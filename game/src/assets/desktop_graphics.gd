@@ -4,11 +4,11 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
-const CITY_SYSTEM_GROUPS := {30977: 11, 30979: 15, 30980: 12, 30981: 21, 30982: 14, 30983: 19, 30984: 17, 30985: 18, 30986: 20, 30987: 16, 30988: 13}
-const ICON_GROUPS := {"city": {2: [1, 2], 3: [9, 10], 77: [7, 8], 181: [3, 4], 182: [5, 6]}, "scurk": {1: [3, 4], 2: [1, 2], 3: [5, 6], 4: [7, 8]}}
+const CITY_SYSTEM_GROUPS: Dictionary[int, int] = {30977: 11, 30979: 15, 30980: 12, 30981: 21, 30982: 14, 30983: 19, 30984: 17, 30985: 18, 30986: 20, 30987: 16, 30988: 13}
+const ICON_GROUPS: Dictionary[String, Dictionary] = {"city": {2: [1, 2], 3: [9, 10], 77: [7, 8], 181: [3, 4], 182: [5, 6]}, "scurk": {1: [3, 4], 2: [1, 2], 3: [5, 6], 4: [7, 8]}}
 var error := ""
-var icons := {"city": {}, "scurk": {}}
-var cursors := {"city": {}, "scurk": {}}
+var icons: Dictionary[String, Dictionary] = {"city": {}, "scurk": {}}
+var cursors: Dictionary[String, Dictionary] = {"city": {}, "scurk": {}}
 
 
 static func load_manifest(value: Variant, read_png: Callable, palette: Sc2Palette) -> DesktopGraphics:
@@ -165,9 +165,9 @@ func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 
 					hotspot = Vector2i(int(coordinates[0]), int(coordinates[1]))
 
-				var png: Dictionary = read_png.call(record.get("png"))
+				var png: IndexedImageResult = read_png.call(record.get("png"))
 
-				if png.is_empty() or not png.get("ok", false):
+				if png == null or not png.ok:
 					error = "Cannot load desktop indexed PNG"
 
 					return

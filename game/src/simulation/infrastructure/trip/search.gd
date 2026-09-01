@@ -57,13 +57,13 @@ static func trace(
 	var costs := PackedInt32Array([0])
 	var headings := PackedInt32Array([4])
 	var parents := PackedInt32Array([-1])
-	var pending := {0: [0]}
-	var best := {_state_key(start_index, modes[0], 4): 0}
+	var pending: Dictionary[int, Array] = {0: [0]}
+	var best: Dictionary[int, int] = {_state_key(start_index, modes[0], 4): 0}
 	var reachable: Array[Dictionary] = []
 	var links: Array[Dictionary] = []
-	var destinations: Dictionary = {}
-	var link_keys: Dictionary = {}
-	var endpoints: Dictionary = {}
+	var destinations: Dictionary[Vector2i, int] = {}
+	var link_keys: Dictionary[Vector2i, bool] = {}
+	var endpoints: Dictionary[Vector2i, Dictionary] = {}
 	var winner := -1
 	var expanded := 0
 
@@ -214,7 +214,7 @@ static func trace(
 	result["expanded_states"] = expanded
 
 	if collect_reach:
-		var limit_points := {}
+		var limit_points: Dictionary[Vector2i, String] = {}
 		for point: Vector2i in endpoints:
 			var endpoint: Dictionary = endpoints[point]
 			if endpoint.limited and not endpoint.exit and not endpoint.destination:

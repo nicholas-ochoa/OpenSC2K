@@ -273,7 +273,7 @@ func refresh_scurk_artwork() -> void:
 			if entry == null:
 				continue
 
-			var rendered: Dictionary = entry.create_image(app.asset_state.palette)
+			var rendered := entry.create_image(app.asset_state.palette)
 
 			if not rendered.ok:
 				continue

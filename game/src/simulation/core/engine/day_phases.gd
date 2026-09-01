@@ -6,15 +6,15 @@ extends RefCounted
 
 # built once on load. the phases hold no mutable state, so the simulation
 # worker and the main thread can share them
-static var _table: Dictionary = _build_table()
+static var _table: Dictionary[String, SimulationDayPhase] = _build_table()
 
 
 # the action name that `SimulationClock` emits, and the phase that runs it
-static func table() -> Dictionary:
+static func table() -> Dictionary[String, SimulationDayPhase]:
 	return _table
 
 
-static func _build_table() -> Dictionary:
+static func _build_table() -> Dictionary[String, SimulationDayPhase]:
 	return {
 		"month_start": MonthStart.new(),
 		"budget": Budget.new(),

@@ -5,11 +5,11 @@ extends DisasterStartConstants
 
 static func start(
 	city: CityState, disaster_type: int, point: Vector2i, random: SimRandom, lfsr_random: SimLfsrRandom = null
-) -> Dictionary:
+) -> DisasterStartResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return DisasterStartResult.failed("city is invalid")
 
 	if disaster_type == DISASTER_NONE:
 		return DisasterStartObjectsState._result(disaster_type, point, false, true, 0)
@@ -63,7 +63,7 @@ static func start(
 		return DisasterStartObjectsState._result(disaster_type, point, false, false, 0)
 
 	if random == null:
-		return {"ok": false, "error": "a compatible process random generator is required"}
+		return DisasterStartResult.failed("a compatible process random generator is required")
 
 	var thing_chunk := city.document.find_chunk("XTHG")
 	var text_chunk := city.document.find_chunk("XTXT")
@@ -74,7 +74,7 @@ static func start(
 		or text_chunk == null
 		or text_chunk.decoded_payload.size() != city.document.decoded_size("XTXT")
 	):
-		return {"ok": false, "error": "disaster moving-object data is missing or invalid"}
+		return DisasterStartResult.failed("disaster moving-object data is missing or invalid")
 
 	var things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
 	var text: PackedByteArray = text_chunk.decoded_payload.duplicate()
@@ -117,12 +117,12 @@ static func start(
 	var old_things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
 
 	if not thing_chunk.set_decoded_payload(things):
-		return {"ok": false, "error": "cannot store the disaster moving object"}
+		return DisasterStartResult.failed("cannot store the disaster moving object")
 
 	if not text_chunk.set_decoded_payload(text):
 		thing_chunk.set_decoded_payload(old_things)
 
-		return {"ok": false, "error": "cannot link the disaster moving object"}
+		return DisasterStartResult.failed("cannot link the disaster moving object")
 
 	city.resync_mirrors(["XTXT"])
 

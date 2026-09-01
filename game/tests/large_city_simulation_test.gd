@@ -29,11 +29,11 @@ func _init() -> void:
 				for y in range(maxi(0, origin.y - 16), mini(edge, origin.y + 16)):
 					city.set_terrain_id(origin.x, y, 0x20)
 			var result := engine.start_disaster(disaster, origin)
-			check(result.get("ok", false), "%d disaster %d start: %s" % [edge, disaster, result.get("error", "")])
+			check(result.ok, "%d disaster %d start: %s" % [edge, disaster, result.error])
 
 			if disaster == DisasterStartPhase.DISASTER_MONSTER or disaster == DisasterStartPhase.DISASTER_TORNADO:
 				var things := document.find_chunk("XTHG").decoded_payload
-				var offset := int(result.get("record", 0)) * CityState.THING_RECORD_SIZE
+				var offset := int(result.record) * CityState.THING_RECORD_SIZE
 				check(ThingData.read(things, offset + 8) < 128 and ThingData.read(things, offset + 9) < 128, "monster pose bytes")
 
 			# Every entry point above accepts every relevant record/grid width.
@@ -42,10 +42,10 @@ func _init() -> void:
 			if edge > 128 and disaster not in [DisasterStartPhase.DISASTER_FIRE, DisasterStartPhase.DISASTER_FLOOD, DisasterStartPhase.DISASTER_MONSTER]:
 				continue
 			for tick in (2 if edge == 16 else 1):
-				check(engine.advance_moving_things(tick * 200).get("ok", false), "moving disaster tick")
+				check(engine.advance_moving_things(tick * 200).ok, "moving disaster tick")
 
 				if engine.active_disaster_type != 0:
-					check(engine.advance_disaster_tick().get("ok", false), "map disaster tick")
+					check(engine.advance_disaster_tick().ok, "map disaster tick")
 
 			if engine.active_disaster_type != 0 or engine.pending_disaster_type != 0 or DisasterStartObjectsState.has_active_object(city, disaster):
 				check(CityDebugActions.end_disaster(city, document, engine).get("ok", false), "clear disaster %d" % edge)
@@ -170,7 +170,7 @@ func check_far_services_and_year(edge: int) -> void:
 		if not result.ok:
 			break
 
-		phases_seen.merge(result.get("phase_results", {}), true)
+		phases_seen.merge(result.phase_results, true)
 
 	for phase in ["budget", "month_start", "annual_microsim", "power", "water", "traffic",
 		"pollution_terrain_land_value", "growth", "rci_demand", "rci_aftermath", "education_health",

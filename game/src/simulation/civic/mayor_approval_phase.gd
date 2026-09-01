@@ -22,12 +22,28 @@ const TILE_MAYOR_HOUSE := 0xf3
 const NEWS_HIGH_APPROVAL := 0x201
 
 
-static func run(city: CityState, random: SimRandom, previous_approval: int) -> Dictionary:
+class Result extends PhaseResult:
+	var approval := 0
+	var previous_approval := 0
+	var weights := PackedInt32Array()
+	var survey_counts := PackedInt32Array()
+	var ranking := PackedInt32Array()
+	var updated_mayor_house_records := 0
+
+
+static func failed(message: String) -> Result:
+	var result := Result.new()
+	result.error = message
+
+	return result
+
+
+static func run(city: CityState, random: SimRandom, previous_approval: int) -> Result:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return failed("city is invalid")
 
 	if random == null:
-		return {"ok": false, "error": "a compatible random generator is required"}
+		return failed("a compatible random generator is required")
 
 	var misc_chunk := city.document.find_chunk("MISC")
 	var graph_chunk := city.document.find_chunk("XGRP")
@@ -42,7 +58,7 @@ static func run(city: CityState, random: SimRandom, previous_approval: int) -> D
 		or microsim_chunk.decoded_payload.size()
 		!= city.document.decoded_size("XMIC")
 	):
-		return {"ok": false, "error": "MISC, XGRP, or XMIC has the wrong size"}
+		return failed("MISC, XGRP, or XMIC has the wrong size")
 
 	var misc: PackedByteArray = misc_chunk.decoded_payload
 	var graphs: PackedByteArray = graph_chunk.decoded_payload
@@ -92,7 +108,7 @@ static func run(city: CityState, random: SimRandom, previous_approval: int) -> D
 		updated_records += 1
 
 	if not microsim_chunk.set_decoded_payload(microsims):
-		return {"ok": false, "error": "cannot store mayor house statistics"}
+		return failed("cannot store mayor house statistics")
 
 	var ranking := PackedInt32Array([0, 1, 2, 3, 4, 5, 6])
 
@@ -108,18 +124,17 @@ static func run(city: CityState, random: SimRandom, previous_approval: int) -> D
 	if previous_approval < 80 and approval > 79:
 		news_items.append({"type": NEWS_HIGH_APPROVAL, "argument": 0})
 
-	return {
-		"ok": true,
-		"error": "",
-		"approval": approval,
-		"previous_approval": previous_approval,
-		"weights": weights,
-		"survey_counts": survey_counts,
-		"ranking": ranking,
-		"updated_mayor_house_records": updated_records,
-		"news_items": news_items,
-		"complete": true,
-	}
+	var result := Result.new()
+	result.ok = true
+	result.approval = approval
+	result.previous_approval = previous_approval
+	result.weights = weights
+	result.survey_counts = survey_counts
+	result.ranking = ranking
+	result.updated_mayor_house_records = updated_records
+	result.news_items = news_items
+
+	return result
 
 
 static func complaint_weights(city: CityState) -> PackedInt32Array:

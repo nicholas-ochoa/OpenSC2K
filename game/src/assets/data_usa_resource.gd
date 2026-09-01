@@ -78,7 +78,7 @@ func _load(data_path: String, index_path: String) -> void:
 
 		records.append(Vector2i(resource_id, data_offset))
 
-	var resources := {}
+	var resources: Dictionary[int, PackedByteArray] = {}
 
 	for record_index in records.size():
 		var record := records[record_index]

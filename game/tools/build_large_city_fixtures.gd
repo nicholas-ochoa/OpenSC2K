@@ -159,7 +159,7 @@ func build_fixture(edge: int) -> void:
 		assert(previous is Dictionary and previous.get("output_sha256", "") == FileAccess.get_sha256(path), "Refuse to replace an edited fixture: " + path)
 
 	var saved := CityFileStore.save_copy(document, path, "res://../references/SIMCITY2000")
-	assert(saved.ok, String(saved.get("error", "")))
+	assert(saved.ok, String(saved.error))
 	var reloaded := Sc2File.load_path(path)
 	assert(reloaded.is_valid() and reloaded.map_size == edge)
 	assert(reloaded.serialize(true).data == saved.data)

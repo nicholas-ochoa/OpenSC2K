@@ -68,7 +68,7 @@ func _init() -> void:
 			if not _result(result, "%d day %d" % [edge, day]):
 				return
 
-			for phase in result.get("applied", []):
+			for phase in result.applied:
 				phases[phase] = true
 
 			while not engine.pending_interaction.is_empty():
@@ -84,7 +84,7 @@ func _init() -> void:
 				if not _result(result, "resolve interaction"):
 					return
 
-				for phase in result.get("applied", []):
+				for phase in result.applied:
 					phases[phase] = true
 
 			if not _result(engine.advance_moving_things(day * 200), "moving tick"):
@@ -119,8 +119,8 @@ func _init() -> void:
 	quit()
 
 
-func _result(result: Dictionary, context: String) -> bool:
-	return _check(result.get("ok", false), "%s: %s" % [context, result.get("error", "")])
+func _result(result: Variant, context: String) -> bool:
+	return _check(result.ok, "%s: %s" % [context, result.error])
 
 
 func _check(condition: bool, context: String) -> bool:

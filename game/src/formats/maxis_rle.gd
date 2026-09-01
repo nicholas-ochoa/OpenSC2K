@@ -2,7 +2,7 @@ class_name MaxisRle
 extends RefCounted
 
 
-static func decode(encoded: PackedByteArray, expected_size: int = -1) -> Dictionary:
+static func decode(encoded: PackedByteArray, expected_size: int = -1) -> BinaryResult:
 	var decoded := PackedByteArray()
 	var read_offset := 0
 
@@ -12,24 +12,24 @@ static func decode(encoded: PackedByteArray, expected_size: int = -1) -> Diction
 
 		if control < 0x80:
 			if read_offset + control > encoded.size():
-				return _failure("Literal data extends past the encoded input")
+				return BinaryResult.failure("Literal data extends past the encoded input")
 
 			if expected_size >= 0 and decoded.size() + control > expected_size:
-				return _failure("Literal data extends past the expected output size")
+				return BinaryResult.failure("Literal data extends past the expected output size")
 
 			decoded.append_array(encoded.slice(read_offset, read_offset + control))
 			read_offset += control
 		# 0x80 is invalid here, don't treat it as a run or a no-op
 		elif control == 0x80:
-			return _failure("Control byte 0x80 is reserved")
+			return BinaryResult.failure("Control byte 0x80 is reserved")
 		else:
 			if read_offset >= encoded.size():
-				return _failure("Run control byte has no value byte")
+				return BinaryResult.failure("Run control byte has no value byte")
 
 			var count := control - 127
 
 			if expected_size >= 0 and decoded.size() + count > expected_size:
-				return _failure("Run extends past the expected output size")
+				return BinaryResult.failure("Run extends past the expected output size")
 
 			var value: int = encoded[read_offset]
 			read_offset += 1
@@ -38,11 +38,16 @@ static func decode(encoded: PackedByteArray, expected_size: int = -1) -> Diction
 				decoded.append(value)
 
 	if expected_size >= 0 and decoded.size() != expected_size:
-		return _failure(
+		return BinaryResult.failure(
 			"Decoded %d bytes; expected %d bytes" % [decoded.size(), expected_size]
 		)
 
-	return {"ok": true, "data": decoded, "error": ""}
+	var outcome := BinaryResult.new()
+	outcome.ok = true
+	outcome.data = decoded
+	outcome.error = ""
+
+	return outcome
 
 
 static func encode(decoded: PackedByteArray) -> PackedByteArray:
@@ -84,8 +89,3 @@ static func _measure_run(data: PackedByteArray, start: int) -> int:
 		run_size += 1
 
 	return run_size
-
-
-static func _failure(message: String) -> Dictionary:
-	return {"ok": false, "data": PackedByteArray(), "error": message}
-

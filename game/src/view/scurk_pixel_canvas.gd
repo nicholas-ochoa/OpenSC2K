@@ -246,7 +246,7 @@ func load_original_textures(executable_path: String) -> Dictionary:
 
 	for index in ORIGINAL_TEXTURE_RESOURCE_IDS.size():
 		var resource_id: int = ORIGINAL_TEXTURE_RESOURCE_IDS[index]
-		var loaded: Dictionary = loaded_set.entries[index]
+		var loaded := loaded_set.entries[index]
 
 		if loaded.width != 8 or loaded.height != 8 or loaded.pixels.size() != 64:
 			return {
@@ -282,7 +282,7 @@ func load_original_clear_backgrounds(executable_path: String) -> Dictionary:
 
 	for index in CLEAR_BACKGROUND_RESOURCE_IDS.size():
 		var resource_id: int = CLEAR_BACKGROUND_RESOURCE_IDS[index]
-		var loaded: Dictionary = loaded_set.entries[index]
+		var loaded := loaded_set.entries[index]
 
 		if (
 			loaded.width != 128

@@ -45,7 +45,7 @@ func _initialize() -> void:
 	var sprite: Sc2SpriteArchive.SpriteEntry = loaded.large_sprites.find_sprite(1001)
 	assert(sprite.duplicate_index == 1)
 	assert(sprite.decode_indices().pixels == PackedInt32Array([-1, 1, 171, 172]))
-	var indices: Dictionary = sprite.create_image(Sc2Palette.index_encoding())
+	var indices := sprite.create_image(Sc2Palette.index_encoding())
 	assert(indices.image.get_pixel(2, 0).r8 == 171)
 	assert(indices.image.get_pixel(0, 0).a8 == 0)
 	var returned: PackedInt32Array = sprite.decode_indices().pixels

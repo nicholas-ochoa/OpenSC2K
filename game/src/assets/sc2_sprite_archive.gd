@@ -15,9 +15,15 @@ class SpriteEntry extends RefCounted:
 	var _index_image_mutex := Mutex.new()
 
 
-	func decode_indices() -> Dictionary:
+	func decode_indices() -> IndexedImageResult:
 		if not _direct_indices.is_empty():
-			return {"ok": true, "pixels": _direct_indices.duplicate(), "rows": height, "error": ""}
+			var outcome := IndexedImageResult.new()
+			outcome.ok = true
+			outcome.pixels = _direct_indices.duplicate()
+			outcome.rows = height
+			outcome.error = ""
+
+			return outcome
 
 		var pixels := PackedInt32Array()
 		pixels.resize(width * height)
@@ -30,7 +36,7 @@ class SpriteEntry extends RefCounted:
 
 		while position < encoded_pixels.size():
 			if position + 2 > encoded_pixels.size():
-				return _failure("truncated block header")
+				return IndexedImageResult.failure(_sprite_error("truncated block header"))
 
 			var block_length := int(encoded_pixels[position])
 			# two layers of commands here: outer blocks and then row runs
@@ -42,24 +48,24 @@ class SpriteEntry extends RefCounted:
 				break
 
 			if position + block_length > encoded_pixels.size():
-				return _failure("block extends past sprite data")
+				return IndexedImageResult.failure(_sprite_error("block extends past sprite data"))
 
 			if block_mode == 0:
 				position += block_length
 				continue
 
 			if block_mode != 1:
-				return _failure("unsupported outer block mode %d" % block_mode)
+				return IndexedImageResult.failure(_sprite_error("unsupported outer block mode %d" % block_mode))
 
 			if row >= height:
-				return _failure("sprite has more rows than its header")
+				return IndexedImageResult.failure(_sprite_error("sprite has more rows than its header"))
 
 			var row_end := position + block_length
 			var x := 0
 
 			while position < row_end:
 				if position + 2 > row_end:
-					return _failure("truncated row command")
+					return IndexedImageResult.failure(_sprite_error("truncated row command"))
 
 				var count := int(encoded_pixels[position])
 				var mode := int(encoded_pixels[position + 1])
@@ -72,13 +78,13 @@ class SpriteEntry extends RefCounted:
 						x += count
 
 						if x > width:
-							return _failure("row skip extends past sprite width")
+							return IndexedImageResult.failure(_sprite_error("row skip extends past sprite width"))
 					4:
 						if position + count > row_end:
-							return _failure("pixel run extends past row block")
+							return IndexedImageResult.failure(_sprite_error("pixel run extends past row block"))
 
 						if x + count > width:
-							return _failure("pixel run extends past sprite width")
+							return IndexedImageResult.failure(_sprite_error("pixel run extends past sprite width"))
 
 						for pixel_offset in count:
 							pixels[row * width + x] = encoded_pixels[position + pixel_offset]
@@ -90,25 +96,31 @@ class SpriteEntry extends RefCounted:
 							if position < row_end:
 								position += 1
 							elif not allow_unpadded_odd_runs:
-								return _failure("odd pixel run has no padding byte")
+								return IndexedImageResult.failure(_sprite_error("odd pixel run has no padding byte"))
 					_:
-						return _failure("unsupported row mode %d" % mode)
+						return IndexedImageResult.failure(_sprite_error("unsupported row mode %d" % mode))
 
 			row += 1
 
 		if not found_end:
-			return _failure("sprite has no end block")
+			return IndexedImageResult.failure(_sprite_error("sprite has no end block"))
 
-		return {"ok": true, "pixels": pixels, "rows": row, "error": ""}
+		var outcome := IndexedImageResult.new()
+		outcome.ok = true
+		outcome.pixels = pixels
+		outcome.rows = row
+		outcome.error = ""
+
+		return outcome
 
 
 	func pixel_hash() -> int:
 		return hash(_direct_indices) if not _direct_indices.is_empty() else hash(encoded_pixels)
 
 
-	func create_image(palette: Sc2Palette) -> Dictionary:
+	func create_image(palette: Sc2Palette) -> AssetImageResult:
 		if not palette.is_valid():
-			return _failure("palette is invalid")
+			return AssetImageResult.failure(_sprite_error("palette is invalid"))
 
 		if palette.is_index_encoding:
 			return _create_index_image()
@@ -116,7 +128,7 @@ class SpriteEntry extends RefCounted:
 		var decoded := decode_indices()
 
 		if not decoded.ok:
-			return decoded
+			return AssetImageResult.failure(decoded.error)
 
 		var image := Image.create(width, height, false, Image.FORMAT_RGBA8)
 		var pixels: PackedInt32Array = decoded.pixels
@@ -130,14 +142,21 @@ class SpriteEntry extends RefCounted:
 				else:
 					image.set_pixel(x, y, Color.TRANSPARENT)
 
-		return {"ok": true, "image": image, "error": ""}
+		var outcome := AssetImageResult.new()
+		outcome.ok = true
+		outcome.image = image
+		outcome.error = ""
+
+		return outcome
 
 
-	func _create_index_image() -> Dictionary:
+	func _create_index_image() -> AssetImageResult:
 		_index_image_mutex.lock()
 
 		if _index_image != null:
-			var cached := {"ok": true, "image": _index_image, "error": ""}
+			var cached := AssetImageResult.new()
+			cached.ok = true
+			cached.image = _index_image
 			_index_image_mutex.unlock()
 
 			return cached
@@ -147,7 +166,7 @@ class SpriteEntry extends RefCounted:
 		if not decoded.ok:
 			_index_image_mutex.unlock()
 
-			return decoded
+			return AssetImageResult.failure(decoded.error)
 
 		var image := Image.create(width, height, false, Image.FORMAT_RGBA8)
 		var pixels: PackedInt32Array = decoded.pixels
@@ -166,18 +185,20 @@ class SpriteEntry extends RefCounted:
 		_index_image = image
 		_index_image_mutex.unlock()
 
-		return {"ok": true, "image": image, "error": ""}
+		var outcome := AssetImageResult.new()
+		outcome.ok = true
+		outcome.image = image
+		outcome.error = ""
+
+		return outcome
 
 
-	func _failure(message: String) -> Dictionary:
-		return {
-			"ok": false,
-			"error": "sprite %d at 0x%x: %s" % [sprite_id, offset, message],
-		}
+	func _sprite_error(message: String) -> String:
+		return "sprite %d at 0x%x: %s" % [sprite_id, offset, message]
 
 
 var entries: Array[SpriteEntry] = []
-var entries_by_id: Dictionary = {}
+var entries_by_id: Dictionary[int, SpriteEntry] = {}
 var parse_error := ""
 # alternate art can leave the ground visible below its small highway pieces
 var redraw_small_highway_ground := false
@@ -250,7 +271,7 @@ func parse(bytes: PackedByteArray) -> bool:
 	if header_end > bytes.size():
 		return _fail("metadata table extends past the file")
 
-	var duplicate_counts: Dictionary = {}
+	var duplicate_counts: Dictionary[int, int] = {}
 
 	for index in count:
 		var metadata_offset := 2 + index * 10

@@ -10,69 +10,74 @@ const RESOURCE_TYPE_STRING := 6
 const STRINGS_PER_BLOCK := 16
 
 
-static func load_ids(path: String, resource_ids: PackedInt32Array) -> Dictionary:
-	var wanted_ids := {}
-	var wanted_blocks := {}
+static func load_ids(path: String, resource_ids: PackedInt32Array) -> PeStringsResult:
+	var wanted_ids: Dictionary[int, bool] = {}
+	var wanted_blocks: Dictionary[int, bool] = {}
 
 	for resource_id in resource_ids:
 		if resource_id < 0 or resource_id > 0xffff:
-			return _failure("string resource ID is outside the valid range")
+			return PeStringsResult.failure("string resource ID is outside the valid range")
 
 		wanted_ids[resource_id] = true
 		wanted_blocks[int(resource_id / STRINGS_PER_BLOCK) + 1] = true
 
 	if wanted_ids.is_empty():
-		return {"ok": true, "strings": {}, "error": ""}
+		var outcome := PeStringsResult.new()
+		outcome.ok = true
+		outcome.strings = {}
+		outcome.error = ""
+
+		return outcome
 
 	var bytes := FileAccess.get_file_as_bytes(path)
 
 	if bytes.is_empty():
-		return _failure("cannot read PE file: %s" % path)
+		return PeStringsResult.failure("cannot read PE file: %s" % path)
 
 	if bytes.size() < 0x40 or _read_u16(bytes, 0) != 0x5a4d:
-		return _failure("file does not have an MZ header")
+		return PeStringsResult.failure("file does not have an MZ header")
 
 	var pe_offset := _read_u32(bytes, 0x3c)
 
 	if not _has_range(bytes, pe_offset, 24) or _read_u32(bytes, pe_offset) != PE_SIGNATURE:
-		return _failure("file does not have a valid PE header")
+		return PeStringsResult.failure("file does not have a valid PE header")
 
 	var section_count := _read_u16(bytes, pe_offset + 6)
 	var optional_size := _read_u16(bytes, pe_offset + 20)
 	var optional_offset := pe_offset + 24
 
 	if not _has_range(bytes, optional_offset, optional_size):
-		return _failure("PE optional header is truncated")
+		return PeStringsResult.failure("PE optional header is truncated")
 
 	if _read_u16(bytes, optional_offset) != PE32_MAGIC:
-		return _failure("only PE32 resources are supported")
+		return PeStringsResult.failure("only PE32 resources are supported")
 
 	var data_directories := optional_offset + 96
 	var resource_entry := data_directories + RESOURCE_DIRECTORY_INDEX * 8
 
 	if not _has_range(bytes, resource_entry, 8):
-		return _failure("PE resource directory entry is missing")
+		return PeStringsResult.failure("PE resource directory entry is missing")
 
 	var resource_rva := _read_u32(bytes, resource_entry)
 	var resource_size := _read_u32(bytes, resource_entry + 4)
 
 	if resource_rva == 0 or resource_size == 0:
-		return _failure("PE file does not contain resources")
+		return PeStringsResult.failure("PE file does not contain resources")
 
 	var section_offset := optional_offset + optional_size
 	var root_offset := _rva_to_offset(bytes, resource_rva, section_offset, section_count)
 
 	if root_offset < 0:
-		return _failure("PE resource directory is outside its sections")
+		return PeStringsResult.failure("PE resource directory is outside its sections")
 
 	var type_directory := _numeric_child_directory(
 		bytes, root_offset, root_offset, RESOURCE_TYPE_STRING
 	)
 
 	if type_directory < 0:
-		return _failure("PE file does not contain string resources")
+		return PeStringsResult.failure("PE file does not contain string resources")
 
-	var result := {}
+	var result: Dictionary[int, String] = {}
 
 	for block_key in wanted_blocks:
 		var block_id := int(block_key)
@@ -81,24 +86,24 @@ static func load_ids(path: String, resource_ids: PackedInt32Array) -> Dictionary
 		)
 
 		if language_directory < 0:
-			return _failure("PE string block %d is missing" % block_id)
+			return PeStringsResult.failure("PE string block %d is missing" % block_id)
 
 		var data_entry := _first_child_data(bytes, root_offset, language_directory)
 
 		if data_entry < 0 or not _has_range(bytes, data_entry, 16):
-			return _failure("PE string block %d has no language data" % block_id)
+			return PeStringsResult.failure("PE string block %d has no language data" % block_id)
 
 		var data_rva := _read_u32(bytes, data_entry)
 		var data_size := _read_u32(bytes, data_entry + 4)
 		var data_offset := _rva_to_offset(bytes, data_rva, section_offset, section_count)
 
 		if data_offset < 0 or not _has_range(bytes, data_offset, data_size):
-			return _failure("PE string block %d data is truncated" % block_id)
+			return PeStringsResult.failure("PE string block %d data is truncated" % block_id)
 
 		var decoded := _decode_block(bytes, data_offset, data_size, block_id)
 
 		if not decoded.ok:
-			return decoded
+			return PeStringsResult.failure(decoded.error)
 
 		for slot in STRINGS_PER_BLOCK:
 			var resource_id := (block_id - 1) * STRINGS_PER_BLOCK + slot
@@ -106,25 +111,30 @@ static func load_ids(path: String, resource_ids: PackedInt32Array) -> Dictionary
 			if wanted_ids.has(resource_id):
 				result[resource_id] = decoded.strings[slot]
 
-	return {"ok": true, "strings": result, "error": ""}
+	var outcome := PeStringsResult.new()
+	outcome.ok = true
+	outcome.strings = result
+	outcome.error = ""
+
+	return outcome
 
 
 static func _decode_block(
 	bytes: PackedByteArray, offset: int, size: int, block_id: int
-) -> Dictionary:
+) -> PeStringBlockResult:
 	var strings: Array[String] = []
 	var cursor := offset
 	var end := offset + size
 
 	for _slot in STRINGS_PER_BLOCK:
 		if cursor > end - 2:
-			return _failure("PE string block %d is truncated" % block_id)
+			return PeStringBlockResult.failure("PE string block %d is truncated" % block_id)
 
 		var length := _read_u16(bytes, cursor)
 		cursor += 2
 
 		if length > int((end - cursor) / 2):
-			return _failure("PE string block %d text is truncated" % block_id)
+			return PeStringBlockResult.failure("PE string block %d text is truncated" % block_id)
 
 		var value := ""
 
@@ -134,7 +144,12 @@ static func _decode_block(
 		strings.append(value)
 		cursor += length * 2
 
-	return {"ok": true, "strings": strings, "error": ""}
+	var outcome := PeStringBlockResult.new()
+	outcome.ok = true
+	outcome.strings = strings
+	outcome.error = ""
+
+	return outcome
 
 
 static func _numeric_child_directory(
@@ -233,7 +248,3 @@ static func _read_u32(bytes: PackedByteArray, offset: int) -> int:
 		| (int(bytes[offset + 2]) << 16)
 		| (int(bytes[offset + 3]) << 24)
 	)
-
-
-static func _failure(message: String) -> Dictionary:
-	return {"ok": false, "error": message}

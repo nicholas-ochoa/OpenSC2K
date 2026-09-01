@@ -7,7 +7,7 @@ var destination := ""
 var error := ""
 
 
-func export_packs(source: String, target: String, original_data := "") -> Dictionary:
+func export_packs(source: String, target: String, original_data := "") -> AssetImportResult:
 	destination = target
 	error = ""
 
@@ -15,12 +15,12 @@ func export_packs(source: String, target: String, original_data := "") -> Dictio
 		var folder := destination.path_join(kind)
 
 		if DirAccess.dir_exists_absolute(folder) and (not DirAccess.get_files_at(folder).is_empty() or not DirAccess.get_directories_at(folder).is_empty()):
-			return {"ok": false, "error": "Refusing to overwrite an existing pack: " + folder}
+			return AssetImportResult.failure("Refusing to overwrite an existing pack: " + folder)
 
 	var assets := OriginalGameAssets.load_root(source)
 
 	if not assets.error.is_empty():
-		return {"ok": false, "error": assets.error}
+		return AssetImportResult.failure(assets.error)
 
 	var manifest := {"format": "opensc2k-graphics", "version": 1, "name": "Original SimCity 2000", "palette": "palette.png",
 			"scenario_palette": "scenario-palette.png", "ui": {}}
@@ -40,11 +40,11 @@ func export_packs(source: String, target: String, original_data := "") -> Dictio
 		var records: Array = []
 		var index := 0
 
-		for entry in pair[1].entries:
-			var pixels: Dictionary = entry.decode_indices()
+		for entry: Sc2SpriteArchive.SpriteEntry in pair[1].entries:
+			var pixels := entry.decode_indices()
 
 			if not pixels.ok:
-				return {"ok": false, "error": "Cannot decode sprite"}
+				return AssetImportResult.failure("Cannot decode sprite")
 
 			var size_folder := "large" if pair[0] == "large_sprites" else ("small" if entry.sprite_id < 500 else "medium")
 			var relative := "%s/%04d-%d.png" % [size_folder, index, entry.sprite_id]
@@ -58,7 +58,7 @@ func export_packs(source: String, target: String, original_data := "") -> Dictio
 		var dib := PeBitmapResource.load_numeric_dib(source.path_join("SIMCITY.EXE"), pair[1])
 
 		if not dib.ok:
-			return {"ok": false, "error": "Cannot decode toolbar bitmap"}
+			return AssetImportResult.failure("Cannot decode toolbar bitmap")
 
 		var bytes: PackedByteArray = dib.bytes
 		var palette := Sc2Palette.new()
@@ -68,13 +68,13 @@ func export_packs(source: String, target: String, original_data := "") -> Dictio
 			var offset := int(bytes.decode_u32(0)) + mini(index, count - 1) * 4
 			palette.colors.append(Color8(bytes[offset + 2], bytes[offset + 1], bytes[offset]))
 
-		var decoded: Dictionary
+		var decoded: IndexedImageResult
 
 		if dib.bits_per_pixel == 8:
 			decoded = PeBitmapResource.load_numeric_indexed8(source.path_join("SIMCITY.EXE"), pair[1])
 		else:
 			if dib.bits_per_pixel != 4 or dib.compression != 0:
-				return {"ok": false, "error": "Unsupported original bitmap"}
+				return AssetImportResult.failure("Unsupported original bitmap")
 
 			var pixels := PackedInt32Array()
 			var stride := ((int(dib.width) * 4 + 31) / 32) * 4
@@ -85,10 +85,14 @@ func export_packs(source: String, target: String, original_data := "") -> Dictio
 					var value := bytes[start + (int(dib.height) - 1 - y) * stride + (x / 2)]
 					pixels.append((value >> 4) if x % 2 == 0 else (value & 15))
 
-			decoded = {"ok": true, "width": dib.width, "height": dib.height, "pixels": pixels}
+			decoded = IndexedImageResult.new()
+			decoded.ok = true
+			decoded.width = dib.width
+			decoded.height = dib.height
+			decoded.pixels = pixels
 
 		if not decoded.ok:
-			return {"ok": false, "error": "Cannot decode original bitmap"}
+			return AssetImportResult.failure("Cannot decode original bitmap")
 
 		var relative := "ui/%s.png" % pair[0]
 		_write_png("graphics/" + relative, decoded.width, decoded.height, decoded.pixels, palette)
@@ -98,7 +102,7 @@ func export_packs(source: String, target: String, original_data := "") -> Dictio
 		var decoded := IndexedBmp.decode(FileAccess.get_file_as_bytes(source.path_join("BITMAPS/%s.BMP" % pair[1])))
 
 		if not decoded.ok:
-			return {"ok": false, "error": "Cannot decode original bitmap"}
+			return AssetImportResult.failure("Cannot decode original bitmap")
 
 		var palette := Sc2Palette.new()
 		palette.colors = decoded.colors
@@ -110,7 +114,7 @@ func export_packs(source: String, target: String, original_data := "") -> Dictio
 	var loaded := GraphicsPack.load_root(destination.path_join("graphics"))
 
 	if not loaded.error.is_empty():
-		return {"ok": false, "error": loaded.error}
+		return AssetImportResult.failure(loaded.error)
 
 	for kind in ["sound", "music"]:
 		var media := {"format": "opensc2k-" + kind, "version": 1, "name": "Original SimCity 2000 " + kind, "files": {}}
@@ -127,9 +131,13 @@ func export_packs(source: String, target: String, original_data := "") -> Dictio
 		var media_error := MediaPack.load_folder(destination.path_join(kind), kind).error
 
 		if not media_error.is_empty():
-			return {"ok": false, "error": media_error}
+			return AssetImportResult.failure(media_error)
 
-	return {"ok": error.is_empty(), "error": error}
+	var outcome := AssetImportResult.new()
+	outcome.ok = error.is_empty()
+	outcome.error = error
+
+	return outcome
 
 
 func _write_png(path: String, width: int, height: int, pixels: PackedInt32Array, palette: Sc2Palette) -> void:

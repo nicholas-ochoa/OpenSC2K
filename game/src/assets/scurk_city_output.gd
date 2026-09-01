@@ -171,9 +171,11 @@ static func save_small_bmp(
 	for index in bytes.size():
 		pixels[index] = bytes[index]
 
-	return IndexedBitmap.save_path(
+	var saved := IndexedBitmap.save_path(
 		path, image.get_width(), image.get_height(), pixels, output_palette
 	)
+
+	return {"ok": saved.ok, "error": saved.error, "path": saved.path}
 
 
 static func save_pdf(
@@ -522,7 +524,7 @@ static func _draw_artwork_stamps(output: Image, city: CityState, palette: Sc2Pal
 		if entry == null:
 			continue
 
-		var rendered: Dictionary = entry.create_image(palette)
+		var rendered := entry.create_image(palette)
 
 		if not rendered.ok:
 			continue

@@ -46,8 +46,8 @@ func _benchmark_initialize() -> void:
 	IsometricStaticVisuals.static_visual_signature(simulated)
 
 	for day in 4:
-		assert(engine.advance_day().get("ok", false))
-		assert(engine.advance_moving_things(day * 200).get("ok", false))
+		assert(engine.advance_day().ok)
+		assert(engine.advance_moving_things(day * 200).ok)
 		var started := Time.get_ticks_usec()
 		IsometricStaticVisuals.static_visual_signature(simulated)
 		print("SIGNATURE simulated_day=%d total_us=%d" % [day + 1, Time.get_ticks_usec() - started])

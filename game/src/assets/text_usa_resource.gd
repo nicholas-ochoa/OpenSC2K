@@ -7,7 +7,8 @@ const INDEX_RECORD_SIZE := 8
 static func load_ids(
 	data_path: String, index_path: String, resource_ids: PackedInt32Array
 ) -> Dictionary:
-	var wanted := {}
+	var wanted: Dictionary[int, bool] = {}
+	var result: Dictionary[int, String] = {}
 
 	for resource_id in resource_ids:
 		if resource_id < 0:
@@ -16,7 +17,7 @@ static func load_ids(
 		wanted[resource_id] = true
 
 	if wanted.is_empty():
-		return {"ok": true, "strings": {}, "error": ""}
+		return {"ok": true, "strings": result, "error": ""}
 
 	var data := FileAccess.get_file_as_bytes(data_path)
 
@@ -44,8 +45,6 @@ static func load_ids(
 			return _failure("text resource offsets are not ordered")
 
 		records.append(Vector2i(resource_id, data_offset))
-
-	var result := {}
 
 	for record_index in records.size():
 		var record := records[record_index]

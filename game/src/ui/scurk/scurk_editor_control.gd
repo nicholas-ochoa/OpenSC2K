@@ -361,7 +361,7 @@ func import_image_path(path: String) -> Dictionary:
 	var imported := ScurkImageImport.load_path(path, palette)
 
 	if not imported.ok:
-		return imported
+		return {"ok": false, "error": imported.error}
 
 	if imported.width > 128 or imported.height > 256:
 		return {
@@ -395,7 +395,7 @@ func export_image_path(path: String) -> Dictionary:
 	if not shape.ok:
 		return shape
 
-	var encoded: Dictionary
+	var encoded: AssetBytesResult
 
 	match output_path.get_extension().to_lower():
 		"png":
@@ -406,7 +406,7 @@ func export_image_path(path: String) -> Dictionary:
 			return {"ok": false, "error": "Choose PNG or GIF as the image format."}
 
 	if not encoded.ok:
-		return encoded
+		return {"ok": false, "error": encoded.error}
 
 	var error := DirAccess.make_dir_recursive_absolute(output_path.get_base_dir())
 
@@ -467,7 +467,7 @@ func export_bmp_path(path: String) -> Dictionary:
 	)
 
 	if not result.ok:
-		return result
+		return {"ok": false, "error": result.error}
 
 	_set_status("Exported sprite %d to %s." % [
 		view_sprite_id(current_large_id, current_view), output_path.get_file(),
@@ -1360,7 +1360,7 @@ func _refresh_view_previews() -> void:
 		return
 
 	for view in 3:
-		var entry: Variant = _resolved_view_entry(view)
+		var entry: Sc2SpriteArchive.SpriteEntry = _resolved_view_entry(view)
 
 		if entry == null:
 			view_previews[view].clear_preview(view)
@@ -1376,7 +1376,7 @@ func _refresh_view_previews() -> void:
 			view_preview_panels[view].visible = true
 			continue
 
-		var decoded: Dictionary = entry.decode_indices()
+		var decoded := entry.decode_indices()
 
 		if not decoded.ok:
 			view_previews[view].clear_preview(view)

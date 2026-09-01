@@ -10,7 +10,7 @@ var palette: Sc2Palette
 var scenario_palette: Sc2Palette
 var large_sprites := Sc2SpriteArchive.new()
 var small_medium_sprites := Sc2SpriteArchive.new()
-var ui_images: Dictionary = {}
+var ui_images: Dictionary[String, Image] = {}
 var scurk_graphics: ScurkGraphics
 var city_ui_graphics: CityUiGraphics
 var desktop_graphics: DesktopGraphics
@@ -161,7 +161,7 @@ func _load_sprites(records: Variant, archive: Sc2SpriteArchive) -> bool:
 	if not records is Array or records.is_empty():
 		return _fail("Sprite lists must be nonempty arrays")
 
-	var duplicate_counts: Dictionary = {}
+	var duplicate_counts: Dictionary[int, int] = {}
 
 	for record in records:
 		if not record is Dictionary:
@@ -192,36 +192,36 @@ func _load_sprites(records: Variant, archive: Sc2SpriteArchive) -> bool:
 	return true
 
 
-func _read_png(relative_path: Variant) -> Dictionary:
+func _read_png(relative_path: Variant) -> IndexedImageResult:
 	if not relative_path is String or relative_path.is_empty():
 		_fail("PNG path must be a nonempty string")
 
-		return {}
+		return null
 
 	var path: String = relative_path
 
 	if path.is_absolute_path() or path.contains(":") or path.contains("\\"):
 		_fail("PNG paths must be relative and use forward slashes")
 
-		return {}
+		return null
 
 	for component in path.split("/"):
 		if component in ["", ".", ".."]:
 			_fail("PNG paths must not contain empty, dot, or parent components")
 
-			return {}
+			return null
 
 	if path.get_extension().to_lower() != "png":
 		_fail("Graphics files must be PNG")
 
-		return {}
+		return null
 
 	var decoded := Png.load_path(_root.path_join(path))
 
 	if not decoded.ok:
 		_fail("%s: %s" % [path, decoded.error])
 
-		return {}
+		return null
 
 	return decoded
 

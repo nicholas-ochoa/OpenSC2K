@@ -2,7 +2,7 @@ class_name CityUiGraphics
 extends RefCounted
 
 
-const CONTROL_SIZES := {
+const CONTROL_SIZES: Dictionary[String, Vector2i] = {
 	"ADVICED": Vector2i(30, 25), "ADVICEF": Vector2i(30, 25), "ADVICEU": Vector2i(30, 25),
 	"BOOKD": Vector2i(30, 24), "BOOKF": Vector2i(30, 24), "BOOKU": Vector2i(30, 24),
 	"CHECKD": Vector2i(16, 16), "CHECKF": Vector2i(16, 16), "CHECKU": Vector2i(16, 16),
@@ -19,16 +19,17 @@ const TERRAIN_LOOSE_ROLES := ["raise", "lower", "stretch", "level", "sea_raise",
 const TERRAIN_WIDTHS := [19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 16, 13, 8]
 const MEDIA_IDS := [261, 262, 263, 264, 265, 266, 267, 268, 269, 270, "WILL0D.BMP", "WILL0U.BMP", "WILL1D.BMP", "WILL1U.BMP", "WILL2D.BMP", "WILL2U.BMP", "WILL3D.BMP", "WILL3U.BMP", "WILL4D.BMP", "WILL4U.BMP"]
 const NOTICE_IDS := [400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411]
-const PRESENTATION_SIZES := {"128.BMP": Vector2i(106, 53), "2000WIN.BMP": Vector2i(371, 331), "ABOUT.BMP": Vector2i(480, 299), "PRESNTS.BMP": Vector2i(238, 198), "TITLESCR.BMP": Vector2i(644, 484), "PAL_LOAD.BMP": Vector2i(101, 101), "PAL_MSTR.BMP": Vector2i(101, 101), "PAL_STTC.BMP": Vector2i(101, 101)}
+const PRESENTATION_SIZES: Dictionary[String, Vector2i] = {"128.BMP": Vector2i(106, 53), "2000WIN.BMP": Vector2i(371, 331), "ABOUT.BMP": Vector2i(480, 299), "PRESNTS.BMP": Vector2i(238, 198), "TITLESCR.BMP": Vector2i(644, 484), "PAL_LOAD.BMP": Vector2i(101, 101), "PAL_MSTR.BMP": Vector2i(101, 101), "PAL_STTC.BMP": Vector2i(101, 101)}
 var error := ""
-var controls: Dictionary = {}
+var controls: Dictionary[String, Image] = {}
 var hourglass: Array[Image] = []
-var portraits: Dictionary = {}
+var portraits: Dictionary[int, Image] = {}
+# integer pe ids and string loose-file names share these two lookups
 var terrain: Dictionary = {}
 var media: Dictionary = {}
-var notices: Dictionary = {}
-var presentation: Dictionary = {}
-var presentation_palettes: Dictionary = {}
+var notices: Dictionary[int, Image] = {}
+var presentation: Dictionary[String, Image] = {}
+var presentation_palettes: Dictionary[String, Sc2Palette] = {}
 var check_sheet: Image
 var check_system_colors := false
 
@@ -42,7 +43,7 @@ static func load_manifest(value: Variant, read_png: Callable, palette: Sc2Palett
 
 static func load_original(reference_root: String) -> CityUiGraphics:
 	var graphics := CityUiGraphics.new()
-	graphics.check_sheet = PeBitmapResource.load_named(reference_root.path_join("SIMCITY.EXE"), CheckControlGraphics.RESOURCE_ID).get("image")
+	graphics.check_sheet = PeBitmapResource.load_named(reference_root.path_join("SIMCITY.EXE"), CheckControlGraphics.RESOURCE_ID).image
 	graphics.check_system_colors = true
 
 	for id in CONTROL_SIZES:
@@ -55,7 +56,7 @@ static func load_original(reference_root: String) -> CityUiGraphics:
 				image = Image.load_from_file(path)
 		else:
 			var loaded := PeBitmapResource.load_named(reference_root.path_join("SIMCITY.EXE"), id)
-			image = loaded.get("image")
+			image = loaded.image
 
 		if image != null:
 			graphics.controls[id] = image
@@ -106,7 +107,7 @@ static func _original_image(reference_root: String, id: Variant) -> Image:
 
 		return Image.load_from_file(path) if FileAccess.file_exists(path) else null
 
-	return PeBitmapResource.load_numeric(reference_root.path_join("SIMCITY.EXE"), id).get("image")
+	return PeBitmapResource.load_numeric(reference_root.path_join("SIMCITY.EXE"), id).image
 
 
 func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
@@ -137,9 +138,9 @@ func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 
 				return
 
-			var png: Dictionary = read_png.call(record.get("png"))
+			var png: IndexedImageResult = read_png.call(record.get("png"))
 
-			if png.is_empty() or not png.get("ok", false):
+			if png == null or not png.ok:
 				error = "Cannot read city_ui image %s" % str(ids[i])
 
 				return

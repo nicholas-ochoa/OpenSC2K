@@ -140,7 +140,7 @@ static func microsim_site(city: CityState, microsim_id: int) -> Dictionary:
 	return city.microsim_sites().get(microsim_id, {})
 
 
-static func microsim_sites(city: CityState) -> Dictionary:
+static func microsim_sites(city: CityState) -> Dictionary[int, Dictionary]:
 	assert(OS.get_thread_caller_id() == OS.get_main_thread_id(),
 		"CityState microsim site cache is main-thread only")
 	var text := city.document.find_chunk("XTXT")

@@ -122,9 +122,9 @@ func _check_simulation_run() -> void:
 	var changed_days := 0
 
 	for day in DAY_COUNT:
-		check(engine.advance_day().get("ok", false), "Simulation day %d advances" % day)
+		check(engine.advance_day().ok, "Simulation day %d advances" % day)
 		check(
-			engine.advance_moving_things(day * 200).get("ok", false),
+			engine.advance_moving_things(day * 200).ok,
 			"Moving things advance on day %d" % day,
 		)
 		var next_signature := CityIsometricRenderer.static_visual_signature(city)

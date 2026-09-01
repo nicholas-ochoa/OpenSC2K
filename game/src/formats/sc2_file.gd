@@ -6,7 +6,7 @@ extends RefCounted
 const ChunkType = preload("res://src/formats/sc2_chunk.gd")
 const RleCodec = preload("res://src/formats/maxis_rle.gd")
 
-const DECODED_SIZES := {
+const DECODED_SIZES: Dictionary[String, int] = {
 	"CNAM": 32,
 	"MISC": 4800,
 	"ALTM": 32768,
@@ -30,7 +30,7 @@ const DECODED_SIZES := {
 	"XGRP": 3328,
 }
 
-const RAW_CHUNKS := {
+const RAW_CHUNKS: Dictionary[String, bool] = {
 	"CNAM": true,
 	"ALTM": true,
 	"TEXT": true,
@@ -56,7 +56,7 @@ var parse_error := ""
 # Cache the first occurrence of each chunk ID. Worker lookups only read
 # the cache; rebuild it when the chunk list changes. A size mismatch
 # falls back to a scan. Store positions so the cache cannot keep chunks alive.
-var _chunk_cache := {}
+var _chunk_cache: Dictionary[String, int] = {}
 var _chunk_cache_size := -1
 
 
@@ -325,7 +325,7 @@ func set_misc_i32(offset: int, value: int) -> bool:
 	return set_misc_u32(offset, value)
 
 
-func serialize(force_rebuild: bool = false) -> Dictionary:
+func serialize(force_rebuild: bool = false) -> BinaryResult:
 	var has_changes := false
 
 	for chunk in chunks:
@@ -334,7 +334,12 @@ func serialize(force_rebuild: bool = false) -> Dictionary:
 			break
 
 	if not force_rebuild and not has_changes and not source_bytes.is_empty():
-		return {"ok": true, "data": source_bytes.duplicate(), "error": ""}
+		var outcome := BinaryResult.new()
+		outcome.ok = true
+		outcome.data = source_bytes.duplicate()
+		outcome.error = ""
+
+		return outcome
 
 	var body := PackedByteArray()
 	body.append_array(("SCLG" if is_extended() else "SCDH").to_ascii_buffer())
@@ -356,7 +361,12 @@ func serialize(force_rebuild: bool = false) -> Dictionary:
 	output.append_array(_u32_be(body.size()))
 	output.append_array(body)
 
-	return {"ok": true, "data": output, "error": ""}
+	var outcome := BinaryResult.new()
+	outcome.ok = true
+	outcome.data = output
+	outcome.error = ""
+
+	return outcome
 
 
 func _fail(message: String) -> bool:
@@ -503,7 +513,7 @@ func enable_full_resolution_maps() -> bool:
 	if full_resolution_maps():
 		return true
 
-	var expanded := {}
+	var expanded: Dictionary[String, PackedByteArray] = {}
 
 	for id in HALF_MAP_CHUNKS + QUARTER_MAP_CHUNKS:
 		var chunk := find_chunk(id)

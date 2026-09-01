@@ -44,7 +44,7 @@ const ANY_RCI_ZONE_MASK := 0x7e
 # independent corrected lane model. port bits: north, east, south, west
 # straight sections have one direction per lane. curves connect the ingress
 # and egress corners of their two-by-two footprint with right-hand traffic
-const HIGHWAY_PORTS := {0x49: 5, 0x4a: 10, 0x4b: 5, 0x4c: 10,
+const HIGHWAY_PORTS: Dictionary[int, int] = {0x49: 5, 0x4a: 10, 0x4b: 5, 0x4c: 10,
 	0x4d: 5, 0x4e: 10, 0x4f: 5, 0x50: 10,
 	0x61: 10, 0x62: 5, 0x63: 10, 0x64: 5,
 	0x65: 3, 0x66: 6, 0x67: 12, 0x68: 9, 0x69: 15}

@@ -40,7 +40,7 @@ func process(delta: float) -> void:
 
 	app.simulation_state.simulation_engine.midi_playback_active = app.effects_audio.music_playback_is_active()
 	var interaction_suspended := _simulation_suspended()
-	var result: Dictionary
+	var result: SimulationTickResult
 
 	if app.simulation_state.frame_simulation != null:
 		app.simulation_state.frame_simulation.budget_usec = FrameSimulationRunner.budget_for_frame(delta)
@@ -92,7 +92,7 @@ func _advance_palette_animation(delta: float, suspended: bool) -> void:
 		app.static_render.update_palette_cycle_texture()
 
 
-func consume_simulation_result(result: Dictionary) -> void:
+func consume_simulation_result(result: SimulationTickResult) -> void:
 	if result.base_ticks > 0:
 		sync_speed_ui()
 
@@ -102,7 +102,7 @@ func consume_simulation_result(result: Dictionary) -> void:
 	var changed_disaster_map := false
 
 	for disaster in result.disaster_results:
-		if disaster.get("map_changed", false):
+		if disaster.map_changed:
 			changed_disaster_map = true
 			break
 
@@ -150,7 +150,7 @@ func consume_simulation_result(result: Dictionary) -> void:
 	if not result.effect_events.is_empty() or not result.sound_events.is_empty():
 		app.effects_audio.show_effect_events(result.effect_events, app.moving_sprites.audible_sound_events(result.sound_events))
 
-	for track_id in result.get("music_track_requests", PackedInt32Array()):
+	for track_id in result.music_track_requests:
 		if app.document_state.city.music_enabled():
 			app.effects_audio.play_music_track(int(track_id))
 

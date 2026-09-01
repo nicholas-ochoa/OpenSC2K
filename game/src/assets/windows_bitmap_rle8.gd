@@ -3,9 +3,9 @@ extends RefCounted
 # bi_rle8 decoding to top-down palette indices. no rgb index matching
 
 
-static func decode(bytes: PackedByteArray, width: int, height: int) -> Dictionary:
+static func decode(bytes: PackedByteArray, width: int, height: int) -> IndexedImageResult:
 	if width <= 0 or height <= 0 or width > 4096 or height > 4096:
-		return _failure("RLE8 dimensions must be 1 through 4096")
+		return IndexedImageResult.failure("RLE8 dimensions must be 1 through 4096")
 
 	var pixels := PackedInt32Array()
 	pixels.resize(width * height)
@@ -21,27 +21,33 @@ static func decode(bytes: PackedByteArray, width: int, height: int) -> Dictionar
 
 		if count == 0:
 			if value == 1:
-				return {"ok": true, "pixels": pixels, "consumed": offset, "error": ""}
+				var outcome := IndexedImageResult.new()
+				outcome.ok = true
+				outcome.pixels = pixels
+				outcome.consumed = offset
+				outcome.error = ""
+
+				return outcome
 
 			if value == 0:
 				x = 0
 				y += 1
 
 				if y > height:
-					return _failure("RLE8 line escape exceeds the image")
+					return IndexedImageResult.failure("RLE8 line escape exceeds the image")
 
 				continue
 
 			if value == 2:
 				if offset + 2 > bytes.size():
-					return _failure("RLE8 delta is truncated")
+					return IndexedImageResult.failure("RLE8 delta is truncated")
 
 				x += int(bytes[offset])
 				y += int(bytes[offset + 1])
 				offset += 2
 
 				if x > width or y >= height:
-					return _failure("RLE8 delta exceeds the image")
+					return IndexedImageResult.failure("RLE8 delta exceeds the image")
 
 				continue
 
@@ -49,10 +55,10 @@ static func decode(bytes: PackedByteArray, width: int, height: int) -> Dictionar
 			var padded_size := (count + 1) & ~1
 
 			if offset + padded_size > bytes.size():
-				return _failure("RLE8 absolute run or padding is truncated")
+				return IndexedImageResult.failure("RLE8 absolute run or padding is truncated")
 
 			if x + count > width or y >= height:
-				return _failure("RLE8 absolute run exceeds its row")
+				return IndexedImageResult.failure("RLE8 absolute run exceeds its row")
 
 			for i in count:
 				pixels[(height - 1 - y) * width + x + i] = bytes[offset + i]
@@ -60,15 +66,11 @@ static func decode(bytes: PackedByteArray, width: int, height: int) -> Dictionar
 			offset += padded_size
 		else:
 			if x + count > width or y >= height:
-				return _failure("RLE8 encoded run exceeds its row")
+				return IndexedImageResult.failure("RLE8 encoded run exceeds its row")
 
 			for i in count:
 				pixels[(height - 1 - y) * width + x + i] = value
 
 		x += count
 
-	return _failure("RLE8 end-of-bitmap escape is missing")
-
-
-static func _failure(message: String) -> Dictionary:
-	return {"ok": false, "error": message}
+	return IndexedImageResult.failure("RLE8 end-of-bitmap escape is missing")

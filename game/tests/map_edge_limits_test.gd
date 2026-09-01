@@ -167,8 +167,8 @@ func check_transport(edge: int) -> void:
 		ThingData.write(p.XTHG, offset + 3, edge - 3)
 		ThingData.write(p.XTHG, offset + 4, edge - 3)
 		ThingData.write(p.XTHG, offset + 6, 8)
-		var counters := {"active_sailboats": active, "removed_sailboats": 0, "malformed_records": 0,
-			"distressed_sailboats": 0, "turned_sailboats": 0, "moved_sailboats": 0}
+		var counters := MovingThingResult.new()
+		counters.active_sailboats = active
 		SailboatThingTick.update(p.XBLD, p.XBIT, p.XTXT, p.XTHG, 1,
 			SequenceRandom.new(), SequenceLfsr.new([1]), counters, edge)
 		var survives: bool = active <= (4 * edge * edge) / 16384

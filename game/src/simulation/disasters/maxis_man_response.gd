@@ -7,8 +7,8 @@ const ARRIVAL_SOUND := 513
 const ARRIVAL_OFFSETS := [Vector2i(16, 0), Vector2i(0, 16), Vector2i(-16, 0), Vector2i(0, -16)]
 
 
-static func apply(city: CityState, started: Dictionary, random: SimRandom, lfsr_random: SimLfsrRandom) -> Dictionary:
-	if not started.get("ok", false) or not started.get("started", false):
+static func apply(city: CityState, started: DisasterStartResult, random: SimRandom, lfsr_random: SimLfsrRandom) -> DisasterStartResult:
+	if not started.ok or not started.started:
 		return started
 
 	# State 1 also covers a declined proposal or failed missile search.
@@ -68,13 +68,17 @@ static func apply(city: CityState, started: Dictionary, random: SimRandom, lfsr_
 	OverlayData.write(text, index, OverlayData.thing_id(record))
 	var old_things: PackedByteArray = thing_chunk.decoded_payload
 	if not thing_chunk.set_decoded_payload(things):
-		return {"ok": false, "error": "cannot store the automatic Maxis Man response"}
+		return DisasterStartResult.failed("cannot store the automatic Maxis Man response")
 	if not text_chunk.set_decoded_payload(text):
 		thing_chunk.set_decoded_payload(old_things)
-		return {"ok": false, "error": "cannot link the automatic Maxis Man response"}
+		return DisasterStartResult.failed("cannot link the automatic Maxis Man response")
 
 	city.resync_mirrors(["XTXT"])
-	started["maxis_man_response"] = {"record": record, "point": point, "target": target, "goal": goal}
+	started.maxis_man_response = DisasterStartResult.MaxisManArrival.new()
+	started.maxis_man_response.record = record
+	started.maxis_man_response.point = point
+	started.maxis_man_response.target = target
+	started.maxis_man_response.goal = goal
 	started.sound_events.append(ARRIVAL_SOUND)
 	started.view_center_requests.append(point)
 	return started

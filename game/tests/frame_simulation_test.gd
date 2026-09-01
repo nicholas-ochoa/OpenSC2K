@@ -10,6 +10,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	check_field_coverage()
+	check_snapshot_schedule_isolation()
 
 	for edge in [128, 512]:
 		await check_parity(edge)
@@ -137,7 +138,7 @@ func check_special_ticks() -> void:
 	print("PASS: 512 annual update, fire ticks, shutdown and private arrays")
 
 
-func compare_tick(sync: GameSpeedController, sliced: GameSpeedController, runner: FrameSimulationRunner, now: int, context: String) -> Dictionary:
+func compare_tick(sync: GameSpeedController, sliced: GameSpeedController, runner: FrameSimulationRunner, now: int, context: String) -> SimulationTickResult:
 	var expected := sync.advance_time(200, now)
 	var actual := runner.advance_time(200, now)
 	var deadline := Time.get_ticks_msec() + 30000
@@ -178,3 +179,17 @@ func saved_payloads(document: Sc2File) -> Array:
 	for chunk in document.chunks:
 		values.append(chunk.decoded_payload.duplicate())
 	return values
+
+
+func check_snapshot_schedule_isolation() -> void:
+	var source := make_controller(128)
+	source.engine.pending_day_schedule = {"actions": PackedStringArray(["budget"]), "nested": {"values": [1]}}
+	var stamp := SimulationSnapshot.stamp(source)
+	var captured := SimulationSnapshot.capture(source, SimulationSliceBudget.new())
+	captured.engine.pending_day_schedule.nested.values[0] = 2
+	check(source.engine.pending_day_schedule.nested.values[0] == 1, "capture deep-copies the pending schedule")
+	check(SimulationSnapshot.stamp(source) == stamp, "private schedule edits preserve the source stamp")
+	SimulationSnapshot.publish(captured, source)
+	captured.engine.pending_day_schedule.nested.values[0] = 3
+	check(source.engine.pending_day_schedule.nested.values[0] == 2, "publication deep-copies the pending schedule")
+	check(SimulationSnapshot.stamp(source) != stamp, "published schedule edits change the stamp")

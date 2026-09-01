@@ -180,7 +180,7 @@ func _test_industry_window(reference_root: String) -> void:
 		reference_root.path_join("SIMCITY.EXE"),
 		PackedInt32Array(range(422, 433)),
 	)
-	var all_names: bool = names.get("ok", false) and names.strings.size() == 11
+	var all_names: bool = names.ok and names.strings.size() == 11
 
 	if all_names:
 		for resource_id in range(422, 433):
@@ -191,9 +191,9 @@ func _test_industry_window(reference_root: String) -> void:
 
 	_check(all_names, "Supplied executable contains all eleven industry labels")
 	var icons := PeBitmap.load_numeric(reference_root.path_join("SIMCITY.EXE"), 178)
-	var icon_image: Image = icons.get("image") as Image
+	var icon_image: Image = icons.image
 	_check(
-		icons.get("ok", false) and icon_image != null and not icon_image.is_empty(),
+		icons.ok and icon_image != null and not icon_image.is_empty(),
 		"Supplied executable contains the industry icon strip",
 	)
 
@@ -265,7 +265,7 @@ func _test_simnation_window(reference_root: String) -> void:
 		PackedInt32Array([421, 548, 583]),
 	)
 	_check(
-		strings.get("ok", false)
+		strings.ok
 		and str(strings.strings.get(421, "")).contains("%lu000")
 		and not str(strings.strings.get(548, "")).is_empty()
 		and not str(strings.strings.get(583, "")).is_empty(),

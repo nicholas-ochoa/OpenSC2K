@@ -125,11 +125,11 @@ func open_scurk_place_print() -> void:
 	if app.view_state.overlay_mode != CityViewMode.Mode.CITY:
 		app.menus.set_overlay(CityViewMode.Mode.CITY)
 
-	var names := (
-		app.asset_state.active_scurk_tile_set.names
-		if app.asset_state.active_scurk_tile_set != null
-		else {}
-	)
+	var names: Dictionary[int, String] = {}
+
+	if app.asset_state.active_scurk_tile_set != null:
+		names = app.asset_state.active_scurk_tile_set.names
+
 	app.scurk_place_print.configure(app.asset_state.palette, app.asset_state.large_sprites, names, app.asset_state.scurk_graphics)
 
 	if app.tool_state.last_edit_command == null or not app.tool_state.last_edit_command.scurk_place_history:

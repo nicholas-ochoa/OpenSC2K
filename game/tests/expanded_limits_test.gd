@@ -61,8 +61,8 @@ func _init() -> void:
 		document.find_chunk("XTHG").set_decoded_payload(things)
 		city.replace_text_overlays(overlays)
 		var result := MovingThingPhase.run(city, rng, SimLfsrRandom.new(456))
-		check(result.get("ok", false), "all object slots tick: " + str(result.get("error", "")))
-		check(result.get("scanned_records", 0) == city.thing_count() - 1, "all object slots scanned")
+		check(result.ok, "all object slots tick: " + str(result.error))
+		check(result.scanned_records == city.thing_count() - 1, "all object slots scanned")
 		# Dispatch into an extended slot, then check that undo restores the bytes.
 		things = document.find_chunk("XTHG").decoded_payload.duplicate()
 		var last := city.thing_count() - 1

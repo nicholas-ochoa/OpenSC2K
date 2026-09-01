@@ -113,7 +113,7 @@ class TickContext:
 
 
 	# update each thing record with its type's tick rule, in record order
-	func update_records(counters: Dictionary) -> void:
+	func update_records(counters: MovingThingResult) -> void:
 		var city_center := Vector2i(
 			city.document.misc_u32(MISC_CITY_CENTER_X),
 			city.document.misc_u32(MISC_CITY_CENTER_Y)
@@ -231,15 +231,15 @@ static func run(
 	traffic_news_time_msec := -1,
 	traffic_news_deadline_msec := 0,
 	suppress_vehicle_crashes := false
-) -> Dictionary:
+) -> MovingThingResult:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return MovingThingResult.failure("city is invalid")
 
 	if random == null:
-		return {"ok": false, "error": "a compatible random generator is required"}
+		return MovingThingResult.failure("a compatible random generator is required")
 
 	if lfsr_random == null:
-		return {"ok": false, "error": "a compatible LFSR generator is required"}
+		return MovingThingResult.failure("a compatible LFSR generator is required")
 
 	if game_random == null:
 		game_random = GameLcgRandom.new(1)
@@ -252,14 +252,14 @@ static func run(
 	)
 
 	if not tick.load_payloads(city):
-		return {"ok": false, "error": "moving-thing input chunks are missing or have the wrong size"}
+		return MovingThingResult.failure("moving-thing input chunks are missing or have the wrong size")
 
 	var counters := _new_counters(tick.things, traffic_news_time_msec, traffic_news_deadline_msec)
 	tick.update_records(counters)
 	var failed_chunk := tick.commit_payloads()
 
 	if not failed_chunk.is_empty():
-		return {"ok": false, "error": "cannot store %s after the moving-thing tick" % failed_chunk}
+		return MovingThingResult.failure("cannot store %s after the moving-thing tick" % failed_chunk)
 
 	_mark_complete(counters)
 
@@ -268,81 +268,26 @@ static func run(
 
 static func _new_counters(
 	things: PackedByteArray, traffic_news_time_msec: int, traffic_news_deadline_msec: int
-) -> Dictionary:
-	return {
-		"scanned_records": ThingData.count(things) - 1,
-		"active_airplanes": 0,
-		"active_helicopters": 0,
-		"active_ships": 0,
-		"active_monsters": 0,
-		"active_explosions": 0,
-		"active_sailboats": 0,
-		"active_trains": 0,
-		"active_tornadoes": 0,
-		"active_maxis_men": 0,
-		"moved_helicopters": 0,
-		"moved_airplanes": 0,
-		"moved_ships": 0,
-		"moved_monsters": 0,
-		"moved_sailboats": 0,
-		"moved_trains": 0,
-		"moved_tornadoes": 0,
-		"moved_maxis_men": 0,
-		"turned_sailboats": 0,
-		"turned_trains": 0,
-		"paused_trains": 0,
-		"reversed_trains": 0,
-		"distressed_sailboats": 0,
-		"removed_sailboats": 0,
-		"removed_trains": 0,
-		"removed_helicopters": 0,
-		"crashed_helicopters": 0,
-		"removed_airplanes": 0,
-		"crashed_airplanes": 0,
-		"landed_airplanes": 0,
-		"removed_ships": 0,
-		"crashed_ships": 0,
-		"docked_ships": 0,
-		"departing_ships": 0,
-		"removed_explosions": 0,
-		"removed_tornadoes": 0,
-		"removed_maxis_men": 0,
-		"removed_monsters": 0,
-		"monster_damage_hits": 0,
-		"monster_forced_airplanes": 0,
-		"monster_forced_helicopters": 0,
-		"monster_military_collisions": 0,
-		"tornado_demolitions": 0,
-		"maxis_man_extinguished_fires": 0,
-		"maxis_man_destroyed_targets": 0,
-		"maxis_man_explosions": 0,
-		"spread_explosion_fires": 0,
-		"rubble_explosion_hits": 0,
-		"damaged_facilities": 0,
-		"deferred_facility_explosion_hits": 0,
-		"malformed_records": 0,
-		"news_items": [],
-		"sound_events": [],
-		"traffic_news_checks": 0,
-		"traffic_news_time_msec": traffic_news_time_msec,
-		"traffic_news_deadline_msec": traffic_news_deadline_msec,
-		"connection_count_changes": [],
-		"created_train_crash_explosions": 0,
-		"disaster_start_requests": [],
-	}
+) -> MovingThingResult:
+	var counters := MovingThingResult.new()
+	counters.scanned_records = ThingData.count(things) - 1
+	counters.traffic_news_time_msec = traffic_news_time_msec
+	counters.traffic_news_deadline_msec = traffic_news_deadline_msec
+
+	return counters
 
 
-static func _mark_complete(counters: Dictionary) -> void:
-	counters["ok"] = true
-	counters["sailboats_complete"] = true
-	counters["train_routes_complete"] = true
-	counters["helicopters_save_visible_complete"] = true
-	counters["ships_save_visible_complete"] = true
-	counters["airplanes_save_visible_complete"] = true
-	counters["explosion_records_complete"] = true
-	counters["tornadoes_save_visible_complete"] = true
-	counters["maxis_man_save_visible_complete"] = true
-	counters["monsters_save_visible_complete"] = true
-	counters["explosion_map_damage_complete"] = counters.deferred_facility_explosion_hits == 0
-	counters["complete"] = counters.explosion_map_damage_complete
-	counters["error"] = ""
+static func _mark_complete(counters: MovingThingResult) -> void:
+	counters.ok = true
+	counters.sailboats_complete = true
+	counters.train_routes_complete = true
+	counters.helicopters_save_visible_complete = true
+	counters.ships_save_visible_complete = true
+	counters.airplanes_save_visible_complete = true
+	counters.explosion_records_complete = true
+	counters.tornadoes_save_visible_complete = true
+	counters.maxis_man_save_visible_complete = true
+	counters.monsters_save_visible_complete = true
+	counters.explosion_map_damage_complete = counters.deferred_facility_explosion_hits == 0
+	counters.complete = counters.explosion_map_damage_complete
+	counters.error = ""

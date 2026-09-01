@@ -46,7 +46,7 @@ static func copy_indexed(
 		var encoded := IndexedBitmap.encode(width, height, pixels, palette)
 
 		if not encoded.ok:
-			return encoded
+			return _failure(encoded.error)
 
 		var payload: PackedByteArray = encoded.bytes
 		path = directory.path_join(TEMP_BMP_FILENAME)
@@ -55,7 +55,7 @@ static func copy_indexed(
 			var dib := IndexedBitmap.bmp_to_dib(payload)
 
 			if not dib.ok:
-				return dib
+				return _failure(dib.error)
 
 			payload = dib.bytes
 			path = directory.path_join(TEMP_DIB_FILENAME)
@@ -304,12 +304,12 @@ static func _paste_native_indexed(platform: String, palette: Sc2Palette) -> Dict
 	)
 
 	if not decoded.ok:
-		return decoded
+		return _failure(decoded.error)
 
 	var mapped := IndexedBitmap.map_to_palette(decoded, palette)
 
 	if not mapped.ok:
-		return mapped
+		return _failure(mapped.error)
 
 	return {
 		"ok": true,

@@ -14,8 +14,8 @@ const DAY_SUMMARIES := [
 	"Milestones, scenarios, bankruptcy", "Statistics-window refresh only",
 	"Map and SimNation window refresh, weather and disaster checks",
 ]
-var days: Dictionary = {}
-var steps: Dictionary = {}
+var days: Dictionary[int, Dictionary] = {}
+var steps: Dictionary[String, Dictionary] = {}
 
 
 func clear() -> void:
@@ -32,9 +32,9 @@ func record_step(label: String, usec: int) -> void:
 	steps[label] = row
 
 
-func consume(result: Dictionary) -> void:
-	for day in result.get("day_results", []):
-		if not day.get("ok", false) or not day.has("timing"):
+func consume(result: SimulationTickResult) -> void:
+	for day in result.day_results:
+		if not day.ok or day.timing.is_empty():
 			continue
 
 		var age := int(day.day)
@@ -55,7 +55,7 @@ func consume(result: Dictionary) -> void:
 		for label in day.timing.steps:
 			record_step("Day %02d / %s" % [slot + 1, _phase_group(label)], day.timing.steps[label])
 
-		var phases: Dictionary = day.get("phase_results", {})
+		var phases := day.phase_results
 
 		for phase_name: String in phases:
 			var phase: PhaseResult = phases[phase_name]
@@ -73,12 +73,15 @@ func consume(result: Dictionary) -> void:
 			for label in phase.timing.get("steps", {}):
 				record_step("Day %02d / %s / %s" % [slot + 1, group, label], phase.timing.steps[label])
 
-	for key in ["moving_results", "disaster_results"]:
-		for item in result.get(key, []):
-			if item.get("ok", false) and item.has("timing"):
-				record_step(key.trim_suffix("_results"), item.timing.work_usec)
+	for item in result.moving_results:
+		if item.ok and not item.timing.is_empty():
+			record_step("moving", item.timing.work_usec)
 
-	for label in result.get("job_timings", {}):
+	for item in result.disaster_results:
+		if item.ok and not item.timing.is_empty():
+			record_step("disaster", item.timing.work_usec)
+
+	for label in result.job_timings:
 		record_step(label, result.job_timings[label])
 
 

@@ -74,17 +74,17 @@ func _init(
 				break
 
 
-func advance_moving_things(current_time_msec := -1) -> Dictionary:
+func advance_moving_things(current_time_msec := -1) -> MovingThingResult:
 	var span := SimulationTimingSpan.new(city.simulation_slice)
 	var result := _timed_advance_moving_things(current_time_msec)
-	result["timing"] = span.finish()
+	result.timing = span.finish()
 
 	return result
 
 
-func _timed_advance_moving_things(current_time_msec := -1) -> Dictionary:
+func _timed_advance_moving_things(current_time_msec := -1) -> MovingThingResult:
 	if terminal_state:
-		return {"ok": false, "error": "the game has ended"}
+		return MovingThingResult.failure("the game has ended")
 
 	if current_time_msec < 0:
 		current_time_msec = Time.get_ticks_msec()
@@ -101,13 +101,13 @@ func _timed_advance_moving_things(current_time_msec := -1) -> Dictionary:
 		not vehicle_crashes_enabled
 	)
 
-	if not result.get("ok", false):
+	if not result.ok:
 		return result
 
-	var queue_update := _persist_news_result(PhaseResult.from_dictionary(result))
+	var queue_update := _persist_news_result(result)
 
 	if not queue_update.ok:
-		return queue_update
+		return MovingThingResult.failure(queue_update.error)
 
 	traffic_news_deadline_msec = result.traffic_news_deadline_msec
 
@@ -124,115 +124,116 @@ func _timed_advance_moving_things(current_time_msec := -1) -> Dictionary:
 	return result
 
 
-func advance_day() -> Dictionary:
+func advance_day() -> SimulationDayResult:
 	var span := SimulationTimingSpan.new(city.simulation_slice if city != null else null)
 	var result := _timed_advance_day()
 
-	if result.get("ok", false):
+	if result.ok:
 		var measured := span.finish()
-		var scheduled: Dictionary = result.get("timing", {"work_usec": 0, "steps": {}})
+		var scheduled: Dictionary = result.timing
 		measured.steps = scheduled.steps
 		measured.steps["day setup and events"] = maxi(0, int(measured.work_usec) - int(scheduled.work_usec))
-		result["timing"] = measured
+		result.timing = measured
 
 	return result
 
 
-func _timed_advance_day() -> Dictionary:
+func _timed_advance_day() -> SimulationDayResult:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return SimulationDayResult.failure("city is invalid")
 
 	if not pending_interaction.is_empty():
-		return {"ok": false, "error": "%s interaction is pending" % pending_interaction}
+		return SimulationDayResult.failure("%s interaction is pending" % pending_interaction)
 
 	if terminal_state:
-		return {"ok": false, "error": "the game has ended"}
+		return SimulationDayResult.failure("the game has ended")
 
 	if active_disaster_type != 0:
-		return {"ok": false, "error": "a disaster is active"}
+		return SimulationDayResult.failure("a disaster is active")
 
 	var schedule := clock.advance_day()
 
 	if not city.set_age_in_days(clock.city_days):
-		return {"ok": false, "error": "cannot store the new simulation day"}
+		return SimulationDayResult.failure("cannot store the new simulation day")
 
 	if BudgetPhase.requires_annual_budget(city):
 		pending_interaction = "annual_budget"
 		pending_day_schedule = schedule
 
-		return {
-			"ok": true,
-			"day": clock.city_days,
-			"schedule": schedule,
-			"applied": PackedStringArray(),
-			"pending": schedule.actions.duplicate(),
-			"phase_results": {},
-			"interaction_requests": [{
+		var outcome := SimulationDayResult.new()
+		outcome.ok = true
+		outcome.day = clock.city_days
+		outcome.schedule = schedule
+		outcome.applied = PackedStringArray()
+		outcome.pending = schedule.actions.duplicate()
+		outcome.phase_results = {}
+		outcome.interaction_requests = [{
 				"type": "annual_budget",
 				"funding_values": BudgetPhase.funding_values(city),
 				"auto_budget": false,
-			}],
-			"complete": false,
-			"error": "",
-		}
+			}]
+		outcome.complete = false
+		outcome.error = ""
+
+		return outcome
 
 	return _append_pending_disaster(_run_day_schedule(schedule, false))
 
 
-func resolve_annual_budget(funding_values: PackedInt32Array, auto_budget: bool) -> Dictionary:
+func resolve_annual_budget(funding_values: PackedInt32Array, auto_budget: bool) -> SimulationDayResult:
 	var span := SimulationTimingSpan.new(city.simulation_slice if city != null else null)
 	var result := _timed_resolve_annual_budget(funding_values, auto_budget)
 
-	if result.get("ok", false):
+	if result.ok:
 		var measured := span.finish()
-		var scheduled: Dictionary = result.get("timing", {"work_usec": 0, "steps": {}})
+		var scheduled: Dictionary = result.timing
 		measured.steps = scheduled.steps
 		measured.steps["day setup and events"] = maxi(0, int(measured.work_usec) - int(scheduled.work_usec))
-		result["timing"] = measured
+		result.timing = measured
 
 	return result
 
 
-func _timed_resolve_annual_budget(funding_values: PackedInt32Array, auto_budget: bool) -> Dictionary:
+func _timed_resolve_annual_budget(funding_values: PackedInt32Array, auto_budget: bool) -> SimulationDayResult:
 	if pending_interaction != "annual_budget" or pending_day_schedule.is_empty():
-		return {"ok": false, "error": "no annual budget interaction is pending"}
+		return SimulationDayResult.failure("no annual budget interaction is pending")
 
 	var stored := BudgetPhase.set_funding(city, funding_values, auto_budget)
 
 	if not stored.ok:
-		return stored
+		return SimulationDayResult.failure(stored.error)
 
 	var result := _run_day_schedule(pending_day_schedule, true)
 
-	if result.get("ok", false):
+	if result.ok:
 		pending_interaction = ""
 		pending_day_schedule = {}
 
 	return _append_pending_disaster(result)
 
 
-func resolve_military_proposal(accepted: bool) -> Dictionary:
+func resolve_military_proposal(accepted: bool) -> SimulationDayResult:
 	var span := SimulationTimingSpan.new(city.simulation_slice if city != null else null)
 	var result := _timed_resolve_military_proposal(accepted)
 
-	if result.get("ok", false):
+	if result.ok:
 		var measured := span.finish()
-		var scheduled: Dictionary = result.get("timing", {"work_usec": 0, "steps": {}})
+		var scheduled: Dictionary = result.timing
 		measured.steps = scheduled.steps
 		measured.steps["day setup and events"] = maxi(0, int(measured.work_usec) - int(scheduled.work_usec))
-		result["timing"] = measured
+		result.timing = measured
 
 	return result
 
 
-func _timed_resolve_military_proposal(accepted: bool) -> Dictionary:
+func _timed_resolve_military_proposal(accepted: bool) -> SimulationDayResult:
 	if pending_interaction != "military_proposal" or pending_day_schedule.is_empty():
-		return {"ok": false, "error": "no military proposal interaction is pending"}
+		return SimulationDayResult.failure("no military proposal interaction is pending")
 
 	var proposal := MilitaryProposalPhase.resolve(city, accepted, game_random)
 
 	if not proposal.ok:
-		return {"ok": false, "error": proposal.error}
+		return SimulationDayResult.failure(proposal.error)
 
 	var original_schedule: Dictionary = pending_day_schedule
 	var remaining_schedule := _schedule_after(original_schedule, "milestones")
@@ -240,12 +241,12 @@ func _timed_resolve_military_proposal(accepted: bool) -> Dictionary:
 	pending_day_schedule = {}
 	var result := _run_day_schedule(remaining_schedule, false)
 
-	if not result.get("ok", false):
+	if not result.ok:
 		return result
 
 	var applied := PackedStringArray(["milestones"])
 	applied.append_array(result.applied)
-	var phase_results := {"military_proposal": proposal}
+	var phase_results: Dictionary[String, PhaseResult] = {"military_proposal": proposal}
 
 	for phase_name in result.phase_results:
 		phase_results[phase_name] = result.phase_results[phase_name]
@@ -257,34 +258,32 @@ func _timed_resolve_military_proposal(accepted: bool) -> Dictionary:
 	return _append_pending_disaster(result)
 
 
-func advance_disaster_tick() -> Dictionary:
+func advance_disaster_tick() -> DisasterMapScanDispatch.Result:
 	var span := SimulationTimingSpan.new(city.simulation_slice)
 	var result := _timed_advance_disaster_tick()
-	result["timing"] = span.finish()
+	result.timing = span.finish()
 
 	return result
 
 
-func _timed_advance_disaster_tick() -> Dictionary:
+func _timed_advance_disaster_tick() -> DisasterMapScanDispatch.Result:
 	if active_disaster_type == 0:
-		return {"ok": false, "error": "no disaster is active"}
+		return DisasterMapScanDispatch.failed("no disaster is active")
 
 	var phase_result := DisasterMapScanDispatch.run_all(
 		city, random, lfsr_random, disaster_map_counter, disaster_hurricane_counter
 	)
 
-	if not phase_result.get("ok", false):
+	if not phase_result.ok:
 		return phase_result
 
-	var queue_update := _persist_news_result(PhaseResult.from_dictionary(phase_result))
+	var queue_update := _persist_news_result(phase_result)
 
 	if not queue_update.ok:
-		return queue_update
+		return DisasterMapScanDispatch.failed(queue_update.error)
 
-	disaster_map_counter = int(phase_result.get("map_counter", disaster_map_counter))
-	disaster_hurricane_counter = int(
-		phase_result.get("hurricane_counter", disaster_hurricane_counter)
-	)
+	disaster_map_counter = phase_result.map_counter
+	disaster_hurricane_counter = phase_result.hurricane_counter
 	var still_active: bool = bool(phase_result.active) or DisasterStartObjectsState.has_active_object(
 		city, active_disaster_type
 	)
@@ -297,43 +296,43 @@ func _timed_advance_disaster_tick() -> Dictionary:
 		disaster_hurricane_counter = 0
 
 		if not city.document.set_misc_u32(0x0004, 1):
-			return {"ok": false, "error": "cannot restore city mode after the disaster"}
+			return DisasterMapScanDispatch.failed("cannot restore city mode after the disaster")
 
-	phase_result["active"] = still_active
-	phase_result["disaster_type"] = active_disaster_type if still_active else ended_type
-	phase_result["ended_type"] = ended_type
-	phase_result["complete"] = not still_active
+	phase_result.active = still_active
+	phase_result.disaster_type = active_disaster_type if still_active else ended_type
+	phase_result.ended_type = ended_type
+	phase_result.complete = not still_active
 
 	return phase_result
 
 
-func start_disaster(disaster_type: int, point: Vector2i) -> Dictionary:
+func start_disaster(disaster_type: int, point: Vector2i) -> DisasterStartResult:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return DisasterStartResult.failed("city is invalid")
 
 	if terminal_state:
-		return {"ok": false, "error": "the game has ended"}
+		return DisasterStartResult.failed("the game has ended")
 
 	if not pending_interaction.is_empty():
-		return {"ok": false, "error": "%s interaction is pending" % pending_interaction}
+		return DisasterStartResult.failed("%s interaction is pending" % pending_interaction)
 
 	if active_disaster_type != 0:
-		return {"ok": false, "error": "a disaster is already active"}
+		return DisasterStartResult.failed("a disaster is already active")
 
 	var started := _start_disaster_phase(disaster_type, point)
 
-	if not started.get("ok", false):
+	if not started.ok:
 		return started
 
-	if not started.get("started", false):
-		if not started.get("complete", false):
+	if not started.started:
+		if not started.complete:
 			unsupported_disaster_type = disaster_type
 
 		return started
 
 	active_disaster_type = disaster_type
-	disaster_map_counter = int(started.get("map_counter", 0))
-	disaster_hurricane_counter = int(started.get("hurricane_counter", 0))
+	disaster_map_counter = started.map_counter
+	disaster_hurricane_counter = started.hurricane_counter
 	unsupported_disaster_type = 0
 
 	if not city.document.set_misc_u32(0x0004, 2):
@@ -341,25 +340,25 @@ func start_disaster(disaster_type: int, point: Vector2i) -> Dictionary:
 		disaster_map_counter = 0
 		disaster_hurricane_counter = 0
 
-		return {"ok": false, "error": "cannot store active disaster mode"}
+		return DisasterStartResult.failed("cannot store active disaster mode")
 
-	var queue_update := _persist_news_result(PhaseResult.from_dictionary(started))
+	var queue_update := _persist_news_result(started)
 
 	if not queue_update.ok:
-		return queue_update
+		return DisasterStartResult.failed(queue_update.error)
 
 	return started
 
 
-func recalculate_mayor_house() -> Dictionary:
+func recalculate_mayor_house() -> MayorApprovalPhase.Result:
 	var result := MayorApprovalPhase.run(city, random, mayor_approval)
 
-	if result.get("ok", false):
+	if result.ok:
 		mayor_approval = result.approval
-		var queue_update := _persist_news_result(PhaseResult.from_dictionary(result))
+		var queue_update := _persist_news_result(result)
 
 		if not queue_update.ok:
-			return queue_update
+			return MayorApprovalPhase.failed(queue_update.error)
 
 	return result
 
@@ -383,15 +382,15 @@ static func _rotate_runtime_point(point: Vector2i, counter_clockwise: bool, map_
 	return Vector2i(map_edge - 1 - point.y, point.x)
 
 
-func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Dictionary:
+func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> SimulationDayResult:
 	var span := SimulationTimingSpan.new(city.simulation_slice)
 	var result := _execute_day_schedule(schedule, annual_budget_approved, span)
-	result["timing"] = span.finish()
+	result.timing = span.finish()
 
 	return result
 
 
-func _execute_day_schedule(schedule: Dictionary, annual_budget_approved: bool, span: SimulationTimingSpan) -> Dictionary:
+func _execute_day_schedule(schedule: Dictionary, annual_budget_approved: bool, span: SimulationTimingSpan) -> SimulationDayResult:
 	return SimulationDaySchedule._execute_day_schedule(self, schedule, annual_budget_approved, span)
 
 
@@ -399,12 +398,12 @@ func _schedule_after(schedule: Dictionary, completed_action: String) -> Dictiona
 	return SimulationDaySchedule._schedule_after(self, schedule, completed_action)
 
 
-func _persist_news_result(result: PhaseResult) -> Dictionary:
+func _persist_news_result(result: PhaseResult) -> SimulationPhaseContext.NewsPersistenceResult:
 	return SimulationDaySchedule._persist_news_result(self, result)
 
 
-func _append_pending_disaster(result: Dictionary) -> Dictionary:
-	if not result.get("ok", false) or not result.get("interaction_requests", []).is_empty():
+func _append_pending_disaster(result: SimulationDayResult) -> SimulationDayResult:
+	if not result.ok or not result.interaction_requests.is_empty():
 		return result
 
 	if pending_disaster_type == 0:
@@ -414,28 +413,27 @@ func _append_pending_disaster(result: Dictionary) -> Dictionary:
 	pending_disaster_type = 0
 
 	if not city.document.set_misc_u32(0x0070, 0):
-		return {"ok": false, "error": "cannot clear the pending disaster type"}
+		return SimulationDayResult.failure("cannot clear the pending disaster type")
 
-	var start_result := _start_disaster_phase(disaster_type, pending_disaster_point)
+	var started := _start_disaster_phase(disaster_type, pending_disaster_point)
 
-	if not start_result.ok:
-		return start_result
+	if not started.ok:
+		return SimulationDayResult.failure(started.error)
 
-	var started := PhaseResult.from_dictionary(start_result)
 	var queue_update := _persist_news_result(started)
 
 	if not queue_update.ok:
-		return queue_update
+		return SimulationDayResult.failure(queue_update.error)
 
 	result.phase_results["disaster_start"] = started
 
-	if started.extra.started:
+	if started.started:
 		active_disaster_type = disaster_type
-		disaster_map_counter = int(started.extra.get("map_counter", 0))
-		disaster_hurricane_counter = int(started.extra.get("hurricane_counter", 0))
+		disaster_map_counter = started.map_counter
+		disaster_hurricane_counter = started.hurricane_counter
 
 		if not city.document.set_misc_u32(0x0004, 2):
-			return {"ok": false, "error": "cannot store active disaster mode"}
+			return SimulationDayResult.failure("cannot store active disaster mode")
 
 		result.applied.append("disaster_start")
 	elif not started.complete:
@@ -446,6 +444,6 @@ func _append_pending_disaster(result: Dictionary) -> Dictionary:
 	return result
 
 
-func _start_disaster_phase(disaster_type: int, point: Vector2i) -> Dictionary:
+func _start_disaster_phase(disaster_type: int, point: Vector2i) -> DisasterStartResult:
 	var started := DisasterStartPhase.start(city, disaster_type, point, random, lfsr_random)
 	return MaxisManResponse.apply(city, started, random, lfsr_random)

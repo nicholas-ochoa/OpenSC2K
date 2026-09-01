@@ -9,14 +9,14 @@ const PIXEL_OFFSET := FILE_HEADER_SIZE + INFO_HEADER_SIZE + PALETTE_SIZE
 const MAX_DIMENSION := 0x7fff
 
 
-static func load_path(path: String, target_palette: Sc2Palette) -> Dictionary:
+static func load_path(path: String, target_palette: Sc2Palette) -> IndexedImageResult:
 	if not FileAccess.file_exists(path):
-		return _failure("BMP file does not exist: %s" % path)
+		return IndexedImageResult.failure("BMP file does not exist: %s" % path)
 
 	var bytes := FileAccess.get_file_as_bytes(path)
 
 	if FileAccess.get_open_error() != OK:
-		return _failure("Cannot read BMP file: %s" % path)
+		return IndexedImageResult.failure("Cannot read BMP file: %s" % path)
 
 	var decoded := decode(bytes)
 
@@ -28,14 +28,15 @@ static func load_path(path: String, target_palette: Sc2Palette) -> Dictionary:
 	if not mapped.ok:
 		return mapped
 
-	return {
-		"ok": true,
-		"error": "",
-		"width": decoded.width,
-		"height": decoded.height,
-		"pixels": mapped.pixels,
-		"remapped_color_count": mapped.remapped_color_count,
-	}
+	var outcome := IndexedImageResult.new()
+	outcome.ok = true
+	outcome.error = ""
+	outcome.width = decoded.width
+	outcome.height = decoded.height
+	outcome.pixels = mapped.pixels
+	outcome.remapped_color_count = mapped.remapped_color_count
+
+	return outcome
 
 
 static func save_path(
@@ -44,31 +45,30 @@ static func save_path(
 	height: int,
 	pixels: PackedInt32Array,
 	palette: Sc2Palette
-) -> Dictionary:
+) -> FileWriteResult:
 	var encoded := encode(width, height, pixels, palette)
 
 	if not encoded.ok:
-		return {"ok": false, "error": encoded.error}
+		return FileWriteResult.failure(encoded.error)
 
 	var file := FileAccess.open(path, FileAccess.WRITE)
 
 	if file == null:
-		return {
-			"ok": false,
-			"error": "Cannot open BMP output: %s" % error_string(FileAccess.get_open_error()),
-		}
+		return FileWriteResult.failure("Cannot open BMP output: %s" % error_string(FileAccess.get_open_error()))
 
 	file.store_buffer(encoded.bytes)
 	var write_error := file.get_error()
 	file.close()
 
 	if write_error != OK:
-		return {
-			"ok": false,
-			"error": "Cannot write BMP output: %s" % error_string(write_error),
-		}
+		return FileWriteResult.failure("Cannot write BMP output: %s" % error_string(write_error))
 
-	return {"ok": true, "error": "", "path": path}
+	var outcome := FileWriteResult.new()
+	outcome.ok = true
+	outcome.error = ""
+	outcome.path = path
+
+	return outcome
 
 
 static func encode_dib(
@@ -77,7 +77,7 @@ static func encode_dib(
 	pixels: PackedInt32Array,
 	palette: Sc2Palette,
 	transparent_index := 0
-) -> Dictionary:
+) -> AssetBytesResult:
 	var encoded := encode(width, height, pixels, palette, transparent_index)
 
 	if not encoded.ok:
@@ -86,45 +86,46 @@ static func encode_dib(
 	return bmp_to_dib(encoded.bytes)
 
 
-static func decode_dib(bytes: PackedByteArray) -> Dictionary:
+static func decode_dib(bytes: PackedByteArray) -> IndexedImageResult:
 	var wrapped := dib_to_bmp(bytes)
 
 	if not wrapped.ok:
-		return wrapped
+		return IndexedImageResult.failure(wrapped.error)
 
 	return decode(wrapped.bytes)
 
 
-static func bmp_to_dib(bytes: PackedByteArray) -> Dictionary:
+static func bmp_to_dib(bytes: PackedByteArray) -> AssetBytesResult:
 	var decoded := decode(bytes)
 
 	if not decoded.ok:
-		return decoded
+		return AssetBytesResult.failure(decoded.error)
 
-	return {
-		"ok": true,
-		"error": "",
-		"bytes": bytes.slice(FILE_HEADER_SIZE),
-	}
+	var outcome := AssetBytesResult.new()
+	outcome.ok = true
+	outcome.error = ""
+	outcome.bytes = bytes.slice(FILE_HEADER_SIZE)
+
+	return outcome
 
 
-static func dib_to_bmp(bytes: PackedByteArray) -> Dictionary:
+static func dib_to_bmp(bytes: PackedByteArray) -> AssetBytesResult:
 	if bytes.size() < INFO_HEADER_SIZE:
-		return _failure("DIB data is shorter than its information header.")
+		return AssetBytesResult.failure("DIB data is shorter than its information header.")
 
 	var header_size := _read_u32(bytes, 0)
 
 	if header_size < INFO_HEADER_SIZE or header_size > bytes.size():
-		return _failure("DIB information header is invalid.")
+		return AssetBytesResult.failure("DIB information header is invalid.")
 
 	if _read_u16(bytes, 12) != 1:
-		return _failure("DIB plane count is not one.")
+		return AssetBytesResult.failure("DIB plane count is not one.")
 
 	if _read_u16(bytes, 14) != 8:
-		return _failure("SCURK clipboard input requires an 8-bit indexed DIB.")
+		return AssetBytesResult.failure("SCURK clipboard input requires an 8-bit indexed DIB.")
 
 	if _read_u32(bytes, 16) != 0:
-		return _failure("SCURK clipboard input requires an uncompressed DIB.")
+		return AssetBytesResult.failure("SCURK clipboard input requires an uncompressed DIB.")
 
 	var color_count := _read_u32(bytes, 32)
 
@@ -132,12 +133,12 @@ static func dib_to_bmp(bytes: PackedByteArray) -> Dictionary:
 		color_count = PALETTE_COLOR_COUNT
 
 	if color_count != PALETTE_COLOR_COUNT:
-		return _failure("SCURK clipboard input requires exactly 256 palette colors.")
+		return AssetBytesResult.failure("SCURK clipboard input requires exactly 256 palette colors.")
 
 	var dib_pixel_offset := header_size + color_count * 4
 
 	if dib_pixel_offset > bytes.size():
-		return _failure("DIB palette extends past the clipboard data.")
+		return AssetBytesResult.failure("DIB palette extends past the clipboard data.")
 
 	var file_size := FILE_HEADER_SIZE + bytes.size()
 	var wrapped := PackedByteArray()
@@ -151,31 +152,36 @@ static func dib_to_bmp(bytes: PackedByteArray) -> Dictionary:
 	var decoded := decode(wrapped)
 
 	if not decoded.ok:
-		return decoded
+		return AssetBytesResult.failure(decoded.error)
 
-	return {"ok": true, "error": "", "bytes": wrapped}
+	var outcome := AssetBytesResult.new()
+	outcome.ok = true
+	outcome.error = ""
+	outcome.bytes = wrapped
+
+	return outcome
 
 
-static func decode(bytes: PackedByteArray) -> Dictionary:
+static func decode(bytes: PackedByteArray) -> IndexedImageResult:
 	if bytes.size() < PIXEL_OFFSET:
-		return _failure("BMP file is shorter than an 8-bit indexed header.")
+		return IndexedImageResult.failure("BMP file is shorter than an 8-bit indexed header.")
 
 	if bytes[0] != 0x42 or bytes[1] != 0x4d:
-		return _failure("File does not have a Windows BMP signature.")
+		return IndexedImageResult.failure("File does not have a Windows BMP signature.")
 
 	var declared_size := _read_u32(bytes, 2)
 
 	if declared_size != 0 and declared_size > bytes.size():
-		return _failure("BMP file is shorter than its declared size.")
+		return IndexedImageResult.failure("BMP file is shorter than its declared size.")
 
 	var pixel_offset := _read_u32(bytes, 10)
 	var header_size := _read_u32(bytes, FILE_HEADER_SIZE)
 
 	if header_size < INFO_HEADER_SIZE:
-		return _failure("BMP does not use a supported information header.")
+		return IndexedImageResult.failure("BMP does not use a supported information header.")
 
 	if FILE_HEADER_SIZE + header_size > bytes.size():
-		return _failure("BMP information header extends past the file.")
+		return IndexedImageResult.failure("BMP information header extends past the file.")
 
 	var width := _read_i32(bytes, 18)
 	var signed_height := _read_i32(bytes, 22)
@@ -186,16 +192,16 @@ static func decode(bytes: PackedByteArray) -> Dictionary:
 		or signed_height == 0
 		or absi(signed_height) > MAX_DIMENSION
 	):
-		return _failure("BMP dimensions are invalid or too large.")
+		return IndexedImageResult.failure("BMP dimensions are invalid or too large.")
 
 	if _read_u16(bytes, 26) != 1:
-		return _failure("BMP plane count is not one.")
+		return IndexedImageResult.failure("BMP plane count is not one.")
 
 	if _read_u16(bytes, 28) != 8:
-		return _failure("SCURK import requires an 8-bit indexed BMP.")
+		return IndexedImageResult.failure("SCURK import requires an 8-bit indexed BMP.")
 
 	if _read_u32(bytes, 30) != 0:
-		return _failure("SCURK import requires an uncompressed BMP.")
+		return IndexedImageResult.failure("SCURK import requires an uncompressed BMP.")
 
 	var color_count := _read_u32(bytes, 46)
 
@@ -203,21 +209,21 @@ static func decode(bytes: PackedByteArray) -> Dictionary:
 		color_count = PALETTE_COLOR_COUNT
 
 	if color_count != PALETTE_COLOR_COUNT:
-		return _failure("SCURK import requires exactly 256 palette colors.")
+		return IndexedImageResult.failure("SCURK import requires exactly 256 palette colors.")
 
 	var palette_offset := FILE_HEADER_SIZE + header_size
 
 	if palette_offset + PALETTE_SIZE > bytes.size():
-		return _failure("BMP palette extends past the file.")
+		return IndexedImageResult.failure("BMP palette extends past the file.")
 
 	if pixel_offset < palette_offset + PALETTE_SIZE or pixel_offset > bytes.size():
-		return _failure("BMP pixel offset is invalid.")
+		return IndexedImageResult.failure("BMP pixel offset is invalid.")
 
 	var height := absi(signed_height)
 	var row_stride := _row_stride(width)
 
 	if pixel_offset + row_stride * height > bytes.size():
-		return _failure("BMP pixel data extends past the file.")
+		return IndexedImageResult.failure("BMP pixel data extends past the file.")
 
 	var colors: Array[Color] = []
 
@@ -236,31 +242,32 @@ static func decode(bytes: PackedByteArray) -> Dictionary:
 		for x in width:
 			pixels[y * width + x] = bytes[row_offset + x]
 
-	return {
-		"ok": true,
-		"error": "",
-		"width": width,
-		"height": height,
-		"pixels": pixels,
-		"colors": colors,
-		"top_down": top_down,
-	}
+	var outcome := IndexedImageResult.new()
+	outcome.ok = true
+	outcome.error = ""
+	outcome.width = width
+	outcome.height = height
+	outcome.pixels = pixels
+	outcome.colors = colors
+	outcome.top_down = top_down
+
+	return outcome
 
 
 static func map_to_palette(
-	decoded: Dictionary, target_palette: Sc2Palette, transparent_index := 0
-) -> Dictionary:
-	if not decoded.get("ok", false):
-		return _failure(decoded.get("error", "BMP data is invalid."))
+	decoded: IndexedImageResult, target_palette: Sc2Palette, transparent_index := 0
+) -> IndexedImageResult:
+	if not decoded.ok:
+		return IndexedImageResult.failure(decoded.error)
 
 	if target_palette == null or not target_palette.is_valid():
-		return _failure("The SimCity 2000 palette is not available.")
+		return IndexedImageResult.failure("The SimCity 2000 palette is not available.")
 
-	var source_colors: Array = decoded.get("colors", [])
-	var source_pixels: PackedInt32Array = decoded.get("pixels", PackedInt32Array())
+	var source_colors: Array = decoded.colors
+	var source_pixels: PackedInt32Array = decoded.pixels
 
 	if source_colors.size() != PALETTE_COLOR_COUNT:
-		return _failure("BMP palette does not contain 256 colors.")
+		return IndexedImageResult.failure("BMP palette does not contain 256 colors.")
 
 	var index_map := PackedInt32Array()
 	index_map.resize(PALETTE_COLOR_COUNT)
@@ -286,12 +293,13 @@ static func map_to_palette(
 	for index in source_pixels.size():
 		mapped[index] = index_map[source_pixels[index]]
 
-	return {
-		"ok": true,
-		"error": "",
-		"pixels": mapped,
-		"remapped_color_count": remapped_color_count,
-	}
+	var outcome := IndexedImageResult.new()
+	outcome.ok = true
+	outcome.error = ""
+	outcome.pixels = mapped
+	outcome.remapped_color_count = remapped_color_count
+
+	return outcome
 
 
 static func encode(
@@ -300,22 +308,22 @@ static func encode(
 	pixels: PackedInt32Array,
 	palette: Sc2Palette,
 	transparent_index := 0
-) -> Dictionary:
+) -> AssetBytesResult:
 	if width <= 0 or width > MAX_DIMENSION or height <= 0 or height > MAX_DIMENSION:
-		return _failure("BMP dimensions are invalid or too large.")
+		return AssetBytesResult.failure("BMP dimensions are invalid or too large.")
 
 	if pixels.size() != width * height:
-		return _failure("BMP pixel count does not match its dimensions.")
+		return AssetBytesResult.failure("BMP pixel count does not match its dimensions.")
 
 	if palette == null or not palette.is_valid():
-		return _failure("The SimCity 2000 palette is not available.")
+		return AssetBytesResult.failure("The SimCity 2000 palette is not available.")
 
 	if transparent_index < 0 or transparent_index >= PALETTE_COLOR_COUNT:
-		return _failure("BMP transparent palette index is invalid.")
+		return AssetBytesResult.failure("BMP transparent palette index is invalid.")
 
 	for pixel in pixels:
 		if pixel < -1 or pixel >= PALETTE_COLOR_COUNT:
-			return _failure("BMP has a palette index outside the 8-bit range.")
+			return AssetBytesResult.failure("BMP has a palette index outside the 8-bit range.")
 
 	var row_stride := _row_stride(width)
 	var pixel_data_size := row_stride * height
@@ -351,7 +359,12 @@ static func encode(
 			var pixel := pixels[y * width + x]
 			bytes[row_offset + x] = transparent_index if pixel < 0 else pixel
 
-	return {"ok": true, "error": "", "bytes": bytes}
+	var outcome := AssetBytesResult.new()
+	outcome.ok = true
+	outcome.error = ""
+	outcome.bytes = bytes
+
+	return outcome
 
 
 static func _nearest_palette_index(source: Color, target_palette: Sc2Palette) -> int:
@@ -422,7 +435,3 @@ static func _write_u32(bytes: PackedByteArray, offset: int, value: int) -> void:
 	bytes[offset + 1] = (value >> 8) & 0xff
 	bytes[offset + 2] = (value >> 16) & 0xff
 	bytes[offset + 3] = (value >> 24) & 0xff
-
-
-static func _failure(message: String) -> Dictionary:
-	return {"ok": false, "error": message}

@@ -200,7 +200,7 @@ static func _thing_distance(start: Vector2i, target: Vector2i) -> int:
 
 
 static func _queue_thing_sound(
-	counters: Dictionary, sound_id: int, things: PackedByteArray, record: int
+	counters: MovingThingResult, sound_id: int, things: PackedByteArray, record: int
 ) -> void:
 	var offset := record * RECORD_SIZE
 	counters.sound_events.append({

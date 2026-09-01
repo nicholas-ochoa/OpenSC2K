@@ -4,19 +4,19 @@ extends DisasterStartConstants
 
 static func _start_meltdown(
 	city: CityState, requested_point: Vector2i, random: SimRandom, lfsr_random: SimLfsrRandom
-) -> Dictionary:
+) -> DisasterStartResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if random == null:
-		return {"ok": false, "error": "a compatible process random generator is required"}
+		return DisasterStartResult.failed("a compatible process random generator is required")
 
 	if lfsr_random == null:
-		return {"ok": false, "error": "a compatible LFSR generator is required"}
+		return DisasterStartResult.failed("a compatible LFSR generator is required")
 
 	var original := DisasterStartObjectsState._map_payloads(city)
 
 	if original.is_empty():
-		return {"ok": false, "error": "meltdown disaster input chunks are missing or invalid"}
+		return DisasterStartResult.failed("meltdown disaster input chunks are missing or invalid")
 
 	var payloads := DisasterStartObjectsState._duplicate_payloads(original)
 	var runtime_events := DisasterMapDamage.new_runtime_events()
@@ -142,22 +142,22 @@ static func _start_meltdown(
 	var map_changed := DisasterStartObjectsState._payloads_changed(original, payloads)
 
 	if map_changed and not DisasterStartObjectsState._apply_map_payloads(city, original, payloads):
-		return {"ok": false, "error": "cannot store the meltdown disaster"}
+		return DisasterStartResult.failed("cannot store the meltdown disaster")
 
 	var result := DisasterStartObjectsState._result(DISASTER_MELTDOWN, center, true, true, 0)
-	result["plant_point"] = plant_point
-	result["plant_site"] = site
-	result["gate_attempts"] = 65 * 65
-	result["gate_hits"] = gate_hits
-	result["fire_damage_attempts"] = fire_damage_attempts
-	result["structure_damage_attempts"] = structure_damage_attempts
-	result["radioactive_writes"] = radioactive_writes
-	result["toxic_writes"] = toxic_writes
-	result["map_changed"] = map_changed
-	result["effect_events"] = runtime_events.effect_events
+	result.plant_point = plant_point
+	result.plant_site = site
+	result.counters["gate_attempts"] = 65 * 65
+	result.counters["gate_hits"] = gate_hits
+	result.counters["fire_damage_attempts"] = fire_damage_attempts
+	result.counters["structure_damage_attempts"] = structure_damage_attempts
+	result.counters["radioactive_writes"] = radioactive_writes
+	result.counters["toxic_writes"] = toxic_writes
+	result.map_changed = map_changed
+	result.effect_events = runtime_events.effect_events
 	var sounds: Array[int] = runtime_events.sound_events.duplicate()
 	sounds.append(SOUND_SIREN)
-	result["sound_events"] = sounds
+	result.sound_events = sounds
 
 	return result
 
@@ -193,19 +193,19 @@ static func _write_radioactivity(payloads: Dictionary, point: Vector2i, map_edge
 	return old_tile != RADIOACTIVITY_TILE
 
 
-static func _start_microwave(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> Dictionary:
+static func _start_microwave(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> DisasterStartResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if random == null:
-		return {"ok": false, "error": "a compatible process random generator is required"}
+		return DisasterStartResult.failed("a compatible process random generator is required")
 
 	if lfsr_random == null:
-		return {"ok": false, "error": "a compatible LFSR generator is required"}
+		return DisasterStartResult.failed("a compatible LFSR generator is required")
 
 	var original := DisasterStartObjectsState._map_payloads(city)
 
 	if original.is_empty():
-		return {"ok": false, "error": "microwave disaster input chunks are missing or invalid"}
+		return DisasterStartResult.failed("microwave disaster input chunks are missing or invalid")
 
 	var payloads := DisasterStartObjectsState._duplicate_payloads(original)
 	var plant_point := _find_first_building(payloads.XBLD, MICROWAVE_POWER_PLANT, map_edge)
@@ -264,21 +264,21 @@ static func _start_microwave(city: CityState, random: SimRandom, lfsr_random: Si
 	var map_changed := DisasterStartObjectsState._payloads_changed(original, payloads)
 
 	if map_changed and not DisasterStartObjectsState._apply_map_payloads(city, original, payloads):
-		return {"ok": false, "error": "cannot store the microwave disaster"}
+		return DisasterStartResult.failed("cannot store the microwave disaster")
 
 	var result := DisasterStartObjectsState._result(DISASTER_MICROWAVE, plant_point, true, true, 0)
 	var sounds: Array[int] = runtime_events.sound_events.duplicate()
 	sounds.append(SOUND_SIREN)
-	result["sound_events"] = sounds
-	result["effect_events"] = runtime_events.effect_events
-	result["view_center_requests"] = view_centers
-	result["plant_point"] = plant_point
-	result["path_finish"] = point
-	result["path_steps"] = 39 - remaining
-	result["damage_points"] = damage_points
-	result["damage_attempts"] = damage_points.size()
-	result["toxic_writes"] = toxic_writes
-	result["map_changed"] = map_changed
+	result.sound_events = sounds
+	result.effect_events = runtime_events.effect_events
+	result.view_center_requests = view_centers
+	result.plant_point = plant_point
+	result.path_finish = point
+	result.counters["path_steps"] = 39 - remaining
+	result.damage_points = damage_points
+	result.counters["damage_attempts"] = damage_points.size()
+	result.counters["toxic_writes"] = toxic_writes
+	result.map_changed = map_changed
 
 	return result
 

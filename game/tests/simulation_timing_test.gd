@@ -1,12 +1,13 @@
 extends SceneTree
+const TimingResults = preload("res://tests/support/timing_results.gd")
 
 
 func _initialize() -> void:
 	var history := SimulationTimingHistory.new()
 
 	for sample in [[2, 4000], [27, 8000], [27, 2000]]:
-		history.consume({"day_results": [{"ok": true, "day": sample[0],
-			"timing": {"work_usec": sample[1], "steps": {"pollution": sample[1]}}}]})
+		history.consume(TimingResults.tick_fixture({"day_results": [{"ok": true, "day": sample[0],
+			"timing": {"work_usec": sample[1], "steps": {"pollution": sample[1]}}}]}))
 
 	assert(history.days[2].count == 2)
 	assert(history.days[2].total_usec == 14000 and history.days[2].last_usec == 10000)
@@ -134,8 +135,8 @@ func _check_phase_timings(history: SimulationTimingHistory) -> void:
 		assert(total <= phase.timing.work_usec)
 		var before: PackedByteArray = city.document.serialize().data
 		var states := [engine.random.state, engine.lfsr_random.state, engine.game_random.state]
-		history.consume({"day_results": [day]})
-		history.consume({"day_results": [day]})
+		history.consume(TimingResults.tick_fixture({"day_results": [day]}))
+		history.consume(TimingResults.tick_fixture({"day_results": [day]}))
 
 		var parent_key := "Day %02d / %s" % [posmod(pair[0], 25) + 1, pair[1]]
 		assert(history.steps[parent_key].count == 2, "Phase totals are not counted again when details arrive")
@@ -151,21 +152,23 @@ func _check_phase_timings(history: SimulationTimingHistory) -> void:
 		assert(states == [engine.random.state, engine.lfsr_random.state, engine.game_random.state])
 
 	# Preserve the existing data-map group while accepting other timed phases.
-	history.consume({"day_results": [{"ok": true, "day": 2,
+	var map_phase := PhaseResult.new()
+	map_phase.timing = {"steps": {"smoothing": 300}}
+	history.consume(TimingResults.tick_fixture({"day_results": [{"ok": true, "day": 2,
 		"timing": {"work_usec": 500, "steps": {"pollution_terrain_land_value": 450}},
 		"phase_results": {"pollution_terrain_land_value":
-			PhaseResult.from_dictionary({"timing": {"steps": {"smoothing": 300}}})}}]})
+			map_phase}}]}))
 	assert(history.steps["Day 03 / data maps / smoothing"].last_usec == 300)
 	assert(history.steps["Day 03 / data maps"].last_usec == 450)
 	# A resumed proposal has a phase total but no separate scheduler step.
 	var proposal_city := CityState.from_document(EmptyCityTemplate.create())
 	var proposal := MilitaryProposalPhase.resolve(proposal_city, true, GameLcgRandom.new(789))
 	assert(proposal.ok and proposal.timing.steps.has("naval site search"))
-	history.consume({"day_results": [{"ok": true, "day": 22,
+	history.consume(TimingResults.tick_fixture({"day_results": [{"ok": true, "day": 22,
 		"timing": {"work_usec": proposal.timing.work_usec, "steps": {}},
-		"phase_results": {"military_proposal": proposal}}]})
+		"phase_results": {"military_proposal": proposal}}]}))
 	assert(history.steps["Day 23 / military_proposal"].count == 1)
 	assert(history.steps["Day 23 / military_proposal"].last_usec == proposal.timing.work_usec)
-	history.consume({"day_results": [{"ok": false, "day": 1,
-		"timing": {"work_usec": 999, "steps": {"rejected": 999}}}]})
+	history.consume(TimingResults.tick_fixture({"day_results": [{"ok": false, "day": 1,
+		"timing": {"work_usec": 999, "steps": {"rejected": 999}}}]}))
 	assert(not history.steps.has("Day 02 / rejected"))

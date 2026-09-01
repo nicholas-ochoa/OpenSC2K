@@ -44,11 +44,11 @@ var object_altitude_overrides := PackedInt32Array()
 # so filling them from workers would race on the dictionaries.
 # CityTileEdits, CityRecords, and IsometricStaticVisuals check this in debug builds.
 # Masked XBIT signatures use revisions, with a content check as fallback.
-var _masked_tile_flag_signatures: Dictionary = {}
+var _masked_tile_flag_signatures: Dictionary[int, Dictionary] = {}
 # runtime-only sign pages and static overlay content, keyed by xtxt/xthg revisions
 var _static_text_overlay_cache: Dictionary = {}
 # runtime-only microsim footprints, rebuilt when xtxt or xthg changes
-var _microsim_sites: Dictionary = {}
+var _microsim_sites: Dictionary[int, Dictionary] = {}
 var _microsim_sites_key := []
 
 
@@ -526,7 +526,7 @@ func microsim_site(microsim_id: int) -> Dictionary:
 	return CityRecords.microsim_site(self, microsim_id)
 
 
-func microsim_sites() -> Dictionary:
+func microsim_sites() -> Dictionary[int, Dictionary]:
 	return CityRecords.microsim_sites(self)
 
 

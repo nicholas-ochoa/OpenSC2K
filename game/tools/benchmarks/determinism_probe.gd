@@ -28,7 +28,7 @@ func _benchmark_initialize() -> void:
 
 		for day in DAYS:
 			var result := engine.advance_day()
-			day_hashes.append("%d:%s" % [day, "ok" if result.get("ok", false) else "FAIL"])
+			day_hashes.append("%d:%s" % [day, "ok" if result.ok else "FAIL"])
 
 		lines.append("%s %s r=%d l=%d g=%d days=%s" % [
 			name, _state_hash(city), engine.random.state,

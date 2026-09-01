@@ -3,12 +3,18 @@ extends SceneTree
 class RecordingEngine extends SimulationEngine:
 
 
-	func advance_disaster_tick() -> Dictionary:
-		return {"ok": true}
+	func advance_disaster_tick() -> DisasterMapScanDispatch.Result:
+		var result := DisasterMapScanDispatch.Result.new()
+		result.ok = true
+
+		return result
 
 
-	func advance_moving_things(_current_time_msec := -1) -> Dictionary:
-		return {"ok": true}
+	func advance_moving_things(_current_time_msec := -1) -> MovingThingResult:
+		var result := MovingThingResult.new()
+		result.ok = true
+
+		return result
 
 var checks := 0
 var failures := 0

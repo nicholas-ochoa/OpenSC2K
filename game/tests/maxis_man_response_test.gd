@@ -67,9 +67,17 @@ func fixture(edge: int, native: bool) -> CityState:
 	return CityState.from_document(fixtures[key].duplicate_document())
 
 
-func start_result(point: Vector2i, type := 1, record := 0) -> Dictionary:
-	return {"ok": true, "started": true, "disaster_type": type, "point": point,
-		"record": record, "sound_events": [520], "view_center_requests": [point]}
+func start_result(point: Vector2i, type := 1, record := 0) -> DisasterStartResult:
+	var result := DisasterStartResult.new()
+	result.ok = true
+	result.started = true
+	result.disaster_type = type
+	result.point = point
+	result.record = record
+	result.sound_events = [520]
+	result.view_center_requests = [point]
+
+	return result
 
 
 func _test_gates(edge: int, native: bool) -> void:
@@ -89,12 +97,14 @@ func _test_gates(edge: int, native: bool) -> void:
 		var random := ProcessRandom.new([0])
 		var gate := GateRandom.new(outcome)
 		var result := MaxisManResponse.apply(copy, start_result(Vector2i(30, 30)), random, gate)
-		check(result.has("maxis_man_response") == (outcome == 0), "Only one of four gate outcomes creates a hero")
+		check((result.maxis_man_response != null) == (outcome == 0), "Only one of four gate outcomes creates a hero")
 		check(gate.calls == 1 and random.calls == (1 if outcome == 0 else 0), "Gate and arrival RNG order")
 		if outcome != 0:
 			check(DocumentState.capture(copy.document) == DocumentState.capture(city.document), "Rejected gate preserves saved bytes")
 
-	for state in [{"ok": false}, {"ok": true, "started": false}]:
+	for succeeded in [false, true]:
+		var state := DisasterStartResult.new()
+		state.ok = succeeded
 		var random := ProcessRandom.new([0])
 		var gate := GateRandom.new()
 		MaxisManResponse.apply(city, state, random, gate)
@@ -159,7 +169,7 @@ func _test_pool(edge: int, native: bool) -> void:
 		var random := ProcessRandom.new([0])
 		var gate := GateRandom.new()
 		var result := MaxisManResponse.apply(city, start_result(Vector2i(30, 30)), random, gate)
-		check(not result.has("maxis_man_response"), "Full pool or existing hero prevents creation")
+		check(not (result.maxis_man_response != null), "Full pool or existing hero prevents creation")
 		check(gate.calls == 1 and random.calls == 0, "Pool rejection happens after gate and before arrival RNG")
 		check(DocumentState.capture(city.document) == before, "Pool rejection preserves every saved byte")
 
@@ -173,9 +183,11 @@ func _test_engine(edge: int, native: bool) -> void:
 	var direct := manual.start_disaster(7, target)
 	scheduled.pending_disaster_type = 7
 	scheduled.pending_disaster_point = target
-	var queued := scheduled._append_pending_disaster({"ok": true, "phase_results": {}, "applied": [], "pending": []})
-	check(direct.ok and direct.has("maxis_man_response"), "Manual disaster starts automatic hero")
-	check(queued.ok and queued.phase_results.disaster_start.extra.has("maxis_man_response"), "Queued disaster starts automatic hero")
+	var day := SimulationDayResult.new()
+	day.ok = true
+	var queued := scheduled._append_pending_disaster(day)
+	check(direct.ok and (direct.maxis_man_response != null), "Manual disaster starts automatic hero")
+	check(queued.ok and (queued.phase_results.disaster_start.maxis_man_response != null), "Queued disaster starts automatic hero")
 	check(DocumentState.capture(city.document) == DocumentState.capture(copy.document), "Manual and queued paths publish identical city bytes")
 	check(manual.random.state == scheduled.random.state and manual.lfsr_random.state == 4, "Both paths consume exactly one response gate")
 	var before: Array = DocumentState.capture(city.document)
@@ -192,7 +204,7 @@ func _test_engine(edge: int, native: bool) -> void:
 	var controller := GameSpeedController.new(SimulationEngine.new(fixture(edge, native), 123, 2))
 	var snapshot := SimulationSnapshot.capture(controller, null)
 	var response := snapshot.engine.start_disaster(7, target)
-	check(response.has("maxis_man_response") and controller.engine.city.thing(2).type == 0, "Worker hero remains private until publication")
+	check((response.maxis_man_response != null) and controller.engine.city.thing(2).type == 0, "Worker hero remains private until publication")
 	SimulationSnapshot.publish(snapshot, controller)
 	check(DocumentState.capture(controller.engine.city.document) == DocumentState.capture(snapshot.engine.city.document), "Worker publication preserves hero bytes and links")
 	check(controller.engine.random.state == snapshot.engine.random.state and controller.engine.lfsr_random.state == 4, "Worker publication preserves response RNG")

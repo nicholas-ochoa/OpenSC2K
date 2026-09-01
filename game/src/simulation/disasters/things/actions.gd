@@ -21,7 +21,7 @@ static func _monster_damage(
 	current: Vector2i,
 	random: SimRandom,
 	lfsr_random: SimLfsrRandom,
-	counters: Dictionary
+	counters: MovingThingResult
 ) -> void:
 	var map_edge: int = city.map_size if city != null else 128
 	var point := current + Vector2i.ONE
@@ -203,7 +203,7 @@ static func _direction_quadrant(start: Vector2i, target: Vector2i) -> int:
 
 
 static func _queue_thing_sound(
-	counters: Dictionary, sound_id: int, things: PackedByteArray, record: int
+	counters: MovingThingResult, sound_id: int, things: PackedByteArray, record: int
 ) -> void:
 	var offset := record * RECORD_SIZE
 	counters.sound_events.append({
@@ -222,7 +222,7 @@ static func _write_u32_be(data: PackedByteArray, offset: int, value: int) -> voi
 
 
 static func _record_connection_count_change(
-	counters: Dictionary, tile_id: int, point: Vector2i
+	counters: MovingThingResult, tile_id: int, point: Vector2i
 ) -> void:
 	var is_commerce := (
 		(tile_id >= 0x1d and tile_id <= 0x2b)

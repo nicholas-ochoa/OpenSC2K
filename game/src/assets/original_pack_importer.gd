@@ -3,7 +3,7 @@ extends RefCounted
 
 
 
-static func import_executable(executable: String, packs_root: String, saved_root := "") -> Dictionary:
+static func import_executable(executable: String, packs_root: String, saved_root := "") -> AssetImportResult:
 	var target := packs_root.path_join("Original-SC2K-%d-%d" % [Time.get_unix_time_from_system(), Time.get_ticks_usec()])
 	var stage := target + ".staging"
 	var support := stage.path_join("original")
@@ -17,15 +17,16 @@ static func import_executable(executable: String, packs_root: String, saved_root
 	var exported := OriginalPackExporter.new().export_packs(support, stage, "original")
 
 	if exported.ok and DirAccess.rename_absolute(support, stage.path_join("graphics/original")) != OK:
-		exported = {"ok": false, "error": "Cannot attach original support data to the graphics pack."}
+		exported = AssetImportResult.failure("Cannot attach original support data to the graphics pack.")
 
 	if exported.ok:
 		var checked := GameAssetSource.load_source("", "folder", stage.path_join("graphics/pack.json"))
 
 		if not checked.error.is_empty():
-			exported = {"ok": false, "error": checked.error}
+			exported = AssetImportResult.failure(checked.error)
 
-	var saved_games := {"ok": true, "created": PackedStringArray()}
+	var saved_games := AssetImportResult.new()
+	saved_games.ok = true
 
 	if exported.ok:
 		saved_games = OriginalCityImporter.import_saved_games(stage.path_join("graphics/original"), saved_root if not saved_root.is_empty()
@@ -35,15 +36,22 @@ static func import_executable(executable: String, packs_root: String, saved_root
 			exported = saved_games
 
 	if exported.ok and DirAccess.rename_absolute(stage, target) != OK:
-		exported = {"ok": false, "error": "Cannot activate the imported packs."}
+		exported = AssetImportResult.failure("Cannot activate the imported packs.")
 
 	if not exported.ok:
-		OriginalCityImporter.rollback(saved_games.get("created", PackedStringArray()))
+		OriginalCityImporter.rollback(saved_games.created)
 		OriginalGameInstaller.remove_tree(stage)
 
 		return exported
 
-	return {"ok": true, "error": "", "root": target.path_join("graphics/original"),
-		"cities": saved_games.get("cities", 0), "scenarios": saved_games.get("scenarios", 0),
-		"graphics": target.path_join("graphics/pack.json"), "sound": target.path_join("sound/pack.json"),
-		"music": target.path_join("music/pack.json")}
+	var outcome := AssetImportResult.new()
+	outcome.ok = true
+	outcome.error = ""
+	outcome.root = target.path_join("graphics/original")
+	outcome.cities = saved_games.cities
+	outcome.scenarios = saved_games.scenarios
+	outcome.graphics = target.path_join("graphics/pack.json")
+	outcome.sound = target.path_join("sound/pack.json")
+	outcome.music = target.path_join("music/pack.json")
+
+	return outcome

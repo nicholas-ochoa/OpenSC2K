@@ -38,7 +38,7 @@ static func update(
 	ship_home: Vector2i,
 	random: SimRandom,
 	lfsr_random: SimLfsrRandom,
-	counters: Dictionary,
+	counters: MovingThingResult,
 	map_edge: int = 128,
 ) -> void:
 	var offset := record * RECORD_SIZE
@@ -290,7 +290,7 @@ static func _remove(
 
 
 static func _queue_sound(
-	counters: Dictionary, things: PackedByteArray, record: int
+	counters: MovingThingResult, things: PackedByteArray, record: int
 ) -> void:
 	var offset := record * RECORD_SIZE
 	counters.sound_events.append({

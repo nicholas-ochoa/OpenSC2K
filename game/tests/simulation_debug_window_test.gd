@@ -1,4 +1,5 @@
 extends SceneTree
+const TimingResults = preload("res://tests/support/timing_results.gd")
 
 class MetricsHost extends Control:
 	var debug: Control = self
@@ -57,8 +58,8 @@ func _run() -> void:
 	assert(metrics_tree.rows["simulation_slices/snapshot_usec"].get_text(1) == "4.000 ms")
 	assert(metrics_tree.rows["simulation_slices/work/parked_usec"].get_text(1) == "—")
 	assert(metrics_tree.rows["new_counter"].get_text(1) == "7")
-	host.timing_state.simulation_timings.consume({"day_results": [{"ok": true, "day": 2,
-		"timing": {"work_usec": 2500, "steps": {"pollution": 2500}}}]})
+	host.timing_state.simulation_timings.consume(TimingResults.tick_fixture({"day_results": [{"ok": true, "day": 2,
+		"timing": {"work_usec": 2500, "steps": {"pollution": 2500}}}]}))
 	debug.toggle()
 	assert(debug.is_open and debug._days.get_root().get_child_count() == 25)
 	var day_three := debug._days.get_root().get_child(2)
@@ -68,19 +69,21 @@ func _run() -> void:
 	assert(day_three.get_child(0).get_text(1).strip_edges() == "pollution")
 	assert(day_three.get_child(0).get_text(2) == "2.500")
 	day_three.collapsed = false
-	host.timing_state.simulation_timings.consume({"day_results": [{"ok": true, "day": 3,
+	host.timing_state.simulation_timings.consume(TimingResults.tick_fixture({"day_results": [{"ok": true, "day": 3,
 		"timing": {"work_usec": 900, "steps": {"pollution": 900}}}],
-		"job_timings": {"worker elapsed": 6000}})
+		"job_timings": {"worker elapsed": 6000}}))
 	debug._refresh_metrics()
 	assert(debug._days.get_root().get_child(2) == day_three and not day_three.collapsed)
 	assert(day_three.get_child_count() == 1 and day_three.get_child(0).get_text(2) == "2.500")
 	assert(debug._days.get_root().get_child(3).get_child(0).get_text(2) == "0.900")
 	assert(debug._other_steps.collapsed and debug._other_steps.get_child(0).get_text(2) == "6.000")
 	for pair in [[1, "power"], [3, "growth"], [19, "traffic"], [20, "water"]]:
-		host.timing_state.simulation_timings.consume({"day_results": [{"ok": true, "day": pair[0],
+		var phase := PhaseResult.new()
+		phase.timing = {"steps": {"measured detail": 6000}}
+		host.timing_state.simulation_timings.consume(TimingResults.tick_fixture({"day_results": [{"ok": true, "day": pair[0],
 			"timing": {"work_usec": 7000, "steps": {pair[1]: 7000}},
 			"phase_results": {pair[1]:
-				PhaseResult.from_dictionary({"timing": {"steps": {"measured detail": 6000}}})}}]})
+				phase}}]}))
 
 	debug._refresh_metrics()
 

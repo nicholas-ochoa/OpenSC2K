@@ -5,7 +5,7 @@ extends RefCounted
 
 var error := ""
 var records: Array[Dictionary] = []
-var images: Dictionary = {}
+var images: Dictionary[String, Image] = {}
 
 
 static func load_manifest(value: Variant, read_png: Callable, palette: Sc2Palette) -> ScenarioGraphics:
@@ -47,7 +47,7 @@ func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 
 		return
 
-	var ids := {}
+	var ids: Dictionary[String, bool] = {}
 
 	for record in value:
 		if not record is Dictionary or not record.get("id") is String or str(record.id).strip_edges().is_empty():
@@ -67,9 +67,9 @@ func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 
 			return
 
-		var png: Dictionary = read_png.call(record.get("png"))
+		var png: IndexedImageResult = read_png.call(record.get("png"))
 
-		if not png.get("ok", false):
+		if png == null or not png.ok:
 			error = "Cannot read scenario picture %s" % record.id
 
 			return

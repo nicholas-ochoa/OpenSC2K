@@ -6,9 +6,9 @@ const CYCLE_START := 31 # past the one-time slow-table initialization
 const CYCLE_TICKS := 120 # lcm of the 40-tick fast and 60-tick slow cycles
 
 
-static func encode_cycle(width: int, height: int, pixels: PackedInt32Array, palette: Sc2Palette) -> Dictionary:
+static func encode_cycle(width: int, height: int, pixels: PackedInt32Array, palette: Sc2Palette) -> AssetBytesResult:
 	if width < 1 or height < 1 or width > 128 or height > 256 or pixels.size() != width * height or palette == null or not palette.is_valid():
-		return {"ok": false, "error": "Invalid SCURK GIF dimensions, pixels, or palette."}
+		return AssetBytesResult.failure("Invalid SCURK GIF dimensions, pixels, or palette.")
 
 	var used := PackedByteArray()
 	used.resize(256)
@@ -17,7 +17,7 @@ static func encode_cycle(width: int, height: int, pixels: PackedInt32Array, pale
 
 	for pixel in pixels:
 		if pixel < -1 or pixel > 255:
-			return {"ok": false, "error": "GIF pixel is outside the indexed palette."}
+			return AssetBytesResult.failure("GIF pixel is outside the indexed palette.")
 
 		if pixel < 0:
 			transparent = true
@@ -27,7 +27,7 @@ static func encode_cycle(width: int, height: int, pixels: PackedInt32Array, pale
 	var clear_index := used.find(0) if transparent else 0
 
 	if clear_index < 0:
-		return {"ok": false, "error": "GIF transparency requires an unused palette index."}
+		return AssetBytesResult.failure("GIF transparency requires an unused palette index.")
 
 	var raster := PackedByteArray()
 
@@ -81,7 +81,14 @@ static func encode_cycle(width: int, height: int, pixels: PackedInt32Array, pale
 
 	output.append(0x3b)
 
-	return {"ok": true, "error": "", "bytes": output, "frame_count": frames.size(), "duration_cs": 660}
+	var outcome := AssetBytesResult.new()
+	outcome.ok = true
+	outcome.error = ""
+	outcome.bytes = output
+	outcome.frame_count = frames.size()
+	outcome.duration_cs = 660
+
+	return outcome
 
 
 static func _palette(output: PackedByteArray, palette: Sc2Palette, mapping: PackedInt32Array) -> void:

@@ -22,46 +22,44 @@ const REQUIRED_RELATIVE_PATHS := [
 
 static func validate_executable(
 	executable_path: String, expected_hash: String = EXPECTED_SIMCITY_SHA256
-) -> Dictionary:
+) -> AssetImportResult:
 	var path := executable_path.simplify_path()
 
 	if path.get_file().to_upper() != "SIMCITY.EXE":
-		return {
-			"ok": false,
-			"error": "Select SIMCITY.EXE from the original SimCity 2000 installation.",
-		}
+		return AssetImportResult.failure("Select SIMCITY.EXE from the original SimCity 2000 installation.")
 
 	if not FileAccess.file_exists(path):
-		return {"ok": false, "error": "The selected SIMCITY.EXE does not exist."}
+		return AssetImportResult.failure("The selected SIMCITY.EXE does not exist.")
 
 	var actual_hash := FileAccess.get_sha256(path).to_lower()
 
 	if actual_hash.is_empty():
-		return {"ok": false, "error": "Cannot read the selected SIMCITY.EXE."}
+		return AssetImportResult.failure("Cannot read the selected SIMCITY.EXE.")
 
 	if actual_hash != expected_hash.to_lower():
-		return {
-			"ok": false,
-			"error": (
+		return AssetImportResult.failure((
 				"The selected SIMCITY.EXE is not the supported 1996 Special Edition file.\n\n"
 				+ "Expected SHA-256:\n%s\n\nSelected SHA-256:\n%s"
 				% [expected_hash.to_lower(), actual_hash]
-			),
-			"actual_hash": actual_hash,
-		}
+			))
 
-	return {"ok": true, "path": path, "hash": actual_hash}
+	var outcome := AssetImportResult.new()
+	outcome.ok = true
+	outcome.path = path
+	outcome.hash = actual_hash
+
+	return outcome
 
 
 static func validate_install_root(
 	install_root: String,
 	expected_hash: String = EXPECTED_SIMCITY_SHA256,
 	required_paths: Array = REQUIRED_RELATIVE_PATHS,
-) -> Dictionary:
+) -> AssetImportResult:
 	var root := install_root.simplify_path()
 
 	if not DirAccess.dir_exists_absolute(root):
-		return {"ok": false, "error": "The original game data directory does not exist."}
+		return AssetImportResult.failure("The original game data directory does not exist.")
 
 	var executable_result := validate_executable(
 		root.path_join("SIMCITY.EXE"), expected_hash
@@ -75,7 +73,12 @@ static func validate_install_root(
 	if not required_result.ok:
 		return required_result
 
-	return {"ok": true, "root": root, "hash": executable_result.hash}
+	var outcome := AssetImportResult.new()
+	outcome.ok = true
+	outcome.root = root
+	outcome.hash = executable_result.hash
+
+	return outcome
 
 
 static func install_from_executable(
@@ -83,7 +86,7 @@ static func install_from_executable(
 	destination_root: String,
 	expected_hash: String = EXPECTED_SIMCITY_SHA256,
 	required_paths: Array = REQUIRED_RELATIVE_PATHS,
-) -> Dictionary:
+) -> AssetImportResult:
 	var executable_result := validate_executable(executable_path, expected_hash)
 
 	if not executable_result.ok:
@@ -98,10 +101,7 @@ static func install_from_executable(
 		or source_root.begins_with(destination + "/")
 		or destination.begins_with(source_root + "/")
 	):
-		return {
-			"ok": false,
-			"error": "Select SIMCITY.EXE from an original installation outside the app data copy.",
-		}
+		return AssetImportResult.failure("Select SIMCITY.EXE from an original installation outside the app data copy.")
 
 	var required_result := _validate_required_files(source_root, required_paths)
 
@@ -112,10 +112,7 @@ static func install_from_executable(
 	var make_parent_error := DirAccess.make_dir_recursive_absolute(destination_parent)
 
 	if make_parent_error != OK:
-		return {
-			"ok": false,
-			"error": "Cannot create the app data directory: %s" % error_string(make_parent_error),
-		}
+		return AssetImportResult.failure("Cannot create the app data directory: %s" % error_string(make_parent_error))
 
 	var staging_root := _unique_sibling_path(destination, "installing")
 	var copy_result := _copy_tree(source_root, staging_root)
@@ -142,10 +139,7 @@ static func install_from_executable(
 		if rename_executable_error != OK:
 			remove_tree(staging_root)
 
-			return {
-				"ok": false,
-				"error": "Cannot prepare SIMCITY.EXE in app data: %s" % error_string(rename_executable_error),
-			}
+			return AssetImportResult.failure("Cannot prepare SIMCITY.EXE in app data: %s" % error_string(rename_executable_error))
 
 	var staged_result := validate_install_root(
 		staging_root, expected_hash, required_paths
@@ -154,10 +148,7 @@ static func install_from_executable(
 	if not staged_result.ok:
 		remove_tree(staging_root)
 
-		return {
-			"ok": false,
-			"error": "The copied installation is not valid. %s" % staged_result.error,
-		}
+		return AssetImportResult.failure("The copied installation is not valid. %s" % staged_result.error)
 
 	var previous_root := ""
 
@@ -168,10 +159,7 @@ static func install_from_executable(
 		if backup_error != OK:
 			remove_tree(staging_root)
 
-			return {
-				"ok": false,
-				"error": "Cannot preserve the existing app data copy: %s" % error_string(backup_error),
-			}
+			return AssetImportResult.failure("Cannot preserve the existing app data copy: %s" % error_string(backup_error))
 
 	var activate_error := DirAccess.rename_absolute(staging_root, destination)
 
@@ -181,17 +169,15 @@ static func install_from_executable(
 
 		remove_tree(staging_root)
 
-		return {
-			"ok": false,
-			"error": "Cannot activate the copied installation: %s" % error_string(activate_error),
-		}
+		return AssetImportResult.failure("Cannot activate the copied installation: %s" % error_string(activate_error))
 
-	return {
-		"ok": true,
-		"root": destination,
-		"hash": staged_result.hash,
-		"previous_root": previous_root,
-	}
+	var outcome := AssetImportResult.new()
+	outcome.ok = true
+	outcome.root = destination
+	outcome.hash = staged_result.hash
+	outcome.previous_root = previous_root
+
+	return outcome
 
 
 static func remove_tree(path: String) -> Error:
@@ -240,43 +226,34 @@ static func remove_tree(path: String) -> Error:
 
 static func _validate_required_files(
 	install_root: String, required_paths: Array
-) -> Dictionary:
+) -> AssetImportResult:
 	for relative_path in required_paths:
 		if not FileAccess.file_exists(install_root.path_join(relative_path)):
-			return {
-				"ok": false,
-				"error": "The selected installation is missing %s." % relative_path,
-			}
+			return AssetImportResult.failure("The selected installation is missing %s." % relative_path)
 
-	return {"ok": true}
+	var outcome := AssetImportResult.new()
+	outcome.ok = true
+
+	return outcome
 
 
-static func _copy_tree(source_root: String, destination_root: String) -> Dictionary:
+static func _copy_tree(source_root: String, destination_root: String) -> AssetImportResult:
 	var source := DirAccess.open(source_root)
 
 	if source == null:
-		return {
-			"ok": false,
-			"error": "Cannot read the selected installation: %s" % error_string(DirAccess.get_open_error()),
-		}
+		return AssetImportResult.failure("Cannot read the selected installation: %s" % error_string(DirAccess.get_open_error()))
 
 	var make_error := DirAccess.make_dir_recursive_absolute(destination_root)
 
 	if make_error != OK:
-		return {
-			"ok": false,
-			"error": "Cannot create the installation copy: %s" % error_string(make_error),
-		}
+		return AssetImportResult.failure("Cannot create the installation copy: %s" % error_string(make_error))
 
 	source.include_hidden = true
 	source.include_navigational = false
 	var list_error := source.list_dir_begin()
 
 	if list_error != OK:
-		return {
-			"ok": false,
-			"error": "Cannot list the selected installation: %s" % error_string(list_error),
-		}
+		return AssetImportResult.failure("Cannot list the selected installation: %s" % error_string(list_error))
 
 	var entry_name := source.get_next()
 
@@ -284,10 +261,7 @@ static func _copy_tree(source_root: String, destination_root: String) -> Diction
 		if source.is_link(entry_name):
 			source.list_dir_end()
 
-			return {
-				"ok": false,
-				"error": "The selected installation contains an unsupported link: %s" % entry_name,
-			}
+			return AssetImportResult.failure("The selected installation contains an unsupported link: %s" % entry_name)
 
 		var source_path := source_root.path_join(entry_name)
 		var destination_path := destination_root.path_join(entry_name)
@@ -305,16 +279,16 @@ static func _copy_tree(source_root: String, destination_root: String) -> Diction
 			if copy_error != OK:
 				source.list_dir_end()
 
-				return {
-					"ok": false,
-					"error": "Cannot copy %s: %s" % [entry_name, error_string(copy_error)],
-				}
+				return AssetImportResult.failure("Cannot copy %s: %s" % [entry_name, error_string(copy_error)])
 
 		entry_name = source.get_next()
 
 	source.list_dir_end()
 
-	return {"ok": true}
+	var outcome := AssetImportResult.new()
+	outcome.ok = true
+
+	return outcome
 
 
 static func _unique_sibling_path(path: String, purpose: String) -> String:

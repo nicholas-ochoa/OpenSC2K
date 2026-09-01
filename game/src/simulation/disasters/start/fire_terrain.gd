@@ -2,19 +2,19 @@ class_name DisasterStartFireTerrain
 extends DisasterStartConstants
 
 
-static func _start_fire(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> Dictionary:
+static func _start_fire(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> DisasterStartResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if random == null:
-		return {"ok": false, "error": "a compatible process random generator is required"}
+		return DisasterStartResult.failed("a compatible process random generator is required")
 
 	if lfsr_random == null:
-		return {"ok": false, "error": "a compatible LFSR generator is required"}
+		return DisasterStartResult.failed("a compatible LFSR generator is required")
 
 	var original := DisasterStartObjectsState._map_payloads(city)
 
 	if original.is_empty():
-		return {"ok": false, "error": "fire disaster input chunks are missing or invalid"}
+		return DisasterStartResult.failed("fire disaster input chunks are missing or invalid")
 
 	var payloads := DisasterStartObjectsState._duplicate_payloads(original)
 	var runtime_events := DisasterMapDamage.new_runtime_events()
@@ -64,26 +64,26 @@ static func _start_fire(city: CityState, random: SimRandom, lfsr_random: SimLfsr
 			return _store_fire(city, original, payloads, point, runtime_events)
 
 	var result := DisasterStartObjectsState._result(DISASTER_FIRE, point, false, true, 0)
-	result["notice_ids"] = [0xf5]
+	result.notice_ids = [0xf5]
 
 	return result
 
 
 static func _start_earthquake(
 	city: CityState, point: Vector2i, random: SimRandom, lfsr_random: SimLfsrRandom
-) -> Dictionary:
+) -> DisasterStartResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if random == null:
-		return {"ok": false, "error": "a compatible process random generator is required"}
+		return DisasterStartResult.failed("a compatible process random generator is required")
 
 	if lfsr_random == null:
-		return {"ok": false, "error": "a compatible LFSR generator is required"}
+		return DisasterStartResult.failed("a compatible LFSR generator is required")
 
 	var original := DisasterStartObjectsState._map_payloads(city)
 
 	if original.is_empty():
-		return {"ok": false, "error": "earthquake disaster input chunks are missing or invalid"}
+		return DisasterStartResult.failed("earthquake disaster input chunks are missing or invalid")
 
 	var payloads := DisasterStartObjectsState._duplicate_payloads(original)
 	var runtime_events := DisasterMapDamage.new_runtime_events()
@@ -138,15 +138,15 @@ static func _start_earthquake(
 	var map_changed := DisasterStartObjectsState._payloads_changed(original, payloads)
 
 	if map_changed and not DisasterStartObjectsState._apply_map_payloads(city, original, payloads):
-		return {"ok": false, "error": "cannot store the earthquake disaster"}
+		return DisasterStartResult.failed("cannot store the earthquake disaster")
 
 	var result := DisasterStartObjectsState._result(DISASTER_EARTHQUAKE, point, true, true, 0)
-	result["gate_attempts"] = 65 * 65
-	result["gate_hits"] = gate_hits
-	result["eligible_targets"] = eligible_targets
-	result["fire_damage_attempts"] = fire_damage_attempts
-	result["structure_damage_attempts"] = structure_damage_attempts
-	result["map_changed"] = map_changed
+	result.counters["gate_attempts"] = 65 * 65
+	result.counters["gate_hits"] = gate_hits
+	result.counters["eligible_targets"] = eligible_targets
+	result.counters["fire_damage_attempts"] = fire_damage_attempts
+	result.counters["structure_damage_attempts"] = structure_damage_attempts
+	result.map_changed = map_changed
 	var effect_events: Array[Dictionary] = [{
 		"type": "earthquake",
 		"frames": 24,
@@ -154,7 +154,7 @@ static func _start_earthquake(
 		"distance": 4,
 	}]
 	effect_events.append_array(runtime_events.effect_events)
-	result["effect_events"] = effect_events
+	result.effect_events = effect_events
 	var sounds: Array[int] = []
 
 	for _frame in 24:
@@ -165,21 +165,21 @@ static func _start_earthquake(
 
 	sounds.append_array(runtime_events.sound_events)
 	sounds.append(SOUND_SIREN)
-	result["sound_events"] = sounds
+	result.sound_events = sounds
 
 	return result
 
 
-static func _start_volcano(city: CityState, center: Vector2i, random: SimRandom) -> Dictionary:
+static func _start_volcano(city: CityState, center: Vector2i, random: SimRandom) -> DisasterStartResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if random == null:
-		return {"ok": false, "error": "a compatible process random generator is required"}
+		return DisasterStartResult.failed("a compatible process random generator is required")
 
 	var original := DisasterStartObjectsState._map_payloads(city)
 
 	if original.is_empty():
-		return {"ok": false, "error": "volcano disaster input chunks are missing or invalid"}
+		return DisasterStartResult.failed("volcano disaster input chunks are missing or invalid")
 
 	var payloads := DisasterStartObjectsState._duplicate_payloads(original)
 	var heights := TerrainEditHeights._decode_heights(payloads.ALTM, map_edge)
@@ -274,21 +274,21 @@ static func _start_volcano(city: CityState, center: Vector2i, random: SimRandom)
 	var map_changed := DisasterStartObjectsState._payloads_changed(original, payloads)
 
 	if map_changed and not DisasterStartObjectsState._apply_map_payloads(city, original, payloads):
-		return {"ok": false, "error": "cannot store the volcano disaster"}
+		return DisasterStartResult.failed("cannot store the volcano disaster")
 
 	var result := DisasterStartObjectsState._result(DISASTER_VOLCANO, center, true, true, 0)
 	sounds.append(SOUND_SIREN)
-	result["sound_events"] = sounds
-	result["iterations"] = iterations
-	result["successful_raises"] = successful_raises
-	result["rejected_raises"] = rejected_raises
-	result["temporary_budget_spent"] = VOLCANO_BUDGET - remaining_budget
-	result["near_toxic_writes"] = near_toxic_writes
-	result["near_fire_writes"] = near_fire_writes
-	result["distant_toxic_writes"] = distant_toxic_writes
-	result["distant_fire_writes"] = distant_fire_writes
-	result["terrain_indices"] = changed_indices
-	result["map_changed"] = map_changed
+	result.sound_events = sounds
+	result.counters["iterations"] = iterations
+	result.counters["successful_raises"] = successful_raises
+	result.counters["rejected_raises"] = rejected_raises
+	result.counters["temporary_budget_spent"] = VOLCANO_BUDGET - remaining_budget
+	result.counters["near_toxic_writes"] = near_toxic_writes
+	result.counters["near_fire_writes"] = near_fire_writes
+	result.counters["distant_toxic_writes"] = distant_toxic_writes
+	result.counters["distant_fire_writes"] = distant_fire_writes
+	result.terrain_indices = changed_indices
+	result.map_changed = map_changed
 
 	return result
 
@@ -340,19 +340,19 @@ static func _volcano_raise_is_valid(
 
 static func _start_firestorm(
 	city: CityState, center: Vector2i, random: SimRandom, lfsr_random: SimLfsrRandom
-) -> Dictionary:
+) -> DisasterStartResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if random == null:
-		return {"ok": false, "error": "a compatible process random generator is required"}
+		return DisasterStartResult.failed("a compatible process random generator is required")
 
 	if lfsr_random == null:
-		return {"ok": false, "error": "a compatible LFSR generator is required"}
+		return DisasterStartResult.failed("a compatible LFSR generator is required")
 
 	var original := DisasterStartObjectsState._map_payloads(city)
 
 	if original.is_empty():
-		return {"ok": false, "error": "firestorm disaster input chunks are missing or invalid"}
+		return DisasterStartResult.failed("firestorm disaster input chunks are missing or invalid")
 
 	var payloads := DisasterStartObjectsState._duplicate_payloads(original)
 	var point := center
@@ -411,25 +411,25 @@ static func _start_firestorm(
 	var map_changed := DisasterStartObjectsState._payloads_changed(original, payloads)
 
 	if map_changed and not DisasterStartObjectsState._apply_map_payloads(city, original, payloads):
-		return {"ok": false, "error": "cannot store the firestorm disaster"}
+		return DisasterStartResult.failed("cannot store the firestorm disaster")
 
 	var result := DisasterStartObjectsState._result(DISASTER_FIRESTORM, center, started, true, 0)
-	result["requested_point"] = center
-	result["scan_finish"] = point
-	result["scan_steps"] = scan_steps
-	result["attempted_in_map"] = attempted_in_map
-	result["successful_cells"] = 65 - remaining
-	result["remaining_cells"] = remaining
-	result["result_codes"] = result_codes
-	result["accepted_points"] = accepted_points
-	result["map_changed"] = map_changed
-	result["effect_events"] = runtime_events.effect_events
+	result.requested_point = center
+	result.scan_finish = point
+	result.counters["scan_steps"] = scan_steps
+	result.counters["attempted_in_map"] = attempted_in_map
+	result.counters["successful_cells"] = 65 - remaining
+	result.counters["remaining_cells"] = remaining
+	result.result_codes = result_codes
+	result.accepted_points = accepted_points
+	result.map_changed = map_changed
+	result.effect_events = runtime_events.effect_events
 
 	if started:
-		result["view_center_requests"] = [point]
+		result.view_center_requests = [point]
 		var sounds: Array[int] = runtime_events.sound_events.duplicate()
 		sounds.append(SOUND_SIREN)
-		result["sound_events"] = sounds
+		result.sound_events = sounds
 
 	return result
 
@@ -473,14 +473,14 @@ static func _store_fire(
 	payloads: Dictionary,
 	point: Vector2i,
 	runtime_events: Dictionary,
-) -> Dictionary:
+) -> DisasterStartResult:
 	if not DisasterStartObjectsState._apply_map_payloads(city, original, payloads):
-		return {"ok": false, "error": "cannot store the fire disaster"}
+		return DisasterStartResult.failed("cannot store the fire disaster")
 
 	var result := DisasterStartObjectsState._result(DISASTER_FIRE, point, true, true, 0)
-	result["effect_events"] = runtime_events.effect_events
+	result.effect_events = runtime_events.effect_events
 	var sounds: Array[int] = runtime_events.sound_events.duplicate()
 	sounds.append(SOUND_SIREN)
-	result["sound_events"] = sounds
+	result.sound_events = sounds
 
 	return result

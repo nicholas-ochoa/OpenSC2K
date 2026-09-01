@@ -157,11 +157,11 @@ func debug_start_disaster(disaster_type: int) -> Dictionary:
 
 	var result := app.reports.start_disaster_at_view_center(disaster_type)
 
-	if not result.get("ok", false):
+	if not result.ok:
 		return {
 			"ok": false,
 			"message": "The %s could not start: %s"
-			% [CityMenuBar.disaster_name(disaster_type), result.get("error", "unknown error")],
+			% [CityMenuBar.disaster_name(disaster_type), result.error],
 		}
 
 	return {

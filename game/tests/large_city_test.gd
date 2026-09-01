@@ -66,7 +66,7 @@ func check_size(edge: int) -> void:
 	var record: int = spawned.get("record", 1)
 	check(city.thing(record).x == corner.x and city.thing(record).y == corner.y, "Wide object coordinates")
 	var moving := MovingThingPhase.run(city, SimRandom.new(1), SimLfsrRandom.new(1), GameLcgRandom.new(1))
-	check(moving.ok, "Moving phase: " + moving.get("error", ""))
+	check(moving.ok, "Moving phase: " + moving.error)
 	var rotated := CityRotationCommand.apply(city, false)
 	check(rotated.ok, "Rotation: " + rotated.get("error", ""))
 	var rotated_thing := city.thing(record)

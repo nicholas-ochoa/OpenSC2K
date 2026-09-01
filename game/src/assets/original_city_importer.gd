@@ -3,9 +3,9 @@ extends RefCounted
 # copy original saved games without replacing the player's existing files
 
 
-static func import_saved_games(source_root: String, saved_root: String) -> Dictionary:
+static func import_saved_games(source_root: String, saved_root: String) -> AssetImportResult:
 	var copied := PackedStringArray()
-	var counts := {"cities": 0, "scenarios": 0}
+	var counts: Dictionary[String, int] = {"cities": 0, "scenarios": 0}
 
 	for entry in [["CITIES", "cities", "sc2"], ["SCENARIO", "scenarios", "scn"]]:
 		var source := source_root.path_join(entry[0])
@@ -30,24 +30,31 @@ static func import_saved_games(source_root: String, saved_root: String) -> Dicti
 				if DirAccess.make_dir_recursive_absolute(destination.get_base_dir()) != OK:
 					rollback(copied)
 
-					return {"ok": false, "error": "Cannot create saved-game folder: " + destination.get_base_dir()}
+					return AssetImportResult.failure("Cannot create saved-game folder: " + destination.get_base_dir())
 
 				if DirAccess.copy_absolute(original, destination) != OK:
 					DirAccess.remove_absolute(destination)
 					rollback(copied)
 
-					return {"ok": false, "error": "Cannot import saved game: " + destination}
+					return AssetImportResult.failure("Cannot import saved game: " + destination)
 
 				copied.append(destination)
 
 				if FileAccess.get_sha256(original) != FileAccess.get_sha256(destination):
 					rollback(copied)
 
-					return {"ok": false, "error": "Saved game copy failed verification: " + destination}
+					return AssetImportResult.failure("Saved game copy failed verification: " + destination)
 
 			counts[entry[1]] += 1
 
-	return {"ok": true, "error": "", "created": copied, "cities": counts.cities, "scenarios": counts.scenarios}
+	var outcome := AssetImportResult.new()
+	outcome.ok = true
+	outcome.error = ""
+	outcome.created = copied
+	outcome.cities = counts.cities
+	outcome.scenarios = counts.scenarios
+
+	return outcome
 
 
 static func rollback(created: PackedStringArray) -> void:

@@ -5,7 +5,7 @@ extends RefCounted
 const RESOURCE_ID := "CTL3D_3DCHECK"
 const CELL_SIZE := Vector2i(14, 13)
 const SHEET_SIZE := Vector2i(70, 39)
-const ICONS := {
+const ICONS: Dictionary[String, Vector2i] = {
 	"unchecked": Vector2i(0, 0), "checked": Vector2i(1, 0),
 	"unchecked_disabled": Vector2i(2, 0), "checked_disabled": Vector2i(4, 0),
 	"radio_unchecked": Vector2i(0, 1), "radio_checked": Vector2i(1, 1),

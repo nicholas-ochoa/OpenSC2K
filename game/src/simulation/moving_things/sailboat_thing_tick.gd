@@ -24,7 +24,7 @@ static func update(
 	record: int,
 	random: SimRandom,
 	lfsr_random: SimLfsrRandom,
-	counters: Dictionary,
+	counters: MovingThingResult,
 	map_edge: int = 128,
 ) -> void:
 	var offset := record * RECORD_SIZE
@@ -115,7 +115,7 @@ static func _move(
 	things: PackedByteArray,
 	record: int,
 	direction: int,
-	counters: Dictionary,
+	counters: MovingThingResult,
 	map_edge: int = 128,
 ) -> void:
 	var offset := record * RECORD_SIZE
@@ -176,7 +176,7 @@ static func _remove(
 
 
 static func _queue_distress_sound(
-	counters: Dictionary, things: PackedByteArray, record: int
+	counters: MovingThingResult, things: PackedByteArray, record: int
 ) -> void:
 	var offset := record * RECORD_SIZE
 	counters.sound_events.append({

@@ -235,7 +235,7 @@ func _refresh_animation() -> void:
 		if sprite == null:
 			continue
 
-		var rendered: Dictionary = sprite.create_image(colors)
+		var rendered := sprite.create_image(colors)
 
 		if not rendered.ok:
 			continue
@@ -287,7 +287,7 @@ func _occlude(image: Image, position: Vector2i, order: int) -> Image:
 			if sprite == null:
 				continue
 
-			var rendered: Dictionary = sprite.create_image(demo_palette)
+			var rendered := sprite.create_image(demo_palette)
 
 			if not rendered.ok:
 				continue

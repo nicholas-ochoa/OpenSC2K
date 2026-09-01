@@ -4,7 +4,7 @@ extends DisasterStartConstants
 @warning_ignore_start("integer_division")
 
 
-static func _start_toxic_spill(city: CityState, point: Vector2i) -> Dictionary:
+static func _start_toxic_spill(city: CityState, point: Vector2i) -> DisasterStartResult:
 	var map_edge: int = city.map_size if city != null else 128
 	var index := DisasterStartObjectsState._index(point, map_edge)
 
@@ -14,29 +14,29 @@ static func _start_toxic_spill(city: CityState, point: Vector2i) -> Dictionary:
 	var text_chunk := city.document.find_chunk("XTXT")
 
 	if text_chunk == null or text_chunk.decoded_payload.size() != city.document.decoded_size("XTXT"):
-		return {"ok": false, "error": "toxic-spill map data is missing or invalid"}
+		return DisasterStartResult.failed("toxic-spill map data is missing or invalid")
 
 	var text: PackedByteArray = text_chunk.decoded_payload.duplicate()
 	OverlayData.write(text, index, 0xfb)
 
 	if not text_chunk.set_decoded_payload(text):
-		return {"ok": false, "error": "cannot store the toxic spill"}
+		return DisasterStartResult.failed("cannot store the toxic spill")
 
 	city.resync_mirrors(["XTXT"])
 
 	return DisasterStartObjectsState._result(DISASTER_TOXIC_SPILL, point, true, true, 0)
 
 
-static func _start_riot(city: CityState, point: Vector2i, random: SimRandom) -> Dictionary:
+static func _start_riot(city: CityState, point: Vector2i, random: SimRandom) -> DisasterStartResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if random == null:
-		return {"ok": false, "error": "a compatible process random generator is required"}
+		return DisasterStartResult.failed("a compatible process random generator is required")
 
 	var riot_maps := _riot_map_payloads(city)
 
 	if riot_maps.is_empty():
-		return {"ok": false, "error": "riot disaster map data is missing or invalid"}
+		return DisasterStartResult.failed("riot disaster map data is missing or invalid")
 
 	var text: PackedByteArray = riot_maps.XTXT.duplicate()
 	var current_point := point
@@ -61,21 +61,21 @@ static func _start_riot(city: CityState, point: Vector2i, random: SimRandom) -> 
 		seed_points.append(seed_point)
 
 	if not _store_riot_text(city, text):
-		return {"ok": false, "error": "cannot store the riot disaster"}
+		return DisasterStartResult.failed("cannot store the riot disaster")
 
 	return _riot_result(DISASTER_RIOT, current_point, seed_points, 3)
 
 
-static func _start_mass_riots(city: CityState, point: Vector2i, random: SimRandom) -> Dictionary:
+static func _start_mass_riots(city: CityState, point: Vector2i, random: SimRandom) -> DisasterStartResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if random == null:
-		return {"ok": false, "error": "a compatible process random generator is required"}
+		return DisasterStartResult.failed("a compatible process random generator is required")
 
 	var riot_maps := _riot_map_payloads(city)
 
 	if riot_maps.is_empty():
-		return {"ok": false, "error": "mass-riot disaster map data is missing or invalid"}
+		return DisasterStartResult.failed("mass-riot disaster map data is missing or invalid")
 
 	var attempt_count := (
 		int(city.document.misc_u32(MISC_NORMAL_POPULATION) / 10000) + 5
@@ -111,7 +111,7 @@ static func _start_mass_riots(city: CityState, point: Vector2i, random: SimRando
 			seed_points.append(seed_point)
 
 	if not seed_points.is_empty() and not _store_riot_text(city, text):
-		return {"ok": false, "error": "cannot store the mass-riot disaster"}
+		return DisasterStartResult.failed("cannot store the mass-riot disaster")
 
 	return _riot_result(
 		DISASTER_MASS_RIOTS, final_point, seed_points, maxi(attempt_count, 0)
@@ -199,12 +199,12 @@ static func _riot_result(
 	point: Vector2i,
 	seed_points: Array[Vector2i],
 	attempt_count: int
-) -> Dictionary:
+) -> DisasterStartResult:
 	var started := not seed_points.is_empty()
 	var result := DisasterStartObjectsState._result(disaster_type, point, started, true, 0)
-	result["attempt_count"] = attempt_count
-	result["seed_writes"] = seed_points.size()
-	result["seed_points"] = seed_points
+	result.counters["attempt_count"] = attempt_count
+	result.counters["seed_writes"] = seed_points.size()
+	result.seed_points = seed_points
 	var sounds: Array[int] = []
 
 	for _seed in seed_points:
@@ -213,21 +213,21 @@ static func _riot_result(
 	if started:
 		sounds.append(SOUND_SIREN)
 
-	result["sound_events"] = sounds
+	result.sound_events = sounds
 
 	return result
 
 
-static func _start_pollution(city: CityState, point: Vector2i, random: SimRandom) -> Dictionary:
+static func _start_pollution(city: CityState, point: Vector2i, random: SimRandom) -> DisasterStartResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if random == null:
-		return {"ok": false, "error": "a compatible process random generator is required"}
+		return DisasterStartResult.failed("a compatible process random generator is required")
 
 	var text_chunk := city.document.find_chunk("XTXT")
 
 	if text_chunk == null or text_chunk.decoded_payload.size() != city.document.decoded_size("XTXT"):
-		return {"ok": false, "error": "pollution-disaster map data is missing or invalid"}
+		return DisasterStartResult.failed("pollution-disaster map data is missing or invalid")
 
 	var attempt_count := (
 		int(city.document.misc_u32(MISC_NORMAL_POPULATION) / 10000) + 5
@@ -255,14 +255,14 @@ static func _start_pollution(city: CityState, point: Vector2i, random: SimRandom
 
 	if seed_writes > 0:
 		if not text_chunk.set_decoded_payload(text):
-			return {"ok": false, "error": "cannot store the pollution disaster"}
+			return DisasterStartResult.failed("cannot store the pollution disaster")
 
 		city.resync_mirrors(["XTXT"])
 
 	var result := DisasterStartObjectsState._result(
 		DISASTER_POLLUTION, point, seed_writes > 0, true, 0
 	)
-	result["attempt_count"] = maxi(attempt_count, 0)
-	result["seed_writes"] = seed_writes
+	result.counters["attempt_count"] = maxi(attempt_count, 0)
+	result.counters["seed_writes"] = seed_writes
 
 	return result

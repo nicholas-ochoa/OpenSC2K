@@ -4,18 +4,18 @@ extends DisasterStartConstants
 @warning_ignore_start("integer_division")
 
 
-static func _start_crash_wrapper(disaster_type: int, point: Vector2i) -> Dictionary:
+static func _start_crash_wrapper(disaster_type: int, point: Vector2i) -> DisasterStartResult:
 	var result := _result(disaster_type, point, true, true, 0)
 	result.view_center_requests = []
 
 	return result
 
 
-static func _start_plane_crash(city: CityState, lfsr_random: SimLfsrRandom) -> Dictionary:
+static func _start_plane_crash(city: CityState, lfsr_random: SimLfsrRandom) -> DisasterStartResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if lfsr_random == null:
-		return {"ok": false, "error": "a compatible LFSR generator is required"}
+		return DisasterStartResult.failed("a compatible LFSR generator is required")
 
 	var thing_chunk := city.document.find_chunk("XTHG")
 	var text_chunk := city.document.find_chunk("XTXT")
@@ -27,7 +27,7 @@ static func _start_plane_crash(city: CityState, lfsr_random: SimLfsrRandom) -> D
 		or text_chunk == null
 		or text_chunk.decoded_payload.size() != city.document.decoded_size("XTXT")
 	):
-		return {"ok": false, "error": "plane-crash moving-object data is missing or invalid"}
+		return DisasterStartResult.failed("plane-crash moving-object data is missing or invalid")
 
 	var things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
 	var text: PackedByteArray = text_chunk.decoded_payload.duplicate()
@@ -60,12 +60,12 @@ static func _start_plane_crash(city: CityState, lfsr_random: SimLfsrRandom) -> D
 	var old_things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
 
 	if not thing_chunk.set_decoded_payload(things):
-		return {"ok": false, "error": "cannot store the crashing plane"}
+		return DisasterStartResult.failed("cannot store the crashing plane")
 
 	if not text_chunk.set_decoded_payload(text):
 		thing_chunk.set_decoded_payload(old_things)
 
-		return {"ok": false, "error": "cannot link the crashing plane"}
+		return DisasterStartResult.failed("cannot link the crashing plane")
 
 	city.resync_mirrors(["XTXT"])
 
@@ -101,22 +101,19 @@ static func has_active_object(city: CityState, _disaster_type: int) -> bool:
 
 static func _result(
 	disaster_type: int, point: Vector2i, started: bool, complete: bool, record: int
-) -> Dictionary:
-	return {
-		"ok": true,
-		"error": "",
-		"disaster_type": disaster_type,
-		"point": point,
-		"started": started,
-		"implemented": complete,
-		"record": record,
-		"news_items": [],
-		"notice_ids": [],
-		"map_counter": 0,
-		"sound_events": [SOUND_SIREN] if started else [],
-		"view_center_requests": [point] if started else [],
-		"complete": complete,
-	}
+) -> DisasterStartResult:
+	var result := DisasterStartResult.new()
+	result.ok = true
+	result.disaster_type = disaster_type
+	result.point = point
+	result.started = started
+	result.implemented = complete
+	result.record = record
+	result.sound_events = [SOUND_SIREN] if started else []
+	result.view_center_requests = [point] if started else []
+	result.complete = complete
+
+	return result
 
 
 static func _count_type(things: PackedByteArray, thing_type: int) -> int:

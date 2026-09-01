@@ -27,7 +27,7 @@ var annual_budget_approved := false
 var action := ""
 
 # results in completion order. the controller reads the events in this order
-var phase_results: Dictionary = {}
+var phase_results: Dictionary[String, PhaseResult] = {}
 
 # set by a phase that must stop the day and ask the player a question
 var interaction_request: Dictionary = {}
@@ -63,35 +63,54 @@ func record(name: String, result: PhaseResult) -> PhaseResult:
 	return result
 
 
+class NewsPersistenceResult extends RefCounted:
+	var ok := false
+	var error := ""
+	var inserted := 0
+
+
 # insert the stories of one result into the saved newspaper queue
-static func persist_news(city: CityState, result: PhaseResult) -> Dictionary:
+static func persist_news(city: CityState, result: PhaseResult) -> NewsPersistenceResult:
+	var persisted := NewsPersistenceResult.new()
+	persisted.ok = true
+
 	if result.news_queue_updated:
-		return {"ok": true, "error": "", "inserted": 0}
+		return persisted
 
 	if result.news_items.is_empty():
-		return {"ok": true, "error": "", "inserted": 0}
+		return persisted
 
 	var misc_chunk := city.document.find_chunk("MISC")
 
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != NewsQueue.MISC_SIZE:
-		return {"ok": false, "error": "MISC is missing or has the wrong size"}
+		persisted.ok = false
+		persisted.error = "MISC is missing or has the wrong size"
+
+		return persisted
 
 	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
 	var insertion := NewsQueue.insert_items(misc, result.news_items)
 
 	if not insertion.ok:
-		return insertion
+		persisted.ok = false
+		persisted.error = insertion.error
+
+		return persisted
 
 	if insertion.inserted == 0:
-		return insertion
+		return persisted
 
 	if not misc_chunk.set_decoded_payload(misc):
-		return {"ok": false, "error": "cannot store newspaper stories"}
+		persisted.ok = false
+		persisted.error = "cannot store newspaper stories"
 
+		return persisted
+
+	persisted.inserted = insertion.inserted
 	result.news_queue_updated = true
 	result.news_queue_inserted = insertion.inserted
 
-	return insertion
+	return persisted
 
 
 static func failed(message: String) -> PhaseResult:

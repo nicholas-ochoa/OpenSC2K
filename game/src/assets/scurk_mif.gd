@@ -8,7 +8,7 @@ const FILE_HEADER_LENGTH := 12
 
 var info_payload := PackedByteArray()
 var shapes: Array[Sc2SpriteArchive.SpriteEntry] = []
-var names: Dictionary = {}
+var names: Dictionary[int, String] = {}
 var piece_records: Array[Dictionary] = []
 var archive: Sc2SpriteArchive = Sc2SpriteArchive.new()
 var overrides: Sc2SpriteArchive = Sc2SpriteArchive.new()
@@ -34,7 +34,7 @@ static func from_archives(archives: Array[Sc2SpriteArchive]) -> ScurkMif:
 	var result := ScurkMif.new()
 	result.info_payload.resize(INFO_LENGTH)
 	result.info_payload.fill(0)
-	var entries: Dictionary = {}
+	var entries: Dictionary[int, Sc2SpriteArchive.SpriteEntry] = {}
 
 	for source in archives:
 		if source == null or not source.is_valid():
@@ -108,7 +108,7 @@ func parse(bytes: PackedByteArray) -> bool:
 	piece_count = _read_u16_be(bytes, position)
 	position += 2
 
-	var duplicate_counts: Dictionary = {}
+	var duplicate_counts: Dictionary[int, int] = {}
 
 	for piece_index in piece_count:
 		if position + 8 > tile_end:
@@ -341,7 +341,7 @@ func _parse_shape(
 	bytes: PackedByteArray,
 	payload_start: int,
 	payload_end: int,
-	duplicate_counts: Dictionary
+	duplicate_counts: Dictionary[int, int]
 ) -> bool:
 	if payload_end - payload_start < 10:
 		return _fail("SHAP payload is shorter than its header")
@@ -367,8 +367,8 @@ func _parse_shape(
 	entry.allow_unpadded_odd_runs = true
 	var decoded := entry.decode_indices()
 
-	if not decoded.get("ok", false):
-		return _fail(decoded.get("error", "SHAP sprite cannot be decoded"))
+	if not decoded.ok:
+		return _fail(decoded.error)
 
 	shapes.append(entry)
 	archive.entries.append(entry)
@@ -488,7 +488,7 @@ func _rebuild_archives() -> void:
 		archive.entries_by_id[entry.sprite_id] = entry
 		var decoded := entry.decode_indices()
 
-		if not decoded.get("ok", false):
+		if not decoded.ok:
 			continue
 
 		for pixel in decoded.pixels:

@@ -26,7 +26,7 @@ static func update(
 	things: PackedByteArray,
 	record: int,
 	random: SimRandom,
-	counters: Dictionary,
+	counters: MovingThingResult,
 	map_edge: int = 128,
 ) -> void:
 	var offset := record * RECORD_SIZE
@@ -167,7 +167,7 @@ static func _move_maxis_man(
 	things: PackedByteArray,
 	record: int,
 	direction: int,
-	counters: Dictionary,
+	counters: MovingThingResult,
 	map_edge: int = 128,
 ) -> bool:
 	if _move_thing_eight_way(TYPE_MAXIS_MAN, text, things, record, direction, map_edge) < 0:
@@ -351,7 +351,7 @@ static func _direction_quadrant(start: Vector2i, target: Vector2i) -> int:
 
 
 static func _queue_thing_sound(
-	counters: Dictionary, sound_id: int, things: PackedByteArray, record: int
+	counters: MovingThingResult, sound_id: int, things: PackedByteArray, record: int
 ) -> void:
 	var offset := record * RECORD_SIZE
 	counters.sound_events.append({

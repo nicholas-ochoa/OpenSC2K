@@ -21,7 +21,7 @@ static func update_explosion(
 	random: SimRandom,
 	lfsr_random: SimLfsrRandom,
 	allow_disaster_damage: bool,
-	counters: Dictionary
+	counters: MovingThingResult
 ) -> void:
 	var map_edge: int = city.map_size if city != null else 128
 	var offset := record * RECORD_SIZE
@@ -105,7 +105,7 @@ static func update_monster(
 	city_center: Vector2i,
 	random: SimRandom,
 	lfsr_random: SimLfsrRandom,
-	counters: Dictionary
+	counters: MovingThingResult
 ) -> void:
 	var map_edge: int = city.map_size if city != null else 128
 	var offset := record * RECORD_SIZE
@@ -235,7 +235,7 @@ static func update_tornado(
 	things: PackedByteArray,
 	record: int,
 	random: SimRandom,
-	counters: Dictionary
+	counters: MovingThingResult
 ) -> void:
 	var map_edge: int = city.map_size if city != null else 128
 	var offset := record * RECORD_SIZE

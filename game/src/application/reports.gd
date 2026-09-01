@@ -8,6 +8,14 @@ const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
 const Music = preload("res://src/audio/music_director.gd")
 const MENU_NO_DISASTERS := CityMenuBarView.MENU_NO_DISASTERS
 
+# presentation outcome and the complete typed simulation result
+class DisasterReportResult extends RefCounted:
+	var ok := false
+	var error := ""
+	var name := ""
+	var phase_result: DisasterStartResult
+
+
 var app: CityApplication
 var document_state: ActiveDocumentState
 var text_resources: OriginalTextResources
@@ -44,13 +52,17 @@ func on_disaster_menu(id: int) -> void:
 
 	var result := start_disaster_at_view_center(id)
 
-	if not result.get("ok", false):
-		app.interface.show_error("Cannot start the disaster: %s" % result.get("error", "unknown error"))
+	if not result.ok:
+		app.interface.show_error("Cannot start the disaster: %s" % result.error)
 
 
-func start_disaster_at_view_center(id: int) -> Dictionary:
+func start_disaster_at_view_center(id: int) -> DisasterReportResult:
+	var report := DisasterReportResult.new()
+
 	if app.document_state.city == null or app.simulation_state.simulation_engine == null:
-		return {"ok": false, "error": "no city is loaded"}
+		report.error = "no city is loaded"
+
+		return report
 
 	var point := app.map_view.center_tile() if app.map_view != null else Vector2i(64, 64)
 
@@ -58,12 +70,17 @@ func start_disaster_at_view_center(id: int) -> Dictionary:
 		point = Vector2i(64, 64)
 
 	var result := app.simulation_state.simulation_engine.start_disaster(id, point)
+	report.phase_result = result
 
-	if not result.get("ok", false):
-		return result
+	if not result.ok:
+		report.error = result.error
 
-	if not result.get("started", false):
-		return {"ok": false, "error": "the selected disaster could not start"}
+		return report
+
+	if not result.started:
+		report.error = "the selected disaster could not start"
+
+		return report
 
 	if app.document_state.city.music_enabled():
 		app.effects_audio.play_music_track(Music.DISASTER_TRACK)
@@ -72,19 +89,21 @@ func start_disaster_at_view_center(id: int) -> Dictionary:
 	app.simulation_state.simulation_map_dirty = false
 	app.map_render.refresh_map(false)
 
-	for requested_point in result.get("view_center_requests", []):
+	for requested_point in result.view_center_requests:
 		app.map_view.center_on_tile(requested_point)
 
 	app.effects_audio.show_effect_events(
-		result.get("effect_events", []), result.get("sound_events", [])
+		result.effect_events, result.sound_events
 	)
-	show_news_items(result.get("news_items", []))
+	show_news_items(result.news_items)
 	var disaster_name := CityMenuBar.disaster_name(id)
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "%s started." % disaster_name
-	result["name"] = disaster_name
 
-	return result
+	report.ok = true
+	report.name = disaster_name
+
+	return report
 
 
 func on_windows_menu(id: int) -> void:
@@ -319,7 +338,7 @@ func moving_things_are_active(results: Array) -> bool:
 			"active_tornadoes",
 			"active_maxis_men",
 		]:
-			if int(result.get(key, 0)) > 0:
+			if int(result.get(key)) > 0:
 				return true
 
 	return false

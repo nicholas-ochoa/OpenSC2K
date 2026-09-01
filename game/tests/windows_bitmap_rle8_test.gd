@@ -52,10 +52,8 @@ func _initialize() -> void:
 		assert(hash.start(HashingContext.HASH_SHA256) == OK and hash.update(image.get_data()) == OK)
 		assert(hash.finish().hex_encode() == expected[id], "independent decoder agreement for %d" % id)
 
-	var dib := PeBitmapResource.load_numeric_dib(path, 1202)
-
 	for change in ["top_down", "palette", "truncated", "size", "planes"]:
-		var bad := dib.duplicate(true)
+		var bad := PeBitmapResource.load_numeric_dib(path, 1202)
 
 		match change:
 			"top_down":

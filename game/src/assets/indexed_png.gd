@@ -11,16 +11,16 @@ const MAX_DIMENSION := 4096
 static var _crc_table: PackedInt64Array = _make_crc_table()
 
 
-static func load_path(path: String, strict_palette := true) -> Dictionary:
+static func load_path(path: String, strict_palette := true) -> IndexedImageResult:
 	if not FileAccess.file_exists(path):
-		return _failure("PNG file does not exist: %s" % path)
+		return IndexedImageResult.failure("PNG file does not exist: %s" % path)
 
 	return decode(FileAccess.get_file_as_bytes(path), strict_palette)
 
 
-static func decode(bytes: PackedByteArray, strict_palette := true) -> Dictionary:
+static func decode(bytes: PackedByteArray, strict_palette := true) -> IndexedImageResult:
 	if bytes.size() < 8 or bytes.slice(0, 8) != PackedByteArray(SIGNATURE):
-		return _failure("Invalid PNG signature")
+		return IndexedImageResult.failure("Invalid PNG signature")
 
 	var rewritten := bytes.slice(0, 8)
 	var palette := Sc2Palette.new()
@@ -41,17 +41,17 @@ static func decode(bytes: PackedByteArray, strict_palette := true) -> Dictionary
 		var length := _u32(bytes, position)
 
 		if length > bytes.size() - position - 12:
-			return _failure("PNG chunk extends past the file")
+			return IndexedImageResult.failure("PNG chunk extends past the file")
 
 		var kind := bytes.slice(position + 4, position + 8).get_string_from_ascii()
 		var payload := bytes.slice(position + 8, position + 8 + length)
 		var checksum := _u32(bytes, position + 8 + length)
 
 		if _crc(bytes.slice(position + 4, position + 8 + length)) != checksum:
-			return _failure("Invalid PNG chunk checksum")
+			return IndexedImageResult.failure("Invalid PNG chunk checksum")
 
 		if width == 0 and kind != "IHDR":
-			return _failure("PNG must start with IHDR")
+			return IndexedImageResult.failure("PNG must start with IHDR")
 
 		if has_data and kind != "IDAT":
 			ended_data = true
@@ -59,25 +59,25 @@ static func decode(bytes: PackedByteArray, strict_palette := true) -> Dictionary
 		match kind:
 			"IHDR":
 				if width != 0 or length != 13:
-					return _failure("Invalid PNG header")
+					return IndexedImageResult.failure("Invalid PNG header")
 
 				width = _u32(payload, 0)
 				height = _u32(payload, 4)
 
 				if width < 1 or height < 1 or width > MAX_DIMENSION or height > MAX_DIMENSION:
-					return _failure("PNG dimensions must be 1 through 4096")
+					return IndexedImageResult.failure("PNG dimensions must be 1 through 4096")
 
 				bit_depth = payload[8]
 
 				if payload[9] != 3 or bit_depth not in [1, 2, 4, 8] or (strict_palette and bit_depth != 8):
-					return _failure("PNG must use 8-bit indexed color" if strict_palette else "PNG must use 1-, 2-, 4-, or 8-bit indexed color")
+					return IndexedImageResult.failure("PNG must use 8-bit indexed color" if strict_palette else "PNG must use 1-, 2-, 4-, or 8-bit indexed color")
 
 				if payload[10] != 0 or payload[11] != 0 or payload[12] > 1:
-					return _failure("Unsupported PNG encoding")
+					return IndexedImageResult.failure("Unsupported PNG encoding")
 			"PLTE":
 				if (not palette.colors.is_empty() or has_data or has_alpha or length == 0 or length % 3 != 0 or (length / 3) > (1 << bit_depth)
 						or (strict_palette and length != 768)):
-					return _failure("PNG must have one 256-color palette before pixel data" if strict_palette else "PNG must have one valid indexed palette before pixel data")
+					return IndexedImageResult.failure("PNG must have one 256-color palette before pixel data" if strict_palette else "PNG must have one valid indexed palette before pixel data")
 
 				palette_count = length / 3
 
@@ -93,14 +93,14 @@ static func decode(bytes: PackedByteArray, strict_palette := true) -> Dictionary
 					palette.colors.append(Color.BLACK)
 			"tRNS":
 				if has_alpha or has_data or not palette.is_valid() or length < 1 or length > palette_count:
-					return _failure("Invalid PNG transparency table")
+					return IndexedImageResult.failure("Invalid PNG transparency table")
 
 				has_alpha = true
 
 				for index in length:
 					if payload[index] != 0 and payload[index] != 255:
 						# no partial alpha here, and even invisible pixels must keep their index
-						return _failure("PNG transparency must be fully clear or opaque")
+						return IndexedImageResult.failure("PNG transparency must be fully clear or opaque")
 
 					alpha[index] = payload[index]
 
@@ -109,17 +109,17 @@ static func decode(bytes: PackedByteArray, strict_palette := true) -> Dictionary
 				continue
 			"IDAT":
 				if not palette.is_valid() or ended_data:
-					return _failure("Invalid PNG pixel-data order")
+					return IndexedImageResult.failure("Invalid PNG pixel-data order")
 
 				has_data = true
 			"IEND":
 				if length != 0 or not has_data:
-					return _failure("Invalid PNG end chunk")
+					return IndexedImageResult.failure("Invalid PNG end chunk")
 
 				finished = true
 			_:
 				if (bytes[position + 4] & 32) == 0:
-					return _failure("Unsupported critical PNG chunk: %s" % kind)
+					return IndexedImageResult.failure("Unsupported critical PNG chunk: %s" % kind)
 
 				# omit color profiles and other editor metadata from index decoding
 				position += length + 12
@@ -132,12 +132,12 @@ static func decode(bytes: PackedByteArray, strict_palette := true) -> Dictionary
 			break
 
 	if not finished or position != bytes.size():
-		return _failure("PNG is incomplete or has trailing bytes")
+		return IndexedImageResult.failure("PNG is incomplete or has trailing bytes")
 
 	var image := Image.new()
 
 	if image.load_png_from_buffer(rewritten) != OK:
-		return _failure("Cannot decode PNG pixel data")
+		return IndexedImageResult.failure("Cannot decode PNG pixel data")
 
 	image.convert(Image.FORMAT_RGBA8)
 	var rgba := image.get_data()
@@ -148,22 +148,29 @@ static func decode(bytes: PackedByteArray, strict_palette := true) -> Dictionary
 		var value := int(rgba[index * 4])
 
 		if value >= palette_count:
-			return _failure("PNG pixel is outside its palette")
+			return IndexedImageResult.failure("PNG pixel is outside its palette")
 
 		pixels[index] = value if alpha[value] == 255 else -1
 
-	return {"ok": true, "error": "", "width": width, "height": height,
-		"pixels": pixels, "palette": palette}
+	var outcome := IndexedImageResult.new()
+	outcome.ok = true
+	outcome.error = ""
+	outcome.width = width
+	outcome.height = height
+	outcome.pixels = pixels
+	outcome.palette = palette
+
+	return outcome
 
 
 static func encode(
 	width: int, height: int, pixels: PackedInt32Array, palette: Sc2Palette
-) -> Dictionary:
+) -> AssetBytesResult:
 	if width < 1 or height < 1 or width > MAX_DIMENSION or height > MAX_DIMENSION:
-		return _failure("PNG dimensions must be 1 through 4096")
+		return AssetBytesResult.failure("PNG dimensions must be 1 through 4096")
 
 	if pixels.size() != width * height or palette == null or not palette.is_valid():
-		return _failure("Invalid PNG pixels or palette")
+		return AssetBytesResult.failure("Invalid PNG pixels or palette")
 
 	var used := PackedByteArray()
 	used.resize(256)
@@ -172,7 +179,7 @@ static func encode(
 
 	for pixel in pixels:
 		if pixel < -1 or pixel > 255:
-			return _failure("PNG palette index must be -1 through 255")
+			return AssetBytesResult.failure("PNG palette index must be -1 through 255")
 
 		if pixel == -1:
 			has_transparency = true
@@ -182,7 +189,7 @@ static func encode(
 	var transparent_index := used.find(0) if has_transparency else -1
 
 	if has_transparency and transparent_index < 0:
-		return _failure("Indexed PNG needs an unused palette index for transparency")
+		return AssetBytesResult.failure("Indexed PNG needs an unused palette index for transparency")
 
 	var header := PackedByteArray()
 	_append_u32(header, width)
@@ -217,7 +224,12 @@ static func encode(
 	output.append_array(_chunk("IDAT", raw.compress(FileAccess.COMPRESSION_DEFLATE)))
 	output.append_array(_chunk("IEND", PackedByteArray()))
 
-	return {"ok": true, "error": "", "bytes": output}
+	var outcome := AssetBytesResult.new()
+	outcome.ok = true
+	outcome.error = ""
+	outcome.bytes = output
+
+	return outcome
 
 
 static func _chunk(kind: String, payload: PackedByteArray) -> PackedByteArray:
@@ -256,7 +268,3 @@ static func _u32(bytes: PackedByteArray, offset: int) -> int:
 static func _append_u32(bytes: PackedByteArray, value: int) -> void:
 	for shift in [24, 16, 8, 0]:
 		bytes.append((value >> shift) & 255)
-
-
-static func _failure(message: String) -> Dictionary:
-	return {"ok": false, "error": message}

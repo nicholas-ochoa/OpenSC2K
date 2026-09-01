@@ -26,11 +26,11 @@ const NEWSPAPER_STRING_LAST := 391
 const DEFAULT_FOREST_PROTEST_TEXT := "Citizens are protesting forest demolition."
 const DEFAULT_BUILDING_OBJECTION_TEXT := "Residents objected to this facility site."
 
-var strings: Dictionary = {}
+var strings: Dictionary[int, String] = {}
 var forest_protest_text := DEFAULT_FOREST_PROTEST_TEXT
 var building_objection_text := DEFAULT_BUILDING_OBJECTION_TEXT
 var forest_protest_image: Image
-var library_texts: Dictionary = {}
+var library_texts: Dictionary[int, String] = {}
 var original_credits := ""
 var newspaper_data: DataUsaResource
 var toolbar_art: Image
@@ -187,4 +187,4 @@ func _bitmap_image(reference_root: String, resource_id: int) -> Image:
 		reference_root.path_join("SIMCITY.EXE"), resource_id
 	)
 
-	return loaded.get("image") as Image if loaded.ok else null
+	return loaded.image if loaded.ok else null

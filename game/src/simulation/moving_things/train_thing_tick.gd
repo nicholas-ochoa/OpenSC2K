@@ -36,7 +36,7 @@ static func update(
 	random: SimRandom,
 	lfsr_random: SimLfsrRandom,
 	game_random: GameLcgRandom,
-	counters: Dictionary,
+	counters: MovingThingResult,
 	map_edge: int = 128,
 ) -> void:
 	var offset := record * RECORD_SIZE
@@ -403,7 +403,7 @@ static func _remove_thing(
 
 
 static func _queue_sound(
-	counters: Dictionary, things: PackedByteArray, record: int
+	counters: MovingThingResult, things: PackedByteArray, record: int
 ) -> void:
 	var offset := record * RECORD_SIZE
 	counters.sound_events.append({

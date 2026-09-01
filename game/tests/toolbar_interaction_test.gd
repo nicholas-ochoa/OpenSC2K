@@ -258,14 +258,20 @@ class CountingEngine extends SimulationEngine:
 	var fire_ticks := 0
 
 
-	func advance_moving_things(_current_time_msec := -1) -> Dictionary:
-		return {"ok": true}
+	func advance_moving_things(_current_time_msec := -1) -> MovingThingResult:
+		var result := MovingThingResult.new()
+		result.ok = true
+
+		return result
 
 
-	func advance_disaster_tick() -> Dictionary:
+	func advance_disaster_tick() -> DisasterMapScanDispatch.Result:
 		fire_ticks += 1
 
-		return {"ok": true}
+		var result := DisasterMapScanDispatch.Result.new()
+		result.ok = true
+
+		return result
 
 
 func _test_fire_clock(city: CityState) -> void:

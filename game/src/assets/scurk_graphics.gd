@@ -18,7 +18,7 @@ const CONTROL_IDS := [
 	21000, 21001, 21002, 21003, 21004, 21005, 21006, 21007,
 	21018, 21019, 21020,
 ]
-const WORKSPACE_SIZES := {
+const WORKSPACE_SIZES: Dictionary[int, Vector2i] = {
 	1200: Vector2i(33, 25), 1201: Vector2i(32, 24), 1202: Vector2i(33, 25),
 	1203: Vector2i(33, 25), 1204: Vector2i(33, 25), 1205: Vector2i(32, 24),
 	1206: Vector2i(32, 24), 1207: Vector2i(32, 24), 1208: Vector2i(32, 24),
@@ -31,17 +31,17 @@ const WORKSPACE_SIZES := {
 	22107: Vector2i(48, 8), 22108: Vector2i(48, 300), 22109: Vector2i(48, 8), 22110: Vector2i(64, 64),
 	23000: Vector2i(400, 200),
 }
-const PRESENTATION_SIZES := {123: Vector2i(128, 256), 124: Vector2i(128, 256), 125: Vector2i(640, 480)}
+const PRESENTATION_SIZES: Dictionary[int, Vector2i] = {123: Vector2i(128, 256), 124: Vector2i(128, 256), 125: Vector2i(640, 480)}
 
 var error := ""
 var patterns: Array[PackedInt32Array] = []
 var pattern_names := PackedStringArray()
 var backgrounds: Array[PackedInt32Array] = []
-var control_images: Dictionary = {}
-var workspace_images: Dictionary = {}
-var workspace_pixels: Dictionary = {}
-var presentation_images: Dictionary = {}
-var presentation_pixels: Dictionary = {}
+var control_images: Dictionary[int, Image] = {}
+var workspace_images: Dictionary[int, Image] = {}
+var workspace_pixels: Dictionary[int, PackedInt32Array] = {}
+var presentation_images: Dictionary[int, Image] = {}
+var presentation_pixels: Dictionary[int, PackedInt32Array] = {}
 
 
 static func load_manifest(value: Variant, read_png: Callable, palette: Sc2Palette) -> ScurkGraphics:
@@ -88,9 +88,9 @@ func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 
 				return
 
-			var png: Dictionary = read_png.call(record.get("png"))
+			var png: IndexedImageResult = read_png.call(record.get("png"))
 
-			if png.is_empty() or not png.get("ok", false):
+			if png == null or not png.ok:
 				error = "Cannot read SCURK bitmap %d" % ids[i]
 
 				return

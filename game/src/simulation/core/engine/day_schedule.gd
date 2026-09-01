@@ -4,7 +4,7 @@ extends RefCounted
 # The caller owns the state.
 
 
-static func _execute_day_schedule(engine: SimulationEngine, schedule: Dictionary, annual_budget_approved: bool, span: SimulationTimingSpan) -> Dictionary:
+static func _execute_day_schedule(engine: SimulationEngine, schedule: Dictionary, annual_budget_approved: bool, span: SimulationTimingSpan) -> SimulationDayResult:
 
 	var applied := PackedStringArray()
 	var pending := PackedStringArray()
@@ -32,7 +32,7 @@ static func _execute_day_schedule(engine: SimulationEngine, schedule: Dictionary
 		_store_context(context, engine)
 
 		if not result.ok:
-			return {"ok": false, "error": result.error}
+			return SimulationDayResult.failure(result.error)
 
 		if not context.interaction_request.is_empty():
 			engine.pending_interaction = context.interaction_request.type
@@ -59,18 +59,19 @@ static func _day_result(
 	pending: PackedStringArray,
 	context: SimulationPhaseContext,
 	interaction_requests: Array
-) -> Dictionary:
-	return {
-		"ok": true,
-		"day": engine.clock.city_days,
-		"schedule": schedule,
-		"applied": applied,
-		"pending": pending,
-		"phase_results": context.phase_results,
-		"interaction_requests": interaction_requests,
-		"complete": pending.is_empty(),
-		"error": "",
-	}
+) -> SimulationDayResult:
+	var outcome := SimulationDayResult.new()
+	outcome.ok = true
+	outcome.day = engine.clock.city_days
+	outcome.schedule = schedule
+	outcome.applied = applied
+	outcome.pending = pending
+	outcome.phase_results = context.phase_results
+	outcome.interaction_requests = interaction_requests
+	outcome.complete = pending.is_empty()
+	outcome.error = ""
+
+	return outcome
 
 
 static func _load_context(
@@ -103,8 +104,8 @@ static func _store_context(context: SimulationPhaseContext, engine: SimulationEn
 # true when the day's only work was the data-map scan. those maps carry
 # pollution, land value, and service coverage, not surface or underground
 # artwork, so a caller can skip the map repaint
-static func scanned_data_maps_only(day: Dictionary) -> bool:
-	var results: Dictionary = day.get("phase_results", {})
+static func scanned_data_maps_only(day: SimulationDayResult) -> bool:
+	var results := day.phase_results
 
 	if results.size() != 1:
 		return false
@@ -126,5 +127,5 @@ static func _schedule_after(engine: SimulationEngine, schedule: Dictionary, comp
 	return remaining
 
 
-static func _persist_news_result(engine: SimulationEngine, result: PhaseResult) -> Dictionary:
+static func _persist_news_result(engine: SimulationEngine, result: PhaseResult) -> SimulationPhaseContext.NewsPersistenceResult:
 	return SimulationPhaseContext.persist_news(engine.city, result)

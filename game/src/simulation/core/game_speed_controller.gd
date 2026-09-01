@@ -10,7 +10,7 @@ enum Speed {
 }
 
 const BASE_TICK_MSEC := 200.0
-const SPEED_NAMES := {
+const SPEED_NAMES: Dictionary[int, String] = {
 	Speed.PAUSED: "Paused",
 	Speed.TURTLE: "Turtle",
 	Speed.LLAMA: "Llama",
@@ -61,7 +61,7 @@ func speed_name() -> String:
 
 func advance_time(
 	delta_msec: float, current_time_msec := -1, simulation_suspended := false
-) -> Dictionary:
+) -> SimulationTickResult:
 	var result := _empty_result()
 
 	if engine == null or engine.city == null or not engine.city.is_valid():
@@ -99,13 +99,13 @@ func advance_time(
 		):
 			var moving := engine.advance_moving_things(pulse_time)
 
-			if not moving.get("ok", false):
-				result.error = moving.get("error", "moving-thing update failed")
+			if not moving.ok:
+				result.error = moving.error
 
 				return result
 
 			result.moving_results.append(moving)
-			_append_runtime_events(result, moving)
+			_append_moving_events(result, moving)
 
 		if (
 			speed > Speed.PAUSED
@@ -151,7 +151,7 @@ func advance_time(
 
 func resolve_annual_budget(
 	funding_values: PackedInt32Array, auto_budget: bool
-) -> Dictionary:
+) -> SimulationTickResult:
 	var result := _empty_result()
 
 	if engine == null or not interaction_blocked:
@@ -161,8 +161,8 @@ func resolve_annual_budget(
 
 	var day := engine.resolve_annual_budget(funding_values, auto_budget)
 
-	if not day.get("ok", false):
-		result.error = day.get("error", "annual budget resolution failed")
+	if not day.ok:
+		result.error = day.error
 
 		return result
 
@@ -173,7 +173,7 @@ func resolve_annual_budget(
 	return result
 
 
-func resolve_military_proposal(accepted: bool) -> Dictionary:
+func resolve_military_proposal(accepted: bool) -> SimulationTickResult:
 	var result := _empty_result()
 
 	if engine == null or not interaction_blocked:
@@ -183,8 +183,8 @@ func resolve_military_proposal(accepted: bool) -> Dictionary:
 
 	var day := engine.resolve_military_proposal(accepted)
 
-	if not day.get("ok", false):
-		result.error = day.get("error", "military proposal resolution failed")
+	if not day.ok:
+		result.error = day.error
 
 		return result
 
@@ -209,7 +209,7 @@ func _is_day_due() -> bool:
 	return false
 
 
-func _run_day(result: Dictionary) -> String:
+func _run_day(result: SimulationTickResult) -> String:
 	if engine.active_disaster_type != 0:
 		if engine.active_disaster_type in [1, 12] and not original_compatibility:
 			if fire_elapsed_msec < FIRE_TICK_MSEC:
@@ -219,8 +219,8 @@ func _run_day(result: Dictionary) -> String:
 
 		var disaster := engine.advance_disaster_tick()
 
-		if not disaster.get("ok", false):
-			return disaster.get("error", "disaster update failed")
+		if not disaster.ok:
+			return disaster.error
 
 		result.disaster_results.append(disaster)
 		_append_runtime_events(result, disaster)
@@ -229,27 +229,27 @@ func _run_day(result: Dictionary) -> String:
 
 	var day := engine.advance_day()
 
-	if not day.get("ok", false):
-		return day.get("error", "simulation day failed")
+	if not day.ok:
+		return day.error
 
 	_consume_day_result(result, day)
 
 	return ""
 
 
-func _consume_day_result(result: Dictionary, day: Dictionary) -> void:
+func _consume_day_result(result: SimulationTickResult, day: SimulationDayResult) -> void:
 	result.day_results.append(day)
-	var requests: Array = day.get("interaction_requests", [])
+	var requests: Array = day.interaction_requests
 	result.interaction_requests.append_array(requests)
 
 	if not requests.is_empty():
 		interaction_blocked = true
 
-	for action in day.get("pending", PackedStringArray()):
+	for action in day.pending:
 		if not result.pending_actions.has(action):
 			result.pending_actions.append(action)
 
-	var phase_results: Dictionary = day.get("phase_results", {})
+	var phase_results := day.phase_results
 
 	for phase_name in phase_results:
 		var phase_result: PhaseResult = phase_results[phase_name]
@@ -273,28 +273,19 @@ func _consume_day_result(result: Dictionary, day: Dictionary) -> void:
 		terminal_blocked = true
 
 
-func _append_runtime_events(result: Dictionary, phase_result: Dictionary) -> void:
-	result.news_items.append_array(phase_result.get("news_items", []))
-	result.effect_events.append_array(phase_result.get("effect_events", []))
-	result.sound_events.append_array(phase_result.get("sound_events", []))
-	result.view_center_requests.append_array(phase_result.get("view_center_requests", []))
+func _append_runtime_events(result: SimulationTickResult, phase_result: PhaseResult) -> void:
+	result.news_items.append_array(phase_result.news_items)
+	result.effect_events.append_array(phase_result.effect_events)
+	result.sound_events.append_array(phase_result.sound_events)
+	result.view_center_requests.append_array(phase_result.view_center_requests)
 
 
-func _empty_result() -> Dictionary:
-	return {
-		"ok": false,
-		"error": "",
-		"base_ticks": 0,
-		"moving_results": [],
-		"disaster_results": [],
-		"day_results": [],
-		"news_items": [],
-		"effect_events": [],
-		"sound_events": [],
-		"music_track_requests": PackedInt32Array(),
-		"view_center_requests": [],
-		"refresh_requests": [],
-		"interaction_requests": [],
-		"game_over_events": [],
-		"pending_actions": PackedStringArray(),
-	}
+func _empty_result() -> SimulationTickResult:
+	return SimulationTickResult.new()
+
+
+func _append_moving_events(result: SimulationTickResult, moving: MovingThingResult) -> void:
+	result.news_items.append_array(moving.news_items)
+	result.effect_events.append_array(moving.effect_events)
+	result.sound_events.append_array(moving.sound_events)
+	result.view_center_requests.append_array(moving.view_center_requests)

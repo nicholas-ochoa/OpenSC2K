@@ -136,9 +136,9 @@ func _append_preview_tile(tiles: Array[Dictionary], sprite_id: int, baseline: Ve
 	if sprite == null:
 		return
 
-	var rendered: Dictionary = sprite.create_image(preview_palette)
+	var rendered := sprite.create_image(preview_palette)
 
-	if rendered.get("ok", false):
+	if rendered.ok:
 		var image: Image = rendered.image
 
 		if flip:

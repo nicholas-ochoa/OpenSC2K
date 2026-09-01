@@ -2,28 +2,48 @@ class_name DisasterMapScanDispatch
 extends DisasterMapConstants
 
 
+class Result extends PhaseResult:
+	var active := false
+	var map_counter := 0
+	var hurricane_counter := 0
+	var map_changed := false
+	var disaster_type := 0
+	var ended_type := 0
+	# diagnostic counts and marker activity from the scan
+	var counters: Dictionary[String, int] = {}
+	var active_markers: Dictionary[String, bool] = {}
+	var dispatch_map: Result
+
+
+static func failed(message: String) -> Result:
+	var result := Result.new()
+	result.error = message
+
+	return result
+
+
 static func run_all(
 	city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom, map_counter: int, hurricane_counter := 0
-) -> Dictionary:
+) -> Result:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return failed("city is invalid")
 
 	if random == null:
-		return {"ok": false, "error": "a compatible process random generator is required"}
+		return failed("a compatible process random generator is required")
 
 	if lfsr_random == null:
-		return {"ok": false, "error": "a compatible LFSR generator is required"}
+		return failed("a compatible LFSR generator is required")
 
 	var original := DisasterMapState._map_payloads(city)
 
 	if original.is_empty():
-		return {"ok": false, "error": "disaster-map input chunks are missing or invalid"}
+		return failed("disaster-map input chunks are missing or invalid")
 
 	var payloads := DisasterMapState._duplicate_payloads(original)
 	var counter := maxi(map_counter - 1, 0)
-	var counters := {
+	var counters: Dictionary[String, int] = {
 		"fire_markers_scanned": 0,
 		"fire_updates": 0,
 		"spread_attempts": 0,
@@ -58,7 +78,7 @@ static func run_all(
 		"hurricane_damage_attempts": 0,
 		"hurricane_damaged_structures": 0,
 	}
-	var dispatch := {
+	var dispatch: Dictionary[String, int] = {
 		"dispatch_markers_scanned": 0,
 		"fire_suppression_attempts": 0,
 		"fire_extinctions": 0,
@@ -188,15 +208,8 @@ static func run_all(
 	var map_changed := DisasterMapState._payloads_changed(original, payloads)
 
 	if map_changed and not DisasterMapState._apply_map_payloads(city, original, payloads):
-		return {"ok": false, "error": "cannot store the disaster-map tick"}
+		return failed("cannot store the disaster-map tick")
 
-	counters["ok"] = true
-	counters["error"] = ""
-	counters["active"] = fire_active or flood_active or toxic_active or riot_active
-	counters["fire_active"] = fire_active
-	counters["flood_active"] = flood_active
-	counters["toxic_active"] = toxic_active
-	counters["riot_active"] = riot_active
 	counters["remaining_fires"] = OverlayData.occurrences(payloads.XTXT, FIRE_OVERLAY)
 	counters["remaining_floods"] = OverlayData.occurrences(payloads.XTXT, 0xfc)
 	counters["remaining_toxic"] = OverlayData.occurrences(payloads.XTXT, TOXIC_OVERLAY)
@@ -204,47 +217,47 @@ static func run_all(
 		OverlayData.occurrences(payloads.XTXT, RIOT_OVERLAY_FORWARD)
 		+ OverlayData.occurrences(payloads.XTXT, RIOT_OVERLAY_REVERSE)
 	)
-	counters["map_counter"] = counter
-	counters["hurricane_counter"] = next_hurricane_counter
-	counters["map_changed"] = map_changed
-	counters["news_items"] = []
-	counters["effect_events"] = effect_events
-	counters["sound_events"] = sound_events
-	counters["view_center_requests"] = view_center_requests
-	counters["complete"] = true
-	dispatch["ok"] = true
-	dispatch["error"] = ""
-	dispatch["active"] = false
-	dispatch["map_changed"] = map_changed
-	dispatch["news_items"] = []
-	dispatch["effect_events"] = []
-	dispatch["sound_events"] = []
-	dispatch["view_center_requests"] = []
-	dispatch["complete"] = true
-	counters["dispatch_map"] = dispatch
+	var result := Result.new()
+	result.ok = true
+	result.active = fire_active or flood_active or toxic_active or riot_active
+	result.active_markers = {
+		"fire": fire_active, "flood": flood_active,
+		"toxic": toxic_active, "riot": riot_active,
+	}
+	result.counters = counters
+	result.map_counter = counter
+	result.hurricane_counter = next_hurricane_counter
+	result.map_changed = map_changed
+	result.effect_events = effect_events
+	result.sound_events = sound_events
+	result.view_center_requests = view_center_requests
+	result.dispatch_map = Result.new()
+	result.dispatch_map.ok = true
+	result.dispatch_map.map_changed = map_changed
+	result.dispatch_map.counters = dispatch
 
-	return counters
+	return result
 
 
-static func run_dispatch(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> Dictionary:
+static func run_dispatch(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> Result:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return failed("city is invalid")
 
 	if random == null:
-		return {"ok": false, "error": "a compatible process random generator is required"}
+		return failed("a compatible process random generator is required")
 
 	if lfsr_random == null:
-		return {"ok": false, "error": "a compatible LFSR generator is required"}
+		return failed("a compatible LFSR generator is required")
 
 	var original := DisasterMapState._map_payloads(city)
 
 	if original.is_empty():
-		return {"ok": false, "error": "dispatch-map input chunks are missing or invalid"}
+		return failed("dispatch-map input chunks are missing or invalid")
 
 	var payloads := DisasterMapState._duplicate_payloads(original)
-	var counters := {
+	var counters: Dictionary[String, int] = {
 		"dispatch_markers_scanned": 0,
 		"fire_suppression_attempts": 0,
 		"fire_extinctions": 0,
@@ -295,19 +308,14 @@ static func run_dispatch(city: CityState, random: SimRandom, lfsr_random: SimLfs
 	var map_changed := DisasterMapState._payloads_changed(original, payloads)
 
 	if map_changed and not DisasterMapState._apply_map_payloads(city, original, payloads):
-		return {"ok": false, "error": "cannot store the dispatch-map tick"}
+		return failed("cannot store the dispatch-map tick")
 
-	counters["ok"] = true
-	counters["error"] = ""
-	counters["active"] = false
-	counters["map_changed"] = map_changed
-	counters["news_items"] = []
-	counters["effect_events"] = []
-	counters["sound_events"] = []
-	counters["view_center_requests"] = []
-	counters["complete"] = true
+	var result := Result.new()
+	result.ok = true
+	result.map_changed = map_changed
+	result.counters = counters
 
-	return counters
+	return result
 
 
 static func _process_dispatch_cell(

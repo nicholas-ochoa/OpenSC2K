@@ -22,7 +22,7 @@ func _init(source: GameSpeedController) -> void:
 	controller = source
 
 
-func advance_time(delta_msec: float, now_msec: int, suspended := false) -> Dictionary:
+func advance_time(delta_msec: float, now_msec: int, suspended := false) -> SimulationTickResult:
 	var empty := controller._empty_result()
 	empty.ok = true
 
@@ -41,18 +41,18 @@ func advance_time(delta_msec: float, now_msec: int, suspended := false) -> Dicti
 			_budget.cancel()
 
 		if not _thread.is_alive():
-			var result: Dictionary = _thread.wait_to_finish()
+			var result: SimulationTickResult = _thread.wait_to_finish()
 			last_work_metrics = _budget.metrics()
 			_thread = null
 
 			if not _discard:
 				pending_msec = maxf(0.0, pending_msec - _submitted_msec)
 
-				if result.get("ok", false):
+				if result.ok:
 					var started := Time.get_ticks_usec()
 					SimulationSnapshot.publish(_working, controller)
 					publish_usec = Time.get_ticks_usec() - started
-					result["job_timings"] = {"Main thread / snapshot": snapshot_usec, "Main thread / publish": publish_usec,
+					result.job_timings = {"Main thread / snapshot": snapshot_usec, "Main thread / publish": publish_usec,
 						"Worker / elapsed": last_work_metrics.elapsed_usec, "Worker / frame waits": last_work_metrics.parked_usec}
 					completed_ticks += 1
 
@@ -131,7 +131,7 @@ func close() -> void:
 	_budget = null
 
 
-static func _run(working: GameSpeedController, budget: SimulationSliceBudget, delta_msec: float, now_msec: int) -> Dictionary:
+static func _run(working: GameSpeedController, budget: SimulationSliceBudget, delta_msec: float, now_msec: int) -> SimulationTickResult:
 	budget.checkpoint()
 	var result := working.advance_time(delta_msec, now_msec)
 	budget.finish()

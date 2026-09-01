@@ -3427,13 +3427,13 @@ func _test_scurk_mif(reference_root: String) -> void:
 			var clear_entry := scurk_editor.tile_set.archive.find_sprite(
 				editable_ids[0] - clear_view * 500
 			)
-			var clear_decoded := clear_entry.decode_indices() if clear_entry != null else {}
+			var clear_decoded := clear_entry.decode_indices() if clear_entry != null else IndexedImageResult.new()
 			var clear_view_is_blank: bool = (
 				clear_entry != null
 				and clear_entry.width
 					== int(scurk_editor.active_base_width / ScurkWorkspace.view_divisor(clear_view))
 				and clear_entry.height == 1
-				and clear_decoded.get("ok", false)
+				and clear_decoded.ok
 				and not clear_decoded.pixels.has(0)
 			)
 
@@ -3755,14 +3755,14 @@ func _test_scurk_mif(reference_root: String) -> void:
 
 		if reparsed.is_valid():
 			var edited_entry := reparsed.archive.find_sprite(1208)
-			var edited_decode := edited_entry.decode_indices() if edited_entry != null else {}
+			var edited_decode := edited_entry.decode_indices() if edited_entry != null else IndexedImageResult.new()
 			_check(
 				reparsed.info_payload == original_info
 				and reparsed.names.get(0xb5, "") == "Edited Theater"
 				and edited_entry != null
 				and edited_entry.width == 3
 				and edited_entry.height == 2
-				and edited_decode.get("ok", false)
+				and edited_decode.ok
 				and edited_decode.pixels == edited_pixels,
 				"SCURK edit writes preserve INFO and decode to the edited values",
 			)
@@ -5024,8 +5024,8 @@ func _test_simulation_engine(reference_root: String) -> void:
 	_check(
 		monster_start.ok
 		and monster_start.phase_results.has("disaster_start")
-		and monster_start.phase_results.disaster_start.extra.disaster_type == DisasterStart.DISASTER_MONSTER
-		and monster_start.phase_results.disaster_start.extra.started
+		and monster_start.phase_results.disaster_start.disaster_type == DisasterStart.DISASTER_MONSTER
+		and monster_start.phase_results.disaster_start.started
 		and monster_scenario_engine.active_disaster_type == DisasterStart.DISASTER_MONSTER,
 		"A scenario starts its queued monster after the first calendar tick",
 	)
@@ -6112,8 +6112,8 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		pollution_start.ok
 		and pollution_start.started
 		and pollution_start.complete
-		and pollution_start.attempt_count == 8
-		and pollution_start.seed_writes == 8
+		and pollution_start.counters.attempt_count == 8
+		and pollution_start.counters.seed_writes == 8
 		and pollution_start.sound_events == [DisasterStart.SOUND_SIREN]
 		and pollution_start.view_center_requests == [pollution_point],
 		"Pollution uses normal population for its seed count and reports a start",
@@ -6139,8 +6139,8 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		missed_pollution.ok
 		and not missed_pollution.started
 		and missed_pollution.complete
-		and missed_pollution.attempt_count == 8
-		and missed_pollution.seed_writes == 0
+		and missed_pollution.counters.attempt_count == 8
+		and missed_pollution.counters.seed_writes == 0
 		and missed_pollution.sound_events.is_empty()
 		and missed_pollution_random.position == 16,
 		"Pollution consumes all attempts but does not start when every seed is outside the map: %s pos=%d"
@@ -6172,7 +6172,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		riot_start.ok
 		and riot_start.started
 		and riot_start.complete
-		and riot_start.seed_writes == 3
+		and riot_start.counters.seed_writes == 3
 		and riot_start.seed_points == [Vector2i(20, 19), Vector2i(20, 18), Vector2i(20, 17)]
 		and riot_start.point == Vector2i(20, 17)
 		and riot_start.view_center_requests == [Vector2i(20, 17)],
@@ -6221,7 +6221,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		rejected_riot.ok
 		and not rejected_riot.started
 		and rejected_riot.complete
-		and rejected_riot.seed_writes == 0
+		and rejected_riot.counters.seed_writes == 0
 		and rejected_riot_random.position == 0,
 		"Riot excludes its origin and XBLD below 0x1D without consuming random state",
 	)
@@ -6258,8 +6258,8 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	_check(
 		mass_riot_start.ok
 		and mass_riot_start.started
-		and mass_riot_start.attempt_count == 7
-		and mass_riot_start.seed_writes == 7
+		and mass_riot_start.counters.attempt_count == 7
+		and mass_riot_start.counters.seed_writes == 7
 		and mass_riot_start.point == Vector2i(56, 63)
 		and mass_riot_random.position == 21,
 		"Mass Riots uses population plus five attempts and three random values per successful seed",
@@ -6302,11 +6302,11 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		earthquake_start.ok
 		and earthquake_start.started
 		and earthquake_start.complete
-		and earthquake_start.gate_attempts == 4225
-		and earthquake_start.gate_hits == 1
-		and earthquake_start.eligible_targets == 1
-		and earthquake_start.fire_damage_attempts == 1
-		and earthquake_start.structure_damage_attempts == 0
+		and earthquake_start.counters.gate_attempts == 4225
+		and earthquake_start.counters.gate_hits == 1
+		and earthquake_start.counters.eligible_targets == 1
+		and earthquake_start.counters.fire_damage_attempts == 1
+		and earthquake_start.counters.structure_damage_attempts == 0
 		and earthquake_start.map_changed,
 		"Earthquake scans all 65 by 65 offsets and selects fire damage with the next random value",
 	)
@@ -6353,8 +6353,8 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		empty_earthquake.ok
 		and empty_earthquake.started
 		and not empty_earthquake.map_changed
-		and empty_earthquake.gate_hits == 1
-		and empty_earthquake.eligible_targets == 0
+		and empty_earthquake.counters.gate_hits == 1
+		and empty_earthquake.counters.eligible_targets == 0
 		and empty_earthquake_random.position == 4225,
 		"Earthquake consumes its random gate before it rejects an out-of-map offset",
 	)
@@ -6484,12 +6484,12 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		"Meltdown finds the first nuclear plant, normalizes its center, and reports a start",
 	)
 	_check(
-		meltdown_start.gate_attempts == 4225
-		and meltdown_start.gate_hits == 3
-		and meltdown_start.fire_damage_attempts == 1
-		and meltdown_start.structure_damage_attempts == 2
-		and meltdown_start.radioactive_writes == 17
-		and meltdown_start.toxic_writes == 1
+		meltdown_start.counters.gate_attempts == 4225
+		and meltdown_start.counters.gate_hits == 3
+		and meltdown_start.counters.fire_damage_attempts == 1
+		and meltdown_start.counters.structure_damage_attempts == 2
+		and meltdown_start.counters.radioactive_writes == 17
+		and meltdown_start.counters.toxic_writes == 1
 		and meltdown_start.map_changed
 		and meltdown_random.position == 4392,
 		"Meltdown preserves the 65-by-65 scan branches and exact process-random order: %s pos=%d"
@@ -6634,9 +6634,9 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		and microwave_start.plant_point == microwave_plant
 		and microwave_start.point == microwave_plant
 		and microwave_start.path_finish == Vector2i(49, 10)
-		and microwave_start.path_steps == 39
-		and microwave_start.damage_attempts == 38
-		and microwave_start.toxic_writes == 1
+		and microwave_start.counters.path_steps == 39
+		and microwave_start.counters.damage_attempts == 38
+		and microwave_start.counters.toxic_writes == 1
 		and microwave_start.map_changed
 		and microwave_random.position == 40,
 		"Microwave ignores the requested point and follows 39 random eight-direction steps",
@@ -6688,9 +6688,9 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	_check(
 		edge_microwave.ok
 		and edge_microwave.started
-		and edge_microwave.path_steps == 1
+		and edge_microwave.counters.path_steps == 1
 		and edge_microwave.path_finish == Vector2i(128, 10)
-		and edge_microwave.damage_attempts == 0
+		and edge_microwave.counters.damage_attempts == 0
 		and not edge_microwave.map_changed
 		and edge_microwave.sound_events == [DisasterStart.SOUND_SIREN]
 		and edge_microwave_random.position == 2,
@@ -6751,9 +6751,9 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		and volcano.started
 		and volcano.complete
 		and volcano.point == Vector2i(64, 64)
-		and volcano.successful_raises > 0
-		and volcano.rejected_raises == 0
-		and volcano.temporary_budget_spent == DisasterStart.VOLCANO_BUDGET
+		and volcano.counters.successful_raises > 0
+		and volcano.counters.rejected_raises == 0
+		and volcano.counters.temporary_budget_spent == DisasterStart.VOLCANO_BUDGET
 		and volcano.map_changed
 		and volcano_city.funds() == 12345,
 		"Volcano spends its separate terrain budget and preserves city funds",
@@ -6762,12 +6762,12 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		volcano_city.land_altitude(62, 62) > 0
 		and volcano_city.text_overlay_id(62, 62) == DisasterMap.TOXIC_OVERLAY
 		and volcano_city.text_overlay_id(48, 48) == DisasterMap.FIRE_OVERLAY
-		and volcano.near_toxic_writes == volcano.iterations
-		and volcano.distant_fire_writes == volcano.iterations,
+		and volcano.counters.near_toxic_writes == volcano.counters.iterations
+		and volcano.counters.distant_fire_writes == volcano.counters.iterations,
 		"Volcano raises its five-by-five core and writes the two recovered marker classes",
 	)
 	_check(
-		volcano_random.position == volcano.iterations * 6
+		volcano_random.position == volcano.counters.iterations * 6
 		and volcano.sound_events == [
 			DisasterStart.SOUND_VOLCANO,
 			DisasterStart.SOUND_SIREN,
@@ -6808,10 +6808,10 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	_check(
 		wet_volcano.ok
 		and wet_volcano.started
-		and wet_volcano.iterations == 25
-		and wet_volcano.successful_raises == 0
-		and wet_volcano.rejected_raises == 25
-		and wet_volcano.temporary_budget_spent == DisasterStart.VOLCANO_BUDGET
+		and wet_volcano.counters.iterations == 25
+		and wet_volcano.counters.successful_raises == 0
+		and wet_volcano.counters.rejected_raises == 25
+		and wet_volcano.counters.temporary_budget_spent == DisasterStart.VOLCANO_BUDGET
 		and wet_volcano_city.land_altitude(62, 62) == 0
 		and wet_volcano_city.text_overlay_id(48, 48) == DisasterMap.TOXIC_OVERLAY
 		and wet_volcano_random.position == 150,
@@ -6851,10 +6851,10 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		firestorm.ok
 		and firestorm.started
 		and firestorm.complete
-		and firestorm.successful_cells == 65
-		and firestorm.remaining_cells == 0
-		and firestorm.scan_steps == 65
-		and firestorm.attempted_in_map == 65
+		and firestorm.counters.successful_cells == 65
+		and firestorm.counters.remaining_cells == 0
+		and firestorm.counters.scan_steps == 65
+		and firestorm.counters.attempted_in_map == 65
 		and firestorm.scan_finish == Vector2i(67, 68)
 		and firestorm.map_changed,
 		"Firestorm stops after 65 accepted cells on its clockwise square spiral",
@@ -6897,9 +6897,9 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		blocked_firestorm.ok
 		and not blocked_firestorm.started
 		and blocked_firestorm.complete
-		and blocked_firestorm.successful_cells == 0
-		and blocked_firestorm.scan_steps == 16256
-		and blocked_firestorm.attempted_in_map == 16255
+		and blocked_firestorm.counters.successful_cells == 0
+		and blocked_firestorm.counters.scan_steps == 16256
+		and blocked_firestorm.counters.attempted_in_map == 16255
 		and blocked_firestorm.scan_finish == Vector2i(128, 0)
 		and not blocked_firestorm.map_changed
 		and blocked_firestorm.sound_events.is_empty()
@@ -6947,10 +6947,10 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		mass_flood.ok
 		and mass_flood.started
 		and mass_flood.complete
-		and mass_flood.attempt_count == 5
-		and mass_flood.valid_candidates == 5
-		and mass_flood.seed_writes == 5
-		and mass_flood.delay_frames == 5
+		and mass_flood.counters.attempt_count == 5
+		and mass_flood.counters.valid_candidates == 5
+		and mass_flood.counters.seed_writes == 5
+		and mass_flood.counters.delay_frames == 5
 		and mass_flood.map_counter == 60
 		and mass_flood.map_changed,
 		"Mass Floods runs five ordinary Flood starts for a zero-population city",
@@ -6996,9 +6996,9 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		invalid_mass_flood.ok
 		and not invalid_mass_flood.started
 		and invalid_mass_flood.complete
-		and invalid_mass_flood.attempt_count == 5
-		and invalid_mass_flood.valid_candidates == 0
-		and invalid_mass_flood.seed_writes == 0
+		and invalid_mass_flood.counters.attempt_count == 5
+		and invalid_mass_flood.counters.valid_candidates == 0
+		and invalid_mass_flood.counters.seed_writes == 0
 		and invalid_mass_flood.map_counter == 0
 		and not invalid_mass_flood.map_changed
 		and invalid_mass_flood.sound_events.is_empty()
@@ -7062,10 +7062,10 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 			and hurricane.started
 			and hurricane.complete
 			and hurricane.direction == hurricane_case.direction
-			and hurricane.damage_scans == hurricane_case.damage
-			and hurricane.damage_attempts == hurricane_case.damage
-			and hurricane.flood_attempts == hurricane_case.flood
-			and hurricane.flood_writes == hurricane_case.flood
+			and hurricane.counters.damage_scans == hurricane_case.damage
+			and hurricane.counters.damage_attempts == hurricane_case.damage
+			and hurricane.counters.flood_attempts == hurricane_case.flood
+			and hurricane.counters.flood_writes == hurricane_case.flood
 			and hurricane.map_counter == 60
 			and hurricane.hurricane_counter == 50
 			and hurricane.map_changed,
@@ -7598,9 +7598,9 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 	_check(
 		fire_dispatch_tick.ok
-		and fire_dispatch_tick.dispatch_markers_scanned == 1
-		and fire_dispatch_tick.fire_suppression_attempts == 1
-		and fire_dispatch_tick.fire_extinctions == 1
+		and fire_dispatch_tick.counters.dispatch_markers_scanned == 1
+		and fire_dispatch_tick.counters.fire_suppression_attempts == 1
+		and fire_dispatch_tick.counters.fire_extinctions == 1
 		and fire_dispatch.city.text_overlay_id(19, 20) == 0
 		and fire_dispatch.city.building_id(19, 20) == 3,
 		"A fire unit extinguishes its selected neighbor and leaves LFSR-selected rubble",
@@ -7623,7 +7623,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 	_check(
 		rail_dispatch_tick.ok
-		and rail_dispatch_tick.fire_extinctions == 1
+		and rail_dispatch_tick.counters.fire_extinctions == 1
 		and rail_dispatch.city.text_overlay_id(19, 20) == 0
 		and rail_dispatch.city.building_id(19, 20) == 0x3f,
 		"Dispatch extinguishes rail values 0x3F through 0x42 without demolition",
@@ -7645,8 +7645,8 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 	_check(
 		police_dispatch_tick.ok
-		and police_dispatch_tick.fire_extinctions == 1
-		and police_dispatch_tick.riot_suppressions == 1
+		and police_dispatch_tick.counters.fire_extinctions == 1
+		and police_dispatch_tick.counters.riot_suppressions == 1
 		and police_dispatch.city.text_overlay_id(19, 20) == 0
 		and police_dispatch.city.text_overlay_id(21, 20) == 0,
 		"A police unit can pass its LFSR fire gate and always attempts riot suppression",
@@ -7671,8 +7671,8 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 	_check(
 		gated_police_tick.ok
-		and gated_police_tick.fire_suppression_attempts == 0
-		and gated_police_tick.riot_suppressions == 1
+		and gated_police_tick.counters.fire_suppression_attempts == 0
+		and gated_police_tick.counters.riot_suppressions == 1
 		and gated_police.city.text_overlay_id(19, 20) == DisasterMap.FIRE_OVERLAY
 		and gated_police.city.text_overlay_id(21, 20) == 0
 		and gated_police_random.position == 1,
@@ -7836,7 +7836,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	_check(
 		dispatch_engine_tick.ok
 		and dispatch_engine_tick.active
-		and dispatch_engine_tick.dispatch_map.fire_extinctions == 1
+		and dispatch_engine_tick.dispatch_map.counters.fire_extinctions == 1
 		and dispatch_engine_fixture.city.text_overlay_id(19, 20) == 0
 		and dispatch_engine_fixture.city.building_id(19, 20) == 0x3f,
 		"The active disaster engine applies map-side dispatch suppression after its fire scan",
@@ -7861,10 +7861,10 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	_check(
 		mixed_tick.ok
 		and mixed_tick.active
-		and mixed_tick.dispatch_map.fire_suppression_attempts == 1
-		and mixed_tick.riot_markers_scanned == 1
-		and mixed_tick.fire_markers_scanned == 1
-		and mixed_tick.water_extinctions == 1
+		and mixed_tick.dispatch_map.counters.fire_suppression_attempts == 1
+		and mixed_tick.counters.riot_markers_scanned == 1
+		and mixed_tick.counters.fire_markers_scanned == 1
+		and mixed_tick.counters.water_extinctions == 1
 		and mixed_tick.sound_events == [DisasterMap.SOUND_FIRE],
 		"The combined scan processes all marker classes and keeps original sound order",
 	)
@@ -7894,8 +7894,8 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	_check(
 		hurricane_tick.ok
 		and hurricane_tick.hurricane_counter == 49
-		and hurricane_tick.hurricane_damage_attempts == 1
-		and hurricane_tick.hurricane_damaged_structures == 1
+		and hurricane_tick.counters.hurricane_damage_attempts == 1
+		and hurricane_tick.counters.hurricane_damaged_structures == 1
 		and hurricane_tick_fixture.city.building_id(20, 21) < 5
 		and hurricane_tick.view_center_requests == [Vector2i(20, 21)],
 		"An active hurricane tick can damage and center a source-qualified tall building",
@@ -7929,7 +7929,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	_check(
 		gated_hurricane_tick.ok
 		and gated_hurricane_tick.hurricane_counter == 49
-		and gated_hurricane_tick.hurricane_damage_attempts == 0
+		and gated_hurricane_tick.counters.hurricane_damage_attempts == 0
 		and not gated_hurricane_tick.map_changed
 		and gated_hurricane_tick.sound_events.is_empty()
 		and gated_hurricane_random.position == 1
@@ -7950,7 +7950,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	_check(
 		active_toxic_tick.ok
 		and active_toxic_tick.active
-		and active_toxic_tick.lfsr_expirations == 1
+		and active_toxic_tick.counters.lfsr_expirations == 1
 		and ended_toxic_tick.ok
 		and ended_toxic_tick.complete
 		and toxic_engine.active_disaster_type == 0
@@ -7975,7 +7975,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		and toxic_spill_engine.active_disaster_type == 0
 		and toxic_spill_tick.ok
 		and toxic_spill_tick.active
-		and toxic_spill_tick.lfsr_expirations == 1
+		and toxic_spill_tick.counters.lfsr_expirations == 1
 		and toxic_spill_end.ok
 		and toxic_spill_end.complete
 		and toxic_spill_fixture.city.city_mode() == 1,
@@ -7996,17 +7996,17 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	var pollution_engine_start := pollution_engine.start_disaster(
 		DisasterStart.DISASTER_POLLUTION, Vector2i(24, 25)
 	)
-	var pollution_ticks: Array[Dictionary] = []
+	var pollution_ticks: Array[DisasterMapScanDispatch.Result] = []
 
 	while pollution_engine.active_disaster_type != 0 and pollution_ticks.size() < 128:
 		var pollution_result := pollution_engine.advance_disaster_tick()
 		pollution_ticks.append(pollution_result)
 
-		if not pollution_result.get("ok", false):
+		if not pollution_result.ok:
 			break
 
-	var pollution_tick: Dictionary = pollution_ticks[0] if not pollution_ticks.is_empty() else {}
-	var pollution_end: Dictionary = pollution_ticks[-1] if not pollution_ticks.is_empty() else {}
+	var pollution_tick := pollution_ticks[0] if not pollution_ticks.is_empty() else DisasterMapScanDispatch.Result.new()
+	var pollution_end := pollution_ticks[-1] if not pollution_ticks.is_empty() else DisasterMapScanDispatch.Result.new()
 	_check(
 		pollution_engine_start.ok
 		and pollution_engine_start.started
@@ -8046,7 +8046,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		and riot_engine_start.started
 		and riot_engine_tick.ok
 		and riot_engine_tick.active
-		and riot_engine_tick.riot_markers_scanned > 0
+		and riot_engine_tick.counters.riot_markers_scanned > 0
 		and riot_engine.active_disaster_type == DisasterStart.DISASTER_RIOT
 		and riot_engine_city.city_mode() == 2,
 		"Riot enters disaster mode and runs its recurring map branch",
@@ -10911,13 +10911,12 @@ func _test_news_queue(reference_root: String) -> void:
 	_check(_clear_news_records(engine_document), "Engine newspaper fixture clears story records")
 	var engine_city := CityModel.from_document(engine_document)
 	var engine := Simulation.new(engine_city, 1, 7, 13)
-	var phase_result := PhaseResult.from_dictionary({
-		"ok": true,
-		"news_items": [
-			{"type": 0x1fe, "argument": 0},
-			{"type": 9, "argument": 4},
-		],
-	})
+	var phase_result := PhaseResult.new()
+	phase_result.ok = true
+	phase_result.news_items = [
+		{"type": 0x1fe, "argument": 0},
+		{"type": 9, "argument": 4},
+	]
 	var persisted := engine._persist_news_result(phase_result)
 	var persisted_record := NewsQueue.story_record(
 		engine_document.find_chunk("MISC").decoded_payload, 0
@@ -10933,11 +10932,10 @@ func _test_news_queue(reference_root: String) -> void:
 		"Simulation engine persists valid story events and skips runtime notifications",
 	)
 	var before_duplicate: PackedByteArray = engine_document.find_chunk("MISC").decoded_payload.duplicate()
-	var already_updated := PhaseResult.from_dictionary({
-		"ok": true,
-		"news_queue_updated": true,
-		"news_items": [{"type": 3, "argument": 0}],
-	})
+	var already_updated := PhaseResult.new()
+	already_updated.ok = true
+	already_updated.news_queue_updated = true
+	already_updated.news_items = [{"type": 3, "argument": 0}]
 	var duplicate := engine._persist_news_result(already_updated)
 	_check(
 		duplicate.ok
@@ -13214,7 +13212,7 @@ func _test_query_info(reference_root: String) -> void:
 		original_strings_result.ok,
 		"Query source strings load: %s" % original_strings_result.error,
 	)
-	var original_strings: Dictionary = original_strings_result.get("strings", {})
+	var original_strings: Dictionary = original_strings_result.strings
 	_check(
 		original_strings.size() == 259,
 		"Query requests each reachable tile name, facility, action, and analysis string",

@@ -161,7 +161,7 @@ func _run() -> void:
 	quit()
 
 
-func _u32_at(directory: Dictionary, address: int) -> int:
+func _u32_at(directory: PeDirectoryResult, address: int) -> int:
 	var at := PeBitmapResource._rva_to_offset(directory.bytes, address - 0x400000, directory.section_offset, directory.section_count)
 	assert(at >= 0)
 

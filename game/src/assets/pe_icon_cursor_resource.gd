@@ -24,12 +24,12 @@ static func load_resource(path: String, type_id: int, resource_id: int) -> Dicti
 	var directory := PeBitmapResource._load_resource_directory(path)
 
 	if not directory.ok:
-		return directory
+		return _failure(directory.error)
 
 	return resource_from_directory(directory, type_id, resource_id)
 
 
-static func resource_from_directory(directory: Dictionary, type_id: int, resource_id: int) -> Dictionary:
+static func resource_from_directory(directory: PeDirectoryResult, type_id: int, resource_id: int) -> Dictionary:
 	if resource_id < 0 or resource_id > 65535 or type_id not in [1, 3, 12, 14]:
 		return _failure("Invalid icon/cursor resource ID or type")
 
@@ -69,7 +69,7 @@ static func decode_group(bytes: PackedByteArray, cursor := false) -> Dictionary:
 		return _failure("Invalid icon/cursor group length")
 
 	var entries: Array[Dictionary] = []
-	var ids := {}
+	var ids: Dictionary[int, bool] = {}
 
 	for i in count:
 		var at := 6 + i * 14

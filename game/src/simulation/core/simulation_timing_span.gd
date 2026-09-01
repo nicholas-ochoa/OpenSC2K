@@ -12,7 +12,7 @@ var budget: SimulationSliceBudget
 var started: int
 var step_started: int
 var current_step := ""
-var steps: Dictionary = {}
+var steps: Dictionary[String, int] = {}
 var indexed_labels: PackedStringArray
 var indexed_totals: PackedInt64Array
 var current_index := -1
