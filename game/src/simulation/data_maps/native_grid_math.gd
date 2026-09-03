@@ -6,6 +6,11 @@ extends RefCounted
 # integer spatial filters for the independent sc2x per-tile simulation
 
 
+class SmoothedBytes extends RefCounted:
+	var values := PackedByteArray()
+	var total := 0
+
+
 static func neighborhood(values: PackedInt32Array, edge: int, radius: int, scale: int,
 	budget: SimulationSliceBudget = null) -> PackedInt32Array:
 	var stride := edge + 1
@@ -165,7 +170,7 @@ static func smooth(values: PackedInt32Array, edge: int, center_weight: int, base
 
 
 static func smooth_bytes(values: PackedInt32Array, edge: int, center_weight: int, base_divisor: int,
-	step: int = 1, rings: int = 2, budget: SimulationSliceBudget = null) -> Dictionary:
+	step: int = 1, rings: int = 2, budget: SimulationSliceBudget = null) -> SmoothedBytes:
 	var result := PackedByteArray()
 	result.resize(values.size())
 	var sum := 0
@@ -217,7 +222,11 @@ static func smooth_bytes(values: PackedInt32Array, edge: int, center_weight: int
 				result[index] = clampi(int(total / interior_divisor), 0, 255)
 				sum += result[index]
 
-	return {"values": result, "total": sum}
+	var smoothed := SmoothedBytes.new()
+	smoothed.values = result
+	smoothed.total = sum
+
+	return smoothed
 
 
 static func _smooth_edge_value(values: PackedInt32Array, edge: int, x: int, y: int,

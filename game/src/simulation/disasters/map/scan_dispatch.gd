@@ -2,44 +2,24 @@ class_name DisasterMapScanDispatch
 extends DisasterMapConstants
 
 
-class Result extends PhaseResult:
-	var active := false
-	var map_counter := 0
-	var hurricane_counter := 0
-	var map_changed := false
-	var disaster_type := 0
-	var ended_type := 0
-	# diagnostic counts and marker activity from the scan
-	var counters: Dictionary[String, int] = {}
-	var active_markers: Dictionary[String, bool] = {}
-	var dispatch_map: Result
-
-
-static func failed(message: String) -> Result:
-	var result := Result.new()
-	result.error = message
-
-	return result
-
-
 static func run_all(
 	city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom, map_counter: int, hurricane_counter := 0
-) -> Result:
+) -> DisasterMapResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return failed("city is invalid")
+		return DisasterMapResult.failure("city is invalid")
 
 	if random == null:
-		return failed("a compatible process random generator is required")
+		return DisasterMapResult.failure("a compatible process random generator is required")
 
 	if lfsr_random == null:
-		return failed("a compatible LFSR generator is required")
+		return DisasterMapResult.failure("a compatible LFSR generator is required")
 
 	var original := DisasterMapState._map_payloads(city)
 
 	if original.is_empty():
-		return failed("disaster-map input chunks are missing or invalid")
+		return DisasterMapResult.failure("disaster-map input chunks are missing or invalid")
 
 	var payloads := DisasterMapState._duplicate_payloads(original)
 	var counter := maxi(map_counter - 1, 0)
@@ -197,7 +177,7 @@ static func run_all(
 					true,
 				)
 
-				if damage.get("changed", false):
+				if damage.changed:
 					counters.hurricane_damaged_structures += 1
 
 				DisasterMapDamage.append_damage_events(runtime_events, damage)
@@ -208,7 +188,7 @@ static func run_all(
 	var map_changed := DisasterMapState._payloads_changed(original, payloads)
 
 	if map_changed and not DisasterMapState._apply_map_payloads(city, original, payloads):
-		return failed("cannot store the disaster-map tick")
+		return DisasterMapResult.failure("cannot store the disaster-map tick")
 
 	counters["remaining_fires"] = OverlayData.occurrences(payloads.XTXT, FIRE_OVERLAY)
 	counters["remaining_floods"] = OverlayData.occurrences(payloads.XTXT, 0xfc)
@@ -217,7 +197,7 @@ static func run_all(
 		OverlayData.occurrences(payloads.XTXT, RIOT_OVERLAY_FORWARD)
 		+ OverlayData.occurrences(payloads.XTXT, RIOT_OVERLAY_REVERSE)
 	)
-	var result := Result.new()
+	var result := DisasterMapResult.new()
 	result.ok = true
 	result.active = fire_active or flood_active or toxic_active or riot_active
 	result.active_markers = {
@@ -231,7 +211,7 @@ static func run_all(
 	result.effect_events = effect_events
 	result.sound_events = sound_events
 	result.view_center_requests = view_center_requests
-	result.dispatch_map = Result.new()
+	result.dispatch_map = DisasterMapResult.new()
 	result.dispatch_map.ok = true
 	result.dispatch_map.map_changed = map_changed
 	result.dispatch_map.counters = dispatch
@@ -239,22 +219,22 @@ static func run_all(
 	return result
 
 
-static func run_dispatch(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> Result:
+static func run_dispatch(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> DisasterMapResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return failed("city is invalid")
+		return DisasterMapResult.failure("city is invalid")
 
 	if random == null:
-		return failed("a compatible process random generator is required")
+		return DisasterMapResult.failure("a compatible process random generator is required")
 
 	if lfsr_random == null:
-		return failed("a compatible LFSR generator is required")
+		return DisasterMapResult.failure("a compatible LFSR generator is required")
 
 	var original := DisasterMapState._map_payloads(city)
 
 	if original.is_empty():
-		return failed("dispatch-map input chunks are missing or invalid")
+		return DisasterMapResult.failure("dispatch-map input chunks are missing or invalid")
 
 	var payloads := DisasterMapState._duplicate_payloads(original)
 	var counters: Dictionary[String, int] = {
@@ -308,9 +288,9 @@ static func run_dispatch(city: CityState, random: SimRandom, lfsr_random: SimLfs
 	var map_changed := DisasterMapState._payloads_changed(original, payloads)
 
 	if map_changed and not DisasterMapState._apply_map_payloads(city, original, payloads):
-		return failed("cannot store the dispatch-map tick")
+		return DisasterMapResult.failure("cannot store the dispatch-map tick")
 
-	var result := Result.new()
+	var result := DisasterMapResult.new()
 	result.ok = true
 	result.map_changed = map_changed
 	result.counters = counters

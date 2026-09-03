@@ -4,7 +4,7 @@ extends RefCounted
 # The caller owns the state.
 
 
-static func _execute_day_schedule(engine: SimulationEngine, schedule: Dictionary, annual_budget_approved: bool, span: SimulationTimingSpan) -> SimulationDayResult:
+static func _execute_day_schedule(engine: SimulationEngine, schedule: SimulationSchedule, annual_budget_approved: bool, span: SimulationTimingSpan) -> SimulationDayResult:
 
 	var applied := PackedStringArray()
 	var pending := PackedStringArray()
@@ -54,7 +54,7 @@ static func _execute_day_schedule(engine: SimulationEngine, schedule: Dictionary
 
 static func _day_result(
 	engine: SimulationEngine,
-	schedule: Dictionary,
+	schedule: SimulationSchedule,
 	applied: PackedStringArray,
 	pending: PackedStringArray,
 	context: SimulationPhaseContext,
@@ -76,7 +76,7 @@ static func _day_result(
 
 static func _load_context(
 	engine: SimulationEngine,
-	schedule: Dictionary,
+	schedule: SimulationSchedule,
 	annual_budget_approved: bool,
 	span: SimulationTimingSpan
 ) -> SimulationPhaseContext:
@@ -113,8 +113,8 @@ static func scanned_data_maps_only(day: SimulationDayResult) -> bool:
 	return results.values()[0] is PollutionPhase.Result
 
 
-static func _schedule_after(engine: SimulationEngine, schedule: Dictionary, completed_action: String) -> Dictionary:
-	var remaining := schedule.duplicate(true)
+static func _schedule_after(engine: SimulationEngine, schedule: SimulationSchedule, completed_action: String) -> SimulationSchedule:
+	var remaining := schedule.copy()
 	remaining.actions = PackedStringArray()
 	var found := false
 

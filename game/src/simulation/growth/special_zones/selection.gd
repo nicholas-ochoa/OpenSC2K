@@ -141,9 +141,13 @@ static func grow_special_zone(
 	zone: int,
 	rotation: int,
 	map_edge: int = 128,
-) -> Dictionary:
+) -> SpecialZonePlacement.Result:
 	if zone != 7 and not SpecialZoneState._has_power(flags, point.x, point.y, map_edge):
-		return {"ok": false, "changed_tiles": 0}
+		var result := SpecialZonePlacement.Result.new()
+		result.ok = false
+		result.changed_tiles = 0
+
+		return result
 
 	if tile == 0xdd:
 		return SpecialZonePlacement._place_runway(
@@ -169,7 +173,11 @@ static func grow_special_zone(
 		if zone == 7:
 			flags[SpecialZoneState._index(point, map_edge)] &= 0x0f
 
-		return {"ok": true, "changed_tiles": int(buildings[SpecialZoneState._index(point, map_edge)] != before)}
+		var result := SpecialZonePlacement.Result.new()
+		result.ok = true
+		result.changed_tiles = int(buildings[SpecialZoneState._index(point, map_edge)] != before)
+
+		return result
 
 	if SPECIAL_TWO_BY_TWO_TILES.has(tile):
 		return SpecialZonePlacement._place_special_two_by_two(
@@ -181,4 +189,8 @@ static func grow_special_zone(
 			buildings, zones, underground, misc, point, zone, rotation, map_edge
 		)
 
-	return {"ok": true, "changed_tiles": 0}
+	var result := SpecialZonePlacement.Result.new()
+	result.ok = true
+	result.changed_tiles = 0
+
+	return result

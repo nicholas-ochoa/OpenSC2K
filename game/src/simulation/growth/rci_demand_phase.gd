@@ -50,6 +50,11 @@ class Result extends PhaseResult:
 	var industry_connections := 0
 
 
+class ConnectionCounts extends RefCounted:
+	var commerce := 0
+	var industry := 0
+
+
 static func run(city: CityState) -> Result:
 	if city == null or not city.is_valid():
 		return _failed("city is invalid")
@@ -200,7 +205,7 @@ static func _failed(message: String) -> Result:
 	return result
 
 
-static func connection_counts(city: CityState) -> Dictionary:
+static func connection_counts(city: CityState) -> ConnectionCounts:
 	var map_edge: int = city.map_size if city != null else 128
 	var commerce := 0
 	var industry := 0
@@ -220,7 +225,11 @@ static func connection_counts(city: CityState) -> Dictionary:
 		if _in_ranges(tile, INDUSTRY_CONNECTION_RANGES):
 			industry += 1
 
-	return {"commerce": commerce, "industry": industry}
+	var result := ConnectionCounts.new()
+	result.commerce = commerce
+	result.industry = industry
+
+	return result
 
 
 static func _in_ranges(value: int, ranges: Array) -> bool:

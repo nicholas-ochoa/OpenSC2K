@@ -5,13 +5,13 @@ extends RefCounted
 var ok := false
 var error := ""
 var day := 0
-var schedule: Dictionary = {}
+var schedule: SimulationSchedule
 var applied := PackedStringArray()
 var pending := PackedStringArray()
 var phase_results: Dictionary[String, PhaseResult] = {}
 var interaction_requests: Array = []
 var complete := false
-var timing: Dictionary = {"work_usec": 0, "steps": {}}
+var timing := SimulationTiming.new(0)
 
 
 static func failure(message: String) -> SimulationDayResult:

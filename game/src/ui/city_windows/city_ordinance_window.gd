@@ -21,13 +21,13 @@ func _ready() -> void:
 	ordinance_control.close_requested.connect(hide)
 
 
-func open_city(value: CityState) -> Dictionary:
+func open_city(value: CityState) -> OrdinanceCommand.Result:
 	if value == null or ordinance_control == null:
-		return {"ok": false, "error": "city is not available"}
+		return OrdinanceCommand.failed("city is not available")
 
 	var result := ordinance_control.set_city(value)
 
-	if result.get("ok", false):
+	if result.ok:
 		popup_centered(Vector2i(800, 640))
 
 	return result

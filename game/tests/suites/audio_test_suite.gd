@@ -210,14 +210,48 @@ func _test_midi_block_mixing(reference_root: String) -> void:
 	synthetic.format_type = 1
 	synthetic.track_count = 1
 	synthetic.ticks_per_quarter = 192
-	synthetic.events.assign([
-		{"type": "program_change", "channel": 0, "program": 48, "time_seconds": 0.0},
-		{"type": "note_on", "channel": 0, "note": 60, "velocity": 100, "time_seconds": 0.0},
-		{"type": "note_on", "channel": 9, "note": 36, "velocity": 110, "time_seconds": 0.02},
-		{"type": "control_change", "channel": 0, "controller": 10, "value": 20, "time_seconds": 0.05},
-		{"type": "note_off", "channel": 0, "note": 60, "velocity": 0, "time_seconds": 0.10},
-		{"type": "note_on", "channel": 0, "note": 64, "velocity": 90, "time_seconds": 0.11},
-	])
+	var event_0 := StandardMidiFile.Event.new()
+	event_0.type = "program_change"
+	event_0.channel = 0
+	event_0.program = 48
+	event_0.time_seconds = 0.0
+
+	var event_1 := StandardMidiFile.Event.new()
+	event_1.type = "note_on"
+	event_1.channel = 0
+	event_1.note = 60
+	event_1.velocity = 100
+	event_1.time_seconds = 0.0
+
+	var event_2 := StandardMidiFile.Event.new()
+	event_2.type = "note_on"
+	event_2.channel = 9
+	event_2.note = 36
+	event_2.velocity = 110
+	event_2.time_seconds = 0.02
+
+	var event_3 := StandardMidiFile.Event.new()
+	event_3.type = "control_change"
+	event_3.channel = 0
+	event_3.controller = 10
+	event_3.value = 20
+	event_3.time_seconds = 0.05
+
+	var event_4 := StandardMidiFile.Event.new()
+	event_4.type = "note_off"
+	event_4.channel = 0
+	event_4.note = 60
+	event_4.velocity = 0
+	event_4.time_seconds = 0.10
+
+	var event_5 := StandardMidiFile.Event.new()
+	event_5.type = "note_on"
+	event_5.channel = 0
+	event_5.note = 64
+	event_5.velocity = 90
+	event_5.time_seconds = 0.11
+
+	synthetic.events.assign([event_0, event_1, event_2, event_3, event_4, event_5])
 	synthetic.duration_seconds = 0.2
 	var tail_render := _render_offline(synthetic, 220500, 1024)
 	_check(

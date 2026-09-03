@@ -20,7 +20,7 @@ var graphics: DesktopGraphics
 var active_app := ""
 var active_group := -1
 var active_shape := -1
-var active_record: Dictionary = {}
+var active_record: DesktopGraphics.Cursor
 var upload_count := 0
 var _textures: Dictionary[String, ImageTexture] = {}
 var _layer: CanvasLayer
@@ -62,9 +62,9 @@ func set_graphics(value: DesktopGraphics) -> void:
 
 
 func present(app: String, group: int, point: Vector2, shape: int) -> void:
-	var record := graphics.cursor(app, group) if graphics != null else {}
+	var record := graphics.cursor(app, group) if graphics != null else null
 
-	if record.is_empty():
+	if record == null:
 		clear_cursor()
 
 		return
@@ -104,7 +104,7 @@ func present(app: String, group: int, point: Vector2, shape: int) -> void:
 
 
 func clear_cursor() -> void:
-	if active_shape >= 0 and active_record.get("image") != null:
+	if active_shape >= 0 and active_record != null and active_record.image != null:
 		Input.set_custom_mouse_cursor(null, active_shape)
 
 	if _owns_hidden_mouse:
@@ -116,14 +116,14 @@ func clear_cursor() -> void:
 	active_app = ""
 	active_group = -1
 	active_shape = -1
-	active_record = {}
+	active_record = null
 
 	if _layer != null:
 		_layer.hide()
 		_copy.hide()
 
 
-static func mask_image(masked: Dictionary) -> Image:
+static func mask_image(masked: PeIconCursorResource.DecodedImage) -> Image:
 	var image := Image.create(masked.width, masked.height, false, Image.FORMAT_RGBA8)
 
 	for y in masked.height:

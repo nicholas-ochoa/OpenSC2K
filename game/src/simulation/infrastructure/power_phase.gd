@@ -20,6 +20,12 @@ class Result extends PhaseResult:
 	var usage_percent := 0
 
 
+class Component extends RefCounted:
+	var tiles := PackedInt32Array()
+	var capacity := 0
+	var consumers := 0
+
+
 static func run(city: CityState, random: SimRandom) -> Result:
 	var map_edge: int = city.map_size if city != null else 128
 
@@ -114,7 +120,7 @@ static func _failed(message: String) -> Result:
 
 static func _trace_component(
 	city: CityState, flags: PackedByteArray, start_x: int, start_y: int, random: SimRandom
-) -> Dictionary:
+) -> Component:
 	var map_edge: int = city.map_size if city != null else 128
 	var queue := PackedInt32Array([city.index_of(start_x, start_y)])
 	var queue_position := 0
@@ -156,7 +162,12 @@ static func _trace_component(
 		if x < map_edge - 1:
 			queue.append(city.index_of(x + 1, y))
 
-	return {"tiles": tiles, "capacity": capacity, "consumers": consumers}
+	var result := Component.new()
+	result.tiles = tiles
+	result.capacity = capacity
+	result.consumers = consumers
+
+	return result
 
 
 static func _plant_capacity(

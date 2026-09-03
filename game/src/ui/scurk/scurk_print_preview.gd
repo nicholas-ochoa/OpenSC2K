@@ -22,7 +22,7 @@ func _ready() -> void:
 func set_magnification(value: int) -> bool:
 	var grid := Output.page_grid(value)
 
-	if grid.is_empty():
+	if grid == null:
 		return false
 
 	magnification = value

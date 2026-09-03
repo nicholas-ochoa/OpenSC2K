@@ -453,11 +453,11 @@ func _test_reference_corpus(reference_root: String) -> void:
 			for paper_index in NewsQueue.PAPER_COUNT:
 				var paper := NewsQueue.paper_record(misc_chunk.decoded_payload, paper_index)
 				paper_records_valid = paper_records_valid and (
-					int(paper.get("name", -1)) in range(6)
-					and int(paper.get("layout", -1)) in range(3)
-					and int(paper.get("price", -1)) in range(3)
-					and int(paper.get("opinion", -1)) in range(6)
-					and int(paper.get("weather", -1)) in range(6)
+					int(paper.name) in range(6)
+					and int(paper.layout) in range(3)
+					and int(paper.price) in range(3)
+					and int(paper.opinion) in range(6)
+					and int(paper.weather) in range(6)
 				)
 
 			_check(
@@ -3824,7 +3824,7 @@ func _test_scurk_place_command(reference_root: String) -> void:
 		and ScurkOutput.page_grid(2).columns == 4
 		and ScurkOutput.page_grid(4).count == 28
 		and ScurkOutput.page_grid(4).columns == 7
-		and ScurkOutput.page_grid(3).is_empty(),
+		and ScurkOutput.page_grid(3) == null,
 		"SCURK printing uses the executable's 2, 8, and 28-page grids",
 	)
 	_check(
@@ -4450,7 +4450,7 @@ func _test_indexed_bmp() -> void:
 
 func _test_simulation_clock() -> void:
 	var clock := Clock.new(0)
-	var phases: Array[Dictionary] = []
+	var phases: Array[SimulationSchedule] = []
 
 	for unused in 25:
 		phases.append(clock.advance_day())
@@ -4553,29 +4553,30 @@ func _test_scenarios(reference_root: String) -> void:
 				"%s template describes the complete legacy SCEN record" % path.get_file(),
 			)
 			_check(
-				template.fields[0] == {
-					"name": "Disaster Type",
-					"type_code": "DWRD",
-					"size": 2,
-					"scenario_offset": 4,
-				},
+				template.fields[0].name == "Disaster Type"
+				and template.fields[0].type_code == "DWRD"
+				and template.fields[0].size == 2
+				and template.fields[0].scenario_offset == 4,
 				"%s template starts with the disaster type" % path.get_file(),
 			)
 			_check(
-				template.fields[-1] == {
-					"name": "Item Two Tiles",
-					"type_code": "DWRD",
-					"size": 2,
-					"scenario_offset": 50,
-				},
+				template.fields[-1].name == "Item Two Tiles"
+				and template.fields[-1].type_code == "DWRD"
+				and template.fields[-1].size == 2
+				and template.fields[-1].scenario_offset == 50,
 				"%s template ends with the second tile count" % path.get_file(),
 			)
 
+			var field_values: Array = []
+
+			for field in template.fields:
+				field_values.append([field.name, field.type_code, field.size, field.scenario_offset])
+
 			if first_template_fields.is_empty():
-				first_template_fields = template.fields
+				first_template_fields = field_values
 			else:
 				_check(
-					template.fields == first_template_fields,
+					field_values == first_template_fields,
 					"%s uses the common supplied template" % path.get_file(),
 				)
 		elif template.ok:
@@ -7242,8 +7243,8 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		water_tick.ok
 		and water_tick.active
 		and water_tick.map_changed
-		and water_tick.water_extinctions == 1
-		and water_tick.remaining_fires == 0
+		and water_tick.counters.water_extinctions == 1
+		and water_tick.counters.remaining_fires == 0
 		and water_tick.sound_events == [DisasterMap.SOUND_FIRE],
 		"A selected fire marker on water clears and keeps the disaster active for this scan",
 	)
@@ -7269,8 +7270,8 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 	_check(
 		spread_tick.ok
-		and spread_tick.spread_attempts == 1
-		and spread_tick.spread_fires == 1
+		and spread_tick.counters.spread_attempts == 1
+		and spread_tick.counters.spread_fires == 1
 		and spread.city.text_overlay_id(19, 20) == 0xff
 		and spread_random.position == 2,
 		"Fire choice zero spreads west through the shared damage helper",
@@ -7288,7 +7289,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 	_check(
 		linked_spread_tick.ok
-		and linked_spread_tick.spread_fires == 1
+		and linked_spread_tick.counters.spread_fires == 1
 		and linked_spread_tick.effect_events.size() == 1
 		and linked_spread_tick.effect_events[0].point == Vector2i(19, 20)
 		and linked_spread_tick.effect_events[0].sprite_id == 1394
@@ -7306,8 +7307,8 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	var covered_tick := DisasterMapFireFlood.run_fire(covered.city, covered_random, covered_lfsr)
 	_check(
 		covered_tick.ok
-		and covered_tick.coverage_extinctions == 1
-		and covered_tick.remaining_fires == 0
+		and covered_tick.counters.coverage_extinctions == 1
+		and covered_tick.counters.remaining_fires == 0
 		and covered.city.text_overlay_id(20, 20) == 0
 		and covered.city.building_id(20, 20) == 4,
 		"Fire coverage plus eight extinguishes and replaces a burning structure with LFSR rubble",
@@ -7326,8 +7327,8 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	var explosion: ThingRecord = collapsing.city.thing(1)
 	_check(
 		collapse_tick.ok
-		and collapse_tick.structure_collapses == 1
-		and collapse_tick.created_explosions == 1
+		and collapse_tick.counters.structure_collapses == 1
+		and collapse_tick.counters.created_explosions == 1
 		and explosion.type == 6
 		and explosion.x == 20
 		and explosion.y == 20
@@ -7348,9 +7349,9 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 	_check(
 		toxic_tick.ok
-		and toxic_tick.structure_collapses == 1
-		and toxic_tick.created_explosions == 0
-		and toxic_tick.toxic_markers == 1
+		and toxic_tick.counters.structure_collapses == 1
+		and toxic_tick.counters.created_explosions == 0
+		and toxic_tick.counters.toxic_markers == 1
 		and toxic.city.text_overlay_id(20, 20) == DisasterMap.TOXIC_OVERLAY,
 		"A special burning structure can leave the recovered toxic marker",
 	)
@@ -7368,8 +7369,8 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	_check(
 		toxic_expiry.ok
 		and toxic_expiry.active
-		and toxic_expiry.lfsr_expirations == 1
-		and toxic_expiry.remaining_toxic == 0
+		and toxic_expiry.counters.lfsr_expirations == 1
+		and toxic_expiry.counters.remaining_toxic == 0
 		and expired_toxic.city.text_overlay_id(20, 20) == 0,
 		"A selected toxic marker expires on the one-in-64 LFSR gate",
 	)
@@ -7390,8 +7391,8 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 	_check(
 		water_toxic_tick.ok
-		and water_toxic_tick.water_expirations == 1
-		and water_toxic_tick.remaining_toxic == 0
+		and water_toxic_tick.counters.water_expirations == 1
+		and water_toxic_tick.counters.remaining_toxic == 0
 		and water_toxic_random.position == 2
 		and water_toxic_lfsr.position == 1,
 		"A selected toxic marker on water has the recovered one-in-16 expiry gate",
@@ -7414,8 +7415,8 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 	_check(
 		downhill_tick.ok
-		and downhill_tick.moved_markers == 1
-		and downhill_tick.remaining_toxic == 1
+		and downhill_tick.counters.moved_markers == 1
+		and downhill_tick.counters.remaining_toxic == 1
 		and downhill_toxic.city.text_overlay_id(20, 20) == 0
 		and downhill_toxic.city.text_overlay_id(19, 20) == DisasterMap.TOXIC_OVERLAY,
 		"A toxic marker moves to its first strictly lower cardinal neighbor",
@@ -7440,9 +7441,9 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	var flat_tick := DisasterMapMarkers.run_toxic(flat_toxic.city, flat_random, flat_lfsr)
 	_check(
 		flat_tick.ok
-		and flat_tick.toxic_markers_scanned == 2
-		and flat_tick.toxic_updates == 1
-		and flat_tick.moved_markers == 1
+		and flat_tick.counters.toxic_markers_scanned == 2
+		and flat_tick.counters.toxic_updates == 1
+		and flat_tick.counters.moved_markers == 1
 		and flat_toxic.city.text_overlay_id(21, 20) == DisasterMap.TOXIC_OVERLAY,
 		"A flat toxic marker uses the process-random cardinal direction",
 	)
@@ -7469,7 +7470,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 	_check(
 		abandon_tick.ok
-		and abandon_tick.abandoned_structures == 1
+		and abandon_tick.counters.abandoned_structures == 1
 		and abandoned_toxic.city.building_id(20, 20) == 0x8b
 		and abandoned_toxic.city.zone_id(20, 20) == 1,
 		"A toxic cloud changes a normal RCI building to its abandoned class before moving",
@@ -7491,8 +7492,8 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	_check(
 		idle_riot_tick.ok
 		and idle_riot_tick.active
-		and idle_riot_tick.riot_updates == 1
-		and idle_riot_tick.remaining_riots == 1
+		and idle_riot_tick.counters.riot_updates == 1
+		and idle_riot_tick.counters.remaining_riots == 1
 		and idle_riot_tick.sound_events == [DisasterMap.SOUND_RIOT]
 		and idle_riot.city.text_overlay_id(20, 20) == DisasterMap.RIOT_OVERLAY_FORWARD,
 		"An unsupported reverse riot changes to the forward phase and can request sound",
@@ -7513,8 +7514,8 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 	_check(
 		water_riot_tick.ok
-		and water_riot_tick.expired_riots == 1
-		and water_riot_tick.remaining_riots == 0
+		and water_riot_tick.counters.expired_riots == 1
+		and water_riot_tick.counters.remaining_riots == 0
 		and water_riot_random.position == 3,
 		"An updating riot expires on water after its second process-random gate",
 	)
@@ -7531,7 +7532,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 	_check(
 		reverse_riot_tick.ok
-		and reverse_riot_tick.propagated_riots == 1
+		and reverse_riot_tick.counters.propagated_riots == 1
 		and reverse_riot.city.text_overlay_id(20, 20) == 0
 		and reverse_riot.city.text_overlay_id(19, 20) == DisasterMap.RIOT_OVERLAY_REVERSE,
 		"A reverse riot propagates west along a supported network tile",
@@ -7553,9 +7554,9 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 	_check(
 		forward_riot_tick.ok
-		and forward_riot_tick.riot_markers_scanned == 2
-		and forward_riot_tick.riot_updates == 1
-		and forward_riot_tick.propagated_riots == 1
+		and forward_riot_tick.counters.riot_markers_scanned == 2
+		and forward_riot_tick.counters.riot_updates == 1
+		and forward_riot_tick.counters.propagated_riots == 1
 		and forward_riot.city.text_overlay_id(21, 20) == DisasterMap.RIOT_OVERLAY_FORWARD,
 		"A forward riot propagates east and receives a second scan gate later in the pass",
 	)
@@ -7577,8 +7578,8 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 	_check(
 		damaging_riot_tick.ok
-		and damaging_riot_tick.damage_attempts == 1
-		and damaging_riot_tick.started_fires == 1
+		and damaging_riot_tick.counters.damage_attempts == 1
+		and damaging_riot_tick.counters.started_fires == 1
 		and damaging_riot.city.text_overlay_id(19, 20) == DisasterMap.FIRE_OVERLAY,
 		"A low riot damage choice starts fire through the shared disaster helper",
 	)
@@ -7692,9 +7693,9 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		flood_tick.ok
 		and flood_tick.active
 		and flood_tick.map_counter == 59
-		and flood_tick.flood_updates == 1
-		and flood_tick.spread_floods == 1
-		and flood_tick.remaining_floods == 2
+		and flood_tick.counters.flood_updates == 1
+		and flood_tick.counters.spread_floods == 1
+		and flood_tick.counters.remaining_floods == 2
 		and flood_tick.sound_events == [DisasterMap.SOUND_FLOOD]
 		and flood.city.text_overlay_id(19, 20) == 0xfc,
 		"An early flood tick spreads west and can request the recovered flood sound",
@@ -7720,7 +7721,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 	_check(
 		linked_flood_tick.ok
-		and linked_flood_tick.spread_floods == 1
+		and linked_flood_tick.counters.spread_floods == 1
 		and linked_flood_tick.effect_events.size() == 1
 		and linked_flood_tick.effect_events[0].point == Vector2i(19, 20)
 		and linked_flood_tick.effect_events[0].sprite_id == 1394
@@ -7747,8 +7748,8 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		expired_tick.ok
 		and expired_tick.active
 		and expired_tick.map_counter == 0
-		and expired_tick.expired_floods == 1
-		and expired_tick.remaining_floods == 0
+		and expired_tick.counters.expired_floods == 1
+		and expired_tick.counters.remaining_floods == 0
 		and no_flood_tick.ok
 		and not no_flood_tick.active,
 		"A zero-counter LFSR bit clears flood and the next scan ends it",
@@ -7771,8 +7772,8 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 	_check(
 		uphill_tick.ok
-		and uphill_tick.spread_attempts == 1
-		and uphill_tick.spread_floods == 0
+		and uphill_tick.counters.spread_attempts == 1
+		and uphill_tick.counters.spread_floods == 0
 		and uphill.city.text_overlay_id(19, 20) == 0,
 		"Flood cannot spread to a higher low-five-bit altitude",
 	)
@@ -7996,7 +7997,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	var pollution_engine_start := pollution_engine.start_disaster(
 		DisasterStart.DISASTER_POLLUTION, Vector2i(24, 25)
 	)
-	var pollution_ticks: Array[DisasterMapScanDispatch.Result] = []
+	var pollution_ticks: Array[DisasterMapResult] = []
 
 	while pollution_engine.active_disaster_type != 0 and pollution_ticks.size() < 128:
 		var pollution_result := pollution_engine.advance_disaster_tick()
@@ -8005,8 +8006,8 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		if not pollution_result.ok:
 			break
 
-	var pollution_tick := pollution_ticks[0] if not pollution_ticks.is_empty() else DisasterMapScanDispatch.Result.new()
-	var pollution_end := pollution_ticks[-1] if not pollution_ticks.is_empty() else DisasterMapScanDispatch.Result.new()
+	var pollution_tick := pollution_ticks[0] if not pollution_ticks.is_empty() else DisasterMapResult.new()
+	var pollution_end := pollution_ticks[-1] if not pollution_ticks.is_empty() else DisasterMapResult.new()
 	_check(
 		pollution_engine_start.ok
 		and pollution_engine_start.started
@@ -10744,12 +10745,13 @@ func _test_news_queue(reference_root: String) -> void:
 
 	var paper := NewsQueue.paper_record(paper_misc, 0)
 	_check(
-		paper == {"name": 0, "layout": 1, "price": 2, "opinion": 3, "weather": 4},
+		paper.name == 0 and paper.layout == 1 and paper.price == 2
+		and paper.opinion == 3 and paper.weather == 4,
 		"Newspaper paper records narrow all five saved fields",
 	)
 	_check(
-		NewsQueue.paper_record(paper_misc, -1).is_empty()
-		and NewsQueue.paper_record(paper_misc, NewsQueue.PAPER_COUNT).is_empty(),
+		NewsQueue.paper_record(paper_misc, -1) == null
+		and NewsQueue.paper_record(paper_misc, NewsQueue.PAPER_COUNT) == null,
 		"Newspaper paper reader rejects invalid indices",
 	)
 	var session_misc := _filled_bytes(NewsQueue.MISC_SIZE, 0)
@@ -11044,11 +11046,7 @@ func _test_newspaper_text(reference_root: String) -> void:
 	for story_type in 80:
 		var rendered := NewspaperTextGenerator.render_story(
 			data,
-			{
-				"type": story_type,
-				"argument": 0,
-				"auxiliary": PackedByteArray([0xff, 0xff, 0xff]),
-			},
+			NewsQueue.StoryRecord.new(story_type, 0, PackedByteArray([0xff, 0xff, 0xff])),
 			0x4000 + story_type * 17,
 			city.city_name(),
 			city.mayor_name(),
@@ -12715,10 +12713,14 @@ func _test_new_city_setup(reference_root: String) -> void:
 		var new_city_paper_state_valid := true
 
 		for paper_index in NewsQueue.PAPER_COUNT:
+			var actual_paper := NewsQueue.paper_record(document.find_chunk("MISC").decoded_payload, paper_index)
+			var expected_paper := NewsQueue.paper_record(newspaper_session, paper_index)
 			new_city_paper_state_valid = new_city_paper_state_valid and (
-				NewsQueue.paper_record(
-					document.find_chunk("MISC").decoded_payload, paper_index
-				) == NewsQueue.paper_record(newspaper_session, paper_index)
+				actual_paper.name == expected_paper.name
+				and actual_paper.layout == expected_paper.layout
+				and actual_paper.price == expected_paper.price
+				and actual_paper.opinion == expected_paper.opinion
+				and actual_paper.weather == expected_paper.weather
 			)
 
 		var expected_story_types := PackedInt32Array([2, 11, 12, 13, 14, 15, 16, 18, 19])

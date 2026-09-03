@@ -5,7 +5,7 @@ extends Control
 
 signal tested(position: Vector2i)
 signal tick_changed
-var record: Dictionary = {}
+var record: DesktopGraphics.Cursor
 var sweep := {"demo": false, "playing": false, "tick": 0, "elapsed": 0.0}
 var pointer := Vector2i(-100, -100)
 var last_click := Vector2i(-1, -1)
@@ -24,7 +24,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	var local := get_local_mouse_position()
-	var inside := is_visible_in_tree() and Rect2(Vector2.ZERO, size).has_point(local) and not record.is_empty()
+	var inside := is_visible_in_tree() and Rect2(Vector2.ZERO, size).has_point(local) and record != null
 	var active: bool = inside and get_window().has_focus() and not sweep.demo
 
 	if active != _hidden:
@@ -88,7 +88,7 @@ func _draw() -> void:
 
 	draw_texture(_background_texture, Vector2.ZERO)
 
-	if pointer.x < 0 or record.is_empty():
+	if pointer.x < 0 or record == null:
 		return
 
 	var origin: Vector2i = pointer - record.hotspot

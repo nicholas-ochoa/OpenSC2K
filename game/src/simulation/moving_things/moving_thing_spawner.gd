@@ -28,6 +28,14 @@ const TRAIN_DIRECTION_ORDERS := [
 ]
 
 
+class Result extends RefCounted:
+	var spawned := false
+	var record := 0
+	var point := Vector2i.ZERO
+	var target := Vector2i.ZERO
+	var goal := 0
+
+
 static func count_type(things: PackedByteArray, thing_type: int) -> int:
 	var count := 0
 
@@ -41,7 +49,7 @@ static func count_type(things: PackedByteArray, thing_type: int) -> int:
 static func spawn_helicopter(
 	things: PackedByteArray, text: PackedByteArray, point: Vector2i, random: SimRandom,
 	map_edge: int = 128,
-) -> Dictionary:
+) -> Result:
 	var index := _index(point, map_edge)
 
 	if (
@@ -50,12 +58,18 @@ static func spawn_helicopter(
 		or count_type(things, TYPE_MONSTER) != 0
 		or count_type(things, TYPE_HELICOPTER) >= 1 * maxi(1, (map_edge * map_edge) / 16384)
 	):
-		return {"spawned": false}
+		var result := Result.new()
+		result.spawned = false
+
+		return result
 
 	var record := _first_free_record(things)
 
 	if record == 0:
-		return {"spawned": false}
+		var result := Result.new()
+		result.spawned = false
+
+		return result
 
 	var offset := record * RECORD_SIZE
 	ThingData.write(things, offset, TYPE_HELICOPTER)
@@ -71,7 +85,12 @@ static func spawn_helicopter(
 	ThingData.write(things, offset + 10, OverlayData.read(text, index))
 	OverlayData.write(text, index, OverlayData.thing_id(record))
 
-	return {"spawned": true, "record": record, "point": point}
+	var result := Result.new()
+	result.spawned = true
+	result.record = record
+	result.point = point
+
+	return result
 
 
 static func spawn_airplane(
@@ -81,7 +100,7 @@ static func spawn_airplane(
 	runway_axis: int,
 	random: SimRandom,
 	map_edge: int = 128,
-) -> Dictionary:
+) -> Result:
 	var source_index := _index(point, map_edge)
 
 	if (
@@ -90,12 +109,18 @@ static func spawn_airplane(
 		or count_type(things, TYPE_MONSTER) != 0
 		or count_type(things, TYPE_AIRPLANE) >= 2 * maxi(1, (map_edge * map_edge) / 16384)
 	):
-		return {"spawned": false}
+		var result := Result.new()
+		result.spawned = false
+
+		return result
 
 	var record := _first_free_record(things)
 
 	if record == 0:
-		return {"spawned": false}
+		var result := Result.new()
+		result.spawned = false
+
+		return result
 
 	var offset := record * RECORD_SIZE
 	ThingData.write(things, offset, TYPE_AIRPLANE)
@@ -145,7 +170,12 @@ static func spawn_airplane(
 	ThingData.write(things, offset + 10, OverlayData.read(text, attached_index))
 	OverlayData.write(text, attached_index, OverlayData.thing_id(record))
 
-	return {"spawned": true, "record": record, "point": attached}
+	var result := Result.new()
+	result.spawned = true
+	result.record = record
+	result.point = attached
+
+	return result
 
 
 static func spawn_ship(
@@ -155,9 +185,12 @@ static func spawn_ship(
 	target: Vector2i,
 	random: SimRandom,
 	map_edge: int = 128,
-) -> Dictionary:
+) -> Result:
 	if count_type(things, TYPE_SHIP) >= 1 * maxi(1, (map_edge * map_edge) / 16384):
-		return {"spawned": false}
+		var result := Result.new()
+		result.spawned = false
+
+		return result
 
 	var start := Vector2i(-1, -1)
 
@@ -180,17 +213,26 @@ static func spawn_ship(
 					start = Vector2i(x, (map_edge - 2))
 
 	if start.x < 0:
-		return {"spawned": false}
+		var result := Result.new()
+		result.spawned = false
+
+		return result
 
 	var start_index := _index(start, map_edge)
 
 	if OverlayData.blocks_thing(OverlayData.read(text, start_index)):
-		return {"spawned": false}
+		var result := Result.new()
+		result.spawned = false
+
+		return result
 
 	var record := _first_free_record(things)
 
 	if record == 0:
-		return {"spawned": false}
+		var result := Result.new()
+		result.spawned = false
+
+		return result
 
 	var offset := record * RECORD_SIZE
 	ThingData.write(things, offset, TYPE_SHIP)
@@ -205,7 +247,13 @@ static func spawn_ship(
 	OverlayData.write(text, start_index, OverlayData.thing_id(record))
 	ThingData.set_ship_home(things, record, start)
 
-	return {"spawned": true, "record": record, "point": start, "target": target}
+	var result := Result.new()
+	result.spawned = true
+	result.record = record
+	result.point = start
+	result.target = target
+
+	return result
 
 
 static func spawn_sailboats(
@@ -260,7 +308,7 @@ static func spawn_maxis_man(
 	goal: int,
 	height: int,
 	map_edge: int = 128,
-) -> Dictionary:
+) -> Result:
 	var index := _index(point, map_edge)
 	var target_index := _index(target, map_edge)
 
@@ -271,12 +319,18 @@ static func spawn_maxis_man(
 		or count_type(things, TYPE_MAXIS_MAN) >= 1
 		or (ThingData.is_record_target(goal) and (goal < FIRST_RECORD or ThingData.target_record(goal) >= ThingData.count(things)))
 	):
-		return {"spawned": false}
+		var result := Result.new()
+		result.spawned = false
+
+		return result
 
 	var record := _first_free_record(things)
 
 	if record == 0:
-		return {"spawned": false}
+		var result := Result.new()
+		result.spawned = false
+
+		return result
 
 	var offset := record * RECORD_SIZE
 	ThingData.write(things, offset, TYPE_MAXIS_MAN)
@@ -293,13 +347,14 @@ static func spawn_maxis_man(
 	ThingData.write(things, offset + 11, goal)
 	OverlayData.write(text, index, OverlayData.thing_id(record))
 
-	return {
-		"spawned": true,
-		"record": record,
-		"point": point,
-		"target": target,
-		"goal": goal,
-	}
+	var result := Result.new()
+	result.spawned = true
+	result.record = record
+	result.point = point
+	result.target = target
+	result.goal = goal
+
+	return result
 
 
 static func spawn_train(

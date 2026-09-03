@@ -120,15 +120,12 @@ static func from_shape(
 
 static func shape_from_workspace(
 	workspace_pixels: PackedInt32Array, base_width: int, view: int
-) -> Dictionary:
+) -> IndexedImageResult:
 	if (
 		workspace_pixels.size() != WIDTH * HEIGHT
 		or not is_standard_base_width(base_width)
 	):
-		return {
-			"ok": false,
-			"error": "SCURK drawing workspace or base width is invalid.",
-		}
+		return IndexedImageResult.failure("SCURK drawing workspace or base width is invalid.")
 
 	var divisor := view_divisor(view)
 	var output_width := int(base_width / divisor)
@@ -162,13 +159,14 @@ static func shape_from_workspace(
 		blank.resize(output_width)
 		blank.fill(-1)
 
-		return {
-			"ok": true,
-			"width": output_width,
-			"height": 1,
-			"pixels": blank,
-			"error": "",
-		}
+		var result := IndexedImageResult.new()
+		result.ok = true
+		result.width = output_width
+		result.height = 1
+		result.pixels = blank
+		result.error = ""
+
+		return result
 
 	var output_height := output_max_height - first_visible_row
 	var output := PackedInt32Array()
@@ -180,10 +178,11 @@ static func shape_from_workspace(
 				(first_visible_row + y) * output_width + x
 			]
 
-	return {
-		"ok": true,
-		"width": output_width,
-		"height": output_height,
-		"pixels": output,
-		"error": "",
-	}
+	var result := IndexedImageResult.new()
+	result.ok = true
+	result.width = output_width
+	result.height = output_height
+	result.pixels = output
+	result.error = ""
+
+	return result

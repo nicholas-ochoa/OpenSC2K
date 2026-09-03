@@ -61,7 +61,9 @@ func _check_city_name_fallback(newspaper: NewspaperDialog) -> void:
 	assert(city.city_name().is_empty())
 	assert(city.display_name() == "BABAR")
 	assert(document.serialize().data == source_bytes, "Reading the display name changed city bytes")
-	assert(NewspaperDialog._paper_title(city, {}, 3, {"name": 2}).contains(city.display_name()))
+	var paper := NewsQueue.PaperRecord.new()
+	paper.name = 2
+	assert(NewspaperDialog._paper_title(city, {}, 3, paper).contains(city.display_name()))
 
 	# Reproduce the first growth milestone in memory. Do not save the supplied city.
 	var misc := document.find_chunk("MISC").decoded_payload.duplicate()
@@ -189,7 +191,12 @@ func _check_menu_and_forecast(newspaper: NewspaperDialog) -> void:
 	assert(not payload.extra_stories.is_empty())
 	var extra_before := document.serialize().data as PackedByteArray
 	var extra_stories := newspaper._extra_stories(document.find_chunk("MISC").decoded_payload, newspaper._team_names())
-	assert(extra_stories == payload.extra_stories, "Extra stories must use stable private seeds")
+	assert(extra_stories.size() == payload.extra_stories.size(), "Extra story count changed")
+	for index in extra_stories.size():
+		var expected: Dictionary = payload.extra_stories[index]
+		var actual := extra_stories[index]
+		assert(actual.headline == expected.headline and actual.article == expected.article and actual.page == expected.page,
+			"Extra stories must use stable private seeds")
 	assert(document.serialize().data == extra_before, "Extra stories changed saved news")
 	var headlines: PackedStringArray = payload.headlines.duplicate()
 

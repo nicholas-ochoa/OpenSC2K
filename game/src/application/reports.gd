@@ -129,10 +129,10 @@ func _open_ordinance_window() -> void:
 	if app.document_state.city == null or app.ordinance_window == null:
 		return
 
-	var result: Dictionary = app.ordinance_window.open_city(app.document_state.city)
+	var result: OrdinanceCommand.Result = app.ordinance_window.open_city(app.document_state.city)
 
-	if not result.get("ok", false):
-		app.interface.show_error("Cannot open ordinances: %s" % result.get("error", "invalid data"))
+	if not result.ok:
+		app.interface.show_error("Cannot open ordinances: %s" % result.error)
 
 
 func on_ordinances_changed() -> void:
@@ -286,7 +286,7 @@ func refresh_saved_news_summary() -> void:
 	for slot in NewsQueue.QUEUE_COUNT:
 		var record := NewsQueue.story_record(misc_chunk.decoded_payload, slot)
 
-		if record.is_empty() or int(record.priority) <= 0:
+		if record == null or int(record.priority) <= 0:
 			continue
 
 		var story_type := int(record.type)

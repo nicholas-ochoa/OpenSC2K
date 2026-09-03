@@ -46,7 +46,7 @@ static func _process_surface_maintenance(
 		var wind := GrowthState._read_u32(misc, 0x0064) & 0xff
 
 		if _maintenance_fails(misc, 12, random, 50, wind):
-			var result: Dictionary
+			var result: DemolishPointResult
 
 			if tile == 0x6a or tile == 0x6b:
 				result = DemolishBridges._demolish_reinforced_bridge(
@@ -59,14 +59,14 @@ static func _process_surface_maintenance(
 					point, random, true, map_edge
 				)
 
-			if not result.get("changed", false):
+			if not result.changed:
 				counters.deferred_bridge_collapses += 1
 
 				return
 
 			GrowthState._sync_altitudes(altitude, altitudes, map_edge)
 			counters.collapsed_bridges += 1
-			counters.bridge_effects.append_array(result.get("effect_events", []))
+			counters.bridge_effects.append_array(result.effect_events)
 			counters.view_center_requests.append(point)
 			counters.news_items.append({
 				"type": NEWSPAPER_BRIDGE_COLLAPSE,

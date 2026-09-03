@@ -5,6 +5,20 @@ extends RefCounted
 const EXTENSIONS := ["flac", "ogg", "mp3"]
 
 
+class Result extends RefCounted:
+	var stream: AudioStream
+	var path := ""
+
+
+class Request extends RefCounted:
+	var paths := PackedStringArray()
+	var request := 0
+
+	func _init(source_paths: PackedStringArray, request_id: int) -> void:
+		paths = source_paths
+		request = request_id
+
+
 static func find_tracks(folder: String, track_id: int) -> PackedStringArray:
 	var result := PackedStringArray()
 	var names := DirAccess.get_files_at(folder) if DirAccess.dir_exists_absolute(folder) else PackedStringArray()
@@ -22,7 +36,7 @@ static func find_tracks(folder: String, track_id: int) -> PackedStringArray:
 	return result
 
 
-static func load_track(paths: PackedStringArray) -> Dictionary:
+static func load_track(paths: PackedStringArray) -> Result:
 	for path in paths:
 		var stream: AudioStream
 
@@ -42,9 +56,17 @@ static func load_track(paths: PackedStringArray) -> Dictionary:
 			else:
 				stream.set("loop", false)
 
-			return {"stream": stream, "path": path}
+			var result := Result.new()
+			result.stream = stream
+			result.path = path
 
-	return {"stream": null, "path": ""}
+			return result
+
+	var result := Result.new()
+	result.stream = null
+	result.path = ""
+
+	return result
 
 
 static func _load_flac(path: String) -> AudioStreamWAV:

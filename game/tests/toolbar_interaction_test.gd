@@ -265,10 +265,10 @@ class CountingEngine extends SimulationEngine:
 		return result
 
 
-	func advance_disaster_tick() -> DisasterMapScanDispatch.Result:
+	func advance_disaster_tick() -> DisasterMapResult:
 		fire_ticks += 1
 
-		var result := DisasterMapScanDispatch.Result.new()
+		var result := DisasterMapResult.new()
 		result.ok = true
 
 		return result

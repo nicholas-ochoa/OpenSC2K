@@ -48,7 +48,7 @@ func _run() -> void:
 	controller.soundtrack_folder = folder
 	# Exercise the asynchronous path with Dummy output, without bypassing decode.
 	controller.current_track_id = 10001
-	controller.pending_recording = {"paths": matches, "request": controller.music_request}
+	controller.pending_recording = RecordedSoundtrack.Request.new(matches, controller.music_request)
 	var deadline := Time.get_ticks_msec() + 15000
 
 	while not controller.recording_player.playing and Time.get_ticks_msec() < deadline:
@@ -58,9 +58,9 @@ func _run() -> void:
 	controller.set_volumes(0.1, 0.0)
 	assert(is_equal_approx(controller.recording_player.volume_linear, 0.1))
 	controller.handle_application_focus_out()
-	assert(controller.recording_player.stream != null and controller.recording_player.stream_paused and controller.pending_recording.is_empty())
+	assert(controller.recording_player.stream != null and controller.recording_player.stream_paused and controller.pending_recording == null)
 	# Stop the request before its worker finishes; check that playback stays stopped.
-	controller.pending_recording = {"paths": matches, "request": controller.music_request}
+	controller.pending_recording = RecordedSoundtrack.Request.new(matches, controller.music_request)
 	controller._process(0)
 	controller.stop_music()
 

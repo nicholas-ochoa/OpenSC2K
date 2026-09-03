@@ -153,7 +153,7 @@ func _check_phase_timings(history: SimulationTimingHistory) -> void:
 
 	# Preserve the existing data-map group while accepting other timed phases.
 	var map_phase := PhaseResult.new()
-	map_phase.timing = {"steps": {"smoothing": 300}}
+	map_phase.timing = SimulationTiming.new(-1, {"smoothing": 300})
 	history.consume(TimingResults.tick_fixture({"day_results": [{"ok": true, "day": 2,
 		"timing": {"work_usec": 500, "steps": {"pollution_terrain_land_value": 450}},
 		"phase_results": {"pollution_terrain_land_value":

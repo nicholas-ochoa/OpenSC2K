@@ -2,25 +2,25 @@ class_name DisasterMapMarkers
 extends DisasterMapConstants
 
 
-static func run_toxic(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> Dictionary:
+static func run_toxic(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> DisasterMapResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return DisasterMapResult.failure("city is invalid")
 
 	if random == null:
-		return {"ok": false, "error": "a compatible process random generator is required"}
+		return DisasterMapResult.failure("a compatible process random generator is required")
 
 	if lfsr_random == null:
-		return {"ok": false, "error": "a compatible LFSR generator is required"}
+		return DisasterMapResult.failure("a compatible LFSR generator is required")
 
 	var original := DisasterMapState._map_payloads(city)
 
 	if original.is_empty():
-		return {"ok": false, "error": "toxic-map input chunks are missing or invalid"}
+		return DisasterMapResult.failure("toxic-map input chunks are missing or invalid")
 
 	var payloads := DisasterMapState._duplicate_payloads(original)
-	var counters := {
+	var counters: Dictionary[String, int] = {
 		"toxic_markers_scanned": 0,
 		"toxic_updates": 0,
 		"lfsr_expirations": 0,
@@ -83,41 +83,43 @@ static func run_toxic(city: CityState, random: SimRandom, lfsr_random: SimLfsrRa
 	var map_changed := DisasterMapState._payloads_changed(original, payloads)
 
 	if map_changed and not DisasterMapState._apply_map_payloads(city, original, payloads):
-		return {"ok": false, "error": "cannot store the toxic-map tick"}
+		return DisasterMapResult.failure("cannot store the toxic-map tick")
 
-	counters["ok"] = true
-	counters["error"] = ""
-	counters["active"] = active
+	var result := DisasterMapResult.new()
+	result.counters = counters
+	result.ok = true
+	result.error = ""
+	result.active = active
 	counters["remaining_toxic"] = OverlayData.occurrences(payloads.XTXT, TOXIC_OVERLAY)
-	counters["map_changed"] = map_changed
-	counters["news_items"] = []
-	counters["effect_events"] = []
-	counters["sound_events"] = []
-	counters["view_center_requests"] = []
-	counters["complete"] = true
+	result.map_changed = map_changed
+	result.news_items = []
+	result.effect_events = []
+	result.sound_events = []
+	result.view_center_requests = []
+	result.complete = true
 
-	return counters
+	return result
 
 
-static func run_riot(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> Dictionary:
+static func run_riot(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> DisasterMapResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return DisasterMapResult.failure("city is invalid")
 
 	if random == null:
-		return {"ok": false, "error": "a compatible process random generator is required"}
+		return DisasterMapResult.failure("a compatible process random generator is required")
 
 	if lfsr_random == null:
-		return {"ok": false, "error": "a compatible LFSR generator is required"}
+		return DisasterMapResult.failure("a compatible LFSR generator is required")
 
 	var original := DisasterMapState._map_payloads(city)
 
 	if original.is_empty():
-		return {"ok": false, "error": "riot-map input chunks are missing or invalid"}
+		return DisasterMapResult.failure("riot-map input chunks are missing or invalid")
 
 	var payloads := DisasterMapState._duplicate_payloads(original)
-	var counters := {
+	var counters: Dictionary[String, int] = {
 		"riot_markers_scanned": 0,
 		"riot_updates": 0,
 		"expired_riots": 0,
@@ -219,28 +221,30 @@ static func run_riot(city: CityState, random: SimRandom, lfsr_random: SimLfsrRan
 	var map_changed := DisasterMapState._payloads_changed(original, payloads)
 
 	if map_changed and not DisasterMapState._apply_map_payloads(city, original, payloads):
-		return {"ok": false, "error": "cannot store the riot-map tick"}
+		return DisasterMapResult.failure("cannot store the riot-map tick")
 
 	var sound_events: Array[int] = runtime_events.sound_events
 
 	if active and random.next_u15() & 7 == 0:
 		sound_events.append(SOUND_RIOT)
 
-	counters["ok"] = true
-	counters["error"] = ""
-	counters["active"] = active
+	var result := DisasterMapResult.new()
+	result.counters = counters
+	result.ok = true
+	result.error = ""
+	result.active = active
 	counters["remaining_riots"] = (
 		OverlayData.occurrences(payloads.XTXT, RIOT_OVERLAY_FORWARD)
 		+ OverlayData.occurrences(payloads.XTXT, RIOT_OVERLAY_REVERSE)
 	)
-	counters["map_changed"] = map_changed
-	counters["news_items"] = []
-	counters["effect_events"] = runtime_events.effect_events
-	counters["sound_events"] = sound_events
-	counters["view_center_requests"] = []
-	counters["complete"] = true
+	result.map_changed = map_changed
+	result.news_items = []
+	result.effect_events = runtime_events.effect_events
+	result.sound_events = sound_events
+	result.view_center_requests = []
+	result.complete = true
 
-	return counters
+	return result
 
 
 static func _process_toxic_cell(
@@ -298,7 +302,7 @@ static func _process_riot_cell(
 	random: SimRandom,
 	lfsr_random: SimLfsrRandom,
 	counters: Dictionary,
-	runtime_events: Dictionary,
+	runtime_events: DisasterDamage.RuntimeEvents,
 ) -> void:
 	var map_edge: int = city.map_size if city != null else 128
 	counters.riot_markers_scanned += 1

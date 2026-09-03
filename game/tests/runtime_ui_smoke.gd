@@ -694,8 +694,8 @@ func _run() -> void:
 	var debug_misc_chunk := debug_city.document.find_chunk("MISC")
 	var debug_old_misc: PackedByteArray = debug_misc_chunk.decoded_payload.duplicate()
 	var debug_old_funds := debug_city.funds()
-	var money_result: Dictionary = main.debug.call("debug_add_funds", 10000)
-	var unlock_result: Dictionary = main.debug.call("debug_unlock_everything")
+	var money_result: ApplicationDebug.ActionResult = main.debug.call("debug_add_funds", 10000)
+	var unlock_result: ApplicationDebug.ActionResult = main.debug.call("debug_unlock_everything")
 	var unlocked := ToolAvailability.inspect(debug_city)
 
 	if (
@@ -733,7 +733,7 @@ func _run() -> void:
 	debug_text_chunk.set_decoded_payload(empty_text)
 	debug_city.text_overlays = empty_text.duplicate()
 	debug_city.set_text_overlay_id(64, 64, 0xff)
-	var maxis_result: Dictionary = main.debug.call("debug_dispatch_maxis_man")
+	var maxis_result: ApplicationDebug.ActionResult = main.debug.call("debug_dispatch_maxis_man")
 
 	if not maxis_result.ok or debug_city.thing(1).type != 16:
 		push_error("The debug Maxis Man action did not dispatch a saved moving object")
@@ -745,7 +745,7 @@ func _run() -> void:
 	debug_thing_chunk.set_decoded_payload(empty_things)
 	debug_text_chunk.set_decoded_payload(empty_text)
 	debug_city.text_overlays = empty_text.duplicate()
-	var start_disaster: Dictionary = main.debug.call(
+	var start_disaster: ApplicationDebug.ActionResult = main.debug.call(
 		"debug_start_disaster", DisasterStart.DISASTER_TORNADO
 	)
 	var active_disaster_metrics: Dictionary = main.debug.call("debug_metrics")
@@ -763,8 +763,8 @@ func _run() -> void:
 		return
 
 	debug_city.set_text_overlay_id(65, 64, 0xff)
-	var end_disaster: Dictionary = main.debug.call("debug_end_disaster")
-	var disable_disasters: Dictionary = main.debug.call("debug_set_no_disasters", true)
+	var end_disaster: ApplicationDebug.ActionResult = main.debug.call("debug_end_disaster")
+	var disable_disasters: ApplicationDebug.ActionResult = main.debug.call("debug_set_no_disasters", true)
 
 	if (
 		not end_disaster.ok

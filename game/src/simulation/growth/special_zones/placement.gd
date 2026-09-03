@@ -3,6 +3,11 @@ extends SpecialZoneConstants
 
 
 
+class Result extends RefCounted:
+	var ok := false
+	var changed_tiles := 0
+
+
 static func _place_runway(
 	buildings: PackedByteArray,
 	zones: PackedByteArray,
@@ -14,7 +19,7 @@ static func _place_runway(
 	map_edge: int = 128,
 	terrain: PackedByteArray = PackedByteArray(),
 	underground: PackedByteArray = PackedByteArray(),
-) -> Dictionary:
+) -> Result:
 	# military runway orientation uses its own count, as in sc2kfix
 	var count := SpecialZoneState._special_tile_count(misc, 0xdd, zone == 7, map_edge)
 	var direction := Vector2i.ZERO
@@ -25,14 +30,22 @@ static func _place_runway(
 		elif point.y & 1:
 			direction = Vector2i(1, 0)
 		else:
-			return {"ok": false, "changed_tiles": 0}
+			var result := Result.new()
+			result.ok = false
+			result.changed_tiles = 0
+
+			return result
 	else:
 		if point.y & 1:
 			direction = Vector2i(1, 0)
 		elif point.x & 1:
 			direction = Vector2i(0, 1)
 		else:
-			return {"ok": false, "changed_tiles": 0}
+			var result := Result.new()
+			result.ok = false
+			result.changed_tiles = 0
+
+			return result
 
 	var new_tiles := 0
 	var checked := point
@@ -41,14 +54,26 @@ static func _place_runway(
 		var checked_index := SpecialZoneState._index(checked, map_edge)
 
 		if (zones[checked_index] & 0x0f) != zone:
-			return {"ok": false, "changed_tiles": 0}
+			var result := Result.new()
+			result.ok = false
+			result.changed_tiles = 0
+
+			return result
 
 		if zone == 7:
 			var tile := int(buildings[checked_index])
 			if (tile >= 0x1d and tile <= 0x2b) or tile == 0xe0 or tile == 0xf9:
-				return {"ok": false, "changed_tiles": 0}
+				var result := Result.new()
+				result.ok = false
+				result.changed_tiles = 0
+
+				return result
 			if (not terrain.is_empty() and terrain[checked_index] != 0) or (not underground.is_empty() and underground[checked_index] != 0):
-				return {"ok": false, "changed_tiles": 0}
+				var result := Result.new()
+				result.ok = false
+				result.changed_tiles = 0
+
+				return result
 
 		if buildings[checked_index] == 0xdd or buildings[checked_index] == 0xde:
 			new_tiles -= 1
@@ -60,7 +85,11 @@ static func _place_runway(
 			break
 
 	if new_tiles < 5:
-		return {"ok": false, "changed_tiles": 0}
+		var result := Result.new()
+		result.ok = false
+		result.changed_tiles = 0
+
+		return result
 
 	var flip := SpecialZoneState._special_axis_is_flipped(direction.x, rotation)
 	var changed_tiles := 0
@@ -99,7 +128,11 @@ static func _place_runway(
 		placed_tiles += 1
 		current += direction
 
-	return {"ok": true, "changed_tiles": changed_tiles}
+	var result := Result.new()
+	result.ok = true
+	result.changed_tiles = changed_tiles
+
+	return result
 
 
 static func _place_crane_and_pier(
@@ -113,7 +146,7 @@ static func _place_crane_and_pier(
 	zone: int,
 	rotation: int,
 	map_edge: int = 128,
-) -> Dictionary:
+) -> Result:
 	var direction := Vector2i.ZERO
 
 	for candidate in CARDINAL_DIRECTIONS:
@@ -125,10 +158,18 @@ static func _place_crane_and_pier(
 			break
 
 	if direction == Vector2i.ZERO:
-		return {"ok": false, "changed_tiles": 0}
+		var result := Result.new()
+		result.ok = false
+		result.changed_tiles = 0
+
+		return result
 
 	if (direction.y != 0 and point.x & 1) or (direction.x != 0 and point.y & 1):
-		return {"ok": false, "changed_tiles": 0}
+		var result := Result.new()
+		result.ok = false
+		result.changed_tiles = 0
+
+		return result
 
 	var checked := point
 
@@ -137,12 +178,20 @@ static func _place_crane_and_pier(
 		var index := SpecialZoneState._index(checked, map_edge)
 
 		if index < 0 or flags[index] & 0x04 == 0 or buildings[index] != 0:
-			return {"ok": false, "changed_tiles": 0}
+			var result := Result.new()
+			result.ok = false
+			result.changed_tiles = 0
+
+			return result
 
 	var last_word := int(altitudes[SpecialZoneState._index(checked, map_edge)])
 
 	if ((last_word & 0x03e0) >> 5) < (last_word & 0x1f) + 2:
-		return {"ok": false, "changed_tiles": 0}
+		var result := Result.new()
+		result.ok = false
+		result.changed_tiles = 0
+
+		return result
 
 	_clear_special_building(buildings, zones, flags, misc, point, map_edge)
 	var before := int(buildings[SpecialZoneState._index(point, map_edge)])
@@ -169,7 +218,11 @@ static func _place_crane_and_pier(
 
 		changed_tiles += 1
 
-	return {"ok": true, "changed_tiles": changed_tiles}
+	var result := Result.new()
+	result.ok = true
+	result.changed_tiles = changed_tiles
+
+	return result
 
 
 static func _place_special_two_by_two(
@@ -184,11 +237,15 @@ static func _place_special_two_by_two(
 	rotation: int,
 	map_edge: int = 128,
 	underground: PackedByteArray = PackedByteArray(),
-) -> Dictionary:
+) -> Result:
 	var anchor := Vector2i(point.x & ~1, point.y & ~1)
 
 	if anchor.x < 0 or anchor.y < 0 or anchor.x >= (map_edge - 1) or anchor.y >= (map_edge - 1):
-		return {"ok": false, "changed_tiles": 0}
+		var result := Result.new()
+		result.ok = false
+		result.changed_tiles = 0
+
+		return result
 
 	var points := [
 		anchor, anchor + Vector2i(1, 0), anchor + Vector2i(0, 1), anchor + Vector2i(1, 1),
@@ -200,21 +257,41 @@ static func _place_special_two_by_two(
 		var checked_tile := int(buildings[index])
 
 		if checked_tile == 0xdd or checked_tile == 0xde or checked_tile == 0xe0:
-			return {"ok": false, "changed_tiles": 0}
+			var result := Result.new()
+			result.ok = false
+			result.changed_tiles = 0
+
+			return result
 
 		# The original checks 0xeb..0xff only at the anchor. sc2kfix checks
 		# the missile-silo restriction across the whole footprint.
 		if point_index == 0 and checked_tile > 0xea:
-			return {"ok": false, "changed_tiles": 0}
+			var result := Result.new()
+			result.ok = false
+			result.changed_tiles = 0
+
+			return result
 
 		if zone == 7:
 			if (checked_tile >= 0x1d and checked_tile <= 0x2b) or checked_tile == 0xf9 or checked_tile == 0x05 or checked_tile == 0x0d:
-				return {"ok": false, "changed_tiles": 0}
+				var result := Result.new()
+				result.ok = false
+				result.changed_tiles = 0
+
+				return result
 			if terrain[index] != 0 or flags[index] & 0x04 or (not underground.is_empty() and underground[index] != 0):
-				return {"ok": false, "changed_tiles": 0}
+				var result := Result.new()
+				result.ok = false
+				result.changed_tiles = 0
+
+				return result
 
 		if (zones[index] & 0x0f) != zone:
-			return {"ok": false, "changed_tiles": 0}
+			var result := Result.new()
+			result.ok = false
+			result.changed_tiles = 0
+
+			return result
 
 	for checked in points:
 		_clear_special_building(buildings, zones, flags, misc, checked, map_edge)
@@ -237,7 +314,11 @@ static func _place_special_two_by_two(
 		var index := SpecialZoneState._index(checked, map_edge)
 		changed_tiles += int(buildings[index] != before[index])
 
-	return {"ok": true, "changed_tiles": changed_tiles}
+	var result := Result.new()
+	result.ok = true
+	result.changed_tiles = changed_tiles
+
+	return result
 
 
 static func place_special_item(
@@ -301,7 +382,7 @@ static func place_missile_silo(
 	zone: int,
 	rotation: int,
 	map_edge: int = 128,
-) -> Dictionary:
+) -> Result:
 	var origin := point
 
 	for unused in 2:
@@ -317,7 +398,11 @@ static func place_missile_silo(
 			origin = upper
 
 	if origin.x < 0 or origin.y < 0 or origin.x > map_edge - 3 or origin.y > map_edge - 3:
-		return {"ok": false, "changed_tiles": 0}
+		var result := Result.new()
+		result.ok = false
+		result.changed_tiles = 0
+
+		return result
 
 	var changed_tiles := 0
 
@@ -333,7 +418,11 @@ static func place_missile_silo(
 
 	SpecialZoneState._set_corners(zones, origin, 3, rotation, map_edge)
 
-	return {"ok": true, "changed_tiles": changed_tiles}
+	var result := Result.new()
+	result.ok = true
+	result.changed_tiles = changed_tiles
+
+	return result
 
 
 static func _clear_special_building(

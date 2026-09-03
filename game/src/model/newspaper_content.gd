@@ -1,6 +1,12 @@
 class_name NewspaperContent
 extends RefCounted
 
+class ExtraStory extends RefCounted:
+	var headline := ""
+	var article := ""
+	var page := 0
+
+
 var layout_index := 0
 var title_text := ""
 var date_text := ""
@@ -15,7 +21,7 @@ var weather_headline := ""
 var weather_article := ""
 var weather_page := 2
 var opinion_page := 3
-var extra_stories: Array[Dictionary] = []
+var extra_stories: Array[ExtraStory] = []
 var headlines := PackedStringArray()
 var articles := PackedStringArray()
 var continuation_pages: Array[int] = []
@@ -70,14 +76,20 @@ func headline_for_slot(slot: int) -> String:
 	return headlines[slot] if slot >= 0 and slot < headlines.size() else ""
 
 
+# json payload for the html reader. convert typed records only at this boundary
 func payload(papers: PackedStringArray, selected: int) -> Dictionary:
 	var picture := ""
 
 	if picture_texture != null:
 		picture = "data:image/png;base64," + Marshalls.raw_to_base64(picture_texture.get_image().save_png_to_buffer())
 
+	var story_payloads: Array[Dictionary] = []
+
+	for story in extra_stories:
+		story_payloads.append({"headline": story.headline, "article": story.article, "page": story.page})
+
 	return {"title": title_text, "headline": headline_for_slot(0), "date": date_text, "price": price_text, "weather": weather_text,
 			"weather_heading": weather_heading, "weather_headline": weather_headline, "weather_article": weather_article,
-			"weather_page": weather_page, "opinion_page": opinion_page, "extra_stories": extra_stories, "opinion": opinion_text,
+			"weather_page": weather_page, "opinion_page": opinion_page, "extra_stories": story_payloads, "opinion": opinion_text,
 			"opinion_heading": opinion_heading, "opinion_headline": opinion_headline, "opinion_article": opinion_article, "headlines": headlines,
 			"articles": articles, "pages": continuation_pages, "picture": picture, "papers": papers, "selected": selected}

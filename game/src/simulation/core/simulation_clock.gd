@@ -15,7 +15,7 @@ func _init(initial_city_days: int = 0) -> void:
 	city_days = maxi(initial_city_days, 0)
 
 
-func advance_day() -> Dictionary:
+func advance_day() -> SimulationSchedule:
 	city_days += 1
 
 	return state_for_day(city_days)
@@ -25,20 +25,16 @@ func write_to_city(city: CityState) -> bool:
 	return city.set_age_in_days(city_days)
 
 
-static func state_for_day(days: int) -> Dictionary:
+static func state_for_day(days: int) -> SimulationSchedule:
 	var safe_days := maxi(days, 0)
 	var month_day := safe_days % DAYS_PER_MONTH
 	var month := int(safe_days / DAYS_PER_MONTH) % MONTHS_PER_YEAR
-	var phase := {
-		"city_days": safe_days,
-		"elapsed_years": int(safe_days / DAYS_PER_YEAR),
-		"month": month,
-		"month_day": month_day,
-		"season": int(((month + 1) % MONTHS_PER_YEAR) / 3),
-		"actions": PackedStringArray(),
-		"growth_step": -1,
-		"growth_substep": -1,
-	}
+	var phase := SimulationSchedule.new()
+	phase.city_days = safe_days
+	phase.elapsed_years = int(safe_days / DAYS_PER_YEAR)
+	phase.month = month
+	phase.month_day = month_day
+	phase.season = int(((month + 1) % MONTHS_PER_YEAR) / 3)
 	var actions: PackedStringArray = phase.actions
 
 	match month_day:

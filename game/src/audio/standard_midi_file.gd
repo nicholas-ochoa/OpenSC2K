@@ -1,10 +1,45 @@
 class_name StandardMidiFile
 extends RefCounted
 
+class TrackResult extends RefCounted:
+	var ok := false
+	var error := ""
+	var next_order := 0
+	var end_tick := 0
+
+	static func failure(message: String) -> TrackResult:
+		var result := TrackResult.new()
+		result.error = message
+
+		return result
+
+
+class VariableLengthResult extends RefCounted:
+	var ok := false
+	var error := ""
+	var value := 0
+	var next := 0
+
+
+class Event extends RefCounted:
+	var tick := 0
+	var order := 0
+	var track := 0
+	var type := ""
+	var channel := 0
+	var note := 0
+	var velocity := 0
+	var controller := 0
+	var value := 0
+	var program := 0
+	var microseconds_per_quarter := 0
+	var time_seconds := 0.0
+
+
 var format_type := -1
 var track_count := 0
 var ticks_per_quarter := 0
-var events: Array[Dictionary] = []
+var events: Array[Event] = []
 var duration_seconds := 0.0
 var parse_error := ""
 
@@ -102,7 +137,7 @@ func _parse_track(
 	end: int,
 	track_index: int,
 	first_order: int
-) -> Dictionary:
+) -> TrackResult:
 	var cursor := start
 	var tick := 0
 	var running_status := -1
@@ -112,16 +147,13 @@ func _parse_track(
 		var delta := _read_variable_length(data, cursor, end)
 
 		if not delta.ok:
-			return {
-				"ok": false,
-				"error": "MIDI track %d has an invalid delta: %s" % [track_index, delta.error],
-			}
+			return TrackResult.failure("MIDI track %d has an invalid delta: %s" % [track_index, delta.error])
 
 		cursor = delta.next
 		tick += delta.value
 
 		if cursor >= end:
-			return {"ok": false, "error": "MIDI track %d ends after a delta" % track_index}
+			return TrackResult.failure("MIDI track %d ends after a delta" % track_index)
 
 		var status := int(data[cursor])
 		var first_data := -1
@@ -135,10 +167,7 @@ func _parse_track(
 				running_status = -1
 		else:
 			if running_status < 0:
-				return {
-					"ok": false,
-					"error": "MIDI track %d uses data without running status" % track_index,
-				}
+				return TrackResult.failure("MIDI track %d uses data without running status" % track_index)
 
 			first_data = status
 			status = running_status
@@ -146,36 +175,36 @@ func _parse_track(
 
 		if status == 0xff:
 			if cursor >= end:
-				return {"ok": false, "error": "MIDI track %d has a truncated meta event" % track_index}
+				return TrackResult.failure("MIDI track %d has a truncated meta event" % track_index)
 
 			var meta_type := int(data[cursor])
 			cursor += 1
 			var meta_length := _read_variable_length(data, cursor, end)
 
 			if not meta_length.ok:
-				return {"ok": false, "error": "MIDI track %d has an invalid meta length" % track_index}
+				return TrackResult.failure("MIDI track %d has an invalid meta length" % track_index)
 
 			cursor = meta_length.next
 
 			if cursor + meta_length.value > end:
-				return {"ok": false, "error": "MIDI track %d has a truncated meta payload" % track_index}
+				return TrackResult.failure("MIDI track %d has a truncated meta payload" % track_index)
 
 			if meta_type == 0x51:
 				if meta_length.value != 3:
-					return {"ok": false, "error": "MIDI track %d has an invalid tempo event" % track_index}
+					return TrackResult.failure("MIDI track %d has an invalid tempo event" % track_index)
 
 				var microseconds := (
 					(int(data[cursor]) << 16)
 					| (int(data[cursor + 1]) << 8)
 					| int(data[cursor + 2])
 				)
-				events.append({
-					"tick": tick,
-					"order": order,
-					"track": track_index,
-					"type": "tempo",
-					"microseconds_per_quarter": microseconds,
-				})
+				var event := Event.new()
+				event.tick = tick
+				event.order = order
+				event.track = track_index
+				event.type = "tempo"
+				event.microseconds_per_quarter = microseconds
+				events.append(event)
 				order += 1
 
 			cursor += meta_length.value
@@ -185,7 +214,7 @@ func _parse_track(
 			var sysex_length := _read_variable_length(data, cursor, end)
 
 			if not sysex_length.ok or sysex_length.next + sysex_length.value > end:
-				return {"ok": false, "error": "MIDI track %d has a truncated system event" % track_index}
+				return TrackResult.failure("MIDI track %d has a truncated system event" % track_index)
 
 			cursor = sysex_length.next + sysex_length.value
 			continue
@@ -193,67 +222,72 @@ func _parse_track(
 		var command := status & 0xf0
 
 		if command < 0x80 or command > 0xe0:
-			return {"ok": false, "error": "MIDI track %d has unsupported status 0x%02x" % [track_index, status]}
+			return TrackResult.failure("MIDI track %d has unsupported status 0x%02x" % [track_index, status])
 
 		var data_size := 1 if command == 0xc0 or command == 0xd0 else 2
 		var data_1 := first_data
 
 		if data_1 < 0:
 			if cursor >= end:
-				return {"ok": false, "error": "MIDI track %d has truncated channel data" % track_index}
+				return TrackResult.failure("MIDI track %d has truncated channel data" % track_index)
 
 			data_1 = int(data[cursor])
 			cursor += 1
 
 		if data_1 & 0x80:
-			return {"ok": false, "error": "MIDI track %d has invalid channel data" % track_index}
+			return TrackResult.failure("MIDI track %d has invalid channel data" % track_index)
 
 		var data_2 := 0
 
 		if data_size == 2:
 			if cursor >= end:
-				return {"ok": false, "error": "MIDI track %d has truncated channel data" % track_index}
+				return TrackResult.failure("MIDI track %d has truncated channel data" % track_index)
 
 			data_2 = int(data[cursor])
 			cursor += 1
 
 			if data_2 & 0x80:
-				return {"ok": false, "error": "MIDI track %d has invalid channel data" % track_index}
+				return TrackResult.failure("MIDI track %d has invalid channel data" % track_index)
 
-		var event := {
-			"tick": tick,
-			"order": order,
-			"track": track_index,
-			"channel": status & 0x0f,
-		}
+		var event := Event.new()
+		event.tick = tick
+		event.order = order
+		event.track = track_index
+		event.channel = status & 0x0f
 
 		match command:
 			0x80:
-				event["type"] = "note_off"
-				event["note"] = data_1
-				event["velocity"] = data_2
+				event.type = "note_off"
+				event.note = data_1
+				event.velocity = data_2
 			0x90:
-				event["type"] = "note_off" if data_2 == 0 else "note_on"
-				event["note"] = data_1
-				event["velocity"] = data_2
+				event.type = "note_off" if data_2 == 0 else "note_on"
+				event.note = data_1
+				event.velocity = data_2
 			0xb0:
-				event["type"] = "control_change"
-				event["controller"] = data_1
-				event["value"] = data_2
+				event.type = "control_change"
+				event.controller = data_1
+				event.value = data_2
 			0xc0:
-				event["type"] = "program_change"
-				event["program"] = data_1
+				event.type = "program_change"
+				event.program = data_1
 			0xe0:
-				event["type"] = "pitch_bend"
-				event["value"] = data_1 | (data_2 << 7)
+				event.type = "pitch_bend"
+				event.value = data_1 | (data_2 << 7)
 			_:
-				event.clear()
+				event = null
 
-		if not event.is_empty():
+		if event != null:
 			events.append(event)
 			order += 1
 
-	return {"ok": true, "next_order": order, "end_tick": tick, "error": ""}
+	var result := TrackResult.new()
+	result.ok = true
+	result.next_order = order
+	result.end_tick = tick
+	result.error = ""
+
+	return result
 
 
 func _assign_event_times(maximum_tick: int) -> void:
@@ -267,7 +301,7 @@ func _assign_event_times(maximum_tick: int) -> void:
 			float(tick - previous_tick) * float(tempo)
 			/ float(ticks_per_quarter) / 1000000.0
 		)
-		event["time_seconds"] = seconds
+		event.time_seconds = seconds
 		previous_tick = tick
 
 		if event.type == "tempo":
@@ -279,7 +313,7 @@ func _assign_event_times(maximum_tick: int) -> void:
 	)
 
 
-func _event_precedes(left: Dictionary, right: Dictionary) -> bool:
+func _event_precedes(left: Event, right: Event) -> bool:
 	if int(left.tick) != int(right.tick):
 		return int(left.tick) < int(right.tick)
 
@@ -293,25 +327,49 @@ func _fail(message: String) -> bool:
 	return false
 
 
-static func _read_variable_length(data: PackedByteArray, offset: int, end: int) -> Dictionary:
+static func _read_variable_length(data: PackedByteArray, offset: int, end: int) -> VariableLengthResult:
 	var value := 0
 	var cursor := offset
 
 	for byte_index in 4:
 		if cursor >= end:
-			return {"ok": false, "value": 0, "next": cursor, "error": "truncated value"}
+			var result := VariableLengthResult.new()
+			result.ok = false
+			result.value = 0
+			result.next = cursor
+			result.error = "truncated value"
+
+			return result
 
 		var current := int(data[cursor])
 		cursor += 1
 		value = (value << 7) | (current & 0x7f)
 
 		if current & 0x80 == 0:
-			return {"ok": true, "value": value, "next": cursor, "error": ""}
+			var result := VariableLengthResult.new()
+			result.ok = true
+			result.value = value
+			result.next = cursor
+			result.error = ""
+
+			return result
 
 		if byte_index == 3:
-			return {"ok": false, "value": 0, "next": cursor, "error": "value exceeds four bytes"}
+			var result := VariableLengthResult.new()
+			result.ok = false
+			result.value = 0
+			result.next = cursor
+			result.error = "value exceeds four bytes"
 
-	return {"ok": false, "value": 0, "next": cursor, "error": "invalid value"}
+			return result
+
+	var result := VariableLengthResult.new()
+	result.ok = false
+	result.value = 0
+	result.next = cursor
+	result.error = "invalid value"
+
+	return result
 
 
 static func _read_u16_be(data: PackedByteArray, offset: int) -> int:

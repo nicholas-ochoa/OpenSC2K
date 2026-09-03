@@ -52,7 +52,7 @@ func mark_index(index: int) -> void:
 	step_started = now
 
 
-func finish() -> Dictionary:
+func finish() -> SimulationTiming:
 	if indexed_labels.is_empty():
 		mark("")
 	else:
@@ -61,4 +61,4 @@ func finish() -> Dictionary:
 		for index in indexed_labels.size():
 			steps[indexed_labels[index]] = indexed_totals[index]
 
-	return {"work_usec": now_usec() - started, "steps": steps}
+	return SimulationTiming.new(now_usec() - started, steps)

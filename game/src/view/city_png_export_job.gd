@@ -9,6 +9,15 @@ const ViewFilter = preload("res://src/view/city_view_filter.gd")
 const STAGE_RENDER := "render"
 const STAGE_WRITE := "write"
 
+class Progress extends RefCounted:
+	var stage := ""
+	var fraction := 0.0
+
+
+class Result extends FileWriteResult:
+	var size := Vector2i.ZERO
+
+
 var city_snapshot: CityState
 var palette: Sc2Palette
 var sprites: Sc2SpriteArchive
@@ -40,15 +49,17 @@ func start() -> Error:
 
 
 # return the current stage and its completed fraction. safe from any thread
-func progress() -> Dictionary:
+func progress() -> Progress:
 	_mutex.lock()
-	var result := {"stage": _stage, "fraction": _fraction}
+	var result := Progress.new()
+	result.stage = _stage
+	result.fraction = _fraction
 	_mutex.unlock()
 
 	return result
 
 
-func run() -> Dictionary:
+func run() -> Result:
 	if city_snapshot == null or not city_snapshot.is_valid():
 		return _failure("the city is not valid")
 
@@ -80,7 +91,13 @@ func run() -> Dictionary:
 	if error != OK:
 		return _failure("cannot write %s: %s" % [path, error_string(error)])
 
-	return {"ok": true, "error": "", "path": path, "size": image.get_size()}
+	var result := Result.new()
+	result.ok = true
+	result.error = ""
+	result.path = path
+	result.size = image.get_size()
+
+	return result
 
 
 func _set_render_fraction(value: float) -> void:
@@ -96,5 +113,11 @@ func _set_stage(value: String) -> void:
 	_mutex.unlock()
 
 
-func _failure(message: String) -> Dictionary:
-	return {"ok": false, "error": message, "path": path, "size": Vector2i.ZERO}
+func _failure(message: String) -> Result:
+	var result := Result.new()
+	result.ok = false
+	result.error = message
+	result.path = path
+	result.size = Vector2i.ZERO
+
+	return result

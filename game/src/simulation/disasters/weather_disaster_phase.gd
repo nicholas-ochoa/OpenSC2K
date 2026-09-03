@@ -266,25 +266,23 @@ static func _select_disaster(
 	lfsr_random: SimLfsrRandom,
 	current_point: Vector2i,
 	map_edge: int = 128,
-) -> Dictionary:
+) -> Result:
 	var difficulty := _read_u32(misc, MISC_DIFFICULTY) & 0xffff
 	var difficulty_is_valid := difficulty > 0 and difficulty < DISASTER_WAIT_MONTHS.size()
 	var wait_months := int(DISASTER_WAIT_MONTHS[difficulty]) if difficulty_is_valid else -1
-	var result := {
-		"ok": true,
-		"error": "",
-		"disaster_type": DISASTER_NONE,
-		"disaster_point": current_point,
-		"wait_months": wait_months,
-		"disaster_roll": -1,
-		"candidate_type": DISASTER_NONE,
-	}
+	var result := Result.new()
+	result.ok = true
+	result.disaster_type = DISASTER_NONE
+	result.disaster_point = current_point
+	result.wait_months = wait_months
+	result.disaster_roll = -1
+	result.candidate_type = DISASTER_NONE
 
 	if _read_u32(misc, MISC_NO_DISASTERS) != 0:
 		return result
 
 	if not difficulty_is_valid:
-		return {"ok": false, "error": "city difficulty is out of range"}
+		return _failed("city difficulty is out of range")
 
 	var city_months := int(_read_u32(misc, MISC_CITY_DAYS) / 25)
 

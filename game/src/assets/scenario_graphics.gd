@@ -15,7 +15,7 @@ static func load_manifest(value: Variant, read_png: Callable, palette: Sc2Palett
 	return result
 
 
-static func render(scenario: ScenarioState, palette: Sc2Palette, graphics: ScenarioGraphics = null) -> Dictionary:
+static func render(scenario: ScenarioState, palette: Sc2Palette, graphics: ScenarioGraphics = null) -> ScenarioState.PictureImage:
 	if graphics != null:
 		var picture := scenario.picture_indices()
 		var chunk := scenario.document.find_chunk("PICT")
@@ -25,7 +25,15 @@ static func render(scenario: ScenarioState, palette: Sc2Palette, graphics: Scena
 			var image: Image = graphics.images.get(key)
 
 			if image != null and image.get_size() == Vector2i(picture.width, picture.height):
-				return {"ok": true, "image": image, "width": picture.width, "height": picture.height, "error": "", "replacement": true}
+				var result := ScenarioState.PictureImage.new()
+				result.ok = true
+				result.image = image
+				result.width = picture.width
+				result.height = picture.height
+				result.error = ""
+				result.replacement = true
+
+				return result
 
 	var original := scenario.picture_image(palette)
 	original.replacement = false

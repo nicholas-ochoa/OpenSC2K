@@ -105,7 +105,7 @@ func poll_export() -> void:
 
 		return
 
-	var result: Dictionary = job.thread.wait_to_finish()
+	var result: CityPngExportJob.Result = job.thread.wait_to_finish()
 	job = null
 	app.city_png_export_progress.hide()
 

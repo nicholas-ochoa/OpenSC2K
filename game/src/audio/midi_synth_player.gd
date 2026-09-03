@@ -22,6 +22,19 @@ const PREFILL_FRAMES := int(PREFILL_SECONDS * SAMPLE_RATE)
 const IDLE_POLL_MSEC := 10
 
 
+class PlaybackResult extends RefCounted:
+	var ok := false
+	var error := ""
+	var track_id := -1
+	var duration_seconds := 0.0
+
+	static func failure(message: String) -> PlaybackResult:
+		var result := PlaybackResult.new()
+		result.error = message
+
+		return result
+
+
 class Voice:
 	extends RefCounted
 
@@ -109,21 +122,21 @@ func _exit_tree() -> void:
 		_audio_player.stream = null
 
 
-func play_path(path: String, track_id: int) -> Dictionary:
+func play_path(path: String, track_id: int) -> PlaybackResult:
 	var sequence := MidiFile.load_path(path)
 
 	if not sequence.is_valid():
-		return {"ok": false, "error": sequence.parse_error}
+		return PlaybackResult.failure(sequence.parse_error)
 
 	return play_sequence(sequence, track_id)
 
 
-func play_sequence(sequence: StandardMidiFile, track_id: int) -> Dictionary:
+func play_sequence(sequence: StandardMidiFile, track_id: int) -> PlaybackResult:
 	if sequence == null or not sequence.is_valid():
-		return {"ok": false, "error": "MIDI sequence is not valid"}
+		return PlaybackResult.failure("MIDI sequence is not valid")
 
 	if not is_inside_tree() or _audio_player == null:
-		return {"ok": false, "error": "MIDI player is not ready"}
+		return PlaybackResult.failure("MIDI player is not ready")
 
 	stop()
 	_audio_player.play()
@@ -132,12 +145,12 @@ func play_sequence(sequence: StandardMidiFile, track_id: int) -> Dictionary:
 	if playback == null:
 		stop()
 
-		return {"ok": false, "error": "Godot did not create MIDI audio playback"}
+		return PlaybackResult.failure("Godot did not create MIDI audio playback")
 
 	if not _start_thread():
 		stop()
 
-		return {"ok": false, "error": "Godot did not start the MIDI synthesizer thread"}
+		return PlaybackResult.failure("Godot did not start the MIDI synthesizer thread")
 
 	# the synth thread primes the ring buffer; the main thread never mixes
 	_mutex.lock()
@@ -152,12 +165,13 @@ func play_sequence(sequence: StandardMidiFile, track_id: int) -> Dictionary:
 	_mutex.unlock()
 	_wake.post()
 
-	return {
-		"ok": true,
-		"track_id": track_id,
-		"duration_seconds": sequence.duration_seconds,
-		"error": "",
-	}
+	var result := PlaybackResult.new()
+	result.ok = true
+	result.track_id = track_id
+	result.duration_seconds = sequence.duration_seconds
+	result.error = ""
+
+	return result
 
 
 func stop() -> void:
@@ -577,7 +591,7 @@ func _write_output(frame_count: int) -> void:
 
 func _apply_due_events() -> void:
 	while _event_cursor < _sequence.events.size():
-		var event: Dictionary = _sequence.events[_event_cursor]
+		var event: StandardMidiFile.Event = _sequence.events[_event_cursor]
 
 		if float(event.time_seconds) > _position_seconds + 0.000001:
 			break
@@ -586,13 +600,13 @@ func _apply_due_events() -> void:
 		_event_cursor += 1
 
 
-func _apply_event(event: Dictionary) -> void:
-	var event_type := String(event.get("type", ""))
+func _apply_event(event: StandardMidiFile.Event) -> void:
+	var event_type := event.type
 
 	if event_type == "tempo":
 		return
 
-	var channel := clampi(int(event.get("channel", 0)), 0, 15)
+	var channel := clampi(event.channel, 0, 15)
 
 	match event_type:
 		"note_on":

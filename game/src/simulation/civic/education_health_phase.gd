@@ -377,7 +377,7 @@ static func _remove_population(
 	amount: int,
 	city_population: int,
 	random: SimRandom
-) -> Dictionary:
+) -> Result:
 	var remaining := amount
 	var pass_count := 0
 
@@ -411,9 +411,13 @@ static func _remove_population(
 		pass_count += 1
 
 		if pass_count > 100000:
-			return {"ok": false, "error": "demographic removal did not converge"}
+			return _failed("demographic removal did not converge")
 
-	return {"ok": true, "error": ""}
+	var result := Result.new()
+	result.ok = true
+	result.error = ""
+
+	return result
 
 
 static func _tile_count(city: CityState, tile_id: int) -> int:

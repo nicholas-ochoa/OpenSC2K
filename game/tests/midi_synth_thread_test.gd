@@ -73,10 +73,21 @@ func _short_sequence() -> StandardMidiFile:
 	sequence.format_type = 1
 	sequence.track_count = 1
 	sequence.ticks_per_quarter = 192
-	sequence.events.assign([
-		{"type": "note_on", "channel": 0, "note": 60, "velocity": 100, "time_seconds": 0.0},
-		{"type": "note_off", "channel": 0, "note": 60, "velocity": 0, "time_seconds": 0.08},
-	])
+	var event_0 := StandardMidiFile.Event.new()
+	event_0.type = "note_on"
+	event_0.channel = 0
+	event_0.note = 60
+	event_0.velocity = 100
+	event_0.time_seconds = 0.0
+
+	var event_1 := StandardMidiFile.Event.new()
+	event_1.type = "note_off"
+	event_1.channel = 0
+	event_1.note = 60
+	event_1.velocity = 0
+	event_1.time_seconds = 0.08
+
+	sequence.events.assign([event_0, event_1])
 	sequence.duration_seconds = 0.1
 
 	return sequence

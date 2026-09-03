@@ -48,7 +48,7 @@ func _init() -> void:
 					check(engine.advance_disaster_tick().ok, "map disaster tick")
 
 			if engine.active_disaster_type != 0 or engine.pending_disaster_type != 0 or DisasterStartObjectsState.has_active_object(city, disaster):
-				check(CityDebugActions.end_disaster(city, document, engine).get("ok", false), "clear disaster %d" % edge)
+				check(CityDebugActions.end_disaster(city, document, engine).ok, "clear disaster %d" % edge)
 
 			check(not DisasterStartObjectsState.has_active_object(city, disaster), "objects cleared")
 
@@ -151,7 +151,7 @@ func check_far_services_and_year(edge: int) -> void:
 	document.find_chunk("XMIC").set_decoded_payload(microsims)
 	city.set_text_overlay_id(origin.x, origin.y, OverlayData.facility_id(record))
 	check(MicrosimAnnualPhase._find_microsim_location(city.text_overlays, record, edge)
-		== {"x": origin.x, "y": origin.y}, "annual facility lookup finds far extended record")
+		== origin, "annual facility lookup finds far extended record")
 	city.set_auto_budget_enabled(true)
 	city.set_no_disasters_enabled(true)
 	city.set_age_in_days(274)

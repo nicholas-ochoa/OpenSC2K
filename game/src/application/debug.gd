@@ -9,6 +9,15 @@ const Random = preload("res://src/simulation/random/sim_random.gd")
 const DisasterStart = preload("res://src/simulation/disasters/disaster_start_phase.gd")
 const DebugActions = preload("res://src/debug/city_debug_actions.gd")
 
+class ActionResult extends RefCounted:
+	var ok := false
+	var message := ""
+
+	func _init(succeeded: bool, text: String) -> void:
+		ok = succeeded
+		message = text
+
+
 var app: CityApplication
 
 
@@ -93,89 +102,83 @@ func debug_clear_render_caches() -> void:
 	debug_full_redraw()
 
 
-func debug_add_funds(amount: int) -> Dictionary:
+func debug_add_funds(amount: int) -> ActionResult:
 	var result := DebugActions.add_funds(app.document_state.city, amount)
 
 	if not result.ok:
-		return {"ok": false, "message": result.error}
+		return ActionResult.new(false, result.error)
 
 	app.interface.refresh_details()
 
-	return {
-		"ok": true,
-		"message": "Added $%s. Funds are now $%s."
-		% [app.interface.format_number(amount), app.interface.format_number(int(result.new_funds))],
-	}
+	return ActionResult.new(
+		true,
+		"Added $%s. Funds are now $%s."
+		% [app.interface.format_number(amount), app.interface.format_number(int(result.new_funds))]
+	)
 
 
-func debug_unlock_everything() -> Dictionary:
+func debug_unlock_everything() -> ActionResult:
 	var result := DebugActions.unlock_everything(app.document_state.city, app.document_state.current_document)
 
 	if not result.ok:
-		return {"ok": false, "message": result.error}
+		return ActionResult.new(false, result.error)
 
 	app.camera_input.refresh_child_tool_icons()
 	app.current_tool.refresh_tool_availability()
 	app.current_tool.update_edit_state()
 	app.interface.refresh_details()
 
-	return {
-		"ok": true,
-		"message": "Unlocked all inventions, rewards, arcologies, and power plants.",
-	}
+	return ActionResult.new(true, "Unlocked all inventions, rewards, arcologies, and power plants.")
 
 
-func debug_set_no_disasters(enabled: bool) -> Dictionary:
+func debug_set_no_disasters(enabled: bool) -> ActionResult:
 	var result := DebugActions.set_no_disasters(app.document_state.city, enabled)
 
 	if not result.ok:
-		return {"ok": false, "message": result.error}
+		return ActionResult.new(false, result.error)
 
 	app.menus.sync_city_option_menus()
 	app.interface.refresh_details()
 
-	return {
-		"ok": true,
-		"message": "Random disasters are %s." % ("disabled" if enabled else "enabled"),
-	}
+	return ActionResult.new(true, "Random disasters are %s." % ("disabled" if enabled else "enabled"))
 
 
-func debug_set_detailed_timing(enabled: bool) -> Dictionary:
+func debug_set_detailed_timing(enabled: bool) -> ActionResult:
 	SimulationTimingSpan.detailed = enabled
 
-	return {
-		"ok": true,
-		"message": "Detailed per-tile timing is %s. It is measured work, so it also slows the phases it reports." % (
+	return ActionResult.new(
+		true,
+		"Detailed per-tile timing is %s. It is measured work, so it also slows the phases it reports." % (
 			"on" if enabled else "off"
-		),
-	}
+		)
+	)
 
 
-func debug_start_disaster(disaster_type: int) -> Dictionary:
+func debug_start_disaster(disaster_type: int) -> ActionResult:
 	if disaster_type < DisasterStart.DISASTER_FIRE or disaster_type > DisasterStart.DISASTER_PLANE_CRASH:
-		return {"ok": false, "message": "The disaster selection is not valid."}
+		return ActionResult.new(false, "The disaster selection is not valid.")
 
 	var result := app.reports.start_disaster_at_view_center(disaster_type)
 
 	if not result.ok:
-		return {
-			"ok": false,
-			"message": "The %s could not start: %s"
-			% [CityMenuBar.disaster_name(disaster_type), result.error],
-		}
+		return ActionResult.new(
+			false,
+			"The %s could not start: %s"
+			% [CityMenuBar.disaster_name(disaster_type), result.error]
+		)
 
-	return {
-		"ok": true,
-		"message": "%s started at the current view center."
-		% CityMenuBar.disaster_name(disaster_type),
-	}
+	return ActionResult.new(
+		true,
+		"%s started at the current view center."
+		% CityMenuBar.disaster_name(disaster_type)
+	)
 
 
-func debug_end_disaster() -> Dictionary:
+func debug_end_disaster() -> ActionResult:
 	var result := DebugActions.end_disaster(app.document_state.city, app.document_state.current_document, app.simulation_state.simulation_engine)
 
 	if not result.ok:
-		return {"ok": false, "message": result.error}
+		return ActionResult.new(false, result.error)
 
 	app.tool_state.last_edit_command = null
 	app.simulation_state.simulation_map_dirty = false
@@ -183,9 +186,9 @@ func debug_end_disaster() -> Dictionary:
 	app.moving_sprites.refresh_moving_things()
 	app.interface.refresh_details()
 
-	return {
-		"ok": true,
-		"message": "Ended %s and cleared %d marker(s) and %d object(s)."
+	return ActionResult.new(
+		true,
+		"Ended %s and cleared %d marker(s) and %d object(s)."
 		% [
 			(
 				CityMenuBar.disaster_name(int(result.active_type))
@@ -194,24 +197,24 @@ func debug_end_disaster() -> Dictionary:
 			),
 			int(result.cleared_markers),
 			int(result.cleared_objects),
-		],
-	}
+		]
+	)
 
 
-func debug_dispatch_maxis_man() -> Dictionary:
+func debug_dispatch_maxis_man() -> ActionResult:
 	var center := app.map_view.center_tile() if app.map_view != null else Vector2i(64, 64)
 	var result := DebugActions.dispatch_maxis_man(app.document_state.city, app.document_state.current_document, center)
 
 	if not result.ok:
-		return {"ok": false, "message": result.error}
+		return ActionResult.new(false, result.error)
 
 	app.moving_sprites.refresh_moving_things()
 
-	return {
-		"ok": true,
-		"message": "Maxis Man was dispatched from %s toward %s."
-		% [str(result.start), str(result.target)],
-	}
+	return ActionResult.new(
+		true,
+		"Maxis Man was dispatched from %s toward %s."
+		% [str(result.start), str(result.target)]
+	)
 
 
 func debug_set_visible_altitude_levels(levels: int) -> void:

@@ -22,7 +22,7 @@ var commerce_connections := 0
 var industry_connections := 0
 var traffic_news_deadline_msec := 0
 var pending_interaction := ""
-var pending_day_schedule: Dictionary = {}
+var pending_day_schedule: SimulationSchedule
 var scenario: ScenarioState
 var terminal_state := false
 var bus_passengers := 0
@@ -130,7 +130,7 @@ func advance_day() -> SimulationDayResult:
 
 	if result.ok:
 		var measured := span.finish()
-		var scheduled: Dictionary = result.timing
+		var scheduled := result.timing
 		measured.steps = scheduled.steps
 		measured.steps["day setup and events"] = maxi(0, int(measured.work_usec) - int(scheduled.work_usec))
 		result.timing = measured
@@ -186,7 +186,7 @@ func resolve_annual_budget(funding_values: PackedInt32Array, auto_budget: bool) 
 
 	if result.ok:
 		var measured := span.finish()
-		var scheduled: Dictionary = result.timing
+		var scheduled := result.timing
 		measured.steps = scheduled.steps
 		measured.steps["day setup and events"] = maxi(0, int(measured.work_usec) - int(scheduled.work_usec))
 		result.timing = measured
@@ -195,7 +195,7 @@ func resolve_annual_budget(funding_values: PackedInt32Array, auto_budget: bool) 
 
 
 func _timed_resolve_annual_budget(funding_values: PackedInt32Array, auto_budget: bool) -> SimulationDayResult:
-	if pending_interaction != "annual_budget" or pending_day_schedule.is_empty():
+	if pending_interaction != "annual_budget" or pending_day_schedule == null:
 		return SimulationDayResult.failure("no annual budget interaction is pending")
 
 	var stored := BudgetPhase.set_funding(city, funding_values, auto_budget)
@@ -207,7 +207,7 @@ func _timed_resolve_annual_budget(funding_values: PackedInt32Array, auto_budget:
 
 	if result.ok:
 		pending_interaction = ""
-		pending_day_schedule = {}
+		pending_day_schedule = null
 
 	return _append_pending_disaster(result)
 
@@ -218,7 +218,7 @@ func resolve_military_proposal(accepted: bool) -> SimulationDayResult:
 
 	if result.ok:
 		var measured := span.finish()
-		var scheduled: Dictionary = result.timing
+		var scheduled := result.timing
 		measured.steps = scheduled.steps
 		measured.steps["day setup and events"] = maxi(0, int(measured.work_usec) - int(scheduled.work_usec))
 		result.timing = measured
@@ -227,7 +227,7 @@ func resolve_military_proposal(accepted: bool) -> SimulationDayResult:
 
 
 func _timed_resolve_military_proposal(accepted: bool) -> SimulationDayResult:
-	if pending_interaction != "military_proposal" or pending_day_schedule.is_empty():
+	if pending_interaction != "military_proposal" or pending_day_schedule == null:
 		return SimulationDayResult.failure("no military proposal interaction is pending")
 
 	var proposal := MilitaryProposalPhase.resolve(city, accepted, game_random)
@@ -235,10 +235,10 @@ func _timed_resolve_military_proposal(accepted: bool) -> SimulationDayResult:
 	if not proposal.ok:
 		return SimulationDayResult.failure(proposal.error)
 
-	var original_schedule: Dictionary = pending_day_schedule
+	var original_schedule: SimulationSchedule = pending_day_schedule
 	var remaining_schedule := _schedule_after(original_schedule, "milestones")
 	pending_interaction = ""
-	pending_day_schedule = {}
+	pending_day_schedule = null
 	var result := _run_day_schedule(remaining_schedule, false)
 
 	if not result.ok:
@@ -258,7 +258,7 @@ func _timed_resolve_military_proposal(accepted: bool) -> SimulationDayResult:
 	return _append_pending_disaster(result)
 
 
-func advance_disaster_tick() -> DisasterMapScanDispatch.Result:
+func advance_disaster_tick() -> DisasterMapResult:
 	var span := SimulationTimingSpan.new(city.simulation_slice)
 	var result := _timed_advance_disaster_tick()
 	result.timing = span.finish()
@@ -266,9 +266,9 @@ func advance_disaster_tick() -> DisasterMapScanDispatch.Result:
 	return result
 
 
-func _timed_advance_disaster_tick() -> DisasterMapScanDispatch.Result:
+func _timed_advance_disaster_tick() -> DisasterMapResult:
 	if active_disaster_type == 0:
-		return DisasterMapScanDispatch.failed("no disaster is active")
+		return DisasterMapResult.failure("no disaster is active")
 
 	var phase_result := DisasterMapScanDispatch.run_all(
 		city, random, lfsr_random, disaster_map_counter, disaster_hurricane_counter
@@ -280,7 +280,7 @@ func _timed_advance_disaster_tick() -> DisasterMapScanDispatch.Result:
 	var queue_update := _persist_news_result(phase_result)
 
 	if not queue_update.ok:
-		return DisasterMapScanDispatch.failed(queue_update.error)
+		return DisasterMapResult.failure(queue_update.error)
 
 	disaster_map_counter = phase_result.map_counter
 	disaster_hurricane_counter = phase_result.hurricane_counter
@@ -296,7 +296,7 @@ func _timed_advance_disaster_tick() -> DisasterMapScanDispatch.Result:
 		disaster_hurricane_counter = 0
 
 		if not city.document.set_misc_u32(0x0004, 1):
-			return DisasterMapScanDispatch.failed("cannot restore city mode after the disaster")
+			return DisasterMapResult.failure("cannot restore city mode after the disaster")
 
 	phase_result.active = still_active
 	phase_result.disaster_type = active_disaster_type if still_active else ended_type
@@ -382,7 +382,7 @@ static func _rotate_runtime_point(point: Vector2i, counter_clockwise: bool, map_
 	return Vector2i(map_edge - 1 - point.y, point.x)
 
 
-func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> SimulationDayResult:
+func _run_day_schedule(schedule: SimulationSchedule, annual_budget_approved: bool) -> SimulationDayResult:
 	var span := SimulationTimingSpan.new(city.simulation_slice)
 	var result := _execute_day_schedule(schedule, annual_budget_approved, span)
 	result.timing = span.finish()
@@ -390,11 +390,11 @@ func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Si
 	return result
 
 
-func _execute_day_schedule(schedule: Dictionary, annual_budget_approved: bool, span: SimulationTimingSpan) -> SimulationDayResult:
+func _execute_day_schedule(schedule: SimulationSchedule, annual_budget_approved: bool, span: SimulationTimingSpan) -> SimulationDayResult:
 	return SimulationDaySchedule._execute_day_schedule(self, schedule, annual_budget_approved, span)
 
 
-func _schedule_after(schedule: Dictionary, completed_action: String) -> Dictionary:
+func _schedule_after(schedule: SimulationSchedule, completed_action: String) -> SimulationSchedule:
 	return SimulationDaySchedule._schedule_after(self, schedule, completed_action)
 
 

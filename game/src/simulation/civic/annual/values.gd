@@ -21,9 +21,9 @@ static func _raw_population(misc: PackedByteArray, cohort: int) -> int:
 	return _read_u32(misc, MISC_RAW_POPULATION + cohort * MISC_DEMOGRAPHIC_RECORD_SIZE)
 
 
-static func _find_microsim_location(text_overlays: PackedByteArray, record_id: int, map_edge: int = 128, budget: SimulationSliceBudget = null) -> Dictionary:
+static func _find_microsim_location(text_overlays: PackedByteArray, record_id: int, map_edge: int = 128, budget: SimulationSliceBudget = null) -> Vector2i:
 	if OverlayData.count(text_overlays) != map_edge * map_edge:
-		return {}
+		return Vector2i(-1, -1)
 
 	var text_id := OverlayData.facility_id(record_id)
 
@@ -34,11 +34,11 @@ static func _find_microsim_location(text_overlays: PackedByteArray, record_id: i
 		for y in map_edge:
 			if int(OverlayData.read(text_overlays, x * map_edge + y)) == text_id:
 				if x == 0 and y == 0:
-					return {}
+					return Vector2i(-1, -1)
 
-				return {"x": x, "y": y}
+				return Vector2i(x, y)
 
-	return {}
+	return Vector2i(-1, -1)
 
 
 static func _arcology_count(misc: PackedByteArray, map_edge: int = 128) -> int:

@@ -103,7 +103,7 @@ static func totals(
 	crime_total: int,
 	developed_tiles: int,
 	city_center: Vector2i,
-	timing: Dictionary = {}
+	timing: SimulationTiming = null
 ) -> Result:
 	var result := Result.new()
 	result.ok = true
@@ -112,7 +112,7 @@ static func totals(
 	result.crime_total = crime_total
 	result.developed_tiles = developed_tiles
 	result.city_center = city_center
-	result.timing = timing
+	result.timing = timing if timing != null else SimulationTiming.new()
 
 	return result
 

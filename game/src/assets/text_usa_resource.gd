@@ -4,9 +4,15 @@ extends RefCounted
 const INDEX_RECORD_SIZE := 8
 
 
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+	var strings: Dictionary[int, String] = {}
+
+
 static func load_ids(
 	data_path: String, index_path: String, resource_ids: PackedInt32Array
-) -> Dictionary:
+) -> Result:
 	var wanted: Dictionary[int, bool] = {}
 	var result: Dictionary[int, String] = {}
 
@@ -17,7 +23,12 @@ static func load_ids(
 		wanted[resource_id] = true
 
 	if wanted.is_empty():
-		return {"ok": true, "strings": result, "error": ""}
+		var outcome := Result.new()
+		outcome.ok = true
+		outcome.strings = result
+		outcome.error = ""
+
+		return outcome
 
 	var data := FileAccess.get_file_as_bytes(data_path)
 
@@ -66,7 +77,12 @@ static func load_ids(
 	if result.size() != wanted.size():
 		return _failure("one or more requested text resources are missing")
 
-	return {"ok": true, "strings": result, "error": ""}
+	var outcome := Result.new()
+	outcome.ok = true
+	outcome.strings = result
+	outcome.error = ""
+
+	return outcome
 
 
 static func _read_u32(bytes: PackedByteArray, offset: int) -> int:
@@ -78,5 +94,9 @@ static func _read_u32(bytes: PackedByteArray, offset: int) -> int:
 	)
 
 
-static func _failure(message: String) -> Dictionary:
-	return {"ok": false, "error": message}
+static func _failure(message: String) -> Result:
+	var outcome := Result.new()
+	outcome.ok = false
+	outcome.error = message
+
+	return outcome

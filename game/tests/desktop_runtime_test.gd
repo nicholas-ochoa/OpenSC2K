@@ -50,7 +50,7 @@ func _run() -> void:
 			var route := desktop.cursor_selection(map, width)
 
 			for graphics in [original, alternate]:
-				assert(not graphics.cursor(route.app, route.group).is_empty())
+				assert(graphics.cursor(route.app, route.group) != null)
 
 		map.zoom_factor = 0.25
 		var small := desktop.cursor_selection(map, 1024)
@@ -139,7 +139,7 @@ func _run() -> void:
 
 	# Every encoded mask byte retains the original operation, including inversion.
 	for id in [1, 2]:
-		var masked: Dictionary = original.cursors.scurk[id].masked
+		var masked: PeIconCursorResource.DecodedImage = original.cursors.scurk[id].masked
 		var encoded := DesktopCursorPresenter.mask_image(masked)
 
 		for at in 1024:
@@ -182,6 +182,6 @@ func _alternate_graphics() -> DesktopGraphics:
 				if kind == "icons":
 					result.icons[app][id] = image
 				else:
-					result.cursors[app][id] = {"image": image, "hotspot": Vector2i.ZERO}
+					result.cursors[app][id] = DesktopGraphics.Cursor.new(image, Vector2i.ZERO)
 
 	return result

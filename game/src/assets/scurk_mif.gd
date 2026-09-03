@@ -6,10 +6,34 @@ const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const INFO_LENGTH := 0x72
 const FILE_HEADER_LENGTH := 12
 
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+
+	static func failure(message: String) -> Result:
+		var result := Result.new()
+		result.error = message
+
+		return result
+
+
+class Piece extends RefCounted:
+	var tag := ""
+	var sprite_id := -1
+	var raw_payload := PackedByteArray()
+	var entry: Sc2SpriteArchive.SpriteEntry
+
+	func _init(kind: String, id: int, payload: PackedByteArray, sprite: Sc2SpriteArchive.SpriteEntry = null) -> void:
+		tag = kind
+		sprite_id = id
+		raw_payload = payload
+		entry = sprite
+
+
 var info_payload := PackedByteArray()
 var shapes: Array[Sc2SpriteArchive.SpriteEntry] = []
 var names: Dictionary[int, String] = {}
-var piece_records: Array[Dictionary] = []
+var piece_records: Array[Piece] = []
 var archive: Sc2SpriteArchive = Sc2SpriteArchive.new()
 var overrides: Sc2SpriteArchive = Sc2SpriteArchive.new()
 var piece_count := 0
@@ -143,37 +167,25 @@ func is_valid() -> bool:
 	return parse_error.is_empty()
 
 
-func to_bytes() -> Dictionary:
+func to_bytes() -> AssetBytesResult:
 	if not is_valid():
-		return {"ok": false, "bytes": PackedByteArray(), "error": parse_error}
+		return AssetBytesResult.failure(parse_error)
 
 	if info_payload.size() != INFO_LENGTH:
-		return {
-			"ok": false,
-			"bytes": PackedByteArray(),
-			"error": "INFO payload length is not 0x72",
-		}
+		return AssetBytesResult.failure("INFO payload length is not 0x72")
 
 	if piece_records.size() > 0xffff:
-		return {
-			"ok": false,
-			"bytes": PackedByteArray(),
-			"error": "TILE piece count is too large",
-		}
+		return AssetBytesResult.failure("TILE piece count is too large")
 
 	var tile_payload := PackedByteArray()
 	_append_u16_be(tile_payload, piece_records.size())
 
 	for piece in piece_records:
-		var tag := str(piece.get("tag", ""))
-		var payload: PackedByteArray = piece.get("raw_payload", PackedByteArray())
+		var tag := str(piece.tag)
+		var payload: PackedByteArray = piece.raw_payload
 
 		if tag.length() != 4:
-			return {
-				"ok": false,
-				"bytes": PackedByteArray(),
-				"error": "TILE piece has an invalid tag",
-			}
+			return AssetBytesResult.failure("TILE piece has an invalid tag")
 
 		tile_payload.append_array(tag.to_ascii_buffer())
 		_append_u32_be(tile_payload, payload.size())
@@ -191,41 +203,47 @@ func to_bytes() -> Dictionary:
 	bytes.append_array(tile_payload)
 	_write_u32_be(bytes, 4, bytes.size() - 8)
 
-	return {"ok": true, "bytes": bytes, "error": ""}
+	var result := AssetBytesResult.new()
+	result.ok = true
+	result.bytes = bytes
+	result.error = ""
+
+	return result
 
 
-func save_path(path: String) -> Dictionary:
+func save_path(path: String) -> Result:
 	var encoded := to_bytes()
 
 	if not encoded.ok:
-		return {"ok": false, "error": encoded.error}
+		return Result.failure(encoded.error)
 
 	var file := FileAccess.open(path, FileAccess.WRITE)
 
 	if file == null:
-		return {
-			"ok": false,
-			"error": "cannot open SCURK tile set for writing: %s" % path,
-		}
+		return Result.failure("cannot open SCURK tile set for writing: %s" % path)
 
 	file.store_buffer(encoded.bytes)
 	var error := file.get_error()
 	file.close()
 
 	if error != OK:
-		return {"ok": false, "error": "cannot write SCURK tile set: %s" % error_string(error)}
+		return Result.failure("cannot write SCURK tile set: %s" % error_string(error))
 
-	return {"ok": true, "error": ""}
+	var result := Result.new()
+	result.ok = true
+	result.error = ""
+
+	return result
 
 
-func set_name(sprite_id: int, value: String) -> Dictionary:
+func set_name(sprite_id: int, value: String) -> Result:
 	if sprite_id < 0 or sprite_id > 0xffff:
-		return {"ok": false, "error": "NAME sprite ID is outside the 16-bit range"}
+		return Result.failure("NAME sprite ID is outside the 16-bit range")
 
 	var name_bytes := value.to_ascii_buffer()
 
 	if name_bytes.size() + 1 > 0xffff:
-		return {"ok": false, "error": "NAME text is too long"}
+		return Result.failure("NAME text is too long")
 
 	name_bytes.append(0)
 	var payload := PackedByteArray()
@@ -235,30 +253,30 @@ func set_name(sprite_id: int, value: String) -> Dictionary:
 	var record_index := _last_piece_index("NAME", sprite_id)
 
 	if record_index < 0:
-		piece_records.append({
-			"tag": "NAME",
-			"sprite_id": sprite_id,
-			"raw_payload": payload,
-		})
+		piece_records.append(Piece.new("NAME", sprite_id, payload))
 	else:
 		piece_records[record_index].raw_payload = payload
 
 	names[sprite_id] = value
 	piece_count = piece_records.size()
 
-	return {"ok": true, "error": ""}
+	var result := Result.new()
+	result.ok = true
+	result.error = ""
+
+	return result
 
 
-func remove_name(sprite_id: int) -> Dictionary:
+func remove_name(sprite_id: int) -> Result:
 	if sprite_id < 0 or sprite_id > 0xffff:
-		return {"ok": false, "error": "NAME sprite ID is outside the 16-bit range"}
+		return Result.failure("NAME sprite ID is outside the 16-bit range")
 
-	var kept_records: Array[Dictionary] = []
+	var kept_records: Array[Piece] = []
 
 	for piece in piece_records:
 		if (
-			piece.get("tag", "") == "NAME"
-			and int(piece.get("sprite_id", -1)) == sprite_id
+			piece.tag == "NAME"
+			and int(piece.sprite_id) == sprite_id
 		):
 			continue
 
@@ -268,35 +286,39 @@ func remove_name(sprite_id: int) -> Dictionary:
 	names.erase(sprite_id)
 	piece_count = piece_records.size()
 
-	return {"ok": true, "error": ""}
+	var result := Result.new()
+	result.ok = true
+	result.error = ""
+
+	return result
 
 
 func set_shape_indices(
 	sprite_id: int, width: int, height: int, pixels: PackedInt32Array
-) -> Dictionary:
+) -> Result:
 	return _set_shape_indices(sprite_id, width, height, pixels, true)
 
 
 func _set_shape_indices(
 	sprite_id: int, width: int, height: int, pixels: PackedInt32Array, rebuild_archives: bool
-) -> Dictionary:
+) -> Result:
 	if sprite_id < 0 or sprite_id > 0xffff:
-		return {"ok": false, "error": "SHAP sprite ID is outside the 16-bit range"}
+		return Result.failure("SHAP sprite ID is outside the 16-bit range")
 
 	if width <= 0 or height <= 0 or width > 255 or height > 0xffff:
-		return {"ok": false, "error": "SHAP dimensions are invalid"}
+		return Result.failure("SHAP dimensions are invalid")
 
 	if pixels.size() != width * height:
-		return {"ok": false, "error": "SHAP pixel count does not match its dimensions"}
+		return Result.failure("SHAP pixel count does not match its dimensions")
 
 	for pixel in pixels:
 		if pixel < -1 or pixel > 0xff:
-			return {"ok": false, "error": "SHAP palette index is invalid"}
+			return Result.failure("SHAP palette index is invalid")
 
 	var pixel_data := _encode_pixels(width, height, pixels)
 
 	if pixel_data.is_empty():
-		return {"ok": false, "error": "SHAP pixels cannot be encoded"}
+		return Result.failure("SHAP pixels cannot be encoded")
 
 	var payload := PackedByteArray()
 	_append_u16_be(payload, sprite_id)
@@ -313,12 +335,7 @@ func _set_shape_indices(
 		entry.sprite_id = sprite_id
 		entry.duplicate_index = 0
 		shapes.append(entry)
-		piece_records.append({
-			"tag": "SHAP",
-			"sprite_id": sprite_id,
-			"entry": entry,
-			"raw_payload": payload,
-		})
+		piece_records.append(Piece.new("SHAP", sprite_id, payload, entry))
 	else:
 		entry = piece_records[record_index].entry as Sc2SpriteArchive.SpriteEntry
 		piece_records[record_index].raw_payload = payload
@@ -334,7 +351,11 @@ func _set_shape_indices(
 
 	piece_count = piece_records.size()
 
-	return {"ok": true, "error": ""}
+	var result := Result.new()
+	result.ok = true
+	result.error = ""
+
+	return result
 
 
 func _parse_shape(
@@ -381,12 +402,7 @@ func _parse_shape(
 			overrides.entries_by_id[entry.sprite_id] = entry
 			break
 
-	piece_records.append({
-		"tag": "SHAP",
-		"sprite_id": entry.sprite_id,
-		"entry": entry,
-		"raw_payload": bytes.slice(payload_start, payload_end),
-	})
+	piece_records.append(Piece.new("SHAP", entry.sprite_id, bytes.slice(payload_start, payload_end), entry))
 
 	return true
 
@@ -407,11 +423,7 @@ func _parse_name(bytes: PackedByteArray, payload_start: int, payload_end: int) -
 		name_bytes.resize(name_bytes.size() - 1)
 
 	names[sprite_id] = name_bytes.get_string_from_ascii()
-	piece_records.append({
-		"tag": "NAME",
-		"sprite_id": sprite_id,
-		"raw_payload": bytes.slice(payload_start, payload_end),
-	})
+	piece_records.append(Piece.new("NAME", sprite_id, bytes.slice(payload_start, payload_end)))
 
 	return true
 
@@ -471,9 +483,9 @@ static func _read_u32_be(bytes: PackedByteArray, offset: int) -> int:
 
 func _last_piece_index(tag: String, sprite_id: int) -> int:
 	for index in range(piece_records.size() - 1, -1, -1):
-		var piece: Dictionary = piece_records[index]
+		var piece: Piece = piece_records[index]
 
-		if piece.get("tag", "") == tag and int(piece.get("sprite_id", -1)) == sprite_id:
+		if piece.tag == tag and int(piece.sprite_id) == sprite_id:
 			return index
 
 	return -1

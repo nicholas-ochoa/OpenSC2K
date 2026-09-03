@@ -258,7 +258,7 @@ static func update_tornado(
 			flags, text, labels, microsims, misc, current, random, true, true, false
 		)
 
-		if demolition.get("changed", false):
+		if demolition.changed:
 			counters.tornado_demolitions += 1
 
 	var first_direction: int = (

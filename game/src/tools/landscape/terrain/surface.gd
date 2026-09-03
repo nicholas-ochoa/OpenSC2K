@@ -51,7 +51,7 @@ static func _clear_terrain_conflicts(
 			if random == null:
 				return {"ok": false}
 
-			var demolished: Dictionary = DemolishStructures._demolish_point(
+			var demolished: DemolishPointResult = DemolishStructures._demolish_point(
 				city,
 				altitude,
 				buildings,
@@ -71,11 +71,11 @@ static func _clear_terrain_conflicts(
 			)
 			random_used = true
 
-			for changed_index in demolished.get("indices", PackedInt32Array()):
+			for changed_index in demolished.indices:
 				if not changed_indices.has(changed_index):
 					changed_indices.append(changed_index)
 
-			var effects: Array = demolished.get("effect_events", [])
+			var effects: Array = demolished.effect_events
 			next_effect_frame = _append_effect_sequence(
 				effect_events, effects, next_effect_frame
 			)

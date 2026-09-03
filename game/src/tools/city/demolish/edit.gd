@@ -114,17 +114,17 @@ static func apply_path(
 			)
 		)
 
-		if result.get("specialized", false):
+		if result.specialized:
 			skipped_specialized += 1
 			continue
 
-		if not result.get("changed", false):
+		if not result.changed:
 			continue
 
 		action_count += 1
 		total_cost += cost_per_action
 
-		if result.get("easter_event", false):
+		if result.easter_event:
 			easter_events += 1
 			var news_result := NewsQueue.insert(misc, NEWS_FOREST_PROTEST, 0)
 
@@ -136,7 +136,7 @@ static func apply_path(
 			news_items.append({"type": NEWS_FOREST_PROTEST, "argument": 0})
 			sound_events.append(SOUND_FOREST_PROTEST)
 
-		var result_effects: Array = result.get("effect_events", [])
+		var result_effects: Array = result.effect_events
 		var effect_offset := DemolishEffectsSites.parallel_effect_offset(
 			point, action_count - 1, random_state_before
 		)
@@ -145,7 +145,7 @@ static func apply_path(
 		if not result_effects.is_empty() and not sound_events.has(SOUND_EXPLODE):
 			sound_events.append(SOUND_EXPLODE)
 
-		for index in result.get("indices", PackedInt32Array()):
+		for index in result.indices:
 			if not changed_indices.has(index):
 				changed_indices.append(index)
 

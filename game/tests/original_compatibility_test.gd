@@ -3,8 +3,8 @@ extends SceneTree
 class RecordingEngine extends SimulationEngine:
 
 
-	func advance_disaster_tick() -> DisasterMapScanDispatch.Result:
-		var result := DisasterMapScanDispatch.Result.new()
+	func advance_disaster_tick() -> DisasterMapResult:
+		var result := DisasterMapResult.new()
 		result.ok = true
 
 		return result

@@ -39,7 +39,7 @@ static func update_power(annual: MicrosimAnnualContext, record_id: int, offset: 
 		annual.span.mark("expired plant search and demolition")
 		var location := _find_microsim_location(annual.changed_payloads.XTXT, record_id, annual.map_edge, annual.city.simulation_slice)
 
-		if not location.is_empty():
+		if location.x >= 0:
 			var plant_cost: int = POWER_PLANT_COSTS.get(power_tile, 0)
 			var funds := _read_i32(annual.misc, MISC_FUNDS)
 
@@ -57,10 +57,10 @@ static func update_power(annual: MicrosimAnnualContext, record_id: int, offset: 
 					annual.city, annual.changed_payloads, Vector2i(location.x, location.y), annual.random, true
 				)
 
-				if demolition.get("changed", false):
+				if demolition.changed:
 					annual.next_effect_frame = DemolishEffectsSites.append_effect_sequence(
 						annual.effect_events,
-						demolition.get("effect_events", []),
+						demolition.effect_events,
 						annual.next_effect_frame
 					)
 					annual.demolished_power_records.append(expired_record)

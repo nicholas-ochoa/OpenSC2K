@@ -9,7 +9,7 @@ var completed_ticks := 0
 var cancelled_ticks := 0
 var snapshot_usec := 0
 var publish_usec := 0
-var last_work_metrics := {}
+var last_work_metrics: SimulationSliceBudget.Metrics
 var _thread: Thread
 var _budget: SimulationSliceBudget
 var _working: GameSpeedController
@@ -116,9 +116,11 @@ func is_pending() -> bool:
 	return _thread != null
 
 
+# Values shown in the debug tree.
 func metrics() -> Dictionary:
+	var work := _budget.metrics() if _budget != null else last_work_metrics
 	return {"pending": is_pending(), "pending_msec": pending_msec, "completed_ticks": completed_ticks, "cancelled_ticks": cancelled_ticks,
-			"snapshot_usec": snapshot_usec, "publish_usec": publish_usec, "work": _budget.metrics() if _budget != null else last_work_metrics}
+			"snapshot_usec": snapshot_usec, "publish_usec": publish_usec, "work": work.debug_fields() if work != null else {}}
 
 
 func close() -> void:

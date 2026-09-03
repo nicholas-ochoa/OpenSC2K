@@ -83,25 +83,25 @@ static func _failed(message: String) -> Result:
 
 static func calculate_current_values(
 	city: CityState, developed_tiles: int, power_usage_percent: int, water_usage_percent: int
-) -> Dictionary:
+) -> Result:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return _failed("city is invalid")
 
 	var misc := city.document.find_chunk("MISC")
 
 	if misc == null or misc.decoded_payload.size() != MISC_SIZE:
-		return {"ok": false, "error": "MISC is missing or has the wrong size"}
+		return _failed("MISC is missing or has the wrong size")
 
 	if developed_tiles < 0 or developed_tiles > (map_edge * map_edge):
-		return {"ok": false, "error": "developed tile count is out of range"}
+		return _failed("developed tile count is out of range")
 
 	if power_usage_percent < 0 or power_usage_percent > 100:
-		return {"ok": false, "error": "power usage percentage is out of range"}
+		return _failed("power usage percentage is out of range")
 
 	if water_usage_percent < 0 or water_usage_percent > 100:
-		return {"ok": false, "error": "water usage percentage is out of range"}
+		return _failed("water usage percentage is out of range")
 
 	var zone_populations := PackedInt64Array()
 
@@ -145,7 +145,7 @@ static func calculate_current_values(
 		)
 
 	if transport_cost <= 0:
-		return {"ok": false, "error": "transport graph divisor is not positive"}
+		return _failed("transport graph divisor is not positive")
 
 	var developed_divisor := _divide_toward_zero(developed_tiles, 4) + 1
 	var unemployment := int(
@@ -173,20 +173,26 @@ static func calculate_current_values(
 		]
 	)
 
-	return {"ok": true, "values": values, "unemployment": unemployment, "error": ""}
+	var result := Result.new()
+	result.ok = true
+	result.values = values
+	result.unemployment = unemployment
+	result.error = ""
+
+	return result
 
 
-static func advance(city: CityState, current_values: PackedInt64Array) -> Dictionary:
+static func advance(city: CityState, current_values: PackedInt64Array) -> Result:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return _failed("city is invalid")
 
 	if current_values.size() != SERIES_COUNT:
-		return {"ok": false, "error": "sixteen current graph values are required"}
+		return _failed("sixteen current graph values are required")
 
 	var chunk := city.document.find_chunk("XGRP")
 
 	if chunk == null or chunk.decoded_payload.size() != SERIES_COUNT * VALUES_PER_SERIES * 4:
-		return {"ok": false, "error": "XGRP is missing or has the wrong size"}
+		return _failed("XGRP is missing or has the wrong size")
 
 	var data := chunk.decoded_payload.duplicate()
 	var month := int((city.age_in_days() % 300) / 25)
@@ -211,9 +217,15 @@ static func advance(city: CityState, current_values: PackedInt64Array) -> Dictio
 			_copy_value(data, series, 0, 32)
 
 	if not chunk.set_decoded_payload(data):
-		return {"ok": false, "error": "cannot store updated XGRP data"}
+		return _failed("cannot store updated XGRP data")
 
-	return {"ok": true, "month": month, "elapsed_years": elapsed_years, "error": ""}
+	var result := Result.new()
+	result.ok = true
+	result.month = month
+	result.elapsed_years = elapsed_years
+	result.error = ""
+
+	return result
 
 
 static func _copy_value(data: PackedByteArray, series: int, source: int, target: int) -> void:

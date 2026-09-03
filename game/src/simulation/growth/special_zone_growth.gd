@@ -94,4 +94,4 @@ static func process(
 			point, fallback_tile, zone, rotation, map_edge
 		)
 
-	counters.special_tiles_placed += int(placed.get("changed_tiles", 0))
+	counters.special_tiles_placed += placed.changed_tiles

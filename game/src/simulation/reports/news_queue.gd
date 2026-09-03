@@ -48,11 +48,40 @@ const STORY_DECAYS := [
 ]
 
 
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+	var random_calls := 0
+	var slot := 0
+	var priority := 0
+	var inserted := 0
+
+
+class StoryRecord extends RefCounted:
+	var type := 0
+	var priority := 0
+	var argument := 0
+	var auxiliary := PackedByteArray()
+
+	func _init(story_type := 0, story_argument := 0, story_auxiliary := PackedByteArray()) -> void:
+		type = story_type
+		argument = story_argument
+		auxiliary = story_auxiliary
+
+
+class PaperRecord extends RefCounted:
+	var name := 0
+	var layout := 0
+	var price := 0
+	var opinion := 0
+	var weather := 0
+
+
 static func is_story_type(story_type: int) -> bool:
 	return story_type >= 0 and story_type < STORY_PRIORITIES.size()
 
 
-static func initialize_session(misc: PackedByteArray, random: SimRandom) -> Dictionary:
+static func initialize_session(misc: PackedByteArray, random: SimRandom) -> Result:
 	var validation := _validate_misc(misc)
 
 	if not validation.ok:
@@ -94,10 +123,15 @@ static func initialize_session(misc: PackedByteArray, random: SimRandom) -> Dict
 		for field in range(FIRST_AUXILIARY_FIELD, STORY_FIELD_COUNT):
 			_write_u32(misc, offset + field * 4, 0xff)
 
-	return {"ok": true, "error": "", "random_calls": 122}
+	var result := Result.new()
+	result.ok = true
+	result.error = ""
+	result.random_calls = 122
+
+	return result
 
 
-static func decay_and_sort(misc: PackedByteArray) -> Dictionary:
+static func decay_and_sort(misc: PackedByteArray) -> Result:
 	var validation := _validate_misc(misc)
 
 	if not validation.ok:
@@ -122,10 +156,14 @@ static func decay_and_sort(misc: PackedByteArray) -> Dictionary:
 			if first_priority < candidate_priority:
 				_swap_story_records(misc, first_slot, candidate_slot)
 
-	return {"ok": true, "error": ""}
+	var result := Result.new()
+	result.ok = true
+	result.error = ""
+
+	return result
 
 
-static func insert(misc: PackedByteArray, story_type: int, argument: int) -> Dictionary:
+static func insert(misc: PackedByteArray, story_type: int, argument: int) -> Result:
 	var validation := _validate_misc(misc)
 
 	if not validation.ok:
@@ -153,15 +191,16 @@ static func insert(misc: PackedByteArray, story_type: int, argument: int) -> Dic
 	for field in range(FIRST_AUXILIARY_FIELD, STORY_FIELD_COUNT):
 		_write_u32(misc, offset + field * 4, 0xff)
 
-	return {
-		"ok": true,
-		"error": "",
-		"slot": inserted_slot,
-		"priority": priority,
-	}
+	var result := Result.new()
+	result.ok = true
+	result.error = ""
+	result.slot = inserted_slot
+	result.priority = priority
+
+	return result
 
 
-static func insert_items(misc: PackedByteArray, news_items: Array) -> Dictionary:
+static func insert_items(misc: PackedByteArray, news_items: Array) -> Result:
 	var inserted := 0
 
 	for item in news_items:
@@ -177,25 +216,31 @@ static func insert_items(misc: PackedByteArray, news_items: Array) -> Dictionary
 
 		inserted += 1
 
-	return {"ok": true, "error": "", "inserted": inserted}
+	var result := Result.new()
+	result.ok = true
+	result.error = ""
+	result.inserted = inserted
+
+	return result
 
 
-static func story_record(misc: PackedByteArray, slot: int) -> Dictionary:
+static func story_record(misc: PackedByteArray, slot: int) -> StoryRecord:
 	if not _validate_misc(misc).ok or slot < 0 or slot >= STORY_RECORD_COUNT:
-		return {}
+		return null
 
 	var offset := _story_offset(slot)
 
-	return {
-		"type": _to_i16(_read_u32(misc, offset)),
-		"priority": _to_i16(_read_u32(misc, offset + 4)),
-		"argument": _read_u32(misc, offset + 8) & 0xff,
-		"auxiliary": PackedByteArray([
-			_read_u32(misc, offset + 12) & 0xff,
-			_read_u32(misc, offset + 16) & 0xff,
-			_read_u32(misc, offset + 20) & 0xff,
-		]),
-	}
+	var result := StoryRecord.new()
+	result.type = _to_i16(_read_u32(misc, offset))
+	result.priority = _to_i16(_read_u32(misc, offset + 4))
+	result.argument = _read_u32(misc, offset + 8) & 0xff
+	result.auxiliary = PackedByteArray([
+		_read_u32(misc, offset + 12) & 0xff,
+		_read_u32(misc, offset + 16) & 0xff,
+		_read_u32(misc, offset + 20) & 0xff,
+	])
+
+	return result
 
 
 static func available_paper_count(progression: int) -> int:
@@ -208,7 +253,7 @@ static func available_paper_count(progression: int) -> int:
 	return clampi(level + 1, 0, PAPER_COUNT)
 
 
-static func prepare_weather_report(misc: PackedByteArray, weather: int) -> Dictionary:
+static func prepare_weather_report(misc: PackedByteArray, weather: int) -> Result:
 	var validation := _validate_misc(misc)
 
 	if not validation.ok:
@@ -219,10 +264,14 @@ static func prepare_weather_report(misc: PackedByteArray, weather: int) -> Dicti
 	_write_u32(misc, offset, 0)
 	_write_u32(misc, offset + 8, weather & 0xff)
 
-	return {"ok": true, "error": ""}
+	var result := Result.new()
+	result.ok = true
+	result.error = ""
+
+	return result
 
 
-static func prepare_opinion_report(misc: PackedByteArray, style: int, subject: int) -> Dictionary:
+static func prepare_opinion_report(misc: PackedByteArray, style: int, subject: int) -> Result:
 	var validation := _validate_misc(misc)
 
 	if not validation.ok:
@@ -234,27 +283,32 @@ static func prepare_opinion_report(misc: PackedByteArray, style: int, subject: i
 	_write_u32(misc, offset, types[clampi(style, 0, 5)])
 	_write_u32(misc, offset + 8, subject & 0xff)
 
-	return {"ok": true, "error": ""}
+	var result := Result.new()
+	result.ok = true
+	result.error = ""
+
+	return result
 
 
-static func paper_record(misc: PackedByteArray, paper: int) -> Dictionary:
+static func paper_record(misc: PackedByteArray, paper: int) -> PaperRecord:
 	if not _validate_misc(misc).ok or paper < 0 or paper >= PAPER_COUNT:
-		return {}
+		return null
 
 	var offset := PAPER_OFFSET + paper * PAPER_RECORD_SIZE
 
-	return {
-		"name": _read_u32(misc, offset + PAPER_NAME_FIELD * 4) & 0xff,
-		"layout": _read_u32(misc, offset + PAPER_LAYOUT_FIELD * 4) & 0xff,
-		"price": _read_u32(misc, offset + PAPER_PRICE_FIELD * 4) & 0xff,
-		"opinion": _read_u32(misc, offset + PAPER_OPINION_FIELD * 4) & 0xff,
-		"weather": _read_u32(misc, offset + PAPER_WEATHER_FIELD * 4) & 0xff,
-	}
+	var result := PaperRecord.new()
+	result.name = _read_u32(misc, offset + PAPER_NAME_FIELD * 4) & 0xff
+	result.layout = _read_u32(misc, offset + PAPER_LAYOUT_FIELD * 4) & 0xff
+	result.price = _read_u32(misc, offset + PAPER_PRICE_FIELD * 4) & 0xff
+	result.opinion = _read_u32(misc, offset + PAPER_OPINION_FIELD * 4) & 0xff
+	result.weather = _read_u32(misc, offset + PAPER_WEATHER_FIELD * 4) & 0xff
+
+	return result
 
 
 static func update_story_substitutions(
 	misc: PackedByteArray, slot: int, argument: int, auxiliary: PackedByteArray
-) -> Dictionary:
+) -> Result:
 	var validation := _validate_misc(misc)
 
 	if not validation.ok:
@@ -276,14 +330,22 @@ static func update_story_substitutions(
 			auxiliary[index],
 		)
 
-	return {"ok": true, "error": ""}
+	var result := Result.new()
+	result.ok = true
+	result.error = ""
+
+	return result
 
 
-static func _validate_misc(misc: PackedByteArray) -> Dictionary:
+static func _validate_misc(misc: PackedByteArray) -> Result:
 	if misc.size() != MISC_SIZE:
 		return _failure("MISC is missing or has the wrong size")
 
-	return {"ok": true, "error": ""}
+	var result := Result.new()
+	result.ok = true
+	result.error = ""
+
+	return result
 
 
 static func _story_offset(slot: int) -> int:
@@ -367,5 +429,9 @@ static func _write_u32(data: PackedByteArray, offset: int, value: int) -> void:
 	data[offset + 3] = encoded & 0xff
 
 
-static func _failure(message: String) -> Dictionary:
-	return {"ok": false, "error": message}
+static func _failure(message: String) -> Result:
+	var result := Result.new()
+	result.ok = false
+	result.error = message
+
+	return result

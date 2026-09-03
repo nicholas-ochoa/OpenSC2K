@@ -27,7 +27,7 @@ var soundtrack_folder := ""
 var recording_thread: Thread
 var music_request := 0
 var recording_request := -1
-var pending_recording: Dictionary = {}
+var pending_recording: RecordedSoundtrack.Request
 var dummy_music_active := false
 var menu_music := false
 var startup_theme_pending := false
@@ -159,7 +159,7 @@ func play_music_track(track_id: int, choose_shuffle := true, immediate := false)
 		return true
 
 	if not recordings.is_empty():
-		pending_recording = {"paths": recordings, "request": music_request}
+		pending_recording = RecordedSoundtrack.Request.new(recordings, music_request)
 		music_activity_changed.emit(true)
 
 		return true
@@ -198,7 +198,7 @@ func _music_started() -> void:
 
 func _process(_delta: float) -> void:
 	if recording_thread != null and not recording_thread.is_alive():
-		var result: Dictionary = recording_thread.wait_to_finish()
+		var result: RecordedSoundtrack.Result = recording_thread.wait_to_finish()
 		recording_thread = null
 
 		if recording_request == music_request:
@@ -212,10 +212,10 @@ func _process(_delta: float) -> void:
 				push_warning("Cannot decode soundtrack recording; trying MIDI. FLAC requires FFmpeg.")
 				_play_midi_fallback()
 
-	if recording_thread == null and not pending_recording.is_empty():
+	if recording_thread == null and pending_recording != null:
 		recording_request = int(pending_recording.request)
 		var paths: PackedStringArray = pending_recording.paths
-		pending_recording.clear()
+		pending_recording = null
 		recording_thread = Thread.new()
 
 		if recording_thread.start(RecordedSoundtrack.load_track.bind(paths), Thread.PRIORITY_LOW) != OK:
@@ -236,7 +236,7 @@ func music_playback_is_active() -> bool:
 	if AudioServer.get_driver_name() == "Dummy":
 		return dummy_music_active or (recording_player != null and recording_player.stream != null and (recording_player.playing or recording_player.stream_paused))
 
-	return (not pending_recording.is_empty()
+	return (pending_recording != null
 		or (recording_thread != null and recording_request == music_request)
 		or (recording_player != null and recording_player.stream != null and (recording_player.playing or recording_player.stream_paused))
 		or (music_player != null and music_player.is_track_active()))
@@ -313,7 +313,7 @@ func stop_music(clear_gap := true) -> void:
 	queued_choose_shuffle = true
 	focus_paused = false
 	music_request += 1
-	pending_recording.clear()
+	pending_recording = null
 
 	if recording_player != null:
 		recording_player.stop()

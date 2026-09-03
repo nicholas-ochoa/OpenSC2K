@@ -28,6 +28,13 @@ class Result extends PhaseResult:
 	var treatment_sufficient := false
 
 
+class Component extends RefCounted:
+	var tiles := PackedInt32Array()
+	var supply := 0
+	var consumers := 0
+	var tower_capacity := 0
+
+
 static func run(city: CityState) -> Result:
 	var map_edge: int = city.map_size if city != null else 128
 
@@ -157,7 +164,7 @@ static func _trace_component(
 	pump_base_supply: int,
 	map_edge: int = 128,
 	budget: SimulationSliceBudget = null,
-) -> Dictionary:
+) -> Component:
 	var queue := PackedInt32Array([start])
 	var queue_position := 0
 	var tiles := PackedInt32Array()
@@ -166,12 +173,13 @@ static func _trace_component(
 	var tower_capacity := 0
 
 	if not flags[start] & FLAG_PIPED:
-		return {
-			"tiles": tiles,
-			"supply": supply,
-			"consumers": consumers,
-			"tower_capacity": tower_capacity,
-		}
+		var result := Component.new()
+		result.tiles = tiles
+		result.supply = supply
+		result.consumers = consumers
+		result.tower_capacity = tower_capacity
+
+		return result
 
 	flags[start] |= FLAG_MARK
 
@@ -218,12 +226,13 @@ static func _trace_component(
 		if x < map_edge - 1:
 			_queue_piped_tile(queue, flags, index + map_edge)
 
-	return {
-		"tiles": tiles,
-		"supply": supply,
-		"consumers": consumers,
-		"tower_capacity": tower_capacity,
-	}
+	var result := Component.new()
+	result.tiles = tiles
+	result.supply = supply
+	result.consumers = consumers
+	result.tower_capacity = tower_capacity
+
+	return result
 
 
 static func _queue_piped_tile(

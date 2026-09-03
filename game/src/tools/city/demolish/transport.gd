@@ -23,7 +23,7 @@ static func _demolish_tunnel(
 	emit_effects: bool,
 	scurk_mode := false,
 	map_edge: int = 128,
-) -> Dictionary:
+) -> DemolishPointResult:
 	var direction: Vector2i = [
 		Vector2i(-1, 0), Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1)
 	][tile_id - TUNNEL_FIRST]
@@ -40,7 +40,11 @@ static func _demolish_tunnel(
 		current += direction
 
 	if points.size() < 2 or current.x < 0 or current.x >= map_edge or current.y < 0 or current.y >= map_edge:
-		return {"changed": false, "specialized": true}
+		var result := DemolishPointResult.new()
+		result.changed = false
+		result.specialized = true
+
+		return result
 
 	var effect_events: Array[Dictionary] = []
 
@@ -67,7 +71,12 @@ static func _demolish_tunnel(
 	for point in points:
 		indices.append(point.x * map_edge + point.y)
 
-	return {"changed": true, "indices": indices, "effect_events": effect_events}
+	var result := DemolishPointResult.new()
+	result.changed = true
+	result.indices = indices
+	result.effect_events = effect_events
+
+	return result
 
 
 static func _demolish_transport_component(
@@ -84,7 +93,7 @@ static func _demolish_transport_component(
 	emit_effects: bool,
 	scurk_mode := false,
 	map_edge: int = 128,
-) -> Dictionary:
+) -> DemolishPointResult:
 	var first := RUNWAY_FIRST if tile_id <= RUNWAY_LAST else PIER_FIRST
 	var last := RUNWAY_LAST if tile_id <= RUNWAY_LAST else PIER_LAST
 	var make_rubble := first == RUNWAY_FIRST
@@ -140,11 +149,12 @@ static func _demolish_transport_component(
 
 	DemolishTerrain._retile_after_demolition(buildings, terrain, zones, underground, flags, misc, component, PackedByteArray(), map_edge)
 
-	return {
-		"changed": not component.is_empty(),
-		"indices": indices,
-		"effect_events": effect_events,
-	}
+	var result := DemolishPointResult.new()
+	result.changed = not component.is_empty()
+	result.indices = indices
+	result.effect_events = effect_events
+
+	return result
 
 
 static func _demolish_highway_section(
@@ -164,17 +174,25 @@ static func _demolish_highway_section(
 	emit_effects: bool,
 	scurk_mode := false,
 	map_edge: int = 128,
-) -> Dictionary:
+) -> DemolishPointResult:
 	var anchor := Vector2i(selected.x & ~1, selected.y & ~1)
 
 	if not HighwayGeometry._anchor_is_in_bounds(anchor, map_edge):
-		return {"changed": false, "specialized": true}
+		var result := DemolishPointResult.new()
+		result.changed = false
+		result.specialized = true
+
+		return result
 
 	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 		var point: Vector2i = anchor + offset
 
 		if not _is_highway_tile(buildings[point.x * map_edge + point.y]):
-			return {"changed": false, "specialized": true}
+			var result := DemolishPointResult.new()
+			result.changed = false
+			result.specialized = true
+
+			return result
 
 	var points: Array[Vector2i] = []
 	var indices := PackedInt32Array()
@@ -226,4 +244,9 @@ static func _demolish_highway_section(
 			text_overlays, {}, map_edge
 		)
 
-	return {"changed": true, "indices": indices, "effect_events": effect_events}
+	var result := DemolishPointResult.new()
+	result.changed = true
+	result.indices = indices
+	result.effect_events = effect_events
+
+	return result

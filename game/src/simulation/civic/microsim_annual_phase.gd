@@ -268,10 +268,10 @@ static func _launch_arcologies(annual: MicrosimAnnualContext) -> void:
 				annual.city, annual.changed_payloads, Vector2i(x, y), annual.random, true
 			)
 
-			if demolition.get("changed", false):
+			if demolition.changed:
 				annual.next_effect_frame = DemolishEffectsSites.append_effect_sequence(
 					annual.effect_events,
-					demolition.get("effect_events", []),
+					demolition.effect_events,
 					annual.next_effect_frame
 				)
 				annual.launched_structures += 1

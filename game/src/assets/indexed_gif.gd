@@ -6,6 +6,12 @@ const CYCLE_START := 31 # past the one-time slow-table initialization
 const CYCLE_TICKS := 120 # lcm of the 40-tick fast and 60-tick slow cycles
 
 
+class Frame extends RefCounted:
+	var start := 0
+	var mapping := PackedInt32Array()
+	var signature := PackedInt32Array()
+
+
 static func encode_cycle(width: int, height: int, pixels: PackedInt32Array, palette: Sc2Palette) -> AssetBytesResult:
 	if width < 1 or height < 1 or width > 128 or height > 256 or pixels.size() != width * height or palette == null or not palette.is_valid():
 		return AssetBytesResult.failure("Invalid SCURK GIF dimensions, pixels, or palette.")
@@ -35,7 +41,7 @@ static func encode_cycle(width: int, height: int, pixels: PackedInt32Array, pale
 		raster.append(clear_index if pixel < 0 else pixel)
 
 	var compressed := _literal_lzw(raster)
-	var frames: Array[Dictionary] = []
+	var frames: Array[Frame] = []
 
 	for tick in CYCLE_TICKS:
 		var mapping := palette.scurk_animation_index_map(CYCLE_START + tick)
@@ -46,7 +52,11 @@ static func encode_cycle(width: int, height: int, pixels: PackedInt32Array, pale
 				signature.append(mapping[index])
 
 		if frames.is_empty() or frames.back().signature != signature:
-			frames.append({"start": tick, "mapping": mapping, "signature": signature})
+			var frame := Frame.new()
+			frame.start = tick
+			frame.mapping = mapping
+			frame.signature = signature
+			frames.append(frame)
 
 	var output := "GIF89a".to_ascii_buffer()
 	_u16(output, width)

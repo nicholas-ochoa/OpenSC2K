@@ -109,7 +109,7 @@ func _ready() -> void:
 	_refresh_controls()
 
 
-func set_city(value: CityState) -> Dictionary:
+func set_city(value: CityState) -> OrdinanceCommand.Result:
 	city = value
 	var result := Ordinances.synchronize_current(city)
 	_refresh_controls()
@@ -200,15 +200,15 @@ func _on_ordinance_toggled(enabled: bool, ordinance_id: int) -> void:
 
 	var result := Ordinances.set_enabled(city, ordinance_id, enabled)
 
-	if not result.get("ok", false):
+	if not result.ok:
 		_refresh_controls()
-		update_failed.emit(str(result.get("error", "cannot change the ordinance")))
+		update_failed.emit(str(result.error))
 
 		return
 
 	_refresh_controls()
 
-	if result.get("changed", false):
+	if result.changed:
 		ordinances_changed.emit()
 
 
@@ -218,11 +218,9 @@ func _refresh_controls() -> void:
 
 	var data := Ordinances.snapshot(city)
 	refreshing = true
-	var valid: bool = data.get("ok", false)
-	var flags := int(data.get("flags", 0))
-	var item_values: PackedInt32Array = data.get(
-		"item_amounts", PackedInt32Array()
-	)
+	var valid: bool = data.ok
+	var flags := int(data.flags)
+	var item_values: PackedInt32Array = data.item_amounts
 
 	for ordinance_id in Ordinances.ORDINANCE_COUNT:
 		var check := ordinance_checks[ordinance_id]
@@ -235,9 +233,7 @@ func _refresh_controls() -> void:
 			else ""
 		)
 
-	var category_values: PackedInt32Array = data.get(
-		"category_amounts", PackedInt32Array()
-	)
+	var category_values: PackedInt32Array = data.category_amounts
 
 	for category in Ordinances.CATEGORY_NAMES.size():
 		category_amounts[category].text = (
@@ -247,12 +243,12 @@ func _refresh_controls() -> void:
 		)
 
 	year_to_date_amount.text = (
-		Ordinances.compact_amount(int(data.get("year_to_date_amount", 0)))
+		Ordinances.compact_amount(int(data.year_to_date_amount))
 		if valid
 		else ""
 	)
 	estimated_amount.text = (
-		Ordinances.compact_amount(int(data.get("estimated_amount", 0)))
+		Ordinances.compact_amount(int(data.estimated_amount))
 		if valid
 		else ""
 	)

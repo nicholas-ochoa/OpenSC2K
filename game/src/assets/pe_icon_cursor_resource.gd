@@ -5,70 +5,116 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 
-static func load_image(path: String, resource_id: int, cursor := false) -> Dictionary:
+class GroupEntry extends RefCounted:
+	var id := 0
+	var width := 0
+	var height := 0
+	var planes := 0
+	var bits := 0
+	var length := 0
+
+
+class GroupResult extends RefCounted:
+	var ok := false
+	var error := ""
+	var entries: Array[GroupEntry] = []
+
+	static func failure(message: String) -> GroupResult:
+		var result := GroupResult.new()
+		result.error = message
+
+		return result
+
+
+class DecodedImage extends RefCounted:
+	var ok := false
+	var error := ""
+	var width := 0
+	var height := 0
+	var bits := 0
+	var hotspot := Vector2i.ZERO
+	var palette := PackedColorArray()
+	var pixels := PackedInt32Array()
+	var and_mask := PackedByteArray()
+	var inverting_pixels := 0
+	var trailing_bytes := 0
+
+	static func failure(message: String) -> DecodedImage:
+		var result := DecodedImage.new()
+		result.error = message
+
+		return result
+
+
+static func load_image(path: String, resource_id: int, cursor := false) -> DecodedImage:
 	var resource := load_resource(path, 1 if cursor else 3, resource_id)
 
-	return decode_image(resource.bytes, cursor) if resource.ok else resource
+	return decode_image(resource.bytes, cursor) if resource.ok else DecodedImage.failure(resource.error)
 
 
-static func load_group(path: String, resource_id: int, cursor := false) -> Dictionary:
+static func load_group(path: String, resource_id: int, cursor := false) -> GroupResult:
 	var resource := load_resource(path, 12 if cursor else 14, resource_id)
 
-	return decode_group(resource.bytes, cursor) if resource.ok else resource
+	return decode_group(resource.bytes, cursor) if resource.ok else GroupResult.failure(resource.error)
 
 
-static func load_resource(path: String, type_id: int, resource_id: int) -> Dictionary:
+static func load_resource(path: String, type_id: int, resource_id: int) -> AssetBytesResult:
 	if resource_id < 0 or resource_id > 65535 or type_id not in [1, 3, 12, 14]:
-		return _failure("Invalid icon/cursor resource ID or type")
+		return AssetBytesResult.failure("Invalid icon/cursor resource ID or type")
 
 	var directory := PeBitmapResource._load_resource_directory(path)
 
 	if not directory.ok:
-		return _failure(directory.error)
+		return AssetBytesResult.failure(directory.error)
 
 	return resource_from_directory(directory, type_id, resource_id)
 
 
-static func resource_from_directory(directory: PeDirectoryResult, type_id: int, resource_id: int) -> Dictionary:
+static func resource_from_directory(directory: PeDirectoryResult, type_id: int, resource_id: int) -> AssetBytesResult:
 	if resource_id < 0 or resource_id > 65535 or type_id not in [1, 3, 12, 14]:
-		return _failure("Invalid icon/cursor resource ID or type")
+		return AssetBytesResult.failure("Invalid icon/cursor resource ID or type")
 
 	var bytes: PackedByteArray = directory.bytes
 	var root: int = directory.root_offset
 	var type_directory := PeBitmapResource._numeric_child_directory(bytes, root, root, type_id)
 
 	if type_directory < 0:
-		return _failure("Icon/cursor resource type is missing")
+		return AssetBytesResult.failure("Icon/cursor resource type is missing")
 
 	var language := PeBitmapResource._numeric_child_directory(bytes, root, type_directory, resource_id)
 
 	if language < 0:
-		return _failure("Icon/cursor resource is missing")
+		return AssetBytesResult.failure("Icon/cursor resource is missing")
 
 	var entry := PeBitmapResource._first_child_data(bytes, root, language)
 
 	if entry < 0 or not PeBitmapResource._has_range(bytes, entry, 16):
-		return _failure("Icon/cursor language data is truncated")
+		return AssetBytesResult.failure("Icon/cursor language data is truncated")
 
 	var offset := PeBitmapResource._rva_to_offset(bytes, bytes.decode_u32(entry), directory.section_offset, directory.section_count)
 	var length := bytes.decode_u32(entry + 4)
 
 	if offset < 0 or not PeBitmapResource._has_range(bytes, offset, length):
-		return _failure("Icon/cursor resource data is truncated")
+		return AssetBytesResult.failure("Icon/cursor resource data is truncated")
 
-	return {"ok": true, "bytes": bytes.slice(offset, offset + length), "error": ""}
+	var result := AssetBytesResult.new()
+	result.ok = true
+	result.bytes = bytes.slice(offset, offset + length)
+	result.error = ""
+
+	return result
 
 
-static func decode_group(bytes: PackedByteArray, cursor := false) -> Dictionary:
+static func decode_group(bytes: PackedByteArray, cursor := false) -> GroupResult:
 	if bytes.size() < 6 or bytes.decode_u16(0) != 0 or bytes.decode_u16(2) != (2 if cursor else 1):
-		return _failure("Invalid icon/cursor group header")
+		return GroupResult.failure("Invalid icon/cursor group header")
 
 	var count := bytes.decode_u16(4)
 
 	if count == 0 or bytes.size() != 6 + count * 14:
-		return _failure("Invalid icon/cursor group length")
+		return GroupResult.failure("Invalid icon/cursor group length")
 
-	var entries: Array[Dictionary] = []
+	var entries: Array[GroupEntry] = []
 	var ids: Dictionary[int, bool] = {}
 
 	for i in count:
@@ -79,19 +125,31 @@ static func decode_group(bytes: PackedByteArray, cursor := false) -> Dictionary:
 		var length := bytes.decode_u32(at + 8)
 
 		if width <= 0 or width > 256 or height <= 0 or height > 512 or id == 0 or ids.has(id) or length == 0:
-			return _failure("Invalid icon/cursor group entry")
+			return GroupResult.failure("Invalid icon/cursor group entry")
 
 		ids[id] = true
-		entries.append({"id": id, "width": width, "height": height, "planes": bytes.decode_u16(at + 4), "bits": bytes.decode_u16(at + 6), "length": length})
+		var entry := GroupEntry.new()
+		entry.id = id
+		entry.width = width
+		entry.height = height
+		entry.planes = bytes.decode_u16(at + 4)
+		entry.bits = bytes.decode_u16(at + 6)
+		entry.length = length
+		entries.append(entry)
 
-	return {"ok": true, "entries": entries, "error": ""}
+	var result := GroupResult.new()
+	result.ok = true
+	result.entries = entries
+	result.error = ""
+
+	return result
 
 
-static func decode_image(bytes: PackedByteArray, cursor := false) -> Dictionary:
+static func decode_image(bytes: PackedByteArray, cursor := false) -> DecodedImage:
 	var start := 4 if cursor else 0
 
 	if bytes.size() < start + 40:
-		return _failure("Icon/cursor DIB header is truncated")
+		return DecodedImage.failure("Icon/cursor DIB header is truncated")
 
 	var hotspot := Vector2i(bytes.decode_u16(0), bytes.decode_u16(2)) if cursor else Vector2i.ZERO
 	var header := bytes.decode_u32(start)
@@ -100,16 +158,16 @@ static func decode_image(bytes: PackedByteArray, cursor := false) -> Dictionary:
 	var bits := bytes.decode_u16(start + 14)
 
 	if header != 40 or width < 1 or width > 256 or stored_height < 2 or stored_height > 512 or stored_height % 2 != 0:
-		return _failure("Unsupported icon/cursor DIB dimensions or header")
+		return DecodedImage.failure("Unsupported icon/cursor DIB dimensions or header")
 
 	# dib height counts the pixels and the mask, halve it for the visible cursor
 	var height := int(stored_height / 2)
 
 	if hotspot.x >= width or hotspot.y >= height:
-		return _failure("Cursor hotspot is outside its image")
+		return DecodedImage.failure("Cursor hotspot is outside its image")
 
 	if bytes.decode_u16(start + 12) != 1 or bits not in [1, 4, 8] or bytes.decode_u32(start + 16) != 0:
-		return _failure("Icon/cursor DIB must be uncompressed indexed data")
+		return DecodedImage.failure("Icon/cursor DIB must be uncompressed indexed data")
 
 	var count := bytes.decode_u32(start + 32)
 
@@ -117,7 +175,7 @@ static func decode_image(bytes: PackedByteArray, cursor := false) -> Dictionary:
 		count = 1 << bits
 
 	if count < 1 or count > (1 << bits):
-		return _failure("Invalid icon/cursor palette length")
+		return DecodedImage.failure("Invalid icon/cursor palette length")
 
 	var pixels_start := start + header + count * 4
 	var xor_stride := int((width * bits + 31) / 32) * 4
@@ -126,7 +184,7 @@ static func decode_image(bytes: PackedByteArray, cursor := false) -> Dictionary:
 	var end := mask_start + and_stride * height
 
 	if bytes.size() < end:
-		return _failure("Icon/cursor palette or mask data is truncated")
+		return DecodedImage.failure("Icon/cursor palette or mask data is truncated")
 
 	var palette := PackedColorArray()
 
@@ -146,7 +204,7 @@ static func decode_image(bytes: PackedByteArray, cursor := false) -> Dictionary:
 			var index := (bytes[pixels_start + row * xor_stride + int(bit_offset / 8)] >> (8 - bits - bit_offset % 8)) & ((1 << bits) - 1)
 
 			if index >= count:
-				return _failure("Icon/cursor index is outside its palette")
+				return DecodedImage.failure("Icon/cursor index is outside its palette")
 
 			var mask := (bytes[mask_start + row * and_stride + int(x / 8)] >> (7 - x % 8)) & 1
 			pixels.append(index)
@@ -155,11 +213,23 @@ static func decode_image(bytes: PackedByteArray, cursor := false) -> Dictionary:
 			if mask == 1 and palette[index] != Color.BLACK:
 				inverted += 1
 
-	return {"ok": true, "width": width, "height": height, "bits": bits, "hotspot": hotspot, "palette": palette, "pixels": pixels,
-			"and_mask": and_mask, "inverting_pixels": inverted, "trailing_bytes": bytes.size() - end, "error": ""}
+	var result := DecodedImage.new()
+	result.ok = true
+	result.width = width
+	result.height = height
+	result.bits = bits
+	result.hotspot = hotspot
+	result.palette = palette
+	result.pixels = pixels
+	result.and_mask = and_mask
+	result.inverting_pixels = inverted
+	result.trailing_bytes = bytes.size() - end
+	result.error = ""
+
+	return result
 
 
-static func composite(decoded: Dictionary, background: Image) -> Image:
+static func composite(decoded: DecodedImage, background: Image) -> Image:
 	assert(decoded.ok and background.get_size() == Vector2i(decoded.width, decoded.height))
 	var image := Image.create(decoded.width, decoded.height, false, Image.FORMAT_RGBA8)
 
@@ -173,12 +243,12 @@ static func composite(decoded: Dictionary, background: Image) -> Image:
 	return image
 
 
-static func transparent_image(decoded: Dictionary) -> Dictionary:
+static func transparent_image(decoded: DecodedImage) -> AssetImageResult:
 	if not decoded.ok:
-		return decoded
+		return AssetImageResult.failure(decoded.error)
 
 	if decoded.inverting_pixels > 0:
-		return _failure("This cursor requires background XOR compositing")
+		return AssetImageResult.failure("This cursor requires background XOR compositing")
 
 	var image := Image.create(decoded.width, decoded.height, false, Image.FORMAT_RGBA8)
 
@@ -187,8 +257,9 @@ static func transparent_image(decoded: Dictionary) -> Dictionary:
 			var i := y * int(decoded.width) + x
 			image.set_pixel(x, y, Color(0, 0, 0, 0) if decoded.and_mask[i] else decoded.palette[decoded.pixels[i]])
 
-	return {"ok": true, "image": image, "error": ""}
+	var result := AssetImageResult.new()
+	result.ok = true
+	result.image = image
+	result.error = ""
 
-
-static func _failure(message: String) -> Dictionary:
-	return {"ok": false, "error": message}
+	return result

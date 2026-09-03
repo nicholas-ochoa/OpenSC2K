@@ -19,6 +19,12 @@ const THING_SPEEDS := {
 }
 
 
+class TargetResult extends RefCounted:
+	var ok := false
+	var malformed := false
+	var point := Vector2i.ZERO
+
+
 static func update(
 	altitude: PackedByteArray,
 	flags: PackedByteArray,
@@ -47,7 +53,7 @@ static func update(
 			var target_result := _maxis_man_target(text, things, offset, current, goal, map_edge)
 
 			if not target_result.ok:
-				if target_result.get("malformed", false):
+				if target_result.malformed:
 					counters.malformed_records += 1
 
 				_update_maxis_man_height(altitude, flags, things, offset, map_edge)
@@ -128,23 +134,32 @@ static func _maxis_man_target(
 	current: Vector2i,
 	goal: int,
 	map_edge: int = 128,
-) -> Dictionary:
+) -> TargetResult:
 	if ThingData.is_record_target(goal):
 		if goal < 0 or ThingData.target_record(goal) >= ThingData.count(things):
-			return {"ok": false, "malformed": true}
+			var result := TargetResult.new()
+			result.ok = false
+			result.malformed = true
+
+			return result
 
 		var target_offset := ThingData.target_record(goal) * RECORD_SIZE
 
-		return {
-			"ok": true,
-			"point": Vector2i(ThingData.read(things, target_offset + 3), ThingData.read(things, target_offset + 4)),
-		}
+		var result := TargetResult.new()
+		result.ok = true
+		result.point = Vector2i(ThingData.read(things, target_offset + 3), ThingData.read(things, target_offset + 4))
+
+		return result
 
 	var target := Vector2i(ThingData.read(things, offset + 8), ThingData.read(things, offset + 9))
 	var target_index := _index(target, map_edge)
 
 	if target_index >= 0 and (OverlayData.read(text, target_index) >= 241 and OverlayData.read(text, target_index) <= 255):
-		return {"ok": true, "point": target}
+		var result := TargetResult.new()
+		result.ok = true
+		result.point = target
+
+		return result
 
 	ThingData.write(things, offset + 2, 2)
 
@@ -157,9 +172,16 @@ static func _maxis_man_target(
 				ThingData.write(things, offset + 9, y)
 				ThingData.write(things, offset + 2, 0)
 
-				return {"ok": true, "point": Vector2i(x, y)}
+				var result := TargetResult.new()
+				result.ok = true
+				result.point = Vector2i(x, y)
 
-	return {"ok": false}
+				return result
+
+	var result := TargetResult.new()
+	result.ok = false
+
+	return result
 
 
 static func _move_maxis_man(

@@ -113,6 +113,13 @@ func _populate_page() -> void:
 	selected_newspaper = clampi(selected_newspaper, 0, maxi(0, paper_titles.size() - 1))
 
 	var paper := NewsQueue.paper_record(misc, selected_newspaper)
+	var weather_headline := ""
+	var weather_article := ""
+	var opinion_headline := ""
+	var opinion_article := ""
+
+	if paper == null:
+		paper = NewsQueue.PaperRecord.new()
 	var weights := MayorApprovalPhase.complaint_weights(city)
 	var subject := 0
 
@@ -121,7 +128,7 @@ func _populate_page() -> void:
 			subject = index
 
 	# use current survey weights without running a poll or changing simulation rng/xmic
-	NewsQueue.prepare_opinion_report(misc, int(paper.get("opinion", 0)), subject)
+	NewsQueue.prepare_opinion_report(misc, int(paper.opinion), subject)
 	var teams := _team_names()
 	var headlines := PackedStringArray()
 	published_articles.clear()
@@ -132,7 +139,7 @@ func _populate_page() -> void:
 
 		var record := NewsQueue.story_record(misc, slot)
 
-		if record.is_empty():
+		if record == null:
 			continue
 
 		var story_type := int(record.type)
@@ -171,9 +178,9 @@ func _populate_page() -> void:
 			headlines.append(headline)
 			published_articles.append(str(report.article))
 		elif slot == 7:
-			paper["weather_headline"] = headline
+			weather_headline = headline
 			var weather_name: String = RciAftermathPhase.WEATHER_NAMES[clampi(city.weather_type(), 0, 11)]
-			paper["weather_article"] = "Current weather: %s." % weather_name
+			weather_article = "Current weather: %s." % weather_name
 
 			if newspaper_data != null and newspaper_data.is_valid():
 				var forecast := NewspaperTextGenerator.render_story(
@@ -181,12 +188,12 @@ func _populate_page() -> void:
 				)
 
 				if forecast.ok:
-					paper["weather_headline"] = forecast.headline
-					paper["weather_article"] = str(forecast.article).strip_edges()
+					weather_headline = forecast.headline
+					weather_article = str(forecast.article).strip_edges()
 		elif slot == 8:
-			paper["opinion_headline"] = headline
+			opinion_headline = headline
 			var subjects := ["traffic", "pollution", "crime", "unemployment", "taxes", "education", "health"]
-			paper["opinion_article"] = "Residents are concerned about %s. The mayor can review current city conditions in the graphs and city maps." % subjects[subject]
+			opinion_article = "Residents are concerned about %s. The mayor can review current city conditions in the graphs and city maps." % subjects[subject]
 
 			if newspaper_data != null and newspaper_data.is_valid():
 				var opinion := NewspaperTextGenerator.render_story(
@@ -194,29 +201,29 @@ func _populate_page() -> void:
 				)
 
 				if opinion.ok:
-					paper["opinion_headline"] = opinion.headline
-					paper["opinion_article"] = str(opinion.article).strip_edges()
+					opinion_headline = opinion.headline
+					opinion_article = str(opinion.article).strip_edges()
 
 	var paper_title := _paper_title(city, original_strings, selected_newspaper, paper)
 	page.set_page(
-		clampi(int(paper.get("layout", 0)), 0, 2),
+		clampi(int(paper.layout), 0, 2),
 		paper_title,
 		_date_text(),
 		_price_text(paper),
-		_opinion_text(paper),
-		_weather_text(paper),
+		_opinion_text(paper, opinion_headline),
+		_weather_text(paper, weather_headline),
 		headlines,
 	)
 	page.set_articles(published_articles)
 	page.set_opinion(
-		original_strings.get(354 + clampi(int(paper.get("opinion", 0)), 0, 5), "Opinion"),
-		str(paper.get("opinion_headline", "")),
-		str(paper.get("opinion_article", "")),
+		original_strings.get(354 + clampi(int(paper.opinion), 0, 5), "Opinion"),
+		opinion_headline,
+		opinion_article,
 	)
 	page.set_weather(
-		original_strings.get(347 + clampi(int(paper.get("weather", 0)), 0, 5), "Weather"),
-		str(paper.get("weather_headline", "")),
-		str(paper.get("weather_article", "")),
+		original_strings.get(347 + clampi(int(paper.weather), 0, 5), "Weather"),
+		weather_headline,
+		weather_article,
 	)
 	page.extra_stories = _extra_stories(misc, teams)
 	title = paper_title
@@ -226,8 +233,8 @@ func _populate_page() -> void:
 		misc_chunk.set_decoded_payload(misc)
 
 
-func _extra_stories(misc: PackedByteArray, teams: PackedStringArray) -> Array[Dictionary]:
-	var stories: Array[Dictionary] = []
+func _extra_stories(misc: PackedByteArray, teams: PackedStringArray) -> Array[NewspaperContent.ExtraStory]:
+	var stories: Array[NewspaperContent.ExtraStory] = []
 
 	if newspaper_data == null or not newspaper_data.is_valid():
 		return stories
@@ -241,9 +248,9 @@ func _extra_stories(misc: PackedByteArray, teams: PackedStringArray) -> Array[Di
 		seen[headline] = true
 
 	for index in 14:
-		var record := NewsQueue.story_record(misc, index + 5) if index < 2 else {
-			"type": 1, "argument": 0, "auxiliary": PackedByteArray([0xff, 0xff, 0xff]),
-		}
+		var record := NewsQueue.story_record(misc, index + 5) if index < 2 else NewsQueue.StoryRecord.new(
+			1, 0, PackedByteArray([0xff, 0xff, 0xff])
+		)
 		var story := NewspaperTextGenerator.render_story(
 			newspaper_data, record, base_seed + 77 + index * 7,
 			city.display_name(), city.mayor_name(), teams,
@@ -253,8 +260,11 @@ func _extra_stories(misc: PackedByteArray, teams: PackedStringArray) -> Array[Di
 			continue
 
 		seen[story.headline] = true
-		stories.append({"headline": story.headline, "article": str(story.article).strip_edges(),
-			"page": posmod(base_seed + index * 7, 29) + 2})
+		var extra := NewspaperContent.ExtraStory.new()
+		extra.headline = story.headline
+		extra.article = story.article.strip_edges()
+		extra.page = posmod(base_seed + index * 7, 29) + 2
+		stories.append(extra)
 
 	return stories
 
@@ -271,7 +281,7 @@ func _refresh_picture() -> void:
 		if misc != null and misc.decoded_payload.size() == NewsQueue.MISC_SIZE:
 			var story := NewsQueue.story_record(misc.decoded_payload, 0)
 
-			if not story.is_empty():
+			if story != null:
 				resource_id = NewspaperPicture.select(int(story.type), session_seed, city.age_in_days(), selected_newspaper)
 
 	var image: Image = null if control_graphics == null else control_graphics.notices.get(resource_id)
@@ -300,9 +310,9 @@ static func newspaper_titles(
 
 
 static func _paper_title(
-	city_value: CityState, strings: Dictionary, paper_index: int, paper: Dictionary
+	city_value: CityState, strings: Dictionary, paper_index: int, paper: NewsQueue.PaperRecord
 ) -> String:
-	var name_style := clampi(int(paper.get("name", 0)), 0, 5)
+	var name_style := clampi(int(paper.name), 0, 5)
 	var paper_name: String = strings.get(360 + name_style, ["Gazette", "Herald", "Chronicle", "Times", "Journal", "Dispatch"][name_style])
 
 	if paper_index < int(NewsQueue.PAPER_COUNT / 2):
@@ -324,17 +334,16 @@ func _date_text() -> String:
 	]
 
 
-func _price_text(paper: Dictionary) -> String:
-	var price_style := clampi(int(paper.get("price", 0)), 0, 2)
+func _price_text(paper: NewsQueue.PaperRecord) -> String:
+	var price_style := clampi(int(paper.price), 0, 2)
 	var era := clampi(floori(float(city.current_year() - 1900) / 50.0), 0, 4)
 
 	return original_strings.get(377 + price_style * 5 + era, "25 cents")
 
 
-func _opinion_text(paper: Dictionary) -> String:
-	var opinion_style := clampi(int(paper.get("opinion", 0)), 0, 5)
+func _opinion_text(paper: NewsQueue.PaperRecord, headline: String) -> String:
+	var opinion_style := clampi(int(paper.opinion), 0, 5)
 	var heading: String = original_strings.get(354 + opinion_style, "Opinion")
-	var headline := str(paper.get("opinion_headline", ""))
 
 	if headline.is_empty():
 		return heading
@@ -342,10 +351,9 @@ func _opinion_text(paper: Dictionary) -> String:
 	return "%s\n%s" % [heading, headline]
 
 
-func _weather_text(paper: Dictionary) -> String:
-	var weather_style := clampi(int(paper.get("weather", 0)), 0, 5)
+func _weather_text(paper: NewsQueue.PaperRecord, headline: String) -> String:
+	var weather_style := clampi(int(paper.weather), 0, 5)
 	var heading: String = original_strings.get(347 + weather_style, "Weather")
-	var headline := str(paper.get("weather_headline", ""))
 
 	if headline.is_empty():
 		return heading
@@ -365,7 +373,7 @@ func _team_names() -> PackedStringArray:
 	return result
 
 
-func _local_report(slot: int) -> Dictionary:
+func _local_report(slot: int) -> NewspaperText.Result:
 	var name_text := city.display_name()
 	var demand := city.rci_demand()
 	var reports := [
@@ -377,7 +385,12 @@ func _local_report(slot: int) -> Dictionary:
 	]
 	var report: Array = reports[clampi(slot, 0, reports.size() - 1)]
 
-	return {"headline": report[0], "article": report[1]}
+	var result := NewspaperText.Result.new()
+	result.ok = true
+	result.headline = report[0]
+	result.article = report[1]
+
+	return result
 
 
 func _web_payload() -> Dictionary:

@@ -1,6 +1,18 @@
 class_name ScurkPickCopy
 extends RefCounted
 
+class Result extends ScurkMif.Result:
+	var object_count := 0
+	var shape_count := 0
+
+
+class PreparedShape extends RefCounted:
+	var sprite_id := 0
+	var width := 0
+	var height := 0
+	var pixels := PackedInt32Array()
+
+
 const GROUP_RESIDENTIAL := 0
 const GROUP_COMMERCIAL := 1
 const GROUP_INDUSTRIAL := 2
@@ -81,7 +93,7 @@ static func copy_objects(
 	large_ids: PackedInt32Array,
 	base_large: Sc2SpriteArchive,
 	base_small_medium: Sc2SpriteArchive
-) -> Dictionary:
+) -> Result:
 	if working == null or not working.is_valid():
 		return _failure("The working object set is invalid.")
 
@@ -97,7 +109,7 @@ static func copy_objects(
 	if base_small_medium == null or not base_small_medium.is_valid():
 		return _failure("The original small and medium sprites are not available.")
 
-	var prepared: Array[Dictionary] = []
+	var prepared: Array[PreparedShape] = []
 	var seen := {}
 
 	for large_id in large_ids:
@@ -123,12 +135,12 @@ static func copy_objects(
 			if not decoded.ok:
 				return _failure(decoded.error)
 
-			prepared.append({
-				"sprite_id": sprite_id,
-				"width": entry.width,
-				"height": entry.height,
-				"pixels": decoded.pixels,
-			})
+			var shape := PreparedShape.new()
+			shape.sprite_id = sprite_id
+			shape.width = entry.width
+			shape.height = entry.height
+			shape.pixels = decoded.pixels
+			prepared.append(shape)
 
 	for shape in prepared:
 		var changed := working.set_shape_indices(
@@ -138,12 +150,13 @@ static func copy_objects(
 		if not changed.ok:
 			return _failure(changed.error)
 
-	return {
-		"ok": true,
-		"error": "",
-		"object_count": seen.size(),
-		"shape_count": prepared.size(),
-	}
+	var result := Result.new()
+	result.ok = true
+	result.error = ""
+	result.object_count = seen.size()
+	result.shape_count = prepared.size()
+
+	return result
 
 
 static func resolved_entry(
@@ -178,10 +191,11 @@ static func _large_ids_for_tiles(tile_ids: Array) -> PackedInt32Array:
 	return result
 
 
-static func _failure(message: String) -> Dictionary:
-	return {
-		"ok": false,
-		"error": message,
-		"object_count": 0,
-		"shape_count": 0,
-	}
+static func _failure(message: String) -> Result:
+	var result := Result.new()
+	result.ok = false
+	result.error = message
+	result.object_count = 0
+	result.shape_count = 0
+
+	return result

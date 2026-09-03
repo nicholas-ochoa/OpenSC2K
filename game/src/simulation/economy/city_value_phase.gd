@@ -61,11 +61,28 @@ const BUILDING_RULES := {
 }
 
 
-static func calculate(city: CityState) -> Dictionary:
+class Result extends PhaseResult:
+	var city_value := 0
+
+
+class MiscInput extends RefCounted:
+	var ok := false
+	var error := ""
+	var misc := PackedByteArray()
+
+
+static func _failed(message: String) -> Result:
+	var result := Result.new()
+	result.error = message
+
+	return result
+
+
+static func calculate(city: CityState) -> Result:
 	var validated := _misc_data(city)
 
 	if not validated.ok:
-		return validated
+		return _failed(validated.error)
 
 	var misc: PackedByteArray = validated.misc
 	var value := _to_i32(-_read_count(misc, MISC_SUBWAY_COUNT, city.map_size))
@@ -95,10 +112,14 @@ static func calculate(city: CityState) -> Dictionary:
 		var count := _divide_toward_zero(_tile_count(misc, tile_id, city.map_size), int(rule[0]))
 		value = _add_value(value, count, int(rule[1]))
 
-	return {"ok": true, "error": "", "city_value": value}
+	var result := Result.new()
+	result.ok = true
+	result.city_value = value
+
+	return result
 
 
-static func run(city: CityState) -> Dictionary:
+static func run(city: CityState) -> Result:
 	var calculated := calculate(city)
 
 	if not calculated.ok:
@@ -109,21 +130,30 @@ static func run(city: CityState) -> Dictionary:
 	_write_i32(misc, MISC_CITY_VALUE, int(calculated.city_value))
 
 	if not misc_chunk.set_decoded_payload(misc):
-		return {"ok": false, "error": "cannot store the city value"}
+		return _failed("cannot store the city value")
 
 	return calculated
 
 
-static func _misc_data(city: CityState) -> Dictionary:
+static func _misc_data(city: CityState) -> MiscInput:
+	var result := MiscInput.new()
+
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		result.error = "city is invalid"
+
+		return result
 
 	var misc_chunk := city.document.find_chunk("MISC")
 
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != MISC_SIZE:
-		return {"ok": false, "error": "MISC is missing or has the wrong size"}
+		result.error = "MISC is missing or has the wrong size"
 
-	return {"ok": true, "error": "", "misc": misc_chunk.decoded_payload}
+		return result
+
+	result.ok = true
+	result.misc = misc_chunk.decoded_payload
+
+	return result
 
 
 static func _tile_count(misc: PackedByteArray, tile_id: int, map_edge: int = 128) -> int:

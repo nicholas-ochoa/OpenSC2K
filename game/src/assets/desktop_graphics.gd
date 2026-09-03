@@ -6,6 +6,17 @@ extends RefCounted
 
 const CITY_SYSTEM_GROUPS: Dictionary[int, int] = {30977: 11, 30979: 15, 30980: 12, 30981: 21, 30982: 14, 30983: 19, 30984: 17, 30985: 18, 30986: 20, 30987: 16, 30988: 13}
 const ICON_GROUPS: Dictionary[String, Dictionary] = {"city": {2: [1, 2], 3: [9, 10], 77: [7, 8], 181: [3, 4], 182: [5, 6]}, "scurk": {1: [3, 4], 2: [1, 2], 3: [5, 6], 4: [7, 8]}}
+class Cursor extends RefCounted:
+	var image: Image
+	var hotspot := Vector2i.ZERO
+	var masked: PeIconCursorResource.DecodedImage
+
+	func _init(picture: Image, point: Vector2i, mask: PeIconCursorResource.DecodedImage = null) -> void:
+		image = picture
+		hotspot = point
+		masked = mask
+
+
 var error := ""
 var icons: Dictionary[String, Dictionary] = {"city": {}, "scurk": {}}
 var cursors: Dictionary[String, Dictionary] = {"city": {}, "scurk": {}}
@@ -32,7 +43,7 @@ static func load_original(reference_root: String) -> DesktopGraphics:
 		for kind in ["icons", "cursors"]:
 			for id in resource_ids(app, kind):
 				var resource := PeIconCursorResource.resource_from_directory(directory, 3 if kind == "icons" else 1, id)
-				var decoded := PeIconCursorResource.decode_image(resource.bytes, kind == "cursors") if resource.ok else resource
+				var decoded := PeIconCursorResource.decode_image(resource.bytes, kind == "cursors") if resource.ok else PeIconCursorResource.DecodedImage.failure(resource.error)
 
 				if not decoded.ok:
 					graphics.error = decoded.error
@@ -49,7 +60,7 @@ static func load_original(reference_root: String) -> DesktopGraphics:
 
 					graphics.icons[app][id] = image.image
 				else:
-					graphics.cursors[app][id] = {"image": image.get("image"), "hotspot": decoded.hotspot, "masked": decoded}
+					graphics.cursors[app][id] = Cursor.new(image.image, decoded.hotspot, decoded)
 
 	return graphics
 
@@ -90,8 +101,8 @@ static func cursor_id(app: String, group: int) -> int:
 	return -1
 
 
-func cursor(app: String, group: int) -> Dictionary:
-	return cursors.get(app, {}).get(cursor_id(app, group), {})
+func cursor(app: String, group: int) -> Cursor:
+	return cursors.get(app, {}).get(cursor_id(app, group))
 
 
 func icon(app: String, group: int, width: int) -> Image:
@@ -102,8 +113,8 @@ func icon(app: String, group: int, width: int) -> Image:
 	return null
 
 
-static func render_cursor(record: Dictionary, background: Image) -> Image:
-	if not record.get("masked", {}).is_empty():
+static func render_cursor(record: Cursor, background: Image) -> Image:
+	if record.masked != null:
 		return PeIconCursorResource.composite(record.masked, background)
 
 	var result := background.duplicate()
@@ -184,4 +195,4 @@ func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 				if kind == "icons":
 					icons[app][ids[i]] = image
 				else:
-					cursors[app][ids[i]] = {"image": image, "hotspot": hotspot, "masked": {}}
+					cursors[app][ids[i]] = Cursor.new(image, hotspot)

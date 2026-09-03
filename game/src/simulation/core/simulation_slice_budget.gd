@@ -2,6 +2,20 @@ class_name SimulationSliceBudget
 extends RefCounted
 # a worker parks at checkpoints until the next rendered frame grants time
 # only the worker calls checkpoint/finish. the main thread grants/cancels
+class Metrics extends RefCounted:
+	var slices := 0
+	var max_slice_usec := 0
+	var waiting := false
+	var cancelled := false
+	var elapsed_usec := 0
+	var parked_usec := 0
+
+	# Values for the debug tree and benchmark JSON.
+	func debug_fields() -> Dictionary:
+		return {"slices": slices, "max_slice_usec": max_slice_usec, "waiting": waiting, "cancelled": cancelled,
+				"elapsed_usec": elapsed_usec, "parked_usec": parked_usec}
+
+
 var parked_usec := 0
 
 var _created_usec := Time.get_ticks_usec()
@@ -88,10 +102,15 @@ func finish() -> void:
 	_mutex.unlock()
 
 
-func metrics() -> Dictionary:
+func metrics() -> Metrics:
 	_mutex.lock()
-	var result := {"slices": _slices, "max_slice_usec": _max_slice_usec, "waiting": _waiting, "cancelled": _cancelled,
-			"elapsed_usec": _elapsed_usec, "parked_usec": parked_usec}
+	var result := Metrics.new()
+	result.slices = _slices
+	result.max_slice_usec = _max_slice_usec
+	result.waiting = _waiting
+	result.cancelled = _cancelled
+	result.elapsed_usec = _elapsed_usec
+	result.parked_usec = parked_usec
 	_mutex.unlock()
 
 	return result

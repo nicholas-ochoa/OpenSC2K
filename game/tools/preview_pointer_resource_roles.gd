@@ -103,14 +103,14 @@ func _detail() -> void:
 	status.text = "Light and dark background composition • Previous/Next returns to sheets"
 
 
-func _load(record: Dictionary) -> Dictionary:
+func _load(record: Dictionary) -> PeIconCursorResource.DecodedImage:
 	var decoded := PeIconCursorResource.load_image("res://../references/SIMCITY2000/" + str(record.source), int(record.id), record.kind == "cursor")
 	assert(decoded.ok, str(decoded.error))
 
 	return decoded
 
 
-func _image(decoded: Dictionary, position: Vector2, zoom: int, backdrop: int) -> TextureRect:
+func _image(decoded: PeIconCursorResource.DecodedImage, position: Vector2, zoom: int, backdrop: int) -> TextureRect:
 	var background := Image.create(decoded.width, decoded.height, false, Image.FORMAT_RGBA8)
 
 	for y in int(decoded.height):

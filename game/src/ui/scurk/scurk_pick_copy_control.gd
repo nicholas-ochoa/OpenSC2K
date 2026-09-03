@@ -110,7 +110,7 @@ func open_with_working(value: ScurkMif, path: String) -> void:
 		source_list.grab_focus()
 
 
-func load_source_path(path: String) -> Dictionary:
+func load_source_path(path: String) -> ScurkMif.Result:
 	var normalized := ProjectSettings.globalize_path(path).simplify_path()
 
 	if _same_path(normalized, working_path):
@@ -127,12 +127,16 @@ func load_source_path(path: String) -> Dictionary:
 	_refresh_lists()
 	_set_status("Loaded source object set %s." % source_path.get_file())
 
-	return {"ok": true, "error": ""}
+	var result := ScurkMif.Result.new()
+	result.ok = true
+	result.error = ""
+
+	return result
 
 
-func copy_completed(result: Dictionary) -> void:
-	if not result.get("ok", false):
-		_set_status(result.get("error", "The objects could not be copied."), true)
+func copy_completed(result: ScurkPickCopy.Result) -> void:
+	if not result.ok:
+		_set_status(result.error, true)
 
 		return
 
@@ -353,5 +357,9 @@ func _same_path(left: String, right: String) -> bool:
 	return not left.is_empty() and not right.is_empty() and left.nocasecmp_to(right) == 0
 
 
-func _failure(message: String) -> Dictionary:
-	return {"ok": false, "error": message}
+func _failure(message: String) -> ScurkMif.Result:
+	var result := ScurkMif.Result.new()
+	result.ok = false
+	result.error = message
+
+	return result

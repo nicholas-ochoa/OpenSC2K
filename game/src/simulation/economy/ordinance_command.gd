@@ -109,14 +109,35 @@ static func current_cost_for_misc(misc: PackedByteArray) -> int:
 	return total
 
 
-static func snapshot(city: CityState) -> Dictionary:
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+	var changed := false
+	var flags := 0
+	var current_raw := 0
+	var raw_costs := PackedInt32Array()
+	var item_amounts := PackedInt32Array()
+	var category_amounts := PackedInt32Array()
+	var year_to_date_amount := 0
+	var estimated_amount := 0
+	var month := 0
+
+
+static func failed(message: String) -> Result:
+	var result := Result.new()
+	result.error = message
+
+	return result
+
+
+static func snapshot(city: CityState) -> Result:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return failed("city is invalid")
 
 	var misc_chunk := city.document.find_chunk("MISC")
 
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != MISC_SIZE:
-		return {"ok": false, "error": "MISC is missing or has the wrong size"}
+		return failed("MISC is missing or has the wrong size")
 
 	var misc: PackedByteArray = misc_chunk.decoded_payload
 	var flags := _read_u32(misc, MISC_ORDINANCES)
@@ -148,76 +169,73 @@ static func snapshot(city: CityState) -> Dictionary:
 	if _read_u32(misc, MISC_YEAR_END) == 0:
 		estimated_raw = _to_i32((11 - month) * current_raw + year_to_date_raw)
 
-	return {
-		"ok": true,
-		"error": "",
-		"flags": flags,
-		"raw_costs": raw_costs,
-		"item_amounts": item_amounts,
-		"category_amounts": category_amounts,
-		"current_raw": current_raw,
-		"year_to_date_amount": _divide_toward_zero(
-			year_to_date_raw, DISPLAY_ANNUAL_DIVISOR
-		),
-		"estimated_amount": _divide_toward_zero(
-			estimated_raw, DISPLAY_ANNUAL_DIVISOR
-		),
-		"month": month,
-	}
+	var result := Result.new()
+	result.ok = true
+	result.error = ""
+	result.flags = flags
+	result.raw_costs = raw_costs
+	result.item_amounts = item_amounts
+	result.category_amounts = category_amounts
+	result.current_raw = current_raw
+	result.year_to_date_amount = _divide_toward_zero(
+		year_to_date_raw, DISPLAY_ANNUAL_DIVISOR
+	)
+	result.estimated_amount = _divide_toward_zero(
+		estimated_raw, DISPLAY_ANNUAL_DIVISOR
+	)
+	result.month = month
+
+	return result
 
 
-static func synchronize_current(city: CityState) -> Dictionary:
+static func synchronize_current(city: CityState) -> Result:
 	if city == null or not city.is_valid():
-		return {"ok": false, "changed": false, "error": "city is invalid"}
+		return failed("city is invalid")
 
 	var misc_chunk := city.document.find_chunk("MISC")
 
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != MISC_SIZE:
-		return {
-			"ok": false,
-			"changed": false,
-			"error": "MISC is missing or has the wrong size",
-		}
+		return failed("MISC is missing or has the wrong size")
 
 	var misc: PackedByteArray = misc_chunk.decoded_payload
 	var budget_offset := _budget_offset(BUDGET_ORDINANCES)
 	var current := current_cost_for_misc(misc)
 
 	if _read_i32(misc, budget_offset + BUDGET_CURRENT) == current:
-		return {"ok": true, "changed": false, "current_raw": current, "error": ""}
+		var result := Result.new()
+		result.ok = true
+		result.changed = false
+		result.current_raw = current
+		result.error = ""
+
+		return result
 
 	var changed := misc.duplicate()
 	_write_i32(changed, budget_offset + BUDGET_CURRENT, current)
 
 	if not misc_chunk.set_decoded_payload(changed):
-		return {
-			"ok": false,
-			"changed": false,
-			"error": "cannot store the ordinance budget total",
-		}
+		return failed("cannot store the ordinance budget total")
 
-	return {"ok": true, "changed": true, "current_raw": current, "error": ""}
+	var result := Result.new()
+	result.ok = true
+	result.changed = true
+	result.current_raw = current
+	result.error = ""
+
+	return result
 
 
-static func set_enabled(city: CityState, ordinance_id: int, enabled: bool) -> Dictionary:
+static func set_enabled(city: CityState, ordinance_id: int, enabled: bool) -> Result:
 	if city == null or not city.is_valid():
-		return {"ok": false, "changed": false, "error": "city is invalid"}
+		return failed("city is invalid")
 
 	if ordinance_id < 0 or ordinance_id >= ORDINANCE_COUNT:
-		return {
-			"ok": false,
-			"changed": false,
-			"error": "ordinance is outside the valid range",
-		}
+		return failed("ordinance is outside the valid range")
 
 	var misc_chunk := city.document.find_chunk("MISC")
 
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != MISC_SIZE:
-		return {
-			"ok": false,
-			"changed": false,
-			"error": "MISC is missing or has the wrong size",
-		}
+		return failed("MISC is missing or has the wrong size")
 
 	var misc: PackedByteArray = misc_chunk.decoded_payload
 	var old_flags := _read_u32(misc, MISC_ORDINANCES)
@@ -234,19 +252,16 @@ static func set_enabled(city: CityState, ordinance_id: int, enabled: bool) -> Di
 	var has_change := new_flags != old_flags or changed != misc
 
 	if has_change and not misc_chunk.set_decoded_payload(changed):
-		return {
-			"ok": false,
-			"changed": false,
-			"error": "cannot store the ordinance selection",
-		}
+		return failed("cannot store the ordinance selection")
 
-	return {
-		"ok": true,
-		"changed": has_change,
-		"flags": new_flags,
-		"current_raw": current,
-		"error": "",
-	}
+	var result := Result.new()
+	result.ok = true
+	result.changed = has_change
+	result.flags = new_flags
+	result.current_raw = current
+	result.error = ""
+
+	return result
 
 
 static func compact_amount(value: int) -> String:

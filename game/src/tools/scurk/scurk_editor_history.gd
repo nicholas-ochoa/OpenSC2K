@@ -4,15 +4,27 @@ extends RefCounted
 const Mif = preload("res://src/assets/scurk_mif.gd")
 const HISTORY_LIMIT := 24
 
+class Result extends ScurkMif.Result:
+	var no_action := false
+	var document: ScurkMif
+
+
+class Record extends RefCounted:
+	var before := PackedByteArray()
+	var after := PackedByteArray()
+	var blank_before: Dictionary[int, bool] = {}
+	var blank_after: Dictionary[int, bool] = {}
+
+
 var saved_bytes := PackedByteArray()
-var undo_stack: Array[Dictionary] = []
-var redo_stack: Array[Dictionary] = []
+var undo_stack: Array[Record] = []
+var redo_stack: Array[Record] = []
 var pending_edit_before := PackedByteArray()
-var pending_blank_shape_ids: Dictionary = {}
+var pending_blank_shape_ids: Dictionary[int, bool] = {}
 var object_start_bytes := PackedByteArray()
 var object_start_large_id := -1
-var object_start_blank_shape_ids: Dictionary = {}
-var blank_shape_ids: Dictionary = {}
+var object_start_blank_shape_ids: Dictionary[int, bool] = {}
+var blank_shape_ids: Dictionary[int, bool] = {}
 var dirty := false
 
 
@@ -73,12 +85,12 @@ func record(before: PackedByteArray, document: ScurkMif) -> bool:
 	if not encoded.ok or encoded.bytes == before:
 		return false
 
-	undo_stack.append({
-		"before": before.duplicate(),
-		"after": encoded.bytes.duplicate(),
-		"blank_before": pending_blank_shape_ids.duplicate(),
-		"blank_after": blank_shape_ids.duplicate(),
-	})
+	var action := Record.new()
+	action.before = before.duplicate()
+	action.after = encoded.bytes.duplicate()
+	action.blank_before = pending_blank_shape_ids.duplicate()
+	action.blank_after = blank_shape_ids.duplicate()
+	undo_stack.append(action)
 
 	if undo_stack.size() > HISTORY_LIMIT:
 		undo_stack.pop_front()
@@ -99,41 +111,66 @@ func can_redo() -> bool:
 	return not redo_stack.is_empty()
 
 
-func undo() -> Dictionary:
+func undo() -> Result:
 	if not can_undo():
-		return {"ok": false, "no_action": true, "error": ""}
+		var result := Result.new()
+		result.ok = false
+		result.no_action = true
+		result.error = ""
 
-	var action: Dictionary = undo_stack.pop_back()
+		return result
+
+	var action: Record = undo_stack.pop_back()
 	var replacement := _decode_document(action.before)
 
 	if not replacement.ok:
 		return replacement
 
-	blank_shape_ids = action.get("blank_before", {}).duplicate()
+	blank_shape_ids = action.blank_before.duplicate()
 	redo_stack.append(action)
 
-	return {"ok": true, "document": replacement.document, "error": ""}
+	var result := Result.new()
+	result.ok = true
+	result.document = replacement.document
+	result.error = ""
+
+	return result
 
 
-func redo() -> Dictionary:
+func redo() -> Result:
 	if not can_redo():
-		return {"ok": false, "no_action": true, "error": ""}
+		var result := Result.new()
+		result.ok = false
+		result.no_action = true
+		result.error = ""
 
-	var action: Dictionary = redo_stack.pop_back()
+		return result
+
+	var action: Record = redo_stack.pop_back()
 	var replacement := _decode_document(action.after)
 
 	if not replacement.ok:
 		return replacement
 
-	blank_shape_ids = action.get("blank_after", {}).duplicate()
+	blank_shape_ids = action.blank_after.duplicate()
 	undo_stack.append(action)
 
-	return {"ok": true, "document": replacement.document, "error": ""}
+	var result := Result.new()
+	result.ok = true
+	result.document = replacement.document
+	result.error = ""
+
+	return result
 
 
-func revert_object(document: ScurkMif, large_id: int) -> Dictionary:
+func revert_object(document: ScurkMif, large_id: int) -> Result:
 	if not can_revert_object(document, large_id):
-		return {"ok": false, "no_action": true, "error": ""}
+		var result := Result.new()
+		result.ok = false
+		result.no_action = true
+		result.error = ""
+
+		return result
 
 	var encoded := document.to_bytes()
 	var before: PackedByteArray = encoded.bytes.duplicate()
@@ -147,7 +184,12 @@ func revert_object(document: ScurkMif, large_id: int) -> Dictionary:
 	pending_blank_shape_ids = blank_before
 	record(before, replacement.document)
 
-	return {"ok": true, "document": replacement.document, "error": ""}
+	var result := Result.new()
+	result.ok = true
+	result.document = replacement.document
+	result.error = ""
+
+	return result
 
 
 func can_revert_object(document: ScurkMif, large_id: int) -> bool:
@@ -190,10 +232,19 @@ func _update_dirty_bytes(encoded_bytes: PackedByteArray) -> void:
 	dirty = encoded_bytes != saved_bytes
 
 
-func _decode_document(bytes: PackedByteArray) -> Dictionary:
+func _decode_document(bytes: PackedByteArray) -> Result:
 	var replacement := Mif.new()
 
 	if not replacement.parse(bytes):
-		return {"ok": false, "error": replacement.parse_error}
+		var result := Result.new()
+		result.ok = false
+		result.error = replacement.parse_error
 
-	return {"ok": true, "document": replacement, "error": ""}
+		return result
+
+	var result := Result.new()
+	result.ok = true
+	result.document = replacement
+	result.error = ""
+
+	return result

@@ -65,7 +65,7 @@ static func _monster_damage(
 		flags, text, labels, microsims, misc, point, random, true, true, false
 	)
 
-	if not demolition.get("changed", false):
+	if not demolition.changed:
 		return
 
 	match goal:

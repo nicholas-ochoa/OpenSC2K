@@ -5,31 +5,24 @@ const TEXT_LABEL_BASE := 201
 const SOUND_DAMAGE := 0x1f8
 
 
-static func new_runtime_events() -> Dictionary:
-	return {
-		"effect_events": [] as Array[Dictionary],
-		"sound_events": [] as Array[int],
-		"next_effect_frame": 0,
-	}
+class RuntimeEvents extends RefCounted:
+	var effect_events: Array[Dictionary] = []
+	var sound_events: Array[int] = []
+	var next_effect_frame := 0
 
 
-static func append_damage_events(runtime_events: Dictionary, damage: Dictionary) -> void:
-	if runtime_events.is_empty():
+static func new_runtime_events() -> RuntimeEvents:
+	return RuntimeEvents.new()
+
+
+static func append_damage_events(runtime_events: RuntimeEvents, damage: DemolishPointResult) -> void:
+	if runtime_events == null or damage.effect_events.is_empty():
 		return
 
-	var source: Array = damage.get("effect_events", [])
-
-	if source.is_empty():
-		return
-
-	var destination: Array[Dictionary] = runtime_events.get("effect_events", [])
-	runtime_events["next_effect_frame"] = DemolishEffectsSites.append_effect_sequence(
-		destination, source, int(runtime_events.get("next_effect_frame", 0))
+	runtime_events.next_effect_frame = DemolishEffectsSites.append_effect_sequence(
+		runtime_events.effect_events, damage.effect_events, runtime_events.next_effect_frame
 	)
-	runtime_events["effect_events"] = destination
-	var sounds: Array[int] = runtime_events.get("sound_events", [])
-	sounds.append(SOUND_DAMAGE)
-	runtime_events["sound_events"] = sounds
+	runtime_events.sound_events.append(SOUND_DAMAGE)
 
 
 static func apply(
@@ -49,7 +42,7 @@ static func apply(
 	random: SimRandom,
 	lfsr_random: SimLfsrRandom,
 	allow_small_tile := false,
-	runtime_events: Dictionary = {},
+	runtime_events: DisasterDamage.RuntimeEvents = null,
 ) -> int:
 	var map_edge: int = city.map_size if city != null else 128
 	var index := _index(point, map_edge)
@@ -110,7 +103,7 @@ static func apply_flood(
 	maximum_altitude: int,
 	random: SimRandom,
 	lfsr_random: SimLfsrRandom,
-	runtime_events: Dictionary = {},
+	runtime_events: DisasterDamage.RuntimeEvents = null,
 ) -> int:
 	var map_edge: int = city.map_size if city != null else 128
 	var index := _index(point, map_edge)
@@ -168,14 +161,14 @@ static func burn_structure(
 	mark_fire := true,
 	clear_current := true,
 	emit_effects := false
-) -> Dictionary:
+) -> DemolishPointResult:
 	var map_edge: int = city.map_size if city != null else 128
 	var result := DemolishStructures._demolish_point(
 		city, altitude, buildings, terrain, zones, underground,
 		flags, text, labels, microsims, misc, point, random, true, true, emit_effects
 	)
 
-	for index in result.get("indices", PackedInt32Array()):
+	for index in result.indices:
 		if mark_fire and flags[index] & 0x04 == 0:
 			OverlayData.write(text, index, 0xff)
 

@@ -25,7 +25,7 @@ var view_center_requests: Array = []
 var music_track_requests := PackedInt32Array()
 
 # measured work for the timing window
-var timing: Dictionary = {}
+var timing := SimulationTiming.new()
 
 
 # Tests compare fields through this shallow dictionary. They exclude measured

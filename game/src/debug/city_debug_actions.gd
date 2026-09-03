@@ -16,26 +16,71 @@ const DISASTER_OVERLAY_FIRST := 0xfb
 const MAXIS_TARGET_OVERLAY_FIRST := 241
 
 
-static func add_funds(city: CityState, amount: int) -> Dictionary:
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+
+
+class FundsResult extends Result:
+	var new_funds := 0
+
+
+class EndDisasterResult extends Result:
+	var active_type := 0
+	var cleared_markers := 0
+	var cleared_objects := 0
+
+
+class DispatchResult extends Result:
+	var start := Vector2i.ZERO
+	var target := Vector2i.ZERO
+
+
+class DisasterTarget extends RefCounted:
+	var point := Vector2i.ZERO
+	var goal := 0
+
+
+static func add_funds(city: CityState, amount: int) -> FundsResult:
 	if city == null or amount <= 0:
-		return {"ok": false, "error": "No city is loaded."}
+		var result := FundsResult.new()
+		result.ok = false
+		result.error = "No city is loaded."
+
+		return result
 
 	var new_funds := mini(MAX_FUNDS, city.funds() + amount)
 
 	if not city.set_funds(new_funds):
-		return {"ok": false, "error": "Funds could not be changed."}
+		var result := FundsResult.new()
+		result.ok = false
+		result.error = "Funds could not be changed."
 
-	return {"ok": true, "new_funds": new_funds}
+		return result
+
+	var result := FundsResult.new()
+	result.ok = true
+	result.new_funds = new_funds
+
+	return result
 
 
-static func unlock_everything(city: CityState, document: Sc2File) -> Dictionary:
+static func unlock_everything(city: CityState, document: Sc2File) -> Result:
 	if city == null or document == null:
-		return {"ok": false, "error": "No city is loaded."}
+		var result := Result.new()
+		result.ok = false
+		result.error = "No city is loaded."
+
+		return result
 
 	var misc_chunk := document.find_chunk("MISC")
 
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != MISC_SIZE:
-		return {"ok": false, "error": "The city MISC data is not valid."}
+		var result := Result.new()
+		result.ok = false
+		result.error = "The city MISC data is not valid."
+
+		return result
 
 	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
 	ToolAvailability._write_u32_be(misc, ToolAvailability.MISC_PROGRESSION, 6)
@@ -60,40 +105,63 @@ static func unlock_everything(city: CityState, document: Sc2File) -> Dictionary:
 	)
 
 	if not misc_chunk.set_decoded_payload(misc):
-		return {"ok": false, "error": "The unlock state could not be stored."}
+		var result := Result.new()
+		result.ok = false
+		result.error = "The unlock state could not be stored."
 
-	return {"ok": true}
+		return result
+
+	var result := Result.new()
+	result.ok = true
+
+	return result
 
 
-static func set_no_disasters(city: CityState, enabled: bool) -> Dictionary:
+static func set_no_disasters(city: CityState, enabled: bool) -> Result:
 	if city == null:
-		return {"ok": false, "error": "No city is loaded."}
+		var result := Result.new()
+		result.ok = false
+		result.error = "No city is loaded."
+
+		return result
 
 	if not city.set_no_disasters_enabled(enabled):
-		return {
-			"ok": false,
-			"error": "The random-disaster option could not be stored.",
-		}
+		var result := Result.new()
+		result.ok = false
+		result.error = "The random-disaster option could not be stored."
 
-	return {"ok": true}
+		return result
+
+	var result := Result.new()
+	result.ok = true
+
+	return result
 
 
 static func end_disaster(
 	city: CityState,
 	document: Sc2File,
 	engine: SimulationEngine,
-) -> Dictionary:
+) -> EndDisasterResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or document == null or engine == null:
-		return {"ok": false, "error": "No city is loaded."}
+		var result := EndDisasterResult.new()
+		result.ok = false
+		result.error = "No city is loaded."
+
+		return result
 
 	var thing_chunk := document.find_chunk("XTHG")
 	var text_chunk := document.find_chunk("XTXT")
 	var misc_chunk := document.find_chunk("MISC")
 
 	if not _valid_disaster_chunks(thing_chunk, text_chunk, misc_chunk, map_edge):
-		return {"ok": false, "error": "The city disaster data is not valid."}
+		var result := EndDisasterResult.new()
+		result.ok = false
+		result.error = "The city disaster data is not valid."
+
+		return result
 
 	var old_things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
 	var old_text: PackedByteArray = text_chunk.decoded_payload.duplicate()
@@ -114,58 +182,91 @@ static func end_disaster(
 	)
 
 	if not had_disaster:
-		return {"ok": false, "error": "No active disaster was found."}
+		var result := EndDisasterResult.new()
+		result.ok = false
+		result.error = "No active disaster was found."
+
+		return result
 
 	if not thing_chunk.set_decoded_payload(things):
-		return {"ok": false, "error": "The disaster objects could not be cleared."}
+		var result := EndDisasterResult.new()
+		result.ok = false
+		result.error = "The disaster objects could not be cleared."
+
+		return result
 
 	if not text_chunk.set_decoded_payload(text):
 		thing_chunk.set_decoded_payload(old_things)
 
-		return {"ok": false, "error": "The disaster markers could not be cleared."}
+		var result := EndDisasterResult.new()
+		result.ok = false
+		result.error = "The disaster markers could not be cleared."
+
+		return result
 
 	if not misc_chunk.set_decoded_payload(misc):
 		thing_chunk.set_decoded_payload(old_things)
 		text_chunk.set_decoded_payload(old_text)
 
-		return {"ok": false, "error": "The disaster mode could not be cleared."}
+		var result := EndDisasterResult.new()
+		result.ok = false
+		result.error = "The disaster mode could not be cleared."
+
+		return result
 
 	city.resync_mirrors(["XTXT"])
 	_reset_disaster_engine(engine)
 
-	return {
-		"ok": true,
-		"active_type": active_type,
-		"cleared_markers": cleared_markers,
-		"cleared_objects": disaster_records.size(),
-	}
+	var result := EndDisasterResult.new()
+	result.ok = true
+	result.active_type = active_type
+	result.cleared_markers = cleared_markers
+	result.cleared_objects = disaster_records.size()
+
+	return result
 
 
 static func dispatch_maxis_man(
 	city: CityState,
 	document: Sc2File,
 	view_center: Vector2i,
-) -> Dictionary:
+) -> DispatchResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or document == null:
-		return {"ok": false, "error": "No city is loaded."}
+		var result := DispatchResult.new()
+		result.ok = false
+		result.error = "No city is loaded."
+
+		return result
 
 	var target := _disaster_target(city, document, view_center)
 
-	if target.is_empty():
-		return {"ok": false, "error": "No active disaster target was found."}
+	if target == null:
+		var result := DispatchResult.new()
+		result.ok = false
+		result.error = "No active disaster target was found."
+
+		return result
 
 	var start := _maxis_man_start(city, target.point)
 
 	if start.x < 0:
-		return {"ok": false, "error": "No clear launch tile was found."}
+		var result := DispatchResult.new()
+		result.ok = false
+		result.error = "No clear launch tile was found."
+
+		return result
 
 	var thing_chunk := document.find_chunk("XTHG")
 	var text_chunk := document.find_chunk("XTXT")
 
 	if thing_chunk == null or text_chunk == null:
-		return {"ok": false, "error": "The moving-object data is missing."}
+		var result := DispatchResult.new()
+		result.ok = false
+		result.error = "The moving-object data is missing."
+
+		return result
 
 	var old_things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
 	var things: PackedByteArray = old_things.duplicate()
@@ -180,22 +281,36 @@ static func dispatch_maxis_man(
 	)
 
 	if not spawned.spawned:
-		return {
-			"ok": false,
-			"error": "Maxis Man is already active or no record is free.",
-		}
+		var result := DispatchResult.new()
+		result.ok = false
+		result.error = "Maxis Man is already active or no record is free."
+
+		return result
 
 	if not thing_chunk.set_decoded_payload(things):
-		return {"ok": false, "error": "The Maxis Man record could not be stored."}
+		var result := DispatchResult.new()
+		result.ok = false
+		result.error = "The Maxis Man record could not be stored."
+
+		return result
 
 	if not text_chunk.set_decoded_payload(text):
 		thing_chunk.set_decoded_payload(old_things)
 
-		return {"ok": false, "error": "The Maxis Man map link could not be stored."}
+		var result := DispatchResult.new()
+		result.ok = false
+		result.error = "The Maxis Man map link could not be stored."
+
+		return result
 
 	city.resync_mirrors(["XTXT"])
 
-	return {"ok": true, "start": start, "target": target.point}
+	var result := DispatchResult.new()
+	result.ok = true
+	result.start = start
+	result.target = target.point
+
+	return result
 
 
 static func _valid_disaster_chunks(
@@ -215,8 +330,8 @@ static func _valid_disaster_chunks(
 	)
 
 
-static func _disaster_record_indices(things: PackedByteArray) -> Dictionary:
-	var result := {}
+static func _disaster_record_indices(things: PackedByteArray) -> Dictionary[int, bool]:
+	var result: Dictionary[int, bool] = {}
 
 	for record in range(1, ThingData.count(things)):
 		var offset := record * CityState.THING_RECORD_SIZE
@@ -239,7 +354,7 @@ static func _disaster_record_indices(things: PackedByteArray) -> Dictionary:
 static func _clear_disaster_markers(
 	text: PackedByteArray,
 	things: PackedByteArray,
-	disaster_records: Dictionary,
+	disaster_records: Dictionary[int, bool],
 	map_edge: int = 128,
 ) -> int:
 	var cleared_markers := 0
@@ -276,7 +391,7 @@ static func _clear_disaster_markers(
 
 static func _clear_thing_records(
 	things: PackedByteArray,
-	disaster_records: Dictionary,
+	disaster_records: Dictionary[int, bool],
 ) -> void:
 	for record in disaster_records:
 		var offset := int(record) * CityState.THING_RECORD_SIZE
@@ -298,7 +413,7 @@ static func _disaster_target(
 	city: CityState,
 	document: Sc2File,
 	view_center: Vector2i,
-) -> Dictionary:
+) -> DisasterTarget:
 	var map_edge: int = city.map_size if city != null else 128
 	var thing_chunk := document.find_chunk("XTHG")
 
@@ -309,10 +424,11 @@ static func _disaster_target(
 			var offset := record * CityState.THING_RECORD_SIZE
 
 			if int(ThingData.read(things, offset)) in [5, 15]:
-				return {
-					"point": Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4)),
-					"goal": ThingData.target_id(record),
-				}
+				var result := DisasterTarget.new()
+				result.point = Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
+				result.goal = ThingData.target_id(record)
+
+				return result
 
 	var nearest := Vector2i(-1, -1)
 	var nearest_distance := MAX_FUNDS
@@ -329,7 +445,14 @@ static func _disaster_target(
 				nearest = point
 				nearest_distance = distance
 
-	return {} if nearest.x < 0 else {"point": nearest, "goal": MAXIS_TARGET_OVERLAY_FIRST}
+	if nearest.x < 0:
+		return null
+
+	var result := DisasterTarget.new()
+	result.point = nearest
+	result.goal = MAXIS_TARGET_OVERLAY_FIRST
+
+	return result
 
 
 static func _maxis_man_start(city: CityState, target: Vector2i) -> Vector2i:

@@ -9,15 +9,22 @@ static func structure_area(tile_id: int) -> int:
 
 static func damage_structure_payloads(
 	city: CityState, payloads: Dictionary, point: Vector2i, random: SimRandom, emit_effects := false
-) -> Dictionary:
+) -> DemolishPointResult:
 	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT", "XLAB", "XMIC", "MISC"]:
 		if not payloads.has(chunk_id):
-			return {"changed": false, "error": "%s payload is missing" % chunk_id}
+			var result := DemolishPointResult.new()
+			result.changed = false
+			result.error = "%s payload is missing" % chunk_id
+
+			return result
 
 	var index := city.index_of(point.x, point.y)
 
 	if index < 0 or int(payloads.XBLD[index]) < 6:
-		return {"changed": false}
+		var result := DemolishPointResult.new()
+		result.changed = false
+
+		return result
 
 	return _demolish_point(
 		city,
@@ -57,16 +64,22 @@ static func _demolish_point(
 	retile_neighbors := true,
 	emit_effects := true,
 	scurk_mode := false
-) -> Dictionary:
+) -> DemolishPointResult:
 	var map_edge: int = city.map_size if city != null else 128
 	var index := point.x * map_edge + point.y
 	var tile_id := int(buildings[index])
 
 	if not force_damage and ((zones[index] & 0x0f) == MILITARY_ZONE or tile_id == RADIOACTIVITY):
-		return {"changed": false}
+		var result := DemolishPointResult.new()
+		result.changed = false
+
+		return result
 
 	if not force_damage and OverlayData.read(text_overlays, index) == PROTECTED_CONNECTION_LABEL:
-		return {"changed": false}
+		var result := DemolishPointResult.new()
+		result.changed = false
+
+		return result
 
 	if tile_id >= TUNNEL_FIRST and tile_id <= TUNNEL_LAST:
 		return DemolishTransport._demolish_tunnel(
@@ -115,18 +128,33 @@ static func _demolish_point(
 
 	if tile_id == 0:
 		if scurk_mode:
-			return {"changed": false}
+			var result := DemolishPointResult.new()
+			result.changed = false
+
+			return result
 
 		if terrain[index] < 0x30:
-			return {"changed": false}
+			var result := DemolishPointResult.new()
+			result.changed = false
+
+			return result
 
 		DemolishTerrain._remove_surface_water(altitude, buildings, terrain, zones, flags, misc, point, map_edge)
 
-		return {"changed": true, "indices": PackedInt32Array([index])}
+		var result := DemolishPointResult.new()
+		result.changed = true
+		result.indices = PackedInt32Array([index])
+
+		return result
 
 	if tile_id < 0x0d:
 		if not scurk_mode and tile_id >= 0x06 and random.next_u15() % 20 == 0:
-			return {"changed": true, "easter_event": true, "indices": PackedInt32Array()}
+			var result := DemolishPointResult.new()
+			result.changed = true
+			result.easter_event = true
+			result.indices = PackedInt32Array()
+
+			return result
 
 		var network_effects: Array[Dictionary] = []
 
@@ -144,17 +172,21 @@ static func _demolish_point(
 			buildings, terrain, zones, underground, flags, misc, [point], text_overlays, map_edge
 		)
 
-		return {
-			"changed": true,
-			"indices": PackedInt32Array([index]),
-			"effect_events": network_effects,
-		}
+		var result := DemolishPointResult.new()
+		result.changed = true
+		result.indices = PackedInt32Array([index])
+		result.effect_events = network_effects
+
+		return result
 
 	var area := DemolishEffectsSites._building_area(tile_id)
 	var site := DemolishEffectsSites._find_building_site(buildings, zones, point, tile_id, area, city.compass_rotation(), map_edge)
 
 	if site.size == Vector2i.ZERO:
-		return {"changed": false}
+		var result := DemolishPointResult.new()
+		result.changed = false
+
+		return result
 
 	var effect_events: Array[Dictionary] = []
 
@@ -210,7 +242,12 @@ static func _demolish_point(
 		else:
 			DemolishTerrain._remove_surface_water(altitude, buildings, terrain, zones, flags, misc, point, map_edge)
 
-	return {"changed": true, "indices": indices, "effect_events": effect_events}
+	var result := DemolishPointResult.new()
+	result.changed = true
+	result.indices = indices
+	result.effect_events = effect_events
+
+	return result
 
 
 static func _demolish_underground_point(
@@ -228,15 +265,21 @@ static func _demolish_underground_point(
 	point: Vector2i,
 	random: SimRandom,
 	scurk_mode := false
-) -> Dictionary:
+) -> DemolishPointResult:
 	var map_edge: int = city.map_size if city != null else 128
 	var index := point.x * map_edge + point.y
 
 	if not scurk_mode and (zones[index] & 0x0f) == MILITARY_ZONE:
-		return {"changed": false}
+		var result := DemolishPointResult.new()
+		result.changed = false
+
+		return result
 
 	if not scurk_mode and OverlayData.read(text_overlays, index) == PROTECTED_CONNECTION_LABEL:
-		return {"changed": false}
+		var result := DemolishPointResult.new()
+		result.changed = false
+
+		return result
 
 	var altitude_offset := index * 2
 	var altitude_word := (
@@ -250,13 +293,16 @@ static func _demolish_underground_point(
 		and tunnel_level != 1
 		and (flags[index] & BuildingCommand.FLAG_PIPED) == 0
 	):
-		return {"changed": false}
+		var result := DemolishPointResult.new()
+		result.changed = false
+
+		return result
 
 	if buildings[index] < 0x70:
 		flags[index] &= ~BuildingCommand.FLAG_PIPED & 0xff
 
 	var indices := PackedInt32Array([index])
-	var effect_events: Array = []
+	var effect_events: Array[Dictionary] = []
 
 	if tunnel_level == 1 or underground_tile == 0x23:
 		var surface_result := _demolish_point(
@@ -279,19 +325,20 @@ static func _demolish_underground_point(
 			scurk_mode
 		)
 
-		for changed_index in surface_result.get("indices", PackedInt32Array()):
+		for changed_index in surface_result.indices:
 			if not indices.has(changed_index):
 				indices.append(changed_index)
 
-		effect_events = surface_result.get("effect_events", [])
+		effect_events = surface_result.effect_events
 
 	BuildingUnderground._replace_underground(underground, zones, misc, index, 0)
 	DemolishTerrain._retile_after_demolition(
 		buildings, terrain, zones, underground, flags, misc, [point], text_overlays, map_edge
 	)
 
-	return {
-		"changed": true,
-		"indices": indices,
-		"effect_events": effect_events,
-	}
+	var result := DemolishPointResult.new()
+	result.changed = true
+	result.indices = indices
+	result.effect_events = effect_events
+
+	return result

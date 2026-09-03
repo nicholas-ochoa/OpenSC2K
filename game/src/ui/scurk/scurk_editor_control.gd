@@ -21,6 +21,16 @@ const DrawingControlsView = preload("res://src/ui/scurk/scurk_editor_drawing_con
 const CanvasPanelView = preload("res://src/ui/scurk/scurk_editor_canvas_panel.gd")
 const PalettePanelView = preload("res://src/ui/scurk/scurk_editor_palette_panel.gd")
 
+class Result extends ScurkMif.Result:
+	var path := ""
+
+	static func rejected(message: String) -> Result:
+		var result := Result.new()
+		result.error = message
+
+		return result
+
+
 const VIEW_LARGE := 0
 const VIEW_MEDIUM := 1
 const VIEW_SMALL := 2
@@ -38,10 +48,10 @@ var foreground_palette_index := 0
 var background_palette_index := 255
 var pending_discard_action := ""
 var edit_history: ScurkEditorHistory = EditorHistory.new()
-var undo_stack: Array[Dictionary]:
+var undo_stack: Array[ScurkEditorHistory.Record]:
 	get:
 		return edit_history.undo_stack
-var redo_stack: Array[Dictionary]:
+var redo_stack: Array[ScurkEditorHistory.Record]:
 	get:
 		return edit_history.redo_stack
 var dirty: bool:
@@ -164,7 +174,7 @@ func configure(
 		_refresh_sprite()
 
 
-func show_editor(initial_path := "") -> Dictionary:
+func show_editor(initial_path := "") -> Result:
 	if tile_set == null:
 		var path := initial_path
 
@@ -184,26 +194,30 @@ func show_editor(initial_path := "") -> Dictionary:
 	if object_list != null:
 		object_list.grab_focus()
 
-	return {"ok": true, "error": ""}
+	var outcome := Result.new()
+	outcome.ok = true
+	outcome.error = ""
+
+	return outcome
 
 
-func load_path(path: String) -> Dictionary:
+func load_path(path: String) -> Result:
 	var loaded := Mif.load_path(path)
 
 	if not loaded.is_valid():
-		return {"ok": false, "error": loaded.parse_error}
+		return Result.rejected(loaded.parse_error)
 
 	return load_tile_set(loaded, path)
 
 
-func load_tile_set(loaded: ScurkMif, path := "") -> Dictionary:
+func load_tile_set(loaded: ScurkMif, path := "") -> Result:
 	if loaded == null or not loaded.is_valid():
-		return {"ok": false, "error": "The SCURK tile set is invalid."}
+		return Result.rejected("The SCURK tile set is invalid.")
 
 	var encoded := loaded.to_bytes()
 
 	if not encoded.ok:
-		return {"ok": false, "error": encoded.error}
+		return Result.rejected(encoded.error)
 
 	tile_set = loaded
 	source_path = ProjectSettings.globalize_path(path).simplify_path() if not path.is_empty() else ""
@@ -224,12 +238,16 @@ func load_tile_set(loaded: ScurkMif, path := "") -> Dictionary:
 	if pick_copy_control != null and pick_copy_control.visible:
 		pick_copy_control.open_with_working(tile_set, source_path)
 
-	return {"ok": true, "error": ""}
+	var outcome := Result.new()
+	outcome.ok = true
+	outcome.error = ""
+
+	return outcome
 
 
-func save_path(path: String) -> Dictionary:
+func save_path(path: String) -> Result:
 	if tile_set == null or not tile_set.is_valid():
-		return {"ok": false, "error": "No valid SCURK tile set is loaded."}
+		return Result.rejected("No valid SCURK tile set is loaded.")
 
 	var output_path := ProjectSettings.globalize_path(path).simplify_path()
 
@@ -237,29 +255,23 @@ func save_path(path: String) -> Dictionary:
 		output_path += ".MIF"
 
 	if path_is_within(output_path, reference_directory):
-		return {
-			"ok": false,
-			"error": "The original game data folder is read-only. Use another folder.",
-		}
+		return Result.rejected("The original game data folder is read-only. Use another folder.")
 
 	var parent := output_path.get_base_dir()
 	var directory_error := DirAccess.make_dir_recursive_absolute(parent)
 
 	if directory_error != OK:
-		return {
-			"ok": false,
-			"error": "Cannot create the output directory: %s" % error_string(directory_error),
-		}
+		return Result.rejected("Cannot create the output directory: %s" % error_string(directory_error))
 
 	var saved := tile_set.save_path(output_path)
 
 	if not saved.ok:
-		return saved
+		return Result.rejected(saved.error)
 
 	var encoded := tile_set.to_bytes()
 
 	if not encoded.ok:
-		return {"ok": false, "error": encoded.error}
+		return Result.rejected(encoded.error)
 
 	source_path = output_path
 	edit_history.mark_saved(encoded.bytes)
@@ -270,7 +282,12 @@ func save_path(path: String) -> Dictionary:
 
 	_set_status("Saved %s." % source_path.get_file())
 
-	return {"ok": true, "error": "", "path": source_path}
+	var outcome := Result.new()
+	outcome.ok = true
+	outcome.error = ""
+	outcome.path = source_path
+
+	return outcome
 
 
 func request_close() -> void:
@@ -350,24 +367,21 @@ func request_export_bmp() -> void:
 	export_bmp_dialog.popup_centered_ratio(0.75)
 
 
-func import_bmp_path(path: String) -> Dictionary:
+func import_bmp_path(path: String) -> Result:
 	return import_image_path(path)
 
 
-func import_image_path(path: String) -> Dictionary:
+func import_image_path(path: String) -> Result:
 	if tile_set == null or current_large_id < 0:
-		return {"ok": false, "error": "No SCURK object is selected."}
+		return Result.rejected("No SCURK object is selected.")
 
 	var imported := ScurkImageImport.load_path(path, palette)
 
 	if not imported.ok:
-		return {"ok": false, "error": imported.error}
+		return Result.rejected(imported.error)
 
 	if imported.width > 128 or imported.height > 256:
-		return {
-			"ok": false,
-			"error": "SCURK graphics cannot be larger than 128 by 256 pixels.",
-		}
+		return Result.rejected("SCURK graphics cannot be larger than 128 by 256 pixels.")
 
 	return _replace_active_view(
 		imported.width,
@@ -378,9 +392,9 @@ func import_image_path(path: String) -> Dictionary:
 	)
 
 
-func export_image_path(path: String) -> Dictionary:
+func export_image_path(path: String) -> Result:
 	if pixel_canvas == null or pixel_canvas.sprite_width <= 0:
-		return {"ok": false, "error": "No SCURK sprite is available to export."}
+		return Result.rejected("No SCURK sprite is available to export.")
 
 	var output_path := ProjectSettings.globalize_path(path).simplify_path()
 
@@ -388,12 +402,12 @@ func export_image_path(path: String) -> Dictionary:
 		output_path += ".gif" if export_bmp_dialog.current_filter == 1 else ".png"
 
 	if path_is_within(output_path, reference_directory):
-		return {"ok": false, "error": "The original game data folder is read-only. Use another folder."}
+		return Result.rejected("The original game data folder is read-only. Use another folder.")
 
 	var shape := _active_output_shape()
 
 	if not shape.ok:
-		return shape
+		return Result.rejected(shape.error)
 
 	var encoded: AssetBytesResult
 
@@ -403,36 +417,41 @@ func export_image_path(path: String) -> Dictionary:
 		"gif":
 			encoded = IndexedGif.encode_cycle(shape.width, shape.height, shape.pixels, palette)
 		_:
-			return {"ok": false, "error": "Choose PNG or GIF as the image format."}
+			return Result.rejected("Choose PNG or GIF as the image format.")
 
 	if not encoded.ok:
-		return {"ok": false, "error": encoded.error}
+		return Result.rejected(encoded.error)
 
 	var error := DirAccess.make_dir_recursive_absolute(output_path.get_base_dir())
 
 	if error != OK:
-		return {"ok": false, "error": "Cannot create the export folder."}
+		return Result.rejected("Cannot create the export folder.")
 
 	var file := FileAccess.open(output_path, FileAccess.WRITE)
 
 	if file == null:
-		return {"ok": false, "error": "Cannot open the export file."}
+		return Result.rejected("Cannot open the export file.")
 
 	file.store_buffer(encoded.bytes)
 	error = file.get_error()
 	file.close()
 
 	if error != OK:
-		return {"ok": false, "error": "Cannot write the export file."}
+		return Result.rejected("Cannot write the export file.")
 
 	_set_status("Exported image to %s." % output_path.get_file())
 
-	return {"ok": true, "error": "", "path": output_path}
+	var outcome := Result.new()
+	outcome.ok = true
+	outcome.error = ""
+	outcome.path = output_path
+
+	return outcome
 
 
-func export_bmp_path(path: String) -> Dictionary:
+func export_bmp_path(path: String) -> Result:
 	if pixel_canvas == null or pixel_canvas.sprite_width <= 0:
-		return {"ok": false, "error": "No SCURK sprite is available to export."}
+		return Result.rejected("No SCURK sprite is available to export.")
 
 	var output_path := ProjectSettings.globalize_path(path).simplify_path()
 
@@ -440,23 +459,17 @@ func export_bmp_path(path: String) -> Dictionary:
 		output_path += ".BMP"
 
 	if path_is_within(output_path, reference_directory):
-		return {
-			"ok": false,
-			"error": "The original game data folder is read-only. Use another folder.",
-		}
+		return Result.rejected("The original game data folder is read-only. Use another folder.")
 
 	var directory_error := DirAccess.make_dir_recursive_absolute(output_path.get_base_dir())
 
 	if directory_error != OK:
-		return {
-			"ok": false,
-			"error": "Cannot create the output directory: %s" % error_string(directory_error),
-		}
+		return Result.rejected("Cannot create the output directory: %s" % error_string(directory_error))
 
 	var active_shape := _active_output_shape()
 
 	if not active_shape.ok:
-		return active_shape
+		return Result.rejected(active_shape.error)
 
 	var result := IndexedBitmap.save_path(
 		output_path,
@@ -467,13 +480,18 @@ func export_bmp_path(path: String) -> Dictionary:
 	)
 
 	if not result.ok:
-		return {"ok": false, "error": result.error}
+		return Result.rejected(result.error)
 
 	_set_status("Exported sprite %d to %s." % [
 		view_sprite_id(current_large_id, current_view), output_path.get_file(),
 	])
 
-	return {"ok": true, "error": "", "path": output_path}
+	var outcome := Result.new()
+	outcome.ok = true
+	outcome.error = ""
+	outcome.path = output_path
+
+	return outcome
 
 
 func copy_object_to_system_clipboard() -> void:
@@ -551,7 +569,7 @@ func _copy_pick_objects(
 	var encoded := tile_set.to_bytes()
 
 	if not encoded.ok:
-		pick_copy_control.copy_completed(encoded)
+		pick_copy_control.copy_completed(ScurkPickCopy._failure(encoded.error))
 
 		return
 
@@ -590,7 +608,7 @@ func _replace_active_view(
 	pixels: PackedInt32Array,
 	description: String,
 	remapped_color_count: int
-) -> Dictionary:
+) -> Result:
 	_capture_edit_start()
 	var sprite_id := view_sprite_id(current_large_id, current_view)
 	var output_width := width
@@ -608,7 +626,7 @@ func _replace_active_view(
 		if not active_shape.ok:
 			edit_history.cancel_pending_edit()
 
-			return active_shape
+			return Result.rejected(active_shape.error)
 
 		output_width = active_shape.width
 		output_height = active_shape.height
@@ -621,7 +639,7 @@ func _replace_active_view(
 	if not changed.ok:
 		edit_history.cancel_pending_edit()
 
-		return changed
+		return Result.rejected(changed.error)
 
 	edit_history.mark_shape_blank_state(sprite_id, output_pixels)
 	_record_edit(edit_history.pending_edit_before)
@@ -633,7 +651,11 @@ func _replace_active_view(
 	)
 	_set_status("%s into sprite %d.%s" % [description, sprite_id, remap_note])
 
-	return {"ok": true, "error": ""}
+	var outcome := Result.new()
+	outcome.ok = true
+	outcome.error = ""
+
+	return outcome
 
 
 func undo() -> void:
@@ -667,7 +689,7 @@ func redo() -> void:
 func revert_object() -> void:
 	var result := edit_history.revert_object(tile_set, current_large_id)
 
-	if result.get("no_action", false):
+	if result.no_action:
 		return
 
 	if not result.ok:
@@ -1422,22 +1444,23 @@ func _resolved_view_entry(view: int):
 	return entry
 
 
-func _active_output_shape() -> Dictionary:
+func _active_output_shape() -> IndexedImageResult:
 	if pixel_canvas == null or pixel_canvas.sprite_width <= 0:
-		return {"ok": false, "error": "No SCURK sprite is available."}
+		return IndexedImageResult.failure("No SCURK sprite is available.")
 
 	if active_workspace:
 		return DrawingWorkspace.shape_from_workspace(
 			pixel_canvas.pixels, active_base_width, current_view
 		)
 
-	return {
-		"ok": true,
-		"width": pixel_canvas.sprite_width,
-		"height": pixel_canvas.sprite_height,
-		"pixels": pixel_canvas.pixels.duplicate(),
-		"error": "",
-	}
+	var outcome := IndexedImageResult.new()
+	outcome.ok = true
+	outcome.width = pixel_canvas.sprite_width
+	outcome.height = pixel_canvas.sprite_height
+	outcome.pixels = pixel_canvas.pixels.duplicate()
+	outcome.error = ""
+
+	return outcome
 
 
 func _commit_name() -> void:

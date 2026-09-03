@@ -51,7 +51,8 @@ func _run() -> void:
 		return
 	print(JSON.stringify({"edge": city.map_size, "frames_while_pending": frames,
 		"elapsed_usec": Time.get_ticks_usec() - started, "max_main_call_usec": max_call_usec,
-		"worker": runner.last_work_metrics, "day": result.day_results[0].timing,
+		"worker": runner.last_work_metrics.debug_fields(), "day": {"work_usec": result.day_results[0].timing.work_usec,
+			"steps": result.day_results[0].timing.steps},
 		"job": result.job_timings}))
 	runner.close()
 	quit()

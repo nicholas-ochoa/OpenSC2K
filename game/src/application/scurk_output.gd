@@ -152,7 +152,7 @@ func _save_scurk_city_pdf(path: String) -> void:
 	var magnification := int(app.scurk_state.pending_print_options.get("magnification", 1))
 	var grid := ScurkCityOutput.page_grid(magnification)
 
-	if grid.is_empty():
+	if grid == null:
 		app.interface.show_error("The selected print magnification is invalid.")
 
 		return

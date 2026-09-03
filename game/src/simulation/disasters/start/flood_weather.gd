@@ -299,7 +299,7 @@ static func _hurricane_damage(
 	random: SimRandom,
 	lfsr_random: SimLfsrRandom,
 	damage_points: Array[Vector2i],
-	runtime_events: Dictionary,
+	runtime_events: DisasterDamage.RuntimeEvents,
 	emit_effects: bool
 ) -> void:
 	var damage := DisasterMapDamage.burn_structure(

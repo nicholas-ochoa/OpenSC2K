@@ -26,75 +26,102 @@ const CONFIRMATION_CANCELLED := 0
 const CONFIRMATION_CONFIRMED := 1
 
 
-static func issue(city: CityState, confirmation := CONFIRMATION_UNSELECTED) -> Dictionary:
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+	var status := ""
+	var confirmation_required := false
+	var changed := false
+	var bond_count := 0
+	var funds := 0
+	var city_value := 0
+	var credit_value := 0
+	var rate := 0
+
+
+class MiscInput extends RefCounted:
+	var ok := false
+	var error := ""
+	var chunk: Sc2Chunk
+	var misc := PackedByteArray()
+
+
+static func _failed(message: String) -> Result:
+	var result := Result.new()
+	result.error = message
+
+	return result
+
+
+static func issue(city: CityState, confirmation := CONFIRMATION_UNSELECTED) -> Result:
 	if not _valid_confirmation(confirmation):
-		return {"ok": false, "error": "confirmation choice is invalid"}
+		return _failed("confirmation choice is invalid")
 
 	var validated := _misc_data(city)
 
 	if not validated.ok:
-		return validated
+		return _failed(validated.error)
 
 	var misc_chunk = validated.chunk
 	var misc: PackedByteArray = validated.misc.duplicate()
 	var bond_count := _read_u32(misc, MISC_BONDS)
 
 	if bond_count > MAX_BONDS:
-		return {"ok": false, "error": "saved bond count exceeds fifty"}
+		return _failed("saved bond count exceeds fifty")
 
 	# the budget handler rebuilds the city value before every issue attempt
 	var city_value_result := CityValue.calculate(city)
 
 	if not city_value_result.ok:
-		return city_value_result
+		return _failed(city_value_result.error)
 
 	var city_value := int(city_value_result.city_value)
 	_write_i32(misc, MISC_CITY_VALUE, city_value)
 	var denominator := (city_value + 1) & 0xffffffff
 
 	if denominator == 0:
-		return {"ok": false, "error": "city value makes the credit calculation invalid"}
+		return _failed("city value makes the credit calculation invalid")
 
 	var numerator := (bond_count * 2500) & 0xffffffff
 	var credit_value := _to_i16(int(numerator / denominator))
 
 	if credit_value >= CREDIT_LIMIT:
 		if not misc_chunk.set_decoded_payload(misc):
-			return {"ok": false, "error": "cannot store the rebuilt city value"}
+			return _failed("cannot store the rebuilt city value")
 
 		return _result(
 			"credit_denied", false, false, bond_count, _read_i32(misc, MISC_FUNDS),
-			{"city_value": city_value, "credit_value": credit_value}
+			city_value, credit_value
 		)
 
 	if bond_count == MAX_BONDS:
 		if not misc_chunk.set_decoded_payload(misc):
-			return {"ok": false, "error": "cannot store the rebuilt city value"}
+			return _failed("cannot store the rebuilt city value")
 
 		return _result(
 			"maximum_bonds", false, false, bond_count, _read_i32(misc, MISC_FUNDS),
-			{"city_value": city_value, "credit_value": credit_value}
+			city_value, credit_value
 		)
 
 	var rate := _to_i16(_read_u16_low(misc, MISC_FEDERAL_RATE) + 1)
 
 	if confirmation == CONFIRMATION_UNSELECTED:
 		if not misc_chunk.set_decoded_payload(misc):
-			return {"ok": false, "error": "cannot store the rebuilt city value"}
+			return _failed("cannot store the rebuilt city value")
 
 		return _result(
 			"confirmation_required", true, false, bond_count,
 			_read_i32(misc, MISC_FUNDS),
-			{"city_value": city_value, "credit_value": credit_value, "rate": rate}
+			city_value, credit_value, rate
 		)
 
 	if confirmation == CONFIRMATION_CANCELLED:
 		if not misc_chunk.set_decoded_payload(misc):
-			return {"ok": false, "error": "cannot store the rebuilt city value"}
+			return _failed("cannot store the rebuilt city value")
 
 		return _result(
 			"cancelled", false, false, bond_count, _read_i32(misc, MISC_FUNDS),
-			{"city_value": city_value, "credit_value": credit_value, "rate": rate}
+			city_value, credit_value, rate
 		)
 
 	var interest_sum := _interest_sum(misc, bond_count)
@@ -113,29 +140,29 @@ static func issue(city: CityState, confirmation := CONFIRMATION_UNSELECTED) -> D
 	)
 
 	if not misc_chunk.set_decoded_payload(misc):
-		return {"ok": false, "error": "cannot store the issued bond"}
+		return _failed("cannot store the issued bond")
 
 	return _result(
 		"issued", false, true, bond_count, funds,
-		{"city_value": city_value, "credit_value": credit_value, "rate": rate}
+		city_value, credit_value, rate
 	)
 
 
-static func repay(city: CityState, confirmation := CONFIRMATION_UNSELECTED) -> Dictionary:
+static func repay(city: CityState, confirmation := CONFIRMATION_UNSELECTED) -> Result:
 	if not _valid_confirmation(confirmation):
-		return {"ok": false, "error": "confirmation choice is invalid"}
+		return _failed("confirmation choice is invalid")
 
 	var validated := _misc_data(city)
 
 	if not validated.ok:
-		return validated
+		return _failed(validated.error)
 
 	var misc_chunk = validated.chunk
 	var misc: PackedByteArray = validated.misc.duplicate()
 	var bond_count := _read_u32(misc, MISC_BONDS)
 
 	if bond_count > MAX_BONDS:
-		return {"ok": false, "error": "saved bond count exceeds fifty"}
+		return _failed("saved bond count exceeds fifty")
 
 	var funds := _read_i32(misc, MISC_FUNDS)
 
@@ -150,12 +177,12 @@ static func repay(city: CityState, confirmation := CONFIRMATION_UNSELECTED) -> D
 	if confirmation == CONFIRMATION_UNSELECTED:
 		return _result(
 			"confirmation_required", true, false, bond_count, funds,
-			{"rate": oldest_rate}
+			0, 0, oldest_rate
 		)
 
 	if confirmation == CONFIRMATION_CANCELLED:
 		return _result(
-			"cancelled", false, false, bond_count, funds, {"rate": oldest_rate}
+			"cancelled", false, false, bond_count, funds, 0, 0, oldest_rate
 		)
 
 	var rates := PackedInt32Array()
@@ -184,10 +211,10 @@ static func repay(city: CityState, confirmation := CONFIRMATION_UNSELECTED) -> D
 	_write_i32(misc, _bond_budget_offset() + BUDGET_FUNDING, average_rate)
 
 	if not misc_chunk.set_decoded_payload(misc):
-		return {"ok": false, "error": "cannot store the repaid bond"}
+		return _failed("cannot store the repaid bond")
 
 	return _result(
-		"repaid", false, true, bond_count, funds, {"rate": oldest_rate}
+		"repaid", false, true, bond_count, funds, 0, 0, oldest_rate
 	)
 
 
@@ -197,18 +224,20 @@ static func _result(
 	changed: bool,
 	bond_count: int,
 	funds: int,
-	extra := {}
-) -> Dictionary:
-	var result := {
-		"ok": true,
-		"error": "",
-		"status": status,
-		"confirmation_required": confirmation_required,
-		"changed": changed,
-		"bond_count": bond_count,
-		"funds": funds,
-	}
-	result.merge(extra)
+	city_value := 0,
+	credit_value := 0,
+	rate := 0
+) -> Result:
+	var result := Result.new()
+	result.ok = true
+	result.status = status
+	result.confirmation_required = confirmation_required
+	result.changed = changed
+	result.bond_count = bond_count
+	result.funds = funds
+	result.city_value = city_value
+	result.credit_value = credit_value
+	result.rate = rate
 
 	return result
 
@@ -219,21 +248,26 @@ static func _valid_confirmation(value: int) -> bool:
 	]
 
 
-static func _misc_data(city: CityState) -> Dictionary:
+static func _misc_data(city: CityState) -> MiscInput:
+	var result := MiscInput.new()
+
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		result.error = "city is invalid"
+
+		return result
 
 	var misc_chunk := city.document.find_chunk("MISC")
 
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != MISC_SIZE:
-		return {"ok": false, "error": "MISC is missing or has the wrong size"}
+		result.error = "MISC is missing or has the wrong size"
 
-	return {
-		"ok": true,
-		"error": "",
-		"chunk": misc_chunk,
-		"misc": misc_chunk.decoded_payload,
-	}
+		return result
+
+	result.ok = true
+	result.chunk = misc_chunk
+	result.misc = misc_chunk.decoded_payload
+
+	return result
 
 
 static func _interest_sum(misc: PackedByteArray, bond_count: int) -> int:

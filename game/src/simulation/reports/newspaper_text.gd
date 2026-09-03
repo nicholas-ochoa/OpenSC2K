@@ -67,14 +67,24 @@ static func token_phrase_id(value: int) -> int:
 	return index + 32 if index >= 0 else 0
 
 
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+	var headline := ""
+	var article := ""
+	var argument := 0
+	var auxiliary := PackedByteArray()
+	var random_state := 0
+
+
 static func render_story(
 	data: DataUsaResource,
-	record: Dictionary,
+	record: NewsQueue.StoryRecord,
 	seed: int,
 	city_text: String,
 	mayor_text: String,
 	teams: PackedStringArray
-) -> Dictionary:
+) -> Result:
 	var renderer := NewspaperText.new()
 	var setup := renderer._setup(data, record, city_text, mayor_text, teams)
 
@@ -100,25 +110,26 @@ static func render_story(
 	renderer._capitalize_article(article_bytes)
 	var article := renderer._decode_oem(article_bytes, false)
 
-	return {
-		"ok": true,
-		"error": "",
-		"headline": headline,
-		"article": article,
-		"argument": renderer.argument,
-		"auxiliary": renderer.auxiliary.duplicate(),
-		"random_state": renderer.random.state,
-	}
+	var result := Result.new()
+	result.ok = true
+	result.error = ""
+	result.headline = headline
+	result.article = article
+	result.argument = renderer.argument
+	result.auxiliary = renderer.auxiliary.duplicate()
+	result.random_state = renderer.random.state
+
+	return result
 
 
 static func render_headline(
 	data: DataUsaResource,
-	record: Dictionary,
+	record: NewsQueue.StoryRecord,
 	seed: int,
 	city_text: String,
 	mayor_text: String,
 	teams: PackedStringArray
-) -> Dictionary:
+) -> Result:
 	var renderer := NewspaperText.new()
 	var setup := renderer._setup(data, record, city_text, mayor_text, teams)
 
@@ -133,27 +144,28 @@ static func render_headline(
 	if not renderer.error.is_empty():
 		return renderer._failure(renderer.error)
 
-	return {
-		"ok": true,
-		"error": "",
-		"headline": renderer._title_case(renderer._decode_oem(headline_bytes, true)),
-		"argument": renderer.argument,
-		"auxiliary": renderer.auxiliary.duplicate(),
-		"random_state": renderer.random.state,
-	}
+	var result := Result.new()
+	result.ok = true
+	result.error = ""
+	result.headline = renderer._title_case(renderer._decode_oem(headline_bytes, true))
+	result.argument = renderer.argument
+	result.auxiliary = renderer.auxiliary.duplicate()
+	result.random_state = renderer.random.state
+
+	return result
 
 
 func _setup(
 	data: DataUsaResource,
-	record: Dictionary,
+	record: NewsQueue.StoryRecord,
 	city_text: String,
 	mayor_text: String,
 	teams: PackedStringArray
-) -> Dictionary:
+) -> Result:
 	if data == null or not data.is_valid():
 		return _failure("newspaper grammar data is invalid")
 
-	if not record.has("type") or not record.has("argument") or not record.has("auxiliary"):
+	if record == null:
 		return _failure("newspaper story record is incomplete")
 
 	var saved_story_type := int(record.type)
@@ -178,7 +190,11 @@ func _setup(
 	mayor_name = mayor_text
 	team_names = teams.duplicate()
 
-	return {"ok": true, "error": ""}
+	var result := Result.new()
+	result.ok = true
+	result.error = ""
+
+	return result
 
 
 func _render_selected(mode: int) -> PackedByteArray:
@@ -459,5 +475,9 @@ static func _is_alphanumeric(value: String) -> bool:
 	)
 
 
-func _failure(message: String) -> Dictionary:
-	return {"ok": false, "error": message}
+func _failure(message: String) -> Result:
+	var result := Result.new()
+	result.ok = false
+	result.error = message
+
+	return result

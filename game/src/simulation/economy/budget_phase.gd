@@ -279,17 +279,17 @@ static func funding_values(city: CityState) -> PackedInt32Array:
 
 static func set_funding(
 	city: CityState, values: PackedInt32Array, auto_budget: bool
-) -> Dictionary:
+) -> Result:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return _failed("city is invalid")
 
 	if values.size() != BUDGET_COUNT:
-		return {"ok": false, "error": "sixteen budget funding values are required"}
+		return _failed("sixteen budget funding values are required")
 
 	var misc_chunk := city.document.find_chunk("MISC")
 
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != MISC_SIZE:
-		return {"ok": false, "error": "MISC is missing or has the wrong size"}
+		return _failed("MISC is missing or has the wrong size")
 
 	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
 
@@ -299,9 +299,13 @@ static func set_funding(
 	_write_u32(misc, MISC_AUTO_BUDGET, 1 if auto_budget else 0)
 
 	if not misc_chunk.set_decoded_payload(misc):
-		return {"ok": false, "error": "cannot store budget funding values"}
+		return _failed("cannot store budget funding values")
 
-	return {"ok": true, "error": ""}
+	var result := Result.new()
+	result.ok = true
+	result.error = ""
+
+	return result
 
 
 static func _budget_offset(budget_id: int) -> int:

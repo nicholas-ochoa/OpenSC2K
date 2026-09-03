@@ -20,7 +20,7 @@ var lfsr_random: SimLfsrRandom
 var game_random: GameLcgRandom
 var scenario: ScenarioState
 var span: SimulationTimingSpan
-var schedule: Dictionary = {}
+var schedule: SimulationSchedule
 var annual_budget_approved := false
 
 # the action being run, which names its result

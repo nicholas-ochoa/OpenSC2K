@@ -440,7 +440,7 @@ static func _apply_fire_damage(
 	point: Vector2i,
 	random: SimRandom,
 	lfsr_random: SimLfsrRandom,
-	runtime_events: Dictionary = {},
+	runtime_events: DisasterDamage.RuntimeEvents = null,
 ) -> int:
 	return DisasterMapDamage.apply(
 		city,
@@ -472,7 +472,7 @@ static func _store_fire(
 	original: Dictionary,
 	payloads: Dictionary,
 	point: Vector2i,
-	runtime_events: Dictionary,
+	runtime_events: DisasterDamage.RuntimeEvents,
 ) -> DisasterStartResult:
 	if not DisasterStartObjectsState._apply_map_payloads(city, original, payloads):
 		return DisasterStartResult.failed("cannot store the fire disaster")

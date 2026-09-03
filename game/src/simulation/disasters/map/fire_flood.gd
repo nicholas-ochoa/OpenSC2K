@@ -2,25 +2,25 @@ class_name DisasterMapFireFlood
 extends DisasterMapConstants
 
 
-static func run_fire(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> Dictionary:
+static func run_fire(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> DisasterMapResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return DisasterMapResult.failure("city is invalid")
 
 	if random == null:
-		return {"ok": false, "error": "a compatible process random generator is required"}
+		return DisasterMapResult.failure("a compatible process random generator is required")
 
 	if lfsr_random == null:
-		return {"ok": false, "error": "a compatible LFSR generator is required"}
+		return DisasterMapResult.failure("a compatible LFSR generator is required")
 
 	var original := DisasterMapState._map_payloads(city)
 
 	if original.is_empty():
-		return {"ok": false, "error": "fire-map input chunks are missing or invalid"}
+		return DisasterMapResult.failure("fire-map input chunks are missing or invalid")
 
 	var payloads := DisasterMapState._duplicate_payloads(original)
-	var counters := {
+	var counters: Dictionary[String, int] = {
 		"fire_markers_scanned": 0,
 		"fire_updates": 0,
 		"spread_attempts": 0,
@@ -104,49 +104,51 @@ static func run_fire(city: CityState, random: SimRandom, lfsr_random: SimLfsrRan
 	var map_changed := DisasterMapState._payloads_changed(original, payloads)
 
 	if map_changed and not DisasterMapState._apply_map_payloads(city, original, payloads):
-		return {"ok": false, "error": "cannot store the fire-map tick"}
+		return DisasterMapResult.failure("cannot store the fire-map tick")
 
-	counters["ok"] = true
-	counters["error"] = ""
-	counters["active"] = active
+	var result := DisasterMapResult.new()
+	result.counters = counters
+	result.ok = true
+	result.error = ""
+	result.active = active
 	counters["remaining_fires"] = OverlayData.occurrences(payloads.XTXT, FIRE_OVERLAY)
-	counters["map_changed"] = map_changed
-	counters["news_items"] = []
-	counters["effect_events"] = runtime_events.effect_events
+	result.map_changed = map_changed
+	result.news_items = []
+	result.effect_events = runtime_events.effect_events
 	var sound_events: Array[int] = runtime_events.sound_events
 
 	if active:
 		sound_events.append(SOUND_FIRE)
 
-	counters["sound_events"] = sound_events
-	counters["view_center_requests"] = []
-	counters["complete"] = true
+	result.sound_events = sound_events
+	result.view_center_requests = []
+	result.complete = true
 
-	return counters
+	return result
 
 
 static func run_flood(
 	city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom, map_counter: int
-) -> Dictionary:
+) -> DisasterMapResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return DisasterMapResult.failure("city is invalid")
 
 	if random == null:
-		return {"ok": false, "error": "a compatible process random generator is required"}
+		return DisasterMapResult.failure("a compatible process random generator is required")
 
 	if lfsr_random == null:
-		return {"ok": false, "error": "a compatible LFSR generator is required"}
+		return DisasterMapResult.failure("a compatible LFSR generator is required")
 
 	var original := DisasterMapState._map_payloads(city)
 
 	if original.is_empty():
-		return {"ok": false, "error": "flood-map input chunks are missing or invalid"}
+		return DisasterMapResult.failure("flood-map input chunks are missing or invalid")
 
 	var payloads := DisasterMapState._duplicate_payloads(original)
 	var counter := maxi(map_counter - 1, 0)
-	var counters := {
+	var counters: Dictionary[String, int] = {
 		"flood_markers_scanned": 0,
 		"flood_updates": 0,
 		"spread_attempts": 0,
@@ -233,26 +235,28 @@ static func run_flood(
 	var map_changed := DisasterMapState._payloads_changed(original, payloads)
 
 	if map_changed and not DisasterMapState._apply_map_payloads(city, original, payloads):
-		return {"ok": false, "error": "cannot store the flood-map tick"}
+		return DisasterMapResult.failure("cannot store the flood-map tick")
 
 	var sound_events: Array[int] = runtime_events.sound_events
 
 	if active and random.next_u15() & 7 == 0:
 		sound_events.append(SOUND_FLOOD)
 
-	counters["ok"] = true
-	counters["error"] = ""
-	counters["active"] = active
+	var result := DisasterMapResult.new()
+	result.counters = counters
+	result.ok = true
+	result.error = ""
+	result.active = active
 	counters["remaining_floods"] = OverlayData.occurrences(payloads.XTXT, 0xfc)
-	counters["map_counter"] = counter
-	counters["map_changed"] = map_changed
-	counters["news_items"] = []
-	counters["effect_events"] = runtime_events.effect_events
-	counters["sound_events"] = sound_events
-	counters["view_center_requests"] = []
-	counters["complete"] = true
+	result.map_counter = counter
+	result.map_changed = map_changed
+	result.news_items = []
+	result.effect_events = runtime_events.effect_events
+	result.sound_events = sound_events
+	result.view_center_requests = []
+	result.complete = true
 
-	return counters
+	return result
 
 
 static func _process_fire_cell(
@@ -263,7 +267,7 @@ static func _process_fire_cell(
 	random: SimRandom,
 	lfsr_random: SimLfsrRandom,
 	counters: Dictionary,
-	runtime_events: Dictionary,
+	runtime_events: DisasterDamage.RuntimeEvents,
 ) -> void:
 	var map_edge: int = city.map_size if city != null else 128
 	counters.fire_markers_scanned += 1
@@ -327,7 +331,7 @@ static func _process_flood_cell(
 	random: SimRandom,
 	lfsr_random: SimLfsrRandom,
 	counters: Dictionary,
-	runtime_events: Dictionary,
+	runtime_events: DisasterDamage.RuntimeEvents,
 ) -> void:
 	counters.flood_markers_scanned += 1
 
@@ -394,7 +398,7 @@ static func _apply_damage(
 	point: Vector2i,
 	random: SimRandom,
 	lfsr_random: SimLfsrRandom,
-	runtime_events: Dictionary = {},
+	runtime_events: DisasterDamage.RuntimeEvents = null,
 ) -> int:
 	return DisasterMapDamage.apply(
 		city,
@@ -428,7 +432,7 @@ static func _apply_flood_damage(
 	maximum_altitude: int,
 	random: SimRandom,
 	lfsr_random: SimLfsrRandom,
-	runtime_events: Dictionary = {},
+	runtime_events: DisasterDamage.RuntimeEvents = null,
 ) -> int:
 	return DisasterMapDamage.apply_flood(
 		city,

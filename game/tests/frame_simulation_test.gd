@@ -35,7 +35,9 @@ func check_parity(edge: int) -> void:
 	var sync := make_controller(edge)
 	var sliced := make_controller(edge)
 	var runner := FrameSimulationRunner.new(sliced)
-	runner.budget_usec = 16000
+	# Use a short lease for the small fixture so it exercises resumed work
+	# even when every 128-tile job fits within the normal frame budget.
+	runner.budget_usec = 1000 if edge == 128 else 16000
 	var random_id := sliced.engine.random.get_instance_id()
 	var city_id := sliced.engine.city.get_instance_id()
 	var document_id := sliced.engine.city.document.get_instance_id()
@@ -65,7 +67,7 @@ func check_parity(edge: int) -> void:
 		check(TimingResults.without_timings(actual) == TimingResults.without_timings(expected), "identical tick events and results at %d day %d" % [edge, day])
 		check(saved_payloads(sliced.engine.city.document) == saved_payloads(sync.engine.city.document), "identical saved payloads at %d day %d" % [edge, day])
 		check(sliced.engine.random.state == sync.engine.random.state and sliced.engine.lfsr_random.state == sync.engine.lfsr_random.state and sliced.engine.game_random.state == sync.engine.game_random.state, "identical random states")
-		slices += int(runner.last_work_metrics.get("slices", 0))
+		slices += int(runner.last_work_metrics.slices)
 
 	check(slices > days.size(), "work spans multiple frame grants")
 	check(sliced.engine.city.document.serialize().data == sync.engine.city.document.serialize().data, "final encoded bytes match")
@@ -183,13 +185,13 @@ func saved_payloads(document: Sc2File) -> Array:
 
 func check_snapshot_schedule_isolation() -> void:
 	var source := make_controller(128)
-	source.engine.pending_day_schedule = {"actions": PackedStringArray(["budget"]), "nested": {"values": [1]}}
+	source.engine.pending_day_schedule = SimulationClock.state_for_day(300)
 	var stamp := SimulationSnapshot.stamp(source)
 	var captured := SimulationSnapshot.capture(source, SimulationSliceBudget.new())
-	captured.engine.pending_day_schedule.nested.values[0] = 2
-	check(source.engine.pending_day_schedule.nested.values[0] == 1, "capture deep-copies the pending schedule")
+	captured.engine.pending_day_schedule.actions[0] = "power"
+	check(source.engine.pending_day_schedule.actions[0] == "budget", "capture deep-copies the pending schedule")
 	check(SimulationSnapshot.stamp(source) == stamp, "private schedule edits preserve the source stamp")
 	SimulationSnapshot.publish(captured, source)
-	captured.engine.pending_day_schedule.nested.values[0] = 3
-	check(source.engine.pending_day_schedule.nested.values[0] == 2, "publication deep-copies the pending schedule")
+	captured.engine.pending_day_schedule.actions[0] = "water"
+	check(source.engine.pending_day_schedule.actions[0] == "power", "publication deep-copies the pending schedule")
 	check(SimulationSnapshot.stamp(source) != stamp, "published schedule edits change the stamp")

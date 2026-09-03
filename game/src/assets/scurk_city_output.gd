@@ -64,16 +64,40 @@ const FONT_5X7 := {
 }
 
 
-static func page_grid(magnification: int) -> Dictionary:
+class PageGrid extends RefCounted:
+	var columns: int
+	var rows: int
+	var count: int
+	var view_size: int
+
+	func _init(column_count: int, row_count: int, graphics_size: int) -> void:
+		columns = column_count
+		rows = row_count
+		count = columns * rows
+		view_size = graphics_size
+
+
+class PdfResult extends FileWriteResult:
+	var page_count := 0
+	var available_page_count := 0
+
+	static func rejected(message: String) -> PdfResult:
+		var result := PdfResult.new()
+		result.error = message
+
+		return result
+
+
+static func page_grid(magnification: int) -> PageGrid:
 	match magnification:
 		1:
-			return {"columns": 2, "rows": 1, "count": 2, "view_size": Renderer.VIEW_SMALL}
+			return PageGrid.new(2, 1, Renderer.VIEW_SMALL)
 		2:
-			return {"columns": 4, "rows": 2, "count": 8, "view_size": Renderer.VIEW_MEDIUM}
+			return PageGrid.new(4, 2, Renderer.VIEW_MEDIUM)
 		4:
-			return {"columns": 7, "rows": 4, "count": 28, "view_size": Renderer.VIEW_LARGE}
+			return PageGrid.new(7, 4, Renderer.VIEW_LARGE)
 
-	return {}
+	return null
 
 
 static func render(
@@ -82,9 +106,9 @@ static func render(
 	sprites: Sc2SpriteArchive,
 	view_size: int,
 	options: Dictionary
-) -> Dictionary:
+) -> AssetImageResult:
 	if city == null or not city.is_valid():
-		return _failure("city is invalid")
+		return AssetImageResult.failure("city is invalid")
 
 	var view := String(options.get("view", "city"))
 	var transparent := bool(options.get("transparent_background", false))
@@ -125,15 +149,15 @@ static func render(
 		if result.get("ok", false) and show_signs:
 			_draw_signs(result.image, display_city, render_palette, view_size)
 	else:
-		return _failure("print view must be city or underground")
+		return AssetImageResult.failure("print view must be city or underground")
 
 	if not result.get("ok", false):
-		return _failure(String(result.get("error", "city output failed")))
+		return AssetImageResult.failure(String(result.get("error", "city output failed")))
 
 	var image: Image = result.get("image") as Image
 
 	if image == null or image.is_empty():
-		return _failure("city output is empty")
+		return AssetImageResult.failure("city output is empty")
 
 	if view == "city":
 		_draw_artwork_stamps(image, city, render_palette, sprites, view_size)
@@ -141,7 +165,12 @@ static func render(
 	if not bool(options.get("color", true)):
 		image = _monochrome_copy(image)
 
-	return {"ok": true, "error": "", "image": image}
+	var outcome := AssetImageResult.new()
+	outcome.ok = true
+	outcome.error = ""
+	outcome.image = image
+
+	return outcome
 
 
 static func save_small_bmp(
@@ -151,18 +180,18 @@ static func save_small_bmp(
 	output_palette: Sc2Palette,
 	sprites: Sc2SpriteArchive,
 	options: Dictionary
-) -> Dictionary:
+) -> FileWriteResult:
 	var rendered := render(
 		city, index_palette, sprites, Renderer.VIEW_SMALL, options
 	)
 
 	if not rendered.ok:
-		return rendered
+		return FileWriteResult.failure(rendered.error)
 
 	var image: Image = rendered.image
 
 	if image.get_format() != Image.FORMAT_L8:
-		return _failure("indexed city output has the wrong image format")
+		return FileWriteResult.failure("indexed city output has the wrong image format")
 
 	var bytes := image.get_data()
 	var pixels := PackedInt32Array()
@@ -175,7 +204,7 @@ static func save_small_bmp(
 		path, image.get_width(), image.get_height(), pixels, output_palette
 	)
 
-	return {"ok": saved.ok, "error": saved.error, "path": saved.path}
+	return saved
 
 
 static func save_pdf(
@@ -184,19 +213,19 @@ static func save_pdf(
 	output_palette: Sc2Palette,
 	sprites: Sc2SpriteArchive,
 	options: Dictionary
-) -> Dictionary:
+) -> PdfResult:
 	var magnification := int(options.get("magnification", 1))
 	var grid := page_grid(magnification)
 
-	if grid.is_empty():
-		return _failure("print magnification must be 1x, 2x, or 4x")
+	if grid == null:
+		return PdfResult.rejected("print magnification must be 1x, 2x, or 4x")
 
 	var rendered := render(
 		city, output_palette, sprites, int(grid.view_size), options
 	)
 
 	if not rendered.ok:
-		return rendered
+		return PdfResult.rejected(rendered.error)
 
 	var image: Image = rendered.image
 
@@ -206,17 +235,17 @@ static func save_pdf(
 	var selected := _selected_page_indices(options, int(grid.count))
 
 	if selected.is_empty():
-		return _failure("select at least one page to print")
+		return PdfResult.rejected("select at least one page to print")
 
 	var pdf := _encode_pdf(image, grid, selected)
 
 	if not pdf.ok:
-		return pdf
+		return PdfResult.rejected(pdf.error)
 
 	var file := FileAccess.open(path, FileAccess.WRITE)
 
 	if file == null:
-		return _failure(
+		return PdfResult.rejected(
 			"cannot open PDF output: %s" % error_string(FileAccess.get_open_error())
 		)
 
@@ -225,15 +254,16 @@ static func save_pdf(
 	file.close()
 
 	if write_error != OK:
-		return _failure("cannot write PDF output: %s" % error_string(write_error))
+		return PdfResult.rejected("cannot write PDF output: %s" % error_string(write_error))
 
-	return {
-		"ok": true,
-		"error": "",
-		"path": path,
-		"page_count": selected.size(),
-		"available_page_count": int(grid.count),
-	}
+	var outcome := PdfResult.new()
+	outcome.ok = true
+	outcome.error = ""
+	outcome.path = path
+	outcome.page_count = selected.size()
+	outcome.available_page_count = int(grid.count)
+
+	return outcome
 
 
 static func _selected_page_indices(options: Dictionary, page_count: int) -> PackedInt32Array:
@@ -255,8 +285,8 @@ static func _selected_page_indices(options: Dictionary, page_count: int) -> Pack
 
 
 static func _encode_pdf(
-	image: Image, grid: Dictionary, selected: PackedInt32Array
-) -> Dictionary:
+	image: Image, grid: PageGrid, selected: PackedInt32Array
+) -> AssetBytesResult:
 	var columns := int(grid.columns)
 	var rows := int(grid.rows)
 	var object_count := 2 + selected.size() * 3
@@ -283,7 +313,7 @@ static func _encode_pdf(
 		var row := page_index % rows
 
 		if column < 0 or column >= columns:
-			return _failure("selected print page is outside the page grid")
+			return AssetBytesResult.failure("selected print page is outside the page grid")
 
 		var left := floori(float(image.get_width()) * float(column) / float(columns))
 		var right := floori(float(image.get_width()) * float(column + 1) / float(columns))
@@ -296,7 +326,7 @@ static func _encode_pdf(
 		var jpeg := page_image.save_jpg_to_buffer(0.96)
 
 		if jpeg.is_empty():
-			return _failure("cannot encode a printable city page")
+			return AssetBytesResult.failure("cannot encode a printable city page")
 
 		var page_id := int(page_ids[output_index])
 		var image_id := page_id + 1
@@ -357,7 +387,12 @@ static func _encode_pdf(
 		% [object_count + 1, xref_offset]
 	).to_ascii_buffer())
 
-	return {"ok": true, "error": "", "bytes": output}
+	var outcome := AssetBytesResult.new()
+	outcome.ok = true
+	outcome.error = ""
+	outcome.bytes = output
+
+	return outcome
 
 
 static func _monochrome_copy(source: Image) -> Image:
@@ -509,10 +544,6 @@ static func _fill_clipped(image: Image, rectangle: Rect2i, color: Color) -> void
 
 	if clipped.get_area() > 0:
 		image.fill_rect(clipped, color)
-
-
-static func _failure(message: String) -> Dictionary:
-	return {"ok": false, "error": message}
 
 
 static func _draw_artwork_stamps(output: Image, city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, view_size: int) -> void:

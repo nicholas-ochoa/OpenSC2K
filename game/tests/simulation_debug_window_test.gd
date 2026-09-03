@@ -13,10 +13,10 @@ class MetricsHost extends Control:
 		terrain_levels = value
 
 
-	func debug_set_detailed_timing(enabled: bool) -> Dictionary:
+	func debug_set_detailed_timing(enabled: bool) -> ApplicationDebug.ActionResult:
 		detailed_timing = enabled
 
-		return {"ok": true, "message": "Detailed timing is %s." % ("on" if enabled else "off")}
+		return ApplicationDebug.ActionResult.new(true, "Detailed timing is %s." % ("on" if enabled else "off"))
 
 
 	func debug_metrics() -> Dictionary:
@@ -79,7 +79,7 @@ func _run() -> void:
 	assert(debug._other_steps.collapsed and debug._other_steps.get_child(0).get_text(2) == "6.000")
 	for pair in [[1, "power"], [3, "growth"], [19, "traffic"], [20, "water"]]:
 		var phase := PhaseResult.new()
-		phase.timing = {"steps": {"measured detail": 6000}}
+		phase.timing = SimulationTiming.new(-1, {"measured detail": 6000})
 		host.timing_state.simulation_timings.consume(TimingResults.tick_fixture({"day_results": [{"ok": true, "day": pair[0],
 			"timing": {"work_usec": 7000, "steps": {pair[1]: 7000}},
 			"phase_results": {pair[1]:

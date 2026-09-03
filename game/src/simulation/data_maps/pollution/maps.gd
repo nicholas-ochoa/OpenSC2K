@@ -40,7 +40,7 @@ static func build(
 	city: CityState, span: SimulationTimingSpan, map_edge: int,
 	traffic_chunk: Sc2Chunk, pollution_chunk: Sc2Chunk, crime_chunk: Sc2Chunk,
 	population_chunk: Sc2Chunk, growth_chunk: Sc2Chunk
-) -> Dictionary:
+) -> CoarseMaps:
 	var maps := CoarseMaps.new()
 	maps.city = city
 	maps.slice = city.simulation_slice
@@ -79,22 +79,7 @@ static func build(
 	span.mark("crime smoothing")
 	_smooth_crime(maps)
 
-	return {
-		"pollution": maps.pollution,
-		"land_value": maps.land_value,
-		"police": maps.police,
-		"fire": maps.fire,
-		"population": maps.population,
-		"growth": maps.growth,
-		"crime": maps.crime,
-		"flags": maps.flags,
-		"total": maps.total,
-		"land_value_total": maps.land_value_total,
-		"crime_total": maps.crime_total,
-		"center_x": maps.center_x,
-		"center_y": maps.center_y,
-		"developed_tiles": maps.developed_tiles,
-	}
+	return maps
 
 
 # sum traffic, previous pollution, and polluting buildings for each half-grid

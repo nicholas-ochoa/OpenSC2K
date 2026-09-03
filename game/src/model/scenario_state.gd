@@ -10,6 +10,67 @@ const TEMPLATE_TYPE_SIZES := {
 	"DLNG": 4,
 }
 
+class TemplateField extends RefCounted:
+	var name := ""
+	var type_code := ""
+	var size := 0
+	var scenario_offset := 0
+
+
+class PictureIndices extends RefCounted:
+	var ok := false
+	var error := ""
+	var width := 0
+	var height := 0
+	var pixels := PackedByteArray()
+
+	static func rejected(message: String) -> PictureIndices:
+		var result := PictureIndices.new()
+		result.error = message
+
+		return result
+
+
+class PictureImage extends AssetImageResult:
+	var width := 0
+	var height := 0
+	var replacement := false
+
+	static func rejected(message: String) -> PictureImage:
+		var result := PictureImage.new()
+		result.error = message
+
+		return result
+
+
+class Template extends RefCounted:
+	var ok := false
+	var error := ""
+	var present := false
+	var fields: Array[TemplateField] = []
+	var scenario_size := 0
+
+	static func rejected(message: String) -> Template:
+		var result := Template.new()
+		result.error = message
+
+		return result
+
+
+class Goals extends RefCounted:
+	var ok := false
+	var error := ""
+	var met := false
+	var unmet := PackedStringArray()
+	var values: Dictionary[String, int] = {}
+
+	static func rejected(message: String) -> Goals:
+		var result := Goals.new()
+		result.error = message
+
+		return result
+
+
 var document: Sc2File
 var load_error := ""
 var format_size := 0
@@ -104,23 +165,23 @@ func opening_description() -> String:
 	return _text_chunk(0x81000000)
 
 
-func picture_indices() -> Dictionary:
+func picture_indices() -> PictureIndices:
 	var chunk := document.find_chunk("PICT")
 
 	if chunk == null:
-		return _failure("PICT chunk is missing")
+		return PictureIndices.rejected("PICT chunk is missing")
 
 	var data := chunk.decoded_payload
 
 	if data.size() < 8 or _read_u32_be(data, 0) != 0x80000000:
-		return _failure("PICT header is invalid")
+		return PictureIndices.rejected("PICT header is invalid")
 
 	# pict dimensions are little-endian even though scen and form values are big-endian
 	var width := _read_u16_le(data, 4)
 	var height := _read_u16_le(data, 6)
 
 	if width <= 0 or height <= 0:
-		return _failure("PICT dimensions are empty")
+		return PictureIndices.rejected("PICT dimensions are empty")
 
 	var pixels := PackedByteArray()
 	pixels.resize(width * height)
@@ -129,11 +190,11 @@ func picture_indices() -> Dictionary:
 	var has_row_terminators := remaining == height * (width + 1)
 
 	if remaining != width * height and not has_row_terminators:
-		return _failure("PICT byte count does not match its dimensions")
+		return PictureIndices.rejected("PICT byte count does not match its dimensions")
 
 	for y in height:
 		if position + width > data.size():
-			return _failure("PICT row %d is truncated" % y)
+			return PictureIndices.rejected("PICT row %d is truncated" % y)
 
 		for x in width:
 			pixels[y * width + x] = data[position + x]
@@ -142,24 +203,31 @@ func picture_indices() -> Dictionary:
 
 		if has_row_terminators:
 			if data[position] != 0x00 and data[position] != 0xff:
-				return _failure("PICT row %d has invalid terminator 0x%02x" % [y, data[position]])
+				return PictureIndices.rejected("PICT row %d has invalid terminator 0x%02x" % [y, data[position]])
 
 			position += 1
 
 	if position != data.size():
-		return _failure("PICT has %d unparsed bytes" % (data.size() - position))
+		return PictureIndices.rejected("PICT has %d unparsed bytes" % (data.size() - position))
 
-	return {"ok": true, "width": width, "height": height, "pixels": pixels, "error": ""}
+	var result := PictureIndices.new()
+	result.ok = true
+	result.width = width
+	result.height = height
+	result.pixels = pixels
+	result.error = ""
+
+	return result
 
 
-func picture_image(palette: Sc2Palette) -> Dictionary:
+func picture_image(palette: Sc2Palette) -> PictureImage:
 	if palette == null or not palette.is_valid():
-		return _failure("PICT palette is invalid")
+		return PictureImage.rejected("PICT palette is invalid")
 
 	var picture := picture_indices()
 
 	if not picture.ok:
-		return picture
+		return PictureImage.rejected(picture.error)
 
 	var width: int = picture.width
 	var height: int = picture.height
@@ -172,33 +240,35 @@ func picture_image(palette: Sc2Palette) -> Dictionary:
 		for x in width:
 			image.set_pixel(x, source_y, palette.color(pixels[source_y * width + x]))
 
-	return {
-		"ok": true,
-		"width": width,
-		"height": height,
-		"image": image,
-		"error": "",
-	}
+	var result := PictureImage.new()
+	result.ok = true
+	result.width = width
+	result.height = height
+	result.image = image
+	result.error = ""
+
+	return result
 
 
-func template_fields() -> Dictionary:
+func template_fields() -> Template:
 	var chunk := document.find_chunk("TMPL") if document != null else null
 
 	if chunk == null:
-		return {
-			"ok": true,
-			"present": false,
-			"fields": [],
-			"scenario_size": 0,
-			"error": "",
-		}
+		var result := Template.new()
+		result.ok = true
+		result.present = false
+		result.fields = []
+		result.scenario_size = 0
+		result.error = ""
+
+		return result
 
 	var data := chunk.decoded_payload
 
 	if data.size() < 4 or _read_u32_be(data, 0) != TEMPLATE_HEADER:
-		return _failure("TMPL header is invalid")
+		return Template.rejected("TMPL header is invalid")
 
-	var fields: Array[Dictionary] = []
+	var fields: Array[TemplateField] = []
 	var position := 4
 	var scenario_offset := 4
 
@@ -207,10 +277,10 @@ func template_fields() -> Dictionary:
 		position += 1
 
 		if name_length == 0:
-			return _failure("TMPL field %d has an empty name" % fields.size())
+			return Template.rejected("TMPL field %d has an empty name" % fields.size())
 
 		if position + name_length + 4 > data.size():
-			return _failure("TMPL field %d is truncated" % fields.size())
+			return Template.rejected("TMPL field %d is truncated" % fields.size())
 
 		var name := data.slice(position, position + name_length).get_string_from_ascii()
 		position += name_length
@@ -218,34 +288,35 @@ func template_fields() -> Dictionary:
 		position += 4
 
 		if not TEMPLATE_TYPE_SIZES.has(type_code):
-			return _failure(
+			return Template.rejected(
 				"TMPL field %d has unknown type %s" % [fields.size(), type_code]
 			)
 
 		var field_size := int(TEMPLATE_TYPE_SIZES[type_code])
-		fields.append({
-			"name": name,
-			"type_code": type_code,
-			"size": field_size,
-			"scenario_offset": scenario_offset,
-		})
+		var field := TemplateField.new()
+		field.name = name
+		field.type_code = type_code
+		field.size = field_size
+		field.scenario_offset = scenario_offset
+		fields.append(field)
 		scenario_offset += field_size
 
-	return {
-		"ok": true,
-		"present": true,
-		"fields": fields,
-		"scenario_size": scenario_offset,
-		"error": "",
-	}
+	var result := Template.new()
+	result.ok = true
+	result.present = true
+	result.fields = fields
+	result.scenario_size = scenario_offset
+	result.error = ""
+
+	return result
 
 
-func evaluate_goals(city: CityState) -> Dictionary:
+func evaluate_goals(city: CityState) -> Goals:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return Goals.rejected("city is invalid")
 
 	var unmet := PackedStringArray()
-	var values := {
+	var values: Dictionary[String, int] = {
 		"city_size": city.document.misc_u32(0x102c),
 		"residential": city.document.misc_i32(0x077c),
 		"commercial": city.document.misc_i32(0x07e8),
@@ -284,13 +355,14 @@ func evaluate_goals(city: CityState) -> Dictionary:
 		if second_count < second_building_tile_count:
 			unmet.append("second_building")
 
-	return {
-		"ok": true,
-		"met": unmet.is_empty(),
-		"unmet": unmet,
-		"values": values,
-		"error": "",
-	}
+	var result := Goals.new()
+	result.ok = true
+	result.met = unmet.is_empty()
+	result.unmet = unmet
+	result.values = values
+	result.error = ""
+
+	return result
 
 
 func set_time_limit_months(value: int) -> bool:
@@ -375,7 +447,3 @@ static func _read_i32_be(data: PackedByteArray, offset: int) -> int:
 	var value := _read_u32_be(data, offset)
 
 	return value - 0x100000000 if value >= 0x80000000 else value
-
-
-static func _failure(message: String) -> Dictionary:
-	return {"ok": false, "error": message}

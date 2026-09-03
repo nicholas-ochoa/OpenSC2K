@@ -15,7 +15,7 @@ static func _demolish_bridge(
 	random: SimRandom = null,
 	emit_effects := false,
 	map_edge: int = 128,
-) -> Dictionary:
+) -> DemolishPointResult:
 	var selected_index := selected.x * map_edge + selected.y
 	var direction := Vector2i(1, 0) if (flags[selected_index] & FLAG_FLIPPED) != 0 else Vector2i(0, 1)
 	var first := selected
@@ -99,11 +99,12 @@ static func _demolish_bridge(
 	DemolishTerrain._retile_surface_water(terrain, flags, selected, true, map_edge)
 	DemolishTerrain._retile_after_demolition(buildings, terrain, zones, underground, flags, misc, points, PackedByteArray(), map_edge)
 
-	return {
-		"changed": true,
-		"indices": indices,
-		"effect_events": effect_events,
-	}
+	var result := DemolishPointResult.new()
+	result.changed = true
+	result.indices = indices
+	result.effect_events = effect_events
+
+	return result
 
 
 static func _demolish_reinforced_bridge(
@@ -118,11 +119,15 @@ static func _demolish_reinforced_bridge(
 	random: SimRandom = null,
 	emit_effects := false,
 	map_edge: int = 128,
-) -> Dictionary:
+) -> DemolishPointResult:
 	var anchor := Vector2i(selected.x & ~1, selected.y & ~1)
 
 	if not reinforced_section_is_valid(buildings, anchor, map_edge):
-		return {"changed": false, "specialized": true}
+		var result := DemolishPointResult.new()
+		result.changed = false
+		result.specialized = true
+
+		return result
 
 	var anchor_tile := int(buildings[anchor.x * map_edge + anchor.y])
 	# the executable selects the span axis from the section's tile kind
@@ -204,11 +209,12 @@ static func _demolish_reinforced_bridge(
 	DemolishTerrain._retile_surface_water(terrain, flags, selected, true, map_edge)
 	DemolishTerrain._retile_after_demolition(buildings, terrain, zones, underground, flags, misc, points, PackedByteArray(), map_edge)
 
-	return {
-		"changed": true,
-		"indices": indices,
-		"effect_events": effect_events,
-	}
+	var result := DemolishPointResult.new()
+	result.changed = true
+	result.indices = indices
+	result.effect_events = effect_events
+
+	return result
 
 
 static func reinforced_section_is_valid(

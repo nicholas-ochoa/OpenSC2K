@@ -14,8 +14,16 @@ const DAY_SUMMARIES := [
 	"Milestones, scenarios, bankruptcy", "Statistics-window refresh only",
 	"Map and SimNation window refresh, weather and disaster checks",
 ]
-var days: Dictionary[int, Dictionary] = {}
-var steps: Dictionary[String, Dictionary] = {}
+class Sample extends RefCounted:
+	var count := 0
+	var total_usec := 0
+	var last_usec := 0
+	var max_usec := 0
+	var age := -1
+
+
+var days: Dictionary[int, Sample] = {}
+var steps: Dictionary[String, Sample] = {}
 
 
 func clear() -> void:
@@ -24,7 +32,11 @@ func clear() -> void:
 
 
 func record_step(label: String, usec: int) -> void:
-	var row: Dictionary = steps.get(label, {"count": 0, "total_usec": 0, "last_usec": 0, "max_usec": 0})
+	var row: Sample = steps.get(label)
+
+	if row == null:
+		row = Sample.new()
+
 	row.count += 1
 	row.total_usec += usec
 	row.last_usec = usec
@@ -39,7 +51,10 @@ func consume(result: SimulationTickResult) -> void:
 
 		var age := int(day.day)
 		var slot := posmod(age, 25)
-		var row: Dictionary = days.get(slot, {"count": 0, "total_usec": 0, "last_usec": 0, "max_usec": 0, "age": -1})
+		var row: Sample = days.get(slot)
+
+		if row == null:
+			row = Sample.new()
 
 		if row.age != age:
 			row.count += 1
@@ -67,10 +82,10 @@ func consume(result: SimulationTickResult) -> void:
 					measured_parent = true
 					break
 
-			if phase.timing.has("work_usec") and not measured_parent:
+			if phase.timing.has_total and not measured_parent:
 				record_step("Day %02d / %s" % [slot + 1, group], phase.timing.work_usec)
 
-			for label in phase.timing.get("steps", {}):
+			for label in phase.timing.steps:
 				record_step("Day %02d / %s / %s" % [slot + 1, group, label], phase.timing.steps[label])
 
 	for item in result.moving_results:

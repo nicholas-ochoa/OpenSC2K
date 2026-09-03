@@ -73,7 +73,10 @@ static func stamp(source: GameSpeedController) -> Array:
 
 	for field in ENGINE_FIELDS + CONTROLLER_FIELDS:
 		var value: Variant = engine.get(field) if field in ENGINE_FIELDS else source.get(field)
-		result.append(value.duplicate(true) if value is Dictionary else value)
+		if value is SimulationSchedule:
+			result.append(value.stamp())
+		else:
+			result.append(value.duplicate(true) if value is Dictionary else value)
 
 	return result
 
@@ -89,4 +92,7 @@ static func copy_engine(source: SimulationEngine, target: SimulationEngine) -> v
 static func _copy_fields(source: Object, target: Object, fields: Array) -> void:
 	for field in fields:
 		var value: Variant = source.get(field)
-		target.set(field, value.duplicate(true) if value is Dictionary else value)
+		if value is SimulationSchedule:
+			target.set(field, value.copy())
+		else:
+			target.set(field, value.duplicate(true) if value is Dictionary else value)

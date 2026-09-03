@@ -3,7 +3,7 @@ extends RefCounted
 
 ## Compare deterministic results while retaining all non-timing fields.
 static func without_timings(value: Variant) -> Variant:
-	if value is DisasterStartResult.MaxisManArrival or value is PhaseResult or value is SimulationDayResult or value is SimulationTickResult or value is MovingThingResult:
+	if value is SimulationTiming or value is SimulationSchedule or value is DisasterStartResult.MaxisManArrival or value is PhaseResult or value is SimulationDayResult or value is SimulationTickResult or value is MovingThingResult:
 		var fields := {}
 
 		for property in value.get_property_list():
@@ -43,7 +43,11 @@ static func tick_fixture(fields: Dictionary) -> SimulationTickResult:
 		var day := SimulationDayResult.new()
 
 		for key in value:
-			if key == "phase_results":
+			if key == "timing":
+				var steps: Dictionary[String, int] = {}
+				steps.assign(value[key].get("steps", {}))
+				day.timing = SimulationTiming.new(value[key].get("work_usec", -1), steps)
+			elif key == "phase_results":
 				day.phase_results.assign(value[key])
 			else:
 				day.set(key, value[key])

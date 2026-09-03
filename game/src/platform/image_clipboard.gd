@@ -9,21 +9,43 @@ const TEMP_BMP_FILENAME := "scurk-copy.bmp"
 const TEMP_DIB_FILENAME := "scurk-copy.dib"
 
 
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+
+	static func failure(message: String) -> Result:
+		var result := Result.new()
+		result.error = message
+
+		return result
+
+
+class Command extends Result:
+	var executable := ""
+	var arguments := PackedStringArray()
+
+	static func rejected(message: String) -> Command:
+		var result := Command.new()
+		result.error = message
+
+		return result
+
+
 static func copy_indexed(
 	width: int,
 	height: int,
 	pixels: PackedInt32Array,
 	palette: Sc2Palette
-) -> Dictionary:
+) -> Result:
 	if DisplayServer.get_name() == "headless":
-		return _failure("Image clipboard output is not available in headless mode.")
+		return Result.failure("Image clipboard output is not available in headless mode.")
 
 	var platform := OS.get_name()
 	var directory := ProjectSettings.globalize_path(TEMP_DIRECTORY)
 	var directory_error := DirAccess.make_dir_recursive_absolute(directory)
 
 	if directory_error != OK:
-		return _failure(
+		return Result.failure(
 			"Cannot create the clipboard directory: %s" % error_string(directory_error)
 		)
 
@@ -33,20 +55,20 @@ static func copy_indexed(
 		var converted := indexed_to_image(width, height, pixels, palette)
 
 		if not converted.ok:
-			return converted
+			return Result.failure(converted.error)
 
 		path = directory.path_join(TEMP_PNG_FILENAME)
 		var save_error: Error = converted.image.save_png(path)
 
 		if save_error != OK:
-			return _failure(
+			return Result.failure(
 				"Cannot create the clipboard image: %s" % error_string(save_error)
 			)
 	else:
 		var encoded := IndexedBitmap.encode(width, height, pixels, palette)
 
 		if not encoded.ok:
-			return _failure(encoded.error)
+			return Result.failure(encoded.error)
 
 		var payload: PackedByteArray = encoded.bytes
 		path = directory.path_join(TEMP_BMP_FILENAME)
@@ -55,7 +77,7 @@ static func copy_indexed(
 			var dib := IndexedBitmap.bmp_to_dib(payload)
 
 			if not dib.ok:
-				return _failure(dib.error)
+				return Result.failure(dib.error)
 
 			payload = dib.bytes
 			path = directory.path_join(TEMP_DIB_FILENAME)
@@ -71,9 +93,9 @@ static func copy_indexed(
 	return copied
 
 
-static func paste_indexed(palette: Sc2Palette) -> Dictionary:
+static func paste_indexed(palette: Sc2Palette) -> IndexedImageResult:
 	if DisplayServer.get_name() == "headless":
-		return _failure("Image clipboard input is not available in headless mode.")
+		return IndexedImageResult.failure("Image clipboard input is not available in headless mode.")
 
 	var platform := OS.get_name()
 
@@ -84,12 +106,12 @@ static func paste_indexed(palette: Sc2Palette) -> Dictionary:
 			return native
 
 	if not DisplayServer.clipboard_has_image():
-		return _failure("The system clipboard does not contain an image.")
+		return IndexedImageResult.failure("The system clipboard does not contain an image.")
 
 	var image := DisplayServer.clipboard_get_image()
 
 	if image == null or image.is_empty():
-		return _failure("The system clipboard image cannot be read.")
+		return IndexedImageResult.failure("The system clipboard image cannot be read.")
 
 	return image_to_indexed(image, palette)
 
@@ -99,12 +121,12 @@ static func indexed_to_image(
 	height: int,
 	pixels: PackedInt32Array,
 	palette: Sc2Palette
-) -> Dictionary:
+) -> AssetImageResult:
 	if width <= 0 or height <= 0 or pixels.size() != width * height:
-		return _failure("Clipboard pixel count does not match its dimensions.")
+		return AssetImageResult.failure("Clipboard pixel count does not match its dimensions.")
 
 	if palette == null or not palette.is_valid():
-		return _failure("The SimCity 2000 palette is not available.")
+		return AssetImageResult.failure("The SimCity 2000 palette is not available.")
 
 	var image := Image.create(width, height, false, Image.FORMAT_RGBA8)
 
@@ -119,17 +141,22 @@ static func indexed_to_image(
 				color.a = 1.0
 				image.set_pixel(x, y, color)
 			else:
-				return _failure("Clipboard image has an invalid palette index.")
+				return AssetImageResult.failure("Clipboard image has an invalid palette index.")
 
-	return {"ok": true, "error": "", "image": image}
+	var result := AssetImageResult.new()
+	result.ok = true
+	result.error = ""
+	result.image = image
+
+	return result
 
 
-static func image_to_indexed(image: Image, palette: Sc2Palette) -> Dictionary:
+static func image_to_indexed(image: Image, palette: Sc2Palette) -> IndexedImageResult:
 	if image == null or image.is_empty():
-		return _failure("Clipboard image is empty.")
+		return IndexedImageResult.failure("Clipboard image is empty.")
 
 	if palette == null or not palette.is_valid():
-		return _failure("The SimCity 2000 palette is not available.")
+		return IndexedImageResult.failure("The SimCity 2000 palette is not available.")
 
 	var source: Image = image.duplicate()
 	source.convert(Image.FORMAT_RGBA8)
@@ -138,7 +165,7 @@ static func image_to_indexed(image: Image, palette: Sc2Palette) -> Dictionary:
 	var pixels := PackedInt32Array()
 	pixels.resize(width * height)
 	var exact_indices := _exact_palette_indices(palette)
-	var mapped_indices := {}
+	var mapped_indices: Dictionary[int, int] = {}
 	var remapped_color_count := 0
 
 	for y in height:
@@ -162,17 +189,18 @@ static func image_to_indexed(image: Image, palette: Sc2Palette) -> Dictionary:
 
 			pixels[pixel_offset] = int(mapped_indices[rgb_key])
 
-	return {
-		"ok": true,
-		"error": "",
-		"width": width,
-		"height": height,
-		"pixels": pixels,
-		"remapped_color_count": remapped_color_count,
-	}
+	var result := IndexedImageResult.new()
+	result.ok = true
+	result.error = ""
+	result.width = width
+	result.height = height
+	result.pixels = pixels
+	result.remapped_color_count = remapped_color_count
+
+	return result
 
 
-static func _copy_path(platform: String, path: String) -> Dictionary:
+static func _copy_path(platform: String, path: String) -> Result:
 	var command := _copy_command(platform, path)
 
 	if not command.ok:
@@ -186,35 +214,40 @@ static func _copy_path(platform: String, path: String) -> Dictionary:
 	if exit_code != 0:
 		var detail := "\n".join(PackedStringArray(output)).strip_edges()
 
-		return _failure(
+		return Result.failure(
 			"Cannot copy the image to the system clipboard%s"
 			% [(": " + detail) if not detail.is_empty() else "."]
 		)
 
-	return {"ok": true, "error": ""}
+	var result := Result.new()
+	result.ok = true
+	result.error = ""
+
+	return result
 
 
 static func _copy_command(
 	platform: String, path: String, linux_executable := ""
-) -> Dictionary:
+) -> Command:
 	if platform == "macOS":
 		var executable := "/usr/bin/osascript"
 
 		if not FileAccess.file_exists(executable):
-			return _failure("The macOS clipboard command is not available.")
+			return Command.rejected("The macOS clipboard command is not available.")
 
 		var escaped_path := path.replace("\\", "\\\\").replace("\"", "\\\"")
 
-		return {
-			"ok": true,
-			"error": "",
-			"executable": executable,
-			"arguments": PackedStringArray([
-				"-e",
-				"set the clipboard to (read (POSIX file \"%s\") as «class PNGf»)"
-				% escaped_path,
-			]),
-		}
+		var result := Command.new()
+		result.ok = true
+		result.error = ""
+		result.executable = executable
+		result.arguments = PackedStringArray([
+			"-e",
+			"set the clipboard to (read (POSIX file \"%s\") as «class PNGf»)"
+			% escaped_path,
+		])
+
+		return result
 
 	if platform == "Windows":
 		var windows_root := OS.get_environment("SystemRoot")
@@ -234,14 +267,15 @@ static func _copy_command(
 			+ "finally {$stream.Dispose()}"
 		)
 
-		return {
-			"ok": true,
-			"error": "",
-			"executable": executable,
-			"arguments": PackedStringArray([
-				"-NoProfile", "-NonInteractive", "-STA", "-Command", script,
-			]),
-		}
+		var result := Command.new()
+		result.ok = true
+		result.error = ""
+		result.executable = executable
+		result.arguments = PackedStringArray([
+			"-NoProfile", "-NonInteractive", "-STA", "-Command", script,
+		])
+
+		return result
 
 	if platform == "Linux":
 		var executable: String = linux_executable
@@ -250,26 +284,27 @@ static func _copy_command(
 			executable = _find_executable("xclip")
 
 		if executable.is_empty():
-			return _failure("Image clipboard output requires xclip on Linux.")
+			return Command.rejected("Image clipboard output requires xclip on Linux.")
 
-		return {
-			"ok": true,
-			"error": "",
-			"executable": executable,
-			"arguments": PackedStringArray([
-				"-selection", "clipboard", "-target", "image/bmp", "-i", path,
-			]),
-		}
+		var result := Command.new()
+		result.ok = true
+		result.error = ""
+		result.executable = executable
+		result.arguments = PackedStringArray([
+			"-selection", "clipboard", "-target", "image/bmp", "-i", path,
+		])
 
-	return _failure("Image clipboard output is not supported on %s." % platform)
+		return result
+
+	return Command.rejected("Image clipboard output is not supported on %s." % platform)
 
 
-static func _paste_native_indexed(platform: String, palette: Sc2Palette) -> Dictionary:
+static func _paste_native_indexed(platform: String, palette: Sc2Palette) -> IndexedImageResult:
 	var directory := ProjectSettings.globalize_path(TEMP_DIRECTORY)
 	var directory_error := DirAccess.make_dir_recursive_absolute(directory)
 
 	if directory_error != OK:
-		return _failure(
+		return IndexedImageResult.failure(
 			"Cannot create the clipboard directory: %s" % error_string(directory_error)
 		)
 
@@ -279,7 +314,7 @@ static func _paste_native_indexed(platform: String, palette: Sc2Palette) -> Dict
 	var command := _paste_command(platform, path)
 
 	if not command.ok:
-		return command
+		return IndexedImageResult.failure(command.error)
 
 	DirAccess.remove_absolute(path)
 	var output: Array = []
@@ -288,14 +323,14 @@ static func _paste_native_indexed(platform: String, palette: Sc2Palette) -> Dict
 	if exit_code != 0 or not FileAccess.file_exists(path):
 		DirAccess.remove_absolute(path)
 
-		return _failure("The system clipboard does not contain indexed image data.")
+		return IndexedImageResult.failure("The system clipboard does not contain indexed image data.")
 
 	var bytes := FileAccess.get_file_as_bytes(path)
 	var read_error := FileAccess.get_open_error()
 	DirAccess.remove_absolute(path)
 
 	if read_error != OK:
-		return _failure("Cannot read the indexed clipboard data.")
+		return IndexedImageResult.failure("Cannot read the indexed clipboard data.")
 
 	var decoded := (
 		IndexedBitmap.decode_dib(bytes)
@@ -304,26 +339,27 @@ static func _paste_native_indexed(platform: String, palette: Sc2Palette) -> Dict
 	)
 
 	if not decoded.ok:
-		return _failure(decoded.error)
+		return IndexedImageResult.failure(decoded.error)
 
 	var mapped := IndexedBitmap.map_to_palette(decoded, palette)
 
 	if not mapped.ok:
-		return _failure(mapped.error)
+		return IndexedImageResult.failure(mapped.error)
 
-	return {
-		"ok": true,
-		"error": "",
-		"width": decoded.width,
-		"height": decoded.height,
-		"pixels": mapped.pixels,
-		"remapped_color_count": mapped.remapped_color_count,
-	}
+	var result := IndexedImageResult.new()
+	result.ok = true
+	result.error = ""
+	result.width = decoded.width
+	result.height = decoded.height
+	result.pixels = mapped.pixels
+	result.remapped_color_count = mapped.remapped_color_count
+
+	return result
 
 
 static func _paste_command(
 	platform: String, path: String, linux_executable := ""
-) -> Dictionary:
+) -> Command:
 	if platform == "Windows":
 		var windows_root := OS.get_environment("SystemRoot")
 		var executable := (
@@ -342,14 +378,15 @@ static func _paste_command(
 			+ "[System.IO.File]::WriteAllBytes('%s',$bytes)" % escaped_path
 		)
 
-		return {
-			"ok": true,
-			"error": "",
-			"executable": executable,
-			"arguments": PackedStringArray([
-				"-NoProfile", "-NonInteractive", "-STA", "-Command", script,
-			]),
-		}
+		var result := Command.new()
+		result.ok = true
+		result.error = ""
+		result.executable = executable
+		result.arguments = PackedStringArray([
+			"-NoProfile", "-NonInteractive", "-STA", "-Command", script,
+		])
+
+		return result
 
 	if platform == "Linux":
 		var executable: String = linux_executable
@@ -358,27 +395,28 @@ static func _paste_command(
 			executable = _find_executable("xclip")
 
 		if executable.is_empty():
-			return _failure("Indexed clipboard input requires xclip on Linux.")
+			return Command.rejected("Indexed clipboard input requires xclip on Linux.")
 
-		return {
-			"ok": true,
-			"error": "",
-			"executable": "/bin/sh",
-			"arguments": PackedStringArray([
-				"-c",
-				"%s -selection clipboard -target image/bmp -o > %s"
-				% [_shell_quote(executable), _shell_quote(path)],
-			]),
-		}
+		var result := Command.new()
+		result.ok = true
+		result.error = ""
+		result.executable = "/bin/sh"
+		result.arguments = PackedStringArray([
+			"-c",
+			"%s -selection clipboard -target image/bmp -o > %s"
+			% [_shell_quote(executable), _shell_quote(path)],
+		])
 
-	return _failure("Indexed clipboard input is not supported on %s." % platform)
+		return result
+
+	return Command.rejected("Indexed clipboard input is not supported on %s." % platform)
 
 
-static func _write_bytes(path: String, bytes: PackedByteArray) -> Dictionary:
+static func _write_bytes(path: String, bytes: PackedByteArray) -> Result:
 	var file := FileAccess.open(path, FileAccess.WRITE)
 
 	if file == null:
-		return _failure(
+		return Result.failure(
 			"Cannot create the clipboard image: %s"
 			% error_string(FileAccess.get_open_error())
 		)
@@ -388,11 +426,15 @@ static func _write_bytes(path: String, bytes: PackedByteArray) -> Dictionary:
 	file.close()
 
 	if write_error != OK:
-		return _failure(
+		return Result.failure(
 			"Cannot write the clipboard image: %s" % error_string(write_error)
 		)
 
-	return {"ok": true, "error": ""}
+	var result := Result.new()
+	result.ok = true
+	result.error = ""
+
+	return result
 
 
 static func _shell_quote(value: String) -> String:
@@ -409,8 +451,8 @@ static func _find_executable(filename: String) -> String:
 	return ""
 
 
-static func _exact_palette_indices(palette: Sc2Palette) -> Dictionary:
-	var indices := {}
+static func _exact_palette_indices(palette: Sc2Palette) -> Dictionary[int, int]:
+	var indices: Dictionary[int, int] = {}
 
 	for index in 256:
 		var key := _rgb_key(palette.color(index))
@@ -451,7 +493,3 @@ static func _rgb_key(color: Color) -> int:
 		| clampi(roundi(color.g * 255.0), 0, 255) << 8
 		| clampi(roundi(color.b * 255.0), 0, 255)
 	)
-
-
-static func _failure(message: String) -> Dictionary:
-	return {"ok": false, "error": message}

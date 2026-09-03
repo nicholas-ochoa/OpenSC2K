@@ -179,13 +179,13 @@ func _button(parent: Control, caption: String, action: Callable) -> void:
 func _invoke(method: String) -> void:
 	var result: Variant = main_control.debug.call(method)
 
-	if result is Dictionary:
+	if result is ApplicationDebug.ActionResult:
 		_record_action(result)
 
 
-func _record_action(result: Dictionary) -> void:
+func _record_action(result: ApplicationDebug.ActionResult) -> void:
 	if _action_label != null:
-		_action_label.text = str(result.get("message", result.get("error", "Debug action completed.")))
+		_action_label.text = result.message
 
 	_refresh_metrics()
 
@@ -274,9 +274,12 @@ func _build_day_rows() -> void:
 
 func _refresh_day_rows(history: SimulationTimingHistory) -> void:
 	for day in 25:
-		_stats(_day_rows[day], 2, history.days.get(day, {}) if history != null else {})
+		_stats(_day_rows[day], 2, history.days.get(day) if history != null else null)
 
-	var samples: Dictionary = history.steps if history != null else {}
+	var samples: Dictionary[String, SimulationTimingHistory.Sample] = {}
+
+	if history != null:
+		samples = history.steps
 
 	# include intermediate groups even when they have no measured total
 	var desired: Dictionary = {}
@@ -338,15 +341,15 @@ func _refresh_day_rows(history: SimulationTimingHistory) -> void:
 				"detail rows; do not add both. Groups without measured totals show a dash."))
 			_step_rows[label] = row
 
-		_stats(row, 2, samples.get(label, {}))
+		_stats(row, 2, samples.get(label))
 
 	if _other_steps != null and _other_steps.get_child_count() == 0:
 		_other_steps.free()
 		_other_steps = null
 
 
-func _stats(item: TreeItem, column: int, row: Dictionary) -> void:
-	if row.is_empty():
+func _stats(item: TreeItem, column: int, row: SimulationTimingHistory.Sample) -> void:
+	if row == null:
 		for index in range(column, column + 4):
 			item.set_text(index, "—")
 
