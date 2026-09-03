@@ -15,8 +15,8 @@ static func sprite_id(city: CityState, info: Dictionary) -> int:
 		return -1
 
 	if info.get("kind", "") == "specific":
-		var microsim: Dictionary = info.get("microsim", {})
-		var facility_tile := int(microsim.get("tile_id", 0))
+		var microsim: CityRecords.Microsim = info.get("microsim")
+		var facility_tile := microsim.tile_id if microsim != null else 0
 
 		return LARGE_SPRITE_BASE + facility_tile if facility_tile > 0 else -1
 
@@ -106,14 +106,14 @@ static func advanced_rows(info: Dictionary) -> Array[PackedStringArray]:
 		rows.append(PackedStringArray(["Microsim", "", "None", ""]))
 	else:
 		rows.append(_number_row("Microsim ID", microsim_id, str(info.get("microsim_label", ""))))
-		var microsim: Dictionary = info.get("microsim", {})
+		var microsim: CityRecords.Microsim = info.get("microsim")
 
-		if microsim.is_empty():
+		if microsim == null:
 			rows.append(PackedStringArray(["XMIC", "", "Unavailable", ""]))
 
 		for index in 4:
-			if microsim.has("stat_%d" % index):
-				rows.append(_number_row("XMIC data %d" % index, int(microsim["stat_%d" % index]), "", 2 if index == 0 else 4))
+			if microsim != null:
+				rows.append(_number_row("XMIC data %d" % index, microsim.statistic(index), "", 2 if index == 0 else 4))
 
 	return rows
 

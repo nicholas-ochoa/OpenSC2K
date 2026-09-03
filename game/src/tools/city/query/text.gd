@@ -86,7 +86,7 @@ static func _advanced_lines(info: Dictionary) -> PackedStringArray:
 	if microsim_id < 0:
 		result.append("Microsim ID: None")
 	else:
-		var microsim: Dictionary = info.get("microsim", {})
+		var microsim: CityRecords.Microsim = info.get("microsim")
 		var microsim_label := str(info.get("microsim_label", ""))
 
 		if not microsim_label.is_empty():
@@ -94,13 +94,13 @@ static func _advanced_lines(info: Dictionary) -> PackedStringArray:
 
 		result.append("Microsim ID: %d / 0x%02X" % [microsim_id, microsim_id])
 
-		if microsim.is_empty():
+		if microsim == null:
 			result.append("XMIC data: unavailable")
 		else:
 			result.append("Data 0: %d / 0x%02X" % [microsim.stat_0, microsim.stat_0])
 
 			for data_index in range(1, 4):
-				var value := int(microsim["stat_%d" % data_index])
+				var value := microsim.statistic(data_index)
 				result.append("Data %d: %d / 0x%04X" % [data_index, value, value])
 
 	var things: Array = info.get("things", [])
@@ -200,7 +200,7 @@ static func resource_string_ids() -> PackedInt32Array:
 
 static func _specific_lines(
 	city: CityState,
-	microsim: Dictionary,
+	microsim: CityRecords.Microsim,
 	microsim_type: int,
 	resource_strings: Dictionary
 ) -> PackedStringArray:
@@ -232,7 +232,7 @@ static func _specific_lines(
 
 static func expand_specific_template(
 	city: CityState,
-	microsim: Dictionary,
+	microsim: CityRecords.Microsim,
 	template: String,
 	resource_strings: Dictionary
 ) -> String:

@@ -5,6 +5,28 @@ extends NewTerrainConstants
 @warning_ignore_start("integer_division")
 
 
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+	var has_ocean := false
+	var has_river := false
+	var hills := 0
+	var water := 0
+	var trees := 0
+	var water_level := 0
+	var water_tiles := 0
+	var salt_water_tiles := 0
+	var tree_tiles := 0
+	var minimum_altitude := 0
+	var maximum_altitude := 0
+
+	static func failure(message: String) -> Result:
+		var result := Result.new()
+		result.error = message
+
+		return result
+
+
 static func generate(
 	document: Sc2File,
 	has_ocean: bool,
@@ -17,16 +39,16 @@ static func generate(
 	layout: String = "classic",
 	features: Array = [],
 	smooth_slopes := false,
-) -> Dictionary:
+) -> Result:
 	if layout not in LAYOUTS:
-		return NewTerrainValues._failure("unknown terrain layout")
+		return Result.failure("unknown terrain layout")
 
 	var selected := features.duplicate()
 	if layout != "classic" and layout not in selected:
 		selected.append(layout)
 	for feature in selected:
 		if feature not in LAYOUTS or feature == "classic":
-			return NewTerrainValues._failure("unknown terrain feature")
+			return Result.failure("unknown terrain feature")
 	if "canyon" in selected:
 		for river_feature in ["meander", "delta", "crossing", "branch", "rejoin", "valley"]:
 			selected.erase(river_feature)
@@ -40,14 +62,14 @@ static func generate(
 	var map_edge: int = document.map_size if document != null else 128
 
 	if document == null or not document.is_valid():
-		return NewTerrainValues._failure("city document is invalid")
+		return Result.failure("city document is invalid")
 
 	for value in [hills, water, trees]:
 		if value < MIN_SLIDER or value > MAX_SLIDER:
-			return NewTerrainValues._failure("terrain sliders must be between 0 and 47")
+			return Result.failure("terrain sliders must be between 0 and 47")
 
 	if process_random == null or game_random == null:
-		return NewTerrainValues._failure("terrain random state is missing")
+		return Result.failure("terrain random state is missing")
 
 	var required := {
 		"ALTM": (map_edge * map_edge) * 2,
@@ -64,7 +86,7 @@ static func generate(
 		var chunk := document.find_chunk(chunk_id)
 
 		if chunk == null or chunk.decoded_payload.size() != document.decoded_size(chunk_id):
-			return NewTerrainValues._failure("required %s data is missing or invalid" % chunk_id)
+			return Result.failure("required %s data is missing or invalid" % chunk_id)
 
 		payloads[chunk_id] = chunk.decoded_payload.duplicate()
 
@@ -172,23 +194,24 @@ static func generate(
 
 	for chunk_id in ["ALTM", "XTER", "XBLD", "XZON", "XBIT", "MISC"]:
 		if not document.find_chunk(chunk_id).set_decoded_payload(payloads[chunk_id]):
-			return NewTerrainValues._failure("cannot store generated %s data" % chunk_id)
+			return Result.failure("cannot store generated %s data" % chunk_id)
 
 	process_random.state = staged_process.state
 	game_random.state = staged_game.state
 
-	return {
-		"ok": true,
-		"has_ocean": has_ocean,
-		"has_river": has_river,
-		"hills": hills,
-		"water": water,
-		"trees": trees,
-		"water_level": water_level,
-		"water_tiles": NewTerrainValues._count_flag(flags, FLAG_WATER),
-		"salt_water_tiles": NewTerrainValues._count_flag(flags, FLAG_SALT_WATER),
-		"tree_tiles": NewTerrainValues._count_range(buildings, FIRST_TREE, LAST_TREE),
-		"minimum_altitude": NewTerrainValues._minimum(altitude, map_edge),
-		"maximum_altitude": NewTerrainValues._maximum(altitude, map_edge),
-		"error": "",
-	}
+	var result := Result.new()
+	result.ok = true
+	result.has_ocean = has_ocean
+	result.has_river = has_river
+	result.hills = hills
+	result.water = water
+	result.trees = trees
+	result.water_level = water_level
+	result.water_tiles = NewTerrainValues._count_flag(flags, FLAG_WATER)
+	result.salt_water_tiles = NewTerrainValues._count_flag(flags, FLAG_SALT_WATER)
+	result.tree_tiles = NewTerrainValues._count_range(buildings, FIRST_TREE, LAST_TREE)
+	result.minimum_altitude = NewTerrainValues._minimum(altitude, map_edge)
+	result.maximum_altitude = NewTerrainValues._maximum(altitude, map_edge)
+	result.error = ""
+
+	return result

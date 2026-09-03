@@ -32,7 +32,7 @@ static func inspect(
 	if OverlayData.is_facility(overlay):
 		var microsim := city.microsim(OverlayData.facility_record(overlay))
 
-		if not microsim.is_empty() and microsim.tile_id != 0:
+		if microsim != null and microsim.tile_id != 0:
 			var microsim_type := int(MICROSIM_TYPE_BY_TILE.get(microsim.tile_id, 0))
 			var action := ""
 			var action_resource_id := -1

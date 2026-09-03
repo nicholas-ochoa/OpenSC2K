@@ -104,10 +104,10 @@ static func history_for_scale(
 	var record := value_city.graph_series(series)
 	var key := _scale_key(scale)
 
-	if record.is_empty() or key.is_empty():
+	if record == null or key.is_empty():
 		return ordered
 
-	var stored: PackedInt64Array = record.get(key, PackedInt64Array())
+	var stored: PackedInt64Array = record.values_for_period(key)
 
 	for index in range(stored.size() - 1, -1, -1):
 		ordered.append(stored[index])
@@ -120,10 +120,13 @@ static func display_maxima(value_city: CityState) -> PackedInt64Array:
 	raw.resize(SERIES_COUNT)
 
 	for series in SERIES_COUNT:
-		var record := value_city.graph_series(series) if value_city != null else {}
+		var record := value_city.graph_series(series) if value_city != null else null
+
+		if record == null:
+			continue
 
 		for key in ["year", "decade", "century"]:
-			var values: PackedInt64Array = record.get(key, PackedInt64Array())
+			var values: PackedInt64Array = record.values_for_period(key)
 
 			for value in values:
 				raw[series] = maxi(raw[series], int(value))

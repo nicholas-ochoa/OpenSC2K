@@ -27,9 +27,9 @@ func _run() -> void:
 	var options := {"size": 128, "native_maps": true, "ocean": false, "river": false,
 		"hills": 0, "water": 0, "trees": 0}
 	main.new_city_state.session.begin(123, 456)
-	var preview: Dictionary = main.new_city_state.session.generate_preview("", options, false)
+	var preview: NewCityTerrainSession.PreviewResult = main.new_city_state.session.generate_preview("", options, false)
 	check(preview.ok and preview.document.full_resolution_maps(), "Native preview mode")
-	var created: Dictionary = main.new_city_state.session.create_city("", "Native", "Mayor", 1, 1900, options, PackedByteArray())
+	var created: NewCitySetup.Result = main.new_city_state.session.create_city("", "Native", "Mayor", 1, 1900, options, PackedByteArray())
 	check(created.ok and created.document.full_resolution_maps(), "Native new city mode")
 	check(created.document.find_chunk("ALTM").decoded_payload == preview.document.find_chunk("ALTM").decoded_payload,
 		"Native preview and created terrain match")

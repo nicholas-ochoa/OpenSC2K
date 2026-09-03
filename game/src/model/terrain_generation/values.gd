@@ -76,7 +76,3 @@ static func _write_u32_be(
 	data[offset + 1] = (encoded >> 16) & 0xff
 	data[offset + 2] = (encoded >> 8) & 0xff
 	data[offset + 3] = encoded & 0xff
-
-
-static func _failure(message: String) -> Dictionary:
-	return {"ok": false, "error": message}

@@ -50,6 +50,28 @@ const INVENTION_BASE_YEARS := [
 ]
 
 
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+	var stage := ""
+	var document: Sc2File
+	var city_name := ""
+	var mayor_name := ""
+	var difficulty := 0
+	var starting_year := 0
+	var invention_years := PackedInt32Array()
+	var terrain: NewCityTerrain.Result
+	var process_state := 0
+	var game_state := 0
+
+	static func failure(message: String, failed_stage := "") -> Result:
+		var result := Result.new()
+		result.error = message
+		result.stage = failed_stage
+
+		return result
+
+
 static func create(
 	template: Sc2File,
 	requested_city_name: String,
@@ -60,39 +82,39 @@ static func create(
 	game_random: GameLcgRandom = null,
 	terrain_options: Dictionary = {},
 	newspaper_session_state: PackedByteArray = PackedByteArray(),
-) -> Dictionary:
+) -> Result:
 	if template == null or not template.is_valid():
-		return _failure("default city template is invalid")
+		return Result.failure("default city template is invalid")
 
 	if difficulty < 1 or difficulty > 3:
-		return _failure("difficulty must be Easy, Medium, or Hard")
+		return Result.failure("difficulty must be Easy, Medium, or Hard")
 
 	if not STARTING_YEARS.has(starting_year):
-		return _failure("starting year must be 1900, 1950, 2000, or 2050")
+		return Result.failure("starting year must be 1900, 1950, 2000, or 2050")
 
 	if random == null:
-		return _failure("random state is missing")
+		return Result.failure("random state is missing")
 
 	if not terrain_options.is_empty() and game_random == null:
-		return _failure("terrain game-random state is missing")
+		return Result.failure("terrain game-random state is missing")
 
 	if (
 		not newspaper_session_state.is_empty()
 		and newspaper_session_state.size() != NewsQueue.MISC_SIZE
 	):
-		return _failure("newspaper session state has the wrong size")
+		return Result.failure("newspaper session state has the wrong size")
 
 	var source_misc := template.find_chunk("MISC")
 	var source_graph := template.find_chunk("XGRP")
 
 	if source_misc == null or source_misc.decoded_payload.size() != MISC_SIZE:
-		return _failure("default MISC data is missing or invalid")
+		return Result.failure("default MISC data is missing or invalid")
 
 	if source_graph == null or source_graph.decoded_payload.size() != GRAPH_SIZE:
-		return _failure("default XGRP data is missing or invalid")
+		return Result.failure("default XGRP data is missing or invalid")
 
 	if template.find_chunk("CNAM") == null or template.find_chunk("XLAB") == null:
-		return _failure("default name data is missing")
+		return Result.failure("default name data is missing")
 
 	var document := template.duplicate_document()
 	document.source_path = ""
@@ -107,18 +129,18 @@ static func create(
 		mayor_name = "Mayor"
 
 	if not document.set_city_name(city_name):
-		return _failure("cannot store the city name")
+		return Result.failure("cannot store the city name")
 
 	var city := CityModel.from_document(document)
 
 	if not city.is_valid() or not city.set_label(0, mayor_name):
-		return _failure("cannot store the mayor name")
+		return Result.failure("cannot store the mayor name")
 
 	var staged_random := Random.new(random.state)
 	var staged_game_random = (
 		GameRandom.new(game_random.state) if game_random != null else null
 	)
-	var terrain_result := {}
+	var terrain_result: NewCityTerrain.Result
 
 	if not terrain_options.is_empty():
 		terrain_result = Terrain.generate(
@@ -136,7 +158,7 @@ static func create(
 		)
 
 		if not terrain_result.ok:
-			return _failure("cannot generate terrain: %s" % terrain_result.error)
+			return Result.failure("cannot generate terrain: %s" % terrain_result.error)
 
 	var misc_chunk := document.find_chunk("MISC")
 	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
@@ -200,10 +222,10 @@ static func create(
 	var news_result := NewsQueue.insert(misc, FOUNDING_STORY_TYPE, 0)
 
 	if not news_result.ok:
-		return _failure("cannot initialize the founding newspaper: %s" % news_result.error)
+		return Result.failure("cannot initialize the founding newspaper: %s" % news_result.error)
 
 	if not misc_chunk.set_decoded_payload(misc):
-		return _failure("cannot store new-city settings")
+		return Result.failure("cannot store new-city settings")
 
 	var graph_chunk := document.find_chunk("XGRP")
 	var graph := PackedByteArray()
@@ -215,24 +237,25 @@ static func create(
 	)
 
 	if not graph_chunk.set_decoded_payload(graph):
-		return _failure("cannot initialize graph history")
+		return Result.failure("cannot initialize graph history")
 
 	random.state = staged_random.state
 
 	if game_random != null:
 		game_random.state = staged_game_random.state
 
-	return {
-		"ok": true,
-		"document": document,
-		"city_name": document.city_name(),
-		"mayor_name": city.mayor_name(),
-		"difficulty": difficulty,
-		"starting_year": starting_year,
-		"invention_years": invention_years,
-		"terrain": terrain_result,
-		"error": "",
-	}
+	var result := Result.new()
+	result.ok = true
+	result.document = document
+	result.city_name = document.city_name()
+	result.mayor_name = city.mayor_name()
+	result.difficulty = difficulty
+	result.starting_year = starting_year
+	result.invention_years = invention_years
+	result.terrain = terrain_result
+	result.error = ""
+
+	return result
 
 
 static func _write_graph_value(
@@ -254,7 +277,3 @@ static func _write_u32(data: PackedByteArray, offset: int, value: int) -> void:
 	data[offset + 1] = (encoded >> 16) & 0xff
 	data[offset + 2] = (encoded >> 8) & 0xff
 	data[offset + 3] = encoded & 0xff
-
-
-static func _failure(message: String) -> Dictionary:
-	return {"ok": false, "error": message}

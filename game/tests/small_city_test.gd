@@ -162,7 +162,7 @@ func check_terrain(edge: int) -> void:
 				var repeat_doc := fixture(edge)
 				var repeat_result := NewCityTerrain.generate(repeat_doc, true, true, 12, 5, 0,
 					SimRandom.new(seed), GameLcgRandom.new(seed), layout)
-				check(repeat_result == result and repeat_doc.serialize().data == doc.serialize().data,
+				check(_terrain_result_values(repeat_result) == _terrain_result_values(result) and repeat_doc.serialize().data == doc.serialize().data,
 					"Small terrain layout and seed are deterministic")
 	for slider in [0, 47]:
 		var result := NewCityTerrain.generate(fixture(edge), false, false, slider, slider, slider,
@@ -224,3 +224,10 @@ func check_vehicles(edge: int) -> void:
 		var spawned := MovingThingSpawner._spawn_train_record(p.XBLD, p.XTHG, p.XTXT,
 			start, SequenceGameLcg.new(), SequenceLfsr.new(), edge)
 		check(spawned == (start.x == edge - 4), "Small-map trains retain capacity and edge margins")
+
+
+func _terrain_result_values(result: NewCityTerrain.Result) -> Array:
+	return [result.ok, result.error,
+		result.has_ocean, result.has_river, result.hills, result.water, result.trees,
+		result.water_level, result.water_tiles, result.salt_water_tiles,
+		result.tree_tiles, result.minimum_altitude, result.maximum_altitude]

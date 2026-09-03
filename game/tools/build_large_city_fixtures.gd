@@ -108,7 +108,8 @@ func build_fixture(edge: int) -> void:
 							else:
 								report.signs_not_copied += 1
 						elif old <= 200:
-							var tile := int(source.microsim(old - 51).get("tile_id", 0))
+							var microsim := source.microsim(old - 51)
+							var tile := microsim.tile_id if microsim != null else 0
 							var kind := int(BuildingCommand.MICROSIM_TYPE_BY_TILE.get(tile, 0))
 							var can_allocate := kind > 16
 

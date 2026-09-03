@@ -29,12 +29,13 @@ func _run() -> void:
 		things.decoded_payload[12] = 1
 		ThingData.write(things.decoded_payload, 15, edge - 1)
 		ThingData.write(things.decoded_payload, 16, edge - 2)
-		assert(city.microsim_site(1).is_empty())
+		assert(city.microsim_site(1) == null)
 
 		for point in [Vector2i(3, 4), Vector2i(4, 4), Vector2i(3, 5), Vector2i(4, 5), Vector2i(6, 7)]:
 			assert(city.set_text_overlay_id(point.x, point.y, OverlayData.facility_id(1)))
 
-		assert(city.microsim_site(1) == {"x": 3, "y": 4, "width": 4, "height": 4, "tiles": 5})
+		var first_site := city.microsim_site(1)
+		assert([first_site.x, first_site.y, first_site.width, first_site.height, first_site.tiles] == [3, 4, 4, 4, 5])
 
 		# A moving thing covering a facility tile keeps the facility ID in its label field.
 		var covering := things.decoded_payload.duplicate()
@@ -45,7 +46,8 @@ func _run() -> void:
 		assert(things.set_decoded_payload(covering))
 		assert(city.set_text_overlay_id(4, 5, OverlayData.thing_id(2)))
 		assert(city.set_text_overlay_id(6, 7, 0))
-		assert(city.microsim_site(1) == {"x": 3, "y": 4, "width": 2, "height": 2, "tiles": 4})
+		var covered_site := city.microsim_site(1)
+		assert([covered_site.x, covered_site.y, covered_site.width, covered_site.height, covered_site.tiles] == [3, 4, 2, 2, 4])
 		assert(city.microsim_sites() == city.microsim_sites())
 		# Links from a thing that is not on that tile are stale and ignored.
 		ThingData.write(covering, 27, 9)
@@ -141,10 +143,8 @@ func _check_sorting() -> void:
 	var records: Array[Dictionary] = []
 
 	# Record 2 is off-map. Sort 0x2A after 0x10 by value, not by digit count.
-	for entry in [[0, "Record 0", 0x2A, {"x": 13, "y": 4}], [2, "Record 2", 0x10, {}], [10, "Record 10", 0xD2, {"x": 3, "y": 9}]]:
-		var site: Dictionary = entry[3]
-		if not site.is_empty():
-			site.merge({"width": 1, "height": 1})
+	for entry in [[0, "Record 0", 0x2A, CityRecords.Site.new(13, 4, 1, 1)], [2, "Record 2", 0x10, null], [10, "Record 10", 0xD2, CityRecords.Site.new(3, 9, 1, 1)]]:
+		var site: CityRecords.Site = entry[3]
 		records.append({"id": str(entry[0]), "name": entry[1], "value": "", "raw": "", "site": site,
 			"sort": [entry[0], "", entry[2], DebugCityTables._site_sort(site), ""]})
 
@@ -163,7 +163,7 @@ func _check_sorting() -> void:
 		panel.sort_by(column, true)
 		assert(order.call() == ["Record 0", "Record 10", "Record 2"])
 	# Refresh keeps the sort, and new rows land in sorted position.
-	records.append({"id": "5", "name": "Record 5", "value": "", "raw": "", "site": {"x": 8, "y": 0, "width": 1, "height": 1},
+	records.append({"id": "5", "name": "Record 5", "value": "", "raw": "", "site": CityRecords.Site.new(8, 0, 1, 1),
 		"sort": [5, "", 0, [8, 0, 1], ""]})
 	panel.update_records(records)
 	assert(order.call() == ["Record 0", "Record 5", "Record 10", "Record 2"])

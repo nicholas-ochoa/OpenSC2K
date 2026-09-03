@@ -15,16 +15,16 @@ func start(source: NewCityTerrainSession, template_path: String, options: Dictio
 
 
 func _generate(template_path: String, options: Dictionary, palette: Sc2Palette,
-	sprites: Sc2SpriteArchive) -> Dictionary:
+	sprites: Sc2SpriteArchive) -> NewCityTerrainSession.PreviewResult:
 	var result := session.generate_preview(template_path, options, true)
 	if not result.ok:
 		return result
 	var rendered := CityIsometricRenderer.create_image(result.city, palette, sprites,
 		view_size, 0, false, false, false, false)
 	if not rendered.ok:
-		return {"ok": false, "stage": "preview", "error": rendered.error}
-	result["landscape_image"] = rendered.image
-	result["minimap_image"] = CityMinimap.create_image(result.city, palette, "structures")
+		return NewCityTerrainSession.PreviewResult.failure(rendered.error, "preview")
+	result.landscape_image = rendered.image
+	result.minimap_image = CityMinimap.create_image(result.city, palette, "structures")
 	return result
 
 

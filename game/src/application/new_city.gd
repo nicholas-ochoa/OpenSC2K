@@ -131,7 +131,7 @@ func poll_new_city_preview() -> void:
 	if app.new_city_state.preview_job == null or app.new_city_state.preview_job.thread.is_alive():
 		return
 	var job := app.new_city_state.preview_job
-	var generated: Dictionary = job.thread.wait_to_finish()
+	var generated: NewCityTerrainSession.PreviewResult = job.thread.wait_to_finish()
 	app.new_city_state.preview_job = null
 	app.new_city_dialog.set_generating(false)
 	if not app.new_city_dialog.visible or job.revision != app.new_city_dialog.generation_revision:
@@ -148,10 +148,10 @@ func poll_new_city_preview() -> void:
 	app.new_city_dialog.preview_status.text = (
 		"Water: %s tiles   Trees: %s tiles   Height: %s–%s"
 		% [
-			app.interface.format_number(int(generated.water_tiles)),
-			app.interface.format_number(int(generated.tree_tiles)),
-			int(generated.minimum_altitude),
-			int(generated.maximum_altitude),
+			app.interface.format_number(int(generated.terrain.water_tiles)),
+			app.interface.format_number(int(generated.terrain.tree_tiles)),
+			int(generated.terrain.minimum_altitude),
+			int(generated.terrain.maximum_altitude),
 		]
 	)
 

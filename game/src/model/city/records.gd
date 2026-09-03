@@ -5,6 +5,59 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 
+class Site extends RefCounted:
+	var x: int
+	var y: int
+	var width: int
+	var height: int
+	var tiles: int
+
+	func _init(left: int, top: int, columns: int, rows: int, tile_count := 0) -> void:
+		x = left
+		y = top
+		width = columns
+		height = rows
+		tiles = tile_count
+
+
+class Microsim extends RefCounted:
+	var tile_id := 0
+	var stat_0 := 0
+	var stat_1 := 0
+	var stat_2 := 0
+	var stat_3 := 0
+
+	func statistic(index: int) -> int:
+		match index:
+			0:
+				return stat_0
+			1:
+				return stat_1
+			2:
+				return stat_2
+			3:
+				return stat_3
+
+		return 0
+
+
+class GraphSeries extends RefCounted:
+	var year := PackedInt64Array()
+	var decade := PackedInt64Array()
+	var century := PackedInt64Array()
+
+	func values_for_period(period: String) -> PackedInt64Array:
+		match period:
+			"year":
+				return year
+			"decade":
+				return decade
+			"century":
+				return century
+
+		return PackedInt64Array()
+
+
 static func city_name(city: CityState) -> String:
 	return city.document.city_name()
 
@@ -68,24 +121,25 @@ static func set_label(city: CityState, label_id: int, value: String) -> bool:
 	return chunk.set_decoded_payload(changed)
 
 
-static func microsim(city: CityState, microsim_id: int) -> Dictionary:
+static func microsim(city: CityState, microsim_id: int) -> Microsim:
 	if microsim_id < 0 or microsim_id >= city.document.decoded_size("XMIC") / CityState.MICROSIM_RECORD_SIZE:
-		return {}
+		return null
 
 	var chunk := city.document.find_chunk("XMIC")
 
 	if chunk == null:
-		return {}
+		return null
 
 	var offset := microsim_id * CityState.MICROSIM_RECORD_SIZE
 
-	return {
-		"tile_id": int(chunk.decoded_payload[offset]),
-		"stat_0": int(chunk.decoded_payload[offset + 1]),
-		"stat_1": city._read_u16_be(chunk.decoded_payload, offset + 2),
-		"stat_2": city._read_u16_be(chunk.decoded_payload, offset + 4),
-		"stat_3": city._read_u16_be(chunk.decoded_payload, offset + 6),
-	}
+	var result := Microsim.new()
+	result.tile_id = int(chunk.decoded_payload[offset])
+	result.stat_0 = int(chunk.decoded_payload[offset + 1])
+	result.stat_1 = city._read_u16_be(chunk.decoded_payload, offset + 2)
+	result.stat_2 = city._read_u16_be(chunk.decoded_payload, offset + 4)
+	result.stat_3 = city._read_u16_be(chunk.decoded_payload, offset + 6)
+
+	return result
 
 
 # null for a record outside xthg
@@ -101,14 +155,14 @@ static func thing(city: CityState, thing_id: int) -> ThingRecord:
 	return ThingRecord.read(chunk.decoded_payload, thing_id * CityState.THING_RECORD_SIZE)
 
 
-static func graph_series(city: CityState, graph_id: int) -> Dictionary:
+static func graph_series(city: CityState, graph_id: int) -> GraphSeries:
 	if graph_id < 0 or graph_id >= CityState.GRAPH_COUNT:
-		return {}
+		return null
 
 	var chunk := city.document.find_chunk("XGRP")
 
 	if chunk == null:
-		return {}
+		return null
 
 	var values := PackedInt64Array()
 	var offset := graph_id * CityState.GRAPH_VALUE_COUNT * 4
@@ -116,11 +170,12 @@ static func graph_series(city: CityState, graph_id: int) -> Dictionary:
 	for index in CityState.GRAPH_VALUE_COUNT:
 		values.append(city._read_u32_be(chunk.decoded_payload, offset + index * 4))
 
-	return {
-		"year": values.slice(0, 12),
-		"decade": values.slice(12, 32),
-		"century": values.slice(32, 52),
-	}
+	var result := GraphSeries.new()
+	result.year = values.slice(0, 12)
+	result.decade = values.slice(12, 32)
+	result.century = values.slice(32, 52)
+
+	return result
 
 
 static func thing_count(city: CityState) -> int:
@@ -131,16 +186,16 @@ static func microsim_count(city: CityState) -> int:
 	return city.document.decoded_size("XMIC") / CityState.MICROSIM_RECORD_SIZE
 
 
-# map footprint of one xmic record: {x, y, width, height, tiles}, or {} when
+# map footprint of one xmic record, or null when
 # no tile links to it. xmic stores no position, so this is derived from xtxt,
 # following moving things that temporarily cover a facility tile
 
 
-static func microsim_site(city: CityState, microsim_id: int) -> Dictionary:
-	return city.microsim_sites().get(microsim_id, {})
+static func microsim_site(city: CityState, microsim_id: int) -> Site:
+	return city.microsim_sites().get(microsim_id)
 
 
-static func microsim_sites(city: CityState) -> Dictionary[int, Dictionary]:
+static func microsim_sites(city: CityState) -> Dictionary[int, Site]:
 	assert(OS.get_thread_caller_id() == OS.get_main_thread_id(),
 		"CityState microsim site cache is main-thread only")
 	var text := city.document.find_chunk("XTXT")
@@ -215,8 +270,8 @@ static func microsim_sites(city: CityState) -> Dictionary[int, Dictionary]:
 		var at := record * 5
 
 		if bounds[at + 4] > 0:
-			city._microsim_sites[record] = {"x": bounds[at], "y": bounds[at + 1], "width": bounds[at + 2] - bounds[at] + 1,
-				"height": bounds[at + 3] - bounds[at + 1] + 1, "tiles": bounds[at + 4]}
+			city._microsim_sites[record] = Site.new(bounds[at], bounds[at + 1], bounds[at + 2] - bounds[at] + 1,
+				bounds[at + 3] - bounds[at + 1] + 1, bounds[at + 4])
 
 	city._microsim_sites_key = key
 

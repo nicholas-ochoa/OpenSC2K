@@ -48,7 +48,7 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 
 			for id in city.microsim_count():
 				var record := city.microsim(id)
-				var tile := int(record.get("tile_id", 0))
+				var tile := record.tile_id if record != null else 0
 				if tile == 0 and not include_empty:
 					continue
 
@@ -57,15 +57,15 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 				var labels: Array = STAT_LABELS.get(tile, ["Type-specific byte", "Type-specific statistic", "Type-specific statistic", "Type-specific statistic"])
 
 				for index in 4:
-					fields.append(_field("stat_%d" % index, record.get("stat_%d" % index, 0),
+					fields.append(_field("stat_%d" % index, record.statistic(index) if record != null else 0,
 						labels[index]))
 
 				var value: String = "Empty" if tile == 0 else FACILITIES.get(tile, "Facility 0x%02X" % tile)
 				var label := city.label(OverlayData.facility_id(id))
-				var site: Dictionary = sites.get(id, {})
+				var site: CityRecords.Site = sites.get(id)
 				var detail := "-" if label.is_empty() or label == value else label
 				result.append({"id": str(id), "name": "Record %d" % id, "value": value, "raw": "0x%02X" % tile,
-					"position": "Not on map" if site.is_empty() else "(%d, %d) %d×%d" % [site.x, site.y, site.width, site.height],
+					"position": "Not on map" if site == null else "(%d, %d) %d×%d" % [site.x, site.y, site.width, site.height],
 					"site": site, "detail": detail,
 					# sort values per visible column, excluding the locate icon column
 					"sort": [id, value, tile, _site_sort(site), detail],
@@ -78,8 +78,8 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 					continue
 
 				var table := DebugObjectFields.table_cells(id, record, city)
-				var site := {} if record.type == 0 or city.index_of(record.x, record.y) < 0 \
-					else {"x": record.x, "y": record.y, "width": 1, "height": 1}
+				var site := null if record.type == 0 or city.index_of(record.x, record.y) < 0 \
+					else CityRecords.Site.new(record.x, record.y, 1, 1)
 				var sort: Array = [id]
 
 				for key: String in DebugObjectFields.COLUMNS:
@@ -118,8 +118,8 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 	return result
 
 
-static func _site_sort(site: Dictionary) -> Variant:
-	return null if site.is_empty() else [site.x, site.y, site.width * site.height]
+static func _site_sort(site: CityRecords.Site) -> Variant:
+	return null if site == null else [site.x, site.y, site.width * site.height]
 
 
 static func _field(key: String, value: Variant, detail: String) -> Dictionary:

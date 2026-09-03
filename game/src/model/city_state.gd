@@ -48,7 +48,7 @@ var _masked_tile_flag_signatures: Dictionary[int, Dictionary] = {}
 # runtime-only sign pages and static overlay content, keyed by xtxt/xthg revisions
 var _static_text_overlay_cache: Dictionary = {}
 # runtime-only microsim footprints, rebuilt when xtxt or xthg changes
-var _microsim_sites: Dictionary[int, Dictionary] = {}
+var _microsim_sites: Dictionary[int, CityRecords.Site] = {}
 var _microsim_sites_key := []
 
 
@@ -338,7 +338,7 @@ func set_label(label_id: int, value: String) -> bool:
 	return CityRecords.set_label(self, label_id, value)
 
 
-func microsim(microsim_id: int) -> Dictionary:
+func microsim(microsim_id: int) -> CityRecords.Microsim:
 	return CityRecords.microsim(self, microsim_id)
 
 
@@ -346,7 +346,7 @@ func thing(thing_id: int) -> ThingRecord:
 	return CityRecords.thing(self, thing_id)
 
 
-func graph_series(graph_id: int) -> Dictionary:
+func graph_series(graph_id: int) -> CityRecords.GraphSeries:
 	return CityRecords.graph_series(self, graph_id)
 
 
@@ -522,11 +522,11 @@ func microsim_count() -> int:
 	return CityRecords.microsim_count(self)
 
 
-func microsim_site(microsim_id: int) -> Dictionary:
+func microsim_site(microsim_id: int) -> CityRecords.Site:
 	return CityRecords.microsim_site(self, microsim_id)
 
 
-func microsim_sites() -> Dictionary[int, Dictionary]:
+func microsim_sites() -> Dictionary[int, CityRecords.Site]:
 	return CityRecords.microsim_sites(self)
 
 

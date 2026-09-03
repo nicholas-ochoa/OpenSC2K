@@ -10,9 +10,12 @@ func _run() -> void:
 	var palette := Sc2Palette.index_encoding()
 	var sprites := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
 	assert(sprites.is_valid())
+	var microsim := CityRecords.Microsim.new()
+	microsim.stat_0 = 12
+	microsim.stat_1 = 500
 	var values := {"point": Vector2i(400, 300), "tile_id": 211, "sprite_id": 1211,
 		"altitude_raw": 4660, "flags_raw": 128, "flag_names": PackedStringArray(["Powered"]),
-		"microsim_id": 7, "microsim_label": "Station", "microsim": {"stat_0": 12, "stat_1": 500}}
+		"microsim_id": 7, "microsim_label": "Station", "microsim": microsim}
 	var rows := QueryPresentation.advanced_rows(values)
 	assert(rows[0][1] == "211" and rows[0][3] == "0xD3")
 	assert(rows[1][3] == "0x04BB")

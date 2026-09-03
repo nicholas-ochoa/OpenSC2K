@@ -126,9 +126,9 @@ func check_ui() -> void:
 	var options: Dictionary = main.new_city._new_city_terrain_options()
 	# Format policy is independent of expensive terrain feature combinations.
 	options.merge({"hills": 0, "water": 0, "trees": 0, "ocean": false, "river": false}, true)
-	var generated: Dictionary = main.new_city_state.session.generate_preview("", options, false)
+	var generated: NewCityTerrainSession.PreviewResult = main.new_city_state.session.generate_preview("", options, false)
 	check(generated.ok and not generated.document.is_extended(), "Compatibility generates original-format preview")
-	var created: Dictionary = main.new_city_state.session.create_city("", "Compatible", "Mayor", 1, 1900, options, PackedByteArray())
+	var created: NewCitySetup.Result = main.new_city_state.session.create_city("", "Compatible", "Mayor", 1, 1900, options, PackedByteArray())
 	check(created.ok and not created.document.is_extended(), "Compatibility creates original-format city")
 	var doc := EmptyCityTemplate.create(128)
 	check(main.city_session.activate_document(doc), "Compatible city activates")

@@ -441,7 +441,7 @@ func _test_reference_corpus(reference_root: String) -> void:
 				"%s month is in range" % path.get_file()
 			)
 			_check(city.label(0).length() <= 23, "%s mayor label is bounded" % path.get_file())
-			_check(city.microsim(149).size() == 5, "%s has 150 microsim records" % path.get_file())
+			_check(city.microsim(149) != null, "%s has 150 microsim records" % path.get_file())
 			_check(city.thing(39) != null, "%s has 40 thing records" % path.get_file())
 			var graph := city.graph_series(15)
 			_check(graph.year.size() == 12, "%s graph has 12 monthly values" % path.get_file())
@@ -12455,7 +12455,7 @@ func _test_new_city_terrain(reference_root: String) -> void:
 	if generated.ok:
 		var document: Sc2File = generated.document
 		var city := CityModel.from_document(document)
-		var terrain_result: Dictionary = generated.terrain
+		var terrain_result: NewCityTerrain.Result = generated.terrain
 		_check(
 			terrain_result.water_level == 4
 			and document.misc_u32(NewCityTerrain.MISC_WATER_LEVEL) == 4
@@ -13509,13 +13509,9 @@ func _test_query_info(reference_root: String) -> void:
 			hospital.lines[4] == str(original_strings[920]).replace("#3", "2000"),
 			"Specific query expands statistic three",
 		)
-		var arcology := {
-			"tile_id": 0xfb,
-			"stat_0": 0,
-			"stat_1": 7,
-			"stat_2": 0,
-			"stat_3": 0,
-		}
+		var arcology := CityRecords.Microsim.new()
+		arcology.tile_id = 0xfb
+		arcology.stat_1 = 7
 		_check(
 			QueryText.expand_specific_template(
 				city, arcology, str(original_strings[942]), original_strings
@@ -13533,6 +13529,7 @@ func _test_query_info(reference_root: String) -> void:
 		"Library query exposes its Ruminate action",
 	)
 	var arcology_info := library.duplicate(true)
+	arcology_info.microsim = city.microsim(library.microsim_id)
 	arcology_info.microsim.tile_id = 0xfb
 	_check(
 		QueryPresentation.sprite_id(city, arcology_info) == 1251,

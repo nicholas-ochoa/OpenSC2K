@@ -243,19 +243,19 @@ func _set_cells(row: TreeItem, record: Dictionary) -> void:
 	var sort: Array = record.get("sort", []).duplicate()
 
 	if not sort.is_empty() and locate_column >= 0:
-		var site: Dictionary = record.get("site", {})
-		sort.insert(locate_column, null if site.is_empty() else [site.x, site.y])
+		var site: CityRecords.Site = record.get("site")
+		sort.insert(locate_column, null if site == null else [site.x, site.y])
 
 	row.set_meta("sort", sort)
 
 	if locate_column >= 0:
-		_set_locate_icon(row, record.get("site", {}))
+		_set_locate_icon(row, record.get("site"))
 
 
-func _set_locate_icon(row: TreeItem, site: Dictionary) -> void:
+func _set_locate_icon(row: TreeItem, site: CityRecords.Site) -> void:
 	var column := locate_column
 
-	if site.is_empty():
+	if site == null:
 		row.set_icon(column, null)
 		row.set_metadata(column, null)
 		row.set_tooltip_text(column, "")

@@ -8,6 +8,24 @@ const NewTerrain = preload("res://src/model/new_city_terrain.gd")
 const Random = preload("res://src/simulation/random/sim_random.gd")
 const GameRandom = preload("res://src/simulation/random/game_lcg_random.gd")
 
+class PreviewResult extends RefCounted:
+	var ok := false
+	var error := ""
+	var stage := ""
+	var terrain: NewCityTerrain.Result
+	var document: Sc2File
+	var city: CityState
+	var landscape_image: Image
+	var minimap_image: Image
+
+	static func failure(message: String, failed_stage: String) -> PreviewResult:
+		var result := PreviewResult.new()
+		result.error = message
+		result.stage = failed_stage
+
+		return result
+
+
 var preview_document: Sc2File
 var independent_template := false
 var preview_options: Dictionary = {}
@@ -35,21 +53,17 @@ func matches(options: Dictionary) -> bool:
 
 
 func generate_preview(
-	template_path: String, options: Dictionary, advance_seed: bool) -> Dictionary:
+	template_path: String, options: Dictionary, advance_seed: bool) -> PreviewResult:
 	var document := _load_template(template_path)
 
 	if not document.is_valid():
-		return {
-			"ok": false,
-			"stage": "template",
-			"error": document.parse_error,
-		}
+		return PreviewResult.failure(document.parse_error, "template")
 
 	if not document.resize_empty_map(int(options.get("size", 128))):
-		return {"ok": false, "stage": "size", "error": "Unsupported city size"}
+		return PreviewResult.failure("Unsupported city size", "size")
 
 	if options.get("native_maps", false) and not document.enable_full_resolution_maps():
-		return {"ok": false, "stage": "data_maps", "error": "Cannot enable per-tile data maps"}
+		return PreviewResult.failure("Cannot enable per-tile data maps", "data_maps")
 
 	if advance_seed or preview_document == null:
 		preview_process_start = preview_process_cursor
@@ -72,28 +86,22 @@ func generate_preview(
 	)
 
 	if not generated.ok:
-		return {
-			"ok": false,
-			"stage": "terrain",
-			"error": generated.error,
-		}
+		return PreviewResult.failure(generated.error, "terrain")
 
 	var preview_city := CityModel.from_document(document)
 
 	if not preview_city.is_valid():
-		return {
-			"ok": false,
-			"stage": "city",
-			"error": preview_city.load_error,
-		}
+		return PreviewResult.failure(preview_city.load_error, "city")
 
 	preview_document = document
 	preview_options = options.duplicate(true)
 	preview_process_cursor = preview_process.state
 	preview_game_cursor = preview_game.state
-	var result: Dictionary = generated.duplicate(true)
-	result["document"] = document
-	result["city"] = preview_city
+	var result := PreviewResult.new()
+	result.ok = true
+	result.terrain = generated
+	result.document = document
+	result.city = preview_city
 
 	return result
 
@@ -105,9 +113,9 @@ func create_city(
 	difficulty: int,
 	starting_year: int,
 	terrain_options: Dictionary,
-	newspaper_session_state: PackedByteArray) -> Dictionary:
+	newspaper_session_state: PackedByteArray) -> NewCitySetup.Result:
 	if not matches(terrain_options):
-		return {"ok": false, "stage": "terrain", "error": "Regenerate terrain first"}
+		return NewCitySetup.Result.failure("Regenerate terrain first", "terrain")
 
 	# Found the displayed city. Generating it again here could produce a different map.
 	var template := preview_document.duplicate_document()
@@ -126,17 +134,12 @@ func create_city(
 	)
 
 	if not created.ok:
-		return {
-			"ok": false,
-			"stage": "setup",
-			"error": created.error,
-		}
+		return NewCitySetup.Result.failure(created.error, "setup")
 
-	var result: Dictionary = created.duplicate(true)
-	result["process_state"] = process_random.state
-	result["game_state"] = game_random.state
+	created.process_state = process_random.state
+	created.game_state = game_random.state
 
-	return result
+	return created
 
 
 func _load_template(path: String) -> Sc2File:
