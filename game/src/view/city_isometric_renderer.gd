@@ -15,7 +15,7 @@ static func create_image(
 	validate_required_assets := true,
 	include_special_overlays := true,
 	progress := Callable()
-) -> Dictionary:
+) -> AssetImageResult:
 	return IsometricImageRender.create_image(
 		city, palette, sprites, view_size, animation_phase, include_moving_things, transparent_background,
 		validate_required_assets, include_special_overlays, progress
@@ -31,7 +31,7 @@ static func patch_static_image(
 	view_size := VIEW_LARGE,
 	animation_phase := 0,
 	copy_image := true
-) -> Dictionary:
+) -> IsometricImageRender.PatchResult:
 	return IsometricImageRender.patch_static_image(
 		base_image, city, palette, sprites, dirty_indices, view_size, animation_phase, copy_image
 	)
@@ -57,7 +57,7 @@ static func maximum_sprite_size(sprites: Sc2SpriteArchive) -> Vector2i:
 # it is a conservative bound, not the painted area. region renderers cull
 # with it. `dirty_screen_rect` merges it for a set of tiles
 static func potential_tile_bounds(
-	configuration: Dictionary, sprite_limit: Vector2i, x: int, y: int,
+	configuration: CityViewConfiguration, sprite_limit: Vector2i, x: int, y: int,
 	map_edge: int = 128,
 ) -> Rect2i:
 	return IsometricGeometry.potential_tile_bounds(configuration, sprite_limit, x, y, map_edge)
@@ -66,14 +66,14 @@ static func potential_tile_bounds(
 # return the diagonals and screen columns whose tiles can touch `bounds`
 # a region painter walks `first_diagonal` to `last_diagonal` in order
 static func region_tile_span(
-	configuration: Dictionary, sprite_limit: Vector2i, bounds: Rect2i,
+	configuration: CityViewConfiguration, sprite_limit: Vector2i, bounds: Rect2i,
 	map_edge: int, underground: bool
-) -> Dictionary:
+) -> CityRegionTileSpan:
 	return IsometricGeometry.region_tile_span(configuration, sprite_limit, bounds, map_edge, underground)
 
 
 # return the first and last y of the tiles on `diagonal` inside `span`
-static func diagonal_rows(span: Dictionary, diagonal: int, map_edge: int) -> Vector2i:
+static func diagonal_rows(span: CityRegionTileSpan, diagonal: int, map_edge: int) -> Vector2i:
 	return IsometricGeometry.diagonal_rows(span, diagonal, map_edge)
 
 
@@ -85,7 +85,7 @@ static func terrain_sprite_id(terrain: int, water_flag: bool, sprite_base := 100
 	return IsometricGeometry.terrain_sprite_id(terrain, water_flag, sprite_base)
 
 
-static func view_configuration(view_size: int) -> Dictionary:
+static func view_configuration(view_size: int) -> CityViewConfiguration:
 	return IsometricGeometry.view_configuration(view_size)
 
 
@@ -133,7 +133,7 @@ static func draw_tile(
 	palette: Sc2Palette,
 	sprites: Sc2SpriteArchive,
 	cache: Dictionary,
-	configuration: Dictionary,
+	configuration: CityViewConfiguration,
 	origin_x: int,
 	x: int,
 	y: int,
@@ -199,7 +199,7 @@ static func draw_moving_thing(
 	sprites: Sc2SpriteArchive,
 	cache: Dictionary,
 	visual: Dictionary,
-	configuration: Dictionary,
+	configuration: CityViewConfiguration,
 	offset := Vector2i.ZERO
 ) -> void:
 	IsometricImageRender.draw_moving_thing(output, city, palette, sprites, cache, visual, configuration, offset)
@@ -218,7 +218,7 @@ static func moving_thing_draw_commands_for_visual(
 	city: CityState,
 	sprites: Sc2SpriteArchive,
 	visual: Dictionary,
-	configuration: Dictionary
+	configuration: CityViewConfiguration
 ) -> Array[Dictionary]:
 	return IsometricDynamicCommands.moving_thing_draw_commands_for_visual(city, sprites, visual, configuration)
 
@@ -246,7 +246,7 @@ static func patch_static_occlusion_commands(
 static func tile_occlusion_commands(
 	city: CityState,
 	sprites: Sc2SpriteArchive,
-	configuration: Dictionary,
+	configuration: CityViewConfiguration,
 	origin_x: int,
 	x: int,
 	y: int,
@@ -255,7 +255,7 @@ static func tile_occlusion_commands(
 	return IsometricStaticOcclusion.tile_occlusion_commands(city, sprites, configuration, origin_x, x, y, draw_order)
 
 
-static func configure_train_foreground(command: Dictionary, building_id: int, configuration: Dictionary) -> void:
+static func configure_train_foreground(command: Dictionary, building_id: int, configuration: CityViewConfiguration) -> void:
 	IsometricStaticOcclusion.configure_train_foreground(command, building_id, configuration)
 
 

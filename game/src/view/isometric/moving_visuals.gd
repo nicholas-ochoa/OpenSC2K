@@ -109,7 +109,7 @@ static func moving_thing_anchor(
 
 	var configuration := IsometricGeometry.view_configuration(view_size)
 
-	if configuration.is_empty():
+	if configuration == null:
 		return {}
 
 	var half_width := int(configuration.half_width)
@@ -294,7 +294,7 @@ static func tornado_sprite(
 
 	var configuration := IsometricGeometry.view_configuration(view_size)
 
-	if configuration.is_empty():
+	if configuration == null:
 		return {}
 
 	var phase := (
@@ -328,7 +328,7 @@ static func monster_layers(
 	if thing.type != 5:
 		return layers
 
-	if IsometricGeometry.view_configuration(view_size).is_empty():
+	if IsometricGeometry.view_configuration(view_size) == null:
 		return layers
 
 	var altitude := city.object_altitude(x, y)

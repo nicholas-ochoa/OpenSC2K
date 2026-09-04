@@ -38,7 +38,7 @@ func _run() -> void:
 
 	# Player edits take the next available worker ahead of stale background work.
 	var edited: Vector2i = cache.visible[-1]
-	for entry: Dictionary in cache.entries.values():
+	for entry: CityRegionResult in cache.entries.values():
 		entry.generation = 0
 	cache.configure(city, palette, sprites, [2], 2, CityViewMode.Mode.CITY, {}, true, true,
 		Rect2i(edited * cache.region_edge, Vector2i.ONE * cache.region_edge))

@@ -20,6 +20,24 @@ const ALWAYS := 0xffffff
 const MAX_ORDER := 0xfffffc
 
 
+class Result extends RefCounted:
+	var depth: Array = []
+	var train: Array = []
+
+
+class Quad extends RefCounted:
+	var value: int
+	var image: Image
+	var source: Rect2i
+	var position: Vector2i
+
+	func _init(depth_value: int, sprite: Image, area: Rect2i, destination: Vector2i) -> void:
+		value = depth_value
+		image = sprite
+		source = area
+		position = destination
+
+
 # RGB encodes depth here. Color correction would corrupt it.
 static func encode(value: int) -> Color:
 	value = clampi(value, 0, ALWAYS)
@@ -31,20 +49,20 @@ static func decode(color: Color) -> int:
 	return (color.r8 << 16) | (color.g8 << 8) | color.b8
 
 
-# return {"depth": mesh arrays, "train": mesh arrays} for one region
+# return the normal and train depth meshes for one region
 # vertex positions are relative to `bounds.position`, as in the region mesh
 # uvs use the atlas_edge normalization of citygpuregionrenderer. the caller
 # rescales them with the region uvs if the atlas grows
 static func build(foreground: Array[Dictionary], draws: Array[Dictionary], bounds: Rect2i,
-		context: CityGpuBuildContext, sprites: Sc2SpriteArchive, palette: Sc2Palette) -> Dictionary:
-	var normal: Array[Dictionary] = []
-	var train: Array[Dictionary] = []
+		context: CityGpuBuildContext, sprites: Sc2SpriteArchive, palette: Sc2Palette) -> Result:
+	var normal: Array[Quad] = []
+	var train: Array[Quad] = []
 
 	for index in foreground.size():
 		var command := foreground[index]
 		var draw := draws[index]
 		var order := mini(int(command.depth_order), MAX_ORDER)
-		normal.append({"value": order + 1, "image": draw.image, "source": draw.source, "position": draw.position})
+		normal.append(Quad.new(order + 1, draw.image, draw.source, draw.position))
 
 		if bool(command.get("train_ignore", false)):
 			continue
@@ -61,23 +79,27 @@ static func build(foreground: Array[Dictionary], draws: Array[Dictionary], bound
 			continue
 
 		var depth_limited: bool = bool(command.get("train_foreground_requires_depth", false)) or command.has("train_deck_thickness")
-		train.append({"value": order + 2 if depth_limited else ALWAYS, "image": mask,
-			"source": Rect2i(Vector2i.ZERO, mask.get_size()), "position": draw.position})
+		train.append(Quad.new(order + 2 if depth_limited else ALWAYS, mask,
+			Rect2i(Vector2i.ZERO, mask.get_size()), draw.position))
 
 	var depth := _arrays(normal, bounds, context)
 
 	if not context.error.is_empty():
-		return {}
+		return Result.new()
 
 	var train_arrays := _arrays(train, bounds, context)
 
 	if not context.error.is_empty():
-		return {}
+		return Result.new()
 
-	return {"depth": depth, "train": train_arrays}
+	var result := Result.new()
+	result.depth = depth
+	result.train = train_arrays
+
+	return result
 
 
-static func _arrays(quads: Array[Dictionary], bounds: Rect2i, context: CityGpuBuildContext) -> Array:
+static func _arrays(quads: Array[Quad], bounds: Rect2i, context: CityGpuBuildContext) -> Array:
 	# a stable sort keeps painter order among equal values
 	var ordered := range(quads.size())
 	ordered.sort_custom(func(left: int, right: int) -> bool:
@@ -91,7 +113,7 @@ static func _arrays(quads: Array[Dictionary], bounds: Rect2i, context: CityGpuBu
 	var indices := PackedInt32Array()
 
 	for index in ordered:
-		var quad: Dictionary = quads[index]
+		var quad: Quad = quads[index]
 		var source: Rect2i = quad.source
 		var rectangle := Rect2i(quad.position, source.size)
 		var clipped := rectangle.intersection(bounds)

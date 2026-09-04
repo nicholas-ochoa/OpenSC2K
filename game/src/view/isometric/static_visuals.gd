@@ -14,7 +14,7 @@ static func validate_assets(
 	var errors := PackedStringArray()
 	var configuration := IsometricGeometry.view_configuration(view_size)
 
-	if configuration.is_empty():
+	if configuration == null:
 		errors.append("city view size is invalid")
 
 		return errors
@@ -123,7 +123,7 @@ static func edge_stack_visuals(
 
 	var configuration := IsometricGeometry.view_configuration(view_size)
 
-	if configuration.is_empty():
+	if configuration == null:
 		return visuals
 
 	var land := city.land_altitude(x, y)
@@ -157,7 +157,7 @@ static func highway_ground_visuals(
 
 	var configuration := IsometricGeometry.view_configuration(view_size)
 
-	if configuration.is_empty():
+	if configuration == null:
 		return visuals
 
 	# The small highway composite already includes the ground.
@@ -200,7 +200,7 @@ static func traffic_overlay_visual(
 
 	var configuration := IsometricGeometry.view_configuration(view_size)
 
-	if configuration.is_empty():
+	if configuration == null:
 		return {}
 
 	var tile := city.building_id(x, y)
@@ -267,7 +267,7 @@ static func power_marker_visual(
 
 	var configuration := IsometricGeometry.view_configuration(view_size)
 
-	if configuration.is_empty():
+	if configuration == null:
 		return {}
 
 	if (
@@ -307,7 +307,7 @@ static func special_overlay_visual(
 
 	var configuration := IsometricGeometry.view_configuration(view_size)
 
-	if configuration.is_empty():
+	if configuration == null:
 		return {}
 
 	var phase := animation_phase + x * 3 + y * 5
@@ -346,7 +346,7 @@ static func dispatch_sprite_id(
 
 	var configuration := IsometricGeometry.view_configuration(view_size)
 
-	if configuration.is_empty():
+	if configuration == null:
 		return 0
 
 	var sprite_offset := int(DISPATCH_SPRITE_OFFSETS.get(thing.type, 0))
@@ -502,7 +502,7 @@ static func building_baseline_offset(
 ) -> int:
 	var configuration := IsometricGeometry.view_configuration(view_size)
 
-	if configuration.is_empty() or sprite_width < 0:
+	if configuration == null or sprite_width < 0:
 		return 0
 
 	if building_id >= 0x61 and building_id <= 0x6b:

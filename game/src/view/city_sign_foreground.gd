@@ -3,7 +3,16 @@ extends RefCounted
 
 
 
-static func static_pixels(sampled: Image, masks: Array[Dictionary], bounds: Rect2i) -> Image:
+class Mask extends RefCounted:
+	var image: Image
+	var position: Vector2i
+
+	func _init(sprite: Image, destination: Vector2i) -> void:
+		image = sprite
+		position = destination
+
+
+static func static_pixels(sampled: Image, masks: Array[Mask], bounds: Rect2i) -> Image:
 	var mask := Image.create(bounds.size.x, bounds.size.y, false, Image.FORMAT_RGBA8)
 	mask.fill(Color.TRANSPARENT)
 
@@ -45,8 +54,8 @@ static func add_moving(output: Image, moving: Image, position: Vector2i, bounds:
 	output.blit_rect_mask(source, source, Rect2i(overlap.position - position, overlap.size), overlap.position - bounds.position)
 
 
-static func used_indices(image: Image) -> Dictionary:
-	var result := {}
+static func used_indices(image: Image) -> Dictionary[int, bool]:
+	var result: Dictionary[int, bool] = {}
 	var bytes := image.get_data()
 
 	for offset in range(0, bytes.size(), 4):

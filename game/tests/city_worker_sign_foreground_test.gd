@@ -24,8 +24,8 @@ func _run() -> void:
 			var origin := Vector2i((cache.native_size / 2) / CityRegionCache.GPU_REGION_EDGE) * CityRegionCache.GPU_REGION_EDGE * cache.divisor
 			var bounds := Rect2i(origin - Vector2i(13, 9), Vector2i(83, 127))
 			cache.set_sign_requests([
-				{"key": 1, "bounds": bounds, "draw_order": -1},
-				{"key": 2, "bounds": bounds, "draw_order": edge * edge * 2},
+				CitySignRequest.new(1, bounds, -1),
+				CitySignRequest.new(2, bounds, edge * edge * 2),
 			])
 			cache.update_viewport(Rect2(bounds).grow(64))
 			var deadline := Time.get_ticks_msec() + 30000
@@ -36,7 +36,7 @@ func _run() -> void:
 				await process_frame
 
 			assert(cache.ready())
-			var masks: Array[Dictionary] = []
+			var masks: Array[CitySignForeground.Mask] = []
 			var images := {}
 
 			for command in cache.occlusion_candidates(bounds):
@@ -46,7 +46,7 @@ func _run() -> void:
 					mask = mask.duplicate()
 					mask.resize(mask.get_width() * cache.divisor, mask.get_height() * cache.divisor, Image.INTERPOLATE_NEAREST)
 
-				masks.append({"image": mask, "position": command.position * cache.divisor})
+				masks.append(CitySignForeground.Mask.new(mask, command.position * cache.divisor))
 
 			var expected := CitySignForeground.static_pixels(cache.image_region(bounds), masks, bounds)
 			var actual := cache.sign_foreground(1, bounds, -1)

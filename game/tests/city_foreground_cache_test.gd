@@ -29,10 +29,14 @@ func _run() -> void:
 	main.map_view.sign_source_entries()
 	assert(main.map_view.debug_metrics().sign_scans == sign_scans, "Equivalent snapshot rebuilt the sign layout")
 	assert(not main.render_caches.sign_foreground_cache.is_empty())
-	var saved: Dictionary = main.render_caches.sign_foreground_cache.duplicate(true)
+	var saved := _foreground_values(main.render_caches.sign_foreground_cache)
 	main.moving_sprites.refresh_moving_things(main.static_render.city_view_size())
-	assert(main.render_caches.sign_foreground_cache == saved, "Unchanged foreground replaced cached masks or textures")
-	var previous: Dictionary = main.map_view.sign_occlusion_visuals.duplicate(true)
+	assert(_foreground_values(main.render_caches.sign_foreground_cache) == saved, "Unchanged foreground replaced cached masks or textures")
+	var previous: Dictionary[int, CitySignVisual] = {}
+
+	for key in main.map_view.sign_occlusion_visuals:
+		previous[key] = main.map_view.sign_occlusion_visuals[key].copy()
+
 	assert(not previous.is_empty())
 	main.render_caches.sign_foreground_cache.clear()
 	main.map_render.refresh_sign_occlusion(main.static_render.city_view_size())
@@ -64,3 +68,21 @@ func _run() -> void:
 	await process_frame
 	print("PASS: unchanged sign foreground reuse, palette remapping, transparency and artwork invalidation")
 	quit()
+
+
+# Capture every field by value so later mutations cannot alter the expected state.
+func _foreground_values(cache: Dictionary[int, RenderCaches.SignForeground]) -> Dictionary:
+	var values := {}
+
+	for key in cache:
+		var entry := cache[key]
+		var visual: Array = []
+
+		if entry.visual != null:
+			visual = [entry.visual.indexed, entry.visual.indices, entry.visual.texture,
+				entry.visual.position, entry.visual.size]
+
+		values[key] = [entry.signature.duplicate(true), entry.indices,
+			entry.palette_signature, entry.used_indices.duplicate(), visual]
+
+	return values

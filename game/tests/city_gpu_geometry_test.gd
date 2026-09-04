@@ -48,13 +48,23 @@ func _run() -> void:
 			var sprites := large if view == 2 else small
 			var context := CityGpuBuildContext.new()
 			var center := (CityIsometricRenderer.output_size_for_view(view, city.map_size) / 2) / 256
-			var request := {"city": city, "prepared": true, "visibility": {},
-				"palette": palette, "sprites": sprites, "keys": [center, center + Vector2i.ONE, center + Vector2i(2, 0)],
-				"edge": 256, "view": view, "mode": mode, "pipes": true, "subways": true,
-				"generation": 1, "signs": [] as Array[Dictionary]}
+			var request := CityGpuRegionBatch.Request.new()
+			request.city = city
+			request.prepared = true
+			request.visibility = {}
+			request.palette = palette
+			request.sprites = sprites
+			request.keys = [center, center + Vector2i.ONE, center + Vector2i(2, 0)]
+			request.edge = 256
+			request.view = view
+			request.mode = mode
+			request.pipes = true
+			request.subways = true
+			request.generation = 1
+			request.signs = [] as Array[CitySignRequest]
 			var batch := CityGpuRegionBatch.build(request, context, -1)
 			assert(batch.ok and batch.regions.size() == 3 and batch.atlas_image != null)
-			for region: Dictionary in batch.regions:
+			for region: CityGpuRegionResult in batch.regions:
 				var expected := CityRegionRenderer.render(city, palette, sprites, region.bounds, view, mode)
 				expected.image.convert(Image.FORMAT_LA8)
 				assert(region.occlusion_commands == expected.occlusion_commands)
@@ -82,7 +92,7 @@ func _compare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, b
 		await _check_gpu_pixels(gpu, cpu.image)
 
 
-func _check_gpu_pixels(result: Dictionary, expected: Image) -> void:
+func _check_gpu_pixels(result: CityGpuRegionResult, expected: Image) -> void:
 	var viewport := SubViewport.new()
 	viewport.size = expected.get_size()
 	viewport.transparent_bg = true

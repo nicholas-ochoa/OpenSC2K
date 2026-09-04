@@ -19,7 +19,7 @@ static func moving_thing_draw_commands(
 
 	var configuration := IsometricGeometry.view_configuration(view_size)
 
-	if configuration.is_empty():
+	if configuration == null:
 		return commands
 
 	for diagonal in map_edge * 2 - 1:
@@ -63,7 +63,7 @@ static func dynamic_draw_commands(
 
 	var configuration := IsometricGeometry.view_configuration(view_size)
 
-	if configuration.is_empty():
+	if configuration == null:
 		return commands
 
 	var entries: Array[Dictionary] = []
@@ -155,11 +155,11 @@ static func special_overlay_draw_command(
 	sprites: Sc2SpriteArchive,
 	point: Vector2i,
 	visual: Dictionary,
-	configuration: Dictionary
+	configuration: CityViewConfiguration
 ) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
-	if visual.is_empty() or configuration.is_empty():
+	if visual.is_empty() or configuration == null:
 		return {}
 
 	var entry := sprites.find_sprite(int(visual.sprite_id))
@@ -196,12 +196,12 @@ static func moving_thing_draw_commands_for_visual(
 	city: CityState,
 	sprites: Sc2SpriteArchive,
 	visual: Dictionary,
-	configuration: Dictionary
+	configuration: CityViewConfiguration
 ) -> Array[Dictionary]:
 	var map_edge: int = city.map_size if city != null else 128
 	var commands: Array[Dictionary] = []
 
-	if visual.is_empty() or configuration.is_empty():
+	if visual.is_empty() or configuration == null:
 		return commands
 
 	if visual.monster:

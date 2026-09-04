@@ -13,7 +13,7 @@ static func render(city: CityState, point: Vector2i, palette: Sc2Palette, sprite
 	if city == null or city.index_of(point.x, point.y) < 0 or palette == null or sprites == null or not sprites.is_valid():
 		return null
 
-	var config := Renderer.view_configuration(Renderer.VIEW_LARGE).duplicate()
+	var config := Renderer.view_configuration(Renderer.VIEW_LARGE).copy()
 	var center := Vector2.ZERO
 
 	for corner in Renderer.tile_polygon(city, point.x, point.y):

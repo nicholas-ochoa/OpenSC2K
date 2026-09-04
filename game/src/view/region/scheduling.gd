@@ -111,7 +111,7 @@ static func _trim_retained_regions(cache: CityRegionCache) -> void:
 	var ranked: Array[Vector3i] = []
 	for key: Vector2i in cache.entries:
 		if key not in cache.wanted:
-			ranked.append(Vector3i(int(cache.entries[key].get("last_visible", 0)), key.x, key.y))
+			ranked.append(Vector3i(cache.entries[key].last_visible, key.x, key.y))
 	ranked.sort()
 
 	for index in mini(excess, ranked.size()):
@@ -137,13 +137,13 @@ static func _close_gpu_workers(cache: CityRegionCache) -> void:
 static func _tick_gpu(cache: CityRegionCache) -> bool:
 	if cache._gpu_workers.is_empty():
 		for index in mini(CityRegionCache.GPU_WORKERS, maxi(1, OS.get_processor_count() - 2)):
-			cache._gpu_workers.append({"thread": null, "context": null, "atlas": null, "atlas_revision": -1, "layout": -1, "generation": -1, "keys": []})
+			cache._gpu_workers.append(CityRegionCache.GpuWorker.new())
 
 	for worker in cache._gpu_workers:
 		if worker.thread == null or worker.thread.is_alive():
 			continue
 
-		var result: Dictionary = worker.thread.wait_to_finish()
+		var result: CityGpuRegionBatch.Result = worker.thread.wait_to_finish()
 		worker.thread = null
 		cache._gpu_has_work = true
 
@@ -177,7 +177,7 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 				worker.atlas.update(result.atlas_image)
 
 			worker.atlas_revision = int(result.atlas_revision)
-		for region: Dictionary in result.regions:
+		for region: CityGpuRegionResult in result.regions:
 			var key: Vector2i = region.key
 
 			if key not in cache.wanted or (cache.entries.has(key) and int(cache.entries[key].generation) > int(worker.generation)):
@@ -190,15 +190,15 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 				mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, region.gpu_arrays, [], {}, Mesh.ARRAY_FLAG_USE_2D_VERTICES)
 
 			region.mesh = mesh
-			region.depth_mesh = _depth_mesh(region.get("depth_arrays", []))
-			region.train_depth_mesh = _depth_mesh(region.get("train_depth_arrays", []))
-			region.erase("depth_arrays")
-			region.erase("train_depth_arrays")
+			region.depth_mesh = _depth_mesh(region.depth_arrays)
+			region.train_depth_mesh = _depth_mesh(region.train_depth_arrays)
+			region.depth_arrays = []
+			region.train_depth_arrays = []
 			region.atlas_texture = worker.atlas
 			region.generation = int(worker.generation)
-			region.last_visible = cache._viewport_serial if key in cache.visible else int(cache.entries.get(key, {}).get("last_visible", 0))
-			region.erase("gpu_arrays")
-			region.erase("atlas_image")
+			region.last_visible = cache._viewport_serial if key in cache.visible else (cache.entries[key].last_visible if cache.entries.has(key) else 0)
+			region.gpu_arrays = []
+			region.atlas_image = null
 			cache.entries[key] = region
 
 			if cache._edit_priority.has(key) and int(worker.generation) >= int(cache._edit_priority[key]):
@@ -213,7 +213,7 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 	var changed := cache._changed
 	cache._changed = false
 
-	if not cache._gpu_has_work or cache._gpu_workers.all(func(worker: Dictionary) -> bool:
+	if not cache._gpu_has_work or cache._gpu_workers.all(func(worker: CityRegionCache.GpuWorker) -> bool:
 		return worker.thread != null):
 		return changed
 
@@ -232,7 +232,7 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 
 	for index in queue.size():
 		var key := queue[index]
-		ranked.append(Vector3i(int(cache.entries.get(key, {}).get("generation", -1)), index, (key.x << 16) | key.y))
+		ranked.append(Vector3i((cache.entries[key].generation if cache.entries.has(key) else -1), index, (key.x << 16) | key.y))
 
 	ranked.sort()
 	queue.clear()
@@ -299,10 +299,21 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 		worker.generation = cache.generation
 		worker.keys = keys
 		worker.thread = Thread.new()
-		var request := {"city": cache._snapshot, "prepared": cache._prepared, "visibility": cache._visibility,
-			"palette": cache._palette, "sprites": cache._sprites, "keys": keys, "edge": cache.region_edge,
-			"view": cache.view_size, "mode": cache.mode, "water_mains": cache._show_water_mains, "pipes": cache._show_pipes, "subways": cache._show_subways,
-			"generation": cache.generation, "signs": cache.sign_requests}
+		var request := CityGpuRegionBatch.Request.new()
+		request.city = cache._snapshot
+		request.prepared = cache._prepared
+		request.visibility = cache._visibility
+		request.palette = cache._palette
+		request.sprites = cache._sprites
+		request.keys = keys
+		request.edge = cache.region_edge
+		request.view = cache.view_size
+		request.mode = cache.mode
+		request.water_mains = cache._show_water_mains
+		request.pipes = cache._show_pipes
+		request.subways = cache._show_subways
+		request.generation = cache.generation
+		request.signs = cache.sign_requests
 		var error: Error = worker.thread.start(CityGpuRegionBatch.build.bind(request, worker.context, worker.atlas_revision), Thread.PRIORITY_LOW)
 
 		if error != OK:
@@ -335,8 +346,9 @@ static func _depth_mesh(arrays: Array) -> ArrayMesh:
 static func _gpu_atlas_bytes(cache: CityRegionCache) -> int:
 	var bytes := 0
 	var seen := {}
-	for entry: Dictionary in cache.entries.values():
-		var texture: Texture2D = entry.get("atlas_texture")
+	for entry: CityRegionResult in cache.entries.values():
+		var gpu := entry as CityGpuRegionResult
+		var texture: Texture2D = gpu.atlas_texture if gpu != null else null
 
 		if texture != null and not seen.has(texture.get_instance_id()):
 			seen[texture.get_instance_id()] = true

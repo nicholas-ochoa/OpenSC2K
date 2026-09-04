@@ -45,17 +45,27 @@ func _run() -> void:
 		for x in range(-1, 2):
 			keys.append(center_key + Vector2i(x, y))
 
-	var request := {"city": city, "prepared": true, "visibility": {},
-		"palette": _palette, "sprites": _sprites, "keys": keys,
-		"edge": EDGE, "view": VIEW, "mode": CityViewMode.Mode.CITY, "pipes": true, "subways": true,
-		"generation": 1, "signs": [] as Array[Dictionary]}
+	var request := CityGpuRegionBatch.Request.new()
+	request.city = city
+	request.prepared = true
+	request.visibility = {}
+	request.palette = _palette
+	request.sprites = _sprites
+	request.keys = keys
+	request.edge = EDGE
+	request.view = VIEW
+	request.mode = CityViewMode.Mode.CITY
+	request.pipes = true
+	request.subways = true
+	request.generation = 1
+	request.signs = [] as Array[CitySignRequest]
 	var batch := CityGpuRegionBatch.build(request, CityGpuBuildContext.new(), -1)
 	assert(batch.ok, "GPU region build failed")
 	var atlas := ImageTexture.create_from_image(batch.atlas_image)
 	var source := CityMapSource.new(CityIsometricRenderer.output_size_for_view(VIEW, city.map_size))
 	var found := {}
 
-	for region: Dictionary in batch.regions:
+	for region: CityGpuRegionResult in batch.regions:
 		var mesh := ArrayMesh.new()
 
 		if not region.gpu_arrays[Mesh.ARRAY_VERTEX].is_empty():
@@ -324,7 +334,7 @@ func _sprite_image(sprite_id: int, flip: bool) -> Image:
 	return CityIsometricRenderer.sprite_image(_sprites, _palette, _images, sprite_id, flip)
 
 
-func _crossing_point(city: CityState, configuration: Dictionary) -> Vector2i:
+func _crossing_point(city: CityState, configuration: CityViewConfiguration) -> Vector2i:
 	for building in CROSSINGS:
 		for index in city.buildings.size():
 			if int(city.buildings[index]) != building:

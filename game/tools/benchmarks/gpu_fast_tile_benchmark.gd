@@ -3,7 +3,7 @@ extends "res://tools/benchmarks/fixture_paths.gd"
 ## and CPU region paint time, over every 256-pixel region of the city view.
 class ReferenceOnlyContext extends CityGpuBuildContext:
 	func _fast_tile(_recorder: CityGpuDrawList, _city: CityState, _palette: Sc2Palette,
-			_sprites: Sc2SpriteArchive, _config: Dictionary, _origin: int, _x: int, _y: int) -> bool:
+			_sprites: Sc2SpriteArchive, _config: CityViewConfiguration, _origin: int, _x: int, _y: int) -> bool:
 		return false
 
 

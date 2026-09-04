@@ -4,6 +4,20 @@ extends CityMapConstants
 
 @warning_ignore_start("integer_division")
 
+class Entry extends RefCounted:
+	var key: int
+	var anchor: Vector2
+	var label: String
+	var text_width: float
+	var bounds: Rect2i
+	var draw_order: int
+
+
+class Layout extends RefCounted:
+	var panel: Rect2
+	var post: Rect2
+
+
 var map: CityMapControl
 
 
@@ -24,27 +38,36 @@ func set_signs_visible(value: bool) -> void:
 	map.queue_redraw()
 
 
-func set_sign_occlusion_visuals(value: Dictionary) -> void:
-	if map.sign_occlusion_visuals == value:
+func set_sign_occlusion_visuals(value: Dictionary[int, CitySignVisual]) -> void:
+	var unchanged := map.sign_occlusion_visuals.size() == value.size()
+
+	if unchanged:
+		for key in value:
+			if not value[key].matches(map.sign_occlusion_visuals.get(key)):
+				unchanged = false
+				break
+
+	if unchanged:
 		return
 
-	map.sign_occlusion_visuals = value.duplicate(true)
+	var retained: Dictionary[int, CitySignVisual] = {}
+
+	for key in value:
+		retained[key] = value[key].copy()
+
+	map.sign_occlusion_visuals = retained
 	map.queue_redraw()
 
 
-func sign_source_entries() -> Array[Dictionary]:
+func sign_source_entries() -> Array[CitySignRequest]:
 	if not map.signs_visible or map.city == null:
 		return []
 
 	_ensure_sign_entries()
-	var entries: Array[Dictionary] = []
+	var entries: Array[CitySignRequest] = []
 
 	for entry in map._sign_entries:
-		entries.append({
-			"key": int(entry.key),
-			"bounds": entry.bounds,
-			"draw_order": int(entry.draw_order),
-		})
+		entries.append(CitySignRequest.new(entry.key, entry.bounds, entry.draw_order))
 
 	return entries
 
@@ -126,17 +149,17 @@ func _ensure_sign_entries() -> void:
 			view_index, divisor,
 		)
 		var bounds: Rect2 = layout.panel.merge(layout.post)
-		map._sign_entries.append({
-			"key": map.city.index_of(x, y),
-			"anchor": polygon[0] + Vector2(0, -8),
-			"label": label_text,
-			"text_width": native_width,
-			"bounds": Rect2i(
-				Vector2i(floori(bounds.position.x), floori(bounds.position.y)),
-				Vector2i(ceili(bounds.size.x), ceili(bounds.size.y)),
-			),
-			"draw_order": (x + y) * map_edge + y,
-		})
+		var sign := Entry.new()
+		sign.key = map.city.index_of(x, y)
+		sign.anchor = polygon[0] + Vector2(0, -8)
+		sign.label = label_text
+		sign.text_width = native_width
+		sign.bounds = Rect2i(
+			Vector2i(floori(bounds.position.x), floori(bounds.position.y)),
+			Vector2i(ceili(bounds.size.x), ceili(bounds.size.y)),
+		)
+		sign.draw_order = (x + y) * map_edge + y
+		map._sign_entries.append(sign)
 
 
 func _invalidate_sign_entries() -> void:
@@ -195,23 +218,23 @@ func _draw_signs(scale: float, offset: Vector2) -> void:
 
 
 func _draw_sign_occlusion(key: int, scale: float, offset: Vector2) -> void:
-	var visual: Dictionary = map.sign_occlusion_visuals.get(key, {})
+	var visual: CitySignVisual = map.sign_occlusion_visuals.get(key)
 
-	if visual.is_empty():
+	if visual == null:
 		return
 
-	var texture: Texture2D = visual.get("texture") as Texture2D
+	var texture := visual.texture
 
 	if texture == null:
 		return
 
-	var source_position: Vector2 = visual.get("position", Vector2.ZERO)
-	var source_size: Vector2 = visual.get("size", Vector2(texture.get_size()))
+	var source_position := visual.position
+	var source_size := visual.size
 	map.draw_texture_rect(
 		texture,
 		Rect2(offset + source_position * scale, source_size * scale),
 		false,
-		CityForegroundPalette.INDEXED_DRAW_COLOR if bool(visual.get("indexed", false)) else Color.WHITE,
+		CityForegroundPalette.INDEXED_DRAW_COLOR if visual.indexed else Color.WHITE,
 	)
 
 
@@ -251,9 +274,9 @@ static func later_sign_occluder_visuals(
 
 static func sign_layout(
 	anchor: Vector2, text_width: float, view_index: int, display_multiplier := 1.0
-) -> Dictionary:
+) -> Layout:
 	if view_index < Renderer.VIEW_SMALL or view_index > Renderer.VIEW_LARGE:
-		return {}
+		return null
 
 	var multiplier: float = maxf(1.0, display_multiplier)
 	var width: float = roundf(text_width)
@@ -265,16 +288,17 @@ static func sign_layout(
 	var panel_left: float = anchor.x - floorf(width * 0.5) - 8.0 * multiplier
 	var panel_right: float = panel_left + width + 16.0 * multiplier
 
-	return {
-		"panel": Rect2(
-			Vector2(panel_left, panel_top),
-			Vector2(panel_right - panel_left, panel_bottom - panel_top),
-		),
-		"post": Rect2(
-			Vector2(anchor.x - 2.0 * multiplier, panel_bottom),
-			Vector2(4.0 * multiplier, anchor.y - panel_bottom),
-		),
-	}
+	var layout := Layout.new()
+	layout.panel = Rect2(
+		Vector2(panel_left, panel_top),
+		Vector2(panel_right - panel_left, panel_bottom - panel_top),
+	)
+	layout.post = Rect2(
+		Vector2(anchor.x - 2.0 * multiplier, panel_bottom),
+		Vector2(4.0 * multiplier, anchor.y - panel_bottom),
+	)
+
+	return layout
 
 
 func _get_sign_font() -> Font:

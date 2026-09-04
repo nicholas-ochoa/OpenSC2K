@@ -7,23 +7,23 @@ const Underground = preload("res://src/view/city_underground_view.gd")
 
 static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 		bounds: Rect2i, view_size := Renderer.VIEW_LARGE, mode := CityViewMode.Mode.CITY,
-		show_pipes := true, show_subways := true, show_water_mains := true) -> Dictionary:
+		show_pipes := true, show_subways := true, show_water_mains := true) -> CityRegionResult:
 	if city == null or not city.is_valid() or palette == null or not palette.is_valid() or sprites == null or not sprites.is_valid():
-		return {"ok": false, "error": "invalid region assets"}
+		return CityRegionResult.rejected("invalid region assets")
 
 	var configuration := Renderer.view_configuration(view_size)
 
-	if configuration.is_empty() or not CityViewMode.is_map(mode):
-		return {"ok": false, "error": "invalid region view"}
+	if configuration == null or not CityViewMode.is_map(mode):
+		return CityRegionResult.rejected("invalid region view")
 
 	bounds = bounds.intersection(Rect2i(Vector2i.ZERO, Renderer.output_size_for_view(view_size, city.map_size)))
 
 	if not bounds.has_area():
-		return {"ok": false, "error": "empty region"}
+		return CityRegionResult.rejected("empty region")
 
 	var image := Image.create(bounds.size.x, bounds.size.y, false, Image.FORMAT_RGBA8)
 	image.fill(Color.WHITE if mode == CityViewMode.Mode.UNDERGROUND else Color.TRANSPARENT)
-	var local := configuration.duplicate()
+	var local := configuration.copy()
 	local.top_margin = int(local.top_margin) - bounds.position.y
 	var origin := int(configuration.side_margin) + city.map_size * int(configuration.half_width)
 	var sprite_limit := Renderer.maximum_sprite_size(sprites)
@@ -66,4 +66,13 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 
 	var grid := Renderer.build_occlusion_grid(foreground, int(configuration.divisor))
 
-	return {"ok": true, "error": "", "occlusion_commands": foreground, "occlusion_grid": grid, "image": image, "bounds": bounds, "tiles_drawn": count}
+	var result := CityRegionResult.new()
+	result.ok = true
+	result.error = ""
+	result.occlusion_commands = foreground
+	result.occlusion_grid = grid
+	result.image = image
+	result.bounds = bounds
+	result.tiles_drawn = count
+
+	return result

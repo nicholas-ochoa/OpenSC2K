@@ -2072,7 +2072,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		map_control._sign_cache_build_count == sign_cache_builds,
 		"Repeated sign drawing reuses the zoom-specific city-sign scan",
 	)
-	map_control.set_sign_occlusion_visuals({sign_city.index_of(64, 64): {"test": true}})
+	map_control.set_sign_occlusion_visuals({sign_city.index_of(64, 64): CitySignVisual.new()})
 	_check(
 		map_control.sign_occlusion_visuals.size() == 1,
 		"Map control accepts one localized sign-occlusion layer",

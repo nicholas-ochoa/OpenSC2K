@@ -5,6 +5,18 @@ extends IsometricConstants
 @warning_ignore_start("integer_division")
 
 
+class PatchResult extends AssetImageResult:
+	var native_rect := Rect2i()
+	var output_rect := Rect2i()
+	var tiles_drawn := 0
+
+	static func rejected(message: String) -> PatchResult:
+		var result := PatchResult.new()
+		result.error = message
+
+		return result
+
+
 static func create_image(
 	city: CityState,
 	palette: Sc2Palette,
@@ -16,28 +28,28 @@ static func create_image(
 	validate_required_assets := true,
 	include_special_overlays := true,
 	progress := Callable()
-) -> Dictionary:
+) -> AssetImageResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return _failure("city is invalid")
+		return AssetImageResult.failure("city is invalid")
 
 	if palette == null or not palette.is_valid():
-		return _failure("palette is invalid")
+		return AssetImageResult.failure("palette is invalid")
 
 	if sprites == null or not sprites.is_valid():
-		return _failure("large sprite archive is invalid")
+		return AssetImageResult.failure("large sprite archive is invalid")
 
 	var configuration := IsometricGeometry.view_configuration(view_size)
 
-	if configuration.is_empty():
-		return _failure("city view size is invalid")
+	if configuration == null:
+		return AssetImageResult.failure("city view size is invalid")
 
 	if validate_required_assets:
 		var asset_errors := IsometricStaticVisuals.validate_assets(city, sprites, view_size)
 
 		if not asset_errors.is_empty():
-			return _failure(asset_errors[0])
+			return AssetImageResult.failure(asset_errors[0])
 
 	var output_size := IsometricGeometry.output_size_for_view(view_size, map_edge)
 	var output := Image.create(output_size.x, output_size.y, false, Image.FORMAT_RGBA8)
@@ -64,7 +76,12 @@ static func create_image(
 	if palette.is_index_encoding:
 		output.convert(Image.FORMAT_LA8 if transparent_background else Image.FORMAT_L8)
 
-	return {"ok": true, "image": output, "error": ""}
+	var result := AssetImageResult.new()
+	result.ok = true
+	result.image = output
+	result.error = ""
+
+	return result
 
 
 static func patch_static_image(
@@ -76,25 +93,25 @@ static func patch_static_image(
 	view_size := VIEW_LARGE,
 	animation_phase := 0,
 	copy_image := true
-) -> Dictionary:
+) -> PatchResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if base_image == null or base_image.is_empty():
-		return _failure("base city image is invalid")
+		return PatchResult.rejected("base city image is invalid")
 
 	if city == null or not city.is_valid():
-		return _failure("city is invalid")
+		return PatchResult.rejected("city is invalid")
 
 	if palette == null or not palette.is_valid() or not palette.is_index_encoding:
-		return _failure("indexed palette is invalid")
+		return PatchResult.rejected("indexed palette is invalid")
 
 	if sprites == null or not sprites.is_valid():
-		return _failure("sprite archive is invalid")
+		return PatchResult.rejected("sprite archive is invalid")
 
 	var configuration := IsometricGeometry.view_configuration(view_size)
 
-	if configuration.is_empty():
-		return _failure("city view size is invalid")
+	if configuration == null:
+		return PatchResult.rejected("city view size is invalid")
 
 	var native_size := IsometricGeometry.output_size_for_view(view_size, map_edge)
 	var output_scale := 1
@@ -102,7 +119,7 @@ static func patch_static_image(
 	if base_image.get_size() == IsometricGeometry.output_size_for_view(VIEW_LARGE, map_edge):
 		output_scale = int(configuration.divisor)
 	elif base_image.get_size() != native_size:
-		return _failure("base city image has the wrong size")
+		return PatchResult.rejected("base city image has the wrong size")
 
 	var sprite_limit := IsometricGeometry.maximum_sprite_size(sprites)
 	var native_rect := IsometricGeometry.dirty_screen_rect(
@@ -110,9 +127,9 @@ static func patch_static_image(
 	)
 
 	if native_rect.get_area() <= 0:
-		return _failure("dirty city region is empty")
+		return PatchResult.rejected("dirty city region is empty")
 
-	var local_configuration := configuration.duplicate()
+	var local_configuration := configuration.copy()
 	local_configuration.top_margin = (
 		int(configuration.top_margin) - native_rect.position.y
 	)
@@ -181,14 +198,15 @@ static func patch_static_image(
 		region, Rect2i(Vector2i.ZERO, region.get_size()), output_rect.position
 	)
 
-	return {
-		"ok": true,
-		"image": patched,
-		"native_rect": native_rect,
-		"output_rect": output_rect,
-		"tiles_drawn": tiles_drawn,
-		"error": "",
-	}
+	var result := PatchResult.new()
+	result.ok = true
+	result.image = patched
+	result.native_rect = native_rect
+	result.output_rect = output_rect
+	result.tiles_drawn = tiles_drawn
+	result.error = ""
+
+	return result
 
 
 # paint one map tile into `output`, in back-to-front order
@@ -203,7 +221,7 @@ static func draw_tile(
 	palette: Sc2Palette,
 	sprites: Sc2SpriteArchive,
 	cache: Dictionary,
-	configuration: Dictionary,
+	configuration: CityViewConfiguration,
 	origin_x: int,
 	x: int,
 	y: int,
@@ -372,7 +390,7 @@ static func _draw_edge_stacks(
 	palette: Sc2Palette,
 	sprites: Sc2SpriteArchive,
 	cache: Dictionary,
-	configuration: Dictionary,
+	configuration: CityViewConfiguration,
 	screen_x: int,
 	flat_base_y: int,
 	x: int,
@@ -394,7 +412,7 @@ static func _draw_highway_ground(
 	palette: Sc2Palette,
 	sprites: Sc2SpriteArchive,
 	cache: Dictionary,
-	configuration: Dictionary,
+	configuration: CityViewConfiguration,
 	screen_x: int,
 	base_y: int,
 	x: int,
@@ -421,7 +439,7 @@ static func draw_moving_thing(
 	sprites: Sc2SpriteArchive,
 	cache: Dictionary,
 	visual: Dictionary,
-	configuration: Dictionary,
+	configuration: CityViewConfiguration,
 	offset := Vector2i.ZERO
 ) -> void:
 	for command in IsometricDynamicCommands.moving_thing_draw_commands_for_visual(
@@ -438,7 +456,3 @@ static func draw_moving_thing(
 			output.blend_rect(
 				sprite, Rect2i(Vector2i.ZERO, sprite.get_size()), position
 			)
-
-
-static func _failure(message: String) -> Dictionary:
-	return {"ok": false, "error": message}

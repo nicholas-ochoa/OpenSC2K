@@ -11,7 +11,7 @@ class ProfiledContext extends CityGpuBuildContext:
 	var slot_usec := 0
 
 
-	func intersects(city: CityState, sprites: Sc2SpriteArchive, config: Dictionary, x: int, y: int, region: Rect2i, mode: CityViewMode.Mode) -> bool:
+	func intersects(city: CityState, sprites: Sc2SpriteArchive, config: CityViewConfiguration, x: int, y: int, region: Rect2i, mode: CityViewMode.Mode) -> bool:
 		var began := Time.get_ticks_usec()
 		var value := super.intersects(city, sprites, config, x, y, region, mode)
 		intersection_usec += Time.get_ticks_usec() - began
@@ -20,7 +20,7 @@ class ProfiledContext extends CityGpuBuildContext:
 		return value
 
 
-	func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, configuration: Dictionary, x: int, y: int, mode: CityViewMode.Mode, pipes: bool, subways: bool, water_mains := true) -> Dictionary:
+	func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, configuration: CityViewConfiguration, x: int, y: int, mode: CityViewMode.Mode, pipes: bool, subways: bool, water_mains := true) -> CityGpuBuildContext.Tile:
 		var began := Time.get_ticks_usec()
 		var value := super.tile(city, palette, sprites, configuration, x, y, mode, pipes, subways, water_mains)
 		tile_usec += Time.get_ticks_usec() - began

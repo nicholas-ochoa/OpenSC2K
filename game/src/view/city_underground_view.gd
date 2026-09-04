@@ -22,28 +22,28 @@ static func create_image(
 	show_subways := true, show_water_mains := true,
 	transparent_background := false,
 	progress := Callable()
-) -> Dictionary:
+) -> AssetImageResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return _failure("city is invalid")
+		return AssetImageResult.failure("city is invalid")
 
 	if palette == null or not palette.is_valid():
-		return _failure("palette is invalid")
+		return AssetImageResult.failure("palette is invalid")
 
 	if sprites == null or not sprites.is_valid():
-		return _failure("sprite archive is invalid")
+		return AssetImageResult.failure("sprite archive is invalid")
 
 	var configuration := Geometry.view_configuration(view_size)
 
-	if configuration.is_empty():
-		return _failure("underground view size is invalid")
+	if configuration == null:
+		return AssetImageResult.failure("underground view size is invalid")
 
 	if validate_required_assets:
 		var asset_errors := validate_assets(city, sprites, view_size, show_pipes, show_subways, show_water_mains)
 
 		if not asset_errors.is_empty():
-			return _failure(asset_errors[0])
+			return AssetImageResult.failure(asset_errors[0])
 
 	var output_size := Geometry.output_size_for_view(view_size, map_edge)
 	var output := Image.create(output_size.x, output_size.y, false, Image.FORMAT_RGBA8)
@@ -77,7 +77,12 @@ static func create_image(
 	if palette.is_index_encoding:
 		output.convert(Image.FORMAT_LA8 if transparent_background else Image.FORMAT_L8)
 
-	return {"ok": true, "image": output, "error": ""}
+	var result := AssetImageResult.new()
+	result.ok = true
+	result.image = output
+	result.error = ""
+
+	return result
 
 
 static func validate_assets(
@@ -102,7 +107,7 @@ static func validate_assets(
 
 	var configuration := Geometry.view_configuration(view_size)
 
-	if configuration.is_empty():
+	if configuration == null:
 		errors.append("underground view size is invalid")
 
 		return errors
@@ -144,7 +149,7 @@ static func tile_sprite_ids(
 
 	var configuration := Geometry.view_configuration(view_size)
 
-	if configuration.is_empty():
+	if configuration == null:
 		return result
 
 	var sprite_base := int(configuration.sprite_base)
@@ -227,7 +232,7 @@ static func tunnel_sprite_id(
 
 	var configuration := Geometry.view_configuration(view_size)
 
-	if configuration.is_empty():
+	if configuration == null:
 		return -1
 
 	var levels := city.tunnel_levels(x, y) & 0x1f
@@ -274,7 +279,7 @@ static func draw_tile(
 	palette: Sc2Palette,
 	sprites: Sc2SpriteArchive,
 	cache: Dictionary,
-	configuration: Dictionary,
+	configuration: CityViewConfiguration,
 	origin_x: int,
 	x: int,
 	y: int,
@@ -345,7 +350,3 @@ static func _sprite_image(
 
 static func _blend(output: Variant, sprite: Image, position: Vector2i) -> void:
 	output.blend_rect(sprite, Rect2i(Vector2i.ZERO, sprite.get_size()), position)
-
-
-static func _failure(message: String) -> Dictionary:
-	return {"ok": false, "image": null, "error": message}

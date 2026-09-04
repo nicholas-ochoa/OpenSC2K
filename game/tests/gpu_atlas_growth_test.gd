@@ -26,12 +26,23 @@ func _initialize() -> void:
 	var center := (CityIsometricRenderer.output_size_for_view(2, city.map_size) / 2) / 256
 	context = CityGpuBuildContext.new()
 	context.atlas_edge = 64
-	var request := {"city": city, "prepared": true, "visibility": {}, "palette": Sc2Palette.index_encoding(),
-		"sprites": sprites, "keys": [center, center + Vector2i.ONE, center + Vector2i(2, 0)], "edge": 256,
-		"view": 2, "mode": CityViewMode.Mode.CITY, "pipes": true, "subways": true, "generation": 1, "signs": [] as Array[Dictionary]}
+	var request := CityGpuRegionBatch.Request.new()
+	request.city = city
+	request.prepared = true
+	request.visibility = {}
+	request.palette = Sc2Palette.index_encoding()
+	request.sprites = sprites
+	request.keys = [center, center + Vector2i.ONE, center + Vector2i(2, 0)]
+	request.edge = 256
+	request.view = 2
+	request.mode = CityViewMode.Mode.CITY
+	request.pipes = true
+	request.subways = true
+	request.generation = 1
+	request.signs = [] as Array[CitySignRequest]
 	var batch := CityGpuRegionBatch.build(request, context, -1)
 	assert(batch.ok and context.atlas_edge > 64)
-	for region: Dictionary in batch.regions:
+	for region: CityGpuRegionResult in batch.regions:
 		assert(region.atlas_edge == context.atlas_edge)
 		var uvs: PackedVector2Array = region.gpu_arrays[Mesh.ARRAY_TEX_UV]
 		var vertices: PackedVector2Array = region.gpu_arrays[Mesh.ARRAY_VERTEX]

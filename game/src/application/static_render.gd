@@ -112,7 +112,7 @@ func _apply_static_edit_patch(command: EditCommandResult) -> bool:
 		false
 	)
 
-	if not patched.get("ok", false):
+	if not patched.ok:
 		return false
 
 	app.timing_state.edit_display_timings.patch_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
@@ -133,13 +133,10 @@ func _apply_static_edit_patch(command: EditCommandResult) -> bool:
 		),
 		view_size
 	)
-	caches.static_view_cache[CityViewMode.Mode.CITY] = {
-		"image": caches.static_city_image,
-		"occlusion_commands": caches.static_occlusion_commands,
-		"signature": caches.static_visual_signature,
-		"display_city": caches.static_display_city,
-		"view_size": view_size,
-	}
+	caches.static_view_cache[CityViewMode.Mode.CITY] = RenderCaches.StaticView.new(
+		caches.static_city_image, caches.static_occlusion_commands, caches.static_visual_signature,
+		caches.static_display_city, view_size
+	)
 	app.timing_state.edit_display_timings.occlusion_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
 	profile_start = Time.get_ticks_usec()
 	var source := CityMapTexture.update_region(app.map_view.city_source, caches.static_city_image, patched.output_rect)
@@ -344,12 +341,12 @@ func poll_static_render() -> void:
 	if state.thread == null or state.thread.is_alive():
 		return
 
-	var rendered: Dictionary = state.thread.wait_to_finish()
+	var rendered: CityRenderJob.Result = state.thread.wait_to_finish()
 	state.thread = null
 	state.job = null
 
-	if not rendered.get("ok", false):
-		app.interface.show_error(rendered.get("error", "city rendering failed"))
+	if not rendered.ok:
+		app.interface.show_error(rendered.error)
 
 		return
 
@@ -357,7 +354,7 @@ func poll_static_render() -> void:
 		app.document_state.city == null
 		or int(rendered.epoch) != state.epoch
 		or int(rendered.view_size) != city_view_size()
-		or int(rendered.get("render_mode", CityViewMode.Mode.CITY)) != app.view_state.overlay_mode
+		or rendered.render_mode != app.view_state.overlay_mode
 	):
 		if app.document_state.city != null and CityViewMode.is_map(app.view_state.overlay_mode):
 			app.map_render.refresh_map(false)
@@ -369,13 +366,10 @@ func poll_static_render() -> void:
 	caches.static_visual_signature = rendered.signature
 	caches.static_render_mode = int(rendered.render_mode) as CityViewMode.Mode
 	caches.static_display_city = rendered.display_city
-	caches.static_view_cache[caches.static_render_mode] = {
-		"image": caches.static_city_image,
-		"occlusion_commands": caches.static_occlusion_commands,
-		"signature": caches.static_visual_signature,
-		"display_city": caches.static_display_city,
-		"view_size": int(rendered.view_size),
-	}
+	caches.static_view_cache[caches.static_render_mode] = RenderCaches.StaticView.new(
+		caches.static_city_image, caches.static_occlusion_commands, caches.static_visual_signature,
+		caches.static_display_city, int(rendered.view_size)
+	)
 	var source := CityMapTexture.create(caches.static_city_image)
 	app.map_view.set_city_view(
 		caches.static_display_city, source, null, true

@@ -116,7 +116,7 @@ var data_value_texture: ImageTexture
 var hover_tile := Vector2i(-1, -1)
 var transient_effects: Array[Dictionary] = []
 var dynamic_sprites: Array[Dictionary] = []
-var sign_occlusion_visuals: Dictionary = {}
+var sign_occlusion_visuals: Dictionary[int, CitySignVisual] = {}
 var _panning := false
 var _middle_click_pending := false
 var _middle_press_position := Vector2.ZERO
@@ -136,7 +136,7 @@ var _dynamic_material: ShaderMaterial
 var _palette_shader: Shader
 var _foreground_palette_material: ShaderMaterial
 var _sign_font: SystemFont
-var _sign_entries: Array[Dictionary] = []
+var _sign_entries: Array[CityMapSigns.Entry] = []
 var _sign_entries_city: CityState
 var _sign_entries_zoom := -1.0
 var _sign_layout_signature: Array = []
@@ -189,11 +189,11 @@ func set_signs_visible(value: bool) -> void:
 	signs.set_signs_visible(value)
 
 
-func set_sign_occlusion_visuals(value: Dictionary) -> void:
+func set_sign_occlusion_visuals(value: Dictionary[int, CitySignVisual]) -> void:
 	signs.set_sign_occlusion_visuals(value)
 
 
-func sign_source_entries() -> Array[Dictionary]:
+func sign_source_entries() -> Array[CitySignRequest]:
 	return signs.sign_source_entries()
 
 

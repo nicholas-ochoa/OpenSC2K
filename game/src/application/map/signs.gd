@@ -37,7 +37,7 @@ static func refresh_sign_occlusion(render: ApplicationMapRender, view_size: int)
 	var color_indices := render.app.asset_state.palette.animation_index_map(render.app.palette_clock.cycle_ticks)
 	var gpu_palette := render.caches.region_cache != null and render.caches.region_cache.gpu_enabled
 	var image_bounds := Rect2i(Vector2i.ZERO, render.static_image_size())
-	var visuals := {}
+	var visuals: Dictionary[int, CitySignVisual] = {}
 
 	for entry in entries:
 		var source_bounds: Rect2i = entry.bounds
@@ -59,7 +59,7 @@ static func refresh_sign_occlusion(render: ApplicationMapRender, view_size: int)
 		var key := int(entry.key)
 
 		if render.caches.sign_foreground_cache.has(key) and render.caches.sign_foreground_cache[key].signature == signature:
-			var cached: Dictionary = render.caches.sign_foreground_cache[key]
+			var cached := render.caches.sign_foreground_cache[key]
 
 			if cached.indices != null:
 				var palette_signature := 0 if gpu_palette else render.sign_palette_signature(cached.used_indices, color_indices)
@@ -75,7 +75,7 @@ static func refresh_sign_occlusion(render: ApplicationMapRender, view_size: int)
 		var foreground: Image = render.caches.region_cache.sign_foreground(key, bounds, int(entry.draw_order), factor) if gpu_palette else null
 
 		if foreground == null:
-			var masks: Array[Dictionary] = []
+			var masks: Array[CitySignForeground.Mask] = []
 
 			for command in render.app.moving_sprites.static_occlusion_candidates(bounds):
 				if int(command.depth_order) <= int(entry.draw_order):
@@ -89,7 +89,7 @@ static func refresh_sign_occlusion(render: ApplicationMapRender, view_size: int)
 				var resource := render.app.moving_sprites.dynamic_sprite_resource(sprite_archive, int(command.sprite_id), bool(command.flip), divisor, factor)
 
 				if not resource.is_empty():
-					masks.append({"image": resource.image, "position": position * factor})
+					masks.append(CitySignForeground.Mask.new(resource.image, position * factor))
 
 			var sampled: Image = (render.caches.region_cache.image_region(bounds, factor) if render.caches.region_cache != null
 					else render.caches.static_city_image.get_region(bounds))
@@ -101,37 +101,44 @@ static func refresh_sign_occlusion(render: ApplicationMapRender, view_size: int)
 			if moving_image != null:
 				CitySignForeground.add_moving(foreground, moving_image, Vector2i(visual.position) * factor, Rect2i(bounds.position * factor, bounds.size * factor))
 
-		var used_indices := {} if gpu_palette else CitySignForeground.used_indices(foreground)
+		var used_indices: Dictionary[int, bool] = {}
+
+		if not gpu_palette:
+			used_indices = CitySignForeground.used_indices(foreground)
+
 		var empty_foreground := foreground.is_invisible() if gpu_palette else used_indices.is_empty()
 
 		if empty_foreground:
-			render.caches.sign_foreground_cache[key] = {"signature": signature, "indices": null}
+			render.caches.sign_foreground_cache[key] = RenderCaches.SignForeground.new(signature)
 			continue
 
 		var texture: Texture2D
-		var previous: Dictionary = render.app.map_view.sign_occlusion_visuals.get(key, {})
+		var previous: CitySignVisual = render.app.map_view.sign_occlusion_visuals.get(key)
 
-		if (gpu_palette and bool(previous.get("indexed", false)) and previous.has("indices")
+		if (gpu_palette and previous != null and previous.indexed and previous.indices != null
 				and previous.indices.get_size() == foreground.get_size() and previous.indices.get_data() == foreground.get_data()):
 			foreground = previous.indices
 			texture = previous.texture
 		else:
 			texture = ImageTexture.create_from_image(foreground if gpu_palette else render.sign_palette_image(foreground, color_indices))
 
-		visuals[int(entry.key)] = {
-			"indexed": gpu_palette,
-			"indices": foreground if gpu_palette else null,
-			"texture": texture,
-			"position": Vector2(bounds.position),
-			"size": Vector2(bounds.size),
-		}
-		render.caches.sign_foreground_cache[key] = {"signature": signature, "indices": foreground, "palette_signature": 0 if gpu_palette
-				else render.sign_palette_signature(used_indices, color_indices), "used_indices": used_indices, "visual": visuals[key]}
+		var visual := CitySignVisual.new(texture)
+		visual.indexed = gpu_palette
+		visual.indices = foreground if gpu_palette else null
+		visual.position = Vector2(bounds.position)
+		visual.size = Vector2(bounds.size)
+		visuals[entry.key] = visual
+		var cached := RenderCaches.SignForeground.new(signature)
+		cached.indices = foreground
+		cached.palette_signature = 0 if gpu_palette else render.sign_palette_signature(used_indices, color_indices)
+		cached.used_indices = used_indices
+		cached.visual = visual
+		render.caches.sign_foreground_cache[key] = cached
 
 	render.app.map_view.set_sign_occlusion_visuals(visuals)
 
 
-static func sign_palette_signature(render: ApplicationMapRender, used: Dictionary, mapping: PackedInt32Array) -> int:
+static func sign_palette_signature(render: ApplicationMapRender, used: Dictionary[int, bool], mapping: PackedInt32Array) -> int:
 	var colors := PackedInt32Array()
 
 	for index in used:

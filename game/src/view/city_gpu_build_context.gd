@@ -4,6 +4,21 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
+class Tile extends RefCounted:
+	var draws: Array[Dictionary] = []
+	var foreground: Array[Dictionary] = []
+	var foreground_draws: Array[Dictionary] = []
+
+
+class ImageRole extends RefCounted:
+	var sprite_id: int
+	var flip: bool
+
+	func _init(id: int, flipped: bool) -> void:
+		sprite_id = id
+		flip = flipped
+
+
 const ATLAS_EDGE := 2048
 const MAX_ATLAS_EDGE := 8192
 var atlas_edge := ATLAS_EDGE
@@ -11,9 +26,9 @@ const TILE_CACHE_LIMIT := 16384
 var images: Dictionary = {}
 # derived train crossing masks for the moving-object depth meshes
 var occlusion_masks: Dictionary[String, Image] = {}
-var image_roles: Dictionary[int, Dictionary] = {}
+var image_roles: Dictionary[int, ImageRole] = {}
 var _image_key_count := 0
-var tiles: Dictionary[int, Dictionary] = {}
+var tiles: Dictionary[int, Tile] = {}
 var bounds_cache: Dictionary = {}
 var revision := -1
 var rotation := 0
@@ -34,7 +49,7 @@ func set_revision(value: int) -> void:
 
 
 func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
-		configuration: Dictionary, x: int, y: int, mode: CityViewMode.Mode, pipes: bool, subways: bool, water_mains := true) -> Dictionary:
+		configuration: CityViewConfiguration, x: int, y: int, mode: CityViewMode.Mode, pipes: bool, subways: bool, water_mains := true) -> Tile:
 	var key := city.index_of(x, y)
 
 	if tiles.has(key):
@@ -58,9 +73,9 @@ func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 			var building := city.building_id(x, y)
 
 			for draw in recorder.draws:
-				var role: Dictionary = image_roles.get(draw.image.get_instance_id(), {})
+				var role: ImageRole = image_roles.get(draw.image.get_instance_id())
 
-				if role.is_empty():
+				if role == null:
 					continue # masked traffic changes color, not foreground geometry
 
 				var command := {"sprite_id": role.sprite_id, "flip": role.flip,
@@ -73,7 +88,10 @@ func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 				foreground.append(command)
 				foreground_draws.append(draw)
 
-	var result := {"draws": recorder.draws, "foreground": foreground, "foreground_draws": foreground_draws}
+	var result := Tile.new()
+	result.draws = recorder.draws
+	result.foreground = foreground
+	result.foreground_draws = foreground_draws
 
 	if tiles.size() >= TILE_CACHE_LIMIT:
 		# fifo bounds geometry memory even during repeated cross-map pans
@@ -144,7 +162,7 @@ func _grow_atlas() -> void:
 	atlas_revision += 1
 
 
-func intersects(city: CityState, sprites: Sc2SpriteArchive, config: Dictionary,
+func intersects(city: CityState, sprites: Sc2SpriteArchive, config: CityViewConfiguration,
 		x: int, y: int, region: Rect2i, mode: CityViewMode.Mode) -> bool:
 	var key := x * city.map_size + y
 
@@ -229,7 +247,7 @@ func _register_image_roles() -> void:
 		if fields.size() != 2 or not fields[0].is_valid_int():
 			continue
 
-		image_roles[images[key].get_instance_id()] = {"sprite_id": fields[0].to_int(), "flip": fields[1] == "1"}
+		image_roles[images[key].get_instance_id()] = ImageRole.new(fields[0].to_int(), fields[1] == "1")
 
 	_image_key_count = images.size()
 
@@ -237,7 +255,7 @@ func _register_image_roles() -> void:
 # a shortcut for common surface tiles. city_gpu_fast_tile_test proves that it
 # records the same draws as cityisometricrenderer.draw_tile
 func _fast_tile(recorder: CityGpuDrawList, city: CityState, palette: Sc2Palette,
-		sprites: Sc2SpriteArchive, config: Dictionary, origin: int, x: int, y: int) -> bool:
+		sprites: Sc2SpriteArchive, config: CityViewConfiguration, origin: int, x: int, y: int) -> bool:
 	var key := x * city.map_size + y
 	var building := int(city.buildings[key])
 

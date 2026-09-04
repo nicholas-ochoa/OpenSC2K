@@ -5,10 +5,10 @@ const Renderer = preload("res://src/view/city_isometric_renderer.gd")
 
 static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 		bounds: Rect2i, view: int, mode: CityViewMode.Mode, pipes: bool, subways: bool,
-		context: CityGpuBuildContext, revision: int, uploaded_atlas_revision: int, copy_atlas := true, water_mains := true) -> Dictionary:
+		context: CityGpuBuildContext, revision: int, uploaded_atlas_revision: int, copy_atlas := true, water_mains := true) -> CityGpuRegionResult:
 	if (city == null or not city.is_valid() or palette == null or not palette.is_valid() or sprites == null or not sprites.is_valid()
 			or view not in [0, 1, 2] or not CityViewMode.is_map(mode)):
-		return {"ok": false, "error": "invalid GPU region assets"}
+		return CityGpuRegionResult.failed("invalid GPU region assets")
 
 	context.set_revision(revision)
 	context.rotation = city.compass_rotation()
@@ -16,7 +16,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 	bounds = bounds.intersection(Rect2i(Vector2i.ZERO, Renderer.output_size_for_view(view, city.map_size)))
 
 	if not bounds.has_area():
-		return {"ok": false, "error": "empty GPU region"}
+		return CityGpuRegionResult.failed("empty GPU region")
 
 	var limit := Renderer.maximum_sprite_size(sprites)
 	var span := Renderer.region_tile_span(configuration, limit, bounds, city.map_size, mode == CityViewMode.Mode.UNDERGROUND)
@@ -55,7 +55,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 				var slot := context.slot(draw.image)
 
 				if not context.error.is_empty():
-					return {"ok": false, "error": context.error}
+					return CityGpuRegionResult.failed(context.error)
 
 				var uv := Rect2i(slot.position + source.position, source.size)
 				_append_quad(Rect2(clipped.position - bounds.position, clipped.size), Rect2(uv), vertices, uvs, indices)
@@ -67,13 +67,13 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 					foreground.append(command)
 					foreground_draws.append(tile.foreground_draws[index])
 
-	var depth := {}
+	var depth := CityGpuOcclusionDepth.Result.new()
 
 	if mode == CityViewMode.Mode.CITY:
 		depth = CityGpuOcclusionDepth.build(foreground, foreground_draws, bounds, context, sprites, palette)
 
 		if not context.error.is_empty():
-			return {"ok": false, "error": context.error}
+			return CityGpuRegionResult.failed(context.error)
 
 	var arrays := []
 
@@ -82,7 +82,10 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 		for index in uvs.size():
 			uvs[index] *= float(CityGpuBuildContext.ATLAS_EDGE) / context.atlas_edge
 
-		for depth_arrays: Array in depth.values():
+		for depth_arrays: Array in [depth.depth, depth.train]:
+			if depth_arrays.is_empty():
+				continue
+
 			var depth_uvs: PackedVector2Array = depth_arrays[Mesh.ARRAY_TEX_UV]
 
 			for index in depth_uvs.size():
@@ -95,14 +98,23 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 	arrays[Mesh.ARRAY_TEX_UV] = uvs
 	arrays[Mesh.ARRAY_INDEX] = indices
 
-	return {"ok": true, "error": "", "gpu_arrays": arrays, "gpu_draws": draws, "gpu_draw_grid": Renderer.build_occlusion_grid(draws, 1),
-		"background": Color.WHITE if mode == CityViewMode.Mode.UNDERGROUND else Color.TRANSPARENT,
-		"bounds": bounds, "occlusion_commands": foreground,
-		"depth_arrays": depth.get("depth", []), "train_depth_arrays": depth.get("train", []),
-		"occlusion_grid": Renderer.build_occlusion_grid(foreground, int(configuration.divisor)),
-		"atlas_revision": context.atlas_revision,
-		"atlas_edge": context.atlas_edge,
-		"atlas_image": context.atlas.duplicate() if copy_atlas and context.atlas != null and context.atlas_revision != uploaded_atlas_revision else null}
+	var result := CityGpuRegionResult.new()
+	result.ok = true
+	result.error = ""
+	result.gpu_arrays = arrays
+	result.gpu_draws = draws
+	result.gpu_draw_grid = Renderer.build_occlusion_grid(draws, 1)
+	result.background = Color.WHITE if mode == CityViewMode.Mode.UNDERGROUND else Color.TRANSPARENT
+	result.bounds = bounds
+	result.occlusion_commands = foreground
+	result.depth_arrays = depth.depth
+	result.train_depth_arrays = depth.train
+	result.occlusion_grid = Renderer.build_occlusion_grid(foreground, int(configuration.divisor))
+	result.atlas_revision = context.atlas_revision
+	result.atlas_edge = context.atlas_edge
+	result.atlas_image = context.atlas.duplicate() if copy_atlas and context.atlas != null and context.atlas_revision != uploaded_atlas_revision else null
+
+	return result
 
 
 static func _append_quad(rectangle: Rect2, uv: Rect2, vertices: PackedVector2Array,

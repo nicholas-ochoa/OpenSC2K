@@ -16,7 +16,7 @@ static func static_occlusion_commands(
 
 	var configuration := IsometricGeometry.view_configuration(view_size)
 
-	if configuration.is_empty():
+	if configuration == null:
 		return commands
 
 	var origin_x: int = (
@@ -59,7 +59,7 @@ static func patch_static_occlusion_commands(
 
 	var configuration := IsometricGeometry.view_configuration(view_size)
 
-	if configuration.is_empty():
+	if configuration == null:
 		return []
 
 	var origin_x: int = (
@@ -113,7 +113,7 @@ static func patch_static_occlusion_commands(
 static func tile_occlusion_commands(
 	city: CityState,
 	sprites: Sc2SpriteArchive,
-	configuration: Dictionary,
+	configuration: CityViewConfiguration,
 	origin_x: int,
 	x: int,
 	y: int,
@@ -269,7 +269,7 @@ static func _append_occluder(
 	commands.append(command)
 
 
-static func configure_train_foreground(command: Dictionary, building_id: int, configuration: Dictionary) -> void:
+static func configure_train_foreground(command: Dictionary, building_id: int, configuration: CityViewConfiguration) -> void:
 	var reference := train_power_foreground_reference_sprite_id(building_id, int(configuration.sprite_base))
 
 	if reference != 0:

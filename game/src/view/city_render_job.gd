@@ -5,6 +5,18 @@ const Renderer = preload("res://src/view/city_isometric_renderer.gd")
 const UndergroundView = preload("res://src/view/city_underground_view.gd")
 const ViewFilter = preload("res://src/view/city_view_filter.gd")
 
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+	var index_image: Image
+	var occlusion_commands: Array[Dictionary] = []
+	var signature: Array = []
+	var view_size := Renderer.VIEW_LARGE
+	var epoch := 0
+	var render_mode := CityViewMode.Mode.CITY
+	var display_city: CityState
+
+
 var city_snapshot: CityState
 var index_palette: Sc2Palette
 var sprites: Sc2SpriteArchive
@@ -19,8 +31,8 @@ var show_underground_pipes := true
 var show_underground_subways := true
 
 
-func run() -> Dictionary:
-	var indexed: Dictionary
+func run() -> Result:
+	var indexed: AssetImageResult
 
 	if render_mode == CityViewMode.Mode.UNDERGROUND:
 		indexed = UndergroundView.create_image(
@@ -35,14 +47,15 @@ func run() -> Dictionary:
 		)
 
 	if not indexed.ok:
-		return {
-			"ok": false,
-			"error": indexed.error,
-			"signature": signature,
-			"view_size": view_size,
-			"epoch": epoch,
-			"render_mode": render_mode,
-		}
+		var result := Result.new()
+		result.ok = false
+		result.error = indexed.error
+		result.signature = signature
+		result.view_size = view_size
+		result.epoch = epoch
+		result.render_mode = render_mode
+
+		return result
 
 	var index_image: Image = indexed.image
 
@@ -60,14 +73,15 @@ func run() -> Dictionary:
 			city_snapshot, sprites, view_size
 		)
 
-	return {
-		"ok": true,
-		"error": "",
-		"index_image": index_image,
-		"occlusion_commands": occlusion_commands,
-		"signature": signature,
-		"view_size": view_size,
-		"epoch": epoch,
-		"render_mode": render_mode,
-		"display_city": city_snapshot,
-	}
+	var result := Result.new()
+	result.ok = true
+	result.error = ""
+	result.index_image = index_image
+	result.occlusion_commands = occlusion_commands
+	result.signature = signature
+	result.view_size = view_size
+	result.epoch = epoch
+	result.render_mode = render_mode
+	result.display_city = city_snapshot
+
+	return result

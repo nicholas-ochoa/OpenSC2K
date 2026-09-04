@@ -27,7 +27,7 @@ func _run() -> void:
 	view.city_source = _source([CityMapSource.MeshEntry.new(Vector2.ZERO, mesh_b, texture, 4)])
 	view.layers._sync_base_layer()
 	assert(first.get_meta("divisor") == 4 and first.scale == Vector2.ONE * view.camera._view_scale() * 4, "Cached geometry used the old divisor")
-	var foreground := {1: {"texture": texture}}
+	var foreground: Dictionary[int, CitySignVisual] = {1: CitySignVisual.new(texture)}
 	view.set_sign_occlusion_visuals(foreground)
 	var replacement := ImageTexture.create_from_image(Image.create(3, 3, false, Image.FORMAT_LA8))
 	foreground[1].texture = replacement
@@ -36,8 +36,8 @@ func _run() -> void:
 	assert(view.sign_occlusion_visuals[1].texture == replacement)
 	var main = load("res://src/main.gd").new()
 	main.render_caches.sign_foreground_cache.assign({
-		1: {"signature": [2, Rect2i(0, 0, 40, 40)]},
-		2: {"signature": [2, Rect2i(400, 400, 40, 40)]},
+		1: RenderCaches.SignForeground.new([2, Rect2i(0, 0, 40, 40)]),
+		2: RenderCaches.SignForeground.new([2, Rect2i(400, 400, 40, 40)]),
 	})
 	main.render_caches.dynamic_visual_cache.assign({
 		"near": {"position": Vector2.ZERO, "size": Vector2(20, 20)},
@@ -52,11 +52,12 @@ func _run() -> void:
 	main.map_render._invalidate_region_foregrounds(whole)
 	assert(main.render_caches.sign_foreground_cache.is_empty())
 	var mapping := PackedInt32Array(range(256))
-	var colors: int = main.map_render.sign_palette_signature({17: true}, mapping)
+	var used_indices: Dictionary[int, bool] = {17: true}
+	var colors: int = main.map_render.sign_palette_signature(used_indices, mapping)
 	mapping[161] = 162
-	assert(main.map_render.sign_palette_signature({17: true}, mapping) == colors)
+	assert(main.map_render.sign_palette_signature(used_indices, mapping) == colors)
 	mapping[17] = 18
-	assert(main.map_render.sign_palette_signature({17: true}, mapping) != colors)
+	assert(main.map_render.sign_palette_signature(used_indices, mapping) != colors)
 	_check_sign_layout_tokens(view)
 	main.free()
 	view.queue_free()

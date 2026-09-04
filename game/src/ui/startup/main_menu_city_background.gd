@@ -6,6 +6,10 @@ const MINIMUM_ZOOM := 0.5
 const SHOT_MAGNIFICATIONS := [3, 2, 1, 1]
 const Cleanup = preload("res://src/debug/city_debug_actions.gd")
 
+class RenderResult extends AssetImageResult:
+	var occlusion_commands: Array[Dictionary] = []
+
+
 # this city has no connection to the player's document, save path, or ui events
 var demo_city: CityState
 var controller: GameSpeedController
@@ -126,10 +130,10 @@ static func _collect_cities(folder: String, paths: PackedStringArray) -> void:
 
 func _process(delta: float) -> void:
 	if render_thread != null and not render_thread.is_alive():
-		var result: Dictionary = render_thread.wait_to_finish()
+		var result: RenderResult = render_thread.wait_to_finish()
 		render_thread = null
 
-		if result.get("ok", false):
+		if result.ok:
 			static_image = result.image
 			demo_texture = ImageTexture.create_from_image(static_image)
 			static_layer.texture = demo_texture
@@ -172,9 +176,13 @@ func _start_render() -> void:
 		render_thread = null
 
 
-static func _render(snapshot: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive) -> Dictionary:
-	var result := Renderer.create_image(snapshot, Sc2Palette.index_encoding(), sprites, Renderer.VIEW_LARGE, 0, false, true, false, false)
-	result["occlusion_commands"] = Renderer.static_occlusion_commands(snapshot, sprites)
+static func _render(snapshot: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive) -> RenderResult:
+	var rendered := Renderer.create_image(snapshot, Sc2Palette.index_encoding(), sprites, Renderer.VIEW_LARGE, 0, false, true, false, false)
+	var result := RenderResult.new()
+	result.ok = rendered.ok
+	result.error = rendered.error
+	result.image = rendered.image
+	result.occlusion_commands = Renderer.static_occlusion_commands(snapshot, sprites)
 
 	return result
 

@@ -58,9 +58,9 @@ func _run() -> void:
 		await process_frame
 
 	assert(cache.ready() and cache.last_error.is_empty())
-	for entry: Dictionary in cache.entries.values():
+	for entry: CityRegionResult in cache.entries.values():
 		assert(entry.generation == cache.generation)
-		assert(not entry.has("display_city"), "Region still holds an old city snapshot")
+		assert(entry.display_city == null, "Region still holds an old city snapshot")
 		assert(entry.image.get_width() <= 512 and entry.image.get_height() <= 512)
 		var p: Vector2i = entry.bounds.position * cache.divisor
 		assert(cache.pixel(p) == entry.image.get_pixel(0, 0), "Native pixel sampling uses display scale")

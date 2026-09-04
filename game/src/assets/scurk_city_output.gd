@@ -113,7 +113,7 @@ static func render(
 	var view := String(options.get("view", "city"))
 	var transparent := bool(options.get("transparent_background", false))
 	var progress: Callable = options.get("progress", Callable())
-	var result: Dictionary
+	var result: AssetImageResult
 
 	if view == "underground":
 		result = UndergroundView.create_image(
@@ -146,15 +146,15 @@ static func render(
 			progress
 		)
 
-		if result.get("ok", false) and show_signs:
+		if result.ok and show_signs:
 			_draw_signs(result.image, display_city, render_palette, view_size)
 	else:
 		return AssetImageResult.failure("print view must be city or underground")
 
-	if not result.get("ok", false):
-		return AssetImageResult.failure(String(result.get("error", "city output failed")))
+	if not result.ok:
+		return AssetImageResult.failure(result.error)
 
-	var image: Image = result.get("image") as Image
+	var image: Image = result.image
 
 	if image == null or image.is_empty():
 		return AssetImageResult.failure("city output is empty")
@@ -431,7 +431,7 @@ static func _draw_signs(
 
 	var configuration := Renderer.view_configuration(view_size)
 
-	if configuration.is_empty():
+	if configuration == null:
 		return
 
 	var divisor := float(configuration.divisor)

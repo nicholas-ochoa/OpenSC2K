@@ -1,0 +1,25 @@
+class_name CityGpuRegionResult
+extends CityRegionResult
+
+
+var gpu_arrays: Array = []
+var gpu_draws: Array[Dictionary] = []
+var gpu_draw_grid: Dictionary[Vector2i, Array] = {}
+var background := Color.TRANSPARENT
+var depth_arrays: Array = []
+var train_depth_arrays: Array = []
+var atlas_revision := -1
+var atlas_edge := 0
+var atlas_image: Image
+var sign_foregrounds: Dictionary[int, CitySignForegroundPatch] = {}
+var mesh: ArrayMesh
+var depth_mesh: ArrayMesh
+var train_depth_mesh: ArrayMesh
+var atlas_texture: ImageTexture
+
+
+static func failed(message: String) -> CityGpuRegionResult:
+	var result := CityGpuRegionResult.new()
+	result.error = message
+
+	return result

@@ -10,10 +10,20 @@ const GPU_OFFSCREEN_LIMIT := 384
 const GPU_PREFETCH_LIMIT := 256
 const GPU_REGION_EDGE := 256
 const GPU_WORKERS := 2
+class GpuWorker extends RefCounted:
+	var thread: Thread
+	var context: CityGpuBuildContext
+	var atlas: ImageTexture
+	var atlas_revision := -1
+	var layout := -1
+	var generation := -1
+	var keys: Array[Vector2i] = []
+
+
 var region_edge := REGION_EDGE
 var gpu_enabled := gpu_supported()
-var _gpu_workers: Array[Dictionary] = []
-var entries: Dictionary[Vector2i, Dictionary] = {}
+var _gpu_workers: Array[GpuWorker] = []
+var entries: Dictionary[Vector2i, CityRegionResult] = {}
 var wanted: Array[Vector2i] = []
 var visible: Array[Vector2i] = []
 var signature: Array = []
@@ -47,7 +57,7 @@ var foreground_changes: Array[Rect2i] = []
 # regions that became visible since the last tick. occlusion reads only visible
 # regions, so a moving sprite cached beside the view lacks their silhouettes
 var _visibility_changes: Array[Rect2i] = []
-var sign_requests: Array[Dictionary] = []
+var sign_requests: Array[CitySignRequest] = []
 var sign_layout_token: Array = []
 var _foreground_reset := true
 var _gpu_has_work := true
@@ -85,7 +95,7 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 
 			if bounds.intersects(dirty):
 				_edit_priority[key] = generation
-		for entry: Dictionary in entries.values():
+		for entry: CityRegionResult in entries.values():
 			if int(entry.generation) == generation - 1 and not entry.bounds.intersects(dirty):
 				entry.generation = generation
 
@@ -145,14 +155,14 @@ func _needs_reset(
 	)
 
 
-func set_sign_requests(requests: Array[Dictionary]) -> void:
-	var next: Array[Dictionary] = []
+func set_sign_requests(requests: Array[CitySignRequest]) -> void:
+	var next: Array[CitySignRequest] = []
 
 	for request in requests:
 		var bounds: Rect2i = request.bounds.intersection(Rect2i(Vector2i.ZERO, native_size * divisor))
 
 		if bounds.has_area():
-			next.append({"key": int(request.key), "bounds": bounds, "draw_order": int(request.draw_order)})
+			next.append(CitySignRequest.new(request.key, bounds, request.draw_order))
 
 	sign_requests = next
 
@@ -165,15 +175,16 @@ func sign_foreground(key: int, bounds: Rect2i, order: int, texture_factor := 1) 
 		if not entries.has(region_key):
 			return null
 
-		var entry: Dictionary = entries[region_key]
-		var patch: Dictionary = entry.get("sign_foregrounds", {}).get(key, {})
+		var entry: CityRegionResult = entries[region_key]
+		var gpu := entry as CityGpuRegionResult
+		var patch: CitySignForegroundPatch = gpu.sign_foregrounds.get(key) if gpu != null else null
 
-		if patch.is_empty() or patch.source_bounds != bounds or int(patch.draw_order) != order:
+		if patch == null or patch.source_bounds != bounds or int(patch.draw_order) != order:
 			return null
 
 		var image: Image = patch.image
 
-		if int(patch.get("texture_factor", 1)) != divisor * texture_factor:
+		if patch.texture_factor != divisor * texture_factor:
 			image = image.duplicate()
 			image.resize(patch.bounds.size.x * divisor * texture_factor, patch.bounds.size.y * divisor * texture_factor, Image.INTERPOLATE_NEAREST)
 
@@ -210,7 +221,7 @@ func tick() -> bool:
 		return _tick_gpu()
 
 	if _thread != null and not _thread.is_alive():
-		var result: Dictionary = _thread.wait_to_finish()
+		var result: CityRegionResult = _thread.wait_to_finish()
 		_thread = null
 
 		if not result.ok:
@@ -222,7 +233,7 @@ func tick() -> bool:
 				display_city = _snapshot
 				_prepared = true
 
-			result.erase("display_city")
+			result.display_city = null
 			result.texture = ImageTexture.create_from_image(result.image)
 			result.generation = _job_generation
 			entries[_job_key] = result
@@ -274,11 +285,13 @@ func texture() -> CityMapSource:
 		if not entries.has(key):
 			continue
 
-		var entry: Dictionary = entries[key]
+		var entry: CityRegionResult = entries[key]
 
-		if entry.has("mesh"):
-			output.meshes.append(CityMapSource.MeshEntry.new(Vector2(entry.bounds.position * divisor), entry.mesh, entry.atlas_texture, divisor,
-				entry.get("depth_mesh"), entry.get("train_depth_mesh")))
+		var gpu := entry as CityGpuRegionResult
+
+		if gpu != null:
+			output.meshes.append(CityMapSource.MeshEntry.new(Vector2(gpu.bounds.position * divisor), gpu.mesh, gpu.atlas_texture, divisor,
+				gpu.depth_mesh, gpu.train_depth_mesh))
 			continue
 
 		output.tiles.append(CityMapSource.TileEntry.new(Vector2(entry.bounds.position * divisor), Vector2(entry.bounds.size * divisor), entry.texture))
@@ -295,7 +308,7 @@ func occlusion_candidates(bounds: Rect2i) -> Array[Dictionary]:
 		if not entries.has(key) or key not in visible:
 			continue
 
-		var entry: Dictionary = entries[key]
+		var entry: CityRegionResult = entries[key]
 
 		if not Rect2(entry.bounds).intersects(native):
 			continue
@@ -346,7 +359,7 @@ func image_region(bounds: Rect2i, texture_factor := 1) -> Image:
 		if not entries.has(key):
 			continue
 
-		var entry: Dictionary = entries[key]
+		var entry: CityRegionResult = entries[key]
 		var world := Rect2i(entry.bounds.position * divisor, entry.bounds.size * divisor)
 		var overlap := world.intersection(bounds)
 
@@ -357,8 +370,9 @@ func image_region(bounds: Rect2i, texture_factor := 1) -> Image:
 		var last := Vector2i((Vector2(overlap.end) / divisor).ceil())
 		var native := Rect2i(first, last - first)
 		var sample_factor := texture_factor if divisor == 1 else 1
-		var image: Image = (CityGpuDrawList.paint(entry.gpu_draws, native, entry.background, entry.gpu_draw_grid, sample_factor)
-				if entry.has("gpu_draws") else entry.image.get_region(Rect2i(native.position - entry.bounds.position, native.size)))
+		var gpu := entry as CityGpuRegionResult
+		var image: Image = (CityGpuDrawList.paint(gpu.gpu_draws, native, gpu.background, gpu.gpu_draw_grid, sample_factor)
+				if gpu != null else entry.image.get_region(Rect2i(native.position - entry.bounds.position, native.size)))
 		image.convert(Image.FORMAT_LA8)
 		var target_size := native.size * divisor * texture_factor
 
@@ -381,11 +395,13 @@ func pixel(point: Vector2i) -> Color:
 	if not entries.has(key):
 		return Color.TRANSPARENT
 
-	var entry: Dictionary = entries[key]
+	var entry: CityRegionResult = entries[key]
 	var local: Vector2i = native - entry.bounds.position
 
-	if entry.has("gpu_draws"):
-		return CityGpuDrawList.paint(entry.gpu_draws, Rect2i(native, Vector2i.ONE), entry.background, entry.gpu_draw_grid).get_pixel(0, 0)
+	var gpu := entry as CityGpuRegionResult
+
+	if gpu != null:
+		return CityGpuDrawList.paint(gpu.gpu_draws, Rect2i(native, Vector2i.ONE), gpu.background, gpu.gpu_draw_grid).get_pixel(0, 0)
 
 	return entry.image.get_pixelv(local) if Rect2i(Vector2i.ZERO, entry.image.get_size()).has_point(local) else Color.TRANSPARENT
 
@@ -420,8 +436,8 @@ func prefetch_ready() -> bool:
 
 func metrics() -> Dictionary:
 	var bytes := 0
-	for entry: Dictionary in entries.values():
-		if not entry.has("image"):
+	for entry: CityRegionResult in entries.values():
+		if entry.image == null:
 			continue
 
 		bytes += entry.image.get_width() * entry.image.get_height() * (1 if entry.image.get_format() == Image.FORMAT_L8 else 2)
@@ -445,15 +461,16 @@ func close() -> void:
 
 static func _render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, bounds: Rect2i, view: int,
 		render_mode: CityViewMode.Mode, visibility: Dictionary, prepared: bool, pipes: bool, subways: bool, water_mains: bool,
-		gpu_context: CityGpuBuildContext = null, revision := 0, atlas_revision := -1, foreground_requests: Array[Dictionary] = []) -> Dictionary:
+		gpu_context: CityGpuBuildContext = null, revision := 0, atlas_revision := -1, foreground_requests: Array[CitySignRequest] = []) -> CityRegionResult:
 	var started := Time.get_ticks_usec()
 	var display := city if prepared else CityViewFilter.surface_copy(city, visibility)
-	var result := (CityGpuRegionRenderer.render(display, palette, sprites, bounds, view, render_mode, pipes, subways, gpu_context, revision,
+	var result: CityRegionResult = (CityGpuRegionRenderer.render(display, palette, sprites, bounds, view, render_mode, pipes, subways, gpu_context, revision,
 			atlas_revision, true, water_mains) if gpu_context != null
 			else CityRegionRenderer.render(display, palette, sprites, bounds, view, render_mode, pipes, subways, water_mains))
 
 	if result.ok and gpu_context != null and render_mode == CityViewMode.Mode.CITY:
-		result.sign_foregrounds = CityGpuSignForegrounds.build(result, foreground_requests, palette, sprites, gpu_context,
+		var gpu := result as CityGpuRegionResult
+		gpu.sign_foregrounds = CityGpuSignForegrounds.build(gpu, foreground_requests, palette, sprites, gpu_context,
 				int(CityIsometricRenderer.view_configuration(view).divisor))
 
 	result.display_city = display

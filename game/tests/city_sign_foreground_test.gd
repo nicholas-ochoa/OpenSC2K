@@ -6,9 +6,9 @@ func _initialize() -> void:
 
 	for format in [Image.FORMAT_RGBA8, Image.FORMAT_LA8]:
 		var sampled := _image(bounds.size, format, 1)
-		var masks: Array[Dictionary] = [
-			{"image": _image(Vector2i(33, 29), format, 3), "position": Vector2i(88, 190)},
-			{"image": _image(Vector2i(42, 27), format, 7), "position": Vector2i(120, 211)},
+		var masks: Array[CitySignForeground.Mask] = [
+			CitySignForeground.Mask.new(_image(Vector2i(33, 29), format, 3), Vector2i(88, 190)),
+			CitySignForeground.Mask.new(_image(Vector2i(42, 27), format, 7), Vector2i(120, 211)),
 		]
 		var expected := Image.create(bounds.size.x, bounds.size.y, false, Image.FORMAT_RGBA8)
 		expected.fill(Color.TRANSPARENT)

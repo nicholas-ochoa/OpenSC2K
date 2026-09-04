@@ -46,7 +46,10 @@ func _initialize() -> void:
 func _fill(cache: CityRegionCache) -> void:
 	for key in cache.wanted:
 		if not cache.entries.has(key):
-			cache.entries[key] = {"generation": cache.generation, "last_visible": cache._viewport_serial if key in cache.visible else 0}
+			var entry := CityGpuRegionResult.new()
+			entry.generation = cache.generation
+			entry.last_visible = cache._viewport_serial if key in cache.visible else 0
+			cache.entries[key] = entry
 
 	cache._trim_retained_regions()
 	assert(cache.entries.size() <= cache.visible.size() + cache.offscreen_limit())

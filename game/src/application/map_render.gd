@@ -74,18 +74,18 @@ func refresh_map(force := true) -> void:
 
 # shows a cached static view that matches the signature and view size. returns false on a cache miss
 func _show_cached_static_view(current_signature: Array, view_size: int) -> bool:
-	var cached: Dictionary = caches.static_view_cache.get(app.view_state.overlay_mode, {})
+	var cached: RenderCaches.StaticView = caches.static_view_cache.get(app.view_state.overlay_mode)
 
 	if (
-		cached.is_empty()
-		or cached.get("signature", []) != current_signature
-		or int(cached.get("view_size", -1)) != view_size
+		cached == null
+		or cached.signature != current_signature
+		or cached.view_size != view_size
 	):
 		return false
 
 	caches.static_city_image = cached.image
 	app.moving_sprites.set_static_occlusion_commands(
-		cached.get("occlusion_commands", []), view_size
+		cached.occlusion_commands, view_size
 	)
 	caches.static_visual_signature = current_signature
 	caches.static_render_mode = app.view_state.overlay_mode
@@ -120,7 +120,7 @@ func _render_static_view(current_signature: Array, view_size: int, sprite_archiv
 		if app.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND
 		else ViewFilter.surface_copy(app.document_state.city, app.view_state.surface_visibility)
 	)
-	var indexed: Dictionary
+	var indexed: AssetImageResult
 
 	if app.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND:
 		indexed = UndergroundView.create_image(
@@ -159,13 +159,10 @@ func _render_static_view(current_signature: Array, view_size: int, sprite_archiv
 	caches.static_visual_signature = current_signature
 	caches.static_render_mode = app.view_state.overlay_mode
 	caches.static_display_city = display_city
-	caches.static_view_cache[app.view_state.overlay_mode] = {
-		"image": image,
-		"occlusion_commands": caches.static_occlusion_commands,
-		"signature": current_signature,
-		"display_city": display_city,
-		"view_size": view_size,
-	}
+	caches.static_view_cache[app.view_state.overlay_mode] = RenderCaches.StaticView.new(
+		image, caches.static_occlusion_commands, current_signature,
+		display_city, view_size
+	)
 	var source := CityMapTexture.create(image)
 	app.map_view.set_city_view(caches.static_display_city, source, null, true)
 	app.menus.sync_map_style()
@@ -333,7 +330,7 @@ func refresh_sign_occlusion(view_size: int) -> void:
 	ApplicationMapSigns.refresh_sign_occlusion(self, view_size)
 
 
-func sign_palette_signature(used: Dictionary, mapping: PackedInt32Array) -> int:
+func sign_palette_signature(used: Dictionary[int, bool], mapping: PackedInt32Array) -> int:
 	return ApplicationMapSigns.sign_palette_signature(self, used, mapping)
 
 

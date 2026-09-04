@@ -24,7 +24,7 @@ func _run() -> void:
 			var sprites := large if view == CityIsometricRenderer.VIEW_LARGE else small
 
 			for mode: CityViewMode.Mode in ([CityViewMode.Mode.CITY, CityViewMode.Mode.UNDERGROUND] if edge == 128 else [CityViewMode.Mode.CITY]):
-				var full: Dictionary
+				var full: AssetImageResult
 
 				if mode == CityViewMode.Mode.CITY:
 					full = CityIsometricRenderer.create_image(city, palette, sprites, view, 0, false, true, false, false)
