@@ -115,7 +115,7 @@ var data_value_texture: ImageTexture
 
 var hover_tile := Vector2i(-1, -1)
 var transient_effects: Array[Dictionary] = []
-var dynamic_sprites: Array[Dictionary] = []
+var dynamic_sprites: Array[CityDynamicVisual] = []
 var sign_occlusion_visuals: Dictionary[int, CitySignVisual] = {}
 var _panning := false
 var _middle_click_pending := false
@@ -282,7 +282,7 @@ func shake_view(frames := 24, frame_duration := 0.005, distance := 4.0) -> void:
 	presentation.shake_view(frames, frame_duration, distance)
 
 
-func set_dynamic_sprites(sprites: Array[Dictionary]) -> void:
+func set_dynamic_sprites(sprites: Array[CityDynamicVisual]) -> void:
 	presentation.set_dynamic_sprites(sprites)
 
 

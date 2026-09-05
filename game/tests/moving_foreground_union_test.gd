@@ -4,8 +4,11 @@ class TestSprites extends ApplicationMovingSprites:
 	var images: Dictionary = {}
 
 
-	func dynamic_sprite_resource(_archive: Sc2SpriteArchive, sprite_id: int, _flip: bool, _divisor: int, _factor := 1) -> Dictionary:
-		return {"image": images[sprite_id]}
+	func dynamic_sprite_resource(_archive: Sc2SpriteArchive, sprite_id: int, _flip: bool, _divisor: int, _factor := 1) -> CitySpriteResource:
+		var result := CitySpriteResource.new()
+		result.image = images[sprite_id]
+
+		return result
 
 
 func _initialize() -> void:
@@ -22,8 +25,12 @@ func _initialize() -> void:
 			image.set_pixel(id, 1, Color.WHITE)
 
 		host.moving_sprites.images[id] = image
-		var command := {"sprite_id": id, "position": Vector2i.ZERO,
-			"size": Vector2i(8, 4), "flip": false, "depth_order": 11 + id}
+		var command := CityStaticCommand.new()
+		command.sprite_id = id
+		command.position = Vector2i.ZERO
+		command.size = Vector2i(8, 4)
+		command.flip = false
+		command.depth_order = 11 + id
 		host.render_caches.static_occlusion_commands.append(command)
 
 	# A background sprite leaves the moving object visible.
@@ -54,9 +61,15 @@ func _initialize() -> void:
 	track.set_pixel(4, 1, Color.TRANSPARENT)
 	host.moving_sprites.images[4] = crossing
 	host.moving_sprites.images[5] = track
-	host.render_caches.static_occlusion_commands.append({"sprite_id": 4, "position": Vector2i.ZERO,
-		"size": Vector2i(8, 4), "flip": false, "depth_order": 10,
-		"train_foreground_reference_sprite_id": 5, "train_foreground_requires_depth": true})
+	var crossing_command := CityStaticCommand.new()
+	crossing_command.sprite_id = 4
+	crossing_command.position = Vector2i.ZERO
+	crossing_command.size = Vector2i(8, 4)
+	crossing_command.flip = false
+	crossing_command.depth_order = 10
+	crossing_command.train_foreground_reference_sprite_id = 5
+	crossing_command.train_foreground_requires_depth = true
+	host.render_caches.static_occlusion_commands.append(crossing_command)
 	host.render_caches.static_occlusion_grid.clear()
 	host.render_caches.dynamic_occluder_cache.clear()
 	var crossing_mask := host.moving_sprites._dynamic_occluder_image(null, 1, Vector2i.ZERO, Vector2i(8, 4), 10, true)
@@ -90,7 +103,7 @@ func _initialize() -> void:
 	assert(bands.get_pixel(0, 12).a > 0.0, "Second highway deck remains in foreground")
 
 	for tile in [0x0e, 0x1c, 0x43, 0x44, 0x47, 0x48, 0x4f, 0x50]:
-		var command := {}
+		var command := CityStaticCommand.new()
 		CityIsometricRenderer.configure_train_foreground(command, tile, CityIsometricRenderer.view_configuration(CityIsometricRenderer.VIEW_LARGE))
 
 		if tile in [0x4f, 0x50]:

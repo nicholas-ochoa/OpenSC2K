@@ -100,11 +100,24 @@ func shake_view(frames := 24, frame_duration := 0.005, distance := 4.0) -> void:
 	)
 
 
-func set_dynamic_sprites(sprites: Array[Dictionary]) -> void:
-	if map.dynamic_sprites == sprites:
+func set_dynamic_sprites(sprites: Array[CityDynamicVisual]) -> void:
+	var unchanged := map.dynamic_sprites.size() == sprites.size()
+
+	if unchanged:
+		for index in sprites.size():
+			if not sprites[index].matches(map.dynamic_sprites[index]):
+				unchanged = false
+				break
+
+	if unchanged:
 		return
 
-	map.dynamic_sprites = sprites.duplicate(true)
+	var retained: Array[CityDynamicVisual] = []
+
+	for visual in sprites:
+		retained.append(visual.copy())
+
+	map.dynamic_sprites = retained
 
 	if map._dynamic_canvas != null:
 		map._dynamic_canvas.set_visuals(
@@ -245,8 +258,8 @@ func _draw() -> void:
 		map.draw_polyline(local_polygon, Color(0.55, 1.0, 0.65, 0.9) if valid else Color(1.0, 0.25, 0.2, 0.95), 1.0)
 
 	if map.selection.bulldozer_visible() and map.bulldozer_visual_provider.is_valid():
-		var visual: Dictionary = map.bulldozer_visual_provider.call(map.hover_tile, map.bulldozer_direction)
-		if not visual.is_empty():
+		var visual: CityDynamicVisual = map.bulldozer_visual_provider.call(map.hover_tile, map.bulldozer_direction)
+		if visual != null:
 			map.draw_texture_rect(
 				visual.texture, Rect2(offset + visual.position * scale, visual.size * scale),
 				false, CityForegroundPalette.INDEXED_DRAW_COLOR
@@ -275,13 +288,13 @@ func _draw_transient_effects(scale: float, offset: Vector2) -> void:
 
 func _draw_dynamic_sprites(scale: float, offset: Vector2) -> void:
 	for visual in map.dynamic_sprites:
-		var texture: Texture2D = visual.get("texture") as Texture2D
+		var texture: Texture2D = visual.texture
 
 		if texture == null:
 			continue
 
-		var source_position: Vector2 = visual.get("position", Vector2.ZERO)
-		var source_size: Vector2 = visual.get("size", Vector2(texture.get_size()))
+		var source_position: Vector2 = visual.position
+		var source_size: Vector2 = visual.size
 		map.draw_texture_rect(
 			texture,
 			Rect2(offset + source_position * scale, source_size * scale),

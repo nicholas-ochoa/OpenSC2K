@@ -62,6 +62,20 @@ func _run() -> void:
 	assert(colored.get_pixel(0, 0) == main.asset_state.palette.color(17))
 	assert(colored.get_pixel(1, 0).a == 0.0)
 	assert(indexed.get_pixel(0, 0).r8 == 161, "Palette update changed cached indices")
+	var sign_bounds: Rect2i = main.render_caches.sign_foreground_cache[key].signature[1]
+	var moving := CityDynamicVisual.new(null, Vector2(sign_bounds.position), Vector2(indexed.get_size()))
+	moving.depth_order = 1000000
+	moving.image = indexed
+	var candidates: Array[CityDynamicVisual] = [moving]
+	main.render_caches.dynamic_sign_occluders = candidates
+	main.render_caches.dynamic_sign_occlusion_grid = CityDynamicVisual.build_grid(candidates)
+	main.map_render.refresh_sign_occlusion(main.static_render.city_view_size())
+	var with_moving := _foreground_values(main.render_caches.sign_foreground_cache)
+	var repeated_candidates: Array[CityDynamicVisual] = [moving.copy()]
+	main.render_caches.dynamic_sign_occluders = repeated_candidates
+	main.map_render.refresh_sign_occlusion(main.static_render.city_view_size())
+	assert(_foreground_values(main.render_caches.sign_foreground_cache) == with_moving,
+		"Equivalent moving visual values must retain sign masks and textures across distinct records")
 	main.static_render.invalidate_rendered_city()
 	assert(main.render_caches.sign_foreground_cache.is_empty())
 	main.queue_free()

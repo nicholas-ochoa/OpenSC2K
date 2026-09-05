@@ -1100,7 +1100,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		patch_city, small_medium, IsometricRenderer.VIEW_SMALL
 	)
 	_check(
-		regional_patch_occlusion == full_patch_occlusion,
+		_static_command_values(regional_patch_occlusion) == _static_command_values(full_patch_occlusion),
 		"A regional edit keeps the complete static occlusion command order",
 	)
 	_check(IsometricRenderer.terrain_sprite_id(0x00, false) == 1256, "Flat land uses sprite 1256")
@@ -1157,7 +1157,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(
 		IsometricStaticVisuals.traffic_overlay_visual(
 			overlay_city, overlay_point.x, overlay_point.y
-		).is_empty(),
+		) == null,
 		"Normal road traffic does not draw at density 85",
 	)
 	traffic_data[traffic_index] = 86
@@ -1213,7 +1213,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(
 		IsometricStaticVisuals.traffic_overlay_visual(
 			overlay_city, overlay_point.x, overlay_point.y, IsometricRenderer.VIEW_SMALL
-		).is_empty(),
+		) == null,
 		"Small view omits high-density variants absent from its source archive",
 	)
 	_check(
@@ -1223,7 +1223,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(
 		IsometricStaticVisuals.traffic_overlay_visual(
 			overlay_city, overlay_point.x, overlay_point.y
-		).is_empty(),
+		) == null,
 		"Busy traffic cells do not draw traffic sprites on power lines",
 	)
 	_check(
@@ -1262,9 +1262,9 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Traffic view fixture restores the first highway threshold",
 	)
 	_check(
-		not IsometricStaticVisuals.traffic_overlay_visual(
+		IsometricStaticVisuals.traffic_overlay_visual(
 			overlay_city, overlay_point.x, overlay_point.y
-		).is_empty(),
+		) != null,
 		"Elevated highway traffic uses the recovered lower threshold",
 	)
 	_check(
@@ -1401,7 +1401,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(
 		IsometricStaticVisuals.power_marker_visual(
 			overlay_city, overlay_point.x, overlay_point.y
-		).is_empty(),
+		) == null,
 		"Powered zone building does not draw an unpowered marker",
 	)
 	_check(
@@ -1448,7 +1448,8 @@ func _test_sprite_archives(reference_root: String) -> void:
 		overlay_city.set_tile_flag(fire_x, overlay_point.y, 0x04, false)
 		var visual := IsometricStaticVisuals.fire_overlay_visual(overlay_city, fire_x, overlay_point.y)
 		fire_frames[visual.sprite_id] = true
-		_check(visual == IsometricStaticVisuals.fire_overlay_visual(overlay_city, fire_x, overlay_point.y),
+		var repeated := IsometricStaticVisuals.fire_overlay_visual(overlay_city, fire_x, overlay_point.y)
+		_check(visual.sprite_id == repeated.sprite_id and visual.flip == repeated.flip and visual.overlay == repeated.overlay,
 			"Fire animation is stable for the same tile and display time")
 		overlay_city.set_text_overlay_id(fire_x, overlay_point.y, original_overlay)
 		overlay_city.set_tile_flag(fire_x, overlay_point.y, 0x04, original_water)
@@ -1467,7 +1468,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(
 		IsometricStaticVisuals.fire_overlay_visual(
 			overlay_city, overlay_point.x, overlay_point.y
-		).is_empty(),
+		) == null,
 		"Fire does not draw on a saved water tile",
 	)
 	_check(
@@ -1498,7 +1499,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(
 		IsometricStaticVisuals.special_overlay_visual(
 			overlay_city, overlay_point.x, overlay_point.y
-		).is_empty(),
+		) == null,
 		"Special marker 0xfd does not draw on a saved water tile",
 	)
 	_check(
@@ -1644,19 +1645,19 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(
 		IsometricRenderer.moving_thing_sprite(ThingRecord.from_fields({
 			"type": 6, "direction": 2, "state": 0,
-		}), IsometricRenderer.VIEW_SMALL).is_empty(),
+		}), IsometricRenderer.VIEW_SMALL) == null,
 		"Explosion stays hidden below its recovered minimum view",
 	)
 	_check(
 		IsometricRenderer.moving_thing_sprite(ThingRecord.from_fields({
 			"type": 2, "direction": 2, "state": 0,
-		}), IsometricRenderer.VIEW_MEDIUM).is_empty(),
+		}), IsometricRenderer.VIEW_MEDIUM) == null,
 		"Helicopter stays hidden below its recovered minimum view",
 	)
 	_check(
 		IsometricRenderer.moving_thing_sprite(ThingRecord.from_fields({
 			"type": 10, "direction": 0, "state": 0,
-		})).is_empty(),
+		})) == null,
 		"The generic view defers trains to their custom renderer",
 	)
 	_check(
@@ -1671,23 +1672,20 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(starter.set_building_id(64, 64, 0), "Moving overlay fixture clears its tile")
 	_check(starter.set_tile_flag(64, 64, 0x04, false), "Moving overlay fixture uses dry land")
 	var plane_entry := large.find_sprite(plane_visual.sprite_id)
+	var plane_commands_visual := IsometricMovingVisuals.Visual.new()
+	plane_commands_visual.sprite_id = plane_visual.sprite_id
+	plane_commands_visual.flip = plane_visual.flip
+	plane_commands_visual.type = 1
+	plane_commands_visual.x = 64
+	plane_commands_visual.y = 64
+	plane_commands_visual.z = 2
+	plane_commands_visual.px = 8
+	plane_commands_visual.py = 8
+	plane_commands_visual.train = false
+	plane_commands_visual.tornado = false
+	plane_commands_visual.monster = false
 	var plane_commands := IsometricRenderer.moving_thing_draw_commands_for_visual(
-		starter,
-		large,
-		{
-			"sprite_id": plane_visual.sprite_id,
-			"flip": plane_visual.flip,
-			"type": 1,
-			"x": 64,
-			"y": 64,
-			"z": 2,
-			"px": 8,
-			"py": 8,
-			"train": false,
-			"tornado": false,
-			"monster": false,
-		},
-		IsometricRenderer.view_configuration(IsometricRenderer.VIEW_LARGE)
+		starter, large, plane_commands_visual, IsometricRenderer.view_configuration(IsometricRenderer.VIEW_LARGE)
 	)
 	var expected_plane_position := Vector2i(
 		2096 - int(plane_entry.width / 2), 1545 - plane_entry.height
@@ -1740,7 +1738,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	)
 	var occlusion_grid := IsometricRenderer.build_occlusion_grid(static_occluders, 1)
 	var occlusion_target_index := int(static_occluders.size() / 2)
-	var occlusion_target: Dictionary = static_occluders[occlusion_target_index]
+	var occlusion_target: CityStaticCommand = static_occluders[occlusion_target_index]
 	var occlusion_target_bounds := Rect2i(
 		Vector2i(occlusion_target.position), Vector2i(occlusion_target.size)
 	)
@@ -1750,7 +1748,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	var occlusion_candidates_complete := true
 
 	for occluder_index in static_occluders.size():
-		var candidate: Dictionary = static_occluders[occluder_index]
+		var candidate: CityStaticCommand = static_occluders[occluder_index]
 		var candidate_bounds := Rect2i(
 			Vector2i(candidate.position), Vector2i(candidate.size)
 		)
@@ -1822,7 +1820,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	var found_dynamic_special := false
 
 	for command in dynamic_specials:
-		if int(command.get("overlay", 0)) == 0xfb:
+		if int(command.overlay) == 0xfb:
 			found_dynamic_special = true
 			break
 
@@ -1880,16 +1878,16 @@ func _test_sprite_archives(reference_root: String) -> void:
 	var capeques_dynamic := IsometricRenderer.dynamic_draw_commands(
 		capeques, large, IsometricRenderer.VIEW_LARGE, 0
 	)
-	var capeques_dynamic_moving: Array[Dictionary] = []
+	var capeques_dynamic_moving: Array[CityDynamicCommand] = []
 
 	for command in capeques_dynamic:
-		if not command.has("overlay"):
+		if command.overlay < 0:
 			capeques_dynamic_moving.append(command)
 
 	_check(
-		capeques_dynamic_moving == IsometricDynamicCommands.moving_thing_draw_commands(
+		_dynamic_command_values(capeques_dynamic_moving) == _dynamic_command_values(IsometricDynamicCommands.moving_thing_draw_commands(
 			capeques, large, IsometricRenderer.VIEW_LARGE, 0
-		),
+		)),
 		"Indexed dynamic lookup preserves Capeques moving-object draw order",
 	)
 
@@ -2078,19 +2076,20 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Map control accepts one localized sign-occlusion layer",
 	)
 	map_control.set_sign_occlusion_visuals({})
+	var sign_candidates: Array[CityDynamicVisual] = []
+
+	for fixture in [
+		[Vector2(100, 100), 9, false], [Vector2(100, 100), 10, false],
+		[Vector2(150, 150), 12, false], [Vector2(100, 100), 13, true],
+		[Vector2(105, 105), 14, false],
+	]:
+		var visual := CityDynamicVisual.new(null, fixture[0], Vector2(20, 20))
+		visual.depth_order = fixture[1]
+		visual.shadow = fixture[2]
+		sign_candidates.append(visual)
+
 	var later_sign_visuals := CityMapSigns.later_sign_occluder_visuals(
-		[
-			{"position": Vector2(100, 100), "size": Vector2(20, 20), "depth_order": 9},
-			{"position": Vector2(100, 100), "size": Vector2(20, 20), "depth_order": 10},
-			{"position": Vector2(150, 150), "size": Vector2(20, 20), "depth_order": 12},
-			{
-				"position": Vector2(100, 100), "size": Vector2(20, 20),
-				"depth_order": 13, "shadow": true,
-			},
-			{"position": Vector2(105, 105), "size": Vector2(20, 20), "depth_order": 14},
-		],
-		Rect2i(100, 100, 20, 20),
-		10,
+		sign_candidates, Rect2i(100, 100, 20, 20), 10
 	)
 	_check(
 		later_sign_visuals.size() == 1
@@ -2305,13 +2304,13 @@ func _test_sprite_archives(reference_root: String) -> void:
 		and selection_complete_signals[0] == 1,
 		"Shift-click does not start or commit a landscape selection",
 	)
-	map_control.set_dynamic_sprites([{"position": Vector2(10, 20)}])
+	map_control.set_dynamic_sprites([CityDynamicVisual.new(null, Vector2(10, 20))])
 	_check(map_control.dynamic_sprites.size() == 1, "Map control accepts a dynamic sprite layer")
 	map_control.layers._ensure_base_layer()
-	var many_dynamic_sprites: Array[Dictionary] = []
+	var many_dynamic_sprites: Array[CityDynamicVisual] = []
 
 	for index in 1500:
-		many_dynamic_sprites.append({"position": Vector2(index, index)})
+		many_dynamic_sprites.append(CityDynamicVisual.new(null, Vector2(index, index)))
 
 	map_control.set_dynamic_sprites(many_dynamic_sprites)
 	_check(
@@ -2367,33 +2366,29 @@ func _test_sprite_archives(reference_root: String) -> void:
 	var marker_image := Image.create(4, 4, false, Image.FORMAT_RGBA8)
 	marker_image.fill(Color8(10, 10, 10, 255))
 	var marker_texture := ImageTexture.create_from_image(marker_image)
-	var batch_input: Array[Dictionary] = []
+	var batch_input: Array[CityDynamicVisual] = []
 
 	for index in 1500:
-		batch_input.append({
-			"texture": marker_texture,
-			"image": marker_image,
-			"position": Vector2(index % 100, int(index / 100)),
-			"size": Vector2(4, 4),
-			"special_overlay": true,
-			"batch_cache_key": "marker:%d" % index,
-		})
+		var visual := CityDynamicVisual.new(marker_texture, Vector2(index % 100, int(index / 100)), Vector2(4, 4))
+		visual.image = marker_image
+		visual.special_overlay = true
+		visual.batch_cache_key = "marker:%d" % index
+		batch_input.append(visual)
 
-	var separator := {
-		"texture": marker_texture,
-		"image": marker_image,
-		"position": Vector2.ZERO,
-		"size": Vector2(4, 4),
-	}
+	var separator := CityDynamicVisual.new()
+	separator.texture = marker_texture
+	separator.image = marker_image
+	separator.position = Vector2.ZERO
+	separator.size = Vector2(4, 4)
 	batch_input.insert(750, separator)
-	var marker_batch_cache := {}
+	var marker_batch_cache: Dictionary[String, CityDynamicVisual] = {}
 	var batches := DynamicSpriteCanvas.batch_special_visuals(
 		batch_input, marker_batch_cache
 	)
 	_check(
 		batches.size() < 10
 		and batches[3] == separator
-		and batches[0].get("special_batch", false),
+		and batches[0].special_batch,
 		"Dynamic marker batching keeps moving-object order and reduces 1,500 markers",
 	)
 	var cached_batches := DynamicSpriteCanvas.batch_special_visuals(
@@ -2572,26 +2567,23 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Train view maps a rail tile to its recovered sprite variant",
 	)
 	var train_entry := large.find_sprite(straight_train.sprite_id)
+	var train_commands_visual := IsometricMovingVisuals.Visual.new()
+	train_commands_visual.sprite_id = straight_train.sprite_id
+	train_commands_visual.flip = straight_train.flip
+	train_commands_visual.type = 10
+	train_commands_visual.x = 64
+	train_commands_visual.y = 64
+	train_commands_visual.z = 0
+	train_commands_visual.px = 0
+	train_commands_visual.py = 0
+	train_commands_visual.train = true
+	train_commands_visual.screen_x = straight_train.screen_x
+	train_commands_visual.screen_y = straight_train.screen_y
+	train_commands_visual.elevation = straight_train.elevation
+	train_commands_visual.tornado = false
+	train_commands_visual.monster = false
 	var train_commands := IsometricRenderer.moving_thing_draw_commands_for_visual(
-		starter,
-		large,
-		{
-			"sprite_id": straight_train.sprite_id,
-			"flip": straight_train.flip,
-			"type": 10,
-			"x": 64,
-			"y": 64,
-			"z": 0,
-			"px": 0,
-			"py": 0,
-			"train": true,
-			"screen_x": straight_train.screen_x,
-			"screen_y": straight_train.screen_y,
-			"elevation": straight_train.elevation,
-			"tornado": false,
-			"monster": false,
-		},
-		IsometricRenderer.view_configuration(IsometricRenderer.VIEW_LARGE)
+		starter, large, train_commands_visual, IsometricRenderer.view_configuration(IsometricRenderer.VIEW_LARGE)
 	)
 	_check(
 		train_commands.size() == 1
@@ -2604,31 +2596,28 @@ func _test_sprite_archives(reference_root: String) -> void:
 	var crossing_train := IsometricRenderer.train_sprite(starter, 64, 64, ThingRecord.from_fields({
 		"type": 10, "dx": 0,
 	}))
+	var crossing_commands_visual := IsometricMovingVisuals.Visual.new()
+	crossing_commands_visual.sprite_id = crossing_train.sprite_id
+	crossing_commands_visual.flip = crossing_train.flip
+	crossing_commands_visual.type = 10
+	crossing_commands_visual.x = 64
+	crossing_commands_visual.y = 64
+	crossing_commands_visual.z = 0
+	crossing_commands_visual.px = 0
+	crossing_commands_visual.py = 0
+	crossing_commands_visual.train = true
+	crossing_commands_visual.screen_x = crossing_train.screen_x
+	crossing_commands_visual.screen_y = crossing_train.screen_y
+	crossing_commands_visual.elevation = crossing_train.elevation
+	crossing_commands_visual.tornado = false
+	crossing_commands_visual.monster = false
 	var crossing_commands := IsometricRenderer.moving_thing_draw_commands_for_visual(
-		starter,
-		large,
-		{
-			"sprite_id": crossing_train.sprite_id,
-			"flip": crossing_train.flip,
-			"type": 10,
-			"x": 64,
-			"y": 64,
-			"z": 0,
-			"px": 0,
-			"py": 0,
-			"train": true,
-			"screen_x": crossing_train.screen_x,
-			"screen_y": crossing_train.screen_y,
-			"elevation": crossing_train.elevation,
-			"tornado": false,
-			"monster": false,
-		},
-		IsometricRenderer.view_configuration(IsometricRenderer.VIEW_LARGE)
+		starter, large, crossing_commands_visual, IsometricRenderer.view_configuration(IsometricRenderer.VIEW_LARGE)
 	)
 	_check(
 		crossing_commands.size() == 1
 		and crossing_commands[0].train
-		and not crossing_commands[0].has("same_tile_foreground_indices"),
+		and crossing_commands[0].same_tile_foreground_indices.is_empty(),
 		"Train commands request the dedicated power-line foreground mask",
 	)
 	_check(
@@ -2637,7 +2626,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		and IsometricStaticOcclusion.train_power_foreground_reference_sprite_id(0x2d) == 0,
 		"Power lines and crossovers select their train foreground source",
 	)
-	var crossing_foreground_command: Dictionary = {}
+	var crossing_foreground_command: CityStaticCommand
 	var crossing_depth := (64 + 64) * CityState.MAP_SIZE + 64
 
 	for command in IsometricRenderer.static_occlusion_commands(starter, large):
@@ -2646,7 +2635,8 @@ func _test_sprite_archives(reference_root: String) -> void:
 			break
 
 	_check(
-		int(crossing_foreground_command.get("train_foreground_reference_sprite_id", 0))
+		crossing_foreground_command != null
+		and crossing_foreground_command.train_foreground_reference_sprite_id
 			== 1045,
 		"Static rail-power crossover commands retain the rail-only reference",
 	)
@@ -16612,3 +16602,31 @@ func _load_fixture(path: String) -> Sc2File:
 	if not fixture_documents.has(path):
 		fixture_documents[path] = Sc2Document.load_path(path)
 	return fixture_documents[path].duplicate_document()
+
+
+func _dynamic_command_values(commands: Array[CityDynamicCommand]) -> Array:
+	var values: Array = []
+
+	for command in commands:
+		values.append([command.sprite_id, command.flip, command.position,
+			command.shadow, command.depth_order, command.record, command.overlay,
+			command.static_occlusion, command.train, command.same_tile_foreground_indices])
+
+	return values
+
+
+func _static_command_values(commands: Array[CityStaticCommand], include_region := true) -> Array:
+	var values: Array = []
+
+	for command in commands:
+		var fields := [command.sprite_id, command.flip, command.position, command.size,
+			command.depth_order, command.train_ignore, command.train_foreground_reference_sprite_id,
+			command.train_deck_thickness, command.train_deck_reference_sprite_id,
+			command.train_foreground_requires_depth]
+
+		if include_region:
+			fields.append(command.region_order)
+
+		values.append(fields)
+
+	return values

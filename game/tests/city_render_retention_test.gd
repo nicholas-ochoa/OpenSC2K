@@ -34,15 +34,24 @@ func _run() -> void:
 	assert(view.sign_occlusion_visuals[1].texture == texture, "Changing cached input altered a retained visual")
 	view.set_sign_occlusion_visuals(foreground)
 	assert(view.sign_occlusion_visuals[1].texture == replacement)
+	var dynamic := CityDynamicVisual.new(texture, Vector2(5, 7))
+	view.set_dynamic_sprites([dynamic])
+	var revision := view._dynamic_canvas.visual_revision
+	view.set_dynamic_sprites([dynamic.copy()])
+	assert(view._dynamic_canvas.visual_revision == revision, "Unchanged visual fields rebuilt the canvas")
+	dynamic.position = Vector2(15, 17)
+	assert(view.dynamic_sprites[0].position == Vector2(5, 7), "Changing input altered a retained dynamic visual")
+	view.set_dynamic_sprites([dynamic])
+	assert(view.dynamic_sprites[0].position == dynamic.position)
 	var main = load("res://src/main.gd").new()
 	main.render_caches.sign_foreground_cache.assign({
 		1: RenderCaches.SignForeground.new([2, Rect2i(0, 0, 40, 40)]),
 		2: RenderCaches.SignForeground.new([2, Rect2i(400, 400, 40, 40)]),
 	})
 	main.render_caches.dynamic_visual_cache.assign({
-		"near": {"position": Vector2.ZERO, "size": Vector2(20, 20)},
-		"far": {"position": Vector2(500, 500), "size": Vector2(20, 20)},
-		"empty": {},
+		"near": CityDynamicVisual.new(null, Vector2.ZERO, Vector2(20, 20)),
+		"far": CityDynamicVisual.new(null, Vector2(500, 500), Vector2(20, 20)),
+		"empty": null,
 	})
 	var near: Array[Rect2i] = [Rect2i(0, 0, 256, 256)]
 	main.map_render._invalidate_region_foregrounds(near)

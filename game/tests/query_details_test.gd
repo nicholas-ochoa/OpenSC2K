@@ -132,7 +132,7 @@ func _run() -> void:
 		if "--thing" in OS.get_cmdline_user_args():
 			for x in main.document_state.city.map_size:
 				for y in main.document_state.city.map_size:
-					if not CityIsometricRenderer.moving_thing_visual(main.document_state.city, x, y).is_empty():
+					if CityIsometricRenderer.moving_thing_visual(main.document_state.city, x, y) != null:
 						selected = Vector2i(x, y)
 
 		var started := Time.get_ticks_usec()

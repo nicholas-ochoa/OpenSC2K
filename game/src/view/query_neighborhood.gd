@@ -44,7 +44,7 @@ static func render(city: CityState, point: Vector2i, palette: Sc2Palette, sprite
 			var draws := CityGpuDrawList.new()
 			Renderer.draw_tile(draws, city, palette, sprites, cache, config, origin - bounds.position.x, x, y, 0, false, true)
 			var selected := site.has_point(Vector2i(x, y))
-			for draw: Dictionary in draws.draws:
+			for draw: CityGpuDrawList.Draw in draws.draws:
 				var source: Image = draw.image
 				image.blend_rect(source, draw.source, draw.position)
 
@@ -54,7 +54,7 @@ static func render(city: CityState, point: Vector2i, palette: Sc2Palette, sprite
 	# include the queried moving object in this same preview, at its map position
 	var visual := Renderer.moving_thing_visual(city, point.x, point.y, Renderer.VIEW_LARGE, 0)
 
-	if not visual.is_empty():
+	if visual != null:
 		# the moving object is always the queried one, so it stays fully opaque
 		var moving_configuration := Renderer.view_configuration(Renderer.VIEW_LARGE)
 

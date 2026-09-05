@@ -3,6 +3,17 @@ extends Control
 
 @warning_ignore_start("integer_division")
 
+class Endpoint extends RefCounted:
+	var series: int
+	var point: Vector2
+	var value: int
+
+	func _init(series_index: int, position: Vector2, latest_value: int) -> void:
+		series = series_index
+		point = position
+		value = latest_value
+
+
 const SERIES_COUNT := 16
 const DEFAULT_SELECTED_MASK := 0x000f
 const TIME_YEAR := 0
@@ -250,7 +261,7 @@ func _draw() -> void:
 			)
 
 	var maxima := display_maxima(city)
-	var endpoints: Array[Dictionary] = []
+	var endpoints: Array[Endpoint] = []
 
 	for series in SERIES_COUNT:
 		if (selected_mask & (1 << series)) == 0:
@@ -272,19 +283,17 @@ func _draw() -> void:
 		if points.size() >= 2:
 			draw_polyline(points, _series_color(series), 1.0, false)
 
-		endpoints.append({
-			"series": series,
-			"point": points[points.size() - 1],
-			"value": history[history.size() - 1],
-		})
+		endpoints.append(Endpoint.new(
+			series, points[points.size() - 1], history[history.size() - 1]
+		))
 
 	_draw_endpoint_labels(plot, endpoints, font, font_size)
 
 
 func _draw_endpoint_labels(
-	plot: Rect2, endpoints: Array[Dictionary], font: Font, font_size: int
+	plot: Rect2, endpoints: Array[Endpoint], font: Font, font_size: int
 ) -> void:
-	endpoints.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+	endpoints.sort_custom(func(left: Endpoint, right: Endpoint) -> bool:
 		var left_point: Vector2 = left.point
 		var right_point: Vector2 = right.point
 
@@ -293,7 +302,7 @@ func _draw_endpoint_labels(
 	var label_positions := PackedFloat32Array()
 
 	for index in endpoints.size():
-		var endpoint: Dictionary = endpoints[index]
+		var endpoint: Endpoint = endpoints[index]
 		var point: Vector2 = endpoint.point
 		var prior_y := (
 			label_positions[index - 1] if index > 0 else plot.position.y - 14.0
@@ -318,7 +327,7 @@ func _draw_endpoint_labels(
 			label_positions[index] += top_shift
 
 	for index in endpoints.size():
-		var endpoint: Dictionary = endpoints[index]
+		var endpoint: Endpoint = endpoints[index]
 		var point: Vector2 = endpoint.point
 		var label_y := label_positions[index]
 		var series: int = endpoint.series

@@ -32,7 +32,7 @@ class ProfileMovingSprites extends ApplicationMovingSprites:
 		super.refresh_moving_things(view_size)
 		app._record("moving", started)
 
-	func static_occlusion_candidates(bounds: Rect2i) -> Array[Dictionary]:
+	func static_occlusion_candidates(bounds: Rect2i) -> Array[CityStaticCommand]:
 		var started := Time.get_ticks_usec()
 		var result := super.static_occlusion_candidates(bounds)
 		app._record("foreground_candidates", started)

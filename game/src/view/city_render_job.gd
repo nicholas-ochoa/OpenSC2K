@@ -9,7 +9,7 @@ class Result extends RefCounted:
 	var ok := false
 	var error := ""
 	var index_image: Image
-	var occlusion_commands: Array[Dictionary] = []
+	var occlusion_commands: Array[CityStaticCommand] = []
 	var signature: Array = []
 	var view_size := Renderer.VIEW_LARGE
 	var epoch := 0
@@ -66,7 +66,7 @@ func run() -> Result:
 			Image.INTERPOLATE_NEAREST
 		)
 
-	var occlusion_commands: Array[Dictionary] = []
+	var occlusion_commands: Array[CityStaticCommand] = []
 
 	if render_mode == CityViewMode.Mode.CITY:
 		occlusion_commands = Renderer.static_occlusion_commands(

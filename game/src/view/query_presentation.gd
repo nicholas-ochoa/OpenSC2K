@@ -46,32 +46,38 @@ static func sprite_id(city: CityState, info: Dictionary) -> int:
 
 static func thing_sprite(
 	city: CityState, point: Vector2i, thing: ThingRecord, record := -1
-) -> Dictionary:
+) -> CitySpriteVisual:
 	if city == null or not city.is_valid() or thing == null:
-		return {}
+		return null
 
 	var thing_type := thing.type
 
 	if thing_type < 1 or thing_type >= Renderer.THING_SPRITES.size():
-		return {}
+		return null
 
 	match thing_type:
 		5:
-			return {"sprite_id": Renderer.THING_SPRITES[5], "flip": false}
+			var result := CitySpriteVisual.new()
+			result.sprite_id = Renderer.THING_SPRITES[5]
+			result.flip = false
+
+			return result
 		7, 8, 14:
 			var offset := int(Renderer.DISPATCH_SPRITE_OFFSETS.get(thing_type, 0))
 
-			return {
-				"sprite_id": LARGE_SPRITE_BASE + offset,
-				"flip": false,
-			}
+			var result := CitySpriteVisual.new()
+			result.sprite_id = LARGE_SPRITE_BASE + offset
+			result.flip = false
+
+			return result
 		10, 11:
 			return Renderer.train_sprite(city, point.x, point.y, thing)
 		12, 13:
-			return {
-				"sprite_id": Renderer.THING_SPRITES[thing_type],
-				"flip": false,
-			}
+			var result := CitySpriteVisual.new()
+			result.sprite_id = Renderer.THING_SPRITES[thing_type]
+			result.flip = false
+
+			return result
 		15:
 			return Renderer.tornado_sprite(
 				city, point.x, point.y, thing, max(record, 0), LARGE_VIEW

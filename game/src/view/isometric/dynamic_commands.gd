@@ -5,14 +5,27 @@ extends IsometricConstants
 @warning_ignore_start("integer_division")
 
 
+class Entry extends RefCounted:
+	var order: int
+	var record: int
+	var point: Vector2i
+	var special: bool
+
+	func _init(draw_order: int, thing_record: int, tile: Vector2i, is_special: bool) -> void:
+		order = draw_order
+		record = thing_record
+		point = tile
+		special = is_special
+
+
 static func moving_thing_draw_commands(
 	city: CityState,
 	sprites: Sc2SpriteArchive,
 	view_size := VIEW_LARGE,
 	animation_phase := 0
-) -> Array[Dictionary]:
+) -> Array[CityDynamicCommand]:
 	var map_edge: int = city.map_size if city != null else 128
-	var commands: Array[Dictionary] = []
+	var commands: Array[CityDynamicCommand] = []
 
 	if city == null or not city.is_valid() or sprites == null or not sprites.is_valid():
 		return commands
@@ -33,7 +46,7 @@ static func moving_thing_draw_commands(
 				city, x, y, view_size, animation_phase
 			)
 
-			if visual.is_empty():
+			if visual == null:
 				continue
 
 			var visual_commands := moving_thing_draw_commands_for_visual(
@@ -54,9 +67,9 @@ static func dynamic_draw_commands(
 	sprites: Sc2SpriteArchive,
 	view_size := VIEW_LARGE,
 	animation_phase := 0
-) -> Array[Dictionary]:
+) -> Array[CityDynamicCommand]:
 	var map_edge: int = city.map_size if city != null else 128
-	var commands: Array[Dictionary] = []
+	var commands: Array[CityDynamicCommand] = []
 
 	if city == null or not city.is_valid() or sprites == null or not sprites.is_valid():
 		return commands
@@ -66,7 +79,7 @@ static func dynamic_draw_commands(
 	if configuration == null:
 		return commands
 
-	var entries: Array[Dictionary] = []
+	var entries: Array[Entry] = []
 	var things := city.document.find_chunk("XTHG")
 
 	for record in city.thing_count():
@@ -84,12 +97,8 @@ static func dynamic_draw_commands(
 		):
 			continue
 
-		entries.append({
-			"order": (point.x + point.y) * map_edge + point.y,
-			"record": record,
-			"point": point,
-			"special": false,
-		})
+		entries.append(Entry.new((point.x + point.y) * map_edge + point.y,
+			record, point, false))
 
 	for overlay in SPECIAL_OVERLAY_SPRITE_OFFSETS:
 		var found := OverlayData.find(city.text_overlays, int(overlay))
@@ -98,15 +107,11 @@ static func dynamic_draw_commands(
 			var point := Vector2i(
 				int(found / map_edge), found % map_edge
 			)
-			entries.append({
-				"order": (point.x + point.y) * map_edge + point.y,
-				"record": city.thing_count(),
-				"point": point,
-				"special": true,
-			})
+			entries.append(Entry.new((point.x + point.y) * map_edge + point.y,
+				city.thing_count(), point, true))
 			found = OverlayData.find(city.text_overlays, int(overlay), found + 1)
 
-	entries.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+	entries.sort_custom(func(left: Entry, right: Entry) -> bool:
 		if int(left.order) == int(right.order):
 			return int(left.record) < int(right.record)
 
@@ -119,7 +124,7 @@ static func dynamic_draw_commands(
 		if not city.tile_is_visible(point.x, point.y):
 			continue
 
-		var entry_commands: Array[Dictionary] = []
+		var entry_commands: Array[CityDynamicCommand] = []
 
 		if entry.special:
 			var special_visual := IsometricStaticVisuals.special_overlay_visual(
@@ -129,7 +134,7 @@ static func dynamic_draw_commands(
 				city, sprites, point, special_visual, configuration
 			)
 
-			if not special_command.is_empty():
+			if special_command != null:
 				entry_commands.append(special_command)
 		else:
 			var moving_visual := IsometricMovingVisuals.moving_thing_visual(
@@ -154,18 +159,18 @@ static func special_overlay_draw_command(
 	city: CityState,
 	sprites: Sc2SpriteArchive,
 	point: Vector2i,
-	visual: Dictionary,
+	visual: IsometricStaticVisuals.SpecialOverlay,
 	configuration: CityViewConfiguration
-) -> Dictionary:
+) -> CityDynamicCommand:
 	var map_edge: int = city.map_size if city != null else 128
 
-	if visual.is_empty() or configuration == null:
-		return {}
+	if visual == null or configuration == null:
+		return null
 
 	var entry := sprites.find_sprite(int(visual.sprite_id))
 
 	if entry == null:
-		return {}
+		return null
 
 	var altitude := city.object_altitude(point.x, point.y)
 	var screen_x := (
@@ -179,29 +184,30 @@ static func special_overlay_draw_command(
 		- altitude * int(configuration.altitude_step)
 	)
 
-	return {
-		"sprite_id": int(visual.sprite_id),
-		"flip": bool(visual.flip),
-		"position": Vector2i(
-			screen_x + int(configuration.half_width) - int(entry.width / 2),
-			base_y + int(configuration.tile_height) - entry.height,
-		),
-		"shadow": false,
-		"overlay": int(visual.overlay),
-		"static_occlusion": true,
-	}
+	var result := CityDynamicCommand.new()
+	result.sprite_id = int(visual.sprite_id)
+	result.flip = bool(visual.flip)
+	result.position = Vector2i(
+		screen_x + int(configuration.half_width) - int(entry.width / 2),
+		base_y + int(configuration.tile_height) - entry.height,
+	)
+	result.shadow = false
+	result.overlay = int(visual.overlay)
+	result.static_occlusion = true
+
+	return result
 
 
 static func moving_thing_draw_commands_for_visual(
 	city: CityState,
 	sprites: Sc2SpriteArchive,
-	visual: Dictionary,
+	visual: IsometricMovingVisuals.Visual,
 	configuration: CityViewConfiguration
-) -> Array[Dictionary]:
+) -> Array[CityDynamicCommand]:
 	var map_edge: int = city.map_size if city != null else 128
-	var commands: Array[Dictionary] = []
+	var commands: Array[CityDynamicCommand] = []
 
-	if visual.is_empty() or configuration == null:
+	if visual == null or configuration == null:
 		return commands
 
 	if visual.monster:
@@ -310,10 +316,11 @@ static func moving_thing_draw_commands_for_visual(
 
 static func _moving_draw_command(
 	sprite_id: int, flip: bool, position: Vector2i, shadow: bool
-) -> Dictionary:
-	return {
-		"sprite_id": sprite_id,
-		"flip": flip,
-		"position": position,
-		"shadow": shadow,
-	}
+) -> CityDynamicCommand:
+	var result := CityDynamicCommand.new()
+	result.sprite_id = sprite_id
+	result.flip = flip
+	result.position = position
+	result.shadow = shadow
+
+	return result

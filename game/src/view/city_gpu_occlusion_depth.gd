@@ -53,7 +53,7 @@ static func decode(color: Color) -> int:
 # vertex positions are relative to `bounds.position`, as in the region mesh
 # uvs use the atlas_edge normalization of citygpuregionrenderer. the caller
 # rescales them with the region uvs if the atlas grows
-static func build(foreground: Array[Dictionary], draws: Array[Dictionary], bounds: Rect2i,
+static func build(foreground: Array[CityStaticCommand], draws: Array[CityGpuDrawList.Draw], bounds: Rect2i,
 		context: CityGpuBuildContext, sprites: Sc2SpriteArchive, palette: Sc2Palette) -> Result:
 	var normal: Array[Quad] = []
 	var train: Array[Quad] = []
@@ -64,10 +64,10 @@ static func build(foreground: Array[Dictionary], draws: Array[Dictionary], bound
 		var order := mini(int(command.depth_order), MAX_ORDER)
 		normal.append(Quad.new(order + 1, draw.image, draw.source, draw.position))
 
-		if bool(command.get("train_ignore", false)):
+		if bool(command.train_ignore):
 			continue
 
-		var crossing: bool = command.has("train_foreground_reference_sprite_id") or command.has("train_deck_thickness")
+		var crossing: bool = command.train_foreground_reference_sprite_id != 0 or command.train_deck_thickness != 0
 
 		if not crossing:
 			train.append(normal.back())
@@ -78,7 +78,7 @@ static func build(foreground: Array[Dictionary], draws: Array[Dictionary], bound
 		if mask == null:
 			continue
 
-		var depth_limited: bool = bool(command.get("train_foreground_requires_depth", false)) or command.has("train_deck_thickness")
+		var depth_limited: bool = bool(command.train_foreground_requires_depth) or command.train_deck_thickness != 0
 		train.append(Quad.new(order + 2 if depth_limited else ALWAYS, mask,
 			Rect2i(Vector2i.ZERO, mask.get_size()), draw.position))
 
@@ -149,12 +149,12 @@ static func _arrays(quads: Array[Quad], bounds: Rect2i, context: CityGpuBuildCon
 # the cpu train path builds the same masks from display-scale images, with the
 # deck thickness scaled by the view divisor. native masks are the same pixels
 # before the nearest-neighbor scale
-static func _train_mask(command: Dictionary, surface: Image, context: CityGpuBuildContext,
+static func _train_mask(command: CityStaticCommand, surface: Image, context: CityGpuBuildContext,
 		sprites: Sc2SpriteArchive, palette: Sc2Palette) -> Image:
 	var flip := bool(command.flip)
 
-	if command.has("train_deck_thickness"):
-		var reference := int(command.get("train_deck_reference_sprite_id", 0))
+	if command.train_deck_thickness != 0:
+		var reference := int(command.train_deck_reference_sprite_id)
 		var key := "deck:%d:%d:%d:%d" % [int(command.sprite_id), int(flip), reference, int(command.train_deck_thickness)]
 
 		if context.occlusion_masks.has(key):

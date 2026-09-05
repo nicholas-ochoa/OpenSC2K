@@ -153,21 +153,21 @@ static func moving_thing_visual(
 	y: int,
 	view_size := VIEW_LARGE,
 	animation_phase := 0
-) -> Dictionary:
+) -> IsometricMovingVisuals.Visual:
 	return IsometricMovingVisuals.moving_thing_visual(city, x, y, view_size, animation_phase)
 
 
-static func moving_thing_anchor(city: CityState, record: int, view_size := VIEW_LARGE) -> Dictionary:
+static func moving_thing_anchor(city: CityState, record: int, view_size := VIEW_LARGE) -> IsometricMovingVisuals.Anchor:
 	return IsometricMovingVisuals.moving_thing_anchor(city, record, view_size)
 
 
-static func moving_thing_sprite(thing: ThingRecord, view_size := VIEW_LARGE) -> Dictionary:
+static func moving_thing_sprite(thing: ThingRecord, view_size := VIEW_LARGE) -> IsometricMovingVisuals.Sprite:
 	return IsometricMovingVisuals.moving_thing_sprite(thing, view_size)
 
 
 static func train_sprite(
 	city: CityState, x: int, y: int, thing: ThingRecord
-) -> Dictionary:
+) -> IsometricMovingVisuals.Sprite:
 	return IsometricMovingVisuals.train_sprite(city, x, y, thing)
 
 
@@ -178,14 +178,14 @@ static func tornado_sprite(
 	thing: ThingRecord,
 	record: int,
 	view_size := VIEW_LARGE
-) -> Dictionary:
+) -> IsometricMovingVisuals.Sprite:
 	return IsometricMovingVisuals.tornado_sprite(city, x, y, thing, record, view_size)
 
 
 # For monsters, dx stores body-part flags rather than velocity.
 static func monster_pose_layers(
 	body_position: Vector2i, dx: int, dy: int, head_frame := 0, view_size := VIEW_LARGE
-) -> Array[Dictionary]:
+) -> Array[IsometricMovingVisuals.Layer]:
 	return IsometricMovingVisuals.monster_pose_layers(body_position, dx, dy, head_frame, view_size)
 
 
@@ -198,7 +198,7 @@ static func draw_moving_thing(
 	palette: Sc2Palette,
 	sprites: Sc2SpriteArchive,
 	cache: Dictionary,
-	visual: Dictionary,
+	visual: IsometricMovingVisuals.Visual,
 	configuration: CityViewConfiguration,
 	offset := Vector2i.ZERO
 ) -> void:
@@ -210,32 +210,32 @@ static func dynamic_draw_commands(
 	sprites: Sc2SpriteArchive,
 	view_size := VIEW_LARGE,
 	animation_phase := 0
-) -> Array[Dictionary]:
+) -> Array[CityDynamicCommand]:
 	return IsometricDynamicCommands.dynamic_draw_commands(city, sprites, view_size, animation_phase)
 
 
 static func moving_thing_draw_commands_for_visual(
 	city: CityState,
 	sprites: Sc2SpriteArchive,
-	visual: Dictionary,
+	visual: IsometricMovingVisuals.Visual,
 	configuration: CityViewConfiguration
-) -> Array[Dictionary]:
+) -> Array[CityDynamicCommand]:
 	return IsometricDynamicCommands.moving_thing_draw_commands_for_visual(city, sprites, visual, configuration)
 
 
 static func static_occlusion_commands(
 	city: CityState, sprites: Sc2SpriteArchive, view_size := VIEW_LARGE
-) -> Array[Dictionary]:
+) -> Array[CityStaticCommand]:
 	return IsometricStaticOcclusion.static_occlusion_commands(city, sprites, view_size)
 
 
 static func patch_static_occlusion_commands(
-	base_commands: Array[Dictionary],
+	base_commands: Array[CityStaticCommand],
 	city: CityState,
 	sprites: Sc2SpriteArchive,
 	dirty_indices: PackedInt32Array,
 	view_size := VIEW_LARGE
-) -> Array[Dictionary]:
+) -> Array[CityStaticCommand]:
 	return IsometricStaticOcclusion.patch_static_occlusion_commands(base_commands, city, sprites, dirty_indices, view_size)
 
 
@@ -251,11 +251,11 @@ static func tile_occlusion_commands(
 	x: int,
 	y: int,
 	draw_order: int
-) -> Array[Dictionary]:
+) -> Array[CityStaticCommand]:
 	return IsometricStaticOcclusion.tile_occlusion_commands(city, sprites, configuration, origin_x, x, y, draw_order)
 
 
-static func configure_train_foreground(command: Dictionary, building_id: int, configuration: CityViewConfiguration) -> void:
+static func configure_train_foreground(command: CityStaticCommand, building_id: int, configuration: CityViewConfiguration) -> void:
 	IsometricStaticOcclusion.configure_train_foreground(command, building_id, configuration)
 
 
@@ -264,7 +264,7 @@ static func foreground_difference_mask(sprite: Image, background: Image) -> Imag
 
 
 static func build_occlusion_grid(
-	commands: Array[Dictionary], divisor: int
+	commands: Array[CityStaticCommand], divisor: int
 ) -> Dictionary[Vector2i, Array]:
 	return IsometricPixelOperations.build_occlusion_grid(commands, divisor)
 
@@ -282,7 +282,7 @@ static func occlude_dynamic_with_mask(
 	index_image: Image = null,
 	same_tile_foreground_indices := PackedInt32Array(),
 	index_reader := Callable()
-) -> Dictionary:
+) -> IsometricPixelOperations.OcclusionResult:
 	return IsometricPixelOperations.occlude_dynamic_with_mask(
 		sprite, occluder_mask, position, index_image, same_tile_foreground_indices, index_reader
 	)

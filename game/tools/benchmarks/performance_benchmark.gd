@@ -155,11 +155,11 @@ func _benchmark_initialize() -> void:
 			edit_occlusion_patch_usec,
 			Time.get_ticks_usec() - started,
 			edit_occlusion.size(),
-			edit_occlusion == edit_full_occlusion,
+			_static_command_values(edit_occlusion) == _static_command_values(edit_full_occlusion),
 		]
 	)
 
-	if edit_occlusion != edit_full_occlusion:
+	if _static_command_values(edit_occlusion) != _static_command_values(edit_full_occlusion):
 		printerr("Regional occlusion commands do not match the complete list.")
 		quit(1)
 
@@ -228,11 +228,11 @@ func _benchmark_initialize() -> void:
 	var hurricane_commands := Renderer.dynamic_draw_commands(
 		scenario_city, sprites, Renderer.VIEW_LARGE, 30
 	)
-	var hurricane_visuals: Array[Dictionary] = []
+	var hurricane_visuals: Array[CityDynamicVisual] = []
 	var hurricane_images := {}
 
 	for command in hurricane_commands:
-		if not command.has("overlay"):
+		if command.overlay < 0:
 			continue
 
 		var image_key := "%d:%d" % [command.sprite_id, int(command.flip)]
@@ -257,16 +257,14 @@ func _benchmark_initialize() -> void:
 
 			hurricane_images[image_key] = marker_image
 
-		hurricane_visuals.append({
-			"image": marker_image,
-			"position": Vector2(command.position),
-			"size": Vector2(marker_image.get_size()),
-			"special_overlay": true,
-			"batch_cache_key": image_key + ":" + str(command.position),
-		})
+		var visual := CityDynamicVisual.new(null, Vector2(command.position), Vector2(marker_image.get_size()))
+		visual.image = marker_image
+		visual.special_overlay = true
+		visual.batch_cache_key = image_key + ":" + str(command.position)
+		hurricane_visuals.append(visual)
 
 	started = Time.get_ticks_usec()
-	var hurricane_batch_cache := {}
+	var hurricane_batch_cache: Dictionary[String, CityDynamicVisual] = {}
 	var hurricane_batches := DynamicSpriteCanvas.batch_special_visuals(
 		hurricane_visuals, hurricane_batch_cache
 	)
@@ -288,10 +286,19 @@ func _benchmark_initialize() -> void:
 		]
 	)
 	var dynamic_canvas := DynamicSpriteCanvas.new()
+	var canvas_visuals: Array[CityDynamicVisual] = []
+
+	for command in hurricane_commands:
+		var visual := CityDynamicVisual.new(null, Vector2(command.position))
+		visual.depth_order = command.depth_order
+		visual.record = command.record
+		visual.shadow = command.shadow
+		canvas_visuals.append(visual)
+
 	started = Time.get_ticks_usec()
 
 	for _canvas_index in 40:
-		dynamic_canvas.set_visuals(hurricane_commands, 1.0, Vector2.ZERO)
+		dynamic_canvas.set_visuals(canvas_visuals, 1.0, Vector2.ZERO)
 
 	print(
 		"hurricane_dynamic_canvas_40: %d us; commands=%d; ok=%s"
@@ -393,3 +400,20 @@ static func fixture_paths() -> PackedStringArray:
 		reference_path("CITIES/" + input_path(DEFAULT_CITY_FILE).get_file()), reference_path("DATA/LARGE.DAT"),
 		reference_path("SCENARIO/CHARLEST.SCN"),
 	])
+
+
+func _static_command_values(commands: Array[CityStaticCommand], include_region := true) -> Array:
+	var values: Array = []
+
+	for command in commands:
+		var fields := [command.sprite_id, command.flip, command.position, command.size,
+			command.depth_order, command.train_ignore, command.train_foreground_reference_sprite_id,
+			command.train_deck_thickness, command.train_deck_reference_sprite_id,
+			command.train_foreground_requires_depth]
+
+		if include_region:
+			fields.append(command.region_order)
+
+		values.append(fields)
+
+	return values

@@ -17,7 +17,7 @@ static func build(region: CityGpuRegionResult, requests: Array[CitySignRequest],
 			continue
 
 		var masks: Array[CitySignForeground.Mask] = []
-		for command: Dictionary in region.occlusion_commands:
+		for command: CityStaticCommand in region.occlusion_commands:
 			if int(command.depth_order) <= int(request.draw_order):
 				continue
 

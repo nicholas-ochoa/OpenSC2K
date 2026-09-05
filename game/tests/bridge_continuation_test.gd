@@ -19,7 +19,8 @@ func _initialize() -> void:
 				assert(city.building_id(x, 20) != 0, "Network continues across the bridge to the endpoint")
 
 			assert(city.funds() == 20000 - command.cost)
-			var artwork := NetworkPlacementPreview.build({"city": preview_city, "group": group, "tool": 0, "start": Vector2i(base, 20), "finish": Vector2i(base + 12, 20), "view": 2, "palette": palette, "sprites": sprites, "underground": false})
+			var artwork := NetworkPlacementPreview.build(NetworkPlacementPreview.Request.new(preview_city, group, 0,
+				Vector2i(base, 20), Vector2i(base + 12, 20), 2, palette, sprites, false))
 			assert(not artwork.draws.is_empty() and preview_city.building_id(base + 12, 20) != 0)
 			assert(DocumentState.capture(preview_city.document) == DocumentState.capture(city.document), "Bridge preview matches the complete placed route")
 			assert(NetworkCommand.undo(city, command).ok)

@@ -43,7 +43,7 @@ func _run() -> void:
 		var after := CityIsometricRenderer.moving_thing_anchor(main.document_state.city, airplane, 2)
 		var canvas: CityDynamicSpriteCanvas = main.map_view._dynamic_canvas
 
-		if before.is_empty() or after.is_empty() or not ApplicationMovingSprites.can_blend(before, after) or before.anchor == after.anchor:
+		if before == null or after == null or not ApplicationMovingSprites.can_blend(before, after) or before.anchor == after.anchor:
 			main.moving_sprites.advance_blend(now + 200)
 			continue
 
@@ -103,11 +103,11 @@ func _first_record(city: CityState, types: Array) -> int:
 	return -1
 
 
-func _gpu_visuals(main: Node) -> Array[Dictionary]:
-	var result: Array[Dictionary] = []
+func _gpu_visuals(main: Node) -> Array[CityDynamicVisual]:
+	var result: Array[CityDynamicVisual] = []
 
-	for visual: Dictionary in main.map_view._dynamic_canvas.visuals:
-		if visual.has("gpu_mode"):
+	for visual: CityDynamicVisual in main.map_view._dynamic_canvas.visuals:
+		if visual.gpu_mode >= 0:
 			result.append(visual)
 
 	return result

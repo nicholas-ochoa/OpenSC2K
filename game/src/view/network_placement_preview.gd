@@ -4,12 +4,60 @@ extends CanvasGroup
 
 @warning_ignore_start("integer_division")
 
+class Request extends RefCounted:
+	var city: CityState
+	var group: int
+	var tool: int
+	var start: Vector2i
+	var finish: Vector2i
+	var view: int
+	var palette: Sc2Palette
+	var sprites: Sc2SpriteArchive
+	var underground: bool
+	var free_mode: bool
+	var cache: Dictionary
+
+	func _init(source: CityState, tool_group: int, subtool: int, first: Vector2i, last: Vector2i,
+		graphics_size: int, colors: Sc2Palette, artwork: Sc2SpriteArchive, below_ground: bool,
+		free := false, images: Dictionary = {}) -> void:
+		city = source
+		group = tool_group
+		tool = subtool
+		start = first
+		finish = last
+		view = graphics_size
+		palette = colors
+		sprites = artwork
+		underground = below_ground
+		free_mode = free
+		cache = images
+
+
+class Result extends RefCounted:
+	var draws: Array[CityGpuDrawList.Draw] = []
+	var command: EditCommandResult
+	var divisor := 1
+	var candidate_count := 0
+	var tile_count := 0
+
+
+class Visual extends RefCounted:
+	var texture: ImageTexture
+	var source: Rect2i
+	var position: Vector2i
+
+	func _init(image_texture: ImageTexture, area: Rect2i, destination: Vector2i) -> void:
+		texture = image_texture
+		source = area
+		position = destination
+
+
 var worker: Thread
-var pending: Dictionary = {}
+var pending: Request
 var request_key := ""
 var generation := 0
 var worker_generation := 0
-var visuals: Array[Dictionary] = []
+var visuals: Array[Visual] = []
 var divisor := 1
 # planned price for the pending route, anchored at the drag start tile
 var cost := -1
@@ -41,7 +89,7 @@ func clear() -> void:
 	request_key = ""
 	context_key = ""
 	render_key = ""
-	pending.clear()
+	pending = null
 	visuals.clear()
 	cost = -1
 	affordable = true
@@ -88,8 +136,8 @@ func request(city: CityState, group: int, tool: int, start: Vector2i, finish: Ve
 		map_view.network_preview_active = true
 		map_view.queue_redraw()
 
-	pending = {"city": city, "group": group, "tool": tool, "start": start, "finish": finish, "view": view, "palette": palette,
-			"sprites": sprites, "underground": underground, "free_mode": free_mode, "cache": sprite_cache}
+	pending = Request.new(city, group, tool, start, finish, view, palette,
+			sprites, underground, free_mode, sprite_cache)
 
 
 func _process(_delta: float) -> void:
@@ -99,29 +147,29 @@ func _process(_delta: float) -> void:
 		var completed := worker
 		worker = null
 		var value: Variant = completed.wait_to_finish()
-		var result: Dictionary = value if value is Dictionary else {"draws": []}
+		var result: Result = value if value is Result else Result.new()
 
 		if worker_generation == generation and not request_key.is_empty():
 			visuals.clear()
-			_read_price(result.get("command") as EditCommandResult)
-			divisor = int(result.get("divisor", 1))
-			for draw: Dictionary in result.get("draws", []):
+			_read_price(result.command)
+			divisor = result.divisor
+			for draw in result.draws:
 				var source: Image = draw.image
 				var key := source.get_instance_id()
 
 				if not texture_cache.has(key):
 					texture_cache[key] = ImageTexture.create_from_image(source)
 
-				visuals.append({"texture": texture_cache[key], "source": draw.source, "position": draw.position})
+				visuals.append(Visual.new(texture_cache[key], draw.source, draw.position))
 
 			if map_view != null:
 				map_view.queue_redraw()
 
 			painter.queue_redraw()
 
-	if worker == null and not pending.is_empty():
-		var job := pending.duplicate()
-		pending.clear()
+	if worker == null and pending != null:
+		var job := pending
+		pending = null
 		# copy on the main thread; the worker never reads live simulation data
 		job.city = snapshot_city(job.city)
 		worker_generation = generation
@@ -205,17 +253,20 @@ static func apply_preview(city: CityState, group: int, tool: int, start: Vector2
 	return EditCommandResult.new()
 
 
-static func build(job: Dictionary) -> Dictionary:
+static func build(job: Request) -> Result:
 	var city: CityState = job.city
 	var before_buildings := city.buildings
 	var before_terrain := city.terrain
 	var before_underground := city.underground
 	var before_flags := city.tile_flags
 	var before_altitude := city.altitude_words.duplicate()
-	var result := apply_preview(city, job.group, job.tool, job.start, job.finish, bool(job.get("free_mode", false)))
+	var result := apply_preview(city, job.group, job.tool, job.start, job.finish, job.free_mode)
+
+	var artwork := Result.new()
+	artwork.command = result
 
 	if not result.ok:
-		return {"draws": [], "command": result}
+		return artwork
 
 	var tiles := {}
 	# command footprints include bridge decks and tunnel paths. check adjacent
@@ -234,7 +285,7 @@ static func build(job: Dictionary) -> Dictionary:
 	var config := CityIsometricRenderer.view_configuration(job.view)
 	var origin := int(config.side_margin) + city.map_size * int(config.half_width)
 	var draws := CityGpuDrawList.new()
-	var cache: Dictionary = job.get("cache", {})
+	var cache := job.cache
 
 	for key in order:
 		var point: Vector2i = tiles[key]
@@ -244,10 +295,15 @@ static func build(job: Dictionary) -> Dictionary:
 		else:
 			CityIsometricRenderer.draw_tile(draws, city, job.palette, job.sprites, cache, config, origin, point.x, point.y, 0, false, true)
 
-	return {"draws": draws.draws, "divisor": config.divisor, "command": result, "candidate_count": candidates.size(), "tile_count": tiles.size()}
+	artwork.draws = draws.draws
+	artwork.divisor = config.divisor
+	artwork.candidate_count = candidates.size()
+	artwork.tile_count = tiles.size()
+
+	return artwork
 
 
-static func candidate_indices(command: EditCommandResult, start: Vector2i, finish: Vector2i, edge: int) -> Dictionary:
+static func candidate_indices(command: EditCommandResult, start: Vector2i, finish: Vector2i, edge: int) -> Dictionary[int, bool]:
 	var points: Array = [start, finish]
 	points.append_array(command.points)
 	for index: int in command.tile_indices:
@@ -256,7 +312,7 @@ static func candidate_indices(command: EditCommandResult, start: Vector2i, finis
 	if command is OnrampEditResult:
 		points.append((command as OnrampEditResult).road_point)
 
-	var candidates := {}
+	var candidates: Dictionary[int, bool] = {}
 	for point: Vector2i in points:
 		for x in range(maxi(0, point.x - 2), mini(edge, point.x + 3)):
 			for y in range(maxi(0, point.y - 2), mini(edge, point.y + 3)):

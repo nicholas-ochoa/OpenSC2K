@@ -28,7 +28,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 	var origin := int(configuration.side_margin) + city.map_size * int(configuration.half_width)
 	var sprite_limit := Renderer.maximum_sprite_size(sprites)
 	var cache := {}
-	var foreground: Array[Dictionary] = []
+	var foreground: Array[CityStaticCommand] = []
 	var count := 0
 	var span := Renderer.region_tile_span(configuration, sprite_limit, bounds, city.map_size, mode == CityViewMode.Mode.UNDERGROUND)
 
@@ -53,7 +53,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 				var commands := Renderer.tile_occlusion_commands(city, sprites, configuration, origin, x, y, order)
 
 				for index in commands.size():
-					var command: Dictionary = commands[index]
+					var command: CityStaticCommand = commands[index]
 
 					if Rect2i(command.position, command.size).intersects(bounds):
 						command.region_order = (order << 16) | index

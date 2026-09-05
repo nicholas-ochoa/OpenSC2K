@@ -253,17 +253,17 @@ static func sign_display_multiplier(zoom: float) -> float:
 
 
 static func later_sign_occluder_visuals(
-	visuals: Array[Dictionary], bounds: Rect2i, draw_order: int
-) -> Array[Dictionary]:
-	var result: Array[Dictionary] = []
+	visuals: Array[CityDynamicVisual], bounds: Rect2i, draw_order: int
+) -> Array[CityDynamicVisual]:
+	var result: Array[CityDynamicVisual] = []
 
 	for visual in visuals:
-		if bool(visual.get("shadow", false)) or int(visual.get("depth_order", -1)) <= draw_order:
+		if visual.shadow or visual.depth_order <= draw_order:
 			continue
 
 		var visual_bounds := Rect2i(
-			Vector2i(visual.get("position", Vector2.ZERO)),
-			Vector2i(visual.get("size", Vector2.ZERO)),
+			Vector2i(visual.position),
+			Vector2i(visual.size),
 		)
 
 		if bounds.intersects(visual_bounds):

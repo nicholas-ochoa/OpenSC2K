@@ -40,11 +40,11 @@ func refresh_city(value: CityState) -> void:
 		simnation_control.set_city(value)
 
 
-func _neighbor_names(value: CityState) -> Dictionary:
-	var names := {}
+func _neighbor_names(value: CityState) -> Dictionary[int, String]:
+	var names: Dictionary[int, String] = {}
 	var data := SimNationView.snapshot(value)
 
-	if not data.get("ok", false):
+	if not data.ok:
 		return names
 
 	for neighbor in data.neighbors:

@@ -3,6 +3,29 @@ extends Control
 
 @warning_ignore_start("integer_division")
 
+class Neighbor extends RefCounted:
+	var index: int
+	var name_index: int
+	var name_resource_id: int
+	var population: int
+	var value: int
+	var fame: int
+
+
+class Snapshot extends RefCounted:
+	var ok: bool = false
+	var error: String = ""
+	var city_name: String = ""
+	var normal_population: int
+	var arcology_population: int
+	var arcology_count: int
+	var arcology_adjustment: int
+	var display_population: int
+	var national_population: int
+	var compass: int
+	var neighbors: Array[Neighbor] = []
+
+
 const LOGICAL_SIZE := Vector2(204.0, 160.0)
 const SPRITE_SIZE := Vector2(128.0, 64.0)
 const SPRITE_ROW_COUNT := 6
@@ -76,25 +99,29 @@ func refresh() -> void:
 	queue_redraw()
 
 
-static func snapshot(value_city: CityState) -> Dictionary:
+static func snapshot(value_city: CityState) -> Snapshot:
 	if value_city == null or not value_city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		var result := Snapshot.new()
+		result.ok = false
+		result.error = "city is invalid"
 
-	var neighbors: Array[Dictionary] = []
+		return result
+
+	var neighbors: Array[Neighbor] = []
 
 	for index in NEIGHBOR_COUNT:
 		var offset := MISC_NEIGHBORS + index * NEIGHBOR_STRIDE
 		var name_index := _to_i16(value_city.document.misc_u32(offset))
-		neighbors.append({
-			"index": index,
-			"name_index": name_index,
-			"name_resource_id": (
-				0 if name_index == 0 else NEIGHBOR_NAME_STRING_BASE + name_index
-			),
-			"population": value_city.document.misc_u32(offset + 4),
-			"value": value_city.document.misc_u32(offset + 8),
-			"fame": value_city.document.misc_u32(offset + 12),
-		})
+		var neighbor := Neighbor.new()
+		neighbor.index = index
+		neighbor.name_index = name_index
+		neighbor.name_resource_id = (
+			0 if name_index == 0 else NEIGHBOR_NAME_STRING_BASE + name_index
+		)
+		neighbor.population = value_city.document.misc_u32(offset + 4)
+		neighbor.value = value_city.document.misc_u32(offset + 8)
+		neighbor.fame = value_city.document.misc_u32(offset + 12)
+		neighbors.append(neighbor)
 
 	var arcology_tiles := 0
 
@@ -110,19 +137,20 @@ static func snapshot(value_city: CityState) -> Dictionary:
 	var normal_population := value_city.document.misc_u32(MISC_NORMAL_POPULATION)
 	var arcology_population := value_city.document.misc_u32(MISC_ARCOLOGY_POPULATION)
 
-	return {
-		"ok": true,
-		"city_name": value_city.city_name(),
-		"normal_population": normal_population,
-		"arcology_population": arcology_population,
-		"arcology_count": arcology_count,
-		"arcology_adjustment": arcology_adjustment,
-		"display_population": normal_population + arcology_population + arcology_adjustment,
-		"national_population": value_city.document.misc_u32(MISC_NATIONAL_POPULATION),
-		"compass": value_city.compass_rotation(),
-		"neighbors": neighbors,
-		"error": "",
-	}
+	var result := Snapshot.new()
+	result.ok = true
+	result.city_name = value_city.city_name()
+	result.normal_population = normal_population
+	result.arcology_population = arcology_population
+	result.arcology_count = arcology_count
+	result.arcology_adjustment = arcology_adjustment
+	result.display_population = normal_population + arcology_population + arcology_adjustment
+	result.national_population = value_city.document.misc_u32(MISC_NATIONAL_POPULATION)
+	result.compass = value_city.compass_rotation()
+	result.neighbors = neighbors
+	result.error = ""
+
+	return result
 
 
 static func display_neighbor_indices(compass: int) -> PackedInt32Array:
@@ -193,7 +221,7 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), BACKGROUND_COLOR, true)
 	var data := snapshot(city)
 
-	if not data.get("ok", false):
+	if not data.ok:
 		_draw_centered_message("No city is loaded.")
 
 		return
@@ -205,7 +233,7 @@ func _draw() -> void:
 		var displayed := display_neighbor_indices(int(data.compass))
 
 		for position_index in displayed.size():
-			var neighbor: Dictionary = data.neighbors[displayed[position_index]]
+			var neighbor: Neighbor = data.neighbors[displayed[position_index]]
 			_draw_settlement(
 				SPRITE_POSITIONS[position_index + 1],
 				int(neighbor.population),
@@ -220,7 +248,7 @@ func _draw() -> void:
 	var displayed := display_neighbor_indices(int(data.compass))
 
 	for position_index in displayed.size():
-		var neighbor: Dictionary = data.neighbors[displayed[position_index]]
+		var neighbor: Neighbor = data.neighbors[displayed[position_index]]
 		var name_index := int(neighbor.name_index)
 		var label := "Ocean" if name_index == 0 else str(
 			neighbor_names.get(name_index, "City %d" % name_index)

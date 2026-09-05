@@ -2,13 +2,13 @@ class_name CityDynamicCommandCache
 extends RefCounted
 # cache painter commands independently of static-region publication
 var signature: Array = []
-var commands: Array[Dictionary] = []
+var commands: Array[CityDynamicCommand] = []
 var rebuilds := 0
 var _phase := -1
 var _phase_animated := false
 
 
-func get_commands(city: CityState, sprites: Sc2SpriteArchive, view: int, phase: int) -> Array[Dictionary]:
+func get_commands(city: CityState, sprites: Sc2SpriteArchive, view: int, phase: int) -> Array[CityDynamicCommand]:
 	if city == null or city.document == null or not city.is_valid() or sprites == null or not sprites.is_valid():
 		return []
 
@@ -25,8 +25,8 @@ func get_commands(city: CityState, sprites: Sc2SpriteArchive, view: int, phase: 
 		_phase = phase
 
 		if changed:
-			_phase_animated = commands.any(func(command: Dictionary) -> bool:
-				return command.has("overlay"))
+			_phase_animated = commands.any(func(command: CityDynamicCommand) -> bool:
+				return command.overlay >= 0)
 
 			if not _phase_animated and things != null:
 				# type 6 uses the display clock to mirror its sprite. other moving

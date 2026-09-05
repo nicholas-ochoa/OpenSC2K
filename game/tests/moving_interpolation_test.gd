@@ -39,12 +39,12 @@ func _check_blend_timing() -> void:
 
 
 func _check_blend_limits() -> void:
-	var from := {"type": 1, "x": 10, "y": 10}
-	assert(ApplicationMovingSprites.can_blend(from, {"type": 1, "x": 11, "y": 9}))
-	assert(ApplicationMovingSprites.can_blend(from, {"type": 1, "x": 12, "y": 12}))
-	assert(not ApplicationMovingSprites.can_blend(from, {"type": 1, "x": 13, "y": 10}), "A long move is a new record")
-	assert(not ApplicationMovingSprites.can_blend(from, {"type": 6, "x": 10, "y": 10}), "A crash becomes an explosion in place")
-	assert(ApplicationMovingSprites.can_blend({"type": 10, "x": 3, "y": 3}, {"type": 11, "x": 3, "y": 4}), "Engines and cars share a consist")
+	var from := IsometricMovingVisuals.Anchor.new(1, Vector2i(10, 10))
+	assert(ApplicationMovingSprites.can_blend(from, IsometricMovingVisuals.Anchor.new(1, Vector2i(11, 9))))
+	assert(ApplicationMovingSprites.can_blend(from, IsometricMovingVisuals.Anchor.new(1, Vector2i(12, 12))))
+	assert(not ApplicationMovingSprites.can_blend(from, IsometricMovingVisuals.Anchor.new(1, Vector2i(13, 10))), "A long move is a new record")
+	assert(not ApplicationMovingSprites.can_blend(from, IsometricMovingVisuals.Anchor.new(6, Vector2i(10, 10))), "A crash becomes an explosion in place")
+	assert(ApplicationMovingSprites.can_blend(IsometricMovingVisuals.Anchor.new(10, Vector2i(3, 3)), IsometricMovingVisuals.Anchor.new(11, Vector2i(3, 4))), "Engines and cars share a consist")
 
 
 func _check_item_colors() -> void:
@@ -87,7 +87,7 @@ func _check_anchors(city: CityState, sprites: Sc2SpriteArchive) -> void:
 	var checked := 0
 
 	for command in CityIsometricRenderer.dynamic_draw_commands(city, sprites, CityIsometricRenderer.VIEW_LARGE, 0):
-		if not command.has("record") or bool(command.get("shadow", false)):
+		if command.record < 0 or command.shadow:
 			continue
 
 		var thing := city.thing(int(command.record))
@@ -115,7 +115,7 @@ func _check_anchors(city: CityState, sprites: Sc2SpriteArchive) -> void:
 
 	for record in city.thing_count():
 		if int(city.thing(record).type) == 0:
-			assert(CityIsometricRenderer.moving_thing_anchor(city, record, 2).is_empty(), "An unused record has no anchor")
+			assert(CityIsometricRenderer.moving_thing_anchor(city, record, 2) == null, "An unused record has no anchor")
 
 
 func _check_depth_arrays(city: CityState, sprites: Sc2SpriteArchive) -> void:
@@ -131,11 +131,11 @@ func _check_depth_arrays(city: CityState, sprites: Sc2SpriteArchive) -> void:
 		var clipped := 0
 		var ignored := 0
 
-		for command: Dictionary in result.occlusion_commands:
+		for command: CityStaticCommand in result.occlusion_commands:
 			if Rect2i(command.position, command.size).intersection(bounds).has_area():
 				clipped += 1
 
-				if bool(command.get("train_ignore", false)):
+				if bool(command.train_ignore):
 					ignored += 1
 
 		for field in ["depth_arrays", "train_depth_arrays"]:

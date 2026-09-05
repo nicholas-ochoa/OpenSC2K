@@ -4,6 +4,35 @@ extends IsometricConstants
 
 @warning_ignore_start("integer_division")
 
+class Edge extends RefCounted:
+	var sprite_id: int
+	var elevation: int
+
+	func _init(id: int, height: int) -> void:
+		sprite_id = id
+		elevation = height
+
+
+class Ground extends RefCounted:
+	var source: Vector2i
+	var sprite_id: int
+	var offset: Vector2i
+
+	func _init(point: Vector2i, id: int, position: Vector2i) -> void:
+		source = point
+		sprite_id = id
+		offset = position
+
+
+class Traffic extends CitySpriteVisual:
+	var variant: int
+	var density: int
+
+
+class SpecialOverlay extends CitySpriteVisual:
+	var overlay: int
+
+
 const SIGN_PAGE_CELLS := 1024
 
 
@@ -61,12 +90,12 @@ static func validate_assets(
 
 				var traffic_visual := traffic_overlay_visual(city, x, y, view_size)
 
-				if not traffic_visual.is_empty() and sprites.find_sprite(traffic_visual.sprite_id) == null:
+				if traffic_visual != null and sprites.find_sprite(traffic_visual.sprite_id) == null:
 					missing[traffic_visual.sprite_id] = true
 
 				var power_marker := power_marker_visual(city, x, y, view_size)
 
-				if not power_marker.is_empty() and sprites.find_sprite(power_marker.sprite_id) == null:
+				if power_marker != null and sprites.find_sprite(power_marker.sprite_id) == null:
 					missing[power_marker.sprite_id] = true
 
 			var special_overlay := city.text_overlay_id(x, y)
@@ -88,8 +117,8 @@ static func validate_assets(
 
 			var moving_visual := IsometricMovingVisuals.moving_thing_visual(city, x, y, view_size)
 
-			if not moving_visual.is_empty():
-				if moving_visual.get("monster", false):
+			if moving_visual != null:
+				if moving_visual.monster:
 					for layer in moving_visual.layers:
 						if sprites.find_sprite(layer.sprite_id) == null:
 							missing[layer.sprite_id] = true
@@ -111,9 +140,9 @@ static func validate_assets(
 
 static func edge_stack_visuals(
 	city: CityState, x: int, y: int, view_size := VIEW_LARGE
-) -> Array[Dictionary]:
+) -> Array[Edge]:
 	var map_edge: int = city.map_size if city != null else 128
-	var visuals: Array[Dictionary] = []
+	var visuals: Array[Edge] = []
 
 	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
 		return visuals
@@ -129,19 +158,13 @@ static func edge_stack_visuals(
 	var land := city.land_altitude(x, y)
 
 	for level in land:
-		visuals.append({
-			"sprite_id": int(configuration.sprite_base) + 269,
-			"elevation": level * int(configuration.altitude_step),
-		})
+		visuals.append(Edge.new(int(configuration.sprite_base) + 269, level * int(configuration.altitude_step)))
 
 	if city.is_water(x, y):
 		var water := city.water_altitude(x, y)
 
 		for level in range(land, water):
-			visuals.append({
-				"sprite_id": int(configuration.sprite_base) + 284,
-				"elevation": level * int(configuration.altitude_step),
-			})
+			visuals.append(Edge.new(int(configuration.sprite_base) + 284, level * int(configuration.altitude_step)))
 
 	return visuals
 
@@ -149,8 +172,8 @@ static func edge_stack_visuals(
 static func highway_ground_visuals(
 	city: CityState, x: int, y: int, view_size := VIEW_LARGE,
 	redraw_small := false
-) -> Array[Dictionary]:
-	var visuals: Array[Dictionary] = []
+) -> Array[Ground]:
+	var visuals: Array[Ground] = []
 
 	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
 		return visuals
@@ -179,41 +202,38 @@ static func highway_ground_visuals(
 		if city.index_of(source.x, source.y) < 0:
 			continue
 
-		visuals.append({
-			"source": source,
-			"sprite_id": IsometricGeometry.terrain_sprite_id(
+		visuals.append(Ground.new(source, IsometricGeometry.terrain_sprite_id(
 				city.terrain_id(source.x, source.y),
 				city.is_water(source.x, source.y),
 				configuration.sprite_base,
 			),
-			"offset": screen_offsets[index],
-		})
+			screen_offsets[index]))
 
 	return visuals
 
 
 static func traffic_overlay_visual(
 	city: CityState, x: int, y: int, view_size := VIEW_LARGE
-) -> Dictionary:
+) -> Traffic:
 	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
-		return {}
+		return null
 
 	var configuration := IsometricGeometry.view_configuration(view_size)
 
 	if configuration == null:
-		return {}
+		return null
 
 	var tile := city.building_id(x, y)
 
 	# the executable enters its traffic branch only for road-or-higher xbld
 	# values. earlier table entries belong to other painter paths
 	if tile < 0x1d or tile >= TRAFFIC_TILE_VARIANTS.size():
-		return {}
+		return null
 
 	var variant: int = TRAFFIC_TILE_VARIANTS[tile]
 
 	if variant == 0:
-		return {}
+		return null
 
 	var density := city.traffic_density(x, y)
 	var low_threshold := 85
@@ -224,7 +244,7 @@ static func traffic_overlay_visual(
 		high_threshold = 56
 
 	if density <= low_threshold:
-		return {}
+		return null
 
 	var flip := city.is_flipped(x, y)
 
@@ -239,76 +259,78 @@ static func traffic_overlay_visual(
 
 	if density > high_threshold:
 		if variant < 0 or variant >= TRAFFIC_HIGH_VARIANTS.size():
-			return {}
+			return null
 
 		variant = TRAFFIC_HIGH_VARIANTS[variant]
 
 	if variant == 0:
-		return {}
+		return null
 
 	# The small archive ends at traffic variant 27, even though the original
 	# painter can request later IDs.
 	if view_size == VIEW_SMALL and variant > 27:
-		return {}
+		return null
 
-	return {
-		"sprite_id": int(configuration.sprite_base) + TRAFFIC_SPRITE_OFFSET + variant,
-		"flip": flip,
-		"variant": variant,
-		"density": density,
-	}
+	var result := Traffic.new()
+	result.sprite_id = int(configuration.sprite_base) + TRAFFIC_SPRITE_OFFSET + variant
+	result.flip = flip
+	result.variant = variant
+	result.density = density
+
+	return result
 
 
 static func power_marker_visual(
 	city: CityState, x: int, y: int, view_size := VIEW_LARGE
-) -> Dictionary:
+) -> CitySpriteVisual:
 	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
-		return {}
+		return null
 
 	var configuration := IsometricGeometry.view_configuration(view_size)
 
 	if configuration == null:
-		return {}
+		return null
 
 	if (
 		city.building_id(x, y) < 0x70
 		or not city.is_powerable(x, y)
 		or city.is_powered(x, y)
 	):
-		return {}
+		return null
 
-	return {
-		"sprite_id": int(configuration.sprite_base) + POWER_MARKER_SPRITE_OFFSET,
-	}
+	var result := CitySpriteVisual.new()
+	result.sprite_id = int(configuration.sprite_base) + POWER_MARKER_SPRITE_OFFSET
+
+	return result
 
 
 static func fire_overlay_visual(
 	city: CityState, x: int, y: int, view_size := VIEW_LARGE, animation_phase := 0
-) -> Dictionary:
+) -> SpecialOverlay:
 	if city == null or city.text_overlay_id(x, y) != 0xff:
-		return {}
+		return null
 
 	return special_overlay_visual(city, x, y, view_size, animation_phase)
 
 
 static func special_overlay_visual(
 	city: CityState, x: int, y: int, view_size := VIEW_LARGE, animation_phase := 0
-) -> Dictionary:
+) -> SpecialOverlay:
 	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
-		return {}
+		return null
 
 	var overlay := city.text_overlay_id(x, y)
 
 	if not SPECIAL_OVERLAY_SPRITE_OFFSETS.has(overlay):
-		return {}
+		return null
 
 	if city.is_water(x, y) and overlay != 0xfb and overlay != 0xfc:
-		return {}
+		return null
 
 	var configuration := IsometricGeometry.view_configuration(view_size)
 
 	if configuration == null:
-		return {}
+		return null
 
 	var phase := animation_phase + x * 3 + y * 5
 
@@ -324,11 +346,12 @@ static func special_overlay_visual(
 	if sprite_offsets.size() > 1:
 		sprite_offset = sprite_offsets[phase % sprite_offsets.size()]
 
-	return {
-		"sprite_id": int(configuration.sprite_base) + sprite_offset,
-		"flip": ((phase >> 2) & 1) != 0,
-		"overlay": overlay,
-	}
+	var result := SpecialOverlay.new()
+	result.sprite_id = int(configuration.sprite_base) + sprite_offset
+	result.flip = ((phase >> 2) & 1) != 0
+	result.overlay = overlay
+
+	return result
 
 
 static func dispatch_sprite_id(

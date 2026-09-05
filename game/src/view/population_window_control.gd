@@ -3,6 +3,25 @@ extends Control
 
 @warning_ignore_start("integer_division")
 
+class Cohort extends RefCounted:
+	var age_start: int
+	var population: int
+	var education_points: int
+	var life_points: int
+	var education_quotient: int
+	var life_expectancy: int
+
+
+class Snapshot extends RefCounted:
+	var ok: bool = false
+	var error: String = ""
+	var cohorts: Array[Cohort] = []
+	var total_population: int
+	var workforce_percent: int
+	var workforce_life_expectancy: int
+	var workforce_education_quotient: int
+
+
 enum Mode {
 	POPULATION,
 	HEALTH,
@@ -45,51 +64,56 @@ func refresh() -> void:
 	queue_redraw()
 
 
-static func snapshot(value_city: CityState) -> Dictionary:
+static func snapshot(value_city: CityState) -> Snapshot:
 	if value_city == null or not value_city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		var result := Snapshot.new()
+		result.ok = false
+		result.error = "city is invalid"
 
-	var cohorts: Array[Dictionary] = []
+		return result
+
+	var cohorts: Array[Cohort] = []
 
 	for cohort in COHORT_COUNT:
 		var offset := MISC_POPULATION_TABLE + cohort * COHORT_STRIDE
 		var population := value_city.document.misc_u32(offset)
 		var education_points := value_city.document.misc_u32(offset + 4)
 		var life_points := value_city.document.misc_u32(offset + 8)
-		cohorts.append({
-			"age_start": cohort * 5,
-			"population": population,
-			"education_points": education_points,
-			"life_points": life_points,
-			"education_quotient": (
-				int(education_points / population) if population > 0 else 0
-			),
-			"life_expectancy": (
-				int(life_points / population) if population > 0 else 0
-			),
-		})
+		var entry := Cohort.new()
+		entry.age_start = cohort * 5
+		entry.population = population
+		entry.education_points = education_points
+		entry.life_points = life_points
+		entry.education_quotient = (
+			int(education_points / population) if population > 0 else 0
+		)
+		entry.life_expectancy = (
+			int(life_points / population) if population > 0 else 0
+		)
+		cohorts.append(entry)
 
-	return {
-		"ok": true,
-		"cohorts": cohorts,
-		"total_population": value_city.document.misc_u32(MISC_NORMAL_POPULATION),
-		"workforce_percent": value_city.document.misc_u32(MISC_WORKFORCE_PERCENT),
-		"workforce_life_expectancy": value_city.document.misc_u32(MISC_WORKFORCE_LE),
-		"workforce_education_quotient": value_city.document.misc_u32(MISC_WORKFORCE_EQ),
-		"error": "",
-	}
+	var result := Snapshot.new()
+	result.ok = true
+	result.cohorts = cohorts
+	result.total_population = value_city.document.misc_u32(MISC_NORMAL_POPULATION)
+	result.workforce_percent = value_city.document.misc_u32(MISC_WORKFORCE_PERCENT)
+	result.workforce_life_expectancy = value_city.document.misc_u32(MISC_WORKFORCE_LE)
+	result.workforce_education_quotient = value_city.document.misc_u32(MISC_WORKFORCE_EQ)
+	result.error = ""
+
+	return result
 
 
-static func chart_values(data: Dictionary, selected_mode: int) -> PackedInt32Array:
+static func chart_values(data: Snapshot, selected_mode: int) -> PackedInt32Array:
 	var result := PackedInt32Array()
 
-	if not data.get("ok", false):
+	if not data.ok:
 		return result
 
-	var total := int(data.get("total_population", 0))
+	var total := int(data.total_population)
 
-	for cohort in data.get("cohorts", []):
-		var population := int(cohort.get("population", 0))
+	for cohort in data.cohorts:
+		var population := int(cohort.population)
 		var value := 0
 
 		if selected_mode == Mode.POPULATION and total > 0:
@@ -98,36 +122,36 @@ static func chart_values(data: Dictionary, selected_mode: int) -> PackedInt32Arr
 			if population > 0 and value == 0:
 				value = 1
 		elif selected_mode == Mode.HEALTH and population > 0:
-			value = int(cohort.get("life_points", 0) / population)
+			value = int(cohort.life_points / population)
 		elif selected_mode == Mode.EDUCATION and population > 0:
-			value = int(cohort.get("education_points", 0) * 15 / (population * 25))
+			value = int(cohort.education_points * 15 / (population * 25))
 
 		result.append(value)
 
 	return result
 
 
-static func indicator_value(data: Dictionary, selected_mode: int) -> int:
-	if not data.get("ok", false):
+static func indicator_value(data: Snapshot, selected_mode: int) -> int:
+	if not data.ok:
 		return 0
 
 	if selected_mode == Mode.POPULATION:
-		return int(data.get("workforce_percent", 0))
+		return int(data.workforce_percent)
 
 	if selected_mode == Mode.HEALTH:
-		return int(data.get("workforce_life_expectancy", 0))
+		return int(data.workforce_life_expectancy)
 
-	return (int(data.get("workforce_education_quotient", 0)) * 15) / 25
+	return (int(data.workforce_education_quotient) * 15) / 25
 
 
-static func indicator_text(data: Dictionary, selected_mode: int) -> String:
+static func indicator_text(data: Snapshot, selected_mode: int) -> String:
 	if selected_mode == Mode.POPULATION:
-		return "Workforce: %d%%" % int(data.get("workforce_percent", 0))
+		return "Workforce: %d%%" % int(data.workforce_percent)
 
 	if selected_mode == Mode.HEALTH:
-		return "LE = %d yrs" % int(data.get("workforce_life_expectancy", 0))
+		return "LE = %d yrs" % int(data.workforce_life_expectancy)
 
-	return "EQ = %d" % int(data.get("workforce_education_quotient", 0))
+	return "EQ = %d" % int(data.workforce_education_quotient)
 
 
 static func y_axis_label(selected_mode: int, step: int) -> String:

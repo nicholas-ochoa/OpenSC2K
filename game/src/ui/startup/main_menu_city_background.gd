@@ -7,7 +7,7 @@ const SHOT_MAGNIFICATIONS := [3, 2, 1, 1]
 const Cleanup = preload("res://src/debug/city_debug_actions.gd")
 
 class RenderResult extends AssetImageResult:
-	var occlusion_commands: Array[Dictionary] = []
+	var occlusion_commands: Array[CityStaticCommand] = []
 
 
 # this city has no connection to the player's document, save path, or ui events
@@ -23,10 +23,10 @@ var demo_sprites: Sc2SpriteArchive
 var static_layer: Sprite2D
 var cycle_texture: ImageTexture
 var static_image: Image
-var occlusion_commands: Array[Dictionary] = []
+var occlusion_commands: Array[CityStaticCommand] = []
 var occlusion_grid := {}
 var sprite_cache := {}
-var dynamic_visuals: Array[Dictionary] = []
+var dynamic_visuals: Array[CityDynamicVisual] = []
 var animation_elapsed := 0.0
 var animation_revision := 0
 var city_name_label: Label
@@ -266,10 +266,10 @@ func _refresh_animation() -> void:
 					var index := roundi(static_image.get_pixelv(point).r * 255.0)
 					image.set_pixel(x, y, colors.colors[Renderer.shadow_palette_index(index)])
 
-		if command.get("static_occlusion", true):
+		if command.static_occlusion:
 			image = _occlude(image, position, int(command.depth_order))
 
-		dynamic_visuals.append({"texture": ImageTexture.create_from_image(image), "position": Vector2(position)})
+		dynamic_visuals.append(CityDynamicVisual.new(ImageTexture.create_from_image(image), Vector2(position)))
 
 
 func _occlude(image: Image, position: Vector2i, order: int) -> Image:

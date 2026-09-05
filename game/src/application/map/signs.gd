@@ -50,12 +50,15 @@ static func refresh_sign_occlusion(render: ApplicationMapRender, view_size: int)
 		if bounds.get_area() <= 0:
 			continue
 
-		var moving_candidates: Array[Dictionary] = []
+		var moving_candidates: Array[CityDynamicVisual] = []
+		var moving_signature: Array = []
 
 		for moving_index in ApplicationMapRender.IsometricRenderer.occlusion_candidate_indices(render.caches.dynamic_sign_occlusion_grid, bounds):
-			moving_candidates.append(render.caches.dynamic_sign_occluders[moving_index])
+			var visual := render.caches.dynamic_sign_occluders[moving_index]
+			moving_candidates.append(visual)
+			moving_signature.append(visual.value_signature())
 
-		var signature := [view_size, bounds, int(entry.draw_order), moving_candidates]
+		var signature := [view_size, bounds, int(entry.draw_order), moving_signature]
 		var key := int(entry.key)
 
 		if render.caches.sign_foreground_cache.has(key) and render.caches.sign_foreground_cache[key].signature == signature:
@@ -88,7 +91,7 @@ static func refresh_sign_occlusion(render: ApplicationMapRender, view_size: int)
 
 				var resource := render.app.moving_sprites.dynamic_sprite_resource(sprite_archive, int(command.sprite_id), bool(command.flip), divisor, factor)
 
-				if not resource.is_empty():
+				if resource != null:
 					masks.append(CitySignForeground.Mask.new(resource.image, position * factor))
 
 			var sampled: Image = (render.caches.region_cache.image_region(bounds, factor) if render.caches.region_cache != null
@@ -96,7 +99,7 @@ static func refresh_sign_occlusion(render: ApplicationMapRender, view_size: int)
 			foreground = CitySignForeground.static_pixels(sampled, masks, Rect2i(bounds.position * factor, bounds.size * factor))
 
 		for visual in CityMapSigns.later_sign_occluder_visuals(moving_candidates, bounds, int(entry.draw_order)):
-			var moving_image: Image = visual.get("image") as Image
+			var moving_image: Image = visual.image
 
 			if moving_image != null:
 				CitySignForeground.add_moving(foreground, moving_image, Vector2i(visual.position) * factor, Rect2i(bounds.position * factor, bounds.size * factor))

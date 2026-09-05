@@ -166,7 +166,7 @@ func _record(city: CityState, x: int, y: int, odd: bool, setup: Dictionary, cove
 	covered["object:override" if overridden else "object:flag"] = true
 
 
-func _same(actual: Array[Dictionary], expected: Array[Dictionary]) -> bool:
+func _same(actual: Array[CityGpuDrawList.Draw], expected: Array[CityGpuDrawList.Draw]) -> bool:
 	if actual.size() != expected.size():
 		return false
 
@@ -180,7 +180,7 @@ func _same(actual: Array[Dictionary], expected: Array[Dictionary]) -> bool:
 	return true
 
 
-func _describe(draws: Array[Dictionary]) -> String:
+func _describe(draws: Array[CityGpuDrawList.Draw]) -> String:
 	var parts := PackedStringArray()
 
 	for draw in draws:

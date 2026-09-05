@@ -20,9 +20,9 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 
 	var limit := Renderer.maximum_sprite_size(sprites)
 	var span := Renderer.region_tile_span(configuration, limit, bounds, city.map_size, mode == CityViewMode.Mode.UNDERGROUND)
-	var draws: Array[Dictionary] = []
-	var foreground: Array[Dictionary] = []
-	var foreground_draws: Array[Dictionary] = []
+	var draws: Array[CityGpuDrawList.Draw] = []
+	var foreground: Array[CityStaticCommand] = []
+	var foreground_draws: Array[CityGpuDrawList.Draw] = []
 	var vertices := PackedVector2Array()
 	var uvs := PackedVector2Array()
 	var indices := PackedInt32Array()
@@ -44,7 +44,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 				continue
 
 			var tile := context.tile(city, palette, sprites, configuration, diagonal - y, y, mode, pipes, subways, water_mains)
-			for draw: Dictionary in tile.draws:
+			for draw: CityGpuDrawList.Draw in tile.draws:
 				var rectangle := Rect2i(draw.position, draw.source.size)
 				var clipped := rectangle.intersection(bounds)
 
@@ -61,7 +61,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 				_append_quad(Rect2(clipped.position - bounds.position, clipped.size), Rect2(uv), vertices, uvs, indices)
 				draws.append(draw)
 			for index in tile.foreground.size():
-				var command: Dictionary = tile.foreground[index]
+				var command: CityStaticCommand = tile.foreground[index]
 
 				if Rect2i(command.position, command.size).intersects(bounds):
 					foreground.append(command)
@@ -103,7 +103,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 	result.error = ""
 	result.gpu_arrays = arrays
 	result.gpu_draws = draws
-	result.gpu_draw_grid = Renderer.build_occlusion_grid(draws, 1)
+	result.gpu_draw_grid = CityGpuDrawList.build_grid(draws)
 	result.background = Color.WHITE if mode == CityViewMode.Mode.UNDERGROUND else Color.TRANSPARENT
 	result.bounds = bounds
 	result.occlusion_commands = foreground

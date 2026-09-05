@@ -299,9 +299,9 @@ func texture() -> CityMapSource:
 	return output
 
 
-func occlusion_candidates(bounds: Rect2i) -> Array[Dictionary]:
-	var found := {}
-	var versions := {}
+func occlusion_candidates(bounds: Rect2i) -> Array[CityStaticCommand]:
+	var found: Dictionary[int, CityStaticCommand] = {}
+	var versions: Dictionary[int, int] = {}
 	var native := Rect2(Vector2(bounds.position) / divisor, Vector2(bounds.size) / divisor)
 
 	for key in _keys_for_bounds(bounds):
@@ -314,7 +314,7 @@ func occlusion_candidates(bounds: Rect2i) -> Array[Dictionary]:
 			continue
 
 		for index in CityIsometricRenderer.occlusion_candidate_indices(entry.occlusion_grid, bounds):
-			var command: Dictionary = entry.occlusion_commands[index]
+			var command: CityStaticCommand = entry.occlusion_commands[index]
 			var order: int = command.region_order
 
 			if int(versions.get(order, -1)) > int(entry.generation):
@@ -325,7 +325,7 @@ func occlusion_candidates(bounds: Rect2i) -> Array[Dictionary]:
 
 	var ordered := found.keys()
 	ordered.sort()
-	var result: Array[Dictionary] = []
+	var result: Array[CityStaticCommand] = []
 
 	for order in ordered:
 		result.append(found[order])

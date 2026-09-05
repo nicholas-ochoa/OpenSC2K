@@ -48,7 +48,7 @@ func _initialize() -> void:
 		var vertices: PackedVector2Array = region.gpu_arrays[Mesh.ARRAY_VERTEX]
 
 		for index in region.gpu_draws.size():
-			var draw: Dictionary = region.gpu_draws[index]
+			var draw: CityGpuDrawList.Draw = region.gpu_draws[index]
 			var uv := (uvs[index * 4] + uvs[index * 4 + 2]) * 0.5
 			assert(uv.x >= 0 and uv.y >= 0 and uv.x <= 1 and uv.y <= 1)
 			var point := (vertices[index * 4] + vertices[index * 4 + 2]) * 0.5 + Vector2(region.bounds.position)

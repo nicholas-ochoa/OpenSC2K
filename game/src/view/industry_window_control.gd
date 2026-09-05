@@ -3,6 +3,22 @@ extends Control
 
 signal tax_rates_changed
 
+class Snapshot extends RefCounted:
+	var ok: bool = false
+	var error: String = ""
+	var ratios: PackedInt64Array
+	var tax_rates: PackedInt32Array
+	var demands: PackedInt32Array
+	var industrial_tax: int
+
+
+class TaxResult extends RefCounted:
+	var ok: bool = false
+	var error: String = ""
+	var changed: bool = false
+	var value: int
+
+
 enum Mode {
 	RATIOS,
 	TAX_RATES,
@@ -78,9 +94,13 @@ func refresh() -> void:
 	queue_redraw()
 
 
-static func snapshot(value_city: CityState) -> Dictionary:
+static func snapshot(value_city: CityState) -> Snapshot:
 	if value_city == null or not value_city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		var result := Snapshot.new()
+		result.ok = false
+		result.error = "city is invalid"
+
+		return result
 
 	var ratios := PackedInt64Array()
 	var tax_rates := PackedInt32Array()
@@ -96,30 +116,34 @@ static func snapshot(value_city: CityState) -> Dictionary:
 		MISC_BUDGETS + BUDGET_INDUSTRIAL * BUDGET_RECORD_SIZE + BUDGET_FUNDING
 	)
 
-	return {
-		"ok": true,
-		"ratios": ratios,
-		"tax_rates": tax_rates,
-		"demands": demands,
-		"industrial_tax": value_city.document.misc_i32(industrial_tax_offset),
-		"error": "",
-	}
+	var result := Snapshot.new()
+	result.ok = true
+	result.ratios = ratios
+	result.tax_rates = tax_rates
+	result.demands = demands
+	result.industrial_tax = value_city.document.misc_i32(industrial_tax_offset)
+	result.error = ""
+
+	return result
 
 
-static func values_for_mode(data: Dictionary, selected_mode: int) -> Array:
-	if not data.get("ok", false):
-		return []
+static func values_for_mode(data: Snapshot, selected_mode: int) -> Array[int]:
+	var values: Array[int] = []
+
+	if not data.ok:
+		return values
 
 	if selected_mode == Mode.RATIOS:
-		return Array(data.get("ratios", PackedInt64Array()))
+		values.assign(Array(data.ratios))
+	elif selected_mode == Mode.TAX_RATES:
+		values.assign(Array(data.tax_rates))
+	else:
+		values.assign(Array(data.demands))
 
-	if selected_mode == Mode.TAX_RATES:
-		return Array(data.get("tax_rates", PackedInt32Array()))
-
-	return Array(data.get("demands", PackedInt32Array()))
+	return values
 
 
-static func maximum_for_mode(data: Dictionary, selected_mode: int) -> int:
+static func maximum_for_mode(data: Snapshot, selected_mode: int) -> int:
 	if selected_mode < Mode.RATIOS or selected_mode > Mode.DEMAND:
 		return 1
 
@@ -133,17 +157,32 @@ static func maximum_for_mode(data: Dictionary, selected_mode: int) -> int:
 
 static func set_tax_rate(
 	value_city: CityState, industry: int, value: int, all_industries := false
-) -> Dictionary:
+) -> TaxResult:
 	if value_city == null or not value_city.is_valid():
-		return {"ok": false, "changed": false, "error": "city is invalid"}
+		var result := TaxResult.new()
+		result.ok = false
+		result.changed = false
+		result.error = "city is invalid"
+
+		return result
 
 	if industry < 0 or industry >= INDUSTRY_COUNT:
-		return {"ok": false, "changed": false, "error": "industry is outside the valid range"}
+		var result := TaxResult.new()
+		result.ok = false
+		result.changed = false
+		result.error = "industry is outside the valid range"
+
+		return result
 
 	var misc_chunk := value_city.document.find_chunk("MISC")
 
 	if misc_chunk == null or misc_chunk.decoded_payload.size() < MISC_INDUSTRIES + INDUSTRY_COUNT * INDUSTRY_STRIDE:
-		return {"ok": false, "changed": false, "error": "MISC is missing or too short"}
+		var result := TaxResult.new()
+		result.ok = false
+		result.changed = false
+		result.error = "MISC is missing or too short"
+
+		return result
 
 	var tax_rate := clampi(value, 0, MAXIMUM_INDUSTRY_TAX)
 	var data: PackedByteArray = misc_chunk.decoded_payload.duplicate()
@@ -162,9 +201,20 @@ static func set_tax_rate(
 		changed = true
 
 	if changed and not misc_chunk.set_decoded_payload(data):
-		return {"ok": false, "changed": false, "error": "cannot store industry tax rates"}
+		var result := TaxResult.new()
+		result.ok = false
+		result.changed = false
+		result.error = "cannot store industry tax rates"
 
-	return {"ok": true, "changed": changed, "value": tax_rate, "error": ""}
+		return result
+
+	var result := TaxResult.new()
+	result.ok = true
+	result.changed = changed
+	result.value = tax_rate
+	result.error = ""
+
+	return result
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -204,7 +254,7 @@ func _apply_tax_pointer(pointer: Vector2, apply_all: bool) -> void:
 	var value := int((pointer.x - plot.position.x) * maximum / plot.size.x)
 	var result := set_tax_rate(city, industry, value, apply_all)
 
-	if result.get("ok", false) and result.get("changed", false):
+	if result.ok and result.changed:
 		queue_redraw()
 		tax_rates_changed.emit()
 
@@ -213,7 +263,7 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), get_theme_color("canvas", "AppPalette"), true)
 	var data := snapshot(city)
 
-	if not data.get("ok", false):
+	if not data.ok:
 		_draw_centered_message("No city is loaded.")
 
 		return
@@ -290,7 +340,7 @@ func _draw() -> void:
 
 	if mode == Mode.TAX_RATES:
 		var reference := clampf(
-			float(data.get("industrial_tax", 0)) / float(maximum), 0.0, 1.0
+			float(data.industrial_tax) / float(maximum), 0.0, 1.0
 		)
 		var reference_x := plot.position.x + plot.size.x * reference
 		draw_dashed_line(

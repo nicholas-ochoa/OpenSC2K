@@ -7,9 +7,9 @@ extends IsometricConstants
 
 static func static_occlusion_commands(
 	city: CityState, sprites: Sc2SpriteArchive, view_size := VIEW_LARGE
-) -> Array[Dictionary]:
+) -> Array[CityStaticCommand]:
 	var map_edge: int = city.map_size if city != null else 128
-	var commands: Array[Dictionary] = []
+	var commands: Array[CityStaticCommand] = []
 
 	if city == null or not city.is_valid() or sprites == null or not sprites.is_valid():
 		return commands
@@ -40,12 +40,12 @@ static func static_occlusion_commands(
 
 
 static func patch_static_occlusion_commands(
-	base_commands: Array[Dictionary],
+	base_commands: Array[CityStaticCommand],
 	city: CityState,
 	sprites: Sc2SpriteArchive,
 	dirty_indices: PackedInt32Array,
 	view_size := VIEW_LARGE
-) -> Array[Dictionary]:
+) -> Array[CityStaticCommand]:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if (
@@ -66,7 +66,7 @@ static func patch_static_occlusion_commands(
 		int(configuration.side_margin)
 		+ map_edge * int(configuration.half_width)
 	)
-	var replacements := {}
+	var replacements: Dictionary[int, Array] = {}
 
 	for value in dirty_indices:
 		var index := int(value)
@@ -84,11 +84,11 @@ static func patch_static_occlusion_commands(
 	if replacements.is_empty():
 		return base_commands.duplicate()
 
-	var commands: Array[Dictionary] = []
-	var inserted := {}
+	var commands: Array[CityStaticCommand] = []
+	var inserted: Dictionary[int, bool] = {}
 
 	for command in base_commands:
-		var order := int(command.get("depth_order", -1))
+		var order := int(command.depth_order)
 
 		if not replacements.has(order):
 			commands.append(command)
@@ -118,9 +118,9 @@ static func tile_occlusion_commands(
 	x: int,
 	y: int,
 	draw_order: int
-) -> Array[Dictionary]:
+) -> Array[CityStaticCommand]:
 	var map_edge: int = city.map_size if city != null else 128
-	var commands: Array[Dictionary] = []
+	var commands: Array[CityStaticCommand] = []
 
 	if not city.tile_is_visible(x, y):
 		return commands
@@ -204,7 +204,7 @@ static func tile_occlusion_commands(
 
 			var power_marker := IsometricStaticVisuals.power_marker_visual(city, x, y, configuration.view_size)
 
-			if not power_marker.is_empty():
+			if power_marker != null:
 				var marker_entry = sprites.find_sprite(power_marker.sprite_id)
 
 				if marker_entry != null:
@@ -240,7 +240,7 @@ static func tile_occlusion_commands(
 
 
 static func _append_occluder(
-	commands: Array[Dictionary],
+	commands: Array[CityStaticCommand],
 	sprites: Sc2SpriteArchive,
 	sprite_id: int,
 	flip: bool,
@@ -253,13 +253,12 @@ static func _append_occluder(
 	if entry == null:
 		return
 
-	var command := {
-		"sprite_id": sprite_id,
-		"flip": flip,
-		"position": base_position - Vector2i(0, entry.height),
-		"size": Vector2i(entry.width, entry.height),
-		"depth_order": draw_order,
-	}
+	var command := CityStaticCommand.new()
+	command.sprite_id = sprite_id
+	command.flip = flip
+	command.position = base_position - Vector2i(0, entry.height)
+	command.size = Vector2i(entry.width, entry.height)
+	command.depth_order = draw_order
 
 	if train_foreground_reference_sprite_id != 0:
 		command.train_foreground_reference_sprite_id = (
@@ -269,7 +268,7 @@ static func _append_occluder(
 	commands.append(command)
 
 
-static func configure_train_foreground(command: Dictionary, building_id: int, configuration: CityViewConfiguration) -> void:
+static func configure_train_foreground(command: CityStaticCommand, building_id: int, configuration: CityViewConfiguration) -> void:
 	var reference := train_power_foreground_reference_sprite_id(building_id, int(configuration.sprite_base))
 
 	if reference != 0:

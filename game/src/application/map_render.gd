@@ -148,7 +148,7 @@ func _render_static_view(current_signature: Array, view_size: int, sprite_archiv
 		)
 
 	caches.static_city_image = image
-	var occlusion_commands: Array[Dictionary] = []
+	var occlusion_commands: Array[CityStaticCommand] = []
 
 	if app.view_state.overlay_mode == CityViewMode.Mode.CITY:
 		occlusion_commands = IsometricRenderer.static_occlusion_commands(
@@ -291,9 +291,9 @@ func _invalidate_region_foregrounds(changes: Array[Rect2i]) -> bool:
 	var invalidated := false
 
 	for key in caches.dynamic_visual_cache.keys():
-		var visual: Dictionary = caches.dynamic_visual_cache[key]
+		var visual: CityDynamicVisual = caches.dynamic_visual_cache[key]
 
-		if visual.is_empty():
+		if visual == null:
 			caches.dynamic_visual_cache.erase(key)
 			continue
 

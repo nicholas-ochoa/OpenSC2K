@@ -18,7 +18,8 @@ func _run() -> void:
 
 		for tool in [Vector2i(6, 0), Vector2i(7, 0), Vector2i(3, 0), Vector2i(4, 0), Vector2i(7, 1), Vector2i(6, 1)]:
 			var preview_city := NetworkPlacementPreview.snapshot_city(city)
-			var result := NetworkPlacementPreview.build({"city": preview_city, "group": tool.x, "tool": tool.y, "start": start, "finish": finish, "view": CityIsometricRenderer.VIEW_LARGE, "palette": palette, "sprites": sprites, "underground": tool == Vector2i(4, 0) or tool == Vector2i(7, 1)})
+			var result := NetworkPlacementPreview.build(NetworkPlacementPreview.Request.new(preview_city, tool.x, tool.y,
+				start, finish, CityIsometricRenderer.VIEW_LARGE, palette, sprites, tool == Vector2i(4, 0) or tool == Vector2i(7, 1)))
 			assert(result.candidate_count < 300, "Preview work scales with route length, not map area")
 			assert(not result.draws.is_empty(), "Preview artwork for %s on %d map" % [tool, edge])
 			var placed := CityState.from_document(city.document.duplicate_document())
@@ -50,7 +51,8 @@ func _run() -> void:
 	assert(snapshot.altitude_words[0] != original.altitude_words[0])
 	assert(original.buildings[0] == 0, "Snapshot write changed the live city")
 	var rejected := CityState.from_document(EmptyCityTemplate.create(128))
-	var invalid := NetworkPlacementPreview.build({"city": rejected, "group": 6, "tool": 0, "start": Vector2i(-1, -1), "finish": Vector2i.ZERO, "view": 2, "palette": palette, "sprites": sprites, "underground": false})
+	var invalid := NetworkPlacementPreview.build(NetworkPlacementPreview.Request.new(rejected, 6, 0,
+		Vector2i(-1, -1), Vector2i.ZERO, 2, palette, sprites, false))
 	assert(invalid.draws.is_empty())
 	var controller := NetworkPlacementPreview.new()
 	var map := CityMapControl.new()
@@ -176,6 +178,6 @@ func _test_highway_recovery(palette: Sc2Palette, sprites: Sc2SpriteArchive) -> v
 func _wait_for_preview(preview: NetworkPlacementPreview) -> void:
 	var deadline := Time.get_ticks_msec() + 5000
 
-	while not preview.pending.is_empty() or preview.worker != null:
+	while preview.pending != null or preview.worker != null:
 		assert(Time.get_ticks_msec() < deadline, "Network preview worker timed out")
 		await create_timer(0.01).timeout

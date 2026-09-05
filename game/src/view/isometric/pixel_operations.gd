@@ -3,6 +3,15 @@ extends IsometricConstants
 
 
 
+class OcclusionResult extends RefCounted:
+	var image: Image
+	var occluded_pixels: int
+
+	func _init(visible: Image, count := 0) -> void:
+		image = visible
+		occluded_pixels = count
+
+
 static func foreground_difference_mask(sprite: Image, background: Image) -> Image:
 	if sprite == null:
 		return null
@@ -43,7 +52,7 @@ static func foreground_difference_mask(sprite: Image, background: Image) -> Imag
 
 
 static func build_occlusion_grid(
-	commands: Array[Dictionary], divisor: int
+	commands: Array[CityStaticCommand], divisor: int
 ) -> Dictionary[Vector2i, Array]:
 	var grid: Dictionary[Vector2i, Array] = {}
 
@@ -54,27 +63,31 @@ static func build_occlusion_grid(
 			Vector2i(command.size) * divisor,
 		)
 
-		if bounds.get_area() <= 0:
-			continue
-
-		var last_pixel := bounds.position + bounds.size - Vector2i.ONE
-		var first_cell := Vector2i(
-			floori(float(bounds.position.x) / float(OCCLUSION_CELL_SIZE)),
-			floori(float(bounds.position.y) / float(OCCLUSION_CELL_SIZE)),
-		)
-		var last_cell := Vector2i(
-			floori(float(last_pixel.x) / float(OCCLUSION_CELL_SIZE)),
-			floori(float(last_pixel.y) / float(OCCLUSION_CELL_SIZE)),
-		)
-
-		for cell_y in range(first_cell.y, last_cell.y + 1):
-			for cell_x in range(first_cell.x, last_cell.x + 1):
-				var cell := Vector2i(cell_x, cell_y)
-				var cell_indices: Array = grid.get(cell, [])
-				cell_indices.append(command_index)
-				grid[cell] = cell_indices
+		append_occlusion_bounds(grid, bounds, command_index)
 
 	return grid
+
+
+static func append_occlusion_bounds(grid: Dictionary[Vector2i, Array], bounds: Rect2i, command_index: int) -> void:
+	if bounds.get_area() <= 0:
+		return
+
+	var last_pixel := bounds.position + bounds.size - Vector2i.ONE
+	var first_cell := Vector2i(
+		floori(float(bounds.position.x) / float(OCCLUSION_CELL_SIZE)),
+		floori(float(bounds.position.y) / float(OCCLUSION_CELL_SIZE)),
+	)
+	var last_cell := Vector2i(
+		floori(float(last_pixel.x) / float(OCCLUSION_CELL_SIZE)),
+		floori(float(last_pixel.y) / float(OCCLUSION_CELL_SIZE)),
+	)
+
+	for cell_y in range(first_cell.y, last_cell.y + 1):
+		for cell_x in range(first_cell.x, last_cell.x + 1):
+			var cell := Vector2i(cell_x, cell_y)
+			var cell_indices: Array = grid.get(cell, [])
+			cell_indices.append(command_index)
+			grid[cell] = cell_indices
 
 
 static func occlusion_candidate_indices(
@@ -119,9 +132,9 @@ static func occlude_dynamic_with_mask(
 	index_image: Image = null,
 	same_tile_foreground_indices := PackedInt32Array(),
 	index_reader := Callable()
-) -> Dictionary:
+) -> OcclusionResult:
 	if sprite == null:
-		return {"image": sprite, "occluded_pixels": 0}
+		return OcclusionResult.new(sprite)
 
 	var visible: Image
 	var occluded_pixels := 0
@@ -161,10 +174,7 @@ static func occlude_dynamic_with_mask(
 			visible.set_pixel(source_x, source_y, source_color)
 			occluded_pixels += 1
 
-	return {
-		"image": sprite if visible == null else visible,
-		"occluded_pixels": occluded_pixels,
-	}
+	return OcclusionResult.new(sprite if visible == null else visible, occluded_pixels)
 
 
 static func shadow_color(palette: Sc2Palette, destination: Color) -> Color:

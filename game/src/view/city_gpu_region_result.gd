@@ -3,7 +3,7 @@ extends CityRegionResult
 
 
 var gpu_arrays: Array = []
-var gpu_draws: Array[Dictionary] = []
+var gpu_draws: Array[CityGpuDrawList.Draw] = []
 var gpu_draw_grid: Dictionary[Vector2i, Array] = {}
 var background := Color.TRANSPARENT
 var depth_arrays: Array = []

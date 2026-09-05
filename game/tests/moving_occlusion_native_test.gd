@@ -1,4 +1,8 @@
 extends SceneTree
+
+class TestVisual extends CityDynamicVisual:
+	var sprite_id: int
+
 ## GPU moving-object occlusion and shadows match the CPU rules pixel for pixel.
 ##
 ## The test draws real region meshes through CityMapControl and the moving
@@ -15,7 +19,7 @@ const CROSSINGS := [0x4f, 0x50, 0x4d, 0x4e, 0x47, 0x48]
 var _palette: Sc2Palette
 var _sprites: Sc2SpriteArchive
 var _images := {}
-var _commands: Array[Dictionary] = []
+var _commands: Array[CityStaticCommand] = []
 var _index_regions: Array[Dictionary] = []
 var _checked_pixels := 0
 var _hidden_pixels := 0
@@ -77,7 +81,7 @@ func _run() -> void:
 			"image": CityGpuDrawList.paint(region.gpu_draws, region.bounds, region.background, region.gpu_draw_grid)})
 
 		# The union of region commands, as CityRegionCache.occlusion_candidates returns it.
-		for command: Dictionary in region.occlusion_commands:
+		for command: CityStaticCommand in region.occlusion_commands:
 			found[int(command.region_order)] = command
 
 	var orders := found.keys()
@@ -151,7 +155,7 @@ func _run() -> void:
 	quit()
 
 
-func _check_pass(map: CityMapControl, viewport: SubViewport, visuals: Array[Dictionary], blend: Dictionary) -> void:
+func _check_pass(map: CityMapControl, viewport: SubViewport, visuals: Array[CityDynamicVisual], blend: Dictionary) -> void:
 	map.set_moving_blend(blend.get("offsets", {}), blend.get("orders", {}))
 	map.set_dynamic_sprites(visuals)
 	await RenderingServer.frame_post_draw
@@ -162,7 +166,7 @@ func _check_pass(map: CityMapControl, viewport: SubViewport, visuals: Array[Dict
 	var differences := 0
 	var first_difference := ""
 
-	for visual in visuals:
+	for visual: TestVisual in visuals:
 		var record := int(visual.record)
 		var position := Vector2i(visual.position) + Vector2i(blend.get("offsets", {}).get(record, Vector2.ZERO))
 		var order := int(blend.get("orders", {}).get(record, visual.depth_order))
@@ -230,13 +234,13 @@ func _occluder(size: Vector2i, position: Vector2i, order: int, is_train: bool) -
 	var bounds := Rect2i(position, size)
 
 	for command in _commands:
-		if is_train and bool(command.get("train_ignore", false)):
+		if is_train and bool(command.train_ignore):
 			continue
 
 		var later := int(command.depth_order) > order
 		var train_foreground: bool = (
-			is_train and (command.has("train_foreground_reference_sprite_id") or command.has("train_deck_thickness"))
-			and (not (bool(command.get("train_foreground_requires_depth", false)) or command.has("train_deck_thickness"))
+			is_train and (command.train_foreground_reference_sprite_id != 0 or command.train_deck_thickness != 0)
+			and (not (bool(command.train_foreground_requires_depth) or command.train_deck_thickness != 0)
 				or int(command.depth_order) >= order)
 		)
 
@@ -262,11 +266,11 @@ func _occluder(size: Vector2i, position: Vector2i, order: int, is_train: bool) -
 	return hidden
 
 
-func _train_mask(command: Dictionary, surface: Image) -> Image:
-	if command.has("train_deck_thickness"):
+func _train_mask(command: CityStaticCommand, surface: Image) -> Image:
+	if command.train_deck_thickness != 0:
 		var deck_surface := surface
 
-		if command.has("train_deck_reference_sprite_id"):
+		if command.train_deck_reference_sprite_id != 0:
 			var background := _sprite_image(int(command.train_deck_reference_sprite_id), bool(command.flip))
 			deck_surface = Image.create(surface.get_width(), surface.get_height(), false, Image.FORMAT_RGBA8)
 			deck_surface.blit_rect(background, Rect2i(Vector2i.ZERO, background.get_size()), Vector2i(0, surface.get_height() - background.get_height()))
@@ -293,8 +297,8 @@ func _static_index(point: Vector2i) -> int:
 	return 0
 
 
-func _grid_visuals(grid: Array[Vector2i], sprite_id: int, mode: int, choice: String) -> Array[Dictionary]:
-	var visuals: Array[Dictionary] = []
+func _grid_visuals(grid: Array[Vector2i], sprite_id: int, mode: int, choice: String) -> Array[CityDynamicVisual]:
+	var visuals: Array[CityDynamicVisual] = []
 	var size := _sprite_image(sprite_id, false).get_size()
 
 	for index in grid.size():
@@ -322,12 +326,19 @@ func _grid_visuals(grid: Array[Vector2i], sprite_id: int, mode: int, choice: Str
 	return visuals
 
 
-func _visual(sprite_id: int, position: Vector2i, mode: int, order: int, record: int) -> Dictionary:
+func _visual(sprite_id: int, position: Vector2i, mode: int, order: int, record: int) -> TestVisual:
 	var image := _sprite_image(sprite_id, false)
 
-	return {"texture": ImageTexture.create_from_image(image), "position": Vector2(position),
-		"size": Vector2(image.get_size()), "gpu_mode": mode, "depth_order": order,
-		"record": record, "sprite_id": sprite_id}
+	var result := TestVisual.new()
+	result.texture = ImageTexture.create_from_image(image)
+	result.position = Vector2(position)
+	result.size = Vector2(image.get_size())
+	result.gpu_mode = mode
+	result.depth_order = order
+	result.record = record
+	result.sprite_id = sprite_id
+
+	return result
 
 
 func _sprite_image(sprite_id: int, flip: bool) -> Image:

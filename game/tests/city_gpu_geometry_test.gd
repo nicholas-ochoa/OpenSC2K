@@ -67,7 +67,7 @@ func _run() -> void:
 			for region: CityGpuRegionResult in batch.regions:
 				var expected := CityRegionRenderer.render(city, palette, sprites, region.bounds, view, mode)
 				expected.image.convert(Image.FORMAT_LA8)
-				assert(region.occlusion_commands == expected.occlusion_commands)
+				assert(_static_command_values(region.occlusion_commands) == _static_command_values(expected.occlusion_commands))
 				assert(CityGpuDrawList.paint(region.gpu_draws, region.bounds, region.background, region.gpu_draw_grid).get_data() == expected.image.get_data())
 
 				if DisplayServer.get_name() != "headless":
@@ -83,7 +83,7 @@ func _compare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, b
 	var cpu := CityRegionRenderer.render(city, palette, sprites, bounds, view, mode)
 	var gpu := CityGpuRegionRenderer.render(city, palette, sprites, bounds, view, mode, true, true, context, 1, -1)
 	assert(cpu.ok and gpu.ok)
-	assert(cpu.occlusion_commands == gpu.occlusion_commands, "GPU foreground must match CPU command order")
+	assert(_static_command_values(cpu.occlusion_commands) == _static_command_values(gpu.occlusion_commands), "GPU foreground must match CPU command order")
 	var rasterized := CityGpuDrawList.paint(gpu.gpu_draws, bounds, gpu.background, gpu.gpu_draw_grid)
 	cpu.image.convert(Image.FORMAT_LA8)
 	assert(cpu.image.get_data() == rasterized.get_data(), "GPU draw list differs from CPU pixels")
@@ -125,3 +125,20 @@ func _check_gpu_pixels(result: CityGpuRegionResult, expected: Image) -> void:
 	assert(differences == 0, "GPU raster differs at %d pixels" % differences)
 	viewport.queue_free()
 	await process_frame
+
+
+func _static_command_values(commands: Array[CityStaticCommand], include_region := true) -> Array:
+	var values: Array = []
+
+	for command in commands:
+		var fields := [command.sprite_id, command.flip, command.position, command.size,
+			command.depth_order, command.train_ignore, command.train_foreground_reference_sprite_id,
+			command.train_deck_thickness, command.train_deck_reference_sprite_id,
+			command.train_foreground_requires_depth]
+
+		if include_region:
+			fields.append(command.region_order)
+
+		values.append(fields)
+
+	return values

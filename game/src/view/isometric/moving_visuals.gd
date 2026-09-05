@@ -5,49 +5,91 @@ extends IsometricConstants
 @warning_ignore_start("integer_division")
 
 
+class Layer extends CitySpriteVisual:
+	var screen_x: int
+	var screen_y: int
+
+
+class Sprite extends CitySpriteVisual:
+	var train := false
+	var screen_x := 0
+	var screen_y := 0
+	var elevation := 0
+	var variant := 0
+	var tornado := false
+	var monster := false
+	var layers: Array[Layer] = []
+
+
+class Visual extends Sprite:
+	var record: int
+	var type: int
+	var x: int
+	var y: int
+	var z: int
+	var px: int
+	var py: int
+	var view_size: int
+
+
+class Position extends RefCounted:
+	var anchor: Vector2
+	var order: int
+
+
+class Anchor extends Position:
+	var type: int
+	var x: int
+	var y: int
+
+	func _init(kind := 0, point := Vector2i.ZERO) -> void:
+		type = kind
+		x = point.x
+		y = point.y
+
+
 static func moving_thing_visual(
 	city: CityState,
 	x: int,
 	y: int,
 	view_size := VIEW_LARGE,
 	animation_phase := 0
-) -> Dictionary:
+) -> Visual:
 	var overlay := city.text_overlay_id(x, y)
 
 	if not OverlayData.is_thing(overlay):
-		return {}
+		return null
 
 	var record := OverlayData.thing_record(overlay)
 	var thing := city.thing(record)
 
 	if thing == null:
-		return {}
+		return null
 
 	var type := thing.type
 
 	if type < 0 or type >= THING_MINIMUM_VIEW.size():
-		return {}
+		return null
 
 	if view_size < THING_MINIMUM_VIEW[type]:
-		return {}
+		return null
 
 	if (thing.x != x or thing.y != y) and type != 10 and type != 11:
-		return {}
+		return null
 
-	var sprite: Dictionary
+	var sprite: Sprite
 
 	if type == 5:
 		var layers := monster_layers(city, x, y, thing, record, view_size)
 
 		if layers.is_empty():
-			return {}
+			return null
 
-		sprite = {
-			"sprite_id": layers[0].sprite_id,
-			"flip": layers[0].flip,
-			"monster": true,
-			"layers": layers,
-		}
+		sprite = Sprite.new()
+		sprite.sprite_id = layers[0].sprite_id
+		sprite.flip = layers[0].flip
+		sprite.monster = true
+		sprite.layers = layers
 	elif type == 10 or type == 11:
 		sprite = train_sprite(city, x, y, thing)
 	elif type == 15:
@@ -55,62 +97,63 @@ static func moving_thing_visual(
 	else:
 		sprite = moving_thing_sprite(thing, view_size)
 
-		if type == 6 and not sprite.is_empty():
+		if type == 6 and sprite != null:
 			sprite.flip = ((animation_phase + record + x + y) & 1) != 0
 
-	if sprite.is_empty():
-		return {}
+	if sprite == null:
+		return null
 
-	return {
-		"sprite_id": sprite.sprite_id,
-		"flip": sprite.flip,
-		"record": record,
-		"type": thing.type,
-		"x": x,
-		"y": y,
-		"z": thing.z,
-		"px": thing.px,
-		"py": thing.py,
-		"train": sprite.get("train", false),
-		"screen_x": sprite.get("screen_x", 0),
-		"screen_y": sprite.get("screen_y", 0),
-		"elevation": sprite.get("elevation", 0),
-		"tornado": sprite.get("tornado", false),
-		"monster": sprite.get("monster", false),
-		"layers": sprite.get("layers", []),
-		"view_size": view_size,
-	}
+	var result := Visual.new()
+	result.sprite_id = sprite.sprite_id
+	result.flip = sprite.flip
+	result.record = record
+	result.type = thing.type
+	result.x = x
+	result.y = y
+	result.z = thing.z
+	result.px = thing.px
+	result.py = thing.py
+	result.train = sprite.train
+	result.screen_x = sprite.screen_x
+	result.screen_y = sprite.screen_y
+	result.elevation = sprite.elevation
+	result.tornado = sprite.tornado
+	result.monster = sprite.monster
+	result.layers = sprite.layers
+	result.view_size = view_size
+
+	return result
 
 
 # return the display anchor of one xthg record for display interpolation
 # the anchor uses the same placement terms as the draw commands, without the
-# sprite size. the result is in common large logical pixels. it is empty for
+# sprite size. the result is in common large logical pixels. it is null for
 # an unused record and for a type that the moving-object path does not move
 static func moving_thing_anchor(
 	city: CityState, record: int, view_size := VIEW_LARGE
-) -> Dictionary:
+) -> Anchor:
 	if city == null or not city.is_valid():
-		return {}
+		return null
 
 	var thing := city.thing(record)
 
 	if thing == null:
-		return {}
+		return null
 
 	var type := thing.type
 	var x := thing.x
 	var y := thing.y
 
 	if type <= 0 or type >= THING_MINIMUM_VIEW.size() or city.index_of(x, y) < 0:
-		return {}
+		return null
 
 	if type in [7, 8, 12, 13, 14]:
-		return {}
+		return null
 
 	var configuration := IsometricGeometry.view_configuration(view_size)
 
 	if configuration == null:
-		return {}
+		return null
 
 	var half_width := int(configuration.half_width)
 	var half_height := int(configuration.half_height)
@@ -122,8 +165,8 @@ static func moving_thing_anchor(
 		10, 11:
 			var sprite := train_sprite(city, x, y, thing)
 
-			if sprite.is_empty():
-				return {}
+			if sprite == null:
+				return null
 
 			# Trains use the large-view art and placement constants.
 			anchor = Vector2i(
@@ -153,31 +196,32 @@ static func moving_thing_anchor(
 					- thing.z * half_height
 			)
 
-	return {
-		"type": type,
-		"x": x,
-		"y": y,
-		"anchor": Vector2(anchor * divisor),
-		"order": (x + y) * city.map_size + y,
-	}
+	var result := Anchor.new()
+	result.type = type
+	result.x = x
+	result.y = y
+	result.anchor = Vector2(anchor * divisor)
+	result.order = (x + y) * city.map_size + y
+
+	return result
 
 
-static func moving_thing_sprite(thing: ThingRecord, view_size := VIEW_LARGE) -> Dictionary:
+static func moving_thing_sprite(thing: ThingRecord, view_size := VIEW_LARGE) -> Sprite:
 	if thing == null:
-		return {}
+		return null
 
 	var type := thing.type
 	var direction := thing.direction
 	var state := thing.state
 
 	if type < 1 or type >= THING_SPRITES.size():
-		return {}
+		return null
 
 	if view_size < VIEW_SMALL or view_size > VIEW_LARGE:
-		return {}
+		return null
 
 	if view_size < THING_MINIMUM_VIEW[type]:
-		return {}
+		return null
 
 	var sprite_id: int = THING_SPRITES[type] + (view_size - VIEW_LARGE) * 500
 	var flip := false
@@ -185,50 +229,54 @@ static func moving_thing_sprite(thing: ThingRecord, view_size := VIEW_LARGE) -> 
 	match type:
 		1, 2, 3:
 			if direction < 0 or direction >= SHIP_DIRECTION_POSITION.size():
-				return {}
+				return null
 
 			sprite_id += SHIP_DIRECTION_POSITION[direction]
 			flip = SHIP_DIRECTION_FLIP[direction]
 		4:
 			if direction < 0 or direction >= THING_DIRECTION_POSITION.size():
-				return {}
+				return null
 
 			sprite_id += THING_DIRECTION_POSITION[direction]
 			flip = THING_DIRECTION_FLIP[direction]
 		6:
 			if direction < 0 or direction > 2:
-				return {}
+				return null
 
 			sprite_id += direction
 		9:
 			if state != 0:
 				sprite_id = 379 + view_size * 500
 			elif direction < 0 or direction >= THING_DIRECTION_POSITION.size():
-				return {}
+				return null
 			else:
 				sprite_id += THING_DIRECTION_POSITION[direction]
 				flip = THING_DIRECTION_FLIP[direction]
 		16:
 			if direction < 0 or direction > 7:
-				return {}
+				return null
 
 			flip = direction > 3
 		_:
-			return {}
+			return null
 
-	return {"sprite_id": sprite_id, "flip": flip}
+	var result := Sprite.new()
+	result.sprite_id = sprite_id
+	result.flip = flip
+
+	return result
 
 
 static func train_sprite(
 	city: CityState, x: int, y: int, thing: ThingRecord
-) -> Dictionary:
+) -> Sprite:
 	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
-		return {}
+		return null
 
 	var type := thing.type
 
 	if type != 10 and type != 11:
-		return {}
+		return null
 
 	var tile := city.building_id(x, y)
 	var variant := 0
@@ -241,7 +289,7 @@ static func train_sprite(
 		var tile_index := tile - 0x2c
 
 		if tile_index < 0 or tile_index > 0x22:
-			return {}
+			return null
 
 		if tile_index > 0x12:
 			tile_index -= 6
@@ -255,7 +303,7 @@ static func train_sprite(
 			var transition := thing.dx
 
 			if transition < 0 or transition >= TRAIN_TRANSITION_VARIANT.size():
-				return {}
+				return null
 
 			variant = TRAIN_TRANSITION_VARIANT[transition]
 
@@ -265,17 +313,18 @@ static func train_sprite(
 			elevation += ALTITUDE_STEP
 
 	if variant < 0 or variant >= TRAIN_SPRITE_POSITION.size():
-		return {}
+		return null
 
-	return {
-		"sprite_id": THING_SPRITES[type] + TRAIN_SPRITE_POSITION[variant],
-		"flip": TRAIN_SPRITE_FLIP[variant],
-		"train": true,
-		"screen_x": TRAIN_SCREEN_X[variant],
-		"screen_y": TRAIN_SCREEN_Y[variant],
-		"elevation": elevation,
-		"variant": variant,
-	}
+	var result := Sprite.new()
+	result.sprite_id = THING_SPRITES[type] + TRAIN_SPRITE_POSITION[variant]
+	result.flip = TRAIN_SPRITE_FLIP[variant]
+	result.train = true
+	result.screen_x = TRAIN_SCREEN_X[variant]
+	result.screen_y = TRAIN_SCREEN_Y[variant]
+	result.elevation = elevation
+	result.variant = variant
+
+	return result
 
 
 static func tornado_sprite(
@@ -285,31 +334,32 @@ static func tornado_sprite(
 	thing: ThingRecord,
 	record: int,
 	view_size := VIEW_LARGE
-) -> Dictionary:
+) -> Sprite:
 	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
-		return {}
+		return null
 
 	if thing.type != 15:
-		return {}
+		return null
 
 	var configuration := IsometricGeometry.view_configuration(view_size)
 
 	if configuration == null:
-		return {}
+		return null
 
 	var phase := (
 		thing.px + thing.py + x + y + record
 	)
 	var altitude := city.object_altitude(x, y)
 
-	return {
-		"sprite_id": (
-			THING_SPRITES[15] + (view_size - VIEW_LARGE) * 500 + phase % 3
-		),
-		"flip": (phase & 1) != 0,
-		"tornado": true,
-		"elevation": altitude * int(configuration.altitude_step),
-	}
+	var result := Sprite.new()
+	result.sprite_id = (
+		THING_SPRITES[15] + (view_size - VIEW_LARGE) * 500 + phase % 3
+	)
+	result.flip = (phase & 1) != 0
+	result.tornado = true
+	result.elevation = altitude * int(configuration.altitude_step)
+
+	return result
 
 
 static func monster_layers(
@@ -319,8 +369,8 @@ static func monster_layers(
 	thing: ThingRecord,
 	record: int,
 	view_size := VIEW_LARGE
-) -> Array[Dictionary]:
-	var layers: Array[Dictionary] = []
+) -> Array[Layer]:
+	var layers: Array[Layer] = []
 
 	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
 		return layers
@@ -348,9 +398,9 @@ static func monster_layers(
 # For monsters, dx stores body-part flags rather than velocity.
 static func monster_pose_layers(
 	body_position: Vector2i, dx: int, dy: int, head_frame := 0, view_size := VIEW_LARGE
-) -> Array[Dictionary]:
+) -> Array[Layer]:
 	# shared native sprite geometry. callers supply display coordinates and pose bits
-	var layers: Array[Dictionary] = []
+	var layers: Array[Layer] = []
 	var body_x := body_position.x
 	var body_y := body_position.y
 	var upper_x := body_x - 20
@@ -449,10 +499,11 @@ static func monster_pose_layers(
 
 static func _monster_layer(
 	sprite_id: int, screen_x: int, screen_y: int, flip: bool
-) -> Dictionary:
-	return {
-		"sprite_id": sprite_id,
-		"screen_x": screen_x,
-		"screen_y": screen_y,
-		"flip": flip,
-	}
+) -> Layer:
+	var result := Layer.new()
+	result.sprite_id = sprite_id
+	result.screen_x = screen_x
+	result.screen_y = screen_y
+	result.flip = flip
+
+	return result

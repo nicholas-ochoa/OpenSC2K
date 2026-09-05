@@ -301,7 +301,7 @@ static func draw_tile(
 		)
 		var traffic_visual := IsometricStaticVisuals.traffic_overlay_visual(city, x, y, configuration.view_size)
 
-		if not traffic_visual.is_empty():
+		if traffic_visual != null:
 			var traffic_image := IsometricPixelOperations.sprite_image(
 				sprites, palette, cache, traffic_visual.sprite_id, traffic_visual.flip
 			)
@@ -319,7 +319,7 @@ static func draw_tile(
 
 		var power_marker := IsometricStaticVisuals.power_marker_visual(city, x, y, configuration.view_size)
 
-		if not power_marker.is_empty():
+		if power_marker != null:
 			var marker_image := IsometricPixelOperations.sprite_image(
 				sprites, palette, cache, power_marker.sprite_id, false
 			)
@@ -354,7 +354,7 @@ static func draw_tile(
 			city, x, y, configuration.view_size, animation_phase
 		)
 
-		if not moving_visual.is_empty():
+		if moving_visual != null:
 			draw_moving_thing(
 				output, city, palette, sprites, cache, moving_visual, configuration
 			)
@@ -364,7 +364,7 @@ static func draw_tile(
 			city, x, y, configuration.view_size, animation_phase
 		)
 
-		if not special_visual.is_empty():
+		if special_visual != null:
 			var special_image := IsometricPixelOperations.sprite_image(
 				sprites, palette, cache, special_visual.sprite_id, special_visual.flip
 			)
@@ -438,7 +438,7 @@ static func draw_moving_thing(
 	palette: Sc2Palette,
 	sprites: Sc2SpriteArchive,
 	cache: Dictionary,
-	visual: Dictionary,
+	visual: IsometricMovingVisuals.Visual,
 	configuration: CityViewConfiguration,
 	offset := Vector2i.ZERO
 ) -> void:

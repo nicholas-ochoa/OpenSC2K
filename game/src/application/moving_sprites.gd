@@ -15,8 +15,8 @@ const BLEND_TILE_LIMIT := 2
 var app: CityApplication
 var caches: RenderCaches
 # display interpolation state by xthg record. see `note_moving_tick`
-var _blend_from: Dictionary = {}
-var _blend_to: Dictionary = {}
+var _blend_from: Dictionary[int, IsometricMovingVisuals.Position] = {}
+var _blend_to: Dictionary[int, IsometricMovingVisuals.Anchor] = {}
 var _blend_city_id := 0
 var _blend_view_size := -1
 var _blend_tick_msec := 0
@@ -50,13 +50,13 @@ func note_moving_tick(now_msec := -1) -> void:
 
 	var view_size := app.static_render.city_view_size()
 	var continuing := _blend_city_id == app.document_state.city.get_instance_id() and _blend_view_size == view_size
-	var next := {}
-	var from := {}
+	var next: Dictionary[int, IsometricMovingVisuals.Anchor] = {}
+	var from: Dictionary[int, IsometricMovingVisuals.Position] = {}
 
 	for record in app.document_state.city.thing_count():
 		var anchor := IsometricRenderer.moving_thing_anchor(app.document_state.city, record, view_size)
 
-		if anchor.is_empty():
+		if anchor == null:
 			continue
 
 		next[record] = anchor
@@ -116,7 +116,7 @@ static func blend_alpha(elapsed_msec: float, frame_rate: int) -> float:
 
 
 # true when a record can move smoothly from `previous` to `current`
-static func can_blend(previous: Dictionary, current: Dictionary) -> bool:
+static func can_blend(previous: IsometricMovingVisuals.Anchor, current: IsometricMovingVisuals.Anchor) -> bool:
 	var previous_type := int(previous.type)
 	var current_type := int(current.type)
 	var same_type := previous_type == current_type or (previous_type in [10, 11] and current_type in [10, 11])
@@ -128,19 +128,20 @@ static func can_blend(previous: Dictionary, current: Dictionary) -> bool:
 	)
 
 
-func _displayed_anchor(record: int) -> Dictionary:
-	var target: Dictionary = _blend_to[record]
+func _displayed_anchor(record: int) -> IsometricMovingVisuals.Position:
+	var target: IsometricMovingVisuals.Anchor = _blend_to[record]
 
 	if not _blend_from.has(record):
 		return target
 
-	var start: Dictionary = _blend_from[record]
+	var start: IsometricMovingVisuals.Position = _blend_from[record]
 
 	# Use the later draw order between tiles so neither tile's flat surface covers the sprite.
-	return {
-		"anchor": start.anchor.lerp(target.anchor, _blend_alpha),
-		"order": maxi(int(start.order), int(target.order)) if _blend_alpha < 1.0 else int(target.order),
-	}
+	var result := IsometricMovingVisuals.Position.new()
+	result.anchor = start.anchor.lerp(target.anchor, _blend_alpha)
+	result.order = maxi(int(start.order), int(target.order)) if _blend_alpha < 1.0 else int(target.order)
+
+	return result
 
 
 func _apply_blend() -> void:
@@ -194,32 +195,32 @@ func refresh_moving_things(view_size := -1) -> void:
 	var commands := caches.dynamic_command_cache.get_commands(
 		app.document_state.city, sprite_archive, view_size, int(Time.get_ticks_msec() / 100)
 	)
-	var visuals: Array[Dictionary] = []
+	var visuals: Array[CityDynamicVisual] = []
 	var gpu_moving := _gpu_moving_active()
 
 	for command in commands:
-		if not app.view_state.show_vehicles and command.has("record") and _is_vehicle(int(command.record)):
+		if not app.view_state.show_vehicles and command.record >= 0 and _is_vehicle(int(command.record)):
 			continue
 
 		if (caches.region_cache != null and not Rect2(Vector2(command.position) * divisor,
-				Vector2(command.get("size", Vector2i(256, 256))) * divisor).intersects(app.map_view.visible_source_rect().grow(256 * divisor))):
+				Vector2(Vector2i(256, 256)) * divisor).intersects(app.map_view.visible_source_rect().grow(256 * divisor))):
 			continue
 
 		# the shader applies occlusion and shadows, so the visual needs no image work
-		if gpu_moving and not command.has("overlay"):
+		if gpu_moving and command.overlay < 0:
 			var gpu_visual := _gpu_moving_visual(sprite_archive, command, divisor, factor)
 
-			if not gpu_visual.is_empty():
+			if gpu_visual != null:
 				visuals.append(gpu_visual)
 
 			continue
 
-		var visual_cache_key := var_to_str([view_size, factor, command])
+		var visual_cache_key := var_to_str([view_size, factor, command.value_signature()])
 
 		if caches.dynamic_visual_cache.has(visual_cache_key):
-			var cached: Dictionary = caches.dynamic_visual_cache[visual_cache_key]
+			var cached: CityDynamicVisual = caches.dynamic_visual_cache[visual_cache_key]
 
-			if not cached.is_empty() and not bool(cached.get("hidden", false)):
+			if cached != null and not cached.hidden:
 				visuals.append(cached)
 
 			continue
@@ -228,7 +229,7 @@ func refresh_moving_things(view_size := -1) -> void:
 			sprite_archive, command.sprite_id, command.flip, divisor, factor
 		)
 
-		if resource.is_empty():
+		if resource == null:
 			continue
 
 		var position := Vector2i(command.position) * divisor
@@ -237,24 +238,26 @@ func refresh_moving_things(view_size := -1) -> void:
 		var visual_image: Image = resource.image
 		var occluder_mask: Image
 
-		if bool(command.get("static_occlusion", true)):
+		if bool(command.static_occlusion):
 			occluder_mask = _dynamic_occluder_image(
 				sprite_archive, divisor, position, resource.native_size,
-				int(command.get("depth_order", -1)), bool(command.get("train", false)), factor
+				int(command.depth_order), bool(command.train), factor
 			)
 
 		if command.shadow:
 			var shadow_image := _dynamic_shadow_image(resource.image, position, occluder_mask, factor)
 
 			if shadow_image == null:
-				caches.dynamic_visual_cache[visual_cache_key] = {"hidden": true, "position": Vector2(position), "size": Vector2(resource.native_size)}
+				var hidden := CityDynamicVisual.new(null, Vector2(position), Vector2(resource.native_size))
+				hidden.hidden = true
+				caches.dynamic_visual_cache[visual_cache_key] = hidden
 				continue
 
 			visual_image = shadow_image
 			texture = ImageTexture.create_from_image(shadow_image)
 			index_texture = null
 		else:
-			var foreground_indices: PackedInt32Array = command.get("same_tile_foreground_indices", PackedInt32Array())
+			var foreground_indices: PackedInt32Array = command.same_tile_foreground_indices
 			var index_reader := Callable()
 
 			if caches.region_cache != null and not foreground_indices.is_empty():
@@ -272,28 +275,25 @@ func refresh_moving_things(view_size := -1) -> void:
 				texture = ImageTexture.create_from_image(occluded.image)
 				index_texture = texture
 
-		var visual := {
-			"texture": texture,
-			"index_texture": index_texture,
-			"palette_lookup_all": true,
-			"texture_factor": factor,
-			"position": Vector2(position),
-			"size": Vector2(resource.native_size),
-			"image": visual_image,
-			"special_overlay": command.has("overlay"),
-			"batch_cache_key": visual_cache_key,
-			"depth_order": int(command.get("depth_order", -1)),
-			"shadow": bool(command.get("shadow", false)),
-		}
+		var visual := CityDynamicVisual.new()
+		visual.texture = texture
+		visual.index_texture = index_texture
+		visual.palette_lookup_all = true
+		visual.texture_factor = factor
+		visual.position = Vector2(position)
+		visual.size = Vector2(resource.native_size)
+		visual.image = visual_image
+		visual.special_overlay = command.overlay >= 0
+		visual.batch_cache_key = visual_cache_key
+		visual.depth_order = int(command.depth_order)
+		visual.shadow = bool(command.shadow)
 		visuals.append(visual)
 
 		if not visual_cache_key.is_empty():
 			caches.dynamic_visual_cache[visual_cache_key] = visual
 
 	caches.dynamic_sign_occluders = visuals.duplicate()
-	caches.dynamic_sign_occlusion_grid = IsometricRenderer.build_occlusion_grid(
-		caches.dynamic_sign_occluders, 1
-	)
+	caches.dynamic_sign_occlusion_grid = CityDynamicVisual.build_grid(caches.dynamic_sign_occluders)
 
 	if caches.dynamic_special_batch_cache.size() > 128:
 		caches.dynamic_special_batch_cache.clear()
@@ -322,40 +322,41 @@ func audible_sound_events(sound_events: Array) -> Array:
 		return not (event is Dictionary and int(event.get("thing_type", 0)) in CityViewFilter.VEHICLE_THING_TYPES))
 
 
-func _gpu_moving_visual(sprite_archive: Sc2SpriteArchive, command: Dictionary, divisor: int, factor: int) -> Dictionary:
+func _gpu_moving_visual(sprite_archive: Sc2SpriteArchive, command: CityDynamicCommand, divisor: int, factor: int) -> CityDynamicVisual:
 	var resource := dynamic_sprite_resource(
 		sprite_archive, command.sprite_id, command.flip, divisor, factor
 	)
 
-	if resource.is_empty():
-		return {}
+	if resource == null:
+		return null
 
 	var mode := CityMapMovingOcclusion.MODE_SPRITE
 
-	if bool(command.get("shadow", false)):
+	if bool(command.shadow):
 		mode = CityMapMovingOcclusion.MODE_SHADOW
-	elif bool(command.get("train", false)):
+	elif bool(command.train):
 		mode = CityMapMovingOcclusion.MODE_TRAIN
 
-	return {
-		"texture": resource.texture,
-		"texture_factor": factor,
-		"position": Vector2(Vector2i(command.position) * divisor),
-		"size": Vector2(resource.native_size),
-		# signs treat this image as an opaque moving sprite. a shadow has none
-		"image": null if bool(command.get("shadow", false)) else resource.image,
-		"depth_order": int(command.get("depth_order", -1)) if bool(command.get("static_occlusion", true)) else -1,
-		"shadow": bool(command.get("shadow", false)),
-		"record": int(command.get("record", -1)),
-		"gpu_mode": mode,
-	}
+	var result := CityDynamicVisual.new()
+	result.texture = resource.texture
+	result.texture_factor = factor
+	result.position = Vector2(Vector2i(command.position) * divisor)
+	result.size = Vector2(resource.native_size)
+	# signs treat this image as an opaque moving sprite. a shadow has none
+	result.image = null if bool(command.shadow) else resource.image
+	result.depth_order = int(command.depth_order) if bool(command.static_occlusion) else -1
+	result.shadow = bool(command.shadow)
+	result.record = int(command.record)
+	result.gpu_mode = mode
+
+	return result
 
 
-func static_occlusion_candidates(bounds: Rect2i) -> Array[Dictionary]:
+func static_occlusion_candidates(bounds: Rect2i) -> Array[CityStaticCommand]:
 	if caches.region_cache != null:
 		return caches.region_cache.occlusion_candidates(bounds)
 
-	var result: Array[Dictionary] = []
+	var result: Array[CityStaticCommand] = []
 
 	for index in IsometricRenderer.occlusion_candidate_indices(caches.static_occlusion_grid, bounds):
 		result.append(caches.static_occlusion_commands[index])
@@ -394,13 +395,13 @@ func _dynamic_occluder_image(
 	# Bounding boxes include transparent pixels. Combine all later silhouettes
 	# to find the foreground that actually covers the sprite.
 	for command in static_occlusion_candidates(bounds):
-		if is_train and bool(command.get("train_ignore", false)):
+		if is_train and bool(command.train_ignore):
 			continue
 
 		var later_static := int(command.depth_order) > draw_order
 		var train_foreground := (
-			is_train and (command.has("train_foreground_reference_sprite_id") or command.has("train_deck_thickness"))
-			and (not (bool(command.get("train_foreground_requires_depth", false)) or command.has("train_deck_thickness"))
+			is_train and (command.train_foreground_reference_sprite_id != 0 or command.train_deck_thickness != 0)
+			and (not (bool(command.train_foreground_requires_depth) or command.train_deck_thickness != 0)
 				or int(command.depth_order) >= draw_order)
 		)
 		var use_later_static := (
@@ -423,7 +424,7 @@ func _dynamic_occluder_image(
 			sprite_archive, int(command.sprite_id), bool(command.flip), divisor, texture_factor
 		)
 
-		if resource.is_empty():
+		if resource == null:
 			continue
 
 		var occluder_image: Image = resource.image
@@ -448,7 +449,7 @@ func _dynamic_occluder_image(
 	return mask
 
 
-func set_static_occlusion_commands(commands: Array, view_size: int) -> void:
+func set_static_occlusion_commands(commands: Array[CityStaticCommand], view_size: int) -> void:
 	caches.static_occlusion_commands.assign(commands)
 	caches.dynamic_occluder_cache.clear()
 	caches.dynamic_visual_cache.clear()
@@ -462,11 +463,11 @@ func set_static_occlusion_commands(commands: Array, view_size: int) -> void:
 
 func _dynamic_train_foreground_image(
 	sprite_archive: Sc2SpriteArchive,
-	command: Dictionary,
+	command: CityStaticCommand,
 	divisor: int,
 	surface: Image, texture_factor := 1
 ) -> Image:
-	if command.has("train_deck_thickness"):
+	if command.train_deck_thickness != 0:
 		var deck_key := "deck:%d:%d:%d:%d" % [int(command.sprite_id), int(command.flip), divisor, texture_factor]
 
 		if caches.dynamic_foreground_cache.has(deck_key):
@@ -475,10 +476,10 @@ func _dynamic_train_foreground_image(
 		var deck_surface := surface
 
 		# a highway/power crossing uses the wire-free highway as its mask
-		if command.has("train_deck_reference_sprite_id"):
+		if command.train_deck_reference_sprite_id != 0:
 			var background := dynamic_sprite_resource(sprite_archive, int(command.train_deck_reference_sprite_id), bool(command.flip), divisor, texture_factor)
 
-			if not background.is_empty():
+			if background != null:
 				deck_surface = Image.create(surface.get_width(), surface.get_height(), false, Image.FORMAT_RGBA8)
 				deck_surface.blit_rect(background.image, Rect2i(Vector2i.ZERO, background.image.get_size()),
 						Vector2i(0, surface.get_height() - background.image.get_height()))
@@ -504,7 +505,7 @@ func _dynamic_train_foreground_image(
 		sprite_archive, reference_sprite_id, bool(command.flip), divisor, texture_factor
 	)
 
-	if reference.is_empty():
+	if reference == null:
 		return surface
 
 	var foreground := IsometricRenderer.foreground_difference_mask(
@@ -515,41 +516,43 @@ func _dynamic_train_foreground_image(
 	return foreground
 
 
-func demolish_brush_visual(tile: Vector2i, direction: int) -> Dictionary:
+func demolish_brush_visual(tile: Vector2i, direction: int) -> CityDynamicVisual:
 	var view_size := app.static_render.city_view_size()
 	var archive := app.static_render.sprite_archive_for_view(view_size)
 	if app.document_state.city == null or archive == null or app.asset_state.palette == null:
-		return {}
+		return null
 
 	var sprite := IsometricRenderer.moving_thing_sprite(ThingRecord.from_fields({"type": 4, "direction": direction}), view_size)
 	var entry := archive.find_sprite(int(sprite.sprite_id))
 	if entry == null:
-		return {}
+		return null
 
 	var configuration := IsometricRenderer.view_configuration(view_size)
 	var divisor := int(configuration.divisor)
 	var resource := dynamic_sprite_resource(archive, int(sprite.sprite_id), bool(sprite.flip), divisor)
-	if resource.is_empty():
-		return {}
+	if resource == null:
+		return null
 
-	var visual := {
-		"sprite_id": sprite.sprite_id, "flip": sprite.flip, "type": 4,
-		"x": tile.x, "y": tile.y, "z": 0, "px": 0, "py": 0,
-		"monster": false, "tornado": false, "train": false,
-	}
+	var visual := IsometricMovingVisuals.Visual.new()
+	visual.sprite_id = sprite.sprite_id
+	visual.flip = sprite.flip
+	visual.type = 4
+	visual.x = tile.x
+	visual.y = tile.y
 	var commands := IsometricRenderer.moving_thing_draw_commands_for_visual(app.document_state.city, archive, visual, configuration)
 	if commands.is_empty():
-		return {}
-	return {
-		"texture": resource.texture,
-		"position": Vector2(commands[0].position * divisor),
-		"size": Vector2(entry.width, entry.height) * divisor,
-	}
+		return null
+	var result := CityDynamicVisual.new()
+	result.texture = resource.texture
+	result.position = Vector2(commands[0].position * divisor)
+	result.size = Vector2(entry.width, entry.height) * divisor
+
+	return result
 
 
 func dynamic_sprite_resource(
 	sprite_archive: Sc2SpriteArchive, sprite_id: int, flip: bool, divisor: int, texture_factor := 1
-) -> Dictionary:
+) -> CitySpriteResource:
 	var key := "%d:%d:%d:%d:%d" % [sprite_id, int(flip), divisor, texture_factor, sprite_archive.get_instance_id()]
 
 	if caches.dynamic_sprite_cache.has(key):
@@ -558,13 +561,13 @@ func dynamic_sprite_resource(
 	var entry := sprite_archive.find_sprite(sprite_id)
 
 	if entry == null:
-		return {}
+		return null
 
 	var native_size := Vector2i(entry.width, entry.height) * divisor
 	var indexed := entry.create_image(app.asset_state.palette_index_encoding)
 
 	if not indexed.ok:
-		return {}
+		return null
 
 	var image: Image = indexed.image
 
@@ -582,12 +585,11 @@ func dynamic_sprite_resource(
 		)
 
 	var texture := ImageTexture.create_from_image(image)
-	var resource := {
-		"image": image,
-		"native_size": native_size,
-		"texture": texture,
-		"index_texture": texture,
-	}
+	var resource := CitySpriteResource.new()
+	resource.image = image
+	resource.native_size = native_size
+	resource.texture = texture
+	resource.index_texture = texture
 	caches.dynamic_sprite_cache[key] = resource
 
 	return resource

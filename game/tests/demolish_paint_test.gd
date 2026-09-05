@@ -75,8 +75,8 @@ func _run() -> void:
 		for zoom in (CityMapControl.ZOOM_LEVELS if edge == 64 else [1.0]):
 			map.zoom_factor = zoom
 			for direction in 4:
-				var visual: Dictionary = main.moving_sprites.demolish_brush_visual(start, direction)
-				assert(not visual.is_empty() and visual.texture.get_size().x > 0)
+				var visual: CityDynamicVisual = main.moving_sprites.demolish_brush_visual(start, direction)
+				assert(visual != null and visual.texture.get_size().x > 0)
 		map.zoom_factor = 0.25
 		_button(map, start + Vector2i(10, 0), false)
 		assert(not map.selection.bulldozer_visible())

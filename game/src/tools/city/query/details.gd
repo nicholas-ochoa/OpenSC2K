@@ -82,8 +82,8 @@ static func _things_at(city: CityState, point: Vector2i) -> Array[Dictionary]:
 			else "Unknown"
 		)
 		var visual := Presentation.thing_sprite(city, point, thing, record)
-		entry["sprite_id"] = int(visual.get("sprite_id", -1))
-		entry["sprite_flip"] = bool(visual.get("flip", false))
+		entry["sprite_id"] = visual.sprite_id if visual != null else -1
+		entry["sprite_flip"] = visual.flip if visual != null else false
 		result.append(entry)
 
 	return result

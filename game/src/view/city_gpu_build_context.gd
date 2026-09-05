@@ -5,9 +5,9 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 class Tile extends RefCounted:
-	var draws: Array[Dictionary] = []
-	var foreground: Array[Dictionary] = []
-	var foreground_draws: Array[Dictionary] = []
+	var draws: Array[CityGpuDrawList.Draw] = []
+	var foreground: Array[CityStaticCommand] = []
+	var foreground_draws: Array[CityGpuDrawList.Draw] = []
 
 
 class ImageRole extends RefCounted:
@@ -58,8 +58,8 @@ func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	var recorder := CityGpuDrawList.new()
 	var origin := int(configuration.side_margin) + city.map_size * int(configuration.half_width)
 	var order := (x + y) * city.map_size + y
-	var foreground: Array[Dictionary] = []
-	var foreground_draws: Array[Dictionary] = []
+	var foreground: Array[CityStaticCommand] = []
+	var foreground_draws: Array[CityGpuDrawList.Draw] = []
 
 	if mode == CityViewMode.Mode.UNDERGROUND:
 		CityUndergroundView.draw_tile(recorder, city, palette, sprites, images, configuration, origin, x, y, pipes, subways, water_mains)
@@ -78,9 +78,13 @@ func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 				if role == null:
 					continue # masked traffic changes color, not foreground geometry
 
-				var command := {"sprite_id": role.sprite_id, "flip": role.flip,
-					"position": draw.position, "size": draw.source.size, "depth_order": order,
-					"region_order": (order << 16) | foreground.size()}
+				var command := CityStaticCommand.new()
+				command.sprite_id = role.sprite_id
+				command.flip = role.flip
+				command.position = draw.position
+				command.size = draw.source.size
+				command.depth_order = order
+				command.region_order = (order << 16) | foreground.size()
 
 				if building > 0 and int(role.sprite_id) == int(configuration.sprite_base) + building:
 					CityIsometricRenderer.configure_train_foreground(command, building, configuration)
