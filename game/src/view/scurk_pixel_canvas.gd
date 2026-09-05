@@ -3,6 +3,23 @@ extends Control
 
 @warning_ignore_start("integer_division")
 
+class LoadResult extends RefCounted:
+	var ok := false
+	var error := ""
+
+	static func failure(message: String) -> LoadResult:
+		var result := LoadResult.new()
+		result.error = message
+
+		return result
+
+
+class PixelRegion extends RefCounted:
+	var width := 0
+	var height := 0
+	var pixels := PackedInt32Array()
+
+
 const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
 
 signal edit_started
@@ -235,48 +252,46 @@ func set_drawing_graphics(graphics: ScurkGraphics) -> void:
 	queue_redraw()
 
 
-func load_original_textures(executable_path: String) -> Dictionary:
+func load_original_textures(executable_path: String) -> LoadResult:
 	var loaded_patterns: Array[PackedInt32Array] = []
 	var loaded_set := PeBitmap.load_numeric_indexed8_many(
 		executable_path, ORIGINAL_TEXTURE_RESOURCE_IDS
 	)
 
 	if not loaded_set.ok:
-		return {"ok": false, "error": "Cannot load SCURK textures: " + loaded_set.error}
+		return LoadResult.failure("Cannot load SCURK textures: " + loaded_set.error)
 
 	for index in ORIGINAL_TEXTURE_RESOURCE_IDS.size():
 		var resource_id: int = ORIGINAL_TEXTURE_RESOURCE_IDS[index]
 		var loaded := loaded_set.entries[index]
 
 		if loaded.width != 8 or loaded.height != 8 or loaded.pixels.size() != 64:
-			return {
-				"ok": false,
-				"error": "SCURK texture %d is not 8 by 8 pixels." % resource_id,
-			}
+			return LoadResult.failure("SCURK texture %d is not 8 by 8 pixels." % resource_id)
 
 		loaded_patterns.append(loaded.pixels)
 
 	if loaded_patterns.size() != TEXTURE_NAMES.size():
-		return {"ok": false, "error": "The SCURK texture set is incomplete."}
+		return LoadResult.failure("The SCURK texture set is incomplete.")
 
 	texture_patterns = loaded_patterns
 	original_textures_loaded = true
 	texture_index = clampi(texture_index, 0, texture_patterns.size() - 1)
 	queue_redraw()
 
-	return {"ok": true, "error": ""}
+	var result := LoadResult.new()
+	result.ok = true
+	result.error = ""
+
+	return result
 
 
-func load_original_clear_backgrounds(executable_path: String) -> Dictionary:
+func load_original_clear_backgrounds(executable_path: String) -> LoadResult:
 	var loaded_set := PeBitmap.load_numeric_indexed8_many(
 		executable_path, CLEAR_BACKGROUND_RESOURCE_IDS
 	)
 
 	if not loaded_set.ok:
-		return {
-			"ok": false,
-			"error": "Cannot load SCURK drawing backgrounds: " + loaded_set.error,
-		}
+		return LoadResult.failure("Cannot load SCURK drawing backgrounds: " + loaded_set.error)
 
 	var loaded_backgrounds: Array[PackedInt32Array] = []
 
@@ -289,11 +304,8 @@ func load_original_clear_backgrounds(executable_path: String) -> Dictionary:
 			or loaded.height != 256
 			or loaded.pixels.size() != 128 * 256
 		):
-			return {
-				"ok": false,
-				"error": "SCURK drawing background %d is not 128 by 256 pixels."
-					% resource_id,
-			}
+			return LoadResult.failure("SCURK drawing background %d is not 128 by 256 pixels."
+					% resource_id)
 
 		loaded_backgrounds.append(loaded.pixels)
 
@@ -305,7 +317,11 @@ func load_original_clear_backgrounds(executable_path: String) -> Dictionary:
 
 	queue_redraw()
 
-	return {"ok": true, "error": ""}
+	var result := LoadResult.new()
+	result.ok = true
+	result.error = ""
+
+	return result
 
 
 static func _fallback_texture_patterns() -> Array[PackedInt32Array]:
@@ -399,9 +415,14 @@ static func copy_region(
 	height: int,
 	start: Vector2i,
 	finish: Vector2i
-) -> Dictionary:
+) -> PixelRegion:
 	if width <= 0 or height <= 0 or value_pixels.size() != width * height:
-		return {"width": 0, "height": 0, "pixels": PackedInt32Array()}
+		var result := PixelRegion.new()
+		result.width = 0
+		result.height = 0
+		result.pixels = PackedInt32Array()
+
+		return result
 
 	var minimum := Vector2i(
 		clampi(mini(start.x, finish.x), 0, width - 1),
@@ -422,7 +443,12 @@ static func copy_region(
 				(minimum.y + y) * width + minimum.x + x
 			]
 
-	return {"width": copied_width, "height": copied_height, "pixels": copied}
+	var result := PixelRegion.new()
+	result.width = copied_width
+	result.height = copied_height
+	result.pixels = copied
+
+	return result
 
 
 static func paste_region(

@@ -52,9 +52,9 @@ static func preview_error(city: CityState, group: int, subtool: int, point: Vect
 	if not _footprint_is_in_bounds(site, int(tool.area), map_edge):
 		return "The building footprint extends outside the map."
 
-	var check := _check_site(city.buildings, city.terrain, city.zones, city.tile_flags, site, tile_for_tool(group, subtool), map_edge)
+	var error := _site_error(city.buildings, city.terrain, city.zones, city.tile_flags, site, tile_for_tool(group, subtool), map_edge)
 
-	return String(check.get("error", ""))
+	return error
 
 
 static func _footprint_is_in_bounds(site: Rect2i, area: int, map_edge: int = 128) -> bool:
@@ -67,7 +67,7 @@ static func _footprint_is_in_bounds(site: Rect2i, area: int, map_edge: int = 128
 	return site.position.x >= 1 and site.position.y >= 1 and site.end.x <= (map_edge - 1) and site.end.y <= (map_edge - 1)
 
 
-static func _check_site(
+static func _site_error(
 	buildings: PackedByteArray,
 	terrain: PackedByteArray,
 	zones: PackedByteArray,
@@ -75,7 +75,7 @@ static func _check_site(
 	site: Rect2i,
 	tile_id: int,
 	map_edge: int = 128,
-) -> Dictionary:
+) -> String:
 	var marina_water_tiles := 0
 
 	for x in range(site.position.x, site.end.x):
@@ -84,25 +84,25 @@ static func _check_site(
 			var old_building := int(buildings[index])
 
 			if old_building >= ROAD_FIRST or old_building == RADIOACTIVITY or old_building == SMALL_PARK:
-				return {"ok": false, "error": "site contains a protected tile"}
+				return "site contains a protected tile"
 
 			if tile_id == SMALL_PARK and old_building > 0x0c:
-				return {"ok": false, "error": "site contains a protected tile"}
+				return "site contains a protected tile"
 
 			if (zones[index] & 0x0f) == MILITARY_ZONE:
-				return {"ok": false, "error": "site is in a military zone"}
+				return "site is in a military zone"
 
 			var is_water := (flags[index] & FLAG_WATER) != 0
 
 			if tile_id == MARINA and is_water:
 				marina_water_tiles += 1
 			elif terrain[index] != 0 or is_water:
-				return {"ok": false, "error": "site is not clear"}
+				return "site is not clear"
 
 	if tile_id == MARINA and (marina_water_tiles == 0 or marina_water_tiles == site.size.x * site.size.y):
-		return {"ok": false, "error": "marina must span land and water"}
+		return "marina must span land and water"
 
-	return {"ok": true, "error": ""}
+	return ""
 
 
 static func _count_nearby_residential(

@@ -124,7 +124,7 @@ func update_edit_state() -> void:
 	if app.map_view == null:
 		return
 
-	var state: Dictionary
+	var state: ToolEditState.Result
 	app.assets.refresh_scurk_artwork()
 	app.map_view.desktop_cursor_app = "city"
 	app.map_view.desktop_cursor_role = DesktopCursorRules.city_tool(app.tool_state.selected_group, app.tool_state.selected_subtool)
@@ -235,8 +235,8 @@ func _placement_preview_error(point: Vector2i) -> String:
 		if site.size.x == 0 or not Rect2i(0, 0, map_edge, map_edge).encloses(site):
 			return "The object footprint extends outside the map."
 
-		return ("" if tile_id > 255 else String(ScurkPlace._check_site(app.document_state.city.buildings, app.document_state.city.terrain,
-				app.document_state.city.tile_flags, site, tile_id, map_edge).get("error", "")))
+		return ("" if tile_id > 255 else ScurkPlace._site_error(app.document_state.city.buildings, app.document_state.city.terrain,
+				app.document_state.city.tile_flags, site, tile_id, map_edge))
 
 	if Buildings.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
 		return Buildings.preview_error(app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool, point)

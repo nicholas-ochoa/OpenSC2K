@@ -48,7 +48,7 @@ func open_tool_choice_dialog(group_index: int) -> void:
 		if group_index == 3
 		else "Select an available arcology."
 	)
-	var available_tools: Array[Dictionary] = []
+	var available_tools: Array[ToolCatalog.Tool] = []
 
 	for subtool_index in choices:
 		available_tools.append(Tools.tool(group_index, subtool_index))

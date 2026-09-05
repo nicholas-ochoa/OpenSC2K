@@ -2,6 +2,12 @@ class_name CityMapCamera
 extends CityMapConstants
 
 
+class ScrollState extends RefCounted:
+	var content := Vector2.ZERO
+	var page := Vector2.ZERO
+	var value := Vector2.ZERO
+
+
 var map: CityMapControl
 
 
@@ -149,9 +155,9 @@ func visible_tile_outline() -> PackedVector2Array:
 	return result
 
 
-func scroll_state() -> Dictionary:
+func scroll_state() -> ScrollState:
 	if map.city_source == null:
-		return {}
+		return null
 
 	var bounds := _camera_source_bounds()
 	var content := bounds.size
@@ -168,7 +174,12 @@ func scroll_state() -> Dictionary:
 		else:
 			value[axis] = clampf(value[axis], 0.0, content[axis] - page[axis])
 
-	return {"content": content, "page": page, "value": value}
+	var result := ScrollState.new()
+	result.content = content
+	result.page = page
+	result.value = value
+
+	return result
 
 
 func set_scroll_value(axis: int, value: float) -> bool:
@@ -177,7 +188,7 @@ func set_scroll_value(axis: int, value: float) -> bool:
 
 	var state := scroll_state()
 
-	if state.is_empty():
+	if state == null:
 		return false
 
 	var offset: Vector2 = state.value

@@ -67,14 +67,12 @@ func apply_tunnel_selection(
 
 		return
 
+	var scurk_tool := (
+		app.scurk_place_print.selected_edit_tool()
+		if free_mode and app.scurk_place_print != null else null
+	)
 	app.scurk_workspace.record_edit_command(
-		tunnel,
-		free_mode,
-		String(
-			app.scurk_place_print.selected_edit_tool().get("name", "Tunnel")
-			if free_mode and app.scurk_place_print != null
-			else "Tunnel"
-		)
+		tunnel, free_mode, scurk_tool.name if scurk_tool != null else "Tunnel"
 	)
 	app.interface.refresh_details()
 	app.static_render.refresh_after_city_edit(tunnel)

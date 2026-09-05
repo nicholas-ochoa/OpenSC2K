@@ -46,7 +46,7 @@ func apply_map_selection(
 
 	var scurk_tool_mode := app.scurk_workspace.scurk_edit_tool_active()
 	var scurk_tool := (
-		app.scurk_place_print.selected_edit_tool() if scurk_tool_mode else {}
+		app.scurk_place_print.selected_edit_tool() if scurk_tool_mode else null
 	)
 
 	if not _select_scurk_tool(finish, scurk_tool):
@@ -91,7 +91,7 @@ func apply_map_selection(
 		finish,
 		dragged,
 		scurk_tool_mode,
-		int(scurk_tool.get("zone", -1))
+		scurk_tool.zone if scurk_tool != null else -1
 	)
 	_finish_simple_edit(zone_edit, scurk_tool_mode, scurk_tool)
 
@@ -99,7 +99,7 @@ func apply_map_selection(
 # while the scurk place-and-print window is open, place an object at finish or
 # select the window's edit tool. returns false when the selection is handled
 # or no edit tool is chosen
-func _select_scurk_tool(finish: Vector2i, scurk_tool: Dictionary) -> bool:
+func _select_scurk_tool(finish: Vector2i, scurk_tool: ScurkEditTool) -> bool:
 	if app.scurk_place_print == null or not app.scurk_place_print.visible:
 		return true
 
@@ -108,7 +108,7 @@ func _select_scurk_tool(finish: Vector2i, scurk_tool: Dictionary) -> bool:
 
 		return false
 
-	if scurk_tool.is_empty():
+	if scurk_tool == null:
 		return false
 
 	app.tool_state.selected_group = int(scurk_tool.group)
@@ -219,7 +219,7 @@ func _apply_landscape_editor_terrain(start: Vector2i, dragged: bool) -> bool:
 		return true
 
 	var command := LandscapeEditorCommand.apply(app.document_state.city, tool.selected_group, tool.selected_subtool, start, tool.tool_random, levels)
-	_finish_simple_edit(SimpleEdits._result("terrain", command, tool.selected_group, tool.selected_subtool, true), false, {})
+	_finish_simple_edit(SimpleEdits._result("terrain", command, tool.selected_group, tool.selected_subtool, true), false, null)
 
 	return true
 
@@ -238,20 +238,20 @@ func _apply_landscape_brush(start: Vector2i, path: Array[Vector2i]) -> bool:
 		var command := TerrainTools.apply_path(app.document_state.city, tool.selected_group, tool.selected_subtool,
 			origin, path, tool.tool_random, tool.landscape_editor, target)
 		if command.ok or command.error != "no terrain height changed":
-			_finish_simple_edit(SimpleEdits._result("terrain", command, tool.selected_group, tool.selected_subtool, tool.landscape_editor), false, {})
+			_finish_simple_edit(SimpleEdits._result("terrain", command, tool.selected_group, tool.selected_subtool, tool.landscape_editor), false, null)
 		return true
 
 	var command := LandscapeCommand.apply_path(app.document_state.city, tool.selected_group, tool.selected_subtool,
 		path, tool.tool_random, tool.landscape_editor, true)
 	if command.ok or command.error != "no eligible tiles changed":
-		_finish_simple_edit(SimpleEdits._result("landscape", command, tool.selected_group, tool.selected_subtool, tool.landscape_editor), false, {})
+		_finish_simple_edit(SimpleEdits._result("landscape", command, tool.selected_group, tool.selected_subtool, tool.landscape_editor), false, null)
 	return true
 
 
 # tools that simpleedits applies in one step, such as demolish and terrain
 # a demolish brush pass that changes nothing is not reported
 func _apply_simple_edit(
-	start: Vector2i, finish: Vector2i, path: Array[Vector2i], scurk_tool_mode: bool, scurk_tool: Dictionary
+	start: Vector2i, finish: Vector2i, path: Array[Vector2i], scurk_tool_mode: bool, scurk_tool: ScurkEditTool
 ) -> bool:
 	var simple_edit := SimpleEdits.apply_supported(
 		app.document_state.city,
@@ -398,7 +398,7 @@ func _record_building(
 
 
 func _finish_simple_edit(
-	edit: Dictionary, scurk_tool_mode: bool, scurk_tool: Dictionary
+	edit: SimpleEditFlow.Result, scurk_tool_mode: bool, scurk_tool: ScurkEditTool
 ) -> void:
 	var command: EditCommandResult = edit.command
 
@@ -414,7 +414,7 @@ func _finish_simple_edit(
 
 	if edit.record_command:
 		app.scurk_workspace.record_edit_command(
-			command, scurk_tool_mode, String(scurk_tool.get("name", ""))
+			command, scurk_tool_mode, scurk_tool.name if scurk_tool != null else ""
 		)
 	else:
 		app.tool_state.last_edit_command = command

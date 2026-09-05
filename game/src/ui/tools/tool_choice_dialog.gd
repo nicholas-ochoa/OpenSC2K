@@ -20,7 +20,7 @@ func _ready() -> void:
 		choice_buttons.append(choice_button)
 
 
-func set_tools(title_text: String, prompt_text: String, tools: Array) -> void:
+func set_tools(title_text: String, prompt_text: String, tools: Array[ToolCatalog.Tool]) -> void:
 	title = title_text
 	dialog_text = prompt_text
 
@@ -31,14 +31,14 @@ func set_tools(title_text: String, prompt_text: String, tools: Array) -> void:
 		if not choice_button.visible:
 			continue
 
-		var tool: Dictionary = tools[choice_index]
+		var tool: ToolCatalog.Tool = tools[choice_index]
 		choice_button.text = "%s\n$%s" % [
-			tool.get("name", "Building"),
-			Numbers.format(int(tool.get("cost", 0))),
+			tool.name,
+			Numbers.format(int(tool.cost)),
 		]
-		choice_button.tooltip_text = "Select %s" % tool.get("name", "building")
+		choice_button.tooltip_text = "Select %s" % tool.name
 
 
-func show_tools(title_text: String, prompt_text: String, tools: Array) -> void:
+func show_tools(title_text: String, prompt_text: String, tools: Array[ToolCatalog.Tool]) -> void:
 	set_tools(title_text, prompt_text, tools)
 	popup_centered()

@@ -154,7 +154,7 @@ func tool_button_tooltip(
 ) -> String:
 	var tool := Tools.tool(group_index, subtool_index)
 
-	if tool.is_empty():
+	if tool == null:
 		return ""
 
 	if group_index == 16 and subtool_index == 1:
@@ -177,7 +177,7 @@ func tool_button_tooltip(
 	if group_index == 3 and subtool_index >= 2:
 		var details := Tools.power_plant_details(subtool_index)
 
-		if not details.is_empty():
+		if details != null:
 			lines.append("Nominal output: %d MW" % details.output_mw)
 			lines.append("Grid capacity: %s" % details.grid_capacity)
 			lines.append("Pollution factor: %d" % details.pollution)
@@ -236,7 +236,7 @@ func _create_button(
 	return button
 
 
-func _tool_price(tool: Dictionary) -> String:
+func _tool_price(tool: ToolCatalog.Tool) -> String:
 	if free_landscape:
 		return "Free"
 

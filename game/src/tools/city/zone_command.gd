@@ -1,6 +1,26 @@
 class_name ZoneCommand
 extends RefCounted
 
+class Preview extends RefCounted:
+	var ok := false
+	var error := ""
+	var zone_type := 0
+	var dragged := false
+	var charged_tiles := 0
+	var changed_tiles := 0
+	var terrain_surcharges := 0
+	var cost := 0
+	var listed_cost := 0
+	var affordable := false
+	var free_mode := false
+
+	static func failure(message: String) -> Preview:
+		var result := Preview.new()
+		result.error = message
+
+		return result
+
+
 const GROUP_PORTS := 8
 const GROUP_BULLDOZER := 0
 const SUBTOOL_DEZONE := 4
@@ -47,7 +67,7 @@ static func apply_rectangle(
 		zone_type_override
 	)
 
-	if not preview.get("ok", false):
+	if not preview.ok:
 		return ZoneEditResult.rejected(preview.error)
 
 	var zone_type := int(preview.zone_type)
@@ -158,14 +178,14 @@ static func preview_rectangle(
 	dragged := true,
 	free_mode := false,
 	zone_type_override := -1
-) -> Dictionary:
+) -> Preview:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return Preview.failure("city is invalid")
 
 	if not _point_is_valid(start, map_edge) or not _point_is_valid(finish, map_edge):
-		return {"ok": false, "error": "zone rectangle is outside the city"}
+		return Preview.failure("zone rectangle is outside the city")
 
 	var tool := ToolCatalog.tool(group_index, subtool_index)
 	var has_override := (
@@ -177,19 +197,19 @@ static func preview_rectangle(
 		else _zone_type_for_tool(group_index, subtool_index)
 	)
 
-	if (tool.is_empty() and not has_override) or zone_type < 0:
-		return {"ok": false, "error": "tool is not a zoning tool"}
+	if (tool == null and not has_override) or zone_type < 0:
+		return Preview.failure("tool is not a zoning tool")
 
 	var start_index := city.index_of(start.x, start.y)
 
 	if city.tile_flags[start_index] & FLAG_WATER:
-		return {"ok": false, "error": "a zone selection cannot start on water"}
+		return Preview.failure("a zone selection cannot start on water")
 
 	if (
 		city.buildings[start_index] == RADIOACTIVITY
 		or (city.zones[start_index] & 0x0f) == MILITARY_ZONE
 	):
-		return {"ok": false, "error": "a zone selection cannot start on this tile"}
+		return Preview.failure("a zone selection cannot start on this tile")
 
 	var charged_tiles := 0
 	var terrain_surcharges := 0
@@ -227,23 +247,24 @@ static func preview_rectangle(
 					changed_tiles += 1
 
 	var listed_cost := (
-		charged_tiles * int(tool.get("cost", 0)) + terrain_surcharges * 25
+		charged_tiles * (tool.cost if tool != null else 0) + terrain_surcharges * 25
 	)
 	var cost := 0 if free_mode else listed_cost
 
-	return {
-		"ok": true,
-		"zone_type": zone_type,
-		"dragged": dragged,
-		"charged_tiles": charged_tiles,
-		"changed_tiles": changed_tiles,
-		"terrain_surcharges": terrain_surcharges,
-		"cost": cost,
-		"listed_cost": listed_cost,
-		"affordable": free_mode or city.funds() >= cost,
-		"free_mode": free_mode,
-		"error": "",
-	}
+	var result := Preview.new()
+	result.ok = true
+	result.zone_type = zone_type
+	result.dragged = dragged
+	result.charged_tiles = charged_tiles
+	result.changed_tiles = changed_tiles
+	result.terrain_surcharges = terrain_surcharges
+	result.cost = cost
+	result.listed_cost = listed_cost
+	result.affordable = free_mode or city.funds() >= cost
+	result.free_mode = free_mode
+	result.error = ""
+
+	return result
 
 
 # undo also rejects a command of another family

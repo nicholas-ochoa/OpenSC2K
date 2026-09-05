@@ -353,7 +353,7 @@ func on_map_selection_changed(
 			return
 
 		var scurk_tool := app.scurk_place_print.selected_edit_tool()
-		var zone_type := int(scurk_tool.get("zone", -1))
+		var zone_type := scurk_tool.zone if scurk_tool != null else -1
 
 		if zone_type < 0:
 			app.map_view.clear_selection_price()
@@ -371,7 +371,7 @@ func on_map_selection_changed(
 			zone_type
 		)
 
-		if not scurk_preview.get("ok", false):
+		if not scurk_preview.ok:
 			app.map_view.clear_selection_price()
 
 			return
@@ -397,7 +397,7 @@ func on_map_selection_changed(
 		app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool, start, finish, dragged
 	)
 
-	if not preview.get("ok", false):
+	if not preview.ok:
 		app.map_view.clear_selection_price()
 		app.status_label.theme_type_variation = "ErrorLabel"
 		app.status_label.text = "Cannot start zone selection: %s" % preview.error

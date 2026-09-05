@@ -1,6 +1,21 @@
 class_name DispatchCommand
 extends RefCounted
 
+class Availability extends RefCounted:
+	var ok: bool = false
+	var error: String = ""
+	var police: int = 0
+	var fire: int = 0
+	var military: int = 0
+	var base_type: int = 0
+
+	static func failure(message: String) -> Availability:
+		var result := Availability.new()
+		result.error = message
+
+		return result
+
+
 const GROUP_DISPATCH := 2
 const FLAG_WATER := 0x04
 const MISC_CITY_MODE := 0x0004
@@ -23,14 +38,14 @@ static func supports_tool(group_index: int, subtool_index: int) -> bool:
 	return group_index == GROUP_DISPATCH and subtool_index >= 0 and subtool_index < 3
 
 
-static func availability(city: CityState) -> Dictionary:
+static func availability(city: CityState) -> Availability:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return Availability.failure("city is invalid")
 
 	var misc := city.document.find_chunk("MISC")
 
 	if misc == null or misc.decoded_payload.size() != 4800:
-		return {"ok": false, "error": "MISC is missing or has the wrong size"}
+		return Availability.failure("MISC is missing or has the wrong size")
 
 	var data: PackedByteArray = misc.decoded_payload
 	var police := int(_read_u32_be(data, MISC_TILE_COUNTS + POLICE_STATION * 4) >> 3)
@@ -44,14 +59,15 @@ static func availability(city: CityState) -> Dictionary:
 	if police == 0 and fire == 0 and military == 0:
 		military = 1
 
-	return {
-		"ok": true,
-		"police": police,
-		"fire": fire,
-		"military": military,
-		"base_type": base_type,
-		"error": "",
-	}
+	var result := Availability.new()
+	result.ok = true
+	result.police = police
+	result.fire = fire
+	result.military = military
+	result.base_type = base_type
+	result.error = ""
+
+	return result
 
 
 static func apply(

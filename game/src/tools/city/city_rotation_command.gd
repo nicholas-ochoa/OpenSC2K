@@ -29,16 +29,16 @@ const REQUIRED_CHUNKS := [
 
 
 # View rotation rewrites the saved city coordinates.
-static func apply(city: CityState, counter_clockwise: bool) -> Dictionary:
+static func apply(city: CityState, counter_clockwise: bool) -> RotationEditResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return RotationEditResult.rejected("city is invalid")
 
 	var old_payloads := _payloads(city)
 
 	if old_payloads.is_empty():
-		return {"ok": false, "error": "rotation data is missing or invalid"}
+		return RotationEditResult.rejected("rotation data is missing or invalid")
 
 	var changed := _duplicate_payloads(old_payloads)
 	var surface_table := _surface_table(counter_clockwise)
@@ -91,16 +91,17 @@ static func apply(city: CityState, counter_clockwise: bool) -> Dictionary:
 			changed_ids.append(chunk_id)
 
 	if not _apply_payloads(city, changed_ids, changed, old_payloads):
-		return {"ok": false, "error": "cannot store rotated city data"}
+		return RotationEditResult.rejected("cannot store rotated city data")
 
-	return {
-		"ok": true,
-		"counter_clockwise": counter_clockwise,
-		"old_compass": old_compass,
-		"new_compass": new_compass,
-		"changed_ids": changed_ids,
-		"error": "",
-	}
+	var result := RotationEditResult.new()
+	result.ok = true
+	result.counter_clockwise = counter_clockwise
+	result.old_compass = old_compass
+	result.new_compass = new_compass
+	result.changed_ids = changed_ids
+	result.error = ""
+
+	return result
 
 
 static func rotate_point(point: Vector2i, size: int, counter_clockwise: bool) -> Vector2i:
@@ -132,8 +133,8 @@ static func underground_tile_after_rotation(tile: int, counter_clockwise: bool) 
 	return table[tile] if tile >= 0 and tile < table.size() else tile
 
 
-static func _payloads(city: CityState) -> Dictionary:
-	var result := {}
+static func _payloads(city: CityState) -> Dictionary[String, PackedByteArray]:
+	var result: Dictionary[String, PackedByteArray] = {}
 
 	for specification in REQUIRED_CHUNKS:
 		var chunk_id: String = specification[0]
@@ -148,8 +149,8 @@ static func _payloads(city: CityState) -> Dictionary:
 	return result
 
 
-static func _duplicate_payloads(payloads: Dictionary) -> Dictionary:
-	var result := {}
+static func _duplicate_payloads(payloads: Dictionary[String, PackedByteArray]) -> Dictionary[String, PackedByteArray]:
+	var result: Dictionary[String, PackedByteArray] = {}
 
 	for chunk_id in payloads:
 		result[chunk_id] = payloads[chunk_id].duplicate()
@@ -158,7 +159,7 @@ static func _duplicate_payloads(payloads: Dictionary) -> Dictionary:
 
 
 static func _apply_payloads(
-	city: CityState, chunk_ids: PackedStringArray, payloads: Dictionary, rollback: Dictionary
+	city: CityState, chunk_ids: PackedStringArray, payloads: Dictionary[String, PackedByteArray], rollback: Dictionary[String, PackedByteArray]
 ) -> bool:
 	var applied := PackedStringArray()
 

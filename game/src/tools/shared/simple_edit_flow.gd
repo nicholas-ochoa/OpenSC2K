@@ -1,6 +1,18 @@
 class_name SimpleEditFlow
 extends RefCounted
 
+class Result extends RefCounted:
+	var handled: bool = false
+	var command: EditCommandResult
+	var record_command: bool = false
+	var refresh_details: bool = false
+	var show_effects: bool = false
+	var refresh_news_summary: bool = false
+	var play_success_sound: bool = false
+	var play_failure_sound: bool = false
+	var message: String = ""
+
+
 const Tools = preload("res://src/tools/shared/tool_catalog.gd")
 const DisplayNumbers = preload("res://src/ui/shared/display_number_format.gd")
 const Landscapes = preload("res://src/tools/landscape/landscape_command.gd")
@@ -22,7 +34,7 @@ static func apply_supported(
 	random: SimRandom,
 	underground: bool,
 	free_mode: bool
-) -> Dictionary:
+) -> Result:
 	var command: EditCommandResult
 
 	if Landscapes.supports_tool(group_index, subtool_index):
@@ -71,7 +83,10 @@ static func apply_supported(
 
 		return _result("onramp", command, group_index, subtool_index, free_mode)
 
-	return {"handled": false}
+	var result := Result.new()
+	result.handled = false
+
+	return result
 
 
 static func apply_zone(
@@ -83,7 +98,7 @@ static func apply_zone(
 	dragged: bool,
 	free_mode: bool,
 	zone_type: int
-) -> Dictionary:
+) -> Result:
 	var command := Zones.apply_rectangle(
 		city,
 		group_index,
@@ -104,33 +119,33 @@ static func _result(
 	group_index: int,
 	subtool_index: int,
 	free_mode: bool
-) -> Dictionary:
-	var tool_name := String(Tools.tool(group_index, subtool_index).get("name", "Tool"))
-	var result := {
-		"handled": true,
-		"command": command,
-		"record_command": kind != "hydro",
-		"refresh_details": kind != "subway_to_rail",
-		"show_effects": kind == "terrain" or (kind == "demolish" and not free_mode),
-		"refresh_news_summary": (
-			command is DemolishEditResult and command.ok and (command as DemolishEditResult).easter_events > 0
-		),
-		"play_success_sound": kind in [
-			"landscape", "hydro", "subway_to_rail", "onramp", "zone"
-		],
-		"play_failure_sound": kind in [
-			"landscape", "hydro", "subway_to_rail", "onramp", "zone"
-		],
-	}
+) -> Result:
+	var tool := Tools.tool(group_index, subtool_index)
+	var tool_name := tool.name if tool != null else "Tool"
+	var result := Result.new()
+	result.handled = true
+	result.command = command
+	result.record_command = kind != "hydro"
+	result.refresh_details = kind != "subway_to_rail"
+	result.show_effects = kind == "terrain" or (kind == "demolish" and not free_mode)
+	result.refresh_news_summary = (
+		command is DemolishEditResult and command.ok and (command as DemolishEditResult).easter_events > 0
+	)
+	result.play_success_sound = kind in [
+		"landscape", "hydro", "subway_to_rail", "onramp", "zone"
+	]
+	result.play_failure_sound = kind in [
+		"landscape", "hydro", "subway_to_rail", "onramp", "zone"
+	]
 
 	if not command.ok:
-		result["message"] = _failure_message(
+		result.message = _failure_message(
 			kind, tool_name, command.error if not command.error.is_empty() else "unknown error"
 		)
 
 		return result
 
-	result["message"] = _success_message(kind, tool_name, command)
+	result.message = _success_message(kind, tool_name, command)
 
 	return result
 

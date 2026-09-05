@@ -1,6 +1,17 @@
 class_name ToolEditState
 extends RefCounted
 
+class Result extends RefCounted:
+	var available: bool = false
+	var enabled: bool = false
+	var selection: String = "point"
+	var area: int = 1
+	var landscape: bool = false
+	var show_status: bool = false
+	var status_text: String = ""
+	var status_detail: String = ""
+
+
 const Tools = preload("res://src/tools/shared/tool_catalog.gd")
 const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
 const Zones = preload("res://src/tools/city/zone_command.gd")
@@ -28,7 +39,7 @@ static func is_tool_variant(group_index: int, subtool_index: int) -> bool:
 
 static func scurk_object(
 	city: CityState, overlay_mode: CityViewMode.Mode, tile_id: int
-) -> Dictionary:
+) -> Result:
 	var area := ScurkPlace.footprint(tile_id, Vector2i(8, 8)).size.x
 	var can_place := (
 		city != null
@@ -36,28 +47,29 @@ static func scurk_object(
 		and ScurkPlace.is_placeable_tile(tile_id)
 	)
 
-	return {
-		"available": can_place,
-		"enabled": can_place,
-		"selection": "point",
-		"area": area,
-		"landscape": false,
-		"show_status": true,
-		"status_text": "SCURK Tile %d" % tile_id if can_place else "SCURK Place",
-		"status_detail": (
-			"SCURK tile %d selected. Click its anchor tile to place a %d by %d object."
-			% [tile_id, area, area]
-			if can_place
-			else "Select a SCURK object to place."
-		),
-	}
+	var result := Result.new()
+	result.available = can_place
+	result.enabled = can_place
+	result.selection = "point"
+	result.area = area
+	result.landscape = false
+	result.show_status = true
+	result.status_text = "SCURK Tile %d" % tile_id if can_place else "SCURK Place"
+	result.status_detail = (
+		"SCURK tile %d selected. Click its anchor tile to place a %d by %d object."
+		% [tile_id, area, area]
+		if can_place
+		else "Select a SCURK object to place."
+	)
+
+	return result
 
 
-static func scurk_tool(city: CityState, tool: Dictionary) -> Dictionary:
-	var can_edit := city != null and not tool.is_empty()
-	var group_index := int(tool.get("group", -1))
-	var subtool_index := int(tool.get("subtool", -1))
-	var is_zone := int(tool.get("zone", -1)) >= 0
+static func scurk_tool(city: CityState, tool: ScurkEditTool) -> Result:
+	var can_edit := city != null and tool != null
+	var group_index := tool.group if tool != null else -1
+	var subtool_index := tool.subtool if tool != null else -1
+	var is_zone := tool != null and tool.zone >= 0
 	var is_demolish := Demolish.supports_tool(group_index, subtool_index)
 	var is_landscape := Landscapes.supports_tool(group_index, subtool_index)
 	var is_network := Networks.supports_tool(group_index, subtool_index)
@@ -70,26 +82,27 @@ static func scurk_tool(city: CityState, tool: Dictionary) -> Dictionary:
 	elif is_landscape or is_network or is_highway or is_terrain:
 		selection = "path"
 
-	var tool_name := String(tool.get("name", "Edit Tool"))
+	var tool_name := tool.name if tool != null else "Edit Tool"
 
-	return {
-		"available": can_edit,
-		"enabled": can_edit,
-		"selection": selection,
-		"area": 1,
-		"landscape": is_landscape,
-		"show_status": true,
-		"status_text": "SCURK %s" % tool_name,
-		"status_detail": (
-			"%s is active in Place & Print. Click or drag on the city. City funds and development gates do not apply."
-			% tool_name
-		),
-	}
+	var result := Result.new()
+	result.available = can_edit
+	result.enabled = can_edit
+	result.selection = selection
+	result.area = 1
+	result.landscape = is_landscape
+	result.show_status = true
+	result.status_text = "SCURK %s" % tool_name
+	result.status_detail = (
+		"%s is active in Place & Print. Click or drag on the city. City funds and development gates do not apply."
+		% tool_name
+	)
+
+	return result
 
 
 static func normal(
 	city: CityState, overlay_mode: CityViewMode.Mode, group_index: int, subtool_index: int
-) -> Dictionary:
+) -> Result:
 	var available := city != null and ToolAvailability.is_available(
 		city, group_index, subtool_index
 	)
@@ -109,7 +122,7 @@ static func normal(
 	var is_query := group_index == 16
 	var is_center := group_index == 17
 	var point_area := (
-		int(Tools.tool(group_index, subtool_index).get("area", 1))
+		Tools.tool(group_index, subtool_index).area
 		if is_building else 1
 	)
 	var is_underground_network := (
@@ -158,42 +171,43 @@ static func normal(
 
 	var tool := Tools.tool(group_index, subtool_index)
 
-	return {
-		"available": available,
-		"enabled": enabled,
-		"selection": selection,
-		"area": point_area,
-		"landscape": is_landscape,
-		"show_status": city != null,
-		"status_text": str(tool.get("name", "Tool")),
-		"status_detail": _normal_status_detail(
-			city,
-			tool,
-			available,
-			group_index,
-			subtool_index,
-			is_zone,
-			is_landscape,
-			is_building,
-			is_network,
-			is_hydro,
-			is_subway_to_rail,
-			is_onramp,
-			is_tunnel,
-			is_highway,
-			is_demolish,
-			is_terrain,
-			is_dispatch,
-			is_sign,
-			is_query,
-			is_center,
-		),
-	}
+	var result := Result.new()
+	result.available = available
+	result.enabled = enabled
+	result.selection = selection
+	result.area = point_area
+	result.landscape = is_landscape
+	result.show_status = city != null
+	result.status_text = tool.name if tool != null else "Tool"
+	result.status_detail = _normal_status_detail(
+		city,
+		tool,
+		available,
+		group_index,
+		subtool_index,
+		is_zone,
+		is_landscape,
+		is_building,
+		is_network,
+		is_hydro,
+		is_subway_to_rail,
+		is_onramp,
+		is_tunnel,
+		is_highway,
+		is_demolish,
+		is_terrain,
+		is_dispatch,
+		is_sign,
+		is_query,
+		is_center,
+	)
+
+	return result
 
 
 static func _normal_status_detail(
 	city: CityState,
-	tool: Dictionary,
+	tool: ToolCatalog.Tool,
 	available: bool,
 	group_index: int,
 	subtool_index: int,
@@ -216,7 +230,7 @@ static func _normal_status_detail(
 	if city == null:
 		return ""
 
-	var tool_name := str(tool.get("name", "Tool"))
+	var tool_name := tool.name if tool != null else "Tool"
 
 	if not available:
 		return "%s is not available in this city." % tool_name

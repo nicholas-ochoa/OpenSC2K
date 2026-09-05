@@ -5,8 +5,23 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 
-static func apply(city: CityState) -> Dictionary:
-	var result := {"ok": true, "created": 0, "linked": 0, "unfilled": 0}
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+	var created := 0
+	var linked := 0
+	var unfilled := 0
+
+	static func failure(message: String) -> Result:
+		var result := Result.new()
+		result.error = message
+
+		return result
+
+
+static func apply(city: CityState) -> Result:
+	var result := Result.new()
+	result.ok = true
 
 	if city == null or not city.is_valid() or not city.document.is_extended():
 		return result
@@ -17,7 +32,7 @@ static func apply(city: CityState) -> Dictionary:
 		var chunk := document.find_chunk(id)
 
 		if chunk == null or chunk.decoded_payload.size() != document.decoded_size(id):
-			return {"ok": false, "error": "Cannot repair facility records: %s is missing or invalid." % id}
+			return Result.failure("Cannot repair facility records: %s is missing or invalid." % id)
 
 	var microsims := document.find_chunk("XMIC").decoded_payload.duplicate()
 	var labels := document.find_chunk("XLAB").decoded_payload.duplicate()
@@ -26,7 +41,7 @@ static func apply(city: CityState) -> Dictionary:
 	var misc := document.find_chunk("MISC").decoded_payload
 	# local deterministic initialization must not consume the simulation rng
 	var random := SimRandom.new(1)
-	var rebuilt_shared := {}
+	var rebuilt_shared: Dictionary[int, bool] = {}
 	var edge := city.map_size
 	var next_free := BuildingCommand.MICROSIM_DYNAMIC_FIRST
 
@@ -134,7 +149,7 @@ static func _overlay_target(
 ) -> int:
 	var id := OverlayData.read(text, index)
 	var target := index
-	var visited := {}
+	var visited: Dictionary[int, bool] = {}
 
 	while OverlayData.is_thing(id):
 		var record := OverlayData.thing_record(id)

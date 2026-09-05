@@ -12887,7 +12887,7 @@ func _test_tool_catalog() -> void:
 		"Wind details expose its rated power output",
 	)
 	_check(
-		Tools.power_plant_details(1).is_empty(),
+		Tools.power_plant_details(1) == null,
 		"Power-plant details reject the retired chooser entry",
 	)
 	var road := Tools.tool(6, 0)
@@ -12898,8 +12898,8 @@ func _test_tool_catalog() -> void:
 	_check(prison.cost == 3000 and prison.area == 4, "Prison uses the executable cost and area")
 	var marina := Tools.tool(14, 4)
 	_check(marina.cost == 1000 and marina.area == 3, "Marina uses the executable cost and area")
-	_check(Tools.tool(-1, 0).is_empty(), "Tool catalog rejects an invalid group")
-	_check(Tools.tool(0, 12).is_empty(), "Tool catalog rejects an invalid subtool")
+	_check(Tools.tool(-1, 0) == null, "Tool catalog rejects an invalid group")
+	_check(Tools.tool(0, 12) == null, "Tool catalog rejects an invalid subtool")
 
 
 func _test_tool_availability(reference_root: String) -> void:
@@ -12973,12 +12973,9 @@ func _test_tool_availability(reference_root: String) -> void:
 		"Tool edit state limits underground input to supported tools",
 	)
 	var scurk_object_state := ToolEditState.scurk_object(city, CityViewMode.Mode.CITY, 0xcf)
-	var scurk_zone_state := ToolEditState.scurk_tool(city, {
-		"group": 9,
-		"subtool": 0,
-		"zone": 1,
-		"name": "Light Residential",
-	})
+	var scurk_zone_state := ToolEditState.scurk_tool(
+		city, ScurkEditTool.new("Light Residential", 9, 0, 1, "city")
+	)
 	_check(
 		scurk_object_state.enabled
 		and scurk_object_state.area == 4

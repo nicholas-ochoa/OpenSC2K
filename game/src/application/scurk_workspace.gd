@@ -187,7 +187,7 @@ func _select_scurk_edit_tool(
 	app.tool_state.selected_subtool = subtool_index
 	var tool := app.scurk_place_print.selected_edit_tool()
 	# "either" has no key and leaves the current view
-	var required_view := CityViewMode.from_key(String(tool.get("view", "either")))
+	var required_view := CityViewMode.from_key(tool.view if tool != null else "either")
 
 	if required_view != CityViewMode.Mode.NONE and app.view_state.overlay_mode != required_view:
 		app.menus.set_overlay(required_view)

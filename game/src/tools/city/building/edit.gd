@@ -78,10 +78,10 @@ static func apply(
 
 		return outside
 
-	var site_check := BuildingSites._check_site(buildings, terrain, zones, flags, site, tile_id, map_edge)
+	var site_error := BuildingSites._site_error(buildings, terrain, zones, flags, site, tile_id, map_edge)
 
-	if not site_check.ok:
-		var blocked := BuildingEditResult.rejected(site_check.error, cost)
+	if not site_error.is_empty():
+		var blocked := BuildingEditResult.rejected(site_error, cost)
 		blocked.lfsr_advanced = lfsr_random.state != lfsr_state_before
 
 		return blocked

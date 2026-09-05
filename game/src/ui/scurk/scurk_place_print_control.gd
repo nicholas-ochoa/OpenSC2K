@@ -13,32 +13,32 @@ const PickCopy = preload("res://src/tools/scurk/scurk_pick_copy.gd")
 
 const MODE_OBJECTS := 0
 const MODE_EDIT_TOOLS := 1
-const EDIT_TOOLS := [
-	{"name": "Bulldozer", "group": 0, "subtool": 0, "zone": -1, "view": "either"},
-	{"name": "Level Terrain", "group": 0, "subtool": 1, "zone": -1, "view": "city"},
-	{"name": "Raise Terrain", "group": 0, "subtool": 2, "zone": -1, "view": "city"},
-	{"name": "Lower Terrain", "group": 0, "subtool": 3, "zone": -1, "view": "city"},
-	{"name": "De-zone", "group": 0, "subtool": 4, "zone": 0, "view": "city"},
-	{"name": "Pond, Lake, or River", "group": 1, "subtool": 1, "zone": -1, "view": "city"},
-	{"name": "Water Pipes", "group": 4, "subtool": 0, "zone": -1, "view": "underground"},
-	{"name": "Light Residential", "group": 9, "subtool": 0, "zone": 1, "view": "city"},
-	{"name": "Dense Residential", "group": 9, "subtool": 1, "zone": 2, "view": "city"},
-	{"name": "Light Commercial", "group": 10, "subtool": 0, "zone": 3, "view": "city"},
-	{"name": "Dense Commercial", "group": 10, "subtool": 1, "zone": 4, "view": "city"},
-	{"name": "Light Industrial", "group": 11, "subtool": 0, "zone": 5, "view": "city"},
-	{"name": "Dense Industrial", "group": 11, "subtool": 1, "zone": 6, "view": "city"},
-	{"name": "Seaport Zone", "group": 8, "subtool": 0, "zone": 9, "view": "city"},
-	{"name": "Airport Zone", "group": 8, "subtool": 1, "zone": 8, "view": "city"},
-	{"name": "Military Zone", "group": 8, "subtool": 0, "zone": 7, "view": "city"},
-	{"name": "Road", "group": 6, "subtool": 0, "zone": -1, "view": "city"},
-	{"name": "Highway", "group": 6, "subtool": 1, "zone": -1, "view": "city"},
-	{"name": "Tunnel", "group": 6, "subtool": 2, "zone": -1, "view": "city"},
-	{"name": "On-ramp", "group": 6, "subtool": 3, "zone": -1, "view": "city"},
-	{"name": "Power Line", "group": 3, "subtool": 0, "zone": -1, "view": "city"},
-	{"name": "Rail", "group": 7, "subtool": 0, "zone": -1, "view": "city"},
-	{"name": "Subway", "group": 7, "subtool": 1, "zone": -1, "view": "underground"},
-	{"name": "Subway-to-Rail Connector", "group": 7, "subtool": 4, "zone": -1, "view": "underground"},
-	{"name": "Center", "group": 17, "subtool": 0, "zone": -1, "view": "either"},
+static var EDIT_TOOLS: Array[ScurkEditTool] = [
+	ScurkEditTool.new("Bulldozer", 0, 0, -1, "either"),
+	ScurkEditTool.new("Level Terrain", 0, 1, -1, "city"),
+	ScurkEditTool.new("Raise Terrain", 0, 2, -1, "city"),
+	ScurkEditTool.new("Lower Terrain", 0, 3, -1, "city"),
+	ScurkEditTool.new("De-zone", 0, 4, 0, "city"),
+	ScurkEditTool.new("Pond, Lake, or River", 1, 1, -1, "city"),
+	ScurkEditTool.new("Water Pipes", 4, 0, -1, "underground"),
+	ScurkEditTool.new("Light Residential", 9, 0, 1, "city"),
+	ScurkEditTool.new("Dense Residential", 9, 1, 2, "city"),
+	ScurkEditTool.new("Light Commercial", 10, 0, 3, "city"),
+	ScurkEditTool.new("Dense Commercial", 10, 1, 4, "city"),
+	ScurkEditTool.new("Light Industrial", 11, 0, 5, "city"),
+	ScurkEditTool.new("Dense Industrial", 11, 1, 6, "city"),
+	ScurkEditTool.new("Seaport Zone", 8, 0, 9, "city"),
+	ScurkEditTool.new("Airport Zone", 8, 1, 8, "city"),
+	ScurkEditTool.new("Military Zone", 8, 0, 7, "city"),
+	ScurkEditTool.new("Road", 6, 0, -1, "city"),
+	ScurkEditTool.new("Highway", 6, 1, -1, "city"),
+	ScurkEditTool.new("Tunnel", 6, 2, -1, "city"),
+	ScurkEditTool.new("On-ramp", 6, 3, -1, "city"),
+	ScurkEditTool.new("Power Line", 3, 0, -1, "city"),
+	ScurkEditTool.new("Rail", 7, 0, -1, "city"),
+	ScurkEditTool.new("Subway", 7, 1, -1, "underground"),
+	ScurkEditTool.new("Subway-to-Rail Connector", 7, 4, -1, "underground"),
+	ScurkEditTool.new("Center", 17, 0, -1, "either"),
 ]
 
 const THUMBNAIL_SIZE := 64
@@ -107,7 +107,7 @@ func _ready() -> void:
 	tool_list.clear()
 
 	for index in EDIT_TOOLS.size():
-		var tool: Dictionary = EDIT_TOOLS[index]
+		var tool: ScurkEditTool = EDIT_TOOLS[index]
 		var item := tool_list.add_item(String(tool.name))
 		tool_list.set_item_metadata(item, index)
 		tool_list.set_item_tooltip(item, "%s is free in Place & Print. Normal terrain and map-edge rules still apply." % tool.name)
@@ -143,7 +143,7 @@ func set_workspace_images(images: Dictionary) -> void:
 	tool_list.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 
 	for i in EDIT_TOOLS.size():
-		var tool: Dictionary = EDIT_TOOLS[i]
+		var tool: ScurkEditTool = EDIT_TOOLS[i]
 		var id := 1200
 
 		if int(tool.zone) >= 0:
@@ -180,11 +180,11 @@ func is_object_mode() -> bool:
 	return mode_selector == null or mode_selector.selected == MODE_OBJECTS
 
 
-func selected_edit_tool() -> Dictionary:
+func selected_edit_tool() -> ScurkEditTool:
 	if is_object_mode() or selected_edit_index < 0 or selected_edit_index >= EDIT_TOOLS.size():
-		return {}
+		return null
 
-	return EDIT_TOOLS[selected_edit_index].duplicate()
+	return EDIT_TOOLS[selected_edit_index].copy()
 
 
 func select_edit_tool(index: int, notify := true) -> bool:
@@ -356,7 +356,7 @@ func _update_selection_label() -> void:
 	if not is_object_mode():
 		var tool := selected_edit_tool()
 
-		if tool.is_empty():
+		if tool == null:
 			set_status("Select an edit tool.")
 
 			return
@@ -414,7 +414,7 @@ func _sync_mode_controls() -> void:
 func _emit_edit_tool() -> void:
 	var tool := selected_edit_tool()
 
-	if tool.is_empty():
+	if tool == null:
 		return
 
 	edit_tool_selected.emit(

@@ -6,6 +6,11 @@ const MINIMUM_ZOOM := 0.5
 const SHOT_MAGNIFICATIONS := [3, 2, 1, 1]
 const Cleanup = preload("res://src/debug/city_debug_actions.gd")
 
+class CameraFrame extends RefCounted:
+	var offset := Vector2.ZERO
+	var scale := 1.0
+
+
 class RenderResult extends AssetImageResult:
 	var occlusion_commands: Array[CityStaticCommand] = []
 
@@ -187,7 +192,7 @@ static func _render(snapshot: CityState, palette: Sc2Palette, sprites: Sc2Sprite
 	return result
 
 
-func _camera() -> Dictionary:
+func _camera() -> CameraFrame:
 	# hold each framing for 24 seconds. integral scales preserve source pixels;
 	# fractional continuous zoom makes nearest-neighbor artwork shimmer
 	var shot := int(elapsed / 24.0) % 4
@@ -200,7 +205,11 @@ func _camera() -> Dictionary:
 	var scale := camera_zoom(shot, pixel_scale)
 	var offset := ((size / 2.0 - center * scale) * pixel_scale).round() / pixel_scale
 
-	return {"offset": offset, "scale": scale}
+	var result := CameraFrame.new()
+	result.offset = offset
+	result.scale = scale
+
+	return result
 
 
 

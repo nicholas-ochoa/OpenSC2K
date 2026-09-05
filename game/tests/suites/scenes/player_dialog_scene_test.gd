@@ -37,7 +37,7 @@ func run() -> void:
 	var choice := preload("res://src/ui/tools/tool_choice_dialog.tscn").instantiate() as ToolChoiceDialog
 	root.add_child(choice)
 	choice.choice_requested.connect(func(index: int) -> void: selected_choice = index)
-	choice.set_tools("Tools", "Pick one", [{"name": "First", "cost": 25}, {"name": "Second", "cost": 75}])
+	choice.set_tools("Tools", "Pick one", [ToolCatalog.Tool.new("", "First", 25), ToolCatalog.Tool.new("", "Second", 75)])
 	assert(not choice.choice_buttons[2].visible)
 	choice.choice_buttons[1].pressed.emit()
 	assert(selected_choice == 1 and choice.choice_buttons[1].text.contains("Second"))

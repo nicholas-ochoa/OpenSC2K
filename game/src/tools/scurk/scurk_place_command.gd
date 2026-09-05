@@ -132,10 +132,10 @@ static func apply(
 	var microsims: PackedByteArray = changed_payloads.XMIC
 	var misc: PackedByteArray = changed_payloads.MISC
 
-	var site_check := _check_site(buildings, terrain, flags, site, tile_id, map_edge)
+	var site_error := _site_error(buildings, terrain, flags, site, tile_id, map_edge)
 
-	if not site_check.ok:
-		return EditCommandResult.failure(site_check.error)
+	if not site_error.is_empty():
+		return EditCommandResult.failure(site_error)
 
 	var process_random_state_before := process_random.state
 	var overlay_id := BuildingFacilities.provision_microsim(
@@ -294,14 +294,14 @@ static func _apply_history(
 	return EditCommandResult.undone(maxi(command.tile_indices.size(), command.points.size()))
 
 
-static func _check_site(
+static func _site_error(
 	buildings: PackedByteArray,
 	terrain: PackedByteArray,
 	flags: PackedByteArray,
 	site: Rect2i,
 	tile_id: int,
 	map_edge: int = 128,
-) -> Dictionary:
+) -> String:
 	var marina_water_tiles := 0
 
 	for x in range(site.position.x, site.end.x):
@@ -314,10 +314,10 @@ static func _check_site(
 				or old_building == RADIOACTIVITY
 				or old_building == SMALL_PARK
 			):
-				return _failure("site contains a protected tile")
+				return "site contains a protected tile"
 
 			if tile_id == SMALL_PARK and old_building > 0x0c:
-				return _failure("site contains a protected tile")
+				return "site contains a protected tile"
 
 			var is_water := (flags[index] & FLAG_WATER) != 0
 
@@ -326,17 +326,17 @@ static func _check_site(
 					marina_water_tiles += 1
 			elif tile_id >= HYDRO_DAM_FIRST and tile_id <= HYDRO_DAM_LAST:
 				if terrain[index] == 0 or not is_water:
-					return _failure("hydroelectric dam requires water terrain")
+					return "hydroelectric dam requires water terrain"
 			elif tile_id >= 0x70 and (terrain[index] != 0 or is_water):
-				return _failure("site is not flat clear land")
+				return "site is not flat clear land"
 
 	if tile_id == MARINA and (
 		marina_water_tiles == 0
 		or marina_water_tiles == site.size.x * site.size.y
 	):
-		return _failure("marina must span land and water")
+		return "marina must span land and water"
 
-	return {"ok": true, "error": ""}
+	return ""
 
 
 static func _zone_for_tile(
@@ -396,7 +396,3 @@ static func _group_is_placeable(group: int) -> bool:
 		and group != PickCopy.GROUP_ANIMATING_I
 		and group != PickCopy.GROUP_ANIMATING_II
 	)
-
-
-static func _failure(message: String) -> Dictionary:
-	return {"ok": false, "error": message}

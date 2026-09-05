@@ -1,6 +1,23 @@
 class_name ToolAvailability
 extends RefCounted
 
+class Result extends RefCounted:
+	var ok: bool = false
+	var error: String = ""
+	var group_masks: PackedInt32Array
+	var power_plant_mask: int = 0
+	var released_inventions: PackedByteArray
+	var arcology_count: int = 0
+	var progression: int = 0
+	var military_base_type: int = 0
+
+	static func failure(message: String) -> Result:
+		var result := Result.new()
+		result.error = message
+
+		return result
+
+
 const MISC_PROGRESSION := 0x0020
 const MISC_GRANTED_REWARDS := 0x0078
 const MISC_INVENTION_YEARS := 0x0738
@@ -24,21 +41,21 @@ const BASE_GROUP_MASKS := [
 const BASE_POWER_PLANT_MASK := 0x07
 
 
-static func inspect(city: CityState) -> Dictionary:
+static func inspect(city: CityState) -> Result:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return Result.failure("city is invalid")
 
 	var chunk := city.document.find_chunk("MISC")
 
 	if chunk == null or chunk.decoded_payload.size() != 4800:
-		return {"ok": false, "error": "MISC is missing or has the wrong size"}
+		return Result.failure("MISC is missing or has the wrong size")
 
 	return inspect_misc(chunk.decoded_payload)
 
 
-static func inspect_misc(misc: PackedByteArray) -> Dictionary:
+static func inspect_misc(misc: PackedByteArray) -> Result:
 	if misc.size() != 4800:
-		return {"ok": false, "error": "MISC has the wrong size"}
+		return Result.failure("MISC has the wrong size")
 
 	var group_masks := PackedInt32Array(BASE_GROUP_MASKS)
 	var power_plant_mask := BASE_POWER_PLANT_MASK
@@ -100,22 +117,23 @@ static func inspect_misc(misc: PackedByteArray) -> Dictionary:
 	if military_base_type == 2 or military_base_type == 3 or military_base_type == 4:
 		group_masks[2] |= 0x04
 
-	return {
-		"ok": true,
-		"group_masks": group_masks,
-		"power_plant_mask": power_plant_mask,
-		"released_inventions": released,
-		"arcology_count": arcology_count,
-		"progression": progression,
-		"military_base_type": military_base_type,
-		"error": "",
-	}
+	var result := Result.new()
+	result.ok = true
+	result.group_masks = group_masks
+	result.power_plant_mask = power_plant_mask
+	result.released_inventions = released
+	result.arcology_count = arcology_count
+	result.progression = progression
+	result.military_base_type = military_base_type
+	result.error = ""
+
+	return result
 
 
 static func is_available(city: CityState, group_index: int, subtool_index: int) -> bool:
 	var tool := ToolCatalog.tool(group_index, subtool_index)
 
-	if tool.is_empty():
+	if tool == null:
 		return false
 
 	if group_index >= 15 or (group_index == 1 and subtool_index == 3):

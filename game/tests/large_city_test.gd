@@ -68,7 +68,7 @@ func check_size(edge: int) -> void:
 	var moving := MovingThingPhase.run(city, SimRandom.new(1), SimLfsrRandom.new(1), GameLcgRandom.new(1))
 	check(moving.ok, "Moving phase: " + moving.error)
 	var rotated := CityRotationCommand.apply(city, false)
-	check(rotated.ok, "Rotation: " + rotated.get("error", ""))
+	check(rotated.ok, "Rotation: " + rotated.error)
 	var rotated_thing := city.thing(record)
 	check(rotated_thing.x == edge - 1 - corner.y and rotated_thing.y == corner.x, "Wide object rotation")
 	var wide_reload := Sc2File.new()

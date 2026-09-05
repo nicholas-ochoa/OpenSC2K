@@ -402,7 +402,7 @@ func _build_landscape_tools() -> void:
 		button.custom_minimum_size = Vector2(46, 30)
 		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
-		button.tooltip_text = str(Tools.GROUPS[group].tools[tool][1])
+		button.tooltip_text = str(Tools.GROUPS[group].tools[tool].name)
 		button.icon = _icon_provider.call(group, tool) if _icon_provider.is_valid() else null
 		if group in [0, 1] and button.icon != null:
 			# terrain symbols are 19-pixel native icons, like the city toolbar
