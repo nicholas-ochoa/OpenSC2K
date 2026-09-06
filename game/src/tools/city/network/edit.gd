@@ -18,7 +18,7 @@ class SegmentPlan:
 	var changed_payloads: Dictionary
 	var planned: Array[Vector2i] = []
 	var planned_directions: Array[int] = []
-	var bridge_plan := {}
+	var bridge_plan: NetworkBridges.Plan
 	var graded_tiles := 0
 	var listed_dry_cost := 0
 	var dry_cost := 0
@@ -40,7 +40,7 @@ class SegmentPlan:
 
 
 	func has_bridge() -> bool:
-		return bridge_plan.get("ok", false)
+		return bridge_plan != null and bridge_plan.ok
 
 
 static func apply_segment(
@@ -138,7 +138,7 @@ static func _plan_route(plan: SegmentPlan) -> RouteEditResult:
 				)
 
 	if planned.is_empty() and not plan.has_bridge():
-		return RouteEditResult.rejected(plan.bridge_plan.get("error", "network cannot start on this tile"))
+		return RouteEditResult.rejected(plan.bridge_plan.error if plan.bridge_plan != null else "network cannot start on this tile")
 
 	return null
 
@@ -391,7 +391,7 @@ static func _undo_record(plan: SegmentPlan, changed_ids: PackedStringArray) -> R
 		result.listed_bridge_cost = plan.listed_bridge_cost
 
 	result.bridge_cancelled = plan.has_bridge() and plan.selected_bridge == BRIDGE_CANCELLED
-	result.bridge_span_length = bridge_plan.get("span_length", 0)
+	result.bridge_span_length = bridge_plan.span_length if bridge_plan != null else 0
 	result.bridge_error = plan.bridge_error
 	result.connection_anchor = plan.connection_anchor
 	result.connection_built = connection_built

@@ -87,15 +87,15 @@ static func apply_path(
 				continue
 
 		var heights := TerrainEditHeights._decode_heights(altitude, map_edge)
-		var trial := {}
+		var trial: TerrainEditHeights.Plan
 
 		if operation == SUBTOOL_RAISE:
 			trial = TerrainEditHeights.plan_raise(heights, zones, buildings, point, funds, map_edge)
 		else:
 			trial = TerrainEditHeights._plan_lower(heights, point, funds, map_edge)
 
-		if not trial.get("valid", false):
-			if trial.get("insufficient", false):
+		if not trial.valid:
+			if trial.insufficient:
 				skipped_insufficient += 1
 
 			continue

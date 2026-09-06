@@ -22,6 +22,15 @@ const CARDINAL_WATER_SHAPES := [13, 21, 18, 8, 19, 16, 5, 1, 20, 7, 17, 4, 6, 3,
 const DIAGONAL_WATER_SHAPES := [0, 9, 10, 0, 11, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0]
 
 
+class WaterTransition extends RefCounted:
+	var value: int
+	var early_return: bool
+
+	func _init(terrain_value: int, skip_update: bool) -> void:
+		value = terrain_value
+		early_return = skip_update
+
+
 static func supports_tool(group_index: int, subtool_index: int) -> bool:
 	return group_index == GROUP_NATURE and (
 		subtool_index in [SUBTOOL_TREES, SUBTOOL_WATER, 3]
@@ -318,23 +327,23 @@ static func _water_shape(flags: PackedByteArray, x: int, y: int, map_edge: int =
 	return DIAGONAL_WATER_SHAPES[missing_diagonal]
 
 
-static func _water_transition(current: int, shape: int) -> Dictionary:
+static func _water_transition(current: int, shape: int) -> WaterTransition:
 	if current < 0x10:
-		return {"value": shape + 0x30, "early_return": false}
+		return WaterTransition.new(shape + 0x30, false)
 
 	if current < 0x30:
 		if current > 0x1f:
 			if ((shape ^ current) & 0x0f) == 0:
-				return {"value": current, "early_return": true}
+				return WaterTransition.new(current, true)
 
-			return {"value": current - 0x10, "early_return": false}
+			return WaterTransition.new(current - 0x10, false)
 
-		return {"value": current, "early_return": false}
+		return WaterTransition.new(current, false)
 
 	if current == shape + 0x30:
-		return {"value": current, "early_return": true}
+		return WaterTransition.new(current, true)
 
-	return {"value": shape + 0x30, "early_return": false}
+	return WaterTransition.new(shape + 0x30, false)
 
 
 static func _update_building_count(

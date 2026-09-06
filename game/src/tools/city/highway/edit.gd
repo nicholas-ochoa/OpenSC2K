@@ -13,7 +13,7 @@ class SegmentPlan:
 	var free_mode: bool
 	var old_payloads: Dictionary
 	var sections: Array[Vector2i] = []
-	var bridge_plan := {}
+	var bridge_plan: HighwayBridges.Plan
 	var bridge_attempted := false
 	var listed_route_cost := 0
 	var route_cost := 0
@@ -36,7 +36,7 @@ class SegmentPlan:
 
 
 	func has_bridge() -> bool:
-		return bridge_plan.get("ok", false)
+		return bridge_plan != null and bridge_plan.ok
 
 
 static func apply_segment(
@@ -146,7 +146,7 @@ static func _plan_route(plan: SegmentPlan) -> RouteEditResult:
 
 	if sections.is_empty() and not plan.has_bridge():
 		if plan.bridge_attempted:
-			return RouteEditResult.rejected(plan.bridge_plan.get("error", "highway bridge is invalid"))
+			return RouteEditResult.rejected(plan.bridge_plan.error)
 
 		return RouteEditResult.rejected("highway cannot start on this section")
 
@@ -411,7 +411,7 @@ static func _undo_record(plan: SegmentPlan, changed_ids: PackedStringArray) -> R
 	result.bridge_cancelled = plan.has_bridge() and plan.selected_bridge == BRIDGE_CANCELLED
 	result.bridge_sections = plan.bridge_sections
 	result.bridge_endpoint_sections = plan.bridge_endpoint_sections
-	result.bridge_span_length = int(bridge_plan.get("span_length", 0))
+	result.bridge_span_length = bridge_plan.span_length if bridge_plan != null else 0
 	result.bridge_error = plan.bridge_error if plan.bridge_attempted else ""
 	result.connection_built = connection_built
 	result.connection_cancelled = plan.connection_available and plan.connection_choice == CONNECTION_CANCELLED
@@ -474,9 +474,9 @@ static func preview_valid(city: CityState, selected: Vector2i) -> bool:
 	if HighwayGeometry._section_has_water(city.tile_flags, anchor, map_edge):
 		var bridge := HighwayBridges.plan_bridge_from_start(city.buildings, city.terrain, altitude, anchor, city.compass_rotation(), map_edge)
 
-		if bridge.get("ok", false):
+		if bridge.ok:
 			for choice in HighwayBridges._bridge_choices(bridge):
-				if city.funds() >= int(choice.get("cost", 0)):
+				if city.funds() >= int(choice.cost):
 					return true
 
 	return false
@@ -497,8 +497,8 @@ static func preview_error(city: CityState, selected: Vector2i) -> String:
 		var altitude: PackedByteArray = city.document.find_chunk("ALTM").decoded_payload
 		var bridge := HighwayBridges.plan_bridge_from_start(city.buildings, city.terrain, altitude, anchor, city.compass_rotation(), map_edge)
 
-		if not bridge.get("ok", false):
-			return String(bridge.get("error", "This shore cannot start a highway bridge."))
+		if not bridge.ok:
+			return bridge.error
 
 		return "Insufficient funds for this highway bridge."
 

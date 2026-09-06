@@ -2,6 +2,19 @@ class_name HighwayPlacement
 extends HighwayConstants
 
 
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+	var kind := 0
+	var graded := false
+
+	static func failure(message: String) -> Result:
+		var result := Result.new()
+		result.error = message
+
+		return result
+
+
 static func _place_straight_section(
 	buildings: PackedByteArray,
 	zones: PackedByteArray,
@@ -49,9 +62,9 @@ static func _place_section(
 	direction: int,
 	rotation: int,
 	map_edge: int = 128,
-) -> Dictionary:
+) -> Result:
 	if HighwayGeometry.terrain_section_shape(buildings, terrain, altitude, anchor, map_edge) == INVALID_TERRAIN_SHAPE:
-		return {"ok": false, "error": "highway terrain grade is invalid"}
+		return Result.failure("highway terrain grade is invalid")
 
 	_clear_section_zone_types(zones, anchor, map_edge)
 	var old_kind := HighwayGeometry._section_kind(buildings, zones, flags, anchor, map_edge)
@@ -105,12 +118,13 @@ static func _place_section(
 		rotation, map_edge
 	)
 
-	return {
-		"ok": true,
-		"kind": kind if kind >= 0 else old_kind,
-		"graded": installed_grade,
-		"error": "",
-	}
+	var result := Result.new()
+	result.ok = true
+	result.kind = kind if kind >= 0 else old_kind
+	result.graded = installed_grade
+	result.error = ""
+
+	return result
 
 
 static func _clear_section_zone_types(zones: PackedByteArray, anchor: Vector2i, map_edge: int = 128) -> void:

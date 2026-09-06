@@ -65,12 +65,12 @@ func activate_document(
 	if app.military_dialog.visible:
 		app.military_dialog.hide()
 
-	app.tool_state.pending_bridge_request.clear()
+	app.tool_state.pending_bridge_request = null
 
 	if app.bridge_dialog.visible:
 		app.bridge_dialog.hide()
 
-	app.tool_state.pending_tool_choices.clear()
+	app.tool_state.pending_tool_choices = null
 
 	if app.tool_choice_dialog.visible:
 		app.tool_choice_dialog.hide()
@@ -80,17 +80,17 @@ func activate_document(
 	if app.stadium_dialog.visible:
 		app.stadium_dialog.hide()
 
-	app.tool_state.pending_network_connection.clear()
+	app.tool_state.pending_network_connection = null
 
 	if app.network_connection_dialog.visible:
 		app.network_connection_dialog.hide()
 
-	app.tool_state.pending_highway_connection.clear()
+	app.tool_state.pending_highway_connection = null
 
 	if app.highway_connection_dialog.visible:
 		app.highway_connection_dialog.hide()
 
-	app.tool_state.pending_tunnel_request.clear()
+	app.tool_state.pending_tunnel_request = null
 
 	if app.tunnel_dialog.visible:
 		app.tunnel_dialog.hide()

@@ -5,6 +5,22 @@ extends NetworkConstants
 @warning_ignore_start("integer_division")
 
 
+class Plan extends RefCounted:
+	var ok := false
+	var error := ""
+	var start := Vector2i.ZERO
+	var direction := 0
+	var span_length := 0
+	var direction_allowed := false
+
+	static func failure(message: String, allowed := false) -> Plan:
+		var result := Plan.new()
+		result.error = message
+		result.direction_allowed = allowed
+
+		return result
+
+
 static func bridge_type_name(bridge_type: int) -> String:
 	if bridge_type < 0 or bridge_type >= BRIDGE_NAMES.size():
 		return "Unknown Bridge"
@@ -30,7 +46,7 @@ static func _plan_bridge_from_start(
 	start: Vector2i,
 	view_rotation: int,
 	map_edge: int = 128,
-) -> Dictionary:
+) -> Plan:
 	for direction in [
 		view_rotation & 3,
 		(view_rotation + 2) & 3,
@@ -39,10 +55,10 @@ static func _plan_bridge_from_start(
 	]:
 		var plan := _scan_bridge(buildings, terrain, start, direction, true, map_edge)
 
-		if plan.get("direction_allowed", false):
+		if plan.direction_allowed:
 			return plan
 
-	return {"ok": false, "error": "bridge does not face open water"}
+	return Plan.failure("bridge does not face open water")
 
 
 static func _scan_bridge(
@@ -52,25 +68,25 @@ static func _scan_bridge(
 	direction: int,
 	require_direction: bool,
 	map_edge: int = 128,
-) -> Dictionary:
+) -> Plan:
 	if start.x < 0 or start.x >= map_edge or start.y < 0 or start.y >= map_edge:
-		return {"ok": false, "error": "bridge start is outside the city"}
+		return Plan.failure("bridge start is outside the city")
 
 	var start_index := start.x * map_edge + start.y
 	var terrain_id := int(terrain[start_index])
 
 	if terrain_id < 0x20 or terrain_id >= 0x40:
-		return {"ok": false, "error": "bridge must start on shoreline terrain"}
+		return Plan.failure("bridge must start on shoreline terrain")
 
 	var direction_mask := int(BRIDGE_SHORE_DIRECTIONS[terrain_id & 0x0f])
 
 	if direction_mask == 0:
-		return {"ok": false, "error": "bridge shoreline shape is not eligible"}
+		return Plan.failure("bridge shoreline shape is not eligible")
 
 	var direction_allowed := (direction_mask & (1 << direction)) != 0
 
 	if require_direction and not direction_allowed:
-		return {"ok": false, "direction_allowed": false, "error": ""}
+		return Plan.failure("", false)
 
 	var span_length := 0
 	var checked := start
@@ -80,20 +96,12 @@ static func _scan_bridge(
 			var checked_index := checked.x * map_edge + checked.y
 
 			if buildings[checked_index] != 0:
-				return {
-					"ok": false,
-					"direction_allowed": true,
-					"error": "bridge path contains a structure",
-				}
+				return Plan.failure("bridge path contains a structure", true)
 
 		checked += DIRECTIONS[direction]
 
 		if checked.x < 0 or checked.x >= map_edge or checked.y < 0 or checked.y >= map_edge:
-			return {
-				"ok": false,
-				"direction_allowed": true,
-				"error": "bridge does not reach another bank",
-			}
+			return Plan.failure("bridge does not reach another bank", true)
 
 		span_length += 1
 		var checked_terrain := int(
@@ -103,16 +111,17 @@ static func _scan_bridge(
 		if checked_terrain <= 0x0f or checked_terrain >= 0x40:
 			break
 
-	return {
-		"ok": true,
-		"direction_allowed": true,
-		"start": start,
-		"direction": direction,
-		"span_length": span_length,
-	}
+	var result := Plan.new()
+	result.ok = true
+	result.direction_allowed = true
+	result.start = start
+	result.direction = direction
+	result.span_length = span_length
+
+	return result
 
 
-static func bridge_choices(span_length: int, mode: int) -> Array[Dictionary]:
+static func bridge_choices(span_length: int, mode: int) -> Array[BridgeChoice]:
 	var available_mask := 0x07
 
 	if span_length > 4 and span_length < 12:
@@ -122,23 +131,21 @@ static func bridge_choices(span_length: int, mode: int) -> Array[Dictionary]:
 		available_mask |= 0x10
 
 	available_mask &= int(BRIDGE_MODE_MASKS[mode])
-	var result: Array[Dictionary] = []
+	var result: Array[BridgeChoice] = []
 
 	for bridge_type in BRIDGE_NAMES.size():
 		if (available_mask & (1 << bridge_type)) == 0:
 			continue
 
-		result.append({
-			"type": bridge_type,
-			"name": bridge_type_name(bridge_type),
-			"cost_per_tile": BRIDGE_COSTS[bridge_type],
-			"cost": span_length * int(BRIDGE_COSTS[bridge_type]),
-		})
+		result.append(BridgeChoice.new(
+			bridge_type, bridge_type_name(bridge_type),
+			BRIDGE_COSTS[bridge_type], span_length * int(BRIDGE_COSTS[bridge_type])
+		))
 
 	return result
 
 
-static func _bridge_choice_exists(choices: Array[Dictionary], bridge_type: int) -> bool:
+static func _bridge_choice_exists(choices: Array[BridgeChoice], bridge_type: int) -> bool:
 	for choice in choices:
 		if int(choice.type) == bridge_type:
 			return true
@@ -153,7 +160,7 @@ static func _place_bridge(
 	zones: PackedByteArray,
 	flags: PackedByteArray,
 	misc: PackedByteArray,
-	plan: Dictionary,
+	plan: Plan,
 	bridge_type: int,
 	map_edge: int = 128,
 ) -> Array[Vector2i]:

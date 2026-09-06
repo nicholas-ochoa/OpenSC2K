@@ -50,7 +50,7 @@ var continuation_error := ""
 
 # the route waits for a player choice. the city is unchanged
 var bridge_selection_required := false
-var bridge_choices: Array[Dictionary] = []
+var bridge_choices: Array[BridgeChoice] = []
 var connection_selection_required := false
 var cancelled := false
 

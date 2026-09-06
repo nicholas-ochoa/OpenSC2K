@@ -5,6 +5,14 @@ extends TerrainEditConstants
 @warning_ignore_start("integer_division")
 
 
+class ClearResult extends RefCounted:
+	var ok := false
+	var indices := PackedInt32Array()
+	var effect_events: Array[Dictionary] = []
+	var sound_events: Array[int] = []
+	var random_used := false
+
+
 static func _expanded_indices(indices: PackedInt32Array, map_edge: int = 128) -> PackedInt32Array:
 	var result := PackedInt32Array()
 
@@ -35,7 +43,7 @@ static func _clear_terrain_conflicts(
 	misc: PackedByteArray,
 	indices: PackedInt32Array,
 	random: SimRandom
-) -> Dictionary:
+) -> ClearResult:
 	var map_edge: int = city.map_size if city != null else 128
 	var changed_indices := PackedInt32Array()
 	var effect_events: Array[Dictionary] = []
@@ -49,7 +57,7 @@ static func _clear_terrain_conflicts(
 
 		if old_building >= 0x0d:
 			if random == null:
-				return {"ok": false}
+				return ClearResult.new()
 
 			var demolished: DemolishPointResult = DemolishStructures._demolish_point(
 				city,
@@ -95,13 +103,14 @@ static func _clear_terrain_conflicts(
 			if not changed_indices.has(index):
 				changed_indices.append(index)
 
-	return {
-		"ok": true,
-		"indices": changed_indices,
-		"effect_events": effect_events,
-		"sound_events": sound_events,
-		"random_used": random_used,
-	}
+	var result := ClearResult.new()
+	result.ok = true
+	result.indices = changed_indices
+	result.effect_events = effect_events
+	result.sound_events = sound_events
+	result.random_used = random_used
+
+	return result
 
 
 static func _terrain_conflict_needs_random(

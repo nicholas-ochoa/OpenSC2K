@@ -61,14 +61,9 @@ func apply_network_selection(
 		return
 
 	if network.connection_selection_required:
-		app.tool_state.pending_network_connection = {
-			"start": start,
-			"finish": finish,
-			"group_index": group_index,
-			"subtool_index": subtool_index,
-			"bridge_type": bridge_type,
-			"free_mode": free_mode,
-		}
+		app.tool_state.pending_network_connection = ToolState.ConnectionRequest.new(
+			start, finish, group_index, subtool_index, bridge_type, free_mode
+		)
 		var message := (
 			(
 				"Build a %s connection to a neighboring city?\n"
@@ -165,11 +160,11 @@ func cancel_network_connection() -> void:
 
 
 func _apply_pending_network_connection(connection_choice: int) -> void:
-	if app.tool_state.pending_network_connection.is_empty():
+	if app.tool_state.pending_network_connection == null:
 		return
 
-	var request := app.tool_state.pending_network_connection.duplicate()
-	app.tool_state.pending_network_connection.clear()
+	var request := app.tool_state.pending_network_connection
+	app.tool_state.pending_network_connection = null
 	app.network_connection_dialog.hide()
 	app.tool_state.selected_group = int(request.group_index)
 	app.tool_state.selected_subtool = int(request.subtool_index)
@@ -180,7 +175,7 @@ func _apply_pending_network_connection(connection_choice: int) -> void:
 		int(request.group_index),
 		int(request.subtool_index),
 		connection_choice,
-		bool(request.get("free_mode", false))
+		request.free_mode
 	)
 
 
@@ -193,18 +188,18 @@ func open_bridge_dialog(
 	request_type := "network",
 	free_mode := false
 ) -> void:
-	app.tool_state.pending_bridge_request = {
-		"start": start,
-		"finish": finish,
-		"group_index": group_index,
-		"subtool_index": subtool_index,
-		"request_type": request_type,
-		"free_mode": free_mode,
-		"choices": result.bridge_choices,
-		# highways report their route as 2 by 2 sections
-		"dry_points": result.sections if request_type == "highway" else result.dry_points,
-	}
-	var choices: Array = app.tool_state.pending_bridge_request.choices
+	var request := ToolState.BridgeRequest.new()
+	request.start = start
+	request.finish = finish
+	request.group_index = group_index
+	request.subtool_index = subtool_index
+	request.request_type = request_type
+	request.free_mode = free_mode
+	request.choices = result.bridge_choices
+	# highways report their route as 2 by 2 sections
+	request.dry_points = result.sections if request_type == "highway" else result.dry_points
+	app.tool_state.pending_bridge_request = request
+	var choices := request.choices
 	app.bridge_dialog.preview_palette = app.asset_state.palette
 	app.bridge_dialog.preview_sprites = app.asset_state.large_sprites
 	app.bridge_dialog.show_choices(
@@ -216,28 +211,28 @@ func open_bridge_dialog(
 
 
 func choose_bridge(choice_index: int) -> void:
-	if app.tool_state.pending_bridge_request.is_empty():
+	if app.tool_state.pending_bridge_request == null:
 		return
 
-	var request := app.tool_state.pending_bridge_request.duplicate(true)
-	var choices: Array = request.get("choices", [])
+	var request := app.tool_state.pending_bridge_request.copy()
+	var choices := request.choices
 
 	if choice_index < 0 or choice_index >= choices.size():
 		return
 
-	var choice: Dictionary = choices[choice_index]
-	app.tool_state.pending_bridge_request.clear()
+	var choice: BridgeChoice = choices[choice_index]
+	app.tool_state.pending_bridge_request = null
 	app.bridge_dialog.hide()
 
-	if request.get("request_type", "network") == "highway":
+	if request.request_type == "highway":
 		app.tool_state.selected_group = int(request.group_index)
 		app.tool_state.selected_subtool = int(request.subtool_index)
 		app.route_edits.apply_highway_selection(
 			request.start,
 			request.finish,
 			Highways.CONNECTION_UNSELECTED,
-			int(choice.get("type", Highways.BRIDGE_UNSELECTED)),
-			bool(request.get("free_mode", false))
+			choice.type,
+			request.free_mode
 		)
 
 		return
@@ -245,34 +240,34 @@ func choose_bridge(choice_index: int) -> void:
 	apply_network_selection(
 		request.start,
 		request.finish,
-		int(choice.get("type", Networks.BRIDGE_UNSELECTED)),
+		choice.type,
 		int(request.group_index),
 		int(request.subtool_index),
 		Networks.CONNECTION_UNSELECTED,
-		bool(request.get("free_mode", false))
+		request.free_mode
 	)
 
 
 func cancel_bridge() -> void:
-	if app.tool_state.pending_bridge_request.is_empty():
+	if app.tool_state.pending_bridge_request == null:
 		return
 
-	var request := app.tool_state.pending_bridge_request.duplicate(true)
-	app.tool_state.pending_bridge_request.clear()
+	var request := app.tool_state.pending_bridge_request.copy()
+	app.tool_state.pending_bridge_request = null
 
-	if request.get("dry_points", []).is_empty():
+	if request.dry_points.is_empty():
 		app.effects_audio.play_tool_failure_sound(
 			int(request.group_index),
 			int(request.subtool_index),
 			"cancelled",
-			bool(request.get("free_mode", false)),
+			request.free_mode,
 		)
 		app.status_label.theme_type_variation = ""
 		app.status_label.text = "Bridge selection canceled. No action was taken."
 
 		return
 
-	if request.get("request_type", "network") == "highway":
+	if request.request_type == "highway":
 		app.tool_state.selected_group = int(request.group_index)
 		app.tool_state.selected_subtool = int(request.subtool_index)
 		app.route_edits.apply_highway_selection(
@@ -280,7 +275,7 @@ func cancel_bridge() -> void:
 			request.finish,
 			Highways.CONNECTION_UNSELECTED,
 			Highways.BRIDGE_CANCELLED,
-			bool(request.get("free_mode", false))
+			request.free_mode
 		)
 
 		return
@@ -292,5 +287,5 @@ func cancel_bridge() -> void:
 		int(request.group_index),
 		int(request.subtool_index),
 		Networks.CONNECTION_UNSELECTED,
-		bool(request.get("free_mode", false))
+		request.free_mode
 	)

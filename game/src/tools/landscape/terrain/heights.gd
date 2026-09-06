@@ -3,6 +3,22 @@ extends TerrainEditConstants
 
 
 
+class Plan extends RefCounted:
+	var valid := false
+	var insufficient := false
+	var heights := PackedInt32Array()
+	var modified := PackedInt32Array()
+	var zone_indices := PackedInt32Array()
+	var funds := 0
+	var cost := 0
+
+	static func invalid(insufficient_funds := false) -> Plan:
+		var result := Plan.new()
+		result.insufficient = insufficient_funds
+
+		return result
+
+
 static func plan_raise(
 	heights: PackedInt32Array,
 	zones: PackedByteArray,
@@ -10,13 +26,13 @@ static func plan_raise(
 	start: Vector2i,
 	funds: int,
 	map_edge: int = 128,
-) -> Dictionary:
-	var visiting := {}
-	var visited := {}
+) -> Plan:
+	var visiting: Dictionary[int, bool] = {}
+	var visited: Dictionary[int, bool] = {}
 	var postorder: Array[Vector2i] = []
 
 	if not _collect_raise_dependencies(heights, zones, start, visiting, visited, postorder, map_edge):
-		return {"valid": false}
+		return Plan.invalid()
 
 	var trial := heights.duplicate()
 	var modified := PackedInt32Array()
@@ -40,24 +56,25 @@ static func plan_raise(
 		_normalize_cardinal_slopes(trial, buildings, point, modified, map_edge)
 
 	if cost == 0:
-		return {"valid": false, "insufficient": true}
+		return Plan.invalid(true)
 
-	return {
-		"valid": true,
-		"heights": trial,
-		"modified": modified,
-		"zone_indices": zone_indices,
-		"funds": remaining,
-		"cost": cost,
-	}
+	var result := Plan.new()
+	result.valid = true
+	result.heights = trial
+	result.modified = modified
+	result.zone_indices = zone_indices
+	result.funds = remaining
+	result.cost = cost
+
+	return result
 
 
 static func _collect_raise_dependencies(
 	heights: PackedInt32Array,
 	zones: PackedByteArray,
 	point: Vector2i,
-	visiting: Dictionary,
-	visited: Dictionary,
+	visiting: Dictionary[int, bool],
+	visited: Dictionary[int, bool],
 	postorder: Array[Vector2i],
 	map_edge: int = 128,
 ) -> bool:
@@ -142,14 +159,14 @@ static func _normalize_cardinal_slopes(
 static func _plan_lower(
 	heights: PackedInt32Array, start: Vector2i, funds: int,
 	map_edge: int = 128,
-) -> Dictionary:
+) -> Plan:
 	if funds < 25:
-		return {"valid": false, "insufficient": true}
+		return Plan.invalid(true)
 
 	var start_index := start.x * map_edge + start.y
 
 	if heights[start_index] == 0:
-		return {"valid": false}
+		return Plan.invalid()
 
 	var trial := heights.duplicate()
 	var queue: Array[Vector2i] = []
@@ -204,14 +221,15 @@ static func _plan_lower(
 				if not modified.has(checked_index):
 					modified.append(checked_index)
 
-	return {
-		"valid": true,
-		"heights": trial,
-		"modified": modified,
-		"zone_indices": zone_indices,
-		"funds": maxi(0, funds - decrements * 25),
-		"cost": mini(funds, decrements * 25),
-	}
+	var result := Plan.new()
+	result.valid = true
+	result.heights = trial
+	result.modified = modified
+	result.zone_indices = zone_indices
+	result.funds = maxi(0, funds - decrements * 25)
+	result.cost = mini(funds, decrements * 25)
+
+	return result
 
 
 static func _decode_heights(altitude: PackedByteArray, map_edge: int = 128) -> PackedInt32Array:

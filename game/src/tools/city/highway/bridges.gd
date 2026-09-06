@@ -2,6 +2,26 @@ class_name HighwayBridges
 extends HighwayConstants
 
 
+class Plan extends RefCounted:
+	var ok := false
+	var error := ""
+	var start := Vector2i.ZERO
+	var direction := 0
+	var span_length := 0
+	var reinforced_allowed := false
+
+	static func failure(message: String) -> Plan:
+		var result := Plan.new()
+		result.error = message
+
+		return result
+
+
+class Placement extends RefCounted:
+	var sections: Array[Vector2i] = []
+	var endpoint_sections: Array[Vector2i] = []
+
+
 static func bridge_type_name(bridge_type: int) -> String:
 	return String(BRIDGE_NAMES.get(bridge_type, "Unknown Bridge"))
 
@@ -13,14 +33,14 @@ static func plan_bridge_from_start(
 	start: Vector2i,
 	view_rotation: int,
 	map_edge: int = 128,
-) -> Dictionary:
+) -> Plan:
 	if not _section_is_bridge_clear(buildings, start, map_edge):
-		return {"ok": false, "error": "highway bridge start contains a structure"}
+		return Plan.failure("highway bridge start contains a structure")
 
 	var terrain_code := bridge_terrain_code(terrain, start, map_edge)
 
 	if (terrain_code & 0x0f00) != 0:
-		return {"ok": false, "error": "highway bridge start terrain is invalid"}
+		return Plan.failure("highway bridge start terrain is invalid")
 
 	if ((terrain_code >> 8) & 0xff) != 0:
 		terrain_code >>= 12
@@ -38,7 +58,7 @@ static func plan_bridge_from_start(
 		if (direction_mask & (1 << direction)) != 0:
 			return _scan_bridge(buildings, terrain, altitude, start, direction, map_edge)
 
-	return {"ok": false, "error": "highway bridge does not face open water"}
+	return Plan.failure("highway bridge does not face open water")
 
 
 static func _scan_bridge(
@@ -48,9 +68,9 @@ static func _scan_bridge(
 	start: Vector2i,
 	direction: int,
 	map_edge: int = 128,
-) -> Dictionary:
+) -> Plan:
 	if not _section_is_bridge_clear(buildings, start, map_edge):
-		return {"ok": false, "error": "highway bridge start contains a structure"}
+		return Plan.failure("highway bridge start contains a structure")
 
 	var span_length := 0
 	var checked := start
@@ -60,53 +80,52 @@ static func _scan_bridge(
 		span_length += 1
 
 		if not HighwayGeometry._anchor_is_in_bounds(checked, map_edge):
-			return {"ok": false, "error": "highway bridge does not reach another bank"}
+			return Plan.failure("highway bridge does not reach another bank")
 
 		if not _section_is_bridge_clear(buildings, checked, map_edge):
-			return {"ok": false, "error": "highway bridge path contains a structure"}
+			return Plan.failure("highway bridge path contains a structure")
 
 		var terrain_code := bridge_terrain_code(terrain, checked, map_edge)
 
 		if (terrain_code & 0x0f00) != 0:
-			return {"ok": false, "error": "highway bridge bank terrain is invalid"}
+			return Plan.failure("highway bridge bank terrain is invalid")
 
 		if (terrain_code & 0xff) == 0:
 			break
 
-	return {
-		"ok": true,
-		"start": start,
-		"direction": direction,
-		"span_length": span_length,
-		"reinforced_allowed": _reinforced_bridge_is_allowed(
-			buildings, terrain, altitude, start, direction, span_length, map_edge
-		),
-		"error": "",
-	}
+	var result := Plan.new()
+	result.ok = true
+	result.start = start
+	result.direction = direction
+	result.span_length = span_length
+	result.reinforced_allowed = _reinforced_bridge_is_allowed(
+		buildings, terrain, altitude, start, direction, span_length, map_edge
+	)
+	result.error = ""
+
+	return result
 
 
-static func _bridge_choices(plan: Dictionary) -> Array[Dictionary]:
-	var span_length := int(plan.get("span_length", 0))
+static func _bridge_choices(plan: Plan) -> Array[BridgeChoice]:
+	var span_length := plan.span_length
 	var types := [BRIDGE_HIGHWAY]
 
-	if plan.get("reinforced_allowed", false):
+	if plan.reinforced_allowed:
 		types.append(BRIDGE_REINFORCED)
 
-	var result: Array[Dictionary] = []
+	var result: Array[BridgeChoice] = []
 
 	for bridge_type in types:
-		result.append({
-			"type": bridge_type,
-			"name": bridge_type_name(bridge_type),
-			"cost_per_tile": int(BRIDGE_COSTS[bridge_type]),
-			"cost": span_length * int(BRIDGE_COSTS[bridge_type]),
-		})
+		result.append(BridgeChoice.new(
+			bridge_type, bridge_type_name(bridge_type),
+			int(BRIDGE_COSTS[bridge_type]), span_length * int(BRIDGE_COSTS[bridge_type])
+		))
 
 	return result
 
 
 static func _bridge_choice_exists(
-	choices: Array[Dictionary], bridge_type: int
+	choices: Array[BridgeChoice], bridge_type: int
 ) -> bool:
 	for choice in choices:
 		if int(choice.type) == bridge_type:
@@ -244,11 +263,11 @@ static func _place_bridge(
 	flags: PackedByteArray,
 	altitude: PackedByteArray,
 	misc: PackedByteArray,
-	plan: Dictionary,
+	plan: Plan,
 	bridge_type: int,
 	rotation: int,
 	map_edge: int = 128,
-) -> Dictionary:
+) -> Placement:
 	var start: Vector2i = plan.start
 	var direction := int(plan.direction)
 	var span_length := int(plan.span_length)
@@ -314,7 +333,11 @@ static func _place_bridge(
 
 		sections.append(anchor)
 
-	return {"sections": sections, "endpoint_sections": endpoint_sections}
+	var result := Placement.new()
+	result.sections = sections
+	result.endpoint_sections = endpoint_sections
+
+	return result
 
 
 static func _write_bridge_endpoint(

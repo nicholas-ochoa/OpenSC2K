@@ -45,7 +45,7 @@ func run() -> void:
 	var bridge := preload("res://src/ui/tools/bridge_selection_dialog.tscn").instantiate() as BridgeSelectionDialog
 	root.add_child(bridge)
 	bridge.choice_requested.connect(func(index: int) -> void: selected_choice = index)
-	bridge.set_choices(4, "road", [{"name": "Test Bridge", "cost": 100, "cost_per_tile": 25}], false)
+	bridge.set_choices(4, "road", [BridgeChoice.new(2, "Test Bridge", 25, 100)], false)
 	assert(not bridge.choice_buttons[1].visible)
 	assert(bridge.choice_labels[0].text.contains("$100"))
 	bridge.choice_buttons[0].pressed.emit()

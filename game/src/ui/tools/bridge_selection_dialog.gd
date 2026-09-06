@@ -31,7 +31,7 @@ func _ready() -> void:
 func set_choices(
 	span_length: int,
 	request_type: String,
-	choices: Array,
+	choices: Array[BridgeChoice],
 	free_mode: bool,
 ) -> void:
 	var span_units := (
@@ -49,19 +49,19 @@ func set_choices(
 		if not choice_button.visible:
 			continue
 
-		var choice: Dictionary = choices[choice_index]
+		var choice: BridgeChoice = choices[choice_index]
 		choice_button.text = (
-			"%s\nFree in Place & Print" % choice.get("name", "Bridge")
+			"%s\nFree in Place & Print" % choice.name
 			if free_mode
 			else "%s\n$%s total\n$%s for each %s" % [
-				choice.get("name", "Bridge"),
-				Numbers.format(int(choice.get("cost", 0))),
-				Numbers.format(int(choice.get("cost_per_tile", 0))),
+				choice.name,
+				Numbers.format(int(choice.cost)),
+				Numbers.format(int(choice.cost_per_tile)),
 				cost_unit,
 			]
 		)
-		choice_button.tooltip_text = "Build %s" % choice.get("name", "bridge")
-		preview_controls[choice_index].texture = preview_image(request_type, int(choice.get("type", 2)))
+		choice_button.tooltip_text = "Build %s" % choice.name
+		preview_controls[choice_index].texture = preview_image(request_type, int(choice.type))
 		choice_labels[choice_index].text = choice_button.text
 
 
@@ -69,7 +69,7 @@ func set_choices(
 func show_choices(
 	span_length: int,
 	request_type: String,
-	choices: Array,
+	choices: Array[BridgeChoice],
 	free_mode: bool,
 ) -> void:
 	set_choices(span_length, request_type, choices, free_mode)

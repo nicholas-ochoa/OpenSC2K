@@ -34,11 +34,9 @@ func apply_tunnel_selection(
 
 			return
 
-		app.tool_state.pending_tunnel_request = {
-			"start": start,
-			"group_index": app.tool_state.selected_group,
-			"subtool_index": app.tool_state.selected_subtool,
-		}
+		app.tool_state.pending_tunnel_request = ToolState.TunnelRequest.new(
+			start, app.tool_state.selected_group, app.tool_state.selected_subtool
+		)
 		var message := (
 			"Engineers report that tunnel construction costs will be $%s.\n"
 			+ "Do you wish to construct the tunnel?"
@@ -92,11 +90,11 @@ func cancel_tunnel() -> void:
 
 
 func _apply_pending_tunnel(confirmation_choice: int) -> void:
-	if app.tool_state.pending_tunnel_request.is_empty():
+	if app.tool_state.pending_tunnel_request == null:
 		return
 
-	var request := app.tool_state.pending_tunnel_request.duplicate()
-	app.tool_state.pending_tunnel_request.clear()
+	var request := app.tool_state.pending_tunnel_request
+	app.tool_state.pending_tunnel_request = null
 	app.tunnel_dialog.hide()
 	app.tool_state.selected_group = int(request.group_index)
 	app.tool_state.selected_subtool = int(request.subtool_index)
@@ -144,14 +142,9 @@ func apply_highway_selection(
 		return
 
 	if highway.connection_selection_required:
-		app.tool_state.pending_highway_connection = {
-			"start": start,
-			"finish": finish,
-			"group_index": app.tool_state.selected_group,
-			"subtool_index": app.tool_state.selected_subtool,
-			"free_mode": free_mode,
-			"bridge_type": bridge_type,
-		}
+		app.tool_state.pending_highway_connection = ToolState.ConnectionRequest.new(
+			start, finish, app.tool_state.selected_group, app.tool_state.selected_subtool, bridge_type, free_mode
+		)
 		var message := (
 			(
 				"Build a highway connection to a neighboring city?\n"
@@ -240,11 +233,11 @@ func cancel_highway_connection() -> void:
 
 
 func _apply_pending_highway_connection(connection_choice: int) -> void:
-	if app.tool_state.pending_highway_connection.is_empty():
+	if app.tool_state.pending_highway_connection == null:
 		return
 
-	var request := app.tool_state.pending_highway_connection.duplicate()
-	app.tool_state.pending_highway_connection.clear()
+	var request := app.tool_state.pending_highway_connection
+	app.tool_state.pending_highway_connection = null
 	app.highway_connection_dialog.hide()
 	app.tool_state.selected_group = int(request.group_index)
 	app.tool_state.selected_subtool = int(request.subtool_index)
@@ -252,6 +245,6 @@ func _apply_pending_highway_connection(connection_choice: int) -> void:
 		request.start,
 		request.finish,
 		connection_choice,
-		int(request.get("bridge_type", Highways.BRIDGE_UNSELECTED)),
-		bool(request.get("free_mode", false))
+		request.bridge_type,
+		request.free_mode
 	)

@@ -220,7 +220,7 @@ static func _start_volcano(city: CityState, center: Vector2i, random: SimRandom)
 				heights, payloads.XZON, payloads.XBLD, near_point, remaining_budget, map_edge
 			)
 
-			if trial.get("valid", false):
+			if trial.valid:
 				heights = trial.heights
 				remaining_budget = int(trial.funds)
 				TerrainEditHeights._write_heights(payloads.ALTM, heights, trial.modified)

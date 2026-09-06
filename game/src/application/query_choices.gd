@@ -36,10 +36,9 @@ func open_tool_choice_dialog(group_index: int) -> void:
 
 		return
 
-	app.tool_state.pending_tool_choices = {
-		"group_index": group_index,
-		"subtools": choices,
-	}
+	app.tool_state.pending_tool_choices = ToolState.ToolChoices.new(
+		group_index, choices
+	)
 	var title_text := (
 		"Select Power Plant" if group_index == 3 else "Select Arcology"
 	)
@@ -57,23 +56,23 @@ func open_tool_choice_dialog(group_index: int) -> void:
 
 
 func choose_tool_variant(choice_index: int) -> void:
-	if app.tool_state.pending_tool_choices.is_empty():
+	if app.tool_state.pending_tool_choices == null:
 		return
 
-	var choices: Array = app.tool_state.pending_tool_choices.get("subtools", [])
+	var choices := app.tool_state.pending_tool_choices.subtools
 
 	if choice_index < 0 or choice_index >= choices.size():
 		return
 
 	app.tool_state.selected_group = int(app.tool_state.pending_tool_choices.group_index)
 	app.tool_state.selected_subtool = int(choices[choice_index])
-	app.tool_state.pending_tool_choices.clear()
+	app.tool_state.pending_tool_choices = null
 	app.tool_choice_dialog.hide()
 	app.current_tool.update_edit_state()
 
 
 func cancel_tool_choice() -> void:
-	app.tool_state.pending_tool_choices.clear()
+	app.tool_state.pending_tool_choices = null
 	app.current_tool.update_edit_state()
 
 
