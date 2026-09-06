@@ -3,6 +3,48 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
+class RenameResult extends RefCounted:
+	var ok := false
+	var error := ""
+	var overlay_id := 0
+	var old_value := ""
+	var new_value := ""
+
+	static func failure(message: String) -> RenameResult:
+		var result := RenameResult.new()
+		result.error = message
+
+		return result
+
+
+class Category extends RefCounted:
+	var id: int
+	var name: String
+	var acres: int
+	var percent: int
+
+	func _init(category_id: int, category_name: String, area: int, share: int) -> void:
+		id = category_id
+		name = category_name
+		acres = area
+		percent = share
+
+
+class Analysis extends RefCounted:
+	var ok := false
+	var error := ""
+	var header := ""
+	var counts := PackedInt32Array()
+	var total := 0
+	var categories: Array[Category] = []
+
+	static func failure(message: String) -> Analysis:
+		var result := Analysis.new()
+		result.error = message
+
+		return result
+
+
 const FIRST_BUILDING := 0x0d
 const CATEGORY_COUNT := 12
 const CATEGORY_RESOURCE_BASE := 988
@@ -113,42 +155,43 @@ const FALLBACK_CATEGORY_NAMES := [
 
 
 static func rename_facility(
-	city: CityState, info: Dictionary, value: String
-) -> Dictionary:
+	city: CityState, info: QueryResult, value: String
+) -> RenameResult:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return RenameResult.failure("city is invalid")
 
-	if info.get("kind", "") != "specific":
-		return {"ok": false, "error": "query does not select a facility"}
+	if info == null or info.kind != "specific":
+		return RenameResult.failure("query does not select a facility")
 
-	var overlay_id := int(info.get("overlay_id", 0))
-	var point: Vector2i = info.get("point", Vector2i(-1, -1))
+	var overlay_id := int(info.overlay_id)
+	var point: Vector2i = info.point
 
 	if not OverlayData.is_facility(overlay_id):
-		return {"ok": false, "error": "facility label is invalid"}
+		return RenameResult.failure("facility label is invalid")
 
 	if city.text_overlay_id(point.x, point.y) != overlay_id:
-		return {"ok": false, "error": "queried facility has changed"}
+		return RenameResult.failure("queried facility has changed")
 
 	var old_value := city.label(overlay_id)
 
 	if not city.set_label(overlay_id, value):
-		return {"ok": false, "error": "cannot store facility name"}
+		return RenameResult.failure("cannot store facility name")
 
-	return {
-		"ok": true,
-		"overlay_id": overlay_id,
-		"old_value": old_value,
-		"new_value": city.label(overlay_id),
-		"error": "",
-	}
+	var result := RenameResult.new()
+	result.ok = true
+	result.overlay_id = overlay_id
+	result.old_value = old_value
+	result.new_value = city.label(overlay_id)
+	result.error = ""
+
+	return result
 
 
 static func city_analysis(
 	city: CityState, resource_strings: Dictionary = {}
-) -> Dictionary:
+) -> Analysis:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return Analysis.failure("city is invalid")
 
 	var misc_chunk := city.document.find_chunk("MISC")
 
@@ -156,7 +199,7 @@ static func city_analysis(
 		misc_chunk == null
 		or misc_chunk.decoded_payload.size() < MISC_TILE_COUNTS + 0x100 * 4
 	):
-		return {"ok": false, "error": "MISC tile counts are missing or invalid"}
+		return Analysis.failure("MISC tile counts are missing or invalid")
 
 	var counts := PackedInt32Array()
 	counts.resize(CATEGORY_COUNT)
@@ -176,7 +219,7 @@ static func city_analysis(
 	for category_id in range(1, CATEGORY_COUNT):
 		total += counts[category_id]
 
-	var categories: Array[Dictionary] = []
+	var categories: Array[Category] = []
 
 	for category_id in range(1, CATEGORY_COUNT):
 		var name: String = FALLBACK_CATEGORY_NAMES[category_id]
@@ -185,31 +228,30 @@ static func city_analysis(
 		if resource_strings.has(resource_id):
 			name = str(resource_strings[resource_id]).strip_edges()
 
-		categories.append({
-			"id": category_id,
-			"name": name,
-			"acres": counts[category_id],
-			"percent": int((counts[category_id] * 100) / total) if total != 0 else 0,
-		})
+		categories.append(Category.new(
+			category_id, name, counts[category_id],
+			int((counts[category_id] * 100) / total) if total != 0 else 0
+		))
 
 	var header := "Category                 Acres   Share"
 
 	if resource_strings.has(CATEGORY_RESOURCE_BASE):
 		header = str(resource_strings[CATEGORY_RESOURCE_BASE])
 
-	return {
-		"ok": true,
-		"header": header,
-		"counts": counts,
-		"total": total,
-		"categories": categories,
-		"error": "",
-	}
+	var result := Analysis.new()
+	result.ok = true
+	result.header = header
+	result.counts = counts
+	result.total = total
+	result.categories = categories
+	result.error = ""
+
+	return result
 
 
-static func format_city_analysis(analysis: Dictionary) -> String:
-	if not analysis.get("ok", false):
-		return "Analysis failed: %s" % analysis.get("error", "unknown error")
+static func format_city_analysis(analysis: Analysis) -> String:
+	if not analysis.ok:
+		return "Analysis failed: %s" % analysis.error
 
 	var lines := PackedStringArray([str(analysis.header)])
 

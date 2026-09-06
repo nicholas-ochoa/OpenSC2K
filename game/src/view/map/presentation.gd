@@ -317,7 +317,7 @@ func clear_trip_reach() -> void:
 		map.queue_redraw()
 
 
-func show_service_query(source: CityState, point: Vector2i, all_stations := false) -> Dictionary:
+func show_service_query(source: CityState, point: Vector2i, all_stations := false) -> ServiceQueryAnalysis.Result:
 	clear_service_query()
 	var result := ServiceQueryAnalysis.inspect(source, point, all_stations)
 	if result.ok:

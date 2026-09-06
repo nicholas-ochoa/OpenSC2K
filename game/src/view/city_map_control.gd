@@ -338,7 +338,7 @@ func clear_trip_reach() -> void:
 	presentation.clear_trip_reach()
 
 
-func show_service_query(source: CityState, point: Vector2i, all_stations := false) -> Dictionary:
+func show_service_query(source: CityState, point: Vector2i, all_stations := false) -> ServiceQueryAnalysis.Result:
 	return presentation.show_service_query(source, point, all_stations)
 
 

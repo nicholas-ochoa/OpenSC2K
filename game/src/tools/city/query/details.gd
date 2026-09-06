@@ -7,7 +7,7 @@ extends QueryConstants
 
 static func _advanced_details(
 	city: CityState, point: Vector2i, microsim_id := -1
-) -> Dictionary:
+) -> QueryResult:
 	var map_edge: int = city.map_size if city != null else 128
 	var index := city.index_of(point.x, point.y)
 	var detail_index := CityDataGrid.index(city.document.find_chunk("XVAL").decoded_payload, map_edge, point.x, point.y)
@@ -33,32 +33,31 @@ static func _advanced_details(
 		underground_name = UNDERGROUND_NAMES[underground_id]
 
 	var zone_raw := int(city.zones[index])
-	var result := {
-		"tile_id": city.building_id(point.x, point.y),
-		"zone_id": zone_raw & 0x0f,
-		"altitude_raw": int(city.altitude_words[index]),
-		"land_value_raw": int(city.document.find_chunk("XVAL").decoded_payload[detail_index]),
-		"crime_raw": int(city.document.find_chunk("XCRM").decoded_payload[detail_index]),
-		"pollution_raw": int(city.document.find_chunk("XPLT").decoded_payload[detail_index]),
-		"zone_raw": zone_raw,
-		"corner_name": _corner_name(zone_raw & 0xf0),
-		"flags_raw": flags,
-		"flag_names": flag_names,
-		"underground_id": underground_id,
-		"underground_name": underground_name,
-		"microsim_id": microsim_id,
-		"things": _things_at(city, point),
-	}
+	var result := QueryResult.new()
+	result.tile_id = city.building_id(point.x, point.y)
+	result.zone_id = zone_raw & 0x0f
+	result.altitude_raw = int(city.altitude_words[index])
+	result.land_value_raw = int(city.document.find_chunk("XVAL").decoded_payload[detail_index])
+	result.crime_raw = int(city.document.find_chunk("XCRM").decoded_payload[detail_index])
+	result.pollution_raw = int(city.document.find_chunk("XPLT").decoded_payload[detail_index])
+	result.zone_raw = zone_raw
+	result.corner_name = _corner_name(zone_raw & 0xf0)
+	result.flags_raw = flags
+	result.flag_names = flag_names
+	result.underground_id = underground_id
+	result.underground_name = underground_name
+	result.microsim_id = microsim_id
+	result.things = _things_at(city, point)
 
 	if microsim_id >= 0:
-		result["microsim"] = city.microsim(microsim_id)
-		result["microsim_label"] = city.label(overlay_id)
+		result.microsim = city.microsim(microsim_id)
+		result.microsim_label = city.label(overlay_id)
 
 	return result
 
 
-static func _things_at(city: CityState, point: Vector2i) -> Array[Dictionary]:
-	var result: Array[Dictionary] = []
+static func _things_at(city: CityState, point: Vector2i) -> Array[QueryThing]:
+	var result: Array[QueryThing] = []
 
 	for record in range(1, city.thing_count()):
 		var thing := city.thing(record)
@@ -68,22 +67,22 @@ static func _things_at(city: CityState, point: Vector2i) -> Array[Dictionary]:
 
 		var thing_type := thing.type
 		var direction := thing.direction
-		# the query dialog reads the stored fields plus these presentation keys
-		var entry := thing.to_dictionary()
-		entry["record"] = record
-		entry["type_name"] = (
+		# the query dialog reads copied stored fields plus presentation labels
+		var entry := QueryThing.new(thing)
+		entry.record = record
+		entry.type_name = (
 			THING_NAMES[thing_type]
 			if thing_type >= 0 and thing_type < THING_NAMES.size()
 			else "Unknown"
 		)
-		entry["direction_name"] = (
+		entry.direction_name = (
 			DIRECTION_NAMES[direction]
 			if direction >= 0 and direction < DIRECTION_NAMES.size()
 			else "Unknown"
 		)
 		var visual := Presentation.thing_sprite(city, point, thing, record)
-		entry["sprite_id"] = visual.sprite_id if visual != null else -1
-		entry["sprite_flip"] = visual.flip if visual != null else false
+		entry.sprite_id = visual.sprite_id if visual != null else -1
+		entry.sprite_flip = visual.flip if visual != null else false
 		result.append(entry)
 
 	return result

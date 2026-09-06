@@ -13,9 +13,7 @@ func _run() -> void:
 	var microsim := CityRecords.Microsim.new()
 	microsim.stat_0 = 12
 	microsim.stat_1 = 500
-	var values := {"point": Vector2i(400, 300), "tile_id": 211, "sprite_id": 1211,
-		"altitude_raw": 4660, "flags_raw": 128, "flag_names": PackedStringArray(["Powered"]),
-		"microsim_id": 7, "microsim_label": "Station", "microsim": microsim}
+	var values := _query_fixture(microsim)
 	var rows := QueryPresentation.advanced_rows(values)
 	assert(rows[0][1] == "211" and rows[0][3] == "0xD3")
 	assert(rows[1][3] == "0x04BB")
@@ -81,8 +79,24 @@ func _run() -> void:
 
 	assert(dialog.details_grid.get_root().get_child_count() == rows.size())
 	assert(dialog.tabs.is_tab_hidden(dialog.things_grid.get_index()))
-	var with_thing := values.duplicate(true)
-	with_thing.things = [{"record": 1, "type": 1, "type_name": "Airplane", "direction": 2, "direction_name": "East", "state": 0, "x": 400, "y": 300, "z": 12, "px": 0, "py": 0, "dx": 1, "dy": 0, "label": 0, "goal": 0}]
+	var with_thing := _query_fixture(microsim)
+	var thing := QueryThing.new()
+	thing.record = 1
+	thing.type = 1
+	thing.type_name = "Airplane"
+	thing.direction = 2
+	thing.direction_name = "East"
+	thing.state = 0
+	thing.x = 400
+	thing.y = 300
+	thing.z = 12
+	thing.px = 0
+	thing.py = 0
+	thing.dx = 1
+	thing.dy = 0
+	thing.label = 0
+	thing.goal = 0
+	with_thing.things = [thing]
 	dialog.show_query("Station", "Station", true, "Station", "", with_thing)
 	assert(not dialog.tabs.is_tab_hidden(dialog.things_grid.get_index()))
 	assert(dialog.things_grid.get_root().get_child_count() == QueryPresentation.thing_rows(with_thing).size())
@@ -145,3 +159,18 @@ func _run() -> void:
 
 	print("PASS: structured query values, coordinates, selection contrast, map edges and unchanged city bytes")
 	quit()
+
+
+func _query_fixture(microsim: CityRecords.Microsim) -> QueryResult:
+	var values := QueryResult.new()
+	values.point = Vector2i(400, 300)
+	values.tile_id = 211
+	values.sprite_id = 1211
+	values.altitude_raw = 4660
+	values.flags_raw = 128
+	values.flag_names = PackedStringArray(["Powered"])
+	values.microsim_id = 7
+	values.microsim_label = "Station"
+	values.microsim = microsim
+
+	return values

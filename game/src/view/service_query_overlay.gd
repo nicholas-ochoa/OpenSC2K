@@ -1,7 +1,7 @@
 class_name ServiceQueryOverlay
 extends RefCounted
 
-var analysis: Dictionary = {}
+var analysis: ServiceQueryAnalysis.Result
 var polygons: Array[PackedVector2Array] = []
 var colors: Array[Color] = []
 var station_polygons: Array[PackedVector2Array] = []
@@ -11,7 +11,7 @@ var station_border_mesh: ArrayMesh
 var station_highlight_mesh: ArrayMesh
 
 
-func rebuild(city: CityState, result: Dictionary) -> void:
+func rebuild(city: CityState, result: ServiceQueryAnalysis.Result) -> void:
 	analysis = result
 	polygons.clear()
 	colors.clear()

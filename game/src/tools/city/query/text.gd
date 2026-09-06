@@ -3,9 +3,9 @@ extends QueryConstants
 
 
 
-static func format_text(info: Dictionary) -> String:
-	if not info.get("ok", false):
-		return "Query failed: %s" % info.get("error", "unknown error")
+static func format_text(info: QueryResult) -> String:
+	if not info.ok:
+		return "Query failed: %s" % info.error
 
 	var point: Vector2i = info.point
 
@@ -61,9 +61,9 @@ static func format_text(info: Dictionary) -> String:
 	return "\n".join(lines)
 
 
-static func _advanced_lines(info: Dictionary) -> PackedStringArray:
+static func _advanced_lines(info: QueryResult) -> PackedStringArray:
 	var point: Vector2i = info.point
-	var flag_names: PackedStringArray = info.get("flag_names", PackedStringArray())
+	var flag_names: PackedStringArray = info.flag_names
 	var flag_text := "none" if flag_names.is_empty() else " ".join(flag_names)
 	var result := PackedStringArray([
 		"Advanced tile data",
@@ -81,13 +81,13 @@ static func _advanced_lines(info: Dictionary) -> PackedStringArray:
 		"Underground: %s (XUND %d / 0x%02X)"
 		% [info.underground_name, info.underground_id, info.underground_id],
 	])
-	var microsim_id := int(info.get("microsim_id", -1))
+	var microsim_id := int(info.microsim_id)
 
 	if microsim_id < 0:
 		result.append("Microsim ID: None")
 	else:
-		var microsim: CityRecords.Microsim = info.get("microsim")
-		var microsim_label := str(info.get("microsim_label", ""))
+		var microsim: CityRecords.Microsim = info.microsim
+		var microsim_label := str(info.microsim_label)
 
 		if not microsim_label.is_empty():
 			result.append("Microsim name: %s" % microsim_label)
@@ -103,7 +103,7 @@ static func _advanced_lines(info: Dictionary) -> PackedStringArray:
 				var value := microsim.statistic(data_index)
 				result.append("Data %d: %d / 0x%04X" % [data_index, value, value])
 
-	var things: Array = info.get("things", [])
+	var things: Array = info.things
 
 	if not things.is_empty():
 		result.append("")

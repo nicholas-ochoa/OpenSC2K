@@ -4,14 +4,37 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+	var origin := Vector2i(-1, -1)
+	var site := Rect2i()
+	var values: Dictionary[Vector2i, int] = {}
+	var name := ""
+	var funding := 0
+	var powered := false
+	var native := false
+	var all_stations := false
+	var fire := false
+	var sites: Array[Rect2i] = []
+	var station_count := 0
+	var powered_count := 0
+
+	static func failure(message: String) -> Result:
+		var result := Result.new()
+		result.error = message
+
+		return result
+
+
 # display-only contribution of one station. never runs a simulation phase
-static func inspect(city: CityState, point: Vector2i, all_stations := false) -> Dictionary:
+static func inspect(city: CityState, point: Vector2i, all_stations := false) -> Result:
 	if city == null or city.index_of(point.x, point.y) < 0:
-		return {"ok": false, "error": "Click a police or fire station."}
+		return Result.failure("Click a police or fire station.")
 
 	var building := city.building_id(point.x, point.y)
 	if building not in [PollutionPhase.POLICE_STATION, PollutionPhase.FIRE_STATION]:
-		return {"ok": false, "error": "Click a police or fire station."}
+		return Result.failure("Click a police or fire station.")
 
 	if all_stations:
 		return _inspect_all(city, building)
@@ -25,7 +48,7 @@ static func inspect(city: CityState, point: Vector2i, all_stations := false) -> 
 				origin = Vector2i(x, y)
 
 	if origin.x < 0:
-		return {"ok": false, "error": "This station has no valid building origin."}
+		return Result.failure("This station has no valid building origin.")
 
 	var police := building == PollutionPhase.POLICE_STATION
 	var funding := PollutionPhase._budget_funding(city, PollutionPhase.BUDGET_POLICE if police else PollutionPhase.BUDGET_FIRE)
@@ -36,7 +59,7 @@ static func inspect(city: CityState, point: Vector2i, all_stations := false) -> 
 		strength = strength / 2
 
 	var native := city.document.full_resolution_maps()
-	var values := {}
+	var values: Dictionary[Vector2i, int] = {}
 	if native:
 		var pattern := NativeGridMath.service_pattern(strength)
 		for dx in range(-15, 16):
@@ -59,15 +82,25 @@ static func inspect(city: CityState, point: Vector2i, all_stations := false) -> 
 					for dy in 4:
 						values[Vector2i(x * 4 + dx, y * 4 + dy)] = int(grid[x * edge + y])
 
-	return {"ok": true, "origin": origin, "site": site, "values": values,
-		"name": "Police Station" if police else "Fire Station", "funding": funding,
-		"powered": powered, "native": native, "all_stations": false,
-		"fire": not police, "sites": [site]}
+	var result := Result.new()
+	result.ok = true
+	result.origin = origin
+	result.site = site
+	result.values = values
+	result.name = "Police Station" if police else "Fire Station"
+	result.funding = funding
+	result.powered = powered
+	result.native = native
+	result.all_stations = false
+	result.fire = not police
+	result.sites = [site]
+
+	return result
 
 
-static func _inspect_all(city: CityState, building: int) -> Dictionary:
-	var result: Dictionary = {}
-	var values := {}
+static func _inspect_all(city: CityState, building: int) -> Result:
+	var result: Result
+	var values: Dictionary[Vector2i, int] = {}
 	var sites: Array[Rect2i] = []
 	var powered_count := 0
 	for x in city.map_size:
@@ -78,17 +111,20 @@ static func _inspect_all(city: CityState, building: int) -> Dictionary:
 			var station := inspect(city, Vector2i(x, y))
 			if not station.ok:
 				continue
-			if result.is_empty():
-				result = station.duplicate()
+			if result == null:
+				result = station
 			sites.append(station.site)
 			powered_count += int(station.powered)
 			for tile: Vector2i in station.values:
 				values[tile] = mini(255, int(values.get(tile, 0)) + int(station.values[tile]))
 
-	if result.is_empty():
-		return {"ok": false, "error": "No valid stations of this type were found."}
+	if result == null:
+		return Result.failure("No valid stations of this type were found.")
 
-	result.merge({"all_stations": true, "values": values, "sites": sites,
-		"station_count": sites.size(), "powered_count": powered_count,
-		"name": "All Fire Stations" if result.fire else "All Police Stations"}, true)
+	result.all_stations = true
+	result.values = values
+	result.sites = sites
+	result.station_count = sites.size()
+	result.powered_count = powered_count
+	result.name = "All Fire Stations" if result.fire else "All Police Stations"
 	return result

@@ -19,7 +19,7 @@ func _ready() -> void:
 	table.set_column_custom_minimum_width(2, 100)
 
 
-func set_categories(categories: Array) -> void:
+func set_categories(categories: Array[QueryActions.Category]) -> void:
 	table.clear()
 	var root := table.create_item()
 
@@ -32,6 +32,6 @@ func set_categories(categories: Array) -> void:
 		item.set_text_alignment(2, HORIZONTAL_ALIGNMENT_RIGHT)
 
 
-func show_categories(categories: Array) -> void:
+func show_categories(categories: Array[QueryActions.Category]) -> void:
 	set_categories(categories)
 	popup_centered()

@@ -54,7 +54,7 @@ func show_query(
 	is_specific: bool,
 	details_text: String,
 	action_text: String,
-	info: Dictionary = {},
+	info: QueryResult = null,
 	neighborhood_texture: Texture2D = null,
 	animation_palette: Sc2Palette = null,
 	animation_ticks: int = 0,
@@ -70,7 +70,7 @@ func show_query(
 	_populate_details(info)
 	tabs.current_tab = 0
 	neighborhood_view.configure_animation(animation_palette, animation_ticks)
-	neighborhood_view.zoom = QueryNeighborhood.zoom_for_tile(int(info.get("tile_id", 0)))
+	neighborhood_view.zoom = QueryNeighborhood.zoom_for_tile(info.tile_id if info != null else 0)
 	neighborhood_view.texture = neighborhood_texture
 	neighborhood_view.visible = neighborhood_texture != null
 	show()
@@ -91,16 +91,16 @@ func close_query() -> void:
 	neighborhood_view.texture = null
 
 
-func _populate_summary(details: String, info: Dictionary) -> void:
+func _populate_summary(details: String, info: QueryResult) -> void:
 	for child in summary_rows.get_children():
 		summary_rows.remove_child(child)
 		child.queue_free()
 
 	var lines := details.split("\n")
 
-	if info.has("point"):
+	if (info != null and info.point.x >= 0):
 		var point: Vector2i = info.point
-		lines.insert(1, "Location: X: %d, Y: %d, Z: %d" % [point.x, point.y, int(info.get("altitude_raw", 0)) & 0x1f])
+		lines.insert(1, "Location: X: %d, Y: %d, Z: %d" % [point.x, point.y, int(info.altitude_raw) & 0x1f])
 
 	for index in range(1, lines.size()):
 		var line := lines[index].strip_edges()
@@ -108,7 +108,7 @@ func _populate_summary(details: String, info: Dictionary) -> void:
 		if line == "Advanced tile data":
 			break
 
-		if line.is_empty() or (info.has("point") and line.begins_with("Tile: ")):
+		if line.is_empty() or ((info != null and info.point.x >= 0) and line.begins_with("Tile: ")):
 			continue
 
 		var card := PanelContainer.new()
@@ -130,7 +130,7 @@ func _populate_summary(details: String, info: Dictionary) -> void:
 			card.add_child(_summary_label(line))
 
 
-func _populate_details(info: Dictionary) -> void:
+func _populate_details(info: QueryResult) -> void:
 	_populate_grid(details_grid, QueryPresentation.advanced_rows(info))
 	var objects := QueryPresentation.thing_rows(info)
 	_populate_grid(things_grid, objects)

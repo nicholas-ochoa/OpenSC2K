@@ -10,17 +10,17 @@ const LARGE_SAILBOAT_NORTHEAST := 1380
 const LARGE_VIEW := Renderer.VIEW_LARGE
 
 
-static func sprite_id(city: CityState, info: Dictionary) -> int:
-	if city == null or not city.is_valid() or not info.get("ok", false):
+static func sprite_id(city: CityState, info: QueryResult) -> int:
+	if city == null or not city.is_valid() or info == null or not info.ok:
 		return -1
 
-	if info.get("kind", "") == "specific":
-		var microsim: CityRecords.Microsim = info.get("microsim")
+	if info.kind == "specific":
+		var microsim: CityRecords.Microsim = info.microsim
 		var facility_tile := microsim.tile_id if microsim != null else 0
 
 		return LARGE_SPRITE_BASE + facility_tile if facility_tile > 0 else -1
 
-	var point: Vector2i = info.get("point", Vector2i(-1, -1))
+	var point: Vector2i = info.point
 
 	if city.index_of(point.x, point.y) < 0:
 		return -1
@@ -86,33 +86,33 @@ static func thing_sprite(
 			return Renderer.moving_thing_sprite(thing, LARGE_VIEW)
 
 
-static func advanced_rows(info: Dictionary) -> Array[PackedStringArray]:
+static func advanced_rows(info: QueryResult) -> Array[PackedStringArray]:
 	var rows: Array[PackedStringArray] = []
 
-	if info.is_empty():
+	if info == null:
 		return rows
 
-	var point: Vector2i = info.get("point", Vector2i.ZERO)
+	var point: Vector2i = info.point
 
 	for entry in [["Tile ID", "tile_id", 2], ["Sprite ID", "sprite_id", 4],
 		["ALTM", "altitude_raw", 4], ["XVAL", "land_value_raw", 2],
 		["XCRM", "crime_raw", 2], ["XPLT", "pollution_raw", 2], ["XTXT", "overlay_id", 2]]:
-		rows.append(_number_row(entry[0], int(info.get(entry[1], 0)), "", entry[2]))
+		rows.append(_number_row(entry[0], int(info.get(entry[1])), "", entry[2]))
 
 	rows.append(_number_row("X", point.x))
 	rows.append(_number_row("Y", point.y))
-	rows.append(_number_row("Z", int(info.get("altitude_raw", 0)) & 0x1f))
-	rows.append(_number_row("XZON", int(info.get("zone_raw", 0)), str(info.get("corner_name", ""))))
-	rows.append(_number_row("Zone", int(info.get("zone_id", 0)), str(info.get("zone_name", ""))))
-	rows.append(_number_row("XBIT", int(info.get("flags_raw", 0)), " ".join(info.get("flag_names", PackedStringArray()))))
-	rows.append(_number_row("XUND", int(info.get("underground_id", 0)), str(info.get("underground_name", ""))))
-	var microsim_id := int(info.get("microsim_id", -1))
+	rows.append(_number_row("Z", int(info.altitude_raw) & 0x1f))
+	rows.append(_number_row("XZON", int(info.zone_raw), str(info.corner_name)))
+	rows.append(_number_row("Zone", int(info.zone_id), str(info.zone_name)))
+	rows.append(_number_row("XBIT", int(info.flags_raw), " ".join(info.flag_names)))
+	rows.append(_number_row("XUND", int(info.underground_id), str(info.underground_name)))
+	var microsim_id := int(info.microsim_id)
 
 	if microsim_id < 0:
 		rows.append(PackedStringArray(["Microsim", "", "None", ""]))
 	else:
-		rows.append(_number_row("Microsim ID", microsim_id, str(info.get("microsim_label", ""))))
-		var microsim: CityRecords.Microsim = info.get("microsim")
+		rows.append(_number_row("Microsim ID", microsim_id, str(info.microsim_label)))
+		var microsim: CityRecords.Microsim = info.microsim
 
 		if microsim == null:
 			rows.append(PackedStringArray(["XMIC", "", "Unavailable", ""]))
@@ -124,15 +124,19 @@ static func advanced_rows(info: Dictionary) -> Array[PackedStringArray]:
 	return rows
 
 
-static func thing_rows(info: Dictionary) -> Array[PackedStringArray]:
+static func thing_rows(info: QueryResult) -> Array[PackedStringArray]:
 	var rows: Array[PackedStringArray] = []
-	for thing: Dictionary in info.get("things", []):
+
+	if info == null:
+		return rows
+
+	for thing: QueryThing in info.things:
 		rows.append(_number_row("Record", int(thing.record), str(thing.type_name)))
 		rows.append(_number_row("Type", int(thing.type), str(thing.type_name)))
 		rows.append(_number_row("Direction", int(thing.direction), str(thing.direction_name)))
 
 		for field in ["state", "x", "y", "z", "px", "py", "dx", "dy", "label", "goal"]:
-			rows.append(_number_row(field.to_upper(), int(thing[field])))
+			rows.append(_number_row(field.to_upper(), int(thing.get(field))))
 
 	return rows
 

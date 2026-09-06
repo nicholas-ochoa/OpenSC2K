@@ -191,7 +191,7 @@ func open_query(point: Vector2i) -> void:
 
 		return
 
-	if result.get("overlay_id", 0) == 111 and app.simulation_state.simulation_engine != null:
+	if result.overlay_id == 111 and app.simulation_state.simulation_engine != null:
 		var approval := app.simulation_state.simulation_engine.recalculate_mayor_house()
 
 		if not approval.ok:
@@ -203,19 +203,19 @@ func open_query(point: Vector2i) -> void:
 		result = Queries.inspect(app.document_state.city, point, text_resources.original_query_strings)
 
 	if (
-		result.get("kind", "") == "general"
+		result.kind == "general"
 		and app.asset_state.active_scurk_tile_set != null
-		and app.asset_state.active_scurk_tile_set.names.has(int(result.get("tile_id", -1)))
+		and app.asset_state.active_scurk_tile_set.names.has(int(result.tile_id))
 	):
 		result.title = app.asset_state.active_scurk_tile_set.names[int(result.tile_id)]
 
 	app.tool_state.active_query_result = result
 	var is_specific: bool = result.kind == "specific"
-	var action := str(result.get("action", ""))
+	var action := str(result.action)
 	var action_text := ""
 
 	if not action.is_empty():
-		var action_resource_id := int(result.get("action_resource_id", -1))
+		var action_resource_id := int(result.action_resource_id)
 		var fallback := "Analyze" if action == "city_analysis" else "Ruminate"
 		action_text = str(text_resources.original_query_strings.get(action_resource_id, fallback))
 
@@ -231,7 +231,7 @@ func open_query(point: Vector2i) -> void:
 		app.asset_state.palette,
 		app.palette_clock.cycle_ticks,
 	)
-	app.effects_audio.play_sound_events(result.get("sound_events", []))
+	app.effects_audio.play_sound_events(result.sound_events)
 
 
 func close_query(commit_rename := false) -> bool:
@@ -241,7 +241,8 @@ func close_query(commit_rename := false) -> bool:
 	if (
 		commit_rename
 		and app.query_dialog.rename_is_enabled()
-		and app.tool_state.active_query_result.get("kind", "") == "specific"
+		and app.tool_state.active_query_result != null
+		and app.tool_state.active_query_result.kind == "specific"
 	):
 		var renamed := QueryFacilityActions.rename_facility(
 			app.document_state.city, app.tool_state.active_query_result, app.query_dialog.facility_name()
@@ -252,7 +253,7 @@ func close_query(commit_rename := false) -> bool:
 
 			return false
 
-		app.tool_state.active_query_result["title"] = renamed.new_value
+		app.tool_state.active_query_result.title = renamed.new_value
 
 	app.query_dialog.close_query()
 
@@ -266,7 +267,7 @@ func run_query_action() -> void:
 	if not close_query(true):
 		return
 
-	match str(app.tool_state.active_query_result.get("action", "")):
+	match app.tool_state.active_query_result.action if app.tool_state.active_query_result != null else "":
 		"city_analysis":
 			var analysis := QueryFacilityActions.city_analysis(
 				app.document_state.city, text_resources.original_query_strings

@@ -3,8 +3,11 @@ extends SceneTree
 
 func _initialize() -> void:
 	var city := CityState.from_document(EmptyCityTemplate.create())
-	var values := {Vector2i(32, 32): 125, Vector2i(33, 32): 250}
-	var result := {"values": values, "fire": true, "sites": [Rect2i(32, 32, 3, 3)]}
+	var values: Dictionary[Vector2i, int] = {Vector2i(32, 32): 125, Vector2i(33, 32): 250}
+	var result := ServiceQueryAnalysis.Result.new()
+	result.values = values
+	result.fire = true
+	result.sites = [Rect2i(32, 32, 3, 3)]
 	var overlay := ServiceQueryOverlay.new()
 	overlay.rebuild(city, result)
 	var arrays := overlay.fill_mesh.surface_get_arrays(0)

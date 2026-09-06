@@ -77,7 +77,7 @@ func _test_all(edge: int, native: bool) -> void:
 		for offset in [Vector2i.ZERO, Vector2i(6, 0)]:
 			check(BuildingCommand.apply(city, 13, subtool, base + offset + Vector2i(0, subtool * 6), SimLfsrRandom.new(1), SimRandom.new(1)).ok, "Place overlapping stations")
 	var before: Array = DocumentState.capture(city.document)
-	var results: Array[Dictionary] = []
+	var results: Array[ServiceQueryAnalysis.Result] = []
 	for subtool in [0, 1]:
 		var point := base + Vector2i(0, subtool * 6)
 		var result := ServiceQueryAnalysis.inspect(city, point, true)
@@ -95,7 +95,7 @@ func _test_all(edge: int, native: bool) -> void:
 		_check_coverage(data, results[subtool].values, edge, "Combined coverage")
 
 
-func _check_coverage(data: PackedByteArray, values: Dictionary, edge: int, label: String) -> void:
+func _check_coverage(data: PackedByteArray, values: Dictionary[Vector2i, int], edge: int, label: String) -> void:
 	var expected := PackedByteArray()
 	expected.resize(edge * edge) # Uncovered cells must remain zero.
 	for point: Vector2i in values:

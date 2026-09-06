@@ -13515,7 +13515,7 @@ func _test_query_info(reference_root: String) -> void:
 		and library.action_resource_id == Queries.LIBRARY_ACTION_RESOURCE,
 		"Library query exposes its Ruminate action",
 	)
-	var arcology_info := library.duplicate(true)
+	var arcology_info := Queries.inspect(city, Vector2i(10, 10), original_strings)
 	arcology_info.microsim = city.microsim(library.microsim_id)
 	arcology_info.microsim.tile_id = 0xfb
 	_check(

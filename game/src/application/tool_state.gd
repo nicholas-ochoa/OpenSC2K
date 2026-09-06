@@ -89,6 +89,6 @@ var pending_stadium_command: BuildingEditResult
 var pending_network_connection: ConnectionRequest
 var pending_highway_connection: ConnectionRequest
 var pending_tunnel_request: TunnelRequest
-var active_query_result: Dictionary = {}
+var active_query_result: QueryResult
 var pending_building_objection_group := -1
 var pending_building_objection_subtool := -1

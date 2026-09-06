@@ -87,7 +87,7 @@ func _test_main_menu() -> void:
 	var analysis_dialog := CityAnalysisDialogUi.instantiate() as CityAnalysisDialog
 	analysis_dialog._ready()
 	analysis_dialog.set_categories([
-		{"name": "Roads", "acres": 12, "percent": 34},
+		QueryActions.Category.new(0, "Roads", 12, 34),
 	])
 	var analysis_root := analysis_dialog.table.get_root()
 	var analysis_item := analysis_root.get_first_child()

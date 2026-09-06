@@ -7,14 +7,14 @@ extends QueryConstants
 
 static func inspect(
 	city: CityState, point: Vector2i, resource_strings: Dictionary = {}
-) -> Dictionary:
+) -> QueryResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return QueryResult.failure("city is invalid")
 
 	if city.index_of(point.x, point.y) < 0:
-		return {"ok": false, "error": "query position is outside the city"}
+		return QueryResult.failure("query position is outside the city")
 
 	for checked in [
 		["XTRF", (map_edge / 2) * (map_edge / 2)],
@@ -25,7 +25,7 @@ static func inspect(
 		var chunk := city.document.find_chunk(checked[0])
 
 		if chunk == null or chunk.decoded_payload.size() != city.document.decoded_size(str(checked[0])):
-			return {"ok": false, "error": "%s data is missing or invalid" % checked[0]}
+			return QueryResult.failure("%s data is missing or invalid" % checked[0])
 
 	var overlay := city.text_overlay_id(point.x, point.y)
 
@@ -44,29 +44,25 @@ static func inspect(
 				action = "library_ruminate"
 				action_resource_id = LIBRARY_ACTION_RESOURCE
 
-			var specific := {
-				"ok": true,
-				"kind": "specific",
-				"point": point,
-				"title": city.label(overlay),
-				"overlay_id": overlay,
-				"microsim_id": OverlayData.facility_record(overlay),
-				"microsim": microsim,
-				"microsim_type": microsim_type,
-				"lines": QueryText._specific_lines(
-					city, microsim, microsim_type, resource_strings
-				),
-				"action": action,
-				"action_resource_id": action_resource_id,
-				"sound_events": QueryText.specific_sound_events(
-					int(microsim.tile_id), int(microsim.stat_0)
-				),
-				"error": "",
-			}
-			specific.merge(QueryDetails._advanced_details(
-				city, point, OverlayData.facility_record(overlay)
-			))
-			specific["sprite_id"] = Presentation.sprite_id(city, specific)
+			var specific := QueryDetails._advanced_details(city, point, OverlayData.facility_record(overlay))
+			specific.ok = true
+			specific.kind = "specific"
+			specific.point = point
+			specific.title = city.label(overlay)
+			specific.overlay_id = overlay
+			specific.microsim_id = OverlayData.facility_record(overlay)
+			specific.microsim = microsim
+			specific.microsim_type = microsim_type
+			specific.lines = QueryText._specific_lines(
+				city, microsim, microsim_type, resource_strings
+			)
+			specific.action = action
+			specific.action_resource_id = action_resource_id
+			specific.sound_events = QueryText.specific_sound_events(
+				int(microsim.tile_id), int(microsim.stat_0)
+			)
+			specific.error = ""
+			specific.sprite_id = Presentation.sprite_id(city, specific)
 
 			return specific
 
@@ -94,37 +90,35 @@ static func inspect(
 	var pollution_chunk := city.document.find_chunk("XPLT")
 	var land_value_chunk := city.document.find_chunk("XVAL")
 	var crime_chunk := city.document.find_chunk("XCRM")
-	var result := {
-		"ok": true,
-		"kind": "general",
-		"point": point,
-		"title": QueryText._tile_description(city, point, building, resource_strings),
-		"building_id": building,
-		"terrain_id": terrain,
-		"zone_id": zone,
-		"zone_name": ZONE_NAMES[zone] if zone < ZONE_NAMES.size() else "Unknown zone",
-		"zone_density": ZONE_DENSITIES[zone] if zone < ZONE_DENSITIES.size() else "",
-		"shows_traffic": QueryDetails._is_traffic_tile(building),
-		"traffic": QueryDetails.traffic(city, traffic_chunk.decoded_payload, point, building),
-		"altitude_feet": altitude_feet,
-		"altitude_is_depth": altitude_is_depth,
-		"shows_land_value": not wet_tile or land_altitude < water_level,
-		"land_value": int(land_value_chunk.decoded_payload[detail_index]) + 1,
-		"crime": int(crime_chunk.decoded_payload[detail_index]),
-		"crime_level": QueryDetails.level_name(crime_chunk.decoded_payload[detail_index]),
-		"pollution": int(pollution_chunk.decoded_payload[detail_index]),
-		"pollution_level": QueryDetails.level_name(pollution_chunk.decoded_payload[detail_index]),
-		"shows_utilities": (
-			building >= FIRST_BUILDING_WITH_UTILITIES and zone != MILITARY_ZONE and not wet_tile
-		),
-		"powered": city.is_powered(point.x, point.y),
-		"watered": city.is_watered(point.x, point.y),
-		"water_detail": QueryDetails._water_detail(city, point, building),
-		"overlay_id": overlay,
-		"sound_events": [],
-		"error": "",
-	}
-	result.merge(QueryDetails._advanced_details(city, point))
-	result["sprite_id"] = Presentation.sprite_id(city, result)
+	var result := QueryDetails._advanced_details(city, point)
+	result.ok = true
+	result.kind = "general"
+	result.point = point
+	result.title = QueryText._tile_description(city, point, building, resource_strings)
+	result.building_id = building
+	result.terrain_id = terrain
+	result.zone_id = zone
+	result.zone_name = ZONE_NAMES[zone] if zone < ZONE_NAMES.size() else "Unknown zone"
+	result.zone_density = ZONE_DENSITIES[zone] if zone < ZONE_DENSITIES.size() else ""
+	result.shows_traffic = QueryDetails._is_traffic_tile(building)
+	result.traffic = QueryDetails.traffic(city, traffic_chunk.decoded_payload, point, building)
+	result.altitude_feet = altitude_feet
+	result.altitude_is_depth = altitude_is_depth
+	result.shows_land_value = not wet_tile or land_altitude < water_level
+	result.land_value = int(land_value_chunk.decoded_payload[detail_index]) + 1
+	result.crime = int(crime_chunk.decoded_payload[detail_index])
+	result.crime_level = QueryDetails.level_name(crime_chunk.decoded_payload[detail_index])
+	result.pollution = int(pollution_chunk.decoded_payload[detail_index])
+	result.pollution_level = QueryDetails.level_name(pollution_chunk.decoded_payload[detail_index])
+	result.shows_utilities = (
+		building >= FIRST_BUILDING_WITH_UTILITIES and zone != MILITARY_ZONE and not wet_tile
+	)
+	result.powered = city.is_powered(point.x, point.y)
+	result.watered = city.is_watered(point.x, point.y)
+	result.water_detail = QueryDetails._water_detail(city, point, building)
+	result.overlay_id = overlay
+	result.sound_events = []
+	result.error = ""
+	result.sprite_id = Presentation.sprite_id(city, result)
 
 	return result
