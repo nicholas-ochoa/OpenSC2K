@@ -23,7 +23,7 @@ func run() -> void:
 	sign.free()
 	var stadium := preload("res://src/ui/tools/stadium_team_dialog.tscn").instantiate() as StadiumTeamDialog
 	root.add_child(stadium)
-	stadium.show_teams([{"id": 4, "name": "Lions"}, {"id": 9, "name": "Bears"}])
+	stadium.show_teams([StadiumTeamDialog.Team.new(4, "Lions"), StadiumTeamDialog.Team.new(9, "Bears")])
 	assert(stadium.selected_team_id() == 4 and stadium.entered_name() == "Lions")
 	stadium.team_selector.select(1)
 	stadium.team_selector.item_selected.emit(1)

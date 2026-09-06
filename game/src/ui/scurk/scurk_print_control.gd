@@ -1,8 +1,8 @@
 class_name ScurkPrintControl
 extends Window
 
-signal preview_options_changed(options: Dictionary)
-signal save_pdf_requested(options: Dictionary)
+signal preview_options_changed(options: ScurkCityOutput.Options)
+signal save_pdf_requested(options: ScurkCityOutput.Options)
 
 const PreviewView = preload("res://src/ui/scurk/scurk_print_preview.gd")
 
@@ -88,8 +88,9 @@ func show_workspace() -> void:
 	request_preview()
 
 
-func options() -> Dictionary:
-	var visibility := {
+func options() -> ScurkCityOutput.Options:
+	var result := ScurkCityOutput.Options.new()
+	result.surface_visibility = {
 		"buildings": buildings_check.button_pressed,
 		"networks": infrastructure_check.button_pressed,
 		"water": true,
@@ -97,17 +98,15 @@ func options() -> Dictionary:
 		"zones": zones_check.button_pressed,
 		"signs": signs_check.button_pressed,
 	}
+	result.magnification = MAGNIFICATIONS[magnification_selector.selected]
+	result.view = "underground" if view_selector.selected == 1 else "city"
+	result.color = color_selector.selected == 0
+	result.entire_city = print_what_selector.selected == 0
+	result.selected_pages = preview.selected_pages.duplicate()
+	result.show_pipes = pipes_check.button_pressed
+	result.show_water_mains = water_mains_check.button_pressed
 
-	return {
-		"magnification": MAGNIFICATIONS[magnification_selector.selected],
-		"view": "underground" if view_selector.selected == 1 else "city",
-		"color": color_selector.selected == 0,
-		"entire_city": print_what_selector.selected == 0,
-		"selected_pages": preview.selected_pages.duplicate(),
-		"surface_visibility": visibility,
-		"show_pipes": pipes_check.button_pressed,
-		"show_water_mains": water_mains_check.button_pressed,
-	}
+	return result
 
 
 func set_preview_image(image: Image) -> void:

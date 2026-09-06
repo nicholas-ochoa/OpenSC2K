@@ -2,6 +2,18 @@ class_name CityDesktopPresentation
 extends Node
 # own cursor display only over an active drawing surface
 
+class CursorSelection extends RefCounted:
+	var app: String
+	var group: int
+	# a negative shape keeps the hovered control's own cursor shape
+	var shape: int
+
+	func _init(cursor_app: String, cursor_group: int, cursor_shape := -1) -> void:
+		app = cursor_app
+		group = cursor_group
+		shape = cursor_shape
+
+
 var graphics: DesktopGraphics
 var map_view: CityMapControl
 var editor: ScurkEditorControl
@@ -47,18 +59,18 @@ func _process(_delta: float) -> void:
 	var hovered := viewport.gui_get_hovered_control()
 	var selection := cursor_selection(hovered, DisplayServer.screen_get_size(window.current_screen).x)
 
-	if selection.is_empty():
+	if selection == null:
 		presenter.clear_cursor()
 
 		return
 
 	presenter.present(selection.app, selection.group, _pointer_position,
-		selection.get("shape", hovered.get_cursor_shape(hovered.get_local_mouse_position())))
+		selection.shape if selection.shape >= 0 else hovered.get_cursor_shape(hovered.get_local_mouse_position()))
 
 
-func cursor_selection(hovered: Control, display_width: int) -> Dictionary:
+func cursor_selection(hovered: Control, display_width: int) -> CursorSelection:
 	if hovered == null or not hovered.is_visible_in_tree():
-		return {}
+		return null
 
 	if hovered == map_view and map_view.city != null:
 		var role := map_view.desktop_cursor_role if map_view.edit_enabled else 0
@@ -69,23 +81,23 @@ func cursor_selection(hovered: Control, display_width: int) -> Dictionary:
 			role = 23
 
 		if role == 0:
-			return {}
+			return null
 
 		var app := map_view.desktop_cursor_app
 
-		return {"app": app, "group": (31000 if app == "scurk" else DesktopCursorRules.city_family(display_width)) + role}
+		return CursorSelection.new(app, (31000 if app == "scurk" else DesktopCursorRules.city_family(display_width)) + role)
 
 	if hovered is ScurkPixelCanvas and hovered.sprite_width > 0:
-		return {"app": "scurk", "group": DesktopCursorRules.paint_tool(hovered.tool)}
+		return CursorSelection.new("scurk", DesktopCursorRules.paint_tool(hovered.tool))
 
 	if hovered is ScurkObjectList and hovered.drop_target and get_viewport().gui_is_dragging():
 		var data: Variant = get_viewport().gui_get_drag_data()
 
 		if hovered._can_drop_data(hovered.get_local_mouse_position(), data):
-			return {"app": "scurk", "group": 30004 if data.large_ids.size() == 1 else 30005,
-				"shape": Input.CURSOR_CAN_DROP}
+			return CursorSelection.new("scurk", 30004 if data.large_ids.size() == 1 else 30005,
+				Input.CURSOR_CAN_DROP)
 
-	return {}
+	return null
 
 
 func _update_icon() -> void:

@@ -1,6 +1,15 @@
 class_name StadiumTeamDialog
 extends ConfirmationDialog
 
+class Team extends RefCounted:
+	var id: int
+	var name: String
+
+	func _init(team_id: int, team_name: String) -> void:
+		id = team_id
+		name = team_name
+
+
 var team_selector: OptionButton
 var name_input: LineEdit
 
@@ -14,18 +23,18 @@ func _ready() -> void:
 	team_selector.item_selected.connect(_select_team)
 
 
-func set_teams(teams: Array) -> void:
+func set_teams(teams: Array[Team]) -> void:
 	team_selector.clear()
 
 	for team in teams:
-		team_selector.add_item(str(team.get("name", "Team")), int(team.get("id", -1)))
+		team_selector.add_item(team.name, team.id)
 
 	if not teams.is_empty():
 		team_selector.select(0)
 		_select_team(0)
 
 
-func show_teams(teams: Array) -> void:
+func show_teams(teams: Array[Team]) -> void:
 	set_teams(teams)
 	popup_centered()
 	name_input.grab_focus()

@@ -48,7 +48,7 @@ func open_export_dialog() -> void:
 	app.city_png_export_dialog.show_options()
 
 
-func start_export(options: Dictionary) -> void:
+func start_export(options: CityPngExportJob.Options) -> void:
 	if app.document_state.city == null or is_running():
 		return
 

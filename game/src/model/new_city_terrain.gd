@@ -5,6 +5,47 @@ extends NewTerrainConstants
 @warning_ignore_start("integer_division")
 
 
+class Options extends RefCounted:
+	var size := 128
+	var native_maps := false
+	var ocean := DEFAULT_OCEAN
+	var river := DEFAULT_RIVER
+	var hills := DEFAULT_HILLS
+	var water := DEFAULT_WATER
+	var trees := DEFAULT_TREES
+	var layout := "classic"
+	var smooth_slopes := false
+	var features: Array[String] = []
+
+	func copy() -> Options:
+		var result := Options.new()
+		result.size = size
+		result.native_maps = native_maps
+		result.ocean = ocean
+		result.river = river
+		result.hills = hills
+		result.water = water
+		result.trees = trees
+		result.layout = layout
+		result.smooth_slopes = smooth_slopes
+		result.features = features.duplicate()
+
+		return result
+
+	func same_values(other: Options) -> bool:
+		return (other != null
+			and size == other.size
+			and native_maps == other.native_maps
+			and ocean == other.ocean
+			and river == other.river
+			and hills == other.hills
+			and water == other.water
+			and trees == other.trees
+			and layout == other.layout
+			and smooth_slopes == other.smooth_slopes
+			and features == other.features)
+
+
 class Result extends RefCounted:
 	var ok := false
 	var error := ""

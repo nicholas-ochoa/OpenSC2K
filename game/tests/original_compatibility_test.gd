@@ -76,8 +76,14 @@ func check_formats() -> void:
 
 			check(saved_payloads(doc) == original, "Policy does not convert or mutate city")
 
-	var options := {"size": 512, "native_maps": true, "hills": 10}
-	check(OriginalCompatibility.terrain_options(options, true) == {"size": 128, "native_maps": false, "hills": 10}, "Creation options force original format")
+	var options := NewCityTerrain.Options.new()
+	options.size = 512
+	options.native_maps = true
+	options.hills = 10
+	var expected := options.copy()
+	expected.size = 128
+	expected.native_maps = false
+	check(OriginalCompatibility.terrain_options(options, true).same_values(expected), "Creation options force original format")
 	check(options.size == 512 and options.native_maps, "Creation policy leaves caller options unchanged")
 	# Round-trip an unknown chunk through a compatible save.
 	var doc := EmptyCityTemplate.create(128)
@@ -123,9 +129,13 @@ func check_ui() -> void:
 	check(main.new_city._new_city_terrain_options().size == 128 and not main.new_city._new_city_terrain_options().native_maps, "Creation guard survives programmatic UI selection")
 	main.new_city_state.session.independent_template = true
 	main.new_city_state.session.begin(123, 456)
-	var options: Dictionary = main.new_city._new_city_terrain_options()
+	var options: NewCityTerrain.Options = main.new_city._new_city_terrain_options()
 	# Format policy is independent of expensive terrain feature combinations.
-	options.merge({"hills": 0, "water": 0, "trees": 0, "ocean": false, "river": false}, true)
+	options.hills = 0
+	options.water = 0
+	options.trees = 0
+	options.ocean = false
+	options.river = false
 	var generated: NewCityTerrainSession.PreviewResult = main.new_city_state.session.generate_preview("", options, false)
 	check(generated.ok and not generated.document.is_extended(), "Compatibility generates original-format preview")
 	var created: NewCitySetup.Result = main.new_city_state.session.create_city("", "Compatible", "Mayor", 1, 1900, options, PackedByteArray())

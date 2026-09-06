@@ -123,9 +123,10 @@ func _check_content_options() -> void:
 
 func _check_render_progress() -> void:
 	var values: Array[float] = []
-	var result := ScurkCityOutput.render(main.document_state.city, main.asset_state.palette, main.static_render.sprite_archive_for_view(Renderer.VIEW_SMALL), Renderer.VIEW_SMALL, {
-		"view": "underground", "progress": func(value: float) -> void: values.append(value),
-	})
+	var options := ScurkCityOutput.Options.new()
+	options.view = "underground"
+	options.progress = func(value: float) -> void: values.append(value)
+	var result := ScurkCityOutput.render(main.document_state.city, main.asset_state.palette, main.static_render.sprite_archive_for_view(Renderer.VIEW_SMALL), Renderer.VIEW_SMALL, options)
 	assert(result.ok and values.size() == main.document_state.city.map_size * 2 - 1)
 
 	for index in range(1, values.size()):
@@ -144,7 +145,12 @@ func _check_exports() -> void:
 
 	for entry in cases:
 		var path := folder.path_join("%s_%d_%d.png" % [entry[0], entry[1], entry[2]])
-		main.city_png_export.start_export({"path": path, "view_size": entry[1], "view": entry[0], "transparent_background": entry[3], "signs": true, "moving_things": true})
+		var options := ExportJob.Options.new()
+		options.path = path
+		options.view_size = entry[1]
+		options.view = entry[0]
+		options.transparent_background = entry[3]
+		main.city_png_export.start_export(options)
 		assert(main.city_png_export.is_running())
 
 		while main.city_png_export.is_running():
@@ -170,7 +176,9 @@ func _check_exports() -> void:
 
 func _check_progress_overlay() -> void:
 	var overlay: ProgressOverlay = main.city_png_export_progress
-	var options := {"path": folder.path_join("slow.png"), "view_size": Renderer.VIEW_MEDIUM, "view": "city", "transparent_background": false, "signs": true, "moving_things": true}
+	var options := ExportJob.Options.new()
+	options.path = folder.path_join("slow.png")
+	options.view_size = Renderer.VIEW_MEDIUM
 	main.city_png_export.progress_delay_msec = 0
 	main.city_png_export.start_export(options)
 	var seen := false

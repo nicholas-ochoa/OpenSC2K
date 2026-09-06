@@ -85,13 +85,12 @@ func open_stadium_dialog(command: BuildingEditResult) -> void:
 		return
 
 	app.tool_state.pending_stadium_command = command.copy() as BuildingEditResult
-	var teams: Array[Dictionary] = []
+	var teams: Array[StadiumTeamDialog.Team] = []
 
 	for team_index in choices:
-		teams.append({
-			"id": team_index,
-			"name": BuildingFacilities.stadium_team_name(app.document_state.city, team_index),
-		})
+		teams.append(StadiumTeamDialog.Team.new(
+			team_index, BuildingFacilities.stadium_team_name(app.document_state.city, team_index)
+		))
 
 	app.stadium_dialog.show_teams(teams)
 

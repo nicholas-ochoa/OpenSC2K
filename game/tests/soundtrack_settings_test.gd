@@ -16,7 +16,7 @@ func _run() -> void:
 	var dialog := preload("res://src/ui/settings/app_settings_dialog.tscn").instantiate() as AppSettingsDialog
 	root.add_child(dialog)
 	dialog.show_values(0.5, 0.3, false)
-	assert(not dialog.selected_values().has("soundtrack_folder"))
+	assert(not ("soundtrack_folder" in dialog.selected_values()))
 	dialog.music_pack_edit.text = "/music/pack.json"
 	assert(dialog.selected_values().music_pack_folder == "/music/pack.json")
 	var controller := CityAudioController.new()

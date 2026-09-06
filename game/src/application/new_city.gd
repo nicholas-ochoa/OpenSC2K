@@ -78,18 +78,19 @@ func _update_new_city_slider_labels() -> void:
 	app.new_city_dialog.trees_value.text = str(roundi(app.new_city_dialog.trees_input.value))
 
 
-func _new_city_terrain_options() -> Dictionary:
-	return OriginalCompatibility.terrain_options({
-		"features": app.new_city_dialog.selected_features(),
-		"smooth_slopes": true,
-		"size": app.new_city_dialog.size_input.get_selected_id(),
-		"native_maps": app.new_city_dialog.native_maps_input.button_pressed,
-		"ocean": app.new_city_dialog.ocean_input.button_pressed,
-		"river": app.new_city_dialog.river_input.button_pressed,
-		"hills": roundi(app.new_city_dialog.hills_input.value),
-		"water": roundi(app.new_city_dialog.water_input.value),
-		"trees": roundi(app.new_city_dialog.trees_input.value),
-	}, app.new_city_dialog.compatibility_input.button_pressed)
+func _new_city_terrain_options() -> NewCityTerrain.Options:
+	var options := NewCityTerrain.Options.new()
+	options.features.assign(app.new_city_dialog.selected_features())
+	options.smooth_slopes = true
+	options.size = app.new_city_dialog.size_input.get_selected_id()
+	options.native_maps = app.new_city_dialog.native_maps_input.button_pressed
+	options.ocean = app.new_city_dialog.ocean_input.button_pressed
+	options.river = app.new_city_dialog.river_input.button_pressed
+	options.hills = roundi(app.new_city_dialog.hills_input.value)
+	options.water = roundi(app.new_city_dialog.water_input.value)
+	options.trees = roundi(app.new_city_dialog.trees_input.value)
+
+	return OriginalCompatibility.terrain_options(options, app.new_city_dialog.compatibility_input.button_pressed)
 
 
 func make_new_city_preview() -> void:

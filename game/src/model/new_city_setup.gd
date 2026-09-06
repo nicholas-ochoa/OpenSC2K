@@ -80,7 +80,7 @@ static func create(
 	starting_year: int,
 	random: SimRandom,
 	game_random: GameLcgRandom = null,
-	terrain_options: Dictionary = {},
+	terrain_options: NewCityTerrain.Options = null,
 	newspaper_session_state: PackedByteArray = PackedByteArray(),
 ) -> Result:
 	if template == null or not template.is_valid():
@@ -95,7 +95,7 @@ static func create(
 	if random == null:
 		return Result.failure("random state is missing")
 
-	if not terrain_options.is_empty() and game_random == null:
+	if terrain_options != null and game_random == null:
 		return Result.failure("terrain game-random state is missing")
 
 	if (
@@ -142,19 +142,19 @@ static func create(
 	)
 	var terrain_result: NewCityTerrain.Result
 
-	if not terrain_options.is_empty():
+	if terrain_options != null:
 		terrain_result = Terrain.generate(
 			document,
-			bool(terrain_options.get("ocean", Terrain.DEFAULT_OCEAN)),
-			bool(terrain_options.get("river", Terrain.DEFAULT_RIVER)),
-			int(terrain_options.get("hills", Terrain.DEFAULT_HILLS)),
-			int(terrain_options.get("water", Terrain.DEFAULT_WATER)),
-			int(terrain_options.get("trees", Terrain.DEFAULT_TREES)),
+			bool(terrain_options.ocean),
+			bool(terrain_options.river),
+			int(terrain_options.hills),
+			int(terrain_options.water),
+			int(terrain_options.trees),
 			staged_random,
 			staged_game_random,
-			str(terrain_options.get("layout", "classic")),
-			terrain_options.get("features", []),
-			bool(terrain_options.get("smooth_slopes", false)),
+			str(terrain_options.layout),
+			terrain_options.features,
+			bool(terrain_options.smooth_slopes),
 		)
 
 		if not terrain_result.ok:

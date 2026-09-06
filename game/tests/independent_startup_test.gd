@@ -47,7 +47,12 @@ func _test_generated_cities() -> void:
 	assert(template.serialize().data == unchanged)
 	assert(template.misc_u32(0x1008) == 0 and template.misc_u32(0x1010) == 0)
 	assert(template.misc_u32(0x1040) == 0)
-	var options := {"ocean": true, "river": true, "hills": 12, "water": 5, "trees": 0}
+	var options := NewCityTerrain.Options.new()
+	options.ocean = true
+	options.river = true
+	options.hills = 12
+	options.water = 5
+	options.trees = 0
 	var session := NewCityTerrainSession.new()
 	session.independent_template = true
 	session.begin(1, 1)

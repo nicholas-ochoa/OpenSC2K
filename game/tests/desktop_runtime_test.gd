@@ -55,15 +55,16 @@ func _run() -> void:
 		map.zoom_factor = 0.25
 		var small := desktop.cursor_selection(map, 1024)
 		map.zoom_factor = 2.0
-		assert(desktop.cursor_selection(map, 1024) == small)
+		var large := desktop.cursor_selection(map, 1024)
+		assert(large.app == small.app and large.group == small.group and large.shape == small.shape)
 
 	map._panning = true
 	assert(desktop.cursor_selection(map, 1024).group == 1010)
 	map._panning = false
 	map.edit_enabled = false
-	assert(desktop.cursor_selection(map, 1024).is_empty())
-	assert(desktop.cursor_selection(main.city_menu_bar.file_menu, 1024).is_empty())
-	assert(desktop.cursor_selection(null, 1024).is_empty())
+	assert(desktop.cursor_selection(map, 1024) == null)
+	assert(desktop.cursor_selection(main.city_menu_bar.file_menu, 1024) == null)
+	assert(desktop.cursor_selection(null, 1024) == null)
 	var motion := InputEventMouseMotion.new()
 	motion.position = Vector2(157, 92)
 	desktop._input(motion)
@@ -78,7 +79,7 @@ func _run() -> void:
 		assert(desktop.cursor_selection(pixel_canvas, 640).group == expected)
 
 	pixel_canvas.hide()
-	assert(desktop.cursor_selection(pixel_canvas, 640).is_empty())
+	assert(desktop.cursor_selection(pixel_canvas, 640) == null)
 	var target := ScurkObjectList.new()
 	target.drop_target = true
 	root.add_child(target)
@@ -90,9 +91,9 @@ func _run() -> void:
 		assert(route.shape == Input.CURSOR_CAN_DROP)
 		root.gui_cancel_drag()
 
-	assert(desktop.cursor_selection(target, 1024).is_empty())
+	assert(desktop.cursor_selection(target, 1024) == null)
 	target.force_drag({"kind": "unrelated"}, null)
-	assert(desktop.cursor_selection(target, 1024).is_empty())
+	assert(desktop.cursor_selection(target, 1024) == null)
 	root.gui_cancel_drag()
 	target.queue_free()
 	var presenter := desktop.presenter

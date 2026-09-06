@@ -37,8 +37,8 @@ static func save_error(document: Sc2File, path: String, enabled: bool) -> String
 	return ""
 
 
-static func terrain_options(options: Dictionary, enabled: bool) -> Dictionary:
-	var result := options.duplicate()
+static func terrain_options(options: NewCityTerrain.Options, enabled: bool) -> NewCityTerrain.Options:
+	var result := options.copy()
 
 	if enabled:
 		result.size = 128

@@ -45,7 +45,7 @@ func run_check() -> void:
 		while main.new_city_state.preview_job != null:
 			await process_frame
 		assert(main.new_city_state.session.preview_document.map_size == edge)
-		assert(main.new_city_state.session.preview_options.get("size") == edge)
+		assert(main.new_city_state.session.preview_options.size == edge)
 		assert(main.new_city_dialog.preview_view.texture.get_width() == edge)
 
 	main.new_city.cancel_new_city()

@@ -64,6 +64,41 @@ const FONT_5X7 := {
 }
 
 
+class Options extends RefCounted:
+	var view := "city"
+	var color := true
+	var magnification := 1
+	var entire_city := true
+	var selected_pages := PackedByteArray()
+	var show_pipes := true
+	var show_water_mains := true
+	var moving_things := false
+	var special_overlays := false
+	var transparent_background := false
+	var progress := Callable()
+	var surface_visibility: Dictionary[String, bool] = {}
+
+	func _init() -> void:
+		surface_visibility.assign(ViewFilter.DEFAULT_VISIBILITY)
+
+	func copy() -> Options:
+		var result := Options.new()
+		result.view = view
+		result.color = color
+		result.magnification = magnification
+		result.entire_city = entire_city
+		result.selected_pages = selected_pages.duplicate()
+		result.show_pipes = show_pipes
+		result.show_water_mains = show_water_mains
+		result.moving_things = moving_things
+		result.special_overlays = special_overlays
+		result.transparent_background = transparent_background
+		result.progress = progress
+		result.surface_visibility = surface_visibility.duplicate()
+
+		return result
+
+
 class PageGrid extends RefCounted:
 	var columns: int
 	var rows: int
@@ -105,14 +140,14 @@ static func render(
 	render_palette: Sc2Palette,
 	sprites: Sc2SpriteArchive,
 	view_size: int,
-	options: Dictionary
+	options: Options
 ) -> AssetImageResult:
 	if city == null or not city.is_valid():
 		return AssetImageResult.failure("city is invalid")
 
-	var view := String(options.get("view", "city"))
-	var transparent := bool(options.get("transparent_background", false))
-	var progress: Callable = options.get("progress", Callable())
+	var view := String(options.view)
+	var transparent := bool(options.transparent_background)
+	var progress: Callable = options.progress
 	var result: AssetImageResult
 
 	if view == "underground":
@@ -122,15 +157,15 @@ static func render(
 			sprites,
 			view_size,
 			true,
-			bool(options.get("show_pipes", true)), true, bool(options.get("show_water_mains", true)),
+			bool(options.show_pipes), true, bool(options.show_water_mains),
 			transparent, progress
 		)
 	elif view == "city":
 		var show_signs := bool(
-			options.get("surface_visibility", {}).get("signs", true)
+			options.surface_visibility.get("signs", true)
 		)
 		var visibility := ViewFilter.normalized(
-			options.get("surface_visibility", ViewFilter.DEFAULT_VISIBILITY)
+			options.surface_visibility
 		)
 		var display_city := ViewFilter.surface_copy(city, visibility)
 		result = Renderer.create_image(
@@ -139,10 +174,10 @@ static func render(
 			sprites,
 			view_size,
 			0,
-			bool(options.get("moving_things", false)),
+			bool(options.moving_things),
 			transparent,
 			true,
-			bool(options.get("special_overlays", false)),
+			bool(options.special_overlays),
 			progress
 		)
 
@@ -162,7 +197,7 @@ static func render(
 	if view == "city":
 		_draw_artwork_stamps(image, city, render_palette, sprites, view_size)
 
-	if not bool(options.get("color", true)):
+	if not bool(options.color):
 		image = _monochrome_copy(image)
 
 	var outcome := AssetImageResult.new()
@@ -179,7 +214,7 @@ static func save_small_bmp(
 	index_palette: Sc2Palette,
 	output_palette: Sc2Palette,
 	sprites: Sc2SpriteArchive,
-	options: Dictionary
+	options: Options
 ) -> FileWriteResult:
 	var rendered := render(
 		city, index_palette, sprites, Renderer.VIEW_SMALL, options
@@ -212,9 +247,9 @@ static func save_pdf(
 	city: CityState,
 	output_palette: Sc2Palette,
 	sprites: Sc2SpriteArchive,
-	options: Dictionary
+	options: Options
 ) -> PdfResult:
-	var magnification := int(options.get("magnification", 1))
+	var magnification := int(options.magnification)
 	var grid := page_grid(magnification)
 
 	if grid == null:
@@ -266,16 +301,16 @@ static func save_pdf(
 	return outcome
 
 
-static func _selected_page_indices(options: Dictionary, page_count: int) -> PackedInt32Array:
+static func _selected_page_indices(options: Options, page_count: int) -> PackedInt32Array:
 	var result := PackedInt32Array()
 
-	if bool(options.get("entire_city", true)):
+	if bool(options.entire_city):
 		for index in page_count:
 			result.append(index)
 
 		return result
 
-	var selected: PackedByteArray = options.get("selected_pages", PackedByteArray())
+	var selected: PackedByteArray = options.selected_pages
 
 	for index in mini(selected.size(), page_count):
 		if selected[index] != 0:

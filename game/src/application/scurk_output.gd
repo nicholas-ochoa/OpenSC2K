@@ -61,7 +61,7 @@ func _export_scurk_city_bmp(path: String) -> void:
 		return
 
 	var options := _current_scurk_output_options()
-	options["color"] = true
+	options.color = true
 	var result := ScurkCityOutput.save_small_bmp(
 		output_path,
 		app.document_state.city,
@@ -96,7 +96,7 @@ func _open_scurk_print_dialog() -> void:
 	app.scurk_print.show_workspace()
 
 
-func _refresh_scurk_print_preview(options: Dictionary) -> void:
+func _refresh_scurk_print_preview(options: ScurkCityOutput.Options) -> void:
 	if app.document_state.city == null or app.scurk_print == null:
 		return
 
@@ -116,11 +116,11 @@ func _refresh_scurk_print_preview(options: Dictionary) -> void:
 	app.scurk_print.set_preview_image(result.image)
 
 
-func _open_scurk_print_pdf_dialog(options: Dictionary) -> void:
+func _open_scurk_print_pdf_dialog(options: ScurkCityOutput.Options) -> void:
 	if app.document_state.city == null:
 		return
 
-	app.scurk_state.pending_print_options = options.duplicate(true)
+	app.scurk_state.pending_print_options = options.copy()
 	var output_directory := ProjectSettings.globalize_path("user://scurk_prints")
 	DirAccess.make_dir_recursive_absolute(output_directory)
 	app.scurk_print_pdf_dialog.current_dir = output_directory
@@ -130,13 +130,13 @@ func _open_scurk_print_pdf_dialog(options: Dictionary) -> void:
 		output_name = "CITY"
 
 	app.scurk_print_pdf_dialog.current_file = "%s_%dx.PDF" % [
-		output_name, int(options.get("magnification", 1)),
+		output_name, int(options.magnification),
 	]
 	app.scurk_print_pdf_dialog.popup_centered_ratio(0.75)
 
 
 func _save_scurk_city_pdf(path: String) -> void:
-	if app.document_state.city == null or app.scurk_state.pending_print_options.is_empty():
+	if app.document_state.city == null or app.scurk_state.pending_print_options == null:
 		return
 
 	var output_path := ProjectSettings.globalize_path(path).simplify_path()
@@ -149,7 +149,7 @@ func _save_scurk_city_pdf(path: String) -> void:
 
 		return
 
-	var magnification := int(app.scurk_state.pending_print_options.get("magnification", 1))
+	var magnification := int(app.scurk_state.pending_print_options.magnification)
 	var grid := ScurkCityOutput.page_grid(magnification)
 
 	if grid == null:
@@ -177,14 +177,14 @@ func _save_scurk_city_pdf(path: String) -> void:
 	app.scurk_place_print.set_status(message)
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = message
-	app.scurk_state.pending_print_options.clear()
+	app.scurk_state.pending_print_options = null
 
 
-func _current_scurk_output_options() -> Dictionary:
-	return {
-		"view": CityViewMode.key(app.view_state.overlay_mode),
-		"color": true,
-		"surface_visibility": app.view_state.surface_visibility.duplicate(),
-		"show_pipes": app.view_state.show_underground_pipes,
-		"show_water_mains": app.view_state.show_underground_water_mains,
-	}
+func _current_scurk_output_options() -> ScurkCityOutput.Options:
+	var result := ScurkCityOutput.Options.new()
+	result.view = CityViewMode.key(app.view_state.overlay_mode)
+	result.surface_visibility.assign(app.view_state.surface_visibility)
+	result.show_pipes = app.view_state.show_underground_pipes
+	result.show_water_mains = app.view_state.show_underground_water_mains
+
+	return result

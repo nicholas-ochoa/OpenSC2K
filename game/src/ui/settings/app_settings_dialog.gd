@@ -137,29 +137,30 @@ func show_values(
 	popup_centered()
 
 
-func selected_values() -> Dictionary:
-	return {
-		"default_mayor_name": default_mayor_edit.text.strip_edges(),
-		"ui_theme": "dark" if theme_selector.selected == 1 else "light",
-		"translucent_menus": translucent_menus_check.button_pressed,
-		"overview_graphics": overview_graphics_selector.selected,
-		"original_compatibility": original_compatibility_check.button_pressed,
-		"warn_sc2x_conversion": warn_sc2x_conversion_check.button_pressed,
-		"toolbar_sounds": toolbar_sounds_check.button_pressed,
-		"shuffle_music": shuffle_music_check.button_pressed,
-		"sound_pack_folder": sound_pack_edit.text.strip_edges(),
-		"music_pack_folder": music_pack_edit.text.strip_edges(),
-		"zoom_graphics": _selected_zoom_graphics(),
-		"background_audio": background_audio_check.button_pressed,
-		"city_renderer": "cpu" if renderer_selector.selected == 1 else "gpu",
-		"moving_frame_rate": moving_frame_rate_selector.get_selected_id(),
-		"music_volume": float(music_slider.value) / 100.0,
-		"effects_volume": float(effects_slider.value) / 100.0,
-		"dark_underground": dark_underground_check.button_pressed,
-		"fullscreen": fullscreen_check.button_pressed,
-		"graphics_source": "auto" if folder_edit.text.strip_edges().is_empty() else "folder",
-		"graphics_folder": folder_edit.text.strip_edges(),
-	}
+func selected_values() -> AppSettingsStore.Values:
+	var result := AppSettingsStore.Values.new()
+	result.default_mayor_name = default_mayor_edit.text.strip_edges()
+	result.ui_theme = "dark" if theme_selector.selected == 1 else "light"
+	result.translucent_menus = translucent_menus_check.button_pressed
+	result.overview_graphics = overview_graphics_selector.selected
+	result.original_compatibility = original_compatibility_check.button_pressed
+	result.warn_sc2x_conversion = warn_sc2x_conversion_check.button_pressed
+	result.toolbar_sounds = toolbar_sounds_check.button_pressed
+	result.shuffle_music = shuffle_music_check.button_pressed
+	result.sound_pack_folder = sound_pack_edit.text.strip_edges()
+	result.music_pack_folder = music_pack_edit.text.strip_edges()
+	result.zoom_graphics = _selected_zoom_graphics()
+	result.background_audio = background_audio_check.button_pressed
+	result.city_renderer = "cpu" if renderer_selector.selected == 1 else "gpu"
+	result.moving_frame_rate = moving_frame_rate_selector.get_selected_id()
+	result.music_volume = float(music_slider.value) / 100.0
+	result.effects_volume = float(effects_slider.value) / 100.0
+	result.dark_underground = dark_underground_check.button_pressed
+	result.fullscreen = fullscreen_check.button_pressed
+	result.graphics_source = "auto" if folder_edit.text.strip_edges().is_empty() else "folder"
+	result.graphics_folder = folder_edit.text.strip_edges()
+
+	return result
 
 
 func select_moving_frame_rate(rate: int) -> void:

@@ -26,7 +26,13 @@ func check_size(edge: int) -> void:
 		var session := NewCityTerrainSession.new()
 		session.independent_template = true
 		session.begin(123, 456)
-		var options := {"size": edge, "ocean": false, "river": true, "hills": 12, "water": 5, "trees": 15}
+		var options := NewCityTerrain.Options.new()
+		options.size = edge
+		options.ocean = false
+		options.river = true
+		options.hills = 12
+		options.water = 5
+		options.trees = 15
 		var preview := session.generate_preview("", options, false)
 		check(preview.ok and preview.city.map_size == edge, "Preview size")
 		var created := session.create_city("", "Large City", "Mayor", 1, 1900, options, PackedByteArray())

@@ -2,7 +2,7 @@ class_name CityPngExportDialog
 extends ConfirmationDialog
 
 
-signal export_requested(options: Dictionary)
+signal export_requested(options: CityPngExportJob.Options)
 
 const ExportJob = preload("res://src/view/city_png_export_job.gd")
 const FileDialogs = preload("res://src/ui/shared/file_dialog_factory.gd")
@@ -85,17 +85,18 @@ func show_options() -> void:
 	file_name_input.grab_focus()
 
 
-func options() -> Dictionary:
+func options() -> CityPngExportJob.Options:
 	var surface := _surface_view()
 
-	return {
-		"path": output_path(),
-		"view_size": graphics_selector.get_selected_id(),
-		"view": String(VIEWS[view_selector.get_selected_id()][1]),
-		"transparent_background": not background_check.button_pressed,
-		"signs": surface and signs_check.button_pressed,
-		"moving_things": surface and moving_things_check.button_pressed,
-	}
+	var result := CityPngExportJob.Options.new()
+	result.path = output_path()
+	result.view_size = graphics_selector.get_selected_id()
+	result.view = String(VIEWS[view_selector.get_selected_id()][1])
+	result.transparent_background = not background_check.button_pressed
+	result.signs = surface and signs_check.button_pressed
+	result.moving_things = surface and moving_things_check.button_pressed
+
+	return result
 
 
 func output_path() -> String:

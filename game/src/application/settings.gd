@@ -68,7 +68,7 @@ func _refresh_settings_pack_names() -> void:
 
 
 func apply_settings() -> void:
-	var values: Dictionary = app.settings_dialog.selected_values()
+	var values: AppSettingsStore.Values = app.settings_dialog.selected_values()
 
 	if bool(values.original_compatibility) and app.document_state.current_document != null and app.document_state.current_document.is_extended():
 		app.settings_dialog.show_compatibility_error(("This city is SC2X and cannot return to original compatibility. Save it, then open a different original SC2 " +

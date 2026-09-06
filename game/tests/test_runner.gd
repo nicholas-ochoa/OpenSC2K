@@ -4182,15 +4182,9 @@ func _test_scurk_place_command(reference_root: String) -> void:
 	var output_sprites := SpriteArchive.load_path(
 		reference_root.path_join("DATA/SMALLMED.DAT")
 	)
-	var output_options := {
-		"view": "city",
-		"color": true,
-		"entire_city": false,
-		"selected_pages": PackedByteArray([1, 0]),
-		"surface_visibility": ViewFilter.DEFAULT_VISIBILITY.duplicate(),
-		"show_pipes": true,
-		"magnification": 1,
-	}
+	var output_options := ScurkOutput.Options.new()
+	output_options.entire_city = false
+	output_options.selected_pages = PackedByteArray([1, 0])
 	var print_sign := Signs.set_sign(print_city, Vector2i(8, 8), "PRINT TEST")
 	var output_with_sign := ScurkOutput.render(
 		print_city,
@@ -4199,7 +4193,7 @@ func _test_scurk_place_command(reference_root: String) -> void:
 		IsometricRenderer.VIEW_SMALL,
 		output_options
 	)
-	var no_sign_options: Dictionary = output_options.duplicate(true)
+	var no_sign_options := output_options.copy()
 	no_sign_options.surface_visibility.signs = false
 	var output_without_sign := ScurkOutput.render(
 		print_city,
@@ -4220,7 +4214,7 @@ func _test_scurk_place_command(reference_root: String) -> void:
 	if print_sign.ok:
 		Signs.undo(print_city, print_sign)
 
-	var monochrome_options: Dictionary = output_options.duplicate(true)
+	var monochrome_options := output_options.copy()
 	monochrome_options.color = false
 	var monochrome_output := ScurkOutput.render(
 		print_city,
@@ -12427,13 +12421,12 @@ func _test_new_city_terrain(reference_root: String) -> void:
 	var source_path := reference_root.path_join("DEFAULT.SC2")
 	var template := _load_fixture(source_path)
 	var original_altitude := template.find_chunk("ALTM").decoded_payload.duplicate()
-	var options := {
-		"ocean": NewCityTerrain.DEFAULT_OCEAN,
-		"river": NewCityTerrain.DEFAULT_RIVER,
-		"hills": NewCityTerrain.DEFAULT_HILLS,
-		"water": NewCityTerrain.DEFAULT_WATER,
-		"trees": NewCityTerrain.DEFAULT_TREES,
-	}
+	var options := NewCityTerrain.Options.new()
+	options.ocean = NewCityTerrain.DEFAULT_OCEAN
+	options.river = NewCityTerrain.DEFAULT_RIVER
+	options.hills = NewCityTerrain.DEFAULT_HILLS
+	options.water = NewCityTerrain.DEFAULT_WATER
+	options.trees = NewCityTerrain.DEFAULT_TREES
 	var process_random := Random.new(1)
 	var game_random := GameRandom.new(1)
 	var generated := NewCity.create(
@@ -12595,10 +12588,16 @@ func _test_new_city_terrain(reference_root: String) -> void:
 		"Closing New City clears its preview document",
 	)
 
+	var ocean_options := NewCityTerrain.Options.new()
+	ocean_options.ocean = true
+	ocean_options.river = false
+	ocean_options.hills = 12
+	ocean_options.water = 5
+	ocean_options.trees = 0
 	var ocean := NewCity.create(
 		template, "Ocean City", "Ocean Mayor", 1, 1900,
 		Random.new(1), GameRandom.new(1),
-		{"ocean": true, "river": false, "hills": 12, "water": 5, "trees": 0}
+		ocean_options
 	)
 	_check(ocean.ok, "Ocean-only terrain generates: %s" % ocean.error)
 
@@ -12651,7 +12650,7 @@ func _test_new_city_setup(reference_root: String) -> void:
 		1900,
 		easy_random,
 		null,
-		{},
+		null,
 		newspaper_session,
 	)
 	_check(easy.ok, "Easy new city initializes: %s" % easy.error)

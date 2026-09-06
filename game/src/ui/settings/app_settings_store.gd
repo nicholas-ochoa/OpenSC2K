@@ -10,35 +10,44 @@ const MOVING_FRAME_RATES := [5, 10, 20, 30, 60]
 const DEFAULT_MOVING_FRAME_RATE := 20
 
 
+class Values extends RefCounted:
+	var default_mayor_name := "Mayor"
+	var ui_theme := "light"
+	var translucent_menus := true
+	var dark_underground := false
+	var overview_graphics := 0
+	var moving_frame_rate := DEFAULT_MOVING_FRAME_RATE
+	var music_volume := 0.8
+	var effects_volume := 0.8
+	var fullscreen := false
+	var graphics_source := "auto"
+	var graphics_folder := ""
+	var city_renderer := "gpu"
+	var zoom_graphics: Array[int] = AppSettingsStore.normalize_zoom_graphics(DEFAULT_ZOOM_GRAPHICS)
+	var background_audio := false
+	var shuffle_music := false
+	var original_compatibility := false
+	var warn_sc2x_conversion := true
+	var toolbar_sounds := true
+	var sound_pack_folder := ""
+	var music_pack_folder := ""
+
+
+class LoadedValues extends Values:
+	# legacy file preference is read for migration, but is not a dialog option
+	var soundtrack_folder := ""
+
+
 static func load_values(
 	path := SETTINGS_PATH,
 	default_music_volume := 0.8,
 	default_effects_volume := 0.8,
 	default_fullscreen := false
-) -> Dictionary:
-	var result := {
-		"default_mayor_name": "Mayor",
-		"ui_theme": "light",
-		"translucent_menus": true,
-		"dark_underground": false,
-		"overview_graphics": 0,
-		"moving_frame_rate": DEFAULT_MOVING_FRAME_RATE,
-		"music_volume": clampf(default_music_volume, 0.0, 1.0),
-		"effects_volume": clampf(default_effects_volume, 0.0, 1.0),
-		"fullscreen": default_fullscreen,
-		"graphics_source": "auto",
-		"graphics_folder": "",
-		"soundtrack_folder": "",
-		"city_renderer": "gpu",
-		"zoom_graphics": normalize_zoom_graphics(DEFAULT_ZOOM_GRAPHICS),
-		"background_audio": false,
-		"shuffle_music": false,
-		"original_compatibility": false,
-		"warn_sc2x_conversion": true,
-		"toolbar_sounds": true,
-		"sound_pack_folder": "",
-		"music_pack_folder": "",
-	}
+) -> LoadedValues:
+	var result := LoadedValues.new()
+	result.music_volume = clampf(default_music_volume, 0.0, 1.0)
+	result.effects_volume = clampf(default_effects_volume, 0.0, 1.0)
+	result.fullscreen = default_fullscreen
 	var config := ConfigFile.new()
 
 	if config.load(path) != OK:
@@ -61,8 +70,9 @@ static func load_values(
 		1.0,
 	)
 
-	for key in ["toolbar_sounds", "sound_pack_folder", "music_pack_folder"]:
-		result[key] = config.get_value("audio", key, result[key])
+	result.toolbar_sounds = bool(config.get_value("audio", "toolbar_sounds", result.toolbar_sounds))
+	result.sound_pack_folder = str(config.get_value("audio", "sound_pack_folder", result.sound_pack_folder))
+	result.music_pack_folder = str(config.get_value("audio", "music_pack_folder", result.music_pack_folder))
 
 	result.warn_sc2x_conversion = bool(config.get_value("simulation", "warn_sc2x_conversion", true))
 	result.original_compatibility = bool(config.get_value("simulation", "original_compatibility", false))

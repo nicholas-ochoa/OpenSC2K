@@ -80,7 +80,7 @@ func _run() -> void:
 		edit.text = old_path
 		assert(dialog.pack_name_labels[kind].text == active_name)
 
-	assert(not dialog.selected_values().has("soundtrack_folder"))
+	assert(not ("soundtrack_folder" in dialog.selected_values()))
 	var pickers := 0
 
 	for child in dialog.get_children():

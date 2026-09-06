@@ -24,8 +24,14 @@ func _run() -> void:
 	main.new_city_dialog.native_maps_input.button_pressed = false
 	check(not main.new_city._new_city_terrain_options().native_maps, "Original grid option remains available")
 	main.new_city_state.session.independent_template = true
-	var options := {"size": 128, "native_maps": true, "ocean": false, "river": false,
-		"hills": 0, "water": 0, "trees": 0}
+	var options := NewCityTerrain.Options.new()
+	options.size = 128
+	options.native_maps = true
+	options.ocean = false
+	options.river = false
+	options.hills = 0
+	options.water = 0
+	options.trees = 0
 	main.new_city_state.session.begin(123, 456)
 	var preview: NewCityTerrainSession.PreviewResult = main.new_city_state.session.generate_preview("", options, false)
 	check(preview.ok and preview.document.full_resolution_maps(), "Native preview mode")
