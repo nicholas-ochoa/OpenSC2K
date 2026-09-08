@@ -74,7 +74,7 @@ func start_result(point: Vector2i, type := 1, record := 0) -> DisasterStartResul
 	result.disaster_type = type
 	result.point = point
 	result.record = record
-	result.sound_events = [520]
+	result.sound_events = SoundEvent.from_ids([520])
 	result.view_center_requests = [point]
 
 	return result
@@ -138,7 +138,7 @@ func _test_targets(edge: int, native: bool, types: Array) -> void:
 			"Disaster %d stores original hero fields at edge %d" % [type, edge])
 		check(random.calls == (2 if type in [3, 13] else 1), "Only riot target selection takes a second process value")
 		check(city.text_overlay_id(point.x, point.y) == OverlayData.thing_id(1), "Hero is linked to its arrival tile")
-		check(result.sound_events == [520, 513] and result.view_center_requests == [target, point], "Arrival events follow the disaster events")
+		check(SoundEvent.same_arrays(result.sound_events, SoundEvent.from_ids([520, 513])) and result.view_center_requests == [target, point], "Arrival events follow the disaster events")
 		# Save encoding depends on format/size, not which disaster selected the goal.
 		if type == types[-1] and ((edge == 128 and not native) or (edge == 512 and native)):
 			var serialized: PackedByteArray = city.document.serialize().data

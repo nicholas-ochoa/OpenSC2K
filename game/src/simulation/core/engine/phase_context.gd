@@ -30,7 +30,7 @@ var action := ""
 var phase_results: Dictionary[String, PhaseResult] = {}
 
 # set by a phase that must stop the day and ask the player a question
-var interaction_request: Dictionary = {}
+var interaction_request: SimulationInteractionRequest
 
 # engine state. see engine_state
 var developed_tiles := -1

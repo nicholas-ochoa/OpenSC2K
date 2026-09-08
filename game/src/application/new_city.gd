@@ -98,7 +98,8 @@ func make_new_city_preview() -> void:
 		return
 	app.new_city_dialog.preview_timer.stop()
 	app.new_city_dialog.invalidate()
-	app.audio_controller.play_sound_events([529], app.document_state.city == null or app.document_state.city.sound_enabled(),
+	var sound_ids: Array[int] = [529]
+	app.audio_controller.play_sound_ids(sound_ids, app.document_state.city == null or app.document_state.city.sound_enabled(),
 			CityViewMode.Mode.CITY, IsometricRenderer.VIEW_LARGE)
 	_generate_new_city_preview(true)
 
@@ -263,7 +264,8 @@ func start_city() -> void:
 	app.current_tool.select_tool_group(9)
 	app.frame.select_speed(GameSpeed.Speed.TURTLE)
 	app.status_label.text = "City started. Build zones, roads, and services."
-	app.effects_audio.play_sound_events([513])
+	var sound_ids: Array[int] = [513]
+	app.effects_audio.play_sound_ids(sound_ids)
 	app.newspaper_state.founding_pending = true
 	app.reports.on_newspaper_menu(0)
 

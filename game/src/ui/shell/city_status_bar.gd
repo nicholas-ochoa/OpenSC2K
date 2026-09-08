@@ -180,11 +180,11 @@ func prepend_reports(reports: PackedStringArray, maximum := 3) -> void:
 	_sync_overflow_tooltip(reports_label)
 
 
-func prepend_news_items(news_items: Array, maximum := 3) -> void:
+func prepend_news_items(news_items: Array[NewsEvent], maximum := 3) -> void:
 	var reports := PackedStringArray()
 
 	for item in news_items:
-		reports.append(report_name(int(item.get("type", 0)), resource_strings))
+		reports.append(report_name(int(item.type), resource_strings))
 
 	prepend_reports(reports, maximum)
 

@@ -9,7 +9,7 @@ var schedule: SimulationSchedule
 var applied := PackedStringArray()
 var pending := PackedStringArray()
 var phase_results: Dictionary[String, PhaseResult] = {}
-var interaction_requests: Array = []
+var interaction_requests: Array[SimulationInteractionRequest] = []
 var complete := false
 var timing := SimulationTiming.new(0)
 

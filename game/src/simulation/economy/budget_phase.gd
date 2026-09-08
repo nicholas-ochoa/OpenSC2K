@@ -208,7 +208,7 @@ static func run(city: CityState, random: SimRandom, annual_budget_approved := fa
 	)
 
 	span.mark("ordinance events")
-	var news_items: Array[Dictionary] = []
+	var news_items: Array[NewsEvent] = []
 
 	if (
 		_read_u32(misc, MISC_NO_DISASTERS) == 0
@@ -221,7 +221,7 @@ static func run(city: CityState, random: SimRandom, annual_budget_approved := fa
 			MISC_ORDINANCES,
 			_read_u32(misc, MISC_ORDINANCES) | (1 << ordinance_id)
 		)
-		news_items.append({"type": NEWS_ORDINANCE, "argument": ordinance_id})
+		news_items.append(NewsEvent.new(NEWS_ORDINANCE, ordinance_id))
 
 	span.mark("store budget")
 	if not misc_chunk.set_decoded_payload(misc):

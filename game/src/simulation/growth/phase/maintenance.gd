@@ -17,7 +17,7 @@ static func _process_surface_maintenance(
 	point: Vector2i,
 	random: SimRandom,
 	lfsr_random: SimLfsrRandom,
-	counters: Dictionary,
+	counters: GrowthMaintenanceResult,
 	map_edge: int = 128,
 ) -> void:
 	var index := GrowthState._index(point, map_edge)
@@ -30,7 +30,7 @@ static func _process_surface_maintenance(
 		if _maintenance_fails(misc, 10, random, 100):
 			GrowthState.replace_building(buildings, zones, misc, index, 1 + (random.next_u15() & 3))
 			flags[index] &= 0x7f
-			counters.decayed_roads += 1
+			counters.metrics.decayed_roads += 1
 
 		return
 
@@ -38,7 +38,7 @@ static func _process_surface_maintenance(
 		if _maintenance_fails(misc, 13, random, 100):
 			GrowthState.replace_building(buildings, zones, misc, index, 1 + (random.next_u15() & 3))
 			flags[index] &= 0x7f
-			counters.decayed_rails += 1
+			counters.metrics.decayed_rails += 1
 
 		return
 
@@ -60,19 +60,16 @@ static func _process_surface_maintenance(
 				)
 
 			if not result.changed:
-				counters.deferred_bridge_collapses += 1
+				counters.metrics.deferred_bridge_collapses += 1
 
 				return
 
 			GrowthState._sync_altitudes(altitude, altitudes, map_edge)
-			counters.collapsed_bridges += 1
+			counters.metrics.collapsed_bridges += 1
 			counters.bridge_effects.append_array(result.effect_events)
 			counters.view_center_requests.append(point)
-			counters.news_items.append({
-				"type": NEWSPAPER_BRIDGE_COLLAPSE,
-				"argument": 0,
-			})
-			counters.sound_events.append(SOUND_EXPLODE)
+			counters.news_items.append(NewsEvent.new(NEWSPAPER_BRIDGE_COLLAPSE, 0))
+			counters.sound_events.append(SoundEvent.new(SOUND_EXPLODE))
 
 		return
 
@@ -96,7 +93,7 @@ static func _process_surface_maintenance(
 				replacement = 1 + (random.next_u15() & 3)
 
 			GrowthState.replace_building(buildings, zones, misc, highway_index, replacement)
-			counters.decayed_highway_tiles += 1
+			counters.metrics.decayed_highway_tiles += 1
 
 
 static func _process_microsim_growth(
@@ -114,7 +111,7 @@ static func _process_microsim_growth(
 	tile: int,
 	game_random: GameLcgRandom,
 	lfsr_random: SimLfsrRandom,
-	counters: Dictionary,
+	counters: GrowthMaintenanceResult,
 	map_edge: int = 128,
 ) -> void:
 	var index := GrowthState._index(point, map_edge)
@@ -129,7 +126,7 @@ static func _process_microsim_growth(
 			if MovingThings.spawn_train(
 				buildings, things, text_overlays, point, game_random, lfsr_random, map_edge
 			):
-				counters.spawned_trains += 1
+				counters.metrics.spawned_trains += 1
 
 		return
 
@@ -140,7 +137,7 @@ static func _process_microsim_growth(
 		var sailboat_limit := int(SpecialZoneState.tile_count(misc, 0xf8, false, map_edge) / 9)
 
 		if MovingThings.count_type(things, MovingThings.TYPE_SAILBOAT) < sailboat_limit:
-			counters.spawned_sailboats += MovingThings.spawn_sailboats(
+			counters.metrics.spawned_sailboats += MovingThings.spawn_sailboats(
 				buildings, flags, things, text_overlays, point, lfsr_random, map_edge
 			)
 
@@ -174,7 +171,7 @@ static func _process_microsim_growth(
 		value = int(value / 2.0)
 
 	microsims[record_offset + 1] = clampi(value, 0, 12)
-	counters.arcologies_updated += 1
+	counters.metrics.arcologies_updated += 1
 
 
 static func _process_subway_maintenance(
@@ -188,7 +185,7 @@ static func _process_subway_maintenance(
 	point: Vector2i,
 	random: SimRandom,
 	lfsr_random: SimLfsrRandom,
-	counters: Dictionary,
+	counters: GrowthMaintenanceResult,
 	map_edge: int = 128,
 ) -> void:
 	if lfsr_random.next_mask(0x7f) != 0:
@@ -211,7 +208,7 @@ static func _process_subway_maintenance(
 		replacement = 0x10
 	elif old_tile == 0x23:
 		if buildings[index] != 0xe9:
-			counters.deferred_station_removals += 1
+			counters.metrics.deferred_station_removals += 1
 
 			return
 
@@ -229,13 +226,13 @@ static func _process_subway_maintenance(
 			OverlayData.write(text_overlays, index, 0)
 
 		_replace_underground(underground, zones, misc, index, 0)
-		counters.removed_subway_stations += 1
-		counters.decayed_subway_tiles += 1
+		counters.metrics.removed_subway_stations += 1
+		counters.metrics.decayed_subway_tiles += 1
 
 		return
 
 	_replace_underground(underground, zones, misc, index, replacement)
-	counters.decayed_subway_tiles += 1
+	counters.metrics.decayed_subway_tiles += 1
 
 
 static func _maintenance_fails(

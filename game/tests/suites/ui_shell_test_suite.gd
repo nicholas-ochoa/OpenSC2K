@@ -146,8 +146,8 @@ func _test_main_menu() -> void:
 	)
 	status_bar.prepend_reports(PackedStringArray(["Latest"]))
 	status_bar.prepend_news_items([
-		{"type": 0x211},
-		{"type": -1},
+		NewsEvent.new(0x211),
+		NewsEvent.new(-1),
 	])
 	status_bar.clear_environment()
 	_check(

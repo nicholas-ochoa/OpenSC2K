@@ -160,7 +160,7 @@ static func _start_earthquake(
 
 	sounds.append_array(runtime_events.sound_events)
 	sounds.append(SOUND_SIREN)
-	result.sound_events = sounds
+	result.sound_events = SoundEvent.from_ids(sounds)
 
 	return result
 
@@ -273,7 +273,7 @@ static func _start_volcano(city: CityState, center: Vector2i, random: SimRandom)
 
 	var result := DisasterStartObjectsState._result(DISASTER_VOLCANO, center, true, true, 0)
 	sounds.append(SOUND_SIREN)
-	result.sound_events = sounds
+	result.sound_events = SoundEvent.from_ids(sounds)
 	result.counters["iterations"] = iterations
 	result.counters["successful_raises"] = successful_raises
 	result.counters["rejected_raises"] = rejected_raises
@@ -424,7 +424,7 @@ static func _start_firestorm(
 		result.view_center_requests = [point]
 		var sounds: Array[int] = runtime_events.sound_events.duplicate()
 		sounds.append(SOUND_SIREN)
-		result.sound_events = sounds
+		result.sound_events = SoundEvent.from_ids(sounds)
 
 	return result
 
@@ -476,6 +476,6 @@ static func _store_fire(
 	result.effect_events = runtime_events.effect_events
 	var sounds: Array[int] = runtime_events.sound_events.duplicate()
 	sounds.append(SOUND_SIREN)
-	result.sound_events = sounds
+	result.sound_events = SoundEvent.from_ids(sounds)
 
 	return result

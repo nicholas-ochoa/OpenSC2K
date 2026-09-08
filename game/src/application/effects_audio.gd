@@ -63,7 +63,7 @@ func stop_sound_effects() -> void:
 		app.audio_controller.stop_sound_effects()
 
 
-func show_effect_events(effect_events: Array[EffectEvent], sound_events: Array) -> void:
+func show_effect_events(effect_events: Array[EffectEvent], sound_events: Array[SoundEvent]) -> void:
 	if app.document_state.city == null:
 		return
 
@@ -129,7 +129,11 @@ func show_effect_events(effect_events: Array[EffectEvent], sound_events: Array) 
 	play_sound_events(sound_events)
 
 
-func play_sound_events(sound_events: Array) -> void:
+func play_sound_ids(sound_ids: Array[int]) -> void:
+	play_sound_events(SoundEvent.from_ids(sound_ids))
+
+
+func play_sound_events(sound_events: Array[SoundEvent]) -> void:
 	if app.document_state.city == null or app.audio_controller == null:
 		return
 
@@ -144,7 +148,7 @@ func play_tool_success_sound(
 	if free_mode:
 		return
 
-	play_sound_events(ToolSounds.success_events(group_index, subtool_index))
+	play_sound_ids(ToolSounds.success_events(group_index, subtool_index))
 
 
 func play_tool_failure_sound(
@@ -156,7 +160,7 @@ func play_tool_failure_sound(
 	if free_mode:
 		return
 
-	play_sound_events(
+	play_sound_ids(
 		ToolSounds.failure_events(group_index, subtool_index, str(error))
 	)
 

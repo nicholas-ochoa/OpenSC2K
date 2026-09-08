@@ -97,6 +97,17 @@ const MILITARY_TILE_COUNT_INDEX := {
 }
 
 
+class MapChange extends RefCounted:
+	var point: Vector2i
+	var old_tile: int
+	var new_tile: int
+
+	func _init(location: Vector2i, previous: int, replacement: int) -> void:
+		point = location
+		old_tile = previous
+		new_tile = replacement
+
+
 class Result extends PhaseResult:
 	var season := 0
 	var old_weather_trend := 0
@@ -106,7 +117,7 @@ class Result extends PhaseResult:
 	var heat := 0
 	var wind := 0
 	var rain := 0
-	var map_changes: Array = []
+	var map_changes: Array[MapChange] = []
 	var map_changed := false
 	var invention_index := -1
 
@@ -153,7 +164,7 @@ static func run(city: CityState, random: SimRandom, season: int) -> Result:
 	var zones: PackedByteArray = zone_chunk.decoded_payload
 	var flags: PackedByteArray = flag_chunk.decoded_payload
 	var graphs: PackedByteArray = graph_chunk.decoded_payload
-	var map_changes: Array = []
+	var map_changes: Array[MapChange] = []
 
 	span.mark("ecology")
 	_update_random_tree(city, random, buildings, zones, flags, misc, map_changes)
@@ -163,7 +174,7 @@ static func run(city: CityState, random: SimRandom, season: int) -> Result:
 	if not queue_decay.ok:
 		return _failed(queue_decay.error)
 
-	var news_items: Array = [{"type": NEWS_JUNK, "argument": 0}]
+	var news_items: Array[NewsEvent] = [NewsEvent.new(NEWS_JUNK, 0)]
 	_append_general_news(random, misc, graphs, news_items, map_edge)
 	span.mark("inventions")
 	var invention_index := _release_invention(city, random, misc, news_items)
@@ -246,7 +257,7 @@ static func _update_random_tree(
 	zones: PackedByteArray,
 	flags: PackedByteArray,
 	misc: PackedByteArray,
-	map_changes: Array
+	map_changes: Array[MapChange]
 ) -> void:
 	var map_edge: int = city.map_size if city != null else 128
 	var point := Vector2i(random.next_u15() % map_edge, random.next_u15() % map_edge)
@@ -255,7 +266,7 @@ static func _update_random_tree(
 
 	if old_tile == RADIOACTIVITY_TILE and (random.next_u15() & 0x0f) == 0:
 		_replace_building(buildings, zones, misc, index, 0)
-		map_changes.append({"point": point, "old_tile": old_tile, "new_tile": 0})
+		map_changes.append(MapChange.new(point, old_tile, 0))
 
 	if flags[index] & 0x04 != 0:
 		return
@@ -266,7 +277,7 @@ static func _update_random_tree(
 
 	if old_tile >= FIRST_TREE_TILE and old_tile <= LAST_GROWING_TREE_TILE:
 		_replace_building(buildings, zones, misc, index, old_tile + 1)
-		map_changes.append({"point": point, "old_tile": old_tile, "new_tile": old_tile + 1})
+		map_changes.append(MapChange.new(point, old_tile, old_tile + 1))
 
 	match random.next_u15() & 3:
 		0:
@@ -286,33 +297,30 @@ static func _update_random_tree(
 
 	var new_tile := FIRST_TREE_TILE if old_tile < FIRST_TREE_TILE else old_tile + 1
 	_replace_building(buildings, zones, misc, index, new_tile)
-	map_changes.append({"point": point, "old_tile": old_tile, "new_tile": new_tile})
+	map_changes.append(MapChange.new(point, old_tile, new_tile))
 
 
 static func _append_general_news(
-	random: SimRandom, misc: PackedByteArray, graphs: PackedByteArray, news_items: Array,
+	random: SimRandom, misc: PackedByteArray, graphs: PackedByteArray, news_items: Array[NewsEvent],
 	map_edge: int = 128
 ) -> void:
 	match random.next_u15() % 6:
 		0:
 			if (random.next_u15() & 3) == 0:
-				news_items.append({"type": NEWS_WAR, "argument": 0})
+				news_items.append(NewsEvent.new(NEWS_WAR, 0))
 
 			if (random.next_u15() & 3) == 0:
-				news_items.append({
-					"type": NEWS_MARKET,
-					"argument": _read_u32(misc, 0x005c) & 0xffff,
-				})
+				news_items.append(NewsEvent.new(NEWS_MARKET, _read_u32(misc, 0x005c) & 0xffff))
 		1:
-			news_items.append({"type": 0x0b, "argument": 0})
+			news_items.append(NewsEvent.new(0x0b, 0))
 		2:
-			news_items.append({"type": 0x0c, "argument": 0})
+			news_items.append(NewsEvent.new(0x0c, 0))
 		3:
-			news_items.append({"type": 0x0d, "argument": 0})
+			news_items.append(NewsEvent.new(0x0d, 0))
 		4:
-			news_items.append({"type": 0x0e, "argument": 0})
+			news_items.append(NewsEvent.new(0x0e, 0))
 		5:
-			news_items.append({"type": 0x0f, "argument": 0})
+			news_items.append(NewsEvent.new(0x0f, 0))
 
 	var stadium_tiles := _read_u32(misc, MISC_TILE_COUNTS + STADIUM_TILE * 4)
 
@@ -320,7 +328,7 @@ static func _append_general_news(
 		var team: int = random.next_u15() % 5
 
 		if _to_i16(_read_u32(misc, MISC_STADIUM_TEAMS)) & (1 << team):
-			news_items.append({"type": NEWS_SPORTS, "argument": team})
+			news_items.append(NewsEvent.new(NEWS_SPORTS, team))
 
 	_append_graph_news(random, graphs, GRAPH_TRAFFIC, NEWS_HIGH_TRAFFIC, NEWS_LOW_TRAFFIC, news_items)
 	_append_graph_news(random, graphs, GRAPH_POLLUTION, NEWS_HIGH_POLLUTION, NEWS_LOW_POLLUTION, news_items)
@@ -329,28 +337,28 @@ static func _append_general_news(
 	var unemployment := _read_i32(misc, MISC_UNEMPLOYMENT)
 
 	if (random.next_u15() & 0x3f) < unemployment:
-		news_items.append({"type": NEWS_POOR_EMPLOYMENT, "argument": 0})
+		news_items.append(NewsEvent.new(NEWS_POOR_EMPLOYMENT, 0))
 
 	if unemployment < (random.next_u15() & 3):
-		news_items.append({"type": NEWS_GOOD_EMPLOYMENT, "argument": 0})
+		news_items.append(NewsEvent.new(NEWS_GOOD_EMPLOYMENT, 0))
 
 	var education := _read_u32(misc, 0x004c)
 	var education_roll: int = random.next_u15() % 80
 
 	if education < 80:
 		if education < education_roll:
-			news_items.append({"type": NEWS_POOR_EDUCATION, "argument": 0})
+			news_items.append(NewsEvent.new(NEWS_POOR_EDUCATION, 0))
 	elif education_roll < education - 80:
-		news_items.append({"type": NEWS_GOOD_EDUCATION, "argument": 0})
+		news_items.append(NewsEvent.new(NEWS_GOOD_EDUCATION, 0))
 
 	var health := _read_u32(misc, 0x0048)
 	var health_roll: int = random.next_u15() % 60
 
 	if health < 60:
 		if health < health_roll:
-			news_items.append({"type": NEWS_POOR_HEALTH, "argument": 0})
+			news_items.append(NewsEvent.new(NEWS_POOR_HEALTH, 0))
 	elif health_roll < health - 60:
-		news_items.append({"type": NEWS_GOOD_HEALTH, "argument": 0})
+		news_items.append(NewsEvent.new(NEWS_GOOD_HEALTH, 0))
 
 
 static func _append_graph_news(
@@ -359,19 +367,19 @@ static func _append_graph_news(
 	series: int,
 	high_type: int,
 	low_type: int,
-	news_items: Array
+	news_items: Array[NewsEvent]
 ) -> void:
 	var value := _read_i32(graphs, series * 52 * 4)
 
 	if (random.next_u15() & 0x7f) < value:
-		news_items.append({"type": high_type, "argument": 0})
+		news_items.append(NewsEvent.new(high_type, 0))
 
 	if value < (random.next_u15() & 0x0f):
-		news_items.append({"type": low_type, "argument": 0})
+		news_items.append(NewsEvent.new(low_type, 0))
 
 
 static func _release_invention(
-	city: CityState, random: SimRandom, misc: PackedByteArray, news_items: Array
+	city: CityState, random: SimRandom, misc: PackedByteArray, news_items: Array[NewsEvent]
 ) -> int:
 	if (random.next_u15() & 7) != 0:
 		return -1
@@ -387,7 +395,7 @@ static func _release_invention(
 
 		var news_type := NEWS_INVENTION if index < 7 else NEWS_INNOVATION
 		var argument := index if index < 7 else index - 7
-		news_items.append({"type": news_type, "argument": argument})
+		news_items.append(NewsEvent.new(news_type, argument))
 		_write_u32(misc, offset, 0)
 
 		return index

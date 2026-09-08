@@ -167,11 +167,7 @@ func _timed_advance_day() -> SimulationDayResult:
 		outcome.applied = PackedStringArray()
 		outcome.pending = schedule.actions.duplicate()
 		outcome.phase_results = {}
-		outcome.interaction_requests = [{
-				"type": "annual_budget",
-				"funding_values": BudgetPhase.funding_values(city),
-				"auto_budget": false,
-			}]
+		outcome.interaction_requests = [SimulationInteractionRequest.annual_budget(BudgetPhase.funding_values(city))]
 		outcome.complete = false
 		outcome.error = ""
 

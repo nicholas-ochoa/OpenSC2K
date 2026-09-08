@@ -138,10 +138,10 @@ static func run(
 		commerce_connections & 0xffff,
 		industry_connections & 0xffff, map_edge
 	)
-	var news_items: Array[Dictionary] = []
+	var news_items: Array[NewsEvent] = []
 
 	if status_index >= 0:
-		news_items.append({"type": NEWS_DEMAND_BASE + status_index, "argument": 0})
+		news_items.append(NewsEvent.new(NEWS_DEMAND_BASE + status_index, 0))
 
 	span.mark("disaster selection and location")
 	var selection := _select_disaster(

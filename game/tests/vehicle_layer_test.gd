@@ -67,10 +67,10 @@ func _check_application() -> void:
 	assert(shown > 0, "A shown vehicle draws")
 	assert(main.simulation_state.simulation_engine.vehicle_crashes_enabled)
 
-	var sounds := [
-		{"sound_id": 518, "thing_type": 1, "record": vehicle},
-		{"sound_id": 514, "thing_type": 5, "record": 3},
-		509,
+	var sounds: Array[SoundEvent] = [
+		SoundEvent.for_thing(518, 1, vehicle),
+		SoundEvent.for_thing(514, 5, 3),
+		SoundEvent.new(509),
 	]
 	assert(main.moving_sprites.audible_sound_events(sounds).size() == 3)
 
@@ -78,7 +78,7 @@ func _check_application() -> void:
 	assert(not main.view_state.show_vehicles, "The sidebar check hides vehicles")
 	assert(not main.simulation_state.simulation_engine.vehicle_crashes_enabled, "Hidden vehicles cannot crash")
 	assert(main.map_view.dynamic_sprites.size() < shown, "A hidden vehicle does not draw")
-	var audible: Array = main.moving_sprites.audible_sound_events(sounds)
+	var audible: Array[SoundEvent] = main.moving_sprites.audible_sound_events(sounds)
 	assert(audible.size() == 2 and not audible.has(sounds[0]), "Only vehicle sounds are dropped")
 	var menu := main.view_menu.get_popup() as PopupMenu
 	assert(not menu.is_item_checked(menu.get_item_index(CityMenuBar.MENU_VIEW_VEHICLES)), "The View menu follows the sidebar")

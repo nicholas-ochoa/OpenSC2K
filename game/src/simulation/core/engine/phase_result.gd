@@ -12,16 +12,16 @@ var error := ""
 var complete := true
 
 # newspaper stories for the saved queue, and whether they reached it
-var news_items: Array = []
+var news_items: Array[NewsEvent] = []
 var news_queue_updated := false
 var news_queue_inserted := 0
 
 # presentation events for the main thread
-var sound_events: Array = []
+var sound_events: Array[SoundEvent] = []
 var effect_events: Array[EffectEvent] = []
 var game_over_events: Array[GameOverEvent] = []
-var refresh_requests: Array = []
-var view_center_requests: Array = []
+var refresh_requests: Array[String] = []
+var view_center_requests: Array[Vector2i] = []
 var music_track_requests := PackedInt32Array()
 
 # measured work for the timing window
@@ -43,7 +43,7 @@ func to_dictionary() -> Dictionary:
 
 
 # a phase that only asks the interface to refresh
-static func refreshing(requests: Array) -> PhaseResult:
+static func refreshing(requests: Array[String]) -> PhaseResult:
 	var result := PhaseResult.new()
 	result.ok = true
 	result.refresh_requests = requests.duplicate()

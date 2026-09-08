@@ -332,8 +332,14 @@ func stop_sound_effects() -> void:
 	CityAudioEffects.stop_sound_effects(self)
 
 
+func play_sound_ids(
+	sound_ids: Array[int], sound_enabled: bool, overlay_mode: CityViewMode.Mode, view_size: int
+) -> void:
+	play_sound_events(SoundEvent.from_ids(sound_ids), sound_enabled, overlay_mode, view_size)
+
+
 func play_sound_events(
-	sound_events: Array, sound_enabled: bool, overlay_mode: CityViewMode.Mode, view_size: int
+	sound_events: Array[SoundEvent], sound_enabled: bool, overlay_mode: CityViewMode.Mode, view_size: int
 ) -> void:
 	CityAudioEffects.play_sound_events(self, sound_events, sound_enabled, overlay_mode, view_size)
 

@@ -240,7 +240,7 @@ static func run_riot(city: CityState, random: SimRandom, lfsr_random: SimLfsrRan
 	result.map_changed = map_changed
 	result.news_items = []
 	result.effect_events = runtime_events.effect_events
-	result.sound_events = sound_events
+	result.sound_events = SoundEvent.from_ids(sound_events)
 	result.view_center_requests = []
 	result.complete = true
 

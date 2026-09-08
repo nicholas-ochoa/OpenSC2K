@@ -18,7 +18,7 @@ static func process(
 	point: Vector2i,
 	random: SimRandom,
 	rotation: int,
-	counters: Dictionary,
+	counters: GrowthMaintenanceResult,
 	map_edge: int = 128,
 ) -> void:
 	var index := SpecialZoneState._index(point, map_edge)
@@ -73,7 +73,7 @@ static func process(
 	if selected_tile < 0:
 		return
 
-	counters.special_growth_attempts += 1
+	counters.metrics.special_growth_attempts += 1
 	var placed := SpecialZoneSelection.grow_special_zone(
 		buildings,
 		zones,
@@ -94,4 +94,4 @@ static func process(
 			point, fallback_tile, zone, rotation, map_edge
 		)
 
-	counters.special_tiles_placed += placed.changed_tiles
+	counters.metrics.special_tiles_placed += placed.changed_tiles

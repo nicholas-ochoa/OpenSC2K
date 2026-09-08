@@ -2,6 +2,26 @@ class_name MovingThingResult
 extends PhaseResult
 
 
+class ConnectionChange extends RefCounted:
+	var kind: String
+	var delta: int
+	var point: Vector2i
+
+	func _init(connection_kind: String, count_delta: int, location: Vector2i) -> void:
+		kind = connection_kind
+		delta = count_delta
+		point = location
+
+
+class DisasterRequest extends RefCounted:
+	var type: int
+	var point: Vector2i
+
+	func _init(disaster_type: int, location: Vector2i) -> void:
+		type = disaster_type
+		point = location
+
+
 var scanned_records := 0
 var active_airplanes := 0
 var active_helicopters := 0
@@ -56,9 +76,9 @@ var malformed_records := 0
 var traffic_news_checks := 0
 var traffic_news_time_msec := 0
 var traffic_news_deadline_msec := 0
-var connection_count_changes: Array = []
+var connection_count_changes: Array[ConnectionChange] = []
 var created_train_crash_explosions := 0
-var disaster_start_requests: Array = []
+var disaster_start_requests: Array[DisasterRequest] = []
 var sailboats_complete := false
 var train_routes_complete := false
 var helicopters_save_visible_complete := false

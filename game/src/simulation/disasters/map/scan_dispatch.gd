@@ -209,7 +209,7 @@ static func run_all(
 	result.hurricane_counter = next_hurricane_counter
 	result.map_changed = map_changed
 	result.effect_events = effect_events
-	result.sound_events = sound_events
+	result.sound_events = SoundEvent.from_ids(sound_events)
 	result.view_center_requests = view_center_requests
 	result.dispatch_map = DisasterMapResult.new()
 	result.dispatch_map.ok = true

@@ -200,16 +200,16 @@ static func insert(misc: PackedByteArray, story_type: int, argument: int) -> Res
 	return result
 
 
-static func insert_items(misc: PackedByteArray, news_items: Array) -> Result:
+static func insert_items(misc: PackedByteArray, news_items: Array[NewsEvent]) -> Result:
 	var inserted := 0
 
 	for item in news_items:
-		var story_type := int(item.get("type", -1))
+		var story_type := int(item.type)
 
 		if not is_story_type(story_type):
 			continue
 
-		var result := insert(misc, story_type, int(item.get("argument", 0)))
+		var result := insert(misc, story_type, int(item.argument))
 
 		if not result.ok:
 			return result

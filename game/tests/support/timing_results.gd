@@ -3,7 +3,7 @@ extends RefCounted
 
 ## Compare deterministic results while retaining all non-timing fields.
 static func without_timings(value: Variant) -> Variant:
-	if value is SimulationTiming or value is SimulationSchedule or value is DisasterStartResult.MaxisManArrival or value is PhaseResult or value is SimulationDayResult or value is SimulationTickResult or value is MovingThingResult:
+	if value is SimulationTiming or value is SimulationSchedule or value is DisasterStartResult.MaxisManArrival or value is PhaseResult or value is SimulationDayResult or value is SimulationTickResult or value is MovingThingResult or value is EffectEvent or value is GameOverEvent or value is PowerPlantExpiry or value is SimulationInteractionRequest or value is SoundEvent or value is NewsEvent or value is MovingThingResult.ConnectionChange or value is MovingThingResult.DisasterRequest or value is RciAftermathPhase.MapChange:
 		var fields := {}
 
 		for property in value.get_property_list():

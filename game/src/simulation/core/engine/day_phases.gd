@@ -301,10 +301,7 @@ class Milestones extends SimulationDayPhase:
 			return stored
 
 		if milestones.military_proposal_pending:
-			context.interaction_request = {
-				"type": "military_proposal",
-				"notification_id": 0xf0,
-			}
+			context.interaction_request = SimulationInteractionRequest.military_proposal()
 
 		return milestones
 
@@ -331,9 +328,9 @@ class Bankruptcy extends SimulationDayPhase:
 
 # an action that only asks the interface to refresh
 class Refresh extends SimulationDayPhase:
-	var requests: Array
+	var requests: Array[String]
 
-	func _init(refresh_requests: Array) -> void:
+	func _init(refresh_requests: Array[String]) -> void:
 		requests = refresh_requests
 
 	func run(context: SimulationPhaseContext) -> PhaseResult:

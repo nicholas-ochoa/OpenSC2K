@@ -62,7 +62,7 @@ static func apply_path(
 	var skipped_specialized := 0
 	var skipped_insufficient := 0
 	var easter_events := 0
-	var news_items: Array[Dictionary] = []
+	var news_items: Array[NewsEvent] = []
 	var effect_events: Array[EffectEvent] = []
 	var sound_events: Array[int] = []
 	var random_state_before := random.state
@@ -133,7 +133,7 @@ static func apply_path(
 
 				return DemolishEditResult.rejected("cannot store forest protest news")
 
-			news_items.append({"type": NEWS_FOREST_PROTEST, "argument": 0})
+			news_items.append(NewsEvent.new(NEWS_FOREST_PROTEST, 0))
 			sound_events.append(SOUND_FOREST_PROTEST)
 
 		var result_effects: Array[EffectEvent] = result.effect_events

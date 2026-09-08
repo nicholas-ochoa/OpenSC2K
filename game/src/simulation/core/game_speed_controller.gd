@@ -239,7 +239,7 @@ func _run_day(result: SimulationTickResult) -> String:
 
 func _consume_day_result(result: SimulationTickResult, day: SimulationDayResult) -> void:
 	result.day_results.append(day)
-	var requests: Array = day.interaction_requests
+	var requests := day.interaction_requests
 	result.interaction_requests.append_array(requests)
 
 	if not requests.is_empty():

@@ -5292,7 +5292,7 @@ func _test_game_speed_controller(reference_root: String) -> void:
 	_check(
 		monster_start.ok
 		and monster_start.day_results.size() == 1
-		and monster_start.sound_events.has(DisasterStart.SOUND_SIREN)
+		and (SoundEvent.count_plain(monster_start.sound_events, DisasterStart.SOUND_SIREN) > 0)
 		and not monster_start.view_center_requests.is_empty(),
 		"Controller forwards scenario monster start effects",
 	)
@@ -5916,7 +5916,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		and monster.started
 		and monster.complete
 		and monster.record == 1
-		and monster.sound_events == [DisasterStart.SOUND_SIREN]
+		and SoundEvent.same_arrays(monster.sound_events, SoundEvent.from_ids([DisasterStart.SOUND_SIREN]))
 		and monster.view_center_requests == [Vector2i(20, 20)],
 		"Monster disaster replaces an occupied moving object and reports runtime effects",
 	)
@@ -5970,7 +5970,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		and fire.started
 		and fire.complete
 		and fire.point == fire_point
-		and fire.sound_events == [DisasterStart.SOUND_SIREN]
+		and SoundEvent.same_arrays(fire.sound_events, SoundEvent.from_ids([DisasterStart.SOUND_SIREN]))
 		and fire.view_center_requests == [fire_point],
 		"Fire starts at the first suitable point in the center spiral",
 	)
@@ -6013,7 +6013,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		and flood.started
 		and flood.point == flood_source
 		and flood.map_counter == 60
-		and flood.sound_events == [DisasterStart.SOUND_FLOOD, DisasterStart.SOUND_SIREN]
+		and SoundEvent.same_arrays(flood.sound_events, SoundEvent.from_ids([DisasterStart.SOUND_FLOOD, DisasterStart.SOUND_SIREN]))
 		and flood.view_center_requests == [flood_source],
 		"Flood starts on the first shoreline terrain cell and reports its runtime state",
 	)
@@ -6046,7 +6046,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		and toxic_start.started
 		and toxic_start.complete
 		and toxic_start.point == toxic_point
-		and toxic_start.sound_events == [DisasterStart.SOUND_SIREN]
+		and SoundEvent.same_arrays(toxic_start.sound_events, SoundEvent.from_ids([DisasterStart.SOUND_SIREN]))
 		and toxic_start.view_center_requests == [toxic_point]
 		and toxic_city.text_overlay_id(toxic_point.x, toxic_point.y) == DisasterMap.TOXIC_OVERLAY,
 		"Toxic Spill writes XTXT 0xFB directly at the requested point",
@@ -6089,7 +6089,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		and pollution_start.complete
 		and pollution_start.counters.attempt_count == 8
 		and pollution_start.counters.seed_writes == 8
-		and pollution_start.sound_events == [DisasterStart.SOUND_SIREN]
+		and SoundEvent.same_arrays(pollution_start.sound_events, SoundEvent.from_ids([DisasterStart.SOUND_SIREN]))
 		and pollution_start.view_center_requests == [pollution_point],
 		"Pollution uses normal population for its seed count and reports a start",
 	)
@@ -6157,12 +6157,12 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		riot_city.text_overlay_id(20, 19) == DisasterStart.RIOT_OVERLAY_FORWARD
 		and riot_city.text_overlay_id(20, 18) == DisasterStart.RIOT_OVERLAY_REVERSE
 		and riot_city.text_overlay_id(20, 17) == DisasterStart.RIOT_OVERLAY_FORWARD
-		and riot_start.sound_events == [
+		and SoundEvent.same_arrays(riot_start.sound_events, SoundEvent.from_ids([
 			DisasterStart.SOUND_RIOT,
 			DisasterStart.SOUND_RIOT,
 			DisasterStart.SOUND_RIOT,
 			DisasterStart.SOUND_SIREN,
-		]
+		]))
 		and riot_random.position == 3,
 		"Riot uses one orientation bit and sound request for each seeded marker",
 	)
@@ -6244,7 +6244,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		and mass_riot_city.text_overlay_id(68, 63) == DisasterStart.RIOT_OVERLAY_FORWARD
 		and mass_riot_city.text_overlay_id(56, 63) == DisasterStart.RIOT_OVERLAY_FORWARD
 		and mass_riot_start.sound_events.size() == 8
-		and mass_riot_start.sound_events[-1] == DisasterStart.SOUND_SIREN,
+		and mass_riot_start.sound_events[-1].equals(SoundEvent.new(DisasterStart.SOUND_SIREN)),
 		"Mass Riots stores each marker and appends the common siren after riot sounds",
 	)
 
@@ -6299,9 +6299,9 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		and earthquake_start.effect_events[0].frame_msec == 5
 		and earthquake_start.effect_events[0].distance == 4
 		and earthquake_start.sound_events.size() == 25
-		and earthquake_start.sound_events[0] == DisasterStart.SOUND_EARTHQUAKE
-		and earthquake_start.sound_events[23] == DisasterStart.SOUND_EARTHQUAKE
-		and earthquake_start.sound_events[24] == DisasterStart.SOUND_SIREN
+		and earthquake_start.sound_events[0].equals(SoundEvent.new(DisasterStart.SOUND_EARTHQUAKE))
+		and earthquake_start.sound_events[23].equals(SoundEvent.new(DisasterStart.SOUND_EARTHQUAKE))
+		and earthquake_start.sound_events[24].equals(SoundEvent.new(DisasterStart.SOUND_SIREN))
 		and earthquake_start.view_center_requests == [earthquake_point],
 		"Earthquake reports its 24 shake frames, repeated sound, siren, and view center",
 	)
@@ -6451,9 +6451,9 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		and meltdown_start.plant_site == Rect2i(63, 63, 4, 4)
 		and meltdown_start.point == meltdown_center
 		and meltdown_start.view_center_requests == [meltdown_center]
-		and meltdown_start.sound_events == [
+		and SoundEvent.same_arrays(meltdown_start.sound_events, SoundEvent.from_ids([
 			DisasterStart.SOUND_EARTHQUAKE, DisasterStart.SOUND_SIREN,
-		]
+		]))
 		and meltdown_start.effect_events.size() == 64
 		and meltdown_start.effect_events[0].frame == 0
 		and meltdown_start.effect_events[16].frame == 1
@@ -6626,9 +6626,9 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 			Vector2i(39, 10),
 		]
 		and microwave_start.sound_events.size() == 39
-		and microwave_start.sound_events[0] == DisasterStart.SOUND_MICROWAVE
-		and microwave_start.sound_events[-2] == DisasterStart.SOUND_MICROWAVE
-		and microwave_start.sound_events[-1] == DisasterStart.SOUND_SIREN,
+		and microwave_start.sound_events[0].equals(SoundEvent.new(DisasterStart.SOUND_MICROWAVE))
+		and microwave_start.sound_events[-2].equals(SoundEvent.new(DisasterStart.SOUND_MICROWAVE))
+		and microwave_start.sound_events[-1].equals(SoundEvent.new(DisasterStart.SOUND_SIREN)),
 		"Microwave requests periodic view centers, one sound per damaged point, and the siren",
 	)
 	_check(
@@ -6669,7 +6669,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		and edge_microwave.path_finish == Vector2i(128, 10)
 		and edge_microwave.counters.damage_attempts == 0
 		and not edge_microwave.map_changed
-		and edge_microwave.sound_events == [DisasterStart.SOUND_SIREN]
+		and SoundEvent.same_arrays(edge_microwave.sound_events, SoundEvent.from_ids([DisasterStart.SOUND_SIREN]))
 		and edge_microwave_random.position == 2,
 		"Microwave stops after an out-of-map move and retains its final random read",
 	)
@@ -6745,10 +6745,10 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	)
 	_check(
 		volcano_random.position == volcano.counters.iterations * 6
-		and volcano.sound_events == [
+		and SoundEvent.same_arrays(volcano.sound_events, SoundEvent.from_ids([
 			DisasterStart.SOUND_VOLCANO,
 			DisasterStart.SOUND_SIREN,
-		]
+		]))
 		and volcano.view_center_requests == [Vector2i(64, 64)],
 		"Volcano preserves the per-iteration random order, sound gate, and view center",
 	)
@@ -6847,7 +6847,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		"Firestorm uses the shared small-tile damage option for every accepted cell",
 	)
 	_check(
-		firestorm.sound_events == [DisasterStart.SOUND_SIREN]
+		SoundEvent.same_arrays(firestorm.sound_events, SoundEvent.from_ids([DisasterStart.SOUND_SIREN]))
 		and firestorm.view_center_requests == [Vector2i(67, 68)]
 		and firestorm_random.position == 0
 		and firestorm_lfsr.position == 0,
@@ -6943,8 +6943,8 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	)
 	_check(
 		mass_flood.sound_events.size() == 6
-		and mass_flood.sound_events.count(DisasterStart.SOUND_FLOOD) == 5
-		and mass_flood.sound_events[-1] == DisasterStart.SOUND_SIREN
+		and SoundEvent.count_plain(mass_flood.sound_events, DisasterStart.SOUND_FLOOD) == 5
+		and mass_flood.sound_events[-1].equals(SoundEvent.new(DisasterStart.SOUND_SIREN))
 		and mass_flood.view_center_requests == [Vector2i(64, 64)]
 		and mass_flood_random.position == 10
 		and mass_flood_lfsr.position == 0,
@@ -7052,9 +7052,9 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		_check(
 			hurricane_lfsr.position == hurricane_case.lfsr
 			and hurricane.view_center_requests.is_empty()
-			and hurricane.sound_events[0] == DisasterStart.SOUND_HURRICANE
-			and hurricane.sound_events[-2] == DisasterStart.SOUND_HURRICANE
-			and hurricane.sound_events[-1] == DisasterStart.SOUND_SIREN,
+			and hurricane.sound_events[0].equals(SoundEvent.new(DisasterStart.SOUND_HURRICANE))
+			and hurricane.sound_events[-2].equals(SoundEvent.new(DisasterStart.SOUND_HURRICANE))
+			and hurricane.sound_events[-1].equals(SoundEvent.new(DisasterStart.SOUND_SIREN)),
 			"Hurricane direction %d preserves random use, sound order, and no view center"
 			% hurricane_case.direction,
 		)
@@ -7066,7 +7066,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		)
 		_check(
 			hurricane.effect_events.size() == expected_effects
-			and hurricane.sound_events.count(DisasterStart.SOUND_EARTHQUAKE)
+			and SoundEvent.count_plain(hurricane.sound_events, DisasterStart.SOUND_EARTHQUAKE)
 			== expected_effects
 			and last_effect_frame == expected_effects - 1,
 			"Hurricane direction %d emits sequential source-enabled edge damage effects"
@@ -7221,7 +7221,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		and water_tick.map_changed
 		and water_tick.counters.water_extinctions == 1
 		and water_tick.counters.remaining_fires == 0
-		and water_tick.sound_events == [DisasterMap.SOUND_FIRE],
+		and SoundEvent.same_arrays(water_tick.sound_events, SoundEvent.from_ids([DisasterMap.SOUND_FIRE])),
 		"A selected fire marker on water clears and keeps the disaster active for this scan",
 	)
 	_check(
@@ -7270,9 +7270,9 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		and linked_spread_tick.effect_events[0].point == Vector2i(19, 20)
 		and linked_spread_tick.effect_events[0].sprite_id == 1394
 		and linked_spread_tick.effect_events[0].flip
-		and linked_spread_tick.sound_events == [
+		and SoundEvent.same_arrays(linked_spread_tick.sound_events, SoundEvent.from_ids([
 			DisasterMap.SOUND_EARTHQUAKE, DisasterMap.SOUND_FIRE,
-		]
+		]))
 		and linked_spread_random.position == 4,
 		"Shared fire damage emits native dust and consumes its two visual random values",
 	)
@@ -7470,7 +7470,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		and idle_riot_tick.active
 		and idle_riot_tick.counters.riot_updates == 1
 		and idle_riot_tick.counters.remaining_riots == 1
-		and idle_riot_tick.sound_events == [DisasterMap.SOUND_RIOT]
+		and SoundEvent.same_arrays(idle_riot_tick.sound_events, SoundEvent.from_ids([DisasterMap.SOUND_RIOT]))
 		and idle_riot.city.text_overlay_id(20, 20) == DisasterMap.RIOT_OVERLAY_FORWARD,
 		"An unsupported reverse riot changes to the forward phase and can request sound",
 	)
@@ -7672,7 +7672,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		and flood_tick.counters.flood_updates == 1
 		and flood_tick.counters.spread_floods == 1
 		and flood_tick.counters.remaining_floods == 2
-		and flood_tick.sound_events == [DisasterMap.SOUND_FLOOD]
+		and SoundEvent.same_arrays(flood_tick.sound_events, SoundEvent.from_ids([DisasterMap.SOUND_FLOOD]))
 		and flood.city.text_overlay_id(19, 20) == 0xfc,
 		"An early flood tick spreads west and can request the recovered flood sound",
 	)
@@ -7702,7 +7702,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		and linked_flood_tick.effect_events[0].point == Vector2i(19, 20)
 		and linked_flood_tick.effect_events[0].sprite_id == 1394
 		and linked_flood_tick.effect_events[0].flip
-		and linked_flood_tick.sound_events == [DisasterMap.SOUND_EARTHQUAKE]
+		and SoundEvent.same_arrays(linked_flood_tick.sound_events, SoundEvent.from_ids([DisasterMap.SOUND_EARTHQUAKE]))
 		and linked_flood_random.position == 4,
 		"Shared flood damage emits native dust and consumes its two visual random values",
 	)
@@ -7842,7 +7842,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		and mixed_tick.counters.riot_markers_scanned == 1
 		and mixed_tick.counters.fire_markers_scanned == 1
 		and mixed_tick.counters.water_extinctions == 1
-		and mixed_tick.sound_events == [DisasterMap.SOUND_FIRE],
+		and SoundEvent.same_arrays(mixed_tick.sound_events, SoundEvent.from_ids([DisasterMap.SOUND_FIRE])),
 		"The combined scan processes all marker classes and keeps original sound order",
 	)
 	_check(
@@ -7878,9 +7878,9 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"An active hurricane tick can damage and center a source-qualified tall building",
 	)
 	_check(
-		hurricane_tick.sound_events == [
+		SoundEvent.same_arrays(hurricane_tick.sound_events, SoundEvent.from_ids([
 			DisasterMap.SOUND_HURRICANE, DisasterMap.SOUND_EARTHQUAKE,
-		]
+		]))
 		and hurricane_tick.effect_events.size() == 1
 		and hurricane_tick_lfsr.position == 3
 		and hurricane_tick_random.position == 4,
@@ -8358,7 +8358,11 @@ func _test_annual_special_microsim_phase(reference_root: String) -> void:
 	)
 	_check(expired.ok, "Annual expired-power update completes: %s" % expired.error)
 	_check(
-		expired.demolished_power_records.size() == 1 and expired.expired_power_records.is_empty(),
+		expired.demolished_power_records.size() == 1 and expired.expired_power_records.is_empty()
+		and expired.demolished_power_records[0].record == 10
+		and expired.demolished_power_records[0].tile == 0xc9
+		and expired.demolished_power_records[0].x == 19
+		and expired.demolished_power_records[0].y == 19,
 		"Annual expired power completes its demolition",
 	)
 	_check(expiry_city.microsim(10).tile_id == 0, "Annual power demolition releases the XMIC record")
@@ -8380,8 +8384,8 @@ func _test_annual_special_microsim_phase(reference_root: String) -> void:
 		and expired.effect_events[63].frame == 3,
 		"Annual power demolition returns four ordered native dust frames",
 	)
-	_check(not expired.news_items.has({"type": 0x1f8, "argument": 0}), "Annual power demolition does not report sound as news")
-	_check(expired.sound_events == [504], "Annual power demolition reports the explosion sound")
+	_check(not NewsEvent.contains(expired.news_items, 0x1f8, 0), "Annual power demolition does not report sound as news")
+	_check(SoundEvent.same_arrays(expired.sound_events, SoundEvent.from_ids([504])), "Annual power demolition reports the explosion sound")
 
 	var aus_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 	var aus_city := CityModel.from_document(aus_document)
@@ -8442,7 +8446,7 @@ func _test_mayor_approval_phase(reference_root: String) -> void:
 	_check(favorable.approval == 100, "Mayor approval counts all favorable survey samples")
 	_check(favorable_random.position == 100, "Mayor approval consumes 100 process random values")
 	_check(
-		favorable.news_items == [{"type": 0x201, "argument": 0}],
+		NewsEvent.same_arrays(favorable.news_items, [NewsEvent.new(0x201, 0)]),
 		"Mayor approval reports the upward 80-percent threshold",
 	)
 	var mayor_house := city.microsim(1)
@@ -8561,13 +8565,13 @@ func _test_arcology_launch_phase(reference_root: String) -> void:
 	)
 	_check(lfsr.position == 100, "Arcology launch consumes one LFSR value per record")
 	_check(
-		result.news_items == [
-			{"type": 0x211, "argument": 0},
-			{"type": 0x212, "argument": 0},
-		],
+		NewsEvent.same_arrays(result.news_items, [
+			NewsEvent.new(0x211, 0),
+			NewsEvent.new(0x212, 0),
+		]),
 		"Arcology launch reports start and completion news: %s" % [result.news_items],
 	)
-	_check(result.sound_events == [504], "Arcology launch reports one explosion sound: %s" % [result.sound_events])
+	_check(SoundEvent.same_arrays(result.sound_events, SoundEvent.from_ids([504])), "Arcology launch reports one explosion sound: %s" % [result.sound_events])
 	_check(result.complete, "Arcology launch completes the annual microsimulation action")
 
 
@@ -9106,10 +9110,9 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	_check(
 		spread_result.ok
 		and spread_result.spread_explosion_fires == 3
-		and spread_result.disaster_start_requests == [{
-			"type": DisasterStart.DISASTER_AIR_CRASH,
-			"point": Vector2i(20, 20),
-		}]
+		and spread_result.disaster_start_requests.size() == 1
+		and spread_result.disaster_start_requests[0].type == DisasterStart.DISASTER_AIR_CRASH
+		and spread_result.disaster_start_requests[0].point == Vector2i(20, 20)
 		and spreading_explosion.city.disaster_type() == DisasterStart.DISASTER_AIR_CRASH,
 		"A damaging airplane explosion stores its recovered Air Crash trigger",
 	)
@@ -10340,7 +10343,7 @@ func _test_transport_maintenance(reference_root: String) -> void:
 	)
 	_check(
 		bridge_result.view_center_requests == [Vector2i(20, 20)]
-		and bridge_result.sound_events == [504]
+		and SoundEvent.same_arrays(bridge_result.sound_events, SoundEvent.from_ids([504]))
 		and bridge_result.news_items.size() == 1
 		and bridge_result.news_items[0].type == 39
 		and bridge_result.news_items[0].argument == 0,
@@ -10878,7 +10881,7 @@ func _test_news_queue(reference_root: String) -> void:
 	)
 	var mixed := NewsQueue.insert_items(
 		misc,
-		[{"type": 0x1f8, "argument": 0}, {"type": 39, "argument": 4}],
+		[NewsEvent.new(0x1f8, 0), NewsEvent.new(39, 4)],
 	)
 	_check(
 		mixed.ok and mixed.inserted == 1 and NewsQueue.story_record(misc, 2).type == 39,
@@ -10892,8 +10895,8 @@ func _test_news_queue(reference_root: String) -> void:
 	var phase_result := PhaseResult.new()
 	phase_result.ok = true
 	phase_result.news_items = [
-		{"type": 0x1fe, "argument": 0},
-		{"type": 9, "argument": 4},
+		NewsEvent.new(0x1fe, 0),
+		NewsEvent.new(9, 4),
 	]
 	var persisted := engine._persist_news_result(phase_result)
 	var persisted_record := NewsQueue.story_record(
@@ -10913,7 +10916,7 @@ func _test_news_queue(reference_root: String) -> void:
 	var already_updated := PhaseResult.new()
 	already_updated.ok = true
 	already_updated.news_queue_updated = true
-	already_updated.news_items = [{"type": 3, "argument": 0}]
+	already_updated.news_items = [NewsEvent.new(3, 0)]
 	var duplicate := engine._persist_news_result(already_updated)
 	_check(
 		duplicate.ok
@@ -11126,10 +11129,10 @@ func _test_rci_aftermath(reference_root: String) -> void:
 			"Weather stores all four save-visible MISC fields",
 		)
 		_check(
-			result.news_items == [
-				{"type": RciAftermath.NEWS_JUNK, "argument": 0},
-				{"type": 0x0b, "argument": 0},
-			],
+			NewsEvent.same_arrays(result.news_items, [
+				NewsEvent.new(RciAftermath.NEWS_JUNK, 0),
+				NewsEvent.new(0x0b, 0),
+			]),
 			"The ordinary monthly news branch keeps its original order",
 		)
 		_check(tree_random.position == 16, "Tree, news, invention, and weather checks consume 16 random values")
@@ -11334,7 +11337,7 @@ func _test_weather_disaster_phase(reference_root: String) -> void:
 		_check(
 			power_result.status_index == WeatherDisaster.STATUS_POWER
 			and power_result.status_news_type == 46
-			and power_result.news_items == [{"type": 46, "argument": 0}],
+			and NewsEvent.same_arrays(power_result.news_items, [NewsEvent.new(46, 0)]),
 			"A fully used power system requests more power with story type 46",
 		)
 		_check(
@@ -11652,11 +11655,11 @@ func _test_simnation(reference_root: String) -> void:
 
 	if news_result.ok:
 		_check(
-			news_result.news_items == [
-				{"type": 9, "argument": 4},
-				{"type": 10, "argument": 3},
-				{"type": 7, "argument": 3},
-			],
+			NewsEvent.same_arrays(news_result.news_items, [
+				NewsEvent.new(9, 4),
+				NewsEvent.new(10, 3),
+				NewsEvent.new(7, 3),
+			]),
 			"SimNation emits federal-rate and national-economy reports in native order",
 		)
 		_check(
@@ -15728,9 +15731,15 @@ func _test_demolish_command(reference_root: String) -> void:
 		and forest_protest.easter_events == 1
 		and forest_protest.sound_events == [Demolish.SOUND_FOREST_PROTEST]
 		and forest_protest.news_queue_updated
-		and forest_protest.news_items == [{"type": 0x28, "argument": 0}],
+		and NewsEvent.same_arrays(forest_protest.news_items, [NewsEvent.new(0x28, 0)]),
 		"The hidden tree branch reports its protest sound and newspaper story",
 	)
+	var copied_protest := forest_protest.copy() as DemolishEditResult
+	_check(NewsEvent.same_arrays(copied_protest.news_items, forest_protest.news_items),
+		"Copied demolition results retain every news field")
+	copied_protest.news_items[0].argument = 7
+	_check(forest_protest.news_items[0].argument == 0,
+		"Copied demolition news owns independent event values")
 	_check(
 		simple_city.building_id(10, 10) == 0x06
 		and simple_city.funds() == 9

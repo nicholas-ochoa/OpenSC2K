@@ -4,11 +4,11 @@ extends RefCounted
 const Renderer = preload("res://src/view/city_isometric_renderer.gd")
 
 
-static func event_sound_id(event, overlay_mode: CityViewMode.Mode, view_size: int) -> int:
-	if not (event is Dictionary):
-		return int(event)
+static func event_sound_id(event: SoundEvent, overlay_mode: CityViewMode.Mode, view_size: int) -> int:
+	if not event.from_thing:
+		return event.sound_id
 
-	var thing_type := int(event.get("thing_type", -1))
+	var thing_type := event.thing_type
 
 	if (
 		overlay_mode != CityViewMode.Mode.CITY
@@ -18,4 +18,4 @@ static func event_sound_id(event, overlay_mode: CityViewMode.Mode, view_size: in
 	):
 		return -1
 
-	return int(event.get("sound_id", -1))
+	return event.sound_id

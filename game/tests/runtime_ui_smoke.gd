@@ -533,7 +533,8 @@ func _run() -> void:
 		var wave_cache: Dictionary = audio_controller.wave_stream_cache
 		var wave_accepted_before := int(wave_gate.accepted_count)
 		var wave_suppressed_before := int(wave_gate.suppressed_count)
-		main.effects_audio.call("play_sound_events", [504, 504, 504])
+		var repeated_sounds: Array[int] = [504, 504, 504]
+		main.effects_audio.call("play_sound_ids", repeated_sounds)
 
 		if (
 			wave_cache.size() != 30

@@ -88,7 +88,7 @@ static func update_school(annual: MicrosimAnnualContext, record_id: int, offset:
 	_write_u16_be(annual.microsims, offset + 6, school_funding_quarter)
 
 	if (school_funding_quarter & 0xffff) < 20:
-		annual.news_items.append({"type": NEWS_EDUCATION, "argument": 0})
+		annual.news_items.append(NewsEvent.new(NEWS_EDUCATION, 0))
 
 	var school_count := maxi(
 		_divide_toward_zero(_tile_count(annual.misc, TILE_SCHOOL, annual.map_edge), 9), 1

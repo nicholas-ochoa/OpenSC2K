@@ -33,7 +33,7 @@ static func update_power(annual: MicrosimAnnualContext, record_id: int, offset: 
 		annual.random_records_pending += 1
 
 	if int(annual.microsims[offset + 1]) > 48:
-		annual.news_items.append({"type": NEWS_POWER_PLANT, "argument": power_tile + 0x37})
+		annual.news_items.append(NewsEvent.new(NEWS_POWER_PLANT, power_tile + 0x37))
 
 	if int(annual.microsims[offset + 1]) > 50:
 		annual.span.mark("expired plant search and demolition")
@@ -47,12 +47,7 @@ static func update_power(annual: MicrosimAnnualContext, record_id: int, offset: 
 				_write_i32(annual.misc, MISC_FUNDS, funds - plant_cost)
 				annual.microsims[offset + 1] = 0
 			else:
-				var expired_record := {
-					"record": record_id,
-					"tile": power_tile,
-					"x": location.x,
-					"y": location.y,
-				}
+				var expired_record := PowerPlantExpiry.new(record_id, power_tile, location)
 				var demolition := DemolishStructures.damage_structure_payloads(
 					annual.city, annual.changed_payloads, Vector2i(location.x, location.y), annual.random, true
 				)

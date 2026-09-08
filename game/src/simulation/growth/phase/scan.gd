@@ -5,12 +5,8 @@ extends GrowthConstants
 @warning_ignore_start("integer_division")
 
 
-# payload aliases, generators, and counters for one growth partition. the
-# per-tile steps are methods here because member reads on self are indexed;
-# the same steps as static functions that read a context object cost about 4%
-# of the growth benchmark. rci counters change on most tiles, so they are
-# typed fields. the counters dictionary holds the rarer maintenance,
-# special-zone, and spawn counters that the maintenance helpers update
+# member reads were about 4% quicker than passing a context through static helpers
+# keep the busy rci counters here; rare events go in the result
 class TileScan extends GrowthConstants:
 	var altitude: PackedByteArray
 	var altitudes: PackedInt32Array
@@ -37,29 +33,7 @@ class TileScan extends GrowthConstants:
 	var game_random: GameLcgRandom
 	var span: SimulationTimingSpan
 	var detailed: bool
-	var counters := {
-		"decayed_roads": 0,
-		"decayed_rails": 0,
-		"decayed_highway_tiles": 0,
-		"decayed_subway_tiles": 0,
-		"collapsed_bridges": 0,
-		"removed_subway_stations": 0,
-		"deferred_bridge_collapses": 0,
-		"deferred_bridge_effects": 0,
-		"bridge_effects": [],
-		"view_center_requests": [],
-		"news_items": [],
-		"sound_events": [],
-		"deferred_station_removals": 0,
-		"special_growth_attempts": 0,
-		"special_tiles_placed": 0,
-		"arcologies_updated": 0,
-		"spawned_airplanes": 0,
-		"spawned_helicopters": 0,
-		"spawned_ships": 0,
-		"spawned_sailboats": 0,
-		"spawned_trains": 0,
-	}
+	var counters := GrowthMaintenanceResult.new()
 	var error := ""
 	var scanned_tiles := 0
 	var rci_tiles := 0
@@ -468,29 +442,29 @@ class TileScan extends GrowthConstants:
 		growth.bus_passengers = bus_passengers
 		growth.rail_passengers = rail_passengers
 		growth.subway_passengers = subway_passengers
-		growth.decayed_roads = counters.decayed_roads
-		growth.decayed_rails = counters.decayed_rails
-		growth.decayed_highway_tiles = counters.decayed_highway_tiles
-		growth.decayed_subway_tiles = counters.decayed_subway_tiles
-		growth.collapsed_bridges = counters.collapsed_bridges
-		growth.removed_subway_stations = counters.removed_subway_stations
-		growth.deferred_bridge_collapses = counters.deferred_bridge_collapses
-		growth.deferred_bridge_effects = counters.deferred_bridge_effects
-		growth.deferred_station_removals = counters.deferred_station_removals
-		growth.special_growth_attempts = counters.special_growth_attempts
-		growth.special_tiles_placed = counters.special_tiles_placed
-		growth.arcologies_updated = counters.arcologies_updated
-		growth.spawned_airplanes = counters.spawned_airplanes
-		growth.spawned_helicopters = counters.spawned_helicopters
-		growth.spawned_ships = counters.spawned_ships
-		growth.spawned_sailboats = counters.spawned_sailboats
-		growth.spawned_trains = counters.spawned_trains
+		growth.decayed_roads = counters.metrics.decayed_roads
+		growth.decayed_rails = counters.metrics.decayed_rails
+		growth.decayed_highway_tiles = counters.metrics.decayed_highway_tiles
+		growth.decayed_subway_tiles = counters.metrics.decayed_subway_tiles
+		growth.collapsed_bridges = counters.metrics.collapsed_bridges
+		growth.removed_subway_stations = counters.metrics.removed_subway_stations
+		growth.deferred_bridge_collapses = counters.metrics.deferred_bridge_collapses
+		growth.deferred_bridge_effects = counters.metrics.deferred_bridge_effects
+		growth.deferred_station_removals = counters.metrics.deferred_station_removals
+		growth.special_growth_attempts = counters.metrics.special_growth_attempts
+		growth.special_tiles_placed = counters.metrics.special_tiles_placed
+		growth.arcologies_updated = counters.metrics.arcologies_updated
+		growth.spawned_airplanes = counters.metrics.spawned_airplanes
+		growth.spawned_helicopters = counters.metrics.spawned_helicopters
+		growth.spawned_ships = counters.metrics.spawned_ships
+		growth.spawned_sailboats = counters.metrics.spawned_sailboats
+		growth.spawned_trains = counters.metrics.spawned_trains
 		growth.bridge_effects.assign(counters.bridge_effects)
-		growth.news_items = counters.news_items
-		growth.sound_events = counters.sound_events
+		growth.news_items.assign(counters.news_items)
+		growth.sound_events.assign(counters.sound_events)
 		growth.view_center_requests = counters.view_center_requests
-		growth.ship_home_found = counters.has("ship_home")
-		growth.ship_home = counters.get("ship_home", Vector2i(-1, -1))
+		growth.ship_home_found = counters.ship_home_found
+		growth.ship_home = counters.ship_home
 		growth.timing = span.finish()
 
 		return growth

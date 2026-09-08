@@ -10,8 +10,15 @@ var skipped_specialized := 0
 var skipped_insufficient := 0
 # forest protests keep the tree and add a saved news story
 var easter_events := 0
-var news_items: Array[Dictionary] = []
+var news_items: Array[NewsEvent] = []
 var news_queue_updated := false
+
+
+func copy() -> EditCommandResult:
+	var result := super.copy() as DemolishEditResult
+	result.news_items = NewsEvent.copy_all(news_items)
+
+	return result
 
 
 static func rejected(message: String, charged := 0) -> DemolishEditResult:

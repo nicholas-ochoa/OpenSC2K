@@ -15,7 +15,7 @@ static func _airport_growth_selection(
 	military: bool,
 	rotation: int,
 	random: SimRandom,
-	counters: Dictionary,
+	counters: GrowthMaintenanceResult,
 	map_edge: int = 128,
 ) -> int:
 	if random.next_u15() & 3:
@@ -31,7 +31,7 @@ static func _airport_growth_selection(
 			)
 
 			if helicopter.spawned:
-				counters.spawned_helicopters += 1
+				counters.metrics.spawned_helicopters += 1
 		else:
 			var runway_axis := 2 if bool(flags[SpecialZoneState._index(point, map_edge)] & 0x02) != bool(rotation & 1) else 0
 			var airplane := MovingThings.spawn_airplane(
@@ -39,7 +39,7 @@ static func _airport_growth_selection(
 			)
 
 			if airplane.spawned:
-				counters.spawned_airplanes += 1
+				counters.metrics.spawned_airplanes += 1
 
 		return -1
 
@@ -91,7 +91,7 @@ static func _seaport_growth_selection(
 	current_tile: int,
 	military: bool,
 	random: SimRandom,
-	counters: Dictionary,
+	counters: GrowthMaintenanceResult,
 	map_edge: int = 128,
 ) -> int:
 	if random.next_u15() & 3:
@@ -101,14 +101,11 @@ static func _seaport_growth_selection(
 			)
 
 			if ship.spawned:
-				counters.spawned_ships += 1
-				counters["ship_home"] = ship.point
-				counters.sound_events.append({
-					"sound_id": SOUND_SHIP,
-					"thing_type": 3,
-					"record": int(ship.record),
-					"point": ship.point,
-				})
+				counters.metrics.spawned_ships += 1
+				counters.ship_home_found = true
+				counters.ship_home = ship.point
+				counters.sound_events.append(SoundEvent.for_thing(SOUND_SHIP, 3, int(ship.record),
+					ship.point))
 
 		return -1
 

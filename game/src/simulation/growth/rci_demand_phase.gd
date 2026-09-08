@@ -44,7 +44,7 @@ class Result extends PhaseResult:
 	var previous_population := 0
 	var normal_population := 0
 	var tax_population := PackedInt64Array()
-	var targets: Array = []
+	var targets: Array[float] = []
 	var demands := PackedInt32Array()
 	var commerce_connections := 0
 	var industry_connections := 0
@@ -149,7 +149,7 @@ static func run(city: CityState) -> Result:
 		float((_tile_count(city, 0xe0) + 1 + connections.industry) * 1500),
 	)
 
-	var targets := [residential_target, commercial_target, industrial_target]
+	var targets: Array[float] = [residential_target, commercial_target, industrial_target]
 	var ordinance_flags := city.document.misc_u32(ORDINANCES_OFFSET)
 	var demands := PackedInt32Array()
 

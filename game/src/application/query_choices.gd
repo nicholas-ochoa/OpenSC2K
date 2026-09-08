@@ -230,7 +230,7 @@ func open_query(point: Vector2i) -> void:
 		app.asset_state.palette,
 		app.palette_clock.cycle_ticks,
 	)
-	app.effects_audio.play_sound_events(result.sound_events)
+	app.effects_audio.play_sound_ids(result.sound_events)
 
 
 func close_query(commit_rename := false) -> bool:

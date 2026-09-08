@@ -210,7 +210,8 @@ func _apply_landscape_editor_terrain(start: Vector2i, dragged: bool) -> bool:
 
 		if committed != null:
 			app.effects_audio.stop_tool_loop_sound()
-			app.effects_audio.play_sound_events([ToolSounds.SOUND_TRACTOR])
+			var sound_ids: Array[int] = [ToolSounds.SOUND_TRACTOR]
+			app.effects_audio.play_sound_ids(sound_ids)
 			app.scurk_workspace.record_edit_command(committed)
 			app.interface.refresh_details()
 
@@ -347,7 +348,7 @@ func _report_building_rejection(
 		app.tool_state.last_edit_command = null
 
 	if building.resident_objection:
-		app.effects_audio.play_sound_events(building.sound_events)
+		app.effects_audio.play_sound_ids(building.sound_events)
 		app.tool_state.pending_building_objection_group = building_group
 		app.tool_state.pending_building_objection_subtool = building_subtool
 		app.reports.show_building_objection()
@@ -425,18 +426,19 @@ func _finish_simple_edit(
 	app.static_render.refresh_after_city_edit(command)
 
 	if edit.show_effects:
-		app.effects_audio.show_effect_events(command.effect_events, command.sound_events)
+		app.effects_audio.show_effect_events(command.effect_events, SoundEvent.from_ids(command.sound_events))
 
 	if app.tool_state.selected_group == 0 and app.tool_state.selected_subtool in [1, 2, 3, 5, 6, 7] and not command.changed_ids.is_empty():
 		app.effects_audio.stop_tool_loop_sound()
-		app.effects_audio.play_sound_events([ToolSounds.SOUND_TRACTOR])
+		var sound_ids: Array[int] = [ToolSounds.SOUND_TRACTOR]
+		app.effects_audio.play_sound_ids(sound_ids)
 
 	# keep the tree and news story, no modal protest notice
 	if edit.refresh_news_summary:
 		app.reports.refresh_saved_news_summary()
 
 	if command.command_type == "zone":
-		app.effects_audio.play_sound_events(ToolSounds.zone_success_events((command as ZoneEditResult).zone_type))
+		app.effects_audio.play_sound_ids(ToolSounds.zone_success_events((command as ZoneEditResult).zone_type))
 	elif edit.play_success_sound:
 		app.effects_audio.play_tool_success_sound(app.tool_state.selected_group, app.tool_state.selected_subtool, scurk_tool_mode)
 

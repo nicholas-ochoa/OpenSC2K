@@ -177,8 +177,8 @@ func _random_name() -> void:
 	city_name_input.text = CityNameGenerator.generate(feature)
 
 
-func selected_features() -> Array:
-	var result: Array = []
+func selected_features() -> Array[String]:
+	var result: Array[String] = []
 	for key in feature_inputs:
 		if feature_inputs[key].button_pressed:
 			result.append(key)

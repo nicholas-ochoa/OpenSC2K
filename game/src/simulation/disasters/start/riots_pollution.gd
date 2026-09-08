@@ -213,7 +213,7 @@ static func _riot_result(
 	if started:
 		sounds.append(SOUND_SIREN)
 
-	result.sound_events = sounds
+	result.sound_events = SoundEvent.from_ids(sounds)
 
 	return result
 

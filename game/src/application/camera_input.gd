@@ -337,7 +337,8 @@ func refresh_terrain_stretch(levels: int) -> void:
 		app.static_render.refresh_after_city_edit(update)
 
 		if levels != 0 and not is_instance_valid(app.audio_controller.tool_loop_player):
-			app.effects_audio.play_sound_events([ToolSounds.SOUND_TRACTOR])
+			var sound_ids: Array[int] = [ToolSounds.SOUND_TRACTOR]
+			app.effects_audio.play_sound_ids(sound_ids)
 
 
 func on_map_selection_changed(

@@ -148,7 +148,7 @@ static func _start_mass_floods(
 			sounds.append(SOUND_FLOOD)
 
 		sounds.append(SOUND_SIREN)
-		result.sound_events = sounds
+		result.sound_events = SoundEvent.from_ids(sounds)
 		result.map_counter = 60
 
 	return result
@@ -275,7 +275,7 @@ static func _start_hurricane(
 
 	var result := DisasterStartObjectsState._result(DISASTER_HURRICANE, requested_point, true, true, 0)
 	sounds.append(SOUND_SIREN)
-	result.sound_events = sounds
+	result.sound_events = SoundEvent.from_ids(sounds)
 	result.view_center_requests = []
 	result.effect_events = effect_events
 	result.map_counter = 60
@@ -394,7 +394,8 @@ static func _store_flood(
 
 static func _flood_result(point: Vector2i, started: bool) -> DisasterStartResult:
 	var result := DisasterStartObjectsState._result(DISASTER_FLOOD, point, started, true, 0)
-	result.sound_events = [SOUND_FLOOD, SOUND_SIREN] if started else []
+	if started:
+		result.sound_events = [SoundEvent.new(SOUND_FLOOD), SoundEvent.new(SOUND_SIREN)]
 	result.map_counter = 60 if started else 0
 
 	return result

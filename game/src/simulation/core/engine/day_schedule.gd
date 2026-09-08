@@ -34,7 +34,7 @@ static func _execute_day_schedule(engine: SimulationEngine, schedule: Simulation
 		if not result.ok:
 			return SimulationDayResult.failure(result.error)
 
-		if not context.interaction_request.is_empty():
+		if context.interaction_request != null:
 			engine.pending_interaction = context.interaction_request.type
 			engine.pending_day_schedule = schedule
 			pending.append(action)
@@ -58,7 +58,7 @@ static func _day_result(
 	applied: PackedStringArray,
 	pending: PackedStringArray,
 	context: SimulationPhaseContext,
-	interaction_requests: Array
+	interaction_requests: Array[SimulationInteractionRequest]
 ) -> SimulationDayResult:
 	var outcome := SimulationDayResult.new()
 	outcome.ok = true

@@ -65,7 +65,7 @@ static func load_original(reference_root: String) -> DesktopGraphics:
 	return graphics
 
 
-static func resource_ids(app: String, kind: String) -> Array:
+static func resource_ids(app: String, kind: String) -> Array[int]:
 	if kind == "icons":
 		return range(1, 11 if app == "city" else 9)
 

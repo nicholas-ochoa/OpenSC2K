@@ -236,7 +236,7 @@ func on_help_menu(_id: int) -> void:
 	app.interface.open_about_dialog()
 
 
-func show_news_items(news_items: Array) -> void:
+func show_news_items(news_items: Array[NewsEvent]) -> void:
 	if app.city_status_bar != null:
 		app.city_status_bar.prepend_news_items(news_items)
 

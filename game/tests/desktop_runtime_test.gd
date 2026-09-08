@@ -85,7 +85,7 @@ func _run() -> void:
 	root.add_child(target)
 
 	for ids in [PackedInt32Array([1001]), PackedInt32Array([1001, 1002])]:
-		target.force_drag({"kind": "scurk_pick_copy_objects", "large_ids": ids}, null)
+		target.force_drag(ScurkObjectList.CopyObjectsDrag.new(target.get_instance_id(), ids), null)
 		var route := desktop.cursor_selection(target, 1024)
 		assert(route.group == (30004 if ids.size() == 1 else 30005))
 		assert(route.shape == Input.CURSOR_CAN_DROP)

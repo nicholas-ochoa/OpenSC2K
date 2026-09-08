@@ -314,12 +314,12 @@ func _is_vehicle(record: int) -> bool:
 
 
 # drop vehicle sounds while the vehicles layer is hidden
-func audible_sound_events(sound_events: Array) -> Array:
+func audible_sound_events(sound_events: Array[SoundEvent]) -> Array[SoundEvent]:
 	if app.view_state.show_vehicles:
 		return sound_events
 
-	return sound_events.filter(func(event: Variant) -> bool:
-		return not (event is Dictionary and int(event.get("thing_type", 0)) in CityViewFilter.VEHICLE_THING_TYPES))
+	return sound_events.filter(func(event: SoundEvent) -> bool:
+		return not (event.from_thing and event.thing_type in CityViewFilter.VEHICLE_THING_TYPES))
 
 
 func _gpu_moving_visual(sprite_archive: Sc2SpriteArchive, command: CityDynamicCommand, divisor: int, factor: int) -> CityDynamicVisual:

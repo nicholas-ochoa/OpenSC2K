@@ -293,12 +293,8 @@ static func _queue_sound(
 	counters: MovingThingResult, things: PackedByteArray, record: int
 ) -> void:
 	var offset := record * RECORD_SIZE
-	counters.sound_events.append({
-		"sound_id": SOUND_SHIP,
-		"thing_type": int(ThingData.read(things, offset)),
-		"record": record,
-		"point": Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4)),
-	})
+	counters.sound_events.append(SoundEvent.for_thing(SOUND_SHIP, int(ThingData.read(things, offset)), record,
+		Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))))
 
 
 static func _steer_direction(

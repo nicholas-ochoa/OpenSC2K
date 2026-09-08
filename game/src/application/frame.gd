@@ -161,9 +161,9 @@ func consume_simulation_result(result: SimulationTickResult) -> void:
 		app.reports.show_game_over_events(result.game_over_events)
 
 	for request in result.interaction_requests:
-		if request.get("type", "") == "annual_budget":
-			app.budget.open_budget_dialog(request.get("funding_values", PackedInt32Array()), true)
-		elif request.get("type", "") == "military_proposal":
+		if request.type == "annual_budget":
+			app.budget.open_budget_dialog(request.funding_values, true)
+		elif request.type == "military_proposal":
 			app.budget.open_military_proposal()
 
 

@@ -109,8 +109,9 @@ static func _result(
 	result.started = started
 	result.implemented = complete
 	result.record = record
-	result.sound_events = [SOUND_SIREN] if started else []
-	result.view_center_requests = [point] if started else []
+	if started:
+		result.sound_events = [SoundEvent.new(SOUND_SIREN)]
+		result.view_center_requests.append(point)
 	result.complete = complete
 
 	return result

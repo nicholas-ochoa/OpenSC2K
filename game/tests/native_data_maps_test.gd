@@ -247,10 +247,10 @@ func check_wide_counts(edge: int) -> void:
 	check(BuildingFacilities.population_cap(misc, 200, 900, edge) == expected, "Placement population availability does not wrap")
 	doc.set_misc_u32(RciAftermathPhase.MISC_TILE_COUNTS + RciAftermathPhase.STADIUM_TILE * 4, 40000)
 	doc.set_misc_u32(RciAftermathPhase.MISC_STADIUM_TEAMS, 1)
-	var news: Array = []
+	var news: Array[NewsEvent] = []
 	RciAftermathPhase._append_general_news(ZeroRandom.new(), doc.find_chunk("MISC").decoded_payload,
 		doc.find_chunk("XGRP").decoded_payload, news, edge)
-	check(news.has({"type": RciAftermathPhase.NEWS_SPORTS, "argument": 0}) == (edge != 128),
+	check(NewsEvent.contains(news, RciAftermathPhase.NEWS_SPORTS, 0) == (edge != 128),
 		"Sports news uses wide stadium count")
 	var micro := doc.find_chunk("XMIC").decoded_payload.duplicate()
 	BuildingFacilities.initialize_microsim(micro, misc, 10, 0xd0, 1900, SimRandom.new(1), false, false, edge)

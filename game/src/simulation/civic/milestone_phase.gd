@@ -88,7 +88,7 @@ static func run(city: CityState) -> Result:
 	result.requirement = requirement
 	result.reward_id = reward_id
 	result.military_proposal_pending = military_proposal_pending
-	result.news_items = [{"type": NEWS_GROWTH, "argument": old_progression}]
+	result.news_items = [NewsEvent.new(NEWS_GROWTH, old_progression)]
 	result.complete = not military_proposal_pending
 
 	return result

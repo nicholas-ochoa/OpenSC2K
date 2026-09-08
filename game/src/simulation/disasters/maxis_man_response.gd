@@ -79,6 +79,6 @@ static func apply(city: CityState, started: DisasterStartResult, random: SimRand
 	started.maxis_man_response.point = point
 	started.maxis_man_response.target = target
 	started.maxis_man_response.goal = goal
-	started.sound_events.append(ARRIVAL_SOUND)
+	started.sound_events.append(SoundEvent.new(ARRIVAL_SOUND))
 	started.view_center_requests.append(point)
 	return started

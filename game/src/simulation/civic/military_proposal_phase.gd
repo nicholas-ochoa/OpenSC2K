@@ -27,7 +27,7 @@ class Result extends PhaseResult:
 	var site := Rect2i()
 	var changed_indices := PackedInt32Array()
 	var notice_id := -1
-	var sites: Array = []
+	var sites: Array[Rect2i] = []
 
 
 static func resolve(city: CityState, accepted: bool, game_random: GameLcgRandom) -> Result:
@@ -266,11 +266,12 @@ static func _result(
 	result.site = site
 	result.changed_indices = changed_indices
 	result.notice_id = notice_id
-	result.view_center_requests = (
-		[site.position + Vector2i(4, 4)]
-		if accepted and (base_type == BASE_ARMY or base_type == BASE_AIR_FORCE)
-		else ([site.position] if accepted else [])
-	)
+	if accepted:
+		result.view_center_requests.append(
+			site.position + Vector2i(4, 4)
+			if base_type == BASE_ARMY or base_type == BASE_AIR_FORCE
+			else site.position
+		)
 
 	return result
 

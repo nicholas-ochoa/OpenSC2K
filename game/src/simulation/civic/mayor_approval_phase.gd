@@ -119,10 +119,10 @@ static func run(city: CityState, random: SimRandom, previous_approval: int) -> R
 				ranking[index] = ranking[index + 1]
 				ranking[index + 1] = prior
 
-	var news_items := []
+	var news_items: Array[NewsEvent] = []
 
 	if previous_approval < 80 and approval > 79:
-		news_items.append({"type": NEWS_HIGH_APPROVAL, "argument": 0})
+		news_items.append(NewsEvent.new(NEWS_HIGH_APPROVAL, 0))
 
 	var result := Result.new()
 	result.ok = true

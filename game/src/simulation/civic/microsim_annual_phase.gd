@@ -31,8 +31,8 @@ class Result extends PhaseResult:
 	var updated_arcology_records := 0
 	var updated_llamadome_records := 0
 	var random_records_pending := 0
-	var demolished_power_records: Array = []
-	var expired_power_records: Array = []
+	var demolished_power_records: Array[PowerPlantExpiry] = []
+	var expired_power_records: Array[PowerPlantExpiry] = []
 	var arcology_launch_pending := false
 	var arcology_launched := false
 	var launch_arcology_records := 0
@@ -239,7 +239,7 @@ static func _store_prison_and_school_totals(annual: MicrosimAnnualContext) -> vo
 	)
 
 	if annual.low_school_score:
-		annual.news_items.append({"type": NEWS_EDUCATION, "argument": 0})
+		annual.news_items.append(NewsEvent.new(NEWS_EDUCATION, 0))
 
 
 # store the arcology population and decide whether the launch is due
@@ -254,7 +254,7 @@ static func _store_arcology_population(annual: MicrosimAnnualContext) -> void:
 # demolish every launch-marked structure, pay the launch bonus, and report
 # the launch
 static func _launch_arcologies(annual: MicrosimAnnualContext) -> void:
-	annual.news_items.append({"type": NEWS_ARCOLOGY_LAUNCH_START, "argument": 0})
+	annual.news_items.append(NewsEvent.new(NEWS_ARCOLOGY_LAUNCH_START, 0))
 	var text_overlays: PackedByteArray = annual.changed_payloads.XTXT
 
 	for x in annual.map_edge:
@@ -282,7 +282,7 @@ static func _launch_arcologies(annual: MicrosimAnnualContext) -> void:
 		MISC_FUNDS,
 		_to_i32(_read_i32(annual.misc, MISC_FUNDS) + annual.launch_arcology_records * 100000)
 	)
-	annual.news_items.append({"type": NEWS_ARCOLOGY_LAUNCH_END, "argument": 0})
+	annual.news_items.append(NewsEvent.new(NEWS_ARCOLOGY_LAUNCH_END, 0))
 	annual.arcology_launched = true
 	annual.arcology_launch_pending = false
 
@@ -323,7 +323,7 @@ static func _result(annual: MicrosimAnnualContext) -> Result:
 	result.launched_structures = annual.launched_structures
 	result.news_items = annual.news_items
 	result.effect_events = annual.effect_events
-	result.sound_events = annual.sound_events
+	result.sound_events = SoundEvent.from_ids(annual.sound_events)
 	result.view_center_requests = annual.view_center_requests
 	result.complete = (
 		annual.random != null

@@ -55,7 +55,7 @@ static func run(city: CityState, random: SimRandom) -> Result:
 	if federal_rate <= 0:
 		return _failed("the national federal rate is not positive")
 
-	var news_items: Array = []
+	var news_items: Array[NewsEvent] = []
 
 	var national_population := _read_u32(data, MISC_NATIONAL_POPULATION)
 	var population_change := _scaled_change(national_population, economy_trend)
@@ -76,7 +76,7 @@ static func run(city: CityState, random: SimRandom) -> Result:
 			if random.next_u15() % (federal_rate * 25) < national_score:
 				federal_rate += 1
 				_write_u32(data, MISC_NATIONAL_FEDERAL_RATE, federal_rate)
-				news_items.append({"type": NEWS_FEDERAL_RATE_UP, "argument": federal_rate})
+				news_items.append(NewsEvent.new(NEWS_FEDERAL_RATE_UP, federal_rate))
 
 			if national_score < random.next_u15() % (federal_rate * 25):
 				federal_rate -= 1
@@ -84,7 +84,7 @@ static func run(city: CityState, random: SimRandom) -> Result:
 				if federal_rate == 0:
 					federal_rate = 1
 				else:
-					news_items.append({"type": NEWS_FEDERAL_RATE_DOWN, "argument": federal_rate})
+					news_items.append(NewsEvent.new(NEWS_FEDERAL_RATE_DOWN, federal_rate))
 
 				_write_u32(data, MISC_NATIONAL_FEDERAL_RATE, federal_rate)
 
@@ -94,7 +94,7 @@ static func run(city: CityState, random: SimRandom) -> Result:
 			if new_trend != economy_trend:
 				economy_trend = new_trend
 				_write_u32(data, MISC_NATIONAL_ECONOMY_TREND, economy_trend)
-				news_items.append({"type": NEWS_NATIONAL_ECONOMY, "argument": economy_trend})
+				news_items.append(NewsEvent.new(NEWS_NATIONAL_ECONOMY, economy_trend))
 
 	var neighbor_populations := PackedInt64Array()
 	var neighbor_values := PackedInt64Array()

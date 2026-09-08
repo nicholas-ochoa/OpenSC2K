@@ -223,7 +223,7 @@ func _resolve_military_proposal(accepted: bool) -> void:
 	var proposal: MilitaryProposalPhase.Result = result.day_results[0].phase_results.military_proposal
 
 	if proposal.base_type in [2, 3, 4, 5]:
-		app.effects_audio.play_sound_events(ToolSounds.zone_success_events(7))
+		app.effects_audio.play_sound_ids(ToolSounds.zone_success_events(7))
 
 	match proposal.base_type:
 		2:

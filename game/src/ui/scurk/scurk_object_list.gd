@@ -3,6 +3,15 @@ extends ItemList
 
 signal objects_dropped(large_ids: PackedInt32Array)
 
+class CopyObjectsDrag extends RefCounted:
+	var source_instance: int
+	var large_ids: PackedInt32Array
+
+	func _init(source: int, ids: PackedInt32Array) -> void:
+		source_instance = source
+		large_ids = ids
+
+
 var drag_source := false
 var drop_target := false
 
@@ -44,19 +53,13 @@ func _get_drag_data(at_position: Vector2) -> Variant:
 	preview.add_child(preview_label)
 	set_drag_preview(preview)
 
-	return {
-		"kind": "scurk_pick_copy_objects",
-		"source_instance": get_instance_id(),
-		"large_ids": large_ids,
-	}
+	return CopyObjectsDrag.new(get_instance_id(), large_ids)
 
 
 func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
 	return (
 		drop_target
-		and data is Dictionary
-		and data.get("kind", "") == "scurk_pick_copy_objects"
-		and data.get("large_ids", PackedInt32Array()) is PackedInt32Array
+		and data is CopyObjectsDrag
 		and not data.large_ids.is_empty()
 	)
 

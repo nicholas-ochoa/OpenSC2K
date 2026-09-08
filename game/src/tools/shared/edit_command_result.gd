@@ -36,7 +36,7 @@ var random_state_before := 0
 var random_state_after := 0
 
 # presentation events for the main thread
-var sound_events: Array = []
+var sound_events: Array[int] = []
 var effect_events: Array[EffectEvent] = []
 
 # undo and redo results: the number of tiles restored

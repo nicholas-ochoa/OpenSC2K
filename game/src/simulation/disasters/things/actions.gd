@@ -206,12 +206,8 @@ static func _queue_thing_sound(
 	counters: MovingThingResult, sound_id: int, things: PackedByteArray, record: int
 ) -> void:
 	var offset := record * RECORD_SIZE
-	counters.sound_events.append({
-		"sound_id": sound_id,
-		"thing_type": int(ThingData.read(things, offset)),
-		"record": record,
-		"point": Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4)),
-	})
+	counters.sound_events.append(SoundEvent.for_thing(sound_id, int(ThingData.read(things, offset)), record,
+		Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))))
 
 
 static func _write_u32_be(data: PackedByteArray, offset: int, value: int) -> void:
@@ -231,11 +227,8 @@ static func _record_connection_count_change(
 		or tile_id == 0x4c
 		or (tile_id >= 0x5d and tile_id <= 0x60)
 	)
-	counters.connection_count_changes.append({
-		"kind": "commerce" if is_commerce else "industry",
-		"delta": -1,
-		"point": point,
-	})
+	counters.connection_count_changes.append(MovingThingResult.ConnectionChange.new(
+		"commerce" if is_commerce else "industry", -1, point))
 
 
 static func _index(point: Vector2i, map_edge: int = 128) -> int:
