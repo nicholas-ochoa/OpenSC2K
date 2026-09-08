@@ -93,7 +93,7 @@ func refresh_from_host(host: Control, force := false) -> void:
 	status.text = "No city loaded." if city == null else "%d records • published state • refresh at most once per second" % rows.size()
 
 
-func update_records(records: Array[Dictionary]) -> void:
+func update_records(records: Array[DebugTableRecord]) -> void:
 	if table.get_root() == null:
 		table.create_item()
 
@@ -112,7 +112,7 @@ func update_records(records: Array[Dictionary]) -> void:
 
 		_set_cells(row, record)
 		row.set_meta("order", order)
-		var fields: Array = record.get("fields", [])
+		var fields := record.fields
 
 		while row.get_child_count() > fields.size():
 			row.get_child(row.get_child_count() - 1).free()
@@ -218,9 +218,9 @@ static func compare_keys(a: Variant, b: Variant) -> int:
 	return str(a).naturalnocasecmp_to(str(b))
 
 
-func _set_cells(row: TreeItem, record: Dictionary) -> void:
-	var cells: Array = record.get("cells", []).duplicate()
-	var tooltips: Array = record.get("tooltips", []).duplicate()
+func _set_cells(row: TreeItem, record: DebugTableRecord) -> void:
+	var cells := record.cells.duplicate()
+	var tooltips := record.tooltips.duplicate()
 
 	if not cells.is_empty() and locate_column >= 0:
 		cells.insert(locate_column, "")
@@ -230,7 +230,7 @@ func _set_cells(row: TreeItem, record: Dictionary) -> void:
 
 	if cells.is_empty():
 		for key in ["name", "value", "raw", "position", "detail"] if kind == "XMIC" else ["name", "value", "raw", "detail"]:
-			cells.append(str(record.get(key, "")))
+			cells.append(str(record.get(key)))
 
 		if kind == "XMIC":
 			cells.insert(locate_column, "")
@@ -240,16 +240,16 @@ func _set_cells(row: TreeItem, record: Dictionary) -> void:
 		row.set_text(column, text)
 		row.set_tooltip_text(column, str(tooltips[column]) if column < tooltips.size() else text)
 
-	var sort: Array = record.get("sort", []).duplicate()
+	var sort: Array = record.sort.duplicate()
 
 	if not sort.is_empty() and locate_column >= 0:
-		var site: CityRecords.Site = record.get("site")
+		var site: CityRecords.Site = record.site
 		sort.insert(locate_column, null if site == null else [site.x, site.y])
 
 	row.set_meta("sort", sort)
 
 	if locate_column >= 0:
-		_set_locate_icon(row, record.get("site"))
+		_set_locate_icon(row, record.site)
 
 
 func _set_locate_icon(row: TreeItem, site: CityRecords.Site) -> void:

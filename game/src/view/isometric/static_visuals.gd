@@ -418,16 +418,19 @@ static func static_visual_signature(city: CityState, view_size := VIEW_LARGE) ->
 static func _static_text_overlay_signature(city: CityState) -> int:
 	assert(OS.get_thread_caller_id() == OS.get_main_thread_id(),
 		"Static overlay signature cache is main-thread only")
-	var key := [city.chunk_revision("XTXT"), city.chunk_revision("XTHG")]
+	var key: Array[int] = [city.chunk_revision("XTXT"), city.chunk_revision("XTHG")]
 	var cache := city._static_text_overlay_cache
 
-	if cache.get("key") == key:
-		return int(cache.value)
+	if cache != null and cache.key == key:
+		return cache.value
 
-	var page_bytes: Array = cache.get("pages", [])
-	var page_indices: Array = cache.get("indices", [])
-	var high_pages: Array = cache.get("high_pages", [])
-	var previous_key: Array = cache.get("key", [])
+	if cache == null:
+		cache = CitySignatureCache.TextOverlays.new()
+
+	var page_bytes := cache.pages
+	var page_indices := cache.indices
+	var high_pages := cache.high_pages
+	var previous_key := cache.key
 	var text_changed: bool = previous_key.is_empty() or previous_key[0] != key[0]
 
 	var indices := PackedInt32Array()
@@ -457,9 +460,9 @@ static func _static_text_overlay_signature(city: CityState) -> int:
 		indices.append_array(page_indices[page])
 
 	var value := _compute_static_text_overlay_signature(city, indices)
-	city._static_text_overlay_cache = {
-		"key": key, "value": value, "pages": page_bytes, "high_pages": high_pages, "indices": page_indices,
-	}
+	cache.key = key
+	cache.value = value
+	city._static_text_overlay_cache = cache
 
 	return value
 

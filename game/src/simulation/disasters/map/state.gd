@@ -126,8 +126,8 @@ static func _spawn_explosion(
 	return true
 
 
-static func _map_payloads(city: CityState) -> Dictionary:
-	var result := {}
+static func _map_payloads(city: CityState) -> Dictionary[String, PackedByteArray]:
+	var result: Dictionary[String, PackedByteArray] = {}
 
 	for chunk_id in MAP_CHUNK_SIZES:
 		if city.simulation_slice != null:
@@ -143,8 +143,8 @@ static func _map_payloads(city: CityState) -> Dictionary:
 	return result
 
 
-static func _duplicate_payloads(payloads: Dictionary) -> Dictionary:
-	var result := {}
+static func _duplicate_payloads(payloads: Dictionary) -> Dictionary[String, PackedByteArray]:
+	var result: Dictionary[String, PackedByteArray] = {}
 
 	for chunk_id in payloads:
 		result[chunk_id] = payloads[chunk_id].duplicate()

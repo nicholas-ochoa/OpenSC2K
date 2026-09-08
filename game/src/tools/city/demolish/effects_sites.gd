@@ -4,7 +4,7 @@ extends DemolishConstants
 
 
 static func append_effect_sequence(
-	destination: Array[Dictionary], source: Array, first_frame: int
+	destination: Array[EffectEvent], source: Array[EffectEvent], first_frame: int
 ) -> int:
 	if source.is_empty():
 		return first_frame
@@ -12,9 +12,9 @@ static func append_effect_sequence(
 	var frame_count := 0
 
 	for source_effect in source:
-		var effect: Dictionary = source_effect.duplicate()
-		var source_frame := int(effect.get("frame", 0))
-		effect["frame"] = first_frame + source_frame
+		var effect := source_effect.copy()
+		var source_frame := int(effect.frame)
+		effect.frame = first_frame + source_frame
 		destination.append(effect)
 		frame_count = maxi(frame_count, source_frame + 1)
 
@@ -50,15 +50,9 @@ static func _effect_altitude(
 
 static func _dust_effect(
 	point: Vector2i, effect_altitude: int, random: SimRandom, frame: int, screen_offset: Vector2i
-) -> Dictionary:
-	return {
-		"point": point,
-		"sprite_id": BRIDGE_DEBRIS_SPRITE + (random.next_u15() & 3),
-		"screen_offset": screen_offset,
-		"flip": (random.next_u15() & 1) != 0,
-		"frame": frame,
-		"altitude": effect_altitude,
-	}
+) -> EffectEvent:
+	return EffectEvent.new(point, BRIDGE_DEBRIS_SPRITE + (random.next_u15() & 3),
+		screen_offset, (random.next_u15() & 1) != 0, frame, effect_altitude)
 
 
 static func _structure_effects(
@@ -68,8 +62,8 @@ static func _structure_effects(
 	area: int,
 	random: SimRandom,
 	map_edge: int = 128,
-) -> Array[Dictionary]:
-	var effects: Array[Dictionary] = []
+) -> Array[EffectEvent]:
+	var effects: Array[EffectEvent] = []
 	var anchor := Vector2i(site.position.x, site.end.y - 1)
 	var anchor_index := anchor.x * map_edge + anchor.y
 	var effect_altitude := _effect_altitude(altitude, flags, anchor_index)

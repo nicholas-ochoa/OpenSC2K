@@ -131,7 +131,7 @@ static func run_all(
 				)
 
 	var sound_events: Array[int] = runtime_events.sound_events
-	var effect_events: Array[Dictionary] = runtime_events.effect_events
+	var effect_events: Array[EffectEvent] = runtime_events.effect_events
 	var view_center_requests: Array[Vector2i] = []
 
 	if riot_active and random.next_u15() & 7 == 0:

@@ -63,7 +63,7 @@ static func apply_path(
 	var skipped_insufficient := 0
 	var easter_events := 0
 	var news_items: Array[Dictionary] = []
-	var effect_events: Array[Dictionary] = []
+	var effect_events: Array[EffectEvent] = []
 	var sound_events: Array[int] = []
 	var random_state_before := random.state
 
@@ -136,7 +136,7 @@ static func apply_path(
 			news_items.append({"type": NEWS_FOREST_PROTEST, "argument": 0})
 			sound_events.append(SOUND_FOREST_PROTEST)
 
-		var result_effects: Array = result.effect_events
+		var result_effects: Array[EffectEvent] = result.effect_events
 		var effect_offset := DemolishEffectsSites.parallel_effect_offset(
 			point, action_count - 1, random_state_before
 		)

@@ -4,9 +4,9 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 
-static func inspect(city: CityState, clicked: Vector2i) -> Dictionary:
+static func inspect(city: CityState, clicked: Vector2i) -> TransportTripReachResult:
 	if city == null or not city.is_valid() or city.index_of(clicked.x, clicked.y) < 0:
-		return {"ok": false, "error": "Select a tile inside the city."}
+		return TransportTripReachResult.rejected("Select a tile inside the city.")
 
 	var origin := _growth_anchor(city, clicked)
 	var index := city.index_of(origin.x, origin.y)
@@ -30,22 +30,27 @@ static func inspect(city: CityState, clicked: Vector2i) -> Dictionary:
 
 	if not TransportTripSearch.valid_inputs(city.buildings, city.zones, city.underground,
 		city.text_overlays, city.altitude_words, traffic, city.map_size):
-		return {"ok": false, "error": "Transport maps for this city have the wrong size."}
+		return TransportTripReachResult.rejected("Transport maps for this city have the wrong size.")
 
 	var result := TransportTripSearch.trace(city.buildings, city.zones, city.underground,
 		city.text_overlays, city.altitude_words, traffic, origin, zone if rci else 7,
-		density, SimRandom.new(1), 100, city.map_size, true, start)
+		density, SimRandom.new(1), 100, city.map_size, true, start) as TransportTripReachResult
 	_add_building_coverage(city, result, origin)
 	var powered := GrowthDevelopment._has_power(city.tile_flags, origin.x, origin.y, city.map_size)
 	var demand := city.document.misc_i32(0x0718 + ((zone - 1) / 2) * 4) if rci else 0
 	var lines := PackedStringArray()
-	if result.get("reachable", []).is_empty():
+	if result.reachable.is_empty():
 		lines.append("No transport access within three tiles.")
 	elif not rci:
 		lines.append("Network exploration. Select an RCI zone to check growth.")
 
-	result.merge({"origin": origin, "clicked": clicked, "limit": limit,
-		"summary": lines, "rci": rci, "powered": powered, "demand": demand}, true)
+	result.origin = origin
+	result.clicked = clicked
+	result.limit = limit
+	result.summary = lines
+	result.rci = rci
+	result.powered = powered
+	result.demand = demand
 	return result
 
 
@@ -101,13 +106,13 @@ static func _cover_site(city: CityState, point: Vector2i, cost: int, tiles: Dict
 			tiles[part] = mini(cost, int(tiles.get(part, cost)))
 
 
-static func _add_building_coverage(city: CityState, result: Dictionary, origin: Vector2i) -> void:
-	var destinations: Dictionary = result.get("destinations", {}).duplicate()
-	for point: Vector2i in result.get("destinations", {}):
+static func _add_building_coverage(city: CityState, result: TransportTripReachResult, origin: Vector2i) -> void:
+	var destinations := result.destinations.duplicate()
+	for point: Vector2i in result.destinations:
 		if city.index_of(point.x, point.y) >= 0:
 			_cover_site(city, point, int(destinations[point]), destinations)
-	var access_tiles := {}
-	for node: Dictionary in result.get("reachable", []):
+	var access_tiles: Dictionary[Vector2i, int] = {}
+	for node in result.reachable:
 		if int(node.mode) not in [TransportTrip.ROAD_MODE, TransportTrip.BUS_ROAD_MODE,
 			TransportTrip.BUS_STOP_MODE, TransportTrip.BUS_RAIL_MODE,
 			TransportTrip.RAIL_STATION_MODE, TransportTrip.SUBWAY_STATION_MODE]:
@@ -117,7 +122,8 @@ static func _add_building_coverage(city: CityState, result: Dictionary, origin: 
 			var index := city.index_of(point.x, point.y)
 			if index >= 0 and ((city.zones[index] & 15) != 0 or city.buildings[index] >= 0x70):
 				_cover_site(city, point, int(node.cost), access_tiles)
-	var origin_tiles := {}
+	var origin_tiles: Dictionary[Vector2i, int] = {}
 	_cover_site(city, origin, 0, origin_tiles)
-	result.merge({"destinations": destinations, "access_tiles": access_tiles,
-		"origin_tiles": origin_tiles}, true)
+	result.destinations = destinations
+	result.access_tiles = access_tiles
+	result.origin_tiles = origin_tiles

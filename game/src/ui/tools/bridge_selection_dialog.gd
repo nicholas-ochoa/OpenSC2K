@@ -7,6 +7,15 @@ const Numbers = preload("res://src/ui/shared/display_number_format.gd")
 
 signal choice_requested(index: int)
 
+class PreviewTile extends RefCounted:
+	var image: Image
+	var position: Vector2i
+
+	func _init(pixels: Image, origin: Vector2i) -> void:
+		image = pixels
+		position = origin
+
+
 var choice_buttons: Array[Button] = []
 var preview_controls: Array[TextureRect] = []
 var choice_labels: Array[Label] = []
@@ -80,7 +89,7 @@ func preview_image(request_type: String, bridge_type: int) -> Texture2D:
 	if preview_palette == null or preview_sprites == null:
 		return null
 
-	var tiles: Array[Dictionary] = []
+	var tiles: Array[PreviewTile] = []
 	var highway := request_type == "highway"
 	var count := 8 if highway else 12
 
@@ -130,7 +139,7 @@ func preview_image(request_type: String, bridge_type: int) -> Texture2D:
 	return ImageTexture.create_from_image(output)
 
 
-func _append_preview_tile(tiles: Array[Dictionary], sprite_id: int, baseline: Vector2i, flip := false) -> void:
+func _append_preview_tile(tiles: Array[PreviewTile], sprite_id: int, baseline: Vector2i, flip := false) -> void:
 	var sprite = preview_sprites.find_sprite(sprite_id)
 
 	if sprite == null:
@@ -144,7 +153,7 @@ func _append_preview_tile(tiles: Array[Dictionary], sprite_id: int, baseline: Ve
 		if flip:
 			image.flip_x()
 
-		tiles.append({"image": image, "position": baseline - Vector2i(image.get_width() / 2, image.get_height() - 1)})
+		tiles.append(PreviewTile.new(image, baseline - Vector2i(image.get_width() / 2, image.get_height() - 1)))
 
 
 static func _preview_baseline(x: int, y: int) -> Vector2i:

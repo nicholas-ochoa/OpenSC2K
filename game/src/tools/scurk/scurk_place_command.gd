@@ -104,9 +104,9 @@ static func apply(
 		artwork.ok = true
 		artwork.command_type = "scurk_artwork"
 		artwork.scurk_place_history = true
-		artwork.old_stamps = city.scurk_artwork_stamps.duplicate(true)
-		city.scurk_artwork_stamps.append({"tile_id": tile_id, "point": selected})
-		artwork.new_stamps = city.scurk_artwork_stamps.duplicate(true)
+		artwork.old_stamps = ScurkArtworkStamp.copy_all(city.scurk_artwork_stamps)
+		city.scurk_artwork_stamps.append(ScurkArtworkStamp.new(tile_id, selected))
+		artwork.new_stamps = ScurkArtworkStamp.copy_all(city.scurk_artwork_stamps)
 
 		return artwork
 
@@ -249,12 +249,12 @@ static func _apply_history(
 
 	if command.command_type == "scurk_artwork":
 		var artwork := command as ScurkPlaceResult
-		var expected: Array = artwork.old_stamps if forward else artwork.new_stamps
+		var expected := artwork.old_stamps if forward else artwork.new_stamps
 
-		if city.scurk_artwork_stamps != expected:
+		if not ScurkArtworkStamp.same_values(city.scurk_artwork_stamps, expected):
 			return EditCommandResult.failure("artwork changed after this command")
 
-		city.scurk_artwork_stamps.assign((artwork.new_stamps if forward else artwork.old_stamps).duplicate(true))
+		city.scurk_artwork_stamps = ScurkArtworkStamp.copy_all(artwork.new_stamps if forward else artwork.old_stamps)
 
 		return EditCommandResult.undone(1)
 

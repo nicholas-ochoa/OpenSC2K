@@ -319,7 +319,7 @@ static func screen_to_tile(city: CityState, point: Vector2, land_surface := fals
 
 static func transient_effect_position(
 	city: CityState,
-	effect: Dictionary,
+	effect: EffectEvent,
 	sprite_height: int,
 	view_size := VIEW_LARGE
 ) -> Vector2i:
@@ -328,7 +328,7 @@ static func transient_effect_position(
 	if city == null or not city.is_valid():
 		return Vector2i(-1, -1)
 
-	var point: Vector2i = effect.get("point", Vector2i(-1, -1))
+	var point: Vector2i = effect.point
 
 	if city.index_of(point.x, point.y) < 0 or sprite_height < 0:
 		return Vector2i(-1, -1)
@@ -339,12 +339,12 @@ static func transient_effect_position(
 		return Vector2i(-1, -1)
 
 	var divisor := int(configuration.divisor)
-	var large_offset: Vector2i = effect.get("screen_offset", Vector2i.ZERO)
+	var large_offset: Vector2i = effect.screen_offset
 	var offset := Vector2i(
 		int(large_offset.x / divisor), int(large_offset.y / divisor)
 	)
 	var effect_altitude := int(
-		effect.get("altitude", city.water_altitude(point.x, point.y))
+		effect.altitude if effect.altitude >= 0 else city.water_altitude(point.x, point.y)
 	)
 
 	return Vector2i(
@@ -360,7 +360,7 @@ static func transient_effect_position(
 
 static func bridge_effect_position(
 	city: CityState,
-	effect: Dictionary,
+	effect: EffectEvent,
 	sprite_height: int,
 	view_size := VIEW_LARGE
 ) -> Vector2i:

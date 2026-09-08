@@ -5,9 +5,9 @@ func _initialize() -> void:
 	call_deferred("_run")
 
 
-func _record(type: int, direction := 0, state := 0, goal := 0) -> Dictionary:
-	return {"type": type, "direction": direction, "state": state, "goal": goal,
-		"x": 400, "y": 300, "z": 10, "px": 8, "py": 8, "dx": 450, "dy": 350, "label": 0}
+func _record(type: int, direction := 0, state := 0, goal := 0) -> ThingRecord:
+	return ThingRecord.from_fields({"type": type, "direction": direction, "state": state, "goal": goal,
+		"x": 400, "y": 300, "z": 10, "px": 8, "py": 8, "dx": 450, "dy": 350, "label": 0})
 
 
 func _run() -> void:

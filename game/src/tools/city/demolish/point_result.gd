@@ -7,4 +7,4 @@ var error := ""
 var specialized := false
 var easter_event := false
 var indices := PackedInt32Array()
-var effect_events: Array[Dictionary] = []
+var effect_events: Array[EffectEvent] = []

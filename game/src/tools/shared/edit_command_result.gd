@@ -37,7 +37,7 @@ var random_state_after := 0
 
 # presentation events for the main thread
 var sound_events: Array = []
-var effect_events: Array = []
+var effect_events: Array[EffectEvent] = []
 
 # undo and redo results: the number of tiles restored
 var restored_tiles := 0
@@ -76,6 +76,8 @@ func copy() -> EditCommandResult:
 				value = value.duplicate()
 
 			result.set(property.name, value)
+
+	result.effect_events = EffectEvent.copy_all(effect_events)
 
 	return result
 

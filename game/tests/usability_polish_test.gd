@@ -9,15 +9,15 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	var events: Array = []
+	var events: Array[EffectEvent] = []
 
 	for tile in 12:
 		for frame in 3:
-			events.append({"point": Vector2i(tile, 0), "frame": tile * 10 + frame})
+			events.append(EffectEvent.new(Vector2i(tile, 0), 0, Vector2i.ZERO, false, tile * 10 + frame))
 
-	var original := events.duplicate(true)
+	var original := EffectEvent.copy_all(events)
 	var shuffled := ApplicationEffectsAudio._parallel_dust_events(events)
-	assert(events == original)
+	assert(EffectEvent.same_arrays(events, original))
 	var starts := {}
 
 	for tile in 12:
@@ -59,6 +59,11 @@ func _run() -> void:
 	assert(stamp.ok and city.scurk_artwork_stamps.size() == 1)
 	assert(city.document.serialize().data == before and rng.state == 123)
 	assert(ToolState.scurk_object(city, CityViewMode.Mode.CITY, 359).area == 1)
+	var copied := stamp.copy() as ScurkPlaceResult
+	copied.new_stamps[0].point = Vector2i(31, 32)
+	assert(city.scurk_artwork_stamps[0].point == Vector2i(32, 32))
+	assert(not Place.undo(city, copied, rng).ok, "Undo accepted changed history values")
+	city.scurk_artwork_stamps[0] = ScurkArtworkStamp.new(359, Vector2i(32, 32))
 	assert(Place.undo(city, stamp, rng).ok and city.scurk_artwork_stamps.is_empty())
 	assert(Place.redo(city, stamp, rng).ok and city.scurk_artwork_stamps.size() == 1)
 	assert(city.document.serialize().data == before)

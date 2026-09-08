@@ -198,24 +198,27 @@ static func masked_tile_flag_signature(city: CityState, mask: int) -> int:
 		"CityState tile-flag signature cache is main-thread only")
 	var byte_mask := mask & 0xff
 	var revision := city.chunk_revision("XBIT")
-	var cached: Dictionary = city._masked_tile_flag_signatures.get(byte_mask, {})
+	var cached: CitySignatureCache.MaskedFlags = city._masked_tile_flag_signatures.get(byte_mask)
 
-	if revision >= 0 and cached.get("revision") == revision and cached.get("size") == city.tile_flags.size():
-		return int(cached.get("value", 0))
+	if cached != null and revision >= 0 and cached.revision == revision and cached.size == city.tile_flags.size():
+		return cached.value
+
+	if cached == null:
+		cached = CitySignatureCache.MaskedFlags.new()
 
 	# standalone mirror arrays have no chunk revision. keep the content fallback
 	var source_signature := hash(city.tile_flags)
 
 	if (
-		cached.get("source") == source_signature
-		and cached.get("size") == city.tile_flags.size()
+		cached.source == source_signature
+		and cached.size == city.tile_flags.size()
 	):
-		cached["revision"] = revision
+		cached.revision = revision
 
-		return int(cached.get("value", 0))
+		return cached.value
 
-	var source_pages: Array = cached.get("pages", [])
-	var masked_pages: Array = cached.get("masked_pages", [])
+	var source_pages := cached.pages
+	var masked_pages := cached.masked_pages
 	var visible_flags := PackedByteArray()
 	var word_mask := 0
 
@@ -252,14 +255,11 @@ static func masked_tile_flag_signature(city: CityState, mask: int) -> int:
 		visible_flags.append_array(masked_pages[page])
 
 	var value := hash(visible_flags)
-	city._masked_tile_flag_signatures[byte_mask] = {
-		"pages": source_pages,
-		"masked_pages": masked_pages,
-		"revision": revision,
-		"source": source_signature,
-		"size": city.tile_flags.size(),
-		"value": value,
-	}
+	cached.revision = revision
+	cached.source = source_signature
+	cached.size = city.tile_flags.size()
+	cached.value = value
+	city._masked_tile_flag_signatures[byte_mask] = cached
 
 	return value
 

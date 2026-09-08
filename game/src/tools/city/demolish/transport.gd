@@ -46,7 +46,7 @@ static func _demolish_tunnel(
 
 		return result
 
-	var effect_events: Array[Dictionary] = []
+	var effect_events: Array[EffectEvent] = []
 
 	if emit_effects:
 		for endpoint in [points[0], points[-1]]:
@@ -123,7 +123,7 @@ static func _demolish_transport_component(
 				stack.append(neighbor)
 
 	var indices := PackedInt32Array()
-	var effect_events: Array[Dictionary] = []
+	var effect_events: Array[EffectEvent] = []
 
 	for point in component:
 		var index := point.x * map_edge + point.y
@@ -196,7 +196,7 @@ static func _demolish_highway_section(
 
 	var points: Array[Vector2i] = []
 	var indices := PackedInt32Array()
-	var effect_events: Array[Dictionary] = []
+	var effect_events: Array[EffectEvent] = []
 
 	if emit_effects:
 		effect_events = DemolishEffectsSites._structure_effects(

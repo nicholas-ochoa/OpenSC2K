@@ -31,7 +31,7 @@ static func run(scenario: ScenarioState, city: CityState) -> Result:
 		victory.outcome = "victory"
 		victory.remaining_months = scenario.time_limit_months
 		victory.unmet = goals.unmet
-		victory.game_over_events = [{"type": "scenario_victory"}]
+		victory.game_over_events = [GameOverEvent.new("scenario_victory")]
 
 		return victory
 
@@ -41,10 +41,10 @@ static func run(scenario: ScenarioState, city: CityState) -> Result:
 		return _failed("cannot store the scenario time limit")
 
 	var outcome := "failure" if remaining == 0 else ""
-	var events: Array[Dictionary] = []
+	var events: Array[GameOverEvent] = []
 
 	if outcome == "failure":
-		events.append({"type": "scenario_failure"})
+		events.append(GameOverEvent.new("scenario_failure"))
 
 	var result := Result.new()
 	result.ok = true

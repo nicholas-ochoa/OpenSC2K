@@ -4,7 +4,7 @@ extends RefCounted
 const ROUTE_BORDER_COLOR := Color(0.12, 0.20, 0.28, 0.75)
 const DIRECTION_COLOR := Color(0.12, 0.20, 0.28, 1.0)
 
-var analysis: Dictionary = {}
+var analysis: TransportTripReachResult
 var segments := PackedVector2Array()
 var colors := PackedColorArray()
 var arrows := PackedVector2Array()
@@ -19,7 +19,7 @@ var origin := Vector2.ZERO
 var access := Vector2.ZERO
 
 
-func rebuild(city: CityState, result: Dictionary) -> void:
+func rebuild(city: CityState, result: TransportTripReachResult) -> void:
 	analysis = result
 	segments.clear()
 	colors.clear()
@@ -32,11 +32,11 @@ func rebuild(city: CityState, result: Dictionary) -> void:
 	tile_modes.clear()
 	failed_points.clear()
 	origin = _center(city, result.origin)
-	access = _center(city, result.get("start", result.origin))
+	access = _center(city, result.start if result.start.x >= 0 else result.origin)
 	var limit := int(result.limit)
 	var seen := {}
 
-	for node: Dictionary in result.get("reachable", []):
+	for node: TransportTripReachResult.ReachNode in result.reachable:
 		var key: Vector2i = node.point
 		tile_modes[key] = int(tile_modes.get(key, 0)) | (1 << int(node.mode))
 		if not seen.has(key):
@@ -46,8 +46,8 @@ func rebuild(city: CityState, result: Dictionary) -> void:
 			marker_colors.append(heat_color(float(node.cost) / limit))
 
 	var arrow_links := {}
-	for link: Dictionary in result.get("links", []):
-		var from_mode := int(link.get("from_mode", link.mode))
+	for link: TransportTripReachResult.Link in result.links:
+		var from_mode := int(link.from_mode)
 		var a := _center(city, link.from, from_mode)
 		var b := _center(city, link.to, int(link.mode))
 		var color := route_color(link, limit)
@@ -69,7 +69,7 @@ func rebuild(city: CityState, result: Dictionary) -> void:
 			arrow_colors.append_array(PackedColorArray([DIRECTION_COLOR, DIRECTION_COLOR]))
 
 	var destination_sites := {}
-	for point: Vector2i in result.get("destinations", {}):
+	for point: Vector2i in result.destinations:
 		# neighbor connections end one tile outside the map
 		var bounded := point.clamp(Vector2i.ZERO, Vector2i.ONE * (city.map_size - 1))
 		var site := TripReachAnalysis._building_site(city, bounded)
@@ -82,12 +82,12 @@ func rebuild(city: CityState, result: Dictionary) -> void:
 				center += _center(city, Vector2i(x, y))
 		destinations.append(center / float(site.get_area()))
 
-	for point: Vector2i in result.get("limit_points", {}):
+	for point: Vector2i in result.limit_points:
 		failed_points.append(seen.get(point, _center(city, point)))
 
 
 func draw_on(canvas: Control, scale: float, offset: Vector2, underground := false) -> void:
-	if analysis.is_empty():
+	if analysis == null:
 		return
 
 	canvas.draw_set_transform(offset, 0.0, Vector2.ONE * scale)
@@ -157,7 +157,7 @@ func _draw_key(canvas: Control) -> void:
 				canvas.get_theme_color("font_color", "MapLegend"))
 
 
-static func route_color(link: Dictionary, limit: int) -> Color:
+static func route_color(link: TransportTripReachResult.Link, limit: int) -> Color:
 	return heat_color(float(link.cost) / limit)
 
 
@@ -185,18 +185,20 @@ func tile_tooltip(point: Vector2i) -> String:
 	if point.x < 0:
 		return ""
 	var title := "Trip Query\n"
+	if analysis == null:
+		return title + "Tile: %d, %d\nNot reached by this trip." % [point.x, point.y]
 	var modes := int(tile_modes.get(point, 0))
 	var subway_bit := 1 << TransportTrip.SUBWAY_MODE
 	if modes & subway_bit:
 		title += "Routes: Surface and subway\n" if modes & ~subway_bit else "Route: Subway (underground)\n"
-	if analysis.get("origin_tiles", {}).has(point):
+	if analysis.origin_tiles.has(point):
 		return title + "Origin: tile %d, %d\n%s\nTrip Budget: %d" % [point.x, point.y,
 			"Destination reachable" if analysis.reached_destination else "Destination not reachable", analysis.limit]
-	if analysis.get("destinations", {}).has(point):
+	if analysis.destinations.has(point):
 		return title + "Destination: tile %d, %d\nTrip Cost: %d / %d" % [point.x, point.y, analysis.destinations[point], analysis.limit]
-	if analysis.get("access_tiles", {}).has(point):
+	if analysis.access_tiles.has(point):
 		return title + "Building: tile %d, %d\nWithin network access\nNot a compatible destination for this trip." % [point.x, point.y]
-	if analysis.get("limit_points", {}).has(point):
+	if analysis.limit_points.has(point):
 		return title + "Tile: %d, %d\nTrip limit reached\nTrip Cost: %d / %d" % [point.x, point.y, tile_costs[point], analysis.limit]
 	if tile_costs.has(point):
 		return title + "Tile: %d, %d\nMinimum Trip Cost: %d / %d" % [point.x, point.y, tile_costs[point], analysis.limit]

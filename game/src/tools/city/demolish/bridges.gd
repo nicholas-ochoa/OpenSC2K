@@ -42,21 +42,15 @@ static func _demolish_bridge(
 
 	var points: Array[Vector2i] = []
 	var indices := PackedInt32Array()
-	var effect_events: Array[Dictionary] = []
+	var effect_events: Array[EffectEvent] = []
 	var current := first
 
 	while true:
 		var index := current.x * map_edge + current.y
 
 		if emit_effects and random != null:
-			effect_events.append({
-				"point": current,
-				"sprite_id": BRIDGE_DEBRIS_SPRITE + (random.next_u15() & 3),
-				"screen_offset": Vector2i.ZERO,
-				"flip": (random.next_u15() & 1) != 0,
-				"frame": 0,
-				"altitude": DemolishTerrain._water_altitude(altitude, index),
-			})
+			effect_events.append(EffectEvent.new(current, BRIDGE_DEBRIS_SPRITE + (random.next_u15() & 3),
+				Vector2i.ZERO, (random.next_u15() & 1) != 0, 0, DemolishTerrain._water_altitude(altitude, index)))
 
 		NetworkState.replace_building(buildings, zones, misc, index, 0)
 		zones[index] &= 0x0f
@@ -145,7 +139,7 @@ static func _demolish_reinforced_bridge(
 
 	var points: Array[Vector2i] = []
 	var indices := PackedInt32Array()
-	var effect_events: Array[Dictionary] = []
+	var effect_events: Array[EffectEvent] = []
 	var current := first
 
 	while true:
@@ -157,14 +151,8 @@ static func _demolish_reinforced_bridge(
 				Vector2i(0, 0), Vector2i(16, -8),
 				Vector2i(32, 0), Vector2i(32, 8),
 			]:
-				effect_events.append({
-					"point": current,
-					"sprite_id": effect_sprite,
-					"screen_offset": screen_offset,
-					"flip": (random.next_u15() & 1) != 0,
-					"frame": 0,
-					"altitude": DemolishTerrain._water_altitude(altitude, current_index),
-				})
+				effect_events.append(EffectEvent.new(current, effect_sprite,
+					screen_offset, (random.next_u15() & 1) != 0, 0, DemolishTerrain._water_altitude(altitude, current_index)))
 
 		for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 			var point: Vector2i = current + offset

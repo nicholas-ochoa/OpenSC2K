@@ -28,6 +28,7 @@ class TileScan extends GrowthConstants:
 	var crime: PackedByteArray
 	var misc: PackedByteArray
 	var walking_access: Array[PackedByteArray] = []
+	var trip_result := TransportTripResult.new()
 	var map_edge: int
 	var rotation: int
 	var anchor_mask: int
@@ -259,7 +260,7 @@ class TileScan extends GrowthConstants:
 				zone,
 				density,
 				random,
-				100, map_edge, false, -1, walking_access[(zone + 1) / 2],
+				100, map_edge, false, -1, walking_access[(zone + 1) / 2], trip_result,
 			)
 
 			if not trip.ok:
@@ -297,7 +298,7 @@ class TileScan extends GrowthConstants:
 
 	# count the trip outcome and its passengers. a completed trip returns the
 	# zone class demand plus 2000 as growth pressure; a failed trip returns 0
-	func _record_trip(trip: Dictionary, zone: int, density: int) -> int:
+	func _record_trip(trip: TransportTripResult, zone: int, density: int) -> int:
 		if not trip.reached_destination:
 			failed_trips += 1
 
@@ -484,7 +485,7 @@ class TileScan extends GrowthConstants:
 		growth.spawned_ships = counters.spawned_ships
 		growth.spawned_sailboats = counters.spawned_sailboats
 		growth.spawned_trains = counters.spawned_trains
-		growth.bridge_effects = counters.bridge_effects
+		growth.bridge_effects.assign(counters.bridge_effects)
 		growth.news_items = counters.news_items
 		growth.sound_events = counters.sound_events
 		growth.view_center_requests = counters.view_center_requests

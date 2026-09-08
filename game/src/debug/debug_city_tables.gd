@@ -36,8 +36,8 @@ const ENGINE_FIELDS := [
 ]
 
 
-static func collect(kind: String, city: CityState, engine: SimulationEngine = null, include_empty := false) -> Array[Dictionary]:
-	var result: Array[Dictionary] = []
+static func collect(kind: String, city: CityState, engine: SimulationEngine = null, include_empty := false) -> Array[DebugTableRecord]:
+	var result: Array[DebugTableRecord] = []
 
 	if city == null or not city.is_valid():
 		return result
@@ -52,7 +52,7 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 				if tile == 0 and not include_empty:
 					continue
 
-				var fields: Array[Dictionary] = []
+				var fields: Array[DebugTableRecord] = []
 				fields.append(_field("tile_id", tile, "Type"))
 				var labels: Array = STAT_LABELS.get(tile, ["Type-specific byte", "Type-specific statistic", "Type-specific statistic", "Type-specific statistic"])
 
@@ -64,15 +64,22 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 				var label := city.label(OverlayData.facility_id(id))
 				var site: CityRecords.Site = sites.get(id)
 				var detail := "-" if label.is_empty() or label == value else label
-				result.append({"id": str(id), "name": "Record %d" % id, "value": value, "raw": "0x%02X" % tile,
-					"position": "Not on map" if site == null else "(%d, %d) %d×%d" % [site.x, site.y, site.width, site.height],
-					"site": site, "detail": detail,
-					# sort values per visible column, excluding the locate icon column
-					"sort": [id, value, tile, _site_sort(site), detail],
-					"empty": tile == 0, "fields": fields})
+				var row := DebugTableRecord.new()
+				row.id = str(id)
+				row.name = "Record %d" % id
+				row.value = value
+				row.raw = "0x%02X" % tile
+				row.position = "Not on map" if site == null else "(%d, %d) %d×%d" % [site.x, site.y, site.width, site.height]
+				row.site = site
+				row.detail = detail
+				# sort values per visible column, excluding the locate icon column
+				row.sort = [id, value, tile, _site_sort(site), detail]
+				row.empty = tile == 0
+				row.fields = fields
+				result.append(row)
 		"Objects":
 			for id in city.thing_count():
-				var record := city.thing(id).to_dictionary()
+				var record := city.thing(id)
 
 				if record.type == 0 and not include_empty:
 					continue
@@ -84,18 +91,27 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 
 				for key: String in DebugObjectFields.COLUMNS:
 					# translated columns sort by their visible text; the rest by stored value
-					sort.append(table.cells[sort.size()] if key in DebugObjectFields.TRANSLATED else record[key])
+					sort.append(table.cells[sort.size()] if key in DebugObjectFields.TRANSLATED else record.get(key))
 
-				result.append({"id": str(id), "name": "Object %d" % id,
-					"value": DebugObjectFields.type_name(record.type),
-					"raw": "(%d, %d, %d)" % [record.x, record.y, record.z],
-					"cells": table.cells, "tooltips": table.tooltips, "empty": record.type == 0,
-					"site": site, "sort": sort,
-					"fields": [{"cells": table.raw, "tooltips": table.tooltips}]})
+				var row := DebugTableRecord.new()
+				row.id = str(id)
+				row.name = "Object %d" % id
+				row.value = DebugObjectFields.type_name(record.type)
+				row.raw = "(%d, %d, %d)" % [record.x, record.y, record.z]
+				row.cells = table.cells
+				row.tooltips = table.tooltips
+				row.empty = record.type == 0
+				row.site = site
+				row.sort = sort
+				var stored := DebugTableRecord.new()
+				stored.cells = table.raw
+				stored.tooltips = table.tooltips
+				row.fields = [stored]
+				result.append(row)
 
 		"State":
 			if engine != null:
-				var fields: Array[Dictionary] = []
+				var fields: Array[DebugTableRecord] = []
 
 				for key in ENGINE_FIELDS:
 					fields.append(_field(key, engine.get(key), ENGINE_DETAILS.get(key, "Published runtime state; not a worker's pending result")))
@@ -106,14 +122,24 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 					if random != null:
 						fields.append(_field(key + ".state", random.get("state"), "Current RNG state; read without advancing it"))
 
-				result.append({"id": "engine", "name": "Simulation state", "value": "%d fields" % fields.size(), "fields": fields})
+				var row := DebugTableRecord.new()
+				row.id = "engine"
+				row.name = "Simulation state"
+				row.value = "%d fields" % fields.size()
+				row.fields = fields
+				result.append(row)
 
-			var chunks: Array[Dictionary] = []
+			var chunks: Array[DebugTableRecord] = []
 
 			for chunk in city.document.chunks:
 				chunks.append(_field(chunk.chunk_id, chunk.decoded_payload.size(), "Decoded bytes; original bytes are not rewritten"))
 
-			result.append({"id": "chunks", "name": "Save chunks", "value": "%d chunks" % chunks.size(), "fields": chunks})
+			var row := DebugTableRecord.new()
+			row.id = "chunks"
+			row.name = "Save chunks"
+			row.value = "%d chunks" % chunks.size()
+			row.fields = chunks
+			result.append(row)
 
 	return result
 
@@ -122,5 +148,6 @@ static func _site_sort(site: CityRecords.Site) -> Variant:
 	return null if site == null else [site.x, site.y, site.width * site.height]
 
 
-static func _field(key: String, value: Variant, detail: String) -> Dictionary:
-	return {"name": key, "value": str(value), "raw": ("-0x%X" % -value if value < 0 else "0x%X" % value) if value is int else "", "detail": detail}
+static func _field(key: String, value: Variant, detail: String) -> DebugTableRecord:
+	return DebugTableRecord.field(key, str(value),
+		("-0x%X" % -value if value < 0 else "0x%X" % value) if value is int else "", detail)

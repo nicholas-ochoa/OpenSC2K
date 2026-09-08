@@ -15,10 +15,10 @@ static func run(city: CityState) -> Result:
 
 	var funds := city.funds()
 	var bankrupt := funds < BANKRUPTCY_LIMIT
-	var events: Array[Dictionary] = []
+	var events: Array[GameOverEvent] = []
 
 	if bankrupt:
-		events.append({"type": "bankruptcy", "funds": funds})
+		events.append(GameOverEvent.new("bankruptcy", funds))
 
 	var result := Result.new()
 	result.ok = true

@@ -6,7 +6,7 @@ const SOUND_DAMAGE := 0x1f8
 
 
 class RuntimeEvents extends RefCounted:
-	var effect_events: Array[Dictionary] = []
+	var effect_events: Array[EffectEvent] = []
 	var sound_events: Array[int] = []
 	var next_effect_frame := 0
 

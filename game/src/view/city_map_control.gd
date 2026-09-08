@@ -89,7 +89,7 @@ var _stretch_press_y := 0.0
 var network_preview_active := false
 var highway_preview := false
 var query_footprint_preview := false
-var scurk_stamp_visuals: Array[Dictionary] = []
+var scurk_stamp_visuals: Array[CityDynamicVisual] = []
 var service_query: ServiceQueryOverlay
 var trip_reach: TripReachOverlay
 var trip_query_underground := false
@@ -114,7 +114,7 @@ var data_geometry_signature: Array = []
 var data_value_texture: ImageTexture
 
 var hover_tile := Vector2i(-1, -1)
-var transient_effects: Array[Dictionary] = []
+var transient_effects: Array[CityTransientEffectVisual] = []
 var dynamic_sprites: Array[CityDynamicVisual] = []
 var sign_occlusion_visuals: Dictionary[int, CitySignVisual] = {}
 var _panning := false
@@ -274,7 +274,7 @@ func visible_tile_outline() -> PackedVector2Array:
 	return camera.visible_tile_outline()
 
 
-func show_transient_effects(effects: Array[Dictionary], duration := 0.1) -> void:
+func show_transient_effects(effects: Array[CityTransientEffectVisual], duration := 0.1) -> void:
 	presentation.show_transient_effects(effects, duration)
 
 
@@ -330,7 +330,7 @@ func _process(delta: float) -> void:
 	interaction._process(delta)
 
 
-func show_trip_reach(source: CityState, point: Vector2i) -> Dictionary:
+func show_trip_reach(source: CityState, point: Vector2i) -> TransportTripReachResult:
 	return presentation.show_trip_reach(source, point)
 
 
@@ -353,7 +353,7 @@ func _expire_transient_effects(generation: int) -> void:
 
 # bind timers to this node so they stop with it
 func _show_transient_effect_frame(
-	effects: Array[Dictionary],
+	effects: Array[CityTransientEffectVisual],
 	frame: int,
 	last_frame: int,
 	duration: float,

@@ -2778,21 +2778,16 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Tornado view selects its native small frame and altitude scale",
 	)
 	_check(
-		IsometricGeometry.bridge_effect_position(starter, {
-			"point": Vector2i(64, 64),
-			"screen_offset": Vector2i(16, -8),
-		}, 10) == Vector2i(2096, 1518),
+		IsometricGeometry.bridge_effect_position(starter, EffectEvent.new(Vector2i(64, 64), 0, Vector2i(16, -8)), 10) == Vector2i(2096, 1518),
 		"Bridge debris view uses water altitude and the recovered screen offset",
 	)
 	var default_effect_position := IsometricRenderer.transient_effect_position(
-		starter, {"point": Vector2i(64, 64)}, 10
+		starter, EffectEvent.new(Vector2i(64, 64)), 10
 	)
 	var raised_effect_position := IsometricRenderer.transient_effect_position(
 		starter,
-		{
-			"point": Vector2i(64, 64),
-			"altitude": starter.water_altitude(64, 64) + 2,
-		},
+		EffectEvent.new(Vector2i(64, 64), 0, Vector2i.ZERO, false, 0,
+			starter.water_altitude(64, 64) + 2),
 		10
 	)
 	_check(
@@ -2809,10 +2804,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	var small_debris_height := small_debris.height if small_debris != null else -1
 	var small_debris_position := IsometricGeometry.bridge_effect_position(
 		starter,
-		{
-			"point": Vector2i(64, 64),
-			"screen_offset": Vector2i(16, -8),
-		},
+		EffectEvent.new(Vector2i(64, 64), 0, Vector2i(16, -8)),
 		small_debris_height,
 		IsometricRenderer.VIEW_SMALL
 	)
@@ -2825,10 +2817,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	var medium_debris_height := medium_debris.height if medium_debris != null else -1
 	var medium_debris_position := IsometricGeometry.bridge_effect_position(
 		starter,
-		{
-			"point": Vector2i(64, 64),
-			"screen_offset": Vector2i(16, -8),
-		},
+		EffectEvent.new(Vector2i(64, 64), 0, Vector2i(16, -8)),
 		medium_debris_height,
 		IsometricRenderer.VIEW_MEDIUM
 	)
@@ -4672,7 +4661,8 @@ func _test_scenarios(reference_root: String) -> void:
 	_check(
 		bankrupt.bankrupt
 		and bankrupt.game_over_events.size() == 1
-		and bankrupt.game_over_events[0].type == "bankruptcy",
+		and bankrupt.game_over_events[0].type == "bankruptcy"
+		and bankrupt.game_over_events[0].funds == -100001,
 		"Funds below negative one hundred thousand emit bankruptcy",
 	)
 
@@ -6303,9 +6293,11 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		"Earthquake consumes one gate per offset and starts fire on its selected cell",
 	)
 	_check(
-		earthquake_start.effect_events == [{
-			"type": "earthquake", "frames": 24, "frame_msec": 5, "distance": 4,
-		}]
+		earthquake_start.effect_events.size() == 1
+		and earthquake_start.effect_events[0].type == "earthquake"
+		and earthquake_start.effect_events[0].frames == 24
+		and earthquake_start.effect_events[0].frame_msec == 5
+		and earthquake_start.effect_events[0].distance == 4
 		and earthquake_start.sound_events.size() == 25
 		and earthquake_start.sound_events[0] == DisasterStart.SOUND_EARTHQUAKE
 		and earthquake_start.sound_events[23] == DisasterStart.SOUND_EARTHQUAKE
@@ -15681,7 +15673,7 @@ func _test_demolish_command(reference_root: String) -> void:
 	var first_effect_frames := PackedInt32Array()
 
 	for effect in parallel_demolition.effect_events:
-		var frame := int(effect.get("frame", -1))
+		var frame := int(effect.frame)
 		parallel_effects = (
 			parallel_effects
 			and frame >= 0

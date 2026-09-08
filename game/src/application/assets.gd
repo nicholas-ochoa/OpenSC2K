@@ -280,7 +280,7 @@ func refresh_scurk_artwork() -> void:
 
 			var texture := ImageTexture.create_from_image(rendered.image)
 			var anchor: Vector2 = CityIsometricRenderer.tile_polygon(app.document_state.city, stamp.point.x, stamp.point.y)[2]
-			app.map_view.scurk_stamp_visuals.append({"texture": texture, "position": anchor - Vector2(texture.get_width() / 2.0, texture.get_height() - 1)})
+			app.map_view.scurk_stamp_visuals.append(CityDynamicVisual.new(texture, anchor - Vector2(texture.get_width() / 2.0, texture.get_height() - 1)))
 
 	app.map_view.queue_redraw()
 

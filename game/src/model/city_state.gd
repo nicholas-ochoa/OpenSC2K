@@ -23,7 +23,7 @@ const MISC_NO_DISASTERS_OPTION := 0x1000
 const MIRRORED_CHUNKS: PackedStringArray = ["ALTM", "XTER", "XBLD", "XZON", "XUND", "XTXT", "XBIT"]
 
 # scurk artwork outside xbld is kept only for this workspace session
-var scurk_artwork_stamps: Array[Dictionary] = []
+var scurk_artwork_stamps: Array[ScurkArtworkStamp] = []
 var map_size := 128
 var simulation_slice: SimulationSliceBudget
 var document: Sc2File
@@ -44,9 +44,9 @@ var object_altitude_overrides := PackedInt32Array()
 # so filling them from workers would race on the dictionaries.
 # CityTileEdits, CityRecords, and IsometricStaticVisuals check this in debug builds.
 # Masked XBIT signatures use revisions, with a content check as fallback.
-var _masked_tile_flag_signatures: Dictionary[int, Dictionary] = {}
+var _masked_tile_flag_signatures: Dictionary[int, CitySignatureCache.MaskedFlags] = {}
 # runtime-only sign pages and static overlay content, keyed by xtxt/xthg revisions
-var _static_text_overlay_cache: Dictionary = {}
+var _static_text_overlay_cache: CitySignatureCache.TextOverlays
 # runtime-only microsim footprints, rebuilt when xtxt or xthg changes
 var _microsim_sites: Dictionary[int, CityRecords.Site] = {}
 var _microsim_sites_key := []

@@ -61,7 +61,7 @@ func set_city_view(
 	map.viewport_changed.emit()
 
 
-func show_transient_effects(effects: Array[Dictionary], duration := 0.1) -> void:
+func show_transient_effects(effects: Array[CityTransientEffectVisual], duration := 0.1) -> void:
 	map._effect_generation += 1
 	map.transient_effects.clear()
 	map.queue_redraw()
@@ -69,12 +69,12 @@ func show_transient_effects(effects: Array[Dictionary], duration := 0.1) -> void
 	if effects.is_empty() or not map.is_inside_tree():
 		return
 
-	var sequence: Array[Dictionary] = []
+	var sequence: Array[CityTransientEffectVisual] = []
 	sequence.append_array(effects)
 	var last_frame := 0
 
 	for effect in sequence:
-		last_frame = maxi(last_frame, int(effect.get("frame", 0)))
+		last_frame = maxi(last_frame, effect.frame)
 
 	_show_transient_effect_frame(
 		sequence, 0, last_frame, maxf(0.0, float(duration)), map._effect_generation
@@ -158,7 +158,7 @@ func _expire_transient_effects(generation: int) -> void:
 
 
 func _show_transient_effect_frame(
-	effects: Array[Dictionary],
+	effects: Array[CityTransientEffectVisual],
 	frame: int,
 	last_frame: int,
 	duration: float,
@@ -170,7 +170,7 @@ func _show_transient_effect_frame(
 	map.transient_effects.clear()
 
 	for effect in effects:
-		if int(effect.get("frame", 0)) == frame:
+		if effect.frame == frame:
 			map.transient_effects.append(effect)
 
 	map.queue_redraw()
@@ -273,12 +273,12 @@ func _draw() -> void:
 
 func _draw_transient_effects(scale: float, offset: Vector2) -> void:
 	for effect in map.transient_effects:
-		var texture: Texture2D = effect.get("texture") as Texture2D
+		var texture: Texture2D = effect.texture
 
 		if texture == null:
 			continue
 
-		var source_position: Vector2 = effect.get("position", Vector2.ZERO)
+		var source_position: Vector2 = effect.position
 		map.draw_texture_rect(
 			texture,
 			Rect2(offset + source_position * scale, Vector2(texture.get_size()) * scale),
@@ -302,7 +302,7 @@ func _draw_dynamic_sprites(scale: float, offset: Vector2) -> void:
 		)
 
 
-func show_trip_reach(source: CityState, point: Vector2i) -> Dictionary:
+func show_trip_reach(source: CityState, point: Vector2i) -> TransportTripReachResult:
 	var result := TripReachAnalysis.inspect(source, point)
 	if result.ok:
 		map.trip_reach = TripReachOverlay.new()

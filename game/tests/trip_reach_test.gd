@@ -32,6 +32,7 @@ func _initialize() -> void:
 			_test_highway(edge, native)
 			_test_branches(edge, native)
 			_test_station_and_tunnel(edge, native)
+	_test_reused_result()
 	_test_map_exits()
 	_test_walking_cache()
 	_test_multimodal()
@@ -71,7 +72,7 @@ func _test_highway(edge: int, native: bool) -> void:
 	check(diagnostic.reached_destination, "Diagnostic agrees with simulation")
 	check(DocumentState.capture(city.document) == before, "Inspection does not change any city bytes")
 	var reached := {}
-	for node: Dictionary in diagnostic.reachable:
+	for node: TransportTripReachResult.ReachNode in diagnostic.reachable:
 		reached[node.point] = true
 		check(node.cost < diagnostic.limit, "All displayed states are within budget")
 	check(reached.has(a + Vector2i(10, 1)), "Correct lane is reached")
@@ -250,7 +251,7 @@ func _test_overpasses() -> void:
 					if network < 2:
 						var under := TripReachAnalysis.inspect(city, under_start)
 						var points := {}
-						for node: Dictionary in under.reachable:
+						for node: TransportTripReachResult.ReachNode in under.reachable:
 							points[node.point] = true
 						check(points.has(under_end), "Road and rail trips continue under the highway")
 					if edge != 128 or rotation == 3:
@@ -308,8 +309,8 @@ func _compare_walking_cache(scan: GrowthScan.TileScan, point: Vector2i, zone: in
 		direct_random, 10, scan.map_edge, false, start)
 	var cached := TransportTripSearch.trace(scan.buildings, scan.zones, scan.underground,
 		scan.text_overlays, scan.altitudes, cached_traffic, point, zone, 2,
-		cached_random, 10, scan.map_edge, false, start, scan.walking_access[(zone + 1) >> 1])
-	check(cached == direct, "Cached trip keeps every result field")
+		cached_random, 10, scan.map_edge, false, start, scan.walking_access[(zone + 1) >> 1], scan.trip_result)
+	check(cached == scan.trip_result and cached.same_values(direct), "Reused cached trip keeps every result field")
 	check(cached_random.state == direct_random.state, "Cached trip keeps random state")
 	check(cached_traffic == direct_traffic, "Cached trip keeps traffic bytes")
 
@@ -386,3 +387,27 @@ func _test_map_exits() -> void:
 					"Labelled map connection reaches an outside destination")
 			if wrapped >= 0 and wrapped < city.zones.size():
 				city.zones[wrapped] = 0
+
+
+func _test_reused_result() -> void:
+	var city := fixture(128, false)
+	city.set_building_id(20, 20, 0x1d)
+	city.set_zone_id(20, 21, 3)
+	var scratch := TransportTripResult.new()
+	var random := SimRandom.new(123)
+	var traffic := city.document.find_chunk("XTRF").decoded_payload.duplicate()
+	var reached := TransportTripSearch.trace(city.buildings, city.zones, city.underground,
+		city.text_overlays, city.altitude_words, traffic, Vector2i(19, 20), 1, 2,
+		random, 100, 128, false, -1, PackedByteArray(), scratch)
+	check(reached == scratch and reached.reached_destination, "Reusable trip reaches a walking destination")
+	var rejected := TransportTripSearch.trace(city.buildings, city.zones, city.underground,
+		city.text_overlays, city.altitude_words, traffic, Vector2i(19, 20), -1, 2,
+		random, 100, 128, false, -1, PackedByteArray(), scratch)
+	check(rejected == scratch and rejected.same_values(TransportTripResult.failure("zone is outside the supported range")),
+		"Rejected reused trip clears the previous success fields")
+	var empty := TransportTripSearch.trace(city.buildings, city.zones, city.underground,
+		city.text_overlays, city.altitude_words, traffic, Vector2i(80, 80), 1, 2,
+		random, 100, 128, false, -1, PackedByteArray(), scratch)
+	var expected := TransportTripResult.new()
+	expected.ok = true
+	check(empty == scratch and empty.same_values(expected), "No-access reused trip clears the previous error")

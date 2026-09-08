@@ -175,7 +175,7 @@ static func _start_hurricane(
 	var damage_points: Array[Vector2i] = []
 	var flood_points: Array[Vector2i] = []
 	var runtime_events := DisasterMapDamage.new_runtime_events()
-	var effect_events: Array[Dictionary] = runtime_events.effect_events
+	var effect_events: Array[EffectEvent] = runtime_events.effect_events
 	var sounds: Array[int] = runtime_events.sound_events
 	sounds.append(SOUND_HURRICANE)
 	var damage_scans := 0

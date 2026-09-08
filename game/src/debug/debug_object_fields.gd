@@ -17,11 +17,17 @@ const COLUMNS := ["type", "state", "direction", "goal", "x", "y", "z", "px", "py
 const TRANSLATED := ["type", "state", "direction", "goal", "label"]
 
 
+class TableCells extends RefCounted:
+	var cells: Array[String] = []
+	var raw: Array[String] = []
+	var tooltips: Array[String] = []
+
+
 static func type_name(value: int) -> String:
 	return QueryInfo.THING_NAMES[value] if value >= 0 and value < QueryInfo.THING_NAMES.size() else "Unknown object type"
 
 
-static func direction(record: Dictionary) -> String:
+static func direction(record: ThingRecord) -> String:
 	var value := int(record.direction)
 	var type := int(record.type)
 
@@ -41,7 +47,7 @@ static func direction(record: Dictionary) -> String:
 	return "Not interpreted for this type"
 
 
-static func state(record: Dictionary, city: CityState) -> String:
+static func state(record: ThingRecord, city: CityState) -> String:
 	var value := int(record.state)
 	var type := int(record.type)
 
@@ -68,7 +74,7 @@ static func state(record: Dictionary, city: CityState) -> String:
 	return "Not interpreted for this type"
 
 
-static func goal(record: Dictionary, city: CityState) -> String:
+static func goal(record: ThingRecord, city: CityState) -> String:
 	var value := int(record.goal)
 
 	match int(record.type):
@@ -88,13 +94,13 @@ static func goal(record: Dictionary, city: CityState) -> String:
 	return "Not interpreted for this type"
 
 
-static func fields(record: Dictionary, city: CityState) -> Array[Dictionary]:
-	var result: Array[Dictionary] = []
+static func fields(record: ThingRecord, city: CityState) -> Array[DebugTableRecord]:
+	var result: Array[DebugTableRecord] = []
 	var type := int(record.type)
 
 	for index in FIELDS.size():
 		var key: String = FIELDS[index]
-		var value := int(record.get(key, 0))
+		var value := int(record.get(key))
 		var meaning := "Not interpreted for this object type"
 		var translated := ""
 
@@ -145,15 +151,14 @@ static func fields(record: Dictionary, city: CityState) -> Array[Dictionary]:
 					meaning = "Previous XTXT overlay restored when leaving this tile"
 					translated = _overlay(value)
 
-		result.append({"name": key, "value": str(value), "raw": "0x%02X" % value,
-			"translation": translated, "detail": meaning})
+		result.append(DebugTableRecord.field(key, str(value), "0x%02X" % value, meaning, translated))
 
 	return result
 
 
 # one-line cells for the debug table: translated values, then "number / hex" for the child row
-static func table_cells(id: int, record: Dictionary, city: CityState) -> Dictionary:
-	var by_name := {}
+static func table_cells(id: int, record: ThingRecord, city: CityState) -> TableCells:
+	var by_name: Dictionary[String, DebugTableRecord] = {}
 
 	for field in fields(record, city):
 		by_name[field.name] = field
@@ -163,7 +168,7 @@ static func table_cells(id: int, record: Dictionary, city: CityState) -> Diction
 	var tips: Array[String] = ["XTHG record %d" % id]
 
 	for key: String in COLUMNS:
-		var field: Dictionary = by_name[key]
+		var field := by_name[key]
 		var text: String = field.value
 
 		if key in TRANSLATED:
@@ -174,7 +179,12 @@ static func table_cells(id: int, record: Dictionary, city: CityState) -> Diction
 		var tip := "%s: %s\n%s" % [key, field.detail, raw[-1]]
 		tips.append(tip if field.translation.is_empty() else "%s\n%s" % [tip, field.translation])
 
-	return {"cells": cells, "raw": raw, "tooltips": tips}
+	var result := TableCells.new()
+	result.cells = cells
+	result.raw = raw
+	result.tooltips = tips
+
+	return result
 
 
 static func _target(id: int, city: CityState) -> String:

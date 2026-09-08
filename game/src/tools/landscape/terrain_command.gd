@@ -62,7 +62,7 @@ static func apply_path(
 	var changed_indices := PackedInt32Array()
 	var skipped_conflicts := 0
 	var skipped_insufficient := 0
-	var effect_events: Array[Dictionary] = []
+	var effect_events: Array[EffectEvent] = []
 	var sound_events: Array[int] = []
 	var next_effect_frame := 0
 	var random_state_before := random.state if random != null else 0

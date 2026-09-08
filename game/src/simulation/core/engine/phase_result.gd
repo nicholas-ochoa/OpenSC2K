@@ -18,8 +18,8 @@ var news_queue_inserted := 0
 
 # presentation events for the main thread
 var sound_events: Array = []
-var effect_events: Array = []
-var game_over_events: Array = []
+var effect_events: Array[EffectEvent] = []
+var game_over_events: Array[GameOverEvent] = []
 var refresh_requests: Array = []
 var view_center_requests: Array = []
 var music_track_requests := PackedInt32Array()

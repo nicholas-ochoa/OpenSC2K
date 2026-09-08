@@ -301,12 +301,12 @@ func refresh_saved_news_summary() -> void:
 	app.interface.refresh_status_summary()
 
 
-func show_game_over_events(events: Array) -> void:
+func show_game_over_events(events: Array[GameOverEvent]) -> void:
 	app.simulation_state.game_over_active = true
 	var messages := PackedStringArray()
 
 	for event in events:
-		match event.get("type", ""):
+		match event.type:
 			"scenario_victory":
 				messages.append("The scenario goals are complete.")
 			"scenario_failure":
@@ -316,7 +316,7 @@ func show_game_over_events(events: Array) -> void:
 
 	app.game_over_dialog.title = "Game Over" if events.size() != 1 else (
 		"Scenario Complete"
-		if events[0].get("type", "") == "scenario_victory"
+		if events[0].type == "scenario_victory"
 		else "Game Over"
 	)
 	app.game_over_dialog.dialog_text = "\n".join(messages) + "\n\nOpen another city to continue."

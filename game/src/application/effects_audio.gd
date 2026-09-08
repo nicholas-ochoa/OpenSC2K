@@ -5,6 +5,15 @@ extends RefCounted
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const ToolSounds = preload("res://src/audio/tool_sound_rules.gd")
 
+class DustTiming extends RefCounted:
+	var first: int
+	var start: int
+
+	func _init(first_frame: int, start_frame: int) -> void:
+		first = first_frame
+		start = start_frame
+
+
 var app: CityApplication
 
 
@@ -54,19 +63,19 @@ func stop_sound_effects() -> void:
 		app.audio_controller.stop_sound_effects()
 
 
-func show_effect_events(effect_events: Array, sound_events: Array) -> void:
+func show_effect_events(effect_events: Array[EffectEvent], sound_events: Array) -> void:
 	if app.document_state.city == null:
 		return
 
 	effect_events = _parallel_dust_events(effect_events)
-	var visuals: Array[Dictionary] = []
+	var visuals: Array[CityTransientEffectVisual] = []
 
 	for effect in effect_events:
-		if effect.get("type", "") == "earthquake":
+		if effect.type == "earthquake":
 			app.map_view.shake_view(
-				int(effect.get("frames", 24)),
-				float(effect.get("frame_msec", 5)) / 1000.0,
-				float(effect.get("distance", 4)),
+				int(effect.frames),
+				float(effect.frame_msec) / 1000.0,
+				float(effect.distance),
 			)
 
 	if app.view_state.overlay_mode == CityViewMode.Mode.CITY:
@@ -75,11 +84,11 @@ func show_effect_events(effect_events: Array, sound_events: Array) -> void:
 		var divisor := int(IsometricRenderer.view_configuration(view_size).divisor)
 
 		for effect in effect_events:
-			if effect.get("type", "") == "earthquake":
+			if effect.type == "earthquake":
 				continue
 
 			var sprite_id := IsometricRenderer.effect_sprite_id(
-				int(effect.get("sprite_id", 0)), view_size
+				int(effect.sprite_id), view_size
 			)
 			var sprite := sprite_archive.find_sprite(sprite_id)
 
@@ -93,7 +102,7 @@ func show_effect_events(effect_events: Array, sound_events: Array) -> void:
 
 			var effect_image: Image = rendered.image
 
-			if effect.get("flip", false):
+			if effect.flip:
 				effect_image.flip_x()
 
 			var position := IsometricRenderer.transient_effect_position(
@@ -110,11 +119,10 @@ func show_effect_events(effect_events: Array, sound_events: Array) -> void:
 					Image.INTERPOLATE_NEAREST
 				)
 
-			visuals.append({
-				"texture": ImageTexture.create_from_image(effect_image),
-				"position": Vector2(position * divisor),
-				"frame": int(effect.get("frame", 0)),
-			})
+			visuals.append(CityTransientEffectVisual.new(
+				ImageTexture.create_from_image(effect_image),
+				Vector2(position * divisor), int(effect.frame)
+			))
 
 		app.map_view.show_transient_effects(visuals, 0.1)
 
@@ -165,11 +173,11 @@ func stop_tool_loop_sound() -> void:
 		app.audio_controller.stop_tool_loop_sound()
 
 
-static func _parallel_dust_events(events: Array) -> Array:
-	var groups := {}
+static func _parallel_dust_events(events: Array[EffectEvent]) -> Array[EffectEvent]:
+	var groups: Dictionary[Vector2i, Array] = {}
 
 	for event in events:
-		if event.has("point") and event.get("type", "") != "earthquake":
+		if event.point != Vector2i(-1, -1) and event.type != "earthquake":
 			var key: Vector2i = event.point
 
 			if not groups.has(key):
@@ -182,24 +190,24 @@ static func _parallel_dust_events(events: Array) -> Array:
 
 	var order := groups.keys()
 	order.shuffle() # presentation randomness does not consume simulation random state
-	var starts := {}
+	var starts: Dictionary[Vector2i, DustTiming] = {}
 
 	for index in order.size():
 		var first := 2147483647
 
 		for event in groups[order[index]]:
-			first = mini(first, int(event.get("frame", 0)))
+			first = mini(first, int(event.frame))
 
-		starts[order[index]] = {"first": first, "start": index % 5}
+		starts[order[index]] = DustTiming.new(first, index % 5)
 
-	var result: Array = []
+	var result: Array[EffectEvent] = []
 
 	for source in events:
-		var event: Dictionary = source.duplicate()
+		var event := source.copy()
 
-		if event.has("point") and starts.has(event.point):
-			var timing: Dictionary = starts[event.point]
-			event.frame = int(event.get("frame", 0)) - int(timing.first) + int(timing.start)
+		if event.point != Vector2i(-1, -1) and starts.has(event.point):
+			var timing := starts[event.point]
+			event.frame = int(event.frame) - int(timing.first) + int(timing.start)
 
 		result.append(event)
 

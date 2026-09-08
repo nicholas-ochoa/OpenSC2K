@@ -147,12 +147,7 @@ static func _start_earthquake(
 	result.counters["fire_damage_attempts"] = fire_damage_attempts
 	result.counters["structure_damage_attempts"] = structure_damage_attempts
 	result.map_changed = map_changed
-	var effect_events: Array[Dictionary] = [{
-		"type": "earthquake",
-		"frames": 24,
-		"frame_msec": 5,
-		"distance": 4,
-	}]
+	var effect_events: Array[EffectEvent] = [EffectEvent.earthquake()]
 	effect_events.append_array(runtime_events.effect_events)
 	result.effect_events = effect_events
 	var sounds: Array[int] = []

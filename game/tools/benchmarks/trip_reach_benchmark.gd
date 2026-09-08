@@ -26,7 +26,7 @@ func _benchmark_initialize() -> void:
 		var result := TransportTripSearch.trace(city.buildings, city.zones, city.underground,
 			city.text_overlays, city.altitude_words, traffic, point, city.zone_id(point.x, point.y),
 			GrowthDevelopment.density(city.building_id(point.x, point.y)), SimRandom.new(i + 1))
-		expanded += int(result.get("expanded_states", 0))
+		expanded += int(result.expanded_states)
 	print("Capeques 256 trips: %d usec, %d expanded states" % [Time.get_ticks_usec() - started, expanded])
 	for edge in [128, 512]:
 		var dense := CityState.from_document(EmptyCityTemplate.create(edge))

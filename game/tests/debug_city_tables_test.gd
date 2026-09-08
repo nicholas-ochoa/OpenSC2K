@@ -55,7 +55,7 @@ func _run() -> void:
 		assert(city.microsim_site(1).tiles == 3)
 		var before: PackedByteArray = city.document.serialize().data
 		var records := DebugCityTables.collect("XMIC", city)
-		var police: Dictionary = {}
+		var police: DebugTableRecord
 
 		for record in records:
 			if record.id == "1":
@@ -140,13 +140,17 @@ func _run() -> void:
 func _check_sorting() -> void:
 	var panel := preload("res://src/debug/debug_record_table.tscn").instantiate() as DebugRecordTable
 	root.add_child(panel)
-	var records: Array[Dictionary] = []
+	var records: Array[DebugTableRecord] = []
 
 	# Record 2 is off-map. Sort 0x2A after 0x10 by value, not by digit count.
 	for entry in [[0, "Record 0", 0x2A, CityRecords.Site.new(13, 4, 1, 1)], [2, "Record 2", 0x10, null], [10, "Record 10", 0xD2, CityRecords.Site.new(3, 9, 1, 1)]]:
 		var site: CityRecords.Site = entry[3]
-		records.append({"id": str(entry[0]), "name": entry[1], "value": "", "raw": "", "site": site,
-			"sort": [entry[0], "", entry[2], DebugCityTables._site_sort(site), ""]})
+		var record := DebugTableRecord.new()
+		record.id = str(entry[0])
+		record.name = entry[1]
+		record.site = site
+		record.sort = [entry[0], "", entry[2], DebugCityTables._site_sort(site), ""]
+		records.append(record)
 
 	panel.update_records(records)
 	var order := func() -> Array:
@@ -163,8 +167,12 @@ func _check_sorting() -> void:
 		panel.sort_by(column, true)
 		assert(order.call() == ["Record 0", "Record 10", "Record 2"])
 	# Refresh keeps the sort, and new rows land in sorted position.
-	records.append({"id": "5", "name": "Record 5", "value": "", "raw": "", "site": CityRecords.Site.new(8, 0, 1, 1),
-		"sort": [5, "", 0, [8, 0, 1], ""]})
+	var added := DebugTableRecord.new()
+	added.id = "5"
+	added.name = "Record 5"
+	added.site = CityRecords.Site.new(8, 0, 1, 1)
+	added.sort = [5, "", 0, [8, 0, 1], ""]
+	records.append(added)
 	panel.update_records(records)
 	assert(order.call() == ["Record 0", "Record 5", "Record 10", "Record 2"])
 	panel.sort_by(0)

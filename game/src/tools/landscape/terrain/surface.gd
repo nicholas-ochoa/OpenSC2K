@@ -8,7 +8,7 @@ extends TerrainEditConstants
 class ClearResult extends RefCounted:
 	var ok := false
 	var indices := PackedInt32Array()
-	var effect_events: Array[Dictionary] = []
+	var effect_events: Array[EffectEvent] = []
 	var sound_events: Array[int] = []
 	var random_used := false
 
@@ -46,7 +46,7 @@ static func _clear_terrain_conflicts(
 ) -> ClearResult:
 	var map_edge: int = city.map_size if city != null else 128
 	var changed_indices := PackedInt32Array()
-	var effect_events: Array[Dictionary] = []
+	var effect_events: Array[EffectEvent] = []
 	var sound_events: Array[int] = []
 	var next_effect_frame := 0
 	var random_used := false
@@ -83,7 +83,7 @@ static func _clear_terrain_conflicts(
 				if not changed_indices.has(changed_index):
 					changed_indices.append(changed_index)
 
-			var effects: Array = demolished.effect_events
+			var effects: Array[EffectEvent] = demolished.effect_events
 			next_effect_frame = _append_effect_sequence(
 				effect_events, effects, next_effect_frame
 			)
@@ -124,7 +124,7 @@ static func _terrain_conflict_needs_random(
 
 
 static func _append_effect_sequence(
-	destination: Array[Dictionary], source: Array, first_frame: int
+	destination: Array[EffectEvent], source: Array[EffectEvent], first_frame: int
 ) -> int:
 	if source.is_empty():
 		return first_frame
@@ -132,9 +132,9 @@ static func _append_effect_sequence(
 	var frame_count := 0
 
 	for source_effect in source:
-		var effect: Dictionary = source_effect.duplicate()
-		var source_frame := int(effect.get("frame", 0))
-		effect["frame"] = first_frame + source_frame
+		var effect := source_effect.copy()
+		var source_frame := int(effect.frame)
+		effect.frame = first_frame + source_frame
 		destination.append(effect)
 		frame_count = maxi(frame_count, source_frame + 1)
 

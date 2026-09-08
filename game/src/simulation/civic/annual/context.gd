@@ -38,7 +38,7 @@ var launched_structures: int
 var arcology_launched: bool
 var sound_events: Array
 var view_center_requests: Array
-var effect_events: Array[Dictionary]
+var effect_events: Array[EffectEvent]
 var next_effect_frame: int
 var updated_subway: int
 var updated_bus: int

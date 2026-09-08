@@ -109,7 +109,7 @@ static func screen_to_tile(city: CityState, point: Vector2, land_surface := fals
 
 static func transient_effect_position(
 	city: CityState,
-	effect: Dictionary,
+	effect: EffectEvent,
 	sprite_height: int,
 	view_size := VIEW_LARGE
 ) -> Vector2i:

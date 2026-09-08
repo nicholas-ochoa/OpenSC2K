@@ -156,7 +156,7 @@ static func _demolish_point(
 
 			return result
 
-		var network_effects: Array[Dictionary] = []
+		var network_effects: Array[EffectEvent] = []
 
 		if tile_id >= 0x06 and emit_effects:
 			network_effects.append(DemolishEffectsSites._dust_effect(
@@ -188,7 +188,7 @@ static func _demolish_point(
 
 		return result
 
-	var effect_events: Array[Dictionary] = []
+	var effect_events: Array[EffectEvent] = []
 
 	if emit_effects:
 		effect_events = DemolishEffectsSites._structure_effects(altitude, flags, site, area, random, map_edge)
@@ -302,7 +302,7 @@ static func _demolish_underground_point(
 		flags[index] &= ~BuildingCommand.FLAG_PIPED & 0xff
 
 	var indices := PackedInt32Array([index])
-	var effect_events: Array[Dictionary] = []
+	var effect_events: Array[EffectEvent] = []
 
 	if tunnel_level == 1 or underground_tile == 0x23:
 		var surface_result := _demolish_point(

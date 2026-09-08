@@ -13,8 +13,10 @@ func _initialize() -> void:
 				for y in range(20, 22):
 					city.set_building_id(x, y, 0x94)
 			city.set_building_id(edge - 1, edge - 1, 0x94)
-			var result := {"origin": Vector2i(10, 10), "limit": 100,
-				"destinations": {points[0]: 10, points[1]: 20}}
+			var result := TransportTripReachResult.new()
+			result.origin = Vector2i(10, 10)
+			result.limit = 100
+			result.destinations = {points[0]: 10, points[1]: 20}
 			var before: PackedByteArray = city.document.serialize().data
 			var overlay := TripReachOverlay.new()
 			overlay.rebuild(city, result)

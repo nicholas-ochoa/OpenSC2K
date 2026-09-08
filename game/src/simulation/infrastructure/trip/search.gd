@@ -5,6 +5,14 @@ extends TransportTripConstants
 @warning_ignore_start("integer_division")
 
 
+class Endpoint extends RefCounted:
+	var exit := false
+	var destination := false
+	var limited := false
+
+
+# a caller may reuse a private result for ordinary growth trips. reach queries
+# allocate an independent subclass and retain their own nodes and links
 static func trace(
 	buildings: PackedByteArray,
 	zones: PackedByteArray,
@@ -21,22 +29,35 @@ static func trace(
 	collect_reach := false,
 	start_override := -1,
 	walking_access := PackedByteArray(),
-) -> Dictionary:
+	reuse: TransportTripResult = null,
+) -> TransportTripResult:
+	assert(not collect_reach or reuse == null)
+	var result: TransportTripResult = reuse
+
+	if result == null:
+		result = TransportTripReachResult.new() if collect_reach else TransportTripResult.new()
+	else:
+		result.reset()
+
 	# the map sizes are invariant across a caller's tile loop. callers check them
 	# once with valid_inputs(). only the per-tile arguments are checked here
 	if random == null:
-		return {"ok": false, "error": "a compatible random generator is required"}
+		result.error = "a compatible random generator is required"
+		return result
 
 	if zone < 0 or zone >= DESTINATION_ZONE_MASKS.size():
-		return {"ok": false, "error": "zone is outside the supported range"}
+		result.error = "zone is outside the supported range"
+		return result
 
 	if traffic_weight < 0:
-		return {"ok": false, "error": "traffic weight cannot be negative"}
+		result.error = "traffic weight cannot be negative"
+		return result
 
 	var start := start_override if start_override >= 0 else _find_transport(buildings, origin, map_edge)
 
 	if start < 0:
-		return _result(false, 0, 0, false, false, false)
+		result.ok = true
+		return result
 
 	var limit := maxi(maximum_cost, 0)
 
@@ -59,11 +80,11 @@ static func trace(
 	var parents := PackedInt32Array([-1])
 	var pending: Dictionary[int, Array] = {0: [0]}
 	var best: Dictionary[int, int] = {_state_key(start_index, modes[0], 4): 0}
-	var reachable: Array[Dictionary] = []
-	var links: Array[Dictionary] = []
+	var reachable: Array[TransportTripReachResult.ReachNode] = []
+	var links: Array[TransportTripReachResult.Link] = []
 	var destinations: Dictionary[Vector2i, int] = {}
 	var link_keys: Dictionary[Vector2i, bool] = {}
-	var endpoints: Dictionary[Vector2i, Dictionary] = {}
+	var endpoints: Dictionary[Vector2i, Endpoint] = {}
 	var winner := -1
 	var expanded := 0
 
@@ -84,9 +105,9 @@ static func trace(
 			expanded += 1
 
 			if collect_reach:
-				reachable.append({"point": point, "mode": mode, "cost": cost})
+				reachable.append(TransportTripReachResult.ReachNode.new(point, mode, cost))
 				if not endpoints.has(point):
-					endpoints[point] = {"exit": false, "destination": false, "limited": false}
+					endpoints[point] = Endpoint.new()
 
 			# fill the partition's selected mask table on first use. a zone write
 			# invalidates affected entries before the next trip reads them
@@ -162,7 +183,7 @@ static func trace(
 
 					if not link_keys.has(link_key):
 						link_keys[link_key] = true
-						links.append({"from": point, "to": next_point, "from_mode": mode, "mode": next_mode, "cost": next_cost})
+						links.append(TransportTripReachResult.Link.new(point, next_point, mode, next_mode, next_cost))
 
 				if next_cost >= int(best.get(next_key, limit)):
 					continue
@@ -209,19 +230,29 @@ static func trace(
 				var traffic_index := CityDataGrid.index(traffic, map_edge, point.x, point.y)
 				traffic[traffic_index] = mini(int(traffic[traffic_index]) + traffic_weight, 0xff)
 
-	var result := _result(winner >= 0, costs[winner] if winner >= 0 else 0,
-		path.size(), used_bus, used_rail, used_subway)
-	result["expanded_states"] = expanded
+	result.ok = true
+	result.reached_destination = winner >= 0
+	result.cost = costs[winner] if winner >= 0 else 0
+	result.path_length = path.size()
+	result.used_bus = used_bus
+	result.used_rail = used_rail
+	result.used_subway = used_subway
+	result.expanded_states = expanded
 
 	if collect_reach:
 		var limit_points: Dictionary[Vector2i, String] = {}
 		for point: Vector2i in endpoints:
-			var endpoint: Dictionary = endpoints[point]
+			var endpoint := endpoints[point]
 			if endpoint.limited and not endpoint.exit and not endpoint.destination:
 				limit_points[point] = "Trip limit reached"
-		result["limit_points"] = limit_points
-		result.merge({"reachable": reachable, "links": links, "destinations": destinations,
-			"limit": limit, "start": points[0], "origin": origin})
+		var reach := result as TransportTripReachResult
+		reach.limit_points = limit_points
+		reach.reachable = reachable
+		reach.links = links
+		reach.destinations = destinations
+		reach.limit = limit
+		reach.start = points[0]
+		reach.origin = origin
 
 	return result
 
@@ -321,23 +352,3 @@ static func _find_transport(buildings: PackedByteArray, origin: Vector2i, map_ed
 			return (SUBWAY_STATION_MODE << (14 if map_edge == 128 else 18)) | index
 
 	return -1
-
-
-static func _result(
-	reached_destination: bool,
-	cost: int,
-	path_length: int,
-	used_bus: bool,
-	used_rail: bool,
-	used_subway: bool
-) -> Dictionary:
-	return {
-		"ok": true,
-		"reached_destination": reached_destination,
-		"cost": cost,
-		"path_length": path_length,
-		"used_bus": used_bus,
-		"used_rail": used_rail,
-		"used_subway": used_subway,
-		"error": "",
-	}

@@ -234,9 +234,9 @@ static func _store(
 	return BuildingState._apply_payloads(city, ids, payloads, old_payloads)
 
 
-static func _chunks(city: CityState) -> Dictionary:
+static func _chunks(city: CityState) -> Dictionary[String, Sc2Chunk]:
 	var map_edge: int = city.map_size if city != null else 128
-	var result := {}
+	var result: Dictionary[String, Sc2Chunk] = {}
 
 	for checked in [
 		["XBLD", (map_edge * map_edge)],

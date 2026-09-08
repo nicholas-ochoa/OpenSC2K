@@ -43,7 +43,7 @@ func _initialize() -> void:
 							check(part.origin == route.origin, label + " every source tile resolves to the same anchor")
 							check(part.reached_destination == inspected.reached_destination and part.cost == inspected.cost,
 								label + " every source tile has the same outcome")
-					for point: Vector2i in inspected.get("destinations", {}):
+					for point: Vector2i in inspected.destinations:
 						check(route.destination.has_point(point), label + " destination marker belongs to the destination footprint")
 
 	_test_full_interchange_scenario()
@@ -141,7 +141,7 @@ func _test_scenarios() -> void:
 		var result := TripReachAnalysis.inspect(city, scenario.origin)
 		check(result.reached_destination == (variant > 0), "Long road fails budget; parallel highway and rail enable access")
 		var modes := {}
-		for node: Dictionary in result.reachable:
+		for node: TransportTripReachResult.ReachNode in result.reachable:
 			modes[node.mode] = true
 		check(modes.has(TransportTrip.HIGHWAY_MODE) == (variant > 0), "Scenario explores highway when present")
 		check(modes.has(TransportTrip.RAIL_MODE) == (variant == 2), "Scenario explores rail when stations are present")
@@ -149,7 +149,7 @@ func _test_scenarios() -> void:
 		overlay.rebuild(city, result)
 		var ramp_points := {}
 		for i in result.links.size():
-			var link: Dictionary = result.links[i]
+			var link: TransportTripReachResult.Link = result.links[i]
 			for end in 2:
 				var point: Vector2i = link.from if end == 0 else link.to
 				if city.building_id(point.x, point.y) not in range(0x5d, 0x61):
@@ -173,12 +173,12 @@ func _test_subway_scenario() -> void:
 	check(city.underground_id(scenario.entrance.x, scenario.entrance.y) == 0x23,
 		"Subway scenario uses a real underground station entrance")
 	var found := false
-	for node: Dictionary in result.reachable:
+	for node: TransportTripReachResult.ReachNode in result.reachable:
 		if node.point == scenario.underground_midpoint and node.mode == TransportTrip.SUBWAY_MODE:
 			found = true
 	check(found, "Trip Query explores the bent underground route")
 	var subway_links := 0
-	for link: Dictionary in result.links:
+	for link: TransportTripReachResult.Link in result.links:
 		var underground: bool = link.mode == TransportTrip.SUBWAY_MODE or link.from_mode == TransportTrip.SUBWAY_MODE
 		var color := TripReachOverlay.route_color(link, result.limit)
 		if underground:
@@ -216,7 +216,7 @@ func _test_tunnel_scenario() -> void:
 	check(result.reached_destination, "Road tunnel connects residential and commercial buildings")
 	check(result.destinations.has(scenario.destination), "Tunnel destination footprint is marked")
 	var found := false
-	for node: Dictionary in result.reachable:
+	for node: TransportTripReachResult.ReachNode in result.reachable:
 		if node.point == scenario.tunnel_midpoint and node.mode == TransportTrip.ROAD_TUNNEL_MODE:
 			found = true
 	check(found, "Trip Query traverses the middle of the road tunnel")
@@ -242,7 +242,7 @@ func _test_bus_scenario() -> void:
 	check(result.reached_destination and result.used_bus, "Bus example reaches its destination by bus")
 	check(result.destinations.has(scenario.destination), "Bus example marks the commercial destination")
 	var found := false
-	for node: Dictionary in result.reachable:
+	for node: TransportTripReachResult.ReachNode in result.reachable:
 		if node.point == scenario.road_midpoint and node.mode == TransportTrip.BUS_ROAD_MODE:
 			found = true
 	check(found, "Trip Query explores the road in bus mode")
@@ -268,7 +268,7 @@ func _test_full_interchange_scenario() -> void:
 	check(result.reached_destination, "Full interchange reaches commercial destinations")
 	check(scenario.ramps.size() == 8, "Full interchange has four ramps at each end")
 	var reached := {}
-	for node: Dictionary in result.reachable:
+	for node: TransportTripReachResult.ReachNode in result.reachable:
 		reached[node.point] = true
 	for ramp: Vector2i in scenario.ramps:
 		check(city.building_id(ramp.x, ramp.y) in range(0x5d, 0x61), "Full interchange contains a real constructed ramp")
