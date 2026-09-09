@@ -6,6 +6,7 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	_check_configuration_offsets()
 	var large := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
 	var small := Sc2SpriteArchive.combine([Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SMALLMED.DAT"), Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SPECIAL.DAT")])
 	var palette := Sc2Palette.index_encoding()
@@ -44,3 +45,24 @@ func _run() -> void:
 				print("PASS: %d view %d %s regional pixels match whole-map painter" % [edge, view, CityViewMode.key(mode)])
 
 	quit()
+
+
+func _check_configuration_offsets() -> void:
+	assert(CityIsometricRenderer.view_configuration(-1) == null)
+	assert(CityIsometricRenderer.view_configuration(3) == null)
+
+	for view in 3:
+		var base := CityIsometricRenderer.view_configuration(view)
+		var original_margin := base.top_margin
+
+		for margin in [-512, 0, 128, original_margin]:
+			var local := base.with_top_margin(margin)
+			assert(local != base and local.top_margin == margin)
+			assert(base.top_margin == original_margin)
+			assert(local.view_size == base.view_size and local.divisor == base.divisor)
+			assert(local.tile_width == base.tile_width and local.tile_height == base.tile_height)
+			assert(local.half_width == base.half_width and local.half_height == base.half_height)
+			assert(local.altitude_step == base.altitude_step and local.side_margin == base.side_margin)
+			assert(local.sprite_base == base.sprite_base)
+
+		assert(CityIsometricRenderer.view_configuration(view) == base)

@@ -174,22 +174,22 @@ static func special_overlay_draw_command(
 
 	var altitude := city.object_altitude(point.x, point.y)
 	var screen_x := (
-		int(configuration.side_margin)
-		+ map_edge * int(configuration.half_width)
-		+ (point.x - point.y) * int(configuration.half_width)
+		configuration.side_margin
+		+ map_edge * configuration.half_width
+		+ (point.x - point.y) * configuration.half_width
 	)
 	var base_y := (
-		int(configuration.top_margin)
-		+ (point.x + point.y) * int(configuration.half_height)
-		- altitude * int(configuration.altitude_step)
+		configuration.top_margin
+		+ (point.x + point.y) * configuration.half_height
+		- altitude * configuration.altitude_step
 	)
 
 	var result := CityDynamicCommand.new()
 	result.sprite_id = int(visual.sprite_id)
 	result.flip = bool(visual.flip)
 	result.position = Vector2i(
-		screen_x + int(configuration.half_width) - int(entry.width / 2),
-		base_y + int(configuration.tile_height) - entry.height,
+		screen_x + configuration.half_width - int(entry.width / 2),
+		base_y + configuration.tile_height - entry.height,
 	)
 	result.shadow = false
 	result.overlay = int(visual.overlay)
@@ -212,11 +212,11 @@ static func moving_thing_draw_commands_for_visual(
 
 	if visual.monster:
 		var monster_origin_x := (
-			int(configuration.side_margin)
-			+ map_edge * int(configuration.half_width)
+			configuration.side_margin
+			+ map_edge * configuration.half_width
 		)
 		var monster_origin_y: int = (
-			int(configuration.top_margin) + int(configuration.tile_height)
+			configuration.top_margin + configuration.tile_height
 		)
 		var monster_has_shadow := city.building_id(visual.x, visual.y) < 0x71
 
@@ -230,7 +230,7 @@ static func moving_thing_draw_commands_for_visual(
 				commands.append(_moving_draw_command(
 					layer.sprite_id, layer.flip,
 					destination + Vector2i(
-						0, int(configuration.half_height) * visual.z
+						0, configuration.half_height * visual.z
 					),
 					true
 				))
@@ -250,16 +250,16 @@ static func moving_thing_draw_commands_for_visual(
 
 	if visual.tornado:
 		var right_x: int = (
-			int(configuration.side_margin)
-			+ map_edge * int(configuration.half_width)
-			+ (visual.x - visual.y) * int(configuration.half_width)
-			+ int(configuration.half_width)
+			configuration.side_margin
+			+ map_edge * configuration.half_width
+			+ (visual.x - visual.y) * configuration.half_width
+			+ configuration.half_width
 		)
 		destination = Vector2i(
 			right_x - entry.width,
-			int(configuration.top_margin)
-				+ (visual.x + visual.y) * int(configuration.half_height)
-				+ int(configuration.tile_height)
+			configuration.top_margin
+				+ (visual.x + visual.y) * configuration.half_height
+				+ configuration.tile_height
 				- visual.elevation - entry.height
 		)
 	elif visual.train:
@@ -275,29 +275,29 @@ static func moving_thing_draw_commands_for_visual(
 		)
 	else:
 		var altitude := city.object_altitude(visual.x, visual.y)
-		var view_size := int(configuration.view_size)
+		var view_size := configuration.view_size
 		var center_x: int = (
-			int(configuration.side_margin)
-			+ map_edge * int(configuration.half_width)
-			+ (visual.x - visual.y) * int(configuration.half_width)
-			+ int(configuration.half_width)
+			configuration.side_margin
+			+ map_edge * configuration.half_width
+			+ (visual.x - visual.y) * configuration.half_width
+			+ configuration.half_width
 			+ int((visual.px - visual.py) / THING_X_DIVISOR[view_size])
 		)
 		destination = Vector2i(
 			center_x - int(entry.width / 2),
-			int(configuration.top_margin)
-				+ (visual.x + visual.y) * int(configuration.half_height)
-				+ int(configuration.tile_height)
+			configuration.top_margin
+				+ (visual.x + visual.y) * configuration.half_height
+				+ configuration.tile_height
 				+ int((visual.px + visual.py) / THING_Y_DIVISOR[view_size])
-				- altitude * int(configuration.altitude_step)
-				- visual.z * int(configuration.half_height) - entry.height
+				- altitude * configuration.altitude_step
+				- visual.z * configuration.half_height - entry.height
 		)
 
 		if visual.type in [1, 2, 16] and city.building_id(visual.x, visual.y) < 0x71:
 			commands.append(_moving_draw_command(
 				visual.sprite_id, visual.flip,
 				destination + Vector2i(
-					0, int(configuration.half_height) * (visual.z - 2)
+					0, configuration.half_height * (visual.z - 2)
 				),
 				true
 			))

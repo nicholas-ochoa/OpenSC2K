@@ -90,7 +90,7 @@ func _generate(city: CityState) -> PackedInt32Array:
 
 func _compare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, setup: Dictionary, covered: Dictionary) -> void:
 	var configuration := CityIsometricRenderer.view_configuration(setup.view)
-	var origin := int(configuration.side_margin) + city.map_size * int(configuration.half_width)
+	var origin := configuration.side_margin + city.map_size * configuration.half_width
 	var context := CityGpuBuildContext.new()
 	context.rotation = city.compass_rotation()
 	var odd := (city.compass_rotation() & 1) != 0

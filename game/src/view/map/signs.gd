@@ -106,7 +106,7 @@ func _ensure_sign_entries() -> void:
 	map._sign_entries_zoom = map.zoom_factor
 	map._sign_cache_build_count += 1
 	var view_index := sign_view_index(map.zoom_factor)
-	var divisor := int(Renderer.view_configuration(view_index).divisor)
+	var divisor := Renderer.view_configuration(view_index).divisor
 	var font := _get_sign_font()
 	var font_size: int = SIGN_FONT_HEIGHTS[view_index]
 	var positions: Array[Vector2i] = []

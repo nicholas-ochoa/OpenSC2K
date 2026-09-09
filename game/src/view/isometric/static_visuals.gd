@@ -158,13 +158,13 @@ static func edge_stack_visuals(
 	var land := city.land_altitude(x, y)
 
 	for level in land:
-		visuals.append(Edge.new(int(configuration.sprite_base) + 269, level * int(configuration.altitude_step)))
+		visuals.append(Edge.new(configuration.sprite_base + 269, level * configuration.altitude_step))
 
 	if city.is_water(x, y):
 		var water := city.water_altitude(x, y)
 
 		for level in range(land, water):
-			visuals.append(Edge.new(int(configuration.sprite_base) + 284, level * int(configuration.altitude_step)))
+			visuals.append(Edge.new(configuration.sprite_base + 284, level * configuration.altitude_step))
 
 	return visuals
 
@@ -272,7 +272,7 @@ static func traffic_overlay_visual(
 		return null
 
 	var result := Traffic.new()
-	result.sprite_id = int(configuration.sprite_base) + TRAFFIC_SPRITE_OFFSET + variant
+	result.sprite_id = configuration.sprite_base + TRAFFIC_SPRITE_OFFSET + variant
 	result.flip = flip
 	result.variant = variant
 	result.density = density
@@ -299,7 +299,7 @@ static func power_marker_visual(
 		return null
 
 	var result := CitySpriteVisual.new()
-	result.sprite_id = int(configuration.sprite_base) + POWER_MARKER_SPRITE_OFFSET
+	result.sprite_id = configuration.sprite_base + POWER_MARKER_SPRITE_OFFSET
 
 	return result
 
@@ -347,7 +347,7 @@ static func special_overlay_visual(
 		sprite_offset = sprite_offsets[phase % sprite_offsets.size()]
 
 	var result := SpecialOverlay.new()
-	result.sprite_id = int(configuration.sprite_base) + sprite_offset
+	result.sprite_id = configuration.sprite_base + sprite_offset
 	result.flip = ((phase >> 2) & 1) != 0
 	result.overlay = overlay
 
@@ -377,7 +377,7 @@ static func dispatch_sprite_id(
 	if sprite_offset == 0:
 		return 0
 
-	return int(configuration.sprite_base) + sprite_offset
+	return configuration.sprite_base + sprite_offset
 
 
 # moving an object doesn't always change the static image
@@ -532,12 +532,12 @@ static func building_baseline_offset(
 		return 0
 
 	if building_id >= 0x61 and building_id <= 0x6b:
-		return int(configuration.half_height)
+		return configuration.half_height
 
 	if building_id >= 0x70:
-		return int(sprite_width / 4) - int(configuration.half_height)
+		return int(sprite_width / 4) - configuration.half_height
 
 	if terrain_id == 0x0d:
-		return -int(configuration.altitude_step)
+		return -configuration.altitude_step
 
 	return 0

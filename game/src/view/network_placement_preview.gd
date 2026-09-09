@@ -283,7 +283,7 @@ static func build(job: Request) -> Result:
 	var order := tiles.keys()
 	order.sort()
 	var config := CityIsometricRenderer.view_configuration(job.view)
-	var origin := int(config.side_margin) + city.map_size * int(config.half_width)
+	var origin := config.side_margin + city.map_size * config.half_width
 	var draws := CityGpuDrawList.new()
 	var cache := job.cache
 

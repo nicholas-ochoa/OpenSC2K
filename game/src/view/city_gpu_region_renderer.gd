@@ -109,7 +109,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 	result.occlusion_commands = foreground
 	result.depth_arrays = depth.depth
 	result.train_depth_arrays = depth.train
-	result.occlusion_grid = Renderer.build_occlusion_grid(foreground, int(configuration.divisor))
+	result.occlusion_grid = Renderer.build_occlusion_grid(foreground, configuration.divisor)
 	result.atlas_revision = context.atlas_revision
 	result.atlas_edge = context.atlas_edge
 	result.atlas_image = context.atlas.duplicate() if copy_atlas and context.atlas != null and context.atlas_revision != uploaded_atlas_revision else null

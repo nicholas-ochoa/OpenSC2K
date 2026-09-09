@@ -117,7 +117,7 @@ static func patch_static_image(
 	var output_scale := 1
 
 	if base_image.get_size() == IsometricGeometry.output_size_for_view(VIEW_LARGE, map_edge):
-		output_scale = int(configuration.divisor)
+		output_scale = configuration.divisor
 	elif base_image.get_size() != native_size:
 		return PatchResult.rejected("base city image has the wrong size")
 
@@ -129,13 +129,12 @@ static func patch_static_image(
 	if native_rect.get_area() <= 0:
 		return PatchResult.rejected("dirty city region is empty")
 
-	var local_configuration := configuration.copy()
-	local_configuration.top_margin = (
-		int(configuration.top_margin) - native_rect.position.y
+	var local_configuration := configuration.with_top_margin(
+		configuration.top_margin - native_rect.position.y
 	)
 	var origin_x := (
-		int(configuration.side_margin)
-		+ map_edge * int(configuration.half_width)
+		configuration.side_margin
+		+ map_edge * configuration.half_width
 		- native_rect.position.x
 	)
 	var region := Image.create(
@@ -146,15 +145,15 @@ static func patch_static_image(
 	var tiles_drawn := 0
 	# bound both x+y and x-y before walking the painter order. keep the exact
 	# rectangle test below, including the full altitude and sprite allowance
-	var half_width := int(configuration.half_width)
-	var half_height := int(configuration.half_height)
-	var full_origin_x := int(configuration.side_margin) + map_edge * half_width
-	var top_margin := int(configuration.top_margin)
-	var bottom_extra := int(configuration.tile_height) + int(sprite_limit.x / 4) + 1
-	var top_extra := 32 * int(configuration.altitude_step) + sprite_limit.y
+	var half_width := configuration.half_width
+	var half_height := configuration.half_height
+	var full_origin_x := configuration.side_margin + map_edge * half_width
+	var top_margin := configuration.top_margin
+	var bottom_extra := configuration.tile_height + int(sprite_limit.x / 4) + 1
+	var top_extra := 32 * configuration.altitude_step + sprite_limit.y
 	var first_diagonal := maxi(0, floori(float(native_rect.position.y - top_margin - bottom_extra) / half_height))
 	var last_diagonal := mini(2 * (map_edge - 1), ceili(float(native_rect.end.y - top_margin + top_extra) / half_height))
-	var first_difference := floori(float(native_rect.position.x - full_origin_x - sprite_limit.x - int(configuration.tile_width) - 1) / half_width)
+	var first_difference := floori(float(native_rect.position.x - full_origin_x - sprite_limit.x - configuration.tile_width - 1) / half_width)
 	var last_difference := ceili(float(native_rect.end.x - full_origin_x + sprite_limit.x) / half_width)
 
 	for diagonal in range(first_diagonal, last_diagonal + 1):
@@ -244,9 +243,9 @@ static func draw_tile(
 	if terrain_id >= 0x10:
 		terrain_altitude = city.water_altitude(x, y)
 
-	var screen_x: int = origin_x + (x - y) * int(configuration.half_width)
+	var screen_x: int = origin_x + (x - y) * configuration.half_width
 	var flat_base_y: int = (
-		int(configuration.top_margin) + (x + y) * int(configuration.half_height)
+		configuration.top_margin + (x + y) * configuration.half_height
 	)
 	_draw_edge_stacks(
 		output, city, palette, sprites, cache, configuration,
@@ -254,7 +253,7 @@ static func draw_tile(
 	)
 	var base_y: int = (
 		flat_base_y
-		- terrain_altitude * int(configuration.altitude_step)
+		- terrain_altitude * configuration.altitude_step
 	)
 
 	var is_highway_composite := building_id >= 0x61 and building_id <= 0x6b
@@ -271,7 +270,7 @@ static func draw_tile(
 
 	if zone > 0 and building_id == 0:
 		var zone_image := IsometricPixelOperations.sprite_image(
-			sprites, palette, cache, int(configuration.sprite_base) + 290 + zone, false
+			sprites, palette, cache, configuration.sprite_base + 290 + zone, false
 		)
 		IsometricPixelOperations._blend_on_base(output, zone_image, screen_x, base_y, configuration.tile_height)
 
@@ -280,7 +279,7 @@ static func draw_tile(
 	if building_id > 0 and IsometricStaticVisuals._should_draw_building(city, x, y, building_id):
 		var building_base_y := (
 			flat_base_y
-			- city.object_altitude(x, y) * int(configuration.altitude_step)
+			- city.object_altitude(x, y) * configuration.altitude_step
 		)
 
 		if is_highway_composite:
@@ -291,7 +290,7 @@ static func draw_tile(
 
 		var flip := IsometricStaticVisuals.building_sprite_flip(city, x, y, building_id)
 		building_image = IsometricPixelOperations.sprite_image(
-			sprites, palette, cache, int(configuration.sprite_base) + building_id, flip
+			sprites, palette, cache, configuration.sprite_base + building_id, flip
 		)
 		building_base_y += IsometricStaticVisuals.building_baseline_offset(
 			building_id, terrain_id, building_image.get_width(), configuration.view_size
@@ -338,11 +337,11 @@ static func draw_tile(
 			sprites, palette, cache, dispatch_sprite, false
 		)
 		var dispatch_x := (
-			screen_x + int(configuration.half_width)
+			screen_x + configuration.half_width
 			- int(dispatch_image.get_width() / 2)
 		)
 		var dispatch_base_y := (
-			flat_base_y - city.land_altitude(x, y) * int(configuration.altitude_step)
+			flat_base_y - city.land_altitude(x, y) * configuration.altitude_step
 		)
 		IsometricPixelOperations._blend_on_base(
 			output, dispatch_image, dispatch_x, dispatch_base_y,
@@ -369,14 +368,14 @@ static func draw_tile(
 				sprites, palette, cache, special_visual.sprite_id, special_visual.flip
 			)
 			var special_x := (
-				screen_x + int(configuration.half_width)
+				screen_x + configuration.half_width
 				- int(special_image.get_width() / 2)
 			)
 			var special_altitude := city.object_altitude(x, y)
 			var special_base_y := (
-				int(configuration.top_margin)
-				+ (x + y) * int(configuration.half_height)
-				- special_altitude * int(configuration.altitude_step)
+				configuration.top_margin
+				+ (x + y) * configuration.half_height
+				- special_altitude * configuration.altitude_step
 			)
 			IsometricPixelOperations._blend_on_base(
 				output, special_image, special_x, special_base_y,

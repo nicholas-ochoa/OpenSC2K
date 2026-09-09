@@ -39,7 +39,7 @@ class Result extends RefCounted:
 static func build(request: Request, context: CityGpuBuildContext, uploaded_revision: int) -> Result:
 	var display: CityState = request.city if request.prepared else CityViewFilter.surface_copy(request.city, request.visibility)
 	var regions: Array[CityGpuRegionResult] = []
-	var divisor := int(CityIsometricRenderer.view_configuration(request.view).divisor)
+	var divisor := CityIsometricRenderer.view_configuration(request.view).divisor
 	for key: Vector2i in request.keys:
 		var started := Time.get_ticks_usec()
 		var bounds := Rect2i(key * int(request.edge), Vector2i.ONE * int(request.edge))

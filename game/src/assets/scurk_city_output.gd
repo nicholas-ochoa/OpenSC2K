@@ -585,7 +585,7 @@ static func _draw_artwork_stamps(output: Image, city: CityState, palette: Sc2Pal
 	var configuration := Renderer.view_configuration(view_size)
 
 	for stamp in city.scurk_artwork_stamps:
-		var entry = sprites.find_sprite(int(configuration.sprite_base) + int(stamp.tile_id))
+		var entry = sprites.find_sprite(configuration.sprite_base + int(stamp.tile_id))
 
 		if entry == null:
 			continue

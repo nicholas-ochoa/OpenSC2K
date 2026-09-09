@@ -81,7 +81,7 @@ func show_effect_events(effect_events: Array[EffectEvent], sound_events: Array[S
 	if app.view_state.overlay_mode == CityViewMode.Mode.CITY:
 		var view_size := app.static_render.city_view_size()
 		var sprite_archive := app.static_render.sprite_archive_for_view(view_size)
-		var divisor := int(IsometricRenderer.view_configuration(view_size).divisor)
+		var divisor := IsometricRenderer.view_configuration(view_size).divisor
 
 		for effect in effect_events:
 			if effect.type == "earthquake":

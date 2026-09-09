@@ -88,8 +88,7 @@ func _run() -> void:
 func _cutaway(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive) -> Image:
 	var image := Image.create(256, 256, false, Image.FORMAT_RGBA8)
 	image.fill(Color.TRANSPARENT)
-	var configuration := CityIsometricRenderer.view_configuration(CityIsometricRenderer.VIEW_LARGE).copy()
-	configuration.top_margin = 128
+	var configuration := CityIsometricRenderer.view_configuration(CityIsometricRenderer.VIEW_LARGE).with_top_margin(128)
 	CityUndergroundView.draw_tile(image, city, palette, sprites, {}, configuration, 128, 5, 5, false, true)
 
 	return image

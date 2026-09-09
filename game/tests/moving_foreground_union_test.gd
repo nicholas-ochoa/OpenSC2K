@@ -128,7 +128,7 @@ func _initialize() -> void:
 			var found := false
 
 			for command in commands:
-				if int(command.sprite_id) != int(config.sprite_base) + tile:
+				if int(command.sprite_id) != config.sprite_base + tile:
 					continue
 
 				found = true
@@ -146,7 +146,7 @@ func _initialize() -> void:
 			var gpu_found := false
 
 			for command in gpu.foreground:
-				if int(command.sprite_id) == int(config.sprite_base) + tile:
+				if int(command.sprite_id) == config.sprite_base + tile:
 					gpu_found = true
 					assert(command.train_foreground_requires_depth and command.train_deck_thickness == view + 1)
 

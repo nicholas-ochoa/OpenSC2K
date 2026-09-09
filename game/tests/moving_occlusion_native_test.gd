@@ -353,12 +353,12 @@ func _crossing_point(city: CityState, configuration: CityViewConfiguration) -> V
 
 			var x := int(index / city.map_size)
 			var y := index % city.map_size
-			var origin := int(configuration.side_margin) + city.map_size * int(configuration.half_width)
+			var origin := configuration.side_margin + city.map_size * configuration.half_width
 
 			return Vector2i(
-				origin + (x - y) * int(configuration.half_width) + int(configuration.half_width),
-				int(configuration.top_margin) + (x + y) * int(configuration.half_height)
-					- city.land_altitude(x, y) * int(configuration.altitude_step)
+				origin + (x - y) * configuration.half_width + configuration.half_width,
+				configuration.top_margin + (x + y) * configuration.half_height
+					- city.land_altitude(x, y) * configuration.altitude_step
 			)
 
 	assert(false, "The test city needs a rail crossing")

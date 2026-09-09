@@ -13,7 +13,7 @@ func _run() -> void:
 
 	for view in [0, 1, 2]:
 		var sprites := large if view == 2 else medium
-		var divisor := int(CityIsometricRenderer.view_configuration(view).divisor)
+		var divisor := CityIsometricRenderer.view_configuration(view).divisor
 		var cache := CityRegionCache.new()
 		cache.configure(city, palette, sprites, [view], view, CityViewMode.Mode.CITY, CityViewFilter.DEFAULT_VISIBILITY, true, true)
 		var viewport := Rect2(1400, 800, 1400, 1100)

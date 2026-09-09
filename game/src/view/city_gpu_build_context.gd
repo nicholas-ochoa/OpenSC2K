@@ -56,7 +56,7 @@ func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 		return tiles[key]
 
 	var recorder := CityGpuDrawList.new()
-	var origin := int(configuration.side_margin) + city.map_size * int(configuration.half_width)
+	var origin := configuration.side_margin + city.map_size * configuration.half_width
 	var order := (x + y) * city.map_size + y
 	var foreground: Array[CityStaticCommand] = []
 	var foreground_draws: Array[CityGpuDrawList.Draw] = []
@@ -86,7 +86,7 @@ func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 				command.depth_order = order
 				command.region_order = (order << 16) | foreground.size()
 
-				if building > 0 and int(role.sprite_id) == int(configuration.sprite_base) + building:
+				if building > 0 and int(role.sprite_id) == configuration.sprite_base + building:
 					CityIsometricRenderer.configure_train_foreground(command, building, configuration)
 
 				foreground.append(command)
@@ -196,12 +196,12 @@ func intersects(city: CityState, sprites: Sc2SpriteArchive, config: CityViewConf
 		return false
 
 	var terrain := CityIsometricRenderer.surface_terrain_id(city, x, y)
-	var origin := int(config.side_margin) + city.map_size * int(config.half_width)
-	var screen_x := origin + (x - y) * int(config.half_width)
-	var flat_y := int(config.top_margin) + (x + y) * int(config.half_height)
+	var origin := config.side_margin + city.map_size * config.half_width
+	var screen_x := origin + (x - y) * config.half_width
+	var flat_y := config.top_margin + (x + y) * config.half_height
 	var altitude := city.water_altitude(x, y) if terrain >= 0x10 else city.land_altitude(x, y)
-	var base_y := flat_y - altitude * int(config.altitude_step) + int(config.tile_height)
-	var terrain_entry := sprites.find_sprite(CityIsometricRenderer.terrain_sprite_id(terrain, city.is_water(x, y), int(config.sprite_base)))
+	var base_y := flat_y - altitude * config.altitude_step + config.tile_height
+	var terrain_entry := sprites.find_sprite(CityIsometricRenderer.terrain_sprite_id(terrain, city.is_water(x, y), config.sprite_base))
 
 	if terrain_entry == null:
 		return true
@@ -209,22 +209,22 @@ func intersects(city: CityState, sprites: Sc2SpriteArchive, config: CityViewConf
 	var bounds := Rect2i(screen_x, base_y - terrain_entry.height, terrain_entry.width, terrain_entry.height)
 
 	if building > 0:
-		var entry := sprites.find_sprite(int(config.sprite_base) + building)
+		var entry := sprites.find_sprite(config.sprite_base + building)
 
 		if entry == null:
 			return true
 
-		var object_y := flat_y - city.object_altitude(x, y) * int(config.altitude_step) + int(config.tile_height)
-		object_y += CityIsometricRenderer.building_baseline_offset(building, terrain, entry.width, int(config.view_size))
+		var object_y := flat_y - city.object_altitude(x, y) * config.altitude_step + config.tile_height
+		object_y += CityIsometricRenderer.building_baseline_offset(building, terrain, entry.width, config.view_size)
 		bounds = bounds.merge(Rect2i(screen_x, object_y - entry.height, entry.width, entry.height))
 
 		if building >= 0x70:
-			var marker := sprites.find_sprite(int(config.sprite_base) + CityIsometricRenderer.POWER_MARKER_SPRITE_OFFSET)
+			var marker := sprites.find_sprite(config.sprite_base + CityIsometricRenderer.POWER_MARKER_SPRITE_OFFSET)
 
 			if marker != null:
 				bounds = bounds.merge(Rect2i(screen_x + int(entry.width / 2) - int(marker.width / 2), object_y - marker.height, marker.width, marker.height))
 	elif city.zone_id(x, y) > 0:
-		var zone := sprites.find_sprite(int(config.sprite_base) + 290 + city.zone_id(x, y))
+		var zone := sprites.find_sprite(config.sprite_base + 290 + city.zone_id(x, y))
 
 		if zone != null:
 			bounds = bounds.merge(Rect2i(screen_x, base_y - zone.height, zone.width, zone.height))
@@ -275,19 +275,19 @@ func _fast_tile(recorder: CityGpuDrawList, city: CityState, palette: Sc2Palette,
 
 	var word := int(city.altitude_words[key])
 	var altitude := ((word >> 5) & 31) if terrain >= 0x10 else (word & 31)
-	var screen_x := origin + (x - y) * int(config.half_width)
-	var flat_y := int(config.top_margin) + (x + y) * int(config.half_height) + int(config.tile_height)
-	var base_y := flat_y - altitude * int(config.altitude_step)
+	var screen_x := origin + (x - y) * config.half_width
+	var flat_y := config.top_margin + (x + y) * config.half_height + config.tile_height
+	var base_y := flat_y - altitude * config.altitude_step
 
 	if building < 0x70:
-		_append_sprite(recorder, sprites, palette, CityIsometricRenderer.terrain_sprite_id(terrain, (flags & 4) != 0, int(config.sprite_base)),
+		_append_sprite(recorder, sprites, palette, CityIsometricRenderer.terrain_sprite_id(terrain, (flags & 4) != 0, config.sprite_base),
 				false, Vector2i(screen_x, base_y))
 
 	if building == 0:
 		var zone := int(city.zones[key]) & 15
 
 		if zone > 0:
-			_append_sprite(recorder, sprites, palette, int(config.sprite_base) + 290 + zone, false, Vector2i(screen_x, base_y))
+			_append_sprite(recorder, sprites, palette, config.sprite_base + 290 + zone, false, Vector2i(screen_x, base_y))
 
 		return true
 
@@ -299,19 +299,19 @@ func _fast_tile(recorder: CityGpuDrawList, city: CityState, palette: Sc2Palette,
 	if building >= 0x70 and (rotation & 1) != 0:
 		flip = not flip
 
-	var sprite_id := int(config.sprite_base) + building
+	var sprite_id := config.sprite_base + building
 	var image := CityIsometricRenderer.sprite_image(sprites, palette, images, sprite_id, flip)
 	var object_altitude := ((word >> 5) & 31) if (flags & 4) != 0 else (word & 31)
 
 	if city.object_altitude_overrides.size() == city.map_size * city.map_size and city.object_altitude_overrides[key] >= 0:
 		object_altitude = city.object_altitude_overrides[key]
 
-	var offset := int(image.get_width() / 4) - int(config.half_height) if building >= 0x70 else (-int(config.altitude_step) if terrain == 0x0d else 0)
-	var object_y := flat_y - object_altitude * int(config.altitude_step) + offset
+	var offset := int(image.get_width() / 4) - config.half_height if building >= 0x70 else (-config.altitude_step if terrain == 0x0d else 0)
+	var object_y := flat_y - object_altitude * config.altitude_step + offset
 	recorder.blend_rect(image, Rect2i(Vector2i.ZERO, image.get_size()), Vector2i(screen_x, object_y - image.get_height()))
 
 	if building >= 0x70 and (flags & 0xc0) == 0x80:
-		var marker := CityIsometricRenderer.sprite_image(sprites, palette, images, int(config.sprite_base) + CityIsometricRenderer.POWER_MARKER_SPRITE_OFFSET, false)
+		var marker := CityIsometricRenderer.sprite_image(sprites, palette, images, config.sprite_base + CityIsometricRenderer.POWER_MARKER_SPRITE_OFFSET, false)
 		recorder.blend_rect(marker, Rect2i(Vector2i.ZERO, marker.get_size()),
 				Vector2i(screen_x + int(image.get_width() / 2) - int(marker.get_width() / 2), object_y - marker.get_height()))
 

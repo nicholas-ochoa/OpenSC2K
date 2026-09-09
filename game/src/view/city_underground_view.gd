@@ -54,8 +54,8 @@ static func create_image(
 		255,
 	))
 	var origin_x: int = (
-		int(configuration.side_margin)
-		+ map_edge * int(configuration.half_width)
+		configuration.side_margin
+		+ map_edge * configuration.half_width
 	)
 	var cache: Dictionary = {}
 
@@ -152,7 +152,7 @@ static func tile_sprite_ids(
 	if configuration == null:
 		return result
 
-	var sprite_base := int(configuration.sprite_base)
+	var sprite_base := configuration.sprite_base
 	var underground := city.underground_id(x, y)
 
 	if not show_subways:
@@ -241,9 +241,9 @@ static func tunnel_sprite_id(
 		return -1
 
 	if levels == 1:
-		return int(configuration.sprite_base) + 0x3e + city.terrain_id(x, y)
+		return configuration.sprite_base + 0x3e + city.terrain_id(x, y)
 
-	return int(configuration.sprite_base) + DEEP_TUNNEL
+	return configuration.sprite_base + DEEP_TUNNEL
 
 
 static func visual_signature(city: CityState, view_size: int, show_pipes := true, show_subways := true, show_water_mains := true) -> Array:
@@ -288,29 +288,29 @@ static func draw_tile(
 	show_water_mains := true
 ) -> void:
 	var surface_visible := city.tile_is_visible(x, y)
-	var screen_x := origin_x + (x - y) * int(configuration.half_width)
+	var screen_x := origin_x + (x - y) * configuration.half_width
 	var base_y := (
-		int(configuration.top_margin)
-		+ (x + y) * int(configuration.half_height)
-		- city.land_altitude(x, y) * int(configuration.altitude_step)
+		configuration.top_margin
+		+ (x + y) * configuration.half_height
+		- city.land_altitude(x, y) * configuration.altitude_step
 	)
 	var terrain_image := _sprite_image(
 		sprites,
 		palette,
 		cache,
-		int(configuration.sprite_base) + terrain_wireframe_offset(city.terrain_id(x, y)),
+		configuration.sprite_base + terrain_wireframe_offset(city.terrain_id(x, y)),
 	)
-	var terrain_top := base_y + int(configuration.tile_height) - terrain_image.get_height()
+	var terrain_top := base_y + configuration.tile_height - terrain_image.get_height()
 
-	var tunnel_sprite := tunnel_sprite_id(city, x, y, int(configuration.view_size))
+	var tunnel_sprite := tunnel_sprite_id(city, x, y, configuration.view_size)
 
 	if tunnel_sprite > 0 and city.underground_level_is_visible(x, y, maxi(0, (city.tunnel_levels(x, y) & 0x1f) - 1)):
 		var tunnel_image := _sprite_image(sprites, palette, cache, tunnel_sprite)
-		var tunnel_y := base_y + int(configuration.tile_height) - tunnel_image.get_height()
+		var tunnel_y := base_y + configuration.tile_height - tunnel_image.get_height()
 		var levels := city.tunnel_levels(x, y) & 0x1f
 
 		if levels > 1:
-			tunnel_y += (levels - 1) * int(configuration.altitude_step)
+			tunnel_y += (levels - 1) * configuration.altitude_step
 
 		_blend(output, tunnel_image, Vector2i(screen_x, tunnel_y))
 
@@ -325,7 +325,7 @@ static func draw_tile(
 			return
 
 	for sprite_id in tile_sprite_ids(
-		city, x, y, int(configuration.view_size), show_pipes and surface_visible, show_subways, show_water_mains and surface_visible
+		city, x, y, configuration.view_size, show_pipes and surface_visible, show_subways, show_water_mains and surface_visible
 	):
 		var image := _sprite_image(sprites, palette, cache, sprite_id)
 		_blend(output, image, Vector2i(screen_x, terrain_top))

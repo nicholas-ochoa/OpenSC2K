@@ -26,7 +26,7 @@ static func refresh_sign_occlusion(render: ApplicationMapRender, view_size: int)
 
 	var sprite_archive := render.app.static_render.sprite_archive_for_view(view_size)
 	var configuration := ApplicationMapRender.IsometricRenderer.view_configuration(view_size)
-	var divisor := int(configuration.divisor)
+	var divisor := configuration.divisor
 	var factor := 1
 
 	if render.caches.static_occlusion_grid.is_empty() and render.caches.region_cache == null:

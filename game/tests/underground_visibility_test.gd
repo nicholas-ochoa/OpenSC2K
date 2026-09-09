@@ -11,7 +11,7 @@ func _run() -> void:
 	var sprites := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
 	var palette := Sc2Palette.index_encoding()
 	var view := CityIsometricRenderer.VIEW_LARGE
-	var base := int(CityIsometricRenderer.view_configuration(view).sprite_base)
+	var base := CityIsometricRenderer.view_configuration(view).sprite_base
 	for wet in [false, true]:
 		for underground in [0, 1, 0x10, 0x1e, 0x1f, 0x20]:
 			city.set_underground_id(20, 20, underground)
@@ -35,8 +35,8 @@ func _run() -> void:
 					assert(DocumentState.capture(city.document) == saved)
 
 	var configuration := CityIsometricRenderer.view_configuration(view)
-	var origin := int(configuration.side_margin) + city.map_size * int(configuration.half_width)
-	var bounds := Rect2i(origin - 80, int(configuration.top_margin) + 40 * int(configuration.half_height) - city.land_altitude(20, 20) * int(configuration.altitude_step) - 80, 200, 200)
+	var origin := configuration.side_margin + city.map_size * configuration.half_width
+	var bounds := Rect2i(origin - 80, configuration.top_margin + 40 * configuration.half_height - city.land_altitude(20, 20) * configuration.altitude_step - 80, 200, 200)
 	var cache := CityRegionCache.new()
 	cache.gpu_enabled = false
 	for pipes in [false, true]:

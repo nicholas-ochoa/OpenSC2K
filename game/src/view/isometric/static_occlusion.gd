@@ -20,8 +20,8 @@ static func static_occlusion_commands(
 		return commands
 
 	var origin_x: int = (
-		int(configuration.side_margin)
-		+ map_edge * int(configuration.half_width)
+		configuration.side_margin
+		+ map_edge * configuration.half_width
 	)
 
 	for diagonal in map_edge * 2 - 1:
@@ -63,8 +63,8 @@ static func patch_static_occlusion_commands(
 		return []
 
 	var origin_x: int = (
-		int(configuration.side_margin)
-		+ map_edge * int(configuration.half_width)
+		configuration.side_margin
+		+ map_edge * configuration.half_width
 	)
 	var replacements: Dictionary[int, Array] = {}
 
@@ -132,9 +132,9 @@ static func tile_occlusion_commands(
 	if terrain_id >= 0x10:
 		terrain_altitude = city.water_altitude(x, y)
 
-	var screen_x := origin_x + (x - y) * int(configuration.half_width)
+	var screen_x := origin_x + (x - y) * configuration.half_width
 	var flat_base_y := (
-		int(configuration.top_margin) + (x + y) * int(configuration.half_height)
+		configuration.top_margin + (x + y) * configuration.half_height
 	)
 
 	if x == map_edge - 1 or y == map_edge - 1:
@@ -143,27 +143,27 @@ static func tile_occlusion_commands(
 				commands, sprites, visual.sprite_id, false,
 				Vector2i(
 					screen_x,
-					flat_base_y - visual.elevation + int(configuration.tile_height)
+					flat_base_y - visual.elevation + configuration.tile_height
 				),
 				draw_order
 			)
 
-	var base_y := flat_base_y - terrain_altitude * int(configuration.altitude_step)
+	var base_y := flat_base_y - terrain_altitude * configuration.altitude_step
 	var is_highway_composite := building_id >= 0x61 and building_id <= 0x6b
 
 	if building_id < 0x70 and not is_highway_composite:
 		_append_occluder(
 			commands, sprites,
 			IsometricGeometry.terrain_sprite_id(terrain_id, city.is_water(x, y), configuration.sprite_base),
-			false, Vector2i(screen_x, base_y + int(configuration.tile_height)), draw_order
+			false, Vector2i(screen_x, base_y + configuration.tile_height), draw_order
 		)
 
 	var zone := city.zone_id(x, y)
 
 	if zone > 0 and building_id == 0:
 		_append_occluder(
-			commands, sprites, int(configuration.sprite_base) + 290 + zone, false,
-			Vector2i(screen_x, base_y + int(configuration.tile_height)), draw_order
+			commands, sprites, configuration.sprite_base + 290 + zone, false,
+			Vector2i(screen_x, base_y + configuration.tile_height), draw_order
 		)
 
 	if building_id > 0 and IsometricStaticVisuals._should_draw_building(city, x, y, building_id):
@@ -174,28 +174,28 @@ static func tile_occlusion_commands(
 				_append_occluder(
 					commands, sprites, visual.sprite_id,
 					false,
-					Vector2i(screen_x, base_y + int(configuration.tile_height))
+					Vector2i(screen_x, base_y + configuration.tile_height)
 						+ Vector2i(visual.offset),
 					draw_order
 				)
 
 		var building_flip := IsometricStaticVisuals.building_sprite_flip(city, x, y, building_id)
-		var building_sprite_id := int(configuration.sprite_base) + building_id
+		var building_sprite_id := configuration.sprite_base + building_id
 		var building_entry = sprites.find_sprite(building_sprite_id)
 
 		if building_entry != null:
 			var building_base_y := (
 				flat_base_y
-				- city.object_altitude(x, y) * int(configuration.altitude_step)
+				- city.object_altitude(x, y) * configuration.altitude_step
 			) + IsometricStaticVisuals.building_baseline_offset(
 				building_id, terrain_id, building_entry.width, configuration.view_size
 			)
 			_append_occluder(
 				commands, sprites, building_sprite_id, building_flip,
-				Vector2i(screen_x, building_base_y + int(configuration.tile_height)),
+				Vector2i(screen_x, building_base_y + configuration.tile_height),
 				draw_order,
 				train_power_foreground_reference_sprite_id(
-					building_id, int(configuration.sprite_base)
+					building_id, configuration.sprite_base
 				)
 			)
 
@@ -213,7 +213,7 @@ static func tile_occlusion_commands(
 						Vector2i(
 							screen_x + int(building_entry.width / 2)
 								- int(marker_entry.width / 2),
-							building_base_y + int(configuration.tile_height)
+							building_base_y + configuration.tile_height
 						),
 						draw_order
 					)
@@ -227,11 +227,11 @@ static func tile_occlusion_commands(
 			_append_occluder(
 				commands, sprites, dispatch_sprite, false,
 				Vector2i(
-					screen_x + int(configuration.half_width)
+					screen_x + configuration.half_width
 						- int(dispatch_entry.width / 2),
 					flat_base_y
-						- city.land_altitude(x, y) * int(configuration.altitude_step)
-						+ int(configuration.tile_height)
+						- city.land_altitude(x, y) * configuration.altitude_step
+						+ configuration.tile_height
 				),
 				draw_order
 			)
@@ -269,7 +269,7 @@ static func _append_occluder(
 
 
 static func configure_train_foreground(command: CityStaticCommand, building_id: int, configuration: CityViewConfiguration) -> void:
-	var reference := train_power_foreground_reference_sprite_id(building_id, int(configuration.sprite_base))
+	var reference := train_power_foreground_reference_sprite_id(building_id, configuration.sprite_base)
 
 	if reference != 0:
 		command.train_foreground_reference_sprite_id = reference
@@ -277,7 +277,7 @@ static func configure_train_foreground(command: CityStaticCommand, building_id: 
 	command.train_ignore = (building_id >= 0x0e and building_id <= 0x1c) or building_id in [0x43, 0x44, 0x47, 0x48]
 
 	if (building_id >= 0x49 and building_id <= 0x50) or (building_id >= 0x61 and building_id <= 0x6b):
-		command.train_deck_thickness = int(configuration.view_size) + 1
+		command.train_deck_thickness = configuration.view_size + 1
 
 		if building_id in [0x4f, 0x50]:
 			command.train_deck_reference_sprite_id = reference

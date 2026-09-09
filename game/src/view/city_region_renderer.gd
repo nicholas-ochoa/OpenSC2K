@@ -23,9 +23,8 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 
 	var image := Image.create(bounds.size.x, bounds.size.y, false, Image.FORMAT_RGBA8)
 	image.fill(Color.WHITE if mode == CityViewMode.Mode.UNDERGROUND else Color.TRANSPARENT)
-	var local := configuration.copy()
-	local.top_margin = int(local.top_margin) - bounds.position.y
-	var origin := int(configuration.side_margin) + city.map_size * int(configuration.half_width)
+	var local := configuration.with_top_margin(configuration.top_margin - bounds.position.y)
+	var origin := configuration.side_margin + city.map_size * configuration.half_width
 	var sprite_limit := Renderer.maximum_sprite_size(sprites)
 	var cache := {}
 	var foreground: Array[CityStaticCommand] = []
@@ -40,7 +39,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 			var potential := Renderer.potential_tile_bounds(configuration, sprite_limit, x, y, city.map_size)
 
 			if mode == CityViewMode.Mode.UNDERGROUND:
-				potential.size.y += 31 * int(configuration.altitude_step)
+				potential.size.y += 31 * configuration.altitude_step
 
 			if not potential.intersects(bounds):
 				continue
@@ -64,7 +63,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 	if palette.is_index_encoding:
 		image.convert(Image.FORMAT_L8 if mode == CityViewMode.Mode.UNDERGROUND else Image.FORMAT_LA8)
 
-	var grid := Renderer.build_occlusion_grid(foreground, int(configuration.divisor))
+	var grid := Renderer.build_occlusion_grid(foreground, configuration.divisor)
 
 	var result := CityRegionResult.new()
 	result.ok = true

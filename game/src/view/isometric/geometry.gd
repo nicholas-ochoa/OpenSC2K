@@ -73,23 +73,23 @@ static func potential_tile_bounds(
 	map_edge: int = 128,
 ) -> Rect2i:
 	var origin_x := (
-		int(configuration.side_margin)
-		+ map_edge * int(configuration.half_width)
+		configuration.side_margin
+		+ map_edge * configuration.half_width
 	)
-	var screen_x := origin_x + (x - y) * int(configuration.half_width)
+	var screen_x := origin_x + (x - y) * configuration.half_width
 	var flat_base_y := (
-		int(configuration.top_margin)
-		+ (x + y) * int(configuration.half_height)
+		configuration.top_margin
+		+ (x + y) * configuration.half_height
 	)
 	var top := (
 		flat_base_y
-		- 31 * int(configuration.altitude_step)
-		- int(configuration.altitude_step)
+		- 31 * configuration.altitude_step
+		- configuration.altitude_step
 		- sprite_limit.y
 	)
 	var bottom := (
 		flat_base_y
-		+ int(configuration.tile_height)
+		+ configuration.tile_height
 		+ int(sprite_limit.x / 4)
 		+ 1
 	)
@@ -97,7 +97,7 @@ static func potential_tile_bounds(
 	return Rect2i(
 		Vector2i(screen_x - sprite_limit.x, top),
 		Vector2i(
-			int(configuration.tile_width) + sprite_limit.x * 2 + 1,
+			configuration.tile_width + sprite_limit.x * 2 + 1,
 			bottom - top
 		)
 	)
@@ -113,20 +113,20 @@ static func region_tile_span(
 	configuration: CityViewConfiguration, sprite_limit: Vector2i, bounds: Rect2i,
 	map_edge: int, underground: bool
 ) -> CityRegionTileSpan:
-	var half_width := int(configuration.half_width)
-	var half_height := int(configuration.half_height)
-	var origin := int(configuration.side_margin) + map_edge * half_width
-	var bottom := int(configuration.tile_height) + int(sprite_limit.x / 4) + 1
+	var half_width := configuration.half_width
+	var half_height := configuration.half_height
+	var origin := configuration.side_margin + map_edge * half_width
+	var bottom := configuration.tile_height + int(sprite_limit.x / 4) + 1
 
 	if underground:
-		bottom += 31 * int(configuration.altitude_step)
+		bottom += 31 * configuration.altitude_step
 
-	var top := 32 * int(configuration.altitude_step) + sprite_limit.y
+	var top := 32 * configuration.altitude_step + sprite_limit.y
 
 	var result := CityRegionTileSpan.new()
-	result.first_diagonal = maxi(0, floori(float(bounds.position.y - int(configuration.top_margin) - bottom) / half_height))
-	result.last_diagonal = mini(2 * (map_edge - 1), ceili(float(bounds.end.y - int(configuration.top_margin) + top) / half_height))
-	result.first_difference = floori(float(bounds.position.x - origin - sprite_limit.x - int(configuration.tile_width) - 1) / half_width)
+	result.first_diagonal = maxi(0, floori(float(bounds.position.y - configuration.top_margin - bottom) / half_height))
+	result.last_diagonal = mini(2 * (map_edge - 1), ceili(float(bounds.end.y - configuration.top_margin + top) / half_height))
+	result.first_difference = floori(float(bounds.position.x - origin - sprite_limit.x - configuration.tile_width - 1) / half_width)
 	result.last_difference = ceili(float(bounds.end.x - origin + sprite_limit.x) / half_width)
 
 	return result
@@ -178,18 +178,7 @@ static func terrain_sprite_id(terrain: int, water_flag: bool, sprite_base := 100
 
 
 static func view_configuration(view_size: int) -> CityViewConfiguration:
-	match view_size:
-		VIEW_SMALL:
-			return CityViewConfiguration.new(VIEW_SMALL, 4, Vector2i(8, 5), Vector2i(4, 2),
-				3, Vector2i(8, 128), 0)
-		VIEW_MEDIUM:
-			return CityViewConfiguration.new(VIEW_MEDIUM, 2, Vector2i(16, 9), Vector2i(8, 4),
-				6, Vector2i(16, 256), 500)
-		VIEW_LARGE:
-			return CityViewConfiguration.new(VIEW_LARGE, 1, Vector2i(TILE_WIDTH, TILE_HEIGHT),
-				Vector2i(HALF_WIDTH, HALF_HEIGHT), ALTITUDE_STEP, Vector2i(SIDE_MARGIN, TOP_MARGIN), 1000)
-
-	return null
+	return CityViewConfigurations.for_size(view_size)
 
 
 static func output_size_for_view(view_size: int, map_edge: int = 128) -> Vector2i:
@@ -198,7 +187,7 @@ static func output_size_for_view(view_size: int, map_edge: int = 128) -> Vector2
 	if configuration == null:
 		return Vector2i.ZERO
 
-	return (IMAGE_SIZE_LARGE + Vector2i((map_edge - 128) * 32, (map_edge - 128) * 16)) / int(configuration.divisor)
+	return (IMAGE_SIZE_LARGE + Vector2i((map_edge - 128) * 32, (map_edge - 128) * 16)) / configuration.divisor
 
 
 static func tile_polygon(city: CityState, x: int, y: int, land_surface := false) -> PackedVector2Array:
@@ -338,7 +327,7 @@ static func transient_effect_position(
 	if configuration == null:
 		return Vector2i(-1, -1)
 
-	var divisor := int(configuration.divisor)
+	var divisor := configuration.divisor
 	var large_offset: Vector2i = effect.screen_offset
 	var offset := Vector2i(
 		int(large_offset.x / divisor), int(large_offset.y / divisor)
@@ -348,12 +337,12 @@ static func transient_effect_position(
 	)
 
 	return Vector2i(
-		int(configuration.side_margin)
-			+ map_edge * int(configuration.half_width)
-			+ (point.x - point.y) * int(configuration.half_width) + offset.x,
-		int(configuration.top_margin)
-			+ (point.x + point.y) * int(configuration.half_height)
-			- effect_altitude * int(configuration.altitude_step)
+		configuration.side_margin
+			+ map_edge * configuration.half_width
+			+ (point.x - point.y) * configuration.half_width + offset.x,
+		configuration.top_margin
+			+ (point.x + point.y) * configuration.half_height
+			- effect_altitude * configuration.altitude_step
 			- sprite_height + offset.y
 	)
 
@@ -373,4 +362,4 @@ static func effect_sprite_id(large_sprite_id: int, view_size := VIEW_LARGE) -> i
 	if configuration == null or large_sprite_id < 1000:
 		return -1
 
-	return int(configuration.sprite_base) + large_sprite_id - 1000
+	return configuration.sprite_base + large_sprite_id - 1000

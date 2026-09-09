@@ -155,10 +155,10 @@ static func moving_thing_anchor(
 	if configuration == null:
 		return null
 
-	var half_width := int(configuration.half_width)
-	var half_height := int(configuration.half_height)
-	var step := int(configuration.altitude_step)
-	var divisor := int(configuration.divisor)
+	var half_width := configuration.half_width
+	var half_height := configuration.half_height
+	var step := configuration.altitude_step
+	var divisor := configuration.divisor
 	var anchor := Vector2i.ZERO
 
 	match type:
@@ -357,7 +357,7 @@ static func tornado_sprite(
 	)
 	result.flip = (phase & 1) != 0
 	result.tornado = true
-	result.elevation = altitude * int(configuration.altitude_step)
+	result.elevation = altitude * configuration.altitude_step
 
 	return result
 

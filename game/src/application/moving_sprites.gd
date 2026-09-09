@@ -190,7 +190,7 @@ func refresh_moving_things(view_size := -1) -> void:
 
 	var sprite_archive := app.static_render.sprite_archive_for_view(view_size)
 	var configuration := IsometricRenderer.view_configuration(view_size)
-	var divisor := int(configuration.divisor)
+	var divisor := configuration.divisor
 	var factor := 1
 	var commands := caches.dynamic_command_cache.get_commands(
 		app.document_state.city, sprite_archive, view_size, int(Time.get_ticks_msec() / 100)
@@ -455,7 +455,7 @@ func set_static_occlusion_commands(commands: Array[CityStaticCommand], view_size
 	caches.dynamic_visual_cache.clear()
 	caches.sign_foreground_cache.clear()
 	caches.dynamic_special_batch_cache.clear()
-	var divisor := int(IsometricRenderer.view_configuration(view_size).divisor)
+	var divisor := IsometricRenderer.view_configuration(view_size).divisor
 	caches.static_occlusion_grid = IsometricRenderer.build_occlusion_grid(
 		caches.static_occlusion_commands, divisor
 	)
@@ -528,7 +528,7 @@ func demolish_brush_visual(tile: Vector2i, direction: int) -> CityDynamicVisual:
 		return null
 
 	var configuration := IsometricRenderer.view_configuration(view_size)
-	var divisor := int(configuration.divisor)
+	var divisor := configuration.divisor
 	var resource := dynamic_sprite_resource(archive, int(sprite.sprite_id), bool(sprite.flip), divisor)
 	if resource == null:
 		return null

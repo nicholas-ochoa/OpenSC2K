@@ -82,8 +82,8 @@ func _check_settings() -> void:
 ## Compare anchors with draw commands so interpolation ends at the drawn position.
 func _check_anchors(city: CityState, sprites: Sc2SpriteArchive) -> void:
 	var configuration := CityIsometricRenderer.view_configuration(CityIsometricRenderer.VIEW_LARGE)
-	var origin_x := int(configuration.side_margin) + city.map_size * int(configuration.half_width) + int(configuration.half_width)
-	var base_y := int(configuration.top_margin) + int(configuration.tile_height)
+	var origin_x := configuration.side_margin + city.map_size * configuration.half_width + configuration.half_width
+	var base_y := configuration.top_margin + configuration.tile_height
 	var checked := 0
 
 	for command in CityIsometricRenderer.dynamic_draw_commands(city, sprites, CityIsometricRenderer.VIEW_LARGE, 0):

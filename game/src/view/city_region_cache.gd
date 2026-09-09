@@ -110,7 +110,7 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	signature = new_signature.duplicate()
 	view_size = new_view
 	mode = new_mode
-	divisor = int(CityIsometricRenderer.view_configuration(view_size).divisor)
+	divisor = CityIsometricRenderer.view_configuration(view_size).divisor
 	native_size = CityIsometricRenderer.output_size_for_view(view_size, city.map_size)
 	_snapshot = CityState.new()
 	_snapshot.document = city.document.duplicate_document()
@@ -471,7 +471,7 @@ static func _render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArch
 	if result.ok and gpu_context != null and render_mode == CityViewMode.Mode.CITY:
 		var gpu := result as CityGpuRegionResult
 		gpu.sign_foregrounds = CityGpuSignForegrounds.build(gpu, foreground_requests, palette, sprites, gpu_context,
-				int(CityIsometricRenderer.view_configuration(view).divisor))
+				CityIsometricRenderer.view_configuration(view).divisor)
 
 	result.display_city = display
 	result.usec = Time.get_ticks_usec() - started
