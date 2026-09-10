@@ -5,13 +5,11 @@ class Draw extends RefCounted:
 	var image: Image
 	var source: Rect2i
 	var position: Vector2i
-	var size: Vector2i
 
 	func _init(sprite: Image, area: Rect2i, destination: Vector2i) -> void:
 		image = sprite
 		source = area
 		position = destination
-		size = area.size
 
 
 var draws: Array[Draw] = []
@@ -42,7 +40,7 @@ static func paint(draws_value: Array[Draw], bounds: Rect2i, background: Color, g
 				texture.resize(target_size.x, target_size.y, Image.INTERPOLATE_NEAREST)
 				source = Rect2i(Vector2i.ZERO, target_size)
 
-			image.blend_rect(texture, source, (Vector2i(draw.position) - bounds.position) * factor)
+			image.blend_rect(texture, source, (draw.position - bounds.position) * factor)
 
 	image.convert(Image.FORMAT_LA8)
 
@@ -54,6 +52,6 @@ static func build_grid(draws_value: Array[Draw]) -> Dictionary[Vector2i, Array]:
 
 	for index in draws_value.size():
 		var draw := draws_value[index]
-		IsometricPixelOperations.append_occlusion_bounds(grid, Rect2i(draw.position, draw.size), index)
+		IsometricPixelOperations.append_occlusion_bounds(grid, Rect2i(draw.position, draw.source.size), index)
 
 	return grid

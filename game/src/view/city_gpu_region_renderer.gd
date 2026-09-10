@@ -51,7 +51,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 				if not clipped.has_area():
 					continue
 
-				var source := Rect2i(Vector2i(draw.source.position) + clipped.position - rectangle.position, clipped.size)
+				var source := Rect2i(draw.source.position + clipped.position - rectangle.position, clipped.size)
 				var slot := context.slot(draw.image)
 
 				if not context.error.is_empty():

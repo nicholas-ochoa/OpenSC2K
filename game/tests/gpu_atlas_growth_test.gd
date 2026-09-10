@@ -52,7 +52,7 @@ func _initialize() -> void:
 			var uv := (uvs[index * 4] + uvs[index * 4 + 2]) * 0.5
 			assert(uv.x >= 0 and uv.y >= 0 and uv.x <= 1 and uv.y <= 1)
 			var point := (vertices[index * 4] + vertices[index * 4 + 2]) * 0.5 + Vector2(region.bounds.position)
-			var source := Vector2i(point) - Vector2i(draw.position) + Vector2i(draw.source.position)
+			var source := Vector2i(point) - draw.position + draw.source.position
 			assert(batch.atlas_image.get_pixelv(Vector2i(uv * context.atlas_edge)) == draw.image.get_pixelv(source), "Batch UV sampled the wrong pixel after atlas growth")
 	print("PASS: atlas growth preserves pixels, slots and normalized UVs across a region batch")
 	quit()
