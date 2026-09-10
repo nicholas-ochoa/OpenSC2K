@@ -91,7 +91,7 @@ static func append_occlusion_bounds(grid: Dictionary[Vector2i, Array], bounds: R
 
 
 static func occlusion_candidate_indices(
-	grid: Dictionary, bounds: Rect2i
+	grid: Dictionary[Vector2i, Array], bounds: Rect2i
 ) -> Array[int]:
 	var result: Array[int] = []
 

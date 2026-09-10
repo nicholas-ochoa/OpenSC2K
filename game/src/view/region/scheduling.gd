@@ -137,7 +137,7 @@ static func _close_gpu_workers(cache: CityRegionCache) -> void:
 static func _tick_gpu(cache: CityRegionCache) -> bool:
 	if cache._gpu_workers.is_empty():
 		for index in mini(CityRegionCache.GPU_WORKERS, maxi(1, OS.get_processor_count() - 2)):
-			cache._gpu_workers.append(CityRegionCache.GpuWorker.new())
+			cache._gpu_workers.append(CityRegionCache.RegionWorker.new())
 
 	for worker in cache._gpu_workers:
 		if worker.thread == null or worker.thread.is_alive():
@@ -147,7 +147,7 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 		worker.thread = null
 		cache._gpu_has_work = true
 
-		if int(worker.layout) != cache._layout_generation:
+		if worker.layout != cache._layout_generation:
 			cache.discarded_regions += worker.keys.size()
 			continue
 
@@ -164,7 +164,7 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 
 			return true
 
-		if int(worker.generation) == cache.generation and not cache._prepared:
+		if worker.generation == cache.generation and not cache._prepared:
 			cache._snapshot = result.display_city
 			cache.display_city = cache._snapshot
 			cache._prepared = true
@@ -180,7 +180,7 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 		for region: CityGpuRegionResult in result.regions:
 			var key: Vector2i = region.key
 
-			if key not in cache.wanted or (cache.entries.has(key) and int(cache.entries[key].generation) > int(worker.generation)):
+			if key not in cache.wanted or (cache.entries.has(key) and int(cache.entries[key].generation) > worker.generation):
 				cache.discarded_regions += 1
 				continue
 
@@ -195,13 +195,13 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 			region.depth_arrays = []
 			region.train_depth_arrays = []
 			region.atlas_texture = worker.atlas
-			region.generation = int(worker.generation)
+			region.generation = worker.generation
 			region.last_visible = cache._viewport_serial if key in cache.visible else (cache.entries[key].last_visible if cache.entries.has(key) else 0)
 			region.gpu_arrays = []
 			region.atlas_image = null
 			cache.entries[key] = region
 
-			if cache._edit_priority.has(key) and int(worker.generation) >= int(cache._edit_priority[key]):
+			if cache._edit_priority.has(key) and worker.generation >= int(cache._edit_priority[key]):
 				cache._edit_priority.erase(key)
 
 			cache.foreground_changes.append(Rect2i(region.bounds.position * cache.divisor, region.bounds.size * cache.divisor))
@@ -213,14 +213,14 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 	var changed := cache._changed
 	cache._changed = false
 
-	if not cache._gpu_has_work or cache._gpu_workers.all(func(worker: CityRegionCache.GpuWorker) -> bool:
+	if not cache._gpu_has_work or cache._gpu_workers.all(func(worker: CityRegionCache.RegionWorker) -> bool:
 		return worker.thread != null):
 		return changed
 
 	var active := {}
 
 	for worker in cache._gpu_workers:
-		if worker.thread != null and int(worker.layout) == cache._layout_generation:
+		if worker.thread != null and worker.layout == cache._layout_generation:
 			for key in worker.keys:
 				active[key] = true
 
@@ -261,14 +261,15 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 	queue = urgent + queue
 	cache._gpu_has_work = false
 
-	for worker in cache._gpu_workers:
+	for worker_index in cache._gpu_workers.size():
+		var worker := cache._gpu_workers[worker_index]
+
 		if worker.thread != null:
 			continue
 
 		var keys: Array[Vector2i] = []
-		var worker_index := cache._gpu_workers.find(worker)
 		# keep the first result quick. warm workers then run bounded batches
-		var limit := CityGpuRegionBatch.MAX_REGIONS if int(worker.layout) == cache._layout_generation else 1
+		var limit := CityGpuRegionBatch.MAX_REGIONS if worker.layout == cache._layout_generation else 1
 
 		for key in queue:
 			if active.has(key) or (cache.entries.has(key) and int(cache.entries[key].generation) == cache.generation):
@@ -290,7 +291,7 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 
 		cache._gpu_has_work = true
 
-		if int(worker.layout) != cache._layout_generation:
+		if worker.layout != cache._layout_generation:
 			worker.context = CityGpuBuildContext.new()
 			worker.atlas = null
 			worker.atlas_revision = -1

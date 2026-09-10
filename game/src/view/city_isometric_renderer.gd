@@ -270,7 +270,7 @@ static func build_occlusion_grid(
 
 
 static func occlusion_candidate_indices(
-	grid: Dictionary, bounds: Rect2i
+	grid: Dictionary[Vector2i, Array], bounds: Rect2i
 ) -> Array[int]:
 	return IsometricPixelOperations.occlusion_candidate_indices(grid, bounds)
 

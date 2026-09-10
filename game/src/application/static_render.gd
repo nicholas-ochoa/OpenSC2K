@@ -282,7 +282,7 @@ func request_static_render(
 		return
 
 	state.pending = false
-	var snapshot_document := app.document_state.current_document.duplicate_document()
+	var snapshot_document := app.document_state.current_document.duplicate_document(true)
 	var snapshot := CityModel.from_document(snapshot_document)
 
 	if not snapshot.is_valid():

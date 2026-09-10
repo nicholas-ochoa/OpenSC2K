@@ -29,7 +29,7 @@ var static_layer: Sprite2D
 var cycle_texture: ImageTexture
 var static_image: Image
 var occlusion_commands: Array[CityStaticCommand] = []
-var occlusion_grid := {}
+var occlusion_grid: Dictionary[Vector2i, Array] = {}
 var sprite_cache := {}
 var dynamic_visuals: Array[CityDynamicVisual] = []
 var animation_elapsed := 0.0

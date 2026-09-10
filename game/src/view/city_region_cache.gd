@@ -10,7 +10,7 @@ const GPU_OFFSCREEN_LIMIT := 384
 const GPU_PREFETCH_LIMIT := 256
 const GPU_REGION_EDGE := 256
 const GPU_WORKERS := 2
-class GpuWorker extends RefCounted:
+class RegionWorker extends RefCounted:
 	var thread: Thread
 	var context: CityGpuBuildContext
 	var atlas: ImageTexture
@@ -22,7 +22,7 @@ class GpuWorker extends RefCounted:
 
 var region_edge := REGION_EDGE
 var gpu_enabled := gpu_supported()
-var _gpu_workers: Array[GpuWorker] = []
+var _gpu_workers: Array[RegionWorker] = []
 var entries: Dictionary[Vector2i, CityRegionResult] = {}
 var wanted: Array[Vector2i] = []
 var visible: Array[Vector2i] = []
@@ -113,7 +113,7 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	divisor = CityIsometricRenderer.view_configuration(view_size).divisor
 	native_size = CityIsometricRenderer.output_size_for_view(view_size, city.map_size)
 	_snapshot = CityState.new()
-	_snapshot.document = city.document.duplicate_document()
+	_snapshot.document = city.document.duplicate_document(true)
 	_snapshot.map_size = city.map_size
 	_snapshot.visible_altitude_levels = city.visible_altitude_levels
 

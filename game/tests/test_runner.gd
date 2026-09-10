@@ -149,6 +149,7 @@ func _init() -> void:
 	if _selected("formats"):
 		_test_original_game_installer(reference_root)
 	if _selected("rendering"):
+		_test_view_configurations()
 		_test_palette_and_minimap(reference_root)
 	if _selected("rendering"):
 		_test_sprite_archives(reference_root)
@@ -550,6 +551,50 @@ func _test_city_options(reference_root: String) -> void:
 	)
 
 
+
+
+func _test_view_configurations() -> void:
+	# Native size table from IsometricGeometry before 4a089e29.
+	var expected_rows: Array[Array] = [
+		[IsometricRenderer.VIEW_SMALL, 4, 8, 5, 4, 2, 3, 128, 8, 0],
+		[IsometricRenderer.VIEW_MEDIUM, 2, 16, 9, 8, 4, 6, 256, 16, 500],
+		[IsometricRenderer.VIEW_LARGE, 1, 32, 17, 16, 8, 12, 512, 32, 1000],
+	]
+
+	for expected in expected_rows:
+		var view_size: int = expected[0]
+		var shared := CityViewConfigurations.for_size(view_size)
+		_check(shared != null, "View size %d has a shared configuration" % view_size)
+
+		if shared == null:
+			continue
+
+		_check(is_same(shared, CityViewConfigurations.for_size(view_size)),
+			"View size %d reuses the same configuration instance" % view_size)
+		_check(_view_configuration_values(shared) == expected,
+			"View size %d preserves all ten native geometry values" % view_size)
+		var variant := shared.with_top_margin(73)
+		var expected_variant: Array = expected.duplicate()
+		expected_variant[7] = 73
+		_check(not is_same(shared, variant),
+			"View size %d derives a separate configuration instance" % view_size)
+		_check(_view_configuration_values(variant) == expected_variant,
+			"View size %d changes only the derived top margin" % view_size)
+		_check(is_same(shared, CityViewConfigurations.for_size(view_size))
+			and _view_configuration_values(shared) == expected,
+			"View size %d leaves the shared configuration untouched" % view_size)
+
+	for view_size in [-1, IsometricRenderer.VIEW_LARGE + 1]:
+		_check(CityViewConfigurations.for_size(view_size) == null,
+			"Out-of-range view size %d has no configuration" % view_size)
+
+
+func _view_configuration_values(configuration: CityViewConfiguration) -> Array[int]:
+	return [configuration.view_size, configuration.divisor,
+		configuration.tile_width, configuration.tile_height,
+		configuration.half_width, configuration.half_height,
+		configuration.altitude_step, configuration.top_margin,
+		configuration.side_margin, configuration.sprite_base]
 
 
 func _test_palette_and_minimap(reference_root: String) -> void:

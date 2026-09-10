@@ -19,7 +19,7 @@ func blend_rect(image: Image, source: Rect2i, destination: Vector2i) -> void:
 	draws.append(Draw.new(image, source, destination))
 
 
-static func paint(draws_value: Array[Draw], bounds: Rect2i, background: Color, grid: Dictionary = {}, factor := 1) -> Image:
+static func paint(draws_value: Array[Draw], bounds: Rect2i, background: Color, grid: Dictionary[Vector2i, Array] = {}, factor := 1) -> Image:
 	assert(factor in [1, 2, 4])
 	var image := Image.create(bounds.size.x * factor, bounds.size.y * factor, false, Image.FORMAT_RGBA8)
 	image.fill(background)
