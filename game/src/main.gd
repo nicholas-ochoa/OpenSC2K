@@ -11,7 +11,7 @@ var view_state := ViewState.new()
 # application preferences and asset dialogs
 var preferences := AppPreferences.new()
 var sc2x_conversion_dialog: ConfirmationDialog
-var reference_import_dialog: FileDialog
+var reference_import_dialog: Sc2AssetImportDialog
 var reference_import_error_dialog: AcceptDialog
 var graphics_source_error_dialog: AcceptDialog
 # original text resources and newspaper session

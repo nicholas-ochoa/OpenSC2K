@@ -111,25 +111,13 @@ func build_reference_import_dialogs() -> void:
 	app.graphics_source_error_dialog.title = "Graphics source"
 	app.graphics_source_error_dialog.exclusive = true
 	app.add_child(app.graphics_source_error_dialog)
-	app.reference_import_dialog = FileDialog.new()
-	app.reference_import_dialog.title = "Select the original SimCity 2000 SIMCITY.EXE"
-	app.reference_import_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
-	app.reference_import_dialog.access = FileDialog.ACCESS_FILESYSTEM
-	app.reference_import_dialog.filters = PackedStringArray([
-		"*.EXE,*.exe ; SimCity 2000 executable",
-	])
-	app.reference_import_dialog.exclusive = true
-	app.reference_import_dialog.file_selected.connect(_import_original_game)
-	app.reference_import_dialog.canceled.connect(_on_reference_import_canceled)
-	app.add_child(app.reference_import_dialog)
-
 	app.reference_import_error_dialog = AcceptDialog.new()
 	app.reference_import_error_dialog.title = "Cannot import SimCity 2000"
 	app.reference_import_error_dialog.exclusive = true
 	app.reference_import_error_dialog.confirmed.connect(show_reference_import_dialog)
 	app.add_child(app.reference_import_error_dialog)
 
-	for dialog in [app.graphics_source_error_dialog, app.reference_import_dialog, app.reference_import_error_dialog]:
+	for dialog in [app.graphics_source_error_dialog, app.reference_import_error_dialog]:
 		dialog.theme = AppUiTheme.file_dialog() if dialog is FileDialog else AppUiTheme.current()
 
 
@@ -142,12 +130,70 @@ func show_reference_import_dialog() -> void:
 	if app.reference_import_dialog == null:
 		return
 
-	app.reference_import_dialog.popup_centered_ratio(0.8)
+	app.reference_import_dialog.open()
 
 
 func _on_reference_import_canceled() -> void:
 	if app.settings_dialog != null:
 		app.settings.open_import_settings()
+
+
+func activate_imported_packs(result: Sc2MediaImportResult) -> void:
+	if not result.ok:
+		return
+
+	var notes := PackedStringArray()
+	var active := PackedStringArray()
+
+	if not result.graphics.is_empty():
+		var selected := GameAssetSource.load_source(app.asset_state.reference_root, "folder", result.graphics)
+
+		if selected.error.is_empty():
+			apply_graphics_source(selected)
+			app.preferences.graphics_source = "folder"
+			app.preferences.graphics_folder = result.graphics
+			active.append("graphics")
+			notes.append_array(selected.warnings)
+		else:
+			notes.append("Graphics pack saved, but could not be activated: " + selected.error)
+
+	for kind in ["sound", "music"]:
+		var path: String = result.get(kind)
+
+		if path.is_empty():
+			continue
+
+		if app.audio_controller != null and app.audio_controller.set_media_pack(kind, path):
+			app.preferences.set(kind + "_pack_folder", path)
+			active.append(kind)
+
+			if kind == "music":
+				app.preferences.soundtrack_folder = ""
+				app.audio_controller.set_soundtrack_folder("")
+		else:
+			notes.append("%s pack saved, but could not be loaded. The previous pack is still active." % kind.capitalize())
+
+	if not active.is_empty():
+		notes.append("Active packs: " + ", ".join(active) + ".")
+
+		if _save_import_preferences() != OK:
+			notes.append("The packs are active, but their preferences could not be saved.")
+
+	app.settings._refresh_settings_pack_names()
+	app.status_label.text = "Imported packs saved." if active.is_empty() else "Imported packs active: " + ", ".join(active) + "."
+	app.reference_import_dialog.add_activation_notes(notes)
+
+
+func _save_import_preferences() -> Error:
+	return SettingsStore.save_values(
+		app.preferences.music_volume, app.preferences.effects_volume, app.preferences.fullscreen,
+		app.preferences.settings_path, app.preferences.graphics_source, app.preferences.graphics_folder, app.preferences.soundtrack_folder,
+		app.preferences.city_renderer, app.preferences.background_audio, app.preferences.zoom_graphics, app.preferences.toolbar_sounds,
+		app.preferences.sound_pack_folder, app.preferences.music_pack_folder, app.preferences.shuffle_music,
+		app.preferences.original_compatibility, app.preferences.warn_sc2x_conversion, app.preferences.default_mayor_name,
+		app.preferences.overview_graphics, app.preferences.ui_theme, app.preferences.dark_underground,
+		app.preferences.translucent_menus, app.preferences.moving_frame_rate,
+	)
 
 
 func _show_reference_import_error(message: String) -> void:
@@ -207,9 +253,8 @@ func apply_graphics_source(selected: GameAssetSource) -> void:
 	app.asset_state.asset_source = selected
 	app.asset_state.assets_ready = true
 	app.asset_state.reference_root = selected.reference_root
-	app.new_city_state.session.independent_template = false
-	app.audio_controller.reference_root = app.asset_state.reference_root
-	app.audio_controller.original_media_enabled = true
+	app.new_city_state.session.independent_template = not selected.use_original_data
+	app.audio_controller.set_original_media_source(app.asset_state.reference_root, selected.use_original_data)
 	var assets := selected.assets
 	text_resources.newspaper_data = assets.newspaper_data
 	text_resources.original_query_strings = assets.strings

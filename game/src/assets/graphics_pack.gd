@@ -6,6 +6,7 @@ const UI_FIELDS := ["toolbar_art", "industry_icons", "city_map_icons", "simnatio
 
 var error := ""
 var pack_name := ""
+var partial := false
 var palette: Sc2Palette
 var scenario_palette: Sc2Palette
 var large_sprites := Sc2SpriteArchive.new()
@@ -30,10 +31,26 @@ func apply_to(assets: OriginalGameAssets) -> bool:
 	if not error.is_empty():
 		return false
 
-	assets.palette = palette
-	assets.scenario_palette = scenario_palette
-	assets.large_sprites = large_sprites
-	assets.small_medium_sprites = small_medium_sprites
+	var has_large := not large_sprites.entries.is_empty()
+	var has_small := not small_medium_sprites.entries.is_empty()
+
+	# one palette for both sizes; replacing half the art mustn't recolor the other half
+	# all city sprites use one indexed palette. do not recolor a retained archive
+	# when a partial pack only replaces the other size group
+	if partial and has_large != has_small and assets.palette != null and assets.palette.colors != palette.colors:
+		return _fail("This partial pack needs both city sprite size groups to change the active palette.")
+
+	if not partial or has_large or has_small:
+		assets.palette = palette
+
+	if scenario_palette != null:
+		assets.scenario_palette = scenario_palette
+
+	if not partial or has_large:
+		assets.large_sprites = large_sprites
+
+	if not partial or has_small:
+		assets.small_medium_sprites = small_medium_sprites
 
 	if scurk_graphics != null:
 		assets.scurk_graphics = scurk_graphics
@@ -81,6 +98,13 @@ func _load() -> void:
 		return
 
 	pack_name = manifest.name
+	var partial_value: Variant = manifest.get("partial", false)
+
+	if not partial_value is bool:
+		_fail("partial must be a boolean")
+		return
+
+	partial = partial_value
 	var redraw: Variant = manifest.get("redraw_small_highway_ground", false)
 
 	if not redraw is bool:
@@ -96,20 +120,21 @@ func _load() -> void:
 		return
 
 	palette = palette_image.palette
-	var scenario_image := _read_png(manifest.get("scenario_palette"))
+	if not partial or manifest.has("scenario_palette"):
+		var scenario_image := _read_png(manifest.get("scenario_palette"))
 
-	if not error.is_empty():
+		if not error.is_empty():
+			return
+
+		scenario_palette = scenario_image.palette
+
+	if not _load_sprites(manifest.get("large_sprites", []), large_sprites):
 		return
 
-	scenario_palette = scenario_image.palette
-
-	if not _load_sprites(manifest.get("large_sprites"), large_sprites):
+	if not _load_sprites(manifest.get("small_medium_sprites", []), small_medium_sprites):
 		return
 
-	if not _load_sprites(manifest.get("small_medium_sprites"), small_medium_sprites):
-		return
-
-	var ui: Variant = manifest.get("ui")
+	var ui: Variant = manifest.get("ui", {} if partial else null)
 
 	if not ui is Dictionary:
 		_fail("ui must be an object")
@@ -123,6 +148,9 @@ func _load() -> void:
 			return
 
 	for field in UI_FIELDS:
+		if partial and not ui.has(field):
+			continue
+
 		var decoded := _read_png(ui.get(field))
 
 		if not error.is_empty():
@@ -151,14 +179,21 @@ func _load() -> void:
 			_fail(desktop_graphics.error)
 
 	if error.is_empty() and manifest.has("scenario_pictures"):
+		if scenario_palette == null:
+			_fail("scenario_palette is required for scenario pictures")
+			return
+
 		scenario_graphics = ScenarioGraphics.load_manifest(manifest.scenario_pictures, _read_png, scenario_palette)
 
 		if error.is_empty() and not scenario_graphics.error.is_empty():
 			_fail(scenario_graphics.error)
 
+	if error.is_empty() and large_sprites.entries.is_empty() and small_medium_sprites.entries.is_empty() and ui_images.is_empty() and scurk_graphics == null and city_ui_graphics == null and desktop_graphics == null and scenario_graphics == null:
+		_fail("Graphics pack contains no assets")
+
 
 func _load_sprites(records: Variant, archive: Sc2SpriteArchive) -> bool:
-	if not records is Array or records.is_empty():
+	if not records is Array or (records.is_empty() and not partial):
 		return _fail("Sprite lists must be nonempty arrays")
 
 	var duplicate_counts: Dictionary[int, int] = {}

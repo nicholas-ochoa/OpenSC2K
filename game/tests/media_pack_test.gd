@@ -63,8 +63,17 @@ func _run() -> void:
 	var audio := CityAudioController.new()
 	root.add_child(audio)
 	audio.setup("/missing", 0.5, 0.5, false)
+	assert(audio.wave_stream_cache.is_empty())
+	audio.set_original_media_source(ProjectSettings.globalize_path("res://../references/SIMCITY2000"), true)
+	assert(audio.wave_stream_cache.size() == 30)
+	audio.set_original_media_source("/missing", false)
+	assert(audio.wave_stream_cache.is_empty())
 	assert(audio.set_media_packs(base.path_join("sound"), base.path_join("music")))
 	assert(audio.wave_stream_cache.size() == 30)
+	var selected_sounds := audio.sound_pack
+	var selected_music := audio.music_pack
+	audio.set_original_media_source("/another-missing-source", false)
+	assert(audio.wave_stream_cache.size() == 30 and audio.sound_pack == selected_sounds and audio.music_pack == selected_music)
 	assert(audio.play_music_track(10001))
 	assert(not audio.set_media_packs(temporary, base.path_join("music")))
 	assert(audio.wave_stream_cache.size() == 30 and audio.current_track_id == 10001)

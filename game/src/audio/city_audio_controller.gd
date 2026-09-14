@@ -464,6 +464,16 @@ static func validate_media_packs(sound_folder: String, music_folder: String) -> 
 	return ""
 
 
+# refresh fallback media when the graphics pack changes its support folder
+func set_original_media_source(root_path: String, enabled: bool) -> void:
+	if reference_root == root_path and original_media_enabled == enabled:
+		return
+
+	reference_root = root_path
+	original_media_enabled = enabled
+	_apply_media_packs(sound_pack, music_pack)
+
+
 func set_media_packs(sound_folder: String, music_folder: String) -> bool:
 	var sounds := MediaPack.load_folder(sound_folder, "sound")
 	var music := MediaPack.load_folder(music_folder, "music")
@@ -473,6 +483,26 @@ func set_media_packs(sound_folder: String, music_folder: String) -> bool:
 
 		return false
 
+	_apply_media_packs(sounds, music)
+	return true
+
+
+# change one pack without reloading or replacing the other active category
+func set_media_pack(kind: String, folder: String) -> bool:
+	if kind not in ["sound", "music"]:
+		return false
+
+	var pack := MediaPack.load_folder(folder, kind)
+
+	if not pack.error.is_empty():
+		music_notice.emit(pack.error)
+		return false
+
+	_apply_media_packs(pack if kind == "sound" else sound_pack, pack if kind == "music" else music_pack)
+	return true
+
+
+func _apply_media_packs(sounds: MediaPack, music: MediaPack) -> void:
 	var track := current_track_id
 	var queued_track := queued_music_track
 	var choose_shuffle := queued_choose_shuffle
@@ -490,8 +520,6 @@ func set_media_packs(sound_folder: String, music_folder: String) -> bool:
 			play_music_track(track, false)
 		elif music_gap_remaining_msec > 0.0:
 			music_activity_changed.emit(true)
-
-	return true
 
 
 func play_toolbar_click(sound_enabled: bool) -> void:

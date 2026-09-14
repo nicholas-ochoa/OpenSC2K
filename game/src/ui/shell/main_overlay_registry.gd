@@ -4,6 +4,7 @@ extends Control
 const MainMenuView = preload("res://src/ui/startup/main_menu_control.tscn")
 const SettingsDialogView = preload("res://src/ui/settings/app_settings_dialog.tscn")
 const AboutDialogView = preload("res://src/ui/settings/about_dialog.tscn")
+const AssetImportDialogView = preload("res://src/ui/settings/sc2_asset_import_dialog.tscn")
 const SaveChangesDialogView = preload("res://src/ui/shared/save_changes_dialog.gd")
 
 var scurk_workspace: Control
@@ -12,6 +13,7 @@ var modeless_windows: Array[Node] = []
 
 var main_menu: MainMenuControl
 var settings_dialog: AppSettingsDialog
+var asset_import_dialog: Sc2AssetImportDialog
 var scurk_editor: ScurkEditorControl
 var scurk_place_print: ScurkPlacePrintControl
 var scurk_print: ScurkPrintControl
@@ -33,6 +35,8 @@ func _create_overlays() -> void:
 
 	settings_dialog = SettingsDialogView.instantiate() as AppSettingsDialog
 	_register(settings_dialog, self, CityDialogRegistry.Modality.BLOCKING)
+	asset_import_dialog = AssetImportDialogView.instantiate() as Sc2AssetImportDialog
+	_register(asset_import_dialog, self, CityDialogRegistry.Modality.BLOCKING)
 
 	about_dialog = AboutDialogView.instantiate()
 	_register(about_dialog, self, CityDialogRegistry.Modality.MODELESS)

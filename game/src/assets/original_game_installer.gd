@@ -21,7 +21,7 @@ const REQUIRED_RELATIVE_PATHS := [
 
 
 static func validate_executable(
-	executable_path: String, expected_hash: String = EXPECTED_SIMCITY_SHA256
+	executable_path: String, expected_hash: String = ""
 ) -> AssetImportResult:
 	var path := executable_path.simplify_path()
 
@@ -36,12 +36,18 @@ static func validate_executable(
 	if actual_hash.is_empty():
 		return AssetImportResult.failure("Cannot read the selected SIMCITY.EXE.")
 
-	if actual_hash != expected_hash.to_lower():
+	if not expected_hash.is_empty() and actual_hash != expected_hash.to_lower():
 		return AssetImportResult.failure((
-				"The selected SIMCITY.EXE is not the supported 1996 Special Edition file.\n\n"
+				"The selected SIMCITY.EXE does not match the requested verification hash.\n\n"
 				+ "Expected SHA-256:\n%s\n\nSelected SHA-256:\n%s"
 				% [expected_hash.to_lower(), actual_hash]
 			))
+
+	if expected_hash.is_empty():
+		var parsed := Sc2ImportContainer.windows(FileAccess.get_file_as_bytes(path), path)
+
+		if not parsed.error.is_empty():
+			return AssetImportResult.failure("Cannot read the game's Windows resources: " + parsed.error)
 
 	var outcome := AssetImportResult.new()
 	outcome.ok = true
@@ -53,7 +59,7 @@ static func validate_executable(
 
 static func validate_install_root(
 	install_root: String,
-	expected_hash: String = EXPECTED_SIMCITY_SHA256,
+	expected_hash: String = "",
 	required_paths: Array = REQUIRED_RELATIVE_PATHS,
 ) -> AssetImportResult:
 	var root := install_root.simplify_path()
@@ -84,7 +90,7 @@ static func validate_install_root(
 static func install_from_executable(
 	executable_path: String,
 	destination_root: String,
-	expected_hash: String = EXPECTED_SIMCITY_SHA256,
+	expected_hash: String = "",
 	required_paths: Array = REQUIRED_RELATIVE_PATHS,
 ) -> AssetImportResult:
 	var executable_result := validate_executable(executable_path, expected_hash)

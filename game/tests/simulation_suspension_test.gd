@@ -63,7 +63,7 @@ func _check_current_classification() -> void:
 		main.network_connection_dialog, main.highway_connection_dialog, main.tunnel_dialog,
 		main.query_dialog, main.ordinance_window, main.building_objection_dialog,
 		main.scenario_dialog, main.military_dialog, main.budget_dialog,
-		main.main_menu, main.settings_dialog, main.save_changes_dialog,
+		main.main_menu, main.settings_dialog, main.reference_import_dialog, main.save_changes_dialog,
 		main.scurk_editor, main.scurk_place_print, main.scurk_print,
 	]
 	var modeless: Array[Node] = [

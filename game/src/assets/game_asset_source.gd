@@ -1,6 +1,6 @@
 class_name GameAssetSource
 extends RefCounted
-# load the original base set and apply an optional external graphics pack
+# load a graphics pack with optional original support data
 
 const MODES := ["auto", "original", "folder"]
 var assets: OriginalGameAssets
@@ -9,6 +9,7 @@ var uses_graphics_pack := false
 var graphics_name := ""
 var error := ""
 var reference_root := ""
+var warnings := PackedStringArray()
 
 
 static func default_reference_root() -> String:
@@ -60,22 +61,30 @@ static func load_source(base_root: String, mode: String, folder := "", override_
 
 	var installed := OriginalGameInstaller.validate_install_root(result.reference_root)
 
-	if not installed.ok:
-		result.error = "Import the original SimCity 2000 game files to start."
+	if installed.ok:
+		result.assets = OriginalGameAssets.load_root(result.reference_root)
+		result.use_original_data = result.assets.error.is_empty()
 
-		return result
+		if not result.use_original_data:
+			result.warnings.append("The original support set could not be loaded: " + result.assets.error)
 
-	result.use_original_data = true
-	result.assets = OriginalGameAssets.load_root(result.reference_root)
+	if not result.use_original_data:
+		# a city pack can stand alone. optional ui and text consumers already
+		# supply controls or report missing content without an original executable
+		if pack.large_sprites.entries.is_empty() or pack.small_medium_sprites.entries.is_empty():
+			result.error = "This graphics pack needs a base set for its missing city sprite size group. Import both large and small/medium city sprites to start without a base."
+			return result
 
-	if not result.assets.error.is_empty():
-		result.error = result.assets.error
-
-		return result
-
+		result.assets = OriginalGameAssets.new()
+		result.reference_root = pack_root
+		result.warnings.append("This pack runs without original Windows support files. Missing interface artwork and text use the available built-in controls and messages.")
 	if not pack.apply_to(result.assets):
 		result.error = "Cannot load graphics pack: " + pack.error
 
+		return result
+
+	if result.assets.palette == null or not result.assets.palette.is_valid():
+		result.error = "The graphics pack does not provide a valid city palette."
 		return result
 
 	result.graphics_name = pack.pack_name

@@ -58,6 +58,10 @@ func _initialize() -> void:
 	var assets := OriginalGameAssets.new()
 	assert(loaded.apply_to(assets))
 	assert(assets.large_sprites == loaded.large_sprites)
+	_write_manifest(root, manifest)
+	var standalone := GameAssetSource.load_source("", "folder", root)
+	assert(standalone.error.is_empty() and not standalone.use_original_data, standalone.error)
+	assert(standalone.assets.large_sprites.find_sprite(1001).decode_indices().pixels == sprite.decode_indices().pixels)
 
 	for bad_path in ["../sprite.png", "/sprite.png", "res://sprite.png", "a\\sprite.png", "./sprite.png"]:
 		manifest.palette = bad_path
@@ -78,6 +82,32 @@ func _initialize() -> void:
 	manifest.ui.erase("toolbar_art")
 	_write_manifest(root, manifest)
 	assert(not Pack.load_root(root).error.is_empty())
+	manifest.partial = true
+	manifest.erase("scenario_palette")
+	manifest.small_medium_sprites = []
+	_write_manifest(root, manifest)
+	var partial := Pack.load_root(root)
+	assert(partial.error.is_empty(), partial.error)
+	assert(not GameAssetSource.load_source("", "folder", root).error.is_empty(), "One sprite size group cannot activate without a base")
+	var kept_small := assets.small_medium_sprites
+	var kept_scenario := assets.scenario_palette
+	var kept_toolbar := assets.toolbar_art
+	assert(partial.apply_to(assets))
+	assert(assets.small_medium_sprites == kept_small and assets.scenario_palette == kept_scenario and assets.toolbar_art == kept_toolbar)
+	# Reject an incompatible palette before changing any active assets.
+	var different := Sc2Palette.index_encoding()
+	assets.palette = different
+	var kept_large := assets.large_sprites
+	assert(not Pack.load_root(root).apply_to(assets))
+	assert(assets.palette == different and assets.large_sprites == kept_large)
+	manifest.large_sprites = []
+	_write_manifest(root, manifest)
+	assert(not GameAssetSource.load_source("", "folder", root).error.is_empty(), "UI-only packs cannot supply a city on first run")
+	assert(Pack.load_root(root).apply_to(assets))
+	assert(assets.palette == different and assets.large_sprites == kept_large)
+	manifest.ui = {}
+	_write_manifest(root, manifest)
+	assert(not Pack.load_root(root).error.is_empty(), "Empty partial packs are invalid")
 	DirAccess.remove_absolute(root.path_join("sprite.png"))
 	DirAccess.remove_absolute(root.path_join("pack.json"))
 	DirAccess.remove_absolute(root)

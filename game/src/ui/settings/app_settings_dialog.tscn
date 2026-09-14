@@ -513,7 +513,7 @@ layout_mode = 2
 [node name="ImportHint" type="Label" parent="Tabs/Import Data/Fields"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Select SIMCITY.EXE from your SimCity 2000 installation to import graphics, sounds, music, cities, and scenarios for use in OpenSC2K."
+text = "Import graphics, sounds and music from your SimCity 2000 game files. Choose all asset types or import one type. Each import creates separate packs."
 autowrap_mode = 3
 theme_type_variation = "HelpLabel"
 

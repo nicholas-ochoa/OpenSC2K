@@ -188,6 +188,9 @@ func _build_main_menu() -> void:
 	app.settings_dialog = app.main_overlays.settings_dialog
 	app.settings_dialog.confirmed.connect(app.settings.apply_settings)
 	app.settings_dialog.import_original_requested.connect(app.assets.show_reference_import_dialog)
+	app.reference_import_dialog = app.main_overlays.asset_import_dialog
+	app.reference_import_dialog.packs_imported.connect(app.assets.activate_imported_packs)
+	app.reference_import_dialog.dismissed.connect(app.assets._on_reference_import_canceled)
 
 	app.about_dialog = app.main_overlays.about_dialog
 

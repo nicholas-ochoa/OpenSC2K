@@ -1088,5 +1088,53 @@
     "requires": [
       "ext/graphics/pack.json"
     ]
+  },
+  {
+    "id": "sc2_import_container_test",
+    "script": "tests/sc2_import_container_test.gd",
+    "domain": "formats",
+    "lane": "product"
+  },
+  {
+    "id": "sc2_import_corpus_test",
+    "script": "tests/sc2_import_corpus_test.gd",
+    "domain": "formats",
+    "lane": "audit"
+  },
+  {
+    "id": "sc2_import_audio_test",
+    "script": "tests/sc2_import_audio_test.gd",
+    "domain": "formats",
+    "lane": "product"
+  },
+  {
+    "id": "sc2_import_graphics_test",
+    "script": "tests/sc2_import_graphics_test.gd",
+    "domain": "formats",
+    "lane": "product"
+  },
+  {
+    "id": "sc2_import_pack_corpus_test",
+    "script": "tests/sc2_import_pack_corpus_test.gd",
+    "domain": "formats",
+    "lane": "audit"
+  },
+  {
+    "id": "sc2_import_dialog_test",
+    "script": "tests/sc2_import_dialog_test.gd",
+    "domain": "ui",
+    "lane": "product"
+  },
+  {
+    "id": "sc2_import_standalone_test",
+    "script": "tests/sc2_import_standalone_test.gd",
+    "domain": "ui",
+    "lane": "audit"
+  },
+  {
+    "id": "sc2_import_mac_tiles_test",
+    "script": "tests/sc2_import_mac_tiles_test.gd",
+    "domain": "formats",
+    "lane": "audit"
   }
 ]

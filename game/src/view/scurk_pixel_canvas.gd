@@ -236,6 +236,15 @@ func display_palette_index(index: int) -> int:
 
 
 func set_drawing_graphics(graphics: ScurkGraphics) -> void:
+	if graphics == null:
+		texture_patterns = _fallback_texture_patterns()
+		original_textures_loaded = false
+		texture_index = clampi(texture_index, 0, texture_patterns.size() - 1)
+		clear_background_pixels.clear()
+		clip_background_pixels.clear()
+		queue_redraw()
+		return
+
 	texture_patterns.clear()
 
 	for pattern in graphics.patterns:
