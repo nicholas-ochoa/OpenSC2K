@@ -30,6 +30,11 @@ func set_animated_palette(texture: Texture2D) -> void:
 	map.layers._sync_base_material()
 
 
+func set_dark_underground_palette(texture: Texture2D) -> void:
+	map.dark_underground_palette_texture = texture
+	map.layers._sync_base_material()
+
+
 func set_signs_visible(value: bool) -> void:
 	if map.signs_visible == value:
 		return

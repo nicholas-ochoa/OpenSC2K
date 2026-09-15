@@ -308,6 +308,7 @@ func _sync_base_material() -> void:
 		return
 
 	map._base_material.set_shader_parameter("dark_underground", map.dark_underground)
+	map._base_material.set_shader_parameter("dark_underground_palette", map.dark_underground_palette_texture)
 	map._base_material.set_shader_parameter("palette_indices", map.palette_index_texture)
 	map._base_material.set_shader_parameter("animated_palette", map.animated_palette_texture)
 	# with palette_lookup_all, the base texture holds the indices itself

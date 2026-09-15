@@ -433,8 +433,16 @@ func update_palette_cycle_texture() -> void:
 	else:
 		palette_clock.cycle_texture.update(image)
 
+	var underground_image := app.asset_state.palette.underground_animation_image(palette_clock.cycle_ticks)
+
+	if palette_clock.underground_cycle_texture == null:
+		palette_clock.underground_cycle_texture = ImageTexture.create_from_image(underground_image)
+	else:
+		palette_clock.underground_cycle_texture.update(underground_image)
+
 	if app.map_view != null:
 		app.map_view.set_animated_palette(palette_clock.cycle_texture)
+		app.map_view.set_dark_underground_palette(palette_clock.underground_cycle_texture)
 
 
 func _city_graphics_size() -> int:

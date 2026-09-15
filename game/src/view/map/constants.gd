@@ -27,6 +27,7 @@ uniform sampler2D animated_palette : source_color, filter_nearest, repeat_disabl
 uniform bool palette_cycle_enabled = false;
 uniform bool palette_lookup_all = false;
 uniform bool dark_underground = false;
+uniform sampler2D dark_underground_palette : source_color, filter_nearest, repeat_disable;
 
 void fragment() {
 	vec4 base_color = texture(TEXTURE, UV);
@@ -46,29 +47,7 @@ void fragment() {
 		COLOR = base_color;
 	}
 	if (dark_underground) {
-		float high = max(COLOR.r, max(COLOR.g, COLOR.b));
-		float low = min(COLOR.r, min(COLOR.g, COLOR.b));
-		// Preserve sprite shading. Only white is the underground paper background.
-		if (palette_lookup_all && palette_index >= 200 && palette_index <= 207) {
-			// Original flowing-water cycle. Keep its moving highlights.
-			COLOR.rgb = mix(vec3(0.22, 0.66, 0.82), vec3(0.66, 0.94, 1.0), COLOR.g);
-		} else if (palette_lookup_all && palette_index >= 140 && palette_index <= 147) {
-			// Original fixed blue pipe ramp means no water, not flowing water.
-			COLOR.rgb = mix(vec3(0.36, 0.20, 0.12), vec3(0.72, 0.46, 0.28), high);
-		} else if (low > 0.97) {
-			COLOR.rgb = vec3(0.125, 0.157, 0.188);
-		} else if (high - low < 0.08) {
-			COLOR.rgb = mix(vec3(0.28, 0.33, 0.38), vec3(0.60, 0.66, 0.70), high);
-		} else if (COLOR.b > COLOR.r * 1.3 && COLOR.b > COLOR.g * 1.15) {
-			// Water pipes: readable blue with enough green for dark-background contrast.
-			COLOR.rgb = mix(vec3(0.18, 0.43, 0.65), vec3(0.40, 0.78, 0.96), high);
-		} else if (COLOR.g > COLOR.r * 1.2 && COLOR.g > COLOR.b * 1.2) {
-			// Subway routes remain green and distinct from the water network.
-			COLOR.rgb = mix(vec3(0.18, 0.43, 0.28), vec3(0.45, 0.82, 0.56), high);
-		} else {
-			// Keep terrain wireframes subordinate to the networks.
-			COLOR.rgb *= 0.60;
-		}
+		COLOR.rgb = texture(dark_underground_palette, vec2((float(palette_index) + 0.5) / 256.0, 0.5)).rgb;
 	}
 }
 """

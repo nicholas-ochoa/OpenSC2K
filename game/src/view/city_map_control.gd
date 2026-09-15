@@ -45,6 +45,7 @@ var city: CityState:
 var city_source: CityMapSource
 var palette_index_texture: Texture2D
 var animated_palette_texture: Texture2D
+var dark_underground_palette_texture: Texture2D
 var dark_underground := false:
 	set(value):
 		dark_underground = value
@@ -183,6 +184,10 @@ func set_city_view(
 
 func set_animated_palette(texture: Texture2D) -> void:
 	signs.set_animated_palette(texture)
+
+
+func set_dark_underground_palette(texture: Texture2D) -> void:
+	signs.set_dark_underground_palette(texture)
 
 
 func set_signs_visible(value: bool) -> void:

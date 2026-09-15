@@ -150,6 +150,39 @@ func animation_image(base_ticks: int) -> Image:
 	return image
 
 
+# the blue pipe is dry; the cycling blue pipe is wet
+# apply the underground colors after cycling so water keeps its moving highlights
+func underground_animation_image(base_ticks: int) -> Image:
+	var image := animation_image(base_ticks)
+
+	for index in 256:
+		var source := image.get_pixel(index, 0)
+		var high := maxf(source.r, maxf(source.g, source.b))
+		var low := minf(source.r, minf(source.g, source.b))
+		var remapped: Color
+
+		if index >= 200 and index <= 207:
+			remapped = Color(0.22, 0.66, 0.82).lerp(Color(0.66, 0.94, 1.0), source.g)
+		elif index >= 140 and index <= 147:
+			# the fixed blue pipe ramp means no water
+			remapped = Color(0.36, 0.20, 0.12).lerp(Color(0.72, 0.46, 0.28), high)
+		elif low > 0.97:
+			remapped = Color(0.125, 0.157, 0.188)
+		elif high - low < 0.08:
+			remapped = Color(0.28, 0.33, 0.38).lerp(Color(0.60, 0.66, 0.70), high)
+		elif source.b > source.r * 1.3 and source.b > source.g * 1.15:
+			remapped = Color(0.18, 0.43, 0.65).lerp(Color(0.40, 0.78, 0.96), high)
+		elif source.g > source.r * 1.2 and source.g > source.b * 1.2:
+			remapped = Color(0.18, 0.43, 0.28).lerp(Color(0.45, 0.82, 0.56), high)
+		else:
+			remapped = source * 0.60
+
+		remapped.a = source.a
+		image.set_pixel(index, 0, remapped)
+
+	return image
+
+
 static func _apply_cycle(
 	indices: PackedInt32Array, start: int, cycle_table: Array
 ) -> void:

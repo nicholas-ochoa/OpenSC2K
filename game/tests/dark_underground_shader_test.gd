@@ -27,6 +27,18 @@ func _run() -> void:
 	shader.code = CityMapControl.PALETTE_CYCLE_SHADER
 	var material := ShaderMaterial.new()
 	material.shader = shader
+	var source_palette := Sc2Palette.new()
+	var source_indices := Image.create(8, 1, false, Image.FORMAT_RGBA8)
+
+	for index in 256:
+		source_palette.colors.append(source.get_pixel(index, 0) if index < 8 else Color.BLACK)
+
+	for index in 8:
+		source_indices.set_pixel(index, 0, Color8(index, index, index))
+
+	var underground_texture := ImageTexture.create_from_image(source_palette.underground_animation_image(0))
+	material.set_shader_parameter("palette_indices", ImageTexture.create_from_image(source_indices))
+	material.set_shader_parameter("dark_underground_palette", underground_texture)
 	material.set_shader_parameter("dark_underground", true)
 	var rect := TextureRect.new()
 	rect.texture = texture
@@ -73,6 +85,7 @@ func _run() -> void:
 		for x in indices.size():
 			source.set_pixel(x, 0, Color8(indices[x], indices[x], indices[x]))
 		texture.update(source)
+		underground_texture.update(palette.underground_animation_image(0))
 		material.set_shader_parameter("animated_palette", palette_texture)
 		material.set_shader_parameter("palette_lookup_all", true)
 		material.set_shader_parameter("palette_cycle_enabled", true)
@@ -88,8 +101,9 @@ func _run() -> void:
 				"Flowing-water cycle must retain its highlights")
 			assert(actual.get_pixel(offset + 4, 0).g > actual.get_pixel(offset + 5, 0).g,
 				"Subway shading must survive")
-		palette_image.set_pixel(200, 0, palette.color(204))
+		palette_image = palette.animation_image(4)
 		palette_texture.update(palette_image)
+		underground_texture.update(palette.underground_animation_image(4))
 		await RenderingServer.frame_post_draw
 		assert(viewport.get_texture().get_image().get_pixel(2, 0) != actual.get_pixel(2, 0),
 			"Retained pipe pixels must animate with the palette")
