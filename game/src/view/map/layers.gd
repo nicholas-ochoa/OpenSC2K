@@ -22,10 +22,8 @@ func set_data_view(value: CityState, mode: CityViewMode.Mode) -> void:
 		map.data_view_layer = MeshInstance2D.new()
 		map.data_view_layer.name = "TileDataLayer"
 		map.data_view_layer.show_behind_parent = true
-		var shader := Shader.new()
-		shader.code = CityDataView.GRID_SHADER
 		var grid_material := ShaderMaterial.new()
-		grid_material.shader = shader
+		grid_material.shader = CityDataView.GRID_SHADER
 		map.data_view_layer.material = grid_material
 		map.add_child(map.data_view_layer)
 
@@ -175,8 +173,7 @@ func _ensure_base_layer() -> void:
 	map.add_child(map._price_layer)
 	map._foreground_palette_material = CityForegroundPalette.create_material(map.animated_palette_texture)
 	map.material = map._foreground_palette_material
-	map._palette_shader = Shader.new()
-	map._palette_shader.code = PALETTE_CYCLE_SHADER
+	map._palette_shader = PALETTE_CYCLE_SHADER
 	map._base_material = _new_palette_material()
 	map._base_layer.material = map._base_material
 	map.add_child(map._base_layer)

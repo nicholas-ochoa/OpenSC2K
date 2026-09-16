@@ -216,10 +216,8 @@ func check_shader() -> void:
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	root.add_child(viewport)
 	var layer := MeshInstance2D.new()
-	var shader := Shader.new()
-	shader.code = CityDataView.GRID_SHADER
 	var material := ShaderMaterial.new()
-	material.shader = shader
+	material.shader = CityDataView.GRID_SHADER
 	layer.material = material
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)

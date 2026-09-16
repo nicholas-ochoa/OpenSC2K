@@ -3,18 +3,7 @@ extends Node
 # this cursor is an operation on the screen, not just an image
 # native pointers for ordinary art; a small gpu patch for original xor art
 
-const XOR_SHADER := """
-shader_type canvas_item;
-render_mode unshaded;
-uniform sampler2D screen_image : hint_screen_texture, repeat_disable, filter_nearest;
-void fragment() {
-	vec4 mask = texture(TEXTURE, UV);
-	ivec3 background = ivec3(round(textureLod(screen_image, SCREEN_UV, 0.0).rgb * 255.0));
-	ivec3 foreground = ivec3(round(mask.rgb * 255.0));
-	ivec3 result = (mask.a > 0.5 ? background : ivec3(0)) ^ foreground;
-	COLOR = vec4(vec3(result) / 255.0, 1.0);
-}
-"""
+const XOR_SHADER := preload("res://src/view/desktop_cursor_xor.gdshader")
 
 var graphics: DesktopGraphics
 var active_app := ""
@@ -39,10 +28,8 @@ func _ready() -> void:
 	_patch = TextureRect.new()
 	_patch.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_patch.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	var shader := Shader.new()
-	shader.code = XOR_SHADER
 	var shader_material := ShaderMaterial.new()
-	shader_material.shader = shader
+	shader_material.shader = XOR_SHADER
 	_patch.material = shader_material
 	_layer.add_child(_patch)
 	_layer.hide()

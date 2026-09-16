@@ -44,10 +44,8 @@ func _ready() -> void:
 	static_layer = Sprite2D.new()
 	static_layer.centered = false
 	static_layer.show_behind_parent = true
-	var shader := Shader.new()
-	shader.code = CityMapControl.PALETTE_CYCLE_SHADER
 	var shader_material := ShaderMaterial.new()
-	shader_material.shader = shader
+	shader_material.shader = CityMapControl.PALETTE_CYCLE_SHADER
 	shader_material.set_shader_parameter("palette_lookup_all", true)
 	shader_material.set_shader_parameter("palette_cycle_enabled", true)
 	static_layer.material = shader_material

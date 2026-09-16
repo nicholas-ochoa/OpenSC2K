@@ -19,10 +19,8 @@ func configure_animation(source: Sc2Palette, start_ticks: int) -> void:
 		return
 
 	palette_texture = ImageTexture.create_from_image(source.animation_image(ticks))
-	var shader := Shader.new()
-	shader.code = CityMapControl.PALETTE_CYCLE_SHADER
 	var lookup := ShaderMaterial.new()
-	lookup.shader = shader
+	lookup.shader = CityMapControl.PALETTE_CYCLE_SHADER
 	lookup.set_shader_parameter("animated_palette", palette_texture)
 	lookup.set_shader_parameter("palette_cycle_enabled", true)
 	lookup.set_shader_parameter("palette_lookup_all", true)

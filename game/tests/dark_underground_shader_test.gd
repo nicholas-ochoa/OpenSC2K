@@ -23,10 +23,8 @@ func _run() -> void:
 	source.set_pixel(7, 0, Color(0.3, 0.3, 0.3))
 	var before := source.get_data()
 	var texture := ImageTexture.create_from_image(source)
-	var shader := Shader.new()
-	shader.code = CityMapControl.PALETTE_CYCLE_SHADER
 	var material := ShaderMaterial.new()
-	material.shader = shader
+	material.shader = CityMapControl.PALETTE_CYCLE_SHADER
 	var source_palette := Sc2Palette.new()
 	var source_indices := Image.create(8, 1, false, Image.FORMAT_RGBA8)
 
