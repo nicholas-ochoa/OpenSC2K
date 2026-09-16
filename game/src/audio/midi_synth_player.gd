@@ -15,11 +15,19 @@ const MAX_TAIL_SECONDS := 2.0
 const MAX_FRAMES_PER_FILL := 1024
 const PITCH_BEND_RANGE := 2.0
 const TAU_VALUE := PI * 2.0
+const WAVETABLE_SIZE := 2048
 # the synth thread refills once the device has taken the prefill margin, so the
 # ring keeps most of its second of slack. godot has no timed semaphore wait, so
 # a full buffer costs one paced check every idle_poll_msec, never a spin
 const PREFILL_FRAMES := int(PREFILL_SECONDS * SAMPLE_RATE)
 const IDLE_POLL_MSEC := 10
+
+
+static var _family_0_table := PackedFloat32Array()
+static var _family_1_table := PackedFloat32Array()
+static var _family_2_table := PackedFloat32Array()
+static var _family_6_table := PackedFloat32Array()
+static var _family_7_table := PackedFloat32Array()
 
 
 class PlaybackResult extends RefCounted:
@@ -99,6 +107,25 @@ var _mix_right := PackedFloat64Array()
 var _frame_times := PackedFloat64Array()
 var _output := PackedVector2Array()
 var _track_complete := false
+
+
+# godot calls this once when it loads the class, before any synth thread starts
+static func _static_init() -> void:
+	# Keep the interpolation endpoint: family 1's 3.01 harmonic does not wrap at phase 1.
+	_family_0_table.resize(WAVETABLE_SIZE + 1)
+	_family_1_table.resize(WAVETABLE_SIZE + 1)
+	_family_2_table.resize(WAVETABLE_SIZE + 1)
+	_family_6_table.resize(WAVETABLE_SIZE + 1)
+	_family_7_table.resize(WAVETABLE_SIZE + 1)
+
+	for i in range(WAVETABLE_SIZE + 1):
+		var phase := float(i) / WAVETABLE_SIZE
+		_family_0_table[i] = sin(TAU_VALUE * phase) * 0.72 + sin(TAU_VALUE * phase * 2.0) * 0.20 + sin(TAU_VALUE * phase * 3.0) * 0.08
+		_family_1_table[i] = sin(TAU_VALUE * phase) * 0.65 + sin(TAU_VALUE * phase * 3.01) * 0.35
+		_family_2_table[i] = sin(TAU_VALUE * phase) * 0.65 + sin(TAU_VALUE * phase * 2.0) * 0.25 + sin(TAU_VALUE * phase * 4.0) * 0.10
+		# family 6 still needs its pitch-dependent saw at runtime
+		_family_6_table[i] = sin(TAU_VALUE * phase) * 0.55
+		_family_7_table[i] = sin(TAU_VALUE * phase) * 0.88 + sin(TAU_VALUE * phase * 2.0) * 0.12
 
 
 func _init() -> void:
@@ -684,16 +711,23 @@ func _apply_control_change(channel: int, controller: int, value: int) -> void:
 			_release_channel_voices(channel)
 
 
+static func _wavetable_sample(table: PackedFloat32Array, phase: float) -> float:
+	var scaled := phase * WAVETABLE_SIZE
+	var index0 := int(scaled) & (WAVETABLE_SIZE - 1)
+
+	return lerpf(table[index0], table[index0 + 1], scaled - index0)
+
+
 static func _family_sample(
 	family: int, phase: float, secondary_phase: float, phase_step: float
 ) -> float:
 	match family:
 		0:
-			return sin(TAU_VALUE * phase) * 0.72 + sin(TAU_VALUE * phase * 2.0) * 0.20 + sin(TAU_VALUE * phase * 3.0) * 0.08
+			return _wavetable_sample(_family_0_table, phase)
 		1:
-			return sin(TAU_VALUE * phase) * 0.65 + sin(TAU_VALUE * phase * 3.01) * 0.35
+			return _wavetable_sample(_family_1_table, phase)
 		2:
-			return sin(TAU_VALUE * phase) * 0.65 + sin(TAU_VALUE * phase * 2.0) * 0.25 + sin(TAU_VALUE * phase * 4.0) * 0.10
+			return _wavetable_sample(_family_2_table, phase)
 		3:
 			return _triangle(phase) * 0.70 + band_limited_saw(phase, phase_step) * 0.30
 		4:
@@ -704,9 +738,9 @@ static func _family_sample(
 				+ band_limited_saw(secondary_phase, phase_step * 1.006) * 0.48
 			)
 		6:
-			return band_limited_saw(phase, phase_step) * 0.45 + sin(TAU_VALUE * phase) * 0.55
+			return band_limited_saw(phase, phase_step) * 0.45 + _wavetable_sample(_family_6_table, phase)
 		7:
-			return sin(TAU_VALUE * phase) * 0.88 + sin(TAU_VALUE * phase * 2.0) * 0.12
+			return _wavetable_sample(_family_7_table, phase)
 		8:
 			return (
 				band_limited_square(phase, phase_step) * 0.55
