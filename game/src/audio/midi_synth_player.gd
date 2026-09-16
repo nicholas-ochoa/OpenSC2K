@@ -551,6 +551,24 @@ func _mix_voice(voice: Voice, offset: int, count: int) -> int:
 	var percussion := voice.percussion
 	var family := voice.family
 	var note := voice.note
+	var table := PackedFloat32Array()
+
+	# select the oscillator once per block, not once per sample
+	if not percussion:
+		match family:
+			0:
+				table = _family_0_table
+			1:
+				table = _family_1_table
+			2:
+				table = _family_2_table
+			6:
+				table = _family_6_table
+			7:
+				table = _family_7_table
+
+	var use_table := not table.is_empty()
+	var add_saw := family == 6
 
 	var age_step := 1.0 / SAMPLE_RATE
 	var phase_step := minf(voice.frequency / SAMPLE_RATE, 0.49)
@@ -588,6 +606,13 @@ func _mix_voice(voice: Voice, offset: int, count: int) -> int:
 				note, phase, age_seconds,
 				float((noise_state >> 8) & 0xffff) / 32767.5 - 1.0, phase_step
 			)
+		elif use_table:
+			var scaled := phase * WAVETABLE_SIZE
+			var index0 := int(scaled) & (WAVETABLE_SIZE - 1)
+			sample = lerpf(table[index0], table[index0 + 1], scaled - index0)
+
+			if add_saw:
+				sample = band_limited_saw(phase, phase_step) * 0.45 + sample
 		else:
 			sample = _family_sample(family, phase, secondary_phase, phase_step)
 
