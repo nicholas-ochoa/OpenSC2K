@@ -298,6 +298,7 @@ func _test_rle() -> void:
 		PackedByteArray([1, 2, 3, 4, 5]),
 		_filled_bytes(128, 0xaa),
 		_filled_bytes(300, 0x00),
+		_filled_bytes(128, 0xaa) + PackedByteArray([1, 2, 3]) + _filled_bytes(3, 0x55),
 	]
 
 	for original in cases:
@@ -307,6 +308,9 @@ func _test_rle() -> void:
 
 		if result.ok:
 			_check(result.data == original, "RLE round trip preserves bytes")
+
+		var unsized := RleCodec.decode(encoded)
+		_check(unsized.ok and unsized.data == original, "RLE decodes without an expected size")
 
 
 func _test_invalid_rle() -> void:

@@ -5,6 +5,7 @@ extends RefCounted
 static func decode(encoded: PackedByteArray, expected_size: int = -1) -> BinaryResult:
 	var decoded := PackedByteArray()
 	var read_offset := 0
+	var run := PackedByteArray()
 
 	while read_offset < encoded.size():
 		var control: int = encoded[read_offset]
@@ -34,8 +35,11 @@ static func decode(encoded: PackedByteArray, expected_size: int = -1) -> BinaryR
 			var value: int = encoded[read_offset]
 			read_offset += 1
 
-			for unused in count:
-				decoded.append(value)
+			# fill and append in native code. per-byte gdscript writes are slower,
+			# including when the complete output is allocated before decoding
+			run.resize(count)
+			run.fill(value)
+			decoded.append_array(run)
 
 	if expected_size >= 0 and decoded.size() != expected_size:
 		return BinaryResult.failure(
