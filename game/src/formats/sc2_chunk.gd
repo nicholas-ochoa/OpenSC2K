@@ -13,11 +13,13 @@ var is_dirty := false
 var mutation_revision := 0
 
 
-func set_decoded_payload(value: PackedByteArray) -> bool:
+# Copies by default. With transfer_ownership, stop using the caller's array,
+# including as an undo snapshot.
+func set_decoded_payload(value: PackedByteArray, transfer_ownership := false) -> bool:
 	if expected_decoded_size >= 0 and value.size() != expected_decoded_size:
 		return false
 
-	decoded_payload = value.duplicate()
+	decoded_payload = value if transfer_ownership else value.duplicate()
 	mark_mutated()
 
 	return true

@@ -42,7 +42,7 @@ static func run(city: CityState) -> Result:
 	span.mark("store traffic map and total")
 	# decay leaves an empty map unchanged. the render change signature reads the
 	# xtrf revision, so a redundant write would repaint the city every phase
-	if traffic != chunk.decoded_payload and not chunk.set_decoded_payload(traffic):
+	if traffic != chunk.decoded_payload and not chunk.set_decoded_payload(traffic, true):
 		return _failed("cannot store updated XTRF data")
 
 	if not city.document.set_misc_u32(MISC_TRAFFIC_COUNT, total):

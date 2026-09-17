@@ -291,7 +291,7 @@ func set_city_name(value: String) -> bool:
 
 	changed[encoded.size() + 1] = 0
 
-	return chunk.set_decoded_payload(changed)
+	return chunk.set_decoded_payload(changed, true)
 
 
 func misc_u32(offset: int) -> int:

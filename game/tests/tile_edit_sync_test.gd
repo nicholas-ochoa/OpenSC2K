@@ -20,6 +20,7 @@ func _init() -> void:
 		check_rejections(edge)
 		print("PASS: tile edit cases completed at %d" % edge)
 
+	check_payload_assignment()
 	check_flag_signature_cache()
 	print("Tile edit sync: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
@@ -221,3 +222,22 @@ func every_altitude_word_matches(city: CityState) -> bool:
 			return false
 
 	return true
+
+
+func check_payload_assignment() -> void:
+	var chunk := Sc2Chunk.new()
+	chunk.expected_decoded_size = 3
+	var retained := PackedByteArray([1, 2, 3])
+	check(chunk.set_decoded_payload(retained), "Default assignment accepts valid bytes")
+	retained[0] = 9
+	check(chunk.decoded_payload[0] == 1, "Default assignment isolates caller writes")
+	chunk.write_decoded_byte(1, 8)
+	check(retained[1] == 2, "Default assignment isolates later chunk writes")
+	var owned := PackedByteArray([4, 5, 6])
+	check(chunk.set_decoded_payload(owned, true), "Ownership transfer accepts valid bytes")
+	owned = PackedByteArray()
+	check(chunk.decoded_payload == PackedByteArray([4, 5, 6]), "Transferred bytes outlive the caller")
+	var revision := chunk.mutation_revision
+	check(not chunk.set_decoded_payload(PackedByteArray([7]), true), "Transfer rejects invalid size")
+	check(chunk.mutation_revision == revision and chunk.decoded_payload == PackedByteArray([4, 5, 6]),
+		"Rejected transfer preserves payload and revision")

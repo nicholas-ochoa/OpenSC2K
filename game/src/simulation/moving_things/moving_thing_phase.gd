@@ -204,7 +204,7 @@ class TickContext:
 			if working[index] == original:
 				continue
 
-			if not chunk.set_decoded_payload(working[index]):
+			if not chunk.set_decoded_payload(working[index], true):
 				for rollback in replaced:
 					rollback[0].set_decoded_payload(rollback[1])
 

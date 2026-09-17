@@ -14,7 +14,7 @@ static func create(map_edge: int = 128) -> Sc2File:
 		var bytes := PackedByteArray()
 		bytes.resize(chunk.expected_decoded_size)
 		bytes.fill(0)
-		chunk.set_decoded_payload(bytes)
+		chunk.set_decoded_payload(bytes, true)
 		document.chunks.append(chunk)
 
 	document.rebuild_chunk_cache()
