@@ -29,6 +29,8 @@ var occlusion_masks: Dictionary[String, Image] = {}
 var image_roles: Dictionary[int, ImageRole] = {}
 var _image_key_count := 0
 var tiles: Dictionary[int, Tile] = {}
+var _tile_order := PackedInt32Array()
+var _tile_order_head := 0
 var bounds_cache: Dictionary = {}
 var revision := -1
 var rotation := 0
@@ -41,9 +43,14 @@ var row_height := 0
 var error := ""
 
 
+func _init() -> void:
+	_tile_order.resize(TILE_CACHE_LIMIT)
+
+
 func set_revision(value: int) -> void:
 	if revision != value:
 		tiles.clear()
+		_tile_order_head = 0
 		bounds_cache.clear()
 		revision = value
 
@@ -99,11 +106,12 @@ func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 
 	if tiles.size() >= TILE_CACHE_LIMIT:
 		# fifo bounds geometry memory even during repeated cross-map pans
-		var keys := tiles.keys()
-
 		for index in 1024:
-			tiles.erase(keys[index])
+			tiles.erase(_tile_order[(_tile_order_head + index) % TILE_CACHE_LIMIT])
 
+		_tile_order_head = (_tile_order_head + 1024) % TILE_CACHE_LIMIT
+
+	_tile_order[(_tile_order_head + tiles.size()) % TILE_CACHE_LIMIT] = key
 	tiles[key] = result
 
 	return result
