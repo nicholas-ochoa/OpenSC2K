@@ -38,6 +38,7 @@ class TickContext:
 	var map_edge: int
 	# indexed like commit_order
 	var chunks: Array[Sc2Chunk] = []
+	var map_payloads_writable := false
 	var altitude: PackedByteArray
 	var buildings: PackedByteArray
 	var terrain: PackedByteArray
@@ -75,7 +76,8 @@ class TickContext:
 
 
 	# find each input chunk, check its size, and give the records a working copy
-	# of its payload. returns false when a chunk is missing or has the wrong size
+	# of xthg and xtxt. other payloads are read-only until prepare_map_writes
+	# returns false when a chunk is missing or has the wrong size
 	func load_payloads(source: CityState) -> bool:
 		city = source
 		map_edge = source.map_size
@@ -98,18 +100,37 @@ class TickContext:
 
 		things = chunks[0].decoded_payload.duplicate()
 		text = chunks[1].decoded_payload.duplicate()
-		altitude = chunks[2].decoded_payload.duplicate()
-		buildings = chunks[3].decoded_payload.duplicate()
-		terrain = chunks[4].decoded_payload.duplicate()
-		zones = chunks[5].decoded_payload.duplicate()
-		underground = chunks[6].decoded_payload.duplicate()
-		flags = chunks[7].decoded_payload.duplicate()
-		traffic = chunks[8].decoded_payload.duplicate()
-		labels = chunks[9].decoded_payload.duplicate()
-		microsims = chunks[10].decoded_payload.duplicate()
-		misc = chunks[11].decoded_payload.duplicate()
+		altitude = chunks[2].decoded_payload
+		buildings = chunks[3].decoded_payload
+		terrain = chunks[4].decoded_payload
+		zones = chunks[5].decoded_payload
+		underground = chunks[6].decoded_payload
+		flags = chunks[7].decoded_payload
+		traffic = chunks[8].decoded_payload
+		labels = chunks[9].decoded_payload
+		microsims = chunks[10].decoded_payload
+		misc = chunks[11].decoded_payload
 
 		return true
+
+
+	# ordinary vehicles only write xthg and xtxt. copy the map planes just before
+	# the first disaster record, including a record spawned earlier in this tick
+	func prepare_map_writes() -> void:
+		if map_payloads_writable:
+			return
+
+		altitude = altitude.duplicate()
+		buildings = buildings.duplicate()
+		terrain = terrain.duplicate()
+		zones = zones.duplicate()
+		underground = underground.duplicate()
+		flags = flags.duplicate()
+		traffic = traffic.duplicate()
+		labels = labels.duplicate()
+		microsims = microsims.duplicate()
+		misc = misc.duplicate()
+		map_payloads_writable = true
 
 
 	# update each thing record with its type's tick rule, in record order
@@ -149,6 +170,7 @@ class TickContext:
 						ThingData.ship_home(things, record, ship_home), random, lfsr_random, counters, map_edge
 					)
 				TYPE_MONSTER:
+					prepare_map_writes()
 					counters.active_monsters += 1
 					DisasterTick.update_monster(
 						city, altitude, buildings, terrain, zones, underground,
@@ -156,6 +178,7 @@ class TickContext:
 						record, city_center, random, lfsr_random, counters
 					)
 				TYPE_EXPLOSION:
+					prepare_map_writes()
 					counters.active_explosions += 1
 					DisasterTick.update_explosion(
 						city, altitude, buildings, terrain, zones, underground,
@@ -174,6 +197,7 @@ class TickContext:
 						random, lfsr_random, game_random, counters, map_edge
 					)
 				TYPE_TORNADO:
+					prepare_map_writes()
 					counters.active_tornadoes += 1
 					DisasterTick.update_tornado(
 						city, altitude, buildings, terrain, zones, underground,
@@ -197,7 +221,7 @@ class TickContext:
 		var replaced: Array = []
 		var committed := PackedStringArray()
 
-		for index in COMMIT_ORDER.size():
+		for index in (COMMIT_ORDER.size() if map_payloads_writable else 2):
 			var chunk := chunks[index]
 			var original := chunk.decoded_payload
 

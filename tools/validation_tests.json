@@ -10,6 +10,12 @@
     "timeout": 90
   },
   {
+    "id": "moving_payload_isolation_test",
+    "script": "tests/moving_payload_isolation_test.gd",
+    "domain": "simulation",
+    "lane": "product"
+  },
+  {
     "id": "maxis_man_response_test",
     "script": "tests/maxis_man_response_test.gd",
     "domain": "simulation",
