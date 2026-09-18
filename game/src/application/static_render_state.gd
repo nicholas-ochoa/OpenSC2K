@@ -2,7 +2,7 @@ class_name StaticRenderState
 extends RefCounted
 
 
-var thread: Thread
+var task: CityRenderTask
 var job: CityRenderJob
 
 var epoch := 0

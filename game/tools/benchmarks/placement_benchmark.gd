@@ -58,7 +58,7 @@ func _run() -> void:
 
 		var render_state := main.get("static_render_state") as StaticRenderState
 
-		while render_state.thread != null or render_state.pending:
+		while render_state.task != null or render_state.pending:
 			await process_frame
 
 	main.queue_free()

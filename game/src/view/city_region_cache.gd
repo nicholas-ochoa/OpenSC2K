@@ -11,7 +11,7 @@ const GPU_PREFETCH_LIMIT := 256
 const GPU_REGION_EDGE := 256
 const GPU_WORKERS := 2
 class RegionWorker extends RefCounted:
-	var thread: Thread
+	var task: CityRenderTask
 	var context: CityGpuBuildContext
 	var atlas: ImageTexture
 	var atlas_revision := -1
@@ -45,7 +45,7 @@ var _show_water_mains := true
 var _show_pipes := true
 var _show_subways := true
 var _prepared := false
-var _thread: Thread
+var _task: CityRenderTask
 var _job_key := Vector2i.ZERO
 var _job_generation := 0
 var _layout_generation := 0
@@ -220,9 +220,9 @@ func tick() -> bool:
 	if gpu_enabled:
 		return _tick_gpu()
 
-	if _thread != null and not _thread.is_alive():
-		var result: CityRegionResult = _thread.wait_to_finish()
-		_thread = null
+	if _task != null and not _task.is_running():
+		var result: CityRegionResult = _task.finish()
+		_task = null
 
 		if not result.ok:
 			last_error = result.error
@@ -244,7 +244,7 @@ func tick() -> bool:
 		else:
 			discarded_regions += 1
 
-	if _thread == null and last_error.is_empty():
+	if _task == null and last_error.is_empty():
 		var queue: Array[Vector2i] = []
 
 		for key in visible:
@@ -260,13 +260,13 @@ func tick() -> bool:
 			_job_key = key
 			_job_generation = generation
 			_job_layout = _layout_generation
-			_thread = Thread.new()
+			_task = CityRenderTask.new()
 			var bounds := Rect2i(key * region_edge, Vector2i(region_edge, region_edge))
-			var error := _thread.start(_render.bind(_snapshot, _palette, _sprites, bounds, view_size, mode, _visibility, _prepared, _show_pipes,
-					_show_subways, _show_water_mains), Thread.PRIORITY_LOW)
+			var error := _task.start(_render.bind(_snapshot, _palette, _sprites, bounds, view_size, mode, _visibility, _prepared, _show_pipes,
+					_show_subways, _show_water_mains))
 
 			if error != OK:
-				_thread = null
+				_task = null
 				last_error = error_string(error)
 				_changed = true
 
@@ -444,16 +444,16 @@ func metrics() -> Dictionary:
 
 	return {"gpu": gpu_enabled, "atlas_bytes": _gpu_atlas_bytes(), "resident": entries.size(), "visible": visible.size(),
 			"offscreen_limit": offscreen_limit(), "cpu_image_bytes": bytes, "texture_bytes_estimate": bytes, "completed": completed_regions,
-			"discarded": discarded_regions, "max_region_usec": max_region_usec, "ready": ready(), "covered": covered(), "pending": _thread != null or _gpu_pending()}
+			"discarded": discarded_regions, "max_region_usec": max_region_usec, "ready": ready(), "covered": covered(), "pending": _task != null or _gpu_pending()}
 
 
 func close() -> void:
 	_close_gpu_workers()
 
-	if _thread != null:
-		_thread.wait_to_finish()
+	if _task != null:
+		_task.finish()
 
-	_thread = null
+	_task = null
 	entries.clear()
 	_snapshot = null
 	display_city = null

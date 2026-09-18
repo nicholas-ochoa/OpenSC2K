@@ -254,7 +254,7 @@ func _run() -> void:
 
 			if (
 				patch_command.command_type != "zone"
-				or main.static_render_state.thread != null
+				or main.static_render_state.task != null
 				or main.render_caches.static_visual_signature != expected_signature
 			):
 				push_error("A bounded city edit did not use the exact regional refresh")
@@ -266,7 +266,7 @@ func _run() -> void:
 			main.city_edits.call("undo_last_edit")
 
 			if (
-				main.static_render_state.thread != null
+				main.static_render_state.task != null
 				or loaded_city.zone_id(patch_point.x, patch_point.y) != 0
 			):
 				push_error("Regional city-edit Undo did not restore the prior view")

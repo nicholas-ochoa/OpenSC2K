@@ -41,7 +41,7 @@ func debug_metrics() -> Dictionary:
 		),
 		"tool": "--",
 		"view": CityViewMode.key(app.view_state.overlay_mode),
-		"static_render": "running" if app.static_render_state.thread != null else "idle",
+		"static_render": "running" if app.static_render_state.task != null else "idle",
 		"render_pending": app.static_render_state.pending,
 		"static_cache": app.render_caches.static_view_cache.size(),
 		"dynamic_cache": app.render_caches.dynamic_visual_cache.size(),

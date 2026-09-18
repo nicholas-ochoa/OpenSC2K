@@ -66,7 +66,7 @@ func _apply_static_edit_patch(command: EditCommandResult) -> bool:
 		or caches.static_city_image.is_empty()
 		or caches.static_render_mode != CityViewMode.Mode.CITY
 		or caches.static_display_city == null
-		or state.thread != null
+		or state.task != null
 	):
 		return false
 
@@ -266,7 +266,7 @@ static func _edit_dirty_indices(command: EditCommandResult, map_edge: int = 128)
 func request_static_render(
 	signature: Array, view_size: int, sprite_archive: Sc2SpriteArchive, render_mode := CityViewMode.Mode.CITY
 ) -> void:
-	if state.thread != null:
+	if state.task != null:
 		return
 
 	var now_msec := Time.get_ticks_msec()
@@ -304,13 +304,13 @@ func request_static_render(
 	state.job.show_underground_subways = app.view_state.show_underground_subways
 	state.job.show_underground_water_mains = app.view_state.show_underground_water_mains
 	state.job.show_underground_pipes = app.view_state.show_underground_pipes
-	state.thread = Thread.new()
-	var start_error := state.thread.start(
-		state.job.run, Thread.PRIORITY_LOW
+	state.task = CityRenderTask.new()
+	var start_error := state.task.start(
+		state.job.run
 	)
 
 	if start_error != OK:
-		state.thread = null
+		state.task = null
 		state.job = null
 		app.interface.show_error("Cannot start the city renderer: %s" % error_string(start_error))
 	else:
@@ -320,7 +320,7 @@ func request_static_render(
 func start_pending_static_render() -> void:
 	if (
 		not state.pending
-		or state.thread != null
+		or state.task != null
 		or app.document_state.city == null
 		or not CityViewMode.is_map(app.view_state.overlay_mode)
 	):
@@ -338,11 +338,11 @@ func start_pending_static_render() -> void:
 func poll_static_render() -> void:
 	app.map_render.poll_region_cache()
 
-	if state.thread == null or state.thread.is_alive():
+	if state.task == null or state.task.is_running():
 		return
 
-	var rendered: CityRenderJob.Result = state.thread.wait_to_finish()
-	state.thread = null
+	var rendered: CityRenderJob.Result = state.task.finish()
+	state.task = null
 	state.job = null
 
 	if not rendered.ok:
@@ -459,10 +459,10 @@ func sprite_archive_for_view(view_size: int) -> Sc2SpriteArchive:
 
 # waits for the running static render and discards its job
 func stop_render_job() -> void:
-	if state.thread != null and state.thread.is_started():
-		state.thread.wait_to_finish()
+	if state.task != null:
+		state.task.finish()
 
-	state.thread = null
+	state.task = null
 	state.job = null
 
 

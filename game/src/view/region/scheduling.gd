@@ -120,7 +120,7 @@ static func _trim_retained_regions(cache: CityRegionCache) -> void:
 
 static func _gpu_pending(cache: CityRegionCache) -> bool:
 	for worker in cache._gpu_workers:
-		if worker.thread != null:
+		if worker.task != null:
 			return true
 
 	return false
@@ -128,8 +128,8 @@ static func _gpu_pending(cache: CityRegionCache) -> bool:
 
 static func _close_gpu_workers(cache: CityRegionCache) -> void:
 	for worker in cache._gpu_workers:
-		if worker.thread != null:
-			worker.thread.wait_to_finish()
+		if worker.task != null:
+			worker.task.finish()
 
 	cache._gpu_workers.clear()
 
@@ -140,11 +140,11 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 			cache._gpu_workers.append(CityRegionCache.RegionWorker.new())
 
 	for worker in cache._gpu_workers:
-		if worker.thread == null or worker.thread.is_alive():
+		if worker.task == null or worker.task.is_running():
 			continue
 
-		var result: CityGpuRegionBatch.Result = worker.thread.wait_to_finish()
-		worker.thread = null
+		var result: CityGpuRegionBatch.Result = worker.task.finish()
+		worker.task = null
 		cache._gpu_has_work = true
 
 		if worker.layout != cache._layout_generation:
@@ -214,13 +214,13 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 	cache._changed = false
 
 	if not cache._gpu_has_work or cache._gpu_workers.all(func(worker: CityRegionCache.RegionWorker) -> bool:
-		return worker.thread != null):
+		return worker.task != null):
 		return changed
 
 	var active := {}
 
 	for worker in cache._gpu_workers:
-		if worker.thread != null and worker.layout == cache._layout_generation:
+		if worker.task != null and worker.layout == cache._layout_generation:
 			for key in worker.keys:
 				active[key] = true
 
@@ -264,7 +264,7 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 	for worker_index in cache._gpu_workers.size():
 		var worker := cache._gpu_workers[worker_index]
 
-		if worker.thread != null:
+		if worker.task != null:
 			continue
 
 		var keys: Array[Vector2i] = []
@@ -299,7 +299,7 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 		worker.layout = cache._layout_generation
 		worker.generation = cache.generation
 		worker.keys = keys
-		worker.thread = Thread.new()
+		worker.task = CityRenderTask.new()
 		var request := CityGpuRegionBatch.Request.new()
 		request.city = cache._snapshot
 		request.prepared = cache._prepared
@@ -315,10 +315,10 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 		request.subways = cache._show_subways
 		request.generation = cache.generation
 		request.signs = cache.sign_requests
-		var error: Error = worker.thread.start(CityGpuRegionBatch.build.bind(request, worker.context, worker.atlas_revision), Thread.PRIORITY_LOW)
+		var error: Error = worker.task.start(CityGpuRegionBatch.build.bind(request, worker.context, worker.atlas_revision))
 
 		if error != OK:
-			worker.thread = null
+			worker.task = null
 			cache._close_gpu_workers()
 			cache.gpu_enabled = false
 			cache.wanted.resize(mini(cache.wanted.size(), cache.visible.size() + CityRegionCache.OFFSCREEN_LIMIT))

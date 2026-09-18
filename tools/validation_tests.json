@@ -10,6 +10,12 @@
     "timeout": 90
   },
   {
+    "id": "city_render_task_test",
+    "script": "tests/city_render_task_test.gd",
+    "domain": "rendering",
+    "lane": "product"
+  },
+  {
     "id": "city_gpu_tile_eviction_test",
     "script": "tests/city_gpu_tile_eviction_test.gd",
     "domain": "rendering",
