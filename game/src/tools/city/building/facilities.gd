@@ -73,7 +73,7 @@ static func assign_stadium_team(
 		return BuildingEditResult.rejected("required city data is missing or invalid")
 
 	var expected_payloads := command.new_payloads
-	var command_ids := command.changed_ids
+	var command_ids := command.changed_ids.duplicate()
 
 	for chunk_id in command_ids:
 		if (
@@ -117,7 +117,7 @@ static func assign_stadium_team(
 	var updated_command := command.copy() as BuildingEditResult
 
 	for chunk_id in team_chunk_ids:
-		updated_command.new_payloads[chunk_id] = changed_payloads[chunk_id].duplicate()
+		updated_command.new_payloads[chunk_id] = changed_payloads[chunk_id]
 
 		if not command_ids.has(chunk_id):
 			command_ids.append(chunk_id)
@@ -127,6 +127,8 @@ static func assign_stadium_team(
 	updated_command.stadium_team_index = team_index
 	updated_command.stadium_team_label = STADIUM_TEAM_LABEL_BASE + team_index
 	updated_command.stadium_team_name = team_name.left(23)
+
+	updated_command.retain_changed_payloads()
 
 	return updated_command
 

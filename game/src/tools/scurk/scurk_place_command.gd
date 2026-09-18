@@ -218,6 +218,7 @@ static func apply(
 	result.tracks_random = true
 	result.random_state_before = process_random_state_before
 	result.random_state_after = process_random.state
+	result.retain_changed_payloads()
 
 	return result
 

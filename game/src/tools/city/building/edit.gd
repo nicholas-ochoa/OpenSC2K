@@ -216,6 +216,9 @@ static func apply(
 	result.immediate_water_refresh = immediate_water_refresh
 	result.stadium_team_selection_required = tile_id == STADIUM and overlay_id != 0
 
+	if not result.stadium_team_selection_required:
+		result.retain_changed_payloads()
+
 	return result
 
 

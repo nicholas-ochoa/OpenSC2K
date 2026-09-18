@@ -19,7 +19,8 @@ var listed_cost := 0
 var free_mode := false
 
 # decoded chunk payloads before and after the edit, keyed by chunk id. undo
-# and redo exchange the `changed_ids` entries
+# and redo exchange the `changed_ids` entries. published payload arrays are
+# read-only. replace dictionary entries to extend an edit; never modify bytes
 var changed_ids := PackedStringArray()
 var old_payloads: Dictionary[String, PackedByteArray] = {}
 var new_payloads: Dictionary[String, PackedByteArray] = {}
@@ -46,6 +47,9 @@ var restored_tiles := 0
 var scurk_place_history := false
 var scurk_tool_name := ""
 
+# runtime-only reflection plan. script variables do not change between copies
+var _copy_names := PackedStringArray()
+
 static func failure(message: String) -> EditCommandResult:
 	var result := EditCommandResult.new()
 	result.error = message
@@ -61,21 +65,29 @@ static func undone(tiles: int) -> EditCommandResult:
 	return result
 
 
-# an independent copy, for paint-brush accumulation and the stadium team choice
+# independent mutable containers, for brush accumulation and stadium choices
+# published payload bytes are read-only and can be shared between copies
 func copy() -> EditCommandResult:
 	var result: EditCommandResult = get_script().new()
 
-	# packed arrays are shared references, so they are copied like the containers
-	for property in get_property_list():
-		if int(property.usage) & PROPERTY_USAGE_SCRIPT_VARIABLE:
-			var value: Variant = get(property.name)
+	if _copy_names.is_empty():
+		for property in get_property_list():
+			if int(property.usage) & PROPERTY_USAGE_SCRIPT_VARIABLE and property.name != "_copy_names":
+				_copy_names.append(property.name)
 
-			if value is Dictionary or value is Array:
-				value = value.duplicate(true)
-			elif typeof(value) > TYPE_ARRAY:
-				value = value.duplicate()
+	result._copy_names = _copy_names
 
-			result.set(property.name, value)
+	for name in _copy_names:
+		var value: Variant = get(name)
+
+		if value is Dictionary:
+			value = value.duplicate(name != "old_payloads" and name != "new_payloads")
+		elif value is Array:
+			value = value.duplicate(true)
+		elif typeof(value) > TYPE_ARRAY:
+			value = value.duplicate()
+
+		result.set(name, value)
 
 	result.effect_events = EffectEvent.copy_all(effect_events)
 
@@ -101,3 +113,15 @@ func merge_stroke(stroke: EditCommandResult) -> void:
 # subclasses add their own stroke counters
 func _merge_counts(_stroke: EditCommandResult) -> void:
 	pass
+
+
+# drop chunks which this edit never changes. pending multi-step edits must
+# retain their initial snapshots until all steps have completed
+func retain_changed_payloads() -> void:
+	for id in old_payloads.keys():
+		if id not in changed_ids:
+			old_payloads.erase(id)
+
+	for id in new_payloads.keys():
+		if id not in changed_ids:
+			new_payloads.erase(id)

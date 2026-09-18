@@ -10,6 +10,12 @@
     "timeout": 90
   },
   {
+    "id": "edit_payload_copy_test",
+    "script": "tests/edit_payload_copy_test.gd",
+    "domain": "tools",
+    "lane": "product"
+  },
+  {
     "id": "moving_payload_isolation_test",
     "script": "tests/moving_payload_isolation_test.gd",
     "domain": "simulation",
