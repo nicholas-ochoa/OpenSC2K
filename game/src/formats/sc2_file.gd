@@ -40,6 +40,7 @@ const RAW_CHUNKS: Dictionary[String, bool] = {
 }
 
 const MAP_SIZES := [16, 32, 64, 128, 256, 384, 512]
+enum TilePlane { ALTITUDE, TERRAIN, BUILDINGS, ZONES, UNDERGROUND, TEXT, FLAGS }
 const FULL_MAP_CHUNKS := ["ALTM", "XTER", "XBLD", "XZON", "XUND", "XTXT", "XBIT"]
 # these maps aren't all the same size; traffic uses half, services use a quarter
 const HALF_MAP_CHUNKS := ["XTRF", "XPLT", "XVAL", "XCRM"]
@@ -58,6 +59,8 @@ var parse_error := ""
 # falls back to a scan. Store positions so the cache cannot keep chunks alive.
 var _chunk_cache: Dictionary[String, int] = {}
 var _chunk_cache_size := -1
+# typed tile-plane slots follow full_map_chunks and share its invalidation rule
+var _tile_chunks: Array[Sc2Chunk] = []
 
 
 static func load_path(path: String) -> Sc2File:
@@ -237,13 +240,29 @@ func rebuild_chunk_cache() -> void:
 		if not _chunk_cache.has(id):
 			_chunk_cache[id] = index
 
+	_tile_chunks.clear()
+
+	for id in FULL_MAP_CHUNKS:
+		var index: int = _chunk_cache.get(id, -1)
+		_tile_chunks.append(chunks[index] if index >= 0 else null)
+
 	_chunk_cache_size = chunks.size()
 
 
 # drop the cached lookups and return find_chunk to a plain scan
 func invalidate_chunk_cache() -> void:
 	_chunk_cache.clear()
+	_tile_chunks.clear()
 	_chunk_cache_size = -1
+
+
+# slot order is full_map_chunks. rebuild after same-size chunk replacements,
+# as with find_chunk. uncached or resized lists use the authoritative scan
+func tile_chunk(slot: int) -> Sc2Chunk:
+	if _chunk_cache_size != chunks.size():
+		return _scan_chunk(FULL_MAP_CHUNKS[slot], 0)
+
+	return _tile_chunks[slot]
 
 
 func _scan_chunk(chunk_id: String, occurrence: int) -> Sc2Chunk:

@@ -20,6 +20,7 @@ func _init() -> void:
 		check_rejections(edge)
 		print("PASS: tile edit cases completed at %d" % edge)
 
+	check_tile_chunk_cache()
 	check_payload_assignment()
 	check_flag_signature_cache()
 	print("Tile edit sync: %d checks, %d failures" % [checks, failures])
@@ -241,3 +242,29 @@ func check_payload_assignment() -> void:
 	check(not chunk.set_decoded_payload(PackedByteArray([7]), true), "Transfer rejects invalid size")
 	check(chunk.mutation_revision == revision and chunk.decoded_payload == PackedByteArray([4, 5, 6]),
 		"Rejected transfer preserves payload and revision")
+
+
+func check_tile_chunk_cache() -> void:
+	var city := fixture(128)
+	var document := city.document
+	var original := document.find_chunk("XBLD")
+	var replacement := Sc2Chunk.new()
+	replacement.chunk_id = "XBLD"
+	replacement.expected_decoded_size = original.expected_decoded_size
+	check(replacement.set_decoded_payload(original.decoded_payload), "Replacement payload is valid")
+	document.chunks[document.chunks.find(original)] = replacement
+	document.rebuild_chunk_cache()
+	check(city.set_building_id(2, 3, 0x1d), "Tile edit uses a rebuilt same-size replacement")
+	check(replacement.decoded_payload[259] == 0x1d and original.decoded_payload[259] == 0,
+		"Cached tile edits cannot write the replaced chunk")
+	document.invalidate_chunk_cache()
+	check(city.set_building_id(2, 3, 0x1e), "Invalidated tile cache falls back to lookup")
+	document.rebuild_chunk_cache()
+	document.chunks.erase(replacement)
+	check(not city.set_building_id(2, 3, 0x1f), "Removed tile chunk cannot use a stale cached reference")
+	check(city.building_id(2, 3) == 0x1e, "Rejected cached write preserves the mirror")
+	document.chunks.append(replacement)
+	document.rebuild_chunk_cache()
+	for slot in Sc2File.FULL_MAP_CHUNKS.size():
+		check(document.tile_chunk(slot) == document.find_chunk(Sc2File.FULL_MAP_CHUNKS[slot]),
+			"Tile slots and generic lookup agree")

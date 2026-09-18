@@ -13,7 +13,7 @@ static func set_terrain_id(city: CityState, x: int, y: int, value: int) -> bool:
 		return false
 
 	var index := city.index_of(x, y)
-	var chunk := _tile_chunk(city, "XTER", city.terrain.size(), index)
+	var chunk := _tile_chunk(city, Sc2File.TilePlane.TERRAIN, city.terrain.size(), index)
 
 	if chunk == null:
 		return false
@@ -29,7 +29,7 @@ static func set_building_id(city: CityState, x: int, y: int, value: int) -> bool
 		return false
 
 	var index := city.index_of(x, y)
-	var chunk := _tile_chunk(city, "XBLD", city.buildings.size(), index)
+	var chunk := _tile_chunk(city, Sc2File.TilePlane.BUILDINGS, city.buildings.size(), index)
 
 	if chunk == null:
 		return false
@@ -59,7 +59,7 @@ static func set_zone_id(city: CityState, x: int, y: int, value: int) -> bool:
 		return false
 
 	var index := city.index_of(x, y)
-	var chunk := _tile_chunk(city, "XZON", city.zones.size(), index)
+	var chunk := _tile_chunk(city, Sc2File.TilePlane.ZONES, city.zones.size(), index)
 
 	if chunk == null:
 		return false
@@ -78,7 +78,7 @@ static func set_building_corners(city: CityState, x: int, y: int, value: int) ->
 		return false
 
 	var index := city.index_of(x, y)
-	var chunk := _tile_chunk(city, "XZON", city.zones.size(), index)
+	var chunk := _tile_chunk(city, Sc2File.TilePlane.ZONES, city.zones.size(), index)
 
 	if chunk == null:
 		return false
@@ -109,7 +109,7 @@ static func set_underground_id(city: CityState, x: int, y: int, value: int) -> b
 		return false
 
 	var index := city.index_of(x, y)
-	var chunk := _tile_chunk(city, "XUND", city.underground.size(), index)
+	var chunk := _tile_chunk(city, Sc2File.TilePlane.UNDERGROUND, city.underground.size(), index)
 
 	if chunk == null:
 		return false
@@ -126,7 +126,7 @@ static func set_text_overlay_id(city: CityState, x: int, y: int, value: int) -> 
 
 	var index := city.index_of(x, y)
 	var size := city.text_overlays.size()
-	var chunk := _tile_chunk(city, "XTXT", size, index)
+	var chunk := _tile_chunk(city, Sc2File.TilePlane.TEXT, size, index)
 
 	if chunk == null:
 		return false
@@ -166,7 +166,7 @@ static func set_tile_flag(city: CityState, x: int, y: int, mask: int, enabled: b
 		return false
 
 	var index := city.index_of(x, y)
-	var chunk := _tile_chunk(city, "XBIT", city.tile_flags.size(), index)
+	var chunk := _tile_chunk(city, Sc2File.TilePlane.FLAGS, city.tile_flags.size(), index)
 
 	if chunk == null:
 		return false
@@ -303,11 +303,11 @@ static func set_tunnel_levels(city: CityState, x: int, y: int, value: int) -> bo
 # the chunk behind a mirrored tile plane, when a single byte at index is safe
 # to write in place. returns null unless the tile is on the map and the payload
 # still has the size of the array citystate mirrors it with
-static func _tile_chunk(city: CityState, chunk_id: String, mirror_size: int, index: int) -> Sc2Chunk:
+static func _tile_chunk(city: CityState, slot: int, mirror_size: int, index: int) -> Sc2Chunk:
 	if index < 0 or index >= mirror_size:
 		return null
 
-	var chunk := city.document.find_chunk(chunk_id) if city.document != null else null
+	var chunk := city.document.tile_chunk(slot) if city.document != null else null
 
 	if chunk == null or chunk.decoded_payload.size() != mirror_size:
 		return null
@@ -322,7 +322,7 @@ static func _set_altitude_word(city: CityState, x: int, y: int, value: int) -> b
 	if index < 0 or index >= cells:
 		return false
 
-	var chunk := city.document.find_chunk("ALTM") if city.document != null else null
+	var chunk := city.document.tile_chunk(Sc2File.TilePlane.ALTITUDE) if city.document != null else null
 
 	if chunk == null or chunk.decoded_payload.size() != cells * 2:
 		return false
