@@ -312,7 +312,10 @@ func _test_ordinance_window(reference_root: String) -> void:
 	_check(
 		data.ok
 		and data.raw_costs.size() == 20
-		and data.raw_costs[0] == 7500
+		and data.raw_costs[0] == 15000
+		and data.raw_costs[1] == 7500
+		and data.raw_costs[2] == 30000
+		and data.raw_costs[3] == 3750
 		and data.raw_costs[4] == -2500
 		and data.raw_costs[8] == -1250
 		and data.raw_costs[12] == -15000
@@ -322,14 +325,14 @@ func _test_ordinance_window(reference_root: String) -> void:
 		"Ordinance window uses the recovered bit order and formulas",
 	)
 	_check(
-		data.current_raw == -42750
-		and data.item_amounts == PackedInt32Array([100, 0, 0, 0, -33, 0, 0, 0, -16, 0, 0, 0, -200, 0, 0, 0, -420, 0, 0, 0])
-		and data.category_amounts == PackedInt32Array([100, -33, -16, -200, -420]),
+		data.current_raw == -35250
+		and data.item_amounts == PackedInt32Array([200, 0, 0, 0, -33, 0, 0, 0, -16, 0, 0, 0, -200, 0, 0, 0, -420, 0, 0, 0])
+		and data.category_amounts == PackedInt32Array([200, -33, -16, -200, -420]),
 		"Ordinance window calculates item and category display amounts",
 	)
 	_check(
 		data.year_to_date_amount == -10
-		and data.estimated_amount == -390
+		and data.estimated_amount == -323
 		and data.month == 3,
 		"Ordinance window calculates the in-year totals",
 	)
@@ -337,7 +340,7 @@ func _test_ordinance_window(reference_root: String) -> void:
 	_check(
 		synchronized.ok
 		and synchronized.changed
-		and document.misc_i32(ordinance_offset) == -42750,
+		and document.misc_i32(ordinance_offset) == -35250,
 		"Opening Ordinances synchronizes its saved budget total",
 	)
 	var enabled := Ordinances.set_enabled(city, 17, true)
@@ -345,7 +348,7 @@ func _test_ordinance_window(reference_root: String) -> void:
 		enabled.ok
 		and enabled.changed
 		and document.misc_u32(Ordinances.MISC_ORDINANCES) == (flags | (1 << 17))
-		and document.misc_i32(ordinance_offset) == -42750,
+		and document.misc_i32(ordinance_offset) == -35250,
 		"Ordinance selection preserves high bits and updates its total",
 	)
 	var disabled := Ordinances.set_enabled(city, 0, false)

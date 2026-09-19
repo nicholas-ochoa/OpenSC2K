@@ -5434,17 +5434,17 @@ func _test_city_value_phase(reference_root: String) -> void:
 	_check(document.set_misc_u32(0x01f0 + 0xd0 * 4, 99), "City-value fixture sets city halls")
 	var before := document.misc_i32(0x0024)
 	var calculated := CityValue.calculate(city)
-	_check(calculated.ok and calculated.city_value == 122556, "City value uses all recovered rules")
+	_check(calculated.ok and calculated.city_value == 136956, "City value uses all recovered rules")
 	_check(document.misc_i32(0x0024) == before, "City-value calculation is read-only")
 	var result := CityValue.run(city)
-	_check(result.ok and result.city_value == 122556, "City-value phase completes")
-	_check(document.misc_i32(0x0024) == 122556, "City-value phase stores MISC city value")
+	_check(result.ok and result.city_value == 136956, "City-value phase completes")
+	_check(document.misc_i32(0x0024) == 136956, "City-value phase stores MISC city value")
 
 	_check(document.set_misc_u32(0x01f0 + 0x0e * 4, 0xffff), "City-value fixture sets signed count")
 	_check(document.set_misc_u32(0x0fe8, 0xffff), "City-value fixture sets signed subway count")
 	var signed_result := CityValue.calculate(city)
 	_check(
-		signed_result.ok and signed_result.city_value == 122554,
+		signed_result.ok and signed_result.city_value == 136954,
 		"City value sign-extends the supplied runtime counters",
 	)
 
@@ -5623,7 +5623,7 @@ func _test_budget_phase(reference_root: String) -> void:
 	_check(document.misc_i32(0x0bc0) == 123, "Budget stores prior January road costs")
 	_check(document.misc_i32(0x0bc4) == 80, "Budget stores prior January road funding")
 	_check(document.misc_i32(0x0bbc) == 9840, "Budget accumulates funded road costs")
-	_check(result.current_costs[3] == 600, "Budget calculates active ordinance cost")
+	_check(result.current_costs[3] == -300, "Budget calculates active ordinance cost")
 	_check(result.current_costs[4] == document.misc_i32(0x18), "Budget copies the bond count")
 	_check(
 		result.current_costs.slice(5, 10) == PackedInt32Array([3, 4, 2, 5, 2]),

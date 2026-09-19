@@ -69,10 +69,10 @@ static func costs_for_misc(misc: PackedByteArray) -> PackedInt32Array:
 		+ _read_u32(misc, MISC_NORMAL_POPULATION)
 	)
 	costs = PackedInt32Array([
-		residential,
 		commercial,
-		_to_i32(residential * 2),
-		_divide_toward_zero(commercial, 2),
+		residential,
+		_to_i32(commercial * 2),
+		_divide_toward_zero(residential, 2),
 		_divide_toward_zero(residential, -3),
 		_divide_toward_zero(commercial, -6),
 		-_divide_toward_zero(residential, 2),
