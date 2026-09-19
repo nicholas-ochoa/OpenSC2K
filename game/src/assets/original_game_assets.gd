@@ -68,6 +68,9 @@ static func required_string_ids() -> PackedInt32Array:
 	for resource_id in range(CITY_MAP_STRING_FIRST, CITY_MAP_STRING_LAST + 1):
 		result.append(resource_id)
 
+	for resource_id in range(294, 327):
+		result.append(resource_id)
+
 	result.append(SIMNATION_FORMAT_STRING_ID)
 
 	for resource_id in range(

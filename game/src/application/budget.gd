@@ -33,6 +33,12 @@ func open_budget_dialog(values: PackedInt32Array, annual: bool) -> void:
 	if app.document_state.city.music_enabled() and app.simulation_state.simulation_engine != null:
 		app.effects_audio.play_music_track(Music.budget_track(app.simulation_state.simulation_engine.lfsr_random))
 
+	if not app.budget_dialog.advisor_requested.is_connected(show_advisor):
+		app.budget_dialog.advisor_requested.connect(show_advisor)
+		app.budget_dialog.ordinances_changed.connect(app.reports.on_ordinances_changed)
+		app.budget_dialog.update_failed.connect(app.interface.show_error)
+
+	app.budget_dialog.set_city(app.document_state.city)
 	app.simulation_state.annual_budget_pending = annual
 	app.budget_dialog.open_budget(
 		values,
@@ -40,6 +46,22 @@ func open_budget_dialog(values: PackedInt32Array, annual: bool) -> void:
 		app.document_state.city.document.misc_u32(Budget.MISC_AUTO_BUDGET) != 0,
 	)
 	_update_bond_controls()
+
+
+func show_advisor(index: int) -> void:
+	var city := app.document_state.city
+	var engine := app.simulation_state.simulation_engine
+	if city == null or engine == null:
+		return
+
+	var report := BudgetReport.capture(city, app.budget_dialog.funding_values())
+	var power_usage := engine.power_usage_percent
+	if power_usage < 0:
+		power_usage = 100 - int(city.graph_series(8).year[0])
+	var resource_id := BudgetAdvice.select(city, report, index, engine.random, power_usage)
+	app.budget_dialog.show_advice(index, resource_id, app.city_dialogs.original_assets)
+	if index == 0:
+		app.effects_audio.play_sound_ids([512])
 
 
 func request_issue_bond() -> void:

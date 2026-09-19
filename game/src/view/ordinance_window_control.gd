@@ -34,6 +34,8 @@ const EFFECTS := [
 const LEFT_CATEGORIES := [0, 2, 4]
 const RIGHT_CATEGORIES := [1, 3]
 
+@export var embedded := false
+
 var city: CityState
 var ordinance_checks: Array[CheckBox] = []
 var ordinance_amounts: Array[LineEdit] = []
@@ -60,53 +62,48 @@ func _ready() -> void:
 	columns.add_theme_constant_override("separation", 12)
 	add_child(columns)
 
-	var left := VBoxContainer.new()
-	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left.add_theme_constant_override("separation", 8)
-	columns.add_child(left)
-
-	for category in LEFT_CATEGORIES:
-		_add_group(left, category)
-
-	var right := VBoxContainer.new()
-	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	right.add_theme_constant_override("separation", 8)
-	columns.add_child(right)
-
-	for category in RIGHT_CATEGORIES:
-		_add_group(right, category)
-
-	_add_summary(right)
+	var category_columns: Array = [[0, 1], [2, 3], [4]] if embedded else [LEFT_CATEGORIES, RIGHT_CATEGORIES]
+	for index in category_columns.size():
+		var column := VBoxContainer.new()
+		column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		column.add_theme_constant_override("separation", 8)
+		columns.add_child(column)
+		for category: int in category_columns[index]:
+			_add_group(column, category)
+		if index == category_columns.size() - 1:
+			_add_summary(column)
 
 	var totals := GridContainer.new()
 	totals.columns = 4
 	totals.add_theme_constant_override("h_separation", 8)
 	add_child(totals)
 	var ytd_caption := Label.new()
-	ytd_caption.text = "YTD Total $"
+	ytd_caption.text = "Year to date"
 	ytd_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	ytd_caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	totals.add_child(ytd_caption)
 	year_to_date_amount = _amount_field("YearToDateAmount", 100)
 	totals.add_child(year_to_date_amount)
 	var estimate_caption := Label.new()
-	estimate_caption.text = "Estimated Total $"
+	estimate_caption.text = "Year-end estimate"
 	estimate_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	estimate_caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	totals.add_child(estimate_caption)
 	estimated_amount = _amount_field("EstimatedAmount", 100)
 	totals.add_child(estimated_amount)
 
-	var button_row := HBoxContainer.new()
-	button_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	add_child(button_row)
-	var ok_button := Button.new()
-	ok_button.name = "OrdinanceOK"
-	ok_button.text = "OK"
-	ok_button.custom_minimum_size = Vector2(110, 30)
-	ok_button.pressed.connect(close_requested.emit)
-	button_row.add_child(ok_button)
+	if not embedded:
+		var button_row := HBoxContainer.new()
+		button_row.alignment = BoxContainer.ALIGNMENT_CENTER
+		add_child(button_row)
+		var ok_button := Button.new()
+		ok_button.name = "OrdinanceOK"
+		ok_button.text = "OK"
+		ok_button.custom_minimum_size = Vector2(110, 30)
+		ok_button.pressed.connect(close_requested.emit)
+		button_row.add_child(ok_button)
 	_refresh_controls()
+	AppUiTheme.current().changed.connect(_refresh_controls)
 
 
 func set_city(value: CityState) -> OrdinanceCommand.Result:
@@ -149,7 +146,7 @@ func _add_group(parent: VBoxContainer, category: int) -> void:
 		check.toggled.connect(_on_ordinance_toggled.bind(ordinance_id))
 		rows.add_child(check)
 		ordinance_checks[ordinance_id] = check
-		var amount := _amount_field("OrdinanceAmount%d" % ordinance_id, 78)
+		var amount := _amount_field("OrdinanceAmount%d" % ordinance_id, 78 if embedded else 100)
 		rows.add_child(amount)
 		ordinance_amounts[ordinance_id] = amount
 
@@ -177,7 +174,7 @@ func _add_summary(parent: VBoxContainer) -> void:
 		caption.text = Ordinances.CATEGORY_NAMES[category]
 		caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		rows.add_child(caption)
-		var amount := _amount_field("CategoryAmount%d" % category, 100)
+		var amount := _amount_field("CategoryAmount%d" % category, 78 if embedded else 100)
 		rows.add_child(amount)
 		category_amounts[category] = amount
 
@@ -228,7 +225,7 @@ func _refresh_controls() -> void:
 		check.disabled = not valid
 		check.button_pressed = valid and bool(flags & (1 << ordinance_id))
 		amount.text = (
-			Ordinances.compact_amount(item_values[ordinance_id])
+			BudgetReport.currency(item_values[ordinance_id])
 			if valid and ordinance_id < item_values.size()
 			else ""
 		)
@@ -237,19 +234,24 @@ func _refresh_controls() -> void:
 
 	for category in Ordinances.CATEGORY_NAMES.size():
 		category_amounts[category].text = (
-			Ordinances.compact_amount(category_values[category])
+			BudgetReport.currency(category_values[category])
 			if valid and category < category_values.size()
 			else ""
 		)
 
 	year_to_date_amount.text = (
-		Ordinances.compact_amount(int(data.year_to_date_amount))
+		BudgetReport.currency(int(data.year_to_date_amount))
 		if valid
 		else ""
 	)
 	estimated_amount.text = (
-		Ordinances.compact_amount(int(data.estimated_amount))
+		BudgetReport.currency(int(data.estimated_amount))
 		if valid
 		else ""
 	)
+	for field: LineEdit in ordinance_amounts + category_amounts + [year_to_date_amount, estimated_amount]:
+		if field.text.begins_with("−"):
+			field.add_theme_color_override("font_uneditable_color", field.get_theme_color("error", "AppPalette"))
+		else:
+			field.remove_theme_color_override("font_uneditable_color")
 	refreshing = false

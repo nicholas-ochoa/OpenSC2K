@@ -1,5 +1,11 @@
 [
   {
+    "id": "budget_dialog_test",
+    "script": "tests/budget_dialog_test.gd",
+    "domain": "ui",
+    "lane": "product"
+  },
+  {
     "id": "benchmark_inputs",
     "python": "tools/test_benchmark_inputs.py",
     "domain": "tools",

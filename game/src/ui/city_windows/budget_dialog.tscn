@@ -1,326 +1,150 @@
 [gd_scene format=3]
 
-[ext_resource type="Script" path="res://src/ui/city_windows/budget_dialog.gd" id="1_il4yx"]
+[ext_resource type="Script" path="res://src/ui/city_windows/budget_dialog.gd" id="1"]
+[ext_resource type="Script" path="res://src/view/ordinance_window_control.gd" id="2"]
 
 [node name="BudgetDialog" type="ConfirmationDialog"]
 visible = true
 title = "Budget"
 ok_button_text = "Apply"
-size = Vector2i(720, 560)
-min_size = Vector2i(720, 560)
-script = ExtResource("1_il4yx")
+size = Vector2i(940, 700)
+min_size = Vector2i(940, 660)
+script = ExtResource("1")
 
 [node name="Margin" type="MarginContainer" parent="."]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 16.0
-offset_top = 48.0
+offset_top = 12.0
 offset_right = -16.0
-offset_bottom = -58.0
+offset_bottom = -54.0
 
 [node name="Content" type="VBoxContainer" parent="Margin"]
-custom_minimum_size = Vector2(660, 0)
 layout_mode = 2
-theme_override_constants/separation = 6
+theme_override_constants/separation = 10
+
+[node name="Heading" type="Label" parent="Margin/Content"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "City budget"
 
 [node name="Notice" type="Label" parent="Margin/Content"]
-custom_minimum_size = Vector2(640, 42)
 layout_mode = 2
+custom_minimum_size = Vector2(760, 0)
 autowrap_mode = 3
+text = "Review income, services and the year-end forecast."
 
-[node name="AutoBudget" type="CheckBox" parent="Margin/Content"]
+[node name="Tabs" type="TabContainer" parent="Margin/Content"]
 layout_mode = 2
-text = "Use the same funding automatically next year"
+size_flags_vertical = 3
 
-[node name="Columns" type="HBoxContainer" parent="Margin/Content"]
-layout_mode = 2
-theme_override_constants/separation = 24
-
-[node name="Left" type="VBoxContainer" parent="Margin/Content/Columns"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 5
-
-[node name="ResidentialTaxRow" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
-layout_mode = 2
-
-[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Left/ResidentialTaxRow"]
-custom_minimum_size = Vector2(150, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Residential Tax"
-
-[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Left/ResidentialTaxRow"]
-custom_minimum_size = Vector2(145, 30)
-layout_mode = 2
-max_value = 22.0
-rounded = true
-suffix = "% tax"
-
-[node name="CommercialTaxRow" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
-layout_mode = 2
-
-[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Left/CommercialTaxRow"]
-custom_minimum_size = Vector2(150, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Commercial Tax"
-
-[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Left/CommercialTaxRow"]
-custom_minimum_size = Vector2(145, 30)
-layout_mode = 2
-max_value = 22.0
-rounded = true
-suffix = "% tax"
-
-[node name="IndustrialTaxRow" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
-layout_mode = 2
-
-[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Left/IndustrialTaxRow"]
-custom_minimum_size = Vector2(150, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Industrial Tax"
-
-[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Left/IndustrialTaxRow"]
-custom_minimum_size = Vector2(145, 30)
-layout_mode = 2
-max_value = 22.0
-rounded = true
-suffix = "% tax"
-
-[node name="OrdinancesRow" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
-layout_mode = 2
-
-[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Left/OrdinancesRow"]
-custom_minimum_size = Vector2(150, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Ordinances"
-
-[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Left/OrdinancesRow"]
-custom_minimum_size = Vector2(145, 30)
-layout_mode = 2
-min_value = -2147483600.0
-max_value = 2147483647.0
-rounded = true
-editable = false
-
-[node name="BondsRow" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
-layout_mode = 2
-
-[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Left/BondsRow"]
-custom_minimum_size = Vector2(150, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Bonds"
-
-[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Left/BondsRow"]
-visible = false
-custom_minimum_size = Vector2(145, 30)
-layout_mode = 2
-min_value = -2147483600.0
-max_value = 2147483647.0
-rounded = true
-editable = false
-
-[node name="PoliceRow" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
-layout_mode = 2
-
-[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Left/PoliceRow"]
-custom_minimum_size = Vector2(150, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Police"
-
-[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Left/PoliceRow"]
-custom_minimum_size = Vector2(145, 30)
-layout_mode = 2
-tooltip_text = "Service capacity and coverage scale with funding: 100% gives full strength, 50% gives about half, and 0% removes the funded contribution. Lower funding reduces annual spending."
-rounded = true
-suffix = "% funded"
-
-[node name="FireRow" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
-layout_mode = 2
-
-[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Left/FireRow"]
-custom_minimum_size = Vector2(150, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Fire"
-
-[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Left/FireRow"]
-custom_minimum_size = Vector2(145, 30)
-layout_mode = 2
-tooltip_text = "Service capacity and coverage scale with funding: 100% gives full strength, 50% gives about half, and 0% removes the funded contribution. Lower funding reduces annual spending."
-rounded = true
-suffix = "% funded"
-
-[node name="HealthRow" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
-layout_mode = 2
-
-[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Left/HealthRow"]
-custom_minimum_size = Vector2(150, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Health"
-
-[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Left/HealthRow"]
-custom_minimum_size = Vector2(145, 30)
-layout_mode = 2
-tooltip_text = "Service capacity and coverage scale with funding: 100% gives full strength, 50% gives about half, and 0% removes the funded contribution. Lower funding reduces annual spending."
-rounded = true
-suffix = "% funded"
-
-[node name="Right" type="VBoxContainer" parent="Margin/Content/Columns"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 5
-
-[node name="SchoolRow" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
-layout_mode = 2
-
-[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Right/SchoolRow"]
-custom_minimum_size = Vector2(150, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "School"
-
-[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Right/SchoolRow"]
-custom_minimum_size = Vector2(145, 30)
-layout_mode = 2
-tooltip_text = "Service capacity and coverage scale with funding: 100% gives full strength, 50% gives about half, and 0% removes the funded contribution. Lower funding reduces annual spending."
-rounded = true
-suffix = "% funded"
-
-[node name="CollegeRow" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
-layout_mode = 2
-
-[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Right/CollegeRow"]
-custom_minimum_size = Vector2(150, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "College"
-
-[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Right/CollegeRow"]
-custom_minimum_size = Vector2(145, 30)
-layout_mode = 2
-tooltip_text = "Service capacity and coverage scale with funding: 100% gives full strength, 50% gives about half, and 0% removes the funded contribution. Lower funding reduces annual spending."
-rounded = true
-suffix = "% funded"
-
-[node name="RoadRow" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
-layout_mode = 2
-
-[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Right/RoadRow"]
-custom_minimum_size = Vector2(150, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Road"
-
-[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Right/RoadRow"]
-custom_minimum_size = Vector2(145, 30)
-layout_mode = 2
-tooltip_text = "100% funds normal maintenance. Lower funding increases the risk of network decay; 50% is partial maintenance and 0% leaves the network unfunded. Lower funding reduces annual spending."
-rounded = true
-suffix = "% funded"
-
-[node name="HighwayRow" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
-layout_mode = 2
-
-[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Right/HighwayRow"]
-custom_minimum_size = Vector2(150, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Highway"
-
-[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Right/HighwayRow"]
-custom_minimum_size = Vector2(145, 30)
-layout_mode = 2
-tooltip_text = "100% funds normal maintenance. Lower funding increases the risk of network decay; 50% is partial maintenance and 0% leaves the network unfunded. Lower funding reduces annual spending."
-rounded = true
-suffix = "% funded"
-
-[node name="BridgeRow" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
-layout_mode = 2
-
-[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Right/BridgeRow"]
-custom_minimum_size = Vector2(150, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Bridge"
-
-[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Right/BridgeRow"]
-custom_minimum_size = Vector2(145, 30)
-layout_mode = 2
-tooltip_text = "100% funds normal maintenance. Lower funding increases the risk of network decay; 50% is partial maintenance and 0% leaves the network unfunded. Lower funding reduces annual spending."
-rounded = true
-suffix = "% funded"
-
-[node name="RailRow" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
-layout_mode = 2
-
-[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Right/RailRow"]
-custom_minimum_size = Vector2(150, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Rail"
-
-[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Right/RailRow"]
-custom_minimum_size = Vector2(145, 30)
-layout_mode = 2
-tooltip_text = "100% funds normal maintenance. Lower funding increases the risk of network decay; 50% is partial maintenance and 0% leaves the network unfunded. Lower funding reduces annual spending."
-rounded = true
-suffix = "% funded"
-
-[node name="SubwayRow" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
-layout_mode = 2
-
-[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Right/SubwayRow"]
-custom_minimum_size = Vector2(150, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Subway"
-
-[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Right/SubwayRow"]
-custom_minimum_size = Vector2(145, 30)
-layout_mode = 2
-tooltip_text = "100% funds normal maintenance. Lower funding increases the risk of network decay; 50% is partial maintenance and 0% leaves the network unfunded. Lower funding reduces annual spending."
-rounded = true
-suffix = "% funded"
-
-[node name="TunnelRow" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
-layout_mode = 2
-
-[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Right/TunnelRow"]
-custom_minimum_size = Vector2(150, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Tunnel"
-
-[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Right/TunnelRow"]
-custom_minimum_size = Vector2(145, 30)
-layout_mode = 2
-tooltip_text = "100% funds normal maintenance. Lower funding increases the risk of network decay; 50% is partial maintenance and 0% leaves the network unfunded. Lower funding reduces annual spending."
-rounded = true
-suffix = "% funded"
-
-[node name="Bonds" type="HBoxContainer" parent="Margin/Content"]
+[node name="Overview" type="VBoxContainer" parent="Margin/Content/Tabs"]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Summary" type="Label" parent="Margin/Content/Bonds"]
+[node name="DetailToggle" type="CheckBox" parent="Margin/Content/Tabs/Overview"]
+layout_mode = 2
+text = "Show individual tax and funding rates"
+
+[node name="Scroll" type="ScrollContainer" parent="Margin/Content/Tabs/Overview"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Rows" type="GridContainer" parent="Margin/Content/Tabs/Overview/Scroll"]
 layout_mode = 2
 size_flags_horizontal = 3
+columns = 5
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 8
 
-[node name="Issue" type="Button" parent="Margin/Content/Bonds"]
+[node name="Hint" type="Label" parent="Margin/Content/Tabs/Overview"]
 layout_mode = 2
-text = "Issue $10K Bond"
+custom_minimum_size = Vector2(760, 0)
+autowrap_mode = 3
+text = "Mixed rates stay unchanged until you edit the group. History shows recorded and projected months."
 
-[node name="Repay" type="Button" parent="Margin/Content/Bonds"]
+[node name="Monthly history" type="VBoxContainer" parent="Margin/Content/Tabs"]
 layout_mode = 2
-text = "Repay $10K Bond"
+theme_override_constants/separation = 8
+
+[node name="Category" type="OptionButton" parent="Margin/Content/Tabs/Monthly history"]
+layout_mode = 2
+
+[node name="Table" type="Tree" parent="Margin/Content/Tabs/Monthly history"]
+layout_mode = 2
+size_flags_vertical = 3
+hide_root = true
+column_titles_visible = true
+select_mode = 1
+
+[node name="Hint" type="Label" parent="Margin/Content/Tabs/Monthly history"]
+layout_mode = 2
+custom_minimum_size = Vector2(760, 0)
+autowrap_mode = 3
+text = "Recorded months use saved costs and rates. Projected months use the proposed budget."
+
+[node name="Bonds" type="VBoxContainer" parent="Margin/Content/Tabs"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Summary" type="Label" parent="Margin/Content/Tabs/Bonds"]
+layout_mode = 2
+custom_minimum_size = Vector2(760, 0)
+autowrap_mode = 3
+
+[node name="Table" type="Tree" parent="Margin/Content/Tabs/Bonds"]
+layout_mode = 2
+size_flags_vertical = 3
+hide_root = true
+column_titles_visible = true
+
+[node name="Actions" type="HBoxContainer" parent="Margin/Content/Tabs/Bonds"]
+layout_mode = 2
+
+[node name="Issue" type="Button" parent="Margin/Content/Tabs/Bonds/Actions"]
+layout_mode = 2
+text = "Issue $10,000 bond…"
+
+[node name="Repay" type="Button" parent="Margin/Content/Tabs/Bonds/Actions"]
+layout_mode = 2
+text = "Repay oldest bond…"
+
+[node name="Advice" type="Button" parent="Margin/Content/Tabs/Bonds/Actions"]
+layout_mode = 2
+text = "Ask advisor"
+
+[node name="Hint" type="Label" parent="Margin/Content/Tabs/Bonds"]
+layout_mode = 2
+custom_minimum_size = Vector2(760, 0)
+autowrap_mode = 3
+text = "Confirmed bond actions take effect immediately. Cancel does not undo them."
+
+[node name="Ordinances" type="VBoxContainer" parent="Margin/Content/Tabs"]
+layout_mode = 2
+
+[node name="Hint" type="Label" parent="Margin/Content/Tabs/Ordinances"]
+layout_mode = 2
+custom_minimum_size = Vector2(760, 0)
+autowrap_mode = 3
+text = "Ordinance changes take effect immediately. Cancel does not undo them."
+
+[node name="OrdinanceWindowControl" type="VBoxContainer" parent="Margin/Content/Tabs/Ordinances"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("2")
+embedded = true
+
+[node name="Totals" type="GridContainer" parent="Margin/Content"]
+layout_mode = 2
+columns = 4
+theme_override_constants/h_separation = 16
+
+[node name="AutoBudget" type="CheckBox" parent="Margin/Content"]
+layout_mode = 2
+text = "Use this budget automatically next year"
 
 [node name="BondConfirmation" type="ConfirmationDialog" parent="."]
 title = "Bond"
@@ -328,3 +152,30 @@ ok_button_text = "Yes"
 size = Vector2i(500, 210)
 min_size = Vector2i(500, 210)
 cancel_button_text = "No"
+
+[node name="Advisor" type="AcceptDialog" parent="."]
+title = "Advisor"
+size = Vector2i(590, 290)
+min_size = Vector2i(590, 290)
+
+[node name="Content" type="HBoxContainer" parent="Advisor"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = -58.0
+theme_override_constants/separation = 20
+
+[node name="Portrait" type="TextureRect" parent="Advisor/Content"]
+custom_minimum_size = Vector2(128, 164)
+layout_mode = 2
+size_flags_vertical = 0
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Advice" type="RichTextLabel" parent="Advisor/Content"]
+layout_mode = 2
+size_flags_horizontal = 3

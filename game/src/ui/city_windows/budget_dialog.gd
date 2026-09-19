@@ -1,33 +1,21 @@
 class_name BudgetDialog
 extends ConfirmationDialog
+# proposed funding, budget reports, and original advisor access
+
+@warning_ignore_start("integer_division")
 
 signal apply_requested
 signal cancel_requested
 signal issue_bond_requested
 signal repay_bond_requested
 signal bond_confirmation_resolved(action: String, confirmed: bool)
+signal advisor_requested(index: int)
+signal ordinances_changed
+signal update_failed(message: String)
 
 const Budget = preload("res://src/simulation/economy/budget_phase.gd")
 const Bonds = preload("res://src/simulation/economy/bond_command.gd")
-
-const BUDGET_NAMES := [
-	"Residential Tax",
-	"Commercial Tax",
-	"Industrial Tax",
-	"Ordinances",
-	"Bonds",
-	"Police",
-	"Fire",
-	"Health",
-	"School",
-	"College",
-	"Road",
-	"Highway",
-	"Bridge",
-	"Rail",
-	"Subway",
-	"Tunnel",
-]
+const BUDGET_NAMES := BudgetReport.NAMES
 
 var notice_label: Label
 var controls: Array[SpinBox] = []
@@ -37,57 +25,188 @@ var issue_bond_button: Button
 var repay_bond_button: Button
 var bond_dialog: ConfirmationDialog
 var pending_bond_action := ""
+var city: CityState
+var report: BudgetReport
+var group_controls: Array[SpinBox] = []
+var group_hints: Array[Label] = []
+var ytd_labels: Array[Label] = []
+var estimate_labels: Array[Label] = []
+var detail_nodes: Array[Control] = []
+var detail_toggle: CheckBox
+var tabs: TabContainer
+var history_category: OptionButton
+var history_table: Tree
+var bond_table: Tree
+var ordinance_control: OrdinanceWindowControl
+var advisor_dialog: AcceptDialog
+var total_labels: Array[Label] = []
+var total_captions: Array[Label] = []
+var refreshing := false
+var action_buttons: Array[Button] = []
+var group_edits: Dictionary[int, float] = {}
 
 
 func _ready() -> void:
-	# the scene is visible for editor layout work. open it only on request in game
 	hide()
 	theme = AppUiTheme.current()
 	confirmed.connect(apply_requested.emit)
 	canceled.connect(cancel_requested.emit)
-	notice_label = get_node("Margin/Content/Notice")
-	auto_budget_check = get_node("Margin/Content/AutoBudget")
-	bond_summary_label = get_node("Margin/Content/Bonds/Summary")
-	issue_bond_button = get_node("Margin/Content/Bonds/Issue")
-	repay_bond_button = get_node("Margin/Content/Bonds/Repay")
-	bond_dialog = get_node("BondConfirmation")
-	auto_budget_check.theme = AppUiTheme.current()
-
-	for column in $Margin/Content/Columns.get_children():
-		for row in column.get_children():
-			var control := row.get_node("FundingInput") as SpinBox
-			control.get_line_edit().tooltip_text = control.tooltip_text
-			controls.append(control)
-
+	notice_label = $Margin/Content/Notice
+	auto_budget_check = $Margin/Content/AutoBudget
+	tabs = $Margin/Content/Tabs
+	detail_toggle = $Margin/Content/Tabs/Overview/DetailToggle
+	bond_summary_label = $"Margin/Content/Tabs/Bonds/Summary"
+	issue_bond_button = $Margin/Content/Tabs/Bonds/Actions/Issue
+	repay_bond_button = $Margin/Content/Tabs/Bonds/Actions/Repay
+	bond_dialog = $BondConfirmation
+	advisor_dialog = $Advisor
+	history_category = $"Margin/Content/Tabs/Monthly history/Category"
+	history_table = $"Margin/Content/Tabs/Monthly history/Table"
+	bond_table = $Margin/Content/Tabs/Bonds/Table
+	ordinance_control = $Margin/Content/Tabs/Ordinances/OrdinanceWindowControl
+	ordinance_control.ordinances_changed.connect(_ordinances_changed)
+	ordinance_control.update_failed.connect(update_failed.emit)
+	ordinance_control.close_requested.connect(func() -> void: tabs.current_tab = 0)
 	issue_bond_button.pressed.connect(issue_bond_requested.emit)
 	repay_bond_button.pressed.connect(repay_bond_requested.emit)
+	$Margin/Content/Tabs/Bonds/Actions/Advice.pressed.connect(advisor_requested.emit.bind(2))
 	bond_dialog.confirmed.connect(_resolve_bond_confirmation.bind(true))
 	bond_dialog.canceled.connect(_resolve_bond_confirmation.bind(false))
+	detail_toggle.toggled.connect(_show_details)
+	history_category.item_selected.connect(func(_index: int) -> void: _refresh_history())
+	_build_rows()
+	action_buttons.append($Margin/Content/Tabs/Bonds/Actions/Advice)
+	_style_actions()
+	AppUiTheme.current().changed.connect(_style_actions)
+
+	for caption in ["Year to date", "Year-end cash flow", "Current funds", "Year-end funds"]:
+		var column := VBoxContainer.new()
+		column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		$Margin/Content/Totals.add_child(column)
+		var heading := _label(caption)
+		column.add_child(heading)
+		total_captions.append(heading)
+		var amount := _label("$0")
+		amount.add_theme_font_size_override("font_size", 18)
+		column.add_child(amount)
+		total_labels.append(amount)
+
+	for caption: String in BudgetReport.GROUP_NAMES:
+		history_category.add_item(caption)
+
+	_setup_table(bond_table, ["Bond", "Principal", "Interest rate", "Annual interest"])
+
+
+func _build_rows() -> void:
+	var rows: GridContainer = $Margin/Content/Tabs/Overview/Scroll/Rows
+
+	for caption in ["Category", "Rate / funding", "Year to date", "Year-end estimate", ""]:
+		rows.add_child(_label(caption))
+
+	controls.resize(Budget.BUDGET_COUNT)
+
+	for group in BudgetReport.GROUPS.size():
+		rows.add_child(_label(BudgetReport.GROUP_NAMES[group]))
+		var field := VBoxContainer.new()
+		rows.add_child(field)
+		var spin := _spin(22 if group == 0 else 100)
+		spin.visible = group not in [1, 2]
+		field.add_child(spin)
+		group_controls.append(spin)
+		spin.value_changed.connect(_group_changed.bind(group))
+		spin.get_line_edit().text_changed.connect(_group_text_changed.bind(group))
+		spin.get_line_edit().text_submitted.connect(func(_text: String) -> void: _commit_group_edit(group))
+		spin.get_line_edit().focus_exited.connect(_commit_group_edit.bind(group))
+		var hint := _label("")
+		field.add_child(hint)
+		group_hints.append(hint)
+		var ytd := _label("$0", true)
+		var estimate := _label("$0", true)
+		rows.add_child(ytd)
+		rows.add_child(estimate)
+		ytd_labels.append(ytd)
+		estimate_labels.append(estimate)
+		var actions := HBoxContainer.new()
+		rows.add_child(actions)
+		var history := Button.new()
+		history.text = "Details" if group in [1, 2] else "History"
+		history.pressed.connect(_open_details.bind(group))
+		actions.add_child(history)
+		action_buttons.append(history)
+		var advice := Button.new()
+		advice.text = "Advisor"
+		advice.pressed.connect(advisor_requested.emit.bind(group))
+		actions.add_child(advice)
+		action_buttons.append(advice)
+
+		for id: int in BudgetReport.GROUPS[group]:
+			var control := _spin(22 if id < 3 else 100)
+			controls[id] = control
+			control.value_changed.connect(_individual_changed)
+
+			if group in [1, 2]:
+				control.min_value = -2147483648
+				control.max_value = 2147483647
+				control.editable = false
+				control.hide()
+				field.add_child(control)
+			elif BudgetReport.GROUPS[group].size() == 1:
+				control.hide()
+				field.add_child(control)
+			else:
+				var name_label := _label("    " + BudgetReport.NAMES[id])
+				for node: Control in [name_label, control, _label(""), _label(""), _label("")]:
+					rows.add_child(node)
+					detail_nodes.append(node)
+					node.hide()
+
+
+func _spin(maximum: int) -> SpinBox:
+	var spin := SpinBox.new()
+	spin.max_value = maximum
+	spin.rounded = true
+	spin.suffix = "%"
+	spin.custom_minimum_size.x = 105
+	return spin
+
+
+func _label(text: String, amount := false) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if amount:
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	return label
+
+
+func set_city(value: CityState) -> void:
+	city = value
+	ordinance_control.city = value
+	ordinance_control.refresh()
 
 
 func open_budget(values: PackedInt32Array, annual: bool, auto_budget: bool) -> void:
 	title = "Annual Budget" if annual else "Budget"
-	notice_label.text = (
-		"Set the tax rates and service funding. Apply this budget to finish the annual settlement."
-		if annual
-		else "Set the tax rates and service funding. Ordinance and bond values are calculated by the simulation."
-	)
+	$Margin/Content/Heading.text = title if city == null else "%s · %s %d" % [city.display_name(), BudgetReport.MONTHS[city.current_month() - 1], city.current_year()]
+	notice_label.text = "Review last year’s totals. Apply the proposed rates to complete settlement and start the new budget year." if annual else "Review income, service funding and the year-end forecast. Apply saves the proposed rates."
 	auto_budget_check.button_pressed = auto_budget
 	get_cancel_button().disabled = annual
 	exclusive = annual
-
-	for budget_id in mini(values.size(), controls.size()):
-		controls[budget_id].value = values[budget_id]
-
-	popup_centered()
+	refreshing = true
+	for id in mini(values.size(), controls.size()):
+		controls[id].set_value_no_signal(values[id])
+	refreshing = false
+	detail_toggle.set_pressed_no_signal(false)
+	_show_details(false)
+	tabs.current_tab = 0
+	refresh_report()
+	popup_centered(Vector2i(940, 700))
 
 
 func funding_values() -> PackedInt32Array:
 	var values := PackedInt32Array()
-
 	for control in controls:
 		values.append(roundi(control.value))
-
 	return values
 
 
@@ -95,52 +214,200 @@ func auto_budget_enabled() -> bool:
 	return auto_budget_check.button_pressed
 
 
-func set_bond_state(
-	bond_count: int,
-	funds: int,
-	average_fixed: int,
-	oldest_rate: int,
-) -> void:
-	controls[Budget.BUDGET_BONDS].value = average_fixed
+func _group_changed(value: float, group: int) -> void:
+	if refreshing:
+		return
+	for id: int in BudgetReport.GROUPS[group]:
+		controls[id].set_value_no_signal(value)
+	refresh_report()
 
-	if bond_count == 0:
-		bond_summary_label.text = "No outstanding bonds"
+
+func _group_text_changed(text: String, group: int) -> void:
+	if refreshing:
+		return
+
+	var number := text.replace("%", "").strip_edges()
+	if number.is_valid_float():
+		group_edits[group] = clampf(number.to_float(), 0, group_controls[group].max_value)
 	else:
-		bond_summary_label.text = "%d outstanding; oldest %d%%; average %.2f%%" % [
-			bond_count, oldest_rate, float(average_fixed) / 10000.0,
-		]
+		group_edits.erase(group)
 
-	issue_bond_button.disabled = bond_count > Bonds.MAX_BONDS
+
+func _commit_group_edit(group: int) -> void:
+	if group_edits.has(group):
+		_group_changed(group_edits[group], group)
+
+
+func _individual_changed(_value: float) -> void:
+	if not refreshing:
+		refresh_report()
+
+
+func _show_details(enabled: bool) -> void:
+	for node in detail_nodes:
+		node.visible = enabled
+
+
+func _open_details(group: int) -> void:
+	if group == 1:
+		tabs.current_tab = 3
+	elif group == 2:
+		tabs.current_tab = 2
+	else:
+		history_category.select(group)
+		_refresh_history()
+		tabs.current_tab = 1
+
+
+func refresh_report() -> void:
+	var values := funding_values()
+	group_edits.clear()
+	refreshing = true
+	for group in BudgetReport.GROUPS.size():
+		var ids: Array = BudgetReport.GROUPS[group]
+		var first: int = values[ids[0]]
+		var mixed := false
+		for id: int in ids:
+			mixed = mixed or values[id] != first
+		group_controls[group].set_value_no_signal(first)
+		group_hints[group].text = "Mixed rates" if mixed else ""
+		group_hints[group].visible = mixed
+		if mixed:
+			group_controls[group].get_line_edit().text = "Mixed"
+	refreshing = false
+
+	if city == null:
+		return
+
+	report = BudgetReport.capture(city, values)
+	for group in BudgetReport.GROUPS.size():
+		_set_amount(ytd_labels[group], BudgetReport.group_amount(report.year_to_date, group))
+		_set_amount(estimate_labels[group], BudgetReport.group_amount(report.estimated, group))
+	var totals := [report.ytd_cash, report.estimated_cash, city.funds(), BudgetReport.wrap_i32(city.funds() + (report.ytd_cash if report.year_end else report.estimated_cash))]
+	total_captions[3].text = "Funds after settlement" if report.year_end else "Year-end funds"
+	total_captions[1].text = "Projected annual flow" if report.year_end else "Year-end cash flow"
+	for index in totals.size():
+		_set_amount(total_labels[index], totals[index])
+	_refresh_history()
+	_refresh_bond_table()
+
+
+func _setup_table(table: Tree, titles: Array) -> void:
+	table.theme = AppUiTheme.file_dialog()
+	var dark := AppUiTheme.selected == "dark"
+	for state in ["title_button_normal", "title_button_hover", "title_button_pressed"]:
+		var header := AppUiThemeDefinitions.create_box(Color("4b5563") if dark else Color("e2e8f0"), Color("788699") if dark else Color("b7c3d2"), 1, 6, 5)
+		table.add_theme_stylebox_override(state, header)
+	table.add_theme_color_override("title_button_color", Color("f8fafc") if dark else Color("253247"))
+	table.clear()
+	table.columns = titles.size()
+	for column in titles.size():
+		table.set_column_title(column, titles[column])
+		table.set_column_custom_minimum_width(column, 85 if column > 0 else 120)
+	table.create_item()
+
+
+func _refresh_history() -> void:
+	if report == null:
+		return
+	var group := history_category.selected
+	var ids: Array = BudgetReport.GROUPS[group]
+	var titles: Array = ["Month", "Status"]
+	if group == 2:
+		titles.append_array(["Principal", "Rate", "Interest"])
+	else:
+		for id: int in ids:
+			titles.append(BudgetReport.NAMES[id])
+	titles.append("Running total")
+	_setup_table(history_table, titles)
+	var cumulative := 0
+	for month in 12:
+		var row := history_table.create_item(history_table.get_root())
+		row.set_text(0, BudgetReport.MONTHS[month])
+		row.set_text(1, "Recorded" if month < report.actual_months else "Projected")
+		var amount := 0
+		if group == 2:
+			row.set_text(2, BudgetReport.currency(report.history_costs[4][month] * Bonds.BOND_VALUE))
+			row.set_text(3, "%.2f%%" % (report.history_rates[4][month] / 10000.0))
+			row.set_text(4, BudgetReport.currency(report.history[4][month]))
+			amount = report.history[4][month]
+		else:
+			for index in ids.size():
+				var id: int = ids[index]
+				row.set_text(index + 2, BudgetReport.currency(report.history[id][month]))
+				row.set_tooltip_text(index + 2, "Rate: %d%%" % report.history_rates[id][month] if id != 3 else "Ordinance income and costs")
+				amount += report.history[id][month]
+		cumulative += amount
+		row.set_text(titles.size() - 1, BudgetReport.currency(cumulative))
+		for column in range(2, titles.size()):
+			row.set_text_alignment(column, HORIZONTAL_ALIGNMENT_RIGHT)
+			if row.get_text(column).begins_with("−"):
+				row.set_custom_color(column, _loss_color())
+
+
+func _refresh_bond_table() -> void:
+	if city == null:
+		return
+	_setup_table(bond_table, ["Bond", "Principal", "Interest rate", "Annual interest"])
+	var count := mini(city.document.misc_u32(Bonds.MISC_BONDS), Bonds.MAX_BONDS)
+	for index in count:
+		var rate := city.document.misc_u32(Bonds.MISC_BOND_RATES + index * 4) & 0xffff
+		var row := bond_table.create_item(bond_table.get_root())
+		row.set_text(0, "%d%s" % [index + 1, " (oldest)" if index == 0 else ""])
+		row.set_text(1, BudgetReport.currency(Bonds.BOND_VALUE))
+		row.set_text(2, "%d%%" % rate)
+		row.set_text(3, BudgetReport.currency(-rate * 100))
+		if rate > 0:
+			row.set_custom_color(3, _loss_color())
+	var federal := BudgetAdvice._signed_word(city.document.misc_u32(Bonds.MISC_FEDERAL_RATE))
+	var value := CityValuePhase.calculate(city)
+	var city_value := value.city_value if value.ok else city.document.misc_u32(Bonds.MISC_CITY_VALUE)
+	var credit := clampi(BudgetAdvice._signed_word(((count * 25000) & 0xffffffff) / maxi((city_value + 1) & 0xffffffff, 1)), 0, 6)
+	bond_summary_label.text = "Outstanding: %s   ·   Credit: %s\nBank rate: %d%%   ·   Next bond: %d%%   ·   City value: %s" % [BudgetReport.currency(count * Bonds.BOND_VALUE), ["AAA", "AA", "A", "B", "C", "D", "F"][credit], federal, federal + 1, BudgetReport.currency(city_value * 1000)]
+
+
+func set_bond_state(bond_count: int, funds: int, average_fixed: int, _oldest_rate: int) -> void:
+	controls[Budget.BUDGET_BONDS].set_value_no_signal(average_fixed)
+	issue_bond_button.disabled = bond_count >= Bonds.MAX_BONDS
 	repay_bond_button.disabled = bond_count == 0 or funds < Bonds.BOND_VALUE
+	refresh_report()
+
+
+func show_advice(index: int, resource_id: int, assets: OriginalGameAssets) -> void:
+	advisor_dialog.title = "%s advisor" % BudgetReport.GROUP_NAMES[index]
+	var text: String = BudgetAdvice.FALLBACK[resource_id - 294]
+	var portrait: TextureRect = $Advisor/Content/Portrait
+	portrait.texture = null
+	if assets != null:
+		text = assets.strings.get(resource_id, text)
+		if assets.city_ui_graphics != null and assets.city_ui_graphics.portraits.has(197 + index):
+			portrait.texture = ImageTexture.create_from_image(assets.city_ui_graphics.portraits[197 + index])
+	portrait.visible = portrait.texture != null
+	$Advisor/Content/Advice.text = text.replace("\r\n", "\n")
+	advisor_dialog.popup_centered()
+
+
+func _ordinances_changed() -> void:
+	refresh_report()
+	ordinances_changed.emit()
 
 
 func open_bond_confirmation(action: String, rate: int) -> void:
 	pending_bond_action = action
-
-	if action == "issue":
-		_style_bond_confirmation()
-		bond_dialog.title = "Issue Bond"
-		bond_dialog.dialog_text = (
-			"Current Rates are %d%%.\nDo You Want to Issue the Bond?" % rate
-		)
-	else:
-		_style_bond_confirmation()
-		bond_dialog.title = "Repay Bond"
-		bond_dialog.dialog_text = (
-			"Oldest Bond Rate is %d%%\nDo You Want to Repay the Bond?" % rate
-		)
-
+	bond_dialog.theme = AppUiTheme.current()
+	bond_dialog.title = "Issue Bond" if action == "issue" else "Repay Bond"
+	bond_dialog.dialog_text = "Issue a $10,000 bond at %d%%?" % rate if action == "issue" else "Repay the oldest $10,000 bond at %d%%?" % rate
 	bond_dialog.popup_centered()
 
 
 func reset_dialogs() -> void:
-	if visible:
-		hide()
-
+	hide()
 	pending_bond_action = ""
-
-	if bond_dialog.visible:
-		bond_dialog.hide()
+	bond_dialog.hide()
+	advisor_dialog.hide()
+	city = null
+	report = null
+	ordinance_control.city = null
 
 
 func bond_confirmation_visible() -> bool:
@@ -150,10 +417,40 @@ func bond_confirmation_visible() -> bool:
 func _resolve_bond_confirmation(confirmed_value: bool) -> void:
 	var action := pending_bond_action
 	pending_bond_action = ""
-
 	if not action.is_empty():
 		bond_confirmation_resolved.emit(action, confirmed_value)
 
 
-func _style_bond_confirmation() -> void:
-	bond_dialog.theme = AppUiTheme.current()
+func _loss_color() -> Color:
+	return Color("ff8585") if AppUiTheme.selected == "dark" else Color("b42318")
+
+
+func _set_amount(label: Label, amount: int) -> void:
+	label.text = BudgetReport.currency(amount)
+	if amount < 0:
+		label.add_theme_color_override("font_color", _loss_color())
+	else:
+		label.remove_theme_color_override("font_color")
+
+
+func _style_actions() -> void:
+	var dark := AppUiTheme.selected == "dark"
+	for button in action_buttons:
+		button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		for state in ["normal", "hover", "pressed", "focus"]:
+			var background := Color("4b5563") if dark else Color("f8fafc")
+			if state == "hover":
+				background = Color("617084") if dark else Color("e8eef7")
+			elif state == "pressed":
+				background = Color("374151") if dark else Color("d7e2f0")
+			var box := AppUiThemeDefinitions.create_box(background, Color("788699") if dark else Color("a8b3c2"), 1, 10, 5)
+			box.set_corner_radius_all(5)
+			if state == "focus":
+				box.bg_color = Color.TRANSPARENT
+				box.border_color = Color("80baff") if dark else Color("2767b0")
+				box.set_border_width_all(2)
+			button.add_theme_stylebox_override(state, box)
+		for color_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+			button.add_theme_color_override(color_name, Color("f8fafc") if dark else Color("253247"))
+	if report != null:
+		refresh_report()
