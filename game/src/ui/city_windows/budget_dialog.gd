@@ -197,7 +197,6 @@ func open_budget(values: PackedInt32Array, annual: bool, auto_budget: bool) -> v
 	title = "Annual Budget" if annual else "Budget"
 	$Margin/Content/Heading.text = title if city == null else "%s · %s %d" % [city.display_name(), BudgetReport.MONTHS[city.current_month() - 1], city.current_year()]
 	notice_label.text = "Review last year’s totals." if annual else "Review income, service funding and the year-end forecast."
-	$Margin/Content/ApplyHint.text = "Apply the proposed rates to complete settlement and start the new budget year." if annual else "Apply saves the proposed rates."
 	auto_budget_check.button_pressed = auto_budget
 	get_cancel_button().disabled = annual
 	exclusive = annual

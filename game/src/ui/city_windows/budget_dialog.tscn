@@ -145,10 +145,6 @@ theme_override_constants/h_separation = 16
 layout_mode = 2
 text = "Use this budget automatically next year"
 
-[node name="ApplyHint" type="Label" parent="Margin/Content"]
-layout_mode = 2
-text = "Apply saves the proposed rates."
-
 [node name="BondConfirmation" type="ConfirmationDialog" parent="."]
 title = "Bond"
 ok_button_text = "Yes"
