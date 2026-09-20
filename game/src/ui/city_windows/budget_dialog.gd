@@ -10,6 +10,7 @@ signal issue_bond_requested
 signal repay_bond_requested
 signal bond_confirmation_resolved(action: String, confirmed: bool)
 signal advisor_requested(index: int)
+signal sound_requested(sound_ids: Array[int])
 signal ordinances_changed
 signal update_failed(message: String)
 
@@ -44,6 +45,7 @@ var total_captions: Array[Label] = []
 var refreshing := false
 var action_buttons: Array[Button] = []
 var group_edits: Dictionary[int, float] = {}
+var previous_funding := PackedInt32Array()
 
 
 func _ready() -> void:
@@ -75,7 +77,11 @@ func _ready() -> void:
 	detail_toggle.toggled.connect(_show_details)
 	history_category.item_selected.connect(func(_index: int) -> void: _refresh_history())
 	_build_rows()
-	action_buttons.append($Margin/Content/Tabs/Bonds/Actions/Advice)
+	var bond_advice: Button = $Margin/Content/Tabs/Bonds/Actions/Advice
+	bond_advice.text = ""
+	bond_advice.icon = preload("res://src/ui/city_windows/icons/budget_advisor.svg")
+	bond_advice.tooltip_text = "Ask the bond advisor"
+	action_buttons.append(bond_advice)
 	_style_actions()
 	AppUiTheme.current().changed.connect(_style_actions)
 
@@ -129,12 +135,14 @@ func _build_rows() -> void:
 		var actions := HBoxContainer.new()
 		rows.add_child(actions)
 		var history := Button.new()
-		history.text = "Details" if group in [1, 2] else "History"
+		history.icon = preload("res://src/ui/city_windows/icons/budget_details.svg") if group in [1, 2] else preload("res://src/ui/city_windows/icons/budget_history.svg")
+		history.tooltip_text = "Open the %s tab" % ("Ordinances" if group == 1 else "Bonds") if group in [1, 2] else "Show monthly history for %s" % BudgetReport.GROUP_NAMES[group].to_lower()
 		history.pressed.connect(_open_details.bind(group))
 		actions.add_child(history)
 		action_buttons.append(history)
 		var advice := Button.new()
-		advice.text = "Advisor"
+		advice.icon = preload("res://src/ui/city_windows/icons/budget_advisor.svg")
+		advice.tooltip_text = "Ask the %s advisor" % BudgetReport.GROUP_NAMES[group].to_lower()
 		advice.pressed.connect(advisor_requested.emit.bind(group))
 		actions.add_child(advice)
 		action_buttons.append(advice)
@@ -188,7 +196,8 @@ func set_city(value: CityState) -> void:
 func open_budget(values: PackedInt32Array, annual: bool, auto_budget: bool) -> void:
 	title = "Annual Budget" if annual else "Budget"
 	$Margin/Content/Heading.text = title if city == null else "%s · %s %d" % [city.display_name(), BudgetReport.MONTHS[city.current_month() - 1], city.current_year()]
-	notice_label.text = "Review last year’s totals. Apply the proposed rates to complete settlement and start the new budget year." if annual else "Review income, service funding and the year-end forecast. Apply saves the proposed rates."
+	notice_label.text = "Review last year’s totals." if annual else "Review income, service funding and the year-end forecast."
+	$Margin/Content/ApplyHint.text = "Apply the proposed rates to complete settlement and start the new budget year." if annual else "Apply saves the proposed rates."
 	auto_budget_check.button_pressed = auto_budget
 	get_cancel_button().disabled = annual
 	exclusive = annual
@@ -219,6 +228,7 @@ func _group_changed(value: float, group: int) -> void:
 		return
 	for id: int in BudgetReport.GROUPS[group]:
 		controls[id].set_value_no_signal(value)
+	_play_tax_change()
 	refresh_report()
 
 
@@ -240,7 +250,20 @@ func _commit_group_edit(group: int) -> void:
 
 func _individual_changed(_value: float) -> void:
 	if not refreshing:
+		_play_tax_change()
 		refresh_report()
+
+
+func _play_tax_change() -> void:
+	var values := funding_values()
+	if previous_funding.size() != values.size():
+		return
+	var difference := 0
+	for id in 3:
+		difference += values[id] - previous_funding[id]
+	if difference != 0:
+		var sounds: Array[int] = [512 if difference > 0 else 513]
+		sound_requested.emit(sounds)
 
 
 func _show_details(enabled: bool) -> void:
@@ -261,6 +284,7 @@ func _open_details(group: int) -> void:
 
 func refresh_report() -> void:
 	var values := funding_values()
+	previous_funding = values.duplicate()
 	group_edits.clear()
 	refreshing = true
 	for group in BudgetReport.GROUPS.size():
@@ -363,7 +387,7 @@ func _refresh_bond_table() -> void:
 	var value := CityValuePhase.calculate(city)
 	var city_value := value.city_value if value.ok else city.document.misc_u32(Bonds.MISC_CITY_VALUE)
 	var credit := clampi(BudgetAdvice._signed_word(((count * 25000) & 0xffffffff) / maxi((city_value + 1) & 0xffffffff, 1)), 0, 6)
-	bond_summary_label.text = "Outstanding: %s   ·   Credit: %s\nBank rate: %d%%   ·   Next bond: %d%%   ·   City value: %s" % [BudgetReport.currency(count * Bonds.BOND_VALUE), ["AAA", "AA", "A", "B", "C", "D", "F"][credit], federal, federal + 1, BudgetReport.currency(city_value * 1000)]
+	bond_summary_label.text = "Outstanding: %s   ·   Credit: %s   ·   Bank rate: %d%%   ·   Next bond: %d%%   ·   City value: %s" % [BudgetReport.currency(count * Bonds.BOND_VALUE), ["AAA", "AA", "A", "B", "C", "D", "F"][credit], federal, federal + 1, BudgetReport.currency(city_value * 1000)]
 
 
 func set_bond_state(bond_count: int, funds: int, average_fixed: int, _oldest_rate: int) -> void:
@@ -450,7 +474,7 @@ func _style_actions() -> void:
 				box.border_color = Color("80baff") if dark else Color("2767b0")
 				box.set_border_width_all(2)
 			button.add_theme_stylebox_override(state, box)
-		for color_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		for color_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "icon_normal_color", "icon_hover_color", "icon_pressed_color", "icon_focus_color"]:
 			button.add_theme_color_override(color_name, Color("f8fafc") if dark else Color("253247"))
 	if report != null:
 		refresh_report()

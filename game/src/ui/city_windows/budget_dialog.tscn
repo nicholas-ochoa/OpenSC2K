@@ -92,7 +92,6 @@ theme_override_constants/separation = 10
 [node name="Summary" type="Label" parent="Margin/Content/Tabs/Bonds"]
 layout_mode = 2
 custom_minimum_size = Vector2(760, 0)
-autowrap_mode = 3
 
 [node name="Table" type="Tree" parent="Margin/Content/Tabs/Bonds"]
 layout_mode = 2
@@ -145,6 +144,10 @@ theme_override_constants/h_separation = 16
 [node name="AutoBudget" type="CheckBox" parent="Margin/Content"]
 layout_mode = 2
 text = "Use this budget automatically next year"
+
+[node name="ApplyHint" type="Label" parent="Margin/Content"]
+layout_mode = 2
+text = "Apply saves the proposed rates."
 
 [node name="BondConfirmation" type="ConfirmationDialog" parent="."]
 title = "Bond"

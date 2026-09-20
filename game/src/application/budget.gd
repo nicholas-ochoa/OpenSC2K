@@ -35,6 +35,7 @@ func open_budget_dialog(values: PackedInt32Array, annual: bool) -> void:
 
 	if not app.budget_dialog.advisor_requested.is_connected(show_advisor):
 		app.budget_dialog.advisor_requested.connect(show_advisor)
+		app.budget_dialog.sound_requested.connect(app.effects_audio.play_sound_ids)
 		app.budget_dialog.ordinances_changed.connect(app.reports.on_ordinances_changed)
 		app.budget_dialog.update_failed.connect(app.interface.show_error)
 

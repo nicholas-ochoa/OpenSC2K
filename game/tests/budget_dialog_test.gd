@@ -52,11 +52,14 @@ func _run() -> void:
 	city.set_age_in_days(250)
 	var dialog := preload("res://src/ui/city_windows/budget_dialog.tscn").instantiate() as BudgetDialog
 	root.add_child(dialog)
+	var sounds: Array[int] = []
+	dialog.sound_requested.connect(func(ids: Array[int]) -> void: sounds.append_array(ids))
 	dialog.set_city(city)
 	before = city.document.serialize().data
 	dialog.open_budget(values, false, false)
 	await process_frame
 	assert(dialog.funding_values() == values)
+	assert(sounds.is_empty(), "Opening the budget played a tax-change sound")
 	dialog.size = Vector2i(940, 660)
 	dialog.tabs.current_tab = 3
 	await process_frame
@@ -64,6 +67,9 @@ func _run() -> void:
 	var ordinance_bounds := dialog.tabs.get_global_rect()
 	for field: Control in dialog.ordinance_control.ordinance_checks + dialog.ordinance_control.ordinance_amounts + dialog.ordinance_control.category_amounts:
 		assert(ordinance_bounds.encloses(field.get_global_rect()), "Ordinance control clipped at minimum window size")
+	dialog.tabs.current_tab = 2
+	await process_frame
+	assert(dialog.tabs.get_global_rect().encloses(dialog.bond_summary_label.get_global_rect()), "Bond summary clipped")
 	dialog.tabs.current_tab = 0
 	dialog.detail_toggle.button_pressed = true
 	dialog.detail_toggle.button_pressed = false
@@ -79,6 +85,13 @@ func _run() -> void:
 	assert(dialog.funding_values().slice(8, 10) == PackedInt32Array([75, 75]))
 	dialog.group_controls[7].value = 80
 	assert(dialog.funding_values().slice(10, 16) == PackedInt32Array([80, 80, 80, 80, 80, 80]))
+	assert(sounds == [512, 512, 513], "Wrong sounds for tax and funding changes")
+	dialog._group_changed(7, 0)
+	assert(sounds.size() == 3, "Setting the same value played another sound")
+	dialog.controls[0].value = 6
+	assert(sounds == [512, 512, 513, 513], "Individual tax decreases also cheer")
+	for button in dialog.action_buttons:
+		assert(button.icon != null and not button.tooltip_text.is_empty())
 	assert(city.document.serialize().data == before, "Editing proposed funding changed saved data")
 	dialog.history_category.select(7)
 	dialog._refresh_history()
