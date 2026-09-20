@@ -123,6 +123,10 @@ func on_windows_menu(id: int) -> void:
 		open_city_map_window()
 	elif id == 7:
 		app.debug_overlay.toggle()
+	elif id == CityMenuBarView.MENU_SCENARIO_GOALS:
+		var engine := app.simulation_state.simulation_engine
+		if engine != null and engine.scenario != null:
+			app.budget.open_scenario_intro(engine.scenario, false)
 
 
 func _open_ordinance_window() -> void:
@@ -185,6 +189,14 @@ func open_city_map_window() -> void:
 func on_city_map_mode_changed(mode: String) -> void:
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "City Map: %s" % CityMapView.MODE_NAMES.get(mode, mode)
+
+
+# the city map window drives the isometric view while its checkbox is on
+func on_city_map_isometric_view_requested(mode: CityViewMode.Mode) -> void:
+	if app.document_state.city == null or app.view_state.overlay_mode == mode:
+		return
+
+	app.menus.set_overlay(mode)
 
 
 func on_city_map_center_requested(point: Vector2i) -> void:

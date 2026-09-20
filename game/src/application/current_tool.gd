@@ -198,8 +198,6 @@ func update_edit_state() -> void:
 	app.map_view.query_footprint_preview = app.tool_state.selected_group == 16
 	if app.tool_state.selected_group != 16 or app.tool_state.selected_subtool != 1:
 		app.map_view.clear_trip_reach()
-	if app.tool_state.selected_group != 16 or app.tool_state.selected_subtool != 2:
-		app.map_view.clear_service_query()
 	app.map_view.query_city = app.document_state.city
 	app.map_view.set_edit_enabled(
 		bool(state.enabled),

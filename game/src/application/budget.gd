@@ -270,7 +270,7 @@ func _restore_military_proposal_dialog() -> void:
 		app.military_dialog.popup_centered()
 
 
-func open_scenario_intro(scenario: ScenarioState) -> void:
+func open_scenario_intro(scenario: ScenarioState, starting := true) -> void:
 	var rendered_picture := ScenarioGraphics.render(scenario, app.asset_state.scenario_palette, app.asset_state.scenario_graphics)
 	var picture: Image = rendered_picture.image if rendered_picture.ok else null
 	var name := app.document_state.city.city_name()
@@ -278,11 +278,15 @@ func open_scenario_intro(scenario: ScenarioState) -> void:
 	if name.is_empty():
 		name = app.document_state.current_document.source_path.get_file().get_basename()
 
-	app.status_label.theme_type_variation = ""
-	app.status_label.text = "Review the scenario briefing before the simulation starts."
-	app.scenario_dialog.show_briefing(name, picture, scenario.opening_description())
+	if starting:
+		app.status_label.theme_type_variation = ""
+		app.status_label.text = "Review the scenario briefing before the simulation starts."
+	app.scenario_dialog.show_briefing(name, picture, scenario.opening_description(), starting)
 
 
 func begin_scenario() -> void:
+	if not app.scenario_dialog.starts_scenario:
+		return
+
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "Scenario started."

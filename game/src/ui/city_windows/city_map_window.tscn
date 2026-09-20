@@ -5,10 +5,10 @@
 
 [node name="CityMapWindow" type="Window"]
 title = "City Map"
-size = Vector2i(480, 680)
+size = Vector2i(420, 530)
 visible = true
 transient = true
-min_size = Vector2i(420, 620)
+min_size = Vector2i(300, 420)
 script = ExtResource("1_ujfl6")
 
 [node name="Background" type="PanelContainer" parent="."]
@@ -19,14 +19,14 @@ theme_type_variation = "PanelPadding5_3_5_3"
 
 [node name="Margin" type="MarginContainer" parent="Background"]
 layout_mode = 2
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 10
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 10
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
 
 [node name="CityMapWindowControl" type="VBoxContainer" parent="Background/Margin"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/separation = 8
+theme_override_constants/separation = 6
 script = ExtResource("2_ws2p2")

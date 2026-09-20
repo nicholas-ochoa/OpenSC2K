@@ -53,6 +53,14 @@ vertical_alignment = 1
 text_overrun_behavior = 3
 metadata/always_status_tooltip = true
 
+[node name="LocateDisaster" type="Button" parent="Metrics"]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+visible = false
+focus_mode = 0
+tooltip_text = "Center the map view on the active disaster."
+text = "Locate"
+
 [node name="ReportsDivider" type="VSeparator" parent="Metrics"]
 layout_mode = 2
 

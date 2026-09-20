@@ -3,6 +3,7 @@ extends Window
 
 signal mode_changed(mode: String)
 signal center_requested(point: Vector2i)
+signal isometric_view_requested(mode: CityViewMode.Mode)
 
 const CityMapView = preload("res://src/view/city_map_window_control.gd")
 
@@ -16,6 +17,7 @@ func _ready() -> void:
 	map_control = get_node("Background/Margin/CityMapWindowControl")
 	map_control.mode_changed.connect(mode_changed.emit)
 	map_control.center_requested.connect(center_requested.emit)
+	map_control.isometric_view_requested.connect(isometric_view_requested.emit)
 
 
 func set_resources(icon_strip: Image, strings: Dictionary) -> void:
@@ -35,7 +37,7 @@ func toggle_city(
 
 	map_control.set_city(value, palette)
 	map_control.refresh_viewport(viewport_outline)
-	popup_centered(Vector2i(480, 680))
+	popup_centered(Vector2i(420, 530))
 
 
 func refresh_city(
@@ -46,6 +48,12 @@ func refresh_city(
 
 	map_control.set_city(value, palette)
 	map_control.refresh_viewport(viewport_outline)
+
+
+# keeps the isometric view checkbox honest when the city view changes elsewhere
+func sync_view_mode(mode: CityViewMode.Mode) -> void:
+	if map_control != null:
+		map_control.sync_view_mode(mode)
 
 
 func refresh_viewport(viewport_outline: PackedVector2Array) -> void:

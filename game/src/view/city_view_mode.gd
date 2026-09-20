@@ -2,16 +2,26 @@ class_name CityViewMode
 extends RefCounted
 
 
-enum Mode { NONE = -1, CITY, UNDERGROUND, LAND_VALUE, POLLUTION, CRIME, WATER, POWER, HEIGHT }
+enum Mode {
+	NONE = -1, CITY, UNDERGROUND, DENSITY, GROWTH, TRAFFIC, POLLUTION, CRIME,
+	POLICE_POWER, FIRE_POWER, LAND_VALUE, WATER, POWER, HEIGHT
+}
 
-
-const KEYS: Array[String] = ["city", "underground", "land_value", "pollution", "crime", "water", "power", "height"]
+# string keys for status text, debug output, and dialog options
+const KEYS: Array[String] = [
+	"city", "underground", "density", "growth", "traffic", "pollution", "crime",
+	"police_power", "fire_power", "land_value", "water", "power", "height",
+]
 # every selectable mode, in view menu order
 const DISPLAY_MODES: Array[Mode] = [
-	Mode.CITY, Mode.UNDERGROUND, Mode.LAND_VALUE, Mode.POLLUTION, Mode.CRIME, Mode.WATER, Mode.POWER, Mode.HEIGHT
+	Mode.CITY, Mode.UNDERGROUND, Mode.DENSITY, Mode.GROWTH, Mode.TRAFFIC, Mode.POLLUTION, Mode.CRIME,
+	Mode.POLICE_POWER, Mode.FIRE_POWER, Mode.LAND_VALUE, Mode.WATER, Mode.POWER, Mode.HEIGHT
 ]
 # isometric data views, in sidebar order
-const DATA_MODES: Array[Mode] = [Mode.LAND_VALUE, Mode.POLLUTION, Mode.CRIME, Mode.WATER, Mode.POWER, Mode.HEIGHT]
+const DATA_MODES: Array[Mode] = [
+	Mode.DENSITY, Mode.GROWTH, Mode.TRAFFIC, Mode.POLLUTION, Mode.CRIME,
+	Mode.POLICE_POWER, Mode.FIRE_POWER, Mode.LAND_VALUE, Mode.WATER, Mode.POWER, Mode.HEIGHT
+]
 
 
 static func key(mode: Mode) -> String:
@@ -31,4 +41,4 @@ static func is_map(mode: Mode) -> bool:
 
 # true for the isometric data views
 static func is_data(mode: Mode) -> bool:
-	return mode >= Mode.LAND_VALUE and mode <= Mode.HEIGHT
+	return mode >= Mode.DENSITY and mode <= Mode.HEIGHT

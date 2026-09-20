@@ -12907,7 +12907,7 @@ func _test_map_edits(reference_root: String) -> void:
 
 func _test_tool_catalog() -> void:
 	_check(Tools.GROUPS.size() == 18, "Tool catalog has all eighteen original groups")
-	_check(Tools.all_tools().size() == 77, "Tool catalog retains original entries, Cancel Dispatch, five editor tools, Trip Query, and Service Query")
+	_check(Tools.all_tools().size() == 76, "Tool catalog retains original entries, Cancel Dispatch, five editor tools, and Trip Query")
 	var coal := Tools.tool(3, 2)
 	_check(coal.cost == 4000 and coal.area == 4, "Coal plant uses the executable cost and area")
 	var coal_details := Tools.power_plant_details(2)

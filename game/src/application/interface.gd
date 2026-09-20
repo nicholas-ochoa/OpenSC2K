@@ -80,6 +80,7 @@ func build_interface(original_assets: OriginalGameAssets) -> void:
 	app.map_view.zoom_changed.connect(app.camera_input.on_city_zoom_changed)
 	app.map_view.viewport_changed.connect(app.reports.refresh_city_map_viewport)
 	app.city_status_bar = app.city_workspace.status_bar
+	app.city_status_bar.disaster_locate_requested.connect(app.camera_input.center_map_on_disaster)
 	app.status_label = app.city_status_bar.message_label
 	app.frame.sync_speed_ui()
 
@@ -140,6 +141,7 @@ func build_interface(original_assets: OriginalGameAssets) -> void:
 	app.city_map_window = app.city_dialogs.city_map_window
 	app.city_map_window.mode_changed.connect(app.reports.on_city_map_mode_changed)
 	app.city_map_window.center_requested.connect(app.reports.on_city_map_center_requested)
+	app.city_map_window.isometric_view_requested.connect(app.reports.on_city_map_isometric_view_requested)
 	app.ordinance_window = app.city_dialogs.ordinance_window
 	app.ordinance_window.ordinances_changed.connect(app.reports.on_ordinances_changed)
 	app.ordinance_window.update_failed.connect(show_error)

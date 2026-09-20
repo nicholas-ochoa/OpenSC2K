@@ -159,6 +159,45 @@ func _check_weather_phase(source: CityState) -> void:
 			assert(engine.city_status_resource_id == 269)
 
 
+## The status bar offers the locate button only while a disaster is active.
+func _check_disaster_locate(main) -> void:
+	var city: CityState = main.document_state.city
+	assert(main.city_status_bar.locate_disaster_button.visible, "An active disaster must offer the locate button")
+	main.city_status_bar.locate_disaster_button.pressed.emit()
+	assert(main.status_label.text == "The disaster could not be located.",
+		"An unlocated disaster must report the failure: " + main.status_label.text)
+	var fire := Vector2i(60, 70)
+	assert(city.set_text_overlay_id(fire.x, fire.y, DisasterMapConstants.FIRE_OVERLAY))
+	assert(DisasterFocus.find_point(city) == fire, "Disaster location missed the fire marker")
+
+	for spread in [2, 10]:
+		assert(city.set_text_overlay_id(fire.x, fire.y + spread, DisasterMapConstants.FIRE_OVERLAY))
+
+	assert(DisasterFocus.find_point(city) == Vector2i(fire.x, fire.y + 2),
+		"Spread markers must locate the tile nearest their middle")
+	# Map art is absent in this run, so bind the camera city the renderer would supply.
+	main.map_view.city = city
+	assert(main.map_view.center_on_tile(Vector2i(10, 10)))
+	main.city_status_bar.locate_disaster_button.pressed.emit()
+	assert(main.map_view.center_tile() == Vector2i(fire.x, fire.y + 2),
+		"The locate button must center the map on the disaster: " + str(main.map_view.center_tile()))
+	var monster := Vector2i(20, 30)
+	var thing_chunk := city.document.find_chunk("XTHG")
+	var things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
+	ThingData.write(things, CityState.THING_RECORD_SIZE, DisasterStartConstants.TYPE_MONSTER)
+	ThingData.write(things, CityState.THING_RECORD_SIZE + 3, monster.x)
+	ThingData.write(things, CityState.THING_RECORD_SIZE + 4, monster.y)
+	assert(thing_chunk.set_decoded_payload(things))
+	assert(DisasterFocus.find_point(city) == monster, "Map marker took priority over the disaster object")
+
+	for spread in [0, 2, 10]:
+		assert(city.set_text_overlay_id(fire.x, fire.y + spread, 0))
+
+	ThingData.write(things, CityState.THING_RECORD_SIZE, 0)
+	assert(thing_chunk.set_decoded_payload(things))
+	assert(DisasterFocus.find_point(city).x < 0, "Finished disaster still returned a location")
+
+
 func _check_main_ui(strings: Dictionary) -> void:
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("user://missing-test-art"))
@@ -184,8 +223,10 @@ func _check_main_ui(strings: Dictionary) -> void:
 	main.simulation_state.simulation_engine.active_disaster_type = 16
 	main.frame.select_speed(GameSpeedController.Speed.TURTLE)
 	assert(main.city_status_bar.reports_label.text == str(main.original_text_resources.original_query_strings[CityStatusMessages.DISASTER_IDS[16]]).strip_edges())
+	_check_disaster_locate(main)
 	main.simulation_state.simulation_engine.active_disaster_type = 0
 	main.interface.refresh_status_summary()
+	assert(not main.city_status_bar.locate_disaster_button.visible, "The locate button must leave with the disaster")
 	assert(main.city_status_bar.reports_label.text == str(main.original_text_resources.original_query_strings[269]).strip_edges())
 	main.queue_free()
 	await process_frame

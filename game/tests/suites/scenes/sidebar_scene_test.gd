@@ -31,7 +31,7 @@ func run() -> void:
 	first.rotate_counter_clockwise_button.pressed.emit()
 	assert(clicks == 3 and rotations == [false, true])
 	first.data_view_input.item_selected.emit(1)
-	assert(requested_modes == [CityViewMode.Mode.UNDERGROUND, CityViewMode.DATA_MODES[0]])
+	assert(requested_modes == [CityViewMode.Mode.UNDERGROUND, CityViewMode.DATA_MODES[first.data_view_input.get_item_id(1) - 1]])
 	first.show_tool_group(9, null)
 	first.child_tool_buttons[0].pressed.emit()
 	assert(clicks == 4, "Wrong click connection count on a child button")

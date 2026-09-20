@@ -4,6 +4,7 @@ extends AcceptDialog
 var picture_view: TextureRect
 var text_view: Label
 var text_scroll: ScrollContainer
+var starts_scenario := true
 
 
 func _ready() -> void:
@@ -26,6 +27,10 @@ func set_briefing(scenario_name: String, picture: Image, description: String) ->
 	text_scroll.scroll_vertical = 0
 
 
-func show_briefing(scenario_name: String, picture: Image, description: String) -> void:
+func show_briefing(
+	scenario_name: String, picture: Image, description: String, starting := true
+) -> void:
+	starts_scenario = starting
+	ok_button_text = "Begin Scenario" if starting else "OK"
 	set_briefing(scenario_name, picture, description)
 	popup_centered()

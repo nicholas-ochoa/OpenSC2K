@@ -81,6 +81,22 @@ func _ready() -> void:
 	child_palette = %ChildPalette
 	view_layers_heading = %ViewLayersHeading
 	data_view_input = %DataViewInput
+	data_view_input.clear()
+	data_view_input.add_item("Data view: off", 0)
+
+	# follow cityviewmode so new data views appear without touching the scene
+	# item ids stay in data_modes order while the list reads alphabetically
+	var data_view_titles: Array = []
+
+	for index in CityViewMode.DATA_MODES.size():
+		data_view_titles.append([str(CityDataView.TITLES[index]), index + 1])
+
+	data_view_titles.sort_custom(func(a: Array, b: Array) -> bool: return a[0].naturalnocasecmp_to(b[0]) < 0)
+
+	for entry in data_view_titles:
+		data_view_input.add_item(entry[0], entry[1])
+
+	data_view_input.select(0)
 	view_mode_buttons = {CityViewMode.Mode.CITY: %CityView, CityViewMode.Mode.UNDERGROUND: %UndergroundView, CityViewMode.Mode.HEIGHT: %HeightView}
 	view_visibility_checks = {
 		"buildings": %BuildingsVisible, "networks": %NetworksVisible,
@@ -130,7 +146,8 @@ func _ready() -> void:
 		view_mode_buttons[mode].pressed.connect(overlay_requested.emit.bind(mode))
 
 	data_view_input.item_selected.connect(func(index: int) -> void:
-		overlay_requested.emit(CityViewMode.Mode.CITY if index == 0 else CityViewMode.DATA_MODES[index - 1]))
+		var id := data_view_input.get_item_id(index)
+		overlay_requested.emit(CityViewMode.Mode.CITY if id == 0 else CityViewMode.DATA_MODES[id - 1]))
 
 	for layer in ["buildings", "networks", "water", "trees", "zones", "signs", "vehicles"]:
 		view_visibility_checks[layer].toggled.connect(_on_surface_visibility_toggled.bind(layer))
@@ -284,7 +301,7 @@ func _on_surface_visibility_toggled(visible: bool, layer: String) -> void:
 
 func sync_view_mode(mode: CityViewMode.Mode) -> void:
 	if data_view_input != null:
-		data_view_input.select(CityViewMode.DATA_MODES.find(mode) + 1)
+		data_view_input.select(data_view_input.get_item_index(CityViewMode.DATA_MODES.find(mode) + 1))
 
 	for key in view_mode_buttons:
 		view_mode_buttons[key].set_pressed_no_signal(key == mode)

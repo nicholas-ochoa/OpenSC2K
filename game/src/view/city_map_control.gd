@@ -91,7 +91,6 @@ var network_preview_active := false
 var highway_preview := false
 var query_footprint_preview := false
 var scurk_stamp_visuals: Array[CityDynamicVisual] = []
-var service_query: ServiceQueryOverlay
 var trip_reach: TripReachOverlay
 var trip_query_underground := false
 var query_city: CityState
@@ -341,14 +340,6 @@ func show_trip_reach(source: CityState, point: Vector2i) -> TransportTripReachRe
 
 func clear_trip_reach() -> void:
 	presentation.clear_trip_reach()
-
-
-func show_service_query(source: CityState, point: Vector2i, all_stations := false) -> ServiceQueryAnalysis.Result:
-	return presentation.show_service_query(source, point, all_stations)
-
-
-func clear_service_query() -> void:
-	presentation.clear_service_query()
 
 
 # bind timers to this node so they stop with it

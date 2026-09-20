@@ -116,9 +116,8 @@ func unhandled_key_input(event: InputEvent) -> void:
 	elif event.keycode == KEY_Z and event.is_command_or_control_pressed():
 		app.city_edits.undo_last_edit()
 		app.get_viewport().set_input_as_handled()
-	elif event.keycode == KEY_ESCAPE and app.map_view != null and (app.map_view.trip_reach != null or app.map_view.service_query != null):
+	elif event.keycode == KEY_ESCAPE and app.map_view != null and app.map_view.trip_reach != null:
 		app.map_view.clear_trip_reach()
-		app.map_view.clear_service_query()
 		app.get_viewport().set_input_as_handled()
 	elif (camera_keys_allowed() and not event.is_command_or_control_pressed() and not event.alt_pressed
 			and (event.keycode == KEY_PLUS or event.keycode == KEY_EQUAL or event.physical_keycode == KEY_E)):
@@ -244,7 +243,6 @@ func rotate_city(counter_clockwise: bool) -> void:
 
 	app.tool_state.last_edit_command = null
 	app.map_view.clear_trip_reach()
-	app.map_view.clear_service_query()
 	app.map_view.show_transient_effects([])
 	app.map_render.refresh_map()
 
@@ -426,3 +424,15 @@ func center_map_on_tile(point: Vector2i) -> void:
 		app.effects_audio.play_tool_success_sound(17, 0)
 		app.status_label.theme_type_variation = ""
 		app.status_label.text = "Centered the map on tile %d, %d." % [point.x, point.y]
+
+
+func center_map_on_disaster() -> void:
+	var point := DisasterFocus.find_point(app.document_state.city)
+
+	if point.x < 0:
+		app.status_label.theme_type_variation = "ErrorLabel"
+		app.status_label.text = "The disaster could not be located."
+
+		return
+
+	center_map_on_tile(point)

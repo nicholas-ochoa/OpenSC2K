@@ -129,10 +129,6 @@ func _apply_view_tool(finish: Vector2i) -> bool:
 	if tool.selected_group == 16:
 		if tool.selected_subtool == 1:
 			app.map_view.show_trip_reach(app.document_state.city, finish)
-		elif tool.selected_subtool == 2:
-			var result := app.map_view.show_service_query(app.document_state.city, finish, app.map_view._shift_pressed)
-			if not result.ok:
-				app.interface.show_error(str(result.error))
 		else:
 			app.query_choices.open_query(finish)
 

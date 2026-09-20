@@ -114,7 +114,7 @@ func check_ui() -> void:
 
 		shared_mesh = main.map_view.data_view_mesh
 		check(main.view_menu.get_popup().is_item_checked(index + 2), "Selected menu check")
-		check(main.city_toolbar.data_view_input.selected == index + 1, "Sidebar follows view menu")
+		check(main.city_toolbar.data_view_input.selected == main.city_toolbar.data_view_input.get_item_index(index + 1), "Sidebar follows view menu")
 		check(main.map_view.city_source.size == CityIsometricRenderer.output_size_for_view(2, 16), "Native isometric extent")
 		check(main.map_view.source_center == center, "Switch preserves camera")
 		check(main.map_view.edit_enabled, "Query stays enabled")
@@ -124,7 +124,7 @@ func check_ui() -> void:
 		check(main.map_view.data_view_layer.visible and main.map_view.data_view_layer.material != null, "Grid shader is active")
 		check(DocumentState.capture(doc) == before, "View changes preserve saved city")
 
-	main.city_toolbar.data_view_input.item_selected.emit(1)
+	main.city_toolbar.data_view_input.item_selected.emit(main.city_toolbar.data_view_input.get_item_index(CityViewMode.DATA_MODES.find(CityViewMode.Mode.LAND_VALUE) + 1))
 	check(main.view_state.overlay_mode == CityViewMode.Mode.LAND_VALUE, "Sidebar opens data view")
 	var old_mesh: ArrayMesh = main.map_view.data_view_mesh
 	var data := doc.find_chunk("XVAL").decoded_payload.duplicate()

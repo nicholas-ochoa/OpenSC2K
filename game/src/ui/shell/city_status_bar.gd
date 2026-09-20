@@ -1,6 +1,8 @@
 class_name CityStatusBar
 extends PanelContainer
 
+signal disaster_locate_requested
+
 const REPORT_ROTATION_SECONDS := 7.0
 const NEWS_NAMES := {
 	46: CityStatusMessages.NEED_FALLBACKS[0],
@@ -90,6 +92,7 @@ var message_label: Label
 var weather_label: Label
 var rci_graph: RciStatusControl
 var reports_label: Label
+var locate_disaster_button: Button
 var speed_label: Label
 var compass: StatusCompass
 var zoom_label: Label
@@ -110,12 +113,18 @@ func _ready() -> void:
 	weather_label = $Metrics/Weather
 	rci_graph = $Metrics/RCI
 	reports_label = $Metrics/Reports
+	locate_disaster_button = $Metrics/LocateDisaster
+	locate_disaster_button.pressed.connect(_on_locate_disaster_pressed)
 	speed_label = $Metrics/Speed
 	compass = $Metrics/Compass
 	zoom_label = $Metrics/Zoom
 	speed_label.theme_changed.connect(_fit_speed_label)
 	_fit_speed_label()
 	refresh_tooltips()
+
+
+func _on_locate_disaster_pressed() -> void:
+	disaster_locate_requested.emit()
 
 
 func _fit_speed_label() -> void:
@@ -238,6 +247,7 @@ func set_city_status(engine: SimulationEngine, paused: bool, strings: Dictionary
 	city_status_available = false
 	priority_status = false
 	status_style = ""
+	var disaster_active := engine != null and engine.active_disaster_type != 0
 
 	if engine != null:
 		var resource_id := engine.city_status_resource_id
@@ -254,6 +264,9 @@ func set_city_status(engine: SimulationEngine, paused: bool, strings: Dictionary
 			status_style = "ErrorLabel"
 
 		city_status_text = CityStatusMessages.text(resource_id, strings)
+
+	if locate_disaster_button != null:
+		locate_disaster_button.visible = disaster_active
 
 	_refresh_report_text()
 	_sync_overflow_tooltip(reports_label)

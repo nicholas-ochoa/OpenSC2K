@@ -27,6 +27,7 @@ func _run() -> void:
 
 	_check_every_window_is_classified()
 	_check_current_classification()
+	_check_scenario_goals()
 	_check_new_windows()
 	main.queue_free()
 	await process_frame
@@ -87,6 +88,44 @@ func _check_current_classification() -> void:
 		_set_shown(window, true)
 		assert(not main.frame._simulation_suspended(), "%s leaves the simulation running" % window.name)
 		_hide_all()
+
+
+func _check_scenario_goals() -> void:
+	var popup: PopupMenu = main.city_menu_bar.windows_menu.get_popup()
+	assert(popup.get_item_index(CityMenuBar.MENU_SCENARIO_GOALS) == -1)
+	main.reports.on_windows_menu(CityMenuBar.MENU_SCENARIO_GOALS)
+	assert(not main.scenario_dialog.visible)
+	var document := Sc2File.load_path(ProjectSettings.globalize_path(
+		"res://../references/SIMCITY2000/SCENARIO/MALIBU.SCN"))
+	assert(document.is_valid())
+	assert(main.city_session.activate_document(document))
+	_hide_all()
+	assert(popup.get_item_index(CityMenuBar.MENU_SCENARIO_GOALS) >= 0)
+	var engine: SimulationEngine = main.simulation_state.simulation_engine
+	var before := document.serialize().data
+	var random_states := [engine.random.state, engine.lfsr_random.state, engine.game_random.state]
+	main.status_label.text = "Status before reviewing goals"
+	var status_before: String = main.status_label.text
+	popup.id_pressed.emit(CityMenuBar.MENU_SCENARIO_GOALS)
+	assert(main.scenario_dialog.visible)
+	assert(not main.scenario_dialog.starts_scenario)
+	assert(not main.scenario_dialog.text_view.text.is_empty())
+	assert(main.frame._simulation_suspended())
+	main.scenario_dialog.get_ok_button().pressed.emit()
+	assert(not main.scenario_dialog.visible)
+	assert(not main.frame._simulation_suspended())
+	assert(main.status_label.text == status_before)
+	assert(document.serialize().data == before)
+	assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == random_states)
+	main.budget.open_scenario_intro(engine.scenario)
+	assert(main.scenario_dialog.starts_scenario)
+	main.scenario_dialog.get_ok_button().pressed.emit()
+	assert(main.status_label.text != status_before)
+	assert(main.city_session.activate_document(EmptyCityTemplate.create(128)))
+	_hide_all()
+	assert(popup.get_item_index(CityMenuBar.MENU_SCENARIO_GOALS) == -1)
+	main.reports.on_windows_menu(CityMenuBar.MENU_SCENARIO_GOALS)
+	assert(not main.scenario_dialog.visible)
 
 
 func _check_new_windows() -> void:

@@ -206,7 +206,6 @@ static var GROUPS: Array[Group] = [
 	Group.new("query", "Query", [
 		Entry.new("query", "Query", 0, 1),
 		Entry.new("trip_reach", "Trip Query", 0, 1),
-		Entry.new("service_query", "Service Query", 0, 1),
 	]),
 	Group.new("centering", "Center", [
 		Entry.new("center", "Center View", 0, 0),

@@ -219,8 +219,6 @@ func _draw() -> void:
 	if map.data_view_mesh != null:
 		map.layers._draw_data_view(scale, offset)
 
-		if map.service_query != null:
-			map.service_query.draw_on(map, scale, offset)
 		if map.trip_reach != null:
 			map.trip_reach.draw_on(map, scale, offset, map.trip_query_underground)
 
@@ -265,8 +263,6 @@ func _draw() -> void:
 				false, CityForegroundPalette.INDEXED_DRAW_COLOR
 			)
 
-	if map.service_query != null:
-		map.service_query.draw_on(map, scale, offset)
 	if map.trip_reach != null:
 		map.trip_reach.draw_on(map, scale, offset, map.trip_query_underground)
 
@@ -314,20 +310,4 @@ func show_trip_reach(source: CityState, point: Vector2i) -> TransportTripReachRe
 func clear_trip_reach() -> void:
 	if map.trip_reach != null:
 		map.trip_reach = null
-		map.queue_redraw()
-
-
-func show_service_query(source: CityState, point: Vector2i, all_stations := false) -> ServiceQueryAnalysis.Result:
-	clear_service_query()
-	var result := ServiceQueryAnalysis.inspect(source, point, all_stations)
-	if result.ok:
-		map.service_query = ServiceQueryOverlay.new()
-		map.service_query.rebuild(source, result)
-	map.queue_redraw()
-	return result
-
-
-func clear_service_query() -> void:
-	if map.service_query != null:
-		map.service_query = null
 		map.queue_redraw()

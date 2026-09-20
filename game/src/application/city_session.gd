@@ -29,7 +29,6 @@ func activate_document(
 		return false
 
 	app.map_view.clear_trip_reach()
-	app.map_view.clear_service_query()
 	var loaded_city := CityModel.from_document(document)
 
 	if not loaded_city.is_valid():
@@ -195,6 +194,7 @@ func activate_document(
 		display_name = "New City"
 
 	app.city_menu_bar.set_city_name(display_name)
+	app.city_menu_bar.set_scenario_available(app.simulation_state.simulation_engine.scenario != null)
 	app.reports.refresh_newspaper_menu()
 	app.interface.refresh_details()
 	app.status_label.theme_type_variation = ""

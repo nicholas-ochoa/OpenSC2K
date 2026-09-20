@@ -11,6 +11,7 @@ signal newspaper_menu_requested(id: int)
 signal help_menu_requested(id: int)
 
 const MENU_SETTINGS := 0x8302
+const MENU_SCENARIO_GOALS := 8
 const MENU_SAVE_CITY := 7
 const MENU_EXPORT_CITY_PNG := 8
 const MENU_UPGRADE_SC2X := 0x8303
@@ -44,6 +45,7 @@ var options_menu: MenuButton
 var view_menu: MenuButton
 var disasters_menu: MenuButton
 var newspaper_menu: MenuButton
+var windows_menu: MenuButton
 var city_label: Label
 var population_label: Label
 var date_label: Label
@@ -89,14 +91,20 @@ func _ready() -> void:
 	options_menu.get_popup().add_item("Settings...", MENU_SETTINGS)
 	options_menu.disabled = true
 
-	view_menu = _add_menu(menu_row, "View", [
-		["City View", 0], ["Underground View", 1],
-		["Land Value", 2], ["Pollution", 3], ["Crime", 4],
-		["Water Supply", 5], ["Power Supply", 6], ["Height", 7],
-		["City Map...", MENU_VIEW_CITY_MAP],
-	], _on_view_menu)
+	var view_items: Array = []
 
-	for index in 7:
+	# one radio item per display mode, in cityviewmode order
+	for index in CityViewMode.DISPLAY_MODES.size():
+		var mode: CityViewMode.Mode = CityViewMode.DISPLAY_MODES[index]
+		var data_index := CityViewMode.DATA_MODES.find(mode)
+		var label: String = CityDataView.TITLES[data_index] if data_index >= 0 else (
+			"City View" if mode == CityViewMode.Mode.CITY else "Underground View")
+		view_items.append([label, index])
+
+	view_items.append(["City Map...", MENU_VIEW_CITY_MAP])
+	view_menu = _add_menu(menu_row, "View", view_items, _on_view_menu)
+
+	for index in CityViewMode.DISPLAY_MODES.size():
 		view_menu.get_popup().set_item_as_radio_checkable(index, true)
 
 	view_menu.get_popup().add_separator()
@@ -135,11 +143,8 @@ func _ready() -> void:
 		"Air Crash and Helicopter Crash do nothing when selected, as in the original Windows game."
 	)
 
-	_add_menu(menu_row, "Windows", [
-		["Budget", 0], ["Ordinances", 1], ["Population", 2],
-		["City Industry", 3], ["Graphs", 4], ["Neighbors", 5],
-		["City Map", 6], ["Debug Info", 7],
-	], _on_windows_menu)
+	windows_menu = _add_menu(menu_row, "Windows", [], _on_windows_menu)
+	set_scenario_available(false)
 	newspaper_menu = _add_menu(
 		menu_row,
 		"Newspaper",
@@ -229,6 +234,23 @@ func _add_menu(
 	menu.get_popup().id_pressed.connect(callback)
 
 	return menu
+
+
+func set_scenario_available(available: bool) -> void:
+	var popup := windows_menu.get_popup()
+	popup.clear()
+
+	for item in [
+		["Budget", 0], ["Ordinances", 1], ["Population", 2],
+		["Industry", 3], ["Graphs", 4], ["Neighbors", 5], ["Map", 6],
+	]:
+		popup.add_item(item[0], item[1])
+
+	if available:
+		popup.add_item("Show Scenario Goals", MENU_SCENARIO_GOALS)
+
+	popup.add_separator()
+	popup.add_item("Debug", 7)
 
 
 func _metric_label(text_value: String, minimum_width: int) -> Label:

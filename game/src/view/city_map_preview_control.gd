@@ -5,6 +5,8 @@ signal center_requested(point: Vector2i)
 
 const MAP_SIZE := 128
 
+const BORDER := 2.0
+
 var map_texture: Texture2D
 var viewport_outline := PackedVector2Array()
 
@@ -14,7 +16,7 @@ func _ready() -> void:
 	mouse_default_cursor_shape = Control.CURSOR_CROSS
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	clip_contents = true
-	custom_minimum_size = Vector2(384, 384)
+	custom_minimum_size = Vector2(256, 256)
 	gui_input.connect(_on_gui_input)
 
 
@@ -29,7 +31,8 @@ func set_viewport_outline(points: PackedVector2Array) -> void:
 
 
 func map_rect() -> Rect2:
-	var edge := minf(size.x, size.y)
+	# leave room for the border inside the control, which clips its contents
+	var edge := maxf(0.0, minf(size.x, size.y) - BORDER * 2.0)
 
 	return Rect2((size - Vector2(edge, edge)) * 0.5, Vector2(edge, edge))
 
@@ -37,7 +40,8 @@ func map_rect() -> Rect2:
 func _draw() -> void:
 	var map_edge: int = map_texture.get_width() if map_texture != null else 128
 	var target := map_rect()
-	draw_rect(target.grow(2), Color("404040"), true)
+	draw_rect(target.grow(BORDER), Color("1b222b"), true)
+	draw_rect(target.grow(BORDER), Color("8d97a5"), false, 1.0)
 
 	if map_texture != null:
 		draw_texture_rect(map_texture, target, false)

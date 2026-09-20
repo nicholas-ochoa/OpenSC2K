@@ -17,6 +17,8 @@ signal update_failed(message: String)
 const Budget = preload("res://src/simulation/economy/budget_phase.gd")
 const Bonds = preload("res://src/simulation/economy/bond_command.gd")
 const BUDGET_NAMES := BudgetReport.NAMES
+# drawn width of the action icons, independent of the imported artwork size
+const ICON_WIDTH := 20
 
 var notice_label: Label
 var controls: Array[SpinBox] = []
@@ -456,24 +458,12 @@ func _set_amount(label: Label, amount: int) -> void:
 		label.remove_theme_color_override("font_color")
 
 
+# icon-only actions keep the normal button look. the artwork imports at four
+# times its drawn size, so a scaled interface stays sharp
 func _style_actions() -> void:
-	var dark := AppUiTheme.selected == "dark"
 	for button in action_buttons:
 		button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		for state in ["normal", "hover", "pressed", "focus"]:
-			var background := Color("4b5563") if dark else Color("f8fafc")
-			if state == "hover":
-				background = Color("617084") if dark else Color("e8eef7")
-			elif state == "pressed":
-				background = Color("374151") if dark else Color("d7e2f0")
-			var box := AppUiThemeDefinitions.create_box(background, Color("788699") if dark else Color("a8b3c2"), 1, 10, 5)
-			box.set_corner_radius_all(5)
-			if state == "focus":
-				box.bg_color = Color.TRANSPARENT
-				box.border_color = Color("80baff") if dark else Color("2767b0")
-				box.set_border_width_all(2)
-			button.add_theme_stylebox_override(state, box)
-		for color_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "icon_normal_color", "icon_hover_color", "icon_pressed_color", "icon_focus_color"]:
-			button.add_theme_color_override(color_name, Color("f8fafc") if dark else Color("253247"))
+		button.add_theme_constant_override("icon_max_width", ICON_WIDTH)
+
 	if report != null:
 		refresh_report()

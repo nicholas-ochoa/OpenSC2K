@@ -116,11 +116,13 @@ func _draw_data_key() -> void:
 	var title: String = CityDataView.TITLES[CityViewMode.DATA_MODES.find(map.data_view_mode)]
 	map.draw_string(font, origin + Vector2(12, 24), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, map.get_theme_color("font_color", "MapLegend"))
 
-	if map.data_view_mode in [CityViewMode.Mode.WATER, CityViewMode.Mode.POWER]:
-		for index in 3:
+	var states := CityDataView.state_labels(map.data_view_mode)
+
+	if not states.is_empty():
+		for index in states.size():
 			var position := origin + Vector2(12 + index * 100, 38)
-			map.draw_rect(Rect2(position, Vector2(88, 18)), CityDataView.color(index, map.data_view_mode))
-			map.draw_string(font, position + Vector2(0, 38), ["No link", "No supply", "Supplied"][index], HORIZONTAL_ALIGNMENT_LEFT, -1, 14,
+			map.draw_rect(Rect2(position, Vector2(88, 18)), CityDataView.color(CityDataView.state_value(map.data_view_mode, index), map.data_view_mode))
+			map.draw_string(font, position + Vector2(0, 38), states[index], HORIZONTAL_ALIGNMENT_LEFT, -1, 14,
 					map.get_theme_color("font_color", "MapLegend"))
 	else:
 		for index in 32:
@@ -132,23 +134,22 @@ func _draw_data_key() -> void:
 			map.draw_string(font, origin + Vector2(38, 106), "Water surface (transparent)", HORIZONTAL_ALIGNMENT_LEFT, -1, 13,
 					map.get_theme_color("font_color", "MapLegend"))
 
-		var low := "Level 1" if map.data_view_mode == CityViewMode.Mode.HEIGHT else "Very low"
-		var high := "Level 32" if map.data_view_mode == CityViewMode.Mode.HEIGHT else "Very high"
+		var labels := CityDataView.range_labels(map.data_view_mode)
+		var low := labels[0]
+		var high := labels[1]
 		map.draw_string(font, origin + Vector2(12, 80), low, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, map.get_theme_color("font_color", "MapLegend"))
 		var high_width := font.get_string_size(high, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
 		map.draw_string(font, origin + Vector2(308 - high_width, 80), high, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, map.get_theme_color("font_color", "MapLegend"))
 
 
 func data_key_origin() -> Vector2:
-	if map.data_view_mode == CityViewMode.Mode.HEIGHT:
-		# match trip query: anchor inside the map area, clear of the sidebar
-		var workspace := map.get_parent()
-		if workspace != null:
-			var map_space := workspace.get_node_or_null("Page/Content/MapSpace") as Control
-			if map_space != null:
-				return map_space.global_position - map.global_position + Vector2(12, 12)
-		return Vector2(12, 12)
-	return Vector2(maxf(8, map.size.x - 332), maxf(8, map.size.y - 108))
+	# match trip query: anchor inside the map area, clear of the sidebar
+	var workspace := map.get_parent()
+	if workspace != null:
+		var map_space := workspace.get_node_or_null("Page/Content/MapSpace") as Control
+		if map_space != null:
+			return map_space.global_position - map.global_position + Vector2(12, 12)
+	return Vector2(12, 12)
 
 
 func _data_legend_box() -> StyleBoxFlat:

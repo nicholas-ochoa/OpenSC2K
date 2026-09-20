@@ -311,8 +311,6 @@ func _query_footprint_tiles(point: Vector2i) -> Array[Vector2i]:
 
 
 func _get_tooltip(at_position: Vector2) -> String:
-	if map.service_query != null and not map.camera.is_panning():
-		return map.service_query.tile_tooltip(map.camera._tile_at(at_position))
 	if map.trip_reach != null and not map.camera.is_panning():
 		return map.trip_reach.tile_tooltip(map.camera._tile_at(at_position))
 

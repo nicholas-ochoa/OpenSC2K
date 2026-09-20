@@ -4,6 +4,8 @@ extends VBoxContainer
 signal mode_changed(mode: String)
 signal center_requested(point: Vector2i)
 
+signal isometric_view_requested(mode: CityViewMode.Mode)
+
 const Minimap = preload("res://src/view/city_minimap.gd")
 const Preview = preload("res://src/view/city_map_preview_control.gd")
 
@@ -42,6 +44,19 @@ const MODE_NAMES := {
 	"schools": "Schools",
 	"colleges": "Colleges",
 }
+# isometric data view behind each map mode. modes without one stay on the city view
+const MODE_VIEWS := {
+	"traffic": CityViewMode.Mode.TRAFFIC,
+	"power": CityViewMode.Mode.POWER,
+	"water": CityViewMode.Mode.WATER,
+	"density": CityViewMode.Mode.DENSITY,
+	"growth": CityViewMode.Mode.GROWTH,
+	"crime": CityViewMode.Mode.CRIME,
+	"police_power": CityViewMode.Mode.POLICE_POWER,
+	"pollution": CityViewMode.Mode.POLLUTION,
+	"land_value": CityViewMode.Mode.LAND_VALUE,
+	"fire_power": CityViewMode.Mode.FIRE_POWER,
+}
 const MODE_STRING_IDS := {
 	"structures": 327,
 	"zones": 328,
@@ -69,7 +84,11 @@ var strings: Dictionary = {}
 var icon_sheet: Image
 var tab_bar: TabBar
 var preview: CityMapPreviewControl
-var mode_list: ItemList
+var preview_frame: AspectRatioContainer
+var mode_grid: GridContainer
+var mode_buttons: Array[CheckBox] = []
+var mode_button_group: ButtonGroup
+var isometric_check: CheckBox
 var selected_tab := 0
 var selected_item := 0
 var refreshing := false
@@ -78,7 +97,7 @@ var image_signature: Array = []
 
 func _ready() -> void:
 	name = "CityMapWindowControl"
-	add_theme_constant_override("separation", 8)
+	add_theme_constant_override("separation", 6)
 	tab_bar = TabBar.new()
 	tab_bar.name = "CityMapTabs"
 	tab_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -90,14 +109,31 @@ func _ready() -> void:
 	preview.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	preview.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	preview.center_requested.connect(center_requested.emit)
-	add_child(preview)
 
-	mode_list = ItemList.new()
-	mode_list.name = "CityMapModes"
-	mode_list.custom_minimum_size = Vector2(0, 96)
-	mode_list.select_mode = ItemList.SELECT_SINGLE
-	mode_list.item_selected.connect(_on_mode_selected)
-	add_child(mode_list)
+	# the map is square. fitting it here keeps the window from padding it out
+	preview_frame = AspectRatioContainer.new()
+	preview_frame.name = "CityMapPreviewFrame"
+	preview_frame.ratio = 1.0
+	preview_frame.stretch_mode = AspectRatioContainer.STRETCH_FIT
+	preview_frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	preview_frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	preview_frame.add_child(preview)
+	add_child(preview_frame)
+
+	mode_button_group = ButtonGroup.new()
+	mode_grid = GridContainer.new()
+	mode_grid.name = "CityMapModes"
+	mode_grid.columns = 2
+	mode_grid.add_theme_constant_override("h_separation", 12)
+	mode_grid.add_theme_constant_override("v_separation", 0)
+	add_child(mode_grid)
+
+	isometric_check = CheckBox.new()
+	isometric_check.name = "CityMapIsometricView"
+	isometric_check.text = "Isometric View"
+	isometric_check.tooltip_text = "Show the selected map in the isometric city view."
+	isometric_check.toggled.connect(_on_isometric_toggled)
+	add_child(isometric_check)
 
 	_rebuild_tabs()
 	_rebuild_modes()
@@ -169,19 +205,32 @@ func _rebuild_tabs() -> void:
 
 
 func _rebuild_modes() -> void:
-	if mode_list == null:
+	if mode_grid == null:
 		return
 
 	refreshing = true
-	mode_list.clear()
+
+	for button in mode_buttons:
+		button.button_group = null
+		mode_grid.remove_child(button)
+		button.queue_free()
+
+	mode_buttons.clear()
 	var modes: Array = TAB_MODES[selected_tab]
-
-	for mode in modes:
-		var resource_id := int(MODE_STRING_IDS.get(mode, 0))
-		mode_list.add_item(str(strings.get(resource_id, MODE_NAMES.get(mode, mode))))
-
 	selected_item = clampi(selected_item, 0, modes.size() - 1)
-	mode_list.select(selected_item)
+
+	for index in modes.size():
+		var mode: String = str(modes[index])
+		var resource_id := int(MODE_STRING_IDS.get(mode, 0))
+		var button := CheckBox.new()
+		button.text = str(strings.get(resource_id, MODE_NAMES.get(mode, mode)))
+		# one group keeps the checkboxes mutually exclusive, like radio buttons
+		button.button_group = mode_button_group
+		button.set_pressed_no_signal(index == selected_item)
+		button.pressed.connect(_on_mode_selected.bind(index))
+		mode_grid.add_child(button)
+		mode_buttons.append(button)
+
 	refreshing = false
 
 
@@ -194,6 +243,7 @@ func _on_tab_changed(tab: int) -> void:
 	_rebuild_modes()
 	refresh()
 	mode_changed.emit(current_mode())
+	_follow_isometric_view()
 
 
 func _on_mode_selected(item: int) -> void:
@@ -203,6 +253,46 @@ func _on_mode_selected(item: int) -> void:
 	selected_item = clampi(item, 0, TAB_MODES[selected_tab].size() - 1)
 	refresh()
 	mode_changed.emit(current_mode())
+	_follow_isometric_view()
+
+
+func _on_isometric_toggled(_enabled: bool) -> void:
+	if refreshing:
+		return
+
+	_emit_isometric_view()
+
+
+func _emit_isometric_view() -> void:
+	if isometric_check == null:
+		return
+
+	isometric_view_requested.emit(current_view_mode() if isometric_check.button_pressed else CityViewMode.Mode.CITY)
+
+
+# a new selection only moves the city view while the checkbox is on
+func _follow_isometric_view() -> void:
+	if isometric_check != null and isometric_check.button_pressed:
+		_emit_isometric_view()
+
+
+# isometric view for the selected map mode, or the plain city view when it has none
+func current_view_mode() -> CityViewMode.Mode:
+	var mode: CityViewMode.Mode = MODE_VIEWS.get(current_mode(), CityViewMode.Mode.CITY)
+
+	return mode
+
+
+# follows the active isometric view when it changes outside this window
+func sync_view_mode(mode: CityViewMode.Mode) -> void:
+	if isometric_check == null:
+		return
+
+	# only clear the box: another view taking over means this window no longer drives it
+	if isometric_check.button_pressed and mode != current_view_mode():
+		refreshing = true
+		isometric_check.set_pressed_no_signal(false)
+		refreshing = false
 
 
 func _image_signature() -> Array:

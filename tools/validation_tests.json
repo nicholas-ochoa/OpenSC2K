@@ -975,24 +975,6 @@
     "lane": "product"
   },
   {
-    "id": "service_query_test",
-    "script": "tests/service_query_test.gd",
-    "domain": "tools",
-    "lane": "product"
-  },
-  {
-    "id": "service_query_ui_test",
-    "script": "tests/service_query_ui_test.gd",
-    "domain": "ui",
-    "lane": "product"
-  },
-  {
-    "id": "service_query_mesh_test",
-    "script": "tests/service_query_mesh_test.gd",
-    "domain": "ui",
-    "lane": "product"
-  },
-  {
     "id": "trip_reach_test",
     "script": "tests/trip_reach_test.gd",
     "domain": "tools",

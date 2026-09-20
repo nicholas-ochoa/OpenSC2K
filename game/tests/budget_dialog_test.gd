@@ -92,6 +92,10 @@ func _run() -> void:
 	assert(sounds == [512, 512, 513, 513], "Individual tax decreases also cheer")
 	for button in dialog.action_buttons:
 		assert(button.icon != null and not button.tooltip_text.is_empty())
+		# Oversized artwork keeps a scaled interface sharp; the drawn icon stays small.
+		assert(button.icon.get_width() > BudgetDialog.ICON_WIDTH)
+		assert(button.get_theme_constant("icon_max_width") == BudgetDialog.ICON_WIDTH)
+		assert(not button.has_theme_stylebox_override("normal"), "Actions keep the normal button background")
 	assert(city.document.serialize().data == before, "Editing proposed funding changed saved data")
 	dialog.history_category.select(7)
 	dialog._refresh_history()
