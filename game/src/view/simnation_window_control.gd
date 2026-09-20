@@ -40,7 +40,6 @@ const FIRST_ARCOLOGY := 0xfb
 const LAST_ARCOLOGY := 0xfe
 const NEIGHBOR_NAME_STRING_BASE := 0x0223
 const DEFAULT_NATIONAL_FORMAT := "Nat. Pop: %lu000"
-const BACKGROUND_COLOR := Color8(75, 39, 11)
 const SPRITE_POSITIONS := [
 	Vector2(38.0, 31.0),
 	Vector2(-26.0, -1.0),
@@ -214,7 +213,7 @@ static func prepare_sprite_sheet(source: Image) -> Image:
 
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), BACKGROUND_COLOR, true)
+	draw_rect(Rect2(Vector2.ZERO, size), get_theme_color("map_canvas", "AppPalette"), true)
 	var data := snapshot(city)
 
 	if not data.ok:
