@@ -61,7 +61,6 @@ var city: CityState
 var sprite_sheet: Texture2D
 var neighbor_names := {}
 var national_format := DEFAULT_NATIONAL_FORMAT
-var display_font: SystemFont
 
 
 func _init() -> void:
@@ -69,9 +68,6 @@ func _init() -> void:
 	custom_minimum_size = Vector2(408, 320)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	display_font = SystemFont.new()
-	display_font.font_names = PackedStringArray(["Times New Roman", "Times", "serif"])
-	display_font.font_weight = 700
 
 
 func set_city(value: CityState) -> void:
@@ -279,17 +275,20 @@ func _draw_settlement(
 
 
 func _draw_record_label(label: String, population: int, position: Vector2, font_size: int) -> void:
-	_draw_outlined_text(label, position, font_size)
-
 	if population != 0:
 		_draw_outlined_text(
 			str(population),
-			position + Vector2(0, display_font.get_height(font_size)),
+			position,
 			font_size,
 		)
 
+		position.y += get_theme_default_font().get_height(font_size)
+
+	_draw_outlined_text(label, position, font_size)
+
 
 func _draw_outlined_text(text: String, center: Vector2, font_size: int) -> void:
+	var display_font := get_theme_default_font()
 	var text_width := display_font.get_string_size(
 		text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
 	).x
@@ -301,7 +300,7 @@ func _draw_outlined_text(text: String, center: Vector2, font_size: int) -> void:
 	for offset in [Vector2(1, 1), Vector2(1, -1), Vector2(-1, 1), Vector2(-1, -1)]:
 		draw_string(
 			display_font, baseline + offset, text, HORIZONTAL_ALIGNMENT_LEFT, -1,
-			font_size, get_theme_color("ink", "AppPalette")
+			font_size, Color.BLACK
 		)
 
 	draw_string(

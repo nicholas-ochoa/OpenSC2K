@@ -37,3 +37,4 @@ func refresh_city(value: CityState) -> void:
 
 func _on_mode_selected(mode: int) -> void:
 	population_control.set_mode(mode)
+	title = mode_buttons[mode].text

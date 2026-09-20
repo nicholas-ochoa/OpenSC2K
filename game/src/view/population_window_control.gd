@@ -146,12 +146,12 @@ static func indicator_value(data: Snapshot, selected_mode: int) -> int:
 
 static func indicator_text(data: Snapshot, selected_mode: int) -> String:
 	if selected_mode == Mode.POPULATION:
-		return "Workforce: %d%%" % int(data.workforce_percent)
+		return "Work Force %% = %d" % int(data.workforce_percent)
 
 	if selected_mode == Mode.HEALTH:
-		return "LE = %d yrs" % int(data.workforce_life_expectancy)
+		return "Work Force LE = %d" % int(data.workforce_life_expectancy)
 
-	return "EQ = %d" % int(data.workforce_education_quotient)
+	return "Work Force EQ = %d" % int(data.workforce_education_quotient)
 
 
 static func y_axis_label(selected_mode: int, step: int) -> String:
@@ -176,7 +176,7 @@ func _draw() -> void:
 
 	var font := get_theme_default_font()
 	var font_size := 12
-	var plot := Rect2(58, 18, maxf(1.0, size.x - 78.0), maxf(1.0, size.y - 62.0))
+	var plot := Rect2(58, 36, maxf(1.0, size.x - 78.0), maxf(1.0, size.y - 92.0))
 
 	for step in 7:
 		var y := plot.end.y - plot.size.y * float(step) / 6.0
@@ -224,25 +224,31 @@ func _draw() -> void:
 				HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, get_theme_color("ink", "AppPalette")
 			)
 
-	var indicator := indicator_value(data, mode)
-	var indicator_y := plot.end.y - plot.size.y * clampf(
-		float(indicator) / float(CHART_MAXIMUM), 0.0, 1.0
-	)
-	draw_line(
-		Vector2(plot.position.x, indicator_y), Vector2(plot.end.x, indicator_y),
-		Color("c00000"), 2.0
-	)
-	var indicator_label := indicator_text(data, mode)
-	var indicator_width := font.get_string_size(
-		indicator_label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
-	).x
-	draw_rect(
-		Rect2(plot.end.x - indicator_width - 6, indicator_y - 13, indicator_width + 6, 15),
-		get_theme_color("paper", "AppPalette"), true
-	)
+	# the original marks ages 20 through 55, not a value on the vertical axis
+	var workforce_left := plot.position.x + slot_width * 4.0
+	var workforce_right := plot.position.x + slot_width * 11.0
+	var bracket_y := plot.position.y + 2.0
+	var bracket_center := (workforce_left + workforce_right) * 0.5
+	var workforce_color := get_theme_color("ink", "AppPalette")
+	draw_polyline(PackedVector2Array([
+		Vector2(workforce_left, plot.end.y), Vector2(workforce_left, bracket_y),
+		Vector2(workforce_right, bracket_y), Vector2(workforce_right, plot.end.y),
+	]), workforce_color, 1.0)
+	draw_polyline(PackedVector2Array([
+		Vector2(bracket_center, bracket_y), Vector2(bracket_center, plot.position.y - 16),
+		Vector2(bracket_center + 6, plot.position.y - 16),
+	]), workforce_color, 1.0)
 	draw_string(
-		font, Vector2(plot.end.x - indicator_width - 3, indicator_y - 1), indicator_label,
-		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, get_theme_color("error", "AppPalette")
+		font, Vector2(bracket_center + 12, plot.position.y - 12), indicator_text(data, mode),
+		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, workforce_color
+	)
+	var age_title := "Resident Age"
+	var age_title_width := font.get_string_size(
+		age_title, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
+	).x
+	draw_string(
+		font, Vector2(plot.get_center().x - age_title_width * 0.5, plot.end.y + 34), age_title,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, get_theme_color("ink", "AppPalette")
 	)
 
 
