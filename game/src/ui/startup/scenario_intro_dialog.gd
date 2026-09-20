@@ -2,7 +2,8 @@ class_name ScenarioIntroDialog
 extends AcceptDialog
 
 var picture_view: TextureRect
-var text_view: TextEdit
+var text_view: Label
+var text_scroll: ScrollContainer
 
 
 func _ready() -> void:
@@ -11,7 +12,8 @@ func _ready() -> void:
 	theme = AppUiTheme.current()
 	get_label().visible = false
 	picture_view = $Layout/PictureFrame/Picture
-	text_view = $Layout/Text
+	text_scroll = $Layout/TextScroll
+	text_view = $Layout/TextScroll/Text
 
 
 func set_briefing(scenario_name: String, picture: Image, description: String) -> void:
@@ -19,8 +21,9 @@ func set_briefing(scenario_name: String, picture: Image, description: String) ->
 	picture_view.texture = (
 		ImageTexture.create_from_image(picture) if picture != null else null
 	)
-	text_view.text = description.replace("\r\n", "\n").replace("\r", "\n")
-	text_view.scroll_vertical = 0
+	var briefing := description.replace("\r\n", "\n").replace("\r", "\n").strip_edges()
+	text_view.text = briefing.trim_prefix("Extended Description:").strip_edges()
+	text_scroll.scroll_vertical = 0
 
 
 func show_briefing(scenario_name: String, picture: Image, description: String) -> void:

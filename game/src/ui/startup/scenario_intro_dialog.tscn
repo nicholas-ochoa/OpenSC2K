@@ -27,9 +27,13 @@ layout_mode = 2
 expand_mode = 1
 stretch_mode = 5
 
-[node name="Text" type="TextEdit" parent="Layout"]
+[node name="TextScroll" type="ScrollContainer" parent="Layout"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-editable = false
-wrap_mode = 1
+horizontal_scroll_mode = 0
+
+[node name="Text" type="Label" parent="Layout/TextScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3
