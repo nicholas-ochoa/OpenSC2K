@@ -1,6 +1,10 @@
 class_name TrainThingTick
 extends RefCounted
 
+const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
+
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const RECORD_SIZE := CityState.THING_RECORD_SIZE
 const FIRST_RECORD := 1
 const LAST_RECORD := CityState.THING_COUNT - 1
@@ -10,7 +14,7 @@ const TYPE_TRAIN_ENGINE := 10
 const TYPE_TRAIN_CAR := 11
 const TYPE_SUBWAY_ENGINE := 12
 const TYPE_SUBWAY_CAR := 13
-const TILE_RAIL_STATION := 0xed
+const TILE_RAIL_STATION := Tiles.RAIL_STATION
 const SOUND_TRAIN := 0x20c
 const CARDINAL_DIRECTIONS := [
 	Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0),
@@ -137,7 +141,7 @@ static func update(
 	current = destination
 	var current_index := _index(current, map_edge)
 
-	if buildings[current_index] >= 0x6c and buildings[current_index] <= 0x70:
+	if buildings[current_index] >= Tiles.RAIL_SUBWAY_FIRST and buildings[current_index] <= Tiles.DEVELOPED_FIRST:
 		ThingData.write(things, offset, (
 			TYPE_SUBWAY_ENGINE if engine_type == TYPE_TRAIN_ENGINE else TYPE_TRAIN_ENGINE
 		))
@@ -206,7 +210,7 @@ static func _current_route_is_valid(
 
 	var surface := int(buildings[index])
 
-	if _is_surface_route(surface) or (surface >= 0x6c and surface <= 0x70):
+	if _is_surface_route(surface) or (surface >= Tiles.RAIL_SUBWAY_FIRST and surface <= Tiles.DEVELOPED_FIRST):
 		return true
 
 	return _is_underground_route(underground[index])
@@ -230,7 +234,7 @@ static func _route_is_valid(
 
 	return (
 		_is_underground_route(underground[index])
-		or (buildings[index] >= 0x6c and buildings[index] <= 0x70)
+		or (buildings[index] >= Tiles.RAIL_SUBWAY_FIRST and buildings[index] <= Tiles.DEVELOPED_FIRST)
 	)
 
 
@@ -238,13 +242,13 @@ static func _is_surface_route(tile_value: int) -> bool:
 	var tile := int(tile_value)
 
 	return (
-		(tile >= 0x2c and tile <= 0x3e)
-		or (tile >= 0x45 and tile <= 0x48)
-		or (tile >= 0x6c and tile <= 0x6f)
-		or tile == 0x4d
-		or tile == 0x4e
-		or tile == 0x5a
-		or tile == 0x5b
+		(tile >= Tiles.RAIL_FIRST and tile <= Tiles.RAIL_LAST)
+		or (tile >= Tiles.ROAD_RAIL_CROSSING_ONE and tile <= Tiles.RAIL_POWER_CROSSING_TWO)
+		or (tile >= Tiles.RAIL_SUBWAY_FIRST and tile <= Tiles.RAIL_SUBWAY_LAST)
+		or tile == Tiles.HIGHWAY_RAIL_CROSSING_ONE
+		or tile == Tiles.HIGHWAY_RAIL_CROSSING_TWO
+		or tile == Tiles.RAIL_BRIDGE
+		or tile == Tiles.RAIL_BRIDGE_PYLON
 	)
 
 
@@ -252,11 +256,11 @@ static func _is_underground_route(tile_value: int) -> bool:
 	var tile := int(tile_value)
 
 	return (
-		(tile > 0 and tile < 0x10)
-		or tile == 0x1f
-		or tile == 0x20
-		or tile == 0x22
-		or tile == 0x23
+		(tile > 0 and tile < UnderTiles.PIPE_FIRST)
+		or tile == UnderTiles.PIPE_SUBWAY_ONE
+		or tile == UnderTiles.PIPE_SUBWAY_TWO
+		or tile == UnderTiles.MISSILE_SILO
+		or tile == UnderTiles.SUBWAY_ENTRANCE
 	)
 
 

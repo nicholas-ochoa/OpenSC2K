@@ -3,6 +3,8 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const Ordinances = preload("res://src/simulation/economy/ordinance_command.gd")
 
 const MISC_SIZE := 4800
@@ -47,11 +49,11 @@ const ANNUAL_DIVISOR_FACTORS := [
 ]
 
 const SERVICE_TILE_IDS := {
-	BUDGET_POLICE: 0xd2,
-	BUDGET_FIRE: 0xd3,
-	BUDGET_HEALTH: 0xd1,
-	BUDGET_SCHOOL: 0xd6,
-	BUDGET_COLLEGE: 0xd9,
+	BUDGET_POLICE: Tiles.POLICE_STATION,
+	BUDGET_FIRE: Tiles.FIRE_STATION,
+	BUDGET_HEALTH: Tiles.HOSPITAL,
+	BUDGET_SCHOOL: Tiles.SCHOOL,
+	BUDGET_COLLEGE: Tiles.COLLEGE,
 }
 
 const NEWS_ORDINANCE := 0x29
@@ -160,7 +162,7 @@ static func run(city: CityState, random: SimRandom, annual_budget_approved := fa
 	for budget_id in range(BUDGET_ROAD, BUDGET_TUNNEL + 1):
 		_write_i32(misc, _budget_offset(budget_id), 0)
 
-	for tile_id in range(0x1d, 0x70):
+	for tile_id in range(Tiles.FIRST_ROAD, Tiles.DEVELOPED_FIRST):
 		var count := _tile_count(misc, tile_id)
 
 		if (
@@ -193,13 +195,13 @@ static func run(city: CityState, random: SimRandom, annual_budget_approved := fa
 	_write_i32(
 		misc,
 		_budget_offset(BUDGET_SUBWAY),
-		_tile_count(misc, 0xe9) + _read_u32(misc, MISC_SUBWAY_COUNT)
+		_tile_count(misc, Tiles.SUBWAY_STATION) + _read_u32(misc, MISC_SUBWAY_COUNT)
 	)
-	_add_current(misc, BUDGET_RAIL, _tile_count(misc, 0xed))
+	_add_current(misc, BUDGET_RAIL, _tile_count(misc, Tiles.RAIL_STATION))
 	_add_current(
 		misc,
 		BUDGET_ROAD,
-		_divide_toward_zero(_tile_count(misc, 0xec), 4) * 250
+		_divide_toward_zero(_tile_count(misc, Tiles.BUS_DEPOT), 4) * 250
 	)
 	_write_i32(
 		misc,

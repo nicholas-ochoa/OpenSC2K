@@ -3,13 +3,15 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const MAP_SIZE := CityState.MAP_SIZE
 const FLAG_MARK := 0x08
 const FLAG_POWERED := 0x40
 const FLAG_POWERABLE := 0x80
-const FIRST_CONSUMER := 0x70
-const FIRST_PLANT := 0xc6
-const LAST_PLANT := 0xcf
+const FIRST_CONSUMER := Tiles.DEVELOPED_FIRST
+const FIRST_PLANT := Tiles.HYDRO_POWER_ONE
+const LAST_PLANT := Tiles.COAL_POWER
 const SOLAR_EFFICIENCY_ORDINANCE := 0x10000
 
 
@@ -174,28 +176,28 @@ static func _plant_capacity(
 	city: CityState, building: int, x: int, y: int, random: SimRandom
 ) -> int:
 	match building:
-		0xc6, 0xc7:
+		Tiles.HYDRO_POWER_ONE, Tiles.HYDRO_POWER_TWO:
 			return 40
-		0xc8:
+		Tiles.WIND_POWER:
 			var wind := city.document.misc_u32(0x64) & 0xff
 
 			return int((city.land_altitude(x, y) + random.next_u15() % (int(wind / 8) + 1)) / 2)
-		0xc9:
+		Tiles.GAS_POWER:
 			return 11
-		0xca:
+		Tiles.OIL_POWER:
 			return 48
-		0xcb:
+		Tiles.NUCLEAR_POWER:
 			return 111
-		0xcc:
+		Tiles.SOLAR_POWER:
 			var rain := city.document.misc_u32(0x68) & 0xff
 			var sunlight_range: int = maxi(int((100 - rain) / 10), 1)
 
 			return random.next_u15() % sunlight_range + 5
-		0xcd:
+		Tiles.MICROWAVE_POWER:
 			return 355
-		0xce:
+		Tiles.FUSION_POWER:
 			return 555
-		0xcf:
+		Tiles.COAL_POWER:
 			return 44
 
 	return 0

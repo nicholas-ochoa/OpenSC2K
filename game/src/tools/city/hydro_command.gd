@@ -8,7 +8,7 @@ const SUBTOOL_HYDRO := 3
 const TERRAIN_WATERFALL_A := 0x2e
 const TERRAIN_WATERFALL_B := 0x3e
 const FLAG_POWERABLE := 0x80
-const HYDRO_TILE_A := 0xc6
+const HYDRO_TILE_A := BuildingTileIds.HYDRO_POWER_ONE
 const HYDRO_ORIENTATION := [1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1]
 
 

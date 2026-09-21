@@ -2,17 +2,19 @@ class_name DebugCityTables
 extends RefCounted
 # Read the published city snapshot. Reuse cached scans; do not serialize or draw random values.
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const FACILITIES = BuildingCommand.DEFAULT_MICROSIM_LABELS
 const STAT_LABELS := {
-	0xd1: ["Score", "Patients", "Staff", "Half funding"],
-	0xd2: ["Funding", "Funded capacity", "Crime per tile", "Arrests"],
-	0xd3: ["Funding", "Funded capacity", "Capacity / 16 + 1", "Annual random statistic"],
-	0xd6: ["Score", "Students", "Staff", "Quarter funding"],
-	0xd8: ["Type-specific byte", "Prisoners", "Funded capacity", "Prisoners / 100"],
-	0xd9: ["Score", "Students", "Staff", "Funding"],
-	0xe9: ["Type-specific byte", "Subway tile count", "Preserved statistic", "Annual passengers"],
-	0xec: ["Type-specific byte", "Bus tile count / 4", "Bus tile count", "Annual passengers"],
-	0xed: ["Type-specific byte", "Rail tile count / 4", "Preserved statistic", "Annual passengers"],
+	Tiles.HOSPITAL: ["Score", "Patients", "Staff", "Half funding"],
+	Tiles.POLICE_STATION: ["Funding", "Funded capacity", "Crime per tile", "Arrests"],
+	Tiles.FIRE_STATION: ["Funding", "Funded capacity", "Capacity / 16 + 1", "Annual random statistic"],
+	Tiles.SCHOOL: ["Score", "Students", "Staff", "Quarter funding"],
+	Tiles.PRISON: ["Type-specific byte", "Prisoners", "Funded capacity", "Prisoners / 100"],
+	Tiles.COLLEGE: ["Score", "Students", "Staff", "Funding"],
+	Tiles.SUBWAY_STATION: ["Type-specific byte", "Subway tile count", "Preserved statistic", "Annual passengers"],
+	Tiles.BUS_DEPOT: ["Type-specific byte", "Bus tile count / 4", "Bus tile count", "Annual passengers"],
+	Tiles.RAIL_STATION: ["Type-specific byte", "Rail tile count / 4", "Preserved statistic", "Annual passengers"],
 }
 const ENGINE_DETAILS := {
 	"developed_tiles": "Cached developed-tile count; -1 means not calculated",

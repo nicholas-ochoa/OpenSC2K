@@ -245,7 +245,7 @@ static func _bridge_tile(
 ) -> int:
 	match bridge_type:
 		BRIDGE_WIRE:
-			return 0x5c
+			return Tiles.POWER_BRIDGE
 		BRIDGE_RAIL:
 			var middle := int(span_length / 2)
 
@@ -254,35 +254,35 @@ static func _bridge_tile(
 				and span_index >= middle - 2
 				and span_index <= middle + 2
 			):
-				return 0x5b
+				return Tiles.RAIL_BRIDGE_PYLON
 
-			return 0x5a
+			return Tiles.RAIL_BRIDGE
 		BRIDGE_ROAD_RAISING:
 			var quarter := int((span_length + 1) / 4)
 
 			if span_index < quarter:
-				return 0x57
+				return Tiles.ROAD_BRIDGE
 
 			if span_index == quarter:
-				return 0x56
+				return Tiles.RAISING_BRIDGE_TOWER
 
 			if span_index < span_length - quarter - 1:
-				return 0x58
+				return Tiles.RAISING_BRIDGE_CLOSED
 
 			if span_length - quarter - span_index == 1:
-				return 0x56
+				return Tiles.RAISING_BRIDGE_TOWER
 
-			return 0x57
+			return Tiles.ROAD_BRIDGE
 		BRIDGE_ROAD_SUSPENSION:
 			var pattern_span := (span_length - 2) % 5 + 2
 			var first_pattern := int(pattern_span / 2)
 			var pattern_end := span_length - int((pattern_span + 1) / 2)
 
 			if span_index < first_pattern or span_index >= pattern_end:
-				return 0x57
+				return Tiles.ROAD_BRIDGE
 
 			var pattern_index := (span_index - first_pattern) % 5
 
-			return 0x51 + pattern_index if direction == 0 or direction == 3 else 0x55 - pattern_index
+			return Tiles.SUSPENSION_BRIDGE_ONE + pattern_index if direction == 0 or direction == 3 else Tiles.SUSPENSION_BRIDGE_FIVE - pattern_index
 		_:
-			return 0x57
+			return Tiles.ROAD_BRIDGE

@@ -1,6 +1,7 @@
 class_name QueryConstants
 extends RefCounted
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const Presentation = preload("res://src/view/query_presentation.gd")
 
 const FULL_MAP_SIZE := CityState.MAP_SIZE
@@ -9,11 +10,11 @@ const FIRST_MICROSIM_LABEL := 51
 const LAST_MICROSIM_LABEL := 200
 const FIRST_BUILDING_WITH_UTILITIES := 13
 const MILITARY_ZONE := 7
-const WATER_PUMP := 0xdc
-const WATER_TOWER := 0xeb
+const WATER_PUMP := Tiles.WATER_PUMP
+const WATER_TOWER := Tiles.WATER_TOWER
 const STADIUM_SPORT_RESOURCE_BASE := 786
-const CITY_HALL := 0xd0
-const LIBRARY := 0xf5
+const CITY_HALL := Tiles.CITY_HALL
+const LIBRARY := Tiles.LIBRARY
 const CITY_HALL_ACTION_RESOURCE := 810
 const LIBRARY_ACTION_RESOURCE := 811
 const ANALYSIS_RESOURCE_BASE := 988
@@ -25,66 +26,66 @@ const GENERAL_SAILBOAT_NAME_INDEX := 161
 
 # the first strict upper bound greater than xbld selects the name index
 const GENERAL_NAME_UPPER_BOUNDS := [
-	0x01,
-	0x05,
-	0x06,
-	0x0d,
-	0x0e,
-	0x1d,
-	0x2c,
-	0x3f,
-	0x43,
-	0x47,
-	0x49,
-	0x51,
-	0x56,
-	0x5c,
-	0x5d,
-	0x61,
-	0x6a,
-	0x6c,
-	0x70,
+	Tiles.RUBBLE_FIRST,
+	Tiles.RADIOACTIVE_WASTE,
+	Tiles.TREE_FIRST,
+	Tiles.SMALL_PARK,
+	Tiles.POWER_LINE_FIRST,
+	Tiles.FIRST_ROAD,
+	Tiles.RAIL_FIRST,
+	Tiles.TUNNEL_FIRST,
+	Tiles.ROAD_POWER_CROSSING_ONE,
+	Tiles.RAIL_POWER_CROSSING_ONE,
+	Tiles.HIGHWAY_STRAIGHT_ONE,
+	Tiles.SUSPENSION_BRIDGE_ONE,
+	Tiles.RAISING_BRIDGE_TOWER,
+	Tiles.POWER_BRIDGE,
+	Tiles.ONRAMP_FIRST,
+	Tiles.HIGHWAY_SLOPE_FIRST,
+	Tiles.HIGHWAY_BRIDGE,
+	Tiles.RAIL_SUBWAY_FIRST,
+	Tiles.DEVELOPED_FIRST,
 	0x74,
 	0x78,
-	0x7c,
+	Tiles.COMMERCIAL_1X1_FIRST,
 ]
 
 const MICROSIM_TYPE_BY_TILE := {
-	0xc6: 21,
-	0xc7: 21,
-	0xc8: 20,
-	0xc9: 1,
-	0xca: 1,
-	0xcb: 1,
-	0xcc: 1,
-	0xcd: 1,
-	0xce: 1,
-	0xcf: 1,
-	0xd0: 2,
-	0xd1: 3,
-	0xd2: 4,
-	0xd3: 5,
-	0xd4: 23,
-	0xd5: 22,
-	0xd6: 6,
-	0xd7: 7,
-	0xd8: 8,
-	0xd9: 9,
-	0xda: 10,
-	0xdb: 11,
-	0xe9: 19,
-	0xec: 17,
-	0xed: 18,
-	0xf3: 12,
-	0xf4: 13,
-	0xf5: 24,
-	0xf8: 25,
-	0xfa: 14,
-	0xfb: 15,
-	0xfc: 15,
-	0xfd: 15,
-	0xfe: 15,
-	0xff: 16,
+	Tiles.HYDRO_POWER_ONE: 21,
+	Tiles.HYDRO_POWER_TWO: 21,
+	Tiles.WIND_POWER: 20,
+	Tiles.GAS_POWER: 1,
+	Tiles.OIL_POWER: 1,
+	Tiles.NUCLEAR_POWER: 1,
+	Tiles.SOLAR_POWER: 1,
+	Tiles.MICROWAVE_POWER: 1,
+	Tiles.FUSION_POWER: 1,
+	Tiles.COAL_POWER: 1,
+	Tiles.CITY_HALL: 2,
+	Tiles.HOSPITAL: 3,
+	Tiles.POLICE_STATION: 4,
+	Tiles.FIRE_STATION: 5,
+	Tiles.MUSEUM: 23,
+	Tiles.BIG_PARK: 22,
+	Tiles.SCHOOL: 6,
+	Tiles.STADIUM: 7,
+	Tiles.PRISON: 8,
+	Tiles.COLLEGE: 9,
+	Tiles.ZOO: 10,
+	Tiles.STATUE: 11,
+	Tiles.SUBWAY_STATION: 19,
+	Tiles.BUS_DEPOT: 17,
+	Tiles.RAIL_STATION: 18,
+	Tiles.MAYOR_HOUSE: 12,
+	Tiles.WATER_TREATMENT: 13,
+	Tiles.LIBRARY: 24,
+	Tiles.MARINA: 25,
+	Tiles.DESALINIZATION: 14,
+	Tiles.PLYMOUTH_ARCOLOGY: 15,
+	Tiles.FOREST_ARCOLOGY: 15,
+	Tiles.DARCO_ARCOLOGY: 15,
+	Tiles.LAUNCH_ARCOLOGY: 15,
+	Tiles.LLAMA_DOME: 16,
 }
 
 # each row contains the five windows string resource ids used by one xmic type

@@ -205,37 +205,37 @@ static func _has_power(flags: PackedByteArray, x: int, y: int, map_edge: int = 1
 
 
 static func density(tile: int) -> int:
-	if tile <= 0x8b:
+	if tile <= Tiles.DEVELOPED_1X1_LAST:
 		return 1
 
 	if tile <= 0x8f:
 		return 2
 
-	if tile <= 0x93:
+	if tile <= Tiles.RESIDENTIAL_2X2_LAST:
 		return 3
 
 	if tile <= 0x98:
 		return 2
 
-	if tile <= 0x9d:
+	if tile <= Tiles.COMMERCIAL_2X2_LAST:
 		return 3
 
 	if tile <= 0xa1:
 		return 2
 
-	if tile <= 0xa5:
+	if tile <= Tiles.INDUSTRIAL_2X2_LAST:
 		return 3
 
 	if tile <= 0xa7:
 		return 2
 
-	if tile <= 0xa9:
+	if tile <= Tiles.CONSTRUCTION_2X2_LAST:
 		return 3
 
 	if tile <= 0xab:
 		return 2
 
-	if tile <= 0xad:
+	if tile <= Tiles.DEVELOPED_2X2_LAST:
 		return 3
 
 	return 4
@@ -243,16 +243,16 @@ static func density(tile: int) -> int:
 
 static func _status(tile: int) -> int:
 	if (
-		(tile >= 0x88 and tile <= 0x89)
-		or (tile >= 0xa6 and tile <= 0xa9)
-		or (tile >= 0xc2 and tile <= 0xc3)
+		(tile >= Tiles.CONSTRUCTION_1X1_FIRST and tile <= Tiles.CONSTRUCTION_1X1_LAST)
+		or (tile >= Tiles.CONSTRUCTION_2X2_FIRST and tile <= Tiles.CONSTRUCTION_2X2_LAST)
+		or (tile >= Tiles.CONSTRUCTION_3X3_FIRST and tile <= Tiles.CONSTRUCTION_3X3_LAST)
 	):
 		return STATUS_CONSTRUCTION
 
 	if (
-		(tile >= 0x8a and tile <= 0x8b)
-		or (tile >= 0xaa and tile <= 0xad)
-		or (tile >= 0xc4 and tile <= 0xc5)
+		(tile >= Tiles.ABANDONED_1X1_FIRST and tile <= Tiles.DEVELOPED_1X1_LAST)
+		or (tile >= Tiles.ABANDONED_2X2_FIRST and tile <= Tiles.DEVELOPED_2X2_LAST)
+		or (tile >= Tiles.ABANDONED_3X3_FIRST and tile <= Tiles.DEVELOPED_3X3_LAST)
 	):
 		return STATUS_ABANDONED
 

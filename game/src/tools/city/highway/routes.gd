@@ -79,7 +79,7 @@ static func _section_has_straight_crossing(buildings: PackedByteArray, anchor: V
 		var point: Vector2i = anchor + offset
 		var tile_id := int(buildings[point.x * map_edge + point.y])
 
-		if tile_id >= 0x0e and not HighwayGeometry._is_highway_tile(tile_id) and HighwayGeometry._network_can_cross(tile_id, direction):
+		if tile_id >= Tiles.POWER_LINE_FIRST and not HighwayGeometry._is_highway_tile(tile_id) and HighwayGeometry._network_can_cross(tile_id, direction):
 			return true
 
 	return false
@@ -124,7 +124,7 @@ static func _section_is_flat_eligible(
 		if not HighwayGeometry._building_is_allowed(tile_id):
 			return false
 
-		if tile_id > 0x0e and not HighwayGeometry._is_highway_tile(tile_id) and not HighwayGeometry._network_can_cross(tile_id, direction):
+		if tile_id > Tiles.POWER_LINE_FIRST and not HighwayGeometry._is_highway_tile(tile_id) and not HighwayGeometry._network_can_cross(tile_id, direction):
 			return false
 
 	return (

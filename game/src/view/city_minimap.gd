@@ -3,6 +3,8 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const MODES := [
 	"structures",
 	"zones",
@@ -27,10 +29,10 @@ const MODES := [
 const ZONE_COLORS := [0, 59, 59, 92, 92, 50, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 const POWER_LINE_FIRST := 0x0e
 const POWER_LINE_LAST := 0x1c
-const POLICE_STATION := 0xd2
-const FIRE_STATION := 0xd3
-const SCHOOL := 0xd6
-const COLLEGE := 0xd9
+const POLICE_STATION := Tiles.POLICE_STATION
+const FIRE_STATION := Tiles.FIRE_STATION
+const SCHOOL := Tiles.SCHOOL
+const COLLEGE := Tiles.COLLEGE
 
 
 static func create_image(city: CityState, palette: Sc2Palette, mode := "structures") -> Image:

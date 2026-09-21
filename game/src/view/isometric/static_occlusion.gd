@@ -151,7 +151,7 @@ static func tile_occlusion_commands(
 	var base_y := flat_base_y - terrain_altitude * configuration.altitude_step
 	var is_highway_composite := building_id >= 0x61 and building_id <= 0x6b
 
-	if building_id < 0x70 and not is_highway_composite:
+	if building_id < Tiles.DEVELOPED_FIRST and not is_highway_composite:
 		_append_occluder(
 			commands, sprites,
 			IsometricGeometry.terrain_sprite_id(terrain_id, city.is_water(x, y), configuration.sprite_base),

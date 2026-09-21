@@ -5,6 +5,8 @@ extends GrowthConstants
 @warning_ignore_start("integer_division")
 
 
+const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
+
 static func _process_surface_maintenance(
 	altitude: PackedByteArray,
 	altitudes: PackedInt32Array,
@@ -48,7 +50,7 @@ static func _process_surface_maintenance(
 		if _maintenance_fails(misc, 12, random, 50, wind):
 			var result: DemolishPointResult
 
-			if tile == 0x6a or tile == 0x6b:
+			if tile == Tiles.HIGHWAY_BRIDGE or tile == Tiles.REINFORCED_HIGHWAY_BRIDGE:
 				result = DemolishBridges._demolish_reinforced_bridge(
 					altitude, buildings, terrain, zones, underground, flags, misc,
 					point, random, true, map_edge
@@ -116,11 +118,11 @@ static func _process_microsim_growth(
 ) -> void:
 	var index := GrowthState._index(point, map_edge)
 
-	if tile == 0xed:
+	if tile == Tiles.RAIL_STATION:
 		if flags[index] & 0x40 == 0 or lfsr_random.next_mask(3) != 0:
 			return
 
-		var train_limit := int(SpecialZoneState.tile_count(misc, 0xed, false, map_edge) / 4)
+		var train_limit := int(SpecialZoneState.tile_count(misc, Tiles.RAIL_STATION, false, map_edge) / 4)
 
 		if MovingThings.count_type(things, MovingThings.TYPE_TRAIN_ENGINE) < train_limit:
 			if MovingThings.spawn_train(
@@ -130,11 +132,11 @@ static func _process_microsim_growth(
 
 		return
 
-	if tile == 0xf8:
+	if tile == Tiles.MARINA:
 		if flags[index] & 0x40 == 0 or lfsr_random.next_mask(3) != 0:
 			return
 
-		var sailboat_limit := int(SpecialZoneState.tile_count(misc, 0xf8, false, map_edge) / 9)
+		var sailboat_limit := int(SpecialZoneState.tile_count(misc, Tiles.MARINA, false, map_edge) / 9)
 
 		if MovingThings.count_type(things, MovingThings.TYPE_SAILBOAT) < sailboat_limit:
 			counters.metrics.spawned_sailboats += MovingThings.spawn_sailboats(
@@ -143,7 +145,7 @@ static func _process_microsim_growth(
 
 		return
 
-	if tile < 0xfb or tile > 0xfe or zones[index] & 0xf0 != 0x80:
+	if tile < Tiles.PLYMOUTH_ARCOLOGY or tile > Tiles.LAUNCH_ARCOLOGY or zones[index] & Tiles.LOADING_BAY != 0x80:
 		return
 
 	var label := int(OverlayData.read(text_overlays, index))
@@ -153,7 +155,7 @@ static func _process_microsim_growth(
 
 	var record_offset := OverlayData.facility_record(label) * CityState.MICROSIM_RECORD_SIZE
 
-	if microsims[record_offset] < 0xfb or microsims[record_offset] > 0xfe:
+	if microsims[record_offset] < Tiles.PLYMOUTH_ARCOLOGY or microsims[record_offset] > Tiles.LAUNCH_ARCOLOGY:
 		return
 
 	var coarse_index := CityDataGrid.index(land_value, map_edge, point.x, point.y)
@@ -207,7 +209,7 @@ static func _process_subway_maintenance(
 	elif old_tile == 0x20:
 		replacement = 0x10
 	elif old_tile == 0x23:
-		if buildings[index] != 0xe9:
+		if buildings[index] != Tiles.SUBWAY_STATION:
 			counters.metrics.deferred_station_removals += 1
 
 			return
@@ -222,7 +224,7 @@ static func _process_subway_maintenance(
 		flags[index] &= 0x3d
 		var overlay := int(OverlayData.read(text_overlays, index))
 
-		if not OverlayData.blocks_thing(overlay) or overlay == 0xfa:
+		if not OverlayData.blocks_thing(overlay) or overlay == Tiles.DESALINIZATION:
 			OverlayData.write(text_overlays, index, 0)
 
 		_replace_underground(underground, zones, misc, index, 0)
@@ -251,39 +253,39 @@ static func _maintenance_fails(
 
 static func _is_road_budget_tile(tile: int) -> bool:
 	return (
-		(tile >= 0x1d and tile <= 0x2b)
-		or (tile >= 0x3f and tile <= 0x46)
-		or tile == 0x4b
-		or tile == 0x4c
-		or (tile >= 0x5d and tile <= 0x60)
+		(tile >= Tiles.FIRST_ROAD and tile <= Tiles.LAST_ROAD)
+		or (tile >= Tiles.TUNNEL_FIRST and tile <= Tiles.ROAD_RAIL_CROSSING_TWO)
+		or tile == Tiles.HIGHWAY_ROAD_CROSSING_ONE
+		or tile == Tiles.HIGHWAY_ROAD_CROSSING_TWO
+		or (tile >= Tiles.ONRAMP_FIRST and tile <= Tiles.ONRAMP_LAST)
 	)
 
 
 static func _is_rail_budget_tile(tile: int) -> bool:
 	return (
-		(tile >= 0x2c and tile <= 0x3e)
-		or (tile >= 0x45 and tile <= 0x48)
-		or (tile >= 0x6c and tile <= 0x6f)
-		or tile == 0x4d
-		or tile == 0x4e
+		(tile >= Tiles.RAIL_FIRST and tile <= Tiles.RAIL_LAST)
+		or (tile >= Tiles.ROAD_RAIL_CROSSING_ONE and tile <= Tiles.RAIL_POWER_CROSSING_TWO)
+		or (tile >= Tiles.RAIL_SUBWAY_FIRST and tile <= Tiles.RAIL_SUBWAY_LAST)
+		or tile == Tiles.HIGHWAY_RAIL_CROSSING_ONE
+		or tile == Tiles.HIGHWAY_RAIL_CROSSING_TWO
 	)
 
 
 static func _is_bridge_budget_tile(tile: int) -> bool:
-	return (tile >= 0x51 and tile <= 0x5c) or tile == 0x6a or tile == 0x6b
+	return (tile >= Tiles.SUSPENSION_BRIDGE_ONE and tile <= Tiles.POWER_BRIDGE) or tile == Tiles.HIGHWAY_BRIDGE or tile == Tiles.REINFORCED_HIGHWAY_BRIDGE
 
 
 static func _is_highway_budget_tile(tile: int) -> bool:
-	return (tile >= 0x49 and tile <= 0x50) or (tile >= 0x61 and tile <= 0x69)
+	return (tile >= Tiles.HIGHWAY_STRAIGHT_ONE and tile <= Tiles.HIGHWAY_POWER_CROSSING_TWO) or (tile >= Tiles.HIGHWAY_SLOPE_FIRST and tile <= Tiles.HIGHWAY_INTERSECTION)
 
 
 static func _is_subway_tile(tile: int) -> bool:
 	return (
-		(tile > 0 and tile < 0x10)
-		or tile == 0x1f
-		or tile == 0x20
-		or tile == 0x22
-		or tile == 0x23
+		(tile > 0 and tile < UnderTiles.PIPE_FIRST)
+		or tile == UnderTiles.PIPE_SUBWAY_ONE
+		or tile == UnderTiles.PIPE_SUBWAY_TWO
+		or tile == UnderTiles.MISSILE_SILO
+		or tile == UnderTiles.SUBWAY_ENTRANCE
 	)
 
 

@@ -159,7 +159,7 @@ static func _advance_to_density_four(
 		for checked_point in perimeter:
 			var index := GrowthState._index(checked_point, map_edge)
 
-			if index >= 0 and buildings[index] > 0x8b:
+			if index >= 0 and buildings[index] > Tiles.DEVELOPED_1X1_LAST:
 				_clear_growth_building(
 					buildings, zones, flags, misc, land_value,
 					checked_point, random, rotation, map_edge

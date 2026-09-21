@@ -19,7 +19,7 @@ static func _airport_growth_selection(
 	map_edge: int = 128,
 ) -> int:
 	if random.next_u15() & 3:
-		if military or current_tile != 0xdd or random.next_u15() % 30 != 0:
+		if military or current_tile != Tiles.RUNWAY or random.next_u15() % 30 != 0:
 			return -1
 
 		if flags[SpecialZoneState._index(point, map_edge)] & 0x40 == 0:
@@ -44,40 +44,40 @@ static func _airport_growth_selection(
 		return -1
 
 	var runway_groups := int(
-		((SpecialZoneState._special_tile_count(misc, 0xdd, military, map_edge) + SpecialZoneState._special_tile_count(misc, 0xde, military, map_edge)) / 5)
+		((SpecialZoneState._special_tile_count(misc, Tiles.RUNWAY, military, map_edge) + SpecialZoneState._special_tile_count(misc, Tiles.RUNWAY_CROSSING, military, map_edge)) / 5)
 	)
-	var parking_tile := 0xef if military else 0xee
+	var parking_tile := Tiles.PARKING_LOT_TWO if military else Tiles.PARKING_LOT_ONE
 
 	if int(SpecialZoneState._special_tile_count(misc, parking_tile, military, map_edge) / 4) >= runway_groups:
-		return 0xdd
+		return Tiles.RUNWAY
 
-	var selected := 0xe2 if military else 0xe1
-
-	if SpecialZoneState._special_tile_count(misc, selected, military, map_edge) * 2 < runway_groups:
-		return selected
-
-	selected = 0xea
+	var selected := Tiles.CONTROL_TOWER_TWO if military else Tiles.CONTROL_TOWER_ONE
 
 	if SpecialZoneState._special_tile_count(misc, selected, military, map_edge) * 2 < runway_groups:
 		return selected
 
-	selected = 0xe7 if military else 0xe6
+	selected = Tiles.RADAR
+
+	if SpecialZoneState._special_tile_count(misc, selected, military, map_edge) * 2 < runway_groups:
+		return selected
+
+	selected = Tiles.FIGHTER_JET if military else Tiles.TARMAC
 
 	if SpecialZoneState._special_tile_count(misc, selected, military, map_edge) < runway_groups:
 		return selected
 
-	selected = 0xe4
+	selected = Tiles.AIRPORT_BUILDING_ONE
 
 	if int(SpecialZoneState._special_tile_count(misc, selected, military, map_edge) / 2) < runway_groups:
 		return selected
 
-	selected = 0xe5
+	selected = Tiles.AIRPORT_BUILDING_TWO
 
 	if int(SpecialZoneState._special_tile_count(misc, selected, military, map_edge) / 2) < runway_groups:
 		return selected
 
-	if int(SpecialZoneState._special_tile_count(misc, 0xf6, military, map_edge) / 4) < runway_groups:
-		return 0xf6
+	if int(SpecialZoneState._special_tile_count(misc, Tiles.HANGAR_TWO, military, map_edge) / 4) < runway_groups:
+		return Tiles.HANGAR_TWO
 
 	return parking_tile
 
@@ -95,7 +95,7 @@ static func _seaport_growth_selection(
 	map_edge: int = 128,
 ) -> int:
 	if random.next_u15() & 3:
-		if not military and current_tile == 0xe0 and random.next_u15() & 3 == 0:
+		if not military and current_tile == Tiles.CRANE and random.next_u15() & 3 == 0:
 			var ship := MovingThings.spawn_ship(
 				terrain, things, text_overlays, point, random, map_edge
 			)
@@ -109,20 +109,20 @@ static func _seaport_growth_selection(
 
 		return -1
 
-	var crane_count := SpecialZoneState._special_tile_count(misc, 0xe0, military, map_edge)
+	var crane_count := SpecialZoneState._special_tile_count(misc, Tiles.CRANE, military, map_edge)
 
-	if int(SpecialZoneState._special_tile_count(misc, 0xf2, military, map_edge) / 4) >= crane_count:
-		return 0xe0
+	if int(SpecialZoneState._special_tile_count(misc, Tiles.CARGO_YARD, military, map_edge) / 4) >= crane_count:
+		return Tiles.CRANE
 
-	var second_tile := 0xf1 if military else 0xf0
+	var second_tile := Tiles.TOP_SECRET if military else Tiles.LOADING_BAY
 
 	if int(SpecialZoneState._special_tile_count(misc, second_tile, military, map_edge) / 4) < crane_count:
 		return second_tile
 
-	if int(SpecialZoneState._special_tile_count(misc, 0xe3, military, map_edge) / 3) < crane_count:
-		return 0xe3
+	if int(SpecialZoneState._special_tile_count(misc, Tiles.SEAPORT_WAREHOUSE, military, map_edge) / 3) < crane_count:
+		return Tiles.SEAPORT_WAREHOUSE
 
-	return 0xf2
+	return Tiles.CARGO_YARD
 
 
 static func grow_special_zone(
@@ -146,12 +146,12 @@ static func grow_special_zone(
 
 		return result
 
-	if tile == 0xdd:
+	if tile == Tiles.RUNWAY:
 		return SpecialZonePlacement._place_runway(
 			buildings, zones, flags, misc, point, zone, rotation, map_edge, terrain, underground
 		)
 
-	if tile == 0xe0:
+	if tile == Tiles.CRANE:
 		return SpecialZonePlacement._place_crane_and_pier(
 			buildings, zones, flags, terrain, altitudes,
 			misc, point, zone, rotation, map_edge
@@ -181,7 +181,7 @@ static func grow_special_zone(
 			buildings, zones, flags, terrain, misc, point, tile, zone, rotation, map_edge, underground
 		)
 
-	if tile == 0xf9:
+	if tile == Tiles.MISSILE_SILO:
 		return SpecialZonePlacement.place_missile_silo(
 			buildings, zones, underground, misc, point, zone, rotation, map_edge
 		)

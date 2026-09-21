@@ -3,6 +3,8 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const MISC_SIZE := 4800
 const MISC_CITY_VALUE := 0x0024
 const MISC_TILE_COUNTS := 0x01f0
@@ -13,53 +15,53 @@ const MISC_SUBWAY_COUNT := 0x0fe8
 # the executable indexes shifted cost tables for 0xc6 through 0xcf. these are
 # valuation constants, not the matching buildings' construction costs
 const BUILDING_RULES := {
-	0xc6: [1, 4000],
-	0xc7: [1, 400],
-	0xc8: [1, 6600],
-	0xc9: [16, 6600],
-	0xca: [16, 2000],
-	0xcb: [16, 15000],
-	0xcc: [16, 100],
-	0xcd: [16, 1300],
-	0xce: [16, 28000],
-	0xcf: [16, 40000],
-	0xd1: [9, 500],
-	0xd2: [9, 500],
-	0xd3: [9, 500],
-	0xd4: [9, 1000],
-	0xd5: [9, 150],
-	0xd6: [9, 250],
-	0xd7: [16, 3000],
-	0xd8: [16, 3000],
-	0xd9: [16, 1000],
-	0xda: [16, 5000],
-	0xdc: [1, 100],
-	0xdd: [1, 250],
-	0xde: [1, 250],
-	0xdf: [1, 150],
-	0xe0: [1, 150],
-	0xe1: [1, 250],
-	0xe3: [1, 150],
-	0xe4: [1, 250],
-	0xe5: [1, 250],
-	0xe6: [1, 250],
-	0xe9: [1, 250],
-	0xea: [1, 250],
-	0xeb: [4, 250],
-	0xec: [4, 250],
-	0xed: [4, 500],
-	0xee: [1, 250],
-	0xf0: [1, 150],
-	0xf2: [1, 150],
-	0xf4: [9, 500],
-	0xf5: [4, 500],
-	0xf6: [1, 250],
-	0xf8: [9, 1000],
-	0xfa: [9, 1000],
-	0xfb: [16, 100000],
-	0xfc: [16, 120000],
-	0xfd: [16, 150000],
-	0xfe: [16, 200000],
+	Tiles.HYDRO_POWER_ONE: [1, 4000],
+	Tiles.HYDRO_POWER_TWO: [1, 400],
+	Tiles.WIND_POWER: [1, 6600],
+	Tiles.GAS_POWER: [16, 6600],
+	Tiles.OIL_POWER: [16, 2000],
+	Tiles.NUCLEAR_POWER: [16, 15000],
+	Tiles.SOLAR_POWER: [16, 100],
+	Tiles.MICROWAVE_POWER: [16, 1300],
+	Tiles.FUSION_POWER: [16, 28000],
+	Tiles.COAL_POWER: [16, 40000],
+	Tiles.HOSPITAL: [9, 500],
+	Tiles.POLICE_STATION: [9, 500],
+	Tiles.FIRE_STATION: [9, 500],
+	Tiles.MUSEUM: [9, 1000],
+	Tiles.BIG_PARK: [9, 150],
+	Tiles.SCHOOL: [9, 250],
+	Tiles.STADIUM: [16, 3000],
+	Tiles.PRISON: [16, 3000],
+	Tiles.COLLEGE: [16, 1000],
+	Tiles.ZOO: [16, 5000],
+	Tiles.WATER_PUMP: [1, 100],
+	Tiles.RUNWAY: [1, 250],
+	Tiles.RUNWAY_CROSSING: [1, 250],
+	Tiles.PIER: [1, 150],
+	Tiles.CRANE: [1, 150],
+	Tiles.CONTROL_TOWER_ONE: [1, 250],
+	Tiles.SEAPORT_WAREHOUSE: [1, 150],
+	Tiles.AIRPORT_BUILDING_ONE: [1, 250],
+	Tiles.AIRPORT_BUILDING_TWO: [1, 250],
+	Tiles.TARMAC: [1, 250],
+	Tiles.SUBWAY_STATION: [1, 250],
+	Tiles.RADAR: [1, 250],
+	Tiles.WATER_TOWER: [4, 250],
+	Tiles.BUS_DEPOT: [4, 250],
+	Tiles.RAIL_STATION: [4, 500],
+	Tiles.PARKING_LOT_ONE: [1, 250],
+	Tiles.LOADING_BAY: [1, 150],
+	Tiles.CARGO_YARD: [1, 150],
+	Tiles.WATER_TREATMENT: [9, 500],
+	Tiles.LIBRARY: [4, 500],
+	Tiles.HANGAR_TWO: [1, 250],
+	Tiles.MARINA: [9, 1000],
+	Tiles.DESALINIZATION: [9, 1000],
+	Tiles.PLYMOUTH_ARCOLOGY: [16, 100000],
+	Tiles.FOREST_ARCOLOGY: [16, 120000],
+	Tiles.DARCO_ARCOLOGY: [16, 150000],
+	Tiles.LAUNCH_ARCOLOGY: [16, 200000],
 }
 
 
@@ -89,7 +91,7 @@ static func calculate(city: CityState) -> Result:
 	var misc: PackedByteArray = validated.misc
 	var value := _to_i32(-_read_count(misc, MISC_SUBWAY_COUNT, city.map_size))
 
-	for tile_id in range(0x0e, 0x70):
+	for tile_id in range(Tiles.POWER_LINE_FIRST, Tiles.DEVELOPED_FIRST):
 		var cost := 0
 
 		if tile_id < 0x1d:

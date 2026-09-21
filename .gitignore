@@ -12,6 +12,7 @@ __pycache__/
 *.gpr
 *.rep/
 ghidra-project/
+ghidra/
 
 # Platform files
 .DS_Store

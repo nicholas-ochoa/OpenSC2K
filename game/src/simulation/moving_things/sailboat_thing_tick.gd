@@ -5,8 +5,8 @@ extends RefCounted
 
 const RECORD_SIZE := CityState.THING_RECORD_SIZE
 const TEXT_LABEL_BASE := 201
-const TILE_PIER := 0xdf
-const TILE_MARINA := 0xf8
+const TILE_PIER := BuildingTileIds.PIER
+const TILE_MARINA := BuildingTileIds.MARINA
 const SOUND_DISTRESS := 0x20f
 const SUBTILE_LIMIT := 16
 const SUBTILE_X := [0, 16, 0, -16]

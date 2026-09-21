@@ -3,11 +3,13 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const RECORD_SIZE := CityState.THING_RECORD_SIZE
 const TEXT_LABEL_BASE := 201
 const TYPE_EXPLOSION := 6
-const TILE_PIER := 0xdf
-const TILE_MARINA := 0xf8
+const TILE_PIER := Tiles.PIER
+const TILE_MARINA := Tiles.MARINA
 const SOUND_SHIP := 0x205
 const DIRECTIONS := [
 	Vector2i(0, -1), Vector2i(1, -1), Vector2i(1, 0), Vector2i(1, 1),
@@ -23,8 +25,8 @@ const PIER_DELTAS := [
 	Vector2i(2, 0), Vector2i(0, 2), Vector2i(-2, 0), Vector2i(0, -2),
 ]
 const ROUTE_BUILDINGS := {
-	0x51: true, 0x52: true, 0x54: true, 0x55: true, 0x58: true,
-	0x59: true, 0x5b: true, 0x5c: true, 0x6b: true,
+	Tiles.SUSPENSION_BRIDGE_ONE: true, Tiles.SUSPENSION_BRIDGE_TWO: true, Tiles.SUSPENSION_BRIDGE_FOUR: true, Tiles.SUSPENSION_BRIDGE_FIVE: true, Tiles.RAISING_BRIDGE_CLOSED: true,
+	Tiles.RAISING_BRIDGE_OPEN: true, Tiles.RAIL_BRIDGE_PYLON: true, Tiles.POWER_BRIDGE: true, Tiles.REINFORCED_HIGHWAY_BRIDGE: true,
 }
 
 
@@ -203,7 +205,7 @@ static func _is_water_route(
 
 	var underground_tile := int(underground[index])
 
-	if underground_tile >= 0x10 and underground_tile <= 0x1f:
+	if underground_tile >= UndergroundTileIds.PIPE_FIRST and underground_tile <= UndergroundTileIds.PIPE_SUBWAY_ONE:
 		return false
 
 	var building := int(buildings[index])

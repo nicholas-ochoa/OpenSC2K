@@ -4,6 +4,8 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 static func inspect(city: CityState, clicked: Vector2i) -> TransportTripReachResult:
 	if city == null or not city.is_valid() or city.index_of(clicked.x, clicked.y) < 0:
 		return TransportTripReachResult.rejected("Select a tile inside the city.")
@@ -13,7 +15,7 @@ static func inspect(city: CityState, clicked: Vector2i) -> TransportTripReachRes
 	var zone := int(city.zones[index]) & 15
 	var rci := zone >= 1 and zone <= 6
 	var tile := int(city.buildings[index])
-	var density := GrowthDevelopment.density(tile) if tile >= 0x70 and tile <= 0xc5 else 0
+	var density := GrowthDevelopment.density(tile) if tile >= Tiles.DEVELOPED_FIRST and tile <= Tiles.DEVELOPED_3X3_LAST else 0
 	var limit := 75 if density == 1 else 100
 	var start := -1
 
@@ -57,11 +59,11 @@ static func inspect(city: CityState, clicked: Vector2i) -> TransportTripReachRes
 static func _network_mode(tile: int) -> int:
 	if TransportTripSteps._is_highway_span(tile) or (tile >= 0x5d and tile <= 0x60):
 		return TransportTrip.HIGHWAY_MODE
-	if tile == 0xed:
+	if tile == Tiles.RAIL_STATION:
 		return TransportTrip.RAIL_STATION_MODE
-	if tile == 0xe9:
+	if tile == Tiles.SUBWAY_STATION:
 		return TransportTrip.SUBWAY_STATION_MODE
-	if tile == 0xec:
+	if tile == Tiles.BUS_DEPOT:
 		return TransportTrip.BUS_STOP_MODE
 	if TransportTripSteps._is_surface_road(tile):
 		return TransportTrip.ROAD_MODE
@@ -74,7 +76,7 @@ static func _network_mode(tile: int) -> int:
 
 static func _growth_anchor(city: CityState, point: Vector2i) -> Vector2i:
 	var tile := city.building_id(point.x, point.y)
-	if tile < 0x70:
+	if tile < Tiles.DEVELOPED_FIRST:
 		return point
 	var area := DemolishEffectsSites._building_area(tile)
 	var site := DemolishEffectsSites._find_building_site(city.buildings, city.zones, point,
@@ -89,7 +91,7 @@ static func _growth_anchor(city: CityState, point: Vector2i) -> Vector2i:
 
 static func _building_site(city: CityState, point: Vector2i) -> Rect2i:
 	var tile := city.building_id(point.x, point.y)
-	if tile < 0x70:
+	if tile < Tiles.DEVELOPED_FIRST:
 		return Rect2i(point, Vector2i.ONE)
 	var site := DemolishEffectsSites._find_building_site(city.buildings, city.zones, point,
 		tile, DemolishEffectsSites._building_area(tile), city.compass_rotation(), city.map_size)
@@ -120,7 +122,7 @@ static func _add_building_coverage(city: CityState, result: TransportTripReachRe
 		for offset: Vector2i in TransportTrip.TRANSPORT_OFFSETS:
 			var point: Vector2i = node.point + offset
 			var index := city.index_of(point.x, point.y)
-			if index >= 0 and ((city.zones[index] & 15) != 0 or city.buildings[index] >= 0x70):
+			if index >= 0 and ((city.zones[index] & 15) != 0 or city.buildings[index] >= Tiles.DEVELOPED_FIRST):
 				_cover_site(city, point, int(node.cost), access_tiles)
 	var origin_tiles: Dictionary[Vector2i, int] = {}
 	_cover_site(city, origin, 0, origin_tiles)

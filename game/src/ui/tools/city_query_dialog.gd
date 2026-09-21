@@ -104,6 +104,9 @@ func _populate_summary(details: String, info: QueryResult) -> void:
 	for index in range(1, lines.size()):
 		var line := lines[index].strip_edges()
 
+		if line.begins_with("Running at ") and line.ends_with("% of Capacity"):
+			line = "Capacity: " + line.trim_prefix("Running at ").trim_suffix(" of Capacity")
+
 		if line == "Advanced tile data":
 			break
 
@@ -152,7 +155,6 @@ func _summary_label(value: String) -> Label:
 	var label := Label.new()
 	label.text = value
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.add_theme_font_size_override("font_size", 16)
 
 	return label
 

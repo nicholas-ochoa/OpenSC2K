@@ -3,6 +3,8 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const MAP_SIZE := CityState.MAP_SIZE
 const FLAG_SALT_WATER := 0x01
 const FLAG_WATER := 0x04
@@ -10,13 +12,13 @@ const FLAG_MARK := 0x08
 const FLAG_WATERED := 0x10
 const FLAG_PIPED := 0x20
 const FLAG_POWERED := 0x40
-const FIRST_CONSUMER := 0x70
+const FIRST_CONSUMER := Tiles.DEVELOPED_FIRST
 const MISC_TILE_COUNTS := 0x01f0
 const MISC_TREATMENT_SUFFICIENT := 0x104c
-const WATER_PUMP := 0xdc
-const WATER_TOWER := 0xeb
-const WATER_TREATMENT := 0xf4
-const DESALINIZATION := 0xfa
+const WATER_PUMP := Tiles.WATER_PUMP
+const WATER_TOWER := Tiles.WATER_TOWER
+const WATER_TREATMENT := Tiles.WATER_TREATMENT
+const DESALINIZATION := Tiles.DESALINIZATION
 
 
 class Result extends PhaseResult:

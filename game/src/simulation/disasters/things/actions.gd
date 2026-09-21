@@ -57,7 +57,7 @@ static func _monster_damage(
 
 		return
 
-	if flags[index] & 0x04 or building <= 0x0d or building == 200:
+	if flags[index] & 0x04 or building <= 0x0d or building == BuildingTileIds.WIND_POWER:
 		return
 
 	var demolition := DemolishStructures._demolish_point(
@@ -79,9 +79,9 @@ static func _monster_damage(
 			)
 		3:
 			var overlay_id := BuildingFacilities.provision_microsim(
-				microsims, labels, text, 200, city.current_year(), random
+				microsims, labels, text, BuildingTileIds.WIND_POWER, city.current_year(), random
 			)
-			NetworkState.replace_building(buildings, zones, misc, index, 200)
+			NetworkState.replace_building(buildings, zones, misc, index, BuildingTileIds.WIND_POWER)
 			zones[index] = 0xf0
 			flags[index] = (flags[index] & 0x1f) | 0xe0
 

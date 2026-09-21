@@ -5,6 +5,10 @@ extends TransportTripConstants
 
 # the search passes checked flat indices. a next index of -1 means a map exit
 # keep the points for highway lane geometry
+const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
+
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 static func advance(
 	buildings: PackedByteArray,
 	zones: PackedByteArray,
@@ -34,37 +38,37 @@ static func advance(
 		ROAD_MODE:
 			if _is_highway_span(tile) and highway_step(buildings, current, next_point, map_edge):
 				var current_tile := int(buildings[current_index])
-				if current_tile >= 0x5d and current_tile <= 0x60:
+				if current_tile >= Tiles.ONRAMP_FIRST and current_tile <= Tiles.ONRAMP_LAST:
 					return _move(HIGHWAY_MODE, 1)
 
 			if destination:
 				return ADVANCE_SUCCESS
 
-			if tile >= 0x3f and tile <= 0x42:
+			if tile >= Tiles.TUNNEL_FIRST and tile <= Tiles.TUNNEL_LAST:
 				return _move(ROAD_TUNNEL_MODE, 3)
 
 			if _is_road_bridge(tile):
 				return _move(ROAD_BRIDGE_MODE, 3)
 
-			if tile >= 0x5d and tile <= 0x60:
+			if tile >= Tiles.ONRAMP_FIRST and tile <= Tiles.ONRAMP_LAST:
 				return _move(HIGHWAY_MODE, 2)
 
 			if _is_surface_road(tile):
 				return _move(ROAD_MODE, 3)
 
-			if tile == 0xec:
+			if tile == Tiles.BUS_DEPOT:
 				return _move(BUS_STOP_MODE, 4)
 
-			if tile == 0xed:
+			if tile == Tiles.RAIL_STATION:
 				return _move(RAIL_STATION_MODE, 4)
 
-			if tile == 0xe9:
+			if tile == Tiles.SUBWAY_STATION:
 				return _move(SUBWAY_STATION_MODE, 4)
 		HIGHWAY_MODE:
 			if _is_highway_span(tile) and highway_step(buildings, current, next_point, map_edge):
 				return _move(HIGHWAY_MODE, 1)
 
-			if tile >= 0x5d and tile <= 0x60 and _highway_exit(buildings, current, next_point, map_edge):
+			if tile >= Tiles.ONRAMP_FIRST and tile <= Tiles.ONRAMP_LAST and _highway_exit(buildings, current, next_point, map_edge):
 				return _move(ROAD_MODE, 1)
 		ROAD_TUNNEL_MODE:
 			if altitudes[index] & 0xfc00:
@@ -82,31 +86,31 @@ static func advance(
 			if destination:
 				return ADVANCE_SUCCESS
 
-			if tile >= 0x3f and tile <= 0x42:
+			if tile >= Tiles.TUNNEL_FIRST and tile <= Tiles.TUNNEL_LAST:
 				return _move(BUS_TUNNEL_MODE, 2)
 
 			if _is_road_bridge(tile):
 				return _move(BUS_BRIDGE_MODE, 2)
 
-			if tile >= 0x5d and tile <= 0x60:
+			if tile >= Tiles.ONRAMP_FIRST and tile <= Tiles.ONRAMP_LAST:
 				return _move(BUS_HIGHWAY_MODE, 2)
 
 			if _is_surface_road(tile):
 				return _move(BUS_ROAD_MODE, 2)
 
-			if tile == 0xec:
+			if tile == Tiles.BUS_DEPOT:
 				return _move(BUS_RAIL_MODE, 4)
 
-			if tile == 0xed:
+			if tile == Tiles.RAIL_STATION:
 				return _move(RAIL_STATION_MODE, 4)
 
-			if tile == 0xe9:
+			if tile == Tiles.SUBWAY_STATION:
 				return _move(SUBWAY_STATION_MODE, 4)
 		BUS_HIGHWAY_MODE:
 			if _is_highway_span(tile) and highway_step(buildings, current, next_point, map_edge):
 				return _move(BUS_HIGHWAY_MODE, 1)
 
-			if tile >= 0x5d and tile <= 0x60 and _highway_exit(buildings, current, next_point, map_edge):
+			if tile >= Tiles.ONRAMP_FIRST and tile <= Tiles.ONRAMP_LAST and _highway_exit(buildings, current, next_point, map_edge):
 				return _move(BUS_ROAD_MODE, 1)
 		BUS_TUNNEL_MODE:
 			if altitudes[index] & 0xfc00:
@@ -124,7 +128,7 @@ static func advance(
 			if destination:
 				return ADVANCE_SUCCESS
 
-			if tile == 0xec:
+			if tile == Tiles.BUS_DEPOT:
 				return _move(BUS_STOP_MODE, 4)
 
 			if _is_surface_road(tile):
@@ -133,13 +137,13 @@ static func advance(
 			if destination:
 				return ADVANCE_SUCCESS
 
-			if tile == 0xec or tile == 0xed:
+			if tile == Tiles.BUS_DEPOT or tile == Tiles.RAIL_STATION:
 				return _move(BUS_RAIL_MODE, 4)
 
 			if _is_surface_road(tile):
 				return _move(ROAD_MODE, 3)
 		RAIL_STATION_MODE:
-			if tile == 0xed:
+			if tile == Tiles.RAIL_STATION:
 				return _move(RAIL_STATION_MODE, 4)
 
 			if _is_rail(tile):
@@ -148,16 +152,16 @@ static func advance(
 			if _is_subway(int(underground[index])):
 				return _move(SUBWAY_MODE, 1)
 		RAIL_MODE:
-			if tile == 0xed:
+			if tile == Tiles.RAIL_STATION:
 				return _move(BUS_RAIL_MODE, 4)
 
 			if _is_rail(tile):
 				return _move(RAIL_MODE, 1)
 
-			if tile > 0xfa:
+			if tile > Tiles.DESALINIZATION:
 				return ADVANCE_SUCCESS
 		SUBWAY_MODE:
-			if tile == 0xe9:
+			if tile == Tiles.SUBWAY_STATION:
 				return _move(BUS_RAIL_MODE, 4)
 
 			if _is_subway(int(underground[index])):
@@ -172,39 +176,39 @@ static func _move(mode: int, cost: int) -> int:
 
 static func _is_surface_road(tile: int) -> bool:
 	return (
-		(tile >= 0x1d and tile <= 0x2b)
-		or (tile >= 0x3f and tile <= 0x46)
-		or tile == 0x4b
-		or tile == 0x4c
-		or (tile >= 0x5d and tile <= 0x60)
+		(tile >= Tiles.FIRST_ROAD and tile <= Tiles.LAST_ROAD)
+		or (tile >= Tiles.TUNNEL_FIRST and tile <= Tiles.ROAD_RAIL_CROSSING_TWO)
+		or tile == Tiles.HIGHWAY_ROAD_CROSSING_ONE
+		or tile == Tiles.HIGHWAY_ROAD_CROSSING_TWO
+		or (tile >= Tiles.ONRAMP_FIRST and tile <= Tiles.ONRAMP_LAST)
 	)
 
 
 static func _is_road_bridge(tile: int) -> bool:
-	return (tile >= 0x51 and tile <= 0x5c) or tile == 0x6a or tile == 0x6b
+	return (tile >= Tiles.SUSPENSION_BRIDGE_ONE and tile <= Tiles.POWER_BRIDGE) or tile == Tiles.HIGHWAY_BRIDGE or tile == Tiles.REINFORCED_HIGHWAY_BRIDGE
 
 
 static func _is_highway_span(tile: int) -> bool:
-	return (tile >= 0x61 and tile <= 0x69) or (tile >= 0x49 and tile <= 0x50)
+	return (tile >= Tiles.HIGHWAY_SLOPE_FIRST and tile <= Tiles.HIGHWAY_INTERSECTION) or (tile >= Tiles.HIGHWAY_STRAIGHT_ONE and tile <= Tiles.HIGHWAY_POWER_CROSSING_TWO)
 
 
 static func _is_rail(tile: int) -> bool:
 	return (
-		(tile >= 0x2c and tile <= 0x3e)
-		or (tile >= 0x45 and tile <= 0x48)
-		or (tile >= 0x6c and tile <= 0x6f)
-		or tile == 0x4d
-		or tile == 0x4e
+		(tile >= Tiles.RAIL_FIRST and tile <= Tiles.RAIL_LAST)
+		or (tile >= Tiles.ROAD_RAIL_CROSSING_ONE and tile <= Tiles.RAIL_POWER_CROSSING_TWO)
+		or (tile >= Tiles.RAIL_SUBWAY_FIRST and tile <= Tiles.RAIL_SUBWAY_LAST)
+		or tile == Tiles.HIGHWAY_RAIL_CROSSING_ONE
+		or tile == Tiles.HIGHWAY_RAIL_CROSSING_TWO
 	)
 
 
 static func _is_subway(tile: int) -> bool:
 	return (
-		(tile > 0 and tile < 0x10)
-		or tile == 0x1f
-		or tile == 0x20
-		or tile == 0x22
-		or tile == 0x23
+		(tile > 0 and tile < UnderTiles.PIPE_FIRST)
+		or tile == UnderTiles.PIPE_SUBWAY_ONE
+		or tile == UnderTiles.PIPE_SUBWAY_TWO
+		or tile == UnderTiles.MISSILE_SILO
+		or tile == UnderTiles.SUBWAY_ENTRANCE
 	)
 
 
@@ -226,7 +230,7 @@ static func highway_step(buildings: PackedByteArray, current: Vector2i,
 	var corner := LANE_CORNERS.find(Vector2i(current.x & 1, current.y & 1))
 	var next_corner := LANE_CORNERS.find(Vector2i(next_point.x & 1, next_point.y & 1))
 
-	if tile >= 0x5d and tile <= 0x60:
+	if tile >= Tiles.ONRAMP_FIRST and tile <= Tiles.ONRAMP_LAST:
 		# ramps enter the adjacent outside lane; they cannot cross the median
 		return _ramp_side(next_point, current, next_ports)
 

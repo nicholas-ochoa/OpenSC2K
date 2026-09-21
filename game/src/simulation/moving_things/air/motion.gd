@@ -137,7 +137,7 @@ static func _air_route_blocked(
 ) -> bool:
 	var checked_index := _index(current + AIR_ROUTE_DELTAS[direction], map_edge)
 
-	return checked_index >= 0 and buildings[checked_index] >= 0xfb
+	return checked_index >= 0 and buildings[checked_index] >= BuildingTileIds.PLYMOUTH_ARCOLOGY
 
 
 static func _turn_one_step(direction: int, target: int) -> int:

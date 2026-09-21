@@ -4,6 +4,8 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const FALLBACK := [
 	"The budget looks satisfactory. Keep watching the city's needs.",
 	"The city has a serious cash shortage. Consider issuing a bond.",
@@ -97,7 +99,7 @@ static func select(city: CityState, report: BudgetReport, advisor: int, random: 
 				choice = 6
 		4, 5:
 			var health := advisor == 5
-			var tiles := _signed_word(doc.misc_u32(0x1f0 + (0xd1 if health else 0xd3) * 4))
+			var tiles := _signed_word(doc.misc_u32(0x1f0 + (Tiles.HOSPITAL if health else Tiles.FIRE_STATION) * 4))
 			var capacity := BudgetReport.wrap_i32((tiles * (250 if health else 150) / 9) * report.funding[7 if health else 6]) & 0xffffffff
 			var comfortable := (BudgetReport.wrap_i32(capacity * 2) / 3) & 0xffffffff
 			if capacity < population:
@@ -110,8 +112,8 @@ static func select(city: CityState, report: BudgetReport, advisor: int, random: 
 				var selected := random.next_u15() % 3
 				choice = 26 if flags & [0x20, 0x400, 0x40][selected] else 23 + selected
 		6:
-			var schools := _signed_word(doc.misc_u32(0x1f0 + 0xd6 * 4))
-			var colleges := _signed_word(doc.misc_u32(0x1f0 + 0xd9 * 4))
+			var schools := _signed_word(doc.misc_u32(0x1f0 + Tiles.SCHOOL * 4))
+			var colleges := _signed_word(doc.misc_u32(0x1f0 + Tiles.COLLEGE * 4))
 			var school_capacity := BudgetReport.wrap_i32((schools * 15 / 9) * report.funding[8]) & 0xffffffff
 			var college_capacity := BudgetReport.wrap_i32((colleges * 50 / 16) * report.funding[9]) & 0xffffffff
 			if school_capacity < ((doc.misc_u32(0x7c + 12) + doc.misc_u32(0x7c + 24)) & 0xffffffff):

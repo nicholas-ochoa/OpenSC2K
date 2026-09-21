@@ -1,6 +1,8 @@
 class_name ScurkPickCopy
 extends RefCounted
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 class Result extends ScurkMif.Result:
 	var object_count := 0
 	var shape_count := 0
@@ -56,19 +58,19 @@ const GROUP_TILE_IDS := [
 		164, 165, 132, 134, 133, 135,
 	],
 	[
-		251, 252, 253, 254, 255, 208, 209, 210, 211, 212, 213, 13,
-		214, 215, 216, 217, 218, 219, 220, 244, 250, 243, 245, 247,
-		235, 248,
+		Tiles.PLYMOUTH_ARCOLOGY, Tiles.FOREST_ARCOLOGY, Tiles.DARCO_ARCOLOGY, Tiles.LAUNCH_ARCOLOGY, Tiles.LLAMA_DOME, Tiles.CITY_HALL, Tiles.HOSPITAL, Tiles.POLICE_STATION, Tiles.FIRE_STATION, Tiles.MUSEUM, Tiles.BIG_PARK, 13,
+		Tiles.SCHOOL, Tiles.STADIUM, Tiles.PRISON, Tiles.COLLEGE, Tiles.ZOO, Tiles.STATUE, Tiles.WATER_PUMP, Tiles.WATER_TREATMENT, Tiles.DESALINIZATION, Tiles.MAYOR_HOUSE, Tiles.LIBRARY, Tiles.CHURCH,
+		Tiles.WATER_TOWER, Tiles.MARINA,
 	],
-	[198, 199, 200, 201, 202, 203, 204, 205, 206, 207],
+	[Tiles.HYDRO_POWER_ONE, Tiles.HYDRO_POWER_TWO, Tiles.WIND_POWER, Tiles.GAS_POWER, Tiles.OIL_POWER, Tiles.NUCLEAR_POWER, Tiles.SOLAR_POWER, Tiles.MICROWAVE_POWER, Tiles.FUSION_POWER, Tiles.COAL_POWER],
 	[
 		194, 195, 166, 167, 168, 169, 136, 137, 138, 139, 170, 171,
-		172, 173, 196, 197, 233, 236, 237, 224, 240, 242,
+		172, 173, 196, 197, Tiles.SUBWAY_STATION, Tiles.BUS_DEPOT, Tiles.RAIL_STATION, Tiles.CRANE, Tiles.LOADING_BAY, Tiles.CARGO_YARD,
 	],
-	[227, 221, 222, 225, 238, 230, 234, 232, 246, 228, 229, 226],
+	[Tiles.SEAPORT_WAREHOUSE, Tiles.RUNWAY, Tiles.RUNWAY_CROSSING, Tiles.CONTROL_TOWER_ONE, Tiles.PARKING_LOT_ONE, Tiles.TARMAC, Tiles.RADAR, Tiles.HANGAR_ONE, Tiles.HANGAR_TWO, Tiles.AIRPORT_BUILDING_ONE, Tiles.AIRPORT_BUILDING_TWO, Tiles.CONTROL_TOWER_TWO],
 	[499, 498, 497, 496, 495, 494, 493, 399, 398, 397, 396, 395, 394, 393, 392],
 	[387, 388, 389, 391, 390, 373, 372, 371, 370, 369, 363, 362, 361, 360, 359],
-	[231, 239, 241, 249, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 5],
+	[Tiles.FIGHTER_JET, Tiles.PARKING_LOT_TWO, Tiles.TOP_SECRET, Tiles.MISSILE_SILO, 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 5],
 ]
 
 

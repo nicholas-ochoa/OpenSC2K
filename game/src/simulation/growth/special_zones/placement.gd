@@ -21,7 +21,7 @@ static func _place_runway(
 	underground: PackedByteArray = PackedByteArray(),
 ) -> Result:
 	# military runway orientation uses its own count, as in sc2kfix
-	var count := SpecialZoneState._special_tile_count(misc, 0xdd, zone == 7, map_edge)
+	var count := SpecialZoneState._special_tile_count(misc, Tiles.RUNWAY, zone == 7, map_edge)
 	var direction := Vector2i.ZERO
 
 	if count & 1 == 0:
@@ -62,7 +62,7 @@ static func _place_runway(
 
 		if zone == 7:
 			var tile := int(buildings[checked_index])
-			if (tile >= 0x1d and tile <= 0x2b) or tile == 0xe0 or tile == 0xf9:
+			if (tile >= 0x1d and tile <= 0x2b) or tile == Tiles.CRANE or tile == Tiles.MISSILE_SILO:
 				var result := Result.new()
 				result.ok = false
 				result.changed_tiles = 0
@@ -75,7 +75,7 @@ static func _place_runway(
 
 				return result
 
-		if buildings[checked_index] == 0xdd or buildings[checked_index] == 0xde:
+		if buildings[checked_index] == Tiles.RUNWAY or buildings[checked_index] == Tiles.RUNWAY_CROSSING:
 			new_tiles -= 1
 
 		new_tiles += 1
@@ -100,11 +100,11 @@ static func _place_runway(
 		var index := SpecialZoneState._index(current, map_edge)
 		var current_tile := int(buildings[index])
 
-		if current_tile == 0xdd or current_tile == 0xde:
+		if current_tile == Tiles.RUNWAY or current_tile == Tiles.RUNWAY_CROSSING:
 			placed_tiles -= 1
 
-			if current_tile == 0xdd and bool(flags[index] & 0x02) != flip:
-				SpecialZoneState._replace_special_building(buildings, zones, misc, index, 0xde)
+			if current_tile == Tiles.RUNWAY and bool(flags[index] & 0x02) != flip:
+				SpecialZoneState._replace_special_building(buildings, zones, misc, index, Tiles.RUNWAY_CROSSING)
 				zones[index] |= 0xf0
 
 				if zone != 7:
@@ -114,7 +114,7 @@ static func _place_runway(
 				changed_tiles += 1
 		else:
 			_clear_special_building(buildings, zones, flags, misc, current, map_edge)
-			SpecialZoneState._replace_special_building(buildings, zones, misc, index, 0xdd)
+			SpecialZoneState._replace_special_building(buildings, zones, misc, index, Tiles.RUNWAY)
 			zones[index] |= 0xf0
 
 			if zone != 7:
@@ -196,7 +196,7 @@ static func _place_crane_and_pier(
 	_clear_special_building(buildings, zones, flags, misc, point, map_edge)
 	var before := int(buildings[SpecialZoneState._index(point, map_edge)])
 	place_special_item(
-		buildings, zones, flags, terrain, misc, point, 0xe0, 1, zone, rotation, map_edge
+		buildings, zones, flags, terrain, misc, point, Tiles.CRANE, 1, zone, rotation, map_edge
 	)
 	zones[SpecialZoneState._index(point, map_edge)] = (zones[SpecialZoneState._index(point, map_edge)] & 0xf0) | zone
 
@@ -210,7 +210,7 @@ static func _place_crane_and_pier(
 	for unused in 4:
 		pier += direction
 		var index := SpecialZoneState._index(pier, map_edge)
-		SpecialZoneState._replace_special_building(buildings, zones, misc, index, 0xdf)
+		SpecialZoneState._replace_special_building(buildings, zones, misc, index, Tiles.PIER)
 		zones[index] |= 0xf0
 
 		if flip:
@@ -256,7 +256,7 @@ static func _place_special_two_by_two(
 		var index := SpecialZoneState._index(checked, map_edge)
 		var checked_tile := int(buildings[index])
 
-		if checked_tile == 0xdd or checked_tile == 0xde or checked_tile == 0xe0:
+		if checked_tile == Tiles.RUNWAY or checked_tile == Tiles.RUNWAY_CROSSING or checked_tile == Tiles.CRANE:
 			var result := Result.new()
 			result.ok = false
 			result.changed_tiles = 0
@@ -265,7 +265,7 @@ static func _place_special_two_by_two(
 
 		# The original checks 0xeb..0xff only at the anchor. sc2kfix checks
 		# the missile-silo restriction across the whole footprint.
-		if point_index == 0 and checked_tile > 0xea:
+		if point_index == 0 and checked_tile > Tiles.RADAR:
 			var result := Result.new()
 			result.ok = false
 			result.changed_tiles = 0
@@ -273,7 +273,7 @@ static func _place_special_two_by_two(
 			return result
 
 		if zone == 7:
-			if (checked_tile >= 0x1d and checked_tile <= 0x2b) or checked_tile == 0xf9 or checked_tile == 0x05 or checked_tile == 0x0d:
+			if (checked_tile >= Tiles.FIRST_ROAD and checked_tile <= Tiles.LAST_ROAD) or checked_tile == Tiles.MISSILE_SILO or checked_tile == Tiles.RADIOACTIVE_WASTE or checked_tile == Tiles.SMALL_PARK:
 				var result := Result.new()
 				result.ok = false
 				result.changed_tiles = 0
@@ -345,7 +345,7 @@ static func place_special_item(
 			if index < 0 or (area > 1 and (x < 1 or y < 1 or x > map_edge - 2 or y > map_edge - 2)):
 				return false
 
-			if buildings[index] >= 0x1d or buildings[index] == 0x05 or buildings[index] == 0x0d:
+			if buildings[index] >= Tiles.FIRST_ROAD or buildings[index] == Tiles.RADIOACTIVE_WASTE or buildings[index] == Tiles.SMALL_PARK:
 				return false
 
 			if (zones[index] & 0x0f) == 7 and zone != 7:
@@ -410,11 +410,11 @@ static func place_missile_silo(
 		for y in range(origin.y, origin.y + 3):
 			var index := x * map_edge + y
 
-			if buildings[index] != 0xf9:
+			if buildings[index] != Tiles.MISSILE_SILO:
 				changed_tiles += 1
 
-			SpecialZoneState._replace_special_building(buildings, zones, misc, index, 0xf9)
-			SpecialZoneState.replace_underground(underground, zones, misc, index, 0x22)
+			SpecialZoneState._replace_special_building(buildings, zones, misc, index, Tiles.MISSILE_SILO)
+			SpecialZoneState.replace_underground(underground, zones, misc, index, UndergroundTileIds.MISSILE_SILO)
 
 	SpecialZoneState._set_corners(zones, origin, 3, rotation, map_edge)
 
@@ -435,12 +435,12 @@ static func _clear_special_building(
 ) -> void:
 	var selected_index := SpecialZoneState._index(point, map_edge)
 
-	if selected_index < 0 or buildings[selected_index] <= 0xc5:
+	if selected_index < 0 or buildings[selected_index] <= Tiles.DEVELOPED_3X3_LAST:
 		return
 
 	var points: Array[Vector2i] = [point]
 
-	if buildings[selected_index] < 0xdb or buildings[selected_index] > 0xea:
+	if buildings[selected_index] < Tiles.STATUE or buildings[selected_index] > Tiles.RADAR:
 		var anchor := Vector2i(point.x & ~1, point.y & ~1)
 		points = [
 			anchor,

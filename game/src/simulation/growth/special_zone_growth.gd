@@ -33,13 +33,13 @@ static func process(
 				if random.next_u15() & 3:
 					return
 
-				var parking_count := int(SpecialZoneState._special_tile_count(misc, 0xef, true, map_edge) / 4)
-				selected_tile = 0xef
+				var parking_count := int(SpecialZoneState._special_tile_count(misc, Tiles.PARKING_LOT_TWO, true, map_edge) / 4)
+				selected_tile = Tiles.PARKING_LOT_TWO
 
-				if int(SpecialZoneState._special_tile_count(misc, 0xe8, true, map_edge) / 12) < parking_count:
-					selected_tile = 0xe8
+				if int(SpecialZoneState._special_tile_count(misc, Tiles.HANGAR_ONE, true, map_edge) / 12) < parking_count:
+					selected_tile = Tiles.HANGAR_ONE
 
-				fallback_tile = 0xe8
+				fallback_tile = Tiles.HANGAR_ONE
 			3:
 				selected_tile = SpecialZoneSelection._airport_growth_selection(
 					flags, text_overlays, things, misc, point, current_tile,
@@ -50,10 +50,10 @@ static func process(
 					terrain, text_overlays, things, misc, point, current_tile,
 					true, random, counters, map_edge
 				)
-				fallback_tile = 0xe3
+				fallback_tile = Tiles.SEAPORT_WAREHOUSE
 			5:
-				if current_tile != 0xf9:
-					selected_tile = 0xf9
+				if current_tile != Tiles.MISSILE_SILO:
+					selected_tile = Tiles.MISSILE_SILO
 			_:
 				return
 	elif zone == 8:
@@ -66,7 +66,7 @@ static func process(
 			terrain, text_overlays, things, misc, point, current_tile,
 			false, random, counters, map_edge
 		)
-		fallback_tile = 0xe3
+		fallback_tile = Tiles.SEAPORT_WAREHOUSE
 	else:
 		return
 

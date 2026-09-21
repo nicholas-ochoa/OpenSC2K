@@ -1,14 +1,16 @@
 class_name HighwayConstants
 extends RefCounted
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const GROUP_ROADS := 6
 const SUBTOOL_HIGHWAY := 1
-const RADIOACTIVITY := 0x05
-const SMALL_PARK := 0x0d
-const STRAIGHT_FIRST := 0x49
-const STRAIGHT_LAST := 0x50
-const SHAPED_FIRST := 0x61
-const SHAPED_LAST := 0x6b
+const RADIOACTIVITY := Tiles.RADIOACTIVE_WASTE
+const SMALL_PARK := Tiles.SMALL_PARK
+const STRAIGHT_FIRST := Tiles.HIGHWAY_STRAIGHT_ONE
+const STRAIGHT_LAST := Tiles.HIGHWAY_POWER_CROSSING_TWO
+const SHAPED_FIRST := Tiles.HIGHWAY_SLOPE_FIRST
+const SHAPED_LAST := Tiles.REINFORCED_HIGHWAY_BRIDGE
 const FLAG_WATER := 0x04
 const CONNECTION_LABEL := 0xfa
 const CONNECTION_COST := 1500

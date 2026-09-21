@@ -4,7 +4,7 @@ extends RefCounted
 const GROUP_RAIL := 7
 const SUBTOOL_CONNECTION := 4
 const CONNECTOR_FIRST := 0x6c
-const RADIOACTIVITY := 0x05
+const RADIOACTIVITY := BuildingTileIds.RADIOACTIVE_WASTE
 const MAX_CLEAR_BUILDING := 0x0c
 const FLAG_PIPED := 0x20
 const DIRECTIONS := [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]

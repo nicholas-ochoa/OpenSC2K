@@ -43,9 +43,9 @@ const FIRE_SPIRAL_X := [0, 1, 0, -1]
 const FIRE_SPIRAL_Y := [-1, 0, 1, 0]
 const RIOT_OVERLAY_FORWARD := 0xfd
 const RIOT_OVERLAY_REVERSE := 0xfe
-const NUCLEAR_POWER_PLANT := 0xcb
-const RADIOACTIVITY_TILE := 0x05
-const MICROWAVE_POWER_PLANT := 0xcd
+const NUCLEAR_POWER_PLANT := BuildingTileIds.NUCLEAR_POWER
+const RADIOACTIVITY_TILE := BuildingTileIds.RADIOACTIVE_WASTE
+const MICROWAVE_POWER_PLANT := BuildingTileIds.MICROWAVE_POWER
 const EIGHT_DIRECTIONS := [
 	Vector2i(0, -1),
 	Vector2i(1, -1),

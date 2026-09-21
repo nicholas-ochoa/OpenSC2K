@@ -159,9 +159,9 @@ static func provision_microsim(
 	else:
 		record_id = microsim_type - 16
 
-	if record_id < 0 and tile_id >= 0xfb:
+	if record_id < 0 and tile_id >= PLYMOUTH_ARCOLOGY:
 		for checked_id in range(MICROSIM_DYNAMIC_FIRST, microsims.size() / CityState.MICROSIM_RECORD_SIZE):
-			if microsims[checked_id * CityState.MICROSIM_RECORD_SIZE] < 0xfb:
+			if microsims[checked_id * CityState.MICROSIM_RECORD_SIZE] < PLYMOUTH_ARCOLOGY:
 				record_id = checked_id
 				var old_overlay_id := OverlayData.facility_id(checked_id)
 
@@ -216,34 +216,34 @@ static func initialize_microsim(
 	var offset := record_id * CityState.MICROSIM_RECORD_SIZE
 
 	match tile_id:
-		0xc6, 0xc7:
+		HYDRO_POWER_ONE, HYDRO_POWER_TWO:
 			BuildingState._write_u16_be(microsims, offset + 2, BuildingState._read_u16_be(microsims, offset + 2) + 1)
 			BuildingState._write_u16_be(microsims, offset + 4, BuildingState._read_u16_be(microsims, offset + 4) + 20)
-		0xc8:
+		WIND_POWER:
 			BuildingState._write_u16_be(microsims, offset + 2, BuildingState._read_u16_be(microsims, offset + 2) + 1)
 			BuildingState._write_u16_be(microsims, offset + 4, BuildingState._read_u16_be(microsims, offset + 4) + 4)
-		0xc9, 0xcc:
+		GAS_POWER, SOLAR_POWER:
 			BuildingState._write_u16_be(microsims, offset + 2, 50)
-		0xca:
+		OIL_POWER:
 			BuildingState._write_u16_be(microsims, offset + 2, 220)
-		0xcb:
+		NUCLEAR_POWER:
 			BuildingState._write_u16_be(microsims, offset + 2, 500)
-		0xcd:
+		MICROWAVE_POWER:
 			BuildingState._write_u16_be(microsims, offset + 2, 1600)
-		0xce:
+		FUSION_POWER:
 			BuildingState._write_u16_be(microsims, offset + 2, 2500)
-		0xcf:
+		COAL_POWER:
 			BuildingState._write_u16_be(microsims, offset + 2, 200)
-		0xd0:
+		CITY_HALL:
 			BuildingState._write_u16_be(
 				microsims,
 				offset + 2,
 				0 if scurk_place_mode else population_cap(misc, 200, 900, map_edge)
 			)
 			BuildingState._write_u16_be(microsims, offset + 4, current_year)
-		0xd1, 0xd6, 0xd9:
+		HOSPITAL, SCHOOL, COLLEGE:
 			microsims[offset + 1] = 6
-		0xd2:
+		POLICE_STATION:
 			var police_funding := (
 				0
 				if scurk_place_mode
@@ -258,7 +258,7 @@ static func initialize_microsim(
 					else population_cap(misc, _to_i16(police_funding * 2), 90, map_edge)
 				)
 			)
-		0xd3:
+		FIRE_STATION:
 			var fire_funding := (
 				0
 				if scurk_place_mode
@@ -276,35 +276,35 @@ static func initialize_microsim(
 				)
 			)
 			BuildingState._write_u16_be(microsims, offset + 4, 4)
-		0xd4:
+		MUSEUM:
 			microsims[offset + 1] = 100
-		0xd5:
+		BIG_PARK:
 			BuildingState._write_u16_be(microsims, offset + 4, BuildingState._read_u16_be(microsims, offset + 4) + 9)
-		0xdb:
+		STATUE:
 			BuildingState._write_u16_be(microsims, offset + 2, current_year)
-		0xe9, 0xec, 0xed:
+		SUBWAY_STATION, BUS_DEPOT, RAIL_STATION:
 			BuildingState._write_u16_be(microsims, offset + 2, BuildingState._read_u16_be(microsims, offset + 2) + 1)
-		0xf3:
+		MAYOR_HOUSE:
 			BuildingState._write_u16_be(microsims, offset + 2, current_year)
 			BuildingState._write_u16_be(microsims, offset + 4, process_random.next_u15() % 30 + 10)
 			BuildingState._write_u16_be(microsims, offset + 6, process_random.next_u15() % 60)
-		0xfb:
+		PLYMOUTH_ARCOLOGY:
 			microsims[offset + 1] = 5
 			BuildingState._write_u16_be(microsims, offset + 2, 55)
 			BuildingState._write_u16_be(microsims, offset + 6, current_year)
-		0xfc:
+		FOREST_ARCOLOGY:
 			microsims[offset + 1] = 5
 			BuildingState._write_u16_be(microsims, offset + 2, 30)
 			BuildingState._write_u16_be(microsims, offset + 6, current_year)
-		0xfd:
+		DARCO_ARCOLOGY:
 			microsims[offset + 1] = 5
 			BuildingState._write_u16_be(microsims, offset + 2, 45)
 			BuildingState._write_u16_be(microsims, offset + 6, current_year)
-		0xfe:
+		LAUNCH_ARCOLOGY:
 			microsims[offset + 1] = 5
 			BuildingState._write_u16_be(microsims, offset + 2, 65)
 			BuildingState._write_u16_be(microsims, offset + 6, current_year)
-		0xff:
+		LLAMA_DOME:
 			BuildingState._write_u16_be(
 				microsims,
 				offset + 6,
@@ -318,7 +318,7 @@ static func population_cap(misc: PackedByteArray, maximum: int, divisor: int, ma
 
 	var arcology_count := 0
 
-	for tile_id in range(0xfb, 0xff):
+	for tile_id in range(PLYMOUTH_ARCOLOGY, LAUNCH_ARCOLOGY + 1):
 		var count := BuildingState.read_u32_be(misc, MISC_TILE_COUNTS + tile_id * 4)
 		arcology_count += _to_i16(count) if map_edge == 128 else count
 

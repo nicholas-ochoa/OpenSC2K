@@ -91,7 +91,7 @@ static func frame_selection(image: Image, selected: Rect2i) -> Image:
 
 
 static func zoom_for_tile(tile_id: int) -> float:
-	if tile_id >= 0xfb and tile_id <= 0xfe:
+	if tile_id >= BuildingTileIds.PLYMOUTH_ARCOLOGY and tile_id <= BuildingTileIds.LAUNCH_ARCOLOGY:
 		return 2.0
 
 	match DemolishEffectsSites._building_area(tile_id):

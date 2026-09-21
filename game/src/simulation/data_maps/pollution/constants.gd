@@ -1,6 +1,8 @@
 class_name PollutionConstants
 extends RefCounted
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const MAP_SIZE := 64
 const SERVICE_MAP_SIZE := 32
 const FULL_MAP_SIZE := CityState.MAP_SIZE
@@ -20,17 +22,17 @@ const CLEAN_INDUSTRY_ORDINANCE := 0x00080000
 const POLICE_COVERAGE_ORDINANCE := 0x00000800
 const FIRE_COVERAGE_ORDINANCE := 0x00000010
 const CRIME_REDUCTION_ORDINANCE := 0x00000004
-const RADIOACTIVITY := 0x05
-const FIRST_TREE := 0x06
-const SMALL_PARK := 0x0d
-const FIRST_ROAD := 0x1d
-const FIRST_POLLUTING_BUILDING := 0x70
-const BIG_PARK := 0xd5
-const POLICE_STATION := 0xd2
-const FIRE_STATION := 0xd3
-const FIRST_POWER_PLANT := 0xc6
-const FIRST_ARCOLOGY := 0xfb
-const LAST_ARCOLOGY := 0xfe
+const RADIOACTIVITY := Tiles.RADIOACTIVE_WASTE
+const FIRST_TREE := Tiles.TREE_FIRST
+const SMALL_PARK := Tiles.SMALL_PARK
+const FIRST_ROAD := Tiles.FIRST_ROAD
+const FIRST_POLLUTING_BUILDING := Tiles.DEVELOPED_FIRST
+const BIG_PARK := Tiles.BIG_PARK
+const POLICE_STATION := Tiles.POLICE_STATION
+const FIRE_STATION := Tiles.FIRE_STATION
+const FIRST_POWER_PLANT := Tiles.HYDRO_POWER_ONE
+const FIRST_ARCOLOGY := Tiles.PLYMOUTH_ARCOLOGY
+const LAST_ARCOLOGY := Tiles.LAUNCH_ARCOLOGY
 const FLAG_WATER := 0x04
 const FLAG_MARK := 0x08
 const FLAG_WATERED := 0x10
@@ -51,9 +53,9 @@ const BUILDING_POLLUTION := {
 	0x9e: 12, 0x9f: 12, 0xa0: 12, 0xa1: 12,
 	0xa2: 18, 0xa3: 18, 0xa4: 18, 0xa5: 18,
 	0xbc: 24, 0xbd: 24, 0xbe: 24, 0xbf: 24, 0xc0: 24, 0xc1: 24,
-	0xc9: 10, 0xca: 25, 0xcb: 2, 0xce: 2, 0xcf: 50,
-	0xd7: 4, 0xd8: 10, 0xdc: 2, 0xdd: 10, 0xde: 10, 0xdf: 10,
-	0xe0: 5, 0xe3: 5, 0xe4: 5, 0xe5: 5, 0xe6: 10, 0xe7: 10,
-	0xe9: 5, 0xec: 3, 0xed: 4, 0xee: 2, 0xef: 2, 0xf0: 2, 0xf1: 2,
-	0xf2: 10, 0xf4: 10, 0xf6: 5, 0xfb: 25, 0xfc: 10, 0xfd: 12, 0xfe: 15,
+	Tiles.GAS_POWER: 10, Tiles.OIL_POWER: 25, Tiles.NUCLEAR_POWER: 2, Tiles.FUSION_POWER: 2, Tiles.COAL_POWER: 50,
+	Tiles.STADIUM: 4, Tiles.PRISON: 10, Tiles.WATER_PUMP: 2, Tiles.RUNWAY: 10, Tiles.RUNWAY_CROSSING: 10, Tiles.PIER: 10,
+	Tiles.CRANE: 5, Tiles.SEAPORT_WAREHOUSE: 5, Tiles.AIRPORT_BUILDING_ONE: 5, Tiles.AIRPORT_BUILDING_TWO: 5, Tiles.TARMAC: 10, Tiles.FIGHTER_JET: 10,
+	Tiles.SUBWAY_STATION: 5, Tiles.BUS_DEPOT: 3, Tiles.RAIL_STATION: 4, Tiles.PARKING_LOT_ONE: 2, Tiles.PARKING_LOT_TWO: 2, Tiles.LOADING_BAY: 2, Tiles.TOP_SECRET: 2,
+	Tiles.CARGO_YARD: 10, Tiles.WATER_TREATMENT: 10, Tiles.HANGAR_TWO: 5, Tiles.PLYMOUTH_ARCOLOGY: 25, Tiles.FOREST_ARCOLOGY: 10, Tiles.DARCO_ARCOLOGY: 12, Tiles.LAUNCH_ARCOLOGY: 15,
 }

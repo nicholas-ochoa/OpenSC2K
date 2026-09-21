@@ -4,7 +4,7 @@ extends RefCounted
 const GROUP_ROADS := 6
 const SUBTOOL_TUNNEL := 2
 const MAX_CLEAR_BUILDING := 0x0d
-const RADIOACTIVITY := 0x05
+const RADIOACTIVITY := BuildingTileIds.RADIOACTIVE_WASTE
 const FIRST_ENTRANCE := 0x3f
 const TUNNEL_MASK := 0x7c00
 const ALTITUDE_DATA_MASK := 0x03ff

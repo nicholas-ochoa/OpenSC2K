@@ -412,7 +412,7 @@ static func _write_reinforced_bridge_section(
 		var index := point.x * map_edge + point.y
 		zone_types.append(zones[index] & 0x0f)
 		NetworkState.replace_building(
-			buildings, zones, misc, index, 0x5d + kind
+			buildings, zones, misc, index, Tiles.ONRAMP_FIRST + kind
 		)
 
 		if (direction & 1) == 0:

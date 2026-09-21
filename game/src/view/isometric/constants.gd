@@ -1,6 +1,8 @@
 class_name IsometricConstants
 extends RefCounted
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const TILE_WIDTH := 32
 # 17 pixels of art on a 16-pixel diamond, keep the shared edge
 const TILE_HEIGHT := 17
@@ -69,12 +71,12 @@ const TRAIN_SCREEN_X: PackedInt32Array = [0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 0, 0, 0
 const TRAIN_SCREEN_Y: PackedInt32Array = [0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 8, 8, 6, 6, 0, 0, 0, 6]
 const OCCLUSION_CELL_SIZE := 128
 const POWER_CROSSING_BASE_TILE := {
-	0x43: 0x1d,
-	0x44: 0x1e,
-	0x47: 0x2c,
-	0x48: 0x2d,
-	0x4f: 0x49,
-	0x50: 0x4a,
+	Tiles.ROAD_POWER_CROSSING_ONE: Tiles.FIRST_ROAD,
+	Tiles.ROAD_POWER_CROSSING_TWO: Tiles.ROAD_SECOND,
+	Tiles.RAIL_POWER_CROSSING_ONE: Tiles.RAIL_FIRST,
+	Tiles.RAIL_POWER_CROSSING_TWO: Tiles.RAIL_SECOND,
+	Tiles.HIGHWAY_POWER_CROSSING_ONE: Tiles.HIGHWAY_STRAIGHT_ONE,
+	Tiles.HIGHWAY_POWER_CROSSING_TWO: Tiles.HIGHWAY_STRAIGHT_TWO,
 }
 const HIGHWAY_GROUND_SOURCE_OFFSETS := [
 	Vector2i(0, 0), Vector2i(0, -1),

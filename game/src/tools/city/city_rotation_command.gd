@@ -356,12 +356,12 @@ static func _rotate_surface_tile_counts(
 	misc: PackedByteArray, surface_table: PackedByteArray
 ) -> void:
 	var old_counts := PackedInt64Array()
-	old_counts.resize(0x70)
+	old_counts.resize(BuildingTileIds.DEVELOPED_FIRST)
 
-	for tile in 0x70:
+	for tile in BuildingTileIds.DEVELOPED_FIRST:
 		old_counts[tile] = _read_u32_be(misc, TILE_COUNT_OFFSET + tile * 4)
 
-	for tile in 0x70:
+	for tile in BuildingTileIds.DEVELOPED_FIRST:
 		_write_u32_be(
 			misc, TILE_COUNT_OFFSET + int(surface_table[tile]) * 4, old_counts[tile]
 		)

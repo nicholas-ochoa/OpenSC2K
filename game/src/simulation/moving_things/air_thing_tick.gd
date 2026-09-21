@@ -5,6 +5,8 @@ extends AirThingConstants
 @warning_ignore_start("integer_division")
 
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 static func update_airplane(
 	buildings: PackedByteArray,
 	zones: PackedByteArray,
@@ -34,8 +36,8 @@ static func update_airplane(
 
 	# no_accidents blocks spontaneous collisions and landings. A plane already
 	# falling from a disaster (state 7) still follows no_disasters.
-	if not no_disasters and not no_accidents and building > 0x70 and zones[current_index] & 0x0f != 8:
-		if building > 0xfa:
+	if not no_disasters and not no_accidents and building > Tiles.DEVELOPED_FIRST and zones[current_index] & 0x0f != 8:
+		if building > Tiles.DESALINIZATION:
 			AirThingMotion._convert_to_explosion(
 				things, record, 5, 1 if lfsr_random.next_mod(16) == 0 else 0
 			)
@@ -93,7 +95,7 @@ static func update_airplane(
 				if current_index >= 0:
 					OverlayData.write(text, current_index, ThingData.read(things, offset + 10))
 
-				if current_index < 0 or buildings[current_index] != 0xdd:
+				if current_index < 0 or buildings[current_index] != Tiles.RUNWAY:
 					if no_disasters or no_accidents:
 						AirThingMotion._remove_without_crash(text, things, record, map_edge)
 						counters.removed_airplanes += 1
@@ -230,7 +232,7 @@ static func update_helicopter(
 
 		return
 
-	if not no_disasters and not no_accidents and buildings[current_index] > 0xfa:
+	if not no_disasters and not no_accidents and buildings[current_index] > Tiles.DESALINIZATION:
 		AirThingMotion._convert_to_explosion(things, record, 5, 0)
 		counters.crashed_helicopters += 1
 

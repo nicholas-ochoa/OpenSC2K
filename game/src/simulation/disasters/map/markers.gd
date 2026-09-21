@@ -2,6 +2,8 @@ class_name DisasterMapMarkers
 extends DisasterMapConstants
 
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 static func run_toxic(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> DisasterMapResult:
 	var map_edge: int = city.map_size if city != null else 128
 
@@ -382,7 +384,7 @@ static func _abandon_toxic_structure(
 	var index := DisasterMapState._index(point, map_edge)
 	var tile := int(payloads.XBLD[index])
 
-	if tile < 0x70 or tile > 0xc5 or _is_construction_or_abandoned(tile):
+	if tile < Tiles.DEVELOPED_FIRST or tile > Tiles.DEVELOPED_3X3_LAST or _is_construction_or_abandoned(tile):
 		return false
 
 	var area: int = DemolishEffectsSites._building_area(tile)
@@ -412,9 +414,9 @@ static func _abandon_toxic_structure(
 
 static func _is_construction_or_abandoned(tile: int) -> bool:
 	return (
-		(tile >= 0x88 and tile <= 0x8b)
-		or (tile >= 0xa6 and tile <= 0xad)
-		or (tile >= 0xc2 and tile <= 0xc5)
+		(tile >= Tiles.CONSTRUCTION_1X1_FIRST and tile <= Tiles.DEVELOPED_1X1_LAST)
+		or (tile >= Tiles.CONSTRUCTION_2X2_FIRST and tile <= Tiles.DEVELOPED_2X2_LAST)
+		or (tile >= Tiles.CONSTRUCTION_3X3_FIRST and tile <= Tiles.DEVELOPED_3X3_LAST)
 	)
 
 

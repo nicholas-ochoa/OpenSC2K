@@ -3,6 +3,8 @@ extends NetworkConstants
 
 
 
+const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
+
 static func _place_surface(
 	buildings: PackedByteArray,
 	terrain: PackedByteArray,
@@ -65,21 +67,21 @@ static func _grade_surface_terrain(
 
 static func _surface_replacement(old_tile: int, mode: int) -> int:
 	if mode == MODE_ROAD:
-		if old_tile < 0x0e:
-			return 0x1d
+		if old_tile < Tiles.POWER_LINE_FIRST:
+			return Tiles.FIRST_ROAD
 
-		return {0x0e: 0x44, 0x0f: 0x43, 0x2c: 0x46, 0x2d: 0x45, 0x49: 0x4b, 0x4a: 0x4c}.get(old_tile, -1)
+		return {Tiles.POWER_LINE_FIRST: Tiles.ROAD_POWER_CROSSING_TWO, Tiles.POWER_LINE_SECOND: Tiles.ROAD_POWER_CROSSING_ONE, Tiles.RAIL_FIRST: Tiles.ROAD_RAIL_CROSSING_TWO, Tiles.RAIL_SECOND: Tiles.ROAD_RAIL_CROSSING_ONE, Tiles.HIGHWAY_STRAIGHT_ONE: Tiles.HIGHWAY_ROAD_CROSSING_ONE, Tiles.HIGHWAY_STRAIGHT_TWO: Tiles.HIGHWAY_ROAD_CROSSING_TWO}.get(old_tile, -1)
 
 	if mode == MODE_RAIL:
-		if old_tile < 0x0e:
-			return 0x2c
+		if old_tile < Tiles.POWER_LINE_FIRST:
+			return Tiles.RAIL_FIRST
 
-		return {0x0e: 0x48, 0x0f: 0x47, 0x1d: 0x45, 0x1e: 0x46, 0x49: 0x4d, 0x4a: 0x4e}.get(old_tile, -1)
+		return {Tiles.POWER_LINE_FIRST: Tiles.RAIL_POWER_CROSSING_TWO, Tiles.POWER_LINE_SECOND: Tiles.RAIL_POWER_CROSSING_ONE, Tiles.FIRST_ROAD: Tiles.ROAD_RAIL_CROSSING_ONE, Tiles.ROAD_SECOND: Tiles.ROAD_RAIL_CROSSING_TWO, Tiles.HIGHWAY_STRAIGHT_ONE: Tiles.HIGHWAY_RAIL_CROSSING_ONE, Tiles.HIGHWAY_STRAIGHT_TWO: Tiles.HIGHWAY_RAIL_CROSSING_TWO}.get(old_tile, -1)
 
-	if old_tile < 0x0e:
-		return 0x0e
+	if old_tile < Tiles.POWER_LINE_FIRST:
+		return Tiles.POWER_LINE_FIRST
 
-	return {0x1d: 0x43, 0x1e: 0x44, 0x2c: 0x47, 0x2d: 0x48, 0x49: 0x4f, 0x4a: 0x50}.get(old_tile, -1)
+	return {Tiles.FIRST_ROAD: Tiles.ROAD_POWER_CROSSING_ONE, Tiles.ROAD_SECOND: Tiles.ROAD_POWER_CROSSING_TWO, Tiles.RAIL_FIRST: Tiles.RAIL_POWER_CROSSING_ONE, Tiles.RAIL_SECOND: Tiles.RAIL_POWER_CROSSING_TWO, Tiles.HIGHWAY_STRAIGHT_ONE: Tiles.HIGHWAY_POWER_CROSSING_ONE, Tiles.HIGHWAY_STRAIGHT_TWO: Tiles.HIGHWAY_POWER_CROSSING_TWO}.get(old_tile, -1)
 
 
 static func _retile_surface_neighborhood(
@@ -125,17 +127,17 @@ static func retile_surface(
 		if current < 0x1d or current > 0x2b:
 			return
 
-		base = 0x1d
+		base = Tiles.FIRST_ROAD
 	elif mode == MODE_RAIL:
 		if current < 0x2c or current > 0x3e:
 			return
 
-		base = 0x2c
+		base = Tiles.RAIL_FIRST
 	else:
 		if current < 0x0e or current > 0x1c:
 			return
 
-		base = 0x0e
+		base = Tiles.POWER_LINE_FIRST
 
 	var terrain_id := int(terrain[index])
 
@@ -162,7 +164,7 @@ static func retile_surface(
 
 			var slope_index := slope.x * map_edge + slope.y
 
-			if terrain[slope_index] == shape and buildings[slope_index] == 0x2d + shape:
+			if terrain[slope_index] == shape and buildings[slope_index] == Tiles.RAIL_SECOND + shape:
 				NetworkState.replace_building(buildings, zones, misc, index, 0x3a + shape)
 
 				return
@@ -219,20 +221,20 @@ static func _place_underground(
 
 	if pipes:
 		if old_tile == 0:
-			new_tile = 0x10
-		elif old_tile == 0x01:
-			new_tile = 0x1f
-		elif old_tile == 0x02:
-			new_tile = 0x20
+			new_tile = UnderTiles.PIPE_FIRST
+		elif old_tile == UnderTiles.SUBWAY_FIRST:
+			new_tile = UnderTiles.PIPE_SUBWAY_ONE
+		elif old_tile == UnderTiles.SUBWAY_SECOND:
+			new_tile = UnderTiles.PIPE_SUBWAY_TWO
 		else:
 			return
 
 		flags[index] |= FLAG_PIPED
 	else:
 		if old_tile == 0:
-			new_tile = 0x01
-		elif old_tile >= 0x10 and old_tile <= 0x1e:
-			new_tile = 0x1f if (direction & 1) == 0 else 0x20
+			new_tile = UnderTiles.SUBWAY_FIRST
+		elif old_tile >= UnderTiles.PIPE_FIRST and old_tile <= UnderTiles.PIPE_LAST:
+			new_tile = UnderTiles.PIPE_SUBWAY_ONE if (direction & 1) == 0 else UnderTiles.PIPE_SUBWAY_TWO
 		else:
 			return
 

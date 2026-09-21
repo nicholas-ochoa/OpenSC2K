@@ -25,8 +25,8 @@ const MISC_ARCOLOGY_POPULATION := 0x1020
 const BUDGET_ROAD := 10
 const BUDGET_HIGHWAY := 11
 const BUDGET_BRIDGE := 12
-const FIRST_ARCOLOGY := 0xfb
-const LAST_ARCOLOGY := 0xfe
+const FIRST_ARCOLOGY := BuildingTileIds.PLYMOUTH_ARCOLOGY
+const LAST_ARCOLOGY := BuildingTileIds.LAUNCH_ARCOLOGY
 
 
 class Result extends PhaseResult:

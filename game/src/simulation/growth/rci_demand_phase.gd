@@ -3,6 +3,8 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const ZONE_POPULATION_OFFSET := 0x05f0
 const DEMAND_OFFSET := 0x0718
 const BUDGET_OFFSET := 0x077c
@@ -99,11 +101,11 @@ static func run(city: CityState) -> Result:
 		residential_target,
 		float(
 			(
-				int(_tile_count(city, 0xd5) / 3)
-				+ _tile_count(city, 0xd7)
-				+ _tile_count(city, 0xda)
+				int(_tile_count(city, Tiles.BIG_PARK) / 3)
+				+ _tile_count(city, Tiles.STADIUM)
+				+ _tile_count(city, Tiles.ZOO)
 				+ 10
-				+ _tile_count(city, 0xf8)
+				+ _tile_count(city, Tiles.MARINA)
 			) * 150
 		),
 	)
@@ -136,7 +138,7 @@ static func run(city: CityState) -> Result:
 		float(
 			(
 				int(
-					(connections.commerce + _tile_count(city, 0xdd) + _tile_count(city, 0xde))
+					(connections.commerce + _tile_count(city, Tiles.RUNWAY) + _tile_count(city, Tiles.RUNWAY_CROSSING))
 					/ 5
 				)
 				* 4
@@ -146,7 +148,7 @@ static func run(city: CityState) -> Result:
 	)
 	industrial_target = minf(
 		industrial_target,
-		float((_tile_count(city, 0xe0) + 1 + connections.industry) * 1500),
+		float((_tile_count(city, Tiles.CRANE) + 1 + connections.industry) * 1500),
 	)
 
 	var targets: Array[float] = [residential_target, commercial_target, industrial_target]

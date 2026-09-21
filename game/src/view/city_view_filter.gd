@@ -48,7 +48,7 @@ static func surface_copy(source: CityState, visibility: Dictionary) -> CityState
 	for index in (map_edge * map_edge):
 		var building := int(result.buildings[index])
 
-		if not show_buildings and building >= 0x70:
+		if not show_buildings and building >= BuildingTileIds.DEVELOPED_FIRST:
 			result.buildings[index] = 0
 		elif not show_networks and building >= 0x0e and building <= 0x6f:
 			result.buildings[index] = 0

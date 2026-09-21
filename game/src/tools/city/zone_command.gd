@@ -1,6 +1,8 @@
 class_name ZoneCommand
 extends RefCounted
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 class Preview extends RefCounted:
 	var ok := false
 	var error := ""
@@ -28,10 +30,10 @@ const GROUP_RESIDENTIAL := 9
 const GROUP_COMMERCIAL := 10
 const GROUP_INDUSTRIAL := 11
 const FLAG_WATER := 0x04
-const FIRST_ROAD := 0x1d
-const FIRST_DEVELOPED_BUILDING := 0x70
-const RADIOACTIVITY := 0x05
-const SMALL_PARK := 0x0d
+const FIRST_ROAD := Tiles.FIRST_ROAD
+const FIRST_DEVELOPED_BUILDING := Tiles.DEVELOPED_FIRST
+const RADIOACTIVITY := Tiles.RADIOACTIVE_WASTE
+const SMALL_PARK := Tiles.SMALL_PARK
 const MILITARY_ZONE := 0x07
 const TERRAIN_REQUIRES_SURCHARGE := [
 	false, false, false, false, false, true, true, true,

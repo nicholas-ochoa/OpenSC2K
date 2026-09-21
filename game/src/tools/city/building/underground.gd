@@ -22,9 +22,9 @@ static func _place_pipe(
 
 	if old_tile == 0:
 		new_tile = UNDER_PIPE_FIRST
-	elif old_tile == 1:
+	elif old_tile == UnderTiles.SUBWAY_FIRST:
 		new_tile = UNDER_PIPE_SUBWAY_LR
-	elif old_tile == 2:
+	elif old_tile == UnderTiles.SUBWAY_SECOND:
 		new_tile = UNDER_PIPE_SUBWAY_TB
 	else:
 		return

@@ -3,15 +3,17 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const GROUP_NATURE := 1
 const FULL_MAP_SIZE := CityState.MAP_SIZE
 const SUBTOOL_TREES := 0
 const SUBTOOL_WATER := 1
 const FLAG_WATER := 0x04
-const RADIOACTIVITY := 0x05
-const FIRST_TREE := 0x06
-const LAST_TREE := 0x0c
-const FIRST_NON_LANDSCAPE_BUILDING := 0x0e
+const RADIOACTIVITY := Tiles.RADIOACTIVE_WASTE
+const FIRST_TREE := Tiles.TREE_FIRST
+const LAST_TREE := Tiles.TREE_LAST
+const FIRST_NON_LANDSCAPE_BUILDING := Tiles.POWER_LINE_FIRST
 const FORBIDDEN_COAST := 0x2e
 const WATERFALL := 0x3e
 const MISC_FUNDS := 0x0014

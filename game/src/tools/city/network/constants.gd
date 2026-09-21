@@ -1,6 +1,8 @@
 class_name NetworkConstants
 extends RefCounted
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const MISC_FUNDS := 0x0014
 const MISC_TILE_COUNTS := 0x01f0
 const MISC_MILITARY_TILE_COUNTS := 0x0fa8
@@ -84,19 +86,19 @@ const GRADED_TERRAIN := [
 ]
 const NETWORK_SLOPE_SHAPES := [0, 2, 3, 4, 5]
 const MILITARY_TILE_COUNT_INDEX := {
-	0xdd: 1,
-	0xde: 2,
-	0xef: 3,
-	0xf2: 4,
-	0xea: 5,
-	0xe3: 6,
-	0xe4: 7,
-	0xe5: 8,
-	0xf1: 9,
-	0xe0: 10,
-	0xe2: 11,
-	0xe7: 12,
-	0xe8: 13,
-	0xf6: 14,
-	0xf9: 15,
+	Tiles.RUNWAY: 1,
+	Tiles.RUNWAY_CROSSING: 2,
+	Tiles.PARKING_LOT_TWO: 3,
+	Tiles.CARGO_YARD: 4,
+	Tiles.RADAR: 5,
+	Tiles.SEAPORT_WAREHOUSE: 6,
+	Tiles.AIRPORT_BUILDING_ONE: 7,
+	Tiles.AIRPORT_BUILDING_TWO: 8,
+	Tiles.TOP_SECRET: 9,
+	Tiles.CRANE: 10,
+	Tiles.CONTROL_TOWER_TWO: 11,
+	Tiles.FIGHTER_JET: 12,
+	Tiles.HANGAR_ONE: 13,
+	Tiles.HANGAR_TWO: 14,
+	Tiles.MISSILE_SILO: 15,
 }

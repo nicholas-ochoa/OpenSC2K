@@ -292,7 +292,7 @@ static func power_marker_visual(
 		return null
 
 	if (
-		city.building_id(x, y) < 0x70
+		city.building_id(x, y) < Tiles.DEVELOPED_FIRST
 		or not city.is_powerable(x, y)
 		or city.is_powered(x, y)
 	):
@@ -516,7 +516,7 @@ static func building_sprite_flip(
 ) -> bool:
 	var flip := city.is_flipped(x, y)
 
-	if building_id >= 0x70 and (city.compass_rotation() & 1) != 0:
+	if building_id >= Tiles.DEVELOPED_FIRST and (city.compass_rotation() & 1) != 0:
 		flip = not flip
 
 	return flip
@@ -534,7 +534,7 @@ static func building_baseline_offset(
 	if building_id >= 0x61 and building_id <= 0x6b:
 		return configuration.half_height
 
-	if building_id >= 0x70:
+	if building_id >= Tiles.DEVELOPED_FIRST:
 		return int(sprite_width / 4) - configuration.half_height
 
 	if terrain_id == 0x0d:

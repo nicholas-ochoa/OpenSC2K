@@ -258,7 +258,7 @@ static func draw_tile(
 
 	var is_highway_composite := building_id >= 0x61 and building_id <= 0x6b
 
-	if building_id < 0x70 and not is_highway_composite:
+	if building_id < Tiles.DEVELOPED_FIRST and not is_highway_composite:
 		var terrain := IsometricPixelOperations.sprite_image(
 			sprites, palette, cache,
 			IsometricGeometry.terrain_sprite_id(terrain_id, city.is_water(x, y), configuration.sprite_base),

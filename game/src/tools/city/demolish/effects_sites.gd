@@ -86,37 +86,37 @@ static func _structure_effects(
 
 
 static func _building_area(tile_id: int) -> int:
-	if tile_id < 0x70:
+	if tile_id < Tiles.DEVELOPED_FIRST:
 		return 1
 
-	if tile_id <= 0x8b:
+	if tile_id <= Tiles.DEVELOPED_1X1_LAST:
 		return 1
 
-	if tile_id <= 0xad:
+	if tile_id <= Tiles.DEVELOPED_2X2_LAST:
 		return 2
 
-	if tile_id <= 0xc5:
+	if tile_id <= Tiles.DEVELOPED_3X3_LAST:
 		return 3
 
-	if tile_id <= 0xc8:
+	if tile_id <= Tiles.SMALL_POWER_LAST:
 		return 1
 
-	if tile_id <= 0xcf:
+	if tile_id <= Tiles.LARGE_POWER_LAST:
 		return 4
 
-	if tile_id <= 0xd6:
+	if tile_id <= Tiles.CIVIC_3X3_LAST:
 		return 3
 
-	if tile_id <= 0xda:
+	if tile_id <= Tiles.CIVIC_4X4_LAST:
 		return 4
 
-	if tile_id <= 0xea:
+	if tile_id <= Tiles.INFRASTRUCTURE_1X1_LAST:
 		return 1
 
-	if tile_id <= 0xf7:
+	if tile_id <= Tiles.INFRASTRUCTURE_2X2_LAST:
 		return 2
 
-	if tile_id <= 0xfa:
+	if tile_id <= Tiles.INFRASTRUCTURE_3X3_LAST:
 		return 3
 
 	return 4

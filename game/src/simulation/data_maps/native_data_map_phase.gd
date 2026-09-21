@@ -6,6 +6,8 @@ extends RefCounted
 # SC2X v3 per-tile rules. These differ from the original executable's coarse-grid rules.
 
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 static func run(city: CityState) -> PollutionPhase.Result:
 	var span := SimulationTimingSpan.new(city.simulation_slice)
 	span.mark("sources and terrain")
@@ -87,11 +89,11 @@ static func run(city: CityState) -> PollutionPhase.Result:
 			if terrain[index] > 0 and terrain[index] < 0x10:
 				residential[index] += 12
 
-			if building >= 0x70 and building < 0xc6:
+			if building >= Tiles.DEVELOPED_FIRST and building < Tiles.HYDRO_POWER_ONE:
 				weights[index] = PollutionPhase._population_weight(building)
 				occupied[index] = 1
-			elif building >= 0xc6:
-				weights[index] = 12 if building >= 0xfb and building <= 0xfe else 2
+			elif building >= Tiles.HYDRO_POWER_ONE:
+				weights[index] = 12 if building >= Tiles.PLYMOUTH_ARCOLOGY and building <= Tiles.LAUNCH_ARCOLOGY else 2
 
 	var center := Vector2i(edge / 2, edge / 2) if center_count == 0 else Vector2i(center_sum.x / center_count, center_sum.y / center_count)
 	var ordinances := doc.misc_u32(PollutionPhase.MISC_ORDINANCES)

@@ -64,34 +64,34 @@ static func _budget_funding(city: CityState, budget_id: int) -> int:
 
 
 static func _population_weight(building: int) -> int:
-	if building >= 0x70 and building <= 0x89:
+	if building >= Tiles.DEVELOPED_FIRST and building <= Tiles.CONSTRUCTION_1X1_LAST:
 		return 1
 
-	if building >= 0x8c and building <= 0x8f:
+	if building >= Tiles.RESIDENTIAL_2X2_FIRST and building <= 0x8f:
 		return 2
 
-	if building >= 0x90 and building <= 0x93:
+	if building >= 0x90 and building <= Tiles.RESIDENTIAL_2X2_LAST:
 		return 3
 
-	if building >= 0x94 and building <= 0x98:
+	if building >= Tiles.COMMERCIAL_2X2_FIRST and building <= 0x98:
 		return 2
 
-	if building >= 0x99 and building <= 0x9d:
+	if building >= 0x99 and building <= Tiles.COMMERCIAL_2X2_LAST:
 		return 3
 
-	if building >= 0x9e and building <= 0xa1:
+	if building >= Tiles.INDUSTRIAL_2X2_FIRST and building <= 0xa1:
 		return 2
 
-	if building >= 0xa2 and building <= 0xa5:
+	if building >= 0xa2 and building <= Tiles.INDUSTRIAL_2X2_LAST:
 		return 3
 
-	if building >= 0xa6 and building <= 0xa7:
+	if building >= Tiles.CONSTRUCTION_2X2_FIRST and building <= 0xa7:
 		return 2
 
-	if building >= 0xa8 and building <= 0xa9:
+	if building >= 0xa8 and building <= Tiles.CONSTRUCTION_2X2_LAST:
 		return 3
 
-	if building >= 0xae and building <= 0xc3:
+	if building >= Tiles.RESIDENTIAL_3X3_FIRST and building <= Tiles.CONSTRUCTION_3X3_LAST:
 		return 4
 
 	return 0

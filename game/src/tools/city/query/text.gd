@@ -132,27 +132,29 @@ static func _advanced_lines(info: QueryResult) -> PackedStringArray:
 
 static func specific_sound_events(tile_id: int, statistic_0: int) -> Array[int]:
 	match tile_id:
-		0xc6, 0xc7, 0xc8, 0xc9, 0xca, 0xcb, 0xcc, 0xcd, 0xce, 0xcf:
+		Tiles.HYDRO_POWER_ONE, Tiles.HYDRO_POWER_TWO, Tiles.WIND_POWER, \
+		Tiles.GAS_POWER, Tiles.OIL_POWER, Tiles.NUCLEAR_POWER, Tiles.SOLAR_POWER, \
+		Tiles.MICROWAVE_POWER, Tiles.FUSION_POWER, Tiles.COAL_POWER:
 			return [514]
-		0xd0, 0xd5, 0xd7, 0xdb, 0xf3, 0xff:
+		Tiles.CITY_HALL, Tiles.BIG_PARK, Tiles.STADIUM, Tiles.STATUE, Tiles.MAYOR_HOUSE, Tiles.LLAMA_DOME:
 			return [513]
-		0xd1, 0xd2:
+		Tiles.HOSPITAL, Tiles.POLICE_STATION:
 			return [506]
-		0xd3:
+		Tiles.FIRE_STATION:
 			return [509]
-		0xd6, 0xd9:
+		Tiles.SCHOOL, Tiles.COLLEGE:
 			return [523]
-		0xd8:
+		Tiles.PRISON:
 			return [522]
-		0xda:
+		Tiles.ZOO:
 			return [527]
-		0xec:
+		Tiles.BUS_DEPOT:
 			return [521]
-		0xed:
+		Tiles.RAIL_STATION:
 			return [524]
-		0xf8:
+		Tiles.MARINA:
 			return [511]
-		0xfb, 0xfc, 0xfd, 0xfe:
+		Tiles.PLYMOUTH_ARCOLOGY, Tiles.FOREST_ARCOLOGY, Tiles.DARCO_ARCOLOGY, Tiles.LAUNCH_ARCOLOGY:
 			if statistic_0 > 9:
 				return [526, 513]
 
@@ -293,7 +295,7 @@ static func general_name_resource_id(
 
 	var name_index := 0
 
-	if building < 0x7c:
+	if building < Tiles.COMMERCIAL_1X1_FIRST:
 		for upper_bound_index in GENERAL_NAME_UPPER_BOUNDS.size():
 			name_index = upper_bound_index
 
@@ -331,85 +333,85 @@ static func _fallback_tile_description(
 
 		return "Clear terrain"
 
-	if building <= 4:
+	if building <= Tiles.RUBBLE_LAST:
 		return "Rubble"
 
-	if building == 5:
+	if building == Tiles.RADIOACTIVE_WASTE:
 		return "Radioactive waste"
 
-	if building <= 12:
+	if building <= Tiles.TREE_LAST:
 		return "Trees"
 
-	if building == 13:
+	if building == Tiles.SMALL_PARK:
 		return "Small park"
 
-	if building <= 28:
+	if building <= Tiles.POWER_LINE_LAST:
 		return "Power lines"
 
-	if building <= 43:
+	if building <= Tiles.LAST_ROAD:
 		return "Road"
 
-	if building <= 62:
+	if building <= Tiles.RAIL_LAST:
 		return "Railway"
 
-	if building <= 66:
+	if building <= Tiles.TUNNEL_LAST:
 		return "Tunnel entrance"
 
-	if building <= 72:
+	if building <= Tiles.RAIL_POWER_CROSSING_TWO:
 		return "Transport crossover"
 
-	if building <= 80:
+	if building <= Tiles.HIGHWAY_POWER_CROSSING_TWO:
 		return "Highway"
 
-	if building <= 92:
+	if building <= Tiles.POWER_BRIDGE:
 		return "Bridge"
 
-	if building <= 107:
+	if building <= Tiles.REINFORCED_HIGHWAY_BRIDGE:
 		return "Highway"
 
-	if building <= 111:
+	if building <= Tiles.RAIL_SUBWAY_LAST:
 		return "Subway-to-rail connection"
 
-	if building <= 123:
+	if building <= Tiles.RESIDENTIAL_1X1_LAST:
 		return "Residential building"
 
-	if building <= 131:
+	if building <= Tiles.COMMERCIAL_1X1_LAST:
 		return "Commercial building"
 
-	if building <= 135:
+	if building <= Tiles.INDUSTRIAL_1X1_LAST:
 		return "Industrial building"
 
-	if building <= 139:
+	if building <= Tiles.DEVELOPED_1X1_LAST:
 		return "Construction or abandoned building"
 
-	if building <= 147:
+	if building <= Tiles.RESIDENTIAL_2X2_LAST:
 		return "Residential building"
 
-	if building <= 157:
+	if building <= Tiles.COMMERCIAL_2X2_LAST:
 		return "Commercial building"
 
-	if building <= 165:
+	if building <= Tiles.INDUSTRIAL_2X2_LAST:
 		return "Industrial building"
 
-	if building <= 173:
+	if building <= Tiles.DEVELOPED_2X2_LAST:
 		return "Construction or abandoned building"
 
-	if building <= 177:
+	if building <= Tiles.RESIDENTIAL_3X3_LAST:
 		return "Residential building"
 
-	if building <= 187:
+	if building <= Tiles.COMMERCIAL_3X3_LAST:
 		return "Commercial building"
 
-	if building <= 193:
+	if building <= Tiles.INDUSTRIAL_3X3_LAST:
 		return "Industrial building"
 
-	if building <= 197:
+	if building <= Tiles.DEVELOPED_3X3_LAST:
 		return "Construction or abandoned building"
 
-	if building <= 207:
+	if building <= Tiles.COAL_POWER:
 		return "Power plant"
 
-	if building <= 219:
+	if building <= Tiles.STATUE:
 		return "City service"
 
 	if building == WATER_PUMP:
@@ -418,10 +420,10 @@ static func _fallback_tile_description(
 	if building == WATER_TOWER:
 		return "Water tower"
 
-	if building <= 250:
+	if building <= Tiles.DESALINIZATION:
 		return "City infrastructure"
 
-	if building <= 254:
+	if building <= Tiles.LAUNCH_ARCOLOGY:
 		return "Arcology"
 
 	return "Civic landmark"

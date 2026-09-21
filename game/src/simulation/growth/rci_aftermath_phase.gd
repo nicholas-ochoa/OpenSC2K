@@ -3,6 +3,8 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
 const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
 
@@ -18,11 +20,11 @@ const MISC_UNEMPLOYMENT := 0x0fa4
 const MISC_MILITARY_TILE_COUNTS := 0x0fa8
 const MISC_STADIUM_TEAMS := 0x1028
 
-const RADIOACTIVITY_TILE := 0x05
-const FIRST_TREE_TILE := 0x06
+const RADIOACTIVITY_TILE := Tiles.RADIOACTIVE_WASTE
+const FIRST_TREE_TILE := Tiles.TREE_FIRST
 const LAST_GROWING_TREE_TILE := 0x0b
-const LAST_TREE_TILE := 0x0d
-const STADIUM_TILE := 0xd7
+const LAST_TREE_TILE := Tiles.SMALL_PARK
+const STADIUM_TILE := Tiles.STADIUM
 const INVENTION_COUNT := 17
 
 const NEWS_JUNK := 0x01
@@ -91,9 +93,9 @@ const WEATHER_WIND_TARGETS := [15, 30, 0, 0, 15, 5, 10, 30, 60, 100, 100, 100]
 const WEATHER_RAIN_TARGETS := [0, 0, 0, 15, 15, 15, 30, 30, 30, 60, 60, 60]
 
 const MILITARY_TILE_COUNT_INDEX := {
-	0xdd: 1, 0xde: 2, 0xef: 3, 0xf2: 4, 0xea: 5, 0xe3: 6,
-	0xe4: 7, 0xe5: 8, 0xf1: 9, 0xe0: 10, 0xe2: 11, 0xe7: 12,
-	0xe8: 13, 0xf6: 14, 0xf9: 15,
+	Tiles.RUNWAY: 1, Tiles.RUNWAY_CROSSING: 2, Tiles.PARKING_LOT_TWO: 3, Tiles.CARGO_YARD: 4, Tiles.RADAR: 5, Tiles.SEAPORT_WAREHOUSE: 6,
+	Tiles.AIRPORT_BUILDING_ONE: 7, Tiles.AIRPORT_BUILDING_TWO: 8, Tiles.TOP_SECRET: 9, Tiles.CRANE: 10, Tiles.CONTROL_TOWER_TWO: 11, Tiles.FIGHTER_JET: 12,
+	Tiles.HANGAR_ONE: 13, Tiles.HANGAR_TWO: 14, Tiles.MISSILE_SILO: 15,
 }
 
 

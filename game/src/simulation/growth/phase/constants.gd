@@ -1,6 +1,8 @@
 class_name GrowthConstants
 extends RefCounted
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const MovingThings = preload("res://src/simulation/moving_things/moving_thing_spawner.gd")
 const SpecialZoneGrowth = preload("res://src/simulation/growth/special_zone_growth.gd")
 const MAP_VALUE_COUNT := 64 * 64
@@ -17,11 +19,11 @@ const NEWSPAPER_BRIDGE_COLLAPSE := 39
 const SOUND_EXPLODE := 504
 const POPULATION_BY_DENSITY := [0, 1, 8, 12, 36]
 const BUILDING_BASE := [
-	0, 0x70, 0x8c, 0x90, 0xae,
-	0x7c, 0x94, 0x99, 0xb2,
-	0x84, 0x9e, 0xa2, 0xbc,
-	0x88, 0xa6, 0xa8, 0xc2,
-	0x8a, 0xaa, 0xac, 0xc4,
+	0, Tiles.DEVELOPED_FIRST, Tiles.RESIDENTIAL_2X2_FIRST, Tiles.RESIDENTIAL_2X2_DENSE_FIRST, Tiles.RESIDENTIAL_3X3_FIRST,
+	Tiles.COMMERCIAL_1X1_FIRST, Tiles.COMMERCIAL_2X2_FIRST, Tiles.COMMERCIAL_2X2_DENSE_FIRST, Tiles.COMMERCIAL_3X3_FIRST,
+	Tiles.INDUSTRIAL_1X1_FIRST, Tiles.INDUSTRIAL_2X2_FIRST, Tiles.INDUSTRIAL_2X2_DENSE_FIRST, Tiles.INDUSTRIAL_3X3_FIRST,
+	Tiles.CONSTRUCTION_1X1_FIRST, Tiles.CONSTRUCTION_2X2_FIRST, Tiles.CONSTRUCTION_2X2_DENSE_FIRST, Tiles.CONSTRUCTION_3X3_FIRST,
+	Tiles.ABANDONED_1X1_FIRST, Tiles.ABANDONED_2X2_FIRST, Tiles.ABANDONED_2X2_DENSE_FIRST, Tiles.ABANDONED_3X3_FIRST,
 ]
 const BUILDING_RANGE := [
 	196, 12, 4, 4, 4,
@@ -41,7 +43,7 @@ const STATUS_ABANDONED := 2
 const CLASS_RESIDENTIAL := 0
 const CLASS_CONSTRUCTION := 3
 const CLASS_ABANDONED := 4
-const CHURCH_TILE := 0xf7
+const CHURCH_TILE := Tiles.CHURCH
 
 # fixed timing indices keep per-tile instrumentation inexpensive. tiles replaces
 # the nine per-tile categories unless the debug window asks for detailed timing

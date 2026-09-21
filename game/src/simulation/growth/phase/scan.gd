@@ -206,11 +206,11 @@ class TileScan extends GrowthConstants:
 		var density := 0
 		var status := STATUS_NORMAL
 
-		if building < 0x70:
+		if building < Tiles.DEVELOPED_FIRST:
 			if building >= 0x1d or not TransportTrip.has_nearby_transport(buildings, tile, map_edge):
 				return true
 		else:
-			if building > 0xc5 or zone_byte & anchor_mask == 0:
+			if building > Tiles.DEVELOPED_3X3_LAST or zone_byte & anchor_mask == 0:
 				return true
 
 			density = GrowthDevelopment.density(building)

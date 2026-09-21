@@ -3,6 +3,8 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 class RenameResult extends RefCounted:
 	var ok := false
 	var error := ""
@@ -45,7 +47,7 @@ class Analysis extends RefCounted:
 		return result
 
 
-const FIRST_BUILDING := 0x0d
+const FIRST_BUILDING := Tiles.SMALL_PARK
 const CATEGORY_COUNT := 12
 const CATEGORY_RESOURCE_BASE := 988
 const MISC_TILE_COUNTS := 0x01f0
@@ -53,46 +55,46 @@ const FIRST_MICROSIM_LABEL := 51
 const LAST_MICROSIM_LABEL := 200
 
 const TILE_UPPER_BOUNDS := [
-	0x0e,
-	0x1d,
-	0x70,
-	0x7c,
-	0x84,
-	0x88,
-	0x8c,
-	0x94,
-	0x9e,
-	0xa6,
-	0xae,
-	0xb2,
-	0xbc,
-	0xc2,
-	0xc6,
-	0xd0,
-	0xd4,
-	0xd5,
-	0xd6,
-	0xd7,
-	0xd8,
-	0xd9,
-	0xda,
-	0xdc,
-	0xdd,
-	0xe9,
-	0xeb,
-	0xec,
-	0xee,
-	0xf3,
-	0xf4,
-	0xf5,
-	0xf6,
-	0xf7,
-	0xf8,
-	0xf9,
-	0xfa,
-	0xfb,
-	0xff,
-	0x00,
+	Tiles.POWER_LINE_FIRST,
+	Tiles.FIRST_ROAD,
+	Tiles.DEVELOPED_FIRST,
+	Tiles.COMMERCIAL_1X1_FIRST,
+	Tiles.INDUSTRIAL_1X1_FIRST,
+	Tiles.CONSTRUCTION_1X1_FIRST,
+	Tiles.RESIDENTIAL_2X2_FIRST,
+	Tiles.COMMERCIAL_2X2_FIRST,
+	Tiles.INDUSTRIAL_2X2_FIRST,
+	Tiles.CONSTRUCTION_2X2_FIRST,
+	Tiles.RESIDENTIAL_3X3_FIRST,
+	Tiles.COMMERCIAL_3X3_FIRST,
+	Tiles.INDUSTRIAL_3X3_FIRST,
+	Tiles.CONSTRUCTION_3X3_FIRST,
+	Tiles.HYDRO_POWER_ONE,
+	Tiles.CITY_HALL,
+	Tiles.MUSEUM,
+	Tiles.BIG_PARK,
+	Tiles.SCHOOL,
+	Tiles.STADIUM,
+	Tiles.PRISON,
+	Tiles.COLLEGE,
+	Tiles.ZOO,
+	Tiles.WATER_PUMP,
+	Tiles.RUNWAY,
+	Tiles.SUBWAY_STATION,
+	Tiles.WATER_TOWER,
+	Tiles.BUS_DEPOT,
+	Tiles.PARKING_LOT_ONE,
+	Tiles.MAYOR_HOUSE,
+	Tiles.WATER_TREATMENT,
+	Tiles.LIBRARY,
+	Tiles.HANGAR_TWO,
+	Tiles.CHURCH,
+	Tiles.MARINA,
+	Tiles.MISSILE_SILO,
+	Tiles.DESALINIZATION,
+	Tiles.PLYMOUTH_ARCOLOGY,
+	Tiles.LLAMA_DOME,
+	Tiles.EMPTY,
 ]
 
 const CATEGORY_BY_RANGE := [

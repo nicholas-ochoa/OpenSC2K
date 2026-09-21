@@ -3,6 +3,8 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const MISC_SIZE := 4800
 const POLLUTION_SIZE := 64 * 64
 const MISC_CITY_DAYS := 0x0010
@@ -26,22 +28,22 @@ const BUDGET_COMMERCIAL := 1
 const BUDGET_INDUSTRIAL := 2
 const BUDGET_ROAD := 10
 
-const TILE_HOSPITAL := 0xd1
-const TILE_POLICE := 0xd2
-const TILE_FIRE := 0xd3
-const TILE_BIG_PARK := 0xd5
-const TILE_SCHOOL := 0xd6
-const TILE_STADIUM := 0xd7
-const TILE_PRISON := 0xd8
-const TILE_ZOO := 0xda
-const TILE_RUNWAY := 0xdd
-const TILE_RUNWAY_CROSSING := 0xde
-const TILE_PIER := 0xe0
-const TILE_SUBWAY_STATION := 0xe9
-const TILE_RAIL_STATION := 0xed
-const TILE_MICROWAVE_PLANT := 0xcd
-const TILE_NUCLEAR_PLANT := 0xcb
-const TILE_MARINA := 0xf8
+const TILE_HOSPITAL := Tiles.HOSPITAL
+const TILE_POLICE := Tiles.POLICE_STATION
+const TILE_FIRE := Tiles.FIRE_STATION
+const TILE_BIG_PARK := Tiles.BIG_PARK
+const TILE_SCHOOL := Tiles.SCHOOL
+const TILE_STADIUM := Tiles.STADIUM
+const TILE_PRISON := Tiles.PRISON
+const TILE_ZOO := Tiles.ZOO
+const TILE_RUNWAY := Tiles.RUNWAY
+const TILE_RUNWAY_CROSSING := Tiles.RUNWAY_CROSSING
+const TILE_CRANE := Tiles.CRANE
+const TILE_SUBWAY_STATION := Tiles.SUBWAY_STATION
+const TILE_RAIL_STATION := Tiles.RAIL_STATION
+const TILE_MICROWAVE_PLANT := Tiles.MICROWAVE_POWER
+const TILE_NUCLEAR_PLANT := Tiles.NUCLEAR_POWER
+const TILE_MARINA := Tiles.MARINA
 
 const NEWS_DEMAND_BASE := 0x2e
 const STATUS_NONE := -1
@@ -225,7 +227,7 @@ static func _status_index(
 	var industrial_population := _budget_current(misc, BUDGET_INDUSTRIAL) - arcology_share
 
 	if (
-		_tile_count(misc, TILE_PIER, map_edge) + industry_connections
+		_tile_count(misc, TILE_CRANE, map_edge) + industry_connections
 		< int(industrial_population / 10000)
 	):
 		if _read_u32(misc, 0x0e44) == 0 and _read_u32(misc, 0x0e48) == 0:

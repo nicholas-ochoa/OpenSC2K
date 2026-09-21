@@ -4,10 +4,10 @@ extends RefCounted
 const GROUP_ROADS := 6
 const SUBTOOL_ONRAMP := 3
 const MAX_CLEAR_BUILDING := 0x0d
-const RADIOACTIVITY := 0x05
+const RADIOACTIVITY := BuildingTileIds.RADIOACTIVE_WASTE
 const HIGHWAY_FIRST := 0x49
 const HIGHWAY_LAST := 0x50
-const ROAD_FIRST := 0x1d
+const ROAD_FIRST := BuildingTileIds.FIRST_ROAD
 const ROAD_LAST := 0x2b
 const ROAD_INTERSECTION := 0x2b
 const RAMP_FIRST := 0x5d

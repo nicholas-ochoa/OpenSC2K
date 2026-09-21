@@ -89,7 +89,7 @@ static func sprite_role(tile_id: int) -> String:
 	if tile_id >= 1 and tile_id <= 0x0d:
 		return "Landscape tile"
 
-	if tile_id >= 0x70 and tile_id <= 0xff:
+	if tile_id >= BuildingTileIds.DEVELOPED_FIRST and tile_id <= 0xff:
 		return "Building or zone tile"
 
 	if tile_id >= 0x100 and tile_id <= 0x122:

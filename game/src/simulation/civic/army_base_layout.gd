@@ -46,6 +46,6 @@ static func _strip(
 		if distance == 7 and placed < 2:
 			continue
 		if terrain[index] == 0 and (zones[index] & 15) == 7 and buildings[index] in [0x1d, 0x1e]:
-			SpecialZoneState._replace_special_building(buildings, zones, misc, index, 0xde)
+			SpecialZoneState._replace_special_building(buildings, zones, misc, index, BuildingTileIds.RUNWAY_CROSSING)
 			zones[index] |= 0xf0
 			flags[index] &= 0x0f

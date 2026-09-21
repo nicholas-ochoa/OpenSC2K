@@ -1,19 +1,21 @@
 class_name ScurkPlaceCommand
 extends RefCounted
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const Buildings = preload("res://src/tools/city/building_command.gd")
 const PickCopy = preload("res://src/tools/scurk/scurk_pick_copy.gd")
 
-const ROAD_FIRST := 0x1d
-const RADIOACTIVITY := 0x05
-const SMALL_PARK := 0x0d
-const BIG_PARK := 0xd5
-const HYDRO_DAM_FIRST := 0xc6
-const HYDRO_DAM_LAST := 0xc7
-const MARINA := 0xf8
-const STATUE := 0xdb
-const WATER_PUMP := 0xdc
-const SUBWAY_STATION := 0xe9
+const ROAD_FIRST := Tiles.FIRST_ROAD
+const RADIOACTIVITY := Tiles.RADIOACTIVE_WASTE
+const SMALL_PARK := Buildings.SMALL_PARK
+const BIG_PARK := Buildings.BIG_PARK
+const HYDRO_DAM_FIRST := Buildings.HYDRO_POWER_ONE
+const HYDRO_DAM_LAST := Buildings.HYDRO_POWER_TWO
+const MARINA := Buildings.MARINA
+const STATUE := Buildings.STATUE
+const WATER_PUMP := Buildings.WATER_PUMP
+const SUBWAY_STATION := Buildings.SUBWAY_STATION
 const FLAG_WATER := 0x04
 const FLAG_PIPED := 0x20
 const FLAG_POWERED := 0x40
@@ -21,30 +23,30 @@ const FLAG_POWERABLE := 0x80
 const STRUCTURE_FLAGS := FLAG_PIPED | FLAG_POWERED | FLAG_POWERABLE
 
 const BUDGET_CURRENT := {
-	0xd1: 7,
-	0xd2: 5,
-	0xd3: 6,
-	0xd6: 8,
-	0xd9: 9,
+	Buildings.HOSPITAL: 7,
+	Buildings.POLICE_STATION: 5,
+	Buildings.FIRE_STATION: 6,
+	Buildings.SCHOOL: 8,
+	Buildings.COLLEGE: 9,
 }
 
 const VARIABLE_ZONE_TILES := {
-	0x88: 1,
-	0x89: 1,
-	0x8a: 2,
-	0x8b: 2,
-	0xa6: 2,
+	Tiles.CONSTRUCTION_1X1_FIRST: 1,
+	Tiles.CONSTRUCTION_1X1_LAST: 1,
+	Tiles.ABANDONED_1X1_FIRST: 2,
+	Tiles.DEVELOPED_1X1_LAST: 2,
+	Tiles.CONSTRUCTION_2X2_FIRST: 2,
 	0xa7: 2,
-	0xa8: 2,
-	0xa9: 2,
-	0xaa: 2,
+	Tiles.CONSTRUCTION_2X2_DENSE_FIRST: 2,
+	Tiles.CONSTRUCTION_2X2_LAST: 2,
+	Tiles.ABANDONED_2X2_FIRST: 2,
 	0xab: 2,
-	0xac: 2,
-	0xad: 1,
-	0xc2: 2,
-	0xc3: 2,
-	0xc4: 1,
-	0xc5: 1,
+	Tiles.ABANDONED_2X2_DENSE_FIRST: 2,
+	Tiles.DEVELOPED_2X2_LAST: 1,
+	Tiles.CONSTRUCTION_3X3_FIRST: 2,
+	Tiles.CONSTRUCTION_3X3_LAST: 2,
+	Tiles.ABANDONED_3X3_FIRST: 1,
+	Tiles.DEVELOPED_3X3_LAST: 1,
 }
 
 
@@ -60,7 +62,7 @@ static func placeable_large_ids(group: int) -> PackedInt32Array:
 	result = PickCopy.group_large_ids(group)
 
 	if group == 5:
-		for tile_id in range(0x0e, 0x70):
+		for tile_id in range(Tiles.POWER_LINE_FIRST, Tiles.DEVELOPED_FIRST):
 			result.append(1000 + tile_id)
 
 	return result
@@ -154,7 +156,7 @@ static func apply(
 		FLAG_PIPED if tile_id == SMALL_PARK or tile_id == BIG_PARK else STRUCTURE_FLAGS
 	)
 
-	if tile_id < 0x70:
+	if tile_id < Tiles.DEVELOPED_FIRST:
 		placed_flags = FLAG_POWERABLE if tile_id >= 0x0e else 0
 
 	var tile_indices := PackedInt32Array()
@@ -328,7 +330,7 @@ static func _site_error(
 			elif tile_id >= HYDRO_DAM_FIRST and tile_id <= HYDRO_DAM_LAST:
 				if terrain[index] == 0 or not is_water:
 					return "hydroelectric dam requires water terrain"
-			elif tile_id >= 0x70 and (terrain[index] != 0 or is_water):
+			elif tile_id >= Tiles.DEVELOPED_FIRST and (terrain[index] != 0 or is_water):
 				return "site is not flat clear land"
 
 	if tile_id == MARINA and (
@@ -360,31 +362,31 @@ static func _zone_for_tile(
 
 		return result
 
-	if tile_id >= 0x70 and tile_id <= 0x7b:
+	if tile_id >= Tiles.DEVELOPED_FIRST and tile_id <= Tiles.RESIDENTIAL_1X1_LAST:
 		return 1
 
-	if tile_id >= 0x8c and tile_id <= 0x93 or tile_id >= 0xae and tile_id <= 0xb1:
+	if tile_id >= Tiles.RESIDENTIAL_2X2_FIRST and tile_id <= Tiles.RESIDENTIAL_2X2_LAST or tile_id >= Tiles.RESIDENTIAL_3X3_FIRST and tile_id <= Tiles.RESIDENTIAL_3X3_LAST:
 		return 2
 
-	if tile_id >= 0x7c and tile_id <= 0x83:
+	if tile_id >= Tiles.COMMERCIAL_1X1_FIRST and tile_id <= Tiles.COMMERCIAL_1X1_LAST:
 		return 3
 
-	if tile_id >= 0x94 and tile_id <= 0x9d or tile_id >= 0xb2 and tile_id <= 0xbb:
+	if tile_id >= Tiles.COMMERCIAL_2X2_FIRST and tile_id <= Tiles.COMMERCIAL_2X2_LAST or tile_id >= Tiles.COMMERCIAL_3X3_FIRST and tile_id <= Tiles.COMMERCIAL_3X3_LAST:
 		return 4
 
-	if tile_id >= 0x84 and tile_id <= 0x87 or tile_id >= 0xa4 and tile_id <= 0xa5:
+	if tile_id >= Tiles.INDUSTRIAL_1X1_FIRST and tile_id <= Tiles.INDUSTRIAL_1X1_LAST or tile_id >= 0xa4 and tile_id <= Tiles.INDUSTRIAL_2X2_LAST:
 		return 5
 
-	if tile_id >= 0x9e and tile_id <= 0xa3 or tile_id >= 0xbc and tile_id <= 0xc1:
+	if tile_id >= Tiles.INDUSTRIAL_2X2_FIRST and tile_id <= 0xa3 or tile_id >= Tiles.INDUSTRIAL_3X3_FIRST and tile_id <= Tiles.INDUSTRIAL_3X3_LAST:
 		return 6
 
-	if tile_id in [0xe2, 0xe7, 0xef, 0xf1, 0xf9]:
+	if tile_id in [Tiles.CONTROL_TOWER_TWO, Tiles.FIGHTER_JET, Tiles.PARKING_LOT_TWO, Tiles.TOP_SECRET, Tiles.MISSILE_SILO]:
 		return 7
 
-	if tile_id in [0xe1, 0xe4, 0xe5, 0xe6, 0xe8, 0xea, 0xee, 0xf6]:
+	if tile_id in [Tiles.CONTROL_TOWER_ONE, Tiles.AIRPORT_BUILDING_ONE, Tiles.AIRPORT_BUILDING_TWO, Tiles.TARMAC, Tiles.HANGAR_ONE, Tiles.RADAR, Tiles.PARKING_LOT_ONE, Tiles.HANGAR_TWO]:
 		return 8
 
-	if tile_id in [0xe0, 0xf0, 0xf2]:
+	if tile_id in [Tiles.CRANE, Tiles.LOADING_BAY, Tiles.CARGO_YARD]:
 		return 9
 
 	return 0

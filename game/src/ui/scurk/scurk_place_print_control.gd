@@ -8,6 +8,8 @@ signal print_city_requested
 signal undo_requested
 signal redo_requested
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const Place = preload("res://src/tools/scurk/scurk_place_command.gd")
 const PickCopy = preload("res://src/tools/scurk/scurk_pick_copy.gd")
 
@@ -427,16 +429,16 @@ func _object_name(tile_id: int) -> String:
 	if not custom_name.is_empty():
 		return custom_name
 
-	if tile_id >= 0x70 and tile_id <= 0xc5:
+	if tile_id >= Tiles.DEVELOPED_FIRST and tile_id <= Tiles.DEVELOPED_3X3_LAST:
 		return "Residential, Commercial, or Industrial"
 
-	if tile_id >= 0xc6 and tile_id <= 0xcf:
+	if tile_id >= Tiles.HYDRO_POWER_ONE and tile_id <= Tiles.COAL_POWER:
 		return "Power Plant"
 
-	if tile_id >= 0xd0 and tile_id <= 0xdf:
+	if tile_id >= Tiles.CITY_HALL and tile_id <= Tiles.PIER:
 		return "City Service"
 
-	if tile_id >= 0xe0 and tile_id <= 0xfa:
+	if tile_id >= Tiles.CRANE and tile_id <= Tiles.DESALINIZATION:
 		return "City Infrastructure"
 
 	if tile_id <= 0x0d:

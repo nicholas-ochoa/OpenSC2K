@@ -147,8 +147,8 @@ static func _demolish_point(
 
 		return result
 
-	if tile_id < 0x0d:
-		if not scurk_mode and tile_id >= 0x06 and random.next_u15() % 20 == 0:
+	if tile_id < Tiles.SMALL_PARK:
+		if not scurk_mode and tile_id >= Tiles.TREE_FIRST and random.next_u15() % 20 == 0:
 			var result := DemolishPointResult.new()
 			result.changed = true
 			result.easter_event = true
@@ -158,7 +158,7 @@ static func _demolish_point(
 
 		var network_effects: Array[EffectEvent] = []
 
-		if tile_id >= 0x06 and emit_effects:
+		if tile_id >= Tiles.TREE_FIRST and emit_effects:
 			network_effects.append(DemolishEffectsSites._dust_effect(
 				point, DemolishEffectsSites._effect_altitude(altitude, flags, index), random, 0, Vector2i.ZERO
 			))
@@ -211,7 +211,7 @@ static func _demolish_point(
 			indices.append(changed_index)
 			changed_points.append(Vector2i(x, y))
 
-	if tile_id == SUBWAY_STATION or (tile_id >= 0x6c and tile_id <= 0x70):
+	if tile_id == SUBWAY_STATION or (tile_id >= Tiles.RAIL_SUBWAY_FIRST and tile_id <= Tiles.DEVELOPED_FIRST):
 		BuildingUnderground._replace_underground(
 			underground, zones, misc, index, 0
 		)
@@ -298,7 +298,7 @@ static func _demolish_underground_point(
 
 		return result
 
-	if buildings[index] < 0x70:
+	if buildings[index] < Tiles.DEVELOPED_FIRST:
 		flags[index] &= ~BuildingCommand.FLAG_PIPED & 0xff
 
 	var indices := PackedInt32Array([index])

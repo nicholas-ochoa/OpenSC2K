@@ -18,7 +18,7 @@ const GRAPH_POLLUTION := 5
 const GRAPH_LAND_VALUE := 6
 const GRAPH_CRIME := 7
 const GRAPH_VALUE_COUNT := 52
-const TILE_MAYOR_HOUSE := 0xf3
+const TILE_MAYOR_HOUSE := BuildingTileIds.MAYOR_HOUSE
 const NEWS_HIGH_APPROVAL := 0x201
 
 

@@ -22,9 +22,9 @@ const RAW_POPULATION_FIELD := 0
 const EDUCATION_FIELD := 4
 const LIFE_EXPECTANCY_FIELD := 8
 
-const HOSPITAL_TILE := 0xd1
-const SCHOOL_TILE := 0xd6
-const COLLEGE_TILE := 0xd9
+const HOSPITAL_TILE := BuildingTileIds.HOSPITAL
+const SCHOOL_TILE := BuildingTileIds.SCHOOL
+const COLLEGE_TILE := BuildingTileIds.COLLEGE
 const BUDGET_HEALTH := 7
 const BUDGET_SCHOOL := 8
 const BUDGET_COLLEGE := 9

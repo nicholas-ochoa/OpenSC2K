@@ -16,8 +16,8 @@ const MISC_HAS_OCEAN := 0x0e44
 const MISC_HAS_RIVER := 0x0e48
 const FLAG_SALT_WATER := 0x01
 const FLAG_WATER := 0x04
-const FIRST_TREE := 0x06
-const LAST_TREE := 0x0c
+const FIRST_TREE := BuildingTileIds.TREE_FIRST
+const LAST_TREE := BuildingTileIds.TREE_LAST
 const FORBIDDEN_COAST := 0x2e
 const WATERFALL := 0x3e
 
