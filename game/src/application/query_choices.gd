@@ -183,7 +183,7 @@ func cancel_sign() -> void:
 
 
 func open_query(point: Vector2i) -> void:
-	var result := Queries.inspect(app.document_state.city, point, text_resources.original_query_strings)
+	var result := Queries.inspect(app.document_state.city, point)
 
 	if not result.ok:
 		app.interface.show_error("Cannot query tile: %s" % result.error)
@@ -199,7 +199,7 @@ func open_query(point: Vector2i) -> void:
 			return
 
 		app.reports.show_news_items(approval.news_items)
-		result = Queries.inspect(app.document_state.city, point, text_resources.original_query_strings)
+		result = Queries.inspect(app.document_state.city, point)
 
 	if (
 		result.kind == "general"
@@ -214,9 +214,7 @@ func open_query(point: Vector2i) -> void:
 	var action_text := ""
 
 	if not action.is_empty():
-		var action_resource_id := int(result.action_resource_id)
-		var fallback := "Analyze" if action == "city_analysis" else "Ruminate"
-		action_text = str(text_resources.original_query_strings.get(action_resource_id, fallback))
+		action_text = str(QueryStrings.ACTIONS.get(action, ""))
 
 	var neighborhood := QueryNeighborhood.render(app.document_state.city, point, app.asset_state.palette_index_encoding, app.asset_state.large_sprites)
 	app.query_dialog.show_query(
@@ -268,9 +266,7 @@ func run_query_action() -> void:
 
 	match app.tool_state.active_query_result.action if app.tool_state.active_query_result != null else "":
 		"city_analysis":
-			var analysis := QueryFacilityActions.city_analysis(
-				app.document_state.city, text_resources.original_query_strings
-			)
+			var analysis := QueryFacilityActions.city_analysis(app.document_state.city)
 
 			if not analysis.ok:
 				app.interface.show_error("Cannot analyze city: %s" % analysis.error)

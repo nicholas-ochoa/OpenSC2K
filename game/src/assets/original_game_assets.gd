@@ -10,29 +10,7 @@ const LibraryWindows = preload("res://src/ui/city_windows/library_ruminate_windo
 
 const CREDITS_TEXT_RESOURCE_ID := 128
 const FOREST_PROTEST_BITMAP_ID := 403
-const FOREST_PROTEST_STRING_ID := 236
-const BUILDING_OBJECTION_STRING_ID := 106
-const INDUSTRY_STRING_FIRST := 422
-const INDUSTRY_STRING_LAST := 432
-const CITY_MAP_STRING_FIRST := 327
-const CITY_MAP_STRING_LAST := 344
-const SIMNATION_FORMAT_STRING_ID := 421
-const NEIGHBOR_NAME_STRING_FIRST := 548
-const NEIGHBOR_NAME_STRING_LAST := 583
-const NEWSPAPER_STRING_FIRST := 347
-const NEWSPAPER_STRING_LAST := 391
 
-const DEFAULT_FOREST_PROTEST_TEXT := "Citizens are protesting forest demolition."
-const DEFAULT_BUILDING_OBJECTION_TEXT := "Residents objected to this facility site."
-
-const NOTICE_STRINGS: Dictionary[int, String] = {
-	106: "Your citizens urge you to reconsider the placement of this facility",
-	236: "Citizens are protesting your destruction of the forest.",
-}
-
-var strings: Dictionary[int, String] = string_table()
-var forest_protest_text: String = NOTICE_STRINGS[FOREST_PROTEST_STRING_ID]
-var building_objection_text: String = NOTICE_STRINGS[BUILDING_OBJECTION_STRING_ID]
 var forest_protest_image: Image
 var library_texts: Dictionary[int, String] = {}
 var original_credits := ""
@@ -56,24 +34,6 @@ static func load_root(reference_root: String) -> OriginalGameAssets:
 	var result := OriginalGameAssets.new()
 	result.load_ui(reference_root)
 	result.load_city_graphics(reference_root)
-
-	return result
-
-
-static func required_string_ids() -> PackedInt32Array:
-	return PackedInt32Array(string_table().keys())
-
-
-static func string_table() -> Dictionary[int, String]:
-	var result: Dictionary[int, String] = NOTICE_STRINGS.duplicate()
-
-	for table: Dictionary[int, String] in [
-		CityStatusMessages.STATUS_STRINGS, BudgetAdvice.ADVICE_STRINGS,
-		CityMapWindowControl.MAP_MODE_STRINGS, NewspaperDialog.NEWSPAPER_STRINGS,
-		SimNationWindowControl.NATION_STRINGS, IndustryWindowControl.INDUSTRY_STRINGS,
-		QueryStrings.TEXT,
-	]:
-		result.merge(table)
 
 	return result
 

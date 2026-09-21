@@ -57,51 +57,8 @@ const MODE_VIEWS := {
 	"land_value": CityViewMode.Mode.LAND_VALUE,
 	"fire_power": CityViewMode.Mode.FIRE_POWER,
 }
-const MODE_STRING_IDS := {
-	"structures": 327,
-	"zones": 328,
-	"roads": 329,
-	"rail": 330,
-	"traffic": 331,
-	"power": 332,
-	"water": 333,
-	"density": 334,
-	"growth": 335,
-	"crime": 336,
-	"police_power": 337,
-	"police_stations": 338,
-	"pollution": 339,
-	"land_value": 340,
-	"fire_power": 341,
-	"fire_stations": 342,
-	"schools": 343,
-	"colleges": 344,
-}
-
-const MAP_MODE_STRINGS: Dictionary[int, String] = {
-	327: "Structures",
-	328: "Zones",
-	329: "Roads",
-	330: "Rail",
-	331: "Traffic",
-	332: "Power",
-	333: "Water Supply",
-	334: "Density",
-	335: "Rate of Growth",
-	336: "Crime Rate",
-	337: "Police Power",
-	338: "Police Depts",
-	339: "Pollution",
-	340: "Land Value",
-	341: "Fire Power",
-	342: "Fire Depts",
-	343: "Schools",
-	344: "Colleges",
-}
-
 var city: CityState
 var palette: Sc2Palette
-var strings: Dictionary = {}
 var icon_sheet: Image
 var tab_bar: TabBar
 var preview: CityMapPreviewControl
@@ -160,9 +117,8 @@ func _ready() -> void:
 	_rebuild_modes()
 
 
-func set_resources(value: Image, value_strings: Dictionary) -> void:
+func set_resources(value: Image) -> void:
 	icon_sheet = value
-	strings = value_strings.duplicate()
 	_rebuild_tabs()
 	_rebuild_modes()
 
@@ -242,9 +198,8 @@ func _rebuild_modes() -> void:
 
 	for index in modes.size():
 		var mode: String = str(modes[index])
-		var resource_id := int(MODE_STRING_IDS.get(mode, 0))
 		var button := CheckBox.new()
-		button.text = str(strings.get(resource_id, MODE_NAMES.get(mode, mode)))
+		button.text = str(MODE_NAMES.get(mode, mode))
 		# one group keeps the checkboxes mutually exclusive, like radio buttons
 		button.button_group = mode_button_group
 		button.set_pressed_no_signal(index == selected_item)

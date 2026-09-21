@@ -47,6 +47,7 @@ const DEFAULT_STADIUM_TEAM_NAMES := [
 const SOUND_NUISANCE := 0x200
 const NUISANCE_BITMAP_ID := 403
 const NUISANCE_STRING_ID := 106
+const NUISANCE_OBJECTION := "Your citizens urge you to\r\n reconsider the placement\r\nof this facility"
 
 const BUDGET_CURRENT := {
 	HOSPITAL: 7,

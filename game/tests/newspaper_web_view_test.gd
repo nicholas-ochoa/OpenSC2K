@@ -63,7 +63,7 @@ func _check_city_name_fallback(newspaper: NewspaperDialog) -> void:
 	assert(document.serialize().data == source_bytes, "Reading the display name changed city bytes")
 	var paper := NewsQueue.PaperRecord.new()
 	paper.name = 2
-	assert(NewspaperDialog._paper_title(city, {}, 3, paper).contains(city.display_name()))
+	assert(NewspaperDialog._paper_title(city, 3, paper).contains(city.display_name()))
 
 	# Reproduce the first growth milestone in memory. Do not save the supplied city.
 	var misc := document.find_chunk("MISC").decoded_payload.duplicate()
@@ -75,7 +75,7 @@ func _check_city_name_fallback(newspaper: NewspaperDialog) -> void:
 	)
 	assert(data.is_valid())
 	var seed := -28 - (city.age_in_days() / 25)
-	newspaper.open_reports(city, document, data, {}, {}, seed, 0)
+	newspaper.open_reports(city, document, data, {}, seed, 0)
 	var payload := newspaper._web_payload()
 	assert(payload.headline == "BABAR Awakens!!")
 	assert(str(payload.articles[0]).contains("BABAR"))
@@ -83,7 +83,7 @@ func _check_city_name_fallback(newspaper: NewspaperDialog) -> void:
 	assert(city.city_name().is_empty())
 	newspaper.hide()
 
-	newspaper.open_reports(city, document, null, {}, {}, seed, 0)
+	newspaper.open_reports(city, document, null, {}, seed, 0)
 	assert(str(newspaper._web_payload().headlines[0]).begins_with("BABAR counts "))
 	newspaper.hide()
 	var before := document.serialize().data as PackedByteArray
@@ -151,7 +151,7 @@ func _check_menu_and_forecast(newspaper: NewspaperDialog) -> void:
 		# Menu availability follows saved progression even after population drops.
 		document.set_misc_u32(0x102c, 0)
 		var before := document.serialize().data as PackedByteArray
-		var titles := NewspaperDialog.newspaper_titles(city, document, {})
+		var titles := NewspaperDialog.newspaper_titles(city, document)
 		assert(titles.size() == mini(level + 1, 6))
 		menu.set_newspapers(titles)
 		var popup := menu.newspaper_menu.get_popup()
@@ -174,7 +174,7 @@ func _check_menu_and_forecast(newspaper: NewspaperDialog) -> void:
 	assert(data.is_valid())
 	document.set_misc_u32(NewsQueue.STORY_OFFSET + 7 * NewsQueue.STORY_RECORD_SIZE, 18)
 	document.set_misc_u32(NewsQueue.STORY_OFFSET + 7 * NewsQueue.STORY_RECORD_SIZE + 8, 0)
-	newspaper.open_reports(city, document, data, {}, {}, 123, 5)
+	newspaper.open_reports(city, document, data, {}, 123, 5)
 	var saved_weather := NewsQueue.story_record(document.find_chunk("MISC").decoded_payload, 7)
 	assert(saved_weather.type == 0 and saved_weather.argument == city.weather_type())
 	assert(newspaper.selected_newspaper == 1, "Unavailable newspaper selection was not clamped")
@@ -233,6 +233,6 @@ func _check_menu_and_forecast(newspaper: NewspaperDialog) -> void:
 	assert(document.find_chunk("XMIC").decoded_payload == microsims_before)
 	graph_chunk.set_decoded_payload(graph_before)
 	newspaper.hide()
-	newspaper.open_reports(city, document, null, {}, {}, 123, 0)
+	newspaper.open_reports(city, document, null, {}, 123, 0)
 	assert(str(newspaper._web_payload().weather_article).contains(RciAftermathPhase.WEATHER_NAMES[city.weather_type()]))
 	newspaper.hide()

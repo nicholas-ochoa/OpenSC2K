@@ -205,7 +205,7 @@ func _run() -> void:
 		assert(city.document.serialize().data == rail_before)
 
 	var paper := main.get("newspaper_dialog") as NewspaperDialog
-	paper.open_reports(city, city.document, null, {}, {}, 123)
+	paper.open_reports(city, city.document, null, {}, 123)
 	assert(paper.published_articles.size() == 5)
 	assert(" ".join(paper.published_articles).contains(str(city.population())))
 

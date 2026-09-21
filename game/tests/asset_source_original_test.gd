@@ -7,7 +7,7 @@ func _initialize() -> void:
 	var original := GameAssetSource.load_source(reference, "original", "", "res://../ext/graphics")
 	assert(original.error.is_empty(), original.error)
 	assert(original.uses_graphics_pack and original.has_city_template)
-	assert(original.assets.newspaper_data.is_valid() and not original.assets.strings.is_empty())
+	assert(original.assets.newspaper_data.is_valid())
 	assert(not GameAssetSource.load_source(reference, "original", "", "/missing-pack").error.is_empty())
 	var folder := "user://source-pack-test-%d" % OS.get_process_id()
 	assert(DirAccess.make_dir_recursive_absolute(folder) == OK)
@@ -30,7 +30,7 @@ func _initialize() -> void:
 		var external := GameAssetSource.load_source(reference, mode, folder, folder if mode == "auto" else "")
 		assert(external.error.is_empty(), external.error)
 		assert(external.uses_graphics_pack and not external.has_city_template)
-		assert(external.assets.newspaper_data == null and not external.assets.strings.is_empty())
+		assert(external.assets.newspaper_data == null)
 		assert(external.assets.large_sprites.find_sprite(1001).decode_indices().pixels == PackedInt32Array([-1, 1, 171, 172]))
 
 	for name in ["tile.png", "pack.json"]:

@@ -61,7 +61,6 @@ const CATEGORY_EDUCATION := 8
 const CATEGORY_HEALTH := 9
 const CATEGORY_RECREATION := 10
 const CATEGORY_ARCOLOGIES := 11
-const CATEGORY_RESOURCE_BASE := 988
 const MISC_TILE_COUNTS := 0x01f0
 const FIRST_MICROSIM_LABEL := 51
 const LAST_MICROSIM_LABEL := 200
@@ -110,19 +109,10 @@ const CATEGORY_BY_TILE_BOUND := [
 	[Tiles.EMPTY, CATEGORY_RECREATION],
 ]
 
-const FALLBACK_CATEGORY_NAMES := [
-	"",
-	"Transportation",
-	"Power",
-	"Water",
-	"Residential",
-	"Commercial",
-	"Industrial",
-	"Ports and airports",
-	"Education",
-	"Health and safety",
-	"Recreation",
-	"Arcologies",
+const ANALYSIS_HEADER := "LAND USE\t\tACRES\t% of CITY"
+const CATEGORY_NAMES: Array[String] = [
+	"", "Transportation", "Power", "Water", "Residential", "Commercial", "Industrial",
+	"Ports/Airports", "Education", "Health/Safety", "Recreation", "Arcologies",
 ]
 
 
@@ -159,9 +149,7 @@ static func rename_facility(
 	return result
 
 
-static func city_analysis(
-	city: CityState, resource_strings: Dictionary = {}
-) -> Analysis:
+static func city_analysis(city: CityState) -> Analysis:
 	if city == null or not city.is_valid():
 		return Analysis.failure("city is invalid")
 
@@ -194,25 +182,14 @@ static func city_analysis(
 	var categories: Array[Category] = []
 
 	for category_id in range(1, CATEGORY_COUNT):
-		var name: String = FALLBACK_CATEGORY_NAMES[category_id]
-		var resource_id := CATEGORY_RESOURCE_BASE + category_id
-
-		if resource_strings.has(resource_id):
-			name = str(resource_strings[resource_id]).strip_edges()
-
 		categories.append(Category.new(
-			category_id, name, counts[category_id],
+			category_id, CATEGORY_NAMES[category_id], counts[category_id],
 			int((counts[category_id] * 100) / total) if total != 0 else 0
 		))
 
-	var header := "Category                 Acres   Share"
-
-	if resource_strings.has(CATEGORY_RESOURCE_BASE):
-		header = str(resource_strings[CATEGORY_RESOURCE_BASE])
-
 	var result := Analysis.new()
 	result.ok = true
-	result.header = header
+	result.header = ANALYSIS_HEADER
 	result.counts = counts
 	result.total = total
 	result.categories = categories

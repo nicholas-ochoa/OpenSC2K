@@ -166,77 +166,22 @@ static func specific_sound_events(tile_id: int, statistic_0: int) -> Array[int]:
 			return []
 
 
-static func resource_string_ids() -> PackedInt32Array:
-	var unique := {}
-	unique[CITY_HALL_ACTION_RESOURCE] = true
-	unique[LIBRARY_ACTION_RESOURCE] = true
-
-	for name_index in range(0, 154):
-		unique[GENERAL_NAME_RESOURCE_BASE + name_index] = true
-
-	for name_index in range(GENERAL_CLEAR_NAME_INDEX, GENERAL_SAILBOAT_NAME_INDEX + 1):
-		unique[GENERAL_NAME_RESOURCE_BASE + name_index] = true
-
-	for resource_id in range(
-		STADIUM_SPORT_RESOURCE_BASE, STADIUM_SPORT_RESOURCE_BASE + 5
-	):
-		unique[resource_id] = true
-
-	for resource_id in range(ANALYSIS_RESOURCE_BASE, ANALYSIS_RESOURCE_BASE + 12):
-		unique[resource_id] = true
-
-	for row in MICROSIM_RESOURCE_IDS:
-		for resource_id in row:
-			if resource_id >= 0:
-				unique[resource_id] = true
-
-	var result := PackedInt32Array()
-
-	for resource_id in unique:
-		result.append(int(resource_id))
-
-	result.sort()
-
-	return result
-
-
 static func _specific_lines(
-	city: CityState,
-	microsim: CityRecords.Microsim,
-	microsim_type: int,
-	resource_strings: Dictionary
+	city: CityState, microsim: CityRecords.Microsim, microsim_type: int
 ) -> PackedStringArray:
-	if resource_strings.is_empty():
-		return PackedStringArray([
-			"Rating: %d" % microsim.stat_0,
-			"Value 1: %d" % microsim.stat_1,
-			"Value 2: %d" % microsim.stat_2,
-			"Value 3: %d" % microsim.stat_3,
-		])
-
-	if microsim_type < 0 or microsim_type >= MICROSIM_RESOURCE_IDS.size():
-		return PackedStringArray()
-
 	var result := PackedStringArray()
 
-	for resource_id in MICROSIM_RESOURCE_IDS[microsim_type]:
-		if resource_id < 0:
-			continue
+	if microsim_type < 0 or microsim_type >= QueryStrings.MICROSIM_LINES.size():
+		return result
 
-		if not resource_strings.has(resource_id):
-			return _specific_lines(city, microsim, microsim_type, {})
-
-		var template := str(resource_strings[resource_id])
-		result.append(expand_specific_template(city, microsim, template, resource_strings))
+	for template: String in QueryStrings.MICROSIM_LINES[microsim_type]:
+		result.append(expand_specific_template(city, microsim, template))
 
 	return result
 
 
 static func expand_specific_template(
-	city: CityState,
-	microsim: CityRecords.Microsim,
-	template: String,
-	resource_strings: Dictionary
+	city: CityState, microsim: CityRecords.Microsim, template: String
 ) -> String:
 	var grade_index := int(microsim.stat_0)
 	var grade := str(grade_index)
@@ -244,11 +189,11 @@ static func expand_specific_template(
 	if grade_index >= 0 and grade_index < GRADE_NAMES.size():
 		grade = GRADE_NAMES[grade_index]
 
-	var sport_id := STADIUM_SPORT_RESOURCE_BASE + int(microsim.stat_2)
-	var sport := str(microsim.stat_2)
+	var sport_index := int(microsim.stat_2)
+	var sport := str(sport_index)
 
-	if resource_strings.has(sport_id):
-		sport = str(resource_strings[sport_id])
+	if sport_index >= 0 and sport_index < QueryStrings.SPORTS.size():
+		sport = QueryStrings.SPORTS[sport_index]
 
 	var wins_losses := ""
 
@@ -267,163 +212,36 @@ static func expand_specific_template(
 	)
 
 
-static func _tile_description(
-	city: CityState,
-	point: Vector2i,
-	building: int,
-	resource_strings: Dictionary = {}
-) -> String:
-	var resource_id := general_name_resource_id(city, point, building)
-
-	if resource_strings.has(resource_id):
-		var original_name := str(resource_strings[resource_id]).strip_edges()
-
-		if not original_name.is_empty():
-			return original_name
-
-	return _fallback_tile_description(city, point, building)
-
-
-static func general_name_resource_id(
-	city: CityState, point: Vector2i, building := -1
-) -> int:
+static func tile_name(city: CityState, point: Vector2i, building := -1) -> String:
 	if city == null or city.index_of(point.x, point.y) < 0:
-		return -1
+		return ""
 
 	if building < Tiles.EMPTY:
 		building = city.building_id(point.x, point.y)
 
+	if building == Tiles.EMPTY:
+		if not city.is_water(point.x, point.y):
+			return QueryStrings.CLEAR_TERRAIN
+
+		var overlay := city.text_overlay_id(point.x, point.y)
+
+		if OverlayData.is_thing(overlay):
+			var thing := city.thing(OverlayData.thing_record(overlay))
+
+			if thing != null and thing.type == 9:
+				return QueryStrings.SAILBOAT
+
+		return QueryStrings.SALT_WATER if city.is_salt_water(point.x, point.y) else QueryStrings.FRESH_WATER
+
+	if building >= Tiles.COMMERCIAL_1X1_FIRST:
+		return QueryStrings.TILE_NAMES[building - 0x66]
+
 	var name_index := 0
 
-	if building < Tiles.COMMERCIAL_1X1_FIRST:
-		for upper_bound_index in GENERAL_NAME_UPPER_BOUNDS.size():
-			name_index = upper_bound_index
+	for upper_bound_index in GENERAL_NAME_UPPER_BOUNDS.size():
+		name_index = upper_bound_index
 
-			if building < int(GENERAL_NAME_UPPER_BOUNDS[upper_bound_index]):
-				break
-	else:
-		name_index = building - 0x66
+		if building < int(GENERAL_NAME_UPPER_BOUNDS[upper_bound_index]):
+			break
 
-	if building == Tiles.EMPTY:
-		name_index = GENERAL_CLEAR_NAME_INDEX
-
-		if city.is_water(point.x, point.y):
-			name_index = (
-				GENERAL_SALT_WATER_NAME_INDEX
-				if city.is_salt_water(point.x, point.y)
-				else GENERAL_FRESH_WATER_NAME_INDEX
-			)
-			var overlay := city.text_overlay_id(point.x, point.y)
-
-			if OverlayData.is_thing(overlay):
-				var thing := city.thing(OverlayData.thing_record(overlay))
-
-				if thing != null and thing.type == 9:
-					name_index = GENERAL_SAILBOAT_NAME_INDEX
-
-	return GENERAL_NAME_RESOURCE_BASE + name_index
-
-
-static func _fallback_tile_description(
-	city: CityState, point: Vector2i, building: int
-) -> String:
-	if building == Tiles.EMPTY:
-		if city.is_water(point.x, point.y):
-			return "Salt water" if city.is_salt_water(point.x, point.y) else "Fresh water"
-
-		return "Clear terrain"
-
-	if building <= Tiles.RUBBLE_LAST:
-		return "Rubble"
-
-	if building == Tiles.RADIOACTIVE_WASTE:
-		return "Radioactive waste"
-
-	if building <= Tiles.TREE_LAST:
-		return "Trees"
-
-	if building == Tiles.SMALL_PARK:
-		return "Small park"
-
-	if building <= Tiles.POWER_LINE_LAST:
-		return "Power lines"
-
-	if building <= Tiles.LAST_ROAD:
-		return "Road"
-
-	if building <= Tiles.RAIL_LAST:
-		return "Railway"
-
-	if building <= Tiles.TUNNEL_LAST:
-		return "Tunnel entrance"
-
-	if building <= Tiles.RAIL_POWER_CROSSING_2:
-		return "Transport crossover"
-
-	if building <= Tiles.HIGHWAY_POWER_CROSSING_2:
-		return "Highway"
-
-	if building <= Tiles.POWER_BRIDGE:
-		return "Bridge"
-
-	if building <= Tiles.REINFORCED_HIGHWAY_BRIDGE:
-		return "Highway"
-
-	if building <= Tiles.RAIL_SUBWAY_LAST:
-		return "Subway-to-rail connection"
-
-	if building <= Tiles.RESIDENTIAL_1X1_LAST:
-		return "Residential building"
-
-	if building <= Tiles.COMMERCIAL_1X1_LAST:
-		return "Commercial building"
-
-	if building <= Tiles.INDUSTRIAL_1X1_LAST:
-		return "Industrial building"
-
-	if building <= Tiles.DEVELOPED_1X1_LAST:
-		return "Construction or abandoned building"
-
-	if building <= Tiles.RESIDENTIAL_2X2_LAST:
-		return "Residential building"
-
-	if building <= Tiles.COMMERCIAL_2X2_LAST:
-		return "Commercial building"
-
-	if building <= Tiles.INDUSTRIAL_2X2_LAST:
-		return "Industrial building"
-
-	if building <= Tiles.DEVELOPED_2X2_LAST:
-		return "Construction or abandoned building"
-
-	if building <= Tiles.RESIDENTIAL_3X3_LAST:
-		return "Residential building"
-
-	if building <= Tiles.COMMERCIAL_3X3_LAST:
-		return "Commercial building"
-
-	if building <= Tiles.INDUSTRIAL_3X3_LAST:
-		return "Industrial building"
-
-	if building <= Tiles.DEVELOPED_3X3_LAST:
-		return "Construction or abandoned building"
-
-	if building <= Tiles.COAL_POWER:
-		return "Power plant"
-
-	if building <= Tiles.STATUE:
-		return "City service"
-
-	if building == WATER_PUMP:
-		return "Water pump"
-
-	if building == WATER_TOWER:
-		return "Water tower"
-
-	if building <= Tiles.DESALINIZATION:
-		return "City infrastructure"
-
-	if building <= Tiles.LAUNCH_ARCOLOGY:
-		return "Arcology"
-
-	return "Civic landmark"
+	return QueryStrings.TILE_NAMES[name_index]

@@ -5,21 +5,21 @@ signal disaster_locate_requested
 
 const REPORT_ROTATION_SECONDS := 7.0
 const NEWS_NAMES := {
-	46: CityStatusMessages.NEED_FALLBACKS[0],
-	47: CityStatusMessages.NEED_FALLBACKS[1],
-	48: CityStatusMessages.NEED_FALLBACKS[2],
-	49: CityStatusMessages.NEED_FALLBACKS[3],
-	50: CityStatusMessages.NEED_FALLBACKS[4],
-	51: CityStatusMessages.NEED_FALLBACKS[5],
-	52: CityStatusMessages.NEED_FALLBACKS[6],
-	53: CityStatusMessages.NEED_FALLBACKS[7],
-	54: CityStatusMessages.NEED_FALLBACKS[8],
-	55: CityStatusMessages.NEED_FALLBACKS[9],
-	56: CityStatusMessages.NEED_FALLBACKS[10],
-	57: CityStatusMessages.NEED_FALLBACKS[11],
-	58: CityStatusMessages.NEED_FALLBACKS[12],
-	59: CityStatusMessages.NEED_FALLBACKS[13],
-	60: CityStatusMessages.NEED_FALLBACKS[14],
+	46: CityStatusMessages.NEEDS[0],
+	47: CityStatusMessages.NEEDS[1],
+	48: CityStatusMessages.NEEDS[2],
+	49: CityStatusMessages.NEEDS[3],
+	50: CityStatusMessages.NEEDS[4],
+	51: CityStatusMessages.NEEDS[5],
+	52: CityStatusMessages.NEEDS[6],
+	53: CityStatusMessages.NEEDS[7],
+	54: CityStatusMessages.NEEDS[8],
+	55: CityStatusMessages.NEEDS[9],
+	56: CityStatusMessages.NEEDS[10],
+	57: CityStatusMessages.NEEDS[11],
+	58: CityStatusMessages.NEEDS[12],
+	59: CityStatusMessages.NEEDS[13],
+	60: CityStatusMessages.NEEDS[14],
 
 	0: "Weather report",
 	2: "City founded",
@@ -96,7 +96,6 @@ var locate_disaster_button: Button
 var speed_label: Label
 var compass: StatusCompass
 var zoom_label: Label
-var resource_strings: Dictionary = {}
 var city_status_text := ""
 var city_status_available := false
 var priority_status := false
@@ -193,14 +192,14 @@ func prepend_news_items(news_items: Array[NewsEvent], maximum := 3) -> void:
 	var reports := PackedStringArray()
 
 	for item in news_items:
-		reports.append(report_name(int(item.type), resource_strings))
+		reports.append(report_name(int(item.type)))
 
 	prepend_reports(reports, maximum)
 
 
-static func report_name(news_type: int, strings: Dictionary = {}) -> String:
+static func report_name(news_type: int) -> String:
 	if news_type >= 46 and news_type <= 60:
-		return CityStatusMessages.text(CityStatusMessages.NEED_FIRST + news_type - 46, strings)
+		return CityStatusMessages.NEEDS[news_type - 46]
 
 	return str(NEWS_NAMES.get(news_type, "City report"))
 
@@ -241,8 +240,7 @@ func refresh_message_tooltip() -> void:
 	_sync_overflow_tooltip(message_label)
 
 
-func set_city_status(engine: SimulationEngine, paused: bool, strings: Dictionary = {}) -> void:
-	resource_strings = strings
+func set_city_status(engine: SimulationEngine, paused: bool) -> void:
 	city_status_text = ""
 	city_status_available = false
 	priority_status = false
@@ -250,20 +248,18 @@ func set_city_status(engine: SimulationEngine, paused: bool, strings: Dictionary
 	var disaster_active := engine != null and engine.active_disaster_type != 0
 
 	if engine != null:
-		var resource_id := engine.city_status_resource_id
-		city_status_available = resource_id >= 0
+		city_status_available = engine.city_status_resource_id >= 0
+		city_status_text = CityStatusMessages.text(engine.city_status_resource_id)
 
 		if paused:
-			resource_id = CityStatusMessages.PAUSED
+			city_status_text = CityStatusMessages.PAUSED_TEXT
 			priority_status = true
 			status_style = "SuccessLabel"
 		elif engine.active_disaster_type != 0:
 			var disaster := engine.active_disaster_type
-			resource_id = CityStatusMessages.DISASTER_IDS[disaster] if disaster > 0 and disaster < CityStatusMessages.DISASTER_IDS.size() else 0
+			city_status_text = CityStatusMessages.DISASTERS[disaster] if disaster > 0 and disaster < CityStatusMessages.DISASTERS.size() else ""
 			priority_status = true
 			status_style = "ErrorLabel"
-
-		city_status_text = CityStatusMessages.text(resource_id, strings)
 
 	if locate_disaster_button != null:
 		locate_disaster_button.visible = disaster_active

@@ -30,7 +30,6 @@ const ScurkPalette = preload("res://src/view/scurk_palette_control.gd")
 const Minimap = preload("res://src/view/city_minimap.gd")
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
-const PeString = preload("res://src/assets/pe_string_resource.gd")
 const TextUsa = preload("res://src/assets/text_usa_resource.gd")
 const DataUsa = preload("res://src/assets/data_usa_resource.gd")
 const MapControl = preload("res://src/view/city_map_control.gd")
@@ -699,11 +698,6 @@ func _test_palette_and_minimap(reference_root: String) -> void:
 		recovered_modes == Array(Minimap.MODES, TYPE_STRING, "", null),
 		"City Map exposes all 18 modes in the recovered nine-tab order",
 	)
-	_check(
-		CityMapWindow.MODE_STRING_IDS.structures == 327
-		and CityMapWindow.MODE_STRING_IDS.colleges == 344,
-		"City Map mode labels use the recovered executable string range",
-	)
 
 	var point := Vector2i(0, 0)
 	_check(loaded_city.set_building_id(point.x, point.y, Tiles.EMPTY), "City Map fixture clears a tile")
@@ -876,41 +870,6 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(
 		not PeBitmap.load_numeric(reference_root.path_join("SIMCITY.EXE"), 0xffff).ok,
 		"Windows bitmap loader rejects a missing numeric resource",
-	)
-	var string_ids := PackedInt32Array([106, 236, 786, 790, 910, 982])
-	var strings := PeString.load_ids(reference_root.path_join("SIMCITY.EXE"), string_ids)
-	_check(strings.ok, "Windows string resources load: %s" % strings.error)
-
-	if strings.ok:
-		_check(strings.strings.size() == string_ids.size(), "Windows string loader returns each requested ID")
-		_check(strings.strings[910] == "#T", "Windows string loader decodes UTF-16 placeholders")
-
-	_check(
-		not PeString.load_ids(
-			reference_root.path_join("SIMCITY.EXE"), PackedInt32Array([0xffff])
-		).ok,
-		"Windows string loader rejects a missing resource block",
-	)
-	var newspaper_ids := PackedInt32Array()
-
-	for resource_id in range(347, 392):
-		newspaper_ids.append(resource_id)
-
-	var newspaper_strings := PeString.load_ids(
-		reference_root.path_join("SIMCITY.EXE"), newspaper_ids
-	)
-	var newspaper_strings_complete: bool = newspaper_strings.ok
-
-	if newspaper_strings.ok:
-		for resource_id in newspaper_ids:
-			newspaper_strings_complete = (
-				newspaper_strings_complete
-				and not str(newspaper_strings.strings.get(resource_id, "")).is_empty()
-			)
-
-	_check(
-		newspaper_strings_complete,
-		"Windows resources provide all newspaper headings, names, and prices",
 	)
 	var library_text := TextUsa.load_ids(
 		reference_root.path_join("DATA/TEXT_USA.DAT"),
@@ -13260,18 +13219,6 @@ func _test_sign_command(reference_root: String) -> void:
 
 
 func _test_query_info(reference_root: String) -> void:
-	var original_strings_result := PeString.load_ids(
-		reference_root.path_join("SIMCITY.EXE"), QueryText.resource_string_ids()
-	)
-	_check(
-		original_strings_result.ok,
-		"Query source strings load: %s" % original_strings_result.error,
-	)
-	var original_strings: Dictionary = original_strings_result.strings
-	_check(
-		original_strings.size() == 259,
-		"Query requests each reachable tile name, facility, action, and analysis string",
-	)
 	var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 
 	for chunk_id in ["XBLD", "XTER", "XZON", "XTXT", "XBIT"]:
@@ -13338,17 +13285,8 @@ func _test_query_info(reference_root: String) -> void:
 		queried_values == PackedInt32Array(thing_values),
 		"Query exposes all saved XTHG fields without changing their values",
 	)
-	var named_info := Queries.inspect(city, Vector2i(10, 10), original_strings)
-	_check(
-		named_info.title
-		== str(original_strings[Queries.GENERAL_NAME_RESOURCE_BASE + 6]),
-		"General query loads the original road-range name",
-	)
-	_check(
-		QueryText.general_name_resource_id(city, Vector2i(10, 10))
-		== Queries.GENERAL_NAME_RESOURCE_BASE + 6,
-		"General query applies the recovered road name indirection",
-	)
+	var named_info := Queries.inspect(city, Vector2i(10, 10))
+	_check(named_info.title == "Road", "General query applies the recovered road name indirection")
 	_check(info.zone_name == "Residential" and info.zone_density == "low-density", "Query reports zone type and density")
 	_check(info.traffic == 4, "Query reproduces adjacent road traffic calculation")
 	_check(info.altitude_feet == 250 and not info.altitude_is_depth, "Query reproduces clear-terrain altitude")
@@ -13397,28 +13335,24 @@ func _test_query_info(reference_root: String) -> void:
 	_check(city.set_building_id(40, 40, Tiles.EMPTY), "Query name fixture clears a terrain tile")
 	_check(city.set_tile_flag(40, 40, 0x04, false), "Query name fixture clears its water flag")
 	_check(
-		QueryText.general_name_resource_id(city, Vector2i(40, 40))
-		== Queries.GENERAL_NAME_RESOURCE_BASE + Queries.GENERAL_CLEAR_NAME_INDEX,
-		"General query selects the original clear-terrain name",
+		QueryText.tile_name(city, Vector2i(40, 40)) == QueryStrings.CLEAR_TERRAIN,
+		"General query selects the clear-terrain name",
 	)
 	_check(city.set_tile_flag(40, 40, 0x04, true), "Query name fixture sets its water flag")
 	_check(city.set_tile_flag(40, 40, 0x01, true), "Query name fixture sets its salt-water flag")
 	_check(
-		QueryText.general_name_resource_id(city, Vector2i(40, 40))
-		== Queries.GENERAL_NAME_RESOURCE_BASE + Queries.GENERAL_SALT_WATER_NAME_INDEX,
-		"General query selects the original salt-water name",
+		QueryText.tile_name(city, Vector2i(40, 40)) == QueryStrings.SALT_WATER,
+		"General query selects the salt-water tile name",
 	)
 	_check(city.set_tile_flag(40, 40, 0x01, false), "Query name fixture clears its salt-water flag")
 	_check(
-		QueryText.general_name_resource_id(city, Vector2i(40, 40))
-		== Queries.GENERAL_NAME_RESOURCE_BASE + Queries.GENERAL_FRESH_WATER_NAME_INDEX,
-		"General query selects the original fresh-water name",
+		QueryText.tile_name(city, Vector2i(40, 40)) == QueryStrings.FRESH_WATER,
+		"General query selects the fresh-water tile name",
 	)
 	_check(city.set_building_id(41, 40, Tiles.LLAMA_DOME), "Query name fixture places an exact-name tile")
 	_check(
-		QueryText.general_name_resource_id(city, Vector2i(41, 40))
-		== Queries.GENERAL_NAME_RESOURCE_BASE + 153,
-		"General query gives tile FF its individual original name",
+		QueryText.tile_name(city, Vector2i(41, 40)) == "Braun Llama-dome",
+		"General query gives tile FF its individual name",
 	)
 	_check(document.set_misc_u32(0x68, 8), "Query pump fixture sets rain")
 	_check(city.set_building_id(20, 20, Tiles.WATER_PUMP), "Query pump fixture places a pump")
@@ -13468,7 +13402,7 @@ func _test_query_info(reference_root: String) -> void:
 	)
 	_check(city.set_label(51, "Civic Center"), "Query fixture names a microsim")
 	_check(city.set_text_overlay_id(10, 10, 51), "Query fixture attaches a microsim")
-	var specific := Queries.inspect(city, Vector2i(10, 10), original_strings)
+	var specific := Queries.inspect(city, Vector2i(10, 10))
 	_check(specific.ok and specific.kind == "specific", "Specific query follows XTXT to XMIC")
 	_check(specific.title == "Civic Center" and specific.microsim.stat_0 == 7, "Specific query reports its label and rating")
 	_check(specific.microsim.stat_1 == 0x0102, "Specific query reads big-endian statistic one")
@@ -13491,28 +13425,10 @@ func _test_query_info(reference_root: String) -> void:
 		"Query rename uses the saved XLAB length limit",
 	)
 	_check(city.set_label(51, "Civic Center"), "Query fixture restores the facility name")
+	_check(specific.action == "city_analysis", "City Hall query exposes its Analyze action")
 	_check(
-		specific.action == "city_analysis"
-		and specific.action_resource_id == Queries.CITY_HALL_ACTION_RESOURCE,
-		"City Hall query exposes its Analyze action",
-	)
-
-	if original_strings_result.ok:
-		_check(
-			specific.lines
-			== PackedStringArray([
-				str(original_strings[945]).replace("#1", "258"),
-				str(original_strings[929]).replace("#2", "772"),
-			]),
-			"City Hall query expands its original resource rows",
-		)
-
-	var fallback := Queries.inspect(city, Vector2i(10, 10))
-	_check(
-		fallback.lines.size() == 4
-		and fallback.lines[0].contains("7")
-		and fallback.lines[3].contains("1286"),
-		"Specific query keeps raw values when original text is unavailable",
+		specific.lines == PackedStringArray(["Employees : 258", "Built in : 772"]),
+		"City Hall query expands its information rows",
 	)
 
 	microsim_data = document.find_chunk("XMIC").decoded_payload.duplicate()
@@ -13526,21 +13442,19 @@ func _test_query_info(reference_root: String) -> void:
 	microsim_data[7] = 0xfd
 	_check(document.find_chunk("XMIC").set_decoded_payload(microsim_data), "Query fixture sets Stadium data")
 	_check(city.set_label(0xfd, "Camel City Flyers"), "Query fixture names a Stadium team")
-	var stadium := Queries.inspect(city, Vector2i(10, 10), original_strings)
-	_check(stadium.microsim_type == 7 and stadium.lines.size() == 5, "Stadium query uses all five original rows")
-
-	if original_strings_result.ok:
-		_check(
-			stadium.lines
-			== PackedStringArray([
-				str(original_strings[936]),
-				str(original_strings[924]).replace("#1", "18000"),
-				str(original_strings[958]).replace("#S", str(original_strings[788])),
-				"Camel City Flyers",
-				str(original_strings[982]).replace("#W", "23-17"),
-			]),
-			"Stadium query separates its sport, editable name, and record",
-		)
+	var stadium := Queries.inspect(city, Vector2i(10, 10))
+	_check(stadium.microsim_type == 7 and stadium.lines.size() == 5, "Stadium query uses all five rows")
+	_check(
+		stadium.lines
+		== PackedStringArray([
+			"Capacity : 25000",
+			"Attendance : 18000",
+			"Local Team : Soccer",
+			"Camel City Flyers",
+			"Wins-Losses : 23-17",
+		]),
+		"Stadium query separates its sport, editable name, and record",
+	)
 
 	microsim_data[0] = 0xd1
 	microsim_data[1] = 12
@@ -13551,37 +13465,23 @@ func _test_query_info(reference_root: String) -> void:
 	microsim_data[6] = 0x07
 	microsim_data[7] = 0xd0
 	_check(document.find_chunk("XMIC").set_decoded_payload(microsim_data), "Query fixture sets Hospital data")
-	var hospital := Queries.inspect(city, Vector2i(10, 10), original_strings)
-
-	if original_strings_result.ok:
-		_check(
-			hospital.lines[3] == str(original_strings[952]).replace("#G", "A+"),
-			"Specific query maps its rating byte to the original grade scale",
-		)
-		_check(
-			hospital.lines[4] == str(original_strings[920]).replace("#3", "2000"),
-			"Specific query expands statistic three",
-		)
-		var arcology := CityRecords.Microsim.new()
-		arcology.tile_id = Tiles.PLYMOUTH_ARCOLOGY
-		arcology.stat_1 = 7
-		_check(
-			QueryText.expand_specific_template(
-				city, arcology, str(original_strings[942]), original_strings
-			)
-			== str(original_strings[942]).replace("#1", "7"),
-			"Specific query preserves suffix digits after a numeric placeholder",
-		)
+	var hospital := Queries.inspect(city, Vector2i(10, 10))
+	_check(hospital.lines[3] == "Grade : A+", "Specific query maps its rating byte to the grade scale")
+	_check(hospital.lines[4] == "Annual Cost : $2000", "Specific query expands statistic three")
+	var arcology := CityRecords.Microsim.new()
+	arcology.tile_id = Tiles.PLYMOUTH_ARCOLOGY
+	arcology.stat_1 = 7
+	_check(
+		QueryText.expand_specific_template(city, arcology, "Design Capacity : #1000")
+		== "Design Capacity : 7000",
+		"Specific query preserves suffix digits after a numeric placeholder",
+	)
 
 	microsim_data[0] = 0xf5
 	_check(document.find_chunk("XMIC").set_decoded_payload(microsim_data), "Query fixture sets Library data")
-	var library := Queries.inspect(city, Vector2i(10, 10), original_strings)
-	_check(
-		library.action == "library_ruminate"
-		and library.action_resource_id == Queries.LIBRARY_ACTION_RESOURCE,
-		"Library query exposes its Ruminate action",
-	)
-	var arcology_info := Queries.inspect(city, Vector2i(10, 10), original_strings)
+	var library := Queries.inspect(city, Vector2i(10, 10))
+	_check(library.action == "library_ruminate", "Library query exposes its Ruminate action")
+	var arcology_info := Queries.inspect(city, Vector2i(10, 10))
 	arcology_info.microsim = city.microsim(library.microsim_id)
 	arcology_info.microsim.tile_id = Tiles.PLYMOUTH_ARCOLOGY
 	_check(
@@ -13652,7 +13552,7 @@ func _test_query_info(reference_root: String) -> void:
 		document.find_chunk("MISC").set_decoded_payload(analysis_misc),
 		"City analysis fixture sets saved tile counts",
 	)
-	var analysis := QueryFacilityActions.city_analysis(city, original_strings)
+	var analysis := QueryFacilityActions.city_analysis(city)
 	_check(analysis.ok, "City Hall analysis succeeds: %s" % analysis.error)
 	_check(analysis.total == 11 and analysis.counts[0] == 1, "City Hall analysis excludes hidden and unmatched tiles from its total")
 
@@ -13663,12 +13563,11 @@ func _test_query_info(reference_root: String) -> void:
 			"City Hall analysis classifies category %d" % category_id,
 		)
 
-	if original_strings_result.ok:
-		_check(
-			analysis.header == str(original_strings[988])
-			and analysis.categories[0].name == str(original_strings[989]).strip_edges(),
-			"City Hall analysis uses the original table labels",
-		)
+	_check(
+		analysis.header == QueryFacilityActions.ANALYSIS_HEADER
+		and analysis.categories[0].name == "Transportation",
+		"City Hall analysis labels its table",
+	)
 
 	_check(
 		QueryFacilityActions.format_city_analysis(analysis).contains("9%"),

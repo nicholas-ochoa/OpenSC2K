@@ -11,58 +11,26 @@ const MONTH_NAMES := [
 	"July", "August", "September", "October", "November", "December",
 ]
 
-const NEWSPAPER_STRINGS: Dictionary[int, String] = {
-	347: "Weather Corner",
-	348: "Weather Report",
-	349: "Today's Weather",
-	350: "Weather with Merle",
-	351: "Weather Forecast",
-	352: "Weather Talk",
-	353: "Mayor Rated %d%%",
-	354: "Fred's Opinion",
-	355: "Editor's Corner",
-	356: "Commentary",
-	357: "Opinion Poll",
-	358: "Survey",
-	359: "MisSim's Advice",
-	360: "Picayune",
-	361: "Courier",
-	362: "Herald",
-	363: "Journal",
-	364: "Times",
-	365: "Chronicle",
-	366: "The newspaper is on strike.",
-	367: "Traffic %d%%",
-	368: "Pollute %d%%",
-	369: "Crime %d%%",
-	370: "Taxes %d%%",
-	371: "Unemp. %d%%",
-	372: "Educate %d%%",
-	373: "Health %d%%",
-	374: "The military is unable to find a suitable location for a base near your city. You have the thanks of the nation for your patriotic acquiesence. SALUTE!!",
-	375: "Sunday ",
-	376: "The ",
-	377: "One Cent",
-	378: "Five Cents",
-	379: "Twenty-Five Cents",
-	380: "One Dollar",
-	381: "Five Dollars",
-	382: "A Single Penny",
-	383: "Only A Nickel",
-	384: "Still A Quarter",
-	385: "Just A Dollar",
-	386: "Merely Five Bucks",
-	387: "Price 1¢",
-	388: "Price 5¢",
-	389: "Price 25¢",
-	390: "Price $1",
-	391: "Price $5",
-}
+const WEATHER_HEADINGS: Array[String] = [
+	"Weather Corner", "Weather Report", "Today's Weather", "Weather with Merle", "Weather Forecast",
+	"Weather Talk",
+]
+const OPINION_HEADINGS: Array[String] = [
+	"Fred's Opinion", "Editor's Corner", "Commentary", "Opinion Poll", "Survey", "MisSim's Advice",
+]
+const PAPER_NAMES: Array[String] = ["Picayune", "Courier", "Herald", "Journal", "Times", "Chronicle"]
+const SUNDAY := "Sunday "
+const THE := "The "
+# one row per price style, one column per 50-year era from 1900
+const PRICES := [
+	["One Cent", "Five Cents", "Twenty-Five Cents", "One Dollar", "Five Dollars"],
+	["A Single Penny", "Only A Nickel", "Still A Quarter", "Just A Dollar", "Merely Five Bucks"],
+	["Price 1¢", "Price 5¢", "Price 25¢", "Price $1", "Price $5"],
+]
 
 var city: CityState
 var document: Sc2File
 var newspaper_data: DataUsaResource
-var original_strings: Dictionary = {}
 var news_names: Dictionary = {}
 var session_seed := 0
 var selected_newspaper := 0
@@ -109,7 +77,6 @@ func open_reports(
 	city_value: CityState,
 	document_value: Sc2File,
 	data_value: DataUsaResource,
-	original_string_values: Dictionary,
 	news_name_values: Dictionary,
 	session_seed_value: int,
 	paper_index: int = 0,
@@ -117,7 +84,6 @@ func open_reports(
 	city = city_value
 	document = document_value
 	newspaper_data = data_value
-	original_strings = original_string_values
 	news_names = news_name_values
 	session_seed = session_seed_value
 	var count := NewsQueue.available_paper_count(city.city_status())
@@ -157,7 +123,7 @@ func _populate_page() -> void:
 	var old_misc: PackedByteArray = misc_chunk.decoded_payload
 	var misc := old_misc.duplicate()
 	NewsQueue.prepare_weather_report(misc, city.weather_type())
-	paper_titles = newspaper_titles(city, document, original_strings)
+	paper_titles = newspaper_titles(city, document)
 	selected_newspaper = clampi(selected_newspaper, 0, maxi(0, paper_titles.size() - 1))
 
 	var paper := NewsQueue.paper_record(misc, selected_newspaper)
@@ -252,7 +218,7 @@ func _populate_page() -> void:
 					opinion_headline = opinion.headline
 					opinion_article = str(opinion.article).strip_edges()
 
-	var paper_title := _paper_title(city, original_strings, selected_newspaper, paper)
+	var paper_title := _paper_title(city, selected_newspaper, paper)
 	page.set_page(
 		clampi(int(paper.layout), 0, 2),
 		paper_title,
@@ -264,12 +230,12 @@ func _populate_page() -> void:
 	)
 	page.set_articles(published_articles)
 	page.set_opinion(
-		original_strings.get(354 + clampi(int(paper.opinion), 0, 5), "Opinion"),
+		OPINION_HEADINGS[clampi(int(paper.opinion), 0, 5)],
 		opinion_headline,
 		opinion_article,
 	)
 	page.set_weather(
-		original_strings.get(347 + clampi(int(paper.weather), 0, 5), "Weather"),
+		WEATHER_HEADINGS[clampi(int(paper.weather), 0, 5)],
 		weather_headline,
 		weather_article,
 	)
@@ -336,9 +302,7 @@ func _refresh_picture() -> void:
 	page.set_picture(resource_id, image)
 
 
-static func newspaper_titles(
-	city_value: CityState, document_value: Sc2File, strings: Dictionary
-) -> PackedStringArray:
+static func newspaper_titles(city_value: CityState, document_value: Sc2File) -> PackedStringArray:
 	var titles := PackedStringArray()
 
 	if city_value == null or document_value == null:
@@ -351,20 +315,19 @@ static func newspaper_titles(
 
 	for index in NewsQueue.available_paper_count(city_value.city_status()):
 		titles.append(_paper_title(
-			city_value, strings, index, NewsQueue.paper_record(misc.decoded_payload, index)
+			city_value, index, NewsQueue.paper_record(misc.decoded_payload, index)
 		))
 
 	return titles
 
 
 static func _paper_title(
-	city_value: CityState, strings: Dictionary, paper_index: int, paper: NewsQueue.PaperRecord
+	city_value: CityState, paper_index: int, paper: NewsQueue.PaperRecord
 ) -> String:
-	var name_style := clampi(int(paper.name), 0, 5)
-	var paper_name: String = strings.get(360 + name_style, ["Gazette", "Herald", "Chronicle", "Times", "Journal", "Dispatch"][name_style])
+	var paper_name := PAPER_NAMES[clampi(int(paper.name), 0, 5)]
 
 	if paper_index < int(NewsQueue.PAPER_COUNT / 2):
-		return "%s%s" % [strings.get(376, "The "), paper_name]
+		return THE + paper_name
 
 	var city_name := city_value.display_name()
 
@@ -375,7 +338,7 @@ func _date_text() -> String:
 	var month_index := clampi(city.current_month() - 1, 0, MONTH_NAMES.size() - 1)
 
 	return "%s%s %d, %d" % [
-		original_strings.get(375, "Sunday "),
+		SUNDAY,
 		MONTH_NAMES[month_index],
 		city.current_day(),
 		city.current_year(),
@@ -386,12 +349,12 @@ func _price_text(paper: NewsQueue.PaperRecord) -> String:
 	var price_style := clampi(int(paper.price), 0, 2)
 	var era := clampi(floori(float(city.current_year() - 1900) / 50.0), 0, 4)
 
-	return original_strings.get(377 + price_style * 5 + era, "25 cents")
+	return PRICES[price_style][era]
 
 
 func _opinion_text(paper: NewsQueue.PaperRecord, headline: String) -> String:
 	var opinion_style := clampi(int(paper.opinion), 0, 5)
-	var heading: String = original_strings.get(354 + opinion_style, "Opinion")
+	var heading := OPINION_HEADINGS[opinion_style]
 
 	if headline.is_empty():
 		return heading
@@ -401,7 +364,7 @@ func _opinion_text(paper: NewsQueue.PaperRecord, headline: String) -> String:
 
 func _weather_text(paper: NewsQueue.PaperRecord, headline: String) -> String:
 	var weather_style := clampi(int(paper.weather), 0, 5)
-	var heading: String = original_strings.get(347 + weather_style, "Weather")
+	var heading := WEATHER_HEADINGS[weather_style]
 
 	if headline.is_empty():
 		return heading

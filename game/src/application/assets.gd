@@ -69,8 +69,6 @@ func initialize_runtime() -> void:
 	NewsQueue.initialize_session(app.newspaper_state.session_state, app.tool_state.tool_random)
 	var original_assets := app.asset_state.asset_source.assets
 	text_resources.newspaper_data = original_assets.newspaper_data
-	text_resources.original_query_strings = original_assets.strings
-	text_resources.building_objection_text = original_assets.building_objection_text
 	text_resources.library_texts = original_assets.library_texts
 	app.asset_state.scurk_graphics = original_assets.scurk_graphics
 	app.interface.build_interface(original_assets)
@@ -256,8 +254,6 @@ func apply_graphics_source(selected: GameAssetSource) -> void:
 	app.audio_controller.set_original_media_source(app.asset_state.reference_root, false)
 	var assets := selected.assets
 	text_resources.newspaper_data = assets.newspaper_data
-	text_resources.original_query_strings = assets.strings
-	text_resources.building_objection_text = assets.building_objection_text
 	text_resources.library_texts = assets.library_texts
 	app.asset_state.palette = assets.palette
 	app.asset_state.scenario_palette = assets.scenario_palette
@@ -283,7 +279,7 @@ func apply_graphics_source(selected: GameAssetSource) -> void:
 	app.city_dialogs.original_assets = assets
 	app.industry_window.industry_control.set_icon_strip(assets.industry_icons)
 	app.simnation_window.simnation_control.set_sprite_sheet(assets.simnation_sprites)
-	app.city_map_window.set_resources(assets.city_map_icons, assets.strings)
+	app.city_map_window.set_resources(assets.city_map_icons)
 	app.building_objection_dialog.set_picture(assets.forest_protest_image)
 	if app.scurk_editor != null:
 		app.scurk_editor.configure(app.asset_state.palette, app.asset_state.base_large_sprites, app.asset_state.base_small_medium_sprites,

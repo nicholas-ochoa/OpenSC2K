@@ -6,7 +6,6 @@ extends Control
 class Neighbor extends RefCounted:
 	var index: int
 	var name_index: int
-	var name_resource_id: int
 	var population: int
 	var value: int
 	var fame: int
@@ -38,8 +37,7 @@ const MISC_ARCOLOGY_POPULATION := 0x1020
 const MISC_NORMAL_POPULATION := 0x102c
 const FIRST_ARCOLOGY := BuildingTileIds.PLYMOUTH_ARCOLOGY
 const LAST_ARCOLOGY := BuildingTileIds.LAUNCH_ARCOLOGY
-const NEIGHBOR_NAME_STRING_BASE := 0x0223
-const DEFAULT_NATIONAL_FORMAT := "Nat. Pop: %lu000"
+const NATIONAL_POPULATION := "Nat. Pop: %d000"
 const SPRITE_POSITIONS := [
 	Vector2(38.0, 31.0),
 	Vector2(-26.0, -1.0),
@@ -56,50 +54,17 @@ const LABEL_POSITIONS := [
 ]
 const NATIONAL_LABEL_POSITION := Vector2(100.0, 143.0)
 
-const NATION_STRINGS: Dictionary[int, String] = {
-	421: "Nat. Pop: %lu000",
-	548: "Oak Creek",
-	549: "Denmont",
-	550: "Fort Verdegris",
-	551: "Schwinton",
-	552: "Mill Valley",
-	553: "Petaluma",
-	554: "PortVille",
-	555: "Ashland",
-	556: "Eubancs",
-	557: "Aurac",
-	558: "Tent Pegs",
-	559: "Cherryton",
-	560: "Blake",
-	561: "Pioneers",
-	562: "Fortune",
-	563: "Phippsville",
-	564: "Jeromi",
-	565: "Harpersville",
-	566: "Washers Grove",
-	567: "Stars County",
-	568: "Villa",
-	569: "Serviland",
-	570: "Newton",
-	571: "Avon",
-	572: "Dexter",
-	573: "Sinistrel",
-	574: "Jenna",
-	575: "Yestonia",
-	576: "New Boots",
-	577: "Hoek Creek",
-	578: "Stimpleton",
-	579: "Little Rouge",
-	580: "Krighton",
-	581: "Cats Corner",
-	582: "Rimmer",
-	583: "Lister",
-}
+const NEIGHBOR_NAMES: Array[String] = [
+	"Oak Creek", "Denmont", "Fort Verdegris", "Schwinton", "Mill Valley", "Petaluma",
+	"PortVille", "Ashland", "Eubancs", "Aurac", "Tent Pegs", "Cherryton",
+	"Blake", "Pioneers", "Fortune", "Phippsville", "Jeromi", "Harpersville",
+	"Washers Grove", "Stars County", "Villa", "Serviland", "Newton", "Avon",
+	"Dexter", "Sinistrel", "Jenna", "Yestonia", "New Boots", "Hoek Creek",
+	"Stimpleton", "Little Rouge", "Krighton", "Cats Corner", "Rimmer", "Lister",
+]
 
 var city: CityState
 var sprite_sheet: Texture2D
-var neighbor_names := {}
-var national_format := DEFAULT_NATIONAL_FORMAT
 
 
 func _init() -> void:
@@ -117,16 +82,6 @@ func set_city(value: CityState) -> void:
 func set_sprite_sheet(source: Image) -> void:
 	var prepared := prepare_sprite_sheet(source)
 	sprite_sheet = null if prepared == null else ImageTexture.create_from_image(prepared)
-	queue_redraw()
-
-
-func set_neighbor_names(value: Dictionary) -> void:
-	neighbor_names = value.duplicate()
-	queue_redraw()
-
-
-func set_national_format(value: String) -> void:
-	national_format = value if not value.is_empty() else DEFAULT_NATIONAL_FORMAT
 	queue_redraw()
 
 
@@ -150,9 +105,6 @@ static func snapshot(value_city: CityState) -> Snapshot:
 		var neighbor := Neighbor.new()
 		neighbor.index = index
 		neighbor.name_index = name_index
-		neighbor.name_resource_id = (
-			0 if name_index == 0 else NEIGHBOR_NAME_STRING_BASE + name_index
-		)
 		neighbor.population = value_city.document.misc_u32(offset + 4)
 		neighbor.value = value_city.document.misc_u32(offset + 8)
 		neighbor.fame = value_city.document.misc_u32(offset + 12)
@@ -218,14 +170,14 @@ static func sprite_index(population: int, ocean: bool) -> int:
 	return 5
 
 
-static func national_population_text(format_string: String, population: int) -> String:
-	var text := format_string if not format_string.is_empty() else DEFAULT_NATIONAL_FORMAT
-	text = text.replace("%lu", str(population))
-	text = text.replace("%ld", str(population))
-	text = text.replace("%u", str(population))
-	text = text.replace("%d", str(population))
+static func neighbor_name(name_index: int) -> String:
+	if name_index == 0:
+		return "Ocean"
 
-	return text
+	if name_index > 0 and name_index <= NEIGHBOR_NAMES.size():
+		return NEIGHBOR_NAMES[name_index - 1]
+
+	return "City %d" % name_index
 
 
 static func prepare_sprite_sheet(source: Image) -> Image:
@@ -284,19 +236,15 @@ func _draw() -> void:
 
 	for position_index in displayed.size():
 		var neighbor: Neighbor = data.neighbors[displayed[position_index]]
-		var name_index := int(neighbor.name_index)
-		var label := "Ocean" if name_index == 0 else str(
-			neighbor_names.get(name_index, "City %d" % name_index)
-		)
 		_draw_record_label(
-			label,
+			neighbor_name(int(neighbor.name_index)),
 			int(neighbor.population),
 			LABEL_POSITIONS[position_index + 1] * scale,
 			font_size,
 		)
 
 	_draw_outlined_text(
-		national_population_text(national_format, int(data.national_population)),
+		NATIONAL_POPULATION % int(data.national_population),
 		NATIONAL_LABEL_POSITION * scale,
 		font_size,
 	)

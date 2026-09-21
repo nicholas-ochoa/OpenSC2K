@@ -19,8 +19,8 @@ func _ready() -> void:
 	map_control.isometric_view_requested.connect(isometric_view_requested.emit)
 
 
-func set_resources(icon_strip: Image, strings: Dictionary) -> void:
-	map_control.set_resources(icon_strip, strings)
+func set_resources(icon_strip: Image) -> void:
+	map_control.set_resources(icon_strip)
 
 
 func toggle_city(

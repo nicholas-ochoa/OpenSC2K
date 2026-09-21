@@ -219,7 +219,7 @@ func refresh_city_map_viewport() -> void:
 
 func refresh_newspaper_menu() -> void:
 	app.city_menu_bar.set_newspapers(
-		NewspaperDialog.newspaper_titles(app.document_state.city, document_state.current_document, text_resources.original_query_strings),
+		NewspaperDialog.newspaper_titles(app.document_state.city, document_state.current_document),
 	)
 
 
@@ -237,7 +237,6 @@ func on_newspaper_menu(id: int) -> void:
 		app.document_state.city,
 		document_state.current_document,
 		text_resources.newspaper_data,
-		text_resources.original_query_strings,
 		CityStatusBar.NEWS_NAMES,
 		app.newspaper_state.session_seed,
 		id,
@@ -259,7 +258,7 @@ func show_building_objection() -> void:
 	if app.building_objection_dialog == null:
 		return
 
-	app.building_objection_dialog.show_message(text_resources.building_objection_text, true)
+	app.building_objection_dialog.show_message(BuildingConstants.NUISANCE_OBJECTION, true)
 
 
 func on_building_objection_closed() -> void:
@@ -302,7 +301,7 @@ func refresh_saved_news_summary() -> void:
 			continue
 
 		var story_type := int(record.type)
-		reports.append(CityStatusBar.report_name(story_type, text_resources.original_query_strings))
+		reports.append(CityStatusBar.report_name(story_type))
 
 		if reports.size() == 3:
 			break

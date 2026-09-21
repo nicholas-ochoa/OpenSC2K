@@ -24,8 +24,6 @@ const PictureDialogView = preload("res://src/ui/shared/picture_notice_dialog.tsc
 const LibraryWindowsView = preload("res://src/ui/city_windows/library_ruminate_windows.gd")
 const ScenarioDialogView = preload("res://src/ui/startup/scenario_intro_dialog.tscn")
 const BudgetDialogView = preload("res://src/ui/city_windows/budget_dialog.tscn")
-const IndustryView = preload("res://src/view/industry_window_control.gd")
-const SimNationView = preload("res://src/view/simnation_window_control.gd")
 
 # whether a visible window suspends the simulation. each registered window
 # declares one value. statistics windows are modeless, as in the original game
@@ -139,30 +137,13 @@ func _create_information_windows() -> void:
 	_register(population_window, "CityWindows", Modality.MODELESS)
 	industry_window = IndustryWindowView.instantiate()
 	_register(industry_window, "CityWindows", Modality.MODELESS)
-	var industry_names := PackedStringArray()
-
-	for index in IndustryView.INDUSTRY_COUNT:
-		var fallback: String = IndustryView.DEFAULT_NAMES[index]
-		industry_names.append(str(original_assets.strings.get(
-			OriginalGameAssets.INDUSTRY_STRING_FIRST + index, fallback
-		)))
-
-	industry_window.set_resources(industry_names, original_assets.industry_icons)
+	industry_window.set_resources(original_assets.industry_icons)
 	simnation_window = SimNationWindowView.instantiate()
 	_register(simnation_window, "CityWindows", Modality.MODELESS)
-	simnation_window.set_resources(
-		original_assets.simnation_sprites,
-		str(original_assets.strings.get(
-			OriginalGameAssets.SIMNATION_FORMAT_STRING_ID,
-			SimNationView.DEFAULT_NATIONAL_FORMAT,
-		)),
-		original_assets.strings,
-	)
+	simnation_window.set_resources(original_assets.simnation_sprites)
 	city_map_window = CityMapWindowView.instantiate()
 	_register(city_map_window, "CityWindows", Modality.MODELESS)
-	city_map_window.set_resources(
-		original_assets.city_map_icons, original_assets.strings
-	)
+	city_map_window.set_resources(original_assets.city_map_icons)
 	ordinance_window = OrdinanceWindowView.instantiate()
 	_register(ordinance_window, "CityWindows", Modality.BLOCKING)
 	analysis_dialog = AnalysisDialogView.instantiate()
@@ -183,7 +164,7 @@ func _create_event_dialogs() -> void:
 		"BuildingObjectionImage",
 		"BuildingObjectionMessage",
 		original_assets.forest_protest_image,
-		original_assets.building_objection_text,
+		BuildingConstants.NUISANCE_OBJECTION,
 	)
 	game_over_dialog = AcceptDialog.new()
 	game_over_dialog.name = "GameOverDialog"

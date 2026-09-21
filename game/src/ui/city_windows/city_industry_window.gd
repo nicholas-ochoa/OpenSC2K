@@ -3,8 +3,6 @@ extends Window
 
 signal tax_rates_changed
 
-const IndustryView = preload("res://src/view/industry_window_control.gd")
-
 var industry_control: IndustryWindowControl
 var mode_buttons: Array[CheckBox] = []
 
@@ -21,8 +19,7 @@ func _ready() -> void:
 		mode_buttons.append(radio)
 
 
-func set_resources(industry_names: PackedStringArray, icon_strip: Image) -> void:
-	industry_control.set_industry_names(industry_names)
+func set_resources(icon_strip: Image) -> void:
 	industry_control.set_icon_strip(icon_strip)
 
 

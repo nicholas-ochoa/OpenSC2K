@@ -17,26 +17,20 @@ func _run() -> void:
 	assert(speed.set_speed(GameSpeedController.Speed.TURTLE))
 	var status := (load("res://src/ui/shell/city_status_bar.tscn") as PackedScene).instantiate() as CityStatusBar
 	root.add_child(status)
-	var resources := PeStringResource.load_ids(
-		ProjectSettings.globalize_path("res://../references/SIMCITY2000/SIMCITY.EXE"),
-		CityStatusMessages.resource_ids()
-	)
-	assert(resources.ok)
-	status.resource_strings = resources.strings
 	var shortage_day := -1
 
 	# Use the same timer and event delivery as the live status bar.
 	for pulse in range(1, 201):
 		var result := speed.advance_time(200.0, pulse * 200)
 		assert(result.ok, str(result))
-		status.set_city_status(engine, false, resources.strings)
+		status.set_city_status(engine, false)
 		status.update_report_rotation(0.2)
 		if not result.news_items.is_empty():
 			status.prepend_news_items(result.news_items)
 		for item in result.news_items:
 			if int(item.type) == 50:
 				shortage_day = city.age_in_days()
-				assert(status.reports_label.text == str(resources.strings[269]).strip_edges(),
+				assert(status.reports_label.text == CityStatusMessages.NEEDS[4],
 					"Babar's shortage must have a specific status label: " + status.reports_label.text)
 		if city.age_in_days() >= 25:
 			break
@@ -44,66 +38,65 @@ func _run() -> void:
 	assert(shortage_day == 24, "Babar shortage was not reported on day 24")
 	assert(city.age_in_days() == 25)
 	assert(engine.water_usage_percent == 100)
-	assert(status.recent_reports.has(str(resources.strings[269]).strip_edges()))
+	assert(status.recent_reports.has(CityStatusMessages.NEEDS[4]))
 	var before := document.serialize().data as PackedByteArray
 	status.update_report_rotation(CityStatusBar.REPORT_ROTATION_SECONDS)
 	assert(document.serialize().data == before, "Rotating reports changed saved data")
 	assert(FileAccess.get_file_as_bytes(path) == source_bytes)
-	_check_status_cases(status, engine, resources.strings)
+	_check_status_cases(status, engine)
 	_check_worker_state(speed)
 	_check_source_tables(path.get_base_dir().get_base_dir().path_join("SIMCITY.EXE"))
 	_check_weather_phase(city)
-	await _check_main_ui(resources.strings)
+	await _check_main_ui()
 	status.free()
 	print("PASS: Babar Turtle water-shortage event reaches the status bar before February")
 	quit()
 
 
-func _check_status_cases(status: CityStatusBar, engine: SimulationEngine, strings: Dictionary) -> void:
+func _check_status_cases(status: CityStatusBar, engine: SimulationEngine) -> void:
 	var before := engine.city.document.serialize().data as PackedByteArray
 	for need in CityStatusMessages.NEED_COUNT:
 		engine.city_status_resource_id = CityStatusMessages.monthly_resource(need, 0)
-		status.set_city_status(engine, false, strings)
-		var expected := str(strings[265 + need]).strip_edges()
-		assert(not expected.is_empty())
+		status.set_city_status(engine, false)
+		var expected := CityStatusMessages.NEEDS[need]
 		assert(status.reports_label.text == expected)
-		assert(CityStatusBar.report_name(46 + need, strings) == expected)
+		assert(CityStatusBar.report_name(46 + need) == expected)
 		status.prepend_reports(PackedStringArray(["Unrelated report"]))
 		status.update_report_rotation(8.0)
 		assert(status.reports_label.text == expected, "Rotating reports lost an active need")
 
 	for weather in CityStatusMessages.WEATHER_COUNT:
-		var label := CityStatusMessages.text(33200 + weather, strings)
+		var label := CityStatusMessages.text(33200 + weather)
 		assert(label == RciAftermathPhase.WEATHER_NAMES[weather])
 		status.set_environment(Vector3i.ZERO, label)
 		assert(status.weather_label.text.contains(label))
 		if weather >= 9:
 			engine.city_status_resource_id = CityStatusMessages.monthly_resource(WeatherDisasterPhase.STATUS_WEATHER, weather)
-			status.set_city_status(engine, false, strings)
-			assert(status.reports_label.text == str(strings[272 + weather]).strip_edges())
+			status.set_city_status(engine, false)
+			assert(status.reports_label.text == CityStatusMessages.WARNINGS[weather - 9])
 
 	for disaster in range(1, 19):
 		engine.active_disaster_type = disaster
-		status.set_city_status(engine, false, strings)
-		var expected := str(strings[CityStatusMessages.DISASTER_IDS[disaster]]).strip_edges() if disaster <= 16 else ""
+		status.set_city_status(engine, false)
+		var expected := CityStatusMessages.DISASTERS[disaster] if disaster <= 16 else ""
 		assert(status.reports_label.text == expected)
-		status.set_city_status(engine, true, strings)
-		assert(status.reports_label.text == str(strings[528]).strip_edges())
+		status.set_city_status(engine, true)
+		assert(status.reports_label.text == CityStatusMessages.PAUSED_TEXT)
 		status.show_music_notice("Playing: Test")
-		assert(status.reports_label.text == str(strings[528]).strip_edges())
+		assert(status.reports_label.text == CityStatusMessages.PAUSED_TEXT)
 		status.update_report_rotation(5.1)
 
 	engine.active_disaster_type = 0
 	engine.city_status_resource_id = 269
-	status.set_city_status(engine, false, strings)
-	assert(status.reports_label.text == str(strings[269]).strip_edges())
+	status.set_city_status(engine, false)
+	assert(status.reports_label.text == CityStatusMessages.NEEDS[4])
 	engine.city_status_resource_id = CityStatusMessages.monthly_resource(WeatherDisasterPhase.STATUS_NONE, 0)
-	status.set_city_status(engine, false, strings)
+	status.set_city_status(engine, false)
 	assert(status.reports_label.text.is_empty(), "Cleared need restored an old report")
-	status.set_city_status(null, false, strings)
+	status.set_city_status(null, false)
 	status.set_reports(PackedStringArray())
-	assert(CityStatusMessages.text(280, strings) == str(strings[280]).strip_edges())
-	assert(CityStatusMessages.text(0, strings).is_empty())
+	assert(CityStatusMessages.text(CityStatusMessages.BROWNOUT) == CityStatusMessages.BROWNOUTS)
+	assert(CityStatusMessages.text(0).is_empty())
 	assert(CityStatusMessages.monthly_resource(WeatherDisasterPhase.STATUS_WEATHER, 255) == 0)
 	assert(engine.city.document.serialize().data == before, "Updating status changed saved data")
 
@@ -198,7 +191,7 @@ func _check_disaster_locate(main) -> void:
 	assert(DisasterFocus.find_point(city).x < 0, "Finished disaster still returned a location")
 
 
-func _check_main_ui(strings: Dictionary) -> void:
+func _check_main_ui() -> void:
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("user://missing-test-art"))
 	var main = (load("res://main.tscn") as PackedScene).instantiate()
@@ -207,26 +200,25 @@ func _check_main_ui(strings: Dictionary) -> void:
 	root.add_child(main)
 	await process_frame
 	main.set_process(false)
-	main.original_text_resources.original_query_strings = strings
 	assert(main.city_session.activate_document(EmptyCityTemplate.create(128)))
 	main.set_process(false)
 	main.city_status_bar.music_notice_seconds = 0
 	main.simulation_state.simulation_engine.city_status_resource_id = 269
 	main.frame.select_speed(GameSpeedController.Speed.TURTLE)
-	assert(main.city_status_bar.reports_label.text == str(main.original_text_resources.original_query_strings[269]).strip_edges())
+	assert(main.city_status_bar.reports_label.text == CityStatusMessages.NEEDS[4])
 	for weather in CityStatusMessages.WEATHER_COUNT:
 		assert(main.document_state.city.document.set_misc_u32(RciAftermathPhase.MISC_WEATHER_TREND, weather))
 		main.interface.refresh_status_summary()
 		assert(main.city_status_bar.weather_label.text.contains(RciAftermathPhase.WEATHER_NAMES[weather]))
 	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
-	assert(main.city_status_bar.reports_label.text == str(main.original_text_resources.original_query_strings[528]).strip_edges())
+	assert(main.city_status_bar.reports_label.text == CityStatusMessages.PAUSED_TEXT)
 	main.simulation_state.simulation_engine.active_disaster_type = 16
 	main.frame.select_speed(GameSpeedController.Speed.TURTLE)
-	assert(main.city_status_bar.reports_label.text == str(main.original_text_resources.original_query_strings[CityStatusMessages.DISASTER_IDS[16]]).strip_edges())
+	assert(main.city_status_bar.reports_label.text == CityStatusMessages.DISASTERS[16])
 	_check_disaster_locate(main)
 	main.simulation_state.simulation_engine.active_disaster_type = 0
 	main.interface.refresh_status_summary()
 	assert(not main.city_status_bar.locate_disaster_button.visible, "The locate button must leave with the disaster")
-	assert(main.city_status_bar.reports_label.text == str(main.original_text_resources.original_query_strings[269]).strip_edges())
+	assert(main.city_status_bar.reports_label.text == CityStatusMessages.NEEDS[4])
 	main.queue_free()
 	await process_frame

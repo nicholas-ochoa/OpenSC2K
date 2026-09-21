@@ -32,12 +32,13 @@ func _run() -> void:
 		return
 
 	var main := packed_scene.instantiate()
-	main.asset_state.reference_root = reference_root
+	preload("res://tests/support/app_fixture.gd").configure(main)
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
-	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
 	root.add_child(main)
 	await process_frame
 	await process_frame
+	# the loaded pack supplies the protected reference cities
+	reference_root = main.asset_state.reference_root
 	main.new_city.call("open_new_city_dialog")
 	await process_frame
 	var main_menu := main.get("main_menu") as MainMenuControl

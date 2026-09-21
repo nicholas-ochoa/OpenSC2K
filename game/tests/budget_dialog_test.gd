@@ -111,7 +111,7 @@ func _run() -> void:
 	dialog.open_bond_confirmation("issue", 8)
 	assert(dialog.bond_confirmation_visible())
 	dialog.bond_dialog.hide()
-	dialog.show_advice(0, 294, null)
+	dialog.show_advice(0, 0, null)
 	assert(dialog.advisor_dialog.visible)
 	dialog.reset_dialogs()
 	assert(not dialog.visible and not dialog.advisor_dialog.visible and not dialog.bond_confirmation_visible())
@@ -164,7 +164,7 @@ func _graph(id: int, value: int) -> void:
 
 
 func _advice(advisor: int, power := 0, seed_value := 1) -> int:
-	return BudgetAdvice.select(city, BudgetReport.capture(city, values), advisor, SimRandom.new(seed_value), power) - 294
+	return BudgetAdvice.select(city, BudgetReport.capture(city, values), advisor, SimRandom.new(seed_value), power)
 
 
 func _test_advice() -> void:

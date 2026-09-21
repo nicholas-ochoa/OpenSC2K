@@ -3,7 +3,6 @@ extends RefCounted
 const Sc2Document = preload("res://src/formats/sc2_file.gd")
 const CityModel = preload("res://src/model/city_state.gd")
 const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
-const PeString = preload("res://src/assets/pe_string_resource.gd")
 const OriginalAssets = preload("res://src/assets/original_game_assets.gd")
 const PopulationView = preload("res://src/view/population_window_control.gd")
 const IndustryView = preload("res://src/view/industry_window_control.gd")
@@ -26,21 +25,6 @@ func run(reference_root: String) -> void:
 
 
 func _test_original_assets(reference_root: String) -> void:
-	var resource_ids := OriginalAssets.required_string_ids()
-	_check(
-		resource_ids.has(OriginalAssets.FOREST_PROTEST_STRING_ID)
-		and resource_ids.has(OriginalAssets.BUILDING_OBJECTION_STRING_ID)
-		and resource_ids.has(OriginalAssets.INDUSTRY_STRING_FIRST)
-		and resource_ids.has(OriginalAssets.INDUSTRY_STRING_LAST)
-		and resource_ids.has(OriginalAssets.CITY_MAP_STRING_FIRST)
-		and resource_ids.has(OriginalAssets.CITY_MAP_STRING_LAST)
-		and resource_ids.has(OriginalAssets.SIMNATION_FORMAT_STRING_ID)
-		and resource_ids.has(OriginalAssets.NEIGHBOR_NAME_STRING_FIRST)
-		and resource_ids.has(OriginalAssets.NEIGHBOR_NAME_STRING_LAST)
-		and resource_ids.has(OriginalAssets.NEWSPAPER_STRING_FIRST)
-		and resource_ids.has(OriginalAssets.NEWSPAPER_STRING_LAST),
-		"Original asset loader owns every shared string-resource range",
-	)
 	var assets := OriginalAssets.load_root(reference_root)
 	_check(
 		assets.error.is_empty()
@@ -176,20 +160,6 @@ func _test_industry_window(reference_root: String) -> void:
 		not IndustryView.set_tax_rate(city, 11, 5).ok,
 		"Industry window rejects an invalid industry",
 	)
-	var names := PeString.load_ids(
-		reference_root.path_join("SIMCITY.EXE"),
-		PackedInt32Array(range(422, 433)),
-	)
-	var all_names: bool = names.ok and names.strings.size() == 11
-
-	if all_names:
-		for resource_id in range(422, 433):
-			all_names = (
-				all_names
-				and not str(names.strings.get(resource_id, "")).is_empty()
-			)
-
-	_check(all_names, "Supplied executable contains all eleven industry labels")
 	var icons := PeBitmap.load_numeric(reference_root.path_join("SIMCITY.EXE"), 178)
 	var icon_image: Image = icons.image
 	_check(
@@ -231,10 +201,10 @@ func _test_simnation_window(reference_root: String) -> void:
 		data.ok
 		and data.compass == 2
 		and data.neighbors.size() == 4
-		and data.neighbors[0].name_resource_id == 548
-		and data.neighbors[2].name_resource_id == 0
-		and data.neighbors[3].name_resource_id == 583,
-		"SimNation window reads saved records and maps name resources",
+		and SimNationView.neighbor_name(data.neighbors[0].name_index) == "Oak Creek"
+		and SimNationView.neighbor_name(data.neighbors[2].name_index) == "Ocean"
+		and SimNationView.neighbor_name(data.neighbors[3].name_index) == "Lister",
+		"SimNation window reads saved records and maps neighbor names",
 	)
 	_check(
 		data.arcology_count == 141
@@ -260,21 +230,9 @@ func _test_simnation_window(reference_root: String) -> void:
 		and SimNationView.sprite_index(100000, false) == 5,
 		"SimNation window selects all recovered population sprites",
 	)
-	var strings := PeString.load_ids(
-		reference_root.path_join("SIMCITY.EXE"),
-		PackedInt32Array([421, 548, 583]),
-	)
 	_check(
-		strings.ok
-		and str(strings.strings.get(421, "")).contains("%lu000")
-		and not str(strings.strings.get(548, "")).is_empty()
-		and not str(strings.strings.get(583, "")).is_empty(),
-		"Supplied executable contains the SimNation caption and neighbor names",
-	)
-	_check(
-		SimNationView.national_population_text("Nat. Pop: %lu000", 123456)
-		== "Nat. Pop: 123456000",
-		"SimNation window expands the original national-population format",
+		SimNationView.NATIONAL_POPULATION % 123456 == "Nat. Pop: 123456000",
+		"SimNation window expands the national-population format",
 	)
 	var source := Image.load_from_file(reference_root.path_join("BITMAPS/NEIGHBOR.BMP"))
 	var prepared: Image = SimNationView.prepare_sprite_sheet(source)

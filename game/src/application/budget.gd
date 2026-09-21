@@ -59,8 +59,8 @@ func show_advisor(index: int) -> void:
 	var power_usage := engine.power_usage_percent
 	if power_usage < 0:
 		power_usage = 100 - int(city.graph_series(8).year[0])
-	var resource_id := BudgetAdvice.select(city, report, index, engine.random, power_usage)
-	app.budget_dialog.show_advice(index, resource_id, app.city_dialogs.original_assets)
+	var advice := BudgetAdvice.select(city, report, index, engine.random, power_usage)
+	app.budget_dialog.show_advice(index, advice, app.city_dialogs.original_assets)
 	if index == 0:
 		app.effects_audio.play_sound_ids([512])
 

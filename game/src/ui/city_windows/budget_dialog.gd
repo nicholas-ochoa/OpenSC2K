@@ -398,17 +398,14 @@ func set_bond_state(bond_count: int, funds: int, average_fixed: int, _oldest_rat
 	refresh_report()
 
 
-func show_advice(index: int, resource_id: int, assets: OriginalGameAssets) -> void:
+func show_advice(index: int, advice: int, assets: OriginalGameAssets) -> void:
 	advisor_dialog.title = "%s advisor" % BudgetReport.GROUP_NAMES[index]
-	var text: String = BudgetAdvice.FALLBACK[resource_id - 294]
 	var portrait: TextureRect = $Advisor/Content/Portrait
 	portrait.texture = null
-	if assets != null:
-		text = assets.strings.get(resource_id, text)
-		if assets.city_ui_graphics != null and assets.city_ui_graphics.portraits.has(197 + index):
-			portrait.texture = ImageTexture.create_from_image(assets.city_ui_graphics.portraits[197 + index])
+	if assets != null and assets.city_ui_graphics != null and assets.city_ui_graphics.portraits.has(197 + index):
+		portrait.texture = ImageTexture.create_from_image(assets.city_ui_graphics.portraits[197 + index])
 	portrait.visible = portrait.texture != null
-	$Advisor/Content/Advice.text = text.replace("\r\n", "\n")
+	$Advisor/Content/Advice.text = BudgetAdvice.ADVICE[advice]
 	advisor_dialog.popup_centered()
 
 

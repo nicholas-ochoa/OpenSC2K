@@ -43,7 +43,6 @@ var zone_raw := 0
 var flags_raw := 0
 var underground_id := UndergroundTileIds.EMPTY
 var microsim_id := -1
-var action_resource_id := -1
 var point := Vector2i(-1, -1)
 var microsim: CityRecords.Microsim
 var lines := PackedStringArray()

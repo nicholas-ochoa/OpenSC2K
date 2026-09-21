@@ -34,37 +34,13 @@ const BUDGET_INDUSTRIAL := 2
 const BUDGET_FUNDING := 0x04
 const INITIAL_MAXIMUMS := [70, 30, 100]
 const MAXIMUM_INDUSTRY_TAX := 20
-const DEFAULT_NAMES := [
-	"Steel/Mining",
-	"Textiles",
-	"Petrochemicals",
-	"Food",
-	"Construction",
-	"Automotive",
-	"Aerospace",
-	"Finance",
-	"Media",
-	"Electronics",
-	"Tourism",
+const INDUSTRY_NAMES: Array[String] = [
+	"Steel/Mining", "Textiles", "Petrochemical", "Food", "Construction", "Automotive",
+	"Aerospace", "Finance", "Media", "Electronics", "Tourism",
 ]
-
-const INDUSTRY_STRINGS: Dictionary[int, String] = {
-	422: "Steel/Mining",
-	423: "Textiles",
-	424: "Petrochemical",
-	425: "Food",
-	426: "Construction",
-	427: "Automotive",
-	428: "Aerospace",
-	429: "Finance",
-	430: "Media",
-	431: "Electronics",
-	432: "Tourism",
-}
 
 var city: CityState
 var mode := Mode.RATIOS
-var industry_names := PackedStringArray(DEFAULT_NAMES)
 var icon_strip: Texture2D
 var dragging_tax := false
 
@@ -88,14 +64,6 @@ func set_mode(value: int) -> void:
 
 	mode = value
 	dragging_tax = false
-	queue_redraw()
-
-
-func set_industry_names(value: PackedStringArray) -> void:
-	if value.size() != INDUSTRY_COUNT:
-		return
-
-	industry_names = value.duplicate()
 	queue_redraw()
 
 
@@ -296,7 +264,7 @@ func _draw() -> void:
 
 	for industry in INDUSTRY_COUNT:
 		var center_y := plot.position.y + row_height * (float(industry) + 0.5)
-		var label := industry_names[industry]
+		var label := INDUSTRY_NAMES[industry]
 		var label_width := font.get_string_size(
 			label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
 		).x

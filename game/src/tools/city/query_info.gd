@@ -5,9 +5,7 @@ extends QueryConstants
 @warning_ignore_start("integer_division")
 
 
-static func inspect(
-	city: CityState, point: Vector2i, resource_strings: Dictionary = {}
-) -> QueryResult:
+static func inspect(city: CityState, point: Vector2i) -> QueryResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
@@ -35,14 +33,11 @@ static func inspect(
 		if microsim != null and microsim.tile_id != BuildingTileIds.EMPTY:
 			var microsim_type := int(MICROSIM_TYPE_BY_TILE.get(microsim.tile_id, 0))
 			var action := ""
-			var action_resource_id := -1
 
 			if microsim.tile_id == CITY_HALL:
 				action = "city_analysis"
-				action_resource_id = CITY_HALL_ACTION_RESOURCE
 			elif microsim.tile_id == LIBRARY:
 				action = "library_ruminate"
-				action_resource_id = LIBRARY_ACTION_RESOURCE
 
 			var specific := QueryDetails._advanced_details(city, point, OverlayData.facility_record(overlay))
 			specific.ok = true
@@ -53,11 +48,8 @@ static func inspect(
 			specific.microsim_id = OverlayData.facility_record(overlay)
 			specific.microsim = microsim
 			specific.microsim_type = microsim_type
-			specific.lines = QueryText._specific_lines(
-				city, microsim, microsim_type, resource_strings
-			)
+			specific.lines = QueryText._specific_lines(city, microsim, microsim_type)
 			specific.action = action
-			specific.action_resource_id = action_resource_id
 			specific.sound_events = QueryText.specific_sound_events(
 				int(microsim.tile_id), int(microsim.stat_0)
 			)
@@ -94,7 +86,7 @@ static func inspect(
 	result.ok = true
 	result.kind = "general"
 	result.point = point
-	result.title = QueryText._tile_description(city, point, building, resource_strings)
+	result.title = QueryText.tile_name(city, point, building)
 	result.building_id = building
 	result.terrain_id = terrain
 	result.zone_id = zone

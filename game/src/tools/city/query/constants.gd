@@ -12,17 +12,8 @@ const FIRST_BUILDING_WITH_UTILITIES := Tiles.SMALL_PARK
 const MILITARY_ZONE := 7
 const WATER_PUMP := Tiles.WATER_PUMP
 const WATER_TOWER := Tiles.WATER_TOWER
-const STADIUM_SPORT_RESOURCE_BASE := 786
 const CITY_HALL := Tiles.CITY_HALL
 const LIBRARY := Tiles.LIBRARY
-const CITY_HALL_ACTION_RESOURCE := 810
-const LIBRARY_ACTION_RESOURCE := 811
-const ANALYSIS_RESOURCE_BASE := 988
-const GENERAL_NAME_RESOURCE_BASE := 593
-const GENERAL_CLEAR_NAME_INDEX := 158
-const GENERAL_SALT_WATER_NAME_INDEX := 159
-const GENERAL_FRESH_WATER_NAME_INDEX := 160
-const GENERAL_SAILBOAT_NAME_INDEX := 161
 
 # the first strict upper bound greater than xbld selects the name index
 const GENERAL_NAME_UPPER_BOUNDS := [
@@ -87,36 +78,6 @@ const MICROSIM_TYPE_BY_TILE := {
 	Tiles.LAUNCH_ARCOLOGY: 15,
 	Tiles.LLAMA_DOME: 16,
 }
-
-# each row contains the five windows string resource ids used by one xmic type
-const MICROSIM_RESOURCE_IDS := [
-	[-1, -1, -1, -1, -1],
-	[960, 972, 916, -1, -1],
-	[945, 929, -1, -1, -1],
-	[925, 965, 943, 952, 920],
-	[962, 941, 922, -1, 919],
-	[951, 950, 970, -1, 919],
-	[935, 974, 976, 952, 920],
-	[936, 924, 958, 910, 982],
-	[934, 956, 953, 948, 911],
-	[938, 924, 976, 952, 920],
-	[966, 918, 917, 963, -1],
-	[954, 959, 928, 967, -1],
-	[921, 928, 947, 944, -1],
-	[937, -1, 978, 977, -1],
-	[971, 973, 946, -1, 940],
-	[942, 969, 930, -1, 940],
-	[980, 979, 957, 939, 931],
-	[932, 933, 964, 912, 901],
-	[968, 964, -1, 912, 903],
-	[975, 964, -1, 912, 904],
-	[981, 961, -1, 913, 909],
-	[955, 961, -1, 913, 908],
-	[923, 915, 947, 912, 902],
-	[923, 949, -1, 914, 907],
-	[924, 927, 952, 914, 905],
-	[926, -1, -1, 914, 906],
-]
 
 const GRADE_NAMES := [
 	"F",
