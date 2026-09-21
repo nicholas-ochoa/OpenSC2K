@@ -42,6 +42,42 @@ const FALLBACK := [
 	"The transport network is large for this population. Review maintenance costs.",
 ]
 
+const ADVICE_STRINGS: Dictionary[int, String] = {
+	294: "I have no advice at this time.",
+	295: "We should float a bond to pay for city expansion.",
+	296: "Rates are good right now.  Float a bond to take advantage.",
+	297: "These outstanding bonds are killing us.  Raise taxes to pay them off.",
+	298: "Cut back on City Services to cover the budget deficit.",
+	299: "I'm proud to report that crime is at an all time low.",
+	300: "Our crime rate is comparable to the national average.",
+	301: "Crime is out of control.  We need more police stations.",
+	302: "Our fire coverage is excellent.",
+	303: "Our fire response is adequate.",
+	304: "This city needs more firemen.",
+	305: "You should lower taxes to encourage growth.",
+	306: "Let's raise taxes to increase total funds.",
+	307: "Cut back on services until our funds increase.",
+	308: "The people are asking for a pollution ordinance.",
+	309: "The power plants are overworked.  Let's push energy conservation.",
+	310: "A neighborhood watch program would take a bite out of crime.",
+	311: "We need an Anti-Drug campaign to help our kids.",
+	312: "Legalized Gambling has attracted an upleasant element.",
+	313: "You should drop the 1% income tax to give Residents a break.",
+	314: "You should drop the 1% sales tax to give Commerce a break.",
+	315: "Hospital services are trim, efficient and responsive.",
+	316: "We could use more hospitals.",
+	317: "A public smoking ban would benefit everyone.",
+	318: "General CPR training will assuredly save lives.",
+	319: "While expensive, Free Clinics will make you popular.",
+	320: "Current health care is adequate to our needs.",
+	321: "Educational services are adequate to our city's need.",
+	322: "We need more adequately funded grade schools.",
+	323: "We need more adequately funded colleges.",
+	324: "YOU CAN'T CUT BACK ON FUNDING!  YOU WILL REGRET THIS!",
+	325: "The transit lanes are inadequate.  Float a bond and build more.",
+	326: "We have too many roads.  Remove some to save on maintenance.",
+}
+
 
 static func select(city: CityState, report: BudgetReport, advisor: int, random: SimRandom, power_usage: int) -> int:
 	var doc := city.document

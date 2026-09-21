@@ -25,9 +25,14 @@ const NEWSPAPER_STRING_LAST := 391
 const DEFAULT_FOREST_PROTEST_TEXT := "Citizens are protesting forest demolition."
 const DEFAULT_BUILDING_OBJECTION_TEXT := "Residents objected to this facility site."
 
-var strings: Dictionary[int, String] = OriginalUiStrings.VALUES.duplicate()
-var forest_protest_text: String = OriginalUiStrings.VALUES[FOREST_PROTEST_STRING_ID]
-var building_objection_text: String = OriginalUiStrings.VALUES[BUILDING_OBJECTION_STRING_ID]
+const NOTICE_STRINGS: Dictionary[int, String] = {
+	106: "Your citizens urge you to reconsider the placement of this facility",
+	236: "Citizens are protesting your destruction of the forest.",
+}
+
+var strings: Dictionary[int, String] = string_table()
+var forest_protest_text: String = NOTICE_STRINGS[FOREST_PROTEST_STRING_ID]
+var building_objection_text: String = NOTICE_STRINGS[BUILDING_OBJECTION_STRING_ID]
 var forest_protest_image: Image
 var library_texts: Dictionary[int, String] = {}
 var original_credits := ""
@@ -56,7 +61,21 @@ static func load_root(reference_root: String) -> OriginalGameAssets:
 
 
 static func required_string_ids() -> PackedInt32Array:
-	return PackedInt32Array(OriginalUiStrings.VALUES.keys())
+	return PackedInt32Array(string_table().keys())
+
+
+static func string_table() -> Dictionary[int, String]:
+	var result: Dictionary[int, String] = NOTICE_STRINGS.duplicate()
+
+	for table: Dictionary[int, String] in [
+		CityStatusMessages.STATUS_STRINGS, BudgetAdvice.ADVICE_STRINGS,
+		CityMapWindowControl.MAP_MODE_STRINGS, NewspaperDialog.NEWSPAPER_STRINGS,
+		SimNationWindowControl.NATION_STRINGS, IndustryWindowControl.INDUSTRY_STRINGS,
+		QueryStrings.TEXT,
+	]:
+		result.merge(table)
+
+	return result
 
 
 func load_ui(reference_root: String) -> void:

@@ -11,6 +11,54 @@ const MONTH_NAMES := [
 	"July", "August", "September", "October", "November", "December",
 ]
 
+const NEWSPAPER_STRINGS: Dictionary[int, String] = {
+	347: "Weather Corner",
+	348: "Weather Report",
+	349: "Today's Weather",
+	350: "Weather with Merle",
+	351: "Weather Forecast",
+	352: "Weather Talk",
+	353: "Mayor Rated %d%%",
+	354: "Fred's Opinion",
+	355: "Editor's Corner",
+	356: "Commentary",
+	357: "Opinion Poll",
+	358: "Survey",
+	359: "MisSim's Advice",
+	360: "Picayune",
+	361: "Courier",
+	362: "Herald",
+	363: "Journal",
+	364: "Times",
+	365: "Chronicle",
+	366: "The newspaper is on strike.",
+	367: "Traffic %d%%",
+	368: "Pollute %d%%",
+	369: "Crime %d%%",
+	370: "Taxes %d%%",
+	371: "Unemp. %d%%",
+	372: "Educate %d%%",
+	373: "Health %d%%",
+	374: "The military is unable to find a suitable location for a base near your city. You have the thanks of the nation for your patriotic acquiesence. SALUTE!!",
+	375: "Sunday ",
+	376: "The ",
+	377: "One Cent",
+	378: "Five Cents",
+	379: "Twenty-Five Cents",
+	380: "One Dollar",
+	381: "Five Dollars",
+	382: "A Single Penny",
+	383: "Only A Nickel",
+	384: "Still A Quarter",
+	385: "Just A Dollar",
+	386: "Merely Five Bucks",
+	387: "Price 1¢",
+	388: "Price 5¢",
+	389: "Price 25¢",
+	390: "Price $1",
+	391: "Price $5",
+}
+
 var city: CityState
 var document: Sc2File
 var newspaper_data: DataUsaResource
@@ -377,11 +425,47 @@ func _local_report(slot: int) -> NewspaperText.Result:
 	var name_text := city.display_name()
 	var demand := city.rci_demand()
 	var reports := [
-		["%s counts %d residents" % [name_text, city.population()], "%s has a recorded population of %d. City services and transport must keep pace as new neighborhoods develop. Residents need connections to employment, electricity and water. This edition records conditions on %s." % [name_text, city.population(), _date_text()]],
-		["Treasury reports $%d" % city.funds(), "The city treasury holds $%d. Construction draws from this balance, while taxes and service spending affect the annual budget. The Budget window contains current funding levels and projected totals." % city.funds()],
-		["Development demand in focus", "Current demand readings are %d for homes, %d for commerce and %d for industry. Positive readings indicate room for growth. Tax rates, transport access and city conditions affect development. Zoned land still needs suitable services before it can grow." % [demand.x, demand.y, demand.z]],
-		["Connections keep the city moving", "Roads, rail and subway routes connect neighborhoods with jobs. Gaps and disconnected stations can prevent trips. The City Map transport views show where the network is busy and where better connections may help."],
-		["A closer look at city services", "Police, fire protection, schools and health services depend on facilities and their funding. The city maps show local coverage. The Budget window lets the mayor review service spending, while Query provides details for individual facilities."]
+		[
+			"%s counts %d residents" % [name_text, city.population()],
+			(
+				"%s has a recorded population of %d. City services and transport must keep pace as "
+				+ "new neighborhoods develop. Residents need connections to employment, electricity and "
+				+ "water. This edition records conditions on %s."
+			) % [name_text, city.population(), _date_text()],
+		],
+		[
+			"Treasury reports $%d" % city.funds(),
+			(
+				"The city treasury holds $%d. Construction draws from this balance, while taxes and "
+				+ "service spending affect the annual budget. The Budget window contains current "
+				+ "funding levels and projected totals."
+			) % city.funds(),
+		],
+		[
+			"Development demand in focus",
+			(
+				"Current demand readings are %d for homes, %d for commerce and %d for industry. "
+				+ "Positive readings indicate room for growth. Tax rates, transport access and city "
+				+ "conditions affect development. Zoned land still needs suitable services before it "
+				+ "can grow."
+			) % [demand.x, demand.y, demand.z],
+		],
+		[
+			"Connections keep the city moving",
+			(
+				"Roads, rail and subway routes connect neighborhoods with jobs. Gaps and disconnected "
+				+ "stations can prevent trips. The City Map transport views show where the network is "
+				+ "busy and where better connections may help."
+			),
+		],
+		[
+			"A closer look at city services",
+			(
+				"Police, fire protection, schools and health services depend on facilities and their "
+				+ "funding. The city maps show local coverage. The Budget window lets the mayor review "
+				+ "service spending, while Query provides details for individual facilities."
+			),
+		],
 	]
 	var report: Array = reports[clampi(slot, 0, reports.size() - 1)]
 

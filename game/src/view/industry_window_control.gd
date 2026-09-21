@@ -48,6 +48,20 @@ const DEFAULT_NAMES := [
 	"Tourism",
 ]
 
+const INDUSTRY_STRINGS: Dictionary[int, String] = {
+	422: "Steel/Mining",
+	423: "Textiles",
+	424: "Petrochemical",
+	425: "Food",
+	426: "Construction",
+	427: "Automotive",
+	428: "Aerospace",
+	429: "Finance",
+	430: "Media",
+	431: "Electronics",
+	432: "Tourism",
+}
+
 var city: CityState
 var mode := Mode.RATIOS
 var industry_names := PackedStringArray(DEFAULT_NAMES)

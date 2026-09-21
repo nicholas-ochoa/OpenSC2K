@@ -14,8 +14,16 @@ const HOURGLASS_IDS := [189, 190, 191, 192, 193, 194, 195, 196]
 const PORTRAIT_IDS := [197, 198, 199, 200, 201, 202, 203, 204]
 const PORTRAIT_SIZE := Vector2i(64, 82)
 const TERRAIN_SIZES := {139: Vector2i(65, 65), 207: Vector2i(544, 19), "TERRAIN.BMP": Vector2i(341, 19)}
-const TERRAIN_ROLES := ["raise", "lower", "stretch", "level", "sea_raise", "sea_lower", "water", "stream", "tree", "forest", "center", "zoom_out", "zoom_in", "rotate_left", "rotate_right", "help", "hills", "water_amount", "trees_amount"]
-const TERRAIN_LOOSE_ROLES := ["raise", "lower", "stretch", "level", "sea_raise", "sea_lower", "water", "stream", "tree", "forest", "zoom_out", "zoom_in", "rotate_left", "rotate_right", "center", "help", "hills", "water_amount", "trees_amount"]
+const TERRAIN_ROLES := [
+	"raise", "lower", "stretch", "level", "sea_raise", "sea_lower", "water", "stream", "tree",
+	"forest", "center", "zoom_out", "zoom_in", "rotate_left", "rotate_right", "help", "hills",
+	"water_amount", "trees_amount",
+]
+const TERRAIN_LOOSE_ROLES := [
+	"raise", "lower", "stretch", "level", "sea_raise", "sea_lower", "water", "stream", "tree",
+	"forest", "zoom_out", "zoom_in", "rotate_left", "rotate_right", "center", "help", "hills",
+	"water_amount", "trees_amount",
+]
 const TERRAIN_WIDTHS := [19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 16, 13, 8]
 const MEDIA_IDS := [261, 262, 263, 264, 265, 266, 267, 268, 269, 270, "WILL0D.BMP", "WILL0U.BMP", "WILL1D.BMP", "WILL1U.BMP", "WILL2D.BMP", "WILL2U.BMP", "WILL3D.BMP", "WILL3U.BMP", "WILL4D.BMP", "WILL4U.BMP"]
 const NOTICE_IDS := [400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411]

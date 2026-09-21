@@ -56,6 +56,46 @@ const LABEL_POSITIONS := [
 ]
 const NATIONAL_LABEL_POSITION := Vector2(100.0, 143.0)
 
+const NATION_STRINGS: Dictionary[int, String] = {
+	421: "Nat. Pop: %lu000",
+	548: "Oak Creek",
+	549: "Denmont",
+	550: "Fort Verdegris",
+	551: "Schwinton",
+	552: "Mill Valley",
+	553: "Petaluma",
+	554: "PortVille",
+	555: "Ashland",
+	556: "Eubancs",
+	557: "Aurac",
+	558: "Tent Pegs",
+	559: "Cherryton",
+	560: "Blake",
+	561: "Pioneers",
+	562: "Fortune",
+	563: "Phippsville",
+	564: "Jeromi",
+	565: "Harpersville",
+	566: "Washers Grove",
+	567: "Stars County",
+	568: "Villa",
+	569: "Serviland",
+	570: "Newton",
+	571: "Avon",
+	572: "Dexter",
+	573: "Sinistrel",
+	574: "Jenna",
+	575: "Yestonia",
+	576: "New Boots",
+	577: "Hoek Creek",
+	578: "Stimpleton",
+	579: "Little Rouge",
+	580: "Krighton",
+	581: "Cats Corner",
+	582: "Rimmer",
+	583: "Lister",
+}
+
 var city: CityState
 var sprite_sheet: Texture2D
 var neighbor_names := {}

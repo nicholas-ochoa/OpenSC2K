@@ -4,23 +4,24 @@ extends RefCounted
 # saved connection permissions, bridge clearance, or an elevated deck height
 
 const HEIGHT_ADJUSTMENTS := [0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0]
+# one row per terrain shape, one column per network DIRECTIONS index (N, E, S, W)
 const ENTRY_BLOCKS_DIRECTION := [
-	false, false, false, false,
-	true, false, true, false,
-	false, true, false, true,
-	true, false, true, false,
-	false, true, false, true,
-	false, false, false, false,
-	false, false, false, false,
-	false, false, false, false,
-	false, false, false, false,
-	false, false, false, false,
-	false, false, false, false,
-	false, false, false, false,
-	false, false, false, false,
-	false, false, false, false,
-	true, false, true, false,
-	true, false, true, false,
+	false, false, false, false,  # FLAT
+	true, false, true, false,  # SLOPE_TOP_LEFT
+	false, true, false, true,  # SLOPE_TOP_RIGHT
+	true, false, true, false,  # SLOPE_BOTTOM_RIGHT
+	false, true, false, true,  # SLOPE_BOTTOM_LEFT
+	false, false, false, false,  # RAISED_EXCEPT_BOTTOM
+	false, false, false, false,  # RAISED_EXCEPT_LEFT
+	false, false, false, false,  # RAISED_EXCEPT_TOP
+	false, false, false, false,  # RAISED_EXCEPT_RIGHT
+	false, false, false, false,  # CORNER_TOP
+	false, false, false, false,  # CORNER_RIGHT
+	false, false, false, false,  # CORNER_BOTTOM
+	false, false, false, false,  # CORNER_LEFT
+	false, false, false, false,  # RAISED
+	true, false, true, false,  # UNUSED_0E
+	true, false, true, false,  # UNUSED_0F
 ]
 
 const VERTICAL_TERRAIN_BLOCKS := {

@@ -78,6 +78,27 @@ const MODE_STRING_IDS := {
 	"colleges": 344,
 }
 
+const MAP_MODE_STRINGS: Dictionary[int, String] = {
+	327: "Structures",
+	328: "Zones",
+	329: "Roads",
+	330: "Rail",
+	331: "Traffic",
+	332: "Power",
+	333: "Water Supply",
+	334: "Density",
+	335: "Rate of Growth",
+	336: "Crime Rate",
+	337: "Police Power",
+	338: "Police Depts",
+	339: "Pollution",
+	340: "Land Value",
+	341: "Fire Power",
+	342: "Fire Depts",
+	343: "Schools",
+	344: "Colleges",
+}
+
 var city: CityState
 var palette: Sc2Palette
 var strings: Dictionary = {}

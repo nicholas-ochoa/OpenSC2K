@@ -29,6 +29,7 @@ const THING_SPEEDS := {
 
 
 # final supplied smallmed.dat metadata heights for sprite ids 0x71 through 0xfa
+const BUILDING_SPRITE_HEIGHTS_FIRST := 0x71
 const BUILDING_SPRITE_HEIGHTS := [
 	5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 8, 7, 6, 6, 8,
 	12, 7, 9, 5, 8, 6, 7, 5, 5, 5, 5, 10, 11, 11, 11, 16,

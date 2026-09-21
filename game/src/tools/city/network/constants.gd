@@ -66,22 +66,40 @@ const TERRAIN_IS_NETWORK_SLOPE := [
 	false, true, true, true, true, false, false, false,
 ]
 const TERRAIN_BLOCKS_DIRECTION := NetworkTerrainRules.ENTRY_BLOCKS_DIRECTION
+# one row per current terrain shape, one column per DIRECTIONS index (N, E, S, W).
+# only rows where TERRAIN_IS_NETWORK_SLOPE is true are read
 const GRADED_TERRAIN := [
+	# FLAT
 	TerrainTileIds.FLAT, TerrainTileIds.FLAT, TerrainTileIds.SLOPE_TOP_LEFT, TerrainTileIds.FLAT,
+	# SLOPE_TOP_LEFT
 	TerrainTileIds.FLAT, TerrainTileIds.FLAT, TerrainTileIds.FLAT, TerrainTileIds.FLAT,
+	# SLOPE_TOP_RIGHT
 	TerrainTileIds.FLAT, TerrainTileIds.FLAT, TerrainTileIds.SLOPE_TOP_LEFT, TerrainTileIds.SLOPE_TOP_LEFT,
+	# SLOPE_BOTTOM_RIGHT
 	TerrainTileIds.FLAT, TerrainTileIds.FLAT, TerrainTileIds.SLOPE_TOP_LEFT, TerrainTileIds.SLOPE_TOP_LEFT,
+	# SLOPE_BOTTOM_LEFT
 	TerrainTileIds.FLAT, TerrainTileIds.FLAT, TerrainTileIds.FLAT, TerrainTileIds.FLAT,
+	# RAISED_EXCEPT_BOTTOM
 	TerrainTileIds.FLAT, TerrainTileIds.FLAT, TerrainTileIds.FLAT, TerrainTileIds.FLAT,
+	# RAISED_EXCEPT_LEFT
 	TerrainTileIds.FLAT, TerrainTileIds.FLAT, TerrainTileIds.FLAT, TerrainTileIds.FLAT,
+	# RAISED_EXCEPT_TOP
 	TerrainTileIds.FLAT, TerrainTileIds.FLAT, TerrainTileIds.FLAT, TerrainTileIds.FLAT,
+	# RAISED_EXCEPT_RIGHT
 	TerrainTileIds.FLAT, TerrainTileIds.FLAT, TerrainTileIds.FLAT, TerrainTileIds.FLAT,
+	# CORNER_TOP
 	TerrainTileIds.SLOPE_TOP_RIGHT, TerrainTileIds.SLOPE_TOP_LEFT, TerrainTileIds.SLOPE_TOP_RIGHT, TerrainTileIds.SLOPE_TOP_LEFT,
+	# CORNER_RIGHT
 	TerrainTileIds.SLOPE_TOP_RIGHT, TerrainTileIds.SLOPE_BOTTOM_RIGHT, TerrainTileIds.SLOPE_TOP_RIGHT, TerrainTileIds.SLOPE_BOTTOM_RIGHT,
+	# CORNER_BOTTOM
 	TerrainTileIds.SLOPE_BOTTOM_LEFT, TerrainTileIds.SLOPE_BOTTOM_RIGHT, TerrainTileIds.SLOPE_BOTTOM_LEFT, TerrainTileIds.SLOPE_BOTTOM_RIGHT,
+	# CORNER_LEFT
 	TerrainTileIds.SLOPE_BOTTOM_LEFT, TerrainTileIds.SLOPE_TOP_LEFT, TerrainTileIds.SLOPE_BOTTOM_LEFT, TerrainTileIds.SLOPE_TOP_LEFT,
+	# RAISED
 	TerrainTileIds.FLAT, TerrainTileIds.FLAT, TerrainTileIds.SLOPE_TOP_LEFT, TerrainTileIds.RAISED_EXCEPT_LEFT,
+	# UNUSED_0E
 	TerrainTileIds.FLAT, TerrainTileIds.FLAT, TerrainTileIds.RAISED_EXCEPT_TOP, TerrainTileIds.CORNER_BOTTOM,
+	# UNUSED_0F
 	TerrainTileIds.SLOPE_TOP_LEFT, TerrainTileIds.CORNER_TOP, TerrainTileIds.SLOPE_TOP_LEFT, TerrainTileIds.CORNER_RIGHT,
 ]
 const NETWORK_SLOPE_SHAPES := [0, 2, 3, 4, 5]

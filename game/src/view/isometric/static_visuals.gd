@@ -225,12 +225,13 @@ static func traffic_overlay_visual(
 
 	var tile := city.building_id(x, y)
 
-	# the executable enters its traffic branch only for road-or-higher xbld
-	# values. earlier table entries belong to other painter paths
-	if tile < Tiles.ROAD_STRAIGHT_1 or tile >= TRAFFIC_TILE_VARIANTS.size():
+	# the executable enters its traffic branch only for road-or-higher xbld values
+	var variant_index := tile - TRAFFIC_TILE_FIRST
+
+	if variant_index < 0 or variant_index >= TRAFFIC_TILE_VARIANTS.size():
 		return null
 
-	var variant: int = TRAFFIC_TILE_VARIANTS[tile]
+	var variant: int = TRAFFIC_TILE_VARIANTS[variant_index]
 
 	if variant == 0:
 		return null

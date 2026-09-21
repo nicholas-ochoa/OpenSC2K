@@ -46,7 +46,7 @@ static func update_airplane(
 			return
 
 		# building artwork height is part of aircraft physics
-		var sprite_height: int = BUILDING_SPRITE_HEIGHTS[building - Tiles.LOWER_CLASS_HOMES_1X1_2]
+		var sprite_height: int = BUILDING_SPRITE_HEIGHTS[building - BUILDING_SPRITE_HEIGHTS_FIRST]
 
 		if ThingData.read(things, offset + 5) < int(sprite_height / 3):
 			AirThingMotion._convert_to_explosion(things, record, 5, 1)
