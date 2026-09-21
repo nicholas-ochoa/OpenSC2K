@@ -2917,6 +2917,24 @@ func _test_sprite_archives(reference_root: String) -> void:
 		and monster_layers[14].flip,
 		"Monster view mirrors and positions the right lower outer layer",
 	)
+	var ordinary_monster := ThingRecord.from_fields({
+		"type": 5, "z": 10, "dx": 0x25, "dy": 0x1b,
+	})
+	for view_size in [IsometricRenderer.VIEW_SMALL, IsometricRenderer.VIEW_MEDIUM, IsometricRenderer.VIEW_LARGE]:
+		var head_base: int = 490 + view_size * 500
+		for phase in [0, 19, 20, 39, 40]:
+			var eye_layers := IsometricMovingVisuals.monster_layers(
+				starter, 64, 64, ordinary_monster, 1, view_size, phase
+			)
+			var expected_head := head_base + (1 if phase >= 20 and phase < 40 else 0)
+			_check(
+				eye_layers[6].sprite_id == expected_head
+				and eye_layers[7].sprite_id == expected_head
+				and not eye_layers[6].flip and eye_layers[7].flip,
+				"Monster eye opens and closes at every source size without the unused DY flag",
+			)
+	_check(ordinary_monster.dx == 0x25 and ordinary_monster.dy == 0x1b,
+		"Monster eye animation preserves saved pose bytes")
 	var small_monster_layers := IsometricMovingVisuals.monster_layers(starter, 64, 64, ThingRecord.from_fields({
 		"type": 5,
 		"z": 10,

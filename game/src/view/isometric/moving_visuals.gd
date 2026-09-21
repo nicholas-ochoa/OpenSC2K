@@ -80,7 +80,7 @@ static func moving_thing_visual(
 	var sprite: Sprite
 
 	if type == 5:
-		var layers := monster_layers(city, x, y, thing, record, view_size)
+		var layers := monster_layers(city, x, y, thing, record, view_size, animation_phase)
 
 		if layers.is_empty():
 			return null
@@ -368,7 +368,8 @@ static func monster_layers(
 	y: int,
 	thing: ThingRecord,
 	record: int,
-	view_size := VIEW_LARGE
+	view_size := VIEW_LARGE,
+	animation_phase := 0
 ) -> Array[Layer]:
 	var layers: Array[Layer] = []
 
@@ -387,7 +388,8 @@ static func monster_layers(
 	var dy := thing.dy
 	var body_x := (x - y - 3) * HALF_WIDTH
 	var body_y := (x + y) * HALF_HEIGHT - (altitude + z) * ALTITUDE_STEP
-	var head_frame := 0
+	# borrow the about eye timing, leave the saved pose and rng alone
+	var head_frame := (animation_phase / 20) & 1
 
 	if dy & 0x80:
 		head_frame = (thing.px + thing.py + x + y + record) & 1
