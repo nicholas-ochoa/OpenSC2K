@@ -29,7 +29,6 @@ var _updating := false
 
 
 func _ready() -> void:
-	# visible in the editor, closed at startup
 	hide()
 	theme = AppUiTheme.current()
 	folder_input = $Fields/Grid/FolderRow/FolderInput

@@ -10,7 +10,6 @@ var ordinance_control: OrdinanceWindowControl
 
 
 func _ready() -> void:
-	# visible in the editor, closed at startup
 	hide()
 	close_requested.connect(hide)
 	theme = AppUiTheme.current()

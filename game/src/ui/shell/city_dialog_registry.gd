@@ -1,6 +1,7 @@
 class_name CityDialogRegistry
 extends Control
 
+# Scene dialogs stay visible in the editor and hide themselves in _ready().
 const FileDialogs = preload("res://src/ui/shared/file_dialog_factory.gd")
 const NewCityDialogView = preload("res://src/ui/startup/new_city_terrain_dialog.tscn")
 const SignDialogView = preload("res://src/ui/tools/city_sign_dialog.tscn")

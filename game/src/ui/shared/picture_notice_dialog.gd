@@ -6,7 +6,6 @@ var message_label: Label
 
 
 func _ready() -> void:
-	# visible in the editor, closed at startup
 	hide()
 	theme = AppUiTheme.current()
 	get_label().visible = false

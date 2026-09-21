@@ -43,7 +43,6 @@ var confirm_all_dialog: ConfirmationDialog
 
 
 func _ready() -> void:
-	# visible in the editor, closed at startup
 	hide()
 	group_selector = get_node("Content/Controls/GroupSelector")
 	view_buttons.assign([get_node("Content/Controls/Large"), get_node("Content/Controls/Medium"), get_node("Content/Controls/Small")])

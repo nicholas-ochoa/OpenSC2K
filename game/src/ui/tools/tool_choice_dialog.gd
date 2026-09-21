@@ -9,7 +9,6 @@ var choice_buttons: Array[Button] = []
 
 
 func _ready() -> void:
-	# visible in the editor, closed at startup
 	hide()
 	theme = AppUiTheme.current()
 	get_ok_button().visible = false

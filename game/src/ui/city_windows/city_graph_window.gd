@@ -8,7 +8,6 @@ var series_buttons: Array[CheckBox] = []
 
 
 func _ready() -> void:
-	# visible in the editor, closed at startup
 	hide()
 	close_requested.connect(hide)
 	graph_control = get_node("Background/Margin/Column/ChartFrame/Chart")

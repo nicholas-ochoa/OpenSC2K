@@ -20,7 +20,6 @@ var ok_button: Button
 
 
 func _ready() -> void:
-	# visible in the editor, closed at startup
 	hide()
 	var title_bar: DialogTitleBar = $Center/QueryDialog/Content/TitleBar
 	title_label = title_bar.title_label

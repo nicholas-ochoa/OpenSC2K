@@ -29,7 +29,6 @@ var save_pdf_button: Button
 
 
 func _ready() -> void:
-	# visible in the editor, closed at startup
 	hide()
 	magnification_selector = get_node("Panel/Margin/Content/PrintOptions/MagnificationSelector")
 	view_selector = get_node("Panel/Margin/Content/PrintOptions/ViewSelector")

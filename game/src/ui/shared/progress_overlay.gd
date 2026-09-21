@@ -8,7 +8,6 @@ var detail_label: Label
 
 
 func _ready() -> void:
-	# visible in the editor, closed at startup
 	hide()
 	title_label = $Center/Panel/Rows/Title
 	bar = $Center/Panel/Rows/Bar

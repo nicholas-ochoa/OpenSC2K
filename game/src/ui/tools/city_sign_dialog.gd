@@ -5,7 +5,6 @@ var text_input: LineEdit
 
 
 func _ready() -> void:
-	# visible in the editor, closed at startup
 	hide()
 	theme = AppUiTheme.current()
 	text_input = $TextInput

@@ -49,7 +49,6 @@ var control_graphics: CityUiGraphics
 
 
 func _ready() -> void:
-	# visible in the editor, closed at startup
 	hide()
 	landscape_background = TextureRect.new()
 	landscape_background.mouse_filter = Control.MOUSE_FILTER_IGNORE

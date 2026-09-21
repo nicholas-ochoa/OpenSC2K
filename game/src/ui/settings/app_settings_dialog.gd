@@ -38,7 +38,6 @@ var background_audio_check: CheckBox
 
 
 func _ready() -> void:
-	# visible in the editor, closed at startup
 	hide()
 	theme = AppUiTheme.current()
 

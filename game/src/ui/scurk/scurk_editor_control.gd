@@ -116,7 +116,6 @@ func _init() -> void:
 
 func _ready() -> void:
 	AppUiTheme.bind_canvas(self)
-	# visible in the editor, closed at startup
 	hide()
 	_bind_interface()
 

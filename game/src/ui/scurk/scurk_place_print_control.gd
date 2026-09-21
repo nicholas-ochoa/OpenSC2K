@@ -79,7 +79,6 @@ var redo_button: Button
 
 
 func _ready() -> void:
-	# visible in the editor, closed at startup
 	hide()
 	instructions = get_node("Panel/Margin/Content/Instructions")
 	mode_selector = get_node("Panel/Margin/Content/WorkspaceRow/ModeSelector")
