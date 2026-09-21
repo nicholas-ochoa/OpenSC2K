@@ -5,6 +5,8 @@ extends TerrainEditConstants
 @warning_ignore_start("integer_division")
 
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 class ClearResult extends RefCounted:
 	var ok := false
 	var indices := PackedInt32Array()
@@ -55,7 +57,7 @@ static func _clear_terrain_conflicts(
 		var point := Vector2i(int(index / map_edge), index % map_edge)
 		var old_building := int(buildings[index])
 
-		if old_building >= 0x0d:
+		if old_building >= Tiles.SMALL_PARK:
 			if random == null:
 				return ClearResult.new()
 
@@ -91,14 +93,14 @@ static func _clear_terrain_conflicts(
 			if not effects.is_empty():
 				sound_events.append(504)
 
-		if old_building != 5:
-			NetworkState.replace_building(buildings, zones, misc, index, 0)
+		if old_building != Tiles.RADIOACTIVE_WASTE:
+			NetworkState.replace_building(buildings, zones, misc, index, Tiles.EMPTY)
 
 			if not changed_indices.has(index):
 				changed_indices.append(index)
 
-		if underground[index] != 0:
-			BuildingUnderground._replace_underground(underground, zones, misc, index, 0)
+		if underground[index] != UndergroundTileIds.EMPTY:
+			BuildingUnderground._replace_underground(underground, zones, misc, index, UndergroundTileIds.EMPTY)
 
 			if not changed_indices.has(index):
 				changed_indices.append(index)
@@ -117,7 +119,7 @@ static func _terrain_conflict_needs_random(
 	buildings: PackedByteArray, indices: PackedInt32Array
 ) -> bool:
 	for index in indices:
-		if buildings[index] >= 0x0d:
+		if buildings[index] >= Tiles.SMALL_PARK:
 			return true
 
 	return false

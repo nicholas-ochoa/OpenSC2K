@@ -1,16 +1,18 @@
 class_name OnrampCommand
 extends RefCounted
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const GROUP_ROADS := 6
 const SUBTOOL_ONRAMP := 3
-const MAX_CLEAR_BUILDING := 0x0d
-const RADIOACTIVITY := BuildingTileIds.RADIOACTIVE_WASTE
-const HIGHWAY_FIRST := 0x49
-const HIGHWAY_LAST := 0x50
-const ROAD_FIRST := BuildingTileIds.FIRST_ROAD
-const ROAD_LAST := 0x2b
-const ROAD_INTERSECTION := 0x2b
-const RAMP_FIRST := 0x5d
+const MAX_CLEAR_BUILDING := Tiles.SMALL_PARK
+const RADIOACTIVITY := Tiles.RADIOACTIVE_WASTE
+const HIGHWAY_FIRST := Tiles.HIGHWAY_STRAIGHT_1
+const HIGHWAY_LAST := Tiles.HIGHWAY_POWER_CROSSING_2
+const ROAD_FIRST := Tiles.FIRST_ROAD
+const ROAD_LAST := Tiles.ROAD_CROSSROADS
+const ROAD_INTERSECTION := Tiles.ROAD_CROSSROADS
+const RAMP_FIRST := Tiles.HIGHWAY_ONRAMP_1
 const FLAG_FLIPPED := 0x02
 
 # neighbor masks use north, east, south, and west bits. each value selects
@@ -45,7 +47,7 @@ static func apply(
 	if city.buildings[index] > MAX_CLEAR_BUILDING or city.buildings[index] == RADIOACTIVITY:
 		return OnrampEditResult.rejected("on-ramp site contains a protected building")
 
-	if city.terrain[index] != 0:
+	if city.terrain[index] != TerrainTileIds.FLAT:
 		return OnrampEditResult.rejected("on-ramp site is not clear terrain")
 
 	var highway_mask := 0
@@ -164,10 +166,10 @@ static func undo(city: CityState, command: OnrampEditResult) -> EditCommandResul
 static func _ramp_tile(highway_mask: int, road_direction: int) -> int:
 	match road_direction:
 		0:
-			return 0x5f if (highway_mask & 2) else 0x5e
+			return Tiles.HIGHWAY_ONRAMP_3 if (highway_mask & 2) else Tiles.HIGHWAY_ONRAMP_2
 		1:
-			return RAMP_FIRST if (highway_mask & 1) else 0x60
+			return RAMP_FIRST if (highway_mask & 1) else Tiles.HIGHWAY_ONRAMP_4
 		2:
-			return 0x60 if (highway_mask & 2) else RAMP_FIRST
+			return Tiles.HIGHWAY_ONRAMP_4 if (highway_mask & 2) else RAMP_FIRST
 		_:
-			return 0x5e if (highway_mask & 1) else 0x5f
+			return Tiles.HIGHWAY_ONRAMP_2 if (highway_mask & 1) else Tiles.HIGHWAY_ONRAMP_3

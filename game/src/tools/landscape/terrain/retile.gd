@@ -5,6 +5,8 @@ extends TerrainEditConstants
 @warning_ignore_start("integer_division")
 
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 static func retile_region(
 	altitude: PackedByteArray,
 	buildings: PackedByteArray,
@@ -32,15 +34,15 @@ static func retile_region(
 
 		var shape := int(TERRAIN_SHAPES[higher_mask])
 
-		if shape != 0:
+		if shape != TerrainTileIds.FLAT:
 			zones[index] &= 0xf0
 
-		var raised_basin := shape == 50
+		var raised_basin := shape == RAISE_BASIN
 
 		if raised_basin:
 			land = mini(31, land + 1)
 			TerrainEditHeights.set_land_altitude(altitude, index, land)
-			shape = 0
+			shape = TerrainTileIds.FLAT
 
 		if land >= sea_level:
 			flags[index] &= ~FLAG_WATER & 0xff
@@ -50,11 +52,11 @@ static func retile_region(
 		flags[index] |= FLAG_WATER
 		TerrainEditHeights._set_water_altitude(altitude, index, sea_level)
 
-		if buildings[index] != 0 and buildings[index] != 5:
-			NetworkState.replace_building(buildings, zones, misc, index, 0)
+		if buildings[index] != Tiles.EMPTY and buildings[index] != Tiles.RADIOACTIVE_WASTE:
+			NetworkState.replace_building(buildings, zones, misc, index, Tiles.EMPTY)
 
 		terrain[index] = (
-			0x10
+			TerrainTileIds.DEEP_WATER_FLAT
 			if raised_basin
-			else shape + (0x20 if sea_level - land == 1 else 0x10)
+			else shape + (TerrainTileIds.SHORE_FIRST if sea_level - land == 1 else TerrainTileIds.DEEP_WATER_FIRST)
 		)

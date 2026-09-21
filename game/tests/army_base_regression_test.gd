@@ -56,7 +56,7 @@ func _initialize() -> void:
 			if native:
 				doc.enable_full_resolution_maps()
 			var city := CityState.from_document(doc)
-			city.set_underground_id(12, 10, 1)
+			city.set_underground_id(12, 10, UndergroundTileIds.SUBWAY_LR)
 			var result := MilitaryProposalPhase.resolve(city, true, PlotRandom.new(10))
 			check(result.ok and city.zone_id(12, 10) == 0 and city.underground_id(12, 10) == 1,
 				"Proposal excludes each underground obstruction")

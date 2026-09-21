@@ -1,4 +1,6 @@
 extends SceneTree
+const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
+
 const DocumentState = preload("res://tests/support/document_state.gd")
 
 
@@ -13,7 +15,7 @@ func _run() -> void:
 	var view := CityIsometricRenderer.VIEW_LARGE
 	var base := CityIsometricRenderer.view_configuration(view).sprite_base
 	for wet in [false, true]:
-		for underground in [0, 1, 0x10, 0x1e, 0x1f, 0x20]:
+		for underground in [UnderTiles.EMPTY, UnderTiles.SUBWAY_LR, UnderTiles.PIPE_LR, UnderTiles.PIPE_LTBR, UnderTiles.PIPE_TB_SUBWAY_LR, UnderTiles.PIPE_LR_SUBWAY_TB]:
 			city.set_underground_id(20, 20, underground)
 			city.set_terrain_id(20, 20, 0)
 			city.set_tile_flag(20, 20, 0x20, true)

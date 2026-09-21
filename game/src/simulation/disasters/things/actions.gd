@@ -3,6 +3,8 @@ extends DisasterThingConstants
 
 
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 static func _monster_damage(
 	city: CityState,
 	altitude: PackedByteArray,
@@ -34,7 +36,7 @@ static func _monster_damage(
 	var goal := int(ThingData.read(things, offset + 11))
 
 	if goal == 0:
-		if building <= 5:
+		if building <= Tiles.RADIOACTIVE_WASTE:
 			return
 
 		var damage_result := DisasterMapDamage.apply(
@@ -57,7 +59,7 @@ static func _monster_damage(
 
 		return
 
-	if flags[index] & 0x04 or building <= 0x0d or building == BuildingTileIds.WIND_POWER:
+	if flags[index] & 0x04 or building <= Tiles.SMALL_PARK or building == Tiles.WIND_POWER:
 		return
 
 	var demolition := DemolishStructures._demolish_point(
@@ -79,9 +81,9 @@ static func _monster_damage(
 			)
 		3:
 			var overlay_id := BuildingFacilities.provision_microsim(
-				microsims, labels, text, BuildingTileIds.WIND_POWER, city.current_year(), random
+				microsims, labels, text, Tiles.WIND_POWER, city.current_year(), random
 			)
-			NetworkState.replace_building(buildings, zones, misc, index, BuildingTileIds.WIND_POWER)
+			NetworkState.replace_building(buildings, zones, misc, index, Tiles.WIND_POWER)
 			zones[index] = 0xf0
 			flags[index] = (flags[index] & 0x1f) | 0xe0
 
@@ -221,11 +223,11 @@ static func _record_connection_count_change(
 	counters: MovingThingResult, tile_id: int, point: Vector2i
 ) -> void:
 	var is_commerce := (
-		(tile_id >= 0x1d and tile_id <= 0x2b)
-		or (tile_id >= 0x3f and tile_id <= 0x46)
-		or tile_id == 0x4b
-		or tile_id == 0x4c
-		or (tile_id >= 0x5d and tile_id <= 0x60)
+		(tile_id >= Tiles.ROAD_STRAIGHT_1 and tile_id <= Tiles.ROAD_CROSSROADS)
+		or (tile_id >= Tiles.TUNNEL_ENTRANCE_1 and tile_id <= Tiles.ROAD_RAIL_CROSSING_2)
+		or tile_id == Tiles.HIGHWAY_ROAD_CROSSING_1
+		or tile_id == Tiles.HIGHWAY_ROAD_CROSSING_2
+		or (tile_id >= Tiles.HIGHWAY_ONRAMP_1 and tile_id <= Tiles.HIGHWAY_ONRAMP_4)
 	)
 	counters.connection_count_changes.append(MovingThingResult.ConnectionChange.new(
 		"commerce" if is_commerce else "industry", -1, point))

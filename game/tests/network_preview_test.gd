@@ -37,7 +37,7 @@ func _run() -> void:
 			if slope:
 				assert(copy.set_terrain_id(offset.x + 1, offset.y + 1, 2))
 			else:
-				assert(copy.set_building_id(offset.x + 1, offset.y + 1, 0x2d))
+				assert(copy.set_building_id(offset.x + 1, offset.y + 1, BuildingTileIds.RAIL_STRAIGHT_2))
 
 			var route := NetworkCommand.apply(copy, 6, 0, offset, offset + Vector2i(3, 2))
 			assert(route.ok)
@@ -47,7 +47,7 @@ func _run() -> void:
 	var original := CityState.from_document(EmptyCityTemplate.create(128))
 	var snapshot := NetworkPlacementPreview.snapshot_city(original)
 	snapshot.altitude_words[0] += 1
-	snapshot.buildings[0] = 0x1d
+	snapshot.buildings[0] = BuildingTileIds.ROAD_STRAIGHT_1
 	assert(snapshot.altitude_words[0] != original.altitude_words[0])
 	assert(original.buildings[0] == 0, "Snapshot write changed the live city")
 	var rejected := CityState.from_document(EmptyCityTemplate.create(128))

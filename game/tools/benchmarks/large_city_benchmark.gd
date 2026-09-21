@@ -24,7 +24,7 @@ func _benchmark_initialize() -> void:
 			return
 		var render_ms := (Time.get_ticks_usec() - begin) / 1000.0
 		var point := Vector2i(edge - 12, edge - 12)
-		city.set_building_id(point.x, point.y, 0x1d)
+		city.set_building_id(point.x, point.y, BuildingTileIds.ROAD_STRAIGHT_1)
 		var times := [[], []]
 
 		for trial in 3:

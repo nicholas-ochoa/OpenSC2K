@@ -174,7 +174,7 @@ func _run() -> void:
 	assert(map.selection_path.size() == 6)
 	map.selection._clear_selection()
 	# Dual underground cells can display either or both networks without edits.
-	city.set_underground_id(90, 90, 0x1f)
+	city.set_underground_id(90, 90, UndergroundTileIds.PIPE_TB_SUBWAY_LR)
 	var pipe_only := CityUndergroundView.tile_sprite_ids(city, 90, 90, 2, true, false)
 	var subway_only := CityUndergroundView.tile_sprite_ids(city, 90, 90, 2, false, true)
 	assert(pipe_only != subway_only and city.underground_id(90, 90) == 0x1f)

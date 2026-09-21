@@ -3,6 +3,8 @@ extends ConfirmationDialog
 
 @warning_ignore_start("integer_division")
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const Numbers = preload("res://src/ui/shared/display_number_format.gd")
 
 signal choice_requested(index: int)
@@ -99,12 +101,12 @@ func preview_image(request_type: String, bridge_type: int) -> Texture2D:
 
 	if highway and bridge_type == HighwayCommand.BRIDGE_REINFORCED:
 		for section in 4:
-			_append_preview_tile(tiles, 1000 + 0x5d + (14 if section % 2 == 0 else 13), _preview_baseline(section * 2, 0)
+			_append_preview_tile(tiles, 1000 + (Tiles.REINFORCED_HIGHWAY_BRIDGE if section % 2 == 0 else Tiles.HIGHWAY_BRIDGE), _preview_baseline(section * 2, 0)
 					+ Vector2i(0, CityIsometricRenderer.HALF_HEIGHT * 2), true)
 	else:
 		for x in count:
 			for y in (2 if highway else 1):
-				var tile := 0x4a if highway else NetworkBridges._bridge_tile(bridge_type, count + 2, x + 1, 1)
+				var tile := Tiles.HIGHWAY_STRAIGHT_2 if highway else NetworkBridges._bridge_tile(bridge_type, count + 2, x + 1, 1)
 				_append_preview_tile(tiles, 1000 + tile, _preview_baseline(x, y), not highway)
 
 	if not highway:
@@ -113,7 +115,7 @@ func preview_image(request_type: String, bridge_type: int) -> Texture2D:
 			var baseline := _preview_baseline(bank.x, 0)
 			var terrain_sprite := CityIsometricRenderer.terrain_sprite_id(bank.y, false)
 			_append_preview_tile(tiles, terrain_sprite, baseline)
-			_append_preview_tile(tiles, 1000 + 0x1d + int(NetworkCommand.NETWORK_SLOPE_SHAPES[bank.y]), baseline)
+			_append_preview_tile(tiles, 1000 + Tiles.ROAD_STRAIGHT_1 + int(NetworkCommand.NETWORK_SLOPE_SHAPES[bank.y]), baseline)
 
 	var bounds := Rect2i()
 

@@ -10,8 +10,8 @@ const ROAD_FIRST := Tiles.FIRST_ROAD
 const RADIOACTIVITY := Tiles.RADIOACTIVE_WASTE
 const SMALL_PARK := Buildings.SMALL_PARK
 const BIG_PARK := Buildings.BIG_PARK
-const HYDRO_DAM_FIRST := Buildings.HYDRO_POWER_ONE
-const HYDRO_DAM_LAST := Buildings.HYDRO_POWER_TWO
+const HYDRO_DAM_FIRST := Buildings.HYDRO_POWER_1
+const HYDRO_DAM_LAST := Buildings.HYDRO_POWER_2
 const MARINA := Buildings.MARINA
 const STATUE := Buildings.STATUE
 const WATER_PUMP := Buildings.WATER_PUMP
@@ -36,11 +36,11 @@ const VARIABLE_ZONE_TILES := {
 	Tiles.ABANDONED_1X1_FIRST: 2,
 	Tiles.DEVELOPED_1X1_LAST: 2,
 	Tiles.CONSTRUCTION_2X2_FIRST: 2,
-	0xa7: 2,
+	Tiles.CONSTRUCTION_2X2_2: 2,
 	Tiles.CONSTRUCTION_2X2_DENSE_FIRST: 2,
 	Tiles.CONSTRUCTION_2X2_LAST: 2,
 	Tiles.ABANDONED_2X2_FIRST: 2,
-	0xab: 2,
+	Tiles.ABANDONED_2X2_2: 2,
 	Tiles.ABANDONED_2X2_DENSE_FIRST: 2,
 	Tiles.DEVELOPED_2X2_LAST: 1,
 	Tiles.CONSTRUCTION_3X3_FIRST: 2,
@@ -76,7 +76,7 @@ static func footprint(tile_id: int, selected: Vector2i) -> Rect2i:
 	if not is_placeable_tile(tile_id):
 		return Rect2i()
 
-	return BuildingSites.footprint(selected, DemolishStructures.structure_area(tile_id) if tile_id <= 255 else 1)
+	return BuildingSites.footprint(selected, DemolishStructures.structure_area(tile_id) if tile_id <= Tiles.MAX_ID else 1)
 
 
 static func apply(
@@ -98,7 +98,7 @@ static func apply(
 	if process_random == null:
 		return EditCommandResult.failure("process random state is required")
 
-	if tile_id > 255:
+	if tile_id > Tiles.MAX_ID:
 		if selected.x < 0 or selected.y < 0 or selected.x >= map_edge or selected.y >= map_edge:
 			return EditCommandResult.failure("object does not fit inside the map")
 
@@ -157,7 +157,7 @@ static func apply(
 	)
 
 	if tile_id < Tiles.DEVELOPED_FIRST:
-		placed_flags = FLAG_POWERABLE if tile_id >= 0x0e else 0
+		placed_flags = FLAG_POWERABLE if tile_id >= Tiles.POWER_LINE_FIRST else 0
 
 	var tile_indices := PackedInt32Array()
 
@@ -319,7 +319,7 @@ static func _site_error(
 			):
 				return "site contains a protected tile"
 
-			if tile_id == SMALL_PARK and old_building > 0x0c:
+			if tile_id == SMALL_PARK and old_building > Tiles.TREES_7:
 				return "site contains a protected tile"
 
 			var is_water := (flags[index] & FLAG_WATER) != 0
@@ -328,9 +328,9 @@ static func _site_error(
 				if is_water:
 					marina_water_tiles += 1
 			elif tile_id >= HYDRO_DAM_FIRST and tile_id <= HYDRO_DAM_LAST:
-				if terrain[index] == 0 or not is_water:
+				if terrain[index] == TerrainTileIds.FLAT or not is_water:
 					return "hydroelectric dam requires water terrain"
-			elif tile_id >= Tiles.DEVELOPED_FIRST and (terrain[index] != 0 or is_water):
+			elif tile_id >= Tiles.DEVELOPED_FIRST and (terrain[index] != TerrainTileIds.FLAT or is_water):
 				return "site is not flat clear land"
 
 	if tile_id == MARINA and (
@@ -374,16 +374,16 @@ static func _zone_for_tile(
 	if tile_id >= Tiles.COMMERCIAL_2X2_FIRST and tile_id <= Tiles.COMMERCIAL_2X2_LAST or tile_id >= Tiles.COMMERCIAL_3X3_FIRST and tile_id <= Tiles.COMMERCIAL_3X3_LAST:
 		return 4
 
-	if tile_id >= Tiles.INDUSTRIAL_1X1_FIRST and tile_id <= Tiles.INDUSTRIAL_1X1_LAST or tile_id >= 0xa4 and tile_id <= Tiles.INDUSTRIAL_2X2_LAST:
+	if tile_id >= Tiles.INDUSTRIAL_1X1_FIRST and tile_id <= Tiles.INDUSTRIAL_1X1_LAST or tile_id >= Tiles.FACTORY_2X2_5 and tile_id <= Tiles.INDUSTRIAL_2X2_LAST:
 		return 5
 
-	if tile_id >= Tiles.INDUSTRIAL_2X2_FIRST and tile_id <= 0xa3 or tile_id >= Tiles.INDUSTRIAL_3X3_FIRST and tile_id <= Tiles.INDUSTRIAL_3X3_LAST:
+	if tile_id >= Tiles.INDUSTRIAL_2X2_FIRST and tile_id <= Tiles.FACTORY_2X2_4 or tile_id >= Tiles.INDUSTRIAL_3X3_FIRST and tile_id <= Tiles.INDUSTRIAL_3X3_LAST:
 		return 6
 
-	if tile_id in [Tiles.CONTROL_TOWER_TWO, Tiles.FIGHTER_JET, Tiles.PARKING_LOT_TWO, Tiles.TOP_SECRET, Tiles.MISSILE_SILO]:
+	if tile_id in [Tiles.CONTROL_TOWER_2, Tiles.FIGHTER_JET, Tiles.PARKING_LOT_2, Tiles.TOP_SECRET, Tiles.MISSILE_SILO]:
 		return 7
 
-	if tile_id in [Tiles.CONTROL_TOWER_ONE, Tiles.AIRPORT_BUILDING_ONE, Tiles.AIRPORT_BUILDING_TWO, Tiles.TARMAC, Tiles.HANGAR_ONE, Tiles.RADAR, Tiles.PARKING_LOT_ONE, Tiles.HANGAR_TWO]:
+	if tile_id in [Tiles.CONTROL_TOWER_1, Tiles.AIRPORT_BUILDING_1, Tiles.AIRPORT_BUILDING_2, Tiles.TARMAC, Tiles.HANGAR_1, Tiles.RADAR, Tiles.PARKING_LOT_1, Tiles.HANGAR_2]:
 		return 8
 
 	if tile_id in [Tiles.CRANE, Tiles.LOADING_BAY, Tiles.CARGO_YARD]:

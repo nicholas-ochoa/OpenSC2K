@@ -240,7 +240,7 @@ static func draw_tile(
 	var building_id := city.building_id(x, y)
 	var terrain_altitude := city.land_altitude(x, y)
 
-	if terrain_id >= 0x10:
+	if terrain_id >= TerrainTileIds.DEEP_WATER_FIRST:
 		terrain_altitude = city.water_altitude(x, y)
 
 	var screen_x: int = origin_x + (x - y) * configuration.half_width
@@ -256,7 +256,7 @@ static func draw_tile(
 		- terrain_altitude * configuration.altitude_step
 	)
 
-	var is_highway_composite := building_id >= 0x61 and building_id <= 0x6b
+	var is_highway_composite := building_id >= Tiles.HIGHWAY_SLOPE_1 and building_id <= Tiles.REINFORCED_HIGHWAY_BRIDGE
 
 	if building_id < Tiles.DEVELOPED_FIRST and not is_highway_composite:
 		var terrain := IsometricPixelOperations.sprite_image(
@@ -268,7 +268,7 @@ static func draw_tile(
 
 	var zone := city.zone_id(x, y)
 
-	if zone > 0 and building_id == 0:
+	if zone > 0 and building_id == BuildingTileIds.EMPTY:
 		var zone_image := IsometricPixelOperations.sprite_image(
 			sprites, palette, cache, configuration.sprite_base + 290 + zone, false
 		)
@@ -276,7 +276,7 @@ static func draw_tile(
 
 	var building_image: Image
 
-	if building_id > 0 and IsometricStaticVisuals._should_draw_building(city, x, y, building_id):
+	if building_id > BuildingTileIds.EMPTY and IsometricStaticVisuals._should_draw_building(city, x, y, building_id):
 		var building_base_y := (
 			flat_base_y
 			- city.object_altitude(x, y) * configuration.altitude_step

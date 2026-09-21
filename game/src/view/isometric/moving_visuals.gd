@@ -282,11 +282,11 @@ static func train_sprite(
 	var variant := 0
 	var elevation := 0
 
-	if tile == 0x5a or tile == 0x5b:
+	if tile == Tiles.RAIL_BRIDGE or tile == Tiles.RAIL_BRIDGE_PYLON:
 		variant = 1 if city.is_flipped(x, y) else 0
 		elevation = (city.water_altitude(x, y) + 1) * ALTITUDE_STEP
 	else:
-		var tile_index := tile - 0x2c
+		var tile_index := tile - Tiles.RAIL_STRAIGHT_1
 
 		if tile_index < 0 or tile_index > 0x22:
 			return null
@@ -309,7 +309,7 @@ static func train_sprite(
 
 		elevation = city.land_altitude(x, y) * ALTITUDE_STEP
 
-		if city.terrain_id(x, y) == 0x0d:
+		if city.terrain_id(x, y) == TerrainTileIds.RAISED:
 			elevation += ALTITUDE_STEP
 
 	if variant < 0 or variant >= TRAIN_SPRITE_POSITION.size():

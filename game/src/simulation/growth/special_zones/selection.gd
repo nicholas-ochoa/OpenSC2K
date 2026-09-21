@@ -46,12 +46,12 @@ static func _airport_growth_selection(
 	var runway_groups := int(
 		((SpecialZoneState._special_tile_count(misc, Tiles.RUNWAY, military, map_edge) + SpecialZoneState._special_tile_count(misc, Tiles.RUNWAY_CROSSING, military, map_edge)) / 5)
 	)
-	var parking_tile := Tiles.PARKING_LOT_TWO if military else Tiles.PARKING_LOT_ONE
+	var parking_tile := Tiles.PARKING_LOT_2 if military else Tiles.PARKING_LOT_1
 
 	if int(SpecialZoneState._special_tile_count(misc, parking_tile, military, map_edge) / 4) >= runway_groups:
 		return Tiles.RUNWAY
 
-	var selected := Tiles.CONTROL_TOWER_TWO if military else Tiles.CONTROL_TOWER_ONE
+	var selected := Tiles.CONTROL_TOWER_2 if military else Tiles.CONTROL_TOWER_1
 
 	if SpecialZoneState._special_tile_count(misc, selected, military, map_edge) * 2 < runway_groups:
 		return selected
@@ -66,18 +66,18 @@ static func _airport_growth_selection(
 	if SpecialZoneState._special_tile_count(misc, selected, military, map_edge) < runway_groups:
 		return selected
 
-	selected = Tiles.AIRPORT_BUILDING_ONE
+	selected = Tiles.AIRPORT_BUILDING_1
 
 	if int(SpecialZoneState._special_tile_count(misc, selected, military, map_edge) / 2) < runway_groups:
 		return selected
 
-	selected = Tiles.AIRPORT_BUILDING_TWO
+	selected = Tiles.AIRPORT_BUILDING_2
 
 	if int(SpecialZoneState._special_tile_count(misc, selected, military, map_edge) / 2) < runway_groups:
 		return selected
 
-	if int(SpecialZoneState._special_tile_count(misc, Tiles.HANGAR_TWO, military, map_edge) / 4) < runway_groups:
-		return Tiles.HANGAR_TWO
+	if int(SpecialZoneState._special_tile_count(misc, Tiles.HANGAR_2, military, map_edge) / 4) < runway_groups:
+		return Tiles.HANGAR_2
 
 	return parking_tile
 

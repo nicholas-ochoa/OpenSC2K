@@ -2,6 +2,8 @@ extends SceneTree
 
 @warning_ignore_start("integer_division")
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 class SequenceRandom extends SimRandom:
 	var values: Array[int]
 	var position := 0
@@ -148,7 +150,7 @@ func check_transport(edge: int) -> void:
 
 		for delta in [Vector2i.ZERO, Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
 			var point: Vector2i = start + delta
-			p.XBLD[point.x * edge + point.y] = 0x2c
+			p.XBLD[point.x * edge + point.y] = Tiles.RAIL_STRAIGHT_1
 
 		var spawned := MovingThingSpawner._spawn_train_record(p.XBLD, p.XTHG, p.XTXT,
 			start, SequenceGameLcg.new(), SequenceLfsr.new(), edge)
@@ -219,7 +221,7 @@ func check_random_sites(edge: int) -> void:
 	var proposal := MilitaryProposalPhase.resolve(city, true, SequenceGameLcg.new([edge - 10]))
 	check(proposal.ok and city.zone_id(edge - 10, edge - 10) == 7, "Military base can select far map")
 	city = CityState.from_document(EmptyCityTemplate.create(edge))
-	city.buildings.fill(0x0d)
+	city.buildings.fill(Tiles.SMALL_PARK)
 	var choices: Array[int] = []
 	choices.resize(48)
 	choices.fill(10)
@@ -230,7 +232,7 @@ func check_random_sites(edge: int) -> void:
 
 		for dx in 3:
 			for dy in 3:
-				city.buildings[(origin.x + dx) * edge + origin.y + dy] = 0
+				city.buildings[(origin.x + dx) * edge + origin.y + dy] = Tiles.EMPTY
 
 	city.document.find_chunk("XBLD").set_decoded_payload(city.buildings)
 	var silos := MilitaryProposalPhase.resolve(city, true, SequenceGameLcg.new(choices))
@@ -244,7 +246,7 @@ func check_tools(edge: int) -> void:
 
 	for dx in 2:
 		for dy in 2:
-			p.XBLD[(corner.x + dx) * edge + corner.y + dy] = 0x6a
+			p.XBLD[(corner.x + dx) * edge + corner.y + dy] = Tiles.HIGHWAY_BRIDGE
 
 	check(DemolishBridges.reinforced_section_is_valid(p.XBLD, corner, edge), "Far reinforced bridge section")
 	check(not DemolishBridges.reinforced_section_is_valid(p.XBLD, corner + Vector2i.ONE, edge), "Bridge bounds reject overflow")
@@ -292,12 +294,12 @@ func check_growth_dispatch(edge: int) -> void:
 				for dy in 2:
 					city.set_zone_id(origin.x + dx, origin.y - dy, 2)
 
-				city.set_building_id(origin.x + dx, origin.y, 0x70)
+				city.set_building_id(origin.x + dx, origin.y, Tiles.LOWER_CLASS_HOMES_1X1_1)
 				city.set_tile_flag(origin.x + dx, origin.y, 0x40, true)
 				city.zones[(origin.x + dx) * edge + origin.y] |= 0xf0
 
 			for dy in range(1, 5):
-				city.set_building_id(origin.x, origin.y + dy, 0x1d)
+				city.set_building_id(origin.x, origin.y + dy, Tiles.ROAD_STRAIGHT_1)
 
 			city.set_zone_id(origin.x, origin.y + 5, 3)
 

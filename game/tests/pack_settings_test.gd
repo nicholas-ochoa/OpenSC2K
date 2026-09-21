@@ -19,6 +19,10 @@ func _run() -> void:
 	DirAccess.make_dir_recursive_absolute(folder)
 	var manifest: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(source.path_join("pack.json")))
 	manifest.name = "Runtime test"
+
+	for field in ["city_ui", "desktop", "scurk", "runtime_data"]:
+		manifest.erase(field)
+
 	var record: Dictionary = manifest.large_sprites.back()
 	# Keep flat terrain at all views and the edited sprite; other sprites are not used.
 	manifest.large_sprites = manifest.large_sprites.filter(func(item): return int(item.id) in [1256, int(record.id)])

@@ -1,10 +1,10 @@
 class_name GameAssetSource
 extends RefCounted
-# load a graphics pack with optional original support data
+# load imported packs without access to the original installation
 
 const MODES := ["auto", "original", "folder"]
 var assets: OriginalGameAssets
-var use_original_data := false
+var has_city_template := false
 var uses_graphics_pack := false
 var graphics_name := ""
 var error := ""
@@ -13,10 +13,10 @@ var warnings := PackedStringArray()
 
 
 static func default_reference_root() -> String:
-	return ProjectSettings.globalize_path("user://original_game").simplify_path()
+	return MediaPack.default_folder("graphics").path_join("runtime")
 
 
-static func load_source(base_root: String, mode: String, folder := "", override_folder := "") -> GameAssetSource:
+static func load_source(_base_root: String, mode: String, folder := "", override_folder := "") -> GameAssetSource:
 	var result := GameAssetSource.new()
 
 
@@ -40,44 +40,34 @@ static func load_source(base_root: String, mode: String, folder := "", override_
 
 		return result
 
-	result.reference_root = base_root
-	var metadata: Variant = JSON.parse_string(FileAccess.get_file_as_string(pack_root.path_join("pack.json")))
+	result.assets = OriginalGameAssets.new()
+	result.reference_root = pack_root
+	var metadata: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(pack_root.path_join("pack.json")))
 
-	if metadata is Dictionary and metadata.has("original_data"):
-		var relative: Variant = metadata.original_data
+	if metadata.has("runtime_data"):
+		var relative: Variant = metadata.runtime_data
 
 		if not relative is String or relative.is_empty() or relative.is_absolute_path() or relative.contains(":") or relative.contains("\\"):
-			result.error = "original_data must be a relative folder path."
-
+			result.error = "runtime_data must be a relative folder path."
 			return result
 
 		for part in relative.split("/"):
 			if part in ["", ".", ".."]:
-				result.error = "original_data cannot contain empty, dot, or parent components."
-
+				result.error = "runtime_data cannot contain empty, dot, or parent components."
 				return result
 
 		result.reference_root = pack_root.path_join(relative)
+		result.assets.load_text_data(result.reference_root)
+		result.has_city_template = FileAccess.file_exists(result.reference_root.path_join("DEFAULT.SC2"))
 
-	var installed := OriginalGameInstaller.validate_install_root(result.reference_root)
-
-	if installed.ok:
-		result.assets = OriginalGameAssets.load_root(result.reference_root)
-		result.use_original_data = result.assets.error.is_empty()
-
-		if not result.use_original_data:
-			result.warnings.append("The original support set could not be loaded: " + result.assets.error)
-
-	if not result.use_original_data:
-		# a city pack can stand alone. optional ui and text consumers already
-		# supply controls or report missing content without an original executable
-		if pack.large_sprites.entries.is_empty() or pack.small_medium_sprites.entries.is_empty():
-			result.error = "This graphics pack needs a base set for its missing city sprite size group. Import both large and small/medium city sprites to start without a base."
+		if not result.has_city_template or result.assets.newspaper_data == null or not result.assets.newspaper_data.is_valid() or result.assets.library_texts.is_empty() or result.assets.original_credits.is_empty():
+			result.error = "The graphics pack has incomplete runtime data. Import it again."
 			return result
 
-		result.assets = OriginalGameAssets.new()
-		result.reference_root = pack_root
-		result.warnings.append("This pack runs without original Windows support files. Missing interface artwork and text use the available built-in controls and messages.")
+	if pack.large_sprites.entries.is_empty() or pack.small_medium_sprites.entries.is_empty():
+		result.error = "This graphics pack needs both city sprite size groups."
+		return result
+
 	if not pack.apply_to(result.assets):
 		result.error = "Cannot load graphics pack: " + pack.error
 

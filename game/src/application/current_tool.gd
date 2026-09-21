@@ -233,7 +233,7 @@ func _placement_preview_error(point: Vector2i) -> String:
 		if site.size.x == 0 or not Rect2i(0, 0, map_edge, map_edge).encloses(site):
 			return "The object footprint extends outside the map."
 
-		return ("" if tile_id > 255 else ScurkPlace._site_error(app.document_state.city.buildings, app.document_state.city.terrain,
+		return ("" if tile_id > BuildingTileIds.MAX_ID else ScurkPlace._site_error(app.document_state.city.buildings, app.document_state.city.terrain,
 				app.document_state.city.tile_flags, site, tile_id, map_edge))
 
 	if Buildings.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
@@ -245,10 +245,10 @@ func _placement_preview_error(point: Vector2i) -> String:
 		if app.document_state.city.funds() < int(Tools.tool(app.tool_state.selected_group, app.tool_state.selected_subtool).cost):
 			return "Insufficient funds."
 
-		if app.document_state.city.buildings[index] != 0:
+		if app.document_state.city.buildings[index] != BuildingTileIds.EMPTY:
 			return "Clear the existing structure first."
 
-		return "" if app.document_state.city.terrain[index] in [0x2e, 0x3e] else "Hydroelectric power requires a waterfall tile."
+		return "" if app.document_state.city.terrain[index] in [TerrainTileIds.FORBIDDEN_COAST, TerrainTileIds.WATERFALL] else "Hydroelectric power requires a waterfall tile."
 
 	if Onramps.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
 		return Onramps.apply(app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool, point, false, true).error

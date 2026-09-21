@@ -1,5 +1,7 @@
 extends SceneTree
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 var checks := 0
 var failures := 0
 
@@ -77,7 +79,7 @@ func _test_block_and_endpoints() -> void:
 	check(view.trip_reach.failed_points.is_empty(), "Short dead-end spur has no limit markers")
 	var long_route := CityState.from_document(EmptyCityTemplate.create(128))
 	for x in range(20, 100):
-		long_route.set_building_id(x, 20, 0x1d)
+		long_route.set_building_id(x, 20, Tiles.ROAD_STRAIGHT_1)
 	var limited := view.show_trip_reach(long_route, Vector2i(20, 20))
 	check(limited.limit_points.has(Vector2i(53, 20)), "Red X marks the last road tile before the trip limit")
 	check(view.trip_reach.failed_points.size() == 1, "Long route has one trip-limit marker")
@@ -94,9 +96,9 @@ func _test_building_coverage() -> void:
 			var origin := shift + Vector2i(20, 19)
 			var target := shift + Vector2i(35, 20 + distance)
 			for x in range(20, 36):
-				city.set_building_id(x + shift.x, 20 + shift.y, 0x1e)
-			TripQueryFixture.stamp(city, Rect2i(origin, Vector2i.ONE), 0x70, 1)
-			TripQueryFixture.stamp(city, Rect2i(target, Vector2i.ONE), 0x7c, 3)
+				city.set_building_id(x + shift.x, 20 + shift.y, Tiles.ROAD_STRAIGHT_2)
+			TripQueryFixture.stamp(city, Rect2i(origin, Vector2i.ONE), Tiles.LOWER_CLASS_HOMES_1X1_1, 1)
+			TripQueryFixture.stamp(city, Rect2i(target, Vector2i.ONE), Tiles.GAS_STATION_1X1_1, 3)
 			var rotations := 4 if edge == 128 else 1
 			for rotation in rotations:
 				var result := TripReachAnalysis.inspect(city, origin)
@@ -126,8 +128,8 @@ func _test_building_coverage() -> void:
 	check(overlay.destinations.size() == 1, "Multi-tile destination has one centered checkmark")
 	city = CityState.from_document(EmptyCityTemplate.create(128))
 	for x in range(20, 40):
-		city.set_building_id(x, 20, 0x2d)
-	TripQueryFixture.stamp(city, Rect2i(30, 23, 1, 1), 0x7c, 3)
+		city.set_building_id(x, 20, Tiles.RAIL_STRAIGHT_2)
+	TripQueryFixture.stamp(city, Rect2i(30, 23, 1, 1), Tiles.GAS_STATION_1X1_1, 3)
 	result = TripReachAnalysis.inspect(city, Vector2i(20, 20))
 	check(result.destinations.is_empty(), "Bare rail has no walking destination catchment")
 	check(result.access_tiles.is_empty(), "Bare rail does not label nearby buildings as having access")
@@ -198,11 +200,11 @@ func _test_subway_scenario() -> void:
 	check(overlay.destinations.size() == 2, "Both industrial buildings have destination markers")
 	check(city.document.serialize().data == before, "Subway inspection preserves saved city bytes")
 	var exit_tile := city.building_id(scenario.exit_station.x, scenario.exit_station.y)
-	city.set_building_id(scenario.exit_station.x, scenario.exit_station.y, 0)
+	city.set_building_id(scenario.exit_station.x, scenario.exit_station.y, Tiles.EMPTY)
 	check(not TripReachAnalysis.inspect(city, scenario.origin).reached_destination,
 		"Subway cannot deliver passengers without the exit station")
 	city.set_building_id(scenario.exit_station.x, scenario.exit_station.y, exit_tile)
-	city.set_underground_id(scenario.underground_midpoint.x, scenario.underground_midpoint.y, 0)
+	city.set_underground_id(scenario.underground_midpoint.x, scenario.underground_midpoint.y, UndergroundTileIds.EMPTY)
 	check(not TripReachAnalysis.inspect(city, scenario.origin).reached_destination,
 		"A gap in the subway stops the trip")
 
@@ -254,7 +256,7 @@ func _test_bus_scenario() -> void:
 	for stop: Vector2i in scenario.stops:
 		for x in range(stop.x, stop.x + 2):
 			for y in range(stop.y, stop.y + 2):
-				city.set_building_id(x, y, 0)
+				city.set_building_id(x, y, Tiles.EMPTY)
 	check(not TripReachAnalysis.inspect(city, scenario.origin).reached_destination,
 		"Without bus depots the road exceeds the trip budget")
 

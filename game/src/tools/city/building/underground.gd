@@ -20,11 +20,11 @@ static func _place_pipe(
 
 	var new_tile := -1
 
-	if old_tile == 0:
+	if old_tile == UnderTiles.EMPTY:
 		new_tile = UNDER_PIPE_FIRST
 	elif old_tile == UnderTiles.SUBWAY_FIRST:
 		new_tile = UNDER_PIPE_SUBWAY_LR
-	elif old_tile == UnderTiles.SUBWAY_SECOND:
+	elif old_tile == UnderTiles.SUBWAY_TB:
 		new_tile = UNDER_PIPE_SUBWAY_TB
 	else:
 		return
@@ -48,11 +48,11 @@ static func _place_subway_station(
 	var old_tile := int(underground[index])
 	var inserted_tile := -1
 
-	if old_tile == 0:
+	if old_tile == UnderTiles.EMPTY:
 		inserted_tile = UNDER_SUBWAY_FIRST
 	elif old_tile == UNDER_PIPE_FIRST:
 		inserted_tile = UNDER_PIPE_SUBWAY_TB
-	elif old_tile == UNDER_PIPE_FIRST + 1:
+	elif old_tile == UnderTiles.PIPE_TB:
 		inserted_tile = UNDER_PIPE_SUBWAY_LR
 
 	if inserted_tile >= 0:
@@ -91,10 +91,10 @@ static func _replace_underground(
 
 static func _is_subway_tile(tile_id: int) -> bool:
 	return (
-		(tile_id > 0 and tile_id < UNDER_PIPE_FIRST)
+		(tile_id > UnderTiles.EMPTY and tile_id < UNDER_PIPE_FIRST)
 		or tile_id == UNDER_PIPE_SUBWAY_LR
 		or tile_id == UNDER_PIPE_SUBWAY_TB
-		or tile_id == UNDER_UNKNOWN
+		or tile_id == UNDER_MISSILE_SILO
 		or tile_id == UNDER_SUBWAY_ENTRANCE
 	)
 
@@ -126,7 +126,7 @@ static func _retile_underground(
 		if current < UNDER_SUBWAY_FIRST or current > UNDER_SUBWAY_LAST:
 			return
 
-	var terrain_shape := int(terrain[index]) & 0x0f if terrain[index] <= 0x30 else 0
+	var terrain_shape := int(terrain[index]) & TerrainTileIds.SHAPE_MASK if terrain[index] <= TerrainTileIds.SURFACE_WATER_FIRST else 0
 	var base := UNDER_PIPE_FIRST if pipes else UNDER_SUBWAY_FIRST
 
 	if FORCED_TERRAIN_MASKS.has(terrain_shape):
@@ -179,7 +179,7 @@ static func _underground_connects(tile_id: int, pipes: bool) -> bool:
 		or tile_id == UNDER_SUBWAY_ENTRANCE
 		or tile_id == UNDER_PIPE_SUBWAY_LR
 		or tile_id == UNDER_PIPE_SUBWAY_TB
-		or tile_id == UNDER_UNKNOWN
+		or tile_id == UNDER_MISSILE_SILO
 	)
 
 

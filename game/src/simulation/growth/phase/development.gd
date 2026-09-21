@@ -208,31 +208,31 @@ static func density(tile: int) -> int:
 	if tile <= Tiles.DEVELOPED_1X1_LAST:
 		return 1
 
-	if tile <= 0x8f:
+	if tile <= Tiles.NICE_APARTMENTS_2X2_1:
 		return 2
 
 	if tile <= Tiles.RESIDENTIAL_2X2_LAST:
 		return 3
 
-	if tile <= 0x98:
+	if tile <= Tiles.OFFICE_BUILDING_2X2_2:
 		return 2
 
 	if tile <= Tiles.COMMERCIAL_2X2_LAST:
 		return 3
 
-	if tile <= 0xa1:
+	if tile <= Tiles.FACTORY_2X2_2:
 		return 2
 
 	if tile <= Tiles.INDUSTRIAL_2X2_LAST:
 		return 3
 
-	if tile <= 0xa7:
+	if tile <= Tiles.CONSTRUCTION_2X2_2:
 		return 2
 
 	if tile <= Tiles.CONSTRUCTION_2X2_LAST:
 		return 3
 
-	if tile <= 0xab:
+	if tile <= Tiles.ABANDONED_2X2_2:
 		return 2
 
 	if tile <= Tiles.DEVELOPED_2X2_LAST:

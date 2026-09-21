@@ -2,6 +2,8 @@ class_name DisasterMapFireFlood
 extends DisasterMapConstants
 
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 static func run_fire(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> DisasterMapResult:
 	var map_edge: int = city.map_size if city != null else 128
 
@@ -76,7 +78,7 @@ static func run_fire(city: CityState, random: SimRandom, lfsr_random: SimLfsrRan
 			elif choice == 5:
 				var tile := int(payloads.XBLD[index])
 
-				if tile > 0x6f:
+				if tile > Tiles.RAIL_SUBWAY_ENTRANCE_4:
 					var toxic_site := Rect2i()
 
 					if SPECIAL_TOXIC_BUILDINGS.has(tile):
@@ -193,7 +195,7 @@ static func run_flood(
 			var point := Vector2i(x, y)
 
 			if counter < 30 and random.next_u15() & 3 == 0:
-				if payloads.XBLD[index] > 0x6f:
+				if payloads.XBLD[index] > Tiles.RAIL_SUBWAY_ENTRANCE_4:
 					DisasterMapDamage.burn_structure(
 						city,
 						payloads.ALTM,
@@ -296,7 +298,7 @@ static func _process_fire_cell(
 	elif choice == 5:
 		var tile := int(payloads.XBLD[index])
 
-		if tile > 0x6f:
+		if tile > Tiles.RAIL_SUBWAY_ENTRANCE_4:
 			var toxic_site := Rect2i()
 
 			if SPECIAL_TOXIC_BUILDINGS.has(tile):
@@ -352,7 +354,7 @@ static func _process_flood_cell(
 	counters.flood_updates += 1
 
 	if counter < 30 and random.next_u15() & 3 == 0:
-		if payloads.XBLD[index] > 0x6f:
+		if payloads.XBLD[index] > Tiles.RAIL_SUBWAY_ENTRANCE_4:
 			DisasterMapDamage.burn_structure(
 				city,
 				payloads.ALTM,

@@ -2,6 +2,10 @@ extends SceneTree
 
 @warning_ignore_start("integer_division")
 
+const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
+
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const RleCodec = preload("res://src/formats/maxis_rle.gd")
 const Sc2Document = preload("res://src/formats/sc2_file.gd")
 const CityFileStore = preload("res://src/formats/city_file_store.gd")
@@ -702,9 +706,9 @@ func _test_palette_and_minimap(reference_root: String) -> void:
 	)
 
 	var point := Vector2i(0, 0)
-	_check(loaded_city.set_building_id(point.x, point.y, 0), "City Map fixture clears a tile")
+	_check(loaded_city.set_building_id(point.x, point.y, Tiles.EMPTY), "City Map fixture clears a tile")
 	_check(loaded_city.set_zone_id(point.x, point.y, 0), "City Map fixture clears a zone")
-	_check(loaded_city.set_underground_id(point.x, point.y, 0), "City Map fixture clears underground")
+	_check(loaded_city.set_underground_id(point.x, point.y, UnderTiles.EMPTY), "City Map fixture clears underground")
 	_check(loaded_city.set_land_altitude(point.x, point.y, 0), "City Map fixture clears altitude")
 
 	for mask in [0x04, 0x10, 0x20, 0x40, 0x80]:
@@ -717,12 +721,12 @@ func _test_palette_and_minimap(reference_root: String) -> void:
 		Minimap.color_index(loaded_city, point.x, point.y, "structures") == 0x80,
 		"City Map uses the recovered level-zero ground color",
 	)
-	_check(loaded_city.set_building_id(point.x, point.y, 1), "City Map fixture sets trees")
+	_check(loaded_city.set_building_id(point.x, point.y, Tiles.RUBBLE_1), "City Map fixture sets trees")
 	_check(
 		Minimap.color_index(loaded_city, point.x, point.y, "structures") == 0x35,
 		"City Map uses the recovered tree color",
 	)
-	_check(loaded_city.set_building_id(point.x, point.y, 0), "City Map fixture clears trees")
+	_check(loaded_city.set_building_id(point.x, point.y, Tiles.EMPTY), "City Map fixture clears trees")
 	_check(loaded_city.set_tile_flag(point.x, point.y, 0x04, true), "City Map fixture sets water")
 	_check(
 		Minimap.color_index(loaded_city, point.x, point.y, "structures") == 0x62,
@@ -740,8 +744,8 @@ func _test_palette_and_minimap(reference_root: String) -> void:
 	_check(loaded_city.set_zone_id(point.x, point.y, 0), "City Map fixture clears final zone")
 
 	for network_test in [
-		["roads", 0x1d], ["roads", 0x55], ["rail", 0x2c],
-		["rail", 0x5a], ["traffic", 0x2c], ["power", 0x43],
+		["roads", Tiles.ROAD_STRAIGHT_1], ["roads", Tiles.SUSPENSION_BRIDGE_5], ["rail", Tiles.RAIL_STRAIGHT_1],
+		["rail", Tiles.RAIL_BRIDGE], ["traffic", Tiles.RAIL_STRAIGHT_1], ["power", Tiles.ROAD_POWER_CROSSING_1],
 	]:
 		_check(
 			loaded_city.set_building_id(point.x, point.y, network_test[1]),
@@ -754,7 +758,7 @@ func _test_palette_and_minimap(reference_root: String) -> void:
 			"City Map highlights %s tile %02x" % network_test,
 		)
 
-	_check(loaded_city.set_building_id(point.x, point.y, 0), "City Map fixture clears networks")
+	_check(loaded_city.set_building_id(point.x, point.y, Tiles.EMPTY), "City Map fixture clears networks")
 	_check(loaded_city.set_tile_flag(point.x, point.y, 0x40, true), "City Map fixture sets power")
 	_check(
 		Minimap.color_index(loaded_city, point.x, point.y, "power") == 0x32,
@@ -767,12 +771,12 @@ func _test_palette_and_minimap(reference_root: String) -> void:
 		"City Map uses the recovered unpowered color",
 	)
 	_check(loaded_city.set_tile_flag(point.x, point.y, 0x80, false), "City Map fixture clears powerable")
-	_check(loaded_city.set_underground_id(point.x, point.y, 0x10), "City Map fixture sets pipe")
+	_check(loaded_city.set_underground_id(point.x, point.y, UnderTiles.PIPE_LR), "City Map fixture sets pipe")
 	_check(
 		Minimap.color_index(loaded_city, point.x, point.y, "water") == 0xff,
 		"City Map highlights the recovered pipe range",
 	)
-	_check(loaded_city.set_underground_id(point.x, point.y, 0), "City Map fixture clears pipe")
+	_check(loaded_city.set_underground_id(point.x, point.y, UnderTiles.EMPTY), "City Map fixture clears pipe")
 
 	for gradient_test in [
 		["XTRF", "traffic", 64, 0xf0, 0xaa],
@@ -806,8 +810,8 @@ func _test_palette_and_minimap(reference_root: String) -> void:
 		)
 
 	for facility_test in [
-		["police_stations", 0xd2], ["fire_stations", 0xd3],
-		["schools", 0xd6], ["colleges", 0xd9],
+		["police_stations", Tiles.POLICE_STATION], ["fire_stations", Tiles.FIRE_STATION],
+		["schools", Tiles.SCHOOL], ["colleges", Tiles.COLLEGE],
 	]:
 		_check(loaded_city.set_building_id(point.x, point.y, facility_test[1]), "City Map fixture sets facility")
 		_check(
@@ -1054,7 +1058,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	# Large-map patch extents are owned by large_render_patch_test.
 	var render_fixture := CityModel.from_document(EmptyCityTemplate.create(16))
 	for point in [Vector2i(4, 4), Vector2i(12, 12), Vector2i(10, 6)]:
-		render_fixture.set_building_id(point.x, point.y, 0x0d)
+		render_fixture.set_building_id(point.x, point.y, Tiles.SMALL_PARK)
 	var indexed_city := IsometricRenderer.create_image(
 		render_fixture, Palette.index_encoding(), small_medium,
 		IsometricRenderer.VIEW_SMALL, 0, false, true
@@ -1085,7 +1089,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	var patch_point := Vector2i(8, 8)
 	var patch_index := patch_city.index_of(patch_point.x, patch_point.y)
 	_check(
-		patch_city.set_building_id(patch_point.x, patch_point.y, 0x0d),
+		patch_city.set_building_id(patch_point.x, patch_point.y, Tiles.SMALL_PARK),
 		"Static region fixture places a small park",
 	)
 	var patch_result := IsometricRenderer.patch_static_image(
@@ -1191,7 +1195,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		overlay_document.find_chunk("XTRF").decoded_payload.duplicate()
 	)
 	_check(
-		overlay_city.set_building_id(overlay_point.x, overlay_point.y, 0x1d),
+		overlay_city.set_building_id(overlay_point.x, overlay_point.y, Tiles.ROAD_STRAIGHT_1),
 		"Traffic view fixture installs a straight road",
 	)
 	traffic_data[traffic_index] = 85
@@ -1266,7 +1270,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Small view omits high-density variants absent from its source archive",
 	)
 	_check(
-		overlay_city.set_building_id(overlay_point.x, overlay_point.y, 0x0e),
+		overlay_city.set_building_id(overlay_point.x, overlay_point.y, Tiles.POWER_LINE_STRAIGHT_1),
 		"Traffic exclusion fixture installs a power line",
 	)
 	_check(
@@ -1276,7 +1280,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Busy traffic cells do not draw traffic sprites on power lines",
 	)
 	_check(
-		overlay_city.set_building_id(overlay_point.x, overlay_point.y, 0x49),
+		overlay_city.set_building_id(overlay_point.x, overlay_point.y, Tiles.HIGHWAY_STRAIGHT_1),
 		"Traffic view fixture installs a highway",
 	)
 	traffic_data[traffic_index] = 29
@@ -1302,7 +1306,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Highway traffic selects the recovered high-density lane sprite",
 	)
 	_check(
-		overlay_city.set_building_id(overlay_point.x, overlay_point.y, 0x61),
+		overlay_city.set_building_id(overlay_point.x, overlay_point.y, Tiles.HIGHWAY_SLOPE_1),
 		"Traffic view fixture installs an elevated highway",
 	)
 	traffic_data[traffic_index] = 29
@@ -1322,13 +1326,13 @@ func _test_sprite_archives(reference_root: String) -> void:
 	)
 	_check(
 		not IsometricStaticVisuals._should_draw_building(
-			overlay_city, overlay_point.x, overlay_point.y, 0x61
+			overlay_city, overlay_point.x, overlay_point.y, Tiles.HIGHWAY_SLOPE_1
 		),
 		"Elevated highway waits for its compass-selected anchor",
 	)
 	_check(
 		IsometricStaticVisuals._should_draw_building(
-			overlay_city, overlay_point.x, overlay_point.y, 0x6c
+			overlay_city, overlay_point.x, overlay_point.y, Tiles.RAIL_SUBWAY_ENTRANCE_1
 		),
 		"Subway-to-rail tiles draw without zone anchor bits",
 	)
@@ -1342,7 +1346,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	)
 	_check(
 		IsometricStaticVisuals._should_draw_building(
-			overlay_city, overlay_point.x, overlay_point.y, 0x61
+			overlay_city, overlay_point.x, overlay_point.y, Tiles.HIGHWAY_SLOPE_1
 		),
 		"Elevated highway draws from its compass-selected anchor",
 	)
@@ -1405,22 +1409,22 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Saved mirror stays direct for rail and combines with compass for buildings",
 	)
 	_check(
-		IsometricRenderer.building_baseline_offset(0x1d, 0x0d, 32) == -12
-		and IsometricRenderer.building_baseline_offset(0x1d, 0x00, 32) == 0,
+		IsometricRenderer.building_baseline_offset(Tiles.ROAD_STRAIGHT_1, 0x0d, 32) == -12
+		and IsometricRenderer.building_baseline_offset(Tiles.ROAD_STRAIGHT_1, 0x00, 32) == 0,
 		"A network on terrain shape 0x0d uses the recovered raised baseline",
 	)
 	_check(
-		IsometricRenderer.building_baseline_offset(0x70, 0x00, 128) == 24
+		IsometricRenderer.building_baseline_offset(Tiles.LOWER_CLASS_HOMES_1X1_1, 0x00, 128) == 24
 		and IsometricRenderer.building_baseline_offset(
-			0x70, 0x00, 64, IsometricRenderer.VIEW_MEDIUM
+			Tiles.LOWER_CLASS_HOMES_1X1_1, 0x00, 64, IsometricRenderer.VIEW_MEDIUM
 		) == 12
 		and IsometricRenderer.building_baseline_offset(
-			0x70, 0x00, 32, IsometricRenderer.VIEW_SMALL
+			Tiles.LOWER_CLASS_HOMES_1X1_1, 0x00, 32, IsometricRenderer.VIEW_SMALL
 		) == 6,
 		"Large footprints use the native quarter-width baseline at every zoom",
 	)
 	_check(
-		overlay_city.set_building_id(overlay_point.x, overlay_point.y, 0x70),
+		overlay_city.set_building_id(overlay_point.x, overlay_point.y, Tiles.LOWER_CLASS_HOMES_1X1_1),
 		"Power-marker fixture installs a zone building",
 	)
 	_check(
@@ -1718,7 +1722,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Isometric lookup fixture clears terrain",
 	)
 	starter = CityModel.from_document(starter_document)
-	_check(starter.set_building_id(64, 64, 0), "Moving overlay fixture clears its tile")
+	_check(starter.set_building_id(64, 64, Tiles.EMPTY), "Moving overlay fixture clears its tile")
 	_check(starter.set_tile_flag(64, 64, 0x04, false), "Moving overlay fixture uses dry land")
 	var plane_entry := large.find_sprite(plane_visual.sprite_id)
 	var plane_commands_visual := IsometricMovingVisuals.Visual.new()
@@ -2529,7 +2533,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Hidden pipes keep a subway and remove its pipe overlay",
 	)
 	_check(
-		underground_city.set_building_id(20, 20, 0xff),
+		underground_city.set_building_id(20, 20, Tiles.LLAMA_DOME),
 		"Underground fixture adds a surface building",
 	)
 	_check(
@@ -2565,9 +2569,9 @@ func _test_sprite_archives(reference_root: String) -> void:
 		)
 
 	var filtered_source := CityModel.from_document(starter.document.duplicate_document())
-	_check(filtered_source.set_building_id(10, 10, 0x80), "View filter adds a building")
-	_check(filtered_source.set_building_id(11, 10, 0x2e), "View filter adds a network")
-	_check(filtered_source.set_building_id(12, 10, 0x06), "View filter adds a tree")
+	_check(filtered_source.set_building_id(10, 10, Tiles.SMALL_OFFICE_BUILDING_1X1), "View filter adds a building")
+	_check(filtered_source.set_building_id(11, 10, Tiles.RAIL_SLOPE_1), "View filter adds a network")
+	_check(filtered_source.set_building_id(12, 10, Tiles.TREES_1), "View filter adds a tree")
 	_check(filtered_source.set_zone_id(13, 10, 2), "View filter adds a zone")
 	_check(filtered_source.set_terrain_id(14, 10, 0x10), "View filter adds water terrain")
 	_check(filtered_source.set_tile_flag(14, 10, 0x04, true), "View filter marks water")
@@ -2575,7 +2579,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(filtered_source.set_tile_flag(15, 10, 0x04, true), "View filter marks shoreline water")
 	_check(filtered_source.set_land_altitude(15, 10, 2), "View filter sets shoreline land altitude")
 	_check(filtered_source.set_water_altitude(15, 10, 7), "View filter sets shoreline water altitude")
-	_check(filtered_source.set_building_id(15, 10, 0xf8), "View filter adds a partial-water structure")
+	_check(filtered_source.set_building_id(15, 10, Tiles.MARINA), "View filter adds a partial-water structure")
 	var filtered := ViewFilter.surface_copy(filtered_source, {
 		"buildings": false,
 		"networks": false,
@@ -2607,7 +2611,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		and filtered_source.is_water(14, 10),
 		"Surface visibility filtering does not change saved city state",
 	)
-	_check(starter.set_building_id(64, 64, 0x2e), "Train drawing fixture adds a rail tile")
+	_check(starter.set_building_id(64, 64, Tiles.RAIL_SLOPE_1), "Train drawing fixture adds a rail tile")
 	var straight_train := IsometricRenderer.train_sprite(starter, 64, 64, ThingRecord.from_fields({
 		"type": 10, "dx": 0,
 	}))
@@ -2641,7 +2645,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		),
 		"Surface train uses the same recovered baseline as its rail tile",
 	)
-	_check(starter.set_building_id(64, 64, 0x48), "Train wire fixture adds a rail-power crossover")
+	_check(starter.set_building_id(64, 64, Tiles.RAIL_POWER_CROSSING_2), "Train wire fixture adds a rail-power crossover")
 	var crossing_train := IsometricRenderer.train_sprite(starter, 64, 64, ThingRecord.from_fields({
 		"type": 10, "dx": 0,
 	}))
@@ -2787,7 +2791,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		and actual_crossing_mask.occluded_pixels == foreground_overlap,
 		"The train draws over the rail deck but stays behind the full power-line foreground",
 	)
-	_check(starter.set_building_id(64, 64, 0x36), "Train drawing fixture adds a turn tile")
+	_check(starter.set_building_id(64, 64, Tiles.RAIL_JUNCTION_1), "Train drawing fixture adds a turn tile")
 	var turning_train := IsometricRenderer.train_sprite(starter, 64, 64, ThingRecord.from_fields({
 		"type": 11, "dx": 1,
 	}))
@@ -2799,7 +2803,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		turning_train.screen_y == 6 and not turning_train.flip,
 		"Train view applies the recovered turn position and mirror",
 	)
-	_check(starter.set_building_id(64, 64, 0x5a), "Train drawing fixture adds a tunnel tile")
+	_check(starter.set_building_id(64, 64, Tiles.RAIL_BRIDGE), "Train drawing fixture adds a tunnel tile")
 	_check(starter.set_tile_flag(64, 64, 0x02, true), "Train drawing fixture mirrors the tunnel")
 	var tunnel_train := IsometricRenderer.train_sprite(starter, 64, 64, ThingRecord.from_fields({
 		"type": 10, "dx": 0,
@@ -3155,7 +3159,8 @@ func _test_scurk_mif(reference_root: String) -> void:
 		var scurk_editor := ScurkEditor.instantiate() as ScurkEditorControl
 		scurk_editor._ready()
 		scurk_editor.configure(
-			editor_palette, editor_large, editor_small_medium, reference_root
+			editor_palette, editor_large, editor_small_medium, reference_root,
+			GraphicsPack.load_root("res://../ext/graphics").scurk_graphics
 		)
 
 		# This control is built manually outside a SceneTree in this test.
@@ -3182,7 +3187,7 @@ func _test_scurk_mif(reference_root: String) -> void:
 			and scurk_editor.revert_name_button != null
 			and scurk_editor.paste_tool_button.disabled
 			and scurk_editor.clipboard_action_buttons.size() == 3
-			and scurk_editor.pixel_canvas.original_textures_loaded
+			and not scurk_editor.pixel_canvas.original_textures_loaded
 			and scurk_editor.pixel_canvas.texture_patterns.size() == 42
 			and scurk_editor.cycle_colors_check.button_pressed
 			and scurk_editor.increment_cycle_button.disabled
@@ -3790,7 +3795,7 @@ func _test_scurk_mif(reference_root: String) -> void:
 			8, 9, 10,
 		])
 		var edited_shape := tile_set_one.set_shape_indices(1208, 3, 2, edited_pixels)
-		var edited_name := tile_set_one.set_name(0xb5, "Edited Theater")
+		var edited_name := tile_set_one.set_name(Tiles.THEATER_SQUARE_3X3, "Edited Theater")
 		var edited_bytes := tile_set_one.to_bytes()
 		var reparsed := ScurkTileSet.new()
 		_check(
@@ -3813,7 +3818,7 @@ func _test_scurk_mif(reference_root: String) -> void:
 				"SCURK edit writes preserve INFO and decode to the edited values",
 			)
 
-		var removed_name := tile_set_one.remove_name(0xb5)
+		var removed_name := tile_set_one.remove_name(Tiles.THEATER_SQUARE_3X3)
 		var removed_bytes := tile_set_one.to_bytes()
 		var reparsed_removed := ScurkTileSet.new()
 		_check(
@@ -3875,7 +3880,7 @@ func _test_scurk_place_command(reference_root: String) -> void:
 	)
 	_check(
 		ScurkPlace.placeable_large_ids(ScurkPickCopy.GROUP_ALL).size() == 500
-		and ScurkPlace.is_placeable_tile(0x1d)
+		and ScurkPlace.is_placeable_tile(Tiles.ROAD_STRAIGHT_1)
 		and ScurkPlace.is_placeable_tile(0x167)
 		and not ScurkPlace.is_placeable_tile(500),
 		"SCURK Place & Print exposes every sprite family, including networks and artwork",
@@ -3994,7 +3999,7 @@ func _test_scurk_place_command(reference_root: String) -> void:
 	)
 
 	_check(
-		city.set_building_id(50, 50, 0x1d),
+		city.set_building_id(50, 50, Tiles.ROAD_STRAIGHT_1),
 		"SCURK protected-site fixture places a road",
 	)
 	var blocked_random_state := process_random.state
@@ -4009,7 +4014,7 @@ func _test_scurk_place_command(reference_root: String) -> void:
 		"SCURK object placement keeps native road and random-state protection",
 	)
 	_check(
-		city.set_building_id(50, 50, 0),
+		city.set_building_id(50, 50, Tiles.EMPTY),
 		"SCURK protected-site fixture removes the road",
 	)
 
@@ -4762,10 +4767,10 @@ func _test_random_and_power(reference_root: String) -> void:
 
 	var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 	var city := CityModel.from_document(document)
-	_check(city.set_building_id(10, 10, 0xc6), "Power test places a hydro plant")
-	_check(city.set_building_id(10, 11, 0x0e), "Power test places a power line")
-	_check(city.set_building_id(10, 12, 0x70), "Power test places a consumer")
-	_check(city.set_building_id(20, 20, 0x70), "Power test places a disconnected consumer")
+	_check(city.set_building_id(10, 10, Tiles.HYDRO_POWER_1), "Power test places a hydro plant")
+	_check(city.set_building_id(10, 11, Tiles.POWER_LINE_STRAIGHT_1), "Power test places a power line")
+	_check(city.set_building_id(10, 12, Tiles.LOWER_CLASS_HOMES_1X1_1), "Power test places a consumer")
+	_check(city.set_building_id(20, 20, Tiles.LOWER_CLASS_HOMES_1X1_1), "Power test places a disconnected consumer")
 
 	for point in [Vector2i(10, 10), Vector2i(10, 11), Vector2i(10, 12), Vector2i(20, 20)]:
 		_check(city.set_tile_flag(point.x, point.y, 0x80, true), "Power test tile is powerable")
@@ -4787,10 +4792,10 @@ func _test_random_and_power(reference_root: String) -> void:
 func _test_water(reference_root: String) -> void:
 	var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 	var city := CityModel.from_document(document)
-	_check(city.set_building_id(30, 30, 0xdc), "Water test places a pump")
-	_check(city.set_building_id(30, 31, 0x00), "Water test clears a pipe tile")
-	_check(city.set_building_id(30, 32, 0x70), "Water test places a consumer")
-	_check(city.set_building_id(40, 40, 0x70), "Water test places a disconnected consumer")
+	_check(city.set_building_id(30, 30, Tiles.WATER_PUMP), "Water test places a pump")
+	_check(city.set_building_id(30, 31, Tiles.EMPTY), "Water test clears a pipe tile")
+	_check(city.set_building_id(30, 32, Tiles.LOWER_CLASS_HOMES_1X1_1), "Water test places a consumer")
+	_check(city.set_building_id(40, 40, Tiles.LOWER_CLASS_HOMES_1X1_1), "Water test places a disconnected consumer")
 
 	for point in [Vector2i(30, 30), Vector2i(30, 31), Vector2i(30, 32), Vector2i(40, 40)]:
 		_check(city.set_tile_flag(point.x, point.y, 0x20, true), "Water test tile is piped")
@@ -5901,7 +5906,7 @@ func _test_military_proposal_phase(reference_root: String) -> void:
 	)
 
 	var missile_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
-	var missile_buildings := _filled_bytes(CityState.TILE_COUNT, 0x0d)
+	var missile_buildings := _filled_bytes(CityState.TILE_COUNT, Tiles.SMALL_PARK)
 	var expected_sites: Array[Rect2i] = []
 
 	for origin in [Vector2i(5, 5), Vector2i(15, 15), Vector2i(25, 25), Vector2i(35, 35), Vector2i(45, 45), Vector2i(55, 55)]:
@@ -5909,7 +5914,7 @@ func _test_military_proposal_phase(reference_root: String) -> void:
 
 		for x in range(origin.x, origin.x + 3):
 			for y in range(origin.y, origin.y + 3):
-				missile_buildings[x * CityState.MAP_SIZE + y] = 0
+				missile_buildings[x * CityState.MAP_SIZE + y] = Tiles.EMPTY
 
 	_check(
 		missile_document.find_chunk("XBLD").set_decoded_payload(missile_buildings),
@@ -6010,9 +6015,9 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	_check(DisasterStartObjectsState.has_active_object(monster_city, DisasterStart.DISASTER_MONSTER), "Monster activity is visible to the disaster controller")
 
 	var fire_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
-	var fire_buildings := _filled_bytes(CityState.TILE_COUNT, 0)
+	var fire_buildings := _filled_bytes(CityState.TILE_COUNT, Tiles.EMPTY)
 	var fire_point := Vector2i(60, 69)
-	fire_buildings[fire_point.x * CityState.MAP_SIZE + fire_point.y] = 0x70
+	fire_buildings[fire_point.x * CityState.MAP_SIZE + fire_point.y] = Tiles.LOWER_CLASS_HOMES_1X1_1
 	_check(
 		fire_document.find_chunk("XBLD").set_decoded_payload(fire_buildings)
 		and fire_document.find_chunk("XBIT").set_decoded_payload(
@@ -6190,10 +6195,10 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	)
 
 	var riot_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
-	var riot_buildings := _filled_bytes(CityState.TILE_COUNT, 0)
+	var riot_buildings := _filled_bytes(CityState.TILE_COUNT, Tiles.EMPTY)
 
 	for y in [19, 18, 17]:
-		riot_buildings[20 * CityState.MAP_SIZE + y] = 0x1d
+		riot_buildings[20 * CityState.MAP_SIZE + y] = Tiles.ROAD_STRAIGHT_1
 
 	_check(
 		riot_document.find_chunk("XBLD").set_decoded_payload(riot_buildings)
@@ -6237,9 +6242,9 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	var rejected_riot_document := _load_fixture(
 		reference_root.path_join("DEFAULT.SC2")
 	)
-	var rejected_riot_buildings := _filled_bytes(CityState.TILE_COUNT, 0)
-	rejected_riot_buildings[20 * CityState.MAP_SIZE + 20] = 0x1d
-	rejected_riot_buildings[20 * CityState.MAP_SIZE + 19] = 0x1c
+	var rejected_riot_buildings := _filled_bytes(CityState.TILE_COUNT, Tiles.EMPTY)
+	rejected_riot_buildings[20 * CityState.MAP_SIZE + 20] = Tiles.ROAD_STRAIGHT_1
+	rejected_riot_buildings[20 * CityState.MAP_SIZE + 19] = Tiles.POWER_LINE_CROSSROADS
 	_check(
 		rejected_riot_document.find_chunk("XBLD").set_decoded_payload(
 			rejected_riot_buildings
@@ -6318,7 +6323,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	var earthquake_point := Vector2i(64, 64)
 	var earthquake_damage_point := Vector2i(32, 32)
 	var earthquake_fixture := _fire_map_fixture(
-		reference_root, earthquake_damage_point, 0x1d
+		reference_root, earthquake_damage_point, Tiles.ROAD_STRAIGHT_1
 	)
 	_check(
 		earthquake_fixture.city != null
@@ -6374,7 +6379,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	)
 
 	var empty_earthquake_fixture := _fire_map_fixture(
-		reference_root, Vector2i(20, 20), 0
+		reference_root, Vector2i(20, 20), Tiles.EMPTY
 	)
 	_check(
 		empty_earthquake_fixture.city.set_text_overlay_id(20, 20, 0),
@@ -6440,9 +6445,9 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	var military_target := Vector2i(32, 33)
 	var fire_target := Vector2i(32, 34)
 	var toxic_target := Vector2i(32, 35)
-	meltdown_buildings[military_target.x * CityState.MAP_SIZE + military_target.y] = 0xdd
+	meltdown_buildings[military_target.x * CityState.MAP_SIZE + military_target.y] = Tiles.RUNWAY
 	meltdown_zones[military_target.x * CityState.MAP_SIZE + military_target.y] = 7
-	meltdown_buildings[toxic_target.x * CityState.MAP_SIZE + toxic_target.y] = 0x0d
+	meltdown_buildings[toxic_target.x * CityState.MAP_SIZE + toxic_target.y] = Tiles.SMALL_PARK
 	meltdown_flags[toxic_target.x * CityState.MAP_SIZE + toxic_target.y] = 0x04
 	_check(
 		meltdown_document.find_chunk("XBLD").set_decoded_payload(meltdown_buildings)
@@ -6711,7 +6716,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	var edge_microwave_document := _load_fixture(
 		reference_root.path_join("DEFAULT.SC2")
 	)
-	var edge_microwave_buildings := _filled_bytes(CityState.TILE_COUNT, 0)
+	var edge_microwave_buildings := _filled_bytes(CityState.TILE_COUNT, Tiles.EMPTY)
 	edge_microwave_buildings[127 * CityState.MAP_SIZE + 10] = (
 		DisasterStart.MICROWAVE_POWER_PLANT
 	)
@@ -7141,8 +7146,8 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		)
 
 	var fallback_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
-	var fallback_buildings := _filled_bytes(CityState.TILE_COUNT, 0)
-	fallback_buildings[12 * CityState.MAP_SIZE + 13] = 6
+	var fallback_buildings := _filled_bytes(CityState.TILE_COUNT, Tiles.EMPTY)
+	fallback_buildings[12 * CityState.MAP_SIZE + 13] = Tiles.TREES_1
 	_check(
 		fallback_document.find_chunk("XBLD").set_decoded_payload(fallback_buildings)
 		and fallback_document.find_chunk("XBIT").set_decoded_payload(
@@ -7278,7 +7283,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 
 
 func _test_disaster_map_phase(reference_root: String) -> void:
-	var water := _fire_map_fixture(reference_root, Vector2i(20, 20), 6, true)
+	var water := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.TREES_1, true)
 	var water_random := SequenceRandom.new([0])
 	var water_lfsr := SequenceLfsrRandom.new([])
 	var water_tick := DisasterMapFireFlood.run_fire(water.city, water_random, water_lfsr)
@@ -7305,8 +7310,8 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"A later fire scan ends after no marker remains",
 	)
 
-	var spread := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
-	_check(spread.city.set_building_id(19, 20, 6), "Fire spread fixture adds a west target")
+	var spread := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.TREES_1)
+	_check(spread.city.set_building_id(19, 20, Tiles.TREES_1), "Fire spread fixture adds a west target")
 	var spread_random := SequenceRandom.new([0, 0])
 	var spread_tick := DisasterMapFireFlood.run_fire(
 		spread.city, spread_random, SequenceLfsrRandom.new([])
@@ -7320,9 +7325,9 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"Fire choice zero spreads west through the shared damage helper",
 	)
 
-	var linked_spread := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
+	var linked_spread := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.TREES_1)
 	_check(
-		linked_spread.city.set_building_id(19, 20, 0x70)
+		linked_spread.city.set_building_id(19, 20, Tiles.LOWER_CLASS_HOMES_1X1_1)
 		and linked_spread.city.set_text_overlay_id(19, 20, 51),
 		"Linked fire spread fixture adds a west microsimulation building",
 	)
@@ -7344,7 +7349,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"Shared fire damage emits native dust and consumes its two visual random values",
 	)
 
-	var covered := _fire_map_fixture(reference_root, Vector2i(20, 20), 0x70)
+	var covered := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.LOWER_CLASS_HOMES_1X1_1)
 	var covered_random := SequenceRandom.new([0, 4, 0, 2])
 	var covered_lfsr := SequenceLfsrRandom.new([3])
 	var covered_tick := DisasterMapFireFlood.run_fire(covered.city, covered_random, covered_lfsr)
@@ -7361,7 +7366,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"Coverage extinction preserves the process and LFSR random order",
 	)
 
-	var collapsing := _fire_map_fixture(reference_root, Vector2i(20, 20), 0x70)
+	var collapsing := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.LOWER_CLASS_HOMES_1X1_1)
 	var collapse_random := SequenceRandom.new([0, 5, 1])
 	var collapse_lfsr := SequenceLfsrRandom.new([2, 0])
 	var collapse_tick := DisasterMapFireFlood.run_fire(
@@ -7386,7 +7391,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		and collapse_lfsr.position == 2,
 		"Fire collapse links its explosion and preserves the original random order",
 	)
-	var toxic := _fire_map_fixture(reference_root, Vector2i(20, 20), 0x85)
+	var toxic := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.CHEMICAL_STORAGE_1X1)
 	var toxic_tick := DisasterMapFireFlood.run_fire(
 		toxic.city, SequenceRandom.new([0, 5, 1]), SequenceLfsrRandom.new([2, 1])
 	)
@@ -7399,7 +7404,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"A special burning structure can leave the recovered toxic marker",
 	)
 
-	var expired_toxic := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
+	var expired_toxic := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.TREES_1)
 	_check(
 		expired_toxic.city.set_text_overlay_id(20, 20, DisasterMap.TOXIC_OVERLAY),
 		"Toxic expiry fixture installs its marker",
@@ -7422,7 +7427,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"Toxic LFSR expiry consumes no later process-random value",
 	)
 
-	var water_toxic := _fire_map_fixture(reference_root, Vector2i(20, 20), 6, true)
+	var water_toxic := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.TREES_1, true)
 	_check(
 		water_toxic.city.set_text_overlay_id(20, 20, DisasterMap.TOXIC_OVERLAY),
 		"Water toxic fixture installs its marker",
@@ -7441,7 +7446,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"A selected toxic marker on water has the recovered one-in-16 expiry gate",
 	)
 
-	var downhill_toxic := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
+	var downhill_toxic := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.TREES_1)
 	_check(
 		downhill_toxic.city.set_text_overlay_id(20, 20, DisasterMap.TOXIC_OVERLAY)
 		and downhill_toxic.city.set_land_altitude(20, 20, 5)
@@ -7469,7 +7474,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"A downhill toxic move does not consume a fallback direction value",
 	)
 
-	var flat_toxic := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
+	var flat_toxic := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.TREES_1)
 	_check(
 		flat_toxic.city.set_text_overlay_id(20, 20, DisasterMap.TOXIC_OVERLAY)
 		and flat_toxic.city.set_land_altitude(20, 20, 5)
@@ -7495,7 +7500,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"A marker that moves later in scan order receives its native second scan gate",
 	)
 
-	var abandoned_toxic := _fire_map_fixture(reference_root, Vector2i(20, 20), 0x70)
+	var abandoned_toxic := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.LOWER_CLASS_HOMES_1X1_1)
 	_check(
 		abandoned_toxic.city.set_zone_id(20, 20, 1)
 		and abandoned_toxic.city.set_building_corners(20, 20, 0xf0)
@@ -7523,7 +7528,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"Toxic abandonment consumes the normal building-selection random value",
 	)
 
-	var idle_riot := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
+	var idle_riot := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.TREES_1)
 	_check(
 		idle_riot.city.set_text_overlay_id(20, 20, DisasterMap.RIOT_OVERLAY_REVERSE),
 		"Idle riot fixture installs its reverse marker",
@@ -7546,7 +7551,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"An unsupported riot consumes its two gates, damage choice, and final sound gate",
 	)
 
-	var water_riot := _fire_map_fixture(reference_root, Vector2i(20, 20), 6, true)
+	var water_riot := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.TREES_1, true)
 	_check(
 		water_riot.city.set_text_overlay_id(20, 20, DisasterMap.RIOT_OVERLAY_FORWARD),
 		"Water riot fixture installs its forward marker",
@@ -7563,10 +7568,10 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"An updating riot expires on water after its second process-random gate",
 	)
 
-	var reverse_riot := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
+	var reverse_riot := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.TREES_1)
 	_check(
 		reverse_riot.city.set_text_overlay_id(20, 20, DisasterMap.RIOT_OVERLAY_REVERSE)
-		and reverse_riot.city.set_building_id(19, 20, 0x1e),
+		and reverse_riot.city.set_building_id(19, 20, Tiles.ROAD_STRAIGHT_2),
 		"Reverse riot fixture adds a supported west road",
 	)
 	var reverse_riot_random := SequenceRandom.new([0, 1, 4, 1, 1])
@@ -7585,10 +7590,10 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"A one-connection reverse riot skips the connection-choice random value",
 	)
 
-	var forward_riot := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
+	var forward_riot := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.TREES_1)
 	_check(
 		forward_riot.city.set_text_overlay_id(20, 20, DisasterMap.RIOT_OVERLAY_FORWARD)
-		and forward_riot.city.set_building_id(21, 20, 0x3f),
+		and forward_riot.city.set_building_id(21, 20, Tiles.TUNNEL_ENTRANCE_1),
 		"Forward riot fixture adds a supported east rail tile",
 	)
 	var forward_riot_random := SequenceRandom.new([0, 1, 4, 1, 1, 1])
@@ -7608,10 +7613,10 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"Forward riot reprocessing preserves the native in-place random order",
 	)
 
-	var damaging_riot := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
+	var damaging_riot := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.TREES_1)
 	_check(
 		damaging_riot.city.set_text_overlay_id(20, 20, DisasterMap.RIOT_OVERLAY_REVERSE)
-		and damaging_riot.city.set_building_id(19, 20, 6),
+		and damaging_riot.city.set_building_id(19, 20, Tiles.TREES_1),
 		"Riot damage fixture adds a combustible west target",
 	)
 	var damaging_riot_tick := DisasterMapMarkers.run_riot(
@@ -7631,7 +7636,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		reference_root, Dispatch.TYPE_FIRE, Vector2i(20, 20)
 	)
 	_check(
-		fire_dispatch.city.set_building_id(19, 20, 6)
+		fire_dispatch.city.set_building_id(19, 20, Tiles.TREES_1)
 		and fire_dispatch.city.set_text_overlay_id(19, 20, DisasterMap.FIRE_OVERLAY),
 		"Fire dispatch fixture adds a burning west network tile",
 	)
@@ -7658,7 +7663,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		reference_root, Dispatch.TYPE_FIRE, Vector2i(20, 20)
 	)
 	_check(
-		rail_dispatch.city.set_building_id(19, 20, 0x3f)
+		rail_dispatch.city.set_building_id(19, 20, Tiles.TUNNEL_ENTRANCE_1)
 		and rail_dispatch.city.set_text_overlay_id(19, 20, DisasterMap.FIRE_OVERLAY),
 		"Rail dispatch fixture adds a burning west rail tile",
 	)
@@ -7677,7 +7682,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		reference_root, Dispatch.TYPE_POLICE, Vector2i(20, 20)
 	)
 	_check(
-		police_dispatch.city.set_building_id(19, 20, 0x3f)
+		police_dispatch.city.set_building_id(19, 20, Tiles.TUNNEL_ENTRANCE_1)
 		and police_dispatch.city.set_text_overlay_id(19, 20, DisasterMap.FIRE_OVERLAY)
 		and police_dispatch.city.set_text_overlay_id(21, 20, DisasterMap.RIOT_OVERLAY_FORWARD),
 		"Police dispatch fixture adds west fire and east riot markers",
@@ -7704,7 +7709,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		reference_root, Dispatch.TYPE_POLICE, Vector2i(20, 20)
 	)
 	_check(
-		gated_police.city.set_building_id(19, 20, 0x3f)
+		gated_police.city.set_building_id(19, 20, Tiles.TUNNEL_ENTRANCE_1)
 		and gated_police.city.set_text_overlay_id(19, 20, DisasterMap.FIRE_OVERLAY)
 		and gated_police.city.set_text_overlay_id(21, 20, DisasterMap.RIOT_OVERLAY_REVERSE),
 		"Gated police fixture adds west fire and east riot markers",
@@ -7723,10 +7728,10 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"A failed police fire gate does not block its separate riot-suppression attempt",
 	)
 
-	var flood := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
+	var flood := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.TREES_1)
 	_check(
 		flood.city.set_text_overlay_id(20, 20, 0xfc)
-		and flood.city.set_building_id(19, 20, 6),
+		and flood.city.set_building_id(19, 20, Tiles.TREES_1),
 		"Flood tick fixture installs its source and west target",
 	)
 	var flood_random := SequenceRandom.new([0, 0])
@@ -7748,10 +7753,10 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"An early flood spread preserves its process-random order",
 	)
 
-	var linked_flood := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
+	var linked_flood := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.TREES_1)
 	_check(
 		linked_flood.city.set_text_overlay_id(20, 20, 0xfc)
-		and linked_flood.city.set_building_id(19, 20, 0x70)
+		and linked_flood.city.set_building_id(19, 20, Tiles.LOWER_CLASS_HOMES_1X1_1)
 		and linked_flood.city.set_text_overlay_id(19, 20, 51),
 		"Linked flood fixture installs a west microsimulation building",
 	)
@@ -7774,7 +7779,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"Shared flood damage emits native dust and consumes its two visual random values",
 	)
 
-	var expired_flood := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
+	var expired_flood := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.TREES_1)
 	_check(
 		expired_flood.city.set_text_overlay_id(20, 20, 0xfc),
 		"Expired flood fixture installs its marker",
@@ -7802,10 +7807,10 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"Expired flood consumes its LFSR gate before the final sound gate",
 	)
 
-	var uphill := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
+	var uphill := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.TREES_1)
 	_check(
 		uphill.city.set_text_overlay_id(20, 20, 0xfc)
-		and uphill.city.set_building_id(19, 20, 6)
+		and uphill.city.set_building_id(19, 20, Tiles.TREES_1)
 		and uphill.city.set_land_altitude(20, 20, 0)
 		and uphill.city.set_land_altitude(19, 20, 1),
 		"Uphill flood fixture raises the west target",
@@ -7821,7 +7826,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"Flood cannot spread to a higher low-five-bit altitude",
 	)
 
-	var manual_flood := _fire_map_fixture(reference_root, Vector2i(20, 20), 0)
+	var manual_flood := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.EMPTY)
 	var shoreline := _filled_bytes(CityState.TILE_COUNT, 0)
 	shoreline[20 * CityState.MAP_SIZE + 20] = 0x20
 	_check(
@@ -7845,7 +7850,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"The engine keeps the flood lifetime counter from start through recurring ticks",
 	)
 
-	var engine_fixture := _fire_map_fixture(reference_root, Vector2i(20, 20), 6, true)
+	var engine_fixture := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.TREES_1, true)
 	_check(engine_fixture.document.set_misc_u32(0x0004, 2), "Fire engine fixture selects disaster mode")
 	var engine := Simulation.new(engine_fixture.city, 3, 7, 13)
 	engine.active_disaster_type = DisasterStart.DISASTER_FIRE
@@ -7867,7 +7872,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		reference_root, Dispatch.TYPE_FIRE, Vector2i(20, 20)
 	)
 	_check(
-		dispatch_engine_fixture.city.set_building_id(19, 20, 0x3f)
+		dispatch_engine_fixture.city.set_building_id(19, 20, Tiles.TUNNEL_ENTRANCE_1)
 		and dispatch_engine_fixture.city.set_text_overlay_id(
 			19, 20, DisasterMap.FIRE_OVERLAY
 		)
@@ -7920,7 +7925,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 
 	var hurricane_tick_fixture := _fire_map_fixture(
-		reference_root, Vector2i(20, 21), 0x71
+		reference_root, Vector2i(20, 21), Tiles.LOWER_CLASS_HOMES_1X1_2
 	)
 	_check(
 		hurricane_tick_fixture.city.set_text_overlay_id(20, 21, 0),
@@ -7955,7 +7960,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 
 	var gated_hurricane_fixture := _fire_map_fixture(
-		reference_root, Vector2i(20, 21), 0x71
+		reference_root, Vector2i(20, 21), Tiles.LOWER_CLASS_HOMES_1X1_2
 	)
 	_check(
 		gated_hurricane_fixture.city.set_text_overlay_id(20, 21, 0),
@@ -7981,7 +7986,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"A hurricane tick consumes only its sound and LFSR gates when both reject",
 	)
 
-	var toxic_engine_fixture := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
+	var toxic_engine_fixture := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.TREES_1)
 	_check(
 		toxic_engine_fixture.city.set_text_overlay_id(20, 20, DisasterMap.TOXIC_OVERLAY)
 		and toxic_engine_fixture.document.set_misc_u32(0x0004, 2),
@@ -8002,7 +8007,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"The engine continues a map disaster through toxic residue and ends one scan later",
 	)
 
-	var toxic_spill_fixture := _fire_map_fixture(reference_root, Vector2i(24, 25), 0)
+	var toxic_spill_fixture := _fire_map_fixture(reference_root, Vector2i(24, 25), Tiles.EMPTY)
 	_check(
 		toxic_spill_fixture.city.set_text_overlay_id(24, 25, 0),
 		"Toxic Spill engine fixture clears its target",
@@ -8027,7 +8032,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 
 	var pollution_engine_fixture := _fire_map_fixture(
-		reference_root, Vector2i(24, 25), 0
+		reference_root, Vector2i(24, 25), Tiles.EMPTY
 	)
 	_check(
 		pollution_engine_fixture.city.set_text_overlay_id(24, 25, 0)
@@ -8096,7 +8101,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"Riot enters disaster mode and runs its recurring map branch",
 	)
 
-	var manual := _fire_map_fixture(reference_root, Vector2i(20, 20), 0)
+	var manual := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.EMPTY)
 	_check(manual.city.set_text_overlay_id(20, 20, 0), "Manual disaster fixture clears fire")
 	var manual_engine := Simulation.new(manual.city, 1, 7, 13)
 	var manual_start := manual_engine.start_disaster(
@@ -8214,7 +8219,7 @@ func _test_annual_service_microsim_phase(reference_root: String) -> void:
 	var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 	var city := CityModel.from_document(document)
 	var microsims := _filled_bytes(CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE, 0)
-	var service_tiles := [0xd1, 0xd2, 0xd3, 0xd6, 0xd7, 0xd8, 0xd9]
+	var service_tiles := [Tiles.HOSPITAL, Tiles.POLICE_STATION, Tiles.FIRE_STATION, Tiles.SCHOOL, Tiles.STADIUM, Tiles.PRISON, Tiles.COLLEGE]
 
 	for index in service_tiles.size():
 		microsims[(index + 1) * 8] = service_tiles[index]
@@ -8304,7 +8309,7 @@ func _test_annual_special_microsim_phase(reference_root: String) -> void:
 	var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 	var city := CityModel.from_document(document)
 	var microsims := _filled_bytes(CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE, 0)
-	var special_tiles := [0xc9, 0xda, 0xdb, 0xf3, 0xf4, 0xf8, 0xfb, 0xfe, 0xff]
+	var special_tiles := [Tiles.GAS_POWER, Tiles.ZOO, Tiles.STATUE, Tiles.MAYOR_HOUSE, Tiles.WATER_TREATMENT, Tiles.MARINA, Tiles.PLYMOUTH_ARCOLOGY, Tiles.LAUNCH_ARCOLOGY, Tiles.LLAMA_DOME]
 
 	for index in special_tiles.size():
 		microsims[(index + 1) * 8] = special_tiles[index]
@@ -8658,7 +8663,7 @@ func _test_transport_trip(reference_root: String) -> void:
 	var city := CityModel.from_document(document)
 
 	for point in [Vector2i(20, 21), Vector2i(20, 22), Vector2i(20, 23)]:
-		_check(city.set_building_id(point.x, point.y, 0x1d), "Transport fixture places a road")
+		_check(city.set_building_id(point.x, point.y, Tiles.ROAD_STRAIGHT_1), "Transport fixture places a road")
 
 	_check(city.set_zone_id(20, 20, 1), "Transport fixture sets the origin zone")
 	_check(city.set_zone_id(20, 26, 3), "Transport fixture sets a job destination")
@@ -8675,7 +8680,7 @@ func _test_transport_trip(reference_root: String) -> void:
 	_check(failed.ok and not failed.reached_destination, "Trip rejects an incompatible destination")
 	_check(document.find_chunk("XTRF").decoded_payload == before_failed_trip, "Failed trip preserves XTRF")
 
-	_check(city.set_building_id(1, 0, 0x1d), "Connection fixture places an edge road")
+	_check(city.set_building_id(1, 0, Tiles.ROAD_STRAIGHT_1), "Connection fixture places an edge road")
 	_check(city.set_text_overlay_id(1, 0, 0xfa), "Connection fixture marks a city connection")
 	var connection := Transport.run(city, Vector2i(1, 1), 5, 1, Random.new(7))
 	_check(connection.ok and connection.reached_destination, "Trip can leave through a city connection")
@@ -8686,7 +8691,7 @@ func _test_transport_trip(reference_root: String) -> void:
 
 
 func _test_growth_phase(reference_root: String) -> void:
-	var normal := _growth_fixture(reference_root, 0xae, 1, 2000)
+	var normal := _growth_fixture(reference_root, Tiles.LARGE_APARTMENT_BUILDING_3X3_1, 1, 2000)
 	var normal_result := GrowthScan.run(normal.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new())
 	_check(normal_result.ok, "Normal growth scan completes: %s" % normal_result.error)
 	_check(normal_result.scanned_tiles == 1024, "Growth scan processes one sixteenth of the map")
@@ -8695,7 +8700,7 @@ func _test_growth_phase(reference_root: String) -> void:
 	_check(normal_result.successful_trips == 1, "Developed zone completes its transport trip")
 	_check(normal.city.building_id(20, 20) == 0xae, "Stable density-four zone keeps its building")
 
-	var bare := _growth_fixture(reference_root, 0, 1, 2000)
+	var bare := _growth_fixture(reference_root, Tiles.EMPTY, 1, 2000)
 	var bare_result := GrowthScan.run(bare.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new())
 	_check(bare_result.ok, "Bare-zone growth scan completes: %s" % bare_result.error)
 	_check(bare_result.started_construction == 1, "Bare powered zone starts construction")
@@ -8706,21 +8711,21 @@ func _test_growth_phase(reference_root: String) -> void:
 		"Construction sets utility flags",
 	)
 
-	var declining := _growth_fixture(reference_root, 0x70, 1, -2000)
+	var declining := _growth_fixture(reference_root, Tiles.LOWER_CLASS_HOMES_1X1_1, 1, -2000)
 	var decline_result := GrowthScan.run(declining.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new())
 	_check(decline_result.ok, "Declining-zone scan completes: %s" % decline_result.error)
 	_check(decline_result.abandoned_buildings == 1, "Low demand abandons the controlled building")
 	_check(declining.city.building_id(20, 20) == 0x8a, "Density-one zone uses an abandoned tile")
 	_check(declining.document.misc_u32(0x05f4) == 1, "Population is counted before abandonment")
 
-	var abandoned := _growth_fixture(reference_root, 0x8a, 1, 2000)
+	var abandoned := _growth_fixture(reference_root, Tiles.ABANDONED_1X1_1, 1, 2000)
 	var recovery_result := GrowthScan.run(abandoned.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new())
 	_check(recovery_result.ok, "Abandoned-zone scan completes: %s" % recovery_result.error)
 	_check(recovery_result.recovered_buildings == 1, "High demand recovers an abandoned building")
 	_check(abandoned.city.building_id(20, 20) == 0x70, "Recovered residence uses value group zero")
 	_check(abandoned.document.misc_u32(0x060c) == 1, "Abandoned population is counted before recovery")
 
-	var construction := _growth_fixture(reference_root, 0x88, 1, 2000)
+	var construction := _growth_fixture(reference_root, Tiles.CONSTRUCTION_1X1_1, 1, 2000)
 	var construction_result := GrowthScan.run(
 		construction.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new()
 	)
@@ -8728,10 +8733,10 @@ func _test_growth_phase(reference_root: String) -> void:
 	_check(construction_result.completed_construction == 1, "Construction completes on the controlled roll")
 	_check(construction.city.building_id(20, 20) == 0x70, "Residential construction becomes occupied")
 
-	var church := _growth_fixture(reference_root, 0xa6, 1, 2000)
+	var church := _growth_fixture(reference_root, Tiles.CONSTRUCTION_2X2_1, 1, 2000)
 
 	for point in [Vector2i(20, 19), Vector2i(21, 19), Vector2i(21, 20)]:
-		_check(church.city.set_building_id(point.x, point.y, 0xa6), "Church fixture fills construction footprint")
+		_check(church.city.set_building_id(point.x, point.y, Tiles.CONSTRUCTION_2X2_1), "Church fixture fills construction footprint")
 		_check(church.city.set_zone_id(point.x, point.y, 1), "Church fixture zones construction footprint")
 
 	_check(church.document.set_misc_u32(0x01f0 + 0xa6 * 4, 4), "Church fixture counts construction tiles")
@@ -8844,10 +8849,10 @@ func _test_special_zone_growth(reference_root: String) -> void:
 	for x in range(21, 26):
 		_check(air_force.city.set_zone_id(x, 21, 7), "Air Force fixture zones its runway strip")
 
-	_check(air_force.city.set_building_id(10, 10, 0xdd), "Air Force fixture places one civilian runway")
-	_check(air_force.city.set_building_id(23, 21, 0x1d), "Air Force fixture places a military road")
+	_check(air_force.city.set_building_id(10, 10, Tiles.RUNWAY), "Air Force fixture places one civilian runway")
+	_check(air_force.city.set_building_id(23, 21, Tiles.ROAD_STRAIGHT_1), "Air Force fixture places a military road")
 	_check(air_force.city.set_terrain_id(23, 21, 1), "Air Force fixture sets terrain under the road")
-	_check(air_force.city.set_underground_id(23, 21, 1), "Air Force fixture sets a subway under the road")
+	_check(air_force.city.set_underground_id(23, 21, UnderTiles.SUBWAY_LR), "Air Force fixture sets a subway under the road")
 	_check(air_force.document.set_misc_u32(0x0e4c, 3), "Air Force fixture selects an air base")
 	_check(air_force.document.set_misc_u32(0x01f0, 16378), "Air Force fixture counts normal clear tiles")
 	_check(air_force.document.set_misc_u32(0x01f0 + 0xdd * 4, 1), "Air Force fixture counts its civilian runway")
@@ -8864,7 +8869,7 @@ func _test_special_zone_growth(reference_root: String) -> void:
 
 	var aircraft := _special_growth_fixture(reference_root)
 	_check(aircraft.city.set_zone_id(20, 20, 8), "Aircraft fixture sets an airport zone")
-	_check(aircraft.city.set_building_id(20, 20, 0xdd), "Aircraft fixture places a runway")
+	_check(aircraft.city.set_building_id(20, 20, Tiles.RUNWAY), "Aircraft fixture places a runway")
 	_check(aircraft.city.set_tile_flag(20, 20, 0x40, true), "Aircraft fixture powers its runway")
 	_check(aircraft.document.set_misc_u32(0x01f0, 16383), "Aircraft fixture counts clear tiles")
 	_check(aircraft.document.set_misc_u32(0x01f0 + 0xdd * 4, 1), "Aircraft fixture counts its runway")
@@ -8893,7 +8898,7 @@ func _test_special_zone_growth(reference_root: String) -> void:
 
 	var airplane := _special_growth_fixture(reference_root)
 	_check(airplane.city.set_zone_id(20, 20, 8), "Airplane fixture sets an airport zone")
-	_check(airplane.city.set_building_id(20, 20, 0xdd), "Airplane fixture places a runway")
+	_check(airplane.city.set_building_id(20, 20, Tiles.RUNWAY), "Airplane fixture places a runway")
 	_check(airplane.city.set_tile_flag(20, 20, 0x40, true), "Airplane fixture powers its runway")
 	_check(airplane.document.set_misc_u32(0x01f0, 16383), "Airplane fixture counts clear tiles")
 	_check(airplane.document.set_misc_u32(0x01f0 + 0xdd * 4, 1), "Airplane fixture counts its runway")
@@ -8975,7 +8980,7 @@ func _test_special_zone_growth(reference_root: String) -> void:
 
 	var ship_fixture := _special_growth_fixture(reference_root)
 	_check(ship_fixture.city.set_zone_id(20, 20, 9), "Ship fixture sets a seaport zone")
-	_check(ship_fixture.city.set_building_id(20, 20, 0xe0), "Ship fixture places a crane")
+	_check(ship_fixture.city.set_building_id(20, 20, Tiles.CRANE), "Ship fixture places a crane")
 	_check(ship_fixture.city.set_terrain_id(2, 10, 0x10), "Ship fixture places edge water")
 	var stale_ship_record: PackedByteArray = ship_fixture.document.find_chunk("XTHG").decoded_payload.duplicate()
 	stale_ship_record[12 + 8] = 77
@@ -9015,11 +9020,11 @@ func _test_special_zone_growth(reference_root: String) -> void:
 
 func _test_growth_microsimulations(reference_root: String) -> void:
 	var station := _special_growth_fixture(reference_root)
-	_check(station.city.set_building_id(20, 20, 0xed), "Train fixture places a rail station")
+	_check(station.city.set_building_id(20, 20, Tiles.RAIL_STATION), "Train fixture places a rail station")
 	_check(station.city.set_tile_flag(20, 20, 0x40, true), "Train fixture powers its station")
-	_check(station.city.set_building_id(20, 18, 0x2c), "Train fixture places its spawn rail")
-	_check(station.city.set_building_id(19, 18, 0x2c), "Train fixture places its west route rail")
-	_check(station.city.set_building_id(21, 18, 0x2c), "Train fixture places its east route rail")
+	_check(station.city.set_building_id(20, 18, Tiles.RAIL_STRAIGHT_1), "Train fixture places its spawn rail")
+	_check(station.city.set_building_id(19, 18, Tiles.RAIL_STRAIGHT_1), "Train fixture places its west route rail")
+	_check(station.city.set_building_id(21, 18, Tiles.RAIL_STRAIGHT_1), "Train fixture places its east route rail")
 	_check(station.document.set_misc_u32(0x01f0 + 0xed * 4, 4), "Train fixture sets the station count")
 	var train_result := GrowthScan.run(
 		station.city,
@@ -9052,11 +9057,11 @@ func _test_growth_microsimulations(reference_root: String) -> void:
 		and first_car.py == 18,
 		"Train stores two linked car records at its initial tile",
 	)
-	var full_buildings := _filled_bytes(128 * 128, 0)
+	var full_buildings := _filled_bytes(128 * 128, Tiles.EMPTY)
 	var full_things := _filled_bytes(40 * 12, 0)
 	var full_text := _filled_bytes(128 * 128, 0)
-	full_buildings[20 * 128 + 18] = 0x2c
-	full_buildings[20 * 128 + 17] = 0x2c
+	full_buildings[20 * 128 + 18] = Tiles.RAIL_STRAIGHT_1
+	full_buildings[20 * 128 + 17] = Tiles.RAIL_STRAIGHT_1
 
 	for record in range(1, 40):
 		full_things[record * 12] = 7
@@ -9074,7 +9079,7 @@ func _test_growth_microsimulations(reference_root: String) -> void:
 	)
 
 	var marina := _special_growth_fixture(reference_root)
-	_check(marina.city.set_building_id(20, 20, 0xf8), "Sailboat fixture places a marina")
+	_check(marina.city.set_building_id(20, 20, Tiles.MARINA), "Sailboat fixture places a marina")
 	_check(marina.city.set_tile_flag(20, 20, 0x40, true), "Sailboat fixture powers its marina")
 	_check(marina.city.set_tile_flag(20, 19, 0x04, true), "Sailboat fixture marks north water")
 	_check(marina.document.set_misc_u32(0x01f0 + 0xf8 * 4, 9), "Sailboat fixture sets the marina count")
@@ -9098,7 +9103,7 @@ func _test_growth_microsimulations(reference_root: String) -> void:
 	_check(marina.city.text_overlay_id(20, 19) == 202, "Sailboat attaches its XTHG record")
 
 	var arcology := _special_growth_fixture(reference_root)
-	_check(arcology.city.set_building_id(20, 20, 0xfb), "Arcology fixture places an arcology tile")
+	_check(arcology.city.set_building_id(20, 20, Tiles.PLYMOUTH_ARCOLOGY), "Arcology fixture places an arcology tile")
 	_check(arcology.city.set_building_corners(20, 20, 0x80), "Arcology fixture sets the absolute anchor bit")
 	_check(arcology.city.set_text_overlay_id(20, 20, 61), "Arcology fixture attaches dynamic XMIC record ten")
 	_check(arcology.city.set_tile_flag(20, 20, 0x40, true), "Arcology fixture powers the tile")
@@ -9126,7 +9131,7 @@ func _test_growth_microsimulations(reference_root: String) -> void:
 func _test_moving_thing_phase(reference_root: String) -> void:
 	var explosion := _special_growth_fixture(reference_root)
 	_set_explosion(explosion, 1, Vector2i(20, 20), 5, 0, 0)
-	_check(explosion.city.set_building_id(20, 20, 0x90), "Explosion fixture places its center building")
+	_check(explosion.city.set_building_id(20, 20, Tiles.NICE_APARTMENTS_2X2_2), "Explosion fixture places its center building")
 	var first_explosion_frame := MovingThingTick.run(
 		explosion.city, SequenceRandom.new([1]), NonzeroLfsrRandom.new()
 	)
@@ -9159,7 +9164,7 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 
 	for point in [Vector2i(21, 20), Vector2i(20, 21), Vector2i(19, 20)]:
 		_check(
-			spreading_explosion.city.set_building_id(point.x, point.y, 6),
+			spreading_explosion.city.set_building_id(point.x, point.y, Tiles.TREES_1),
 			"Spreading explosion fixture makes the target combustible",
 		)
 
@@ -9198,7 +9203,7 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	var labeled_explosion := _special_growth_fixture(reference_root)
 	_set_explosion(labeled_explosion, 1, Vector2i(20, 20), 5, 1, 2)
 	_check(
-		labeled_explosion.city.set_building_id(21, 20, 6),
+		labeled_explosion.city.set_building_id(21, 20, Tiles.TREES_1),
 		"Explosion fixture makes the labeled tile combustible",
 	)
 	_check(labeled_explosion.city.set_label(1, "Blast Zone"), "Explosion fixture sets a user label")
@@ -9217,7 +9222,7 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 
 	var rubble_explosion := _special_growth_fixture(reference_root)
 	_set_explosion(rubble_explosion, 1, Vector2i(20, 20), 5, 1, 2)
-	_check(rubble_explosion.city.set_building_id(21, 20, 0x90), "Rubble explosion fixture places a building")
+	_check(rubble_explosion.city.set_building_id(21, 20, Tiles.NICE_APARTMENTS_2X2_2), "Rubble explosion fixture places a building")
 	_check(rubble_explosion.city.set_text_overlay_id(21, 20, 241), "Rubble explosion fixture places overlay 241")
 	var rubble_result := MovingThingTick.run(
 		rubble_explosion.city,
@@ -9235,7 +9240,7 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 
 	var facility_explosion := _special_growth_fixture(reference_root)
 	_set_explosion(facility_explosion, 1, Vector2i(20, 20), 5, 1, 2)
-	_check(facility_explosion.city.set_building_id(21, 20, 0x8b), "Facility explosion fixture places a building")
+	_check(facility_explosion.city.set_building_id(21, 20, Tiles.ABANDONED_1X1_2), "Facility explosion fixture places a building")
 	_check(facility_explosion.document.set_misc_u32(0x01f0, 16383), "Facility explosion fixture counts occupied land")
 	_check(facility_explosion.document.set_misc_u32(0x01f0 + 0x8b * 4, 1), "Facility explosion fixture counts its building")
 	var facility_microsims: PackedByteArray = facility_explosion.document.find_chunk("XMIC").decoded_payload.duplicate()
@@ -9268,7 +9273,7 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 
 	var connection_explosion := _special_growth_fixture(reference_root)
 	_set_explosion(connection_explosion, 1, Vector2i(20, 20), 5, 1, 2)
-	_check(connection_explosion.city.set_building_id(21, 20, 0x1d), "Connection blast fixture places a road")
+	_check(connection_explosion.city.set_building_id(21, 20, Tiles.ROAD_STRAIGHT_1), "Connection blast fixture places a road")
 	_check(connection_explosion.city.set_text_overlay_id(21, 20, 250), "Connection blast fixture places a neighbor label")
 	var connection_result := MovingThingTick.run(
 		connection_explosion.city,
@@ -9287,7 +9292,7 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 
 	var tornado := _special_growth_fixture(reference_root)
 	_set_tornado(tornado, 1, Vector2i(20, 20), 2)
-	_check(tornado.city.set_building_id(20, 20, 0x1d), "Tornado fixture places a road")
+	_check(tornado.city.set_building_id(20, 20, Tiles.ROAD_STRAIGHT_1), "Tornado fixture places a road")
 	_check(tornado.document.set_misc_u32(0x01f0, 16383), "Tornado fixture counts occupied land")
 	_check(tornado.document.set_misc_u32(0x01f0 + 0x1d * 4, 1), "Tornado fixture counts its road")
 	var tornado_result := MovingThingTick.run(
@@ -9415,7 +9420,7 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 
 	var radioactive_monster := _special_growth_fixture(reference_root)
 	_set_monster(radioactive_monster, 1, Vector2i(20, 20), 2, 1, 8, 1)
-	_check(radioactive_monster.city.set_building_id(21, 21, 0x8b), "Monster damage fixture places a building")
+	_check(radioactive_monster.city.set_building_id(21, 21, Tiles.ABANDONED_1X1_2), "Monster damage fixture places a building")
 	_check(radioactive_monster.document.set_misc_u32(0x01f0, 16383), "Monster damage fixture counts occupied land")
 	_check(radioactive_monster.document.set_misc_u32(0x01f0 + 0x8b * 4, 1), "Monster damage fixture counts its building")
 	var radioactive_result := MovingThingTick.run(
@@ -9481,7 +9486,7 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 
 	var airplane := _special_growth_fixture(reference_root)
 	_set_airplane(airplane, 1, Vector2i(20, 20), Vector2i(20, 20), 2, 0, 0)
-	_check(airplane.city.set_building_id(20, 20, 0xdd), "Airplane takeoff fixture places a runway")
+	_check(airplane.city.set_building_id(20, 20, Tiles.RUNWAY), "Airplane takeoff fixture places a runway")
 	_check(airplane.city.set_zone_id(20, 20, 8), "Airplane takeoff fixture sets the airport zone")
 	var takeoff_plane_result := MovingThingTick.run(
 		airplane.city, SequenceRandom.new([1]), NonzeroLfsrRandom.new()
@@ -9500,7 +9505,7 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 
 	var cruising_plane := _special_growth_fixture(reference_root)
 	_set_airplane(cruising_plane, 1, Vector2i(20, 20), Vector2i(30, 20), 2, 2, 14)
-	_check(cruising_plane.city.set_building_id(23, 20, 0xfb), "Airplane obstacle fixture places an arcology")
+	_check(cruising_plane.city.set_building_id(23, 20, Tiles.PLYMOUTH_ARCOLOGY), "Airplane obstacle fixture places an arcology")
 	var cruise_plane_result := MovingThingTick.run(
 		cruising_plane.city, SequenceRandom.new([1]), NonzeroLfsrRandom.new()
 	)
@@ -9537,7 +9542,7 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 
 	var landing_plane := _special_growth_fixture(reference_root)
 	_set_airplane(landing_plane, 1, Vector2i(20, 20), Vector2i(21, 20), 2, 1, 1)
-	_check(landing_plane.city.set_building_id(21, 20, 0xdd), "Landing airplane fixture places its destination runway")
+	_check(landing_plane.city.set_building_id(21, 20, Tiles.RUNWAY), "Landing airplane fixture places its destination runway")
 	var landing_plane_result := MovingThingTick.run(
 		landing_plane.city, SequenceRandom.new([1]), NonzeroLfsrRandom.new()
 	)
@@ -9569,7 +9574,7 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 
 	var low_plane := _special_growth_fixture(reference_root)
 	_set_airplane(low_plane, 1, Vector2i(20, 20), Vector2i(30, 20), 2, 2, 11)
-	_check(low_plane.city.set_building_id(20, 20, 0xbb), "Low airplane fixture places the tallest small-map building sprite")
+	_check(low_plane.city.set_building_id(20, 20, Tiles.CORPORATE_HEADQUARTERS_3X3), "Low airplane fixture places the tallest small-map building sprite")
 	var low_plane_result := MovingThingTick.run(
 		low_plane.city, SequenceRandom.new([1]), NonzeroLfsrRandom.new()
 	)
@@ -9583,7 +9588,7 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 
 	var arcology_plane := _special_growth_fixture(reference_root)
 	_set_airplane(arcology_plane, 1, Vector2i(20, 20), Vector2i(30, 20), 2, 2, 16)
-	_check(arcology_plane.city.set_building_id(20, 20, 0xfb), "Airplane crash fixture places an arcology")
+	_check(arcology_plane.city.set_building_id(20, 20, Tiles.PLYMOUTH_ARCOLOGY), "Airplane crash fixture places an arcology")
 	var arcology_plane_result := MovingThingTick.run(
 		arcology_plane.city, SequenceRandom.new([1]), ZeroLfsrRandom.new()
 	)
@@ -9642,7 +9647,7 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	_set_ship(docking_ship, 1, Vector2i(20, 20), Vector2i(30, 20), 2, 0)
 	_check(docking_ship.city.set_tile_flag(20, 20, 0x04, true), "Docking ship marks current water")
 	_check(docking_ship.city.set_tile_flag(24, 20, 0x04, true), "Docking ship marks route water")
-	_check(docking_ship.city.set_building_id(22, 20, 0xdf), "Docking ship places a pier two cells away")
+	_check(docking_ship.city.set_building_id(22, 20, Tiles.PIER), "Docking ship places a pier two cells away")
 	var dock_result := MovingThingTick.run(
 		docking_ship.city, SequenceRandom.new([1]), NonzeroLfsrRandom.new()
 	)
@@ -9811,7 +9816,7 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 
 	var avoiding := _special_growth_fixture(reference_root)
 	_set_helicopter(avoiding, 1, Vector2i(20, 20), Vector2i(30, 20), 2, 2, 10)
-	_check(avoiding.city.set_building_id(23, 20, 0xfb), "Helicopter obstacle fixture places an arcology")
+	_check(avoiding.city.set_building_id(23, 20, Tiles.PLYMOUTH_ARCOLOGY), "Helicopter obstacle fixture places an arcology")
 	var avoid_result := MovingThingTick.run(
 		avoiding.city, ZeroRandom.new(), NonzeroLfsrRandom.new()
 	)
@@ -9862,7 +9867,7 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 
 	var building_crash := _special_growth_fixture(reference_root)
 	_set_helicopter(building_crash, 1, Vector2i(20, 20), Vector2i(30, 20), 2, 2, 10)
-	_check(building_crash.city.set_building_id(20, 20, 0xfb), "Helicopter crash fixture places an arcology")
+	_check(building_crash.city.set_building_id(20, 20, Tiles.PLYMOUTH_ARCOLOGY), "Helicopter crash fixture places an arcology")
 	var building_crash_result := MovingThingTick.run(
 		building_crash.city, ZeroRandom.new(), NonzeroLfsrRandom.new()
 	)
@@ -9931,7 +9936,7 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 
 	var marina := _special_growth_fixture(reference_root)
 	_set_sailboat(marina, 1, Vector2i(20, 20), 1)
-	_check(marina.city.set_building_id(21, 20, 0xf8), "Sailboat destination fixture places a marina")
+	_check(marina.city.set_building_id(21, 20, Tiles.MARINA), "Sailboat destination fixture places a marina")
 	var marina_result := MovingThingTick.run(
 		marina.city, ZeroRandom.new(), SequenceLfsrRandom.new([1])
 	)
@@ -9942,7 +9947,7 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	var train := _special_growth_fixture(reference_root)
 
 	for x in range(20, 23):
-		_check(train.city.set_building_id(x, 20, 0x2c), "Moving train fixture places surface rail")
+		_check(train.city.set_building_id(x, 20, Tiles.RAIL_STRAIGHT_1), "Moving train fixture places surface rail")
 
 	_set_train(train, Vector2i(20, 20), Vector2i(21, 20), 1, 10)
 	var train_result := MovingThingTick.run(
@@ -9970,9 +9975,9 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	_check(train.city.text_overlay_id(21, 20) == 202, "Train movement attaches the engine at its new cell")
 
 	var station := _special_growth_fixture(reference_root)
-	_check(station.city.set_building_id(20, 20, 0x2c), "Pausing train fixture places current rail")
-	_check(station.city.set_building_id(21, 20, 0x2c), "Pausing train fixture places destination rail")
-	_check(station.city.set_building_id(20, 19, 0xed), "Pausing train fixture places an adjacent station")
+	_check(station.city.set_building_id(20, 20, Tiles.RAIL_STRAIGHT_1), "Pausing train fixture places current rail")
+	_check(station.city.set_building_id(21, 20, Tiles.RAIL_STRAIGHT_1), "Pausing train fixture places destination rail")
+	_check(station.city.set_building_id(20, 19, Tiles.RAIL_STATION), "Pausing train fixture places an adjacent station")
 	_set_train(station, Vector2i(20, 20), Vector2i(21, 20), 1, 10)
 	var pause_result := MovingThingTick.run(
 		station.city, ZeroRandom.new(), SequenceLfsrRandom.new([1]), ZeroGameRandom.new()
@@ -9984,9 +9989,9 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	)
 
 	var turning_train := _special_growth_fixture(reference_root)
-	_check(turning_train.city.set_building_id(20, 20, 0x2c), "Turning train fixture places current rail")
-	_check(turning_train.city.set_building_id(21, 20, 0x2c), "Turning train fixture places destination rail")
-	_check(turning_train.city.set_building_id(21, 19, 0x2c), "Turning train fixture places north rail")
+	_check(turning_train.city.set_building_id(20, 20, Tiles.RAIL_STRAIGHT_1), "Turning train fixture places current rail")
+	_check(turning_train.city.set_building_id(21, 20, Tiles.RAIL_STRAIGHT_1), "Turning train fixture places destination rail")
+	_check(turning_train.city.set_building_id(21, 19, Tiles.RAIL_STRAIGHT_1), "Turning train fixture places north rail")
 	_set_train(turning_train, Vector2i(20, 20), Vector2i(21, 20), 1, 10)
 	var train_turn_result := MovingThingTick.run(
 		turning_train.city,
@@ -10013,9 +10018,9 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	)
 
 	var subway_train := _special_growth_fixture(reference_root)
-	_check(subway_train.city.set_building_id(20, 20, 0x2c), "Subway train fixture places current rail")
-	_check(subway_train.city.set_building_id(21, 20, 0x6c), "Subway train fixture places a transition tile")
-	_check(subway_train.city.set_underground_id(22, 20, 1), "Subway train fixture places its next subway")
+	_check(subway_train.city.set_building_id(20, 20, Tiles.RAIL_STRAIGHT_1), "Subway train fixture places current rail")
+	_check(subway_train.city.set_building_id(21, 20, Tiles.RAIL_SUBWAY_ENTRANCE_1), "Subway train fixture places a transition tile")
+	_check(subway_train.city.set_underground_id(22, 20, UnderTiles.SUBWAY_LR), "Subway train fixture places its next subway")
 	_set_train(subway_train, Vector2i(20, 20), Vector2i(21, 20), 1, 10)
 	var subway_train_result := MovingThingTick.run(
 		subway_train.city,
@@ -10032,8 +10037,8 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	)
 
 	var reversing_train := _special_growth_fixture(reference_root)
-	_check(reversing_train.city.set_building_id(20, 20, 0x2c), "Reversing train fixture places its old rail")
-	_check(reversing_train.city.set_building_id(21, 20, 0x2c), "Reversing train fixture places its current rail")
+	_check(reversing_train.city.set_building_id(20, 20, Tiles.RAIL_STRAIGHT_1), "Reversing train fixture places its old rail")
+	_check(reversing_train.city.set_building_id(21, 20, Tiles.RAIL_STRAIGHT_1), "Reversing train fixture places its current rail")
 	_set_train(reversing_train, Vector2i(20, 20), Vector2i(21, 20), 1, 10)
 	var reversing_things: PackedByteArray = reversing_train.document.find_chunk("XTHG").decoded_payload.duplicate()
 	reversing_things[2 * 12 + 10] = 7
@@ -10309,7 +10314,7 @@ func _set_train(
 
 
 func _test_transport_maintenance(reference_root: String) -> void:
-	var road := _maintenance_fixture(reference_root, 0x1d, 0)
+	var road := _maintenance_fixture(reference_root, Tiles.ROAD_STRAIGHT_1, UnderTiles.EMPTY)
 	_check(road.city.set_tile_flag(20, 20, 0x80, true), "Road decay fixture sets powerable")
 	_check(road.document.set_misc_i32(0x077c + 10 * 0x6c + 4, 0), "Road decay fixture removes funding")
 	var road_result := GrowthScan.run(road.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
@@ -10317,7 +10322,7 @@ func _test_transport_maintenance(reference_root: String) -> void:
 	_check(road.city.building_id(20, 20) == 1, "Road decay makes process-selected rubble")
 	_check(road.city.tile_flags[20 * 128 + 20] & 0x80 == 0, "Road decay clears powerable")
 
-	var rail := _maintenance_fixture(reference_root, 0x2c, 0)
+	var rail := _maintenance_fixture(reference_root, Tiles.RAIL_STRAIGHT_1, UnderTiles.EMPTY)
 	_check(rail.city.set_tile_flag(20, 20, 0x80, true), "Rail decay fixture sets powerable")
 	_check(rail.document.set_misc_i32(0x077c + 13 * 0x6c + 4, 0), "Rail decay fixture removes funding")
 	var rail_result := GrowthScan.run(rail.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
@@ -10325,10 +10330,10 @@ func _test_transport_maintenance(reference_root: String) -> void:
 	_check(rail.city.building_id(20, 20) == 1, "Rail decay makes process-selected rubble")
 	_check(rail.city.tile_flags[20 * 128 + 20] & 0x80 == 0, "Rail decay clears powerable")
 
-	var highway := _maintenance_fixture(reference_root, 0x49, 0)
+	var highway := _maintenance_fixture(reference_root, Tiles.HIGHWAY_STRAIGHT_1, UnderTiles.EMPTY)
 
 	for point in [Vector2i(21, 20), Vector2i(20, 21), Vector2i(21, 21)]:
-		_check(highway.city.set_building_id(point.x, point.y, 0x49), "Highway decay fixture fills its section")
+		_check(highway.city.set_building_id(point.x, point.y, Tiles.HIGHWAY_STRAIGHT_1), "Highway decay fixture fills its section")
 
 	_check(highway.city.set_tile_flag(21, 20, 0x04, true), "Highway decay fixture sets one water tile")
 	_check(highway.document.set_misc_u32(0x01f0 + 0x49 * 4, 4), "Highway decay fixture counts its tiles")
@@ -10340,21 +10345,21 @@ func _test_transport_maintenance(reference_root: String) -> void:
 	for point in [Vector2i(20, 20), Vector2i(20, 21), Vector2i(21, 21)]:
 		_check(highway.city.building_id(point.x, point.y) == 1, "Highway decay makes rubble on dry land")
 
-	var subway := _maintenance_fixture(reference_root, 0, 0x01)
+	var subway := _maintenance_fixture(reference_root, Tiles.EMPTY, UnderTiles.SUBWAY_LR)
 	_check(subway.document.set_misc_i32(0x077c + 14 * 0x6c + 4, 0), "Subway decay fixture removes funding")
 	var subway_result := GrowthScan.run(subway.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
 	_check(subway_result.ok and subway_result.decayed_subway_tiles == 1, "Unfunded subway decays on the rare check")
 	_check(subway.city.underground_id(20, 20) == 0, "Subway decay clears a subway tile")
 	_check(subway.document.misc_u32(0x0fe8) == 0, "Subway decay decrements the saved XUND count")
 
-	var crossover := _maintenance_fixture(reference_root, 0, 0x1f)
+	var crossover := _maintenance_fixture(reference_root, Tiles.EMPTY, UnderTiles.PIPE_TB_SUBWAY_LR)
 	_check(crossover.document.set_misc_i32(0x077c + 14 * 0x6c + 4, 0), "Crossover decay fixture removes funding")
 	var crossover_result := GrowthScan.run(crossover.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
 	_check(crossover_result.ok and crossover_result.decayed_subway_tiles == 1, "Subway crossover loses its rail layer")
 	_check(crossover.city.underground_id(20, 20) == 0x11, "Subway crossover preserves its pipe layer")
 	_check(crossover.document.misc_u32(0x0fe8) == 0, "Crossover decay decrements the saved XUND count")
 
-	var station := _maintenance_fixture(reference_root, 0xe9, 0x23)
+	var station := _maintenance_fixture(reference_root, Tiles.SUBWAY_STATION, UnderTiles.SUBWAY_ENTRANCE)
 	_check(station.city.set_text_overlay_id(20, 20, 54), "Station decay fixture sets its microsim label")
 	_check(station.city.set_tile_flag(20, 20, 0xe2, true), "Station decay fixture sets utility and flip flags")
 	_check(station.document.set_misc_i32(0x077c + 14 * 0x6c + 4, 0), "Station decay fixture removes funding")
@@ -10370,19 +10375,19 @@ func _test_transport_maintenance(reference_root: String) -> void:
 	)
 	_check(station.document.misc_u32(0x0fe8) == 0, "Station decay decrements the subway count")
 
-	var bridge := _maintenance_fixture(reference_root, 0x51, 0)
+	var bridge := _maintenance_fixture(reference_root, Tiles.SUSPENSION_BRIDGE_1, UnderTiles.EMPTY)
 
 	for x in range(18, 25):
 		for y in range(19, 22):
 			_check(bridge.city.set_land_altitude(x, y, 0), "Bridge decay fixture levels the waterbed")
 
 	for x in range(20, 23):
-		_check(bridge.city.set_building_id(x, 20, 0x51), "Bridge decay fixture places a span tile")
+		_check(bridge.city.set_building_id(x, 20, Tiles.SUSPENSION_BRIDGE_1), "Bridge decay fixture places a span tile")
 		_check(bridge.city.set_terrain_id(x, 20, 0x30), "Bridge decay fixture places water terrain")
 		_check(bridge.city.set_tile_flag(x, 20, 0x06, true), "Bridge decay fixture marks horizontal water")
 
 	for x in [19, 23]:
-		_check(bridge.city.set_building_id(x, 20, 0x1d), "Bridge decay fixture places a bank road")
+		_check(bridge.city.set_building_id(x, 20, Tiles.ROAD_STRAIGHT_1), "Bridge decay fixture places a bank road")
 		_check(bridge.city.set_land_altitude(x, 20, 1), "Bridge decay fixture raises a bank")
 
 	_check(bridge.document.set_misc_u32(0x01f0, 16379), "Bridge decay fixture counts clear tiles")
@@ -10433,7 +10438,7 @@ func _test_transport_maintenance(reference_root: String) -> void:
 
 	_check(bridge.document.misc_u32(0x01f0 + 0x51 * 4) == 0, "Bridge collapse clears its tile count")
 
-	var reinforced := _maintenance_fixture(reference_root, 0x6a, 0)
+	var reinforced := _maintenance_fixture(reference_root, Tiles.HIGHWAY_BRIDGE, UnderTiles.EMPTY)
 	_check(reinforced.document.set_misc_i32(0x077c + 12 * 0x6c + 4, 0), "Reinforced bridge fixture removes funding")
 	var reinforced_result := GrowthScan.run(
 		reinforced.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new()
@@ -10441,7 +10446,7 @@ func _test_transport_maintenance(reference_root: String) -> void:
 	_check(reinforced_result.ok and reinforced_result.deferred_bridge_collapses == 1, "Reinforced bridge collapse stays explicit")
 	_check(reinforced.city.building_id(20, 20) == 0x6a, "Malformed reinforced bridge stays unchanged")
 
-	var reinforced_span := _maintenance_fixture(reference_root, 0, 0)
+	var reinforced_span := _maintenance_fixture(reference_root, Tiles.EMPTY, UnderTiles.EMPTY)
 
 	for x in range(18, 29):
 		for y in range(19, 23):
@@ -10469,7 +10474,7 @@ func _test_transport_maintenance(reference_root: String) -> void:
 					"Reinforced collapse fixture marks span water",
 				)
 
-	_check(reinforced_span.city.set_building_id(26, 20, 0x49), "Reinforced collapse fixture places its forward bank")
+	_check(reinforced_span.city.set_building_id(26, 20, Tiles.HIGHWAY_STRAIGHT_1), "Reinforced collapse fixture places its forward bank")
 	_check(reinforced_span.city.set_land_altitude(26, 20, 1), "Reinforced collapse fixture raises its forward bank")
 	_check(reinforced_span.document.set_misc_u32(0x01f0, 16371), "Reinforced collapse fixture counts clear tiles")
 	_check(reinforced_span.document.set_misc_u32(0x01f0 + 0x6a * 4, 4), "Reinforced collapse fixture counts pylons")
@@ -10522,7 +10527,7 @@ func _test_transport_maintenance(reference_root: String) -> void:
 	_check(reinforced_span.document.misc_u32(0x01f0 + 0x6a * 4) == 0, "Reinforced collapse clears its pylon count")
 	_check(reinforced_span.document.misc_u32(0x01f0 + 0x6b * 4) == 0, "Reinforced collapse clears its normal-span count")
 
-	var funded := _maintenance_fixture(reference_root, 0x1d, 0)
+	var funded := _maintenance_fixture(reference_root, Tiles.ROAD_STRAIGHT_1, UnderTiles.EMPTY)
 	var funded_result := GrowthScan.run(funded.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
 	_check(funded_result.ok and funded_result.decayed_roads == 0, "Full road funding prevents decay")
 	_check(funded.city.building_id(20, 20) == 0x1d, "Full road funding preserves the road")
@@ -10530,9 +10535,9 @@ func _test_transport_maintenance(reference_root: String) -> void:
 
 func _maintenance_fixture(reference_root: String, surface_tile: int, underground_tile: int) -> Dictionary:
 	var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
-	var buildings := _filled_bytes(128 * 128, 0)
+	var buildings := _filled_bytes(128 * 128, Tiles.EMPTY)
 	var zones := _filled_bytes(128 * 128, 0)
-	var underground := _filled_bytes(128 * 128, 0)
+	var underground := _filled_bytes(128 * 128, UnderTiles.EMPTY)
 	var flags := _filled_bytes(128 * 128, 0)
 	var index := 20 * 128 + 20
 	buildings[index] = surface_tile
@@ -10569,7 +10574,7 @@ func _fire_map_fixture(
 ) -> Dictionary:
 	var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 	var index := point.x * CityState.MAP_SIZE + point.y
-	var buildings := _filled_bytes(CityState.TILE_COUNT, 0)
+	var buildings := _filled_bytes(CityState.TILE_COUNT, Tiles.EMPTY)
 	var flags := _filled_bytes(CityState.TILE_COUNT, 0)
 	var text := _filled_bytes(CityState.TILE_COUNT, 0)
 	buildings[index] = tile
@@ -10579,7 +10584,7 @@ func _fire_map_fixture(
 	for entry in [
 		["XBLD", buildings],
 		["XZON", _filled_bytes(CityState.TILE_COUNT, 0)],
-		["XUND", _filled_bytes(CityState.TILE_COUNT, 0)],
+		["XUND", _filled_bytes(CityState.TILE_COUNT, UnderTiles.EMPTY)],
 		["XBIT", flags],
 		["XTXT", text],
 		["XTER", _filled_bytes(CityState.TILE_COUNT, 0)],
@@ -10601,7 +10606,7 @@ func _fire_map_fixture(
 func _dispatch_map_fixture(
 	reference_root: String, thing_type: int, point: Vector2i
 ) -> Dictionary:
-	var fixture := _fire_map_fixture(reference_root, point, 0)
+	var fixture := _fire_map_fixture(reference_root, point, Tiles.EMPTY)
 
 	if fixture.city == null:
 		return fixture
@@ -10625,9 +10630,9 @@ func _special_growth_fixture(reference_root: String) -> Dictionary:
 	var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 
 	for entry in [
-		["XBLD", _filled_bytes(128 * 128, 0)],
+		["XBLD", _filled_bytes(128 * 128, Tiles.EMPTY)],
 		["XZON", _filled_bytes(128 * 128, 0)],
-		["XUND", _filled_bytes(128 * 128, 0)],
+		["XUND", _filled_bytes(128 * 128, UnderTiles.EMPTY)],
 		["XTXT", _filled_bytes(128 * 128, 0)],
 		["XBIT", _filled_bytes(128 * 128, 0)],
 		["XTER", _filled_bytes(128 * 128, 0)],
@@ -10671,10 +10676,10 @@ func _growth_fixture(
 	reference_root: String, origin_building: int, origin_zone: int, demand: int
 ) -> Dictionary:
 	var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
-	var buildings := _filled_bytes(128 * 128, 0)
+	var buildings := _filled_bytes(128 * 128, Tiles.EMPTY)
 
 	for point in [Vector2i(20, 21), Vector2i(20, 22), Vector2i(20, 23), Vector2i(20, 24)]:
-		buildings[point.x * 128 + point.y] = 0x1d
+		buildings[point.x * 128 + point.y] = Tiles.ROAD_STRAIGHT_1
 
 	buildings[20 * 128 + 20] = origin_building
 	var zones := _filled_bytes(128 * 128, 0)
@@ -10687,7 +10692,7 @@ func _growth_fixture(
 		["XBLD", buildings],
 		["XZON", zones],
 		["XBIT", flags],
-		["XUND", _filled_bytes(128 * 128, 0)],
+		["XUND", _filled_bytes(128 * 128, UnderTiles.EMPTY)],
 		["XTXT", _filled_bytes(128 * 128, 0)],
 		["XTRF", _filled_bytes(64 * 64, 0)],
 		["XVAL", _filled_bytes(64 * 64, 0)],
@@ -10726,7 +10731,7 @@ func _test_rci_demand(reference_root: String) -> void:
 	for offset in [0x0718, 0x071c, 0x0720, 0x0fa0, 0x1030]:
 		_check(document.set_misc_i32(offset, 0), "RCI fixture clears MISC 0x%x" % offset)
 
-	for tile_id in [0xd5, 0xd7, 0xda, 0xdd, 0xde, 0xe0, 0xf8]:
+	for tile_id in [Tiles.BIG_PARK, Tiles.STADIUM, Tiles.ZOO, Tiles.RUNWAY, Tiles.RUNWAY_CROSSING, Tiles.CRANE, Tiles.MARINA]:
 		_check(
 			document.set_misc_i32(0x01f0 + tile_id * 4, 0),
 			"RCI fixture clears tile count %d" % tile_id,
@@ -10745,8 +10750,8 @@ func _test_rci_demand(reference_root: String) -> void:
 	text_overlays[1] = 0xfa
 	_check(document.find_chunk("XTXT").set_decoded_payload(text_overlays), "RCI fixture sets connection labels")
 	var buildings := document.find_chunk("XBLD").decoded_payload.duplicate()
-	buildings[0] = 0x1d
-	buildings[1] = 0x2c
+	buildings[0] = Tiles.ROAD_STRAIGHT_1
+	buildings[1] = Tiles.RAIL_STRAIGHT_1
 	_check(document.find_chunk("XBLD").set_decoded_payload(buildings), "RCI fixture sets road and rail connections")
 	var city := CityModel.from_document(document)
 	var result := RciDemand.run(city)
@@ -11125,8 +11130,8 @@ func _test_rci_aftermath(reference_root: String) -> void:
 	var buildings: PackedByteArray = document.find_chunk("XBLD").decoded_payload.duplicate()
 	var zones: PackedByteArray = document.find_chunk("XZON").decoded_payload.duplicate()
 	var flags: PackedByteArray = document.find_chunk("XBIT").decoded_payload.duplicate()
-	buildings[source_index] = 6
-	buildings[neighbor_index] = 0
+	buildings[source_index] = Tiles.TREES_1
+	buildings[neighbor_index] = Tiles.EMPTY
 	zones[source_index] &= 0xf0
 	zones[neighbor_index] &= 0xf0
 	flags[source_index] &= ~0x04
@@ -11350,8 +11355,8 @@ func _test_rci_aftermath(reference_root: String) -> void:
 	var radioactive_neighbor := Vector2i(51, 50)
 	var radioactive_index := radioactive_point.x * CityModel.MAP_SIZE + radioactive_point.y
 	var radioactive_neighbor_index := radioactive_neighbor.x * CityModel.MAP_SIZE + radioactive_neighbor.y
-	radioactive_buildings[radioactive_index] = 5
-	radioactive_buildings[radioactive_neighbor_index] = 0
+	radioactive_buildings[radioactive_index] = Tiles.RADIOACTIVE_WASTE
+	radioactive_buildings[radioactive_neighbor_index] = Tiles.EMPTY
 	radioactive_flags[radioactive_index] &= ~0x04
 	radioactive_flags[radioactive_neighbor_index] &= ~0x04
 	radioactive_zones[radioactive_index] &= 0xf0
@@ -12043,9 +12048,9 @@ func _test_pollution(reference_root: String) -> void:
 	var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 	var buildings := PackedByteArray()
 	buildings.resize(CityModel.TILE_COUNT)
-	buildings[20 * CityModel.MAP_SIZE + 20] = 0xc9
-	buildings[20 * CityModel.MAP_SIZE + 21] = 0xcb
-	buildings[21 * CityModel.MAP_SIZE + 20] = 0x05
+	buildings[20 * CityModel.MAP_SIZE + 20] = Tiles.GAS_POWER
+	buildings[20 * CityModel.MAP_SIZE + 21] = Tiles.NUCLEAR_POWER
+	buildings[21 * CityModel.MAP_SIZE + 20] = Tiles.RADIOACTIVE_WASTE
 	_check(document.find_chunk("XBLD").set_decoded_payload(buildings), "Pollution test installs buildings")
 	var traffic := PackedByteArray()
 	traffic.resize(64 * 64)
@@ -12115,7 +12120,7 @@ func _test_pollution(reference_root: String) -> void:
 		)
 
 	var clean_buildings := clean_document.find_chunk("XBLD").decoded_payload.duplicate()
-	clean_buildings[40 * 128 + 40] = 0x1d
+	clean_buildings[40 * 128 + 40] = Tiles.ROAD_STRAIGHT_1
 	_check(
 		clean_document.find_chunk("XBLD").set_decoded_payload(clean_buildings),
 		"Combined scan test places one road tile"
@@ -12887,10 +12892,10 @@ func _test_map_edits(reference_root: String) -> void:
 	var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 	var city := CityModel.from_document(document)
 	_check(city.set_terrain_id(4, 5, 0x2a), "Terrain tile can change")
-	_check(city.set_building_id(4, 5, 0x8a), "Building tile can change")
+	_check(city.set_building_id(4, 5, Tiles.ABANDONED_1X1_1), "Building tile can change")
 	_check(city.set_zone_id(4, 5, 0x05), "Zone can change")
 	_check(city.set_building_corners(4, 5, 0xa0), "Building corners can change")
-	_check(city.set_underground_id(4, 5, 0x22), "Underground tile can change")
+	_check(city.set_underground_id(4, 5, UnderTiles.MISSILE_SILO), "Underground tile can change")
 	_check(city.set_text_overlay_id(4, 5, 0x31), "Text overlay can change")
 	_check(city.set_tile_flag(4, 5, 0x40, true), "Tile powered flag can change")
 	_check(city.set_land_altitude(4, 5, 17), "Land altitude can change")
@@ -13113,7 +13118,7 @@ func _test_zone_command(reference_root: String) -> void:
 		)
 
 	var buildings := document.find_chunk("XBLD").decoded_payload.duplicate()
-	buildings[11 * 128 + 11] = 0x1d
+	buildings[11 * 128 + 11] = Tiles.ROAD_STRAIGHT_1
 	_check(document.find_chunk("XBLD").set_decoded_payload(buildings), "Zone test places a road")
 	var flags := document.find_chunk("XBIT").decoded_payload.duplicate()
 	flags[12 * 128 + 12] = 0x04
@@ -13206,7 +13211,7 @@ func _test_zone_command(reference_root: String) -> void:
 	_check(later.cost == 60, "Later zoning command uses changed-tile cost")
 	var stale := Zones.undo(city, command)
 	_check(not stale.ok, "Undo rejects a command after later zone changes")
-	_check(city.set_building_id(10, 10, 3), "De-zone test places rubble")
+	_check(city.set_building_id(10, 10, Tiles.RUBBLE_3), "De-zone test places rubble")
 	var dezone := Zones.apply_rectangle(city, 0, 4, Vector2i(10, 10), Vector2i(12, 12))
 	_check(dezone.ok and dezone.cost == 6, "De-zone removes six zones for one dollar each")
 	_check(city.zone_id(10, 10) == 0, "De-zone clears the zone nibble")
@@ -13294,11 +13299,11 @@ func _test_query_info(reference_root: String) -> void:
 
 	_check(document.set_misc_u32(0x0e40, 4), "Query fixture sets water level")
 	var city := CityModel.from_document(document)
-	_check(city.set_building_id(10, 10, 0x1d), "Query fixture places a road")
+	_check(city.set_building_id(10, 10, Tiles.ROAD_STRAIGHT_1), "Query fixture places a road")
 	_check(city.set_zone_id(10, 10, 1), "Query fixture zones the road")
 	_check(city.set_land_altitude(10, 10, 6), "Query fixture sets altitude")
 	_check(city.set_tile_flag(10, 10, 0x40, true), "Query fixture powers the road")
-	_check(city.set_underground_id(10, 10, 0x1f), "Query fixture adds a pipe and subway crossover")
+	_check(city.set_underground_id(10, 10, UnderTiles.PIPE_TB_SUBWAY_LR), "Query fixture adds a pipe and subway crossover")
 	var info := Queries.inspect(city, Vector2i(10, 10))
 	_check(info.ok and info.kind == "general", "General query succeeds: %s" % info.error)
 	_check(info.sound_events.is_empty(), "General query does not request a sound")
@@ -13389,7 +13394,7 @@ func _test_query_info(reference_root: String) -> void:
 			QueryDetails.level_name(band[0]) == QueryDetails.level_name(band[1]),
 			"Query level stays constant within a threshold band",
 		)
-	_check(city.set_building_id(40, 40, 0), "Query name fixture clears a terrain tile")
+	_check(city.set_building_id(40, 40, Tiles.EMPTY), "Query name fixture clears a terrain tile")
 	_check(city.set_tile_flag(40, 40, 0x04, false), "Query name fixture clears its water flag")
 	_check(
 		QueryText.general_name_resource_id(city, Vector2i(40, 40))
@@ -13409,21 +13414,21 @@ func _test_query_info(reference_root: String) -> void:
 		== Queries.GENERAL_NAME_RESOURCE_BASE + Queries.GENERAL_FRESH_WATER_NAME_INDEX,
 		"General query selects the original fresh-water name",
 	)
-	_check(city.set_building_id(41, 40, 0xff), "Query name fixture places an exact-name tile")
+	_check(city.set_building_id(41, 40, Tiles.LLAMA_DOME), "Query name fixture places an exact-name tile")
 	_check(
 		QueryText.general_name_resource_id(city, Vector2i(41, 40))
 		== Queries.GENERAL_NAME_RESOURCE_BASE + 153,
 		"General query gives tile FF its individual original name",
 	)
 	_check(document.set_misc_u32(0x68, 8), "Query pump fixture sets rain")
-	_check(city.set_building_id(20, 20, 0xdc), "Query pump fixture places a pump")
+	_check(city.set_building_id(20, 20, Tiles.WATER_PUMP), "Query pump fixture places a pump")
 	_check(city.set_tile_flag(20, 20, 0x40, true), "Query pump fixture powers the pump")
 	_check(city.set_tile_flag(19, 20, 0x04, true), "Query pump fixture places fresh water")
 	var pump := Queries.inspect(city, Vector2i(20, 20))
 	_check(pump.water_detail.contains("24480"), "Query reports recovered pump output")
 
 	for tower_tile in [Vector2i(30, 30), Vector2i(31, 30), Vector2i(30, 29), Vector2i(31, 29)]:
-		_check(city.set_building_id(tower_tile.x, tower_tile.y, 0xeb), "Query tower fixture places a tower tile")
+		_check(city.set_building_id(tower_tile.x, tower_tile.y, Tiles.WATER_TOWER), "Query tower fixture places a tower tile")
 
 	for watered_tile in [Vector2i(30, 30), Vector2i(31, 30), Vector2i(30, 29)]:
 		_check(city.set_tile_flag(watered_tile.x, watered_tile.y, 0x10, true), "Query tower fixture stores water")
@@ -13558,7 +13563,7 @@ func _test_query_info(reference_root: String) -> void:
 			"Specific query expands statistic three",
 		)
 		var arcology := CityRecords.Microsim.new()
-		arcology.tile_id = 0xfb
+		arcology.tile_id = Tiles.PLYMOUTH_ARCOLOGY
 		arcology.stat_1 = 7
 		_check(
 			QueryText.expand_specific_template(
@@ -13578,7 +13583,7 @@ func _test_query_info(reference_root: String) -> void:
 	)
 	var arcology_info := Queries.inspect(city, Vector2i(10, 10), original_strings)
 	arcology_info.microsim = city.microsim(library.microsim_id)
-	arcology_info.microsim.tile_id = 0xfb
+	arcology_info.microsim.tile_id = Tiles.PLYMOUTH_ARCOLOGY
 	_check(
 		QueryPresentation.sprite_id(city, arcology_info) == 1251,
 		"Query uses a full-size arcology sprite as corrected by SC2KFix",
@@ -13723,7 +13728,7 @@ func _test_landscape_command(reference_root: String) -> void:
 	_check(water_document.set_misc_u32(0x01f0, 16383), "Water fixture counts clear tiles")
 	_check(water_document.set_misc_u32(0x01f0 + 6 * 4, 1), "Water fixture counts one tree")
 	var water_city := CityModel.from_document(water_document)
-	_check(water_city.set_building_id(10, 10, 6), "Water fixture places a tree")
+	_check(water_city.set_building_id(10, 10, Tiles.TREES_1), "Water fixture places a tree")
 	_check(water_city.set_zone_id(10, 10, 1), "Water fixture places a zone")
 	_check(water_city.set_building_corners(10, 10, 0xa0), "Water fixture sets corner bits")
 	_check(water_city.set_land_altitude(10, 10, 5), "Water fixture sets land altitude")
@@ -13957,7 +13962,7 @@ func _test_building_command(reference_root: String) -> void:
 	_check(museum.ok, "Museum placement succeeds")
 	_check(city.microsim(7).stat_0 == 100, "Museum system starts with score byte 100")
 	_check(Buildings.undo(city, museum, random, process_random).ok, "Museum placement can be undone")
-	_check(city.set_building_id(40, 40, 0x0e), "Small park rejection fixture places a power line")
+	_check(city.set_building_id(40, 40, Tiles.POWER_LINE_STRAIGHT_1), "Small park rejection fixture places a power line")
 	var blocked_park := Buildings.apply(
 		city, 14, 0, Vector2i(40, 40), random, process_random
 	)
@@ -13967,7 +13972,7 @@ func _test_building_command(reference_root: String) -> void:
 		and city.building_id(40, 40) == 0x0e,
 		"Small park cannot replace a power line",
 	)
-	_check(city.set_building_id(40, 40, 0), "Small park rejection fixture clears its power line")
+	_check(city.set_building_id(40, 40, Tiles.EMPTY), "Small park rejection fixture clears its power line")
 	var park := Buildings.apply(city, 14, 0, Vector2i(40, 40), random, process_random)
 	_check(park.ok, "Small park placement succeeds")
 	_check(city.tile_flags[40 * 128 + 40] & 0xe0 == 0x20, "Small park gets only the piped structure flag")
@@ -14017,7 +14022,7 @@ func _test_building_command(reference_root: String) -> void:
 		"Australian Llama Dome placement can be undone",
 	)
 
-	_check(city.set_underground_id(59, 60, 0x1e), "Pump fixture places an adjacent isolated pipe")
+	_check(city.set_underground_id(59, 60, UnderTiles.PIPE_LTBR), "Pump fixture places an adjacent isolated pipe")
 	var pump := Buildings.apply(city, 4, 1, Vector2i(60, 60), random, process_random)
 	_check(pump.ok, "Water pump placement succeeds")
 	_check(city.underground_id(59, 60) == 0x11 and city.underground_id(60, 60) == 0x11, "Water pump reconnects its adjacent pipe")
@@ -14025,7 +14030,7 @@ func _test_building_command(reference_root: String) -> void:
 	_check(Buildings.undo(city, pump, random, process_random).ok, "Water pump underground changes can be undone")
 	_check(city.underground_id(59, 60) == 0x1e and city.underground_id(60, 60) == 0, "Pump undo restores both underground tiles")
 
-	_check(city.set_underground_id(64, 65, 0x0f), "Subway fixture places an adjacent isolated subway")
+	_check(city.set_underground_id(64, 65, UnderTiles.SUBWAY_LTBR), "Subway fixture places an adjacent isolated subway")
 	_check(document.set_misc_u32(0x0fe8, 1), "Subway fixture counts its adjacent subway")
 	var subway_station := Buildings.apply(city, 7, 3, Vector2i(65, 65), random, process_random)
 	_check(subway_station.ok, "Subway station placement succeeds")
@@ -14119,10 +14124,10 @@ func _test_building_command(reference_root: String) -> void:
 
 	var edge := Buildings.apply(city, 3, 2, Vector2i(1, 1), random, process_random)
 	_check(not edge.ok and not edge.error.is_empty(), "Four-tile building rejects the inner map edge")
-	_check(city.set_building_id(20, 20, 0x1d), "Blocked-site fixture places a road")
+	_check(city.set_building_id(20, 20, Tiles.ROAD_STRAIGHT_1), "Blocked-site fixture places a road")
 	var blocked := Buildings.apply(city, 3, 2, Vector2i(20, 20), random, process_random)
 	_check(not blocked.ok and not blocked.error.is_empty(), "Building placement rejects a road")
-	_check(city.set_building_id(20, 20, 0), "Blocked-site fixture removes the road")
+	_check(city.set_building_id(20, 20, Tiles.EMPTY), "Blocked-site fixture removes the road")
 	_check(city.set_zone_id(20, 20, 7), "Military fixture sets a military zone")
 	var military := Buildings.apply(city, 3, 2, Vector2i(20, 20), random, process_random)
 	_check(not military.ok and not military.error.is_empty(), "Building placement rejects military zones")
@@ -14208,7 +14213,7 @@ func _test_building_command(reference_root: String) -> void:
 			"Nuisance fixture clears one nearby residential tile",
 		)
 
-	_check(nuisance_city.set_building_id(20, 20, 0x1d), "Nuisance fixture blocks a Coal plant site")
+	_check(nuisance_city.set_building_id(20, 20, Tiles.ROAD_STRAIGHT_1), "Nuisance fixture blocks a Coal plant site")
 	var blocked_lfsr := LfsrRandom.new(1)
 	var nuisance_blocked := Buildings.apply(
 		nuisance_city,
@@ -14225,7 +14230,7 @@ func _test_building_command(reference_root: String) -> void:
 		and blocked_lfsr.state == 2,
 		"A nuisance building consumes its LFSR value before the site test",
 	)
-	_check(nuisance_city.set_building_id(20, 20, 0), "Nuisance fixture clears the blocked site")
+	_check(nuisance_city.set_building_id(20, 20, Tiles.EMPTY), "Nuisance fixture clears the blocked site")
 	var edge_lfsr := LfsrRandom.new(1)
 	var nuisance_edge := Buildings.apply(
 		nuisance_city,
@@ -14466,7 +14471,7 @@ func _test_network_command(reference_root: String) -> void:
 	)
 	_check(city.set_funds(10000), "Road connection fixture restores funds")
 
-	_check(city.set_building_id(20, 20, 0x1d), "Rail crossover fixture places a road")
+	_check(city.set_building_id(20, 20, Tiles.ROAD_STRAIGHT_1), "Rail crossover fixture places a road")
 	var rail_crossing := Networks.apply(city, 7, 0, Vector2i(20, 20), Vector2i(21, 20))
 	_check(rail_crossing.ok and city.building_id(20, 20) == 0x45, "Rail tool creates the recovered road crossover")
 	_check(Networks.undo(city, rail_crossing).ok, "Rail crossover can be undone")
@@ -14505,7 +14510,7 @@ func _test_network_command(reference_root: String) -> void:
 	)
 	_check(Networks.undo(city, road_power).ok, "Road power crossing can be undone")
 	_check(Networks.undo(city, crossing_road).ok, "Power-crossing road can be undone")
-	_check(city.set_building_id(65, 65, 0x1d), "Single power-crossing fixture places a road")
+	_check(city.set_building_id(65, 65, Tiles.ROAD_STRAIGHT_1), "Single power-crossing fixture places a road")
 	var single_road_power := Networks.apply(city, 3, 0, Vector2i(65, 65), Vector2i(65, 65))
 	_check(
 		single_road_power.ok and city.building_id(65, 65) == 0x43,
@@ -14524,7 +14529,7 @@ func _test_network_command(reference_root: String) -> void:
 	)
 	_check(Networks.undo(city, rail_power).ok, "Rail power crossing can be undone")
 	_check(Networks.undo(city, crossing_rail).ok, "Power-crossing rail can be undone")
-	_check(city.set_building_id(75, 75, 0x2c), "Single power-crossing fixture places rail")
+	_check(city.set_building_id(75, 75, Tiles.RAIL_STRAIGHT_1), "Single power-crossing fixture places rail")
 	var single_rail_power := Networks.apply(city, 3, 0, Vector2i(75, 75), Vector2i(75, 75))
 	_check(
 		single_rail_power.ok and city.building_id(75, 75) == 0x47,
@@ -14567,7 +14572,7 @@ func _test_network_command(reference_root: String) -> void:
 	_check(Networks.undo(city, subway).ok, "Subway drag can be undone")
 	_check(document.misc_u32(0x0fe8) == 0, "Subway undo restores the saved subway count")
 
-	_check(city.set_building_id(42, 40, 0x51), "Partial-route fixture places an obstruction")
+	_check(city.set_building_id(42, 40, Tiles.SUSPENSION_BRIDGE_1), "Partial-route fixture places an obstruction")
 	var partial := Networks.apply(city, 6, 0, Vector2i(40, 40), Vector2i(44, 40))
 	_check(partial.ok and partial.stopped_early, "Road route stops at an obstruction")
 	_check(partial.points == [Vector2i(40, 40), Vector2i(41, 40)], "Road route keeps the clear prefix")
@@ -14866,7 +14871,7 @@ func _test_subway_to_rail_command(reference_root: String) -> void:
 	_check(document.set_misc_u32(0x01f0 + 0x2c * 4, 1), "Subway-to-rail fixture counts rail")
 	_check(document.set_misc_u32(0x0fe8, 0), "Subway-to-rail fixture clears subway count")
 	var city := CityModel.from_document(document)
-	_check(city.set_building_id(21, 20, 0x2c), "Subway-to-rail fixture places adjacent rail")
+	_check(city.set_building_id(21, 20, Tiles.RAIL_STRAIGHT_1), "Subway-to-rail fixture places adjacent rail")
 	_check(city.set_zone_id(20, 20, 3), "Subway-to-rail fixture places a commercial zone")
 	var surface := SubwayToRail.apply(city, 7, 4, Vector2i(20, 20))
 	_check(surface.ok, "Subway-to-rail placement beside surface rail succeeds: %s" % surface.error)
@@ -14879,12 +14884,12 @@ func _test_subway_to_rail_command(reference_root: String) -> void:
 	_check(city.building_id(20, 20) == 0 and city.underground_id(20, 20) == 0, "Subway-to-rail undo restores surface and underground maps")
 	_check(document.misc_u32(0x0fe8) == 0, "Subway-to-rail undo restores the saved subway count")
 
-	_check(city.set_building_id(21, 20, 0), "Underground connection fixture removes surface rail")
-	_check(city.set_underground_id(21, 20, 0x01), "Underground connection fixture places adjacent subway")
+	_check(city.set_building_id(21, 20, Tiles.EMPTY), "Underground connection fixture removes surface rail")
+	_check(city.set_underground_id(21, 20, UnderTiles.SUBWAY_LR), "Underground connection fixture places adjacent subway")
 	var underground := SubwayToRail.apply(city, 7, 4, Vector2i(20, 20))
 	_check(underground.ok and underground.tile_id == 0x6e, "East subway selects the opposite connector orientation")
 	_check(SubwayToRail.undo(city, underground).ok, "Underground-oriented connector can be undone")
-	_check(city.set_underground_id(21, 20, 0), "Missing-neighbor fixture removes adjacent subway")
+	_check(city.set_underground_id(21, 20, UnderTiles.EMPTY), "Missing-neighbor fixture removes adjacent subway")
 	var no_neighbor := SubwayToRail.apply(city, 7, 4, Vector2i(20, 20))
 	_check(not no_neighbor.ok and not no_neighbor.error.is_empty(), "Subway-to-rail placement requires an adjacent network")
 
@@ -14905,8 +14910,8 @@ func _test_onramp_command(reference_root: String) -> void:
 	_check(document.set_misc_u32(0x01f0 + 0x49 * 4, 1), "On-ramp fixture counts highway")
 	_check(document.set_misc_u32(0x01f0 + 0x1d * 4, 1), "On-ramp fixture counts road")
 	var city := CityModel.from_document(document)
-	_check(city.set_building_id(21, 20, 0x49), "On-ramp fixture places east highway")
-	_check(city.set_building_id(20, 19, 0x1d), "On-ramp fixture places north road")
+	_check(city.set_building_id(21, 20, Tiles.HIGHWAY_STRAIGHT_1), "On-ramp fixture places east highway")
+	_check(city.set_building_id(20, 19, Tiles.ROAD_STRAIGHT_1), "On-ramp fixture places north road")
 	var north := Onramps.apply(city, 6, 3, Vector2i(20, 20))
 	_check(north.ok, "North-road on-ramp succeeds: %s" % north.error)
 	_check(north.tile_id == 0x5f and city.building_id(20, 20) == 0x5f, "East highway and north road select ramp 0x5f")
@@ -14917,22 +14922,22 @@ func _test_onramp_command(reference_root: String) -> void:
 	_check(city.building_id(20, 20) == 0 and city.building_id(20, 19) == 0x1d, "On-ramp undo restores both surface tiles")
 	_check(city.funds() == 100, "On-ramp undo restores funds")
 
-	_check(city.set_building_id(21, 20, 0), "Second on-ramp fixture removes east highway")
-	_check(city.set_building_id(20, 19, 0), "Second on-ramp fixture removes north road")
-	_check(city.set_building_id(20, 19, 0x49), "Second on-ramp fixture places north highway")
-	_check(city.set_building_id(21, 20, 0x1d), "Second on-ramp fixture places east road")
+	_check(city.set_building_id(21, 20, Tiles.EMPTY), "Second on-ramp fixture removes east highway")
+	_check(city.set_building_id(20, 19, Tiles.EMPTY), "Second on-ramp fixture removes north road")
+	_check(city.set_building_id(20, 19, Tiles.HIGHWAY_STRAIGHT_1), "Second on-ramp fixture places north highway")
+	_check(city.set_building_id(21, 20, Tiles.ROAD_STRAIGHT_1), "Second on-ramp fixture places east road")
 	var east := Onramps.apply(city, 6, 3, Vector2i(20, 20))
 	_check(east.ok and east.tile_id == 0x5d, "North highway and east road select ramp 0x5d")
 	_check(Onramps.undo(city, east).ok, "East-road on-ramp can be undone")
-	_check(city.set_building_id(20, 19, 0), "Invalid arrangement fixture removes north highway")
-	_check(city.set_building_id(21, 20, 0), "Invalid arrangement fixture removes east road")
-	_check(city.set_building_id(21, 20, 0x49), "Invalid arrangement fixture places east highway")
-	_check(city.set_building_id(19, 20, 0x1d), "Invalid arrangement fixture places west road")
+	_check(city.set_building_id(20, 19, Tiles.EMPTY), "Invalid arrangement fixture removes north highway")
+	_check(city.set_building_id(21, 20, Tiles.EMPTY), "Invalid arrangement fixture removes east road")
+	_check(city.set_building_id(21, 20, Tiles.HIGHWAY_STRAIGHT_1), "Invalid arrangement fixture places east highway")
+	_check(city.set_building_id(19, 20, Tiles.ROAD_STRAIGHT_1), "Invalid arrangement fixture places west road")
 	var parallel := Onramps.apply(city, 6, 3, Vector2i(20, 20))
 	_check(not parallel.ok and not parallel.error.is_empty(), "On-ramp rejects a road parallel to the highway")
 	_check(city.set_funds(24), "On-ramp funds fixture sets insufficient funds")
-	_check(city.set_building_id(19, 20, 0), "On-ramp funds fixture removes west road")
-	_check(city.set_building_id(20, 19, 0x1d), "On-ramp funds fixture places north road")
+	_check(city.set_building_id(19, 20, Tiles.EMPTY), "On-ramp funds fixture removes west road")
+	_check(city.set_building_id(20, 19, Tiles.ROAD_STRAIGHT_1), "On-ramp funds fixture places north road")
 	var unaffordable := Onramps.apply(city, 6, 3, Vector2i(20, 20))
 	_check(not unaffordable.ok and not unaffordable.error.is_empty(), "On-ramp command reports insufficient funds")
 	_check(city.set_funds(0), "SCURK on-ramp fixture clears funds")
@@ -14973,7 +14978,7 @@ func _test_tunnel_command(reference_root: String) -> void:
 	_check(city.set_land_altitude(21, 20, 6), "Tunnel fixture raises the hill interior")
 	_check(city.set_terrain_id(22, 20, 1), "Tunnel fixture places the opposite slope")
 	_check(city.set_land_altitude(22, 20, 5), "Tunnel fixture sets finish altitude")
-	_check(city.set_building_id(19, 20, 0x1d), "Tunnel fixture places an adjacent road")
+	_check(city.set_building_id(19, 20, Tiles.ROAD_STRAIGHT_1), "Tunnel fixture places an adjacent road")
 	var planned := Tunnels.apply(city, 6, 2, Vector2i(20, 20))
 	_check(
 		planned.confirmation_required
@@ -15020,10 +15025,10 @@ func _test_tunnel_command(reference_root: String) -> void:
 	var conflict := Tunnels.apply(city, 6, 2, Vector2i(20, 20))
 	_check(not conflict.ok and not conflict.error.is_empty(), "Tunnel rejects an existing ALTM tunnel path")
 	_check(city.set_tunnel_levels(21, 20, 0), "Tunnel conflict fixture removes existing tunnel")
-	_check(city.set_underground_id(21, 20, 0x10), "Tunnel conflict fixture places a pipe at depth two")
+	_check(city.set_underground_id(21, 20, UnderTiles.PIPE_LR), "Tunnel conflict fixture places a pipe at depth two")
 	var pipe_conflict := Tunnels.apply(city, 6, 2, Vector2i(20, 20))
 	_check(not pipe_conflict.ok and not pipe_conflict.error.is_empty(), "Tunnel rejects a pipe at the matching depth")
-	_check(city.set_underground_id(21, 20, 0), "Tunnel conflict fixture removes pipe")
+	_check(city.set_underground_id(21, 20, UnderTiles.EMPTY), "Tunnel conflict fixture removes pipe")
 	_check(city.set_terrain_id(22, 20, 2), "Tunnel exit fixture changes the opposite slope")
 	var no_exit := Tunnels.apply(city, 6, 2, Vector2i(20, 20))
 	_check(not no_exit.ok and not no_exit.error.is_empty(), "Tunnel requires the recovered opposite exit slope")
@@ -15112,7 +15117,7 @@ func _test_highway_command(reference_root: String) -> void:
 	_check((city.zones[10 * 128 + 12] & 0xf0) != 0xf0, "Shaped highway stores a 2-by-2 corner mask")
 	_check(Highways.undo(city, turn).ok, "Turning highway can be undone")
 
-	_check(city.set_building_id(10, 10, 0x1e), "Highway crossing fixture places a horizontal road")
+	_check(city.set_building_id(10, 10, Tiles.ROAD_STRAIGHT_2), "Highway crossing fixture places a horizontal road")
 	_check(document.set_misc_u32(0x01f0, 16383), "Highway crossing fixture updates clear count")
 	_check(document.set_misc_u32(0x01f0 + 0x1e * 4, 1), "Highway crossing fixture counts road")
 	var crossing_city := CityModel.from_document(document)
@@ -15120,8 +15125,8 @@ func _test_highway_command(reference_root: String) -> void:
 	_check(crossing.ok, "Highway can cross a perpendicular road: %s" % crossing.error)
 	_check(crossing_city.building_id(10, 10) == 0x4b, "Vertical highway and horizontal road use crossover 0x4b")
 	_check(Highways.undo(crossing_city, crossing).ok, "Highway crossover can be undone")
-	_check(crossing_city.set_building_id(10, 10, 0), "Highway obstruction fixture removes road")
-	_check(crossing_city.set_building_id(14, 10, 0xd0), "Highway obstruction fixture places a building")
+	_check(crossing_city.set_building_id(10, 10, Tiles.EMPTY), "Highway obstruction fixture removes road")
+	_check(crossing_city.set_building_id(14, 10, Tiles.CITY_HALL), "Highway obstruction fixture places a building")
 	var partial := Highways.apply(crossing_city, 6, 1, Vector2i(10, 10), Vector2i(16, 10))
 	_check(partial.ok and partial.stopped_early, "Highway route stops at an obstruction")
 	_check(partial.sections == [Vector2i(10, 10), Vector2i(12, 10)], "Highway route keeps its clear prefix")
@@ -15519,7 +15524,7 @@ func _test_highway_command(reference_root: String) -> void:
 
 	for point in high_neighbor_points:
 		_check(
-			grade_city.set_building_id(point.x, point.y, 0x4a)
+			grade_city.set_building_id(point.x, point.y, Tiles.HIGHWAY_STRAIGHT_2)
 			and grade_city.set_building_corners(point.x, point.y, 0xf0)
 			and grade_city.set_land_altitude(point.x, point.y, 2),
 			"Highway retile fixture installs a higher west section",
@@ -15570,7 +15575,7 @@ func _test_highway_command(reference_root: String) -> void:
 	)
 
 	_check(
-		grade_city.set_building_id(40, 40, 0xd0),
+		grade_city.set_building_id(40, 40, Tiles.CITY_HALL),
 		"Invalid highway grade fixture places a building",
 	)
 	_check(
@@ -15583,7 +15588,7 @@ func _test_highway_command(reference_root: String) -> void:
 		"Highway terrain validation rejects an occupied section",
 	)
 	_check(
-		grade_city.set_building_id(40, 40, 0),
+		grade_city.set_building_id(40, 40, Tiles.EMPTY),
 		"Invalid highway grade fixture removes its building",
 	)
 
@@ -15721,13 +15726,13 @@ func _test_demolish_command(reference_root: String) -> void:
 	_check(simple_document.set_misc_u32(0x01f0, 16383), "Simple demolish fixture counts clear tiles")
 	_check(simple_document.set_misc_u32(0x01f0 + 3 * 4, 1), "Simple demolish fixture counts rubble")
 	var simple_city := CityModel.from_document(simple_document)
-	_check(simple_city.set_building_id(10, 10, 3), "Simple demolish fixture places rubble")
+	_check(simple_city.set_building_id(10, 10, Tiles.RUBBLE_3), "Simple demolish fixture places rubble")
 	var rubble := Demolish.apply_path(simple_city, 0, 0, [Vector2i(10, 10)], demolition_random)
 	_check(rubble.ok and simple_city.building_id(10, 10) == 0, "Demolish clears rubble")
 	_check(rubble.cost == 1 and simple_city.funds() == 9, "Rubble demolition charges one dollar")
 	_check(Demolish.undo(simple_city, rubble, demolition_random).ok, "Rubble demolition can be undone")
-	_check(simple_city.set_building_id(12, 10, 0x1d), "Parallel demolish fixture places its first road")
-	_check(simple_city.set_building_id(13, 10, 0x1d), "Parallel demolish fixture places its second road")
+	_check(simple_city.set_building_id(12, 10, Tiles.ROAD_STRAIGHT_1), "Parallel demolish fixture places its first road")
+	_check(simple_city.set_building_id(13, 10, Tiles.ROAD_STRAIGHT_1), "Parallel demolish fixture places its second road")
 	_check(
 		simple_document.set_misc_u32(0x01f0 + 0x1d * 4, 2),
 		"Parallel demolish fixture counts both road tiles",
@@ -15766,8 +15771,8 @@ func _test_demolish_command(reference_root: String) -> void:
 		and simple_city.building_id(13, 10) == 0x1d,
 		"One Undo restores the complete parallel bulldozer rectangle",
 	)
-	_check(simple_city.set_building_id(12, 10, 0), "Parallel demolish fixture clears its first road")
-	_check(simple_city.set_building_id(13, 10, 0), "Parallel demolish fixture clears its second road")
+	_check(simple_city.set_building_id(12, 10, Tiles.EMPTY), "Parallel demolish fixture clears its first road")
+	_check(simple_city.set_building_id(13, 10, Tiles.EMPTY), "Parallel demolish fixture clears its second road")
 	_check(
 		simple_document.set_misc_u32(0x01f0 + 0x1d * 4, 0),
 		"Parallel demolish fixture clears its road count",
@@ -15785,7 +15790,7 @@ func _test_demolish_command(reference_root: String) -> void:
 				"Forest protest fixture clears a newspaper story field",
 			)
 
-	_check(simple_city.set_building_id(10, 10, 0x06), "Forest protest fixture places a tree")
+	_check(simple_city.set_building_id(10, 10, Tiles.TREES_1), "Forest protest fixture places a tree")
 	var forest_random := Random.new(19)
 	var forest_protest := Demolish.apply_path(
 		simple_city, 0, 0, [Vector2i(10, 10)], forest_random
@@ -15828,10 +15833,10 @@ func _test_demolish_command(reference_root: String) -> void:
 	var military := Demolish.apply_path(simple_city, 0, 0, [Vector2i(10, 10)], demolition_random)
 	_check(not military.ok and not military.error.is_empty(), "Demolish rejects military zones")
 	_check(simple_city.set_zone_id(10, 10, 0), "Highway demolish fixture clears military zone")
-	_check(simple_city.set_building_id(10, 10, 0x49), "Highway demolish fixture places highway")
+	_check(simple_city.set_building_id(10, 10, Tiles.HIGHWAY_STRAIGHT_1), "Highway demolish fixture places highway")
 	var highway := Demolish.apply_path(simple_city, 0, 0, [Vector2i(10, 10)], demolition_random)
 	_check(not highway.ok and not highway.error.is_empty(), "Demolish rejects a malformed highway section")
-	_check(simple_city.set_building_id(10, 10, 0), "Highway demolition fixture removes its malformed tile")
+	_check(simple_city.set_building_id(10, 10, Tiles.EMPTY), "Highway demolition fixture removes its malformed tile")
 	_check(simple_document.set_misc_i32(0x14, 500), "Highway demolition fixture sets funds")
 	var placed_highway := Highways.apply(simple_city, 6, 1, Vector2i(10, 10), Vector2i(10, 10))
 	_check(placed_highway.ok, "Highway demolition fixture builds one complete section")
@@ -15900,7 +15905,7 @@ func _test_demolish_command(reference_root: String) -> void:
 
 	for y in range(19, 22):
 		_check(
-			underground_city.set_underground_id(20, y, 0x01),
+			underground_city.set_underground_id(20, y, UnderTiles.SUBWAY_LR),
 			"Underground demolition fixture places subway",
 		)
 
@@ -15936,7 +15941,7 @@ func _test_demolish_command(reference_root: String) -> void:
 
 	for y in range(29, 32):
 		_check(
-			underground_city.set_underground_id(30, y, 0x10),
+			underground_city.set_underground_id(30, y, UnderTiles.PIPE_LR),
 			"Underground demolition fixture places pipe",
 		)
 		_check(
@@ -16033,8 +16038,8 @@ func _test_demolish_command(reference_root: String) -> void:
 	_check(special_document.set_misc_u32(0x0e40, 0), "Special demolition fixture sets sea level")
 	_check(special_document.set_misc_u32(0x01f0, 16384), "Special demolition fixture counts clear tiles")
 	var special_city := CityModel.from_document(special_document)
-	_check(special_city.set_building_id(30, 30, 0x3f), "Tunnel demolition fixture places its first entrance")
-	_check(special_city.set_building_id(28, 30, 0x41), "Tunnel demolition fixture places its second entrance")
+	_check(special_city.set_building_id(30, 30, Tiles.TUNNEL_ENTRANCE_1), "Tunnel demolition fixture places its first entrance")
+	_check(special_city.set_building_id(28, 30, Tiles.TUNNEL_ENTRANCE_3), "Tunnel demolition fixture places its second entrance")
 
 	for x in range(28, 31):
 		_check(special_city.set_tunnel_levels(x, 30, 3), "Tunnel demolition fixture stores tunnel depth")
@@ -16056,9 +16061,9 @@ func _test_demolish_command(reference_root: String) -> void:
 	_check(Demolish.undo(special_city, tunnel, demolition_random).ok, "Tunnel demolition can be undone")
 
 	for point in [Vector2i(40, 40), Vector2i(41, 40), Vector2i(41, 41)]:
-		_check(special_city.set_building_id(point.x, point.y, 0xdd), "Runway demolition fixture places a connected tile")
+		_check(special_city.set_building_id(point.x, point.y, Tiles.RUNWAY), "Runway demolition fixture places a connected tile")
 
-	_check(special_city.set_building_id(45, 45, 0xdd), "Runway demolition fixture places a separate tile")
+	_check(special_city.set_building_id(45, 45, Tiles.RUNWAY), "Runway demolition fixture places a separate tile")
 	var runway := Demolish.apply_path(special_city, 0, 0, [Vector2i(40, 40)], demolition_random)
 	_check(
 		runway.ok and runway.tile_indices.size() == 3 and runway.effect_events.size() == 3,
@@ -16072,7 +16077,7 @@ func _test_demolish_command(reference_root: String) -> void:
 	_check(Demolish.undo(special_city, runway, demolition_random).ok, "Runway demolition can be undone")
 
 	for point in [Vector2i(50, 50), Vector2i(50, 51)]:
-		_check(special_city.set_building_id(point.x, point.y, 0xdf), "Pier demolition fixture places a connected tile")
+		_check(special_city.set_building_id(point.x, point.y, Tiles.PIER), "Pier demolition fixture places a connected tile")
 
 	var pier := Demolish.apply_path(special_city, 0, 0, [Vector2i(50, 50)], demolition_random)
 	_check(
@@ -16087,14 +16092,14 @@ func _test_demolish_command(reference_root: String) -> void:
 	_check(special_document.set_misc_u32(0x0e40, 1), "Bridge demolition fixture sets sea level")
 
 	for x in range(70, 73):
-		_check(special_city.set_building_id(x, 70, 0x51 + x - 70), "Bridge demolition fixture places a span tile")
+		_check(special_city.set_building_id(x, 70, Tiles.SUSPENSION_BRIDGE_1 + x - 70), "Bridge demolition fixture places a span tile")
 		_check(special_city.set_terrain_id(x, 70, 0x30), "Bridge demolition fixture places water terrain")
 		_check(special_city.set_tile_flag(x, 70, 0x04, true), "Bridge demolition fixture marks span water")
 		_check(special_city.set_tile_flag(x, 70, 0x02, true), "Bridge demolition fixture sets a horizontal span")
 
 	for x in [69, 73]:
 		_check(special_city.set_land_altitude(x, 70, 1), "Bridge demolition fixture raises a bank")
-		_check(special_city.set_building_id(x, 70, 0x1d), "Bridge demolition fixture places a bank road")
+		_check(special_city.set_building_id(x, 70, Tiles.ROAD_STRAIGHT_1), "Bridge demolition fixture places a bank road")
 
 	var bridge := Demolish.apply_path(special_city, 0, 0, [Vector2i(71, 70)], demolition_random)
 	_check(
@@ -16125,7 +16130,7 @@ func _test_demolish_command(reference_root: String) -> void:
 				_check(special_city.set_tile_flag(point.x, point.y, 0x04, true), "Reinforced demolition fixture marks span water")
 
 	for bank_point in [Vector2i(78, 80), Vector2i(86, 80)]:
-		_check(special_city.set_building_id(bank_point.x, bank_point.y, 0x49), "Reinforced demolition fixture places a bank")
+		_check(special_city.set_building_id(bank_point.x, bank_point.y, Tiles.HIGHWAY_STRAIGHT_1), "Reinforced demolition fixture places a bank")
 		_check(special_city.set_land_altitude(bank_point.x, bank_point.y, 1), "Reinforced demolition fixture raises a bank")
 
 	var reinforced_bridge := Demolish.apply_path(
@@ -16186,7 +16191,7 @@ func _test_terrain_command(reference_root: String) -> void:
 	_check(TerrainTools.supports_tool(0, 3), "Terrain command supports Lower Terrain")
 	_check(not TerrainTools.supports_tool(0, 0), "Terrain command rejects Demolish")
 	var executable_shapes := _load_pe_rva_bytes(
-		reference_root.path_join("SIMCITY.EXE"), 0x000e7958, 256
+		reference_root.path_join("SIMCITY.EXE"), 0x000e7958, TerrainTools.TERRAIN_SHAPES.size()
 	)
 	var shape_table_matches := executable_shapes.size() == TerrainTools.TERRAIN_SHAPES.size()
 
@@ -16198,12 +16203,12 @@ func _test_terrain_command(reference_root: String) -> void:
 
 	_check(
 		shape_table_matches,
-		"Terrain shape table matches all 256 supplied executable bytes",
+		"Terrain shape table matches the reachable supplied executable bytes",
 	)
 	var ordered_heights := PackedInt32Array()
 	ordered_heights.resize(CityState.TILE_COUNT)
 	var ordered_zones := _filled_bytes(CityState.TILE_COUNT, 0)
-	var ordered_buildings := _filled_bytes(CityState.TILE_COUNT, 0)
+	var ordered_buildings := _filled_bytes(CityState.TILE_COUNT, Tiles.EMPTY)
 	var ordered_start := Vector2i(20, 20)
 	var ordered_west := Vector2i(19, 20)
 	var ordered_north := Vector2i(20, 19)
@@ -16261,8 +16266,8 @@ func _test_terrain_command(reference_root: String) -> void:
 	_check(propagated.ok and city.land_altitude(50, 50) == 0, "Lower Terrain applies its selected change before propagation")
 	_check(city.land_altitude(51, 50) == 2 and propagated.cost == 50, "Lower Terrain lowers a neighbor more than one level higher")
 	_check(TerrainTools.undo(city, propagated).ok, "Propagated Lower Terrain can be undone")
-	_check(city.set_building_id(40, 40, 0x1d), "Terrain conflict fixture places a road")
-	_check(city.set_underground_id(40, 40, 0x01), "Terrain conflict fixture places a subway")
+	_check(city.set_building_id(40, 40, Tiles.ROAD_STRAIGHT_1), "Terrain conflict fixture places a road")
+	_check(city.set_underground_id(40, 40, UnderTiles.SUBWAY_LR), "Terrain conflict fixture places a subway")
 	_check(document.set_misc_u32(0x01f0, 16383), "Terrain conflict fixture reduces the clear count")
 	_check(document.set_misc_u32(0x01f0 + 0x1d * 4, 1), "Terrain conflict fixture counts its road")
 	_check(document.set_misc_u32(0x0fe8, 1), "Terrain conflict fixture counts its subway")
@@ -16305,8 +16310,8 @@ func _test_terrain_command(reference_root: String) -> void:
 		"Terrain undo restores both networks, altitude, and random state",
 	)
 
-	_check(city.set_building_id(40, 40, 5), "Terrain radioactivity fixture replaces the road")
-	_check(city.set_underground_id(40, 40, 0), "Terrain radioactivity fixture removes its subway")
+	_check(city.set_building_id(40, 40, Tiles.RADIOACTIVE_WASTE), "Terrain radioactivity fixture replaces the road")
+	_check(city.set_underground_id(40, 40, UnderTiles.EMPTY), "Terrain radioactivity fixture removes its subway")
 	var radioactivity_raise := TerrainTools.apply_path(
 		city, 0, 2, Vector2i(40, 40), [Vector2i(40, 40)]
 	)
@@ -16323,7 +16328,7 @@ func _test_terrain_command(reference_root: String) -> void:
 
 	for x in range(60, 62):
 		for y in range(60, 62):
-			_check(city.set_building_id(x, y, 0x8c), "Terrain structure fixture fills its site")
+			_check(city.set_building_id(x, y, Tiles.CHEAP_APARTMENTS_2X2), "Terrain structure fixture fills its site")
 
 	_check(city.set_building_corners(60, 60, 0x10), "Terrain structure fixture sets bottom-left")
 	_check(city.set_building_corners(61, 60, 0x20), "Terrain structure fixture sets bottom-right")
@@ -16355,7 +16360,7 @@ func _test_terrain_command(reference_root: String) -> void:
 	)
 
 	var basin_altitude := _filled_bytes(CityState.TILE_COUNT * 2, 0)
-	var basin_buildings := _filled_bytes(CityState.TILE_COUNT, 0)
+	var basin_buildings := _filled_bytes(CityState.TILE_COUNT, Tiles.EMPTY)
 	var basin_terrain := _filled_bytes(CityState.TILE_COUNT, 0)
 	var basin_zones := _filled_bytes(CityState.TILE_COUNT, 0)
 	var basin_flags := _filled_bytes(CityState.TILE_COUNT, 0)
@@ -16476,8 +16481,8 @@ func _test_city_rotation(reference_root: String) -> void:
 		"Clockwise rotation transforms a full-map point",
 	)
 	_check(
-		CityRotation.surface_tile_after_rotation(0x1f, true) == 0x22
-		and CityRotation.surface_tile_after_rotation(0x1f, false) == 0x20,
+		CityRotation.surface_tile_after_rotation(Tiles.ROAD_SLOPE_1, true) == 0x22
+		and CityRotation.surface_tile_after_rotation(Tiles.ROAD_SLOPE_1, false) == 0x20,
 		"Rotation uses the recovered surface-network lookup tables",
 	)
 	_check(
@@ -16486,8 +16491,8 @@ func _test_city_rotation(reference_root: String) -> void:
 		"Rotation uses the recovered terrain lookup tables",
 	)
 	_check(
-		CityRotation.underground_tile_after_rotation(0x03, true) == 0x06
-		and CityRotation.underground_tile_after_rotation(0x03, false) == 0x04,
+		CityRotation.underground_tile_after_rotation(UnderTiles.SUBWAY_HTB, true) == 0x06
+		and CityRotation.underground_tile_after_rotation(UnderTiles.SUBWAY_HTB, false) == 0x04,
 		"Rotation uses the recovered underground lookup tables",
 	)
 
@@ -16512,16 +16517,16 @@ func _test_city_rotation(reference_root: String) -> void:
 	things[train + 8] = 0
 	_check(document.find_chunk("XTHG").set_decoded_payload(things), "Rotation fixture stores moving things")
 	var city := CityModel.from_document(document)
-	_check(city.set_building_id(10, 10, 0x51), "Rotation fixture stores an unflipped bridge")
+	_check(city.set_building_id(10, 10, Tiles.SUSPENSION_BRIDGE_1), "Rotation fixture stores an unflipped bridge")
 	_check(city.set_tile_flag(10, 10, 0x02, false), "Rotation fixture clears the first bridge flip")
-	_check(city.set_building_id(11, 10, 0x51), "Rotation fixture stores a flipped bridge")
+	_check(city.set_building_id(11, 10, Tiles.SUSPENSION_BRIDGE_1), "Rotation fixture stores a flipped bridge")
 	_check(city.set_tile_flag(11, 10, 0x02, true), "Rotation fixture sets the second bridge flip")
-	_check(city.set_building_id(12, 10, 0x5d), "Rotation fixture stores an unflipped on-ramp")
+	_check(city.set_building_id(12, 10, Tiles.HIGHWAY_ONRAMP_1), "Rotation fixture stores an unflipped on-ramp")
 	_check(city.set_tile_flag(12, 10, 0x02, false), "Rotation fixture clears the first ramp flip")
-	_check(city.set_building_id(13, 10, 0x5d), "Rotation fixture stores a flipped on-ramp")
+	_check(city.set_building_id(13, 10, Tiles.HIGHWAY_ONRAMP_1), "Rotation fixture stores a flipped on-ramp")
 	_check(city.set_tile_flag(13, 10, 0x02, true), "Rotation fixture sets the second ramp flip")
 	_check(city.set_terrain_id(14, 10, 0x01), "Rotation fixture stores directional terrain")
-	_check(city.set_underground_id(15, 10, 0x03), "Rotation fixture stores a directional subway")
+	_check(city.set_underground_id(15, 10, UnderTiles.SUBWAY_HTB), "Rotation fixture stores a directional subway")
 	var old_payloads := {}
 
 	for specification in CityRotation.REQUIRED_CHUNKS:

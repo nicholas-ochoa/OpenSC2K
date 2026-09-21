@@ -2,6 +2,8 @@ extends SceneTree
 
 @warning_ignore_start("integer_division")
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const DocumentState = preload("res://tests/support/document_state.gd")
 const TimingResults = preload("res://tests/support/timing_results.gd")
 const TestRandoms = preload("res://tests/support/test_randoms.gd")
@@ -128,8 +130,8 @@ func check_values(edge: int) -> void:
 	land[index] = 255
 	land[index + 1] = 0
 	doc.find_chunk("XVAL").set_decoded_payload(land)
-	city.set_building_id(point.x, point.y, 0x70)
-	city.set_building_id(point.x, point.y + 1, 0x70)
+	city.set_building_id(point.x, point.y, Tiles.LOWER_CLASS_HOMES_1X1_1)
+	city.set_building_id(point.x, point.y + 1, Tiles.LOWER_CLASS_HOMES_1X1_1)
 	check(GrowthConstruction.can_advance_density(2, 2, 3, land, point.x, point.y, edge), "Growth reads selected tile land value")
 	check(not GrowthConstruction.can_advance_density(2, 2, 3, land, point.x, point.y + 1, edge), "Neighbor has separate growth eligibility")
 	var query := QueryInfo.inspect(city, point)
@@ -165,7 +167,7 @@ func check_values(edge: int) -> void:
 	# A single source changes adjacent tile values independently.
 	doc = native_document(edge)
 	city = CityState.from_document(doc)
-	city.set_building_id(point.x, point.y, 0xc9)
+	city.set_building_id(point.x, point.y, Tiles.GAS_POWER)
 
 	for dx in range(-5, 6):
 		for dy in range(-5, 6):
@@ -200,7 +202,7 @@ func check_values(edge: int) -> void:
 
 	for dx in range(-3, 4):
 		for dy in range(-3, 4):
-			city.set_building_id(point.x + dx, point.y + dy, 0x93)
+			city.set_building_id(point.x + dx, point.y + dy, Tiles.CONDOMINIUM_2X2_3)
 			city.set_zone_id(point.x + dx, point.y + dy, 4)
 
 	var old_growth := doc.find_chunk("XROG").decoded_payload[index]
@@ -261,7 +263,7 @@ func check_sliced(edge: int) -> void:
 	var doc := native_document(edge)
 	var city := CityState.from_document(doc)
 	city.set_age_in_days(1)
-	city.set_building_id(edge - 16, edge - 16, 0xc9)
+	city.set_building_id(edge - 16, edge - 16, Tiles.GAS_POWER)
 	city.set_no_disasters_enabled(true)
 	city.set_auto_budget_enabled(true)
 	var other := CityState.from_document(doc.duplicate_document())

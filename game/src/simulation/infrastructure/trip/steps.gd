@@ -177,36 +177,36 @@ static func _move(mode: int, cost: int) -> int:
 static func _is_surface_road(tile: int) -> bool:
 	return (
 		(tile >= Tiles.FIRST_ROAD and tile <= Tiles.LAST_ROAD)
-		or (tile >= Tiles.TUNNEL_FIRST and tile <= Tiles.ROAD_RAIL_CROSSING_TWO)
-		or tile == Tiles.HIGHWAY_ROAD_CROSSING_ONE
-		or tile == Tiles.HIGHWAY_ROAD_CROSSING_TWO
+		or (tile >= Tiles.TUNNEL_FIRST and tile <= Tiles.ROAD_RAIL_CROSSING_2)
+		or tile == Tiles.HIGHWAY_ROAD_CROSSING_1
+		or tile == Tiles.HIGHWAY_ROAD_CROSSING_2
 		or (tile >= Tiles.ONRAMP_FIRST and tile <= Tiles.ONRAMP_LAST)
 	)
 
 
 static func _is_road_bridge(tile: int) -> bool:
-	return (tile >= Tiles.SUSPENSION_BRIDGE_ONE and tile <= Tiles.POWER_BRIDGE) or tile == Tiles.HIGHWAY_BRIDGE or tile == Tiles.REINFORCED_HIGHWAY_BRIDGE
+	return (tile >= Tiles.SUSPENSION_BRIDGE_1 and tile <= Tiles.POWER_BRIDGE) or tile == Tiles.HIGHWAY_BRIDGE or tile == Tiles.REINFORCED_HIGHWAY_BRIDGE
 
 
 static func _is_highway_span(tile: int) -> bool:
-	return (tile >= Tiles.HIGHWAY_SLOPE_FIRST and tile <= Tiles.HIGHWAY_INTERSECTION) or (tile >= Tiles.HIGHWAY_STRAIGHT_ONE and tile <= Tiles.HIGHWAY_POWER_CROSSING_TWO)
+	return (tile >= Tiles.HIGHWAY_SLOPE_FIRST and tile <= Tiles.HIGHWAY_INTERSECTION) or (tile >= Tiles.HIGHWAY_STRAIGHT_1 and tile <= Tiles.HIGHWAY_POWER_CROSSING_2)
 
 
 static func _is_rail(tile: int) -> bool:
 	return (
 		(tile >= Tiles.RAIL_FIRST and tile <= Tiles.RAIL_LAST)
-		or (tile >= Tiles.ROAD_RAIL_CROSSING_ONE and tile <= Tiles.RAIL_POWER_CROSSING_TWO)
+		or (tile >= Tiles.ROAD_RAIL_CROSSING_1 and tile <= Tiles.RAIL_POWER_CROSSING_2)
 		or (tile >= Tiles.RAIL_SUBWAY_FIRST and tile <= Tiles.RAIL_SUBWAY_LAST)
-		or tile == Tiles.HIGHWAY_RAIL_CROSSING_ONE
-		or tile == Tiles.HIGHWAY_RAIL_CROSSING_TWO
+		or tile == Tiles.HIGHWAY_RAIL_CROSSING_1
+		or tile == Tiles.HIGHWAY_RAIL_CROSSING_2
 	)
 
 
 static func _is_subway(tile: int) -> bool:
 	return (
-		(tile > 0 and tile < UnderTiles.PIPE_FIRST)
-		or tile == UnderTiles.PIPE_SUBWAY_ONE
-		or tile == UnderTiles.PIPE_SUBWAY_TWO
+		(tile > UnderTiles.EMPTY and tile < UnderTiles.PIPE_FIRST)
+		or tile == UnderTiles.PIPE_TB_SUBWAY_LR
+		or tile == UnderTiles.PIPE_LR_SUBWAY_TB
 		or tile == UnderTiles.MISSILE_SILO
 		or tile == UnderTiles.SUBWAY_ENTRANCE
 	)

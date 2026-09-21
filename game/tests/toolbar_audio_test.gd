@@ -36,7 +36,7 @@ func _run() -> void:
 	for x in range(70, 77):
 		for y in range(70, 77):
 			main.document_state.city.set_terrain_id(x, y, 0)
-			main.document_state.city.set_building_id(x, y, 0)
+			main.document_state.city.set_building_id(x, y, BuildingTileIds.EMPTY)
 			main.document_state.city.set_tile_flag(x, y, 4, false)
 
 	# Both tree tools use the original tree plop in free landscape mode.

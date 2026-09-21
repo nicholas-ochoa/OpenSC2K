@@ -243,10 +243,10 @@ static func _is_surface_route(tile_value: int) -> bool:
 
 	return (
 		(tile >= Tiles.RAIL_FIRST and tile <= Tiles.RAIL_LAST)
-		or (tile >= Tiles.ROAD_RAIL_CROSSING_ONE and tile <= Tiles.RAIL_POWER_CROSSING_TWO)
+		or (tile >= Tiles.ROAD_RAIL_CROSSING_1 and tile <= Tiles.RAIL_POWER_CROSSING_2)
 		or (tile >= Tiles.RAIL_SUBWAY_FIRST and tile <= Tiles.RAIL_SUBWAY_LAST)
-		or tile == Tiles.HIGHWAY_RAIL_CROSSING_ONE
-		or tile == Tiles.HIGHWAY_RAIL_CROSSING_TWO
+		or tile == Tiles.HIGHWAY_RAIL_CROSSING_1
+		or tile == Tiles.HIGHWAY_RAIL_CROSSING_2
 		or tile == Tiles.RAIL_BRIDGE
 		or tile == Tiles.RAIL_BRIDGE_PYLON
 	)
@@ -256,9 +256,9 @@ static func _is_underground_route(tile_value: int) -> bool:
 	var tile := int(tile_value)
 
 	return (
-		(tile > 0 and tile < UnderTiles.PIPE_FIRST)
-		or tile == UnderTiles.PIPE_SUBWAY_ONE
-		or tile == UnderTiles.PIPE_SUBWAY_TWO
+		(tile > UnderTiles.EMPTY and tile < UnderTiles.PIPE_FIRST)
+		or tile == UnderTiles.PIPE_TB_SUBWAY_LR
+		or tile == UnderTiles.PIPE_LR_SUBWAY_TB
 		or tile == UnderTiles.MISSILE_SILO
 		or tile == UnderTiles.SUBWAY_ENTRANCE
 	)

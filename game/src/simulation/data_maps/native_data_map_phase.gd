@@ -72,7 +72,7 @@ static func run(city: CityState) -> PollutionPhase.Result:
 			if building >= PollutionPhase.FIRST_ROAD or zone != 0:
 				developed += 1
 
-			if building == 0:
+			if building == Tiles.EMPTY:
 				residential[index] = 12 if tile_flags & PollutionPhase.FLAG_WATER else 4
 				industrial[index] = 12 if tile_flags & PollutionPhase.FLAG_WATER else 0
 			elif building == PollutionPhase.BIG_PARK:
@@ -86,13 +86,13 @@ static func run(city: CityState) -> PollutionPhase.Result:
 				residential[index] += 4
 				industrial[index] += 4
 
-			if terrain[index] > 0 and terrain[index] < 0x10:
+			if terrain[index] > TerrainTileIds.FLAT and terrain[index] < TerrainTileIds.DEEP_WATER_FIRST:
 				residential[index] += 12
 
-			if building >= Tiles.DEVELOPED_FIRST and building < Tiles.HYDRO_POWER_ONE:
+			if building >= Tiles.DEVELOPED_FIRST and building < Tiles.HYDRO_POWER_1:
 				weights[index] = PollutionPhase._population_weight(building)
 				occupied[index] = 1
-			elif building >= Tiles.HYDRO_POWER_ONE:
+			elif building >= Tiles.HYDRO_POWER_1:
 				weights[index] = 12 if building >= Tiles.PLYMOUTH_ARCOLOGY and building <= Tiles.LAUNCH_ARCOLOGY else 2
 
 	var center := Vector2i(edge / 2, edge / 2) if center_count == 0 else Vector2i(center_sum.x / center_count, center_sum.y / center_count)

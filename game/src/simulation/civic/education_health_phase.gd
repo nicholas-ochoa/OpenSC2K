@@ -3,6 +3,8 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const MISC_SIZE := 4800
 const MISC_CITY_POLLUTION := 0x0034
 const MISC_WORKFORCE_PERCENT := 0x0044
@@ -22,9 +24,9 @@ const RAW_POPULATION_FIELD := 0
 const EDUCATION_FIELD := 4
 const LIFE_EXPECTANCY_FIELD := 8
 
-const HOSPITAL_TILE := BuildingTileIds.HOSPITAL
-const SCHOOL_TILE := BuildingTileIds.SCHOOL
-const COLLEGE_TILE := BuildingTileIds.COLLEGE
+const HOSPITAL_TILE := Tiles.HOSPITAL
+const SCHOOL_TILE := Tiles.SCHOOL
+const COLLEGE_TILE := Tiles.COLLEGE
 const BUDGET_HEALTH := 7
 const BUDGET_SCHOOL := 8
 const BUDGET_COLLEGE := 9

@@ -1,4 +1,6 @@
 extends SceneTree
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const TimingResults = preload("res://tests/support/timing_results.gd")
 
 
@@ -67,7 +69,7 @@ func _check_growth_detail_flag() -> void:
 
 		for y in range(8, 24):
 			city.set_zone_id(12, y, 1)
-			city.set_building_id(12, y, 0x70)
+			city.set_building_id(12, y, Tiles.LOWER_CLASS_HOMES_1X1_1)
 			city.set_building_corners(12, y, 0x80)
 			city.set_tile_flag(12, y, 0xe0, true)
 
@@ -111,9 +113,9 @@ func _check_phase_timings(history: SimulationTimingHistory) -> void:
 		city.document.set_misc_u32(BudgetPhase.MISC_YEAR_END, 1)
 		city.document.set_misc_u32(EducationHealthPhase.MISC_NORMAL_POPULATION, 1000)
 		city.document.set_misc_u32(RciDemandPhase.ZONE_POPULATION_OFFSET + 4, 100)
-		city.set_building_id(10, 10, 0xcf)
-		city.set_building_id(10, 11, 0xdc)
-		city.set_building_id(10, 12, 0x70)
+		city.set_building_id(10, 10, Tiles.COAL_POWER)
+		city.set_building_id(10, 11, Tiles.WATER_PUMP)
+		city.set_building_id(10, 12, Tiles.LOWER_CLASS_HOMES_1X1_1)
 
 		for y in range(10, 13):
 			city.set_tile_flag(10, y, 0xe0, true)

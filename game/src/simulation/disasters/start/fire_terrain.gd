@@ -33,7 +33,7 @@ static func _start_fire(city: CityState, random: SimRandom, lfsr_random: SimLfsr
 
 		if (
 			index >= 0
-			and payloads.XBLD[index] > 0x6f
+			and payloads.XBLD[index] > BuildingTileIds.RAIL_SUBWAY_ENTRANCE_4
 			and _starts_fire(
 				_apply_fire_damage(
 					city, payloads, point, random, lfsr_random, runtime_events
@@ -104,7 +104,7 @@ static func _start_earthquake(
 			var target := point + Vector2i(x_offset, y_offset)
 			var index := DisasterStartObjectsState._index(target, map_edge)
 
-			if index < 0 or payloads.XBLD[index] <= 0x0d:
+			if index < 0 or payloads.XBLD[index] <= BuildingTileIds.SMALL_PARK:
 				continue
 
 			eligible_targets += 1

@@ -2,7 +2,7 @@ class_name SubwayToRailEditResult
 extends EditCommandResult
 
 
-var tile_id := 0
+var tile_id := BuildingTileIds.EMPTY
 var orientation := 0
 var neighbor := Vector2i(-1, -1)
 

@@ -17,8 +17,8 @@ func _run() -> void:
 		var city := CityState.from_document(document)
 		if edge == 512:
 			for point in [Vector2i(10, 10), Vector2i(256, 256), Vector2i(509, 509)]:
-				assert(city.set_building_id(point.x, point.y, 0x0d))
-				assert(city.set_building_id(point.x + 1, point.y, 0x1d))
+				assert(city.set_building_id(point.x, point.y, BuildingTileIds.SMALL_PARK))
+				assert(city.set_building_id(point.x + 1, point.y, BuildingTileIds.ROAD_STRAIGHT_1))
 
 		# All sprite sizes at 128; maximum map bounds with the small painter.
 		for view in ([0, 1, 2] if edge == 128 else [CityIsometricRenderer.VIEW_SMALL]):

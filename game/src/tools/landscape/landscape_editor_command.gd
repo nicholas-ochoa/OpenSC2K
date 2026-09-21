@@ -113,7 +113,7 @@ static func _finish_stream_slopes(payloads: Dictionary, previous_terrain: Packed
 		if terrain[index] == previous_terrain[index] and flags[index] == previous_flags[index]:
 			continue
 
-		if terrain[index] < 0x30 or terrain[index] > 0x45 or not flags[index] & 4:
+		if terrain[index] < TerrainTileIds.SURFACE_WATER_FIRST or terrain[index] > TerrainTileIds.CHANNEL_LAST or not flags[index] & 4:
 			continue
 
 		var point := Vector2i(index / map_edge, index % map_edge)
@@ -123,5 +123,5 @@ static func _finish_stream_slopes(payloads: Dictionary, previous_terrain: Packed
 			var near: Vector2i = point + delta
 
 			if TerrainEditHeights._point_is_in_bounds(near, map_edge) and TerrainEditHeights.land_altitude(altitude, near.x * map_edge + near.y) > height:
-				terrain[index] = 0x3e
+				terrain[index] = TerrainTileIds.WATERFALL
 				break

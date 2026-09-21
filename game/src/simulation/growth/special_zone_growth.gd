@@ -33,13 +33,13 @@ static func process(
 				if random.next_u15() & 3:
 					return
 
-				var parking_count := int(SpecialZoneState._special_tile_count(misc, Tiles.PARKING_LOT_TWO, true, map_edge) / 4)
-				selected_tile = Tiles.PARKING_LOT_TWO
+				var parking_count := int(SpecialZoneState._special_tile_count(misc, Tiles.PARKING_LOT_2, true, map_edge) / 4)
+				selected_tile = Tiles.PARKING_LOT_2
 
-				if int(SpecialZoneState._special_tile_count(misc, Tiles.HANGAR_ONE, true, map_edge) / 12) < parking_count:
-					selected_tile = Tiles.HANGAR_ONE
+				if int(SpecialZoneState._special_tile_count(misc, Tiles.HANGAR_1, true, map_edge) / 12) < parking_count:
+					selected_tile = Tiles.HANGAR_1
 
-				fallback_tile = Tiles.HANGAR_ONE
+				fallback_tile = Tiles.HANGAR_1
 			3:
 				selected_tile = SpecialZoneSelection._airport_growth_selection(
 					flags, text_overlays, things, misc, point, current_tile,

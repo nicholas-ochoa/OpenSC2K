@@ -143,7 +143,7 @@ static func diagonal_rows(span: CityRegionTileSpan, diagonal: int, map_edge: int
 static func surface_terrain_id(city: CityState, x: int, y: int) -> int:
 	var terrain := city.terrain_id(x, y)
 
-	if terrain < 0x30 or terrain > 0x45 or terrain == 0x3e:
+	if terrain < TerrainTileIds.SURFACE_WATER_FIRST or terrain > TerrainTileIds.CHANNEL_LAST or terrain == TerrainTileIds.WATERFALL:
 		return terrain
 
 	var height := city.land_altitude(x, y)
@@ -155,7 +155,7 @@ static func surface_terrain_id(city: CityState, x: int, y: int) -> int:
 		var near: Vector2i = Vector2i(x, y) + delta
 
 		if city.index_of(near.x, near.y) >= 0 and city.land_altitude(near.x, near.y) > height:
-			return 0x3e
+			return TerrainTileIds.WATERFALL
 
 	return terrain
 
@@ -163,15 +163,15 @@ static func surface_terrain_id(city: CityState, x: int, y: int) -> int:
 static func terrain_sprite_id(terrain: int, water_flag: bool, sprite_base := 1000) -> int:
 	var tile_id := 256
 
-	if terrain >= 0x00 and terrain <= 0x0e:
+	if terrain >= TerrainTileIds.FLAT and terrain <= TerrainTileIds.LAND_DRAW_LAST:
 		tile_id = 256 + terrain
-	elif terrain >= 0x20 and terrain <= 0x2e:
+	elif terrain >= TerrainTileIds.SHORE_FIRST and terrain <= TerrainTileIds.FORBIDDEN_COAST:
 		tile_id = 256 + terrain - 18
-	elif terrain >= 0x30 and terrain <= 0x3e:
+	elif terrain >= TerrainTileIds.SURFACE_WATER_FIRST and terrain <= TerrainTileIds.WATERFALL:
 		tile_id = 256 + terrain - 34
-	elif terrain >= 0x40 and terrain <= 0x45:
+	elif terrain >= TerrainTileIds.CHANNEL_FIRST and terrain <= TerrainTileIds.CHANNEL_LAST:
 		tile_id = 256 + terrain - 35
-	elif water_flag or (terrain >= 0x10 and terrain <= 0x1e):
+	elif water_flag or (terrain >= TerrainTileIds.DEEP_WATER_FIRST and terrain <= TerrainTileIds.DEEP_WATER_DRAW_LAST):
 		tile_id = 270
 
 	return sprite_base + tile_id
@@ -198,7 +198,7 @@ static func tile_polygon(city: CityState, x: int, y: int, land_surface := false)
 
 	var altitude := city.land_altitude(x, y)
 
-	if not land_surface and city.terrain_id(x, y) >= 0x10:
+	if not land_surface and city.terrain_id(x, y) >= TerrainTileIds.DEEP_WATER_FIRST:
 		altitude = city.water_altitude(x, y)
 
 	var origin_x := SIDE_MARGIN + map_edge * HALF_WIDTH
@@ -226,11 +226,11 @@ static func terrain_surface_polygon(
 	var terrain := city.terrain_id(x, y)
 
 	# shoreline art can show the seabed, but its selectable surface is flat water
-	if terrain < 0 or (not land_surface and terrain >= 0x10):
+	if terrain < TerrainTileIds.FLAT or (not land_surface and terrain >= TerrainTileIds.DEEP_WATER_FIRST):
 		return polygon
 
-	var shape := terrain & 0x0f
-	if land_surface and terrain >= 0x30:
+	var shape := terrain & TerrainTileIds.SHAPE_MASK
+	if land_surface and terrain >= TerrainTileIds.SURFACE_WATER_FIRST:
 		# water picking uses the flat surface, not the seabed drawn underneath
 		# surface water encodes connecting banks, not the ground corner mask
 		var mask := 0

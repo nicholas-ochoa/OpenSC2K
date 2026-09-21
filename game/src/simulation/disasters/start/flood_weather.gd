@@ -4,6 +4,8 @@ extends DisasterStartConstants
 @warning_ignore_start("integer_division")
 
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 static func _start_flood(city: CityState, requested_point: Vector2i, lfsr_random: SimLfsrRandom) -> DisasterStartResult:
 	var map_edge: int = city.map_size if city != null else 128
 
@@ -41,7 +43,7 @@ static func _start_flood(city: CityState, requested_point: Vector2i, lfsr_random
 
 		var point := Vector2i(lfsr_random.next_mod(map_edge), lfsr_random.next_mod(map_edge))
 
-		if payloads.XTER[DisasterStartObjectsState._index(point, map_edge)] == 0:
+		if payloads.XTER[DisasterStartObjectsState._index(point, map_edge)] == TerrainTileIds.FLAT:
 			OverlayData.write(payloads.XTXT, DisasterStartObjectsState._index(point, map_edge), 0xfc)
 
 			return _store_flood(city, original, payloads, point)
@@ -59,7 +61,7 @@ static func find_flood_shore(terrain: PackedByteArray, origin: Vector2i, map_edg
 					var point := origin + Vector2i(dx, dy)
 					var index := DisasterStartObjectsState._index(point, map_edge)
 
-					if index >= 0 and terrain[index] >= 0x20 and terrain[index] < 0x30:
+					if index >= 0 and terrain[index] >= TerrainTileIds.SHORE_FIRST and terrain[index] < TerrainTileIds.SURFACE_WATER_FIRST:
 						return point
 
 		return Vector2i(-1, -1)
@@ -71,7 +73,7 @@ static func find_flood_shore(terrain: PackedByteArray, origin: Vector2i, map_edg
 		for y in map_edge:
 			var tile := terrain[x * map_edge + y]
 
-			if tile < 0x20 or tile >= 0x30:
+			if tile < TerrainTileIds.SHORE_FIRST or tile >= TerrainTileIds.SURFACE_WATER_FIRST:
 				continue
 
 			var radius := maxi(absi(x - origin.x), absi(y - origin.y))
@@ -187,7 +189,7 @@ static func _start_hurricane(
 			var y := (map_edge - 1)
 
 			while y >= 0:
-				if y > 0 and payloads.XBLD[DisasterStartObjectsState._index(Vector2i(x, y), map_edge)] > 0x0c:
+				if y > 0 and payloads.XBLD[DisasterStartObjectsState._index(Vector2i(x, y), map_edge)] > Tiles.TREES_7:
 					break
 
 				y -= lfsr_random.next_mod(20)
@@ -207,7 +209,7 @@ static func _start_hurricane(
 			var x := (map_edge - 1)
 
 			while x >= 0:
-				if x > 0 and payloads.XBLD[DisasterStartObjectsState._index(Vector2i(x, y), map_edge)] > 0x0c:
+				if x > 0 and payloads.XBLD[DisasterStartObjectsState._index(Vector2i(x, y), map_edge)] > Tiles.TREES_7:
 					break
 
 				x -= lfsr_random.next_mod(20)
@@ -230,7 +232,7 @@ static func _start_hurricane(
 			var y := 0
 
 			while y < map_edge:
-				if y < (map_edge - 1) and payloads.XBLD[DisasterStartObjectsState._index(Vector2i(x, y), map_edge)] > 0x0c:
+				if y < (map_edge - 1) and payloads.XBLD[DisasterStartObjectsState._index(Vector2i(x, y), map_edge)] > Tiles.TREES_7:
 					break
 
 				y += lfsr_random.next_mod(20)
@@ -253,7 +255,7 @@ static func _start_hurricane(
 			var x := 0
 
 			while x < map_edge:
-				if x < (map_edge - 1) and payloads.XBLD[DisasterStartObjectsState._index(Vector2i(x, y), map_edge)] > 0x0c:
+				if x < (map_edge - 1) and payloads.XBLD[DisasterStartObjectsState._index(Vector2i(x, y), map_edge)] > Tiles.TREES_7:
 					break
 
 				x += lfsr_random.next_mod(20)
@@ -342,7 +344,7 @@ static func _hurricane_flood_edge(
 		if direction == 0:
 			point = Vector2i(fixed, (map_edge - 1))
 
-			while point.y >= 0 and payloads.XBLD[DisasterStartObjectsState._index(point, map_edge)] <= 5:
+			while point.y >= 0 and payloads.XBLD[DisasterStartObjectsState._index(point, map_edge)] <= Tiles.RADIOACTIVE_WASTE:
 				point.y -= 1
 
 			if point.y <= 0:
@@ -350,7 +352,7 @@ static func _hurricane_flood_edge(
 		elif direction == 1:
 			point = Vector2i((map_edge - 1), fixed)
 
-			while point.x >= 0 and payloads.XBLD[DisasterStartObjectsState._index(point, map_edge)] <= 5:
+			while point.x >= 0 and payloads.XBLD[DisasterStartObjectsState._index(point, map_edge)] <= Tiles.RADIOACTIVE_WASTE:
 				point.x -= 1
 
 			if point.x <= 0:
@@ -358,7 +360,7 @@ static func _hurricane_flood_edge(
 		elif direction == 2:
 			point = Vector2i(fixed, 0)
 
-			while point.y < (map_edge - 1) and payloads.XBLD[DisasterStartObjectsState._index(point, map_edge)] <= 5:
+			while point.y < (map_edge - 1) and payloads.XBLD[DisasterStartObjectsState._index(point, map_edge)] <= Tiles.RADIOACTIVE_WASTE:
 				point.y += 1
 
 			if point.y >= (map_edge - 1):
@@ -366,7 +368,7 @@ static func _hurricane_flood_edge(
 		else:
 			point = Vector2i(0, fixed)
 
-			while point.x < map_edge and payloads.XBLD[DisasterStartObjectsState._index(point, map_edge)] <= 5:
+			while point.x < map_edge and payloads.XBLD[DisasterStartObjectsState._index(point, map_edge)] <= Tiles.RADIOACTIVE_WASTE:
 				point.x += 1
 
 			if point.x >= (map_edge - 1):

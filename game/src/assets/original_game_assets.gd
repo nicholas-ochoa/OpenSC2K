@@ -4,7 +4,6 @@ extends RefCounted
 const PaletteLoader = preload("res://src/assets/sc2_palette.gd")
 const SpriteLoader = preload("res://src/assets/sc2_sprite_archive.gd")
 const BitmapLoader = preload("res://src/assets/pe_bitmap_resource.gd")
-const StringLoader = preload("res://src/assets/pe_string_resource.gd")
 const TextLoader = preload("res://src/assets/text_usa_resource.gd")
 const NewspaperLoader = preload("res://src/assets/data_usa_resource.gd")
 const LibraryWindows = preload("res://src/ui/city_windows/library_ruminate_windows.gd")
@@ -26,9 +25,9 @@ const NEWSPAPER_STRING_LAST := 391
 const DEFAULT_FOREST_PROTEST_TEXT := "Citizens are protesting forest demolition."
 const DEFAULT_BUILDING_OBJECTION_TEXT := "Residents objected to this facility site."
 
-var strings: Dictionary[int, String] = {}
-var forest_protest_text := DEFAULT_FOREST_PROTEST_TEXT
-var building_objection_text := DEFAULT_BUILDING_OBJECTION_TEXT
+var strings: Dictionary[int, String] = OriginalUiStrings.VALUES.duplicate()
+var forest_protest_text: String = OriginalUiStrings.VALUES[FOREST_PROTEST_STRING_ID]
+var building_objection_text: String = OriginalUiStrings.VALUES[BUILDING_OBJECTION_STRING_ID]
 var forest_protest_image: Image
 var library_texts: Dictionary[int, String] = {}
 var original_credits := ""
@@ -57,62 +56,13 @@ static func load_root(reference_root: String) -> OriginalGameAssets:
 
 
 static func required_string_ids() -> PackedInt32Array:
-	var result := QueryText.resource_string_ids()
-	result.append_array(CityStatusMessages.resource_ids())
-	result.append(FOREST_PROTEST_STRING_ID)
-	result.append(BUILDING_OBJECTION_STRING_ID)
-
-	for resource_id in range(INDUSTRY_STRING_FIRST, INDUSTRY_STRING_LAST + 1):
-		result.append(resource_id)
-
-	for resource_id in range(CITY_MAP_STRING_FIRST, CITY_MAP_STRING_LAST + 1):
-		result.append(resource_id)
-
-	for resource_id in range(294, 327):
-		result.append(resource_id)
-
-	result.append(SIMNATION_FORMAT_STRING_ID)
-
-	for resource_id in range(
-		NEIGHBOR_NAME_STRING_FIRST, NEIGHBOR_NAME_STRING_LAST + 1
-	):
-		result.append(resource_id)
-
-	for resource_id in range(NEWSPAPER_STRING_FIRST, NEWSPAPER_STRING_LAST + 1):
-		result.append(resource_id)
-
-	return result
+	return PackedInt32Array(OriginalUiStrings.VALUES.keys())
 
 
 func load_ui(reference_root: String) -> void:
-	load_original_credits(reference_root)
+	load_text_data(reference_root)
 	city_ui_graphics = CityUiGraphics.load_original(reference_root)
 	desktop_graphics = DesktopGraphics.load_original(reference_root)
-	newspaper_data = NewspaperLoader.load_path(
-		reference_root.path_join("DATA/DATA_USA.DAT"),
-		reference_root.path_join("DATA/DATA_USA.IDX"),
-	)
-	var string_resources := StringLoader.load_ids(
-		reference_root.path_join("SIMCITY.EXE"), required_string_ids()
-	)
-
-	if string_resources.ok:
-		strings = string_resources.strings
-		forest_protest_text = strings.get(
-			FOREST_PROTEST_STRING_ID, forest_protest_text
-		)
-		building_objection_text = strings.get(
-			BUILDING_OBJECTION_STRING_ID, building_objection_text
-		)
-
-	var library_resources := TextLoader.load_ids(
-		reference_root.path_join("DATA/TEXT_USA.DAT"),
-		reference_root.path_join("DATA/TEXT_USA.IDX"),
-		PackedInt32Array(LibraryWindows.TEXT_RESOURCE_IDS),
-	)
-
-	if library_resources.ok:
-		library_texts = library_resources.strings
 
 	toolbar_art = _bitmap_image(reference_root, 2)
 	industry_icons = _bitmap_image(reference_root, 178)
@@ -127,6 +77,23 @@ func load_ui(reference_root: String) -> void:
 	simnation_sprites = Image.load_from_file(
 		reference_root.path_join("BITMAPS/NEIGHBOR.BMP")
 	)
+
+
+func load_text_data(reference_root: String) -> void:
+	load_original_credits(reference_root)
+	newspaper_data = NewspaperLoader.load_path(
+		reference_root.path_join("DATA/DATA_USA.DAT"),
+		reference_root.path_join("DATA/DATA_USA.IDX"),
+	)
+
+	var library_resources := TextLoader.load_ids(
+		reference_root.path_join("DATA/TEXT_USA.DAT"),
+		reference_root.path_join("DATA/TEXT_USA.IDX"),
+		PackedInt32Array(LibraryWindows.TEXT_RESOURCE_IDS),
+	)
+
+	if library_resources.ok:
+		library_texts = library_resources.strings
 
 
 func load_original_credits(reference_root: String) -> void:

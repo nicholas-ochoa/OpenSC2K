@@ -72,7 +72,7 @@ static func _service_score(
 static func _adjusted_population(misc: PackedByteArray, map_edge: int = 128) -> int:
 	var arcology_count := 0
 
-	for tile_id in range(0xfb, 0xff):
+	for tile_id in range(Tiles.PLYMOUTH_ARCOLOGY, Tiles.LLAMA_DOME):
 		arcology_count += _tile_count(misc, tile_id, map_edge)
 
 	arcology_count = _divide_toward_zero(arcology_count, 16)
@@ -94,7 +94,7 @@ static func _population_cap(misc: PackedByteArray, maximum: int, divisor: int, m
 
 	var arcology_count := 0
 
-	for tile_id in range(0xfb, 0xff):
+	for tile_id in range(Tiles.PLYMOUTH_ARCOLOGY, Tiles.LLAMA_DOME):
 		arcology_count += _tile_count(misc, tile_id, map_edge)
 
 	arcology_count = _divide_toward_zero(arcology_count, 16)

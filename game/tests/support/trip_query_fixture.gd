@@ -1,8 +1,10 @@
 class_name TripQueryFixture
 extends RefCounted
 
-const SOURCE_TILES := [0, 0x70, 0x8c, 0xae, 0xfb]
-const DESTINATION_TILES := [0, 0x7c, 0x94, 0xb2, 0xfb]
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
+const SOURCE_TILES := [Tiles.EMPTY, Tiles.LOWER_CLASS_HOMES_1X1_1, Tiles.CHEAP_APARTMENTS_2X2, Tiles.LARGE_APARTMENT_BUILDING_3X3_1, Tiles.PLYMOUTH_ARCOLOGY]
+const DESTINATION_TILES := [Tiles.EMPTY, Tiles.GAS_STATION_1X1_1, Tiles.SHOPPING_CENTER_2X2, Tiles.OFFICE_PARK_3X3, Tiles.PLYMOUTH_ARCOLOGY]
 
 
 static func add_route(city: CityState, source_size: int, destination_size: int,
@@ -21,15 +23,15 @@ static func add_route(city: CityState, source_size: int, destination_size: int,
 		var b := Vector2i(base.x + 14, highway_y)
 		assert(HighwayCommand.apply(city, 6, 1, a, b, 0).ok)
 		assert(NetworkCommand.apply(city, 6, 0, Vector2i(road_x, route_y), Vector2i(a.x - 1, route_y)).ok)
-		city.set_building_id(b.x + 1, route_y, 0x1e)
+		city.set_building_id(b.x + 1, route_y, Tiles.ROAD_STRAIGHT_2)
 		assert(OnrampCommand.apply(city, 6, 3, a + Vector2i(0, 2)).ok)
 		assert(OnrampCommand.apply(city, 6, 3, b + Vector2i(0, 2)).ok)
 	elif network == "rail":
-		stamp(city, Rect2i(base.x, route_y, 2, 2), 0xed, 0)
+		stamp(city, Rect2i(base.x, route_y, 2, 2), Tiles.RAIL_STATION, 0)
 		for x in range(base.x + 2, base.x + 16):
-			city.set_building_id(x, route_y, 0x2d)
+			city.set_building_id(x, route_y, Tiles.RAIL_STRAIGHT_2)
 		if destination_size < 4:
-			stamp(city, Rect2i(base.x + 14, route_y, 2, 2), 0xed, 0)
+			stamp(city, Rect2i(base.x + 14, route_y, 2, 2), Tiles.RAIL_STATION, 0)
 	else:
 		assert(NetworkCommand.apply(city, 6, 0, Vector2i(road_x, route_y), Vector2i(destination.position.x - 1, route_y)).ok)
 
@@ -54,13 +56,13 @@ static func add_block(city: CityState, origin := Vector2i(70, 20)) -> Rect2i:
 	for x in range(block.position.x, block.end.x):
 		for y in range(block.position.y, block.end.y):
 			if x in [block.position.x, block.end.x - 1] or y in [block.position.y, block.end.y - 1]:
-				city.set_building_id(x, y, 0x1e if y in [block.position.y, block.end.y - 1] else 0x1d)
+				city.set_building_id(x, y, Tiles.ROAD_STRAIGHT_2 if y in [block.position.y, block.end.y - 1] else Tiles.ROAD_STRAIGHT_1)
 			else:
 				var residential := (x + y) % 2 == 0
-				stamp(city, Rect2i(x, y, 1, 1), 0x70 if residential else 0x7c, 1 if residential else 3)
+				stamp(city, Rect2i(x, y, 1, 1), Tiles.LOWER_CLASS_HOMES_1X1_1 if residential else Tiles.GAS_STATION_1X1_1, 1 if residential else 3)
 	# A spur deliberately ends without a destination.
 	for x in range(block.end.x, block.end.x + 9):
-		city.set_building_id(x, block.position.y + 3, 0x1e)
+		city.set_building_id(x, block.position.y + 3, Tiles.ROAD_STRAIGHT_2)
 	for endpoints in [[block.position, Vector2i(block.end.x - 1, block.position.y)],
 		[Vector2i(block.end.x - 1, block.position.y), block.end - Vector2i.ONE],
 		[block.end - Vector2i.ONE, Vector2i(block.position.x, block.end.y - 1)],
@@ -75,9 +77,9 @@ static func add_scenario(city: CityState, variant: int, base: Vector2i) -> Dicti
 	assert(NetworkCommand.apply(city, 6, 0, Vector2i(base.x, road_y), Vector2i(base.x + 44, road_y)).ok)
 	for x in range(base.x, base.x + 8):
 		for y in range(base.y + 4, base.y + 6):
-			stamp(city, Rect2i(x, y, 1, 1), 0x70 + (x + y) % 4, 1)
-	stamp(city, Rect2i(base.x + 41, base.y + 4, 2, 2), 0x9e, 5)
-	stamp(city, Rect2i(base.x + 41, base.y + 7, 2, 2), 0x9f, 5)
+			stamp(city, Rect2i(x, y, 1, 1), Tiles.LOWER_CLASS_HOMES_1X1_1 + (x + y) % 4, 1)
+	stamp(city, Rect2i(base.x + 41, base.y + 4, 2, 2), Tiles.WAREHOUSE_2X2, 5)
+	stamp(city, Rect2i(base.x + 41, base.y + 7, 2, 2), Tiles.CHEMICAL_PROCESSING_2X2, 5)
 	assert(NetworkCommand.apply(city, 3, 0, base + Vector2i(7, 3), base + Vector2i(44, 3)).ok)
 	assert(NetworkCommand.apply(city, 3, 0, base + Vector2i(44, 3), base + Vector2i(44, 9)).ok)
 	if variant >= 1:
@@ -86,11 +88,11 @@ static func add_scenario(city: CityState, variant: int, base: Vector2i) -> Dicti
 			assert(NetworkCommand.apply(city, 6, 0, Vector2i(x, base.y + 2), Vector2i(x, road_y)).ok)
 			assert(OnrampCommand.apply(city, 6, 3, Vector2i(x + 1, base.y + 2)).ok)
 	if variant >= 2:
-		stamp(city, Rect2i(base.x + 4, base.y + 8, 2, 2), 0xed, 0)
-		stamp(city, Rect2i(base.x + 38, base.y + 8, 2, 2), 0xed, 0)
+		stamp(city, Rect2i(base.x + 4, base.y + 8, 2, 2), Tiles.RAIL_STATION, 0)
+		stamp(city, Rect2i(base.x + 38, base.y + 8, 2, 2), Tiles.RAIL_STATION, 0)
 		assert(NetworkCommand.apply(city, 7, 0, base + Vector2i(4, 10), base + Vector2i(39, 10)).ok)
-		city.set_building_id(base.x + 5, base.y + 7, 0x1d)
-		city.set_building_id(base.x + 39, base.y + 7, 0x1d)
+		city.set_building_id(base.x + 5, base.y + 7, Tiles.ROAD_STRAIGHT_1)
+		city.set_building_id(base.x + 39, base.y + 7, Tiles.ROAD_STRAIGHT_1)
 	var label: String = ["1 Road only", "2 Road and highway", "3 Road highway and rail"][variant]
 	assert(SignCommand.set_sign(city, base + Vector2i(0, 1), label).ok)
 	return {"origin": base + Vector2i(7, 5), "destination": base + Vector2i(41, 5),
@@ -142,8 +144,8 @@ static func add_tunnel_scenario(city: CityState, base: Vector2i) -> Dictionary:
 	assert(NetworkCommand.apply(city, 6, 0, base + Vector2i(0, 6), entrance - Vector2i(1, 0)).ok)
 	assert(NetworkCommand.apply(city, 6, 0, exit_portal + Vector2i(1, 0), base + Vector2i(24, 6)).ok)
 	assert(TunnelCommand.apply(city, 6, 2, entrance, TunnelCommand.CONFIRMATION_CONFIRMED).ok)
-	stamp(city, Rect2i(base + Vector2i(3, 4), Vector2i(2, 2)), 0x8c, 1)
-	stamp(city, Rect2i(base + Vector2i(20, 3), Vector2i(3, 3)), 0xb2, 3)
+	stamp(city, Rect2i(base + Vector2i(3, 4), Vector2i(2, 2)), Tiles.CHEAP_APARTMENTS_2X2, 1)
+	stamp(city, Rect2i(base + Vector2i(20, 3), Vector2i(3, 3)), Tiles.OFFICE_PARK_3X3, 3)
 	assert(SignCommand.set_sign(city, base, "5 Road tunnel").ok)
 	return {"origin": base + Vector2i(3, 5), "destination": base + Vector2i(20, 5),
 		"entrance": entrance, "exit_portal": exit_portal,
@@ -155,8 +157,8 @@ static func add_bus_scenario(city: CityState, base: Vector2i) -> Dictionary:
 	var destination := base + Vector2i(0, 34)
 	var stops: Array[Vector2i] = [base + Vector2i(2, 2), base + Vector2i(2, 30)]
 	assert(NetworkCommand.apply(city, 6, 0, base + Vector2i(4, 0), base + Vector2i(4, 38)).ok)
-	stamp(city, Rect2i(origin, Vector2i.ONE), 0x70, 1)
-	stamp(city, Rect2i(destination, Vector2i(3, 3)), 0xb2, 3)
+	stamp(city, Rect2i(origin, Vector2i.ONE), Tiles.LOWER_CLASS_HOMES_1X1_1, 1)
+	stamp(city, Rect2i(destination, Vector2i(3, 3)), Tiles.OFFICE_PARK_3X3, 3)
 	for stop in stops:
 		assert(BuildingCommand.apply(city, 6, 4, stop, SimLfsrRandom.new(1), SimRandom.new(1)).ok)
 	assert(SignCommand.set_sign(city, base, "6 Road and buses").ok)
@@ -176,10 +178,10 @@ static func add_full_interchange_scenario(city: CityState, base: Vector2i) -> Di
 				assert(OnrampCommand.apply(city, 6, 3, ramp).ok)
 				ramps.append(ramp)
 	var origin := base + Vector2i(5, 9)
-	stamp(city, Rect2i(origin, Vector2i.ONE), 0x70, 1)
-	stamp(city, Rect2i(base + Vector2i(3, 0), Vector2i(2, 2)), 0x8c, 1)
+	stamp(city, Rect2i(origin, Vector2i.ONE), Tiles.LOWER_CLASS_HOMES_1X1_1, 1)
+	stamp(city, Rect2i(base + Vector2i(3, 0), Vector2i(2, 2)), Tiles.CHEAP_APARTMENTS_2X2, 1)
 	var destinations: Array[Vector2i] = [base + Vector2i(30, 0), base + Vector2i(30, 8)]
 	for destination in destinations:
-		stamp(city, Rect2i(destination, Vector2i(2, 2)), 0x94, 3)
+		stamp(city, Rect2i(destination, Vector2i(2, 2)), Tiles.SHOPPING_CENTER_2X2, 3)
 	assert(SignCommand.set_sign(city, base + Vector2i(15, 0), "11 Highway - four ramps per end").ok)
 	return {"origin": origin, "ramps": ramps, "destinations": destinations}

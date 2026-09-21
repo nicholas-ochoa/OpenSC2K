@@ -37,7 +37,7 @@ static func _is_bridge_wrapper_tile(
 
 	var index := point.x * map_edge + point.y
 
-	return (flags[index] & FLAG_WATER) != 0 and terrain[index] < 0x40
+	return (flags[index] & FLAG_WATER) != 0 and terrain[index] < TerrainTileIds.CHANNEL_FIRST
 
 
 static func _plan_bridge_from_start(
@@ -75,10 +75,10 @@ static func _scan_bridge(
 	var start_index := start.x * map_edge + start.y
 	var terrain_id := int(terrain[start_index])
 
-	if terrain_id < 0x20 or terrain_id >= 0x40:
+	if terrain_id < TerrainTileIds.SHORE_FIRST or terrain_id >= TerrainTileIds.CHANNEL_FIRST:
 		return Plan.failure("bridge must start on shoreline terrain")
 
-	var direction_mask := int(BRIDGE_SHORE_DIRECTIONS[terrain_id & 0x0f])
+	var direction_mask := int(BRIDGE_SHORE_DIRECTIONS[terrain_id & TerrainTileIds.SHAPE_MASK])
 
 	if direction_mask == 0:
 		return Plan.failure("bridge shoreline shape is not eligible")
@@ -95,7 +95,7 @@ static func _scan_bridge(
 		if span_length != 0:
 			var checked_index := checked.x * map_edge + checked.y
 
-			if buildings[checked_index] != 0:
+			if buildings[checked_index] != Tiles.EMPTY:
 				return Plan.failure("bridge path contains a structure", true)
 
 		checked += DIRECTIONS[direction]
@@ -108,7 +108,7 @@ static func _scan_bridge(
 			terrain[checked.x * map_edge + checked.y]
 		)
 
-		if checked_terrain <= 0x0f or checked_terrain >= 0x40:
+		if checked_terrain <= TerrainTileIds.LAND_LAST or checked_terrain >= TerrainTileIds.CHANNEL_FIRST:
 			break
 
 	var result := Plan.new()
@@ -221,7 +221,7 @@ static func _place_bridge_bank(
 ) -> void:
 	var index := point.x * map_edge + point.y
 
-	if terrain[index] < 0x30:
+	if terrain[index] < TerrainTileIds.SURFACE_WATER_FIRST:
 		NetworkRules.set_land_altitude(
 			altitude, index, NetworkRules.land_altitude(altitude, index) + 1
 		)
@@ -283,6 +283,6 @@ static func _bridge_tile(
 
 			var pattern_index := (span_index - first_pattern) % 5
 
-			return Tiles.SUSPENSION_BRIDGE_ONE + pattern_index if direction == 0 or direction == 3 else Tiles.SUSPENSION_BRIDGE_FIVE - pattern_index
+			return Tiles.SUSPENSION_BRIDGE_1 + pattern_index if direction == 0 or direction == 3 else Tiles.SUSPENSION_BRIDGE_5 - pattern_index
 		_:
 			return Tiles.ROAD_BRIDGE

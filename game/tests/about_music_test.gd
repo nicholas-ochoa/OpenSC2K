@@ -9,6 +9,8 @@ func _run() -> void:
 	var reference := ProjectSettings.globalize_path("res://../references/SIMCITY2000")
 	var settings_path := "user://about-music-%d.cfg" % OS.get_process_id()
 	var settings := ConfigFile.new()
+	settings.set_value("audio", "music_pack_folder", ProjectSettings.globalize_path("res://../ext/music"))
+	settings.set_value("audio", "sound_pack_folder", ProjectSettings.globalize_path("res://../ext/sound"))
 	settings.set_value("audio", "music_volume", 0.5)
 	settings.set_value("audio", "shuffle_music", true)
 	settings.set_value("audio", "background_audio", true)

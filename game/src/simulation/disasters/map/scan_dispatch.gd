@@ -2,6 +2,8 @@ class_name DisasterMapScanDispatch
 extends DisasterMapConstants
 
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 static func run_all(
 	city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom, map_counter: int, hurricane_counter := 0
 ) -> DisasterMapResult:
@@ -155,7 +157,7 @@ static func run_all(
 			)
 			var hurricane_index := DisasterMapState._index(hurricane_point, map_edge)
 
-			if payloads.XBLD[hurricane_index] > 0x70:
+			if payloads.XBLD[hurricane_index] > Tiles.LOWER_CLASS_HOMES_1X1_1:
 				counters.hurricane_damage_attempts += 1
 				var damage := DisasterMapDamage.burn_structure(
 					city,
@@ -343,10 +345,10 @@ static func _extinguish_dispatch_fire(
 	OverlayData.write(payloads.XTXT, index, 0)
 	var tile := int(payloads.XBLD[index])
 
-	if tile >= 0x3f and tile <= 0x42:
+	if tile >= Tiles.TUNNEL_ENTRANCE_1 and tile <= Tiles.TUNNEL_ENTRANCE_4:
 		return true
 
-	if tile < 0x61:
+	if tile < Tiles.HIGHWAY_SLOPE_1:
 		DemolishStructures._demolish_point(
 			city,
 			payloads.ALTM,
@@ -366,7 +368,7 @@ static func _extinguish_dispatch_fire(
 			false,
 		)
 		NetworkState.replace_building(
-			payloads.XBLD, payloads.XZON, payloads.MISC, index, lfsr_random.next_mod(4) + 1
+			payloads.XBLD, payloads.XZON, payloads.MISC, index, lfsr_random.next_mod(4) + Tiles.RUBBLE_FIRST
 		)
 	elif payloads.XBIT[index] & 0xf0 == 0xf0:
 		DemolishStructures._demolish_point(

@@ -216,7 +216,7 @@ static func initialize_microsim(
 	var offset := record_id * CityState.MICROSIM_RECORD_SIZE
 
 	match tile_id:
-		HYDRO_POWER_ONE, HYDRO_POWER_TWO:
+		HYDRO_POWER_1, HYDRO_POWER_2:
 			BuildingState._write_u16_be(microsims, offset + 2, BuildingState._read_u16_be(microsims, offset + 2) + 1)
 			BuildingState._write_u16_be(microsims, offset + 4, BuildingState._read_u16_be(microsims, offset + 4) + 20)
 		WIND_POWER:

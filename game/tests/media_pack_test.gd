@@ -34,8 +34,7 @@ func _run() -> void:
 		expected.convert(Image.FORMAT_RGBA8)
 		assert(actual.get_data() == expected.get_data(), field)
 
-	var original_ui := original.city_ui_graphics
-	assert(graphics.apply_to(original) and original.city_ui_graphics == original_ui)
+	assert(graphics.apply_to(original) and original.city_ui_graphics == graphics.city_ui_graphics)
 
 	for kind in ["sound", "music"]:
 		var pack := MediaPack.load_folder(base.path_join(kind), kind)

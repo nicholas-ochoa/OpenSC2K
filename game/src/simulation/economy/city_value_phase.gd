@@ -15,8 +15,8 @@ const MISC_SUBWAY_COUNT := 0x0fe8
 # the executable indexes shifted cost tables for 0xc6 through 0xcf. these are
 # valuation constants, not the matching buildings' construction costs
 const BUILDING_RULES := {
-	Tiles.HYDRO_POWER_ONE: [1, 4000],
-	Tiles.HYDRO_POWER_TWO: [1, 400],
+	Tiles.HYDRO_POWER_1: [1, 4000],
+	Tiles.HYDRO_POWER_2: [1, 400],
 	Tiles.WIND_POWER: [1, 6600],
 	Tiles.GAS_POWER: [16, 6600],
 	Tiles.OIL_POWER: [16, 2000],
@@ -40,22 +40,22 @@ const BUILDING_RULES := {
 	Tiles.RUNWAY_CROSSING: [1, 250],
 	Tiles.PIER: [1, 150],
 	Tiles.CRANE: [1, 150],
-	Tiles.CONTROL_TOWER_ONE: [1, 250],
+	Tiles.CONTROL_TOWER_1: [1, 250],
 	Tiles.SEAPORT_WAREHOUSE: [1, 150],
-	Tiles.AIRPORT_BUILDING_ONE: [1, 250],
-	Tiles.AIRPORT_BUILDING_TWO: [1, 250],
+	Tiles.AIRPORT_BUILDING_1: [1, 250],
+	Tiles.AIRPORT_BUILDING_2: [1, 250],
 	Tiles.TARMAC: [1, 250],
 	Tiles.SUBWAY_STATION: [1, 250],
 	Tiles.RADAR: [1, 250],
 	Tiles.WATER_TOWER: [4, 250],
 	Tiles.BUS_DEPOT: [4, 250],
 	Tiles.RAIL_STATION: [4, 500],
-	Tiles.PARKING_LOT_ONE: [1, 250],
+	Tiles.PARKING_LOT_1: [1, 250],
 	Tiles.LOADING_BAY: [1, 150],
 	Tiles.CARGO_YARD: [1, 150],
 	Tiles.WATER_TREATMENT: [9, 500],
 	Tiles.LIBRARY: [4, 500],
-	Tiles.HANGAR_TWO: [1, 250],
+	Tiles.HANGAR_2: [1, 250],
 	Tiles.MARINA: [9, 1000],
 	Tiles.DESALINIZATION: [9, 1000],
 	Tiles.PLYMOUTH_ARCOLOGY: [16, 100000],
@@ -94,17 +94,17 @@ static func calculate(city: CityState) -> Result:
 	for tile_id in range(Tiles.POWER_LINE_FIRST, Tiles.DEVELOPED_FIRST):
 		var cost := 0
 
-		if tile_id < 0x1d:
+		if tile_id < Tiles.ROAD_STRAIGHT_1:
 			cost = 2
-		elif tile_id < 0x2c:
+		elif tile_id < Tiles.RAIL_STRAIGHT_1:
 			cost = 10
-		elif tile_id < 0x3f:
+		elif tile_id < Tiles.TUNNEL_ENTRANCE_1:
 			cost = 25
-		elif tile_id < 0x51:
+		elif tile_id < Tiles.SUSPENSION_BRIDGE_1:
 			cost = 15
-		elif tile_id < 0x61:
+		elif tile_id < Tiles.HIGHWAY_SLOPE_1:
 			cost = 100
-		elif tile_id < 0x6c:
+		elif tile_id < Tiles.RAIL_SUBWAY_ENTRANCE_1:
 			cost = 100
 		else:
 			cost = 250

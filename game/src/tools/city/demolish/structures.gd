@@ -20,7 +20,7 @@ static func damage_structure_payloads(
 
 	var index := city.index_of(point.x, point.y)
 
-	if index < 0 or int(payloads.XBLD[index]) < 6:
+	if index < 0 or int(payloads.XBLD[index]) < Tiles.TREE_FIRST:
 		var result := DemolishPointResult.new()
 		result.changed = false
 
@@ -126,14 +126,14 @@ static func _demolish_point(
 
 	var was_water := (flags[index] & FLAG_WATER) != 0
 
-	if tile_id == 0:
+	if tile_id == BuildingTileIds.EMPTY:
 		if scurk_mode:
 			var result := DemolishPointResult.new()
 			result.changed = false
 
 			return result
 
-		if terrain[index] < 0x30:
+		if terrain[index] < TerrainTileIds.SURFACE_WATER_FIRST:
 			var result := DemolishPointResult.new()
 			result.changed = false
 
@@ -163,9 +163,9 @@ static func _demolish_point(
 				point, DemolishEffectsSites._effect_altitude(altitude, flags, index), random, 0, Vector2i.ZERO
 			))
 
-		NetworkState.replace_building(buildings, zones, misc, index, 0)
+		NetworkState.replace_building(buildings, zones, misc, index, Tiles.EMPTY)
 
-		if terrain[index] >= 0x30:
+		if terrain[index] >= TerrainTileIds.SURFACE_WATER_FIRST:
 			DemolishTerrain._remove_surface_water(altitude, buildings, terrain, zones, flags, misc, point, map_edge)
 
 		DemolishTerrain._retile_after_demolition(
@@ -199,10 +199,10 @@ static func _demolish_point(
 	for x in range(site.position.x, site.end.x):
 		for y in range(site.position.y, site.end.y):
 			var changed_index := x * map_edge + y
-			var rubble := 0
+			var rubble := Tiles.EMPTY
 
-			if not scurk_mode and terrain[changed_index] == 0:
-				rubble = 1 + (random.next_u15() & 3)
+			if not scurk_mode and terrain[changed_index] == TerrainTileIds.FLAT:
+				rubble = Tiles.RUBBLE_FIRST + (random.next_u15() & 3)
 
 			NetworkState.replace_building(buildings, zones, misc, changed_index, rubble)
 			zones[changed_index] &= 0x0f
@@ -236,7 +236,7 @@ static func _demolish_point(
 			text_overlays, map_edge
 		)
 
-	if terrain[index] >= 0x30:
+	if terrain[index] >= TerrainTileIds.SURFACE_WATER_FIRST:
 		if was_water:
 			DemolishTerrain._retile_surface_water(terrain, flags, point, true, map_edge)
 		else:
@@ -289,7 +289,7 @@ static func _demolish_underground_point(
 	var underground_tile := int(underground[index])
 
 	if (
-		underground_tile == 0
+		underground_tile == UndergroundTileIds.EMPTY
 		and tunnel_level != 1
 		and (flags[index] & BuildingCommand.FLAG_PIPED) == 0
 	):
@@ -304,7 +304,7 @@ static func _demolish_underground_point(
 	var indices := PackedInt32Array([index])
 	var effect_events: Array[EffectEvent] = []
 
-	if tunnel_level == 1 or underground_tile == 0x23:
+	if tunnel_level == 1 or underground_tile == UndergroundTileIds.SUBWAY_ENTRANCE:
 		var surface_result := _demolish_point(
 			city,
 			altitude,
@@ -331,7 +331,7 @@ static func _demolish_underground_point(
 
 		effect_events = surface_result.effect_events
 
-	BuildingUnderground._replace_underground(underground, zones, misc, index, 0)
+	BuildingUnderground._replace_underground(underground, zones, misc, index, UndergroundTileIds.EMPTY)
 	DemolishTerrain._retile_after_demolition(
 		buildings, terrain, zones, underground, flags, misc, [point], text_overlays, map_edge
 	)

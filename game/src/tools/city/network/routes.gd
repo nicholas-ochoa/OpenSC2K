@@ -3,6 +3,8 @@ extends NetworkConstants
 
 
 
+const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
+
 static func route(start: Vector2i, finish: Vector2i) -> Array[Vector2i]:
 	var result: Array[Vector2i] = [start]
 	var current := start
@@ -114,7 +116,7 @@ static func plan_route(
 
 		# Check the rail grade after choosing the axis, as the original does.
 		# A failed check ends the route; it does not try the other turn.
-		if mode == MODE_RAIL and direction != incoming_direction and terrain[next.x * map_edge + next.y] != 0:
+		if mode == MODE_RAIL and direction != incoming_direction and terrain[next.x * map_edge + next.y] != TerrainTileIds.FLAT:
 			break
 
 		current = next
@@ -150,17 +152,17 @@ static func _route_keeps_direction(buildings: PackedByteArray, terrain: PackedBy
 	# slopes and straight crossing cells before it chooses either target axis
 	var index := point.x * edge + point.y
 
-	if TERRAIN_IS_NETWORK_SLOPE[terrain[index] & 0x0f]:
+	if TERRAIN_IS_NETWORK_SLOPE[terrain[index] & TerrainTileIds.SHAPE_MASK]:
 		return true
 
 	if mode < MODE_SUBWAY:
 		var tile := int(buildings[index])
 
-		return NetworkRules._surface_fixed_axis(tile, mode) >= 0 or (tile > 0x0d and tile + (direction & 1) in [0x0f, 0x1e, 0x2d, 0x4a])
+		return NetworkRules._surface_fixed_axis(tile, mode) >= 0 or (tile > Tiles.SMALL_PARK and tile + (direction & 1) in [Tiles.POWER_LINE_STRAIGHT_2, Tiles.ROAD_STRAIGHT_2, Tiles.RAIL_STRAIGHT_2, Tiles.HIGHWAY_STRAIGHT_2])
 
 	var tile := int(underground[index])
 
-	return tile in [0x1f, 0x20] or (tile != 0 and tile + (direction & 1) in [2, 0x11])
+	return tile in [UnderTiles.PIPE_TB_SUBWAY_LR, UnderTiles.PIPE_LR_SUBWAY_TB] or (tile != UnderTiles.EMPTY and tile + (direction & 1) in [UnderTiles.SUBWAY_TB, UnderTiles.PIPE_TB])
 
 
 static func _primary_direction(current: Vector2i, finish: Vector2i) -> int:

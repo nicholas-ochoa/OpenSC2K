@@ -15,7 +15,7 @@ static func _remove_surface_water(
 ) -> void:
 	var index := point.x * map_edge + point.y
 
-	if terrain[index] == 0x3e:
+	if terrain[index] == TerrainTileIds.WATERFALL:
 		TerrainRetile.retile_region(
 			altitude,
 			buildings,
@@ -27,7 +27,7 @@ static func _remove_surface_water(
 			BuildingState.read_u32_be(misc, 0x0e40) & 0x1f, map_edge
 		)
 	else:
-		terrain[index] = 0
+		terrain[index] = TerrainTileIds.FLAT
 
 	flags[index] &= ~FLAG_WATER & 0xff
 	_retile_surface_water(terrain, flags, point, false, map_edge)

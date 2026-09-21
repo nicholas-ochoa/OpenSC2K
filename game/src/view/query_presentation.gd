@@ -18,7 +18,7 @@ static func sprite_id(city: CityState, info: QueryResult) -> int:
 		var microsim: CityRecords.Microsim = info.microsim
 		var facility_tile := microsim.tile_id if microsim != null else 0
 
-		return LARGE_SPRITE_BASE + facility_tile if facility_tile > 0 else -1
+		return LARGE_SPRITE_BASE + facility_tile if facility_tile > BuildingTileIds.EMPTY else -1
 
 	var point: Vector2i = info.point
 
@@ -28,7 +28,7 @@ static func sprite_id(city: CityState, info: QueryResult) -> int:
 	var building := city.building_id(point.x, point.y)
 	var result := (
 		LARGE_SPRITE_BASE + building
-		if building != 0
+		if building != BuildingTileIds.EMPTY
 		else Renderer.terrain_sprite_id(
 			city.terrain_id(point.x, point.y), city.is_water(point.x, point.y)
 		)

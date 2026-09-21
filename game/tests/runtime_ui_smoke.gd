@@ -293,7 +293,7 @@ func _run() -> void:
 				not place_print.visible
 				or place_list == null
 				or place_list.item_count != 24
-				or not place_print.select_tile(0x0d)
+				or not place_print.select_tile(BuildingTileIds.SMALL_PARK)
 			):
 				push_error("Cannot open the SCURK Place & Print object selector")
 				main.queue_free()

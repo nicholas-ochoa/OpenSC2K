@@ -25,7 +25,7 @@ static func set_terrain_id(city: CityState, x: int, y: int, value: int) -> bool:
 
 
 static func set_building_id(city: CityState, x: int, y: int, value: int) -> bool:
-	if value < 0 or value > 0xff:
+	if value < 0 or value > BuildingTileIds.MAX_ID:
 		return false
 
 	var index := city.index_of(x, y)

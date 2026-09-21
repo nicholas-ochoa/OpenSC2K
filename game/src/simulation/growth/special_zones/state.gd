@@ -56,9 +56,9 @@ static func _special_axis_is_flipped(x_delta: int, rotation: int) -> bool:
 
 static func _is_subway_tile(tile: int) -> bool:
 	return (
-		(tile > 0 and tile < UnderTiles.PIPE_FIRST)
-		or tile == UnderTiles.PIPE_SUBWAY_ONE
-		or tile == UnderTiles.PIPE_SUBWAY_TWO
+		(tile > UnderTiles.EMPTY and tile < UnderTiles.PIPE_FIRST)
+		or tile == UnderTiles.PIPE_TB_SUBWAY_LR
+		or tile == UnderTiles.PIPE_LR_SUBWAY_TB
 		or tile == UnderTiles.MISSILE_SILO
 		or tile == UnderTiles.SUBWAY_ENTRANCE
 	)

@@ -46,7 +46,7 @@ static func update_airplane(
 			return
 
 		# building artwork height is part of aircraft physics
-		var sprite_height: int = BUILDING_SPRITE_HEIGHTS[building - 0x71]
+		var sprite_height: int = BUILDING_SPRITE_HEIGHTS[building - Tiles.LOWER_CLASS_HOMES_1X1_2]
 
 		if ThingData.read(things, offset + 5) < int(sprite_height / 3):
 			AirThingMotion._convert_to_explosion(things, record, 5, 1)
@@ -289,8 +289,8 @@ static func update_helicopter(
 
 				if (
 					random.next_u15() & 1
-					and buildings[AirThingMotion._index(current, map_edge)] == 0
-					and underground[AirThingMotion._index(current, map_edge)] == 0
+					and buildings[AirThingMotion._index(current, map_edge)] == Tiles.EMPTY
+					and underground[AirThingMotion._index(current, map_edge)] == UndergroundTileIds.EMPTY
 				):
 					ThingData.write(things, offset + 2, 3)
 		3:

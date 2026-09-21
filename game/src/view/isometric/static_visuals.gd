@@ -74,7 +74,7 @@ static func validate_assets(
 
 			var zone := city.zone_id(x, y)
 
-			if zone > 0 and city.building_id(x, y) == 0:
+			if zone > 0 and city.building_id(x, y) == Tiles.EMPTY:
 				var zone_sprite: int = configuration.sprite_base + 290 + zone
 
 				if sprites.find_sprite(zone_sprite) == null:
@@ -82,7 +82,7 @@ static func validate_assets(
 
 			var building := city.building_id(x, y)
 
-			if building > 0 and _should_draw_building(city, x, y, building):
+			if building > Tiles.EMPTY and _should_draw_building(city, x, y, building):
 				var building_sprite: int = configuration.sprite_base + building
 
 				if sprites.find_sprite(building_sprite) == null:
@@ -227,7 +227,7 @@ static func traffic_overlay_visual(
 
 	# the executable enters its traffic branch only for road-or-higher xbld
 	# values. earlier table entries belong to other painter paths
-	if tile < 0x1d or tile >= TRAFFIC_TILE_VARIANTS.size():
+	if tile < Tiles.ROAD_STRAIGHT_1 or tile >= TRAFFIC_TILE_VARIANTS.size():
 		return null
 
 	var variant: int = TRAFFIC_TILE_VARIANTS[tile]
@@ -239,7 +239,7 @@ static func traffic_overlay_visual(
 	var low_threshold := 85
 	var high_threshold := 170
 
-	if (tile >= 0x49 and tile <= 0x50) or (tile >= 0x61 and tile <= 0x6b):
+	if (tile >= Tiles.HIGHWAY_STRAIGHT_1 and tile <= Tiles.HIGHWAY_POWER_CROSSING_2) or (tile >= Tiles.HIGHWAY_SLOPE_1 and tile <= Tiles.REINFORCED_HIGHWAY_BRIDGE):
 		low_threshold = 28
 		high_threshold = 56
 
@@ -502,7 +502,7 @@ static func _compute_static_text_overlay_signature(city: CityState, indices: Pac
 
 # four occupied corners, one sprite, compass picks the winner
 static func _should_draw_building(city: CityState, x: int, y: int, building_id: int) -> bool:
-	if building_id <= 0x60 or (building_id >= 0x6c and building_id <= 0x6f):
+	if building_id <= Tiles.HIGHWAY_ONRAMP_4 or (building_id >= Tiles.RAIL_SUBWAY_ENTRANCE_1 and building_id <= Tiles.RAIL_SUBWAY_ENTRANCE_4):
 		return true
 
 	var anchor_masks := [0x80, 0x10, 0x20, 0x40]
@@ -531,13 +531,13 @@ static func building_baseline_offset(
 	if configuration == null or sprite_width < 0:
 		return 0
 
-	if building_id >= 0x61 and building_id <= 0x6b:
+	if building_id >= Tiles.HIGHWAY_SLOPE_1 and building_id <= Tiles.REINFORCED_HIGHWAY_BRIDGE:
 		return configuration.half_height
 
 	if building_id >= Tiles.DEVELOPED_FIRST:
 		return int(sprite_width / 4) - configuration.half_height
 
-	if terrain_id == 0x0d:
+	if terrain_id == TerrainTileIds.RAISED:
 		return -configuration.altitude_step
 
 	return 0

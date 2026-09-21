@@ -1,6 +1,8 @@
 class_name DisasterDamage
 extends RefCounted
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const TEXT_LABEL_BASE := 201
 const SOUND_DAMAGE := 0x1f8
 
@@ -50,7 +52,7 @@ static func apply(
 	if index < 0 or flags[index] & 0x04 != 0:
 		return 0
 
-	if buildings[index] < 6 and not allow_small_tile:
+	if buildings[index] < Tiles.TREES_1 and not allow_small_tile:
 		return 0
 
 	var overlay := int(OverlayData.read(text, index))
@@ -71,7 +73,7 @@ static func apply(
 			return 0
 		elif overlay < 250:
 			NetworkState.replace_building(
-				buildings, zones, misc, index, lfsr_random.next_mod(4) + 1
+				buildings, zones, misc, index, lfsr_random.next_mod(4) + Tiles.RUBBLE_FIRST
 			)
 
 			return 2
@@ -111,7 +113,7 @@ static func apply_flood(
 	if index < 0 or _altitude_word(altitude, index) & 0x1f > maximum_altitude:
 		return 0
 
-	if terrain[index] >= 0x10 and terrain[index] <= 0x1f:
+	if terrain[index] >= TerrainTileIds.DEEP_WATER_FIRST and terrain[index] <= TerrainTileIds.DEEP_WATER_LAST:
 		return 0
 
 	var overlay := int(OverlayData.read(text, index))
@@ -130,7 +132,7 @@ static func apply_flood(
 			return 0
 		elif overlay < 250:
 			NetworkState.replace_building(
-				buildings, zones, misc, index, lfsr_random.next_mod(4) + 1
+				buildings, zones, misc, index, lfsr_random.next_mod(4) + Tiles.RUBBLE_FIRST
 			)
 
 			return 2
@@ -178,9 +180,9 @@ static func burn_structure(
 		OverlayData.write(text, point_index, 0)
 		var tile := int(buildings[point_index])
 
-		if (tile < 0x3f or tile > 0x42) and tile < 0x61:
+		if (tile < Tiles.TUNNEL_ENTRANCE_1 or tile > Tiles.TUNNEL_ENTRANCE_4) and tile < Tiles.HIGHWAY_SLOPE_1:
 			NetworkState.replace_building(
-				buildings, zones, misc, point_index, lfsr_random.next_mod(4) + 1
+				buildings, zones, misc, point_index, lfsr_random.next_mod(4) + Tiles.RUBBLE_FIRST
 			)
 
 	return result

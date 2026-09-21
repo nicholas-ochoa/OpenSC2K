@@ -139,16 +139,16 @@ static func traffic(
 
 static func _is_traffic_tile(building: int) -> bool:
 	return (
-		(building >= 0x1d and building <= 0x2b)
-		or (building >= 0x3f and building <= 0x42)
-		or (building >= 0x4b and building <= 0x5b)
-		or (building >= 0x5d and building <= 0x6b)
+		(building >= Tiles.ROAD_STRAIGHT_1 and building <= Tiles.ROAD_CROSSROADS)
+		or (building >= Tiles.TUNNEL_ENTRANCE_1 and building <= Tiles.TUNNEL_ENTRANCE_4)
+		or (building >= Tiles.HIGHWAY_ROAD_CROSSING_1 and building <= Tiles.RAIL_BRIDGE_PYLON)
+		or (building >= Tiles.HIGHWAY_ONRAMP_1 and building <= Tiles.REINFORCED_HIGHWAY_BRIDGE)
 	)
 
 
 static func _is_highway_traffic_tile(building: int) -> bool:
-	return (building >= 0x49 and building <= 0x50) or (
-		building >= 0x61 and building <= 0x6b
+	return (building >= Tiles.HIGHWAY_STRAIGHT_1 and building <= Tiles.HIGHWAY_POWER_CROSSING_2) or (
+		building >= Tiles.HIGHWAY_SLOPE_1 and building <= Tiles.REINFORCED_HIGHWAY_BRIDGE
 	)
 
 

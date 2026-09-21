@@ -175,10 +175,10 @@ static func _advance_to_density_four(
 
 static func _has_density_four_road(buildings: PackedByteArray, anchor: Vector2i, map_edge: int = 128) -> bool:
 	var checks := [
-		[anchor + Vector2i(-1, 1), [0x23, 0x27, 0x28, 0x2b]],
-		[anchor + Vector2i(-1, -3), [0x24, 0x28, 0x29, 0x2b]],
-		[anchor + Vector2i(3, -3), [0x25, 0x29, 0x2a, 0x2b]],
-		[anchor + Vector2i(3, 1), [0x26, 0x2a, 0x27, 0x2b]],
+		[anchor + Vector2i(-1, 1), [Tiles.ROAD_CURVE_1, Tiles.ROAD_JUNCTION_1, Tiles.ROAD_JUNCTION_2, Tiles.ROAD_CROSSROADS]],
+		[anchor + Vector2i(-1, -3), [Tiles.ROAD_CURVE_2, Tiles.ROAD_JUNCTION_2, Tiles.ROAD_JUNCTION_3, Tiles.ROAD_CROSSROADS]],
+		[anchor + Vector2i(3, -3), [Tiles.ROAD_CURVE_3, Tiles.ROAD_JUNCTION_3, Tiles.ROAD_JUNCTION_4, Tiles.ROAD_CROSSROADS]],
+		[anchor + Vector2i(3, 1), [Tiles.ROAD_CURVE_4, Tiles.ROAD_JUNCTION_4, Tiles.ROAD_JUNCTION_1, Tiles.ROAD_CROSSROADS]],
 	]
 
 	for check in checks:
@@ -264,9 +264,9 @@ static func _can_build_site(
 
 static func _is_surface_network(tile: int) -> bool:
 	return (
-		(tile >= 0x1d and tile <= 0x3e)
-		or (tile >= 0x3f and tile <= 0x48)
-		or (tile >= 0x4b and tile <= 0x4e)
-		or (tile >= 0x5d and tile <= 0x60)
-		or (tile >= 0x6c and tile <= 0x6f)
+		(tile >= Tiles.ROAD_STRAIGHT_1 and tile <= Tiles.RAIL_SLOPE_8)
+		or (tile >= Tiles.TUNNEL_ENTRANCE_1 and tile <= Tiles.RAIL_POWER_CROSSING_2)
+		or (tile >= Tiles.HIGHWAY_ROAD_CROSSING_1 and tile <= Tiles.HIGHWAY_RAIL_CROSSING_2)
+		or (tile >= Tiles.HIGHWAY_ONRAMP_1 and tile <= Tiles.HIGHWAY_ONRAMP_4)
+		or (tile >= Tiles.RAIL_SUBWAY_ENTRANCE_1 and tile <= Tiles.RAIL_SUBWAY_ENTRANCE_4)
 	)

@@ -50,10 +50,12 @@ static func import_assets(path: String, packs_root: String, categories: PackedSt
 
 			if graphics.error.is_empty():
 				result.counts[category] = graphics.count
-				var support_warning := Sc2ImportSupport.attach_windows_base(source, stage.path_join(category))
+				var support_error := Sc2ImportSupport.attach_runtime_data(source, stage.path_join(category), result)
 
-				if not support_warning.is_empty():
-					result.warnings.append(support_warning)
+				if not support_error.is_empty():
+					result.failures[category] = support_error
+					result.counts.erase(category)
+					OriginalGameInstaller.remove_tree(stage.path_join(category))
 			else:
 				result.failures[category] = graphics.error
 

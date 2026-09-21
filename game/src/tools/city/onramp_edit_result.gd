@@ -2,7 +2,7 @@ class_name OnrampEditResult
 extends EditCommandResult
 
 
-var tile_id := 0
+var tile_id := BuildingTileIds.EMPTY
 var road_direction := 0
 var road_point := Vector2i(-1, -1)
 

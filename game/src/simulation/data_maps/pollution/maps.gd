@@ -187,7 +187,7 @@ static func _find_city_center(maps: CoarseMaps) -> void:
 		for y in map_edge:
 			var index := row + y
 
-			if buildings[index] > 0x6f:
+			if buildings[index] > Tiles.RAIL_SUBWAY_ENTRANCE_4:
 				coordinate_sum_x += x
 				coordinate_sum_y += y
 				center_divisor += 1
@@ -231,7 +231,7 @@ static func _score_terrain(maps: CoarseMaps) -> void:
 			var industrial_value := temporary[industrial_index]
 			var building := buildings[index]
 
-			if building == 0:
+			if building == Tiles.EMPTY:
 				if flags[index] & FLAG_WATER:
 					residential_value += 12
 					industrial_value += 12
@@ -254,7 +254,7 @@ static func _score_terrain(maps: CoarseMaps) -> void:
 
 			var terrain := terrain_map[index]
 
-			if terrain != 0 and terrain < 0x10:
+			if terrain != TerrainTileIds.FLAT and terrain < TerrainTileIds.DEEP_WATER_FIRST:
 				residential_value += 12
 
 			temporary[residential_index] = residential_value

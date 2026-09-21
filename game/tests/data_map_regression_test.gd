@@ -164,7 +164,7 @@ func check_district(edge: int, native: bool) -> void:
 
 	for x in range(point.x - 12, point.x + 13):
 		for y in range(point.y - 12, point.y + 13):
-			city.set_building_id(x, y, 0x93)
+			city.set_building_id(x, y, BuildingTileIds.CONDOMINIUM_2X2_3)
 			city.set_zone_id(x, y, 3)
 			city.set_tile_flag(x, y, PollutionPhase.FLAG_WATERED, true)
 
@@ -186,7 +186,7 @@ func check_district(edge: int, native: bool) -> void:
 	var origin := Vector2i(edge - 8, edge - 8)
 
 	for dy in [1, 2, 3]:
-		city.set_building_id(origin.x, origin.y + dy, 0x1d)
+		city.set_building_id(origin.x, origin.y + dy, BuildingTileIds.ROAD_STRAIGHT_1)
 
 	city.set_zone_id(origin.x, origin.y, 1)
 	city.set_zone_id(origin.x, origin.y + 4, 3)

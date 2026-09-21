@@ -87,7 +87,7 @@ static func terrain_section_shape(
 	if 0x0f - raised_mask == class_masks[4]:
 		return FILLED_FLAT_TERRAIN_SHAPE
 
-	if raised_mask == 0 and int(terrain[anchor.x * map_edge + anchor.y]) == 0x0d:
+	if raised_mask == 0 and int(terrain[anchor.x * map_edge + anchor.y]) == TerrainTileIds.RAISED:
 		return FILLED_FLAT_TERRAIN_SHAPE
 
 	var result := 0
@@ -161,16 +161,16 @@ static func terrain_section_shape(
 
 
 static func _terrain_class(terrain_id: int) -> int:
-	if (terrain_id >= 1 and terrain_id <= 4) or (terrain_id >= 19 and terrain_id <= 38):
+	if (terrain_id >= TerrainTileIds.SLOPE_TOP_LEFT and terrain_id <= TerrainTileIds.SLOPE_BOTTOM_LEFT) or (terrain_id >= TerrainTileIds.DEEP_WATER_SLOPE_BOTTOM_RIGHT and terrain_id <= TerrainTileIds.SHORE_RAISED_EXCEPT_LEFT):
 		return 1
 
-	if terrain_id >= 5 and terrain_id <= 8:
+	if terrain_id >= TerrainTileIds.RAISED_EXCEPT_BOTTOM and terrain_id <= TerrainTileIds.RAISED_EXCEPT_RIGHT:
 		return 2
 
-	if terrain_id >= 9 and terrain_id <= 12:
+	if terrain_id >= TerrainTileIds.CORNER_TOP and terrain_id <= TerrainTileIds.CORNER_LEFT:
 		return 3
 
-	return 4 if terrain_id == 13 else 0
+	return 4 if terrain_id == TerrainTileIds.RAISED else 0
 
 
 static func _section_altitude(
@@ -184,7 +184,7 @@ static func _section_altitude(
 		var index := point.x * map_edge + point.y
 		var height := _land_altitude(altitude, index)
 
-		if terrain[index] != 0:
+		if terrain[index] != TerrainTileIds.FLAT:
 			height += 1
 
 		result = maxi(result, height)
@@ -203,10 +203,10 @@ static func _building_is_allowed(tile_id: int) -> bool:
 	if tile_id == SMALL_PARK or tile_id == RADIOACTIVITY:
 		return false
 
-	if tile_id >= 0x1f and tile_id <= 0x2b:
+	if tile_id >= Tiles.ROAD_SLOPE_1 and tile_id <= Tiles.ROAD_CROSSROADS:
 		return false
 
-	if tile_id >= 0x2e and tile_id <= 0x48:
+	if tile_id >= Tiles.RAIL_SLOPE_1 and tile_id <= Tiles.RAIL_POWER_CROSSING_2:
 		return false
 
 	return tile_id <= STRAIGHT_LAST
@@ -215,7 +215,7 @@ static func _building_is_allowed(tile_id: int) -> bool:
 static func _network_can_cross(tile_id: int, direction: int) -> bool:
 	var directional_id := tile_id + (direction & 1)
 
-	return directional_id == 0x0f or directional_id == 0x1e or directional_id == 0x2d or directional_id == 0x40
+	return directional_id == Tiles.POWER_LINE_STRAIGHT_2 or directional_id == Tiles.ROAD_STRAIGHT_2 or directional_id == Tiles.RAIL_STRAIGHT_2 or directional_id == Tiles.TUNNEL_ENTRANCE_2
 
 
 static func _section_kind(
@@ -235,7 +235,7 @@ static func _section_kind(
 		return -1
 
 	if (zones[anchor_index] & 0xf0) != 0xf0:
-		var shaped_kind := anchor_tile - 0x5d
+		var shaped_kind := anchor_tile - Tiles.HIGHWAY_ONRAMP_1
 
 		if shaped_kind > 12:
 			var south_index := anchor.x * map_edge + anchor.y + 1
@@ -251,13 +251,13 @@ static func _section_kind(
 		var index := point.x * map_edge + point.y
 		last_tile = int(buildings[index])
 
-		if last_tile >= 0x4b and last_tile <= 0x50:
+		if last_tile >= Tiles.HIGHWAY_ROAD_CROSSING_1 and last_tile <= Tiles.HIGHWAY_POWER_CROSSING_2:
 			return last_tile & 1
 
 		if (flags[index] & FLAG_WATER) != 0:
-			return 13 if last_tile == 0x49 else 14
+			return 13 if last_tile == Tiles.HIGHWAY_STRAIGHT_1 else 14
 
-	if last_tile >= STRAIGHT_FIRST and last_tile <= 0x4a:
+	if last_tile >= STRAIGHT_FIRST and last_tile <= Tiles.HIGHWAY_STRAIGHT_2:
 		return (last_tile & 1) + 2
 
 	return -1

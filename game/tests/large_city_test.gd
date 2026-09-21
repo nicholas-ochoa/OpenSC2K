@@ -43,7 +43,7 @@ func check_size(edge: int) -> void:
 	check(city.map_size == edge, "City size")
 	check(city.index_of(edge - 1, edge - 1) == edge * edge - 1, "Far corner index")
 	check(city.index_of(edge, 0) == -1, "Outside map")
-	check(city.set_building_id(edge - 2, edge - 2, 0x1d), "Far road edit")
+	check(city.set_building_id(edge - 2, edge - 2, BuildingTileIds.ROAD_STRAIGHT_1), "Far road edit")
 	var saved := document.serialize()
 	var loaded := Sc2File.new()
 	check(loaded.parse(saved.data), "Reload: " + loaded.parse_error)

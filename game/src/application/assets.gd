@@ -37,10 +37,9 @@ func initialize_runtime() -> void:
 		app.asset_state.reference_root = app.asset_state.asset_source.reference_root
 	else:
 		app.asset_state.asset_source.assets = OriginalGameAssets.new()
-		app.asset_state.asset_source.use_original_data = false
 
 	app.asset_state.runtime_initialized = true
-	app.new_city_state.session.independent_template = not app.asset_state.asset_source.use_original_data
+	app.new_city_state.session.independent_template = not app.asset_state.asset_source.has_city_template
 	app.audio_controller = CityAudio.new()
 	app.audio_controller.startup_theme_pending = true
 	app.audio_controller.background_audio = app.preferences.background_audio
@@ -52,7 +51,7 @@ func initialize_runtime() -> void:
 	)
 	app.add_child(app.audio_controller)
 	app.audio_controller.setup(
-		app.asset_state.reference_root, app.preferences.music_volume, app.preferences.effects_volume, app.asset_state.asset_source.use_original_data
+		app.asset_state.reference_root, app.preferences.music_volume, app.preferences.effects_volume, false
 	)
 
 	if app.asset_state.assets_ready:
@@ -253,8 +252,8 @@ func apply_graphics_source(selected: GameAssetSource) -> void:
 	app.asset_state.asset_source = selected
 	app.asset_state.assets_ready = true
 	app.asset_state.reference_root = selected.reference_root
-	app.new_city_state.session.independent_template = not selected.use_original_data
-	app.audio_controller.set_original_media_source(app.asset_state.reference_root, selected.use_original_data)
+	app.new_city_state.session.independent_template = not selected.has_city_template
+	app.audio_controller.set_original_media_source(app.asset_state.reference_root, false)
 	var assets := selected.assets
 	text_resources.newspaper_data = assets.newspaper_data
 	text_resources.original_query_strings = assets.strings

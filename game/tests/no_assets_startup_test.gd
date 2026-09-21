@@ -6,7 +6,7 @@ func _initialize() -> void:
 
 
 func run() -> void:
-	assert(GameAssetSource.default_reference_root() == ProjectSettings.globalize_path("user://original_game").simplify_path())
+	assert(GameAssetSource.default_reference_root() == MediaPack.default_folder("graphics").path_join("runtime"))
 
 	for kind in ["graphics", "sound", "music"]:
 		assert(MediaPack.default_folder(kind) == ProjectSettings.globalize_path("user://packs").path_join(kind))

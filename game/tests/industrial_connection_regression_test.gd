@@ -26,9 +26,9 @@ func _initialize() -> void:
 				buildings[index] = tile
 				OverlayData.write(overlays, index, 250)
 			# A rail without a connection marker is not a neighbor connection.
-			buildings[0] = 0x2c
+			buildings[0] = BuildingTileIds.RAIL_STRAIGHT_1
 			if edge > 128:
-				buildings[1] = 0x61
+				buildings[1] = BuildingTileIds.HIGHWAY_SLOPE_1
 				OverlayData.write(overlays, 1, 506)
 			doc.find_chunk("XBLD").set_decoded_payload(buildings)
 			doc.find_chunk("XTXT").set_decoded_payload(overlays)

@@ -25,7 +25,7 @@ const PIER_DELTAS := [
 	Vector2i(2, 0), Vector2i(0, 2), Vector2i(-2, 0), Vector2i(0, -2),
 ]
 const ROUTE_BUILDINGS := {
-	Tiles.SUSPENSION_BRIDGE_ONE: true, Tiles.SUSPENSION_BRIDGE_TWO: true, Tiles.SUSPENSION_BRIDGE_FOUR: true, Tiles.SUSPENSION_BRIDGE_FIVE: true, Tiles.RAISING_BRIDGE_CLOSED: true,
+	Tiles.SUSPENSION_BRIDGE_1: true, Tiles.SUSPENSION_BRIDGE_2: true, Tiles.SUSPENSION_BRIDGE_4: true, Tiles.SUSPENSION_BRIDGE_5: true, Tiles.RAISING_BRIDGE_CLOSED: true,
 	Tiles.RAISING_BRIDGE_OPEN: true, Tiles.RAIL_BRIDGE_PYLON: true, Tiles.POWER_BRIDGE: true, Tiles.REINFORCED_HIGHWAY_BRIDGE: true,
 }
 
@@ -205,7 +205,7 @@ static func _is_water_route(
 
 	var underground_tile := int(underground[index])
 
-	if underground_tile >= UndergroundTileIds.PIPE_FIRST and underground_tile <= UndergroundTileIds.PIPE_SUBWAY_ONE:
+	if underground_tile >= UndergroundTileIds.PIPE_FIRST and underground_tile <= UndergroundTileIds.PIPE_TB_SUBWAY_LR:
 		return false
 
 	var building := int(buildings[index])
@@ -213,7 +213,7 @@ static func _is_water_route(
 	if building == TILE_MARINA:
 		return false
 
-	return building == 0 or ROUTE_BUILDINGS.has(building)
+	return building == Tiles.EMPTY or ROUTE_BUILDINGS.has(building)
 
 
 static func _move(

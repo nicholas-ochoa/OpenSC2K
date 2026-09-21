@@ -86,7 +86,7 @@ static func _site_error(
 			if old_building >= ROAD_FIRST or old_building == RADIOACTIVITY or old_building == SMALL_PARK:
 				return "site contains a protected tile"
 
-			if tile_id == SMALL_PARK and old_building > 0x0c:
+			if tile_id == SMALL_PARK and old_building > BuildingTileIds.TREES_7:
 				return "site contains a protected tile"
 
 			if (zones[index] & 0x0f) == MILITARY_ZONE:
@@ -96,7 +96,7 @@ static func _site_error(
 
 			if tile_id == MARINA and is_water:
 				marina_water_tiles += 1
-			elif terrain[index] != 0 or is_water:
+			elif terrain[index] != TerrainTileIds.FLAT or is_water:
 				return "site is not clear"
 
 	if tile_id == MARINA and (marina_water_tiles == 0 or marina_water_tiles == site.size.x * site.size.y):

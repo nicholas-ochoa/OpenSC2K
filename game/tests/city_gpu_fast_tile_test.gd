@@ -4,6 +4,8 @@ extends SceneTree
 ## order, as the one tile painter. The other tiles must go to the painter.
 
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 func _initialize() -> void:
 	var palette := Sc2Palette.index_encoding()
 	var large := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
@@ -37,7 +39,7 @@ func _initialize() -> void:
 	for terrain in range(0x00, 0x46):
 		required.append("terrain:%d" % terrain)
 
-	for building in range(0x01, 0x0e):
+	for building in range(Tiles.RUBBLE_FIRST, Tiles.POWER_LINE_FIRST):
 		required.append("building:%d" % building)
 
 	for flip in [false, true]:
@@ -76,7 +78,7 @@ func _generate(city: CityState) -> PackedInt32Array:
 		assert(city.set_terrain_id(x, y, random.randi_range(0x00, 0x45)))
 		assert(city.set_land_altitude(x, y, land))
 		assert(city.set_water_altitude(x, y, land if random.randf() < 0.5 else random.randi_range(0, 31)))
-		buildings[index] = [0, random.randi_range(0x01, 0x0d), random.randi_range(0x0e, 0x6f), random.randi_range(0x70, 0xff)][random.randi_range(0, 3)]
+		buildings[index] = [0, random.randi_range(Tiles.RUBBLE_FIRST, Tiles.SMALL_PARK), random.randi_range(Tiles.POWER_LINE_FIRST, Tiles.RAIL_SUBWAY_LAST), random.randi_range(Tiles.DEVELOPED_FIRST, Tiles.MAX_ID)][random.randi_range(0, 3)]
 		zones[index] = random.randi_range(0, 0xff) if random.randf() < 0.75 else random.randi_range(0, 0x0f)
 		flags[index] = random.randi_range(0, 0xff)
 		overlays[index] = random.randi_range(201, 240) if random.randf() < 0.05 else 0

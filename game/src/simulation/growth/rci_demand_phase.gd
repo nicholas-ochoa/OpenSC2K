@@ -30,15 +30,15 @@ const TAX_EFFECT := [
 const INDUSTRIAL_DIFFICULTY := [0.0, 1.2, 1.1, 0.95]
 
 const COMMERCE_CONNECTION_RANGES := [
-	Vector2i(0x1d, 0x2b),
-	Vector2i(0x3f, 0x42),
-	Vector2i(0x4b, 0x4c),
-	Vector2i(0x5d, 0x60),
+	Vector2i(Tiles.ROAD_STRAIGHT_1, Tiles.ROAD_CROSSROADS),
+	Vector2i(Tiles.TUNNEL_ENTRANCE_1, Tiles.TUNNEL_ENTRANCE_4),
+	Vector2i(Tiles.HIGHWAY_ROAD_CROSSING_1, Tiles.HIGHWAY_ROAD_CROSSING_2),
+	Vector2i(Tiles.HIGHWAY_ONRAMP_1, Tiles.HIGHWAY_ONRAMP_4),
 ]
 const INDUSTRY_CONNECTION_RANGES := [
-	Vector2i(0x2c, 0x3e),
-	Vector2i(0x45, 0x50),
-	Vector2i(0x61, 0x69),
+	Vector2i(Tiles.RAIL_STRAIGHT_1, Tiles.RAIL_SLOPE_8),
+	Vector2i(Tiles.ROAD_RAIL_CROSSING_1, Tiles.HIGHWAY_POWER_CROSSING_2),
+	Vector2i(Tiles.HIGHWAY_SLOPE_1, Tiles.HIGHWAY_INTERSECTION),
 ]
 
 

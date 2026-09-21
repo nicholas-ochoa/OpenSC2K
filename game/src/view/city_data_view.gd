@@ -284,7 +284,7 @@ static func create_mesh(city: CityState, mode: CityViewMode.Mode, encoded := fal
 				var water := CityIsometricRenderer.tile_polygon(city, x, y)
 
 				# the water flag can also occur on a flat terrain code
-				if city.terrain_id(x, y) < 0x10:
+				if city.terrain_id(x, y) < TerrainTileIds.DEEP_WATER_FIRST:
 					for corner in 4:
 						water[corner].y -= (city.water_altitude(x, y) - city.land_altitude(x, y)) * CityIsometricRenderer.ALTITUDE_STEP
 

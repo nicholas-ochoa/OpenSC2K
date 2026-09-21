@@ -1,5 +1,7 @@
 extends SceneTree
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 class Fixture extends RefCounted:
 	var payloads: Dictionary[String, PackedByteArray] = {}
 	var altitudes := PackedInt32Array()
@@ -27,7 +29,7 @@ func _initialize() -> void:
 	for edge in Sc2File.MAP_SIZES:
 		var base := fixture(edge)
 		for rotation in 4:
-			for tile in [0xe2, 0xe3, 0xe8, 0xef, 0xf1, 0xf2]:
+			for tile in [Tiles.CONTROL_TOWER_2, Tiles.SEAPORT_WAREHOUSE, Tiles.HANGAR_1, Tiles.PARKING_LOT_2, Tiles.TOP_SECRET, Tiles.CARGO_YARD]:
 				var p := base.copy()
 				var point := Vector2i(edge - 12, edge - 12)
 				var result := SpecialZoneSelection.grow_special_zone(p.payloads.XBLD, p.payloads.XZON, p.payloads.XUND, p.payloads.XBIT, p.payloads.XTER,
@@ -51,7 +53,7 @@ func _initialize() -> void:
 			if obstruction >= 0:
 				p.payloads.XBLD[index] = obstruction
 			elif obstruction == -1:
-				p.payloads.XUND[index] = 1
+				p.payloads.XUND[index] = UndergroundTileIds.SUBWAY_LR
 			elif obstruction == -2:
 				p.payloads.XTER[index] = 1
 			else:

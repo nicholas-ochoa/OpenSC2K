@@ -44,10 +44,10 @@ const ANY_RCI_ZONE_MASK := 0x7e
 # independent corrected lane model. port bits: north, east, south, west
 # straight sections have one direction per lane. curves connect the ingress
 # and egress corners of their two-by-two footprint with right-hand traffic
-const HIGHWAY_PORTS: Dictionary[int, int] = {0x49: 5, 0x4a: 10, 0x4b: 5, 0x4c: 10,
-	0x4d: 5, 0x4e: 10, 0x4f: 5, 0x50: 10,
-	0x61: 10, 0x62: 5, 0x63: 10, 0x64: 5,
-	0x65: 3, 0x66: 6, 0x67: 12, 0x68: 9, 0x69: 15}
+const HIGHWAY_PORTS: Dictionary[int, int] = {BuildingTileIds.HIGHWAY_STRAIGHT_1: 5, BuildingTileIds.HIGHWAY_STRAIGHT_2: 10, BuildingTileIds.HIGHWAY_ROAD_CROSSING_1: 5, BuildingTileIds.HIGHWAY_ROAD_CROSSING_2: 10,
+	BuildingTileIds.HIGHWAY_RAIL_CROSSING_1: 5, BuildingTileIds.HIGHWAY_RAIL_CROSSING_2: 10, BuildingTileIds.HIGHWAY_POWER_CROSSING_1: 5, BuildingTileIds.HIGHWAY_POWER_CROSSING_2: 10,
+	BuildingTileIds.HIGHWAY_SLOPE_1: 10, BuildingTileIds.HIGHWAY_SLOPE_2: 5, BuildingTileIds.HIGHWAY_SLOPE_3: 10, BuildingTileIds.HIGHWAY_SLOPE_4: 5,
+	BuildingTileIds.HIGHWAY_CURVE_1: 3, BuildingTileIds.HIGHWAY_CURVE_2: 6, BuildingTileIds.HIGHWAY_CURVE_3: 12, BuildingTileIds.HIGHWAY_CURVE_4: 9, BuildingTileIds.HIGHWAY_INTERSECTION: 15}
 const LANE_CORNERS := [Vector2i(0, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(1, 0)]
 const INGRESS_CORNERS := [0, 3, 2, 1]
 const EGRESS_CORNERS := [3, 2, 1, 0]

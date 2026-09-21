@@ -163,7 +163,7 @@ static func _validate_dry_cost(plan: SegmentPlan) -> RouteEditResult:
 
 		var terrain_id := int(terrain[index])
 
-		if terrain_id < 0x30 and TERRAIN_REQUIRES_GRADING[terrain_id & 0x0f]:
+		if terrain_id < TerrainTileIds.SURFACE_WATER_FIRST and TERRAIN_REQUIRES_GRADING[terrain_id & TerrainTileIds.SHAPE_MASK]:
 			plan.graded_tiles += 1
 
 	plan.listed_dry_cost = new_tiles * int(tool.cost) + plan.graded_tiles * 25

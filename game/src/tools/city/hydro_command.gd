@@ -8,7 +8,7 @@ const SUBTOOL_HYDRO := 3
 const TERRAIN_WATERFALL_A := 0x2e
 const TERRAIN_WATERFALL_B := 0x3e
 const FLAG_POWERABLE := 0x80
-const HYDRO_TILE_A := BuildingTileIds.HYDRO_POWER_ONE
+const HYDRO_TILE_A := BuildingTileIds.HYDRO_POWER_1
 const HYDRO_ORIENTATION := [1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1]
 
 
@@ -40,7 +40,7 @@ static func apply(
 	if city.terrain[index] != TERRAIN_WATERFALL_A and city.terrain[index] != TERRAIN_WATERFALL_B:
 		return HydroEditResult.rejected("hydroelectric power requires a waterfall")
 
-	if city.buildings[index] != 0:
+	if city.buildings[index] != BuildingTileIds.EMPTY:
 		return HydroEditResult.rejected("waterfall already contains a building")
 
 	var cost := int(ToolCatalog.tool(group_index, subtool_index).cost)

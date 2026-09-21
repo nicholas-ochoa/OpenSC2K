@@ -2,6 +2,8 @@ extends SceneTree
 
 @warning_ignore_start("integer_division")
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 class FixedRandom extends SimRandom:
 
 
@@ -60,7 +62,7 @@ func check_power(edge: int, version: int) -> void:
 	var city := CityState.from_document(doc)
 	var point := Vector2i(edge - 16, edge - 16)
 	# One coal tile, police tile, arcology tile, and residential tile, connected.
-	var buildings := [0xcf, 0xd2, 0xfb, 0x70]
+	var buildings := [Tiles.COAL_POWER, Tiles.POLICE_STATION, Tiles.PLYMOUTH_ARCOLOGY, Tiles.LOWER_CLASS_HOMES_1X1_1]
 
 	for index in buildings.size():
 		city.set_building_id(point.x, point.y + index, buildings[index])

@@ -2,6 +2,8 @@ extends SceneTree
 
 @warning_ignore_start("integer_division")
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 class NoMenuInterface extends ApplicationInterface:
 	func show_main_menu() -> void:
 		pass
@@ -113,7 +115,7 @@ func check_repair(edge: int, rotation: int) -> void:
 
 func check_version_one() -> void:
 	var city := CityState.from_document(EmptyCityTemplate.create(256))
-	stamp(city, 0xd2, Vector2i(251, 251))
+	stamp(city, Tiles.POLICE_STATION, Vector2i(251, 251))
 	var doc := city.document
 	doc.large_version = 1
 
@@ -142,7 +144,7 @@ func check_capacity() -> void:
 		microsims[slot * 8] = 0xd2
 		microsims[slot * 8 + 1] = 99
 	doc.find_chunk("XMIC").set_decoded_payload(microsims)
-	stamp(city, 0xd1, Vector2i(500, 500))
+	stamp(city, Tiles.HOSPITAL, Vector2i(500, 500))
 	var result := FacilityRecordRepair.apply(city)
 	check(result.created == 1 and city.text_overlay_id(500, 500) == 256, "Old full table uses first extended slot")
 	check(doc.find_chunk("XMIC").decoded_payload.slice(0, 1200) == microsims.slice(0, 1200), "Existing statistics preserved")
@@ -156,13 +158,13 @@ func check_capacity() -> void:
 	for slot in range(150, city.microsim_count()):
 		microsims[slot * 8] = 0xd1
 	doc.find_chunk("XMIC").set_decoded_payload(microsims)
-	stamp(city, 0xfb, Vector2i(490, 490))
+	stamp(city, Tiles.PLYMOUTH_ARCOLOGY, Vector2i(490, 490))
 	before = doc.serialize().data
 	result = FacilityRecordRepair.apply(city)
 	check(result.unfilled == 1 and result.linked == 0, "Full table reports unfilled arcology")
 	check(doc.serialize().data == before, "Repair never evicts existing records")
 	var legacy := CityState.from_document(EmptyCityTemplate.create())
-	stamp(legacy, 0xd2, Vector2i(10, 10))
+	stamp(legacy, Tiles.POLICE_STATION, Vector2i(10, 10))
 	before = legacy.document.serialize().data
 	check(FacilityRecordRepair.apply(legacy).linked == 0, "Original SC2 is excluded")
 	check(legacy.document.serialize().data == before, "Original SC2 remains byte exact")
@@ -170,15 +172,15 @@ func check_capacity() -> void:
 
 func check_shared_and_obstacles() -> void:
 	var city := CityState.from_document(EmptyCityTemplate.create(256))
-	stamp(city, 0xc8, Vector2i(250, 250))
-	stamp(city, 0xc8, Vector2i(251, 250))
+	stamp(city, Tiles.WIND_POWER, Vector2i(250, 250))
+	stamp(city, Tiles.WIND_POWER, Vector2i(251, 250))
 	check(FacilityRecordRepair.apply(city).created == 1, "Shared wind record created once")
 	var micro := city.document.find_chunk("XMIC").decoded_payload.duplicate()
 	check(micro[4 * 8 + 3] == 2 and micro[4 * 8 + 5] == 8, "Missing shared record aggregates both wind plants")
-	stamp(city, 0xc8, Vector2i(252, 250))
+	stamp(city, Tiles.WIND_POWER, Vector2i(252, 250))
 	check(FacilityRecordRepair.apply(city).linked == 1, "New wind links to existing shared record")
 	check(city.document.find_chunk("XMIC").decoded_payload == micro, "Existing shared statistics are not reset or counted twice")
-	stamp(city, 0xd2, Vector2i(240, 240))
+	stamp(city, Tiles.POLICE_STATION, Vector2i(240, 240))
 	var things := city.document.find_chunk("XTHG").decoded_payload.duplicate()
 	for field in {0: 2, 3: 240, 4: 240}:
 		ThingData.write(things, 12 + field, {0: 2, 3: 240, 4: 240}[field])
@@ -189,10 +191,10 @@ func check_shared_and_obstacles() -> void:
 	check(FacilityRecordRepair.apply(city).linked == 1, "Repair reaches facility beneath aircraft")
 	check(city.text_overlay_id(240, 240) == 202, "Aircraft overlay is preserved")
 	check(ThingData.read(city.document.find_chunk("XTHG").decoded_payload, 22) == city.text_overlay_id(241, 240), "Aircraft restores repaired facility link")
-	stamp(city, 0xd3, Vector2i(230, 230))
+	stamp(city, Tiles.FIRE_STATION, Vector2i(230, 230))
 	city.set_text_overlay_id(230, 230, 1)
-	stamp(city, 0xd6, Vector2i(220, 220))
-	city.set_building_id(221, 221, 0)
+	stamp(city, Tiles.SCHOOL, Vector2i(220, 220))
+	city.set_building_id(221, 221, Tiles.EMPTY)
 	var before: Array = saved_payloads(city.document)
 	check(FacilityRecordRepair.apply(city).linked == 0, "Signs and incomplete footprints are preserved")
 	check(saved_payloads(city.document) == before, "Ambiguous structures are unchanged")
@@ -211,7 +213,7 @@ func check_load() -> void:
 	main.set_process(false)
 	main.map_view.zoom_factor = 0.25
 	var fixture := CityState.from_document(EmptyCityTemplate.create(16))
-	stamp(fixture, 0xd2, Vector2i(10, 10))
+	stamp(fixture, Tiles.POLICE_STATION, Vector2i(10, 10))
 	fixture.set_simulation_speed(1)
 	var bytes: PackedByteArray = fixture.document.serialize().data
 	var file := FileAccess.open(save_path, FileAccess.WRITE)

@@ -132,7 +132,7 @@ static func _advanced_lines(info: QueryResult) -> PackedStringArray:
 
 static func specific_sound_events(tile_id: int, statistic_0: int) -> Array[int]:
 	match tile_id:
-		Tiles.HYDRO_POWER_ONE, Tiles.HYDRO_POWER_TWO, Tiles.WIND_POWER, \
+		Tiles.HYDRO_POWER_1, Tiles.HYDRO_POWER_2, Tiles.WIND_POWER, \
 		Tiles.GAS_POWER, Tiles.OIL_POWER, Tiles.NUCLEAR_POWER, Tiles.SOLAR_POWER, \
 		Tiles.MICROWAVE_POWER, Tiles.FUSION_POWER, Tiles.COAL_POWER:
 			return [514]
@@ -290,7 +290,7 @@ static func general_name_resource_id(
 	if city == null or city.index_of(point.x, point.y) < 0:
 		return -1
 
-	if building < 0:
+	if building < Tiles.EMPTY:
 		building = city.building_id(point.x, point.y)
 
 	var name_index := 0
@@ -304,7 +304,7 @@ static func general_name_resource_id(
 	else:
 		name_index = building - 0x66
 
-	if building == 0:
+	if building == Tiles.EMPTY:
 		name_index = GENERAL_CLEAR_NAME_INDEX
 
 		if city.is_water(point.x, point.y):
@@ -327,7 +327,7 @@ static func general_name_resource_id(
 static func _fallback_tile_description(
 	city: CityState, point: Vector2i, building: int
 ) -> String:
-	if building == 0:
+	if building == Tiles.EMPTY:
 		if city.is_water(point.x, point.y):
 			return "Salt water" if city.is_salt_water(point.x, point.y) else "Fresh water"
 
@@ -357,10 +357,10 @@ static func _fallback_tile_description(
 	if building <= Tiles.TUNNEL_LAST:
 		return "Tunnel entrance"
 
-	if building <= Tiles.RAIL_POWER_CROSSING_TWO:
+	if building <= Tiles.RAIL_POWER_CROSSING_2:
 		return "Transport crossover"
 
-	if building <= Tiles.HIGHWAY_POWER_CROSSING_TWO:
+	if building <= Tiles.HIGHWAY_POWER_CROSSING_2:
 		return "Highway"
 
 	if building <= Tiles.POWER_BRIDGE:

@@ -22,7 +22,7 @@ const MISC_STADIUM_TEAMS := 0x1028
 
 const RADIOACTIVITY_TILE := Tiles.RADIOACTIVE_WASTE
 const FIRST_TREE_TILE := Tiles.TREE_FIRST
-const LAST_GROWING_TREE_TILE := 0x0b
+const LAST_GROWING_TREE_TILE := Tiles.TREES_6
 const LAST_TREE_TILE := Tiles.SMALL_PARK
 const STADIUM_TILE := Tiles.STADIUM
 const INVENTION_COUNT := 17
@@ -93,9 +93,9 @@ const WEATHER_WIND_TARGETS := [15, 30, 0, 0, 15, 5, 10, 30, 60, 100, 100, 100]
 const WEATHER_RAIN_TARGETS := [0, 0, 0, 15, 15, 15, 30, 30, 30, 60, 60, 60]
 
 const MILITARY_TILE_COUNT_INDEX := {
-	Tiles.RUNWAY: 1, Tiles.RUNWAY_CROSSING: 2, Tiles.PARKING_LOT_TWO: 3, Tiles.CARGO_YARD: 4, Tiles.RADAR: 5, Tiles.SEAPORT_WAREHOUSE: 6,
-	Tiles.AIRPORT_BUILDING_ONE: 7, Tiles.AIRPORT_BUILDING_TWO: 8, Tiles.TOP_SECRET: 9, Tiles.CRANE: 10, Tiles.CONTROL_TOWER_TWO: 11, Tiles.FIGHTER_JET: 12,
-	Tiles.HANGAR_ONE: 13, Tiles.HANGAR_TWO: 14, Tiles.MISSILE_SILO: 15,
+	Tiles.RUNWAY: 1, Tiles.RUNWAY_CROSSING: 2, Tiles.PARKING_LOT_2: 3, Tiles.CARGO_YARD: 4, Tiles.RADAR: 5, Tiles.SEAPORT_WAREHOUSE: 6,
+	Tiles.AIRPORT_BUILDING_1: 7, Tiles.AIRPORT_BUILDING_2: 8, Tiles.TOP_SECRET: 9, Tiles.CRANE: 10, Tiles.CONTROL_TOWER_2: 11, Tiles.FIGHTER_JET: 12,
+	Tiles.HANGAR_1: 13, Tiles.HANGAR_2: 14, Tiles.MISSILE_SILO: 15,
 }
 
 
@@ -267,8 +267,8 @@ static func _update_random_tree(
 	var old_tile := int(buildings[index])
 
 	if old_tile == RADIOACTIVITY_TILE and (random.next_u15() & 0x0f) == 0:
-		_replace_building(buildings, zones, misc, index, 0)
-		map_changes.append(MapChange.new(point, old_tile, 0))
+		_replace_building(buildings, zones, misc, index, Tiles.EMPTY)
+		map_changes.append(MapChange.new(point, old_tile, Tiles.EMPTY))
 
 	if flags[index] & 0x04 != 0:
 		return
@@ -294,7 +294,7 @@ static func _update_random_tree(
 	index = point.x * map_edge + point.y
 	old_tile = int(buildings[index])
 
-	if flags[index] & 0x04 != 0 or old_tile >= 0x0c or old_tile == RADIOACTIVITY_TILE:
+	if flags[index] & 0x04 != 0 or old_tile >= Tiles.TREES_7 or old_tile == RADIOACTIVITY_TILE:
 		return
 
 	var new_tile := FIRST_TREE_TILE if old_tile < FIRST_TREE_TILE else old_tile + 1

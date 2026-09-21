@@ -80,7 +80,7 @@ static func apply(city: CityState) -> Result:
 						var record := OverlayData.facility_record(id)
 						var saved_tile := int(microsims[record * 8]) if record < city.microsim_count() else 0
 						has_record = has_record or saved_tile == tile or (
-							kind > 16 and saved_tile != 0 and record == kind - 16
+							kind > 16 and saved_tile != BuildingTileIds.EMPTY and record == kind - 16
 						)
 
 					if id != 0:

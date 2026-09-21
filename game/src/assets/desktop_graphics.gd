@@ -66,10 +66,14 @@ static func load_original(reference_root: String) -> DesktopGraphics:
 
 
 static func resource_ids(app: String, kind: String) -> Array[int]:
-	if kind == "icons":
-		return range(1, 11 if app == "city" else 9)
+	var ids: Array[int] = []
 
-	return range(11, 112) if app == "city" else range(1, 35)
+	if kind == "icons":
+		ids.assign(range(1, 11 if app == "city" else 9))
+	else:
+		ids.assign(range(11, 112) if app == "city" else range(1, 35))
+
+	return ids
 
 
 static func native_size(app: String, kind: String, id: int) -> Vector2i:
@@ -124,7 +128,7 @@ static func render_cursor(record: Cursor, background: Image) -> Image:
 	return result
 
 
-func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
+func _load(value: Variant, read_png: Callable, _palette: Sc2Palette) -> void:
 	if not value is Dictionary or value.is_empty():
 		error = "desktop must contain city or scurk graphics"
 
@@ -145,10 +149,20 @@ func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 			var ids := resource_ids(app, kind)
 			var records: Variant = value[app][kind]
 
-			if not records is Array or records.size() != ids.size():
-				error = "desktop.%s.%s requires %d records in resource order" % [app, kind, ids.size()]
-
+			if not records is Array or records.is_empty():
+				error = "desktop.%s.%s requires image records" % [app, kind]
 				return
+
+			var selected: Array[int] = []
+
+			for record in records:
+				if not record is Dictionary or not (record.get("id") is int or record.get("id") is float) or record.id != int(record.id) or int(record.id) not in ids or int(record.id) in selected:
+					error = "Invalid or duplicate desktop resource ID"
+					return
+
+				selected.append(int(record.id))
+
+			ids = selected
 
 			for i in ids.size():
 				var record: Variant = records[i]
@@ -185,8 +199,8 @@ func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 
 				var size := native_size(app, kind, ids[i])
 
-				if Vector2i(png.width, png.height) != size or png.palette.colors != palette.colors:
-					error = "Desktop PNG must use its native dimensions and the pack palette"
+				if Vector2i(png.width, png.height) != size:
+					error = "Desktop PNG must use its native dimensions"
 
 					return
 
@@ -194,5 +208,34 @@ func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 
 				if kind == "icons":
 					icons[app][ids[i]] = image
+				elif record.has("and_png"):
+					var mask: IndexedImageResult = read_png.call(record.and_png)
+
+					if mask == null or not mask.ok or mask.width != size.x or mask.height != size.y or png.pixels.has(-1):
+						error = "Cursor AND mask must match its opaque XOR image"
+						return
+
+					var decoded := PeIconCursorResource.DecodedImage.new()
+					decoded.ok = true
+					decoded.width = size.x
+					decoded.height = size.y
+					decoded.bits = 8
+					decoded.hotspot = hotspot
+					decoded.palette = PackedColorArray(png.palette.colors)
+					decoded.pixels = png.pixels
+
+					for pixel in mask.pixels.size():
+						var bit := mask.pixels[pixel]
+
+						if bit not in [0, 1]:
+							error = "Cursor AND mask indices must be zero or one"
+							return
+
+						decoded.and_mask.append(bit)
+
+						if bit == 1 and decoded.palette[decoded.pixels[pixel]] != Color.BLACK:
+							decoded.inverting_pixels += 1
+
+					cursors[app][ids[i]] = Cursor.new(PeIconCursorResource.transparent_image(decoded).image, hotspot, decoded)
 				else:
 					cursors[app][ids[i]] = Cursor.new(image, hotspot)

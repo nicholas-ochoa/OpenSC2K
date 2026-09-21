@@ -14,8 +14,8 @@ const RADIOACTIVITY := Tiles.RADIOACTIVE_WASTE
 const FIRST_TREE := Tiles.TREE_FIRST
 const LAST_TREE := Tiles.TREE_LAST
 const FIRST_NON_LANDSCAPE_BUILDING := Tiles.POWER_LINE_FIRST
-const FORBIDDEN_COAST := 0x2e
-const WATERFALL := 0x3e
+const FORBIDDEN_COAST := TerrainTileIds.FORBIDDEN_COAST
+const WATERFALL := TerrainTileIds.WATERFALL
 const MISC_FUNDS := 0x0014
 const MISC_TILE_COUNTS := 0x01f0
 const MILITARY_ZONE := 7
@@ -218,14 +218,14 @@ static func _place_tree(
 		return false
 
 	var old_building := int(buildings[index])
-	var new_building := 0
+	var new_building := Tiles.EMPTY
 
 	if old_building < FIRST_TREE:
 		new_building = FIRST_TREE + (random.next_u15() & 1)
-	elif old_building < 0x0b:
+	elif old_building < Tiles.TREES_6:
 		new_building = old_building + 1
 	elif old_building <= LAST_TREE:
-		new_building = 0x0b + (random.next_u15() & 1)
+		new_building = Tiles.TREES_6 + (random.next_u15() & 1)
 	else:
 		return false
 
@@ -264,8 +264,8 @@ static func _place_water(
 
 	if not transition.early_return:
 		terrain[index] = transition.value
-		_update_building_count(misc, zones[index] & 0x0f, old_building, 0, map_edge)
-		buildings[index] = 0
+		_update_building_count(misc, zones[index] & 0x0f, old_building, Tiles.EMPTY, map_edge)
+		buildings[index] = Tiles.EMPTY
 		var altitude_offset := index * 2
 		var word := (altitude[altitude_offset] << 8) | altitude[altitude_offset + 1]
 		word = (word & 0xfc1f) | ((word & 0x1f) << 5)
@@ -330,22 +330,22 @@ static func _water_shape(flags: PackedByteArray, x: int, y: int, map_edge: int =
 
 
 static func _water_transition(current: int, shape: int) -> WaterTransition:
-	if current < 0x10:
-		return WaterTransition.new(shape + 0x30, false)
+	if current < TerrainTileIds.DEEP_WATER_FIRST:
+		return WaterTransition.new(shape + TerrainTileIds.SURFACE_WATER_FIRST, false)
 
-	if current < 0x30:
-		if current > 0x1f:
-			if ((shape ^ current) & 0x0f) == 0:
+	if current < TerrainTileIds.SURFACE_WATER_FIRST:
+		if current > TerrainTileIds.DEEP_WATER_LAST:
+			if ((shape ^ current) & TerrainTileIds.SHAPE_MASK) == 0:
 				return WaterTransition.new(current, true)
 
-			return WaterTransition.new(current - 0x10, false)
+			return WaterTransition.new(current - TerrainTileIds.DEEP_WATER_FIRST, false)
 
 		return WaterTransition.new(current, false)
 
-	if current == shape + 0x30:
+	if current == shape + TerrainTileIds.SURFACE_WATER_FIRST:
 		return WaterTransition.new(current, true)
 
-	return WaterTransition.new(shape + 0x30, false)
+	return WaterTransition.new(shape + TerrainTileIds.SURFACE_WATER_FIRST, false)
 
 
 static func _update_building_count(

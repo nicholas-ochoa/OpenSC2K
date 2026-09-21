@@ -81,7 +81,7 @@ func _initialize() -> void:
 					if blocked == "occupied":
 						city.set_zone_id(x, y, 3)
 					elif blocked == "underground":
-						city.set_underground_id(x, y, 1)
+						city.set_underground_id(x, y, UndergroundTileIds.SUBWAY_LR)
 					else:
 						city.set_terrain_id(x, y, 1)
 			city = CityState.from_document(doc)
@@ -95,7 +95,7 @@ func fixture(edge: int, rotation: int) -> Sc2File:
 	doc.set_misc_u32(0x0e44, 1)
 	doc.set_misc_u32(0x0008, rotation)
 	var buildings := doc.find_chunk("XBLD").decoded_payload.duplicate()
-	buildings.fill(0x0d)
+	buildings.fill(BuildingTileIds.SMALL_PARK)
 	var flags := doc.find_chunk("XBIT").decoded_payload.duplicate()
 	var heights := doc.find_chunk("ALTM").decoded_payload.duplicate()
 	var inland: Vector2i = NavalBaseSite.INLAND_STEPS[rotation]
@@ -107,7 +107,7 @@ func fixture(edge: int, rotation: int) -> Sc2File:
 		for row in range(-6, 4):
 			var point := shore + along * column + inland * row
 			var index := point.x * edge + point.y
-			buildings[index] = 0
+			buildings[index] = BuildingTileIds.EMPTY
 			flags[index] = 5 if row < 0 else 0
 			heights[index * 2 + 1] = 160 if row < 0 else 165
 	doc.find_chunk("XBLD").set_decoded_payload(buildings)

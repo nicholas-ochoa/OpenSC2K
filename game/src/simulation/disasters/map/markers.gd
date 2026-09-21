@@ -450,12 +450,12 @@ static func _riot_supports(buildings: PackedByteArray, point: Vector2i, map_edge
 	var tile := int(buildings[index])
 
 	return (
-		(tile > 0 and tile < 5)
-		or (tile > 0x1d and tile < 0x2c)
-		or (tile > 0x3e and tile < 0x47)
-		or tile == 0x4b
-		or tile == 0x4c
-		or (tile > 0x5c and tile < 0x61)
+		(tile > Tiles.EMPTY and tile < Tiles.RADIOACTIVE_WASTE)
+		or (tile > Tiles.ROAD_STRAIGHT_1 and tile < Tiles.RAIL_STRAIGHT_1)
+		or (tile > Tiles.RAIL_SLOPE_8 and tile < Tiles.RAIL_POWER_CROSSING_1)
+		or tile == Tiles.HIGHWAY_ROAD_CROSSING_1
+		or tile == Tiles.HIGHWAY_ROAD_CROSSING_2
+		or (tile > Tiles.POWER_BRIDGE and tile < Tiles.HIGHWAY_SLOPE_1)
 	)
 
 

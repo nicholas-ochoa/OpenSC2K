@@ -25,12 +25,12 @@ static func _process_surface_maintenance(
 	var index := GrowthState._index(point, map_edge)
 	var tile := int(buildings[index])
 
-	if tile < 0x1d or lfsr_random.next_mask(0x7f) != 0:
+	if tile < Tiles.FIRST_ROAD or lfsr_random.next_mask(0x7f) != 0:
 		return
 
 	if _is_road_budget_tile(tile):
 		if _maintenance_fails(misc, 10, random, 100):
-			GrowthState.replace_building(buildings, zones, misc, index, 1 + (random.next_u15() & 3))
+			GrowthState.replace_building(buildings, zones, misc, index, Tiles.RUBBLE_FIRST + (random.next_u15() & 3))
 			flags[index] &= 0x7f
 			counters.metrics.decayed_roads += 1
 
@@ -38,7 +38,7 @@ static func _process_surface_maintenance(
 
 	if _is_rail_budget_tile(tile):
 		if _maintenance_fails(misc, 13, random, 100):
-			GrowthState.replace_building(buildings, zones, misc, index, 1 + (random.next_u15() & 3))
+			GrowthState.replace_building(buildings, zones, misc, index, Tiles.RUBBLE_FIRST + (random.next_u15() & 3))
 			flags[index] &= 0x7f
 			counters.metrics.decayed_rails += 1
 
@@ -89,10 +89,10 @@ static func _process_surface_maintenance(
 			point + Vector2i(1, 1),
 		]:
 			var highway_index := GrowthState._index(highway_point, map_edge)
-			var replacement := 0
+			var replacement := Tiles.EMPTY
 
 			if flags[highway_index] & 0x04 == 0:
-				replacement = 1 + (random.next_u15() & 3)
+				replacement = Tiles.RUBBLE_FIRST + (random.next_u15() & 3)
 
 			GrowthState.replace_building(buildings, zones, misc, highway_index, replacement)
 			counters.metrics.decayed_highway_tiles += 1
@@ -145,7 +145,7 @@ static func _process_microsim_growth(
 
 		return
 
-	if tile < Tiles.PLYMOUTH_ARCOLOGY or tile > Tiles.LAUNCH_ARCOLOGY or zones[index] & Tiles.LOADING_BAY != 0x80:
+	if tile < Tiles.PLYMOUTH_ARCOLOGY or tile > Tiles.LAUNCH_ARCOLOGY or zones[index] & ZONE_CORNERS_MASK != CORNER_TOP_RIGHT[0]:
 		return
 
 	var label := int(OverlayData.read(text_overlays, index))
@@ -202,32 +202,32 @@ static func _process_subway_maintenance(
 	if not _maintenance_fails(misc, 14, random, 100):
 		return
 
-	var replacement := 0
+	var replacement := UnderTiles.EMPTY
 
-	if old_tile == 0x1f:
-		replacement = 0x11
-	elif old_tile == 0x20:
-		replacement = 0x10
-	elif old_tile == 0x23:
+	if old_tile == UnderTiles.PIPE_TB_SUBWAY_LR:
+		replacement = UnderTiles.PIPE_TB
+	elif old_tile == UnderTiles.PIPE_LR_SUBWAY_TB:
+		replacement = UnderTiles.PIPE_LR
+	elif old_tile == UnderTiles.SUBWAY_ENTRANCE:
 		if buildings[index] != Tiles.SUBWAY_STATION:
 			counters.metrics.deferred_station_removals += 1
 
 			return
 
-		var surface_replacement := 0
+		var surface_replacement := Tiles.EMPTY
 
-		if terrain[index] == 0:
-			surface_replacement = 1 + (random.next_u15() & 3)
+		if terrain[index] == TerrainTileIds.FLAT:
+			surface_replacement = Tiles.RUBBLE_FIRST + (random.next_u15() & 3)
 
 		GrowthState.replace_building(buildings, zones, misc, index, surface_replacement)
 		zones[index] &= 0x0f
 		flags[index] &= 0x3d
 		var overlay := int(OverlayData.read(text_overlays, index))
 
-		if not OverlayData.blocks_thing(overlay) or overlay == Tiles.DESALINIZATION:
+		if not OverlayData.blocks_thing(overlay) or overlay == NetworkConstants.CONNECTION_LABEL:
 			OverlayData.write(text_overlays, index, 0)
 
-		_replace_underground(underground, zones, misc, index, 0)
+		_replace_underground(underground, zones, misc, index, UnderTiles.EMPTY)
 		counters.metrics.removed_subway_stations += 1
 		counters.metrics.decayed_subway_tiles += 1
 
@@ -254,9 +254,9 @@ static func _maintenance_fails(
 static func _is_road_budget_tile(tile: int) -> bool:
 	return (
 		(tile >= Tiles.FIRST_ROAD and tile <= Tiles.LAST_ROAD)
-		or (tile >= Tiles.TUNNEL_FIRST and tile <= Tiles.ROAD_RAIL_CROSSING_TWO)
-		or tile == Tiles.HIGHWAY_ROAD_CROSSING_ONE
-		or tile == Tiles.HIGHWAY_ROAD_CROSSING_TWO
+		or (tile >= Tiles.TUNNEL_FIRST and tile <= Tiles.ROAD_RAIL_CROSSING_2)
+		or tile == Tiles.HIGHWAY_ROAD_CROSSING_1
+		or tile == Tiles.HIGHWAY_ROAD_CROSSING_2
 		or (tile >= Tiles.ONRAMP_FIRST and tile <= Tiles.ONRAMP_LAST)
 	)
 
@@ -264,26 +264,26 @@ static func _is_road_budget_tile(tile: int) -> bool:
 static func _is_rail_budget_tile(tile: int) -> bool:
 	return (
 		(tile >= Tiles.RAIL_FIRST and tile <= Tiles.RAIL_LAST)
-		or (tile >= Tiles.ROAD_RAIL_CROSSING_ONE and tile <= Tiles.RAIL_POWER_CROSSING_TWO)
+		or (tile >= Tiles.ROAD_RAIL_CROSSING_1 and tile <= Tiles.RAIL_POWER_CROSSING_2)
 		or (tile >= Tiles.RAIL_SUBWAY_FIRST and tile <= Tiles.RAIL_SUBWAY_LAST)
-		or tile == Tiles.HIGHWAY_RAIL_CROSSING_ONE
-		or tile == Tiles.HIGHWAY_RAIL_CROSSING_TWO
+		or tile == Tiles.HIGHWAY_RAIL_CROSSING_1
+		or tile == Tiles.HIGHWAY_RAIL_CROSSING_2
 	)
 
 
 static func _is_bridge_budget_tile(tile: int) -> bool:
-	return (tile >= Tiles.SUSPENSION_BRIDGE_ONE and tile <= Tiles.POWER_BRIDGE) or tile == Tiles.HIGHWAY_BRIDGE or tile == Tiles.REINFORCED_HIGHWAY_BRIDGE
+	return (tile >= Tiles.SUSPENSION_BRIDGE_1 and tile <= Tiles.POWER_BRIDGE) or tile == Tiles.HIGHWAY_BRIDGE or tile == Tiles.REINFORCED_HIGHWAY_BRIDGE
 
 
 static func _is_highway_budget_tile(tile: int) -> bool:
-	return (tile >= Tiles.HIGHWAY_STRAIGHT_ONE and tile <= Tiles.HIGHWAY_POWER_CROSSING_TWO) or (tile >= Tiles.HIGHWAY_SLOPE_FIRST and tile <= Tiles.HIGHWAY_INTERSECTION)
+	return (tile >= Tiles.HIGHWAY_STRAIGHT_1 and tile <= Tiles.HIGHWAY_POWER_CROSSING_2) or (tile >= Tiles.HIGHWAY_SLOPE_FIRST and tile <= Tiles.HIGHWAY_INTERSECTION)
 
 
 static func _is_subway_tile(tile: int) -> bool:
 	return (
-		(tile > 0 and tile < UnderTiles.PIPE_FIRST)
-		or tile == UnderTiles.PIPE_SUBWAY_ONE
-		or tile == UnderTiles.PIPE_SUBWAY_TWO
+		(tile > UnderTiles.EMPTY and tile < UnderTiles.PIPE_FIRST)
+		or tile == UnderTiles.PIPE_TB_SUBWAY_LR
+		or tile == UnderTiles.PIPE_LR_SUBWAY_TB
 		or tile == UnderTiles.MISSILE_SILO
 		or tile == UnderTiles.SUBWAY_ENTRANCE
 	)

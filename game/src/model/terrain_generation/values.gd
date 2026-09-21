@@ -7,12 +7,12 @@ static func _recount_buildings(
 	buildings: PackedByteArray, misc: PackedByteArray
 ) -> void:
 	var counts := PackedInt32Array()
-	counts.resize(256)
+	counts.resize(BuildingTileIds.COUNT)
 
 	for building in buildings:
 		counts[building] += 1
 
-	for building_id in 256:
+	for building_id in BuildingTileIds.COUNT:
 		_write_u32_be(
 			misc, MISC_TILE_COUNTS + building_id * 4, counts[building_id]
 		)

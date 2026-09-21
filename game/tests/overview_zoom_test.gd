@@ -33,7 +33,7 @@ func _run() -> void:
 	if not preview:
 		var city := CityState.from_document(doc)
 		assert(city.set_land_altitude(64, 64, 7))
-		assert(city.set_building_id(64, 64, 0x1d))
+		assert(city.set_building_id(64, 64, BuildingTileIds.ROAD_STRAIGHT_1))
 	# Start near overview; a full-size initial render is not part of this check.
 	main.map_view.zoom_factor = 0.25
 	assert(main.city_session.activate_document(doc))

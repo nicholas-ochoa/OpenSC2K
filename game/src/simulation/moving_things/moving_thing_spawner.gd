@@ -3,6 +3,8 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const MAP_SIZE := 128
 const RECORD_SIZE := 12
 const FIRST_RECORD := 1
@@ -197,19 +199,19 @@ static func spawn_ship(
 	match random.next_u15() & 3:
 		0:
 			for y in map_edge:
-				if terrain[2 * map_edge + y] == 0x10:
+				if terrain[2 * map_edge + y] == TerrainTileIds.DEEP_WATER_FLAT:
 					start = Vector2i(2, y)
 		1:
 			for y in map_edge:
-				if terrain[(map_edge - 2) * map_edge + y] == 0x10:
+				if terrain[(map_edge - 2) * map_edge + y] == TerrainTileIds.DEEP_WATER_FLAT:
 					start = Vector2i((map_edge - 2), y)
 		2:
 			for x in map_edge:
-				if terrain[x * map_edge + 2] == 0x10:
+				if terrain[x * map_edge + 2] == TerrainTileIds.DEEP_WATER_FLAT:
 					start = Vector2i(x, 2)
 		3:
 			for x in map_edge:
-				if terrain[x * map_edge + (map_edge - 2)] == 0x10:
+				if terrain[x * map_edge + (map_edge - 2)] == TerrainTileIds.DEEP_WATER_FLAT:
 					start = Vector2i(x, (map_edge - 2))
 
 	if start.x < 0:
@@ -279,7 +281,7 @@ static func spawn_sailboats(
 			record == 0
 			or index < 0
 			or flags[index] & 0x04 == 0
-			or buildings[index] != 0
+			or buildings[index] != Tiles.EMPTY
 			or OverlayData.read(text, index) != 0
 		):
 			continue
@@ -393,7 +395,7 @@ static func _spawn_train_record(
 	var index := _index(start, map_edge)
 	var tile := int(buildings[index])
 
-	if tile < 0x2c or tile > 0x35 or OverlayData.read(text, index) != 0:
+	if tile < Tiles.RAIL_STRAIGHT_1 or tile > Tiles.RAIL_CURVE_4 or OverlayData.read(text, index) != 0:
 		return false
 
 	var initial_direction: int = lfsr_random.next_mod(4)
@@ -463,13 +465,13 @@ static func _train_route_tile(tile_value: int) -> bool:
 	var tile := int(tile_value)
 
 	return (
-		(tile >= 0x2c and tile <= 0x3e)
-		or (tile >= 0x45 and tile <= 0x48)
-		or (tile >= 0x6c and tile <= 0x6f)
-		or tile == 0x4d
-		or tile == 0x4e
-		or tile == 0x5a
-		or tile == 0x5b
+		(tile >= Tiles.RAIL_STRAIGHT_1 and tile <= Tiles.RAIL_SLOPE_8)
+		or (tile >= Tiles.ROAD_RAIL_CROSSING_1 and tile <= Tiles.RAIL_POWER_CROSSING_2)
+		or (tile >= Tiles.RAIL_SUBWAY_ENTRANCE_1 and tile <= Tiles.RAIL_SUBWAY_ENTRANCE_4)
+		or tile == Tiles.HIGHWAY_RAIL_CROSSING_1
+		or tile == Tiles.HIGHWAY_RAIL_CROSSING_2
+		or tile == Tiles.RAIL_BRIDGE
+		or tile == Tiles.RAIL_BRIDGE_PYLON
 	)
 
 

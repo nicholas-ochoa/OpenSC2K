@@ -129,7 +129,7 @@ static func tile_occlusion_commands(
 	var building_id := city.building_id(x, y)
 	var terrain_altitude := city.land_altitude(x, y)
 
-	if terrain_id >= 0x10:
+	if terrain_id >= TerrainTileIds.DEEP_WATER_FIRST:
 		terrain_altitude = city.water_altitude(x, y)
 
 	var screen_x := origin_x + (x - y) * configuration.half_width
@@ -149,7 +149,7 @@ static func tile_occlusion_commands(
 			)
 
 	var base_y := flat_base_y - terrain_altitude * configuration.altitude_step
-	var is_highway_composite := building_id >= 0x61 and building_id <= 0x6b
+	var is_highway_composite := building_id >= Tiles.HIGHWAY_SLOPE_1 and building_id <= Tiles.REINFORCED_HIGHWAY_BRIDGE
 
 	if building_id < Tiles.DEVELOPED_FIRST and not is_highway_composite:
 		_append_occluder(
@@ -160,13 +160,13 @@ static func tile_occlusion_commands(
 
 	var zone := city.zone_id(x, y)
 
-	if zone > 0 and building_id == 0:
+	if zone > 0 and building_id == BuildingTileIds.EMPTY:
 		_append_occluder(
 			commands, sprites, configuration.sprite_base + 290 + zone, false,
 			Vector2i(screen_x, base_y + configuration.tile_height), draw_order
 		)
 
-	if building_id > 0 and IsometricStaticVisuals._should_draw_building(city, x, y, building_id):
+	if building_id > BuildingTileIds.EMPTY and IsometricStaticVisuals._should_draw_building(city, x, y, building_id):
 		if is_highway_composite:
 			for visual in IsometricStaticVisuals.highway_ground_visuals(
 				city, x, y, configuration.view_size, sprites.redraw_small_highway_ground
@@ -274,12 +274,12 @@ static func configure_train_foreground(command: CityStaticCommand, building_id: 
 	if reference != 0:
 		command.train_foreground_reference_sprite_id = reference
 
-	command.train_ignore = (building_id >= 0x0e and building_id <= 0x1c) or building_id in [0x43, 0x44, 0x47, 0x48]
+	command.train_ignore = (building_id >= Tiles.POWER_LINE_STRAIGHT_1 and building_id <= Tiles.POWER_LINE_CROSSROADS) or building_id in [Tiles.ROAD_POWER_CROSSING_1, Tiles.ROAD_POWER_CROSSING_2, Tiles.RAIL_POWER_CROSSING_1, Tiles.RAIL_POWER_CROSSING_2]
 
-	if (building_id >= 0x49 and building_id <= 0x50) or (building_id >= 0x61 and building_id <= 0x6b):
+	if (building_id >= Tiles.HIGHWAY_STRAIGHT_1 and building_id <= Tiles.HIGHWAY_POWER_CROSSING_2) or (building_id >= Tiles.HIGHWAY_SLOPE_1 and building_id <= Tiles.REINFORCED_HIGHWAY_BRIDGE):
 		command.train_deck_thickness = configuration.view_size + 1
 
-		if building_id in [0x4f, 0x50]:
+		if building_id in [Tiles.HIGHWAY_POWER_CROSSING_1, Tiles.HIGHWAY_POWER_CROSSING_2]:
 			command.train_deck_reference_sprite_id = reference
 
 		command.train_foreground_requires_depth = true
@@ -289,16 +289,16 @@ static func configure_train_foreground(command: CityStaticCommand, building_id: 
 static func train_power_foreground_reference_sprite_id(
 	building_id: int, sprite_base := 1000
 ) -> int:
-	if building_id >= 0x0e and building_id <= 0x1c:
+	if building_id >= Tiles.POWER_LINE_STRAIGHT_1 and building_id <= Tiles.POWER_LINE_CROSSROADS:
 		return -1
 
 	# rail/highway crossings need their raised deck in front of a train on
 	# the same tile. subtract only the ground-level rail sprite
-	if building_id == 0x4d:
-		return sprite_base + 0x2d
+	if building_id == Tiles.HIGHWAY_RAIL_CROSSING_1:
+		return sprite_base + Tiles.RAIL_STRAIGHT_2
 
-	if building_id == 0x4e:
-		return sprite_base + 0x2c
+	if building_id == Tiles.HIGHWAY_RAIL_CROSSING_2:
+		return sprite_base + Tiles.RAIL_STRAIGHT_1
 
 	var reference_tile := int(POWER_CROSSING_BASE_TILE.get(building_id, -1))
 

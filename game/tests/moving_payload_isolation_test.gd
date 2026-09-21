@@ -5,7 +5,7 @@ func _initialize() -> void:
 	for edge in [128, 256]:
 		for kind in [9, 6]:
 			var city := CityState.from_document(EmptyCityTemplate.create(edge))
-			city.set_building_id(10, 10, 1)
+			city.set_building_id(10, 10, BuildingTileIds.RUBBLE_1)
 			city.set_tile_flag(10, 10, 4, true)
 			var things := city.document.find_chunk("XTHG").decoded_payload.duplicate()
 			for pair in [[0, kind], [1, 2 if kind == 6 else 0], [3, 10], [4, 10], [6, 8], [7, 8]]:

@@ -1,6 +1,13 @@
 class_name HighwayBridges
 extends HighwayConstants
 
+# Each nibble records one terrain class across the four bridge-section cells.
+const WEIGHT_FLAT_LAND := 0x1000
+const WEIGHT_SLOPED_LAND := 0x0100
+const WEIGHT_OPEN_WATER := 0x0010
+const WEIGHT_SHORE := 0x0001
+const SLOPED_LAND_MASK := 0x0f00
+
 
 class Plan extends RefCounted:
 	var ok := false
@@ -39,7 +46,7 @@ static func plan_bridge_from_start(
 
 	var terrain_code := bridge_terrain_code(terrain, start, map_edge)
 
-	if (terrain_code & 0x0f00) != 0:
+	if (terrain_code & SLOPED_LAND_MASK) != 0:
 		return Plan.failure("highway bridge start terrain is invalid")
 
 	if ((terrain_code >> 8) & 0xff) != 0:
@@ -87,7 +94,7 @@ static func _scan_bridge(
 
 		var terrain_code := bridge_terrain_code(terrain, checked, map_edge)
 
-		if (terrain_code & 0x0f00) != 0:
+		if (terrain_code & SLOPED_LAND_MASK) != 0:
 			return Plan.failure("highway bridge bank terrain is invalid")
 
 		if (terrain_code & 0xff) == 0:
@@ -223,7 +230,7 @@ static func bridge_terrain_code(
 	map_edge: int = 128,
 ) -> int:
 	if not HighwayGeometry._anchor_is_in_bounds(anchor, map_edge):
-		return 0x0f00
+		return SLOPED_LAND_MASK
 
 	var result := 0
 
@@ -238,20 +245,20 @@ static func bridge_terrain_code(
 
 
 static func _bridge_terrain_weight(terrain_id: int) -> int:
-	if terrain_id == 0 or (terrain_id >= 0x40 and terrain_id <= 0x45):
-		return 0x1000
+	if terrain_id == TerrainTileIds.FLAT or (terrain_id >= TerrainTileIds.CHANNEL_FIRST and terrain_id <= TerrainTileIds.CHANNEL_LAST):
+		return WEIGHT_FLAT_LAND
 
-	if terrain_id >= 1 and terrain_id <= 0x0f:
-		return 0x0100
+	if terrain_id >= TerrainTileIds.SLOPE_TOP_LEFT and terrain_id <= TerrainTileIds.LAND_LAST:
+		return WEIGHT_SLOPED_LAND
 
-	if (terrain_id >= 0x10 and terrain_id <= 0x20) or terrain_id == 0x30:
-		return 0x0010
+	if (terrain_id >= TerrainTileIds.DEEP_WATER_FIRST and terrain_id <= TerrainTileIds.SHORE_FIRST) or terrain_id == TerrainTileIds.SURFACE_WATER_OPEN:
+		return WEIGHT_OPEN_WATER
 
 	if (
-		(terrain_id >= 0x21 and terrain_id <= 0x2f)
-		or (terrain_id >= 0x31 and terrain_id <= 0x3f)
+		(terrain_id >= TerrainTileIds.SHORE_SLOPE_TOP_LEFT and terrain_id <= TerrainTileIds.SHORE_LAST)
+		or (terrain_id >= TerrainTileIds.SURFACE_WATER_NES and terrain_id <= TerrainTileIds.SURFACE_WATER_LAST)
 	):
-		return 0x0001
+		return WEIGHT_SHORE
 
 	return 0
 

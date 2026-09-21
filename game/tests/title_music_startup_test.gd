@@ -33,6 +33,8 @@ func _run() -> void:
 	# Read an actual saved shuffle preference through the application startup path.
 	var settings_path := "user://title-music-startup-test.cfg"
 	var settings := ConfigFile.new()
+	settings.set_value("audio", "music_pack_folder", ProjectSettings.globalize_path("res://../ext/music"))
+	settings.set_value("audio", "sound_pack_folder", ProjectSettings.globalize_path("res://../ext/sound"))
 	settings.set_value("audio", "music_volume", 0.5)
 	settings.set_value("audio", "shuffle_music", true)
 	settings.set_value("audio", "background_audio", true)

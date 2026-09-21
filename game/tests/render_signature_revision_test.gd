@@ -38,7 +38,7 @@ func _check_edits(city: CityState) -> void:
 	var edits := [
 		["ALTM", func() -> bool: return city.set_land_altitude(40, 40, 6)],
 		["XTER", func() -> bool: return city.set_terrain_id(41, 41, 0x1e)],
-		["XBLD", func() -> bool: return city.set_building_id(42, 42, 0x1d)],
+		["XBLD", func() -> bool: return city.set_building_id(42, 42, BuildingTileIds.ROAD_STRAIGHT_1)],
 		["XZON", func() -> bool: return city.set_zone_id(43, 43, 3)],
 		["XBIT", func() -> bool: return city.set_tile_flag(44, 44, 0x40, (city.tile_flags[city.index_of(44, 44)] & 0x40) == 0)],
 		["XTXT", func() -> bool: return city.set_text_overlay_id(45, 45, 1)],
@@ -53,7 +53,7 @@ func _check_edits(city: CityState) -> void:
 		)
 
 	var underground_before := CityUndergroundView.visual_signature(city, CityIsometricRenderer.VIEW_LARGE)
-	check(city.set_underground_id(46, 46, 0x01), "Signature fixture edits XUND")
+	check(city.set_underground_id(46, 46, UndergroundTileIds.SUBWAY_LR), "Signature fixture edits XUND")
 	check(
 		CityUndergroundView.visual_signature(city, CityIsometricRenderer.VIEW_LARGE) != underground_before,
 		"An XUND tile edit invalidates the underground view",

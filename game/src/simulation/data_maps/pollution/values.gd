@@ -67,28 +67,28 @@ static func _population_weight(building: int) -> int:
 	if building >= Tiles.DEVELOPED_FIRST and building <= Tiles.CONSTRUCTION_1X1_LAST:
 		return 1
 
-	if building >= Tiles.RESIDENTIAL_2X2_FIRST and building <= 0x8f:
+	if building >= Tiles.RESIDENTIAL_2X2_FIRST and building <= Tiles.NICE_APARTMENTS_2X2_1:
 		return 2
 
-	if building >= 0x90 and building <= Tiles.RESIDENTIAL_2X2_LAST:
+	if building >= Tiles.NICE_APARTMENTS_2X2_2 and building <= Tiles.RESIDENTIAL_2X2_LAST:
 		return 3
 
-	if building >= Tiles.COMMERCIAL_2X2_FIRST and building <= 0x98:
+	if building >= Tiles.COMMERCIAL_2X2_FIRST and building <= Tiles.OFFICE_BUILDING_2X2_2:
 		return 2
 
-	if building >= 0x99 and building <= Tiles.COMMERCIAL_2X2_LAST:
+	if building >= Tiles.OFFICE_RETAIL_2X2 and building <= Tiles.COMMERCIAL_2X2_LAST:
 		return 3
 
-	if building >= Tiles.INDUSTRIAL_2X2_FIRST and building <= 0xa1:
+	if building >= Tiles.INDUSTRIAL_2X2_FIRST and building <= Tiles.FACTORY_2X2_2:
 		return 2
 
-	if building >= 0xa2 and building <= Tiles.INDUSTRIAL_2X2_LAST:
+	if building >= Tiles.FACTORY_2X2_3 and building <= Tiles.INDUSTRIAL_2X2_LAST:
 		return 3
 
-	if building >= Tiles.CONSTRUCTION_2X2_FIRST and building <= 0xa7:
+	if building >= Tiles.CONSTRUCTION_2X2_FIRST and building <= Tiles.CONSTRUCTION_2X2_2:
 		return 2
 
-	if building >= 0xa8 and building <= Tiles.CONSTRUCTION_2X2_LAST:
+	if building >= Tiles.CONSTRUCTION_2X2_3 and building <= Tiles.CONSTRUCTION_2X2_LAST:
 		return 3
 
 	if building >= Tiles.RESIDENTIAL_3X3_FIRST and building <= Tiles.CONSTRUCTION_3X3_LAST:

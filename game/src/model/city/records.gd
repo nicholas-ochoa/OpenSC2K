@@ -21,7 +21,7 @@ class Site extends RefCounted:
 
 
 class Microsim extends RefCounted:
-	var tile_id := 0
+	var tile_id := BuildingTileIds.EMPTY
 	var stat_0 := 0
 	var stat_1 := 0
 	var stat_2 := 0

@@ -18,21 +18,22 @@ const CARDINAL_OFFSETS := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vect
 const RAISE_DEPENDENCY_OFFSETS := [
 	Vector2i(-1, 0), Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1),
 ]
+# Raise an enclosed basin by one level before assigning its XTER tile.
+const RAISE_BASIN := 50
+# Index by the corners that a higher neighbor raises: 1 top, 2 right, 4 bottom, 8 left.
+# NEIGHBOR_MASKS use only these four bits, so this is the reachable part of the
+# 256-byte executable table.
 const TERRAIN_SHAPES := [
-	0, 9, 10, 2, 11, 13, 3, 6, 12, 1, 13, 5, 4, 8, 7, 50,
-	0, 2, 10, 2, 3, 6, 3, 6, 11, 0, 0, 0, 3, 6, 3, 6,
-	4, 13, 13, 13, 13, 13, 13, 13, 4, 13, 13, 13, 7, 13, 7, 50,
-	12, 13, 13, 13, 13, 13, 13, 13, 4, 13, 13, 13, 13, 13, 13, 13,
-	4, 13, 13, 13, 13, 13, 13, 13, 4, 13, 13, 13, 7, 13, 7, 13,
-	1, 5, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13,
-	13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13,
-	1, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13,
-	8, 13, 13, 13, 13, 13, 13, 13, 8, 13, 13, 13, 50, 13, 13, 13,
-	9, 2, 2, 2, 13, 13, 13, 6, 13, 13, 13, 13, 13, 13, 13, 6,
-	13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13,
-	1, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13,
-	13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13,
-	1, 5, 13, 5, 13, 13, 13, 50, 13, 13, 13, 13, 13, 13, 13, 13,
-	13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13,
-	1, 5, 13, 5, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13,
+	# no bottom or left corner
+	TerrainTileIds.FLAT, TerrainTileIds.CORNER_TOP,
+	TerrainTileIds.CORNER_RIGHT, TerrainTileIds.SLOPE_TOP_RIGHT,
+	# bottom corner
+	TerrainTileIds.CORNER_BOTTOM, TerrainTileIds.RAISED,
+	TerrainTileIds.SLOPE_BOTTOM_RIGHT, TerrainTileIds.RAISED_EXCEPT_LEFT,
+	# left corner
+	TerrainTileIds.CORNER_LEFT, TerrainTileIds.SLOPE_TOP_LEFT,
+	TerrainTileIds.RAISED, TerrainTileIds.RAISED_EXCEPT_BOTTOM,
+	# bottom and left corners
+	TerrainTileIds.SLOPE_BOTTOM_LEFT, TerrainTileIds.RAISED_EXCEPT_RIGHT,
+	TerrainTileIds.RAISED_EXCEPT_TOP, RAISE_BASIN,
 ]

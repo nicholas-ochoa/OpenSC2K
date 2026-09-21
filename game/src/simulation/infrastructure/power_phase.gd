@@ -10,7 +10,7 @@ const FLAG_MARK := 0x08
 const FLAG_POWERED := 0x40
 const FLAG_POWERABLE := 0x80
 const FIRST_CONSUMER := Tiles.DEVELOPED_FIRST
-const FIRST_PLANT := Tiles.HYDRO_POWER_ONE
+const FIRST_PLANT := Tiles.HYDRO_POWER_1
 const LAST_PLANT := Tiles.COAL_POWER
 const SOLAR_EFFICIENCY_ORDINANCE := 0x10000
 
@@ -176,7 +176,7 @@ static func _plant_capacity(
 	city: CityState, building: int, x: int, y: int, random: SimRandom
 ) -> int:
 	match building:
-		Tiles.HYDRO_POWER_ONE, Tiles.HYDRO_POWER_TWO:
+		Tiles.HYDRO_POWER_1, Tiles.HYDRO_POWER_2:
 			return 40
 		Tiles.WIND_POWER:
 			var wind := city.document.misc_u32(0x64) & 0xff

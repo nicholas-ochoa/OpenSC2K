@@ -3,6 +3,8 @@ extends SpecialZoneConstants
 
 
 
+const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
+
 class Result extends RefCounted:
 	var ok := false
 	var changed_tiles := 0
@@ -62,13 +64,13 @@ static func _place_runway(
 
 		if zone == 7:
 			var tile := int(buildings[checked_index])
-			if (tile >= 0x1d and tile <= 0x2b) or tile == Tiles.CRANE or tile == Tiles.MISSILE_SILO:
+			if (tile >= Tiles.FIRST_ROAD and tile <= Tiles.LAST_ROAD) or tile == Tiles.CRANE or tile == Tiles.MISSILE_SILO:
 				var result := Result.new()
 				result.ok = false
 				result.changed_tiles = 0
 
 				return result
-			if (not terrain.is_empty() and terrain[checked_index] != 0) or (not underground.is_empty() and underground[checked_index] != 0):
+			if (not terrain.is_empty() and terrain[checked_index] != TerrainTileIds.FLAT) or (not underground.is_empty() and underground[checked_index] != UnderTiles.EMPTY):
 				var result := Result.new()
 				result.ok = false
 				result.changed_tiles = 0
@@ -177,7 +179,7 @@ static func _place_crane_and_pier(
 		checked += direction
 		var index := SpecialZoneState._index(checked, map_edge)
 
-		if index < 0 or flags[index] & 0x04 == 0 or buildings[index] != 0:
+		if index < 0 or flags[index] & 0x04 == 0 or buildings[index] != Tiles.EMPTY:
 			var result := Result.new()
 			result.ok = false
 			result.changed_tiles = 0
@@ -279,7 +281,7 @@ static func _place_special_two_by_two(
 				result.changed_tiles = 0
 
 				return result
-			if terrain[index] != 0 or flags[index] & 0x04 or (not underground.is_empty() and underground[index] != 0):
+			if terrain[index] != TerrainTileIds.FLAT or flags[index] & 0x04 or (not underground.is_empty() and underground[index] != UnderTiles.EMPTY):
 				var result := Result.new()
 				result.ok = false
 				result.changed_tiles = 0
@@ -351,7 +353,7 @@ static func place_special_item(
 			if (zones[index] & 0x0f) == 7 and zone != 7:
 				return false
 
-			if terrain[index] != 0 or flags[index] & 0x04:
+			if terrain[index] != TerrainTileIds.FLAT or flags[index] & 0x04:
 				return false
 
 			points.append(point)
@@ -414,7 +416,7 @@ static func place_missile_silo(
 				changed_tiles += 1
 
 			SpecialZoneState._replace_special_building(buildings, zones, misc, index, Tiles.MISSILE_SILO)
-			SpecialZoneState.replace_underground(underground, zones, misc, index, UndergroundTileIds.MISSILE_SILO)
+			SpecialZoneState.replace_underground(underground, zones, misc, index, UnderTiles.MISSILE_SILO)
 
 	SpecialZoneState._set_corners(zones, origin, 3, rotation, map_edge)
 
@@ -455,6 +457,6 @@ static func _clear_special_building(
 		if index < 0:
 			continue
 
-		SpecialZoneState._replace_special_building(buildings, zones, misc, index, 0)
+		SpecialZoneState._replace_special_building(buildings, zones, misc, index, Tiles.EMPTY)
 		flags[index] &= 0x3f
 		zones[index] &= 0x0f

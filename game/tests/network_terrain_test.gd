@@ -87,7 +87,7 @@ func _test_surface_connections(edge: int) -> void:
 			NetworkTiles.retile_surface(data.XBLD, data.XTER, data.XZON, data.XBIT, data.MISC, point, mode, data.XTXT, edge)
 			check(data.XBLD[center] == base + (1 if direction % 2 == 0 else 0), "No false side junction mode %d direction %d edge %d" % [mode, direction, edge])
 			for cell in [point, near, left, right]:
-				data.XBLD[cell.x * edge + cell.y] = 0
+				data.XBLD[cell.x * edge + cell.y] = BuildingTileIds.EMPTY
 				data.XBIT[cell.x * edge + cell.y] = 0
 			data.XTER[near_index] = 0
 

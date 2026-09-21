@@ -138,7 +138,7 @@ static func _normalize_cardinal_slopes(
 
 		var neighbor_index := neighbor.x * map_edge + neighbor.y
 
-		if buildings[neighbor_index] >= 0x0d:
+		if buildings[neighbor_index] >= BuildingTileIds.SMALL_PARK:
 			continue
 
 		var difference := heights[index] - heights[neighbor_index]

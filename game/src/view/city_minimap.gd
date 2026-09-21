@@ -27,8 +27,8 @@ const MODES := [
 ]
 
 const ZONE_COLORS := [0, 59, 59, 92, 92, 50, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-const POWER_LINE_FIRST := 0x0e
-const POWER_LINE_LAST := 0x1c
+const POWER_LINE_FIRST := Tiles.POWER_LINE_STRAIGHT_1
+const POWER_LINE_LAST := Tiles.POWER_LINE_CROSSROADS
 const POLICE_STATION := Tiles.POLICE_STATION
 const FIRE_STATION := Tiles.FIRE_STATION
 const SCHOOL := Tiles.SCHOOL
@@ -87,7 +87,7 @@ static func color_index(city: CityState, x: int, y: int, mode := "structures") -
 		"water":
 			var underground := city.underground_id(x, y)
 
-			if underground >= 0x10 and underground <= 0x23:
+			if underground >= UndergroundTileIds.PIPE_LR and underground <= UndergroundTileIds.SUBWAY_ENTRANCE:
 				return 0xff
 
 			if city.is_watered(x, y):
@@ -129,7 +129,7 @@ static func color_index(city: CityState, x: int, y: int, mode := "structures") -
 
 
 static func _base_index(city: CityState, x: int, y: int, building: int) -> int:
-	if building == 0:
+	if building == Tiles.EMPTY:
 		if city.is_water(x, y):
 			return 0x62
 
@@ -137,10 +137,10 @@ static func _base_index(city: CityState, x: int, y: int, building: int) -> int:
 
 		return 0x80 - int((altitude * 3) / 4)
 
-	if building < 6:
+	if building < Tiles.TREES_1:
 		return 0x35
 
-	if building < 0x0d:
+	if building < Tiles.SMALL_PARK:
 		return 0x43
 
 	return 0
@@ -175,43 +175,43 @@ static func _coarse_value(
 
 static func _is_road_map_tile(building: int) -> bool:
 	return (
-		(building >= 0x1d and building <= 0x2b)
-		or (building >= 0x3f and building <= 0x46)
-		or (building >= 0x49 and building <= 0x59)
-		or (building >= 0x5d and building <= 0x6b)
-		or building == 0x4b
-		or building == 0x4c
+		(building >= Tiles.ROAD_STRAIGHT_1 and building <= Tiles.ROAD_CROSSROADS)
+		or (building >= Tiles.TUNNEL_ENTRANCE_1 and building <= Tiles.ROAD_RAIL_CROSSING_2)
+		or (building >= Tiles.HIGHWAY_STRAIGHT_1 and building <= Tiles.RAISING_BRIDGE_OPEN)
+		or (building >= Tiles.HIGHWAY_ONRAMP_1 and building <= Tiles.REINFORCED_HIGHWAY_BRIDGE)
+		or building == Tiles.HIGHWAY_ROAD_CROSSING_1
+		or building == Tiles.HIGHWAY_ROAD_CROSSING_2
 	)
 
 
 static func _is_rail_map_tile(building: int) -> bool:
 	return (
-		(building >= 0x2c and building <= 0x3e)
-		or (building >= 0x45 and building <= 0x48)
-		or (building >= 0x6c and building <= 0x6f)
-		or building == 0x4d
-		or building == 0x4e
-		or building == 0x5a
-		or building == 0x5b
+		(building >= Tiles.RAIL_STRAIGHT_1 and building <= Tiles.RAIL_SLOPE_8)
+		or (building >= Tiles.ROAD_RAIL_CROSSING_1 and building <= Tiles.RAIL_POWER_CROSSING_2)
+		or (building >= Tiles.RAIL_SUBWAY_ENTRANCE_1 and building <= Tiles.RAIL_SUBWAY_ENTRANCE_4)
+		or building == Tiles.HIGHWAY_RAIL_CROSSING_1
+		or building == Tiles.HIGHWAY_RAIL_CROSSING_2
+		or building == Tiles.RAIL_BRIDGE
+		or building == Tiles.RAIL_BRIDGE_PYLON
 	)
 
 
 static func _is_traffic_network(building: int) -> bool:
 	return (
-		(building >= 0x1d and building <= 0x3e)
-		or (building >= 0x3f and building <= 0x48)
-		or (building >= 0x49 and building <= 0x50)
-		or (building >= 0x4b and building <= 0x4e)
-		or (building >= 0x5d and building <= 0x6f)
+		(building >= Tiles.ROAD_STRAIGHT_1 and building <= Tiles.RAIL_SLOPE_8)
+		or (building >= Tiles.TUNNEL_ENTRANCE_1 and building <= Tiles.RAIL_POWER_CROSSING_2)
+		or (building >= Tiles.HIGHWAY_STRAIGHT_1 and building <= Tiles.HIGHWAY_POWER_CROSSING_2)
+		or (building >= Tiles.HIGHWAY_ROAD_CROSSING_1 and building <= Tiles.HIGHWAY_RAIL_CROSSING_2)
+		or (building >= Tiles.HIGHWAY_ONRAMP_1 and building <= Tiles.RAIL_SUBWAY_ENTRANCE_4)
 	)
 
 
 static func _is_power_line(building: int) -> bool:
 	return (
 		(building >= POWER_LINE_FIRST and building <= POWER_LINE_LAST)
-		or building == 0x43
-		or building == 0x44
-		or building == 0x47
-		or building == 0x48
-		or building == 0x5c
+		or building == Tiles.ROAD_POWER_CROSSING_1
+		or building == Tiles.ROAD_POWER_CROSSING_2
+		or building == Tiles.RAIL_POWER_CROSSING_1
+		or building == Tiles.RAIL_POWER_CROSSING_2
+		or building == Tiles.POWER_BRIDGE
 	)

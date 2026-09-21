@@ -34,10 +34,10 @@ static func _grow_trees(
 
 			if current < FIRST_TREE:
 				buildings[index] = FIRST_TREE + (random.next_u15() & 1)
-			elif current < 0x0b:
+			elif current < BuildingTileIds.TREES_6:
 				buildings[index] = current + 1
 			elif current <= LAST_TREE:
-				buildings[index] = 0x0b + (random.next_u15() & 1)
+				buildings[index] = BuildingTileIds.TREES_6 + (random.next_u15() & 1)
 
 
 static func _finish_ocean(flags: PackedByteArray, map_edge: int = 128) -> void:
@@ -101,10 +101,10 @@ static func _make_stream(
 			if candidate_altitude > altitude_limit:
 				continue
 
-			if candidate_terrain >= 0x10 and candidate_terrain < 0x30:
+			if candidate_terrain >= TerrainTileIds.DEEP_WATER_FIRST and candidate_terrain < TerrainTileIds.SURFACE_WATER_FIRST:
 				return
 
-			if candidate_altitude < altitude_limit or candidate_terrain == 0:
+			if candidate_altitude < altitude_limit or candidate_terrain == TerrainTileIds.FLAT:
 				accepted_attempt = attempt
 				next_point = candidate
 				break

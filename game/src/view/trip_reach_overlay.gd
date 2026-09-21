@@ -173,7 +173,7 @@ static func _center(city: CityState, point: Vector2i, mode := -1) -> Vector2:
 	for corner in CityIsometricRenderer.terrain_surface_polygon(city, point.x, point.y):
 		center += corner / 4.0
 	var tile := city.building_id(point.x, point.y)
-	if tile >= 0x5d and tile <= 0x60:
+	if tile >= BuildingTileIds.HIGHWAY_ONRAMP_1 and tile <= BuildingTileIds.HIGHWAY_ONRAMP_4:
 		# all travel modes meet at the same point halfway up the ramp
 		center.y -= CityIsometricRenderer.ALTITUDE_STEP * 0.5
 	elif mode in [TransportTrip.HIGHWAY_MODE, TransportTrip.BUS_HIGHWAY_MODE]:

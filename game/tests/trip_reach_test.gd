@@ -1,6 +1,8 @@
 extends SceneTree
 
 @warning_ignore_start("integer_division")
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const DocumentState = preload("res://tests/support/document_state.gd")
 
 var fixtures: Dictionary = {}
@@ -52,8 +54,8 @@ func _test_highway(edge: int, native: bool) -> void:
 	var b := Vector2i(60, 20) + shift
 	check(HighwayCommand.apply(city, 6, 1, a, b, 0).ok, "Place highway")
 	# Both ramps attach to the eastbound outside lane.
-	city.set_building_id(a.x - 1, a.y + 2, 0x1d)
-	city.set_building_id(b.x + 1, b.y + 2, 0x1d)
+	city.set_building_id(a.x - 1, a.y + 2, Tiles.ROAD_STRAIGHT_1)
+	city.set_building_id(b.x + 1, b.y + 2, Tiles.ROAD_STRAIGHT_1)
 	check(OnrampCommand.apply(city, 6, 3, a + Vector2i(0, 2)).ok, "Place entry ramp")
 	check(OnrampCommand.apply(city, 6, 3, b + Vector2i(0, 2)).ok, "Place exit ramp")
 	var origin := a + Vector2i(-2, 2)
@@ -93,7 +95,7 @@ func _test_highway(edge: int, native: bool) -> void:
 func _test_branches(edge: int, native: bool) -> void:
 	var city := fixture(edge, native)
 	for x in range(20, 61):
-		city.set_building_id(x, 20, 0x1d)
+		city.set_building_id(x, 20, Tiles.ROAD_STRAIGHT_1)
 	city.set_zone_id(20, 21, 3)
 	for seed in [1, 7, 29]:
 		check(TransportTrip.run(city, Vector2i(19, 20), 1, 2, SimRandom.new(seed)).reached_destination,
@@ -112,10 +114,10 @@ func _test_branches(edge: int, native: bool) -> void:
 
 func _test_station_and_tunnel(edge: int, native: bool) -> void:
 	var city := fixture(edge, native)
-	city.set_building_id(20, 23, 0xed)
+	city.set_building_id(20, 23, Tiles.RAIL_STATION)
 	for y in range(24, 34):
-		city.set_building_id(20, y, 0x2c)
-	city.set_building_id(20, 34, 0xed)
+		city.set_building_id(20, y, Tiles.RAIL_STRAIGHT_1)
+	city.set_building_id(20, 34, Tiles.RAIL_STATION)
 	city.set_zone_id(20, 37, 3)
 	var trip := TransportTrip.run(city, Vector2i(20, 20), 1, 2, SimRandom.new(1))
 	check(trip.reached_destination and trip.used_rail, "Three-tile station access works at both ends")
@@ -124,12 +126,12 @@ func _test_station_and_tunnel(edge: int, native: bool) -> void:
 	check(not TransportTrip.run(city, Vector2i(20, 20), 1, 2, SimRandom.new(1)).reached_destination,
 		"Station catchment does not extend to four tiles")
 	city = fixture(edge, native)
-	city.set_building_id(20, 20, 0x1d)
-	city.set_building_id(20, 21, 0x3f)
+	city.set_building_id(20, 20, Tiles.ROAD_STRAIGHT_1)
+	city.set_building_id(20, 21, Tiles.TUNNEL_ENTRANCE_1)
 	for y in range(22, 25):
 		city.altitude_words[20 * edge + y] = 0x400
-	city.set_building_id(20, 25, 0x40)
-	city.set_building_id(20, 26, 0x1d)
+	city.set_building_id(20, 25, Tiles.TUNNEL_ENTRANCE_2)
+	city.set_building_id(20, 26, Tiles.ROAD_STRAIGHT_1)
 	city.set_zone_id(20, 29, 3)
 	trip = TransportTrip.run(city, Vector2i(20, 19), 1, 2, SimRandom.new(1))
 	check(trip.reached_destination and trip.cost == 18, "Car traverses tunnel in tunnel mode at road cost")
@@ -153,8 +155,8 @@ func _test_lane_geometry() -> void:
 
 func _test_ui() -> void:
 	var city := fixture(128, false)
-	city.set_building_id(20, 21, 0x1d)
-	city.set_building_id(20, 22, 0x1d)
+	city.set_building_id(20, 21, Tiles.ROAD_STRAIGHT_1)
+	city.set_building_id(20, 22, Tiles.ROAD_STRAIGHT_1)
 	city.set_zone_id(20, 20, 1)
 	city.set_zone_id(20, 23, 3)
 	var view := CityMapControl.new()
@@ -177,25 +179,25 @@ func _test_ui() -> void:
 
 func _test_multimodal() -> void:
 	var city := fixture(128, false)
-	city.set_building_id(20, 21, 0xec)
+	city.set_building_id(20, 21, Tiles.BUS_DEPOT)
 	for y in range(22, 61):
-		city.set_building_id(20, y, 0x1d)
+		city.set_building_id(20, y, Tiles.ROAD_STRAIGHT_1)
 	city.set_zone_id(20, 63, 3)
 	var result := TransportTrip.run(city, Vector2i(20, 20), 1, 2, SimRandom.new(1))
 	check(result.reached_destination and result.used_bus and result.cost == 78, "Bus route keeps its two-unit road cost")
 	city = fixture(128, false)
-	city.set_building_id(20, 21, 0xe9)
+	city.set_building_id(20, 21, Tiles.SUBWAY_STATION)
 	for y in range(22, 62):
-		city.set_underground_id(20, y, 1)
-	city.set_building_id(20, 61, 0xe9)
+		city.set_underground_id(20, y, UndergroundTileIds.SUBWAY_LR)
+	city.set_building_id(20, 61, Tiles.SUBWAY_STATION)
 	city.set_zone_id(20, 64, 3)
 	result = TransportTrip.run(city, Vector2i(20, 20), 1, 2, SimRandom.new(1))
 	check(result.reached_destination and result.used_subway, "Subway keeps mode transitions and destination catchment")
 	city = fixture(128, false)
-	city.set_building_id(20, 21, 0x1d)
+	city.set_building_id(20, 21, Tiles.ROAD_STRAIGHT_1)
 	for y in range(22, 26):
-		city.set_building_id(20, y, 0x51)
-	city.set_building_id(20, 26, 0x1d)
+		city.set_building_id(20, y, Tiles.SUSPENSION_BRIDGE_1)
+	city.set_building_id(20, 26, Tiles.ROAD_STRAIGHT_1)
 	city.set_zone_id(20, 27, 3)
 	result = TransportTrip.run(city, Vector2i(20, 20), 1, 2, SimRandom.new(1))
 	check(result.reached_destination and result.cost == 15, "Road bridge keeps straight heading and road cost")
@@ -205,8 +207,8 @@ func _test_curve() -> void:
 	var city := fixture(128, false)
 	check(HighwayCommand.apply(city, 6, 1, Vector2i(20, 20), Vector2i(30, 20), 0).ok, "Place first curve leg")
 	check(HighwayCommand.apply(city, 6, 1, Vector2i(30, 20), Vector2i(30, 30), 0).ok, "Place second curve leg")
-	city.set_building_id(19, 22, 0x1d)
-	city.set_building_id(29, 31, 0x1d)
+	city.set_building_id(19, 22, Tiles.ROAD_STRAIGHT_1)
+	city.set_building_id(29, 31, Tiles.ROAD_STRAIGHT_1)
 	check(OnrampCommand.apply(city, 6, 3, Vector2i(20, 22)).ok, "Place curve entry")
 	check(OnrampCommand.apply(city, 6, 3, Vector2i(29, 30)).ok, "Place curve exit")
 	city.set_zone_id(18, 22, 1)
@@ -235,8 +237,8 @@ func _test_overpasses() -> void:
 				check(NetworkCommand.apply(city, group, 0, under_start, under_end).ok, "Place road, rail, or power crossing")
 				if not highway_first:
 					check(HighwayCommand.apply(city, 6, 1, a, b, 0).ok, "Place highway over existing network")
-				city.set_building_id(a.x - 1, a.y + 2, 0x1d)
-				city.set_building_id(b.x + 1, b.y + 2, 0x1d)
+				city.set_building_id(a.x - 1, a.y + 2, Tiles.ROAD_STRAIGHT_1)
+				city.set_building_id(b.x + 1, b.y + 2, Tiles.ROAD_STRAIGHT_1)
 				check(OnrampCommand.apply(city, 6, 3, a + Vector2i(0, 2)).ok, "Place overpass entry ramp")
 				check(OnrampCommand.apply(city, 6, 3, b + Vector2i(0, 2)).ok, "Place overpass exit ramp")
 				var origin := a + Vector2i(-2, 2)
@@ -291,8 +293,8 @@ func _test_dead_end_turns() -> void:
 			middle_across = CityRotationCommand.rotate_point(middle_across, edge, false)
 		var boundary := fixture(edge, false)
 		for x in range(edge - 4, edge):
-			boundary.set_building_id(x, 20, 0x4a)
-			boundary.set_building_id(x, 21, 0x4a)
+			boundary.set_building_id(x, 20, Tiles.HIGHWAY_STRAIGHT_2)
+			boundary.set_building_id(x, 21, Tiles.HIGHWAY_STRAIGHT_2)
 		check(TransportTripSteps.highway_step(boundary.buildings, Vector2i(edge - 1, 21), Vector2i(edge - 1, 20), edge),
 			"True map edge permits a safe turnaround")
 
@@ -391,7 +393,7 @@ func _test_map_exits() -> void:
 
 func _test_reused_result() -> void:
 	var city := fixture(128, false)
-	city.set_building_id(20, 20, 0x1d)
+	city.set_building_id(20, 20, Tiles.ROAD_STRAIGHT_1)
 	city.set_zone_id(20, 21, 3)
 	var scratch := TransportTripResult.new()
 	var random := SimRandom.new(123)

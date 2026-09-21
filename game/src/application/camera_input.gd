@@ -150,7 +150,7 @@ func tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
 		return app.city_toolbar.group_icon(group_index) if app.city_toolbar != null else null
 
 	var tile_id := BuildingSites.tile_for_tool(group_index, subtool_index)
-	var sprite_id := 1000 + tile_id if tile_id > 0 else -1
+	var sprite_id := 1000 + tile_id if tile_id > BuildingTileIds.EMPTY else -1
 
 	if sprite_id < 0:
 		var table_index := group_index * Tools.MAX_SLOTS_PER_GROUP + subtool_index

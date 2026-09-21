@@ -110,7 +110,7 @@ static func _original_image(reference_root: String, id: Variant) -> Image:
 	return PeBitmapResource.load_numeric(reference_root.path_join("SIMCITY.EXE"), id).image
 
 
-func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
+func _load(value: Variant, read_png: Callable, _palette: Sc2Palette) -> void:
 	if not value is Dictionary or value.is_empty():
 		error = "city_ui must contain controls, hourglass, portraits, terrain, media, notices, presentation or checks"
 
@@ -125,10 +125,26 @@ func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 		var ids: Array = {"controls": CONTROL_SIZES.keys(), "hourglass": HOURGLASS_IDS, "portraits": PORTRAIT_IDS, "terrain": TERRAIN_SIZES.keys(), "media": MEDIA_IDS, "notices": NOTICE_IDS, "presentation": PRESENTATION_SIZES.keys(), "checks": [CheckControlGraphics.RESOURCE_ID]}[group]
 		var records: Variant = value[group]
 
-		if not records is Array or records.size() != ids.size():
-			error = "city_ui.%s requires %d records in resource order" % [group, ids.size()]
-
+		if not records is Array or records.is_empty():
+			error = "city_ui.%s requires image records" % group
 			return
+
+		var selected: Array = []
+
+		for record in records:
+			if not record is Dictionary or not _valid_id(record.get("id"), ids) or record.id in selected:
+				error = "Invalid or duplicate city_ui resource ID"
+				return
+
+			var id: Variant = record.id if record.id is String else int(record.id)
+
+			if id in selected:
+				error = "Duplicate city_ui resource ID"
+				return
+
+			selected.append(id)
+
+		ids = selected
 
 		for i in ids.size():
 			var record: Variant = records[i]
@@ -153,7 +169,7 @@ func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 			if group == "controls":
 				size = CONTROL_SIZES[ids[i]]
 			elif group == "hourglass":
-				size = Vector2i(15 if i == 7 else 16, 30)
+				size = Vector2i(15 if ids[i] == 196 else 16, 30)
 			elif group == "terrain":
 				size = TERRAIN_SIZES[ids[i]]
 			elif group == "media":
@@ -168,10 +184,6 @@ func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 
 				return
 
-			if group not in ["notices", "presentation"] and png.palette.colors != palette.colors:
-				error = "city_ui image %s must use the pack palette" % str(ids[i])
-
-				return
 
 			var image: Image = Sc2SpriteArchive.entry_from_indices(0, size.x, size.y, png.pixels).create_image(png.palette).image
 
@@ -233,3 +245,11 @@ func media_image(index: int, pressed: bool) -> Image:
 	assert(index >= 0 and index < 5)
 
 	return media.get(262 + index * 2 - int(pressed))
+
+
+static func _valid_id(value: Variant, ids: Array) -> bool:
+	for id in ids:
+		if _matches_id(value, id):
+			return true
+
+	return false

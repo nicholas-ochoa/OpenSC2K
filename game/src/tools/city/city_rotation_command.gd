@@ -1,6 +1,10 @@
 class_name CityRotationCommand
 extends RefCounted
 
+const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
+
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const MAP_SIZE := CityState.MAP_SIZE
 const COMPASS_OFFSET := 0x0008
 const TILE_COUNT_OFFSET := 0x01f0
@@ -115,7 +119,7 @@ static func rotate_point(point: Vector2i, size: int, counter_clockwise: bool) ->
 
 
 static func surface_tile_after_rotation(tile: int, counter_clockwise: bool) -> int:
-	if tile < 0 or tile > 0xff:
+	if tile < 0 or tile > Tiles.MAX_ID:
 		return tile
 
 	return _surface_table(counter_clockwise)[tile]
@@ -231,23 +235,36 @@ static func _identity_table(size: int) -> PackedByteArray:
 
 # the tile number has a direction baked into it too
 static func _surface_table(counter_clockwise: bool) -> PackedByteArray:
-	var table := _identity_table(256)
+	var table := _identity_table(Tiles.COUNT)
 
 	for pair in [
-		[0x0e, 0x0f], [0x1d, 0x1e], [0x2c, 0x2d], [0x43, 0x44],
-		[0x45, 0x46], [0x47, 0x48], [0x49, 0x4a], [0x4b, 0x4c],
-		[0x4d, 0x4e], [0x4f, 0x50], [0x51, 0x55], [0x52, 0x54],
+		[Tiles.POWER_LINE_STRAIGHT_1, Tiles.POWER_LINE_STRAIGHT_2],
+		[Tiles.ROAD_STRAIGHT_1, Tiles.ROAD_STRAIGHT_2],
+		[Tiles.RAIL_STRAIGHT_1, Tiles.RAIL_STRAIGHT_2],
+		[Tiles.ROAD_POWER_CROSSING_1, Tiles.ROAD_POWER_CROSSING_2],
+		[Tiles.ROAD_RAIL_CROSSING_1, Tiles.ROAD_RAIL_CROSSING_2],
+		[Tiles.RAIL_POWER_CROSSING_1, Tiles.RAIL_POWER_CROSSING_2],
+		[Tiles.HIGHWAY_STRAIGHT_1, Tiles.HIGHWAY_STRAIGHT_2],
+		[Tiles.HIGHWAY_ROAD_CROSSING_1, Tiles.HIGHWAY_ROAD_CROSSING_2],
+		[Tiles.HIGHWAY_RAIL_CROSSING_1, Tiles.HIGHWAY_RAIL_CROSSING_2],
+		[Tiles.HIGHWAY_POWER_CROSSING_1, Tiles.HIGHWAY_POWER_CROSSING_2],
+		[Tiles.SUSPENSION_BRIDGE_1, Tiles.SUSPENSION_BRIDGE_5],
+		[Tiles.SUSPENSION_BRIDGE_2, Tiles.SUSPENSION_BRIDGE_4],
 	]:
 		_swap(table, pair[0], pair[1])
 
 	for cycle in [
-		[0x10, 0x11, 0x12, 0x13], [0x14, 0x15, 0x16, 0x17],
-		[0x18, 0x19, 0x1a, 0x1b], [0x1f, 0x20, 0x21, 0x22],
-		[0x23, 0x24, 0x25, 0x26], [0x27, 0x28, 0x29, 0x2a],
-		[0x2e, 0x2f, 0x30, 0x31], [0x32, 0x33, 0x34, 0x35],
-		[0x36, 0x37, 0x38, 0x39], [0x3b, 0x3c, 0x3d, 0x3e],
-		[0x3f, 0x40, 0x41, 0x42], [0x61, 0x62, 0x63, 0x64],
-		[0x65, 0x66, 0x67, 0x68], [0x6c, 0x6d, 0x6e, 0x6f],
+		[Tiles.POWER_LINE_SLOPE_1, Tiles.POWER_LINE_SLOPE_2, Tiles.POWER_LINE_SLOPE_3, Tiles.POWER_LINE_SLOPE_4],
+		[Tiles.POWER_LINE_CURVE_1, Tiles.POWER_LINE_CURVE_2, Tiles.POWER_LINE_CURVE_3, Tiles.POWER_LINE_CURVE_4],
+		[Tiles.POWER_LINE_JUNCTION_1, Tiles.POWER_LINE_JUNCTION_2, Tiles.POWER_LINE_JUNCTION_3, Tiles.POWER_LINE_JUNCTION_4],
+		[Tiles.ROAD_SLOPE_1, Tiles.ROAD_SLOPE_2, Tiles.ROAD_SLOPE_3, Tiles.ROAD_SLOPE_4],
+		[Tiles.ROAD_CURVE_1, Tiles.ROAD_CURVE_2, Tiles.ROAD_CURVE_3, Tiles.ROAD_CURVE_4], [Tiles.ROAD_JUNCTION_1, Tiles.ROAD_JUNCTION_2, Tiles.ROAD_JUNCTION_3, Tiles.ROAD_JUNCTION_4],
+		[Tiles.RAIL_SLOPE_1, Tiles.RAIL_SLOPE_2, Tiles.RAIL_SLOPE_3, Tiles.RAIL_SLOPE_4], [Tiles.RAIL_CURVE_1, Tiles.RAIL_CURVE_2, Tiles.RAIL_CURVE_3, Tiles.RAIL_CURVE_4],
+		[Tiles.RAIL_JUNCTION_1, Tiles.RAIL_JUNCTION_2, Tiles.RAIL_JUNCTION_3, Tiles.RAIL_JUNCTION_4], [Tiles.RAIL_SLOPE_5, Tiles.RAIL_SLOPE_6, Tiles.RAIL_SLOPE_7, Tiles.RAIL_SLOPE_8],
+		[Tiles.TUNNEL_ENTRANCE_1, Tiles.TUNNEL_ENTRANCE_2, Tiles.TUNNEL_ENTRANCE_3, Tiles.TUNNEL_ENTRANCE_4],
+		[Tiles.HIGHWAY_SLOPE_1, Tiles.HIGHWAY_SLOPE_2, Tiles.HIGHWAY_SLOPE_3, Tiles.HIGHWAY_SLOPE_4],
+		[Tiles.HIGHWAY_CURVE_1, Tiles.HIGHWAY_CURVE_2, Tiles.HIGHWAY_CURVE_3, Tiles.HIGHWAY_CURVE_4],
+		[Tiles.RAIL_SUBWAY_ENTRANCE_1, Tiles.RAIL_SUBWAY_ENTRANCE_2, Tiles.RAIL_SUBWAY_ENTRANCE_3, Tiles.RAIL_SUBWAY_ENTRANCE_4],
 	]:
 		_set_cycle(table, cycle, counter_clockwise)
 
@@ -256,21 +273,21 @@ static func _surface_table(counter_clockwise: bool) -> PackedByteArray:
 
 # four turns won't recover garbage tile ids
 static func _terrain_table(counter_clockwise: bool) -> PackedByteArray:
-	var table := _identity_table(0x48)
+	var table := _identity_table(TerrainTileIds.ROTATION_TABLE_SIZE)
 
-	for invalid in [0x0e, 0x0f, 0x1e, 0x1f, 0x2f, 0x3f, 0x46, 0x47]:
-		table[invalid] = 0
+	for invalid in [TerrainTileIds.UNUSED_0E, TerrainTileIds.UNUSED_0F, TerrainTileIds.UNUSED_1E, TerrainTileIds.UNUSED_1F, TerrainTileIds.UNUSED_2F, TerrainTileIds.UNUSED_3F, TerrainTileIds.UNUSED_46, TerrainTileIds.UNUSED_47]:
+		table[invalid] = TerrainTileIds.FLAT
 
-	_swap(table, 0x40, 0x41)
+	_swap(table, TerrainTileIds.CHANNEL_NS, TerrainTileIds.CHANNEL_EW)
 
 	for cycle in [
-		[0x01, 0x02, 0x03, 0x04], [0x05, 0x06, 0x07, 0x08],
-		[0x09, 0x0a, 0x0b, 0x0c], [0x11, 0x12, 0x13, 0x14],
-		[0x15, 0x16, 0x17, 0x18], [0x19, 0x1a, 0x1b, 0x1c],
-		[0x21, 0x22, 0x23, 0x24], [0x25, 0x26, 0x27, 0x28],
-		[0x29, 0x2a, 0x2b, 0x2c], [0x31, 0x32, 0x33, 0x34],
-		[0x35, 0x36, 0x37, 0x38], [0x39, 0x3a, 0x3b, 0x3c],
-		[0x42, 0x43, 0x44, 0x45],
+		[TerrainTileIds.SLOPE_TOP_LEFT, TerrainTileIds.SLOPE_TOP_RIGHT, TerrainTileIds.SLOPE_BOTTOM_RIGHT, TerrainTileIds.SLOPE_BOTTOM_LEFT], [TerrainTileIds.RAISED_EXCEPT_BOTTOM, TerrainTileIds.RAISED_EXCEPT_LEFT, TerrainTileIds.RAISED_EXCEPT_TOP, TerrainTileIds.RAISED_EXCEPT_RIGHT],
+		[TerrainTileIds.CORNER_TOP, TerrainTileIds.CORNER_RIGHT, TerrainTileIds.CORNER_BOTTOM, TerrainTileIds.CORNER_LEFT], [TerrainTileIds.DEEP_WATER_SLOPE_TOP_LEFT, TerrainTileIds.DEEP_WATER_SLOPE_TOP_RIGHT, TerrainTileIds.DEEP_WATER_SLOPE_BOTTOM_RIGHT, TerrainTileIds.DEEP_WATER_SLOPE_BOTTOM_LEFT],
+		[TerrainTileIds.DEEP_WATER_RAISED_EXCEPT_BOTTOM, TerrainTileIds.DEEP_WATER_RAISED_EXCEPT_LEFT, TerrainTileIds.DEEP_WATER_RAISED_EXCEPT_TOP, TerrainTileIds.DEEP_WATER_RAISED_EXCEPT_RIGHT], [TerrainTileIds.DEEP_WATER_CORNER_TOP, TerrainTileIds.DEEP_WATER_CORNER_RIGHT, TerrainTileIds.DEEP_WATER_CORNER_BOTTOM, TerrainTileIds.DEEP_WATER_CORNER_LEFT],
+		[TerrainTileIds.SHORE_SLOPE_TOP_LEFT, TerrainTileIds.SHORE_SLOPE_TOP_RIGHT, TerrainTileIds.SHORE_SLOPE_BOTTOM_RIGHT, TerrainTileIds.SHORE_SLOPE_BOTTOM_LEFT], [TerrainTileIds.SHORE_RAISED_EXCEPT_BOTTOM, TerrainTileIds.SHORE_RAISED_EXCEPT_LEFT, TerrainTileIds.SHORE_RAISED_EXCEPT_TOP, TerrainTileIds.SHORE_RAISED_EXCEPT_RIGHT],
+		[TerrainTileIds.SHORE_CORNER_TOP, TerrainTileIds.SHORE_CORNER_RIGHT, TerrainTileIds.SHORE_CORNER_BOTTOM, TerrainTileIds.SHORE_CORNER_LEFT], [TerrainTileIds.SURFACE_WATER_NES, TerrainTileIds.SURFACE_WATER_ESW, TerrainTileIds.SURFACE_WATER_NSW, TerrainTileIds.SURFACE_WATER_NEW],
+		[TerrainTileIds.SURFACE_WATER_ES, TerrainTileIds.SURFACE_WATER_SW, TerrainTileIds.SURFACE_WATER_NW, TerrainTileIds.SURFACE_WATER_NE], [TerrainTileIds.SURFACE_WATER_BANK_NW, TerrainTileIds.SURFACE_WATER_BANK_NE, TerrainTileIds.SURFACE_WATER_BANK_SE, TerrainTileIds.SURFACE_WATER_BANK_SW],
+		[TerrainTileIds.CHANNEL_E, TerrainTileIds.CHANNEL_S, TerrainTileIds.CHANNEL_W, TerrainTileIds.CHANNEL_N],
 	]:
 		_set_cycle(table, cycle, counter_clockwise)
 
@@ -278,18 +295,20 @@ static func _terrain_table(counter_clockwise: bool) -> PackedByteArray:
 
 
 static func _underground_table(counter_clockwise: bool) -> PackedByteArray:
-	var table := _identity_table(0x28)
+	var table := _identity_table(UnderTiles.ROTATION_TABLE_SIZE)
 
-	for invalid in [0x24, 0x25, 0x26, 0x27]:
-		table[invalid] = 0
+	for invalid in [UnderTiles.UNUSED_24, UnderTiles.UNUSED_25, UnderTiles.UNUSED_26, UnderTiles.UNUSED_27]:
+		table[invalid] = UnderTiles.EMPTY
 
-	for pair in [[0x01, 0x02], [0x10, 0x11], [0x1f, 0x20]]:
+	for pair in [[UnderTiles.SUBWAY_LR, UnderTiles.SUBWAY_TB], [UnderTiles.PIPE_LR, UnderTiles.PIPE_TB], [UnderTiles.PIPE_TB_SUBWAY_LR, UnderTiles.PIPE_LR_SUBWAY_TB]]:
 		_swap(table, pair[0], pair[1])
 
 	for cycle in [
-		[0x03, 0x04, 0x05, 0x06], [0x07, 0x08, 0x09, 0x0a],
-		[0x0b, 0x0c, 0x0d, 0x0e], [0x12, 0x13, 0x14, 0x15],
-		[0x16, 0x17, 0x18, 0x19], [0x1a, 0x1b, 0x1c, 0x1d],
+		[UnderTiles.SUBWAY_HTB, UnderTiles.SUBWAY_LHR, UnderTiles.SUBWAY_THB, UnderTiles.SUBWAY_HLR],
+		[UnderTiles.SUBWAY_BR, UnderTiles.SUBWAY_BL, UnderTiles.SUBWAY_TL, UnderTiles.SUBWAY_TR],
+		[UnderTiles.SUBWAY_RTB, UnderTiles.SUBWAY_LBR, UnderTiles.SUBWAY_TLB, UnderTiles.SUBWAY_LTR],
+		[UnderTiles.PIPE_HTB, UnderTiles.PIPE_LHR, UnderTiles.PIPE_THB, UnderTiles.PIPE_HLR],
+		[UnderTiles.PIPE_BR, UnderTiles.PIPE_BL, UnderTiles.PIPE_TL, UnderTiles.PIPE_TR], [UnderTiles.PIPE_RTB, UnderTiles.PIPE_LBR, UnderTiles.PIPE_TLB, UnderTiles.PIPE_LTR],
 	]:
 		_set_cycle(table, cycle, counter_clockwise)
 
@@ -319,22 +338,22 @@ static func _rotate_special_surface(
 	counter_clockwise: bool
 ) -> void:
 	var ramp_tiles := (
-		[0x5e, 0x5d, 0x60, 0x5f, 0x60, 0x5f, 0x5e, 0x5d]
+		[Tiles.HIGHWAY_ONRAMP_2, Tiles.HIGHWAY_ONRAMP_1, Tiles.HIGHWAY_ONRAMP_4, Tiles.HIGHWAY_ONRAMP_3, Tiles.HIGHWAY_ONRAMP_4, Tiles.HIGHWAY_ONRAMP_3, Tiles.HIGHWAY_ONRAMP_2, Tiles.HIGHWAY_ONRAMP_1]
 		if counter_clockwise
-		else [0x60, 0x5f, 0x5e, 0x5d, 0x5e, 0x5d, 0x60, 0x5f]
+		else [Tiles.HIGHWAY_ONRAMP_4, Tiles.HIGHWAY_ONRAMP_3, Tiles.HIGHWAY_ONRAMP_2, Tiles.HIGHWAY_ONRAMP_1, Tiles.HIGHWAY_ONRAMP_2, Tiles.HIGHWAY_ONRAMP_1, Tiles.HIGHWAY_ONRAMP_4, Tiles.HIGHWAY_ONRAMP_3]
 	)
 
 	for index in buildings.size():
 		var tile := int(buildings[index])
 		var flipped := (flags[index] & FLIP_FLAG) != 0
 
-		if tile >= 0x5d and tile <= 0x60:
-			var ramp_index := tile - 0x5d + (4 if flipped else 0)
+		if tile >= Tiles.HIGHWAY_ONRAMP_1 and tile <= Tiles.HIGHWAY_ONRAMP_4:
+			var ramp_index := tile - Tiles.HIGHWAY_ONRAMP_1 + (4 if flipped else 0)
 			_replace_building(buildings, zones, misc, index, ramp_tiles[ramp_index])
 			flags[index] = (flags[index] & 0xfd) | (FLIP_FLAG if ramp_index < 4 else 0)
 			continue
 
-		if not ((tile >= 0x51 and tile <= 0x5c) or tile == 0x6a or tile == 0x6b):
+		if not ((tile >= Tiles.SUSPENSION_BRIDGE_1 and tile <= Tiles.POWER_BRIDGE) or tile == Tiles.HIGHWAY_BRIDGE or tile == Tiles.REINFORCED_HIGHWAY_BRIDGE):
 			continue
 
 		if counter_clockwise:
@@ -356,12 +375,12 @@ static func _rotate_surface_tile_counts(
 	misc: PackedByteArray, surface_table: PackedByteArray
 ) -> void:
 	var old_counts := PackedInt64Array()
-	old_counts.resize(BuildingTileIds.DEVELOPED_FIRST)
+	old_counts.resize(Tiles.DEVELOPED_FIRST)
 
-	for tile in BuildingTileIds.DEVELOPED_FIRST:
+	for tile in Tiles.DEVELOPED_FIRST:
 		old_counts[tile] = _read_u32_be(misc, TILE_COUNT_OFFSET + tile * 4)
 
-	for tile in BuildingTileIds.DEVELOPED_FIRST:
+	for tile in Tiles.DEVELOPED_FIRST:
 		_write_u32_be(
 			misc, TILE_COUNT_OFFSET + int(surface_table[tile]) * 4, old_counts[tile]
 		)

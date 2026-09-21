@@ -220,7 +220,7 @@ func check_vehicles(edge: int) -> void:
 		var p := GrowthState.payloads(CityState.from_document(fixture(edge)))
 		for delta in [Vector2i.ZERO, Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
 			var track: Vector2i = start + delta
-			p.XBLD[track.x * edge + track.y] = 0x2c
+			p.XBLD[track.x * edge + track.y] = BuildingTileIds.RAIL_STRAIGHT_1
 		var spawned := MovingThingSpawner._spawn_train_record(p.XBLD, p.XTHG, p.XTXT,
 			start, SequenceGameLcg.new(), SequenceLfsr.new(), edge)
 		check(spawned == (start.x == edge - 4), "Small-map trains retain capacity and edge margins")

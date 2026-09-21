@@ -22,7 +22,7 @@ func _initialize() -> void:
 		command = BuildingCommand.apply(city, 14, 0, Vector2i(20, 20), lfsr, random)
 		assert(command.ok)
 		saved = command.new_payloads.XBLD.duplicate()
-		city.set_building_id(25, 25, 1)
+		city.set_building_id(25, 25, BuildingTileIds.RUBBLE_1)
 		assert(command.new_payloads.XBLD == saved, "Later in-place writes cannot change history")
 		assert(not BuildingCommand.undo(city, command, lfsr, random).ok,
 			"Undo still rejects changes elsewhere in a recorded chunk")

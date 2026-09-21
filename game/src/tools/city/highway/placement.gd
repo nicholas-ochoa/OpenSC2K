@@ -34,18 +34,18 @@ static func _place_straight_section(
 
 static func _straight_replacement(old_tile: int, orientation: int) -> int:
 	match old_tile:
-		0x0e:
-			return 0x50
-		0x0f:
-			return 0x4f
-		0x1d:
-			return 0x4c
-		0x1e:
-			return 0x4b
-		0x2c:
-			return 0x4e
-		0x2d:
-			return 0x4d
+		Tiles.POWER_LINE_STRAIGHT_1:
+			return Tiles.HIGHWAY_POWER_CROSSING_2
+		Tiles.POWER_LINE_STRAIGHT_2:
+			return Tiles.HIGHWAY_POWER_CROSSING_1
+		Tiles.ROAD_STRAIGHT_1:
+			return Tiles.HIGHWAY_ROAD_CROSSING_2
+		Tiles.ROAD_STRAIGHT_2:
+			return Tiles.HIGHWAY_ROAD_CROSSING_1
+		Tiles.RAIL_STRAIGHT_1:
+			return Tiles.HIGHWAY_RAIL_CROSSING_2
+		Tiles.RAIL_STRAIGHT_2:
+			return Tiles.HIGHWAY_RAIL_CROSSING_1
 		_:
 			return STRAIGHT_FIRST + orientation
 
@@ -217,7 +217,7 @@ static func _prepare_flat_terrain(
 		var index := point.x * map_edge + point.y
 
 		if HighwayGeometry._land_altitude(altitude, index) < target:
-			terrain[index] = 0x0d
+			terrain[index] = TerrainTileIds.RAISED
 
 
 static func _prepare_shaped_terrain(
@@ -230,8 +230,8 @@ static func _prepare_shaped_terrain(
 		var point: Vector2i = anchor + offset
 		var index := point.x * map_edge + point.y
 
-		if terrain[index] != 0 or HighwayGeometry._land_altitude(altitude, index) < target:
-			terrain[index] = 0x0d
+		if terrain[index] != TerrainTileIds.FLAT or HighwayGeometry._land_altitude(altitude, index) < target:
+			terrain[index] = TerrainTileIds.RAISED
 
 
 static func _write_section_kind(
@@ -253,9 +253,9 @@ static func _write_section_kind(
 			var point: Vector2i = anchor + offset
 			var old_tile := int(buildings[point.x * map_edge + point.y])
 
-			if old_tile == 0x0e or old_tile == 0x1d or old_tile == 0x2c:
+			if old_tile == Tiles.POWER_LINE_STRAIGHT_1 or old_tile == Tiles.ROAD_STRAIGHT_1 or old_tile == Tiles.RAIL_STRAIGHT_1:
 				orientation = 1
-			elif old_tile == 0x0f or old_tile == 0x1e or old_tile == 0x2d:
+			elif old_tile == Tiles.POWER_LINE_STRAIGHT_2 or old_tile == Tiles.ROAD_STRAIGHT_2 or old_tile == Tiles.RAIL_STRAIGHT_2:
 				orientation = 0
 
 		_place_straight_section(buildings, zones, misc, anchor, orientation, map_edge)
@@ -313,17 +313,17 @@ static func _place_graded_section(
 
 	match kind:
 		4:
-			terrain_pattern = [0x0d, 0x01, 0x01, 0x0d]
+			terrain_pattern = [TerrainTileIds.RAISED, TerrainTileIds.SLOPE_TOP_LEFT, TerrainTileIds.SLOPE_TOP_LEFT, TerrainTileIds.RAISED]
 		5:
-			terrain_pattern = [0x0d, 0x0d, 0x02, 0x02]
+			terrain_pattern = [TerrainTileIds.RAISED, TerrainTileIds.RAISED, TerrainTileIds.SLOPE_TOP_RIGHT, TerrainTileIds.SLOPE_TOP_RIGHT]
 		6:
-			terrain_pattern = [0x03, 0x0d, 0x0d, 0x03]
+			terrain_pattern = [TerrainTileIds.SLOPE_BOTTOM_RIGHT, TerrainTileIds.RAISED, TerrainTileIds.RAISED, TerrainTileIds.SLOPE_BOTTOM_RIGHT]
 		7:
-			terrain_pattern = [0x04, 0x04, 0x0d, 0x0d]
+			terrain_pattern = [TerrainTileIds.SLOPE_BOTTOM_LEFT, TerrainTileIds.SLOPE_BOTTOM_LEFT, TerrainTileIds.RAISED, TerrainTileIds.RAISED]
 		_:
 			return
 
-	var tile_id := 0x5d + kind
+	var tile_id := Tiles.HIGHWAY_ONRAMP_1 + kind
 
 	for offset_index in offsets.size():
 		var point: Vector2i = anchor + offsets[offset_index]
@@ -359,7 +359,7 @@ static func _write_shape(
 
 		return
 
-	var tile_id := 0x5d + kind
+	var tile_id := Tiles.HIGHWAY_ONRAMP_1 + kind
 
 	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 		var point: Vector2i = anchor + offset

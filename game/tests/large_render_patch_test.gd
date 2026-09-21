@@ -23,7 +23,7 @@ func _run() -> void:
 		var dirty := PackedInt32Array()
 
 		for point in [Vector2i(edge - 10, edge - 10), Vector2i(edge / 2, edge - 20), Vector2i(4, 4)]:
-			city.set_building_id(point.x, point.y, 0x1d)
+			city.set_building_id(point.x, point.y, BuildingTileIds.ROAD_STRAIGHT_1)
 			dirty.append(city.index_of(point.x, point.y))
 
 		var full := CityIsometricRenderer.create_image(city, palette, sprites, CityIsometricRenderer.VIEW_SMALL, 0, false, true, false, false)

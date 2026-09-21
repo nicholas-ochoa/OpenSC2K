@@ -116,7 +116,7 @@ func _test_main() -> void:
 	await process_frame
 	assert(main.asset_state.runtime_initialized and main.main_menu.visible)
 	assert(not main.reference_import_dialog.visible and main.document_state.city == null)
-	assert(main.audio_controller.original_media_enabled)
+	assert(not main.audio_controller.original_media_enabled and main.asset_state.asset_source.has_city_template)
 	main.settings.open_settings_dialog()
 	assert(main.settings_dialog.visible)
 

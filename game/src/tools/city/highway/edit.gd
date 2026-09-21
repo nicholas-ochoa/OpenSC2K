@@ -514,7 +514,7 @@ static func preview_error(city: CityState, selected: Vector2i) -> String:
 		if not HighwayGeometry._building_is_allowed(tile_id):
 			return "Clear the structure in the highway footprint first."
 
-		if tile_id > 0x0e and not HighwayGeometry._is_highway_tile(tile_id) and not HighwayGeometry._network_can_cross(tile_id, direction):
+		if tile_id > Tiles.POWER_LINE_STRAIGHT_1 and not HighwayGeometry._is_highway_tile(tile_id) and not HighwayGeometry._network_can_cross(tile_id, direction):
 			return "The existing network cannot cross a highway in this direction."
 
 	return "The 2 by 2 highway section has incompatible elevations or slopes."

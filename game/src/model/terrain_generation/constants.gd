@@ -18,8 +18,8 @@ const FLAG_SALT_WATER := 0x01
 const FLAG_WATER := 0x04
 const FIRST_TREE := BuildingTileIds.TREE_FIRST
 const LAST_TREE := BuildingTileIds.TREE_LAST
-const FORBIDDEN_COAST := 0x2e
-const WATERFALL := 0x3e
+const FORBIDDEN_COAST := TerrainTileIds.FORBIDDEN_COAST
+const WATERFALL := TerrainTileIds.WATERFALL
 
 const MIN_SLIDER := 0
 const MAX_SLIDER := 47

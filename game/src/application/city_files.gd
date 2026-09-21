@@ -27,6 +27,8 @@ func open_city_dialog() -> void:
 
 	if DirAccess.dir_exists_absolute(city_directory):
 		app.file_dialog.current_dir = city_directory
+	elif DirAccess.dir_exists_absolute(app.asset_state.reference_root.path_join("CITIES")):
+		app.file_dialog.current_dir = app.asset_state.reference_root.path_join("CITIES")
 
 	app.file_dialog.popup_centered_ratio(0.8)
 
@@ -39,6 +41,8 @@ func open_scenario_dialog() -> void:
 
 	if DirAccess.dir_exists_absolute(scenario_directory):
 		app.file_dialog.current_dir = scenario_directory
+	elif DirAccess.dir_exists_absolute(app.asset_state.reference_root.path_join("SCENARIO")):
+		app.file_dialog.current_dir = app.asset_state.reference_root.path_join("SCENARIO")
 
 	app.file_dialog.popup_centered_ratio(0.8)
 

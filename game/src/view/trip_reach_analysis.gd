@@ -57,7 +57,7 @@ static func inspect(city: CityState, clicked: Vector2i) -> TransportTripReachRes
 
 
 static func _network_mode(tile: int) -> int:
-	if TransportTripSteps._is_highway_span(tile) or (tile >= 0x5d and tile <= 0x60):
+	if TransportTripSteps._is_highway_span(tile) or (tile >= Tiles.HIGHWAY_ONRAMP_1 and tile <= Tiles.HIGHWAY_ONRAMP_4):
 		return TransportTrip.HIGHWAY_MODE
 	if tile == Tiles.RAIL_STATION:
 		return TransportTrip.RAIL_STATION_MODE

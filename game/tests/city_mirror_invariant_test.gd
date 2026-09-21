@@ -2,6 +2,8 @@ extends SceneTree
 ## Check that CityState mirrors match their chunks after both commits and
 ## rollbacks. A stale mirror causes later growth and rendering errors.
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 var checks := 0
 var failures := 0
 
@@ -56,7 +58,7 @@ func tornado_city(edge: int) -> CityState:
 	for x in range(50, 70):
 		for y in range(50, 70):
 			city.set_zone_id(x, y, 1)
-			city.set_building_id(x, y, 0x70)
+			city.set_building_id(x, y, Tiles.LOWER_CLASS_HOMES_1X1_1)
 			city.set_building_corners(x, y, 0x80)
 			city.set_tile_flag(x, y, 0xe0, true)
 
@@ -123,7 +125,7 @@ func _check_growth_apply_payloads() -> void:
 	check(not payloads.is_empty(), "Growth payloads decode")
 	var rollback := GrowthState.duplicate_payloads(payloads)
 	var index := 40 * 128 + 40
-	payloads.XBLD[index] = 0x07
+	payloads.XBLD[index] = Tiles.TREES_2
 	payloads.ALTM[index * 2] = 0x01
 	payloads.ALTM[index * 2 + 1] = 0x23
 	var applied := GrowthState._apply_payloads(city, PackedStringArray(["XBLD", "ALTM"]), payloads, rollback)
@@ -139,7 +141,7 @@ func _check_growth_apply_rollback() -> void:
 	var payloads := GrowthState.payloads(city)
 	var rollback := GrowthState.duplicate_payloads(payloads)
 	var index := 40 * 128 + 40
-	payloads.XBLD[index] = 0x07
+	payloads.XBLD[index] = Tiles.TREES_2
 	payloads.ALTM = PackedByteArray()
 	var applied := GrowthState._apply_payloads(city, PackedStringArray(["XBLD", "ALTM"]), payloads, rollback)
 	check(not applied, "A wrong-size payload fails the growth commit")
@@ -153,7 +155,7 @@ func _check_growth_phase() -> void:
 
 	for y in range(8, 24):
 		city.set_zone_id(12, y, 1)
-		city.set_building_id(12, y, 0x70)
+		city.set_building_id(12, y, Tiles.LOWER_CLASS_HOMES_1X1_1)
 		city.set_building_corners(12, y, 0x80)
 		city.set_tile_flag(12, y, 0xe0, true)
 
@@ -170,7 +172,7 @@ func _check_growth_phase() -> void:
 func _check_city_rotation() -> void:
 	var city := CityState.from_document(EmptyCityTemplate.create(128))
 	city.set_land_altitude(10, 20, 7)
-	city.set_building_id(30, 40, 0x07)
+	city.set_building_id(30, 40, Tiles.TREES_2)
 	check(CityRotationCommand.apply(city, false).ok, "City rotation succeeds")
 	check_mirrors(city, "city rotation")
 
@@ -238,7 +240,7 @@ func _check_landscape_commands() -> void:
 ## the document it shares. Resyncing that copy would erase the filter.
 func _check_display_copy_is_exempt() -> void:
 	var city := CityState.from_document(EmptyCityTemplate.create(128))
-	city.set_building_id(30, 40, 0xd2)
+	city.set_building_id(30, 40, Tiles.POLICE_STATION)
 	var hidden := CityViewFilter.surface_copy(city, {"buildings": false})
 	check(hidden.document == city.document, "The display copy shares the document")
 	check(hidden.buildings[30 * 128 + 40] == 0, "The display copy hides the building")

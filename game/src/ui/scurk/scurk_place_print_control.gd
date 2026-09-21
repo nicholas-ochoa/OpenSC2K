@@ -373,7 +373,7 @@ func _update_selection_label() -> void:
 
 		return
 
-	if selected_tile_id > 255:
+	if selected_tile_id > Tiles.MAX_ID:
 		set_status("Artwork stamp: kept in this workspace session. Undo and Redo are available.")
 
 		return
@@ -432,7 +432,7 @@ func _object_name(tile_id: int) -> String:
 	if tile_id >= Tiles.DEVELOPED_FIRST and tile_id <= Tiles.DEVELOPED_3X3_LAST:
 		return "Residential, Commercial, or Industrial"
 
-	if tile_id >= Tiles.HYDRO_POWER_ONE and tile_id <= Tiles.COAL_POWER:
+	if tile_id >= Tiles.HYDRO_POWER_1 and tile_id <= Tiles.COAL_POWER:
 		return "Power Plant"
 
 	if tile_id >= Tiles.CITY_HALL and tile_id <= Tiles.PIER:
@@ -441,7 +441,7 @@ func _object_name(tile_id: int) -> String:
 	if tile_id >= Tiles.CRANE and tile_id <= Tiles.DESALINIZATION:
 		return "City Infrastructure"
 
-	if tile_id <= 0x0d:
+	if tile_id <= Tiles.SMALL_PARK:
 		return "Landscape Object"
 
 	return ScurkEditorRules.sprite_role(tile_id)

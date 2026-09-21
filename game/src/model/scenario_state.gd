@@ -89,8 +89,8 @@ var education_goal := 0
 var pollution_limit := 0
 var crime_limit := 0
 var traffic_limit := 0
-var first_building_id := 0
-var second_building_id := 0
+var first_building_id := BuildingTileIds.EMPTY
+var second_building_id := BuildingTileIds.EMPTY
 var first_building_tile_count := 0
 var second_building_tile_count := 0
 
@@ -341,14 +341,14 @@ func evaluate_goals(city: CityState) -> Goals:
 	_check_limit(unmet, "crime", values.crime, crime_limit)
 	_check_limit(unmet, "traffic", values.traffic, traffic_limit)
 
-	if first_building_id != 0:
+	if first_building_id != BuildingTileIds.EMPTY:
 		var first_count := city.document.misc_u32(0x01f0 + first_building_id * 4)
 		values["first_building_tiles"] = first_count
 
 		if first_count < first_building_tile_count:
 			unmet.append("first_building")
 
-	if second_building_id != 0:
+	if second_building_id != BuildingTileIds.EMPTY:
 		var second_count := city.document.misc_u32(0x01f0 + second_building_id * 4)
 		values["second_building_tiles"] = second_count
 

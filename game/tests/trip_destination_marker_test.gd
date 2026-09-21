@@ -11,8 +11,8 @@ func _initialize() -> void:
 			# First site has all four tiles but no corner flags; second is partial at the edge.
 			for x in range(20, 22):
 				for y in range(20, 22):
-					city.set_building_id(x, y, 0x94)
-			city.set_building_id(edge - 1, edge - 1, 0x94)
+					city.set_building_id(x, y, BuildingTileIds.SHOPPING_CENTER_2X2)
+			city.set_building_id(edge - 1, edge - 1, BuildingTileIds.SHOPPING_CENTER_2X2)
 			var result := TransportTripReachResult.new()
 			result.origin = Vector2i(10, 10)
 			result.limit = 100

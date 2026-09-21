@@ -139,20 +139,7 @@ func configure(
 		pixel_canvas.set_drawing_graphics(value_scurk_graphics)
 	elif pixel_canvas != null:
 		pixel_canvas.set_drawing_graphics(null)
-		var executable := reference_directory.path_join("WINSCURK.EXE")
-
-		if FileAccess.file_exists(executable):
-			var textures := pixel_canvas.load_original_textures(executable)
-
-			if not textures.ok:
-				_set_status(textures.error + " Using fallback texture patterns.")
-
-			var backgrounds := pixel_canvas.load_original_clear_backgrounds(executable)
-
-			if not backgrounds.ok:
-				_set_status(backgrounds.error + " Using a transparent drawing background.")
-		else:
-			_set_status("Using built-in texture patterns and a transparent drawing background.")
+		_set_status("Using built-in texture patterns and a transparent drawing background.")
 
 	if palette_panel != null and pixel_canvas != null:
 		palette_panel.configure(

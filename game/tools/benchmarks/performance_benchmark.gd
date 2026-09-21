@@ -86,7 +86,7 @@ func _benchmark_initialize() -> void:
 
 		for y in range(8, CityModel.MAP_SIZE - 8):
 			if (
-				edit_city.building_id(x, y) == 0
+				edit_city.building_id(x, y) == BuildingTileIds.EMPTY
 				and edit_city.terrain_id(x, y) == 0
 				and not edit_city.is_water(x, y)
 			):
@@ -94,7 +94,7 @@ func _benchmark_initialize() -> void:
 				break
 
 	if edit_point.x < 0 or not edit_city.set_building_id(
-		edit_point.x, edit_point.y, 0x0d
+		edit_point.x, edit_point.y, BuildingTileIds.SMALL_PARK
 	):
 		printerr("Cannot prepare the regional-render benchmark edit.")
 		quit(1)

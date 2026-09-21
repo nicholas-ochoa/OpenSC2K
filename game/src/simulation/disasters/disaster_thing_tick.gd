@@ -3,6 +3,8 @@ extends DisasterThingConstants
 
 
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 static func update_explosion(
 	city: CityState,
 	altitude: PackedByteArray,
@@ -46,7 +48,7 @@ static func update_explosion(
 
 		return
 
-	buildings[center_index] = 0
+	buildings[center_index] = Tiles.EMPTY
 
 	if ThingData.read(things, offset + 11) == 0 or not allow_disaster_damage:
 		return
@@ -249,7 +251,7 @@ static func update_tornado(
 
 	var building := int(buildings[index])
 
-	if building > 5:
+	if building > Tiles.RADIOACTIVE_WASTE:
 		var demolition := DemolishStructures._demolish_point(
 			city, altitude, buildings, terrain, zones, underground,
 			flags, text, labels, microsims, misc, current, random, true, true, false
@@ -275,7 +277,7 @@ static func update_tornado(
 
 		return
 
-	if building >= 0x0d:
+	if building >= Tiles.SMALL_PARK:
 		return
 
 	var second_direction: int = (

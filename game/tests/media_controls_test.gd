@@ -33,7 +33,7 @@ func _run() -> void:
 	for tile in range(0xfb, 0xff):
 		assert(QueryNeighborhood.zoom_for_tile(tile) == 2.0)
 
-	assert(QueryNeighborhood.zoom_for_tile(0xc9) == 2.5)
+	assert(QueryNeighborhood.zoom_for_tile(BuildingTileIds.GAS_POWER) == 2.5)
 	assert(ToolSoundRules.success_events(2, 0) == [506])
 	assert(ToolSoundRules.success_events(2, 1) == [509])
 	assert(ToolSoundRules.success_events(2, 2) == [506])

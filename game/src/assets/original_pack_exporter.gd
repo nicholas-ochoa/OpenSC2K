@@ -7,7 +7,7 @@ var destination := ""
 var error := ""
 
 
-func export_packs(source: String, target: String, original_data := "") -> AssetImportResult:
+func export_packs(source: String, target: String) -> AssetImportResult:
 	destination = target
 	error = ""
 
@@ -24,9 +24,6 @@ func export_packs(source: String, target: String, original_data := "") -> AssetI
 
 	var manifest := {"format": "opensc2k-graphics", "version": 1, "name": "Original SimCity 2000", "palette": "palette.png",
 			"scenario_palette": "scenario-palette.png", "ui": {}}
-
-	if not original_data.is_empty():
-		manifest.original_data = original_data
 
 	var indices := PackedInt32Array()
 
@@ -109,6 +106,12 @@ func export_packs(source: String, target: String, original_data := "") -> AssetI
 		var relative := "ui/%s.png" % pair[0]
 		_write_png("graphics/" + relative, decoded.width, decoded.height, decoded.pixels, palette)
 		manifest.ui[pair[0]] = relative
+
+	var runtime := Sc2RuntimeExport.new()
+	runtime.export_data(source, destination.path_join("graphics"), manifest)
+
+	if not runtime.error.is_empty():
+		return AssetImportResult.failure(runtime.error)
 
 	_write("graphics/pack.json", JSON.stringify(manifest, "\t").to_utf8_buffer())
 	var loaded := GraphicsPack.load_root(destination.path_join("graphics"))

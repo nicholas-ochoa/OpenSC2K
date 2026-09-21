@@ -1,6 +1,8 @@
 class_name MilitaryProposalPhase
 extends RefCounted
 
+const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
+
 const MISC_SIZE := 4800
 const MISC_TILE_COUNTS := 0x01f0
 const MISC_BASE_TYPE := 0x0e4c
@@ -78,7 +80,7 @@ static func _resolve(city: CityState, accepted: bool, game_random: GameLcgRandom
 		var changed := _zone_plot(buildings, terrain, underground, flags, zones, misc, navy_site, map_edge)
 		for index in changed:
 			# ownership was transferred to the military-other counter above
-			buildings[index] = 0
+			buildings[index] = BuildingTileIds.EMPTY
 		_write_u32(misc, MISC_BASE_TYPE, BASE_NAVY)
 		if not _store(city, chunks, zones, misc, {"XBLD": buildings}):
 			return _failed("cannot store the Navy base plot")
@@ -99,7 +101,7 @@ static func _resolve(city: CityState, accepted: bool, game_random: GameLcgRandom
 			for y in range(origin.y, origin.y + 8):
 				var index := x * map_edge + y
 
-				if _is_clear_land(buildings, terrain, flags, index) and (zones[index] & 15) == 0 and underground[index] == 0:
+				if _is_clear_land(buildings, terrain, flags, index) and (zones[index] & 15) == 0 and underground[index] == UnderTiles.EMPTY:
 					valid += 1
 
 					if city.land_altitude(x, y) == last_altitude:
@@ -139,7 +141,7 @@ static func _resolve(city: CityState, accepted: bool, game_random: GameLcgRandom
 					_is_clear_land(buildings, terrain, flags, index)
 					and city.land_altitude(x, y) == last_altitude
 					and (zones[index] & 0x0f) != ZONE_MILITARY
-					and underground[index] == 0
+					and underground[index] == UnderTiles.EMPTY
 				):
 					valid += 1
 
@@ -201,7 +203,7 @@ static func _zone_plot(
 			if (
 				_is_clear_land(buildings, terrain, flags, index)
 				and (zones[index] & 0x0f) == 0
-				and underground[index] == 0
+				and underground[index] == UnderTiles.EMPTY
 			):
 				_decrement_tile_count(misc, int(buildings[index]), map_edge)
 				zones[index] = (zones[index] & 0xf7) | ZONE_MILITARY
@@ -217,7 +219,7 @@ static func _is_clear_land(
 	flags: PackedByteArray,
 	index: int
 ) -> bool:
-	return buildings[index] < 0x0d and terrain[index] == 0 and (flags[index] & FLAG_WATER) == 0
+	return buildings[index] < BuildingTileIds.SMALL_PARK and terrain[index] == TerrainTileIds.FLAT and (flags[index] & FLAG_WATER) == 0
 
 
 static func _store(

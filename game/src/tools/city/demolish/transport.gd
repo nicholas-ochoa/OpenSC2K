@@ -62,7 +62,7 @@ static func _demolish_tunnel(
 
 	for entrance in [points[0], points[-1]]:
 		var entrance_index: int = entrance.x * map_edge + entrance.y
-		NetworkState.replace_building(buildings, zones, misc, entrance_index, 0)
+		NetworkState.replace_building(buildings, zones, misc, entrance_index, Tiles.EMPTY)
 		zones[entrance_index] &= 0x0f
 		DemolishTerrain._retile_adjacent_roads(buildings, terrain, zones, flags, misc, entrance, map_edge)
 
@@ -127,10 +127,10 @@ static func _demolish_transport_component(
 
 	for point in component:
 		var index := point.x * map_edge + point.y
-		var replacement := 0
+		var replacement := Tiles.EMPTY
 
 		if make_rubble and not scurk_mode:
-			replacement = 1 + (random.next_u15() & 3)
+			replacement = Tiles.RUBBLE_FIRST + (random.next_u15() & 3)
 
 		if emit_effects:
 			var effect_altitude := (
@@ -206,10 +206,10 @@ static func _demolish_highway_section(
 	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 		var point: Vector2i = anchor + offset
 		var index := point.x * map_edge + point.y
-		var replacement := 0
+		var replacement := Tiles.EMPTY
 
-		if not scurk_mode and terrain[index] == 0:
-			replacement = 1 + (random.next_u15() & 3)
+		if not scurk_mode and terrain[index] == TerrainTileIds.FLAT:
+			replacement = Tiles.RUBBLE_FIRST + (random.next_u15() & 3)
 
 		NetworkState.replace_building(buildings, zones, misc, index, replacement)
 		zones[index] &= 0x0f

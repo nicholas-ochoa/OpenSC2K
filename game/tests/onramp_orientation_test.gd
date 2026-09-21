@@ -28,8 +28,8 @@ func _initialize() -> void:
 			points.append(point)
 			var highway: Vector2i = point + OnrampCommand.DIRECTIONS[entry[0]]
 			var road: Vector2i = point + OnrampCommand.DIRECTIONS[entry[1]]
-			city.set_building_id(highway.x, highway.y, 0x49)
-			city.set_building_id(road.x, road.y, 0x1d)
+			city.set_building_id(highway.x, highway.y, BuildingTileIds.HIGHWAY_STRAIGHT_1)
+			city.set_building_id(road.x, road.y, BuildingTileIds.ROAD_STRAIGHT_1)
 
 		var before: PackedByteArray = city.document.serialize().data
 		var commands: Array[OnrampEditResult] = []

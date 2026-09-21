@@ -32,7 +32,7 @@ static func inspect(
 	if OverlayData.is_facility(overlay):
 		var microsim := city.microsim(OverlayData.facility_record(overlay))
 
-		if microsim != null and microsim.tile_id != 0:
+		if microsim != null and microsim.tile_id != BuildingTileIds.EMPTY:
 			var microsim_type := int(MICROSIM_TYPE_BY_TILE.get(microsim.tile_id, 0))
 			var action := ""
 			var action_resource_id := -1
@@ -79,9 +79,9 @@ static func inspect(
 		altitude_feet = 100 * (water_level - land_altitude) - 50
 		altitude_is_depth = true
 		wet_tile = true
-	elif terrain == 0 or terrain >= 0x10:
+	elif terrain == TerrainTileIds.FLAT or terrain >= TerrainTileIds.DEEP_WATER_FIRST:
 		altitude_feet = 100 * (land_altitude - water_level) + 50
-		wet_tile = terrain >= 0x10
+		wet_tile = terrain >= TerrainTileIds.DEEP_WATER_FIRST
 	else:
 		altitude_feet = 25 * (4 * (land_altitude - water_level) + 4)
 

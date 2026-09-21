@@ -82,26 +82,26 @@ static func _tile_is_eligible(
 		var under_tile := int(underground[index])
 
 		if _reuses_underground(under_tile, mode):
-			if under_tile in [UnderTiles.PIPE_SUBWAY_ONE, UnderTiles.PIPE_SUBWAY_TWO]:
-				var axis := under_tile - UnderTiles.PIPE_SUBWAY_ONE
+			if under_tile in [UnderTiles.PIPE_TB_SUBWAY_LR, UnderTiles.PIPE_LR_SUBWAY_TB]:
+				var axis := under_tile - UnderTiles.PIPE_TB_SUBWAY_LR
 				if mode == MODE_PIPE:
 					axis = 1 - axis
 				return (direction & 1) == axis
 
 			return true
 
-		if under_tile == 0:
+		if under_tile == UnderTiles.EMPTY:
 			return true
 
 		if mode == MODE_PIPE:
-			return under_tile + (direction & 1) == UnderTiles.PIPE_SECOND
+			return under_tile + (direction & 1) == UnderTiles.PIPE_TB
 
 		return under_tile >= UnderTiles.PIPE_FIRST and under_tile <= UnderTiles.PIPE_LAST
 
-	if flags[index] & FLAG_WATER and terrain_id < 0x40:
+	if flags[index] & FLAG_WATER and terrain_id < TerrainTileIds.CHANNEL_FIRST:
 		return false
 
-	if terrain_id >= 0x10 and terrain_id < 0x20:
+	if terrain_id >= TerrainTileIds.DEEP_WATER_FIRST and terrain_id < TerrainTileIds.SHORE_FIRST:
 		return false
 
 	var building := int(buildings[index])
@@ -110,7 +110,7 @@ static func _tile_is_eligible(
 		var axis := _surface_fixed_axis(building, mode)
 		return axis < 0 or (direction & 1) == axis
 
-	if building == Tiles.RADIOACTIVE_WASTE or building == Tiles.SMALL_PARK or building > Tiles.HIGHWAY_POWER_CROSSING_TWO:
+	if building == Tiles.RADIOACTIVE_WASTE or building == Tiles.SMALL_PARK or building > Tiles.HIGHWAY_POWER_CROSSING_2:
 		return false
 
 	if building <= Tiles.TREE_LAST:
@@ -118,17 +118,17 @@ static func _tile_is_eligible(
 
 	var directional_id := building + (direction & 1)
 
-	return directional_id == 0x0f or directional_id == 0x1e or directional_id == 0x2d or directional_id == 0x4a
+	return directional_id == Tiles.POWER_LINE_STRAIGHT_2 or directional_id == Tiles.ROAD_STRAIGHT_2 or directional_id == Tiles.RAIL_STRAIGHT_2 or directional_id == Tiles.HIGHWAY_STRAIGHT_2
 
 
 static func _surface_fixed_axis(tile_id: int, mode: int) -> int:
 	# existing mixed crossings cannot turn. this is a geometry constraint,
 	# separate from whether reuse is free or a future saved edge is blocked
 	if mode == MODE_ROAD:
-		return {Tiles.ROAD_POWER_CROSSING_ONE: 0, Tiles.ROAD_POWER_CROSSING_TWO: 1, Tiles.ROAD_RAIL_CROSSING_ONE: 0, Tiles.ROAD_RAIL_CROSSING_TWO: 1, Tiles.HIGHWAY_ROAD_CROSSING_ONE: 1, Tiles.HIGHWAY_ROAD_CROSSING_TWO: 0}.get(tile_id, -1)
+		return {Tiles.ROAD_POWER_CROSSING_1: 0, Tiles.ROAD_POWER_CROSSING_2: 1, Tiles.ROAD_RAIL_CROSSING_1: 0, Tiles.ROAD_RAIL_CROSSING_2: 1, Tiles.HIGHWAY_ROAD_CROSSING_1: 1, Tiles.HIGHWAY_ROAD_CROSSING_2: 0}.get(tile_id, -1)
 	if mode == MODE_RAIL:
-		return {Tiles.ROAD_RAIL_CROSSING_ONE: 1, Tiles.ROAD_RAIL_CROSSING_TWO: 0, Tiles.RAIL_POWER_CROSSING_ONE: 0, Tiles.RAIL_POWER_CROSSING_TWO: 1, Tiles.HIGHWAY_RAIL_CROSSING_ONE: 1, Tiles.HIGHWAY_RAIL_CROSSING_TWO: 0}.get(tile_id, -1)
-	return {Tiles.ROAD_POWER_CROSSING_ONE: 1, Tiles.ROAD_POWER_CROSSING_TWO: 0, Tiles.RAIL_POWER_CROSSING_ONE: 1, Tiles.RAIL_POWER_CROSSING_TWO: 0, Tiles.HIGHWAY_POWER_CROSSING_ONE: 1, Tiles.HIGHWAY_POWER_CROSSING_TWO: 0}.get(tile_id, -1)
+		return {Tiles.ROAD_RAIL_CROSSING_1: 1, Tiles.ROAD_RAIL_CROSSING_2: 0, Tiles.RAIL_POWER_CROSSING_1: 0, Tiles.RAIL_POWER_CROSSING_2: 1, Tiles.HIGHWAY_RAIL_CROSSING_1: 1, Tiles.HIGHWAY_RAIL_CROSSING_2: 0}.get(tile_id, -1)
+	return {Tiles.ROAD_POWER_CROSSING_1: 1, Tiles.ROAD_POWER_CROSSING_2: 0, Tiles.RAIL_POWER_CROSSING_1: 1, Tiles.RAIL_POWER_CROSSING_2: 0, Tiles.HIGHWAY_POWER_CROSSING_1: 1, Tiles.HIGHWAY_POWER_CROSSING_2: 0}.get(tile_id, -1)
 
 
 static func _reuses_surface(tile_id: int, mode: int) -> bool:
@@ -136,18 +136,18 @@ static func _reuses_surface(tile_id: int, mode: int) -> bool:
 		mode == MODE_RAIL and _rail_connects(tile_id)
 	) or (mode == MODE_POWER and (
 		(tile_id >= Tiles.POWER_LINE_FIRST and tile_id <= Tiles.POWER_LINE_LAST)
-		or (tile_id >= Tiles.ROAD_POWER_CROSSING_ONE and tile_id <= Tiles.ROAD_POWER_CROSSING_TWO)
-		or (tile_id >= Tiles.RAIL_POWER_CROSSING_ONE and tile_id <= Tiles.RAIL_POWER_CROSSING_TWO)
-		or (tile_id >= Tiles.HIGHWAY_POWER_CROSSING_ONE and tile_id <= Tiles.HIGHWAY_POWER_CROSSING_TWO)
+		or (tile_id >= Tiles.ROAD_POWER_CROSSING_1 and tile_id <= Tiles.ROAD_POWER_CROSSING_2)
+		or (tile_id >= Tiles.RAIL_POWER_CROSSING_1 and tile_id <= Tiles.RAIL_POWER_CROSSING_2)
+		or (tile_id >= Tiles.HIGHWAY_POWER_CROSSING_1 and tile_id <= Tiles.HIGHWAY_POWER_CROSSING_2)
 	))
 
 
 static func _road_connects(tile_id: int) -> bool:
 	return (
 		(tile_id >= Tiles.FIRST_ROAD and tile_id <= Tiles.LAST_ROAD)
-		or (tile_id >= Tiles.TUNNEL_FIRST and tile_id <= Tiles.ROAD_RAIL_CROSSING_TWO)
-		or tile_id == Tiles.HIGHWAY_ROAD_CROSSING_ONE
-		or tile_id == Tiles.HIGHWAY_ROAD_CROSSING_TWO
+		or (tile_id >= Tiles.TUNNEL_FIRST and tile_id <= Tiles.ROAD_RAIL_CROSSING_2)
+		or tile_id == Tiles.HIGHWAY_ROAD_CROSSING_1
+		or tile_id == Tiles.HIGHWAY_ROAD_CROSSING_2
 		or (tile_id >= Tiles.ONRAMP_FIRST and tile_id <= Tiles.ONRAMP_LAST)
 	)
 
@@ -155,9 +155,9 @@ static func _road_connects(tile_id: int) -> bool:
 static func _rail_connects(tile_id: int) -> bool:
 	return (
 		(tile_id >= Tiles.RAIL_FIRST and tile_id <= Tiles.RAIL_LAST)
-		or (tile_id >= Tiles.ROAD_RAIL_CROSSING_ONE and tile_id <= Tiles.RAIL_POWER_CROSSING_TWO)
-		or tile_id == Tiles.HIGHWAY_RAIL_CROSSING_ONE
-		or tile_id == Tiles.HIGHWAY_RAIL_CROSSING_TWO
+		or (tile_id >= Tiles.ROAD_RAIL_CROSSING_1 and tile_id <= Tiles.RAIL_POWER_CROSSING_2)
+		or tile_id == Tiles.HIGHWAY_RAIL_CROSSING_1
+		or tile_id == Tiles.HIGHWAY_RAIL_CROSSING_2
 		or (tile_id >= Tiles.RAIL_SUBWAY_FIRST and tile_id <= Tiles.RAIL_SUBWAY_LAST)
 	)
 

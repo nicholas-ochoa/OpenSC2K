@@ -4,6 +4,8 @@ extends DisasterStartConstants
 @warning_ignore_start("integer_division")
 
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 static func _start_toxic_spill(city: CityState, point: Vector2i) -> DisasterStartResult:
 	var map_edge: int = city.map_size if city != null else 128
 	var index := DisasterStartObjectsState._index(point, map_edge)
@@ -175,11 +177,11 @@ static func _find_riot_seed(
 
 static func _riot_start_supports(tile: int) -> bool:
 	return (
-		(tile >= 0x1d and tile <= 0x2b)
-		or (tile >= 0x3f and tile <= 0x46)
-		or tile == 0x4b
-		or tile == 0x4c
-		or (tile >= 0x5d and tile <= 0x60)
+		(tile >= Tiles.ROAD_STRAIGHT_1 and tile <= Tiles.ROAD_CROSSROADS)
+		or (tile >= Tiles.TUNNEL_ENTRANCE_1 and tile <= Tiles.ROAD_RAIL_CROSSING_2)
+		or tile == Tiles.HIGHWAY_ROAD_CROSSING_1
+		or tile == Tiles.HIGHWAY_ROAD_CROSSING_2
+		or (tile >= Tiles.HIGHWAY_ONRAMP_1 and tile <= Tiles.HIGHWAY_ONRAMP_4)
 	)
 
 

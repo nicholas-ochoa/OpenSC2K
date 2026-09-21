@@ -1,4 +1,6 @@
 extends SceneTree
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const DocumentState = preload("res://tests/support/document_state.gd")
 
 
@@ -58,7 +60,7 @@ func _run() -> void:
 		var buildings: PackedByteArray = main.document_state.current_document.find_chunk("XBLD").decoded_payload.duplicate()
 		for x in range(start.x, start.x + 11):
 			for y in range(start.y, start.y + 4):
-				buildings[main.document_state.city.index_of(x, y)] = 1 # Rubble has no protest branch.
+				buildings[main.document_state.city.index_of(x, y)] = Tiles.RUBBLE_1 # Rubble has no protest branch.
 		assert(main.document_state.city.replace_buildings(buildings))
 		var before: Array = DocumentState.capture(main.document_state.current_document)
 		var rng: int = main.tool_state.tool_random.state
@@ -108,8 +110,8 @@ func _run() -> void:
 		assert(DocumentState.capture(main.document_state.current_document) == before and main.tool_state.tool_random.state == rng)
 		# Dust advances the RNG. Keep the first random-state snapshot across later dabs.
 		buildings = main.document_state.city.buildings.duplicate()
-		buildings[main.document_state.city.index_of(start.x, start.y)] = 0x0d
-		buildings[main.document_state.city.index_of(start.x + 2, start.y)] = 0x0d
+		buildings[main.document_state.city.index_of(start.x, start.y)] = Tiles.SMALL_PARK
+		buildings[main.document_state.city.index_of(start.x + 2, start.y)] = Tiles.SMALL_PARK
 		assert(main.document_state.city.replace_buildings(buildings))
 		before = DocumentState.capture(main.document_state.current_document)
 		rng = main.tool_state.tool_random.state
@@ -124,7 +126,7 @@ func _run() -> void:
 		main.menus.set_overlay(CityViewMode.Mode.UNDERGROUND)
 		var underground: PackedByteArray = main.document_state.current_document.find_chunk("XUND").decoded_payload.duplicate()
 		for x in range(start.x, start.x + 4):
-			underground[main.document_state.city.index_of(x, start.y)] = 0x10
+			underground[main.document_state.city.index_of(x, start.y)] = UndergroundTileIds.PIPE_LR
 		assert(main.document_state.current_document.find_chunk("XUND").set_decoded_payload(underground))
 		before = DocumentState.capture(main.document_state.current_document)
 		_button(map, start, true)
@@ -137,7 +139,7 @@ func _run() -> void:
 		main.menus.set_overlay(CityViewMode.Mode.CITY)
 		# A protest keeps its tree without a notice or ending the held stroke.
 		buildings = main.document_state.city.buildings.duplicate()
-		buildings[main.document_state.city.index_of(start.x, start.y)] = 6
+		buildings[main.document_state.city.index_of(start.x, start.y)] = Tiles.TREES_1
 		assert(main.document_state.city.replace_buildings(buildings))
 		var probe := SimRandom.new()
 		for seed in range(1, 1000):

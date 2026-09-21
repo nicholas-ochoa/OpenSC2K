@@ -3,6 +3,8 @@ extends SceneTree
 ## Check that rejected edits leave both copies unchanged.
 
 # Narrow byte overlays at 128, and the wide SC2X two-plane layout at 256.
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const EDGES := [128, 256]
 const MIRRORS := {
 	"XTER": "terrain", "XBLD": "buildings", "XZON": "zones",
@@ -64,9 +66,9 @@ func check_mutators(edge: int) -> void:
 		var index := city.index_of(point.x, point.y)
 		apply(city, "set_terrain_id", city.set_terrain_id(point.x, point.y, 0x1e),
 			city.terrain_id(point.x, point.y) == 0x1e, index, edge)
-		apply(city, "set_building_id", city.set_building_id(point.x, point.y, 0x1d),
+		apply(city, "set_building_id", city.set_building_id(point.x, point.y, Tiles.ROAD_STRAIGHT_1),
 			city.building_id(point.x, point.y) == 0x1d, index, edge)
-		apply(city, "set_underground_id", city.set_underground_id(point.x, point.y, 0x05),
+		apply(city, "set_underground_id", city.set_underground_id(point.x, point.y, UndergroundTileIds.SUBWAY_THB),
 			city.underground_id(point.x, point.y) == 0x05, index, edge)
 
 		# Zones and corners share one byte with complementary masks. Write both
@@ -107,7 +109,7 @@ func check_mutators(edge: int) -> void:
 			"Altitude fields share one word without clobbering at %d %s" % [edge, point])
 
 	# Repeat the same writes and check that the mirrors still agree.
-	check(city.set_building_id(7, 11, 0x1d) and city.set_zone_id(7, 11, 0x06)
+	check(city.set_building_id(7, 11, Tiles.ROAD_STRAIGHT_1) and city.set_zone_id(7, 11, 0x06)
 		and city.set_land_altitude(7, 11, 0x0b),
 		"A redundant tile edit still reports success at %d" % edge)
 	check(planes_match(city), "A redundant tile edit keeps the mirror in sync at %d" % edge)
@@ -144,10 +146,10 @@ func check_rejections(edge: int) -> void:
 
 	for point in outside:
 		check(not city.set_terrain_id(point.x, point.y, 1), "Terrain rejects %s at %d" % [point, edge])
-		check(not city.set_building_id(point.x, point.y, 1), "Building rejects %s at %d" % [point, edge])
+		check(not city.set_building_id(point.x, point.y, Tiles.RUBBLE_1), "Building rejects %s at %d" % [point, edge])
 		check(not city.set_zone_id(point.x, point.y, 1), "Zone rejects %s at %d" % [point, edge])
 		check(not city.set_building_corners(point.x, point.y, 0x10), "Corners reject %s at %d" % [point, edge])
-		check(not city.set_underground_id(point.x, point.y, 1), "Underground rejects %s at %d" % [point, edge])
+		check(not city.set_underground_id(point.x, point.y, UndergroundTileIds.SUBWAY_LR), "Underground rejects %s at %d" % [point, edge])
 		check(not city.set_text_overlay_id(point.x, point.y, 1), "Overlay rejects %s at %d" % [point, edge])
 		check(not city.set_tile_flag(point.x, point.y, 1, true), "Tile flag rejects %s at %d" % [point, edge])
 		check(not city.set_land_altitude(point.x, point.y, 1), "Land altitude rejects %s at %d" % [point, edge])
@@ -254,14 +256,14 @@ func check_tile_chunk_cache() -> void:
 	check(replacement.set_decoded_payload(original.decoded_payload), "Replacement payload is valid")
 	document.chunks[document.chunks.find(original)] = replacement
 	document.rebuild_chunk_cache()
-	check(city.set_building_id(2, 3, 0x1d), "Tile edit uses a rebuilt same-size replacement")
+	check(city.set_building_id(2, 3, Tiles.ROAD_STRAIGHT_1), "Tile edit uses a rebuilt same-size replacement")
 	check(replacement.decoded_payload[259] == 0x1d and original.decoded_payload[259] == 0,
 		"Cached tile edits cannot write the replaced chunk")
 	document.invalidate_chunk_cache()
-	check(city.set_building_id(2, 3, 0x1e), "Invalidated tile cache falls back to lookup")
+	check(city.set_building_id(2, 3, Tiles.ROAD_STRAIGHT_2), "Invalidated tile cache falls back to lookup")
 	document.rebuild_chunk_cache()
 	document.chunks.erase(replacement)
-	check(not city.set_building_id(2, 3, 0x1f), "Removed tile chunk cannot use a stale cached reference")
+	check(not city.set_building_id(2, 3, Tiles.ROAD_SLOPE_1), "Removed tile chunk cannot use a stale cached reference")
 	check(city.building_id(2, 3) == 0x1e, "Rejected cached write preserves the mirror")
 	document.chunks.append(replacement)
 	document.rebuild_chunk_cache()

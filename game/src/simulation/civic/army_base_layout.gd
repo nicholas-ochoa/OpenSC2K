@@ -3,6 +3,10 @@ extends RefCounted
 
 
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+const ZONE_TYPE_MASK := 0x0f
+const ALL_BUILDING_CORNERS := 0xf0
+
 static func build(
 	buildings: PackedByteArray, terrain: PackedByteArray, zones: PackedByteArray,
 	underground: PackedByteArray, flags: PackedByteArray, misc: PackedByteArray,
@@ -26,15 +30,15 @@ static func _strip(
 	for distance in 8:
 		var point: Vector2i = start + step * distance
 		var index: int = point.x * edge + point.y
-		if (zones[index] & 15) != 7 or underground[index] != 0 or flags[index] & 4:
+		if (zones[index] & ZONE_TYPE_MASK) != NetworkConstants.MILITARY_ZONE or underground[index] != UndergroundTileIds.EMPTY or flags[index] & NetworkConstants.FLAG_WATER:
 			continue
 		var tile := int(buildings[index])
-		if tile >= 0x0d or tile == 0x05 or terrain[index] >= 0x10:
+		if tile >= Tiles.SMALL_PARK or tile == Tiles.RADIOACTIVE_WASTE or terrain[index] >= TerrainTileIds.DEEP_WATER_FIRST:
 			continue
-		if NetworkCommand.TERRAIN_BLOCKS_DIRECTION[(terrain[index] & 15) * 4 + direction]:
+		if NetworkCommand.TERRAIN_BLOCKS_DIRECTION[(terrain[index] & TerrainTileIds.SHAPE_MASK) * 4 + direction]:
 			continue
 		NetworkTiles._grade_surface_terrain(terrain, flags, point, direction, edge)
-		SpecialZoneState._replace_special_building(buildings, zones, misc, index, 0x1d)
+		SpecialZoneState._replace_special_building(buildings, zones, misc, index, Tiles.ROAD_STRAIGHT_1)
 		NetworkTiles._retile_surface_neighborhood(buildings, terrain, zones, flags,
 			misc, point, NetworkCommand.MODE_ROAD, PackedByteArray(), edge)
 		placed += 1
@@ -45,7 +49,7 @@ static func _strip(
 		var index: int = point.x * edge + point.y
 		if distance == 7 and placed < 2:
 			continue
-		if terrain[index] == 0 and (zones[index] & 15) == 7 and buildings[index] in [0x1d, 0x1e]:
-			SpecialZoneState._replace_special_building(buildings, zones, misc, index, BuildingTileIds.RUNWAY_CROSSING)
-			zones[index] |= 0xf0
+		if terrain[index] == TerrainTileIds.FLAT and (zones[index] & ZONE_TYPE_MASK) == NetworkConstants.MILITARY_ZONE and buildings[index] in [Tiles.ROAD_STRAIGHT_1, Tiles.ROAD_STRAIGHT_2]:
+			SpecialZoneState._replace_special_building(buildings, zones, misc, index, Tiles.RUNWAY_CROSSING)
+			zones[index] |= ALL_BUILDING_CORNERS
 			flags[index] &= 0x0f

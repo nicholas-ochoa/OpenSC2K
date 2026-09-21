@@ -60,7 +60,7 @@ func _initialize() -> void:
 	assert(assets.large_sprites == loaded.large_sprites)
 	_write_manifest(root, manifest)
 	var standalone := GameAssetSource.load_source("", "folder", root)
-	assert(standalone.error.is_empty() and not standalone.use_original_data, standalone.error)
+	assert(standalone.error.is_empty(), standalone.error)
 	assert(standalone.assets.large_sprites.find_sprite(1001).decode_indices().pixels == sprite.decode_indices().pixels)
 
 	for bad_path in ["../sprite.png", "/sprite.png", "res://sprite.png", "a\\sprite.png", "./sprite.png"]:

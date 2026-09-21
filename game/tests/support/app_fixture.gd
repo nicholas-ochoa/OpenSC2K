@@ -20,3 +20,13 @@ static func configure(main: Node, skip_menu_city := false) -> void:
 	assert(FileAccess.file_exists(pack.path_join("pack.json")), "Application fixture needs ext/graphics/pack.json")
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", pack)
 	main.asset_state.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
+	var settings := ConfigFile.new()
+	settings.load(main.preferences.settings_path)
+
+	for kind in ["sound", "music"]:
+		var key: String = kind + "_pack_folder"
+
+		if not settings.has_section_key("audio", key):
+			settings.set_value("audio", key, ProjectSettings.globalize_path("res://../ext/" + kind))
+
+	assert(settings.save(main.preferences.settings_path) == OK)

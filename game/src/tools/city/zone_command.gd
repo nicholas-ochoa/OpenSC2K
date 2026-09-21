@@ -96,8 +96,8 @@ static func apply_rectangle(
 			previous_buildings.append(changed_buildings[index])
 			changed[index] = (changed[index] & 0xf0) | zone_type
 
-			if zone_type == 0 and changed_buildings[index] > 0 and changed_buildings[index] < 5:
-				changed_buildings[index] = 0
+			if zone_type == 0 and changed_buildings[index] > Tiles.EMPTY and changed_buildings[index] < Tiles.RADIOACTIVE_WASTE:
+				changed_buildings[index] = Tiles.EMPTY
 
 	var cost := int(preview.cost)
 
@@ -222,8 +222,8 @@ static func preview_rectangle(
 		var terrain_id := int(city.terrain[start_index])
 
 		if (
-			terrain_id < 0x30
-			and TERRAIN_REQUIRES_SURCHARGE[terrain_id & 0x0f]
+			terrain_id < TerrainTileIds.SURFACE_WATER_FIRST
+			and TERRAIN_REQUIRES_SURCHARGE[terrain_id & TerrainTileIds.SHAPE_MASK]
 		):
 			terrain_surcharges = 1
 
@@ -346,7 +346,7 @@ static func _tile_is_eligible(city: CityState, index: int) -> bool:
 
 	return (
 		not city.tile_flags[index] & FLAG_WATER
-		and city.terrain[index] == 0
+		and city.terrain[index] == TerrainTileIds.FLAT
 		and building < FIRST_ROAD
 		and building < FIRST_DEVELOPED_BUILDING
 		and building != RADIOACTIVITY
@@ -361,7 +361,7 @@ static func _tile_is_drag_price_eligible(
 	var building := city.buildings[index]
 
 	return (
-		city.terrain[index] == 0
+		city.terrain[index] == TerrainTileIds.FLAT
 		and building < FIRST_ROAD
 		and building != RADIOACTIVITY
 		and building != SMALL_PARK

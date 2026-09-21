@@ -1,5 +1,7 @@
 extends SceneTree
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 var failures := 0
 var fixtures: Dictionary = {}
 
@@ -122,10 +124,10 @@ func check_far_services_and_year(edge: int) -> void:
 	for dx in 4:
 		city.set_tile_flag(origin.x + dx, origin.y, 0xa0, true)
 
-	city.set_building_id(origin.x, origin.y, 0xc9)
-	city.set_building_id(origin.x + 1, origin.y, 0x70)
-	city.set_building_id(origin.x + 2, origin.y, 0xdc)
-	city.set_building_id(origin.x + 3, origin.y, 0xd2)
+	city.set_building_id(origin.x, origin.y, Tiles.GAS_POWER)
+	city.set_building_id(origin.x + 1, origin.y, Tiles.LOWER_CLASS_HOMES_1X1_1)
+	city.set_building_id(origin.x + 2, origin.y, Tiles.WATER_PUMP)
+	city.set_building_id(origin.x + 3, origin.y, Tiles.POLICE_STATION)
 	city.set_zone_id(origin.x + 1, origin.y, 2)
 	city.zones[(origin.x + 3) * edge + origin.y] |= 0x80
 	document.find_chunk("XZON").set_decoded_payload(city.zones)

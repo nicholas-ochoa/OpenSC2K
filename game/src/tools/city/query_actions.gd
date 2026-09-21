@@ -69,7 +69,7 @@ const TILE_UPPER_BOUNDS := [
 	Tiles.COMMERCIAL_3X3_FIRST,
 	Tiles.INDUSTRIAL_3X3_FIRST,
 	Tiles.CONSTRUCTION_3X3_FIRST,
-	Tiles.HYDRO_POWER_ONE,
+	Tiles.HYDRO_POWER_1,
 	Tiles.CITY_HALL,
 	Tiles.MUSEUM,
 	Tiles.BIG_PARK,
@@ -83,11 +83,11 @@ const TILE_UPPER_BOUNDS := [
 	Tiles.SUBWAY_STATION,
 	Tiles.WATER_TOWER,
 	Tiles.BUS_DEPOT,
-	Tiles.PARKING_LOT_ONE,
+	Tiles.PARKING_LOT_1,
 	Tiles.MAYOR_HOUSE,
 	Tiles.WATER_TREATMENT,
 	Tiles.LIBRARY,
-	Tiles.HANGAR_TWO,
+	Tiles.HANGAR_2,
 	Tiles.CHURCH,
 	Tiles.MARINA,
 	Tiles.MISSILE_SILO,
@@ -199,14 +199,14 @@ static func city_analysis(
 
 	if (
 		misc_chunk == null
-		or misc_chunk.decoded_payload.size() < MISC_TILE_COUNTS + 0x100 * 4
+		or misc_chunk.decoded_payload.size() < MISC_TILE_COUNTS + Tiles.COUNT * 4
 	):
 		return Analysis.failure("MISC tile counts are missing or invalid")
 
 	var counts := PackedInt32Array()
 	counts.resize(CATEGORY_COUNT)
 
-	for building in range(FIRST_BUILDING, 0x100):
+	for building in range(FIRST_BUILDING, Tiles.COUNT):
 		var building_count := city.document.misc_i32(MISC_TILE_COUNTS + building * 4)
 
 		for range_index in TILE_UPPER_BOUNDS.size():

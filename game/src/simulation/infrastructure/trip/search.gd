@@ -5,6 +5,8 @@ extends TransportTripConstants
 @warning_ignore_start("integer_division")
 
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 class Endpoint extends RefCounted:
 	var exit := false
 	var destination := false
@@ -342,13 +344,13 @@ static func _find_transport(buildings: PackedByteArray, origin: Vector2i, map_ed
 		if TransportTripSteps._is_surface_road(tile):
 			return (ROAD_MODE << (14 if map_edge == 128 else 18)) | index
 
-		if tile == BuildingTileIds.BUS_DEPOT:
+		if tile == Tiles.BUS_DEPOT:
 			return (BUS_STOP_MODE << (14 if map_edge == 128 else 18)) | index
 
-		if tile == BuildingTileIds.RAIL_STATION:
+		if tile == Tiles.RAIL_STATION:
 			return (RAIL_STATION_MODE << (14 if map_edge == 128 else 18)) | index
 
-		if tile == BuildingTileIds.SUBWAY_STATION:
+		if tile == Tiles.SUBWAY_STATION:
 			return (SUBWAY_STATION_MODE << (14 if map_edge == 128 else 18)) | index
 
 	return -1

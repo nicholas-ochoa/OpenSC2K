@@ -3,6 +3,8 @@ extends RefCounted
 
 # xthg types in the vehicles layer: airplanes, helicopters, cargo ships,
 # sailboats, and surface and subway trains. disaster objects stay visible
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const VEHICLE_THING_TYPES := [1, 2, 3, 9, 10, 11, 12, 13]
 const DEFAULT_VISIBILITY := {
 	"buildings": true,
@@ -48,12 +50,12 @@ static func surface_copy(source: CityState, visibility: Dictionary) -> CityState
 	for index in (map_edge * map_edge):
 		var building := int(result.buildings[index])
 
-		if not show_buildings and building >= BuildingTileIds.DEVELOPED_FIRST:
-			result.buildings[index] = 0
-		elif not show_networks and building >= 0x0e and building <= 0x6f:
-			result.buildings[index] = 0
-		elif not show_trees and building >= 0x06 and building <= 0x0c:
-			result.buildings[index] = 0
+		if not show_buildings and building >= Tiles.DEVELOPED_FIRST:
+			result.buildings[index] = Tiles.EMPTY
+		elif not show_networks and building >= Tiles.POWER_LINE_STRAIGHT_1 and building <= Tiles.RAIL_SUBWAY_ENTRANCE_4:
+			result.buildings[index] = Tiles.EMPTY
+		elif not show_trees and building >= Tiles.TREES_1 and building <= Tiles.TREES_7:
+			result.buildings[index] = Tiles.EMPTY
 
 		if not show_zones:
 			result.zones[index] &= 0xf0
@@ -67,8 +69,8 @@ static func surface_copy(source: CityState, visibility: Dictionary) -> CityState
 			result.tile_flags[index] &= 0xfb
 			var terrain := int(result.terrain[index])
 
-			if terrain >= 0x10 and terrain <= 0x4f:
-				result.terrain[index] = mini(terrain & 0x0f, 0x0e)
+			if terrain >= TerrainTileIds.DEEP_WATER_FIRST and terrain <= TerrainTileIds.WATER_RANGE_LAST:
+				result.terrain[index] = mini(terrain & TerrainTileIds.SHAPE_MASK, TerrainTileIds.LAND_DRAW_LAST)
 
 	return result
 

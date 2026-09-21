@@ -1,6 +1,8 @@
 class_name CityUndergroundView
 extends RefCounted
 
+const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
+
 const Geometry = preload("res://src/view/isometric/geometry.gd")
 
 const TERRAIN_WIREFRAME_FIRST := 0x131
@@ -156,25 +158,25 @@ static func tile_sprite_ids(
 	var underground := city.underground_id(x, y)
 
 	if not show_subways:
-		if underground == 0x1f:
-			underground = 0x11
-		elif underground == 0x20:
-			underground = 0x10
-		elif underground in range(1, 0x10) or underground == 0x23:
-			underground = 0
+		if underground == UnderTiles.PIPE_TB_SUBWAY_LR:
+			underground = UnderTiles.PIPE_TB
+		elif underground == UnderTiles.PIPE_LR_SUBWAY_TB:
+			underground = UnderTiles.PIPE_LR
+		elif underground in range(UnderTiles.SUBWAY_FIRST, UnderTiles.PIPE_FIRST) or underground == UnderTiles.SUBWAY_ENTRANCE:
+			underground = UnderTiles.EMPTY
 
 	var is_pipe := (
-		(underground >= 0x10 and underground <= 0x1e)
-		or underground == 0x1f
-		or underground == 0x20
+		(underground >= UnderTiles.PIPE_LR and underground <= UnderTiles.PIPE_LTBR)
+		or underground == UnderTiles.PIPE_TB_SUBWAY_LR
+		or underground == UnderTiles.PIPE_LR_SUBWAY_TB
 	)
 
 	if is_pipe:
 		if not show_water_mains:
-			if underground == 0x1f:
-				result.append(sprite_base + SUBWAY_AND_PIPE_FIRST + 0x01)
-			elif underground == 0x20:
-				result.append(sprite_base + SUBWAY_AND_PIPE_FIRST + 0x02)
+			if underground == UnderTiles.PIPE_TB_SUBWAY_LR:
+				result.append(sprite_base + SUBWAY_AND_PIPE_FIRST + UnderTiles.SUBWAY_LR)
+			elif underground == UnderTiles.PIPE_LR_SUBWAY_TB:
+				result.append(sprite_base + SUBWAY_AND_PIPE_FIRST + UnderTiles.SUBWAY_TB)
 			else:
 				result.append(
 					sprite_base + terrain_wireframe_offset(city.terrain_id(x, y))
@@ -189,7 +191,7 @@ static func tile_sprite_ids(
 
 		return result
 
-	if underground == 0:
+	if underground == UnderTiles.EMPTY:
 		if not show_pipes or not city.is_piped(x, y):
 			result.append(
 				sprite_base + terrain_wireframe_offset(city.terrain_id(x, y))
@@ -212,14 +214,14 @@ static func tile_sprite_ids(
 
 
 static func terrain_wireframe_offset(terrain: int) -> int:
-	if terrain >= 0x00 and terrain <= 0x0e:
-		return TERRAIN_WIREFRAME_FIRST + mini(terrain, 0x0d)
+	if terrain >= TerrainTileIds.FLAT and terrain <= TerrainTileIds.LAND_DRAW_LAST:
+		return TERRAIN_WIREFRAME_FIRST + mini(terrain, TerrainTileIds.RAISED)
 
-	if terrain >= 0x10 and terrain <= 0x1e:
-		return TERRAIN_WIREFRAME_FIRST + mini(terrain - 0x10, 0x0d)
+	if terrain >= TerrainTileIds.DEEP_WATER_FIRST and terrain <= TerrainTileIds.DEEP_WATER_DRAW_LAST:
+		return TERRAIN_WIREFRAME_FIRST + mini(terrain - TerrainTileIds.DEEP_WATER_FIRST, TerrainTileIds.RAISED)
 
-	if terrain >= 0x20 and terrain <= 0x2e:
-		return TERRAIN_WIREFRAME_FIRST + mini(terrain - 0x20, 0x0d)
+	if terrain >= TerrainTileIds.SHORE_FIRST and terrain <= TerrainTileIds.FORBIDDEN_COAST:
+		return TERRAIN_WIREFRAME_FIRST + mini(terrain - TerrainTileIds.SHORE_FIRST, TerrainTileIds.RAISED)
 
 	return TERRAIN_WIREFRAME_FIRST
 
@@ -241,7 +243,7 @@ static func tunnel_sprite_id(
 		return -1
 
 	if levels == 1:
-		return configuration.sprite_base + 0x3e + city.terrain_id(x, y)
+		return configuration.sprite_base + (BuildingTileIds.TUNNEL_FIRST - 1) + city.terrain_id(x, y)
 
 	return configuration.sprite_base + DEEP_TUNNEL
 
@@ -321,7 +323,7 @@ static func draw_tile(
 		if not show_subways or not city.underground_level_is_visible(x, y, 1):
 			return
 
-		if not (underground in range(1, 0x10) or underground in [0x1f, 0x20, 0x23]):
+		if not (underground in range(UnderTiles.SUBWAY_FIRST, UnderTiles.PIPE_FIRST) or underground in [UnderTiles.PIPE_TB_SUBWAY_LR, UnderTiles.PIPE_LR_SUBWAY_TB, UnderTiles.SUBWAY_ENTRANCE]):
 			return
 
 	for sprite_id in tile_sprite_ids(

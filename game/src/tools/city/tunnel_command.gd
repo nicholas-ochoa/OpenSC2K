@@ -1,11 +1,15 @@
 class_name TunnelCommand
 extends RefCounted
 
+const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
+
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const GROUP_ROADS := 6
 const SUBTOOL_TUNNEL := 2
-const MAX_CLEAR_BUILDING := 0x0d
-const RADIOACTIVITY := BuildingTileIds.RADIOACTIVE_WASTE
-const FIRST_ENTRANCE := 0x3f
+const MAX_CLEAR_BUILDING := Tiles.SMALL_PARK
+const RADIOACTIVITY := Tiles.RADIOACTIVE_WASTE
+const FIRST_ENTRANCE := Tiles.TUNNEL_FIRST
 const TUNNEL_MASK := 0x7c00
 const ALTITUDE_DATA_MASK := 0x03ff
 const ONE_TUNNEL_LEVEL := 0x0400
@@ -43,12 +47,12 @@ static func apply(
 	if city.buildings[start_index] > MAX_CLEAR_BUILDING or city.buildings[start_index] == RADIOACTIVITY:
 		return TunnelEditResult.rejected("tunnel entrance contains a protected building")
 
-	if city.underground[start_index] != 0:
+	if city.underground[start_index] != UnderTiles.EMPTY:
 		return TunnelEditResult.rejected("tunnel entrance conflicts with an underground network")
 
 	var start_terrain := int(city.terrain[start_index])
 
-	if start_terrain < 1 or start_terrain > 4:
+	if start_terrain < TerrainTileIds.SLOPE_TOP_LEFT or start_terrain > TerrainTileIds.SLOPE_BOTTOM_LEFT:
 		return TunnelEditResult.rejected("tunnel entrance requires a cardinal slope")
 
 	var direction_index := (start_terrain + 2) & 3
@@ -145,7 +149,7 @@ static func apply(
 	var text_overlays: PackedByteArray = changed_payloads.XTXT
 	var misc: PackedByteArray = changed_payloads.MISC
 
-	var start_tile := start_terrain + 0x3e
+	var start_tile := start_terrain + (FIRST_ENTRANCE - 1)
 	var finish_tile := ((start_terrain + 1) & 3) + FIRST_ENTRANCE
 	NetworkState.replace_building(buildings, zones, misc, start_index, start_tile)
 	_set_tunnel_level(altitude, start_index, 1)
@@ -219,9 +223,9 @@ static func undo(city: CityState, command: TunnelEditResult) -> EditCommandResul
 
 static func _underground_blocks_tunnel(tile_id: int) -> bool:
 	return (
-		(tile_id >= 0x01 and tile_id <= 0x20)
-		or tile_id == 0x22
-		or tile_id == 0x23
+		(tile_id >= UnderTiles.SUBWAY_LR and tile_id <= UnderTiles.PIPE_LR_SUBWAY_TB)
+		or tile_id == UnderTiles.MISSILE_SILO
+		or tile_id == UnderTiles.SUBWAY_ENTRANCE
 	)
 
 

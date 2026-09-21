@@ -1,11 +1,15 @@
 class_name SubwayToRailCommand
 extends RefCounted
 
+const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
+
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 const GROUP_RAIL := 7
 const SUBTOOL_CONNECTION := 4
-const CONNECTOR_FIRST := 0x6c
-const RADIOACTIVITY := BuildingTileIds.RADIOACTIVE_WASTE
-const MAX_CLEAR_BUILDING := 0x0c
+const CONNECTOR_FIRST := Tiles.RAIL_SUBWAY_ENTRANCE_1
+const RADIOACTIVITY := Tiles.RADIOACTIVE_WASTE
+const MAX_CLEAR_BUILDING := Tiles.TREES_7
 const FLAG_PIPED := 0x20
 const DIRECTIONS := [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]
 
@@ -33,7 +37,7 @@ static func apply(
 	if city.buildings[index] > MAX_CLEAR_BUILDING or city.buildings[index] == RADIOACTIVITY:
 		return SubwayToRailEditResult.rejected("connection site contains a protected building")
 
-	if city.terrain[index] != 0:
+	if city.terrain[index] != TerrainTileIds.FLAT:
 		return SubwayToRailEditResult.rejected("connection site is not clear terrain")
 
 	var neighbor := Vector2i(-1, -1)
@@ -147,17 +151,17 @@ static func undo(city: CityState, command: SubwayToRailEditResult) -> EditComman
 
 static func _surface_rail_connects(tile_id: int) -> bool:
 	return (
-		(tile_id >= 0x2c and tile_id <= 0x3e)
-		or (tile_id >= 0x45 and tile_id <= 0x48)
-		or (tile_id >= 0x6c and tile_id <= 0x6f)
+		(tile_id >= Tiles.RAIL_STRAIGHT_1 and tile_id <= Tiles.RAIL_SLOPE_8)
+		or (tile_id >= Tiles.ROAD_RAIL_CROSSING_1 and tile_id <= Tiles.RAIL_POWER_CROSSING_2)
+		or (tile_id >= Tiles.RAIL_SUBWAY_ENTRANCE_1 and tile_id <= Tiles.RAIL_SUBWAY_ENTRANCE_4)
 	)
 
 
 static func _subway_connects(tile_id: int) -> bool:
 	return (
-		(tile_id >= 0x01 and tile_id <= 0x0f)
-		or tile_id == 0x1f
-		or tile_id == 0x20
-		or tile_id == 0x22
-		or tile_id == 0x23
+		(tile_id >= UnderTiles.SUBWAY_LR and tile_id <= UnderTiles.SUBWAY_LTBR)
+		or tile_id == UnderTiles.PIPE_TB_SUBWAY_LR
+		or tile_id == UnderTiles.PIPE_LR_SUBWAY_TB
+		or tile_id == UnderTiles.MISSILE_SILO
+		or tile_id == UnderTiles.SUBWAY_ENTRANCE
 	)

@@ -207,7 +207,7 @@ class TileScan extends GrowthConstants:
 		var status := STATUS_NORMAL
 
 		if building < Tiles.DEVELOPED_FIRST:
-			if building >= 0x1d or not TransportTrip.has_nearby_transport(buildings, tile, map_edge):
+			if building >= Tiles.ROAD_STRAIGHT_1 or not TransportTrip.has_nearby_transport(buildings, tile, map_edge):
 				return true
 		else:
 			if building > Tiles.DEVELOPED_3X3_LAST or zone_byte & anchor_mask == 0:

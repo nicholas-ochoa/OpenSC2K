@@ -9,7 +9,7 @@ func _benchmark_initialize() -> void:
 	for x in city.map_size:
 		for y in city.map_size:
 			var tile := city.building_id(x, y)
-			if city.zone_id(x, y) in [1, 2, 3, 4, 5, 6] and tile >= 0x70 and tile <= 0xc5:
+			if city.zone_id(x, y) in [1, 2, 3, 4, 5, 6] and tile >= BuildingTileIds.DEVELOPED_FIRST and tile <= BuildingTileIds.DEVELOPED_3X3_LAST:
 				samples.append(Vector2i(x, y))
 	var traffic := city.document.find_chunk("XTRF").decoded_payload.duplicate()
 
@@ -33,7 +33,7 @@ func _benchmark_initialize() -> void:
 		var center := Vector2i(edge - 50, edge - 50)
 		for x in range(center.x - 40, center.x + 41):
 			for y in range(center.y - 40, center.y + 41):
-				dense.set_building_id(x, y, 0x2b)
+				dense.set_building_id(x, y, BuildingTileIds.ROAD_CROSSROADS)
 		started = Time.get_ticks_usec()
 		var result := TripReachAnalysis.inspect(dense, center)
 		var analysis_usec := Time.get_ticks_usec() - started

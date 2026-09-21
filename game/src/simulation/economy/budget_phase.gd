@@ -166,30 +166,30 @@ static func run(city: CityState, random: SimRandom, annual_budget_approved := fa
 		var count := _tile_count(misc, tile_id)
 
 		if (
-			(tile_id >= 0x1d and tile_id <= 0x2b)
-			or (tile_id >= 0x3f and tile_id <= 0x46)
-			or tile_id == 0x4b
-			or tile_id == 0x4c
-			or (tile_id >= 0x5d and tile_id <= 0x60)
+			(tile_id >= Tiles.ROAD_STRAIGHT_1 and tile_id <= Tiles.ROAD_CROSSROADS)
+			or (tile_id >= Tiles.TUNNEL_ENTRANCE_1 and tile_id <= Tiles.ROAD_RAIL_CROSSING_2)
+			or tile_id == Tiles.HIGHWAY_ROAD_CROSSING_1
+			or tile_id == Tiles.HIGHWAY_ROAD_CROSSING_2
+			or (tile_id >= Tiles.HIGHWAY_ONRAMP_1 and tile_id <= Tiles.HIGHWAY_ONRAMP_4)
 		):
 			_add_current(misc, BUDGET_ROAD, count)
 
 		if (
-			(tile_id >= 0x2c and tile_id <= 0x3e)
-			or (tile_id >= 0x45 and tile_id <= 0x48)
-			or (tile_id >= 0x6c and tile_id <= 0x6f)
-			or tile_id == 0x4d
-			or tile_id == 0x4e
+			(tile_id >= Tiles.RAIL_STRAIGHT_1 and tile_id <= Tiles.RAIL_SLOPE_8)
+			or (tile_id >= Tiles.ROAD_RAIL_CROSSING_1 and tile_id <= Tiles.RAIL_POWER_CROSSING_2)
+			or (tile_id >= Tiles.RAIL_SUBWAY_ENTRANCE_1 and tile_id <= Tiles.RAIL_SUBWAY_ENTRANCE_4)
+			or tile_id == Tiles.HIGHWAY_RAIL_CROSSING_1
+			or tile_id == Tiles.HIGHWAY_RAIL_CROSSING_2
 		):
 			_add_current(misc, BUDGET_RAIL, count)
 
-		if (tile_id >= 0x51 and tile_id <= 0x5c) or tile_id == 0x6a or tile_id == 0x6b:
+		if (tile_id >= Tiles.SUSPENSION_BRIDGE_1 and tile_id <= Tiles.POWER_BRIDGE) or tile_id == Tiles.HIGHWAY_BRIDGE or tile_id == Tiles.REINFORCED_HIGHWAY_BRIDGE:
 			_add_current(misc, BUDGET_BRIDGE, count)
 
-		if (tile_id >= 0x61 and tile_id <= 0x6b) or (tile_id >= 0x49 and tile_id <= 0x50):
+		if (tile_id >= Tiles.HIGHWAY_SLOPE_1 and tile_id <= Tiles.REINFORCED_HIGHWAY_BRIDGE) or (tile_id >= Tiles.HIGHWAY_STRAIGHT_1 and tile_id <= Tiles.HIGHWAY_POWER_CROSSING_2):
 			_add_current(misc, BUDGET_HIGHWAY, count)
 
-		if tile_id >= 0x3f and tile_id <= 0x42:
+		if tile_id >= Tiles.TUNNEL_ENTRANCE_1 and tile_id <= Tiles.TUNNEL_ENTRANCE_4:
 			_add_current(misc, BUDGET_TUNNEL, count)
 
 	_write_i32(

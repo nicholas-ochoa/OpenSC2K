@@ -65,7 +65,7 @@ func _run() -> void:
 	city.set_land_altitude(5, 5, 5)
 	city.set_tile_flag(5, 5, 4, false)
 	city.set_terrain_id(5, 5, 0)
-	city.set_underground_id(5, 5, 1)
+	city.set_underground_id(5, 5, UndergroundTileIds.SUBWAY_LR)
 	city.set_tunnel_levels(5, 5, 5)
 	var bytes: PackedByteArray = city.document.serialize().data
 	city.visible_altitude_levels = 5

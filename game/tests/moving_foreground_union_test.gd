@@ -1,5 +1,7 @@
 extends SceneTree
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 class TestSprites extends ApplicationMovingSprites:
 	var images: Dictionary = {}
 
@@ -102,7 +104,7 @@ func _initialize() -> void:
 	assert(bands.get_pixel(0, 6).a == 0.0, "Pillars between composite highway decks cannot cover train")
 	assert(bands.get_pixel(0, 12).a > 0.0, "Second highway deck remains in foreground")
 
-	for tile in [0x0e, 0x1c, 0x43, 0x44, 0x47, 0x48, 0x4f, 0x50]:
+	for tile in [Tiles.POWER_LINE_STRAIGHT_1, Tiles.POWER_LINE_CROSSROADS, Tiles.ROAD_POWER_CROSSING_1, Tiles.ROAD_POWER_CROSSING_2, Tiles.RAIL_POWER_CROSSING_1, Tiles.RAIL_POWER_CROSSING_2, Tiles.HIGHWAY_POWER_CROSSING_1, Tiles.HIGHWAY_POWER_CROSSING_2]:
 		var command := CityStaticCommand.new()
 		CityIsometricRenderer.configure_train_foreground(command, tile, CityIsometricRenderer.view_configuration(CityIsometricRenderer.VIEW_LARGE))
 
@@ -122,7 +124,7 @@ func _initialize() -> void:
 		var config := CityIsometricRenderer.view_configuration(view)
 		var archive := large if view == CityIsometricRenderer.VIEW_LARGE else small
 
-		for tile in [0x4d, 0x4e]:
+		for tile in [Tiles.HIGHWAY_RAIL_CROSSING_1, Tiles.HIGHWAY_RAIL_CROSSING_2]:
 			assert(city.set_building_id(64, 64, tile))
 			var commands := CityIsometricRenderer.tile_occlusion_commands(city, archive, config, 0, 64, 64, 10)
 			var found := false

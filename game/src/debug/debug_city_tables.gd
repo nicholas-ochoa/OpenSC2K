@@ -51,7 +51,7 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 			for id in city.microsim_count():
 				var record := city.microsim(id)
 				var tile := record.tile_id if record != null else 0
-				if tile == 0 and not include_empty:
+				if tile == BuildingTileIds.EMPTY and not include_empty:
 					continue
 
 				var fields: Array[DebugTableRecord] = []
@@ -62,7 +62,7 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 					fields.append(_field("stat_%d" % index, record.statistic(index) if record != null else 0,
 						labels[index]))
 
-				var value: String = "Empty" if tile == 0 else FACILITIES.get(tile, "Facility 0x%02X" % tile)
+				var value: String = "Empty" if tile == BuildingTileIds.EMPTY else FACILITIES.get(tile, "Facility 0x%02X" % tile)
 				var label := city.label(OverlayData.facility_id(id))
 				var site: CityRecords.Site = sites.get(id)
 				var detail := "-" if label.is_empty() or label == value else label
@@ -76,7 +76,7 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 				row.detail = detail
 				# sort values per visible column, excluding the locate icon column
 				row.sort = [id, value, tile, _site_sort(site), detail]
-				row.empty = tile == 0
+				row.empty = tile == BuildingTileIds.EMPTY
 				row.fields = fields
 				result.append(row)
 		"Objects":
