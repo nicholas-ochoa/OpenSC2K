@@ -4,15 +4,15 @@
 
 [node name="ScenarioIntroDialog" type="AcceptDialog"]
 visible = true
-min_size = Vector2i(760, 520)
+min_size = Vector2i(760, 340)
 exclusive = true
 title = "Scenario"
 ok_button_text = "Begin Scenario"
 script = ExtResource("1_notice")
 
 [node name="Layout" type="HBoxContainer" parent="."]
-custom_minimum_size = Vector2(700, 400)
-theme_override_constants/separation = 16
+custom_minimum_size = Vector2(700, 276)
+theme_override_constants/separation = 20
 
 [node name="PictureFrame" type="PanelContainer" parent="Layout"]
 custom_minimum_size = Vector2(276, 276)
@@ -36,4 +36,5 @@ horizontal_scroll_mode = 0
 [node name="Text" type="Label" parent="Layout/TextScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/line_spacing = 4
 autowrap_mode = 3

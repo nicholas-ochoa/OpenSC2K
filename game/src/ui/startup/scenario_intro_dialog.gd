@@ -33,4 +33,4 @@ func show_briefing(
 	starts_scenario = starting
 	ok_button_text = "Begin Scenario" if starting else "OK"
 	set_briefing(scenario_name, picture, description)
-	popup_centered()
+	popup_centered(min_size)

@@ -5,8 +5,8 @@ func run() -> void:
 	var dialog := preload("res://src/ui/startup/scenario_intro_dialog.tscn").instantiate() as ScenarioIntroDialog
 	root.add_child(dialog)
 	var picture := Image.create(260, 260, false, Image.FORMAT_RGB8)
-	dialog.set_briefing("Test", picture, "Extended Description: First\r\nSecond")
-	assert(dialog.text_view.text == "First\nSecond")
+	dialog.set_briefing("Test", picture, "Extended Description: First\r\nSecond\r\n\r\nNext paragraph\rFinal line")
+	assert(dialog.text_view.text == "First\nSecond\n\nNext paragraph\nFinal line")
 	assert(dialog.picture_view.texture.get_size() == Vector2(260, 260))
 	dialog.show_briefing("No picture", null, "Text only")
 	await process_frame
