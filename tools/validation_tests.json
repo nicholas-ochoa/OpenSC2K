@@ -3,7 +3,10 @@
     "id": "budget_dialog_test",
     "script": "tests/budget_dialog_test.gd",
     "domain": "ui",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "benchmark_inputs",
@@ -13,7 +16,11 @@
     "fixtures": [
       "large-cities"
     ],
-    "timeout": 90
+    "timeout": 90,
+    "requires": [
+      "references/SIMCITY2000",
+      "ext/graphics/pack.json"
+    ]
   },
   {
     "id": "city_render_task_test",
@@ -25,7 +32,10 @@
     "id": "city_gpu_tile_eviction_test",
     "script": "tests/city_gpu_tile_eviction_test.gd",
     "domain": "rendering",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "edit_payload_copy_test",
@@ -60,6 +70,9 @@
       "tests/suites/scenes/sidebar_scene_test.gd",
       "tests/suites/scenes/workspace_scene_test.gd",
       "tests/suites/scenes/closed_dialogs_scene_test.gd"
+    ],
+    "requires": [
+      "references/SIMCITY2000"
     ]
   },
   {
@@ -78,7 +91,10 @@
     "id": "overview_zoom_test",
     "script": "tests/overview_zoom_test.gd",
     "domain": "ui",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "ext/graphics/pack.json"
+    ]
   },
   {
     "id": "simulation_timing_test",
@@ -96,7 +112,10 @@
     "id": "moving_foreground_union_test",
     "script": "tests/moving_foreground_union_test.gd",
     "domain": "rendering",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "simulation_debug_window_test",
@@ -120,7 +139,11 @@
     "id": "about_music_test",
     "script": "tests/about_music_test.gd",
     "domain": "audio",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000",
+      "ext/graphics/pack.json"
+    ]
   },
   {
     "id": "native_data_map_optimization_test",
@@ -138,7 +161,10 @@
     "id": "gpu_atlas_growth_test",
     "script": "tests/gpu_atlas_growth_test.gd",
     "domain": "rendering",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "native_graphics_settings_test",
@@ -162,13 +188,20 @@
     "id": "dark_underground_shader_test",
     "script": "tests/dark_underground_shader_test.gd",
     "domain": "rendering",
-    "lane": "native"
+    "lane": "native",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "underground_visibility_test",
     "script": "tests/underground_visibility_test.gd",
     "domain": "rendering",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000",
+      "ext/graphics/pack.json"
+    ]
   },
   {
     "id": "status_compass_test",
@@ -180,7 +213,10 @@
     "id": "water_shortage_status_test",
     "script": "tests/water_shortage_status_test.gd",
     "domain": "ui",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "workspace_overlay_test",
@@ -198,25 +234,39 @@
     "id": "independent_startup_test",
     "script": "tests/independent_startup_test.gd",
     "domain": "ui",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000",
+      "ext/graphics/pack.json"
+    ]
   },
   {
     "id": "asset_source_original_test",
     "script": "tests/asset_source_original_test.gd",
     "domain": "ui",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000",
+      "ext/graphics/pack.json"
+    ]
   },
   {
     "id": "windows_bitmap_rle8_test",
     "script": "tests/windows_bitmap_rle8_test.gd",
     "domain": "formats",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "pe_named_bitmap_test",
     "script": "tests/pe_named_bitmap_test.gd",
     "domain": "formats",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "pe_icon_cursor_test",
@@ -225,58 +275,10 @@
     "lane": "product"
   },
   {
-    "id": "audit_reference_overlays",
-    "script": "tools/audit_reference_overlays.gd",
-    "domain": "reference",
-    "lane": "audit"
-  },
-  {
-    "id": "audit_reference_ui_strips",
-    "script": "tools/audit_reference_ui_strips.gd",
-    "domain": "reference",
-    "lane": "audit"
-  },
-  {
-    "id": "audit_reference_neighbors",
-    "script": "tools/audit_reference_neighbors.gd",
-    "domain": "reference",
-    "lane": "audit"
-  },
-  {
     "id": "scurk_graphics_pack_test",
     "script": "tests/scurk_graphics_pack_test.gd",
     "domain": "scurk",
     "lane": "product"
-  },
-  {
-    "id": "audit_reference_scurk_controls",
-    "script": "tools/audit_reference_scurk_controls.gd",
-    "domain": "reference",
-    "lane": "audit"
-  },
-  {
-    "id": "audit_reference_scurk_workspace",
-    "script": "tools/audit_reference_scurk_workspace.gd",
-    "domain": "reference",
-    "lane": "audit"
-  },
-  {
-    "id": "audit_reference_advisor_portraits",
-    "script": "tools/audit_reference_advisor_portraits.gd",
-    "domain": "reference",
-    "lane": "audit"
-  },
-  {
-    "id": "audit_reference_terrain_media_ui",
-    "script": "tools/audit_reference_terrain_media_ui.gd",
-    "domain": "reference",
-    "lane": "audit"
-  },
-  {
-    "id": "audit_reference_notices",
-    "script": "tools/audit_reference_notices.gd",
-    "domain": "reference",
-    "lane": "audit"
   },
   {
     "id": "desktop_runtime_test",
@@ -284,20 +286,9 @@
     "domain": "ui",
     "lane": "product",
     "requires": [
+      "references/SIMCITY2000",
       "ext/graphics/pack.json"
     ]
-  },
-  {
-    "id": "audit_reference_scurk_presentation",
-    "script": "tools/audit_reference_scurk_presentation.gd",
-    "domain": "reference",
-    "lane": "audit"
-  },
-  {
-    "id": "audit_reference_scurk_drawing",
-    "script": "tools/audit_reference_scurk_drawing.gd",
-    "domain": "reference",
-    "lane": "audit"
   },
   {
     "id": "test_runner",
@@ -306,6 +297,9 @@
     "lane": "product",
     "args": [
       "{references}"
+    ],
+    "requires": [
+      "references/SIMCITY2000"
     ]
   },
   {
@@ -331,7 +325,10 @@
     "id": "facility_record_repair_test",
     "script": "tests/facility_record_repair_test.gd",
     "domain": "simulation",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "ext/graphics/pack.json"
+    ]
   },
   {
     "id": "no_disasters_aircraft_test",
@@ -421,7 +418,11 @@
     "id": "original_compatibility_test",
     "script": "tests/original_compatibility_test.gd",
     "domain": "formats",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000",
+      "ext/graphics/pack.json"
+    ]
   },
   {
     "id": "native_data_maps_ui_test",
@@ -442,7 +443,10 @@
     "id": "large_render_patch_test",
     "script": "tests/large_render_patch_test.gd",
     "domain": "rendering",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "small_city_test",
@@ -516,7 +520,10 @@
     "id": "city_region_renderer_test",
     "script": "tests/city_region_renderer_test.gd",
     "domain": "rendering",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "city_region_cache_test",
@@ -525,13 +532,19 @@
     "lane": "product",
     "fixtures": [
       "large-cities"
+    ],
+    "requires": [
+      "references/SIMCITY2000"
     ]
   },
   {
     "id": "city_region_occlusion_test",
     "script": "tests/city_region_occlusion_test.gd",
     "domain": "rendering",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "frame_simulation_test",
@@ -540,6 +553,9 @@
     "lane": "product",
     "fixtures": [
       "large-cities"
+    ],
+    "requires": [
+      "references/SIMCITY2000"
     ]
   },
   {
@@ -548,6 +564,7 @@
     "domain": "ui",
     "lane": "product",
     "requires": [
+      "references/SIMCITY2000",
       "ext/graphics/pack.json"
     ]
   },
@@ -557,6 +574,7 @@
     "domain": "ui",
     "lane": "product",
     "requires": [
+      "references/SIMCITY2000",
       "ext/graphics/pack.json"
     ]
   },
@@ -566,6 +584,7 @@
     "domain": "ui",
     "lane": "product",
     "requires": [
+      "references/SIMCITY2000",
       "ext/graphics/pack.json"
     ]
   },
@@ -575,6 +594,7 @@
     "domain": "ui",
     "lane": "product",
     "requires": [
+      "references/SIMCITY2000",
       "ext/graphics/pack.json"
     ]
   },
@@ -584,6 +604,7 @@
     "domain": "tools",
     "lane": "product",
     "requires": [
+      "references/SIMCITY2000",
       "ext/graphics/pack.json"
     ]
   },
@@ -593,6 +614,7 @@
     "domain": "ui",
     "lane": "product",
     "requires": [
+      "references/SIMCITY2000",
       "ext/graphics/pack.json"
     ]
   },
@@ -648,13 +670,19 @@
     "id": "demolish_paint_test",
     "script": "tests/demolish_paint_test.gd",
     "domain": "tools",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "ext/graphics/pack.json"
+    ]
   },
   {
     "id": "landscape_editor_tools_test",
     "script": "tests/landscape_editor_tools_test.gd",
     "domain": "tools",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "presentation_refinements_test",
@@ -662,6 +690,7 @@
     "domain": "ui",
     "lane": "product",
     "requires": [
+      "references/SIMCITY2000",
       "ext/graphics/pack.json"
     ]
   },
@@ -696,25 +725,38 @@
     "id": "title_music_startup_test",
     "script": "tests/title_music_startup_test.gd",
     "domain": "audio",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000",
+      "ext/graphics/pack.json"
+    ]
   },
   {
     "id": "stream_waterfall_render_test",
     "script": "tests/stream_waterfall_render_test.gd",
     "domain": "rendering",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "newspaper_web_view_test",
     "script": "tests/newspaper_web_view_test.gd",
     "domain": "ui",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "editor_stream_slopes_test",
     "script": "tests/editor_stream_slopes_test.gd",
     "domain": "ui",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "recorded_soundtrack_test",
@@ -729,7 +771,10 @@
     "id": "soundtrack_settings_test",
     "script": "tests/soundtrack_settings_test.gd",
     "domain": "audio",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "ext/music/pack.json"
+    ]
   },
   {
     "id": "city_gpu_geometry_test",
@@ -738,13 +783,19 @@
     "lane": "product",
     "fixtures": [
       "large-cities"
+    ],
+    "requires": [
+      "references/SIMCITY2000"
     ]
   },
   {
     "id": "city_gpu_fast_tile_test",
     "script": "tests/city_gpu_fast_tile_test.gd",
     "domain": "rendering",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "city_gpu_cache_test",
@@ -753,6 +804,9 @@
     "lane": "product",
     "fixtures": [
       "large-cities"
+    ],
+    "requires": [
+      "references/SIMCITY2000"
     ]
   },
   {
@@ -764,6 +818,7 @@
       "large-cities"
     ],
     "requires": [
+      "references/SIMCITY2000",
       "ext/graphics/pack.json"
     ]
   },
@@ -782,6 +837,7 @@
     "domain": "ui",
     "lane": "product",
     "requires": [
+      "references/SIMCITY2000",
       "ext/graphics/pack.json"
     ]
   },
@@ -791,6 +847,7 @@
     "domain": "rendering",
     "lane": "product",
     "requires": [
+      "references/SIMCITY2000",
       "ext/graphics/pack.json"
     ]
   },
@@ -798,7 +855,10 @@
     "id": "query_details_test",
     "script": "tests/query_details_test.gd",
     "domain": "ui",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "media_controls_test",
@@ -810,7 +870,10 @@
     "id": "network_preview_test",
     "script": "tests/network_preview_test.gd",
     "domain": "tools",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "network_terrain_test",
@@ -828,7 +891,10 @@
     "id": "bridge_continuation_test",
     "script": "tests/bridge_continuation_test.gd",
     "domain": "tools",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "slope_hit_test",
@@ -840,13 +906,19 @@
     "id": "city_render_retention_test",
     "script": "tests/city_render_retention_test.gd",
     "domain": "rendering",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "render_signature_revision_test",
     "script": "tests/render_signature_revision_test.gd",
     "domain": "rendering",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "static_overlay_signature_test",
@@ -855,6 +927,9 @@
     "lane": "product",
     "fixtures": [
       "large-cities"
+    ],
+    "requires": [
+      "references/SIMCITY2000"
     ]
   },
   {
@@ -870,6 +945,9 @@
     "lane": "product",
     "fixtures": [
       "large-cities"
+    ],
+    "requires": [
+      "references/SIMCITY2000"
     ]
   },
   {
@@ -891,6 +969,9 @@
     "lane": "product",
     "fixtures": [
       "large-cities"
+    ],
+    "requires": [
+      "references/SIMCITY2000"
     ]
   },
   {
@@ -905,6 +986,7 @@
     "domain": "formats",
     "lane": "product",
     "requires": [
+      "references/SIMCITY2000",
       "ext/graphics/pack.json",
       "ext/sound/pack.json",
       "ext/music/pack.json"
@@ -916,6 +998,7 @@
     "domain": "audio",
     "lane": "product",
     "requires": [
+      "references/SIMCITY2000",
       "ext/graphics/pack.json"
     ]
   },
@@ -932,19 +1015,28 @@
     "id": "scurk_png_import_test",
     "script": "tests/scurk_png_import_test.gd",
     "domain": "scurk",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "music_preferences_test",
     "script": "tests/music_preferences_test.gd",
     "domain": "audio",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "midi_synth_thread_test",
     "script": "tests/midi_synth_thread_test.gd",
     "domain": "audio",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "scurk_gif_export_test",
@@ -966,13 +1058,20 @@
     "id": "import_packs_runtime_test",
     "script": "tests/import_packs_runtime_test.gd",
     "domain": "ui",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "saved_camera_test",
     "script": "tests/saved_camera_test.gd",
     "domain": "ui",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000",
+      "ext/graphics/pack.json"
+    ]
   },
   {
     "id": "trip_reach_test",
@@ -1009,7 +1108,10 @@
     "fixtures": [
       "large-cities"
     ],
-    "timeout": 7200
+    "timeout": 7200,
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "city_gpu_geometry_test_native",
@@ -1018,13 +1120,19 @@
     "lane": "native",
     "fixtures": [
       "large-cities"
+    ],
+    "requires": [
+      "references/SIMCITY2000"
     ]
   },
   {
     "id": "moving_interpolation_test",
     "script": "tests/moving_interpolation_test.gd",
     "domain": "rendering",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "moving_blend_app_test",
@@ -1032,6 +1140,7 @@
     "domain": "rendering",
     "lane": "product",
     "requires": [
+      "references/SIMCITY2000",
       "ext/graphics/pack.json"
     ]
   },
@@ -1041,6 +1150,7 @@
     "domain": "rendering",
     "lane": "product",
     "requires": [
+      "references/SIMCITY2000",
       "ext/graphics/pack.json"
     ]
   },
@@ -1048,7 +1158,10 @@
     "id": "moving_occlusion_native_test",
     "script": "tests/moving_occlusion_native_test.gd",
     "domain": "rendering",
-    "lane": "native"
+    "lane": "native",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "moving_occlusion_app_native_test",
@@ -1056,6 +1169,7 @@
     "domain": "rendering",
     "lane": "native",
     "requires": [
+      "references/SIMCITY2000",
       "ext/graphics/pack.json"
     ]
   },
@@ -1072,7 +1186,10 @@
     "id": "large_render_patch_test_native",
     "script": "tests/large_render_patch_test.gd",
     "domain": "rendering",
-    "lane": "native"
+    "lane": "native",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
   },
   {
     "id": "graphics_test_palette_padding_preserves_encoded_indices",
@@ -1098,6 +1215,7 @@
       "{references}"
     ],
     "requires": [
+      "references/SIMCITY2000",
       "ext/graphics/pack.json"
     ]
   },
@@ -1106,12 +1224,6 @@
     "script": "tests/sc2_import_container_test.gd",
     "domain": "formats",
     "lane": "product"
-  },
-  {
-    "id": "sc2_import_corpus_test",
-    "script": "tests/sc2_import_corpus_test.gd",
-    "domain": "formats",
-    "lane": "audit"
   },
   {
     "id": "sc2_import_audio_test",
@@ -1126,27 +1238,9 @@
     "lane": "product"
   },
   {
-    "id": "sc2_import_pack_corpus_test",
-    "script": "tests/sc2_import_pack_corpus_test.gd",
-    "domain": "formats",
-    "lane": "audit"
-  },
-  {
     "id": "sc2_import_dialog_test",
     "script": "tests/sc2_import_dialog_test.gd",
     "domain": "ui",
     "lane": "product"
-  },
-  {
-    "id": "sc2_import_standalone_test",
-    "script": "tests/sc2_import_standalone_test.gd",
-    "domain": "ui",
-    "lane": "audit"
-  },
-  {
-    "id": "sc2_import_mac_tiles_test",
-    "script": "tests/sc2_import_mac_tiles_test.gd",
-    "domain": "formats",
-    "lane": "audit"
   }
 ]

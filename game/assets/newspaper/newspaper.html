@@ -7,7 +7,7 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'none'; img-src data:; font-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'"
     />
-    <title>City Newspaper</title>
+    <title>Newspaper</title>
     <style>
       @font-face {
         font-family: 'Newspaper Headline';
@@ -42,13 +42,11 @@
       html,
       body {
         cursor: default;
-      }
-      html,
-      body {
         margin: 0;
         height: 100%;
         background: transparent;
         color: #171713;
+        overflow: hidden;
       }
       body {
         font-family: Georgia, 'Times New Roman', serif;
@@ -373,10 +371,6 @@
       #shell.opening {
         animation: newspaper-spin-in 0.75s cubic-bezier(0.16, 0.75, 0.28, 1) both;
         transform-origin: center;
-      }
-      html,
-      body {
-        overflow: hidden;
       }
       #shell.preparing {
         visibility: hidden;

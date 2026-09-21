@@ -13,7 +13,7 @@ func _run() -> void:
 	root.content_scale_size = Vector2i(1240, 720)
 	root.size = Vector2i(Vector2(1240, 720) * display_scale)
 	root.min_size = Vector2i(Vector2(1000, 600) * display_scale)
-	var gallery := (load("res://tools/ui_gallery/ui_control_gallery.tscn") as PackedScene).instantiate()
+	var gallery := (load("res://tools/ui/ui_control_gallery.tscn") as PackedScene).instantiate()
 	root.add_child(gallery)
 	if "--smoke" in OS.get_cmdline_user_args():
 		await process_frame

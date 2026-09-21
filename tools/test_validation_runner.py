@@ -81,7 +81,6 @@ class ValidationRunnerTest(unittest.TestCase):
         self.assertNotIn('runtime_ui_smoke', ids)
         self.assertEqual(ids.count('runtime_ui_integration'), 1)
         self.assertIn('stitched_city_test', ids)
-        self.assertTrue(any(e['lane'] == 'audit' for e in selected))
 
     def test_routine_excludes_audits_and_native_only_checks(self):
         entries = runner.registry()

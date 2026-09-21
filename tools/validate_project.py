@@ -85,7 +85,7 @@ def missing_requirements(entry):
         elif requirement == 'pillow':
             present = importlib.util.find_spec('PIL')
         else:
-            present = (ROOT / requirement).is_file()
+            present = (ROOT / requirement).exists()
         if not present:
             missing.append(requirement)
     return missing

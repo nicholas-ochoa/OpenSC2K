@@ -1,7 +1,7 @@
 class_name CityNameGenerator
 extends RefCounted
 
-const DATA_PATH := "res://data/city_names.json"
+const DATA_PATH := "res://assets/data/city_names.json"
 
 
 static func generate(layout := "classic", random: RandomNumberGenerator = null,
