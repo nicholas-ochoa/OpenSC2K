@@ -117,15 +117,18 @@ func test_scurk_mif(reference_root: String) -> void:
 			one_tile_mask.size() == 128 * 256
 			and one_tile_mask[255 * 128 + 62] == 0
 			and one_tile_mask[255 * 128 + 63] == 1
-			and one_tile_mask[255 * 128 + 64] == 0
+			and one_tile_mask[255 * 128 + 64] == 1
+			and one_tile_mask[255 * 128 + 65] == 0
 			and one_tile_mask[254 * 128 + 61] == 1
 			and one_tile_mask[254 * 128 + 65] == 1
-			and one_tile_mask[254 * 128 + 66] == 0
-			and one_tile_mask[0 * 128 + 47] == 1
+			and one_tile_mask[254 * 128 + 66] == 1
+			and one_tile_mask[254 * 128 + 67] == 0
+			and one_tile_mask[0 * 128 + 47] == 0
+			and one_tile_mask[0 * 128 + 48] == 1
 			and one_tile_mask[0 * 128 + 80] == 0
 			and four_tile_mask[224 * 128 + 0] == 0
 			and four_tile_mask[223 * 128 + 0] == 1,
-			"SCURK clip mask follows the executable's bottom-up widening region",
+			"SCURK clip mask includes both tile edges",
 		)
 		var blank_workspace := PackedInt32Array()
 		blank_workspace.resize(ScurkWorkspace.WIDTH * ScurkWorkspace.HEIGHT)
@@ -516,7 +519,7 @@ func test_scurk_mif(reference_root: String) -> void:
 			and imported_output.pixels.has(2)
 			and imported_output.pixels.has(4)
 			and not imported_output.pixels.has(3)
-			and not imported_output.pixels.has(5)
+			and imported_output.pixels.has(5)
 			and scurk_editor.dirty,
 			"SCURK editor centers and clips an imported bitmap without changing its base",
 		)
@@ -715,7 +718,8 @@ func test_scurk_mif(reference_root: String) -> void:
 	_check(
 		clip_canvas.pixels[255 * 128 + 62] == -1
 		and clip_canvas.pixels[255 * 128 + 63] == 7
-		and clip_canvas.pixels[255 * 128 + 64] == -1
+		and clip_canvas.pixels[255 * 128 + 64] == 7
+		and clip_canvas.pixels[255 * 128 + 65] == -1
 		and clip_canvas.pixels[0 * 128 + 48] == 7,
 		"SCURK drawing tools erase pixels outside the active object base",
 	)

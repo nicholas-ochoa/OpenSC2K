@@ -1292,7 +1292,7 @@ func _refresh_sprite() -> void:
 		)
 		if _clipping_enabled():
 			pixel_canvas.set_edit_region(
-				DrawingWorkspace.clip_mask(active_base_width),
+				DrawingWorkspace.clip_mask(active_base_width, current_view),
 				DrawingWorkspace.base_size(active_base_width)
 			)
 		pixel_canvas.set_clip_region_visible(clip_region_check.button_pressed and not clip_region_check.disabled)
@@ -1790,7 +1790,7 @@ func _tile_needs_unclipped_workspace() -> bool:
 		var expanded := DrawingWorkspace.from_shape(
 			entry.width, entry.height, decoded.pixels, view, active_base_width, false
 		)
-		if expanded != DrawingWorkspace.apply_clip_mask(expanded, active_base_width):
+		if expanded != DrawingWorkspace.apply_clip_mask(expanded, active_base_width, view):
 			return true
 
 	return false

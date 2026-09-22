@@ -21,7 +21,7 @@ static func base_size(base_width: int) -> int:
 	return int(base_width / 32) if is_standard_base_width(base_width) else -1
 
 
-static func clip_mask(base_width: int) -> PackedByteArray:
+static func clip_mask(base_width: int, view := 0) -> PackedByteArray:
 	var mask := PackedByteArray()
 	mask.resize(WIDTH * HEIGHT)
 
@@ -31,38 +31,30 @@ static func clip_mask(base_width: int) -> PackedByteArray:
 		return mask
 
 	mask.fill(1)
-	var outside_half_width := 63
-	var final_outside_half_width := 64 - int(base_width / 2)
-	var rows := 32 if base_width == WIDTH else HEIGHT
+	var divisor := view_divisor(view)
+	var outside_limit := (WIDTH - base_width) / 2
 
-	for row_from_bottom in rows:
+	for row_from_bottom in HEIGHT:
 		var y := HEIGHT - 1 - row_from_bottom
+		var native_row := row_from_bottom / divisor
+		var outside_half_width := maxi(outside_limit, WIDTH / 2 - (native_row * 2 + 1) * divisor)
 
-		if outside_half_width > 0:
-			for x in outside_half_width:
-				mask[y * WIDTH + x] = 0
-
-		var right_start := 127 - outside_half_width
-
-		if right_start >= 0 and right_start < WIDTH:
-			for x in range(right_start, WIDTH):
-				mask[y * WIDTH + x] = 0
-
-		if final_outside_half_width < outside_half_width:
-			outside_half_width -= 2
+		for x in outside_half_width:
+			mask[y * WIDTH + x] = 0
+			mask[y * WIDTH + WIDTH - 1 - x] = 0
 
 	return mask
 
 
 static func apply_clip_mask(
-	workspace_pixels: PackedInt32Array, base_width: int
+	workspace_pixels: PackedInt32Array, base_width: int, view := 0
 ) -> PackedInt32Array:
 	var result := workspace_pixels.duplicate()
 
 	if result.size() != WIDTH * HEIGHT:
 		return result
 
-	var mask := clip_mask(base_width)
+	var mask := clip_mask(base_width, view)
 
 	for index in result.size():
 		if mask[index] == 0:
@@ -116,7 +108,7 @@ static func from_shape(
 
 					workspace[target_y * WIDTH + target_x] = value
 
-	return apply_clip_mask(workspace, base_width) if clipping_enabled else workspace
+	return apply_clip_mask(workspace, base_width, view) if clipping_enabled else workspace
 
 
 static func shape_from_workspace(
@@ -133,7 +125,7 @@ static func shape_from_workspace(
 	var output_width := int(output_base_width / divisor)
 	var output_max_height := int(HEIGHT / divisor)
 	var source_left := int((WIDTH - output_base_width) / 2)
-	var clipped := apply_clip_mask(workspace_pixels, base_width) if clipping_enabled else workspace_pixels
+	var clipped := apply_clip_mask(workspace_pixels, base_width, view) if clipping_enabled else workspace_pixels
 	var sampled := PackedInt32Array()
 	sampled.resize(output_width * output_max_height)
 	sampled.fill(-1)
