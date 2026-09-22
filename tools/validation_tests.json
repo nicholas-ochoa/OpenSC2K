@@ -1,5 +1,11 @@
 [
   {
+    "id": "trip_overlay_parity_test",
+    "script": "tests/trip_overlay_parity_test.gd",
+    "domain": "rendering",
+    "lane": "product"
+  },
+  {
     "id": "new_city_dialog_options_test",
     "script": "tests/new_city_dialog_options_test.gd",
     "domain": "ui",

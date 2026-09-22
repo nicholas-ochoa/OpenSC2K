@@ -3,6 +3,7 @@ extends RefCounted
 
 const ROUTE_BORDER_COLOR := Color(0.12, 0.20, 0.28, 0.75)
 const DIRECTION_COLOR := Color(0.12, 0.20, 0.28, 1.0)
+const HEAT_COLORS := [Color("258bff"), Color("20d6b1"), Color("f7dc50"), Color("ef594b")]
 
 var analysis: TransportTripReachResult
 var segments := PackedVector2Array()
@@ -31,8 +32,10 @@ func rebuild(city: CityState, result: TransportTripReachResult) -> void:
 	tile_costs.clear()
 	tile_modes.clear()
 	failed_points.clear()
-	origin = _center(city, result.origin)
-	access = _center(city, result.start if result.start.x >= 0 else result.origin)
+	# Keep cached centers within this rebuild. Terrain and mode can change later.
+	var centers: Dictionary[Vector3i, Vector2] = {}
+	origin = _cached_center(city, result.origin, centers)
+	access = _cached_center(city, result.start if result.start.x >= 0 else result.origin, centers)
 	var limit := int(result.limit)
 	var seen := {}
 
@@ -40,16 +43,16 @@ func rebuild(city: CityState, result: TransportTripReachResult) -> void:
 		var key: Vector2i = node.point
 		tile_modes[key] = int(tile_modes.get(key, 0)) | (1 << int(node.mode))
 		if not seen.has(key):
-			seen[key] = _center(city, key, int(node.mode))
+			seen[key] = _cached_center(city, key, centers, int(node.mode))
 			tile_costs[key] = int(node.cost)
-			markers.append(_center(city, key, int(node.mode)))
+			markers.append(seen[key])
 			marker_colors.append(heat_color(float(node.cost) / limit))
 
 	var arrow_links := {}
 	for link: TransportTripReachResult.Link in result.links:
 		var from_mode := int(link.from_mode)
-		var a := _center(city, link.from, from_mode)
-		var b := _center(city, link.to, int(link.mode))
+		var a := _cached_center(city, link.from, centers, from_mode)
+		var b := _cached_center(city, link.to, centers, int(link.mode))
 		var color := route_color(link, limit)
 		segments.append_array(PackedVector2Array([a, b]))
 		colors.append(color)
@@ -79,11 +82,11 @@ func rebuild(city: CityState, result: TransportTripReachResult) -> void:
 		var center := Vector2.ZERO
 		for x in range(site.position.x, site.end.x):
 			for y in range(site.position.y, site.end.y):
-				center += _center(city, Vector2i(x, y))
+				center += _cached_center(city, Vector2i(x, y), centers)
 		destinations.append(center / float(site.get_area()))
 
 	for point: Vector2i in result.limit_points:
-		failed_points.append(seen.get(point, _center(city, point)))
+		failed_points.append(seen.get(point, _cached_center(city, point, centers)))
 
 
 func draw_on(canvas: Control, scale: float, offset: Vector2, underground := false) -> void:
@@ -162,10 +165,16 @@ static func route_color(link: TransportTripReachResult.Link, limit: int) -> Colo
 
 
 static func heat_color(fraction: float) -> Color:
-	var stops := [Color("258bff"), Color("20d6b1"), Color("f7dc50"), Color("ef594b")]
 	var value := clampf(fraction, 0.0, 1.0) * 3.0
 	var index := mini(int(value), 2)
-	return stops[index].lerp(stops[index + 1], value - index)
+	return HEAT_COLORS[index].lerp(HEAT_COLORS[index + 1], value - index)
+
+
+static func _cached_center(city: CityState, point: Vector2i, centers: Dictionary[Vector3i, Vector2], mode := -1) -> Vector2:
+	var key := Vector3i(point.x, point.y, mode)
+	if not centers.has(key):
+		centers[key] = _center(city, point, mode)
+	return centers[key]
 
 
 static func _center(city: CityState, point: Vector2i, mode := -1) -> Vector2:
