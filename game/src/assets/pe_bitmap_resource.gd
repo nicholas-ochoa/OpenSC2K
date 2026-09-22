@@ -82,8 +82,8 @@ static func _image_from_dib(loaded_dib: PeDibResult, resource_id: Variant) -> As
 		var pixel_offset := _read_u32(dib, 0) + color_count * 4
 		var row_stride := (int(decoded.width) + 3) & ~3
 		dib = dib.slice(0, pixel_offset)
-		_write_u32(dib, 16, 0)
-		_write_u32(dib, 20, row_stride * int(decoded.height))
+		dib.encode_u32(16, 0)
+		dib.encode_u32(20, row_stride * int(decoded.height))
 		dib.resize(pixel_offset + row_stride * int(decoded.height))
 
 		for y in int(decoded.height):
@@ -473,10 +473,10 @@ static func _wrap_dib(dib: PackedByteArray) -> AssetBytesResult:
 
 	var result := PackedByteArray()
 	result.resize(14)
-	_write_u16(result, 0, 0x4d42)
-	_write_u32(result, 2, dib.size() + 14)
-	_write_u32(result, 6, 0)
-	_write_u32(result, 10, pixel_offset)
+	result.encode_u16(0, 0x4d42)
+	result.encode_u32(2, dib.size() + 14)
+	result.encode_u32(6, 0)
+	result.encode_u32(10, pixel_offset)
 	result.append_array(dib)
 
 	var outcome := AssetBytesResult.new()
@@ -517,26 +517,11 @@ static func _read_u16(bytes: PackedByteArray, offset: int) -> int:
 	if not _has_range(bytes, offset, 2):
 		return 0
 
-	return int(bytes[offset]) | (int(bytes[offset + 1]) << 8)
+	return bytes.decode_u16(offset)
 
 
 static func _read_u32(bytes: PackedByteArray, offset: int) -> int:
 	if not _has_range(bytes, offset, 4):
 		return 0
 
-	return (
-		int(bytes[offset])
-		| (int(bytes[offset + 1]) << 8)
-		| (int(bytes[offset + 2]) << 16)
-		| (int(bytes[offset + 3]) << 24)
-	)
-
-
-static func _write_u16(bytes: PackedByteArray, offset: int, value: int) -> void:
-	bytes[offset] = value & 0xff
-	bytes[offset + 1] = (value >> 8) & 0xff
-
-
-static func _write_u32(bytes: PackedByteArray, offset: int, value: int) -> void:
-	for index in 4:
-		bytes[offset + index] = (value >> (index * 8)) & 0xff
+	return bytes.decode_u32(offset)

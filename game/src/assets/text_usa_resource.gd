@@ -46,8 +46,8 @@ static func load_ids(
 	var records: Array[Vector2i] = []
 
 	for offset in range(0, index.size(), INDEX_RECORD_SIZE):
-		var resource_id := _read_u32(index, offset)
-		var data_offset := _read_u32(index, offset + 4)
+		var resource_id := index.decode_u32(offset)
+		var data_offset := index.decode_u32(offset + 4)
 
 		if data_offset < 0 or data_offset > data.size():
 			return _failure("text resource %d has an invalid offset" % resource_id)
@@ -83,15 +83,6 @@ static func load_ids(
 	outcome.error = ""
 
 	return outcome
-
-
-static func _read_u32(bytes: PackedByteArray, offset: int) -> int:
-	return (
-		int(bytes[offset])
-		| (int(bytes[offset + 1]) << 8)
-		| (int(bytes[offset + 2]) << 16)
-		| (int(bytes[offset + 3]) << 24)
-	)
 
 
 static func _failure(message: String) -> Result:

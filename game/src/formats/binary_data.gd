@@ -1,6 +1,7 @@
 class_name BinaryData
 extends RefCounted
 ## Big-endian fields in caller-validated buffers. Writes retain the low bits.
+## Use PackedByteArray decode/encode methods for little-endian fields.
 
 
 static func read_u16_be(data: PackedByteArray, offset: int) -> int:

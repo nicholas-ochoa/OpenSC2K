@@ -63,8 +63,8 @@ func _load(data_path: String, index_path: String) -> void:
 	var records: Array[Vector2i] = []
 
 	for offset in range(0, index.size(), INDEX_RECORD_SIZE):
-		var resource_id := _read_u32_le(index, offset)
-		var data_offset := _read_u32_le(index, offset + 4)
+		var resource_id := index.decode_u32(offset)
+		var data_offset := index.decode_u32(offset + 4)
 
 		if data_offset < 0 or data_offset > data.size():
 			load_error = "DATA_USA resource %d has an invalid offset" % resource_id
@@ -148,12 +148,3 @@ func _load(data_path: String, index_path: String) -> void:
 			load_error = "DATA_USA phrase %d is not terminated" % phrase_id
 
 			return
-
-
-static func _read_u32_le(data: PackedByteArray, offset: int) -> int:
-	return (
-		int(data[offset])
-		| (int(data[offset + 1]) << 8)
-		| (int(data[offset + 2]) << 16)
-		| (int(data[offset + 3]) << 24)
-	)

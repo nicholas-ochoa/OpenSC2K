@@ -12,10 +12,6 @@ static func has_range(data: PackedByteArray, offset: int, length: int) -> bool:
 	return offset >= 0 and length >= 0 and offset <= data.size() and length <= data.size() - offset
 
 
-static func be32(data: PackedByteArray, offset: int) -> int:
-	return (BinaryData.read_u16_be(data, offset) << 16) | BinaryData.read_u16_be(data, offset + 2)
-
-
 static func named_archive(data: PackedByteArray, origin: String) -> Sc2ImportContainer:
 	var result := Sc2ImportContainer.new()
 
@@ -55,7 +51,7 @@ static func macintosh(data: PackedByteArray, origin: String) -> Sc2ImportContain
 	var fork := data
 
 	# AppleDouble and AppleSingle both identify the resource fork with entry 2.
-	if has_range(data, 0, 26) and be32(data, 0) in [0x00051607, 0x00051600]:
+	if has_range(data, 0, 26) and BinaryData.read_u32_be(data, 0) in [0x00051607, 0x00051600]:
 		var count := BinaryData.read_u16_be(data, 24)
 
 		if not has_range(data, 26, count * 12):
@@ -66,11 +62,11 @@ static func macintosh(data: PackedByteArray, origin: String) -> Sc2ImportContain
 		for index in count:
 			var entry := 26 + index * 12
 
-			if be32(data, entry) != 2:
+			if BinaryData.read_u32_be(data, entry) != 2:
 				continue
 
-			var offset := be32(data, entry + 4)
-			var length := be32(data, entry + 8)
+			var offset := BinaryData.read_u32_be(data, entry + 4)
+			var length := BinaryData.read_u32_be(data, entry + 8)
 
 			if not has_range(data, offset, length):
 				return result._fail("The Macintosh resource fork is truncated.")
@@ -80,8 +76,8 @@ static func macintosh(data: PackedByteArray, origin: String) -> Sc2ImportContain
 
 	# MacBinary stores a padded data fork before its resource fork.
 	elif has_range(data, 0, 128) and data[0] == 0 and data[1] >= 1 and data[1] <= 63 and data[74] == 0 and data[82] == 0:
-		var offset := 128 + ((be32(data, 83) + 127) / 128) * 128
-		var length := be32(data, 87)
+		var offset := 128 + ((BinaryData.read_u32_be(data, 83) + 127) / 128) * 128
+		var length := BinaryData.read_u32_be(data, 87)
 
 		if length > 0 and has_range(data, offset, length):
 			fork = data.slice(offset, offset + length)
@@ -89,10 +85,10 @@ static func macintosh(data: PackedByteArray, origin: String) -> Sc2ImportContain
 	if not has_range(fork, 0, 16):
 		return result._fail("No readable Macintosh resource fork was found.")
 
-	var data_start := be32(fork, 0)
-	var map_start := be32(fork, 4)
-	var data_length := be32(fork, 8)
-	var map_length := be32(fork, 12)
+	var data_start := BinaryData.read_u32_be(fork, 0)
+	var map_start := BinaryData.read_u32_be(fork, 4)
+	var data_length := BinaryData.read_u32_be(fork, 8)
+	var map_length := BinaryData.read_u32_be(fork, 12)
 
 	if not has_range(fork, data_start, data_length) or map_length < 28 or not has_range(fork, map_start, map_length):
 		return result._fail("Invalid Macintosh resource map.")
@@ -124,13 +120,13 @@ static func macintosh(data: PackedByteArray, origin: String) -> Sc2ImportContain
 			if id >= 32768:
 				id -= 65536
 
-			var relative := be32(fork, ref + 4) & 0xffffff
+			var relative := BinaryData.read_u32_be(fork, ref + 4) & 0xffffff
 
 			if relative + 4 > data_length:
 				return result._fail("Invalid Macintosh resource offset.")
 
 			var start := data_start + relative
-			var length := be32(fork, start)
+			var length := BinaryData.read_u32_be(fork, start)
 
 			if relative + 4 + length > data_length:
 				return result._fail("The Macintosh resource data is truncated.")

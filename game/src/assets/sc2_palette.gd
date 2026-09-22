@@ -42,19 +42,19 @@ static func load_bmp(path: String) -> Sc2Palette:
 
 		return palette
 
-	var dib_size := _read_u32_le(bytes, 14)
+	var dib_size := bytes.decode_u32(14)
 
 	if dib_size < 40 or 14 + dib_size > bytes.size():
 		palette.load_error = "BMP information header is invalid"
 
 		return palette
 
-	if _read_u16_le(bytes, 28) != 8:
+	if bytes.decode_u16(28) != 8:
 		palette.load_error = "BMP does not use an 8-bit indexed palette"
 
 		return palette
 
-	var color_count := _read_u32_le(bytes, 46)
+	var color_count := bytes.decode_u32(46)
 
 	if color_count == 0:
 		color_count = 256
@@ -190,16 +190,3 @@ static func _apply_cycle(
 
 	for destination in cycle_table.size():
 		indices[start + destination] = previous[start + int(cycle_table[destination])]
-
-
-static func _read_u16_le(bytes: PackedByteArray, offset: int) -> int:
-	return bytes[offset] | (bytes[offset + 1] << 8)
-
-
-static func _read_u32_le(bytes: PackedByteArray, offset: int) -> int:
-	return (
-		bytes[offset]
-		| (bytes[offset + 1] << 8)
-		| (bytes[offset + 2] << 16)
-		| (bytes[offset + 3] << 24)
-	)

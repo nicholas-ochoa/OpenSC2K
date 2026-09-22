@@ -6,6 +6,7 @@ func _initialize() -> void:
 
 
 func run() -> void:
+	_test_macintosh_resources()
 	var archive := PackedByteArray()
 	archive.resize(36)
 	archive[0] = 65
@@ -63,3 +64,51 @@ func _put_be16(data: PackedByteArray, offset: int, value: int) -> void:
 func _put_be32(data: PackedByteArray, offset: int, value: int) -> void:
 	_put_be16(data, offset, value >> 16)
 	_put_be16(data, offset + 2, value & 65535)
+
+
+func _test_macintosh_resources() -> void:
+	var fork := PackedByteArray()
+	fork.resize(74)
+	_put_be32(fork, 0, 16)
+	_put_be32(fork, 4, 24)
+	_put_be32(fork, 8, 8)
+	_put_be32(fork, 12, 50)
+	_put_be32(fork, 16, 4)
+	fork[20] = 10
+	fork[21] = 20
+	fork[22] = 30
+	fork[23] = 40
+	_put_be16(fork, 48, 28)
+	fork[54] = 84
+	fork[55] = 69
+	fork[56] = 83
+	fork[57] = 84
+	_put_be16(fork, 60, 10)
+	_put_be16(fork, 62, 7)
+	_put_be16(fork, 64, 0xffff)
+	var apple_double := PackedByteArray()
+	apple_double.resize(38)
+	_put_be32(apple_double, 0, 0x00051607)
+	_put_be32(apple_double, 4, 0x00020000)
+	_put_be16(apple_double, 24, 1)
+	_put_be32(apple_double, 26, 2)
+	_put_be32(apple_double, 30, 38)
+	_put_be32(apple_double, 34, fork.size())
+	apple_double.append_array(fork)
+	var mac_binary := PackedByteArray()
+	mac_binary.resize(128)
+	mac_binary[1] = 1
+	mac_binary[2] = 65
+	_put_be32(mac_binary, 87, fork.size())
+	mac_binary.append_array(fork)
+	for bytes in [fork, apple_double, mac_binary]:
+		var result := Sc2ImportContainer.macintosh(bytes, "generated")
+		assert(result.error.is_empty() and result.resources.size() == 1)
+		assert(result.resources[0].type == "TEST" and result.resources[0].id == 7)
+		assert(result.resources[0].bytes == PackedByteArray([10, 20, 30, 40]))
+		for length in bytes.size():
+			assert(not Sc2ImportContainer.macintosh(bytes.slice(0, length), "generated").error.is_empty())
+	for offset in [0, 4, 8, 12, 16, 66]:
+		var bad := fork.duplicate()
+		_put_be32(bad, offset, 0xffffffff)
+		assert(not Sc2ImportContainer.macintosh(bad, "generated").error.is_empty())

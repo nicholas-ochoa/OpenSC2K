@@ -45,7 +45,7 @@ func _chunks(data: PackedByteArray, start: int, end: int, depth: int, in_sequenc
 			return
 
 		var tag := data.slice(cursor, cursor + 4).get_string_from_ascii()
-		var length := Sc2ImportContainer.be32(data, cursor + 4)
+		var length := BinaryData.read_u32_be(data, cursor + 4)
 		var body := cursor + 8
 
 		if length > end - body:

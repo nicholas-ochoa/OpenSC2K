@@ -129,7 +129,7 @@ func _read(path: String, explicitly_selected: bool) -> void:
 	var bytes := file.get_buffer(file.get_length())
 	_bytes_read += bytes.size()
 
-	if resource_fork or (bytes.size() >= 4 and Sc2ImportContainer.be32(bytes, 0) in [0x00051607, 0x00051600]):
+	if resource_fork or (bytes.size() >= 4 and BinaryData.read_u32_be(bytes, 0) in [0x00051607, 0x00051600]):
 		_accept(Sc2ImportContainer.macintosh(bytes, path), "Macintosh", name)
 		return
 

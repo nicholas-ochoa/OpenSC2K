@@ -177,8 +177,8 @@ func picture_indices() -> PictureIndices:
 		return PictureIndices.rejected("PICT header is invalid")
 
 	# pict dimensions are little-endian even though scen and form values are big-endian
-	var width := _read_u16_le(data, 4)
-	var height := _read_u16_le(data, 6)
+	var width := data.decode_u16(4)
+	var height := data.decode_u16(6)
 
 	if width <= 0 or height <= 0:
 		return PictureIndices.rejected("PICT dimensions are empty")
@@ -419,7 +419,3 @@ func _text_chunk(expected_header: int) -> String:
 		return chunk.decoded_payload.slice(4, end).get_string_from_ascii()
 
 	return ""
-
-
-static func _read_u16_le(data: PackedByteArray, offset: int) -> int:
-	return data[offset] | (data[offset + 1] << 8)

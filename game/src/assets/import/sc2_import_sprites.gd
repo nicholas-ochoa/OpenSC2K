@@ -12,11 +12,11 @@ var error := ""
 static func mac_tile_set(data: PackedByteArray) -> Sc2ImportSprites:
 	var result := Sc2ImportSprites.new()
 
-	if data.size() < 34 or data.slice(0, 4).get_string_from_ascii() != "MIFF" or Sc2ImportContainer.be32(data, 4) != data.size() - 8 or data.slice(8, 16).get_string_from_ascii() != "SC2KINFO":
+	if data.size() < 34 or data.slice(0, 4).get_string_from_ascii() != "MIFF" or BinaryData.read_u32_be(data, 4) != data.size() - 8 or data.slice(8, 16).get_string_from_ascii() != "SC2KINFO":
 		result.error = "Invalid Macintosh tile-set header."
 		return result
 
-	if Sc2ImportContainer.be32(data, 16) != 4 or data.slice(20, 28).get_string_from_ascii() != "_MACTILE" or Sc2ImportContainer.be32(data, 28) != 2:
+	if BinaryData.read_u32_be(data, 16) != 4 or data.slice(20, 28).get_string_from_ascii() != "_MACTILE" or BinaryData.read_u32_be(data, 28) != 2:
 		result.error = "Unsupported Macintosh tile-set directory."
 		return result
 
@@ -30,7 +30,7 @@ static func mac_tile_set(data: PackedByteArray) -> Sc2ImportSprites:
 			result.warnings.append("The Macintosh tile set ends before shape %d. Kept preceding shapes." % index)
 			break
 
-		var length := Sc2ImportContainer.be32(data, cursor + 4)
+		var length := BinaryData.read_u32_be(data, cursor + 4)
 		cursor += 8
 
 		if not Sc2ImportContainer.has_range(data, cursor, length):
@@ -44,7 +44,7 @@ static func mac_tile_set(data: PackedByteArray) -> Sc2ImportSprites:
 		if length == 0:
 			continue
 
-		if length < 10 or Sc2ImportContainer.be32(data, start + 6) != length - 10:
+		if length < 10 or BinaryData.read_u32_be(data, start + 6) != length - 10:
 			result.warnings.append("Macintosh shape %d has an invalid pixel length." % index)
 			continue
 

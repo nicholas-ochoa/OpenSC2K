@@ -34,7 +34,7 @@ static func mac_sound(data: PackedByteArray) -> AssetBytesResult:
 		if operation not in [0x8050, 0x8051]:
 			continue
 
-		var header := Sc2ImportContainer.be32(data, command + 4)
+		var header := BinaryData.read_u32_be(data, command + 4)
 
 		if not Sc2ImportContainer.has_range(data, header, 22):
 			return AssetBytesResult.failure("The Macintosh sample header is truncated.")
@@ -42,8 +42,8 @@ static func mac_sound(data: PackedByteArray) -> AssetBytesResult:
 		if data[header + 20] != 0:
 			return AssetBytesResult.failure("This Macintosh sound uses an unsupported extended or compressed sample format.")
 
-		var length := Sc2ImportContainer.be32(data, header + 4)
-		var rate := Sc2ImportContainer.be32(data, header + 8) >> 16
+		var length := BinaryData.read_u32_be(data, header + 4)
+		var rate := BinaryData.read_u32_be(data, header + 8) >> 16
 
 		if not Sc2ImportContainer.has_range(data, header + 22, length):
 			return AssetBytesResult.failure("The Macintosh sample data is truncated.")

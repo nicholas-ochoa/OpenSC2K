@@ -113,21 +113,21 @@ static func dib_to_bmp(bytes: PackedByteArray) -> AssetBytesResult:
 	if bytes.size() < INFO_HEADER_SIZE:
 		return AssetBytesResult.failure("DIB data is shorter than its information header.")
 
-	var header_size := _read_u32(bytes, 0)
+	var header_size := bytes.decode_u32(0)
 
 	if header_size < INFO_HEADER_SIZE or header_size > bytes.size():
 		return AssetBytesResult.failure("DIB information header is invalid.")
 
-	if _read_u16(bytes, 12) != 1:
+	if bytes.decode_u16(12) != 1:
 		return AssetBytesResult.failure("DIB plane count is not one.")
 
-	if _read_u16(bytes, 14) != 8:
+	if bytes.decode_u16(14) != 8:
 		return AssetBytesResult.failure("SCURK clipboard input requires an 8-bit indexed DIB.")
 
-	if _read_u32(bytes, 16) != 0:
+	if bytes.decode_u32(16) != 0:
 		return AssetBytesResult.failure("SCURK clipboard input requires an uncompressed DIB.")
 
-	var color_count := _read_u32(bytes, 32)
+	var color_count := bytes.decode_u32(32)
 
 	if color_count == 0:
 		color_count = PALETTE_COLOR_COUNT
@@ -146,8 +146,8 @@ static func dib_to_bmp(bytes: PackedByteArray) -> AssetBytesResult:
 	wrapped.fill(0)
 	wrapped[0] = 0x42
 	wrapped[1] = 0x4d
-	_write_u32(wrapped, 2, file_size)
-	_write_u32(wrapped, 10, FILE_HEADER_SIZE + dib_pixel_offset)
+	wrapped.encode_u32(2, file_size)
+	wrapped.encode_u32(10, FILE_HEADER_SIZE + dib_pixel_offset)
 	wrapped.append_array(bytes)
 	var decoded := decode(wrapped)
 
@@ -169,13 +169,13 @@ static func decode(bytes: PackedByteArray) -> IndexedImageResult:
 	if bytes[0] != 0x42 or bytes[1] != 0x4d:
 		return IndexedImageResult.failure("File does not have a Windows BMP signature.")
 
-	var declared_size := _read_u32(bytes, 2)
+	var declared_size := bytes.decode_u32(2)
 
 	if declared_size != 0 and declared_size > bytes.size():
 		return IndexedImageResult.failure("BMP file is shorter than its declared size.")
 
-	var pixel_offset := _read_u32(bytes, 10)
-	var header_size := _read_u32(bytes, FILE_HEADER_SIZE)
+	var pixel_offset := bytes.decode_u32(10)
+	var header_size := bytes.decode_u32(FILE_HEADER_SIZE)
 
 	if header_size < INFO_HEADER_SIZE:
 		return IndexedImageResult.failure("BMP does not use a supported information header.")
@@ -183,8 +183,8 @@ static func decode(bytes: PackedByteArray) -> IndexedImageResult:
 	if FILE_HEADER_SIZE + header_size > bytes.size():
 		return IndexedImageResult.failure("BMP information header extends past the file.")
 
-	var width := _read_i32(bytes, 18)
-	var signed_height := _read_i32(bytes, 22)
+	var width := bytes.decode_s32(18)
+	var signed_height := bytes.decode_s32(22)
 
 	if (
 		width <= 0
@@ -194,16 +194,16 @@ static func decode(bytes: PackedByteArray) -> IndexedImageResult:
 	):
 		return IndexedImageResult.failure("BMP dimensions are invalid or too large.")
 
-	if _read_u16(bytes, 26) != 1:
+	if bytes.decode_u16(26) != 1:
 		return IndexedImageResult.failure("BMP plane count is not one.")
 
-	if _read_u16(bytes, 28) != 8:
+	if bytes.decode_u16(28) != 8:
 		return IndexedImageResult.failure("SCURK import requires an 8-bit indexed BMP.")
 
-	if _read_u32(bytes, 30) != 0:
+	if bytes.decode_u32(30) != 0:
 		return IndexedImageResult.failure("SCURK import requires an uncompressed BMP.")
 
-	var color_count := _read_u32(bytes, 46)
+	var color_count := bytes.decode_u32(46)
 
 	if color_count == 0:
 		color_count = PALETTE_COLOR_COUNT
@@ -333,16 +333,16 @@ static func encode(
 	bytes.fill(0)
 	bytes[0] = 0x42
 	bytes[1] = 0x4d
-	_write_u32(bytes, 2, file_size)
-	_write_u32(bytes, 10, PIXEL_OFFSET)
-	_write_u32(bytes, 14, INFO_HEADER_SIZE)
-	_write_u32(bytes, 18, width)
-	_write_u32(bytes, 22, height)
-	_write_u16(bytes, 26, 1)
-	_write_u16(bytes, 28, 8)
-	_write_u32(bytes, 34, pixel_data_size)
-	_write_u32(bytes, 46, PALETTE_COLOR_COUNT)
-	_write_u32(bytes, 50, PALETTE_COLOR_COUNT)
+	bytes.encode_u32(2, file_size)
+	bytes.encode_u32(10, PIXEL_OFFSET)
+	bytes.encode_u32(14, INFO_HEADER_SIZE)
+	bytes.encode_u32(18, width)
+	bytes.encode_u32(22, height)
+	bytes.encode_u16(26, 1)
+	bytes.encode_u16(28, 8)
+	bytes.encode_u32(34, pixel_data_size)
+	bytes.encode_u32(46, PALETTE_COLOR_COUNT)
+	bytes.encode_u32(50, PALETTE_COLOR_COUNT)
 
 	for index in PALETTE_COLOR_COUNT:
 		var color := palette.color(index)
@@ -404,34 +404,3 @@ static func _same_rgb(first: Color, second: Color) -> bool:
 
 static func _row_stride(width: int) -> int:
 	return (width + 3) & ~3
-
-
-static func _read_u16(bytes: PackedByteArray, offset: int) -> int:
-	return bytes[offset] | (bytes[offset + 1] << 8)
-
-
-static func _read_u32(bytes: PackedByteArray, offset: int) -> int:
-	return (
-		bytes[offset]
-		| (bytes[offset + 1] << 8)
-		| (bytes[offset + 2] << 16)
-		| (bytes[offset + 3] << 24)
-	)
-
-
-static func _read_i32(bytes: PackedByteArray, offset: int) -> int:
-	var value := _read_u32(bytes, offset)
-
-	return value - 0x100000000 if value >= 0x80000000 else value
-
-
-static func _write_u16(bytes: PackedByteArray, offset: int, value: int) -> void:
-	bytes[offset] = value & 0xff
-	bytes[offset + 1] = (value >> 8) & 0xff
-
-
-static func _write_u32(bytes: PackedByteArray, offset: int, value: int) -> void:
-	bytes[offset] = value & 0xff
-	bytes[offset + 1] = (value >> 8) & 0xff
-	bytes[offset + 2] = (value >> 16) & 0xff
-	bytes[offset + 3] = (value >> 24) & 0xff
