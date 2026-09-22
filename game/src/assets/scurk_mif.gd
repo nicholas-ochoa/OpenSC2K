@@ -99,7 +99,7 @@ func parse(bytes: PackedByteArray) -> bool:
 	if _tag(bytes, 0) != "MIFF" or _tag(bytes, 8) != "SC2K":
 		return _fail("file does not have a MIFF/SC2K header")
 
-	if _read_u32_be(bytes, 4) != bytes.size() - 8:
+	if BinaryData.read_u32_be(bytes, 4) != bytes.size() - 8:
 		return _fail("MIFF length does not match the file size")
 
 	var position := FILE_HEADER_LENGTH
@@ -107,7 +107,7 @@ func parse(bytes: PackedByteArray) -> bool:
 	if position + 8 > bytes.size() or _tag(bytes, position) != "INFO":
 		return _fail("INFO chunk is missing")
 
-	var info_length := _read_u32_be(bytes, position + 4)
+	var info_length := BinaryData.read_u32_be(bytes, position + 4)
 	position += 8
 
 	if info_length != INFO_LENGTH:
@@ -122,14 +122,14 @@ func parse(bytes: PackedByteArray) -> bool:
 	if position + 10 > bytes.size() or _tag(bytes, position) != "TILE":
 		return _fail("TILE chunk is missing")
 
-	var tile_length := _read_u32_be(bytes, position + 4)
+	var tile_length := BinaryData.read_u32_be(bytes, position + 4)
 	position += 8
 	var tile_end := position + tile_length
 
 	if tile_end != bytes.size():
 		return _fail("TILE chunk length does not match the file size")
 
-	piece_count = _read_u16_be(bytes, position)
+	piece_count = BinaryData.read_u16_be(bytes, position)
 	position += 2
 
 	var duplicate_counts: Dictionary[int, int] = {}
@@ -139,7 +139,7 @@ func parse(bytes: PackedByteArray) -> bool:
 			return _fail("piece %d header extends past the TILE chunk" % piece_index)
 
 		var piece_tag := _tag(bytes, position)
-		var piece_length := _read_u32_be(bytes, position + 4)
+		var piece_length := BinaryData.read_u32_be(bytes, position + 4)
 		var payload_start := position + 8
 		var payload_end := payload_start + piece_length
 
@@ -201,7 +201,7 @@ func to_bytes() -> AssetBytesResult:
 	bytes.append_array("TILE".to_ascii_buffer())
 	_append_u32_be(bytes, tile_payload.size())
 	bytes.append_array(tile_payload)
-	_write_u32_be(bytes, 4, bytes.size() - 8)
+	BinaryData.write_u32_be(bytes, 4, bytes.size() - 8)
 
 	var result := AssetBytesResult.new()
 	result.ok = true
@@ -368,10 +368,10 @@ func _parse_shape(
 		return _fail("SHAP payload is shorter than its header")
 
 	var entry := Sc2SpriteArchive.SpriteEntry.new()
-	entry.sprite_id = _read_u16_be(bytes, payload_start)
-	entry.width = _read_u16_be(bytes, payload_start + 2)
-	entry.height = _read_u16_be(bytes, payload_start + 4)
-	var pixel_length := _read_u32_be(bytes, payload_start + 6)
+	entry.sprite_id = BinaryData.read_u16_be(bytes, payload_start)
+	entry.width = BinaryData.read_u16_be(bytes, payload_start + 2)
+	entry.height = BinaryData.read_u16_be(bytes, payload_start + 4)
+	var pixel_length := BinaryData.read_u32_be(bytes, payload_start + 6)
 
 	if entry.width <= 0 or entry.height <= 0:
 		return _fail("SHAP sprite %d has an empty dimension" % entry.sprite_id)
@@ -411,8 +411,8 @@ func _parse_name(bytes: PackedByteArray, payload_start: int, payload_end: int) -
 	if payload_end - payload_start < 4:
 		return _fail("NAME payload is shorter than its header")
 
-	var sprite_id := _read_u16_be(bytes, payload_start)
-	var name_length := _read_u16_be(bytes, payload_start + 2)
+	var sprite_id := BinaryData.read_u16_be(bytes, payload_start)
+	var name_length := BinaryData.read_u16_be(bytes, payload_start + 2)
 
 	if payload_start + 4 + name_length != payload_end:
 		return _fail("NAME %d has an invalid text length" % sprite_id)
@@ -466,19 +466,6 @@ static func _normalize_pixel_end(bytes: PackedByteArray) -> PackedByteArray:
 
 static func _tag(bytes: PackedByteArray, offset: int) -> String:
 	return bytes.slice(offset, offset + 4).get_string_from_ascii()
-
-
-static func _read_u16_be(bytes: PackedByteArray, offset: int) -> int:
-	return (bytes[offset] << 8) | bytes[offset + 1]
-
-
-static func _read_u32_be(bytes: PackedByteArray, offset: int) -> int:
-	return (
-		(bytes[offset] << 24)
-		| (bytes[offset + 1] << 16)
-		| (bytes[offset + 2] << 8)
-		| bytes[offset + 3]
-	)
 
 
 func _last_piece_index(tag: String, sprite_id: int) -> int:
@@ -563,10 +550,3 @@ static func _append_u32_be(bytes: PackedByteArray, value: int) -> void:
 	bytes.append((value >> 16) & 0xff)
 	bytes.append((value >> 8) & 0xff)
 	bytes.append(value & 0xff)
-
-
-static func _write_u32_be(bytes: PackedByteArray, offset: int, value: int) -> void:
-	bytes[offset] = (value >> 24) & 0xff
-	bytes[offset + 1] = (value >> 16) & 0xff
-	bytes[offset + 2] = (value >> 8) & 0xff
-	bytes[offset + 3] = value & 0xff
