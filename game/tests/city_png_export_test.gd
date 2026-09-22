@@ -25,6 +25,7 @@ func _run() -> void:
 	folder = ProjectSettings.globalize_path("user://png_export_test")
 	DirAccess.make_dir_recursive_absolute(folder)
 	_check_detached_workflow()
+	await _check_failed_worker()
 	_check_menu_and_dialog()
 	_check_content_options()
 	_check_render_progress()
@@ -221,3 +222,24 @@ func _check_detached_workflow() -> void:
 	exporter.close()
 	assert(not exporter.is_running() and FileAccess.file_exists(options.path))
 	DirAccess.remove_absolute(options.path)
+
+
+func _check_failed_worker() -> void:
+	var exporter := ApplicationCityPngExport.new(ActiveDocumentState.new(), ViewState.new(), LoadedAssetState.new(),
+		Callable(), Callable())
+	var progress := preload("res://src/ui/shared/progress_overlay.tscn").instantiate() as ProgressOverlay
+	root.add_child(progress)
+	progress.show()
+	exporter.bind_ui(null, progress)
+	var errors: Array[String] = []
+	exporter.error_reported.connect(func(message: String) -> void: errors.append(message))
+	exporter.job = CityPngExportJob.new()
+	assert(exporter.job.start() == OK)
+	while exporter.is_running():
+		await process_frame
+		exporter.poll_export()
+	assert(errors.size() == 1 and "city is not valid" in errors[0])
+	assert(not progress.visible and exporter.job == null)
+	exporter.poll_export()
+	assert(errors.size() == 1, "A failed export reports once")
+	progress.free()
