@@ -20,9 +20,9 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	check(main.city_dialogs.new_city_dialog.native_maps_input.button_pressed, "New City defaults to per-tile maps")
-	check(main.new_city._new_city_terrain_options().native_maps, "New City passes native option")
+	check(main.city_dialogs.new_city_dialog.terrain_options().native_maps, "New City passes native option")
 	main.city_dialogs.new_city_dialog.native_maps_input.button_pressed = false
-	check(not main.new_city._new_city_terrain_options().native_maps, "Original grid option remains available")
+	check(not main.city_dialogs.new_city_dialog.terrain_options().native_maps, "Original grid option remains available")
 	main.new_city_state.session.independent_template = true
 	var options := NewCityTerrain.Options.new()
 	options.size = 128

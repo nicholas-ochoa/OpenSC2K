@@ -126,10 +126,10 @@ func check_ui() -> void:
 
 	main.city_dialogs.new_city_dialog.size_input.select(main.city_dialogs.new_city_dialog.size_input.get_item_index(512))
 	main.city_dialogs.new_city_dialog.native_maps_input.set_pressed_no_signal(true)
-	check(main.new_city._new_city_terrain_options().size == 128 and not main.new_city._new_city_terrain_options().native_maps, "Creation guard survives programmatic UI selection")
+	check(main.city_dialogs.new_city_dialog.terrain_options().size == 128 and not main.city_dialogs.new_city_dialog.terrain_options().native_maps, "Creation guard survives programmatic UI selection")
 	main.new_city_state.session.independent_template = true
 	main.new_city_state.session.begin(123, 456)
-	var options: NewCityTerrain.Options = main.new_city._new_city_terrain_options()
+	var options: NewCityTerrain.Options = main.city_dialogs.new_city_dialog.terrain_options()
 	# Format policy is independent of expensive terrain feature combinations.
 	options.hills = 0
 	options.water = 0
