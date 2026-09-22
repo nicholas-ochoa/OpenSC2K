@@ -3,8 +3,8 @@ extends RefCounted
 
 const Power = preload("res://src/simulation/infrastructure/power_phase.gd")
 
-const GROUP_POWER := 3
-const SUBTOOL_HYDRO := 3
+const GROUP_POWER := CityToolIds.Group.POWER
+const SUBTOOL_HYDRO := CityToolIds.Power.HYDRO
 const TERRAIN_WATERFALL_A := 0x2e
 const TERRAIN_WATERFALL_B := 0x3e
 const FLAG_POWERABLE := Sc2TileFlags.POWERABLE

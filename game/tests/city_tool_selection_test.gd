@@ -35,6 +35,7 @@ class TestCityEdits extends ApplicationCityEdits:
 
 func _initialize() -> void:
 	_catalog_indices()
+	_command_selection()
 	var city := CityState.from_document(EmptyCityTemplate.create(16))
 	var original := city.document.serialize().data
 	_edit_state(city)
@@ -84,6 +85,28 @@ func _catalog_indices() -> void:
 	assert(coal.cost == 4000 and coal.area == 4)
 	var pipes := ToolCatalog.tool(CityToolIds.Group.WATER, CityToolIds.Water.PIPES)
 	assert(pipes.cost == 3 and pipes.area == 1)
+
+
+func _command_selection() -> void:
+	# Input pairs are independent expectations for each command's accepted city tools.
+	var commands := [
+		[HydroCommand.supports_tool, [Vector2i(3, 3)]],
+		[TunnelCommand.supports_tool, [Vector2i(6, 2)]],
+		[OnrampCommand.supports_tool, [Vector2i(6, 3)]],
+		[SubwayToRailCommand.supports_tool, [Vector2i(7, 4)]],
+		[HighwayCommand.supports_tool, [Vector2i(6, 1)]],
+		[DemolishCommand.supports_tool, [Vector2i(0, 0)]],
+		[TerrainCommand.supports_tool, [Vector2i(0, 1), Vector2i(0, 2), Vector2i(0, 3)]],
+		[DispatchCommand.supports_tool, [Vector2i(2, 0), Vector2i(2, 1), Vector2i(2, 2)]],
+		[ZoneCommand.supports_tool, [Vector2i(0, 4), Vector2i(8, 0), Vector2i(8, 1), Vector2i(9, 0),
+			Vector2i(9, 1), Vector2i(10, 0), Vector2i(10, 1), Vector2i(11, 0), Vector2i(11, 1)]],
+	]
+	for row: Array in commands:
+		var supports: Callable = row[0]
+		var accepted: Array = row[1]
+		for group in range(-1, 19):
+			for subtool in range(-1, 13):
+				assert(bool(supports.call(group, subtool)) == accepted.has(Vector2i(group, subtool)))
 
 
 func _edit_state(city: CityState) -> void:

@@ -16,7 +16,7 @@ class Availability extends RefCounted:
 		return result
 
 
-const GROUP_DISPATCH := 2
+const GROUP_DISPATCH := CityToolIds.Group.DISPATCH
 const FLAG_WATER := Sc2TileFlags.WATER
 const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
 const POLICE_STATION := BuildingTileIds.POLICE_STATION
@@ -33,7 +33,7 @@ const TYPE_BY_SUBTOOL := [TYPE_POLICE, TYPE_FIRE, TYPE_MILITARY]
 
 
 static func supports_tool(group_index: int, subtool_index: int) -> bool:
-	return group_index == GROUP_DISPATCH and subtool_index >= 0 and subtool_index < 3
+	return group_index == GROUP_DISPATCH and subtool_index >= CityToolIds.Dispatch.POLICE and subtool_index < CityToolIds.Dispatch.RECALL
 
 
 static func availability(city: CityState) -> Availability:

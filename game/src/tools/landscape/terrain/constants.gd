@@ -1,10 +1,10 @@
 class_name TerrainEditConstants
 extends RefCounted
 
-const GROUP_BULLDOZER := 0
-const SUBTOOL_LEVEL := 1
-const SUBTOOL_RAISE := 2
-const SUBTOOL_LOWER := 3
+const GROUP_BULLDOZER := CityToolIds.Group.BULLDOZER
+const SUBTOOL_LEVEL := CityToolIds.Bulldozer.LEVEL
+const SUBTOOL_RAISE := CityToolIds.Bulldozer.RAISE
+const SUBTOOL_LOWER := CityToolIds.Bulldozer.LOWER
 const MILITARY_ZONE := Sc2ZoneLayout.MILITARY
 const FLAG_WATER := Sc2TileFlags.WATER
 const MAX_RAISE_SOURCE := 29

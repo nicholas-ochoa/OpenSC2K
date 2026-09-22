@@ -5,8 +5,8 @@ const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
-const GROUP_RAIL := 7
-const SUBTOOL_CONNECTION := 4
+const GROUP_RAIL := CityToolIds.Group.RAIL
+const SUBTOOL_CONNECTION := CityToolIds.Rail.SUBWAY_TO_RAIL
 const CONNECTOR_FIRST := Tiles.RAIL_SUBWAY_ENTRANCE_1
 const RADIOACTIVITY := Tiles.RADIOACTIVE_WASTE
 const MAX_CLEAR_BUILDING := Tiles.TREES_7

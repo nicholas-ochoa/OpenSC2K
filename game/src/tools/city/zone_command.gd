@@ -23,12 +23,12 @@ class Preview extends RefCounted:
 		return result
 
 
-const GROUP_PORTS := 8
-const GROUP_BULLDOZER := 0
-const SUBTOOL_DEZONE := 4
-const GROUP_RESIDENTIAL := 9
-const GROUP_COMMERCIAL := 10
-const GROUP_INDUSTRIAL := 11
+const GROUP_PORTS := CityToolIds.Group.PORTS
+const GROUP_BULLDOZER := CityToolIds.Group.BULLDOZER
+const SUBTOOL_DEZONE := CityToolIds.Bulldozer.DEZONE
+const GROUP_RESIDENTIAL := CityToolIds.Group.RESIDENTIAL
+const GROUP_COMMERCIAL := CityToolIds.Group.COMMERCIAL
+const GROUP_INDUSTRIAL := CityToolIds.Group.INDUSTRIAL
 const FLAG_WATER := Sc2TileFlags.WATER
 const FIRST_ROAD := Tiles.FIRST_ROAD
 const FIRST_DEVELOPED_BUILDING := Tiles.DEVELOPED_FIRST

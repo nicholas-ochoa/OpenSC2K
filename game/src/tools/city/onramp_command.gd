@@ -3,8 +3,8 @@ extends RefCounted
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
-const GROUP_ROADS := 6
-const SUBTOOL_ONRAMP := 3
+const GROUP_ROADS := CityToolIds.Group.ROADS
+const SUBTOOL_ONRAMP := CityToolIds.Roads.ONRAMP
 const MAX_CLEAR_BUILDING := Tiles.SMALL_PARK
 const RADIOACTIVITY := Tiles.RADIOACTIVE_WASTE
 const HIGHWAY_FIRST := Tiles.HIGHWAY_STRAIGHT_1
