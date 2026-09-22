@@ -1,9 +1,9 @@
 class_name SignCommand
 extends RefCounted
 
-const FIRST_USER_LABEL := 1
-const LAST_USER_LABEL := 50
-const LABEL_RECORD_SIZE := 25
+const FIRST_USER_LABEL := Sc2OverlayLayout.ORIGINAL_SIGN_FIRST
+const LAST_USER_LABEL := Sc2OverlayLayout.ORIGINAL_SIGN_LAST
+const LABEL_RECORD_SIZE := Sc2LabelLayout.RECORD_SIZE
 
 
 static func set_sign(city: CityState, point: Vector2i, text: String) -> SignEditResult:
@@ -66,7 +66,7 @@ static func set_sign(city: CityState, point: Vector2i, text: String) -> SignEdit
 	result.new_overlay = new_overlay
 	result.old_record = old_record
 	result.new_record = new_record
-	result.text = text.left(23)
+	result.text = text.left(Sc2LabelLayout.MAX_TEXT_BYTES)
 
 	return result
 

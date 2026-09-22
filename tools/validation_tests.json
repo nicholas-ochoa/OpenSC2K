@@ -1,5 +1,11 @@
 [
   {
+    "id": "record_layouts_test",
+    "script": "tests/record_layouts_test.gd",
+    "domain": "formats",
+    "lane": "product"
+  },
+  {
     "id": "ordered_chunk_commit_test",
     "script": "tests/ordered_chunk_commit_test.gd",
     "domain": "tools",

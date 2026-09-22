@@ -3,8 +3,8 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
-const SERIES_COUNT := 16
-const VALUES_PER_SERIES := 52
+const SERIES_COUNT := Sc2GraphLayout.SERIES_COUNT
+const VALUES_PER_SERIES := Sc2GraphLayout.VALUES_PER_SERIES
 const MISC_SIZE := Sc2MiscLayout.SIZE
 const MISC_CITY_LAND_VALUE := Sc2MiscLayout.CITY_LAND_VALUE
 const MISC_CITY_CRIME := Sc2MiscLayout.CITY_CRIME
@@ -41,7 +41,7 @@ static func run(
 
 	var chunk := city.document.find_chunk("XGRP")
 
-	if chunk == null or chunk.decoded_payload.size() != SERIES_COUNT * VALUES_PER_SERIES * 4:
+	if chunk == null or chunk.decoded_payload.size() != Sc2GraphLayout.SIZE:
 		return _failed("XGRP is missing or has the wrong size")
 
 	span.mark("store unemployment")
@@ -182,7 +182,7 @@ static func advance(city: CityState, current_values: PackedInt64Array) -> Result
 
 	var chunk := city.document.find_chunk("XGRP")
 
-	if chunk == null or chunk.decoded_payload.size() != SERIES_COUNT * VALUES_PER_SERIES * 4:
+	if chunk == null or chunk.decoded_payload.size() != Sc2GraphLayout.SIZE:
 		return _failed("XGRP is missing or has the wrong size")
 
 	var data := chunk.decoded_payload.duplicate()
@@ -190,22 +190,22 @@ static func advance(city: CityState, current_values: PackedInt64Array) -> Result
 	var elapsed_years := int(city.age_in_days() / CityCalendar.DAYS_PER_YEAR)
 
 	for series in SERIES_COUNT:
-		for index in range(11, 0, -1):
+		for index in range(Sc2GraphLayout.DECADE_OFFSET - 1, Sc2GraphLayout.YEAR_OFFSET, -1):
 			_copy_value(data, series, index - 1, index)
 
-		_write_value(data, series, 0, current_values[series])
+		_write_value(data, series, Sc2GraphLayout.YEAR_OFFSET, current_values[series])
 
 		if month == 0 or month == 6:
-			for index in range(31, 12, -1):
+			for index in range(Sc2GraphLayout.CENTURY_OFFSET - 1, Sc2GraphLayout.DECADE_OFFSET, -1):
 				_copy_value(data, series, index - 1, index)
 
-			_copy_value(data, series, 0, 12)
+			_copy_value(data, series, Sc2GraphLayout.YEAR_OFFSET, Sc2GraphLayout.DECADE_OFFSET)
 
 		if month == 0 and elapsed_years % 5 == 0:
-			for index in range(51, 32, -1):
+			for index in range(Sc2GraphLayout.VALUES_PER_SERIES - 1, Sc2GraphLayout.CENTURY_OFFSET, -1):
 				_copy_value(data, series, index - 1, index)
 
-			_copy_value(data, series, 0, 32)
+			_copy_value(data, series, Sc2GraphLayout.YEAR_OFFSET, Sc2GraphLayout.CENTURY_OFFSET)
 
 	if not chunk.set_decoded_payload(data):
 		return _failed("cannot store updated XGRP data")
@@ -220,14 +220,14 @@ static func advance(city: CityState, current_values: PackedInt64Array) -> Result
 
 
 static func _copy_value(data: PackedByteArray, series: int, source: int, target: int) -> void:
-	var base := series * VALUES_PER_SERIES * 4
+	var base := series * Sc2GraphLayout.SERIES_SIZE
 
-	for byte_index in 4:
-		data[base + target * 4 + byte_index] = data[base + source * 4 + byte_index]
+	for byte_index in Sc2GraphLayout.VALUE_SIZE:
+		data[base + target * Sc2GraphLayout.VALUE_SIZE + byte_index] = data[base + source * Sc2GraphLayout.VALUE_SIZE + byte_index]
 
 
 static func _write_value(data: PackedByteArray, series: int, index: int, value: int) -> void:
-	var offset := (series * VALUES_PER_SERIES + index) * 4
+	var offset := (series * VALUES_PER_SERIES + index) * Sc2GraphLayout.VALUE_SIZE
 	data[offset] = (value >> 24) & 0xff
 	data[offset + 1] = (value >> 16) & 0xff
 	data[offset + 2] = (value >> 8) & 0xff

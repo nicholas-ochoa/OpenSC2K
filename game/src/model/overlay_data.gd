@@ -4,9 +4,11 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
-const EXTRA_FACILITY := 256
-const EXTRA_SIGN := 4096
-const EXTRA_THING := 8192
+const Layout = preload("res://src/formats/sc2_overlay_layout.gd")
+
+const EXTRA_FACILITY := Layout.EXTRA_FACILITY
+const EXTRA_SIGN := Layout.EXTRA_SIGN
+const EXTRA_THING := Layout.EXTRA_THING
 
 
 # the overlay layout keys off the payload size alone. a wide sc2x map stores a
@@ -34,41 +36,41 @@ static func write(data: PackedByteArray, index: int, value: int) -> void:
 
 
 static func is_sign(id: int) -> bool:
-	return (id >= 1 and id <= 50) or (id >= EXTRA_SIGN and id < EXTRA_THING)
+	return (id >= Layout.ORIGINAL_SIGN_FIRST and id <= Layout.ORIGINAL_SIGN_LAST) or (id >= EXTRA_SIGN and id < EXTRA_THING)
 
 
 static func is_facility(id: int) -> bool:
-	return (id >= 51 and id <= 200) or (id >= EXTRA_FACILITY and id < EXTRA_SIGN)
+	return (id >= Layout.ORIGINAL_FACILITY_FIRST and id <= Layout.ORIGINAL_FACILITY_LAST) or (id >= EXTRA_FACILITY and id < EXTRA_SIGN)
 
 
 static func is_thing(id: int) -> bool:
-	return (id >= 201 and id <= 240) or id >= EXTRA_THING
+	return (id >= Layout.ORIGINAL_THING_FIRST and id <= Layout.ORIGINAL_THING_LAST) or id >= EXTRA_THING
 
 
 static func blocks_thing(id: int) -> bool:
-	return is_thing(id) or (id >= 241 and id <= 255)
+	return is_thing(id) or (id >= Layout.ORIGINAL_RESERVED_FIRST and id <= Layout.ORIGINAL_MAX_ID)
 
 
 static func facility_id(record: int) -> int:
-	return record + 51 if record < 150 else EXTRA_FACILITY + record - 150
+	return record + Layout.ORIGINAL_FACILITY_FIRST if record < Sc2MicrosimLayout.ORIGINAL_COUNT else EXTRA_FACILITY + record - Sc2MicrosimLayout.ORIGINAL_COUNT
 
 
 static func facility_record(id: int) -> int:
-	return id - 51 if id <= 200 else id - EXTRA_FACILITY + 150
+	return id - Layout.ORIGINAL_FACILITY_FIRST if id <= Layout.ORIGINAL_FACILITY_LAST else id - EXTRA_FACILITY + Sc2MicrosimLayout.ORIGINAL_COUNT
 
 
 static func thing_id(record: int) -> int:
-	return record + 201 if record < 40 else EXTRA_THING + record - 40
+	return record + Layout.ORIGINAL_THING_FIRST if record < Sc2ThingLayout.ORIGINAL_COUNT else EXTRA_THING + record - Sc2ThingLayout.ORIGINAL_COUNT
 
 
 static func thing_record(id: int) -> int:
-	return id - 201 if id <= 240 else id - EXTRA_THING + 40
+	return id - Layout.ORIGINAL_THING_FIRST if id <= Layout.ORIGINAL_THING_LAST else id - EXTRA_THING + Sc2ThingLayout.ORIGINAL_COUNT
 
 
 static func sign_ids(label_bytes: int) -> PackedInt32Array:
-	var ids := PackedInt32Array(range(1, 51))
+	var ids := PackedInt32Array(range(Layout.ORIGINAL_SIGN_FIRST, Layout.ORIGINAL_SIGN_LAST + 1))
 
-	for id in range(EXTRA_SIGN, label_bytes / 25):
+	for id in range(EXTRA_SIGN, label_bytes / Sc2LabelLayout.RECORD_SIZE):
 		ids.append(id)
 
 	return ids
@@ -102,7 +104,7 @@ static func occurrences(data: PackedByteArray, value: int) -> int:
 
 
 static func valid_id(id: int, edge: int) -> bool:
-	if id >= 0 and id <= 255:
+	if id >= 0 and id <= Layout.ORIGINAL_MAX_ID:
 		return true
 
 	if edge == 128:
@@ -110,8 +112,11 @@ static func valid_id(id: int, edge: int) -> bool:
 
 	var factor := (edge * edge) / 16384
 
-	return ((is_facility(id) and facility_record(id) < 150 * factor) or (is_sign(id) and id < EXTRA_SIGN + 50 * factor - 50)
-			or (is_thing(id) and thing_record(id) < 40 * factor))
+	return (
+		(is_facility(id) and facility_record(id) < Sc2MicrosimLayout.ORIGINAL_COUNT * factor)
+		or (is_sign(id) and id < EXTRA_SIGN + Layout.ORIGINAL_SIGN_COUNT * factor - Layout.ORIGINAL_SIGN_COUNT)
+		or (is_thing(id) and thing_record(id) < Sc2ThingLayout.ORIGINAL_COUNT * factor)
+	)
 
 
 static func sign_indices(data: PackedByteArray, start := 0, end := -1) -> PackedInt32Array:

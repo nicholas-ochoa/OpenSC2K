@@ -85,8 +85,8 @@ static func label(city: CityState, label_id: int) -> String:
 		return ""
 
 	var offset := label_id * CityState.LABEL_RECORD_SIZE
-	var declared_length: int = mini(chunk.decoded_payload[offset], 23)
-	var start := offset + 1
+	var declared_length: int = mini(chunk.decoded_payload[offset + Sc2LabelLayout.LENGTH_OFFSET], Sc2LabelLayout.MAX_TEXT_BYTES)
+	var start := offset + Sc2LabelLayout.TEXT_OFFSET
 	var end := start
 
 	while end < start + declared_length and chunk.decoded_payload[end] != 0:
@@ -106,17 +106,17 @@ static func set_label(city: CityState, label_id: int, value: String) -> bool:
 
 	var encoded := value.to_ascii_buffer()
 
-	if encoded.size() > 23:
-		encoded = encoded.slice(0, 23)
+	if encoded.size() > Sc2LabelLayout.MAX_TEXT_BYTES:
+		encoded = encoded.slice(0, Sc2LabelLayout.MAX_TEXT_BYTES)
 
 	var changed := chunk.decoded_payload.duplicate()
 	var offset := label_id * CityState.LABEL_RECORD_SIZE
-	changed[offset] = encoded.size()
+	changed[offset + Sc2LabelLayout.LENGTH_OFFSET] = encoded.size()
 
 	for index in encoded.size():
-		changed[offset + 1 + index] = encoded[index]
+		changed[offset + Sc2LabelLayout.TEXT_OFFSET + index] = encoded[index]
 
-	changed[offset + 1 + encoded.size()] = 0
+	changed[offset + Sc2LabelLayout.TEXT_OFFSET + encoded.size()] = 0
 
 	return chunk.set_decoded_payload(changed)
 
@@ -133,11 +133,11 @@ static func microsim(city: CityState, microsim_id: int) -> Microsim:
 	var offset := microsim_id * CityState.MICROSIM_RECORD_SIZE
 
 	var result := Microsim.new()
-	result.tile_id = int(chunk.decoded_payload[offset])
-	result.stat_0 = int(chunk.decoded_payload[offset + 1])
-	result.stat_1 = BinaryData.read_u16_be(chunk.decoded_payload, offset + 2)
-	result.stat_2 = BinaryData.read_u16_be(chunk.decoded_payload, offset + 4)
-	result.stat_3 = BinaryData.read_u16_be(chunk.decoded_payload, offset + 6)
+	result.tile_id = int(chunk.decoded_payload[offset + Sc2MicrosimLayout.TILE_ID])
+	result.stat_0 = int(chunk.decoded_payload[offset + Sc2MicrosimLayout.STAT_0])
+	result.stat_1 = BinaryData.read_u16_be(chunk.decoded_payload, offset + Sc2MicrosimLayout.STAT_1)
+	result.stat_2 = BinaryData.read_u16_be(chunk.decoded_payload, offset + Sc2MicrosimLayout.STAT_2)
+	result.stat_3 = BinaryData.read_u16_be(chunk.decoded_payload, offset + Sc2MicrosimLayout.STAT_3)
 
 	return result
 
@@ -165,15 +165,15 @@ static func graph_series(city: CityState, graph_id: int) -> GraphSeries:
 		return null
 
 	var values := PackedInt64Array()
-	var offset := graph_id * CityState.GRAPH_VALUE_COUNT * 4
+	var offset := graph_id * Sc2GraphLayout.SERIES_SIZE
 
 	for index in CityState.GRAPH_VALUE_COUNT:
-		values.append(BinaryData.read_u32_be(chunk.decoded_payload, offset + index * 4))
+		values.append(BinaryData.read_u32_be(chunk.decoded_payload, offset + index * Sc2GraphLayout.VALUE_SIZE))
 
 	var result := GraphSeries.new()
-	result.year = values.slice(0, 12)
-	result.decade = values.slice(12, 32)
-	result.century = values.slice(32, 52)
+	result.year = values.slice(Sc2GraphLayout.YEAR_OFFSET, Sc2GraphLayout.DECADE_OFFSET)
+	result.decade = values.slice(Sc2GraphLayout.DECADE_OFFSET, Sc2GraphLayout.CENTURY_OFFSET)
+	result.century = values.slice(Sc2GraphLayout.CENTURY_OFFSET, Sc2GraphLayout.VALUES_PER_SERIES)
 
 	return result
 

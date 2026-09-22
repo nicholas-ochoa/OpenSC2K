@@ -15,8 +15,8 @@ const DECODED_SIZES: Dictionary[String, int] = {
 	"XZON": 16384,
 	"XUND": 16384,
 	"XTXT": 16384,
-	"XLAB": 6400,
-	"XMIC": 1200,
+	"XLAB": Sc2LabelLayout.ORIGINAL_SIZE,
+	"XMIC": Sc2MicrosimLayout.ORIGINAL_SIZE,
 	"XTHG": Sc2ThingLayout.ORIGINAL_SIZE,
 	"XBIT": 16384,
 	"XTRF": 4096,
@@ -27,7 +27,7 @@ const DECODED_SIZES: Dictionary[String, int] = {
 	"XFIR": 1024,
 	"XPOP": 1024,
 	"XROG": 1024,
-	"XGRP": 3328,
+	"XGRP": Sc2GraphLayout.SIZE,
 }
 
 const RAW_CHUNKS: Dictionary[String, bool] = {
@@ -435,9 +435,12 @@ func decoded_size(chunk_id: String) -> int:
 			"XTXT":
 				return map_size * map_size * 2
 			"XMIC":
-				return 150 * factor * 8
+				return Sc2MicrosimLayout.ORIGINAL_SIZE * factor
 			"XLAB":
-				return (OverlayData.EXTRA_SIGN + 50 * factor - 50) * 25
+				return (
+					Sc2OverlayLayout.EXTRA_SIGN
+					+ Sc2OverlayLayout.ORIGINAL_SIGN_COUNT * factor - Sc2OverlayLayout.ORIGINAL_SIGN_COUNT
+				) * Sc2LabelLayout.RECORD_SIZE
 			"XTHG":
 				return 40 * factor * 24
 
