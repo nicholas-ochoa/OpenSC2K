@@ -102,17 +102,11 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Play Scenario..."
 
-[node name="SCURKPainttheTown" type="Button" parent="Center/Panel/Content"]
+[node name="SCURK" type="Button" parent="Center/Panel/Content"]
 custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "SCURK Paint the Town"
-
-[node name="SCURKPlace&Print" type="Button" parent="Center/Panel/Content"]
-custom_minimum_size = Vector2(0, 42)
-layout_mode = 2
-theme_override_font_sizes/font_size = 16
-text = "SCURK Place & Print"
+text = "SCURK"
 
 [node name="Settings" type="Button" parent="Center/Panel/Content"]
 custom_minimum_size = Vector2(0, 42)

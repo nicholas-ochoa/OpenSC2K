@@ -8,7 +8,6 @@ signal open_city_requested
 signal scenario_requested
 signal settings_requested
 signal scurk_requested
-signal scurk_place_requested
 signal about_requested
 signal exit_requested
 
@@ -17,8 +16,7 @@ const BUTTON_LABELS := [
 	"Start New City",
 	"Open City...",
 	"Play Scenario...",
-	"SCURK Paint the Town",
-	"SCURK Place & Print",
+	"SCURK",
 	"Settings...",
 	"About OpenSC2K...",
 	"Exit",
@@ -32,7 +30,6 @@ var flash_time := 0.0
 var city_background: MainMenuCityBackground
 var continue_button: Button
 var new_city_button: Button
-var scurk_place_button: Button
 
 
 func _ready() -> void:
@@ -52,23 +49,18 @@ func _ready() -> void:
 		var button: Button = content.get_node(button_name)
 		button.pressed.connect(_emit_action.bind(index))
 
-		if index < 6:
+		if index < 5:
 			game_buttons.append(button)
 
 		if index == 0:
 			continue_button = button
 		elif index == 1:
 			new_city_button = button
-		elif index == 5:
-			scurk_place_button = button
 
 
 func show_menu(can_continue: bool) -> void:
 	if continue_button != null:
 		continue_button.visible = can_continue
-
-	if scurk_place_button != null:
-		scurk_place_button.disabled = not can_continue or not assets_ready
 
 	# let the panel shrink when continue city is hidden
 	var panel := new_city_button.get_parent().get_parent() as PanelContainer
@@ -84,7 +76,7 @@ func show_menu(can_continue: bool) -> void:
 
 
 func _emit_action(index: int) -> void:
-	if index < 6 and not assets_ready:
+	if index < 5 and not assets_ready:
 		return
 
 	match index:
@@ -99,12 +91,10 @@ func _emit_action(index: int) -> void:
 		4:
 			scurk_requested.emit()
 		5:
-			scurk_place_requested.emit()
-		6:
 			settings_requested.emit()
-		7:
+		6:
 			about_requested.emit()
-		8:
+		7:
 			exit_requested.emit()
 
 

@@ -157,7 +157,6 @@ func _build_main_menu() -> void:
 	app.main_menu.settings_requested.connect(app.settings.open_settings_dialog)
 	app.main_menu.import_assets_requested.connect(app.settings.open_import_settings)
 	app.main_menu.scurk_requested.connect(app.scurk_workspace.open_scurk_dialog)
-	app.main_menu.scurk_place_requested.connect(app.scurk_workspace.open_scurk_place_print)
 	app.main_menu.about_requested.connect(open_about_dialog)
 	app.main_menu.exit_requested.connect(app.city_files.request_city_exit.bind("quit"))
 
