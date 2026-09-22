@@ -7,16 +7,12 @@ const TEXT_LABEL_BASE := 201
 const TYPE_AIRPLANE := 1
 const TYPE_HELICOPTER := 2
 const TYPE_EXPLOSION := 6
-const SUBTILE_LIMIT := 16
 const SOUND_HELICOPTER := 0x1fe
 const SOUND_AIR_DISASTER := 0x203
 const SOUND_AIRPLANE_TAKEOFF := 0x206
 const SOUND_AIRPLANE_LANDING := 0x207
 const HELICOPTER_SOUND_DELAY_MSEC := 5000
-const EIGHT_DIRECTIONS := [
-	Vector2i(0, -1), Vector2i(1, -1), Vector2i(1, 0), Vector2i(1, 1),
-	Vector2i(0, 1), Vector2i(-1, 1), Vector2i(-1, 0), Vector2i(-1, -1),
-]
+const EIGHT_DIRECTIONS := MovingThingMotion.DIRECTIONS
 const AIR_ROUTE_DELTAS := [
 	Vector2i(0, -3), Vector2i(3, -3), Vector2i(3, 0), Vector2i(3, 3),
 	Vector2i(0, 3), Vector2i(-3, 3), Vector2i(-3, 0), Vector2i(-3, -3),

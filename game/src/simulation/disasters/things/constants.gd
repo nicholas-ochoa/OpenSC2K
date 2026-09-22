@@ -13,14 +13,10 @@ const TYPE_HELICOPTER := 2
 const TYPE_MONSTER := 5
 const TYPE_EXPLOSION := 6
 const TYPE_TORNADO := 15
-const SUBTILE_LIMIT := 16
 const MISC_PENDING_DISASTER := 0x0070
 const SOUND_EXPLOSION := 0x1f8
 const SOUND_MONSTER_DAMAGE := 0x202
-const EIGHT_DIRECTIONS := [
-	Vector2i(0, -1), Vector2i(1, -1), Vector2i(1, 0), Vector2i(1, 1),
-	Vector2i(0, 1), Vector2i(-1, 1), Vector2i(-1, 0), Vector2i(-1, -1),
-]
+const EIGHT_DIRECTIONS := MovingThingMotion.DIRECTIONS
 const THING_SPEEDS := {
 	TYPE_MONSTER: 8,
 	TYPE_TORNADO: 8,

@@ -30,7 +30,7 @@ static func update(
 	var offset := record * RECORD_SIZE
 
 	if counters.active_sailboats > 4 * maxi(1, (map_edge * map_edge) / 16384):
-		_remove(text, things, record, map_edge)
+		MovingThingMotion.remove(text, things, record, map_edge)
 		counters.removed_sailboats += 1
 
 		return
@@ -38,7 +38,7 @@ static func update(
 	var direction := int(ThingData.read(things, offset + 1))
 
 	if direction < 0 or direction >= DIRECTIONS.size():
-		_remove(text, things, record, map_edge)
+		MovingThingMotion.remove(text, things, record, map_edge)
 		counters.removed_sailboats += 1
 		counters.malformed_records += 1
 
@@ -46,7 +46,7 @@ static func update(
 
 	if ThingData.read(things, offset + 2) != 0:
 		if lfsr_random.next_mod(5) == 0:
-			_remove(text, things, record, map_edge)
+			MovingThingMotion.remove(text, things, record, map_edge)
 			counters.removed_sailboats += 1
 
 		return
@@ -56,7 +56,7 @@ static func update(
 		var current_index := _index(current, map_edge)
 
 		if current_index < 0 or flags[current_index] & 0x04 == 0:
-			_remove(text, things, record, map_edge)
+			MovingThingMotion.remove(text, things, record, map_edge)
 			counters.removed_sailboats += 1
 
 			return
@@ -100,7 +100,7 @@ static func _route_state(
 		return 1
 
 	if buildings[next_index] == TILE_MARINA:
-		_remove(text, things, record, map_edge)
+		MovingThingMotion.remove(text, things, record, map_edge)
 
 		return -1
 
@@ -150,7 +150,7 @@ static func _move(
 		var next := old_point + tile_delta
 
 		if next.x < 0 or next.x > map_edge - 2 or next.y < 0 or next.y > map_edge - 2:
-			_remove(text, things, record, map_edge)
+			MovingThingMotion.remove(text, things, record, map_edge)
 			counters.removed_sailboats += 1
 
 			return
@@ -160,19 +160,6 @@ static func _move(
 		OverlayData.write(text, _index(next, map_edge), OverlayData.thing_id(record))
 
 	counters.moved_sailboats += 1
-
-
-static func _remove(
-	text: PackedByteArray, things: PackedByteArray, record: int,
-	map_edge: int = 128,
-) -> void:
-	var offset := record * RECORD_SIZE
-	ThingData.write(things, offset, 0)
-	var point := Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
-	var index := _index(point, map_edge)
-
-	if index >= 0:
-		OverlayData.write(text, index, 0)
 
 
 static func _queue_distress_sound(

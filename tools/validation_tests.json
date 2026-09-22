@@ -1,5 +1,11 @@
 [
   {
+    "id": "moving_thing_motion_test",
+    "script": "tests/moving_thing_motion_test.gd",
+    "domain": "simulation",
+    "lane": "product"
+  },
+  {
     "id": "binary_data_test",
     "script": "tests/binary_data_test.gd",
     "domain": "formats",

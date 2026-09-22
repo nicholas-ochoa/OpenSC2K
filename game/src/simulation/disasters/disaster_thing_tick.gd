@@ -40,7 +40,7 @@ static func update_explosion(
 
 	var center := Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
 	var center_index := DisasterThingActions._index(center, map_edge)
-	DisasterThingActions._remove_thing(text, things, record, map_edge)
+	MovingThingMotion.remove(text, things, record, map_edge)
 	counters.removed_explosions += 1
 
 	if center_index < 0:
@@ -113,7 +113,7 @@ static func update_monster(
 	var direction := int(ThingData.read(things, offset + 1))
 
 	if current_index < 0 or direction < 0 or direction >= EIGHT_DIRECTIONS.size():
-		DisasterThingActions._remove_thing(text, things, record, map_edge)
+		MovingThingMotion.remove(text, things, record, map_edge)
 		counters.removed_monsters += 1
 		counters.malformed_records += 1
 
@@ -147,7 +147,7 @@ static func update_monster(
 
 			ThingData.write(things, offset + 8, 0)
 			ThingData.write(things, offset + 9, 0)
-			move_direction = DisasterThingActions._direction_quadrant(current, city_center)
+			move_direction = MovingThingMotion.direction_quadrant(current, city_center)
 		1:
 			if random.next_u15() % 25 == 0:
 				ThingData.write(things, offset + 2, 2)
@@ -179,12 +179,12 @@ static func update_monster(
 				ThingData.write(things, offset + 9, 36)
 
 			if lfsr_random.next_mod(100) == 0:
-				DisasterThingActions._remove_thing(text, things, record, map_edge)
+				MovingThingMotion.remove(text, things, record, map_edge)
 				counters.removed_monsters += 1
 
 				return
 		_:
-			DisasterThingActions._remove_thing(text, things, record, map_edge)
+			MovingThingMotion.remove(text, things, record, map_edge)
 			counters.removed_monsters += 1
 			counters.malformed_records += 1
 
@@ -243,7 +243,7 @@ static func update_tornado(
 	var direction := int(ThingData.read(things, offset + 1))
 
 	if index < 0 or direction < 0 or direction >= EIGHT_DIRECTIONS.size():
-		DisasterThingActions._remove_thing(text, things, record, map_edge)
+		MovingThingMotion.remove(text, things, record, map_edge)
 		counters.removed_tornadoes += 1
 		counters.malformed_records += 1
 
@@ -272,7 +272,7 @@ static func update_tornado(
 	counters.moved_tornadoes += 1
 
 	if random.next_u15() & 0xff == 0:
-		DisasterThingActions._remove_thing(text, things, record, map_edge)
+		MovingThingMotion.remove(text, things, record, map_edge)
 		counters.removed_tornadoes += 1
 
 		return
@@ -292,5 +292,5 @@ static func update_tornado(
 	counters.moved_tornadoes += 1
 
 	if random.next_u15() & 0xff == 0:
-		DisasterThingActions._remove_thing(text, things, record, map_edge)
+		MovingThingMotion.remove(text, things, record, map_edge)
 		counters.removed_tornadoes += 1

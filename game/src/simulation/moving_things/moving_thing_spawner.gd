@@ -238,7 +238,7 @@ static func spawn_ship(
 
 	var offset := record * RECORD_SIZE
 	ThingData.write(things, offset, TYPE_SHIP)
-	ThingData.write(things, offset + 1, _direction_between(start, target))
+	ThingData.write(things, offset + 1, MovingThingMotion.direction_between(start, target))
 	ThingData.write(things, offset + 2, 0)
 	ThingData.write(things, offset + 3, start.x)
 	ThingData.write(things, offset + 4, start.y)
@@ -336,7 +336,7 @@ static func spawn_maxis_man(
 
 	var offset := record * RECORD_SIZE
 	ThingData.write(things, offset, TYPE_MAXIS_MAN)
-	ThingData.write(things, offset + 1, _direction_between(point, target))
+	ThingData.write(things, offset + 1, MovingThingMotion.direction_between(point, target))
 	ThingData.write(things, offset + 2, 0)
 	ThingData.write(things, offset + 3, point.x)
 	ThingData.write(things, offset + 4, point.y)
@@ -481,23 +481,6 @@ static func _first_free_record(things: PackedByteArray) -> int:
 			return record
 
 	return 0
-
-
-static func _direction_between(start: Vector2i, target: Vector2i) -> int:
-	var difference := target - start
-	var absolute_x := absi(difference.x)
-	var absolute_y := absi(difference.y)
-
-	if absolute_x < int((absolute_y + 1) / 2):
-		return 0 if difference.y < 0 else 4
-
-	if absolute_y < int((absolute_x + 1) / 2):
-		return 6 if difference.x < 0 else 2
-
-	if difference.x < 0:
-		return 7 if difference.y < 0 else 5
-
-	return 1 if difference.y < 0 else 3
 
 
 static func _index(point: Vector2i, map_edge: int = 128) -> int:

@@ -48,7 +48,7 @@ static func update(
 	var first_car := int(ThingData.read(things, offset + 2))
 
 	if first_car < 0 or first_car >= ThingData.count(things):
-		_remove_thing(text, things, record, map_edge)
+		MovingThingMotion.remove(text, things, record, map_edge)
 		counters.removed_trains += 1
 		counters.malformed_records += 1
 
@@ -58,8 +58,8 @@ static func update(
 	var second_car := int(ThingData.read(things, first_car_offset + 2))
 
 	if second_car < 0 or second_car >= ThingData.count(things):
-		_remove_thing(text, things, record, map_edge)
-		_remove_thing(text, things, first_car, map_edge)
+		MovingThingMotion.remove(text, things, record, map_edge)
+		MovingThingMotion.remove(text, things, first_car, map_edge)
 		counters.removed_trains += 1
 		counters.malformed_records += 1
 
@@ -353,9 +353,9 @@ static func _remove_train(
 	second_car_record: int,
 	map_edge: int = 128,
 ) -> void:
-	_remove_thing(text, things, engine_record, map_edge)
-	_remove_thing(text, things, first_car_record, map_edge)
-	_remove_thing(text, things, second_car_record, map_edge)
+	MovingThingMotion.remove(text, things, engine_record, map_edge)
+	MovingThingMotion.remove(text, things, first_car_record, map_edge)
+	MovingThingMotion.remove(text, things, second_car_record, map_edge)
 
 
 static func _spawn_explosion(
@@ -391,19 +391,6 @@ static func _spawn_explosion(
 	OverlayData.write(text, index, OverlayData.thing_id(record))
 
 	return true
-
-
-static func _remove_thing(
-	text: PackedByteArray, things: PackedByteArray, record: int,
-	map_edge: int = 128,
-) -> void:
-	var offset := record * RECORD_SIZE
-	ThingData.write(things, offset, 0)
-	var point := Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
-	var index := _index(point, map_edge)
-
-	if index >= 0:
-		OverlayData.write(text, index, 0)
 
 
 static func _queue_sound(

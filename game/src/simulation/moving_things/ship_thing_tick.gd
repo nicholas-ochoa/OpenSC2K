@@ -97,7 +97,7 @@ static func update(
 					ThingData.write(things, offset + 2, 3)
 					counters.docked_ships += 1
 		1:
-			var desired := _direction_between(current, target)
+			var desired := MovingThingMotion.direction_between(current, target)
 			direction = _turn_one_step(direction, desired)
 			ThingData.write(things, offset + 1, direction)
 
@@ -127,7 +127,7 @@ static func update(
 					break
 
 			if not found:
-				_remove(text, things, record, map_edge)
+				MovingThingMotion.remove(text, things, record, map_edge)
 				counters.removed_ships += 1
 				direction = (
 					(int(ThingData.read(things, offset + 1)) + 2) & 7
@@ -278,19 +278,6 @@ static func _convert_to_explosion(things: PackedByteArray, record: int) -> void:
 	ThingData.write(things, offset + 11, 0)
 
 
-static func _remove(
-	text: PackedByteArray, things: PackedByteArray, record: int,
-	map_edge: int = 128,
-) -> void:
-	var offset := record * RECORD_SIZE
-	ThingData.write(things, offset, 0)
-	var point := Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
-	var index := _index(point, map_edge)
-
-	if index >= 0:
-		OverlayData.write(text, index, 0)
-
-
 static func _queue_sound(
 	counters: MovingThingResult, things: PackedByteArray, record: int
 ) -> void:
@@ -302,7 +289,7 @@ static func _queue_sound(
 static func _steer_direction(
 	direction: int, start: Vector2i, target: Vector2i
 ) -> int:
-	var desired := _direction_between(start, target)
+	var desired := MovingThingMotion.direction_between(start, target)
 
 	return direction if desired == direction else _turn_one_step(direction, desired)
 
@@ -314,23 +301,6 @@ static func _turn_one_step(direction: int, target: int) -> int:
 		)
 
 	return (direction + 1) & 7 if direction - target > 4 else (direction - 1) & 7
-
-
-static func _direction_between(start: Vector2i, target: Vector2i) -> int:
-	var difference := target - start
-	var absolute_x := absi(difference.x)
-	var absolute_y := absi(difference.y)
-
-	if absolute_x < int((absolute_y + 1) / 2):
-		return 0 if difference.y < 0 else 4
-
-	if absolute_y < int((absolute_x + 1) / 2):
-		return 6 if difference.x < 0 else 2
-
-	if difference.x < 0:
-		return 7 if difference.y < 0 else 5
-
-	return 1 if difference.y < 0 else 3
 
 
 static func _index(point: Vector2i, map_edge: int = 128) -> int:

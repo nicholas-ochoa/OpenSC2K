@@ -26,7 +26,7 @@ static func update_airplane(
 	var direction := int(ThingData.read(things, offset + 1))
 
 	if current_index < 0 or direction < 0 or direction >= EIGHT_DIRECTIONS.size():
-		AirThingMotion._remove_thing(text, things, record, map_edge)
+		MovingThingMotion.remove(text, things, record, map_edge)
 		counters.removed_airplanes += 1
 		counters.malformed_records += 1
 
@@ -105,7 +105,7 @@ static func update_airplane(
 					AirThingMotion._convert_to_explosion(things, record, 5, 1)
 					counters.crashed_airplanes += 1
 				else:
-					AirThingMotion._remove_thing(text, things, record, map_edge)
+					MovingThingMotion.remove(text, things, record, map_edge)
 					counters.removed_airplanes += 1
 					counters.landed_airplanes += 1
 		2:
@@ -122,7 +122,7 @@ static func update_airplane(
 			counters.moved_airplanes += 1
 		3:
 			var target := Vector2i(ThingData.read(things, offset + 8), ThingData.read(things, offset + 9))
-			var planned_direction := AirThingMotion._direction_quadrant(current, target)
+			var planned_direction := MovingThingMotion.direction_quadrant(current, target)
 			ThingData.write(things, offset + 1, planned_direction)
 			AirThingMotion._advance_air_direction(buildings, things, record, map_edge)
 			direction = int(ThingData.read(things, offset + 1))
@@ -220,7 +220,7 @@ static func update_helicopter(
 	var direction := int(ThingData.read(things, offset + 1))
 
 	if current_index < 0 or direction < 0 or direction >= EIGHT_DIRECTIONS.size():
-		AirThingMotion._remove_thing(text, things, record, map_edge)
+		MovingThingMotion.remove(text, things, record, map_edge)
 		counters.removed_helicopters += 1
 		counters.malformed_records += 1
 

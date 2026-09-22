@@ -56,7 +56,7 @@ static func apply(city: CityState, started: DisasterStartResult, random: SimRand
 	var index := city.index_of(point.x, point.y)
 	var fields := {
 		0: MovingThingSpawner.TYPE_MAXIS_MAN,
-		1: MovingThingSpawner._direction_between(point, target), 2: 0,
+		1: MovingThingMotion.direction_between(point, target), 2: 0,
 		3: point.x, 4: point.y, 5: city.land_altitude(point.x, point.y) + 2,
 		6: 8, 7: 8, 8: target.x, 9: target.y,
 		10: OverlayData.read(text, index), 11: goal,
