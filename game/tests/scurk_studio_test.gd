@@ -98,11 +98,11 @@ func _test_sidebar() -> void:
 	assert(author.text == "Unapplied author")
 	studio.tabs.current_tab = 1
 	assert(studio.tabs.current_tab == 1)
-	var add := studio.get_node(studio.LAYERS + "/Actions/Add") as Button
+	var add := studio.get_node(studio.LAYERS + "/Row/Actions/Add") as Button
 	assert(add.is_visible_in_tree())
 	add.pressed.emit()
 	assert(_document().layers.size() == 2)
-	var list := studio.get_node(studio.LAYERS + "/List") as ItemList
+	var list := studio.get_node(studio.LAYERS + "/Row/List") as ItemList
 	list.select(1)
 	list.item_selected.emit(1)
 	assert(int(_document().active) == 0)
@@ -122,7 +122,7 @@ func _test_sidebar() -> void:
 	assert(studio.tabs.current_tab == 1 and list.is_visible_in_tree())
 	assert(canvas.selection.mask == selection)
 	studio.get_node(studio.LAYERS + "/Name").text = "Windows"
-	studio.get_node(studio.LAYERS + "/Actions/Rename").pressed.emit()
+	studio.get_node(studio.LAYERS + "/Row/Actions/Rename").pressed.emit()
 	assert(_document().layers[1].name == "Windows")
 	studio.tabs.current_tab = 2
 	studio.get_node(studio.STAMPS + "/Name").text = "Window stamp"
@@ -174,7 +174,7 @@ func _test_layers() -> void:
 	studio._select_layer(0)
 	assert(not canvas.paste_active and editor.tile_set.to_bytes().bytes == before_move)
 	assert(_document().layers[1].pixels[offset] == 99 and _document().layers[1].pixels[offset + 4] == -1)
-	var layers := studio.get_node(studio.LAYERS + "/List") as ItemList
+	var layers := studio.get_node(studio.LAYERS + "/Row/List") as ItemList
 	layers.select(0)
 	layers.item_selected.emit(0)
 	assert(int(_document().active) == int(layers.get_item_metadata(0)) and int(_document().active) == 1)

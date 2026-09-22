@@ -45,10 +45,10 @@ func bind(value: ScurkEditorControl) -> void:
 	$OpenProject.file_selected.connect(load_project)
 	$SaveProject.file_selected.connect(save_project)
 	$Recovery.confirmed.connect(func() -> void: load_project(recovery_path, true))
-	get_node(LAYERS + "/List").item_selected.connect(func(row: int) -> void:
-		_select_layer(int(get_node(LAYERS + "/List").get_item_metadata(row))))
+	get_node(LAYERS + "/Row/List").item_selected.connect(func(row: int) -> void:
+		_select_layer(int(get_node(LAYERS + "/Row/List").get_item_metadata(row))))
 	for action in ["Add", "Delete", "Up", "Down", "Rename"]:
-		get_node(LAYERS + "/Actions/" + action).pressed.connect(_layer_action.bind(action))
+		get_node(LAYERS + "/Row/Actions/" + action).pressed.connect(_layer_action.bind(action))
 	get_node(LAYERS + "/State/Visible").toggled.connect(_layer_visible)
 	get_node(LAYERS + "/State/Locked").toggled.connect(_layer_locked)
 	get_node(HISTORY + "/Actions/Add").pressed.connect(_add_checkpoint)
@@ -96,7 +96,7 @@ func bind(value: ScurkEditorControl) -> void:
 
 
 func _refresh_icon_colors() -> void:
-	for button: Button in get_node(LAYERS + "/Actions").get_children():
+	for button: Button in get_node(LAYERS + "/Row/Actions").get_children():
 		for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
 			var color_name := "font_color" if state == "normal" else "font_%s_color" % state
 			button.add_theme_color_override(
@@ -363,7 +363,7 @@ func _refresh_layers() -> void:
 		return
 	updating_controls = true
 	var document: Dictionary = project.documents[key()]
-	var list := get_node(LAYERS + "/List") as ItemList
+	var list := get_node(LAYERS + "/Row/List") as ItemList
 	list.clear()
 	for index in range(document.layers.size() - 1, -1, -1):
 		var layer: Dictionary = document.layers[index]

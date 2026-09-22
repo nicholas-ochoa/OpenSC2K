@@ -55,9 +55,63 @@ layout_mode = 2
 
 [node name="Metadata" type="VBoxContainer" parent="Margin/Tabs"]
 
-[node name="List" type="ItemList" parent="Margin/Tabs/Layers"]
+[node name="Row" type="HBoxContainer" parent="Margin/Tabs/Layers"]
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="List" type="ItemList" parent="Margin/Tabs/Layers/Row"]
+size_flags_horizontal = 3
 size_flags_vertical = 3
 custom_minimum_size = Vector2(0, 160)
+
+[node name="Actions" type="VBoxContainer" parent="Margin/Tabs/Layers/Row"]
+texture_filter = 2
+theme_override_constants/separation = 4
+
+[node name="Add" type="Button" parent="Margin/Tabs/Layers/Row/Actions"]
+icon = ExtResource("layer_add")
+tooltip_text = "Add layer"
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="Delete" type="Button" parent="Margin/Tabs/Layers/Row/Actions"]
+icon = ExtResource("layer_delete")
+tooltip_text = "Delete layer"
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="Up" type="Button" parent="Margin/Tabs/Layers/Row/Actions"]
+icon = ExtResource("layer_up")
+tooltip_text = "Move layer up"
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="Down" type="Button" parent="Margin/Tabs/Layers/Row/Actions"]
+icon = ExtResource("layer_down")
+tooltip_text = "Move layer down"
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="Rename" type="Button" parent="Margin/Tabs/Layers/Row/Actions"]
+icon = ExtResource("layer_rename")
+tooltip_text = "Rename layer"
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
 
 [node name="Name" type="LineEdit" parent="Margin/Tabs/Layers"]
 placeholder_text = "Layer name"
@@ -71,56 +125,6 @@ button_pressed = true
 [node name="Locked" type="CheckBox" parent="Margin/Tabs/Layers/State"]
 text = "Locked"
 button_pressed = false
-
-[node name="Actions" type="HFlowContainer" parent="Margin/Tabs/Layers"]
-texture_filter = 2
-theme_override_constants/h_separation = 4
-theme_override_constants/v_separation = 4
-
-[node name="Add" type="Button" parent="Margin/Tabs/Layers/Actions"]
-icon = ExtResource("layer_add")
-tooltip_text = "Add layer"
-custom_minimum_size = Vector2(32, 32)
-icon_alignment = 1
-vertical_icon_alignment = 1
-expand_icon = true
-theme_override_constants/icon_max_width = 24
-
-[node name="Delete" type="Button" parent="Margin/Tabs/Layers/Actions"]
-icon = ExtResource("layer_delete")
-tooltip_text = "Delete layer"
-custom_minimum_size = Vector2(32, 32)
-icon_alignment = 1
-vertical_icon_alignment = 1
-expand_icon = true
-theme_override_constants/icon_max_width = 24
-
-[node name="Up" type="Button" parent="Margin/Tabs/Layers/Actions"]
-icon = ExtResource("layer_up")
-tooltip_text = "Move layer up"
-custom_minimum_size = Vector2(32, 32)
-icon_alignment = 1
-vertical_icon_alignment = 1
-expand_icon = true
-theme_override_constants/icon_max_width = 24
-
-[node name="Down" type="Button" parent="Margin/Tabs/Layers/Actions"]
-icon = ExtResource("layer_down")
-tooltip_text = "Move layer down"
-custom_minimum_size = Vector2(32, 32)
-icon_alignment = 1
-vertical_icon_alignment = 1
-expand_icon = true
-theme_override_constants/icon_max_width = 24
-
-[node name="Rename" type="Button" parent="Margin/Tabs/Layers/Actions"]
-icon = ExtResource("layer_rename")
-tooltip_text = "Rename layer"
-custom_minimum_size = Vector2(32, 32)
-icon_alignment = 1
-vertical_icon_alignment = 1
-expand_icon = true
-theme_override_constants/icon_max_width = 24
 
 [node name="List" type="ItemList" parent="Margin/Tabs/History"]
 size_flags_vertical = 3
