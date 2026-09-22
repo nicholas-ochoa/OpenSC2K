@@ -34,7 +34,7 @@ static func capture(city: CityState, proposed: PackedInt32Array) -> BudgetReport
 	report.funding = proposed.duplicate()
 	report.funds = city.funds()
 	report.year_end = city.document.misc_u32(Budget.MISC_YEAR_END) != 0
-	report.actual_months = 12 if report.year_end else city.current_month()
+	report.actual_months = CityCalendar.MONTHS_PER_YEAR if report.year_end else city.current_month()
 	var ytd_scaled := 0
 	var estimate_scaled := 0
 
@@ -44,11 +44,11 @@ static func capture(city: CityState, proposed: PackedInt32Array) -> BudgetReport
 
 		var raw_ytd := city.document.misc_i32(offset + Budget.BUDGET_YEAR_TO_DATE)
 		var funded := wrap_i32(cost * proposed[id])
-		var raw_estimate := wrap_i32(funded * 12) if report.year_end else wrap_i32(raw_ytd + funded * (12 - report.actual_months))
+		var raw_estimate := wrap_i32(funded * CityCalendar.MONTHS_PER_YEAR) if report.year_end else wrap_i32(raw_ytd + funded * (CityCalendar.MONTHS_PER_YEAR - report.actual_months))
 		var factor: int = Budget.ANNUAL_DIVISOR_FACTORS[id]
 		report.current.append(cost)
-		report.year_to_date.append(raw_ytd / (factor * 12))
-		report.estimated.append(raw_estimate / (factor * 12))
+		report.year_to_date.append(raw_ytd / (factor * CityCalendar.MONTHS_PER_YEAR))
+		report.estimated.append(raw_estimate / (factor * CityCalendar.MONTHS_PER_YEAR))
 		report.estimated_raw.append(raw_estimate)
 		ytd_scaled = wrap_i32(ytd_scaled + raw_ytd / factor)
 		estimate_scaled = wrap_i32(estimate_scaled + raw_estimate / factor)
@@ -58,14 +58,14 @@ static func capture(city: CityState, proposed: PackedInt32Array) -> BudgetReport
 		var running_raw := 0
 		var previous_amount := 0
 
-		for month in 12:
+		for month in CityCalendar.MONTHS_PER_YEAR:
 			var actual := month < report.actual_months
-			var month_cost := city.document.misc_i32(offset + Budget.BUDGET_MONTHS + month * 8) if actual else cost
-			var rate := city.document.misc_i32(offset + Budget.BUDGET_MONTHS + month * 8 + 4) if actual else proposed[id]
+			var month_cost := city.document.misc_i32(offset + Budget.BUDGET_MONTHS + month * Sc2BudgetLayout.MONTH_RECORD_SIZE) if actual else cost
+			var rate := city.document.misc_i32(offset + Budget.BUDGET_MONTHS + month * Sc2BudgetLayout.MONTH_RECORD_SIZE + Sc2BudgetLayout.MONTH_FUNDING) if actual else proposed[id]
 			costs.append(month_cost)
 			rates.append(rate)
 			running_raw = wrap_i32(running_raw + wrap_i32(month_cost * rate))
-			var cumulative_amount := running_raw / (factor * 12)
+			var cumulative_amount := running_raw / (factor * CityCalendar.MONTHS_PER_YEAR)
 			amounts.append(cumulative_amount - previous_amount)
 			previous_amount = cumulative_amount
 
@@ -73,8 +73,8 @@ static func capture(city: CityState, proposed: PackedInt32Array) -> BudgetReport
 		report.history_costs.append(costs)
 		report.history_rates.append(rates)
 
-	report.ytd_cash = ytd_scaled / 12
-	report.estimated_cash = estimate_scaled / 12
+	report.ytd_cash = ytd_scaled / CityCalendar.MONTHS_PER_YEAR
+	report.estimated_cash = estimate_scaled / CityCalendar.MONTHS_PER_YEAR
 	return report
 
 

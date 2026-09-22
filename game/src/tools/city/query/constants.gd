@@ -136,9 +136,9 @@ const UNDERGROUND_NAMES := [
 ]
 
 const FLAG_LABELS := [
-	[0x80, "powerable"], [0x40, "powered"], [0x20, "piped"],
-	[0x10, "watered"], [0x08, "xvalmask"], [0x04, "water"],
-	[0x02, "rotated"], [0x01, "saltwater"],
+	[Sc2TileFlags.POWERABLE, "powerable"], [Sc2TileFlags.POWERED, "powered"], [Sc2TileFlags.PIPED, "piped"],
+	[Sc2TileFlags.WATERED, "watered"], [Sc2TileFlags.MARK, "xvalmask"], [Sc2TileFlags.WATER, "water"],
+	[Sc2TileFlags.FLIPPED, "rotated"], [Sc2TileFlags.SALT_WATER, "saltwater"],
 ]
 
 const THING_NAMES := [

@@ -34,7 +34,7 @@ const FIRST_ROAD := Tiles.FIRST_ROAD
 const FIRST_DEVELOPED_BUILDING := Tiles.DEVELOPED_FIRST
 const RADIOACTIVITY := Tiles.RADIOACTIVE_WASTE
 const SMALL_PARK := Tiles.SMALL_PARK
-const MILITARY_ZONE := 0x07
+const MILITARY_ZONE := Sc2ZoneLayout.MILITARY
 const TERRAIN_REQUIRES_SURCHARGE := [
 	false, false, false, false, false, true, true, true,
 	true, true, true, true, true, false, false, false,

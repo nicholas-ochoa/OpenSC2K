@@ -107,7 +107,7 @@ static func run(city: CityState, random: SimRandom, annual_budget_approved := fa
 			if factor != 0:
 				var year_to_date := BinaryData.read_i32_be(misc, budget_offset + BUDGET_YEAR_TO_DATE)
 				funds = _to_i32(
-					funds + _divide_toward_zero(year_to_date, factor * 12)
+					funds + _divide_toward_zero(year_to_date, factor * CityCalendar.MONTHS_PER_YEAR)
 				)
 
 			BinaryData.write_u32_be(misc, budget_offset + BUDGET_YEAR_TO_DATE, 0)
@@ -124,9 +124,9 @@ static func run(city: CityState, random: SimRandom, annual_budget_approved := fa
 		var budget_offset := _budget_offset(budget_id)
 		var current := BinaryData.read_i32_be(misc, budget_offset + BUDGET_CURRENT)
 		var funding := BinaryData.read_i32_be(misc, budget_offset + BUDGET_FUNDING)
-		var month_offset := budget_offset + BUDGET_MONTHS + month * 8
+		var month_offset := budget_offset + BUDGET_MONTHS + month * Sc2BudgetLayout.MONTH_RECORD_SIZE
 		BinaryData.write_u32_be(misc, month_offset, current)
-		BinaryData.write_u32_be(misc, month_offset + 4, funding)
+		BinaryData.write_u32_be(misc, month_offset + Sc2BudgetLayout.MONTH_FUNDING, funding)
 		var year_to_date := BinaryData.read_i32_be(misc, budget_offset + BUDGET_YEAR_TO_DATE)
 		var funded_cost := _to_i32(current * funding)
 		BinaryData.write_u32_be(
@@ -135,7 +135,7 @@ static func run(city: CityState, random: SimRandom, annual_budget_approved := fa
 			_to_i32(year_to_date + funded_cost)
 		)
 
-	if month == 11:
+	if month == CityCalendar.MONTHS_PER_YEAR - 1:
 		BinaryData.write_u32_be(misc, MISC_YEAR_END, 1)
 
 	BinaryData.write_u32_be(misc, _budget_offset(BUDGET_BONDS), BinaryData.read_i32_be(misc, MISC_BONDS))
