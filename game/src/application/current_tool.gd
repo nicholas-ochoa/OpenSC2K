@@ -24,6 +24,44 @@ func _init(application: CityApplication) -> void:
 	app = application
 
 
+func reset_prompts() -> void:
+	app.tool_state.pending_bridge_request = null
+
+	if app.city_dialogs.bridge_dialog.visible:
+		app.city_dialogs.bridge_dialog.hide()
+
+	app.tool_state.pending_tool_choices = null
+
+	if app.city_dialogs.tool_choice_dialog.visible:
+		app.city_dialogs.tool_choice_dialog.hide()
+
+	app.tool_state.pending_stadium_command = null
+
+	if app.city_dialogs.stadium_dialog.visible:
+		app.city_dialogs.stadium_dialog.hide()
+
+	app.tool_state.pending_network_connection = null
+
+	if app.city_dialogs.network_connection_dialog.visible:
+		app.city_dialogs.network_connection_dialog.hide()
+
+	app.tool_state.pending_highway_connection = null
+
+	if app.city_dialogs.highway_connection_dialog.visible:
+		app.city_dialogs.highway_connection_dialog.hide()
+
+	app.tool_state.pending_tunnel_request = null
+
+	if app.city_dialogs.tunnel_dialog.visible:
+		app.city_dialogs.tunnel_dialog.hide()
+
+	if app.city_dialogs.building_objection_dialog != null and app.city_dialogs.building_objection_dialog.visible:
+		app.city_dialogs.building_objection_dialog.hide()
+
+	app.tool_state.pending_building_objection_group = -1
+	app.tool_state.pending_building_objection_subtool = -1
+
+
 func select_tool_group(index: int) -> void:
 	if app.tool_state.terrain_stretch.active:
 		app.map_view.cancel_active_selection()

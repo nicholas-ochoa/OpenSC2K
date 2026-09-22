@@ -14,6 +14,26 @@ func _init(application: CityApplication) -> void:
 	app = application
 
 
+func reset_prompts() -> void:
+	app.city_dialogs.budget_dialog.reset_dialogs()
+
+	if app.city_dialogs.game_over_dialog.visible:
+		app.city_dialogs.game_over_dialog.hide()
+
+	if app.city_dialogs.scenario_dialog.visible:
+		app.city_dialogs.scenario_dialog.hide()
+
+	app.simulation_state.military_proposal_pending = false
+
+	if app.city_dialogs.military_dialog.visible:
+		app.city_dialogs.military_dialog.hide()
+
+
+func reset_pending_state() -> void:
+	app.simulation_state.annual_budget_pending = false
+	app.simulation_state.game_over_active = false
+
+
 func open_manual_budget() -> void:
 	if app.tool_state.landscape_editor:
 		return

@@ -51,54 +51,8 @@ func activate_document(
 	app.city_menu_bar.disasters_menu.disabled = false
 	var music_was_active := app.effects_audio.music_playback_is_active()
 
-	app.city_dialogs.budget_dialog.reset_dialogs()
-
-	if app.city_dialogs.game_over_dialog.visible:
-		app.city_dialogs.game_over_dialog.hide()
-
-	if app.city_dialogs.scenario_dialog.visible:
-		app.city_dialogs.scenario_dialog.hide()
-
-	app.simulation_state.military_proposal_pending = false
-
-	if app.city_dialogs.military_dialog.visible:
-		app.city_dialogs.military_dialog.hide()
-
-	app.tool_state.pending_bridge_request = null
-
-	if app.city_dialogs.bridge_dialog.visible:
-		app.city_dialogs.bridge_dialog.hide()
-
-	app.tool_state.pending_tool_choices = null
-
-	if app.city_dialogs.tool_choice_dialog.visible:
-		app.city_dialogs.tool_choice_dialog.hide()
-
-	app.tool_state.pending_stadium_command = null
-
-	if app.city_dialogs.stadium_dialog.visible:
-		app.city_dialogs.stadium_dialog.hide()
-
-	app.tool_state.pending_network_connection = null
-
-	if app.city_dialogs.network_connection_dialog.visible:
-		app.city_dialogs.network_connection_dialog.hide()
-
-	app.tool_state.pending_highway_connection = null
-
-	if app.city_dialogs.highway_connection_dialog.visible:
-		app.city_dialogs.highway_connection_dialog.hide()
-
-	app.tool_state.pending_tunnel_request = null
-
-	if app.city_dialogs.tunnel_dialog.visible:
-		app.city_dialogs.tunnel_dialog.hide()
-
-	if app.city_dialogs.building_objection_dialog != null and app.city_dialogs.building_objection_dialog.visible:
-		app.city_dialogs.building_objection_dialog.hide()
-
-	app.tool_state.pending_building_objection_group = -1
-	app.tool_state.pending_building_objection_subtool = -1
+	app.budget.reset_prompts()
+	app.current_tool.reset_prompts()
 
 	if app.city_dialogs.new_city_dialog != null and app.city_dialogs.new_city_dialog.visible:
 		app.city_dialogs.new_city_dialog.hide()
@@ -113,8 +67,7 @@ func activate_document(
 
 	app.scurk_state.pending_print_options = null
 	app.scurk_state.edit_history.clear()
-	app.simulation_state.annual_budget_pending = false
-	app.simulation_state.game_over_active = false
+	app.budget.reset_pending_state()
 	app.document_state.city = loaded_city
 	app.map_view.pending_loaded_center = Vector2i(-1, -1)
 
