@@ -3,6 +3,7 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
+const ChunkCommit = preload("res://src/model/city/ordered_chunk_commit.gd")
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
 const GROUP_NATURE := 1
@@ -396,27 +397,4 @@ static func _duplicate_payloads(payloads: Dictionary) -> Dictionary[String, Pack
 static func _apply_payloads(
 	city: CityState, chunk_ids: PackedStringArray, payloads: Dictionary, rollback: Dictionary
 ) -> bool:
-	var applied := PackedStringArray()
-
-	for chunk_id in chunk_ids:
-		var chunk := city.document.find_chunk(chunk_id)
-
-		if chunk == null or not payloads.has(chunk_id) or not chunk.set_decoded_payload(payloads[chunk_id]):
-			for rollback_id in applied:
-				city.document.find_chunk(rollback_id).set_decoded_payload(rollback[rollback_id])
-
-			_refresh_city_arrays(city, applied)
-
-			return false
-
-		applied.append(chunk_id)
-
-	_refresh_city_arrays(city, chunk_ids)
-
-	return true
-
-
-# resync the mirrors of the committed chunks. passing the ids also covers xund
-# and xtxt, which this path used to skip
-static func _refresh_city_arrays(city: CityState, chunk_ids: PackedStringArray) -> void:
-	city.resync_mirrors(chunk_ids)
+	return ChunkCommit.apply(city, chunk_ids, payloads, rollback)

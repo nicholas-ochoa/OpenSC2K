@@ -1,6 +1,8 @@
 class_name BuildingState
 extends BuildingConstants
 
+const ChunkCommit = preload("res://src/model/city/ordered_chunk_commit.gd")
+
 
 
 static func update_building_count(
@@ -67,30 +69,7 @@ static func _restore_payloads(city: CityState, old_payloads: Dictionary) -> bool
 static func _apply_payloads(
 	city: CityState, chunk_ids: PackedStringArray, payloads: Dictionary, rollback: Dictionary
 ) -> bool:
-	var applied := PackedStringArray()
-
-	for chunk_id in chunk_ids:
-		var chunk := city.document.find_chunk(chunk_id)
-
-		if chunk == null or not payloads.has(chunk_id) or not chunk.set_decoded_payload(payloads[chunk_id]):
-			for rollback_id in applied:
-				city.document.find_chunk(rollback_id).set_decoded_payload(rollback[rollback_id])
-
-			_refresh_city_arrays(city, applied)
-
-			return false
-
-		applied.append(chunk_id)
-
-	_refresh_city_arrays(city, chunk_ids)
-
-	return true
-
-
-# resync the mirrors of the committed chunks. passing the ids also covers
-# altm, which this path used to leave to each caller to decode by hand
-static func _refresh_city_arrays(city: CityState, chunk_ids: PackedStringArray) -> void:
-	city.resync_mirrors(chunk_ids)
+	return ChunkCommit.apply(city, chunk_ids, payloads, rollback)
 
 
 static func _write_u32_be(data: PackedByteArray, offset: int, value: int) -> void:

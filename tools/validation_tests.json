@@ -1,5 +1,11 @@
 [
   {
+    "id": "ordered_chunk_commit_test",
+    "script": "tests/ordered_chunk_commit_test.gd",
+    "domain": "tools",
+    "lane": "product"
+  },
+  {
     "id": "growth_site_rules_test",
     "script": "tests/growth_site_rules_test.gd",
     "domain": "simulation",
