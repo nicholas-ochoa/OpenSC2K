@@ -54,16 +54,6 @@ static func _special_axis_is_flipped(x_delta: int, rotation: int) -> bool:
 	return bool(rotation & 1) if x_delta == 0 else not bool(rotation & 1)
 
 
-static func _is_subway_tile(tile: int) -> bool:
-	return (
-		(tile > UnderTiles.EMPTY and tile < UnderTiles.PIPE_FIRST)
-		or tile == UnderTiles.PIPE_TB_SUBWAY_LR
-		or tile == UnderTiles.PIPE_LR_SUBWAY_TB
-		or tile == UnderTiles.MISSILE_SILO
-		or tile == UnderTiles.SUBWAY_ENTRANCE
-	)
-
-
 static func replace_underground(
 	underground: PackedByteArray,
 	zones: PackedByteArray,
@@ -79,10 +69,10 @@ static func replace_underground(
 	if (zones[index] & 0x0f) != 7:
 		var count := BinaryData.read_u32_be(misc, MISC_SUBWAY_COUNT)
 
-		if _is_subway_tile(old_tile):
+		if NetworkTileMembership.subway(old_tile):
 			count = (count - 1) & (0xffff if underground.size() == 16384 else 0xffffffff)
 
-		if _is_subway_tile(new_tile):
+		if NetworkTileMembership.subway(new_tile):
 			count = (count + 1) & (0xffff if underground.size() == 16384 else 0xffffffff)
 
 		BinaryData.write_u32_be(misc, MISC_SUBWAY_COUNT, count)

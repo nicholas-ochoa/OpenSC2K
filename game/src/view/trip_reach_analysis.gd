@@ -22,7 +22,7 @@ static func inspect(city: CityState, clicked: Vector2i) -> TransportTripReachRes
 	if not rci:
 		var mode := _network_mode(tile)
 
-		if mode < 0 and TransportTripSteps._is_subway(int(city.underground[index])):
+		if mode < 0 and NetworkTileMembership.subway(int(city.underground[index])):
 			mode = TransportTrip.SUBWAY_MODE
 
 		if mode >= 0:
@@ -65,11 +65,11 @@ static func _network_mode(tile: int) -> int:
 		return TransportTrip.SUBWAY_STATION_MODE
 	if tile == Tiles.BUS_DEPOT:
 		return TransportTrip.BUS_STOP_MODE
-	if TransportTripSteps._is_surface_road(tile):
+	if NetworkTileMembership.surface_road(tile):
 		return TransportTrip.ROAD_MODE
 	if TransportTripSteps._is_road_bridge(tile):
 		return TransportTrip.ROAD_BRIDGE_MODE
-	if TransportTripSteps._is_rail(tile):
+	if NetworkTileMembership.rail(tile):
 		return TransportTrip.RAIL_MODE
 	return -1
 

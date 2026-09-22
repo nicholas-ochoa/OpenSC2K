@@ -53,7 +53,7 @@ static func advance(
 			if tile >= Tiles.ONRAMP_FIRST and tile <= Tiles.ONRAMP_LAST:
 				return _move(HIGHWAY_MODE, 2)
 
-			if _is_surface_road(tile):
+			if NetworkTileMembership.surface_road(tile):
 				return _move(ROAD_MODE, 3)
 
 			if tile == Tiles.BUS_DEPOT:
@@ -74,13 +74,13 @@ static func advance(
 			if altitudes[index] & 0xfc00:
 				return _move(ROAD_TUNNEL_MODE, 3)
 
-			if _is_surface_road(tile):
+			if NetworkTileMembership.surface_road(tile):
 				return _move(ROAD_MODE, 3)
 		ROAD_BRIDGE_MODE:
 			if _is_road_bridge(tile):
 				return _move(ROAD_BRIDGE_MODE, 3)
 
-			if _is_surface_road(tile):
+			if NetworkTileMembership.surface_road(tile):
 				return _move(ROAD_MODE, 3)
 		BUS_ROAD_MODE:
 			if destination:
@@ -95,7 +95,7 @@ static func advance(
 			if tile >= Tiles.ONRAMP_FIRST and tile <= Tiles.ONRAMP_LAST:
 				return _move(BUS_HIGHWAY_MODE, 2)
 
-			if _is_surface_road(tile):
+			if NetworkTileMembership.surface_road(tile):
 				return _move(BUS_ROAD_MODE, 2)
 
 			if tile == Tiles.BUS_DEPOT:
@@ -116,13 +116,13 @@ static func advance(
 			if altitudes[index] & 0xfc00:
 				return _move(BUS_TUNNEL_MODE, 2)
 
-			if _is_surface_road(tile):
+			if NetworkTileMembership.surface_road(tile):
 				return _move(BUS_ROAD_MODE, 2)
 		BUS_BRIDGE_MODE:
 			if _is_road_bridge(tile):
 				return _move(BUS_BRIDGE_MODE, 2)
 
-			if _is_surface_road(tile):
+			if NetworkTileMembership.surface_road(tile):
 				return _move(BUS_ROAD_MODE, 2)
 		BUS_STOP_MODE:
 			if destination:
@@ -131,7 +131,7 @@ static func advance(
 			if tile == Tiles.BUS_DEPOT:
 				return _move(BUS_STOP_MODE, 4)
 
-			if _is_surface_road(tile):
+			if NetworkTileMembership.surface_road(tile):
 				return _move(BUS_ROAD_MODE, 2)
 		BUS_RAIL_MODE:
 			if destination:
@@ -140,22 +140,22 @@ static func advance(
 			if tile == Tiles.BUS_DEPOT or tile == Tiles.RAIL_STATION:
 				return _move(BUS_RAIL_MODE, 4)
 
-			if _is_surface_road(tile):
+			if NetworkTileMembership.surface_road(tile):
 				return _move(ROAD_MODE, 3)
 		RAIL_STATION_MODE:
 			if tile == Tiles.RAIL_STATION:
 				return _move(RAIL_STATION_MODE, 4)
 
-			if _is_rail(tile):
+			if NetworkTileMembership.rail(tile):
 				return _move(RAIL_MODE, 1)
 		SUBWAY_STATION_MODE:
-			if _is_subway(int(underground[index])):
+			if NetworkTileMembership.subway(int(underground[index])):
 				return _move(SUBWAY_MODE, 1)
 		RAIL_MODE:
 			if tile == Tiles.RAIL_STATION:
 				return _move(BUS_RAIL_MODE, 4)
 
-			if _is_rail(tile):
+			if NetworkTileMembership.rail(tile):
 				return _move(RAIL_MODE, 1)
 
 			if tile > Tiles.DESALINIZATION:
@@ -164,7 +164,7 @@ static func advance(
 			if tile == Tiles.SUBWAY_STATION:
 				return _move(BUS_RAIL_MODE, 4)
 
-			if _is_subway(int(underground[index])):
+			if NetworkTileMembership.subway(int(underground[index])):
 				return _move(SUBWAY_MODE, 1)
 
 	return ADVANCE_BLOCKED
@@ -174,42 +174,12 @@ static func _move(mode: int, cost: int) -> int:
 	return (mode << 8) | cost
 
 
-static func _is_surface_road(tile: int) -> bool:
-	return (
-		(tile >= Tiles.FIRST_ROAD and tile <= Tiles.LAST_ROAD)
-		or (tile >= Tiles.TUNNEL_FIRST and tile <= Tiles.ROAD_RAIL_CROSSING_2)
-		or tile == Tiles.HIGHWAY_ROAD_CROSSING_1
-		or tile == Tiles.HIGHWAY_ROAD_CROSSING_2
-		or (tile >= Tiles.ONRAMP_FIRST and tile <= Tiles.ONRAMP_LAST)
-	)
-
-
 static func _is_road_bridge(tile: int) -> bool:
 	return (tile >= Tiles.SUSPENSION_BRIDGE_1 and tile <= Tiles.POWER_BRIDGE) or tile == Tiles.HIGHWAY_BRIDGE or tile == Tiles.REINFORCED_HIGHWAY_BRIDGE
 
 
 static func _is_highway_span(tile: int) -> bool:
 	return (tile >= Tiles.HIGHWAY_SLOPE_FIRST and tile <= Tiles.HIGHWAY_INTERSECTION) or (tile >= Tiles.HIGHWAY_STRAIGHT_1 and tile <= Tiles.HIGHWAY_POWER_CROSSING_2)
-
-
-static func _is_rail(tile: int) -> bool:
-	return (
-		(tile >= Tiles.RAIL_FIRST and tile <= Tiles.RAIL_LAST)
-		or (tile >= Tiles.ROAD_RAIL_CROSSING_1 and tile <= Tiles.RAIL_POWER_CROSSING_2)
-		or (tile >= Tiles.RAIL_SUBWAY_FIRST and tile <= Tiles.RAIL_SUBWAY_LAST)
-		or tile == Tiles.HIGHWAY_RAIL_CROSSING_1
-		or tile == Tiles.HIGHWAY_RAIL_CROSSING_2
-	)
-
-
-static func _is_subway(tile: int) -> bool:
-	return (
-		(tile > UnderTiles.EMPTY and tile < UnderTiles.PIPE_FIRST)
-		or tile == UnderTiles.PIPE_TB_SUBWAY_LR
-		or tile == UnderTiles.PIPE_LR_SUBWAY_TB
-		or tile == UnderTiles.MISSILE_SILO
-		or tile == UnderTiles.SUBWAY_ENTRANCE
-	)
 
 
 static func _index(point: Vector2i, map_edge: int = 128) -> int:

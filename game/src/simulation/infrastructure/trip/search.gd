@@ -341,7 +341,7 @@ static func _find_transport(buildings: PackedByteArray, origin: Vector2i, map_ed
 
 		var tile := int(buildings[index])
 
-		if TransportTripSteps._is_surface_road(tile):
+		if NetworkTileMembership.surface_road(tile):
 			return (ROAD_MODE << (14 if map_edge == 128 else 18)) | index
 
 		if tile == Tiles.BUS_DEPOT:
