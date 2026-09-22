@@ -1,5 +1,11 @@
 [
   {
+    "id": "new_city_dialog_options_test",
+    "script": "tests/new_city_dialog_options_test.gd",
+    "domain": "ui",
+    "lane": "product"
+  },
+  {
     "id": "record_layouts_test",
     "script": "tests/record_layouts_test.gd",
     "domain": "formats",

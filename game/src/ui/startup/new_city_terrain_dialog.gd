@@ -48,6 +48,79 @@ var terrain_icons: Dictionary = {}
 var control_graphics: CityUiGraphics
 
 
+class SetupOptions extends RefCounted:
+	var city_name := ""
+	var mayor_name := ""
+	var difficulty := 0
+	var starting_year := 0
+
+
+func reset_fields(default_mayor: String) -> void:
+	preview_view.texture = null
+	landscape_background.texture = null
+	compatibility_input.set_pressed_no_signal(false)
+	compatibility_changed(false)
+	native_maps_input.set_pressed_no_signal(true)
+	city_name_input.text = "New City"
+	mayor_name_input.text = default_mayor
+	difficulty_input.select(0)
+	year_input.select(0)
+	reset_features()
+	ocean_input.button_pressed = NewTerrain.DEFAULT_OCEAN
+	river_input.button_pressed = NewTerrain.DEFAULT_RIVER
+	hills_input.value = NewTerrain.DEFAULT_HILLS
+	water_input.value = NewTerrain.DEFAULT_WATER
+	trees_input.value = NewTerrain.DEFAULT_TREES
+	_update_slider_labels()
+
+
+func focus_city_name() -> void:
+	city_name_input.grab_focus()
+	city_name_input.select_all()
+
+
+func setup_options() -> SetupOptions:
+	var options := SetupOptions.new()
+	options.city_name = city_name_input.text
+	options.mayor_name = mayor_name_input.text
+	options.difficulty = difficulty_input.get_selected_id()
+	options.starting_year = year_input.get_selected_id()
+	return options
+
+
+func terrain_options() -> NewCityTerrain.Options:
+	var options := NewCityTerrain.Options.new()
+	options.features.assign(selected_features())
+	options.smooth_slopes = true
+	options.size = size_input.get_selected_id()
+	options.native_maps = native_maps_input.button_pressed
+	options.ocean = ocean_input.button_pressed
+	options.river = river_input.button_pressed
+	options.hills = roundi(hills_input.value)
+	options.water = roundi(water_input.value)
+	options.trees = roundi(trees_input.value)
+	return OriginalCompatibility.terrain_options(options, compatibility_input.button_pressed)
+
+
+func show_preview(landscape: Image, minimap: Image, status: String) -> void:
+	landscape_background.texture = ImageTexture.create_from_image(landscape)
+	preview_view.texture = ImageTexture.create_from_image(minimap)
+	candidate_valid = true
+	done_button.disabled = false
+	preview_status.text = status
+
+
+func _update_slider_labels() -> void:
+	hills_value.text = str(roundi(hills_input.value))
+	water_value.text = str(roundi(water_input.value))
+	trees_value.text = str(roundi(trees_input.value))
+
+
+func _slider_changed(_value: float) -> void:
+	_update_slider_labels()
+	preview_requested.emit()
+
+
 func _ready() -> void:
 	hide()
 	landscape_background = TextureRect.new()
@@ -114,7 +187,7 @@ func _ready() -> void:
 	river_input.toggled.connect(_feature_changed.bind("river"))
 
 	for slider in [hills_input, water_input, trees_input]:
-		slider.value_changed.connect(func(_value: float) -> void: preview_requested.emit())
+		slider.value_changed.connect(_slider_changed)
 
 	$Center/NewCityDialog/Content/Body/Preview/Regenerate.pressed.connect(terrain_regeneration_requested.emit)
 	$Center/NewCityDialog/Content/Buttons/Cancel.pressed.connect(cancel_requested.emit)
