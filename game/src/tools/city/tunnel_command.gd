@@ -10,9 +10,9 @@ const SUBTOOL_TUNNEL := 2
 const MAX_CLEAR_BUILDING := Tiles.SMALL_PARK
 const RADIOACTIVITY := Tiles.RADIOACTIVE_WASTE
 const FIRST_ENTRANCE := Tiles.TUNNEL_FIRST
-const TUNNEL_MASK := 0x7c00
-const ALTITUDE_DATA_MASK := 0x03ff
-const ONE_TUNNEL_LEVEL := 0x0400
+const TUNNEL_MASK := Sc2AltitudeLayout.TUNNEL_MASK
+const ALTITUDE_DATA_MASK := Sc2AltitudeLayout.LAND_MASK | Sc2AltitudeLayout.WATER_MASK
+const ONE_TUNNEL_LEVEL := 1 << Sc2AltitudeLayout.TUNNEL_SHIFT
 const CONFIRMATION_UNSELECTED := -1
 const CONFIRMATION_CANCELLED := 0
 const CONFIRMATION_CONFIRMED := 1
@@ -70,7 +70,7 @@ static func apply(
 		if (altitude_word & TUNNEL_MASK) != 0:
 			return TunnelEditResult.rejected("tunnel path conflicts with another tunnel")
 
-		var altitude_difference := (altitude_word & 0x1f) - start_altitude
+		var altitude_difference := (altitude_word & Sc2AltitudeLayout.LEVEL_MASK) - start_altitude
 
 		if altitude_difference > 30:
 			return TunnelEditResult.rejected("tunnel path is too deep")
@@ -232,7 +232,7 @@ static func _underground_blocks_tunnel(tile_id: int) -> bool:
 static func _set_tunnel_level(altitude: PackedByteArray, index: int, level: int) -> void:
 	var offset := index * 2
 	var word := (altitude[offset] << 8) | altitude[offset + 1]
-	word = (word & ALTITUDE_DATA_MASK) | ((level & 0x1f) << 10)
+	word = (word & ALTITUDE_DATA_MASK) | ((level & Sc2AltitudeLayout.LEVEL_MASK) << Sc2AltitudeLayout.TUNNEL_SHIFT)
 	altitude[offset] = (word >> 8) & 0xff
 	altitude[offset + 1] = word & 0xff
 

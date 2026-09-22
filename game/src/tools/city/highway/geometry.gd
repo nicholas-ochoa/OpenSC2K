@@ -193,7 +193,7 @@ static func _section_altitude(
 
 
 static func _land_altitude(altitude: PackedByteArray, index: int) -> int:
-	return ((altitude[index * 2] << 8) | altitude[index * 2 + 1]) & 0x1f
+	return ((altitude[index * 2] << 8) | altitude[index * 2 + 1]) & Sc2AltitudeLayout.LEVEL_MASK
 
 
 static func _building_is_allowed(tile_id: int) -> bool:
@@ -234,13 +234,13 @@ static func _section_kind(
 	if not _is_highway_tile(anchor_tile):
 		return -1
 
-	if (zones[anchor_index] & 0xf0) != 0xf0:
+	if (zones[anchor_index] & Sc2ZoneLayout.CORNERS_MASK) != Sc2ZoneLayout.CORNERS_MASK:
 		var shaped_kind := anchor_tile - Tiles.HIGHWAY_ONRAMP_1
 
 		if shaped_kind > 12:
 			var south_index := anchor.x * map_edge + anchor.y + 1
 
-			return 16 if (flags[south_index] & 0x02) != 0 else 15
+			return 16 if (flags[south_index] & Sc2TileFlags.FLIPPED) != 0 else 15
 
 		return shaped_kind
 

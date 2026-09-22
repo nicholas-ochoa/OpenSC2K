@@ -52,15 +52,15 @@ static func surface_copy(source: CityState, visibility: Dictionary) -> CityState
 			result.buildings[index] = Tiles.EMPTY
 
 		if not show_zones:
-			result.zones[index] &= 0xf0
+			result.zones[index] &= Sc2ZoneLayout.CORNERS_MASK
 
 		if not show_water:
-			if result.tile_flags[index] & 0x04:
+			if result.tile_flags[index] & Sc2TileFlags.WATER:
 				result.object_altitude_overrides[index] = (
 					int(result.altitude_words[index]) >> 5
 				) & 0x1f
 
-			result.tile_flags[index] &= 0xfb
+			result.tile_flags[index] &= ~Sc2TileFlags.WATER & 0xff
 			var terrain := int(result.terrain[index])
 
 			if terrain >= TerrainTileIds.DEEP_WATER_FIRST and terrain <= TerrainTileIds.WATER_RANGE_LAST:

@@ -27,7 +27,7 @@ static func _replace_special_building(
 	if old_tile == new_tile:
 		return
 
-	var military := (zones[index] & 0x0f) == 7
+	var military := (zones[index] & Sc2ZoneLayout.TYPE_MASK) == 7
 	var old_offset := _special_count_offset(old_tile, military)
 	var new_offset := _special_count_offset(new_tile, military)
 	BinaryData.write_u32_be(misc, old_offset, (BinaryData.read_u32_be(misc, old_offset) - 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
@@ -66,7 +66,7 @@ static func replace_underground(
 	if old_tile == new_tile:
 		return
 
-	if (zones[index] & 0x0f) != 7:
+	if (zones[index] & Sc2ZoneLayout.TYPE_MASK) != 7:
 		var count := BinaryData.read_u32_be(misc, MISC_SUBWAY_COUNT)
 
 		if NetworkTileMembership.subway(old_tile):
@@ -91,28 +91,28 @@ static func _set_corners(
 	var bottom_right := far.x * map_edge + position.y
 	var top_left := far.x * map_edge + far.y
 	var top_right := position.x * map_edge + far.y
-	zones[bottom_left] = (zones[bottom_left] & 0x0f) | CORNER_BOTTOM_LEFT[view]
-	zones[bottom_right] = (zones[bottom_right] & 0x0f) | CORNER_BOTTOM_RIGHT[view]
-	zones[top_left] = (zones[top_left] & 0x0f) | CORNER_TOP_LEFT[view]
-	zones[top_right] = (zones[top_right] & 0x0f) | CORNER_TOP_RIGHT[view]
+	zones[bottom_left] = (zones[bottom_left] & Sc2ZoneLayout.TYPE_MASK) | CORNER_BOTTOM_LEFT[view]
+	zones[bottom_right] = (zones[bottom_right] & Sc2ZoneLayout.TYPE_MASK) | CORNER_BOTTOM_RIGHT[view]
+	zones[top_left] = (zones[top_left] & Sc2ZoneLayout.TYPE_MASK) | CORNER_TOP_LEFT[view]
+	zones[top_right] = (zones[top_right] & Sc2ZoneLayout.TYPE_MASK) | CORNER_TOP_RIGHT[view]
 
 
 static func _has_power(flags: PackedByteArray, x: int, y: int, map_edge: int = 128) -> bool:
 	var index := x * map_edge + y
 
-	if flags[index] & 0x40:
+	if flags[index] & Sc2TileFlags.POWERED:
 		return true
 
-	if x > 1 and flags[(x - 1) * map_edge + y] & 0x40:
+	if x > 1 and flags[(x - 1) * map_edge + y] & Sc2TileFlags.POWERED:
 		return true
 
-	if y > 1 and flags[x * map_edge + y - 1] & 0x40:
+	if y > 1 and flags[x * map_edge + y - 1] & Sc2TileFlags.POWERED:
 		return true
 
-	if x < (map_edge - 1) and flags[(x + 1) * map_edge + y] & 0x40:
+	if x < (map_edge - 1) and flags[(x + 1) * map_edge + y] & Sc2TileFlags.POWERED:
 		return true
 
-	return y < (map_edge - 1) and (flags[x * map_edge + y + 1] & 0x40) != 0
+	return y < (map_edge - 1) and (flags[x * map_edge + y + 1] & Sc2TileFlags.POWERED) != 0
 
 
 static func _index(point: Vector2i, map_edge: int = 128) -> int:

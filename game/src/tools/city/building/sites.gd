@@ -89,7 +89,7 @@ static func _site_error(
 			if tile_id == SMALL_PARK and old_building > BuildingTileIds.TREES_7:
 				return "site contains a protected tile"
 
-			if (zones[index] & 0x0f) == MILITARY_ZONE:
+			if (zones[index] & Sc2ZoneLayout.TYPE_MASK) == MILITARY_ZONE:
 				return "site is in a military zone"
 
 			var is_water := (flags[index] & FLAG_WATER) != 0
@@ -113,7 +113,7 @@ static func _count_nearby_residential(
 
 	for x in range(maxi(selected.x - 8, 0), mini(selected.x + area + 8, map_edge)):
 		for y in range(maxi(selected.y - 8, 0), mini(selected.y + area + 8, map_edge)):
-			var zone := zones[x * map_edge + y] & 0x0f
+			var zone := zones[x * map_edge + y] & Sc2ZoneLayout.TYPE_MASK
 
 			if zone == 1 or zone == 2:
 				count += 1
@@ -125,7 +125,7 @@ static func _count_nearby_residential(
 static func set_corners(zones: PackedByteArray, site: Rect2i, area: int, rotation: int, map_edge: int = 128) -> void:
 	if area == 1:
 		var index := site.position.x * map_edge + site.position.y
-		zones[index] = (zones[index] & 0x0f) | 0xf0
+		zones[index] = (zones[index] & Sc2ZoneLayout.TYPE_MASK) | Sc2ZoneLayout.CORNERS_MASK
 
 		return
 
@@ -135,7 +135,7 @@ static func set_corners(zones: PackedByteArray, site: Rect2i, area: int, rotatio
 	var bottom_right := far.x * map_edge + site.position.y
 	var top_left := far.x * map_edge + far.y
 	var top_right := site.position.x * map_edge + far.y
-	zones[bottom_left] = (zones[bottom_left] & 0x0f) | CORNER_BOTTOM_LEFT[view]
-	zones[bottom_right] = (zones[bottom_right] & 0x0f) | CORNER_BOTTOM_RIGHT[view]
-	zones[top_left] = (zones[top_left] & 0x0f) | CORNER_TOP_LEFT[view]
-	zones[top_right] = (zones[top_right] & 0x0f) | CORNER_TOP_RIGHT[view]
+	zones[bottom_left] = (zones[bottom_left] & Sc2ZoneLayout.TYPE_MASK) | CORNER_BOTTOM_LEFT[view]
+	zones[bottom_right] = (zones[bottom_right] & Sc2ZoneLayout.TYPE_MASK) | CORNER_BOTTOM_RIGHT[view]
+	zones[top_left] = (zones[top_left] & Sc2ZoneLayout.TYPE_MASK) | CORNER_TOP_LEFT[view]
+	zones[top_right] = (zones[top_right] & Sc2ZoneLayout.TYPE_MASK) | CORNER_TOP_RIGHT[view]

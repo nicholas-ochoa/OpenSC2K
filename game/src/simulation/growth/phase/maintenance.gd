@@ -31,7 +31,7 @@ static func _process_surface_maintenance(
 	if NetworkTileMembership.surface_road(tile):
 		if _maintenance_fails(misc, 10, random, 100):
 			GrowthState.replace_building(buildings, zones, misc, index, Tiles.RUBBLE_FIRST + (random.next_u15() & 3))
-			flags[index] &= 0x7f
+			flags[index] &= ~Sc2TileFlags.POWERABLE & 0xff
 			counters.metrics.decayed_roads += 1
 
 		return
@@ -39,7 +39,7 @@ static func _process_surface_maintenance(
 	if NetworkTileMembership.rail(tile):
 		if _maintenance_fails(misc, 13, random, 100):
 			GrowthState.replace_building(buildings, zones, misc, index, Tiles.RUBBLE_FIRST + (random.next_u15() & 3))
-			flags[index] &= 0x7f
+			flags[index] &= ~Sc2TileFlags.POWERABLE & 0xff
 			counters.metrics.decayed_rails += 1
 
 		return
@@ -91,7 +91,7 @@ static func _process_surface_maintenance(
 			var highway_index := GrowthState._index(highway_point, map_edge)
 			var replacement := Tiles.EMPTY
 
-			if flags[highway_index] & 0x04 == 0:
+			if flags[highway_index] & Sc2TileFlags.WATER == 0:
 				replacement = Tiles.RUBBLE_FIRST + (random.next_u15() & 3)
 
 			GrowthState.replace_building(buildings, zones, misc, highway_index, replacement)
@@ -119,7 +119,7 @@ static func _process_microsim_growth(
 	var index := GrowthState._index(point, map_edge)
 
 	if tile == Tiles.RAIL_STATION:
-		if flags[index] & 0x40 == 0 or lfsr_random.next_mask(3) != 0:
+		if flags[index] & Sc2TileFlags.POWERED == 0 or lfsr_random.next_mask(3) != 0:
 			return
 
 		var train_limit := int(SpecialZoneState.tile_count(misc, Tiles.RAIL_STATION, false, map_edge) / 4)
@@ -133,7 +133,7 @@ static func _process_microsim_growth(
 		return
 
 	if tile == Tiles.MARINA:
-		if flags[index] & 0x40 == 0 or lfsr_random.next_mask(3) != 0:
+		if flags[index] & Sc2TileFlags.POWERED == 0 or lfsr_random.next_mask(3) != 0:
 			return
 
 		var sailboat_limit := int(SpecialZoneState.tile_count(misc, Tiles.MARINA, false, map_edge) / 9)
@@ -166,10 +166,10 @@ static func _process_microsim_growth(
 		+ 12
 	)
 
-	if flags[index] & 0x40 == 0:
+	if flags[index] & Sc2TileFlags.POWERED == 0:
 		value = int(value / 2.0)
 
-	if flags[index] & 0x10 == 0:
+	if flags[index] & Sc2TileFlags.WATERED == 0:
 		value = int(value / 2.0)
 
 	microsims[record_offset + 1] = clampi(value, 0, 12)
@@ -220,8 +220,8 @@ static func _process_subway_maintenance(
 			surface_replacement = Tiles.RUBBLE_FIRST + (random.next_u15() & 3)
 
 		GrowthState.replace_building(buildings, zones, misc, index, surface_replacement)
-		zones[index] &= 0x0f
-		flags[index] &= 0x3d
+		zones[index] &= Sc2ZoneLayout.TYPE_MASK
+		flags[index] &= ~(Sc2TileFlags.FLIPPED | Sc2TileFlags.POWER_MASK) & 0xff
 		var overlay := int(OverlayData.read(text_overlays, index))
 
 		if not OverlayData.blocks_thing(overlay) or overlay == NetworkConstants.CONNECTION_LABEL:
@@ -271,7 +271,7 @@ static func _replace_underground(
 	if old_tile == new_tile:
 		return
 
-	if (zones[index] & 0x0f) != 7:
+	if (zones[index] & Sc2ZoneLayout.TYPE_MASK) != 7:
 		var count := BinaryData.read_u32_be(misc, MISC_SUBWAY_COUNT)
 
 		if NetworkTileMembership.subway(old_tile):

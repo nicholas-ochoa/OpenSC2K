@@ -280,7 +280,7 @@ static func spawn_sailboats(
 		if (
 			record == 0
 			or index < 0
-			or flags[index] & 0x04 == 0
+			or flags[index] & Sc2TileFlags.WATER == 0
 			or buildings[index] != Tiles.EMPTY
 			or OverlayData.read(text, index) != 0
 		):

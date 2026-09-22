@@ -103,10 +103,10 @@ static func apply(
 	for x in range(site.position.x, site.end.x):
 		for y in range(site.position.y, site.end.y):
 			var index := x * map_edge + y
-			BuildingState.update_building_count(misc, zones[index] & 0x0f, buildings[index], tile_id, map_edge)
+			BuildingState.update_building_count(misc, zones[index] & Sc2ZoneLayout.TYPE_MASK, buildings[index], tile_id, map_edge)
 			buildings[index] = tile_id
 			zones[index] = 0
-			flags[index] = (flags[index] & 0x1f) | placed_flags
+			flags[index] = (flags[index] & ~Sc2TileFlags.STRUCTURE_MASK & 0xff) | placed_flags
 
 			if overlay_id != 0:
 				OverlayData.write(text_overlays, index, overlay_id)

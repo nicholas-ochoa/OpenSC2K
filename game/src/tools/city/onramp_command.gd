@@ -13,7 +13,7 @@ const ROAD_FIRST := Tiles.FIRST_ROAD
 const ROAD_LAST := Tiles.ROAD_CROSSROADS
 const ROAD_INTERSECTION := Tiles.ROAD_CROSSROADS
 const RAMP_FIRST := Tiles.HIGHWAY_ONRAMP_1
-const FLAG_FLIPPED := 0x02
+const FLAG_FLIPPED := Sc2TileFlags.FLIPPED
 
 # neighbor masks use north, east, south, and west bits. each value selects
 # the road directions that can connect to the adjacent highway arrangement

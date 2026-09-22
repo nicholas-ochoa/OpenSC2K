@@ -17,7 +17,7 @@ class Availability extends RefCounted:
 
 
 const GROUP_DISPATCH := 2
-const FLAG_WATER := 0x04
+const FLAG_WATER := Sc2TileFlags.WATER
 const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
 const POLICE_STATION := BuildingTileIds.POLICE_STATION
 const FIRE_STATION := BuildingTileIds.FIRE_STATION

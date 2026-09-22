@@ -6,11 +6,11 @@ const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const MISC_FUNDS := Sc2MiscLayout.FUNDS
 const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
 const MISC_MILITARY_TILE_COUNTS := Sc2MiscLayout.MILITARY_TILE_COUNTS
-const MILITARY_ZONE := 7
-const FLAG_WATER := 0x04
-const FLAG_FLIPPED := 0x02
-const FLAG_PIPED := 0x20
-const FLAG_POWERABLE := 0x80
+const MILITARY_ZONE := Sc2ZoneLayout.MILITARY
+const FLAG_WATER := Sc2TileFlags.WATER
+const FLAG_FLIPPED := Sc2TileFlags.FLIPPED
+const FLAG_PIPED := Sc2TileFlags.PIPED
+const FLAG_POWERABLE := Sc2TileFlags.POWERABLE
 
 const MODE_ROAD := 0
 const MODE_RAIL := 1

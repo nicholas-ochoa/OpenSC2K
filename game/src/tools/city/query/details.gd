@@ -35,13 +35,13 @@ static func _advanced_details(
 	var zone_raw := int(city.zones[index])
 	var result := QueryResult.new()
 	result.tile_id = city.building_id(point.x, point.y)
-	result.zone_id = zone_raw & 0x0f
+	result.zone_id = zone_raw & Sc2ZoneLayout.TYPE_MASK
 	result.altitude_raw = int(city.altitude_words[index])
 	result.land_value_raw = int(city.document.find_chunk("XVAL").decoded_payload[detail_index])
 	result.crime_raw = int(city.document.find_chunk("XCRM").decoded_payload[detail_index])
 	result.pollution_raw = int(city.document.find_chunk("XPLT").decoded_payload[detail_index])
 	result.zone_raw = zone_raw
-	result.corner_name = _corner_name(zone_raw & 0xf0)
+	result.corner_name = _corner_name(zone_raw & Sc2ZoneLayout.CORNERS_MASK)
 	result.flags_raw = flags
 	result.flag_names = flag_names
 	result.underground_id = underground_id

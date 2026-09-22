@@ -124,7 +124,7 @@ class TileScan extends GrowthConstants:
 
 				var index := x * map_edge + y
 				var zone_byte := int(zones[index])
-				var zone := zone_byte & 0x0f
+				var zone := zone_byte & Sc2ZoneLayout.TYPE_MASK
 				var tile := Vector2i(x, y)
 
 				if zone == 0:

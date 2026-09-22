@@ -174,7 +174,7 @@ static func apply_path(
 
 		for index in (map_edge * map_edge):
 			scurk_zones[index] = (
-				(scurk_zones[index] & 0xf0) | (old_zones[index] & 0x0f)
+				(scurk_zones[index] & Sc2ZoneLayout.CORNERS_MASK) | (old_zones[index] & Sc2ZoneLayout.TYPE_MASK)
 			)
 			scurk_flags[index] = (
 				(scurk_flags[index] & ~FLAG_WATER & 0xff)

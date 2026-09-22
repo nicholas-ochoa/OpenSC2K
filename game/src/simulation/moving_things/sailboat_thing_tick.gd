@@ -55,7 +55,7 @@ static func update(
 		var current := Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
 		var current_index := _index(current, map_edge)
 
-		if current_index < 0 or flags[current_index] & 0x04 == 0:
+		if current_index < 0 or flags[current_index] & Sc2TileFlags.WATER == 0:
 			MovingThingMotion.remove(text, things, record, map_edge)
 			counters.removed_sailboats += 1
 
@@ -107,7 +107,7 @@ static func _route_state(
 	if buildings[next_index] == TILE_PIER or OverlayData.read(text, next_index) != 0:
 		return 0
 
-	return 1 if flags[next_index] & 0x04 != 0 else 0
+	return 1 if flags[next_index] & Sc2TileFlags.WATER != 0 else 0
 
 
 static func _move(

@@ -53,7 +53,7 @@ static func _demolish_bridge(
 				Vector2i.ZERO, (random.next_u15() & 1) != 0, 0, DemolishTerrain._water_altitude(altitude, index)))
 
 		NetworkState.replace_building(buildings, zones, misc, index, Tiles.EMPTY)
-		zones[index] &= 0x0f
+		zones[index] &= Sc2ZoneLayout.TYPE_MASK
 		flags[index] &= ~FLAG_FLIPPED & 0xff
 		points.append(current)
 		indices.append(index)
@@ -158,7 +158,7 @@ static func _demolish_reinforced_bridge(
 			var point: Vector2i = current + offset
 			var index := point.x * map_edge + point.y
 			NetworkState.replace_building(buildings, zones, misc, index, Tiles.EMPTY)
-			zones[index] &= 0x0f
+			zones[index] &= Sc2ZoneLayout.TYPE_MASK
 			flags[index] &= ~FLAG_FLIPPED & 0xff
 			points.append(point)
 			indices.append(index)

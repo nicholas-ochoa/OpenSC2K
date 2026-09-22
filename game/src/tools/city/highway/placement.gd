@@ -26,10 +26,10 @@ static func _place_straight_section(
 	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)]:
 		var point: Vector2i = anchor + offset
 		var index := point.x * map_edge + point.y
-		zones[index] &= 0xf0
+		zones[index] &= Sc2ZoneLayout.CORNERS_MASK
 		var tile_id := _straight_replacement(buildings[index], orientation)
 		NetworkState.replace_building(buildings, zones, misc, index, tile_id)
-		zones[index] |= 0xf0
+		zones[index] |= Sc2ZoneLayout.CORNERS_MASK
 
 
 static func _straight_replacement(old_tile: int, orientation: int) -> int:
@@ -130,7 +130,7 @@ static func _place_section(
 static func _clear_section_zone_types(zones: PackedByteArray, anchor: Vector2i, map_edge: int = 128) -> void:
 	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 		var point: Vector2i = anchor + offset
-		zones[point.x * map_edge + point.y] &= 0xf0
+		zones[point.x * map_edge + point.y] &= Sc2ZoneLayout.CORNERS_MASK
 
 
 static func _retile_affected_sections(
@@ -329,7 +329,7 @@ static func _place_graded_section(
 		var point: Vector2i = anchor + offsets[offset_index]
 		var index := point.x * map_edge + point.y
 		terrain[index] = terrain_pattern[offset_index]
-		zones[index] &= 0xf0
+		zones[index] &= Sc2ZoneLayout.CORNERS_MASK
 		NetworkState.replace_building(buildings, zones, misc, index, tile_id)
 
 	BuildingSites.set_corners(zones, Rect2i(anchor, Vector2i(2, 2)), 2, rotation, map_edge)
@@ -340,7 +340,7 @@ static func _set_land_altitude(
 ) -> void:
 	var offset := index * 2
 	var word := (altitude[offset] << 8) | altitude[offset + 1]
-	word = (word & ~0x1f) | (value & 0x1f)
+	word = (word & ~Sc2AltitudeLayout.LEVEL_MASK) | (value & Sc2AltitudeLayout.LEVEL_MASK)
 	altitude[offset] = (word >> 8) & 0xff
 	altitude[offset + 1] = word & 0xff
 

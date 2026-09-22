@@ -190,7 +190,7 @@ static func generate(
 		NewTerrainHeights._fill_unsupported_slopes(heights, map_edge)
 
 	for index in (map_edge * map_edge):
-		altitude[index * 2 + 1] = heights[index] & 0x1f
+		altitude[index * 2 + 1] = heights[index] & Sc2AltitudeLayout.LEVEL_MASK
 
 	NewTerrainValues._write_u32_be(misc, MISC_WATER_LEVEL, water_level)
 	NewTerrainValues._write_u32_be(misc, MISC_HAS_OCEAN, 1 if has_ocean else 0)

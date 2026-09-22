@@ -162,13 +162,13 @@ func index_of(x: int, y: int) -> int:
 func land_altitude(x: int, y: int) -> int:
 	var index := index_of(x, y)
 
-	return 0 if index < 0 else altitude_words[index] & 0x1f
+	return 0 if index < 0 else altitude_words[index] & Sc2AltitudeLayout.LAND_MASK
 
 
 func water_altitude(x: int, y: int) -> int:
 	var index := index_of(x, y)
 
-	return 0 if index < 0 else (altitude_words[index] >> 5) & 0x1f
+	return 0 if index < 0 else (altitude_words[index] >> Sc2AltitudeLayout.WATER_SHIFT) & Sc2AltitudeLayout.LEVEL_MASK
 
 
 func object_altitude(x: int, y: int) -> int:
@@ -189,7 +189,7 @@ func object_altitude(x: int, y: int) -> int:
 func tunnel_levels(x: int, y: int) -> int:
 	var index := index_of(x, y)
 
-	return 0 if index < 0 else (altitude_words[index] >> 10) & 0x3f
+	return 0 if index < 0 else (altitude_words[index] >> Sc2AltitudeLayout.TUNNEL_SHIFT) & Sc2AltitudeLayout.TUNNEL_FIELD_VALUE_MASK
 
 
 func terrain_id(x: int, y: int) -> int:
@@ -213,7 +213,7 @@ func replace_buildings(value: PackedByteArray) -> bool:
 
 
 func zone_id(x: int, y: int) -> int:
-	return _byte_at(zones, x, y) & 0x0f
+	return _byte_at(zones, x, y) & Sc2ZoneLayout.TYPE_MASK
 
 
 func set_zone_id(x: int, y: int, value: int) -> bool:
@@ -229,7 +229,7 @@ func replace_zones(value: PackedByteArray) -> bool:
 
 
 func building_corners(x: int, y: int) -> int:
-	return _byte_at(zones, x, y) & 0xf0
+	return _byte_at(zones, x, y) & Sc2ZoneLayout.CORNERS_MASK
 
 
 func underground_id(x: int, y: int) -> int:
@@ -255,31 +255,31 @@ func replace_text_overlays(value: PackedByteArray) -> bool:
 
 
 func is_salt_water(x: int, y: int) -> bool:
-	return (_byte_at(tile_flags, x, y) & 0x01) != 0
+	return (_byte_at(tile_flags, x, y) & Sc2TileFlags.SALT_WATER) != 0
 
 
 func is_flipped(x: int, y: int) -> bool:
-	return (_byte_at(tile_flags, x, y) & 0x02) != 0
+	return (_byte_at(tile_flags, x, y) & Sc2TileFlags.FLIPPED) != 0
 
 
 func is_water(x: int, y: int) -> bool:
-	return (_byte_at(tile_flags, x, y) & 0x04) != 0
+	return (_byte_at(tile_flags, x, y) & Sc2TileFlags.WATER) != 0
 
 
 func is_watered(x: int, y: int) -> bool:
-	return (_byte_at(tile_flags, x, y) & 0x10) != 0
+	return (_byte_at(tile_flags, x, y) & Sc2TileFlags.WATERED) != 0
 
 
 func is_piped(x: int, y: int) -> bool:
-	return (_byte_at(tile_flags, x, y) & 0x20) != 0
+	return (_byte_at(tile_flags, x, y) & Sc2TileFlags.PIPED) != 0
 
 
 func is_powered(x: int, y: int) -> bool:
-	return (_byte_at(tile_flags, x, y) & 0x40) != 0
+	return (_byte_at(tile_flags, x, y) & Sc2TileFlags.POWERED) != 0
 
 
 func is_powerable(x: int, y: int) -> bool:
-	return (_byte_at(tile_flags, x, y) & 0x80) != 0
+	return (_byte_at(tile_flags, x, y) & Sc2TileFlags.POWERABLE) != 0
 
 
 func traffic_density(x: int, y: int) -> int:

@@ -8,7 +8,7 @@ const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
 const MISC_BASE_TYPE := Sc2MiscLayout.MILITARY_BASE_TYPE
 const MISC_MILITARY_TILE_COUNTS := Sc2MiscLayout.MILITARY_TILE_COUNTS
 const ZONE_MILITARY := 7
-const FLAG_WATER := 0x04
+const FLAG_WATER := Sc2TileFlags.WATER
 
 const BASE_DECLINED := 1
 const BASE_ARMY := 2
@@ -140,7 +140,7 @@ static func _resolve(city: CityState, accepted: bool, game_random: GameLcgRandom
 				if (
 					_is_clear_land(buildings, terrain, flags, index)
 					and city.land_altitude(x, y) == last_altitude
-					and (zones[index] & 0x0f) != ZONE_MILITARY
+					and (zones[index] & Sc2ZoneLayout.TYPE_MASK) != ZONE_MILITARY
 					and underground[index] == UnderTiles.EMPTY
 				):
 					valid += 1
@@ -202,7 +202,7 @@ static func _zone_plot(
 
 			if (
 				_is_clear_land(buildings, terrain, flags, index)
-				and (zones[index] & 0x0f) == 0
+				and (zones[index] & Sc2ZoneLayout.TYPE_MASK) == 0
 				and underground[index] == UnderTiles.EMPTY
 			):
 				_decrement_tile_count(misc, int(buildings[index]), map_edge)

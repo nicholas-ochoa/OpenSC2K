@@ -34,7 +34,7 @@ static func _place_surface(
 	if mode == MODE_POWER:
 		flags[index] |= FLAG_POWERABLE
 	else:
-		zones[index] &= 0xf0
+		zones[index] &= Sc2ZoneLayout.CORNERS_MASK
 
 	_retile_surface_neighborhood(
 		buildings, terrain, zones, flags, misc, point, mode, text_overlays, map_edge

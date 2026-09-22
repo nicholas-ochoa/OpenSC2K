@@ -110,7 +110,7 @@ static func apply_path(
 		TerrainEditHeights._write_heights(altitude, trial.heights, modified)
 
 		for changed_index in trial.zone_indices:
-			zones[changed_index] &= 0xf0
+			zones[changed_index] &= Sc2ZoneLayout.CORNERS_MASK
 
 		var action_random_state := random.state if random != null else 0
 		var cleared := TerrainEditSurface._clear_terrain_conflicts(

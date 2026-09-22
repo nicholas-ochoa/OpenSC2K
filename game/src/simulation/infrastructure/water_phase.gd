@@ -6,12 +6,12 @@ extends RefCounted
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
 const MAP_SIZE := CityState.MAP_SIZE
-const FLAG_SALT_WATER := 0x01
-const FLAG_WATER := 0x04
-const FLAG_MARK := 0x08
-const FLAG_WATERED := 0x10
-const FLAG_PIPED := 0x20
-const FLAG_POWERED := 0x40
+const FLAG_SALT_WATER := Sc2TileFlags.SALT_WATER
+const FLAG_WATER := Sc2TileFlags.WATER
+const FLAG_MARK := Sc2TileFlags.MARK
+const FLAG_WATERED := Sc2TileFlags.WATERED
+const FLAG_PIPED := Sc2TileFlags.PIPED
+const FLAG_POWERED := Sc2TileFlags.POWERED
 const FIRST_CONSUMER := Tiles.DEVELOPED_FIRST
 const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
 const MISC_TREATMENT_SUFFICIENT := Sc2MiscLayout.TREATMENT_SUFFICIENT

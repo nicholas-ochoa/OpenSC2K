@@ -36,14 +36,14 @@ static func _direction_index(offset: Vector2i) -> int:
 
 
 static func land_altitude(altitude: PackedByteArray, index: int) -> int:
-	return altitude[index * 2 + 1] & 0x1f
+	return altitude[index * 2 + 1] & Sc2AltitudeLayout.LEVEL_MASK
 
 
 static func set_land_altitude(
 	altitude: PackedByteArray, index: int, value: int
 ) -> void:
 	var offset := index * 2
-	altitude[offset + 1] = (altitude[offset + 1] & 0xe0) | (value & 0x1f)
+	altitude[offset + 1] = (altitude[offset + 1] & (~Sc2AltitudeLayout.LAND_MASK & 0xff)) | (value & Sc2AltitudeLayout.LEVEL_MASK)
 
 
 static func _tile_is_eligible(
@@ -63,7 +63,7 @@ static func _tile_is_eligible(
 
 	var index := point.x * map_edge + point.y
 
-	if (zones[index] & 0x0f) == MILITARY_ZONE:
+	if (zones[index] & Sc2ZoneLayout.TYPE_MASK) == MILITARY_ZONE:
 		return false
 
 	var terrain_id := int(terrain[index])
@@ -74,7 +74,7 @@ static func _tile_is_eligible(
 	if mode == MODE_SUBWAY or mode == MODE_PIPE:
 		var altitude_offset := index * 2
 		var altitude_word := (altitude[altitude_offset] << 8) | altitude[altitude_offset + 1]
-		var tunnel_level := (altitude_word & 0x7c00) >> 10
+		var tunnel_level := (altitude_word & Sc2AltitudeLayout.TUNNEL_MASK) >> Sc2AltitudeLayout.TUNNEL_SHIFT
 
 		if tunnel_level == 1 or tunnel_level == 2:
 			return false

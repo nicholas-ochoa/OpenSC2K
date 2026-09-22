@@ -6,9 +6,9 @@ extends RefCounted
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
 const MAP_SIZE := CityState.MAP_SIZE
-const FLAG_MARK := 0x08
-const FLAG_POWERED := 0x40
-const FLAG_POWERABLE := 0x80
+const FLAG_MARK := Sc2TileFlags.MARK
+const FLAG_POWERED := Sc2TileFlags.POWERED
+const FLAG_POWERABLE := Sc2TileFlags.POWERABLE
 const FIRST_CONSUMER := Tiles.DEVELOPED_FIRST
 const FIRST_PLANT := Tiles.HYDRO_POWER_1
 const LAST_PLANT := Tiles.COAL_POWER
@@ -46,7 +46,7 @@ static func run(city: CityState, random: SimRandom) -> Result:
 		if city.simulation_slice != null and (index & 127) == 0:
 			city.simulation_slice.checkpoint()
 
-		flags[index] &= 0xb7
+		flags[index] &= ~(Sc2TileFlags.MARK | Sc2TileFlags.POWERED) & 0xff
 
 	var total_generation := 0
 	var supplied_consumers := 0

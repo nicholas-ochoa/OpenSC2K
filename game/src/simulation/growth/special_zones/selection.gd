@@ -22,7 +22,7 @@ static func _airport_growth_selection(
 		if military or current_tile != Tiles.RUNWAY or random.next_u15() % 30 != 0:
 			return -1
 
-		if flags[SpecialZoneState._index(point, map_edge)] & 0x40 == 0:
+		if flags[SpecialZoneState._index(point, map_edge)] & Sc2TileFlags.POWERED == 0:
 			return -1
 
 		if random.next_u15() % 10 < 4:
@@ -33,7 +33,7 @@ static func _airport_growth_selection(
 			if helicopter.spawned:
 				counters.metrics.spawned_helicopters += 1
 		else:
-			var runway_axis := 2 if bool(flags[SpecialZoneState._index(point, map_edge)] & 0x02) != bool(rotation & 1) else 0
+			var runway_axis := 2 if bool(flags[SpecialZoneState._index(point, map_edge)] & Sc2TileFlags.FLIPPED) != bool(rotation & 1) else 0
 			var airplane := MovingThings.spawn_airplane(
 				things, text_overlays, point, runway_axis, random, map_edge
 			)
@@ -165,10 +165,10 @@ static func grow_special_zone(
 				buildings, zones, flags, terrain, misc, point, tile, 1, zone, rotation, map_edge
 			)
 
-		zones[SpecialZoneState._index(point, map_edge)] = (zones[SpecialZoneState._index(point, map_edge)] & 0xf0) | zone
+		zones[SpecialZoneState._index(point, map_edge)] = (zones[SpecialZoneState._index(point, map_edge)] & Sc2ZoneLayout.CORNERS_MASK) | zone
 
 		if zone == 7:
-			flags[SpecialZoneState._index(point, map_edge)] &= 0x0f
+			flags[SpecialZoneState._index(point, map_edge)] &= ~Sc2TileFlags.UTILITY_MASK & 0xff
 
 		var result := SpecialZonePlacement.Result.new()
 		result.ok = true

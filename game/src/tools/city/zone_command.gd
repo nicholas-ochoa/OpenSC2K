@@ -29,7 +29,7 @@ const SUBTOOL_DEZONE := 4
 const GROUP_RESIDENTIAL := 9
 const GROUP_COMMERCIAL := 10
 const GROUP_INDUSTRIAL := 11
-const FLAG_WATER := 0x04
+const FLAG_WATER := Sc2TileFlags.WATER
 const FIRST_ROAD := Tiles.FIRST_ROAD
 const FIRST_DEVELOPED_BUILDING := Tiles.DEVELOPED_FIRST
 const RADIOACTIVITY := Tiles.RADIOACTIVE_WASTE
@@ -88,13 +88,13 @@ static func apply_rectangle(
 			if not _tile_is_eligible(city, index):
 				continue
 
-			if (changed[index] & 0x0f) == zone_type:
+			if (changed[index] & Sc2ZoneLayout.TYPE_MASK) == zone_type:
 				continue
 
 			tile_indices.append(index)
 			previous_values.append(changed[index])
 			previous_buildings.append(changed_buildings[index])
-			changed[index] = (changed[index] & 0xf0) | zone_type
+			changed[index] = (changed[index] & Sc2ZoneLayout.CORNERS_MASK) | zone_type
 
 			if zone_type == 0 and changed_buildings[index] > Tiles.EMPTY and changed_buildings[index] < Tiles.RADIOACTIVE_WASTE:
 				changed_buildings[index] = Tiles.EMPTY
@@ -209,7 +209,7 @@ static func preview_rectangle(
 
 	if (
 		city.buildings[start_index] == RADIOACTIVITY
-		or (city.zones[start_index] & 0x0f) == MILITARY_ZONE
+		or (city.zones[start_index] & Sc2ZoneLayout.TYPE_MASK) == MILITARY_ZONE
 	):
 		return Preview.failure("a zone selection cannot start on this tile")
 
@@ -229,7 +229,7 @@ static func preview_rectangle(
 
 		if (
 			_tile_is_eligible(city, start_index)
-			and (city.zones[start_index] & 0x0f) != zone_type
+			and (city.zones[start_index] & Sc2ZoneLayout.TYPE_MASK) != zone_type
 		):
 			changed_tiles = 1
 	else:
@@ -351,7 +351,7 @@ static func _tile_is_eligible(city: CityState, index: int) -> bool:
 		and building < FIRST_DEVELOPED_BUILDING
 		and building != RADIOACTIVITY
 		and building != SMALL_PARK
-		and (city.zones[index] & 0x0f) != MILITARY_ZONE
+		and (city.zones[index] & Sc2ZoneLayout.TYPE_MASK) != MILITARY_ZONE
 	)
 
 
@@ -365,8 +365,8 @@ static func _tile_is_drag_price_eligible(
 		and building < FIRST_ROAD
 		and building != RADIOACTIVITY
 		and building != SMALL_PARK
-		and (city.zones[index] & 0x0f) != MILITARY_ZONE
-		and (city.zones[index] & 0x0f) != zone_type
+		and (city.zones[index] & Sc2ZoneLayout.TYPE_MASK) != MILITARY_ZONE
+		and (city.zones[index] & Sc2ZoneLayout.TYPE_MASK) != zone_type
 	)
 
 

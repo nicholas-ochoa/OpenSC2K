@@ -301,10 +301,10 @@ static func _volcano_raise_is_valid(
 	if index < 0 or visited.has(index):
 		return true
 
-	if zones[index] & 0x0f == TerrainCommand.MILITARY_ZONE:
+	if zones[index] & Sc2ZoneLayout.TYPE_MASK == TerrainCommand.MILITARY_ZONE:
 		return false
 
-	if flags[index] & 0x04 != 0 or heights[index] > TerrainCommand.MAX_RAISE_SOURCE:
+	if flags[index] & Sc2TileFlags.WATER != 0 or heights[index] > TerrainCommand.MAX_RAISE_SOURCE:
 		return false
 
 	visited[index] = true
@@ -316,10 +316,10 @@ static func _volcano_raise_is_valid(
 		if neighbor_index < 0:
 			continue
 
-		if zones[neighbor_index] & 0x0f == TerrainCommand.MILITARY_ZONE:
+		if zones[neighbor_index] & Sc2ZoneLayout.TYPE_MASK == TerrainCommand.MILITARY_ZONE:
 			return false
 
-		if flags[neighbor_index] & 0x04 != 0:
+		if flags[neighbor_index] & Sc2TileFlags.WATER != 0:
 			return false
 
 	for offset in TerrainCommand.CARDINAL_OFFSETS:

@@ -55,7 +55,7 @@ static func replace_buildings(city: CityState, value: PackedByteArray) -> bool:
 
 
 static func set_zone_id(city: CityState, x: int, y: int, value: int) -> bool:
-	if value < 0 or value > 0x0f:
+	if value < 0 or value > Sc2ZoneLayout.TYPE_MASK:
 		return false
 
 	var index := city.index_of(x, y)
@@ -66,7 +66,7 @@ static func set_zone_id(city: CityState, x: int, y: int, value: int) -> bool:
 
 	# zone and corner bits share one byte. merge over the payload, which is what
 	# the document writes, rather than over the mirrored copy
-	var merged := (chunk.decoded_payload[index] & 0xf0) | value
+	var merged := (chunk.decoded_payload[index] & Sc2ZoneLayout.CORNERS_MASK) | value
 	chunk.write_decoded_byte(index, merged)
 	city.zones[index] = merged
 
@@ -74,7 +74,7 @@ static func set_zone_id(city: CityState, x: int, y: int, value: int) -> bool:
 
 
 static func set_building_corners(city: CityState, x: int, y: int, value: int) -> bool:
-	if value < 0 or value > 0xf0 or value & 0x0f:
+	if value < 0 or value > Sc2ZoneLayout.CORNERS_MASK or value & Sc2ZoneLayout.TYPE_MASK:
 		return false
 
 	var index := city.index_of(x, y)
@@ -83,7 +83,7 @@ static func set_building_corners(city: CityState, x: int, y: int, value: int) ->
 	if chunk == null:
 		return false
 
-	var merged := value | (chunk.decoded_payload[index] & 0x0f)
+	var merged := value | (chunk.decoded_payload[index] & Sc2ZoneLayout.TYPE_MASK)
 	chunk.write_decoded_byte(index, merged)
 	city.zones[index] = merged
 
@@ -265,7 +265,7 @@ static func masked_tile_flag_signature(city: CityState, mask: int) -> int:
 
 
 static func set_land_altitude(city: CityState, x: int, y: int, value: int) -> bool:
-	if value < 0 or value > 0x1f:
+	if value < 0 or value > Sc2AltitudeLayout.LEVEL_MASK:
 		return false
 
 	var index := city.index_of(x, y)
@@ -273,11 +273,11 @@ static func set_land_altitude(city: CityState, x: int, y: int, value: int) -> bo
 	if index < 0:
 		return false
 
-	return city._set_altitude_word(x, y, (city.altitude_words[index] & ~0x1f) | value)
+	return city._set_altitude_word(x, y, (city.altitude_words[index] & ~Sc2AltitudeLayout.LEVEL_MASK) | value)
 
 
 static func set_water_altitude(city: CityState, x: int, y: int, value: int) -> bool:
-	if value < 0 or value > 0x1f:
+	if value < 0 or value > Sc2AltitudeLayout.LEVEL_MASK:
 		return false
 
 	var index := city.index_of(x, y)
@@ -285,11 +285,11 @@ static func set_water_altitude(city: CityState, x: int, y: int, value: int) -> b
 	if index < 0:
 		return false
 
-	return city._set_altitude_word(x, y, (city.altitude_words[index] & ~0x3e0) | (value << 5))
+	return city._set_altitude_word(x, y, (city.altitude_words[index] & ~Sc2AltitudeLayout.WATER_MASK) | (value << Sc2AltitudeLayout.WATER_SHIFT))
 
 
 static func set_tunnel_levels(city: CityState, x: int, y: int, value: int) -> bool:
-	if value < 0 or value > 0x3f:
+	if value < 0 or value > Sc2AltitudeLayout.TUNNEL_FIELD_VALUE_MASK:
 		return false
 
 	var index := city.index_of(x, y)
@@ -297,7 +297,7 @@ static func set_tunnel_levels(city: CityState, x: int, y: int, value: int) -> bo
 	if index < 0:
 		return false
 
-	return city._set_altitude_word(x, y, (city.altitude_words[index] & ~0xfc00) | (value << 10))
+	return city._set_altitude_word(x, y, (city.altitude_words[index] & ~Sc2AltitudeLayout.TUNNEL_FIELD_MASK) | (value << Sc2AltitudeLayout.TUNNEL_SHIFT))
 
 
 # the chunk behind a mirrored tile plane, when a single byte at index is safe

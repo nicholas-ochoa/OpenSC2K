@@ -55,7 +55,7 @@ static func _place_runway(
 	while SpecialZoneState._index(checked, map_edge) >= 0:
 		var checked_index := SpecialZoneState._index(checked, map_edge)
 
-		if (zones[checked_index] & 0x0f) != zone:
+		if (zones[checked_index] & Sc2ZoneLayout.TYPE_MASK) != zone:
 			var result := Result.new()
 			result.ok = false
 			result.changed_tiles = 0
@@ -105,25 +105,25 @@ static func _place_runway(
 		if current_tile == Tiles.RUNWAY or current_tile == Tiles.RUNWAY_CROSSING:
 			placed_tiles -= 1
 
-			if current_tile == Tiles.RUNWAY and bool(flags[index] & 0x02) != flip:
+			if current_tile == Tiles.RUNWAY and bool(flags[index] & Sc2TileFlags.FLIPPED) != flip:
 				SpecialZoneState._replace_special_building(buildings, zones, misc, index, Tiles.RUNWAY_CROSSING)
-				zones[index] |= 0xf0
+				zones[index] |= Sc2ZoneLayout.CORNERS_MASK
 
 				if zone != 7:
-					flags[index] |= 0xc0
+					flags[index] |= Sc2TileFlags.POWER_MASK
 
-				flags[index] &= 0xfd
+				flags[index] &= ~Sc2TileFlags.FLIPPED & 0xff
 				changed_tiles += 1
 		else:
 			_clear_special_building(buildings, zones, flags, misc, current, map_edge)
 			SpecialZoneState._replace_special_building(buildings, zones, misc, index, Tiles.RUNWAY)
-			zones[index] |= 0xf0
+			zones[index] |= Sc2ZoneLayout.CORNERS_MASK
 
 			if zone != 7:
-				flags[index] |= 0xc0
+				flags[index] |= Sc2TileFlags.POWER_MASK
 
 			if flip:
-				flags[index] |= 0x02
+				flags[index] |= Sc2TileFlags.FLIPPED
 
 			changed_tiles += 1
 
@@ -155,7 +155,7 @@ static func _place_crane_and_pier(
 		var neighbor: Vector2i = point + candidate
 		var neighbor_index := SpecialZoneState._index(neighbor, map_edge)
 
-		if neighbor_index >= 0 and flags[neighbor_index] & 0x04:
+		if neighbor_index >= 0 and flags[neighbor_index] & Sc2TileFlags.WATER:
 			direction = candidate
 			break
 
@@ -179,7 +179,7 @@ static func _place_crane_and_pier(
 		checked += direction
 		var index := SpecialZoneState._index(checked, map_edge)
 
-		if index < 0 or flags[index] & 0x04 == 0 or buildings[index] != Tiles.EMPTY:
+		if index < 0 or flags[index] & Sc2TileFlags.WATER == 0 or buildings[index] != Tiles.EMPTY:
 			var result := Result.new()
 			result.ok = false
 			result.changed_tiles = 0
@@ -188,7 +188,7 @@ static func _place_crane_and_pier(
 
 	var last_word := int(altitudes[SpecialZoneState._index(checked, map_edge)])
 
-	if ((last_word & 0x03e0) >> 5) < (last_word & 0x1f) + 2:
+	if ((last_word & Sc2AltitudeLayout.WATER_MASK) >> Sc2AltitudeLayout.WATER_SHIFT) < (last_word & Sc2AltitudeLayout.LEVEL_MASK) + 2:
 		var result := Result.new()
 		result.ok = false
 		result.changed_tiles = 0
@@ -200,10 +200,10 @@ static func _place_crane_and_pier(
 	place_special_item(
 		buildings, zones, flags, terrain, misc, point, Tiles.CRANE, 1, zone, rotation, map_edge
 	)
-	zones[SpecialZoneState._index(point, map_edge)] = (zones[SpecialZoneState._index(point, map_edge)] & 0xf0) | zone
+	zones[SpecialZoneState._index(point, map_edge)] = (zones[SpecialZoneState._index(point, map_edge)] & Sc2ZoneLayout.CORNERS_MASK) | zone
 
 	if zone == 7:
-		flags[SpecialZoneState._index(point, map_edge)] &= 0x0f
+		flags[SpecialZoneState._index(point, map_edge)] &= ~Sc2TileFlags.UTILITY_MASK & 0xff
 
 	var changed_tiles := int(buildings[SpecialZoneState._index(point, map_edge)] != before)
 	var flip := SpecialZoneState._special_axis_is_flipped(direction.x, rotation)
@@ -213,10 +213,10 @@ static func _place_crane_and_pier(
 		pier += direction
 		var index := SpecialZoneState._index(pier, map_edge)
 		SpecialZoneState._replace_special_building(buildings, zones, misc, index, Tiles.PIER)
-		zones[index] |= 0xf0
+		zones[index] |= Sc2ZoneLayout.CORNERS_MASK
 
 		if flip:
-			flags[index] |= 0x02
+			flags[index] |= Sc2TileFlags.FLIPPED
 
 		changed_tiles += 1
 
@@ -281,14 +281,14 @@ static func _place_special_two_by_two(
 				result.changed_tiles = 0
 
 				return result
-			if terrain[index] != TerrainTileIds.FLAT or flags[index] & 0x04 or (not underground.is_empty() and underground[index] != UnderTiles.EMPTY):
+			if terrain[index] != TerrainTileIds.FLAT or flags[index] & Sc2TileFlags.WATER or (not underground.is_empty() and underground[index] != UnderTiles.EMPTY):
 				var result := Result.new()
 				result.ok = false
 				result.changed_tiles = 0
 
 				return result
 
-		if (zones[index] & 0x0f) != zone:
+		if (zones[index] & Sc2ZoneLayout.TYPE_MASK) != zone:
 			var result := Result.new()
 			result.ok = false
 			result.changed_tiles = 0
@@ -305,10 +305,10 @@ static func _place_special_two_by_two(
 
 	for checked in points:
 		var index := SpecialZoneState._index(checked, map_edge)
-		zones[index] = (zones[index] & 0xf0) | zone
+		zones[index] = (zones[index] & Sc2ZoneLayout.CORNERS_MASK) | zone
 
 		if zone == 7:
-			flags[index] &= 0x0f
+			flags[index] &= ~Sc2TileFlags.UTILITY_MASK & 0xff
 
 	var changed_tiles := 0
 
@@ -350,27 +350,27 @@ static func place_special_item(
 			if buildings[index] >= Tiles.FIRST_ROAD or buildings[index] == Tiles.RADIOACTIVE_WASTE or buildings[index] == Tiles.SMALL_PARK:
 				return false
 
-			if (zones[index] & 0x0f) == 7 and zone != 7:
+			if (zones[index] & Sc2ZoneLayout.TYPE_MASK) == 7 and zone != 7:
 				return false
 
-			if terrain[index] != TerrainTileIds.FLAT or flags[index] & 0x04:
+			if terrain[index] != TerrainTileIds.FLAT or flags[index] & Sc2TileFlags.WATER:
 				return false
 
 			points.append(point)
 
 	for point in points:
 		var index := SpecialZoneState._index(point, map_edge)
-		flags[index] = (flags[index] & 0x1f) | 0xe0
+		flags[index] = (flags[index] & ~Sc2TileFlags.STRUCTURE_MASK & 0xff) | Sc2TileFlags.STRUCTURE_MASK
 		SpecialZoneState._replace_special_building(buildings, zones, misc, index, tile)
 		zones[index] = 0
 
 	if area == 1:
-		zones[SpecialZoneState._index(origin, map_edge)] |= 0xf0
+		zones[SpecialZoneState._index(origin, map_edge)] |= Sc2ZoneLayout.CORNERS_MASK
 	else:
 		SpecialZoneState._set_corners(zones, origin, area, rotation, map_edge)
 
 	for point in points:
-		zones[SpecialZoneState._index(point, map_edge)] = (zones[SpecialZoneState._index(point, map_edge)] & 0xf0) | zone
+		zones[SpecialZoneState._index(point, map_edge)] = (zones[SpecialZoneState._index(point, map_edge)] & Sc2ZoneLayout.CORNERS_MASK) | zone
 
 	return true
 
@@ -390,13 +390,13 @@ static func place_missile_silo(
 	for unused in 2:
 		var left := origin + Vector2i(-1, 0)
 
-		if SpecialZoneState._index(left, map_edge) >= 0 and (zones[SpecialZoneState._index(left, map_edge)] & 0x0f) == zone:
+		if SpecialZoneState._index(left, map_edge) >= 0 and (zones[SpecialZoneState._index(left, map_edge)] & Sc2ZoneLayout.TYPE_MASK) == zone:
 			origin = left
 
 	for unused in 2:
 		var upper := origin + Vector2i(0, -1)
 
-		if SpecialZoneState._index(upper, map_edge) >= 0 and (zones[SpecialZoneState._index(upper, map_edge)] & 0x0f) == zone:
+		if SpecialZoneState._index(upper, map_edge) >= 0 and (zones[SpecialZoneState._index(upper, map_edge)] & Sc2ZoneLayout.TYPE_MASK) == zone:
 			origin = upper
 
 	if origin.x < 0 or origin.y < 0 or origin.x > map_edge - 3 or origin.y > map_edge - 3:
@@ -458,5 +458,5 @@ static func _clear_special_building(
 			continue
 
 		SpecialZoneState._replace_special_building(buildings, zones, misc, index, Tiles.EMPTY)
-		flags[index] &= 0x3f
-		zones[index] &= 0x0f
+		flags[index] &= ~Sc2TileFlags.POWER_MASK & 0xff
+		zones[index] &= Sc2ZoneLayout.TYPE_MASK

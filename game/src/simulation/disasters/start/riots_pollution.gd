@@ -157,7 +157,7 @@ static func _find_riot_seed(
 		if (
 			index >= 0
 			and _riot_start_supports(int(buildings[index]))
-			and flags[index] & 0x04 == 0
+			and flags[index] & Sc2TileFlags.WATER == 0
 			and OverlayData.read(text, index) == 0
 		):
 			return point

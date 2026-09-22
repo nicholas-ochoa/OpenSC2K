@@ -9,7 +9,7 @@ const GROUP_NATURE := 1
 const FULL_MAP_SIZE := CityState.MAP_SIZE
 const SUBTOOL_TREES := 0
 const SUBTOOL_WATER := 1
-const FLAG_WATER := 0x04
+const FLAG_WATER := Sc2TileFlags.WATER
 const RADIOACTIVITY := Tiles.RADIOACTIVE_WASTE
 const FIRST_TREE := Tiles.TREE_FIRST
 const LAST_TREE := Tiles.TREE_LAST
@@ -18,7 +18,7 @@ const FORBIDDEN_COAST := TerrainTileIds.FORBIDDEN_COAST
 const WATERFALL := TerrainTileIds.WATERFALL
 const MISC_FUNDS := Sc2MiscLayout.FUNDS
 const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
-const MILITARY_ZONE := 7
+const MILITARY_ZONE := Sc2ZoneLayout.MILITARY
 
 const CARDINAL_WATER_SHAPES := [13, 21, 18, 8, 19, 16, 5, 1, 20, 7, 17, 4, 6, 3, 2]
 const DIAGONAL_WATER_SHAPES := [0, 9, 10, 0, 11, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0]
@@ -229,7 +229,7 @@ static func _place_tree(
 	else:
 		return false
 
-	_update_building_count(misc, zones[index] & 0x0f, old_building, new_building, int(sqrt(buildings.size())))
+	_update_building_count(misc, zones[index] & Sc2ZoneLayout.TYPE_MASK, old_building, new_building, int(sqrt(buildings.size())))
 	buildings[index] = new_building
 
 	return true
@@ -264,11 +264,11 @@ static func _place_water(
 
 	if not transition.early_return:
 		terrain[index] = transition.value
-		_update_building_count(misc, zones[index] & 0x0f, old_building, Tiles.EMPTY, map_edge)
+		_update_building_count(misc, zones[index] & Sc2ZoneLayout.TYPE_MASK, old_building, Tiles.EMPTY, map_edge)
 		buildings[index] = Tiles.EMPTY
 		var altitude_offset := index * 2
 		var word := (altitude[altitude_offset] << 8) | altitude[altitude_offset + 1]
-		word = (word & 0xfc1f) | ((word & 0x1f) << 5)
+		word = (word & (~Sc2AltitudeLayout.WATER_MASK & 0xffff)) | ((word & Sc2AltitudeLayout.LEVEL_MASK) << Sc2AltitudeLayout.WATER_SHIFT)
 		altitude[altitude_offset] = (word >> 8) & 0xff
 		altitude[altitude_offset + 1] = word & 0xff
 		flags[index] |= FLAG_WATER
@@ -289,7 +289,7 @@ static func _place_water(
 				if not near_transition.early_return:
 					terrain[near_index] = near_transition.value
 
-	zones[index] &= 0xf0
+	zones[index] &= Sc2ZoneLayout.CORNERS_MASK
 
 	return true
 

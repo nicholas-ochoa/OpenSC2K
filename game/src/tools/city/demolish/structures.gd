@@ -69,7 +69,7 @@ static func _demolish_point(
 	var index := point.x * map_edge + point.y
 	var tile_id := int(buildings[index])
 
-	if not force_damage and ((zones[index] & 0x0f) == MILITARY_ZONE or tile_id == RADIOACTIVITY):
+	if not force_damage and ((zones[index] & Sc2ZoneLayout.TYPE_MASK) == MILITARY_ZONE or tile_id == RADIOACTIVITY):
 		var result := DemolishPointResult.new()
 		result.changed = false
 
@@ -205,7 +205,7 @@ static func _demolish_point(
 				rubble = Tiles.RUBBLE_FIRST + (random.next_u15() & 3)
 
 			NetworkState.replace_building(buildings, zones, misc, changed_index, rubble)
-			zones[changed_index] &= 0x0f
+			zones[changed_index] &= Sc2ZoneLayout.TYPE_MASK
 			flags[changed_index] &= FLAG_CLEAR_AFTER_STRUCTURE
 			DemolishEffectsSites._release_overlay(text_overlays, labels, microsims, changed_index)
 			indices.append(changed_index)
@@ -269,7 +269,7 @@ static func _demolish_underground_point(
 	var map_edge: int = city.map_size if city != null else 128
 	var index := point.x * map_edge + point.y
 
-	if not scurk_mode and (zones[index] & 0x0f) == MILITARY_ZONE:
+	if not scurk_mode and (zones[index] & Sc2ZoneLayout.TYPE_MASK) == MILITARY_ZONE:
 		var result := DemolishPointResult.new()
 		result.changed = false
 

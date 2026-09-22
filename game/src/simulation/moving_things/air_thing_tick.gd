@@ -36,7 +36,7 @@ static func update_airplane(
 
 	# no_accidents blocks spontaneous collisions and landings. A plane already
 	# falling from a disaster (state 7) still follows no_disasters.
-	if not no_disasters and not no_accidents and building > Tiles.DEVELOPED_FIRST and zones[current_index] & 0x0f != 8:
+	if not no_disasters and not no_accidents and building > Tiles.DEVELOPED_FIRST and zones[current_index] & Sc2ZoneLayout.TYPE_MASK != 8:
 		if building > Tiles.DESALINIZATION:
 			AirThingMotion._convert_to_explosion(
 				things, record, 5, 1 if lfsr_random.next_mod(16) == 0 else 0

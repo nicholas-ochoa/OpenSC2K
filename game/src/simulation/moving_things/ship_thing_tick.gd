@@ -59,7 +59,7 @@ static func update(
 
 		return
 
-	if flags[current_index] & 0x04 == 0:
+	if flags[current_index] & Sc2TileFlags.WATER == 0:
 		_convert_to_explosion(things, record)
 		counters.crashed_ships += 1
 
@@ -200,7 +200,7 @@ static func _is_water_route(
 	flags: PackedByteArray,
 	index: int
 ) -> bool:
-	if flags[index] & 0x04 == 0:
+	if flags[index] & Sc2TileFlags.WATER == 0:
 		return false
 
 	var underground_tile := int(underground[index])

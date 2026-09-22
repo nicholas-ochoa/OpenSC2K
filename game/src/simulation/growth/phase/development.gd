@@ -114,8 +114,8 @@ static func place_zone(
 			return false
 
 		GrowthState.replace_building(buildings, zones, misc, index, tile)
-		zones[index] |= 0xf0
-		flags[index] |= 0xe0
+		zones[index] |= Sc2ZoneLayout.CORNERS_MASK
+		flags[index] |= Sc2TileFlags.STRUCTURE_MASK
 
 		return true
 
@@ -135,8 +135,8 @@ static func place_zone(
 		for y in range(site_position.y, site_position.y + radius + 1):
 			var index := x * map_edge + y
 			GrowthState.replace_building(buildings, zones, misc, index, tile)
-			zones[index] &= 0x0f
-			flags[index] |= 0xe0
+			zones[index] &= Sc2ZoneLayout.TYPE_MASK
+			flags[index] |= Sc2TileFlags.STRUCTURE_MASK
 
 	_set_corners(zones, site_position, radius + 1, rotation, map_edge)
 
@@ -162,7 +162,7 @@ static func _place_church(
 			var index := x * map_edge + y
 			GrowthState.replace_building(buildings, zones, misc, index, CHURCH_TILE)
 			zones[index] = 0
-			flags[index] |= 0xe0
+			flags[index] |= Sc2TileFlags.STRUCTURE_MASK
 
 	_set_corners(zones, position, 2, rotation, map_edge)
 
@@ -180,28 +180,28 @@ static func _set_corners(
 	var bottom_right := far.x * map_edge + position.y
 	var top_left := far.x * map_edge + far.y
 	var top_right := position.x * map_edge + far.y
-	zones[bottom_left] = (zones[bottom_left] & 0x0f) | CORNER_BOTTOM_LEFT[view]
-	zones[bottom_right] = (zones[bottom_right] & 0x0f) | CORNER_BOTTOM_RIGHT[view]
-	zones[top_left] = (zones[top_left] & 0x0f) | CORNER_TOP_LEFT[view]
-	zones[top_right] = (zones[top_right] & 0x0f) | CORNER_TOP_RIGHT[view]
+	zones[bottom_left] = (zones[bottom_left] & Sc2ZoneLayout.TYPE_MASK) | CORNER_BOTTOM_LEFT[view]
+	zones[bottom_right] = (zones[bottom_right] & Sc2ZoneLayout.TYPE_MASK) | CORNER_BOTTOM_RIGHT[view]
+	zones[top_left] = (zones[top_left] & Sc2ZoneLayout.TYPE_MASK) | CORNER_TOP_LEFT[view]
+	zones[top_right] = (zones[top_right] & Sc2ZoneLayout.TYPE_MASK) | CORNER_TOP_RIGHT[view]
 
 
 static func _has_power(flags: PackedByteArray, x: int, y: int, map_edge: int = 128) -> bool:
 	var index := x * map_edge + y
 
-	if flags[index] & 0x40:
+	if flags[index] & Sc2TileFlags.POWERED:
 		return true
 
-	if x > 1 and flags[(x - 1) * map_edge + y] & 0x40:
+	if x > 1 and flags[(x - 1) * map_edge + y] & Sc2TileFlags.POWERED:
 		return true
 
-	if y > 1 and flags[x * map_edge + y - 1] & 0x40:
+	if y > 1 and flags[x * map_edge + y - 1] & Sc2TileFlags.POWERED:
 		return true
 
-	if x < (map_edge - 1) and flags[(x + 1) * map_edge + y] & 0x40:
+	if x < (map_edge - 1) and flags[(x + 1) * map_edge + y] & Sc2TileFlags.POWERED:
 		return true
 
-	return y < (map_edge - 1) and (flags[x * map_edge + y + 1] & 0x40) != 0
+	return y < (map_edge - 1) and (flags[x * map_edge + y + 1] & Sc2TileFlags.POWERED) != 0
 
 
 static func density(tile: int) -> int:

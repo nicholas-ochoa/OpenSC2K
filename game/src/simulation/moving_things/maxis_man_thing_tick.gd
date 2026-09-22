@@ -219,10 +219,10 @@ static func _update_maxis_man_height(
 		return
 
 	var word := (altitude[index * 2] << 8) | altitude[index * 2 + 1]
-	var ground := word & 0x1f
+	var ground := word & Sc2AltitudeLayout.LEVEL_MASK
 
-	if flags[index] & 0x04:
-		ground = (word >> 5) & 0x1f
+	if flags[index] & Sc2TileFlags.WATER:
+		ground = (word >> Sc2AltitudeLayout.WATER_SHIFT) & Sc2AltitudeLayout.LEVEL_MASK
 
 	ThingData.write(things, offset + 5, (ground + int(ThingData.read(things, offset + 2))) & 0xff)
 

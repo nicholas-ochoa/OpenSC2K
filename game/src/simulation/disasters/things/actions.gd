@@ -59,7 +59,7 @@ static func _monster_damage(
 
 		return
 
-	if flags[index] & 0x04 or building <= Tiles.SMALL_PARK or building == Tiles.WIND_POWER:
+	if flags[index] & Sc2TileFlags.WATER or building <= Tiles.SMALL_PARK or building == Tiles.WIND_POWER:
 		return
 
 	var demolition := DemolishStructures._demolish_point(
@@ -84,8 +84,8 @@ static func _monster_damage(
 				microsims, labels, text, Tiles.WIND_POWER, city.current_year(), random
 			)
 			NetworkState.replace_building(buildings, zones, misc, index, Tiles.WIND_POWER)
-			zones[index] = 0xf0
-			flags[index] = (flags[index] & 0x1f) | 0xe0
+			zones[index] = Sc2ZoneLayout.CORNERS_MASK
+			flags[index] = (flags[index] & ~Sc2TileFlags.STRUCTURE_MASK & 0xff) | Sc2TileFlags.STRUCTURE_MASK
 
 			if overlay_id != 0:
 				OverlayData.write(text, index, overlay_id)

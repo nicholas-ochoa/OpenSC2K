@@ -63,7 +63,7 @@ static func _demolish_tunnel(
 	for entrance in [points[0], points[-1]]:
 		var entrance_index: int = entrance.x * map_edge + entrance.y
 		NetworkState.replace_building(buildings, zones, misc, entrance_index, Tiles.EMPTY)
-		zones[entrance_index] &= 0x0f
+		zones[entrance_index] &= Sc2ZoneLayout.TYPE_MASK
 		DemolishTerrain._retile_adjacent_roads(buildings, terrain, zones, flags, misc, entrance, map_edge)
 
 	var indices := PackedInt32Array()
@@ -143,7 +143,7 @@ static func _demolish_transport_component(
 			))
 
 		NetworkState.replace_building(buildings, zones, misc, index, replacement)
-		zones[index] &= 0x0f
+		zones[index] &= Sc2ZoneLayout.TYPE_MASK
 		flags[index] &= FLAG_CLEAR_AFTER_STRUCTURE
 		indices.append(index)
 
@@ -212,7 +212,7 @@ static func _demolish_highway_section(
 			replacement = Tiles.RUBBLE_FIRST + (random.next_u15() & 3)
 
 		NetworkState.replace_building(buildings, zones, misc, index, replacement)
-		zones[index] &= 0x0f
+		zones[index] &= Sc2ZoneLayout.TYPE_MASK
 		flags[index] &= FLAG_CLEAR_AFTER_STRUCTURE
 		DemolishEffectsSites._release_overlay(text_overlays, labels, microsims, index)
 		points.append(point)

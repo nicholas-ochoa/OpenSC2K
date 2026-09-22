@@ -31,7 +31,7 @@ static func advance(
 
 	var tile := int(buildings[index])
 	var destination: bool = (
-		DESTINATION_ZONE_MASKS[origin_zone] & (1 << (zones[index] & 0x0f))
+		DESTINATION_ZONE_MASKS[origin_zone] & (1 << (zones[index] & Sc2ZoneLayout.TYPE_MASK))
 	) != 0
 
 	match mode:
@@ -71,7 +71,7 @@ static func advance(
 			if tile >= Tiles.ONRAMP_FIRST and tile <= Tiles.ONRAMP_LAST and _highway_exit(buildings, current, next_point, map_edge):
 				return _move(ROAD_MODE, 1)
 		ROAD_TUNNEL_MODE:
-			if altitudes[index] & 0xfc00:
+			if altitudes[index] & Sc2AltitudeLayout.TUNNEL_FIELD_MASK:
 				return _move(ROAD_TUNNEL_MODE, 3)
 
 			if NetworkTileMembership.surface_road(tile):
@@ -113,7 +113,7 @@ static func advance(
 			if tile >= Tiles.ONRAMP_FIRST and tile <= Tiles.ONRAMP_LAST and _highway_exit(buildings, current, next_point, map_edge):
 				return _move(BUS_ROAD_MODE, 1)
 		BUS_TUNNEL_MODE:
-			if altitudes[index] & 0xfc00:
+			if altitudes[index] & Sc2AltitudeLayout.TUNNEL_FIELD_MASK:
 				return _move(BUS_TUNNEL_MODE, 2)
 
 			if NetworkTileMembership.surface_road(tile):

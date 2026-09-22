@@ -49,7 +49,7 @@ static func apply(
 	var map_edge: int = city.map_size if city != null else 128
 	var index := _index(point, map_edge)
 
-	if index < 0 or flags[index] & 0x04 != 0:
+	if index < 0 or flags[index] & Sc2TileFlags.WATER != 0:
 		return 0
 
 	if buildings[index] < Tiles.TREES_1 and not allow_small_tile:
@@ -171,7 +171,7 @@ static func burn_structure(
 	)
 
 	for index in result.indices:
-		if mark_fire and flags[index] & 0x04 == 0:
+		if mark_fire and flags[index] & Sc2TileFlags.WATER == 0:
 			OverlayData.write(text, index, 0xff)
 
 	var point_index := _index(point, map_edge)

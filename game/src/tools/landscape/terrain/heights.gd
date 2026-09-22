@@ -86,7 +86,7 @@ static func _collect_raise_dependencies(
 	if visiting.has(index):
 		return true
 
-	if (zones[index] & 0x0f) == MILITARY_ZONE or heights[index] > MAX_RAISE_SOURCE:
+	if (zones[index] & Sc2ZoneLayout.TYPE_MASK) == MILITARY_ZONE or heights[index] > MAX_RAISE_SOURCE:
 		return false
 
 	for offset in NEIGHBOR_OFFSETS:
@@ -95,7 +95,7 @@ static func _collect_raise_dependencies(
 		if _point_is_in_bounds(neighbor, map_edge):
 			var neighbor_index := neighbor.x * map_edge + neighbor.y
 
-			if (zones[neighbor_index] & 0x0f) == MILITARY_ZONE:
+			if (zones[neighbor_index] & Sc2ZoneLayout.TYPE_MASK) == MILITARY_ZONE:
 				return false
 
 	visiting[index] = true
@@ -250,18 +250,18 @@ static func _write_heights(
 
 
 static func land_altitude(altitude: PackedByteArray, index: int) -> int:
-	return altitude[index * 2 + 1] & 0x1f
+	return altitude[index * 2 + 1] & Sc2AltitudeLayout.LEVEL_MASK
 
 
 static func set_land_altitude(altitude: PackedByteArray, index: int, value: int) -> void:
 	var offset := index * 2
-	altitude[offset + 1] = (altitude[offset + 1] & 0xe0) | (value & 0x1f)
+	altitude[offset + 1] = (altitude[offset + 1] & (~Sc2AltitudeLayout.LAND_MASK & 0xff)) | (value & Sc2AltitudeLayout.LEVEL_MASK)
 
 
 static func _set_water_altitude(altitude: PackedByteArray, index: int, value: int) -> void:
 	var offset := index * 2
 	var word := (altitude[offset] << 8) | altitude[offset + 1]
-	word = (word & 0xfc1f) | ((value & 0x1f) << 5)
+	word = (word & (~Sc2AltitudeLayout.WATER_MASK & 0xffff)) | ((value & Sc2AltitudeLayout.LEVEL_MASK) << Sc2AltitudeLayout.WATER_SHIFT)
 	altitude[offset] = (word >> 8) & 0xff
 	altitude[offset + 1] = word & 0xff
 

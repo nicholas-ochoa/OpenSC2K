@@ -4,7 +4,7 @@ extends RefCounted
 
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-const ZONE_TYPE_MASK := 0x0f
+const ZONE_TYPE_MASK := Sc2ZoneLayout.TYPE_MASK
 const ALL_BUILDING_CORNERS := 0xf0
 
 static func build(
@@ -52,4 +52,4 @@ static func _strip(
 		if terrain[index] == TerrainTileIds.FLAT and (zones[index] & ZONE_TYPE_MASK) == NetworkConstants.MILITARY_ZONE and buildings[index] in [Tiles.ROAD_STRAIGHT_1, Tiles.ROAD_STRAIGHT_2]:
 			SpecialZoneState._replace_special_building(buildings, zones, misc, index, Tiles.RUNWAY_CROSSING)
 			zones[index] |= ALL_BUILDING_CORNERS
-			flags[index] &= 0x0f
+			flags[index] &= ~Sc2TileFlags.UTILITY_MASK & 0xff

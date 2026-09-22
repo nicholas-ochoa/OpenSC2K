@@ -15,7 +15,7 @@ static func replace_building(
 	if old_tile == new_tile:
 		return
 
-	var zone := zones[index] & 0x0f
+	var zone := zones[index] & Sc2ZoneLayout.TYPE_MASK
 	var old_offset := MISC_TILE_COUNTS + old_tile * 4
 	var new_offset := MISC_TILE_COUNTS + new_tile * 4
 

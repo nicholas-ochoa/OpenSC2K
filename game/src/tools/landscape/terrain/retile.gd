@@ -35,7 +35,7 @@ static func retile_region(
 		var shape := int(TERRAIN_SHAPES[higher_mask])
 
 		if shape != TerrainTileIds.FLAT:
-			zones[index] &= 0xf0
+			zones[index] &= Sc2ZoneLayout.CORNERS_MASK
 
 		var raised_basin := shape == RAISE_BASIN
 

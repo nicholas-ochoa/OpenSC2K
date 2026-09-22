@@ -10,7 +10,7 @@ const SUBTOOL_CONNECTION := 4
 const CONNECTOR_FIRST := Tiles.RAIL_SUBWAY_ENTRANCE_1
 const RADIOACTIVITY := Tiles.RADIOACTIVE_WASTE
 const MAX_CLEAR_BUILDING := Tiles.TREES_7
-const FLAG_PIPED := 0x20
+const FLAG_PIPED := Sc2TileFlags.PIPED
 const DIRECTIONS := [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]
 
 
@@ -87,7 +87,7 @@ static func apply(
 	)
 	var tile_id := CONNECTOR_FIRST + orientation
 	NetworkState.replace_building(buildings, zones, misc, index, tile_id)
-	zones[index] |= 0xf0
+	zones[index] |= Sc2ZoneLayout.CORNERS_MASK
 	NetworkTiles.retile_surface(
 		buildings,
 		terrain,

@@ -364,7 +364,7 @@ static func _write_bridge_endpoint(
 		Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1),
 	]:
 		var point: Vector2i = anchor + offset
-		zone_types.append(zones[point.x * map_edge + point.y] & 0x0f)
+		zone_types.append(zones[point.x * map_edge + point.y] & Sc2ZoneLayout.TYPE_MASK)
 
 	HighwayPlacement._write_section_kind(
 		buildings, terrain, zones, altitude, misc, anchor, kind, rotation, map_edge
@@ -376,7 +376,7 @@ static func _write_bridge_endpoint(
 		][offset_index]
 		var point: Vector2i = anchor + offset
 		var index := point.x * map_edge + point.y
-		zones[index] = (zones[index] & 0xf0) | zone_types[offset_index]
+		zones[index] = (zones[index] & Sc2ZoneLayout.CORNERS_MASK) | zone_types[offset_index]
 
 
 static func _write_normal_bridge_section(
@@ -395,7 +395,7 @@ static func _write_normal_bridge_section(
 		var point: Vector2i = anchor + offset
 		var index := point.x * map_edge + point.y
 		NetworkState.replace_building(buildings, zones, misc, index, tile_id)
-		zones[index] |= 0xf0
+		zones[index] |= Sc2ZoneLayout.CORNERS_MASK
 
 
 static func _write_reinforced_bridge_section(
@@ -417,7 +417,7 @@ static func _write_reinforced_bridge_section(
 	for offset in offsets:
 		var point: Vector2i = anchor + offset
 		var index := point.x * map_edge + point.y
-		zone_types.append(zones[index] & 0x0f)
+		zone_types.append(zones[index] & Sc2ZoneLayout.TYPE_MASK)
 		NetworkState.replace_building(
 			buildings, zones, misc, index, Tiles.ONRAMP_FIRST + kind
 		)
@@ -425,7 +425,7 @@ static func _write_reinforced_bridge_section(
 		if (direction & 1) == 0:
 			flags[index] &= ~0x02 & 0xff
 		else:
-			flags[index] |= 0x02
+			flags[index] |= Sc2TileFlags.FLIPPED
 
 	BuildingSites.set_corners(
 		zones, Rect2i(anchor, Vector2i(2, 2)), 2, rotation, map_edge
@@ -434,4 +434,4 @@ static func _write_reinforced_bridge_section(
 	for offset_index in offsets.size():
 		var point: Vector2i = anchor + offsets[offset_index]
 		var index := point.x * map_edge + point.y
-		zones[index] = (zones[index] & 0xf0) | zone_types[offset_index]
+		zones[index] = (zones[index] & Sc2ZoneLayout.CORNERS_MASK) | zone_types[offset_index]

@@ -8,7 +8,7 @@ const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const MAP_SIZE := CityState.MAP_SIZE
 const COMPASS_OFFSET := Sc2MiscLayout.COMPASS
 const TILE_COUNT_OFFSET := Sc2MiscLayout.TILE_COUNTS
-const MILITARY_ZONE := 7
+const MILITARY_ZONE := Sc2ZoneLayout.MILITARY
 const FLIP_FLAG := 0x02
 
 const REQUIRED_CHUNKS := [
@@ -350,7 +350,7 @@ static func _rotate_special_surface(
 		if tile >= Tiles.HIGHWAY_ONRAMP_1 and tile <= Tiles.HIGHWAY_ONRAMP_4:
 			var ramp_index := tile - Tiles.HIGHWAY_ONRAMP_1 + (4 if flipped else 0)
 			_replace_building(buildings, zones, misc, index, ramp_tiles[ramp_index])
-			flags[index] = (flags[index] & 0xfd) | (FLIP_FLAG if ramp_index < 4 else 0)
+			flags[index] = (flags[index] & ~Sc2TileFlags.FLIPPED & 0xff) | (FLIP_FLAG if ramp_index < 4 else 0)
 			continue
 
 		if not ((tile >= Tiles.SUSPENSION_BRIDGE_1 and tile <= Tiles.POWER_BRIDGE) or tile == Tiles.HIGHWAY_BRIDGE or tile == Tiles.REINFORCED_HIGHWAY_BRIDGE):
@@ -358,13 +358,13 @@ static func _rotate_special_surface(
 
 		if counter_clockwise:
 			if flipped:
-				flags[index] &= 0xfd
+				flags[index] &= ~Sc2TileFlags.FLIPPED & 0xff
 			else:
 				flags[index] |= FLIP_FLAG
 				_replace_building(buildings, zones, misc, index, surface_table[tile])
 		else:
 			if flipped:
-				flags[index] &= 0xfd
+				flags[index] &= ~Sc2TileFlags.FLIPPED & 0xff
 				_replace_building(buildings, zones, misc, index, surface_table[tile])
 			else:
 				flags[index] |= FLIP_FLAG
@@ -399,7 +399,7 @@ static func _replace_building(
 	if old_tile == new_tile:
 		return
 
-	if (zones[index] & 0x0f) != MILITARY_ZONE:
+	if (zones[index] & Sc2ZoneLayout.TYPE_MASK) != MILITARY_ZONE:
 		var old_offset := TILE_COUNT_OFFSET + old_tile * 4
 		var new_offset := TILE_COUNT_OFFSET + new_tile * 4
 		BinaryData.write_u32_be(misc, old_offset, (BinaryData.read_u32_be(misc, old_offset) - 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))

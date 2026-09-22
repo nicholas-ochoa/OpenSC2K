@@ -57,7 +57,7 @@ static func _maximum(altitude: PackedByteArray, map_edge: int = 128) -> int:
 
 
 static func _land_altitude(altitude: PackedByteArray, index: int) -> int:
-	return altitude[index * 2 + 1] & 0x1f
+	return altitude[index * 2 + 1] & Sc2AltitudeLayout.LEVEL_MASK
 
 
 static func _index(x: int, y: int, map_edge: int = 128) -> int:

@@ -1,5 +1,11 @@
 [
   {
+    "id": "shared_tile_fields_test",
+    "script": "tests/shared_tile_fields_test.gd",
+    "domain": "formats",
+    "lane": "product"
+  },
+  {
     "id": "city_mirror_copy_test",
     "script": "tests/city_mirror_copy_test.gd",
     "domain": "rendering",

@@ -164,10 +164,10 @@ static func _site_matches(
 	var view := rotation & 3
 
 	return (
-		(zones[site.position.x * map_edge + site.position.y] & 0xf0) == CORNER_BOTTOM_LEFT[view]
-		and (zones[far.x * map_edge + site.position.y] & 0xf0) == CORNER_BOTTOM_RIGHT[view]
-		and (zones[far.x * map_edge + far.y] & 0xf0) == CORNER_TOP_LEFT[view]
-		and (zones[site.position.x * map_edge + far.y] & 0xf0) == CORNER_TOP_RIGHT[view]
+		(zones[site.position.x * map_edge + site.position.y] & Sc2ZoneLayout.CORNERS_MASK) == CORNER_BOTTOM_LEFT[view]
+		and (zones[far.x * map_edge + site.position.y] & Sc2ZoneLayout.CORNERS_MASK) == CORNER_BOTTOM_RIGHT[view]
+		and (zones[far.x * map_edge + far.y] & Sc2ZoneLayout.CORNERS_MASK) == CORNER_TOP_LEFT[view]
+		and (zones[site.position.x * map_edge + far.y] & Sc2ZoneLayout.CORNERS_MASK) == CORNER_TOP_RIGHT[view]
 	)
 
 

@@ -291,7 +291,7 @@ static func _update_random_tree(
 		_replace_building(buildings, zones, misc, index, Tiles.EMPTY)
 		map_changes.append(MapChange.new(point, old_tile, Tiles.EMPTY))
 
-	if flags[index] & 0x04 != 0:
+	if flags[index] & Sc2TileFlags.WATER != 0:
 		return
 
 	if not (old_tile >= FIRST_TREE_TILE and old_tile <= LAST_TREE_TILE):
@@ -315,7 +315,7 @@ static func _update_random_tree(
 	index = point.x * map_edge + point.y
 	old_tile = int(buildings[index])
 
-	if flags[index] & 0x04 != 0 or old_tile >= Tiles.TREES_7 or old_tile == RADIOACTIVITY_TILE:
+	if flags[index] & Sc2TileFlags.WATER != 0 or old_tile >= Tiles.TREES_7 or old_tile == RADIOACTIVITY_TILE:
 		return
 
 	var new_tile := FIRST_TREE_TILE if old_tile < FIRST_TREE_TILE else old_tile + 1
@@ -438,7 +438,7 @@ static func _replace_building(
 	if old_tile == new_tile:
 		return
 
-	var military := (zones[index] & 0x0f) == 7
+	var military := (zones[index] & Sc2ZoneLayout.TYPE_MASK) == 7
 	var old_offset := _tile_count_offset(old_tile, military)
 	var new_offset := _tile_count_offset(new_tile, military)
 	BinaryData.write_u32_be(misc, old_offset, (BinaryData.read_u32_be(misc, old_offset) - 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))

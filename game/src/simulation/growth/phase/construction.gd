@@ -53,7 +53,7 @@ static func _advance_construction(
 				1, CLASS_CONSTRUCTION, random, rotation, map_edge
 			)
 		1:
-			var height := altitudes[GrowthState._index(point, map_edge)] & 0x1f
+			var height := altitudes[GrowthState._index(point, map_edge)] & Sc2AltitudeLayout.LEVEL_MASK
 			var right := point + Vector2i(1, 0)
 			var down := point + Vector2i(0, 1)
 			var down_right := point + Vector2i(1, 1)
@@ -132,7 +132,7 @@ static func _advance_to_density_four(
 	rotation: int,
 	map_edge: int = 128,
 ) -> bool:
-	var height := altitudes[GrowthState._index(point, map_edge)] & 0x1f
+	var height := altitudes[GrowthState._index(point, map_edge)] & Sc2AltitudeLayout.LEVEL_MASK
 
 	for candidate_index in 4:
 		var anchor := point + Vector2i(-(candidate_index & 1), int(candidate_index / 2))
@@ -203,7 +203,7 @@ static func _clear_growth_building(
 ) -> void:
 	var direction: int
 
-	match zones[GrowthState._index(point, map_edge)] & 0xf0:
+	match zones[GrowthState._index(point, map_edge)] & Sc2ZoneLayout.CORNERS_MASK:
 		0x10:
 			direction = -rotation & 3
 		0x20:
@@ -251,7 +251,7 @@ static func _can_build_site(
 	if index < 0:
 		return false
 
-	if (altitudes[index] & 0x1f) != height or (zones[index] & 0x0f) != zone:
+	if (altitudes[index] & Sc2AltitudeLayout.LEVEL_MASK) != height or (zones[index] & Sc2ZoneLayout.TYPE_MASK) != zone:
 		return false
 
 	var building := int(buildings[index])

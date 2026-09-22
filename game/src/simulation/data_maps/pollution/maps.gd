@@ -244,7 +244,7 @@ static func _score_terrain(maps: CoarseMaps) -> void:
 			elif building < FIRST_TREE:
 				residential_value -= 20
 
-			if building >= FIRST_ROAD or zones[index] & 0x0f:
+			if building >= FIRST_ROAD or zones[index] & Sc2ZoneLayout.TYPE_MASK:
 				flags[marked_row + (y >> 1)] |= FLAG_MARK
 				developed_tiles += 1
 
@@ -300,10 +300,10 @@ static func _compute_land_value(
 
 			var full_y := y * 2
 			var full_index := building_row + full_y
-			var zone := zones[full_index] & 0x0f
+			var zone := zones[full_index] & Sc2ZoneLayout.TYPE_MASK
 
 			if zone == 0:
-				zone = zones[full_index + map_edge + 1] & 0x0f
+				zone = zones[full_index + map_edge + 1] & Sc2ZoneLayout.TYPE_MASK
 
 			var service_x := x >> 1
 			var service_y := y >> 1

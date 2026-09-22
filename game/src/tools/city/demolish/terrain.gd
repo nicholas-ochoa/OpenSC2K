@@ -81,16 +81,16 @@ static func _clear_tunnel_level(altitude: PackedByteArray, index: int) -> void:
 
 
 static func _land_altitude(altitude: PackedByteArray, index: int) -> int:
-	return altitude[index * 2 + 1] & 0x1f
+	return altitude[index * 2 + 1] & Sc2AltitudeLayout.LEVEL_MASK
 
 
 static func _water_altitude(altitude: PackedByteArray, index: int) -> int:
-	return (((altitude[index * 2] << 8) | altitude[index * 2 + 1]) >> 5) & 0x1f
+	return (((altitude[index * 2] << 8) | altitude[index * 2 + 1]) >> Sc2AltitudeLayout.WATER_SHIFT) & Sc2AltitudeLayout.LEVEL_MASK
 
 
 static func _set_land_altitude(altitude: PackedByteArray, index: int, value: int) -> void:
 	var offset := index * 2
-	altitude[offset + 1] = (altitude[offset + 1] & 0xe0) | (value & 0x1f)
+	altitude[offset + 1] = (altitude[offset + 1] & (~Sc2AltitudeLayout.LAND_MASK & 0xff)) | (value & Sc2AltitudeLayout.LEVEL_MASK)
 
 
 static func _point_is_in_bounds(point: Vector2i, map_edge: int = 128) -> bool:

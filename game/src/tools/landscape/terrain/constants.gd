@@ -5,8 +5,8 @@ const GROUP_BULLDOZER := 0
 const SUBTOOL_LEVEL := 1
 const SUBTOOL_RAISE := 2
 const SUBTOOL_LOWER := 3
-const MILITARY_ZONE := 7
-const FLAG_WATER := 0x04
+const MILITARY_ZONE := Sc2ZoneLayout.MILITARY
+const FLAG_WATER := Sc2TileFlags.WATER
 const MAX_RAISE_SOURCE := 29
 
 const NEIGHBOR_OFFSETS := [

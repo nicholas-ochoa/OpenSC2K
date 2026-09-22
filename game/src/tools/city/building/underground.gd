@@ -75,7 +75,7 @@ static func _replace_underground(
 	if old_tile == new_tile:
 		return
 
-	if (zones[index] & 0x0f) != MILITARY_ZONE:
+	if (zones[index] & Sc2ZoneLayout.TYPE_MASK) != MILITARY_ZONE:
 		var count := BinaryData.read_u32_be(misc, MISC_SUBWAY_COUNT)
 
 		if _is_subway_tile(old_tile):

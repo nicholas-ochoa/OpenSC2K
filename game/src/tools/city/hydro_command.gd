@@ -7,7 +7,7 @@ const GROUP_POWER := 3
 const SUBTOOL_HYDRO := 3
 const TERRAIN_WATERFALL_A := 0x2e
 const TERRAIN_WATERFALL_B := 0x3e
-const FLAG_POWERABLE := 0x80
+const FLAG_POWERABLE := Sc2TileFlags.POWERABLE
 const HYDRO_TILE_A := BuildingTileIds.HYDRO_POWER_1
 const HYDRO_ORIENTATION := [1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1]
 
@@ -64,10 +64,10 @@ static func apply(
 	var tile_id := _hydro_tile(city, point)
 	var process_random_state_before := process_random.state
 
-	BuildingState.update_building_count(misc, zones[index] & 0x0f, buildings[index], tile_id, city.map_size)
+	BuildingState.update_building_count(misc, zones[index] & Sc2ZoneLayout.TYPE_MASK, buildings[index], tile_id, city.map_size)
 	buildings[index] = tile_id
 	flags[index] |= FLAG_POWERABLE
-	zones[index] = 0xf0
+	zones[index] = Sc2ZoneLayout.CORNERS_MASK
 	var overlay_id := BuildingFacilities.provision_microsim(
 		microsims, labels, text_overlays, tile_id, city.current_year(), process_random
 	)
