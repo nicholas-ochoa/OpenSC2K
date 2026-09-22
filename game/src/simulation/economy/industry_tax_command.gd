@@ -54,10 +54,10 @@ static func set_tax_rate(
 
 		var offset := MISC_INDUSTRIES + current * INDUSTRY_STRIDE + Sc2IndustryLayout.TAX_RATE
 
-		if _read_i32_be(data, offset) == tax_rate:
+		if BinaryData.read_i32_be(data, offset) == tax_rate:
 			continue
 
-		_write_i32_be(data, offset, tax_rate)
+		BinaryData.write_u32_be(data, offset, tax_rate)
 		changed = true
 
 	if changed and not misc_chunk.set_decoded_payload(data):
@@ -75,22 +75,3 @@ static func set_tax_rate(
 	result.error = ""
 
 	return result
-
-
-static func _read_i32_be(data: PackedByteArray, offset: int) -> int:
-	var value := (
-		(data[offset] << 24)
-		| (data[offset + 1] << 16)
-		| (data[offset + 2] << 8)
-		| data[offset + 3]
-	)
-
-	return value - 0x100000000 if value & 0x80000000 else value
-
-
-static func _write_i32_be(data: PackedByteArray, offset: int, value: int) -> void:
-	var encoded := value & 0xffffffff
-	data[offset] = (encoded >> 24) & 0xff
-	data[offset + 1] = (encoded >> 16) & 0xff
-	data[offset + 2] = (encoded >> 8) & 0xff
-	data[offset + 3] = encoded & 0xff
