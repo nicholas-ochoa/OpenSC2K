@@ -77,6 +77,11 @@ func _benchmark_initialize() -> void:
 	started = Time.get_ticks_usec()
 	var rebuilt := job.run()
 	_print_measurement("warm_worker_render", started, rebuilt.ok)
+	if not rebuilt.ok:
+		printerr("%s worker render failed: %s" % [city_file, rebuilt.error])
+		quit(1)
+		return
+
 	var edit_city := CityModel.from_document(city.document.duplicate_document())
 	var edit_point := Vector2i(-1, -1)
 
@@ -215,6 +220,11 @@ func _benchmark_initialize() -> void:
 	)
 	var scenario_simulation := Simulation.new(scenario_city, 1, 7, 13)
 	var scenario_day := scenario_simulation.advance_day()
+	if not scenario_day.ok:
+		printerr("CHARLEST.SCN initial day failed: %s" % scenario_day.error)
+		quit(1)
+		return
+
 
 	for _hurricane_tick in 30:
 		var hurricane_tick := scenario_simulation.advance_disaster_tick()
@@ -313,7 +323,6 @@ func _benchmark_initialize() -> void:
 	var split_disaster_city := CityModel.from_document(city.document.duplicate_document())
 	var split_random := Random.new(1)
 	var split_lfsr := LfsrRandom.new(1)
-	var split_ok := true
 	started = Time.get_ticks_usec()
 
 	for _disaster_index in 40:
@@ -323,27 +332,32 @@ func _benchmark_initialize() -> void:
 		var dispatch_tick := DisasterMapScanDispatch.run_dispatch(
 			split_disaster_city, split_random, split_lfsr
 		)
-		split_ok = split_ok and fire_tick.ok and dispatch_tick.ok
+		if not fire_tick.ok or not dispatch_tick.ok:
+			printerr("%s split disaster tick %d failed: %s %s" % [city_file, _disaster_index, fire_tick.error, dispatch_tick.error])
+			quit(1)
+			return
 
 	print(
-		"split_disaster_map_40: %d us; ok=%s"
-		% [Time.get_ticks_usec() - started, split_ok]
+		"split_disaster_map_40: %d us; ok=true"
+		% [Time.get_ticks_usec() - started]
 	)
 	var unified_disaster_city := CityModel.from_document(city.document.duplicate_document())
 	var unified_random := Random.new(1)
 	var unified_lfsr := LfsrRandom.new(1)
-	var unified_ok := true
 	started = Time.get_ticks_usec()
 
 	for _disaster_index in 40:
 		var unified_tick := DisasterMapScanDispatch.run_all(
 			unified_disaster_city, unified_random, unified_lfsr, 0
 		)
-		unified_ok = unified_ok and unified_tick.ok
+		if not unified_tick.ok:
+			printerr("%s unified disaster tick %d failed: %s" % [city_file, _disaster_index, unified_tick.error])
+			quit(1)
+			return
 
 	print(
-		"unified_disaster_map_40: %d us; ok=%s"
-		% [Time.get_ticks_usec() - started, unified_ok]
+		"unified_disaster_map_40: %d us; ok=true"
+		% [Time.get_ticks_usec() - started]
 	)
 
 	var simulation_city := CityModel.from_document(city.document.duplicate_document())
@@ -388,7 +402,7 @@ func _benchmark_initialize() -> void:
 			return
 
 	print("moving_40_ticks: %d us" % (Time.get_ticks_usec() - started))
-	quit(0 if rebuilt.ok else 1)
+	quit()
 
 
 func _print_measurement(label: String, started: int, ok: bool) -> void:

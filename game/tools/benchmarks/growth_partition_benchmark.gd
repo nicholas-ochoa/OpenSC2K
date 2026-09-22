@@ -7,7 +7,6 @@ const ROUNDS := 5
 
 
 func _benchmark_initialize() -> void:
-	var doc := Sc2File.load_path(reference_path("CITIES/CAPEQUES.SC2"))
 	var totals := PackedInt64Array()
 
 	for round in ROUNDS:
@@ -22,6 +21,11 @@ func _benchmark_initialize() -> void:
 				var game := GameLcgRandom.new(1)
 				var started := Time.get_ticks_usec()
 				var result := GrowthScan.run(city, random, step, substep, lfsr, game)
+				if not result.ok:
+					printerr("CAPEQUES.SC2 growth round %d partition %d/%d failed: %s" % [round, step, substep, result.error])
+					quit(1)
+					return
+
 				elapsed += Time.get_ticks_usec() - started
 				scanned += result.scanned_tiles
 

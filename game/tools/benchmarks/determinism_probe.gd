@@ -28,6 +28,11 @@ func _benchmark_initialize() -> void:
 
 		for day in DAYS:
 			var result := engine.advance_day()
+			if not result.ok:
+				printerr("%s day %d failed: %s" % [name, day, result.error])
+				quit(1)
+				return
+
 			day_hashes.append("%d:%s" % [day, "ok" if result.ok else "FAIL"])
 
 		lines.append("%s %s r=%d l=%d g=%d days=%s" % [
