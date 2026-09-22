@@ -9,6 +9,7 @@ var failures := 0
 
 func _initialize() -> void:
 	_check_sizes()
+	_check_thing_capacity_and_upgrade()
 	_check_overlay_boundaries()
 	_check_labels_and_round_trip(128)
 	_check_labels_and_round_trip(256)
@@ -44,6 +45,46 @@ func _check_sizes() -> void:
 			"Version one retains original label and facility capacities")
 		_check(document.decoded_size("XTHG") == (960 if row[0] > 128 else 480),
 			"Version one retains forty thing records with the existing plane width")
+
+
+func _check_thing_capacity_and_upgrade() -> void:
+	var document := EmptyCityTemplate.create(256)
+	document.large_version = 1
+
+	for id in ["XTXT", "XMIC", "XLAB", "XTHG"]:
+		var chunk := document.find_chunk(id)
+		chunk.expected_decoded_size = document.decoded_size(id)
+		var bytes := PackedByteArray()
+		bytes.resize(chunk.expected_decoded_size)
+		_check(chunk.set_decoded_payload(bytes), "Create version-one record payload")
+
+	var things := document.find_chunk("XTHG").decoded_payload.duplicate()
+
+	for index in 480:
+		things[index] = (index * 3 + 17) & 255
+		things[480 + index] = (index * 7 + 11) & 255
+
+	_check(document.find_chunk("XTHG").set_decoded_payload(things), "Store distinct low and high thing planes")
+	_check(document.large_version == 1 and ThingData.count(things) == 40,
+		"Version-one payload stores forty records in two separate planes")
+	document.upgrade_large_limits()
+	var expected := PackedByteArray()
+	expected.resize(3840)
+
+	for index in 480:
+		expected[index] = things[index]
+		expected[1920 + index] = things[480 + index]
+
+	_check(document.find_chunk("XTHG").decoded_payload == expected,
+		"Upgrade moves both original planes and zeroes new storage")
+	var after := CityState.from_document(document)
+	_check(after.thing_count() == 160 and after.thing(159) != null and after.thing(160) == null,
+		"Version two expands the record count without treating planes as records")
+	var saved: PackedByteArray = document.serialize().data
+	var loaded := Sc2File.new()
+	_check(loaded.parse(saved), "Parse the upgraded generated city")
+	_check(loaded.find_chunk("XTHG").decoded_payload == expected and loaded.serialize(true).data == saved,
+		"Upgraded planes survive a byte-exact save round trip")
 
 
 func _check_overlay_boundaries() -> void:

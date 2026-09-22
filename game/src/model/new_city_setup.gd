@@ -8,7 +8,7 @@ const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
 const Terrain = preload("res://src/model/new_city_terrain.gd")
 
 const MISC_SIZE := Sc2MiscLayout.SIZE
-const GRAPH_SIZE := 16 * 52 * 4
+const GRAPH_SIZE := Sc2GraphLayout.SIZE
 const MISC_START_YEAR := Sc2MiscLayout.START_YEAR
 const MISC_FUNDS := Sc2MiscLayout.FUNDS
 const MISC_BONDS := Sc2MiscLayout.BONDS
@@ -31,7 +31,7 @@ const HARD_BOND_RATE := 3
 const FOUNDING_STORY_TYPE := 2
 const GRAPH_GNP := 13
 const GRAPH_NATIONAL_POPULATION := 14
-const GRAPH_VALUE_COUNT := 52
+const GRAPH_VALUE_COUNT := Sc2GraphLayout.VALUES_PER_SERIES
 
 const STARTING_YEARS := [1900, 1950, 2000, 2050]
 const NATIONAL_POPULATIONS := {
@@ -260,7 +260,7 @@ static func create(
 static func _write_graph_value(
 	data: PackedByteArray, series: int, index: int, value: int
 ) -> void:
-	BinaryData.write_u32_be(data, (series * GRAPH_VALUE_COUNT + index) * 4, value)
+	BinaryData.write_u32_be(data, (series * GRAPH_VALUE_COUNT + index) * Sc2GraphLayout.VALUE_SIZE, value)
 
 
 static func _copy_range(

@@ -29,7 +29,7 @@ static func write(data: PackedByteArray, index: int, value: int) -> void:
 
 
 static func count(data: PackedByteArray) -> int:
-	return data.size() / (2 * RECORD_SIZE if data.size() > BASE_SIZE else RECORD_SIZE)
+	return data.size() / (Sc2ThingLayout.EXTENDED_RECORD_SIZE if data.size() > BASE_SIZE else RECORD_SIZE)
 
 
 # only some fields widen, and which ones depends on the object type

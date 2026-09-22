@@ -14,7 +14,7 @@ class Endpoint extends RefCounted:
 		value = latest_value
 
 
-const SERIES_COUNT := 16
+const SERIES_COUNT := Sc2GraphLayout.SERIES_COUNT
 const DEFAULT_SELECTED_MASK := 0x000f
 const TIME_YEAR := 0
 const TIME_DECADE := 1
@@ -187,20 +187,20 @@ static func time_labels(value_city: CityState, scale: int) -> PackedStringArray:
 	var month := value_city.current_month()
 
 	if scale == TIME_YEAR:
-		for offset in range(11, -1, -1):
+		for offset in range(Sc2GraphLayout.YEAR_COUNT - 1, -1, -1):
 			var month_index := posmod(month - 1 - offset, 12)
 			labels.append(MONTH_NAMES[month_index])
 	elif scale == TIME_DECADE:
 		var newest_half_year := year * 2 + (1 if month >= 7 else 0)
 
-		for index in 20:
-			var half_year := newest_half_year - 19 + index
+		for index in Sc2GraphLayout.DECADE_COUNT:
+			var half_year := newest_half_year - (Sc2GraphLayout.DECADE_COUNT - 1) + index
 			labels.append("'%02d" % posmod(int(half_year / 2), 100))
 	elif scale == TIME_CENTURY:
 		var newest_five_year := int(year / 5) * 5
 
-		for index in 20:
-			labels.append("'%02d" % posmod(newest_five_year - (19 - index) * 5, 100))
+		for index in Sc2GraphLayout.CENTURY_COUNT:
+			labels.append("'%02d" % posmod(newest_five_year - (Sc2GraphLayout.CENTURY_COUNT - 1 - index) * 5, 100))
 
 	return labels
 
@@ -243,7 +243,9 @@ func _draw() -> void:
 	draw_line(Vector2(plot.position.x, plot.end.y), plot.end, get_theme_color("border", "AppPalette"), 1.0)
 
 	var labels := time_labels(city, time_scale)
-	var point_count := 12 if time_scale == TIME_YEAR else 20
+	var point_count := Sc2GraphLayout.YEAR_COUNT if time_scale == TIME_YEAR else (
+		Sc2GraphLayout.CENTURY_COUNT if time_scale == TIME_CENTURY else Sc2GraphLayout.DECADE_COUNT
+	)
 
 	for index in point_count:
 		var x := _point_x(plot, index, point_count)

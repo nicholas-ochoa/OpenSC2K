@@ -144,7 +144,9 @@ static func microsim(city: CityState, microsim_id: int) -> Microsim:
 
 # null for a record outside xthg
 static func thing(city: CityState, thing_id: int) -> ThingRecord:
-	if thing_id < 0 or thing_id >= city.document.decoded_size("XTHG") / (24 if city.map_size > 128 else 12):
+	if thing_id < 0 or thing_id >= city.document.decoded_size("XTHG") / (
+		Sc2ThingLayout.EXTENDED_RECORD_SIZE if city.map_size > 128 else Sc2ThingLayout.RECORD_SIZE
+	):
 		return null
 
 	var chunk := city.document.find_chunk("XTHG")

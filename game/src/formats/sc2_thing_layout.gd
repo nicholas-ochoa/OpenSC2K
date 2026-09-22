@@ -3,6 +3,8 @@ extends RefCounted
 ## XTHG records keep the same low-plane field order in SCDH and SCLG.
 
 const RECORD_SIZE := 12
+# Combined storage width. The low and high planes stay separate.
+const EXTENDED_RECORD_SIZE := RECORD_SIZE * 2
 const ORIGINAL_COUNT := 40
 const ORIGINAL_SIZE := RECORD_SIZE * ORIGINAL_COUNT
 

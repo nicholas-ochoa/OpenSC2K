@@ -4,7 +4,7 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 const MISC_SIZE := Sc2MiscLayout.SIZE
-const XGRP_SIZE := 16 * 52 * 4
+const XGRP_SIZE := Sc2GraphLayout.SIZE
 const MISC_BUDGETS := Sc2MiscLayout.BUDGETS
 const MISC_NORMAL_POPULATION := Sc2MiscLayout.NORMAL_POPULATION
 const BUDGET_RECORD_SIZE := Sc2BudgetLayout.RECORD_SIZE
@@ -14,7 +14,7 @@ const GRAPH_TRAFFIC := 4
 const GRAPH_POLLUTION := 5
 const GRAPH_LAND_VALUE := 6
 const GRAPH_CRIME := 7
-const GRAPH_VALUE_COUNT := 52
+const GRAPH_VALUE_COUNT := Sc2GraphLayout.VALUES_PER_SERIES
 const TILE_MAYOR_HOUSE := BuildingTileIds.MAYOR_HOUSE
 const NEWS_HIGH_APPROVAL := 0x201
 
@@ -93,14 +93,19 @@ static func run(city: CityState, random: SimRandom, previous_approval: int) -> R
 	for record_id in range(1, microsims.size() / CityState.MICROSIM_RECORD_SIZE):
 		var offset := record_id * CityState.MICROSIM_RECORD_SIZE
 
-		if int(microsims[offset]) != TILE_MAYOR_HOUSE:
+		if int(microsims[offset + Sc2MicrosimLayout.TILE_ID]) != TILE_MAYOR_HOUSE:
 			continue
 
-		BinaryData.write_u16_be(microsims, offset + 4, approval)
+		BinaryData.write_u16_be(microsims, offset + Sc2MicrosimLayout.STAT_2, approval)
 
-		if BinaryData.read_u16_be(microsims, offset + 6) != 0:
-			BinaryData.write_u16_be(microsims, offset + 6, BinaryData.read_u16_be(microsims, offset + 6) - 1)
-			microsims[offset + 1] = (int(microsims[offset + 1]) + 1) & 0xff
+		if BinaryData.read_u16_be(microsims, offset + Sc2MicrosimLayout.STAT_3) != 0:
+			BinaryData.write_u16_be(
+				microsims, offset + Sc2MicrosimLayout.STAT_3,
+				BinaryData.read_u16_be(microsims, offset + Sc2MicrosimLayout.STAT_3) - 1
+			)
+			microsims[offset + Sc2MicrosimLayout.STAT_0] = (
+				int(microsims[offset + Sc2MicrosimLayout.STAT_0]) + 1
+			) & 0xff
 
 		updated_records += 1
 
@@ -161,7 +166,7 @@ static func complaint_weights(city: CityState) -> PackedInt32Array:
 
 
 static func _graph_current(data: PackedByteArray, graph_id: int) -> int:
-	return BinaryData.read_u32_be(data, graph_id * GRAPH_VALUE_COUNT * 4)
+	return BinaryData.read_u32_be(data, graph_id * GRAPH_VALUE_COUNT * Sc2GraphLayout.VALUE_SIZE)
 
 
 static func _budget_funding(misc: PackedByteArray, budget_id: int) -> int:

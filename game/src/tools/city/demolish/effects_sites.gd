@@ -182,7 +182,7 @@ static func _release_overlay(
 	if label_id == 0:
 		return
 
-	if not OverlayData.blocks_thing(label_id) or label_id == 250:
+	if not OverlayData.blocks_thing(label_id) or label_id == Sc2OverlayLayout.CONNECTION_MARKER:
 		OverlayData.write(text_overlays, index, 0)
 
 	if OverlayData.is_sign(label_id):

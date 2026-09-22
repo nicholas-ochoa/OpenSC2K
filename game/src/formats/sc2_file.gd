@@ -442,10 +442,10 @@ func decoded_size(chunk_id: String) -> int:
 					+ Sc2OverlayLayout.ORIGINAL_SIGN_COUNT * factor - Sc2OverlayLayout.ORIGINAL_SIGN_COUNT
 				) * Sc2LabelLayout.RECORD_SIZE
 			"XTHG":
-				return 40 * factor * 24
+				return Sc2ThingLayout.ORIGINAL_COUNT * factor * Sc2ThingLayout.EXTENDED_RECORD_SIZE
 
 	if chunk_id == "XTHG" and map_size > 128:
-		return 960
+		return Sc2ThingLayout.ORIGINAL_COUNT * Sc2ThingLayout.EXTENDED_RECORD_SIZE
 
 	if chunk_id in FULL_MAP_CHUNKS:
 		return map_size * map_size * (2 if chunk_id == "ALTM" else 1)
@@ -504,9 +504,9 @@ func upgrade_large_limits() -> void:
 		expanded.resize(chunk.expected_decoded_size)
 
 		if id == "XTHG":
-			for index in 480:
+			for index in Sc2ThingLayout.ORIGINAL_SIZE:
 				expanded[index] = old[index]
-				expanded[(expanded.size() / 2) + index] = old[480 + index]
+				expanded[(expanded.size() / 2) + index] = old[Sc2ThingLayout.ORIGINAL_SIZE + index]
 		else:
 			for index in old.size():
 				expanded[index] = old[index]
