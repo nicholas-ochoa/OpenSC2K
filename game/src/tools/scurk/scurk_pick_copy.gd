@@ -2,6 +2,7 @@ class_name ScurkPickCopy
 extends RefCounted
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+const SpriteIds = preload("res://src/tools/scurk/scurk_sprite_ids.gd")
 
 class Result extends ScurkMif.Result:
 	var object_count := 0
@@ -43,7 +44,7 @@ const GROUP_NAMES := [
 
 # original.mif stores these objects in group order. each value is a city tile id,
 # except the animating groups, which list sprite ids above the tile range.
-# add 1000 to select the large-view sprite
+# Add SpriteIds.LARGE_FIRST to select the large-view sprite.
 const GROUP_TILE_IDS := [
 	[
 		Tiles.LARGE_APARTMENT_BUILDING_3X3_1, Tiles.LARGE_APARTMENT_BUILDING_3X3_2,
@@ -154,7 +155,7 @@ static func copy_objects(
 	var seen := {}
 
 	for large_id in large_ids:
-		if large_id < 1000 or large_id > 1499:
+		if large_id < SpriteIds.LARGE_FIRST or large_id > SpriteIds.LARGE_LAST:
 			return _failure("Object sprite %d is outside the SCURK range." % large_id)
 
 		if seen.has(large_id):
@@ -162,8 +163,8 @@ static func copy_objects(
 
 		seen[large_id] = true
 
-		for view in 3:
-			var sprite_id := large_id - view * 500
+		for view in SpriteIds.VIEW_COUNT:
+			var sprite_id := ScurkEditorRules.view_sprite_id(large_id, view)
 			var entry := resolved_entry(
 				source, sprite_id, base_large, base_small_medium
 			)
@@ -214,7 +215,7 @@ static func resolved_entry(
 	if entry != null:
 		return entry
 
-	var base := base_large if sprite_id >= 1000 else base_small_medium
+	var base := base_large if sprite_id >= SpriteIds.LARGE_FIRST else base_small_medium
 	entry = base.find_sprite(sprite_id) if base != null else null
 
 	if entry != null:
@@ -227,7 +228,7 @@ static func _large_ids_for_tiles(tile_ids: Array) -> PackedInt32Array:
 	var result := PackedInt32Array()
 
 	for tile_id in tile_ids:
-		result.append(1000 + int(tile_id))
+		result.append(SpriteIds.LARGE_FIRST + int(tile_id))
 
 	return result
 

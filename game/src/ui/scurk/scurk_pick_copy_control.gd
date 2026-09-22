@@ -10,9 +10,9 @@ signal copy_requested(
 const PickCopy = preload("res://src/tools/scurk/scurk_pick_copy.gd")
 const ObjectListControl = preload("res://src/ui/scurk/scurk_object_list.gd")
 
-const VIEW_LARGE := 0
-const VIEW_MEDIUM := 1
-const VIEW_SMALL := 2
+const VIEW_LARGE := ScurkSpriteIds.View.LARGE
+const VIEW_MEDIUM := ScurkSpriteIds.View.MEDIUM
+const VIEW_SMALL := ScurkSpriteIds.View.SMALL
 const THUMBNAIL_SIZE := 88
 
 var palette: Sc2Palette
@@ -58,9 +58,9 @@ func _ready() -> void:
 	get_node("Content/TitleBar").close_requested.connect(request_close)
 	get_node("Content/Controls/ChangeSource").pressed.connect(request_source)
 	get_node("Content/Controls/GroupSelector").item_selected.connect(_select_group)
-	get_node("Content/Controls/Large").pressed.connect(_select_view.bind(0))
-	get_node("Content/Controls/Medium").pressed.connect(_select_view.bind(1))
-	get_node("Content/Controls/Small").pressed.connect(_select_view.bind(2))
+	get_node("Content/Controls/Large").pressed.connect(_select_view.bind(VIEW_LARGE))
+	get_node("Content/Controls/Medium").pressed.connect(_select_view.bind(VIEW_MEDIUM))
+	get_node("Content/Controls/Small").pressed.connect(_select_view.bind(VIEW_SMALL))
 	get_node("Content/Sets/SourceObjectSetRow/SourceList").multi_selected.connect(_source_selection_changed)
 	get_node("Content/Sets/SourceObjectSetRow/SourceList").item_activated.connect(_source_item_activated)
 	get_node("Content/Sets/WorkingObjectSetRow/WorkingList").objects_dropped.connect(_objects_dropped)
@@ -188,7 +188,7 @@ func _refresh_lists() -> void:
 func _add_object_item(
 	list: ScurkObjectList, value: ScurkMif, large_id: int, source: bool
 ) -> int:
-	var tile_id := large_id - 1000
+	var tile_id := ScurkEditorRules.object_tile_id(large_id)
 	var custom_name := String(value.names.get(tile_id, "")) if value != null else ""
 	var label := "%03d" % tile_id
 
@@ -199,7 +199,7 @@ func _add_object_item(
 	var item_index := list.add_item(label, icon)
 	list.set_item_metadata(item_index, large_id)
 	list.set_item_tooltip(item_index, "%s object %d; sprite %d" % [
-		"Source" if source else "Working", tile_id, large_id - current_view * 500,
+		"Source" if source else "Working", tile_id, ScurkEditorRules.view_sprite_id(large_id, current_view),
 	])
 
 	return item_index
@@ -215,7 +215,7 @@ func _object_icon(value: ScurkMif, large_id: int, source: bool) -> Texture2D:
 	if cache.has(key):
 		return cache[key]
 
-	var sprite_id := large_id - current_view * 500
+	var sprite_id := ScurkEditorRules.view_sprite_id(large_id, current_view)
 	var entry := ScurkPickCopy.resolved_entry(
 		value, sprite_id, base_large, base_small_medium
 	)

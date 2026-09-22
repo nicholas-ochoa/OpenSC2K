@@ -46,7 +46,7 @@ func _get_drag_data(at_position: Vector2) -> Variant:
 	var preview := PanelContainer.new()
 	var preview_label := Label.new()
 	preview_label.text = (
-		"Copy object %d" % (large_ids[0] - 1000)
+		"Copy object %d" % ScurkEditorRules.object_tile_id(large_ids[0])
 		if large_ids.size() == 1
 		else "Copy %d objects" % large_ids.size()
 	)

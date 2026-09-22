@@ -2,6 +2,7 @@ class_name ScurkPlaceCommand
 extends RefCounted
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+const SpriteIds = preload("res://src/tools/scurk/scurk_sprite_ids.gd")
 const Facilities = preload("res://src/model/facility_metadata.gd")
 
 const Buildings = preload("res://src/tools/city/building_command.gd")
@@ -49,22 +50,22 @@ static func placeable_large_ids(group: int) -> PackedInt32Array:
 	var result := PackedInt32Array()
 
 	if group == PickCopy.GROUP_ALL:
-		for tile_id in 500:
-			result.append(1000 + tile_id)
+		for tile_id in SpriteIds.OBJECT_COUNT:
+			result.append(SpriteIds.LARGE_FIRST + tile_id)
 
 		return result
 
 	result = PickCopy.group_large_ids(group)
 
-	if group == 5:
+	if group == PickCopy.GROUP_TRANSPORTATION:
 		for tile_id in range(Tiles.POWER_LINE_FIRST, Tiles.DEVELOPED_FIRST):
-			result.append(1000 + tile_id)
+			result.append(SpriteIds.LARGE_FIRST + tile_id)
 
 	return result
 
 
 static func is_placeable_tile(tile_id: int) -> bool:
-	return tile_id >= 0 and tile_id < 500
+	return tile_id >= 0 and tile_id < SpriteIds.OBJECT_COUNT
 
 
 static func footprint(tile_id: int, selected: Vector2i) -> Rect2i:

@@ -23,9 +23,9 @@ signal grid_height_changed(value: float)
 signal clip_region_changed(enabled: bool)
 signal clip_enabled_changed(enabled: bool)
 
-const VIEW_LARGE := 0
-const VIEW_MEDIUM := 1
-const VIEW_SMALL := 2
+const VIEW_LARGE := ScurkSpriteIds.View.LARGE
+const VIEW_MEDIUM := ScurkSpriteIds.View.MEDIUM
+const VIEW_SMALL := ScurkSpriteIds.View.SMALL
 
 var view_buttons: Array[Button] = []
 var zoom_label: Label

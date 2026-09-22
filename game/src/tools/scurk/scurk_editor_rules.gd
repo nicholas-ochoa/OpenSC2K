@@ -2,10 +2,11 @@ class_name ScurkEditorRules
 extends RefCounted
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+const SpriteIds = preload("res://src/tools/scurk/scurk_sprite_ids.gd")
 
-const VIEW_LARGE := 0
-const VIEW_MEDIUM := 1
-const VIEW_SMALL := 2
+const VIEW_LARGE := SpriteIds.View.LARGE
+const VIEW_MEDIUM := SpriteIds.View.MEDIUM
+const VIEW_SMALL := SpriteIds.View.SMALL
 
 
 static func editable_large_sprite_ids(
@@ -21,8 +22,8 @@ static func editable_large_sprite_ids(
 	if base_large != null and base_large.is_valid():
 		for entry in base_large.entries:
 			if (
-				entry.sprite_id < 1000
-				or entry.sprite_id > 1499
+				entry.sprite_id < SpriteIds.LARGE_FIRST
+				or entry.sprite_id > SpriteIds.LARGE_LAST
 				or seen.has(entry.sprite_id)
 			):
 				continue
@@ -32,8 +33,8 @@ static func editable_large_sprite_ids(
 
 	for entry in value.shapes:
 		if (
-			entry.sprite_id < 1000
-			or entry.sprite_id > 1499
+			entry.sprite_id < SpriteIds.LARGE_FIRST
+			or entry.sprite_id > SpriteIds.LARGE_LAST
 			or seen.has(entry.sprite_id)
 		):
 			continue
@@ -47,22 +48,22 @@ static func editable_large_sprite_ids(
 
 
 static func view_sprite_id(large_sprite_id: int, view: int) -> int:
-	if large_sprite_id < 1000 or large_sprite_id > 1499:
+	if large_sprite_id < SpriteIds.LARGE_FIRST or large_sprite_id > SpriteIds.LARGE_LAST:
 		return -1
 
 	match view:
 		VIEW_LARGE:
 			return large_sprite_id
 		VIEW_MEDIUM:
-			return large_sprite_id - 500
+			return large_sprite_id - SpriteIds.OBJECT_COUNT
 		VIEW_SMALL:
-			return large_sprite_id - 1000
+			return large_sprite_id - SpriteIds.LARGE_FIRST
 		_:
 			return -1
 
 
 static func object_tile_id(large_sprite_id: int) -> int:
-	return large_sprite_id - 1000 if large_sprite_id in range(1000, 1500) else -1
+	return large_sprite_id - SpriteIds.LARGE_FIRST if large_sprite_id in range(SpriteIds.LARGE_FIRST, SpriteIds.SPRITE_COUNT) else -1
 
 
 static func path_is_within(path: String, directory: String) -> bool:

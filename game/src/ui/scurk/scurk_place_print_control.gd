@@ -325,7 +325,7 @@ func _refresh_objects() -> void:
 		if sprites.find_sprite(large_id) == null:
 			continue
 
-		var tile_id := large_id - 1000
+		var tile_id := ScurkEditorRules.object_tile_id(large_id)
 		var label := "%03d\n%s" % [tile_id, _object_name(tile_id)]
 		var item_index := object_list.add_item(label, _object_icon(tile_id))
 		object_list.set_item_metadata(item_index, tile_id)
@@ -451,7 +451,7 @@ func _object_icon(tile_id: int) -> Texture2D:
 	if icon_cache.has(tile_id):
 		return icon_cache[tile_id]
 
-	var entry = sprites.find_sprite(1000 + tile_id)
+	var entry = sprites.find_sprite(ScurkSpriteIds.LARGE_FIRST + tile_id)
 
 	if entry == null:
 		return null
