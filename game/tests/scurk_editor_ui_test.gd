@@ -23,6 +23,7 @@ func _run() -> void:
 	await process_frame
 	assert(editor.object_list.get_item_icon(0) != null)
 	_test_clipping_toggle(editor)
+	_test_clipboard_actions(editor)
 	editor.brush_size_selector.value = 24
 	assert(editor.pixel_canvas.brush_size == 24)
 	editor.brush_size_selector.value = 25
@@ -288,11 +289,15 @@ func _test_footprints() -> void:
 	canvas.set_tool(ScurkPixelCanvas.TOOL_FILL)
 	canvas.hover_point = Vector2i(9, 10)
 	assert(canvas.tool_footprint().size() == 399)
-	canvas.set_tool(ScurkPixelCanvas.TOOL_PASTE)
 	canvas.clipboard_width = 3
 	canvas.clipboard_height = 2
 	canvas.clipboard_pixels = PackedInt32Array([1, -1, 1, 1, 1, 1])
-	assert(canvas.tool_footprint().size() == 5)
+	assert(canvas.begin_paste(canvas.hover_point))
+	assert(canvas.paste_position == canvas.hover_point)
+	var pasted := canvas.composite_pixels()
+	assert(pasted[canvas.hover_point.y * 20 + canvas.hover_point.x] == 1)
+	assert(canvas.pixel_at(canvas.hover_point) == -1)
+	canvas.cancel_paste()
 	canvas.set_tool(ScurkPixelCanvas.TOOL_EYEDROPPER)
 	assert(canvas.tool_footprint().size() == 1)
 	canvas.clipboard_width = 3
@@ -320,3 +325,50 @@ func _test_footprints() -> void:
 	canvas.set_brush(25, false)
 	assert(canvas.brush_size == 24)
 	canvas.free()
+
+
+func _test_clipboard_actions(editor: ScurkEditorControl) -> void:
+	var canvas := editor.pixel_canvas
+	var artwork := canvas.pixels.duplicate()
+	assert(editor.tool_buttons.size() == 16)
+	editor._select_tool(ScurkPixelCanvas.TOOL_SELECT_RECT)
+	editor.clipboard_copy_button.pressed.emit()
+	assert(not editor.clipboard_paste_button.disabled and not canvas.clipboard_pixels.is_empty())
+	assert(canvas.tool == ScurkPixelCanvas.TOOL_SELECT_RECT)
+	editor.clipboard_paste_button.pressed.emit()
+	assert(canvas.paste_active and canvas.paste_follow_cursor)
+	assert(canvas.tool == ScurkPixelCanvas.TOOL_SELECT_RECT and canvas.pixels == artwork)
+	canvas.cancel_paste()
+	var point := Vector2i(-1, -1)
+	for offset in artwork.size():
+		if artwork[offset] >= 0 and (canvas.edit_mask.is_empty() or canvas.edit_mask[offset] != 0):
+			point = Vector2i(offset % canvas.sprite_width, offset / canvas.sprite_width)
+			break
+	assert(point.x >= 0)
+	canvas.selection.combine(canvas.selection.rectangle(point, point))
+	for command in [KEY_C, KEY_X, KEY_V]:
+		var event := InputEventKey.new()
+		event.keycode = command
+		event.pressed = true
+		event.ctrl_pressed = true
+		editor.object_list.grab_focus()
+		assert(editor.handle_shortcut(event))
+		assert(canvas.tool == ScurkPixelCanvas.TOOL_SELECT_RECT)
+		if command == KEY_C:
+			assert(canvas.clipboard_width == 1 and canvas.clipboard_height == 1)
+		elif command == KEY_X:
+			assert(canvas.pixel_at(point) == -1)
+		else:
+			assert(canvas.paste_active and canvas.paste_follow_cursor)
+	canvas.cancel_paste()
+	editor.undo()
+	assert(canvas.pixels == artwork)
+	var event := InputEventKey.new()
+	event.keycode = KEY_X
+	event.pressed = true
+	event.meta_pressed = true
+	editor.object_search.grab_focus()
+	assert(not editor.handle_shortcut(event))
+	assert(canvas.pixels == artwork)
+	canvas.clear_selection()
+	editor._select_tool(ScurkPixelCanvas.TOOL_PENCIL)

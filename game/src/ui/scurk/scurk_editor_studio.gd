@@ -502,7 +502,7 @@ func _stamp_action(action: String) -> void:
 	var list := get_node(STAMPS + "/List") as ItemList
 	var selected := list.get_selected_items()
 	if action == "Add":
-		if not editor.pixel_canvas.copy_selection():
+		if not editor.pixel_canvas.copy_selection(false):
 			editor._set_status("Select pixels to save a stamp.")
 			return
 		var name := String(get_node(STAMPS + "/Name").text).strip_edges()

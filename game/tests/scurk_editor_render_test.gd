@@ -103,7 +103,8 @@ func _run() -> void:
 	viewport.free()
 	await _test_clip_display(palette)
 	await _test_modern_display(palette)
-	print("PASS: native SCURK cycling, clipping, layers, paste, comparison and palette highlight pixels")
+	await _test_selection_animation(palette)
+	print("PASS: native SCURK cycling, clipping, layers, paste, comparison, palette highlights and selection animation")
 	quit()
 
 
@@ -240,6 +241,65 @@ func _test_modern_display(palette: Sc2Palette) -> void:
 	image = viewport.get_texture().get_image()
 	assert(_color_near(image.get_pixel(21, 4), palette.color(42).lerp(Color.WHITE, 0.6)))
 	assert(canvas.pixels == pixels)
+	viewport.free()
+
+
+func _test_selection_animation(palette: Sc2Palette) -> void:
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(96, 96)
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var canvas := ScurkPixelCanvas.new()
+	canvas.position = Vector2(16, 16)
+	canvas.show_grid = false
+	canvas.set_palette_cycle_enabled(false)
+	canvas.set_zoom(8)
+	var pixels := PackedInt32Array()
+	pixels.resize(64)
+	pixels.fill(42)
+	canvas.set_sprite_data(8, 8, pixels, palette)
+	viewport.add_child(canvas)
+	canvas.set_process(false)
+	var art_draws := [0]
+	canvas.draw.connect(func() -> void: art_draws[0] += 1)
+	var outline := ScurkSelectionOutline.new()
+	outline.position = Vector2(canvas.DISPLAY_MARGIN, 0)
+	canvas.add_child(outline)
+	var edges := PackedVector2Array()
+	for offset in range(8, 56):
+		edges.append_array(PackedVector2Array([
+			Vector2(offset, 8), Vector2(offset + 1, 8),
+			Vector2(56, offset), Vector2(56, offset + 1),
+			Vector2(offset + 1, 56), Vector2(offset, 56),
+			Vector2(8, offset + 1), Vector2(8, offset),
+		]))
+	outline.configure(edges, true)
+	outline.set_process(false)
+	await RenderingServer.frame_post_draw
+	var first := viewport.get_texture().get_image()
+	var first_draws: int = art_draws[0]
+	outline._process(outline.FRAME_SECONDS * 4.0)
+	await RenderingServer.frame_post_draw
+	var second := viewport.get_texture().get_image()
+	assert(first.get_region(Rect2i(25, 23, 48, 3)).get_data() != second.get_region(Rect2i(25, 23, 48, 3)).get_data())
+	assert(first.get_region(Rect2i(30, 30, 36, 36)).get_data() == second.get_region(Rect2i(30, 30, 36, 36)).get_data())
+	assert(canvas.pixels == pixels)
+	assert(art_draws[0] == first_draws, "Selection animation must not redraw the artwork")
+	outline.configure(edges, false)
+	assert(not outline.is_processing())
+	outline._process(1.0)
+	assert(outline.phase == 0)
+	outline.configure(edges, true)
+	canvas.hide()
+	assert(not outline.is_processing())
+	outline._process(1.0)
+	assert(outline.phase == 0)
+	canvas.show()
+	assert(outline.is_processing())
+	outline.configure(PackedVector2Array(), true)
+	assert(not outline.is_processing())
+	outline._process(1.0)
+	assert(outline.phase == 0)
 	viewport.free()
 
 

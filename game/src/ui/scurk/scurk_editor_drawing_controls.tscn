@@ -18,8 +18,6 @@
 [ext_resource type="Texture2D" path="res://src/ui/scurk/icons/rotate_ccw.svg" id="Rotate"]
 [ext_resource type="Texture2D" path="res://src/ui/scurk/icons/flip_horizontal.svg" id="Horizontal"]
 [ext_resource type="Texture2D" path="res://src/ui/scurk/icons/flip_vertical.svg" id="Vertical"]
-[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/copy_object.svg" id="CopyObject"]
-[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/paste_image.svg" id="PasteImage"]
 
 [ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_editor_grid_controls.tscn" id="grid"]
 
@@ -174,28 +172,6 @@ vertical_icon_alignment = 1
 expand_icon = true
 theme_override_constants/icon_max_width = 24
 
-[node name="Copy" type="Button" parent="Margin/Column/Tools"]
-layout_mode = 2
-icon = ExtResource("Copy")
-tooltip_text = "Copy"
-toggle_mode = true
-custom_minimum_size = Vector2(32, 32)
-icon_alignment = 1
-vertical_icon_alignment = 1
-expand_icon = true
-theme_override_constants/icon_max_width = 24
-
-[node name="Paste" type="Button" parent="Margin/Column/Tools"]
-layout_mode = 2
-icon = ExtResource("Paste")
-tooltip_text = "Paste preview: Enter commits, Escape cancels"
-toggle_mode = true
-custom_minimum_size = Vector2(32, 32)
-icon_alignment = 1
-vertical_icon_alignment = 1
-expand_icon = true
-theme_override_constants/icon_max_width = 24
-
 [node name="SelectRect" type="Button" parent="Margin/Column/Tools"]
 layout_mode = 2
 icon = ExtResource("select_rect")
@@ -313,20 +289,20 @@ vertical_icon_alignment = 1
 expand_icon = true
 theme_override_constants/icon_max_width = 24
 
-[node name="CopyObject" type="Button" parent="Margin/Column/Clipboard"]
+[node name="Copy" type="Button" parent="Margin/Column/Clipboard"]
 layout_mode = 2
-icon = ExtResource("CopyObject")
-tooltip_text = "Copy object to system clipboard"
+icon = ExtResource("Copy")
+tooltip_text = "Copy selection or artwork to clipboard (Ctrl/Cmd+C)"
 custom_minimum_size = Vector2(32, 32)
 icon_alignment = 1
 vertical_icon_alignment = 1
 expand_icon = true
 theme_override_constants/icon_max_width = 24
 
-[node name="PasteImage" type="Button" parent="Margin/Column/Clipboard"]
+[node name="Paste" type="Button" parent="Margin/Column/Clipboard"]
 layout_mode = 2
-icon = ExtResource("PasteImage")
-tooltip_text = "Paste image from system clipboard"
+icon = ExtResource("Paste")
+tooltip_text = "Paste clipboard (Ctrl/Cmd+V): click to place, right-click to cancel"
 custom_minimum_size = Vector2(32, 32)
 icon_alignment = 1
 vertical_icon_alignment = 1

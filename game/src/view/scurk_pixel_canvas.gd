@@ -27,7 +27,6 @@ signal pixels_committed(pixels: PackedInt32Array)
 signal palette_index_picked(index: int, background: bool)
 signal pointer_changed(point: Vector2i, index: int)
 signal clipboard_changed(width: int, height: int)
-signal clipboard_copy_rejected(minimum_span: int)
 signal pan_requested(delta: Vector2)
 signal zoom_requested(steps: int, local_position: Vector2)
 signal selection_changed
@@ -48,16 +47,13 @@ const TOOL_ELLIPSE := 6
 const TOOL_RECTANGLE := 7
 const TOOL_FILL := 8
 const TOOL_EYEDROPPER := 9
-const TOOL_COPY := 10
-const TOOL_PASTE := 11
-const TOOL_SELECT_RECT := 12
-const TOOL_SELECT_LASSO := 13
-const TOOL_SELECT_WAND := 14
-const TOOL_MOVE := 15
-const TOOL_SHADE := 16
-const TOOL_STAMP := 17
+const TOOL_SELECT_RECT := 10
+const TOOL_SELECT_LASSO := 11
+const TOOL_SELECT_WAND := 12
+const TOOL_MOVE := 13
+const TOOL_SHADE := 14
+const TOOL_STAMP := 15
 const CYCLE_INTERVAL_SECONDS := Sc2Palette.SCURK_TIMER_INTERVAL_SECONDS
-const MINIMUM_COPY_SPAN := 4
 const CLEAR_BACKGROUND_RESOURCE_IDS := ScurkGraphics.BACKGROUND_IDS
 
 const TEXTURE_NAMES := [
@@ -109,9 +105,6 @@ var stroke_button := MOUSE_BUTTON_NONE
 var last_stroke_point := Vector2i(-1, -1)
 var shape_start := Vector2i(-1, -1)
 var stroke_base_pixels := PackedInt32Array()
-var copy_active := false
-var copy_start := Vector2i(-1, -1)
-var copy_finish := Vector2i(-1, -1)
 var clipboard_width := 0
 var clipboard_height := 0
 var clipboard_pixels := PackedInt32Array()
@@ -150,6 +143,9 @@ var selection_path := PackedVector2Array()
 var selection_preview := PackedByteArray()
 var selection_outline_state: Array = []
 var selection_outline_edges := PackedVector2Array()
+var selection_outline := ScurkSelectionOutline.new()
+var selection_move_dragging := false
+var selection_move_origin := Vector2i.ZERO
 var clipboard_mask := PackedByteArray()
 var paste_active := false
 var paste_position := Vector2i.ZERO
@@ -174,6 +170,8 @@ func _init() -> void:
 	clip_contents = true
 	mouse_exited.connect(_on_mouse_exited)
 	texture_patterns = _fallback_texture_patterns()
+	selection_outline.position = Vector2(DISPLAY_MARGIN, 0)
+	add_child(selection_outline)
 	set_process(true)
 
 
@@ -204,6 +202,8 @@ func _input(event: InputEvent) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
 		_stop_panning()
+		if selection_move_dragging:
+			cancel_paste()
 		space_pressed = false
 		comparison_hold = false
 		queue_redraw()
@@ -222,6 +222,8 @@ func set_sprite_data(
 	if not keep_selection or selection.width != width or selection.height != height:
 		cancel_paste()
 		selection.reset(width, height)
+		selection_dragging = false
+		selection_preview.clear()
 		layer_below_pixels.clear()
 		layer_above_pixels.clear()
 		comparison_pixels.clear()
@@ -234,9 +236,6 @@ func set_sprite_data(
 	stroke_active = false
 	stroke_changed = false
 	stroke_base_pixels.clear()
-	copy_active = false
-	copy_start = Vector2i(-1, -1)
-	copy_finish = Vector2i(-1, -1)
 	hover_point = Vector2i(-1, -1)
 	_update_minimum_size()
 	queue_redraw()
@@ -254,15 +253,12 @@ func set_zoom(value: int) -> void:
 
 func set_tool(value: int) -> void:
 	_finish_stroke()
-	var previous_tool := tool
-	if paste_active and value != tool and value != TOOL_PASTE:
+	if paste_active and value != tool:
 		cancel_paste()
+	if value != tool:
+		selection_dragging = false
+		selection_preview.clear()
 	tool = clampi(value, TOOL_PENCIL, TOOL_STAMP)
-	copy_active = false
-	copy_start = Vector2i(-1, -1)
-	copy_finish = Vector2i(-1, -1)
-	if tool == TOOL_PASTE and previous_tool != tool:
-		begin_paste()
 	queue_redraw()
 
 
@@ -1004,11 +1000,14 @@ func selected_mask() -> PackedByteArray:
 	return result
 
 
-func copy_selection() -> bool:
-	if not selection.active():
+func copy_selection(whole_if_empty := true) -> bool:
+	_finish_stroke()
+	if pixels.is_empty() or (not whole_if_empty and not selection.active()):
 		return false
 
-	var bounds := selection.bounds()
+	var bounds := selection.bounds() if selection.active() else _artwork_bounds()
+	if not bounds.has_area():
+		return false
 	var copied := copy_region(pixels, sprite_width, sprite_height, bounds.position, bounds.end - Vector2i.ONE)
 	clipboard_width = copied.width
 	clipboard_height = copied.height
@@ -1018,7 +1017,7 @@ func copy_selection() -> bool:
 		for x in clipboard_width:
 			var target := bounds.position + Vector2i(x, y)
 			var offset := y * clipboard_width + x
-			clipboard_mask[offset] = selection.mask[target.y * sprite_width + target.x]
+			clipboard_mask[offset] = 1 if selection.contains(target) else 0
 			if clipboard_mask[offset] == 0:
 				clipboard_pixels[offset] = -1
 	clipboard_changed.emit(clipboard_width, clipboard_height)
@@ -1026,18 +1025,29 @@ func copy_selection() -> bool:
 	return true
 
 
+func _artwork_bounds() -> Rect2i:
+	var minimum := Vector2i(sprite_width, sprite_height)
+	var maximum := Vector2i(-1, -1)
+	for offset in pixels.size():
+		if pixels[offset] >= 0:
+			var point := Vector2i(offset % sprite_width, offset / sprite_width)
+			minimum = minimum.min(point)
+			maximum = maximum.max(point)
+	return Rect2i(minimum, maximum - minimum + Vector2i.ONE) if maximum.x >= 0 else Rect2i()
+
+
 func cut_selection() -> void:
 	if not editing_disabled and copy_selection():
-		delete_selection()
+		delete_selection(true)
 
 
-func delete_selection() -> void:
-	if editing_disabled or not selection.active():
+func delete_selection(whole_if_empty := false) -> void:
+	if editing_disabled or (not selection.active() and not whole_if_empty):
 		return
 
 	var changed := pixels.duplicate()
 	for offset in changed.size():
-		if selection.mask[offset] != 0 and _point_is_editable(Vector2i(offset % sprite_width, offset / sprite_width)):
+		if (not selection.active() or selection.mask[offset] != 0) and _point_is_editable(Vector2i(offset % sprite_width, offset / sprite_width)):
 			changed[offset] = paint_options.paint_index(changed[offset], -1)
 	_commit_changed_pixels(changed)
 
@@ -1062,9 +1072,13 @@ func begin_paste(point: Vector2i = Vector2i(-1, -1)) -> bool:
 	if editing_disabled or not has_clipboard():
 		return false
 
+	var cursor_point := hover_point
+	_finish_stroke()
+	selection_dragging = false
+	selection_preview.clear()
 	cancel_paste()
 	paste_active = true
-	paste_position = point if point.x >= 0 else hover_point.max(Vector2i.ZERO)
+	paste_position = point if point.x >= 0 else cursor_point.max(Vector2i.ZERO)
 	paste_follow_cursor = true
 	paste_selection_before = selection.mask.duplicate()
 	state_changed.emit()
@@ -1078,19 +1092,18 @@ func commit_paste() -> void:
 
 	var changed := _floating_pixels()
 	var moved_mask := selection.empty_mask()
-	if paste_clear_source:
-		for y in clipboard_height:
-			for x in clipboard_width:
-				var target := paste_position + Vector2i(x, y)
-				if _point_is_valid(target) and _clipboard_contains(y * clipboard_width + x):
-					moved_mask[target.y * sprite_width + target.x] = 1
+	for y in clipboard_height:
+		for x in clipboard_width:
+			var target := paste_position + Vector2i(x, y)
+			if _point_is_valid(target) and _clipboard_contains(y * clipboard_width + x):
+				moved_mask[target.y * sprite_width + target.x] = 1
 	paste_active = false
 	paste_dragging = false
+	selection_move_dragging = false
 	paste_clear_source = false
 	paste_source_mask.clear()
-	if moved_mask.has(1):
-		selection.combine(moved_mask)
-		selection_changed.emit()
+	selection.combine(moved_mask)
+	selection_changed.emit()
 	_commit_changed_pixels(changed)
 	state_changed.emit()
 	queue_redraw()
@@ -1102,6 +1115,7 @@ func cancel_paste() -> void:
 		selection_changed.emit()
 	paste_active = false
 	paste_dragging = false
+	selection_move_dragging = false
 	paste_follow_cursor = false
 	paste_clear_source = false
 	paste_source_mask.clear()
@@ -1120,6 +1134,13 @@ func _begin_selection_move(duplicate: bool) -> bool:
 	paste_clear_source = not duplicate
 	paste_source_mask = source
 	return true
+
+
+func _finish_selection_drag() -> void:
+	if editing_disabled or paste_position == selection_move_origin:
+		cancel_paste()
+	else:
+		commit_paste()
 
 
 func _transform_clipboard_mask(operation: int) -> void:
@@ -1162,8 +1183,6 @@ func _floating_pixels() -> PackedInt32Array:
 			var offset := target.y * sprite_width + target.x
 			if edit_mask.size() == result.size() and edit_mask[offset] == 0:
 				continue
-			if paste_source_mask.is_empty() and not selection.contains(target):
-				continue
 			result[offset] = paint_options.paint_index(pixels[offset], clipboard_pixels[source])
 	return result
 
@@ -1190,6 +1209,9 @@ func _handle_editor_input(event: InputEvent) -> bool:
 			_stop_panning()
 		var point := _point_from_position(event.position)
 		if paste_active:
+			if selection_move_dragging and not (event.button_mask & MOUSE_BUTTON_MASK_LEFT) and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+				_finish_selection_drag()
+				return true
 			if paste_dragging:
 				paste_position = point - paste_drag_offset
 			elif paste_follow_cursor:
@@ -1225,6 +1247,10 @@ func _handle_editor_input(event: InputEvent) -> bool:
 	if event.pressed and is_inside_tree():
 		grab_focus()
 	var point := _point_from_position(event.position)
+	if paste_active and event.button_index == MOUSE_BUTTON_RIGHT:
+		if event.pressed:
+			cancel_paste()
+		return true
 	if event.alt_pressed and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
 		var picked := display_pixel_at(point)
 		if event.pressed and picked >= 0:
@@ -1233,25 +1259,32 @@ func _handle_editor_input(event: InputEvent) -> bool:
 	if event.button_index != MOUSE_BUTTON_LEFT:
 		return editing_disabled and tool != TOOL_EYEDROPPER
 	if paste_active:
-		paste_follow_cursor = false
-		paste_dragging = event.pressed
-		paste_drag_offset = point - paste_position
-		return true
-	if tool == TOOL_PASTE:
-		if event.pressed:
-			begin_paste(point)
-			paste_follow_cursor = false
-			paste_dragging = true
-			paste_drag_offset = Vector2i.ZERO
+		if selection_move_dragging:
+			if not event.pressed:
+				paste_position = point - paste_drag_offset
+				_finish_selection_drag()
+		elif event.pressed:
+			if paste_follow_cursor:
+				paste_position = point
+			commit_paste()
 		return true
 	if tool == TOOL_MOVE:
 		if event.pressed and selection.contains(point) and _begin_selection_move(false):
+			selection_move_dragging = true
+			selection_move_origin = paste_position
 			paste_dragging = true
 			paste_drag_offset = point - paste_position
 		return true
 	if tool in [TOOL_SELECT_RECT, TOOL_SELECT_LASSO, TOOL_SELECT_WAND]:
 		if event.pressed:
 			selection_mode = ScurkSelection.SUBTRACT if event.ctrl_pressed or event.meta_pressed else (ScurkSelection.ADD if event.shift_pressed else ScurkSelection.REPLACE)
+			if selection_mode == ScurkSelection.REPLACE and selection.active() and selection.contains(point):
+				if _begin_selection_move(false):
+					selection_move_dragging = true
+					selection_move_origin = paste_position
+					paste_dragging = true
+					paste_drag_offset = point - paste_position
+				return true
 			selection_start = point
 			selection_finish = point
 			selection_path = PackedVector2Array([Vector2(point)])
@@ -1305,6 +1338,8 @@ func _handle_editor_key(event: InputEventKey) -> bool:
 	if event.keycode in [KEY_DELETE, KEY_BACKSPACE] and selection.active():
 		delete_selection()
 		return true
+	if command and event.echo and event.keycode in [KEY_X, KEY_C, KEY_V]:
+		return true
 	if command:
 		match event.keycode:
 			KEY_A:
@@ -1343,15 +1378,22 @@ func _update_selection_preview() -> void:
 
 func _draw_selection() -> void:
 	var mask := selection_preview if selection_dragging else selection.mask
+	var width := sprite_width
+	var height := sprite_height
+	selection_outline.position = Vector2(DISPLAY_MARGIN, 0)
 	if paste_active:
-		var rect := Rect2(Vector2(paste_position * zoom), Vector2(clipboard_width, clipboard_height) * zoom)
-		draw_rect(rect, Color.BLACK, false, 3.0)
-		draw_rect(rect, Color.WHITE, false, 1.0)
-		return
-	if mask.size() != pixels.size():
+		width = clipboard_width
+		height = clipboard_height
+		mask = clipboard_mask
+		if mask.size() != width * height:
+			mask.resize(width * height)
+			mask.fill(1)
+		selection_outline.position += Vector2(paste_position * zoom)
+	if mask.size() != width * height or mask.is_empty():
+		selection_outline.configure(PackedVector2Array(), false)
 		return
 
-	var state: Array = [hash(mask), sprite_width, sprite_height, zoom]
+	var state: Array = [hash(mask), width, height, zoom]
 	if state != selection_outline_state:
 		selection_outline_state = state
 		selection_outline_edges.clear()
@@ -1360,17 +1402,14 @@ func _draw_selection() -> void:
 		for offset in mask.size():
 			if mask[offset] == 0:
 				continue
-			var point := Vector2i(offset % sprite_width, offset / sprite_width)
+			var point := Vector2i(offset % width, offset / width)
 			for edge in 4:
 				var neighbor: Vector2i = point + steps[edge]
-				if _point_is_valid(neighbor) and mask[neighbor.y * sprite_width + neighbor.x] != 0:
+				if neighbor.x >= 0 and neighbor.y >= 0 and neighbor.x < width and neighbor.y < height and mask[neighbor.y * width + neighbor.x] != 0:
 					continue
 				selection_outline_edges.append((Vector2(point) + corners[edge]) * zoom)
 				selection_outline_edges.append((Vector2(point) + corners[(edge + 1) % 4]) * zoom)
-	if not selection_outline_edges.is_empty():
-		draw_multiline(selection_outline_edges, Color.BLACK, 3.0)
-		draw_multiline(selection_outline_edges, Color.WHITE, 1.0)
-
+	selection_outline.configure(selection_outline_edges, not selection_dragging)
 
 
 func _draw_guides() -> void:
@@ -1405,18 +1444,6 @@ func _gui_input(event: InputEvent) -> void:
 			pointer_changed.emit(point, display_pixel_at(point))
 			queue_redraw()
 
-		if copy_active:
-			if event.button_mask & MOUSE_BUTTON_MASK_LEFT:
-				if _point_is_valid(point):
-					copy_finish = point
-					queue_redraw()
-			else:
-				_finish_copy(copy_finish)
-
-			accept_event()
-
-			return
-
 		if stroke_active:
 			var expected_mask := (
 				MOUSE_BUTTON_MASK_RIGHT
@@ -1437,36 +1464,6 @@ func _gui_input(event: InputEvent) -> void:
 		return
 
 	if not event is InputEventMouseButton:
-		return
-
-	if tool == TOOL_COPY:
-		if event.button_index != MOUSE_BUTTON_LEFT:
-			return
-
-		var copy_point := _point_from_position(event.position)
-
-		if event.pressed:
-			if _point_is_valid(copy_point):
-				copy_active = true
-				copy_start = copy_point
-				copy_finish = copy_point
-				queue_redraw()
-		else:
-			_finish_copy(copy_point if _point_is_valid(copy_point) else copy_finish)
-
-		accept_event()
-
-		return
-
-	if tool == TOOL_PASTE:
-		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-			var paste_point := _point_from_position(event.position)
-
-			if _point_is_valid(paste_point):
-				_apply_clipboard(paste_point)
-
-			accept_event()
-
 		return
 
 	if event.button_index not in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
@@ -1498,44 +1495,6 @@ func _gui_input(event: InputEvent) -> void:
 		_finish_stroke()
 
 	accept_event()
-
-
-func _finish_copy(point: Vector2i) -> void:
-	if not copy_active:
-		return
-
-	copy_active = false
-
-	if _point_is_valid(point):
-		copy_finish = point
-
-	if (
-		absi(copy_finish.x - copy_start.x) < MINIMUM_COPY_SPAN
-		or absi(copy_finish.y - copy_start.y) < MINIMUM_COPY_SPAN
-	):
-		copy_start = Vector2i(-1, -1)
-		copy_finish = Vector2i(-1, -1)
-		clipboard_copy_rejected.emit(MINIMUM_COPY_SPAN)
-		queue_redraw()
-
-		return
-
-	var copied := copy_region(
-		pixels, sprite_width, sprite_height, copy_start, copy_finish
-	)
-	clipboard_width = copied.width
-	clipboard_height = copied.height
-	clipboard_pixels = copied.pixels
-	clipboard_mask.clear()
-	copy_start = Vector2i(-1, -1)
-	copy_finish = Vector2i(-1, -1)
-	clipboard_changed.emit(clipboard_width, clipboard_height)
-	queue_redraw()
-
-
-func _apply_clipboard(point: Vector2i) -> void:
-	if begin_paste(point):
-		commit_paste()
 
 
 func _begin_stroke(point: Vector2i, button: int) -> void:
@@ -1673,20 +1632,13 @@ func tool_footprint() -> Dictionary[Vector2i, bool]:
 				if not result.has(neighbor) and _point_is_editable(neighbor) and pixel_at(neighbor) == source:
 					result[neighbor] = true
 					pending.append(neighbor)
-	elif tool == TOOL_PASTE:
-		if has_clipboard():
-			for y in clipboard_height:
-				for x in clipboard_width:
-					var target := hover_point + Vector2i(x, y)
-					if _point_is_editable(target):
-						result[target] = true
 	elif tool == TOOL_STAMP:
 		for y in paint_options.stamp_height:
 			for x in paint_options.stamp_width:
 				var target := hover_point + Vector2i(x, y)
 				if paint_options.stamp_pixels[y * paint_options.stamp_width + x] >= 0 and _point_is_editable(target):
 					result[target] = true
-	elif tool in [TOOL_COPY, TOOL_EYEDROPPER, TOOL_SELECT_RECT, TOOL_SELECT_LASSO, TOOL_SELECT_WAND, TOOL_MOVE]:
+	elif tool in [TOOL_EYEDROPPER, TOOL_SELECT_RECT, TOOL_SELECT_LASSO, TOOL_SELECT_WAND, TOOL_MOVE]:
 		result[hover_point] = true
 	else:
 		var points: Array[Vector2i] = [hover_point]
@@ -1848,6 +1800,7 @@ func _on_mouse_exited() -> void:
 
 func _draw() -> void:
 	if sprite_width <= 0 or sprite_height <= 0:
+		selection_outline.configure(PackedVector2Array(), false)
 		draw_rect(Rect2(Vector2.ZERO, size), Color("ffffff"), true)
 
 		return
@@ -1878,22 +1831,9 @@ func _draw() -> void:
 	for guide in clip_guide_rects():
 		draw_rect(guide, Color.WHITE, true)
 
-	if copy_active and _point_is_valid(copy_start) and _point_is_valid(copy_finish):
-		var minimum := Vector2i(
-			mini(copy_start.x, copy_finish.x), mini(copy_start.y, copy_finish.y)
-		)
-		var maximum := Vector2i(
-			maxi(copy_start.x, copy_finish.x), maxi(copy_start.y, copy_finish.y)
-		)
-		var selection := Rect2(
-			Vector2(minimum * zoom), Vector2((maximum - minimum + Vector2i.ONE) * zoom)
-		)
-		draw_rect(selection, Color.WHITE, false, 2.0)
-		draw_rect(selection.grow(-1.0), Color.BLACK, false, 1.0)
-
 	_draw_selection()
 	_draw_guides()
-	if not copy_active and not selection_dragging and not paste_active:
+	if not selection_dragging and not paste_active:
 		_draw_tool_outline()
 
 

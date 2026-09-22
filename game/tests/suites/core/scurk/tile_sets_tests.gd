@@ -236,13 +236,13 @@ func test_scurk_mif(reference_root: String) -> void:
 			"SCURK editor loads all tile, terrain, network, and support sprites",
 		)
 		_check(
-			scurk_editor.tool_buttons.size() == 18
+			scurk_editor.tool_buttons.size() == 16
 			and scurk_editor.palette_panel.texture_control.patterns.size()
 				== ScurkPixelEditor.TEXTURE_NAMES.size()
 			and scurk_editor.brush_size_selector.max_value == 24
 			and scurk_editor.revert_button != null
 			and scurk_editor.revert_name_button != null
-			and scurk_editor.paste_tool_button.disabled
+			and scurk_editor.clipboard_paste_button.disabled
 			and scurk_editor.clipboard_action_buttons.size() == 4
 			and not scurk_editor.pixel_canvas.original_textures_loaded
 			and scurk_editor.pixel_canvas.texture_patterns.size() == 42
@@ -250,8 +250,8 @@ func test_scurk_mif(reference_root: String) -> void:
 			and scurk_editor.increment_cycle_button.disabled
 			and scurk_editor.import_bmp_dialog != null
 			and scurk_editor.export_bmp_dialog != null
-			and scurk_editor.copy_object_button != null
-			and scurk_editor.paste_image_button != null
+			and scurk_editor.clipboard_copy_button != null
+			and scurk_editor.clipboard_paste_button != null
 			and scurk_editor.clear_object_button != null
 			and scurk_editor.clip_region_check != null
 			and scurk_editor.snap_to_grid_check != null
@@ -359,19 +359,9 @@ func test_scurk_mif(reference_root: String) -> void:
 			"SCURK Increment Cycle works only while automatic cycling is off",
 		)
 		scurk_editor._set_cycle_colors(true)
-		scurk_editor._select_tool(ScurkPixelEditor.TOOL_COPY)
-		var editor_copy_press := InputEventMouseButton.new()
-		editor_copy_press.button_index = MOUSE_BUTTON_LEFT
-		editor_copy_press.pressed = true
-		editor_copy_press.position = Vector2(1, 1)
-		scurk_editor.pixel_canvas._gui_input(editor_copy_press)
-		var editor_copy_release := InputEventMouseButton.new()
-		editor_copy_release.button_index = MOUSE_BUTTON_LEFT
-		editor_copy_release.pressed = false
-		editor_copy_release.position = Vector2(17, 17)
-		scurk_editor.pixel_canvas._gui_input(editor_copy_release)
+		scurk_editor.clipboard_copy_button.pressed.emit()
 		_check(
-			not scurk_editor.paste_tool_button.disabled
+			not scurk_editor.clipboard_paste_button.disabled
 			and not scurk_editor.clipboard_action_buttons[0].disabled,
 			"SCURK Copy enables Paste and clipboard transforms",
 		)
@@ -764,7 +754,7 @@ func test_scurk_mif(reference_root: String) -> void:
 		]), Palette.index_encoding()
 	)
 	clipboard_canvas.set_zoom(4)
-	clipboard_canvas.set_tool(ScurkPixelEditor.TOOL_COPY)
+	clipboard_canvas.set_tool(ScurkPixelEditor.TOOL_SELECT_RECT)
 	var copy_press := InputEventMouseButton.new()
 	copy_press.button_index = MOUSE_BUTTON_LEFT
 	copy_press.pressed = true
@@ -775,21 +765,25 @@ func test_scurk_mif(reference_root: String) -> void:
 	copy_release.pressed = false
 	copy_release.position = Vector2(17, 17)
 	clipboard_canvas._gui_input(copy_release)
+	clipboard_canvas.copy_selection()
 	_check(
 		clipboard_canvas.clipboard_width == 5
 		and clipboard_canvas.clipboard_height == 5
 		and clipboard_canvas.clipboard_pixels[0] == 1
 		and clipboard_canvas.clipboard_pixels[24] == 25,
-		"SCURK Copy drag stores a source-sized region in its private clipboard",
+		"SCURK Copy stores the selected region in its private clipboard",
 	)
-	var accepted_clipboard := clipboard_canvas.clipboard_pixels.duplicate()
-	copy_press.position = Vector2(1, 1)
+	clipboard_canvas.clear_selection()
+	copy_press.position = Vector2(5, 5)
 	clipboard_canvas._gui_input(copy_press)
-	copy_release.position = Vector2(13, 13)
+	copy_release.position = Vector2(7, 7)
 	clipboard_canvas._gui_input(copy_release)
+	clipboard_canvas.copy_selection()
 	_check(
-		clipboard_canvas.clipboard_pixels == accepted_clipboard,
-		"SCURK Copy rejects endpoint spans shorter than four pixels",
+		clipboard_canvas.clipboard_width == 1
+		and clipboard_canvas.clipboard_height == 1
+		and clipboard_canvas.clipboard_pixels == PackedInt32Array([7]),
+		"SCURK Copy accepts a single selected pixel",
 	)
 	clipboard_canvas.free()
 	var palette_grid := ScurkPalette.new()

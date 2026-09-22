@@ -79,10 +79,9 @@ var revert_name_button: Button
 var object_panel: ScurkEditorObjectPanel
 var view_buttons: Array[Button] = []
 var tool_buttons: Array[Button] = []
-var paste_tool_button: Button
 var clipboard_action_buttons: Array[Button] = []
-var copy_object_button: Button
-var paste_image_button: Button
+var clipboard_copy_button: Button
+var clipboard_paste_button: Button
 var undo_button: Button
 var redo_button: Button
 var revert_button: Button
@@ -764,6 +763,13 @@ func handle_shortcut(event: InputEventKey) -> bool:
 
 	var command := event.meta_pressed or event.ctrl_pressed
 
+	if command and event.keycode in [KEY_X, KEY_C, KEY_V]:
+		if is_inside_tree():
+			var focused := get_viewport().gui_get_focus_owner()
+			if focused is LineEdit or focused is TextEdit:
+				return false
+		return pixel_canvas._handle_editor_key(event)
+
 	if command and event.keycode == KEY_S:
 		if event.shift_pressed:
 			request_save_as()
@@ -877,8 +883,8 @@ func _bind_interface() -> void:
 	drawing_controls.flip_clipboard_vertical_requested.connect(
 		_flip_clipboard_vertical
 	)
-	drawing_controls.copy_object_requested.connect(copy_object_to_system_clipboard)
-	drawing_controls.paste_image_requested.connect(paste_image_from_system_clipboard)
+	drawing_controls.copy_requested.connect(func() -> void: pixel_canvas.copy_selection())
+	drawing_controls.paste_requested.connect(func() -> void: pixel_canvas.begin_paste())
 	drawing_controls.brush_size_changed.connect(_select_brush_size)
 	drawing_controls.round_brush_changed.connect(_set_round_brush)
 	drawing_controls.filled_shapes_changed.connect(_set_filled_shapes)
@@ -891,10 +897,9 @@ func _bind_interface() -> void:
 	view_buttons = drawing_controls.view_buttons
 	zoom_label = drawing_controls.zoom_label
 	tool_buttons = drawing_controls.tool_buttons
-	paste_tool_button = drawing_controls.paste_tool_button
 	clipboard_action_buttons = drawing_controls.clipboard_action_buttons
-	copy_object_button = drawing_controls.copy_object_button
-	paste_image_button = drawing_controls.paste_image_button
+	clipboard_copy_button = drawing_controls.clipboard_copy_button
+	clipboard_paste_button = drawing_controls.clipboard_paste_button
 	brush_size_selector = drawing_controls.brush_size_selector
 	round_brush_check = drawing_controls.round_brush_check
 	filled_shapes_check = drawing_controls.filled_shapes_check
@@ -915,7 +920,6 @@ func _bind_interface() -> void:
 	pixel_canvas.palette_index_picked.connect(_select_palette_index)
 	pixel_canvas.pointer_changed.connect(_update_pointer_status)
 	pixel_canvas.clipboard_changed.connect(_on_clipboard_changed)
-	pixel_canvas.clipboard_copy_rejected.connect(_on_clipboard_copy_rejected)
 
 	palette_panel = get_node("Panel/Content/Body/Studio/Margin/Tabs/Colors")
 	palette_panel.build()
@@ -954,9 +958,11 @@ func _bind_interface() -> void:
 	_select_palette_index(255, true)
 	studio = $Panel/Content/Body/Studio
 	studio.bind(self)
-	for button in tool_buttons + clipboard_action_buttons:
+	for button in tool_buttons + clipboard_action_buttons + [clipboard_copy_button, clipboard_paste_button]:
 		button.focus_mode = Control.FOCUS_NONE
-		button.pressed.connect(pixel_canvas.grab_focus)
+		button.pressed.connect(func() -> void:
+			if pixel_canvas.is_inside_tree():
+				pixel_canvas.grab_focus())
 	pixel_canvas.pan_requested.connect(canvas_panel.pan_canvas)
 	pixel_canvas.zoom_requested.connect(canvas_panel.zoom_at)
 	canvas_panel.zoom_changed.connect(func(value: int) -> void: zoom_label.text = "%dx" % value)
@@ -1204,21 +1210,14 @@ func _flip_clipboard_vertical() -> void:
 func _on_clipboard_changed(width: int, height: int) -> void:
 	var available := width > 0 and height > 0
 
-	if paste_tool_button != null:
-		paste_tool_button.disabled = not available
+	if clipboard_paste_button != null:
+		clipboard_paste_button.disabled = not available
 
 	for button in clipboard_action_buttons:
 		button.disabled = not available
 
 	if available:
 		_set_status("SCURK clipboard: %d x %d pixels." % [width, height])
-
-
-func _on_clipboard_copy_rejected(minimum_span: int) -> void:
-	_set_status(
-		"Copy requires at least a %d-pixel endpoint span on each axis."
-		% minimum_span
-	)
 
 
 func _refresh_sprite() -> void:
@@ -1854,8 +1853,6 @@ func _studio_action(action: String) -> void:
 		"CutSelection": pixel_canvas.cut_selection()
 		"DuplicateSelection": pixel_canvas.duplicate_selection()
 		"DeleteSelection": pixel_canvas.delete_selection()
-		"PasteSelection":
-			_select_tool(ScurkPixelCanvas.TOOL_PASTE)
-			pixel_canvas.begin_paste(Vector2i.ZERO)
-	if action in ["SelectAll", "Deselect", "CopySelection", "CutSelection", "DuplicateSelection", "DeleteSelection", "PasteSelection"]:
+		"PasteSelection": pixel_canvas.begin_paste()
+	if is_inside_tree() and action in ["SelectAll", "Deselect", "CopySelection", "CutSelection", "DuplicateSelection", "DeleteSelection", "PasteSelection"]:
 		pixel_canvas.grab_focus()

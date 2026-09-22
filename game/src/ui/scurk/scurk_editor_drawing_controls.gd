@@ -11,8 +11,8 @@ signal rotate_clipboard_clockwise_requested
 signal rotate_clipboard_requested
 signal flip_clipboard_horizontal_requested
 signal flip_clipboard_vertical_requested
-signal copy_object_requested
-signal paste_image_requested
+signal copy_requested
+signal paste_requested
 signal brush_size_changed(value: float)
 signal round_brush_changed(enabled: bool)
 signal filled_shapes_changed(enabled: bool)
@@ -30,10 +30,9 @@ const VIEW_SMALL := 2
 var view_buttons: Array[Button] = []
 var zoom_label: Label
 var tool_buttons: Array[Button] = []
-var paste_tool_button: Button
 var clipboard_action_buttons: Array[Button] = []
-var copy_object_button: Button
-var paste_image_button: Button
+var clipboard_copy_button: Button
+var clipboard_paste_button: Button
 var brush_size_selector: SpinBox
 var round_brush_check: CheckBox
 var filled_shapes_check: CheckBox
@@ -75,8 +74,6 @@ func build() -> void:
 		tool_buttons.append(button)
 
 	tool_buttons[0].button_pressed = true
-	paste_tool_button = tool_buttons[ScurkPixelCanvas.TOOL_PASTE]
-	paste_tool_button.disabled = true
 	zoom_label = $Margin/Column/Zoom/Value
 	zoom_out_button = $Margin/Column/Zoom/Out
 	zoom_in_button = $Margin/Column/Zoom/In
@@ -117,17 +114,18 @@ func build() -> void:
 	$"Margin/Column/Clipboard/Vertical".pressed.connect(flip_clipboard_vertical_requested.emit)
 	$"Margin/Column/Clipboard/Vertical".disabled = true
 	clipboard_action_buttons.append($"Margin/Column/Clipboard/Vertical")
-	copy_object_button = $"Margin/Column/Clipboard/CopyObject"
-	paste_image_button = $"Margin/Column/Clipboard/PasteImage"
-	copy_object_button.pressed.connect(copy_object_requested.emit)
-	paste_image_button.pressed.connect(paste_image_requested.emit)
+	clipboard_copy_button = $"Margin/Column/Clipboard/Copy"
+	clipboard_paste_button = $"Margin/Column/Clipboard/Paste"
+	clipboard_copy_button.pressed.connect(copy_requested.emit)
+	clipboard_paste_button.pressed.connect(paste_requested.emit)
+	clipboard_paste_button.disabled = true
 	_watch_buttons(self)
 	theme_changed.connect(_refresh_icon_colors)
 	_refresh_icon_colors()
 
 
 func _refresh_icon_colors() -> void:
-	for button in tool_buttons + clipboard_action_buttons + [copy_object_button, paste_image_button]:
+	for button in tool_buttons + clipboard_action_buttons + [clipboard_copy_button, clipboard_paste_button]:
 		for state in ["normal", "hover", "pressed", "hover_pressed", "disabled", "focus"]:
 			var color_name := "font_color" if state == "normal" else "font_%s_color" % state
 			button.add_theme_color_override(

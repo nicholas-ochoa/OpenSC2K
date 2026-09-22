@@ -25,7 +25,5 @@ static func paint_tool(tool: int) -> int:
 			return 30000
 		ScurkPixelCanvas.TOOL_ERASER:
 			return 30001
-		ScurkPixelCanvas.TOOL_PASTE:
-			return 30003
 
 	return 30002

@@ -11,7 +11,11 @@ func _run() -> void:
 	root.add_child(canvas)
 	_test_navigation(canvas)
 	_test_selection_paint(canvas)
+	_test_selection_drag(canvas)
+	_test_selection_drag_missing_mask(canvas)
 	_test_floating_paste(canvas)
+	_test_paste_during_selection(canvas)
+	_test_clipboard_key_repeat(canvas)
 	_test_selection_edges(canvas)
 	_test_paint_options(canvas)
 	_test_layer_display(canvas)
@@ -173,13 +177,115 @@ func _test_selection_paint(canvas: ScurkPixelCanvas) -> void:
 	assert(canvas.pixels.count(42) == 4)
 
 
+func _motion(canvas: ScurkPixelCanvas, point: Vector2i, held := true) -> void:
+	var event := InputEventMouseMotion.new()
+	event.position = Vector2(point * canvas.zoom) + Vector2(canvas.DISPLAY_MARGIN + 1, 1)
+	event.button_mask = MOUSE_BUTTON_MASK_LEFT if held else 0
+	canvas._gui_input(event)
+
+
+func _test_selection_drag(canvas: ScurkPixelCanvas) -> void:
+	var commits: Array[PackedInt32Array] = []
+	var record := func(value: PackedInt32Array) -> void: commits.append(value)
+	canvas.pixels_committed.connect(record)
+	for tool in [ScurkPixelCanvas.TOOL_SELECT_RECT, ScurkPixelCanvas.TOOL_SELECT_LASSO, ScurkPixelCanvas.TOOL_SELECT_WAND]:
+		_reset(canvas, 7)
+		canvas.pixels[9] = 10
+		canvas.pixels[10] = 55
+		canvas.pixels[17] = -1
+		canvas.pixels[18] = 20
+		canvas.selection.combine(canvas.selection.rectangle(Vector2i.ONE, Vector2i(2, 2)))
+		canvas.selection.combine(canvas.selection.rectangle(Vector2i(2, 1), Vector2i(2, 1)), ScurkSelection.SUBTRACT)
+		canvas.set_tool(tool)
+		var before := canvas.pixels.duplicate()
+		var mask := canvas.selection.mask.duplicate()
+		var count := commits.size()
+		_mouse(canvas, Vector2i.ONE, true)
+		_mouse(canvas, Vector2i.ONE, false)
+		assert(not canvas.paste_active and canvas.pixels == before and canvas.selection.mask == mask)
+		assert(commits.size() == count)
+		_mouse(canvas, Vector2i.ONE, true)
+		_motion(canvas, Vector2i(3, 3))
+		assert(canvas.selection_move_dragging and canvas.pixels == before)
+		assert(canvas.composite_pixels()[27] == 10)
+		_key(canvas, KEY_ESCAPE)
+		_mouse(canvas, Vector2i(3, 3), false)
+		assert(not canvas.paste_active and canvas.pixels == before and canvas.selection.mask == mask)
+		assert(commits.size() == count)
+		_mouse(canvas, Vector2i.ONE, true)
+		_motion(canvas, Vector2i(3, 3))
+		_mouse(canvas, Vector2i(3, 3), false)
+		assert(canvas.tool == tool and not canvas.paste_active and not canvas.selection_dragging)
+		assert(canvas.pixels[9] == -1 and canvas.pixels[18] == -1 and canvas.pixels[10] == 55)
+		assert(canvas.pixels[27] == 10 and canvas.pixels[28] == 7 and canvas.pixels[35] == -1 and canvas.pixels[36] == 20)
+		assert(canvas.selection.bounds() == Rect2i(3, 3, 2, 2) and canvas.selection.mask.count(1) == 3)
+		assert(commits.size() == count + 1)
+		var moved := canvas.pixels.duplicate()
+		_mouse(canvas, Vector2i(3, 3), true)
+		_motion(canvas, Vector2i(4, 4))
+		canvas._notification(Node.NOTIFICATION_WM_WINDOW_FOCUS_OUT)
+		assert(not canvas.paste_active and canvas.pixels == moved)
+		_mouse(canvas, Vector2i(3, 3), true)
+		_motion(canvas, Vector2i(4, 4))
+		_motion(canvas, Vector2i(5, 5), false)
+		assert(not canvas.paste_active and canvas.selection.bounds() == Rect2i(4, 4, 2, 2))
+		canvas.editing_disabled = true
+		_mouse(canvas, Vector2i(4, 4), true)
+		assert(not canvas.paste_active and not canvas.selection_dragging)
+		canvas.editing_disabled = false
+		_mouse(canvas, Vector2i(4, 4), true, MOUSE_BUTTON_LEFT, true)
+		assert(not canvas.paste_active and not canvas.selection_move_dragging)
+		_key(canvas, KEY_ESCAPE)
+		canvas.selection.combine(canvas.selection.rectangle(Vector2i.ONE, Vector2i(2, 2)))
+		_mouse(canvas, Vector2i.ONE, true, MOUSE_BUTTON_LEFT, false, true)
+		assert(not canvas.paste_active and not canvas.selection_move_dragging)
+		_key(canvas, KEY_ESCAPE)
+		canvas.selection.combine(canvas.selection.rectangle(Vector2i(4, 4), Vector2i(5, 5)))
+		_mouse(canvas, Vector2i(4, 4), true)
+		_motion(canvas, Vector2i(12, 12))
+		_mouse(canvas, Vector2i(12, 12), false)
+		assert(not canvas.paste_active and not canvas.selection.active())
+	canvas.pixels_committed.disconnect(record)
+
+
+func _test_selection_drag_missing_mask(canvas: ScurkPixelCanvas) -> void:
+	_reset(canvas)
+	canvas.pixels[9] = 10
+	canvas.selection.combine(canvas.selection.rectangle(Vector2i.ONE, Vector2i.ONE))
+	canvas.set_tool(ScurkPixelCanvas.TOOL_SELECT_RECT)
+	var before := canvas.pixels.duplicate()
+	var event := InputEventMouseButton.new()
+	event.position = Vector2(-100, -100)
+	event.global_position = event.position
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.button_mask = MOUSE_BUTTON_MASK_LEFT
+	event.pressed = true
+	Input.parse_input_event(event)
+	Input.flush_buffered_events()
+	var held := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+	_mouse(canvas, Vector2i.ONE, true)
+	_motion(canvas, Vector2i(3, 3), false)
+	var dragging := canvas.paste_active and canvas.selection_move_dragging
+	var preview := canvas.composite_pixels()
+	var release := event.duplicate() as InputEventMouseButton
+	release.pressed = false
+	release.button_mask = 0
+	Input.parse_input_event(release)
+	Input.flush_buffered_events()
+	assert(held and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT))
+	assert(dragging and canvas.pixels == before and preview[27] == 10)
+	_mouse(canvas, Vector2i(3, 3), false)
+	assert(not canvas.paste_active and canvas.pixel_at(Vector2i.ONE) == -1)
+	assert(canvas.pixel_at(Vector2i(3, 3)) == 10 and canvas.selection.bounds() == Rect2i(3, 3, 1, 1))
+
+
 func _test_floating_paste(canvas: ScurkPixelCanvas) -> void:
 	_reset(canvas)
 	canvas.clipboard_width = 2
 	canvas.clipboard_height = 1
 	canvas.clipboard_pixels = PackedInt32Array([10, 20])
 	canvas.clipboard_mask.clear()
-	canvas.set_tool(ScurkPixelCanvas.TOOL_PASTE)
+	canvas.begin_paste()
 	assert(canvas.paste_active and canvas.pixels.count(-1) == 64)
 	canvas.paste_position = Vector2i(1, 1)
 	assert(canvas.composite_pixels()[9] == 10 and canvas.composite_pixels()[10] == 20)
@@ -206,6 +312,80 @@ func _test_floating_paste(canvas: ScurkPixelCanvas) -> void:
 	assert(canvas.clipboard_mask == PackedByteArray([1, 0]))
 	canvas.flip_clipboard_vertical()
 	assert(canvas.clipboard_mask == PackedByteArray([0, 1]))
+	_reset(canvas)
+	canvas.clipboard_width = 1
+	canvas.clipboard_height = 1
+	canvas.clipboard_pixels = PackedInt32Array([10])
+	canvas.clipboard_mask.clear()
+	_mouse(canvas, Vector2i(3, 3), true)
+	assert(canvas.stroke_active)
+	_key(canvas, KEY_V, true, true)
+	assert(canvas.paste_active and not canvas.stroke_active)
+	_motion(canvas, Vector2i(5, 5))
+	_mouse(canvas, Vector2i(5, 5), false)
+	assert(canvas.paste_active and canvas.pixels.count(42) == 1)
+	_mouse(canvas, Vector2i(5, 5), true)
+	_mouse(canvas, Vector2i(5, 5), false)
+	assert(not canvas.paste_active and canvas.pixels.count(42) == 1 and canvas.pixels[45] == 10)
+
+
+func _test_paste_during_selection(canvas: ScurkPixelCanvas) -> void:
+	for tool in [ScurkPixelCanvas.TOOL_SELECT_RECT, ScurkPixelCanvas.TOOL_SELECT_LASSO]:
+		_reset(canvas)
+		canvas.set_tool(tool)
+		canvas.clipboard_width = 2
+		canvas.clipboard_height = 1
+		canvas.clipboard_pixels = PackedInt32Array([10, 20])
+		canvas.clipboard_mask.clear()
+		canvas.selection.combine(canvas.selection.rectangle(Vector2i(6, 1), Vector2i(6, 1)))
+		var selected := canvas.selection.mask.duplicate()
+		for cancel in [true, false]:
+			_mouse(canvas, Vector2i.ONE, true)
+			_motion(canvas, Vector2i(3, 3))
+			assert(canvas.selection_dragging)
+			_key(canvas, KEY_V, true, true)
+			assert(canvas.paste_active and not canvas.selection_dragging and canvas.selection_preview.is_empty())
+			_motion(canvas, Vector2i(4, 4))
+			_mouse(canvas, Vector2i(4, 4), false)
+			assert(canvas.paste_active and canvas.selection.mask == selected)
+			var button := MOUSE_BUTTON_RIGHT if cancel else MOUSE_BUTTON_LEFT
+			_mouse(canvas, Vector2i(5, 5), true, button)
+			_mouse(canvas, Vector2i(5, 5), false, button)
+			assert(not canvas.paste_active and not canvas.selection_dragging)
+			if cancel:
+				assert(canvas.pixels.count(-1) == 64 and canvas.selection.mask == selected)
+			else:
+				assert(canvas.pixels[45] == 10 and canvas.pixels[46] == 20)
+				assert(canvas.selection.bounds() == Rect2i(5, 5, 2, 1))
+
+
+func _test_clipboard_key_repeat(canvas: ScurkPixelCanvas) -> void:
+	_reset(canvas)
+	canvas.pixels[9] = 10
+	canvas.pixels[10] = 20
+	canvas.selection.combine(canvas.selection.rectangle(Vector2i.ONE, Vector2i(2, 1)))
+	_key(canvas, KEY_X, true, true)
+	assert(canvas.clipboard_pixels == PackedInt32Array([10, 20]) and canvas.pixels.count(-1) == 64)
+	var event := InputEventKey.new()
+	event.keycode = KEY_X
+	event.pressed = true
+	event.ctrl_pressed = true
+	event.echo = true
+	canvas._gui_input(event)
+	assert(canvas.clipboard_pixels == PackedInt32Array([10, 20]))
+	event.keycode = KEY_C
+	event.ctrl_pressed = false
+	event.meta_pressed = true
+	canvas._gui_input(event)
+	assert(canvas.clipboard_pixels == PackedInt32Array([10, 20]))
+	canvas.hover_point = Vector2i(2, 3)
+	_key(canvas, KEY_V, true, true)
+	_key(canvas, KEY_RIGHT)
+	assert(canvas.paste_position == Vector2i(3, 3) and not canvas.paste_follow_cursor)
+	event.keycode = KEY_V
+	canvas._gui_input(event)
+	assert(canvas.paste_active and canvas.paste_position == Vector2i(3, 3) and not canvas.paste_follow_cursor)
+	canvas.cancel_paste()
 
 
 func _test_paint_options(canvas: ScurkPixelCanvas) -> void:

@@ -137,11 +137,11 @@ text = "Deselect"
 
 [node name="CopySelection" type="Button" parent="Actions"]
 layout_mode = 2
-text = "Copy Selection"
+text = "Copy"
 
 [node name="CutSelection" type="Button" parent="Actions"]
 layout_mode = 2
-text = "Cut Selection"
+text = "Cut"
 
 [node name="PasteSelection" type="Button" parent="Actions"]
 layout_mode = 2

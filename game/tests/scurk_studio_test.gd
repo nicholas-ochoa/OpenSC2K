@@ -31,6 +31,7 @@ func _run() -> void:
 	await _test_sidebar()
 	_test_layers()
 	_test_project()
+	_test_clipboard_layers()
 	_test_clear()
 	_test_recovery_ownership()
 	_test_replace()
@@ -216,6 +217,123 @@ func _test_layers() -> void:
 	assert(_document().layers.size() == 3 and studio.project.flatten(studio.key())[offset] == 17)
 	editor.redo()
 	assert(_document().layers.size() == 2 and studio.project.flatten(studio.key()) == flattened)
+
+
+func _test_clipboard_layers() -> void:
+	_fresh()
+	var canvas := editor.pixel_canvas
+	editor._select_tool(ScurkPixelCanvas.TOOL_PENCIL)
+	canvas.set_paint_indices(6, 7)
+	var source := _solid(-1)
+	var source_point := Vector2i(60, 200)
+	var source_offset := source_point.y * Workspace.WIDTH + source_point.x
+	var values := PackedInt32Array([42, -1, 73, 99, 51, 88])
+	for y in 2:
+		for x in 3:
+			source[source_offset + y * Workspace.WIDTH + x] = values[y * 3 + x]
+	_commit(source)
+	studio._layer_action("Add")
+	var target := _solid(-1)
+	var destination := Vector2i(64, 204)
+	var target_offset := destination.y * Workspace.WIDTH + destination.x
+	for y in 2:
+		for x in 3:
+			target[target_offset + y * Workspace.WIDTH + x] = 77
+	_commit(target)
+	studio._select_layer(0)
+	var selected := canvas.selection.empty_mask()
+	var copied_mask := PackedByteArray([1, 1, 0, 1, 0, 1])
+	for y in 2:
+		for x in 3:
+			selected[source_offset + y * Workspace.WIDTH + x] = copied_mask[y * 3 + x]
+	canvas.selection.combine(selected)
+	var history_count := editor.edit_history.undo_stack.size()
+	_clipboard_key(KEY_C, true)
+	var copied := PackedInt32Array([42, -1, -1, 99, -1, 88])
+	assert(canvas.clipboard_width == 3 and canvas.clipboard_height == 2)
+	assert(canvas.clipboard_pixels == copied and canvas.clipboard_mask == copied_mask)
+	assert(_document().layers[0].pixels == source)
+	assert(editor.edit_history.undo_stack.size() == history_count)
+	studio._select_layer(1)
+	assert(canvas.clipboard_pixels == copied and canvas.clipboard_mask == copied_mask)
+	canvas.hover_point = destination
+	_clipboard_key(KEY_V, false)
+	assert(canvas.paste_active)
+	assert(_document().layers[0].pixels == source and _document().layers[1].pixels == target)
+	_clipboard_click(destination, MOUSE_BUTTON_LEFT)
+	var pasted := target.duplicate()
+	for y in 2:
+		for x in 3:
+			if copied_mask[y * 3 + x] != 0:
+				pasted[target_offset + y * Workspace.WIDTH + x] = copied[y * 3 + x]
+	assert(_document().layers[0].pixels == source and _document().layers[1].pixels == pasted)
+	assert(canvas.tool == ScurkPixelCanvas.TOOL_PENCIL and editor.current_tool == canvas.tool)
+	assert(editor.edit_history.undo_stack.size() == history_count + 1)
+	editor.undo()
+	assert(_document().layers[0].pixels == source and _document().layers[1].pixels == target)
+	studio._select_layer(0)
+	canvas.selection.combine(selected)
+	_clipboard_key(KEY_X, false)
+	var cut := source.duplicate()
+	for offset in selected.size():
+		if selected[offset] != 0:
+			cut[offset] = -1
+	assert(_document().layers[0].pixels == cut and _document().layers[1].pixels == target)
+	assert(canvas.clipboard_pixels == copied and canvas.clipboard_mask == copied_mask)
+	assert(editor.edit_history.undo_stack.size() == history_count + 1)
+	studio._select_layer(1)
+	canvas.hover_point = destination
+	_clipboard_key(KEY_V, true)
+	_clipboard_click(destination, MOUSE_BUTTON_RIGHT)
+	assert(_document().layers[0].pixels == cut and _document().layers[1].pixels == target)
+	assert(editor.edit_history.undo_stack.size() == history_count + 1)
+	_clipboard_key(KEY_V, false)
+	_clipboard_click(destination, MOUSE_BUTTON_LEFT)
+	assert(_document().layers[0].pixels == cut and _document().layers[1].pixels == pasted)
+	assert(editor.edit_history.undo_stack.size() == history_count + 2)
+	editor.undo()
+	assert(_document().layers[0].pixels == cut and _document().layers[1].pixels == target)
+	editor.undo()
+	assert(_document().layers[0].pixels == source and _document().layers[1].pixels == target)
+	editor.redo()
+	assert(_document().layers[0].pixels == cut and _document().layers[1].pixels == target)
+	editor.redo()
+	assert(_document().layers[0].pixels == cut and _document().layers[1].pixels == pasted)
+	studio._select_layer(0)
+	canvas.clear_selection()
+	_clipboard_key(KEY_C, false)
+	assert(canvas.clipboard_width == 2 and canvas.clipboard_height == 2)
+	assert(canvas.clipboard_pixels == PackedInt32Array([-1, 73, 51, -1]))
+	_clipboard_key(KEY_X, true)
+	assert(_document().layers[0].pixels == _solid(-1))
+	editor.undo()
+	assert(_document().layers[0].pixels == cut and _document().layers[1].pixels == pasted)
+	assert(canvas.tool == ScurkPixelCanvas.TOOL_PENCIL and editor.current_tool == canvas.tool)
+
+
+func _clipboard_key(code: Key, meta: bool) -> void:
+	editor.pixel_canvas.grab_focus()
+	var event := InputEventKey.new()
+	event.keycode = code
+	event.pressed = true
+	event.meta_pressed = meta
+	event.ctrl_pressed = not meta
+	assert(editor.handle_shortcut(event))
+
+
+func _clipboard_click(point: Vector2i, button: MouseButton) -> void:
+	var canvas := editor.pixel_canvas
+	var event := InputEventMouseButton.new()
+	event.button_index = button
+	event.position = Vector2(canvas.DISPLAY_MARGIN, 0) + (Vector2(point) + Vector2(0.5, 0.5)) * canvas.zoom
+	event.pressed = true
+	canvas._gui_input(event)
+	assert(not canvas.paste_active)
+	var after := canvas.pixels.duplicate()
+	var history_count := editor.edit_history.undo_stack.size()
+	event.pressed = false
+	canvas._gui_input(event)
+	assert(canvas.pixels == after and editor.edit_history.undo_stack.size() == history_count)
 
 
 func _test_project() -> void:
