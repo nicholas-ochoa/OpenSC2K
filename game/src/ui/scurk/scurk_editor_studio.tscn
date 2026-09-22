@@ -6,6 +6,11 @@
 
 [ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_editor_palette_panel.tscn" id="palette"]
 [ext_resource type="Shader" path="res://src/ui/shared/frosted_panel.gdshader" id="glass"]
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/layer_add.svg" id="layer_add"]
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/layer_delete.svg" id="layer_delete"]
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/layer_up.svg" id="layer_up"]
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/layer_down.svg" id="layer_down"]
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/layer_rename.svg" id="layer_rename"]
 
 [sub_resource type="ShaderMaterial" id="GlassMaterial"]
 shader = ExtResource("glass")
@@ -68,21 +73,54 @@ text = "Locked"
 button_pressed = false
 
 [node name="Actions" type="HFlowContainer" parent="Margin/Tabs/Layers"]
+texture_filter = 2
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
 
 [node name="Add" type="Button" parent="Margin/Tabs/Layers/Actions"]
-text = "Add"
+icon = ExtResource("layer_add")
+tooltip_text = "Add layer"
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
 
 [node name="Delete" type="Button" parent="Margin/Tabs/Layers/Actions"]
-text = "Delete"
+icon = ExtResource("layer_delete")
+tooltip_text = "Delete layer"
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
 
 [node name="Up" type="Button" parent="Margin/Tabs/Layers/Actions"]
-text = "Up"
+icon = ExtResource("layer_up")
+tooltip_text = "Move layer up"
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
 
 [node name="Down" type="Button" parent="Margin/Tabs/Layers/Actions"]
-text = "Down"
+icon = ExtResource("layer_down")
+tooltip_text = "Move layer down"
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
 
 [node name="Rename" type="Button" parent="Margin/Tabs/Layers/Actions"]
-text = "Rename"
+icon = ExtResource("layer_rename")
+tooltip_text = "Rename layer"
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
 
 [node name="List" type="ItemList" parent="Margin/Tabs/History"]
 size_flags_vertical = 3

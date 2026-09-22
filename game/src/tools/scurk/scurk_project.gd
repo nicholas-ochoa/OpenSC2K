@@ -79,7 +79,7 @@ func ensure_document(key: String, pixels: PackedInt32Array, width := 128, height
 	documents[key] = {
 		"width": width, "height": height, "active": 0,
 		"original_pixels": pixels.duplicate(),
-		"layers": [_new_layer("Artwork", pixels)],
+		"layers": [_new_layer("Root", pixels)],
 	}
 	return true
 

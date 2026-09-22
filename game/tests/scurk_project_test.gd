@@ -17,6 +17,7 @@ func _run() -> void:
 	assert(project.original_mif == original)
 	var pixels := PackedInt32Array([0, 1, -1, 255])
 	assert(project.ensure_document("1:0", pixels, 2, 2))
+	assert(project.documents["1:0"].layers[0].name == "Root")
 	pixels[0] = 9
 	assert(project.active_pixels("1:0")[0] == 0)
 	assert(project.ensure_document("1:0", pixels, 2, 2))
@@ -44,6 +45,7 @@ func _run() -> void:
 	assert(project.delete_layer("1:0", 0))
 	assert(project.documents["1:0"].active == 0)
 	assert(not project.delete_layer("1:0", 0))
+	assert(project.rename_layer("1:0", 0, "Artwork"))
 	assert(project.documents["1:0"].original_pixels == PackedInt32Array([0, 1, -1, 255]))
 	assert(project.add_stamp("Window", 2, 1, PackedInt32Array([252, -1]), 3) == 0)
 	assert(project.add_stamp("Bad", 2, 1, PackedInt32Array([42]), 1) == -1)
@@ -73,6 +75,7 @@ func _run() -> void:
 	var decoded := Project.from_bytes(encoded.bytes)
 	assert(decoded.ok, decoded.error)
 	assert(decoded.project.original_mif == original)
+	assert(decoded.project.documents["1:0"].layers[0].name == "Artwork")
 	assert(_same_state(decoded.project.snapshot(), project.snapshot()))
 	assert(decoded.project.checkpoints.size() == project.checkpoints.size())
 	for index in project.checkpoints.size():

@@ -91,6 +91,17 @@ func bind(value: ScurkEditorControl) -> void:
 		editor.pixel_canvas.queue_redraw())
 	editor.palette_panel.shade_ramp_changed.connect(editor.pixel_canvas.paint_options.set_shade_ramp)
 	editor.palette_panel.navigation_changed.connect(_palette_state_changed)
+	theme_changed.connect(_refresh_icon_colors)
+	_refresh_icon_colors()
+
+
+func _refresh_icon_colors() -> void:
+	for button: Button in get_node(LAYERS + "/Actions").get_children():
+		for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
+			var color_name := "font_color" if state == "normal" else "font_%s_color" % state
+			button.add_theme_color_override(
+				"icon_%s_color" % state, button.get_theme_color(color_name, "Button")
+			)
 
 
 func reset(bytes: PackedByteArray) -> void:
@@ -688,7 +699,7 @@ func clear_view(view: int) -> void:
 	var blank := PackedInt32Array()
 	blank.resize(int(document.width) * int(document.height))
 	blank.fill(-1)
-	document.layers = [{"name": "Artwork", "visible": true, "locked": false, "pixels": blank}]
+	document.layers = [{"name": "Root", "visible": true, "locked": false, "pixels": blank}]
 	document.active = 0
 
 
