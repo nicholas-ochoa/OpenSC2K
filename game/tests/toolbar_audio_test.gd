@@ -23,6 +23,28 @@ func _run() -> void:
 	main.city_toolbar.toolbar_buttons[0].pressed.emit()
 	assert(not _has_sound(main, 505))
 
+	# SCURK uses the same feedback for tools, clipboard transforms, zoom, and views.
+	main.scurk_workspace._ensure_scurk_editor()
+	var editor := main.scurk_editor as ScurkEditorControl
+	editor.pixel_canvas.clipboard_width = 2
+	editor.pixel_canvas.clipboard_height = 2
+	editor.pixel_canvas.clipboard_pixels = PackedInt32Array([1, 2, 3, 4])
+	for button in [editor.tool_buttons[0], editor.clipboard_action_buttons[0],
+		editor.drawing_controls.zoom_in_button, editor.view_buttons[0]]:
+		main.preferences.toolbar_sounds = true
+		button.pressed.emit()
+		assert(_has_sound(main, 505))
+		await _clear(main)
+		main.preferences.toolbar_sounds = false
+		button.pressed.emit()
+		assert(not _has_sound(main, 505))
+	main.preferences.toolbar_sounds = true
+	main.document_state.city.set_sound_enabled(false)
+	editor.tool_buttons[0].pressed.emit()
+	assert(not _has_sound(main, 505))
+	main.document_state.city.set_sound_enabled(true)
+	main.preferences.toolbar_sounds = false
+
 	# Terrain use still plays the tractor with toolbar feedback disabled.
 	for tool in [2, 3, 5, 6, 7]:
 		main.current_tool.select_tool_group(0)
@@ -70,7 +92,7 @@ func _run() -> void:
 	assert(main.preferences.sound_pack_folder == old_sound_folder)
 	main.queue_free()
 	await process_frame
-	print("PASS: toolbar preference, Center WAV routing, terrain tractor feedback independent of toolbar setting, city sound mute")
+	print("PASS: city and SCURK toolbar preference, Center WAV routing, terrain tractor feedback independent of toolbar setting, city sound mute")
 	quit()
 
 

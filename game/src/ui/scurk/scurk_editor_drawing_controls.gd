@@ -1,6 +1,7 @@
 class_name ScurkEditorDrawingControls
 extends PanelContainer
 
+signal button_clicked
 signal view_selected(view: int)
 signal zoom_fit_requested
 signal zoom_out_requested
@@ -117,6 +118,7 @@ func build() -> void:
 	paste_image_button = $"Margin/Column/Clipboard/PasteImage"
 	copy_object_button.pressed.connect(copy_object_requested.emit)
 	paste_image_button.pressed.connect(paste_image_requested.emit)
+	_watch_buttons(self)
 	theme_changed.connect(_refresh_icon_colors)
 	_refresh_icon_colors()
 
@@ -140,3 +142,11 @@ func update_tool_controls(tool: int) -> void:
 	filled_shapes_check.visible = uses_brush and tool not in [
 		ScurkPixelCanvas.TOOL_PENCIL, ScurkPixelCanvas.TOOL_ERASER, ScurkPixelCanvas.TOOL_LINE,
 	]
+
+
+func _watch_buttons(node: Node) -> void:
+	if node is BaseButton:
+		node.pressed.connect(button_clicked.emit)
+
+	for child in node.get_children():
+		_watch_buttons(child)

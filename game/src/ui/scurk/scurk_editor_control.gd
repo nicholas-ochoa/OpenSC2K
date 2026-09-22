@@ -3,6 +3,7 @@ extends ColorRect
 
 @warning_ignore_start("integer_division")
 
+signal toolbar_button_clicked
 signal about_requested
 signal settings_requested
 signal close_requested
@@ -877,6 +878,7 @@ func _bind_interface() -> void:
 
 	drawing_controls = get_node("Panel/Content/Body/DrawingControls")
 	drawing_controls.build()
+	drawing_controls.button_clicked.connect(toolbar_button_clicked.emit)
 	drawing_controls.view_selected.connect(_select_view)
 	drawing_controls.zoom_fit_requested.connect(_fit_canvas)
 	drawing_controls.zoom_out_requested.connect(_zoom_out)

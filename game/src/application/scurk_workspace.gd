@@ -18,6 +18,7 @@ func _ensure_scurk_editor() -> void:
 		return
 
 	app.scurk_editor = app.main_overlays.ensure_scurk_editor()
+	app.scurk_editor.toolbar_button_clicked.connect(app.interface.play_toolbar_click)
 	app.scurk_editor.settings_requested.connect(app.settings.open_settings_dialog)
 	app.scurk_editor.about_requested.connect(app.interface.open_about_dialog)
 	app.scurk_editor.tile_set_applied.connect(_apply_scurk_tile_set)

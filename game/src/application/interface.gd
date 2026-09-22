@@ -38,10 +38,7 @@ func build_interface(original_assets: OriginalGameAssets) -> void:
 	app.disasters_menu = app.city_menu_bar.disasters_menu
 
 	app.city_toolbar = app.city_workspace.toolbar
-	app.city_toolbar.button_clicked.connect(func() -> void:
-		if app.preferences.toolbar_sounds:
-			app.audio_controller.play_toolbar_click(app.document_state.city == null or app.document_state.city.sound_enabled())
-	)
+	app.city_toolbar.button_clicked.connect(play_toolbar_click)
 	app.city_toolbar.group_requested.connect(app.camera_input.choose_tool_group)
 	app.city_toolbar.subtool_requested.connect(app.current_tool.select_subtool)
 	app.city_toolbar.rotate_requested.connect(app.camera_input.rotate_city)
@@ -325,3 +322,8 @@ func show_error(message: String) -> void:
 
 func format_number(value: int) -> String:
 	return DisplayNumbers.format(value)
+
+
+func play_toolbar_click() -> void:
+	if app.preferences.toolbar_sounds:
+		app.audio_controller.play_toolbar_click(app.document_state.city == null or app.document_state.city.sound_enabled())
