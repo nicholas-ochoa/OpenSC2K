@@ -1,14 +1,9 @@
 class_name ScurkEditorPalettePanel
-extends VBoxContainer
+extends PanelContainer
 
 signal palette_index_selected(index: int, background: bool)
 signal texture_selected(index: int)
-signal eraser_requested
 
-const PaletteControl = preload("res://src/view/scurk_palette_control.gd")
-const TextureControl = preload("res://src/view/scurk_texture_control.gd")
-
-var tabs: TabContainer
 var palette: Sc2Palette
 var palette_control: ScurkPaletteControl
 var foreground_color: ColorRect
@@ -16,13 +11,12 @@ var foreground_color_label: Label
 var background_color: ColorRect
 var background_color_label: Label
 var texture_control: ScurkTextureControl
-var pointer_status_label: Label
-var foreground_marker: TextureRect
-var background_marker: TextureRect
-var texture_scroll: ScrollContainer
+var cycle_colors_check: CheckBox
+var increment_cycle_button: Button
 
 
 func _ready() -> void:
+	AppUiTheme.bind_frosted_panel(self)
 	build()
 
 
@@ -30,79 +24,27 @@ func build() -> void:
 	if palette_control != null:
 		return
 
-	custom_minimum_size = Vector2(300, 0)
-	add_theme_constant_override("separation", 6)
-
-	var heading := Label.new()
-	heading.text = "256-Color Palette"
-	add_child(heading)
-
-	palette_control = PaletteControl.new()
-	palette_control.name = "Palette"
+	palette_control = $Margin/Column/Colors
+	texture_control = $Margin/Column/Textures
+	foreground_color = $Margin/Column/Foreground/Swatch
+	foreground_color_label = $Margin/Column/Foreground/Label
+	background_color = $Margin/Column/Background/Swatch
+	background_color_label = $Margin/Column/Background/Label
+	cycle_colors_check = $Margin/Column/Cycle/Enabled
+	increment_cycle_button = $Margin/Column/Cycle/Step
 	palette_control.index_selected.connect(palette_index_selected.emit)
-	add_child(palette_control)
-
-	var foreground_row := HBoxContainer.new()
-	foreground_row.add_theme_constant_override("separation", 8)
-	add_child(foreground_row)
-	foreground_marker = TextureRect.new()
-	foreground_marker.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
-	foreground_marker.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	foreground_row.add_child(foreground_marker)
-	foreground_color = ColorRect.new()
-	foreground_color.custom_minimum_size = Vector2(38, 26)
-	foreground_row.add_child(foreground_color)
-	foreground_color_label = Label.new()
-	foreground_row.add_child(foreground_color_label)
-
-	var background_row := HBoxContainer.new()
-	background_row.add_theme_constant_override("separation", 8)
-	add_child(background_row)
-	background_marker = TextureRect.new()
-	background_marker.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
-	background_marker.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	background_row.add_child(background_marker)
-	background_color = ColorRect.new()
-	background_color.custom_minimum_size = Vector2(38, 26)
-	background_row.add_child(background_color)
-	background_color_label = Label.new()
-	background_row.add_child(background_color_label)
-
-	var texture_label := Label.new()
-	texture_label.text = "Brush Texture"
-	add_child(texture_label)
-	texture_scroll = ScrollContainer.new()
-	texture_scroll.custom_minimum_size = Vector2(80, 160)
-	texture_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	texture_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	add_child(texture_scroll)
-	texture_control = TextureControl.new()
-	texture_control.name = "TexturePalette"
 	texture_control.texture_selected.connect(texture_selected.emit)
-	texture_scroll.add_child(texture_control)
 
-	var transparent_button := Button.new()
-	transparent_button.text = "Transparent Eraser"
-	transparent_button.tooltip_text = (
-		"Erase pixels to transparent with the selected brush size."
-	)
-	transparent_button.pressed.connect(eraser_requested.emit)
-	add_child(transparent_button)
 
-	var help := Label.new()
-	help.text = (
-		"Left mouse uses the foreground color or texture. Right mouse uses the "
-		+ "background color. Edit Large, Medium, and Small separately."
-	)
-	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	add_child(help)
-	var spacer := Control.new()
-	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	add_child(spacer)
-	pointer_status_label = Label.new()
-	pointer_status_label.text = "Pointer: --"
-	add_child(pointer_status_label)
-	_organize_tabs()
+func set_cycle_tick(tick: int) -> void:
+	palette_control.set_cycle_tick(tick)
+	texture_control.set_cycle_tick(tick)
+	if palette == null or not palette.is_valid():
+		return
+
+	var indices := palette.scurk_animation_index_map(tick)
+	foreground_color.color = palette.color(indices[palette_control.foreground_index])
+	background_color.color = palette.color(indices[palette_control.background_index])
 
 
 func configure(
@@ -122,15 +64,6 @@ func configure(
 
 func set_patterns(patterns: Array[PackedInt32Array]) -> void:
 	texture_control.set_patterns(patterns)
-
-
-func set_workspace_images(images: Dictionary) -> void:
-	build()
-	foreground_marker.texture = ImageTexture.create_from_image(images[22001]) if images.has(22001) else null
-	background_marker.texture = ImageTexture.create_from_image(images[22002]) if images.has(22002) else null
-	foreground_marker.visible = foreground_marker.texture != null
-	background_marker.visible = background_marker.texture != null
-	palette_control.set_palette_image(images.get(22005))
 
 
 func set_colors(foreground_index: int, background_index: int) -> void:
@@ -154,6 +87,7 @@ func set_colors(foreground_index: int, background_index: int) -> void:
 	background_color_label.text = "Background: %d (0x%02X)" % [
 		background, background,
 	]
+	set_cycle_tick(palette_control.palette_cycle_ticks)
 
 
 func set_selected_texture(index: int) -> void:
@@ -162,43 +96,3 @@ func set_selected_texture(index: int) -> void:
 
 func selected_texture_index() -> int:
 	return texture_control.selected_index
-
-
-func set_pointer(point: Vector2i, index: int) -> void:
-	pointer_status_label.text = (
-		"Pointer: --"
-		if point.x < 0
-		else "Pointer: %d, %d — %s" % [
-			point.x,
-			point.y,
-			"transparent" if index < 0 else "index %d" % index,
-		]
-	)
-
-
-func _organize_tabs() -> void:
-	var rows := get_children()
-	tabs = TabContainer.new()
-	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	tabs.use_hidden_tabs_for_min_size = false
-	add_child(tabs)
-	move_child(tabs, 0)
-
-	for definition in [["Colors", [0, 1, 2, 3, 6]], ["Textures", [4, 5]]]:
-		var page := VBoxContainer.new()
-		page.name = definition[0]
-		page.add_theme_constant_override("separation", 8)
-		tabs.add_child(page)
-
-		for index in definition[1]:
-			rows[index].reparent(page)
-
-	rows[7].hide()
-	tooltip_text = rows[7].text
-	rows[8].queue_free()
-	texture_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-
-
-func add_view_panel(panel: Control) -> void:
-	panel.reparent(tabs)
-	panel.name = "Views"

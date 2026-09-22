@@ -1,159 +1,156 @@
 class_name ScurkTextureControl
-extends Control
-
-@warning_ignore_start("integer_division")
+extends GridContainer
 
 signal texture_selected(index: int)
 
-const COLUMN_COUNT := 3
-const CELL_SIZE := 20
-const SWATCH_SCALE := 2
-const SWATCH_OFFSET := 2
+const MINIMUM_SIZE := Vector2(280, 96)
+const BUTTON_SIZE := 32
+const BUTTON_GAP := 2
 
 var palette: Sc2Palette
 var patterns: Array[PackedInt32Array] = []
-var pattern_names := PackedStringArray()
+var buttons: Array[Button] = []
+var textures: Array[ImageTexture] = []
+var pattern_names := PackedStringArray():
+	set(value):
+		pattern_names = value
+		_refresh_tooltips()
 var foreground_index := 0
 var background_index := 255
 var selected_index := 0
+var palette_cycle_ticks := 0
+var texture_state: Array = []
 
 
 func _init() -> void:
-	mouse_filter = Control.MOUSE_FILTER_STOP
-	custom_minimum_size = Vector2(COLUMN_COUNT * CELL_SIZE, 0)
+	custom_minimum_size = MINIMUM_SIZE
+	columns = 7
+	add_theme_constant_override("h_separation", BUTTON_GAP)
+	add_theme_constant_override("v_separation", BUTTON_GAP)
+	resized.connect(_update_columns)
 
 
 func set_palette(value: Sc2Palette) -> void:
 	palette = value
-	queue_redraw()
+	_refresh_textures()
 
 
 func set_patterns(value: Array[PackedInt32Array]) -> void:
+	for button in buttons:
+		remove_child(button)
+		button.free()
+	buttons.clear()
+	textures.clear()
 	patterns.clear()
+	texture_state.clear()
+	var group := ButtonGroup.new()
 
 	for pattern in value:
+		var index := patterns.size()
 		patterns.append(pattern.duplicate())
+		var button := Button.new()
+		button.toggle_mode = true
+		button.button_group = group
+		button.expand_icon = true
+		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
+		button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		button.custom_minimum_size = Vector2(BUTTON_SIZE, BUTTON_SIZE)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		for state in ["normal", "hover", "pressed", "hover_pressed", "disabled", "focus"]:
+			button.add_theme_color_override("icon_%s_color" % state, Color.WHITE)
+		button.pressed.connect(_select_button.bind(index))
+		var texture := ImageTexture.create_from_image(Image.create(8, 8, false, Image.FORMAT_RGBA8))
+		button.icon = texture
+		textures.append(texture)
+		buttons.append(button)
+		add_child(button)
 
-	selected_index = clampi(selected_index, 0, maxi(0, patterns.size() - 1))
-	var row_count := int(ceil(float(patterns.size()) / COLUMN_COUNT))
-	custom_minimum_size = Vector2(COLUMN_COUNT * CELL_SIZE, row_count * CELL_SIZE)
-	reset_size()
-	queue_redraw()
+	set_selected(selected_index)
+	_update_columns()
+	_refresh_tooltips()
+	_refresh_textures()
 
 
 func set_colors(foreground: int, background: int) -> void:
 	foreground_index = clampi(foreground, 0, 255)
 	background_index = clampi(background, 0, 255)
-	queue_redraw()
+	_refresh_textures()
 
 
 func set_selected(index: int) -> void:
 	selected_index = clampi(index, 0, maxi(0, patterns.size() - 1))
-	queue_redraw()
+	if not buttons.is_empty():
+		buttons[selected_index].button_pressed = true
+
+
+func _select_button(index: int) -> void:
+	selected_index = index
+	texture_selected.emit(index)
+
+
+func _update_columns() -> void:
+	var count := maxi(1, patterns.size())
+	var fitting_columns := maxi(1, floori((size.x + BUTTON_GAP) / (BUTTON_SIZE + BUTTON_GAP)))
+	columns = clampi(roundi(sqrt(count * size.x / maxf(1.0, size.y))), 1, mini(count, fitting_columns))
+
+
+func cell_rect(index: int) -> Rect2:
+	return buttons[index].get_rect()
 
 
 func index_at(position: Vector2) -> int:
-	var column := floori(position.x / CELL_SIZE)
-	var row := floori(position.y / CELL_SIZE)
-	var index := row * COLUMN_COUNT + column
-
-	if (
-		column < 0
-		or column >= COLUMN_COUNT
-		or row < 0
-		or index < 0
-		or index >= patterns.size()
-	):
-		return -1
-
-	return index
+	for index in buttons.size():
+		if cell_rect(index).has_point(position):
+			return index
+	return -1
 
 
-func _gui_input(event: InputEvent) -> void:
-	if (
-		event is InputEventMouseButton
-		and event.button_index == MOUSE_BUTTON_LEFT
-		and event.pressed
-	):
-		var index := index_at(event.position)
-
-		if index >= 0:
-			selected_index = index
-			queue_redraw()
-			texture_selected.emit(index)
-			accept_event()
+func _refresh_tooltips() -> void:
+	for index in buttons.size():
+		buttons[index].tooltip_text = _texture_tooltip(index)
 
 
-func _get_tooltip(at_position: Vector2) -> String:
-	var index := index_at(at_position)
-
-	if index < 0:
-		return ""
-
+func _texture_tooltip(index: int) -> String:
 	if index < pattern_names.size():
 		return pattern_names[index]
-
 	if index == 0:
 		return "Solid foreground"
-
 	if index == 1:
 		return "Foreground and background mix"
-
 	if index == 2:
 		return "Solid background"
-
 	return "Original SCURK texture %d" % (index - 2)
 
 
-func _draw() -> void:
-	for index in patterns.size():
-		var origin := Vector2i(
-			(index % COLUMN_COUNT) * CELL_SIZE,
-			int(index / COLUMN_COUNT) * CELL_SIZE
-		)
-		draw_rect(Rect2(origin, Vector2i(CELL_SIZE, CELL_SIZE)), Color("c0c0c0"), true)
-		var pattern := patterns[index]
+func set_cycle_tick(tick: int) -> void:
+	palette_cycle_ticks = tick
+	_refresh_textures()
 
+
+func _refresh_textures() -> void:
+	var valid_palette := palette != null and palette.is_valid()
+	var animation_map := palette.scurk_animation_index_map(palette_cycle_ticks) if valid_palette else PackedInt32Array()
+	var state: Array = [foreground_index, background_index,
+		hash(palette.colors) if valid_palette else 0, hash(animation_map)]
+	if texture_state == state:
+		return
+	texture_state = state
+	for index in patterns.size():
+		var pattern := patterns[index]
+		var image := Image.create(8, 8, false, Image.FORMAT_RGBA8)
 		if pattern.size() == 64:
 			for y in 8:
 				for x in 8:
-					var source := pattern[y * 8 + x]
-					var palette_index := _resolve(source)
-					var color := (
-						palette.color(palette_index)
-						if palette != null and palette.is_valid()
-						else Color.MAGENTA
-					)
-					draw_rect(
-						Rect2(
-							origin.x + SWATCH_OFFSET + x * SWATCH_SCALE,
-							origin.y + SWATCH_OFFSET + y * SWATCH_SCALE,
-							SWATCH_SCALE, SWATCH_SCALE
-						),
-						color, true
-					)
-
-		draw_rect(
-			Rect2(origin, Vector2i(CELL_SIZE, CELL_SIZE)),
-			Color("404040"), false, 1.0
-		)
-
-	if selected_index >= 0 and selected_index < patterns.size():
-		var selected_origin := Vector2i(
-			(selected_index % COLUMN_COUNT) * CELL_SIZE,
-			int(selected_index / COLUMN_COUNT) * CELL_SIZE
-		)
-		draw_rect(
-			Rect2(selected_origin + Vector2i.ONE, Vector2i(CELL_SIZE - 2, CELL_SIZE - 2)),
-			Color("ff2020"), false, 2.0
-		)
+					var palette_index := _resolve(pattern[y * 8 + x])
+					image.set_pixel(x, y, palette.color(animation_map[palette_index]) if valid_palette else Color.MAGENTA)
+		textures[index].update(image)
 
 
 func _resolve(source: int) -> int:
 	if source == 0xff:
 		return foreground_index
-
 	if source == 0xf5 or source == 0:
 		return background_index
-
 	return clampi(source, 0, 255)

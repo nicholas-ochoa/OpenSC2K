@@ -1,0 +1,337 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/scurk/scurk_editor_drawing_controls.gd" id="script"]
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/pencil.svg" id="Pencil"]
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/eraser.svg" id="Eraser"]
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/line.svg" id="Line"]
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/diamond.svg" id="Diamond"]
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/leftwall.svg" id="LeftWall"]
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/rightwall.svg" id="RightWall"]
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/ellipse.svg" id="Ellipse"]
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/rectangle.svg" id="Rectangle"]
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/fill.svg" id="Fill"]
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/eyedropper.svg" id="Eyedropper"]
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/copy.svg" id="Copy"]
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/paste.svg" id="Paste"]
+
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/rotate_cw.svg" id="RotateCW"]
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/rotate_ccw.svg" id="Rotate"]
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/flip_horizontal.svg" id="Horizontal"]
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/flip_vertical.svg" id="Vertical"]
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/copy_object.svg" id="CopyObject"]
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/paste_image.svg" id="PasteImage"]
+
+[ext_resource type="Shader" path="res://src/ui/shared/frosted_panel.gdshader" id="glass"]
+
+[sub_resource type="ShaderMaterial" id="GlassMaterial"]
+shader = ExtResource("glass")
+
+[node name="DrawingControls" type="PanelContainer"]
+script = ExtResource("script")
+material = SubResource("GlassMaterial")
+theme_type_variation = "CityToolbarPanel"
+texture_filter = 2
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
+
+[node name="Column" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Tools" type="GridContainer" parent="Margin/Column"]
+layout_mode = 2
+columns = 3
+size_flags_horizontal = 4
+theme_override_constants/h_separation = 2
+theme_override_constants/v_separation = 2
+
+[node name="Pencil" type="Button" parent="Margin/Column/Tools"]
+layout_mode = 2
+icon = ExtResource("Pencil")
+tooltip_text = "Pencil"
+toggle_mode = true
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="Eraser" type="Button" parent="Margin/Column/Tools"]
+layout_mode = 2
+icon = ExtResource("Eraser")
+tooltip_text = "Eraser"
+toggle_mode = true
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="Line" type="Button" parent="Margin/Column/Tools"]
+layout_mode = 2
+icon = ExtResource("Line")
+tooltip_text = "Line"
+toggle_mode = true
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="Diamond" type="Button" parent="Margin/Column/Tools"]
+layout_mode = 2
+icon = ExtResource("Diamond")
+tooltip_text = "Diamond"
+toggle_mode = true
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="LeftWall" type="Button" parent="Margin/Column/Tools"]
+layout_mode = 2
+icon = ExtResource("LeftWall")
+tooltip_text = "Left wall"
+toggle_mode = true
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="RightWall" type="Button" parent="Margin/Column/Tools"]
+layout_mode = 2
+icon = ExtResource("RightWall")
+tooltip_text = "Right wall"
+toggle_mode = true
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="Ellipse" type="Button" parent="Margin/Column/Tools"]
+layout_mode = 2
+icon = ExtResource("Ellipse")
+tooltip_text = "Ellipse"
+toggle_mode = true
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="Rectangle" type="Button" parent="Margin/Column/Tools"]
+layout_mode = 2
+icon = ExtResource("Rectangle")
+tooltip_text = "Box"
+toggle_mode = true
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="Fill" type="Button" parent="Margin/Column/Tools"]
+layout_mode = 2
+icon = ExtResource("Fill")
+tooltip_text = "Fill"
+toggle_mode = true
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="Eyedropper" type="Button" parent="Margin/Column/Tools"]
+layout_mode = 2
+icon = ExtResource("Eyedropper")
+tooltip_text = "Pick color"
+toggle_mode = true
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="Copy" type="Button" parent="Margin/Column/Tools"]
+layout_mode = 2
+icon = ExtResource("Copy")
+tooltip_text = "Copy"
+toggle_mode = true
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="Paste" type="Button" parent="Margin/Column/Tools"]
+layout_mode = 2
+icon = ExtResource("Paste")
+tooltip_text = "Paste"
+toggle_mode = true
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="ClipboardTop" type="HSeparator" parent="Margin/Column"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 12)
+
+[node name="Clipboard" type="GridContainer" parent="Margin/Column"]
+layout_mode = 2
+columns = 2
+size_flags_horizontal = 4
+theme_override_constants/h_separation = 2
+theme_override_constants/v_separation = 2
+
+[node name="Rotate" type="Button" parent="Margin/Column/Clipboard"]
+layout_mode = 2
+icon = ExtResource("Rotate")
+tooltip_text = "Rotate clipboard counterclockwise"
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="RotateCW" type="Button" parent="Margin/Column/Clipboard"]
+layout_mode = 2
+icon = ExtResource("RotateCW")
+tooltip_text = "Rotate clipboard clockwise"
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="Horizontal" type="Button" parent="Margin/Column/Clipboard"]
+layout_mode = 2
+icon = ExtResource("Horizontal")
+tooltip_text = "Flip clipboard horizontally"
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="Vertical" type="Button" parent="Margin/Column/Clipboard"]
+layout_mode = 2
+icon = ExtResource("Vertical")
+tooltip_text = "Flip clipboard vertically"
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="CopyObject" type="Button" parent="Margin/Column/Clipboard"]
+layout_mode = 2
+icon = ExtResource("CopyObject")
+tooltip_text = "Copy object to system clipboard"
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="PasteImage" type="Button" parent="Margin/Column/Clipboard"]
+layout_mode = 2
+icon = ExtResource("PasteImage")
+tooltip_text = "Paste image from system clipboard"
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="ClipboardBottom" type="HSeparator" parent="Margin/Column"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 12)
+
+[node name="Zoom" type="HBoxContainer" parent="Margin/Column"]
+layout_mode = 2
+
+[node name="Out" type="Button" parent="Margin/Column/Zoom"]
+layout_mode = 2
+text = "-"
+size_flags_horizontal = 3
+
+[node name="Value" type="Label" parent="Margin/Column/Zoom"]
+layout_mode = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+text = "4x"
+size_flags_horizontal = 3
+
+[node name="In" type="Button" parent="Margin/Column/Zoom"]
+layout_mode = 2
+text = "+"
+size_flags_horizontal = 3
+
+[node name="Fit" type="Button" parent="Margin/Column"]
+layout_mode = 2
+text = "Fit canvas"
+
+[node name="Brush" type="VBoxContainer" parent="Margin/Column"]
+layout_mode = 2
+
+[node name="Divider" type="HSeparator" parent="Margin/Column/Brush"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 12)
+
+[node name="SizeRow" type="HBoxContainer" parent="Margin/Column/Brush"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Margin/Column/Brush/SizeRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Brush size"
+
+[node name="Size" type="SpinBox" parent="Margin/Column/Brush/SizeRow"]
+layout_mode = 2
+min_value = 1.0
+max_value = 24.0
+value = 1.0
+suffix = "px"
+custom_minimum_size = Vector2(76, 0)
+
+[node name="Round" type="CheckBox" parent="Margin/Column/Brush"]
+layout_mode = 2
+text = "Round brush"
+
+[node name="Filled" type="CheckBox" parent="Margin/Column/Brush"]
+layout_mode = 2
+visible = false
+text = "Filled shapes"
+
+[node name="Spacer" type="Control" parent="Margin/Column"]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="Sizes" type="VBoxContainer" parent="Margin/Column"]
+layout_mode = 2
+
+[node name="Large" type="Button" parent="Margin/Column/Sizes"]
+layout_mode = 2
+text = "Large"
+toggle_mode = true
+
+[node name="Medium" type="Button" parent="Margin/Column/Sizes"]
+layout_mode = 2
+text = "Medium"
+toggle_mode = true
+
+[node name="Small" type="Button" parent="Margin/Column/Sizes"]
+layout_mode = 2
+text = "Small"
+toggle_mode = true

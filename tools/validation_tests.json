@@ -1012,6 +1012,24 @@
     ]
   },
   {
+    "id": "scurk_editor_render_test",
+    "script": "tests/scurk_editor_render_test.gd",
+    "domain": "scurk",
+    "lane": "native",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
+  },
+  {
+    "id": "scurk_editor_ui_test",
+    "script": "tests/scurk_editor_ui_test.gd",
+    "domain": "scurk",
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
+  },
+  {
     "id": "scurk_png_import_test",
     "script": "tests/scurk_png_import_test.gd",
     "domain": "scurk",

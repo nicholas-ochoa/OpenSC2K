@@ -12,9 +12,11 @@ var error_dialog: AcceptDialog
 var pick_copy_control: ScurkPickCopyControl
 
 
+var export_options: ConfirmationDialog
+var export_view: OptionButton
+
+
 func _ready() -> void:
-	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_create_dialogs()
 
 
@@ -22,47 +24,16 @@ func _create_dialogs() -> void:
 	if open_dialog != null:
 		return
 
-	open_dialog = FileDialog.new()
-	open_dialog.theme = AppUiTheme.file_dialog()
-	open_dialog.access = FileDialog.ACCESS_FILESYSTEM
-	open_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
-	open_dialog.add_filter("*.MIF, *.mif", "SCURK tile sets")
-	add_child(open_dialog)
-
-	save_dialog = FileDialog.new()
-	save_dialog.theme = AppUiTheme.file_dialog()
-	save_dialog.access = FileDialog.ACCESS_FILESYSTEM
-	save_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
-	save_dialog.add_filter("*.MIF, *.mif", "SCURK tile sets")
-	add_child(save_dialog)
-
-	import_bmp_dialog = FileDialog.new()
-	import_bmp_dialog.theme = AppUiTheme.file_dialog()
-	import_bmp_dialog.access = FileDialog.ACCESS_FILESYSTEM
-	import_bmp_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
-	import_bmp_dialog.title = "Import indexed PNG or BMP"
-	import_bmp_dialog.add_filter("*.BMP, *.bmp, *.PNG, *.png", "Indexed images (BMP, PNG)")
-	add_child(import_bmp_dialog)
-
-	export_bmp_dialog = FileDialog.new()
-	export_bmp_dialog.theme = AppUiTheme.file_dialog()
-	export_bmp_dialog.access = FileDialog.ACCESS_FILESYSTEM
-	export_bmp_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
-	export_bmp_dialog.title = "Export Image"
-	export_bmp_dialog.add_filter("*.png", "256-color indexed PNG")
-	export_bmp_dialog.add_filter("*.gif", "Animated GIF (palette cycling)")
-	add_child(export_bmp_dialog)
-
-	discard_dialog = ConfirmationDialog.new()
-	discard_dialog.theme = AppUiTheme.current()
-	discard_dialog.title = "Unsaved SCURK Changes"
-	discard_dialog.get_ok_button().text = "Discard"
-	add_child(discard_dialog)
-
-	error_dialog = AcceptDialog.new()
-	error_dialog.theme = AppUiTheme.current()
-	error_dialog.title = "SCURK Error"
-	add_child(error_dialog)
-
-	pick_copy_control = PickCopyControl.instantiate() as ScurkPickCopyControl
-	add_child(pick_copy_control)
+	open_dialog = $Open
+	save_dialog = $Save
+	import_bmp_dialog = $Import
+	export_bmp_dialog = $Export
+	discard_dialog = $Discard
+	error_dialog = $Error
+	pick_copy_control = $PickCopy
+	export_options = $ExportOptions
+	export_view = $ExportOptions/Content/View
+	for label in ["Large", "Medium", "Small"]:
+		export_view.add_item(label)
+	for dialog in [open_dialog, save_dialog, import_bmp_dialog, export_bmp_dialog]:
+		dialog.theme = AppUiTheme.file_dialog()

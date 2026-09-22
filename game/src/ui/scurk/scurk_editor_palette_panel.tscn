@@ -1,0 +1,93 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/scurk/scurk_editor_palette_panel.gd" id="script"]
+[ext_resource type="Script" path="res://src/view/scurk_palette_control.gd" id="colors"]
+[ext_resource type="Script" path="res://src/view/scurk_texture_control.gd" id="textures"]
+
+[ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_editor_object_panel.tscn" id="objects"]
+
+[ext_resource type="Shader" path="res://src/ui/shared/frosted_panel.gdshader" id="glass"]
+
+[sub_resource type="ShaderMaterial" id="GlassMaterial"]
+shader = ExtResource("glass")
+
+[node name="Palette" type="PanelContainer"]
+script = ExtResource("script")
+material = SubResource("GlassMaterial")
+theme_type_variation = "CityToolbarPanel"
+texture_filter = 1
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
+
+[node name="Column" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Objects" parent="Margin/Column" instance=ExtResource("objects")]
+layout_mode = 2
+
+[node name="ObjectGap" type="Control" parent="Margin/Column"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 10)
+mouse_filter = 2
+
+[node name="ColorsLabel" type="Label" parent="Margin/Column"]
+layout_mode = 2
+text = "Colors"
+
+[node name="Colors" type="Control" parent="Margin/Column"]
+layout_mode = 2
+script = ExtResource("colors")
+
+[node name="Foreground" type="HBoxContainer" parent="Margin/Column"]
+layout_mode = 2
+
+[node name="Swatch" type="ColorRect" parent="Margin/Column/Foreground"]
+layout_mode = 2
+custom_minimum_size = Vector2(26, 20)
+
+[node name="Label" type="Label" parent="Margin/Column/Foreground"]
+layout_mode = 2
+
+[node name="Background" type="HBoxContainer" parent="Margin/Column"]
+layout_mode = 2
+
+[node name="Swatch" type="ColorRect" parent="Margin/Column/Background"]
+layout_mode = 2
+custom_minimum_size = Vector2(26, 20)
+
+[node name="Label" type="Label" parent="Margin/Column/Background"]
+layout_mode = 2
+
+[node name="CycleGap" type="Control" parent="Margin/Column"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 10)
+mouse_filter = 2
+
+[node name="Cycle" type="HBoxContainer" parent="Margin/Column"]
+layout_mode = 2
+
+[node name="Enabled" type="CheckBox" parent="Margin/Column/Cycle"]
+layout_mode = 2
+text = "Cycle colors"
+button_pressed = true
+
+[node name="Step" type="Button" parent="Margin/Column/Cycle"]
+layout_mode = 2
+text = "Step"
+disabled = true
+
+[node name="TexturesLabel" type="Label" parent="Margin/Column"]
+layout_mode = 2
+text = "Textures"
+
+[node name="Textures" type="GridContainer" parent="Margin/Column"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("textures")

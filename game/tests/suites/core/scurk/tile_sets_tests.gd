@@ -236,11 +236,11 @@ func test_scurk_mif(reference_root: String) -> void:
 			scurk_editor.tool_buttons.size() == 12
 			and scurk_editor.palette_panel.texture_control.patterns.size()
 				== ScurkPixelEditor.TEXTURE_NAMES.size()
-			and scurk_editor.brush_size_selector.item_count == 6
+			and scurk_editor.brush_size_selector.max_value == 24
 			and scurk_editor.revert_button != null
 			and scurk_editor.revert_name_button != null
 			and scurk_editor.paste_tool_button.disabled
-			and scurk_editor.clipboard_action_buttons.size() == 3
+			and scurk_editor.clipboard_action_buttons.size() == 4
 			and not scurk_editor.pixel_canvas.original_textures_loaded
 			and scurk_editor.pixel_canvas.texture_patterns.size() == 42
 			and scurk_editor.cycle_colors_check.button_pressed

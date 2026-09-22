@@ -76,7 +76,8 @@ static func from_shape(
 	shape_height: int,
 	shape_pixels: PackedInt32Array,
 	view: int,
-	base_width: int
+	base_width: int,
+	clipping_enabled := true
 ) -> PackedInt32Array:
 	var workspace := PackedInt32Array()
 	workspace.resize(WIDTH * HEIGHT)
@@ -115,11 +116,11 @@ static func from_shape(
 
 					workspace[target_y * WIDTH + target_x] = value
 
-	return apply_clip_mask(workspace, base_width)
+	return apply_clip_mask(workspace, base_width) if clipping_enabled else workspace
 
 
 static func shape_from_workspace(
-	workspace_pixels: PackedInt32Array, base_width: int, view: int
+	workspace_pixels: PackedInt32Array, base_width: int, view: int, clipping_enabled := true
 ) -> IndexedImageResult:
 	if (
 		workspace_pixels.size() != WIDTH * HEIGHT
@@ -128,10 +129,11 @@ static func shape_from_workspace(
 		return IndexedImageResult.failure("SCURK drawing workspace or base width is invalid.")
 
 	var divisor := view_divisor(view)
-	var output_width := int(base_width / divisor)
+	var output_base_width := base_width if clipping_enabled else WIDTH
+	var output_width := int(output_base_width / divisor)
 	var output_max_height := int(HEIGHT / divisor)
-	var source_left := int((WIDTH - base_width) / 2)
-	var clipped := apply_clip_mask(workspace_pixels, base_width)
+	var source_left := int((WIDTH - output_base_width) / 2)
+	var clipped := apply_clip_mask(workspace_pixels, base_width) if clipping_enabled else workspace_pixels
 	var sampled := PackedInt32Array()
 	sampled.resize(output_width * output_max_height)
 	sampled.fill(-1)

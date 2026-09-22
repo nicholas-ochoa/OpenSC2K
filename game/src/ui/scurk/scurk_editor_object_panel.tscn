@@ -1,0 +1,35 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/scurk/scurk_editor_object_panel.gd" id="script"]
+
+[node name="Objects" type="VBoxContainer"]
+script = ExtResource("script")
+
+[node name="Search" type="LineEdit" parent="."]
+layout_mode = 2
+placeholder_text = "Filter tiles"
+custom_minimum_size = Vector2(160, 0)
+
+[node name="Tiles" type="OptionButton" parent="."]
+layout_mode = 2
+custom_minimum_size = Vector2(310, 0)
+size_flags_horizontal = 3
+fit_to_longest_item = false
+texture_filter = 1
+text_overrun_behavior = 3
+
+[node name="NameDialog" type="ConfirmationDialog" parent="."]
+title = "Tile name"
+size = Vector2i(360, 130)
+exclusive = true
+
+[node name="Content" type="VBoxContainer" parent="NameDialog"]
+layout_mode = 2
+
+[node name="Name" type="LineEdit" parent="NameDialog/Content"]
+layout_mode = 2
+placeholder_text = "Optional tile name"
+
+[node name="Revert" type="Button" parent="NameDialog/Content"]
+layout_mode = 2
+text = "Revert name"

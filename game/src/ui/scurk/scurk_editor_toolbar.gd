@@ -1,19 +1,20 @@
 class_name ScurkEditorToolbar
-extends HBoxContainer
+extends PanelContainer
 
+signal settings_requested
 signal open_requested
 signal save_requested
 signal save_as_requested
 signal import_bmp_requested
 signal export_bmp_requested
-signal pick_copy_requested
+signal close_requested
 signal undo_requested
 signal redo_requested
+signal name_requested
 signal revert_requested
 signal clear_requested
-signal apply_requested
-signal place_print_requested
-signal close_requested
+signal pick_copy_requested
+signal about_requested
 
 var save_button: Button
 var undo_button: Button
@@ -30,60 +31,44 @@ func build() -> void:
 	if save_button != null:
 		return
 
-	custom_minimum_size = Vector2(0, 30)
-	var actions := {}
+	$Actions/Settings.pressed.connect(settings_requested.emit)
+	$Actions/About.pressed.connect(about_requested.emit)
+	$Actions/Open.pressed.connect(open_requested.emit)
+	$Actions/Save.pressed.connect(save_requested.emit)
+	$Actions/SaveAs.pressed.connect(save_as_requested.emit)
+	$Actions/Import.pressed.connect(import_bmp_requested.emit)
+	$Actions/Export.pressed.connect(export_bmp_requested.emit)
+	$Actions/Close.pressed.connect(close_requested.emit)
+	$Actions/Undo.pressed.connect(undo_requested.emit)
+	$Actions/Redo.pressed.connect(redo_requested.emit)
+	$Actions/Name.pressed.connect(name_requested.emit)
+	$Actions/Revert.pressed.connect(revert_requested.emit)
+	$Actions/Clear.pressed.connect(clear_requested.emit)
+	$Actions/PickCopy.pressed.connect(pick_copy_requested.emit)
+	save_button = $Actions/Save
+	undo_button = $Actions/Undo
+	redo_button = $Actions/Redo
+	revert_button = $Actions/Revert
+	clear_button = $Actions/Clear
+	_bind_menu($Row/File, ["Open", "Save", "SaveAs", "", "Import", "Export", "", "Close"])
+	_bind_menu($Row/Edit, ["Undo", "Redo", "", "Name", "Revert", "Clear", "", "PickCopy"])
+	_bind_menu($Row/Options, ["Settings"])
+	_bind_menu($Row/Help, ["About"])
 
-	for entry in [
-		["Open...", "open"], ["Save", "save"], ["Save As...", "save_as"],
-		["Import Image...", "import_bmp"], ["Export Image...", "export_bmp"],
-		["Pick & Copy...", "pick_copy"], ["Undo", "undo"], ["Redo", "redo"],
-		["Revert Object", "revert"], ["Clear Object", "clear"],
-		["Apply to City", "apply"], ["Place & Print", "place_print"], ["Close", "close"],
-	]:
-		var action := _button(entry[0], StringName(entry[1] + "_requested"), entry[0])
-		action.hide()
-		add_child(action)
-		actions[entry[1]] = action
 
-	save_button = actions.save
-	undo_button = actions.undo
-	redo_button = actions.redo
-	revert_button = actions.revert
-	clear_button = actions.clear
+func _bind_menu(menu: MenuButton, entries: Array[String]) -> void:
+	var popup := menu.get_popup()
+	for index in entries.size():
+		if entries[index].is_empty():
+			popup.add_separator()
+		else:
+			popup.add_item((get_node("Actions/" + entries[index]) as Button).text, index)
 
-	for group in [
-		["File", ["open", "save", "save_as", "", "import_bmp", "export_bmp", "", "close"]],
-		["Edit", ["undo", "redo", "", "revert", "clear", "", "pick_copy"]],
-		["City", ["apply", "place_print"]],
-	]:
-		var menu := MenuButton.new()
-		menu.text = group[0]
-		add_child(menu)
-		var popup := menu.get_popup()
-		var entries: Array = group[1]
-
+	popup.about_to_popup.connect(func() -> void:
 		for index in entries.size():
-			if str(entries[index]).is_empty():
-				popup.add_separator()
-			else:
-				popup.add_item((actions[entries[index]] as Button).text, index)
-
-		popup.about_to_popup.connect(func() -> void:
-			for index in entries.size():
-				if actions.has(entries[index]):
-					popup.set_item_disabled(index, (actions[entries[index]] as Button).disabled))
-		popup.id_pressed.connect(func(index: int) -> void:
-			var action: Button = actions[entries[index]]
-
-			if not action.disabled:
-				action.pressed.emit())
-
-
-func _button(label: String, signal_name: StringName, tooltip: String) -> Button:
-	var button := Button.new()
-	button.text = label
-	button.tooltip_text = tooltip
-	button.custom_minimum_size = Vector2(0, 30)
-	button.pressed.connect(emit_signal.bind(signal_name))
-
-	return button
+			if not entries[index].is_empty():
+				popup.set_item_disabled(index, (get_node("Actions/" + entries[index]) as Button).disabled))
+	popup.id_pressed.connect(func(index: int) -> void:
+		var action := get_node("Actions/" + entries[index]) as Button
+		if not action.disabled:
+			action.pressed.emit())

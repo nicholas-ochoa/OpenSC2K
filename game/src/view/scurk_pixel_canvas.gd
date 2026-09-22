@@ -29,6 +29,7 @@ signal pointer_changed(point: Vector2i, index: int)
 signal clipboard_changed(width: int, height: int)
 signal clipboard_copy_rejected(minimum_span: int)
 
+const MAX_BRUSH_SIZE := 24
 const TOOL_PENCIL := 0
 const TOOL_ERASER := 1
 const TOOL_LINE := 2
@@ -110,10 +111,15 @@ var clip_base_size := -1
 var show_clip_region := false
 var clear_background_pixels := PackedInt32Array()
 var clip_background_pixels: Array[PackedInt32Array] = []
+var outline_state: Array = []
+var outline_edges := PackedVector2Array()
+var display_texture: ImageTexture
+var display_state: Array = []
 
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	clip_contents = true
 	mouse_exited.connect(_on_mouse_exited)
 	texture_patterns = _fallback_texture_patterns()
@@ -124,11 +130,14 @@ func _process(delta: float) -> void:
 	if not palette_cycle_enabled or not is_visible_in_tree():
 		return
 
+	var before := palette_cycle_ticks
 	palette_cycle_accumulator += delta
 
 	while palette_cycle_accumulator >= CYCLE_INTERVAL_SECONDS:
 		palette_cycle_accumulator -= CYCLE_INTERVAL_SECONDS
 		palette_cycle_ticks += 1
+
+	if palette != null and before != palette_cycle_ticks and palette.scurk_animation_index_map(before) != palette.scurk_animation_index_map(palette_cycle_ticks):
 		queue_redraw()
 
 
@@ -199,8 +208,9 @@ func set_paint_indices(foreground: int, background: int) -> void:
 
 
 func set_brush(value_size: int, rounded: bool) -> void:
-	brush_size = clampi(value_size, 1, 6)
+	brush_size = clampi(value_size, 1, MAX_BRUSH_SIZE)
 	round_brush = rounded
+	queue_redraw()
 
 
 func set_grid_settings(width: int, height: int, snap: bool) -> void:
@@ -388,6 +398,24 @@ func rotate_clipboard_counterclockwise() -> void:
 	var rotated := rotate_counterclockwise(
 		clipboard_pixels, clipboard_width, clipboard_height
 	)
+	var old_width := clipboard_width
+	clipboard_width = clipboard_height
+	clipboard_height = old_width
+	clipboard_pixels = rotated
+	clipboard_changed.emit(clipboard_width, clipboard_height)
+	queue_redraw()
+
+
+func rotate_clipboard_clockwise() -> void:
+	if not has_clipboard():
+		return
+
+	var rotated := PackedInt32Array()
+	rotated.resize(clipboard_pixels.size())
+	for y in clipboard_height:
+		for x in clipboard_width:
+			rotated[x * clipboard_height + clipboard_height - 1 - y] = clipboard_pixels[y * clipboard_width + x]
+
 	var old_width := clipboard_width
 	clipboard_width = clipboard_height
 	clipboard_height = old_width
@@ -1047,35 +1075,104 @@ func _preview_shape(point: Vector2i) -> void:
 func _apply_brush(point: Vector2i) -> void:
 	var erase := tool == TOOL_ERASER
 	var force_background := stroke_button == MOUSE_BUTTON_RIGHT
-	var low := -int((brush_size - 1) / 2)
-	var high := low + brush_size - 1
-	var brush_center := float(low + high) * 0.5
-	var radius := float(brush_size) * 0.5
-
-	for offset_y in range(low, high + 1):
-		for offset_x in range(low, high + 1):
-			if round_brush and brush_size >= 5:
-				var distance := Vector2(
-					float(offset_x) - brush_center, float(offset_y) - brush_center
-				).length()
-
-				if distance > radius:
-					continue
-
-			var target := point + Vector2i(offset_x, offset_y)
-			var value := (
-				-1
-				if erase
-				else (
-					background_index
-					if force_background
-					else texture_color(
-						target, foreground_index, background_index,
-						texture_patterns[texture_index], 8, 8
-					)
+	for target in brush_points(point):
+		var value := (
+			-1 if erase else (
+				background_index if force_background else texture_color(
+					target, foreground_index, background_index,
+					texture_patterns[texture_index], 8, 8
 				)
 			)
-			_apply_pixel(target, value)
+		)
+		_apply_pixel(target, value)
+
+
+func brush_points(point: Vector2i) -> Array[Vector2i]:
+	var result: Array[Vector2i] = []
+	var low := -((brush_size - 1) / 2)
+	var high := low + brush_size - 1
+	var center := float(low + high) * 0.5
+	var radius := float(brush_size) * 0.5
+
+	for y in range(low, high + 1):
+		for x in range(low, high + 1):
+			if round_brush and Vector2(x - center, y - center).length() > radius:
+				continue
+
+			var target := point + Vector2i(x, y)
+			if _point_is_editable(target):
+				result.append(target)
+
+	return result
+
+
+func tool_footprint() -> Dictionary[Vector2i, bool]:
+	var result: Dictionary[Vector2i, bool] = {}
+	if not _point_is_valid(hover_point):
+		return result
+
+	if tool == TOOL_FILL:
+		if not _point_is_editable(hover_point):
+			return result
+
+		var source := pixel_at(hover_point)
+		var pending: Array[Vector2i] = [hover_point]
+		result[hover_point] = true
+		while not pending.is_empty():
+			var point: Vector2i = pending.pop_back()
+			for step in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+				var neighbor: Vector2i = point + step
+				if not result.has(neighbor) and _point_is_editable(neighbor) and pixel_at(neighbor) == source:
+					result[neighbor] = true
+					pending.append(neighbor)
+	elif tool == TOOL_PASTE:
+		if has_clipboard():
+			for y in clipboard_height:
+				for x in clipboard_width:
+					var target := hover_point + Vector2i(x, y)
+					if _point_is_editable(target):
+						result[target] = true
+	elif tool in [TOOL_COPY, TOOL_EYEDROPPER]:
+		result[hover_point] = true
+	else:
+		var points: Array[Vector2i] = [hover_point]
+		if _is_shape_tool(tool):
+			var finish := snapped_shape_point(hover_point, grid_width, grid_height, snap_to_grid)
+			points = shape_points(tool, shape_start if stroke_active else finish, finish, filled_shapes)
+		for point in points:
+			for target in brush_points(point):
+				result[target] = true
+
+	return result
+
+
+func _draw_tool_outline() -> void:
+	var state: Array = [
+		hover_point, tool, brush_size, round_brush, filled_shapes, shape_start,
+		stroke_active, grid_width, grid_height, snap_to_grid, clipboard_width,
+		clipboard_height, clipboard_pixels.size(), sprite_width, sprite_height, pixels, edit_mask,
+	]
+	if state != outline_state:
+		outline_state = state
+		outline_edges.clear()
+		var footprint := tool_footprint()
+		var edges := [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]
+		var corners := [Vector2.ZERO, Vector2.RIGHT, Vector2.ONE, Vector2.DOWN]
+		for point in footprint:
+			for edge in 4:
+				if footprint.has(point + edges[edge]):
+					continue
+
+				outline_edges.append(Vector2(point) + corners[edge])
+				outline_edges.append(Vector2(point) + corners[(edge + 1) % 4])
+
+	if not outline_edges.is_empty():
+		var scaled := PackedVector2Array()
+		scaled.resize(outline_edges.size())
+		for index in outline_edges.size():
+			scaled[index] = outline_edges[index] * zoom
+		draw_multiline(scaled, Color.BLACK, 3.0)
+		draw_multiline(scaled, Color.WHITE, 1.0)
 
 
 func _apply_pixel(point: Vector2i, value: int) -> void:
@@ -1202,36 +1299,8 @@ func _draw() -> void:
 
 		return
 
-	var display_indices := (
-		palette.scurk_animation_index_map(palette_cycle_ticks)
-		if palette != null and palette.is_valid()
-		else PackedInt32Array()
-	)
-
-	for y in sprite_height:
-		for x in sprite_width:
-			var pixel_offset := y * sprite_width + x
-			var index := pixels[pixel_offset]
-
-			if index < 0 and clear_background_pixels.size() == pixels.size():
-				var background := clear_background_pixels
-
-				if (
-					show_clip_region
-					and clip_base_size >= 1
-					and clip_base_size <= clip_background_pixels.size()
-				):
-					background = clip_background_pixels[clip_base_size - 1]
-
-				index = background[pixel_offset]
-
-			var display_index := display_indices[index] if index >= 0 else index
-			var color := (
-				palette.color(display_index)
-				if index >= 0 and palette != null and palette.is_valid()
-				else (Color("d8d8d8") if (x + y) % 2 == 0 else Color("ffffff"))
-			)
-			draw_rect(Rect2(x * zoom, y * zoom, zoom, zoom), color, true)
+	_update_display_texture()
+	draw_texture_rect(display_texture, Rect2(Vector2.ZERO, Vector2(sprite_width, sprite_height) * zoom), false)
 
 	if show_grid:
 		var grid_color := Color(0.0, 0.0, 0.0, 0.18)
@@ -1264,56 +1333,40 @@ func _draw() -> void:
 		)
 		draw_rect(selection, Color.WHITE, false, 2.0)
 		draw_rect(selection.grow(-1.0), Color.BLACK, false, 1.0)
-	elif tool == TOOL_PASTE and has_clipboard() and _point_is_valid(hover_point):
-		for source_y in clipboard_height:
-			for source_x in clipboard_width:
-				var target := hover_point + Vector2i(source_x, source_y)
 
-				if not _point_is_valid(target):
-					continue
+	if not copy_active:
+		_draw_tool_outline()
 
-				var index := clipboard_pixels[source_y * clipboard_width + source_x]
-				var preview_color := (
-					palette.color(display_indices[index])
-					if index >= 0 and palette != null and palette.is_valid()
-					else Color.WHITE
-				)
-				preview_color.a = 0.62 if index >= 0 else 0.32
-				draw_rect(
-					Rect2(target.x * zoom, target.y * zoom, zoom, zoom),
-					preview_color, true
-				)
 
-		var visible_width := mini(clipboard_width, sprite_width - hover_point.x)
-		var visible_height := mini(clipboard_height, sprite_height - hover_point.y)
-		draw_rect(
-			Rect2(
-				hover_point.x * zoom, hover_point.y * zoom,
-				visible_width * zoom, visible_height * zoom
-			),
-			Color.WHITE, false, 2.0
+func _update_display_texture() -> void:
+	var valid_palette := palette != null and palette.is_valid()
+	var indices := palette.scurk_animation_index_map(palette_cycle_ticks) if valid_palette else PackedInt32Array()
+	var background := clear_background_pixels
+	if show_clip_region and clip_base_size >= 1 and clip_base_size <= clip_background_pixels.size():
+		background = clip_background_pixels[clip_base_size - 1]
+	var state: Array = [sprite_width, sprite_height, hash(pixels), hash(background),
+		hash(palette.colors) if valid_palette else 0, hash(indices)]
+	if display_texture != null and display_state == state:
+		return
+
+	var colors := PackedInt64Array()
+	colors.resize(256)
+	for index in 256:
+		colors[index] = palette.color(indices[index]).to_abgr32() if valid_palette else Color.WHITE.to_abgr32()
+	var rgba := PackedByteArray()
+	rgba.resize(pixels.size() * 4)
+	var has_background := background.size() == pixels.size()
+	for offset in pixels.size():
+		var index := pixels[offset]
+		if index < 0 and has_background:
+			index = background[offset]
+		var color := colors[index] if index >= 0 else (
+			0xffd8d8d8 if (offset % sprite_width + offset / sprite_width) % 2 == 0 else 0xffffffff
 		)
-
-		if visible_width * zoom > 2 and visible_height * zoom > 2:
-			draw_rect(
-				Rect2(
-					hover_point.x * zoom + 1, hover_point.y * zoom + 1,
-					visible_width * zoom - 2, visible_height * zoom - 2
-				),
-				Color.BLACK, false, 1.0
-			)
-
-	if _point_is_valid(hover_point):
-		draw_rect(
-			Rect2(hover_point.x * zoom, hover_point.y * zoom, zoom, zoom),
-			Color("ffffff"), false, 1.0
-		)
-
-		if zoom >= 3:
-			draw_rect(
-				Rect2(
-					hover_point.x * zoom + 1, hover_point.y * zoom + 1,
-					zoom - 2, zoom - 2
-				),
-				Color("000000"), false, 1.0
-			)
+		rgba.encode_u32(offset * 4, color)
+	var image := Image.create_from_data(sprite_width, sprite_height, false, Image.FORMAT_RGBA8, rgba)
+	if display_texture == null or display_texture.get_size() != Vector2(sprite_width, sprite_height):
+		display_texture = ImageTexture.create_from_image(image)
+	else:
+		display_texture.update(image)
+	display_state = state

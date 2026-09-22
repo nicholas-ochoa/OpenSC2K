@@ -11,13 +11,16 @@ var palette: Sc2Palette
 var cell_size := 18
 var foreground_index := 0
 var background_index := 255
-var palette_texture: ImageTexture
+var palette_cycle_ticks := 0
 
 
-func set_palette_image(image: Image) -> void:
-	palette_texture = ImageTexture.create_from_image(image) if image != null else null
-	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+func set_cycle_tick(tick: int) -> void:
+	palette_cycle_ticks = tick
 	queue_redraw()
+
+
+func display_palette_index(index: int) -> int:
+	return palette.scurk_animation_index_map(palette_cycle_ticks)[index] if palette != null and palette.is_valid() else index
 
 
 func _init() -> void:
@@ -74,17 +77,11 @@ func _get_tooltip(at_position: Vector2) -> String:
 
 
 func _draw() -> void:
-	if palette_texture != null:
-		draw_texture_rect(palette_texture, Rect2(Vector2.ZERO, Vector2.ONE * COLUMN_COUNT * cell_size), false)
-
 	for index in 256:
-		if palette_texture != null:
-			break
-
 		var x := (index % COLUMN_COUNT) * cell_size
 		var y := int(index / COLUMN_COUNT) * cell_size
 		var color := (
-			palette.color(index)
+			palette.color(display_palette_index(index))
 			if palette != null and palette.is_valid()
 			else Color.MAGENTA
 		)

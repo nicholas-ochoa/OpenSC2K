@@ -1,0 +1,56 @@
+[gd_scene format=3]
+
+[node name="Grid" type="HBoxContainer"]
+layout_mode = 2
+
+[node name="Show" type="CheckBox" parent="."]
+layout_mode = 2
+text = "Show grid"
+button_pressed = true
+
+[node name="Snap" type="CheckBox" parent="."]
+layout_mode = 2
+text = "Snap shapes"
+button_pressed = false
+
+[node name="Clip" type="CheckBox" parent="."]
+layout_mode = 2
+text = "Show clip region"
+button_pressed = false
+
+[node name="Limit" type="CheckBox" parent="."]
+layout_mode = 2
+text = "Clip to tile"
+button_pressed = true
+
+[node name="WidthRow" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="WidthLabel" type="Label" parent="WidthRow"]
+layout_mode = 2
+text = "W"
+tooltip_text = "Grid width"
+size_flags_horizontal = 3
+
+[node name="Width" type="SpinBox" parent="WidthRow"]
+layout_mode = 2
+min_value = 1.0
+max_value = 65.0
+value = 1.0
+custom_minimum_size = Vector2(56, 0)
+
+[node name="HeightRow" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="HeightLabel" type="Label" parent="HeightRow"]
+layout_mode = 2
+text = "H"
+tooltip_text = "Grid height"
+size_flags_horizontal = 3
+
+[node name="Height" type="SpinBox" parent="HeightRow"]
+layout_mode = 2
+min_value = 1.0
+max_value = 65.0
+value = 1.0
+custom_minimum_size = Vector2(56, 0)

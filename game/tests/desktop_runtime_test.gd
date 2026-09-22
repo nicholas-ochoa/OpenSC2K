@@ -75,8 +75,7 @@ func _run() -> void:
 
 	for tool in 12:
 		pixel_canvas.tool = tool
-		var expected := 30000 if tool == 0 else (30001 if tool == 1 else (30003 if tool == 11 else 30002))
-		assert(desktop.cursor_selection(pixel_canvas, 640).group == expected)
+		assert(desktop.cursor_selection(pixel_canvas, 640) == null)
 
 	pixel_canvas.hide()
 	assert(desktop.cursor_selection(pixel_canvas, 640) == null)

@@ -87,9 +87,6 @@ func cursor_selection(hovered: Control, display_width: int) -> CursorSelection:
 
 		return CursorSelection.new(app, (31000 if app == "scurk" else DesktopCursorRules.city_family(display_width)) + role)
 
-	if hovered is ScurkPixelCanvas and hovered.sprite_width > 0:
-		return CursorSelection.new("scurk", DesktopCursorRules.paint_tool(hovered.tool))
-
 	if hovered is ScurkObjectList and hovered.drop_target and get_viewport().gui_is_dragging():
 		var data: Variant = get_viewport().gui_get_drag_data()
 

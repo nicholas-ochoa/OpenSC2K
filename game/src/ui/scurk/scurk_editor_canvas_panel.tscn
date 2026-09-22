@@ -1,0 +1,100 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/scurk/scurk_editor_canvas_panel.gd" id="script"]
+[ext_resource type="Script" path="res://src/view/scurk_pixel_canvas.gd" id="pixels"]
+[ext_resource type="Script" path="res://src/view/scurk_view_preview.gd" id="preview"]
+
+[ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_editor_grid_controls.tscn" id="grid"]
+
+[node name="Canvas" type="VBoxContainer"]
+script = ExtResource("script")
+
+[node name="Row" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PixelScroll" type="ScrollContainer" parent="Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Center" type="CenterContainer" parent="Row/PixelScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="PixelCanvas" type="Control" parent="Row/PixelScroll/Center"]
+layout_mode = 2
+script = ExtResource("pixels")
+
+[node name="Previews" type="PanelContainer" parent="Row"]
+layout_mode = 2
+visible = false
+
+[node name="Content" type="HBoxContainer" parent="Row/Previews"]
+layout_mode = 2
+
+[node name="Large" type="VBoxContainer" parent="Row/Previews/Content"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Row/Previews/Content/Large"]
+layout_mode = 2
+text = "Large"
+horizontal_alignment = 1
+
+[node name="Preview" type="Control" parent="Row/Previews/Content/Large"]
+layout_mode = 2
+script = ExtResource("preview")
+
+[node name="Smaller" type="VBoxContainer" parent="Row/Previews/Content"]
+layout_mode = 2
+
+[node name="Medium" type="VBoxContainer" parent="Row/Previews/Content/Smaller"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Row/Previews/Content/Smaller/Medium"]
+layout_mode = 2
+text = "Medium"
+horizontal_alignment = 1
+
+[node name="Preview" type="Control" parent="Row/Previews/Content/Smaller/Medium"]
+layout_mode = 2
+script = ExtResource("preview")
+
+[node name="Small" type="VBoxContainer" parent="Row/Previews/Content/Smaller"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Row/Previews/Content/Smaller/Small"]
+layout_mode = 2
+text = "Small"
+horizontal_alignment = 1
+
+[node name="Preview" type="Control" parent="Row/Previews/Content/Smaller/Small"]
+layout_mode = 2
+script = ExtResource("preview")
+
+[node name="Footer" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+theme_override_constants/margin_top = 4
+
+[node name="Row" type="HBoxContainer" parent="Footer"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="GridScroll" type="ScrollContainer" parent="Footer/Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+vertical_scroll_mode = 0
+
+[node name="Grid" parent="Footer/Row/GridScroll" instance=ExtResource("grid")]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ShowViews" type="Button" parent="Footer/Row"]
+layout_mode = 2
+size_flags_vertical = 0
+text = "Show all views"
+toggle_mode = true

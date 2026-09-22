@@ -16,10 +16,13 @@ var palette_cycle_enabled := true
 var palette_cycle_ticks := 0
 var palette_cycle_accumulator := 0.0
 var preview_texture: ImageTexture
+var texture_state: Array = []
 
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	visibility_changed.connect(_refresh_visible_texture)
 	set_process(true)
 
 
@@ -30,7 +33,8 @@ func set_preview(
 	shape_pixels: PackedInt32Array,
 	base_width: int,
 	value_palette: Sc2Palette,
-	background_workspace: PackedInt32Array
+	background_workspace: PackedInt32Array,
+	clipping_enabled := true
 ) -> void:
 	view = clampi(value_view, 0, 2)
 	palette = value_palette
@@ -39,7 +43,7 @@ func set_preview(
 	preview_height = int(DrawingWorkspace.HEIGHT / divisor)
 	preview_indices.resize(preview_width * preview_height)
 	var workspace := DrawingWorkspace.from_shape(
-		shape_width, shape_height, shape_pixels, view, base_width
+		shape_width, shape_height, shape_pixels, view, base_width, clipping_enabled
 	)
 	var has_background := (
 		background_workspace.size()
@@ -129,34 +133,32 @@ func _rebuild_texture() -> void:
 		if palette != null and palette.is_valid()
 		else PackedInt32Array()
 	)
+	var state: Array = [preview_width, preview_height, hash(preview_indices),
+		hash(palette.colors) if palette != null else 0, hash(animation_map)]
+	if preview_texture != null and texture_state == state:
+		return
+
+	var colors := PackedInt64Array()
+	colors.resize(256)
+	for index in 256:
+		colors[index] = palette.color(animation_map[index]).to_abgr32() if not animation_map.is_empty() else Color.WHITE.to_abgr32()
 	var rgba := PackedByteArray()
 	rgba.resize(preview_indices.size() * 4)
-
 	for offset in preview_indices.size():
 		var index := preview_indices[offset]
-		var color := Color("ffffff")
-
-		if index >= 0 and index < 256 and not animation_map.is_empty():
-			color = palette.color(animation_map[index])
-		elif index < 0:
-			var x := offset % preview_width
-			var y := int(offset / preview_width)
-			color = Color("d8d8d8") if (x + y) % 2 == 0 else Color("ffffff")
-
-		var byte_offset := offset * 4
-		rgba[byte_offset] = clampi(roundi(color.r * 255.0), 0, 255)
-		rgba[byte_offset + 1] = clampi(roundi(color.g * 255.0), 0, 255)
-		rgba[byte_offset + 2] = clampi(roundi(color.b * 255.0), 0, 255)
-		rgba[byte_offset + 3] = 255
-
+		var color := colors[index] if index >= 0 else (
+			0xffd8d8d8 if (offset % preview_width + offset / preview_width) % 2 == 0 else 0xffffffff
+		)
+		rgba.encode_u32(offset * 4, color)
 	var image := Image.create_from_data(
 		preview_width, preview_height, false, Image.FORMAT_RGBA8, rgba
 	)
 
-	if preview_texture == null:
+	if preview_texture == null or preview_texture.get_size() != Vector2(preview_width, preview_height):
 		preview_texture = ImageTexture.create_from_image(image)
 	else:
 		preview_texture.update(image)
+	texture_state = state
 
 
 func _draw() -> void:
@@ -167,3 +169,16 @@ func _draw() -> void:
 
 	if preview_texture != null:
 		draw_texture(preview_texture, Vector2.ONE)
+
+
+func set_cycle_tick(tick: int) -> void:
+	palette_cycle_ticks = tick
+	if is_visible_in_tree():
+		_rebuild_texture()
+		queue_redraw()
+
+
+func _refresh_visible_texture() -> void:
+	if is_visible_in_tree():
+		_rebuild_texture()
+		queue_redraw()

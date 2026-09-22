@@ -1,0 +1,56 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/scurk/scurk_editor_dialogs.gd" id="script"]
+[ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_pick_copy_control.tscn" id="pick"]
+
+[node name="Dialogs" type="Control"]
+script = ExtResource("script")
+mouse_filter = 2
+
+[node name="Open" type="FileDialog" parent="."]
+access = 2
+file_mode = 0
+filters = PackedStringArray("*.MIF, *.mif ; SCURK tile sets")
+title = "Open tile set"
+
+[node name="Save" type="FileDialog" parent="."]
+access = 2
+file_mode = 4
+filters = PackedStringArray("*.MIF, *.mif ; SCURK tile sets")
+title = "Save tile set"
+
+[node name="Import" type="FileDialog" parent="."]
+access = 2
+file_mode = 0
+filters = PackedStringArray("*.BMP, *.bmp, *.PNG, *.png ; Indexed images (BMP, PNG)")
+title = "Import indexed PNG or BMP"
+
+[node name="Export" type="FileDialog" parent="."]
+access = 2
+file_mode = 4
+filters = PackedStringArray("*.png ; 256-color indexed PNG", "*.gif ; Animated GIF (palette cycling)")
+title = "Export image"
+
+[node name="Discard" type="ConfirmationDialog" parent="."]
+title = "Unsaved SCURK changes"
+ok_button_text = "Discard"
+
+[node name="Error" type="AcceptDialog" parent="."]
+title = "SCURK error"
+
+[node name="ExportOptions" type="ConfirmationDialog" parent="."]
+title = "Export image"
+exclusive = true
+size = Vector2i(300, 130)
+
+[node name="Content" type="VBoxContainer" parent="ExportOptions"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="ExportOptions/Content"]
+layout_mode = 2
+text = "Image size"
+
+[node name="View" type="OptionButton" parent="ExportOptions/Content"]
+layout_mode = 2
+
+[node name="PickCopy" parent="." instance=ExtResource("pick")]

@@ -832,7 +832,7 @@ func _run() -> void:
 	main.scurk_workspace.call("open_scurk_dialog")
 	await process_frame
 	var scurk_editor := main.get("scurk_editor") as Control
-	var object_list := scurk_editor.get("object_list") as ItemList
+	var object_list := scurk_editor.get("object_list") as OptionButton
 
 	if not scurk_editor.visible or object_list.item_count != 499:
 		push_error("Cannot open the complete SCURK object catalog")

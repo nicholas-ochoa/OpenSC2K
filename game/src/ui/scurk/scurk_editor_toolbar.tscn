@@ -1,0 +1,106 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/scurk/scurk_editor_toolbar.gd" id="script"]
+
+[node name="Toolbar" type="PanelContainer"]
+script = ExtResource("script")
+custom_minimum_size = Vector2(0, 31)
+theme_type_variation = "CityMenuBarPanel"
+
+[node name="Row" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="File" type="MenuButton" parent="Row"]
+layout_mode = 2
+text = "File"
+flat = true
+switch_on_hover = true
+custom_minimum_size = Vector2(0, 23)
+
+[node name="Edit" type="MenuButton" parent="Row"]
+layout_mode = 2
+text = "Edit"
+flat = true
+switch_on_hover = true
+custom_minimum_size = Vector2(0, 23)
+
+[node name="Options" type="MenuButton" parent="Row"]
+layout_mode = 2
+text = "Options"
+flat = true
+switch_on_hover = true
+custom_minimum_size = Vector2(0, 23)
+
+[node name="Help" type="MenuButton" parent="Row"]
+layout_mode = 2
+text = "Help"
+flat = true
+switch_on_hover = true
+custom_minimum_size = Vector2(0, 23)
+
+[node name="SpriteStatus" type="Label" parent="Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 2
+text_overrun_behavior = 3
+
+[node name="Actions" type="Control" parent="."]
+layout_mode = 2
+visible = false
+
+[node name="Open" type="Button" parent="Actions"]
+layout_mode = 2
+text = "Open..."
+
+[node name="Save" type="Button" parent="Actions"]
+layout_mode = 2
+text = "Save"
+
+[node name="SaveAs" type="Button" parent="Actions"]
+layout_mode = 2
+text = "Save As..."
+
+[node name="Import" type="Button" parent="Actions"]
+layout_mode = 2
+text = "Import Image..."
+
+[node name="Export" type="Button" parent="Actions"]
+layout_mode = 2
+text = "Export Image..."
+
+[node name="Close" type="Button" parent="Actions"]
+layout_mode = 2
+text = "Close"
+
+[node name="Undo" type="Button" parent="Actions"]
+layout_mode = 2
+text = "Undo"
+
+[node name="Redo" type="Button" parent="Actions"]
+layout_mode = 2
+text = "Redo"
+
+[node name="Name" type="Button" parent="Actions"]
+layout_mode = 2
+text = "Tile Name..."
+
+[node name="Revert" type="Button" parent="Actions"]
+layout_mode = 2
+text = "Revert Object"
+
+[node name="Clear" type="Button" parent="Actions"]
+layout_mode = 2
+text = "Clear Object"
+
+[node name="PickCopy" type="Button" parent="Actions"]
+layout_mode = 2
+text = "Pick & Copy..."
+
+[node name="Settings" type="Button" parent="Actions"]
+layout_mode = 2
+text = "Settings..."
+
+[node name="About" type="Button" parent="Actions"]
+layout_mode = 2
+text = "About OpenSC2K..."

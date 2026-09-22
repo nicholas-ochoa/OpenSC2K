@@ -3,6 +3,8 @@ extends ColorRect
 
 @warning_ignore_start("integer_division")
 
+signal about_requested
+signal settings_requested
 signal close_requested
 signal tile_set_applied(tile_set: ScurkMif, display_name: String, source_path: String)
 signal place_print_requested
@@ -61,10 +63,14 @@ var active_workspace := false
 var active_base_width := 0
 var view_preview_signatures := PackedStringArray(["", "", ""])
 
-var title_label: Label
+var pointer_status_label: Label
+var unclipped_tiles: Dictionary[int, bool] = {}
+var pending_export_view := 0
+var tile_thumbnails: Dictionary[int, Texture2D] = {}
+var thumbnail_signatures: Dictionary[int, int] = {}
 var source_label: Label
 var object_search: LineEdit
-var object_list: ItemList
+var object_list: OptionButton
 var name_edit: LineEdit
 var name_button: Button
 var revert_name_button: Button
@@ -84,7 +90,7 @@ var pixel_canvas: ScurkPixelCanvas
 var view_previews: Array[ScurkViewPreview] = []
 var view_preview_panels: Array[Control] = []
 var palette_panel: ScurkEditorPalettePanel
-var brush_size_selector: OptionButton
+var brush_size_selector: SpinBox
 var filled_shapes_check: CheckBox
 var round_brush_check: CheckBox
 var grid_check: CheckBox
@@ -127,13 +133,12 @@ func configure(
 	value_reference_directory: String,
 	value_scurk_graphics: ScurkGraphics = null,
 ) -> void:
+	tile_thumbnails.clear()
+	thumbnail_signatures.clear()
 	palette = value_palette
 	base_large_sprites = value_large_sprites
 	base_small_medium_sprites = value_small_medium_sprites
 	reference_directory = value_reference_directory.simplify_path()
-
-	if drawing_controls != null:
-		drawing_controls.set_control_images(value_scurk_graphics.control_images if value_scurk_graphics != null else {})
 
 	if pixel_canvas != null and value_scurk_graphics != null:
 		pixel_canvas.set_drawing_graphics(value_scurk_graphics)
@@ -148,7 +153,6 @@ func configure(
 			foreground_palette_index, background_palette_index,
 			value_scurk_graphics.pattern_names if value_scurk_graphics != null else PackedStringArray(),
 		)
-		palette_panel.set_workspace_images(value_scurk_graphics.workspace_images if value_scurk_graphics != null else {})
 		_select_palette_index(foreground_palette_index, false)
 		_select_palette_index(background_palette_index, true)
 
@@ -177,7 +181,7 @@ func show_editor(initial_path := "") -> Result:
 	show()
 	move_to_front()
 	_refresh_sprite()
-	call_deferred("_fit_canvas")
+	_fit_canvas_after_layout()
 
 	if object_list != null:
 		object_list.grab_focus()
@@ -207,7 +211,11 @@ func load_tile_set(loaded: ScurkMif, path := "") -> Result:
 	if not encoded.ok:
 		return Result.rejected(encoded.error)
 
+	tile_thumbnails.clear()
+	thumbnail_signatures.clear()
 	tile_set = loaded
+	unclipped_tiles.clear()
+	view_preview_signatures.fill("")
 	source_path = ProjectSettings.globalize_path(path).simplify_path() if not path.is_empty() else ""
 	edit_history.reset(encoded.bytes)
 	var ids := editable_large_sprite_ids(tile_set, base_large_sprites)
@@ -342,13 +350,25 @@ func request_import_bmp() -> void:
 
 
 func request_export_bmp() -> void:
+	if tile_set == null or current_large_id < 0:
+		return
+
+	for view in 3:
+		dialog_registry.export_view.set_item_disabled(view, not _view_is_available(view))
+	dialog_registry.export_view.select(current_view)
+	dialog_registry.export_options.popup_centered()
+
+
+func _show_export_file_dialog() -> void:
+	dialog_registry.export_options.hide()
+	pending_export_view = dialog_registry.export_view.selected
 	if pixel_canvas == null or pixel_canvas.sprite_width <= 0:
 		return
 
 	var output_directory := ProjectSettings.globalize_path("user://scurk_exports")
 	DirAccess.make_dir_recursive_absolute(output_directory)
 	export_bmp_dialog.current_dir = output_directory
-	var view_name: String = ["LARGE", "MEDIUM", "SMALL"][current_view]
+	var view_name: String = ["LARGE", "MEDIUM", "SMALL"][pending_export_view]
 	export_bmp_dialog.current_file = "OBJECT_%03d_%s.png" % [
 		object_tile_id(current_large_id), view_name,
 	]
@@ -380,7 +400,7 @@ func import_image_path(path: String) -> Result:
 	)
 
 
-func export_image_path(path: String) -> Result:
+func export_image_path(path: String, view := -1) -> Result:
 	if pixel_canvas == null or pixel_canvas.sprite_width <= 0:
 		return Result.rejected("No SCURK sprite is available to export.")
 
@@ -392,7 +412,7 @@ func export_image_path(path: String) -> Result:
 	if path_is_within(output_path, reference_directory):
 		return Result.rejected("The original game data folder is read-only. Use another folder.")
 
-	var shape := _active_output_shape()
+	var shape := _active_output_shape() if view < 0 else _output_shape_for_view(view)
 
 	if not shape.ok:
 		return Result.rejected(shape.error)
@@ -605,10 +625,10 @@ func _replace_active_view(
 
 	if active_workspace:
 		var workspace := DrawingWorkspace.from_shape(
-			width, height, pixels, current_view, active_base_width
+			width, height, pixels, current_view, active_base_width, _clipping_enabled()
 		)
 		var active_shape := DrawingWorkspace.shape_from_workspace(
-			workspace, active_base_width, current_view
+			workspace, active_base_width, current_view, _clipping_enabled()
 		)
 
 		if not active_shape.ok:
@@ -829,8 +849,9 @@ func _bind_interface() -> void:
 	toolbar.redo_requested.connect(redo)
 	toolbar.revert_requested.connect(revert_object)
 	toolbar.clear_requested.connect(clear_object)
-	toolbar.apply_requested.connect(_apply_tile_set)
-	toolbar.place_print_requested.connect(request_place_print)
+	toolbar.name_requested.connect(request_edit_name)
+	toolbar.settings_requested.connect(settings_requested.emit)
+	toolbar.about_requested.connect(about_requested.emit)
 	toolbar.close_requested.connect(request_close)
 	save_button = toolbar.save_button
 	undo_button = toolbar.undo_button
@@ -838,10 +859,10 @@ func _bind_interface() -> void:
 	revert_button = toolbar.revert_button
 	clear_object_button = toolbar.clear_button
 
-	title_label = get_node("Panel/Content/Header/Title")
-	source_label = get_node("Panel/Content/Header/Source")
+	source_label = get_node("Panel/Content/StatusBar/Row/File")
+	pointer_status_label = get_node("Panel/Content/StatusBar/Row/Pointer")
 
-	object_panel = get_node("Panel/Content/Body/Objects")
+	object_panel = get_node("Panel/Content/Body/Palette/Margin/Column/Objects")
 	object_panel.build()
 	object_panel.search_changed.connect(_on_search_changed)
 	object_panel.object_selected.connect(_on_object_selected)
@@ -854,7 +875,7 @@ func _bind_interface() -> void:
 	name_button = object_panel.name_button
 	revert_name_button = object_panel.revert_name_button
 
-	drawing_controls = get_node("Panel/Content/Body/EditorSplit/Editor/DrawingControls")
+	drawing_controls = get_node("Panel/Content/Body/DrawingControls")
 	drawing_controls.build()
 	drawing_controls.view_selected.connect(_select_view)
 	drawing_controls.zoom_fit_requested.connect(_fit_canvas)
@@ -862,6 +883,8 @@ func _bind_interface() -> void:
 	drawing_controls.zoom_in_requested.connect(_zoom_in)
 	drawing_controls.tool_selected.connect(_select_tool)
 	drawing_controls.rotate_clipboard_requested.connect(_rotate_clipboard)
+	drawing_controls.rotate_clipboard_clockwise_requested.connect(func() -> void:
+		pixel_canvas.rotate_clipboard_clockwise())
 	drawing_controls.flip_clipboard_horizontal_requested.connect(
 		_flip_clipboard_horizontal
 	)
@@ -870,7 +893,7 @@ func _bind_interface() -> void:
 	)
 	drawing_controls.copy_object_requested.connect(copy_object_to_system_clipboard)
 	drawing_controls.paste_image_requested.connect(paste_image_from_system_clipboard)
-	drawing_controls.brush_size_selected.connect(_select_brush_size)
+	drawing_controls.brush_size_changed.connect(_select_brush_size)
 	drawing_controls.round_brush_changed.connect(_set_round_brush)
 	drawing_controls.filled_shapes_changed.connect(_set_filled_shapes)
 	drawing_controls.grid_visibility_changed.connect(_set_grid_visible)
@@ -878,8 +901,7 @@ func _bind_interface() -> void:
 	drawing_controls.grid_width_changed.connect(_set_grid_width)
 	drawing_controls.grid_height_changed.connect(_set_grid_height)
 	drawing_controls.clip_region_changed.connect(_set_clip_region_visible)
-	drawing_controls.cycle_colors_changed.connect(_set_cycle_colors)
-	drawing_controls.increment_cycle_requested.connect(_increment_cycle)
+	drawing_controls.clip_enabled_changed.connect(_set_clipping_enabled)
 	view_buttons = drawing_controls.view_buttons
 	zoom_label = drawing_controls.zoom_label
 	tool_buttons = drawing_controls.tool_buttons
@@ -895,15 +917,13 @@ func _bind_interface() -> void:
 	grid_width_selector = drawing_controls.grid_width_selector
 	grid_height_selector = drawing_controls.grid_height_selector
 	clip_region_check = drawing_controls.clip_region_check
-	cycle_colors_check = drawing_controls.cycle_colors_check
-	increment_cycle_button = drawing_controls.increment_cycle_button
 
-	canvas_panel = get_node("Panel/Content/Body/EditorSplit/Editor/Canvas")
+	canvas_panel = get_node("Panel/Content/Body/Editor/Canvas")
 	canvas_panel.build()
 	pixel_canvas = canvas_panel.pixel_canvas
 	view_previews = canvas_panel.view_previews
 	view_preview_panels = canvas_panel.view_preview_panels
-	sprite_status_label = canvas_panel.sprite_status_label
+	sprite_status_label = toolbar.get_node("Row/SpriteStatus")
 	pixel_canvas.edit_started.connect(_capture_edit_start)
 	pixel_canvas.pixels_committed.connect(_commit_pixels)
 	pixel_canvas.palette_index_picked.connect(_select_palette_index)
@@ -911,17 +931,20 @@ func _bind_interface() -> void:
 	pixel_canvas.clipboard_changed.connect(_on_clipboard_changed)
 	pixel_canvas.clipboard_copy_rejected.connect(_on_clipboard_copy_rejected)
 
-	palette_panel = get_node("Panel/Content/Body/EditorSplit/Palette")
+	palette_panel = get_node("Panel/Content/Body/Palette")
 	palette_panel.build()
 	palette_panel.set_patterns(pixel_canvas.texture_patterns)
 	palette_panel.palette_index_selected.connect(_select_palette_index)
 	palette_panel.texture_selected.connect(_select_texture)
-	palette_panel.eraser_requested.connect(
-		_select_tool.bind(ScurkPixelCanvas.TOOL_ERASER)
-	)
-	palette_panel.add_view_panel(canvas_panel.previews_panel)
+	cycle_colors_check = palette_panel.cycle_colors_check
+	increment_cycle_button = palette_panel.increment_cycle_button
+	cycle_colors_check.toggled.connect(_set_cycle_colors)
+	increment_cycle_button.pressed.connect(_increment_cycle)
+	pixel_canvas.set_process(false)
+	for preview in view_previews:
+		preview.set_process(false)
 
-	status_label = get_node("Panel/Content/Status")
+	status_label = get_node("Panel/Content/StatusBar/Row/Message")
 
 	dialog_registry = get_node("Dialogs")
 	dialog_registry._create_dialogs()
@@ -933,6 +956,8 @@ func _bind_interface() -> void:
 	import_bmp_dialog.file_selected.connect(_import_selected_bmp)
 	export_bmp_dialog = dialog_registry.export_bmp_dialog
 	export_bmp_dialog.file_selected.connect(_export_selected_bmp)
+	error_dialog = dialog_registry.error_dialog
+	dialog_registry.export_options.confirmed.connect(_show_export_file_dialog)
 	discard_dialog = dialog_registry.discard_dialog
 	discard_dialog.confirmed.connect(_confirm_discard)
 	pick_copy_control = dialog_registry.pick_copy_control
@@ -960,6 +985,7 @@ func _refresh_object_list() -> void:
 	if tile_set == null:
 		return
 
+	var selected_found := false
 	for large_id in editable_large_sprite_ids(tile_set, base_large_sprites):
 		var tile_id := object_tile_id(large_id)
 		var tile_name := String(tile_set.names.get(tile_id, ""))
@@ -969,9 +995,10 @@ func _refresh_object_list() -> void:
 		if not filter.is_empty() and not label.to_lower().contains(filter):
 			continue
 
-		var list_index := object_list.add_item(label)
+		var list_index := object_list.item_count
+		object_list.add_icon_item(_tile_thumbnail(large_id), label)
 		object_list.set_item_metadata(list_index, large_id)
-		object_list.set_item_tooltip(
+		object_list.get_popup().set_item_tooltip(
 			list_index,
 			"Sprite family %d: Small %d, Medium %d, Large %d"
 			% [tile_id, tile_id, tile_id + 500, tile_id + 1000]
@@ -979,8 +1006,9 @@ func _refresh_object_list() -> void:
 
 		if large_id == selected_id:
 			object_list.select(list_index)
+			selected_found = true
 
-	if object_list.get_selected_items().is_empty() and object_list.item_count > 0:
+	if not selected_found and object_list.item_count > 0:
 		object_list.select(0)
 		var replacement_id := int(object_list.get_item_metadata(0))
 
@@ -990,6 +1018,7 @@ func _refresh_object_list() -> void:
 
 
 func _on_object_selected(index: int) -> void:
+	object_list.select(index)
 	var selected_id := int(object_list.get_item_metadata(index))
 
 	if selected_id != current_large_id:
@@ -1018,6 +1047,7 @@ func _select_view(view: int) -> void:
 
 func _select_tool(tool_value: int) -> void:
 	current_tool = tool_value
+	drawing_controls.update_tool_controls(tool_value)
 
 	if pixel_canvas != null:
 		pixel_canvas.set_tool(tool_value)
@@ -1043,12 +1073,12 @@ func _select_palette_index(index: int, background := false) -> void:
 		)
 
 
-func _select_brush_size(index: int) -> void:
+func _select_brush_size(value: float) -> void:
 	if brush_size_selector == null or pixel_canvas == null:
 		return
 
 	pixel_canvas.set_brush(
-		brush_size_selector.get_item_id(index), round_brush_check.button_pressed
+		roundi(value), round_brush_check.button_pressed
 	)
 
 
@@ -1060,6 +1090,7 @@ func _set_round_brush(enabled: bool) -> void:
 func _set_filled_shapes(enabled: bool) -> void:
 	if pixel_canvas != null:
 		pixel_canvas.filled_shapes = enabled
+		pixel_canvas.queue_redraw()
 
 
 func _set_grid_visible(enabled: bool) -> void:
@@ -1101,25 +1132,45 @@ func _set_clip_region_visible(enabled: bool) -> void:
 		pixel_canvas.set_clip_region_visible(enabled)
 
 
-func _set_cycle_colors(enabled: bool) -> void:
-	if pixel_canvas != null:
-		pixel_canvas.set_palette_cycle_enabled(enabled)
+func _process(delta: float) -> void:
+	if pixel_canvas == null or not is_visible_in_tree():
+		return
 
+	var before := pixel_canvas.palette_cycle_ticks
+	pixel_canvas._process(delta)
+	if before != pixel_canvas.palette_cycle_ticks:
+		_sync_palette_cycle()
+
+
+func _sync_palette_cycle() -> void:
+	var tick := pixel_canvas.palette_cycle_ticks
+	palette_panel.set_cycle_tick(tick)
+	for preview in view_previews:
+		preview.set_cycle_tick(tick)
+
+
+func _set_cycle_colors(enabled: bool) -> void:
+	pixel_canvas.set_palette_cycle_enabled(enabled)
 	for preview in view_previews:
 		preview.set_palette_cycle_enabled(enabled)
-
-	if increment_cycle_button != null:
-		increment_cycle_button.disabled = enabled
+	increment_cycle_button.disabled = enabled
+	_sync_palette_cycle()
 
 
 func _increment_cycle() -> void:
-	if pixel_canvas != null:
-		pixel_canvas.increment_palette_cycle()
+	pixel_canvas.increment_palette_cycle()
+	_sync_palette_cycle()
+	_set_status("Advanced the color cycle by one step.")
 
-	for preview in view_previews:
-		preview.increment_palette_cycle()
 
-	_set_status("Advanced the Paint the Town color cycle by one step.")
+func _clipping_enabled() -> bool:
+	return not unclipped_tiles.get(current_large_id, false)
+
+
+func _set_clipping_enabled(enabled: bool) -> void:
+	unclipped_tiles[current_large_id] = not enabled
+	_refresh_sprite()
+	_set_status("Tile clipping enabled." if enabled else "Tile clipping disabled. Use the full drawing area.")
 
 
 func _select_texture(index: int) -> void:
@@ -1216,21 +1267,27 @@ func _refresh_sprite() -> void:
 	var large_entry := PickCopy.resolved_entry(
 		tile_set, current_large_id, base_large_sprites, base_small_medium_sprites
 	)
-	active_base_width = large_entry.width if large_entry != null else 0
+	var original_entry := base_large_sprites.find_sprite(current_large_id) if base_large_sprites != null else null
+	active_base_width = original_entry.width if original_entry != null else (large_entry.width if large_entry != null else 0)
 	active_workspace = DrawingWorkspace.is_standard_base_width(active_base_width)
+	if active_workspace and not unclipped_tiles.has(current_large_id):
+		unclipped_tiles[current_large_id] = _tile_needs_unclipped_workspace()
+
+	drawing_controls.clip_enabled_check.set_pressed_no_signal(_clipping_enabled())
 	pixel_canvas.clear_edit_region()
 
 	if active_workspace:
 		var workspace := DrawingWorkspace.from_shape(
-			entry.width, entry.height, decoded.pixels, current_view, active_base_width
+			entry.width, entry.height, decoded.pixels, current_view, active_base_width, _clipping_enabled()
 		)
 		pixel_canvas.set_sprite_data(
 			DrawingWorkspace.WIDTH, DrawingWorkspace.HEIGHT, workspace, palette
 		)
-		pixel_canvas.set_edit_region(
-			DrawingWorkspace.clip_mask(active_base_width),
-			DrawingWorkspace.base_size(active_base_width)
-		)
+		if _clipping_enabled():
+			pixel_canvas.set_edit_region(
+				DrawingWorkspace.clip_mask(active_base_width),
+				DrawingWorkspace.base_size(active_base_width)
+			)
 		pixel_canvas.set_clip_region_visible(clip_region_check.button_pressed)
 	else:
 		pixel_canvas.set_sprite_data(entry.width, entry.height, decoded.pixels, palette)
@@ -1240,7 +1297,7 @@ func _refresh_sprite() -> void:
 		foreground_palette_index, background_palette_index
 	)
 	pixel_canvas.set_brush(
-		brush_size_selector.get_item_id(brush_size_selector.selected),
+		roundi(brush_size_selector.value),
 		round_brush_check.button_pressed
 	)
 	pixel_canvas.set_texture(palette_panel.selected_texture_index())
@@ -1248,6 +1305,7 @@ func _refresh_sprite() -> void:
 	pixel_canvas.show_grid = grid_check.button_pressed
 	_apply_grid_settings()
 	_refresh_view_previews()
+	_refresh_selected_thumbnail()
 	var tile_id := object_tile_id(current_large_id)
 	var can_name := tile_id >= 0
 	name_edit.editable = can_name
@@ -1318,7 +1376,7 @@ func _commit_pixels(value_pixels: PackedInt32Array) -> void:
 
 	if active_workspace:
 		var active_shape := DrawingWorkspace.shape_from_workspace(
-			value_pixels, active_base_width, current_view
+			value_pixels, active_base_width, current_view, _clipping_enabled()
 		)
 
 		if not active_shape.ok:
@@ -1351,6 +1409,7 @@ func _commit_pixels(value_pixels: PackedInt32Array) -> void:
 
 	edit_history.mark_shape_blank_state(sprite_id, output_pixels)
 	_record_edit(edit_history.pending_edit_before)
+	_refresh_selected_thumbnail()
 	_refresh_sprite()
 
 
@@ -1378,8 +1437,8 @@ func _refresh_view_previews() -> void:
 			view_preview_signatures[view] = ""
 			continue
 
-		var signature := "%d:%d:%d:%d" % [
-			active_base_width, entry.width, entry.height, entry.pixel_hash(),
+		var signature := "%d:%d:%d:%d:%s" % [
+			active_base_width, entry.width, entry.height, entry.pixel_hash(), _clipping_enabled(),
 		]
 
 		if view_preview_signatures[view] == signature:
@@ -1401,7 +1460,8 @@ func _refresh_view_previews() -> void:
 			decoded.pixels,
 			active_base_width,
 			palette,
-			pixel_canvas.clear_background_pixels
+			pixel_canvas.clear_background_pixels,
+			_clipping_enabled()
 		)
 		view_previews[view].set_palette_cycle_enabled(
 			cycle_colors_check.button_pressed
@@ -1438,7 +1498,7 @@ func _active_output_shape() -> IndexedImageResult:
 
 	if active_workspace:
 		return DrawingWorkspace.shape_from_workspace(
-			pixel_canvas.pixels, active_base_width, current_view
+			pixel_canvas.pixels, active_base_width, current_view, _clipping_enabled()
 		)
 
 	var outcome := IndexedImageResult.new()
@@ -1452,13 +1512,14 @@ func _active_output_shape() -> IndexedImageResult:
 
 
 func _commit_name() -> void:
+	object_panel.name_dialog.hide()
 	if tile_set == null or current_large_id < 0:
 		return
 
 	var tile_id := object_tile_id(current_large_id)
 	var value := name_edit.text.strip_edges()
 
-	if value == String(tile_set.names.get(tile_id, "")):
+	if value == String(tile_set.names.get(tile_id, sprite_role(tile_id))):
 		return
 
 	_capture_edit_start()
@@ -1527,14 +1588,12 @@ func _update_history_buttons() -> void:
 
 
 func _update_title() -> void:
-	if title_label == null:
+	if source_label == null:
 		return
 
 	var filename := source_path.get_file() if not source_path.is_empty() else "Untitled.MIF"
-	title_label.text = "Paint the Town — %s%s" % [filename, " *" if dirty else ""]
-
-	if source_label != null:
-		source_label.text = "Reference source: read-only" if path_is_within(source_path, reference_directory) else source_path
+	source_label.text = "%s%s" % [filename, " *" if dirty else ""]
+	source_label.tooltip_text = source_path
 
 
 func _zoom_in() -> void:
@@ -1554,8 +1613,9 @@ func _zoom_out() -> void:
 
 
 func _update_pointer_status(point: Vector2i, index: int) -> void:
-	if palette_panel != null:
-		palette_panel.set_pointer(point, index)
+	pointer_status_label.text = "" if point.x < 0 else "%d, %d | %s" % [
+		point.x, point.y, "transparent" if index < 0 else "index %d" % index,
+	]
 
 
 func _apply_tile_set() -> void:
@@ -1611,7 +1671,7 @@ func _import_selected_bmp(path: String) -> void:
 
 
 func _export_selected_bmp(path: String) -> void:
-	var result := export_image_path(path)
+	var result := export_image_path(path, pending_export_view)
 
 	if not result.ok:
 		_show_error(result.error)
@@ -1656,3 +1716,101 @@ func _fit_canvas() -> void:
 	zoom_label.text = "%dx" % pixel_canvas.zoom
 	canvas_panel.pixel_scroll.scroll_horizontal = 0
 	canvas_panel.pixel_scroll.scroll_vertical = 0
+
+
+func _output_shape_for_view(view: int) -> IndexedImageResult:
+	if view < VIEW_LARGE or view > VIEW_SMALL:
+		return IndexedImageResult.failure("Select a valid image size.")
+
+	var entry: Sc2SpriteArchive.SpriteEntry = _resolved_view_entry(view)
+	if entry == null:
+		return IndexedImageResult.failure("This image size is not available.")
+
+	var decoded := entry.decode_indices()
+	if not decoded.ok:
+		return IndexedImageResult.failure(decoded.error)
+
+	var result := IndexedImageResult.new()
+	result.ok = true
+	result.width = entry.width
+	result.height = entry.height
+	result.pixels = decoded.pixels
+	return result
+
+
+func _fit_canvas_after_layout() -> void:
+	if not is_inside_tree():
+		return
+
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_fit_canvas()
+
+
+func _tile_needs_unclipped_workspace() -> bool:
+	for view in 3:
+		var entry := tile_set.overrides.find_sprite(view_sprite_id(current_large_id, view))
+		if entry == null:
+			continue
+
+		if entry.width * DrawingWorkspace.view_divisor(view) > active_base_width:
+			return true
+
+		if path_is_within(source_path, reference_directory):
+			continue
+
+		var decoded := entry.decode_indices()
+		if not decoded.ok:
+			continue
+
+		var expanded := DrawingWorkspace.from_shape(
+			entry.width, entry.height, decoded.pixels, view, active_base_width, false
+		)
+		if expanded != DrawingWorkspace.apply_clip_mask(expanded, active_base_width):
+			return true
+
+	return false
+
+
+func _refresh_selected_thumbnail() -> void:
+	if object_list.selected >= 0:
+		object_list.set_item_icon(object_list.selected, _tile_thumbnail(current_large_id))
+
+
+func _tile_thumbnail(large_id: int) -> Texture2D:
+	var entry := PickCopy.resolved_entry(
+		tile_set, large_id, base_large_sprites, base_small_medium_sprites
+	)
+	if edit_history.blank_shape_ids.has(large_id):
+		entry = tile_set.archive.find_sprite(large_id)
+	if entry == null or palette == null:
+		return null
+
+	var signature: int = hash([entry.width, entry.height, entry.pixel_hash()])
+	if thumbnail_signatures.get(large_id, -1) == signature:
+		return tile_thumbnails[large_id]
+
+	var rendered := entry.create_image(palette)
+	if not rendered.ok:
+		return null
+
+	const SIDE := 32
+	var image := rendered.image
+	var factor := float(SIDE) / maxi(image.get_width(), image.get_height())
+	image.resize(maxi(1, roundi(image.get_width() * factor)), maxi(1, roundi(image.get_height() * factor)), Image.INTERPOLATE_NEAREST)
+	var thumbnail := Image.create(SIDE, SIDE, false, Image.FORMAT_RGBA8)
+	thumbnail.fill(Color.TRANSPARENT)
+	thumbnail.blit_rect(image, Rect2i(Vector2i.ZERO, image.get_size()), (Vector2i(SIDE, SIDE) - image.get_size()) / 2)
+	var texture := ImageTexture.create_from_image(thumbnail)
+	tile_thumbnails[large_id] = texture
+	thumbnail_signatures[large_id] = signature
+	return texture
+
+
+func request_edit_name() -> void:
+	if tile_set == null or current_large_id < 0:
+		return
+
+	var tile_id := object_tile_id(current_large_id)
+	name_edit.text = String(tile_set.names.get(tile_id, sprite_role(tile_id)))
+	object_panel.edit_name()

@@ -11,7 +11,7 @@ const RouteConfirmationDialogUi = preload("res://src/ui/tools/route_confirmation
 const CityStatusBarUi = preload("res://src/ui/shell/city_status_bar.gd")
 const FileDialogsUi = preload("res://src/ui/shared/file_dialog_factory.gd")
 const CityMenuBarUi = preload("res://src/ui/shell/city_menu_bar.gd")
-const ScurkEditorDialogsUi = preload("res://src/ui/scurk/scurk_editor_dialogs.gd")
+const ScurkEditorDialogsUi = preload("res://src/ui/scurk/scurk_editor_dialogs.tscn")
 const NewCityTerrainDialogUi = preload("res://src/ui/startup/new_city_terrain_dialog.tscn")
 const BudgetDialogUi = preload("res://src/ui/city_windows/budget_dialog.tscn")
 
@@ -232,7 +232,7 @@ func _test_main_menu() -> void:
 		"City toolbar owns tool groups, child tools, views, and layer controls",
 	)
 	toolbar.free()
-	var scurk_dialogs := ScurkEditorDialogsUi.new()
+	var scurk_dialogs := ScurkEditorDialogsUi.instantiate() as ScurkEditorDialogs
 	scurk_dialogs._create_dialogs()
 	_check(
 		scurk_dialogs.open_dialog.file_mode == FileDialog.FILE_MODE_OPEN_FILE
