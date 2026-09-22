@@ -46,14 +46,14 @@ static func inspect(city: CityState) -> Result:
 
 	var chunk := city.document.find_chunk("MISC")
 
-	if chunk == null or chunk.decoded_payload.size() != 4800:
+	if chunk == null or chunk.decoded_payload.size() != Sc2MiscLayout.SIZE:
 		return Result.failure("MISC is missing or has the wrong size")
 
 	return inspect_misc(chunk.decoded_payload)
 
 
 static func inspect_misc(misc: PackedByteArray) -> Result:
-	if misc.size() != 4800:
+	if misc.size() != Sc2MiscLayout.SIZE:
 		return Result.failure("MISC has the wrong size")
 
 	var group_masks := PackedInt32Array(BASE_GROUP_MASKS)
@@ -161,7 +161,7 @@ static func is_available(city: CityState, group_index: int, subtool_index: int) 
 
 
 static func rebuild_reward_mask(misc: PackedByteArray) -> int:
-	if misc.size() != 4800:
+	if misc.size() != Sc2MiscLayout.SIZE:
 		return 0
 
 	var mask := BinaryData.read_u32_be(misc, MISC_GRANTED_REWARDS)

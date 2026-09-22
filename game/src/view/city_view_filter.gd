@@ -57,8 +57,8 @@ static func surface_copy(source: CityState, visibility: Dictionary) -> CityState
 		if not show_water:
 			if result.tile_flags[index] & Sc2TileFlags.WATER:
 				result.object_altitude_overrides[index] = (
-					int(result.altitude_words[index]) >> 5
-				) & 0x1f
+					int(result.altitude_words[index]) >> Sc2AltitudeLayout.WATER_SHIFT
+				) & Sc2AltitudeLayout.LEVEL_MASK
 
 			result.tile_flags[index] &= ~Sc2TileFlags.WATER & 0xff
 			var terrain := int(result.terrain[index])

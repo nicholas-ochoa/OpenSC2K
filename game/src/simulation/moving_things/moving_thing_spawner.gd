@@ -7,6 +7,7 @@ const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
 const MAP_SIZE := 128
 const RECORD_SIZE := Sc2ThingLayout.RECORD_SIZE
+const Field = Sc2ThingLayout.Field
 const FIRST_RECORD := 1
 const LAST_RECORD := 39
 const TEXT_LABEL_BASE := 201
@@ -42,7 +43,7 @@ static func count_type(things: PackedByteArray, thing_type: int) -> int:
 	var count := 0
 
 	for record in range(FIRST_RECORD, ThingData.count(things)):
-		if ThingData.read(things, record * RECORD_SIZE) == thing_type:
+		if ThingData.read(things, record * RECORD_SIZE + Field.TYPE) == thing_type:
 			count += 1
 
 	return count
@@ -74,17 +75,17 @@ static func spawn_helicopter(
 		return result
 
 	var offset := record * RECORD_SIZE
-	ThingData.write(things, offset, TYPE_HELICOPTER)
-	ThingData.write(things, offset + 1, 2)
-	ThingData.write(things, offset + 2, 0)
-	ThingData.write(things, offset + 3, point.x)
-	ThingData.write(things, offset + 4, point.y)
-	ThingData.write(things, offset + 5, 0)
-	ThingData.write(things, offset + 6, 8)
-	ThingData.write(things, offset + 7, 8)
-	ThingData.write(things, offset + 8, random.next_u15() % map_edge)
-	ThingData.write(things, offset + 9, random.next_u15() % map_edge)
-	ThingData.write(things, offset + 10, OverlayData.read(text, index))
+	ThingData.write(things, offset + Field.TYPE, TYPE_HELICOPTER)
+	ThingData.write(things, offset + Field.DIRECTION, 2)
+	ThingData.write(things, offset + Field.STATE, 0)
+	ThingData.write(things, offset + Field.X, point.x)
+	ThingData.write(things, offset + Field.Y, point.y)
+	ThingData.write(things, offset + Field.Z, 0)
+	ThingData.write(things, offset + Field.PX, 8)
+	ThingData.write(things, offset + Field.PY, 8)
+	ThingData.write(things, offset + Field.DX, random.next_u15() % map_edge)
+	ThingData.write(things, offset + Field.DY, random.next_u15() % map_edge)
+	ThingData.write(things, offset + Field.LABEL, OverlayData.read(text, index))
 	OverlayData.write(text, index, OverlayData.thing_id(record))
 
 	var result := Result.new()
@@ -125,9 +126,9 @@ static func spawn_airplane(
 		return result
 
 	var offset := record * RECORD_SIZE
-	ThingData.write(things, offset, TYPE_AIRPLANE)
-	ThingData.write(things, offset + 6, 8)
-	ThingData.write(things, offset + 7, 8)
+	ThingData.write(things, offset + Field.TYPE, TYPE_AIRPLANE)
+	ThingData.write(things, offset + Field.PX, 8)
+	ThingData.write(things, offset + Field.PY, 8)
 	var attached := point
 	# preserve original entry margins at 128 and above. small maps use the same
 	# proportions so each edge coordinate stays inside the map
@@ -139,37 +140,37 @@ static func spawn_airplane(
 		match random.next_u15() & 3:
 			0:
 				attached = Vector2i(0, random.next_u15() % entry_span + entry_low)
-				ThingData.write(things, offset + 1, 3)
+				ThingData.write(things, offset + Field.DIRECTION, 3)
 			1:
 				attached = Vector2i(random.next_u15() % entry_span + entry_low, 0)
-				ThingData.write(things, offset + 1, 5)
+				ThingData.write(things, offset + Field.DIRECTION, 5)
 			2:
 				attached = Vector2i((map_edge - 1), random.next_u15() % entry_span + entry_low)
-				ThingData.write(things, offset + 1, 7)
+				ThingData.write(things, offset + Field.DIRECTION, 7)
 			3:
 				attached = Vector2i(random.next_u15() % entry_span + entry_low, (map_edge - 1))
-				ThingData.write(things, offset + 1, 1)
+				ThingData.write(things, offset + Field.DIRECTION, 1)
 
-		ThingData.write(things, offset + 2, runway_axis * 0x10 + 3)
-		ThingData.write(things, offset + 5, 0x10)
+		ThingData.write(things, offset + Field.STATE, runway_axis * 0x10 + 3)
+		ThingData.write(things, offset + Field.Z, 0x10)
 
 		if runway_axis == 0:
-			ThingData.write(things, offset + 8, point.x)
-			ThingData.write(things, offset + 9, point.y + 0x10)
+			ThingData.write(things, offset + Field.DX, point.x)
+			ThingData.write(things, offset + Field.DY, point.y + 0x10)
 		else:
-			ThingData.write(things, offset + 8, (point.x - 0x10))
-			ThingData.write(things, offset + 9, point.y)
+			ThingData.write(things, offset + Field.DX, (point.x - 0x10))
+			ThingData.write(things, offset + Field.DY, point.y)
 	else:
-		ThingData.write(things, offset + 1, runway_axis)
-		ThingData.write(things, offset + 2, 0)
-		ThingData.write(things, offset + 5, 0)
-		ThingData.write(things, offset + 8, 0x14)
-		ThingData.write(things, offset + 9, 0x14)
+		ThingData.write(things, offset + Field.DIRECTION, runway_axis)
+		ThingData.write(things, offset + Field.STATE, 0)
+		ThingData.write(things, offset + Field.Z, 0)
+		ThingData.write(things, offset + Field.DX, 0x14)
+		ThingData.write(things, offset + Field.DY, 0x14)
 
-	ThingData.write(things, offset + 3, attached.x)
-	ThingData.write(things, offset + 4, attached.y)
+	ThingData.write(things, offset + Field.X, attached.x)
+	ThingData.write(things, offset + Field.Y, attached.y)
 	var attached_index := _index(attached, map_edge)
-	ThingData.write(things, offset + 10, OverlayData.read(text, attached_index))
+	ThingData.write(things, offset + Field.LABEL, OverlayData.read(text, attached_index))
 	OverlayData.write(text, attached_index, OverlayData.thing_id(record))
 
 	var result := Result.new()
@@ -237,15 +238,15 @@ static func spawn_ship(
 		return result
 
 	var offset := record * RECORD_SIZE
-	ThingData.write(things, offset, TYPE_SHIP)
-	ThingData.write(things, offset + 1, MovingThingMotion.direction_between(start, target))
-	ThingData.write(things, offset + 2, 0)
-	ThingData.write(things, offset + 3, start.x)
-	ThingData.write(things, offset + 4, start.y)
-	ThingData.write(things, offset + 5, 1)
-	ThingData.write(things, offset + 6, 8)
-	ThingData.write(things, offset + 7, 8)
-	ThingData.write(things, offset + 10, OverlayData.read(text, start_index))
+	ThingData.write(things, offset + Field.TYPE, TYPE_SHIP)
+	ThingData.write(things, offset + Field.DIRECTION, MovingThingMotion.direction_between(start, target))
+	ThingData.write(things, offset + Field.STATE, 0)
+	ThingData.write(things, offset + Field.X, start.x)
+	ThingData.write(things, offset + Field.Y, start.y)
+	ThingData.write(things, offset + Field.Z, 1)
+	ThingData.write(things, offset + Field.PX, 8)
+	ThingData.write(things, offset + Field.PY, 8)
+	ThingData.write(things, offset + Field.LABEL, OverlayData.read(text, start_index))
 	OverlayData.write(text, start_index, OverlayData.thing_id(record))
 	ThingData.set_ship_home(things, record, start)
 
@@ -287,15 +288,15 @@ static func spawn_sailboats(
 			continue
 
 		var offset := record * RECORD_SIZE
-		ThingData.write(things, offset, TYPE_SAILBOAT)
-		ThingData.write(things, offset + 1, lfsr_random.next_mod(3))
-		ThingData.write(things, offset + 2, 0)
-		ThingData.write(things, offset + 3, start.x)
-		ThingData.write(things, offset + 4, start.y)
-		ThingData.write(things, offset + 5, 0)
-		ThingData.write(things, offset + 6, 4)
-		ThingData.write(things, offset + 7, 4)
-		ThingData.write(things, offset + 10, 0)
+		ThingData.write(things, offset + Field.TYPE, TYPE_SAILBOAT)
+		ThingData.write(things, offset + Field.DIRECTION, lfsr_random.next_mod(3))
+		ThingData.write(things, offset + Field.STATE, 0)
+		ThingData.write(things, offset + Field.X, start.x)
+		ThingData.write(things, offset + Field.Y, start.y)
+		ThingData.write(things, offset + Field.Z, 0)
+		ThingData.write(things, offset + Field.PX, 4)
+		ThingData.write(things, offset + Field.PY, 4)
+		ThingData.write(things, offset + Field.LABEL, 0)
 		OverlayData.write(text, index, OverlayData.thing_id(record))
 		spawned += 1
 
@@ -335,18 +336,18 @@ static func spawn_maxis_man(
 		return result
 
 	var offset := record * RECORD_SIZE
-	ThingData.write(things, offset, TYPE_MAXIS_MAN)
-	ThingData.write(things, offset + 1, MovingThingMotion.direction_between(point, target))
-	ThingData.write(things, offset + 2, 0)
-	ThingData.write(things, offset + 3, point.x)
-	ThingData.write(things, offset + 4, point.y)
-	ThingData.write(things, offset + 5, clampi(height, 0, 0xff))
-	ThingData.write(things, offset + 6, 8)
-	ThingData.write(things, offset + 7, 8)
-	ThingData.write(things, offset + 8, target.x)
-	ThingData.write(things, offset + 9, target.y)
-	ThingData.write(things, offset + 10, OverlayData.read(text, index))
-	ThingData.write(things, offset + 11, goal)
+	ThingData.write(things, offset + Field.TYPE, TYPE_MAXIS_MAN)
+	ThingData.write(things, offset + Field.DIRECTION, MovingThingMotion.direction_between(point, target))
+	ThingData.write(things, offset + Field.STATE, 0)
+	ThingData.write(things, offset + Field.X, point.x)
+	ThingData.write(things, offset + Field.Y, point.y)
+	ThingData.write(things, offset + Field.Z, clampi(height, 0, 0xff))
+	ThingData.write(things, offset + Field.PX, 8)
+	ThingData.write(things, offset + Field.PY, 8)
+	ThingData.write(things, offset + Field.DX, target.x)
+	ThingData.write(things, offset + Field.DY, target.y)
+	ThingData.write(things, offset + Field.LABEL, OverlayData.read(text, index))
+	ThingData.write(things, offset + Field.GOAL, goal)
 	OverlayData.write(text, index, OverlayData.thing_id(record))
 
 	var result := Result.new()
@@ -409,34 +410,35 @@ static func _spawn_train_record(
 	# The original skips all three allocation checks. If no slot is free,
 	# it writes the train into reserved record 0.
 	var engine_record := _first_free_record(things)
-	ThingData.write(things, engine_record * RECORD_SIZE, TYPE_TRAIN_ENGINE)
+	ThingData.write(things, engine_record * RECORD_SIZE + Field.TYPE, TYPE_TRAIN_ENGINE)
 	var first_car_record := _first_free_record(things)
-	ThingData.write(things, first_car_record * RECORD_SIZE, TYPE_TRAIN_CAR)
+	ThingData.write(things, first_car_record * RECORD_SIZE + Field.TYPE, TYPE_TRAIN_CAR)
 	var second_car_record := _first_free_record(things)
-	ThingData.write(things, second_car_record * RECORD_SIZE, TYPE_TRAIN_CAR)
+	ThingData.write(things, second_car_record * RECORD_SIZE + Field.TYPE, TYPE_TRAIN_CAR)
 	var records: Array[int] = [engine_record, first_car_record, second_car_record]
 
 	for record in records:
 		var offset: int = record * RECORD_SIZE
-		ThingData.write(things, offset + 1, direction)
-		ThingData.write(things, offset + 3, start.x)
-		ThingData.write(things, offset + 4, start.y)
-		ThingData.write(things, offset + 5, 0)
+		ThingData.write(things, offset + Field.DIRECTION, direction)
+		ThingData.write(things, offset + Field.X, start.x)
+		ThingData.write(things, offset + Field.Y, start.y)
+		ThingData.write(things, offset + Field.Z, 0)
 
 	var engine_offset := engine_record * RECORD_SIZE
 	var first_car_offset := first_car_record * RECORD_SIZE
 	var second_car_offset := second_car_record * RECORD_SIZE
-	ThingData.write(things, engine_offset + 6, start.x + CARDINAL_DIRECTIONS[direction].x)
-	ThingData.write(things, engine_offset + 7, start.y + CARDINAL_DIRECTIONS[direction].y)
-	ThingData.write(things, first_car_offset + 6, start.x)
-	ThingData.write(things, first_car_offset + 7, start.y)
-	ThingData.write(things, second_car_offset + 6, start.x)
-	ThingData.write(things, second_car_offset + 7, start.y)
-	ThingData.write(things, engine_offset + 10, OverlayData.read(text, index))
-	ThingData.write(things, first_car_offset + 10, 0)
-	ThingData.write(things, second_car_offset + 10, 0)
-	ThingData.write(things, engine_offset + 2, first_car_record)
-	ThingData.write(things, first_car_offset + 2, second_car_record)
+	# Train PX/PY store the next tile. STATE links each car to the next record.
+	ThingData.write(things, engine_offset + Field.PX, start.x + CARDINAL_DIRECTIONS[direction].x)
+	ThingData.write(things, engine_offset + Field.PY, start.y + CARDINAL_DIRECTIONS[direction].y)
+	ThingData.write(things, first_car_offset + Field.PX, start.x)
+	ThingData.write(things, first_car_offset + Field.PY, start.y)
+	ThingData.write(things, second_car_offset + Field.PX, start.x)
+	ThingData.write(things, second_car_offset + Field.PY, start.y)
+	ThingData.write(things, engine_offset + Field.LABEL, OverlayData.read(text, index))
+	ThingData.write(things, first_car_offset + Field.LABEL, 0)
+	ThingData.write(things, second_car_offset + Field.LABEL, 0)
+	ThingData.write(things, engine_offset + Field.STATE, first_car_record)
+	ThingData.write(things, first_car_offset + Field.STATE, second_car_record)
 	OverlayData.write(text, index, OverlayData.thing_id(engine_record))
 
 	return true
@@ -477,7 +479,7 @@ static func _train_route_tile(tile_value: int) -> bool:
 
 static func _first_free_record(things: PackedByteArray) -> int:
 	for record in range(FIRST_RECORD, ThingData.count(things)):
-		if ThingData.read(things, record * RECORD_SIZE) == 0:
+		if ThingData.read(things, record * RECORD_SIZE + Field.TYPE) == 0:
 			return record
 
 	return 0

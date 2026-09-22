@@ -49,10 +49,11 @@ static func _clear_land(city: CityState, point: Vector2i) -> bool:
 	if index < 0:
 		return false
 	return city.buildings[index] < BuildingTileIds.SMALL_PARK and city.buildings[index] != BuildingTileIds.RADIOACTIVE_WASTE \
-		and city.terrain[index] == TerrainTileIds.FLAT and (city.tile_flags[index] & 4) == 0 \
-		and (city.zones[index] & 15) == 0 and city.underground[index] == UndergroundTileIds.EMPTY
+		and city.terrain[index] == TerrainTileIds.FLAT and (city.tile_flags[index] & Sc2TileFlags.WATER) == 0 \
+		and (city.zones[index] & Sc2ZoneLayout.TYPE_MASK) == 0 and city.underground[index] == UndergroundTileIds.EMPTY
 
 
 static func _salt_water(city: CityState, point: Vector2i) -> bool:
+	const SALT_WATER_FLAGS := Sc2TileFlags.WATER | Sc2TileFlags.SALT_WATER
 	var index := city.index_of(point.x, point.y)
-	return index >= 0 and (city.tile_flags[index] & 5) == 5
+	return index >= 0 and (city.tile_flags[index] & SALT_WATER_FLAGS) == SALT_WATER_FLAGS
