@@ -118,16 +118,16 @@ static func normal(
 	var is_demolish := Demolish.supports_tool(group_index, subtool_index)
 	var is_terrain := TerrainTools.supports_tool(group_index, subtool_index)
 	var is_dispatch := Dispatch.supports_tool(group_index, subtool_index)
-	var is_sign := group_index == 15
-	var is_query := group_index == 16
-	var is_center := group_index == 17
+	var is_sign := group_index == CityToolIds.Group.SIGNS
+	var is_query := group_index == CityToolIds.Group.QUERY
+	var is_center := group_index == CityToolIds.Group.CENTERING
 	var point_area := (
 		Tools.tool(group_index, subtool_index).area
 		if is_building else 1
 	)
 	var is_underground_network := (
-		(group_index == 4 and subtool_index == 0)
-		or (group_index == 7 and subtool_index == 1)
+		(group_index == CityToolIds.Group.WATER and subtool_index == CityToolIds.Water.PIPES)
+		or (group_index == CityToolIds.Group.RAIL and subtool_index == CityToolIds.Rail.SUBWAY)
 	)
 	var supported := (
 		is_zone
@@ -165,7 +165,7 @@ static func normal(
 	elif is_landscape or is_network or is_highway or is_terrain:
 		selection = "path"
 
-	if group_index == 1 and subtool_index == 3:
+	if group_index == CityToolIds.Group.LANDSCAPE and subtool_index == CityToolIds.Landscape.FOREST:
 		selection = "point"
 		point_area = 7
 
@@ -241,7 +241,7 @@ static func _normal_status_detail(
 	if is_zone:
 		return "%s selected. Drag on the city map to zone. Use the mouse wheel to zoom and the right or middle button to pan." % tool_name
 
-	if group_index == 1 and subtool_index == 3:
+	if group_index == CityToolIds.Group.LANDSCAPE and subtool_index == CityToolIds.Landscape.FOREST:
 		return "Place Forest selected. Hold to scatter trees in a seven-tile brush. Each tree placement costs $3. Hold Shift to Query."
 
 	if is_landscape:
@@ -286,7 +286,7 @@ static func _normal_status_detail(
 	if is_sign:
 		return "Place Sign selected. Click a city tile to add, edit, or remove a user sign."
 
-	if is_query and subtool_index == 1:
+	if is_query and subtool_index == CityToolIds.Query.TRIP_REACH:
 		return "Trip Query selected. Click a zone or network tile to show potential routes, trip cost, and growth access."
 
 	if is_query:

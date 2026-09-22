@@ -66,7 +66,8 @@ func select_tool_group(index: int) -> void:
 	if app.tool_state.terrain_stretch.active:
 		app.map_view.cancel_active_selection()
 
-	if app.tool_state.landscape_editor and index not in [0, 1, 16, 17]:
+	if (app.tool_state.landscape_editor and index not in [CityToolIds.Group.BULLDOZER, CityToolIds.Group.LANDSCAPE,
+			CityToolIds.Group.QUERY, CityToolIds.Group.CENTERING]):
 		return
 
 	if index < 0 or index >= Tools.GROUPS.size():
@@ -74,7 +75,7 @@ func select_tool_group(index: int) -> void:
 
 	app.tool_state.selected_group = index
 
-	if app.tool_state.selected_group == Dispatch.GROUP_DISPATCH:
+	if app.tool_state.selected_group == CityToolIds.Group.DISPATCH:
 		app.tool_state.dispatch_cycles = PackedInt32Array([0, 0, 0])
 		app.tool_state.dispatch_initialized = false
 
@@ -88,15 +89,15 @@ func select_tool_group(index: int) -> void:
 
 func _auto_select_underground() -> void:
 	# query, camera and bulldozer work in both views
-	if (app.tool_state.selected_group in [16, 17]
+	if (app.tool_state.selected_group in [CityToolIds.Group.QUERY, CityToolIds.Group.CENTERING]
 			or (CityViewMode.is_map(app.view_state.overlay_mode) and Demolish.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool))):
 		return
 
 	if app.document_state.city == null:
 		return
 
-	var underground_tool := ((app.tool_state.selected_group == 4 and app.tool_state.selected_subtool == 0)
-			or (app.tool_state.selected_group == 7 and app.tool_state.selected_subtool == 1))
+	var underground_tool := ((app.tool_state.selected_group == CityToolIds.Group.WATER and app.tool_state.selected_subtool == CityToolIds.Water.PIPES)
+			or (app.tool_state.selected_group == CityToolIds.Group.RAIL and app.tool_state.selected_subtool == CityToolIds.Rail.SUBWAY))
 	var target := CityViewMode.Mode.UNDERGROUND if underground_tool else CityViewMode.Mode.CITY
 
 	if app.view_state.overlay_mode != target:
@@ -108,15 +109,17 @@ func select_subtool(index: int) -> void:
 		app.map_view.cancel_active_selection()
 
 	if (not app.tool_state.landscape_editor and LandscapeEditorCommand.supports_tool(app.tool_state.selected_group, index)
-			and not (app.tool_state.selected_group == 1 and index == 3)):
+			and not (app.tool_state.selected_group == CityToolIds.Group.LANDSCAPE and index == CityToolIds.Landscape.FOREST)):
 		return
 
 	if (app.tool_state.landscape_editor
-			and (app.tool_state.selected_group not in [0, 1, 16, 17] or (app.tool_state.selected_group == 0 and index == 4)
-			or (app.tool_state.selected_group == 16 and index != 0))):
+			and (app.tool_state.selected_group not in [CityToolIds.Group.BULLDOZER, CityToolIds.Group.LANDSCAPE,
+			CityToolIds.Group.QUERY, CityToolIds.Group.CENTERING]
+			or (app.tool_state.selected_group == CityToolIds.Group.BULLDOZER and index == CityToolIds.Bulldozer.DEZONE)
+			or (app.tool_state.selected_group == CityToolIds.Group.QUERY and index != CityToolIds.Query.QUERY))):
 		return
 
-	if app.tool_state.selected_group == 2 and index == 3:
+	if app.tool_state.selected_group == CityToolIds.Group.DISPATCH and index == CityToolIds.Dispatch.RECALL:
 		var recalled := Dispatch.recall_all(app.document_state.city)
 
 		if recalled.ok:
@@ -137,7 +140,8 @@ func select_subtool(index: int) -> void:
 	_sync_child_tool_selection()
 	update_edit_state()
 
-	if app.tool_state.landscape_editor and app.tool_state.selected_group == 0 and index in [6, 7]:
+	if (app.tool_state.landscape_editor and app.tool_state.selected_group == CityToolIds.Group.BULLDOZER
+			and index in [CityToolIds.Bulldozer.RAISE_SEA, CityToolIds.Bulldozer.LOWER_SEA]):
 		app.city_edits.apply_map_selection(Vector2i.ZERO, Vector2i.ZERO, [Vector2i.ZERO], false)
 
 	if app.tool_state.selected_tool_available and ToolState.is_tool_chooser(app.tool_state.selected_group, app.tool_state.selected_subtool):
@@ -187,10 +191,11 @@ func update_edit_state() -> void:
 		)
 		app.tool_state.selected_tool_available = bool(state.available)
 
-	app.map_view.shift_rectangle_enabled = ((bool(state.landscape) and app.tool_state.selected_subtool != 3)
-			or (app.tool_state.landscape_editor and app.tool_state.selected_group == 0 and app.tool_state.selected_subtool in [1, 2, 3]))
-	app.map_view.continuous_placement = app.tool_state.selected_group == 1 and app.tool_state.selected_subtool == 3
-	app.map_view.shift_line_enabled = app.tool_state.selected_group == 1 and app.tool_state.selected_subtool in [0, 1]
+	app.map_view.shift_rectangle_enabled = ((bool(state.landscape) and app.tool_state.selected_subtool != CityToolIds.Landscape.FOREST)
+			or (app.tool_state.landscape_editor and app.tool_state.selected_group == CityToolIds.Group.BULLDOZER
+			and app.tool_state.selected_subtool in [CityToolIds.Bulldozer.LEVEL, CityToolIds.Bulldozer.RAISE, CityToolIds.Bulldozer.LOWER]))
+	app.map_view.continuous_placement = app.tool_state.selected_group == CityToolIds.Group.LANDSCAPE and app.tool_state.selected_subtool == CityToolIds.Landscape.FOREST
+	app.map_view.shift_line_enabled = app.tool_state.selected_group == CityToolIds.Group.LANDSCAPE and app.tool_state.selected_subtool in [CityToolIds.Landscape.TREES, CityToolIds.Landscape.WATER]
 
 	if app.map_view.shift_line_enabled:
 		state.selection = "rectangle"
@@ -203,15 +208,16 @@ func update_edit_state() -> void:
 		state.available = true
 		app.tool_state.selected_tool_available = true
 		state.selection = "point"
-		state.area = 7 if app.tool_state.selected_group == 1 and app.tool_state.selected_subtool == 3 else 1
+		state.area = 7 if app.tool_state.selected_group == CityToolIds.Group.LANDSCAPE and app.tool_state.selected_subtool == CityToolIds.Landscape.FOREST else 1
 		state.status_text = str(Tools.tool(app.tool_state.selected_group, app.tool_state.selected_subtool).name)
-		state.status_detail = ("Drag up or down to stretch terrain live. Hold Shift to apply on release." if app.tool_state.selected_group == 0
-				and app.tool_state.selected_subtool == 5 else "Free landscape editor tool.")
+		state.status_detail = ("Drag up or down to stretch terrain live. Hold Shift to apply on release." if app.tool_state.selected_group == CityToolIds.Group.BULLDOZER
+				and app.tool_state.selected_subtool == CityToolIds.Bulldozer.STRETCH else "Free landscape editor tool.")
 
 	var level_brush := app.new_city.level_brush_active()
-	app.map_view.landscape_brush = ((level_brush or app.tool_state.selected_group == 1 and app.tool_state.selected_subtool in [0, 1, 3])
+	app.map_view.landscape_brush = ((level_brush or app.tool_state.selected_group == CityToolIds.Group.LANDSCAPE
+			and app.tool_state.selected_subtool in [CityToolIds.Landscape.TREES, CityToolIds.Landscape.WATER, CityToolIds.Landscape.FOREST])
 			and not (app.scurk_place_print != null and app.scurk_place_print.visible))
-	app.map_view.demolish_brush = (app.tool_state.selected_group == 0 and app.tool_state.selected_subtool == 0
+	app.map_view.demolish_brush = (app.tool_state.selected_group == CityToolIds.Group.BULLDOZER and app.tool_state.selected_subtool == CityToolIds.Bulldozer.DEMOLISH
 			and not app.tool_state.landscape_editor and not (app.scurk_place_print != null and app.scurk_place_print.visible))
 	app.map_view.bulldozer_visual_provider = app.moving_sprites.demolish_brush_visual if app.view_state.overlay_mode == CityViewMode.Mode.CITY else Callable()
 	app.city_toolbar.brush_controls.visible = app.tool_state.landscape_editor and app.map_view.landscape_brush and not level_brush
@@ -220,7 +226,7 @@ func update_edit_state() -> void:
 		app.map_view.brush_round = true
 	else:
 		app.map_view.brush_size = (int(app.city_toolbar.brush_size_input.value) if app.tool_state.landscape_editor
-				else (7 if app.tool_state.selected_subtool == 3 else 1))
+				else (7 if app.tool_state.selected_subtool == CityToolIds.Landscape.FOREST else 1))
 		app.map_view.brush_round = app.city_toolbar.brush_shape_input.selected == 1 if app.tool_state.landscape_editor else true
 	if app.map_view.uses_paint_brush():
 		app.map_view.continuous_placement = true
@@ -228,13 +234,15 @@ func update_edit_state() -> void:
 		app.map_view.shift_rectangle_enabled = true
 		state.selection = "point"
 		state.area = 1
-	app.map_view.stretch_terrain = app.tool_state.landscape_editor and app.tool_state.selected_group == 0 and app.tool_state.selected_subtool == 5
+	app.map_view.stretch_terrain = (app.tool_state.landscape_editor and app.tool_state.selected_group == CityToolIds.Group.BULLDOZER
+			and app.tool_state.selected_subtool == CityToolIds.Bulldozer.STRETCH)
 	app.map_view.placement_error_provider = _placement_preview_error
-	app.map_view.show_selection_preview = app.tool_state.selected_group != 17
-	app.map_view.terrain_diamond_preview = app.tool_state.selected_group == 0 and app.tool_state.selected_subtool in [2, 3, 5]
-	app.map_view.highway_preview = app.tool_state.selected_group == 6 and app.tool_state.selected_subtool == 1
-	app.map_view.query_footprint_preview = app.tool_state.selected_group == 16
-	if app.tool_state.selected_group != 16 or app.tool_state.selected_subtool != 1:
+	app.map_view.show_selection_preview = app.tool_state.selected_group != CityToolIds.Group.CENTERING
+	app.map_view.terrain_diamond_preview = (app.tool_state.selected_group == CityToolIds.Group.BULLDOZER
+			and app.tool_state.selected_subtool in [CityToolIds.Bulldozer.RAISE, CityToolIds.Bulldozer.LOWER, CityToolIds.Bulldozer.STRETCH])
+	app.map_view.highway_preview = app.tool_state.selected_group == CityToolIds.Group.ROADS and app.tool_state.selected_subtool == CityToolIds.Roads.HIGHWAY
+	app.map_view.query_footprint_preview = app.tool_state.selected_group == CityToolIds.Group.QUERY
+	if app.tool_state.selected_group != CityToolIds.Group.QUERY or app.tool_state.selected_subtool != CityToolIds.Query.TRIP_REACH:
 		app.map_view.clear_trip_reach()
 	app.map_view.query_city = app.document_state.city
 	app.map_view.set_edit_enabled(

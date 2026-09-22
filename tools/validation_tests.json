@@ -1,5 +1,11 @@
 [
   {
+    "id": "city_tool_selection_test",
+    "script": "tests/city_tool_selection_test.gd",
+    "domain": "tools",
+    "lane": "product"
+  },
+  {
     "id": "network_topology_test",
     "script": "tests/network_topology_test.gd",
     "domain": "tools",
