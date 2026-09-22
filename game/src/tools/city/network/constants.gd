@@ -1,6 +1,7 @@
 class_name NetworkConstants
 extends RefCounted
 
+const Topology = preload("res://src/model/network_topology.gd")
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
 const MISC_FUNDS := Sc2MiscLayout.FUNDS
@@ -55,7 +56,7 @@ const NETWORK_TOOLS := {
 	85: MODE_SUBWAY,
 }
 
-const NETWORK_SHAPES := [0, 0, 1, 6, 0, 0, 7, 11, 1, 9, 1, 10, 8, 13, 12, 14]
+const NETWORK_SHAPES := Topology.SHAPE_OFFSET_BY_CONNECTION_MASK
 const DIRECTIONS := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
 const TERRAIN_REQUIRES_GRADING := [
 	false, false, false, false, false, true, true, true,

@@ -1,6 +1,7 @@
 class_name BuildingConstants
 extends BuildingTileIds
 
+const Topology = preload("res://src/model/network_topology.gd")
 const Facilities = preload("res://src/model/facility_metadata.gd")
 const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
 
@@ -144,7 +145,7 @@ const CORNER_BOTTOM_LEFT := Sc2ZoneLayout.CORNER_BOTTOM_LEFT
 const CORNER_BOTTOM_RIGHT := Sc2ZoneLayout.CORNER_BOTTOM_RIGHT
 const CORNER_TOP_LEFT := Sc2ZoneLayout.CORNER_TOP_LEFT
 const CORNER_TOP_RIGHT := Sc2ZoneLayout.CORNER_TOP_RIGHT
-const NETWORK_SHAPES := [0, 0, 1, 6, 0, 0, 7, 11, 1, 9, 1, 10, 8, 13, 12, 14]
+const NETWORK_SHAPES := Topology.SHAPE_OFFSET_BY_CONNECTION_MASK
 const FORCED_TERRAIN_SHAPES := [0, 2, 3, 4, 5, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1]
 const FORCED_TERRAIN_MASKS := {
 	1: true,
