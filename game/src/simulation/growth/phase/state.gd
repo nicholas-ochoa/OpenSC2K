@@ -20,8 +20,8 @@ static func replace_building(
 	if (zones[index] & 0x0f) != 7:
 		var old_offset := MISC_TILE_COUNTS + old_tile * 4
 		var new_offset := MISC_TILE_COUNTS + new_tile * 4
-		_write_u32(misc, old_offset, (_read_u32(misc, old_offset) - 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
-		_write_u32(misc, new_offset, (_read_u32(misc, new_offset) + 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
+		BinaryData.write_u32_be(misc, old_offset, (BinaryData.read_u32_be(misc, old_offset) - 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
+		BinaryData.write_u32_be(misc, new_offset, (BinaryData.read_u32_be(misc, new_offset) + 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
 
 	buildings[index] = new_tile
 
@@ -116,27 +116,4 @@ static func _index(point: Vector2i, map_edge: int = 128) -> int:
 
 
 static func _add_i32(data: PackedByteArray, offset: int, value: int) -> void:
-	_write_u32(data, offset, _read_i32(data, offset) + value)
-
-
-static func _read_i32(data: PackedByteArray, offset: int) -> int:
-	var value := _read_u32(data, offset)
-
-	return value - 0x100000000 if value & 0x80000000 else value
-
-
-static func _read_u32(data: PackedByteArray, offset: int) -> int:
-	return (
-		(data[offset] << 24)
-		| (data[offset + 1] << 16)
-		| (data[offset + 2] << 8)
-		| data[offset + 3]
-	)
-
-
-static func _write_u32(data: PackedByteArray, offset: int, value: int) -> void:
-	var encoded := value & 0xffffffff
-	data[offset] = (encoded >> 24) & 0xff
-	data[offset + 1] = (encoded >> 16) & 0xff
-	data[offset + 2] = (encoded >> 8) & 0xff
-	data[offset + 3] = encoded & 0xff
+	BinaryData.write_u32_be(data, offset, BinaryData.read_i32_be(data, offset) + value)

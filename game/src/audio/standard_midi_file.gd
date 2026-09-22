@@ -75,14 +75,14 @@ func parse(data: PackedByteArray) -> bool:
 	if data.size() < 14 or _ascii(data, 0, 4) != "MThd":
 		return _fail("MIDI header is missing or truncated")
 
-	var header_size := _read_u32_be(data, 4)
+	var header_size := BinaryData.read_u32_be(data, 4)
 
 	if header_size < 6 or 8 + header_size > data.size():
 		return _fail("MIDI header length is invalid")
 
-	format_type = _read_u16_be(data, 8)
-	track_count = _read_u16_be(data, 10)
-	var division := _read_u16_be(data, 12)
+	format_type = BinaryData.read_u16_be(data, 8)
+	track_count = BinaryData.read_u16_be(data, 10)
+	var division := BinaryData.read_u16_be(data, 12)
 
 	if format_type < 0 or format_type > 1:
 		return _fail("MIDI format %d is not supported" % format_type)
@@ -102,7 +102,7 @@ func parse(data: PackedByteArray) -> bool:
 		if cursor + 8 > data.size() or _ascii(data, cursor, 4) != "MTrk":
 			return _fail("MIDI track %d header is missing or truncated" % track_index)
 
-		var track_size := _read_u32_be(data, cursor + 4)
+		var track_size := BinaryData.read_u32_be(data, cursor + 4)
 		var track_start := cursor + 8
 		var track_end := track_start + track_size
 
@@ -370,19 +370,6 @@ static func _read_variable_length(data: PackedByteArray, offset: int, end: int) 
 	result.error = "invalid value"
 
 	return result
-
-
-static func _read_u16_be(data: PackedByteArray, offset: int) -> int:
-	return (int(data[offset]) << 8) | int(data[offset + 1])
-
-
-static func _read_u32_be(data: PackedByteArray, offset: int) -> int:
-	return (
-		(int(data[offset]) << 24)
-		| (int(data[offset + 1]) << 16)
-		| (int(data[offset + 2]) << 8)
-		| int(data[offset + 3])
-	)
 
 
 static func _ascii(data: PackedByteArray, offset: int, length: int) -> String:

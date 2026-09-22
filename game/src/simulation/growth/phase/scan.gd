@@ -289,7 +289,7 @@ class TileScan extends GrowthConstants:
 		if trip.used_subway:
 			subway_passengers += density
 
-		return GrowthState._read_i32(misc, MISC_DEMAND + int((zone - 1) / 2) * 4) + 2000
+		return BinaryData.read_i32_be(misc, MISC_DEMAND + int((zone - 1) / 2) * 4) + 2000
 
 
 	# add a developed building's population, then roll for abandonment
@@ -330,8 +330,8 @@ class TileScan extends GrowthConstants:
 			return false
 
 		if (
-			GrowthState._read_u32(misc, MISC_NORMAL_POPULATION)
-			> GrowthState._read_u32(misc, MISC_TILE_COUNTS + CHURCH_TILE * 4) * 2500
+			BinaryData.read_u32_be(misc, MISC_NORMAL_POPULATION)
+			> BinaryData.read_u32_be(misc, MISC_TILE_COUNTS + CHURCH_TILE * 4) * 2500
 			and (density & 2) != 0
 			and zone < 3
 		):

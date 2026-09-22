@@ -229,8 +229,8 @@ static func _update_facility_records(annual: MicrosimAnnualContext) -> void:
 
 # store the arrest total and prison bonus, and report a low school score
 static func _store_prison_and_school_totals(annual: MicrosimAnnualContext) -> void:
-	_write_u32(annual.misc, MISC_OLD_ARRESTS, annual.old_arrests)
-	_write_u32(
+	BinaryData.write_u32_be(annual.misc, MISC_OLD_ARRESTS, annual.old_arrests)
+	BinaryData.write_u32_be(
 		annual.misc,
 		MISC_PRISON_BONUS,
 		0
@@ -244,7 +244,7 @@ static func _store_prison_and_school_totals(annual: MicrosimAnnualContext) -> vo
 
 # store the arcology population and decide whether the launch is due
 static func _store_arcology_population(annual: MicrosimAnnualContext) -> void:
-	_write_u32(annual.misc, MISC_ARCOLOGY_POPULATION, annual.arcology_population)
+	BinaryData.write_u32_be(annual.misc, MISC_ARCOLOGY_POPULATION, annual.arcology_population)
 	annual.arcology_launch_pending = (
 		_divide_toward_zero(_tile_count(annual.misc, TILE_LAUNCH_ARCOLOGY, annual.map_edge), 16) > 300
 		and annual.arcology_population > 6000000
@@ -277,10 +277,10 @@ static func _launch_arcologies(annual: MicrosimAnnualContext) -> void:
 				annual.launched_structures += 1
 				annual.sound_events.append(SOUND_EXPLOSION)
 
-	_write_i32(
+	BinaryData.write_u32_be(
 		annual.misc,
 		MISC_FUNDS,
-		_to_i32(_read_i32(annual.misc, MISC_FUNDS) + annual.launch_arcology_records * 100000)
+		_to_i32(BinaryData.read_i32_be(annual.misc, MISC_FUNDS) + annual.launch_arcology_records * 100000)
 	)
 	annual.news_items.append(NewsEvent.new(NEWS_ARCOLOGY_LAUNCH_END, 0))
 	annual.arcology_launched = true

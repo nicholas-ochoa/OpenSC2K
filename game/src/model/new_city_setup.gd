@@ -163,17 +163,17 @@ static func create(
 	var misc_chunk := document.find_chunk("MISC")
 	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
 	var national_population := int(NATIONAL_POPULATIONS[starting_year])
-	_write_u32(misc, MISC_CITY_MODE, 1)
-	_write_u32(misc, MISC_START_YEAR, starting_year)
-	_write_u32(misc, MISC_FUNDS, 20000 if difficulty == 1 else 10000)
-	_write_u32(misc, MISC_BONDS, 0)
-	_write_u32(misc, MISC_DIFFICULTY, difficulty)
-	_write_u32(misc, MISC_NATIONAL_POPULATION, national_population)
-	_write_u32(misc, MISC_NATIONAL_FEDERAL_RATE, 3)
-	_write_u32(misc, MISC_NATIONAL_ECONOMY_TREND, difficulty - 1)
+	BinaryData.write_u32_be(misc, MISC_CITY_MODE, 1)
+	BinaryData.write_u32_be(misc, MISC_START_YEAR, starting_year)
+	BinaryData.write_u32_be(misc, MISC_FUNDS, 20000 if difficulty == 1 else 10000)
+	BinaryData.write_u32_be(misc, MISC_BONDS, 0)
+	BinaryData.write_u32_be(misc, MISC_DIFFICULTY, difficulty)
+	BinaryData.write_u32_be(misc, MISC_NATIONAL_POPULATION, national_population)
+	BinaryData.write_u32_be(misc, MISC_NATIONAL_FEDERAL_RATE, 3)
+	BinaryData.write_u32_be(misc, MISC_NATIONAL_ECONOMY_TREND, difficulty - 1)
 
 	for bond_index in MAX_BONDS:
-		_write_u32(misc, MISC_BOND_RATES + bond_index * 4, 0)
+		BinaryData.write_u32_be(misc, MISC_BOND_RATES + bond_index * 4, 0)
 
 	var bond_budget := MISC_BUDGETS + BUDGET_BONDS * BUDGET_RECORD_SIZE
 
@@ -181,13 +181,13 @@ static func create(
 		misc[bond_budget + byte_index] = 0
 
 	if difficulty == 3:
-		_write_u32(misc, MISC_BONDS, 1)
-		_write_u32(misc, MISC_BOND_RATES, HARD_BOND_RATE)
-		_write_u32(misc, bond_budget + BUDGET_CURRENT, 1)
-		_write_u32(misc, bond_budget + BUDGET_FUNDING, 30000)
-		_write_u32(misc, bond_budget + BUDGET_YEAR_TO_DATE, 30000)
-		_write_u32(misc, bond_budget + BUDGET_COUNT_MONTH_0, 1)
-		_write_u32(misc, bond_budget + BUDGET_FUND_MONTH_0, 30000)
+		BinaryData.write_u32_be(misc, MISC_BONDS, 1)
+		BinaryData.write_u32_be(misc, MISC_BOND_RATES, HARD_BOND_RATE)
+		BinaryData.write_u32_be(misc, bond_budget + BUDGET_CURRENT, 1)
+		BinaryData.write_u32_be(misc, bond_budget + BUDGET_FUNDING, 30000)
+		BinaryData.write_u32_be(misc, bond_budget + BUDGET_YEAR_TO_DATE, 30000)
+		BinaryData.write_u32_be(misc, bond_budget + BUDGET_COUNT_MONTH_0, 1)
+		BinaryData.write_u32_be(misc, bond_budget + BUDGET_FUND_MONTH_0, 30000)
 
 	if not newspaper_session_state.is_empty():
 		_copy_range(
@@ -215,7 +215,7 @@ static func create(
 			invention_year = 0
 
 		invention_years.append(invention_year)
-		_write_u32(
+		BinaryData.write_u32_be(
 			misc, MISC_INVENTION_YEARS + invention_index * 4, invention_year
 		)
 
@@ -261,7 +261,7 @@ static func create(
 static func _write_graph_value(
 	data: PackedByteArray, series: int, index: int, value: int
 ) -> void:
-	_write_u32(data, (series * GRAPH_VALUE_COUNT + index) * 4, value)
+	BinaryData.write_u32_be(data, (series * GRAPH_VALUE_COUNT + index) * 4, value)
 
 
 static func _copy_range(
@@ -269,11 +269,3 @@ static func _copy_range(
 ) -> void:
 	for index in length:
 		target[offset + index] = source[offset + index]
-
-
-static func _write_u32(data: PackedByteArray, offset: int, value: int) -> void:
-	var encoded := value & 0xffffffff
-	data[offset] = (encoded >> 24) & 0xff
-	data[offset + 1] = (encoded >> 16) & 0xff
-	data[offset + 2] = (encoded >> 8) & 0xff
-	data[offset + 3] = encoded & 0xff

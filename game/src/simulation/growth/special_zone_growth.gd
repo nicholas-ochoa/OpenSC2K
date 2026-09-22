@@ -28,7 +28,7 @@ static func process(
 	var fallback_tile := -1
 
 	if zone == 7:
-		match SpecialZoneState.read_u32(misc, MISC_MILITARY_BASE_TYPE) & 0xff:
+		match BinaryData.read_u32_be(misc, MISC_MILITARY_BASE_TYPE) & 0xff:
 			2:
 				if random.next_u15() & 3:
 					return

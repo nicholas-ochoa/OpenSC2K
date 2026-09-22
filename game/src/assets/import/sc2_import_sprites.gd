@@ -21,7 +21,7 @@ static func mac_tile_set(data: PackedByteArray) -> Sc2ImportSprites:
 		return result
 
 	# Mac TILE stores a count followed by SHAP chunks; it does not use the Windows MIF layout.
-	var count := Sc2ImportContainer.be16(data, 32)
+	var count := BinaryData.read_u16_be(data, 32)
 	var cursor := 34
 	var total_pixels := 0
 
@@ -49,9 +49,9 @@ static func mac_tile_set(data: PackedByteArray) -> Sc2ImportSprites:
 			continue
 
 		var entry := Sc2SpriteArchive.SpriteEntry.new()
-		entry.sprite_id = Sc2ImportContainer.be16(data, start)
-		entry.width = Sc2ImportContainer.be16(data, start + 2)
-		entry.height = Sc2ImportContainer.be16(data, start + 4)
+		entry.sprite_id = BinaryData.read_u16_be(data, start)
+		entry.width = BinaryData.read_u16_be(data, start + 2)
+		entry.height = BinaryData.read_u16_be(data, start + 4)
 
 		if entry.width < 1 or entry.height < 1 or entry.width > 4096 or entry.height > 4096 or total_pixels + entry.width * entry.height > 16 * 1024 * 1024:
 			result.warnings.append("Macintosh shape %d exceeds the decoded image limits." % entry.sprite_id)

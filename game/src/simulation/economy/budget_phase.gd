@@ -86,15 +86,15 @@ static func run(city: CityState, random: SimRandom, annual_budget_approved := fa
 	span.mark("prepare data")
 	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
 	var month := int((city.age_in_days() % 300) / 25)
-	var funds_before := _read_i32(misc, MISC_FUNDS)
+	var funds_before := BinaryData.read_i32_be(misc, MISC_FUNDS)
 	var funds := funds_before
 	var settled_year := false
 	var auto_budget_disabled := false
 
 	if (
-		_read_u32(misc, MISC_YEAR_END) != 0
+		BinaryData.read_u32_be(misc, MISC_YEAR_END) != 0
 		and month == 0
-		and _read_u32(misc, MISC_AUTO_BUDGET) == 0
+		and BinaryData.read_u32_be(misc, MISC_AUTO_BUDGET) == 0
 		and not annual_budget_approved
 	):
 		var interactive := Result.new()
@@ -107,7 +107,7 @@ static func run(city: CityState, random: SimRandom, annual_budget_approved := fa
 		return interactive
 
 	span.mark("annual settlement")
-	if _read_u32(misc, MISC_YEAR_END) != 0 and month == 0:
+	if BinaryData.read_u32_be(misc, MISC_YEAR_END) != 0 and month == 0:
 		settled_year = true
 
 		for budget_id in BUDGET_COUNT:
@@ -115,52 +115,52 @@ static func run(city: CityState, random: SimRandom, annual_budget_approved := fa
 			var factor: int = ANNUAL_DIVISOR_FACTORS[budget_id]
 
 			if factor != 0:
-				var year_to_date := _read_i32(misc, budget_offset + BUDGET_YEAR_TO_DATE)
+				var year_to_date := BinaryData.read_i32_be(misc, budget_offset + BUDGET_YEAR_TO_DATE)
 				funds = _to_i32(
 					funds + _divide_toward_zero(year_to_date, factor * 12)
 				)
 
-			_write_i32(misc, budget_offset + BUDGET_YEAR_TO_DATE, 0)
+			BinaryData.write_u32_be(misc, budget_offset + BUDGET_YEAR_TO_DATE, 0)
 
-		_write_u32(misc, MISC_YEAR_END, 0)
-		_write_i32(misc, MISC_FUNDS, funds)
+		BinaryData.write_u32_be(misc, MISC_YEAR_END, 0)
+		BinaryData.write_u32_be(misc, MISC_FUNDS, funds)
 
-		if funds < 0 and _read_u32(misc, MISC_AUTO_BUDGET) != 0:
-			_write_u32(misc, MISC_AUTO_BUDGET, 0)
+		if funds < 0 and BinaryData.read_u32_be(misc, MISC_AUTO_BUDGET) != 0:
+			BinaryData.write_u32_be(misc, MISC_AUTO_BUDGET, 0)
 			auto_budget_disabled = true
 
 	span.mark("monthly history")
 	for budget_id in BUDGET_COUNT:
 		var budget_offset := _budget_offset(budget_id)
-		var current := _read_i32(misc, budget_offset + BUDGET_CURRENT)
-		var funding := _read_i32(misc, budget_offset + BUDGET_FUNDING)
+		var current := BinaryData.read_i32_be(misc, budget_offset + BUDGET_CURRENT)
+		var funding := BinaryData.read_i32_be(misc, budget_offset + BUDGET_FUNDING)
 		var month_offset := budget_offset + BUDGET_MONTHS + month * 8
-		_write_i32(misc, month_offset, current)
-		_write_i32(misc, month_offset + 4, funding)
-		var year_to_date := _read_i32(misc, budget_offset + BUDGET_YEAR_TO_DATE)
+		BinaryData.write_u32_be(misc, month_offset, current)
+		BinaryData.write_u32_be(misc, month_offset + 4, funding)
+		var year_to_date := BinaryData.read_i32_be(misc, budget_offset + BUDGET_YEAR_TO_DATE)
 		var funded_cost := _to_i32(current * funding)
-		_write_i32(
+		BinaryData.write_u32_be(
 			misc,
 			budget_offset + BUDGET_YEAR_TO_DATE,
 			_to_i32(year_to_date + funded_cost)
 		)
 
 	if month == 11:
-		_write_u32(misc, MISC_YEAR_END, 1)
+		BinaryData.write_u32_be(misc, MISC_YEAR_END, 1)
 
-	_write_i32(misc, _budget_offset(BUDGET_BONDS), _read_i32(misc, MISC_BONDS))
+	BinaryData.write_u32_be(misc, _budget_offset(BUDGET_BONDS), BinaryData.read_i32_be(misc, MISC_BONDS))
 
 	span.mark("service and network costs")
 	for budget_id in SERVICE_TILE_IDS:
 		var divisor := 16 if budget_id == BUDGET_COLLEGE else 9
-		_write_i32(
+		BinaryData.write_u32_be(
 			misc,
 			_budget_offset(budget_id),
 			_divide_toward_zero(_tile_count(misc, SERVICE_TILE_IDS[budget_id]), divisor)
 		)
 
 	for budget_id in range(BUDGET_ROAD, BUDGET_TUNNEL + 1):
-		_write_i32(misc, _budget_offset(budget_id), 0)
+		BinaryData.write_u32_be(misc, _budget_offset(budget_id), 0)
 
 	for tile_id in range(Tiles.FIRST_ROAD, Tiles.DEVELOPED_FIRST):
 		var count := _tile_count(misc, tile_id)
@@ -192,10 +192,10 @@ static func run(city: CityState, random: SimRandom, annual_budget_approved := fa
 		if tile_id >= Tiles.TUNNEL_ENTRANCE_1 and tile_id <= Tiles.TUNNEL_ENTRANCE_4:
 			_add_current(misc, BUDGET_TUNNEL, count)
 
-	_write_i32(
+	BinaryData.write_u32_be(
 		misc,
 		_budget_offset(BUDGET_SUBWAY),
-		_tile_count(misc, Tiles.SUBWAY_STATION) + _read_u32(misc, MISC_SUBWAY_COUNT)
+		_tile_count(misc, Tiles.SUBWAY_STATION) + BinaryData.read_u32_be(misc, MISC_SUBWAY_COUNT)
 	)
 	_add_current(misc, BUDGET_RAIL, _tile_count(misc, Tiles.RAIL_STATION))
 	_add_current(
@@ -203,7 +203,7 @@ static func run(city: CityState, random: SimRandom, annual_budget_approved := fa
 		BUDGET_ROAD,
 		_divide_toward_zero(_tile_count(misc, Tiles.BUS_DEPOT), 4) * 250
 	)
-	_write_i32(
+	BinaryData.write_u32_be(
 		misc,
 		_budget_offset(BUDGET_ORDINANCES),
 		Ordinances.current_cost_for_misc(misc),
@@ -213,15 +213,15 @@ static func run(city: CityState, random: SimRandom, annual_budget_approved := fa
 	var news_items: Array[NewsEvent] = []
 
 	if (
-		_read_u32(misc, MISC_NO_DISASTERS) == 0
+		BinaryData.read_u32_be(misc, MISC_NO_DISASTERS) == 0
 		and (random.next_u15() & 7) == 0
-		and (random.next_u15() & 0xffff) + 50000 < _read_i32(misc, MISC_FUNDS)
+		and (random.next_u15() & 0xffff) + 50000 < BinaryData.read_i32_be(misc, MISC_FUNDS)
 	):
 		var ordinance_id: int = random.next_u15() % 20
-		_write_u32(
+		BinaryData.write_u32_be(
 			misc,
 			MISC_ORDINANCES,
-			_read_u32(misc, MISC_ORDINANCES) | (1 << ordinance_id)
+			BinaryData.read_u32_be(misc, MISC_ORDINANCES) | (1 << ordinance_id)
 		)
 		news_items.append(NewsEvent.new(NEWS_ORDINANCE, ordinance_id))
 
@@ -232,14 +232,14 @@ static func run(city: CityState, random: SimRandom, annual_budget_approved := fa
 	var current_costs := PackedInt32Array()
 
 	for budget_id in BUDGET_COUNT:
-		current_costs.append(_read_i32(misc, _budget_offset(budget_id)))
+		current_costs.append(BinaryData.read_i32_be(misc, _budget_offset(budget_id)))
 
 	var result := Result.new()
 	result.ok = true
 	result.month = month
 	result.settled_year = settled_year
 	result.funds_before = funds_before
-	result.funds_after = _read_i32(misc, MISC_FUNDS)
+	result.funds_after = BinaryData.read_i32_be(misc, MISC_FUNDS)
 	result.auto_budget_disabled = auto_budget_disabled
 	result.current_costs = current_costs
 	result.news_items = news_items
@@ -296,9 +296,9 @@ static func set_funding(
 	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
 
 	for budget_id in BUDGET_COUNT:
-		_write_i32(misc, _budget_offset(budget_id) + BUDGET_FUNDING, values[budget_id])
+		BinaryData.write_u32_be(misc, _budget_offset(budget_id) + BUDGET_FUNDING, values[budget_id])
 
-	_write_u32(misc, MISC_AUTO_BUDGET, 1 if auto_budget else 0)
+	BinaryData.write_u32_be(misc, MISC_AUTO_BUDGET, 1 if auto_budget else 0)
 
 	if not misc_chunk.set_decoded_payload(misc):
 		return _failed("cannot store budget funding values")
@@ -315,12 +315,12 @@ static func _budget_offset(budget_id: int) -> int:
 
 
 static func _tile_count(misc: PackedByteArray, tile_id: int) -> int:
-	return _read_i32(misc, MISC_TILE_COUNTS + tile_id * 4)
+	return BinaryData.read_i32_be(misc, MISC_TILE_COUNTS + tile_id * 4)
 
 
 static func _add_current(misc: PackedByteArray, budget_id: int, value: int) -> void:
 	var offset := _budget_offset(budget_id)
-	_write_i32(misc, offset, _to_i32(_read_i32(misc, offset) + value))
+	BinaryData.write_u32_be(misc, offset, _to_i32(BinaryData.read_i32_be(misc, offset) + value))
 
 
 static func _divide_toward_zero(value: int, divisor: int) -> int:
@@ -336,27 +336,3 @@ static func _to_i32(value: int) -> int:
 	var unsigned := value & 0xffffffff
 
 	return unsigned - 0x100000000 if unsigned & 0x80000000 else unsigned
-
-
-static func _read_u32(data: PackedByteArray, offset: int) -> int:
-	return (
-		(data[offset] << 24)
-		| (data[offset + 1] << 16)
-		| (data[offset + 2] << 8)
-		| data[offset + 3]
-	)
-
-
-static func _read_i32(data: PackedByteArray, offset: int) -> int:
-	return _to_i32(_read_u32(data, offset))
-
-
-static func _write_u32(data: PackedByteArray, offset: int, value: int) -> void:
-	data[offset] = (value >> 24) & 0xff
-	data[offset + 1] = (value >> 16) & 0xff
-	data[offset + 2] = (value >> 8) & 0xff
-	data[offset + 3] = value & 0xff
-
-
-static func _write_i32(data: PackedByteArray, offset: int, value: int) -> void:
-	_write_u32(data, offset, value)

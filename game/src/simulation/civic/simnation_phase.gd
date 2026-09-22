@@ -45,29 +45,29 @@ static func run(city: CityState, random: SimRandom) -> Result:
 		return _failed("MISC is missing or has the wrong size")
 
 	var data: PackedByteArray = misc_chunk.decoded_payload.duplicate()
-	var economy_trend := _to_i16(_read_u32(data, MISC_NATIONAL_ECONOMY_TREND))
+	var economy_trend := _to_i16(BinaryData.read_u32_be(data, MISC_NATIONAL_ECONOMY_TREND))
 
 	if economy_trend < 0 or economy_trend >= ECONOMY_FACTORS.size():
 		return _failed("the national economy trend is out of range")
 
-	var federal_rate := _to_i16(_read_u32(data, MISC_NATIONAL_FEDERAL_RATE))
+	var federal_rate := _to_i16(BinaryData.read_u32_be(data, MISC_NATIONAL_FEDERAL_RATE))
 
 	if federal_rate <= 0:
 		return _failed("the national federal rate is not positive")
 
 	var news_items: Array[NewsEvent] = []
 
-	var national_population := _read_u32(data, MISC_NATIONAL_POPULATION)
+	var national_population := BinaryData.read_u32_be(data, MISC_NATIONAL_POPULATION)
 	var population_change := _scaled_change(national_population, economy_trend)
 	national_population = _move_about_center(
 		national_population, population_change, NATIONAL_POPULATION_CENTER
 	)
-	_write_u32(data, MISC_NATIONAL_POPULATION, national_population)
+	BinaryData.write_u32_be(data, MISC_NATIONAL_POPULATION, national_population)
 
-	var national_value := _read_u32(data, MISC_NATIONAL_VALUE)
+	var national_value := BinaryData.read_u32_be(data, MISC_NATIONAL_VALUE)
 	var value_change := _scaled_change(national_value, ECONOMY_FACTORS[economy_trend])
 	national_value = _move_about_center(national_value, value_change, NATIONAL_VALUE_CENTER)
-	_write_u32(data, MISC_NATIONAL_VALUE, national_value)
+	BinaryData.write_u32_be(data, MISC_NATIONAL_VALUE, national_value)
 
 	if random.next_u15() % 10 == 0:
 		var national_score := int(float(national_value) / float(national_population + 1) * 100.0)
@@ -75,7 +75,7 @@ static func run(city: CityState, random: SimRandom) -> Result:
 		if random.next_u15() % 5 < 2:
 			if random.next_u15() % (federal_rate * 25) < national_score:
 				federal_rate += 1
-				_write_u32(data, MISC_NATIONAL_FEDERAL_RATE, federal_rate)
+				BinaryData.write_u32_be(data, MISC_NATIONAL_FEDERAL_RATE, federal_rate)
 				news_items.append(NewsEvent.new(NEWS_FEDERAL_RATE_UP, federal_rate))
 
 			if national_score < random.next_u15() % (federal_rate * 25):
@@ -86,14 +86,14 @@ static func run(city: CityState, random: SimRandom) -> Result:
 				else:
 					news_items.append(NewsEvent.new(NEWS_FEDERAL_RATE_DOWN, federal_rate))
 
-				_write_u32(data, MISC_NATIONAL_FEDERAL_RATE, federal_rate)
+				BinaryData.write_u32_be(data, MISC_NATIONAL_FEDERAL_RATE, federal_rate)
 
 		if random.next_u15() % 3 == 0:
 			var new_trend := economy_level(national_score)
 
 			if new_trend != economy_trend:
 				economy_trend = new_trend
-				_write_u32(data, MISC_NATIONAL_ECONOMY_TREND, economy_trend)
+				BinaryData.write_u32_be(data, MISC_NATIONAL_ECONOMY_TREND, economy_trend)
 				news_items.append(NewsEvent.new(NEWS_NATIONAL_ECONOMY, economy_trend))
 
 	var neighbor_populations := PackedInt64Array()
@@ -101,8 +101,8 @@ static func run(city: CityState, random: SimRandom) -> Result:
 
 	for neighbor in NEIGHBOR_COUNT:
 		var base := MISC_NEIGHBORS + neighbor * NEIGHBOR_STRIDE
-		var population := _read_u32(data, base + NEIGHBOR_POPULATION)
-		var value := _read_u32(data, base + NEIGHBOR_VALUE)
+		var population := BinaryData.read_u32_be(data, base + NEIGHBOR_POPULATION)
+		var value := BinaryData.read_u32_be(data, base + NEIGHBOR_VALUE)
 
 		if population != 0:
 			population_change = _scaled_change(
@@ -115,7 +115,7 @@ static func run(city: CityState, random: SimRandom) -> Result:
 			if population_change == 0:
 				population = (population + (random.next_u15() & 1)) & 0xffffffff
 
-			_write_u32(data, base + NEIGHBOR_POPULATION, population)
+			BinaryData.write_u32_be(data, base + NEIGHBOR_POPULATION, population)
 
 			var neighbor_score := int(float(value) / float(population) * 100.0)
 			var value_factor: int = (
@@ -126,7 +126,7 @@ static func run(city: CityState, random: SimRandom) -> Result:
 			)
 			value_change = _scaled_change(value, value_factor)
 			value = _move_about_center(value, value_change, NATIONAL_VALUE_CENTER)
-			_write_u32(data, base + NEIGHBOR_VALUE, value)
+			BinaryData.write_u32_be(data, base + NEIGHBOR_VALUE, value)
 
 		neighbor_populations.append(population)
 		neighbor_values.append(value)
@@ -142,10 +142,10 @@ static func run(city: CityState, random: SimRandom) -> Result:
 		neighbor_values[shocked_neighbor] = int(
 			float(neighbor_values[shocked_neighbor]) * 0.5
 		)
-		_write_u32(
+		BinaryData.write_u32_be(
 			data, shock_base + NEIGHBOR_POPULATION, neighbor_populations[shocked_neighbor]
 		)
-		_write_u32(data, shock_base + NEIGHBOR_VALUE, neighbor_values[shocked_neighbor])
+		BinaryData.write_u32_be(data, shock_base + NEIGHBOR_VALUE, neighbor_values[shocked_neighbor])
 
 	if not misc_chunk.set_decoded_payload(data):
 		return _failed("cannot store the SimNation update")
@@ -195,20 +195,3 @@ static func _to_i16(value: int) -> int:
 	var word := value & 0xffff
 
 	return word - 0x10000 if word & 0x8000 else word
-
-
-static func _read_u32(data: PackedByteArray, offset: int) -> int:
-	return (
-		(data[offset] << 24)
-		| (data[offset + 1] << 16)
-		| (data[offset + 2] << 8)
-		| data[offset + 3]
-	)
-
-
-static func _write_u32(data: PackedByteArray, offset: int, value: int) -> void:
-	var encoded := value & 0xffffffff
-	data[offset] = (encoded >> 24) & 0xff
-	data[offset + 1] = (encoded >> 16) & 0xff
-	data[offset + 2] = (encoded >> 8) & 0xff
-	data[offset + 3] = encoded & 0xff

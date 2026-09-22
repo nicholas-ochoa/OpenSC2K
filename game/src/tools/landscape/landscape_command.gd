@@ -138,7 +138,7 @@ static func apply_path(
 
 		return LandscapeEditResult.rejected("no eligible tiles changed")
 
-	_write_u32_be(misc, MISC_FUNDS, old_funds - total_cost)
+	BinaryData.write_u32_be(misc, MISC_FUNDS, old_funds - total_cost)
 
 	var changed_ids := PackedStringArray()
 
@@ -356,10 +356,10 @@ static func _update_building_count(
 
 	var old_offset := MISC_TILE_COUNTS + old_building * 4
 	var new_offset := MISC_TILE_COUNTS + new_building * 4
-	var old_count := _read_u32_be(misc, old_offset)
-	_write_u32_be(misc, old_offset, (old_count - 1) & (0xffff if map_edge == 128 else 0xffffffff))
-	var new_count := _read_u32_be(misc, new_offset)
-	_write_u32_be(misc, new_offset, (new_count + 1) & (0xffff if map_edge == 128 else 0xffffffff))
+	var old_count := BinaryData.read_u32_be(misc, old_offset)
+	BinaryData.write_u32_be(misc, old_offset, (old_count - 1) & (0xffff if map_edge == 128 else 0xffffffff))
+	var new_count := BinaryData.read_u32_be(misc, new_offset)
+	BinaryData.write_u32_be(misc, new_offset, (new_count + 1) & (0xffff if map_edge == 128 else 0xffffffff))
 
 
 static func _city_payloads(city: CityState) -> Dictionary[String, PackedByteArray]:
@@ -420,19 +420,3 @@ static func _apply_payloads(
 # and xtxt, which this path used to skip
 static func _refresh_city_arrays(city: CityState, chunk_ids: PackedStringArray) -> void:
 	city.resync_mirrors(chunk_ids)
-
-
-static func _read_u32_be(data: PackedByteArray, offset: int) -> int:
-	return (
-		(data[offset] << 24)
-		| (data[offset + 1] << 16)
-		| (data[offset + 2] << 8)
-		| data[offset + 3]
-	)
-
-
-static func _write_u32_be(data: PackedByteArray, offset: int, value: int) -> void:
-	data[offset] = (value >> 24) & 0xff
-	data[offset + 1] = (value >> 16) & 0xff
-	data[offset + 2] = (value >> 8) & 0xff
-	data[offset + 3] = value & 0xff

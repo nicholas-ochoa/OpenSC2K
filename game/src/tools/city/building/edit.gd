@@ -124,17 +124,17 @@ static func apply(
 
 	if BUDGET_CURRENT.has(tile_id):
 		var budget_offset: int = MISC_BUDGETS + int(BUDGET_CURRENT[tile_id]) * BUDGET_RECORD_SIZE
-		BuildingState._write_u32_be(misc, budget_offset, BuildingState.read_u32_be(misc, budget_offset) + 1)
+		BinaryData.write_u32_be(misc, budget_offset, BinaryData.read_u32_be(misc, budget_offset) + 1)
 
 	if group_index == 5 and subtool_index < 4:
 		var reward_mask := Availability.rebuild_reward_mask(misc)
-		BuildingState._write_u32_be(
+		BinaryData.write_u32_be(
 			misc,
 			Availability.MISC_GRANTED_REWARDS,
 			reward_mask & ~(1 << subtool_index)
 		)
 
-	BuildingState._write_u32_be(misc, MISC_FUNDS, city.funds() - cost)
+	BinaryData.write_u32_be(misc, MISC_FUNDS, city.funds() - cost)
 
 	var changed_ids := PackedStringArray()
 
@@ -151,7 +151,7 @@ static func apply(
 	var immediate_power_refresh := false
 	var immediate_water_refresh := false
 
-	if BuildingState.read_u32_be(misc, MISC_NORMAL_POPULATION) < IMMEDIATE_UTILITY_POPULATION_LIMIT:
+	if BinaryData.read_u32_be(misc, MISC_NORMAL_POPULATION) < IMMEDIATE_UTILITY_POPULATION_LIMIT:
 		var selected_index := city.index_of(selected.x, selected.y)
 
 		if selected_index >= 0 and city.tile_flags[selected_index] & FLAG_POWERABLE:

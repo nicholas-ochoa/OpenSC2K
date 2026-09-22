@@ -43,8 +43,8 @@ static func run(city: CityState) -> Result:
 		return _failed("MISC is missing or has the wrong size")
 
 	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
-	var progression := _read_u32(misc, MISC_PROGRESSION) & 0xffff
-	var population := _read_u32(misc, MISC_NORMAL_POPULATION)
+	var progression := BinaryData.read_u32_be(misc, MISC_PROGRESSION) & 0xffff
+	var population := BinaryData.read_u32_be(misc, MISC_NORMAL_POPULATION)
 
 	if progression >= PROGRESSION_REQUIREMENTS.size():
 		return _unchanged_result(progression, population)
@@ -56,7 +56,7 @@ static func run(city: CityState) -> Result:
 
 	var old_progression := progression
 	progression += 1
-	_write_u32(misc, MISC_PROGRESSION, progression)
+	BinaryData.write_u32_be(misc, MISC_PROGRESSION, progression)
 	var reward_id := -1
 	var military_proposal_pending := false
 
@@ -68,10 +68,10 @@ static func run(city: CityState) -> Result:
 		reward_id = 3
 
 	if reward_id >= 0:
-		_write_u32(
+		BinaryData.write_u32_be(
 			misc,
 			MISC_GRANTED_REWARDS,
-			_read_u32(misc, MISC_GRANTED_REWARDS) | (1 << reward_id)
+			BinaryData.read_u32_be(misc, MISC_GRANTED_REWARDS) | (1 << reward_id)
 		)
 
 	ToolAvailability.rebuild_reward_mask(misc)
@@ -112,19 +112,3 @@ static func _failed(message: String) -> Result:
 	result.error = message
 
 	return result
-
-
-static func _read_u32(data: PackedByteArray, offset: int) -> int:
-	return (
-		(data[offset] << 24)
-		| (data[offset + 1] << 16)
-		| (data[offset + 2] << 8)
-		| data[offset + 3]
-	)
-
-
-static func _write_u32(data: PackedByteArray, offset: int, value: int) -> void:
-	data[offset] = (value >> 24) & 0xff
-	data[offset + 1] = (value >> 16) & 0xff
-	data[offset + 2] = (value >> 8) & 0xff
-	data[offset + 3] = value & 0xff

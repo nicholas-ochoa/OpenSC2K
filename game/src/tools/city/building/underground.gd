@@ -76,7 +76,7 @@ static func _replace_underground(
 		return
 
 	if (zones[index] & 0x0f) != MILITARY_ZONE:
-		var count := BuildingState.read_u32_be(misc, MISC_SUBWAY_COUNT)
+		var count := BinaryData.read_u32_be(misc, MISC_SUBWAY_COUNT)
 
 		if _is_subway_tile(old_tile):
 			count = (count - 1) & (0xffff if underground.size() == 16384 else 0xffffffff)
@@ -84,7 +84,7 @@ static func _replace_underground(
 		if _is_subway_tile(new_tile):
 			count = (count + 1) & (0xffff if underground.size() == 16384 else 0xffffffff)
 
-		BuildingState._write_u32_be(misc, MISC_SUBWAY_COUNT, count)
+		BinaryData.write_u32_be(misc, MISC_SUBWAY_COUNT, count)
 
 	underground[index] = new_tile
 

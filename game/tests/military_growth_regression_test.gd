@@ -41,7 +41,7 @@ func _initialize() -> void:
 				check(SpecialZoneState.tile_count(p.payloads.MISC, tile, false, edge) == 0, "Civilian count stays separate")
 			var p := base.copy()
 			var point := Vector2i(edge - 11, edge - 11)
-			SpecialZoneState.write_u32(p.payloads.MISC, 0x01f0 + 0xdd * 4, 1)
+			BinaryData.write_u32_be(p.payloads.MISC, 0x01f0 + 0xdd * 4, 1)
 			var runway := SpecialZoneSelection.grow_special_zone(p.payloads.XBLD, p.payloads.XZON, p.payloads.XUND, p.payloads.XBIT, p.payloads.XTER,
 				p.altitudes, p.payloads.MISC, point, 0xdd, 7, rotation, edge)
 			check(runway.ok and runway.changed_tiles == 5, "Military runway grows")
@@ -74,6 +74,6 @@ func fixture(edge: int) -> Fixture:
 	p.payloads = GrowthState.duplicate_payloads(GrowthState.payloads(city))
 	p.altitudes = city.altitude_words.duplicate()
 	p.payloads.XZON.fill(7)
-	SpecialZoneState.write_u32(p.payloads.MISC, 0x01f0, 0)
-	SpecialZoneState.write_u32(p.payloads.MISC, 0x0fa8, edge * edge)
+	BinaryData.write_u32_be(p.payloads.MISC, 0x01f0, 0)
+	BinaryData.write_u32_be(p.payloads.MISC, 0x0fa8, edge * edge)
 	return p

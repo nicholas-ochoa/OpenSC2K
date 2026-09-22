@@ -119,11 +119,11 @@ func _load(data_path: String, index_path: String) -> void:
 		return
 
 	for offset in range(0, base_bytes.size(), 2):
-		bases.append(_read_u16_be(base_bytes, offset))
-		counts.append(_read_u16_be(count_bytes, offset))
+		bases.append(BinaryData.read_u16_be(base_bytes, offset))
+		counts.append(BinaryData.read_u16_be(count_bytes, offset))
 
 	for offset in range(0, offset_bytes.size(), 4):
-		offsets.append(_read_u32_be(offset_bytes, offset))
+		offsets.append(BinaryData.read_u32_be(offset_bytes, offset))
 
 	for table_id in TABLE_ENTRY_COUNT:
 		if bases[table_id] < 0 or bases[table_id] + counts[table_id] > PHRASE_COUNT:
@@ -148,19 +148,6 @@ func _load(data_path: String, index_path: String) -> void:
 			load_error = "DATA_USA phrase %d is not terminated" % phrase_id
 
 			return
-
-
-static func _read_u16_be(data: PackedByteArray, offset: int) -> int:
-	return (int(data[offset]) << 8) | int(data[offset + 1])
-
-
-static func _read_u32_be(data: PackedByteArray, offset: int) -> int:
-	return (
-		(int(data[offset]) << 24)
-		| (int(data[offset + 1]) << 16)
-		| (int(data[offset + 2]) << 8)
-		| int(data[offset + 3])
-	)
 
 
 static func _read_u32_le(data: PackedByteArray, offset: int) -> int:

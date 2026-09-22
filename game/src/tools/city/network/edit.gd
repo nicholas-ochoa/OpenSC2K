@@ -360,7 +360,7 @@ static func _apply_to_payload_copies(plan: SegmentPlan) -> void:
 			text_overlays, map_edge
 		)
 
-	NetworkState._write_u32_be(misc, MISC_FUNDS, plan.city.funds() - plan.cost)
+	BinaryData.write_u32_be(misc, MISC_FUNDS, plan.city.funds() - plan.cost)
 
 
 # describe the stored segment, with the old and new payloads undo restores

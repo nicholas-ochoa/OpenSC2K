@@ -118,37 +118,37 @@ static func from_document(source: Sc2File) -> ScenarioState:
 
 		return scenario
 
-	if _read_u32_be(data, 0) != 0x80000000:
+	if BinaryData.read_u32_be(data, 0) != 0x80000000:
 		scenario.load_error = "SCEN header is not 0x80000000"
 
 		return scenario
 
 	scenario.format_size = data.size()
-	scenario.disaster_type = _read_u16_be(data, 0x04)
+	scenario.disaster_type = BinaryData.read_u16_be(data, 0x04)
 	scenario.disaster_x = data[0x06]
 	scenario.disaster_y = data[0x07]
-	scenario.time_limit_months = _read_u16_be(data, 0x08)
-	scenario.city_size_goal = _read_u32_be(data, 0x0a)
-	scenario.residential_goal = _read_i32_be(data, 0x0e)
-	scenario.commercial_goal = _read_i32_be(data, 0x12)
-	scenario.industrial_goal = _read_i32_be(data, 0x16)
-	scenario.cash_goal = _read_i32_be(data, 0x1a)
-	scenario.land_value_goal = _read_i32_be(data, 0x1e)
+	scenario.time_limit_months = BinaryData.read_u16_be(data, 0x08)
+	scenario.city_size_goal = BinaryData.read_u32_be(data, 0x0a)
+	scenario.residential_goal = BinaryData.read_i32_be(data, 0x0e)
+	scenario.commercial_goal = BinaryData.read_i32_be(data, 0x12)
+	scenario.industrial_goal = BinaryData.read_i32_be(data, 0x16)
+	scenario.cash_goal = BinaryData.read_i32_be(data, 0x1a)
+	scenario.land_value_goal = BinaryData.read_i32_be(data, 0x1e)
 
 	var limit_offset := 0x22
 
 	if data.size() == EXTENDED_SIZE:
-		scenario.life_expectancy_goal = _read_u16_be(data, 0x22)
-		scenario.education_goal = _read_u16_be(data, 0x24)
+		scenario.life_expectancy_goal = BinaryData.read_u16_be(data, 0x22)
+		scenario.education_goal = BinaryData.read_u16_be(data, 0x24)
 		limit_offset = 0x26
 
-	scenario.pollution_limit = _read_u32_be(data, limit_offset)
-	scenario.crime_limit = _read_u32_be(data, limit_offset + 4)
-	scenario.traffic_limit = _read_u32_be(data, limit_offset + 8)
+	scenario.pollution_limit = BinaryData.read_u32_be(data, limit_offset)
+	scenario.crime_limit = BinaryData.read_u32_be(data, limit_offset + 4)
+	scenario.traffic_limit = BinaryData.read_u32_be(data, limit_offset + 8)
 	scenario.first_building_id = data[limit_offset + 12]
 	scenario.second_building_id = data[limit_offset + 13]
-	scenario.first_building_tile_count = _read_u16_be(data, limit_offset + 14)
-	scenario.second_building_tile_count = _read_u16_be(data, limit_offset + 16)
+	scenario.first_building_tile_count = BinaryData.read_u16_be(data, limit_offset + 14)
+	scenario.second_building_tile_count = BinaryData.read_u16_be(data, limit_offset + 16)
 
 	return scenario
 
@@ -173,7 +173,7 @@ func picture_indices() -> PictureIndices:
 
 	var data := chunk.decoded_payload
 
-	if data.size() < 8 or _read_u32_be(data, 0) != 0x80000000:
+	if data.size() < 8 or BinaryData.read_u32_be(data, 0) != 0x80000000:
 		return PictureIndices.rejected("PICT header is invalid")
 
 	# pict dimensions are little-endian even though scen and form values are big-endian
@@ -265,7 +265,7 @@ func template_fields() -> Template:
 
 	var data := chunk.decoded_payload
 
-	if data.size() < 4 or _read_u32_be(data, 0) != TEMPLATE_HEADER:
+	if data.size() < 4 or BinaryData.read_u32_be(data, 0) != TEMPLATE_HEADER:
 		return Template.rejected("TMPL header is invalid")
 
 	var fields: Array[TemplateField] = []
@@ -375,7 +375,7 @@ func set_time_limit_months(value: int) -> bool:
 		return false
 
 	var data: PackedByteArray = chunk.decoded_payload.duplicate()
-	_write_u16_be(data, 0x08, value)
+	BinaryData.write_u16_be(data, 0x08, value)
 
 	if not chunk.set_decoded_payload(data):
 		return false
@@ -408,7 +408,7 @@ func _text_chunk(expected_header: int) -> String:
 		if chunk.chunk_id != "TEXT" or chunk.decoded_payload.size() < 4:
 			continue
 
-		if _read_u32_be(chunk.decoded_payload, 0) != expected_header:
+		if BinaryData.read_u32_be(chunk.decoded_payload, 0) != expected_header:
 			continue
 
 		var end := 4
@@ -421,29 +421,5 @@ func _text_chunk(expected_header: int) -> String:
 	return ""
 
 
-static func _read_u16_be(data: PackedByteArray, offset: int) -> int:
-	return (data[offset] << 8) | data[offset + 1]
-
-
 static func _read_u16_le(data: PackedByteArray, offset: int) -> int:
 	return data[offset] | (data[offset + 1] << 8)
-
-
-static func _write_u16_be(data: PackedByteArray, offset: int, value: int) -> void:
-	data[offset] = (value >> 8) & 0xff
-	data[offset + 1] = value & 0xff
-
-
-static func _read_u32_be(data: PackedByteArray, offset: int) -> int:
-	return (
-		(data[offset] << 24)
-		| (data[offset + 1] << 16)
-		| (data[offset + 2] << 8)
-		| data[offset + 3]
-	)
-
-
-static func _read_i32_be(data: PackedByteArray, offset: int) -> int:
-	var value := _read_u32_be(data, offset)
-
-	return value - 0x100000000 if value >= 0x80000000 else value

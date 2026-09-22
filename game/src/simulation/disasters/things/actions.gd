@@ -212,13 +212,6 @@ static func _queue_thing_sound(
 		Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))))
 
 
-static func _write_u32_be(data: PackedByteArray, offset: int, value: int) -> void:
-	data[offset] = (value >> 24) & 0xff
-	data[offset + 1] = (value >> 16) & 0xff
-	data[offset + 2] = (value >> 8) & 0xff
-	data[offset + 3] = value & 0xff
-
-
 static func _record_connection_count_change(
 	counters: MovingThingResult, tile_id: int, point: Vector2i
 ) -> void:

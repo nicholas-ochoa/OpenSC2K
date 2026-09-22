@@ -82,7 +82,7 @@ static func update_explosion(
 
 	if caused_damage and city.city_mode() != 2:
 		var requested_type := disaster_type if disaster_type != 0 else 1
-		DisasterThingActions._write_u32_be(misc, MISC_PENDING_DISASTER, requested_type)
+		BinaryData.write_u32_be(misc, MISC_PENDING_DISASTER, requested_type)
 		counters.disaster_start_requests.append(MovingThingResult.DisasterRequest.new(requested_type, center))
 
 

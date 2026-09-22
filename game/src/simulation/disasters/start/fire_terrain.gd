@@ -19,8 +19,8 @@ static func _start_fire(city: CityState, random: SimRandom, lfsr_random: SimLfsr
 	var payloads := DisasterStartObjectsState._duplicate_payloads(original)
 	var runtime_events := DisasterMapDamage.new_runtime_events()
 	var point := Vector2i(
-		DisasterStartObjectsState._read_u32_be(payloads.MISC, MISC_CITY_CENTER_X) - 20 + random.next_u15() % 40,
-		DisasterStartObjectsState._read_u32_be(payloads.MISC, MISC_CITY_CENTER_Y) - 20 + random.next_u15() % 40
+		BinaryData.read_u32_be(payloads.MISC, MISC_CITY_CENTER_X) - 20 + random.next_u15() % 40,
+		BinaryData.read_u32_be(payloads.MISC, MISC_CITY_CENTER_Y) - 20 + random.next_u15() % 40
 	)
 	var direction := 0
 	var run_length := 1
@@ -232,7 +232,7 @@ static func _start_volcano(city: CityState, center: Vector2i, random: SimRandom)
 					payloads.XBIT,
 					payloads.MISC,
 					retile_indices,
-					DisasterStartObjectsState._read_u32_be(payloads.MISC, 0x0e40), map_edge,
+					BinaryData.read_u32_be(payloads.MISC, 0x0e40), map_edge,
 				)
 
 				for index in retile_indices:

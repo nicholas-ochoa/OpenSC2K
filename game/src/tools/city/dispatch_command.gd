@@ -48,9 +48,9 @@ static func availability(city: CityState) -> Availability:
 		return Availability.failure("MISC is missing or has the wrong size")
 
 	var data: PackedByteArray = misc.decoded_payload
-	var police := int(_read_u32_be(data, MISC_TILE_COUNTS + POLICE_STATION * 4) >> 3)
-	var fire := int(_read_u32_be(data, MISC_TILE_COUNTS + FIRE_STATION * 4) >> 3)
-	var base_type := int(_read_u32_be(data, MISC_MILITARY_BASE_TYPE))
+	var police := int(BinaryData.read_u32_be(data, MISC_TILE_COUNTS + POLICE_STATION * 4) >> 3)
+	var fire := int(BinaryData.read_u32_be(data, MISC_TILE_COUNTS + FIRE_STATION * 4) >> 3)
+	var base_type := int(BinaryData.read_u32_be(data, MISC_MILITARY_BASE_TYPE))
 	var military := 0
 
 	if base_type >= 0 and base_type < MILITARY_AVAILABILITY.size():
@@ -269,15 +269,6 @@ static func _delete_thing(
 
 	for byte_index in THING_RECORD_SIZE:
 		ThingData.write(things, offset + byte_index, 0)
-
-
-static func _read_u32_be(data: PackedByteArray, offset: int) -> int:
-	return (
-		(data[offset] << 24)
-		| (data[offset + 1] << 16)
-		| (data[offset + 2] << 8)
-		| data[offset + 3]
-	)
 
 
 static func recall_all(city: CityState) -> DispatchEditResult:

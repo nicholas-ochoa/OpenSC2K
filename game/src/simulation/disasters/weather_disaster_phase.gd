@@ -177,7 +177,7 @@ static func _status_index(
 	commerce_connections: int,
 	industry_connections: int, map_edge: int = 128
 ) -> int:
-	var weather_trend := _read_u32(misc, MISC_WEATHER_TREND) & 0xff
+	var weather_trend := BinaryData.read_u32_be(misc, MISC_WEATHER_TREND) & 0xff
 
 	if weather_trend >= 9:
 		return STATUS_WEATHER
@@ -185,8 +185,8 @@ static func _status_index(
 	if power_usage_percent >= 99:
 		return STATUS_POWER
 
-	var population := _read_u32(misc, MISC_NORMAL_POPULATION)
-	var arcology_share := int(_read_u32(misc, MISC_ARCOLOGY_POPULATION) / 12)
+	var population := BinaryData.read_u32_be(misc, MISC_NORMAL_POPULATION)
+	var arcology_share := int(BinaryData.read_u32_be(misc, MISC_ARCOLOGY_POPULATION) / 12)
 	var transit_capacity := (
 		_tile_count(misc, TILE_SUBWAY_STATION, map_edge)
 		+ _tile_count(misc, TILE_RAIL_STATION, map_edge)
@@ -230,7 +230,7 @@ static func _status_index(
 		_tile_count(misc, TILE_CRANE, map_edge) + industry_connections
 		< int(industrial_population / 10000)
 	):
-		if _read_u32(misc, 0x0e44) == 0 and _read_u32(misc, 0x0e48) == 0:
+		if BinaryData.read_u32_be(misc, 0x0e44) == 0 and BinaryData.read_u32_be(misc, 0x0e48) == 0:
 			return STATUS_INDUSTRIAL_CONNECTION
 
 		return STATUS_SEAPORT
@@ -243,7 +243,7 @@ static func _status_index(
 		+ commerce_connections
 		< int(commercial_population / 2000)
 	):
-		var airport_release_year := _read_u32(misc, MISC_INVENTION_YEARS + 6 * 4) & 0xffff
+		var airport_release_year := BinaryData.read_u32_be(misc, MISC_INVENTION_YEARS + 6 * 4) & 0xffff
 
 		return STATUS_AIRPORT if airport_release_year == 0 else STATUS_COMMERCIAL_CONNECTION
 
@@ -269,7 +269,7 @@ static func _select_disaster(
 	current_point: Vector2i,
 	map_edge: int = 128,
 ) -> Result:
-	var difficulty := _read_u32(misc, MISC_DIFFICULTY) & 0xffff
+	var difficulty := BinaryData.read_u32_be(misc, MISC_DIFFICULTY) & 0xffff
 	var difficulty_is_valid := difficulty > 0 and difficulty < DISASTER_WAIT_MONTHS.size()
 	var wait_months := int(DISASTER_WAIT_MONTHS[difficulty]) if difficulty_is_valid else -1
 	var result := Result.new()
@@ -280,22 +280,22 @@ static func _select_disaster(
 	result.disaster_roll = -1
 	result.candidate_type = DISASTER_NONE
 
-	if _read_u32(misc, MISC_NO_DISASTERS) != 0:
+	if BinaryData.read_u32_be(misc, MISC_NO_DISASTERS) != 0:
 		return result
 
 	if not difficulty_is_valid:
 		return _failed("city difficulty is out of range")
 
-	var city_months := int(_read_u32(misc, MISC_CITY_DAYS) / 25)
+	var city_months := int(BinaryData.read_u32_be(misc, MISC_CITY_DAYS) / 25)
 
 	if city_months < wait_months:
 		return result
 
 	var disaster_roll: int = random.next_u15() % wait_months
 	result.disaster_roll = disaster_roll
-	var weather_trend := _read_u32(misc, MISC_WEATHER_TREND) & 0xff
-	var has_ocean := _read_u32(misc, 0x0e44) != 0
-	var has_river := _read_u32(misc, 0x0e48) != 0
+	var weather_trend := BinaryData.read_u32_be(misc, MISC_WEATHER_TREND) & 0xff
+	var has_ocean := BinaryData.read_u32_be(misc, 0x0e44) != 0
+	var has_river := BinaryData.read_u32_be(misc, 0x0e48) != 0
 
 	if weather_trend == 10 and has_ocean and disaster_roll < 15:
 		result.disaster_type = DISASTER_HURRICANE
@@ -314,14 +314,14 @@ static func _select_disaster(
 	var candidate: int = random.next_u15() % 19
 	result.candidate_type = candidate
 	var center := Vector2i(
-		_read_u32(misc, MISC_CITY_CENTER_X) & 0xffff,
-		_read_u32(misc, MISC_CITY_CENTER_Y) & 0xffff
+		BinaryData.read_u32_be(misc, MISC_CITY_CENTER_X) & 0xffff,
+		BinaryData.read_u32_be(misc, MISC_CITY_CENTER_Y) & 0xffff
 	)
-	var population := _read_u32(misc, MISC_NORMAL_POPULATION)
+	var population := BinaryData.read_u32_be(misc, MISC_NORMAL_POPULATION)
 
 	match candidate:
 		DISASTER_FIRE:
-			if (_read_u32(misc, MISC_WEATHER_HEAT) & 0xff) < ((random.next_u15() & 0x7f) + 0x7f):
+			if (BinaryData.read_u32_be(misc, MISC_WEATHER_HEAT) & 0xff) < ((random.next_u15() & 0x7f) + 0x7f):
 				return result
 
 			result.disaster_point = _random_map_point(random, map_edge)
@@ -354,10 +354,10 @@ static func _select_disaster(
 			if candidate == DISASTER_MASS_RIOTS and population < 30000:
 				return result
 
-			if _read_u32(misc, MISC_UNEMPLOYMENT) < 10:
+			if BinaryData.read_u32_be(misc, MISC_UNEMPLOYMENT) < 10:
 				return result
 
-			if (_read_u32(misc, MISC_WEATHER_HEAT) & 0xff) < 170:
+			if (BinaryData.read_u32_be(misc, MISC_WEATHER_HEAT) & 0xff) < 170:
 				return result
 
 			result.disaster_point = _random_center_point(random, center, 16)
@@ -443,13 +443,13 @@ static func _toxic_spill_point(
 
 
 static func _budget_current(misc: PackedByteArray, budget_id: int) -> int:
-	return _read_i32(
+	return BinaryData.read_i32_be(
 		misc, MISC_BUDGETS + budget_id * BUDGET_RECORD_SIZE + BUDGET_CURRENT
 	)
 
 
 static func _tile_count(misc: PackedByteArray, tile_id: int, map_edge: int = 128) -> int:
-	var value := _read_u32(misc, MISC_TILE_COUNTS + tile_id * 4)
+	var value := BinaryData.read_u32_be(misc, MISC_TILE_COUNTS + tile_id * 4)
 
 	return _to_i16(value) if map_edge == 128 else value
 
@@ -458,21 +458,6 @@ static func _to_i16(value: int) -> int:
 	var word := value & 0xffff
 
 	return word - 0x10000 if word & 0x8000 else word
-
-
-static func _read_i32(data: PackedByteArray, offset: int) -> int:
-	var value := _read_u32(data, offset)
-
-	return value - 0x100000000 if value & 0x80000000 else value
-
-
-static func _read_u32(data: PackedByteArray, offset: int) -> int:
-	return (
-		(data[offset] << 24)
-		| (data[offset + 1] << 16)
-		| (data[offset + 2] << 8)
-		| data[offset + 3]
-	)
 
 
 static func _failed(message: String) -> Result:

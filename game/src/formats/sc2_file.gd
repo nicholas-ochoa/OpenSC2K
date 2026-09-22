@@ -98,7 +98,7 @@ func parse(bytes: PackedByteArray) -> bool:
 	if _ascii(bytes, 0, 4) != "FORM":
 		return _fail("File does not start with FORM")
 
-	if _read_u32_be(bytes, 4) != bytes.size() - 8:
+	if BinaryData.read_u32_be(bytes, 4) != bytes.size() - 8:
 		return _fail("FORM length does not match the file size")
 
 	var form_type := _ascii(bytes, 8, 4)
@@ -109,11 +109,11 @@ func parse(bytes: PackedByteArray) -> bool:
 	var offset := 12
 
 	if form_type == "SCLG":
-		if bytes.size() < 28 or _ascii(bytes, 12, 4) != "SIZE" or _read_u32_be(bytes, 16) != 8:
+		if bytes.size() < 28 or _ascii(bytes, 12, 4) != "SIZE" or BinaryData.read_u32_be(bytes, 16) != 8:
 			return _fail("Experimental SIZE header is missing")
 
-		map_size = _read_u32_be(bytes, 24)
-		large_version = _read_u32_be(bytes, 20)
+		map_size = BinaryData.read_u32_be(bytes, 24)
+		large_version = BinaryData.read_u32_be(bytes, 20)
 
 		if (
 			large_version not in [1, 2, 3] or map_size not in MAP_SIZES
@@ -133,7 +133,7 @@ func parse(bytes: PackedByteArray) -> bool:
 		if not _is_chunk_id(chunk_id):
 			return _fail("Chunk ID at 0x%x is not printable ASCII" % offset)
 
-		var stored_size := _read_u32_be(bytes, offset + 4)
+		var stored_size := BinaryData.read_u32_be(bytes, offset + 4)
 		var payload_start := offset + 8
 		var payload_end := payload_start + stored_size
 
@@ -319,7 +319,7 @@ func misc_u32(offset: int) -> int:
 	if chunk == null or offset < 0 or offset + 4 > chunk.decoded_payload.size():
 		return 0
 
-	return _read_u32_be(chunk.decoded_payload, offset)
+	return BinaryData.read_u32_be(chunk.decoded_payload, offset)
 
 
 func misc_i32(offset: int) -> int:
@@ -394,15 +394,6 @@ func _fail(message: String) -> bool:
 	invalidate_chunk_cache()
 
 	return false
-
-
-static func _read_u32_be(bytes: PackedByteArray, offset: int) -> int:
-	return (
-		(bytes[offset] << 24)
-		| (bytes[offset + 1] << 16)
-		| (bytes[offset + 2] << 8)
-		| bytes[offset + 3]
-	)
 
 
 static func _u32_be(value: int) -> PackedByteArray:

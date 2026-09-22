@@ -63,12 +63,12 @@ static func inspect_misc(misc: PackedByteArray) -> Result:
 	released.resize(INVENTION_COUNT)
 
 	for index in INVENTION_COUNT:
-		released[index] = int(_read_u32_be(misc, MISC_INVENTION_YEARS + index * 4) & 0xffff == 0)
+		released[index] = int(BinaryData.read_u32_be(misc, MISC_INVENTION_YEARS + index * 4) & 0xffff == 0)
 
 	if released[0]:
 		power_plant_mask |= 0x08
 
-	if released[1] and (_read_u32_be(misc, MISC_ORDINANCES) & ORDINANCE_NUCLEAR_FREE) == 0:
+	if released[1] and (BinaryData.read_u32_be(misc, MISC_ORDINANCES) & ORDINANCE_NUCLEAR_FREE) == 0:
 		power_plant_mask |= 0x10
 
 	if released[2]:
@@ -106,13 +106,13 @@ static func inspect_misc(misc: PackedByteArray) -> Result:
 	for index in range(ARCOLOGY_FIRST_INVENTION, ARCOLOGY_LAST_INVENTION + 1):
 		arcology_count += int(released[index])
 
-	group_masks[5] = _read_u32_be(misc, MISC_GRANTED_REWARDS) & 0xffff
-	var progression := _read_u32_be(misc, MISC_PROGRESSION) & 0xffff
+	group_masks[5] = BinaryData.read_u32_be(misc, MISC_GRANTED_REWARDS) & 0xffff
+	var progression := BinaryData.read_u32_be(misc, MISC_PROGRESSION) & 0xffff
 
 	if progression >= 6 and arcology_count > 0:
 		group_masks[5] |= 0x10
 
-	var military_base_type := _read_u32_be(misc, MISC_MILITARY_BASE_TYPE) & 0xffff
+	var military_base_type := BinaryData.read_u32_be(misc, MISC_MILITARY_BASE_TYPE) & 0xffff
 
 	if military_base_type == 2 or military_base_type == 3 or military_base_type == 4:
 		group_masks[2] |= 0x04
@@ -165,33 +165,17 @@ static func rebuild_reward_mask(misc: PackedByteArray) -> int:
 	if misc.size() != 4800:
 		return 0
 
-	var mask := _read_u32_be(misc, MISC_GRANTED_REWARDS)
-	var progression := _read_u32_be(misc, MISC_PROGRESSION) & 0xffff
+	var mask := BinaryData.read_u32_be(misc, MISC_GRANTED_REWARDS)
+	var progression := BinaryData.read_u32_be(misc, MISC_PROGRESSION) & 0xffff
 	var arcology_count := 0
 
 	for index in range(ARCOLOGY_FIRST_INVENTION, ARCOLOGY_LAST_INVENTION + 1):
-		if (_read_u32_be(misc, MISC_INVENTION_YEARS + index * 4) & 0xffff) == 0:
+		if (BinaryData.read_u32_be(misc, MISC_INVENTION_YEARS + index * 4) & 0xffff) == 0:
 			arcology_count += 1
 
 	if progression >= 6 and arcology_count > 0:
 		mask |= 0x10
 
-	_write_u32_be(misc, MISC_GRANTED_REWARDS, mask)
+	BinaryData.write_u32_be(misc, MISC_GRANTED_REWARDS, mask)
 
 	return mask
-
-
-static func _read_u32_be(data: PackedByteArray, offset: int) -> int:
-	return (
-		(data[offset] << 24)
-		| (data[offset + 1] << 16)
-		| (data[offset + 2] << 8)
-		| data[offset + 3]
-	)
-
-
-static func _write_u32_be(data: PackedByteArray, offset: int, value: int) -> void:
-	data[offset] = (value >> 24) & 0xff
-	data[offset + 1] = (value >> 16) & 0xff
-	data[offset + 2] = (value >> 8) & 0xff
-	data[offset + 3] = value & 0xff

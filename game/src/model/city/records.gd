@@ -135,9 +135,9 @@ static func microsim(city: CityState, microsim_id: int) -> Microsim:
 	var result := Microsim.new()
 	result.tile_id = int(chunk.decoded_payload[offset])
 	result.stat_0 = int(chunk.decoded_payload[offset + 1])
-	result.stat_1 = city._read_u16_be(chunk.decoded_payload, offset + 2)
-	result.stat_2 = city._read_u16_be(chunk.decoded_payload, offset + 4)
-	result.stat_3 = city._read_u16_be(chunk.decoded_payload, offset + 6)
+	result.stat_1 = BinaryData.read_u16_be(chunk.decoded_payload, offset + 2)
+	result.stat_2 = BinaryData.read_u16_be(chunk.decoded_payload, offset + 4)
+	result.stat_3 = BinaryData.read_u16_be(chunk.decoded_payload, offset + 6)
 
 	return result
 
@@ -168,7 +168,7 @@ static func graph_series(city: CityState, graph_id: int) -> GraphSeries:
 	var offset := graph_id * CityState.GRAPH_VALUE_COUNT * 4
 
 	for index in CityState.GRAPH_VALUE_COUNT:
-		values.append(city._read_u32_be(chunk.decoded_payload, offset + index * 4))
+		values.append(BinaryData.read_u32_be(chunk.decoded_payload, offset + index * 4))
 
 	var result := GraphSeries.new()
 	result.year = values.slice(0, 12)

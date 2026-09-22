@@ -72,7 +72,7 @@ static func run(city: CityState, random: SimRandom, previous_approval: int) -> R
 	var approval := _to_i16(previous_approval)
 	var survey_counts := PackedInt32Array([0, 0, 0, 0, 0, 0, 0])
 
-	if total != 0 and _read_u32(misc, MISC_NORMAL_POPULATION) > 99:
+	if total != 0 and BinaryData.read_u32_be(misc, MISC_NORMAL_POPULATION) > 99:
 		approval = 0
 
 		for _sample in 100:
@@ -99,10 +99,10 @@ static func run(city: CityState, random: SimRandom, previous_approval: int) -> R
 		if int(microsims[offset]) != TILE_MAYOR_HOUSE:
 			continue
 
-		_write_u16_be(microsims, offset + 4, approval)
+		BinaryData.write_u16_be(microsims, offset + 4, approval)
 
-		if _read_u16_be(microsims, offset + 6) != 0:
-			_write_u16_be(microsims, offset + 6, _read_u16_be(microsims, offset + 6) - 1)
+		if BinaryData.read_u16_be(microsims, offset + 6) != 0:
+			BinaryData.write_u16_be(microsims, offset + 6, BinaryData.read_u16_be(microsims, offset + 6) - 1)
 			microsims[offset + 1] = (int(microsims[offset + 1]) + 1) & 0xff
 
 		updated_records += 1
@@ -156,48 +156,24 @@ static func complaint_weights(city: CityState) -> PackedInt32Array:
 		_to_i16(_graph_current(graphs, GRAPH_TRAFFIC)),
 		_to_i16(_graph_current(graphs, GRAPH_POLLUTION)),
 		_to_i16(_graph_current(graphs, GRAPH_CRIME)),
-		_to_i16(_read_u32(misc, MISC_UNEMPLOYMENT)),
+		_to_i16(BinaryData.read_u32_be(misc, MISC_UNEMPLOYMENT)),
 		_to_i16(_budget_funding(misc, BUDGET_RESIDENTIAL) * 3),
-		maxi(100 - _to_i16(_read_u32(misc, MISC_WORKFORCE_EDUCATION)), 0),
-		maxi(70 - _to_i16(_read_u32(misc, MISC_WORKFORCE_LIFE_EXPECTANCY)), 0),
+		maxi(100 - _to_i16(BinaryData.read_u32_be(misc, MISC_WORKFORCE_EDUCATION)), 0),
+		maxi(70 - _to_i16(BinaryData.read_u32_be(misc, MISC_WORKFORCE_LIFE_EXPECTANCY)), 0),
 	])
 
 
 static func _graph_current(data: PackedByteArray, graph_id: int) -> int:
-	return _read_u32(data, graph_id * GRAPH_VALUE_COUNT * 4)
+	return BinaryData.read_u32_be(data, graph_id * GRAPH_VALUE_COUNT * 4)
 
 
 static func _budget_funding(misc: PackedByteArray, budget_id: int) -> int:
-	return _read_i32(
+	return BinaryData.read_i32_be(
 		misc, MISC_BUDGETS + budget_id * BUDGET_RECORD_SIZE + BUDGET_FUNDING
 	)
-
-
-static func _read_u32(data: PackedByteArray, offset: int) -> int:
-	return (
-		(data[offset] << 24)
-		| (data[offset + 1] << 16)
-		| (data[offset + 2] << 8)
-		| data[offset + 3]
-	)
-
-
-static func _read_i32(data: PackedByteArray, offset: int) -> int:
-	var value := _read_u32(data, offset)
-
-	return value - 0x100000000 if value >= 0x80000000 else value
-
-
-static func _read_u16_be(data: PackedByteArray, offset: int) -> int:
-	return (data[offset] << 8) | data[offset + 1]
 
 
 static func _to_i16(value: int) -> int:
 	var wrapped := value & 0xffff
 
 	return wrapped - 0x10000 if wrapped >= 0x8000 else wrapped
-
-
-static func _write_u16_be(data: PackedByteArray, offset: int, value: int) -> void:
-	data[offset] = (value >> 8) & 0xff
-	data[offset + 1] = value & 0xff

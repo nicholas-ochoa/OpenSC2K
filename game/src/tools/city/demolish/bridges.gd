@@ -85,7 +85,7 @@ static func _demolish_bridge(
 			flags,
 			misc,
 			PackedInt32Array([bank_index]),
-			BuildingState.read_u32_be(misc, 0x0e40) & 0x1f, map_edge
+			BinaryData.read_u32_be(misc, 0x0e40) & 0x1f, map_edge
 		)
 		points.append(bank)
 		indices.append(bank_index)
@@ -189,7 +189,7 @@ static func _demolish_reinforced_bridge(
 				flags,
 				misc,
 				PackedInt32Array([bank_index]),
-				BuildingState.read_u32_be(misc, 0x0e40) & 0x1f, map_edge
+				BinaryData.read_u32_be(misc, 0x0e40) & 0x1f, map_edge
 			)
 			points.append(bank)
 			indices.append(bank_index)

@@ -357,7 +357,7 @@ static func _apply_to_payload_copies(plan: SegmentPlan) -> RouteEditResult:
 		plan.bridge_sections = bridge_result.sections
 		plan.bridge_endpoint_sections = bridge_result.endpoint_sections
 
-	BuildingState._write_u32_be(misc, BuildingCommand.MISC_FUNDS, city.funds() - plan.cost)
+	BinaryData.write_u32_be(misc, BuildingCommand.MISC_FUNDS, city.funds() - plan.cost)
 
 	return null
 

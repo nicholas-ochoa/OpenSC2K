@@ -160,7 +160,7 @@ static func apply_path(
 
 		return DemolishEditResult.rejected("no eligible tiles changed")
 
-	BuildingState._write_u32_be(
+	BinaryData.write_u32_be(
 		misc, BuildingCommand.MISC_FUNDS, city.funds() - total_cost
 	)
 

@@ -83,22 +83,22 @@ static func unlock_everything(city: CityState, document: Sc2File) -> Result:
 		return result
 
 	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
-	ToolAvailability._write_u32_be(misc, ToolAvailability.MISC_PROGRESSION, 6)
-	ToolAvailability._write_u32_be(
+	BinaryData.write_u32_be(misc, ToolAvailability.MISC_PROGRESSION, 6)
+	BinaryData.write_u32_be(
 		misc, ToolAvailability.MISC_GRANTED_REWARDS, 0xffff
 	)
 
 	for invention_index in ToolAvailability.INVENTION_COUNT:
-		ToolAvailability._write_u32_be(
+		BinaryData.write_u32_be(
 			misc,
 			ToolAvailability.MISC_INVENTION_YEARS + invention_index * 4,
 			0,
 		)
 
-	var ordinances := ToolAvailability._read_u32_be(
+	var ordinances := BinaryData.read_u32_be(
 		misc, ToolAvailability.MISC_ORDINANCES
 	)
-	ToolAvailability._write_u32_be(
+	BinaryData.write_u32_be(
 		misc,
 		ToolAvailability.MISC_ORDINANCES,
 		ordinances & ~ToolAvailability.ORDINANCE_NUCLEAR_FREE,
@@ -171,8 +171,8 @@ static func end_disaster(
 	var disaster_records := _disaster_record_indices(things)
 	var cleared_markers := _clear_disaster_markers(text, things, disaster_records, map_edge)
 	_clear_thing_records(things, disaster_records)
-	ToolAvailability._write_u32_be(misc, MISC_CITY_MODE, NORMAL_CITY_MODE)
-	ToolAvailability._write_u32_be(misc, MISC_DISASTER_TYPE, 0)
+	BinaryData.write_u32_be(misc, MISC_CITY_MODE, NORMAL_CITY_MODE)
+	BinaryData.write_u32_be(misc, MISC_DISASTER_TYPE, 0)
 	var active_type := engine.active_disaster_type
 	var had_disaster := (
 		active_type != 0

@@ -75,7 +75,7 @@ static func apply(
 	if overlay_id != 0:
 		OverlayData.write(text_overlays, index, overlay_id)
 
-	BuildingState._write_u32_be(misc, BuildingCommand.MISC_FUNDS, city.funds() - cost)
+	BinaryData.write_u32_be(misc, BuildingCommand.MISC_FUNDS, city.funds() - cost)
 
 	var changed_ids := PackedStringArray()
 

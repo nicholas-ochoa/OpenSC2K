@@ -175,30 +175,30 @@ func run(reference_root: String) -> void:
 		meltdown_document.find_chunk("MISC").decoded_payload
 	)
 	_check(
-		BuildingState.read_u32_be(
+		BinaryData.read_u32_be(
 			stored_meltdown_misc, Buildings.MISC_TILE_COUNTS + 0xcb * 4
 		) == 0
-		and BuildingState.read_u32_be(
+		and BinaryData.read_u32_be(
 			stored_meltdown_misc, Buildings.MISC_TILE_COUNTS + 0x05 * 4
 		) == 16
-		and BuildingState.read_u32_be(
+		and BinaryData.read_u32_be(
 			stored_meltdown_misc, Growth.MISC_MILITARY_TILE_COUNTS
 		) == 1
-		and BuildingState.read_u32_be(
+		and BinaryData.read_u32_be(
 			stored_meltdown_misc, Growth.MISC_MILITARY_TILE_COUNTS + 4
 		) == 0,
 		"Meltdown moves normal and military tile counts to their radiation buckets: nuclear=%d normal=%d military0=%d military1=%d"
 		% [
-			BuildingState.read_u32_be(
+			BinaryData.read_u32_be(
 				stored_meltdown_misc, Buildings.MISC_TILE_COUNTS + 0xcb * 4
 			),
-			BuildingState.read_u32_be(
+			BinaryData.read_u32_be(
 				stored_meltdown_misc, Buildings.MISC_TILE_COUNTS + 0x05 * 4
 			),
-			BuildingState.read_u32_be(
+			BinaryData.read_u32_be(
 				stored_meltdown_misc, Growth.MISC_MILITARY_TILE_COUNTS
 			),
-			BuildingState.read_u32_be(
+			BinaryData.read_u32_be(
 				stored_meltdown_misc, Growth.MISC_MILITARY_TILE_COUNTS + 4
 			),
 		],

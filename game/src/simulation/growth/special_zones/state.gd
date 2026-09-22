@@ -30,8 +30,8 @@ static func _replace_special_building(
 	var military := (zones[index] & 0x0f) == 7
 	var old_offset := _special_count_offset(old_tile, military)
 	var new_offset := _special_count_offset(new_tile, military)
-	write_u32(misc, old_offset, (read_u32(misc, old_offset) - 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
-	write_u32(misc, new_offset, (read_u32(misc, new_offset) + 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
+	BinaryData.write_u32_be(misc, old_offset, (BinaryData.read_u32_be(misc, old_offset) - 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
+	BinaryData.write_u32_be(misc, new_offset, (BinaryData.read_u32_be(misc, new_offset) + 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
 	buildings[index] = new_tile
 
 
@@ -40,7 +40,7 @@ static func tile_count(misc: PackedByteArray, tile: int, military: bool, map_edg
 
 
 static func _special_tile_count(misc: PackedByteArray, tile: int, military: bool, map_edge: int = 128) -> int:
-	return read_u32(misc, _special_count_offset(tile, military)) & (0xffff if map_edge == 128 else 0xffffffff)
+	return BinaryData.read_u32_be(misc, _special_count_offset(tile, military)) & (0xffff if map_edge == 128 else 0xffffffff)
 
 
 static func _special_count_offset(tile: int, military: bool) -> int:
@@ -77,7 +77,7 @@ static func replace_underground(
 		return
 
 	if (zones[index] & 0x0f) != 7:
-		var count := read_u32(misc, MISC_SUBWAY_COUNT)
+		var count := BinaryData.read_u32_be(misc, MISC_SUBWAY_COUNT)
 
 		if _is_subway_tile(old_tile):
 			count = (count - 1) & (0xffff if underground.size() == 16384 else 0xffffffff)
@@ -85,7 +85,7 @@ static func replace_underground(
 		if _is_subway_tile(new_tile):
 			count = (count + 1) & (0xffff if underground.size() == 16384 else 0xffffffff)
 
-		write_u32(misc, MISC_SUBWAY_COUNT, count)
+		BinaryData.write_u32_be(misc, MISC_SUBWAY_COUNT, count)
 
 	underground[index] = new_tile
 
@@ -130,20 +130,3 @@ static func _index(point: Vector2i, map_edge: int = 128) -> int:
 		return -1
 
 	return point.x * map_edge + point.y
-
-
-static func read_u32(data: PackedByteArray, offset: int) -> int:
-	return (
-		(data[offset] << 24)
-		| (data[offset + 1] << 16)
-		| (data[offset + 2] << 8)
-		| data[offset + 3]
-	)
-
-
-static func write_u32(data: PackedByteArray, offset: int, value: int) -> void:
-	var encoded := value & 0xffffffff
-	data[offset] = (encoded >> 24) & 0xff
-	data[offset + 1] = (encoded >> 16) & 0xff
-	data[offset + 2] = (encoded >> 8) & 0xff
-	data[offset + 3] = encoded & 0xff

@@ -118,12 +118,12 @@ func check_growth(edge: int) -> void:
 
 func check_special(edge: int) -> void:
 	var wide := payloads(edge)
-	SpecialZoneState.write_u32(wide.MISC, SpecialZoneGrowth.MISC_SUBWAY_COUNT, 65535)
+	BinaryData.write_u32_be(wide.MISC, SpecialZoneGrowth.MISC_SUBWAY_COUNT, 65535)
 	SpecialZoneState.replace_underground(wide.XUND, wide.XZON, wide.MISC, edge * edge - 1, 1)
-	check(SpecialZoneState.read_u32(wide.MISC, SpecialZoneGrowth.MISC_SUBWAY_COUNT)
+	check(BinaryData.read_u32_be(wide.MISC, SpecialZoneGrowth.MISC_SUBWAY_COUNT)
 		== (0 if edge == 128 else 65536), "Special growth preserves wide subway count")
 	SpecialZoneState.replace_underground(wide.XUND, wide.XZON, wide.MISC, edge * edge - 1, 0)
-	check(SpecialZoneState.read_u32(wide.MISC, SpecialZoneGrowth.MISC_SUBWAY_COUNT) == 65535,
+	check(BinaryData.read_u32_be(wide.MISC, SpecialZoneGrowth.MISC_SUBWAY_COUNT) == 65535,
 		"Special growth subway decrement")
 
 	for area in [2, 3]:

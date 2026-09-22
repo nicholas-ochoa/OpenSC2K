@@ -180,7 +180,7 @@ static func apply_path(
 
 		return TerrainEditResult.rejected("no terrain height changed")
 
-	BuildingState._write_u32_be(
+	BinaryData.write_u32_be(
 		misc, BuildingCommand.MISC_FUNDS, old_funds if free_mode else funds
 	)
 

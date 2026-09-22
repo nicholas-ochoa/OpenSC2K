@@ -140,7 +140,7 @@ func _add_tile_groups(tiles: Sc2ImportSprites) -> void:
 
 
 static func mac_palette(bytes: PackedByteArray) -> Sc2Palette:
-	if bytes.size() < 16 or Sc2ImportContainer.be16(bytes, 0) != 256 or bytes.size() < 16 + 256 * 16:
+	if bytes.size() < 16 or BinaryData.read_u16_be(bytes, 0) != 256 or bytes.size() < 16 + 256 * 16:
 		return null
 
 	var palette := Sc2Palette.new()

@@ -169,10 +169,10 @@ static func run(city: CityState) -> Result:
 
 	span.mark("store demand and population")
 	var changed := misc.decoded_payload.duplicate()
-	_write_i32(changed, ZONE_POPULATION_OFFSET, zone_population[0])
-	_write_i32(changed, NORMAL_POPULATION_OFFSET, normal_population)
-	_write_i32(changed, GARBAGE_OFFSET, city.document.misc_i32(GARBAGE_OFFSET) + normal_population)
-	_write_i32(changed, OLD_RESIDENTIAL_POPULATION_OFFSET, tax_population[0])
+	BinaryData.write_u32_be(changed, ZONE_POPULATION_OFFSET, zone_population[0])
+	BinaryData.write_u32_be(changed, NORMAL_POPULATION_OFFSET, normal_population)
+	BinaryData.write_u32_be(changed, GARBAGE_OFFSET, city.document.misc_i32(GARBAGE_OFFSET) + normal_population)
+	BinaryData.write_u32_be(changed, OLD_RESIDENTIAL_POPULATION_OFFSET, tax_population[0])
 	var arcology_population := city.document.misc_i32(ARCOLOGY_POPULATION_OFFSET)
 
 	for index in 3:
@@ -181,8 +181,8 @@ static func run(city: CityState) -> Result:
 
 		var budget_population := tax_population[index] * 10
 		budget_population += int(arcology_population / (6 if index == 0 else 12))
-		_write_i32(changed, BUDGET_OFFSET + index * BUDGET_RECORD_SIZE, budget_population)
-		_write_i32(changed, DEMAND_OFFSET + index * 4, demands[index])
+		BinaryData.write_u32_be(changed, BUDGET_OFFSET + index * BUDGET_RECORD_SIZE, budget_population)
+		BinaryData.write_u32_be(changed, DEMAND_OFFSET + index * 4, demands[index])
 
 	if not misc.set_decoded_payload(changed):
 		return _failed("cannot store updated MISC data")
@@ -269,11 +269,3 @@ static func _ordinance_adjusted_tax_rate(category: int, rate: int, flags: int) -
 				rate += 1
 
 	return maxi(rate, 0)
-
-
-static func _write_i32(data: PackedByteArray, offset: int, value: int) -> void:
-	var encoded := value & 0xffffffff
-	data[offset] = (encoded >> 24) & 0xff
-	data[offset + 1] = (encoded >> 16) & 0xff
-	data[offset + 2] = (encoded >> 8) & 0xff
-	data[offset + 3] = encoded & 0xff

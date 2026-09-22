@@ -62,7 +62,7 @@ static func _resolve(city: CityState, accepted: bool, game_random: GameLcgRandom
 
 	if not accepted:
 		span.mark("store declined proposal")
-		_write_u32(misc, MISC_BASE_TYPE, BASE_DECLINED)
+		BinaryData.write_u32_be(misc, MISC_BASE_TYPE, BASE_DECLINED)
 
 		if not chunks.MISC.set_decoded_payload(misc):
 			return _failed("cannot store the declined military proposal")
@@ -81,7 +81,7 @@ static func _resolve(city: CityState, accepted: bool, game_random: GameLcgRandom
 		for index in changed:
 			# ownership was transferred to the military-other counter above
 			buildings[index] = BuildingTileIds.EMPTY
-		_write_u32(misc, MISC_BASE_TYPE, BASE_NAVY)
+		BinaryData.write_u32_be(misc, MISC_BASE_TYPE, BASE_NAVY)
 		if not _store(city, chunks, zones, misc, {"XBLD": buildings}):
 			return _failed("cannot store the Navy base plot")
 		var result := _result(true, BASE_NAVY, navy_site, changed, NOTICE_NAVY)
@@ -116,7 +116,7 @@ static func _resolve(city: CityState, accepted: bool, game_random: GameLcgRandom
 		var changed := _zone_plot(
 			buildings, terrain, underground, flags, zones, misc, Rect2i(origin, Vector2i(8, 8)), map_edge
 		)
-		_write_u32(misc, MISC_BASE_TYPE, base_type)
+		BinaryData.write_u32_be(misc, MISC_BASE_TYPE, base_type)
 
 		if base_type == BASE_ARMY:
 			ArmyBaseLayout.build(buildings, terrain, zones, underground, flags, misc, origin, map_edge)
@@ -153,7 +153,7 @@ static func _resolve(city: CityState, accepted: bool, game_random: GameLcgRandom
 
 	span.mark("store missile sites or failed proposal")
 	if sites.size() != 6:
-		_write_u32(misc, MISC_BASE_TYPE, BASE_DECLINED)
+		BinaryData.write_u32_be(misc, MISC_BASE_TYPE, BASE_DECLINED)
 
 		if not chunks.MISC.set_decoded_payload(misc):
 			return _failed("cannot store the failed military proposal")
@@ -171,7 +171,7 @@ static func _resolve(city: CityState, accepted: bool, game_random: GameLcgRandom
 				_increment_military_other(misc, map_edge)
 				changed_indices.append(index)
 
-	_write_u32(misc, MISC_BASE_TYPE, BASE_MISSILE_SILOS)
+	BinaryData.write_u32_be(misc, MISC_BASE_TYPE, BASE_MISSILE_SILOS)
 
 	if not _store(city, chunks, zones, misc):
 		return _failed("cannot store the military missile sites")
@@ -287,29 +287,12 @@ static func _failed(message: String) -> Result:
 
 static func _decrement_tile_count(misc: PackedByteArray, tile_id: int, map_edge: int = 128) -> void:
 	var offset := MISC_TILE_COUNTS + tile_id * 4
-	_write_u32(misc, offset, (_read_u32(misc, offset) - 1) & (0xffff if map_edge == 128 else 0xffffffff))
+	BinaryData.write_u32_be(misc, offset, (BinaryData.read_u32_be(misc, offset) - 1) & (0xffff if map_edge == 128 else 0xffffffff))
 
 
 static func _increment_military_other(misc: PackedByteArray, map_edge: int = 128) -> void:
-	_write_u32(
+	BinaryData.write_u32_be(
 		misc,
 		MISC_MILITARY_TILE_COUNTS,
-		(_read_u32(misc, MISC_MILITARY_TILE_COUNTS) + 1) & (0xffff if map_edge == 128 else 0xffffffff)
+		(BinaryData.read_u32_be(misc, MISC_MILITARY_TILE_COUNTS) + 1) & (0xffff if map_edge == 128 else 0xffffffff)
 	)
-
-
-static func _read_u32(data: PackedByteArray, offset: int) -> int:
-	return (
-		(data[offset] << 24)
-		| (data[offset + 1] << 16)
-		| (data[offset + 2] << 8)
-		| data[offset + 3]
-	)
-
-
-static func _write_u32(data: PackedByteArray, offset: int, value: int) -> void:
-	var encoded := value & 0xffffffff
-	data[offset] = (encoded >> 24) & 0xff
-	data[offset + 1] = (encoded >> 16) & 0xff
-	data[offset + 2] = (encoded >> 8) & 0xff
-	data[offset + 3] = encoded & 0xff

@@ -22,7 +22,7 @@ static func run(city: CityState) -> Result:
 	var changed: PackedByteArray = misc.decoded_payload.duplicate()
 
 	for index in ZONE_POPULATION_COUNT:
-		_write_u32(changed, MISC_ZONE_POPULATIONS + index * 4, 0)
+		BinaryData.write_u32_be(changed, MISC_ZONE_POPULATIONS + index * 4, 0)
 
 	if not misc.set_decoded_payload(changed):
 		return _failed("cannot clear zone population totals")
@@ -39,11 +39,3 @@ static func _failed(message: String) -> Result:
 	result.error = message
 
 	return result
-
-
-static func _write_u32(data: PackedByteArray, offset: int, value: int) -> void:
-	var encoded := value & 0xffffffff
-	data[offset] = (encoded >> 24) & 0xff
-	data[offset + 1] = (encoded >> 16) & 0xff
-	data[offset + 2] = (encoded >> 8) & 0xff
-	data[offset + 3] = encoded & 0xff

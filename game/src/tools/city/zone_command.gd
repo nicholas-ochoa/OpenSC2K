@@ -133,7 +133,7 @@ static func apply_rectangle(
 
 	if cost > 0:
 		old_payloads.MISC = old_payloads.MISC.duplicate()
-		_write_i32_be(old_payloads.MISC, 0x14, previous_funds)
+		BinaryData.write_u32_be(old_payloads.MISC, 0x14, previous_funds)
 
 	var new_payloads: Dictionary[String, PackedByteArray] = {
 		"XZON": city.document.find_chunk("XZON").decoded_payload.duplicate(),
@@ -372,14 +372,6 @@ static func _tile_is_drag_price_eligible(
 
 static func _point_is_valid(point: Vector2i, map_edge: int = 128) -> bool:
 	return point.x >= 0 and point.x < map_edge and point.y >= 0 and point.y < map_edge
-
-
-static func _write_i32_be(data: PackedByteArray, offset: int, value: int) -> void:
-	var encoded := value & 0xffffffff
-	data[offset] = (encoded >> 24) & 0xff
-	data[offset + 1] = (encoded >> 16) & 0xff
-	data[offset + 2] = (encoded >> 8) & 0xff
-	data[offset + 3] = encoded & 0xff
 
 
 static func _restore_values(

@@ -348,8 +348,8 @@ func _test_walking_cache() -> void:
 			for y in range(16, 24):
 				_compare_walking_cache(scan, Vector2i(x, y), 3, TransportTrip.ROAD_MODE)
 		check(scan.walking_access[2][access.x * edge + access.y] == 2, "Residential zone gives commercial walking access")
-		GrowthState._write_u32(scan.misc, GrowthConstants.MISC_NORMAL_POPULATION, 10000)
-		GrowthState._write_u32(scan.misc, GrowthConstants.MISC_TILE_COUNTS + GrowthConstants.CHURCH_TILE * 4, 0)
+		BinaryData.write_u32_be(scan.misc, GrowthConstants.MISC_NORMAL_POPULATION, 10000)
+		BinaryData.write_u32_be(scan.misc, GrowthConstants.MISC_TILE_COUNTS + GrowthConstants.CHURCH_TILE * 4, 0)
 		for unused in 100:
 			if scan._try_complete_construction(church, 1, 2):
 				break

@@ -217,8 +217,8 @@ static func _demolish_point(
 		)
 
 	if REWARD_BIT_BY_TILE.has(tile_id):
-		var reward_mask := BuildingState.read_u32_be(misc, MISC_GRANTED_REWARDS)
-		BuildingState._write_u32_be(
+		var reward_mask := BinaryData.read_u32_be(misc, MISC_GRANTED_REWARDS)
+		BinaryData.write_u32_be(
 			misc,
 			MISC_GRANTED_REWARDS,
 			reward_mask | (1 << int(REWARD_BIT_BY_TILE[tile_id]))

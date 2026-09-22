@@ -131,7 +131,7 @@ static func run(city: CityState) -> Result:
 
 	var misc_chunk := city.document.find_chunk("MISC")
 	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
-	_write_i32(misc, MISC_CITY_VALUE, int(calculated.city_value))
+	BinaryData.write_u32_be(misc, MISC_CITY_VALUE, int(calculated.city_value))
 
 	if not misc_chunk.set_decoded_payload(misc):
 		return _failed("cannot store the city value")
@@ -188,10 +188,3 @@ static func _to_i32(value: int) -> int:
 	var unsigned := value & 0xffffffff
 
 	return unsigned - 0x100000000 if unsigned & 0x80000000 else unsigned
-
-
-static func _write_i32(data: PackedByteArray, offset: int, value: int) -> void:
-	data[offset] = (value >> 24) & 0xff
-	data[offset + 1] = (value >> 16) & 0xff
-	data[offset + 2] = (value >> 8) & 0xff
-	data[offset + 3] = value & 0xff

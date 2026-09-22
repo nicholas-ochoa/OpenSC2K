@@ -215,15 +215,6 @@ static func _apply_map_payloads(
 	return true
 
 
-static func _read_u32_be(data: PackedByteArray, offset: int) -> int:
-	return (
-		(data[offset] << 24)
-		| (data[offset + 1] << 16)
-		| (data[offset + 2] << 8)
-		| data[offset + 3]
-	)
-
-
 static func _index(point: Vector2i, map_edge: int = 128) -> int:
 	if point.x < 0 or point.y < 0 or point.x >= map_edge or point.y >= map_edge:
 		return -1

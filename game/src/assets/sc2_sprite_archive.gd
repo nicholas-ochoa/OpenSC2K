@@ -265,7 +265,7 @@ func parse(bytes: PackedByteArray) -> bool:
 	if bytes.size() < 2:
 		return _fail("archive is shorter than its count field")
 
-	var count := _read_u16_be(bytes, 0)
+	var count := BinaryData.read_u16_be(bytes, 0)
 	var header_end := 2 + count * 10
 
 	if header_end > bytes.size():
@@ -276,10 +276,10 @@ func parse(bytes: PackedByteArray) -> bool:
 	for index in count:
 		var metadata_offset := 2 + index * 10
 		var entry := SpriteEntry.new()
-		entry.sprite_id = _read_u16_be(bytes, metadata_offset)
-		entry.offset = _read_u32_be(bytes, metadata_offset + 2)
-		entry.height = _read_u16_be(bytes, metadata_offset + 6)
-		entry.width = _read_u16_be(bytes, metadata_offset + 8)
+		entry.sprite_id = BinaryData.read_u16_be(bytes, metadata_offset)
+		entry.offset = BinaryData.read_u32_be(bytes, metadata_offset + 2)
+		entry.height = BinaryData.read_u16_be(bytes, metadata_offset + 6)
+		entry.width = BinaryData.read_u16_be(bytes, metadata_offset + 8)
 		entry.duplicate_index = int(duplicate_counts.get(entry.sprite_id, 0))
 		duplicate_counts[entry.sprite_id] = entry.duplicate_index + 1
 
@@ -320,16 +320,3 @@ func _fail(message: String) -> bool:
 	parse_error = message
 
 	return false
-
-
-static func _read_u16_be(bytes: PackedByteArray, offset: int) -> int:
-	return (bytes[offset] << 8) | bytes[offset + 1]
-
-
-static func _read_u32_be(bytes: PackedByteArray, offset: int) -> int:
-	return (
-		(bytes[offset] << 24)
-		| (bytes[offset + 1] << 16)
-		| (bytes[offset + 2] << 8)
-		| bytes[offset + 3]
-	)

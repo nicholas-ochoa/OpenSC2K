@@ -64,7 +64,7 @@ static func issue(city: CityState, confirmation := CONFIRMATION_UNSELECTED) -> R
 
 	var misc_chunk = validated.chunk
 	var misc: PackedByteArray = validated.misc.duplicate()
-	var bond_count := _read_u32(misc, MISC_BONDS)
+	var bond_count := BinaryData.read_u32_be(misc, MISC_BONDS)
 
 	if bond_count > MAX_BONDS:
 		return _failed("saved bond count exceeds fifty")
@@ -76,7 +76,7 @@ static func issue(city: CityState, confirmation := CONFIRMATION_UNSELECTED) -> R
 		return _failed(city_value_result.error)
 
 	var city_value := int(city_value_result.city_value)
-	_write_i32(misc, MISC_CITY_VALUE, city_value)
+	BinaryData.write_u32_be(misc, MISC_CITY_VALUE, city_value)
 	var denominator := (city_value + 1) & 0xffffffff
 
 	if denominator == 0:
@@ -90,7 +90,7 @@ static func issue(city: CityState, confirmation := CONFIRMATION_UNSELECTED) -> R
 			return _failed("cannot store the rebuilt city value")
 
 		return _result(
-			"credit_denied", false, false, bond_count, _read_i32(misc, MISC_FUNDS),
+			"credit_denied", false, false, bond_count, BinaryData.read_i32_be(misc, MISC_FUNDS),
 			city_value, credit_value
 		)
 
@@ -99,7 +99,7 @@ static func issue(city: CityState, confirmation := CONFIRMATION_UNSELECTED) -> R
 			return _failed("cannot store the rebuilt city value")
 
 		return _result(
-			"maximum_bonds", false, false, bond_count, _read_i32(misc, MISC_FUNDS),
+			"maximum_bonds", false, false, bond_count, BinaryData.read_i32_be(misc, MISC_FUNDS),
 			city_value, credit_value
 		)
 
@@ -111,7 +111,7 @@ static func issue(city: CityState, confirmation := CONFIRMATION_UNSELECTED) -> R
 
 		return _result(
 			"confirmation_required", true, false, bond_count,
-			_read_i32(misc, MISC_FUNDS),
+			BinaryData.read_i32_be(misc, MISC_FUNDS),
 			city_value, credit_value, rate
 		)
 
@@ -120,20 +120,20 @@ static func issue(city: CityState, confirmation := CONFIRMATION_UNSELECTED) -> R
 			return _failed("cannot store the rebuilt city value")
 
 		return _result(
-			"cancelled", false, false, bond_count, _read_i32(misc, MISC_FUNDS),
+			"cancelled", false, false, bond_count, BinaryData.read_i32_be(misc, MISC_FUNDS),
 			city_value, credit_value, rate
 		)
 
 	var interest_sum := _interest_sum(misc, bond_count)
 	_normalize_bond_rates(misc)
-	_write_u32(misc, MISC_BOND_RATES + bond_count * 4, rate & 0xffff)
+	BinaryData.write_u32_be(misc, MISC_BOND_RATES + bond_count * 4, rate & 0xffff)
 	interest_sum = _to_i32(interest_sum + rate)
 	bond_count += 1
-	var funds := _to_i32(_read_i32(misc, MISC_FUNDS) + BOND_VALUE)
-	_write_i32(misc, MISC_FUNDS, funds)
-	_write_u32(misc, MISC_BONDS, bond_count)
-	_write_i32(misc, _bond_budget_offset() + BUDGET_CURRENT, bond_count)
-	_write_i32(
+	var funds := _to_i32(BinaryData.read_i32_be(misc, MISC_FUNDS) + BOND_VALUE)
+	BinaryData.write_u32_be(misc, MISC_FUNDS, funds)
+	BinaryData.write_u32_be(misc, MISC_BONDS, bond_count)
+	BinaryData.write_u32_be(misc, _bond_budget_offset() + BUDGET_CURRENT, bond_count)
+	BinaryData.write_u32_be(
 		misc,
 		_bond_budget_offset() + BUDGET_FUNDING,
 		_divide_toward_zero(_to_i32(interest_sum * 10000), bond_count)
@@ -159,12 +159,12 @@ static func repay(city: CityState, confirmation := CONFIRMATION_UNSELECTED) -> R
 
 	var misc_chunk = validated.chunk
 	var misc: PackedByteArray = validated.misc.duplicate()
-	var bond_count := _read_u32(misc, MISC_BONDS)
+	var bond_count := BinaryData.read_u32_be(misc, MISC_BONDS)
 
 	if bond_count > MAX_BONDS:
 		return _failed("saved bond count exceeds fifty")
 
-	var funds := _read_i32(misc, MISC_FUNDS)
+	var funds := BinaryData.read_i32_be(misc, MISC_FUNDS)
 
 	if bond_count == 0:
 		return _result("no_bonds", false, false, bond_count, funds)
@@ -197,18 +197,18 @@ static func repay(city: CityState, confirmation := CONFIRMATION_UNSELECTED) -> R
 		rates[rate_index] = rates[rate_index + 1]
 
 	for rate_index in MAX_BONDS:
-		_write_u32(misc, MISC_BOND_RATES + rate_index * 4, rates[rate_index])
+		BinaryData.write_u32_be(misc, MISC_BOND_RATES + rate_index * 4, rates[rate_index])
 
 	funds = _to_i32(funds - BOND_VALUE)
-	_write_i32(misc, MISC_FUNDS, funds)
-	_write_u32(misc, MISC_BONDS, bond_count)
-	_write_i32(misc, _bond_budget_offset() + BUDGET_CURRENT, bond_count)
+	BinaryData.write_u32_be(misc, MISC_FUNDS, funds)
+	BinaryData.write_u32_be(misc, MISC_BONDS, bond_count)
+	BinaryData.write_u32_be(misc, _bond_budget_offset() + BUDGET_CURRENT, bond_count)
 	var average_rate := 0
 
 	if bond_count > 0:
 		average_rate = _divide_toward_zero(_to_i32(interest_sum * 10000), bond_count)
 
-	_write_i32(misc, _bond_budget_offset() + BUDGET_FUNDING, average_rate)
+	BinaryData.write_u32_be(misc, _bond_budget_offset() + BUDGET_FUNDING, average_rate)
 
 	if not misc_chunk.set_decoded_payload(misc):
 		return _failed("cannot store the repaid bond")
@@ -282,7 +282,7 @@ static func _interest_sum(misc: PackedByteArray, bond_count: int) -> int:
 static func _normalize_bond_rates(misc: PackedByteArray) -> void:
 	for rate_index in MAX_BONDS:
 		var offset := MISC_BOND_RATES + rate_index * 4
-		_write_u32(misc, offset, _read_u16_low(misc, offset))
+		BinaryData.write_u32_be(misc, offset, _read_u16_low(misc, offset))
 
 
 static func _bond_budget_offset() -> int:
@@ -309,31 +309,7 @@ static func _to_i16(value: int) -> int:
 	return unsigned - 0x10000 if unsigned & 0x8000 else unsigned
 
 
-static func _read_u32(data: PackedByteArray, offset: int) -> int:
-	return (
-		(data[offset] << 24)
-		| (data[offset + 1] << 16)
-		| (data[offset + 2] << 8)
-		| data[offset + 3]
-	)
-
-
-static func _read_i32(data: PackedByteArray, offset: int) -> int:
-	return _to_i32(_read_u32(data, offset))
-
-
 static func _to_i32(value: int) -> int:
 	var unsigned := value & 0xffffffff
 
 	return unsigned - 0x100000000 if unsigned & 0x80000000 else unsigned
-
-
-static func _write_u32(data: PackedByteArray, offset: int, value: int) -> void:
-	data[offset] = (value >> 24) & 0xff
-	data[offset + 1] = (value >> 16) & 0xff
-	data[offset + 2] = (value >> 8) & 0xff
-	data[offset + 3] = value & 0xff
-
-
-static func _write_i32(data: PackedByteArray, offset: int, value: int) -> void:
-	_write_u32(data, offset, value)

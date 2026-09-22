@@ -116,12 +116,12 @@ static func initialize_session(misc: PackedByteArray, random: SimRandom) -> Resu
 
 	for slot in STORY_RECORD_COUNT:
 		var offset := _story_offset(slot)
-		_write_u32(misc, offset, 11 + slot)
-		_write_u32(misc, offset + 4, 0)
-		_write_u32(misc, offset + 8, 0)
+		BinaryData.write_u32_be(misc, offset, 11 + slot)
+		BinaryData.write_u32_be(misc, offset + 4, 0)
+		BinaryData.write_u32_be(misc, offset + 8, 0)
 
 		for field in range(FIRST_AUXILIARY_FIELD, STORY_FIELD_COUNT):
-			_write_u32(misc, offset + field * 4, 0xff)
+			BinaryData.write_u32_be(misc, offset + field * 4, 0xff)
 
 	var result := Result.new()
 	result.ok = true
@@ -139,14 +139,14 @@ static func decay_and_sort(misc: PackedByteArray) -> Result:
 
 	for slot in QUEUE_COUNT:
 		var offset := _story_offset(slot)
-		var story_type := _to_i16(_read_u32(misc, offset))
+		var story_type := _to_i16(BinaryData.read_u32_be(misc, offset))
 
 		if not is_story_type(story_type):
 			return _failure("newspaper queue story type is out of range")
 
-		var priority := _to_i16(_read_u32(misc, offset + 4))
+		var priority := _to_i16(BinaryData.read_u32_be(misc, offset + 4))
 		var decay: int = STORY_DECAYS[story_type]
-		_write_u32(misc, offset + 4, priority - decay if decay < priority else 0)
+		BinaryData.write_u32_be(misc, offset + 4, priority - decay if decay < priority else 0)
 
 	for first_slot in QUEUE_COUNT - 1:
 		for candidate_slot in range(first_slot + 1, QUEUE_COUNT):
@@ -184,12 +184,12 @@ static func insert(misc: PackedByteArray, story_type: int, argument: int) -> Res
 
 	var inserted_slot := slot + 1
 	var offset := _story_offset(inserted_slot)
-	_write_u32(misc, offset + STORY_TYPE_FIELD * 4, story_type)
-	_write_u32(misc, offset + PRIORITY_FIELD * 4, priority)
-	_write_u32(misc, offset + ARGUMENT_FIELD * 4, argument & 0xff)
+	BinaryData.write_u32_be(misc, offset + STORY_TYPE_FIELD * 4, story_type)
+	BinaryData.write_u32_be(misc, offset + PRIORITY_FIELD * 4, priority)
+	BinaryData.write_u32_be(misc, offset + ARGUMENT_FIELD * 4, argument & 0xff)
 
 	for field in range(FIRST_AUXILIARY_FIELD, STORY_FIELD_COUNT):
-		_write_u32(misc, offset + field * 4, 0xff)
+		BinaryData.write_u32_be(misc, offset + field * 4, 0xff)
 
 	var result := Result.new()
 	result.ok = true
@@ -231,13 +231,13 @@ static func story_record(misc: PackedByteArray, slot: int) -> StoryRecord:
 	var offset := _story_offset(slot)
 
 	var result := StoryRecord.new()
-	result.type = _to_i16(_read_u32(misc, offset))
-	result.priority = _to_i16(_read_u32(misc, offset + 4))
-	result.argument = _read_u32(misc, offset + 8) & 0xff
+	result.type = _to_i16(BinaryData.read_u32_be(misc, offset))
+	result.priority = _to_i16(BinaryData.read_u32_be(misc, offset + 4))
+	result.argument = BinaryData.read_u32_be(misc, offset + 8) & 0xff
 	result.auxiliary = PackedByteArray([
-		_read_u32(misc, offset + 12) & 0xff,
-		_read_u32(misc, offset + 16) & 0xff,
-		_read_u32(misc, offset + 20) & 0xff,
+		BinaryData.read_u32_be(misc, offset + 12) & 0xff,
+		BinaryData.read_u32_be(misc, offset + 16) & 0xff,
+		BinaryData.read_u32_be(misc, offset + 20) & 0xff,
 	])
 
 	return result
@@ -261,8 +261,8 @@ static func prepare_weather_report(misc: PackedByteArray, weather: int) -> Resul
 
 	# newspaper opening sets display slot 7 to weather type 0 and the current trend
 	var offset := STORY_OFFSET + 7 * STORY_RECORD_SIZE
-	_write_u32(misc, offset, 0)
-	_write_u32(misc, offset + 8, weather & 0xff)
+	BinaryData.write_u32_be(misc, offset, 0)
+	BinaryData.write_u32_be(misc, offset + 8, weather & 0xff)
 
 	var result := Result.new()
 	result.ok = true
@@ -280,8 +280,8 @@ static func prepare_opinion_report(misc: PackedByteArray, style: int, subject: i
 	# the supplied newspaper opener selects these types from the paper's opinion style
 	var types := [42, 43, 43, 44, 44, 45]
 	var offset := STORY_OFFSET + 8 * STORY_RECORD_SIZE
-	_write_u32(misc, offset, types[clampi(style, 0, 5)])
-	_write_u32(misc, offset + 8, subject & 0xff)
+	BinaryData.write_u32_be(misc, offset, types[clampi(style, 0, 5)])
+	BinaryData.write_u32_be(misc, offset + 8, subject & 0xff)
 
 	var result := Result.new()
 	result.ok = true
@@ -297,11 +297,11 @@ static func paper_record(misc: PackedByteArray, paper: int) -> PaperRecord:
 	var offset := PAPER_OFFSET + paper * PAPER_RECORD_SIZE
 
 	var result := PaperRecord.new()
-	result.name = _read_u32(misc, offset + PAPER_NAME_FIELD * 4) & 0xff
-	result.layout = _read_u32(misc, offset + PAPER_LAYOUT_FIELD * 4) & 0xff
-	result.price = _read_u32(misc, offset + PAPER_PRICE_FIELD * 4) & 0xff
-	result.opinion = _read_u32(misc, offset + PAPER_OPINION_FIELD * 4) & 0xff
-	result.weather = _read_u32(misc, offset + PAPER_WEATHER_FIELD * 4) & 0xff
+	result.name = BinaryData.read_u32_be(misc, offset + PAPER_NAME_FIELD * 4) & 0xff
+	result.layout = BinaryData.read_u32_be(misc, offset + PAPER_LAYOUT_FIELD * 4) & 0xff
+	result.price = BinaryData.read_u32_be(misc, offset + PAPER_PRICE_FIELD * 4) & 0xff
+	result.opinion = BinaryData.read_u32_be(misc, offset + PAPER_OPINION_FIELD * 4) & 0xff
+	result.weather = BinaryData.read_u32_be(misc, offset + PAPER_WEATHER_FIELD * 4) & 0xff
 
 	return result
 
@@ -321,10 +321,10 @@ static func update_story_substitutions(
 		return _failure("newspaper story auxiliary data has the wrong size")
 
 	var offset := _story_offset(slot)
-	_write_u32(misc, offset + ARGUMENT_FIELD * 4, argument & 0xff)
+	BinaryData.write_u32_be(misc, offset + ARGUMENT_FIELD * 4, argument & 0xff)
 
 	for index in 3:
-		_write_u32(
+		BinaryData.write_u32_be(
 			misc,
 			offset + (FIRST_AUXILIARY_FIELD + index) * 4,
 			auxiliary[index],
@@ -359,7 +359,7 @@ static func _paper_field_offset(paper: int, field: int) -> int:
 static func _write_paper_field(
 	misc: PackedByteArray, paper: int, field: int, value: int
 ) -> void:
-	_write_u32(misc, _paper_field_offset(paper, field), value)
+	BinaryData.write_u32_be(misc, _paper_field_offset(paper, field), value)
 
 
 static func _swap_paper_field(
@@ -367,9 +367,9 @@ static func _swap_paper_field(
 ) -> void:
 	var first_offset := _paper_field_offset(first_paper, field)
 	var second_offset := _paper_field_offset(second_paper, field)
-	var first_value := _read_u32(misc, first_offset)
-	_write_u32(misc, first_offset, _read_u32(misc, second_offset))
-	_write_u32(misc, second_offset, first_value)
+	var first_value := BinaryData.read_u32_be(misc, first_offset)
+	BinaryData.write_u32_be(misc, first_offset, BinaryData.read_u32_be(misc, second_offset))
+	BinaryData.write_u32_be(misc, second_offset, first_value)
 
 
 static func _swap_random_paper_field(
@@ -385,7 +385,7 @@ static func _swap_random_paper_field(
 
 
 static func _story_priority(misc: PackedByteArray, slot: int) -> int:
-	return _to_i16(_read_u32(misc, _story_offset(slot) + 4))
+	return _to_i16(BinaryData.read_u32_be(misc, _story_offset(slot) + 4))
 
 
 static func _copy_story_record(misc: PackedByteArray, source_slot: int, target_slot: int) -> void:
@@ -410,23 +410,6 @@ static func _to_i16(value: int) -> int:
 	var word := value & 0xffff
 
 	return word - 0x10000 if word & 0x8000 else word
-
-
-static func _read_u32(data: PackedByteArray, offset: int) -> int:
-	return (
-		(data[offset] << 24)
-		| (data[offset + 1] << 16)
-		| (data[offset + 2] << 8)
-		| data[offset + 3]
-	)
-
-
-static func _write_u32(data: PackedByteArray, offset: int, value: int) -> void:
-	var encoded := value & 0xffffffff
-	data[offset] = (encoded >> 24) & 0xff
-	data[offset + 1] = (encoded >> 16) & 0xff
-	data[offset + 2] = (encoded >> 8) & 0xff
-	data[offset + 3] = encoded & 0xff
 
 
 static func _failure(message: String) -> Result:

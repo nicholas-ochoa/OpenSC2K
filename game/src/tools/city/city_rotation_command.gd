@@ -82,9 +82,9 @@ static func apply(city: CityState, counter_clockwise: bool) -> RotationEditResul
 		changed[chunk_id] = _rotate_grid(changed[chunk_id], CityDataGrid.edge(changed[chunk_id], map_edge), 1, counter_clockwise)
 
 	_rotate_things(changed.XTHG, counter_clockwise, map_edge)
-	var old_compass := _read_u32_be(changed.MISC, COMPASS_OFFSET) & 3
+	var old_compass := BinaryData.read_u32_be(changed.MISC, COMPASS_OFFSET) & 3
 	var new_compass := (old_compass + (1 if counter_clockwise else 3)) & 3
-	_write_u32_be(changed.MISC, COMPASS_OFFSET, new_compass)
+	BinaryData.write_u32_be(changed.MISC, COMPASS_OFFSET, new_compass)
 
 	var changed_ids := PackedStringArray()
 
@@ -378,10 +378,10 @@ static func _rotate_surface_tile_counts(
 	old_counts.resize(Tiles.DEVELOPED_FIRST)
 
 	for tile in Tiles.DEVELOPED_FIRST:
-		old_counts[tile] = _read_u32_be(misc, TILE_COUNT_OFFSET + tile * 4)
+		old_counts[tile] = BinaryData.read_u32_be(misc, TILE_COUNT_OFFSET + tile * 4)
 
 	for tile in Tiles.DEVELOPED_FIRST:
-		_write_u32_be(
+		BinaryData.write_u32_be(
 			misc, TILE_COUNT_OFFSET + int(surface_table[tile]) * 4, old_counts[tile]
 		)
 
@@ -402,8 +402,8 @@ static func _replace_building(
 	if (zones[index] & 0x0f) != MILITARY_ZONE:
 		var old_offset := TILE_COUNT_OFFSET + old_tile * 4
 		var new_offset := TILE_COUNT_OFFSET + new_tile * 4
-		_write_u32_be(misc, old_offset, (_read_u32_be(misc, old_offset) - 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
-		_write_u32_be(misc, new_offset, (_read_u32_be(misc, new_offset) + 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
+		BinaryData.write_u32_be(misc, old_offset, (BinaryData.read_u32_be(misc, old_offset) - 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
+		BinaryData.write_u32_be(misc, new_offset, (BinaryData.read_u32_be(misc, new_offset) + 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
 
 	buildings[index] = new_tile
 
@@ -472,19 +472,3 @@ static func _rotate_train_thing(
 	else:
 		ThingData.write(things, offset + 6, map_edge - 1 - old_py)
 		ThingData.write(things, offset + 7, old_px)
-
-
-static func _read_u32_be(data: PackedByteArray, offset: int) -> int:
-	return (
-		(data[offset] << 24)
-		| (data[offset + 1] << 16)
-		| (data[offset + 2] << 8)
-		| data[offset + 3]
-	)
-
-
-static func _write_u32_be(data: PackedByteArray, offset: int, value: int) -> void:
-	data[offset] = (value >> 24) & 0xff
-	data[offset + 1] = (value >> 16) & 0xff
-	data[offset + 2] = (value >> 8) & 0xff
-	data[offset + 3] = value & 0xff

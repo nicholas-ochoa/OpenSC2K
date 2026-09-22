@@ -111,7 +111,7 @@ static func apply(
 	if road_direction == 0 or road_direction == 2:
 		flags[index] |= FLAG_FLIPPED
 
-	BuildingState._write_u32_be(misc, BuildingCommand.MISC_FUNDS, city.funds() - cost)
+	BinaryData.write_u32_be(misc, BuildingCommand.MISC_FUNDS, city.funds() - cost)
 
 	var changed_ids := PackedStringArray()
 

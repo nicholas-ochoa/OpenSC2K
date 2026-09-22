@@ -482,19 +482,6 @@ func _set_altitude_word(x: int, y: int, value: int) -> bool:
 	return CityTileEdits._set_altitude_word(self, x, y, value)
 
 
-static func _read_u16_be(data: PackedByteArray, offset: int) -> int:
-	return (data[offset] << 8) | data[offset + 1]
-
-
-static func _read_u32_be(data: PackedByteArray, offset: int) -> int:
-	return (
-		(data[offset] << 24)
-		| (data[offset + 1] << 16)
-		| (data[offset + 2] << 8)
-		| data[offset + 3]
-	)
-
-
 func tile_is_visible(x: int, y: int) -> bool:
 	if index_of(x, y) < 0:
 		return false

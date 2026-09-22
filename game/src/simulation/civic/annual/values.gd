@@ -6,19 +6,19 @@ extends MicrosimAnnualConstants
 
 
 static func _tile_count(misc: PackedByteArray, tile_id: int, map_edge: int = 128) -> int:
-	var value := _read_u32(misc, MISC_TILE_COUNTS + tile_id * 4)
+	var value := BinaryData.read_u32_be(misc, MISC_TILE_COUNTS + tile_id * 4)
 
 	return _to_i16(value) if map_edge == 128 else value
 
 
 static func _budget_funding(misc: PackedByteArray, budget_id: int) -> int:
-	return _read_i32(
+	return BinaryData.read_i32_be(
 		misc, MISC_BUDGETS + budget_id * BUDGET_RECORD_SIZE + BUDGET_FUNDING
 	)
 
 
 static func _raw_population(misc: PackedByteArray, cohort: int) -> int:
-	return _read_u32(misc, MISC_RAW_POPULATION + cohort * MISC_DEMOGRAPHIC_RECORD_SIZE)
+	return BinaryData.read_u32_be(misc, MISC_RAW_POPULATION + cohort * MISC_DEMOGRAPHIC_RECORD_SIZE)
 
 
 static func _find_microsim_location(text_overlays: PackedByteArray, record_id: int, map_edge: int = 128, budget: SimulationSliceBudget = null) -> Vector2i:
@@ -82,9 +82,9 @@ static func _adjusted_population(misc: PackedByteArray, map_edge: int = 128) -> 
 		adjustment = (arcology_count * 5 - 700) * 4000
 
 	return (
-		_read_u32(misc, MISC_ARCOLOGY_POPULATION)
+		BinaryData.read_u32_be(misc, MISC_ARCOLOGY_POPULATION)
 		+ adjustment
-		+ _read_u32(misc, MISC_NORMAL_POPULATION)
+		+ BinaryData.read_u32_be(misc, MISC_NORMAL_POPULATION)
 	)
 
 
@@ -105,32 +105,13 @@ static func _population_cap(misc: PackedByteArray, maximum: int, divisor: int, m
 
 	var total_population := (
 		arcology_adjustment
-		+ _read_u32(misc, MISC_ARCOLOGY_POPULATION)
-		+ _read_u32(misc, MISC_NORMAL_POPULATION)
+		+ BinaryData.read_u32_be(misc, MISC_ARCOLOGY_POPULATION)
+		+ BinaryData.read_u32_be(misc, MISC_NORMAL_POPULATION)
 	)
 	var available := int(total_population / divisor) & (0xffff if map_edge == 128 else 0xffffffff)
 	var signed_maximum := _to_i16(maximum)
 
 	return signed_maximum if signed_maximum <= available else available
-
-
-static func _read_u32(data: PackedByteArray, offset: int) -> int:
-	return (
-		(data[offset] << 24)
-		| (data[offset + 1] << 16)
-		| (data[offset + 2] << 8)
-		| data[offset + 3]
-	)
-
-
-static func _read_i32(data: PackedByteArray, offset: int) -> int:
-	var value := _read_u32(data, offset)
-
-	return value - 0x100000000 if value >= 0x80000000 else value
-
-
-static func _read_u16_be(data: PackedByteArray, offset: int) -> int:
-	return (data[offset] << 8) | data[offset + 1]
 
 
 static func _to_i16(value: int) -> int:
@@ -145,24 +126,8 @@ static func _to_i32(value: int) -> int:
 	return wrapped - 0x100000000 if wrapped >= 0x80000000 else wrapped
 
 
-static func _write_u32(data: PackedByteArray, offset: int, value: int) -> void:
-	data[offset] = (value >> 24) & 0xff
-	data[offset + 1] = (value >> 16) & 0xff
-	data[offset + 2] = (value >> 8) & 0xff
-	data[offset + 3] = value & 0xff
-
-
-static func _write_i32(data: PackedByteArray, offset: int, value: int) -> void:
-	_write_u32(data, offset, value & 0xffffffff)
-
-
 static func _divide_toward_zero(value: int, divisor: int) -> int:
 	if value >= 0:
 		return int(value / divisor)
 
 	return -int((-value) / divisor)
-
-
-static func _write_u16_be(data: PackedByteArray, offset: int, value: int) -> void:
-	data[offset] = (value >> 8) & 0xff
-	data[offset + 1] = value & 0xff

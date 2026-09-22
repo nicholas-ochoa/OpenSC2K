@@ -209,23 +209,23 @@ static func run(city: CityState, random: SimRandom, season: int) -> Result:
 		ToolAvailability.rebuild_reward_mask(misc)
 
 	span.mark("weather")
-	var old_trend := _read_u32(misc, MISC_WEATHER_TREND) & 0xff
+	var old_trend := BinaryData.read_u32_be(misc, MISC_WEATHER_TREND) & 0xff
 
 	if old_trend >= WEATHER_NAMES.size():
 		return _failed("weather trend is out of range")
 
 	var weather_roll: int = random.next_u15() & 7
 	var new_trend := weather_transition(old_trend, season, weather_roll)
-	var old_heat := _read_u32(misc, MISC_WEATHER_HEAT) & 0xff
-	var old_wind := _read_u32(misc, MISC_WEATHER_WIND) & 0xff
-	var old_rain := _read_u32(misc, MISC_WEATHER_RAIN) & 0xff
+	var old_heat := BinaryData.read_u32_be(misc, MISC_WEATHER_HEAT) & 0xff
+	var old_wind := BinaryData.read_u32_be(misc, MISC_WEATHER_WIND) & 0xff
+	var old_rain := BinaryData.read_u32_be(misc, MISC_WEATHER_RAIN) & 0xff
 	var new_heat := int((old_heat + WEATHER_HEAT_TARGETS[new_trend]) / 2)
 	var new_wind := int((old_wind + WEATHER_WIND_TARGETS[new_trend]) / 2)
 	var new_rain := int((old_rain + WEATHER_RAIN_TARGETS[new_trend]) / 2)
-	_write_u32(misc, MISC_WEATHER_HEAT, new_heat)
-	_write_u32(misc, MISC_WEATHER_WIND, new_wind)
-	_write_u32(misc, MISC_WEATHER_RAIN, new_rain)
-	_write_u32(misc, MISC_WEATHER_TREND, new_trend)
+	BinaryData.write_u32_be(misc, MISC_WEATHER_HEAT, new_heat)
+	BinaryData.write_u32_be(misc, MISC_WEATHER_WIND, new_wind)
+	BinaryData.write_u32_be(misc, MISC_WEATHER_RAIN, new_rain)
+	BinaryData.write_u32_be(misc, MISC_WEATHER_TREND, new_trend)
 	span.mark("news insertion")
 	var queue_insert := NewsQueue.insert_items(misc, news_items)
 
@@ -336,7 +336,7 @@ static func _append_general_news(
 				news_items.append(NewsEvent.new(NEWS_WAR, 0))
 
 			if (random.next_u15() & 3) == 0:
-				news_items.append(NewsEvent.new(NEWS_MARKET, _read_u32(misc, 0x005c) & 0xffff))
+				news_items.append(NewsEvent.new(NEWS_MARKET, BinaryData.read_u32_be(misc, 0x005c) & 0xffff))
 		1:
 			news_items.append(NewsEvent.new(0x0b, 0))
 		2:
@@ -348,19 +348,19 @@ static func _append_general_news(
 		5:
 			news_items.append(NewsEvent.new(0x0f, 0))
 
-	var stadium_tiles := _read_u32(misc, MISC_TILE_COUNTS + STADIUM_TILE * 4)
+	var stadium_tiles := BinaryData.read_u32_be(misc, MISC_TILE_COUNTS + STADIUM_TILE * 4)
 
 	if (_to_i16(stadium_tiles) if map_edge == 128 else stadium_tiles) > 0:
 		var team: int = random.next_u15() % 5
 
-		if _to_i16(_read_u32(misc, MISC_STADIUM_TEAMS)) & (1 << team):
+		if _to_i16(BinaryData.read_u32_be(misc, MISC_STADIUM_TEAMS)) & (1 << team):
 			news_items.append(NewsEvent.new(NEWS_SPORTS, team))
 
 	_append_graph_news(random, graphs, GRAPH_TRAFFIC, NEWS_HIGH_TRAFFIC, NEWS_LOW_TRAFFIC, news_items)
 	_append_graph_news(random, graphs, GRAPH_POLLUTION, NEWS_HIGH_POLLUTION, NEWS_LOW_POLLUTION, news_items)
 	_append_graph_news(random, graphs, GRAPH_CRIME, NEWS_HIGH_CRIME, NEWS_LOW_CRIME, news_items)
 
-	var unemployment := _read_i32(misc, MISC_UNEMPLOYMENT)
+	var unemployment := BinaryData.read_i32_be(misc, MISC_UNEMPLOYMENT)
 
 	if (random.next_u15() & 0x3f) < unemployment:
 		news_items.append(NewsEvent.new(NEWS_POOR_EMPLOYMENT, 0))
@@ -368,7 +368,7 @@ static func _append_general_news(
 	if unemployment < (random.next_u15() & 3):
 		news_items.append(NewsEvent.new(NEWS_GOOD_EMPLOYMENT, 0))
 
-	var education := _read_u32(misc, 0x004c)
+	var education := BinaryData.read_u32_be(misc, 0x004c)
 	var education_roll: int = random.next_u15() % 80
 
 	if education < 80:
@@ -377,7 +377,7 @@ static func _append_general_news(
 	elif education_roll < education - 80:
 		news_items.append(NewsEvent.new(NEWS_GOOD_EDUCATION, 0))
 
-	var health := _read_u32(misc, 0x0048)
+	var health := BinaryData.read_u32_be(misc, 0x0048)
 	var health_roll: int = random.next_u15() % 60
 
 	if health < 60:
@@ -395,7 +395,7 @@ static func _append_graph_news(
 	low_type: int,
 	news_items: Array[NewsEvent]
 ) -> void:
-	var value := _read_i32(graphs, series * 52 * 4)
+	var value := BinaryData.read_i32_be(graphs, series * 52 * 4)
 
 	if (random.next_u15() & 0x7f) < value:
 		news_items.append(NewsEvent.new(high_type, 0))
@@ -410,11 +410,11 @@ static func _release_invention(
 	if (random.next_u15() & 7) != 0:
 		return -1
 
-	var current_year := _to_i16(_read_u32(misc, MISC_START_YEAR)) + int(city.age_in_days() / 300)
+	var current_year := _to_i16(BinaryData.read_u32_be(misc, MISC_START_YEAR)) + int(city.age_in_days() / 300)
 
 	for index in INVENTION_COUNT:
 		var offset := MISC_INVENTION_YEARS + index * 4
-		var invention_year := _to_i16(_read_u32(misc, offset))
+		var invention_year := _to_i16(BinaryData.read_u32_be(misc, offset))
 
 		if invention_year == 0 or invention_year > current_year:
 			continue
@@ -422,7 +422,7 @@ static func _release_invention(
 		var news_type := NEWS_INVENTION if index < 7 else NEWS_INNOVATION
 		var argument := index if index < 7 else index - 7
 		news_items.append(NewsEvent.new(news_type, argument))
-		_write_u32(misc, offset, 0)
+		BinaryData.write_u32_be(misc, offset, 0)
 
 		return index
 
@@ -444,8 +444,8 @@ static func _replace_building(
 	var military := (zones[index] & 0x0f) == 7
 	var old_offset := _tile_count_offset(old_tile, military)
 	var new_offset := _tile_count_offset(new_tile, military)
-	_write_u32(misc, old_offset, (_read_u32(misc, old_offset) - 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
-	_write_u32(misc, new_offset, (_read_u32(misc, new_offset) + 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
+	BinaryData.write_u32_be(misc, old_offset, (BinaryData.read_u32_be(misc, old_offset) - 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
+	BinaryData.write_u32_be(misc, new_offset, (BinaryData.read_u32_be(misc, new_offset) + 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
 	buildings[index] = new_tile
 
 
@@ -460,29 +460,6 @@ static func _to_i16(value: int) -> int:
 	var word := value & 0xffff
 
 	return word - 0x10000 if word & 0x8000 else word
-
-
-static func _read_i32(data: PackedByteArray, offset: int) -> int:
-	var value := _read_u32(data, offset)
-
-	return value - 0x100000000 if value & 0x80000000 else value
-
-
-static func _read_u32(data: PackedByteArray, offset: int) -> int:
-	return (
-		(data[offset] << 24)
-		| (data[offset + 1] << 16)
-		| (data[offset + 2] << 8)
-		| data[offset + 3]
-	)
-
-
-static func _write_u32(data: PackedByteArray, offset: int, value: int) -> void:
-	var encoded := value & 0xffffffff
-	data[offset] = (encoded >> 24) & 0xff
-	data[offset + 1] = (encoded >> 16) & 0xff
-	data[offset + 2] = (encoded >> 8) & 0xff
-	data[offset + 3] = encoded & 0xff
 
 
 static func _failed(message: String) -> Result:

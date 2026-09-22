@@ -9,18 +9,18 @@ static func mac_sound(data: PackedByteArray) -> AssetBytesResult:
 	if data.size() < 6:
 		return AssetBytesResult.failure("The Macintosh sound resource is truncated.")
 
-	var format := Sc2ImportContainer.be16(data, 0)
+	var format := BinaryData.read_u16_be(data, 0)
 	var cursor := 4
 
 	if format == 1:
-		cursor += Sc2ImportContainer.be16(data, 2) * 6
+		cursor += BinaryData.read_u16_be(data, 2) * 6
 	elif format != 2:
 		return AssetBytesResult.failure("Unsupported Macintosh sound resource format.")
 
 	if not Sc2ImportContainer.has_range(data, cursor, 2):
 		return AssetBytesResult.failure("The Macintosh sound command list is truncated.")
 
-	var count := Sc2ImportContainer.be16(data, cursor)
+	var count := BinaryData.read_u16_be(data, cursor)
 	cursor += 2
 
 	if not Sc2ImportContainer.has_range(data, cursor, count * 8):
@@ -28,7 +28,7 @@ static func mac_sound(data: PackedByteArray) -> AssetBytesResult:
 
 	for index in count:
 		var command := cursor + index * 8
-		var operation := Sc2ImportContainer.be16(data, command)
+		var operation := BinaryData.read_u16_be(data, command)
 
 		# The offset flag points to bytes inside this resource.
 		if operation not in [0x8050, 0x8051]:

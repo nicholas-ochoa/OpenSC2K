@@ -5,15 +5,15 @@ extends MicrosimAnnualValues
 
 static func update_hydro_one(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
 	var hydro_count := _tile_count(annual.misc, TILE_HYDRO_ONE, annual.map_edge) + _tile_count(annual.misc, TILE_HYDRO_TWO, annual.map_edge)
-	_write_u16_be(annual.microsims, offset + 2, hydro_count)
-	_write_u16_be(annual.microsims, offset + 4, hydro_count * 20)
+	BinaryData.write_u16_be(annual.microsims, offset + 2, hydro_count)
+	BinaryData.write_u16_be(annual.microsims, offset + 4, hydro_count * 20)
 	annual.counts.hydro += 1
 
 
 static func update_wind_power(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
 	var wind_count := _tile_count(annual.misc, TILE_WIND_POWER, annual.map_edge)
-	_write_u16_be(annual.microsims, offset + 2, wind_count)
-	_write_u16_be(annual.microsims, offset + 4, wind_count * 4)
+	BinaryData.write_u16_be(annual.microsims, offset + 2, wind_count)
+	BinaryData.write_u16_be(annual.microsims, offset + 4, wind_count * 4)
 	annual.counts.wind += 1
 
 
@@ -26,7 +26,7 @@ static func update_power(annual: MicrosimAnnualContext, record_id: int, offset: 
 	var power_random: int = annual.random.next_u15()
 
 	if annual.power_usage_percent >= 0:
-		_write_u16_be(
+		BinaryData.write_u16_be(
 			annual.microsims, offset + 4, (power_random & 0x07) + annual.power_usage_percent
 		)
 	else:
@@ -41,10 +41,10 @@ static func update_power(annual: MicrosimAnnualContext, record_id: int, offset: 
 
 		if location.x >= 0:
 			var plant_cost: int = POWER_PLANT_COSTS.get(power_tile, 0)
-			var funds := _read_i32(annual.misc, MISC_FUNDS)
+			var funds := BinaryData.read_i32_be(annual.misc, MISC_FUNDS)
 
-			if _read_u32(annual.misc, MISC_NO_DISASTERS) != 0 and funds >= plant_cost:
-				_write_i32(annual.misc, MISC_FUNDS, funds - plant_cost)
+			if BinaryData.read_u32_be(annual.misc, MISC_NO_DISASTERS) != 0 and funds >= plant_cost:
+				BinaryData.write_u32_be(annual.misc, MISC_FUNDS, funds - plant_cost)
 				annual.microsims[offset + 1] = 0
 			else:
 				var expired_record := PowerPlantExpiry.new(record_id, power_tile, location)
@@ -61,7 +61,7 @@ static func update_power(annual: MicrosimAnnualContext, record_id: int, offset: 
 					annual.demolished_power_records.append(expired_record)
 					annual.sound_events.append(SOUND_EXPLOSION)
 
-					if _read_u32(annual.misc, MISC_AUTO_GOTO) != 0:
+					if BinaryData.read_u32_be(annual.misc, MISC_AUTO_GOTO) != 0:
 						annual.view_center_requests.append(Vector2i(location.x, location.y))
 				else:
 					annual.expired_power_records.append(expired_record)
@@ -84,13 +84,13 @@ static func update_water_treatment(annual: MicrosimAnnualContext, record_id: int
 	else:
 		annual.random_records_pending += 1
 
-	_write_u16_be(annual.microsims, offset + 2, water_second % 100)
-	_write_u16_be(
+	BinaryData.write_u16_be(annual.microsims, offset + 2, water_second % 100)
+	BinaryData.write_u16_be(
 		annual.microsims,
 		offset + 4,
 		mini(
 			(water_third & 0x1f) + 135,
-			_divide_toward_zero(_read_u32(annual.misc, MISC_NORMAL_POPULATION), 50)
+			_divide_toward_zero(BinaryData.read_u32_be(annual.misc, MISC_NORMAL_POPULATION), 50)
 		)
 	)
 	annual.counts.water_facility += 1
@@ -104,7 +104,7 @@ static func update_arcology(annual: MicrosimAnnualContext, record_id: int, offse
 	var arcology_count := maxi(_arcology_count(annual.misc, annual.map_edge), 1)
 	var arcology_capacity := _population_cap(
 		annual.misc,
-		_to_i16(_divide_toward_zero(_read_u16_be(annual.microsims, offset + 2) * 1000, 10)),
+		_to_i16(_divide_toward_zero(BinaryData.read_u16_be(annual.microsims, offset + 2) * 1000, 10)),
 		arcology_count * 20, annual.map_edge
 	) & 0xffff
 	var tax_effect := (
@@ -120,16 +120,16 @@ static func update_arcology(annual: MicrosimAnnualContext, record_id: int, offse
 	var arcology_growth := mini((tax_effect * 5 - 50) * 40, arcology_capacity)
 	var next_population := (
 		arcology_growth
-		+ _divide_toward_zero(_read_u16_be(annual.microsims, offset + 4), 50)
-		+ _read_u16_be(annual.microsims, offset + 4)
+		+ _divide_toward_zero(BinaryData.read_u16_be(annual.microsims, offset + 4), 50)
+		+ BinaryData.read_u16_be(annual.microsims, offset + 4)
 	)
 	next_population = mini(
-		next_population, _read_u16_be(annual.microsims, offset + 2) * 1000
+		next_population, BinaryData.read_u16_be(annual.microsims, offset + 2) * 1000
 	)
 	var arcology_record_population := (
 		_to_i16(annual.lfsr_random.next_mask(0x3f)) + _to_i16(next_population)
 	)
-	_write_u16_be(annual.microsims, offset + 4, arcology_record_population)
+	BinaryData.write_u16_be(annual.microsims, offset + 4, arcology_record_population)
 	annual.arcology_population = _to_i32(
 		annual.arcology_population + (arcology_record_population & 0xffff)
 	)

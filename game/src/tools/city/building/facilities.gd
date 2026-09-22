@@ -16,7 +16,7 @@ static func stadium_team_choices(city: CityState) -> PackedInt32Array:
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != 4800:
 		return result
 
-	var used_mask := BuildingState.read_u32_be(
+	var used_mask := BinaryData.read_u32_be(
 		misc_chunk.decoded_payload, MISC_STADIUM_TEAMS
 	) & 0x1f
 
@@ -89,8 +89,8 @@ static func assign_stadium_team(
 	if microsims[record_offset] != STADIUM:
 		return BuildingEditResult.rejected("stadium microsimulation record is missing")
 
-	BuildingState._write_u16_be(microsims, record_offset + 4, team_index)
-	BuildingState._write_u16_be(
+	BinaryData.write_u16_be(microsims, record_offset + 4, team_index)
+	BinaryData.write_u16_be(
 		microsims,
 		record_offset + 6,
 		STADIUM_TEAM_LABEL_BASE + team_index,
@@ -101,10 +101,10 @@ static func assign_stadium_team(
 		team_name,
 	)
 	var misc: PackedByteArray = changed_payloads.MISC
-	BuildingState._write_u32_be(
+	BinaryData.write_u32_be(
 		misc,
 		MISC_STADIUM_TEAMS,
-		BuildingState.read_u32_be(misc, MISC_STADIUM_TEAMS) | (1 << team_index),
+		BinaryData.read_u32_be(misc, MISC_STADIUM_TEAMS) | (1 << team_index),
 	)
 	var team_chunk_ids := PackedStringArray(["XLAB", "XMIC", "MISC"])
 
@@ -217,39 +217,39 @@ static func initialize_microsim(
 
 	match tile_id:
 		HYDRO_POWER_1, HYDRO_POWER_2:
-			BuildingState._write_u16_be(microsims, offset + 2, BuildingState._read_u16_be(microsims, offset + 2) + 1)
-			BuildingState._write_u16_be(microsims, offset + 4, BuildingState._read_u16_be(microsims, offset + 4) + 20)
+			BinaryData.write_u16_be(microsims, offset + 2, BinaryData.read_u16_be(microsims, offset + 2) + 1)
+			BinaryData.write_u16_be(microsims, offset + 4, BinaryData.read_u16_be(microsims, offset + 4) + 20)
 		WIND_POWER:
-			BuildingState._write_u16_be(microsims, offset + 2, BuildingState._read_u16_be(microsims, offset + 2) + 1)
-			BuildingState._write_u16_be(microsims, offset + 4, BuildingState._read_u16_be(microsims, offset + 4) + 4)
+			BinaryData.write_u16_be(microsims, offset + 2, BinaryData.read_u16_be(microsims, offset + 2) + 1)
+			BinaryData.write_u16_be(microsims, offset + 4, BinaryData.read_u16_be(microsims, offset + 4) + 4)
 		GAS_POWER, SOLAR_POWER:
-			BuildingState._write_u16_be(microsims, offset + 2, 50)
+			BinaryData.write_u16_be(microsims, offset + 2, 50)
 		OIL_POWER:
-			BuildingState._write_u16_be(microsims, offset + 2, 220)
+			BinaryData.write_u16_be(microsims, offset + 2, 220)
 		NUCLEAR_POWER:
-			BuildingState._write_u16_be(microsims, offset + 2, 500)
+			BinaryData.write_u16_be(microsims, offset + 2, 500)
 		MICROWAVE_POWER:
-			BuildingState._write_u16_be(microsims, offset + 2, 1600)
+			BinaryData.write_u16_be(microsims, offset + 2, 1600)
 		FUSION_POWER:
-			BuildingState._write_u16_be(microsims, offset + 2, 2500)
+			BinaryData.write_u16_be(microsims, offset + 2, 2500)
 		COAL_POWER:
-			BuildingState._write_u16_be(microsims, offset + 2, 200)
+			BinaryData.write_u16_be(microsims, offset + 2, 200)
 		CITY_HALL:
-			BuildingState._write_u16_be(
+			BinaryData.write_u16_be(
 				microsims,
 				offset + 2,
 				0 if scurk_place_mode else population_cap(misc, 200, 900, map_edge)
 			)
-			BuildingState._write_u16_be(microsims, offset + 4, current_year)
+			BinaryData.write_u16_be(microsims, offset + 4, current_year)
 		HOSPITAL, SCHOOL, COLLEGE:
 			microsims[offset + 1] = 6
 		POLICE_STATION:
 			var police_funding := (
 				0
 				if scurk_place_mode
-				else BuildingState._read_i32_be(misc, MISC_BUDGETS + 5 * BUDGET_RECORD_SIZE + 4)
+				else BinaryData.read_i32_be(misc, MISC_BUDGETS + 5 * BUDGET_RECORD_SIZE + 4)
 			)
-			BuildingState._write_u16_be(
+			BinaryData.write_u16_be(
 				microsims,
 				offset + 2,
 				(
@@ -262,9 +262,9 @@ static func initialize_microsim(
 			var fire_funding := (
 				0
 				if scurk_place_mode
-				else BuildingState._read_i32_be(misc, MISC_BUDGETS + 6 * BUDGET_RECORD_SIZE + 4)
+				else BinaryData.read_i32_be(misc, MISC_BUDGETS + 6 * BUDGET_RECORD_SIZE + 4)
 			)
-			BuildingState._write_u16_be(
+			BinaryData.write_u16_be(
 				microsims,
 				offset + 2,
 				(
@@ -275,37 +275,37 @@ static func initialize_microsim(
 					)
 				)
 			)
-			BuildingState._write_u16_be(microsims, offset + 4, 4)
+			BinaryData.write_u16_be(microsims, offset + 4, 4)
 		MUSEUM:
 			microsims[offset + 1] = 100
 		BIG_PARK:
-			BuildingState._write_u16_be(microsims, offset + 4, BuildingState._read_u16_be(microsims, offset + 4) + 9)
+			BinaryData.write_u16_be(microsims, offset + 4, BinaryData.read_u16_be(microsims, offset + 4) + 9)
 		STATUE:
-			BuildingState._write_u16_be(microsims, offset + 2, current_year)
+			BinaryData.write_u16_be(microsims, offset + 2, current_year)
 		SUBWAY_STATION, BUS_DEPOT, RAIL_STATION:
-			BuildingState._write_u16_be(microsims, offset + 2, BuildingState._read_u16_be(microsims, offset + 2) + 1)
+			BinaryData.write_u16_be(microsims, offset + 2, BinaryData.read_u16_be(microsims, offset + 2) + 1)
 		MAYOR_HOUSE:
-			BuildingState._write_u16_be(microsims, offset + 2, current_year)
-			BuildingState._write_u16_be(microsims, offset + 4, process_random.next_u15() % 30 + 10)
-			BuildingState._write_u16_be(microsims, offset + 6, process_random.next_u15() % 60)
+			BinaryData.write_u16_be(microsims, offset + 2, current_year)
+			BinaryData.write_u16_be(microsims, offset + 4, process_random.next_u15() % 30 + 10)
+			BinaryData.write_u16_be(microsims, offset + 6, process_random.next_u15() % 60)
 		PLYMOUTH_ARCOLOGY:
 			microsims[offset + 1] = 5
-			BuildingState._write_u16_be(microsims, offset + 2, 55)
-			BuildingState._write_u16_be(microsims, offset + 6, current_year)
+			BinaryData.write_u16_be(microsims, offset + 2, 55)
+			BinaryData.write_u16_be(microsims, offset + 6, current_year)
 		FOREST_ARCOLOGY:
 			microsims[offset + 1] = 5
-			BuildingState._write_u16_be(microsims, offset + 2, 30)
-			BuildingState._write_u16_be(microsims, offset + 6, current_year)
+			BinaryData.write_u16_be(microsims, offset + 2, 30)
+			BinaryData.write_u16_be(microsims, offset + 6, current_year)
 		DARCO_ARCOLOGY:
 			microsims[offset + 1] = 5
-			BuildingState._write_u16_be(microsims, offset + 2, 45)
-			BuildingState._write_u16_be(microsims, offset + 6, current_year)
+			BinaryData.write_u16_be(microsims, offset + 2, 45)
+			BinaryData.write_u16_be(microsims, offset + 6, current_year)
 		LAUNCH_ARCOLOGY:
 			microsims[offset + 1] = 5
-			BuildingState._write_u16_be(microsims, offset + 2, 65)
-			BuildingState._write_u16_be(microsims, offset + 6, current_year)
+			BinaryData.write_u16_be(microsims, offset + 2, 65)
+			BinaryData.write_u16_be(microsims, offset + 6, current_year)
 		LLAMA_DOME:
-			BuildingState._write_u16_be(
+			BinaryData.write_u16_be(
 				microsims,
 				offset + 6,
 				current_year if australian_locale else process_random.next_u15() & 0x3f
@@ -319,7 +319,7 @@ static func population_cap(misc: PackedByteArray, maximum: int, divisor: int, ma
 	var arcology_count := 0
 
 	for tile_id in range(PLYMOUTH_ARCOLOGY, LAUNCH_ARCOLOGY + 1):
-		var count := BuildingState.read_u32_be(misc, MISC_TILE_COUNTS + tile_id * 4)
+		var count := BinaryData.read_u32_be(misc, MISC_TILE_COUNTS + tile_id * 4)
 		arcology_count += _to_i16(count) if map_edge == 128 else count
 
 	arcology_count = _divide_toward_zero(arcology_count, 16)
@@ -330,8 +330,8 @@ static func population_cap(misc: PackedByteArray, maximum: int, divisor: int, ma
 
 	var total_population := (
 		arcology_adjustment
-		+ BuildingState.read_u32_be(misc, MISC_ARCOLOGY_POPULATION)
-		+ BuildingState.read_u32_be(misc, MISC_NORMAL_POPULATION)
+		+ BinaryData.read_u32_be(misc, MISC_ARCOLOGY_POPULATION)
+		+ BinaryData.read_u32_be(misc, MISC_NORMAL_POPULATION)
 	)
 	var available := _divide_toward_zero(total_population, divisor) & (0xffff if map_edge == 128 else 0xffffffff)
 	var signed_maximum := _to_i16(maximum)

@@ -24,7 +24,7 @@ static func _remove_surface_water(
 			flags,
 			misc,
 			PackedInt32Array([index]),
-			BuildingState.read_u32_be(misc, 0x0e40) & 0x1f, map_edge
+			BinaryData.read_u32_be(misc, 0x0e40) & 0x1f, map_edge
 		)
 	else:
 		terrain[index] = TerrainTileIds.FLAT

@@ -12,12 +12,8 @@ static func has_range(data: PackedByteArray, offset: int, length: int) -> bool:
 	return offset >= 0 and length >= 0 and offset <= data.size() and length <= data.size() - offset
 
 
-static func be16(data: PackedByteArray, offset: int) -> int:
-	return (int(data[offset]) << 8) | int(data[offset + 1])
-
-
 static func be32(data: PackedByteArray, offset: int) -> int:
-	return (be16(data, offset) << 16) | be16(data, offset + 2)
+	return (BinaryData.read_u16_be(data, offset) << 16) | BinaryData.read_u16_be(data, offset + 2)
 
 
 static func named_archive(data: PackedByteArray, origin: String) -> Sc2ImportContainer:
@@ -60,7 +56,7 @@ static func macintosh(data: PackedByteArray, origin: String) -> Sc2ImportContain
 
 	# AppleDouble and AppleSingle both identify the resource fork with entry 2.
 	if has_range(data, 0, 26) and be32(data, 0) in [0x00051607, 0x00051600]:
-		var count := be16(data, 24)
+		var count := BinaryData.read_u16_be(data, 24)
 
 		if not has_range(data, 26, count * 12):
 			return result._fail("The AppleDouble entry table is truncated.")
@@ -102,12 +98,12 @@ static func macintosh(data: PackedByteArray, origin: String) -> Sc2ImportContain
 		return result._fail("Invalid Macintosh resource map.")
 
 	var map_end := map_start + map_length
-	var type_start := map_start + be16(fork, map_start + 24)
+	var type_start := map_start + BinaryData.read_u16_be(fork, map_start + 24)
 
 	if type_start < map_start or type_start + 2 > map_end:
 		return result._fail("Invalid Macintosh type table.")
 
-	var types := be16(fork, type_start) + 1
+	var types := BinaryData.read_u16_be(fork, type_start) + 1
 
 	if types > 4096 or type_start + 2 + types * 8 > map_end:
 		return result._fail("The Macintosh type table is truncated.")
@@ -115,15 +111,15 @@ static func macintosh(data: PackedByteArray, origin: String) -> Sc2ImportContain
 	for index in types:
 		var entry := type_start + 2 + index * 8
 		var type := fork.slice(entry, entry + 4).get_string_from_ascii()
-		var count := be16(fork, entry + 4) + 1
-		var refs := type_start + be16(fork, entry + 6)
+		var count := BinaryData.read_u16_be(fork, entry + 4) + 1
+		var refs := type_start + BinaryData.read_u16_be(fork, entry + 6)
 
 		if refs < type_start or refs + count * 12 > map_end:
 			return result._fail("The Macintosh reference list is truncated.")
 
 		for resource_index in count:
 			var ref := refs + resource_index * 12
-			var id := be16(fork, ref)
+			var id := BinaryData.read_u16_be(fork, ref)
 
 			if id >= 32768:
 				id -= 65536

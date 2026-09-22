@@ -61,12 +61,12 @@ static func costs_for_misc(misc: PackedByteArray) -> PackedInt32Array:
 	if misc.size() != MISC_SIZE:
 		return costs
 
-	var residential := _read_i32(misc, _budget_offset(BUDGET_RESIDENTIAL))
-	var commercial := _read_i32(misc, _budget_offset(BUDGET_COMMERCIAL))
-	var industrial := _read_i32(misc, _budget_offset(BUDGET_INDUSTRIAL))
+	var residential := BinaryData.read_i32_be(misc, _budget_offset(BUDGET_RESIDENTIAL))
+	var commercial := BinaryData.read_i32_be(misc, _budget_offset(BUDGET_COMMERCIAL))
+	var industrial := BinaryData.read_i32_be(misc, _budget_offset(BUDGET_INDUSTRIAL))
 	var population := _to_i32(
-		_read_u32(misc, MISC_ARCOLOGY_POPULATION)
-		+ _read_u32(misc, MISC_NORMAL_POPULATION)
+		BinaryData.read_u32_be(misc, MISC_ARCOLOGY_POPULATION)
+		+ BinaryData.read_u32_be(misc, MISC_NORMAL_POPULATION)
 	)
 	costs = PackedInt32Array([
 		commercial,
@@ -99,7 +99,7 @@ static func current_cost_for_misc(misc: PackedByteArray) -> int:
 		return 0
 
 	var costs := costs_for_misc(misc)
-	var flags := _read_u32(misc, MISC_ORDINANCES)
+	var flags := BinaryData.read_u32_be(misc, MISC_ORDINANCES)
 	var total := 0
 
 	for ordinance_id in ORDINANCE_COUNT:
@@ -140,7 +140,7 @@ static func snapshot(city: CityState) -> Result:
 		return failed("MISC is missing or has the wrong size")
 
 	var misc: PackedByteArray = misc_chunk.decoded_payload
-	var flags := _read_u32(misc, MISC_ORDINANCES)
+	var flags := BinaryData.read_u32_be(misc, MISC_ORDINANCES)
 	var raw_costs := costs_for_misc(misc)
 	var item_amounts := PackedInt32Array()
 	var category_raw := PackedInt32Array([0, 0, 0, 0, 0])
@@ -162,11 +162,11 @@ static func snapshot(city: CityState) -> Result:
 		)
 
 	var budget_offset := _budget_offset(BUDGET_ORDINANCES)
-	var year_to_date_raw := _read_i32(misc, budget_offset + BUDGET_YEAR_TO_DATE)
-	var month := int((_read_u32(misc, MISC_CITY_DAYS) % 300) / 25)
+	var year_to_date_raw := BinaryData.read_i32_be(misc, budget_offset + BUDGET_YEAR_TO_DATE)
+	var month := int((BinaryData.read_u32_be(misc, MISC_CITY_DAYS) % 300) / 25)
 	var estimated_raw := _to_i32(current_raw * 12)
 
-	if _read_u32(misc, MISC_YEAR_END) == 0:
+	if BinaryData.read_u32_be(misc, MISC_YEAR_END) == 0:
 		estimated_raw = _to_i32((11 - month) * current_raw + year_to_date_raw)
 
 	var result := Result.new()
@@ -201,7 +201,7 @@ static func synchronize_current(city: CityState) -> Result:
 	var budget_offset := _budget_offset(BUDGET_ORDINANCES)
 	var current := current_cost_for_misc(misc)
 
-	if _read_i32(misc, budget_offset + BUDGET_CURRENT) == current:
+	if BinaryData.read_i32_be(misc, budget_offset + BUDGET_CURRENT) == current:
 		var result := Result.new()
 		result.ok = true
 		result.changed = false
@@ -211,7 +211,7 @@ static func synchronize_current(city: CityState) -> Result:
 		return result
 
 	var changed := misc.duplicate()
-	_write_i32(changed, budget_offset + BUDGET_CURRENT, current)
+	BinaryData.write_u32_be(changed, budget_offset + BUDGET_CURRENT, current)
 
 	if not misc_chunk.set_decoded_payload(changed):
 		return failed("cannot store the ordinance budget total")
@@ -238,13 +238,13 @@ static func set_enabled(city: CityState, ordinance_id: int, enabled: bool) -> Re
 		return failed("MISC is missing or has the wrong size")
 
 	var misc: PackedByteArray = misc_chunk.decoded_payload
-	var old_flags := _read_u32(misc, MISC_ORDINANCES)
+	var old_flags := BinaryData.read_u32_be(misc, MISC_ORDINANCES)
 	var mask := 1 << ordinance_id
 	var new_flags := old_flags | mask if enabled else old_flags & ~mask
 	var changed := misc.duplicate()
-	_write_u32(changed, MISC_ORDINANCES, new_flags)
+	BinaryData.write_u32_be(changed, MISC_ORDINANCES, new_flags)
 	var current := current_cost_for_misc(changed)
-	_write_i32(
+	BinaryData.write_u32_be(
 		changed,
 		_budget_offset(BUDGET_ORDINANCES) + BUDGET_CURRENT,
 		current,
@@ -293,27 +293,3 @@ static func _to_i32(value: int) -> int:
 	var unsigned := value & 0xffffffff
 
 	return unsigned - 0x100000000 if unsigned & 0x80000000 else unsigned
-
-
-static func _read_u32(data: PackedByteArray, offset: int) -> int:
-	return (
-		(data[offset] << 24)
-		| (data[offset + 1] << 16)
-		| (data[offset + 2] << 8)
-		| data[offset + 3]
-	)
-
-
-static func _read_i32(data: PackedByteArray, offset: int) -> int:
-	return _to_i32(_read_u32(data, offset))
-
-
-static func _write_u32(data: PackedByteArray, offset: int, value: int) -> void:
-	data[offset] = (value >> 24) & 0xff
-	data[offset + 1] = (value >> 16) & 0xff
-	data[offset + 2] = (value >> 8) & 0xff
-	data[offset + 3] = value & 0xff
-
-
-static func _write_i32(data: PackedByteArray, offset: int, value: int) -> void:
-	_write_u32(data, offset, value)

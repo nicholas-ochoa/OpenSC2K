@@ -45,7 +45,7 @@ static func _process_surface_maintenance(
 		return
 
 	if _is_bridge_budget_tile(tile):
-		var wind := GrowthState._read_u32(misc, 0x0064) & 0xff
+		var wind := BinaryData.read_u32_be(misc, 0x0064) & 0xff
 
 		if _maintenance_fails(misc, 12, random, 50, wind):
 			var result: DemolishPointResult
@@ -244,7 +244,7 @@ static func _maintenance_fails(
 	random_range: int,
 	additional_value := 0
 ) -> bool:
-	var funding := GrowthState._read_i32(
+	var funding := BinaryData.read_i32_be(
 		misc, MISC_BUDGETS + budget_index * MISC_BUDGET_RECORD_SIZE + 4
 	)
 
@@ -302,7 +302,7 @@ static func _replace_underground(
 		return
 
 	if (zones[index] & 0x0f) != 7:
-		var count := GrowthState._read_u32(misc, MISC_SUBWAY_COUNT)
+		var count := BinaryData.read_u32_be(misc, MISC_SUBWAY_COUNT)
 
 		if _is_subway_tile(old_tile):
 			count = (count - 1) & (0xffff if underground.size() == 16384 else 0xffffffff)
@@ -310,6 +310,6 @@ static func _replace_underground(
 		if _is_subway_tile(new_tile):
 			count = (count + 1) & (0xffff if underground.size() == 16384 else 0xffffffff)
 
-		GrowthState._write_u32(misc, MISC_SUBWAY_COUNT, count)
+		BinaryData.write_u32_be(misc, MISC_SUBWAY_COUNT, count)
 
 	underground[index] = new_tile
