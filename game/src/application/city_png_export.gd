@@ -10,15 +10,34 @@ const STAGE_TEXT := {
 	ExportJob.STAGE_WRITE: "Writing the PNG file…",
 }
 
-var app: CityApplication
+signal error_reported(message: String)
+signal status_changed(message: String)
+
+var document_state: ActiveDocumentState
+var view_state: ViewState
+var asset_state: LoadedAssetState
+var current_view_size: Callable
+var sprites_for_view: Callable
+var dialog: CityPngExportDialog
+var progress_overlay: ProgressOverlay
 var job: CityPngExportJob
 var last_folder := ""
 var progress_delay_msec := PROGRESS_DELAY_MSEC
 var _started_msec := 0
 
 
-func _init(application: CityApplication) -> void:
-	app = application
+func _init(document: ActiveDocumentState, view: ViewState, assets: LoadedAssetState,
+		graphics_size: Callable, sprites: Callable) -> void:
+	document_state = document
+	view_state = view
+	asset_state = assets
+	current_view_size = graphics_size
+	sprites_for_view = sprites
+
+
+func bind_ui(export_dialog: CityPngExportDialog, progress: ProgressOverlay) -> void:
+	dialog = export_dialog
+	progress_overlay = progress
 
 
 func is_running() -> bool:
@@ -26,67 +45,66 @@ func is_running() -> bool:
 
 
 func open_export_dialog() -> void:
-	if app.document_state.city == null:
-		app.interface.show_error("Load a city before you export it.")
+	if document_state.city == null:
+		error_reported.emit("Load a city before you export it.")
 
 		return
 
 	if is_running():
-		app.interface.show_error("A PNG export is already running.")
+		error_reported.emit("A PNG export is already running.")
 
 		return
 
-	app.city_dialogs.png_export_dialog.configure(
-		app.document_state.city.city_name(),
+	dialog.configure(
+		document_state.city.city_name(),
 		_default_folder(),
-		app.document_state.city.map_size,
-		app.static_render.city_view_size(),
-		CityViewMode.key(app.view_state.overlay_mode),
-		bool(app.view_state.surface_visibility.get("signs", true)),
-		app.asset_state.reference_root,
+		document_state.city.map_size,
+		current_view_size.call(),
+		CityViewMode.key(view_state.overlay_mode),
+		bool(view_state.surface_visibility.get("signs", true)),
+		asset_state.reference_root,
 	)
-	app.city_dialogs.png_export_dialog.show_options()
+	dialog.show_options()
 
 
 func start_export(options: CityPngExportJob.Options) -> void:
-	if app.document_state.city == null or is_running():
+	if document_state.city == null or is_running():
 		return
 
 	# the worker renders a private copy, so play and edits can continue
-	var snapshot := CityModel.from_document(app.document_state.current_document.duplicate_document())
+	var snapshot := CityModel.from_document(document_state.current_document.duplicate_document())
 
 	if not snapshot.is_valid():
-		app.interface.show_error("Cannot prepare the city for export: %s" % snapshot.load_error)
+		error_reported.emit("Cannot prepare the city for export: %s" % snapshot.load_error)
 
 		return
 
-	snapshot.visible_altitude_levels = app.document_state.city.visible_altitude_levels
+	snapshot.visible_altitude_levels = document_state.city.visible_altitude_levels
 	var view_size := int(options.view_size)
 	job = ExportJob.new()
 	job.city_snapshot = snapshot
-	job.palette = app.asset_state.palette
-	job.sprites = app.static_render.sprite_archive_for_view(view_size)
+	job.palette = asset_state.palette
+	job.sprites = sprites_for_view.call(view_size)
 	job.view_size = view_size
 	job.render_mode = String(options.view)
 	job.transparent_background = bool(options.transparent_background)
 	job.include_signs = bool(options.signs)
 	job.include_moving_things = bool(options.moving_things)
-	job.surface_visibility = app.view_state.surface_visibility.duplicate()
-	job.show_underground_pipes = app.view_state.show_underground_pipes
-	job.show_underground_water_mains = app.view_state.show_underground_water_mains
+	job.surface_visibility = view_state.surface_visibility.duplicate()
+	job.show_underground_pipes = view_state.show_underground_pipes
+	job.show_underground_water_mains = view_state.show_underground_water_mains
 	job.path = String(options.path)
 	last_folder = job.path.get_base_dir()
 	var error := job.start()
 
 	if error != OK:
 		job = null
-		app.interface.show_error("Cannot start the PNG export: %s" % error_string(error))
+		error_reported.emit("Cannot start the PNG export: %s" % error_string(error))
 
 		return
 
 	_started_msec = Time.get_ticks_msec()
-	app.status_label.theme_type_variation = ""
-	app.status_label.text = "Exporting the city to %s…" % options.path.get_file()
+	status_changed.emit("Exporting the city to %s…" % options.path.get_file())
 
 
 func poll_export() -> void:
@@ -99,7 +117,7 @@ func poll_export() -> void:
 			var stage := String(progress.stage)
 			# rendering reports its fraction; png encoding cannot
 			var fraction := float(progress.fraction) if stage == ExportJob.STAGE_RENDER else -1.0
-			app.city_dialogs.png_export_progress.show_progress(
+			progress_overlay.show_progress(
 				"Exporting %s" % job.path.get_file(), String(STAGE_TEXT.get(stage, "")), fraction
 			)
 
@@ -107,16 +125,15 @@ func poll_export() -> void:
 
 	var result: CityPngExportJob.Result = job.thread.wait_to_finish()
 	job = null
-	app.city_dialogs.png_export_progress.hide()
+	progress_overlay.hide()
 
 	if not result.ok:
-		app.interface.show_error("Cannot export the city: %s" % result.error)
+		error_reported.emit("Cannot export the city: %s" % result.error)
 
 		return
 
 	var size: Vector2i = result.size
-	app.status_label.theme_type_variation = ""
-	app.status_label.text = "Exported a %d by %d city image to %s." % [size.x, size.y, result.path]
+	status_changed.emit("Exported a %d by %d city image to %s." % [size.x, size.y, result.path])
 
 
 func close() -> void:

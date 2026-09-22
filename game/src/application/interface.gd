@@ -90,6 +90,9 @@ func build_interface(original_assets: OriginalGameAssets) -> void:
 	app.city_dialogs.city_save_dialog.canceled.connect(app.city_files.on_save_dialog_canceled)
 	app.tile_set_dialog = app.city_dialogs.tile_set_dialog
 	app.tile_set_dialog.file_selected.connect(app.scurk_workspace.load_tile_set)
+	app.city_png_export.bind_ui(app.city_dialogs.png_export_dialog, app.city_dialogs.png_export_progress)
+	app.city_png_export.error_reported.connect(show_error)
+	app.city_png_export.status_changed.connect(show_status)
 	app.city_dialogs.png_export_dialog.export_requested.connect(app.city_png_export.start_export)
 
 
@@ -167,6 +170,11 @@ func _build_main_menu() -> void:
 	app.main_overlays.save_changes_dialog.confirmed.connect(app.city_files.save_pending_city_exit)
 	app.main_overlays.save_changes_dialog.canceled.connect(app.city_files.cancel_pending_city_exit)
 	app.main_overlays.save_changes_dialog.custom_action.connect(app.city_files.on_save_changes_action)
+
+
+func show_status(message: String) -> void:
+	app.status_label.theme_type_variation = ""
+	app.status_label.text = message
 
 
 func show_main_menu() -> void:

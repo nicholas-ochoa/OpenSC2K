@@ -24,6 +24,7 @@ func _run() -> void:
 	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 	folder = ProjectSettings.globalize_path("user://png_export_test")
 	DirAccess.make_dir_recursive_absolute(folder)
+	_check_detached_workflow()
 	_check_menu_and_dialog()
 	_check_content_options()
 	_check_render_progress()
@@ -193,4 +194,30 @@ func _check_progress_overlay() -> void:
 	assert(seen and overlay_shown > 0 and not overlay.visible)
 	main.city_png_export.progress_delay_msec = main.city_png_export.PROGRESS_DELAY_MSEC
 
+	DirAccess.remove_absolute(options.path)
+
+
+func _check_detached_workflow() -> void:
+	var document := ActiveDocumentState.new()
+	var exporter := ApplicationCityPngExport.new(document, ViewState.new(), main.asset_state,
+		func() -> int: return Renderer.VIEW_SMALL,
+		func(_size: int) -> Sc2SpriteArchive: return main.asset_state.small_medium_sprites)
+	var errors: Array[String] = []
+	exporter.error_reported.connect(func(message: String) -> void: errors.append(message))
+	exporter.open_export_dialog()
+	assert(errors.size() == 1 and not exporter.is_running())
+	document.current_document = EmptyCityTemplate.create(16)
+	document.city = CityState.from_document(document.current_document)
+	var options := ExportJob.Options.new()
+	options.path = folder.path_join("detached.png")
+	options.view_size = Renderer.VIEW_SMALL
+	exporter.start_export(options)
+	assert(exporter.is_running())
+	var captured := exporter.job.city_snapshot
+	var before := captured.document.serialize().data
+	document.current_document = EmptyCityTemplate.create(32)
+	document.city = CityState.from_document(document.current_document)
+	assert(captured.map_size == 16 and captured.document.serialize().data == before)
+	exporter.close()
+	assert(not exporter.is_running() and FileAccess.file_exists(options.path))
 	DirAccess.remove_absolute(options.path)
