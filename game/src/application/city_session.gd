@@ -51,57 +51,57 @@ func activate_document(
 	app.city_menu_bar.disasters_menu.disabled = false
 	var music_was_active := app.effects_audio.music_playback_is_active()
 
-	app.budget_dialog.reset_dialogs()
+	app.city_dialogs.budget_dialog.reset_dialogs()
 
-	if app.game_over_dialog.visible:
-		app.game_over_dialog.hide()
+	if app.city_dialogs.game_over_dialog.visible:
+		app.city_dialogs.game_over_dialog.hide()
 
-	if app.scenario_dialog.visible:
-		app.scenario_dialog.hide()
+	if app.city_dialogs.scenario_dialog.visible:
+		app.city_dialogs.scenario_dialog.hide()
 
 	app.simulation_state.military_proposal_pending = false
 
-	if app.military_dialog.visible:
-		app.military_dialog.hide()
+	if app.city_dialogs.military_dialog.visible:
+		app.city_dialogs.military_dialog.hide()
 
 	app.tool_state.pending_bridge_request = null
 
-	if app.bridge_dialog.visible:
-		app.bridge_dialog.hide()
+	if app.city_dialogs.bridge_dialog.visible:
+		app.city_dialogs.bridge_dialog.hide()
 
 	app.tool_state.pending_tool_choices = null
 
-	if app.tool_choice_dialog.visible:
-		app.tool_choice_dialog.hide()
+	if app.city_dialogs.tool_choice_dialog.visible:
+		app.city_dialogs.tool_choice_dialog.hide()
 
 	app.tool_state.pending_stadium_command = null
 
-	if app.stadium_dialog.visible:
-		app.stadium_dialog.hide()
+	if app.city_dialogs.stadium_dialog.visible:
+		app.city_dialogs.stadium_dialog.hide()
 
 	app.tool_state.pending_network_connection = null
 
-	if app.network_connection_dialog.visible:
-		app.network_connection_dialog.hide()
+	if app.city_dialogs.network_connection_dialog.visible:
+		app.city_dialogs.network_connection_dialog.hide()
 
 	app.tool_state.pending_highway_connection = null
 
-	if app.highway_connection_dialog.visible:
-		app.highway_connection_dialog.hide()
+	if app.city_dialogs.highway_connection_dialog.visible:
+		app.city_dialogs.highway_connection_dialog.hide()
 
 	app.tool_state.pending_tunnel_request = null
 
-	if app.tunnel_dialog.visible:
-		app.tunnel_dialog.hide()
+	if app.city_dialogs.tunnel_dialog.visible:
+		app.city_dialogs.tunnel_dialog.hide()
 
-	if app.building_objection_dialog != null and app.building_objection_dialog.visible:
-		app.building_objection_dialog.hide()
+	if app.city_dialogs.building_objection_dialog != null and app.city_dialogs.building_objection_dialog.visible:
+		app.city_dialogs.building_objection_dialog.hide()
 
 	app.tool_state.pending_building_objection_group = -1
 	app.tool_state.pending_building_objection_subtool = -1
 
-	if app.new_city_dialog != null and app.new_city_dialog.visible:
-		app.new_city_dialog.hide()
+	if app.city_dialogs.new_city_dialog != null and app.city_dialogs.new_city_dialog.visible:
+		app.city_dialogs.new_city_dialog.hide()
 
 	app.new_city_state.return_to_main_menu = false
 

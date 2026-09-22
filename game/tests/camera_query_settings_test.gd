@@ -92,32 +92,32 @@ func _run() -> void:
 	assert(main.document_state.city.document.serialize().data == saved, "Panning changed saved data")
 	assert(main.options_menu.get_popup().get_item_index(CityMenuBar.MENU_SETTINGS) >= 0)
 	main.menus.on_options_menu(CityMenuBar.MENU_SETTINGS)
-	assert(main.settings_dialog.visible)
+	assert(main.main_overlays.settings_dialog.visible)
 
 
 	assert(not main.camera_input.camera_keys_allowed())
-	main.settings_dialog.background_audio_check.button_pressed = true
-	assert(main.settings_dialog.selected_values().background_audio)
-	main.settings_dialog.hide()
+	main.main_overlays.settings_dialog.background_audio_check.button_pressed = true
+	assert(main.main_overlays.settings_dialog.selected_values().background_audio)
+	main.main_overlays.settings_dialog.hide()
 	var details := "Police Station\n\nOfficers: 42\nAnnual cost: $100\nFunding: 100%\n\nAdvanced tile data\nTile ID: 211\nXBIT: 0x00"
-	main.query_dialog.show_query("Police Station", "Central Police", true, details, "")
-	assert(main.query_dialog.tabs.current_tab == 0)
-	assert(main.query_dialog.summary_rows.get_child_count() == 3)
+	main.city_dialogs.query_dialog.show_query("Police Station", "Central Police", true, details, "")
+	assert(main.city_dialogs.query_dialog.tabs.current_tab == 0)
+	assert(main.city_dialogs.query_dialog.summary_rows.get_child_count() == 3)
 	assert(not main.camera_input.camera_keys_allowed())
-	main.query_dialog._enable_rename()
-	main.query_dialog.name_input.text = "North Police"
-	assert(main.query_dialog.facility_name() == "North Police")
+	main.city_dialogs.query_dialog._enable_rename()
+	main.city_dialogs.query_dialog.name_input.text = "North Police"
+	assert(main.city_dialogs.query_dialog.facility_name() == "North Police")
 
 	if "--preview" in OS.get_cmdline_user_args():
-		main.query_dialog.name_input.editable = false
-		main.query_dialog.ok_button.grab_focus()
+		main.city_dialogs.query_dialog.name_input.editable = false
+		main.city_dialogs.query_dialog.ok_button.grab_focus()
 		main.map_view.viewport_changed.connect(func() -> void:
 			print("CAMERA center=%s zoom=%d" % [main.map_view.source_center, main.map_view.zoom_percent()]))
 		print("PREVIEW ready center=%s" % main.map_view.source_center)
 
 		return
 
-	main.query_dialog.close_query()
+	main.city_dialogs.query_dialog.close_query()
 	main.queue_free()
 	await process_frame
 	print("PASS: camera momentum, query overview, settings access, Settings renderer and background audio")

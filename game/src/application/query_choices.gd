@@ -52,7 +52,7 @@ func open_tool_choice_dialog(group_index: int) -> void:
 	for subtool_index in choices:
 		available_tools.append(Tools.tool(group_index, subtool_index))
 
-	app.tool_choice_dialog.show_tools(title_text, prompt_text, available_tools)
+	app.city_dialogs.tool_choice_dialog.show_tools(title_text, prompt_text, available_tools)
 
 
 func choose_tool_variant(choice_index: int) -> void:
@@ -67,7 +67,7 @@ func choose_tool_variant(choice_index: int) -> void:
 	app.tool_state.selected_group = int(app.tool_state.pending_tool_choices.group_index)
 	app.tool_state.selected_subtool = int(choices[choice_index])
 	app.tool_state.pending_tool_choices = null
-	app.tool_choice_dialog.hide()
+	app.city_dialogs.tool_choice_dialog.hide()
 	app.current_tool.update_edit_state()
 
 
@@ -92,14 +92,14 @@ func open_stadium_dialog(command: BuildingEditResult) -> void:
 			team_index, BuildingFacilities.stadium_team_name(app.document_state.city, team_index)
 		))
 
-	app.stadium_dialog.show_teams(teams)
+	app.city_dialogs.stadium_dialog.show_teams(teams)
 
 
 func confirm_stadium_team() -> void:
 	if app.tool_state.pending_stadium_command == null:
 		return
 
-	var team_index := app.stadium_dialog.selected_team_id()
+	var team_index := app.city_dialogs.stadium_dialog.selected_team_id()
 
 	if team_index < 0:
 		app.interface.show_error("Select a stadium team.")
@@ -111,7 +111,7 @@ func confirm_stadium_team() -> void:
 		app.document_state.city,
 		app.tool_state.pending_stadium_command,
 		team_index,
-		app.stadium_dialog.entered_name(),
+		app.city_dialogs.stadium_dialog.entered_name(),
 	)
 
 	if not result.ok:
@@ -145,7 +145,7 @@ func cancel_stadium_team() -> void:
 
 func _restore_stadium_dialog() -> void:
 	if app.tool_state.pending_stadium_command != null:
-		app.stadium_dialog.popup_centered()
+		app.city_dialogs.stadium_dialog.popup_centered()
 
 
 func open_sign_dialog(point: Vector2i) -> void:
@@ -157,14 +157,14 @@ func open_sign_dialog(point: Vector2i) -> void:
 		return
 
 	app.tool_state.pending_sign_tile = point
-	app.sign_dialog.show_text(app.document_state.city.label(overlay) if overlay > 0 else "")
+	app.city_dialogs.sign_dialog.show_text(app.document_state.city.label(overlay) if overlay > 0 else "")
 
 
 func commit_sign() -> void:
 	if app.document_state.city == null or app.tool_state.pending_sign_tile.x < 0:
 		return
 
-	var result := Signs.set_sign(app.document_state.city, app.tool_state.pending_sign_tile, app.sign_dialog.entered_text())
+	var result := Signs.set_sign(app.document_state.city, app.tool_state.pending_sign_tile, app.city_dialogs.sign_dialog.entered_text())
 	app.tool_state.pending_sign_tile = Vector2i(-1, -1)
 
 	if not result.ok:
@@ -217,7 +217,7 @@ func open_query(point: Vector2i) -> void:
 		action_text = str(QueryStrings.ACTIONS.get(action, ""))
 
 	var neighborhood := QueryNeighborhood.render(app.document_state.city, point, app.asset_state.palette_index_encoding, app.asset_state.large_sprites)
-	app.query_dialog.show_query(
+	app.city_dialogs.query_dialog.show_query(
 		str(result.title),
 		str(result.title) if is_specific else "",
 		is_specific,
@@ -232,17 +232,17 @@ func open_query(point: Vector2i) -> void:
 
 
 func close_query(commit_rename := false) -> bool:
-	if app.query_dialog == null or not app.query_dialog.visible:
+	if app.city_dialogs.query_dialog == null or not app.city_dialogs.query_dialog.visible:
 		return true
 
 	if (
 		commit_rename
-		and app.query_dialog.rename_is_enabled()
+		and app.city_dialogs.query_dialog.rename_is_enabled()
 		and app.tool_state.active_query_result != null
 		and app.tool_state.active_query_result.kind == "specific"
 	):
 		var renamed := QueryFacilityActions.rename_facility(
-			app.document_state.city, app.tool_state.active_query_result, app.query_dialog.facility_name()
+			app.document_state.city, app.tool_state.active_query_result, app.city_dialogs.query_dialog.facility_name()
 		)
 
 		if not renamed.ok:
@@ -252,7 +252,7 @@ func close_query(commit_rename := false) -> bool:
 
 		app.tool_state.active_query_result.title = renamed.new_value
 
-	app.query_dialog.close_query()
+	app.city_dialogs.query_dialog.close_query()
 
 	return true
 
@@ -273,7 +273,7 @@ func run_query_action() -> void:
 
 				return
 
-			app.city_analysis_dialog.show_categories(analysis.categories)
+			app.city_dialogs.analysis_dialog.show_categories(analysis.categories)
 		"library_ruminate":
 			if (
 				text_resources.library_texts.size()
@@ -283,6 +283,6 @@ func run_query_action() -> void:
 
 				return
 
-			app.library_ruminate_windows.show_texts(
+			app.city_dialogs.library_windows.show_texts(
 				text_resources.library_texts, Vector2i(app.get_viewport_rect().size)
 			)

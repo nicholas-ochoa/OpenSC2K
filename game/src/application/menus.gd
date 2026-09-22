@@ -238,8 +238,8 @@ func _sync_view_controls() -> void:
 	if app.city_toolbar != null:
 		app.city_toolbar.sync_view_mode(app.view_state.overlay_mode)
 
-	if app.city_map_window != null:
-		app.city_map_window.sync_view_mode(app.view_state.overlay_mode)
+	if app.city_dialogs.city_map_window != null:
+		app.city_dialogs.city_map_window.sync_view_mode(app.view_state.overlay_mode)
 
 	for key in app.view_visibility_checks:
 		var check: CheckBox = app.view_visibility_checks[key]

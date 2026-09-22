@@ -11,7 +11,7 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	main.new_city.open_new_city_dialog()
-	var dialog: NewCityTerrainDialog = main.new_city_dialog
+	var dialog: NewCityTerrainDialog = main.city_dialogs.new_city_dialog
 	main.map_view.zoom_factor = 0.25
 	# Exercise the workflow with simple terrain; layout algorithms have their own tests.
 	dialog.hills_input.value = 0

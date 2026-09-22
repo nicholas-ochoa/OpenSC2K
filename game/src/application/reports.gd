@@ -130,10 +130,10 @@ func on_windows_menu(id: int) -> void:
 
 
 func _open_ordinance_window() -> void:
-	if app.document_state.city == null or app.ordinance_window == null:
+	if app.document_state.city == null or app.city_dialogs.ordinance_window == null:
 		return
 
-	var result: OrdinanceCommand.Result = app.ordinance_window.open_city(app.document_state.city)
+	var result: OrdinanceCommand.Result = app.city_dialogs.ordinance_window.open_city(app.document_state.city)
 
 	if not result.ok:
 		app.interface.show_error("Cannot open ordinances: %s" % result.error)
@@ -146,24 +146,24 @@ func on_ordinances_changed() -> void:
 
 
 func _open_graph_window() -> void:
-	if app.document_state.city == null or app.graph_window == null:
+	if app.document_state.city == null or app.city_dialogs.graph_window == null:
 		return
 
-	app.graph_window.show_city(app.document_state.city)
+	app.city_dialogs.graph_window.show_city(app.document_state.city)
 
 
 func _open_population_window() -> void:
-	if app.document_state.city == null or app.population_window == null:
+	if app.document_state.city == null or app.city_dialogs.population_window == null:
 		return
 
-	app.population_window.show_city(app.document_state.city)
+	app.city_dialogs.population_window.show_city(app.document_state.city)
 
 
 func _open_industry_window() -> void:
-	if app.document_state.city == null or app.industry_window == null:
+	if app.document_state.city == null or app.city_dialogs.industry_window == null:
 		return
 
-	app.industry_window.show_city(app.document_state.city)
+	app.city_dialogs.industry_window.show_city(app.document_state.city)
 
 
 func on_industry_tax_rates_changed() -> void:
@@ -173,17 +173,17 @@ func on_industry_tax_rates_changed() -> void:
 
 
 func _open_simnation_window() -> void:
-	if app.document_state.city == null or app.simnation_window == null:
+	if app.document_state.city == null or app.city_dialogs.simnation_window == null:
 		return
 
-	app.simnation_window.show_city(app.document_state.city)
+	app.city_dialogs.simnation_window.show_city(app.document_state.city)
 
 
 func open_city_map_window() -> void:
-	if app.document_state.city == null or app.city_map_window == null:
+	if app.document_state.city == null or app.city_dialogs.city_map_window == null:
 		return
 
-	app.city_map_window.toggle_city(app.document_state.city, app.asset_state.palette, city_map_viewport_outline())
+	app.city_dialogs.city_map_window.toggle_city(app.document_state.city, app.asset_state.palette, city_map_viewport_outline())
 
 
 func on_city_map_mode_changed(mode: String) -> void:
@@ -213,8 +213,8 @@ func city_map_viewport_outline() -> PackedVector2Array:
 
 
 func refresh_city_map_viewport() -> void:
-	if app.city_map_window != null:
-		app.city_map_window.refresh_viewport(city_map_viewport_outline())
+	if app.city_dialogs.city_map_window != null:
+		app.city_dialogs.city_map_window.refresh_viewport(city_map_viewport_outline())
 
 
 func refresh_newspaper_menu() -> void:
@@ -233,7 +233,7 @@ func on_newspaper_menu(id: int) -> void:
 	if app.document_state.city.music_enabled() and app.simulation_state.simulation_engine != null:
 		app.effects_audio.play_music_track(Music.newspaper_track(app.simulation_state.simulation_engine.lfsr_random))
 
-	app.newspaper_dialog.open_reports(
+	app.city_dialogs.newspaper_dialog.open_reports(
 		app.document_state.city,
 		document_state.current_document,
 		text_resources.newspaper_data,
@@ -255,10 +255,10 @@ func show_news_items(news_items: Array[NewsEvent]) -> void:
 
 
 func show_building_objection() -> void:
-	if app.building_objection_dialog == null:
+	if app.city_dialogs.building_objection_dialog == null:
 		return
 
-	app.building_objection_dialog.show_message(BuildingConstants.NUISANCE_OBJECTION, true)
+	app.city_dialogs.building_objection_dialog.show_message(BuildingConstants.NUISANCE_OBJECTION, true)
 
 
 func on_building_objection_closed() -> void:
@@ -325,13 +325,13 @@ func show_game_over_events(events: Array[GameOverEvent]) -> void:
 			"bankruptcy":
 				messages.append("The city is bankrupt. The mayor was impeached.")
 
-	app.game_over_dialog.title = "Game Over" if events.size() != 1 else (
+	app.city_dialogs.game_over_dialog.title = "Game Over" if events.size() != 1 else (
 		"Scenario Complete"
 		if events[0].type == "scenario_victory"
 		else "Game Over"
 	)
-	app.game_over_dialog.dialog_text = "\n".join(messages) + "\n\nOpen another city to continue."
-	app.game_over_dialog.popup_centered()
+	app.city_dialogs.game_over_dialog.dialog_text = "\n".join(messages) + "\n\nOpen another city to continue."
+	app.city_dialogs.game_over_dialog.popup_centered()
 	app.status_label.theme_type_variation = "WarningLabel"
 	app.status_label.text = "\n".join(messages)
 

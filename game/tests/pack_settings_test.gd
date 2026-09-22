@@ -71,7 +71,7 @@ func _run() -> void:
 	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 	var before: PackedByteArray = main.document_state.city.document.serialize().data
 	main.settings.open_settings_dialog()
-	var dialog: AppSettingsDialog = main.settings_dialog
+	var dialog: AppSettingsDialog = main.main_overlays.settings_dialog
 	assert(dialog.folder_row.visible)
 
 	for kind in ["sound", "music"]:
@@ -113,11 +113,11 @@ func _run() -> void:
 	assert(main.asset_state.asset_source.graphics_name == original_manifest.name)
 	assert(main.asset_state.base_large_sprites.find_sprite(record.id).decode_indices().pixels != sprite.pixels)
 	assert(main.document_state.city.document.serialize().data == before)
-	main.settings_dialog.hide()
+	main.main_overlays.settings_dialog.hide()
 	main.new_city.open_new_city_dialog()
-	assert(main.new_city_dialog.mayor_name_input.text == "Alex")
+	assert(main.city_dialogs.new_city_dialog.mayor_name_input.text == "Alex")
 	assert(main.document_state.city.document.serialize().data == before)
-	main.new_city_dialog.hide()
+	main.city_dialogs.new_city_dialog.hide()
 	main.queue_free()
 	await process_frame
 	_remove_folder(ProjectSettings.globalize_path(folder))

@@ -14,18 +14,18 @@ func run_check() -> void:
 	main.new_city_state.session.independent_template = true
 	main.new_city.open_new_city_dialog()
 	# This suite tests size selection and preview jobs; terrain rules have their own tests.
-	main.new_city_dialog.ocean_input.button_pressed = false
-	main.new_city_dialog.river_input.button_pressed = false
-	main.new_city_dialog.hills_input.value = 0
-	main.new_city_dialog.water_input.value = 0
-	main.new_city_dialog.trees_input.value = 0
+	main.city_dialogs.new_city_dialog.ocean_input.button_pressed = false
+	main.city_dialogs.new_city_dialog.river_input.button_pressed = false
+	main.city_dialogs.new_city_dialog.hills_input.value = 0
+	main.city_dialogs.new_city_dialog.water_input.value = 0
+	main.city_dialogs.new_city_dialog.trees_input.value = 0
 
-	assert(main.new_city_dialog.size_input.get_selected_id() == 128)
+	assert(main.city_dialogs.new_city_dialog.size_input.get_selected_id() == 128)
 	for selection in Sc2File.MAP_SIZES.size():
 		var edge: int = Sc2File.MAP_SIZES[selection]
-		main.new_city_dialog.size_input.select(selection)
-		main.new_city_dialog.size_input.item_selected.emit(selection)
-		assert(main.new_city_dialog.done_button.disabled)
+		main.city_dialogs.new_city_dialog.size_input.select(selection)
+		main.city_dialogs.new_city_dialog.size_input.item_selected.emit(selection)
+		assert(main.city_dialogs.new_city_dialog.done_button.disabled)
 		assert(main.new_city._new_city_terrain_options().size == edge)
 		# Size wiring is checked for every option. The minimum-size preview exercises
 		# the worker; New City workflow and terrain tests own larger generation.
@@ -36,7 +36,7 @@ func run_check() -> void:
 			await process_frame
 		assert(main.new_city_state.session.preview_document.map_size == edge)
 		assert(main.new_city_state.session.preview_options.size == edge)
-		assert(main.new_city_dialog.preview_view.texture.get_width() == edge)
+		assert(main.city_dialogs.new_city_dialog.preview_view.texture.get_width() == edge)
 
 	main.new_city.cancel_new_city()
 	main.preferences.zoom_graphics = AppSettingsStore.normalize_zoom_graphics([0, 1, 2, 2, 2, 2])

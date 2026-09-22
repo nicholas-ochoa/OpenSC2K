@@ -29,7 +29,7 @@ func _run() -> void:
 
 			if group == 16:
 				main.query_choices.call("open_query", Vector2i(20, 20))
-				assert(main.query_dialog.visible and main.view_state.overlay_mode == mode)
+				assert(main.city_dialogs.query_dialog.visible and main.view_state.overlay_mode == mode)
 				main.query_choices.call("close_query")
 			elif group == 17:
 				main.camera_input.call("center_map_on_tile", Vector2i(20, 20))
@@ -204,7 +204,7 @@ func _run() -> void:
 		assert(NetworkCommand.undo(city, rail).ok)
 		assert(city.document.serialize().data == rail_before)
 
-	var paper := main.get("newspaper_dialog") as NewspaperDialog
+	var paper := main.city_dialogs.newspaper_dialog as NewspaperDialog
 	paper.open_reports(city, city.document, null, {}, 123)
 	assert(paper.published_articles.size() == 5)
 	assert(" ".join(paper.published_articles).contains(str(city.population())))

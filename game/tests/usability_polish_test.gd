@@ -80,7 +80,7 @@ func _run() -> void:
 
 	main.budget.open_manual_budget()
 	await process_frame
-	var budget := main.budget_dialog as BudgetDialog
+	var budget := main.city_dialogs.budget_dialog as BudgetDialog
 
 	for action in ["issue", "repay"]:
 		budget.open_bond_confirmation(action, 8)

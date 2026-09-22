@@ -41,7 +41,7 @@ func apply_tunnel_selection(
 			"Engineers report that tunnel construction costs will be $%s.\n"
 			+ "Do you wish to construct the tunnel?"
 		) % app.interface.format_number(tunnel.cost)
-		app.tunnel_dialog.show_message(message)
+		app.city_dialogs.tunnel_dialog.show_message(message)
 
 		return
 
@@ -95,7 +95,7 @@ func _apply_pending_tunnel(confirmation_choice: int) -> void:
 
 	var request := app.tool_state.pending_tunnel_request
 	app.tool_state.pending_tunnel_request = null
-	app.tunnel_dialog.hide()
+	app.city_dialogs.tunnel_dialog.hide()
 	app.tool_state.selected_group = int(request.group_index)
 	app.tool_state.selected_subtool = int(request.subtool_index)
 	apply_tunnel_selection(request.start, confirmation_choice)
@@ -160,7 +160,7 @@ func apply_highway_selection(
 				app.interface.format_number(highway.route_cost),
 			]
 		)
-		app.highway_connection_dialog.show_message(message)
+		app.city_dialogs.highway_connection_dialog.show_message(message)
 
 		return
 
@@ -238,7 +238,7 @@ func _apply_pending_highway_connection(connection_choice: int) -> void:
 
 	var request := app.tool_state.pending_highway_connection
 	app.tool_state.pending_highway_connection = null
-	app.highway_connection_dialog.hide()
+	app.city_dialogs.highway_connection_dialog.hide()
 	app.tool_state.selected_group = int(request.group_index)
 	app.tool_state.selected_subtool = int(request.subtool_index)
 	apply_highway_selection(

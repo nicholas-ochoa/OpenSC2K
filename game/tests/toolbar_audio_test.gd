@@ -83,12 +83,12 @@ func _run() -> void:
 	main.city_edits.apply_map_selection(muted_path[0], muted_path[0], muted_path, false)
 	assert(not _has_sound(main, 508))
 	main.settings.open_settings_dialog()
-	main.settings_dialog.sound_pack_edit.text = "/missing/sound-pack"
+	main.main_overlays.settings_dialog.sound_pack_edit.text = "/missing/sound-pack"
 	var old_sound_folder: String = main.preferences.sound_pack_folder
 	main.settings.apply_settings()
 	await process_frame
-	assert(main.settings_dialog.pack_error_label.visible)
-	assert(not main.settings_dialog.pack_error_label.text.is_empty())
+	assert(main.main_overlays.settings_dialog.pack_error_label.visible)
+	assert(not main.main_overlays.settings_dialog.pack_error_label.text.is_empty())
 	assert(main.preferences.sound_pack_folder == old_sound_folder)
 	main.queue_free()
 	await process_frame

@@ -80,7 +80,7 @@ func apply_network_selection(
 				app.interface.format_number(network.dry_cost),
 			]
 		)
-		app.network_connection_dialog.show_message(message, "Keep %s" % tool_name)
+		app.city_dialogs.network_connection_dialog.show_message(message, "Keep %s" % tool_name)
 
 		return
 
@@ -165,7 +165,7 @@ func _apply_pending_network_connection(connection_choice: int) -> void:
 
 	var request := app.tool_state.pending_network_connection
 	app.tool_state.pending_network_connection = null
-	app.network_connection_dialog.hide()
+	app.city_dialogs.network_connection_dialog.hide()
 	app.tool_state.selected_group = int(request.group_index)
 	app.tool_state.selected_subtool = int(request.subtool_index)
 	apply_network_selection(
@@ -200,9 +200,9 @@ func open_bridge_dialog(
 	request.dry_points = result.sections if request_type == "highway" else result.dry_points
 	app.tool_state.pending_bridge_request = request
 	var choices := request.choices
-	app.bridge_dialog.preview_palette = app.asset_state.palette
-	app.bridge_dialog.preview_sprites = app.asset_state.large_sprites
-	app.bridge_dialog.show_choices(
+	app.city_dialogs.bridge_dialog.preview_palette = app.asset_state.palette
+	app.city_dialogs.bridge_dialog.preview_sprites = app.asset_state.large_sprites
+	app.city_dialogs.bridge_dialog.show_choices(
 		result.bridge_span_length,
 		request_type,
 		choices,
@@ -222,7 +222,7 @@ func choose_bridge(choice_index: int) -> void:
 
 	var choice: BridgeChoice = choices[choice_index]
 	app.tool_state.pending_bridge_request = null
-	app.bridge_dialog.hide()
+	app.city_dialogs.bridge_dialog.hide()
 
 	if request.request_type == "highway":
 		app.tool_state.selected_group = int(request.group_index)

@@ -29,7 +29,7 @@ func _run() -> void:
 	var before: PackedByteArray = main.document_state.city.document.serialize().data
 	for selected in [1, 0, 1]:
 		main.settings.open_settings_dialog()
-		var dialog: AppSettingsDialog = main.settings_dialog
+		var dialog: AppSettingsDialog = main.main_overlays.settings_dialog
 		dialog.theme_selector.select(selected)
 		dialog.dark_underground_check.button_pressed = not main.preferences.dark_underground
 		# Cancel discards the selection when Settings next opens.
@@ -59,12 +59,12 @@ func _run() -> void:
 	main.scurk_editor.show()
 	var scurk_menu := main.scurk_editor.get_node("Panel/Content/Toolbar/Actions/Settings") as Button
 	scurk_menu.pressed.emit()
-	assert(main.settings_dialog.visible and main.scurk_editor.visible)
-	main.settings_dialog.hide()
+	assert(main.main_overlays.settings_dialog.visible and main.scurk_editor.visible)
+	main.main_overlays.settings_dialog.hide()
 	var scurk_help := main.scurk_editor.get_node("Panel/Content/Toolbar/Actions/About") as Button
 	scurk_help.pressed.emit()
-	assert(main.about_dialog.visible and main.scurk_editor.visible)
-	main.about_dialog.hide()
+	assert(main.main_overlays.about_dialog.visible and main.scurk_editor.visible)
+	main.main_overlays.about_dialog.hide()
 	assert(main.document_state.city.document.serialize().data == before)
 	# Style selection follows the published texture mode, independent of renderer.
 	# Actual CPU/GPU pixels belong to dark_underground_shader_test.

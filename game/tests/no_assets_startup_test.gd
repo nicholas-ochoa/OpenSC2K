@@ -24,10 +24,10 @@ func run() -> void:
 		assert(button.disabled)
 
 	main.new_city.open_new_city_dialog()
-	assert(not main.new_city_dialog.visible)
+	assert(not main.city_dialogs.new_city_dialog.visible)
 	main.settings.open_import_settings()
-	assert(main.settings_dialog.visible and main.settings_dialog.tabs.current_tab == 3)
-	main.settings_dialog.hide()
+	assert(main.main_overlays.settings_dialog.visible and main.main_overlays.settings_dialog.tabs.current_tab == 3)
+	main.main_overlays.settings_dialog.hide()
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", "")
 	main.queue_free()
 	await process_frame

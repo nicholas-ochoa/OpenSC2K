@@ -36,7 +36,7 @@ func open_export_dialog() -> void:
 
 		return
 
-	app.city_png_export_dialog.configure(
+	app.city_dialogs.png_export_dialog.configure(
 		app.document_state.city.city_name(),
 		_default_folder(),
 		app.document_state.city.map_size,
@@ -45,7 +45,7 @@ func open_export_dialog() -> void:
 		bool(app.view_state.surface_visibility.get("signs", true)),
 		app.asset_state.reference_root,
 	)
-	app.city_png_export_dialog.show_options()
+	app.city_dialogs.png_export_dialog.show_options()
 
 
 func start_export(options: CityPngExportJob.Options) -> void:
@@ -99,7 +99,7 @@ func poll_export() -> void:
 			var stage := String(progress.stage)
 			# rendering reports its fraction; png encoding cannot
 			var fraction := float(progress.fraction) if stage == ExportJob.STAGE_RENDER else -1.0
-			app.city_png_export_progress.show_progress(
+			app.city_dialogs.png_export_progress.show_progress(
 				"Exporting %s" % job.path.get_file(), String(STAGE_TEXT.get(stage, "")), fraction
 			)
 
@@ -107,7 +107,7 @@ func poll_export() -> void:
 
 	var result: CityPngExportJob.Result = job.thread.wait_to_finish()
 	job = null
-	app.city_png_export_progress.hide()
+	app.city_dialogs.png_export_progress.hide()
 
 	if not result.ok:
 		app.interface.show_error("Cannot export the city: %s" % result.error)

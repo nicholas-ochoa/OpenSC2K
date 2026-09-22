@@ -118,26 +118,26 @@ func _test_main() -> void:
 	assert(not main.reference_import_dialog.visible and main.document_state.city == null)
 	assert(not main.audio_controller.original_media_enabled and main.asset_state.asset_source.has_city_template)
 	main.settings.open_settings_dialog()
-	assert(main.settings_dialog.visible)
+	assert(main.main_overlays.settings_dialog.visible)
 
 	for mode in GameAssetSource.MODES:
-		main.settings_dialog.show_values(0.2, 0.4, false, mode, "user://example-pack")
-		assert(main.settings_dialog.selected_values().graphics_source == ("folder" if mode == "folder" else "auto"))
-		assert(main.settings_dialog.folder_row.visible)
+		main.main_overlays.settings_dialog.show_values(0.2, 0.4, false, mode, "user://example-pack")
+		assert(main.main_overlays.settings_dialog.selected_values().graphics_source == ("folder" if mode == "folder" else "auto"))
+		assert(main.main_overlays.settings_dialog.folder_row.visible)
 
-	main.settings_dialog.hide()
+	main.main_overlays.settings_dialog.hide()
 	main.map_view.zoom_factor = 0.25
 	main.new_city.open_new_city_dialog()
-	assert(main.new_city_dialog.visible and main.new_city_state.session.preview_document == null)
-	main.new_city_dialog.city_name_input.text = "Original Startup"
+	assert(main.city_dialogs.new_city_dialog.visible and main.new_city_state.session.preview_document == null)
+	main.city_dialogs.new_city_dialog.city_name_input.text = "Original Startup"
 	# This scenario checks original SC2 save compatibility.
-	main.new_city_dialog.native_maps_input.button_pressed = false
+	main.city_dialogs.new_city_dialog.native_maps_input.button_pressed = false
 	# Terrain algorithms are tested separately; retain the original-size workflow.
-	main.new_city_dialog.hills_input.value = 0
-	main.new_city_dialog.water_input.value = 0
-	main.new_city_dialog.trees_input.value = 0
-	main.new_city_dialog.river_input.button_pressed = false
-	main.new_city_dialog.ocean_input.button_pressed = false
+	main.city_dialogs.new_city_dialog.hills_input.value = 0
+	main.city_dialogs.new_city_dialog.water_input.value = 0
+	main.city_dialogs.new_city_dialog.trees_input.value = 0
+	main.city_dialogs.new_city_dialog.river_input.button_pressed = false
+	main.city_dialogs.new_city_dialog.ocean_input.button_pressed = false
 	main.new_city.make_new_city_preview()
 	while main.new_city_state.preview_job != null:
 		await process_frame
@@ -146,7 +146,7 @@ func _test_main() -> void:
 	assert(main.document_state.city != null and main.document_state.city.city_name() == "Original Startup")
 	assert(main.tool_state.landscape_editor and main.city_toolbar.start_city_button.visible)
 	main.new_city.start_city()
-	main.newspaper_dialog.hide()
+	main.city_dialogs.newspaper_dialog.hide()
 	main.simulation_state.speed_controller.set_speed(GameSpeedController.Speed.PAUSED)
 	_round_trip_city(main.document_state.current_document)
 	main.scurk_workspace.open_scurk_dialog()
@@ -158,8 +158,8 @@ func _test_main() -> void:
 	assert(main.scurk_place_print.visible)
 	main.scurk_place_print.hide()
 	main.city_files.open_save_dialog()
-	assert(main.save_dialog.visible and main.save_dialog.current_file == "Original Startup.SC2")
-	main.save_dialog.hide()
+	assert(main.city_dialogs.city_save_dialog.visible and main.city_dialogs.city_save_dialog.current_file == "Original Startup.SC2")
+	main.city_dialogs.city_save_dialog.hide()
 	main.queue_free()
 	await process_frame
 	await process_frame

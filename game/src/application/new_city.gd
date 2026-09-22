@@ -15,14 +15,14 @@ func _init(application: CityApplication) -> void:
 
 
 func sync_new_city_workspace() -> void:
-	app.city_workspace.set_editor_controls_visible(not app.new_city_dialog.visible)
+	app.city_workspace.set_editor_controls_visible(not app.city_dialogs.new_city_dialog.visible)
 
 
 func open_new_city_dialog() -> void:
 	if not app.asset_state.assets_ready:
 		return
 
-	if app.new_city_dialog == null:
+	if app.city_dialogs.new_city_dialog == null:
 		return
 
 	app.new_city_state.return_to_main_menu = app.main_menu != null and app.main_menu.visible
@@ -30,74 +30,74 @@ func open_new_city_dialog() -> void:
 	if app.new_city_state.return_to_main_menu:
 		app.main_menu.hide()
 
-	app.new_city_dialog.preview_timer.stop()
+	app.city_dialogs.new_city_dialog.preview_timer.stop()
 	app.new_city_state.session.begin(app.tool_state.tool_random.state, app.simulation_state.nuisance_random.state)
-	app.new_city_dialog.preview_view.texture = null
-	app.new_city_dialog.landscape_background.texture = null
-	app.new_city_dialog.compatibility_input.set_pressed_no_signal(false)
-	app.new_city_dialog.compatibility_changed(false)
-	app.new_city_dialog.native_maps_input.set_pressed_no_signal(true)
-	app.new_city_dialog.city_name_input.text = "New City"
-	app.new_city_dialog.mayor_name_input.text = app.preferences.default_mayor_name
-	app.new_city_dialog.difficulty_input.select(0)
-	app.new_city_dialog.year_input.select(0)
-	app.new_city_dialog.reset_features()
-	app.new_city_dialog.ocean_input.button_pressed = NewTerrain.DEFAULT_OCEAN
-	app.new_city_dialog.river_input.button_pressed = NewTerrain.DEFAULT_RIVER
-	app.new_city_dialog.hills_input.value = NewTerrain.DEFAULT_HILLS
-	app.new_city_dialog.water_input.value = NewTerrain.DEFAULT_WATER
-	app.new_city_dialog.trees_input.value = NewTerrain.DEFAULT_TREES
+	app.city_dialogs.new_city_dialog.preview_view.texture = null
+	app.city_dialogs.new_city_dialog.landscape_background.texture = null
+	app.city_dialogs.new_city_dialog.compatibility_input.set_pressed_no_signal(false)
+	app.city_dialogs.new_city_dialog.compatibility_changed(false)
+	app.city_dialogs.new_city_dialog.native_maps_input.set_pressed_no_signal(true)
+	app.city_dialogs.new_city_dialog.city_name_input.text = "New City"
+	app.city_dialogs.new_city_dialog.mayor_name_input.text = app.preferences.default_mayor_name
+	app.city_dialogs.new_city_dialog.difficulty_input.select(0)
+	app.city_dialogs.new_city_dialog.year_input.select(0)
+	app.city_dialogs.new_city_dialog.reset_features()
+	app.city_dialogs.new_city_dialog.ocean_input.button_pressed = NewTerrain.DEFAULT_OCEAN
+	app.city_dialogs.new_city_dialog.river_input.button_pressed = NewTerrain.DEFAULT_RIVER
+	app.city_dialogs.new_city_dialog.hills_input.value = NewTerrain.DEFAULT_HILLS
+	app.city_dialogs.new_city_dialog.water_input.value = NewTerrain.DEFAULT_WATER
+	app.city_dialogs.new_city_dialog.trees_input.value = NewTerrain.DEFAULT_TREES
 	_update_new_city_slider_labels()
-	app.new_city_dialog.show()
-	app.new_city_dialog.invalidate()
-	app.new_city_dialog.city_name_input.grab_focus()
-	app.new_city_dialog.city_name_input.select_all()
+	app.city_dialogs.new_city_dialog.show()
+	app.city_dialogs.new_city_dialog.invalidate()
+	app.city_dialogs.new_city_dialog.city_name_input.grab_focus()
+	app.city_dialogs.new_city_dialog.city_name_input.select_all()
 
 
 func reopen_terrain_dialog() -> void:
 	if not app.tool_state.landscape_editor:
 		return
 	app.new_city_state.return_to_main_menu = false
-	app.new_city_dialog.show()
-	app.new_city_dialog.invalidate()
+	app.city_dialogs.new_city_dialog.show()
+	app.city_dialogs.new_city_dialog.invalidate()
 
 
 func schedule_new_city_preview(_value: Variant = null) -> void:
 	_update_new_city_slider_labels()
 
-	if app.new_city_dialog != null and app.new_city_dialog.visible:
-		app.new_city_dialog.invalidate()
+	if app.city_dialogs.new_city_dialog != null and app.city_dialogs.new_city_dialog.visible:
+		app.city_dialogs.new_city_dialog.invalidate()
 
 
 func _update_new_city_slider_labels() -> void:
-	if app.new_city_dialog == null or app.new_city_dialog.hills_input == null:
+	if app.city_dialogs.new_city_dialog == null or app.city_dialogs.new_city_dialog.hills_input == null:
 		return
 
-	app.new_city_dialog.hills_value.text = str(roundi(app.new_city_dialog.hills_input.value))
-	app.new_city_dialog.water_value.text = str(roundi(app.new_city_dialog.water_input.value))
-	app.new_city_dialog.trees_value.text = str(roundi(app.new_city_dialog.trees_input.value))
+	app.city_dialogs.new_city_dialog.hills_value.text = str(roundi(app.city_dialogs.new_city_dialog.hills_input.value))
+	app.city_dialogs.new_city_dialog.water_value.text = str(roundi(app.city_dialogs.new_city_dialog.water_input.value))
+	app.city_dialogs.new_city_dialog.trees_value.text = str(roundi(app.city_dialogs.new_city_dialog.trees_input.value))
 
 
 func _new_city_terrain_options() -> NewCityTerrain.Options:
 	var options := NewCityTerrain.Options.new()
-	options.features.assign(app.new_city_dialog.selected_features())
+	options.features.assign(app.city_dialogs.new_city_dialog.selected_features())
 	options.smooth_slopes = true
-	options.size = app.new_city_dialog.size_input.get_selected_id()
-	options.native_maps = app.new_city_dialog.native_maps_input.button_pressed
-	options.ocean = app.new_city_dialog.ocean_input.button_pressed
-	options.river = app.new_city_dialog.river_input.button_pressed
-	options.hills = roundi(app.new_city_dialog.hills_input.value)
-	options.water = roundi(app.new_city_dialog.water_input.value)
-	options.trees = roundi(app.new_city_dialog.trees_input.value)
+	options.size = app.city_dialogs.new_city_dialog.size_input.get_selected_id()
+	options.native_maps = app.city_dialogs.new_city_dialog.native_maps_input.button_pressed
+	options.ocean = app.city_dialogs.new_city_dialog.ocean_input.button_pressed
+	options.river = app.city_dialogs.new_city_dialog.river_input.button_pressed
+	options.hills = roundi(app.city_dialogs.new_city_dialog.hills_input.value)
+	options.water = roundi(app.city_dialogs.new_city_dialog.water_input.value)
+	options.trees = roundi(app.city_dialogs.new_city_dialog.trees_input.value)
 
-	return OriginalCompatibility.terrain_options(options, app.new_city_dialog.compatibility_input.button_pressed)
+	return OriginalCompatibility.terrain_options(options, app.city_dialogs.new_city_dialog.compatibility_input.button_pressed)
 
 
 func make_new_city_preview() -> void:
 	if app.new_city_state.preview_job != null:
 		return
-	app.new_city_dialog.preview_timer.stop()
-	app.new_city_dialog.invalidate()
+	app.city_dialogs.new_city_dialog.preview_timer.stop()
+	app.city_dialogs.new_city_dialog.invalidate()
 	var sound_ids: Array[int] = [529]
 	app.audio_controller.play_sound_ids(sound_ids, app.document_state.city == null or app.document_state.city.sound_enabled(),
 			CityViewMode.Mode.CITY, IsometricRenderer.VIEW_LARGE)
@@ -106,16 +106,16 @@ func make_new_city_preview() -> void:
 
 func _generate_new_city_preview(advance_seed: bool) -> bool:
 	if app.asset_state.palette == null or not app.asset_state.palette.is_valid():
-		app.new_city_dialog.preview_status.text = "Terrain preview is not available."
+		app.city_dialogs.new_city_dialog.preview_status.text = "Terrain preview is not available."
 
 		return false
 
 	if app.new_city_state.preview_job != null:
 		return false
 	app.new_city_state.preview_job = NewCityPreviewJob.new()
-	app.new_city_state.preview_job.revision = app.new_city_dialog.generation_revision
+	app.new_city_state.preview_job.revision = app.city_dialogs.new_city_dialog.generation_revision
 	app.new_city_state.preview_job.view_size = NewCityPreviewJob.preview_view_size(
-		app.new_city_dialog.size_input.get_selected_id(), app.new_city_dialog.size)
+		app.city_dialogs.new_city_dialog.size_input.get_selected_id(), app.city_dialogs.new_city_dialog.size)
 	var preview_sprites := (app.asset_state.large_sprites if app.new_city_state.preview_job.view_size == IsometricRenderer.VIEW_LARGE
 			else app.asset_state.small_medium_sprites)
 	var error := app.new_city_state.preview_job.start(app.new_city_state.session,
@@ -123,9 +123,9 @@ func _generate_new_city_preview(advance_seed: bool) -> bool:
 		app.asset_state.palette, preview_sprites, advance_seed)
 	if error != OK:
 		app.new_city_state.preview_job = null
-		app.new_city_dialog.preview_status.text = "Cannot start terrain generation."
+		app.city_dialogs.new_city_dialog.preview_status.text = "Cannot start terrain generation."
 		return false
-	app.new_city_dialog.set_generating(true)
+	app.city_dialogs.new_city_dialog.set_generating(true)
 	return true
 
 
@@ -135,19 +135,19 @@ func poll_new_city_preview() -> void:
 	var job := app.new_city_state.preview_job
 	var generated: NewCityTerrainSession.PreviewResult = job.thread.wait_to_finish()
 	app.new_city_state.preview_job = null
-	app.new_city_dialog.set_generating(false)
-	if not app.new_city_dialog.visible or job.revision != app.new_city_dialog.generation_revision:
+	app.city_dialogs.new_city_dialog.set_generating(false)
+	if not app.city_dialogs.new_city_dialog.visible or job.revision != app.city_dialogs.new_city_dialog.generation_revision:
 		return
 	if not generated.ok:
-		app.new_city_dialog.preview_status.text = "Cannot generate terrain: %s" % generated.error
+		app.city_dialogs.new_city_dialog.preview_status.text = "Cannot generate terrain: %s" % generated.error
 		return
 	app.new_city_state.session = job.session
-	app.new_city_dialog.landscape_background.texture = ImageTexture.create_from_image(generated.landscape_image)
-	app.new_city_dialog.preview_view.texture = ImageTexture.create_from_image(generated.minimap_image)
-	app.new_city_dialog.candidate_valid = true
-	app.new_city_dialog.done_button.disabled = false
+	app.city_dialogs.new_city_dialog.landscape_background.texture = ImageTexture.create_from_image(generated.landscape_image)
+	app.city_dialogs.new_city_dialog.preview_view.texture = ImageTexture.create_from_image(generated.minimap_image)
+	app.city_dialogs.new_city_dialog.candidate_valid = true
+	app.city_dialogs.new_city_dialog.done_button.disabled = false
 
-	app.new_city_dialog.preview_status.text = (
+	app.city_dialogs.new_city_dialog.preview_status.text = (
 		"Water: %s tiles   Trees: %s tiles   Height: %s–%s"
 		% [
 			app.interface.format_number(int(generated.terrain.water_tiles)),
@@ -159,11 +159,11 @@ func poll_new_city_preview() -> void:
 
 
 func cancel_new_city() -> void:
-	app.new_city_dialog.invalidate()
-	app.new_city_dialog.preview_timer.stop()
-	app.new_city_dialog.hide()
+	app.city_dialogs.new_city_dialog.invalidate()
+	app.city_dialogs.new_city_dialog.preview_timer.stop()
+	app.city_dialogs.new_city_dialog.hide()
 	app.new_city_state.session.clear()
-	app.new_city_dialog.preview_view.texture = null
+	app.city_dialogs.new_city_dialog.preview_view.texture = null
 	var return_to_main_menu := app.new_city_state.return_to_main_menu
 	app.new_city_state.return_to_main_menu = false
 
@@ -172,7 +172,7 @@ func cancel_new_city() -> void:
 
 
 func create_new_city() -> void:
-	if not app.new_city_dialog.candidate_valid:
+	if not app.city_dialogs.new_city_dialog.candidate_valid:
 		return
 	if app.tool_state.landscape_editor:
 		create_new_city_unchecked()
@@ -181,19 +181,19 @@ func create_new_city() -> void:
 
 
 func create_new_city_unchecked() -> void:
-	app.new_city_dialog.preview_timer.stop()
+	app.city_dialogs.new_city_dialog.preview_timer.stop()
 	var terrain_options := _new_city_terrain_options()
 
-	if not app.new_city_dialog.candidate_valid or not app.new_city_state.session.matches(terrain_options):
+	if not app.city_dialogs.new_city_dialog.candidate_valid or not app.new_city_state.session.matches(terrain_options):
 		return
 
 	var template_path := app.asset_state.reference_root.path_join("DEFAULT.SC2")
-	var difficulty := app.new_city_dialog.difficulty_input.get_selected_id()
-	var starting_year := app.new_city_dialog.year_input.get_selected_id()
+	var difficulty := app.city_dialogs.new_city_dialog.difficulty_input.get_selected_id()
+	var starting_year := app.city_dialogs.new_city_dialog.year_input.get_selected_id()
 	var result := app.new_city_state.session.create_city(
 		template_path,
-		app.new_city_dialog.city_name_input.text,
-		app.new_city_dialog.mayor_name_input.text,
+		app.city_dialogs.new_city_dialog.city_name_input.text,
+		app.city_dialogs.new_city_dialog.mayor_name_input.text,
 		difficulty,
 		starting_year,
 		terrain_options,
@@ -271,7 +271,7 @@ func start_city() -> void:
 
 
 func on_founding_newspaper_visibility_changed() -> void:
-	if not app.newspaper_state.founding_pending or app.newspaper_dialog.visible:
+	if not app.newspaper_state.founding_pending or app.city_dialogs.newspaper_dialog.visible:
 		return
 
 	app.newspaper_state.founding_pending = false

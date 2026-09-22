@@ -29,26 +29,26 @@ func _set_city_renderer(value: String) -> void:
 
 func open_import_settings() -> void:
 	open_settings_dialog()
-	app.settings_dialog.tabs.current_tab = 3
+	app.main_overlays.settings_dialog.tabs.current_tab = 3
 
 
 func open_settings_dialog() -> void:
-	app.settings_dialog.dark_underground_check.button_pressed = preferences.dark_underground
-	app.settings_dialog.theme_selector.select(1 if preferences.ui_theme == "dark" else 0)
-	app.settings_dialog.translucent_menus_check.button_pressed = preferences.translucent_menus
-	app.settings_dialog.default_mayor_edit.text = preferences.default_mayor_name
-	app.settings_dialog.overview_graphics_selector.select(preferences.overview_graphics)
-	app.settings_dialog.select_moving_frame_rate(preferences.moving_frame_rate)
-	app.settings_dialog.original_compatibility_check.button_pressed = preferences.original_compatibility
-	app.settings_dialog.original_compatibility_check.disabled = app.document_state.current_document != null and app.document_state.current_document.is_extended()
-	app.settings_dialog.original_compatibility_check.tooltip_text = ("SC2X cities cannot return to original compatibility."
-			if app.settings_dialog.original_compatibility_check.disabled else "")
-	app.settings_dialog.warn_sc2x_conversion_check.button_pressed = preferences.warn_sc2x_conversion
-	app.settings_dialog.shuffle_music_check.button_pressed = preferences.shuffle_music
-	app.settings_dialog.toolbar_sounds_check.button_pressed = preferences.toolbar_sounds
-	app.settings_dialog.sound_pack_edit.text = AppSettingsDialog.pack_file_path(preferences.sound_pack_folder)
-	app.settings_dialog.music_pack_edit.text = AppSettingsDialog.pack_file_path(preferences.music_pack_folder)
-	app.settings_dialog.show_values(
+	app.main_overlays.settings_dialog.dark_underground_check.button_pressed = preferences.dark_underground
+	app.main_overlays.settings_dialog.theme_selector.select(1 if preferences.ui_theme == "dark" else 0)
+	app.main_overlays.settings_dialog.translucent_menus_check.button_pressed = preferences.translucent_menus
+	app.main_overlays.settings_dialog.default_mayor_edit.text = preferences.default_mayor_name
+	app.main_overlays.settings_dialog.overview_graphics_selector.select(preferences.overview_graphics)
+	app.main_overlays.settings_dialog.select_moving_frame_rate(preferences.moving_frame_rate)
+	app.main_overlays.settings_dialog.original_compatibility_check.button_pressed = preferences.original_compatibility
+	app.main_overlays.settings_dialog.original_compatibility_check.disabled = app.document_state.current_document != null and app.document_state.current_document.is_extended()
+	app.main_overlays.settings_dialog.original_compatibility_check.tooltip_text = ("SC2X cities cannot return to original compatibility."
+			if app.main_overlays.settings_dialog.original_compatibility_check.disabled else "")
+	app.main_overlays.settings_dialog.warn_sc2x_conversion_check.button_pressed = preferences.warn_sc2x_conversion
+	app.main_overlays.settings_dialog.shuffle_music_check.button_pressed = preferences.shuffle_music
+	app.main_overlays.settings_dialog.toolbar_sounds_check.button_pressed = preferences.toolbar_sounds
+	app.main_overlays.settings_dialog.sound_pack_edit.text = AppSettingsDialog.pack_file_path(preferences.sound_pack_folder)
+	app.main_overlays.settings_dialog.music_pack_edit.text = AppSettingsDialog.pack_file_path(preferences.music_pack_folder)
+	app.main_overlays.settings_dialog.show_values(
 		preferences.music_volume, preferences.effects_volume, preferences.fullscreen,
 		preferences.graphics_source, preferences.graphics_folder, preferences.city_renderer, preferences.background_audio, preferences.zoom_graphics,
 	)
@@ -56,22 +56,22 @@ func open_settings_dialog() -> void:
 
 
 func _refresh_settings_pack_names() -> void:
-	if app.settings_dialog == null:
+	if app.main_overlays.settings_dialog == null:
 		return
 
-	app.settings_dialog.set_loaded_pack("graphics", app.asset_state.asset_source.graphics_name if app.asset_state.assets_ready else "",
+	app.main_overlays.settings_dialog.set_loaded_pack("graphics", app.asset_state.asset_source.graphics_name if app.asset_state.assets_ready else "",
 		preferences.graphics_folder if preferences.graphics_source == "folder" else "")
 
 	if app.audio_controller != null:
-		app.settings_dialog.set_loaded_pack("sound", app.audio_controller.sound_pack.pack_name, preferences.sound_pack_folder)
-		app.settings_dialog.set_loaded_pack("music", app.audio_controller.music_pack.pack_name, preferences.music_pack_folder)
+		app.main_overlays.settings_dialog.set_loaded_pack("sound", app.audio_controller.sound_pack.pack_name, preferences.sound_pack_folder)
+		app.main_overlays.settings_dialog.set_loaded_pack("music", app.audio_controller.music_pack.pack_name, preferences.music_pack_folder)
 
 
 func apply_settings() -> void:
-	var values: AppSettingsStore.Values = app.settings_dialog.selected_values()
+	var values: AppSettingsStore.Values = app.main_overlays.settings_dialog.selected_values()
 
 	if bool(values.original_compatibility) and app.document_state.current_document != null and app.document_state.current_document.is_extended():
-		app.settings_dialog.show_compatibility_error(("This city is SC2X and cannot return to original compatibility. Save it, then open a different original SC2 " +
+		app.main_overlays.settings_dialog.show_compatibility_error(("This city is SC2X and cannot return to original compatibility. Save it, then open a different original SC2 " +
 			"city or restart the app before enabling compatibility."))
 
 		return
@@ -79,7 +79,7 @@ func apply_settings() -> void:
 	var pack_error: String = CityAudioController.validate_media_packs(values.sound_pack_folder, values.music_pack_folder)
 
 	if not pack_error.is_empty():
-		app.settings_dialog.show_pack_error(pack_error)
+		app.main_overlays.settings_dialog.show_pack_error(pack_error)
 
 		return
 

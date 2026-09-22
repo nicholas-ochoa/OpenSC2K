@@ -33,15 +33,15 @@ func open_budget_dialog(values: PackedInt32Array, annual: bool) -> void:
 	if app.document_state.city.music_enabled() and app.simulation_state.simulation_engine != null:
 		app.effects_audio.play_music_track(Music.budget_track(app.simulation_state.simulation_engine.lfsr_random))
 
-	if not app.budget_dialog.advisor_requested.is_connected(show_advisor):
-		app.budget_dialog.advisor_requested.connect(show_advisor)
-		app.budget_dialog.sound_requested.connect(app.effects_audio.play_sound_ids)
-		app.budget_dialog.ordinances_changed.connect(app.reports.on_ordinances_changed)
-		app.budget_dialog.update_failed.connect(app.interface.show_error)
+	if not app.city_dialogs.budget_dialog.advisor_requested.is_connected(show_advisor):
+		app.city_dialogs.budget_dialog.advisor_requested.connect(show_advisor)
+		app.city_dialogs.budget_dialog.sound_requested.connect(app.effects_audio.play_sound_ids)
+		app.city_dialogs.budget_dialog.ordinances_changed.connect(app.reports.on_ordinances_changed)
+		app.city_dialogs.budget_dialog.update_failed.connect(app.interface.show_error)
 
-	app.budget_dialog.set_city(app.document_state.city)
+	app.city_dialogs.budget_dialog.set_city(app.document_state.city)
 	app.simulation_state.annual_budget_pending = annual
-	app.budget_dialog.open_budget(
+	app.city_dialogs.budget_dialog.open_budget(
 		values,
 		annual,
 		app.document_state.city.document.misc_u32(Budget.MISC_AUTO_BUDGET) != 0,
@@ -55,12 +55,12 @@ func show_advisor(index: int) -> void:
 	if city == null or engine == null:
 		return
 
-	var report := BudgetReport.capture(city, app.budget_dialog.funding_values())
+	var report := BudgetReport.capture(city, app.city_dialogs.budget_dialog.funding_values())
 	var power_usage := engine.power_usage_percent
 	if power_usage < 0:
 		power_usage = 100 - int(city.graph_series(8).year[0])
 	var advice := BudgetAdvice.select(city, report, index, engine.random, power_usage)
-	app.budget_dialog.show_advice(index, advice, app.city_dialogs.original_assets)
+	app.city_dialogs.budget_dialog.show_advice(index, advice, app.city_dialogs.original_assets)
 	if index == 0:
 		app.effects_audio.play_sound_ids([512])
 
@@ -80,7 +80,7 @@ func request_issue_bond() -> void:
 
 	match result.status:
 		"confirmation_required":
-			app.budget_dialog.open_bond_confirmation("issue", int(result.rate))
+			app.city_dialogs.budget_dialog.open_bond_confirmation("issue", int(result.rate))
 		"credit_denied":
 			app.interface.show_error(
 				"Sorry, your city may not issue more bonds\nuntil your credit rating improves."
@@ -104,7 +104,7 @@ func request_repay_bond() -> void:
 
 	match result.status:
 		"confirmation_required":
-			app.budget_dialog.open_bond_confirmation("repay", int(result.rate))
+			app.city_dialogs.budget_dialog.open_bond_confirmation("repay", int(result.rate))
 		"insufficient_funds":
 			app.interface.show_error("You Need $10,000 Cash\nto Repay an Outstanding Bond.")
 		"no_bonds":
@@ -155,7 +155,7 @@ func resolve_bond_action(action: String, confirmed: bool) -> void:
 
 
 func _update_bond_controls() -> void:
-	if app.document_state.city == null or app.budget_dialog == null:
+	if app.document_state.city == null or app.city_dialogs.budget_dialog == null:
 		return
 
 	var bond_count := app.document_state.city.document.misc_u32(Bonds.MISC_BONDS)
@@ -166,15 +166,15 @@ func _update_bond_controls() -> void:
 		+ Budget.BUDGET_FUNDING
 	)
 	var oldest := app.document_state.city.document.misc_u32(Bonds.MISC_BOND_RATES) & 0xffff
-	app.budget_dialog.set_bond_state(bond_count, funds, average_fixed, oldest)
+	app.city_dialogs.budget_dialog.set_bond_state(bond_count, funds, average_fixed, oldest)
 
 
 func commit_budget() -> void:
 	if app.document_state.city == null:
 		return
 
-	var values := app.budget_dialog.funding_values()
-	var auto_budget := app.budget_dialog.auto_budget_enabled()
+	var values := app.city_dialogs.budget_dialog.funding_values()
+	var auto_budget := app.city_dialogs.budget_dialog.auto_budget_enabled()
 
 	if app.simulation_state.annual_budget_pending:
 		var result := app.simulation_state.speed_controller.resolve_annual_budget(values, auto_budget)
@@ -211,12 +211,12 @@ func cancel_budget() -> void:
 
 func _restore_annual_budget_dialog() -> void:
 	if app.simulation_state.annual_budget_pending:
-		app.budget_dialog.popup_centered()
+		app.city_dialogs.budget_dialog.popup_centered()
 
 
 func open_military_proposal() -> void:
 	app.simulation_state.military_proposal_pending = true
-	app.military_dialog.popup_centered()
+	app.city_dialogs.military_dialog.popup_centered()
 
 
 func accept_military_proposal() -> void:
@@ -267,7 +267,7 @@ func _resolve_military_proposal(accepted: bool) -> void:
 
 func _restore_military_proposal_dialog() -> void:
 	if app.simulation_state.military_proposal_pending:
-		app.military_dialog.popup_centered()
+		app.city_dialogs.military_dialog.popup_centered()
 
 
 func open_scenario_intro(scenario: ScenarioState, starting := true) -> void:
@@ -281,11 +281,11 @@ func open_scenario_intro(scenario: ScenarioState, starting := true) -> void:
 	if starting:
 		app.status_label.theme_type_variation = ""
 		app.status_label.text = "Review the scenario briefing before the simulation starts."
-	app.scenario_dialog.show_briefing(name, picture, scenario.opening_description(), starting)
+	app.city_dialogs.scenario_dialog.show_briefing(name, picture, scenario.opening_description(), starting)
 
 
 func begin_scenario() -> void:
-	if not app.scenario_dialog.starts_scenario:
+	if not app.city_dialogs.scenario_dialog.starts_scenario:
 		return
 
 	app.status_label.theme_type_variation = ""

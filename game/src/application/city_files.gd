@@ -26,11 +26,11 @@ func open_city_dialog() -> void:
 	var city_directory := ProjectSettings.globalize_path("user://cities")
 
 	if DirAccess.dir_exists_absolute(city_directory):
-		app.file_dialog.current_dir = city_directory
+		app.city_dialogs.city_open_dialog.current_dir = city_directory
 	elif DirAccess.dir_exists_absolute(app.asset_state.reference_root.path_join("CITIES")):
-		app.file_dialog.current_dir = app.asset_state.reference_root.path_join("CITIES")
+		app.city_dialogs.city_open_dialog.current_dir = app.asset_state.reference_root.path_join("CITIES")
 
-	app.file_dialog.popup_centered_ratio(0.8)
+	app.city_dialogs.city_open_dialog.popup_centered_ratio(0.8)
 
 
 func open_scenario_dialog() -> void:
@@ -40,11 +40,11 @@ func open_scenario_dialog() -> void:
 	var scenario_directory := ProjectSettings.globalize_path("user://scenarios")
 
 	if DirAccess.dir_exists_absolute(scenario_directory):
-		app.file_dialog.current_dir = scenario_directory
+		app.city_dialogs.city_open_dialog.current_dir = scenario_directory
 	elif DirAccess.dir_exists_absolute(app.asset_state.reference_root.path_join("SCENARIO")):
-		app.file_dialog.current_dir = app.asset_state.reference_root.path_join("SCENARIO")
+		app.city_dialogs.city_open_dialog.current_dir = app.asset_state.reference_root.path_join("SCENARIO")
 
-	app.file_dialog.popup_centered_ratio(0.8)
+	app.city_dialogs.city_open_dialog.popup_centered_ratio(0.8)
 
 
 func save_city() -> void:
@@ -147,7 +147,7 @@ func open_save_dialog() -> void:
 
 	var save_directory := ProjectSettings.globalize_path("user://cities")
 	DirAccess.make_dir_recursive_absolute(save_directory)
-	app.save_dialog.current_dir = save_directory
+	app.city_dialogs.city_save_dialog.current_dir = save_directory
 	var save_name := document_state.current_document.source_path.get_file().get_basename()
 
 	if save_name.is_empty() and app.document_state.city != null:
@@ -156,10 +156,10 @@ func open_save_dialog() -> void:
 	if save_name.is_empty():
 		save_name = "New City"
 
-	app.save_dialog.filters = PackedStringArray(["*.sc2x ; Extended cities"] if document_state.current_document.is_extended()
+	app.city_dialogs.city_save_dialog.filters = PackedStringArray(["*.sc2x ; Extended cities"] if document_state.current_document.is_extended()
 			else ["*.SC2, *.sc2 ; SimCity 2000 cities"])
-	app.save_dialog.current_file = save_name + (".sc2x" if document_state.current_document.is_extended() else ".SC2")
-	app.save_dialog.popup_centered_ratio(0.8)
+	app.city_dialogs.city_save_dialog.current_file = save_name + (".sc2x" if document_state.current_document.is_extended() else ".SC2")
+	app.city_dialogs.city_save_dialog.popup_centered_ratio(0.8)
 
 
 func _city_has_unsaved_changes() -> bool:
@@ -188,7 +188,7 @@ func request_city_exit(action: String, path := "") -> void:
 	if display_name.is_empty():
 		display_name = "this city"
 
-	app.save_changes_dialog.show_city(display_name)
+	app.main_overlays.save_changes_dialog.show_city(display_name)
 
 
 func _perform_city_exit(action: String, path := "") -> void:
@@ -219,7 +219,7 @@ func on_save_changes_action(action: StringName) -> void:
 	if action != &"discard":
 		return
 
-	app.save_changes_dialog.hide()
+	app.main_overlays.save_changes_dialog.hide()
 	_continue_pending_city_exit()
 
 

@@ -71,7 +71,7 @@ func _simulation_suspended() -> bool:
 		or (app.sc2x_conversion_dialog != null and app.sc2x_conversion_dialog.visible)
 		or (app.scurk_city_export_dialog != null and app.scurk_city_export_dialog.visible)
 		or (app.scurk_print_pdf_dialog != null and app.scurk_print_pdf_dialog.visible)
-		or app.budget_dialog.bond_confirmation_visible()
+		or app.city_dialogs.budget_dialog.bond_confirmation_visible()
 		or app.simulation_state.game_over_active
 		or app.tool_state.landscape_editor
 		or app.newspaper_state.founding_pending

@@ -42,7 +42,7 @@ func _run() -> void:
 	main.new_city.call("open_new_city_dialog")
 	await process_frame
 	var main_menu := main.get("main_menu") as MainMenuControl
-	var new_city_dialog := main.get("new_city_dialog") as NewCityTerrainDialog
+	var new_city_dialog := main.city_dialogs.new_city_dialog as NewCityTerrainDialog
 
 	if main_menu == null or new_city_dialog == null or main_menu.visible or not new_city_dialog.visible:
 		push_error("New City does not take input ownership from the main menu")
@@ -132,7 +132,7 @@ func _run() -> void:
 			var original_funds := loaded_city.funds()
 			loaded_city.set_funds(original_funds + 1)
 			main.city_files.call("request_city_exit", "quit")
-			var save_changes_dialog := main.get("save_changes_dialog") as ConfirmationDialog
+			var save_changes_dialog := main.main_overlays.save_changes_dialog as ConfirmationDialog
 
 			if (
 				not main.city_files.call("_city_has_unsaved_changes")
@@ -578,7 +578,7 @@ func _run() -> void:
 
 		loaded_city.set_music_enabled(false)
 		loaded_city.set_sound_enabled(false)
-		var scenario_dialog := main.get("scenario_dialog") as Window
+		var scenario_dialog := main.city_dialogs.scenario_dialog as Window
 
 		if scenario_dialog != null:
 			scenario_dialog.hide()
@@ -611,12 +611,12 @@ func _run() -> void:
 
 			if bool(main.simulation_state.annual_budget_pending):
 				main.budget.call("commit_budget")
-				var budget_dialog := main.get("budget_dialog") as Window
+				var budget_dialog := main.city_dialogs.budget_dialog as Window
 				budget_dialog.hide()
 
 			if bool(main.simulation_state.military_proposal_pending):
 				main.budget.call("decline_military_proposal")
-				var military_dialog := main.get("military_dialog") as Window
+				var military_dialog := main.city_dialogs.military_dialog as Window
 				military_dialog.hide()
 
 		main.frame.call("select_speed", GameSpeed.Speed.PAUSED)
@@ -635,21 +635,21 @@ func _run() -> void:
 	main.menus.call("set_overlay", CityViewMode.Mode.CITY)
 
 	for entry in [
-		[main.reports._open_ordinance_window, "ordinance_window"],
-		[main.reports._open_population_window, "population_window"],
-		[main.reports._open_industry_window, "industry_window"],
-		[main.reports._open_graph_window, "graph_window"],
-		[main.reports._open_simnation_window, "simnation_window"],
-		[main.reports.open_city_map_window, "city_map_window"],
-		[main.reports.on_newspaper_menu.bind(0), "newspaper_dialog"],
-		[main.budget.open_manual_budget, "budget_dialog"],
-		[main.settings.open_settings_dialog, "settings_dialog"],
-		[main.interface.open_about_dialog, "about_dialog"],
+		[main.reports._open_ordinance_window, main.city_dialogs.ordinance_window],
+		[main.reports._open_population_window, main.city_dialogs.population_window],
+		[main.reports._open_industry_window, main.city_dialogs.industry_window],
+		[main.reports._open_graph_window, main.city_dialogs.graph_window],
+		[main.reports._open_simnation_window, main.city_dialogs.simnation_window],
+		[main.reports.open_city_map_window, main.city_dialogs.city_map_window],
+		[main.reports.on_newspaper_menu.bind(0), main.city_dialogs.newspaper_dialog],
+		[main.budget.open_manual_budget, main.city_dialogs.budget_dialog],
+		[main.settings.open_settings_dialog, main.main_overlays.settings_dialog],
+		[main.interface.open_about_dialog, main.main_overlays.about_dialog],
 	]:
 		entry[0].call()
 
 		await process_frame
-		var opened_window := main.get(entry[1]) as Window
+		var opened_window := entry[1] as Window
 
 		if opened_window != null:
 			opened_window.hide()
@@ -859,7 +859,7 @@ func _run() -> void:
 
 
 func _test_save_city(main: Node) -> bool:
-	var dialog := main.get("save_dialog") as FileDialog
+	var dialog := main.city_dialogs.city_save_dialog as FileDialog
 	main.menus.call("on_file_menu", CityMenuBar.MENU_SAVE_CITY)
 
 	if not dialog.visible:
@@ -929,19 +929,19 @@ func _run_quick(reference_root: String) -> void:
 	main.city_edits.undo_last_edit()
 	assert(city.document.serialize().data == before, "Undo restores all saved bytes")
 	main.settings.open_settings_dialog()
-	assert(main.settings_dialog.visible)
-	main.settings_dialog.hide()
+	assert(main.main_overlays.settings_dialog.visible)
+	main.main_overlays.settings_dialog.hide()
 	main.query_choices.open_query(point)
-	assert(main.query_dialog.visible)
+	assert(main.city_dialogs.query_dialog.visible)
 	main.query_choices.close_query()
 	main.new_city.open_new_city_dialog()
-	assert(main.new_city_dialog.visible)
-	main.new_city_dialog.size_input.select(main.new_city_dialog.size_input.get_item_index(128))
-	main.new_city_dialog.city_name_input.text = "Workflow smoke"
+	assert(main.city_dialogs.new_city_dialog.visible)
+	main.city_dialogs.new_city_dialog.size_input.select(main.city_dialogs.new_city_dialog.size_input.get_item_index(128))
+	main.city_dialogs.new_city_dialog.city_name_input.text = "Workflow smoke"
 	main.new_city.make_new_city_preview()
 	while main.new_city_state.preview_job != null:
 		await process_frame
-	assert(main.new_city_dialog.candidate_valid)
+	assert(main.city_dialogs.new_city_dialog.candidate_valid)
 	main.new_city.create_new_city_unchecked()
 	assert(main.document_state.city != city and main.document_state.city.display_name() == "Workflow smoke")
 	assert(main.tool_state.landscape_editor)

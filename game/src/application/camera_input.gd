@@ -23,7 +23,7 @@ func camera_keys_allowed() -> bool:
 	if focus is LineEdit or focus is TextEdit:
 		return false
 
-	for overlay in [app.main_menu, app.new_city_dialog, app.query_dialog, app.scurk_editor, app.scurk_place_print, app.scurk_print, app.settings_dialog, app.save_changes_dialog]:
+	for overlay in [app.main_menu, app.city_dialogs.new_city_dialog, app.city_dialogs.query_dialog, app.scurk_editor, app.scurk_place_print, app.scurk_print, app.main_overlays.settings_dialog, app.main_overlays.save_changes_dialog]:
 		if overlay != null and overlay.visible:
 			return false
 
@@ -107,10 +107,10 @@ func unhandled_key_input(event: InputEvent) -> void:
 
 		return
 
-	if event.keycode == KEY_ESCAPE and app.query_dialog != null and app.query_dialog.visible:
+	if event.keycode == KEY_ESCAPE and app.city_dialogs.query_dialog != null and app.city_dialogs.query_dialog.visible:
 		app.query_choices.close_query(false)
 		app.get_viewport().set_input_as_handled()
-	elif event.keycode == KEY_ESCAPE and app.new_city_dialog != null and app.new_city_dialog.visible:
+	elif event.keycode == KEY_ESCAPE and app.city_dialogs.new_city_dialog != null and app.city_dialogs.new_city_dialog.visible:
 		app.new_city.cancel_new_city()
 		app.get_viewport().set_input_as_handled()
 	elif event.keycode == KEY_Z and event.is_command_or_control_pressed():

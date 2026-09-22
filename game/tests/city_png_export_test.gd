@@ -27,8 +27,8 @@ func _run() -> void:
 	_check_menu_and_dialog()
 	_check_content_options()
 	_check_render_progress()
-	main.city_png_export_progress.visibility_changed.connect(func() -> void:
-		if main.city_png_export_progress.visible:
+	main.city_dialogs.png_export_progress.visibility_changed.connect(func() -> void:
+		if main.city_dialogs.png_export_progress.visible:
 			overlay_shown += 1
 	)
 	await _check_exports()
@@ -52,7 +52,7 @@ func _check_menu_and_dialog() -> void:
 	var popup: PopupMenu = main.city_menu_bar.file_menu.get_popup()
 	assert(popup.get_item_index(CityMenuBar.MENU_EXPORT_CITY_PNG) >= 0)
 	main.menus.on_file_menu(CityMenuBar.MENU_EXPORT_CITY_PNG)
-	var dialog: CityPngExportDialog = main.city_png_export_dialog
+	var dialog: CityPngExportDialog = main.city_dialogs.png_export_dialog
 	assert(dialog.visible)
 	assert(DirAccess.dir_exists_absolute(dialog.folder_input.text))
 	var options := dialog.options()
@@ -175,7 +175,7 @@ func _check_exports() -> void:
 
 
 func _check_progress_overlay() -> void:
-	var overlay: ProgressOverlay = main.city_png_export_progress
+	var overlay: ProgressOverlay = main.city_dialogs.png_export_progress
 	var options := ExportJob.Options.new()
 	options.path = folder.path_join("slow.png")
 	options.view_size = Renderer.VIEW_MEDIUM

@@ -119,13 +119,13 @@ func check_ui() -> void:
 	await process_frame
 	main.set_process(false)
 	check(main.preferences.original_compatibility, "Startup loads compatibility preference")
-	main.new_city_dialog.compatibility_input.button_pressed = true
-	check(main.new_city_dialog.native_maps_input.disabled and not main.new_city_dialog.native_maps_input.button_pressed, "New City disables native grids")
+	main.city_dialogs.new_city_dialog.compatibility_input.button_pressed = true
+	check(main.city_dialogs.new_city_dialog.native_maps_input.disabled and not main.city_dialogs.new_city_dialog.native_maps_input.button_pressed, "New City disables native grids")
 
-	check(main.new_city_dialog.size_input.disabled, "New City disables map size")
+	check(main.city_dialogs.new_city_dialog.size_input.disabled, "New City disables map size")
 
-	main.new_city_dialog.size_input.select(main.new_city_dialog.size_input.get_item_index(512))
-	main.new_city_dialog.native_maps_input.set_pressed_no_signal(true)
+	main.city_dialogs.new_city_dialog.size_input.select(main.city_dialogs.new_city_dialog.size_input.get_item_index(512))
+	main.city_dialogs.new_city_dialog.native_maps_input.set_pressed_no_signal(true)
 	check(main.new_city._new_city_terrain_options().size == 128 and not main.new_city._new_city_terrain_options().native_maps, "Creation guard survives programmatic UI selection")
 	main.new_city_state.session.independent_template = true
 	main.new_city_state.session.begin(123, 456)
@@ -162,25 +162,25 @@ func check_ui() -> void:
 	main.preferences.original_compatibility = true
 	main.settings.apply_compatibility_controls()
 	main.settings.open_settings_dialog()
-	check(main.settings_dialog.original_compatibility_check.button_pressed, "Settings shows current mode")
-	main.settings_dialog.warn_sc2x_conversion_check.button_pressed = false
-	main.settings_dialog.original_compatibility_check.button_pressed = false
-	main.settings_dialog.hide()
+	check(main.main_overlays.settings_dialog.original_compatibility_check.button_pressed, "Settings shows current mode")
+	main.main_overlays.settings_dialog.warn_sc2x_conversion_check.button_pressed = false
+	main.main_overlays.settings_dialog.original_compatibility_check.button_pressed = false
+	main.main_overlays.settings_dialog.hide()
 	main.settings.apply_settings()
 	check(not main.preferences.original_compatibility and not main.simulation_state.speed_controller.original_compatibility, "Mode can be disabled live")
-	main.new_city_dialog.compatibility_input.button_pressed = false
-	check(not main.new_city_dialog.native_maps_input.disabled, "Disabling New City compatibility restores extensions")
+	main.city_dialogs.new_city_dialog.compatibility_input.button_pressed = false
+	check(not main.city_dialogs.new_city_dialog.native_maps_input.disabled, "Disabling New City compatibility restores extensions")
 	check(not main.preferences.warn_sc2x_conversion and not AppSettingsStore.load_values(settings_path).warn_sc2x_conversion, "Warning checkbox disables and persists warning")
 	check(main.city_session.activate_document(extended), "Extended city activates when mode is off")
 	main.settings.open_settings_dialog()
-	check(main.settings_dialog.original_compatibility_check.disabled, "SC2X disables compatibility checkbox")
-	main.settings_dialog.original_compatibility_check.button_pressed = true
-	main.settings_dialog.hide()
+	check(main.main_overlays.settings_dialog.original_compatibility_check.disabled, "SC2X disables compatibility checkbox")
+	main.main_overlays.settings_dialog.original_compatibility_check.button_pressed = true
+	main.main_overlays.settings_dialog.hide()
 	main.settings.apply_settings()
 	check(not main.preferences.original_compatibility and main.document_state.current_document == extended, "Enabling mode cannot discard or convert active SC2X city")
 	check(not AppSettingsStore.load_values(settings_path).original_compatibility, "Rejected mode change does not persist")
 	await process_frame
-	main.settings_dialog.hide()
+	main.main_overlays.settings_dialog.hide()
 	main.queue_free()
 	await process_frame
 

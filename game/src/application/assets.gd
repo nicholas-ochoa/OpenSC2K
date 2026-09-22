@@ -131,7 +131,7 @@ func show_reference_import_dialog() -> void:
 
 
 func _on_reference_import_canceled() -> void:
-	if app.settings_dialog != null:
+	if app.main_overlays.settings_dialog != null:
 		app.settings.open_import_settings()
 
 
@@ -272,15 +272,15 @@ func apply_graphics_source(selected: GameAssetSource) -> void:
 	app.static_render.update_palette_cycle_texture()
 	app.city_toolbar.replace_artwork(assets.toolbar_art)
 	app.camera_input.refresh_child_tool_icons()
-	app.about_dialog.set_assets(assets)
-	app.new_city_dialog.set_control_graphics(assets.city_ui_graphics)
-	app.newspaper_dialog.set_control_graphics(assets.city_ui_graphics)
+	app.main_overlays.about_dialog.set_assets(assets)
+	app.city_dialogs.new_city_dialog.set_control_graphics(assets.city_ui_graphics)
+	app.city_dialogs.newspaper_dialog.set_control_graphics(assets.city_ui_graphics)
 	app.desktop_presentation.set_graphics(assets.desktop_graphics)
 	app.city_dialogs.original_assets = assets
-	app.industry_window.industry_control.set_icon_strip(assets.industry_icons)
-	app.simnation_window.simnation_control.set_sprite_sheet(assets.simnation_sprites)
-	app.city_map_window.set_resources(assets.city_map_icons)
-	app.building_objection_dialog.set_picture(assets.forest_protest_image)
+	app.city_dialogs.industry_window.industry_control.set_icon_strip(assets.industry_icons)
+	app.city_dialogs.simnation_window.simnation_control.set_sprite_sheet(assets.simnation_sprites)
+	app.city_dialogs.city_map_window.set_resources(assets.city_map_icons)
+	app.city_dialogs.building_objection_dialog.set_picture(assets.forest_protest_image)
 	if app.scurk_editor != null:
 		app.scurk_editor.configure(app.asset_state.palette, app.asset_state.base_large_sprites, app.asset_state.base_small_medium_sprites,
 				app.asset_state.reference_root, app.asset_state.scurk_graphics)

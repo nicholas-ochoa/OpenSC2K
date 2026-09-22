@@ -59,20 +59,20 @@ func _check_every_window_is_classified() -> void:
 # The set matches the suspend condition that preceded the registries.
 func _check_current_classification() -> void:
 	var blocking: Array[Node] = [
-		main.save_dialog, main.city_png_export_dialog, main.city_png_export_progress,
-		main.new_city_dialog, main.bridge_dialog, main.tool_choice_dialog, main.stadium_dialog,
-		main.network_connection_dialog, main.highway_connection_dialog, main.tunnel_dialog,
-		main.query_dialog, main.ordinance_window, main.building_objection_dialog,
-		main.scenario_dialog, main.military_dialog, main.budget_dialog,
-		main.main_menu, main.settings_dialog, main.reference_import_dialog, main.save_changes_dialog,
+		main.city_dialogs.city_save_dialog, main.city_dialogs.png_export_dialog, main.city_dialogs.png_export_progress,
+		main.city_dialogs.new_city_dialog, main.city_dialogs.bridge_dialog, main.city_dialogs.tool_choice_dialog, main.city_dialogs.stadium_dialog,
+		main.city_dialogs.network_connection_dialog, main.city_dialogs.highway_connection_dialog, main.city_dialogs.tunnel_dialog,
+		main.city_dialogs.query_dialog, main.city_dialogs.ordinance_window, main.city_dialogs.building_objection_dialog,
+		main.city_dialogs.scenario_dialog, main.city_dialogs.military_dialog, main.city_dialogs.budget_dialog,
+		main.main_menu, main.main_overlays.settings_dialog, main.reference_import_dialog, main.main_overlays.save_changes_dialog,
 		main.scurk_editor, main.scurk_place_print, main.scurk_print,
 	]
 	var modeless: Array[Node] = [
-		main.file_dialog, main.tile_set_dialog, main.sign_dialog,
-		main.graph_window, main.population_window, main.industry_window,
-		main.simnation_window, main.city_map_window, main.city_analysis_dialog,
-		main.newspaper_dialog, main.library_ruminate_windows, main.game_over_dialog,
-		main.about_dialog,
+		main.city_dialogs.city_open_dialog, main.tile_set_dialog, main.city_dialogs.sign_dialog,
+		main.city_dialogs.graph_window, main.city_dialogs.population_window, main.city_dialogs.industry_window,
+		main.city_dialogs.simnation_window, main.city_dialogs.city_map_window, main.city_dialogs.analysis_dialog,
+		main.city_dialogs.newspaper_dialog, main.city_dialogs.library_windows, main.city_dialogs.game_over_dialog,
+		main.main_overlays.about_dialog,
 	]
 	var registered_blocking: Array[Node] = main.city_dialogs.blocking_windows + main.main_overlays.blocking_windows
 	var registered_modeless: Array[Node] = main.city_dialogs.modeless_windows + main.main_overlays.modeless_windows
@@ -94,7 +94,7 @@ func _check_scenario_goals() -> void:
 	var popup: PopupMenu = main.city_menu_bar.windows_menu.get_popup()
 	assert(popup.get_item_index(CityMenuBar.MENU_SCENARIO_GOALS) == -1)
 	main.reports.on_windows_menu(CityMenuBar.MENU_SCENARIO_GOALS)
-	assert(not main.scenario_dialog.visible)
+	assert(not main.city_dialogs.scenario_dialog.visible)
 	var document := Sc2File.load_path(ProjectSettings.globalize_path(
 		"res://../references/SIMCITY2000/SCENARIO/MALIBU.SCN"))
 	assert(document.is_valid())
@@ -107,25 +107,25 @@ func _check_scenario_goals() -> void:
 	main.status_label.text = "Status before reviewing goals"
 	var status_before: String = main.status_label.text
 	popup.id_pressed.emit(CityMenuBar.MENU_SCENARIO_GOALS)
-	assert(main.scenario_dialog.visible)
-	assert(not main.scenario_dialog.starts_scenario)
-	assert(not main.scenario_dialog.text_view.text.is_empty())
+	assert(main.city_dialogs.scenario_dialog.visible)
+	assert(not main.city_dialogs.scenario_dialog.starts_scenario)
+	assert(not main.city_dialogs.scenario_dialog.text_view.text.is_empty())
 	assert(main.frame._simulation_suspended())
-	main.scenario_dialog.get_ok_button().pressed.emit()
-	assert(not main.scenario_dialog.visible)
+	main.city_dialogs.scenario_dialog.get_ok_button().pressed.emit()
+	assert(not main.city_dialogs.scenario_dialog.visible)
 	assert(not main.frame._simulation_suspended())
 	assert(main.status_label.text == status_before)
 	assert(document.serialize().data == before)
 	assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == random_states)
 	main.budget.open_scenario_intro(engine.scenario)
-	assert(main.scenario_dialog.starts_scenario)
-	main.scenario_dialog.get_ok_button().pressed.emit()
+	assert(main.city_dialogs.scenario_dialog.starts_scenario)
+	main.city_dialogs.scenario_dialog.get_ok_button().pressed.emit()
 	assert(main.status_label.text != status_before)
 	assert(main.city_session.activate_document(EmptyCityTemplate.create(128)))
 	_hide_all()
 	assert(popup.get_item_index(CityMenuBar.MENU_SCENARIO_GOALS) == -1)
 	main.reports.on_windows_menu(CityMenuBar.MENU_SCENARIO_GOALS)
-	assert(not main.scenario_dialog.visible)
+	assert(not main.city_dialogs.scenario_dialog.visible)
 
 
 func _check_new_windows() -> void:

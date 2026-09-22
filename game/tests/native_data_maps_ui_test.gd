@@ -19,9 +19,9 @@ func _run() -> void:
 	main.asset_state.reference_root = ProjectSettings.globalize_path("user://missing-test-originals")
 	root.add_child(main)
 	await process_frame
-	check(main.new_city_dialog.native_maps_input.button_pressed, "New City defaults to per-tile maps")
+	check(main.city_dialogs.new_city_dialog.native_maps_input.button_pressed, "New City defaults to per-tile maps")
 	check(main.new_city._new_city_terrain_options().native_maps, "New City passes native option")
-	main.new_city_dialog.native_maps_input.button_pressed = false
+	main.city_dialogs.new_city_dialog.native_maps_input.button_pressed = false
 	check(not main.new_city._new_city_terrain_options().native_maps, "Original grid option remains available")
 	main.new_city_state.session.independent_template = true
 	var options := NewCityTerrain.Options.new()
@@ -71,19 +71,19 @@ func _run() -> void:
 	check(main.simulation_state.simulation_engine.get_instance_id() == engine_id and main.simulation_state.simulation_engine.random.state == random_state,
 		"Conversion keeps simulation and RNG state")
 	check(main.simulation_state.frame_simulation != null, "Native 128 city uses sliced worker")
-	check(main.save_dialog.visible and main.save_dialog.current_file.ends_with(".sc2x"), "Conversion opens SC2X Save As")
+	check(main.city_dialogs.city_save_dialog.visible and main.city_dialogs.city_save_dialog.current_file.ends_with(".sc2x"), "Conversion opens SC2X Save As")
 	check(document.serialize().data != old_bytes and main.city_files._city_has_unsaved_changes(), "Conversion is an unsaved change")
-	main.save_dialog.hide()
+	main.city_dialogs.city_save_dialog.hide()
 	var saved_path: String = main.document_state.current_save_path
 	main.city_files.upgrade_city_to_sc2x()
-	check(main.document_state.current_save_path == saved_path and not main.save_dialog.visible, "Repeated conversion is harmless")
+	check(main.document_state.current_save_path == saved_path and not main.city_dialogs.city_save_dialog.visible, "Repeated conversion is harmless")
 	var second := EmptyCityTemplate.create(128)
 	check(main.city_session.activate_document(second), "Activate another original city")
 	main.document_state.current_save_path = "user://second-city.SC2"
 	main.preferences.warn_sc2x_conversion = false
 	main.city_files.upgrade_city_to_sc2x()
 	check(second.is_extended() and not main.sc2x_conversion_dialog.visible, "Disabled warning permits direct conversion")
-	main.save_dialog.hide()
+	main.city_dialogs.city_save_dialog.hide()
 	main.queue_free()
 	await process_frame
 	print("Native data-map UI: %d failures" % failures)

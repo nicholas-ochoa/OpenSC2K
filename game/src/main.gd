@@ -42,12 +42,9 @@ var network_preview: NetworkPlacementPreview
 var city_status_bar: CityStatusBar
 var city_dialogs: CityDialogRegistry
 var main_overlays: MainOverlayRegistry
-var file_dialog: FileDialog
-var save_dialog: FileDialog
 var tile_set_dialog: FileDialog
 var scurk_city_export_dialog: FileDialog
 var scurk_print_pdf_dialog: FileDialog
-var new_city_dialog: NewCityTerrainDialog
 var options_menu: MenuButton
 var speed_menu: MenuButton
 var view_menu: MenuButton
@@ -60,38 +57,11 @@ var zoom_in_button: Button
 var zoom_out_button: Button
 var rotate_counter_clockwise_button: Button
 var rotate_clockwise_button: Button
-var sign_dialog: CitySignDialog
-var bridge_dialog: BridgeSelectionDialog
-var tool_choice_dialog: ToolChoiceDialog
-var stadium_dialog: StadiumTeamDialog
-var city_png_export_dialog: CityPngExportDialog
-var city_png_export_progress: ProgressOverlay
-var network_connection_dialog: RouteConfirmationDialog
-var highway_connection_dialog: RouteConfirmationDialog
-var tunnel_dialog: RouteConfirmationDialog
-var query_dialog: CityQueryDialog
-var city_analysis_dialog: CityAnalysisDialog
-var newspaper_dialog: NewspaperDialog
-var building_objection_dialog: PictureNoticeDialog
-var library_ruminate_windows: LibraryRuminateWindows
-var graph_window
-var population_window
-var industry_window
-var simnation_window
-var ordinance_window
-var city_map_window
 var main_menu: MainMenuControl
-var settings_dialog
 var scurk_editor: ScurkEditorControl
 var desktop_presentation: CityDesktopPresentation
 var scurk_place_print: ScurkPlacePrintControl
 var scurk_print: ScurkPrintControl
-var about_dialog: AboutDialog
-var save_changes_dialog: SaveChangesDialog
-var budget_dialog: BudgetDialog
-var game_over_dialog: AcceptDialog
-var military_dialog: ConfirmationDialog
-var scenario_dialog: ScenarioIntroDialog
 var debug_overlay: CityDebugOverlay
 
 # shared state for the controllers; rules and scene ownership stay elsewhere

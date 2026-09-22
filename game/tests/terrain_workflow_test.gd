@@ -29,7 +29,7 @@ func _run() -> void:
 	assert(background.static_image.get_pixel(0, 0).a == 0.0)
 	main.map_view.zoom_factor = 0.25
 	main.new_city.open_new_city_dialog()
-	main.new_city_dialog.size_input.select(main.new_city_dialog.size_input.get_item_index(64))
+	main.city_dialogs.new_city_dialog.size_input.select(main.city_dialogs.new_city_dialog.size_input.get_item_index(64))
 	main.new_city.make_new_city_preview()
 	while main.new_city_state.preview_job != null:
 		await process_frame
@@ -112,7 +112,7 @@ func _run() -> void:
 	main.menus.set_overlay(CityViewMode.Mode.UNDERGROUND)
 	main.menus.set_underground_pipes_visible(false)
 	main.menus.set_underground_subways_visible(false)
-	var bridge := main.bridge_dialog as BridgeSelectionDialog
+	var bridge := main.city_dialogs.bridge_dialog as BridgeSelectionDialog
 	bridge.preview_palette = main.asset_state.palette
 	bridge.preview_sprites = main.asset_state.large_sprites
 	var images := {}
