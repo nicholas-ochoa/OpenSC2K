@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run project checks and report results and timings."""
 import argparse
+from contextlib import nullcontext
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 import hashlib
 import importlib.util
@@ -12,12 +13,19 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 DOMAINS = ('formats', 'simulation', 'tools', 'rendering', 'scurk', 'ui', 'audio')
 SUITES = ('routine', 'full', 'release', 'audit', 'native', 'slow', 'integration', *DOMAINS)
+CONSOLE_LOCK = threading.Lock()
+
+
+def report(message):
+    with CONSOLE_LOCK:
+        print(message, flush=True)
 
 
 def registry():
@@ -153,14 +161,23 @@ class Project:
         shutil.rmtree(self.user)
 
 
-def execute(command, log, timeout=900):
+def execute(command, log=None, timeout=900, name=''):
     environment = dict(os.environ, GODOT_AUDIO_DRIVER='Dummy', GODOT_TEST_TIMEOUT_SECONDS=str(timeout))
     start = time.monotonic()
-    with log.open('w') as output:
+    lines = []
+    with log.open('w') if log else nullcontext() as output:
         # The wrapper handles script errors even when Godot would exit successfully or hang.
-        status = subprocess.call([sys.executable, str(ROOT / 'tools/run_godot_check.py'), *command],
-                                 cwd=ROOT, stdout=output, stderr=subprocess.STDOUT, env=environment)
-    content = log.read_text(errors='replace')
+        with subprocess.Popen([sys.executable, str(ROOT / 'tools/run_godot_check.py'), *command],
+                              cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                              env=environment, text=True, errors='replace') as process:
+            for line in process.stdout:
+                lines.append(line)
+                report((f'[{name}] ' if name else '') + line.rstrip('\n'))
+                if output:
+                    output.write(line)
+                    output.flush()
+            status = process.wait()
+    content = ''.join(lines)
     result = 'FAIL' if status else ('SKIP' if re.search(r'^SKIP:', content, re.M) else 'PASS')
     return result, round(time.monotonic() - start, 3), content
 
@@ -217,7 +234,7 @@ def main():
                         help='Concurrent isolated groups (default: half the CPUs, up to 8; use 1 for timings)')
     parser.add_argument('--strict', action='store_true', help='Treat missing prerequisites and skips as failures')
     parser.add_argument('--godot', default=os.environ.get('GODOT', 'godot'))
-    parser.add_argument('--output', type=Path, help='Log directory (default: unique local/validation run)')
+    parser.add_argument('--output', type=Path, help='Also save logs and summary.json in this directory')
     args = parser.parse_args()
     if args.jobs < 1:
         parser.error('--jobs must be at least 1')
@@ -230,16 +247,18 @@ def main():
         print(f'{len(entries)} entries; editor parse and startup also run')
         return 0
     strict = args.strict or 'release' in suites
-    output = (args.output or ROOT / 'local/validation' / (time.strftime('%Y%m%d-%H%M%S') + '-' + uuid.uuid4().hex[:6])).resolve()
-    output.mkdir(parents=True, exist_ok=False)
+    output = args.output.resolve() if args.output else None
+    if output:
+        output.mkdir(parents=True, exist_ok=False)
+        report(f'Logs: {output}')
     results = []
-    print(f'Logs: {output}', flush=True)
 
     def record(name, status, duration=0, reason=''):
         results.append(dict(id=name, status=status, seconds=duration, reason=reason))
-        print(f'{status:4} {name} ({duration:.2f}s)' + (f': {reason}' if reason else ''), flush=True)
-        (output / 'summary.json').write_text(json.dumps({'suites': suites, 'selected_tests': [e['id'] for e in entries], 'results': results,
-            'jobs': args.jobs, 'elapsed_seconds': round(time.monotonic() - started, 3)}, indent=2) + '\n')
+        report(f'{status:4} {name} ({duration:.2f}s)' + (f': {reason}' if reason else ''))
+        if output:
+            (output / 'summary.json').write_text(json.dumps({'suites': suites, 'selected_tests': [e['id'] for e in entries], 'results': results,
+                'jobs': args.jobs, 'elapsed_seconds': round(time.monotonic() - started, 3)}, indent=2) + '\n')
 
     with tempfile.TemporaryDirectory(prefix='city-validation-') as temporary:
         project = Project(temporary)
@@ -253,8 +272,8 @@ def main():
                 return cmd + list(extra)
 
             def run(name, command, timeout=900):
-                print(f'RUN  {name}', flush=True)
-                status, duration, content = execute(command, output / (name + '.log'), timeout)
+                report(f'RUN  {name}')
+                status, duration, content = execute(command, output / (name + '.log') if output else None, timeout, name)
                 return finish(name, (status, duration, content))
 
             def finish(name, result):
@@ -262,8 +281,6 @@ def main():
                 if status == 'SKIP' and strict:
                     status = 'FAIL'
                 record(name, status, duration)
-                if status != 'PASS':
-                    print(content[-6000:], flush=True)
                 return status != 'FAIL'
 
             project.configure('startup')
@@ -316,8 +333,9 @@ def main():
                             else:
                                 command = godot_command(entry['script'], entry['lane'] == 'native',
                                                         ['--', *extra] if extra else [], target=isolated_project)
-                            print(f'RUN  {name}', flush=True)
-                            result = execute(command, output / (name + '.log'), entry.get('timeout', float(os.environ.get('GODOT_TEST_TIMEOUT_SECONDS', '900'))))
+                            report(f'RUN  {name}')
+                            result = execute(command, output / (name + '.log') if output else None,
+                                             entry.get('timeout', float(os.environ.get('GODOT_TEST_TIMEOUT_SECONDS', '900'))), name)
                             results.append((name, result))
                             if (result[0] == 'FAIL' or (strict and result[0] == 'SKIP')) and not args.keep_going:
                                 break

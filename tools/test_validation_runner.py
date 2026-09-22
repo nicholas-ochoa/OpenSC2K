@@ -116,12 +116,54 @@ class ValidationRunnerTest(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
 
     def test_skip_is_reported_separately(self):
-        with tempfile.TemporaryDirectory() as folder:
+        with contextlib.redirect_stdout(io.StringIO()) as console:
             status, _, _ = runner.execute([sys.executable, '-c', "print('SKIP: missing fixture')"],
-                                          Path(folder) / 'skip.log')
+                                          name='skip')
             self.assertEqual(status, 'SKIP')
+        self.assertIn('[skip] SKIP: missing fixture', console.getvalue())
         with patch.object(runner.shutil, 'which', return_value=None):
             self.assertEqual(runner.missing_requirements({'requires': ['ffmpeg']}), ['ffmpeg'])
+
+    def test_console_streams_before_exit_and_can_also_save_logs(self):
+        with tempfile.TemporaryDirectory() as folder:
+            marker = Path(folder) / 'received'
+            log = Path(folder) / 'check.log'
+            code = ('import pathlib, sys, time\n'
+                    'print("ready", flush=True)\n'
+                    'deadline = time.monotonic() + 3\n'
+                    'marker = pathlib.Path(sys.argv[1])\n'
+                    'while not marker.exists() and time.monotonic() < deadline: time.sleep(0.01)\n'
+                    'assert marker.exists(), "Output was not streamed before exit"\n'
+                    'print("done", file=sys.stderr)\n')
+            report = runner.report
+
+            def receive(message):
+                report(message)
+                if message == '[stream] ready':
+                    marker.touch()
+
+            with contextlib.redirect_stdout(io.StringIO()) as console, \
+                    patch.object(runner, 'report', side_effect=receive):
+                status, _, content = runner.execute([sys.executable, '-c', code, str(marker)],
+                                                     log, name='stream')
+            self.assertEqual(status, 'PASS')
+            self.assertEqual(content, 'ready\ndone\n')
+            self.assertEqual(log.read_text(), content)
+            self.assertEqual(console.getvalue(), '[stream] ready\n[stream] done\n')
+
+    def test_default_run_does_not_create_log_directory(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            with patch.object(sys, 'argv', ['validate']), \
+                    patch.object(runner, 'ROOT', root), \
+                    patch.object(runner, 'registry', return_value=[]), \
+                    patch.object(runner, 'Project'), \
+                    patch.object(runner, 'execute', return_value=('PASS', 0, '')) as execute, \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(runner.main(), 0)
+            self.assertEqual(len(execute.call_args_list), 3)
+            self.assertTrue(all(call.args[1] is None for call in execute.call_args_list))
+            self.assertEqual(list(root.iterdir()), [])
 
     def test_release_rejects_missing_prerequisite(self):
         entry = next(e for e in runner.registry() if e['id'] == 'recorded_soundtrack_test')
