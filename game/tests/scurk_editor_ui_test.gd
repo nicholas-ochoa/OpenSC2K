@@ -27,10 +27,10 @@ func _run() -> void:
 	# Only tools that paint with a brush expose its size and shape controls.
 	for tool in editor.tool_buttons.size():
 		editor.tool_buttons[tool].pressed.emit()
-		var uses_brush := tool <= ScurkPixelCanvas.TOOL_RECTANGLE
+		var uses_brush := tool <= ScurkPixelCanvas.TOOL_RECTANGLE or tool in [ScurkPixelCanvas.TOOL_SHADE, ScurkPixelCanvas.TOOL_STAMP]
 		assert(editor.brush_size_selector.is_visible_in_tree() == uses_brush)
 		assert(editor.round_brush_check.is_visible_in_tree() == uses_brush)
-		assert(editor.filled_shapes_check.is_visible_in_tree() == (tool >= ScurkPixelCanvas.TOOL_DIAMOND and uses_brush))
+		assert(editor.filled_shapes_check.is_visible_in_tree() == (tool >= ScurkPixelCanvas.TOOL_DIAMOND and tool <= ScurkPixelCanvas.TOOL_RECTANGLE))
 	editor.tool_buttons[ScurkPixelCanvas.TOOL_PENCIL].pressed.emit()
 	# Filtering must select the visible result, including after an empty result.
 	editor.object_search.text = "255"

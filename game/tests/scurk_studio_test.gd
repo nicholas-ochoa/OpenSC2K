@@ -1,0 +1,387 @@
+extends SceneTree
+
+const EditorScene = preload("res://src/ui/scurk/scurk_editor_control.tscn")
+const Workspace = preload("res://src/tools/scurk/scurk_drawing_workspace.gd")
+const ContextPreview = preload("res://src/view/scurk_context_preview.gd")
+
+var editor: ScurkEditorControl
+var studio: ScurkEditorStudio
+var original := PackedByteArray()
+var folder := "user://scurk-studio-test-%d" % OS.get_process_id()
+
+
+func _initialize() -> void:
+	call_deferred("_run")
+
+
+func _run() -> void:
+	root.size = Vector2i(1600, 1000)
+	var assets := OriginalGameAssets.load_root(ProjectSettings.globalize_path("res://../references/SIMCITY2000"))
+	editor = EditorScene.instantiate() as ScurkEditorControl
+	root.add_child(editor)
+	studio = editor.studio
+	studio.recovery_path = folder.path_join("recovery.scurk")
+	editor.configure(assets.palette, assets.large_sprites, assets.small_medium_sprites,
+		ProjectSettings.globalize_path("res://../references/SIMCITY2000"), assets.scurk_graphics)
+	assert(editor.show_editor().ok)
+	original = editor.tile_set.to_bytes().bytes
+	editor._set_cycle_colors(false)
+	await process_frame
+	await process_frame
+	_test_layers()
+	_test_project()
+	_test_clear()
+	_test_recovery_ownership()
+	_test_replace()
+	_test_import()
+	_test_context()
+	await _test_navigation()
+	editor.free()
+	var directory := DirAccess.open(folder)
+	if directory != null:
+		for name in directory.get_files():
+			directory.remove(name)
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(folder))
+	print("SCURK studio checks passed")
+	quit()
+
+
+func _fresh() -> void:
+	var mif := ScurkMif.new()
+	assert(mif.parse(original))
+	assert(editor.load_tile_set(mif).ok)
+	editor._set_clipping_enabled(false)
+
+
+func _commit(pixels: PackedInt32Array) -> void:
+	editor._capture_edit_start()
+	editor._commit_pixels(pixels)
+
+
+func _solid(index: int) -> PackedInt32Array:
+	var pixels := editor.pixel_canvas.pixels.duplicate()
+	pixels.fill(index)
+	return pixels
+
+
+func _document() -> Dictionary:
+	return studio.project.documents[studio.key()]
+
+
+func _test_layers() -> void:
+	_fresh()
+	_commit(_solid(42))
+	var offset := 200 * Workspace.WIDTH + 60
+	studio._layer_action("Add")
+	assert(_document().layers.size() == 2 and int(_document().active) == 1)
+	assert(editor.pixel_canvas.pixels[offset] == -1)
+	var overlay := editor.pixel_canvas.pixels.duplicate()
+	overlay[offset] = 99
+	_commit(overlay)
+	assert(studio.project.flatten(studio.key())[offset] == 99)
+	assert(editor.pixel_canvas.layer_below_pixels[offset] == 42)
+	editor.undo()
+	assert(editor.pixel_canvas.pixels[offset] == -1 and _document().layers.size() == 2)
+	editor.redo()
+	assert(editor.pixel_canvas.pixels[offset] == 99)
+	var canvas := editor.pixel_canvas
+	canvas.selection.combine(canvas.selection.rectangle(Vector2i(60, 200), Vector2i(60, 200)))
+	assert(canvas._begin_selection_move(false))
+	canvas.paste_position += Vector2i(4, 0)
+	var before_move := editor.tile_set.to_bytes().bytes
+	studio._select_layer(0)
+	assert(not canvas.paste_active and editor.tile_set.to_bytes().bytes == before_move)
+	assert(_document().layers[1].pixels[offset] == 99 and _document().layers[1].pixels[offset + 4] == -1)
+	var layers := studio.get_node(studio.LAYERS + "/List") as ItemList
+	layers.select(0)
+	layers.item_selected.emit(0)
+	assert(int(_document().active) == int(layers.get_item_metadata(0)) and int(_document().active) == 1)
+	canvas.clear_selection()
+	studio._layer_visible(false)
+	assert(studio.project.flatten(studio.key())[offset] == 42 and editor.pixel_canvas.editing_disabled)
+	studio._layer_visible(true)
+	studio._layer_locked(true)
+	assert(editor.pixel_canvas.editing_disabled)
+	var locked := studio.project.active_pixels(studio.key())
+	_commit(_solid(17))
+	assert(studio.project.active_pixels(studio.key()) == locked)
+	studio._layer_locked(false)
+	studio._layer_action("Down")
+	assert(studio.project.flatten(studio.key())[offset] == 42 and int(_document().active) == 0)
+	studio._layer_action("Up")
+	assert(studio.project.flatten(studio.key())[offset] == 99)
+	var path := folder.path_join("flattened.mif")
+	assert(editor.save_path(path).ok)
+	var mif := ScurkMif.load_path(path)
+	assert(mif.is_valid())
+	var entry := mif.overrides.find_sprite(editor.current_large_id)
+	assert(entry != null)
+	var decoded := entry.decode_indices()
+	assert(decoded.ok)
+	var flattened := Workspace.from_shape(entry.width, entry.height, decoded.pixels, 0, editor.active_base_width, false)
+	assert(flattened == studio.project.flatten(studio.key()))
+	assert(_document().layers.size() == 2)
+	var image_path := folder.path_join("flattened.png")
+	assert(editor.export_image_path(image_path, 0).ok)
+	var exported := IndexedPng.load_path(image_path)
+	assert(exported.ok and exported.pixels == decoded.pixels)
+	editor._capture_object_start()
+	studio._layer_action("Add")
+	_commit(_solid(17))
+	assert(_document().layers.size() == 3)
+	editor.revert_object()
+	assert(_document().layers.size() == 2 and studio.project.flatten(studio.key()) == flattened)
+	editor.undo()
+	assert(_document().layers.size() == 3 and studio.project.flatten(studio.key())[offset] == 17)
+	editor.redo()
+	assert(_document().layers.size() == 2 and studio.project.flatten(studio.key()) == flattened)
+
+
+func _test_project() -> void:
+	var path := folder.path_join("layers.scurk")
+	var key := studio.key()
+	var expected := studio.project.flatten(key)
+	assert(studio.save_project(path))
+	assert(not studio.modified)
+	var bytes := editor.tile_set.to_bytes().bytes
+	studio.get_node(studio.META + "/Author").text = "Tile author"
+	studio.get_node(studio.META + "/Title").text = "Layer test"
+	studio.get_node(studio.META + "/Notes").text = "Indexed artwork"
+	studio._metadata_changed()
+	assert(studio.modified and editor.tile_set.to_bytes().bytes == bytes)
+	assert(studio.project.metadata.author == "Tile author")
+	editor.undo()
+	assert(not studio.project.metadata.has("author"))
+	assert(not studio.modified)
+	editor.redo()
+	assert(studio.project.metadata.author == "Tile author")
+	studio.get_node(studio.HISTORY + "/Name").text = "Before recolor"
+	studio._add_checkpoint()
+	assert(studio.project.checkpoints.size() == 1)
+	var checkpoint_palette := editor.palette_panel.export_state()
+	editor.palette_panel.palette_control.toggle_favorite(42)
+	editor.palette_panel.palette_control.toggle_ramp_index(42)
+	editor.palette_panel.palette_control.toggle_ramp_index(99)
+	assert(studio.autosave())
+	var recovered := ScurkProject.recover_path(studio.recovery_path)
+	assert(recovered.ok and recovered.project.metadata.author == "Tile author")
+	assert(recovered.project.flatten(key) == expected)
+	assert(studio.load_project(studio.recovery_path, true))
+	assert(studio.modified and studio.project_path.is_empty())
+	assert(_document().layers.size() == 2 and studio.project.flatten(studio.key()) == expected)
+	assert(editor.palette_panel.palette_control.favorite_indices.has(42))
+	assert(editor.palette_panel.palette_control.ramp_indices == PackedInt32Array([42, 99]))
+	assert(studio.save_project(path))
+	assert(not FileAccess.file_exists(studio.recovery_path))
+	_commit(_solid(11))
+	assert(studio.project.flatten(studio.key()) != expected)
+	assert(studio.load_project(path))
+	assert(studio.project.flatten(studio.key()) == expected and not studio.modified)
+	assert(studio.project.metadata.author == "Tile author" and studio.project.checkpoints.size() == 1)
+	assert(studio.project.original_mif == original)
+	_commit(_solid(11))
+	studio._refresh_lists()
+	(studio.get_node(studio.HISTORY + "/List") as ItemList).select(0)
+	studio._restore_checkpoint()
+	assert(studio.project.flatten(studio.key()) == expected)
+	editor.undo()
+	assert(studio.project.flatten(studio.key()) != expected)
+	editor.redo()
+	assert(studio.project.flatten(studio.key()) == expected)
+	assert(editor.palette_panel.export_state() == checkpoint_palette)
+	assert(studio.save_project(path))
+	var saved := ScurkProject.load_path(path)
+	assert(saved.ok and saved.project.metadata.palette == checkpoint_palette)
+
+
+func _test_clear() -> void:
+	_fresh()
+	var before := editor.pixel_canvas.pixels.duplicate()
+	assert(before.count(-1) < before.size())
+	editor.clear_object()
+	assert(editor.pixel_canvas.pixels.count(-1) == editor.pixel_canvas.pixels.size())
+	assert(editor.pixel_canvas.comparison_pixels == before)
+	for view in 3:
+		editor._select_view(view)
+		assert(editor.pixel_canvas.pixels.count(-1) == editor.pixel_canvas.pixels.size())
+		var baseline := editor.pixel_canvas.comparison_pixels
+		assert(baseline.count(-1) < baseline.size())
+	var path := folder.path_join("blank.scurk")
+	assert(studio.save_project(path))
+	assert(studio.load_project(path))
+	for view in 3:
+		editor._select_view(view)
+		assert(editor.pixel_canvas.pixels.count(-1) == editor.pixel_canvas.pixels.size())
+		var image_path := folder.path_join("blank-%d.png" % view)
+		assert(editor.export_image_path(image_path, view).ok)
+		var image := IndexedPng.load_path(image_path)
+		assert(image.ok and image.pixels.count(-1) == image.pixels.size())
+
+
+func _test_recovery_ownership() -> void:
+	_fresh()
+	studio.get_node(studio.META + "/Author").text = "Earlier session"
+	studio._metadata_changed()
+	assert(studio.autosave())
+	var earlier := FileAccess.get_file_as_bytes(studio.recovery_path)
+	assert(studio.modified and studio.recovery_owned)
+	_fresh()
+	assert(not studio.recovery_owned)
+	assert(studio.save_project(folder.path_join("unrelated.scurk")))
+	assert(not studio.modified and FileAccess.get_file_as_bytes(studio.recovery_path) == earlier)
+	studio.get_node(studio.META + "/Author").text = "Current session"
+	studio._metadata_changed()
+	assert(studio.autosave() and studio.modified and studio.recovery_owned)
+	var archives := PackedStringArray()
+	for name in DirAccess.get_files_at(folder):
+		if name.begins_with("recovery-") and name.ends_with(".scurk"):
+			archives.append(folder.path_join(name))
+	assert(archives.size() == 1)
+	assert(FileAccess.get_file_as_bytes(archives[0]) == earlier)
+	var current := ScurkProject.load_path(studio.recovery_path)
+	assert(current.ok and current.project.metadata.author == "Current session")
+	assert(studio.load_project(studio.recovery_path, true))
+	assert(studio.modified and studio.recovery_owned)
+	studio.project.metadata["invalid"] = Vector2.ZERO
+	assert(not studio.save_project(folder.path_join("failed.scurk")))
+	studio.project.metadata.erase("invalid")
+	editor.error_dialog.hide()
+	assert(studio.modified and studio.recovery_owned and FileAccess.file_exists(studio.recovery_path))
+	assert(not FileAccess.file_exists(folder.path_join("failed.scurk")))
+	assert(studio.save_project(folder.path_join("recovered-current.scurk")))
+	assert(not studio.modified and not FileAccess.file_exists(studio.recovery_path))
+	assert(FileAccess.get_file_as_bytes(archives[0]) == earlier)
+	assert(studio.load_project(archives[0], true))
+	assert(studio.modified and studio.project.metadata.author == "Earlier session")
+	assert(studio.save_project(archives[0]))
+	assert(not studio.modified and FileAccess.file_exists(archives[0]))
+	var saved := ScurkProject.load_path(archives[0])
+	assert(saved.ok and saved.project.metadata.author == "Earlier session")
+
+
+func _test_replace() -> void:
+	_fresh()
+	for view in 3:
+		editor._select_view(view)
+		_commit(_solid(42))
+	editor._select_view(0)
+	var canvas := editor.pixel_canvas
+	canvas.selection.combine(canvas.selection.rectangle(Vector2i(60, 196), Vector2i(63, 199)))
+	studio.get_node("Replace/Content/Fields/From").value = 42
+	studio.get_node("Replace/Content/Fields/To").value = 77
+	studio.get_node("Replace/Content/AllViews").button_pressed = true
+	var before := editor.tile_set.to_bytes().bytes
+	studio._replace_colors()
+	var after := editor.tile_set.to_bytes().bytes
+	assert(before != after and editor.current_view == 0)
+	for view in 3:
+		var pixels := studio.project.flatten(studio.key(view))
+		assert(pixels[196 * Workspace.WIDTH + 60] == 77)
+		assert(pixels[196 * Workspace.WIDTH + 64] == 42)
+	editor.undo()
+	assert(editor.tile_set.to_bytes().bytes == before)
+	editor.redo()
+	assert(editor.tile_set.to_bytes().bytes == after)
+	canvas.clear_selection()
+	studio._layer_locked(true)
+	var locked := studio.project.flatten(studio.key())
+	studio.get_node("Replace/Content/AllViews").button_pressed = false
+	studio.get_node("Replace/Content/Fields/From").value = 42
+	studio.get_node("Replace/Content/Fields/To").value = 19
+	studio._replace_colors()
+	assert(studio.project.flatten(studio.key()) == locked)
+	studio._layer_locked(false)
+	studio._replace_colors()
+	assert(studio.project.flatten(studio.key())[196 * Workspace.WIDTH + 64] == 19)
+
+
+func _test_import() -> void:
+	_fresh()
+	var pixels := PackedInt32Array([42, -1, 99, 171])
+	var encoded := IndexedPng.encode(2, 2, pixels, editor.palette)
+	assert(encoded.ok)
+	var path := folder.path_join("import.png")
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	assert(file != null)
+	file.store_buffer(encoded.bytes)
+	file.close()
+	var before := editor.tile_set.to_bytes().bytes
+	studio.preview_import(path)
+	assert(studio.get_node("ImportPreview").visible)
+	assert(editor.tile_set.to_bytes().bytes == before)
+	(studio.get_node("ImportPreview") as ConfirmationDialog).canceled.emit()
+	studio.get_node("ImportPreview").hide()
+	assert(editor.tile_set.to_bytes().bytes == before)
+	studio.preview_import(path)
+	studio.get_node("ImportPreview/Content/Placement/X").value = -1
+	studio.get_node("ImportPreview/Content/Placement/Y").value = 255
+	assert(studio.import_clipped == 3)
+	studio.get_node("ImportPreview/Content/Placement/X").value = 60
+	studio.get_node("ImportPreview/Content/Placement/Y").value = 196
+	assert(studio.import_clipped == 0)
+	studio.get_node("ImportPreview").confirmed.emit()
+	studio.get_node("ImportPreview").hide()
+	var canvas := editor.pixel_canvas
+	assert(canvas.pixels[196 * Workspace.WIDTH + 60] == 42)
+	assert(canvas.pixels[196 * Workspace.WIDTH + 61] == -1)
+	assert(canvas.pixels[197 * Workspace.WIDTH + 60] == 99)
+	assert(canvas.pixels[197 * Workspace.WIDTH + 61] == 171)
+	assert(editor.tile_set.to_bytes().bytes != before)
+	editor.undo()
+	assert(editor.tile_set.to_bytes().bytes == before)
+	editor.redo()
+	assert(editor.pixel_canvas.pixels[196 * Workspace.WIDTH + 60] == 42)
+
+
+func _test_context() -> void:
+	var pixels := PackedInt32Array([-1, 42, 252, 171])
+	var texture := ContextPreview.indexed_texture(pixels, 2, 2, editor.palette)
+	assert(texture != null)
+	var image := texture.get_image()
+	assert(image.get_pixel(0, 0).a == 0)
+	assert(image.get_pixel(1, 0).is_equal_approx(editor.palette.color(42)))
+	assert(image.get_pixel(0, 1).is_equal_approx(editor.palette.color(252)))
+	assert(pixels == PackedInt32Array([-1, 42, 252, 171]))
+	assert(ContextPreview.indexed_texture(PackedInt32Array([256]), 1, 1, editor.palette) == null)
+	studio._refresh_context()
+	var preview := studio.get_node("Context/Content/View") as ScurkContextPreview
+	assert(preview.artwork != null and preview.road != null and preview.neighbor != null)
+	studio.get_node("Context/Content/Options/Roads").button_pressed = false
+	studio.get_node("Context/Content/Options/Neighbors").button_pressed = false
+	assert(not preview.show_roads and not preview.show_neighbors)
+
+
+func _test_navigation() -> void:
+	var panel := editor.canvas_panel
+	var canvas := editor.pixel_canvas
+	canvas.set_zoom(12)
+	await process_frame
+	await process_frame
+	panel.pixel_scroll.scroll_horizontal = 120
+	panel.pixel_scroll.scroll_vertical = 500
+	await process_frame
+	var point := Vector2(64, 100)
+	var local := Vector2(ScurkPixelCanvas.DISPLAY_MARGIN, 0) + point * canvas.zoom
+	var anchor := canvas.global_position + local
+	await panel.zoom_at(1, local)
+	await process_frame
+	var shifted := canvas.global_position + Vector2(ScurkPixelCanvas.DISPLAY_MARGIN, 0) + point * canvas.zoom
+	assert(shifted.distance_to(anchor) <= 1.5)
+	var scroll := Vector2i(panel.pixel_scroll.scroll_horizontal, panel.pixel_scroll.scroll_vertical)
+	panel.pan_canvas(Vector2(20, -30))
+	assert(panel.pixel_scroll.scroll_horizontal == scroll.x - 20)
+	assert(panel.pixel_scroll.scroll_vertical == scroll.y + 30)
+	scroll = Vector2i(panel.pixel_scroll.scroll_horizontal, panel.pixel_scroll.scroll_vertical)
+	var zoom := canvas.zoom
+	editor._select_tool(ScurkPixelCanvas.TOOL_SELECT_LASSO)
+	await process_frame
+	assert(canvas.zoom == zoom)
+	assert(Vector2i(panel.pixel_scroll.scroll_horizontal, panel.pixel_scroll.scroll_vertical) == scroll)
+	local = Vector2(ScurkPixelCanvas.DISPLAY_MARGIN, 0) + point * canvas.zoom
+	anchor = canvas.global_position + local
+	for step in 3:
+		panel.zoom_at(1, local)
+	for frame in 4:
+		await process_frame
+	shifted = canvas.global_position + Vector2(ScurkPixelCanvas.DISPLAY_MARGIN, 0) + point * canvas.zoom
+	assert(canvas.zoom == zoom + 3 and shifted.distance_to(anchor) <= 1.5)

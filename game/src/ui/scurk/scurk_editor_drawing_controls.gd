@@ -140,10 +140,12 @@ func update_tool_controls(tool: int) -> void:
 		ScurkPixelCanvas.TOOL_PENCIL, ScurkPixelCanvas.TOOL_ERASER, ScurkPixelCanvas.TOOL_LINE,
 		ScurkPixelCanvas.TOOL_DIAMOND, ScurkPixelCanvas.TOOL_LEFT_WALL, ScurkPixelCanvas.TOOL_RIGHT_WALL,
 		ScurkPixelCanvas.TOOL_ELLIPSE, ScurkPixelCanvas.TOOL_RECTANGLE,
+		ScurkPixelCanvas.TOOL_SHADE, ScurkPixelCanvas.TOOL_STAMP,
 	]
 	$Margin/Column/Brush.visible = uses_brush
 	filled_shapes_check.visible = uses_brush and tool not in [
 		ScurkPixelCanvas.TOOL_PENCIL, ScurkPixelCanvas.TOOL_ERASER, ScurkPixelCanvas.TOOL_LINE,
+		ScurkPixelCanvas.TOOL_SHADE, ScurkPixelCanvas.TOOL_STAMP,
 	]
 
 

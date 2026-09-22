@@ -1,6 +1,13 @@
 class_name ScurkEditorCanvasPanel
 extends VBoxContainer
 
+signal zoom_changed(value: int)
+
+var zoom_pending := 0
+var zoom_running := false
+var zoom_anchor := Vector2.ZERO
+var zoom_pixel := Vector2.ZERO
+
 const PixelCanvas = preload("res://src/view/scurk_pixel_canvas.gd")
 const ViewPreview = preload("res://src/view/scurk_view_preview.gd")
 
@@ -35,3 +42,47 @@ func build() -> void:
 		preview.clear_preview(view_previews.size())
 		view_previews.append(preview)
 		view_preview_panels.append(column)
+
+
+func pan_canvas(delta: Vector2) -> void:
+	pixel_scroll.scroll_horizontal -= roundi(delta.x)
+	pixel_scroll.scroll_vertical -= roundi(delta.y)
+
+
+func zoom_at(steps: int, local_position: Vector2) -> void:
+	zoom_pending += steps
+	zoom_anchor = pixel_canvas.global_position + local_position
+	zoom_pixel = (local_position - Vector2(ScurkPixelCanvas.DISPLAY_MARGIN, 0)) / pixel_canvas.zoom
+	if zoom_running:
+		return
+	zoom_running = true
+	await get_tree().process_frame
+	while zoom_pending != 0:
+		var anchor := zoom_anchor
+		var pixel := zoom_pixel
+		pixel_canvas.set_zoom(pixel_canvas.zoom + zoom_pending)
+		zoom_pending = 0
+		zoom_changed.emit(pixel_canvas.zoom)
+		await get_tree().process_frame
+		var shifted := pixel_canvas.global_position + Vector2(ScurkPixelCanvas.DISPLAY_MARGIN, 0) + pixel * pixel_canvas.zoom
+		pixel_scroll.scroll_horizontal += roundi(shifted.x - anchor.x)
+		pixel_scroll.scroll_vertical += roundi(shifted.y - anchor.y)
+	zoom_running = false
+
+
+func _input(event: InputEvent) -> void:
+	if pixel_canvas == null or not is_visible_in_tree() or not event is InputEventMouse:
+		return
+	var position: Vector2 = event.position
+	if not pixel_canvas.panning and (not pixel_scroll.get_global_rect().has_point(position) or pixel_canvas.get_global_rect().has_point(position)):
+		return
+	var navigation := pixel_canvas.panning
+	if event is InputEventMouseButton:
+		navigation = navigation or event.button_index in [MOUSE_BUTTON_MIDDLE, MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]
+		navigation = navigation or (event.button_index == MOUSE_BUTTON_LEFT and Input.is_key_pressed(KEY_SPACE))
+	if not navigation:
+		return
+	var local := event.duplicate() as InputEventMouse
+	local.position = position - pixel_canvas.global_position
+	if pixel_canvas._handle_editor_input(local):
+		get_viewport().set_input_as_handled()

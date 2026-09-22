@@ -1,0 +1,314 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/scurk/scurk_editor_studio.gd" id="script"]
+
+[ext_resource type="Script" path="res://src/view/scurk_context_preview.gd" id="context"]
+
+[node name="Studio" type="Control"]
+script = ExtResource("script")
+mouse_filter = 2
+
+[node name="Project" type="AcceptDialog" parent="."]
+title = "SCURK project"
+exclusive = true
+size = Vector2i(560, 460)
+
+[node name="Content" type="VBoxContainer" parent="Project"]
+
+[node name="Tabs" type="TabContainer" parent="Project/Content"]
+size_flags_vertical = 3
+custom_minimum_size = Vector2(520, 350)
+
+[node name="Layers" type="VBoxContainer" parent="Project/Content/Tabs"]
+
+[node name="History" type="VBoxContainer" parent="Project/Content/Tabs"]
+
+[node name="Metadata" type="VBoxContainer" parent="Project/Content/Tabs"]
+
+[node name="Stamps" type="VBoxContainer" parent="Project/Content/Tabs"]
+
+[node name="List" type="ItemList" parent="Project/Content/Tabs/Layers"]
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 160)
+
+[node name="Name" type="LineEdit" parent="Project/Content/Tabs/Layers"]
+placeholder_text = "Layer name"
+
+[node name="State" type="HBoxContainer" parent="Project/Content/Tabs/Layers"]
+
+[node name="Visible" type="CheckBox" parent="Project/Content/Tabs/Layers/State"]
+text = "Visible"
+button_pressed = true
+
+[node name="Locked" type="CheckBox" parent="Project/Content/Tabs/Layers/State"]
+text = "Locked"
+button_pressed = false
+
+[node name="Actions" type="HBoxContainer" parent="Project/Content/Tabs/Layers"]
+
+[node name="Add" type="Button" parent="Project/Content/Tabs/Layers/Actions"]
+text = "Add"
+
+[node name="Delete" type="Button" parent="Project/Content/Tabs/Layers/Actions"]
+text = "Delete"
+
+[node name="Up" type="Button" parent="Project/Content/Tabs/Layers/Actions"]
+text = "Up"
+
+[node name="Down" type="Button" parent="Project/Content/Tabs/Layers/Actions"]
+text = "Down"
+
+[node name="Rename" type="Button" parent="Project/Content/Tabs/Layers/Actions"]
+text = "Rename"
+
+[node name="List" type="ItemList" parent="Project/Content/Tabs/History"]
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 160)
+
+[node name="Name" type="LineEdit" parent="Project/Content/Tabs/History"]
+placeholder_text = "Checkpoint name"
+
+[node name="Actions" type="HBoxContainer" parent="Project/Content/Tabs/History"]
+
+[node name="Add" type="Button" parent="Project/Content/Tabs/History/Actions"]
+text = "Add checkpoint"
+
+[node name="Restore" type="Button" parent="Project/Content/Tabs/History/Actions"]
+text = "Restore checkpoint"
+
+[node name="AuthorLabel" type="Label" parent="Project/Content/Tabs/Metadata"]
+text = "Author"
+
+[node name="Author" type="LineEdit" parent="Project/Content/Tabs/Metadata"]
+
+[node name="TitleLabel" type="Label" parent="Project/Content/Tabs/Metadata"]
+text = "Project title"
+
+[node name="Title" type="LineEdit" parent="Project/Content/Tabs/Metadata"]
+
+[node name="NotesLabel" type="Label" parent="Project/Content/Tabs/Metadata"]
+text = "Notes"
+
+[node name="Notes" type="TextEdit" parent="Project/Content/Tabs/Metadata"]
+custom_minimum_size = Vector2(0, 160)
+size_flags_vertical = 3
+
+[node name="Apply" type="Button" parent="Project/Content/Tabs/Metadata"]
+text = "Apply"
+
+[node name="List" type="ItemList" parent="Project/Content/Tabs/Stamps"]
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 150)
+
+[node name="Name" type="LineEdit" parent="Project/Content/Tabs/Stamps"]
+placeholder_text = "Stamp name"
+
+[node name="Actions" type="HBoxContainer" parent="Project/Content/Tabs/Stamps"]
+
+[node name="Add" type="Button" parent="Project/Content/Tabs/Stamps/Actions"]
+text = "Save selection"
+
+[node name="Use" type="Button" parent="Project/Content/Tabs/Stamps/Actions"]
+text = "Use stamp"
+
+[node name="Delete" type="Button" parent="Project/Content/Tabs/Stamps/Actions"]
+text = "Delete"
+
+[node name="Spacing" type="HBoxContainer" parent="Project/Content/Tabs/Stamps"]
+
+[node name="Label" type="Label" parent="Project/Content/Tabs/Stamps/Spacing"]
+text = "Spacing (pixels)"
+
+[node name="Value" type="SpinBox" parent="Project/Content/Tabs/Stamps/Spacing"]
+min_value = 1.0
+max_value = 256.0
+value = 8.0
+custom_minimum_size = Vector2(80, 0)
+
+[node name="Paint" type="AcceptDialog" parent="."]
+title = "Paint options"
+exclusive = true
+size = Vector2i(440, 420)
+
+[node name="Content" type="VBoxContainer" parent="Paint"]
+
+[node name="Lock" type="CheckBox" parent="Paint/Content"]
+text = "Lock transparent pixels"
+button_pressed = false
+
+[node name="Perfect" type="CheckBox" parent="Paint/Content"]
+text = "Pixel-perfect pencil"
+button_pressed = false
+
+[node name="Shade" type="CheckBox" parent="Paint/Content"]
+text = "Shading brush"
+button_pressed = false
+
+[node name="RampHint" type="Label" parent="Paint/Content"]
+text = "Shift-click palette colors to build a dark-to-light ramp."
+
+[node name="Stamp" type="CheckBox" parent="Paint/Content"]
+text = "Stamp brush"
+button_pressed = false
+
+[node name="Iso" type="CheckBox" parent="Paint/Content"]
+text = "Snap lines to isometric directions"
+button_pressed = false
+
+[node name="Guides" type="CheckBox" parent="Paint/Content"]
+text = "Show isometric guides"
+button_pressed = false
+
+[node name="GuideFields" type="GridContainer" parent="Paint/Content"]
+columns = 2
+
+[node name="SpacingLabel" type="Label" parent="Paint/Content/GuideFields"]
+text = "Guide spacing"
+
+[node name="Spacing" type="SpinBox" parent="Paint/Content/GuideFields"]
+min_value = 1.0
+max_value = 256.0
+value = 16.0
+custom_minimum_size = Vector2(80, 0)
+
+[node name="OffsetXLabel" type="Label" parent="Paint/Content/GuideFields"]
+text = "Guide X offset"
+
+[node name="OffsetX" type="SpinBox" parent="Paint/Content/GuideFields"]
+min_value = -256.0
+max_value = 256.0
+value = 0.0
+custom_minimum_size = Vector2(80, 0)
+
+[node name="OffsetYLabel" type="Label" parent="Paint/Content/GuideFields"]
+text = "Guide Y offset"
+
+[node name="OffsetY" type="SpinBox" parent="Paint/Content/GuideFields"]
+min_value = -256.0
+max_value = 256.0
+value = 0.0
+custom_minimum_size = Vector2(80, 0)
+
+[node name="CompareLabel" type="Label" parent="Paint/Content"]
+text = "Compare with saved artwork (hold Backslash for a quick look)"
+
+[node name="Compare" type="OptionButton" parent="Paint/Content"]
+
+[node name="Replace" type="ConfirmationDialog" parent="."]
+title = "Replace color"
+exclusive = true
+size = Vector2i(420, 200)
+
+[node name="Content" type="VBoxContainer" parent="Replace"]
+
+[node name="Fields" type="GridContainer" parent="Replace/Content"]
+columns = 2
+
+[node name="FromLabel" type="Label" parent="Replace/Content/Fields"]
+text = "From palette index"
+
+[node name="From" type="SpinBox" parent="Replace/Content/Fields"]
+min_value = 0.0
+max_value = 255.0
+value = 0.0
+custom_minimum_size = Vector2(80, 0)
+
+[node name="ToLabel" type="Label" parent="Replace/Content/Fields"]
+text = "To palette index"
+
+[node name="To" type="SpinBox" parent="Replace/Content/Fields"]
+min_value = 0.0
+max_value = 255.0
+value = 0.0
+custom_minimum_size = Vector2(80, 0)
+
+[node name="AllViews" type="CheckBox" parent="Replace/Content"]
+text = "Apply to Large, Medium, and Small"
+button_pressed = false
+
+[node name="Hint" type="Label" parent="Replace/Content"]
+text = "Uses the selection when one is active. Locked layers stay unchanged."
+
+[node name="ImportPreview" type="ConfirmationDialog" parent="."]
+title = "Import image"
+exclusive = true
+size = Vector2i(540, 540)
+
+[node name="Content" type="VBoxContainer" parent="ImportPreview"]
+
+[node name="Image" type="TextureRect" parent="ImportPreview/Content"]
+custom_minimum_size = Vector2(360, 330)
+expand_mode = 1
+stretch_mode = 5
+texture_filter = 1
+size_flags_vertical = 3
+
+[node name="Placement" type="HBoxContainer" parent="ImportPreview/Content"]
+
+[node name="XLabel" type="Label" parent="ImportPreview/Content/Placement"]
+text = "X"
+
+[node name="X" type="SpinBox" parent="ImportPreview/Content/Placement"]
+min_value = -512.0
+max_value = 512.0
+value = 0.0
+custom_minimum_size = Vector2(80, 0)
+
+[node name="YLabel" type="Label" parent="ImportPreview/Content/Placement"]
+text = "Y"
+
+[node name="Y" type="SpinBox" parent="ImportPreview/Content/Placement"]
+min_value = -512.0
+max_value = 512.0
+value = 0.0
+custom_minimum_size = Vector2(80, 0)
+
+[node name="Summary" type="Label" parent="ImportPreview/Content"]
+text = ""
+
+[node name="Context" type="AcceptDialog" parent="."]
+title = "Preview in context"
+exclusive = true
+size = Vector2i(700, 520)
+
+[node name="Content" type="VBoxContainer" parent="Context"]
+
+[node name="View" type="Control" parent="Context/Content"]
+script = ExtResource("context")
+custom_minimum_size = Vector2(640, 400)
+size_flags_vertical = 3
+
+[node name="Options" type="HBoxContainer" parent="Context/Content"]
+
+[node name="Roads" type="CheckBox" parent="Context/Content/Options"]
+text = "Roads"
+button_pressed = true
+
+[node name="Neighbors" type="CheckBox" parent="Context/Content/Options"]
+text = "Neighbors"
+button_pressed = true
+
+[node name="Recovery" type="ConfirmationDialog" parent="."]
+title = "Recover SCURK project"
+dialog_text = "An autosaved SCURK project is available."
+ok_button_text = "Recover"
+cancel_button_text = "Keep for later"
+exclusive = true
+
+[node name="OpenProject" type="FileDialog" parent="."]
+title = "Open SCURK project"
+access = 2
+file_mode = 0
+filters = PackedStringArray("*.scurk ; SCURK projects")
+
+[node name="SaveProject" type="FileDialog" parent="."]
+title = "Save SCURK project"
+access = 2
+file_mode = 4
+filters = PackedStringArray("*.scurk ; SCURK projects")
+
+[node name="RecoveryFiles" type="FileDialog" parent="."]
+title = "Recover SCURK project"
+access = 2
+file_mode = 0
+filters = PackedStringArray("*.scurk ; SCURK projects")

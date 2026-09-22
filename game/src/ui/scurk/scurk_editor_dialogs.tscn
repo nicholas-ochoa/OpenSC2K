@@ -10,8 +10,8 @@ mouse_filter = 2
 [node name="Open" type="FileDialog" parent="."]
 access = 2
 file_mode = 0
-filters = PackedStringArray("*.MIF, *.mif ; SCURK tile sets")
-title = "Open tile set"
+filters = PackedStringArray("*.scurk ; SCURK projects", "*.MIF, *.mif ; SCURK tile sets")
+title = "Open SCURK project or tile set"
 
 [node name="Save" type="FileDialog" parent="."]
 access = 2

@@ -233,7 +233,7 @@ func test_scurk_mif(reference_root: String) -> void:
 			"SCURK editor loads all tile, terrain, network, and support sprites",
 		)
 		_check(
-			scurk_editor.tool_buttons.size() == 12
+			scurk_editor.tool_buttons.size() == 18
 			and scurk_editor.palette_panel.texture_control.patterns.size()
 				== ScurkPixelEditor.TEXTURE_NAMES.size()
 			and scurk_editor.brush_size_selector.max_value == 24

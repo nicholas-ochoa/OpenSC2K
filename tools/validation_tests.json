@@ -1102,6 +1102,13 @@
     "lane": "product"
   },
   {
+    "id": "scurk_studio_test",
+    "script": "tests/scurk_studio_test.gd",
+    "domain": "scurk",
+    "lane": "product",
+    "requires": ["references/SIMCITY2000"]
+  },
+  {
     "id": "scurk_editor_ui_test",
     "script": "tests/scurk_editor_ui_test.gd",
     "domain": "scurk",

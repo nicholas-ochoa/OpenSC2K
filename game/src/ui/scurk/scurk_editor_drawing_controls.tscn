@@ -25,6 +25,18 @@
 
 [ext_resource type="Shader" path="res://src/ui/shared/frosted_panel.gdshader" id="glass"]
 
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/select_rect.svg" id="select_rect"]
+
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/select_lasso.svg" id="select_lasso"]
+
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/select_wand.svg" id="select_wand"]
+
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/move.svg" id="move"]
+
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/shade.svg" id="shade"]
+
+[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/stamp.svg" id="stamp"]
+
 [sub_resource type="ShaderMaterial" id="GlassMaterial"]
 shader = ExtResource("glass")
 
@@ -47,7 +59,7 @@ theme_override_constants/separation = 4
 
 [node name="Tools" type="GridContainer" parent="Margin/Column"]
 layout_mode = 2
-columns = 3
+columns = 4
 size_flags_horizontal = 4
 theme_override_constants/h_separation = 2
 theme_override_constants/v_separation = 2
@@ -55,7 +67,7 @@ theme_override_constants/v_separation = 2
 [node name="Pencil" type="Button" parent="Margin/Column/Tools"]
 layout_mode = 2
 icon = ExtResource("Pencil")
-tooltip_text = "Pencil"
+tooltip_text = "Pencil: [ / ] size, X swaps colors, hold Alt/Option to pick"
 toggle_mode = true
 custom_minimum_size = Vector2(32, 32)
 icon_alignment = 1
@@ -154,7 +166,7 @@ theme_override_constants/icon_max_width = 24
 [node name="Eyedropper" type="Button" parent="Margin/Column/Tools"]
 layout_mode = 2
 icon = ExtResource("Eyedropper")
-tooltip_text = "Pick color"
+tooltip_text = "Pick color: hold Alt/Option with any painting tool"
 toggle_mode = true
 custom_minimum_size = Vector2(32, 32)
 icon_alignment = 1
@@ -176,7 +188,73 @@ theme_override_constants/icon_max_width = 24
 [node name="Paste" type="Button" parent="Margin/Column/Tools"]
 layout_mode = 2
 icon = ExtResource("Paste")
-tooltip_text = "Paste"
+tooltip_text = "Paste preview: Enter commits, Escape cancels"
+toggle_mode = true
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="SelectRect" type="Button" parent="Margin/Column/Tools"]
+layout_mode = 2
+icon = ExtResource("select_rect")
+tooltip_text = "Rectangle selection: Shift adds, Ctrl/Cmd subtracts"
+toggle_mode = true
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="SelectLasso" type="Button" parent="Margin/Column/Tools"]
+layout_mode = 2
+icon = ExtResource("select_lasso")
+tooltip_text = "Lasso selection: Shift adds, Ctrl/Cmd subtracts"
+toggle_mode = true
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="SelectWand" type="Button" parent="Margin/Column/Tools"]
+layout_mode = 2
+icon = ExtResource("select_wand")
+tooltip_text = "Magic wand: select connected palette colors"
+toggle_mode = true
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="Move" type="Button" parent="Margin/Column/Tools"]
+layout_mode = 2
+icon = ExtResource("move")
+tooltip_text = "Move selection: drag or use arrow keys; Shift moves 10 pixels"
+toggle_mode = true
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="Shade" type="Button" parent="Margin/Column/Tools"]
+layout_mode = 2
+icon = ExtResource("shade")
+tooltip_text = "Shade along the palette ramp: left lightens, right darkens"
+toggle_mode = true
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="Stamp" type="Button" parent="Margin/Column/Tools"]
+layout_mode = 2
+icon = ExtResource("stamp")
+tooltip_text = "Stamp brush: save and choose stamps in Project tools"
 toggle_mode = true
 custom_minimum_size = Vector2(32, 32)
 icon_alignment = 1
@@ -280,6 +358,7 @@ text = "+"
 size_flags_horizontal = 3
 
 [node name="Fit" type="Button" parent="Margin/Column"]
+tooltip_text = "Fit canvas; Space-drag or middle-drag pans; wheel zooms at the cursor"
 layout_mode = 2
 text = "Fit canvas"
 

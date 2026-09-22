@@ -7,6 +7,8 @@
 [ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_editor_palette_panel.tscn" id="palette_panel"]
 [ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_editor_dialogs.tscn" id="dialogs"]
 
+[ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_editor_studio.tscn" id="studio"]
+
 [node name="SCURKEditor" type="ColorRect"]
 script = ExtResource("script")
 anchors_preset = 15
@@ -85,4 +87,7 @@ custom_minimum_size = Vector2(150, 0)
 text_overrun_behavior = 3
 
 [node name="Dialogs" parent="." instance=ExtResource("dialogs")]
+layout_mode = 2
+
+[node name="Studio" parent="." instance=ExtResource("studio")]
 layout_mode = 2

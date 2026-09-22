@@ -236,7 +236,8 @@ func _test_main_menu() -> void:
 	scurk_dialogs._create_dialogs()
 	_check(
 		scurk_dialogs.open_dialog.file_mode == FileDialog.FILE_MODE_OPEN_FILE
-		and scurk_dialogs.open_dialog.filters[0].contains("*.MIF")
+		and scurk_dialogs.open_dialog.filters[0].contains("*.scurk")
+		and scurk_dialogs.open_dialog.filters[1].contains("*.MIF")
 		and scurk_dialogs.save_dialog.file_mode == FileDialog.FILE_MODE_SAVE_FILE
 		and scurk_dialogs.import_bmp_dialog.filters[0].contains("*.BMP")
 		and scurk_dialogs.export_bmp_dialog.file_mode

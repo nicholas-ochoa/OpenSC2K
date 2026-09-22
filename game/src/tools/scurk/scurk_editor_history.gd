@@ -12,6 +12,8 @@ class Result extends ScurkMif.Result:
 class Record extends RefCounted:
 	var before := PackedByteArray()
 	var after := PackedByteArray()
+	var project_before: Dictionary = {}
+	var project_after: Dictionary = {}
 	var blank_before: Dictionary[int, bool] = {}
 	var blank_after: Dictionary[int, bool] = {}
 
@@ -19,6 +21,8 @@ class Record extends RefCounted:
 var saved_bytes := PackedByteArray()
 var undo_stack: Array[Record] = []
 var redo_stack: Array[Record] = []
+var pending_project_before: Dictionary = {}
+var pending_project_after: Dictionary = {}
 var pending_edit_before := PackedByteArray()
 var pending_blank_shape_ids: Dictionary[int, bool] = {}
 var object_start_bytes := PackedByteArray()
@@ -82,10 +86,12 @@ func record(before: PackedByteArray, document: ScurkMif) -> bool:
 
 	var encoded := document.to_bytes()
 
-	if not encoded.ok or encoded.bytes == before:
+	if not encoded.ok or (encoded.bytes == before and pending_project_before == pending_project_after):
 		return false
 
 	var action := Record.new()
+	action.project_before = pending_project_before.duplicate(true)
+	action.project_after = pending_project_after.duplicate(true)
 	action.before = before.duplicate()
 	action.after = encoded.bytes.duplicate()
 	action.blank_before = pending_blank_shape_ids.duplicate()

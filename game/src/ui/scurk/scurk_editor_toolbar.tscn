@@ -25,6 +25,12 @@ flat = true
 switch_on_hover = true
 custom_minimum_size = Vector2(0, 23)
 
+[node name="Tools" type="MenuButton" parent="Row"]
+layout_mode = 2
+text = "Tools"
+flat = true
+switch_on_hover = true
+
 [node name="Options" type="MenuButton" parent="Row"]
 layout_mode = 2
 text = "Options"
@@ -104,3 +110,55 @@ text = "Settings..."
 [node name="About" type="Button" parent="Actions"]
 layout_mode = 2
 text = "About OpenSC2K..."
+
+[node name="ExportTileSet" type="Button" parent="Actions"]
+layout_mode = 2
+text = "Export Tile Set..."
+
+[node name="ProjectTools" type="Button" parent="Actions"]
+layout_mode = 2
+text = "Layers, Stamps and Project..."
+
+[node name="PaintOptions" type="Button" parent="Actions"]
+layout_mode = 2
+text = "Paint Options..."
+
+[node name="ReplaceColor" type="Button" parent="Actions"]
+layout_mode = 2
+text = "Replace Color..."
+
+[node name="Context" type="Button" parent="Actions"]
+layout_mode = 2
+text = "Preview in Context..."
+
+[node name="SelectAll" type="Button" parent="Actions"]
+layout_mode = 2
+text = "Select All"
+
+[node name="Deselect" type="Button" parent="Actions"]
+layout_mode = 2
+text = "Deselect"
+
+[node name="CopySelection" type="Button" parent="Actions"]
+layout_mode = 2
+text = "Copy Selection"
+
+[node name="CutSelection" type="Button" parent="Actions"]
+layout_mode = 2
+text = "Cut Selection"
+
+[node name="PasteSelection" type="Button" parent="Actions"]
+layout_mode = 2
+text = "Paste"
+
+[node name="DuplicateSelection" type="Button" parent="Actions"]
+layout_mode = 2
+text = "Duplicate Selection"
+
+[node name="DeleteSelection" type="Button" parent="Actions"]
+layout_mode = 2
+text = "Delete Selection"
+
+[node name="RecoverProject" type="Button" parent="Actions"]
+layout_mode = 2
+text = "Recover Autosave..."
