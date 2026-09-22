@@ -7,7 +7,7 @@ const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
 const RECORD_SIZE := CityState.THING_RECORD_SIZE
 const TEXT_LABEL_BASE := 201
-const TYPE_EXPLOSION := 6
+const TYPE_EXPLOSION := Sc2ThingLayout.Type.EXPLOSION
 const TILE_PIER := Tiles.PIER
 const TILE_MARINA := Tiles.MARINA
 const SOUND_SHIP := 0x205

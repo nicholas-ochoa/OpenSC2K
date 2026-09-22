@@ -17,7 +17,7 @@ const DECODED_SIZES: Dictionary[String, int] = {
 	"XTXT": 16384,
 	"XLAB": 6400,
 	"XMIC": 1200,
-	"XTHG": 480,
+	"XTHG": Sc2ThingLayout.ORIGINAL_SIZE,
 	"XBIT": 16384,
 	"XTRF": 4096,
 	"XPLT": 4096,

@@ -6,18 +6,18 @@ extends RefCounted
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
 const MAP_SIZE := 128
-const RECORD_SIZE := 12
+const RECORD_SIZE := Sc2ThingLayout.RECORD_SIZE
 const FIRST_RECORD := 1
 const LAST_RECORD := 39
 const TEXT_LABEL_BASE := 201
-const TYPE_AIRPLANE := 1
-const TYPE_HELICOPTER := 2
-const TYPE_SHIP := 3
-const TYPE_MONSTER := 5
-const TYPE_SAILBOAT := 9
-const TYPE_TRAIN_ENGINE := 10
-const TYPE_TRAIN_CAR := 11
-const TYPE_MAXIS_MAN := 16
+const TYPE_AIRPLANE := Sc2ThingLayout.Type.AIRPLANE
+const TYPE_HELICOPTER := Sc2ThingLayout.Type.HELICOPTER
+const TYPE_SHIP := Sc2ThingLayout.Type.SHIP
+const TYPE_MONSTER := Sc2ThingLayout.Type.MONSTER
+const TYPE_SAILBOAT := Sc2ThingLayout.Type.SAILBOAT
+const TYPE_TRAIN_ENGINE := Sc2ThingLayout.Type.TRAIN_ENGINE
+const TYPE_TRAIN_CAR := Sc2ThingLayout.Type.TRAIN_CAR
+const TYPE_MAXIS_MAN := Sc2ThingLayout.Type.MAXIS_MAN
 const CARDINAL_DIRECTIONS := [
 	Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0),
 ]

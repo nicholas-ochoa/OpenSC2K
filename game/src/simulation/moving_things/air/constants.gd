@@ -4,9 +4,9 @@ extends RefCounted
 const MAP_SIZE := CityState.MAP_SIZE
 const RECORD_SIZE := CityState.THING_RECORD_SIZE
 const TEXT_LABEL_BASE := 201
-const TYPE_AIRPLANE := 1
-const TYPE_HELICOPTER := 2
-const TYPE_EXPLOSION := 6
+const TYPE_AIRPLANE := Sc2ThingLayout.Type.AIRPLANE
+const TYPE_HELICOPTER := Sc2ThingLayout.Type.HELICOPTER
+const TYPE_EXPLOSION := Sc2ThingLayout.Type.EXPLOSION
 const SOUND_HELICOPTER := 0x1fe
 const SOUND_AIR_DISASTER := 0x203
 const SOUND_AIRPLANE_TAKEOFF := 0x206

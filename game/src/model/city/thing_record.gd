@@ -3,6 +3,8 @@ extends RefCounted
 # one decoded xthg moving-object record. fields follow the stored byte order
 # a read copies the values. a later write to xthg does not change this record
 
+const Field = Sc2ThingLayout.Field
+
 const FIELDS: Array[String] = ["type", "direction", "state", "x", "y", "z", "px", "py", "dx", "dy", "label", "goal"]
 
 var type := 0
@@ -22,18 +24,18 @@ var goal := 0
 # decode the record at `offset`. sclg high planes widen the coordinate fields
 static func read(data: PackedByteArray, offset: int) -> ThingRecord:
 	var result := ThingRecord.new()
-	result.type = int(data[offset])
-	result.direction = int(data[offset + 1])
-	result.state = ThingData.read(data, offset + 2)
-	result.x = ThingData.read(data, offset + 3)
-	result.y = ThingData.read(data, offset + 4)
-	result.z = int(data[offset + 5])
-	result.px = ThingData.read(data, offset + 6)
-	result.py = ThingData.read(data, offset + 7)
-	result.dx = ThingData.read(data, offset + 8)
-	result.dy = ThingData.read(data, offset + 9)
-	result.label = ThingData.read(data, offset + 10)
-	result.goal = ThingData.read(data, offset + 11)
+	result.type = int(data[offset + Field.TYPE])
+	result.direction = int(data[offset + Field.DIRECTION])
+	result.state = ThingData.read(data, offset + Field.STATE)
+	result.x = ThingData.read(data, offset + Field.X)
+	result.y = ThingData.read(data, offset + Field.Y)
+	result.z = int(data[offset + Field.Z])
+	result.px = ThingData.read(data, offset + Field.PX)
+	result.py = ThingData.read(data, offset + Field.PY)
+	result.dx = ThingData.read(data, offset + Field.DX)
+	result.dy = ThingData.read(data, offset + Field.DY)
+	result.label = ThingData.read(data, offset + Field.LABEL)
+	result.goal = ThingData.read(data, offset + Field.GOAL)
 
 	return result
 
