@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """Run one Godot check; script errors must fail even if Godot stays open."""
 import os
-import re
 import subprocess
 import sys
 import tempfile
 import time
+
+
+# stdout can interrupt the stderr line prefix.
+ERROR_MARKER = b"ERROR:"
 
 
 def main():
@@ -24,7 +27,7 @@ def main():
                 if data:
                     sys.stdout.buffer.write(data)
                     sys.stdout.buffer.flush()
-                    if re.search(rb"SCRIPT ERROR:|^ERROR:", tail + data, re.MULTILINE):
+                    if ERROR_MARKER in tail + data:
                         failed = True
                     tail = (tail + data)[-512:]
                 if failed or time.monotonic() - start > timeout:
@@ -43,7 +46,7 @@ def main():
                     reader.seek(offset)
                     data = reader.read()
                     sys.stdout.buffer.write(data)
-                    if re.search(rb"SCRIPT ERROR:|^ERROR:", tail + data, re.MULTILINE):
+                    if ERROR_MARKER in tail + data:
                         return 1
                     return status
                 time.sleep(0.1)

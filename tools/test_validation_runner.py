@@ -10,8 +10,9 @@ import sys
 import tempfile
 import threading
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
+import run_godot_check as godot_check
 import validate_project as runner
 
 
@@ -114,6 +115,53 @@ class ValidationRunnerTest(unittest.TestCase):
                                     env=dict(os.environ, GODOT_TEST_TIMEOUT_SECONDS=timeout),
                                     capture_output=True, timeout=10)
             self.assertNotEqual(result.returncode, 0)
+
+    def test_interleaved_engine_error_cannot_pass(self):
+        code = ("import sys; print('Leaked instance: RefCounted - Reference ', end='', flush=True); "
+                "print('ERROR: 45 resources still in use at exit.', file=sys.stderr)")
+        with contextlib.redirect_stdout(io.StringIO()):
+            status, _, content = runner.execute([sys.executable, '-c', code])
+        self.assertEqual(status, 'FAIL')
+        self.assertIn('Reference ERROR:', content)
+        with contextlib.redirect_stdout(io.StringIO()):
+            status, _, content = runner.execute([sys.executable, '-c', "print('PASS: no errors')"])
+        self.assertEqual(status, 'PASS')
+        self.assertEqual(content, 'PASS: no errors\n')
+
+    def test_split_error_is_detected_during_read_and_exit_drain(self):
+        marker = b'ERROR:'
+        for exited in (False, True):
+            for split in range(1, len(marker)):
+                with self.subTest(exited=exited, split=split):
+                    prefix = b'Leaked instance: RefCounted - Reference ' + marker[:split]
+                    suffix = marker[split:] + b' resources still in use at exit.\n'
+                    process = Mock()
+                    pending = True
+
+                    def spawn(*args, stdout, **kwargs):
+                        stdout.write(prefix)
+                        stdout.flush()
+
+                        def poll():
+                            nonlocal pending
+                            if pending:
+                                pending = False
+                                stdout.write(suffix)
+                                stdout.flush()
+                                return 0 if exited else None
+                            return 0
+
+                        process.poll.side_effect = poll
+                        return process
+
+                    with io.TextIOWrapper(io.BytesIO(), write_through=True) as console, \
+                            contextlib.redirect_stdout(console), \
+                            patch.object(sys, 'argv', ['run', 'fixture']), \
+                            patch.object(godot_check.subprocess, 'Popen', side_effect=spawn), \
+                            patch.object(godot_check.time, 'sleep'):
+                        self.assertEqual(godot_check.main(), 1)
+                        self.assertEqual(console.buffer.getvalue(), prefix + suffix)
+                    self.assertEqual(process.terminate.call_count, 0 if exited else 1)
 
     def test_skip_is_reported_separately(self):
         with contextlib.redirect_stdout(io.StringIO()) as console:
