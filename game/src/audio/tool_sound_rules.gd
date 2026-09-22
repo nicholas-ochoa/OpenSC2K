@@ -21,61 +21,61 @@ const SOUND_ZOO := 527
 
 static func success_events(group_index: int, subtool_index: int) -> Array[int]:
 	match group_index:
-		1:
-			if subtool_index in [0, 3]:
+		CityToolIds.Group.LANDSCAPE:
+			if subtool_index in [CityToolIds.Landscape.TREES, CityToolIds.Landscape.FOREST]:
 				return [SOUND_TREE]
 
-			if subtool_index == 1:
+			if subtool_index == CityToolIds.Landscape.WATER:
 				return [SOUND_WATER]
-		2:
-			if subtool_index == 1:
+		CityToolIds.Group.DISPATCH:
+			if subtool_index == CityToolIds.Dispatch.FIRE:
 				return [SOUND_FIRE_STATION]
 
-			if subtool_index in [0, 2]:
+			if subtool_index in [CityToolIds.Dispatch.POLICE, CityToolIds.Dispatch.MILITARY]:
 				return [SOUND_SERVICE]
-		3:
-			if subtool_index == 0:
+		CityToolIds.Group.POWER:
+			if subtool_index == CityToolIds.Power.WIRES:
 				return [SOUND_POWER_LINE]
 
-			if subtool_index >= 2 and subtool_index <= 10:
+			if subtool_index >= CityToolIds.Power.COAL and subtool_index <= CityToolIds.Power.FUSION:
 				return [SOUND_BUILD]
-		4:
-			if subtool_index >= 0 and subtool_index <= 4:
+		CityToolIds.Group.WATER:
+			if subtool_index >= CityToolIds.Water.PIPES and subtool_index <= CityToolIds.Water.DESALINIZATION:
 				return [SOUND_BUILD]
-		5:
-			if subtool_index != 4 and subtool_index >= 0 and subtool_index <= 8:
+		CityToolIds.Group.REWARDS:
+			if subtool_index != CityToolIds.Rewards.ARCOLOGIES and subtool_index >= CityToolIds.Rewards.MAYORS_HOUSE and subtool_index <= CityToolIds.Rewards.LAUNCH:
 				return [SOUND_REWARD]
-		6:
-			if subtool_index == 4:
+		CityToolIds.Group.ROADS:
+			if subtool_index == CityToolIds.Roads.BUS_DEPOT:
 				return [SOUND_BUS_DEPOT]
 
-			if subtool_index >= 0 and subtool_index <= 3:
+			if subtool_index >= CityToolIds.Roads.ROAD and subtool_index <= CityToolIds.Roads.ONRAMP:
 				return [SOUND_BUILD]
-		7:
-			if subtool_index == 2:
+		CityToolIds.Group.RAIL:
+			if subtool_index == CityToolIds.Rail.RAIL_DEPOT:
 				return [SOUND_RAIL_DEPOT, SOUND_BUILD]
 
-			if subtool_index >= 0 and subtool_index <= 4:
+			if subtool_index >= CityToolIds.Rail.RAIL and subtool_index <= CityToolIds.Rail.SUBWAY_TO_RAIL:
 				return [SOUND_BUILD]
-		8, 9, 10, 11:
+		CityToolIds.Group.PORTS, CityToolIds.Group.RESIDENTIAL, CityToolIds.Group.COMMERCIAL, CityToolIds.Group.INDUSTRIAL:
 			return [SOUND_ZONE]
-		12:
+		CityToolIds.Group.EDUCATION:
 			return [SOUND_EDUCATION]
-		13:
+		CityToolIds.Group.SERVICES:
 			match subtool_index:
-				0, 2:
+				CityToolIds.Services.POLICE_STATION, CityToolIds.Services.HOSPITAL:
 					return [SOUND_SERVICE]
-				1:
+				CityToolIds.Services.FIRE_STATION:
 					return [SOUND_FIRE_STATION]
-				3:
+				CityToolIds.Services.PRISON:
 					return [SOUND_PRISON]
-		14:
-			if subtool_index == 2:
+		CityToolIds.Group.RECREATION:
+			if subtool_index == CityToolIds.Recreation.ZOO:
 				return [SOUND_ZOO]
 
-			if subtool_index >= 0 and subtool_index <= 4:
+			if subtool_index >= CityToolIds.Recreation.SMALL_PARK and subtool_index <= CityToolIds.Recreation.MARINA:
 				return [SOUND_REWARD]
-		17:
+		CityToolIds.Group.CENTERING:
 			return [SOUND_CENTER]
 
 	return []
@@ -91,16 +91,16 @@ static func zone_success_events(zone_type: int) -> Array[int]:
 static func failure_events(
 	group_index: int, subtool_index: int, error: String = ""
 ) -> Array[int]:
-	if group_index == 1:
+	if group_index == CityToolIds.Group.LANDSCAPE:
 		if error == "insufficient funds":
 			return [SOUND_ERROR]
 
 		return []
 
-	if group_index < 3 or group_index > 14:
+	if group_index < CityToolIds.Group.POWER or group_index > CityToolIds.Group.RECREATION:
 		return []
 
-	if (group_index == 3 and subtool_index == 1) or (group_index == 5 and subtool_index == 4):
+	if (group_index == CityToolIds.Group.POWER and subtool_index == CityToolIds.Power.PLANTS) or (group_index == CityToolIds.Group.REWARDS and subtool_index == CityToolIds.Rewards.ARCOLOGIES):
 		return []
 
 	return [SOUND_ERROR]

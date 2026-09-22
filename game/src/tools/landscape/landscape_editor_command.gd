@@ -6,7 +6,7 @@ extends RefCounted
 
 # editor-only operations. work on a private document and publish one undo unit
 static func supports_tool(group: int, subtool: int) -> bool:
-	return (group == 0 and subtool in [5, 6, 7]) or (group == 1 and subtool in [2, 3])
+	return (group == CityToolIds.Group.BULLDOZER and subtool in [CityToolIds.Bulldozer.STRETCH, CityToolIds.Bulldozer.RAISE_SEA, CityToolIds.Bulldozer.LOWER_SEA]) or (group == CityToolIds.Group.LANDSCAPE and subtool in [CityToolIds.Landscape.STREAM, CityToolIds.Landscape.FOREST])
 
 
 static func apply(city: CityState, group: int, subtool: int, point: Vector2i, random: SimRandom, stretch_levels := 1) -> TerrainEditResult:
@@ -19,13 +19,13 @@ static func apply(city: CityState, group: int, subtool: int, point: Vector2i, ra
 	var staged_random := SimRandom.new(random.state)
 	var before := random.state
 
-	if group == 0 and subtool == 5:
+	if group == CityToolIds.Group.BULLDOZER and subtool == CityToolIds.Bulldozer.STRETCH:
 		for step in mini(31, absi(stretch_levels)):
-			var result := TerrainCommand.apply_path(staged, 0, 2 if stretch_levels > 0 else 3, point, [point], staged_random, true)
+			var result := TerrainCommand.apply_path(staged, CityToolIds.Group.BULLDOZER, CityToolIds.Bulldozer.RAISE if stretch_levels > 0 else CityToolIds.Bulldozer.LOWER, point, [point], staged_random, true)
 
 			if not result.ok:
 				break
-	elif group == 1 and subtool == 3:
+	elif group == CityToolIds.Group.LANDSCAPE and subtool == CityToolIds.Landscape.FOREST:
 		var points: Array[Vector2i] = []
 
 		for x in range(-3, 4):
@@ -34,21 +34,21 @@ static func apply(city: CityState, group: int, subtool: int, point: Vector2i, ra
 					points.append(point + Vector2i(x + 3, y + 3))
 
 		for pass_index in 3:
-			LandscapeCommand.apply_path(staged, 1, 0, points, staged_random, true)
+			LandscapeCommand.apply_path(staged, CityToolIds.Group.LANDSCAPE, CityToolIds.Landscape.TREES, points, staged_random, true)
 	else:
 		var payloads := {}
 
 		for id in ["ALTM", "XBLD", "XTER", "XZON", "XBIT", "XTXT", "MISC"]:
 			payloads[id] = staged.document.find_chunk(id).decoded_payload.duplicate()
 
-		if group == 1:
+		if group == CityToolIds.Group.LANDSCAPE:
 			var previous_terrain: PackedByteArray = payloads.XTER.duplicate()
 			var previous_flags: PackedByteArray = payloads.XBIT.duplicate()
 			NewTerrainSurface._make_stream(payloads.ALTM, payloads.XBLD, payloads.XTER, payloads.XZON, payloads.XBIT, payloads.XTXT, payloads.MISC,
 					point, 128, staged_random, map_edge)
 			_finish_stream_slopes(payloads, previous_terrain, previous_flags, map_edge)
 		else:
-			var sea := clampi(staged.document.misc_u32(Sc2MiscLayout.WATER_LEVEL) + (1 if subtool == 6 else -1), 0, 31)
+			var sea := clampi(staged.document.misc_u32(Sc2MiscLayout.WATER_LEVEL) + (1 if subtool == CityToolIds.Bulldozer.RAISE_SEA else -1), 0, 31)
 			BinaryData.write_u32_be(payloads.MISC, Sc2MiscLayout.WATER_LEVEL, sea)
 			var indices := PackedInt32Array()
 

@@ -83,38 +83,38 @@ static func inspect_misc(misc: PackedByteArray) -> Result:
 		power_plant_mask |= 0x100
 
 	if released[6]:
-		group_masks[8] |= 0x02
+		group_masks[CityToolIds.Group.PORTS] |= 0x02
 
 	if released[7]:
-		group_masks[6] |= 0x0a
+		group_masks[CityToolIds.Group.ROADS] |= 0x0a
 
 	if released[8]:
-		group_masks[6] |= 0x10
+		group_masks[CityToolIds.Group.ROADS] |= 0x10
 
 	if released[9]:
-		group_masks[7] |= 0x1a
+		group_masks[CityToolIds.Group.RAIL] |= 0x1a
 
 	if released[10]:
-		group_masks[4] |= 0x08
+		group_masks[CityToolIds.Group.WATER] |= 0x08
 
 	if released[11]:
-		group_masks[4] |= 0x10
+		group_masks[CityToolIds.Group.WATER] |= 0x10
 
 	var arcology_count := 0
 
 	for index in range(ARCOLOGY_FIRST_INVENTION, ARCOLOGY_LAST_INVENTION + 1):
 		arcology_count += int(released[index])
 
-	group_masks[5] = BinaryData.read_u32_be(misc, MISC_GRANTED_REWARDS) & 0xffff
+	group_masks[CityToolIds.Group.REWARDS] = BinaryData.read_u32_be(misc, MISC_GRANTED_REWARDS) & 0xffff
 	var progression := BinaryData.read_u32_be(misc, MISC_PROGRESSION) & 0xffff
 
 	if progression >= 6 and arcology_count > 0:
-		group_masks[5] |= 0x10
+		group_masks[CityToolIds.Group.REWARDS] |= 0x10
 
 	var military_base_type := BinaryData.read_u32_be(misc, Sc2MiscLayout.MILITARY_BASE_TYPE) & 0xffff
 
 	if military_base_type == 2 or military_base_type == 3 or military_base_type == 4:
-		group_masks[2] |= 0x04
+		group_masks[CityToolIds.Group.DISPATCH] |= 0x04
 
 	var result := Result.new()
 	result.ok = true
@@ -135,7 +135,7 @@ static func is_available(city: CityState, group_index: int, subtool_index: int) 
 	if tool == null:
 		return false
 
-	if group_index >= 15 or (group_index == 1 and subtool_index == 3):
+	if group_index >= CityToolIds.Group.SIGNS or (group_index == CityToolIds.Group.LANDSCAPE and subtool_index == CityToolIds.Landscape.FOREST):
 		return true
 
 	var result := inspect(city)
@@ -145,16 +145,16 @@ static func is_available(city: CityState, group_index: int, subtool_index: int) 
 
 	# dispatch capacity is prepared from live station and military counts. keep
 	# those tools selectable here and let dispatchcommand report capacity
-	if group_index == 2:
+	if group_index == CityToolIds.Group.DISPATCH:
 		return true
 
-	if group_index == 3 and subtool_index >= 2:
-		return (int(result.power_plant_mask) & (1 << (subtool_index - 2))) != 0
+	if group_index == CityToolIds.Group.POWER and subtool_index >= CityToolIds.Power.COAL:
+		return (int(result.power_plant_mask) & (1 << (subtool_index - CityToolIds.Power.COAL))) != 0
 
-	if group_index == 5 and subtool_index >= 5:
+	if group_index == CityToolIds.Group.REWARDS and subtool_index >= CityToolIds.Rewards.PLYMOUTH:
 		return (
-			(int(result.group_masks[5]) & 0x10) != 0
-			and subtool_index - 5 < int(result.arcology_count)
+			(int(result.group_masks[CityToolIds.Group.REWARDS]) & 0x10) != 0
+			and subtool_index - CityToolIds.Rewards.PLYMOUTH < int(result.arcology_count)
 		)
 
 	return (int(result.group_masks[group_index]) & (1 << subtool_index)) != 0

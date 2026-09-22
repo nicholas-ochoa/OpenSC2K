@@ -18,9 +18,9 @@ var landscape_tools: GridContainer
 var regenerate_button: Button
 var landscape_buttons: Dictionary = {}
 const LANDSCAPE_TOOL_ORDER := [
-	Vector2i(0, 2), Vector2i(0, 3), Vector2i(0, 5), Vector2i(0, 1),
-	Vector2i(0, 6), Vector2i(0, 7), Vector2i(1, 1), Vector2i(1, 2),
-	Vector2i(1, 0), Vector2i(1, 3), Vector2i(16, 0), Vector2i(17, 0),
+	Vector2i(CityToolIds.Group.BULLDOZER, CityToolIds.Bulldozer.RAISE), Vector2i(CityToolIds.Group.BULLDOZER, CityToolIds.Bulldozer.LOWER), Vector2i(CityToolIds.Group.BULLDOZER, CityToolIds.Bulldozer.STRETCH), Vector2i(CityToolIds.Group.BULLDOZER, CityToolIds.Bulldozer.LEVEL),
+	Vector2i(CityToolIds.Group.BULLDOZER, CityToolIds.Bulldozer.RAISE_SEA), Vector2i(CityToolIds.Group.BULLDOZER, CityToolIds.Bulldozer.LOWER_SEA), Vector2i(CityToolIds.Group.LANDSCAPE, CityToolIds.Landscape.WATER), Vector2i(CityToolIds.Group.LANDSCAPE, CityToolIds.Landscape.STREAM),
+	Vector2i(CityToolIds.Group.LANDSCAPE, CityToolIds.Landscape.TREES), Vector2i(CityToolIds.Group.LANDSCAPE, CityToolIds.Landscape.FOREST), Vector2i(CityToolIds.Group.QUERY, CityToolIds.Query.QUERY), Vector2i(CityToolIds.Group.CENTERING, CityToolIds.Centering.CENTER),
 ]
 
 signal group_requested(index: int)
@@ -112,13 +112,13 @@ func _ready() -> void:
 	start_city_button.pressed.connect(start_city_requested.emit)
 	var tool_button_group := ButtonGroup.new()
 
-	for group_index in range(15):
+	for group_index in range(CityToolIds.Group.SIGNS):
 		_add_group_button(%ToolGroups, tool_button_group, group_index)
 
-	for group_index in range(15, 17):
+	for group_index in range(CityToolIds.Group.SIGNS, CityToolIds.Group.CENTERING):
 		_add_group_button(%SpecialTools, tool_button_group, group_index)
 
-	_add_group_button(%ZoomButtons, tool_button_group, 17)
+	_add_group_button(%ZoomButtons, tool_button_group, CityToolIds.Group.CENTERING)
 
 	brush_controls = %BrushControls
 	brush_size_input = %BrushSizeInput
@@ -312,7 +312,7 @@ func _begin_group_hold(group_index: int) -> void:
 	_held_group = group_index
 	_hold_opened = false
 
-	if (group_index >= 15 and group_index != 16) or not is_inside_tree():
+	if (group_index >= CityToolIds.Group.SIGNS and group_index != CityToolIds.Group.QUERY) or not is_inside_tree():
 		return
 
 	get_tree().create_timer(HOLD_SECONDS).timeout.connect(
@@ -421,7 +421,7 @@ func _build_landscape_tools() -> void:
 		button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
 		button.tooltip_text = str(Tools.GROUPS[group].tools[tool].name)
 		button.icon = _icon_provider.call(group, tool) if _icon_provider.is_valid() else null
-		if group in [0, 1] and button.icon != null:
+		if group in [CityToolIds.Group.BULLDOZER, CityToolIds.Group.LANDSCAPE] and button.icon != null:
 			# terrain symbols are 19-pixel native icons, like the city toolbar
 			var native_icon := button.icon.get_image()
 			native_icon.resize(native_icon.get_width() / 2,

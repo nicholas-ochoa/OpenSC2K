@@ -39,7 +39,7 @@ func apply_map_selection(
 
 	var tool := app.tool_state
 
-	if tool.landscape_editor and (tool.selected_group not in [0, 1, 16, 17] or (tool.selected_group == 0 and tool.selected_subtool == 4)):
+	if tool.landscape_editor and (tool.selected_group not in [CityToolIds.Group.BULLDOZER, CityToolIds.Group.LANDSCAPE, CityToolIds.Group.QUERY, CityToolIds.Group.CENTERING] or (tool.selected_group == CityToolIds.Group.BULLDOZER and tool.selected_subtool == CityToolIds.Bulldozer.DEZONE)):
 		app.interface.show_error("Select Start City before building structures.")
 
 		return
@@ -121,20 +121,20 @@ func _select_scurk_tool(finish: Vector2i, scurk_tool: ScurkEditTool) -> bool:
 func _apply_view_tool(finish: Vector2i) -> bool:
 	var tool := app.tool_state
 
-	if tool.selected_group == 17:
+	if tool.selected_group == CityToolIds.Group.CENTERING:
 		app.camera_input.center_map_on_tile(finish)
 
 		return true
 
-	if tool.selected_group == 16:
-		if tool.selected_subtool == 1:
+	if tool.selected_group == CityToolIds.Group.QUERY:
+		if tool.selected_subtool == CityToolIds.Query.TRIP_REACH:
 			app.map_view.show_trip_reach(app.document_state.city, finish)
 		else:
 			app.query_choices.open_query(finish)
 
 		return true
 
-	if tool.selected_group == 15:
+	if tool.selected_group == CityToolIds.Group.SIGNS:
 		app.query_choices.open_sign_dialog(finish)
 
 		return true
@@ -195,7 +195,7 @@ func _apply_landscape_editor_terrain(start: Vector2i, dragged: bool) -> bool:
 	var tool := app.tool_state
 
 	if (not (LandscapeEditorCommand.supports_tool(tool.selected_group, tool.selected_subtool) and tool.landscape_editor
-			and not (tool.selected_group == 1 and tool.selected_subtool == 3))):
+			and not (tool.selected_group == CityToolIds.Group.LANDSCAPE and tool.selected_subtool == CityToolIds.Landscape.FOREST))):
 		return false
 
 	var levels := app.map_view.stretch_height_delta if dragged else 1
@@ -229,7 +229,7 @@ func _apply_landscape_brush(start: Vector2i, path: Array[Vector2i]) -> bool:
 
 	var tool := app.tool_state
 
-	if tool.selected_group == 0:
+	if tool.selected_group == CityToolIds.Group.BULLDOZER:
 		var origin := app.map_view.selection_start if app.map_view.selection_start.x >= 0 else start
 		var target := tool.level_brush_altitude if tool.level_brush_altitude >= 0 else app.document_state.city.land_altitude(origin.x, origin.y)
 		var command := TerrainTools.apply_path(app.document_state.city, tool.selected_group, tool.selected_subtool,
@@ -377,10 +377,10 @@ func _record_building(
 	app.interface.refresh_details()
 	app.static_render.refresh_after_city_edit(building)
 
-	if building_group == 5 and building_subtool < 4:
-		app.camera_input.choose_tool_group(17)
+	if building_group == CityToolIds.Group.REWARDS and building_subtool < CityToolIds.Rewards.ARCOLOGIES:
+		app.camera_input.choose_tool_group(CityToolIds.Group.CENTERING)
 
-	if building_group == 14 and app.document_state.city.music_enabled() and not stadium_team_pending:
+	if building_group == CityToolIds.Group.RECREATION and app.document_state.city.music_enabled() and not stadium_team_pending:
 		app.effects_audio.play_music_track(Music.RECREATION_TRACK)
 
 	app.status_label.theme_type_variation = ""
@@ -424,7 +424,7 @@ func _finish_simple_edit(
 	if edit.show_effects:
 		app.effects_audio.show_effect_events(command.effect_events, SoundEvent.from_ids(command.sound_events))
 
-	if app.tool_state.selected_group == 0 and app.tool_state.selected_subtool in [1, 2, 3, 5, 6, 7] and not command.changed_ids.is_empty():
+	if app.tool_state.selected_group == CityToolIds.Group.BULLDOZER and app.tool_state.selected_subtool in [CityToolIds.Bulldozer.LEVEL, CityToolIds.Bulldozer.RAISE, CityToolIds.Bulldozer.LOWER, CityToolIds.Bulldozer.STRETCH, CityToolIds.Bulldozer.RAISE_SEA, CityToolIds.Bulldozer.LOWER_SEA] and not command.changed_ids.is_empty():
 		app.effects_audio.stop_tool_loop_sound()
 		var sound_ids: Array[int] = [ToolSounds.SOUND_TRACTOR]
 		app.effects_audio.play_sound_ids(sound_ids)

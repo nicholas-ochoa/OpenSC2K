@@ -6,10 +6,10 @@ extends RefCounted
 const ChunkCommit = preload("res://src/model/city/ordered_chunk_commit.gd")
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
-const GROUP_NATURE := 1
+const GROUP_NATURE := CityToolIds.Group.LANDSCAPE
 const FULL_MAP_SIZE := CityState.MAP_SIZE
-const SUBTOOL_TREES := 0
-const SUBTOOL_WATER := 1
+const SUBTOOL_TREES := CityToolIds.Landscape.TREES
+const SUBTOOL_WATER := CityToolIds.Landscape.WATER
 const FLAG_WATER := Sc2TileFlags.WATER
 const RADIOACTIVITY := Tiles.RADIOACTIVE_WASTE
 const FIRST_TREE := Tiles.TREE_FIRST
@@ -36,7 +36,7 @@ class WaterTransition extends RefCounted:
 
 static func supports_tool(group_index: int, subtool_index: int) -> bool:
 	return group_index == GROUP_NATURE and (
-		subtool_index in [SUBTOOL_TREES, SUBTOOL_WATER, 3]
+		subtool_index in [SUBTOOL_TREES, SUBTOOL_WATER, CityToolIds.Landscape.FOREST]
 	)
 
 
@@ -88,7 +88,7 @@ static func apply_path(
 
 	var placement_points: Array[Vector2i] = points
 
-	if subtool_index == 3:
+	if subtool_index == CityToolIds.Landscape.FOREST:
 		placement_points = []
 		var candidates: Array[Vector2i] = []
 
@@ -120,7 +120,7 @@ static func apply_path(
 
 		var applied := false
 
-		if subtool_index in [SUBTOOL_TREES, 3]:
+		if subtool_index in [SUBTOOL_TREES, CityToolIds.Landscape.FOREST]:
 			applied = _place_tree(buildings, terrain, zones, flags, misc, index, random)
 		else:
 			applied = _place_water(

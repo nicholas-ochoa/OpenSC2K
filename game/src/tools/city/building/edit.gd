@@ -126,7 +126,7 @@ static func apply(
 		var budget_offset: int = MISC_BUDGETS + int(BUDGET_CATEGORY_BY_TILE[tile_id]) * BUDGET_RECORD_SIZE
 		BinaryData.write_u32_be(misc, budget_offset, BinaryData.read_u32_be(misc, budget_offset) + 1)
 
-	if group_index == 5 and subtool_index < 4:
+	if group_index == CityToolIds.Group.REWARDS and subtool_index < CityToolIds.Rewards.ARCOLOGIES:
 		var reward_mask := Availability.rebuild_reward_mask(misc)
 		BinaryData.write_u32_be(
 			misc,

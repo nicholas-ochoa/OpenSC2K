@@ -32,7 +32,7 @@ func update(city: CityState, random: SimRandom, target_levels: int) -> EditComma
 	levels = target_levels
 
 	if levels != 0:
-		var edited := LandscapeEditorCommand.apply(city, 0, 5, point, random, levels)
+		var edited := LandscapeEditorCommand.apply(city, CityToolIds.Group.BULLDOZER, CityToolIds.Bulldozer.STRETCH, point, random, levels)
 
 		if edited.ok:
 			command = edited

@@ -190,7 +190,7 @@ func _difficulty_name(difficulty: int) -> String:
 
 
 func level_brush_active() -> bool:
-	return app.tool_state.selected_group == 0 and app.tool_state.selected_subtool == TerrainTools.SUBTOOL_LEVEL
+	return app.tool_state.selected_group == CityToolIds.Group.BULLDOZER and app.tool_state.selected_subtool == TerrainTools.SUBTOOL_LEVEL
 
 
 func _enter_landscape_editor() -> void:
@@ -199,8 +199,8 @@ func _enter_landscape_editor() -> void:
 	app.city_toolbar.set_landscape_editor(true)
 	app.city_menu_bar.disasters_menu.disabled = true
 	app.menus.set_overlay(CityViewMode.Mode.CITY)
-	app.current_tool.select_tool_group(0)
-	app.current_tool.select_subtool(2)
+	app.current_tool.select_tool_group(CityToolIds.Group.BULLDOZER)
+	app.current_tool.select_subtool(CityToolIds.Bulldozer.RAISE)
 	app.status_label.text = "Landscape editor: terrain changes are free. Select Start City when ready."
 
 
@@ -212,7 +212,7 @@ func start_city() -> void:
 	app.city_toolbar.set_landscape_editor(false)
 	app.city_menu_bar.disasters_menu.disabled = false
 	app.tool_state.last_edit_command = null
-	app.current_tool.select_tool_group(9)
+	app.current_tool.select_tool_group(CityToolIds.Group.RESIDENTIAL)
 	app.frame.select_speed(GameSpeed.Speed.TURTLE)
 	app.status_label.text = "City started. Build zones, roads, and services."
 	var sound_ids: Array[int] = [513]

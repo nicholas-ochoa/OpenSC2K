@@ -134,17 +134,17 @@ func choose_tool_group(group_index: int) -> void:
 
 
 func tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
-	if group_index == 1 and subtool_index in [0, 1, 2, 3]:
+	if group_index == CityToolIds.Group.LANDSCAPE and subtool_index in [CityToolIds.Landscape.TREES, CityToolIds.Landscape.WATER, CityToolIds.Landscape.STREAM, CityToolIds.Landscape.FOREST]:
 		return TerrainToolIcons.terrain_action(app.asset_state.asset_source.assets.city_ui_graphics,
 			["tree", "water", "stream", "forest"][subtool_index])
 
-	if group_index == 0 and subtool_index in [1, 2, 3]:
+	if group_index == CityToolIds.Group.BULLDOZER and subtool_index in [CityToolIds.Bulldozer.LEVEL, CityToolIds.Bulldozer.RAISE, CityToolIds.Bulldozer.LOWER]:
 		return TerrainToolIcons.terrain_action(
 			app.asset_state.asset_source.assets.city_ui_graphics, ["", "level", "raise", "lower"][subtool_index]
 		)
 
-	if group_index == 0 and subtool_index in [5, 6, 7]:
-		return TerrainToolIcons.terrain_action(app.asset_state.asset_source.assets.city_ui_graphics, ["stretch", "sea_raise", "sea_lower"][subtool_index - 5])
+	if group_index == CityToolIds.Group.BULLDOZER and subtool_index in [CityToolIds.Bulldozer.STRETCH, CityToolIds.Bulldozer.RAISE_SEA, CityToolIds.Bulldozer.LOWER_SEA]:
+		return TerrainToolIcons.terrain_action(app.asset_state.asset_source.assets.city_ui_graphics, ["stretch", "sea_raise", "sea_lower"][subtool_index - CityToolIds.Bulldozer.STRETCH])
 
 	if app.asset_state.palette == null or app.asset_state.large_sprites == null or not app.asset_state.large_sprites.is_valid():
 		return app.city_toolbar.group_icon(group_index) if app.city_toolbar != null else null
@@ -181,7 +181,7 @@ func tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
 
 	var image: Image = rendered.image.duplicate()
 
-	if group_index == 6 and subtool_index == 1:
+	if group_index == CityToolIds.Group.ROADS and subtool_index == CityToolIds.Roads.HIGHWAY:
 		var section := Image.create(image.get_width() + 32, image.get_height() + 16, false, Image.FORMAT_RGBA8)
 		section.fill(Color.TRANSPARENT)
 
@@ -303,10 +303,10 @@ func on_map_selection_started() -> void:
 	app.tool_state.level_brush_altitude = -1
 	if app.new_city.level_brush_active() and app.document_state.city != null:
 		app.tool_state.level_brush_altitude = app.document_state.city.land_altitude(app.map_view.selection_start.x, app.map_view.selection_start.y)
-	if app.tool_state.landscape_editor and app.tool_state.selected_group == 0 and app.tool_state.selected_subtool == 5:
+	if app.tool_state.landscape_editor and app.tool_state.selected_group == CityToolIds.Group.BULLDOZER and app.tool_state.selected_subtool == CityToolIds.Bulldozer.STRETCH:
 		app.tool_state.terrain_stretch.begin(app.map_view.selection_start)
 
-	if app.tool_state.selected_group != 0:
+	if app.tool_state.selected_group != CityToolIds.Group.BULLDOZER:
 		return
 
 	if app.scurk_place_print != null and app.scurk_place_print.visible:
@@ -421,7 +421,7 @@ func on_map_selection_changed(
 
 func center_map_on_tile(point: Vector2i) -> void:
 	if app.map_view.center_on_tile(point):
-		app.effects_audio.play_tool_success_sound(17, 0)
+		app.effects_audio.play_tool_success_sound(CityToolIds.Group.CENTERING, CityToolIds.Centering.CENTER)
 		app.status_label.theme_type_variation = ""
 		app.status_label.text = "Centered the map on tile %d, %d." % [point.x, point.y]
 

@@ -75,7 +75,7 @@ func activate_document(
 		app.map_view.pending_loaded_center = Vector2i(clampi(document.misc_u32(Sc2MiscLayout.CITY_CENTER_X), 0, app.document_state.city.map_size - 1),
 				clampi(document.misc_u32(Sc2MiscLayout.CITY_CENTER_Y), 0, app.document_state.city.map_size - 1))
 
-	app.current_tool.select_tool_group(17)
+	app.current_tool.select_tool_group(CityToolIds.Group.CENTERING)
 	app.view_state.overlay_mode = CityViewMode.Mode.CITY
 	document_state.current_document = document
 	var initial_serialized := document_state.current_document.serialize()

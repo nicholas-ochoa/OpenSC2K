@@ -68,8 +68,8 @@ class ConnectionRequest extends RefCounted:
 const Random = preload("res://src/simulation/random/sim_random.gd")
 
 # selected tool
-var selected_group := 9
-var selected_subtool := 0
+var selected_group: int = CityToolIds.Group.RESIDENTIAL
+var selected_subtool: int = CityToolIds.Residential.LIGHT
 var selected_tool_available := false
 # edit state
 var last_edit_command: EditCommandResult

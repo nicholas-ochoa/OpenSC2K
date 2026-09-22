@@ -15,7 +15,7 @@ static func city_tool(group: int, subtool: int) -> int:
 	if group < 0 or group >= CITY_TOOLS.size():
 		return 0
 
-	return 16 if group == 1 and subtool == 1 else CITY_TOOLS[group]
+	return 16 if group == CityToolIds.Group.LANDSCAPE and subtool == CityToolIds.Landscape.WATER else CITY_TOOLS[group]
 
 
 static func paint_tool(tool: int) -> int:

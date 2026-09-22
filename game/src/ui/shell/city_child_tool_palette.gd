@@ -55,7 +55,7 @@ func show_tool_group(
 	_clear_buttons()
 	scroll.scroll_vertical = 0
 	scroll.set_deferred("scroll_vertical", 0)
-	var visible_group := group_index < 15 or group_index == 16
+	var visible_group := group_index < CityToolIds.Group.SIGNS or group_index == CityToolIds.Group.QUERY
 	heading.visible = visible_group
 	scroll.visible = visible_group
 
@@ -68,13 +68,13 @@ func show_tool_group(
 	var first_available_subtool := -1
 
 	for subtool_index in group.tools.size():
-		if not free_landscape and LandscapeEditorCommand.supports_tool(group_index, subtool_index) and not (group_index == 1 and subtool_index == 3):
+		if not free_landscape and LandscapeEditorCommand.supports_tool(group_index, subtool_index) and not (group_index == CityToolIds.Group.LANDSCAPE and subtool_index == CityToolIds.Landscape.FOREST):
 			continue
 
-		if free_landscape and ((group_index == 0 and subtool_index == 4) or (group_index == 16 and subtool_index != 0)):
+		if free_landscape and ((group_index == CityToolIds.Group.BULLDOZER and subtool_index == CityToolIds.Bulldozer.DEZONE) or (group_index == CityToolIds.Group.QUERY and subtool_index != CityToolIds.Query.QUERY)):
 			continue
 
-		if (group_index == 3 and subtool_index == 1) or (group_index == 5 and subtool_index == 4):
+		if (group_index == CityToolIds.Group.POWER and subtool_index == CityToolIds.Power.PLANTS) or (group_index == CityToolIds.Group.REWARDS and subtool_index == CityToolIds.Rewards.ARCOLOGIES):
 			continue
 
 		if ToolState.is_tool_variant(group_index, subtool_index):
@@ -157,7 +157,7 @@ func tool_button_tooltip(
 	if tool == null:
 		return ""
 
-	if group_index == 16 and subtool_index == 1:
+	if group_index == CityToolIds.Group.QUERY and subtool_index == CityToolIds.Query.TRIP_REACH:
 		return ("Trip Query\nClick a zone or transport tile. Colors show trip cost. A blue pin marks the origin. Green " +
 			"checkmarks mark possible destinations. Inspection does not change the city.")
 
@@ -170,7 +170,7 @@ func tool_button_tooltip(
 	if int(tool.area) > 0:
 		lines.append("Footprint: %d x %d tiles" % [tool.area, tool.area])
 
-	if group_index == 3 and subtool_index >= 2:
+	if group_index == CityToolIds.Group.POWER and subtool_index >= CityToolIds.Power.COAL:
 		var details := Tools.power_plant_details(subtool_index)
 
 		if details != null:

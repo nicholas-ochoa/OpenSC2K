@@ -20,11 +20,11 @@ func _init(application: CityApplication) -> void:
 
 
 func open_tool_choice_dialog(group_index: int) -> void:
-	if app.document_state.city == null or (group_index != 3 and group_index != 5):
+	if app.document_state.city == null or (group_index != CityToolIds.Group.POWER and group_index != CityToolIds.Group.REWARDS):
 		return
 
-	var first_subtool := 2 if group_index == 3 else 5
-	var final_subtool := 10 if group_index == 3 else 8
+	var first_subtool: int = CityToolIds.Power.COAL if group_index == CityToolIds.Group.POWER else CityToolIds.Rewards.PLYMOUTH
+	var final_subtool: int = CityToolIds.Power.FUSION if group_index == CityToolIds.Group.POWER else CityToolIds.Rewards.LAUNCH
 	var choices: Array[int] = []
 
 	for subtool_index in range(first_subtool, final_subtool + 1):
@@ -40,11 +40,11 @@ func open_tool_choice_dialog(group_index: int) -> void:
 		group_index, choices
 	)
 	var title_text := (
-		"Select Power Plant" if group_index == 3 else "Select Arcology"
+		"Select Power Plant" if group_index == CityToolIds.Group.POWER else "Select Arcology"
 	)
 	var prompt_text := (
 		"Select an available power plant."
-		if group_index == 3
+		if group_index == CityToolIds.Group.POWER
 		else "Select an available arcology."
 	)
 	var available_tools: Array[ToolCatalog.Tool] = []
@@ -123,7 +123,7 @@ func confirm_stadium_team() -> void:
 	app.tool_state.last_edit_command = result
 	app.tool_state.pending_stadium_command = null
 	app.interface.refresh_details()
-	app.effects_audio.play_tool_success_sound(14, 3)
+	app.effects_audio.play_tool_success_sound(CityToolIds.Group.RECREATION, CityToolIds.Recreation.STADIUM)
 
 	if app.document_state.city.music_enabled():
 		app.effects_audio.play_music_track(Music.RECREATION_TRACK)
@@ -134,7 +134,7 @@ func confirm_stadium_team() -> void:
 
 func cancel_stadium_team() -> void:
 	app.tool_state.pending_stadium_command = null
-	app.effects_audio.play_tool_success_sound(14, 3)
+	app.effects_audio.play_tool_success_sound(CityToolIds.Group.RECREATION, CityToolIds.Recreation.STADIUM)
 
 	if app.document_state.city != null and app.document_state.city.music_enabled():
 		app.effects_audio.play_music_track(Music.RECREATION_TRACK)

@@ -57,39 +57,39 @@ const MAX_SLOTS_PER_GROUP := 12
 # grid capacity and pollution values are from the monthly power and pollution
 # phases. the power group uses subtool indices 2 through 10
 static var POWER_PLANT_DETAILS: Dictionary[int, PowerPlantDetails] = {
-	2: PowerPlantDetails.new(
+	CityToolIds.Power.COAL: PowerPlantDetails.new(
 		200, "44 demand tiles", 50, "50 years",
 		"Can be blocked by nearby residential zones."
 	),
-	3: PowerPlantDetails.new(
+	CityToolIds.Power.HYDRO: PowerPlantDetails.new(
 		20, "40 demand tiles", 0, "No age limit",
 		"Must be built on an unused waterfall tile."
 	),
-	4: PowerPlantDetails.new(
+	CityToolIds.Power.OIL: PowerPlantDetails.new(
 		220, "48 demand tiles", 25, "50 years",
 		"Can be blocked by nearby residential zones."
 	),
-	5: PowerPlantDetails.new(
+	CityToolIds.Power.GAS: PowerPlantDetails.new(
 		50, "11 demand tiles", 10, "50 years",
 		"Can be blocked by nearby residential zones."
 	),
-	6: PowerPlantDetails.new(
+	CityToolIds.Power.NUCLEAR: PowerPlantDetails.new(
 		500, "111 demand tiles", 2, "50 years",
 		"The Nuclear-Free ordinance disables this plant."
 	),
-	7: PowerPlantDetails.new(
+	CityToolIds.Power.WIND: PowerPlantDetails.new(
 		4, "Varies with altitude and wind", 0, "No age limit",
 		"Higher land and stronger wind increase grid capacity."
 	),
-	8: PowerPlantDetails.new(
+	CityToolIds.Power.SOLAR: PowerPlantDetails.new(
 		50, "5 to 14 demand tiles; varies with rain", 0, "50 years",
 		"Drier weather increases grid capacity."
 	),
-	9: PowerPlantDetails.new(
+	CityToolIds.Power.MICROWAVE: PowerPlantDetails.new(
 		1600, "355 demand tiles", 0, "50 years",
 		"A microwave disaster can start at this plant."
 	),
-	10: PowerPlantDetails.new(
+	CityToolIds.Power.FUSION: PowerPlantDetails.new(
 		2500, "555 demand tiles", 2, "50 years",
 		"This plant becomes available after its invention."
 	),
