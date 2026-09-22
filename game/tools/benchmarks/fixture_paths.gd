@@ -29,6 +29,37 @@ static func configure_application(main: CityApplication) -> void:
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
 
 
+func report_metadata(workload: Dictionary) -> void:
+	var inputs := {}
+	for path in get_script().fixture_paths():
+		inputs[path] = FileAccess.get_sha256(path)
+
+	# the benchmark folder can be a symlink from a disposable project
+	var folder := ProjectSettings.globalize_path("res://tools/benchmarks")
+	var output: Array = []
+	var revision := "unknown"
+	if OS.execute("git", ["-C", folder, "rev-parse", "HEAD"], output) == 0:
+		revision = str(output[0]).strip_edges()
+
+	output.clear()
+	var dirty: Variant = null
+	if OS.execute("git", ["-C", folder, "status", "--porcelain", "--untracked-files=no"], output) == 0:
+		dirty = not str(output[0]).strip_edges().is_empty()
+
+	var load_note := OS.get_environment("CITY_BENCH_LOAD_NOTE")
+	print("METADATA ", JSON.stringify({"script": get_script().resource_path, "revision": revision,
+		"tracked_changes": dirty, "engine": Engine.get_version_info().string, "display": DisplayServer.get_name(),
+		"arguments": OS.get_cmdline_args(), "inputs_sha256": inputs, "workload": workload,
+		"concurrent_load": load_note if not load_note.is_empty() else "not recorded"}))
+
+
+static func bytes_sha256(data: PackedByteArray) -> String:
+	var hashing := HashingContext.new()
+	hashing.start(HashingContext.HASH_SHA256)
+	hashing.update(data)
+	return hashing.finish().hex_encode()
+
+
 func _initialize() -> void:
 	if "--check-all-inputs" in OS.get_cmdline_user_args():
 		_check_all_inputs()

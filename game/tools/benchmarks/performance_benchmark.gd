@@ -1,5 +1,7 @@
 extends "res://tools/benchmarks/fixture_paths.gd"
 
+@warning_ignore_start("integer_division")
+
 const Sc2Document = preload("res://src/formats/sc2_file.gd")
 const CityModel = preload("res://src/model/city_state.gd")
 const Palette = preload("res://src/assets/sc2_palette.gd")
@@ -11,6 +13,8 @@ const Simulation = preload("res://src/simulation/core/simulation_engine.gd")
 const Random = preload("res://src/simulation/random/sim_random.gd")
 const LfsrRandom = preload("res://src/simulation/random/sim_lfsr_random.gd")
 const DEFAULT_CITY_FILE := "SYDNEY.SC2"
+const CAPTURE_WARMUP := 5
+const CAPTURE_SAMPLES := 40
 
 
 func _benchmark_initialize() -> void:
@@ -35,6 +39,9 @@ func _benchmark_initialize() -> void:
 		quit(1)
 
 		return
+
+	report_metadata({"map_size": city.map_size, "full_resolution": city.document.full_resolution_maps(),
+		"capture_warmup": CAPTURE_WARMUP, "capture_samples": CAPTURE_SAMPLES, "other_workloads": "see measurement labels"})
 
 	var started := Time.get_ticks_usec()
 	var asset_errors := IsometricStaticVisuals.validate_assets(city, sprites)
@@ -203,12 +210,7 @@ func _benchmark_initialize() -> void:
 		Renderer.static_visual_signature(city)
 
 	print("static_signature_40: %d us" % (Time.get_ticks_usec() - started))
-	started = Time.get_ticks_usec()
-
-	for _snapshot_index in 40:
-		CityModel.from_document(city.document.duplicate_document())
-
-	print("render_snapshot_40: %d us" % (Time.get_ticks_usec() - started))
+	_measure_captures(city, index_palette, sprites)
 	started = Time.get_ticks_usec()
 
 	for dynamic_index in 40:
@@ -407,6 +409,41 @@ func _benchmark_initialize() -> void:
 
 func _print_measurement(label: String, started: int, ok: bool) -> void:
 	print("%s: %d us; ok=%s" % [label, Time.get_ticks_usec() - started, ok])
+
+
+func _measure_captures(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive) -> void:
+	var controller := GameSpeedController.new(SimulationEngine.new(city, 123, 456, 789))
+	var regions := CityRegionCache.new()
+	var samples := {"full_image_capture": [], "region_configure_capture": [], "simulation_capture": []}
+
+	for index in CAPTURE_WARMUP + CAPTURE_SAMPLES:
+		var started := Time.get_ticks_usec()
+		var snapshot := CityState.from_document(city.document.duplicate_document(true))
+		snapshot.visible_altitude_levels = city.visible_altitude_levels
+		var elapsed := Time.get_ticks_usec() - started
+		if index >= CAPTURE_WARMUP:
+			samples.full_image_capture.append(elapsed)
+
+		started = Time.get_ticks_usec()
+		regions.configure(city, palette, sprites, [index], Renderer.VIEW_LARGE,
+			CityViewMode.Mode.CITY, CityViewFilter.DEFAULT_VISIBILITY, true, true)
+		elapsed = Time.get_ticks_usec() - started
+		if index >= CAPTURE_WARMUP:
+			samples.region_configure_capture.append(elapsed)
+
+		started = Time.get_ticks_usec()
+		var simulation_snapshot := SimulationSnapshot.capture(controller, null)
+		elapsed = Time.get_ticks_usec() - started
+		if index >= CAPTURE_WARMUP:
+			samples.simulation_capture.append(elapsed)
+		simulation_snapshot = null
+
+	regions.close()
+	for name in samples:
+		var values: Array = samples[name]
+		values.sort()
+		print("%s: samples=%d; median=%d us; min=%d us; max=%d us" % [
+			name, values.size(), values[values.size() / 2], values[0], values[-1]])
 
 
 static func fixture_paths() -> PackedStringArray:

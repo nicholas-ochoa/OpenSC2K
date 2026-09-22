@@ -1,7 +1,9 @@
 extends "res://tools/benchmarks/fixture_paths.gd"
 
 ## Determinism probe: runs fixed-seed days on populated cities and prints a
-## hash of every decoded chunk plus the three RNG states after each city.
+## serialized save bytes, ordered day results, and all three RNG states.
+
+const TimingResults = preload("res://tests/support/timing_results.gd")
 
 const CITIES := [
 	"CAPEQUES.SC2", "BAYVIEW.SC2", "CENTERVL.SC2", "FOURCITI.SC2",
@@ -11,6 +13,8 @@ const DAYS := 60
 
 
 func _benchmark_initialize() -> void:
+	report_metadata({"days": DAYS, "seeds": [123, 456, 789], "warmup": 0, "samples": 1,
+		"annual_budget": "keep funding", "military_proposal": "decline"})
 	var lines := PackedStringArray()
 
 	for name: String in CITIES:
@@ -25,6 +29,7 @@ func _benchmark_initialize() -> void:
 		var city := CityState.from_document(doc)
 		var engine := SimulationEngine.new(city, 123, 456, 789)
 		var day_hashes := PackedStringArray()
+		var first_day := city.age_in_days()
 
 		for day in DAYS:
 			var result := engine.advance_day()
@@ -33,10 +38,28 @@ func _benchmark_initialize() -> void:
 				quit(1)
 				return
 
-			day_hashes.append("%d:%s" % [day, "ok" if result.ok else "FAIL"])
+			day_hashes.append(JSON.stringify(TimingResults.without_timings(result)))
+			while not engine.pending_interaction.is_empty():
+				result = _resolve_interaction(engine)
+				if not result.ok:
+					printerr("%s day %d interaction failed: %s" % [name, day, result.error])
+					quit(1)
+					return
+				day_hashes.append(JSON.stringify(TimingResults.without_timings(result)))
 
-		lines.append("%s %s r=%d l=%d g=%d days=%s" % [
-			name, _state_hash(city), engine.random.state,
+		if city.age_in_days() != first_day + DAYS:
+			printerr("%s did not advance %d days" % [name, DAYS])
+			quit(1)
+			return
+
+		var saved := city.document.serialize(true)
+		if not saved.ok:
+			printerr("%s serialization failed: %s" % [name, saved.error])
+			quit(1)
+			return
+
+		lines.append("%s sha256=%s r=%d l=%d g=%d days=%s" % [
+			name, bytes_sha256(saved.data), engine.random.state,
 			engine.lfsr_random.state, engine.game_random.state,
 			_digest(day_hashes),
 		])
@@ -47,23 +70,17 @@ func _benchmark_initialize() -> void:
 	quit()
 
 
-func _state_hash(city: CityState) -> String:
-	var ctx := HashingContext.new()
-	ctx.start(HashingContext.HASH_SHA256)
-
-	for chunk in city.document.chunks:
-		ctx.update(chunk.chunk_id.to_utf8_buffer())
-		ctx.update(chunk.decoded_payload if chunk.decoded_payload.size() > 0 else chunk.stored_payload)
-
-	return ctx.finish().hex_encode()
+func _resolve_interaction(engine: SimulationEngine) -> SimulationDayResult:
+	match engine.pending_interaction:
+		"annual_budget":
+			return engine.resolve_annual_budget(BudgetPhase.funding_values(engine.city), engine.city.auto_budget_enabled())
+		"military_proposal":
+			return engine.resolve_military_proposal(false)
+	return SimulationDayResult.failure("unsupported interaction: " + engine.pending_interaction)
 
 
 func _digest(values: PackedStringArray) -> String:
-	var ctx := HashingContext.new()
-	ctx.start(HashingContext.HASH_SHA256)
-	ctx.update("|".join(values).to_utf8_buffer())
-
-	return ctx.finish().hex_encode().substr(0, 16)
+	return bytes_sha256("|".join(values).to_utf8_buffer())
 
 
 static func fixture_paths() -> PackedStringArray:
