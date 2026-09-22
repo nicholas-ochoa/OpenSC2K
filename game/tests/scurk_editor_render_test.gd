@@ -102,7 +102,8 @@ func _run() -> void:
 	assert(viewport.get_texture().get_image().get_pixel(401, 1).is_equal_approx(palette.color(42)))
 	viewport.free()
 	await _test_clip_display(palette)
-	print("PASS: native SCURK palette, canvas and display cycling pixels, brush outline and unchanged indices")
+	await _test_modern_display(palette)
+	print("PASS: native SCURK cycling, clipping, layers, paste, comparison and palette highlight pixels")
 	quit()
 
 
@@ -170,3 +171,77 @@ func _test_clip_display(palette: Sc2Palette) -> void:
 	assert(transparent.get_pixel(0, 0).is_equal_approx(palette.color(252)))
 	assert(transparent.get_pixel(1, 0).a == 0.0)
 	viewport.free()
+
+
+func _test_modern_display(palette: Sc2Palette) -> void:
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(64, 64)
+	viewport.transparent_bg = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var canvas := ScurkPixelCanvas.new()
+	canvas.show_grid = false
+	canvas.set_palette_cycle_enabled(false)
+	canvas.set_zoom(8)
+	var pixels := PackedInt32Array()
+	pixels.resize(16)
+	pixels.fill(-1)
+	pixels[0] = 10
+	canvas.set_sprite_data(4, 4, pixels, palette)
+	canvas.layer_below_pixels = pixels.duplicate()
+	canvas.layer_below_pixels.fill(42)
+	canvas.layer_above_pixels = pixels.duplicate()
+	canvas.layer_above_pixels.fill(-1)
+	canvas.layer_above_pixels[1] = 30
+	viewport.add_child(canvas)
+	await RenderingServer.frame_post_draw
+	var image := viewport.get_texture().get_image()
+	assert(image.get_pixel(5, 4).is_equal_approx(palette.color(10)))
+	assert(image.get_pixel(13, 4).is_equal_approx(palette.color(30)))
+	assert(image.get_pixel(21, 4).is_equal_approx(palette.color(42)))
+	canvas.active_layer_visible = false
+	canvas.queue_redraw()
+	await RenderingServer.frame_post_draw
+	image = viewport.get_texture().get_image()
+	assert(image.get_pixel(5, 4).is_equal_approx(palette.color(42)))
+	assert(image.get_pixel(13, 4).is_equal_approx(palette.color(30)))
+	assert(canvas.pixels == pixels)
+	canvas.active_layer_visible = true
+	canvas.clipboard_width = 1
+	canvas.clipboard_height = 1
+	canvas.clipboard_pixels = PackedInt32Array([55])
+	canvas.begin_paste(Vector2i(2, 2))
+	await RenderingServer.frame_post_draw
+	image = viewport.get_texture().get_image()
+	assert(image.get_pixel(21, 20).is_equal_approx(palette.color(55)))
+	assert(canvas.pixels == pixels)
+	canvas.cancel_paste()
+	canvas.comparison_pixels = pixels.duplicate()
+	canvas.comparison_pixels.fill(60)
+	canvas.comparison_mode = 1
+	canvas.queue_redraw()
+	await RenderingServer.frame_post_draw
+	image = viewport.get_texture().get_image()
+	assert(image.get_pixel(5, 4).is_equal_approx(palette.color(60)))
+	canvas.comparison_mode = 2
+	canvas.queue_redraw()
+	await RenderingServer.frame_post_draw
+	image = viewport.get_texture().get_image()
+	assert(_color_near(image.get_pixel(5, 4), palette.color(10).lerp(palette.color(60), 0.5)))
+	canvas.comparison_mode = 3
+	canvas.queue_redraw()
+	await RenderingServer.frame_post_draw
+	image = viewport.get_texture().get_image()
+	assert(_color_near(image.get_pixel(5, 4), Color(1.0, 0.25, 0.7)))
+	canvas.comparison_mode = 0
+	canvas.highlighted_palette_index = 42
+	canvas.queue_redraw()
+	await RenderingServer.frame_post_draw
+	image = viewport.get_texture().get_image()
+	assert(_color_near(image.get_pixel(21, 4), palette.color(42).lerp(Color.WHITE, 0.6)))
+	assert(canvas.pixels == pixels)
+	viewport.free()
+
+
+func _color_near(value: Color, expected: Color) -> bool:
+	return absf(value.r - expected.r) < 0.01 and absf(value.g - expected.g) < 0.01 and absf(value.b - expected.b) < 0.01 and absf(value.a - expected.a) < 0.01
