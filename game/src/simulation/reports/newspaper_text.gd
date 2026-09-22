@@ -53,7 +53,7 @@ static func published_seed(
 	if story_offset < 0:
 		return -1
 
-	return session_seed + int(city_days / 25) + paper_index * 500 + story_offset
+	return session_seed + int(city_days / CityCalendar.DAYS_PER_MONTH) + paper_index * 500 + story_offset
 
 
 static func token_phrase_id(value: int) -> int:

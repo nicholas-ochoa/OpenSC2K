@@ -283,7 +283,7 @@ static func _select_disaster(
 	if not difficulty_is_valid:
 		return _failed("city difficulty is out of range")
 
-	var city_months := int(BinaryData.read_u32_be(misc, MISC_CITY_DAYS) / 25)
+	var city_months := int(BinaryData.read_u32_be(misc, MISC_CITY_DAYS) / CityCalendar.DAYS_PER_MONTH)
 
 	if city_months < wait_months:
 		return result

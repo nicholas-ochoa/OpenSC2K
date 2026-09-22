@@ -75,7 +75,7 @@ static func run(city: CityState, random: SimRandom, annual_budget_approved := fa
 	var span := SimulationTimingSpan.new(city.simulation_slice)
 	span.mark("prepare data")
 	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
-	var month := int((city.age_in_days() % 300) / 25)
+	var month := int((city.age_in_days() % CityCalendar.DAYS_PER_YEAR) / CityCalendar.DAYS_PER_MONTH)
 	var funds_before := BinaryData.read_i32_be(misc, MISC_FUNDS)
 	var funds := funds_before
 	var settled_year := false
@@ -251,7 +251,7 @@ static func requires_annual_budget(city: CityState) -> bool:
 		return false
 
 	return (
-		city.age_in_days() % 300 == 0
+		city.age_in_days() % CityCalendar.DAYS_PER_YEAR == 0
 		and city.document.misc_u32(MISC_YEAR_END) != 0
 		and city.document.misc_u32(MISC_AUTO_BUDGET) == 0
 	)

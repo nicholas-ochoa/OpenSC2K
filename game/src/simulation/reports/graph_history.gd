@@ -186,8 +186,8 @@ static func advance(city: CityState, current_values: PackedInt64Array) -> Result
 		return _failed("XGRP is missing or has the wrong size")
 
 	var data := chunk.decoded_payload.duplicate()
-	var month := int((city.age_in_days() % 300) / 25)
-	var elapsed_years := int(city.age_in_days() / 300)
+	var month := int((city.age_in_days() % CityCalendar.DAYS_PER_YEAR) / CityCalendar.DAYS_PER_MONTH)
+	var elapsed_years := int(city.age_in_days() / CityCalendar.DAYS_PER_YEAR)
 
 	for series in SERIES_COUNT:
 		for index in range(11, 0, -1):

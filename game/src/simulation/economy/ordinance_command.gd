@@ -161,7 +161,7 @@ static func snapshot(city: CityState) -> Result:
 
 	var budget_offset := _budget_offset(BUDGET_ORDINANCES)
 	var year_to_date_raw := BinaryData.read_i32_be(misc, budget_offset + BUDGET_YEAR_TO_DATE)
-	var month := int((BinaryData.read_u32_be(misc, MISC_CITY_DAYS) % 300) / 25)
+	var month := int((BinaryData.read_u32_be(misc, MISC_CITY_DAYS) % CityCalendar.DAYS_PER_YEAR) / CityCalendar.DAYS_PER_MONTH)
 	var estimated_raw := _to_i32(current_raw * 12)
 
 	if BinaryData.read_u32_be(misc, MISC_YEAR_END) == 0:

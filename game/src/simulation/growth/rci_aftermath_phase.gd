@@ -407,7 +407,7 @@ static func _release_invention(
 	if (random.next_u15() & 7) != 0:
 		return -1
 
-	var current_year := _to_i16(BinaryData.read_u32_be(misc, MISC_START_YEAR)) + int(city.age_in_days() / 300)
+	var current_year := _to_i16(BinaryData.read_u32_be(misc, MISC_START_YEAR)) + int(city.age_in_days() / CityCalendar.DAYS_PER_YEAR)
 
 	for index in INVENTION_COUNT:
 		var offset := MISC_INVENTION_YEARS + index * 4

@@ -1,5 +1,11 @@
 [
   {
+    "id": "city_calendar_test",
+    "script": "tests/city_calendar_test.gd",
+    "domain": "simulation",
+    "lane": "product"
+  },
+  {
     "id": "thing_layout_test",
     "script": "tests/thing_layout_test.gd",
     "domain": "formats",

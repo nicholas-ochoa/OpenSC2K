@@ -25,7 +25,7 @@ static func select(story_type: int, session_seed: int, city_days: int, paper_ind
 	if resource != 0:
 		return resource
 
-	var random := SimRandom.new(session_seed + int(city_days / 25) + paper_index * 500 + 21)
+	var random := SimRandom.new(session_seed + int(city_days / CityCalendar.DAYS_PER_MONTH) + paper_index * 500 + 21)
 
 	return 400 + random.next_u15() % 12
 

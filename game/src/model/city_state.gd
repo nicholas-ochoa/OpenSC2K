@@ -460,15 +460,15 @@ func set_no_disasters_enabled(enabled: bool) -> bool:
 
 
 func current_year() -> int:
-	return founding_year() + int(age_in_days() / 300)
+	return founding_year() + int(age_in_days() / CityCalendar.DAYS_PER_YEAR)
 
 
 func current_month() -> int:
-	return int((age_in_days() % 300) / 25) + 1
+	return int((age_in_days() % CityCalendar.DAYS_PER_YEAR) / CityCalendar.DAYS_PER_MONTH) + 1
 
 
 func current_day() -> int:
-	return age_in_days() % 25 + 1
+	return age_in_days() % CityCalendar.DAYS_PER_MONTH + 1
 
 
 func population() -> int:

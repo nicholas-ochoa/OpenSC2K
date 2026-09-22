@@ -4,9 +4,9 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 # february isn't special, every month has 25 days
-const DAYS_PER_MONTH := 25
-const MONTHS_PER_YEAR := 12
-const DAYS_PER_YEAR := DAYS_PER_MONTH * MONTHS_PER_YEAR
+const DAYS_PER_MONTH := CityCalendar.DAYS_PER_MONTH
+const MONTHS_PER_YEAR := CityCalendar.MONTHS_PER_YEAR
+const DAYS_PER_YEAR := CityCalendar.DAYS_PER_YEAR
 
 var city_days := 0
 

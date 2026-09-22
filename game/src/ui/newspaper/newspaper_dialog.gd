@@ -255,7 +255,7 @@ func _extra_stories(misc: PackedByteArray, teams: PackedStringArray) -> Array[Ne
 
 	# reading the newspaper mustn't spend the city's random numbers
 	# remake-only filler uses private deterministic seeds and never updates misc
-	var base_seed := session_seed + (city.age_in_days() / 25) + selected_newspaper * 500
+	var base_seed := session_seed + (city.age_in_days() / CityCalendar.DAYS_PER_MONTH) + selected_newspaper * 500
 	var seen := {page.headline_for_slot(0): true}
 
 	for headline in page.headlines:

@@ -76,7 +76,7 @@ static func run(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom, 
 
 	var data: PackedByteArray = misc_chunk.decoded_payload.duplicate()
 	var start_year := _to_i16(BinaryData.read_u32_be(data, MISC_START_YEAR))
-	var elapsed_years := int(BinaryData.read_u32_be(data, MISC_CITY_DAYS) / 300)
+	var elapsed_years := int(BinaryData.read_u32_be(data, MISC_CITY_DAYS) / CityCalendar.DAYS_PER_YEAR)
 	var targets := world_demands(start_year, elapsed_years)
 
 	if targets.is_empty():
