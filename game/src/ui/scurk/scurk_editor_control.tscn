@@ -4,7 +4,6 @@
 [ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_editor_toolbar.tscn" id="toolbar"]
 [ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_editor_drawing_controls.tscn" id="drawing_controls"]
 [ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_editor_canvas_panel.tscn" id="canvas_panel"]
-[ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_editor_palette_panel.tscn" id="palette_panel"]
 [ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_editor_dialogs.tscn" id="dialogs"]
 
 [ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_editor_studio.tscn" id="studio"]
@@ -51,7 +50,7 @@ layout_mode = 2
 size_flags_vertical = 3
 size_flags_horizontal = 3
 
-[node name="Palette" parent="Panel/Content/Body" instance=ExtResource("palette_panel")]
+[node name="Studio" parent="Panel/Content/Body" instance=ExtResource("studio")]
 layout_mode = 2
 
 [node name="StatusBar" type="PanelContainer" parent="Panel/Content"]
@@ -87,7 +86,4 @@ custom_minimum_size = Vector2(150, 0)
 text_overrun_behavior = 3
 
 [node name="Dialogs" parent="." instance=ExtResource("dialogs")]
-layout_mode = 2
-
-[node name="Studio" parent="." instance=ExtResource("studio")]
 layout_mode = 2

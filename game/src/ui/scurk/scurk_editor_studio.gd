@@ -1,14 +1,15 @@
 class_name ScurkEditorStudio
-extends Control
+extends PanelContainer
 
 @warning_ignore_start("integer_division")
 
 const Workspace = preload("res://src/tools/scurk/scurk_drawing_workspace.gd")
-const LAYERS := "Project/Content/Tabs/Layers"
-const HISTORY := "Project/Content/Tabs/History"
-const META := "Project/Content/Tabs/Metadata"
-const STAMPS := "Project/Content/Tabs/Stamps"
+const LAYERS := "Margin/Tabs/Layers"
+const HISTORY := "Margin/Tabs/History"
+const META := "Margin/Tabs/Metadata"
+const STAMPS := "Margin/Tabs/Stamps"
 
+var tabs: TabContainer
 var editor: ScurkEditorControl
 var project := ScurkProject.new()
 var project_path := ""
@@ -29,11 +30,15 @@ var recovered_source := ""
 var imported: IndexedImageResult
 var imported_path := ""
 var import_clipped := 0
+var context_view := 0
 var updating_controls := false
 
 
 func bind(value: ScurkEditorControl) -> void:
 	editor = value
+	AppUiTheme.bind_frosted_panel(self)
+	tabs = $Margin/Tabs
+	tabs.tab_changed.connect(_tab_changed)
 	for dialog: FileDialog in [$OpenProject, $SaveProject, $RecoveryFiles]:
 		dialog.theme = AppUiTheme.file_dialog()
 	$RecoveryFiles.file_selected.connect(func(path: String) -> void: load_project(path, true))
@@ -73,6 +78,8 @@ func bind(value: ScurkEditorControl) -> void:
 	$ImportPreview.confirmed.connect(_apply_import)
 	for field in ["X", "Y"]:
 		get_node("ImportPreview/Content/Placement/" + field).value_changed.connect(func(_value: float) -> void: _refresh_import())
+	for view in 3:
+		get_node("Context/Content/Options/" + ["Large", "Medium", "Small"][view]).pressed.connect(_select_context_view.bind(view))
 	$Context/Content/Options/Roads.toggled.connect(func(enabled: bool) -> void:
 		$Context/Content/View.show_roads = enabled
 		$Context/Content/View.queue_redraw())
@@ -102,6 +109,8 @@ func reset(bytes: PackedByteArray) -> void:
 	saved_checkpoints.clear()
 	object_start.clear()
 	autosave_revision = -1
+	_refresh_lists()
+	_refresh_metadata()
 
 
 func key(view := -1) -> String:
@@ -188,15 +197,22 @@ func restore(state: Dictionary) -> void:
 	editor.palette_panel.import_state(palette_state())
 	loading = false
 	update_modified()
-
-
-func show_project() -> void:
-	_refresh_layers()
 	_refresh_lists()
+	_refresh_metadata()
+
+
+
+func _tab_changed(index: int) -> void:
+	if index == 1:
+		_refresh_layers()
+	elif index in [2, 3]:
+		_refresh_lists()
+
+
+func _refresh_metadata() -> void:
 	get_node(META + "/Author").text = String(project.metadata.get("author", ""))
 	get_node(META + "/Title").text = String(project.metadata.get("title", ""))
 	get_node(META + "/Notes").text = String(project.metadata.get("notes", ""))
-	$Project.popup_centered()
 
 
 func show_paint() -> void:
@@ -254,6 +270,8 @@ func load_project(path: String, recovered := false) -> bool:
 	loading = false
 	saved_state = project.snapshot()
 	saved_checkpoints = project.checkpoints.duplicate(true)
+	_refresh_lists()
+	_refresh_metadata()
 	modified = recovered
 	editor._update_title()
 	editor._set_status("Recovered project." if recovered else "Loaded %s." % path.get_file())
@@ -432,6 +450,7 @@ func _restore_checkpoint() -> void:
 		editor._record_edit(editor.edit_history.pending_edit_before)
 		editor._refresh_sprite()
 		_refresh_lists()
+		_refresh_metadata()
 
 
 func _metadata_changed() -> void:
@@ -493,7 +512,8 @@ func _stamp_action(action: String) -> void:
 			editor.pixel_canvas.paint_options.stamp_spacing = stamp.spacing
 			get_node(STAMPS + "/Spacing/Value").value = stamp.spacing
 			editor._select_tool(ScurkPixelCanvas.TOOL_STAMP)
-			$Project.hide()
+			if editor.pixel_canvas.is_inside_tree():
+				editor.pixel_canvas.grab_focus()
 	_refresh_lists()
 
 
@@ -579,37 +599,31 @@ func _apply_import() -> void:
 
 
 func show_context() -> void:
+	context_view = editor.current_view
 	_refresh_context()
 	$Context.popup_centered()
 
 
+func _select_context_view(value: int) -> void:
+	if not editor._view_is_available(value):
+		return
+	context_view = value
+	_refresh_context()
+
+
 func _refresh_context() -> void:
 	var view := $Context/Content/View as ScurkContextPreview
-	var shape := editor._output_shape_for_view(editor.current_view)
+	for index in 3:
+		var button := get_node("Context/Content/Options/" + ["Large", "Medium", "Small"][index]) as Button
+		button.disabled = not editor._view_is_available(index)
+		button.set_pressed_no_signal(index == context_view)
+	var shape := editor._output_shape_for_view(context_view)
 	if not shape.ok:
 		return
-	var divisor := Workspace.view_divisor(editor.current_view)
-	var pixels := shape.pixels
-	if divisor > 1:
-		var expanded := PackedInt32Array()
-		expanded.resize(shape.width * shape.height * divisor * divisor)
-		for y in shape.height * divisor:
-			for x in shape.width * divisor:
-				expanded[y * shape.width * divisor + x] = pixels[(y / divisor) * shape.width + x / divisor]
-		pixels = expanded
-	view.artwork = ScurkContextPreview.indexed_texture(pixels, shape.width * divisor, shape.height * divisor, editor.palette)
-	view.footprint = maxi(1, editor.active_base_width / 32)
-	view.road = _context_sprite(1000 + BuildingTileIds.ROAD_STRAIGHT_1)
-	view.neighbor = _context_sprite(1000 + BuildingTileIds.WAREHOUSE_1X1_1)
-	view.queue_redraw()
-
-
-func _context_sprite(id: int) -> ImageTexture:
-	var entry := editor.base_large_sprites.find_sprite(id)
-	if entry == null:
-		return null
-	var decoded := entry.decode_indices()
-	return ScurkContextPreview.indexed_texture(decoded.pixels, entry.width, entry.height, editor.palette) if decoded.ok else null
+	var city_view: int = [CityIsometricRenderer.VIEW_LARGE, CityIsometricRenderer.VIEW_MEDIUM, CityIsometricRenderer.VIEW_SMALL][context_view]
+	view.configure(shape.pixels, shape.width, shape.height,
+		maxi(1, editor.active_base_width / 32), editor.palette,
+		Sc2SpriteArchive.combine([editor.base_large_sprites, editor.base_small_medium_sprites, editor.tile_set.overrides]), city_view)
 
 
 func update_modified() -> void:

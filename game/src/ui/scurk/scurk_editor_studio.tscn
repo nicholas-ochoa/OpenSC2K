@@ -4,122 +4,145 @@
 
 [ext_resource type="Script" path="res://src/view/scurk_context_preview.gd" id="context"]
 
-[node name="Studio" type="Control"]
+[ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_editor_palette_panel.tscn" id="palette"]
+[ext_resource type="Shader" path="res://src/ui/shared/frosted_panel.gdshader" id="glass"]
+
+[sub_resource type="ShaderMaterial" id="GlassMaterial"]
+shader = ExtResource("glass")
+
+[sub_resource type="ButtonGroup" id="ContextViews"]
+
+[sub_resource type="StyleBoxEmpty" id="TabPanel"]
+content_margin_left = 6.0
+content_margin_top = 6.0
+content_margin_right = 6.0
+content_margin_bottom = 6.0
+
+[node name="Studio" type="PanelContainer"]
 script = ExtResource("script")
-mouse_filter = 2
+material = SubResource("GlassMaterial")
+theme_type_variation = "CityToolbarPanel"
+custom_minimum_size = Vector2(410, 0)
 
-[node name="Project" type="AcceptDialog" parent="."]
-title = "SCURK project"
-exclusive = true
-size = Vector2i(560, 460)
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
 
-[node name="Content" type="VBoxContainer" parent="Project"]
-
-[node name="Tabs" type="TabContainer" parent="Project/Content"]
+[node name="Tabs" type="TabContainer" parent="Margin"]
+layout_mode = 2
 size_flags_vertical = 3
-custom_minimum_size = Vector2(520, 350)
+theme_override_styles/panel = SubResource("TabPanel")
+current_tab = 0
+tab_alignment = 0
+use_hidden_tabs_for_min_size = true
 
-[node name="Layers" type="VBoxContainer" parent="Project/Content/Tabs"]
+[node name="Colors" parent="Margin/Tabs" instance=ExtResource("palette")]
+layout_mode = 2
 
-[node name="History" type="VBoxContainer" parent="Project/Content/Tabs"]
+[node name="Layers" type="VBoxContainer" parent="Margin/Tabs"]
 
-[node name="Metadata" type="VBoxContainer" parent="Project/Content/Tabs"]
+[node name="Stamps" type="VBoxContainer" parent="Margin/Tabs"]
 
-[node name="Stamps" type="VBoxContainer" parent="Project/Content/Tabs"]
+[node name="History" type="VBoxContainer" parent="Margin/Tabs"]
 
-[node name="List" type="ItemList" parent="Project/Content/Tabs/Layers"]
+[node name="Metadata" type="VBoxContainer" parent="Margin/Tabs"]
+
+[node name="List" type="ItemList" parent="Margin/Tabs/Layers"]
 size_flags_vertical = 3
 custom_minimum_size = Vector2(0, 160)
 
-[node name="Name" type="LineEdit" parent="Project/Content/Tabs/Layers"]
+[node name="Name" type="LineEdit" parent="Margin/Tabs/Layers"]
 placeholder_text = "Layer name"
 
-[node name="State" type="HBoxContainer" parent="Project/Content/Tabs/Layers"]
+[node name="State" type="HBoxContainer" parent="Margin/Tabs/Layers"]
 
-[node name="Visible" type="CheckBox" parent="Project/Content/Tabs/Layers/State"]
+[node name="Visible" type="CheckBox" parent="Margin/Tabs/Layers/State"]
 text = "Visible"
 button_pressed = true
 
-[node name="Locked" type="CheckBox" parent="Project/Content/Tabs/Layers/State"]
+[node name="Locked" type="CheckBox" parent="Margin/Tabs/Layers/State"]
 text = "Locked"
 button_pressed = false
 
-[node name="Actions" type="HBoxContainer" parent="Project/Content/Tabs/Layers"]
+[node name="Actions" type="HFlowContainer" parent="Margin/Tabs/Layers"]
 
-[node name="Add" type="Button" parent="Project/Content/Tabs/Layers/Actions"]
+[node name="Add" type="Button" parent="Margin/Tabs/Layers/Actions"]
 text = "Add"
 
-[node name="Delete" type="Button" parent="Project/Content/Tabs/Layers/Actions"]
+[node name="Delete" type="Button" parent="Margin/Tabs/Layers/Actions"]
 text = "Delete"
 
-[node name="Up" type="Button" parent="Project/Content/Tabs/Layers/Actions"]
+[node name="Up" type="Button" parent="Margin/Tabs/Layers/Actions"]
 text = "Up"
 
-[node name="Down" type="Button" parent="Project/Content/Tabs/Layers/Actions"]
+[node name="Down" type="Button" parent="Margin/Tabs/Layers/Actions"]
 text = "Down"
 
-[node name="Rename" type="Button" parent="Project/Content/Tabs/Layers/Actions"]
+[node name="Rename" type="Button" parent="Margin/Tabs/Layers/Actions"]
 text = "Rename"
 
-[node name="List" type="ItemList" parent="Project/Content/Tabs/History"]
+[node name="List" type="ItemList" parent="Margin/Tabs/History"]
 size_flags_vertical = 3
 custom_minimum_size = Vector2(0, 160)
 
-[node name="Name" type="LineEdit" parent="Project/Content/Tabs/History"]
+[node name="Name" type="LineEdit" parent="Margin/Tabs/History"]
 placeholder_text = "Checkpoint name"
 
-[node name="Actions" type="HBoxContainer" parent="Project/Content/Tabs/History"]
+[node name="Actions" type="HFlowContainer" parent="Margin/Tabs/History"]
 
-[node name="Add" type="Button" parent="Project/Content/Tabs/History/Actions"]
+[node name="Add" type="Button" parent="Margin/Tabs/History/Actions"]
 text = "Add checkpoint"
 
-[node name="Restore" type="Button" parent="Project/Content/Tabs/History/Actions"]
+[node name="Restore" type="Button" parent="Margin/Tabs/History/Actions"]
 text = "Restore checkpoint"
 
-[node name="AuthorLabel" type="Label" parent="Project/Content/Tabs/Metadata"]
+[node name="AuthorLabel" type="Label" parent="Margin/Tabs/Metadata"]
 text = "Author"
 
-[node name="Author" type="LineEdit" parent="Project/Content/Tabs/Metadata"]
+[node name="Author" type="LineEdit" parent="Margin/Tabs/Metadata"]
 
-[node name="TitleLabel" type="Label" parent="Project/Content/Tabs/Metadata"]
+[node name="TitleLabel" type="Label" parent="Margin/Tabs/Metadata"]
 text = "Project title"
 
-[node name="Title" type="LineEdit" parent="Project/Content/Tabs/Metadata"]
+[node name="Title" type="LineEdit" parent="Margin/Tabs/Metadata"]
 
-[node name="NotesLabel" type="Label" parent="Project/Content/Tabs/Metadata"]
+[node name="NotesLabel" type="Label" parent="Margin/Tabs/Metadata"]
 text = "Notes"
 
-[node name="Notes" type="TextEdit" parent="Project/Content/Tabs/Metadata"]
+[node name="Notes" type="TextEdit" parent="Margin/Tabs/Metadata"]
 custom_minimum_size = Vector2(0, 160)
 size_flags_vertical = 3
 
-[node name="Apply" type="Button" parent="Project/Content/Tabs/Metadata"]
+[node name="Apply" type="Button" parent="Margin/Tabs/Metadata"]
 text = "Apply"
 
-[node name="List" type="ItemList" parent="Project/Content/Tabs/Stamps"]
+[node name="List" type="ItemList" parent="Margin/Tabs/Stamps"]
 size_flags_vertical = 3
 custom_minimum_size = Vector2(0, 150)
 
-[node name="Name" type="LineEdit" parent="Project/Content/Tabs/Stamps"]
+[node name="Name" type="LineEdit" parent="Margin/Tabs/Stamps"]
 placeholder_text = "Stamp name"
 
-[node name="Actions" type="HBoxContainer" parent="Project/Content/Tabs/Stamps"]
+[node name="Actions" type="HFlowContainer" parent="Margin/Tabs/Stamps"]
 
-[node name="Add" type="Button" parent="Project/Content/Tabs/Stamps/Actions"]
+[node name="Add" type="Button" parent="Margin/Tabs/Stamps/Actions"]
 text = "Save selection"
 
-[node name="Use" type="Button" parent="Project/Content/Tabs/Stamps/Actions"]
+[node name="Use" type="Button" parent="Margin/Tabs/Stamps/Actions"]
 text = "Use stamp"
 
-[node name="Delete" type="Button" parent="Project/Content/Tabs/Stamps/Actions"]
+[node name="Delete" type="Button" parent="Margin/Tabs/Stamps/Actions"]
 text = "Delete"
 
-[node name="Spacing" type="HBoxContainer" parent="Project/Content/Tabs/Stamps"]
+[node name="Spacing" type="HBoxContainer" parent="Margin/Tabs/Stamps"]
 
-[node name="Label" type="Label" parent="Project/Content/Tabs/Stamps/Spacing"]
+[node name="Label" type="Label" parent="Margin/Tabs/Stamps/Spacing"]
 text = "Spacing (pixels)"
 
-[node name="Value" type="SpinBox" parent="Project/Content/Tabs/Stamps/Spacing"]
+[node name="Value" type="SpinBox" parent="Margin/Tabs/Stamps/Spacing"]
 min_value = 1.0
 max_value = 256.0
 value = 8.0
@@ -287,6 +310,25 @@ button_pressed = true
 [node name="Neighbors" type="CheckBox" parent="Context/Content/Options"]
 text = "Neighbors"
 button_pressed = true
+
+[node name="ViewGap" type="Control" parent="Context/Content/Options"]
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="Large" type="Button" parent="Context/Content/Options"]
+text = "Large"
+toggle_mode = true
+button_group = SubResource("ContextViews")
+
+[node name="Medium" type="Button" parent="Context/Content/Options"]
+text = "Medium"
+toggle_mode = true
+button_group = SubResource("ContextViews")
+
+[node name="Small" type="Button" parent="Context/Content/Options"]
+text = "Small"
+toggle_mode = true
+button_group = SubResource("ContextViews")
 
 [node name="Recovery" type="ConfirmationDialog" parent="."]
 title = "Recover SCURK project"

@@ -93,7 +93,7 @@ func _select_button(index: int) -> void:
 func _update_columns() -> void:
 	var count := maxi(1, patterns.size())
 	var fitting_columns := maxi(1, floori((size.x + BUTTON_GAP) / (BUTTON_SIZE + BUTTON_GAP)))
-	columns = clampi(roundi(sqrt(count * size.x / maxf(1.0, size.y))), 1, mini(count, fitting_columns))
+	columns = mini(count, fitting_columns)
 
 
 func cell_rect(index: int) -> Rect2:

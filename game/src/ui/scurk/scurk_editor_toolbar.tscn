@@ -115,10 +115,6 @@ text = "About OpenSC2K..."
 layout_mode = 2
 text = "Export Tile Set..."
 
-[node name="ProjectTools" type="Button" parent="Actions"]
-layout_mode = 2
-text = "Layers, Stamps and Project..."
-
 [node name="PaintOptions" type="Button" parent="Actions"]
 layout_mode = 2
 text = "Paint Options..."

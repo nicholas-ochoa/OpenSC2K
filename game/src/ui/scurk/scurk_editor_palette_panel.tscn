@@ -6,27 +6,23 @@
 
 [ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_editor_object_panel.tscn" id="objects"]
 
-[ext_resource type="Shader" path="res://src/ui/shared/frosted_panel.gdshader" id="glass"]
-
-[sub_resource type="ShaderMaterial" id="GlassMaterial"]
-shader = ExtResource("glass")
+[sub_resource type="StyleBoxEmpty" id="Panel"]
 
 [node name="Palette" type="PanelContainer"]
 script = ExtResource("script")
-material = SubResource("GlassMaterial")
-theme_type_variation = "CityToolbarPanel"
+theme_override_styles/panel = SubResource("Panel")
 texture_filter = 1
 
 [node name="Margin" type="MarginContainer" parent="."]
 layout_mode = 2
-theme_override_constants/margin_left = 6
-theme_override_constants/margin_top = 6
-theme_override_constants/margin_right = 6
-theme_override_constants/margin_bottom = 6
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 0
 
 [node name="Column" type="VBoxContainer" parent="Margin"]
 layout_mode = 2
-theme_override_constants/separation = 4
+theme_override_constants/separation = 3
 
 [node name="Objects" parent="Margin/Column" instance=ExtResource("objects")]
 layout_mode = 2

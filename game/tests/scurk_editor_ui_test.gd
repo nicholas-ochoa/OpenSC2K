@@ -1,5 +1,7 @@
 extends SceneTree
 
+@warning_ignore_start("integer_division")
+
 const EditorScene = preload("res://src/ui/scurk/scurk_editor_control.tscn")
 const Workspace = preload("res://src/tools/scurk/scurk_drawing_workspace.gd")
 
@@ -11,6 +13,7 @@ func _initialize() -> void:
 func _run() -> void:
 	_test_footprints()
 	var assets := OriginalGameAssets.load_root(ProjectSettings.globalize_path("res://../references/SIMCITY2000"))
+	_test_clip_edges(assets)
 	var editor := EditorScene.instantiate() as ScurkEditorControl
 	root.add_child(editor)
 	editor.configure(assets.palette, assets.large_sprites, assets.small_medium_sprites,
@@ -19,6 +22,7 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	assert(editor.object_list.get_item_icon(0) != null)
+	_test_clipping_toggle(editor)
 	editor.brush_size_selector.value = 24
 	assert(editor.pixel_canvas.brush_size == 24)
 	editor.brush_size_selector.value = 25
@@ -151,25 +155,29 @@ func _run() -> void:
 	assert(editor.canvas_panel.previews_panel.visible)
 	editor.canvas_panel.show_views_button.button_pressed = false
 	assert(not editor.canvas_panel.previews_panel.visible)
-	# The canvas, selectors, and status bar fit the supported 1024x768 workspace.
-	editor.size = Vector2(1024, 768)
-	await process_frame
-	await process_frame
-	var panel := editor.get_node("Panel") as Control
-	assert(panel.position.x + panel.size.x <= editor.size.x)
-	assert(panel.position.y + panel.size.y <= editor.size.y)
-	assert(editor.pixel_canvas.get_parent().get_parent().size.x > 0)
-	# Every texture remains visible and pickable as the available area changes.
+	# controls stay visible through resize cycles
 	var textures := editor.palette_panel.texture_control
-	for viewport_size in [Vector2(1024, 768), Vector2(1600, 1000)]:
+	for viewport_size in [Vector2(1024, 768), Vector2(1280, 800), Vector2(1600, 1000), Vector2(1024, 768)]:
 		editor.size = viewport_size
-		await process_frame
-		await process_frame
+		for frame in 4:
+			await process_frame
+		var bounds := editor.get_global_rect()
+		for control: Control in [editor.get_node("Panel/Content"), editor.get_node("Panel/Content/Toolbar"),
+			editor.get_node("Panel/Content/Body"), editor.studio, editor.get_node("Panel/Content/StatusBar"),
+			editor.canvas_panel, editor.canvas_panel.pixel_scroll, editor.canvas_panel.get_node("Footer")]:
+			_assert_inside(bounds, control)
+		assert(editor.canvas_panel.pixel_scroll.size.x > 0 and editor.canvas_panel.pixel_scroll.size.y > 0)
+		var columns := textures.columns
+		var texture_rect := textures.get_global_rect()
+		for frame in 4:
+			await process_frame
+			assert(textures.columns == columns and textures.get_global_rect() == texture_rect)
 		for index in textures.patterns.size():
 			var cell := textures.cell_rect(index)
 			assert(textures.index_at(cell.get_center()) == index)
 			textures.buttons[index].pressed.emit()
 			assert(editor.pixel_canvas.texture_index == index)
+			assert(cell.size.x >= 32 and cell.size.y >= 32)
 			assert(cell.position.x >= 0 and cell.position.y >= 0)
 			assert(cell.end.x <= textures.size.x + 0.01 and cell.end.y <= textures.size.y + 0.01)
 		assert(textures.get_global_rect().end.y <= editor.size.y)
@@ -180,6 +188,67 @@ func _run() -> void:
 	editor.free()
 	print("PASS: SCURK selection, modal names, synchronized cycling, unclipped save/reload, selected-view indexed PNG, views and viewport fit")
 	quit()
+
+
+func _assert_inside(bounds: Rect2, control: Control) -> void:
+	var rect := control.get_global_rect()
+	assert(rect.position.x >= bounds.position.x and rect.position.y >= bounds.position.y)
+	assert(rect.end.x <= bounds.end.x and rect.end.y <= bounds.end.y)
+
+
+func _test_clipping_toggle(editor: ScurkEditorControl) -> void:
+	var before: PackedByteArray = editor.tile_set.to_bytes().bytes
+	for id in [1124, 1127]:
+		for row in editor.object_list.item_count:
+			if int(editor.object_list.get_item_metadata(row)) == id:
+				editor._on_object_selected(row)
+				break
+		assert(editor.current_large_id == id)
+		for view in 3:
+			editor._select_view(view)
+			editor.drawing_controls.clip_enabled_check.button_pressed = false
+			var entry: Sc2SpriteArchive.SpriteEntry = editor._resolved_view_entry(view)
+			var decoded := entry.decode_indices()
+			var expected := Workspace.from_shape(entry.width, entry.height, decoded.pixels, view, editor.active_base_width, false)
+			assert(editor.pixel_canvas.pixels == expected)
+			editor.drawing_controls.clip_enabled_check.button_pressed = true
+			assert(editor.pixel_canvas.pixels == expected)
+			assert(editor.pixel_canvas.edit_mask == Workspace.clip_mask(editor.active_base_width, view))
+	assert(editor.tile_set.to_bytes().bytes == before)
+	editor._select_view(0)
+	editor._on_object_selected(0)
+
+
+func _test_clip_edges(assets: OriginalGameAssets) -> void:
+	for id in [1124, 1127]:
+		var base := assets.large_sprites.find_sprite(id)
+		for view in 3:
+			var archive := assets.large_sprites if view == 0 else assets.small_medium_sprites
+			var entry := archive.find_sprite(ScurkEditorControl.view_sprite_id(id, view))
+			var decoded := entry.decode_indices()
+			assert(decoded.ok)
+			var raw := Workspace.from_shape(entry.width, entry.height, decoded.pixels, view, base.width, false)
+			var clipped := Workspace.from_shape(entry.width, entry.height, decoded.pixels, view, base.width)
+			assert(clipped == raw)
+			var output := Workspace.shape_from_workspace(clipped, base.width, view)
+			assert(output.ok and output.width == entry.width and output.height == entry.height)
+			assert(output.pixels == decoded.pixels)
+			var canvas := ScurkPixelCanvas.new()
+			canvas.set_sprite_data(Workspace.WIDTH, Workspace.HEIGHT, raw, assets.palette)
+			canvas.set_edit_region(Workspace.clip_mask(base.width, view), Workspace.base_size(base.width))
+			assert(canvas.pixels == raw)
+			canvas.free()
+	for width in Workspace.STANDARD_BASE_WIDTHS:
+		for view in 3:
+			var divisor := Workspace.view_divisor(view)
+			var mask := Workspace.clip_mask(width, view)
+			assert(mask[255 * Workspace.WIDTH + 64 - divisor] == 1)
+			assert(mask[255 * Workspace.WIDTH + 63 + divisor] == 1)
+			assert(mask[255 * Workspace.WIDTH + 63 - divisor] == 0)
+			assert(mask[255 * Workspace.WIDTH + 64 + divisor] == 0)
+			for y in Workspace.HEIGHT:
+				for x in Workspace.WIDTH / 2:
+					assert(mask[y * Workspace.WIDTH + x] == mask[y * Workspace.WIDTH + Workspace.WIDTH - 1 - x])
 
 
 func _test_footprints() -> void:

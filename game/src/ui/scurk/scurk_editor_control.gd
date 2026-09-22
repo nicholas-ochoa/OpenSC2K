@@ -847,7 +847,7 @@ func _bind_interface() -> void:
 	source_label = get_node("Panel/Content/StatusBar/Row/File")
 	pointer_status_label = get_node("Panel/Content/StatusBar/Row/Pointer")
 
-	object_panel = get_node("Panel/Content/Body/Palette/Margin/Column/Objects")
+	object_panel = get_node("Panel/Content/Body/Studio/Margin/Tabs/Colors/Margin/Column/Objects")
 	object_panel.build()
 	object_panel.search_changed.connect(_on_search_changed)
 	object_panel.object_selected.connect(_on_object_selected)
@@ -917,7 +917,7 @@ func _bind_interface() -> void:
 	pixel_canvas.clipboard_changed.connect(_on_clipboard_changed)
 	pixel_canvas.clipboard_copy_rejected.connect(_on_clipboard_copy_rejected)
 
-	palette_panel = get_node("Panel/Content/Body/Palette")
+	palette_panel = get_node("Panel/Content/Body/Studio/Margin/Tabs/Colors")
 	palette_panel.build()
 	palette_panel.set_patterns(pixel_canvas.texture_patterns)
 	palette_panel.palette_index_selected.connect(_select_palette_index)
@@ -952,7 +952,7 @@ func _bind_interface() -> void:
 	pick_copy_control.copy_requested.connect(_copy_pick_objects)
 	_select_palette_index(0, false)
 	_select_palette_index(255, true)
-	studio = $Studio
+	studio = $Panel/Content/Body/Studio
 	studio.bind(self)
 	for button in tool_buttons + clipboard_action_buttons:
 		button.focus_mode = Control.FOCUS_NONE
@@ -1845,7 +1845,6 @@ func _studio_action(action: String) -> void:
 		"RecoverProject": studio.request_recovery()
 		"ProjectSaveAs": studio.request_save(true)
 		"ExportTileSet": request_save_as()
-		"ProjectTools": studio.show_project()
 		"PaintOptions": studio.show_paint()
 		"ReplaceColor": studio.show_replace()
 		"Context": studio.show_context()

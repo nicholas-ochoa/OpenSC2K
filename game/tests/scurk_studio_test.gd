@@ -28,6 +28,7 @@ func _run() -> void:
 	editor._set_cycle_colors(false)
 	await process_frame
 	await process_frame
+	await _test_sidebar()
 	_test_layers()
 	_test_project()
 	_test_clear()
@@ -66,6 +67,86 @@ func _solid(index: int) -> PackedInt32Array:
 
 func _document() -> Dictionary:
 	return studio.project.documents[studio.key()]
+
+
+func _test_sidebar() -> void:
+	_fresh()
+	var canvas := editor.pixel_canvas
+	var scroll := editor.canvas_panel.pixel_scroll
+	assert(studio.tabs.current_tab == 0 and editor.palette_panel.is_visible_in_tree())
+	canvas.set_zoom(12)
+	await process_frame
+	await process_frame
+	scroll.scroll_horizontal = 120
+	scroll.scroll_vertical = 500
+	await process_frame
+	canvas.selection.combine(canvas.selection.rectangle(Vector2i(60, 200), Vector2i(63, 203)))
+	var selection := canvas.selection.mask.duplicate()
+	var position := Vector2i(scroll.scroll_horizontal, scroll.scroll_vertical)
+	var canvas_rect := canvas.get_global_rect()
+	var author := studio.get_node(studio.META + "/Author") as LineEdit
+	author.text = "Unapplied author"
+	for tab in studio.tabs.get_tab_count():
+		studio.tabs.current_tab = tab
+		await process_frame
+		assert(canvas.is_visible_in_tree() and canvas.selection.mask == selection)
+		assert(canvas.zoom == 12 and canvas.get_global_rect() == canvas_rect, "%d zoom %d rect %s expected %s" % [tab, canvas.zoom, canvas.get_global_rect(), canvas_rect])
+		assert(Vector2i(scroll.scroll_horizontal, scroll.scroll_vertical) == position)
+		canvas.grab_focus()
+		assert(root.gui_get_focus_owner() == canvas)
+	assert(author.text == "Unapplied author")
+	studio.tabs.current_tab = 1
+	assert(studio.tabs.current_tab == 1)
+	var add := studio.get_node(studio.LAYERS + "/Actions/Add") as Button
+	assert(add.is_visible_in_tree())
+	add.pressed.emit()
+	assert(_document().layers.size() == 2)
+	var list := studio.get_node(studio.LAYERS + "/List") as ItemList
+	list.select(1)
+	list.item_selected.emit(1)
+	assert(int(_document().active) == 0)
+	list.select(0)
+	list.item_selected.emit(0)
+	assert(int(_document().active) == 1)
+	editor._select_tool(ScurkPixelCanvas.TOOL_PENCIL)
+	editor._select_palette_index(99)
+	var event := InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.position = Vector2(ScurkPixelCanvas.DISPLAY_MARGIN, 0) + Vector2(60, 200) * canvas.zoom
+	event.pressed = true
+	canvas._gui_input(event)
+	event.pressed = false
+	canvas._gui_input(event)
+	assert(canvas.pixels[200 * Workspace.WIDTH + 60] == 99)
+	assert(studio.tabs.current_tab == 1 and list.is_visible_in_tree())
+	assert(canvas.selection.mask == selection)
+	studio.get_node(studio.LAYERS + "/Name").text = "Windows"
+	studio.get_node(studio.LAYERS + "/Actions/Rename").pressed.emit()
+	assert(_document().layers[1].name == "Windows")
+	studio.tabs.current_tab = 2
+	studio.get_node(studio.STAMPS + "/Name").text = "Window stamp"
+	studio.get_node(studio.STAMPS + "/Actions/Add").pressed.emit()
+	assert(studio.project.stamps.size() == 1)
+	studio.tabs.current_tab = 0
+	editor.undo()
+	studio.tabs.current_tab = 2
+	var stamps := studio.get_node(studio.STAMPS + "/List") as ItemList
+	assert(stamps.item_count == 0)
+	editor.redo()
+	studio.tabs.current_tab = 0
+	studio.tabs.current_tab = 2
+	assert(stamps.item_count == 1)
+	stamps.select(0)
+	studio.get_node(studio.STAMPS + "/Actions/Use").pressed.emit()
+	assert(editor.current_tool == ScurkPixelCanvas.TOOL_STAMP)
+	assert(canvas.paint_options.stamp_pixels.count(99) > 0)
+	studio.tabs.current_tab = 3
+	studio.get_node(studio.HISTORY + "/Name").text = "Window checkpoint"
+	studio.get_node(studio.HISTORY + "/Actions/Add").pressed.emit()
+	studio.tabs.current_tab = 0
+	studio.tabs.current_tab = 3
+	assert(studio.get_node(studio.HISTORY + "/List").item_count == 1)
+	studio.tabs.current_tab = 0
 
 
 func _test_layers() -> void:
@@ -152,9 +233,15 @@ func _test_project() -> void:
 	assert(studio.project.metadata.author == "Tile author")
 	editor.undo()
 	assert(not studio.project.metadata.has("author"))
+	assert(studio.get_node(studio.META + "/Author").text.is_empty())
+	assert(studio.get_node(studio.META + "/Title").text.is_empty())
+	assert(studio.get_node(studio.META + "/Notes").text.is_empty())
 	assert(not studio.modified)
 	editor.redo()
 	assert(studio.project.metadata.author == "Tile author")
+	assert(studio.get_node(studio.META + "/Author").text == "Tile author")
+	assert(studio.get_node(studio.META + "/Title").text == "Layer test")
+	assert(studio.get_node(studio.META + "/Notes").text == "Indexed artwork")
 	studio.get_node(studio.HISTORY + "/Name").text = "Before recolor"
 	studio._add_checkpoint()
 	assert(studio.project.checkpoints.size() == 1)
@@ -178,6 +265,9 @@ func _test_project() -> void:
 	assert(studio.load_project(path))
 	assert(studio.project.flatten(studio.key()) == expected and not studio.modified)
 	assert(studio.project.metadata.author == "Tile author" and studio.project.checkpoints.size() == 1)
+	assert(studio.get_node(studio.META + "/Author").text == "Tile author")
+	assert(studio.get_node(studio.META + "/Title").text == "Layer test")
+	assert(studio.get_node(studio.META + "/Notes").text == "Indexed artwork")
 	assert(studio.project.original_mif == original)
 	_commit(_solid(11))
 	studio._refresh_lists()
@@ -345,10 +435,27 @@ func _test_context() -> void:
 	assert(ContextPreview.indexed_texture(PackedInt32Array([256]), 1, 1, editor.palette) == null)
 	studio._refresh_context()
 	var preview := studio.get_node("Context/Content/View") as ScurkContextPreview
-	assert(preview.artwork != null and preview.road != null and preview.neighbor != null)
+	assert(preview.artwork != null and preview.snapshot != null and preview.snapshot_city != null)
 	studio.get_node("Context/Content/Options/Roads").button_pressed = false
 	studio.get_node("Context/Content/Options/Neighbors").button_pressed = false
 	assert(not preview.show_roads and not preview.show_neighbors)
+	var original_view := editor.current_view
+	var original_pixels := editor.pixel_canvas.pixels.duplicate()
+	var original_bytes := editor.tile_set.to_bytes().bytes
+	for view in 3:
+		var button := studio.get_node("Context/Content/Options/" + ["Large", "Medium", "Small"][view]) as Button
+		assert(not button.disabled)
+		button.pressed.emit()
+		assert(studio.context_view == view)
+		assert(preview.view_size == [CityIsometricRenderer.VIEW_LARGE, CityIsometricRenderer.VIEW_MEDIUM, CityIsometricRenderer.VIEW_SMALL][view])
+		assert(button.button_pressed)
+		var shape := editor._output_shape_for_view(view)
+		assert(preview.artwork.get_size() == Vector2(shape.width, shape.height))
+		assert(editor.current_view == original_view and editor.pixel_canvas.pixels == original_pixels)
+	assert(editor.tile_set.to_bytes().bytes == original_bytes)
+	studio.show_context()
+	assert(studio.context_view == editor.current_view)
+	studio.get_node("Context").hide()
 
 
 func _test_navigation() -> void:

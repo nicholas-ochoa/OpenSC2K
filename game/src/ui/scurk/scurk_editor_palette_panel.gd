@@ -21,7 +21,6 @@ var ramp_clear_button: Button
 
 
 func _ready() -> void:
-	AppUiTheme.bind_frosted_panel(self)
 	build()
 
 

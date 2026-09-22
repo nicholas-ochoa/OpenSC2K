@@ -1102,6 +1102,13 @@
     "lane": "product"
   },
   {
+    "id": "scurk_context_preview_test",
+    "script": "tests/scurk_context_preview_test.gd",
+    "domain": "scurk",
+    "lane": "product",
+    "requires": ["references/SIMCITY2000/DATA/LARGE.DAT", "references/SIMCITY2000/DATA/SMALLMED.DAT"]
+  },
+  {
     "id": "scurk_studio_test",
     "script": "tests/scurk_studio_test.gd",
     "domain": "scurk",
