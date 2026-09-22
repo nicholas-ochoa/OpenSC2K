@@ -39,7 +39,7 @@ static func run(city: CityState) -> PollutionPhase.Result:
 	var population_weights := _population_weights
 	var misc := doc.find_chunk("MISC")
 
-	if misc == null or misc.decoded_payload.size() != 4800:
+	if misc == null or misc.decoded_payload.size() != Sc2MiscLayout.SIZE:
 		return PollutionPhase.failed("MISC is missing or invalid")
 
 	var sources := PackedInt32Array()
@@ -62,7 +62,7 @@ static func run(city: CityState) -> PollutionPhase.Result:
 			var index := x * edge + y
 			var building := int(buildings[index])
 			var tile_flags := int(flags[index])
-			var zone := int(zones[index]) & 15
+			var zone := int(zones[index]) & Sc2ZoneLayout.TYPE_MASK
 			sources[index] = int(old_pollution[index]) + int(old_traffic[index]) / 5
 			sources[index] += pollution_weights[building]
 
@@ -144,7 +144,7 @@ static func run(city: CityState) -> PollutionPhase.Result:
 		for y in edge:
 			var index := x * edge + y
 			growth[index] = clampi((int(old_growth[index]) * 7 + (int(population[index]) - int(old_population[index])) * 8 + 128) / 8, 0, 255)
-			var zone := int(zones[index]) & 15
+			var zone := int(zones[index]) & Sc2ZoneLayout.TYPE_MASK
 			sources[index] = 0
 
 			if buildings[index] < PollutionPhase.FIRST_ROAD and zone == 0:
