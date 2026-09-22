@@ -127,6 +127,10 @@ func check_ui() -> void:
 	if DisplayServer.get_name() != "headless":
 		check(roundi(main.map_view.data_value_texture.get_image().get_pixel(4, 4).r * 255) == 255, "Changed grid uploads current value")
 
+	main.menus.set_overlay(CityViewMode.Mode.CITY)
+	main.menus.set_overlay(CityViewMode.Mode.LAND_VALUE)
+	check(main.map_view.data_view_mesh == old_mesh, "City view round trip retains data geometry across display snapshots")
+
 	check(CityDataView.tile_text(main.document_state.city, CityViewMode.Mode.LAND_VALUE, Vector2i(4, 4), true).contains("255 / 0xFF"), "Exact hover value")
 	main.current_tool.select_tool_group(17)
 	check(main.view_state.overlay_mode == CityViewMode.Mode.LAND_VALUE and main.map_view.edit_enabled, "Center preserves data view")

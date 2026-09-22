@@ -170,6 +170,11 @@ func clear_data_view() -> void:
 	layers.clear_data_view()
 
 
+# Use the source city here. Normal rendering can publish a display snapshot.
+func discard_data_geometry_for_other_city(source_city: CityState) -> void:
+	layers.discard_geometry_for_other_city(source_city)
+
+
 func set_city_view(
 	value: CityState,
 	source: CityMapSource,

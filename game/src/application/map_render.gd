@@ -23,6 +23,7 @@ func refresh_map(force := true) -> void:
 		app.city_status_bar.set_compass(app.document_state.city.compass_rotation() if app.document_state.city != null else -1)
 
 	if app.document_state.city == null or app.asset_state.palette == null:
+		app.map_view.discard_data_geometry_for_other_city(app.document_state.city)
 		return
 
 	app.map_view.trip_query_underground = app.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND
@@ -40,6 +41,7 @@ func refresh_map(force := true) -> void:
 		return
 
 	app.map_view.clear_data_view()
+	app.map_view.discard_data_geometry_for_other_city(app.document_state.city)
 
 	if ((app.document_state.city.map_size > 128 or CityRegionCache.gpu_supported(app.preferences.city_renderer))
 			and CityViewMode.is_map(app.view_state.overlay_mode)):

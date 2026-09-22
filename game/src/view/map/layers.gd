@@ -2,7 +2,13 @@ class_name CityMapLayers
 extends CityMapConstants
 
 
+# Retain one mesh. The budget counts its source vertex and index arrays.
+# Driver and resource overhead are separate from this estimate.
+const RETAINED_GEOMETRY_BYTES := 64 * 1024 * 1024
+
 var map: CityMapControl
+var _retained_data_mesh: ArrayMesh
+var _retained_data_signature: Array = []
 
 
 func _init(control: CityMapControl) -> void:
@@ -15,7 +21,9 @@ func set_data_view(value: CityState, mode: CityViewMode.Mode) -> void:
 	var geometry_signature := CityDataView.geometry_signature(value, mode)
 
 	if map.data_geometry_signature != geometry_signature:
-		map.data_view_mesh = CityDataView.create_mesh(value, mode, true)
+		var cached_mesh: ArrayMesh = _retained_data_mesh if _retained_data_signature == geometry_signature else null
+		_clear_retained_geometry()
+		map.data_view_mesh = cached_mesh if cached_mesh != null else CityDataView.create_mesh(value, mode, true)
 		map.data_geometry_signature = geometry_signature
 
 	if map.data_view_layer == null:
@@ -59,6 +67,10 @@ func clear_data_view() -> void:
 		return
 
 	map.data_view_mode = CityViewMode.Mode.NONE
+	_clear_retained_geometry()
+	if map.data_view_mesh != null and CityDataView.mesh_array_bytes(map.data_view_mesh) <= RETAINED_GEOMETRY_BYTES:
+		_retained_data_mesh = map.data_view_mesh
+		_retained_data_signature = map.data_geometry_signature.duplicate()
 	map.data_view_mesh = null
 
 	if map.data_view_layer != null:
@@ -74,6 +86,18 @@ func clear_data_view() -> void:
 
 	_sync_base_layer()
 	map.queue_redraw()
+
+
+func discard_geometry_for_other_city(value: CityState) -> void:
+	if _retained_data_signature.is_empty():
+		return
+	if value == null or value.document == null or _retained_data_signature[0] != value.document.get_instance_id():
+		_clear_retained_geometry()
+
+
+func _clear_retained_geometry() -> void:
+	_retained_data_mesh = null
+	_retained_data_signature.clear()
 
 
 func _draw_data_view(scale: float, offset: Vector2) -> void:

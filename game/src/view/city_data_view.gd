@@ -167,8 +167,9 @@ static func geometry_signature(city: CityState, mode := CityViewMode.Mode.NONE) 
 		var chunk := city.document.find_chunk(id)
 		result.append(chunk.mutation_revision if chunk != null else -1)
 
-	if mode == CityViewMode.Mode.HEIGHT:
-		result.append(city.masked_tile_flag_signature(0x04))
+	# Clipped terrain also uses the water flag to select its visible altitude.
+	if mode == CityViewMode.Mode.HEIGHT or city.visible_altitude_levels < 32:
+		result.append(city.masked_tile_flag_signature(Sc2TileFlags.WATER))
 
 	return result
 
@@ -302,6 +303,15 @@ static func create_mesh(city: CityState, mode: CityViewMode.Mode, encoded := fal
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 
 	return mesh
+
+
+static func mesh_array_bytes(mesh: ArrayMesh) -> int:
+	# create_mesh stores Vector2 vertices, Color values, Vector2 UVs, and int indices.
+	var bytes := 0
+	for surface in mesh.get_surface_count():
+		bytes += mesh.surface_get_array_len(surface) * (8 + 16 + 8)
+		bytes += mesh.surface_get_array_index_len(surface) * 4
+	return bytes
 
 
 static func _append_quad(vertices: PackedVector2Array, colors: PackedColorArray, uvs: PackedVector2Array,

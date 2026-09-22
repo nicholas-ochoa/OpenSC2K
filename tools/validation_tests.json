@@ -1,5 +1,11 @@
 [
   {
+    "id": "data_view_geometry_cache_test",
+    "script": "tests/data_view_geometry_cache_test.gd",
+    "domain": "rendering",
+    "lane": "product"
+  },
+  {
     "id": "trip_overlay_parity_test",
     "script": "tests/trip_overlay_parity_test.gd",
     "domain": "rendering",
