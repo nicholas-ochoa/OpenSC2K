@@ -1084,6 +1084,12 @@
     ]
   },
   {
+    "id": "scurk_project_test",
+    "script": "tests/scurk_project_test.gd",
+    "domain": "scurk",
+    "lane": "product"
+  },
+  {
     "id": "scurk_editor_ui_test",
     "script": "tests/scurk_editor_ui_test.gd",
     "domain": "scurk",
