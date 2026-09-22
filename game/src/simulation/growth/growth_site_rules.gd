@@ -37,4 +37,3 @@ static func has_power(flags: PackedByteArray, x: int, y: int, map_edge: int = 12
 		return true
 
 	return y < (map_edge - 1) and (flags[x * map_edge + y + 1] & Sc2TileFlags.POWERED) != 0
-
