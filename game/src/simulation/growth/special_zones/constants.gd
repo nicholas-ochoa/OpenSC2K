@@ -18,20 +18,4 @@ const SPECIAL_TWO_BY_TWO_TILES := [Tiles.PARKING_LOT_1, Tiles.PARKING_LOT_2, Til
 const CARDINAL_DIRECTIONS := [
 	Vector2i(0, 1), Vector2i(1, 0), Vector2i(0, -1), Vector2i(-1, 0),
 ]
-const MILITARY_TILE_COUNT_INDEX := {
-	Tiles.RUNWAY: 1,
-	Tiles.RUNWAY_CROSSING: 2,
-	Tiles.PARKING_LOT_2: 3,
-	Tiles.CARGO_YARD: 4,
-	Tiles.RADAR: 5,
-	Tiles.SEAPORT_WAREHOUSE: 6,
-	Tiles.AIRPORT_BUILDING_1: 7,
-	Tiles.AIRPORT_BUILDING_2: 8,
-	Tiles.TOP_SECRET: 9,
-	Tiles.CRANE: 10,
-	Tiles.CONTROL_TOWER_2: 11,
-	Tiles.FIGHTER_JET: 12,
-	Tiles.HANGAR_1: 13,
-	Tiles.HANGAR_2: 14,
-	Tiles.MISSILE_SILO: 15,
-}
+const MILITARY_TILE_COUNT_INDEX := Sc2MilitaryLayout.TILE_COUNT_INDEX

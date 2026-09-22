@@ -1,5 +1,11 @@
 [
   {
+    "id": "military_count_layout_test",
+    "script": "tests/military_count_layout_test.gd",
+    "domain": "simulation",
+    "lane": "product"
+  },
+  {
     "id": "ordinance_identity_test",
     "script": "tests/ordinance_identity_test.gd",
     "domain": "simulation",

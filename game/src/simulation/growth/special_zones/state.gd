@@ -27,7 +27,7 @@ static func _replace_special_building(
 	if old_tile == new_tile:
 		return
 
-	var military := (zones[index] & Sc2ZoneLayout.TYPE_MASK) == 7
+	var military := (zones[index] & Sc2ZoneLayout.TYPE_MASK) == Sc2ZoneLayout.MILITARY
 	var old_offset := _special_count_offset(old_tile, military)
 	var new_offset := _special_count_offset(new_tile, military)
 	BinaryData.write_u32_be(misc, old_offset, (BinaryData.read_u32_be(misc, old_offset) - 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
