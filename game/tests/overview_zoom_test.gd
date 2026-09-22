@@ -1,15 +1,6 @@
 extends SceneTree
 
 # The animated menu has its own tests. Do not render a random second city here.
-class NoMenuInterface extends ApplicationInterface:
-	func show_main_menu() -> void:
-		pass
-
-
-class OverviewApp extends "res://src/main.gd":
-	func _init() -> void:
-		interface = NoMenuInterface.new(self)
-
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -20,7 +11,7 @@ func _run() -> void:
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
 	if not preview:
-		main.set_script(OverviewApp)
+		main.set_script(preload("res://tests/support/app_fixture.gd").NoMenuApp)
 	main.asset_state.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
 	root.add_child(main)
 	await process_frame

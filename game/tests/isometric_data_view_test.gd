@@ -4,15 +4,6 @@ extends SceneTree
 
 const DocumentState = preload("res://tests/support/document_state.gd")
 
-class NoMenuInterface extends ApplicationInterface:
-	func show_main_menu() -> void:
-		pass
-
-
-class TestApp extends "res://src/main.gd":
-	func _init() -> void:
-		interface = NoMenuInterface.new(self)
-
 var failures := 0
 var checks := 0
 
@@ -90,8 +81,7 @@ func _run() -> void:
 
 func check_ui() -> void:
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
-	main.set_script(TestApp)
-	preload("res://tests/support/app_fixture.gd").configure(main)
+	preload("res://tests/support/app_fixture.gd").configure(main, true)
 	root.add_child(main)
 	await process_frame
 	var doc := EmptyCityTemplate.create(16)

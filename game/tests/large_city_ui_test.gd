@@ -1,14 +1,5 @@
 extends SceneTree
 
-class NoMenuInterface extends ApplicationInterface:
-	func show_main_menu() -> void:
-		pass
-
-
-class TestApp extends "res://src/main.gd":
-	func _init() -> void:
-		interface = NoMenuInterface.new(self)
-
 
 
 func _initialize() -> void:
@@ -17,8 +8,7 @@ func _initialize() -> void:
 
 func run_check() -> void:
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
-	main.set_script(TestApp)
-	preload("res://tests/support/app_fixture.gd").configure(main)
+	preload("res://tests/support/app_fixture.gd").configure(main, true)
 	root.add_child(main)
 	await process_frame
 	main.new_city_state.session.independent_template = true

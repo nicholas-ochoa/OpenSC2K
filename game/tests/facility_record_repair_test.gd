@@ -4,15 +4,6 @@ extends SceneTree
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
-class NoMenuInterface extends ApplicationInterface:
-	func show_main_menu() -> void:
-		pass
-
-
-class RepairApp extends "res://src/main.gd":
-	func _init() -> void:
-		interface = NoMenuInterface.new(self)
-
 
 var checks := 0
 var failures := 0
@@ -205,7 +196,7 @@ func check_load() -> void:
 	var save_path := "user://facility-repair-%d.sc2x" % OS.get_process_id()
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
-	main.set_script(RepairApp)
+	main.set_script(preload("res://tests/support/app_fixture.gd").NoMenuApp)
 	main.asset_state.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
 	main.preferences.settings_path = settings_path
 	root.add_child(main)
