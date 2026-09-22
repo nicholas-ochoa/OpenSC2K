@@ -22,6 +22,20 @@ func run() -> void:
 	root.add_child(industry)
 	industry.mode_buttons[1].pressed.emit()
 	assert(industry.industry_control.mode == IndustryWindowControl.Mode.TAX_RATES)
+	var city := CityState.from_document(EmptyCityTemplate.create(16))
+	industry.industry_control.set_city(city)
+	industry.industry_control.size = Vector2(600, 340)
+	var tax_changes: Array[int] = []
+	industry.industry_control.tax_rates_changed.connect(func() -> void: tax_changes.append(1))
+	var plot := industry.industry_control._plot_rect()
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.position = Vector2(plot.position.x + plot.size.x * 0.5, plot.position.y + 1)
+	industry.industry_control._gui_input(press)
+	assert(city.document.misc_i32(0x016c + 4) == 15 and tax_changes.size() == 1)
+	industry.industry_control._gui_input(press)
+	assert(tax_changes.size() == 1, "Unchanged tax does not emit a change")
 	industry.free()
 	var graph := preload("res://src/ui/city_windows/city_graph_window.tscn").instantiate() as CityGraphWindow
 	root.add_child(graph)

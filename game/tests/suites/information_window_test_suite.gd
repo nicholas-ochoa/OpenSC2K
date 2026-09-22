@@ -139,14 +139,23 @@ func _test_industry_window(reference_root: String) -> void:
 		and IndustryView.maximum_for_mode(data, IndustryView.Mode.DEMAND) == 100,
 		"Industry window uses the recovered dynamic maxima",
 	)
-	var changed := IndustryView.set_tax_rate(city, 3, 19)
+	var misc := document.find_chunk("MISC")
+	var expected := misc.decoded_payload.duplicate()
+	var revision := misc.mutation_revision
+	expected[0x016c + 3 * 0x0c + 7] = 19
+	var changed := IndustryTaxCommand.set_tax_rate(city, 3, 19)
 	_check(
 		changed.ok
 		and changed.changed
 		and document.misc_i32(0x016c + 3 * 0x0c + 4) == 19,
 		"Industry window changes one saved tax rate",
 	)
-	var changed_all := IndustryView.set_tax_rate(city, 0, 99, true)
+	_check(misc.decoded_payload == expected and misc.mutation_revision == revision + 1,
+		"Industry tax preserves other bytes and advances the revision")
+	var unchanged := IndustryTaxCommand.set_tax_rate(city, 3, 19)
+	_check(unchanged.ok and not unchanged.changed and misc.mutation_revision == revision + 1,
+		"Unchanged industry tax preserves the revision")
+	var changed_all := IndustryTaxCommand.set_tax_rate(city, 0, 99, true)
 	var all_clamped: bool = changed_all.ok and changed_all.value == 20
 
 	for industry in IndustryView.INDUSTRY_COUNT:
@@ -157,9 +166,21 @@ func _test_industry_window(reference_root: String) -> void:
 
 	_check(all_clamped, "Industry window clamps and changes all tax rates")
 	_check(
-		not IndustryView.set_tax_rate(city, 11, 5).ok,
+		not IndustryTaxCommand.set_tax_rate(city, 11, 5).ok,
 		"Industry window rejects an invalid industry",
 	)
+	var lowered := IndustryTaxCommand.set_tax_rate(city, 0, -1, true)
+	_check(lowered.ok and lowered.changed and lowered.value == 0, "Industry tax clamps negative rates")
+	_check(not IndustryTaxCommand.set_tax_rate(null, 0, 1).ok, "Industry tax rejects a missing city")
+	var invalid := CityState.new()
+	invalid.load_error = "invalid"
+	_check(not IndustryTaxCommand.set_tax_rate(invalid, 0, 1).ok, "Industry tax rejects an invalid city")
+	var malformed := CityState.from_document(EmptyCityTemplate.create(16))
+	var short_misc := malformed.document.find_chunk("MISC")
+	short_misc.decoded_payload = PackedByteArray([0, 0, 0, 0])
+	_check(not IndustryTaxCommand.set_tax_rate(malformed, 0, 1).ok, "Industry tax rejects short MISC")
+	malformed.document.chunks.erase(short_misc)
+	_check(not IndustryTaxCommand.set_tax_rate(malformed, 0, 1).ok, "Industry tax rejects missing MISC")
 	var icons := PeBitmap.load_numeric(reference_root.path_join("SIMCITY.EXE"), 178)
 	var icon_image: Image = icons.image
 	_check(

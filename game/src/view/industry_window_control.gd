@@ -12,13 +12,6 @@ class Snapshot extends RefCounted:
 	var industrial_tax: int
 
 
-class TaxResult extends RefCounted:
-	var ok: bool = false
-	var error: String = ""
-	var changed: bool = false
-	var value: int
-
-
 enum Mode {
 	RATIOS,
 	TAX_RATES,
@@ -33,7 +26,6 @@ const BUDGET_RECORD_SIZE := 0x006c
 const BUDGET_INDUSTRIAL := 2
 const BUDGET_FUNDING := 0x04
 const INITIAL_MAXIMUMS := [70, 30, 100]
-const MAXIMUM_INDUSTRY_TAX := 20
 const INDUSTRY_NAMES: Array[String] = [
 	"Steel/Mining", "Textiles", "Petrochemical", "Food", "Construction", "Automotive",
 	"Aerospace", "Finance", "Media", "Electronics", "Tourism",
@@ -137,68 +129,6 @@ static func maximum_for_mode(data: Snapshot, selected_mode: int) -> int:
 	return maximum
 
 
-static func set_tax_rate(
-	value_city: CityState, industry: int, value: int, all_industries := false
-) -> TaxResult:
-	if value_city == null or not value_city.is_valid():
-		var result := TaxResult.new()
-		result.ok = false
-		result.changed = false
-		result.error = "city is invalid"
-
-		return result
-
-	if industry < 0 or industry >= INDUSTRY_COUNT:
-		var result := TaxResult.new()
-		result.ok = false
-		result.changed = false
-		result.error = "industry is outside the valid range"
-
-		return result
-
-	var misc_chunk := value_city.document.find_chunk("MISC")
-
-	if misc_chunk == null or misc_chunk.decoded_payload.size() < MISC_INDUSTRIES + INDUSTRY_COUNT * INDUSTRY_STRIDE:
-		var result := TaxResult.new()
-		result.ok = false
-		result.changed = false
-		result.error = "MISC is missing or too short"
-
-		return result
-
-	var tax_rate := clampi(value, 0, MAXIMUM_INDUSTRY_TAX)
-	var data: PackedByteArray = misc_chunk.decoded_payload.duplicate()
-	var changed := false
-
-	for current in INDUSTRY_COUNT:
-		if not all_industries and current != industry:
-			continue
-
-		var offset := MISC_INDUSTRIES + current * INDUSTRY_STRIDE + 4
-
-		if _read_i32_be(data, offset) == tax_rate:
-			continue
-
-		_write_i32_be(data, offset, tax_rate)
-		changed = true
-
-	if changed and not misc_chunk.set_decoded_payload(data):
-		var result := TaxResult.new()
-		result.ok = false
-		result.changed = false
-		result.error = "cannot store industry tax rates"
-
-		return result
-
-	var result := TaxResult.new()
-	result.ok = true
-	result.changed = changed
-	result.value = tax_rate
-	result.error = ""
-
-	return result
-
-
 func _gui_input(event: InputEvent) -> void:
 	if mode != Mode.TAX_RATES or city == null or not city.is_valid():
 		return
@@ -234,7 +164,7 @@ func _apply_tax_pointer(pointer: Vector2, apply_all: bool) -> void:
 	var data := snapshot(city)
 	var maximum := maximum_for_mode(data, Mode.TAX_RATES)
 	var value := int((pointer.x - plot.position.x) * maximum / plot.size.x)
-	var result := set_tax_rate(city, industry, value, apply_all)
+	var result := IndustryTaxCommand.set_tax_rate(city, industry, value, apply_all)
 
 	if result.ok and result.changed:
 		queue_redraw()
@@ -361,22 +291,3 @@ static func _to_i16(value: int) -> int:
 	var word := value & 0xffff
 
 	return word - 0x10000 if word & 0x8000 else word
-
-
-static func _read_i32_be(data: PackedByteArray, offset: int) -> int:
-	var value := (
-		(data[offset] << 24)
-		| (data[offset + 1] << 16)
-		| (data[offset + 2] << 8)
-		| data[offset + 3]
-	)
-
-	return value - 0x100000000 if value & 0x80000000 else value
-
-
-static func _write_i32_be(data: PackedByteArray, offset: int, value: int) -> void:
-	var encoded := value & 0xffffffff
-	data[offset] = (encoded >> 24) & 0xff
-	data[offset + 1] = (encoded >> 16) & 0xff
-	data[offset + 2] = (encoded >> 8) & 0xff
-	data[offset + 3] = encoded & 0xff
