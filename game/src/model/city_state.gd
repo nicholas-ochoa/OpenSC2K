@@ -103,6 +103,17 @@ func is_valid() -> bool:
 	return load_error.is_empty()
 
 
+# transfer only arrays from a completed, private snapshot
+func copy_mirrors_to(target: CityState, transfer_ownership := false) -> void:
+	target.altitude_words = altitude_words if transfer_ownership else altitude_words.duplicate()
+	target.terrain = terrain if transfer_ownership else terrain.duplicate()
+	target.buildings = buildings if transfer_ownership else buildings.duplicate()
+	target.zones = zones if transfer_ownership else zones.duplicate()
+	target.underground = underground if transfer_ownership else underground.duplicate()
+	target.text_overlays = text_overlays if transfer_ownership else text_overlays.duplicate()
+	target.tile_flags = tile_flags if transfer_ownership else tile_flags.duplicate()
+
+
 # refresh the mirrors of the named chunks from the document. a commit passes
 # the ids it actually wrote, so a tick that only moved things does not copy
 # six map arrays and decode two bytes per tile for nothing. ids without a
@@ -524,12 +535,6 @@ static func copy_for_edit(source: CityState) -> CityState:
 	snapshot.document = source.document.duplicate_document()
 	snapshot.map_size = source.map_size
 	snapshot.load_error = source.load_error
-	snapshot.altitude_words = source.altitude_words.duplicate()
-	snapshot.buildings = source.buildings.duplicate()
-	snapshot.terrain = source.terrain.duplicate()
-	snapshot.zones = source.zones.duplicate()
-	snapshot.underground = source.underground.duplicate()
-	snapshot.text_overlays = source.text_overlays.duplicate()
-	snapshot.tile_flags = source.tile_flags.duplicate()
+	source.copy_mirrors_to(snapshot)
 
 	return snapshot

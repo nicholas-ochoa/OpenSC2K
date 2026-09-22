@@ -25,13 +25,7 @@ static func surface_copy(source: CityState, visibility: Dictionary) -> CityState
 	result.document = source.document
 	result.map_size = source.map_size
 	result.visible_altitude_levels = source.visible_altitude_levels
-	result.altitude_words = source.altitude_words.duplicate()
-	result.terrain = source.terrain.duplicate()
-	result.buildings = source.buildings.duplicate()
-	result.zones = source.zones.duplicate()
-	result.underground = source.underground.duplicate()
-	result.text_overlays = source.text_overlays.duplicate()
-	result.tile_flags = source.tile_flags.duplicate()
+	source.copy_mirrors_to(result)
 	result.object_altitude_overrides = source.object_altitude_overrides.duplicate()
 
 	var show_buildings := bool(visibility.get("buildings", true))

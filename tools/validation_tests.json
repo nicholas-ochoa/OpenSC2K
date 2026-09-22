@@ -1,5 +1,11 @@
 [
   {
+    "id": "city_mirror_copy_test",
+    "script": "tests/city_mirror_copy_test.gd",
+    "domain": "rendering",
+    "lane": "product"
+  },
+  {
     "id": "network_tile_membership_test",
     "script": "tests/network_tile_membership_test.gd",
     "domain": "simulation",

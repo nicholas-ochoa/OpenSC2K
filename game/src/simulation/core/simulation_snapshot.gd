@@ -14,7 +14,6 @@ const CONTROLLER_FIELDS := [
 	"speed", "accumulator_msec", "fire_elapsed_msec", "subtick_counter", "original_compatibility",
 	"simulation_ready", "interaction_blocked", "terminal_blocked",
 ]
-const CITY_ARRAYS := ["altitude_words", "terrain", "buildings", "zones", "underground", "text_overlays", "tile_flags"]
 
 
 static func capture(source: GameSpeedController, budget: SimulationSliceBudget) -> GameSpeedController:
@@ -24,8 +23,7 @@ static func capture(source: GameSpeedController, budget: SimulationSliceBudget) 
 	city.map_size = original.map_size
 	city.load_error = original.load_error
 
-	for field in CITY_ARRAYS:
-		city.set(field, original.get(field).duplicate())
+	original.copy_mirrors_to(city)
 
 	city.simulation_slice = budget
 	var engine := SimulationEngine.new(null)
@@ -55,8 +53,7 @@ static func publish(completed: GameSpeedController, target: GameSpeedController)
 			into.is_dirty = from.is_dirty
 			into.mutation_revision = from.mutation_revision
 
-	for field in CITY_ARRAYS:
-		city.set(field, updated.get(field))
+	updated.copy_mirrors_to(city, true)
 
 	copy_engine(completed.engine, target.engine)
 	_copy_fields(completed, target, CONTROLLER_FIELDS)

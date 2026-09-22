@@ -117,8 +117,7 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	_snapshot.map_size = city.map_size
 	_snapshot.visible_altitude_levels = city.visible_altitude_levels
 
-	for field in ["altitude_words", "terrain", "buildings", "zones", "underground", "text_overlays", "tile_flags"]:
-		_snapshot.set(field, city.get(field).duplicate())
+	city.copy_mirrors_to(_snapshot)
 
 	display_city = _snapshot
 	_palette = palette
