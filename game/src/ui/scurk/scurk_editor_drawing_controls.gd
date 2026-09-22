@@ -90,17 +90,20 @@ func build() -> void:
 	round_brush_check.toggled.connect(round_brush_changed.emit)
 	filled_shapes_check = $Margin/Column/Brush/Filled
 	filled_shapes_check.toggled.connect(filled_shapes_changed.emit)
-	grid_check = $"../Editor/Canvas/Footer/Row/GridScroll/Grid/Show"
+	grid_check = $Margin/Column/Grid/Show
 	grid_check.toggled.connect(grid_visibility_changed.emit)
-	snap_to_grid_check = $"../Editor/Canvas/Footer/Row/GridScroll/Grid/Snap"
+	grid_check.toggled.connect(func(enabled: bool) -> void: $Margin/Column/Grid/Dimensions.visible = enabled)
+	snap_to_grid_check = $Margin/Column/Brush/Snap
 	snap_to_grid_check.toggled.connect(grid_snap_changed.emit)
-	clip_region_check = $"../Editor/Canvas/Footer/Row/GridScroll/Grid/Clip"
+	clip_region_check = $"../Editor/Canvas/Footer/Row/Clipping/Clip"
 	clip_region_check.toggled.connect(clip_region_changed.emit)
-	clip_enabled_check = $"../Editor/Canvas/Footer/Row/GridScroll/Grid/Limit"
+	clip_enabled_check = $"../Editor/Canvas/Footer/Row/Clipping/Limit"
 	clip_enabled_check.toggled.connect(clip_enabled_changed.emit)
-	grid_width_selector = $"../Editor/Canvas/Footer/Row/GridScroll/Grid/WidthRow/Width"
+	grid_width_selector = $Margin/Column/Grid/Dimensions/WidthRow/Width
+	grid_width_selector.get_line_edit().set("minimum_character_width", 2)
 	grid_width_selector.value_changed.connect(grid_width_changed.emit)
-	grid_height_selector = $"../Editor/Canvas/Footer/Row/GridScroll/Grid/HeightRow/Height"
+	grid_height_selector = $Margin/Column/Grid/Dimensions/HeightRow/Height
+	grid_height_selector.get_line_edit().set("minimum_character_width", 2)
 	grid_height_selector.value_changed.connect(grid_height_changed.emit)
 	$"Margin/Column/Clipboard/RotateCW".pressed.connect(rotate_clipboard_clockwise_requested.emit)
 	$"Margin/Column/Clipboard/RotateCW".disabled = true

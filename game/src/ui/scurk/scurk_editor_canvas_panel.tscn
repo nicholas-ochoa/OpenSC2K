@@ -4,8 +4,6 @@
 [ext_resource type="Script" path="res://src/view/scurk_pixel_canvas.gd" id="pixels"]
 [ext_resource type="Script" path="res://src/view/scurk_view_preview.gd" id="preview"]
 
-[ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_editor_grid_controls.tscn" id="grid"]
-
 [node name="Canvas" type="VBoxContainer"]
 script = ExtResource("script")
 
@@ -84,14 +82,18 @@ theme_override_constants/margin_top = 4
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="GridScroll" type="ScrollContainer" parent="Footer/Row"]
+[node name="Clipping" type="HBoxContainer" parent="Footer/Row"]
 layout_mode = 2
 size_flags_horizontal = 3
-vertical_scroll_mode = 0
 
-[node name="Grid" parent="Footer/Row/GridScroll" instance=ExtResource("grid")]
+[node name="Limit" type="CheckBox" parent="Footer/Row/Clipping"]
 layout_mode = 2
-size_flags_horizontal = 3
+text = "Clip to tile"
+button_pressed = true
+
+[node name="Clip" type="CheckBox" parent="Footer/Row/Clipping"]
+layout_mode = 2
+text = "Show clip region"
 
 [node name="ShowViews" type="Button" parent="Footer/Row"]
 layout_mode = 2

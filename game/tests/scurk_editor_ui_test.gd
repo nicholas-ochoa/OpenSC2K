@@ -80,6 +80,29 @@ func _run() -> void:
 	assert(editor.pixel_canvas.palette_cycle_ticks > tick)
 	for preview in editor.view_previews:
 		assert(preview.palette_cycle_ticks == editor.pixel_canvas.palette_cycle_ticks)
+	# The moved controls still update the canvas, and clip guides require clipping.
+	editor.snap_to_grid_check.button_pressed = true
+	assert(editor.pixel_canvas.snap_to_grid)
+	editor.snap_to_grid_check.button_pressed = false
+	editor.grid_check.button_pressed = false
+	assert(not editor.pixel_canvas.show_grid)
+	assert(not editor.grid_width_selector.is_visible_in_tree() and not editor.grid_height_selector.is_visible_in_tree())
+	editor.grid_check.button_pressed = true
+	assert(editor.grid_width_selector.is_visible_in_tree() and editor.grid_height_selector.is_visible_in_tree())
+	var before_clip_controls: PackedByteArray = editor.tile_set.to_bytes().bytes
+	editor.clip_region_check.button_pressed = true
+	assert(editor.pixel_canvas.show_clip_region and not editor.clip_region_check.disabled)
+	editor.drawing_controls.clip_enabled_check.button_pressed = false
+	assert(editor.clip_region_check.disabled and not editor.pixel_canvas.show_clip_region)
+	assert(editor.pixel_canvas.clip_guide_rects().is_empty())
+	editor.drawing_controls.clip_enabled_check.button_pressed = true
+	assert(not editor.clip_region_check.disabled and editor.pixel_canvas.show_clip_region)
+	for view in 3:
+		editor._select_view(view)
+		assert(editor.pixel_canvas.background_view == view)
+	editor._select_view(0)
+	assert(editor.tile_set.to_bytes().bytes == before_clip_controls)
+	editor.clip_region_check.button_pressed = false
 	# A pixel outside the original tile survives commit, undo, save, and reload.
 	var original: PackedByteArray = editor.tile_set.to_bytes().bytes
 	editor._set_clipping_enabled(false)

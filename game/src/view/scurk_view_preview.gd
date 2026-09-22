@@ -60,6 +60,8 @@ func set_preview(
 
 			if index < 0 and has_background:
 				index = background_workspace[source_offset]
+				if index == ScurkPixelCanvas.BACKGROUND_TRANSPARENT_INDEX:
+					index = -1
 
 			preview_indices[y * preview_width + x] = index
 
@@ -146,9 +148,7 @@ func _rebuild_texture() -> void:
 	rgba.resize(preview_indices.size() * 4)
 	for offset in preview_indices.size():
 		var index := preview_indices[offset]
-		var color := colors[index] if index >= 0 else (
-			0xffd8d8d8 if (offset % preview_width + offset / preview_width) % 2 == 0 else 0xffffffff
-		)
+		var color := colors[index] if index >= 0 else 0
 		rgba.encode_u32(offset * 4, color)
 	var image := Image.create_from_data(
 		preview_width, preview_height, false, Image.FORMAT_RGBA8, rgba
@@ -164,7 +164,7 @@ func _rebuild_texture() -> void:
 func _draw() -> void:
 	draw_rect(
 		Rect2(Vector2.ZERO, Vector2(preview_width + 2, preview_height + 2)),
-		Color("404040"), true
+		Color("404040"), false, 1.0
 	)
 
 	if preview_texture != null:

@@ -1,5 +1,7 @@
 extends SceneTree
 
+@warning_ignore_start("integer_division")
+
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -82,20 +84,10 @@ func _run() -> void:
 	canvas.queue_redraw()
 	await RenderingServer.frame_post_draw
 	assert(viewport.get_texture().get_image().get_pixel(308, 8).is_equal_approx(palette.color(55)))
-	var clip_background := PackedInt32Array()
-	clip_background.resize(16)
-	clip_background.fill(66)
-	canvas.clip_background_pixels = [clip_background]
-	canvas.clip_base_size = 1
-	canvas.set_clip_region_visible(true)
-	await RenderingServer.frame_post_draw
-	assert(viewport.get_texture().get_image().get_pixel(308, 8).is_equal_approx(palette.color(66)))
 	canvas.clear_background_pixels.clear()
-	canvas.clip_background_pixels.clear()
 	canvas.queue_redraw()
 	await RenderingServer.frame_post_draw
-	var checker := viewport.get_texture().get_image()
-	assert(checker.get_pixel(308, 8).is_equal_approx(Color("d8d8d8")))
+	assert(canvas.display_texture.get_image().get_pixel(0, 0).a == 0.0)
 	# Hidden previews retain the clock and catch up when shown again.
 	preview.hide()
 	preview.set_cycle_tick(80)
@@ -109,5 +101,72 @@ func _run() -> void:
 	await RenderingServer.frame_post_draw
 	assert(viewport.get_texture().get_image().get_pixel(401, 1).is_equal_approx(palette.color(42)))
 	viewport.free()
+	await _test_clip_display(palette)
 	print("PASS: native SCURK palette, canvas and display cycling pixels, brush outline and unchanged indices")
 	quit()
+
+
+func _test_clip_display(palette: Sc2Palette) -> void:
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(520, 520)
+	viewport.transparent_bg = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var canvas := ScurkPixelCanvas.new()
+	canvas.position = Vector2(4, 4)
+	canvas.show_grid = false
+	viewport.add_child(canvas)
+	canvas.set_process(false)
+	var pixels := PackedInt32Array()
+	pixels.resize(128 * 256)
+	pixels.fill(42)
+	canvas.clear_background_pixels.resize(pixels.size())
+	canvas.clear_background_pixels.fill(252)
+	for pair in [Vector2i(32, 1), Vector2i(128, 2)]:
+		canvas.clear_edit_region()
+		canvas.set_sprite_data(128, 256, pixels, palette)
+		canvas.set_zoom(pair.y)
+		canvas.set_edit_region(ScurkDrawingWorkspace.clip_mask(pair.x), pair.x / 32)
+		var before := canvas.pixels.duplicate()
+		canvas.set_clip_region_visible(true)
+		await RenderingServer.frame_post_draw
+		var image := viewport.get_texture().get_image()
+		var left := 4 + canvas.DISPLAY_MARGIN + canvas.clip_columns.x * canvas.zoom - 1
+		var right := 4 + canvas.DISPLAY_MARGIN + (canvas.clip_columns.y + 1) * canvas.zoom
+		for y in [4, 4 + 256 * canvas.zoom - 1]:
+			assert(image.get_pixel(left, y).is_equal_approx(Color.WHITE))
+			assert(image.get_pixel(right, y).is_equal_approx(Color.WHITE))
+		assert(image.get_pixel(left + 1, 4).is_equal_approx(palette.color(42)))
+		assert(image.get_pixel(right - 1, 4).is_equal_approx(palette.color(42)))
+		assert(canvas.pixels == before)
+		assert(canvas._point_from_position(Vector2(canvas.DISPLAY_MARGIN, 0)) == Vector2i.ZERO)
+		assert(canvas._point_from_position(Vector2.ZERO).x == -1)
+		canvas.set_clip_region_visible(false)
+		await RenderingServer.frame_post_draw
+		assert(viewport.get_texture().get_image().get_pixel(left, 4).a == 0.0)
+	# Terrain uses the same nearest-neighbor sampling as each selected artwork view.
+	canvas.clear_edit_region()
+	pixels.resize(64)
+	pixels.fill(-1)
+	canvas.set_sprite_data(8, 8, pixels, palette)
+	canvas.clear_background_pixels.resize(64)
+	for index in 64:
+		canvas.clear_background_pixels[index] = 50 + index
+	for view in 3:
+		canvas.set_background_view(view)
+		await RenderingServer.frame_post_draw
+		var image := canvas.display_texture.get_image()
+		var divisor := ScurkDrawingWorkspace.view_divisor(view)
+		for y in 8:
+			for x in 8:
+				var source_x := (x / divisor) * divisor + divisor - 1
+				var source_y := (y / divisor) * divisor + divisor - 1
+				assert(image.get_pixel(x, y).is_equal_approx(palette.color(50 + source_y * 8 + source_x)))
+	canvas.clear_background_pixels.fill(252)
+	canvas.pixels[0] = 252
+	canvas.queue_redraw()
+	await RenderingServer.frame_post_draw
+	var transparent := canvas.display_texture.get_image()
+	assert(transparent.get_pixel(0, 0).is_equal_approx(palette.color(252)))
+	assert(transparent.get_pixel(1, 0).a == 0.0)
+	viewport.free()

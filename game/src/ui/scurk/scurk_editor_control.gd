@@ -1131,7 +1131,7 @@ func _apply_grid_settings() -> void:
 
 func _set_clip_region_visible(enabled: bool) -> void:
 	if pixel_canvas != null:
-		pixel_canvas.set_clip_region_visible(enabled)
+		pixel_canvas.set_clip_region_visible(enabled and not clip_region_check.disabled)
 
 
 func _process(delta: float) -> void:
@@ -1276,6 +1276,8 @@ func _refresh_sprite() -> void:
 		unclipped_tiles[current_large_id] = _tile_needs_unclipped_workspace()
 
 	drawing_controls.clip_enabled_check.set_pressed_no_signal(_clipping_enabled())
+	drawing_controls.clip_enabled_check.disabled = not active_workspace
+	clip_region_check.disabled = not active_workspace or not _clipping_enabled()
 	pixel_canvas.clear_edit_region()
 
 	if active_workspace:
@@ -1290,10 +1292,11 @@ func _refresh_sprite() -> void:
 				DrawingWorkspace.clip_mask(active_base_width),
 				DrawingWorkspace.base_size(active_base_width)
 			)
-		pixel_canvas.set_clip_region_visible(clip_region_check.button_pressed)
+		pixel_canvas.set_clip_region_visible(clip_region_check.button_pressed and not clip_region_check.disabled)
 	else:
 		pixel_canvas.set_sprite_data(entry.width, entry.height, decoded.pixels, palette)
 
+	pixel_canvas.set_background_view(current_view)
 	pixel_canvas.set_tool(current_tool)
 	pixel_canvas.set_paint_indices(
 		foreground_palette_index, background_palette_index

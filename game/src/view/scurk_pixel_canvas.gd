@@ -30,6 +30,8 @@ signal clipboard_changed(width: int, height: int)
 signal clipboard_copy_rejected(minimum_span: int)
 
 const MAX_BRUSH_SIZE := 24
+const DISPLAY_MARGIN := 1
+const BACKGROUND_TRANSPARENT_INDEX := 252
 const TOOL_PENCIL := 0
 const TOOL_ERASER := 1
 const TOOL_LINE := 2
@@ -109,6 +111,8 @@ var palette_cycle_accumulator := 0.0
 var edit_mask := PackedByteArray()
 var clip_base_size := -1
 var show_clip_region := false
+var clip_columns := Vector2i(-1, -1)
+var background_view := 0
 var clear_background_pixels := PackedInt32Array()
 var clip_background_pixels: Array[PackedInt32Array] = []
 var outline_state: Array = []
@@ -186,6 +190,12 @@ func set_edit_region(mask: PackedByteArray, base_size: int) -> void:
 		edit_mask = mask.duplicate()
 		clip_base_size = clampi(base_size, 1, 4)
 
+	clip_columns = Vector2i(sprite_width, -1)
+	for offset in edit_mask.size():
+		if edit_mask[offset] != 0:
+			var x := offset % sprite_width
+			clip_columns.x = mini(clip_columns.x, x)
+			clip_columns.y = maxi(clip_columns.y, x)
 	_enforce_edit_mask()
 	queue_redraw()
 
@@ -193,12 +203,13 @@ func set_edit_region(mask: PackedByteArray, base_size: int) -> void:
 func clear_edit_region() -> void:
 	edit_mask.clear()
 	clip_base_size = -1
+	clip_columns = Vector2i(-1, -1)
 	show_clip_region = false
 	queue_redraw()
 
 
 func set_clip_region_visible(enabled: bool) -> void:
-	show_clip_region = enabled
+	show_clip_region = enabled and not edit_mask.is_empty()
 	queue_redraw()
 
 
@@ -1251,7 +1262,7 @@ func _point_from_position(position: Vector2) -> Vector2i:
 	if zoom <= 0:
 		return Vector2i(-1, -1)
 
-	return Vector2i(floori(position.x / zoom), floori(position.y / zoom))
+	return Vector2i(floori((position.x - DISPLAY_MARGIN) / zoom), floori(position.y / zoom))
 
 
 func _point_is_valid(point: Vector2i) -> bool:
@@ -1282,7 +1293,7 @@ func _enforce_edit_mask() -> void:
 
 func _update_minimum_size() -> void:
 	custom_minimum_size = Vector2(
-		maxi(1, sprite_width * zoom), maxi(1, sprite_height * zoom)
+		maxi(1, sprite_width * zoom) + DISPLAY_MARGIN * 2, maxi(1, sprite_height * zoom)
 	)
 	reset_size()
 
@@ -1299,6 +1310,7 @@ func _draw() -> void:
 
 		return
 
+	draw_set_transform(Vector2(DISPLAY_MARGIN, 0))
 	_update_display_texture()
 	draw_texture_rect(display_texture, Rect2(Vector2.ZERO, Vector2(sprite_width, sprite_height) * zoom), false)
 
@@ -1321,6 +1333,9 @@ func _draw() -> void:
 					grid_color, 1.0
 				)
 
+	for guide in clip_guide_rects():
+		draw_rect(guide, Color.WHITE, true)
+
 	if copy_active and _point_is_valid(copy_start) and _point_is_valid(copy_finish):
 		var minimum := Vector2i(
 			mini(copy_start.x, copy_finish.x), mini(copy_start.y, copy_finish.y)
@@ -1342,9 +1357,7 @@ func _update_display_texture() -> void:
 	var valid_palette := palette != null and palette.is_valid()
 	var indices := palette.scurk_animation_index_map(palette_cycle_ticks) if valid_palette else PackedInt32Array()
 	var background := clear_background_pixels
-	if show_clip_region and clip_base_size >= 1 and clip_base_size <= clip_background_pixels.size():
-		background = clip_background_pixels[clip_base_size - 1]
-	var state: Array = [sprite_width, sprite_height, hash(pixels), hash(background),
+	var state: Array = [sprite_width, sprite_height, background_view, hash(pixels), hash(background),
 		hash(palette.colors) if valid_palette else 0, hash(indices)]
 	if display_texture != null and display_state == state:
 		return
@@ -1356,13 +1369,18 @@ func _update_display_texture() -> void:
 	var rgba := PackedByteArray()
 	rgba.resize(pixels.size() * 4)
 	var has_background := background.size() == pixels.size()
+	var divisor := ScurkDrawingWorkspace.view_divisor(background_view)
 	for offset in pixels.size():
 		var index := pixels[offset]
 		if index < 0 and has_background:
-			index = background[offset]
-		var color := colors[index] if index >= 0 else (
-			0xffd8d8d8 if (offset % sprite_width + offset / sprite_width) % 2 == 0 else 0xffffffff
-		)
+			var x := offset % sprite_width
+			var y := offset / sprite_width
+			var source_x := mini(sprite_width - 1, (x / divisor) * divisor + divisor - 1)
+			var source_y := mini(sprite_height - 1, (y / divisor) * divisor + divisor - 1)
+			index = background[source_y * sprite_width + source_x]
+			if index == BACKGROUND_TRANSPARENT_INDEX:
+				index = -1
+		var color := colors[index] if index >= 0 else 0
 		rgba.encode_u32(offset * 4, color)
 	var image := Image.create_from_data(sprite_width, sprite_height, false, Image.FORMAT_RGBA8, rgba)
 	if display_texture == null or display_texture.get_size() != Vector2(sprite_width, sprite_height):
@@ -1370,3 +1388,19 @@ func _update_display_texture() -> void:
 	else:
 		display_texture.update(image)
 	display_state = state
+
+
+func set_background_view(view: int) -> void:
+	background_view = clampi(view, 0, 2)
+	queue_redraw()
+
+
+func clip_guide_rects() -> Array[Rect2]:
+	if not show_clip_region or clip_columns.x < 0 or clip_columns.y < clip_columns.x:
+		return []
+
+	# One display pixel outside each editable column range, including at 1x zoom.
+	return [
+		Rect2(clip_columns.x * zoom - 1, 0, 1, sprite_height * zoom),
+		Rect2((clip_columns.y + 1) * zoom, 0, 1, sprite_height * zoom),
+	]

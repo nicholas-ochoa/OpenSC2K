@@ -21,6 +21,8 @@
 [ext_resource type="Texture2D" path="res://src/ui/scurk/icons/copy_object.svg" id="CopyObject"]
 [ext_resource type="Texture2D" path="res://src/ui/scurk/icons/paste_image.svg" id="PasteImage"]
 
+[ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_editor_grid_controls.tscn" id="grid"]
+
 [ext_resource type="Shader" path="res://src/ui/shared/frosted_panel.gdshader" id="glass"]
 
 [sub_resource type="ShaderMaterial" id="GlassMaterial"]
@@ -308,10 +310,17 @@ custom_minimum_size = Vector2(76, 0)
 layout_mode = 2
 text = "Round brush"
 
+[node name="Snap" type="CheckBox" parent="Margin/Column/Brush"]
+layout_mode = 2
+text = "Snap shapes"
+
 [node name="Filled" type="CheckBox" parent="Margin/Column/Brush"]
 layout_mode = 2
 visible = false
 text = "Filled shapes"
+
+[node name="Grid" parent="Margin/Column" instance=ExtResource("grid")]
+layout_mode = 2
 
 [node name="Spacer" type="Control" parent="Margin/Column"]
 layout_mode = 2
