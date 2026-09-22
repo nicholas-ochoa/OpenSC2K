@@ -248,23 +248,23 @@ static func _tile_count(city: CityState, tile_id: int) -> int:
 static func _ordinance_adjusted_tax_rate(category: int, rate: int, flags: int) -> int:
 	match category:
 		0:
-			if flags & 0x0002:
+			if flags & OrdinanceIds.INCOME_TAX_MASK:
 				rate += 1
 
-			if flags & 0x4000:
+			if flags & OrdinanceIds.CITY_BEAUTIFICATION_MASK:
 				rate -= 1
 		1:
-			if flags & 0x0001:
+			if flags & OrdinanceIds.SALES_TAX_MASK:
 				rate += 1
 
-			for mask in [0x1000, 0x8000, 0x40000]:
+			for mask in [OrdinanceIds.TOURIST_ADVERTISING_MASK, OrdinanceIds.ANNUAL_CARNIVAL_MASK, OrdinanceIds.HOMELESS_SHELTER_MASK]:
 				if flags & mask:
 					rate -= 1
 		2:
-			if flags & 0x2000:
+			if flags & OrdinanceIds.BUSINESS_ADVERTISING_MASK:
 				rate -= 1
 
-			if flags & 0x80000:
+			if flags & OrdinanceIds.POLLUTION_CONTROLS_MASK:
 				rate += 1
 
 	return maxi(rate, 0)

@@ -63,14 +63,14 @@ static func select(city: CityState, report: BudgetReport, advisor: int, random: 
 			elif (city.funds() & 0xffffffff) < population:
 				choice = 12 if total >= 667 else 13
 		1:
-			if not flags & 0x80000 and _graph(city, 5) > 30:
+			if not flags & OrdinanceIds.POLLUTION_CONTROLS_MASK and _graph(city, 5) > 30:
 				choice = 14
-			elif not flags & 0x10000 and power_usage > 98:
+			elif not flags & OrdinanceIds.ENERGY_CONSERVATION_MASK and power_usage > 98:
 				choice = 15
 			elif crime > 30:
-				if not flags & 0x800:
+				if not flags & OrdinanceIds.NEIGHBORHOOD_WATCH_MASK:
 					choice = 16
-				elif not flags & 0x200:
+				elif not flags & OrdinanceIds.ANTI_DRUG_MASK:
 					choice = 17
 				elif flags & 4:
 					choice = 18
@@ -93,7 +93,7 @@ static func select(city: CityState, report: BudgetReport, advisor: int, random: 
 			choice = 5
 			if crime > 40:
 				choice = 7
-			elif crime > 30 and not flags & 0x800:
+			elif crime > 30 and not flags & OrdinanceIds.NEIGHBORHOOD_WATCH_MASK:
 				choice = 16
 			elif crime > 19:
 				choice = 6
@@ -110,7 +110,7 @@ static func select(city: CityState, report: BudgetReport, advisor: int, random: 
 				choice = 9
 			else:
 				var selected := random.next_u15() % 3
-				choice = 26 if flags & [0x20, 0x400, 0x40][selected] else 23 + selected
+				choice = 26 if flags & [OrdinanceIds.PUBLIC_SMOKING_BAN_MASK, OrdinanceIds.CPR_TRAINING_MASK, OrdinanceIds.FREE_CLINICS_MASK][selected] else 23 + selected
 		6:
 			var schools := _signed_word(doc.misc_u32(Sc2MiscLayout.TILE_COUNTS + Tiles.SCHOOL * 4))
 			var colleges := _signed_word(doc.misc_u32(Sc2MiscLayout.TILE_COUNTS + Tiles.COLLEGE * 4))

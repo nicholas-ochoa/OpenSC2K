@@ -25,7 +25,7 @@ const MISC_ORDINANCES := Sc2MiscLayout.ORDINANCES
 const INVENTION_COUNT := 17
 const ARCOLOGY_FIRST_INVENTION := 12
 const ARCOLOGY_LAST_INVENTION := 15
-const ORDINANCE_NUCLEAR_FREE := 1 << 17
+const ORDINANCE_NUCLEAR_FREE := OrdinanceIds.NUCLEAR_FREE_ZONE_MASK
 
 # supplied executable table at 0x004e9560. the final three groups use direct
 # actions and do not use these submenu masks

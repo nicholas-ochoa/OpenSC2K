@@ -1,5 +1,11 @@
 [
   {
+    "id": "ordinance_identity_test",
+    "script": "tests/ordinance_identity_test.gd",
+    "domain": "simulation",
+    "lane": "product"
+  },
+  {
     "id": "city_calendar_test",
     "script": "tests/city_calendar_test.gd",
     "domain": "simulation",
