@@ -7,6 +7,8 @@ extends RefCounted
 
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+static var _pollution_weights := _make_pollution_weights()
+static var _population_weights := _make_population_weights()
 
 static func run(city: CityState) -> PollutionPhase.Result:
 	var span := SimulationTimingSpan.new(city.simulation_slice)
@@ -33,6 +35,8 @@ static func run(city: CityState) -> PollutionPhase.Result:
 	var flags := city.tile_flags
 	var zones := city.zones
 	var terrain := city.terrain
+	var pollution_weights := _pollution_weights
+	var population_weights := _population_weights
 	var misc := doc.find_chunk("MISC")
 
 	if misc == null or misc.decoded_payload.size() != 4800:
@@ -60,7 +64,7 @@ static func run(city: CityState) -> PollutionPhase.Result:
 			var tile_flags := int(flags[index])
 			var zone := int(zones[index]) & 15
 			sources[index] = int(old_pollution[index]) + int(old_traffic[index]) / 5
-			sources[index] += int(PollutionPhase.BUILDING_POLLUTION.get(building, 0)) * 4
+			sources[index] += pollution_weights[building]
 
 			if building == PollutionPhase.RADIOACTIVITY:
 				sources[index] += 800
@@ -90,7 +94,7 @@ static func run(city: CityState) -> PollutionPhase.Result:
 				residential[index] += 12
 
 			if building >= Tiles.DEVELOPED_FIRST and building < Tiles.HYDRO_POWER_1:
-				weights[index] = PollutionPhase._population_weight(building)
+				weights[index] = population_weights[building]
 				occupied[index] = 1
 			elif building >= Tiles.HYDRO_POWER_1:
 				weights[index] = 12 if building >= Tiles.PLYMOUTH_ARCOLOGY and building <= Tiles.LAUNCH_ARCOLOGY else 2
@@ -192,6 +196,23 @@ static func run(city: CityState) -> PollutionPhase.Result:
 	return PollutionPhase.totals(
 		pollution_total, land_total, crime_total, developed, center, span.finish()
 	)
+
+
+# derive once from the shared rules; workers only read these tables
+static func _make_pollution_weights() -> PackedInt32Array:
+	var values := PackedInt32Array()
+	values.resize(Tiles.COUNT)
+	for building in values.size():
+		values[building] = int(PollutionPhase.BUILDING_POLLUTION.get(building, 0)) * 4
+	return values
+
+
+static func _make_population_weights() -> PackedInt32Array:
+	var values := PackedInt32Array()
+	values.resize(Tiles.COUNT)
+	for building in values.size():
+		values[building] = PollutionPhase._population_weight(building)
+	return values
 
 
 static func _add_stations(city: CityState, police: PackedByteArray, fire: PackedByteArray) -> void:

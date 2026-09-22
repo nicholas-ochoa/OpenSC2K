@@ -23,6 +23,8 @@ func _run() -> void:
 			var flags := city.tile_flags.duplicate()
 			var types := [0, 1, 5, 6, 12, 15, 0x1d, 0x70, 0x80, 0x90, 0xa0, 0xb0, 0xc5, 0xfb,
 				PollutionPhase.POLICE_STATION, PollutionPhase.FIRE_STATION, PollutionPhase.BIG_PARK]
+			# cover every building byte used by the derived source tables
+			types.append_array(range(256))
 
 			for index in buildings.size():
 				buildings[index] = types[(index * 13 + index / edge) % types.size()]
