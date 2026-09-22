@@ -21,25 +21,25 @@ static func create(map_edge: int = 128) -> Sc2File:
 
 	# independent starting policy. newcitysetup supplies difficulty/year values
 	var values := {
-		0x0000: 0x122, 0x0004: 1, 0x000c: 1900, 0x0014: 20000, 0x001c: 1,
-		0x0050: 10000, 0x0054: 3000, 0x0058: 3,
-		0x0060: 150, 0x0064: 10, 0x0068: 15, 0x006c: 4,
-		0x01f0: (map_edge * map_edge),
-		0x0fec: 2, 0x0ff4: 1, 0x0ff8: 1, 0x0ffc: 1,
+		0x0000: 0x122, Sc2MiscLayout.CITY_MODE: 1, Sc2MiscLayout.START_YEAR: 1900, Sc2MiscLayout.FUNDS: 20000, Sc2MiscLayout.DIFFICULTY: 1,
+		Sc2MiscLayout.NATIONAL_POPULATION: 10000, Sc2MiscLayout.NATIONAL_VALUE: 3000, Sc2MiscLayout.NATIONAL_FEDERAL_RATE: 3,
+		Sc2MiscLayout.WEATHER_HEAT: 150, Sc2MiscLayout.WEATHER_WIND: 10, Sc2MiscLayout.WEATHER_RAIN: 15, Sc2MiscLayout.WEATHER_TREND: 4,
+		Sc2MiscLayout.TILE_COUNTS: (map_edge * map_edge),
+		Sc2MiscLayout.SIMULATION_SPEED: 2, Sc2MiscLayout.AUTO_GOTO: 1, Sc2MiscLayout.SOUND: 1, Sc2MiscLayout.MUSIC: 1,
 	}
 
 	for offset in values:
 		document.set_misc_u32(offset, values[offset])
 
-	for industry in 11:
-		document.set_misc_u32(0x0170 + industry * 12, 7)
+	for industry in Sc2IndustryLayout.COUNT:
+		document.set_misc_u32(Sc2MiscLayout.INDUSTRIES + industry * Sc2IndustryLayout.RECORD_SIZE + Sc2IndustryLayout.TAX_RATE, 7)
 
-	for budget in 16:
+	for budget in Sc2BudgetLayout.COUNT:
 		var funding := 7 if budget < 3 else (1 if budget == 3 else (0 if budget == 4 else 100))
-		document.set_misc_u32(0x077c + budget * 0x6c + 4, funding)
+		document.set_misc_u32(Sc2MiscLayout.BUDGETS + budget * Sc2BudgetLayout.RECORD_SIZE + Sc2BudgetLayout.FUNDING, funding)
 
 	for neighbor in 4:
-		document.set_misc_u32(0x06d8 + neighbor * 16, neighbor)
+		document.set_misc_u32(Sc2MiscLayout.NEIGHBORS + neighbor * 16, neighbor)
 		document.set_misc_u32(0x06dc + neighbor * 16, 1000)
 		document.set_misc_u32(0x06e0 + neighbor * 16, 1000)
 

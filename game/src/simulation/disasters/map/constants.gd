@@ -35,5 +35,5 @@ const MAP_CHUNK_SIZES := {
 	"XMIC": CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE,
 	"XTHG": CityState.THING_COUNT * CityState.THING_RECORD_SIZE,
 	"XFIR": 32 * 32,
-	"MISC": 4800,
+	"MISC": Sc2MiscLayout.SIZE,
 }

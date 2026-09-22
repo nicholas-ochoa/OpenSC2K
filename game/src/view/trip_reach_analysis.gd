@@ -39,7 +39,7 @@ static func inspect(city: CityState, clicked: Vector2i) -> TransportTripReachRes
 		density, SimRandom.new(1), 100, city.map_size, true, start) as TransportTripReachResult
 	_add_building_coverage(city, result, origin)
 	var powered := GrowthDevelopment._has_power(city.tile_flags, origin.x, origin.y, city.map_size)
-	var demand := city.document.misc_i32(0x0718 + ((zone - 1) / 2) * 4) if rci else 0
+	var demand := city.document.misc_i32(Sc2MiscLayout.DEMAND + ((zone - 1) / 2) * 4) if rci else 0
 	var lines := PackedStringArray()
 	if result.reachable.is_empty():
 		lines.append("No transport access within three tiles.")

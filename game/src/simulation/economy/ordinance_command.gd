@@ -3,21 +3,19 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
-const MISC_SIZE := 4800
-const MISC_CITY_DAYS := 0x0010
-const MISC_BUDGETS := 0x077c
-const MISC_YEAR_END := 0x0e3c
-const MISC_ORDINANCES := 0x0fa0
-const MISC_ARCOLOGY_POPULATION := 0x1020
-const MISC_NORMAL_POPULATION := 0x102c
+const MISC_SIZE := Sc2MiscLayout.SIZE
+const MISC_CITY_DAYS := Sc2MiscLayout.CITY_DAYS
+const MISC_BUDGETS := Sc2MiscLayout.BUDGETS
+const MISC_YEAR_END := Sc2MiscLayout.YEAR_END
+const MISC_ORDINANCES := Sc2MiscLayout.ORDINANCES
+const MISC_ARCOLOGY_POPULATION := Sc2MiscLayout.ARCOLOGY_POPULATION
+const MISC_NORMAL_POPULATION := Sc2MiscLayout.NORMAL_POPULATION
 
-const BUDGET_RECORD_SIZE := 0x006c
-const BUDGET_CURRENT := 0x00
-const BUDGET_YEAR_TO_DATE := 0x08
-const BUDGET_RESIDENTIAL := 0
-const BUDGET_COMMERCIAL := 1
-const BUDGET_INDUSTRIAL := 2
-const BUDGET_ORDINANCES := 3
+const BUDGET_RECORD_SIZE := Sc2BudgetLayout.RECORD_SIZE
+const BUDGET_CURRENT := Sc2BudgetLayout.CURRENT
+const BUDGET_YEAR_TO_DATE := Sc2BudgetLayout.YEAR_TO_DATE
+const BUDGET_RESIDENTIAL := Sc2BudgetLayout.RESIDENTIAL
+const BUDGET_ORDINANCES := Sc2BudgetLayout.ORDINANCES
 
 const ORDINANCE_COUNT := 20
 const DISPLAY_CURRENT_DIVISOR := 75
@@ -62,8 +60,8 @@ static func costs_for_misc(misc: PackedByteArray) -> PackedInt32Array:
 		return costs
 
 	var residential := BinaryData.read_i32_be(misc, _budget_offset(BUDGET_RESIDENTIAL))
-	var commercial := BinaryData.read_i32_be(misc, _budget_offset(BUDGET_COMMERCIAL))
-	var industrial := BinaryData.read_i32_be(misc, _budget_offset(BUDGET_INDUSTRIAL))
+	var commercial := BinaryData.read_i32_be(misc, _budget_offset(Sc2BudgetLayout.COMMERCIAL))
+	var industrial := BinaryData.read_i32_be(misc, _budget_offset(Sc2BudgetLayout.INDUSTRIAL))
 	var population := _to_i32(
 		BinaryData.read_u32_be(misc, MISC_ARCOLOGY_POPULATION)
 		+ BinaryData.read_u32_be(misc, MISC_NORMAL_POPULATION)

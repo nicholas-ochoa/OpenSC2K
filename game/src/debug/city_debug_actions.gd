@@ -8,9 +8,7 @@ const DisasterStart = preload("res://src/simulation/disasters/disaster_start_pha
 const MovingThingSpawner = preload("res://src/simulation/moving_things/moving_thing_spawner.gd")
 
 const MAX_FUNDS := 0x7fffffff
-const MISC_SIZE := 4800
-const MISC_CITY_MODE := 0x0004
-const MISC_DISASTER_TYPE := 0x0070
+const MISC_SIZE := Sc2MiscLayout.SIZE
 const NORMAL_CITY_MODE := 1
 const DISASTER_OVERLAY_FIRST := 0xfb
 const MAXIS_TARGET_OVERLAY_FIRST := 241
@@ -171,8 +169,8 @@ static func end_disaster(
 	var disaster_records := _disaster_record_indices(things)
 	var cleared_markers := _clear_disaster_markers(text, things, disaster_records, map_edge)
 	_clear_thing_records(things, disaster_records)
-	BinaryData.write_u32_be(misc, MISC_CITY_MODE, NORMAL_CITY_MODE)
-	BinaryData.write_u32_be(misc, MISC_DISASTER_TYPE, 0)
+	BinaryData.write_u32_be(misc, Sc2MiscLayout.CITY_MODE, NORMAL_CITY_MODE)
+	BinaryData.write_u32_be(misc, Sc2MiscLayout.DISASTER_TYPE, 0)
 	var active_type := engine.active_disaster_type
 	var had_disaster := (
 		active_type != 0

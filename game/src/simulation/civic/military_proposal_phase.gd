@@ -3,10 +3,10 @@ extends RefCounted
 
 const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
 
-const MISC_SIZE := 4800
-const MISC_TILE_COUNTS := 0x01f0
-const MISC_BASE_TYPE := 0x0e4c
-const MISC_MILITARY_TILE_COUNTS := 0x0fa8
+const MISC_SIZE := Sc2MiscLayout.SIZE
+const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
+const MISC_BASE_TYPE := Sc2MiscLayout.MILITARY_BASE_TYPE
+const MISC_MILITARY_TILE_COUNTS := Sc2MiscLayout.MILITARY_TILE_COUNTS
 const ZONE_MILITARY := 7
 const FLAG_WATER := 0x04
 

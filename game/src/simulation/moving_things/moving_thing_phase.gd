@@ -21,8 +21,8 @@ const TYPE_TRAIN_ENGINE := 10
 const TYPE_SUBWAY_ENGINE := 12
 const TYPE_TORNADO := 15
 const TYPE_MAXIS_MAN := 16
-const MISC_CITY_CENTER_X := 0x1018
-const MISC_CITY_CENTER_Y := 0x101c
+const MISC_CITY_CENTER_X := Sc2MiscLayout.CITY_CENTER_X
+const MISC_CITY_CENTER_Y := Sc2MiscLayout.CITY_CENTER_Y
 # things and text change on nearly every tick; the map chunks follow
 const COMMIT_ORDER := [
 	"XTHG", "XTXT", "ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTRF", "XLAB", "XMIC", "MISC",

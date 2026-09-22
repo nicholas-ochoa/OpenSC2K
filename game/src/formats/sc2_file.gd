@@ -8,7 +8,7 @@ const RleCodec = preload("res://src/formats/maxis_rle.gd")
 
 const DECODED_SIZES: Dictionary[String, int] = {
 	"CNAM": 32,
-	"MISC": 4800,
+	"MISC": Sc2MiscLayout.SIZE,
 	"ALTM": 32768,
 	"XTER": 16384,
 	"XBLD": 16384,
@@ -477,7 +477,7 @@ func resize_empty_map(edge: int) -> bool:
 		data.resize(chunk.expected_decoded_size)
 		chunk.set_decoded_payload(data)
 
-	set_misc_u32(0x01f0, map_size * map_size)
+	set_misc_u32(Sc2MiscLayout.TILE_COUNTS, map_size * map_size)
 
 	return true
 

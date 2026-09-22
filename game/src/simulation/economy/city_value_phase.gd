@@ -5,10 +5,10 @@ extends RefCounted
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
-const MISC_SIZE := 4800
-const MISC_CITY_VALUE := 0x0024
-const MISC_TILE_COUNTS := 0x01f0
-const MISC_SUBWAY_COUNT := 0x0fe8
+const MISC_SIZE := Sc2MiscLayout.SIZE
+const MISC_CITY_VALUE := Sc2MiscLayout.CITY_VALUE
+const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
+const MISC_SUBWAY_COUNT := Sc2MiscLayout.SUBWAY_COUNT
 
 # these rules reproduce the supplied executable at 0x0046a270. some values are
 # defects. in particular, each underground subway tile subtracts one dollar

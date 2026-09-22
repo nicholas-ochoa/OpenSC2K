@@ -1,12 +1,10 @@
 class_name SimNationPhase
 extends RefCounted
 
-const MISC_SIZE := 4800
-const MISC_NATIONAL_POPULATION := 0x0050
-const MISC_NATIONAL_VALUE := 0x0054
-const MISC_NATIONAL_FEDERAL_RATE := 0x0058
-const MISC_NATIONAL_ECONOMY_TREND := 0x005c
-const MISC_NEIGHBORS := 0x06d8
+const MISC_SIZE := Sc2MiscLayout.SIZE
+const MISC_NATIONAL_POPULATION := Sc2MiscLayout.NATIONAL_POPULATION
+const MISC_NATIONAL_FEDERAL_RATE := Sc2MiscLayout.NATIONAL_FEDERAL_RATE
+const MISC_NATIONAL_ECONOMY_TREND := Sc2MiscLayout.NATIONAL_ECONOMY_TREND
 const NEIGHBOR_STRIDE := 0x10
 const NEIGHBOR_POPULATION := 0x04
 const NEIGHBOR_VALUE := 0x08
@@ -64,10 +62,10 @@ static func run(city: CityState, random: SimRandom) -> Result:
 	)
 	BinaryData.write_u32_be(data, MISC_NATIONAL_POPULATION, national_population)
 
-	var national_value := BinaryData.read_u32_be(data, MISC_NATIONAL_VALUE)
+	var national_value := BinaryData.read_u32_be(data, Sc2MiscLayout.NATIONAL_VALUE)
 	var value_change := _scaled_change(national_value, ECONOMY_FACTORS[economy_trend])
 	national_value = _move_about_center(national_value, value_change, NATIONAL_VALUE_CENTER)
-	BinaryData.write_u32_be(data, MISC_NATIONAL_VALUE, national_value)
+	BinaryData.write_u32_be(data, Sc2MiscLayout.NATIONAL_VALUE, national_value)
 
 	if random.next_u15() % 10 == 0:
 		var national_score := int(float(national_value) / float(national_population + 1) * 100.0)
@@ -100,7 +98,7 @@ static func run(city: CityState, random: SimRandom) -> Result:
 	var neighbor_values := PackedInt64Array()
 
 	for neighbor in NEIGHBOR_COUNT:
-		var base := MISC_NEIGHBORS + neighbor * NEIGHBOR_STRIDE
+		var base := Sc2MiscLayout.NEIGHBORS + neighbor * NEIGHBOR_STRIDE
 		var population := BinaryData.read_u32_be(data, base + NEIGHBOR_POPULATION)
 		var value := BinaryData.read_u32_be(data, base + NEIGHBOR_VALUE)
 
@@ -135,7 +133,7 @@ static func run(city: CityState, random: SimRandom) -> Result:
 
 	if random.next_u15() & 0x3f == 0:
 		shocked_neighbor = random.next_u15() & 3
-		var shock_base := MISC_NEIGHBORS + shocked_neighbor * NEIGHBOR_STRIDE
+		var shock_base := Sc2MiscLayout.NEIGHBORS + shocked_neighbor * NEIGHBOR_STRIDE
 		neighbor_populations[shocked_neighbor] = int(
 			float(neighbor_populations[shocked_neighbor]) * 0.75
 		)

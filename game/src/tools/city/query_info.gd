@@ -60,7 +60,7 @@ static func inspect(city: CityState, point: Vector2i) -> QueryResult:
 
 	var building := city.building_id(point.x, point.y)
 	var zone := city.zone_id(point.x, point.y)
-	var water_level := city.document.misc_u32(0x0e40)
+	var water_level := city.document.misc_u32(Sc2MiscLayout.WATER_LEVEL)
 	var land_altitude := city.land_altitude(point.x, point.y)
 	var terrain := city.terrain_id(point.x, point.y)
 	var wet_tile := false

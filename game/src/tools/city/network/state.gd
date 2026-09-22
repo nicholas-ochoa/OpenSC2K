@@ -44,7 +44,7 @@ static func city_payloads(city: CityState) -> Dictionary[String, PackedByteArray
 		["XUND", (map_edge * map_edge)],
 		["XBIT", (map_edge * map_edge)],
 		["XTXT", (map_edge * map_edge)],
-		["MISC", 4800],
+		["MISC", Sc2MiscLayout.SIZE],
 	]:
 		var chunk := city.document.find_chunk(checked[0])
 

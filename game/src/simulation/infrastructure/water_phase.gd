@@ -13,8 +13,8 @@ const FLAG_WATERED := 0x10
 const FLAG_PIPED := 0x20
 const FLAG_POWERED := 0x40
 const FIRST_CONSUMER := Tiles.DEVELOPED_FIRST
-const MISC_TILE_COUNTS := 0x01f0
-const MISC_TREATMENT_SUFFICIENT := 0x104c
+const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
+const MISC_TREATMENT_SUFFICIENT := Sc2MiscLayout.TREATMENT_SUFFICIENT
 const WATER_PUMP := Tiles.WATER_PUMP
 const WATER_TOWER := Tiles.WATER_TOWER
 const WATER_TREATMENT := Tiles.WATER_TREATMENT
@@ -60,8 +60,8 @@ static func run(city: CityState) -> Result:
 	var total_supply := 0
 	var total_consumers := 0
 	var watered_consumers := 0
-	var pump_base_supply := int((city.document.misc_u32(0x68) & 0xff) / 2)
-	pump_base_supply += city.document.misc_u32(0x0e40) * 5
+	var pump_base_supply := int((city.document.misc_u32(Sc2MiscLayout.WEATHER_RAIN) & 0xff) / 2)
+	pump_base_supply += city.document.misc_u32(Sc2MiscLayout.WATER_LEVEL) * 5
 
 	span.mark("build source scan order")
 	var source_order := _source_scan_order(city.compass_rotation(), map_edge, city.simulation_slice)

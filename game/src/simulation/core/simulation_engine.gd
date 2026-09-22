@@ -291,7 +291,7 @@ func _timed_advance_disaster_tick() -> DisasterMapResult:
 		disaster_map_counter = 0
 		disaster_hurricane_counter = 0
 
-		if not city.document.set_misc_u32(0x0004, 1):
+		if not city.document.set_misc_u32(Sc2MiscLayout.CITY_MODE, 1):
 			return DisasterMapResult.failure("cannot restore city mode after the disaster")
 
 	phase_result.active = still_active
@@ -331,7 +331,7 @@ func start_disaster(disaster_type: int, point: Vector2i) -> DisasterStartResult:
 	disaster_hurricane_counter = started.hurricane_counter
 	unsupported_disaster_type = 0
 
-	if not city.document.set_misc_u32(0x0004, 2):
+	if not city.document.set_misc_u32(Sc2MiscLayout.CITY_MODE, 2):
 		active_disaster_type = 0
 		disaster_map_counter = 0
 		disaster_hurricane_counter = 0
@@ -408,7 +408,7 @@ func _append_pending_disaster(result: SimulationDayResult) -> SimulationDayResul
 	var disaster_type := pending_disaster_type
 	pending_disaster_type = 0
 
-	if not city.document.set_misc_u32(0x0070, 0):
+	if not city.document.set_misc_u32(Sc2MiscLayout.DISASTER_TYPE, 0):
 		return SimulationDayResult.failure("cannot clear the pending disaster type")
 
 	var started := _start_disaster_phase(disaster_type, pending_disaster_point)
@@ -428,7 +428,7 @@ func _append_pending_disaster(result: SimulationDayResult) -> SimulationDayResul
 		disaster_map_counter = started.map_counter
 		disaster_hurricane_counter = started.hurricane_counter
 
-		if not city.document.set_misc_u32(0x0004, 2):
+		if not city.document.set_misc_u32(Sc2MiscLayout.CITY_MODE, 2):
 			return SimulationDayResult.failure("cannot store active disaster mode")
 
 		result.applied.append("disaster_start")

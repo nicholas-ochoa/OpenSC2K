@@ -3,16 +3,13 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
-const MISC_SIZE := 4800
+const MISC_SIZE := Sc2MiscLayout.SIZE
 const XGRP_SIZE := 16 * 52 * 4
-const MISC_WORKFORCE_LIFE_EXPECTANCY := 0x0048
-const MISC_WORKFORCE_EDUCATION := 0x004c
-const MISC_BUDGETS := 0x077c
-const MISC_UNEMPLOYMENT := 0x0fa4
-const MISC_NORMAL_POPULATION := 0x102c
-const BUDGET_RECORD_SIZE := 0x006c
-const BUDGET_FUNDING := 0x04
-const BUDGET_RESIDENTIAL := 0
+const MISC_BUDGETS := Sc2MiscLayout.BUDGETS
+const MISC_NORMAL_POPULATION := Sc2MiscLayout.NORMAL_POPULATION
+const BUDGET_RECORD_SIZE := Sc2BudgetLayout.RECORD_SIZE
+const BUDGET_FUNDING := Sc2BudgetLayout.FUNDING
+const BUDGET_RESIDENTIAL := Sc2BudgetLayout.RESIDENTIAL
 const GRAPH_TRAFFIC := 4
 const GRAPH_POLLUTION := 5
 const GRAPH_LAND_VALUE := 6
@@ -156,10 +153,10 @@ static func complaint_weights(city: CityState) -> PackedInt32Array:
 		_to_i16(_graph_current(graphs, GRAPH_TRAFFIC)),
 		_to_i16(_graph_current(graphs, GRAPH_POLLUTION)),
 		_to_i16(_graph_current(graphs, GRAPH_CRIME)),
-		_to_i16(BinaryData.read_u32_be(misc, MISC_UNEMPLOYMENT)),
+		_to_i16(BinaryData.read_u32_be(misc, Sc2MiscLayout.UNEMPLOYMENT)),
 		_to_i16(_budget_funding(misc, BUDGET_RESIDENTIAL) * 3),
-		maxi(100 - _to_i16(BinaryData.read_u32_be(misc, MISC_WORKFORCE_EDUCATION)), 0),
-		maxi(70 - _to_i16(BinaryData.read_u32_be(misc, MISC_WORKFORCE_LIFE_EXPECTANCY)), 0),
+		maxi(100 - _to_i16(BinaryData.read_u32_be(misc, Sc2MiscLayout.WORKFORCE_EDUCATION)), 0),
+		maxi(70 - _to_i16(BinaryData.read_u32_be(misc, Sc2MiscLayout.WORKFORCE_LIFE_EXPECTANCY)), 0),
 	])
 
 

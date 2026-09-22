@@ -3,9 +3,9 @@ extends RefCounted
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
-const MISC_FUNDS := 0x0014
-const MISC_TILE_COUNTS := 0x01f0
-const MISC_MILITARY_TILE_COUNTS := 0x0fa8
+const MISC_FUNDS := Sc2MiscLayout.FUNDS
+const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
+const MISC_MILITARY_TILE_COUNTS := Sc2MiscLayout.MILITARY_TILE_COUNTS
 const MILITARY_ZONE := 7
 const FLAG_WATER := 0x04
 const FLAG_FLIPPED := 0x02

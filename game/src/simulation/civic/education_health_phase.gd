@@ -5,18 +5,13 @@ extends RefCounted
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
-const MISC_SIZE := 4800
-const MISC_CITY_POLLUTION := 0x0034
-const MISC_WORKFORCE_PERCENT := 0x0044
-const MISC_WORKFORCE_LE := 0x0048
-const MISC_WORKFORCE_EQ := 0x004c
-const MISC_POPULATION_TABLE := 0x007c
-const MISC_TILE_COUNTS := 0x01f0
-const MISC_ZONE_POPULATIONS := 0x05f0
-const MISC_BUDGETS := 0x077c
-const MISC_BUDGET_RECORD_SIZE := 0x006c
-const MISC_ORDINANCES := 0x0fa0
-const MISC_NORMAL_POPULATION := 0x102c
+const MISC_SIZE := Sc2MiscLayout.SIZE
+const MISC_CITY_POLLUTION := Sc2MiscLayout.CITY_POLLUTION
+const MISC_POPULATION_TABLE := Sc2MiscLayout.POPULATION_TABLE
+const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
+const MISC_BUDGETS := Sc2MiscLayout.BUDGETS
+const MISC_ORDINANCES := Sc2MiscLayout.ORDINANCES
+const MISC_NORMAL_POPULATION := Sc2MiscLayout.NORMAL_POPULATION
 
 const POPULATION_STRIDE := 12
 const POPULATION_COHORTS := 20
@@ -27,9 +22,6 @@ const LIFE_EXPECTANCY_FIELD := 8
 const HOSPITAL_TILE := Tiles.HOSPITAL
 const SCHOOL_TILE := Tiles.SCHOOL
 const COLLEGE_TILE := Tiles.COLLEGE
-const BUDGET_HEALTH := 7
-const BUDGET_SCHOOL := 8
-const BUDGET_COLLEGE := 9
 
 const ORDINANCE_PUBLIC_SMOKING_BAN := 0x0020
 const ORDINANCE_FREE_CLINICS := 0x0040
@@ -103,17 +95,17 @@ static func run(city: CityState, random: SimRandom) -> Result:
 	var ordinance_flags := city.document.misc_u32(MISC_ORDINANCES)
 	var health_capacity := int(
 		((int(_tile_count(city, HOSPITAL_TILE) / 9)
-		* _budget_funding(city, BUDGET_HEALTH)
+		* _budget_funding(city, Sc2BudgetLayout.HEALTH)
 		* 25) / 100)
 	)
 	var school_capacity := int(
 		((int(_tile_count(city, SCHOOL_TILE) / 9)
-		* _budget_funding(city, BUDGET_SCHOOL)
+		* _budget_funding(city, Sc2BudgetLayout.SCHOOL)
 		* 15) / 100)
 	)
 	var college_capacity := int(
 		((int(_tile_count(city, COLLEGE_TILE) / 16)
-		* _budget_funding(city, BUDGET_COLLEGE)
+		* _budget_funding(city, Sc2BudgetLayout.COLLEGE)
 		* 50) / 100)
 	)
 	var newborn_life_expectancy := 85
@@ -134,7 +126,7 @@ static func run(city: CityState, random: SimRandom) -> Result:
 
 	span.mark("mortality and aging")
 	var deaths := _apply_mortality(population, education, life_expectancy, random)
-	var abandoned_population := city.document.misc_u32(MISC_ZONE_POPULATIONS + 7 * 4)
+	var abandoned_population := city.document.misc_u32(Sc2MiscLayout.ZONE_POPULATIONS + 7 * 4)
 	var pollution_penalty := int(
 		(city.document.misc_u32(MISC_CITY_POLLUTION) / (city_population + abandoned_population * 10 + 1))
 	)
@@ -169,7 +161,7 @@ static func run(city: CityState, random: SimRandom) -> Result:
 			(newborn_life_expectancy - 35) * protected_births + births * 35
 		)
 		education[0] += int(
-			((births * city.document.misc_u32(MISC_WORKFORCE_EQ)) / 5)
+			((births * city.document.misc_u32(Sc2MiscLayout.WORKFORCE_EDUCATION)) / 5)
 		)
 		population[0] += births
 
@@ -212,9 +204,9 @@ static func run(city: CityState, random: SimRandom) -> Result:
 	span.mark("store demographics")
 	var changed: PackedByteArray = misc.decoded_payload.duplicate()
 	_write_tables(changed, population, education, life_expectancy)
-	_write_u32(changed, MISC_WORKFORCE_PERCENT, workforce_percent)
-	_write_u32(changed, MISC_WORKFORCE_LE, workforce_le)
-	_write_u32(changed, MISC_WORKFORCE_EQ, workforce_eq)
+	_write_u32(changed, Sc2MiscLayout.WORKFORCE_PERCENT, workforce_percent)
+	_write_u32(changed, Sc2MiscLayout.WORKFORCE_LIFE_EXPECTANCY, workforce_le)
+	_write_u32(changed, Sc2MiscLayout.WORKFORCE_EDUCATION, workforce_eq)
 
 	if not misc.set_decoded_payload(changed):
 		return _failed("cannot store updated demographic data")
@@ -428,7 +420,7 @@ static func _tile_count(city: CityState, tile_id: int) -> int:
 
 static func _budget_funding(city: CityState, budget_id: int) -> int:
 	return city.document.misc_i32(
-		MISC_BUDGETS + budget_id * MISC_BUDGET_RECORD_SIZE + 4
+		MISC_BUDGETS + budget_id * Sc2BudgetLayout.RECORD_SIZE + 4
 	)
 
 

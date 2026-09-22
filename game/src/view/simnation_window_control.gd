@@ -29,12 +29,11 @@ const LOGICAL_SIZE := Vector2(204.0, 160.0)
 const SPRITE_SIZE := Vector2(128.0, 64.0)
 const SPRITE_ROW_COUNT := 6
 const NEIGHBOR_COUNT := 4
-const MISC_NATIONAL_POPULATION := 0x0050
-const MISC_NEIGHBORS := 0x06d8
+const MISC_NATIONAL_POPULATION := Sc2MiscLayout.NATIONAL_POPULATION
 const NEIGHBOR_STRIDE := 0x10
-const MISC_TILE_COUNTS := 0x01f0
-const MISC_ARCOLOGY_POPULATION := 0x1020
-const MISC_NORMAL_POPULATION := 0x102c
+const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
+const MISC_ARCOLOGY_POPULATION := Sc2MiscLayout.ARCOLOGY_POPULATION
+const MISC_NORMAL_POPULATION := Sc2MiscLayout.NORMAL_POPULATION
 const FIRST_ARCOLOGY := BuildingTileIds.PLYMOUTH_ARCOLOGY
 const LAST_ARCOLOGY := BuildingTileIds.LAUNCH_ARCOLOGY
 const NATIONAL_POPULATION := "Nat. Pop: %d000"
@@ -100,7 +99,7 @@ static func snapshot(value_city: CityState) -> Snapshot:
 	var neighbors: Array[Neighbor] = []
 
 	for index in NEIGHBOR_COUNT:
-		var offset := MISC_NEIGHBORS + index * NEIGHBOR_STRIDE
+		var offset := Sc2MiscLayout.NEIGHBORS + index * NEIGHBOR_STRIDE
 		var name_index := _to_i16(value_city.document.misc_u32(offset))
 		var neighbor := Neighbor.new()
 		neighbor.index = index

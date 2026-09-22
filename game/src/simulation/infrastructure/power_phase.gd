@@ -75,7 +75,7 @@ static func run(city: CityState, random: SimRandom) -> Result:
 			total_generation += capacity
 			total_consumers += consumers
 
-			if city.document.misc_u32(0x0fa0) & SOLAR_EFFICIENCY_ORDINANCE:
+			if city.document.misc_u32(Sc2MiscLayout.ORDINANCES) & SOLAR_EFFICIENCY_ORDINANCE:
 				capacity += int(capacity / 12)
 
 			supplied_consumers += mini(capacity, consumers)
@@ -179,7 +179,7 @@ static func _plant_capacity(
 		Tiles.HYDRO_POWER_1, Tiles.HYDRO_POWER_2:
 			return 40
 		Tiles.WIND_POWER:
-			var wind := city.document.misc_u32(0x64) & 0xff
+			var wind := city.document.misc_u32(Sc2MiscLayout.WEATHER_WIND) & 0xff
 
 			return int((city.land_altitude(x, y) + random.next_u15() % (int(wind / 8) + 1)) / 2)
 		Tiles.GAS_POWER:
@@ -189,7 +189,7 @@ static func _plant_capacity(
 		Tiles.NUCLEAR_POWER:
 			return 111
 		Tiles.SOLAR_POWER:
-			var rain := city.document.misc_u32(0x68) & 0xff
+			var rain := city.document.misc_u32(Sc2MiscLayout.WEATHER_RAIN) & 0xff
 			var sunlight_range: int = maxi(int((100 - rain) / 10), 1)
 
 			return random.next_u15() % sunlight_range + 5

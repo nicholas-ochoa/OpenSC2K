@@ -3,10 +3,10 @@ extends RefCounted
 
 const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
 
-const MISC_SIZE := 4800
-const MISC_PROGRESSION := 0x0020
-const MISC_GRANTED_REWARDS := 0x0078
-const MISC_NORMAL_POPULATION := 0x102c
+const MISC_SIZE := Sc2MiscLayout.SIZE
+const MISC_PROGRESSION := Sc2MiscLayout.PROGRESSION
+const MISC_GRANTED_REWARDS := Sc2MiscLayout.GRANTED_REWARDS
+const MISC_NORMAL_POPULATION := Sc2MiscLayout.NORMAL_POPULATION
 
 const NEWS_GROWTH := 3
 const PROGRESSION_REQUIREMENTS := [

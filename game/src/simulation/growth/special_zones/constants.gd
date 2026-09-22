@@ -4,10 +4,10 @@ extends RefCounted
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
 const MovingThings = preload("res://src/simulation/moving_things/moving_thing_spawner.gd")
-const MISC_TILE_COUNTS := 0x01f0
-const MISC_MILITARY_BASE_TYPE := 0x0e4c
-const MISC_MILITARY_TILE_COUNTS := 0x0fa8
-const MISC_SUBWAY_COUNT := 0x0fe8
+const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
+const MISC_MILITARY_BASE_TYPE := Sc2MiscLayout.MILITARY_BASE_TYPE
+const MISC_MILITARY_TILE_COUNTS := Sc2MiscLayout.MILITARY_TILE_COUNTS
+const MISC_SUBWAY_COUNT := Sc2MiscLayout.SUBWAY_COUNT
 const SOUND_SHIP := 517
 const CORNER_BOTTOM_LEFT := [0x10, 0x20, 0x40, 0x80]
 const CORNER_BOTTOM_RIGHT := [0x20, 0x40, 0x80, 0x10]

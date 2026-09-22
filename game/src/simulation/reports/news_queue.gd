@@ -1,12 +1,12 @@
 class_name NewsQueue
 extends RefCounted
 
-const MISC_SIZE := 4800
-const PAPER_OFFSET := 0x0e50
+const MISC_SIZE := Sc2MiscLayout.SIZE
+const PAPER_OFFSET := Sc2MiscLayout.PAPERS
 const PAPER_COUNT := 6
 const PAPER_FIELD_COUNT := 5
 const PAPER_RECORD_SIZE := PAPER_FIELD_COUNT * 4
-const STORY_OFFSET := 0x0ec8
+const STORY_OFFSET := Sc2MiscLayout.STORIES
 const QUEUE_COUNT := 7
 const STORY_RECORD_COUNT := 9
 const STORY_FIELD_COUNT := 6

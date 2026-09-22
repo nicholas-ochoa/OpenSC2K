@@ -18,11 +18,10 @@ class Result extends RefCounted:
 		return result
 
 
-const MISC_PROGRESSION := 0x0020
-const MISC_GRANTED_REWARDS := 0x0078
-const MISC_INVENTION_YEARS := 0x0738
-const MISC_MILITARY_BASE_TYPE := 0x0e4c
-const MISC_ORDINANCES := 0x0fa0
+const MISC_PROGRESSION := Sc2MiscLayout.PROGRESSION
+const MISC_GRANTED_REWARDS := Sc2MiscLayout.GRANTED_REWARDS
+const MISC_INVENTION_YEARS := Sc2MiscLayout.INVENTION_YEARS
+const MISC_ORDINANCES := Sc2MiscLayout.ORDINANCES
 const INVENTION_COUNT := 17
 const ARCOLOGY_FIRST_INVENTION := 12
 const ARCOLOGY_LAST_INVENTION := 15
@@ -112,7 +111,7 @@ static func inspect_misc(misc: PackedByteArray) -> Result:
 	if progression >= 6 and arcology_count > 0:
 		group_masks[5] |= 0x10
 
-	var military_base_type := BinaryData.read_u32_be(misc, MISC_MILITARY_BASE_TYPE) & 0xffff
+	var military_base_type := BinaryData.read_u32_be(misc, Sc2MiscLayout.MILITARY_BASE_TYPE) & 0xffff
 
 	if military_base_type == 2 or military_base_type == 3 or military_base_type == 4:
 		group_masks[2] |= 0x04

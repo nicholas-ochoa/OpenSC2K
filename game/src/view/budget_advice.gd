@@ -45,12 +45,12 @@ const ADVICE: Array[String] = [
 
 static func select(city: CityState, report: BudgetReport, advisor: int, random: SimRandom, power_usage: int) -> int:
 	var doc := city.document
-	var population := doc.misc_u32(0x102c)
-	var flags := doc.misc_u32(0x0fa0)
+	var population := doc.misc_u32(Sc2MiscLayout.NORMAL_POPULATION)
+	var flags := doc.misc_u32(Sc2MiscLayout.ORDINANCES)
 	var demand := PackedInt32Array()
 
 	for index in 3:
-		demand.append(_signed_word(doc.misc_i32(0x0718 + index * 4)))
+		demand.append(_signed_word(doc.misc_i32(Sc2MiscLayout.DEMAND + index * 4)))
 
 	var crime := _graph(city, 7)
 	var choice := 0
@@ -79,13 +79,13 @@ static func select(city: CityState, report: BudgetReport, advisor: int, random: 
 			elif flags & 1 and demand[1] < -666:
 				choice = 20
 		2:
-			var denominator := (doc.misc_u32(0x24) + 1) & 0xffffffff
-			var credit := _signed_word(((doc.misc_u32(0x18) * 25000) & 0xffffffff) / maxi(denominator, 1))
+			var denominator := (doc.misc_u32(Sc2MiscLayout.CITY_VALUE) + 1) & 0xffffffff
+			var credit := _signed_word(((doc.misc_u32(Sc2MiscLayout.BONDS) * 25000) & 0xffffffff) / maxi(denominator, 1))
 			if city.funds() < -1000:
 				choice = 1
 			elif city.funds() < 0:
 				choice = 4
-			elif credit + _signed_word(doc.misc_u32(0x58)) + 1 < 4:
+			elif credit + _signed_word(doc.misc_u32(Sc2MiscLayout.NATIONAL_FEDERAL_RATE)) + 1 < 4:
 				choice = 2
 			elif report.estimated_raw[4] > BudgetReport.wrap_i32(report.estimated_raw[0] + report.estimated_raw[1] + report.estimated_raw[2]):
 				choice = 3
@@ -99,7 +99,7 @@ static func select(city: CityState, report: BudgetReport, advisor: int, random: 
 				choice = 6
 		4, 5:
 			var health := advisor == 5
-			var tiles := _signed_word(doc.misc_u32(0x1f0 + (Tiles.HOSPITAL if health else Tiles.FIRE_STATION) * 4))
+			var tiles := _signed_word(doc.misc_u32(Sc2MiscLayout.TILE_COUNTS + (Tiles.HOSPITAL if health else Tiles.FIRE_STATION) * 4))
 			var capacity := BudgetReport.wrap_i32((tiles * (250 if health else 150) / 9) * report.funding[7 if health else 6]) & 0xffffffff
 			var comfortable := (BudgetReport.wrap_i32(capacity * 2) / 3) & 0xffffffff
 			if capacity < population:
@@ -112,13 +112,13 @@ static func select(city: CityState, report: BudgetReport, advisor: int, random: 
 				var selected := random.next_u15() % 3
 				choice = 26 if flags & [0x20, 0x400, 0x40][selected] else 23 + selected
 		6:
-			var schools := _signed_word(doc.misc_u32(0x1f0 + Tiles.SCHOOL * 4))
-			var colleges := _signed_word(doc.misc_u32(0x1f0 + Tiles.COLLEGE * 4))
+			var schools := _signed_word(doc.misc_u32(Sc2MiscLayout.TILE_COUNTS + Tiles.SCHOOL * 4))
+			var colleges := _signed_word(doc.misc_u32(Sc2MiscLayout.TILE_COUNTS + Tiles.COLLEGE * 4))
 			var school_capacity := BudgetReport.wrap_i32((schools * 15 / 9) * report.funding[8]) & 0xffffffff
 			var college_capacity := BudgetReport.wrap_i32((colleges * 50 / 16) * report.funding[9]) & 0xffffffff
-			if school_capacity < ((doc.misc_u32(0x7c + 12) + doc.misc_u32(0x7c + 24)) & 0xffffffff):
+			if school_capacity < ((doc.misc_u32(Sc2MiscLayout.POPULATION_TABLE + 12) + doc.misc_u32(Sc2MiscLayout.POPULATION_TABLE + 24)) & 0xffffffff):
 				choice = 28
-			elif college_capacity < doc.misc_u32(0x7c + 36):
+			elif college_capacity < doc.misc_u32(Sc2MiscLayout.POPULATION_TABLE + 36):
 				choice = 29
 			else:
 				choice = 27

@@ -7,26 +7,25 @@ const GameRandom = preload("res://src/simulation/random/game_lcg_random.gd")
 const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
 const Terrain = preload("res://src/model/new_city_terrain.gd")
 
-const MISC_SIZE := 4800
+const MISC_SIZE := Sc2MiscLayout.SIZE
 const GRAPH_SIZE := 16 * 52 * 4
-const MISC_CITY_MODE := 0x0004
-const MISC_START_YEAR := 0x000c
-const MISC_FUNDS := 0x0014
-const MISC_BONDS := 0x0018
-const MISC_DIFFICULTY := 0x001c
-const MISC_NATIONAL_POPULATION := 0x0050
-const MISC_NATIONAL_FEDERAL_RATE := 0x0058
-const MISC_NATIONAL_ECONOMY_TREND := 0x005c
-const MISC_BOND_RATES := 0x0610
-const MISC_INVENTION_YEARS := 0x0738
-const MISC_BUDGETS := 0x077c
-const BUDGET_RECORD_SIZE := 0x006c
-const BUDGET_BONDS := 4
-const BUDGET_CURRENT := 0x00
-const BUDGET_FUNDING := 0x04
-const BUDGET_YEAR_TO_DATE := 0x08
-const BUDGET_COUNT_MONTH_0 := 0x0c
-const BUDGET_FUND_MONTH_0 := 0x10
+const MISC_START_YEAR := Sc2MiscLayout.START_YEAR
+const MISC_FUNDS := Sc2MiscLayout.FUNDS
+const MISC_BONDS := Sc2MiscLayout.BONDS
+const MISC_DIFFICULTY := Sc2MiscLayout.DIFFICULTY
+const MISC_NATIONAL_POPULATION := Sc2MiscLayout.NATIONAL_POPULATION
+const MISC_NATIONAL_FEDERAL_RATE := Sc2MiscLayout.NATIONAL_FEDERAL_RATE
+const MISC_NATIONAL_ECONOMY_TREND := Sc2MiscLayout.NATIONAL_ECONOMY_TREND
+const MISC_BOND_RATES := Sc2MiscLayout.BOND_RATES
+const MISC_INVENTION_YEARS := Sc2MiscLayout.INVENTION_YEARS
+const MISC_BUDGETS := Sc2MiscLayout.BUDGETS
+const BUDGET_RECORD_SIZE := Sc2BudgetLayout.RECORD_SIZE
+const BUDGET_BONDS := Sc2BudgetLayout.BONDS
+const BUDGET_CURRENT := Sc2BudgetLayout.CURRENT
+const BUDGET_FUNDING := Sc2BudgetLayout.FUNDING
+const BUDGET_YEAR_TO_DATE := Sc2BudgetLayout.YEAR_TO_DATE
+const BUDGET_COUNT_MONTH_0 := Sc2BudgetLayout.MONTHS
+const BUDGET_FUND_MONTH_0 := Sc2BudgetLayout.MONTHS + Sc2BudgetLayout.MONTH_FUNDING
 const MAX_BONDS := 50
 const HARD_BOND_RATE := 3
 const FOUNDING_STORY_TYPE := 2
@@ -163,7 +162,7 @@ static func create(
 	var misc_chunk := document.find_chunk("MISC")
 	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
 	var national_population := int(NATIONAL_POPULATIONS[starting_year])
-	BinaryData.write_u32_be(misc, MISC_CITY_MODE, 1)
+	BinaryData.write_u32_be(misc, Sc2MiscLayout.CITY_MODE, 1)
 	BinaryData.write_u32_be(misc, MISC_START_YEAR, starting_year)
 	BinaryData.write_u32_be(misc, MISC_FUNDS, 20000 if difficulty == 1 else 10000)
 	BinaryData.write_u32_be(misc, MISC_BONDS, 0)

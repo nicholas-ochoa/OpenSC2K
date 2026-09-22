@@ -30,11 +30,8 @@ enum Mode {
 
 const COHORT_COUNT := 20
 const COHORT_STRIDE := 0x0c
-const MISC_WORKFORCE_PERCENT := 0x0044
-const MISC_WORKFORCE_LE := 0x0048
-const MISC_WORKFORCE_EQ := 0x004c
-const MISC_POPULATION_TABLE := 0x007c
-const MISC_NORMAL_POPULATION := 0x102c
+const MISC_POPULATION_TABLE := Sc2MiscLayout.POPULATION_TABLE
+const MISC_NORMAL_POPULATION := Sc2MiscLayout.NORMAL_POPULATION
 const CHART_MAXIMUM := 92
 
 var city: CityState
@@ -96,9 +93,9 @@ static func snapshot(value_city: CityState) -> Snapshot:
 	result.ok = true
 	result.cohorts = cohorts
 	result.total_population = value_city.document.misc_u32(MISC_NORMAL_POPULATION)
-	result.workforce_percent = value_city.document.misc_u32(MISC_WORKFORCE_PERCENT)
-	result.workforce_life_expectancy = value_city.document.misc_u32(MISC_WORKFORCE_LE)
-	result.workforce_education_quotient = value_city.document.misc_u32(MISC_WORKFORCE_EQ)
+	result.workforce_percent = value_city.document.misc_u32(Sc2MiscLayout.WORKFORCE_PERCENT)
+	result.workforce_life_expectancy = value_city.document.misc_u32(Sc2MiscLayout.WORKFORCE_LIFE_EXPECTANCY)
+	result.workforce_education_quotient = value_city.document.misc_u32(Sc2MiscLayout.WORKFORCE_EDUCATION)
 	result.error = ""
 
 	return result

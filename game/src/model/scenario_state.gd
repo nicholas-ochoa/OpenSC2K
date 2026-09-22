@@ -317,17 +317,17 @@ func evaluate_goals(city: CityState) -> Goals:
 
 	var unmet := PackedStringArray()
 	var values: Dictionary[String, int] = {
-		"city_size": city.document.misc_u32(0x102c),
-		"residential": city.document.misc_i32(0x077c),
-		"commercial": city.document.misc_i32(0x07e8),
-		"industrial": city.document.misc_i32(0x0854),
-		"cash_after_bonds": city.funds() - city.document.misc_i32(0x18),
-		"land_value": city.document.misc_i32(0x28),
-		"life_expectancy": city.document.misc_i32(0x48),
-		"education": city.document.misc_i32(0x4c),
-		"pollution": city.document.misc_u32(0x34),
-		"crime": city.document.misc_u32(0x2c),
-		"traffic": city.document.misc_u32(0x30),
+		"city_size": city.document.misc_u32(Sc2MiscLayout.NORMAL_POPULATION),
+		"residential": city.document.misc_i32(Sc2MiscLayout.BUDGETS),
+		"commercial": city.document.misc_i32(Sc2MiscLayout.BUDGETS + Sc2BudgetLayout.COMMERCIAL * Sc2BudgetLayout.RECORD_SIZE),
+		"industrial": city.document.misc_i32(Sc2MiscLayout.BUDGETS + Sc2BudgetLayout.INDUSTRIAL * Sc2BudgetLayout.RECORD_SIZE),
+		"cash_after_bonds": city.funds() - city.document.misc_i32(Sc2MiscLayout.BONDS),
+		"land_value": city.document.misc_i32(Sc2MiscLayout.CITY_LAND_VALUE),
+		"life_expectancy": city.document.misc_i32(Sc2MiscLayout.WORKFORCE_LIFE_EXPECTANCY),
+		"education": city.document.misc_i32(Sc2MiscLayout.WORKFORCE_EDUCATION),
+		"pollution": city.document.misc_u32(Sc2MiscLayout.CITY_POLLUTION),
+		"crime": city.document.misc_u32(Sc2MiscLayout.CITY_CRIME),
+		"traffic": city.document.misc_u32(Sc2MiscLayout.CITY_TRAFFIC),
 	}
 	_check_minimum(unmet, "city_size", values.city_size, city_size_goal, true)
 	_check_minimum(unmet, "residential", values.residential, residential_goal)
@@ -342,14 +342,14 @@ func evaluate_goals(city: CityState) -> Goals:
 	_check_limit(unmet, "traffic", values.traffic, traffic_limit)
 
 	if first_building_id != BuildingTileIds.EMPTY:
-		var first_count := city.document.misc_u32(0x01f0 + first_building_id * 4)
+		var first_count := city.document.misc_u32(Sc2MiscLayout.TILE_COUNTS + first_building_id * 4)
 		values["first_building_tiles"] = first_count
 
 		if first_count < first_building_tile_count:
 			unmet.append("first_building")
 
 	if second_building_id != BuildingTileIds.EMPTY:
-		var second_count := city.document.misc_u32(0x01f0 + second_building_id * 4)
+		var second_count := city.document.misc_u32(Sc2MiscLayout.TILE_COUNTS + second_building_id * 4)
 		values["second_building_tiles"] = second_count
 
 		if second_count < second_building_tile_count:

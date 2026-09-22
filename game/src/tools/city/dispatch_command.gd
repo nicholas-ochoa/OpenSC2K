@@ -18,9 +18,7 @@ class Availability extends RefCounted:
 
 const GROUP_DISPATCH := 2
 const FLAG_WATER := 0x04
-const MISC_CITY_MODE := 0x0004
-const MISC_TILE_COUNTS := 0x01f0
-const MISC_MILITARY_BASE_TYPE := 0x0e4c
+const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
 const POLICE_STATION := BuildingTileIds.POLICE_STATION
 const FIRE_STATION := BuildingTileIds.FIRE_STATION
 const TYPE_POLICE := 7
@@ -50,7 +48,7 @@ static func availability(city: CityState) -> Availability:
 	var data: PackedByteArray = misc.decoded_payload
 	var police := int(BinaryData.read_u32_be(data, MISC_TILE_COUNTS + POLICE_STATION * 4) >> 3)
 	var fire := int(BinaryData.read_u32_be(data, MISC_TILE_COUNTS + FIRE_STATION * 4) >> 3)
-	var base_type := int(BinaryData.read_u32_be(data, MISC_MILITARY_BASE_TYPE))
+	var base_type := int(BinaryData.read_u32_be(data, Sc2MiscLayout.MILITARY_BASE_TYPE))
 	var military := 0
 
 	if base_type >= 0 and base_type < MILITARY_AVAILABILITY.size():
@@ -139,7 +137,7 @@ static func apply(
 
 	var thing_index := _first_free_thing(things)
 
-	if thing_index < 0 and city.document.misc_u32(MISC_CITY_MODE) == 2:
+	if thing_index < 0 and city.document.misc_u32(Sc2MiscLayout.CITY_MODE) == 2:
 		thing_index = ThingData.count(things) - 1
 		_delete_thing(things, text, thing_index, map_edge)
 

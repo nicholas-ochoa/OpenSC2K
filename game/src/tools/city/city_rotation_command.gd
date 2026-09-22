@@ -6,13 +6,13 @@ const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
 const MAP_SIZE := CityState.MAP_SIZE
-const COMPASS_OFFSET := 0x0008
-const TILE_COUNT_OFFSET := 0x01f0
+const COMPASS_OFFSET := Sc2MiscLayout.COMPASS
+const TILE_COUNT_OFFSET := Sc2MiscLayout.TILE_COUNTS
 const MILITARY_ZONE := 7
 const FLIP_FLAG := 0x02
 
 const REQUIRED_CHUNKS := [
-	["MISC", 4800],
+	["MISC", Sc2MiscLayout.SIZE],
 	["ALTM", 32768],
 	["XTER", 16384],
 	["XBLD", 16384],

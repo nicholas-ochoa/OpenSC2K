@@ -48,7 +48,7 @@ static func apply(city: CityState, group: int, subtool: int, point: Vector2i, ra
 					point, 128, staged_random, map_edge)
 			_finish_stream_slopes(payloads, previous_terrain, previous_flags, map_edge)
 		else:
-			var sea := clampi(staged.document.misc_u32(0x0e40) + (1 if subtool == 6 else -1), 0, 31)
+			var sea := clampi(staged.document.misc_u32(Sc2MiscLayout.WATER_LEVEL) + (1 if subtool == 6 else -1), 0, 31)
 			BinaryData.write_u32_be(payloads.MISC, 0x0e40, sea)
 			var indices := PackedInt32Array()
 

@@ -3,26 +3,26 @@ extends RefCounted
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
-const MISC_SIZE := 4800
-const MISC_CITY_CRIME := 0x002c
-const MISC_RAW_POPULATION := 0x007c
+const MISC_SIZE := Sc2MiscLayout.SIZE
+const MISC_CITY_CRIME := Sc2MiscLayout.CITY_CRIME
+const MISC_RAW_POPULATION := Sc2MiscLayout.POPULATION_TABLE
 const MISC_DEMOGRAPHIC_RECORD_SIZE := 0x000c
-const MISC_FUNDS := 0x0014
-const MISC_TILE_COUNTS := 0x01f0
-const MISC_BUDGETS := 0x077c
-const MISC_AUTO_GOTO := 0x0ff4
-const MISC_NO_DISASTERS := 0x1000
-const MISC_ARCOLOGY_POPULATION := 0x1020
-const MISC_NORMAL_POPULATION := 0x102c
-const MISC_OLD_ARRESTS := 0x1038
-const MISC_PRISON_BONUS := 0x103c
-const BUDGET_RECORD_SIZE := 0x006c
-const BUDGET_FUNDING := 0x04
-const BUDGET_POLICE := 5
-const BUDGET_FIRE := 6
-const BUDGET_HEALTH := 7
-const BUDGET_SCHOOL := 8
-const BUDGET_COLLEGE := 9
+const MISC_FUNDS := Sc2MiscLayout.FUNDS
+const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
+const MISC_BUDGETS := Sc2MiscLayout.BUDGETS
+const MISC_AUTO_GOTO := Sc2MiscLayout.AUTO_GOTO
+const MISC_NO_DISASTERS := Sc2MiscLayout.NO_DISASTERS
+const MISC_ARCOLOGY_POPULATION := Sc2MiscLayout.ARCOLOGY_POPULATION
+const MISC_NORMAL_POPULATION := Sc2MiscLayout.NORMAL_POPULATION
+const MISC_OLD_ARRESTS := Sc2MiscLayout.OLD_ARRESTS
+const MISC_PRISON_BONUS := Sc2MiscLayout.PRISON_BONUS
+const BUDGET_RECORD_SIZE := Sc2BudgetLayout.RECORD_SIZE
+const BUDGET_FUNDING := Sc2BudgetLayout.FUNDING
+const BUDGET_POLICE := Sc2BudgetLayout.POLICE
+const BUDGET_FIRE := Sc2BudgetLayout.FIRE
+const BUDGET_HEALTH := Sc2BudgetLayout.HEALTH
+const BUDGET_SCHOOL := Sc2BudgetLayout.SCHOOL
+const BUDGET_COLLEGE := Sc2BudgetLayout.COLLEGE
 const POWER_PLANT_COSTS := {
 	Tiles.GAS_POWER: 2000,
 	Tiles.OIL_POWER: 6600,

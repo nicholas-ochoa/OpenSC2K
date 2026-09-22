@@ -1,8 +1,7 @@
 class_name MonthStartPhase
 extends RefCounted
 
-const MISC_SIZE := 4800
-const MISC_ZONE_POPULATIONS := 0x05f0
+const MISC_SIZE := Sc2MiscLayout.SIZE
 const ZONE_POPULATION_COUNT := 8
 
 
@@ -22,7 +21,7 @@ static func run(city: CityState) -> Result:
 	var changed: PackedByteArray = misc.decoded_payload.duplicate()
 
 	for index in ZONE_POPULATION_COUNT:
-		BinaryData.write_u32_be(changed, MISC_ZONE_POPULATIONS + index * 4, 0)
+		BinaryData.write_u32_be(changed, Sc2MiscLayout.ZONE_POPULATIONS + index * 4, 0)
 
 	if not misc.set_decoded_payload(changed):
 		return _failed("cannot clear zone population totals")

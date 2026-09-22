@@ -5,26 +5,17 @@ extends RefCounted
 
 const SERIES_COUNT := 16
 const VALUES_PER_SERIES := 52
-const MISC_SIZE := 4800
-const MISC_CITY_LAND_VALUE := 0x0028
-const MISC_CITY_CRIME := 0x002c
-const MISC_CITY_TRAFFIC := 0x0030
-const MISC_CITY_POLLUTION := 0x0034
-const MISC_WORKFORCE_LE := 0x0048
-const MISC_WORKFORCE_EQ := 0x004c
-const MISC_NATIONAL_POPULATION := 0x0050
-const MISC_NATIONAL_VALUE := 0x0054
-const MISC_NATIONAL_FEDERAL_RATE := 0x0058
-const MISC_TILE_COUNTS := 0x01f0
-const MISC_ZONE_POPULATIONS := 0x05f0
-const MISC_BUDGETS := 0x077c
-const MISC_BUDGET_RECORD_SIZE := 0x006c
-const MISC_UNEMPLOYMENT := 0x0fa4
-const MISC_ARCOLOGY_POPULATION := 0x1020
+const MISC_SIZE := Sc2MiscLayout.SIZE
+const MISC_CITY_LAND_VALUE := Sc2MiscLayout.CITY_LAND_VALUE
+const MISC_CITY_CRIME := Sc2MiscLayout.CITY_CRIME
+const MISC_CITY_POLLUTION := Sc2MiscLayout.CITY_POLLUTION
+const MISC_NATIONAL_POPULATION := Sc2MiscLayout.NATIONAL_POPULATION
+const MISC_NATIONAL_FEDERAL_RATE := Sc2MiscLayout.NATIONAL_FEDERAL_RATE
+const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
+const MISC_BUDGETS := Sc2MiscLayout.BUDGETS
+const MISC_ARCOLOGY_POPULATION := Sc2MiscLayout.ARCOLOGY_POPULATION
 
-const BUDGET_ROAD := 10
-const BUDGET_HIGHWAY := 11
-const BUDGET_BRIDGE := 12
+const BUDGET_ROAD := Sc2BudgetLayout.ROAD
 const FIRST_ARCOLOGY := BuildingTileIds.PLYMOUTH_ARCOLOGY
 const LAST_ARCOLOGY := BuildingTileIds.LAUNCH_ARCOLOGY
 
@@ -54,7 +45,7 @@ static func run(
 		return _failed("XGRP is missing or has the wrong size")
 
 	span.mark("store unemployment")
-	if not city.document.set_misc_u32(MISC_UNEMPLOYMENT, calculation.unemployment):
+	if not city.document.set_misc_u32(Sc2MiscLayout.UNEMPLOYMENT, calculation.unemployment):
 		return _failed("cannot store the unemployment percentage")
 
 	span.mark("shift graph histories")
@@ -107,7 +98,7 @@ static func calculate_current_values(
 
 	for index in 8:
 		zone_populations.append(
-			city.document.misc_u32(MISC_ZONE_POPULATIONS + index * 4)
+			city.document.misc_u32(Sc2MiscLayout.ZONE_POPULATIONS + index * 4)
 		)
 
 	var total_zone_population := 0
@@ -139,9 +130,9 @@ static func calculate_current_values(
 
 	var transport_cost := 1
 
-	for budget_id in [BUDGET_ROAD, BUDGET_HIGHWAY, BUDGET_BRIDGE]:
+	for budget_id in [BUDGET_ROAD, Sc2BudgetLayout.HIGHWAY, Sc2BudgetLayout.BRIDGE]:
 		transport_cost += city.document.misc_i32(
-			MISC_BUDGETS + budget_id * MISC_BUDGET_RECORD_SIZE
+			MISC_BUDGETS + budget_id * Sc2BudgetLayout.RECORD_SIZE
 		)
 
 	if transport_cost <= 0:
@@ -158,16 +149,16 @@ static func calculate_current_values(
 			_divide_toward_zero(adjusted_arcology_population, 2) + tax_populations[0] * 10,
 			_divide_toward_zero(adjusted_arcology_population, 4) + tax_populations[1] * 10,
 			_divide_toward_zero(adjusted_arcology_population, 4) + tax_populations[2] * 10,
-			int(city.document.misc_u32(MISC_CITY_TRAFFIC) / transport_cost),
+			int(city.document.misc_u32(Sc2MiscLayout.CITY_TRAFFIC) / transport_cost),
 			int(city.document.misc_u32(MISC_CITY_POLLUTION) / developed_divisor),
 			int(city.document.misc_u32(MISC_CITY_LAND_VALUE) / developed_divisor),
 			int(city.document.misc_u32(MISC_CITY_CRIME) / developed_divisor),
 			100 - power_usage_percent,
 			100 - water_usage_percent,
-			city.document.misc_u32(MISC_WORKFORCE_LE),
-			city.document.misc_u32(MISC_WORKFORCE_EQ),
+			city.document.misc_u32(Sc2MiscLayout.WORKFORCE_LIFE_EXPECTANCY),
+			city.document.misc_u32(Sc2MiscLayout.WORKFORCE_EDUCATION),
 			unemployment,
-			city.document.misc_u32(MISC_NATIONAL_VALUE),
+			city.document.misc_u32(Sc2MiscLayout.NATIONAL_VALUE),
 			city.document.misc_u32(MISC_NATIONAL_POPULATION),
 			city.document.misc_i32(MISC_NATIONAL_FEDERAL_RATE),
 		]

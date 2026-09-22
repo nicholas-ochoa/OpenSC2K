@@ -7,7 +7,7 @@ const DEPTH := 4
 
 
 static func find(city: CityState) -> Rect2i:
-	if city.document.misc_u32(0x0e44) == 0:
+	if city.document.misc_u32(Sc2MiscLayout.HAS_OCEAN) == 0:
 		return Rect2i()
 	var edge := city.map_size
 	for turn in 4:

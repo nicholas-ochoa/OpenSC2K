@@ -5,17 +5,16 @@ extends RefCounted
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
-const ZONE_POPULATION_OFFSET := 0x05f0
-const DEMAND_OFFSET := 0x0718
-const BUDGET_OFFSET := 0x077c
-const BUDGET_RECORD_SIZE := 0x006c
-const TILE_COUNT_OFFSET := 0x01f0
-const ORDINANCES_OFFSET := 0x0fa0
-const ARCOLOGY_POPULATION_OFFSET := 0x1020
-const NORMAL_POPULATION_OFFSET := 0x102c
-const INDUSTRIAL_MIX_BONUS_OFFSET := 0x1030
-const OLD_RESIDENTIAL_POPULATION_OFFSET := 0x0074
-const GARBAGE_OFFSET := 0x0040
+const ZONE_POPULATION_OFFSET := Sc2MiscLayout.ZONE_POPULATIONS
+const DEMAND_OFFSET := Sc2MiscLayout.DEMAND
+const BUDGET_RECORD_SIZE := Sc2BudgetLayout.RECORD_SIZE
+const TILE_COUNT_OFFSET := Sc2MiscLayout.TILE_COUNTS
+const ORDINANCES_OFFSET := Sc2MiscLayout.ORDINANCES
+const ARCOLOGY_POPULATION_OFFSET := Sc2MiscLayout.ARCOLOGY_POPULATION
+const NORMAL_POPULATION_OFFSET := Sc2MiscLayout.NORMAL_POPULATION
+const INDUSTRIAL_MIX_BONUS_OFFSET := Sc2MiscLayout.INDUSTRIAL_MIX_BONUS
+const OLD_RESIDENTIAL_POPULATION_OFFSET := Sc2MiscLayout.OLD_RESIDENTIAL_POPULATION
+const GARBAGE_OFFSET := Sc2MiscLayout.GARBAGE
 
 const CONNECTION_LABEL := 0xfa
 const RATIO_SCALE := 600.0
@@ -159,7 +158,7 @@ static func run(city: CityState) -> Result:
 		if city.simulation_slice != null and (index & 127) == 0:
 			city.simulation_slice.checkpoint()
 
-		var tax_rate := city.document.misc_i32(BUDGET_OFFSET + index * BUDGET_RECORD_SIZE + 4)
+		var tax_rate := city.document.misc_i32(Sc2MiscLayout.BUDGETS + index * BUDGET_RECORD_SIZE + 4)
 		tax_rate = _ordinance_adjusted_tax_rate(index, tax_rate, ordinance_flags)
 		tax_rate = clampi(tax_rate, 0, TAX_EFFECT.size() - 1)
 		var ratio := float(targets[index]) / float(tax_population[index] + 1) - 1.0
@@ -181,7 +180,7 @@ static func run(city: CityState) -> Result:
 
 		var budget_population := tax_population[index] * 10
 		budget_population += int(arcology_population / (6 if index == 0 else 12))
-		BinaryData.write_u32_be(changed, BUDGET_OFFSET + index * BUDGET_RECORD_SIZE, budget_population)
+		BinaryData.write_u32_be(changed, Sc2MiscLayout.BUDGETS + index * BUDGET_RECORD_SIZE, budget_population)
 		BinaryData.write_u32_be(changed, DEMAND_OFFSET + index * 4, demands[index])
 
 	if not misc.set_decoded_payload(changed):

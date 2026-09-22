@@ -14,11 +14,11 @@ const THING_COUNT := 40
 const THING_RECORD_SIZE := 12
 const GRAPH_COUNT := 16
 const GRAPH_VALUE_COUNT := 52
-const MISC_AUTO_BUDGET_OPTION := 0x0ff0
-const MISC_AUTO_GOTO_OPTION := 0x0ff4
-const MISC_SOUND_OPTION := 0x0ff8
-const MISC_MUSIC_OPTION := 0x0ffc
-const MISC_NO_DISASTERS_OPTION := 0x1000
+const MISC_AUTO_BUDGET_OPTION := Sc2MiscLayout.AUTO_BUDGET
+const MISC_AUTO_GOTO_OPTION := Sc2MiscLayout.AUTO_GOTO
+const MISC_SOUND_OPTION := Sc2MiscLayout.SOUND
+const MISC_MUSIC_OPTION := Sc2MiscLayout.MUSIC
+const MISC_NO_DISASTERS_OPTION := Sc2MiscLayout.NO_DISASTERS
 # chunks with a citystate mirror array. see resync_mirrors
 const MIRRORED_CHUNKS: PackedStringArray = ["ALTM", "XTER", "XBLD", "XZON", "XUND", "XTXT", "XBIT"]
 
@@ -362,61 +362,61 @@ func graph_series(graph_id: int) -> CityRecords.GraphSeries:
 
 
 func city_mode() -> int:
-	return document.misc_u32(0x04)
+	return document.misc_u32(Sc2MiscLayout.CITY_MODE)
 
 
 func difficulty() -> int:
-	return document.misc_u32(0x1c)
+	return document.misc_u32(Sc2MiscLayout.DIFFICULTY)
 
 
 func city_status() -> int:
-	return document.misc_u32(0x20)
+	return document.misc_u32(Sc2MiscLayout.PROGRESSION)
 
 
 func weather_type() -> int:
-	return document.misc_u32(0x6c)
+	return document.misc_u32(Sc2MiscLayout.WEATHER_TREND)
 
 
 func disaster_type() -> int:
-	return document.misc_u32(0x70)
+	return document.misc_u32(Sc2MiscLayout.DISASTER_TYPE)
 
 
 func funds() -> int:
-	return document.misc_i32(0x14)
+	return document.misc_i32(Sc2MiscLayout.FUNDS)
 
 
 func set_funds(value: int) -> bool:
-	return document.set_misc_i32(0x14, value)
+	return document.set_misc_i32(Sc2MiscLayout.FUNDS, value)
 
 
 func founding_year() -> int:
-	return document.misc_u32(0x0c)
+	return document.misc_u32(Sc2MiscLayout.START_YEAR)
 
 
 func compass_rotation() -> int:
-	return document.misc_u32(0x08) & 0x03
+	return document.misc_u32(Sc2MiscLayout.COMPASS) & 0x03
 
 
 func age_in_days() -> int:
-	return document.misc_u32(0x10)
+	return document.misc_u32(Sc2MiscLayout.CITY_DAYS)
 
 
 func set_age_in_days(value: int) -> bool:
 	if value < 0:
 		return false
 
-	return document.set_misc_u32(0x10, value)
+	return document.set_misc_u32(Sc2MiscLayout.CITY_DAYS, value)
 
 
 func simulation_speed() -> int:
-	return document.misc_u32(0x0fec)
+	return document.misc_u32(Sc2MiscLayout.SIMULATION_SPEED)
 
 
 func set_simulation_speed(value: int) -> bool:
 	if value < 1 or value > 5:
 		return false
 
-	return document.set_misc_u32(0x0fec, value)
+	return document.set_misc_u32(Sc2MiscLayout.SIMULATION_SPEED, value)
 
 
 func auto_budget_enabled() -> bool:
@@ -472,14 +472,14 @@ func current_day() -> int:
 
 
 func population() -> int:
-	return document.misc_u32(0x1020) + document.misc_u32(0x102c)
+	return document.misc_u32(Sc2MiscLayout.ARCOLOGY_POPULATION) + document.misc_u32(Sc2MiscLayout.NORMAL_POPULATION)
 
 
 func rci_demand() -> Vector3i:
 	return Vector3i(
-		document.misc_i32(0x0718),
-		document.misc_i32(0x071c),
-		document.misc_i32(0x0720)
+		document.misc_i32(Sc2MiscLayout.DEMAND),
+		document.misc_i32(Sc2MiscLayout.DEMAND + Sc2MiscLayout.WORD_SIZE),
+		document.misc_i32(Sc2MiscLayout.DEMAND + 2 * Sc2MiscLayout.WORD_SIZE)
 	)
 
 

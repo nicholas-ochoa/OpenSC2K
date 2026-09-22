@@ -175,8 +175,8 @@ static func _water_detail(city: CityState, point: Vector2i, building: int) -> St
 		var supply := 0
 
 		if city.is_powered(point.x, point.y):
-			supply = city.document.misc_u32(0x0e40) * 5
-			supply += int((city.document.misc_u32(0x68) & 0xff) / 2)
+			supply = city.document.misc_u32(Sc2MiscLayout.WATER_LEVEL) * 5
+			supply += int((city.document.misc_u32(Sc2MiscLayout.WEATHER_RAIN) & 0xff) / 2)
 
 			for x in range(maxi(point.x - 1, 0), mini(point.x + 2, map_edge)):
 				for y in range(maxi(point.y - 1, 0), mini(point.y + 2, map_edge)):

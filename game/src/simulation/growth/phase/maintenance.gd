@@ -45,7 +45,7 @@ static func _process_surface_maintenance(
 		return
 
 	if _is_bridge_budget_tile(tile):
-		var wind := BinaryData.read_u32_be(misc, 0x0064) & 0xff
+		var wind := BinaryData.read_u32_be(misc, Sc2MiscLayout.WEATHER_WIND) & 0xff
 
 		if _maintenance_fails(misc, 12, random, 50, wind):
 			var result: DemolishPointResult

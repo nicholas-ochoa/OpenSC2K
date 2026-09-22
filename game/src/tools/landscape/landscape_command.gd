@@ -16,8 +16,8 @@ const LAST_TREE := Tiles.TREE_LAST
 const FIRST_NON_LANDSCAPE_BUILDING := Tiles.POWER_LINE_FIRST
 const FORBIDDEN_COAST := TerrainTileIds.FORBIDDEN_COAST
 const WATERFALL := TerrainTileIds.WATERFALL
-const MISC_FUNDS := 0x0014
-const MISC_TILE_COUNTS := 0x01f0
+const MISC_FUNDS := Sc2MiscLayout.FUNDS
+const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
 const MILITARY_ZONE := 7
 
 const CARDINAL_WATER_SHAPES := [13, 21, 18, 8, 19, 16, 5, 1, 20, 7, 17, 4, 6, 3, 2]
@@ -372,7 +372,7 @@ static func _city_payloads(city: CityState) -> Dictionary[String, PackedByteArra
 		["XZON", (map_edge * map_edge)],
 		["XBIT", (map_edge * map_edge)],
 		["ALTM", (map_edge * map_edge) * 2],
-		["MISC", 4800],
+		["MISC", Sc2MiscLayout.SIZE],
 	]:
 		var chunk := city.document.find_chunk(checked[0])
 

@@ -146,7 +146,7 @@ static func apply_path(
 		action_count += 1
 		TerrainRetile.retile_region(
 			altitude, buildings, terrain, zones, flags, misc, retile_indices,
-			city.document.misc_u32(0x0e40), map_edge
+			city.document.misc_u32(Sc2MiscLayout.WATER_LEVEL), map_edge
 		)
 
 		for changed_index in modified:

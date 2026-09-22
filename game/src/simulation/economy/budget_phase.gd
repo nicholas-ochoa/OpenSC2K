@@ -7,42 +7,32 @@ const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
 const Ordinances = preload("res://src/simulation/economy/ordinance_command.gd")
 
-const MISC_SIZE := 4800
-const MISC_FUNDS := 0x0014
-const MISC_BONDS := 0x0018
-const MISC_TILE_COUNTS := 0x01f0
-const MISC_BUDGETS := 0x077c
-const MISC_YEAR_END := 0x0e3c
-const MISC_ORDINANCES := 0x0fa0
-const MISC_SUBWAY_COUNT := 0x0fe8
-const MISC_AUTO_BUDGET := 0x0ff0
-const MISC_NO_DISASTERS := 0x1000
-const MISC_ARCOLOGY_POPULATION := 0x1020
-const MISC_NORMAL_POPULATION := 0x102c
+const MISC_SIZE := Sc2MiscLayout.SIZE
+const MISC_FUNDS := Sc2MiscLayout.FUNDS
+const MISC_BONDS := Sc2MiscLayout.BONDS
+const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
+const MISC_BUDGETS := Sc2MiscLayout.BUDGETS
+const MISC_YEAR_END := Sc2MiscLayout.YEAR_END
+const MISC_ORDINANCES := Sc2MiscLayout.ORDINANCES
+const MISC_SUBWAY_COUNT := Sc2MiscLayout.SUBWAY_COUNT
+const MISC_AUTO_BUDGET := Sc2MiscLayout.AUTO_BUDGET
+const MISC_NO_DISASTERS := Sc2MiscLayout.NO_DISASTERS
+const MISC_ARCOLOGY_POPULATION := Sc2MiscLayout.ARCOLOGY_POPULATION
+const MISC_NORMAL_POPULATION := Sc2MiscLayout.NORMAL_POPULATION
 
-const BUDGET_COUNT := 16
-const BUDGET_RECORD_SIZE := 0x006c
-const BUDGET_CURRENT := 0x00
-const BUDGET_FUNDING := 0x04
-const BUDGET_YEAR_TO_DATE := 0x08
-const BUDGET_MONTHS := 0x0c
+const BUDGET_COUNT := Sc2BudgetLayout.COUNT
+const BUDGET_RECORD_SIZE := Sc2BudgetLayout.RECORD_SIZE
+const BUDGET_CURRENT := Sc2BudgetLayout.CURRENT
+const BUDGET_FUNDING := Sc2BudgetLayout.FUNDING
+const BUDGET_YEAR_TO_DATE := Sc2BudgetLayout.YEAR_TO_DATE
+const BUDGET_MONTHS := Sc2BudgetLayout.MONTHS
 
-const BUDGET_RESIDENTIAL := 0
-const BUDGET_COMMERCIAL := 1
-const BUDGET_INDUSTRIAL := 2
-const BUDGET_ORDINANCES := 3
-const BUDGET_BONDS := 4
-const BUDGET_POLICE := 5
-const BUDGET_FIRE := 6
-const BUDGET_HEALTH := 7
-const BUDGET_SCHOOL := 8
-const BUDGET_COLLEGE := 9
-const BUDGET_ROAD := 10
-const BUDGET_HIGHWAY := 11
-const BUDGET_BRIDGE := 12
-const BUDGET_RAIL := 13
-const BUDGET_SUBWAY := 14
-const BUDGET_TUNNEL := 15
+const BUDGET_RESIDENTIAL := Sc2BudgetLayout.RESIDENTIAL
+const BUDGET_ORDINANCES := Sc2BudgetLayout.ORDINANCES
+const BUDGET_BONDS := Sc2BudgetLayout.BONDS
+const BUDGET_POLICE := Sc2BudgetLayout.POLICE
+const BUDGET_FIRE := Sc2BudgetLayout.FIRE
+const BUDGET_ROAD := Sc2BudgetLayout.ROAD
 
 const ANNUAL_DIVISOR_FACTORS := [
 	75, 75, 75, 75, -100, -1, -1, -2, -4, -1, -1000, -500, -400, -250, -250, -250,
@@ -51,9 +41,9 @@ const ANNUAL_DIVISOR_FACTORS := [
 const SERVICE_TILE_IDS := {
 	BUDGET_POLICE: Tiles.POLICE_STATION,
 	BUDGET_FIRE: Tiles.FIRE_STATION,
-	BUDGET_HEALTH: Tiles.HOSPITAL,
-	BUDGET_SCHOOL: Tiles.SCHOOL,
-	BUDGET_COLLEGE: Tiles.COLLEGE,
+	Sc2BudgetLayout.HEALTH: Tiles.HOSPITAL,
+	Sc2BudgetLayout.SCHOOL: Tiles.SCHOOL,
+	Sc2BudgetLayout.COLLEGE: Tiles.COLLEGE,
 }
 
 const NEWS_ORDINANCE := 0x29
@@ -152,14 +142,14 @@ static func run(city: CityState, random: SimRandom, annual_budget_approved := fa
 
 	span.mark("service and network costs")
 	for budget_id in SERVICE_TILE_IDS:
-		var divisor := 16 if budget_id == BUDGET_COLLEGE else 9
+		var divisor := 16 if budget_id == Sc2BudgetLayout.COLLEGE else 9
 		BinaryData.write_u32_be(
 			misc,
 			_budget_offset(budget_id),
 			_divide_toward_zero(_tile_count(misc, SERVICE_TILE_IDS[budget_id]), divisor)
 		)
 
-	for budget_id in range(BUDGET_ROAD, BUDGET_TUNNEL + 1):
+	for budget_id in range(BUDGET_ROAD, Sc2BudgetLayout.TUNNEL + 1):
 		BinaryData.write_u32_be(misc, _budget_offset(budget_id), 0)
 
 	for tile_id in range(Tiles.FIRST_ROAD, Tiles.DEVELOPED_FIRST):
@@ -181,23 +171,23 @@ static func run(city: CityState, random: SimRandom, annual_budget_approved := fa
 			or tile_id == Tiles.HIGHWAY_RAIL_CROSSING_1
 			or tile_id == Tiles.HIGHWAY_RAIL_CROSSING_2
 		):
-			_add_current(misc, BUDGET_RAIL, count)
+			_add_current(misc, Sc2BudgetLayout.RAIL, count)
 
 		if (tile_id >= Tiles.SUSPENSION_BRIDGE_1 and tile_id <= Tiles.POWER_BRIDGE) or tile_id == Tiles.HIGHWAY_BRIDGE or tile_id == Tiles.REINFORCED_HIGHWAY_BRIDGE:
-			_add_current(misc, BUDGET_BRIDGE, count)
+			_add_current(misc, Sc2BudgetLayout.BRIDGE, count)
 
 		if (tile_id >= Tiles.HIGHWAY_SLOPE_1 and tile_id <= Tiles.REINFORCED_HIGHWAY_BRIDGE) or (tile_id >= Tiles.HIGHWAY_STRAIGHT_1 and tile_id <= Tiles.HIGHWAY_POWER_CROSSING_2):
-			_add_current(misc, BUDGET_HIGHWAY, count)
+			_add_current(misc, Sc2BudgetLayout.HIGHWAY, count)
 
 		if tile_id >= Tiles.TUNNEL_ENTRANCE_1 and tile_id <= Tiles.TUNNEL_ENTRANCE_4:
-			_add_current(misc, BUDGET_TUNNEL, count)
+			_add_current(misc, Sc2BudgetLayout.TUNNEL, count)
 
 	BinaryData.write_u32_be(
 		misc,
-		_budget_offset(BUDGET_SUBWAY),
+		_budget_offset(Sc2BudgetLayout.SUBWAY),
 		_tile_count(misc, Tiles.SUBWAY_STATION) + BinaryData.read_u32_be(misc, MISC_SUBWAY_COUNT)
 	)
-	_add_current(misc, BUDGET_RAIL, _tile_count(misc, Tiles.RAIL_STATION))
+	_add_current(misc, Sc2BudgetLayout.RAIL, _tile_count(misc, Tiles.RAIL_STATION))
 	_add_current(
 		misc,
 		BUDGET_ROAD,

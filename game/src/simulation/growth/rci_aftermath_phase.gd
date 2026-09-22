@@ -8,17 +8,14 @@ const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
 const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
 
-const MISC_SIZE := 4800
-const MISC_START_YEAR := 0x000c
-const MISC_WEATHER_HEAT := 0x0060
-const MISC_WEATHER_WIND := 0x0064
-const MISC_WEATHER_RAIN := 0x0068
-const MISC_WEATHER_TREND := 0x006c
-const MISC_INVENTION_YEARS := 0x0738
-const MISC_TILE_COUNTS := 0x01f0
-const MISC_UNEMPLOYMENT := 0x0fa4
-const MISC_MILITARY_TILE_COUNTS := 0x0fa8
-const MISC_STADIUM_TEAMS := 0x1028
+const MISC_SIZE := Sc2MiscLayout.SIZE
+const MISC_START_YEAR := Sc2MiscLayout.START_YEAR
+const MISC_WEATHER_HEAT := Sc2MiscLayout.WEATHER_HEAT
+const MISC_WEATHER_TREND := Sc2MiscLayout.WEATHER_TREND
+const MISC_INVENTION_YEARS := Sc2MiscLayout.INVENTION_YEARS
+const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
+const MISC_MILITARY_TILE_COUNTS := Sc2MiscLayout.MILITARY_TILE_COUNTS
+const MISC_STADIUM_TEAMS := Sc2MiscLayout.STADIUM_TEAMS
 
 const RADIOACTIVITY_TILE := Tiles.RADIOACTIVE_WASTE
 const FIRST_TREE_TILE := Tiles.TREE_FIRST
@@ -217,14 +214,14 @@ static func run(city: CityState, random: SimRandom, season: int) -> Result:
 	var weather_roll: int = random.next_u15() & 7
 	var new_trend := weather_transition(old_trend, season, weather_roll)
 	var old_heat := BinaryData.read_u32_be(misc, MISC_WEATHER_HEAT) & 0xff
-	var old_wind := BinaryData.read_u32_be(misc, MISC_WEATHER_WIND) & 0xff
-	var old_rain := BinaryData.read_u32_be(misc, MISC_WEATHER_RAIN) & 0xff
+	var old_wind := BinaryData.read_u32_be(misc, Sc2MiscLayout.WEATHER_WIND) & 0xff
+	var old_rain := BinaryData.read_u32_be(misc, Sc2MiscLayout.WEATHER_RAIN) & 0xff
 	var new_heat := int((old_heat + WEATHER_HEAT_TARGETS[new_trend]) / 2)
 	var new_wind := int((old_wind + WEATHER_WIND_TARGETS[new_trend]) / 2)
 	var new_rain := int((old_rain + WEATHER_RAIN_TARGETS[new_trend]) / 2)
 	BinaryData.write_u32_be(misc, MISC_WEATHER_HEAT, new_heat)
-	BinaryData.write_u32_be(misc, MISC_WEATHER_WIND, new_wind)
-	BinaryData.write_u32_be(misc, MISC_WEATHER_RAIN, new_rain)
+	BinaryData.write_u32_be(misc, Sc2MiscLayout.WEATHER_WIND, new_wind)
+	BinaryData.write_u32_be(misc, Sc2MiscLayout.WEATHER_RAIN, new_rain)
 	BinaryData.write_u32_be(misc, MISC_WEATHER_TREND, new_trend)
 	span.mark("news insertion")
 	var queue_insert := NewsQueue.insert_items(misc, news_items)
@@ -336,7 +333,7 @@ static func _append_general_news(
 				news_items.append(NewsEvent.new(NEWS_WAR, 0))
 
 			if (random.next_u15() & 3) == 0:
-				news_items.append(NewsEvent.new(NEWS_MARKET, BinaryData.read_u32_be(misc, 0x005c) & 0xffff))
+				news_items.append(NewsEvent.new(NEWS_MARKET, BinaryData.read_u32_be(misc, Sc2MiscLayout.NATIONAL_ECONOMY_TREND) & 0xffff))
 		1:
 			news_items.append(NewsEvent.new(0x0b, 0))
 		2:
@@ -360,7 +357,7 @@ static func _append_general_news(
 	_append_graph_news(random, graphs, GRAPH_POLLUTION, NEWS_HIGH_POLLUTION, NEWS_LOW_POLLUTION, news_items)
 	_append_graph_news(random, graphs, GRAPH_CRIME, NEWS_HIGH_CRIME, NEWS_LOW_CRIME, news_items)
 
-	var unemployment := BinaryData.read_i32_be(misc, MISC_UNEMPLOYMENT)
+	var unemployment := BinaryData.read_i32_be(misc, Sc2MiscLayout.UNEMPLOYMENT)
 
 	if (random.next_u15() & 0x3f) < unemployment:
 		news_items.append(NewsEvent.new(NEWS_POOR_EMPLOYMENT, 0))
@@ -368,7 +365,7 @@ static func _append_general_news(
 	if unemployment < (random.next_u15() & 3):
 		news_items.append(NewsEvent.new(NEWS_GOOD_EMPLOYMENT, 0))
 
-	var education := BinaryData.read_u32_be(misc, 0x004c)
+	var education := BinaryData.read_u32_be(misc, Sc2MiscLayout.WORKFORCE_EDUCATION)
 	var education_roll: int = random.next_u15() % 80
 
 	if education < 80:
@@ -377,7 +374,7 @@ static func _append_general_news(
 	elif education_roll < education - 80:
 		news_items.append(NewsEvent.new(NEWS_GOOD_EDUCATION, 0))
 
-	var health := BinaryData.read_u32_be(misc, 0x0048)
+	var health := BinaryData.read_u32_be(misc, Sc2MiscLayout.WORKFORCE_LIFE_EXPECTANCY)
 	var health_roll: int = random.next_u15() % 60
 
 	if health < 60:

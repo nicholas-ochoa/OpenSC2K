@@ -5,28 +5,25 @@ extends RefCounted
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
-const MISC_SIZE := 4800
+const MISC_SIZE := Sc2MiscLayout.SIZE
 const POLLUTION_SIZE := 64 * 64
-const MISC_CITY_DAYS := 0x0010
-const MISC_DIFFICULTY := 0x001c
-const MISC_WEATHER_HEAT := 0x0060
-const MISC_WEATHER_TREND := 0x006c
-const MISC_TILE_COUNTS := 0x01f0
-const MISC_INVENTION_YEARS := 0x0738
-const MISC_BUDGETS := 0x077c
-const MISC_NO_DISASTERS := 0x1000
-const MISC_CITY_CENTER_X := 0x1018
-const MISC_CITY_CENTER_Y := 0x101c
-const MISC_ARCOLOGY_POPULATION := 0x1020
-const MISC_NORMAL_POPULATION := 0x102c
-const MISC_UNEMPLOYMENT := 0x0fa4
+const MISC_CITY_DAYS := Sc2MiscLayout.CITY_DAYS
+const MISC_DIFFICULTY := Sc2MiscLayout.DIFFICULTY
+const MISC_WEATHER_HEAT := Sc2MiscLayout.WEATHER_HEAT
+const MISC_WEATHER_TREND := Sc2MiscLayout.WEATHER_TREND
+const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
+const MISC_INVENTION_YEARS := Sc2MiscLayout.INVENTION_YEARS
+const MISC_BUDGETS := Sc2MiscLayout.BUDGETS
+const MISC_NO_DISASTERS := Sc2MiscLayout.NO_DISASTERS
+const MISC_CITY_CENTER_X := Sc2MiscLayout.CITY_CENTER_X
+const MISC_CITY_CENTER_Y := Sc2MiscLayout.CITY_CENTER_Y
+const MISC_ARCOLOGY_POPULATION := Sc2MiscLayout.ARCOLOGY_POPULATION
+const MISC_NORMAL_POPULATION := Sc2MiscLayout.NORMAL_POPULATION
 
-const BUDGET_RECORD_SIZE := 0x006c
-const BUDGET_CURRENT := 0x00
-const BUDGET_RESIDENTIAL := 0
-const BUDGET_COMMERCIAL := 1
-const BUDGET_INDUSTRIAL := 2
-const BUDGET_ROAD := 10
+const BUDGET_RECORD_SIZE := Sc2BudgetLayout.RECORD_SIZE
+const BUDGET_CURRENT := Sc2BudgetLayout.CURRENT
+const BUDGET_RESIDENTIAL := Sc2BudgetLayout.RESIDENTIAL
+const BUDGET_ROAD := Sc2BudgetLayout.ROAD
 
 const TILE_HOSPITAL := Tiles.HOSPITAL
 const TILE_POLICE := Tiles.POLICE_STATION
@@ -224,18 +221,18 @@ static func _status_index(
 	if population < 8000:
 		return STATUS_NONE
 
-	var industrial_population := _budget_current(misc, BUDGET_INDUSTRIAL) - arcology_share
+	var industrial_population := _budget_current(misc, Sc2BudgetLayout.INDUSTRIAL) - arcology_share
 
 	if (
 		_tile_count(misc, TILE_CRANE, map_edge) + industry_connections
 		< int(industrial_population / 10000)
 	):
-		if BinaryData.read_u32_be(misc, 0x0e44) == 0 and BinaryData.read_u32_be(misc, 0x0e48) == 0:
+		if BinaryData.read_u32_be(misc, Sc2MiscLayout.HAS_OCEAN) == 0 and BinaryData.read_u32_be(misc, Sc2MiscLayout.HAS_RIVER) == 0:
 			return STATUS_INDUSTRIAL_CONNECTION
 
 		return STATUS_SEAPORT
 
-	var commercial_population := _budget_current(misc, BUDGET_COMMERCIAL) - arcology_share
+	var commercial_population := _budget_current(misc, Sc2BudgetLayout.COMMERCIAL) - arcology_share
 
 	if (
 		_tile_count(misc, TILE_RUNWAY, map_edge)
@@ -294,8 +291,8 @@ static func _select_disaster(
 	var disaster_roll: int = random.next_u15() % wait_months
 	result.disaster_roll = disaster_roll
 	var weather_trend := BinaryData.read_u32_be(misc, MISC_WEATHER_TREND) & 0xff
-	var has_ocean := BinaryData.read_u32_be(misc, 0x0e44) != 0
-	var has_river := BinaryData.read_u32_be(misc, 0x0e48) != 0
+	var has_ocean := BinaryData.read_u32_be(misc, Sc2MiscLayout.HAS_OCEAN) != 0
+	var has_river := BinaryData.read_u32_be(misc, Sc2MiscLayout.HAS_RIVER) != 0
 
 	if weather_trend == 10 and has_ocean and disaster_roll < 15:
 		result.disaster_type = DISASTER_HURRICANE
@@ -354,7 +351,7 @@ static func _select_disaster(
 			if candidate == DISASTER_MASS_RIOTS and population < 30000:
 				return result
 
-			if BinaryData.read_u32_be(misc, MISC_UNEMPLOYMENT) < 10:
+			if BinaryData.read_u32_be(misc, Sc2MiscLayout.UNEMPLOYMENT) < 10:
 				return result
 
 			if (BinaryData.read_u32_be(misc, MISC_WEATHER_HEAT) & 0xff) < 170:
@@ -373,7 +370,7 @@ static func _select_disaster(
 
 			result.disaster_point = _random_map_point(random, map_edge)
 		DISASTER_POLLUTION:
-			if _budget_current(misc, BUDGET_INDUSTRIAL) < 10000:
+			if _budget_current(misc, Sc2BudgetLayout.INDUSTRIAL) < 10000:
 				return result
 
 			result.disaster_point = _random_center_point(random, center, 15)

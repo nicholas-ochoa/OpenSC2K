@@ -3,21 +3,12 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
-const MISC_SIZE := 4800
-const MISC_START_YEAR := 0x000c
-const MISC_CITY_DAYS := 0x0010
-const MISC_WORKFORCE_EQ := 0x004c
-const MISC_INDUSTRIES := 0x016c
-const MISC_ZONE_POPULATIONS := 0x05f0
-const MISC_ORDINANCES := 0x0fa0
-const MISC_INDUSTRIAL_MIX_BONUS := 0x1030
-const MISC_INDUSTRIAL_POLLUTION_BONUS := 0x1034
+const MISC_SIZE := Sc2MiscLayout.SIZE
+const MISC_START_YEAR := Sc2MiscLayout.START_YEAR
+const MISC_CITY_DAYS := Sc2MiscLayout.CITY_DAYS
+const MISC_ORDINANCES := Sc2MiscLayout.ORDINANCES
 
-const INDUSTRY_COUNT := 11
-const INDUSTRY_STRIDE := 0x0c
-const INDUSTRY_DEMAND := 0x00
-const INDUSTRY_TAX_RATE := 0x04
-const INDUSTRY_RATIO := 0x08
+const INDUSTRY_COUNT := Sc2IndustryLayout.COUNT
 
 const INDUSTRY_NAMES := [
 	"Steel/Mining",
@@ -97,8 +88,8 @@ static func run(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom, 
 	var ratio_total := 0
 
 	for industry in INDUSTRY_COUNT:
-		var base := MISC_INDUSTRIES + industry * INDUSTRY_STRIDE
-		var old_demand := _to_i16(BinaryData.read_u32_be(data, base + INDUSTRY_DEMAND))
+		var base := Sc2MiscLayout.INDUSTRIES + industry * Sc2IndustryLayout.RECORD_SIZE
+		var old_demand := _to_i16(BinaryData.read_u32_be(data, base + Sc2IndustryLayout.DEMAND))
 		var random_sum := 0
 
 		for roll in 4:
@@ -108,7 +99,7 @@ static func run(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom, 
 		var demand := _divide_toward_zero(random_target + old_demand * 3, 4)
 		demands.append(demand)
 		adjusted.append(demand)
-		var ratio := BinaryData.read_u32_be(data, base + INDUSTRY_RATIO)
+		var ratio := BinaryData.read_u32_be(data, base + Sc2IndustryLayout.RATIO)
 		ratios.append(ratio)
 		ratio_total += ratio
 
@@ -120,7 +111,7 @@ static func run(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom, 
 	if population_growth != 0:
 		_scale_demands(adjusted, [4], 1.1)
 
-	var workforce_eq := BinaryData.read_u32_be(data, MISC_WORKFORCE_EQ)
+	var workforce_eq := BinaryData.read_u32_be(data, Sc2MiscLayout.WORKFORCE_EDUCATION)
 
 	if workforce_eq > 130:
 		_scale_demands(adjusted, HIGH_EQ_INDUSTRIES, 1.2)
@@ -132,8 +123,8 @@ static func run(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom, 
 	var positive_total := 0
 
 	for industry in INDUSTRY_COUNT:
-		var base := MISC_INDUSTRIES + industry * INDUSTRY_STRIDE
-		adjusted[industry] -= _to_i16(BinaryData.read_u32_be(data, base + INDUSTRY_TAX_RATE))
+		var base := Sc2MiscLayout.INDUSTRIES + industry * Sc2IndustryLayout.RECORD_SIZE
+		adjusted[industry] -= _to_i16(BinaryData.read_u32_be(data, base + Sc2IndustryLayout.TAX_RATE))
 
 		if adjusted[industry] <= 0:
 			adjusted[industry] = 0
@@ -141,8 +132,8 @@ static func run(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom, 
 			positive_total += adjusted[industry]
 
 	var industrial_population := (
-		BinaryData.read_u32_be(data, MISC_ZONE_POPULATIONS + 5 * 4)
-		+ BinaryData.read_u32_be(data, MISC_ZONE_POPULATIONS + 6 * 4)
+		BinaryData.read_u32_be(data, Sc2MiscLayout.ZONE_POPULATIONS + 5 * 4)
+		+ BinaryData.read_u32_be(data, Sc2MiscLayout.ZONE_POPULATIONS + 6 * 4)
 	)
 
 	if ratio_total > industrial_population:
@@ -182,12 +173,12 @@ static func run(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom, 
 	var mix_bonus := 0 if maximum_share < 20 else int((maximum_share - 20) / 5)
 
 	for industry in INDUSTRY_COUNT:
-		var base := MISC_INDUSTRIES + industry * INDUSTRY_STRIDE
-		BinaryData.write_u32_be(data, base + INDUSTRY_DEMAND, demands[industry])
-		BinaryData.write_u32_be(data, base + INDUSTRY_RATIO, ratios[industry])
+		var base := Sc2MiscLayout.INDUSTRIES + industry * Sc2IndustryLayout.RECORD_SIZE
+		BinaryData.write_u32_be(data, base + Sc2IndustryLayout.DEMAND, demands[industry])
+		BinaryData.write_u32_be(data, base + Sc2IndustryLayout.RATIO, ratios[industry])
 
-	BinaryData.write_u32_be(data, MISC_INDUSTRIAL_MIX_BONUS, mix_bonus)
-	BinaryData.write_u32_be(data, MISC_INDUSTRIAL_POLLUTION_BONUS, pollution_bonus)
+	BinaryData.write_u32_be(data, Sc2MiscLayout.INDUSTRIAL_MIX_BONUS, mix_bonus)
+	BinaryData.write_u32_be(data, Sc2MiscLayout.INDUSTRIAL_POLLUTION_BONUS, pollution_bonus)
 
 	if not misc_chunk.set_decoded_payload(data):
 		return _failed("cannot store the industry update")

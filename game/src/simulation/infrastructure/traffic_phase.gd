@@ -3,7 +3,6 @@ extends RefCounted
 
 const MAP_SIZE := 64
 const VALUE_COUNT := MAP_SIZE * MAP_SIZE
-const MISC_TRAFFIC_COUNT := 0x30
 
 
 class Result extends PhaseResult:
@@ -45,7 +44,7 @@ static func run(city: CityState) -> Result:
 	if traffic != chunk.decoded_payload and not chunk.set_decoded_payload(traffic, true):
 		return _failed("cannot store updated XTRF data")
 
-	if not city.document.set_misc_u32(MISC_TRAFFIC_COUNT, total):
+	if not city.document.set_misc_u32(Sc2MiscLayout.CITY_TRAFFIC, total):
 		return _failed("cannot store the city traffic count")
 
 	var result := Result.new()

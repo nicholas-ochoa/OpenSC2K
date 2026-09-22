@@ -5,17 +5,17 @@ extends RefCounted
 
 const CityValue = preload("res://src/simulation/economy/city_value_phase.gd")
 
-const MISC_SIZE := 4800
-const MISC_FUNDS := 0x0014
-const MISC_BONDS := 0x0018
-const MISC_CITY_VALUE := 0x0024
-const MISC_FEDERAL_RATE := 0x0058
-const MISC_BOND_RATES := 0x0610
-const MISC_BUDGETS := 0x077c
-const BUDGET_RECORD_SIZE := 0x006c
-const BUDGET_BONDS := 4
-const BUDGET_CURRENT := 0x00
-const BUDGET_FUNDING := 0x04
+const MISC_SIZE := Sc2MiscLayout.SIZE
+const MISC_FUNDS := Sc2MiscLayout.FUNDS
+const MISC_BONDS := Sc2MiscLayout.BONDS
+const MISC_CITY_VALUE := Sc2MiscLayout.CITY_VALUE
+const MISC_FEDERAL_RATE := Sc2MiscLayout.NATIONAL_FEDERAL_RATE
+const MISC_BOND_RATES := Sc2MiscLayout.BOND_RATES
+const MISC_BUDGETS := Sc2MiscLayout.BUDGETS
+const BUDGET_RECORD_SIZE := Sc2BudgetLayout.RECORD_SIZE
+const BUDGET_BONDS := Sc2BudgetLayout.BONDS
+const BUDGET_CURRENT := Sc2BudgetLayout.CURRENT
+const BUDGET_FUNDING := Sc2BudgetLayout.FUNDING
 
 const BOND_VALUE := 10000
 const MAX_BONDS := 50
