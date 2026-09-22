@@ -367,7 +367,7 @@ static func place_special_item(
 	if area == 1:
 		zones[SpecialZoneState._index(origin, map_edge)] |= Sc2ZoneLayout.CORNERS_MASK
 	else:
-		SpecialZoneState._set_corners(zones, origin, area, rotation, map_edge)
+		GrowthSiteRules.set_corners(zones, origin, area, rotation, map_edge)
 
 	for point in points:
 		zones[SpecialZoneState._index(point, map_edge)] = (zones[SpecialZoneState._index(point, map_edge)] & Sc2ZoneLayout.CORNERS_MASK) | zone
@@ -418,7 +418,7 @@ static func place_missile_silo(
 			SpecialZoneState._replace_special_building(buildings, zones, misc, index, Tiles.MISSILE_SILO)
 			SpecialZoneState.replace_underground(underground, zones, misc, index, UnderTiles.MISSILE_SILO)
 
-	SpecialZoneState._set_corners(zones, origin, 3, rotation, map_edge)
+	GrowthSiteRules.set_corners(zones, origin, 3, rotation, map_edge)
 
 	var result := Result.new()
 	result.ok = true

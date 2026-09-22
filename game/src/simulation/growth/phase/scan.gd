@@ -219,7 +219,7 @@ class TileScan extends GrowthConstants:
 		rci_tiles += 1
 		var growth_pressure := 0
 
-		if GrowthDevelopment._has_power(flags, tile.x, tile.y, map_edge):
+		if GrowthSiteRules.has_power(flags, tile.x, tile.y, map_edge):
 			if detailed:
 				span.mark_index(TimingStep.TRIPS)
 

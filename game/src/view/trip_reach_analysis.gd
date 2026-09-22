@@ -38,7 +38,7 @@ static func inspect(city: CityState, clicked: Vector2i) -> TransportTripReachRes
 		city.text_overlays, city.altitude_words, traffic, origin, zone if rci else 7,
 		density, SimRandom.new(1), 100, city.map_size, true, start) as TransportTripReachResult
 	_add_building_coverage(city, result, origin)
-	var powered := GrowthDevelopment._has_power(city.tile_flags, origin.x, origin.y, city.map_size)
+	var powered := GrowthSiteRules.has_power(city.tile_flags, origin.x, origin.y, city.map_size)
 	var demand := city.document.misc_i32(Sc2MiscLayout.DEMAND + ((zone - 1) / 2) * 4) if rci else 0
 	var lines := PackedStringArray()
 	if result.reachable.is_empty():

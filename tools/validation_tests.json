@@ -1,5 +1,11 @@
 [
   {
+    "id": "growth_site_rules_test",
+    "script": "tests/growth_site_rules_test.gd",
+    "domain": "simulation",
+    "lane": "product"
+  },
+  {
     "id": "city_tool_selection_test",
     "script": "tests/city_tool_selection_test.gd",
     "domain": "tools",

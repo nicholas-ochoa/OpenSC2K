@@ -139,7 +139,7 @@ static func grow_special_zone(
 	rotation: int,
 	map_edge: int = 128,
 ) -> SpecialZonePlacement.Result:
-	if zone != 7 and not SpecialZoneState._has_power(flags, point.x, point.y, map_edge):
+	if zone != 7 and not GrowthSiteRules.has_power(flags, point.x, point.y, map_edge):
 		var result := SpecialZonePlacement.Result.new()
 		result.ok = false
 		result.changed_tiles = 0
