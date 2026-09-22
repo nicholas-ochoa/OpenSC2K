@@ -9,9 +9,9 @@ class Result extends RefCounted:
 	var value: int
 
 
-const INDUSTRY_COUNT := 11
-const INDUSTRY_STRIDE := 0x0c
-const MISC_INDUSTRIES := 0x016c
+const INDUSTRY_COUNT := Sc2IndustryLayout.COUNT
+const INDUSTRY_STRIDE := Sc2IndustryLayout.RECORD_SIZE
+const MISC_INDUSTRIES := Sc2MiscLayout.INDUSTRIES
 const MAXIMUM_INDUSTRY_TAX := 20
 
 
@@ -52,7 +52,7 @@ static func set_tax_rate(
 		if not all_industries and current != industry:
 			continue
 
-		var offset := MISC_INDUSTRIES + current * INDUSTRY_STRIDE + 4
+		var offset := MISC_INDUSTRIES + current * INDUSTRY_STRIDE + Sc2IndustryLayout.TAX_RATE
 
 		if _read_i32_be(data, offset) == tax_rate:
 			continue

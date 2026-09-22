@@ -18,13 +18,13 @@ enum Mode {
 	DEMAND,
 }
 
-const INDUSTRY_COUNT := 11
-const INDUSTRY_STRIDE := 0x0c
-const MISC_INDUSTRIES := 0x016c
-const MISC_BUDGETS := 0x077c
-const BUDGET_RECORD_SIZE := 0x006c
-const BUDGET_INDUSTRIAL := 2
-const BUDGET_FUNDING := 0x04
+const INDUSTRY_COUNT := Sc2IndustryLayout.COUNT
+const INDUSTRY_STRIDE := Sc2IndustryLayout.RECORD_SIZE
+const MISC_INDUSTRIES := Sc2MiscLayout.INDUSTRIES
+const MISC_BUDGETS := Sc2MiscLayout.BUDGETS
+const BUDGET_RECORD_SIZE := Sc2BudgetLayout.RECORD_SIZE
+const BUDGET_INDUSTRIAL := Sc2BudgetLayout.INDUSTRIAL
+const BUDGET_FUNDING := Sc2BudgetLayout.FUNDING
 const INITIAL_MAXIMUMS := [70, 30, 100]
 const INDUSTRY_NAMES: Array[String] = [
 	"Steel/Mining", "Textiles", "Petrochemical", "Food", "Construction", "Automotive",
@@ -83,8 +83,8 @@ static func snapshot(value_city: CityState) -> Snapshot:
 	for industry in INDUSTRY_COUNT:
 		var offset := MISC_INDUSTRIES + industry * INDUSTRY_STRIDE
 		demands.append(_to_i16(value_city.document.misc_u32(offset)))
-		tax_rates.append(_to_i16(value_city.document.misc_u32(offset + 4)))
-		ratios.append(value_city.document.misc_u32(offset + 8))
+		tax_rates.append(_to_i16(value_city.document.misc_u32(offset + Sc2IndustryLayout.TAX_RATE)))
+		ratios.append(value_city.document.misc_u32(offset + Sc2IndustryLayout.RATIO))
 
 	var industrial_tax_offset := (
 		MISC_BUDGETS + BUDGET_INDUSTRIAL * BUDGET_RECORD_SIZE + BUDGET_FUNDING
