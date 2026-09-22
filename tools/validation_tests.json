@@ -1,5 +1,11 @@
 [
   {
+    "id": "binary_data_test",
+    "script": "tests/binary_data_test.gd",
+    "domain": "formats",
+    "lane": "product"
+  },
+  {
     "id": "budget_dialog_test",
     "script": "tests/budget_dialog_test.gd",
     "domain": "ui",
