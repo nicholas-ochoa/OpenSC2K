@@ -16,7 +16,7 @@ func _run() -> void:
 			events.append(EffectEvent.new(Vector2i(tile, 0), 0, Vector2i.ZERO, false, tile * 10 + frame))
 
 	var original := EffectEvent.copy_all(events)
-	var shuffled := ApplicationEffectsAudio._parallel_dust_events(events)
+	var shuffled := CityEffectTiming.parallel_dust_events(events)
 	assert(EffectEvent.same_arrays(events, original))
 	var starts := {}
 

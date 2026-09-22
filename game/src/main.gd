@@ -33,7 +33,7 @@ var static_render_state := StaticRenderState.new()
 var palette_clock := PaletteAnimationClock.new()
 
 # scene controls and pending ui workflows
-var audio_controller: Node
+var audio_controller: CityAudioController
 var map_view: CityMapControl
 var city_workspace: CityWorkspace
 var city_menu_bar: CityMenuBar
@@ -83,7 +83,8 @@ var city_png_export := ApplicationCityPngExport.new(document_state, view_state, 
 	static_render.city_view_size, static_render.sprite_archive_for_view)
 var map_render: ApplicationMapRender = ApplicationMapRender.new(self)
 var moving_sprites: ApplicationMovingSprites = ApplicationMovingSprites.new(self)
-var effects_audio: ApplicationEffectsAudio = ApplicationEffectsAudio.new(self)
+var effects_audio := ApplicationEffectsAudio.new(document_state, view_state, asset_state,
+	simulation_state, preferences, static_render.city_view_size, static_render.sprite_archive_for_view)
 var current_tool: ApplicationCurrentTool = ApplicationCurrentTool.new(self)
 var city_edits: ApplicationCityEdits = ApplicationCityEdits.new(self)
 var network_edits: ApplicationNetworkEdits = ApplicationNetworkEdits.new(self)

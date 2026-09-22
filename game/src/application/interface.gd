@@ -141,6 +141,7 @@ func build_interface(original_assets: OriginalGameAssets) -> void:
 	app.current_tool.select_tool_group(app.tool_state.selected_group)
 	app.camera_input.update_zoom_controls(app.map_view.zoom_percent())
 	_build_main_menu()
+	app.effects_audio.bind_view(app.map_view, app.main_menu)
 	app.main_overlays.about_dialog.set_assets(original_assets)
 
 

@@ -41,6 +41,7 @@ func initialize_runtime() -> void:
 	app.asset_state.runtime_initialized = true
 	app.new_city_state.session.independent_template = not app.asset_state.asset_source.has_city_template
 	app.audio_controller = CityAudio.new()
+	app.effects_audio.bind_audio(app.audio_controller)
 	app.audio_controller.startup_theme_pending = true
 	app.audio_controller.background_audio = app.preferences.background_audio
 	app.audio_controller.set_shuffle_music(app.preferences.shuffle_music)
