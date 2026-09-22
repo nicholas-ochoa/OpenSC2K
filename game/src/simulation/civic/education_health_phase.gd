@@ -204,9 +204,9 @@ static func run(city: CityState, random: SimRandom) -> Result:
 	span.mark("store demographics")
 	var changed: PackedByteArray = misc.decoded_payload.duplicate()
 	_write_tables(changed, population, education, life_expectancy)
-	_write_u32(changed, Sc2MiscLayout.WORKFORCE_PERCENT, workforce_percent)
-	_write_u32(changed, Sc2MiscLayout.WORKFORCE_LIFE_EXPECTANCY, workforce_le)
-	_write_u32(changed, Sc2MiscLayout.WORKFORCE_EDUCATION, workforce_eq)
+	BinaryData.write_u32_be(changed, Sc2MiscLayout.WORKFORCE_PERCENT, workforce_percent)
+	BinaryData.write_u32_be(changed, Sc2MiscLayout.WORKFORCE_LIFE_EXPECTANCY, workforce_le)
+	BinaryData.write_u32_be(changed, Sc2MiscLayout.WORKFORCE_EDUCATION, workforce_eq)
 
 	if not misc.set_decoded_payload(changed):
 		return _failed("cannot store updated demographic data")
@@ -441,17 +441,9 @@ static func _write_tables(
 ) -> void:
 	for cohort in POPULATION_COHORTS:
 		var offset := MISC_POPULATION_TABLE + cohort * POPULATION_STRIDE
-		_write_u32(data, offset + RAW_POPULATION_FIELD, population[cohort])
-		_write_u32(data, offset + EDUCATION_FIELD, education[cohort])
-		_write_u32(data, offset + LIFE_EXPECTANCY_FIELD, life_expectancy[cohort])
-
-
-static func _write_u32(data: PackedByteArray, offset: int, value: int) -> void:
-	var encoded := _u32(value)
-	data[offset] = (encoded >> 24) & 0xff
-	data[offset + 1] = (encoded >> 16) & 0xff
-	data[offset + 2] = (encoded >> 8) & 0xff
-	data[offset + 3] = encoded & 0xff
+		BinaryData.write_u32_be(data, offset + RAW_POPULATION_FIELD, population[cohort])
+		BinaryData.write_u32_be(data, offset + EDUCATION_FIELD, education[cohort])
+		BinaryData.write_u32_be(data, offset + LIFE_EXPECTANCY_FIELD, life_expectancy[cohort])
 
 
 static func _u32(value: int) -> int:

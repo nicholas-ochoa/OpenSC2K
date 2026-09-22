@@ -3,7 +3,7 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
-const RECORD_SIZE := CityState.THING_RECORD_SIZE
+const RECORD_SIZE := Sc2ThingLayout.RECORD_SIZE
 const SUBTILE_LIMIT := 16
 const DIRECTIONS := [
 	Vector2i(0, -1), Vector2i(1, -1), Vector2i(1, 0), Vector2i(1, 1),
@@ -51,8 +51,8 @@ static func remove(
 	map_edge: int = 128,
 ) -> void:
 	var offset := record * RECORD_SIZE
-	ThingData.write(things, offset, 0)
-	var point := Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
+	ThingData.write(things, offset + Sc2ThingLayout.Field.TYPE, Sc2ThingLayout.Type.NONE)
+	var point := Vector2i(ThingData.read(things, offset + Sc2ThingLayout.Field.X), ThingData.read(things, offset + Sc2ThingLayout.Field.Y))
 	var index := _index(point, map_edge)
 
 	if index >= 0:
@@ -73,8 +73,8 @@ static func move(
 		return -1
 
 	var offset := record * RECORD_SIZE
-	var subtile_x: int = int(ThingData.read(things, offset + 6)) + DIRECTIONS[direction].x * speed
-	var subtile_y: int = int(ThingData.read(things, offset + 7)) + DIRECTIONS[direction].y * speed
+	var subtile_x: int = int(ThingData.read(things, offset + Sc2ThingLayout.Field.PX)) + DIRECTIONS[direction].x * speed
+	var subtile_y: int = int(ThingData.read(things, offset + Sc2ThingLayout.Field.PY)) + DIRECTIONS[direction].y * speed
 	var tile_delta := Vector2i.ZERO
 
 	if subtile_x > SUBTILE_LIMIT:
@@ -91,13 +91,13 @@ static func move(
 		subtile_y += SUBTILE_LIMIT
 		tile_delta.y = -1
 
-	ThingData.write(things, offset + 6, subtile_x)
-	ThingData.write(things, offset + 7, subtile_y)
+	ThingData.write(things, offset + Sc2ThingLayout.Field.PX, subtile_x)
+	ThingData.write(things, offset + Sc2ThingLayout.Field.PY, subtile_y)
 
 	if tile_delta == Vector2i.ZERO:
 		return 0
 
-	var current := Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
+	var current := Vector2i(ThingData.read(things, offset + Sc2ThingLayout.Field.X), ThingData.read(things, offset + Sc2ThingLayout.Field.Y))
 	var current_index := _index(current, map_edge)
 
 	if current_index < 0:
@@ -105,13 +105,13 @@ static func move(
 
 		return -1
 
-	OverlayData.write(text, current_index, ThingData.read(things, offset + 10))
+	OverlayData.write(text, current_index, ThingData.read(things, offset + Sc2ThingLayout.Field.LABEL))
 	var next := current + tile_delta
 	var next_index := _index(next, map_edge)
 
 	while next_index >= 0 and OverlayData.blocks_thing(OverlayData.read(text, next_index)):
-		ThingData.write(things, offset + 3, next.x)
-		ThingData.write(things, offset + 4, next.y)
+		ThingData.write(things, offset + Sc2ThingLayout.Field.X, next.x)
+		ThingData.write(things, offset + Sc2ThingLayout.Field.Y, next.y)
 		next += tile_delta
 		next_index = _index(next, map_edge)
 
@@ -120,9 +120,9 @@ static func move(
 
 		return -1
 
-	ThingData.write(things, offset + 3, next.x)
-	ThingData.write(things, offset + 4, next.y)
-	ThingData.write(things, offset + 10, OverlayData.read(text, next_index))
+	ThingData.write(things, offset + Sc2ThingLayout.Field.X, next.x)
+	ThingData.write(things, offset + Sc2ThingLayout.Field.Y, next.y)
+	ThingData.write(things, offset + Sc2ThingLayout.Field.LABEL, OverlayData.read(text, next_index))
 	OverlayData.write(text, next_index, OverlayData.thing_id(record))
 
 	return 1

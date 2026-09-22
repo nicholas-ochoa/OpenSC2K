@@ -192,9 +192,9 @@ static func generate(
 	for index in (map_edge * map_edge):
 		altitude[index * 2 + 1] = heights[index] & Sc2AltitudeLayout.LEVEL_MASK
 
-	NewTerrainValues._write_u32_be(misc, MISC_WATER_LEVEL, water_level)
-	NewTerrainValues._write_u32_be(misc, MISC_HAS_OCEAN, 1 if has_ocean else 0)
-	NewTerrainValues._write_u32_be(misc, MISC_HAS_RIVER, 1 if has_river else 0)
+	BinaryData.write_u32_be(misc, MISC_WATER_LEVEL, water_level)
+	BinaryData.write_u32_be(misc, MISC_HAS_OCEAN, 1 if has_ocean else 0)
+	BinaryData.write_u32_be(misc, MISC_HAS_RIVER, 1 if has_river else 0)
 	var all_indices := PackedInt32Array()
 	all_indices.resize((map_edge * map_edge))
 
