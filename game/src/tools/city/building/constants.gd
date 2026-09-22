@@ -1,6 +1,7 @@
 class_name BuildingConstants
 extends BuildingTileIds
 
+const Facilities = preload("res://src/model/facility_metadata.gd")
 const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
 
 const Availability = preload("res://src/tools/shared/tool_availability.gd")
@@ -49,51 +50,9 @@ const NUISANCE_BITMAP_ID := 403
 const NUISANCE_STRING_ID := 106
 const NUISANCE_OBJECTION := "Your citizens urge you to\r\n reconsider the placement\r\nof this facility"
 
-const BUDGET_CURRENT := {
-	HOSPITAL: 7,
-	POLICE_STATION: 5,
-	FIRE_STATION: 6,
-	SCHOOL: 8,
-	COLLEGE: 9,
-}
+const BUDGET_CATEGORY_BY_TILE := Facilities.BUDGET_CATEGORY_BY_TILE
 
-const MICROSIM_TYPE_BY_TILE := {
-	HYDRO_POWER_1: 21,
-	HYDRO_POWER_2: 21,
-	WIND_POWER: 20,
-	GAS_POWER: 1,
-	OIL_POWER: 1,
-	NUCLEAR_POWER: 1,
-	SOLAR_POWER: 1,
-	MICROWAVE_POWER: 1,
-	FUSION_POWER: 1,
-	COAL_POWER: 1,
-	CITY_HALL: 2,
-	HOSPITAL: 3,
-	POLICE_STATION: 4,
-	FIRE_STATION: 5,
-	MUSEUM: 23,
-	BIG_PARK: 22,
-	SCHOOL: 6,
-	STADIUM: 7,
-	PRISON: 8,
-	COLLEGE: 9,
-	ZOO: 10,
-	STATUE: 11,
-	SUBWAY_STATION: 19,
-	BUS_DEPOT: 17,
-	RAIL_STATION: 18,
-	MAYOR_HOUSE: 12,
-	WATER_TREATMENT: 13,
-	LIBRARY: 24,
-	MARINA: 25,
-	DESALINIZATION: 14,
-	PLYMOUTH_ARCOLOGY: 15,
-	FOREST_ARCOLOGY: 15,
-	DARCO_ARCOLOGY: 15,
-	LAUNCH_ARCOLOGY: 15,
-	LLAMA_DOME: 16,
-}
+const MICROSIM_TYPE_BY_TILE := Facilities.MICROSIM_TYPE_BY_TILE
 
 const DEFAULT_MICROSIM_LABELS := {
 	HYDRO_POWER_1: "Hydro Power",

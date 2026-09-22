@@ -4,6 +4,8 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
+const Facilities = preload("res://src/model/facility_metadata.gd")
+
 
 class Result extends RefCounted:
 	var ok := false
@@ -48,7 +50,7 @@ static func apply(city: CityState) -> Result:
 	for x in edge:
 		for y in edge:
 			var tile := int(city.buildings[x * edge + y])
-			var kind := int(BuildingCommand.MICROSIM_TYPE_BY_TILE.get(tile, 0))
+			var kind := int(Facilities.MICROSIM_TYPE_BY_TILE.get(tile, 0))
 
 			if kind == 0:
 				continue

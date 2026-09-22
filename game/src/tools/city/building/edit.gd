@@ -122,8 +122,8 @@ static func apply(
 	elif tile_id == SUBWAY_STATION:
 		BuildingUnderground._place_subway_station(underground, terrain, zones, flags, misc, selected, map_edge)
 
-	if BUDGET_CURRENT.has(tile_id):
-		var budget_offset: int = MISC_BUDGETS + int(BUDGET_CURRENT[tile_id]) * BUDGET_RECORD_SIZE
+	if BUDGET_CATEGORY_BY_TILE.has(tile_id):
+		var budget_offset: int = MISC_BUDGETS + int(BUDGET_CATEGORY_BY_TILE[tile_id]) * BUDGET_RECORD_SIZE
 		BinaryData.write_u32_be(misc, budget_offset, BinaryData.read_u32_be(misc, budget_offset) + 1)
 
 	if group_index == 5 and subtool_index < 4:

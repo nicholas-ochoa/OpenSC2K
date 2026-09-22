@@ -1,5 +1,11 @@
 [
   {
+    "id": "facility_metadata_test",
+    "script": "tests/facility_metadata_test.gd",
+    "domain": "tools",
+    "lane": "product"
+  },
+  {
     "id": "military_count_layout_test",
     "script": "tests/military_count_layout_test.gd",
     "domain": "simulation",
