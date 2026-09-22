@@ -2,6 +2,7 @@ class_name ScurkPlaceCommand
 extends RefCounted
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+const Facilities = preload("res://src/model/facility_metadata.gd")
 
 const Buildings = preload("res://src/tools/city/building_command.gd")
 const PickCopy = preload("res://src/tools/scurk/scurk_pick_copy.gd")
@@ -16,19 +17,13 @@ const MARINA := Buildings.MARINA
 const STATUE := Buildings.STATUE
 const WATER_PUMP := Buildings.WATER_PUMP
 const SUBWAY_STATION := Buildings.SUBWAY_STATION
-const FLAG_WATER := 0x04
-const FLAG_PIPED := 0x20
-const FLAG_POWERED := 0x40
-const FLAG_POWERABLE := 0x80
-const STRUCTURE_FLAGS := FLAG_PIPED | FLAG_POWERED | FLAG_POWERABLE
+const FLAG_WATER := Sc2TileFlags.WATER
+const FLAG_PIPED := Sc2TileFlags.PIPED
+const FLAG_POWERED := Sc2TileFlags.POWERED
+const FLAG_POWERABLE := Sc2TileFlags.POWERABLE
+const STRUCTURE_FLAGS := Sc2TileFlags.STRUCTURE_MASK
 
-const BUDGET_CURRENT := {
-	Buildings.HOSPITAL: 7,
-	Buildings.POLICE_STATION: 5,
-	Buildings.FIRE_STATION: 6,
-	Buildings.SCHOOL: 8,
-	Buildings.COLLEGE: 9,
-}
+const BUDGET_CATEGORY_BY_TILE := Facilities.BUDGET_CATEGORY_BY_TILE
 
 const VARIABLE_ZONE_TILES := {
 	Tiles.CONSTRUCTION_1X1_FIRST: 1,
@@ -166,7 +161,7 @@ static func apply(
 			var index := x * map_edge + y
 			NetworkState.replace_building(buildings, zones, misc, index, tile_id)
 			zones[index] = zone_id
-			flags[index] = (flags[index] & 0x1f) | placed_flags
+			flags[index] = (flags[index] & ~STRUCTURE_FLAGS) | placed_flags
 
 			if overlay_id != 0:
 				OverlayData.write(text_overlays, index, overlay_id)
@@ -182,10 +177,10 @@ static func apply(
 	elif tile_id == SUBWAY_STATION:
 		BuildingUnderground._place_subway_station(underground, terrain, zones, flags, misc, selected, map_edge)
 
-	if BUDGET_CURRENT.has(tile_id):
+	if BUDGET_CATEGORY_BY_TILE.has(tile_id):
 		var budget_offset: int = (
 			Buildings.MISC_BUDGETS
-			+ int(BUDGET_CURRENT[tile_id]) * Buildings.BUDGET_RECORD_SIZE
+			+ int(BUDGET_CATEGORY_BY_TILE[tile_id]) * Buildings.BUDGET_RECORD_SIZE
 		)
 		BuildingState._write_u32_be(
 			misc,
