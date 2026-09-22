@@ -112,11 +112,24 @@ func flatten(key: String) -> PackedInt32Array:
 	if not documents.has(key):
 		return PackedInt32Array()
 
+	return flatten_range(key, 0, documents[key].layers.size())
+
+
+# The range includes first and excludes last. Invalid keys or bounds return no pixels.
+# A valid empty range returns a transparent buffer with the document dimensions.
+func flatten_range(key: String, first: int, last: int) -> PackedInt32Array:
+	if not documents.has(key):
+		return PackedInt32Array()
+
 	var document: Dictionary = documents[key]
+	if first < 0 or last < first or last > document.layers.size():
+		return PackedInt32Array()
+
 	var pixels := PackedInt32Array()
 	pixels.resize(int(document.width) * int(document.height))
 	pixels.fill(-1)
-	for layer: Dictionary in document.layers:
+	for layer_index in range(first, last):
+		var layer: Dictionary = document.layers[layer_index]
 		if not bool(layer.visible):
 			continue
 		var source: PackedInt32Array = layer.pixels

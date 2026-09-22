@@ -85,11 +85,63 @@ func _run() -> void:
 	assert(Project.from_bytes(decoded.project.to_bytes().bytes).ok)
 	assert(decoded.project.set_active_pixels("1:0", PackedInt32Array([8, 8, 8, 8])))
 	assert(project.active_pixels("1:0") != decoded.project.active_pixels("1:0"))
+	_test_composition(original)
 	_test_limits(original)
 	_test_invalid(encoded.bytes)
 	_test_storage(project, encoded.bytes)
 	print("PASS: SCURK project layers, stamps, history, metadata, round trip, invalid data and recovery")
 	quit()
+
+
+func _test_composition(original: PackedByteArray) -> void:
+	var project := Project.new()
+	assert(project.initialize(original).ok)
+	var layers: Array[PackedInt32Array] = [
+		PackedInt32Array([0, 1, -1, 255, 252, -1]),
+		PackedInt32Array([-1, 42, 5, -1, -1, -1]),
+		PackedInt32Array([171, -1, -1, 0, 255, -1]),
+		PackedInt32Array([-1, -1, 252, -1, 42, -1]),
+	]
+	assert(project.ensure_document("1:0", layers[0], 3, 2))
+	for index in range(1, layers.size()):
+		assert(project.add_layer("1:0", "Layer") == index)
+		assert(project.set_active_pixels("1:0", layers[index]))
+
+	for visibility in 1 << layers.size():
+		for index in layers.size():
+			assert(project.set_layer_visible("1:0", index, (visibility & (1 << index)) != 0))
+		var before := project.snapshot()
+		var revision := project.revision
+		var expected := _expected_composition(layers, visibility, 0, layers.size())
+		var flattened := project.flatten("1:0")
+		assert(flattened == expected)
+		flattened[0] = 128
+		assert(project.flatten("1:0") == expected)
+		for first in layers.size() + 1:
+			for last in range(first, layers.size() + 1):
+				expected = _expected_composition(layers, visibility, first, last)
+				var range_pixels := project.flatten_range("1:0", first, last)
+				assert(range_pixels == expected)
+				range_pixels[0] = 128
+				assert(project.flatten_range("1:0", first, last) == expected)
+		assert(project.snapshot() == before and project.revision == revision)
+
+	assert(project.flatten("missing").is_empty())
+	assert(project.flatten_range("missing", 0, 0).is_empty())
+	for bounds in [Vector2i(-1, 2), Vector2i(0, -1), Vector2i(3, 2), Vector2i(0, 5), Vector2i(5, 5)]:
+		assert(project.flatten_range("1:0", bounds.x, bounds.y).is_empty())
+
+
+func _expected_composition(layers: Array[PackedInt32Array], visibility: int, first: int, last: int) -> PackedInt32Array:
+	var expected := PackedInt32Array()
+	for offset in layers[0].size():
+		var color := -1
+		for index in range(last - 1, first - 1, -1):
+			if (visibility & (1 << index)) != 0 and layers[index][offset] >= 0:
+				color = layers[index][offset]
+				break
+		expected.append(color)
+	return expected
 
 
 func _test_limits(original: PackedByteArray) -> void:
