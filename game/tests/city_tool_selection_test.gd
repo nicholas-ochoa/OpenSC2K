@@ -34,6 +34,10 @@ class TestCityEdits extends ApplicationCityEdits:
 
 
 func _initialize() -> void:
+	_run.call_deferred()
+
+
+func _run() -> void:
 	_catalog_indices()
 	_command_selection()
 	var city := CityState.from_document(EmptyCityTemplate.create(16))
@@ -41,7 +45,8 @@ func _initialize() -> void:
 	_edit_state(city)
 	_selection(city)
 	assert(city.document.serialize().data == original)
-	print("PASS: city tool indices, view gating, selection guards, and dispatch recall")
+	await _scurk_selection()
+	print("PASS: city tool indices, view gating, selection guards, dispatch recall, and SCURK edit routing")
 	quit()
 
 
@@ -207,3 +212,57 @@ func _selection(city: CityState) -> void:
 	assert(city.document.serialize().data == dispatched_bytes)
 	assert(DispatchCommand.undo(city, dispatched).ok)
 	app.free()
+
+
+func _scurk_selection() -> void:
+	var window := preload("res://src/ui/scurk/scurk_place_print_control.tscn").instantiate() as ScurkPlacePrintControl
+	window.hide()
+	root.add_child(window)
+	await process_frame
+	var emitted: Array[Vector3i] = []
+	window.edit_tool_selected.connect(func(group: int, subtool: int, zone: int) -> void:
+		emitted.append(Vector3i(group, subtool, zone)))
+	# City tool pairs and saved zone overrides are separate numeric contracts.
+	var expected := [
+		[0, 0, -1, "either"], [0, 1, -1, "city"], [0, 2, -1, "city"],
+		[0, 3, -1, "city"], [0, 4, 0, "city"], [1, 1, -1, "city"],
+		[4, 0, -1, "underground"], [9, 0, 1, "city"], [9, 1, 2, "city"],
+		[10, 0, 3, "city"], [10, 1, 4, "city"], [11, 0, 5, "city"],
+		[11, 1, 6, "city"], [8, 0, 9, "city"], [8, 1, 8, "city"],
+		[8, 0, 7, "city"], [6, 0, -1, "city"], [6, 1, -1, "city"],
+		[6, 2, -1, "city"], [6, 3, -1, "city"], [3, 0, -1, "city"],
+		[7, 0, -1, "city"], [7, 1, -1, "underground"],
+		[7, 4, -1, "underground"], [17, 0, -1, "either"],
+	]
+	assert(window.selected_edit_tool() == null)
+	assert(window.tool_list.item_count == expected.size())
+
+	for index in expected.size():
+		var row: Array = expected[index]
+		assert(window.select_edit_tool(index))
+		assert(emitted.size() == index + 1 and emitted[-1] == Vector3i(row[0], row[1], row[2]))
+		var selected := window.selected_edit_tool()
+		assert(selected != null and [selected.group, selected.subtool, selected.zone, selected.view] == row)
+		assert(ToolCatalog.tool(selected.group, selected.subtool) != null)
+
+		if selected.zone >= 0:
+			_scurk_zone_selection(selected)
+
+	assert(window.select_edit_tool(15, false))
+	assert(emitted.size() == 25 and window.selected_edit_tool().zone == 7)
+	assert(not window.select_edit_tool(-1) and not window.select_edit_tool(25))
+	assert(window.selected_edit_index == 15 and emitted.size() == 25)
+	window.free()
+
+
+func _scurk_zone_selection(tool: ScurkEditTool) -> void:
+	var city := CityState.from_document(EmptyCityTemplate.create(16))
+	var point := Vector2i(8, 8)
+	assert(city.set_zone_id(point.x, point.y, 2 if tool.zone == 1 else 1))
+	var before := city.document.serialize().data
+	var funds := city.funds()
+	var command := ZoneCommand.apply_rectangle(city, tool.group, tool.subtool, point, point, false, true, tool.zone)
+	assert(command.ok and command.tile_indices.size() == 1 and command.cost == 0)
+	assert(city.zone_id(point.x, point.y) == tool.zone and city.funds() == funds)
+	assert(ZoneCommand.undo(city, command).ok)
+	assert(city.document.serialize().data == before)
