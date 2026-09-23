@@ -35,9 +35,7 @@ func _ready() -> void:
 	_window.theme = _create_debug_theme()
 	_window.close_requested.connect(toggle)
 	_window.window_input.connect(_input)
-	var box: VBoxContainer = $DebugWindow/Panel/Margin/Content
-	box.get_node("Header/Reset").pressed.connect(_reset_averages)
-	var tabs: TabContainer = box.get_node("Tabs")
+	var tabs: TabContainer = $DebugWindow/Panel/Margin/Content/Tabs
 	_tabs = tabs
 	tabs.tab_changed.connect(func(_index: int) -> void: _refresh_record_tab())
 	_days = tabs.get_node("Simulation")
@@ -74,24 +72,24 @@ func _build_actions(tabs: TabContainer) -> void:
 	box.add_theme_constant_override("separation", 16)
 	scroll.add_child(box)
 	var simulation := _action_section(box, "Simulation and view", 3)
-	_button(simulation, "Pause / Resume", func() -> void:
+	_button(simulation, "Pause / Resume", "Pause the simulation, or resume it at the speed it had before the pause.", func() -> void:
 		if str(_metrics.get("speed", "Paused")) == "Paused":
 			main_control.frame.call("select_speed", _resume_speed)
 		else:
 			_resume_speed = int(_metrics.get("speed_id", 2))
 			main_control.frame.call("select_speed", 1))
+	_button(simulation, "Reset averages", ("Clear all timing samples on the Simulation tab. " +
+		"The averages, maximums and sample counts start again from zero."), _reset_averages)
 
-	for action in [["Center map", "debug_center_map"], ["Full redraw", "debug_full_redraw"],
-		["Clear render caches", "debug_clear_render_caches"]]:
+	for action in [["Center map", "debug_center_map", "Move the view to the center of the map."],
+		["Full redraw", "debug_full_redraw", "Draw the map again from the city data. Use this to find drawing errors that stay on the screen."],
+		["Clear render caches", "debug_clear_render_caches",
+			"Delete all cached map and sprite images, then draw the map again. Use this to find errors from old cached images."]]:
 		var method := str(action[1])
-		_button(simulation, action[0], func() -> void:
+		_button(simulation, action[0], action[2], func() -> void:
 			_invoke(method))
 
-	for mode: CityViewMode.Mode in [CityViewMode.Mode.CITY, CityViewMode.Mode.UNDERGROUND]:
-		_button(simulation, CityViewMode.key(mode).capitalize() + " view", func() -> void:
-			main_control.menus.call("set_overlay", mode))
-
-	_button(simulation, "Print metrics", func() -> void:
+	_button(simulation, "Print metrics", "Write the current values from the Metrics tab to the console output.", func() -> void:
 		print(_metrics))
 	_detailed_timing_check = CheckBox.new()
 	_detailed_timing_check.text = "Detailed per-tile timing"
@@ -99,30 +97,36 @@ func _build_actions(tabs: TabContainer) -> void:
 	_detailed_timing_check.toggled.connect(func(enabled: bool) -> void:
 		_record_action(main_control.debug.call("debug_set_detailed_timing", enabled)))
 	simulation.add_child(_detailed_timing_check)
-	var cheats := _action_section(box, "City cheats", 3)
+	var cheats := _action_section(box, "Cheats", 3)
 
-	for amount in [10000, 100000, 1000000]:
-		_button(cheats, "+$%d" % amount, func() -> void:
+	for pair in [[10000, "$10,000"], [100000, "$100,000"], [1000000, "$1,000,000"]]:
+		var amount := int(pair[0])
+		_button(cheats, "+$%d" % amount, "Add %s to the city funds." % pair[1], func() -> void:
 			_record_action(main_control.debug.call("debug_add_funds", amount)))
 
-	_button(cheats, "Unlock everything", func() -> void:
+	_button(cheats, "Unlock everything", ("Make all inventions, rewards, arcologies and power plants available now. " +
+		"This also removes the Nuclear Free ordinance."), func() -> void:
 		_invoke("debug_unlock_everything"))
-	_button(cheats, "Call Maxis Man", func() -> void:
+	_button(cheats, "Call Maxis Man", ("Send Maxis Man to the active disaster. If there is no disaster monster or tornado, " +
+		"he goes to the disaster marker nearest the view center."), func() -> void:
 		_invoke("debug_dispatch_maxis_man"))
 	var disasters := _action_section(box, "Disasters", 3)
 	var disaster := OptionButton.new()
 	disaster.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	disaster.tooltip_text = "The disaster to start."
 
 	for caption in DISASTER_NAMES:
 		disaster.add_item(caption)
 
 	disasters.add_child(disaster)
-	_button(disasters, "Start at view center", func() -> void:
+	_button(disasters, "Start at view center", "Start the selected disaster at the tile in the center of the view.", func() -> void:
 		_record_action(main_control.debug.call("debug_start_disaster", disaster.selected + 1)))
-	_button(disasters, "End active disaster", func() -> void:
+	_button(disasters, "End active disaster", ("Stop the current disaster now. This removes its map markers and moving things. " +
+		"Damage that it did stays."), func() -> void:
 		_invoke("debug_end_disaster"))
 	_no_disasters_check = CheckBox.new()
 	_no_disasters_check.text = "Disable random disasters"
+	_no_disasters_check.tooltip_text = "Stop random disasters. This is the Disasters > No Disasters menu option, and it is saved with the city."
 	_no_disasters_check.toggled.connect(func(enabled: bool) -> void:
 		_record_action(main_control.debug.call("debug_set_no_disasters", enabled)))
 	disasters.add_child(_no_disasters_check)
@@ -168,9 +172,10 @@ func _action_section(parent: VBoxContainer, caption: String, columns: int) -> Gr
 	return grid
 
 
-func _button(parent: Control, caption: String, action: Callable) -> void:
+func _button(parent: Control, caption: String, tooltip: String, action: Callable) -> void:
 	var button := Button.new()
 	button.text = caption
+	button.tooltip_text = tooltip
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.pressed.connect(action)
 	parent.add_child(button)

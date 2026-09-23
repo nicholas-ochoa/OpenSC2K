@@ -30,15 +30,6 @@ theme_override_constants/margin_bottom = 12
 [node name="Content" type="VBoxContainer" parent="DebugWindow/Panel/Margin"]
 layout_mode = 2
 
-[node name="Header" type="HBoxContainer" parent="DebugWindow/Panel/Margin/Content"]
-layout_mode = 2
-alignment = 2
-
-[node name="Reset" type="Button" parent="DebugWindow/Panel/Margin/Content/Header"]
-layout_mode = 2
-size_flags_vertical = 0
-text = "Reset averages"
-
 [node name="Tabs" type="TabContainer" parent="DebugWindow/Panel/Margin/Content"]
 layout_mode = 2
 size_flags_vertical = 3
