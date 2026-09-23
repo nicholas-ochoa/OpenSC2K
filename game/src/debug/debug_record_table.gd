@@ -27,7 +27,9 @@ func _ready() -> void:
 	var titles := ["Record / field", "Value", "Hex", "Details"]
 	var widths := [240, 160, 140, 270]
 
-	if kind == "XMIC":
+	if kind == "State":
+		titles = ["Field", "Value", "Hex", "Description"]
+	elif kind == "XMIC":
 		titles.insert(3, "Position")
 		widths.insert(3, 150)
 		locate_column = 4

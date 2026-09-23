@@ -71,7 +71,7 @@ func _run() -> void:
 		assert("Airplane" in objects[0].value)
 		var engine := SimulationEngine.new(city, 123, 456, 789)
 		var state := DebugCityTables.collect("State", city, engine)
-		assert(state[0].fields[-3].value == "123")
+		assert(state[-3].name == "random.state" and state[-3].value == "123" and state[-3].fields.is_empty())
 		assert(engine.random.state == 123 and engine.lfsr_random.state == 456 and engine.game_random.state == 789)
 		assert(city.document.serialize().data == before)
 

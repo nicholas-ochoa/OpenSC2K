@@ -16,26 +16,32 @@ const STAT_LABELS := {
 	Tiles.BUS_DEPOT: ["Type-specific byte", "Bus tile count / 4", "Bus tile count", "Annual passengers"],
 	Tiles.RAIL_STATION: ["Type-specific byte", "Rail tile count / 4", "Preserved statistic", "Annual passengers"],
 }
-const ENGINE_DETAILS := {
-	"developed_tiles": "Cached developed-tile count; -1 means not calculated",
-	"power_usage_percent": "Last power-use percentage; -1 means not calculated",
-	"water_usage_percent": "Last water-use percentage; -1 means not calculated",
-	"commerce_connections": "External connections used by commercial demand",
-	"industry_connections": "External connections used by industrial demand",
-	"bus_passengers": "Runtime bus passengers accumulated for annual XMIC update",
-	"rail_passengers": "Runtime rail passengers accumulated for annual XMIC update",
-	"subway_passengers": "Runtime subway passengers accumulated for annual XMIC update",
-	"pending_interaction": "Player interaction blocking completion of the simulation day",
-	"terminal_state": "Scenario or bankruptcy terminal-state flag",
-	"ship_home": "Runtime cargo-ship home coordinates",
+# state tab rows in display order, with their descriptions
+const ENGINE_FIELDS := {
+	"developed_tiles": "Developed tiles found by the last map scan. -1 until the first scan.",
+	"power_usage_percent": "Percent of power capacity in use at the last power update. -1 until the first update.",
+	"water_usage_percent": "Percent of water capacity in use at the last water update. -1 until the first update.",
+	"commerce_connections": "Connections to neighbor cities that add to commercial demand.",
+	"industry_connections": "Connections to neighbor cities that add to industrial demand.",
+	"bus_passengers": "Bus passengers counted since the last yearly update. The yearly update writes them to the bus depots.",
+	"rail_passengers": "Rail passengers counted since the last yearly update. The yearly update writes them to the rail stations.",
+	"subway_passengers": "Subway passengers counted since the last yearly update. The yearly update writes them to the subway stations.",
+	"mayor_approval": "Mayor approval from the last update of the mayor's house.",
+	"ship_home": "Tile that the cargo ship returns to. (-1, -1) if the city has no cargo ship.",
+	"pending_interaction": "Player prompt that stops the current day, such as the yearly budget. Empty if there is no prompt.",
+	"terminal_state": "True after the game ends from bankruptcy or a scenario result. The simulation then stops.",
+	"active_disaster_type": "ID of the disaster in progress. 0 if there is no disaster.",
+	"pending_disaster_type": "ID of the disaster that starts on the next day. 0 if there is no disaster.",
+	"pending_disaster_point": "Tile where the pending disaster starts.",
+	"unsupported_disaster_type": "ID of a disaster that could not start because it is not supported yet. 0 if there is none.",
+	"disaster_map_counter": "Countdown for the active disaster. It decreases by one on each disaster tick.",
+	"disaster_hurricane_counter": "Countdown for hurricane wind and floods. It decreases by one on each disaster tick.",
 }
-const ENGINE_FIELDS := [
-	"developed_tiles", "power_usage_percent", "water_usage_percent", "commerce_connections",
-	"industry_connections", "bus_passengers", "rail_passengers", "subway_passengers",
-	"mayor_approval", "ship_home", "pending_interaction", "terminal_state",
-	"active_disaster_type", "pending_disaster_type", "pending_disaster_point",
-	"unsupported_disaster_type", "disaster_map_counter", "disaster_hurricane_counter",
-]
+const RANDOM_FIELDS := {
+	"random": "State of the main random number generator.",
+	"game_random": "State of the second random number generator.",
+	"lfsr_random": "State of the shift-register random number generator.",
+}
 
 
 static func collect(kind: String, city: CityState, engine: SimulationEngine = null, include_empty := false) -> Array[DebugTableRecord]:
@@ -113,35 +119,14 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 
 		"State":
 			if engine != null:
-				var fields: Array[DebugTableRecord] = []
+				for key: String in ENGINE_FIELDS:
+					result.append(_field(key, engine.get(key), ENGINE_FIELDS[key]))
 
-				for key in ENGINE_FIELDS:
-					fields.append(_field(key, engine.get(key), ENGINE_DETAILS.get(key, "Published runtime state; not a worker's pending result")))
-
-				for key in ["random", "game_random", "lfsr_random"]:
+				for key: String in RANDOM_FIELDS:
 					var random: RefCounted = engine.get(key)
 
 					if random != null:
-						fields.append(_field(key + ".state", random.get("state"), "Current RNG state; read without advancing it"))
-
-				var row := DebugTableRecord.new()
-				row.id = "engine"
-				row.name = "Simulation state"
-				row.value = "%d fields" % fields.size()
-				row.fields = fields
-				result.append(row)
-
-			var chunks: Array[DebugTableRecord] = []
-
-			for chunk in city.document.chunks:
-				chunks.append(_field(chunk.chunk_id, chunk.decoded_payload.size(), "Decoded bytes; original bytes are not rewritten"))
-
-			var row := DebugTableRecord.new()
-			row.id = "chunks"
-			row.name = "Save chunks"
-			row.value = "%d chunks" % chunks.size()
-			row.fields = chunks
-			result.append(row)
+						result.append(_field(key + ".state", random.get("state"), RANDOM_FIELDS[key]))
 
 	return result
 
@@ -151,5 +136,8 @@ static func _site_sort(site: CityRecords.Site) -> Variant:
 
 
 static func _field(key: String, value: Variant, detail: String) -> DebugTableRecord:
-	return DebugTableRecord.field(key, str(value),
+	var result := DebugTableRecord.field(key, str(value),
 		("-0x%X" % -value if value < 0 else "0x%X" % value) if value is int else "", detail)
+	result.id = key
+
+	return result
