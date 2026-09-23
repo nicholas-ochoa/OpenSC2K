@@ -138,6 +138,8 @@ func _init() -> void:
 	if _selected("simulation"):
 		EconomyTests.new(context).test_power_plant_extra_edition(reference_root)
 	if _selected("simulation"):
+		EconomyTests.new(context).test_subscribed_newspaper(reference_root)
+	if _selected("simulation"):
 		CivicTests.new(context).test_milestone_phase(reference_root)
 	if _selected("simulation"):
 		CivicTests.new(context).test_military_proposal_phase(reference_root)

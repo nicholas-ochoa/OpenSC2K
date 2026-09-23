@@ -1,8 +1,13 @@
 class_name MonthStartPhase
 extends RefCounted
 
+@warning_ignore_start("integer_division")
+
 const MISC_SIZE := Sc2MiscLayout.SIZE
 const ZONE_POPULATION_COUNT := 8
+
+# the original opens the subscribed newspaper after the April and August budget
+const SUBSCRIPTION_MONTHS := [3, 7]
 
 
 class Result extends PhaseResult:
@@ -29,6 +34,11 @@ static func run(city: CityState) -> Result:
 	var result := Result.new()
 	result.ok = true
 	result.cleared_population_fields = ZONE_POPULATION_COUNT
+	var month := int(city.age_in_days() / CityCalendar.DAYS_PER_MONTH) % CityCalendar.MONTHS_PER_YEAR
+	result.newspaper_requested = (
+		city.document.misc_u32(Sc2MiscLayout.NEWSPAPER_SUBSCRIPTION) != 0
+		and month in SUBSCRIPTION_MONTHS
+	)
 
 	return result
 

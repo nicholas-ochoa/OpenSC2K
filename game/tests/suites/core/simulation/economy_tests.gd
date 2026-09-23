@@ -348,3 +348,19 @@ func test_power_plant_extra_edition(_reference_root: String) -> void:
 			tick.newspaper_requested == (extras != 0),
 			"The power plant story opens the newspaper only with extra editions: %s" % tick.newspaper_requested,
 		)
+
+
+# a subscribed newspaper opens on the first day of April and August
+func test_subscribed_newspaper(_reference_root: String) -> void:
+	for case in [[74, 1, true], [174, 1, true], [49, 1, false], [99, 1, false], [74, 0, false]]:
+		var city := CityModel.from_document(EmptyCityTemplate.create())
+		_check(city.set_age_in_days(case[0]), "Subscription fixture selects the day before a month")
+		_check(city.document.set_misc_u32(0x0ff0, 1), "Subscription fixture enables Auto Budget")
+		_check(city.document.set_misc_u32(0x1004, case[1]), "Subscription fixture sets the subscription")
+		var engine := SimulationEngine.new(city, 1, 1, 1)
+		var day := engine.advance_day()
+		_check(day.ok and day.phase_results.has("month_start"), "Subscription fixture runs the month start")
+		_check(
+			day.phase_results["month_start"].newspaper_requested == case[2],
+			"Day %d with subscription %d opens the newspaper: %s" % [case[0] + 1, case[1], case[2]],
+		)

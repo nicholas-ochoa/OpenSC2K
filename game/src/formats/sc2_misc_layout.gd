@@ -59,6 +59,7 @@ const AUTO_GOTO := 0x0ff4
 const SOUND := 0x0ff8
 const MUSIC := 0x0ffc
 const NO_DISASTERS := 0x1000
+const NEWSPAPER_SUBSCRIPTION := 0x1004
 const NEWSPAPER_EXTRAS := 0x1008
 const NEWSPAPER_CHOICE := 0x100c
 const CITY_CENTER_X := 0x1018
