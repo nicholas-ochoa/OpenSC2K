@@ -15,7 +15,7 @@ const DISASTER_OVERLAY_FIRST := 0xfb
 const MAXIS_TARGET_OVERLAY_FIRST := 241
 # order of the debug spawn list
 const SPAWN_TYPES := ["Helicopter", "Airplane", "Cargo ship", "Sailboats", "Train"]
-const TRAIN_SEARCH_RADIUS := 16
+const SPAWN_SEARCH_RADIUS := 16
 
 
 class Result extends RefCounted:
@@ -373,8 +373,8 @@ static func dispatch_maxis_man(
 	return result
 
 
-# add a moving thing near the view center. the spawn uses its own random
-# generators, so the saved simulation random state does not change
+# add a moving thing on the nearest suitable tile to the view center. the spawn
+# uses its own random generators, so the saved simulation random state does not change
 static func spawn_moving_thing(
 	city: CityState,
 	document: Sc2File,
@@ -407,34 +407,54 @@ static func spawn_moving_thing(
 	var lfsr_random := SimLfsrRandom.new(maxi(1, seed & 0xffff))
 	var game_random := GameLcgRandom.new(seed)
 
+	var nearby := _nearest_tiles(view_center, map_edge)
+	result.point = Vector2i(-1, -1)
+
 	match kind:
 		0:
-			var spawned := MovingThingSpawner.spawn_helicopter(things, text, view_center, random, map_edge)
-			result.count = 1 if spawned.spawned else 0
-			result.point = spawned.point
-			result.error = "The view center is blocked, a monster is active, or the helicopter limit is reached."
+			for point in nearby:
+				if MovingThingSpawner.spawn_helicopter(things, text, point, random, map_edge).spawned:
+					result.point = point
+					break
+
+			result.error = "No clear tile was found near the view center, a monster is active, or the helicopter limit is reached."
 		1:
-			var spawned := MovingThingSpawner.spawn_airplane(things, text, view_center, 0, random, map_edge)
-			result.count = 1 if spawned.spawned else 0
-			result.point = spawned.point
-			result.error = "The view center is blocked, a monster is active, or the airplane limit is reached."
+			for point in nearby:
+				var spawned := MovingThingSpawner.spawn_airplane(things, text, point, 0, random, map_edge)
+
+				if spawned.spawned:
+					result.point = spawned.point
+					break
+
+			result.error = "No clear tile was found near the view center, a monster is active, or the airplane limit is reached."
 		2:
 			var terrain: PackedByteArray = document.find_chunk("XTER").decoded_payload
 			var spawned := MovingThingSpawner.spawn_ship(terrain, things, text, view_center, random, map_edge)
-			result.count = 1 if spawned.spawned else 0
-			result.point = spawned.point
+			result.point = spawned.point if spawned.spawned else result.point
 			result.error = "A cargo ship needs deep water near a map edge. Only one cargo ship can be active."
 		3:
 			var flags: PackedByteArray = document.find_chunk("XBIT").decoded_payload
-			result.count = MovingThingSpawner.spawn_sailboats(buildings, flags, things, text, view_center, lfsr_random, map_edge)
-			result.point = view_center
-			result.error = "Sailboats need open water next to the view center, and the sailboat limit applies."
+
+			for point in nearby:
+				result.count = MovingThingSpawner.spawn_sailboats(buildings, flags, things, text, point, lfsr_random, map_edge)
+
+				if result.count > 0:
+					result.point = point
+					break
+
+			result.error = "No open water was found near the view center, or the sailboat limit is reached."
 		4:
-			result.point = _spawn_train_near(buildings, things, text, view_center, game_random, lfsr_random, map_edge)
-			result.count = 1 if result.point.x >= 0 else 0
+			for point in nearby:
+				if MovingThingSpawner._spawn_train_record(buildings, things, text, point, game_random, lfsr_random, map_edge):
+					result.point = point
+					break
+
 			result.error = "No clear rail tile was found near the view center, or the train limit is reached."
 		_:
 			result.error = "The moving thing selection is not valid."
+
+	if kind != 3 and result.point.x >= 0:
+		result.count = 1
 
 	if result.count == 0:
 		return result
@@ -514,31 +534,19 @@ static func remove_moving_things(city: CityState, document: Sc2File) -> RemoveRe
 	return result
 
 
-# nearest clear rail tile first. the train spawner checks the route and the limit
-static func _spawn_train_near(
-	buildings: PackedByteArray,
-	things: PackedByteArray,
-	text: PackedByteArray,
-	center: Vector2i,
-	game_random: GameLcgRandom,
-	lfsr_random: SimLfsrRandom,
-	map_edge: int,
-) -> Vector2i:
-	var candidates: Array[Vector2i] = []
+# map tiles near the center, nearest first
+static func _nearest_tiles(center: Vector2i, map_edge: int) -> Array[Vector2i]:
+	var result: Array[Vector2i] = []
 
-	for x in range(center.x - TRAIN_SEARCH_RADIUS, center.x + TRAIN_SEARCH_RADIUS + 1):
-		for y in range(center.y - TRAIN_SEARCH_RADIUS, center.y + TRAIN_SEARCH_RADIUS + 1):
+	for x in range(center.x - SPAWN_SEARCH_RADIUS, center.x + SPAWN_SEARCH_RADIUS + 1):
+		for y in range(center.y - SPAWN_SEARCH_RADIUS, center.y + SPAWN_SEARCH_RADIUS + 1):
 			if x >= 0 and x < map_edge and y >= 0 and y < map_edge:
-				candidates.append(Vector2i(x, y))
+				result.append(Vector2i(x, y))
 
-	candidates.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+	result.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
 		return absi(a.x - center.x) + absi(a.y - center.y) < absi(b.x - center.x) + absi(b.y - center.y))
 
-	for point in candidates:
-		if MovingThingSpawner._spawn_train_record(buildings, things, text, point, game_random, lfsr_random, map_edge):
-			return point
-
-	return Vector2i(-1, -1)
+	return result
 
 
 static func _valid_disaster_chunks(

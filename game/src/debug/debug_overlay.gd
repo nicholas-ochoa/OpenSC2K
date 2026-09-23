@@ -159,8 +159,8 @@ func _build_actions(tabs: TabContainer) -> void:
 		spawn_type.add_item(caption)
 
 	moving.add_child(spawn_type)
-	_button(moving, "Add near view center", ("Add the selected moving thing at or near the view center. A cargo ship starts at a map edge " +
-		"and sails toward the view center. A train starts on the nearest clear rail tile. The normal limits apply."), func() -> void:
+	_button(moving, "Add near view center", ("Add the selected moving thing on the nearest suitable tile to the view center. " +
+		"A cargo ship starts at a map edge and sails toward the view center. The normal limits apply."), func() -> void:
 		_record_action(main_control.debug.call("debug_spawn_moving_thing", spawn_type.selected)))
 	_button(moving, "Remove all", ("Remove every moving thing, including disaster objects and Maxis Man. " +
 		"The map labels under them come back."), func() -> void:
