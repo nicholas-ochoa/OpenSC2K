@@ -76,7 +76,7 @@ layout_mode = 2
 visible = false
 custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
-text = "Import Assets..."
+text = "Import Assets"
 
 [node name="ContinueCity" type="Button" parent="Center/Panel/Content"]
 custom_minimum_size = Vector2(0, 42)
@@ -94,13 +94,13 @@ text = "Start New City"
 custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "Open City..."
+text = "Open City"
 
 [node name="PlayScenario" type="Button" parent="Center/Panel/Content"]
 custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "Play Scenario..."
+text = "Play Scenario"
 
 [node name="SCURK" type="Button" parent="Center/Panel/Content"]
 custom_minimum_size = Vector2(0, 42)
@@ -112,13 +112,13 @@ text = "SCURK"
 custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "Settings..."
+text = "Settings"
 
 [node name="AboutOpenSC2K" type="Button" parent="Center/Panel/Content"]
 custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
-text = "About OpenSC2K..."
+text = "About OpenSC2K"
 
 [node name="Exit" type="Button" parent="Center/Panel/Content"]
 custom_minimum_size = Vector2(0, 42)

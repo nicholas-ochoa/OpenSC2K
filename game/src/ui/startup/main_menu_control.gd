@@ -14,11 +14,11 @@ signal exit_requested
 const BUTTON_LABELS := [
 	"Continue City",
 	"Start New City",
-	"Open City...",
-	"Play Scenario...",
+	"Open City",
+	"Play Scenario",
 	"SCURK",
-	"Settings...",
-	"About OpenSC2K...",
+	"Settings",
+	"About OpenSC2K",
 	"Exit",
 ]
 
@@ -45,7 +45,7 @@ func _ready() -> void:
 	import_button.pressed.connect(import_assets_requested.emit)
 
 	for index in BUTTON_LABELS.size():
-		var button_name: String = BUTTON_LABELS[index].trim_suffix("...").replace(" ", "")
+		var button_name: String = BUTTON_LABELS[index].replace(" ", "")
 		var button: Button = content.get_node(button_name)
 		button.pressed.connect(_emit_action.bind(index))
 
