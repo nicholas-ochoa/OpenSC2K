@@ -1150,6 +1150,12 @@
     ]
   },
   {
+    "id": "scurk_edit_session_test",
+    "script": "tests/scurk_edit_session_test.gd",
+    "domain": "scurk",
+    "lane": "product"
+  },
+  {
     "id": "scurk_sprite_ids_test",
     "script": "tests/scurk_sprite_ids_test.gd",
     "domain": "scurk",
