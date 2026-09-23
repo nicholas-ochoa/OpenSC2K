@@ -74,7 +74,9 @@ func show_choices() -> void:
 		_rebuild_rows()
 	var anchor := get_global_rect()
 	var bounds := get_viewport_rect()
-	var popup_size := Vector2(minf(maxf(size.x, 310), bounds.size.x), minf(480, bounds.size.y))
+	var padding: Vector2 = $Popup.get_theme_stylebox("panel", "PopupPanel").get_minimum_size()
+	var content_height := rows[0].get_combined_minimum_size().y * rows.size() + padding.y
+	var popup_size := Vector2(minf(maxf(size.x, 310), bounds.size.x), minf(minf(content_height, 480), bounds.size.y))
 	var origin := Vector2(clampf(anchor.position.x, 0, bounds.size.x - popup_size.x), anchor.end.y)
 	if origin.y + popup_size.y > bounds.end.y:
 		origin.y = maxf(0, anchor.position.y - popup_size.y)

@@ -4,7 +4,7 @@
 [ext_resource type="Script" path="res://src/ui/scurk/scurk_tile_selector.gd" id="script"]
 
 [node name="Tiles" instance=ExtResource("row")]
-custom_minimum_size = Vector2(310, 48)
+custom_minimum_size = Vector2(310, 40)
 size_flags_horizontal = 3
 script = ExtResource("script")
 

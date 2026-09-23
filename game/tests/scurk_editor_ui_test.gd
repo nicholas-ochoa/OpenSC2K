@@ -23,7 +23,7 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	assert(editor.object_list.entries[0].thumbnail != null)
-	var guides := editor.drawing_controls.get_node("Margin/Column/Isometric")
+	var guides := editor.drawing_controls.get_node("Margin/Scroll/Column/Isometric")
 	guides.get_node("Guides").button_pressed = true
 	guides.get_node("GuideFields/Spacing").value = 24
 	guides.get_node("GuideFields/OffsetX").value = 3
@@ -44,7 +44,7 @@ func _run() -> void:
 	assert(editor.brush_size_selector.value == 24)
 	editor.brush_size_selector.value = 1
 	# Only tools that paint with a brush expose its size and shape controls.
-	var snap_lines := editor.drawing_controls.get_node("Margin/Column/Brush/SnapLines") as CheckBox
+	var snap_lines := editor.drawing_controls.get_node("Margin/Scroll/Column/Brush/SnapLines") as CheckBox
 	for tool in editor.tool_buttons.size():
 		editor.tool_buttons[tool].pressed.emit()
 		assert(snap_lines.is_visible_in_tree() == (tool == ScurkPixelCanvas.TOOL_LINE))
@@ -281,7 +281,7 @@ func _test_tile_selector() -> void:
 
 
 func _test_paint_sidebar(editor: ScurkEditorControl) -> void:
-	var paint := editor.drawing_controls.get_node("Margin/Column/Paint")
+	var paint := editor.drawing_controls.get_node("Margin/Scroll/Column/Paint")
 	var lock := paint.get_node("Lock") as CheckBox
 	var perfect := paint.get_node("Perfect") as CheckBox
 	editor._select_tool(ScurkPixelCanvas.TOOL_PENCIL)
@@ -322,8 +322,8 @@ func _test_paint_sidebar(editor: ScurkEditorControl) -> void:
 
 func _assert_inside(bounds: Rect2, control: Control) -> void:
 	var rect := control.get_global_rect()
-	assert(rect.position.x >= bounds.position.x and rect.position.y >= bounds.position.y)
-	assert(rect.end.x <= bounds.end.x and rect.end.y <= bounds.end.y)
+	assert(rect.position.x >= bounds.position.x and rect.position.y >= bounds.position.y, "%s: %s starts outside %s" % [control.get_path(), rect, bounds])
+	assert(rect.end.x <= bounds.end.x and rect.end.y <= bounds.end.y, "%s: %s ends outside %s" % [control.get_path(), rect, bounds])
 
 
 func _test_clipping_toggle(editor: ScurkEditorControl) -> void:

@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://src/ui/scurk/scurk_tile_row.gd" id="script"]
 
 [node name="Tile" type="Button"]
-custom_minimum_size = Vector2(0, 48)
+custom_minimum_size = Vector2(0, 40)
 script = ExtResource("script")
 
 [node name="Content" type="MarginContainer" parent="."]

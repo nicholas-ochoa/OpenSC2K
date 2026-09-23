@@ -146,8 +146,10 @@ func ignore_recovery() -> Result:
 	return _success()
 
 
-func capture_object(large_id: int) -> void:
+func capture_object(large_id: int, unclipped := false) -> void:
 	object_start = ObjectState.capture(document, project, large_id, history.blank_shape_ids) if document != null and large_id >= 0 else null
+	if object_start != null:
+		object_start.unclipped = unclipped
 
 
 func can_revert_object(large_id: int) -> bool:

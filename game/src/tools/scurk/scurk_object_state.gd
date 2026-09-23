@@ -21,7 +21,6 @@ static func capture(document: ScurkMif, project: ScurkProject, id: int, blank_id
 		var sprite_id := ScurkEditorRules.view_sprite_id(id, view)
 		if blank_ids.has(sprite_id):
 			state.blank_shape_ids.append(sprite_id)
-	state.unclipped = project.metadata.get("editor_state", {}).get("unclipped_tile_ids", []).has(id)
 	return state
 
 
@@ -57,7 +56,7 @@ func matches(document: ScurkMif, project: ScurkProject, blank_ids: Dictionary[in
 	var baseline := pieces.duplicate(true)
 	for piece in baseline:
 		piece.erase("position")
-	return current.pieces == baseline and current.documents == documents and current.blank_shape_ids == blank_shape_ids and current.unclipped == unclipped
+	return current.pieces == baseline and current.documents == documents and current.blank_shape_ids == blank_shape_ids
 
 
 func restored_project(document: ScurkMif, project: ScurkProject) -> Dictionary:

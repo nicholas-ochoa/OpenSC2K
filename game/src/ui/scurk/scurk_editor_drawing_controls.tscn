@@ -49,18 +49,23 @@ theme_override_constants/margin_top = 6
 theme_override_constants/margin_right = 6
 theme_override_constants/margin_bottom = 6
 
-[node name="Column" type="VBoxContainer" parent="Margin"]
+[node name="Scroll" type="ScrollContainer" parent="Margin"]
 layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="Column" type="VBoxContainer" parent="Margin/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 4
 
-[node name="Tools" type="GridContainer" parent="Margin/Column"]
+[node name="Tools" type="GridContainer" parent="Margin/Scroll/Column"]
 layout_mode = 2
 columns = 4
 size_flags_horizontal = 4
 theme_override_constants/h_separation = 2
 theme_override_constants/v_separation = 2
 
-[node name="Pencil" type="Button" parent="Margin/Column/Tools"]
+[node name="Pencil" type="Button" parent="Margin/Scroll/Column/Tools"]
 layout_mode = 2
 icon = ExtResource("Pencil")
 tooltip_text = "Pencil: [ / ] size, X swaps colors, hold Alt/Option to pick"
@@ -71,7 +76,7 @@ vertical_icon_alignment = 1
 expand_icon = true
 theme_override_constants/icon_max_width = 24
 
-[node name="Eraser" type="Button" parent="Margin/Column/Tools"]
+[node name="Eraser" type="Button" parent="Margin/Scroll/Column/Tools"]
 layout_mode = 2
 icon = ExtResource("Eraser")
 tooltip_text = "Eraser"
@@ -82,7 +87,7 @@ vertical_icon_alignment = 1
 expand_icon = true
 theme_override_constants/icon_max_width = 24
 
-[node name="Line" type="Button" parent="Margin/Column/Tools"]
+[node name="Line" type="Button" parent="Margin/Scroll/Column/Tools"]
 layout_mode = 2
 icon = ExtResource("Line")
 tooltip_text = "Line"
@@ -93,7 +98,7 @@ vertical_icon_alignment = 1
 expand_icon = true
 theme_override_constants/icon_max_width = 24
 
-[node name="Diamond" type="Button" parent="Margin/Column/Tools"]
+[node name="Diamond" type="Button" parent="Margin/Scroll/Column/Tools"]
 layout_mode = 2
 icon = ExtResource("Diamond")
 tooltip_text = "Diamond"
@@ -104,7 +109,7 @@ vertical_icon_alignment = 1
 expand_icon = true
 theme_override_constants/icon_max_width = 24
 
-[node name="LeftWall" type="Button" parent="Margin/Column/Tools"]
+[node name="LeftWall" type="Button" parent="Margin/Scroll/Column/Tools"]
 layout_mode = 2
 icon = ExtResource("LeftWall")
 tooltip_text = "Left wall"
@@ -115,7 +120,7 @@ vertical_icon_alignment = 1
 expand_icon = true
 theme_override_constants/icon_max_width = 24
 
-[node name="RightWall" type="Button" parent="Margin/Column/Tools"]
+[node name="RightWall" type="Button" parent="Margin/Scroll/Column/Tools"]
 layout_mode = 2
 icon = ExtResource("RightWall")
 tooltip_text = "Right wall"
@@ -126,7 +131,7 @@ vertical_icon_alignment = 1
 expand_icon = true
 theme_override_constants/icon_max_width = 24
 
-[node name="Ellipse" type="Button" parent="Margin/Column/Tools"]
+[node name="Ellipse" type="Button" parent="Margin/Scroll/Column/Tools"]
 layout_mode = 2
 icon = ExtResource("Ellipse")
 tooltip_text = "Ellipse"
@@ -137,7 +142,7 @@ vertical_icon_alignment = 1
 expand_icon = true
 theme_override_constants/icon_max_width = 24
 
-[node name="Rectangle" type="Button" parent="Margin/Column/Tools"]
+[node name="Rectangle" type="Button" parent="Margin/Scroll/Column/Tools"]
 layout_mode = 2
 icon = ExtResource("Rectangle")
 tooltip_text = "Box"
@@ -148,7 +153,7 @@ vertical_icon_alignment = 1
 expand_icon = true
 theme_override_constants/icon_max_width = 24
 
-[node name="Fill" type="Button" parent="Margin/Column/Tools"]
+[node name="Fill" type="Button" parent="Margin/Scroll/Column/Tools"]
 layout_mode = 2
 icon = ExtResource("Fill")
 tooltip_text = "Fill"
@@ -159,7 +164,7 @@ vertical_icon_alignment = 1
 expand_icon = true
 theme_override_constants/icon_max_width = 24
 
-[node name="Eyedropper" type="Button" parent="Margin/Column/Tools"]
+[node name="Eyedropper" type="Button" parent="Margin/Scroll/Column/Tools"]
 layout_mode = 2
 icon = ExtResource("Eyedropper")
 tooltip_text = "Pick color: hold Alt/Option with any painting tool"
@@ -170,7 +175,7 @@ vertical_icon_alignment = 1
 expand_icon = true
 theme_override_constants/icon_max_width = 24
 
-[node name="Shade" type="Button" parent="Margin/Column/Tools"]
+[node name="Shade" type="Button" parent="Margin/Scroll/Column/Tools"]
 layout_mode = 2
 icon = ExtResource("shade")
 tooltip_text = "Shade along the palette ramp: left lightens, right darkens"
@@ -181,7 +186,7 @@ vertical_icon_alignment = 1
 expand_icon = true
 theme_override_constants/icon_max_width = 24
 
-[node name="Stamp" type="Button" parent="Margin/Column/Tools"]
+[node name="Stamp" type="Button" parent="Margin/Scroll/Column/Tools"]
 layout_mode = 2
 icon = ExtResource("stamp")
 tooltip_text = "Stamp brush: choose a stamp in the Stamps tab"
@@ -192,16 +197,16 @@ vertical_icon_alignment = 1
 expand_icon = true
 theme_override_constants/icon_max_width = 24
 
-[node name="ClipboardTop" type="HSeparator" parent="Margin/Column"]
+[node name="ClipboardTop" type="HSeparator" parent="Margin/Scroll/Column"]
 layout_mode = 2
 custom_minimum_size = Vector2(0, 12)
 
-[node name="Selection" type="HBoxContainer" parent="Margin/Column"]
+[node name="Selection" type="HBoxContainer" parent="Margin/Scroll/Column"]
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_constants/separation = 2
 
-[node name="SelectRect" type="Button" parent="Margin/Column/Selection"]
+[node name="SelectRect" type="Button" parent="Margin/Scroll/Column/Selection"]
 layout_mode = 2
 icon = ExtResource("select_rect")
 tooltip_text = "Rectangle selection: Shift adds, Ctrl/Cmd subtracts"
@@ -212,7 +217,7 @@ vertical_icon_alignment = 1
 expand_icon = true
 theme_override_constants/icon_max_width = 24
 
-[node name="SelectLasso" type="Button" parent="Margin/Column/Selection"]
+[node name="SelectLasso" type="Button" parent="Margin/Scroll/Column/Selection"]
 layout_mode = 2
 icon = ExtResource("select_lasso")
 tooltip_text = "Lasso selection: Shift adds, Ctrl/Cmd subtracts"
@@ -223,7 +228,7 @@ vertical_icon_alignment = 1
 expand_icon = true
 theme_override_constants/icon_max_width = 24
 
-[node name="SelectWand" type="Button" parent="Margin/Column/Selection"]
+[node name="SelectWand" type="Button" parent="Margin/Scroll/Column/Selection"]
 layout_mode = 2
 icon = ExtResource("select_wand")
 tooltip_text = "Magic wand: select connected palette colors"
@@ -234,7 +239,7 @@ vertical_icon_alignment = 1
 expand_icon = true
 theme_override_constants/icon_max_width = 24
 
-[node name="Move" type="Button" parent="Margin/Column/Selection"]
+[node name="Move" type="Button" parent="Margin/Scroll/Column/Selection"]
 layout_mode = 2
 icon = ExtResource("move")
 tooltip_text = "Move selection: drag or use arrow keys; Shift moves 10 pixels"
@@ -245,14 +250,14 @@ vertical_icon_alignment = 1
 expand_icon = true
 theme_override_constants/icon_max_width = 24
 
-[node name="Clipboard" type="GridContainer" parent="Margin/Column"]
+[node name="Clipboard" type="GridContainer" parent="Margin/Scroll/Column"]
 layout_mode = 2
 columns = 4
 size_flags_horizontal = 4
 theme_override_constants/h_separation = 2
 theme_override_constants/v_separation = 2
 
-[node name="Rotate" type="Button" parent="Margin/Column/Clipboard"]
+[node name="Rotate" type="Button" parent="Margin/Scroll/Column/Clipboard"]
 layout_mode = 2
 icon = ExtResource("Rotate")
 tooltip_text = "Rotate selection counterclockwise"
@@ -262,7 +267,7 @@ vertical_icon_alignment = 1
 expand_icon = true
 theme_override_constants/icon_max_width = 24
 
-[node name="RotateCW" type="Button" parent="Margin/Column/Clipboard"]
+[node name="RotateCW" type="Button" parent="Margin/Scroll/Column/Clipboard"]
 layout_mode = 2
 icon = ExtResource("RotateCW")
 tooltip_text = "Rotate selection clockwise"
@@ -272,7 +277,7 @@ vertical_icon_alignment = 1
 expand_icon = true
 theme_override_constants/icon_max_width = 24
 
-[node name="Horizontal" type="Button" parent="Margin/Column/Clipboard"]
+[node name="Horizontal" type="Button" parent="Margin/Scroll/Column/Clipboard"]
 layout_mode = 2
 icon = ExtResource("Horizontal")
 tooltip_text = "Flip selection horizontally"
@@ -282,7 +287,7 @@ vertical_icon_alignment = 1
 expand_icon = true
 theme_override_constants/icon_max_width = 24
 
-[node name="Vertical" type="Button" parent="Margin/Column/Clipboard"]
+[node name="Vertical" type="Button" parent="Margin/Scroll/Column/Clipboard"]
 layout_mode = 2
 icon = ExtResource("Vertical")
 tooltip_text = "Flip selection vertically"
@@ -292,51 +297,51 @@ vertical_icon_alignment = 1
 expand_icon = true
 theme_override_constants/icon_max_width = 24
 
-[node name="ClipboardBottom" type="HSeparator" parent="Margin/Column"]
+[node name="ClipboardBottom" type="HSeparator" parent="Margin/Scroll/Column"]
 layout_mode = 2
 custom_minimum_size = Vector2(0, 12)
 
-[node name="Zoom" type="HBoxContainer" parent="Margin/Column"]
+[node name="Zoom" type="HBoxContainer" parent="Margin/Scroll/Column"]
 layout_mode = 2
 
-[node name="Out" type="Button" parent="Margin/Column/Zoom"]
+[node name="Out" type="Button" parent="Margin/Scroll/Column/Zoom"]
 layout_mode = 2
 text = "-"
 size_flags_horizontal = 3
 
-[node name="Value" type="Label" parent="Margin/Column/Zoom"]
+[node name="Value" type="Label" parent="Margin/Scroll/Column/Zoom"]
 layout_mode = 2
 horizontal_alignment = 1
 vertical_alignment = 1
 text = "4x"
 size_flags_horizontal = 3
 
-[node name="In" type="Button" parent="Margin/Column/Zoom"]
+[node name="In" type="Button" parent="Margin/Scroll/Column/Zoom"]
 layout_mode = 2
 text = "+"
 size_flags_horizontal = 3
 
-[node name="Fit" type="Button" parent="Margin/Column"]
+[node name="Fit" type="Button" parent="Margin/Scroll/Column"]
 tooltip_text = "Fit canvas; Space-drag or middle-drag pans; wheel zooms at the cursor"
 layout_mode = 2
 text = "Fit canvas"
 
-[node name="Brush" type="VBoxContainer" parent="Margin/Column"]
+[node name="Brush" type="VBoxContainer" parent="Margin/Scroll/Column"]
 layout_mode = 2
 
-[node name="Divider" type="HSeparator" parent="Margin/Column/Brush"]
+[node name="Divider" type="HSeparator" parent="Margin/Scroll/Column/Brush"]
 layout_mode = 2
 custom_minimum_size = Vector2(0, 12)
 
-[node name="SizeRow" type="HBoxContainer" parent="Margin/Column/Brush"]
+[node name="SizeRow" type="HBoxContainer" parent="Margin/Scroll/Column/Brush"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="Margin/Column/Brush/SizeRow"]
+[node name="Label" type="Label" parent="Margin/Scroll/Column/Brush/SizeRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Brush size"
 
-[node name="Size" type="SpinBox" parent="Margin/Column/Brush/SizeRow"]
+[node name="Size" type="SpinBox" parent="Margin/Scroll/Column/Brush/SizeRow"]
 layout_mode = 2
 min_value = 1.0
 max_value = 24.0
@@ -344,108 +349,108 @@ value = 1.0
 suffix = "px"
 custom_minimum_size = Vector2(76, 0)
 
-[node name="Round" type="CheckBox" parent="Margin/Column/Brush"]
+[node name="Round" type="CheckBox" parent="Margin/Scroll/Column/Brush"]
 layout_mode = 2
 text = "Round brush"
 
-[node name="Snap" type="CheckBox" parent="Margin/Column/Brush"]
+[node name="Snap" type="CheckBox" parent="Margin/Scroll/Column/Brush"]
 layout_mode = 2
 text = "Snap shapes"
 
-[node name="SnapLines" type="CheckBox" parent="Margin/Column/Brush"]
+[node name="SnapLines" type="CheckBox" parent="Margin/Scroll/Column/Brush"]
 layout_mode = 2
 visible = false
 text = "Snap lines"
 tooltip_text = "Constrain lines to horizontal, vertical, or 2:1 isometric directions."
 
-[node name="Filled" type="CheckBox" parent="Margin/Column/Brush"]
+[node name="Filled" type="CheckBox" parent="Margin/Scroll/Column/Brush"]
 layout_mode = 2
 visible = false
 text = "Filled shapes"
 
-[node name="Paint" type="VBoxContainer" parent="Margin/Column"]
+[node name="Paint" type="VBoxContainer" parent="Margin/Scroll/Column"]
 layout_mode = 2
 
-[node name="Lock" type="CheckBox" parent="Margin/Column/Paint"]
+[node name="Lock" type="CheckBox" parent="Margin/Scroll/Column/Paint"]
 layout_mode = 2
 text = "Lock transparent pixels"
 tooltip_text = "Preserve the active layer silhouette when painting, erasing, or editing a selection. New-layer paste is not affected."
 
-[node name="Perfect" type="CheckBox" parent="Margin/Column/Paint"]
+[node name="Perfect" type="CheckBox" parent="Margin/Scroll/Column/Paint"]
 layout_mode = 2
 text = "Pixel-perfect pencil"
 tooltip_text = "Remove extra corner pixels from a 1-pixel pencil stroke."
 
-[node name="RampHint" type="Label" parent="Margin/Column/Paint"]
+[node name="RampHint" type="Label" parent="Margin/Scroll/Column/Paint"]
 layout_mode = 2
 visible = false
 text = "Shift-click palette colors from dark to light to build a shade ramp."
 autowrap_mode = 2
 
-[node name="Grid" parent="Margin/Column" instance=ExtResource("grid")]
+[node name="Grid" parent="Margin/Scroll/Column" instance=ExtResource("grid")]
 layout_mode = 2
 
-[node name="GuideDivider" type="HSeparator" parent="Margin/Column"]
+[node name="GuideDivider" type="HSeparator" parent="Margin/Scroll/Column"]
 layout_mode = 2
 custom_minimum_size = Vector2(0, 12)
 
-[node name="Isometric" type="VBoxContainer" parent="Margin/Column"]
+[node name="Isometric" type="VBoxContainer" parent="Margin/Scroll/Column"]
 layout_mode = 2
 
-[node name="Guides" type="CheckBox" parent="Margin/Column/Isometric"]
+[node name="Guides" type="CheckBox" parent="Margin/Scroll/Column/Isometric"]
 text = "Isometric guides"
 button_pressed = false
 
-[node name="GuideFields" type="GridContainer" parent="Margin/Column/Isometric"]
+[node name="GuideFields" type="GridContainer" parent="Margin/Scroll/Column/Isometric"]
 visible = false
 columns = 2
 
-[node name="SpacingLabel" type="Label" parent="Margin/Column/Isometric/GuideFields"]
+[node name="SpacingLabel" type="Label" parent="Margin/Scroll/Column/Isometric/GuideFields"]
 text = "Spacing"
 
-[node name="Spacing" type="SpinBox" parent="Margin/Column/Isometric/GuideFields"]
+[node name="Spacing" type="SpinBox" parent="Margin/Scroll/Column/Isometric/GuideFields"]
 min_value = 1.0
 max_value = 256.0
 value = 16.0
 custom_minimum_size = Vector2(80, 0)
 
-[node name="OffsetXLabel" type="Label" parent="Margin/Column/Isometric/GuideFields"]
+[node name="OffsetXLabel" type="Label" parent="Margin/Scroll/Column/Isometric/GuideFields"]
 text = "X offset"
 
-[node name="OffsetX" type="SpinBox" parent="Margin/Column/Isometric/GuideFields"]
+[node name="OffsetX" type="SpinBox" parent="Margin/Scroll/Column/Isometric/GuideFields"]
 min_value = -256.0
 max_value = 256.0
 value = 0.0
 custom_minimum_size = Vector2(80, 0)
 
-[node name="OffsetYLabel" type="Label" parent="Margin/Column/Isometric/GuideFields"]
+[node name="OffsetYLabel" type="Label" parent="Margin/Scroll/Column/Isometric/GuideFields"]
 text = "Y offset"
 
-[node name="OffsetY" type="SpinBox" parent="Margin/Column/Isometric/GuideFields"]
+[node name="OffsetY" type="SpinBox" parent="Margin/Scroll/Column/Isometric/GuideFields"]
 min_value = -256.0
 max_value = 256.0
 value = 0.0
 custom_minimum_size = Vector2(80, 0)
 
-[node name="Spacer" type="Control" parent="Margin/Column"]
+[node name="Spacer" type="Control" parent="Margin/Scroll/Column"]
 layout_mode = 2
 size_flags_vertical = 3
 mouse_filter = 2
 
-[node name="Sizes" type="VBoxContainer" parent="Margin/Column"]
+[node name="Sizes" type="VBoxContainer" parent="Margin/Scroll/Column"]
 layout_mode = 2
 
-[node name="Large" type="Button" parent="Margin/Column/Sizes"]
+[node name="Large" type="Button" parent="Margin/Scroll/Column/Sizes"]
 layout_mode = 2
 text = "Large"
 toggle_mode = true
 
-[node name="Medium" type="Button" parent="Margin/Column/Sizes"]
+[node name="Medium" type="Button" parent="Margin/Scroll/Column/Sizes"]
 layout_mode = 2
 text = "Medium"
 toggle_mode = true
 
-[node name="Small" type="Button" parent="Margin/Column/Sizes"]
+[node name="Small" type="Button" parent="Margin/Scroll/Column/Sizes"]
 layout_mode = 2
 text = "Small"
 toggle_mode = true

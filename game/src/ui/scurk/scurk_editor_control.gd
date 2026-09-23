@@ -1030,7 +1030,7 @@ func _set_filled_shapes(enabled: bool) -> void:
 
 
 func _set_isometric_guides() -> void:
-	var controls := drawing_controls.get_node("Margin/Column/Isometric")
+	var controls := drawing_controls.get_node("Margin/Scroll/Column/Isometric")
 	pixel_canvas.show_isometric_guides = controls.get_node("Guides").button_pressed
 	var spacing := roundi(controls.get_node("GuideFields/Spacing").value)
 	pixel_canvas.paint_options.guide_spacing = Vector2i(spacing, maxi(1, spacing / 2))
@@ -1311,8 +1311,7 @@ func _capture_edit_start(description := "Edit artwork", merge_key := "") -> bool
 
 
 func _capture_object_start() -> void:
-	studio.sync_editor_state()
-	session.capture_object(current_large_id)
+	session.capture_object(current_large_id, not _clipping_enabled())
 	_update_history_buttons()
 
 
