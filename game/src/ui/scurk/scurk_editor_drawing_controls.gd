@@ -132,7 +132,7 @@ func _refresh_icon_colors() -> void:
 			)
 
 
-func update_tool_controls(tool: int, brush_size := 1, paste_active := false) -> void:
+func update_tool_controls(tool: int, brush_size := 1, paste_active := false, paste_new_layer := false) -> void:
 	var uses_brush := tool in [
 		ScurkPixelCanvas.TOOL_PENCIL, ScurkPixelCanvas.TOOL_ERASER, ScurkPixelCanvas.TOOL_LINE,
 		ScurkPixelCanvas.TOOL_DIAMOND, ScurkPixelCanvas.TOOL_LEFT_WALL, ScurkPixelCanvas.TOOL_RIGHT_WALL,
@@ -141,7 +141,7 @@ func update_tool_controls(tool: int, brush_size := 1, paste_active := false) -> 
 	]
 	$Margin/Column/Brush.visible = uses_brush
 	$Margin/Column/Brush/Snap.visible = ScurkPixelCanvas.is_shape_tool(tool)
-	$Margin/Column/Paint/Lock.visible = paste_active or tool not in [ScurkPixelCanvas.TOOL_EYEDROPPER, ScurkPixelCanvas.TOOL_SHADE]
+	$Margin/Column/Paint/Lock.visible = not paste_new_layer and (paste_active or tool not in [ScurkPixelCanvas.TOOL_EYEDROPPER, ScurkPixelCanvas.TOOL_SHADE])
 	$Margin/Column/Paint/Perfect.visible = tool == ScurkPixelCanvas.TOOL_PENCIL and brush_size == 1 and not paste_active
 	$Margin/Column/Paint/RampHint.visible = tool == ScurkPixelCanvas.TOOL_SHADE and not paste_active
 	$Margin/Column/Brush/SnapLines.visible = tool == ScurkPixelCanvas.TOOL_LINE

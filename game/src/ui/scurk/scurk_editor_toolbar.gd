@@ -5,7 +5,6 @@ signal studio_action(action: String)
 signal settings_requested
 signal open_requested
 signal save_requested
-signal save_as_requested
 signal import_bmp_requested
 signal export_bmp_requested
 signal close_requested

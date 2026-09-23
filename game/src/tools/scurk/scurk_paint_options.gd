@@ -105,3 +105,13 @@ func set_stamp(width: int, height: int, pixels: PackedInt32Array) -> bool:
 	stamp_height = height
 	stamp_pixels = pixels.duplicate()
 	return true
+
+
+static func resolve_texture_value(source: int, foreground: int, background: int) -> int:
+	if source == 0xff:
+		return foreground
+
+	if source == 0xf5 or source == 0:
+		return background
+
+	return clampi(source, 0, 255)

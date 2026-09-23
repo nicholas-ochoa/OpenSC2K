@@ -41,8 +41,8 @@ func set_preview(
 	view = clampi(value_view, ScurkSpriteIds.View.LARGE, ScurkSpriteIds.View.SMALL)
 	palette = value_palette
 	var divisor := DrawingWorkspace.view_divisor(view)
-	preview_width = int(DrawingWorkspace.WIDTH / divisor)
-	preview_height = int(DrawingWorkspace.HEIGHT / divisor)
+	preview_width = DrawingWorkspace.WIDTH / divisor
+	preview_height = DrawingWorkspace.HEIGHT / divisor
 	preview_indices.resize(preview_width * preview_height)
 	var workspace := DrawingWorkspace.from_shape(
 		shape_width, shape_height, shape_pixels, view, base_width, clipping_enabled
@@ -76,8 +76,8 @@ func set_preview(
 func clear_preview(value_view: int) -> void:
 	view = clampi(value_view, ScurkSpriteIds.View.LARGE, ScurkSpriteIds.View.SMALL)
 	var divisor := DrawingWorkspace.view_divisor(view)
-	preview_width = int(DrawingWorkspace.WIDTH / divisor)
-	preview_height = int(DrawingWorkspace.HEIGHT / divisor)
+	preview_width = DrawingWorkspace.WIDTH / divisor
+	preview_height = DrawingWorkspace.HEIGHT / divisor
 	preview_indices.resize(preview_width * preview_height)
 	preview_indices.fill(-1)
 	custom_minimum_size = Vector2(preview_width * preview_scale + 2, preview_height * preview_scale + 2)

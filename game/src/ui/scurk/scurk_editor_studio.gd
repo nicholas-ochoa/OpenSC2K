@@ -374,9 +374,12 @@ func _layer_action(action: String) -> void:
 	if not editor._capture_edit_start(action + " layer"):
 		return
 	match action:
-		"Add": project.add_layer(key(), "Layer %d" % (project.documents[key()].layers.size() + 1))
-		"Up": project.move_layer(key(), index, index + 1)
-		"Down": project.move_layer(key(), index, index - 1)
+		"Add":
+			project.add_layer(key(), "Layer %d" % (project.documents[key()].layers.size() + 1))
+		"Up":
+			project.move_layer(key(), index, index + 1)
+		"Down":
+			project.move_layer(key(), index, index - 1)
 	_flush_layers()
 
 
@@ -422,7 +425,7 @@ func copy_all_layers(cut := false) -> void:
 		var pixels: PackedInt32Array = layer.pixels.duplicate()
 		for offset in pixels.size():
 			if mask[offset] != 0:
-				pixels[offset] = -1
+				pixels[offset] = canvas.paint_options.paint_index(pixels[offset], -1)
 		layer.pixels = pixels
 	project.revision += 1
 	_flush_layers()
@@ -667,8 +670,10 @@ func sync_editor_state() -> void:
 		if editor.unclipped_tiles[id]:
 			unclipped.append(id)
 	project.metadata["editor_state"] = {
-		"blank_shape_ids": Array(editor.edit_history.blank_shape_ids.keys()),
-		"unclipped_tile_ids": unclipped, "tile": editor.current_large_id, "view": editor.current_view,
+		"blank_shape_ids":
+			Array(editor.edit_history.blank_shape_ids.keys()),
+		"unclipped_tile_ids":
+			unclipped, "tile": editor.current_large_id, "view": editor.current_view,
 	}
 
 

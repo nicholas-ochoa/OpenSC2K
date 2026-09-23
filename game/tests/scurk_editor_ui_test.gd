@@ -299,6 +299,16 @@ func _test_paint_sidebar(editor: ScurkEditorControl) -> void:
 		editor._select_tool(tool)
 		assert(perfect.is_visible_in_tree() == (tool == ScurkPixelCanvas.TOOL_PENCIL))
 		assert(lock.is_visible_in_tree() == (tool not in [ScurkPixelCanvas.TOOL_EYEDROPPER, ScurkPixelCanvas.TOOL_SHADE]))
+	editor._select_tool(ScurkPixelCanvas.TOOL_PENCIL)
+	editor.pixel_canvas.select_all()
+	assert(editor.pixel_canvas.copy_selection())
+	assert(editor.pixel_canvas.begin_paste(Vector2i.ZERO))
+	assert(lock.is_visible_in_tree() and not perfect.is_visible_in_tree())
+	editor.pixel_canvas.cancel_paste()
+	assert(editor.pixel_canvas.begin_paste(Vector2i.ZERO, true))
+	assert(not lock.is_visible_in_tree() and not perfect.is_visible_in_tree())
+	editor.pixel_canvas.cancel_paste()
+	editor.pixel_canvas.clear_selection()
 	var compare := editor.canvas_panel.get_node("Footer/Row/Compare/Mode") as OptionButton
 	for mode in range(compare.item_count - 1, -1, -1):
 		compare.select(mode)

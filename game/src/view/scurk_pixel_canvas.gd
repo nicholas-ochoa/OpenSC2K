@@ -730,17 +730,7 @@ static func texture_color(
 		+ posmod(point.x, pattern_width)
 	]
 
-	return resolve_texture_value(source, foreground, background)
-
-
-static func resolve_texture_value(source: int, foreground: int, background: int) -> int:
-	if source == 0xff:
-		return foreground
-
-	if source == 0xf5 or source == 0:
-		return background
-
-	return clampi(source, 0, 255)
+	return ScurkPaintOptions.resolve_texture_value(source, foreground, background)
 
 
 static func line_points(start: Vector2i, finish: Vector2i) -> Array[Vector2i]:
@@ -1191,10 +1181,14 @@ func _handle_editor_input(event: InputEvent) -> bool:
 		if event.pressed:
 			var direction := Vector2.ZERO
 			match event.button_index:
-				MOUSE_BUTTON_WHEEL_UP: direction = Vector2.UP
-				MOUSE_BUTTON_WHEEL_DOWN: direction = Vector2.DOWN
-				MOUSE_BUTTON_WHEEL_LEFT: direction = Vector2.LEFT
-				MOUSE_BUTTON_WHEEL_RIGHT: direction = Vector2.RIGHT
+				MOUSE_BUTTON_WHEEL_UP:
+					direction = Vector2.UP
+				MOUSE_BUTTON_WHEEL_DOWN:
+					direction = Vector2.DOWN
+				MOUSE_BUTTON_WHEEL_LEFT:
+					direction = Vector2.LEFT
+				MOUSE_BUTTON_WHEEL_RIGHT:
+					direction = Vector2.RIGHT
 			_scroll_canvas(direction * event.factor, event.position, event.ctrl_pressed or event.meta_pressed)
 		return true
 	if event.button_index == MOUSE_BUTTON_MIDDLE or (event.button_index == MOUSE_BUTTON_LEFT and (space_pressed or Input.is_key_pressed(KEY_SPACE) or panning)):

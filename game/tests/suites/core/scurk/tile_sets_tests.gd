@@ -575,10 +575,10 @@ func test_scurk_mif(reference_root: String) -> void:
 		"SCURK texture fill uses foreground and background colors",
 	)
 	_check(
-		ScurkPixelEditor.resolve_texture_value(0xff, 7, 8) == 7
-		and ScurkPixelEditor.resolve_texture_value(0xf5, 7, 8) == 8
-		and ScurkPixelEditor.resolve_texture_value(0x00, 7, 8) == 8
-		and ScurkPixelEditor.resolve_texture_value(0x9b, 7, 8) == 0x9b,
+		ScurkPaintOptions.resolve_texture_value(0xff, 7, 8) == 7
+		and ScurkPaintOptions.resolve_texture_value(0xf5, 7, 8) == 8
+		and ScurkPaintOptions.resolve_texture_value(0x00, 7, 8) == 8
+		and ScurkPaintOptions.resolve_texture_value(0x9b, 7, 8) == 0x9b,
 		"SCURK textures map sentinels and keep literal palette indices",
 	)
 	var hollow_box := ScurkPixelEditor.shape_points(

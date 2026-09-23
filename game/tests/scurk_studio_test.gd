@@ -686,6 +686,12 @@ func _test_all_layer_clipboard() -> void:
 	_clipboard_key(KEY_C, false, true)
 	assert(canvas.clipboard_pixels == PackedInt32Array([10, 30]))
 	assert(studio.project.snapshot() == before)
+	canvas.paint_options.lock_transparent = true
+	var locked_history_size := editor.undo_stack.size()
+	_clipboard_key(KEY_X, true, true)
+	assert(studio.project.snapshot() == before and editor.undo_stack.size() == locked_history_size)
+	assert(canvas.clipboard_pixels == PackedInt32Array([10, 30]))
+	canvas.paint_options.lock_transparent = false
 	_clipboard_key(KEY_X, true, true)
 	assert(_document().layers[0].pixels[0] == -1 and _document().layers[0].pixels[1] == -1)
 	assert(_document().layers[1].pixels[1] == -1 and _document().layers[1].pixels[2] == 40)

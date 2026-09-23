@@ -18,7 +18,7 @@ static func is_standard_base_width(width: int) -> bool:
 
 
 static func base_size(base_width: int) -> int:
-	return int(base_width / 32) if is_standard_base_width(base_width) else -1
+	return base_width / 32 if is_standard_base_width(base_width) else -1
 
 
 static func clip_mask(base_width: int, view := ScurkSpriteIds.View.LARGE) -> PackedByteArray:
@@ -86,7 +86,7 @@ static func from_shape(
 	var expanded_width := shape_width * divisor
 	var expanded_height := shape_height * divisor
 	var origin := Vector2i(
-		int((WIDTH - expanded_width) / 2),
+		(WIDTH - expanded_width) / 2,
 		HEIGHT - expanded_height
 	)
 
@@ -122,9 +122,9 @@ static func shape_from_workspace(
 
 	var divisor := view_divisor(view)
 	var output_base_width := base_width if clipping_enabled else WIDTH
-	var output_width := int(output_base_width / divisor)
-	var output_max_height := int(HEIGHT / divisor)
-	var source_left := int((WIDTH - output_base_width) / 2)
+	var output_width := output_base_width / divisor
+	var output_max_height := HEIGHT / divisor
+	var source_left := (WIDTH - output_base_width) / 2
 	var clipped := apply_clip_mask(workspace_pixels, base_width, view) if clipping_enabled else workspace_pixels
 	var sampled := PackedInt32Array()
 	sampled.resize(output_width * output_max_height)

@@ -143,14 +143,6 @@ func _refresh_textures() -> void:
 		if pattern.size() == 64:
 			for y in 8:
 				for x in 8:
-					var palette_index := _resolve(pattern[y * 8 + x])
+					var palette_index := ScurkPaintOptions.resolve_texture_value(pattern[y * 8 + x], foreground_index, background_index)
 					image.set_pixel(x, y, palette.color(animation_map[palette_index]) if valid_palette else Color.MAGENTA)
 		textures[index].update(image)
-
-
-func _resolve(source: int) -> int:
-	if source == 0xff:
-		return foreground_index
-	if source == 0xf5 or source == 0:
-		return background_index
-	return clampi(source, 0, 255)

@@ -7,7 +7,6 @@ signal toolbar_button_clicked
 signal about_requested
 signal settings_requested
 signal close_requested
-signal tile_set_applied(tile_set: ScurkMif, display_name: String, source_path: String)
 
 const Mif = preload("res://src/assets/scurk_mif.gd")
 const IndexedBitmap = preload("res://src/assets/indexed_bmp.gd")
@@ -238,8 +237,8 @@ func _bind_session_document(path := "") -> void:
 	current_view = VIEW_LARGE
 	studio.restore_editor_state()
 	_refresh_object_list()
-	_capture_object_start()
 	_refresh_sprite()
+	_capture_object_start()
 	_update_history_buttons()
 	_update_title()
 	_set_status(
@@ -759,7 +758,6 @@ func _bind_interface() -> void:
 	toolbar.build()
 	toolbar.open_requested.connect(request_open)
 	toolbar.save_requested.connect(request_save)
-	toolbar.save_as_requested.connect(request_save_as)
 	toolbar.import_bmp_requested.connect(request_import_bmp)
 	toolbar.export_bmp_requested.connect(request_export_bmp)
 	toolbar.pick_copy_requested.connect(request_pick_copy)
@@ -944,23 +942,24 @@ func _refresh_object_list() -> void:
 	if object_list.selected >= 0:
 		var replacement_id := entries[object_list.selected].large_id
 		if replacement_id != current_large_id:
-			current_large_id = replacement_id
-			_capture_object_start()
+			_select_object(replacement_id)
+
 
 func _on_object_selected(index: int) -> void:
 	object_list.select(index)
-	var selected_id := object_list.entries[index].large_id
+	_select_object(object_list.entries[index].large_id)
 
-	if selected_id != current_large_id:
-		current_large_id = selected_id
-		_capture_object_start()
 
+func _select_object(large_id: int) -> void:
+	var changed := large_id != current_large_id
+	current_large_id = large_id
 	_refresh_sprite()
+	if changed:
+		_capture_object_start()
 
 
 func _on_search_changed(_value: String) -> void:
 	_refresh_object_list()
-	_refresh_sprite()
 
 
 func _select_view(view: int) -> void:
@@ -977,7 +976,7 @@ func _select_view(view: int) -> void:
 
 func _select_tool(tool_value: int) -> void:
 	current_tool = tool_value
-	drawing_controls.update_tool_controls(tool_value, pixel_canvas.brush_size, pixel_canvas.paste_active)
+	drawing_controls.update_tool_controls(tool_value, pixel_canvas.brush_size, pixel_canvas.paste_active, pixel_canvas.paste_new_layer)
 	if tool_value == ScurkPixelCanvas.TOOL_STAMP and studio != null:
 		studio.tabs.current_tab = studio.get_node(studio.STAMPS).get_index()
 
@@ -1016,7 +1015,7 @@ func _select_brush_size(value: float) -> void:
 	pixel_canvas.set_brush(
 		roundi(value), round_brush_check.button_pressed
 	)
-	drawing_controls.update_tool_controls(current_tool, pixel_canvas.brush_size, pixel_canvas.paste_active)
+	drawing_controls.update_tool_controls(current_tool, pixel_canvas.brush_size, pixel_canvas.paste_active, pixel_canvas.paste_new_layer)
 
 
 func _set_round_brush(enabled: bool) -> void:
@@ -1153,7 +1152,7 @@ func _on_clipboard_changed(width: int, height: int) -> void:
 
 
 func _update_transform_buttons() -> void:
-	drawing_controls.update_tool_controls(current_tool, pixel_canvas.brush_size, pixel_canvas.paste_active)
+	drawing_controls.update_tool_controls(current_tool, pixel_canvas.brush_size, pixel_canvas.paste_active, pixel_canvas.paste_new_layer)
 	var available := pixel_canvas.paste_active or (pixel_canvas.selection.active() and not pixel_canvas.editing_disabled)
 	for button in clipboard_action_buttons:
 		button.disabled = not available
@@ -1568,19 +1567,6 @@ func _update_pointer_status(point: Vector2i, index: int) -> void:
 	]
 
 
-func _apply_tile_set() -> void:
-	if tile_set == null or not tile_set.is_valid():
-		return
-
-	var display_name := source_path.get_file()
-
-	if display_name.is_empty():
-		display_name = "Unsaved tile set"
-
-	tile_set_applied.emit(tile_set, display_name, source_path)
-	_set_status("Applied %s to the city artwork." % display_name)
-
-
 func _popup_open_dialog() -> void:
 	var tile_set_directory := reference_directory.path_join("SCURKART")
 
@@ -1758,20 +1744,35 @@ func request_edit_name() -> void:
 
 func _studio_action(action: String) -> void:
 	match action:
-		"RecoverProject": studio.request_recovery()
-		"ProjectSaveAs": studio.request_save(true)
-		"ExportTileSet": request_save_as()
-		"ReplaceColor": studio.show_replace()
-		"Context": studio.show_context()
-		"SelectAll": pixel_canvas.select_all()
-		"Deselect": pixel_canvas.clear_selection()
-		"CopySelection": pixel_canvas.copy_selection()
-		"CopyAllLayers": studio.copy_all_layers()
-		"CutAllLayers": studio.copy_all_layers(true)
-		"PasteNewLayer": pixel_canvas.begin_paste(Vector2i(-1, -1), true)
-		"CutSelection": pixel_canvas.cut_selection()
-		"DuplicateSelection": pixel_canvas.duplicate_selection()
-		"DeleteSelection": pixel_canvas.delete_selection()
-		"PasteSelection": pixel_canvas.begin_paste()
+		"RecoverProject":
+			studio.request_recovery()
+		"ProjectSaveAs":
+			studio.request_save(true)
+		"ExportTileSet":
+			request_save_as()
+		"ReplaceColor":
+			studio.show_replace()
+		"Context":
+			studio.show_context()
+		"SelectAll":
+			pixel_canvas.select_all()
+		"Deselect":
+			pixel_canvas.clear_selection()
+		"CopySelection":
+			pixel_canvas.copy_selection()
+		"CopyAllLayers":
+			studio.copy_all_layers()
+		"CutAllLayers":
+			studio.copy_all_layers(true)
+		"PasteNewLayer":
+			pixel_canvas.begin_paste(Vector2i(-1, -1), true)
+		"CutSelection":
+			pixel_canvas.cut_selection()
+		"DuplicateSelection":
+			pixel_canvas.duplicate_selection()
+		"DeleteSelection":
+			pixel_canvas.delete_selection()
+		"PasteSelection":
+			pixel_canvas.begin_paste()
 	if is_inside_tree() and action in ["SelectAll", "Deselect", "CopySelection", "CutSelection", "DuplicateSelection", "DeleteSelection", "PasteSelection", "CopyAllLayers", "CutAllLayers", "PasteNewLayer"]:
 		pixel_canvas.grab_focus()
