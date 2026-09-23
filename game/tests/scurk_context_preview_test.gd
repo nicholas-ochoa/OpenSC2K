@@ -114,5 +114,3 @@ func _check_sites(city: CityState) -> void:
 			for sx in range(site.position.x, site.end.x):
 				for sy in range(site.position.y, site.end.y):
 					assert(city.building_id(sx, sy) == tile)
-
-

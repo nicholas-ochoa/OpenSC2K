@@ -68,7 +68,7 @@ theme_override_constants/v_separation = 2
 [node name="Pencil" type="Button" parent="Margin/Scroll/Column/Tools"]
 layout_mode = 2
 icon = ExtResource("Pencil")
-tooltip_text = "Pencil: [ / ] size, X swaps colors, hold Alt/Option to pick"
+tooltip_text = "Pencil: [ / ] size, hold Alt/Option to pick a color"
 toggle_mode = true
 custom_minimum_size = Vector2(32, 32)
 icon_alignment = 1
@@ -178,7 +178,7 @@ theme_override_constants/icon_max_width = 24
 [node name="Shade" type="Button" parent="Margin/Scroll/Column/Tools"]
 layout_mode = 2
 icon = ExtResource("shade")
-tooltip_text = "Shade along the palette ramp: left lightens, right darkens"
+tooltip_text = "Shade along the palette ramp: click to lighten, Shift-click to darken"
 toggle_mode = true
 custom_minimum_size = Vector2(32, 32)
 icon_alignment = 1

@@ -472,6 +472,9 @@ func _test_paint_options(canvas: ScurkPixelCanvas) -> void:
 	canvas._apply_free_line(Vector2i(1, 1))
 	canvas._finish_stroke()
 	assert(canvas.pixels[9] == 60)
+	_mouse(canvas, Vector2i(1, 1), true, MOUSE_BUTTON_LEFT, true)
+	_mouse(canvas, Vector2i(1, 1), false)
+	assert(canvas.pixels[9] == 55)
 	_reset(canvas)
 	canvas.paint_options.pixel_perfect = true
 	canvas._begin_stroke(Vector2i(1, 1), MOUSE_BUTTON_LEFT)

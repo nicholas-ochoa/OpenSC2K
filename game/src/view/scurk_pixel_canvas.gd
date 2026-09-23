@@ -1457,6 +1457,8 @@ func _gui_input(event: InputEvent) -> void:
 		elif is_shape_tool(tool):
 			_begin_shape(point, event.button_index)
 		else:
+			if tool == TOOL_SHADE:
+				paint_options.shade_direction = -1 if event.shift_pressed else 1
 			_begin_stroke(point, event.button_index)
 	else:
 		if stroke_active and is_shape_tool(tool) and _point_is_valid(point):

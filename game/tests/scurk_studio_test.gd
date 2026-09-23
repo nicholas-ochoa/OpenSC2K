@@ -30,8 +30,8 @@ func _run() -> void:
 	await process_frame
 	await _test_sidebar()
 	_test_layers()
-	_test_layer_menu()
 	_test_project()
+	_test_layer_menu()
 	_test_delete_confirmation()
 	_test_undo_history()
 	_test_clipboard_layers()
