@@ -12,10 +12,18 @@ const MAX_SAVED_ID_LIST_SIZE := 1500
 
 var tabs: TabContainer
 var editor: ScurkEditorControl
-var project := ScurkProject.new()
+var project: ScurkProject:
+	get:
+		return editor.session.project
+	set(value):
+		editor.session.project = value
 var project_path := ""
 var recovery_path := "user://scurk/recovery.scurk"
-var modified := false
+var modified: bool:
+	get:
+		return editor.session.modified if editor != null else false
+	set(value):
+		editor.session.modified = value
 var loading := false
 var committing_layer := false
 var last_key := ""
@@ -113,6 +121,7 @@ func _refresh_icon_colors() -> void:
 func reset(bytes: PackedByteArray) -> void:
 	if loading:
 		return
+	editor.session.cancel_edit()
 	project = ScurkProject.new()
 	project.initialize(bytes)
 	project.metadata["editor_state"] = {"blank_shape_ids": [], "unclipped_tile_ids": []}
@@ -163,46 +172,24 @@ func bind_canvas() -> void:
 		_refresh_context()
 
 
-func capture() -> void:
-	if editor == null or project.current_mif.is_empty():
-		return
-	sync_editor_state()
-	editor.edit_history.pending_project_before = project.snapshot()
-
-
-func prepare_pixels(pixels: PackedInt32Array) -> PackedInt32Array:
-	if not project.documents.has(key()):
-		return pixels
-	if not project.set_active_pixels(key(), pixels):
-		return project.flatten(key())
-	return project.flatten(key())
-
-
-func record() -> void:
-	sync_editor_state()
-	if project.current_mif.is_empty():
-		return
-	var encoded := editor.tile_set.to_bytes()
-	if encoded.ok:
-		project.set_current_mif(encoded.bytes)
-	editor.edit_history.pending_project_after = project.snapshot()
-	update_modified()
-
-
 func restore(state: Dictionary) -> void:
 	if state.is_empty():
 		project.documents.clear()
 		return
 	project.restore_snapshot(state)
+	refresh_restored_state()
+
+
+func refresh_restored_state(update_modified_state := true) -> void:
 	restore_editor_state()
 	last_key = ""
 	loading = true
 	editor.palette_panel.import_state(palette_state())
 	loading = false
-	update_modified()
+	if update_modified_state:
+		update_modified()
 	_refresh_lists()
 	_refresh_metadata()
-
 
 
 func _tab_changed(index: int) -> void:
@@ -390,7 +377,8 @@ func _layer_action(action: String) -> void:
 		$DeleteLayer.popup_centered()
 		return
 	editor.pixel_canvas.cancel_paste()
-	editor._capture_edit_start(action + " layer")
+	if not editor._capture_edit_start(action + " layer"):
+		return
 	match action:
 		"Add": project.add_layer(key(), "Layer %d" % (project.documents[key()].layers.size() + 1))
 		"Up": project.move_layer(key(), index, index + 1)
@@ -402,7 +390,8 @@ func _layer_action(action: String) -> void:
 func _layer_visible(enabled: bool) -> void:
 	if updating_controls:
 		return
-	editor._capture_edit_start("Layer visibility")
+	if not editor._capture_edit_start("Layer visibility"):
+		return
 	project.set_layer_visible(key(), int(project.documents[key()].active), enabled)
 	_flush_layers()
 
@@ -410,7 +399,8 @@ func _layer_visible(enabled: bool) -> void:
 func _layer_locked(enabled: bool) -> void:
 	if updating_controls:
 		return
-	editor._capture_edit_start("Layer lock")
+	if not editor._capture_edit_start("Layer lock"):
+		return
 	project.set_layer_locked(key(), int(project.documents[key()].active), enabled)
 	_flush_layers()
 
@@ -428,7 +418,8 @@ func _confirm_delete_layer() -> void:
 		for index in layers.size():
 			if is_same(layers[index], pending_delete_layer):
 				editor.pixel_canvas.cancel_paste()
-				editor._capture_edit_start("Delete layer")
+				if not editor._capture_edit_start("Delete layer"):
+					return
 				if project.delete_layer(pending_delete_key, index):
 					_flush_layers()
 				break
@@ -475,11 +466,12 @@ func _refresh_lists() -> void:
 
 
 func _metadata_changed() -> void:
-	editor._capture_edit_start("Edit metadata")
+	if not editor._capture_edit_start("Edit metadata"):
+		return
 	project.metadata["author"] = get_node(META + "/Author").text
 	project.metadata["title"] = get_node(META + "/Title").text
 	project.metadata["notes"] = get_node(META + "/Notes").text
-	editor._record_edit(editor.edit_history.pending_edit_before)
+	editor._record_edit()
 
 
 func _palette_state_changed(state: Dictionary) -> void:
@@ -518,15 +510,17 @@ func _stamp_action(action: String) -> void:
 		var name := String(get_node(STAMPS + "/Name").text).strip_edges()
 		if name.is_empty():
 			name = "Stamp %d" % (project.stamps.size() + 1)
-		editor._capture_edit_start("Add stamp")
+		if not editor._capture_edit_start("Add stamp"):
+			return
 		project.add_stamp(name, editor.pixel_canvas.clipboard_width, editor.pixel_canvas.clipboard_height,
 			editor.pixel_canvas.clipboard_pixels, editor.pixel_canvas.paint_options.stamp_spacing)
-		editor._record_edit(editor.edit_history.pending_edit_before)
+		editor._record_edit()
 	elif not selected.is_empty():
 		if action == "Delete":
-			editor._capture_edit_start("Delete stamp")
+			if not editor._capture_edit_start("Delete stamp"):
+				return
 			project.remove_stamp(selected[0])
-			editor._record_edit(editor.edit_history.pending_edit_before)
+			editor._record_edit()
 		elif action == "Use":
 			var stamp: Dictionary = project.stamps[selected[0]]
 			editor.pixel_canvas.paint_options.set_stamp(stamp.width, stamp.height, stamp.pixels)
@@ -543,7 +537,8 @@ func _replace_colors() -> void:
 	var to := roundi($Replace/Content/Fields/To.value)
 	if from == to:
 		return
-	editor._capture_edit_start("Replace colors")
+	if not editor._capture_edit_start("Replace colors"):
+		return
 	var old_view := editor.current_view
 	var selection := editor.pixel_canvas.selected_mask()
 	var views := range(ScurkSpriteIds.VIEW_COUNT) if $Replace/Content/AllViews.button_pressed else [old_view]
@@ -561,10 +556,14 @@ func _replace_colors() -> void:
 				if pixels[offset] == from and (selection.size() != pixels.size() or selection[offset] != 0):
 					pixels[offset] = to
 		committing_layer = true
-		editor._write_pixels(project.flatten(key()))
+		var written := editor._write_pixels(project.flatten(key()))
 		committing_layer = false
+		if not written:
+			editor.current_view = old_view
+			editor._refresh_sprite()
+			return
 	editor.current_view = old_view
-	editor._record_edit(editor.edit_history.pending_edit_before)
+	editor._record_edit()
 	editor._refresh_sprite()
 
 
@@ -614,7 +613,8 @@ func _refresh_import() -> void:
 func _apply_import() -> void:
 	if imported == null or editor.pixel_canvas.editing_disabled:
 		return
-	editor._capture_edit_start("Import image")
+	if not editor._capture_edit_start("Import image"):
+		return
 	editor._commit_pixels(_import_pixels())
 	editor._set_status("Imported %s." % imported_path.get_file())
 

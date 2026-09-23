@@ -15,7 +15,7 @@ const IndexedBitmap = preload("res://src/assets/indexed_bmp.gd")
 const SystemImageClipboard = preload("res://src/platform/image_clipboard.gd")
 const PickCopy = preload("res://src/tools/scurk/scurk_pick_copy.gd")
 const DrawingWorkspace = preload("res://src/tools/scurk/scurk_drawing_workspace.gd")
-const EditorHistory = preload("res://src/tools/scurk/scurk_editor_history.gd")
+const EditSession = preload("res://src/tools/scurk/scurk_edit_session.gd")
 const EditorRules = preload("res://src/tools/scurk/scurk_editor_rules.gd")
 const ToolbarView = preload("res://src/ui/scurk/scurk_editor_toolbar.gd")
 const DialogsView = preload("res://src/ui/scurk/scurk_editor_dialogs.gd")
@@ -43,7 +43,12 @@ var palette: Sc2Palette
 var base_large_sprites: Sc2SpriteArchive
 var base_small_medium_sprites: Sc2SpriteArchive
 var reference_directory := ""
-var tile_set: ScurkMif
+var session: ScurkEditSession = EditSession.new()
+var tile_set: ScurkMif:
+	get:
+		return session.document
+	set(value):
+		session.document = value
 var source_path := ""
 var current_large_id := -1
 var current_view := VIEW_LARGE
@@ -51,7 +56,9 @@ var current_tool := ScurkPixelCanvas.TOOL_PENCIL
 var foreground_palette_index := 0
 var background_palette_index := 255
 var pending_discard_action := ""
-var edit_history: ScurkEditorHistory = EditorHistory.new()
+var edit_history: ScurkEditorHistory:
+	get:
+		return session.history
 var undo_stack: Array[ScurkEditorHistory.Record]:
 	get:
 		return edit_history.undo_stack
@@ -594,9 +601,8 @@ func _copy_pick_objects(
 
 		return
 
-	studio.capture()
-	edit_history.pending_description = "Copy objects"
-	edit_history.capture_blank_state()
+	if not _capture_edit_start("Copy objects"):
+		return
 	var result := PickCopy.copy_objects(
 		tile_set,
 		source,
@@ -607,14 +613,14 @@ func _copy_pick_objects(
 
 	if not result.ok:
 		pick_copy_control.copy_completed(result)
-		_show_error(result.error)
+		_abort_edit(result.error)
 
 		return
 
 	for large_id in large_ids:
 		for view in ScurkSpriteIds.VIEW_COUNT:
 			studio.project.documents.erase("%d:%d" % [large_id, view])
-	_record_edit(encoded.bytes)
+	_record_edit()
 	_refresh_object_list()
 	_refresh_sprite()
 	pick_copy_control.copy_completed(result)
@@ -634,9 +640,11 @@ func _replace_active_view(
 ) -> Result:
 	if pixel_canvas.editing_disabled:
 		return Result.rejected("The active layer is locked or hidden.")
-	_capture_edit_start("Import image")
+	if not _capture_edit_start("Import image"):
+		return Result.rejected("Cannot start the image import.")
 	var workspace := DrawingWorkspace.from_shape(width, height, pixels, current_view, active_base_width, _clipping_enabled()) if active_workspace else pixels
-	_commit_pixels(workspace)
+	if not _commit_pixels(workspace):
+		return Result.rejected("Cannot apply the image to this tile.")
 	_set_status("%s. Remapped %d colors." % [description, remapped_color_count])
 	var outcome := Result.new()
 	outcome.ok = true
@@ -680,11 +688,13 @@ func redo() -> void:
 func revert_object() -> void:
 	if studio.object_start.is_empty():
 		return
-	_capture_edit_start("Revert object")
+	if not _capture_edit_start("Revert object"):
+		return
 	if not studio.project.restore_snapshot(studio.object_start):
+		_abort_edit("Cannot restore the selected object.")
 		return
 	_replace_document_bytes(studio.project.current_mif)
-	_record_edit(edit_history.pending_edit_before)
+	_record_edit()
 	_update_after_history()
 	_set_status("Reverted the current object to its state when selected.")
 
@@ -698,15 +708,16 @@ func revert_name() -> void:
 	if not tile_set.names.has(tile_id):
 		return
 
-	_capture_edit_start("Revert tile name")
+	if not _capture_edit_start("Revert tile name"):
+		return
 	var result := tile_set.remove_name(tile_id)
 
 	if not result.ok:
-		_show_error(result.error)
+		_abort_edit(result.error)
 
 		return
 
-	_record_edit(edit_history.pending_edit_before)
+	_record_edit()
 	_refresh_object_list()
 	_refresh_sprite()
 	_set_status("Restored the original query name for object %d." % tile_id)
@@ -717,7 +728,8 @@ func clear_object() -> void:
 	if tile_set == null or current_large_id < 0:
 		return
 
-	_capture_edit_start("Clear object")
+	if not _capture_edit_start("Clear object"):
+		return
 	var changed_views := 0
 
 	for view in range(ScurkSpriteIds.VIEW_COUNT) if active_workspace else [current_view]:
@@ -738,9 +750,7 @@ func clear_object() -> void:
 		)
 
 		if not result.ok:
-			edit_history.cancel_pending_edit()
-			_show_error(result.error)
-			_refresh_sprite()
+			_abort_edit(result.error)
 
 			return
 
@@ -748,7 +758,7 @@ func clear_object() -> void:
 		studio.clear_view(view)
 		changed_views += 1
 
-	_record_edit(edit_history.pending_edit_before)
+	_record_edit()
 	_refresh_sprite()
 	_set_status("Cleared %d object view%s to clean ground and sky." % [
 		changed_views, "" if changed_views == 1 else "s",
@@ -918,6 +928,7 @@ func _bind_interface() -> void:
 	view_preview_panels = canvas_panel.view_preview_panels
 	sprite_status_label = toolbar.get_node("Row/SpriteStatus")
 	pixel_canvas.edit_started.connect(_capture_edit_start)
+	pixel_canvas.edit_cancelled.connect(session.cancel_edit)
 	pixel_canvas.pixels_committed.connect(_commit_pixels)
 	pixel_canvas.palette_index_picked.connect(_select_palette_index)
 	pixel_canvas.pointer_changed.connect(_update_pointer_status)
@@ -1366,9 +1377,12 @@ static func sprite_role(tile_id: int) -> String:
 	return EditorRules.sprite_role(tile_id)
 
 
-func _capture_edit_start(description := "Edit artwork") -> void:
-	edit_history.capture_edit(tile_set, description)
-	studio.capture()
+func _capture_edit_start(description := "Edit artwork") -> bool:
+	studio.sync_editor_state()
+	var result := session.begin_edit(description)
+	if not result.ok:
+		_show_error(result.error)
+	return result.ok
 
 
 func _capture_object_start() -> void:
@@ -1377,61 +1391,53 @@ func _capture_object_start() -> void:
 	_update_history_buttons()
 
 
-func _commit_pixels(value_pixels: PackedInt32Array) -> void:
+func _commit_pixels(value_pixels: PackedInt32Array) -> bool:
 	if pixel_canvas.editing_disabled and not studio.committing_layer:
+		session.cancel_edit()
 		_refresh_sprite()
-		return
-	var flattened := value_pixels if studio.committing_layer else studio.prepare_pixels(value_pixels)
-	if _write_pixels(flattened):
-		_record_edit(edit_history.pending_edit_before)
-		_refresh_selected_thumbnail()
-		_refresh_sprite()
+		return false
+	var result := session.write_pixels(_pixel_target(), value_pixels, not studio.committing_layer)
+	if not result.ok:
+		_refresh_rejected_edit(result.error)
+		return false
+	if not _record_edit():
+		return false
+	_refresh_selected_thumbnail()
+	_refresh_sprite()
+	return true
 
 
 func _write_pixels(value_pixels: PackedInt32Array) -> bool:
-	if tile_set == null or current_large_id < 0:
-		return false
-
-	var sprite_id := view_sprite_id(current_large_id, current_view)
-	var output_width := pixel_canvas.sprite_width
-	var output_height := pixel_canvas.sprite_height
-	var output_pixels := value_pixels
-
-	if active_workspace:
-		var active_shape := DrawingWorkspace.shape_from_workspace(
-			value_pixels, active_base_width, current_view, _clipping_enabled()
-		)
-
-		if not active_shape.ok:
-			_show_error(active_shape.error)
-
-			if not edit_history.pending_edit_before.is_empty():
-				_replace_document_bytes(edit_history.pending_edit_before)
-
-			_refresh_sprite()
-
-			return false
-
-		output_width = active_shape.width
-		output_height = active_shape.height
-		output_pixels = active_shape.pixels
-
-	var result := tile_set.set_shape_indices(
-		sprite_id, output_width, output_height, output_pixels
-	)
-
+	var result := session.write_pixels(_pixel_target(), value_pixels)
 	if not result.ok:
-		_show_error(result.error)
+		_refresh_rejected_edit(result.error)
+	return result.ok
 
-		if not edit_history.pending_edit_before.is_empty():
-			_replace_document_bytes(edit_history.pending_edit_before)
 
-		_refresh_sprite()
+func _pixel_target() -> ScurkEditSession.PixelTarget:
+	var target := EditSession.PixelTarget.new()
+	target.key = studio.key()
+	target.sprite_id = view_sprite_id(current_large_id, current_view)
+	target.width = pixel_canvas.sprite_width
+	target.height = pixel_canvas.sprite_height
+	target.workspace = active_workspace
+	target.base_width = active_base_width
+	target.view = current_view
+	target.clipped = _clipping_enabled()
+	return target
 
-		return false
 
-	edit_history.mark_shape_blank_state(sprite_id, output_pixels)
-	return true
+func _abort_edit(message: String) -> void:
+	var result := session.rollback_edit()
+	_refresh_rejected_edit(message if result.ok else message + " " + result.error)
+
+
+func _refresh_rejected_edit(message: String) -> void:
+	studio.refresh_restored_state(false)
+	_refresh_sprite()
+	_update_history_buttons()
+	_update_title()
+	_show_error(message)
 
 
 func _refresh_view_previews() -> void:
@@ -1544,26 +1550,31 @@ func _commit_name() -> void:
 	if value == String(tile_set.names.get(tile_id, sprite_role(tile_id))):
 		return
 
-	_capture_edit_start("Rename tile")
+	if not _capture_edit_start("Rename tile"):
+		return
 	var result := tile_set.set_name(tile_id, value)
 
 	if not result.ok:
-		_show_error(result.error)
+		_abort_edit(result.error)
 
 		return
 
-	_record_edit(edit_history.pending_edit_before)
+	_record_edit()
 	_refresh_object_list()
 	_refresh_sprite()
 
 
-func _record_edit(before: PackedByteArray) -> void:
-	studio.record()
-	if not edit_history.record(before, tile_set):
-		return
-
-	_update_history_buttons()
-	_update_title()
+func _record_edit() -> bool:
+	studio.sync_editor_state()
+	var result := session.commit_edit()
+	if not result.ok:
+		_refresh_rejected_edit(result.error)
+		return false
+	studio.update_modified()
+	if result.changed:
+		_update_history_buttons()
+		_update_title()
+	return true
 
 
 func _replace_document_bytes(bytes: PackedByteArray) -> bool:

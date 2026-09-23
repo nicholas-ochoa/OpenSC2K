@@ -23,6 +23,7 @@ class PixelRegion extends RefCounted:
 const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
 
 signal edit_started(description: String)
+signal edit_cancelled
 signal pixels_committed(pixels: PackedInt32Array)
 signal palette_index_picked(index: int, background: bool)
 signal pointer_changed(point: Vector2i, index: int)
@@ -1743,6 +1744,8 @@ func _finish_stroke() -> void:
 
 	if stroke_changed:
 		pixels_committed.emit(pixels.duplicate())
+	else:
+		edit_cancelled.emit()
 
 	stroke_changed = false
 

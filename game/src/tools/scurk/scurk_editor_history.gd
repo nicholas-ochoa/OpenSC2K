@@ -22,11 +22,6 @@ class Record extends RefCounted:
 var saved_bytes := PackedByteArray()
 var undo_stack: Array[Record] = []
 var redo_stack: Array[Record] = []
-var pending_project_before: Dictionary = {}
-var pending_project_after: Dictionary = {}
-var pending_description := "Edit artwork"
-var pending_edit_before := PackedByteArray()
-var pending_blank_shape_ids: Dictionary[int, bool] = {}
 var object_start_bytes := PackedByteArray()
 var object_start_large_id := -1
 var object_start_blank_shape_ids: Dictionary[int, bool] = {}
@@ -38,8 +33,6 @@ func reset(encoded_bytes: PackedByteArray) -> void:
 	saved_bytes = encoded_bytes.duplicate()
 	undo_stack.clear()
 	redo_stack.clear()
-	pending_edit_before.clear()
-	pending_blank_shape_ids.clear()
 	blank_shape_ids.clear()
 	dirty = false
 
@@ -47,18 +40,6 @@ func reset(encoded_bytes: PackedByteArray) -> void:
 func mark_saved(encoded_bytes: PackedByteArray) -> void:
 	saved_bytes = encoded_bytes.duplicate()
 	dirty = false
-
-
-func capture_edit(document: ScurkMif, description := "Edit artwork") -> void:
-	if document == null:
-		return
-
-	pending_description = description
-	var encoded := document.to_bytes()
-	pending_edit_before = (
-		encoded.bytes.duplicate() if encoded.ok else PackedByteArray()
-	)
-	pending_blank_shape_ids = blank_shape_ids.duplicate()
 
 
 func capture_object(document: ScurkMif, large_id: int) -> void:
@@ -75,41 +56,16 @@ func capture_object(document: ScurkMif, large_id: int) -> void:
 		object_start_bytes = encoded.bytes.duplicate()
 
 
-func capture_blank_state() -> void:
-	pending_blank_shape_ids = blank_shape_ids.duplicate()
-
-
-func cancel_pending_edit() -> void:
-	pending_edit_before.clear()
-
-
-func record(before: PackedByteArray, document: ScurkMif) -> bool:
-	if before.is_empty() or document == null:
+func record(action: Record) -> bool:
+	if action.before.is_empty() or action.after.is_empty():
 		return false
-
-	var encoded := document.to_bytes()
-
-	if not encoded.ok or (encoded.bytes == before and pending_project_before == pending_project_after):
+	if action.before == action.after and action.project_before == action.project_after:
 		return false
-
-	var action := Record.new()
-	action.description = pending_description
-	action.project_before = pending_project_before.duplicate(true)
-	action.project_after = pending_project_after.duplicate(true)
-	action.before = before.duplicate()
-	action.after = encoded.bytes.duplicate()
-	action.blank_before = pending_blank_shape_ids.duplicate()
-	action.blank_after = blank_shape_ids.duplicate()
 	undo_stack.append(action)
-
 	if undo_stack.size() > HISTORY_LIMIT:
 		undo_stack.pop_front()
-
 	redo_stack.clear()
-	pending_edit_before.clear()
-	pending_blank_shape_ids.clear()
-	_update_dirty_bytes(encoded.bytes)
-
+	_update_dirty_bytes(action.after)
 	return true
 
 
@@ -164,35 +120,6 @@ func redo() -> Result:
 
 	blank_shape_ids = action.blank_after.duplicate()
 	undo_stack.append(action)
-
-	var result := Result.new()
-	result.ok = true
-	result.document = replacement.document
-	result.error = ""
-
-	return result
-
-
-func revert_object(document: ScurkMif, large_id: int) -> Result:
-	if not can_revert_object(document, large_id):
-		var result := Result.new()
-		result.ok = false
-		result.no_action = true
-		result.error = ""
-
-		return result
-
-	var encoded := document.to_bytes()
-	var before: PackedByteArray = encoded.bytes.duplicate()
-	var blank_before := blank_shape_ids.duplicate()
-	var replacement := _decode_document(object_start_bytes)
-
-	if not replacement.ok:
-		return replacement
-
-	blank_shape_ids = object_start_blank_shape_ids.duplicate()
-	pending_blank_shape_ids = blank_before
-	record(before, replacement.document)
 
 	var result := Result.new()
 	result.ok = true
