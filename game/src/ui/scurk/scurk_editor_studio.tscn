@@ -19,12 +19,6 @@ shader = ExtResource("glass")
 
 [sub_resource type="ButtonGroup" id="ContextViews"]
 
-[sub_resource type="StyleBoxEmpty" id="TabPanel"]
-content_margin_left = 6.0
-content_margin_top = 6.0
-content_margin_right = 6.0
-content_margin_bottom = 6.0
-
 [node name="Studio" type="PanelContainer"]
 script = ExtResource("script")
 material = SubResource("GlassMaterial")
@@ -52,7 +46,6 @@ mouse_filter = 2
 [node name="Tabs" type="TabContainer" parent="Margin/Column"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_styles/panel = SubResource("TabPanel")
 current_tab = 0
 tab_alignment = 0
 use_hidden_tabs_for_min_size = true
