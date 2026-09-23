@@ -201,6 +201,140 @@ static func _mark_dirty_tile(index: int, dirty: PackedByteArray, indices: Packed
 	indices.append(index)
 
 
+# mark the tiles whose bytes differ between the payloads of each chunk in `chunk_ids`
+# a chunk that is missing or has another size is skipped
+static func _collect_payload_changes(old_payloads: Dictionary, new_payloads: Dictionary, chunk_ids: Array,
+		map_edge: int, dirty: PackedByteArray, indices: PackedInt32Array) -> void:
+	var cells := map_edge * map_edge
+
+	for chunk_id: String in chunk_ids:
+		if not old_payloads.has(chunk_id) or not new_payloads.has(chunk_id):
+			continue
+
+		var old_bytes: PackedByteArray = old_payloads[chunk_id]
+		var new_bytes: PackedByteArray = new_payloads[chunk_id]
+
+		if new_bytes.size() != old_bytes.size():
+			continue
+
+		if chunk_id == "XTRF":
+			_collect_traffic_changes(old_bytes, new_bytes, map_edge, dirty, indices)
+			continue
+
+		var stride := 2 if chunk_id == "ALTM" or (chunk_id == "XTXT" and map_edge > 128) else 1
+
+		if old_bytes.size() != cells * stride:
+			continue
+
+		_collect_changed_tiles(old_bytes, new_bytes, 1 if chunk_id == "XTXT" else stride,
+			dirty, indices, cells if chunk_id == "XTXT" else 0)
+
+
+# mark the tiles whose traffic density crosses a drawing threshold. a traffic
+# cell can cover a square of tiles
+static func _collect_traffic_changes(before: PackedByteArray, after: PackedByteArray, map_edge: int,
+		dirty: PackedByteArray, indices: PackedInt32Array) -> void:
+	var grid_edge := CityDataGrid.edge(after, map_edge)
+
+	if grid_edge == 0 or before == after:
+		return
+
+	var cells := PackedByteArray()
+	cells.resize(grid_edge * grid_edge)
+	var changed := PackedInt32Array()
+	_collect_changed_tiles(before, after, 1, cells, changed)
+	var scale := map_edge / grid_edge
+
+	for cell in changed:
+		if _traffic_levels(before[cell]) == _traffic_levels(after[cell]):
+			continue
+
+		var first := Vector2i(cell / grid_edge, cell % grid_edge) * scale
+
+		for x in range(first.x, first.x + scale):
+			for y in range(first.y, first.y + scale):
+				_mark_dirty_tile(x * map_edge + y, dirty, indices)
+
+
+static func _traffic_levels(density: int) -> Vector2i:
+	var road := IsometricStaticVisuals.TRAFFIC_THRESHOLDS
+	var highway := IsometricStaticVisuals.HIGHWAY_TRAFFIC_THRESHOLDS
+
+	return Vector2i(int(density > road.x) + int(density > road.y), int(density > highway.x) + int(density > highway.y))
+
+
+# add the screen bounds of each tile whose region source data differs from `old_payloads`
+# returns false when the payloads cannot be compared or so much differs that a full redraw is better
+static func changed_source_rects(city: CityState, old_payloads: Dictionary, sprites: Sc2SpriteArchive, view_size: int,
+		rects: Array[Rect2i]) -> bool:
+	if city == null or city.document == null or old_payloads.is_empty():
+		return false
+
+	var new_payloads: Dictionary[String, PackedByteArray] = {}
+
+	for chunk_id in CityRegionCache.SOURCE_CHUNKS:
+		var chunk := city.document.find_chunk(chunk_id)
+
+		if chunk != null:
+			new_payloads[chunk_id] = chunk.decoded_payload
+
+		# a skipped chunk would hide its changes
+		if old_payloads.has(chunk_id) != new_payloads.has(chunk_id) or (chunk != null and old_payloads[chunk_id].size() != chunk.decoded_payload.size()):
+			return false
+
+	var map_edge := city.map_size
+	var cells := map_edge * map_edge
+	var dirty := PackedByteArray()
+	dirty.resize(cells)
+	var indices := PackedInt32Array()
+	_collect_payload_changes(old_payloads, new_payloads, ["ALTM", "XBLD", "XTER", "XZON", "XBIT", "XUND", "XTRF"], map_edge, dirty, indices)
+
+	if new_payloads.has("XTXT"):
+		_collect_static_overlay_changes(old_payloads["XTXT"], new_payloads["XTXT"], map_edge, dirty, indices)
+
+	if indices.size() > cells * STATIC_EDIT_PATCH_MAX_AREA_RATIO:
+		return false
+
+	var configuration := IsometricRenderer.view_configuration(view_size)
+	var sprite_limit := IsometricRenderer.maximum_sprite_size(sprites) if not indices.is_empty() else Vector2i.ZERO
+	var output := Rect2i(Vector2i.ZERO, IsometricRenderer.output_size_for_view(view_size, map_edge))
+
+	for index in indices:
+		var bounds := IsometricRenderer.potential_tile_bounds(configuration, sprite_limit, index / map_edge, index % map_edge, map_edge)
+		# some tile artwork depends on its neighbors. a neighbor is one half tile away on the screen
+		bounds = bounds.grow_individual(configuration.half_width, configuration.half_height,
+			configuration.half_width, configuration.half_height).intersection(output)
+
+		if bounds.has_area():
+			rects.append(bounds)
+
+	return true
+
+
+# mark text overlay changes that the static regions draw. the regions do not draw
+# special overlays such as floods and fires, or moving objects. the caller checks
+# the text overlay signature for signs and dispatch objects
+static func _collect_static_overlay_changes(before: PackedByteArray, after: PackedByteArray, map_edge: int,
+		dirty: PackedByteArray, indices: PackedInt32Array) -> void:
+	var cells := map_edge * map_edge
+
+	if before == after or OverlayData.count(after) != cells:
+		return
+
+	var changed_flags := PackedByteArray()
+	changed_flags.resize(cells)
+	var changed := PackedInt32Array()
+	_collect_changed_tiles(before, after, 1, changed_flags, changed, cells)
+
+	for index in changed:
+		if not _dynamic_overlay(OverlayData.read(before, index)) or not _dynamic_overlay(OverlayData.read(after, index)):
+			_mark_dirty_tile(index, dirty, indices)
+
+
+static func _dynamic_overlay(overlay: int) -> bool:
+	return overlay == 0 or OverlayData.is_thing(overlay) or IsometricConstants.SPECIAL_OVERLAY_SPRITE_OFFSETS.has(overlay)
+
+
 static func _edit_dirty_indices(command: EditCommandResult, map_edge: int = 128) -> PackedInt32Array:
 	# a flag byte per tile deduplicates without a dictionary, and the collected
 	# indices sort natively instead of as variants
@@ -208,22 +342,8 @@ static func _edit_dirty_indices(command: EditCommandResult, map_edge: int = 128)
 	var dirty := PackedByteArray()
 	dirty.resize(cells)
 	var indices := PackedInt32Array()
-	var old_payloads := command.old_payloads
-	var new_payloads := command.new_payloads
-
-	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XBIT", "XTXT"]:
-		if not old_payloads.has(chunk_id) or not new_payloads.has(chunk_id):
-			continue
-
-		var old_bytes: PackedByteArray = old_payloads[chunk_id]
-		var new_bytes: PackedByteArray = new_payloads[chunk_id]
-		var stride := 2 if chunk_id == "ALTM" or (chunk_id == "XTXT" and map_edge > 128) else 1
-
-		if old_bytes.size() != cells * stride or new_bytes.size() != old_bytes.size():
-			continue
-
-		_collect_changed_tiles(old_bytes, new_bytes, 1 if chunk_id == "XTXT" else stride,
-			dirty, indices, cells if chunk_id == "XTXT" else 0)
+	_collect_payload_changes(command.old_payloads, command.new_payloads, ["ALTM", "XBLD", "XTER", "XZON", "XBIT", "XTXT"],
+		map_edge, dirty, indices)
 
 	# dispatch compares its whole text overlay instead of xtxt payloads
 	if command is DispatchEditResult:

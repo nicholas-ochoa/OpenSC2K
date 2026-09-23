@@ -48,18 +48,27 @@ func _run() -> void:
 		1: RenderCaches.SignForeground.new([2, Rect2i(0, 0, 40, 40)]),
 		2: RenderCaches.SignForeground.new([2, Rect2i(400, 400, 40, 40)]),
 	})
+	var shadow := CityDynamicVisual.new(null, Vector2(150, 150), Vector2(20, 20))
+	shadow.samples_static = true
 	main.render_caches.dynamic_visual_cache.assign({
 		"near": CityDynamicVisual.new(null, Vector2.ZERO, Vector2(20, 20)),
 		"far": CityDynamicVisual.new(null, Vector2(500, 500), Vector2(20, 20)),
 		"empty": null,
+		"shadow": shadow,
+		"unoccluded": CityDynamicVisual.new(null, Vector2(100, 100), Vector2(20, 20)),
 	})
+	main.render_caches.dynamic_occluder_cache.assign({"0:0:20:20:5:0:0:1": null, "100:100:20:20:5:0:0:1": null})
+	# the region pixels changed, but its silhouettes changed only near the origin
 	var near: Array[Rect2i] = [Rect2i(0, 0, 256, 256)]
-	main.map_render._invalidate_region_foregrounds(near)
-	assert(main.render_caches.dynamic_visual_cache.keys() == ["far"])
+	var near_silhouettes: Array[Rect2i] = [Rect2i(0, 0, 64, 64)]
+	main.map_render._invalidate_region_foregrounds(near, near_silhouettes)
+	assert(main.render_caches.dynamic_visual_cache.keys() == ["far", "unoccluded"])
+	assert(main.render_caches.dynamic_occluder_cache.keys() == ["100:100:20:20:5:0:0:1"])
 	assert(not main.render_caches.sign_foreground_cache.has(1) and main.render_caches.sign_foreground_cache.has(2))
 	var whole: Array[Rect2i] = [Rect2i(0, 0, 1024, 1024)]
-	main.map_render._invalidate_region_foregrounds(whole)
+	main.map_render._invalidate_region_foregrounds(whole, whole)
 	assert(main.render_caches.sign_foreground_cache.is_empty())
+	assert(main.render_caches.dynamic_visual_cache.is_empty() and main.render_caches.dynamic_occluder_cache.is_empty())
 	var mapping := PackedInt32Array(range(256))
 	var used_indices: Dictionary[int, bool] = {17: true}
 	var colors: int = main.map_render.sign_palette_signature(used_indices, mapping)

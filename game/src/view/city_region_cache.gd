@@ -10,6 +10,10 @@ const GPU_OFFSCREEN_LIMIT := 384
 const GPU_PREFETCH_LIMIT := 256
 const GPU_REGION_EDGE := 256
 const GPU_WORKERS := 2
+# chunks whose tile data the region renderers read
+const SOURCE_CHUNKS: Array[String] = ["ALTM", "XBLD", "XTER", "XZON", "XBIT", "XTXT", "XUND", "XTRF"]
+# above this count, report the whole region as changed foreground geometry
+const MAX_OCCLUDER_CHANGES := 32
 class RegionWorker extends RefCounted:
 	var task: CityRenderTask
 	var context: CityGpuBuildContext
@@ -54,6 +58,8 @@ var _changed := false
 var _viewport_rect := Rect2i()
 var _viewport_valid := false
 var foreground_changes: Array[Rect2i] = []
+# the parts of `foreground_changes` where the static foreground silhouettes changed
+var occluder_changes: Array[Rect2i] = []
 # regions that became visible since the last tick. occlusion reads only visible
 # regions, so a moving sprite cached beside the view lacks their silhouettes
 var _visibility_changes: Array[Rect2i] = []
@@ -64,6 +70,9 @@ var _gpu_has_work := true
 var _viewport_serial := 0
 var _gpu_schedule_serial := 0
 var _edit_priority: Dictionary[Vector2i, int] = {}
+# decoded payloads of the configured city. a later configure compares them to
+# find the changed tiles. packed arrays share data until the city writes again
+var source_payloads: Dictionary[String, PackedByteArray] = {}
 
 
 static func gpu_supported(preference := "gpu") -> bool:
@@ -72,9 +81,12 @@ static func gpu_supported(preference := "gpu") -> bool:
 	return requested == "gpu" or (DisplayServer.get_name() != "headless" and requested != "cpu" and preference != "cpu")
 
 
+# `dirty` and `changed` bound the changed screen areas. without them every region
+# draws again, unless `changes_listed` tells that `changed` lists every change
 func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 		new_signature: Array, new_view: int, new_mode: CityViewMode.Mode, visibility: Dictionary,
-		show_pipes: bool, show_subways: bool, dirty := Rect2i(), show_water_mains := true) -> void:
+		show_pipes: bool, show_subways: bool, dirty := Rect2i(), show_water_mains := true,
+		changed: Array[Rect2i] = [], changes_listed := false) -> void:
 	if _snapshot == null:
 		region_edge = GPU_REGION_EDGE if gpu_enabled else REGION_EDGE
 
@@ -85,18 +97,34 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	var reset := _needs_reset(
 		city, new_view, new_mode, visibility, sprites, show_pipes, show_subways, show_water_mains
 	)
+
+	# no region shows the change, so the drawn snapshot still matches the city
+	if not reset and changes_listed and changed.is_empty() and not dirty.has_area():
+		signature = new_signature.duplicate()
+		_keep_source_payloads(city)
+
+		return
+
 	generation += 1
 	_gpu_has_work = true
 	last_error = ""
 
-	if not reset and dirty.has_area():
-		for key in visible:
-			var bounds := Rect2i(key * region_edge, Vector2i.ONE * region_edge)
+	if not reset and (dirty.has_area() or changes_listed):
+		var rects := changed.duplicate()
 
-			if bounds.intersects(dirty):
+		if dirty.has_area():
+			rects.append(dirty)
+
+		var dirty_keys := _region_keys(rects)
+
+		for key in visible:
+			if dirty_keys.has(key):
 				_edit_priority[key] = generation
-		for entry: CityRegionResult in entries.values():
-			if int(entry.generation) == generation - 1 and not entry.bounds.intersects(dirty):
+
+		for key in entries:
+			var entry := entries[key]
+
+			if int(entry.generation) == generation - 1 and not dirty_keys.has(key):
 				entry.generation = generation
 
 	if reset:
@@ -118,7 +146,7 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	_snapshot.visible_altitude_levels = city.visible_altitude_levels
 
 	city.copy_mirrors_to(_snapshot)
-
+	_keep_source_payloads(city)
 	display_city = _snapshot
 	_palette = palette
 	_sprites = sprites
@@ -127,6 +155,33 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	_show_pipes = show_pipes
 	_show_subways = show_subways
 	_prepared = mode == CityViewMode.Mode.UNDERGROUND
+
+
+func _keep_source_payloads(city: CityState) -> void:
+	source_payloads.clear()
+
+	for chunk_id in SOURCE_CHUNKS:
+		var chunk := city.document.find_chunk(chunk_id)
+
+		if chunk != null:
+			source_payloads[chunk_id] = chunk.decoded_payload
+
+
+func _region_keys(rects: Array[Rect2i]) -> Dictionary[Vector2i, bool]:
+	var result: Dictionary[Vector2i, bool] = {}
+
+	for rect in rects:
+		if not rect.has_area():
+			continue
+
+		var first := rect.position.maxi(0) / region_edge
+		var last := (rect.end - Vector2i.ONE).maxi(0) / region_edge
+
+		for y in range(first.y, last.y + 1):
+			for x in range(first.x, last.x + 1):
+				result[Vector2i(x, y)] = true
+
+	return result
 
 
 # true when the change invalidates every cached region: another city, map
@@ -216,6 +271,8 @@ func tick() -> bool:
 		foreground_changes.append(Rect2i(Vector2i.ZERO, native_size * divisor))
 		_foreground_reset = false
 
+	occluder_changes.assign(foreground_changes)
+
 	if gpu_enabled:
 		return _tick_gpu()
 
@@ -235,8 +292,8 @@ func tick() -> bool:
 			result.display_city = null
 			result.texture = ImageTexture.create_from_image(result.image)
 			result.generation = _job_generation
+			publish_changes(entries.get(_job_key), result)
 			entries[_job_key] = result
-			foreground_changes.append(Rect2i(result.bounds.position * divisor, result.bounds.size * divisor))
 			completed_regions += 1
 			max_region_usec = maxi(max_region_usec, int(result.usec))
 			_changed = _changed or _job_key in visible
@@ -275,6 +332,60 @@ func tick() -> bool:
 	_changed = false
 
 	return changed
+
+
+# record the screen areas that change when `after` replaces `before`
+func publish_changes(before: CityRegionResult, after: CityRegionResult) -> void:
+	var region := Rect2i(after.bounds.position * divisor, after.bounds.size * divisor)
+	foreground_changes.append(region)
+	var changed: Array[Rect2i] = []
+
+	if before != null:
+		changed = changed_foreground(before, after)
+
+	if before == null or changed.size() > MAX_OCCLUDER_CHANGES:
+		occluder_changes.append(region)
+
+		return
+
+	for rect in changed:
+		occluder_changes.append(Rect2i(rect.position * divisor, rect.size * divisor))
+
+
+# return the native bounds of the foreground commands that differ between two results of one region
+static func changed_foreground(before: CityRegionResult, after: CityRegionResult) -> Array[Rect2i]:
+	var previous: Dictionary[int, CityStaticCommand] = {}
+	var result: Array[Rect2i] = []
+
+	for command in before.occlusion_commands:
+		previous[command.region_order] = command
+
+	for command in after.occlusion_commands:
+		var old: CityStaticCommand = previous.get(command.region_order)
+
+		if old != null:
+			previous.erase(command.region_order)
+
+			if _same_command(old, command):
+				continue
+
+			result.append(Rect2i(old.position, old.size))
+
+		result.append(Rect2i(command.position, command.size))
+
+	for command: CityStaticCommand in previous.values():
+		result.append(Rect2i(command.position, command.size))
+
+	return result
+
+
+static func _same_command(left: CityStaticCommand, right: CityStaticCommand) -> bool:
+	return (left.sprite_id == right.sprite_id and left.flip == right.flip and left.position == right.position
+		and left.size == right.size and left.depth_order == right.depth_order and left.train_ignore == right.train_ignore
+		and left.train_foreground_reference_sprite_id == right.train_foreground_reference_sprite_id
+		and left.train_deck_thickness == right.train_deck_thickness
+		and left.train_deck_reference_sprite_id == right.train_deck_reference_sprite_id
+		and left.train_foreground_requires_depth == right.train_foreground_requires_depth)
 
 
 func texture() -> CityMapSource:
@@ -454,6 +565,7 @@ func close() -> void:
 
 	_task = null
 	entries.clear()
+	source_payloads.clear()
 	_snapshot = null
 	display_city = null
 

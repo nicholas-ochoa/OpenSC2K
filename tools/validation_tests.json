@@ -1038,6 +1038,12 @@
     "lane": "product"
   },
   {
+    "id": "simulation_region_refresh_test",
+    "script": "tests/simulation_region_refresh_test.gd",
+    "domain": "rendering",
+    "lane": "product"
+  },
+  {
     "id": "city_render_retention_test",
     "script": "tests/city_render_retention_test.gd",
     "domain": "rendering",

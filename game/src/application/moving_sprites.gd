@@ -244,12 +244,15 @@ func refresh_moving_things(view_size := -1) -> void:
 				int(command.depth_order), bool(command.train), factor
 			)
 
+		var samples_static := bool(command.shadow)
+
 		if command.shadow:
 			var shadow_image := _dynamic_shadow_image(resource.image, position, occluder_mask, factor)
 
 			if shadow_image == null:
 				var hidden := CityDynamicVisual.new(null, Vector2(position), Vector2(resource.native_size))
 				hidden.hidden = true
+				hidden.samples_static = true
 				caches.dynamic_visual_cache[visual_cache_key] = hidden
 				continue
 
@@ -262,6 +265,7 @@ func refresh_moving_things(view_size := -1) -> void:
 
 			if caches.region_cache != null and not foreground_indices.is_empty():
 				var sampled := caches.region_cache.image_region(Rect2i(position, resource.native_size), factor)
+				samples_static = true
 				index_reader = func(x: int, y: int) -> Color:
 					return sampled.get_pixel(x - position.x * factor, y - position.y * factor)
 
@@ -276,6 +280,7 @@ func refresh_moving_things(view_size := -1) -> void:
 				index_texture = texture
 
 		var visual := CityDynamicVisual.new()
+		visual.samples_static = samples_static
 		visual.texture = texture
 		visual.index_texture = index_texture
 		visual.palette_lookup_all = true
@@ -379,6 +384,7 @@ func _dynamic_occluder_image(
 		position.x, position.y, size.x, size.y, draw_order, int(is_train),
 		app.static_render_state.epoch, texture_factor,
 	]
+	# `occluder_key_bounds` reads the first four values
 
 	if caches.dynamic_occluder_cache.has(cache_key):
 		return caches.dynamic_occluder_cache[cache_key] as Image
@@ -447,6 +453,13 @@ func _dynamic_occluder_image(
 	caches.dynamic_occluder_cache[cache_key] = mask
 
 	return mask
+
+
+# return the screen bounds in a `_dynamic_occluder_image` cache key
+static func occluder_key_bounds(key: String) -> Rect2i:
+	var values := key.split(":", false, 4)
+
+	return Rect2i(int(values[0]), int(values[1]), int(values[2]), int(values[3]))
 
 
 func set_static_occlusion_commands(commands: Array[CityStaticCommand], view_size: int) -> void:

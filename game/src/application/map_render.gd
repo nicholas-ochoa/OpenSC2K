@@ -230,12 +230,22 @@ func refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 	var signature := app.static_render.static_signature_for_mode(app.view_state.overlay_mode, view_size)
 	signature.append(sprites.get_instance_id())
 
+	var changed: Array[Rect2i] = []
+	var changes_listed := false
+	var previous := caches.region_cache.signature
+
 	if force:
 		caches.region_cache.signature = []
+	elif (not dirty.has_area() and app.view_state.overlay_mode == CityViewMode.Mode.CITY and previous.size() == signature.size()
+			and previous[9] == signature[9]):
+		# redraw only the regions that show changed tiles. a text overlay signature change
+		# can come from a moving object record, which the tile comparison does not see
+		changes_listed = ApplicationStaticRender.changed_source_rects(app.document_state.city, caches.region_cache.source_payloads,
+			sprites, view_size, changed)
 
 	caches.region_cache.configure(app.document_state.city, app.asset_state.palette_index_encoding, sprites, signature, view_size,
 		app.view_state.overlay_mode, app.view_state.surface_visibility, app.view_state.show_underground_pipes,
-		app.view_state.show_underground_subways, dirty, app.view_state.show_underground_water_mains)
+		app.view_state.show_underground_subways, dirty, app.view_state.show_underground_water_mains, changed, changes_listed)
 
 	if app.view_state.overlay_mode == CityViewMode.Mode.CITY:
 		var labels := app.document_state.city.document.find_chunk("XLAB")
@@ -276,8 +286,7 @@ func poll_region_cache() -> void:
 		return
 
 	caches.static_display_city = caches.region_cache.display_city
-	caches.dynamic_occluder_cache.clear()
-	var foreground_changed := _invalidate_region_foregrounds(caches.region_cache.foreground_changes)
+	var foreground_changed := _invalidate_region_foregrounds(caches.region_cache.foreground_changes, caches.region_cache.occluder_changes)
 	var source := caches.region_cache.texture()
 	app.map_view.set_city_view(caches.static_display_city, source, null, true, true, caches.region_cache.sign_layout_token)
 	app.menus.sync_map_style()
@@ -289,8 +298,18 @@ func poll_region_cache() -> void:
 		app.map_view.set_dynamic_sprites([])
 
 
-func _invalidate_region_foregrounds(changes: Array[Rect2i]) -> bool:
+# `changes` bound changed static pixels, and `occluder_changes` changed static silhouettes.
+# a moving sprite or overlay that does not sample static pixels depends only on the silhouettes
+func _invalidate_region_foregrounds(changes: Array[Rect2i], occluder_changes: Array[Rect2i]) -> bool:
 	var invalidated := false
+
+	for key in caches.dynamic_occluder_cache.keys():
+		var bounds := ApplicationMovingSprites.occluder_key_bounds(key)
+
+		for changed in occluder_changes:
+			if bounds.intersects(changed):
+				caches.dynamic_occluder_cache.erase(key)
+				break
 
 	for key in caches.dynamic_visual_cache.keys():
 		var visual: CityDynamicVisual = caches.dynamic_visual_cache[key]
@@ -301,7 +320,7 @@ func _invalidate_region_foregrounds(changes: Array[Rect2i]) -> bool:
 
 		var bounds := Rect2i(Vector2i(visual.position), Vector2i(visual.size))
 
-		for changed in changes:
+		for changed in (changes if visual.samples_static else occluder_changes):
 			if bounds.intersects(changed):
 				caches.dynamic_visual_cache.erase(key)
 				invalidated = true

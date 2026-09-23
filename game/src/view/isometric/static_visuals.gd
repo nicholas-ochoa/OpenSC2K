@@ -34,6 +34,9 @@ class SpecialOverlay extends CitySpriteVisual:
 
 
 const SIGN_PAGE_CELLS := 1024
+# traffic density above x draws light traffic, and above y heavy traffic
+const TRAFFIC_THRESHOLDS := Vector2i(85, 170)
+const HIGHWAY_TRAFFIC_THRESHOLDS := Vector2i(28, 56)
 
 
 static func validate_assets(
@@ -237,12 +240,13 @@ static func traffic_overlay_visual(
 		return null
 
 	var density := city.traffic_density(x, y)
-	var low_threshold := 85
-	var high_threshold := 170
+	var thresholds := TRAFFIC_THRESHOLDS
 
 	if (tile >= Tiles.HIGHWAY_STRAIGHT_1 and tile <= Tiles.HIGHWAY_POWER_CROSSING_2) or (tile >= Tiles.HIGHWAY_SLOPE_1 and tile <= Tiles.REINFORCED_HIGHWAY_BRIDGE):
-		low_threshold = 28
-		high_threshold = 56
+		thresholds = HIGHWAY_TRAFFIC_THRESHOLDS
+
+	var low_threshold := thresholds.x
+	var high_threshold := thresholds.y
 
 	if density <= low_threshold:
 		return null

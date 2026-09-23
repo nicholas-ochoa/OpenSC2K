@@ -18,6 +18,8 @@ var record: int = -1
 var gpu_mode: int = -1
 var special_batch: bool = false
 var hidden: bool = false
+# true when the pixels come from the static image, as a shadow does, and not only from its silhouettes
+var samples_static: bool = false
 
 
 func _init(image_texture: Texture2D = null, destination := Vector2.ZERO, extent := Vector2.INF) -> void:
@@ -44,6 +46,7 @@ func copy() -> CityDynamicVisual:
 	result.gpu_mode = gpu_mode
 	result.special_batch = special_batch
 	result.hidden = hidden
+	result.samples_static = samples_static
 
 	return result
 

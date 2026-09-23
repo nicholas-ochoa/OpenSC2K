@@ -199,12 +199,12 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 			region.last_visible = cache._viewport_serial if key in cache.visible else (cache.entries[key].last_visible if cache.entries.has(key) else 0)
 			region.gpu_arrays = []
 			region.atlas_image = null
+			cache.publish_changes(cache.entries.get(key), region)
 			cache.entries[key] = region
 
 			if cache._edit_priority.has(key) and worker.generation >= int(cache._edit_priority[key]):
 				cache._edit_priority.erase(key)
 
-			cache.foreground_changes.append(Rect2i(region.bounds.position * cache.divisor, region.bounds.size * cache.divisor))
 			cache.completed_regions += 1
 			cache.max_region_usec = maxi(cache.max_region_usec, int(region.usec))
 			cache._changed = cache._changed or key in cache.visible
