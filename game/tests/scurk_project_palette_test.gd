@@ -47,21 +47,6 @@ func _run() -> void:
 	_check_palette(editor, third)
 	assert(editor.session.project.palette_rgb == third.to_rgb_bytes())
 
-	# Version one has no RGB data. Its next save uses the configured colors.
-	var legacy := {
-		"version": 1, "revision": 0,
-		"original_mif": Marshalls.raw_to_base64(bytes),
-		"current_mif": Marshalls.raw_to_base64(bytes),
-	}
-	var legacy_path := "user://scurk-palette/legacy.scurk"
-	var file := FileAccess.open(legacy_path, FileAccess.WRITE)
-	file.store_string("SCURK-PROJECT\n" + JSON.stringify(legacy))
-	file.close()
-	assert(editor.studio.load_project(legacy_path))
-	_check_palette(editor, third)
-	assert(editor.studio.save_project("user://scurk-palette/converted.scurk"))
-	assert(ScurkProject.load_path("user://scurk-palette/converted.scurk").project.palette_rgb == third.to_rgb_bytes())
-
 	# Non-UI projects can retain an explicit index-only palette fallback.
 	var index_only := ScurkProject.new()
 	assert(index_only.initialize(bytes).ok)
@@ -82,7 +67,7 @@ func _run() -> void:
 
 	editor.free()
 	await process_frame
-	print("PASS: embedded project colors, asset palette isolation, legacy conversion and index fallback")
+	print("PASS: embedded project colors, asset palette isolation and index fallback")
 	quit()
 
 

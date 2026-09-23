@@ -3,7 +3,6 @@ extends SceneTree
 
 const Project = preload("res://src/tools/scurk/scurk_project.gd")
 const Zip = preload("res://src/tools/scurk/scurk_zip.gd")
-const Legacy = preload("res://tests/scurk_project_test.gd")
 const DOCUMENT_KEY := "../palette:雪"
 const RESOURCE_KEY := "../reference/雪.bin"
 
@@ -16,8 +15,8 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	_test_legacy_migration()
 	var project := _fixture()
+	_test_index_encoding(project)
 	var before: Variant = _project_state(project)
 	var encoded := project.to_bytes()
 	assert(encoded.ok, encoded.error)
@@ -35,38 +34,48 @@ func _run() -> void:
 	_test_checkpoints(restored.project, project)
 	_test_invalid(members, manifest)
 	_test_storage(project, encoded.bytes)
-	print("SCURK project archive: %d checks, %d failures; legacy migration, indexed layers, masks, palette, checkpoints, malformed members and atomic saves" % [checks, failures])
+	print("SCURK project archive: %d checks, %d failures; ZIP-only input, indexed layers, masks, palette, checkpoints, malformed members and atomic saves" % [checks, failures])
 	quit(1 if failures else 0)
 
 
-func _test_legacy_migration() -> void:
-	var legacy := Project.from_bytes(Legacy.legacy_bytes())
-	assert(legacy.ok, legacy.error)
-	var project: ScurkProject = legacy.project
-	_check(project.original_mif == Marshalls.base64_to_raw(Legacy.LEGACY_MIF), "Legacy MIF bytes are exact")
-	_check(project.documents["1:0"].original_pixels == PackedInt32Array([0, 1, -1, 255]), "Legacy signed pixels are exact")
-	_check(project.documents["1:0"].layers[1].pixels == PackedInt32Array([-1, 42, 5, -1]), "Legacy layer pixels are exact")
-	_check(project.stamps[0].pixels == PackedInt32Array([252, -1]), "Legacy stamp pixels are exact")
-	_check(project.palette_rgb.is_empty(), "Legacy files do not invent an RGB palette")
+func _test_index_encoding(project: ScurkProject) -> void:
+	var rgb := project.palette_rgb
+	project.palette_rgb = PackedByteArray()
 	var before: Variant = _project_state(project)
 	var encoded := project.to_bytes()
 	assert(encoded.ok, encoded.error)
 	var members: Dictionary[String, PackedByteArray] = Zip.decode(encoded.bytes).members
 	var palette: Dictionary = JSON.parse_string(members["palette.json"].get_string_from_utf8())
-	_check(palette.kind == "index-encoding" and palette.colors.size() == 256, "Legacy conversion declares an index-encoding palette")
+	_check(palette.kind == "index-encoding" and palette.colors.size() == 256, "Projects without RGB colors declare an index-encoding palette")
 	for index in 256:
-		_check(palette.colors[index] == _canonical([index, index, index]), "Legacy palette encodes each index")
+		_check(palette.colors[index] == _canonical([index, index, index]), "The fallback palette encodes each index")
 	var restored := Project.from_bytes(encoded.bytes)
-	_check(restored.ok and _project_state(restored.project) == before, "Legacy-to-ZIP conversion is lossless")
-	var manifest := _manifest(members)
-	_check(manifest.project.format == "future project field" and manifest.project.palette == {"future": true},
-		"The archive envelope preserves colliding unknown project fields")
+	_check(restored.ok and _project_state(restored.project) == before, "An index-encoding project round trip is lossless")
+	_check(restored.project.palette_rgb.is_empty(), "Index encoding does not invent an RGB palette")
+	project.palette_rgb = rgb
 
 
 func _fixture() -> ScurkProject:
-	var loaded := Project.from_bytes(Legacy.legacy_bytes())
-	assert(loaded.ok)
-	var project: ScurkProject = loaded.project
+	var mif := ScurkMif.from_archives([])
+	var project := Project.new()
+	assert(project.initialize(mif.to_bytes().bytes).ok)
+	assert(project.ensure_document("1:0", PackedInt32Array([0, 1, -1, 255]), 2, 2))
+	assert(project.set_layer_locked("1:0", 0, true))
+	assert(project.add_layer("1:0", "Details") == 1)
+	assert(project.set_active_pixels("1:0", PackedInt32Array([-1, 42, 5, -1])))
+	assert(project.set_layer_visible("1:0", 1, false))
+	project.documents["1:0"].custom = ["document"]
+	project.documents["1:0"].layers[0].custom = {"layer": 1}
+	assert(project.add_stamp("Window", 2, 1, PackedInt32Array([252, -1]), 3) == 0)
+	project.stamps[0].custom = "stamp"
+	project.metadata = {"author": "Original author", "palette": {"favorites": [171, 172], "ramp": [1, 42]},
+		"custom": {"enabled": true, "items": [null, 4, "roof"]}}
+	project.resources["reference.bin"] = PackedByteArray([0, 1, 252, 255])
+	project.extra_fields = {"format": "future project field", "palette": {"future": true},
+		"future_extension": {"tag": "preserve"}}
+	assert(project.add_checkpoint("Before") == 0)
+	project.checkpoints[0].created = "2000-01-01T00:00:00"
+	project.checkpoints[0].custom = "checkpoint"
 	project.palette_rgb = _palette_bytes()
 	var pixels := _all_states()
 	assert(project.ensure_document(DOCUMENT_KEY, pixels, 128, 3))
@@ -87,7 +96,6 @@ func _fixture() -> ScurkProject:
 	assert(project.add_checkpoint("First archive") == 1)
 	project.checkpoints[1].created = "2000-01-02T00:00:00"
 	project.checkpoints[1].custom = {"checkpoint": 1}
-	var mif := ScurkMif.new()
 	assert(mif.parse(project.current_mif))
 	mif.info_payload[17] = 77
 	assert(mif.set_name(1, "Current tile").ok)
@@ -106,6 +114,8 @@ func _test_members(project: ScurkProject, members: Dictionary[String, PackedByte
 	_check(manifest.format == "opensc2k-scurk" and manifest.version == 2 and manifest.palette == "palette.json", "The manifest identifies version two")
 	_check(members["original.mif"] == project.original_mif, "Original MIF is a byte-exact member")
 	_check(members["current/current.mif"] == project.current_mif, "Current MIF is a byte-exact member")
+	_check(manifest.project.format == "future project field" and manifest.project.palette == {"future": true},
+		"The archive envelope preserves colliding unknown project fields")
 	var record: Dictionary = manifest.project
 	var document: Dictionary = record.documents[DOCUMENT_KEY]
 	var descriptor: Dictionary = document.layers[0].pixels
@@ -144,6 +154,10 @@ func _test_checkpoints(restored: ScurkProject, original: ScurkProject) -> void:
 
 
 func _test_invalid(members: Dictionary[String, PackedByteArray], manifest: Dictionary) -> void:
+	var mif := Marshalls.raw_to_base64(ScurkMif.from_archives([]).to_bytes().bytes)
+	var text := Project.from_bytes(("SCURK-PROJECT\n" + JSON.stringify({
+		"version": 1, "revision": 0, "original_mif": mif, "current_mif": mif})).to_utf8_buffer())
+	_check(not text.ok and not text.error.is_empty() and text.project == null, "The old text container is rejected")
 	var descriptor: Dictionary = manifest.project.documents[DOCUMENT_KEY].layers[0].pixels
 	for path: String in ["project.json", "palette.json", "original.mif", "current/current.mif", descriptor.image, descriptor.transparency_mask]:
 		var bad := members.duplicate()
@@ -218,7 +232,7 @@ func _test_invalid(members: Dictionary[String, PackedByteArray], manifest: Dicti
 			"visible":
 				bad.project.documents[DOCUMENT_KEY].layers[0].visible = 1
 			"pixels":
-				bad.project.documents[DOCUMENT_KEY].original_pixels = "legacy-pixels"
+				bad.project.documents[DOCUMENT_KEY].original_pixels = "invalid-pixels"
 			"spacing":
 				bad.project.stamps[0].spacing = 0
 			"checkpoint":

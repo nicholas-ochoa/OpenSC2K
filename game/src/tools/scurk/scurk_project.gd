@@ -4,9 +4,7 @@ extends RefCounted
 const Mif = preload("res://src/assets/scurk_mif.gd")
 const Archive = preload("res://src/tools/scurk/scurk_project_archive.gd")
 const Limits = preload("res://src/tools/scurk/scurk_project_limits.gd")
-const MAGIC := "SCURK-PROJECT\n"
 const VERSION := Archive.VERSION
-const LEGACY_VERSION := 1
 const EXTENSION := "scurk"
 const MAX_FILE_BYTES := Limits.MAX_FILE_BYTES
 const MAX_DATA_BYTES := Limits.MAX_DATA_BYTES
@@ -18,7 +16,8 @@ const MAX_CHECKPOINTS := Limits.MAX_CHECKPOINTS
 const MAX_WIDTH := Limits.MAX_WIDTH
 const MAX_HEIGHT := Limits.MAX_HEIGHT
 const MAX_RESOURCES := Limits.MAX_RESOURCES
-static var _base64_pattern := RegEx.create_from_string("^[A-Za-z0-9+/]*={0,2}$")
+const STATE_FIELDS := ["current_mif", "documents", "metadata", "resources", "stamps"]
+const PROJECT_FIELDS := STATE_FIELDS + ["original_mif", "revision", "checkpoints"]
 
 class Result extends RefCounted:
 	var ok := false
@@ -42,8 +41,6 @@ var stamps: Array[Dictionary] = []
 var checkpoints: Array[Dictionary] = []
 var extra_fields: Dictionary = {}
 var revision := 0
-var parse_error := ""
-var _decoded_bytes := 0
 
 
 func initialize(mif_bytes: PackedByteArray) -> Result:
@@ -269,17 +266,9 @@ func restore_checkpoint(index: int) -> bool:
 
 
 func restore_snapshot(state: Dictionary) -> bool:
-	if not _valid_state(state):
+	if not _valid_state(state) or _state_data_size(state) > MAX_DATA_BYTES:
 		return false
-	var validator := ScurkProject.new()
-	var encoded := _encode_snapshot(state)
-	if not validator._decode_snapshot(encoded):
-		return false
-	current_mif = validator.current_mif
-	documents = validator.documents
-	metadata = validator.metadata
-	resources = validator.resources
-	stamps = validator.stamps
+	_replace_state(state)
 	revision += 1
 	return true
 
@@ -312,97 +301,51 @@ func to_bytes() -> Result:
 static func from_dictionary(record: Dictionary, rgb := PackedByteArray()) -> Result:
 	if not rgb.is_empty() and rgb.size() != Sc2Palette.RGB_BYTES:
 		return Result.failure("The project palette is invalid.")
+	if not _integer_in(record.get("revision"), 0, 9007199254740991):
+		return Result.failure("The project revision is invalid.")
 	if not record.get("original_mif") is PackedByteArray or not _valid_mif(record.original_mif):
 		return Result.failure("The original project tile set is invalid.")
-	if not _valid_state(record):
+	if not _valid_state(record, 0, true):
 		return Result.failure("The project data is invalid.")
 	var history: Variant = record.get("checkpoints", [])
 	if not history is Array or history.size() > MAX_CHECKPOINTS:
 		return Result.failure("The project history is invalid.")
-	# Reuse the strict version-1 value validator for both storage formats.
-	# This conversion stays in memory; snapshots never open an archive or a file.
-	var legacy := _encode_snapshot(record)
-	legacy.version = LEGACY_VERSION
-	legacy.original_mif = _encode_blob(record.original_mif)
-	legacy.checkpoints = []
+	var data_size: int = record.original_mif.size() + _state_data_size(record)
+	if data_size > MAX_DATA_BYTES:
+		return Result.failure("The project exceeds the resource size limit.")
 	for value: Variant in history:
-		if not value is Dictionary or not value.get("snapshot") is Dictionary or not _valid_state(value.snapshot):
+		if not value is Dictionary or not _valid_name(value.get("name", "")) or not _json_fields(value, ["snapshot"], 2):
 			return Result.failure("The project checkpoint is invalid.")
-		var entry: Dictionary = value.duplicate(true)
-		entry.snapshot = _encode_snapshot(value.snapshot)
-		legacy.checkpoints.append(entry)
-	var result := _from_legacy_record(legacy)
-	if result.ok:
-		result.project.palette_rgb = rgb.duplicate()
-	return result
+		if not value.get("created", "") is String or not _integer_in(value.get("revision"), 0, 9007199254740991):
+			return Result.failure("The project checkpoint metadata is invalid.")
+		if not value.get("snapshot") is Dictionary or not _valid_state(value.snapshot, 3):
+			return Result.failure("The project checkpoint data is invalid.")
+		data_size += _state_data_size(value.snapshot)
+		if data_size > MAX_DATA_BYTES:
+			return Result.failure("The project exceeds the resource size limit.")
+
+	var project := ScurkProject.new()
+	project.palette_rgb = rgb.duplicate()
+	project.original_mif = record.original_mif.duplicate()
+	project._replace_state(record)
+	for value: Dictionary in history:
+		var entry := value.duplicate(true)
+		entry.snapshot = _copy_state(value.snapshot)
+		project.checkpoints.append(entry)
+	project.revision = int(record.revision)
+	project.extra_fields = record.duplicate(true)
+	for key: String in PROJECT_FIELDS:
+		project.extra_fields.erase(key)
+	return project._success()
 
 
 static func from_bytes(bytes: PackedByteArray) -> Result:
 	if bytes.size() > MAX_FILE_BYTES:
 		return Result.failure("The project exceeds the file size limit.")
-	var header := MAGIC.to_utf8_buffer()
-	if bytes.size() >= header.size() and bytes.slice(0, header.size()) == header:
-		return _from_legacy_bytes(bytes)
 	var decoded := Archive.decode(bytes)
 	if not decoded.ok:
 		return Result.failure(decoded.error)
 	return from_dictionary(decoded.record, decoded.palette_rgb)
-
-
-static func _from_legacy_bytes(bytes: PackedByteArray) -> Result:
-	var header := MAGIC.to_utf8_buffer()
-	if bytes.size() > MAX_FILE_BYTES or bytes.size() <= header.size():
-		return Result.failure("The project file size is invalid.")
-	if bytes.slice(0, header.size()) != header:
-		return Result.failure("The file is not a SCURK project.")
-	var parser := JSON.new()
-	if parser.parse(bytes.slice(header.size()).get_string_from_utf8()) != OK:
-		return Result.failure("The project JSON is invalid.")
-	if not parser.data is Dictionary:
-		return Result.failure("The project record is invalid.")
-	var record: Dictionary = parser.data
-	return _from_legacy_record(record)
-
-
-static func _from_legacy_record(record: Dictionary) -> Result:
-	if not _json_safe(record):
-		return Result.failure("The project record contains invalid JSON values.")
-	if not _integer_in(record.get("version"), LEGACY_VERSION, LEGACY_VERSION):
-		return Result.failure("The project version is not supported.")
-	if not _integer_in(record.get("revision"), 0, 9007199254740991):
-		return Result.failure("The project revision is invalid.")
-
-	var project := ScurkProject.new()
-	project.original_mif = project._decode_blob(record.get("original_mif"), MAX_MIF_BYTES)
-	if not project.parse_error.is_empty() or not _valid_mif(project.original_mif):
-		return Result.failure("The original project tile set is invalid.")
-	if not project._decode_snapshot(record):
-		return Result.failure(project.parse_error)
-	var history: Variant = record.get("checkpoints", [])
-	if not history is Array or history.size() > MAX_CHECKPOINTS:
-		return Result.failure("The project history is invalid.")
-	for value: Variant in history:
-		if not value is Dictionary or not _valid_name(value.get("name", "")):
-			return Result.failure("The project checkpoint is invalid.")
-		if not value.get("created", "") is String or not _integer_in(value.get("revision"), 0, 9007199254740991):
-			return Result.failure("The project checkpoint metadata is invalid.")
-		if not value.get("snapshot") is Dictionary:
-			return Result.failure("The project checkpoint data is invalid.")
-		var historical := ScurkProject.new()
-		historical._decoded_bytes = project._decoded_bytes
-		if not historical._decode_snapshot(value.snapshot):
-			return Result.failure(historical.parse_error)
-		project._decoded_bytes = historical._decoded_bytes
-		var entry: Dictionary = value.duplicate(true)
-		entry.snapshot = historical.snapshot()
-		project.checkpoints.append(entry)
-	project.revision = int(record.revision)
-	project.extra_fields = record.duplicate(true)
-	for key in ["version", "original_mif", "current_mif", "revision", "documents", "metadata", "resources", "stamps", "checkpoints"]:
-		project.extra_fields.erase(key)
-	var result := project._success()
-	result.project = project
-	return result
 
 
 static func load_path(path: String) -> Result:
@@ -448,168 +391,57 @@ static func recover_path(path: String) -> Result:
 	return load_path(path)
 
 
-func _decode_snapshot(record: Dictionary) -> bool:
-	current_mif = _decode_blob(record.get("current_mif"), MAX_MIF_BYTES)
-	if not parse_error.is_empty() or not _valid_mif(current_mif):
-		return _fail("The current project tile set is invalid.")
-	var source_documents: Variant = record.get("documents", {})
-	if not source_documents is Dictionary or source_documents.size() > MAX_DOCUMENTS:
-		return _fail("The project documents are invalid.")
-	for key: Variant in source_documents:
-		if not key is String or key.is_empty() or key.length() > 128:
-			return _fail("The project document key is invalid.")
-		var document := _decode_document(source_documents[key])
-		if document.is_empty():
-			return false
-		documents[key] = document
-	var source_metadata: Variant = record.get("metadata", {})
-	if not source_metadata is Dictionary or not _json_safe(source_metadata):
-		return _fail("The project metadata is invalid.")
-	metadata = source_metadata.duplicate(true)
-	var source_resources: Variant = record.get("resources", {})
-	if not source_resources is Dictionary or source_resources.size() > MAX_RESOURCES:
-		return _fail("The project resources are invalid.")
-	for key: Variant in source_resources:
-		if not key is String or key.is_empty() or key.length() > 256:
-			return _fail("The project resource name is invalid.")
-		resources[key] = _decode_blob(source_resources[key], MAX_MIF_BYTES)
-		if not parse_error.is_empty():
-			return false
-	var source_stamps: Variant = record.get("stamps", [])
-	if not source_stamps is Array or source_stamps.size() > MAX_STAMPS:
-		return _fail("The project stamps are invalid.")
-	for value: Variant in source_stamps:
-		if not value is Dictionary or not _valid_name(value.get("name", "")):
-			return _fail("The project stamp is invalid.")
-		if not _valid_dimensions(value.get("width"), value.get("height")) or not _integer_in(value.get("spacing"), 1, 256):
-			return _fail("The project stamp size is invalid.")
-		var stamp: Dictionary = value.duplicate(true)
-		stamp.pixels = _decode_pixels(value.get("pixels"), int(value.width), int(value.height))
-		if not parse_error.is_empty():
-			return false
-		stamp.width = int(value.width)
-		stamp.height = int(value.height)
-		stamp.spacing = int(value.spacing)
-		stamps.append(stamp)
-	return true
+func _replace_state(state: Dictionary) -> void:
+	var copied := _copy_state(state)
+	var copied_stamps: Array[Dictionary] = []
+	copied_stamps.assign(copied.stamps)
+	current_mif = copied.current_mif
+	documents = copied.documents
+	metadata = copied.metadata
+	resources = copied.resources
+	stamps = copied_stamps
 
 
-func _decode_document(value: Variant) -> Dictionary:
-	if not value is Dictionary or not _valid_dimensions(value.get("width"), value.get("height")):
-		_fail("The project document size is invalid.")
-		return {}
-	var source_layers: Variant = value.get("layers")
-	if not source_layers is Array or source_layers.is_empty() or source_layers.size() > MAX_LAYERS:
-		_fail("The project layers are invalid.")
-		return {}
-	if not _integer_in(value.get("active"), 0, source_layers.size() - 1):
-		_fail("The active project layer is invalid.")
-		return {}
-	var document: Dictionary = value.duplicate(true)
-	document.width = int(value.width)
-	document.height = int(value.height)
-	document.active = int(value.active)
-	document.original_pixels = _decode_pixels(value.get("original_pixels"), document.width, document.height)
-	document.layers = []
-	for source: Variant in source_layers:
-		if not source is Dictionary or not _valid_name(source.get("name", "")):
-			_fail("The project layer name is invalid.")
-			return {}
-		if not source.get("visible") is bool or not source.get("locked") is bool:
-			_fail("The project layer state is invalid.")
-			return {}
-		var layer: Dictionary = source.duplicate(true)
-		layer.pixels = _decode_pixels(source.get("pixels"), document.width, document.height)
-		document.layers.append(layer)
-	if not parse_error.is_empty():
-		return {}
-	return document
+# Validate first. Copy buffers without serialization and normalize JSON integer fields.
+static func _copy_state(state: Dictionary) -> Dictionary:
+	var copied := {
+		"current_mif": state.current_mif.duplicate(),
+		"documents": state.get("documents", {}).duplicate(true),
+		"metadata": state.get("metadata", {}).duplicate(true),
+		"resources": state.get("resources", {}).duplicate(true),
+		"stamps": state.get("stamps", []).duplicate(true),
+	}
+	for document: Dictionary in copied.documents.values():
+		document.width = int(document.width)
+		document.height = int(document.height)
+		document.active = int(document.active)
+	for stamp: Dictionary in copied.stamps:
+		stamp.width = int(stamp.width)
+		stamp.height = int(stamp.height)
+		stamp.spacing = int(stamp.spacing)
+	return copied
 
 
-func _decode_pixels(value: Variant, width: int, height: int) -> PackedInt32Array:
-	var bytes := _decode_blob(value, width * height * 2)
-	var pixels := PackedInt32Array()
-	if not parse_error.is_empty():
-		return pixels
-	if bytes.size() != width * height * 2:
-		_fail("The project pixel count is invalid.")
-		return pixels
-	pixels.resize(width * height)
-	for index in pixels.size():
-		var color := bytes.decode_s16(index * 2)
-		if color < -1 or color > 255:
-			_fail("The project palette index is invalid.")
-			return PackedInt32Array()
-		pixels[index] = color
-	return pixels
+# Pixels count as signed 16-bit values in the logical budget, independent of PNG size.
+static func _state_data_size(state: Dictionary) -> int:
+	var size: int = state.current_mif.size()
+	for document: Dictionary in state.get("documents", {}).values():
+		size += document.original_pixels.size() * 2
+		for layer: Dictionary in document.layers:
+			size += layer.pixels.size() * 2
+	for bytes: PackedByteArray in state.get("resources", {}).values():
+		size += bytes.size()
+	for stamp: Dictionary in state.get("stamps", []):
+		size += stamp.pixels.size() * 2
+	return size
 
 
-func _decode_blob(value: Variant, limit: int) -> PackedByteArray:
-	if not value is String or value.length() > limit * 2 + 4:
-		_fail("The project resource size is invalid.")
-		return PackedByteArray()
-	if value.is_empty():
-		return PackedByteArray()
-	if value.length() % 4 != 0 or _base64_pattern.search(value) == null:
-		_fail("The project resource encoding is invalid.")
-		return PackedByteArray()
-	var bytes := Marshalls.base64_to_raw(value)
-	if bytes.is_empty() or bytes.size() > limit or _encode_blob(bytes) != value:
-		_fail("The project resource encoding is invalid.")
-		return PackedByteArray()
-	_decoded_bytes += bytes.size()
-	if _decoded_bytes > MAX_DATA_BYTES:
-		_fail("The project exceeds the resource size limit.")
-		return PackedByteArray()
-	return bytes
-
-
-static func _encode_snapshot(state: Dictionary) -> Dictionary:
-	var record := state.duplicate(true)
-	record.current_mif = _encode_blob(state.get("current_mif", PackedByteArray()))
-	var source_documents: Dictionary = state.get("documents", {})
-	var encoded_documents: Dictionary = {}
-	for key: String in source_documents:
-		var document: Dictionary = source_documents[key].duplicate(true)
-		document.original_pixels = _encode_pixels(document.original_pixels)
-		var layers: Array = []
-		for source: Dictionary in document.layers:
-			var layer := source.duplicate(true)
-			layer.pixels = _encode_pixels(source.pixels)
-			layers.append(layer)
-		document.layers = layers
-		encoded_documents[key] = document
-	record.documents = encoded_documents
-	var encoded_resources: Dictionary = {}
-	var source_resources: Dictionary = state.get("resources", {})
-	for key: String in source_resources:
-		encoded_resources[key] = _encode_blob(source_resources[key])
-	record.resources = encoded_resources
-	var encoded_stamps: Array = []
-	for source: Dictionary in state.get("stamps", []):
-		var stamp := source.duplicate(true)
-		stamp.pixels = _encode_pixels(source.pixels)
-		encoded_stamps.append(stamp)
-	record.stamps = encoded_stamps
-	return record
-
-
-static func _encode_pixels(pixels: PackedInt32Array) -> String:
-	var bytes := PackedByteArray()
-	bytes.resize(pixels.size() * 2)
-	for index in pixels.size():
-		bytes.encode_s16(index * 2, pixels[index])
-	return _encode_blob(bytes)
-
-
-static func _encode_blob(bytes: PackedByteArray) -> String:
-	return "" if bytes.is_empty() else Marshalls.raw_to_base64(bytes)
-
-
-static func _valid_state(state: Dictionary) -> bool:
+static func _valid_state(state: Dictionary, depth := 0, project_record := false) -> bool:
+	if not _json_fields(state, PROJECT_FIELDS if project_record else STATE_FIELDS, depth):
+		return false
 	if not state.get("current_mif") is PackedByteArray or not _valid_mif(state.current_mif):
 		return false
-	if not state.get("metadata", {}) is Dictionary or not _json_safe(state.get("metadata", {})):
+	if not state.get("metadata", {}) is Dictionary or not _json_safe(state.get("metadata", {}), depth + 1):
 		return false
 	var document_map: Variant = state.get("documents", {})
 	if not document_map is Dictionary or document_map.size() > MAX_DOCUMENTS:
@@ -620,6 +452,8 @@ static func _valid_state(state: Dictionary) -> bool:
 		var document: Variant = document_map[key]
 		if not document is Dictionary or not _valid_dimensions(document.get("width"), document.get("height")):
 			return false
+		if not _json_fields(document, ["original_pixels", "layers"], depth + 2):
+			return false
 		if not document.get("original_pixels") is PackedInt32Array or not _valid_pixels(document.original_pixels, document.width, document.height):
 			return false
 		var layers: Variant = document.get("layers")
@@ -629,6 +463,8 @@ static func _valid_state(state: Dictionary) -> bool:
 			return false
 		for layer: Variant in layers:
 			if not layer is Dictionary or not _valid_name(layer.get("name", "")):
+				return false
+			if not _json_fields(layer, ["pixels"], depth + 4):
 				return false
 			if not layer.get("visible") is bool or not layer.get("locked") is bool:
 				return false
@@ -647,6 +483,8 @@ static func _valid_state(state: Dictionary) -> bool:
 		return false
 	for stamp: Variant in stamp_list:
 		if not stamp is Dictionary or not _valid_name(stamp.get("name", "")):
+			return false
+		if not _json_fields(stamp, ["pixels"], depth + 2):
 			return false
 		if not _valid_dimensions(stamp.get("width"), stamp.get("height")) or not _integer_in(stamp.get("spacing"), 1, 256):
 			return false
@@ -678,6 +516,17 @@ static func _valid_name(value: Variant) -> bool:
 
 static func _valid_mif(bytes: PackedByteArray) -> bool:
 	return not bytes.is_empty() and bytes.size() <= MAX_MIF_BYTES and Mif.new().parse(bytes)
+
+
+static func _json_fields(record: Dictionary, handled_fields: Array, depth: int) -> bool:
+	if depth > 32:
+		return false
+	for key: Variant in record:
+		if not (key is String or key is StringName):
+			return false
+		if key not in handled_fields and not _json_safe(record[key], depth + 1):
+			return false
+	return true
 
 
 static func _json_safe(value: Variant, depth := 0) -> bool:
@@ -722,11 +571,6 @@ func _set_layer_flag(key: String, index: int, flag: String, value: bool) -> bool
 		documents[key].layers[index][flag] = value
 		revision += 1
 	return true
-
-
-func _fail(message: String) -> bool:
-	parse_error = message
-	return false
 
 
 func _success() -> Result:

@@ -1,9 +1,6 @@
 extends SceneTree
 
 const Project = preload("res://src/tools/scurk/scurk_project.gd")
-# Independent version-one bytes: an empty MIF and signed 16-bit pixel vectors.
-const LEGACY_MAGIC := "SCURK-PROJECT\n"
-const LEGACY_MIF := "TUlGRgAAAIhTQzJLSU5GTwAAAHIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABUSUxFAAAAAgAA"
 
 
 func _initialize() -> void:
@@ -90,7 +87,10 @@ func _run() -> void:
 	assert(project.active_pixels("1:0") != decoded.project.active_pixels("1:0"))
 	_test_composition(original)
 	_test_limits(original)
-	_test_invalid(legacy_bytes())
+	_test_dictionary(project)
+	_test_invalid(project.to_dictionary())
+	_test_model_boundaries(original)
+	_test_restore_failure(project)
 	_test_storage(project, encoded.bytes)
 	print("PASS: SCURK project layers, stamps, history, metadata, round trip, invalid data and recovery")
 	quit()
@@ -173,54 +173,243 @@ func _test_limits(original: PackedByteArray) -> void:
 	assert(not project.to_bytes().ok)
 
 
-func _test_invalid(valid: PackedByteArray) -> void:
-	assert(Project.from_bytes(valid).ok, "The independent version-one fixture remains readable")
+func _test_dictionary(project: ScurkProject) -> void:
+	var source := project.to_dictionary()
+	var expected := source.duplicate(true)
+	var palette := Sc2Palette.index_encoding().to_rgb_bytes()
+	var expected_palette := palette.duplicate()
+	var decoded := Project.from_dictionary(source, palette)
+	assert(decoded.ok, decoded.error)
+	assert(decoded.project.to_dictionary() == expected)
+	assert(decoded.project.palette_rgb == expected_palette)
+	_mutate_record(source)
+	palette[0] = 255
+	assert(decoded.project.to_dictionary() == expected, "Loading must own its dictionaries and packed arrays")
+	assert(decoded.project.palette_rgb == expected_palette)
+	var exported := decoded.project.to_dictionary()
+	_mutate_record(exported)
+	assert(decoded.project.to_dictionary() == expected, "Exporting must not expose mutable model state")
+	assert(project.to_dictionary() == expected)
+
+
+func _mutate_record(record: Dictionary) -> void:
+	record.original_mif[0] = 0
+	record.current_mif[0] = 0
+	record.documents["1:0"].original_pixels[0] = 9
+	record.documents["1:0"].layers[0].pixels[0] = 9
+	record.documents["1:0"].custom[0] = "changed"
+	record.documents["1:0"].layers[0].custom.keep = false
+	record.metadata.custom.items[2] = "changed"
+	record.resources["reference.bin"][0] = 9
+	record.stamps[0].pixels[0] = 9
+	record.checkpoints[0].snapshot.documents["1:0"].layers[0].pixels[0] = 9
+	record.checkpoints[0].snapshot.current_mif[0] = 0
+	record.extra_field = "changed"
+	record.future_extension.tag = "changed"
+
+
+func _test_invalid(source: Dictionary) -> void:
+	assert(Project.from_dictionary(source).ok)
 	assert(not Project.from_bytes(PackedByteArray([0])).ok)
-	assert(not Project.from_bytes(LEGACY_MAGIC.to_utf8_buffer() + "[]".to_utf8_buffer()).ok)
-	assert(not Project.from_bytes(LEGACY_MAGIC.to_utf8_buffer() + "{".to_utf8_buffer()).ok)
-	var source: Dictionary = JSON.parse_string(valid.slice(LEGACY_MAGIC.length()).get_string_from_utf8())
-	for version: Variant in [0, 2, 1.5, "1", null]:
-		var bad := source.duplicate(true)
-		bad.version = version
-		assert(not Project.from_bytes(_record_bytes(bad)).ok)
 	for dimensions in [Vector2(-1, 2), Vector2(0, 2), Vector2(129, 2), Vector2(2, 257), Vector2(1.5, 2)]:
 		var bad := source.duplicate(true)
 		bad.documents["1:0"].width = dimensions.x
 		bad.documents["1:0"].height = dimensions.y
-		assert(not Project.from_bytes(_record_bytes(bad)).ok)
+		_reject_record(bad)
 	for index in [-2, 256, 32767]:
 		var bad := source.duplicate(true)
-		var bytes := Marshalls.base64_to_raw(bad.documents["1:0"].layers[0].pixels)
-		bytes.encode_s16(0, index)
-		bad.documents["1:0"].layers[0].pixels = Marshalls.raw_to_base64(bytes)
-		assert(not Project.from_bytes(_record_bytes(bad)).ok)
+		bad.documents["1:0"].layers[0].pixels[0] = index
+		_reject_record(bad)
+	for pixels: Variant in [PackedInt32Array([0]), PackedByteArray([0, 1, 2, 3]), [0, 1, 2, 3], "pixels"]:
+		var bad := source.duplicate(true)
+		bad.documents["1:0"].layers[0].pixels = pixels
+		_reject_record(bad)
+	for revision: Variant in [-1, 1.5, "1", null]:
+		var bad := source.duplicate(true)
+		bad.revision = revision
+		_reject_record(bad)
+	for flag: String in ["visible", "locked"]:
+		var bad := source.duplicate(true)
+		bad.documents["1:0"].layers[0][flag] = 1
+		_reject_record(bad)
 	var bad := source.duplicate(true)
-	bad.documents["1:0"].layers[0].pixels = "AA=="
-	assert(not Project.from_bytes(_record_bytes(bad)).ok)
-	bad = source.duplicate(true)
-	bad.documents["1:0"].layers[0].visible = 1
-	assert(not Project.from_bytes(_record_bytes(bad)).ok)
+	bad.documents["1:0"].original_pixels = PackedInt32Array([0])
+	_reject_record(bad)
 	bad = source.duplicate(true)
 	bad.documents["1:0"].active = 3
-	assert(not Project.from_bytes(_record_bytes(bad)).ok)
+	_reject_record(bad)
 	bad = source.duplicate(true)
 	bad.documents["1:0"].layers = []
-	assert(not Project.from_bytes(_record_bytes(bad)).ok)
-	bad = source.duplicate(true)
-	bad.current_mif = ""
-	assert(not Project.from_bytes(_record_bytes(bad)).ok)
-	bad = source.duplicate(true)
-	bad.original_mif = "AQID"
-	assert(not Project.from_bytes(_record_bytes(bad)).ok)
+	_reject_record(bad)
+	for field: String in ["current_mif", "original_mif"]:
+		for bytes: Variant in [PackedByteArray(), PackedByteArray([1, 2, 3]), [1, 2, 3], "MIF"]:
+			bad = source.duplicate(true)
+			bad[field] = bytes
+			_reject_record(bad)
 	bad = source.duplicate(true)
 	bad.stamps[0].spacing = 0
-	assert(not Project.from_bytes(_record_bytes(bad)).ok)
+	_reject_record(bad)
+	bad = source.duplicate(true)
+	bad.stamps[0].pixels = PackedInt32Array([0])
+	_reject_record(bad)
 	bad = source.duplicate(true)
 	bad.checkpoints[0].snapshot.documents["1:0"].width = 0
-	assert(not Project.from_bytes(_record_bytes(bad)).ok)
+	_reject_record(bad)
 	bad = source.duplicate(true)
-	bad.resources["reference.bin"] = "invalid!"
-	assert(not Project.from_bytes(_record_bytes(bad)).ok)
+	bad.checkpoints[0].revision = -1
+	_reject_record(bad)
+	bad = source.duplicate(true)
+	bad.checkpoints[0].created = 1
+	_reject_record(bad)
+	for resource: Variant in ["invalid", [0, 1], PackedInt32Array([0, 1])]:
+		bad = source.duplicate(true)
+		bad.resources["reference.bin"] = resource
+		_reject_record(bad)
+	for owner: String in ["project", "metadata", "document", "layer", "stamp", "checkpoint"]:
+		bad = source.duplicate(true)
+		match owner:
+			"project":
+				bad.invalid = Vector2.ONE
+			"metadata":
+				bad.metadata.invalid = Vector2.ONE
+			"document":
+				bad.documents["1:0"].invalid = Vector2.ONE
+			"layer":
+				bad.documents["1:0"].layers[0].invalid = Vector2.ONE
+			"stamp":
+				bad.stamps[0].invalid = Vector2.ONE
+			"checkpoint":
+				bad.checkpoints[0].invalid = Vector2.ONE
+		_reject_record(bad)
+	for size in [1, Sc2Palette.RGB_BYTES - 1, Sc2Palette.RGB_BYTES + 1]:
+		var palette := PackedByteArray()
+		palette.resize(size)
+		assert(not Project.from_dictionary(source, palette).ok)
+
+
+func _small_record(original: PackedByteArray) -> Dictionary:
+	var project := Project.new()
+	assert(project.initialize(original).ok)
+	assert(project.ensure_document("1:0", PackedInt32Array([0]), 1, 1))
+	assert(project.add_stamp("Dot", 1, 1, PackedInt32Array([-1])) == 0)
+	assert(project.add_checkpoint("Before") == 0)
+	return project.to_dictionary()
+
+
+func _test_model_boundaries(original: PackedByteArray) -> void:
+	var source := _small_record(original)
+	var full := source.duplicate(true)
+	for index in range(1, Project.MAX_DOCUMENTS):
+		full.documents[str(index)] = source.documents["1:0"]
+	for index in Project.MAX_RESOURCES:
+		full.resources[str(index)] = PackedByteArray()
+	full.stamps.resize(Project.MAX_STAMPS)
+	full.stamps.fill(source.stamps[0])
+	full.checkpoints.resize(Project.MAX_CHECKPOINTS)
+	full.checkpoints.fill(source.checkpoints[0])
+	assert(Project.from_dictionary(full).ok)
+	for field: String in ["documents", "resources", "stamps", "checkpoints"]:
+		var bad := full.duplicate(true)
+		match field:
+			"documents":
+				bad.documents.extra = source.documents["1:0"]
+			"resources":
+				bad.resources.extra = PackedByteArray()
+			"stamps":
+				bad.stamps.append(source.stamps[0])
+			"checkpoints":
+				bad.checkpoints.append(source.checkpoints[0])
+		_reject_record(bad)
+	for field: String in ["documents", "resources"]:
+		var key_limit := 128 if field == "documents" else 256
+		var value: Variant = source.documents["1:0"] if field == "documents" else PackedByteArray()
+		var valid := source.duplicate(true)
+		valid[field]["a".repeat(key_limit)] = value
+		assert(Project.from_dictionary(valid).ok)
+		for key: Variant in ["", "a".repeat(key_limit + 1), 1]:
+			var bad := source.duplicate(true)
+			bad[field][key] = value
+			_reject_record(bad)
+	for owner: String in ["layer", "stamp", "checkpoint"]:
+		for name: String in ["a".repeat(256), "a".repeat(257), " "]:
+			var record := source.duplicate(true)
+			match owner:
+				"layer":
+					record.documents["1:0"].layers[0].name = name
+				"stamp":
+					record.stamps[0].name = name
+				"checkpoint":
+					record.checkpoints[0].name = name
+			assert(Project.from_dictionary(record).ok == (name.length() == 256))
+	for value: Variant in [NAN, INF, {0: "invalid key"}]:
+		var bad := source.duplicate(true)
+		bad.custom = value
+		_reject_record(bad)
+	for owner: String in ["project", "checkpoint"]:
+		var nesting := 31 if owner == "project" else 29
+		var record := source.duplicate(true)
+		var target: Dictionary = record if owner == "project" else record.checkpoints[0]
+		target.custom = _nested_json(nesting)
+		assert(Project.from_dictionary(record).ok)
+		target.custom = _nested_json(nesting + 1)
+		_reject_record(record)
+	_test_data_budget(source)
+
+
+func _nested_json(levels: int) -> Variant:
+	var value: Variant = true
+	for level in levels:
+		value = [value]
+	return value
+
+
+func _test_data_budget(source: Dictionary) -> void:
+	# One original MIF, two snapshot MIFs and six signed 16-bit pixel values.
+	var overhead: int = source.original_mif.size() * 3 + 6 * 2
+	var block := PackedByteArray()
+	block.resize(Project.MAX_MIF_BYTES)
+	var tail := PackedByteArray()
+	tail.resize(Project.MAX_DATA_BYTES - Project.MAX_MIF_BYTES * 3 - overhead)
+	var record := source.duplicate(true)
+	record.resources = {"first": block, "second": block}
+	record.checkpoints[0].snapshot.resources = {"third": block, "tail": tail}
+	assert(Project.from_dictionary(record).ok, "The aggregate logical byte limit is inclusive")
+	tail.append(0)
+	record.checkpoints[0].snapshot.resources.tail = tail
+	var current := Project.new()
+	assert(current.restore_snapshot({"current_mif": record.current_mif, "documents": record.documents,
+		"metadata": record.metadata, "resources": record.resources, "stamps": record.stamps}),
+		"The current snapshot alone is below the limit")
+	var historical := Project.new()
+	assert(historical.restore_snapshot(record.checkpoints[0].snapshot), "The checkpoint alone is below the limit")
+	_reject_record(record)
+
+
+func _test_restore_failure(project: ScurkProject) -> void:
+	var restored := Project.from_dictionary(project.to_dictionary(), Sc2Palette.index_encoding().to_rgb_bytes())
+	assert(restored.ok)
+	var target: ScurkProject = restored.project
+	var before := target.to_dictionary()
+	var palette := target.palette_rgb.duplicate()
+	for field: String in ["resource", "stamp", "unknown"]:
+		var state := target.snapshot()
+		state.metadata.author = "Must not be published"
+		state.documents["1:0"].layers[0].pixels[0] = 99
+		match field:
+			"resource":
+				state.resources.invalid = "not bytes"
+			"stamp":
+				state.stamps[0].spacing = 0
+			"unknown":
+				state.stamps[0].invalid = Vector2.ONE
+		assert(not target.restore_snapshot(state))
+		assert(target.to_dictionary() == before and target.palette_rgb == palette,
+			"Rejected snapshots keep all document, history, metadata, palette and revision state")
+
+
+func _reject_record(record: Dictionary) -> void:
+	var result := Project.from_dictionary(record)
+	assert(not result.ok and not result.error.is_empty() and result.project == null)
 
 
 func _test_storage(project: ScurkProject, original: PackedByteArray) -> void:
@@ -263,31 +452,5 @@ func _test_storage(project: ScurkProject, original: PackedByteArray) -> void:
 	assert(not Project.load_path(path).ok)
 
 
-func _record_bytes(record: Dictionary) -> PackedByteArray:
-	return LEGACY_MAGIC.to_utf8_buffer() + JSON.stringify(record).to_utf8_buffer()
-
-
-static func legacy_bytes() -> PackedByteArray:
-	# Keep this fixture independent of the current project writer and binary helpers.
-	var state := {"current_mif": LEGACY_MIF,
-		"documents": {"1:0": {"width": 2, "height": 2, "active": 1,
-			"original_pixels": "AAABAP///wA=", "custom": ["document"],
-			"layers": [{"name": "Root", "visible": true, "locked": true,
-				"pixels": "AAABAP///wA=", "custom": {"layer": 1}},
-				{"name": "Details", "visible": false, "locked": false, "pixels": "//8qAAUA//8="}]}},
-		"metadata": {"author": "Legacy author", "palette": {"favorites": [171, 172], "ramp": [1, 42]},
-			"custom": {"enabled": true, "items": [null, 4, "roof"]}},
-		"resources": {"reference.bin": "AAH8/w=="},
-		"stamps": [{"name": "Window", "width": 2, "height": 1, "pixels": "/AD//w==", "spacing": 3,
-			"custom": "stamp"}]}
-	var record := state.duplicate(true)
-	record.merge({"version": 1, "original_mif": LEGACY_MIF, "revision": 7,
-		"format": "future project field", "palette": {"future": true},
-		"future_extension": {"tag": "preserve"},
-		"checkpoints": [{"name": "Before", "created": "2000-01-01T00:00:00", "revision": 6,
-			"snapshot": state, "custom": "checkpoint"}]})
-	return LEGACY_MAGIC.to_utf8_buffer() + JSON.stringify(record).to_utf8_buffer()
-
-
 func _same_state(left: Dictionary, right: Dictionary) -> bool:
-	return JSON.parse_string(JSON.stringify(Project._encode_snapshot(left))) == JSON.parse_string(JSON.stringify(Project._encode_snapshot(right)))
+	return JSON.parse_string(JSON.stringify(left)) == JSON.parse_string(JSON.stringify(right))

@@ -444,4 +444,4 @@ func _store_file(path: String, bytes: PackedByteArray) -> void:
 
 func _same_project_state(left: Dictionary, right: Dictionary) -> bool:
 	# JSON normalizes numeric and array types during a project load.
-	return JSON.parse_string(JSON.stringify(ScurkProject._encode_snapshot(left))) == JSON.parse_string(JSON.stringify(ScurkProject._encode_snapshot(right)))
+	return JSON.parse_string(JSON.stringify(left)) == JSON.parse_string(JSON.stringify(right))
