@@ -14,6 +14,7 @@ func _run() -> void:
 	_test_selection_drag(canvas)
 	_test_selection_drag_missing_mask(canvas)
 	_test_floating_paste(canvas)
+	_test_paste_drag_commit(canvas)
 	_test_paste_during_selection(canvas)
 	_test_clipboard_key_repeat(canvas)
 	_test_selection_edges(canvas)
@@ -88,8 +89,30 @@ func _test_navigation(canvas: ScurkPixelCanvas) -> void:
 	canvas.zoom_requested.connect(func(steps: int, point: Vector2): zooms.append([steps, point]))
 	canvas.pan_requested.connect(func(delta: Vector2): pans.append(delta))
 	canvas.palette_index_picked.connect(func(index: int, background: bool): picks.append([index, background]))
-	_mouse(canvas, Vector2i(2, 3), true, MOUSE_BUTTON_WHEEL_UP)
+	for button in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_LEFT, MOUSE_BUTTON_WHEEL_RIGHT]:
+		_mouse(canvas, Vector2i(2, 3), true, button)
+	assert(zooms.is_empty())
+	assert(pans == [Vector2(0, 48), Vector2(0, -48), Vector2(48, 0), Vector2(-48, 0)])
+	pans.clear()
+	_mouse(canvas, Vector2i(2, 3), true, MOUSE_BUTTON_WHEEL_UP, false, true)
 	assert(zooms == [[1, Vector2(10, 13)]])
+	var wheel := InputEventMouseButton.new()
+	wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
+	wheel.pressed = true
+	wheel.meta_pressed = true
+	canvas._gui_input(wheel)
+	assert(zooms.back()[0] == -1 and pans.is_empty())
+	var gesture := InputEventPanGesture.new()
+	gesture.delta = Vector2(0.5, -0.25)
+	canvas._gui_input(gesture)
+	assert(pans == [Vector2(-24, 12)])
+	pans.clear()
+	gesture.meta_pressed = true
+	gesture.delta = Vector2(0, -0.5)
+	canvas._gui_input(gesture)
+	assert(zooms.size() == 2)
+	canvas._gui_input(gesture)
+	assert(zooms.size() == 3 and zooms.back()[0] == 1 and pans.is_empty())
 	_mouse(canvas, Vector2i.ZERO, true, MOUSE_BUTTON_MIDDLE)
 	var motion := InputEventMouseMotion.new()
 	motion.relative = Vector2(20, -8)
@@ -277,6 +300,41 @@ func _test_selection_drag_missing_mask(canvas: ScurkPixelCanvas) -> void:
 	_mouse(canvas, Vector2i(3, 3), false)
 	assert(not canvas.paste_active and canvas.pixel_at(Vector2i.ONE) == -1)
 	assert(canvas.pixel_at(Vector2i(3, 3)) == 10 and canvas.selection.bounds() == Rect2i(3, 3, 1, 1))
+
+
+func _test_paste_drag_commit(canvas: ScurkPixelCanvas) -> void:
+	_reset(canvas, 7)
+	canvas.clipboard_width = 2
+	canvas.clipboard_height = 1
+	canvas.clipboard_pixels = PackedInt32Array([10, -1])
+	canvas.clipboard_mask.clear()
+	var before := canvas.pixels.duplicate()
+	var commits: Array[PackedInt32Array] = []
+	var record := func(value: PackedInt32Array) -> void: commits.append(value)
+	canvas.pixels_committed.connect(record)
+	canvas.begin_paste(Vector2i.ONE)
+	_mouse(canvas, Vector2i.ONE, true)
+	assert(canvas.paste_active and canvas.paste_dragging and canvas.pixels == before)
+	for point in [Vector2i(2, 2), Vector2i(3, 3), Vector2i(4, 4)]:
+		_motion(canvas, point)
+		assert(canvas.pixels == before and commits.is_empty())
+		assert(canvas.composite_pixels()[point.y * 8 + point.x] == 10)
+	_mouse(canvas, Vector2i(4, 4), false)
+	assert(not canvas.paste_active and commits.size() == 1)
+	assert(canvas.pixels[9] == 7 and canvas.pixels[18] == 7 and canvas.pixels[27] == 7)
+	assert(canvas.pixels[36] == 10 and canvas.pixels[37] == -1)
+	before = canvas.pixels.duplicate()
+	canvas.begin_paste(Vector2i.ONE)
+	_mouse(canvas, Vector2i.ONE, true)
+	_motion(canvas, Vector2i(2, 2))
+	_key(canvas, KEY_ESCAPE)
+	_mouse(canvas, Vector2i(2, 2), false)
+	assert(canvas.pixels == before and commits.size() == 1)
+	canvas.begin_paste(Vector2i.ONE)
+	_mouse(canvas, Vector2i.ONE, true)
+	canvas._notification(Node.NOTIFICATION_WM_WINDOW_FOCUS_OUT)
+	assert(not canvas.paste_active and canvas.pixels == before)
+	canvas.pixels_committed.disconnect(record)
 
 
 func _test_floating_paste(canvas: ScurkPixelCanvas) -> void:

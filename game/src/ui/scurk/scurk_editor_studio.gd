@@ -4,10 +4,10 @@ extends PanelContainer
 @warning_ignore_start("integer_division")
 
 const Workspace = preload("res://src/tools/scurk/scurk_drawing_workspace.gd")
-const LAYERS := "Margin/Tabs/Layers"
-const HISTORY := "Margin/Tabs/History"
-const META := "Margin/Tabs/Metadata"
-const STAMPS := "Margin/Tabs/Stamps"
+const LAYERS := "Margin/Column/Tabs/Layers"
+const HISTORY := "Margin/Column/Tabs/History"
+const META := "Margin/Column/Tabs/Metadata"
+const STAMPS := "Margin/Column/Tabs/Stamps"
 
 var tabs: TabContainer
 var editor: ScurkEditorControl
@@ -32,12 +32,14 @@ var imported_path := ""
 var import_clipped := 0
 var context_view := 0
 var updating_controls := false
+var pending_delete_key := ""
+var pending_delete_layer: Dictionary = {}
 
 
 func bind(value: ScurkEditorControl) -> void:
 	editor = value
 	AppUiTheme.bind_frosted_panel(self)
-	tabs = $Margin/Tabs
+	tabs = $Margin/Column/Tabs
 	tabs.tab_changed.connect(_tab_changed)
 	for dialog: FileDialog in [$OpenProject, $SaveProject, $RecoveryFiles]:
 		dialog.theme = AppUiTheme.file_dialog()
@@ -51,8 +53,11 @@ func bind(value: ScurkEditorControl) -> void:
 		get_node(LAYERS + "/Row/Actions/" + action).pressed.connect(_layer_action.bind(action))
 	get_node(LAYERS + "/State/Visible").toggled.connect(_layer_visible)
 	get_node(LAYERS + "/State/Locked").toggled.connect(_layer_locked)
-	get_node(HISTORY + "/Actions/Add").pressed.connect(_add_checkpoint)
-	get_node(HISTORY + "/Actions/Restore").pressed.connect(_restore_checkpoint)
+	get_node(HISTORY + "/Actions/Undo").pressed.connect(editor.undo)
+	get_node(HISTORY + "/Actions/Redo").pressed.connect(editor.redo)
+	get_node(HISTORY + "/List").item_selected.connect(_select_history)
+	$DeleteLayer.confirmed.connect(_confirm_delete_layer)
+	$DeleteLayer.canceled.connect(_cancel_delete_layer)
 	get_node(META + "/Apply").pressed.connect(_metadata_changed)
 	for action in ["Add", "Use", "Delete"]:
 		get_node(STAMPS + "/Actions/" + action).pressed.connect(_stamp_action.bind(action))
@@ -145,6 +150,7 @@ func bind_canvas() -> void:
 	canvas.set_sprite_data(int(document.width), int(document.height), project.active_pixels(current), editor.palette, keep)
 	canvas.layer_below_pixels = _composite_range(document, 0, int(document.active))
 	canvas.layer_above_pixels = _composite_range(document, int(document.active) + 1, document.layers.size())
+	get_node(LAYERS + "/Row/Actions/Delete").disabled = document.layers.size() <= 1
 	var active: Dictionary = document.layers[int(document.active)]
 	canvas.active_layer_visible = bool(active.visible)
 	canvas.editing_disabled = bool(active.locked) or not bool(active.visible)
@@ -388,12 +394,19 @@ func _select_layer(index: int) -> void:
 func _layer_action(action: String) -> void:
 	if not project.documents.has(key()):
 		return
-	editor.pixel_canvas.cancel_paste()
-	editor._capture_edit_start()
 	var index := int(project.documents[key()].active)
+	if action == "Delete":
+		if project.documents[key()].layers.size() <= 1:
+			return
+		pending_delete_key = key()
+		pending_delete_layer = project.documents[key()].layers[index]
+		$DeleteLayer.dialog_text = 'Delete layer "%s"?' % pending_delete_layer.name
+		$DeleteLayer.popup_centered()
+		return
+	editor.pixel_canvas.cancel_paste()
+	editor._capture_edit_start(action + " layer")
 	match action:
 		"Add": project.add_layer(key(), "Layer %d" % (project.documents[key()].layers.size() + 1))
-		"Delete": project.delete_layer(key(), index)
 		"Up": project.move_layer(key(), index, index + 1)
 		"Down": project.move_layer(key(), index, index - 1)
 		"Rename": project.rename_layer(key(), index, get_node(LAYERS + "/Name").text)
@@ -403,7 +416,7 @@ func _layer_action(action: String) -> void:
 func _layer_visible(enabled: bool) -> void:
 	if updating_controls:
 		return
-	editor._capture_edit_start()
+	editor._capture_edit_start("Layer visibility")
 	project.set_layer_visible(key(), int(project.documents[key()].active), enabled)
 	_flush_layers()
 
@@ -411,7 +424,7 @@ func _layer_visible(enabled: bool) -> void:
 func _layer_locked(enabled: bool) -> void:
 	if updating_controls:
 		return
-	editor._capture_edit_start()
+	editor._capture_edit_start("Layer lock")
 	project.set_layer_locked(key(), int(project.documents[key()].active), enabled)
 	_flush_layers()
 
@@ -423,49 +436,60 @@ func _flush_layers() -> void:
 	_refresh_layers()
 
 
-func _refresh_lists() -> void:
+func _confirm_delete_layer() -> void:
+	if key() == pending_delete_key and project.documents.has(pending_delete_key):
+		var layers: Array = project.documents[pending_delete_key].layers
+		for index in layers.size():
+			if is_same(layers[index], pending_delete_layer):
+				editor.pixel_canvas.cancel_paste()
+				editor._capture_edit_start("Delete layer")
+				if project.delete_layer(pending_delete_key, index):
+					_flush_layers()
+				break
+	_cancel_delete_layer()
+
+
+func _cancel_delete_layer() -> void:
+	pending_delete_key = ""
+	pending_delete_layer = {}
+
+
+func refresh_history() -> void:
 	var history := get_node(HISTORY + "/List") as ItemList
 	history.clear()
-	for checkpoint: Dictionary in project.checkpoints:
-		history.add_item(String(checkpoint.name))
+	history.add_item("Earlier state")
+	for action: ScurkEditorHistory.Record in editor.undo_stack:
+		history.add_item(action.description)
+	for index in range(editor.redo_stack.size() - 1, -1, -1):
+		history.add_item(editor.redo_stack[index].description)
+		history.set_item_custom_fg_color(history.item_count - 1, Color(0.5, 0.5, 0.5))
+	history.select(editor.undo_stack.size())
+	history.ensure_current_is_visible()
+	get_node(HISTORY + "/Actions/Undo").disabled = not editor.edit_history.can_undo()
+	get_node(HISTORY + "/Actions/Redo").disabled = not editor.edit_history.can_redo()
+
+
+func _select_history(index: int) -> void:
+	while editor.undo_stack.size() != index:
+		var previous := editor.undo_stack.size()
+		if previous > index:
+			editor.undo()
+		else:
+			editor.redo()
+		if editor.undo_stack.size() == previous:
+			break
+
+
+func _refresh_lists() -> void:
+	refresh_history()
 	var stamps := get_node(STAMPS + "/List") as ItemList
 	stamps.clear()
 	for stamp: Dictionary in project.stamps:
 		stamps.add_item("%s (%d x %d)" % [stamp.name, stamp.width, stamp.height])
 
 
-func _add_checkpoint() -> void:
-	var name := String(get_node(HISTORY + "/Name").text).strip_edges()
-	if name.is_empty():
-		name = "Checkpoint %d" % (project.checkpoints.size() + 1)
-	sync_editor_state()
-	project.set_current_mif(editor.tile_set.to_bytes().bytes)
-	if project.add_checkpoint(name) >= 0:
-		modified = true
-	_refresh_lists()
-	editor._update_title()
-
-
-func _restore_checkpoint() -> void:
-	var selected := (get_node(HISTORY + "/List") as ItemList).get_selected_items()
-	if selected.is_empty():
-		return
-	editor._capture_edit_start()
-	if project.restore_checkpoint(selected[0]):
-		editor.pixel_canvas.cancel_paste()
-		restore_editor_state()
-		loading = true
-		editor.palette_panel.import_state(palette_state())
-		loading = false
-		editor._replace_document_bytes(project.current_mif)
-		editor._record_edit(editor.edit_history.pending_edit_before)
-		editor._refresh_sprite()
-		_refresh_lists()
-		_refresh_metadata()
-
-
 func _metadata_changed() -> void:
-	editor._capture_edit_start()
+	editor._capture_edit_start("Edit metadata")
 	project.metadata["author"] = get_node(META + "/Author").text
 	project.metadata["title"] = get_node(META + "/Title").text
 	project.metadata["notes"] = get_node(META + "/Notes").text
@@ -508,13 +532,13 @@ func _stamp_action(action: String) -> void:
 		var name := String(get_node(STAMPS + "/Name").text).strip_edges()
 		if name.is_empty():
 			name = "Stamp %d" % (project.stamps.size() + 1)
-		editor._capture_edit_start()
+		editor._capture_edit_start("Add stamp")
 		project.add_stamp(name, editor.pixel_canvas.clipboard_width, editor.pixel_canvas.clipboard_height,
 			editor.pixel_canvas.clipboard_pixels, editor.pixel_canvas.paint_options.stamp_spacing)
 		editor._record_edit(editor.edit_history.pending_edit_before)
 	elif not selected.is_empty():
 		if action == "Delete":
-			editor._capture_edit_start()
+			editor._capture_edit_start("Delete stamp")
 			project.remove_stamp(selected[0])
 			editor._record_edit(editor.edit_history.pending_edit_before)
 		elif action == "Use":
@@ -533,7 +557,7 @@ func _replace_colors() -> void:
 	var to := roundi($Replace/Content/Fields/To.value)
 	if from == to:
 		return
-	editor._capture_edit_start()
+	editor._capture_edit_start("Replace colors")
 	var old_view := editor.current_view
 	var selection := editor.pixel_canvas.selected_mask()
 	var views := [0, 1, 2] if $Replace/Content/AllViews.button_pressed else [old_view]
@@ -604,7 +628,7 @@ func _refresh_import() -> void:
 func _apply_import() -> void:
 	if imported == null or editor.pixel_canvas.editing_disabled:
 		return
-	editor._capture_edit_start()
+	editor._capture_edit_start("Import image")
 	editor._commit_pixels(_import_pixels())
 	editor._set_status("Imported %s." % imported_path.get_file())
 

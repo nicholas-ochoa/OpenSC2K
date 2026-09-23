@@ -2,6 +2,7 @@ class_name ScurkEditorCanvasPanel
 extends VBoxContainer
 
 signal zoom_changed(value: int)
+signal context_requested
 
 var zoom_pending := 0
 var zoom_running := false
@@ -34,7 +35,8 @@ func build() -> void:
 	pixel_scroll = $Row/PixelScroll
 	pixel_canvas = $Row/PixelScroll/Center/PixelCanvas
 	previews_panel = $Row/Previews
-	show_views_button = $Footer/Row/ShowViews
+	$Footer/Row/Views/Context.pressed.connect(context_requested.emit)
+	show_views_button = $Footer/Row/Views/ShowViews
 	show_views_button.toggled.connect(func(enabled: bool) -> void: previews_panel.visible = enabled)
 	for label in ["Large", "Medium", "Small"]:
 		var column := previews_panel.get_node("Content/" + ("" if label == "Large" else "Smaller/") + label) as Control
@@ -71,18 +73,18 @@ func zoom_at(steps: int, local_position: Vector2) -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if pixel_canvas == null or not is_visible_in_tree() or not event is InputEventMouse:
+	if pixel_canvas == null or not is_visible_in_tree() or not (event is InputEventMouse or event is InputEventPanGesture):
 		return
 	var position: Vector2 = event.position
 	if not pixel_canvas.panning and (not pixel_scroll.get_global_rect().has_point(position) or pixel_canvas.get_global_rect().has_point(position)):
 		return
-	var navigation := pixel_canvas.panning
+	var navigation := pixel_canvas.panning or event is InputEventPanGesture
 	if event is InputEventMouseButton:
-		navigation = navigation or event.button_index in [MOUSE_BUTTON_MIDDLE, MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]
+		navigation = navigation or event.button_index in [MOUSE_BUTTON_MIDDLE, MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_LEFT, MOUSE_BUTTON_WHEEL_RIGHT]
 		navigation = navigation or (event.button_index == MOUSE_BUTTON_LEFT and Input.is_key_pressed(KEY_SPACE))
 	if not navigation:
 		return
-	var local := event.duplicate() as InputEventMouse
+	var local := event.duplicate()
 	local.position = position - pixel_canvas.global_position
 	if pixel_canvas._handle_editor_input(local):
 		get_viewport().set_input_as_handled()

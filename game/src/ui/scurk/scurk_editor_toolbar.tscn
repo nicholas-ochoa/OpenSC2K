@@ -25,12 +25,6 @@ flat = true
 switch_on_hover = true
 custom_minimum_size = Vector2(0, 23)
 
-[node name="Tools" type="MenuButton" parent="Row"]
-layout_mode = 2
-text = "Tools"
-flat = true
-switch_on_hover = true
-
 [node name="Options" type="MenuButton" parent="Row"]
 layout_mode = 2
 text = "Options"
@@ -105,7 +99,7 @@ text = "Pick & Copy..."
 
 [node name="Settings" type="Button" parent="Actions"]
 layout_mode = 2
-text = "Settings..."
+text = "Game Options..."
 
 [node name="About" type="Button" parent="Actions"]
 layout_mode = 2
@@ -122,10 +116,6 @@ text = "Paint Options..."
 [node name="ReplaceColor" type="Button" parent="Actions"]
 layout_mode = 2
 text = "Replace Color..."
-
-[node name="Context" type="Button" parent="Actions"]
-layout_mode = 2
-text = "Preview in Context..."
 
 [node name="SelectAll" type="Button" parent="Actions"]
 layout_mode = 2

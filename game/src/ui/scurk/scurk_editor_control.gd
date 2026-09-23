@@ -595,6 +595,7 @@ func _copy_pick_objects(
 		return
 
 	studio.capture()
+	edit_history.pending_description = "Copy objects"
 	edit_history.capture_blank_state()
 	var result := PickCopy.copy_objects(
 		tile_set,
@@ -633,7 +634,7 @@ func _replace_active_view(
 ) -> Result:
 	if pixel_canvas.editing_disabled:
 		return Result.rejected("The active layer is locked or hidden.")
-	_capture_edit_start()
+	_capture_edit_start("Import image")
 	var workspace := DrawingWorkspace.from_shape(width, height, pixels, current_view, active_base_width, _clipping_enabled()) if active_workspace else pixels
 	_commit_pixels(workspace)
 	_set_status("%s. Remapped %d colors." % [description, remapped_color_count])
@@ -679,7 +680,7 @@ func redo() -> void:
 func revert_object() -> void:
 	if studio.object_start.is_empty():
 		return
-	_capture_edit_start()
+	_capture_edit_start("Revert object")
 	if not studio.project.restore_snapshot(studio.object_start):
 		return
 	_replace_document_bytes(studio.project.current_mif)
@@ -697,7 +698,7 @@ func revert_name() -> void:
 	if not tile_set.names.has(tile_id):
 		return
 
-	_capture_edit_start()
+	_capture_edit_start("Revert tile name")
 	var result := tile_set.remove_name(tile_id)
 
 	if not result.ok:
@@ -716,7 +717,7 @@ func clear_object() -> void:
 	if tile_set == null or current_large_id < 0:
 		return
 
-	_capture_edit_start()
+	_capture_edit_start("Clear object")
 	var changed_views := 0
 
 	for view in range(3) if active_workspace else [current_view]:
@@ -853,7 +854,7 @@ func _bind_interface() -> void:
 	source_label = get_node("Panel/Content/StatusBar/Row/File")
 	pointer_status_label = get_node("Panel/Content/StatusBar/Row/Pointer")
 
-	object_panel = get_node("Panel/Content/Body/Studio/Margin/Tabs/Colors/Margin/Column/Objects")
+	object_panel = get_node("Panel/Content/Body/Studio/Margin/Column/Objects")
 	object_panel.build()
 	object_panel.search_changed.connect(_on_search_changed)
 	object_panel.object_selected.connect(_on_object_selected)
@@ -911,6 +912,7 @@ func _bind_interface() -> void:
 
 	canvas_panel = get_node("Panel/Content/Body/Editor/Canvas")
 	canvas_panel.build()
+	canvas_panel.context_requested.connect(_studio_action.bind("Context"))
 	pixel_canvas = canvas_panel.pixel_canvas
 	view_previews = canvas_panel.view_previews
 	view_preview_panels = canvas_panel.view_preview_panels
@@ -921,7 +923,7 @@ func _bind_interface() -> void:
 	pixel_canvas.pointer_changed.connect(_update_pointer_status)
 	pixel_canvas.clipboard_changed.connect(_on_clipboard_changed)
 
-	palette_panel = get_node("Panel/Content/Body/Studio/Margin/Tabs/Colors")
+	palette_panel = get_node("Panel/Content/Body/Studio/Margin/Column/Tabs/Colors")
 	palette_panel.build()
 	palette_panel.set_patterns(pixel_canvas.texture_patterns)
 	palette_panel.palette_index_selected.connect(_select_palette_index)
@@ -1364,8 +1366,8 @@ static func sprite_role(tile_id: int) -> String:
 	return EditorRules.sprite_role(tile_id)
 
 
-func _capture_edit_start() -> void:
-	edit_history.capture_edit(tile_set)
+func _capture_edit_start(description := "Edit artwork") -> void:
+	edit_history.capture_edit(tile_set, description)
 	studio.capture()
 
 
@@ -1542,7 +1544,7 @@ func _commit_name() -> void:
 	if value == String(tile_set.names.get(tile_id, sprite_role(tile_id))):
 		return
 
-	_capture_edit_start()
+	_capture_edit_start("Rename tile")
 	var result := tile_set.set_name(tile_id, value)
 
 	if not result.ok:
@@ -1593,6 +1595,9 @@ func _update_dirty() -> void:
 
 
 func _update_history_buttons() -> void:
+	if studio != null and studio.editor != null:
+		studio.refresh_history()
+
 	if undo_button != null:
 		undo_button.disabled = not edit_history.can_undo()
 

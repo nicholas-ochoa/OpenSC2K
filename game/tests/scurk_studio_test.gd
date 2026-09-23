@@ -31,6 +31,8 @@ func _run() -> void:
 	await _test_sidebar()
 	_test_layers()
 	_test_project()
+	_test_delete_confirmation()
+	_test_undo_history()
 	_test_clipboard_layers()
 	_test_clear()
 	_test_recovery_ownership()
@@ -91,6 +93,7 @@ func _test_sidebar() -> void:
 		studio.tabs.current_tab = tab
 		await process_frame
 		assert(canvas.is_visible_in_tree() and canvas.selection.mask == selection)
+		assert(editor.object_search.is_visible_in_tree() and editor.object_list.is_visible_in_tree())
 		assert(canvas.zoom == 12 and canvas.get_global_rect() == canvas_rect, "%d zoom %d rect %s expected %s" % [tab, canvas.zoom, canvas.get_global_rect(), canvas_rect])
 		assert(Vector2i(scroll.scroll_horizontal, scroll.scroll_vertical) == position)
 		canvas.grab_focus()
@@ -142,12 +145,60 @@ func _test_sidebar() -> void:
 	assert(editor.current_tool == ScurkPixelCanvas.TOOL_STAMP)
 	assert(canvas.paint_options.stamp_pixels.count(99) > 0)
 	studio.tabs.current_tab = 3
-	studio.get_node(studio.HISTORY + "/Name").text = "Window checkpoint"
-	studio.get_node(studio.HISTORY + "/Actions/Add").pressed.emit()
+	var history := studio.get_node(studio.HISTORY + "/List") as ItemList
+	assert(history.item_count == editor.undo_stack.size() + editor.redo_stack.size() + 1)
+	assert(history.get_selected_items() == PackedInt32Array([editor.undo_stack.size()]))
 	studio.tabs.current_tab = 0
-	studio.tabs.current_tab = 3
-	assert(studio.get_node(studio.HISTORY + "/List").item_count == 1)
-	studio.tabs.current_tab = 0
+
+
+func _test_delete_confirmation() -> void:
+	_fresh()
+	studio._layer_action("Add")
+	_commit(_solid(99))
+	var before := editor.tile_set.to_bytes().bytes
+	var count := editor.undo_stack.size()
+	var dialog := studio.get_node("DeleteLayer") as ConfirmationDialog
+	studio._layer_action("Delete")
+	assert(dialog.visible and dialog.exclusive)
+	assert(_document().layers.size() == 2 and editor.undo_stack.size() == count)
+	dialog.canceled.emit()
+	dialog.hide()
+	assert(_document().layers.size() == 2 and editor.tile_set.to_bytes().bytes == before)
+	studio._layer_action("Delete")
+	dialog.confirmed.emit()
+	dialog.hide()
+	assert(_document().layers.size() == 1 and editor.undo_stack.size() == count + 1)
+	editor.undo()
+	assert(_document().layers.size() == 2 and editor.tile_set.to_bytes().bytes == before)
+	# A document replacement while the dialog is open invalidates its target.
+	studio._layer_action("Delete")
+	editor.undo()
+	count = editor.undo_stack.size()
+	dialog.confirmed.emit()
+	dialog.hide()
+	assert(_document().layers.size() == 2 and editor.undo_stack.size() == count)
+
+
+func _test_undo_history() -> void:
+	_fresh()
+	var history := studio.get_node(studio.HISTORY + "/List") as ItemList
+	assert(history.item_count == 1)
+	var original_pixels := editor.pixel_canvas.pixels.duplicate()
+	_commit(_solid(42))
+	studio._layer_action("Add")
+	assert(history.item_count == 3 and history.get_selected_items() == PackedInt32Array([2]))
+	var layers := studio.project.snapshot()
+	history.item_selected.emit(0)
+	assert(editor.undo_stack.is_empty() and editor.redo_stack.size() == 2)
+	assert(editor.pixel_canvas.pixels == original_pixels and history.item_count == 3)
+	history.item_selected.emit(2)
+	assert(editor.undo_stack.size() == 2 and editor.redo_stack.is_empty())
+	assert(studio.project.snapshot() == layers)
+	studio.get_node(studio.HISTORY + "/Actions/Undo").pressed.emit()
+	assert(editor.undo_stack.size() == 1 and editor.redo_stack.size() == 1)
+	_commit(_solid(11))
+	assert(editor.redo_stack.is_empty() and history.item_count == 3)
+	assert(history.get_selected_items() == PackedInt32Array([2]))
 
 
 func _test_layers() -> void:
@@ -326,14 +377,16 @@ func _clipboard_click(point: Vector2i, button: MouseButton) -> void:
 	var event := InputEventMouseButton.new()
 	event.button_index = button
 	event.position = Vector2(canvas.DISPLAY_MARGIN, 0) + (Vector2(point) + Vector2(0.5, 0.5)) * canvas.zoom
+	var before := canvas.pixels.duplicate()
+	var history_count := editor.edit_history.undo_stack.size()
 	event.pressed = true
 	canvas._gui_input(event)
-	assert(not canvas.paste_active)
-	var after := canvas.pixels.duplicate()
-	var history_count := editor.edit_history.undo_stack.size()
+	assert(canvas.pixels == before and editor.edit_history.undo_stack.size() == history_count)
+	assert(canvas.paste_active == (button == MOUSE_BUTTON_LEFT))
 	event.pressed = false
 	canvas._gui_input(event)
-	assert(canvas.pixels == after and editor.edit_history.undo_stack.size() == history_count)
+	assert(not canvas.paste_active)
+	assert(editor.edit_history.undo_stack.size() == history_count + (1 if button == MOUSE_BUTTON_LEFT else 0))
 
 
 func _test_project() -> void:
@@ -360,10 +413,10 @@ func _test_project() -> void:
 	assert(studio.get_node(studio.META + "/Author").text == "Tile author")
 	assert(studio.get_node(studio.META + "/Title").text == "Layer test")
 	assert(studio.get_node(studio.META + "/Notes").text == "Indexed artwork")
-	studio.get_node(studio.HISTORY + "/Name").text = "Before recolor"
-	studio._add_checkpoint()
+	studio.sync_editor_state()
+	studio.project.set_current_mif(editor.tile_set.to_bytes().bytes)
+	assert(studio.project.add_checkpoint("Before recolor") == 0)
 	assert(studio.project.checkpoints.size() == 1)
-	var checkpoint_palette := editor.palette_panel.export_state()
 	editor.palette_panel.palette_control.toggle_favorite(42)
 	editor.palette_panel.palette_control.toggle_ramp_index(42)
 	editor.palette_panel.palette_control.toggle_ramp_index(99)
@@ -387,19 +440,20 @@ func _test_project() -> void:
 	assert(studio.get_node(studio.META + "/Title").text == "Layer test")
 	assert(studio.get_node(studio.META + "/Notes").text == "Indexed artwork")
 	assert(studio.project.original_mif == original)
+	var saved_palette := editor.palette_panel.export_state()
 	_commit(_solid(11))
-	studio._refresh_lists()
-	(studio.get_node(studio.HISTORY + "/List") as ItemList).select(0)
-	studio._restore_checkpoint()
+	studio._select_history(editor.undo_stack.size() - 1)
 	assert(studio.project.flatten(studio.key()) == expected)
-	editor.undo()
-	assert(studio.project.flatten(studio.key()) != expected)
 	editor.redo()
+	assert(studio.project.flatten(studio.key()) != expected)
+	editor.undo()
 	assert(studio.project.flatten(studio.key()) == expected)
-	assert(editor.palette_panel.export_state() == checkpoint_palette)
+	assert(editor.palette_panel.export_state() == saved_palette)
 	assert(studio.save_project(path))
 	var saved := ScurkProject.load_path(path)
-	assert(saved.ok and saved.project.metadata.palette == checkpoint_palette)
+	assert(saved.ok)
+	editor.palette_panel.import_state(saved.project.metadata.palette)
+	assert(editor.palette_panel.export_state() == saved_palette)
 
 
 func _test_clear() -> void:

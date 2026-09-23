@@ -78,9 +78,9 @@ theme_override_constants/margin_right = 8
 theme_override_constants/margin_bottom = 8
 theme_override_constants/margin_top = 4
 
-[node name="Row" type="HBoxContainer" parent="Footer"]
+[node name="Row" type="HFlowContainer" parent="Footer"]
 layout_mode = 2
-theme_override_constants/separation = 10
+theme_override_constants/h_separation = 10
 
 [node name="Clipping" type="HBoxContainer" parent="Footer/Row"]
 layout_mode = 2
@@ -95,7 +95,17 @@ button_pressed = true
 layout_mode = 2
 text = "Show clip region"
 
-[node name="ShowViews" type="Button" parent="Footer/Row"]
+[node name="Views" type="HBoxContainer" parent="Footer/Row"]
+layout_mode = 2
+size_flags_horizontal = 8
+theme_override_constants/separation = 10
+
+[node name="Context" type="Button" parent="Footer/Row/Views"]
+layout_mode = 2
+size_flags_vertical = 0
+text = "Preview in Context..."
+
+[node name="ShowViews" type="Button" parent="Footer/Row/Views"]
 layout_mode = 2
 size_flags_vertical = 0
 text = "Show all views"

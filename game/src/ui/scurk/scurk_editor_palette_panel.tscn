@@ -4,8 +4,6 @@
 [ext_resource type="Script" path="res://src/view/scurk_palette_control.gd" id="colors"]
 [ext_resource type="Script" path="res://src/view/scurk_texture_control.gd" id="textures"]
 
-[ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_editor_object_panel.tscn" id="objects"]
-
 [sub_resource type="StyleBoxEmpty" id="Panel"]
 
 [node name="Palette" type="PanelContainer"]
@@ -23,14 +21,6 @@ theme_override_constants/margin_bottom = 0
 [node name="Column" type="VBoxContainer" parent="Margin"]
 layout_mode = 2
 theme_override_constants/separation = 3
-
-[node name="Objects" parent="Margin/Column" instance=ExtResource("objects")]
-layout_mode = 2
-
-[node name="ObjectGap" type="Control" parent="Margin/Column"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 10)
-mouse_filter = 2
 
 [node name="ColorsHeader" type="HBoxContainer" parent="Margin/Column"]
 layout_mode = 2

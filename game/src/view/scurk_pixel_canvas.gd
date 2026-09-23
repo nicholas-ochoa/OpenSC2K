@@ -22,7 +22,7 @@ class PixelRegion extends RefCounted:
 
 const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
 
-signal edit_started
+signal edit_started(description: String)
 signal pixels_committed(pixels: PackedInt32Array)
 signal palette_index_picked(index: int, background: bool)
 signal pointer_changed(point: Vector2i, index: int)
@@ -36,6 +36,7 @@ signal state_changed
 
 const MAX_BRUSH_SIZE := 24
 const DISPLAY_MARGIN := 1
+const SCROLL_PAN_STEP := 48.0
 const BACKGROUND_TRANSPARENT_INDEX := 252
 const TOOL_PENCIL := 0
 const TOOL_ERASER := 1
@@ -156,6 +157,7 @@ var paste_clear_source := false
 var paste_source_mask := PackedByteArray()
 var paste_selection_before := PackedByteArray()
 var panning := false
+var scroll_zoom_delta := 0.0
 var pan_button_mask := 0
 var space_pressed := false
 var pencil_path: Array[Vector2i] = []
@@ -202,7 +204,7 @@ func _input(event: InputEvent) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
 		_stop_panning()
-		if selection_move_dragging:
+		if paste_dragging:
 			cancel_paste()
 		space_pressed = false
 		comparison_hold = false
@@ -1049,7 +1051,7 @@ func delete_selection(whole_if_empty := false) -> void:
 	for offset in changed.size():
 		if (not selection.active() or selection.mask[offset] != 0) and _point_is_editable(Vector2i(offset % sprite_width, offset / sprite_width)):
 			changed[offset] = paint_options.paint_index(changed[offset], -1)
-	_commit_changed_pixels(changed)
+	_commit_changed_pixels(changed, "Delete selection")
 
 
 func duplicate_selection() -> void:
@@ -1090,6 +1092,7 @@ func commit_paste() -> void:
 	if not paste_active or editing_disabled:
 		return
 
+	var description := "Move selection" if paste_clear_source else "Paste"
 	var changed := _floating_pixels()
 	var moved_mask := selection.empty_mask()
 	for y in clipboard_height:
@@ -1104,7 +1107,7 @@ func commit_paste() -> void:
 	paste_source_mask.clear()
 	selection.combine(moved_mask)
 	selection_changed.emit()
-	_commit_changed_pixels(changed)
+	_commit_changed_pixels(changed, description)
 	state_changed.emit()
 	queue_redraw()
 
@@ -1187,19 +1190,35 @@ func _floating_pixels() -> PackedInt32Array:
 	return result
 
 
-func _commit_changed_pixels(changed: PackedInt32Array) -> void:
+func _commit_changed_pixels(changed: PackedInt32Array, description: String) -> void:
 	if changed == pixels:
 		return
 
-	edit_started.emit()
+	edit_started.emit(description)
 	pixels = changed
 	pixels_committed.emit(pixels.duplicate())
 	queue_redraw()
 
 
+func _scroll_canvas(delta: Vector2, position: Vector2, zoom_modifier: bool) -> void:
+	if zoom_modifier:
+		scroll_zoom_delta -= delta.y if delta.y != 0.0 else delta.x
+		var steps := int(scroll_zoom_delta)
+		if steps != 0:
+			scroll_zoom_delta -= steps
+			zoom_requested.emit(steps, position)
+	else:
+		scroll_zoom_delta = 0.0
+		pan_requested.emit(-delta * SCROLL_PAN_STEP)
+
+
 func _handle_editor_input(event: InputEvent) -> bool:
 	if event is InputEventKey:
 		return _handle_editor_key(event)
+
+	if event is InputEventPanGesture:
+		_scroll_canvas(event.delta, event.position, event.ctrl_pressed or event.meta_pressed)
+		return true
 
 	if event is InputEventMouseMotion:
 		if panning:
@@ -1209,8 +1228,11 @@ func _handle_editor_input(event: InputEvent) -> bool:
 			_stop_panning()
 		var point := _point_from_position(event.position)
 		if paste_active:
-			if selection_move_dragging and not (event.button_mask & MOUSE_BUTTON_MASK_LEFT) and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-				_finish_selection_drag()
+			if paste_dragging and not (event.button_mask & MOUSE_BUTTON_MASK_LEFT) and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+				if selection_move_dragging:
+					_finish_selection_drag()
+				else:
+					commit_paste()
 				return true
 			if paste_dragging:
 				paste_position = point - paste_drag_offset
@@ -1230,8 +1252,15 @@ func _handle_editor_input(event: InputEvent) -> bool:
 	if not event is InputEventMouseButton:
 		return false
 
-	if event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
-		zoom_requested.emit(1 if event.button_index == MOUSE_BUTTON_WHEEL_UP else -1, event.position)
+	if event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_LEFT, MOUSE_BUTTON_WHEEL_RIGHT]:
+		if event.pressed:
+			var direction := Vector2.ZERO
+			match event.button_index:
+				MOUSE_BUTTON_WHEEL_UP: direction = Vector2.UP
+				MOUSE_BUTTON_WHEEL_DOWN: direction = Vector2.DOWN
+				MOUSE_BUTTON_WHEEL_LEFT: direction = Vector2.LEFT
+				MOUSE_BUTTON_WHEEL_RIGHT: direction = Vector2.RIGHT
+			_scroll_canvas(direction * event.factor, event.position, event.ctrl_pressed or event.meta_pressed)
 		return true
 	if event.button_index == MOUSE_BUTTON_MIDDLE or (event.button_index == MOUSE_BUTTON_LEFT and (space_pressed or Input.is_key_pressed(KEY_SPACE) or panning)):
 		panning = event.pressed
@@ -1266,6 +1295,11 @@ func _handle_editor_input(event: InputEvent) -> bool:
 		elif event.pressed:
 			if paste_follow_cursor:
 				paste_position = point
+			paste_dragging = true
+			paste_follow_cursor = false
+			paste_drag_offset = point - paste_position
+		elif paste_dragging:
+			paste_position = point - paste_drag_offset
 			commit_paste()
 		return true
 	if tool == TOOL_MOVE:
@@ -1507,7 +1541,7 @@ func _begin_stroke(point: Vector2i, button: int) -> void:
 	stamp_distance = 0.0
 	shade_visited.clear()
 	last_stroke_point = point
-	edit_started.emit()
+	edit_started.emit("Paint")
 	_apply_brush(point)
 
 
@@ -1519,7 +1553,7 @@ func _begin_shape(point: Vector2i, button: int) -> void:
 		point, grid_width, grid_height, snap_to_grid
 	)
 	stroke_base_pixels = pixels.duplicate()
-	edit_started.emit()
+	edit_started.emit("Draw shape")
 	_preview_shape(point)
 
 
@@ -1739,7 +1773,7 @@ func _apply_fill(point: Vector2i, force_background: bool) -> void:
 	if changed == pixels:
 		return
 
-	edit_started.emit()
+	edit_started.emit("Fill")
 	pixels = changed
 	pixels_committed.emit(pixels.duplicate())
 	queue_redraw()

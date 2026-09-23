@@ -37,7 +37,7 @@ func build() -> void:
 	$Actions/Open.pressed.connect(open_requested.emit)
 	$Actions/Save.pressed.connect(save_requested.emit)
 	$Actions/SaveAs.pressed.connect(studio_action.emit.bind("ProjectSaveAs"))
-	for action in ["RecoverProject", "ExportTileSet", "PaintOptions", "ReplaceColor", "Context", "SelectAll", "Deselect", "CopySelection", "CutSelection", "DuplicateSelection", "DeleteSelection", "PasteSelection"]:
+	for action in ["RecoverProject", "ExportTileSet", "PaintOptions", "ReplaceColor", "SelectAll", "Deselect", "CopySelection", "CutSelection", "DuplicateSelection", "DeleteSelection", "PasteSelection"]:
 		get_node("Actions/" + action).pressed.connect(studio_action.emit.bind(action))
 	$Actions/Import.pressed.connect(import_bmp_requested.emit)
 	$Actions/Export.pressed.connect(export_bmp_requested.emit)
@@ -55,8 +55,7 @@ func build() -> void:
 	clear_button = $Actions/Clear
 	_bind_menu($Row/File, ["Open", "Save", "SaveAs", "ExportTileSet", "RecoverProject", "", "Import", "Export", "", "Close"])
 	_bind_menu($Row/Edit, ["Undo", "Redo", "", "SelectAll", "Deselect", "CopySelection", "CutSelection", "PasteSelection", "DuplicateSelection", "DeleteSelection", "", "ReplaceColor", "Name", "Revert", "Clear", "PickCopy"])
-	_bind_menu($Row/Tools, ["PaintOptions", "Context"])
-	_bind_menu($Row/Options, ["Settings"])
+	_bind_menu($Row/Options, ["PaintOptions", "", "Settings"])
 	_bind_menu($Row/Help, ["About"])
 
 
