@@ -1,10 +1,10 @@
 extends SceneTree
 ## Run build_large_city_fixtures.gd first. This test never saves over a fixture.
 
-# Sydney after 300 days at 10f181ae, with seeds 123/456/789.
+# Sydney after 300 days at e2fdec72, with seeds 123/456/789.
 # A deterministic current-model regression, not proof of Windows parity.
 # The a21651a baseline predates the transport, education, military, and crash fixes.
-const YEAR_SHA256 := "549b52edceb2e1a22389e718d1ee9451fc90e028cc458d9026ac0df069037743"
+const YEAR_SHA256 := "f224f270b403f96a916225813df7ee636080b31425e4dd51ac3c3507d0491118"
 
 
 func _init() -> void:
