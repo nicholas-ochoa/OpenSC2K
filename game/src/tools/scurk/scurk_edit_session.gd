@@ -20,7 +20,7 @@ class PixelTarget extends RefCounted:
 	var height := 0
 	var workspace := false
 	var base_width := 0
-	var view := 0
+	var view := ScurkSpriteIds.View.LARGE
 	var clipped := false
 
 
@@ -36,8 +36,146 @@ var document: ScurkMif
 var project: ScurkProject = Project.new()
 var history: ScurkEditorHistory = History.new()
 var modified := false
+var project_path := ""
+var recovery_path := "user://scurk/recovery.scurk"
+var recovery_owned := false
+var recovered_source := ""
+var saved_pixels: Dictionary = {}
+var saved_state: Dictionary = {}
+var saved_checkpoints: Array = []
+var object_start: Dictionary = {}
 var _pending: PendingEdit
 
+
+func load_document(value: ScurkMif) -> Result:
+	if value == null or not value.is_valid():
+		return _failure("The SCURK tile set is invalid.")
+	var encoded := value.to_bytes()
+	if not encoded.ok:
+		return _failure(encoded.error)
+	var fresh := Project.new()
+	var initialized := fresh.initialize(encoded.bytes)
+	if not initialized.ok:
+		return _failure(initialized.error)
+	fresh.metadata["editor_state"] = {"blank_shape_ids": [], "unclipped_tile_ids": []}
+	document = value
+	project = fresh
+	history.reset(encoded.bytes)
+	cancel_edit()
+	project_path = ""
+	recovery_owned = false
+	recovered_source = ""
+	modified = false
+	object_start.clear()
+	_capture_saved_state()
+	return _success()
+
+
+func load_project(path: String, recovered := false) -> Result:
+	var loaded := Project.load_path(path)
+	if not loaded.ok:
+		return _failure(loaded.error)
+	var replacement := Mif.new()
+	if not replacement.parse(loaded.project.current_mif):
+		return _failure(replacement.parse_error)
+	document = replacement
+	project = loaded.project
+	history.reset(project.current_mif)
+	cancel_edit()
+	object_start.clear()
+	project_path = "" if recovered else ProjectSettings.globalize_path(path)
+	recovery_owned = recovered and ProjectSettings.globalize_path(path) == ProjectSettings.globalize_path(recovery_path)
+	recovered_source = path if recovered else ""
+	_capture_saved_state()
+	modified = recovered
+	return _success()
+
+
+func save_project(path: String) -> Result:
+	var synchronized := _synchronize_document()
+	if not synchronized.ok:
+		return synchronized
+	var written := project.save_path(path)
+	if not written.ok:
+		return _failure(written.error)
+	project_path = ProjectSettings.globalize_path(path)
+	_capture_saved_state()
+	history.mark_saved(project.current_mif)
+	modified = false
+	if recovery_owned and FileAccess.file_exists(recovery_path) and ProjectSettings.globalize_path(recovery_path).simplify_path() != project_path.simplify_path():
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(recovery_path))
+	if not recovered_source.is_empty() and FileAccess.file_exists(recovered_source) and ProjectSettings.globalize_path(recovered_source).simplify_path() != project_path.simplify_path():
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(recovered_source))
+	recovery_owned = false
+	recovered_source = ""
+	return _success()
+
+
+func autosave() -> Result:
+	var synchronized := _synchronize_document()
+	if not synchronized.ok:
+		return synchronized
+	if FileAccess.file_exists(recovery_path) and not recovery_owned:
+		var archived := "%s/recovery-%d-%d.scurk" % [recovery_path.get_base_dir(), Time.get_unix_time_from_system(), Time.get_ticks_usec()]
+		if DirAccess.copy_absolute(ProjectSettings.globalize_path(recovery_path), ProjectSettings.globalize_path(archived)) != OK:
+			return _failure("Cannot preserve the previous recovery file.")
+	var written := project.autosave_path(recovery_path)
+	if not written.ok:
+		return _failure(written.error)
+	recovery_owned = true
+	return _success()
+
+
+func discard_recovery() -> void:
+	if recovery_owned:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(recovery_path))
+		recovery_owned = false
+
+
+func capture_object(large_id: int) -> void:
+	history.capture_object(document, large_id)
+	object_start = project.snapshot()
+
+
+func remember_document_baseline(key: String) -> void:
+	if not project.documents.has(key):
+		return
+	var current: Dictionary = project.documents[key]
+	if saved_state.has("documents") and not saved_state.documents.has(key):
+		saved_state.documents[key] = current.duplicate(true)
+	if not saved_pixels.has(key):
+		saved_pixels[key] = current.original_pixels.duplicate()
+
+
+func update_modified() -> void:
+	var current := project.snapshot()
+	current.metadata.erase("editor_state")
+	var saved := saved_state.duplicate(true)
+	if saved.has("metadata"):
+		saved.metadata.erase("editor_state")
+	for name: String in current.documents:
+		if saved.has("documents") and saved.documents.has(name):
+			saved.documents[name].active = current.documents[name].active
+	modified = current != saved or project.checkpoints != saved_checkpoints
+
+
+func _capture_saved_state() -> void:
+	saved_state = project.snapshot()
+	saved_checkpoints = project.checkpoints.duplicate(true)
+	saved_pixels.clear()
+	for name: String in project.documents:
+		saved_pixels[name] = project.flatten(name)
+
+
+func _synchronize_document() -> Result:
+	if document == null:
+		return _failure("No SCURK tile set is loaded.")
+	var encoded := document.to_bytes()
+	if not encoded.ok:
+		return _failure(encoded.error)
+	if not project.set_current_mif(encoded.bytes):
+		return _failure("The project tile set is invalid.")
+	return _success()
 
 func has_pending_edit() -> bool:
 	return _pending != null
@@ -107,6 +245,7 @@ func commit_edit() -> Result:
 	action.blank_before = _pending.blank_shape_ids
 	action.blank_after = history.blank_shape_ids.duplicate()
 	var changed := history.record(action)
+	update_modified()
 	cancel_edit()
 	return _success(changed)
 
@@ -135,7 +274,6 @@ func redo() -> Result:
 
 
 func _step_history(forward: bool) -> Result:
-	cancel_edit()
 	var source := history.redo_stack if forward else history.undo_stack
 	if source.is_empty():
 		return _success()
@@ -147,6 +285,7 @@ func _step_history(forward: bool) -> Result:
 		return _failure(replacement.parse_error)
 	if state.get("current_mif") != bytes or not project.restore_snapshot(state):
 		return _failure("Cannot restore the project for this history action.")
+	cancel_edit()
 	# Both representations are valid before either history stack moves.
 	document = replacement
 	history.blank_shape_ids = (action.blank_after if forward else action.blank_before).duplicate()
@@ -154,6 +293,7 @@ func _step_history(forward: bool) -> Result:
 	var destination := history.undo_stack if forward else history.redo_stack
 	destination.append(action)
 	history.update_dirty(document)
+	update_modified()
 	return _success(true)
 
 

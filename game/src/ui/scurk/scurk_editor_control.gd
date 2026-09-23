@@ -217,22 +217,22 @@ func load_path(path: String) -> Result:
 
 
 func load_tile_set(loaded: ScurkMif, path := "") -> Result:
-	if loaded == null or not loaded.is_valid():
-		return Result.rejected("The SCURK tile set is invalid.")
+	var result := session.load_document(loaded)
+	if not result.ok:
+		return Result.rejected(result.error)
+	_bind_session_document(path)
+	var outcome := Result.new()
+	outcome.ok = true
+	return outcome
 
-	var encoded := loaded.to_bytes()
 
-	if not encoded.ok:
-		return Result.rejected(encoded.error)
-
+func _bind_session_document(path := "") -> void:
 	tile_thumbnails.clear()
 	thumbnail_signatures.clear()
-	tile_set = loaded
-	studio.reset(encoded.bytes)
+	studio.reset_view()
 	unclipped_tiles.clear()
 	view_preview_signatures.fill("")
 	source_path = ProjectSettings.globalize_path(path).simplify_path() if not path.is_empty() else ""
-	edit_history.reset(encoded.bytes)
 	var ids := editable_large_sprite_ids(tile_set, base_large_sprites)
 	current_large_id = ids[0] if not ids.is_empty() else -1
 	current_view = VIEW_LARGE
@@ -249,12 +249,6 @@ func load_tile_set(loaded: ScurkMif, path := "") -> Result:
 
 	if pick_copy_control != null and pick_copy_control.visible:
 		pick_copy_control.open_with_working(tile_set, source_path)
-
-	var outcome := Result.new()
-	outcome.ok = true
-	outcome.error = ""
-
-	return outcome
 
 
 func save_path(path: String) -> Result:
@@ -1372,8 +1366,7 @@ func _capture_edit_start(description := "Edit artwork") -> bool:
 
 
 func _capture_object_start() -> void:
-	edit_history.capture_object(tile_set, current_large_id)
-	studio.object_start = studio.project.snapshot()
+	session.capture_object(current_large_id)
 	_update_history_buttons()
 
 
@@ -1419,7 +1412,7 @@ func _abort_edit(message: String) -> void:
 
 
 func _refresh_rejected_edit(message: String) -> void:
-	studio.refresh_restored_state(false)
+	studio.refresh_restored_state()
 	_refresh_sprite()
 	_update_history_buttons()
 	_update_title()
@@ -1556,7 +1549,6 @@ func _record_edit() -> bool:
 	if not result.ok:
 		_refresh_rejected_edit(result.error)
 		return false
-	studio.update_modified()
 	if result.changed:
 		_update_history_buttons()
 		_update_title()

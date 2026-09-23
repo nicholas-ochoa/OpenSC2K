@@ -17,8 +17,16 @@ var project: ScurkProject:
 		return editor.session.project
 	set(value):
 		editor.session.project = value
-var project_path := ""
-var recovery_path := "user://scurk/recovery.scurk"
+var project_path: String:
+	get:
+		return editor.session.project_path
+	set(value):
+		editor.session.project_path = value
+var recovery_path: String:
+	get:
+		return editor.session.recovery_path
+	set(value):
+		editor.session.recovery_path = value
 var modified: bool:
 	get:
 		return editor.session.modified if editor != null else false
@@ -27,15 +35,38 @@ var modified: bool:
 var loading := false
 var committing_layer := false
 var last_key := ""
-var saved_pixels: Dictionary = {}
-var saved_state: Dictionary = {}
-var saved_checkpoints: Array = []
-var object_start: Dictionary = {}
+var saved_pixels: Dictionary:
+	get:
+		return editor.session.saved_pixels
+	set(value):
+		editor.session.saved_pixels = value
+var saved_state: Dictionary:
+	get:
+		return editor.session.saved_state
+	set(value):
+		editor.session.saved_state = value
+var saved_checkpoints: Array:
+	get:
+		return editor.session.saved_checkpoints
+	set(value):
+		editor.session.saved_checkpoints = value
+var object_start: Dictionary:
+	get:
+		return editor.session.object_start
+	set(value):
+		editor.session.object_start = value
 var autosave_elapsed := 0.0
-var autosave_revision := -1
 var recovery_checked := false
-var recovery_owned := false
-var recovered_source := ""
+var recovery_owned: bool:
+	get:
+		return editor.session.recovery_owned
+	set(value):
+		editor.session.recovery_owned = value
+var recovered_source: String:
+	get:
+		return editor.session.recovered_source
+	set(value):
+		editor.session.recovered_source = value
 var imported: IndexedImageResult
 var imported_path := ""
 var import_clipped := 0
@@ -118,23 +149,8 @@ func _refresh_icon_colors() -> void:
 			)
 
 
-func reset(bytes: PackedByteArray) -> void:
-	if loading:
-		return
-	editor.session.cancel_edit()
-	project = ScurkProject.new()
-	project.initialize(bytes)
-	project.metadata["editor_state"] = {"blank_shape_ids": [], "unclipped_tile_ids": []}
-	project_path = ""
-	recovery_owned = false
-	recovered_source = ""
-	modified = false
+func reset_view() -> void:
 	last_key = ""
-	saved_pixels.clear()
-	saved_state = project.snapshot()
-	saved_checkpoints.clear()
-	object_start.clear()
-	autosave_revision = -1
 	_refresh_lists()
 	_refresh_metadata()
 
@@ -152,10 +168,7 @@ func bind_canvas() -> void:
 		editor._show_error("This layer size does not match the selected tile.")
 		return
 	var document: Dictionary = project.documents[current]
-	if saved_state.has("documents") and not saved_state.documents.has(current):
-		saved_state.documents[current] = document.duplicate(true)
-	if not saved_pixels.has(current):
-		saved_pixels[current] = document.original_pixels.duplicate()
+	editor.session.remember_document_baseline(current)
 	var keep := current == last_key
 	canvas.set_sprite_data(int(document.width), int(document.height), project.active_pixels(current), editor.palette, keep)
 	canvas.layer_below_pixels = project.flatten_range(current, 0, int(document.active))
@@ -172,14 +185,12 @@ func bind_canvas() -> void:
 		_refresh_context()
 
 
-func refresh_restored_state(update_modified_state := true) -> void:
+func refresh_restored_state() -> void:
 	restore_editor_state()
 	last_key = ""
 	loading = true
 	editor.palette_panel.import_state(palette_state())
 	loading = false
-	if update_modified_state:
-		update_modified()
 	_refresh_lists()
 	_refresh_metadata()
 
@@ -225,36 +236,16 @@ func request_save(save_as := false) -> void:
 
 
 func load_project(path: String, recovered := false) -> bool:
-	var loaded := ScurkProject.load_path(path)
-	if not loaded.ok:
-		editor._show_error(loaded.error)
-		return false
-	var mif := ScurkMif.new()
-	if not mif.parse(loaded.project.current_mif):
-		editor._show_error(mif.parse_error)
-		return false
-	loading = true
-	project = loaded.project
-	last_key = ""
-	saved_pixels.clear()
-	for name: String in project.documents:
-		saved_pixels[name] = project.flatten(name)
-	var result := editor.load_tile_set(mif)
-	loading = false
+	var result := editor.session.load_project(path, recovered)
 	if not result.ok:
 		editor._show_error(result.error)
 		return false
-	project_path = "" if recovered else ProjectSettings.globalize_path(path)
-	recovery_owned = recovered and ProjectSettings.globalize_path(path) == ProjectSettings.globalize_path(recovery_path)
-	recovered_source = path if recovered else ""
 	loading = true
+	editor._bind_session_document()
 	editor.palette_panel.import_state(palette_state())
 	loading = false
-	saved_state = project.snapshot()
-	saved_checkpoints = project.checkpoints.duplicate(true)
 	_refresh_lists()
 	_refresh_metadata()
-	modified = recovered
 	editor._update_title()
 	editor._set_status("Recovered project." if recovered else "Loaded %s." % path.get_file())
 	return true
@@ -267,29 +258,14 @@ func save_project(path: String) -> bool:
 		editor._show_error("The original game data folder is read-only. Use another folder.")
 		return false
 	sync_editor_state()
-	project.set_current_mif(editor.tile_set.to_bytes().bytes)
 	project.metadata["palette"] = editor.palette_panel.export_state()
-	var result := project.save_path(path)
+	var result := editor.session.save_project(path)
 	if not result.ok:
 		editor._show_error(result.error)
 		return false
-	project_path = ProjectSettings.globalize_path(path)
-	modified = false
-	saved_state = project.snapshot()
-	saved_checkpoints = project.checkpoints.duplicate(true)
-	editor.edit_history.mark_saved(project.current_mif)
-	saved_pixels.clear()
-	for name: String in project.documents:
-		saved_pixels[name] = project.flatten(name)
 	editor.pixel_canvas.comparison_pixels = saved_pixels.get(key(), PackedInt32Array())
 	editor._update_title()
 	editor._set_status("Saved %s." % path.get_file())
-	if recovery_owned and FileAccess.file_exists(recovery_path) and ProjectSettings.globalize_path(recovery_path).simplify_path() != project_path.simplify_path():
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(recovery_path))
-	if not recovered_source.is_empty() and FileAccess.file_exists(recovered_source) and ProjectSettings.globalize_path(recovered_source).simplify_path() != project_path.simplify_path():
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(recovered_source))
-	recovery_owned = false
-	recovered_source = ""
 	return true
 
 
@@ -315,15 +291,7 @@ func autosave() -> bool:
 	if project.current_mif.is_empty():
 		return false
 	sync_editor_state()
-	project.set_current_mif(editor.tile_set.to_bytes().bytes)
-	if FileAccess.file_exists(recovery_path) and not recovery_owned:
-		var archived := "%s/recovery-%d-%d.scurk" % [recovery_path.get_base_dir(), Time.get_unix_time_from_system(), Time.get_ticks_usec()]
-		if DirAccess.copy_absolute(ProjectSettings.globalize_path(recovery_path), ProjectSettings.globalize_path(archived)) != OK:
-			editor._set_status("Cannot preserve the previous recovery file.")
-			return false
-	var result := project.autosave_path(recovery_path)
-	if result.ok:
-		recovery_owned = true
+	var result := editor.session.autosave()
 	if not result.ok:
 		editor._set_status("Autosave failed: " + result.error)
 	return result.ok
@@ -640,15 +608,7 @@ func _refresh_context() -> void:
 
 
 func update_modified() -> void:
-	var current := project.snapshot()
-	current.metadata.erase("editor_state")
-	var saved := saved_state.duplicate(true)
-	if saved.has("metadata"):
-		saved.metadata.erase("editor_state")
-	for name: String in current.documents:
-		if saved.has("documents") and saved.documents.has(name):
-			saved.documents[name].active = current.documents[name].active
-	modified = current != saved or project.checkpoints != saved_checkpoints
+	editor.session.update_modified()
 
 
 func sync_editor_state() -> void:
@@ -729,6 +689,4 @@ func show_recovery_files() -> void:
 
 
 func discard_recovery() -> void:
-	if recovery_owned:
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(recovery_path))
-		recovery_owned = false
+	editor.session.discard_recovery()
