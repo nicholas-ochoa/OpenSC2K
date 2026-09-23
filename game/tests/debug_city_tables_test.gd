@@ -81,6 +81,7 @@ func _run() -> void:
 		var panel := preload("res://src/debug/debug_record_table.tscn").instantiate() as DebugRecordTable
 		host.add_child(panel)
 		panel.refresh_from_host(host, true)
+		_check_object_columns(host)
 		var row: TreeItem = panel.rows["1"]
 		row.collapsed = false
 		panel.refresh_from_host(host, true)
@@ -135,6 +136,29 @@ func _run() -> void:
 
 	print("PASS: debug city tables sort, decode large-map records, retain expansion, filter, freeze and preserve save bytes")
 	quit()
+
+
+# moving-thing columns fit their widest cell and explain their meaning
+func _check_object_columns(host: Control) -> void:
+	var panel := preload("res://src/debug/debug_record_table.tscn").instantiate() as DebugRecordTable
+	panel.kind = "Objects"
+	host.add_child(panel)
+	panel.refresh_from_host(host, true)
+	var table := panel.table
+	var font := table.get_theme_font("font")
+	var font_size := table.get_theme_font_size("font_size")
+	var item := panel.rows["1"] as TreeItem
+
+	for column in table.columns:
+		assert(not table.get_column_title_tooltip_text(column).is_empty())
+		var text_width := font.get_string_size(item.get_text(column), HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		assert(table.get_column_width(column) >= text_width, "Column %d is narrower than its text" % column)
+
+	# an expanded row widens the columns to fit its stored values
+	var x_width := table.get_column_width(6)
+	item.collapsed = false
+	assert(table.get_column_width(6) > x_width)
+	panel.free()
 
 
 func _check_sorting() -> void:

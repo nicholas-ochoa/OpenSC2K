@@ -42,6 +42,7 @@ func _ready() -> void:
 	_configure_table(_days, ["Day", "What happens", "Average ms", "Last ms", "Max ms", "Samples"])
 	_build_day_rows()
 	_metrics_tree = tabs.get_node("Metrics")
+	tabs.set_tab_title(tabs.get_tab_idx_from_control(tabs.get_node("Objects")), "Moving Things")
 	for tab_name in ["MicroSims", "Objects"]:
 		(tabs.get_node(tab_name) as DebugRecordTable).locate_requested.connect(_locate_on_map)
 	_build_actions(tabs)

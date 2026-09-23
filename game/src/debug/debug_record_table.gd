@@ -13,6 +13,8 @@ var _city_id := 0
 var locate_column := -1
 var _locate_icon: Texture2D
 var _titles: Array = []
+# columns sized to their widest cell after each refresh
+var _fitted_columns: Array[int] = []
 # sorted column and direction; -1 keeps record order
 var sort_column := -1
 var sort_descending := false
@@ -26,6 +28,7 @@ var sort_descending := false
 func _ready() -> void:
 	var titles := ["Record / field", "Value", "Hex", "Details"]
 	var widths := [240, 160, 140, 270]
+	var tooltips := {}
 
 	if kind == "State":
 		titles = ["Field", "Value", "Hex", "Description"]
@@ -35,18 +38,21 @@ func _ready() -> void:
 		locate_column = 4
 	elif kind == "Objects":
 		titles = ["Object"]
-		widths = [110]
+		widths = [0]
 		locate_column = 1
-		var column_widths := {"type": 140, "state": 200, "direction": 120, "goal": 200, "label": 160}
+		tooltips["Object"] = "Record number of the moving thing in the saved city."
 
 		for key: String in DebugObjectFields.COLUMNS:
-			titles.append(key.capitalize() if key.length() > 2 else key.to_upper())
-			widths.append(column_widths.get(key, 70))
+			var title := key.capitalize() if key.length() > 2 else key.to_upper()
+			titles.append(title)
+			widths.append(0)
+			tooltips[title] = DebugObjectFields.COLUMN_TOOLTIPS[key]
 
 	if locate_column >= 0:
 		# a plain icon column: tree omits row guide lines under item buttons
 		titles.insert(locate_column, "")
 		widths.insert(locate_column, 28)
+		tooltips[""] = "Click the crosshair in a row to center the map on it."
 		_locate_icon = locate_icon(12)
 		table.gui_input.connect(_on_table_input)
 
@@ -58,10 +64,15 @@ func _ready() -> void:
 
 	for column in titles.size():
 		table.set_column_title(column, titles[column])
+		table.set_column_title_tooltip_text(column, tooltips.get(titles[column], ""))
 		table.set_column_custom_minimum_width(column, widths[column])
 		table.set_column_expand(column, column == titles.size() - 1)
-		# objects cells stay one line high; long translations are trimmed and shown in tooltips
-		table.set_column_clip_content(column, kind == "Objects")
+
+		if widths[column] == 0:
+			_fitted_columns.append(column)
+
+	if not _fitted_columns.is_empty():
+		table.item_collapsed.connect(func(_item: TreeItem) -> void: _fit_columns())
 
 	show_empty.visible = kind != "State"
 	search.text_changed.connect(func(_text: String) -> void: _filter())
@@ -130,6 +141,7 @@ func update_records(records: Array[DebugTableRecord]) -> void:
 
 	_apply_sort()
 	_filter()
+	_fit_columns()
 
 
 func sort_by(column: int, descending := false) -> void:
@@ -252,6 +264,33 @@ func _set_cells(row: TreeItem, record: DebugTableRecord) -> void:
 
 	if locate_column >= 0:
 		_set_locate_icon(row, record.site)
+
+
+# the tree fits a column to its title only. measure filtered rows too, so that
+# the widths stay the same while the filter changes
+func _fit_columns() -> void:
+	if _fitted_columns.is_empty():
+		return
+
+	var font := table.get_theme_font("font")
+	var font_size := table.get_theme_font_size("font_size")
+	# keep a gap of about one character between adjacent cells
+	var padding := (table.get_theme_constant("inner_item_margin_left") + table.get_theme_constant("inner_item_margin_right")
+		+ table.get_theme_constant("h_separation") + font_size)
+	var widths := {}
+
+	for row: TreeItem in rows.values():
+		for item: TreeItem in [row] + ([] if row.collapsed else row.get_children()):
+			for column in _fitted_columns:
+				var width := font.get_string_size(item.get_text(column), HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+				widths[column] = maxf(widths.get(column, 0.0), width)
+
+	# the first column also holds the fold arrow and the child indent
+	if widths.has(0):
+		widths[0] += table.get_theme_icon("arrow").get_width() + table.get_theme_constant("item_margin")
+
+	for column in _fitted_columns:
+		table.set_column_custom_minimum_width(column, ceili(widths.get(column, 0.0)) + padding)
 
 
 func _set_locate_icon(row: TreeItem, site: CityRecords.Site) -> void:

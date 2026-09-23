@@ -15,6 +15,20 @@ const FIELDS := ["type", "direction", "state", "x", "y", "z", "px", "py", "dx", 
 # debug table column order; these fields show their translation instead of the stored number
 const COLUMNS := ["type", "state", "direction", "goal", "x", "y", "z", "px", "py", "dx", "dy", "label"]
 const TRANSLATED := ["type", "state", "direction", "goal", "label"]
+const COLUMN_TOOLTIPS := {
+	"type": "Kind of moving thing, such as an airplane, ship, train car, monster or tornado.",
+	"state": "What the moving thing does now. For train and subway cars, this is the next car in the train.",
+	"direction": "Direction of travel on the map. North is toward lower Y. For explosions, this is the animation frame.",
+	"goal": "Target or damage mode. Only monsters, explosions and Maxis Man use it.",
+	"x": "Map X coordinate of the tile that the moving thing is on.",
+	"y": "Map Y coordinate of the tile that the moving thing is on.",
+	"z": "Height used to draw the moving thing. Trains and subways use the terrain height instead.",
+	"px": "Position inside the tile on the X axis. For train and subway cars, this is the X coordinate of the next tile.",
+	"py": "Position inside the tile on the Y axis. For train and subway cars, this is the Y coordinate of the next tile.",
+	"dx": "Target tile X for aircraft and ships, or the fixed target X for Maxis Man. Monsters and trains keep sprite data here.",
+	"dy": "Target tile Y for aircraft and ships, or the fixed target Y for Maxis Man. Monsters keep sprite data here.",
+	"label": "Map label or marker under the moving thing. It is put back when the moving thing moves away.",
+}
 
 
 class TableCells extends RefCounted:
