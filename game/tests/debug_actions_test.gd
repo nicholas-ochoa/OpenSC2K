@@ -11,7 +11,8 @@ func _run() -> void:
 	_check_run_to_date()
 	_check_military_offer()
 	_check_moving_things()
-	print("PASS: debug actions pause on the target date, offer a military base and add or remove moving things")
+	_check_funds()
+	print("PASS: debug actions pause on the target date, offer a military base, add or remove moving things and set funds")
 	quit()
 
 
@@ -138,3 +139,14 @@ func _find(city: CityState, matches: Callable) -> Vector2i:
 			return Vector2i(index / city.map_size, index % city.map_size)
 
 	return Vector2i(-1, -1)
+
+
+func _check_funds() -> void:
+	var city := CityState.from_document(EmptyCityTemplate.create(128))
+
+	for amount in [0, -250000, CityDebugActions.MIN_FUNDS, CityDebugActions.MAX_FUNDS]:
+		var result := CityDebugActions.set_funds(city, amount)
+		assert(result.ok and city.funds() == amount, result.error)
+
+	assert(not CityDebugActions.set_funds(city, CityDebugActions.MAX_FUNDS + 1).ok)
+	assert(city.funds() == CityDebugActions.MAX_FUNDS)

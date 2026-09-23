@@ -126,6 +126,17 @@ func debug_add_funds(amount: int) -> ActionResult:
 	)
 
 
+func debug_set_funds(amount: int) -> ActionResult:
+	var result := DebugActions.set_funds(app.document_state.city, amount)
+
+	if not result.ok:
+		return ActionResult.new(false, result.error)
+
+	app.interface.refresh_details()
+
+	return ActionResult.new(true, "Funds are now $%s." % app.interface.format_number(int(result.new_funds)))
+
+
 func debug_unlock_everything() -> ActionResult:
 	var result := DebugActions.unlock_everything(app.document_state.city, app.document_state.current_document)
 

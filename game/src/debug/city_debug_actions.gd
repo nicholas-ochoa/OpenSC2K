@@ -8,6 +8,7 @@ const DisasterStart = preload("res://src/simulation/disasters/disaster_start_pha
 const MovingThingSpawner = preload("res://src/simulation/moving_things/moving_thing_spawner.gd")
 
 const MAX_FUNDS := 0x7fffffff
+const MIN_FUNDS := -0x80000000
 const MISC_SIZE := Sc2MiscLayout.SIZE
 const NORMAL_CITY_MODE := 1
 const DISASTER_OVERLAY_FIRST := 0xfb
@@ -77,6 +78,22 @@ static func add_funds(city: CityState, amount: int) -> FundsResult:
 	var result := FundsResult.new()
 	result.ok = true
 	result.new_funds = new_funds
+
+	return result
+
+
+static func set_funds(city: CityState, amount: int) -> FundsResult:
+	var result := FundsResult.new()
+
+	if city == null:
+		result.error = "No city is loaded."
+	elif amount < MIN_FUNDS or amount > MAX_FUNDS:
+		result.error = "Funds must be from $%d to $%d." % [MIN_FUNDS, MAX_FUNDS]
+	elif not city.set_funds(amount):
+		result.error = "Funds could not be changed."
+	else:
+		result.ok = true
+		result.new_funds = amount
 
 	return result
 

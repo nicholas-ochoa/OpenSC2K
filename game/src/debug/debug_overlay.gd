@@ -131,6 +131,16 @@ func _build_actions(tabs: TabContainer) -> void:
 		_button(cheats, "+$%d" % amount, "Add %s to the city funds." % pair[1], func() -> void:
 			_record_action(main_control.debug.call("debug_add_funds", amount)))
 
+	var funds := SpinBox.new()
+	funds.min_value = CityDebugActions.MIN_FUNDS
+	funds.max_value = CityDebugActions.MAX_FUNDS
+	funds.prefix = "$"
+	funds.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	funds.tooltip_text = "The amount for Set funds. It can be 0 or negative."
+	cheats.add_child(funds)
+	_button(cheats, "Set funds", "Set the city funds to this amount. Use 0 or a negative amount to test debt and bankruptcy.", func() -> void:
+		_record_action(main_control.debug.call("debug_set_funds", int(funds.value))))
+	cheats.add_child(Control.new())
 	_button(cheats, "Unlock everything", ("Make all inventions, rewards, arcologies and power plants available now. " +
 		"This also removes the Nuclear Free ordinance."), func() -> void:
 		_invoke("debug_unlock_everything"))
