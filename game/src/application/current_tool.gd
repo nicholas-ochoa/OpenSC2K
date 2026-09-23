@@ -221,6 +221,7 @@ func update_edit_state() -> void:
 			and not app.tool_state.landscape_editor and not (app.scurk_place_print != null and app.scurk_place_print.visible))
 	app.map_view.bulldozer_visual_provider = app.moving_sprites.demolish_brush_visual if app.view_state.overlay_mode == CityViewMode.Mode.CITY else Callable()
 	app.city_toolbar.brush_controls.visible = app.tool_state.landscape_editor and app.map_view.landscape_brush and not level_brush
+
 	if level_brush:
 		app.map_view.brush_size = EDITOR_LEVEL_BRUSH_SIZE if app.tool_state.landscape_editor else LEVEL_BRUSH_SIZE
 		app.map_view.brush_round = true
@@ -228,12 +229,14 @@ func update_edit_state() -> void:
 		app.map_view.brush_size = (int(app.city_toolbar.brush_size_input.value) if app.tool_state.landscape_editor
 				else (7 if app.tool_state.selected_subtool == CityToolIds.Landscape.FOREST else 1))
 		app.map_view.brush_round = app.city_toolbar.brush_shape_input.selected == 1 if app.tool_state.landscape_editor else true
+
 	if app.map_view.uses_paint_brush():
 		app.map_view.continuous_placement = true
 		app.map_view.shift_line_enabled = false
 		app.map_view.shift_rectangle_enabled = true
 		state.selection = "point"
 		state.area = 1
+
 	app.map_view.stretch_terrain = (app.tool_state.landscape_editor and app.tool_state.selected_group == CityToolIds.Group.BULLDOZER
 			and app.tool_state.selected_subtool == CityToolIds.Bulldozer.STRETCH)
 	app.map_view.placement_error_provider = _placement_preview_error
@@ -242,8 +245,10 @@ func update_edit_state() -> void:
 			and app.tool_state.selected_subtool in [CityToolIds.Bulldozer.RAISE, CityToolIds.Bulldozer.LOWER, CityToolIds.Bulldozer.STRETCH])
 	app.map_view.highway_preview = app.tool_state.selected_group == CityToolIds.Group.ROADS and app.tool_state.selected_subtool == CityToolIds.Roads.HIGHWAY
 	app.map_view.query_footprint_preview = app.tool_state.selected_group == CityToolIds.Group.QUERY
+
 	if app.tool_state.selected_group != CityToolIds.Group.QUERY or app.tool_state.selected_subtool != CityToolIds.Query.TRIP_REACH:
 		app.map_view.clear_trip_reach()
+
 	app.map_view.query_city = app.document_state.city
 	app.map_view.set_edit_enabled(
 		bool(state.enabled),
@@ -251,6 +256,7 @@ func update_edit_state() -> void:
 		int(state.area),
 		bool(state.landscape),
 	)
+
 	app.interface.refresh_status_summary()
 
 	if app.status_label == null or not bool(state.show_status):

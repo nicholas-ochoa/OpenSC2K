@@ -49,6 +49,7 @@ func activate_document(
 	app.tool_state.landscape_editor = false
 	app.city_toolbar.set_landscape_editor(false)
 	app.city_menu_bar.disasters_menu.disabled = false
+
 	var music_was_active := app.effects_audio.music_playback_is_active()
 
 	app.budget.reset_prompts()
@@ -108,6 +109,7 @@ func activate_document(
 	app.palette_clock.elapsed_msec = 0.0
 	app.static_render.update_palette_cycle_texture()
 	app.moving_sprites.reset_blend()
+
 	var process_seed := app.tool_state.tool_random.state
 	var game_seed := app.simulation_state.nuisance_random.state
 	var lfsr_seed := (
@@ -138,6 +140,7 @@ func activate_document(
 	app.tool_state.dispatch_cycles = PackedInt32Array([0, 0, 0])
 	app.tool_state.dispatch_initialized = false
 	app.camera_input.update_zoom_controls(app.map_view.zoom_percent())
+
 	var display_name := app.document_state.city.city_name()
 
 	if display_name.is_empty():

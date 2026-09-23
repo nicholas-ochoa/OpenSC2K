@@ -131,6 +131,7 @@ static func refresh_sign_occlusion(render: ApplicationMapRender, view_size: int)
 		visual.position = Vector2(bounds.position)
 		visual.size = Vector2(bounds.size)
 		visuals[entry.key] = visual
+
 		var cached := RenderCaches.SignForeground.new(signature)
 		cached.indices = foreground
 		cached.palette_signature = 0 if gpu_palette else render.sign_palette_signature(used_indices, color_indices)

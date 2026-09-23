@@ -72,15 +72,19 @@ func open_budget_dialog(values: PackedInt32Array, annual: bool) -> void:
 func show_advisor(index: int) -> void:
 	var city := app.document_state.city
 	var engine := app.simulation_state.simulation_engine
+
 	if city == null or engine == null:
 		return
 
 	var report := BudgetReport.capture(city, app.city_dialogs.budget_dialog.funding_values())
 	var power_usage := engine.power_usage_percent
+
 	if power_usage < 0:
 		power_usage = 100 - int(city.graph_series(8).year[0])
+
 	var advice := BudgetAdvice.select(city, report, index, engine.random, power_usage)
 	app.city_dialogs.budget_dialog.show_advice(index, advice, app.city_dialogs.original_assets)
+
 	if index == 0:
 		app.effects_audio.play_sound_ids([512])
 
@@ -186,6 +190,7 @@ func _update_bond_controls() -> void:
 		+ Budget.BUDGET_FUNDING
 	)
 	var oldest := app.document_state.city.document.misc_u32(Bonds.MISC_BOND_RATES) & 0xffff
+
 	app.city_dialogs.budget_dialog.set_bond_state(bond_count, funds, average_fixed, oldest)
 
 
@@ -263,6 +268,7 @@ func _resolve_military_proposal(accepted: bool) -> void:
 	app.frame.consume_simulation_result(result)
 	app.interface.refresh_details()
 	app.status_label.theme_type_variation = ""
+
 	var proposal: MilitaryProposalPhase.Result = result.day_results[0].phase_results.military_proposal
 
 	if proposal.base_type in [2, 3, 4, 5]:

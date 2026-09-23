@@ -123,6 +123,7 @@ func _apply_static_edit_patch(command: EditCommandResult) -> bool:
 	caches.static_visual_signature = static_signature_for_mode(CityViewMode.Mode.CITY, view_size)
 	caches.static_render_mode = CityViewMode.Mode.CITY
 	state.pending = false
+
 	app.moving_sprites.set_static_occlusion_commands(
 		IsometricRenderer.patch_static_occlusion_commands(
 			caches.static_occlusion_commands,
@@ -133,12 +134,15 @@ func _apply_static_edit_patch(command: EditCommandResult) -> bool:
 		),
 		view_size
 	)
+
 	caches.static_view_cache[CityViewMode.Mode.CITY] = RenderCaches.StaticView.new(
 		caches.static_city_image, caches.static_occlusion_commands, caches.static_visual_signature,
 		caches.static_display_city, view_size
 	)
+
 	app.timing_state.edit_display_timings.occlusion_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
 	profile_start = Time.get_ticks_usec()
+
 	var source := CityMapTexture.update_region(app.map_view.city_source, caches.static_city_image, patched.output_rect)
 	app.map_view.set_city_view(caches.static_display_city, source, null, true)
 	app.menus.sync_map_style()
@@ -425,6 +429,7 @@ func request_static_render(
 	state.job.show_underground_water_mains = app.view_state.show_underground_water_mains
 	state.job.show_underground_pipes = app.view_state.show_underground_pipes
 	state.task = CityRenderTask.new()
+
 	var start_error := state.task.start(
 		state.job.run
 	)
@@ -447,6 +452,7 @@ func start_pending_static_render() -> void:
 		return
 
 	var view_size := city_view_size()
+
 	request_static_render(
 		static_signature_for_mode(app.view_state.overlay_mode, view_size),
 		view_size,

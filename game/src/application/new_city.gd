@@ -64,40 +64,49 @@ func make_new_city_preview() -> void:
 func _generate_new_city_preview(advance_seed: bool) -> bool:
 	if app.asset_state.palette == null or not app.asset_state.palette.is_valid():
 		app.city_dialogs.new_city_dialog.preview_status.text = "Terrain preview is not available."
-
 		return false
 
 	if app.new_city_state.preview_job != null:
 		return false
+
 	app.new_city_state.preview_job = NewCityPreviewJob.new()
 	app.new_city_state.preview_job.revision = app.city_dialogs.new_city_dialog.generation_revision
 	app.new_city_state.preview_job.view_size = NewCityPreviewJob.preview_view_size(
 		app.city_dialogs.new_city_dialog.size_input.get_selected_id(), app.city_dialogs.new_city_dialog.size)
+
 	var preview_sprites := (app.asset_state.large_sprites if app.new_city_state.preview_job.view_size == IsometricRenderer.VIEW_LARGE
 			else app.asset_state.small_medium_sprites)
+
 	var error := app.new_city_state.preview_job.start(app.new_city_state.session,
 		app.asset_state.reference_root.path_join("DEFAULT.SC2"), app.city_dialogs.new_city_dialog.terrain_options(),
 		app.asset_state.palette, preview_sprites, advance_seed)
+
 	if error != OK:
 		app.new_city_state.preview_job = null
 		app.city_dialogs.new_city_dialog.preview_status.text = "Cannot start terrain generation."
 		return false
+
 	app.city_dialogs.new_city_dialog.set_generating(true)
+
 	return true
 
 
 func poll_new_city_preview() -> void:
 	if app.new_city_state.preview_job == null or app.new_city_state.preview_job.thread.is_alive():
 		return
+
 	var job := app.new_city_state.preview_job
 	var generated: NewCityTerrainSession.PreviewResult = job.thread.wait_to_finish()
 	app.new_city_state.preview_job = null
 	app.city_dialogs.new_city_dialog.set_generating(false)
+
 	if not app.city_dialogs.new_city_dialog.visible or job.revision != app.city_dialogs.new_city_dialog.generation_revision:
 		return
+
 	if not generated.ok:
 		app.city_dialogs.new_city_dialog.preview_status.text = "Cannot generate terrain: %s" % generated.error
 		return
+
 	app.new_city_state.session = job.session
 	app.city_dialogs.new_city_dialog.show_preview(generated.landscape_image, generated.minimap_image,
 		"Water: %s tiles   Trees: %s tiles   Height: %s–%s"
@@ -116,6 +125,7 @@ func cancel_new_city() -> void:
 	app.city_dialogs.new_city_dialog.hide()
 	app.new_city_state.session.clear()
 	app.city_dialogs.new_city_dialog.preview_view.texture = null
+
 	var return_to_main_menu := app.new_city_state.return_to_main_menu
 	app.new_city_state.return_to_main_menu = false
 
@@ -126,6 +136,7 @@ func cancel_new_city() -> void:
 func create_new_city() -> void:
 	if not app.city_dialogs.new_city_dialog.candidate_valid:
 		return
+
 	if app.tool_state.landscape_editor:
 		create_new_city_unchecked()
 	else:

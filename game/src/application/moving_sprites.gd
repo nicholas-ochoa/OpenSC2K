@@ -306,6 +306,7 @@ func refresh_moving_things(view_size := -1) -> void:
 	var batched_visuals := DynamicSpriteCanvas.batch_special_visuals(
 		visuals, caches.dynamic_special_batch_cache
 	)
+
 	app.map_view.set_dynamic_sprites(batched_visuals)
 	app.map_render.refresh_sign_occlusion(view_size)
 	caches.foreground_view_rect = app.map_view.visible_source_rect()
@@ -343,6 +344,7 @@ func _gpu_moving_visual(sprite_archive: Sc2SpriteArchive, command: CityDynamicCo
 		mode = CityMapMovingOcclusion.MODE_TRAIN
 
 	var result := CityDynamicVisual.new()
+
 	result.texture = resource.texture
 	result.texture_factor = factor
 	result.position = Vector2(Vector2i(command.position) * divisor)

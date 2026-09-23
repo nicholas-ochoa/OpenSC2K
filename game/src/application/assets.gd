@@ -67,19 +67,23 @@ func initialize_runtime() -> void:
 	app.tool_state.tool_random = Random.new(app.newspaper_state.session_seed)
 	app.newspaper_state.session_state.resize(NewsQueue.MISC_SIZE)
 	app.newspaper_state.session_state.fill(0)
+
 	NewsQueue.initialize_session(app.newspaper_state.session_state, app.tool_state.tool_random)
+
 	var original_assets := app.asset_state.asset_source.assets
 	text_resources.newspaper_data = original_assets.newspaper_data
 	text_resources.library_texts = original_assets.library_texts
 	app.asset_state.scurk_graphics = original_assets.scurk_graphics
 	app.interface.build_interface(original_assets)
 	app.settings.apply_compatibility_controls()
+
 	app.desktop_presentation = CityDesktopPresentation.new()
 	app.desktop_presentation.map_view = app.map_view
 	app.desktop_presentation.editor = app.scurk_editor
 	app.desktop_presentation.place_print = app.scurk_place_print
 	app.desktop_presentation.print_dialog = app.scurk_print
 	app.add_child(app.desktop_presentation)
+
 	app.desktop_presentation.set_graphics(original_assets.desktop_graphics)
 	app.debug_overlay = DebugOverlayView.instantiate()
 	app.debug_overlay.setup(app)
@@ -87,7 +91,6 @@ func initialize_runtime() -> void:
 
 	if not original_assets.error.is_empty():
 		app.interface.show_error(original_assets.error)
-
 		return
 
 	app.asset_state.palette = original_assets.palette
@@ -227,8 +230,10 @@ func _import_original_game(executable_path: String) -> void:
 	app.preferences.music_pack_folder = install_result.music
 	app.preferences.soundtrack_folder = ""
 	apply_graphics_source(selected)
+
 	app.audio_controller.set_media_packs(app.preferences.sound_pack_folder, app.preferences.music_pack_folder)
 	app.audio_controller.set_soundtrack_folder("")
+
 	var saved := SettingsStore.save_values(
 		app.preferences.music_volume, app.preferences.effects_volume, app.preferences.fullscreen,
 		app.preferences.settings_path, app.preferences.graphics_source, app.preferences.graphics_folder, app.preferences.soundtrack_folder,
@@ -237,6 +242,7 @@ func _import_original_game(executable_path: String) -> void:
 		app.preferences.original_compatibility, app.preferences.warn_sc2x_conversion, app.preferences.default_mayor_name,
 		app.preferences.overview_graphics, app.preferences.ui_theme, app.preferences.dark_underground,
 	)
+
 	app.settings.open_import_settings()
 	app.status_label.text = "Packs active. Imported %d cities and %d scenarios." % [install_result.cities, install_result.scenarios]
 
@@ -248,11 +254,14 @@ func apply_graphics_source(selected: GameAssetSource) -> void:
 	# wait for workers using the old archives
 	app.map_render.close_region_cache()
 	app.static_render.stop_render_job()
+
 	app.asset_state.asset_source = selected
 	app.asset_state.assets_ready = true
 	app.asset_state.reference_root = selected.reference_root
 	app.new_city_state.session.independent_template = not selected.has_city_template
+
 	app.audio_controller.set_original_media_source(app.asset_state.reference_root, false)
+
 	var assets := selected.assets
 	text_resources.newspaper_data = assets.newspaper_data
 	text_resources.library_texts = assets.library_texts
@@ -282,6 +291,7 @@ func apply_graphics_source(selected: GameAssetSource) -> void:
 	app.city_dialogs.simnation_window.simnation_control.set_sprite_sheet(assets.simnation_sprites)
 	app.city_dialogs.city_map_window.set_resources(assets.city_map_icons)
 	app.city_dialogs.building_objection_dialog.set_picture(assets.forest_protest_image)
+
 	if app.scurk_editor != null:
 		app.scurk_editor.configure(app.asset_state.palette, app.asset_state.base_large_sprites, app.asset_state.base_small_medium_sprites,
 				app.asset_state.reference_root, app.asset_state.scurk_graphics)

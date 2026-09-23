@@ -41,7 +41,6 @@ func apply_map_selection(
 
 	if tool.landscape_editor and (tool.selected_group not in [CityToolIds.Group.BULLDOZER, CityToolIds.Group.LANDSCAPE, CityToolIds.Group.QUERY, CityToolIds.Group.CENTERING] or (tool.selected_group == CityToolIds.Group.BULLDOZER and tool.selected_subtool == CityToolIds.Bulldozer.DEZONE)):
 		app.interface.show_error("Select Start City before building structures.")
-
 		return
 
 	var scurk_tool_mode := app.scurk_workspace.scurk_edit_tool_active()
@@ -105,7 +104,6 @@ func _select_scurk_tool(finish: Vector2i, scurk_tool: ScurkEditTool) -> bool:
 
 	if app.scurk_place_print.is_object_mode():
 		app.scurk_workspace.apply_scurk_place_selection(finish)
-
 		return false
 
 	if scurk_tool == null:
@@ -176,12 +174,17 @@ func _record_dispatch(
 	var tool := app.tool_state
 	dispatch.dispatch_cycles_before = cycles_before
 	dispatch.dispatch_initialized_before = initialized_before
+
 	tool.dispatch_initialized = true
 	tool.dispatch_cycles[tool.selected_subtool] = dispatch.slot_index
+
 	dispatch.dispatch_cycles_after = tool.dispatch_cycles.duplicate()
+
 	tool.last_edit_command = dispatch
+
 	app.static_render.refresh_after_city_edit(dispatch)
 	app.effects_audio.play_tool_success_sound(tool.selected_group, tool.selected_subtool)
+
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "Deployed %s unit %d of %d." % [
 		Tools.tool(tool.selected_group, tool.selected_subtool).name,
@@ -234,14 +237,17 @@ func _apply_landscape_brush(start: Vector2i, path: Array[Vector2i]) -> bool:
 		var target := tool.level_brush_altitude if tool.level_brush_altitude >= 0 else app.document_state.city.land_altitude(origin.x, origin.y)
 		var command := TerrainTools.apply_path(app.document_state.city, tool.selected_group, tool.selected_subtool,
 			origin, path, tool.tool_random, tool.landscape_editor, target)
+
 		if command.ok or command.error != "no terrain height changed":
 			_finish_simple_edit(SimpleEdits._result("terrain", command, tool.selected_group, tool.selected_subtool, tool.landscape_editor), false, null)
+
 		return true
 
-	var command := LandscapeCommand.apply_path(app.document_state.city, tool.selected_group, tool.selected_subtool,
-		path, tool.tool_random, tool.landscape_editor, true)
+	var command := LandscapeCommand.apply_path(app.document_state.city, tool.selected_group, tool.selected_subtool, path, tool.tool_random, tool.landscape_editor, true)
+
 	if command.ok or command.error != "no eligible tiles changed":
 		_finish_simple_edit(SimpleEdits._result("landscape", command, tool.selected_group, tool.selected_subtool, tool.landscape_editor), false, null)
+
 	return true
 
 
@@ -267,6 +273,7 @@ func _apply_simple_edit(
 
 	if app.map_view.demolish_brush and simple_edit.command.error == "no eligible tiles changed":
 		return true
+
 	_finish_simple_edit(simple_edit, scurk_tool_mode, scurk_tool)
 
 	return true
