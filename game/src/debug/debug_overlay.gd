@@ -140,6 +140,21 @@ func _build_actions(tabs: TabContainer) -> void:
 	_button(cheats, "Offer military base", ("Show the military base offer now. The simulation waits for your answer. " +
 		"This is not available if the city already has a base."), func() -> void:
 		_invoke("debug_offer_military_base"))
+	var moving := _action_section(box, "Moving things", 3)
+	var spawn_type := OptionButton.new()
+	spawn_type.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spawn_type.tooltip_text = "The moving thing to add."
+
+	for caption in CityDebugActions.SPAWN_TYPES:
+		spawn_type.add_item(caption)
+
+	moving.add_child(spawn_type)
+	_button(moving, "Add near view center", ("Add the selected moving thing at or near the view center. A cargo ship starts at a map edge " +
+		"and sails toward the view center. A train starts on the nearest clear rail tile. The normal limits apply."), func() -> void:
+		_record_action(main_control.debug.call("debug_spawn_moving_thing", spawn_type.selected)))
+	_button(moving, "Remove all", ("Remove every moving thing, including disaster objects and Maxis Man. " +
+		"The map labels under them come back."), func() -> void:
+		_invoke("debug_remove_moving_things"))
 	var disasters := _action_section(box, "Disasters", 3)
 	var disaster := OptionButton.new()
 	disaster.size_flags_horizontal = Control.SIZE_EXPAND_FILL

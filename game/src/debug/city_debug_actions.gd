@@ -12,6 +12,9 @@ const MISC_SIZE := Sc2MiscLayout.SIZE
 const NORMAL_CITY_MODE := 1
 const DISASTER_OVERLAY_FIRST := 0xfb
 const MAXIS_TARGET_OVERLAY_FIRST := 241
+# order of the debug spawn list
+const SPAWN_TYPES := ["Helicopter", "Airplane", "Cargo ship", "Sailboats", "Train"]
+const TRAIN_SEARCH_RADIUS := 16
 
 
 class Result extends RefCounted:
@@ -32,6 +35,15 @@ class EndDisasterResult extends Result:
 class DispatchResult extends Result:
 	var start := Vector2i.ZERO
 	var target := Vector2i.ZERO
+
+
+class SpawnResult extends Result:
+	var point := Vector2i.ZERO
+	var count := 0
+
+
+class RemoveResult extends Result:
+	var count := 0
 
 
 class DisasterTarget extends RefCounted:
@@ -344,6 +356,174 @@ static func dispatch_maxis_man(
 	return result
 
 
+# add a moving thing near the view center. the spawn uses its own random
+# generators, so the saved simulation random state does not change
+static func spawn_moving_thing(
+	city: CityState,
+	document: Sc2File,
+	engine: SimulationEngine,
+	kind: int,
+	view_center: Vector2i,
+	seed: int,
+) -> SpawnResult:
+	var result := SpawnResult.new()
+
+	if city == null or document == null or engine == null:
+		result.error = "No city is loaded."
+
+		return result
+
+	var thing_chunk := document.find_chunk("XTHG")
+	var text_chunk := document.find_chunk("XTXT")
+
+	if thing_chunk == null or text_chunk == null:
+		result.error = "The moving-object data is missing."
+
+		return result
+
+	var map_edge := city.map_size
+	var old_things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
+	var things := old_things.duplicate()
+	var text: PackedByteArray = city.text_overlays.duplicate()
+	var buildings: PackedByteArray = document.find_chunk("XBLD").decoded_payload
+	var random := SimRandom.new(seed)
+	var lfsr_random := SimLfsrRandom.new(maxi(1, seed & 0xffff))
+	var game_random := GameLcgRandom.new(seed)
+
+	match kind:
+		0:
+			var spawned := MovingThingSpawner.spawn_helicopter(things, text, view_center, random, map_edge)
+			result.count = 1 if spawned.spawned else 0
+			result.point = spawned.point
+			result.error = "The view center is blocked, a monster is active, or the helicopter limit is reached."
+		1:
+			var spawned := MovingThingSpawner.spawn_airplane(things, text, view_center, 0, random, map_edge)
+			result.count = 1 if spawned.spawned else 0
+			result.point = spawned.point
+			result.error = "The view center is blocked, a monster is active, or the airplane limit is reached."
+		2:
+			var terrain: PackedByteArray = document.find_chunk("XTER").decoded_payload
+			var spawned := MovingThingSpawner.spawn_ship(terrain, things, text, view_center, random, map_edge)
+			result.count = 1 if spawned.spawned else 0
+			result.point = spawned.point
+			result.error = "A cargo ship needs deep water near a map edge. Only one cargo ship can be active."
+		3:
+			var flags: PackedByteArray = document.find_chunk("XBIT").decoded_payload
+			result.count = MovingThingSpawner.spawn_sailboats(buildings, flags, things, text, view_center, lfsr_random, map_edge)
+			result.point = view_center
+			result.error = "Sailboats need open water next to the view center, and the sailboat limit applies."
+		4:
+			result.point = _spawn_train_near(buildings, things, text, view_center, game_random, lfsr_random, map_edge)
+			result.count = 1 if result.point.x >= 0 else 0
+			result.error = "No clear rail tile was found near the view center, or the train limit is reached."
+		_:
+			result.error = "The moving thing selection is not valid."
+
+	if result.count == 0:
+		return result
+
+	result.error = ""
+
+	if not thing_chunk.set_decoded_payload(things):
+		result.error = "The moving-object records could not be stored."
+
+		return result
+
+	if not text_chunk.set_decoded_payload(text):
+		thing_chunk.set_decoded_payload(old_things)
+		result.error = "The moving-object map links could not be stored."
+
+		return result
+
+	city.resync_mirrors(["XTXT"])
+
+	if kind == 2:
+		engine.ship_home = result.point
+
+	result.ok = true
+
+	return result
+
+
+# remove every moving thing and put back the map labels under them
+static func remove_moving_things(city: CityState, document: Sc2File) -> RemoveResult:
+	var result := RemoveResult.new()
+
+	if city == null or document == null:
+		result.error = "No city is loaded."
+
+		return result
+
+	var thing_chunk := document.find_chunk("XTHG")
+	var text_chunk := document.find_chunk("XTXT")
+
+	if thing_chunk == null or text_chunk == null:
+		result.error = "The moving-object data is missing."
+
+		return result
+
+	var old_things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
+	var things := old_things.duplicate()
+	var text: PackedByteArray = city.text_overlays.duplicate()
+	var records: Dictionary[int, bool] = {}
+
+	for record in range(1, ThingData.count(things)):
+		if ThingData.read(things, record * CityState.THING_RECORD_SIZE) != 0:
+			records[record] = true
+
+	if records.is_empty():
+		result.error = "There are no moving things to remove."
+
+		return result
+
+	_unlink_things(text, things, records, city.map_size)
+	_clear_thing_records(things, records)
+
+	if not thing_chunk.set_decoded_payload(things):
+		result.error = "The moving-object records could not be cleared."
+
+		return result
+
+	if not text_chunk.set_decoded_payload(text):
+		thing_chunk.set_decoded_payload(old_things)
+		result.error = "The moving-object map links could not be cleared."
+
+		return result
+
+	city.resync_mirrors(["XTXT"])
+	result.ok = true
+	result.count = records.size()
+
+	return result
+
+
+# nearest clear rail tile first. the train spawner checks the route and the limit
+static func _spawn_train_near(
+	buildings: PackedByteArray,
+	things: PackedByteArray,
+	text: PackedByteArray,
+	center: Vector2i,
+	game_random: GameLcgRandom,
+	lfsr_random: SimLfsrRandom,
+	map_edge: int,
+) -> Vector2i:
+	var candidates: Array[Vector2i] = []
+
+	for x in range(center.x - TRAIN_SEARCH_RADIUS, center.x + TRAIN_SEARCH_RADIUS + 1):
+		for y in range(center.y - TRAIN_SEARCH_RADIUS, center.y + TRAIN_SEARCH_RADIUS + 1):
+			if x >= 0 and x < map_edge and y >= 0 and y < map_edge:
+				candidates.append(Vector2i(x, y))
+
+	candidates.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		return absi(a.x - center.x) + absi(a.y - center.y) < absi(b.x - center.x) + absi(b.y - center.y))
+
+	for point in candidates:
+		if MovingThingSpawner._spawn_train_record(buildings, things, text, point, game_random, lfsr_random, map_edge):
+			return point
+
+	return Vector2i(-1, -1)
+
+
 static func _valid_disaster_chunks(
 	thing_chunk: Sc2Chunk,
 	text_chunk: Sc2Chunk,
@@ -396,14 +576,28 @@ static func _clear_disaster_markers(
 		if overlay >= DISASTER_OVERLAY_FIRST and overlay <= 255:
 			OverlayData.write(text, index, 0)
 			cleared_markers += 1
-			continue
+
+	_unlink_things(text, things, disaster_records, map_edge)
+
+	return cleared_markers
+
+
+# a thing keeps the overlay it covers. restore it on the thing's own tile
+static func _unlink_things(
+	text: PackedByteArray,
+	things: PackedByteArray,
+	records: Dictionary[int, bool],
+	map_edge: int,
+) -> void:
+	for index in (map_edge * map_edge):
+		var overlay := int(OverlayData.read(text, index))
 
 		if not OverlayData.is_thing(overlay):
 			continue
 
 		var record := OverlayData.thing_record(overlay)
 
-		if not disaster_records.has(record):
+		if not records.has(record):
 			continue
 
 		var offset := record * CityState.THING_RECORD_SIZE
@@ -416,8 +610,6 @@ static func _clear_disaster_markers(
 			if index == point_index and not OverlayData.blocks_thing(prior_overlay)
 			else 0
 		))
-
-	return cleared_markers
 
 
 static func _clear_thing_records(

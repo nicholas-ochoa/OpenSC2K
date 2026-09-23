@@ -249,6 +249,41 @@ func debug_dispatch_maxis_man() -> ActionResult:
 	)
 
 
+func debug_spawn_moving_thing(kind: int) -> ActionResult:
+	var center := app.map_view.center_tile() if app.map_view != null else Vector2i(64, 64)
+	var result := DebugActions.spawn_moving_thing(app.document_state.city, app.document_state.current_document,
+		app.simulation_state.simulation_engine, kind, center, Time.get_ticks_usec() & 0x7fffffff)
+
+	if not result.ok:
+		return ActionResult.new(false, result.error)
+
+	app.moving_sprites.refresh_moving_things()
+
+	match kind:
+		1:
+			return ActionResult.new(true, "Added an airplane at %s." % str(result.point))
+		2:
+			return ActionResult.new(true, "Added a cargo ship at %s. It sails toward the view center." % str(result.point))
+		3:
+			return ActionResult.new(true, "Added %d sailboat(s) next to %s." % [result.count, str(result.point)])
+		4:
+			return ActionResult.new(true, "Added a train at %s." % str(result.point))
+
+	return ActionResult.new(true, "Added a helicopter at %s." % str(result.point))
+
+
+func debug_remove_moving_things() -> ActionResult:
+	var result := DebugActions.remove_moving_things(app.document_state.city, app.document_state.current_document)
+
+	if not result.ok:
+		return ActionResult.new(false, result.error)
+
+	app.map_render.refresh_map(false)
+	app.moving_sprites.refresh_moving_things()
+
+	return ActionResult.new(true, "Removed %d moving thing(s)." % result.count)
+
+
 func debug_offer_military_base() -> ActionResult:
 	if app.simulation_state.military_proposal_pending:
 		return ActionResult.new(false, "The military base offer is already open.")
