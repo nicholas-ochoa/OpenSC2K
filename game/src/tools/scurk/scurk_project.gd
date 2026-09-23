@@ -2,18 +2,22 @@ class_name ScurkProject
 extends RefCounted
 
 const Mif = preload("res://src/assets/scurk_mif.gd")
+const Archive = preload("res://src/tools/scurk/scurk_project_archive.gd")
+const Limits = preload("res://src/tools/scurk/scurk_project_limits.gd")
 const MAGIC := "SCURK-PROJECT\n"
-const VERSION := 1
+const VERSION := Archive.VERSION
+const LEGACY_VERSION := 1
 const EXTENSION := "scurk"
-const MAX_FILE_BYTES := 128 * 1024 * 1024
-const MAX_DATA_BYTES := 64 * 1024 * 1024
-const MAX_MIF_BYTES := 16 * 1024 * 1024
-const MAX_DOCUMENTS := 1500
-const MAX_LAYERS := 32
-const MAX_STAMPS := 256
-const MAX_CHECKPOINTS := 24
-const MAX_WIDTH := 128
-const MAX_HEIGHT := 256
+const MAX_FILE_BYTES := Limits.MAX_FILE_BYTES
+const MAX_DATA_BYTES := Limits.MAX_DATA_BYTES
+const MAX_MIF_BYTES := Limits.MAX_MIF_BYTES
+const MAX_DOCUMENTS := Limits.MAX_DOCUMENTS
+const MAX_LAYERS := Limits.MAX_LAYERS
+const MAX_STAMPS := Limits.MAX_STAMPS
+const MAX_CHECKPOINTS := Limits.MAX_CHECKPOINTS
+const MAX_WIDTH := Limits.MAX_WIDTH
+const MAX_HEIGHT := Limits.MAX_HEIGHT
+const MAX_RESOURCES := Limits.MAX_RESOURCES
 static var _base64_pattern := RegEx.create_from_string("^[A-Za-z0-9+/]*={0,2}$")
 
 class Result extends RefCounted:
@@ -28,6 +32,7 @@ class Result extends RefCounted:
 		return result
 
 
+var palette_rgb := PackedByteArray()
 var original_mif := PackedByteArray()
 var current_mif := PackedByteArray()
 var metadata: Dictionary = {}
@@ -45,6 +50,7 @@ func initialize(mif_bytes: PackedByteArray) -> Result:
 	if not _valid_mif(mif_bytes):
 		return Result.failure("The project tile set is invalid.")
 
+	palette_rgb.clear()
 	original_mif = mif_bytes.duplicate()
 	current_mif = mif_bytes.duplicate()
 	metadata.clear()
@@ -278,40 +284,72 @@ func restore_snapshot(state: Dictionary) -> bool:
 	return true
 
 
-func to_bytes() -> Result:
-	if not _valid_mif(original_mif) or not _valid_mif(current_mif):
-		return Result.failure("The project tile set is invalid.")
-	if not _valid_state(snapshot()) or checkpoints.size() > MAX_CHECKPOINTS:
-		return Result.failure("The project data is invalid.")
+func to_dictionary() -> Dictionary:
 	var record := extra_fields.duplicate(true)
-	record.merge(_encode_snapshot(snapshot()), true)
-	record.version = VERSION
-	record.original_mif = Marshalls.raw_to_base64(original_mif)
+	record.merge(snapshot(), true)
+	record.original_mif = original_mif.duplicate()
 	record.revision = revision
-	var history: Array = []
-	for checkpoint in checkpoints:
-		if not checkpoint.get("snapshot") is Dictionary or not _valid_state(checkpoint.snapshot):
-			return Result.failure("The project checkpoint is invalid.")
-		var entry := checkpoint.duplicate(true)
-		entry.snapshot = _encode_snapshot(checkpoint.snapshot)
-		history.append(entry)
-	record.checkpoints = history
-	if not _json_safe(record):
-		return Result.failure("Project metadata must contain only JSON values.")
+	record.checkpoints = checkpoints.duplicate(true)
+	return record
 
-	var bytes := MAGIC.to_utf8_buffer()
-	bytes.append_array(JSON.stringify(record).to_utf8_buffer())
-	if bytes.size() > MAX_FILE_BYTES:
-		return Result.failure("The project exceeds the file size limit.")
-	var checked := from_bytes(bytes)
+
+func to_bytes() -> Result:
+	var record := to_dictionary()
+	var checked := from_dictionary(record, palette_rgb)
+	if not checked.ok:
+		return checked
+	var encoded := Archive.encode(record, palette_rgb)
+	if not encoded.ok:
+		return Result.failure(encoded.error)
+	checked = from_bytes(encoded.bytes)
 	if not checked.ok:
 		return checked
 	var result := _success()
-	result.bytes = bytes
+	result.bytes = encoded.bytes
+	return result
+
+
+static func from_dictionary(record: Dictionary, rgb := PackedByteArray()) -> Result:
+	if not rgb.is_empty() and rgb.size() != Sc2Palette.RGB_BYTES:
+		return Result.failure("The project palette is invalid.")
+	if not record.get("original_mif") is PackedByteArray or not _valid_mif(record.original_mif):
+		return Result.failure("The original project tile set is invalid.")
+	if not _valid_state(record):
+		return Result.failure("The project data is invalid.")
+	var history: Variant = record.get("checkpoints", [])
+	if not history is Array or history.size() > MAX_CHECKPOINTS:
+		return Result.failure("The project history is invalid.")
+	# Reuse the strict version-1 value validator for both storage formats.
+	# This conversion stays in memory; snapshots never open an archive or a file.
+	var legacy := _encode_snapshot(record)
+	legacy.version = LEGACY_VERSION
+	legacy.original_mif = _encode_blob(record.original_mif)
+	legacy.checkpoints = []
+	for value: Variant in history:
+		if not value is Dictionary or not value.get("snapshot") is Dictionary or not _valid_state(value.snapshot):
+			return Result.failure("The project checkpoint is invalid.")
+		var entry: Dictionary = value.duplicate(true)
+		entry.snapshot = _encode_snapshot(value.snapshot)
+		legacy.checkpoints.append(entry)
+	var result := _from_legacy_record(legacy)
+	if result.ok:
+		result.project.palette_rgb = rgb.duplicate()
 	return result
 
 
 static func from_bytes(bytes: PackedByteArray) -> Result:
+	if bytes.size() > MAX_FILE_BYTES:
+		return Result.failure("The project exceeds the file size limit.")
+	var header := MAGIC.to_utf8_buffer()
+	if bytes.size() >= header.size() and bytes.slice(0, header.size()) == header:
+		return _from_legacy_bytes(bytes)
+	var decoded := Archive.decode(bytes)
+	if not decoded.ok:
+		return Result.failure(decoded.error)
+	return from_dictionary(decoded.record, decoded.palette_rgb)
+
+
+static func _from_legacy_bytes(bytes: PackedByteArray) -> Result:
 	var header := MAGIC.to_utf8_buffer()
 	if bytes.size() > MAX_FILE_BYTES or bytes.size() <= header.size():
 		return Result.failure("The project file size is invalid.")
@@ -323,9 +361,13 @@ static func from_bytes(bytes: PackedByteArray) -> Result:
 	if not parser.data is Dictionary:
 		return Result.failure("The project record is invalid.")
 	var record: Dictionary = parser.data
+	return _from_legacy_record(record)
+
+
+static func _from_legacy_record(record: Dictionary) -> Result:
 	if not _json_safe(record):
 		return Result.failure("The project record contains invalid JSON values.")
-	if not _integer_in(record.get("version"), VERSION, VERSION):
+	if not _integer_in(record.get("version"), LEGACY_VERSION, LEGACY_VERSION):
 		return Result.failure("The project version is not supported.")
 	if not _integer_in(record.get("revision"), 0, 9007199254740991):
 		return Result.failure("The project revision is invalid.")
@@ -425,7 +467,7 @@ func _decode_snapshot(record: Dictionary) -> bool:
 		return _fail("The project metadata is invalid.")
 	metadata = source_metadata.duplicate(true)
 	var source_resources: Variant = record.get("resources", {})
-	if not source_resources is Dictionary or source_resources.size() > 1024:
+	if not source_resources is Dictionary or source_resources.size() > MAX_RESOURCES:
 		return _fail("The project resources are invalid.")
 	for key: Variant in source_resources:
 		if not key is String or key.is_empty() or key.length() > 256:
@@ -593,7 +635,7 @@ static func _valid_state(state: Dictionary) -> bool:
 			if not layer.get("pixels") is PackedInt32Array or not _valid_pixels(layer.pixels, document.width, document.height):
 				return false
 	var resource_map: Variant = state.get("resources", {})
-	if not resource_map is Dictionary or resource_map.size() > 1024:
+	if not resource_map is Dictionary or resource_map.size() > MAX_RESOURCES:
 		return false
 	for key: Variant in resource_map:
 		if not key is String or key.is_empty() or key.length() > 256:
@@ -623,11 +665,11 @@ static func _valid_pixels(pixels: PackedInt32Array, width: int, height: int) -> 
 
 
 static func _valid_dimensions(width: Variant, height: Variant) -> bool:
-	return _integer_in(width, 1, MAX_WIDTH) and _integer_in(height, 1, MAX_HEIGHT)
+	return Limits.valid_dimensions(width, height)
 
 
 static func _integer_in(value: Variant, minimum: int, maximum: int) -> bool:
-	return (value is int or value is float) and is_finite(float(value)) and float(value) == floor(float(value)) and value >= minimum and value <= maximum
+	return Limits.integer_in(value, minimum, maximum)
 
 
 static func _valid_name(value: Variant) -> bool:
