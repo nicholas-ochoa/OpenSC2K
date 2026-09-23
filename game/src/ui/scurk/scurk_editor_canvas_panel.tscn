@@ -48,14 +48,11 @@ alignment = 1
 [node name="Large" type="VBoxContainer" parent="Row/Previews/Content/Scroll/Views/Original"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="Row/Previews/Content/Scroll/Views/Original/Large"]
-layout_mode = 2
-text = "Large"
-horizontal_alignment = 1
-
 [node name="Preview" type="Control" parent="Row/Previews/Content/Scroll/Views/Original/Large"]
 layout_mode = 2
 script = ExtResource("preview")
+crop_to_artwork = true
+size_label = "Large"
 
 [node name="Smaller" type="VBoxContainer" parent="Row/Previews/Content/Scroll/Views/Original"]
 layout_mode = 2
@@ -63,39 +60,30 @@ layout_mode = 2
 [node name="Medium" type="VBoxContainer" parent="Row/Previews/Content/Scroll/Views/Original/Smaller"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="Row/Previews/Content/Scroll/Views/Original/Smaller/Medium"]
-layout_mode = 2
-text = "Medium"
-horizontal_alignment = 1
-
 [node name="Preview" type="Control" parent="Row/Previews/Content/Scroll/Views/Original/Smaller/Medium"]
 layout_mode = 2
 script = ExtResource("preview")
+crop_to_artwork = true
+size_label = "Medium"
 
 [node name="Small" type="VBoxContainer" parent="Row/Previews/Content/Scroll/Views/Original/Smaller"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="Row/Previews/Content/Scroll/Views/Original/Smaller/Small"]
-layout_mode = 2
-text = "Small"
-horizontal_alignment = 1
-
 [node name="Preview" type="Control" parent="Row/Previews/Content/Scroll/Views/Original/Smaller/Small"]
 layout_mode = 2
 script = ExtResource("preview")
+crop_to_artwork = true
+size_label = "Small"
 
 [node name="LargeDouble" type="VBoxContainer" parent="Row/Previews/Content/Scroll/Views"]
 layout_mode = 2
-
-[node name="Label" type="Label" parent="Row/Previews/Content/Scroll/Views/LargeDouble"]
-layout_mode = 2
-text = "Large x2"
-horizontal_alignment = 1
 
 [node name="Preview" type="Control" parent="Row/Previews/Content/Scroll/Views/LargeDouble"]
 layout_mode = 2
 script = ExtResource("preview")
 preview_scale = 2
+crop_to_artwork = true
+size_label = "Large x2"
 
 [node name="Toggles" type="GridContainer" parent="Row/Previews/Content"]
 layout_mode = 2

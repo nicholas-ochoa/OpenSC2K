@@ -11,6 +11,7 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	_test_preview_crop()
 	_test_footprints()
 	await _test_tile_selector()
 	var assets := OriginalGameAssets.load_root(ProjectSettings.globalize_path("res://../references/SIMCITY2000"))
@@ -34,7 +35,8 @@ func _run() -> void:
 	guides.get_node("Guides").button_pressed = false
 	assert(not editor.pixel_canvas.show_isometric_guides)
 	assert(editor.view_previews[3].preview_indices == editor.view_previews[0].preview_indices)
-	assert(editor.view_previews[3].custom_minimum_size == Vector2(258, 514))
+	assert(editor.view_previews[3].display_bounds == editor.view_previews[0].display_bounds)
+	assert(editor.view_previews[3].custom_minimum_size.y > editor.view_previews[0].custom_minimum_size.y)
 	_test_clipping_toggle(editor)
 	_test_clipboard_actions(editor)
 	_test_paint_sidebar(editor)
@@ -501,3 +503,22 @@ func _test_clipboard_actions(editor: ScurkEditorControl) -> void:
 	assert(canvas.pixels == artwork)
 	canvas.clear_selection()
 	editor._select_tool(ScurkPixelCanvas.TOOL_PENCIL)
+
+
+func _test_preview_crop() -> void:
+	var preview := ScurkViewPreview.new()
+	preview.crop_to_artwork = true
+	var pixels := PackedInt32Array([-1, 42, -1, -1])
+	var terrain := PackedInt32Array()
+	terrain.resize(Workspace.WIDTH * Workspace.HEIGHT)
+	terrain.fill(55)
+	preview.set_preview(0, 2, 2, pixels, 32, null, terrain, false)
+	assert(preview.artwork_bounds.size == Vector2i.ONE)
+	assert(preview.display_bounds.encloses(preview.artwork_bounds))
+	assert(preview.display_bounds.size.x < preview.preview_width)
+	var bounds := preview.display_bounds
+	preview.set_preview(0, 2, 2, pixels, 32, null, PackedInt32Array(), false)
+	assert(preview.display_bounds == bounds)
+	preview.clear_preview(0)
+	assert(preview.display_bounds.has_area())
+	preview.free()

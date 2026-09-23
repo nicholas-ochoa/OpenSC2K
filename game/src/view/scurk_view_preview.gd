@@ -8,6 +8,11 @@ const DrawingWorkspace = preload("res://src/tools/scurk/scurk_drawing_workspace.
 const CYCLE_INTERVAL_SECONDS := Sc2Palette.SCURK_TIMER_INTERVAL_SECONDS
 
 @export var preview_scale := 1
+@export var crop_to_artwork := false
+@export var size_label := ""
+
+var artwork_bounds := Rect2i()
+var display_bounds := Rect2i()
 
 var palette: Sc2Palette
 var view := ScurkSpriteIds.View.LARGE
@@ -52,6 +57,8 @@ func set_preview(
 		== DrawingWorkspace.WIDTH * DrawingWorkspace.HEIGHT
 	)
 
+	var minimum := Vector2i(preview_width, preview_height)
+	var maximum := Vector2i(-1, -1)
 	for y in preview_height:
 		var source_y := divisor - 1 + y * divisor
 
@@ -59,6 +66,9 @@ func set_preview(
 			var source_x := divisor - 1 + x * divisor
 			var source_offset := source_y * DrawingWorkspace.WIDTH + source_x
 			var index := workspace[source_offset]
+			if index >= 0:
+				minimum = minimum.min(Vector2i(x, y))
+				maximum = maximum.max(Vector2i(x, y))
 
 			if index < 0 and has_background:
 				index = background_workspace[source_offset]
@@ -67,8 +77,8 @@ func set_preview(
 
 			preview_indices[y * preview_width + x] = index
 
-	custom_minimum_size = Vector2(preview_width * preview_scale + 2, preview_height * preview_scale + 2)
-	reset_size()
+	artwork_bounds = Rect2i(minimum, maximum - minimum + Vector2i.ONE) if maximum.x >= 0 else Rect2i()
+	_update_preview_size()
 	_rebuild_texture()
 	queue_redraw()
 
@@ -80,9 +90,9 @@ func clear_preview(value_view: int) -> void:
 	preview_height = DrawingWorkspace.HEIGHT / divisor
 	preview_indices.resize(preview_width * preview_height)
 	preview_indices.fill(-1)
-	custom_minimum_size = Vector2(preview_width * preview_scale + 2, preview_height * preview_scale + 2)
+	artwork_bounds = Rect2i()
+	_update_preview_size()
 	preview_texture = null
-	reset_size()
 	queue_redraw()
 
 
@@ -163,14 +173,34 @@ func _rebuild_texture() -> void:
 	texture_state = state
 
 
-func _draw() -> void:
-	draw_rect(
-		Rect2(Vector2.ZERO, Vector2(preview_width * preview_scale + 2, preview_height * preview_scale + 2)),
-		Color("404040"), false, 1.0
-	)
+func _update_preview_size() -> void:
+	display_bounds = Rect2i(0, 0, preview_width, preview_height)
+	if crop_to_artwork:
+		var bounds := artwork_bounds if artwork_bounds.has_area() else Rect2i(preview_width / 2, preview_height / 2, 1, 1)
+		display_bounds = bounds.grow(4).intersection(display_bounds)
+	var extent := Vector2(display_bounds.size * preview_scale) + Vector2(2, 2)
+	if not size_label.is_empty():
+		extent.x = maxf(extent.x, get_theme_default_font().get_string_size(size_label, HORIZONTAL_ALIGNMENT_LEFT, -1, _label_size()).x + 10)
+		extent.y += _label_size() + 6
+	custom_minimum_size = extent
+	reset_size()
 
+
+func _label_size() -> int:
+	return 14 if view == ScurkSpriteIds.View.LARGE else (12 if view == ScurkSpriteIds.View.MEDIUM else 10)
+
+
+func _draw() -> void:
+	var frame := Rect2(Vector2.ZERO, custom_minimum_size)
+	draw_rect(frame, Color("404040"), false, 1.0)
+	var label_height := _label_size() + 6 if not size_label.is_empty() else 0
 	if preview_texture != null:
-		draw_texture_rect(preview_texture, Rect2(Vector2.ONE, Vector2(preview_width, preview_height) * preview_scale), false)
+		var extent := Vector2(display_bounds.size * preview_scale)
+		var position := Vector2(floorf((frame.size.x - extent.x) * 0.5), 1 + label_height)
+		draw_texture_rect_region(preview_texture, Rect2(position, extent), Rect2(display_bounds))
+	if not size_label.is_empty():
+		draw_string(get_theme_default_font(), Vector2(5, _label_size() + 2), size_label,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, _label_size(), get_theme_color("font_color", "Label"))
 
 
 func set_cycle_tick(tick: int) -> void:
