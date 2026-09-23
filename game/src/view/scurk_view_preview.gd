@@ -8,7 +8,7 @@ const DrawingWorkspace = preload("res://src/tools/scurk/scurk_drawing_workspace.
 const CYCLE_INTERVAL_SECONDS := Sc2Palette.SCURK_TIMER_INTERVAL_SECONDS
 
 var palette: Sc2Palette
-var view := 0
+var view := ScurkSpriteIds.View.LARGE
 var preview_width := 0
 var preview_height := 0
 var preview_indices := PackedInt32Array()
@@ -36,7 +36,7 @@ func set_preview(
 	background_workspace: PackedInt32Array,
 	clipping_enabled := true
 ) -> void:
-	view = clampi(value_view, 0, 2)
+	view = clampi(value_view, ScurkSpriteIds.View.LARGE, ScurkSpriteIds.View.SMALL)
 	palette = value_palette
 	var divisor := DrawingWorkspace.view_divisor(view)
 	preview_width = int(DrawingWorkspace.WIDTH / divisor)
@@ -72,7 +72,7 @@ func set_preview(
 
 
 func clear_preview(value_view: int) -> void:
-	view = clampi(value_view, 0, 2)
+	view = clampi(value_view, ScurkSpriteIds.View.LARGE, ScurkSpriteIds.View.SMALL)
 	var divisor := DrawingWorkspace.view_divisor(view)
 	preview_width = int(DrawingWorkspace.WIDTH / divisor)
 	preview_height = int(DrawingWorkspace.HEIGHT / divisor)

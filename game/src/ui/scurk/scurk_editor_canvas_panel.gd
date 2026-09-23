@@ -12,9 +12,9 @@ var zoom_pixel := Vector2.ZERO
 const PixelCanvas = preload("res://src/view/scurk_pixel_canvas.gd")
 const ViewPreview = preload("res://src/view/scurk_view_preview.gd")
 
-const VIEW_LARGE := 0
-const VIEW_MEDIUM := 1
-const VIEW_SMALL := 2
+const VIEW_LARGE := ScurkSpriteIds.View.LARGE
+const VIEW_MEDIUM := ScurkSpriteIds.View.MEDIUM
+const VIEW_SMALL := ScurkSpriteIds.View.SMALL
 
 var pixel_scroll: ScrollContainer
 var previews_panel: PanelContainer

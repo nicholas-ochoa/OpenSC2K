@@ -118,7 +118,7 @@ var edit_mask := PackedByteArray()
 var clip_base_size := -1
 var show_clip_region := false
 var clip_columns := Vector2i(-1, -1)
-var background_view := 0
+var background_view := ScurkSpriteIds.View.LARGE
 var clear_background_pixels := PackedInt32Array()
 var clip_background_pixels: Array[PackedInt32Array] = []
 var outline_state: Array = []
@@ -1934,7 +1934,7 @@ func _update_display_texture() -> void:
 
 
 func set_background_view(view: int) -> void:
-	background_view = clampi(view, 0, 2)
+	background_view = clampi(view, ScurkSpriteIds.View.LARGE, ScurkSpriteIds.View.SMALL)
 	queue_redraw()
 
 

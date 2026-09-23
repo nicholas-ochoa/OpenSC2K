@@ -34,9 +34,9 @@ class Result extends ScurkMif.Result:
 		return result
 
 
-const VIEW_LARGE := 0
-const VIEW_MEDIUM := 1
-const VIEW_SMALL := 2
+const VIEW_LARGE := ScurkSpriteIds.View.LARGE
+const VIEW_MEDIUM := ScurkSpriteIds.View.MEDIUM
+const VIEW_SMALL := ScurkSpriteIds.View.SMALL
 
 var studio: ScurkEditorStudio
 var palette: Sc2Palette
@@ -67,7 +67,7 @@ var view_preview_signatures := PackedStringArray(["", "", ""])
 
 var pointer_status_label: Label
 var unclipped_tiles: Dictionary[int, bool] = {}
-var pending_export_view := 0
+var pending_export_view := VIEW_LARGE
 var tile_thumbnails: Dictionary[int, Texture2D] = {}
 var thumbnail_signatures: Dictionary[int, int] = {}
 var source_label: Label
@@ -366,7 +366,7 @@ func request_export_bmp() -> void:
 	if tile_set == null or current_large_id < 0:
 		return
 
-	for view in 3:
+	for view in ScurkSpriteIds.VIEW_COUNT:
 		dialog_registry.export_view.set_item_disabled(view, not _view_is_available(view))
 	dialog_registry.export_view.select(current_view)
 	dialog_registry.export_options.popup_centered()
@@ -612,7 +612,7 @@ func _copy_pick_objects(
 		return
 
 	for large_id in large_ids:
-		for view in 3:
+		for view in ScurkSpriteIds.VIEW_COUNT:
 			studio.project.documents.erase("%d:%d" % [large_id, view])
 	_record_edit(encoded.bytes)
 	_refresh_object_list()
@@ -720,7 +720,7 @@ func clear_object() -> void:
 	_capture_edit_start("Clear object")
 	var changed_views := 0
 
-	for view in range(3) if active_workspace else [current_view]:
+	for view in range(ScurkSpriteIds.VIEW_COUNT) if active_workspace else [current_view]:
 		if not _view_is_available(view):
 			continue
 
@@ -1010,7 +1010,7 @@ func _refresh_object_list() -> void:
 		object_list.get_popup().set_item_tooltip(
 			list_index,
 			"Sprite family %d: Small %d, Medium %d, Large %d"
-			% [tile_id, tile_id, tile_id + 500, tile_id + 1000]
+			% [tile_id, view_sprite_id(large_id, VIEW_SMALL), view_sprite_id(large_id, VIEW_MEDIUM), large_id]
 		)
 
 		if large_id == selected_id:
@@ -1435,21 +1435,21 @@ func _write_pixels(value_pixels: PackedInt32Array) -> bool:
 
 
 func _refresh_view_previews() -> void:
-	if view_previews.size() != 3 or view_preview_panels.size() != 3:
+	if view_previews.size() != ScurkSpriteIds.VIEW_COUNT or view_preview_panels.size() != ScurkSpriteIds.VIEW_COUNT:
 		return
 
 	if is_inside_tree() and not is_visible_in_tree():
 		return
 
 	if tile_set == null or current_large_id < 0:
-		for view in 3:
+		for view in ScurkSpriteIds.VIEW_COUNT:
 			view_previews[view].clear_preview(view)
 			view_preview_panels[view].visible = false
 			view_preview_signatures[view] = ""
 
 		return
 
-	for view in 3:
+	for view in ScurkSpriteIds.VIEW_COUNT:
 		var entry: Sc2SpriteArchive.SpriteEntry = _resolved_view_entry(view)
 
 		if entry == null:
@@ -1776,7 +1776,7 @@ func _fit_canvas_after_layout() -> void:
 
 
 func _tile_needs_unclipped_workspace() -> bool:
-	for view in 3:
+	for view in ScurkSpriteIds.VIEW_COUNT:
 		var entry := tile_set.overrides.find_sprite(view_sprite_id(current_large_id, view))
 		if entry == null:
 			continue

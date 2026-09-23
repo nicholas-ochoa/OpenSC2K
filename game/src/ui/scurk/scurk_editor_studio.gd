@@ -8,6 +8,7 @@ const LAYERS := "Margin/Column/Tabs/Layers"
 const HISTORY := "Margin/Column/Tabs/History"
 const META := "Margin/Column/Tabs/Metadata"
 const STAMPS := "Margin/Column/Tabs/Stamps"
+const MAX_SAVED_ID_LIST_SIZE := 1500
 
 var tabs: TabContainer
 var editor: ScurkEditorControl
@@ -30,7 +31,7 @@ var recovered_source := ""
 var imported: IndexedImageResult
 var imported_path := ""
 var import_clipped := 0
-var context_view := 0
+var context_view := ScurkSpriteIds.View.LARGE
 var updating_controls := false
 var pending_delete_key := ""
 var pending_delete_layer: Dictionary = {}
@@ -83,7 +84,7 @@ func bind(value: ScurkEditorControl) -> void:
 	$ImportPreview.confirmed.connect(_apply_import)
 	for field in ["X", "Y"]:
 		get_node("ImportPreview/Content/Placement/" + field).value_changed.connect(func(_value: float) -> void: _refresh_import())
-	for view in 3:
+	for view in ScurkSpriteIds.VIEW_COUNT:
 		get_node("Context/Content/Options/" + ["Large", "Medium", "Small"][view]).pressed.connect(_select_context_view.bind(view))
 	$Context/Content/Options/Roads.toggled.connect(func(enabled: bool) -> void:
 		$Context/Content/View.show_roads = enabled
@@ -148,8 +149,8 @@ func bind_canvas() -> void:
 		saved_pixels[current] = document.original_pixels.duplicate()
 	var keep := current == last_key
 	canvas.set_sprite_data(int(document.width), int(document.height), project.active_pixels(current), editor.palette, keep)
-	canvas.layer_below_pixels = _composite_range(document, 0, int(document.active))
-	canvas.layer_above_pixels = _composite_range(document, int(document.active) + 1, document.layers.size())
+	canvas.layer_below_pixels = project.flatten_range(current, 0, int(document.active))
+	canvas.layer_above_pixels = project.flatten_range(current, int(document.active) + 1, document.layers.size())
 	get_node(LAYERS + "/Row/Actions/Delete").disabled = document.layers.size() <= 1
 	var active: Dictionary = document.layers[int(document.active)]
 	canvas.active_layer_visible = bool(active.visible)
@@ -160,21 +161,6 @@ func bind_canvas() -> void:
 	_refresh_layers()
 	if $Context.visible:
 		_refresh_context()
-
-
-func _composite_range(document: Dictionary, first: int, last: int) -> PackedInt32Array:
-	var result := PackedInt32Array()
-	result.resize(int(document.width) * int(document.height))
-	result.fill(-1)
-	for index in range(first, last):
-		var layer: Dictionary = document.layers[index]
-		if not bool(layer.visible):
-			continue
-		var pixels: PackedInt32Array = layer.pixels
-		for offset in result.size():
-			if pixels[offset] >= 0:
-				result[offset] = pixels[offset]
-	return result
 
 
 func capture() -> void:
@@ -560,7 +546,7 @@ func _replace_colors() -> void:
 	editor._capture_edit_start("Replace colors")
 	var old_view := editor.current_view
 	var selection := editor.pixel_canvas.selected_mask()
-	var views := [0, 1, 2] if $Replace/Content/AllViews.button_pressed else [old_view]
+	var views := range(ScurkSpriteIds.VIEW_COUNT) if $Replace/Content/AllViews.button_pressed else [old_view]
 	for view: int in views:
 		if not editor._view_is_available(view):
 			continue
@@ -648,7 +634,7 @@ func _select_context_view(value: int) -> void:
 
 func _refresh_context() -> void:
 	var view := $Context/Content/View as ScurkContextPreview
-	for index in 3:
+	for index in ScurkSpriteIds.VIEW_COUNT:
 		var button := get_node("Context/Content/Options/" + ["Large", "Medium", "Small"][index]) as Button
 		button.disabled = not editor._view_is_available(index)
 		button.set_pressed_no_signal(index == context_view)
@@ -689,18 +675,18 @@ func restore_editor_state() -> void:
 	var state: Dictionary = value if value is Dictionary else {}
 	editor.edit_history.blank_shape_ids.clear()
 	for id: Variant in _id_list(state.get("blank_shape_ids", [])):
-		if (id is int or id is float) and int(id) >= 0 and int(id) < 1500:
+		if (id is int or id is float) and int(id) >= ScurkSpriteIds.SMALL_FIRST and int(id) < ScurkSpriteIds.SPRITE_COUNT:
 			editor.edit_history.blank_shape_ids[int(id)] = true
 	editor.unclipped_tiles.clear()
 	for id: Variant in _id_list(state.get("unclipped_tile_ids", [])):
-		if (id is int or id is float) and int(id) >= 1000 and int(id) < 1500:
+		if (id is int or id is float) and int(id) >= ScurkSpriteIds.LARGE_FIRST and int(id) <= ScurkSpriteIds.LARGE_LAST:
 			editor.unclipped_tiles[int(id)] = true
 	var tile_value: Variant = state.get("tile", editor.current_large_id)
 	var tile := int(tile_value) if tile_value is int or tile_value is float else editor.current_large_id
 	if editor.editable_large_sprite_ids(editor.tile_set, editor.base_large_sprites).has(tile):
 		editor.current_large_id = tile
-		var view_value: Variant = state.get("view", 0)
-		editor.current_view = clampi(int(view_value), 0, 2) if view_value is int or view_value is float else 0
+		var view_value: Variant = state.get("view", ScurkSpriteIds.View.LARGE)
+		editor.current_view = clampi(int(view_value), ScurkSpriteIds.View.LARGE, ScurkSpriteIds.View.SMALL) if view_value is int or view_value is float else ScurkSpriteIds.View.LARGE
 
 
 func ensure_view(view: int) -> bool:
@@ -733,7 +719,7 @@ func palette_state() -> Dictionary:
 
 
 func _id_list(value: Variant) -> Array:
-	return value if value is Array and value.size() <= 1500 else []
+	return value if value is Array and value.size() <= MAX_SAVED_ID_LIST_SIZE else []
 
 
 func request_recovery() -> void:

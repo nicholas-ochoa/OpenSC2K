@@ -21,7 +21,7 @@ static func base_size(base_width: int) -> int:
 	return int(base_width / 32) if is_standard_base_width(base_width) else -1
 
 
-static func clip_mask(base_width: int, view := 0) -> PackedByteArray:
+static func clip_mask(base_width: int, view := ScurkSpriteIds.View.LARGE) -> PackedByteArray:
 	var mask := PackedByteArray()
 	mask.resize(WIDTH * HEIGHT)
 
@@ -47,7 +47,7 @@ static func clip_mask(base_width: int, view := 0) -> PackedByteArray:
 
 
 static func apply_clip_mask(
-	workspace_pixels: PackedInt32Array, base_width: int, view := 0
+	workspace_pixels: PackedInt32Array, base_width: int, view := ScurkSpriteIds.View.LARGE
 ) -> PackedInt32Array:
 	var result := workspace_pixels.duplicate()
 

@@ -25,7 +25,9 @@ func _run() -> void:
 	_test_editable_ids()
 	_test_placeable_ids()
 	_test_copy()
-	print("PASS: SCURK sprite conversion, bounds, selection, copy, and rejection (%d checks)" % checks)
+	_test_saved_editor_ids()
+	_test_view_clamps()
+	print("PASS: SCURK sprite conversion, bounds, selection, copy, saved IDs, and view clamps (%d checks)" % checks)
 	quit()
 
 
@@ -100,6 +102,73 @@ func _object_set() -> ScurkMif:
 	for view in 3:
 		_check(value.set_shape_indices(1007 - view * 500, 2, 2, PackedInt32Array([view, -1, 255, 20 + view])).ok)
 	return value
+
+
+func _test_saved_editor_ids() -> void:
+	var editor := ScurkEditorControl.new()
+	editor.tile_set = _object_set()
+	var studio := ScurkEditorStudio.new()
+	studio.editor = editor
+	var repeated_ids: Array = []
+	repeated_ids.resize(1500)
+	repeated_ids.fill(1499)
+	studio.project.metadata.editor_state = {
+		"blank_shape_ids": range(1500), "unclipped_tile_ids": repeated_ids,
+		"tile": 1007, "view": 2,
+	}
+	studio.restore_editor_state()
+	_check(editor.edit_history.blank_shape_ids.size() == 1500)
+	_check(editor.edit_history.blank_shape_ids.has(0) and editor.edit_history.blank_shape_ids.has(1499))
+	_check(editor.unclipped_tiles == {1499: true})
+	_check(editor.current_large_id == 1007 and editor.current_view == 2)
+	_check(studio.project.documents.is_empty())
+
+	repeated_ids.append(1499)
+	studio.project.metadata.editor_state.blank_shape_ids = range(1501)
+	studio.project.metadata.editor_state.unclipped_tile_ids = repeated_ids
+	studio.restore_editor_state()
+	_check(editor.edit_history.blank_shape_ids.is_empty() and editor.unclipped_tiles.is_empty())
+
+	var mixed_ids: Array = [-1, 0, 499, 500, 999, 1000, 1499, 1500, -0.75, 1499.75, "1000", true, null]
+	studio.project.metadata.editor_state = {
+		"blank_shape_ids": mixed_ids, "unclipped_tile_ids": mixed_ids,
+		"tile": 1007.75, "view": 1.75,
+	}
+	studio.restore_editor_state()
+	_check(editor.edit_history.blank_shape_ids == {0: true, 499: true, 500: true, 999: true, 1000: true, 1499: true})
+	_check(editor.unclipped_tiles == {1000: true, 1499: true})
+	_check(editor.current_large_id == 1007 and editor.current_view == 1)
+
+	for pair in [[-1, 0], [3, 2], ["2", 0], [null, 0]]:
+		studio.project.metadata.editor_state.view = pair[0]
+		studio.restore_editor_state()
+		_check(editor.current_view == pair[1])
+
+	studio.project.metadata.editor_state = {"tile": 1500, "view": 0}
+	editor.current_view = 2
+	studio.restore_editor_state()
+	_check(editor.current_large_id == 1007 and editor.current_view == 2)
+	for invalid_list in [PackedInt32Array([1007]), {"id": 1007}, "1007", null]:
+		studio.project.metadata.editor_state = {"blank_shape_ids": invalid_list, "unclipped_tile_ids": invalid_list}
+		studio.restore_editor_state()
+		_check(editor.edit_history.blank_shape_ids.is_empty() and editor.unclipped_tiles.is_empty())
+	studio.free()
+	editor.free()
+
+
+func _test_view_clamps() -> void:
+	var canvas := ScurkPixelCanvas.new()
+	var preview := ScurkViewPreview.new()
+	_check(canvas.background_view == 0 and preview.view == 0)
+	for row in [[-1, 0, 128, 256], [0, 0, 128, 256], [1, 1, 64, 128], [2, 2, 32, 64], [3, 2, 32, 64]]:
+		canvas.set_background_view(row[0])
+		preview.clear_preview(row[0])
+		_check(canvas.background_view == row[1] and preview.view == row[1])
+		_check(preview.preview_width == row[2] and preview.preview_height == row[3])
+	_check(ScurkDrawingWorkspace.clip_mask(32) == ScurkDrawingWorkspace.clip_mask(32, 0))
+	_check(ScurkDrawingWorkspace.view_divisor(-1) == 1 and ScurkDrawingWorkspace.view_divisor(3) == 1)
+	canvas.free()
+	preview.free()
 
 
 func _check(condition: bool) -> void:
