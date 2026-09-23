@@ -832,9 +832,9 @@ func _run() -> void:
 	main.scurk_workspace.call("open_scurk_dialog")
 	await process_frame
 	var scurk_editor := main.get("scurk_editor") as Control
-	var object_list := scurk_editor.get("object_list") as OptionButton
+	var object_list := scurk_editor.get("object_list") as ScurkTileSelector
 
-	if not scurk_editor.visible or object_list.item_count != 499:
+	if not scurk_editor.visible or object_list.entries.size() != 499:
 		push_error("Cannot open the complete SCURK object catalog")
 		main.queue_free()
 		quit(2)
@@ -845,9 +845,9 @@ func _run() -> void:
 	# SCURK format tests own exhaustive sprite coverage. Hide display-only previews.
 	scurk_editor.hide()
 
-	for item_index in [0, 24, 100, object_list.item_count - 1]:
+	for item_index in [0, 24, 100, object_list.entries.size() - 1]:
 		scurk_editor.call("_on_object_selected", item_index)
-		assert(scurk_editor.current_large_id == int(object_list.get_item_metadata(item_index)), "Catalog selection reaches the editor")
+		assert(scurk_editor.current_large_id == object_list.entries[item_index].large_id, "Catalog selection reaches the editor")
 
 		for view in range(3):
 			scurk_editor.call("_select_view", view)
