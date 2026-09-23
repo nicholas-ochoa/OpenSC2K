@@ -48,31 +48,35 @@ layout_mode = 2
 size_flags_horizontal = 3
 script = ExtResource("colors")
 
-[node name="SelectedColor" type="HBoxContainer" parent="Margin/Scroll/Column"]
+[node name="ColorControls" type="HBoxContainer" parent="Margin/Scroll/Column"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SelectedColor" type="HBoxContainer" parent="Margin/Scroll/Column/ColorControls"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Swatch" type="ColorRect" parent="Margin/Scroll/Column/ColorControls/SelectedColor"]
+layout_mode = 2
+custom_minimum_size = Vector2(32, 28)
+size_flags_vertical = 4
+
+[node name="Label" type="Label" parent="Margin/Scroll/Column/ColorControls/SelectedColor"]
+layout_mode = 2
+size_flags_horizontal = 3
+clip_text = true
+
+[node name="Cycle" type="HBoxContainer" parent="Margin/Scroll/Column/ColorControls"]
 layout_mode = 2
 
-[node name="Swatch" type="ColorRect" parent="Margin/Scroll/Column/SelectedColor"]
-layout_mode = 2
-custom_minimum_size = Vector2(26, 20)
-
-[node name="Label" type="Label" parent="Margin/Scroll/Column/SelectedColor"]
-layout_mode = 2
-
-[node name="CycleGap" type="Control" parent="Margin/Scroll/Column"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 10)
-mouse_filter = 2
-
-[node name="Cycle" type="HBoxContainer" parent="Margin/Scroll/Column"]
-layout_mode = 2
-
-[node name="Enabled" type="CheckBox" parent="Margin/Scroll/Column/Cycle"]
+[node name="Enabled" type="CheckBox" parent="Margin/Scroll/Column/ColorControls/Cycle"]
 layout_mode = 2
 text = "Cycle colors"
 button_pressed = true
 
-[node name="Step" type="Button" parent="Margin/Scroll/Column/Cycle"]
+[node name="Step" type="Button" parent="Margin/Scroll/Column/ColorControls/Cycle"]
 layout_mode = 2
+size_flags_vertical = 4
 text = "Step"
 disabled = true
 

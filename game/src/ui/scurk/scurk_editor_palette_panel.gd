@@ -31,10 +31,10 @@ func build() -> void:
 
 	palette_control = $Margin/Scroll/Column/Colors
 	texture_control = $Margin/Scroll/Column/Textures
-	selected_color = $Margin/Scroll/Column/SelectedColor/Swatch
-	selected_color_label = $Margin/Scroll/Column/SelectedColor/Label
-	cycle_colors_check = $Margin/Scroll/Column/Cycle/Enabled
-	increment_cycle_button = $Margin/Scroll/Column/Cycle/Step
+	selected_color = $Margin/Scroll/Column/ColorControls/SelectedColor/Swatch
+	selected_color_label = $Margin/Scroll/Column/ColorControls/SelectedColor/Label
+	cycle_colors_check = $Margin/Scroll/Column/ColorControls/Cycle/Enabled
+	increment_cycle_button = $Margin/Scroll/Column/ColorControls/Cycle/Step
 	palette_view = $Margin/Scroll/Column/ColorsHeader/View
 	ramp_clear_button = $Margin/Scroll/Column/ColorsHeader/ClearRamp
 	palette_control.context_menu_requested.connect(_show_color_menu)
@@ -88,7 +88,9 @@ func set_selected_color(index: int) -> void:
 	palette_control.set_selected_color(index)
 	texture_control.set_selected_color(index)
 	selected_color.color = palette.color(index) if palette != null and palette.is_valid() else Color.MAGENTA
-	selected_color_label.text = "Selected color: %d (0x%02X)" % [index, index]
+	selected_color_label.text = "Color %d (0x%02X)" % [index, index]
+	selected_color.tooltip_text = "Selected color: %d (0x%02X)" % [index, index]
+	selected_color_label.tooltip_text = selected_color.tooltip_text
 	set_cycle_tick(palette_control.palette_cycle_ticks)
 
 
