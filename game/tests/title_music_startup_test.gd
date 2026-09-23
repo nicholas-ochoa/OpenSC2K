@@ -26,7 +26,7 @@ func _run() -> void:
 		assert(audio.current_track_id == MusicDirector.MAIN_THEME_TRACK and not audio.startup_theme_pending)
 		audio.set_menu_music(true)
 		audio._on_music_track_finished(MusicDirector.MAIN_THEME_TRACK)
-		audio.advance(5000)
+		audio.advance(15000)
 		assert(audio.current_track_id == (10004 if shuffle else MusicDirector.MAIN_THEME_TRACK), "Normal menu/shuffle behavior resumes after the title")
 		audio.free()
 

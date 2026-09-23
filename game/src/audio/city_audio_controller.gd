@@ -9,7 +9,7 @@ const MidiSynth = preload("res://src/audio/midi_synth_player.gd")
 const MovingThingAudio = preload("res://src/audio/moving_thing_audio.gd")
 const WaveSounds = preload("res://src/audio/wave_sound_gate.gd")
 
-const MUSIC_GAP_MSEC := 5000.0
+const MUSIC_GAP_MSEC := 15000.0
 
 const SOUND_EFFECT_GROUP := &"open_sc2k_sound_effects"
 
