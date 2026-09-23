@@ -1,0 +1,9 @@
+[gd_scene format=3]
+
+[node name="TooltipCanvas" type="CanvasLayer"]
+layer = 1025
+visible = false
+
+[node name="Surface" type="PanelContainer" parent="."]
+mouse_filter = 2
+theme_type_variation = &"TooltipPanel"

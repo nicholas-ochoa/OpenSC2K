@@ -26,6 +26,10 @@ static func build(value: String, files := false, translucent_menus := true) -> T
 	legend.set_corner_radius_all(6)
 	result.set_stylebox("panel", "MapLegend", legend)
 	result.set_color("font_color", "MapLegend", Color("eeeeee"))
+	var tooltip := create_box(Color(0.03, 0.04, 0.05, 0.88 if translucent_menus else 1.0), Color(1.0, 1.0, 1.0, 0.45), 1, 7, 5)
+	tooltip.set_corner_radius_all(3)
+	result.set_stylebox("panel", "TooltipPanel", tooltip)
+	result.set_color("font_color", "TooltipLabel", Color.WHITE)
 	# godot's file toolbar and menubutton have their own native theme types
 	for type_name in ["MenuButton", "FlatButton", "FlatMenuButton"]:
 		if type_name != "MenuButton":
@@ -144,9 +148,6 @@ static func _light_theme() -> Theme:
 		for color_name in ["font_color", "font_hovered_color", "font_selected_color", "font_hovered_selected_color"]:
 			result.set_color(color_name, type_name, Color("eeeeee"))
 	result.set_color("title_button_color", "Tree", Color("eeeeee"))
-	var tooltip := _copy_style(result, "TooltipPanel", "panel")
-	tooltip.set_corner_radius_all(3)
-	result.set_stylebox("panel", "TooltipPanel", tooltip)
 	result.set_stylebox("panel", "PanelContainer", create_box(Color("dedede"), Color("808080"), 1, 8, 8))
 	return result
 
@@ -330,15 +331,6 @@ static func _base_light_controls() -> Theme:
 	result.set_stylebox(
 		"normal", "PanelContainer", create_box(Color("c0c0c0"), Color("808080"), 1)
 	)
-	result.set_stylebox(
-		"panel",
-		"TooltipPanel",
-		create_box(
-			Color(0.0, 0.0, 0.0, 0.82), Color(1.0, 1.0, 1.0, 0.45), 1, 7, 5
-		),
-	)
-	result.set_color("font_color", "TooltipLabel", Color.WHITE)
-
 	return result
 
 

@@ -95,6 +95,7 @@ var debug: ApplicationDebug = ApplicationDebug.new(self)
 
 func _ready() -> void:
 	add_child(preload("res://src/ui/shared/file_dialog_history.gd").new())
+	add_child(AppTooltips.new())
 	get_tree().auto_accept_quit = false
 
 	if asset_state.reference_root.is_empty():

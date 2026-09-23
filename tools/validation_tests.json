@@ -821,6 +821,18 @@
     ]
   },
   {
+    "id": "frosted_tooltip_test",
+    "script": "tests/frosted_tooltip_test.gd",
+    "domain": "ui",
+    "lane": "product"
+  },
+  {
+    "id": "frosted_tooltip_render_test",
+    "script": "tests/frosted_tooltip_render_test.gd",
+    "domain": "ui",
+    "lane": "native"
+  },
+  {
     "id": "placement_error_tooltip_test",
     "script": "tests/placement_error_tooltip_test.gd",
     "domain": "ui",
