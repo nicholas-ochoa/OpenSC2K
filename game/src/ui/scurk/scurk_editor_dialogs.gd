@@ -1,7 +1,6 @@
 class_name ScurkEditorDialogs
 extends Control
 
-const PickCopyControl = preload("res://src/ui/scurk/scurk_pick_copy_control.tscn")
 
 var open_dialog: FileDialog
 var save_dialog: FileDialog

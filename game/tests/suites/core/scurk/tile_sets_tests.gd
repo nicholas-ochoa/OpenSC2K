@@ -229,7 +229,7 @@ func test_scurk_mif(reference_root: String) -> void:
 		)
 		_check(
 			editor_load.ok
-			and scurk_editor.object_list.item_count == 499
+			and scurk_editor.object_list.entries.size() == 499
 			and scurk_editor.pixel_canvas.sprite_width == ScurkWorkspace.WIDTH
 			and scurk_editor.pixel_canvas.sprite_height == ScurkWorkspace.HEIGHT
 			and scurk_editor.active_workspace,
@@ -243,7 +243,6 @@ func test_scurk_mif(reference_root: String) -> void:
 			and scurk_editor.revert_button != null
 			and scurk_editor.revert_name_button != null
 			and scurk_editor.clipboard_action_buttons.size() == 4
-			and not scurk_editor.pixel_canvas.original_textures_loaded
 			and scurk_editor.pixel_canvas.texture_patterns.size() == 42
 			and scurk_editor.cycle_colors_check.button_pressed
 			and scurk_editor.increment_cycle_button.disabled
@@ -265,7 +264,6 @@ func test_scurk_mif(reference_root: String) -> void:
 			and scurk_editor.view_previews[2].preview_height == 64
 			and scurk_editor.pixel_canvas.clear_background_pixels.size()
 			== ScurkWorkspace.WIDTH * ScurkWorkspace.HEIGHT
-			and scurk_editor.pixel_canvas.clip_background_pixels.size() == 4
 			and scurk_editor.pick_copy_control != null,
 			"SCURK editor exposes the recovered paint, clip, and brush controls",
 		)

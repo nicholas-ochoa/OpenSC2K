@@ -22,8 +22,6 @@ signal transparency_lock_changed(enabled: bool)
 signal pixel_perfect_changed(enabled: bool)
 signal grid_width_changed(value: float)
 signal grid_height_changed(value: float)
-signal clip_region_changed(enabled: bool)
-signal clip_enabled_changed(enabled: bool)
 
 const VIEW_LARGE := ScurkSpriteIds.View.LARGE
 const VIEW_MEDIUM := ScurkSpriteIds.View.MEDIUM
@@ -40,10 +38,8 @@ var grid_check: CheckBox
 var snap_to_grid_check: CheckBox
 var grid_width_selector: SpinBox
 var grid_height_selector: SpinBox
-var clip_region_check: CheckBox
 var zoom_out_button: Button
 var zoom_in_button: Button
-var clip_enabled_check: CheckBox
 
 
 func _ready() -> void:
@@ -98,10 +94,6 @@ func build() -> void:
 	$Margin/Column/Brush/SnapLines.toggled.connect(line_snap_changed.emit)
 	$Margin/Column/Paint/Lock.toggled.connect(transparency_lock_changed.emit)
 	$Margin/Column/Paint/Perfect.toggled.connect(pixel_perfect_changed.emit)
-	clip_region_check = $"../Editor/Canvas/Footer/Row/Clipping/Clip"
-	clip_region_check.toggled.connect(clip_region_changed.emit)
-	clip_enabled_check = $"../Editor/Canvas/Footer/Row/Clipping/Limit"
-	clip_enabled_check.toggled.connect(clip_enabled_changed.emit)
 	grid_width_selector = $Margin/Column/Grid/Dimensions/WidthRow/Width
 	grid_width_selector.get_line_edit().set("minimum_character_width", 2)
 	grid_width_selector.value_changed.connect(grid_width_changed.emit)

@@ -8,21 +8,14 @@ signal about_requested
 signal settings_requested
 signal close_requested
 signal tile_set_applied(tile_set: ScurkMif, display_name: String, source_path: String)
-signal place_print_requested
 
 const Mif = preload("res://src/assets/scurk_mif.gd")
 const IndexedBitmap = preload("res://src/assets/indexed_bmp.gd")
-const SystemImageClipboard = preload("res://src/platform/image_clipboard.gd")
 const PickCopy = preload("res://src/tools/scurk/scurk_pick_copy.gd")
 const DrawingWorkspace = preload("res://src/tools/scurk/scurk_drawing_workspace.gd")
 const EditSession = preload("res://src/tools/scurk/scurk_edit_session.gd")
 const EditorRules = preload("res://src/tools/scurk/scurk_editor_rules.gd")
 const ToolbarView = preload("res://src/ui/scurk/scurk_editor_toolbar.gd")
-const DialogsView = preload("res://src/ui/scurk/scurk_editor_dialogs.gd")
-const ObjectPanelView = preload("res://src/ui/scurk/scurk_editor_object_panel.gd")
-const DrawingControlsView = preload("res://src/ui/scurk/scurk_editor_drawing_controls.gd")
-const CanvasPanelView = preload("res://src/ui/scurk/scurk_editor_canvas_panel.gd")
-const PalettePanelView = preload("res://src/ui/scurk/scurk_editor_palette_panel.gd")
 
 class Result extends ScurkMif.Result:
 	var path := ""
@@ -338,18 +331,6 @@ func request_save() -> void:
 	studio.request_save()
 
 
-func request_save_tile_set() -> void:
-	if source_path.is_empty() or path_is_within(source_path, reference_directory):
-		request_save_as()
-
-		return
-
-	var result := save_path(source_path)
-
-	if not result.ok:
-		_show_error(result.error)
-
-
 func request_save_as() -> void:
 	var output_directory := ProjectSettings.globalize_path("user://tile_sets")
 	DirAccess.make_dir_recursive_absolute(output_directory)
@@ -529,63 +510,6 @@ func export_bmp_path(path: String) -> Result:
 	outcome.path = output_path
 
 	return outcome
-
-
-func copy_object_to_system_clipboard() -> void:
-	if pixel_canvas == null or pixel_canvas.sprite_width <= 0:
-		return
-
-	var active_shape := _active_output_shape()
-
-	if not active_shape.ok:
-		_show_error(active_shape.error)
-
-		return
-
-	var result := SystemImageClipboard.copy_indexed(
-		active_shape.width,
-		active_shape.height,
-		active_shape.pixels,
-		palette
-	)
-
-	if not result.ok:
-		_show_error(result.error)
-
-		return
-
-	_set_status(
-		"Copied sprite %d to the system clipboard."
-		% view_sprite_id(current_large_id, current_view)
-	)
-
-
-func paste_image_from_system_clipboard() -> void:
-	if tile_set == null or current_large_id < 0:
-		return
-
-	var imported := SystemImageClipboard.paste_indexed(palette)
-
-	if not imported.ok:
-		_show_error(imported.error)
-
-		return
-
-	if imported.width > 128 or imported.height > 256:
-		_show_error("SCURK graphics cannot be larger than 128 by 256 pixels.")
-
-		return
-
-	var result := _replace_active_view(
-		imported.width,
-		imported.height,
-		imported.pixels,
-		"Pasted the system clipboard image",
-		imported.remapped_color_count
-	)
-
-	if not result.ok:
-		_show_error(result.error)
 
 
 func request_pick_copy() -> void:
@@ -905,8 +829,6 @@ func _bind_interface() -> void:
 		pixel_canvas.queue_redraw())
 	drawing_controls.grid_width_changed.connect(_set_grid_width)
 	drawing_controls.grid_height_changed.connect(_set_grid_height)
-	drawing_controls.clip_region_changed.connect(_set_clip_region_visible)
-	drawing_controls.clip_enabled_changed.connect(_set_clipping_enabled)
 	view_buttons = drawing_controls.view_buttons
 	zoom_label = drawing_controls.zoom_label
 	tool_buttons = drawing_controls.tool_buttons
@@ -918,10 +840,12 @@ func _bind_interface() -> void:
 	snap_to_grid_check = drawing_controls.snap_to_grid_check
 	grid_width_selector = drawing_controls.grid_width_selector
 	grid_height_selector = drawing_controls.grid_height_selector
-	clip_region_check = drawing_controls.clip_region_check
 
 	canvas_panel = get_node("Panel/Content/Body/Editor/Canvas")
 	canvas_panel.build()
+	canvas_panel.clip_region_changed.connect(_set_clip_region_visible)
+	canvas_panel.clip_enabled_changed.connect(_set_clipping_enabled)
+	clip_region_check = canvas_panel.clip_region_check
 	canvas_panel.context_requested.connect(_studio_action.bind("Context"))
 	canvas_panel.comparison_changed.connect(func(mode: int) -> void:
 		pixel_canvas.comparison_mode = mode
@@ -1295,8 +1219,8 @@ func _refresh_sprite() -> void:
 	if active_workspace and not unclipped_tiles.has(current_large_id):
 		unclipped_tiles[current_large_id] = _tile_needs_unclipped_workspace()
 
-	drawing_controls.clip_enabled_check.set_pressed_no_signal(_clipping_enabled())
-	drawing_controls.clip_enabled_check.disabled = not active_workspace
+	canvas_panel.clip_enabled_check.set_pressed_no_signal(_clipping_enabled())
+	canvas_panel.clip_enabled_check.disabled = not active_workspace
 	clip_region_check.disabled = not active_workspace or not _clipping_enabled()
 	pixel_canvas.clear_edit_region()
 
@@ -1672,15 +1596,6 @@ func _apply_tile_set() -> void:
 
 	tile_set_applied.emit(tile_set, display_name, source_path)
 	_set_status("Applied %s to the city artwork." % display_name)
-
-
-func request_place_print() -> void:
-	if tile_set == null or not tile_set.is_valid():
-		return
-
-	_apply_tile_set()
-	hide()
-	place_print_requested.emit()
 
 
 func _popup_open_dialog() -> void:

@@ -105,16 +105,3 @@ func set_stamp(width: int, height: int, pixels: PackedInt32Array) -> bool:
 	stamp_height = height
 	stamp_pixels = pixels.duplicate()
 	return true
-
-
-func stamp_origins(start: Vector2i, finish: Vector2i) -> Array[Vector2i]:
-	var result: Array[Vector2i] = [start]
-	var distance := Vector2(start).distance_to(Vector2(finish))
-	var spacing := maxi(1, stamp_spacing)
-	if distance == 0:
-		return result
-
-	for step in range(1, floori(distance / spacing) + 1):
-		var point := Vector2(start).lerp(Vector2(finish), float(step * spacing) / distance)
-		result.append(Vector2i(roundi(point.x), roundi(point.y)))
-	return result

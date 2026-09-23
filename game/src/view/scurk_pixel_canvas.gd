@@ -3,24 +3,11 @@ extends Control
 
 @warning_ignore_start("integer_division")
 
-class LoadResult extends RefCounted:
-	var ok := false
-	var error := ""
-
-	static func failure(message: String) -> LoadResult:
-		var result := LoadResult.new()
-		result.error = message
-
-		return result
-
-
 class PixelRegion extends RefCounted:
 	var width := 0
 	var height := 0
 	var pixels := PackedInt32Array()
 
-
-const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
 
 signal edit_started(description: String)
 signal edit_cancelled
@@ -58,7 +45,6 @@ const TOOL_MOVE := 13
 const TOOL_SHADE := 14
 const TOOL_STAMP := 15
 const CYCLE_INTERVAL_SECONDS := Sc2Palette.SCURK_TIMER_INTERVAL_SECONDS
-const CLEAR_BACKGROUND_RESOURCE_IDS := ScurkGraphics.BACKGROUND_IDS
 
 const TEXTURE_NAMES := [
 	"Solid Foreground",
@@ -73,7 +59,6 @@ const TEXTURE_NAMES := [
 	"Texture 31", "Texture 32", "Texture 33", "Texture 34", "Texture 35",
 	"Texture 36", "Texture 37", "Texture 38", "Texture 39",
 ]
-const ORIGINAL_TEXTURE_RESOURCE_IDS := ScurkGraphics.TEXTURE_IDS
 const TEXTURE_ROWS := [
 	[0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
 	[0xaa, 0x55, 0xaa, 0x55, 0xaa, 0x55, 0xaa, 0x55],
@@ -113,7 +98,6 @@ var clipboard_width := 0
 var clipboard_height := 0
 var clipboard_pixels := PackedInt32Array()
 var texture_patterns: Array[PackedInt32Array] = []
-var original_textures_loaded := false
 var palette_cycle_ticks := 0
 var palette_cycle_enabled := true
 var palette_cycle_accumulator := 0.0
@@ -125,7 +109,6 @@ var clip_columns := Vector2i(-1, -1)
 var background_view := ScurkSpriteIds.View.LARGE
 var clear_background_pixels := PackedInt32Array()
 var show_terrain := true
-var clip_background_pixels: Array[PackedInt32Array] = []
 var outline_state: Array = []
 var outline_edges := PackedVector2Array()
 var display_texture: ImageTexture
@@ -360,10 +343,8 @@ func display_palette_index(index: int) -> int:
 func set_drawing_graphics(graphics: ScurkGraphics) -> void:
 	if graphics == null:
 		texture_patterns = _fallback_texture_patterns()
-		original_textures_loaded = false
 		texture_index = clampi(texture_index, 0, texture_patterns.size() - 1)
 		clear_background_pixels.clear()
-		clip_background_pixels.clear()
 		queue_redraw()
 		return
 
@@ -372,87 +353,10 @@ func set_drawing_graphics(graphics: ScurkGraphics) -> void:
 	for pattern in graphics.patterns:
 		texture_patterns.append(pattern.duplicate())
 
-	original_textures_loaded = false
 	texture_index = clampi(texture_index, 0, texture_patterns.size() - 1)
 	clear_background_pixels = graphics.backgrounds[0].duplicate()
-	clip_background_pixels.clear()
-
-	for background in graphics.backgrounds.slice(1):
-		clip_background_pixels.append(background.duplicate())
 
 	queue_redraw()
-
-
-func load_original_textures(executable_path: String) -> LoadResult:
-	var loaded_patterns: Array[PackedInt32Array] = []
-	var loaded_set := PeBitmap.load_numeric_indexed8_many(
-		executable_path, ORIGINAL_TEXTURE_RESOURCE_IDS
-	)
-
-	if not loaded_set.ok:
-		return LoadResult.failure("Cannot load SCURK textures: " + loaded_set.error)
-
-	for index in ORIGINAL_TEXTURE_RESOURCE_IDS.size():
-		var resource_id: int = ORIGINAL_TEXTURE_RESOURCE_IDS[index]
-		var loaded := loaded_set.entries[index]
-
-		if loaded.width != 8 or loaded.height != 8 or loaded.pixels.size() != 64:
-			return LoadResult.failure("SCURK texture %d is not 8 by 8 pixels." % resource_id)
-
-		loaded_patterns.append(loaded.pixels)
-
-	if loaded_patterns.size() != TEXTURE_NAMES.size():
-		return LoadResult.failure("The SCURK texture set is incomplete.")
-
-	texture_patterns = loaded_patterns
-	original_textures_loaded = true
-	texture_index = clampi(texture_index, 0, texture_patterns.size() - 1)
-	queue_redraw()
-
-	var result := LoadResult.new()
-	result.ok = true
-	result.error = ""
-
-	return result
-
-
-func load_original_clear_backgrounds(executable_path: String) -> LoadResult:
-	var loaded_set := PeBitmap.load_numeric_indexed8_many(
-		executable_path, CLEAR_BACKGROUND_RESOURCE_IDS
-	)
-
-	if not loaded_set.ok:
-		return LoadResult.failure("Cannot load SCURK drawing backgrounds: " + loaded_set.error)
-
-	var loaded_backgrounds: Array[PackedInt32Array] = []
-
-	for index in CLEAR_BACKGROUND_RESOURCE_IDS.size():
-		var resource_id: int = CLEAR_BACKGROUND_RESOURCE_IDS[index]
-		var loaded := loaded_set.entries[index]
-
-		if (
-			loaded.width != 128
-			or loaded.height != 256
-			or loaded.pixels.size() != 128 * 256
-		):
-			return LoadResult.failure("SCURK drawing background %d is not 128 by 256 pixels."
-					% resource_id)
-
-		loaded_backgrounds.append(loaded.pixels)
-
-	clear_background_pixels = loaded_backgrounds[0]
-	clip_background_pixels.clear()
-
-	for index in range(1, loaded_backgrounds.size()):
-		clip_background_pixels.append(loaded_backgrounds[index])
-
-	queue_redraw()
-
-	var result := LoadResult.new()
-	result.ok = true
-	result.error = ""
-
-	return result
 
 
 static func _fallback_texture_patterns() -> Array[PackedInt32Array]:
@@ -475,17 +379,6 @@ static func _fallback_texture_patterns() -> Array[PackedInt32Array]:
 		result.append(result[3 + posmod(result.size() - 3, 6)].duplicate())
 
 	return result
-
-
-func replace_pixels(value_pixels: PackedInt32Array) -> bool:
-	if value_pixels.size() != sprite_width * sprite_height:
-		return false
-
-	pixels = value_pixels.duplicate()
-	_enforce_edit_mask()
-	queue_redraw()
-
-	return true
 
 
 func pixel_at(point: Vector2i) -> int:
@@ -815,18 +708,6 @@ static func flood_fill_texture(
 				pending.append(neighbor)
 
 	return result
-
-
-static func pattern_color(
-	point: Vector2i, foreground: int, background: int, pattern_rows: Array
-) -> int:
-	if pattern_rows.size() != 8:
-		return foreground
-
-	var row_mask := int(pattern_rows[posmod(point.y, 8)])
-	var mask := 0x80 >> posmod(point.x, 8)
-
-	return foreground if row_mask & mask else background
 
 
 static func texture_color(

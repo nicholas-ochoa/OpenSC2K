@@ -305,12 +305,6 @@ ok_button_text = "Recover"
 cancel_button_text = "Keep for later"
 exclusive = true
 
-[node name="OpenProject" type="FileDialog" parent="."]
-title = "Open SCURK project"
-access = 2
-file_mode = 0
-filters = PackedStringArray("*.scurk ; SCURK projects")
-
 [node name="SaveProject" type="FileDialog" parent="."]
 title = "Save SCURK project"
 access = 2

@@ -82,10 +82,9 @@ func bind(value: ScurkEditorControl) -> void:
 	AppUiTheme.bind_frosted_panel(self)
 	tabs = $Margin/Column/Tabs
 	tabs.tab_changed.connect(_tab_changed)
-	for dialog: FileDialog in [$OpenProject, $SaveProject, $RecoveryFiles]:
+	for dialog: FileDialog in [$SaveProject, $RecoveryFiles]:
 		dialog.theme = AppUiTheme.file_dialog()
 	$RecoveryFiles.file_selected.connect(func(path: String) -> void: load_project(path, true))
-	$OpenProject.file_selected.connect(load_project)
 	$SaveProject.file_selected.connect(save_project)
 	$Recovery.confirmed.connect(func() -> void: load_project(recovery_path, true))
 	$Recovery.add_button("Ignore", true, "ignore")
@@ -212,10 +211,6 @@ func show_replace() -> void:
 	$Replace/Content/Fields/From.value = editor.foreground_palette_index
 	$Replace/Content/Fields/To.value = editor.background_palette_index
 	$Replace.popup_centered()
-
-
-func request_open() -> void:
-	$OpenProject.popup_centered_ratio(0.75)
 
 
 func request_save(save_as := false) -> void:

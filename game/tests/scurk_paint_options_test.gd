@@ -69,9 +69,6 @@ func _test_stamp() -> void:
 	assert(not options.set_stamp(2, 2, pixels))
 	assert(options.stamp_width == 3 and options.stamp_height == 2)
 	assert(not options.set_stamp(1, 1, PackedInt32Array([256])))
-	options.stamp_spacing = 3
-	assert(options.stamp_origins(Vector2i.ZERO, Vector2i(8, 0)) == [Vector2i.ZERO, Vector2i(3, 0), Vector2i(6, 0)])
-	assert(options.stamp_origins(Vector2i(1, 1), Vector2i(1, 1)) == [Vector2i(1, 1)])
 
 
 func _test_palette() -> void:

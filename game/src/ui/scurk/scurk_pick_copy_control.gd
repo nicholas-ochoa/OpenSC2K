@@ -8,7 +8,6 @@ signal copy_requested(
 )
 
 const PickCopy = preload("res://src/tools/scurk/scurk_pick_copy.gd")
-const ObjectListControl = preload("res://src/ui/scurk/scurk_object_list.gd")
 
 const VIEW_LARGE := ScurkSpriteIds.View.LARGE
 const VIEW_MEDIUM := ScurkSpriteIds.View.MEDIUM

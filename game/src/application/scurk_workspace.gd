@@ -22,7 +22,6 @@ func _ensure_scurk_editor() -> void:
 	app.scurk_editor.settings_requested.connect(app.settings.open_settings_dialog)
 	app.scurk_editor.about_requested.connect(app.interface.open_about_dialog)
 	app.scurk_editor.tile_set_applied.connect(_apply_scurk_tile_set)
-	app.scurk_editor.place_print_requested.connect(open_scurk_place_print)
 	app.desktop_presentation.editor = app.scurk_editor
 
 

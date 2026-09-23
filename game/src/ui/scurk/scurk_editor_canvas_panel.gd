@@ -5,14 +5,16 @@ signal zoom_changed(value: int)
 signal context_requested
 signal comparison_changed(mode: int)
 signal terrain_visibility_changed(enabled: bool)
+signal clip_region_changed(enabled: bool)
+signal clip_enabled_changed(enabled: bool)
+
+var clip_region_check: CheckBox
+var clip_enabled_check: CheckBox
 
 var zoom_pending := 0
 var zoom_running := false
 var zoom_anchor := Vector2.ZERO
 var zoom_pixel := Vector2.ZERO
-
-const PixelCanvas = preload("res://src/view/scurk_pixel_canvas.gd")
-const ViewPreview = preload("res://src/view/scurk_view_preview.gd")
 
 const VIEW_LARGE := ScurkSpriteIds.View.LARGE
 const VIEW_MEDIUM := ScurkSpriteIds.View.MEDIUM
@@ -40,6 +42,10 @@ func build() -> void:
 	pixel_scroll = $Row/PixelScroll
 	pixel_canvas = $Row/PixelScroll/Center/PixelCanvas
 	previews_panel = $Row/Previews
+	clip_region_check = $"Footer/Row/Clipping/Clip"
+	clip_region_check.toggled.connect(clip_region_changed.emit)
+	clip_enabled_check = $"Footer/Row/Clipping/Limit"
+	clip_enabled_check.toggled.connect(clip_enabled_changed.emit)
 	var compare := $Footer/Row/Compare/Mode as OptionButton
 	for label in ["Current artwork", "Saved artwork", "Saved overlay", "Changed pixels"]:
 		compare.add_item(label)

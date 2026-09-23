@@ -139,10 +139,10 @@ func _run() -> void:
 	var before_clip_controls: PackedByteArray = editor.tile_set.to_bytes().bytes
 	editor.clip_region_check.button_pressed = true
 	assert(editor.pixel_canvas.show_clip_region and not editor.clip_region_check.disabled)
-	editor.drawing_controls.clip_enabled_check.button_pressed = false
+	editor.canvas_panel.clip_enabled_check.button_pressed = false
 	assert(editor.clip_region_check.disabled and not editor.pixel_canvas.show_clip_region)
 	assert(editor.pixel_canvas.clip_guide_rects().is_empty())
-	editor.drawing_controls.clip_enabled_check.button_pressed = true
+	editor.canvas_panel.clip_enabled_check.button_pressed = true
 	assert(not editor.clip_region_check.disabled and editor.pixel_canvas.show_clip_region)
 	for view in 3:
 		editor._select_view(view)
@@ -326,12 +326,12 @@ func _test_clipping_toggle(editor: ScurkEditorControl) -> void:
 		assert(editor.current_large_id == id)
 		for view in 3:
 			editor._select_view(view)
-			editor.drawing_controls.clip_enabled_check.button_pressed = false
+			editor.canvas_panel.clip_enabled_check.button_pressed = false
 			var entry: Sc2SpriteArchive.SpriteEntry = editor._resolved_view_entry(view)
 			var decoded := entry.decode_indices()
 			var expected := Workspace.from_shape(entry.width, entry.height, decoded.pixels, view, editor.active_base_width, false)
 			assert(editor.pixel_canvas.pixels == expected)
-			editor.drawing_controls.clip_enabled_check.button_pressed = true
+			editor.canvas_panel.clip_enabled_check.button_pressed = true
 			assert(editor.pixel_canvas.pixels == expected)
 			assert(editor.pixel_canvas.edit_mask == Workspace.clip_mask(editor.active_base_width, view))
 	assert(editor.tile_set.to_bytes().bytes == before)
