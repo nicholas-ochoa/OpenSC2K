@@ -10,6 +10,8 @@ signal windows_menu_requested(id: int)
 signal newspaper_menu_requested(id: int)
 signal help_menu_requested(id: int)
 
+const ShortcutMenu = preload("res://src/ui/scurk/scurk_context_menu.gd")
+
 const MENU_SETTINGS := 0x8302
 const MENU_SCENARIO_GOALS := 8
 const MENU_SAVE_CITY := 7
@@ -90,6 +92,12 @@ func _ready() -> void:
 	options_menu.get_popup().add_separator()
 	options_menu.get_popup().add_item("Settings", MENU_SETTINGS)
 	options_menu.disabled = true
+	var command := KEY_MASK_META if OS.has_feature("macos") else KEY_MASK_CTRL
+	_set_shortcut(file_menu, 0, command | KEY_N)
+	_set_shortcut(file_menu, 1, command | KEY_O)
+	_set_shortcut(file_menu, MENU_SAVE_CITY, command | KEY_S)
+	_set_shortcut(file_menu, 2, command | KEY_MASK_SHIFT | KEY_S)
+	_set_shortcut(options_menu, MENU_SETTINGS, command | KEY_COMMA)
 
 	var view_items: Array = []
 
@@ -101,8 +109,6 @@ func _ready() -> void:
 			"City View" if mode == CityViewMode.Mode.CITY else "Underground View")
 		view_items.append([label, index])
 
-	view_items.append(["", -1])
-	view_items.append(["Map", MENU_VIEW_CITY_MAP])
 	view_menu = _add_menu(menu_row, "View", view_items, _on_view_menu)
 
 	for index in CityViewMode.DISPLAY_MODES.size():
@@ -232,13 +238,35 @@ func _add_menu(
 		else:
 			menu.get_popup().add_item(item[0], item[1])
 
+	menu.get_popup().set_script(ShortcutMenu)
+	(menu.get_popup() as ScurkContextMenu).bind()
 	menu.get_popup().id_pressed.connect(callback)
 
 	return menu
 
 
+func _set_shortcut(menu: MenuButton, id: int, key: int) -> void:
+	var popup := menu.get_popup() as ScurkContextMenu
+	popup.set_shortcut_hint(popup.get_item_index(id), key)
+
+
+func handle_shortcut(event: InputEventKey) -> bool:
+	if not event.pressed or event.echo or not is_visible_in_tree():
+		return false
+	for menu: MenuButton in [file_menu, options_menu, windows_menu]:
+		if menu.disabled:
+			continue
+		var popup := menu.get_popup() as ScurkContextMenu
+		for index in popup.shortcuts:
+			if event.get_keycode_with_modifiers() == popup.shortcuts[index] and not popup.is_item_disabled(index):
+				popup.id_pressed.emit(popup.get_item_id(index))
+				return true
+	return false
+
+
 func set_scenario_available(available: bool) -> void:
-	var popup := windows_menu.get_popup()
+	var popup := windows_menu.get_popup() as ScurkContextMenu
+	popup.reset_hints()
 	popup.clear()
 
 	for item in [
@@ -252,6 +280,7 @@ func set_scenario_available(available: bool) -> void:
 
 	popup.add_separator()
 	popup.add_item("Debug", 7)
+	_set_shortcut(windows_menu, 7, KEY_F12)
 
 
 func _metric_label(text_value: String, minimum_width: int) -> Label:

@@ -6,6 +6,7 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	_test_menu_shortcuts()
 	var motion := CityCameraMotion.new()
 	var moved := Vector2.ZERO
 
@@ -91,7 +92,12 @@ func _run() -> void:
 	main.map_view.pan_screen(Vector2(-10, 10))
 	assert(main.document_state.city.document.serialize().data == saved, "Panning changed saved data")
 	assert(main.options_menu.get_popup().get_item_index(CityMenuBar.MENU_SETTINGS) >= 0)
-	main.menus.on_options_menu(CityMenuBar.MENU_SETTINGS)
+	var settings_key := InputEventKey.new()
+	settings_key.keycode = KEY_COMMA
+	settings_key.pressed = true
+	settings_key.meta_pressed = OS.has_feature("macos")
+	settings_key.ctrl_pressed = not OS.has_feature("macos")
+	assert(main.city_menu_bar.handle_shortcut(settings_key))
 	assert(main.main_overlays.settings_dialog.visible)
 
 
@@ -122,3 +128,46 @@ func _run() -> void:
 	await process_frame
 	print("PASS: camera momentum, query overview, settings access, Settings renderer and background audio")
 	quit()
+
+
+func _test_menu_shortcuts() -> void:
+	var menu := CityMenuBar.new()
+	root.add_child(menu)
+	var actions: Array[int] = []
+	menu.file_menu_requested.connect(func(id: int) -> void: actions.append(id))
+	var key := InputEventKey.new()
+	key.pressed = true
+	key.meta_pressed = OS.has_feature("macos")
+	key.ctrl_pressed = not OS.has_feature("macos")
+	for pair in [[KEY_N, 0], [KEY_O, 1], [KEY_S, CityMenuBar.MENU_SAVE_CITY]]:
+		key.keycode = pair[0]
+		assert(menu.handle_shortcut(key))
+		assert(actions.back() == pair[1])
+	key.shift_pressed = true
+	assert(menu.handle_shortcut(key) and actions.back() == 2)
+	var popup := menu.file_menu.get_popup() as ScurkContextMenu
+	popup.set_item_disabled(popup.get_item_index(2), true)
+	assert(not menu.handle_shortcut(key) and actions.size() == 4)
+	popup.set_item_disabled(popup.get_item_index(2), false)
+	menu.file_menu.disabled = true
+	assert(not menu.handle_shortcut(key) and actions.size() == 4)
+	menu.file_menu.disabled = false
+	key.echo = true
+	assert(not menu.handle_shortcut(key))
+	key.echo = false
+	key.pressed = false
+	assert(not menu.handle_shortcut(key))
+	key.pressed = true
+	popup._shortcut_input(key)
+	assert(actions.size() == 5 and actions.back() == 2)
+	menu.set_scenario_available(true)
+	var debug_actions: Array[int] = []
+	menu.windows_menu_requested.connect(func(id: int) -> void: debug_actions.append(id))
+	key.meta_pressed = false
+	key.ctrl_pressed = false
+	key.shift_pressed = false
+	key.keycode = KEY_F12
+	assert(menu.handle_shortcut(key) and debug_actions == [7])
+	menu.set_scenario_available(false)
+	assert(menu.handle_shortcut(key) and debug_actions == [7, 7])
+	menu.free()

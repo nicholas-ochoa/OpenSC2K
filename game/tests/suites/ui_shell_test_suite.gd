@@ -189,9 +189,7 @@ func _test_main_menu() -> void:
 		and menu_bar.options_menu.get_popup().get_item_index(CityMenuBarUi.MENU_UPGRADE_SC2X) < 0
 		and menu_bar.speed_menu.get_popup().is_item_checkable(pause_index)
 		and menu_bar.options_menu.disabled
-		and menu_bar.view_menu.get_popup().get_item_index(
-			CityMenuBarUi.MENU_VIEW_CITY_MAP
-		) >= 0
+		and menu_bar.windows_menu.get_popup().get_item_index(6) >= 0
 		and menu_bar.disasters_menu.get_popup().get_item_index(
 			CityMenuBarUi.MENU_NO_DISASTERS
 		) >= 0,

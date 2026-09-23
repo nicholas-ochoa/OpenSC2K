@@ -107,6 +107,10 @@ func unhandled_key_input(event: InputEvent) -> void:
 
 		return
 
+	if camera_keys_allowed() and app.city_menu_bar.handle_shortcut(event):
+		app.get_viewport().set_input_as_handled()
+		return
+
 	if event.keycode == KEY_ESCAPE and app.city_dialogs.query_dialog != null and app.city_dialogs.query_dialog.visible:
 		app.query_choices.close_query(false)
 		app.get_viewport().set_input_as_handled()

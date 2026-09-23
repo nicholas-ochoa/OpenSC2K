@@ -264,7 +264,7 @@ func _sync_view_controls() -> void:
 func _rebuild_view_layer_menu(underground_active: bool) -> void:
 	var popup := app.view_menu.get_popup()
 
-	while popup.item_count > CityViewMode.DISPLAY_MODES.size() + 2:
+	while popup.item_count > CityViewMode.DISPLAY_MODES.size() + 1:
 		popup.remove_item(popup.item_count - 1)
 
 	if underground_active:
