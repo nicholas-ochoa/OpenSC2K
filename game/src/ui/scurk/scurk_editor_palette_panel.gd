@@ -67,12 +67,17 @@ func configure(
 	background_index: int,
 	pattern_names := PackedStringArray(),
 ) -> void:
-	palette = value_palette
-	palette_control.set_palette(palette)
-	texture_control.set_palette(palette)
+	set_palette(value_palette)
 	texture_control.set_patterns(patterns)
 	texture_control.pattern_names = pattern_names.duplicate()
 	set_colors(foreground_index, background_index)
+
+
+func set_palette(value: Sc2Palette) -> void:
+	palette = value
+	palette_control.set_palette(palette)
+	texture_control.set_palette(palette)
+	set_colors(palette_control.foreground_index, palette_control.background_index)
 
 
 func set_patterns(patterns: Array[PackedInt32Array]) -> void:

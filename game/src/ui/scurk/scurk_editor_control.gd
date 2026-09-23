@@ -40,6 +40,7 @@ const VIEW_SMALL := ScurkSpriteIds.View.SMALL
 
 var studio: ScurkEditorStudio
 var palette: Sc2Palette
+var configured_palette: Sc2Palette
 var base_large_sprites: Sc2SpriteArchive
 var base_small_medium_sprites: Sc2SpriteArchive
 var reference_directory := ""
@@ -143,7 +144,8 @@ func configure(
 ) -> void:
 	tile_thumbnails.clear()
 	thumbnail_signatures.clear()
-	palette = value_palette
+	configured_palette = value_palette
+	_use_project_palette()
 	base_large_sprites = value_large_sprites
 	base_small_medium_sprites = value_small_medium_sprites
 	reference_directory = value_reference_directory.simplify_path()
@@ -227,6 +229,13 @@ func load_tile_set(loaded: ScurkMif, path := "") -> Result:
 
 
 func _bind_session_document(path := "") -> void:
+	_use_project_palette()
+	if palette_panel != null:
+		palette_panel.set_palette(palette)
+	if pick_copy_control != null:
+		pick_copy_control.configure(
+			palette, base_large_sprites, base_small_medium_sprites, reference_directory
+		)
 	tile_thumbnails.clear()
 	thumbnail_signatures.clear()
 	studio.reset_view()
@@ -249,6 +258,14 @@ func _bind_session_document(path := "") -> void:
 
 	if pick_copy_control != null and pick_copy_control.visible:
 		pick_copy_control.open_with_working(tile_set, source_path)
+
+
+func _use_project_palette() -> void:
+	palette = configured_palette
+	if not session.project.palette_rgb.is_empty():
+		palette = Sc2Palette.from_rgb_bytes(session.project.palette_rgb)
+	elif tile_set != null and palette != null and palette.is_valid() and not palette.is_index_encoding:
+		session.project.palette_rgb = palette.to_rgb_bytes()
 
 
 func save_path(path: String) -> Result:
