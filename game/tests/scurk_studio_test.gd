@@ -527,13 +527,20 @@ func _test_replace() -> void:
 	_fresh()
 	for view in 3:
 		editor._select_view(view)
+		studio.show_replace()
+		studio.get_node("Replace").hide()
+		for index in 3:
+			assert(studio.get_node("Replace/Content/Views/" + ["Large", "Medium", "Small"][index]).button_pressed == (view == index))
+	for view in 3:
+		editor._select_view(view)
 		_commit(_solid(42))
 	editor._select_view(0)
 	var canvas := editor.pixel_canvas
 	canvas.selection.combine(canvas.selection.rectangle(Vector2i(60, 196), Vector2i(63, 199)))
 	studio.get_node("Replace/Content/Fields/From").value = 42
 	studio.get_node("Replace/Content/Fields/To").value = 77
-	studio.get_node("Replace/Content/AllViews").button_pressed = true
+	for label in ["Large", "Medium", "Small"]:
+		studio.get_node("Replace/Content/Views/" + label).button_pressed = true
 	var before := editor.tile_set.to_bytes().bytes
 	studio._replace_colors()
 	var after := editor.tile_set.to_bytes().bytes
@@ -549,7 +556,11 @@ func _test_replace() -> void:
 	canvas.clear_selection()
 	studio._layer_locked(true)
 	var locked := studio.project.flatten(studio.key())
-	studio.get_node("Replace/Content/AllViews").button_pressed = false
+	studio.show_replace()
+	studio.get_node("Replace").hide()
+	assert(studio.get_node("Replace/Content/Views/Large").button_pressed)
+	assert(not studio.get_node("Replace/Content/Views/Medium").button_pressed)
+	assert(not studio.get_node("Replace/Content/Views/Small").button_pressed)
 	studio.get_node("Replace/Content/Fields/From").value = 42
 	studio.get_node("Replace/Content/Fields/To").value = 19
 	studio._replace_colors()

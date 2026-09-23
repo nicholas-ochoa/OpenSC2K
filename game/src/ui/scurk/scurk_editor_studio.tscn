@@ -213,9 +213,16 @@ max_value = 255.0
 value = 0.0
 custom_minimum_size = Vector2(80, 0)
 
-[node name="AllViews" type="CheckBox" parent="Replace/Content"]
-text = "Apply to Large, Medium, and Small"
-button_pressed = false
+[node name="Views" type="HBoxContainer" parent="Replace/Content"]
+
+[node name="Large" type="CheckBox" parent="Replace/Content/Views"]
+text = "Large"
+
+[node name="Medium" type="CheckBox" parent="Replace/Content/Views"]
+text = "Medium"
+
+[node name="Small" type="CheckBox" parent="Replace/Content/Views"]
+text = "Small"
 
 [node name="Hint" type="Label" parent="Replace/Content"]
 text = "Uses the selection when one is active. Locked layers stay unchanged."

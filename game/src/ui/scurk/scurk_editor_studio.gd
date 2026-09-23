@@ -205,6 +205,10 @@ func _refresh_metadata() -> void:
 func show_replace() -> void:
 	$Replace/Content/Fields/From.value = editor.foreground_palette_index
 	$Replace/Content/Fields/To.value = editor.background_palette_index
+	for view in ScurkSpriteIds.VIEW_COUNT:
+		var check := get_node("Replace/Content/Views/" + ["Large", "Medium", "Small"][view]) as CheckBox
+		check.disabled = not editor._view_is_available(view)
+		check.button_pressed = view == editor.current_view and not check.disabled
 	$Replace.popup_centered()
 
 
@@ -548,13 +552,17 @@ func _use_stamp(index: int) -> void:
 func _replace_colors() -> void:
 	var from := roundi($Replace/Content/Fields/From.value)
 	var to := roundi($Replace/Content/Fields/To.value)
-	if from == to:
+	var views: Array[int] = []
+	for view in ScurkSpriteIds.VIEW_COUNT:
+		var check := get_node("Replace/Content/Views/" + ["Large", "Medium", "Small"][view]) as CheckBox
+		if check.button_pressed and editor._view_is_available(view):
+			views.append(view)
+	if from == to or views.is_empty():
 		return
 	if not editor._capture_edit_start("Replace colors"):
 		return
 	var old_view := editor.current_view
 	var selection := editor.pixel_canvas.selected_mask()
-	var views := range(ScurkSpriteIds.VIEW_COUNT) if $Replace/Content/AllViews.button_pressed else [old_view]
 	for view: int in views:
 		if not editor._view_is_available(view):
 			continue
