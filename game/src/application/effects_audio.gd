@@ -80,7 +80,8 @@ func stop_sound_effects() -> void:
 		audio_controller.stop_sound_effects()
 
 
-func show_effect_events(effect_events: Array[EffectEvent], sound_events: Array[SoundEvent]) -> void:
+# `simulation` paces the sounds of a simulation tick. player actions pass false
+func show_effect_events(effect_events: Array[EffectEvent], sound_events: Array[SoundEvent], simulation := false) -> void:
 	if document_state.city == null:
 		return
 
@@ -143,19 +144,19 @@ func show_effect_events(effect_events: Array[EffectEvent], sound_events: Array[S
 
 		map_view.show_transient_effects(visuals, 0.1)
 
-	play_sound_events(sound_events)
+	play_sound_events(sound_events, simulation)
 
 
 func play_sound_ids(sound_ids: Array[int]) -> void:
 	play_sound_events(SoundEvent.from_ids(sound_ids))
 
 
-func play_sound_events(sound_events: Array[SoundEvent]) -> void:
+func play_sound_events(sound_events: Array[SoundEvent], simulation := false) -> void:
 	if document_state.city == null or audio_controller == null:
 		return
 
 	audio_controller.play_sound_events(
-		sound_events, document_state.city.sound_enabled(), view_state.overlay_mode, current_view_size.call()
+		sound_events, document_state.city.sound_enabled(), view_state.overlay_mode, current_view_size.call(), simulation
 	)
 
 

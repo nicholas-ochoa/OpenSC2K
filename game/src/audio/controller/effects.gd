@@ -23,7 +23,8 @@ static func stop_sound_effects(audio: CityAudioController) -> void:
 
 static func play_sound_events(
 	audio: CityAudioController,
-	sound_events: Array[SoundEvent], sound_enabled: bool, overlay_mode: CityViewMode.Mode, view_size: int
+	sound_events: Array[SoundEvent], sound_enabled: bool, overlay_mode: CityViewMode.Mode, view_size: int,
+	simulation := false
 ) -> void:
 	if not sound_enabled or not audio.audio_allowed():
 		return
@@ -39,7 +40,7 @@ static func play_sound_events(
 		var stream := audio.wave_stream_cache.get(sound_id) as AudioStreamWAV
 
 		if stream == null or not audio.wave_sound_gate.request(
-			sound_id, sound_event.from_thing
+			sound_id, sound_event.from_thing, simulation
 		):
 			continue
 

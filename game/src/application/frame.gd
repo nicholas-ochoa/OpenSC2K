@@ -152,7 +152,7 @@ func consume_simulation_result(result: SimulationTickResult) -> void:
 		app.map_view.center_on_tile(point)
 
 	if not result.effect_events.is_empty() or not result.sound_events.is_empty():
-		app.effects_audio.show_effect_events(result.effect_events, app.moving_sprites.audible_sound_events(result.sound_events))
+		app.effects_audio.show_effect_events(result.effect_events, app.moving_sprites.audible_sound_events(result.sound_events), true)
 
 	for track_id in result.music_track_requests:
 		if app.document_state.city.music_enabled():

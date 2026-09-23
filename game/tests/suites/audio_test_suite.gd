@@ -27,6 +27,7 @@ func test_sound_rules() -> void:
 	_test_tool_sound_rules()
 	_test_wave_sound_gate()
 	_test_ambient_sound_gate()
+	_test_simulation_sound_gate()
 
 
 func _test_music_director() -> void:
@@ -387,12 +388,15 @@ func _test_wave_sound_gate() -> void:
 
 func _test_ambient_sound_gate() -> void:
 	var gate := WaveSounds.new()
-	_check(gate.request(510, true) and gate.request(517, true),
-		"Helicopter and ship ambient sounds can each start immediately")
-	gate.request(500)
-	_check(not gate.request(510, true) and not gate.request(517, true),
-		"Other sounds cannot bypass per-sound ambient debounce")
-	gate.advance(14999.0)
+	var helicopter_msec := WaveSounds.duration_ticks(510) * WaveSounds.BASE_TICK_MSEC
+	var ship_msec := WaveSounds.duration_ticks(517) * WaveSounds.BASE_TICK_MSEC
+	_check(gate.request(510, true) and not gate.request(517, true),
+		"A moving-object sound waits while another sound plays")
+	gate.advance(helicopter_msec)
+	_check(gate.request(517, true), "A different moving-object sound starts after the active sound ends")
+	gate.advance(ship_msec)
+	_check(not gate.request(510, true), "Other sounds cannot bypass per-sound ambient debounce")
+	gate.advance(14999.0 - helicopter_msec - ship_msec)
 	_check(not gate.request(510, true), "Ambient sound waits for the full 15 seconds")
 	gate.advance(1.0)
 	_check(gate.request(510, true), "Ambient sound can repeat at exactly 15 seconds")
@@ -400,6 +404,23 @@ func _test_ambient_sound_gate() -> void:
 	_check(gate.request(510), "Player feedback bypasses the ambient delay")
 	gate.stop()
 	_check(gate.request(510, true), "Stopping effects clears ambient replay state")
+
+
+func _test_simulation_sound_gate() -> void:
+	var gate := WaveSounds.new()
+	_check(gate.request(511, false, true) and not gate.request(504, false, true),
+		"A simulation sound waits while another sound plays")
+	gate.advance(WaveSounds.duration_ticks(511) * WaveSounds.BASE_TICK_MSEC)
+	_check(gate.request(504, false, true), "A different simulation sound starts after the active sound ends")
+	gate.advance(WaveSounds.duration_ticks(504) * WaveSounds.BASE_TICK_MSEC)
+	_check(not gate.request(511, false, true), "A simulation sound waits for its replay delay")
+	_check(gate.request(511), "Player feedback bypasses the simulation delay")
+	gate.stop()
+	_check(gate.request(511, false, true), "Stopping effects clears the simulation replay delay")
+	gate.advance(WaveSounds.EVENT_REPLAY_MSEC - 1.0)
+	_check(not gate.request(511, false, true), "A simulation sound waits for the full replay delay")
+	gate.advance(1.0)
+	_check(gate.request(511, false, true), "A simulation sound can repeat at exactly the replay delay")
 
 
 func _check(condition: bool, message: String) -> void:
