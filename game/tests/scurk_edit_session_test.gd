@@ -93,6 +93,7 @@ func _run() -> void:
 	_test_history_rejection(initial, after_valid)
 	_test_active_stroke_history()
 	_test_layer_names()
+	_test_object_revert()
 	await _test_layer_clicks()
 	_test_persistence()
 	editor.free()
@@ -308,6 +309,72 @@ func _test_active_stroke_history() -> void:
 	_check(editor.edit_history.undo_stack.size() == 2, "Stroke after rejected history records one more action")
 	_check_pending_clear("Stroke after rejected history")
 	canvas.foreground_index = foreground
+
+
+func _test_object_revert() -> void:
+	var session := ScurkEditSession.new()
+	var mif := ScurkMif.from_archives([])
+	var original := PackedInt32Array([42, -1])
+	for id in [1000, 1001]:
+		for view in ScurkSpriteIds.VIEW_COUNT:
+			assert(mif.set_shape_indices(ScurkEditorRules.view_sprite_id(id, view), 2, 1, original).ok)
+		assert(mif.set_name(ScurkEditorRules.object_tile_id(id), "Initial %d" % id).ok)
+	mif.info_payload[23] = 173
+	assert(session.load_document(mif).ok)
+	var project := session.project
+	assert(project.ensure_document("1000:0", original, 2, 1))
+	session.capture_object(1000)
+	assert(project.ensure_document("1000:1", original, 2, 1))
+	session.remember_document_baseline("1000:1")
+	_check(not session.can_revert_object(1000), "Viewing another size does not enable Revert")
+	assert(session.begin_edit("Rename layer").ok)
+	project.documents["1000:0"].layers[0].name = "Windows"
+	assert(session.commit_edit().ok)
+	_check(session.can_revert_object(1000), "A layer-only edit enables Revert")
+	assert(session.revert_object(1000).ok)
+	_check(project.documents["1000:0"].layers[0].name == "Root", "Revert restores a layer-only edit")
+	_check(not session.can_revert_object(1000), "Revert clears the selected object's changes")
+	assert(session.begin_edit("Edit several objects").ok)
+	for id in [1000, 1001]:
+		for view in ScurkSpriteIds.VIEW_COUNT:
+			var key := "%d:%d" % [id, view]
+			var changed := PackedInt32Array([99, 99])
+			assert(project.ensure_document(key, original, 2, 1))
+			assert(project.set_active_pixels(key, changed))
+			assert(session.document.set_shape_indices(ScurkEditorRules.view_sprite_id(id, view), 2, 1, changed).ok)
+	assert(session.document.remove_name(0).ok)
+	assert(session.document.set_name(1, "Keep this name").ok)
+	project.metadata.author = "Keep this author"
+	project.resources["reference.bin"] = PackedByteArray([0, 1, 255])
+	assert(project.add_stamp("Window", 2, 1, original, 3) == 0)
+	session.history.blank_shape_ids[1000] = true
+	session.history.blank_shape_ids[1001] = true
+	project.metadata.editor_state.blank_shape_ids = [1000, 1001]
+	project.metadata.editor_state.unclipped_tile_ids = [1000, 1001]
+	assert(session.commit_edit().ok)
+	session.remember_document_baseline("1000:2")
+	var before := project.snapshot()
+	assert(session.revert_object(1000).ok)
+	for view in ScurkSpriteIds.VIEW_COUNT:
+		var entry := session.document.archive.find_sprite(ScurkEditorRules.view_sprite_id(1000, view))
+		_check(entry.decode_indices().pixels == original, "Revert restores each selected view")
+		var other_key := "1001:%d" % view
+		_check(project.documents[other_key] == before.documents[other_key], "Revert preserves each other object's layers")
+		var other := session.document.archive.find_sprite(ScurkEditorRules.view_sprite_id(1001, view))
+		_check(other.decode_indices().pixels == PackedInt32Array([99, 99]), "Revert preserves each other object's MIF view")
+	_check(not project.documents.has("1000:2"), "Revert drops a view first opened after its edit")
+	_check(session.document.names[0] == "Initial 1000" and session.document.names[1] == "Keep this name", "Revert restores only the selected name")
+	_check(session.document.info_payload[23] == 173, "Revert preserves opaque MIF information")
+	_check(project.metadata.author == before.metadata.author and project.resources == before.resources and project.stamps == before.stamps,
+		"Revert preserves project metadata, resources, and stamps")
+	_check(session.history.blank_shape_ids == {1001: true} and project.metadata.editor_state.unclipped_tile_ids == [1001],
+		"Revert restores only the selected object's blank and clip state")
+	var after := project.snapshot()
+	assert(session.undo().ok)
+	_check(project.snapshot() == before, "Undo restores the state before object Revert")
+	assert(session.redo().ok)
+	_check(project.snapshot() == after, "Redo restores the state after object Revert")
+	_check(not session.can_revert_object(1000), "Changes to other objects do not enable Revert")
 
 
 func _test_layer_names() -> void:

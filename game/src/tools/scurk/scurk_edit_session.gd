@@ -5,6 +5,7 @@ extends RefCounted
 const Mif = preload("res://src/assets/scurk_mif.gd")
 const Project = preload("res://src/tools/scurk/scurk_project.gd")
 const History = preload("res://src/tools/scurk/scurk_editor_history.gd")
+const ObjectState = preload("res://src/tools/scurk/scurk_object_state.gd")
 const Workspace = preload("res://src/tools/scurk/scurk_drawing_workspace.gd")
 
 class Result extends RefCounted:
@@ -44,7 +45,7 @@ var recovered_source := ""
 var saved_pixels: Dictionary = {}
 var saved_state: Dictionary = {}
 var saved_checkpoints: Array = []
-var object_start: Dictionary = {}
+var object_start: ScurkObjectState
 var _pending: PendingEdit
 
 
@@ -67,7 +68,7 @@ func load_document(value: ScurkMif) -> Result:
 	recovery_owned = false
 	recovered_source = ""
 	modified = false
-	object_start.clear()
+	object_start = null
 	_capture_saved_state()
 	return _success()
 
@@ -83,7 +84,7 @@ func load_project(path: String, recovered := false) -> Result:
 	project = loaded.project
 	history.reset(project.current_mif)
 	cancel_edit()
-	object_start.clear()
+	object_start = null
 	project_path = "" if recovered else ProjectSettings.globalize_path(path)
 	recovery_owned = recovered and ProjectSettings.globalize_path(path) == ProjectSettings.globalize_path(recovery_path)
 	recovered_source = path if recovered else ""
@@ -146,13 +147,40 @@ func ignore_recovery() -> Result:
 
 
 func capture_object(large_id: int) -> void:
-	history.capture_object(document, large_id)
-	object_start = project.snapshot()
+	object_start = ObjectState.capture(document, project, large_id, history.blank_shape_ids) if document != null and large_id >= 0 else null
+
+
+func can_revert_object(large_id: int) -> bool:
+	return object_start != null and object_start.large_id == large_id and document != null and not object_start.matches(document, project, history.blank_shape_ids)
+
+
+func revert_object(large_id: int) -> Result:
+	if not can_revert_object(large_id):
+		return _success()
+	var state := object_start.restored_project(document, project)
+	if state.is_empty():
+		return _failure("Cannot restore the selected object.")
+	var replacement := Mif.new()
+	if not replacement.parse(state.current_mif):
+		return _failure(replacement.parse_error)
+	var started := begin_edit("Revert object")
+	if not started.ok:
+		return started
+	if not project.restore_snapshot(state):
+		return _reject_edit("Cannot restore the selected object.")
+	document = replacement
+	for view in ScurkSpriteIds.VIEW_COUNT:
+		history.blank_shape_ids.erase(ScurkEditorRules.view_sprite_id(large_id, view))
+	for sprite_id in object_start.blank_shape_ids:
+		history.blank_shape_ids[sprite_id] = true
+	return commit_edit()
 
 
 func remember_document_baseline(key: String) -> void:
 	if not project.documents.has(key):
 		return
+	if object_start != null:
+		object_start.remember_unedited_document(document, project, key)
 	var current: Dictionary = project.documents[key]
 	if saved_state.has("documents") and not saved_state.documents.has(key):
 		saved_state.documents[key] = current.duplicate(true)
@@ -189,6 +217,7 @@ func _synchronize_document() -> Result:
 	if not project.set_current_mif(encoded.bytes):
 		return _failure("The project tile set is invalid.")
 	return _success()
+
 
 func has_pending_edit() -> bool:
 	return _pending != null

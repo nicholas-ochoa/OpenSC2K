@@ -605,18 +605,15 @@ func redo() -> void:
 
 
 func revert_object() -> void:
-	if studio.object_start.is_empty():
+	studio.sync_editor_state()
+	var result := session.revert_object(current_large_id)
+	if not result.ok:
+		_show_error(result.error)
 		return
-	if not _capture_edit_start("Revert object"):
-		return
-	if not studio.project.restore_snapshot(studio.object_start):
-		_abort_edit("Cannot restore the selected object.")
-		return
-	_replace_document_bytes(studio.project.current_mif)
-	_record_edit()
-	_update_after_history()
-	_set_status("Reverted the current object to its state when selected.")
-
+	if result.changed:
+		studio.refresh_restored_state()
+		_update_after_history()
+		_set_status("Reverted the current object to its state when selected.")
 
 func revert_name() -> void:
 	if tile_set == null or current_large_id < 0:
@@ -1315,6 +1312,7 @@ func _capture_edit_start(description := "Edit artwork", merge_key := "") -> bool
 
 
 func _capture_object_start() -> void:
+	studio.sync_editor_state()
 	session.capture_object(current_large_id)
 	_update_history_buttons()
 
@@ -1505,19 +1503,6 @@ func _record_edit() -> bool:
 	return true
 
 
-func _replace_document_bytes(bytes: PackedByteArray) -> bool:
-	var replacement := Mif.new()
-
-	if not replacement.parse(bytes):
-		_show_error(replacement.parse_error)
-
-		return false
-
-	tile_set = replacement
-
-	return true
-
-
 func _update_after_history() -> void:
 	_refresh_object_list()
 	_refresh_sprite()
@@ -1544,9 +1529,7 @@ func _update_history_buttons() -> void:
 		redo_button.disabled = not edit_history.can_redo()
 
 	if revert_button != null:
-		revert_button.disabled = not edit_history.can_revert_object(
-			tile_set, current_large_id
-		)
+		revert_button.disabled = not session.can_revert_object(current_large_id)
 
 	if save_button != null:
 		save_button.disabled = tile_set == null

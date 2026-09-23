@@ -17,8 +17,6 @@ class Record extends RefCounted:
 var saved_bytes := PackedByteArray()
 var undo_stack: Array[Record] = []
 var redo_stack: Array[Record] = []
-var object_start_bytes := PackedByteArray()
-var object_start_large_id := -1
 var blank_shape_ids: Dictionary[int, bool] = {}
 var dirty := false
 
@@ -34,19 +32,6 @@ func reset(encoded_bytes: PackedByteArray) -> void:
 func mark_saved(encoded_bytes: PackedByteArray) -> void:
 	saved_bytes = encoded_bytes.duplicate()
 	dirty = false
-
-
-func capture_object(document: ScurkMif, large_id: int) -> void:
-	object_start_bytes.clear()
-	object_start_large_id = large_id
-
-	if document == null or large_id < 0:
-		return
-
-	var encoded := document.to_bytes()
-
-	if encoded.ok:
-		object_start_bytes = encoded.bytes.duplicate()
 
 
 func record(action: Record) -> bool:
@@ -76,20 +61,6 @@ func can_undo() -> bool:
 
 func can_redo() -> bool:
 	return not redo_stack.is_empty()
-
-
-func can_revert_object(document: ScurkMif, large_id: int) -> bool:
-	if (
-		object_start_bytes.is_empty()
-		or large_id < 0
-		or object_start_large_id != large_id
-		or document == null
-	):
-		return false
-
-	var encoded := document.to_bytes()
-
-	return encoded.ok and encoded.bytes != object_start_bytes
 
 
 func mark_shape_blank_state(

@@ -50,11 +50,6 @@ var saved_checkpoints: Array:
 		return editor.session.saved_checkpoints
 	set(value):
 		editor.session.saved_checkpoints = value
-var object_start: Dictionary:
-	get:
-		return editor.session.object_start
-	set(value):
-		editor.session.object_start = value
 var autosave_elapsed := 0.0
 var recovery_checked := false
 var recovery_owned: bool:
