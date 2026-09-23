@@ -87,6 +87,7 @@ func _rebuild() -> void:
 	configuration = config.with_top_margin(FRAME_CENTER.y - site_depth * config.half_height)
 	origin_x = FRAME_CENTER.x - (target_site.position.x - target_site.position.y + 1) * config.half_width
 	var terrain := sprites.find_sprite(CityIsometricRenderer.terrain_sprite_id(TerrainTileIds.FLAT, false, config.sprite_base))
+	var underground_ground := sprites.find_sprite(config.sprite_base + CityUndergroundView.TERRAIN_WIREFRAME_FIRST)
 	if terrain != null and scene.kind != ContextScene.Kind.UNDERGROUND:
 		var ground := terrain.create_image(_palette)
 		if ground.ok:
@@ -111,8 +112,9 @@ func _rebuild() -> void:
 				CityIsometricRenderer.draw_tile(output, snapshot_city, _palette, sprites, cache,
 					configuration, origin_x, x, y, 0, false, false)
 			if support_target:
+				var anchor_height := underground_ground.height if scene.kind == ContextScene.Kind.UNDERGROUND and underground_ground != null else artwork_image.get_height()
 				var point := Vector2i(origin_x + (x - y) * config.half_width,
-					configuration.top_margin + (x + y) * config.half_height + config.tile_height - artwork_image.get_height())
+					configuration.top_margin + (x + y) * config.half_height + config.tile_height - anchor_height)
 				output.blend_rect(artwork_image, Rect2i(Vector2i.ZERO, artwork_image.get_size()), point)
 	snapshot = ImageTexture.create_from_image(output)
 	queue_redraw()

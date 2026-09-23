@@ -1,5 +1,7 @@
 extends SceneTree
 
+@warning_ignore_start("integer_division")
+
 const Preview = preload("res://src/view/scurk_context_preview.gd")
 const ContextScene = preload("res://src/tools/scurk/scurk_context_scene.gd")
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
@@ -44,6 +46,7 @@ func _run() -> void:
 		if preview.scene.kind == ContextScene.Kind.UNDERGROUND:
 			sprite_id = CityUndergroundView.tile_sprite_ids(preview.snapshot_city, point.x, point.y)[0]
 		_check_sprite_pixels(preview, sprites, palette, sprite_id, point)
+	_test_underground_alignment(preview, sprites, palette)
 	preview.free()
 	print("SCURK context preview checks passed")
 	quit()
@@ -114,3 +117,41 @@ func _check_sites(city: CityState) -> void:
 			for sx in range(site.position.x, site.end.x):
 				for sy in range(site.position.y, site.end.y):
 					assert(city.building_id(sx, sy) == tile)
+
+
+func _test_underground_alignment(preview: ScurkContextPreview, sprites: Sc2SpriteArchive, palette: Sc2Palette) -> void:
+	preview.show_networks = false
+	preview.show_neighbors = false
+	for view in [CityIsometricRenderer.VIEW_LARGE, CityIsometricRenderer.VIEW_MEDIUM, CityIsometricRenderer.VIEW_SMALL]:
+		var config := CityIsometricRenderer.view_configuration(view)
+		for tile in [UndergroundTileIds.SUBWAY_LR, UndergroundTileIds.PIPE_TB, UndergroundTileIds.PIPE_TB + CityUndergroundView.WATERED_PIPE_OFFSET]:
+			var tile_id: int = CityUndergroundView.SUBWAY_AND_PIPE_FIRST + tile
+			var entry := sprites.find_sprite(config.sprite_base + tile_id)
+			var pixels := entry.decode_indices().pixels
+			# A taller edited sprite must keep the same terrain-top anchor.
+			var padding := PackedInt32Array()
+			padding.resize(entry.width * 3)
+			padding.fill(-1)
+			pixels.append_array(padding)
+			pixels[pixels.size() - entry.width / 2] = 42
+			preview.configure(pixels, entry.width, entry.height + 3, 1, palette, sprites, view, tile_id)
+			var city := preview.snapshot_city
+			var point := preview.target_site.position
+			var watered: bool = tile > CityUndergroundView.WATERED_PIPE_OFFSET
+			city.set_underground_id(point.x, point.y, tile - CityUndergroundView.WATERED_PIPE_OFFSET if watered else tile)
+			city.set_tile_flag(point.x, point.y, Sc2TileFlags.PIPED, watered)
+			city.set_tile_flag(point.x, point.y, Sc2TileFlags.WATERED, watered)
+			var override := Sc2SpriteArchive.new()
+			var edited := Sc2SpriteArchive.entry_from_indices(entry.sprite_id, entry.width, entry.height + 3, pixels)
+			override.entries.append(edited)
+			override.entries_by_id[edited.sprite_id] = edited
+			var source := Sc2SpriteArchive.combine([sprites, override])
+			var expected := Image.create(Preview.FRAME_SIZE.x, Preview.FRAME_SIZE.y, false, Image.FORMAT_RGBA8)
+			expected.fill(Color.WHITE)
+			var cache: Dictionary = {}
+			for diagonal in ContextScene.MAP_SIZE * 2 - 1:
+				for y in diagonal + 1:
+					var x := diagonal - y
+					if x < ContextScene.MAP_SIZE and y < ContextScene.MAP_SIZE:
+						CityUndergroundView.draw_tile(expected, city, palette, source, cache, preview.configuration, preview.origin_x, x, y, true, true)
+			assert(preview.snapshot.get_image().get_data() == expected.get_data(), "Underground context differs from the city renderer: %d, view %d" % [tile_id, view])
