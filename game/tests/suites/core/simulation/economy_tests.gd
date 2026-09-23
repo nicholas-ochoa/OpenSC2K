@@ -323,3 +323,28 @@ func test_fiscal_crisis_notice(reference_root: String) -> void:
 	_check(tick.ok and tick.day_results.size() == 1, "Notice fixture runs the January day: %s" % tick.error)
 	_check(city.funds() < 0 and not city.auto_budget_enabled(), "Notice fixture turns off Auto Budget")
 	_check(tick.notice_ids == PackedInt32Array([292]), "The tick result contains the fiscal crisis notice: %s" % tick.notice_ids)
+
+
+# an old power plant in January opens an extra edition through the controller
+func test_power_plant_extra_edition(_reference_root: String) -> void:
+	for extras in [0, 1]:
+		var city := CityModel.from_document(EmptyCityTemplate.create())
+		_check(city.set_age_in_days(299), "Extra-edition fixture selects the last December day")
+		_check(city.document.set_misc_u32(0x0e3c, 1), "Extra-edition fixture sets year end")
+		_check(city.document.set_misc_u32(0x0ff0, 1), "Extra-edition fixture enables Auto Budget")
+		_check(city.document.set_misc_u32(0x1008, extras), "Extra-edition fixture sets the option")
+		var microsims := _filled_bytes(CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE, 0)
+		microsims[8] = Tiles.COAL_POWER
+		microsims[8 + 1] = 48
+		_check(city.document.find_chunk("XMIC").set_decoded_payload(microsims), "Extra-edition fixture installs an old plant")
+		var engine := SimulationEngine.new(city, 1, 1, 1)
+		engine.power_usage_percent = 50
+		engine.water_usage_percent = 50
+		var controller := GameSpeedController.new(engine)
+		_check(controller.set_speed(GameSpeedController.Speed.CHEETAH), "Extra-edition fixture selects Cheetah")
+		var tick := controller.advance_time(GameSpeedController.BASE_TICK_MSEC)
+		_check(tick.ok and NewsEvent.contains(tick.news_items, 0x24, 0xcf + 0x37), "The old plant reports its age")
+		_check(
+			tick.newspaper_requested == (extras != 0),
+			"The power plant story opens the newspaper only with extra editions: %s" % tick.newspaper_requested,
+		)

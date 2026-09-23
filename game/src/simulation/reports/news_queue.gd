@@ -243,6 +243,12 @@ static func story_record(misc: PackedByteArray, slot: int) -> StoryRecord:
 	return result
 
 
+# the supplied news routine at 0x0047b5c0 opens an extra edition for these
+# stories when the extra-edition option is on
+static func opens_extra_edition(story_type: int) -> bool:
+	return (story_type >= 3 and story_type <= 5) or story_type == 0x24
+
+
 static func available_paper_count(progression: int) -> int:
 	# the supplied menu builder at 0x00406d70 reads a signed progression word
 	var level := progression & 0xffff

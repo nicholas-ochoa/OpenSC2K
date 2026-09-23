@@ -291,6 +291,7 @@ func _consume_day_result(result: SimulationTickResult, day: SimulationDayResult)
 		result.music_track_requests.append_array(phase_result.music_track_requests)
 		result.view_center_requests.append_array(phase_result.view_center_requests)
 		result.notice_ids.append_array(phase_result.notice_ids)
+		result.newspaper_requested = result.newspaper_requested or phase_result.newspaper_requested
 
 	if not result.game_over_events.is_empty():
 		terminal_blocked = true

@@ -28,6 +28,9 @@ var music_track_requests := PackedInt32Array()
 # and suspends the simulation until the player closes it
 var notice_ids := PackedInt32Array()
 
+# true when the original opens the newspaper after this work
+var newspaper_requested := false
+
 # measured work for the timing window
 var timing := SimulationTiming.new()
 

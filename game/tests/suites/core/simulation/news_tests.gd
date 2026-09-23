@@ -347,6 +347,24 @@ func test_newspaper_text(reference_root: String) -> void:
 			)
 
 
+# the extra-edition option opens the newspaper for milestone, invention, and
+# power plant stories only
+func test_extra_edition_newspaper(reference_root: String) -> void:
+	for extras in [0, 1]:
+		for story_type in [3, 4, 5, 0x24, 2, 6, 0x25, 0x29]:
+			var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
+			var city := CityModel.from_document(document)
+			_check(document.set_misc_u32(0x1008, extras), "Extra-edition fixture sets the option")
+			var result := PhaseResult.new()
+			result.news_items = [NewsEvent.new(story_type, 0)]
+			var persisted := SimulationPhaseContext.persist_news(city, result)
+			var expected: bool = extras != 0 and ((story_type >= 3 and story_type <= 5) or story_type == 0x24)
+			_check(
+				persisted.ok and persisted.inserted == 1 and result.newspaper_requested == expected,
+				"Story %d with extra editions %d requests the newspaper: %s" % [story_type, extras, expected],
+			)
+
+
 func _load_indexed_u16_resource(reference_root: String, resource_id: int) -> PackedInt32Array:
 	var index := FileAccess.get_file_as_bytes(reference_root.path_join("DATA/DATA_USA.IDX"))
 	var data := FileAccess.get_file_as_bytes(reference_root.path_join("DATA/DATA_USA.DAT"))

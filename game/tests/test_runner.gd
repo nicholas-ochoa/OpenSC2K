@@ -108,6 +108,8 @@ func _init() -> void:
 	if _selected("simulation"):
 		NewsTests.new(context).test_newspaper_text(reference_root)
 	if _selected("simulation"):
+		NewsTests.new(context).test_extra_edition_newspaper(reference_root)
+	if _selected("simulation"):
 		DemandTests.new(context).test_rci_aftermath(reference_root)
 	if _selected("simulation"):
 		WeatherTests.new(context).test_weather_disaster_phase(reference_root)
@@ -133,6 +135,8 @@ func _init() -> void:
 		EconomyTests.new(context).test_january_unknown_utilities(reference_root)
 	if _selected("simulation"):
 		EconomyTests.new(context).test_fiscal_crisis_notice(reference_root)
+	if _selected("simulation"):
+		EconomyTests.new(context).test_power_plant_extra_edition(reference_root)
 	if _selected("simulation"):
 		CivicTests.new(context).test_milestone_phase(reference_root)
 	if _selected("simulation"):

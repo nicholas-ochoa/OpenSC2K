@@ -127,6 +127,7 @@ func build_interface(original_assets: OriginalGameAssets) -> void:
 	app.city_dialogs.ordinance_window.ordinances_changed.connect(app.reports.on_ordinances_changed)
 	app.city_dialogs.ordinance_window.update_failed.connect(show_error)
 	app.city_dialogs.newspaper_dialog.visibility_changed.connect(app.new_city.on_founding_newspaper_visibility_changed)
+	app.city_dialogs.newspaper_dialog.visibility_changed.connect(app.reports.on_scheduled_newspaper_visibility_changed)
 	app.city_dialogs.building_objection_dialog.confirmed.connect(app.reports.on_building_objection_closed)
 	app.city_dialogs.building_objection_dialog.canceled.connect(app.reports.on_building_objection_closed)
 	app.city_dialogs.scenario_dialog.confirmed.connect(app.budget.begin_scenario)

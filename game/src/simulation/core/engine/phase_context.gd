@@ -106,6 +106,11 @@ static func persist_news(city: CityState, result: PhaseResult) -> NewsPersistenc
 
 		return persisted
 
+	if city.document.misc_u32(Sc2MiscLayout.NEWSPAPER_EXTRAS) != 0:
+		for item in result.news_items:
+			if NewsQueue.opens_extra_edition(item.type):
+				result.newspaper_requested = true
+
 	persisted.inserted = insertion.inserted
 	result.news_queue_updated = true
 	result.news_queue_inserted = insertion.inserted

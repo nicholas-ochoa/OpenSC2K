@@ -46,6 +46,7 @@ func activate_document(
 			status_text += " The preference could not be saved."
 
 	app.newspaper_state.founding_pending = false
+	app.newspaper_state.scheduled_pending = false
 	app.tool_state.landscape_editor = false
 	app.city_toolbar.set_landscape_editor(false)
 	app.city_menu_bar.disasters_menu.disabled = false

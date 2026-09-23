@@ -255,6 +255,28 @@ func on_help_menu(_id: int) -> void:
 	app.interface.open_about_dialog()
 
 
+# open the newspaper that the simulation requested. the original opens the
+# paper that MISC 0x100c selects
+func open_scheduled_newspaper() -> void:
+	var city := app.document_state.city
+
+	if city == null or document_state.current_document == null:
+		return
+
+	var paper_count := NewsQueue.available_paper_count(city.city_status())
+
+	if paper_count <= 0:
+		return
+
+	on_newspaper_menu(clampi(city.document.misc_u32(Sc2MiscLayout.NEWSPAPER_CHOICE), 0, paper_count - 1))
+	app.newspaper_state.scheduled_pending = app.city_dialogs.newspaper_dialog.visible
+
+
+func on_scheduled_newspaper_visibility_changed() -> void:
+	if not app.city_dialogs.newspaper_dialog.visible:
+		app.newspaper_state.scheduled_pending = false
+
+
 func show_news_items(news_items: Array[NewsEvent]) -> void:
 	if app.city_status_bar != null:
 		app.city_status_bar.prepend_news_items(news_items)

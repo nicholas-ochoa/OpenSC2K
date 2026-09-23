@@ -75,6 +75,7 @@ func _simulation_suspended() -> bool:
 		or app.simulation_state.game_over_active
 		or app.tool_state.landscape_editor
 		or app.newspaper_state.founding_pending
+		or app.newspaper_state.scheduled_pending
 	)
 
 
@@ -163,6 +164,9 @@ func consume_simulation_result(result: SimulationTickResult) -> void:
 
 	if not result.notice_ids.is_empty():
 		app.reports.show_notices(result.notice_ids)
+
+	if result.newspaper_requested:
+		app.reports.open_scheduled_newspaper()
 
 	if not result.game_over_events.is_empty():
 		app.reports.show_game_over_events(result.game_over_events)

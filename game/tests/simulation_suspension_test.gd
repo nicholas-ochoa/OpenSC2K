@@ -29,6 +29,7 @@ func _run() -> void:
 	_check_current_classification()
 	_check_scenario_goals()
 	await _check_notices()
+	_check_scheduled_newspaper()
 	_check_new_windows()
 	main.queue_free()
 	await process_frame
@@ -153,6 +154,15 @@ func _check_notices() -> void:
 	assert(not dialog.visible)
 
 
+# a newspaper that the simulation opens suspends it until the player closes it
+func _check_scheduled_newspaper() -> void:
+	main.reports.open_scheduled_newspaper()
+	assert(main.city_dialogs.newspaper_dialog.visible and main.newspaper_state.scheduled_pending)
+	assert(main.frame._simulation_suspended(), "A scheduled newspaper suspends the simulation")
+	main.city_dialogs.newspaper_dialog.hide()
+	assert(not main.newspaper_state.scheduled_pending and not main.frame._simulation_suspended())
+
+
 func _check_new_windows() -> void:
 	var blocking := AcceptDialog.new()
 	main.city_dialogs._register(blocking, "Tools", Modality.BLOCKING)
@@ -175,6 +185,7 @@ func _hide_all() -> void:
 
 	main.tool_state.landscape_editor = false
 	main.newspaper_state.founding_pending = false
+	main.newspaper_state.scheduled_pending = false
 
 
 func _set_shown(window: Node, shown: bool) -> void:
