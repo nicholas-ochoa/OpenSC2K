@@ -117,10 +117,12 @@ func _build_actions(tabs: TabContainer) -> void:
 		run_to.add_child(spin)
 		_date_fields.append(spin)
 
-	_button(run_to, "Run to date", ("Run the simulation at the current speed until the date, then pause. If the game is paused, " +
+	var run_button := _button(run_to, "Run to date", ("Run the simulation at the current speed until the date, then pause. If the game is paused, " +
 		"it runs at the speed it had before the pause. A pause before the date cancels the run."), func() -> void:
 		_record_action(main_control.debug.call("debug_run_to_date", int(_date_fields[0].value), int(_date_fields[1].value),
 			int(_date_fields[2].value), _resume_speed)))
+	# keep the button at its text width
+	run_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_target_date = Label.new()
 	_target_date.custom_minimum_size.x = 170
 	run_to.add_child(_target_date)
@@ -227,13 +229,15 @@ func _action_section(parent: VBoxContainer, caption: String, columns: int) -> Gr
 	return grid
 
 
-func _button(parent: Control, caption: String, tooltip: String, action: Callable) -> void:
+func _button(parent: Control, caption: String, tooltip: String, action: Callable) -> Button:
 	var button := Button.new()
 	button.text = caption
 	button.tooltip_text = tooltip
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.pressed.connect(action)
 	parent.add_child(button)
+
+	return button
 
 
 func _invoke(method: String) -> void:
