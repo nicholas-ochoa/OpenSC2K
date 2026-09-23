@@ -350,20 +350,20 @@ func _test_wave_sound_gate() -> void:
 	)
 	var gate := WaveSounds.new()
 	_check(
-		gate.request(504)
-		and not gate.request(504)
+		gate.request(506)
+		and not gate.request(506)
 		and gate.accepted_count == 1
 		and gate.suppressed_count == 1,
 		"An immediate repeated WAVE request is suppressed",
 	)
 	gate.advance(599.0)
 	_check(
-		not gate.request(504) and gate.remaining_ticks == 4,
+		not gate.request(506) and gate.remaining_ticks == 4,
 		"A repeated WAVE request stays suppressed before three base ticks",
 	)
 	gate.advance(1.0)
 	_check(
-		gate.request(504) and gate.remaining_ticks == 6,
+		gate.request(506) and gate.remaining_ticks == 6,
 		"A repeated WAVE request can restart after three base ticks",
 	)
 	_check(
@@ -388,15 +388,12 @@ func _test_wave_sound_gate() -> void:
 
 func _test_ambient_sound_gate() -> void:
 	var gate := WaveSounds.new()
-	var helicopter_msec := WaveSounds.duration_ticks(510) * WaveSounds.BASE_TICK_MSEC
-	var ship_msec := WaveSounds.duration_ticks(517) * WaveSounds.BASE_TICK_MSEC
-	_check(gate.request(510, true) and not gate.request(517, true),
-		"A moving-object sound waits while another sound plays")
-	gate.advance(helicopter_msec)
-	_check(gate.request(517, true), "A different moving-object sound starts after the active sound ends")
-	gate.advance(ship_msec)
-	_check(not gate.request(510, true), "Other sounds cannot bypass per-sound ambient debounce")
-	gate.advance(14999.0 - helicopter_msec - ship_msec)
+	_check(gate.request(510, true) and gate.request(517, true),
+		"Helicopter and ship ambient sounds can each start immediately")
+	gate.request(500)
+	_check(not gate.request(510, true) and not gate.request(517, true),
+		"Other sounds cannot bypass per-sound ambient debounce")
+	gate.advance(14999.0)
 	_check(not gate.request(510, true), "Ambient sound waits for the full 15 seconds")
 	gate.advance(1.0)
 	_check(gate.request(510, true), "Ambient sound can repeat at exactly 15 seconds")
@@ -408,19 +405,26 @@ func _test_ambient_sound_gate() -> void:
 
 func _test_simulation_sound_gate() -> void:
 	var gate := WaveSounds.new()
-	_check(gate.request(511, false, true) and not gate.request(504, false, true),
-		"A simulation sound waits while another sound plays")
-	gate.advance(WaveSounds.duration_ticks(511) * WaveSounds.BASE_TICK_MSEC)
-	_check(gate.request(504, false, true), "A different simulation sound starts after the active sound ends")
-	gate.advance(WaveSounds.duration_ticks(504) * WaveSounds.BASE_TICK_MSEC)
-	_check(not gate.request(511, false, true), "A simulation sound waits for its replay delay")
-	_check(gate.request(511), "Player feedback bypasses the simulation delay")
-	gate.stop()
-	_check(gate.request(511, false, true), "Stopping effects clears the simulation replay delay")
-	gate.advance(WaveSounds.EVENT_REPLAY_MSEC - 1.0)
-	_check(not gate.request(511, false, true), "A simulation sound waits for the full replay delay")
+	_check(gate.request(WaveSounds.SOUND_FLOOD, false, true) and gate.request(WaveSounds.SOUND_EXPLODE, false, true),
+		"Different simulation sounds can start together")
+	gate.advance(999.0)
+	_check(not gate.request(WaveSounds.SOUND_EXPLODE, false, true) and not gate.request(WaveSounds.SOUND_EXPLODE),
+		"A demolition sound from any source waits one second")
 	gate.advance(1.0)
-	_check(gate.request(511, false, true), "A simulation sound can repeat at exactly the replay delay")
+	_check(gate.request(WaveSounds.SOUND_EXPLODE), "A demolition sound can repeat after one second")
+	gate.advance(1999.0)
+	_check(not gate.request(WaveSounds.SOUND_FLOOD, false, true), "The flood sound waits three seconds")
+	_check(gate.request(WaveSounds.SOUND_FLOOD), "Player feedback bypasses the simulation delay")
+	gate.stop()
+	_check(gate.request(520, false, true), "Stopping effects clears the simulation replay delay")
+	gate.advance(WaveSounds.EVENT_REPLAY_MSEC - 1.0)
+	_check(not gate.request(520, false, true), "Other simulation sounds wait the full replay delay")
+	gate.advance(1.0)
+	_check(gate.request(520, false, true), "A simulation sound can repeat at exactly the replay delay")
+	gate.stop()
+	_check(gate.request(WaveSounds.SOUND_FLOOD, false, true), "The flood sound starts again")
+	gate.advance(3000.0)
+	_check(gate.request(WaveSounds.SOUND_FLOOD, false, true), "The flood sound can repeat at exactly three seconds")
 
 
 func _check(condition: bool, message: String) -> void:

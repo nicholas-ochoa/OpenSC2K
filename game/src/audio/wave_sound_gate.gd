@@ -3,12 +3,18 @@ extends RefCounted
 
 const SOUND_FIRST := 500
 const SOUND_LAST := 529
+const SOUND_EXPLODE := 504
+const SOUND_FLOOD := 511
 const BASE_TICK_MSEC := 200.0
 const MINIMUM_REPLAY_TICKS := 3
 # presentation preference: share the ambient delay across all moving objects
 const AMBIENT_REPLAY_MSEC := 15000.0
-# presentation preference: the delay before a simulation event sound, such as a fire or flood, plays again
+# presentation preference: the delay before a simulation event sound, such as a fire, plays again
 const EVENT_REPLAY_MSEC := 10000.0
+# presentation preference: shorter delays for the flood and for demolished buildings
+const EVENT_REPLAY_OVERRIDE_MSEC := {SOUND_FLOOD: 3000.0, SOUND_EXPLODE: 1000.0}
+# presentation preference: the shortest time between two starts of a sound from any source
+const MINIMUM_INTERVAL_MSEC := {SOUND_EXPLODE: 1000.0}
 
 # supplied executable table 0x004ea858 before its initialization pass
 const RAW_DURATION_MSEC := [
@@ -17,9 +23,10 @@ const RAW_DURATION_MSEC := [
 	2468, 971, 2194, 1414, 2338, 1165, 1937, 2359, 1510, 1613,
 ]
 
-# replay delays of ambient and simulation event sounds
+# replay delays of ambient sounds, simulation event sounds, and sounds from any source
 var _ambient_remaining: Dictionary = {}
 var _event_remaining: Dictionary = {}
+var _interval_remaining: Dictionary = {}
 
 var current_sound_id := -1
 var remaining_ticks := 0
@@ -35,18 +42,23 @@ static func duration_ticks(sound_id: int) -> int:
 	return int(RAW_DURATION_MSEC[sound_id - SOUND_FIRST] / 200) + 1
 
 
+static func event_replay_msec(sound_id: int) -> float:
+	return float(EVENT_REPLAY_OVERRIDE_MSEC.get(sound_id, EVENT_REPLAY_MSEC))
+
+
 # `ambient` requests come from moving objects. `simulation` requests come from other
-# simulation events. both wait for their replay delay and for the active sound to end.
-# other requests are player feedback
+# simulation events. both wait for their replay delay. other requests are player feedback
 func request(sound_id: int, ambient := false, simulation := false) -> bool:
 	var total_ticks := duration_ticks(sound_id)
 
 	if total_ticks == 0:
 		return false
 
-	var delays := _ambient_remaining if ambient else _event_remaining
-
-	if (ambient or simulation) and (float(delays.get(sound_id, 0.0)) > 0.0 or remaining_ticks > 0):
+	if (
+		float(_interval_remaining.get(sound_id, 0.0)) > 0.0
+		or (ambient and float(_ambient_remaining.get(sound_id, 0.0)) > 0.0)
+		or (simulation and not ambient and float(_event_remaining.get(sound_id, 0.0)) > 0.0)
+	):
 		suppressed_count += 1
 
 		return false
@@ -63,10 +75,13 @@ func request(sound_id: int, ambient := false, simulation := false) -> bool:
 	current_sound_id = sound_id
 	remaining_ticks = total_ticks
 
+	if MINIMUM_INTERVAL_MSEC.has(sound_id):
+		_interval_remaining[sound_id] = MINIMUM_INTERVAL_MSEC[sound_id]
+
 	if ambient:
 		_ambient_remaining[sound_id] = AMBIENT_REPLAY_MSEC
 	elif simulation:
-		_event_remaining[sound_id] = EVENT_REPLAY_MSEC
+		_event_remaining[sound_id] = event_replay_msec(sound_id)
 
 	accepted_count += 1
 
@@ -77,7 +92,7 @@ func advance(delta_msec: float) -> void:
 	if delta_msec <= 0.0:
 		return
 
-	for delays in [_ambient_remaining, _event_remaining]:
+	for delays in [_ambient_remaining, _event_remaining, _interval_remaining]:
 		for sound_id in delays.keys():
 			var remaining := float(delays[sound_id]) - delta_msec
 
@@ -103,6 +118,7 @@ func advance(delta_msec: float) -> void:
 func stop() -> void:
 	_ambient_remaining.clear()
 	_event_remaining.clear()
+	_interval_remaining.clear()
 	current_sound_id = -1
 	remaining_ticks = 0
 	_tick_accumulator_msec = 0.0
