@@ -121,8 +121,8 @@ func bind(value: ScurkEditorControl) -> void:
 		get_node("ImportPreview/Content/Placement/" + field).value_changed.connect(func(_value: float) -> void: _refresh_import())
 	for view in ScurkSpriteIds.VIEW_COUNT:
 		get_node("Context/Content/Options/" + ["Large", "Medium", "Small"][view]).pressed.connect(_select_context_view.bind(view))
-	$Context/Content/Options/Roads.toggled.connect(func(enabled: bool) -> void:
-		$Context/Content/View.show_roads = enabled
+	$Context/Content/Options/Networks.toggled.connect(func(enabled: bool) -> void:
+		$Context/Content/View.show_networks = enabled
 		$Context/Content/View.queue_redraw())
 	$Context/Content/Options/Neighbors.toggled.connect(func(enabled: bool) -> void:
 		$Context/Content/View.show_neighbors = enabled
@@ -743,7 +743,7 @@ func _refresh_context() -> void:
 	var city_view: int = [CityIsometricRenderer.VIEW_LARGE, CityIsometricRenderer.VIEW_MEDIUM, CityIsometricRenderer.VIEW_SMALL][context_view]
 	view.configure(shape.pixels, shape.width, shape.height,
 		maxi(1, editor.active_base_width / 32), editor.palette,
-		Sc2SpriteArchive.combine([editor.base_large_sprites, editor.base_small_medium_sprites, editor.tile_set.overrides]), city_view)
+		Sc2SpriteArchive.combine([editor.base_large_sprites, editor.base_small_medium_sprites, editor.tile_set.overrides]), city_view, editor.object_tile_id(editor.current_large_id))
 
 
 func update_modified() -> void:

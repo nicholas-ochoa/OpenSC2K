@@ -1,6 +1,7 @@
 extends SceneTree
 
 const Preview = preload("res://src/view/scurk_context_preview.gd")
+const ContextScene = preload("res://src/tools/scurk/scurk_context_scene.gd")
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
 
@@ -9,6 +10,7 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	_test_scenes()
 	var sprites := Sc2SpriteArchive.combine([
 		Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT"),
 		Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SMALLMED.DAT"),
@@ -17,69 +19,69 @@ func _run() -> void:
 	var palette := Sc2Palette.index_encoding()
 	var preview := Preview.new()
 	root.add_child(preview)
-	var before := sprites.find_sprite(1000 + Preview.TARGET_TILE)
-	var artwork := PackedInt32Array()
-	artwork.resize(32 * 32)
-	artwork.fill(-1)
-	preview.configure(artwork, 32, 32, 1, palette, sprites)
-	assert(preview.snapshot != null and preview.snapshot_city.is_valid())
-	assert(sprites.find_sprite(1000 + Preview.TARGET_TILE) == before)
-	var city := preview.snapshot_city
-	assert(city.building_id(6, 4) == Tiles.ROAD_STRAIGHT_2)
-	assert(city.building_id(4, 6) == Tiles.ROAD_STRAIGHT_1)
-	assert(city.building_id(4, 4) == Tiles.ROAD_CROSSROADS)
-	assert(city.building_id(11, 11) == Tiles.ROAD_CROSSROADS)
-	var kinds: Dictionary[int, bool] = {}
-	for x in Preview.MAP_SIZE:
-		for y in Preview.MAP_SIZE:
-			var tile := city.building_id(x, y)
-			if tile >= Tiles.DEVELOPED_FIRST and tile != Preview.TARGET_TILE:
-				kinds[tile] = true
-	assert(kinds.size() >= 12)
-	_check_sites(city)
+	var tile := Tiles.APARTMENTS_2X2_1
+	var before := sprites.find_sprite(1000 + tile)
 	for view in [CityIsometricRenderer.VIEW_LARGE, CityIsometricRenderer.VIEW_MEDIUM, CityIsometricRenderer.VIEW_SMALL]:
 		var config := CityIsometricRenderer.view_configuration(view)
-		artwork.resize(config.tile_width * config.tile_width)
-		artwork.fill(-1)
-		preview.configure(artwork, config.tile_width, config.tile_width, 1, palette, sprites, view)
+		var entry := sprites.find_sprite(config.sprite_base + tile)
+		var artwork := entry.decode_indices().pixels
+		preview.configure(artwork, entry.width, entry.height, 2, palette, sprites, view, tile)
+		assert(preview.snapshot != null and preview.snapshot_city.is_valid())
 		assert(preview.view_size == view and preview.configuration.divisor == config.divisor)
-		assert(preview.artwork.get_size() == Vector2(config.tile_width, config.tile_width))
+		assert(preview.artwork.get_size() == Vector2(entry.width, entry.height))
 		var site := preview.target_site
 		var center := Vector2i(preview.origin_x + (site.position.x - site.position.y + 1) * config.half_width,
 			preview.configuration.top_margin + (site.position.x + site.position.y + site.size.x) * config.half_height)
 		assert(center == Preview.FRAME_CENTER)
-		preview.show_neighbors = true
-		_check_building_roof(preview, sprites, palette, Tiles.OFFICE_BUILDING_2X2_1, Vector2i(6, 1))
-		preview.show_neighbors = false
-		preview.show_roads = true
-		_check_sprite_pixels(preview, sprites, palette, config.sprite_base + Tiles.ROAD_STRAIGHT_2, Vector2i(6, 4))
-		_check_sprite_pixels(preview, sprites, palette, config.sprite_base + Tiles.ROAD_STRAIGHT_1, Vector2i(4, 6))
-		_check_sprite_pixels(preview, sprites, palette, config.sprite_base + Tiles.ROAD_CROSSROADS, Vector2i(4, 4))
-		preview.show_roads = false
-		var terrain_id := CityIsometricRenderer.terrain_sprite_id(TerrainTileIds.FLAT, false, config.sprite_base)
-		_check_sprite_pixels(preview, sprites, palette, terrain_id, Vector2i(6, 4))
-		_check_sprite_pixels(preview, sprites, palette, terrain_id, preview.target_site.position)
-		assert(preview.snapshot_city.building_id(6, 4) == Tiles.EMPTY)
-	for area in [2, 3, 4]:
-		artwork.resize(area * 32 * 32)
-		artwork.fill(-1)
-		artwork[0] = 42
-		preview.configure(artwork, area * 32, 32, area, palette, sprites)
-		assert(preview.target_site.size == Vector2i.ONE * area)
-		var count := 0
-		var anchors := 0
-		for x in Preview.MAP_SIZE:
-			for y in Preview.MAP_SIZE:
-				if preview.snapshot_city.building_id(x, y) == Preview.TARGET_TILE:
-					count += 1
-					if (preview.snapshot_city.building_corners(x, y) & 0x80) != 0:
-						anchors += 1
-		assert(count == area * area and anchors == 1)
-	preview.show_neighbors = true
-	_check_sites(preview.snapshot_city)
+		_check_sites(preview.snapshot_city)
+	assert(sprites.find_sprite(1000 + tile) == before)
+	for sample in [[Tiles.ROAD_STRAIGHT_2, Tiles.ROAD_STRAIGHT_2], [CityUndergroundView.SUBWAY_AND_PIPE_FIRST + UndergroundTileIds.PIPE_TB, CityUndergroundView.SUBWAY_AND_PIPE_FIRST + UndergroundTileIds.PIPE_LR]]:
+		tile = sample[0]
+		var entry := sprites.find_sprite(1000 + tile)
+		preview.configure(entry.decode_indices().pixels, entry.width, entry.height, 1, palette, sprites, CityIsometricRenderer.VIEW_LARGE, tile)
+		var point := Vector2i(8, 7)
+		var sprite_id := 1000 + preview.snapshot_city.building_id(point.x, point.y)
+		if preview.scene.kind == ContextScene.Kind.UNDERGROUND:
+			sprite_id = CityUndergroundView.tile_sprite_ids(preview.snapshot_city, point.x, point.y)[0]
+		_check_sprite_pixels(preview, sprites, palette, sprite_id, point)
 	preview.free()
 	print("SCURK context preview checks passed")
 	quit()
+
+
+func _test_scenes() -> void:
+	var scene := ContextScene.new()
+	for tile in [Tiles.MIDDLE_CLASS_HOMES_1X1_1, Tiles.APARTMENTS_2X2_1, Tiles.LARGE_APARTMENT_BUILDING_3X3_1, Tiles.OFFICE_BUILDING_2X2_1, Tiles.FACTORY_3X3, Tiles.COAL_POWER, Tiles.HOSPITAL]:
+		var area := DemolishStructures.structure_area(tile)
+		scene.build(tile, area, true, true)
+		assert(scene.kind == ContextScene.Kind.BUILDING and scene.target_sites.size() == 2)
+		assert(scene.target_sites[0].size == Vector2i.ONE * area)
+		var city := scene.city
+		var neighbors := 0
+		for x in ContextScene.MAP_SIZE:
+			for y in ContextScene.MAP_SIZE:
+				var other := city.building_id(x, y)
+				if other >= Tiles.DEVELOPED_FIRST and other != tile:
+					neighbors += 1
+					assert(ContextScene.family_for_tile(other) == ContextScene.family_for_tile(tile))
+					assert(DemolishStructures.structure_area(other) == area)
+		assert(neighbors > 0)
+		_check_sites(city)
+		scene.build(tile, area, false, false)
+		assert(scene.target_sites.size() == 1 and scene.city.buildings.count(tile) == area * area)
+	for pair in [[Tiles.ROAD_STRAIGHT_1, ContextScene.Kind.ROAD], [Tiles.RAIL_STRAIGHT_1, ContextScene.Kind.RAIL], [Tiles.POWER_LINE_STRAIGHT_1, ContextScene.Kind.POWER], [Tiles.HIGHWAY_STRAIGHT_1, ContextScene.Kind.HIGHWAY]]:
+		scene.build(pair[0], 1, true, true)
+		assert(scene.kind == pair[1])
+		assert(ContextScene.kind_for_tile(scene.city.building_id(8, 7)) == pair[1])
+		assert(scene.city.building_id(7, 7) == pair[0] and scene.city.building_id(10, 7) == pair[0])
+	for tile in [CityUndergroundView.TERRAIN_WIREFRAME_FIRST, CityUndergroundView.SUBWAY_AND_PIPE_FIRST + UndergroundTileIds.SUBWAY_LR, CityUndergroundView.SUBWAY_AND_PIPE_FIRST + UndergroundTileIds.PIPE_TB, CityUndergroundView.WATERED_TERRAIN]:
+		scene.build(tile, 1, true, true)
+		assert(scene.kind == ContextScene.Kind.UNDERGROUND)
+		assert(scene.city.buildings.count(Tiles.EMPTY) == ContextScene.MAP_SIZE * ContextScene.MAP_SIZE)
+		assert(scene.city.underground_id(8, 7) != UndergroundTileIds.EMPTY)
+	assert(ContextScene.kind_for_tile(0x167) == ContextScene.Kind.SUPPORT)
+	scene.build(0x100, 1, false, true)
+	assert(scene.kind == ContextScene.Kind.TERRAIN and scene.target_sites.size() == 2)
 
 
 func _check_sprite_pixels(preview: ScurkContextPreview, sprites: Sc2SpriteArchive, palette: Sc2Palette, id: int, tile: Vector2i) -> void:
@@ -104,7 +106,7 @@ func _check_sites(city: CityState) -> void:
 	for x in Preview.MAP_SIZE:
 		for y in Preview.MAP_SIZE:
 			var tile := city.building_id(x, y)
-			if tile < Tiles.DEVELOPED_FIRST or tile == Preview.TARGET_TILE or (city.building_corners(x, y) & 0x80) == 0:
+			if tile < Tiles.DEVELOPED_FIRST or (city.building_corners(x, y) & 0x80) == 0:
 				continue
 			var site := DemolishEffectsSites._find_building_site(city.buildings, city.zones, Vector2i(x, y),
 				tile, DemolishEffectsSites._building_area(tile), 0, city.map_size)
@@ -114,21 +116,3 @@ func _check_sites(city: CityState) -> void:
 					assert(city.building_id(sx, sy) == tile)
 
 
-func _check_building_roof(preview: ScurkContextPreview, sprites: Sc2SpriteArchive, palette: Sc2Palette, tile: int, anchor: Vector2i) -> void:
-	var config := preview.configuration
-	var entry := sprites.find_sprite(config.sprite_base + tile)
-	var source := entry.create_image(palette).image
-	var output := preview.snapshot.get_image()
-	var baseline := CityIsometricRenderer.building_baseline_offset(tile, TerrainTileIds.FLAT, entry.width, preview.view_size)
-	var offset := Vector2i(preview.origin_x + (anchor.x - anchor.y) * config.half_width,
-		config.top_margin + (anchor.x + anchor.y) * config.half_height + baseline + config.tile_height - source.get_height())
-	for y in source.get_height():
-		var checked := 0
-		for x in source.get_width():
-			var color := source.get_pixel(x, y)
-			if color.a > 0.0:
-				assert(output.get_pixelv(offset + Vector2i(x, y)).is_equal_approx(color), "Neighbor roof pixels at view %d" % preview.view_size)
-				checked += 1
-		if checked > 0:
-			return
-	assert(false)

@@ -278,8 +278,8 @@ size_flags_vertical = 3
 
 [node name="Options" type="HBoxContainer" parent="Context/Content"]
 
-[node name="Roads" type="CheckBox" parent="Context/Content/Options"]
-text = "Roads"
+[node name="Networks" type="CheckBox" parent="Context/Content/Options"]
+text = "Networks"
 button_pressed = true
 
 [node name="Neighbors" type="CheckBox" parent="Context/Content/Options"]

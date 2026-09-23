@@ -626,9 +626,9 @@ func _test_context() -> void:
 	studio._refresh_context()
 	var preview := studio.get_node("Context/Content/View") as ScurkContextPreview
 	assert(preview.artwork != null and preview.snapshot != null and preview.snapshot_city != null)
-	studio.get_node("Context/Content/Options/Roads").button_pressed = false
+	studio.get_node("Context/Content/Options/Networks").button_pressed = false
 	studio.get_node("Context/Content/Options/Neighbors").button_pressed = false
-	assert(not preview.show_roads and not preview.show_neighbors)
+	assert(not preview.show_networks and not preview.show_neighbors)
 	var original_view := editor.current_view
 	var original_pixels := editor.pixel_canvas.pixels.duplicate()
 	var original_bytes := editor.tile_set.to_bytes().bytes
