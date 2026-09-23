@@ -61,11 +61,11 @@ func _ready() -> void:
 	add_child(menu_row)
 
 	file_menu = _add_menu(menu_row, "File", [
-		["New City...", 0], ["Open City...", 1],
-		["", -1], ["Save City", MENU_SAVE_CITY], ["Save City As...", 2],
-		["Export City as PNG...", MENU_EXPORT_CITY_PNG],
-		["", -1], ["Load Tile Set...", 3], ["Restore Original Tile Set", 4],
-		["SCURK Place & Print...", MENU_SCURK_PLACE_PRINT],
+		["New City", 0], ["Open City", 1],
+		["", -1], ["Save City", MENU_SAVE_CITY], ["Save City As", 2],
+		["", -1], ["Export City as PNG", MENU_EXPORT_CITY_PNG],
+		["", -1], ["Load Tile Set", 3], ["Restore Original Tile Set", 4],
+		["", -1], ["SCURK Place & Print", MENU_SCURK_PLACE_PRINT],
 		["", -1], ["Main Menu", 5], ["Exit", 6],
 	], _on_file_menu)
 	speed_menu = _add_menu(menu_row, "Speed", [
@@ -88,7 +88,7 @@ func _ready() -> void:
 		options_menu.get_popup().set_item_as_checkable(option_index, true)
 
 	options_menu.get_popup().add_separator()
-	options_menu.get_popup().add_item("Settings...", MENU_SETTINGS)
+	options_menu.get_popup().add_item("Settings", MENU_SETTINGS)
 	options_menu.disabled = true
 
 	var view_items: Array = []
@@ -101,7 +101,8 @@ func _ready() -> void:
 			"City View" if mode == CityViewMode.Mode.CITY else "Underground View")
 		view_items.append([label, index])
 
-	view_items.append(["City Map...", MENU_VIEW_CITY_MAP])
+	view_items.append(["", -1])
+	view_items.append(["Map", MENU_VIEW_CITY_MAP])
 	view_menu = _add_menu(menu_row, "View", view_items, _on_view_menu)
 
 	for index in CityViewMode.DISPLAY_MODES.size():
