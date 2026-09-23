@@ -16,7 +16,7 @@ texture_filter = 1
 [node name="Margin" type="MarginContainer" parent="."]
 layout_mode = 2
 theme_override_constants/margin_left = 0
-theme_override_constants/margin_top = 0
+theme_override_constants/margin_top = 6
 theme_override_constants/margin_right = 0
 theme_override_constants/margin_bottom = 0
 
@@ -39,6 +39,7 @@ tooltip_text = "Clear the shade ramp. Shift-click palette colors from dark to li
 
 [node name="Colors" type="Control" parent="Margin/Column"]
 layout_mode = 2
+size_flags_horizontal = 4
 script = ExtResource("colors")
 
 [node name="SelectedColor" type="HBoxContainer" parent="Margin/Column"]
