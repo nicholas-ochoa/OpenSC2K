@@ -201,6 +201,34 @@ func test_annual_service_microsim_phase(reference_root: String) -> void:
 	_check(random.position == 12, "Annual services consume process random values in record order")
 
 
+
+func test_annual_prison_overcrowding(reference_root: String) -> void:
+	for case in [[700, 107, true], [500, 105, false]]:
+		var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
+		var city := CityModel.from_document(document)
+		var microsims := _filled_bytes(CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE, 0)
+		microsims[8] = Tiles.PRISON
+		microsims[8 + 2] = 0xff
+		microsims[8 + 3] = 0xff
+		_check(document.find_chunk("XMIC").set_decoded_payload(microsims), "Prison fixture installs one prison record")
+		_check(document.set_misc_u32(0x01f0 + 0xd8 * 4, 16), "Prison fixture counts one prison")
+		_check(document.set_misc_u32(0x1038, 0), "Prison fixture clears old arrests")
+		_check(document.set_misc_u32(0x102c, 90000), "Prison fixture sets normal population")
+		_check(document.set_misc_u32(0x077c + 5 * 0x006c + 4, 80), "Prison fixture sets police funding")
+		var random := SequenceRandom.new([case[0], 0])
+		var result := AnnualMicrosims.run(city, 0, 0, 0, random)
+		_check(result.ok, "Prison fixture completes: %s" % result.error)
+		_check(city.microsim(1).stat_3 == case[1], "The 10,000 prisoner limit adds a random value: %d" % city.microsim(1).stat_3)
+		var expected: Array[NewsEvent] = []
+
+		if case[2]:
+			expected.append(NewsEvent.new(0x25, 0))
+
+		_check(
+			NewsEvent.same_arrays(result.news_items, expected),
+			"Only more than 105 hundred prisoners reports prison overcrowding: %s" % [result.news_items],
+		)
+
 func test_annual_special_microsim_phase(reference_root: String) -> void:
 	var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 	var city := CityModel.from_document(document)

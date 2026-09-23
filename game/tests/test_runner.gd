@@ -140,6 +140,8 @@ func _init() -> void:
 	if _selected("simulation"):
 		AnnualMicrosimsTests.new(context).test_annual_service_microsim_phase(reference_root)
 	if _selected("simulation"):
+		AnnualMicrosimsTests.new(context).test_annual_prison_overcrowding(reference_root)
+	if _selected("simulation"):
 		AnnualMicrosimsTests.new(context).test_annual_special_microsim_phase(reference_root)
 	if _selected("simulation"):
 		AnnualMicrosimsTests.new(context).test_arcology_launch_phase(reference_root)

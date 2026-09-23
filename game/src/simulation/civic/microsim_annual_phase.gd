@@ -227,7 +227,8 @@ static func _update_facility_records(annual: MicrosimAnnualContext) -> void:
 				MicrosimAnnualAmenities.update_llamadome(annual, record_id, offset)
 
 
-# store the arrest total and prison bonus, and report a low school score
+# store the arrest total and prison bonus. report a low school score, then
+# a crowded prison
 static func _store_prison_and_school_totals(annual: MicrosimAnnualContext) -> void:
 	BinaryData.write_u32_be(annual.misc, MISC_OLD_ARRESTS, annual.old_arrests)
 	BinaryData.write_u32_be(
@@ -240,6 +241,9 @@ static func _store_prison_and_school_totals(annual: MicrosimAnnualContext) -> vo
 
 	if annual.low_school_score:
 		annual.news_items.append(NewsEvent.new(NEWS_EDUCATION, 0))
+
+	if annual.prison_overcrowded:
+		annual.news_items.append(NewsEvent.new(NEWS_PRISON, 0))
 
 
 # store the arcology population and decide whether the launch is due

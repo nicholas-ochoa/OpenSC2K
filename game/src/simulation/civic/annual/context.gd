@@ -29,6 +29,7 @@ var prison_count: int
 var news_items: Array[NewsEvent]
 var random_records_pending: int
 var low_school_score: bool
+var prison_overcrowded: bool
 var expired_power_records: Array[PowerPlantExpiry]
 var demolished_power_records: Array[PowerPlantExpiry]
 var arcology_population: int

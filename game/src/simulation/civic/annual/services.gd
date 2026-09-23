@@ -151,6 +151,10 @@ static func update_prison(annual: MicrosimAnnualContext, record_id: int, offset:
 	if not annual.city.document.is_extended():
 		annual.prison_population &= 0xffff
 
+	# more than 105 hundred prisoners is only possible after the 10,000 limit
+	if prison_stat > 105:
+		annual.prison_overcrowded = true
+
 	if prison_stat < 91:
 		annual.microsims[offset + 1] = 0
 	else:
