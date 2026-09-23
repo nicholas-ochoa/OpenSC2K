@@ -91,6 +91,8 @@ func _run() -> void:
 	_check_artwork(after_valid, "Redo after rejected input")
 	_check_pending_clear("Redo")
 	_test_history_rejection(initial, after_valid)
+	_test_active_stroke_history()
+	_test_persistence()
 	editor.free()
 	await process_frame
 	print("SCURK edit session: %d checks, %d failures" % [checks, failures])
@@ -249,3 +251,197 @@ func _test_rejected_history(redo: bool, invalid_project: bool) -> bool:
 	record.set(field, saved_project)
 	record.set(bytes_field, saved_bytes)
 	return undo_unchanged and redo_unchanged
+
+
+func _test_active_stroke_history() -> void:
+	editor.error_dialog.hide()
+	editor.show()
+	var document := ScurkMif.new()
+	assert(document.parse(editor.tile_set.to_bytes().bytes))
+	assert(editor.load_tile_set(document).ok)
+	editor.studio.sync_editor_state()
+	editor.studio.update_modified()
+	var canvas := editor.pixel_canvas
+	var foreground := canvas.foreground_index
+	canvas.foreground_index = 45
+	canvas._begin_stroke(Vector2i(0, 255), MOUSE_BUTTON_LEFT)
+	assert(canvas.stroke_changed and editor.session.has_pending_edit())
+	var stroke := canvas.pixels.duplicate()
+	for forward in [false, true]:
+		var key := InputEventKey.new()
+		key.keycode = KEY_Z
+		key.pressed = true
+		key.ctrl_pressed = true
+		key.shift_pressed = forward
+		_check(editor.handle_shortcut(key), "The active stroke accepts the history shortcut")
+		_check(editor.session.has_pending_edit(), "Empty history leaves the active stroke pending")
+	_check(canvas.stroke_active and canvas.pixels == stroke, "Empty history leaves the active stroke pixels")
+	canvas._finish_stroke()
+	_check_pixels(stroke, "Stroke after empty history")
+	_check(editor.edit_history.undo_stack.size() == 1, "Stroke after empty history records one action")
+	_check_pending_clear("Stroke after empty history")
+	if editor.edit_history.undo_stack.is_empty():
+		canvas.foreground_index = foreground
+		return
+
+	# Inject a rejected target while another stroke is active.
+	var record: ScurkEditorHistory.Record = editor.edit_history.undo_stack.back()
+	var saved_bytes := record.before.duplicate()
+	record.before = PackedByteArray([0])
+	var before := _state()
+	canvas.foreground_index = 46
+	canvas._begin_stroke(Vector2i(0, 255), MOUSE_BUTTON_LEFT)
+	var next_stroke := canvas.pixels.duplicate()
+	editor.undo()
+	_check(editor.session.has_pending_edit(), "Rejected history leaves the active stroke pending")
+	_check(canvas.stroke_active and canvas.pixels == next_stroke, "Rejected history leaves the active stroke pixels")
+	_check(editor.tile_set.to_bytes().bytes == before.mif and editor.studio.project.snapshot() == before.project,
+		"Rejected history leaves the stroke document unchanged")
+	_check(_history(editor.edit_history.undo_stack) == before.undo and _history(editor.edit_history.redo_stack) == before.redo,
+		"Rejected history leaves the active stroke history unchanged")
+	record.before = saved_bytes
+	editor.error_dialog.hide()
+	canvas._finish_stroke()
+	_check_pixels(next_stroke, "Stroke after rejected history")
+	_check(editor.edit_history.undo_stack.size() == 2, "Stroke after rejected history records one more action")
+	_check_pending_clear("Stroke after rejected history")
+	canvas.foreground_index = foreground
+
+
+func _test_persistence() -> void:
+	var studio := editor.studio
+	var folder := "user://scurk-edit-session-%d" % OS.get_process_id()
+	assert(DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(folder)) == OK)
+	studio.recovery_path = folder.path_join("recovery.scurk")
+	studio.sync_editor_state()
+	studio.project.metadata["palette"] = editor.palette_panel.export_state()
+	var invalid_mif := folder.path_join("invalid.mif")
+	var invalid_project := folder.path_join("invalid.scurk")
+	_store_file(invalid_mif, PackedByteArray([0]))
+	_store_file(invalid_project, PackedByteArray([0]))
+	for path in [invalid_mif, invalid_project]:
+		var before := _persistence_state()
+		_check(not editor.load_path(path).ok, "Invalid input rejects the load")
+		_check_persistence(before, "Rejected load")
+		editor.error_dialog.hide()
+
+	var project_path := folder.path_join("artwork.scurk")
+	_store_file(project_path, PackedByteArray([6, 7, 8]))
+	_test_failed_project_save(project_path)
+	_check(FileAccess.get_file_as_bytes(project_path) == PackedByteArray([6, 7, 8]), "Failed save preserves the existing target bytes")
+	assert(studio.save_project(project_path))
+	_check_saved_project(project_path, "Project save")
+	var earlier := FileAccess.get_file_as_bytes(project_path)
+	_store_file(studio.recovery_path, earlier)
+	assert(not studio.recovery_owned)
+
+	var pixels := editor.pixel_canvas.pixels.duplicate()
+	pixels[255 * 128] = 47
+	editor.pixel_canvas._commit_changed_pixels(pixels, "Edit before unrelated recovery save")
+	assert(studio.save_project(project_path))
+	_check_saved_project(project_path, "Save beside unrelated recovery")
+	_check(FileAccess.get_file_as_bytes(studio.recovery_path) == earlier, "Saving leaves unrelated recovery bytes intact")
+
+	pixels[255 * 128] = 48
+	editor.pixel_canvas._commit_changed_pixels(pixels, "Edit before autosave")
+	assert(studio.autosave())
+	_check(studio.recovery_owned and studio.modified, "Autosave owns the recovery file and leaves edits modified")
+	var recovery_bytes := FileAccess.get_file_as_bytes(studio.recovery_path)
+	var archives := PackedStringArray()
+	for name in DirAccess.get_files_at(folder):
+		if name.begins_with("recovery-") and name.ends_with(".scurk"):
+			archives.append(folder.path_join(name))
+	_check(archives.size() == 1 and FileAccess.get_file_as_bytes(archives[0]) == earlier,
+		"Autosave preserves the prior unrelated recovery file")
+
+	assert(editor.session.begin_edit("Pending before load").ok)
+	assert(studio.load_project(project_path))
+	_check_pending_clear("Successful project load")
+	_check_saved_project(project_path, "Project load")
+	_check(editor.edit_history.undo_stack.is_empty() and editor.edit_history.redo_stack.is_empty(), "Project load resets history")
+	_check(not studio.recovery_owned, "Normal project load does not own an older recovery file")
+	assert(editor.session.begin_edit("Pending before recovery").ok)
+	assert(studio.load_project(studio.recovery_path, true))
+	_check_pending_clear("Successful recovery")
+	_check_pixels(pixels, "Recovered project")
+	_check(studio.modified and editor.dirty and studio.project_path.is_empty(), "Recovery keeps unsaved status and no project path")
+	_check(studio.recovery_owned and editor.edit_history.undo_stack.is_empty() and editor.edit_history.redo_stack.is_empty(),
+		"Recovery owns its file and resets history")
+
+	var before_cancel := _persistence_state()
+	editor.request_close()
+	assert(editor.discard_dialog.visible)
+	editor.discard_dialog.hide()
+	editor.discard_dialog.canceled.emit()
+	_check_persistence(before_cancel, "Canceled discard")
+	_check(FileAccess.get_file_as_bytes(studio.recovery_path) == recovery_bytes, "Canceled discard keeps owned recovery bytes")
+	_test_failed_project_save(folder.path_join("failed.scurk"))
+	_check(FileAccess.get_file_as_bytes(studio.recovery_path) == recovery_bytes, "Failed save keeps owned recovery bytes")
+	var recovered_path := folder.path_join("recovered.scurk")
+	assert(studio.save_project(recovered_path))
+	_check_saved_project(recovered_path, "Recovered project save")
+	_check(not studio.recovery_owned and studio.recovered_source.is_empty() and not FileAccess.file_exists(studio.recovery_path),
+		"Successful save clears only owned recovery state")
+	_check(archives.size() == 1 and FileAccess.get_file_as_bytes(archives[0]) == earlier,
+		"Owned recovery cleanup leaves unrelated recovery bytes intact")
+	for name in DirAccess.get_files_at(folder):
+		assert(DirAccess.remove_absolute(ProjectSettings.globalize_path(folder.path_join(name))) == OK)
+	assert(DirAccess.remove_absolute(ProjectSettings.globalize_path(folder)) == OK)
+
+
+func _test_failed_project_save(path: String) -> void:
+	editor.studio.sync_editor_state()
+	editor.studio.project.metadata["palette"] = editor.palette_panel.export_state()
+	# Inject non-JSON metadata so serialization fails before it replaces a file.
+	editor.studio.project.metadata["invalid"] = Vector2.ZERO
+	var before := _persistence_state()
+	_check(not editor.studio.save_project(path), "Invalid project rejects the save")
+	_check_persistence(before, "Rejected project save")
+	editor.studio.project.metadata.erase("invalid")
+	editor.error_dialog.hide()
+
+
+func _persistence_state() -> Dictionary:
+	var studio := editor.studio
+	var result := _state()
+	result.baselines = [studio.saved_state.duplicate(true), studio.saved_pixels.duplicate(true),
+		studio.saved_checkpoints.duplicate(true), editor.edit_history.saved_bytes.duplicate(),
+		editor.pixel_canvas.comparison_pixels.duplicate(), studio.project_path, editor.source_path]
+	result.recovery = [studio.recovery_owned, studio.recovered_source, studio.recovery_path]
+	result.project_context = [studio.project.original_mif.duplicate(), studio.project.checkpoints.duplicate(true),
+		studio.project.extra_fields.duplicate(true)]
+	return result
+
+
+func _check_persistence(before: Dictionary, label: String) -> void:
+	_check_artwork(before, label)
+	var after := _persistence_state()
+	_check(after.undo == before.undo and after.redo == before.redo, label + " preserves history")
+	_check(after.baselines == before.baselines, label + " preserves saved baselines and paths")
+	_check(after.recovery == before.recovery, label + " preserves recovery ownership")
+	_check(after.project_context == before.project_context, label + " preserves project context")
+
+
+func _check_saved_project(path: String, label: String) -> void:
+	var studio := editor.studio
+	var loaded := ScurkProject.load_path(path)
+	_check(loaded.ok and _same_project_state(loaded.project.snapshot(), studio.project.snapshot()), label + " stores the current project")
+	_check(studio.saved_state == studio.project.snapshot() and studio.saved_checkpoints == studio.project.checkpoints,
+		label + " records project baselines")
+	_check(studio.saved_pixels[studio.key()] == editor.pixel_canvas.pixels and editor.pixel_canvas.comparison_pixels == editor.pixel_canvas.pixels,
+		label + " records pixel baselines")
+	_check(editor.edit_history.saved_bytes == editor.tile_set.to_bytes().bytes, label + " records the MIF baseline")
+	_check(not studio.modified and not editor.dirty and studio.project_path == ProjectSettings.globalize_path(path),
+		label + " clears modified state and records the path")
+
+
+func _store_file(path: String, bytes: PackedByteArray) -> void:
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	assert(file != null)
+	file.store_buffer(bytes)
+	file.close()
+
+
+func _same_project_state(left: Dictionary, right: Dictionary) -> bool:
+	# JSON normalizes numeric and array types during a project load.
+	return JSON.parse_string(JSON.stringify(ScurkProject._encode_snapshot(left))) == JSON.parse_string(JSON.stringify(ScurkProject._encode_snapshot(right)))
