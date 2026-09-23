@@ -22,6 +22,8 @@ const MENU_AUTO_GOTO := 0x8005
 const MENU_SOUND_EFFECTS := 0x8006
 const MENU_MUSIC := 0x8007
 const MENU_NO_DISASTERS := 0x800e
+const MENU_NEWSPAPER_SUBSCRIPTION := 0x8017
+const MENU_NEWSPAPER_EXTRAS := 0x8018
 const MENU_VIEW_CITY_MAP := 0x8100
 const MENU_VIEW_BUILDINGS := 0x8101
 const MENU_VIEW_NETWORKS := 0x8102
@@ -298,10 +300,20 @@ func set_city_name(display_name: String) -> void:
 	city_label.tooltip_text = display_name
 
 
-func set_newspapers(titles: PackedStringArray) -> void:
+# the original menu shows the two newspaper options above the available papers
+func set_newspapers(titles: PackedStringArray, subscribed := false, extras := false) -> void:
 	var popup := newspaper_menu.get_popup()
 	popup.clear()
 	newspaper_menu.disabled = titles.is_empty()
+
+	if titles.is_empty():
+		return
+
+	popup.add_check_item("Subscription", MENU_NEWSPAPER_SUBSCRIPTION)
+	popup.set_item_checked(popup.get_item_index(MENU_NEWSPAPER_SUBSCRIPTION), subscribed)
+	popup.add_check_item("Extra!!!", MENU_NEWSPAPER_EXTRAS)
+	popup.set_item_checked(popup.get_item_index(MENU_NEWSPAPER_EXTRAS), extras)
+	popup.add_separator()
 
 	for index in titles.size():
 		popup.add_item(titles[index], index)

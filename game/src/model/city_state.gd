@@ -427,6 +427,22 @@ func set_auto_budget_enabled(enabled: bool) -> bool:
 	return document.set_misc_u32(MISC_AUTO_BUDGET_OPTION, 1 if enabled else 0)
 
 
+func newspaper_subscription_enabled() -> bool:
+	return document.misc_u32(Sc2MiscLayout.NEWSPAPER_SUBSCRIPTION) != 0
+
+
+func set_newspaper_subscription_enabled(enabled: bool) -> bool:
+	return document.set_misc_u32(Sc2MiscLayout.NEWSPAPER_SUBSCRIPTION, 1 if enabled else 0)
+
+
+func newspaper_extras_enabled() -> bool:
+	return document.misc_u32(Sc2MiscLayout.NEWSPAPER_EXTRAS) != 0
+
+
+func set_newspaper_extras_enabled(enabled: bool) -> bool:
+	return document.set_misc_u32(Sc2MiscLayout.NEWSPAPER_EXTRAS, 1 if enabled else 0)
+
+
 func auto_goto_enabled() -> bool:
 	return document.misc_u32(MISC_AUTO_GOTO_OPTION) != 0
 

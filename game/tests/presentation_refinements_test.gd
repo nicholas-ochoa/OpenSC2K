@@ -61,6 +61,7 @@ func _run() -> void:
 	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 	assert(main.city_dialogs.newspaper_dialog.page is NewspaperContent)
 	assert(main.city_dialogs.newspaper_dialog.exclusive)
+	_check_newspaper_options(main)
 	var city := CityState.from_document(main.document_state.current_document.duplicate_document())
 	city.set_land_altitude(5, 5, 5)
 	city.set_tile_flag(5, 5, 4, false)
@@ -92,3 +93,22 @@ func _cutaway(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive) -
 	CityUndergroundView.draw_tile(image, city, palette, sprites, {}, configuration, 128, 5, 5, false, true)
 
 	return image
+
+
+# the newspaper menu toggles the saved subscription and extra-edition options
+func _check_newspaper_options(main: Node) -> void:
+	var city: CityState = main.document_state.city
+	var popup: PopupMenu = main.city_menu_bar.newspaper_menu.get_popup()
+	assert(city.newspaper_extras_enabled() and not city.newspaper_subscription_enabled())
+
+	for option in [CityMenuBar.MENU_NEWSPAPER_SUBSCRIPTION, CityMenuBar.MENU_NEWSPAPER_EXTRAS]:
+		var offset: int = Sc2MiscLayout.NEWSPAPER_SUBSCRIPTION if option == CityMenuBar.MENU_NEWSPAPER_SUBSCRIPTION else Sc2MiscLayout.NEWSPAPER_EXTRAS
+		var before: int = city.document.misc_u32(offset)
+
+		for _toggle in 2:
+			main.reports.on_newspaper_menu(option)
+			var value: int = city.document.misc_u32(offset)
+			assert(value == (1 if before == 0 else 0), "The newspaper option toggles its saved flag")
+			assert(popup.is_item_checked(popup.get_item_index(option)) == (value != 0))
+			assert(not main.city_dialogs.newspaper_dialog.visible, "A newspaper option does not open a paper")
+			before = value

@@ -153,15 +153,20 @@ func _check_menu_and_forecast(newspaper: NewspaperDialog) -> void:
 		var before := document.serialize().data as PackedByteArray
 		var titles := NewspaperDialog.newspaper_titles(city, document)
 		assert(titles.size() == mini(level + 1, 6))
-		menu.set_newspapers(titles)
+		menu.set_newspapers(titles, level % 2 == 1, level % 3 == 1)
 		var popup := menu.newspaper_menu.get_popup()
-		assert(popup.item_count == titles.size())
+		assert(popup.item_count == titles.size() + 3)
+		var subscription_index := popup.get_item_index(CityMenuBar.MENU_NEWSPAPER_SUBSCRIPTION)
+		var extras_index := popup.get_item_index(CityMenuBar.MENU_NEWSPAPER_EXTRAS)
+		assert(subscription_index == 0 and extras_index == 1 and popup.is_item_separator(2))
+		assert(popup.is_item_checked(subscription_index) == (level % 2 == 1))
+		assert(popup.is_item_checked(extras_index) == (level % 3 == 1))
 
-		for index in popup.item_count:
-			assert(popup.get_item_id(index) == index)
-			assert(popup.get_item_text(index) == titles[index])
-			assert(not popup.is_item_checkable(index))
-			assert(not popup.is_item_radio_checkable(index))
+		for index in titles.size():
+			var item_index := popup.get_item_index(index)
+			assert(item_index == index + 3)
+			assert(popup.get_item_text(item_index) == titles[index])
+			assert(not popup.is_item_radio_checkable(item_index))
 
 		assert(document.serialize().data == before)
 

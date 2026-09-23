@@ -226,13 +226,21 @@ func refresh_city_map_viewport() -> void:
 
 
 func refresh_newspaper_menu() -> void:
+	var city := app.document_state.city
 	app.city_menu_bar.set_newspapers(
-		NewspaperDialog.newspaper_titles(app.document_state.city, document_state.current_document),
+		NewspaperDialog.newspaper_titles(city, document_state.current_document),
+		city != null and city.newspaper_subscription_enabled(),
+		city != null and city.newspaper_extras_enabled(),
 	)
 
 
 func on_newspaper_menu(id: int) -> void:
 	if app.document_state.city == null or document_state.current_document == null:
+		return
+
+	if id == CityMenuBarView.MENU_NEWSPAPER_SUBSCRIPTION or id == CityMenuBarView.MENU_NEWSPAPER_EXTRAS:
+		_toggle_newspaper_option(id)
+
 		return
 
 	if id < 0 or id >= NewsQueue.available_paper_count(app.document_state.city.city_status()):
@@ -249,6 +257,29 @@ func on_newspaper_menu(id: int) -> void:
 		app.newspaper_state.session_seed,
 		id,
 	)
+
+
+# the original toggles each saved option and changes nothing else
+func _toggle_newspaper_option(id: int) -> void:
+	var city := app.document_state.city
+	var subscription := id == CityMenuBarView.MENU_NEWSPAPER_SUBSCRIPTION
+	var enabled := not (city.newspaper_subscription_enabled() if subscription else city.newspaper_extras_enabled())
+	var stored := (
+		city.set_newspaper_subscription_enabled(enabled)
+		if subscription
+		else city.set_newspaper_extras_enabled(enabled)
+	)
+
+	if not stored:
+		app.interface.show_error("Cannot update the newspaper option.")
+
+		return
+
+	refresh_newspaper_menu()
+	app.status_label.theme_type_variation = ""
+	app.status_label.text = "Newspaper %s %s." % [
+		"subscription" if subscription else "extra editions", "enabled" if enabled else "disabled"
+	]
 
 
 func on_help_menu(_id: int) -> void:
