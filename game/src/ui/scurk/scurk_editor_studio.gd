@@ -172,14 +172,6 @@ func bind_canvas() -> void:
 		_refresh_context()
 
 
-func restore(state: Dictionary) -> void:
-	if state.is_empty():
-		project.documents.clear()
-		return
-	project.restore_snapshot(state)
-	refresh_restored_state()
-
-
 func refresh_restored_state(update_modified_state := true) -> void:
 	restore_editor_state()
 	last_key = ""

@@ -1,13 +1,7 @@
 class_name ScurkEditorHistory
 extends RefCounted
 
-const Mif = preload("res://src/assets/scurk_mif.gd")
 const HISTORY_LIMIT := 24
-
-class Result extends ScurkMif.Result:
-	var no_action := false
-	var document: ScurkMif
-
 
 class Record extends RefCounted:
 	var description := "Edit artwork"
@@ -24,7 +18,6 @@ var undo_stack: Array[Record] = []
 var redo_stack: Array[Record] = []
 var object_start_bytes := PackedByteArray()
 var object_start_large_id := -1
-var object_start_blank_shape_ids: Dictionary[int, bool] = {}
 var blank_shape_ids: Dictionary[int, bool] = {}
 var dirty := false
 
@@ -45,7 +38,6 @@ func mark_saved(encoded_bytes: PackedByteArray) -> void:
 func capture_object(document: ScurkMif, large_id: int) -> void:
 	object_start_bytes.clear()
 	object_start_large_id = large_id
-	object_start_blank_shape_ids = blank_shape_ids.duplicate()
 
 	if document == null or large_id < 0:
 		return
@@ -75,58 +67,6 @@ func can_undo() -> bool:
 
 func can_redo() -> bool:
 	return not redo_stack.is_empty()
-
-
-func undo() -> Result:
-	if not can_undo():
-		var result := Result.new()
-		result.ok = false
-		result.no_action = true
-		result.error = ""
-
-		return result
-
-	var action: Record = undo_stack.pop_back()
-	var replacement := _decode_document(action.before)
-
-	if not replacement.ok:
-		return replacement
-
-	blank_shape_ids = action.blank_before.duplicate()
-	redo_stack.append(action)
-
-	var result := Result.new()
-	result.ok = true
-	result.document = replacement.document
-	result.error = ""
-
-	return result
-
-
-func redo() -> Result:
-	if not can_redo():
-		var result := Result.new()
-		result.ok = false
-		result.no_action = true
-		result.error = ""
-
-		return result
-
-	var action: Record = redo_stack.pop_back()
-	var replacement := _decode_document(action.after)
-
-	if not replacement.ok:
-		return replacement
-
-	blank_shape_ids = action.blank_after.duplicate()
-	undo_stack.append(action)
-
-	var result := Result.new()
-	result.ok = true
-	result.document = replacement.document
-	result.error = ""
-
-	return result
 
 
 func can_revert_object(document: ScurkMif, large_id: int) -> bool:
@@ -167,21 +107,3 @@ func update_dirty(document: ScurkMif) -> void:
 
 func _update_dirty_bytes(encoded_bytes: PackedByteArray) -> void:
 	dirty = encoded_bytes != saved_bytes
-
-
-func _decode_document(bytes: PackedByteArray) -> Result:
-	var replacement := Mif.new()
-
-	if not replacement.parse(bytes):
-		var result := Result.new()
-		result.ok = false
-		result.error = replacement.parse_error
-
-		return result
-
-	var result := Result.new()
-	result.ok = true
-	result.document = replacement
-	result.error = ""
-
-	return result

@@ -652,37 +652,23 @@ func _replace_active_view(
 
 
 func undo() -> void:
-	if not edit_history.can_undo():
-		return
-
-	var state: Dictionary = edit_history.undo_stack.back().project_before
-	var result := edit_history.undo()
-	if result.ok:
-		studio.restore(state)
-
-	if result.ok:
-		tile_set = result.document
-	else:
+	var result := session.undo()
+	if not result.ok:
 		_show_error(result.error)
-
-	_update_after_history()
+		return
+	if result.changed:
+		studio.refresh_restored_state()
+		_update_after_history()
 
 
 func redo() -> void:
-	if not edit_history.can_redo():
-		return
-
-	var state: Dictionary = edit_history.redo_stack.back().project_after
-	var result := edit_history.redo()
-	if result.ok:
-		studio.restore(state)
-
-	if result.ok:
-		tile_set = result.document
-	else:
+	var result := session.redo()
+	if not result.ok:
 		_show_error(result.error)
-
-	_update_after_history()
+		return
+	if result.changed:
+		studio.refresh_restored_state()
+		_update_after_history()
 
 
 func revert_object() -> void:

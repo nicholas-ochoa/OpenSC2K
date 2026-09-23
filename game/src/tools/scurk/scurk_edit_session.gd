@@ -126,6 +126,37 @@ func rollback_edit() -> Result:
 	return _success()
 
 
+func undo() -> Result:
+	return _step_history(false)
+
+
+func redo() -> Result:
+	return _step_history(true)
+
+
+func _step_history(forward: bool) -> Result:
+	cancel_edit()
+	var source := history.redo_stack if forward else history.undo_stack
+	if source.is_empty():
+		return _success()
+	var action: ScurkEditorHistory.Record = source.back()
+	var bytes := action.after if forward else action.before
+	var state := action.project_after if forward else action.project_before
+	var replacement := Mif.new()
+	if not replacement.parse(bytes):
+		return _failure(replacement.parse_error)
+	if state.get("current_mif") != bytes or not project.restore_snapshot(state):
+		return _failure("Cannot restore the project for this history action.")
+	# Both representations are valid before either history stack moves.
+	document = replacement
+	history.blank_shape_ids = (action.blank_after if forward else action.blank_before).duplicate()
+	source.pop_back()
+	var destination := history.undo_stack if forward else history.redo_stack
+	destination.append(action)
+	history.update_dirty(document)
+	return _success(true)
+
+
 func _reject_edit(message: String) -> Result:
 	var restored := rollback_edit()
 	return _failure(message if restored.ok else message + " " + restored.error)
