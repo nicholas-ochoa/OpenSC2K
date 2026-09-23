@@ -1,6 +1,8 @@
 class_name CityDebugOverlay
 extends Node
 
+@warning_ignore_start("integer_division")
+
 const SAMPLE_INTERVAL_SECONDS := 0.25
 const DISASTER_NAMES := ["Fire", "Flood", "Riot", "Toxic Spill", "Air Crash",
 	"Earthquake", "Tornado", "Monster", "Meltdown", "Microwave", "Volcano",
@@ -23,6 +25,9 @@ var _terrain_slider: HSlider
 var _terrain_value: Label
 var _no_disasters_check: CheckBox
 var _detailed_timing_check: CheckBox
+# month, day and year fields for the run-to-date action
+var _date_fields: Array[SpinBox] = []
+var _target_date: Label
 
 
 func setup(value: Control) -> void:
@@ -98,6 +103,27 @@ func _build_actions(tabs: TabContainer) -> void:
 	_detailed_timing_check.toggled.connect(func(enabled: bool) -> void:
 		_record_action(main_control.debug.call("debug_set_detailed_timing", enabled)))
 	simulation.add_child(_detailed_timing_check)
+	var run_to := _action_section(box, "Run to date", 8)
+
+	for field in [["Month", 1, 12], ["Day", 1, CityCalendar.DAYS_PER_MONTH], ["Year", 0, 9999]]:
+		var caption := Label.new()
+		caption.text = field[0]
+		run_to.add_child(caption)
+		var spin := SpinBox.new()
+		spin.min_value = field[1]
+		spin.max_value = field[2]
+		spin.value = field[1]
+		spin.tooltip_text = "%s of the date to pause on. Days run from 1 to 25 in each month." % field[0]
+		run_to.add_child(spin)
+		_date_fields.append(spin)
+
+	_button(run_to, "Run to date", ("Run the simulation at the current speed until the date, then pause. If the game is paused, " +
+		"it runs at the speed it had before the pause. A pause before the date cancels the run."), func() -> void:
+		_record_action(main_control.debug.call("debug_run_to_date", int(_date_fields[0].value), int(_date_fields[1].value),
+			int(_date_fields[2].value), _resume_speed)))
+	_target_date = Label.new()
+	_target_date.custom_minimum_size.x = 170
+	run_to.add_child(_target_date)
 	var cheats := _action_section(box, "Cheats", 3)
 
 	for pair in [[10000, "$10,000"], [100000, "$100,000"], [1000000, "$1,000,000"]]:
@@ -216,6 +242,28 @@ func toggle() -> void:
 
 	if is_open:
 		_refresh_metrics()
+		_suggest_run_date()
+
+
+# keep a future date the user entered. otherwise suggest one month after the current date
+func _suggest_run_date() -> void:
+	var current := _day_number(Array(str(_metrics.get("date", "")).split("/")))
+
+	if current < 0 or _day_number(_date_fields.map(func(spin: SpinBox) -> String: return str(int(spin.value)))) > current:
+		return
+
+	current += CityCalendar.DAYS_PER_MONTH
+	_date_fields[0].value = (current % CityCalendar.DAYS_PER_YEAR) / CityCalendar.DAYS_PER_MONTH + 1
+	_date_fields[1].value = current % CityCalendar.DAYS_PER_MONTH + 1
+	_date_fields[2].value = current / CityCalendar.DAYS_PER_YEAR
+
+
+# days since year 0 for month, day and year text. -1 when the text is not a date
+static func _day_number(parts: Array) -> int:
+	if parts.size() != 3 or not parts.all(func(part: String) -> bool: return part.is_valid_int()):
+		return -1
+
+	return int(parts[2]) * CityCalendar.DAYS_PER_YEAR + (int(parts[0]) - 1) * CityCalendar.DAYS_PER_MONTH + int(parts[1]) - 1
 
 
 func _locate_on_map(site: Rect2i) -> void:
@@ -259,6 +307,12 @@ func _refresh_metrics() -> void:
 	_terrain_value.text = str(levels)
 	_no_disasters_check.set_pressed_no_signal(bool(_metrics.get("no_disasters", false)))
 	_detailed_timing_check.set_pressed_no_signal(bool(_metrics.get("detailed_timing", false)))
+	var pause_at_date := str(_metrics.get("pause_at_date", "None"))
+	_target_date.text = "No target date" if pause_at_date == "None" else "Pauses on " + pause_at_date
+
+	# remember the last running speed for pause / resume and run to date
+	if int(_metrics.get("speed_id", 1)) > 1:
+		_resume_speed = int(_metrics.get("speed_id"))
 	_refresh_day_rows(_history())
 
 	_metrics_tree.refresh(_metrics)

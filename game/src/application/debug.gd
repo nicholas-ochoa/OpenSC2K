@@ -56,6 +56,7 @@ func debug_metrics() -> Dictionary:
 		),
 		"no_disasters": app.document_state.city != null and app.document_state.city.no_disasters_enabled(),
 		"detailed_timing": SimulationTimingSpan.detailed,
+		"pause_at_date": "None",
 	}
 
 	if app.audio_controller != null:
@@ -72,6 +73,14 @@ func debug_metrics() -> Dictionary:
 		result.population = app.interface.format_number(app.document_state.city.population())
 		result.funds = "$%s" % app.interface.format_number(app.document_state.city.funds())
 		result.tool = str(Tools.tool(app.tool_state.selected_group, app.tool_state.selected_subtool).name)
+		var pause_at_day := app.simulation_state.speed_controller.pause_at_day if app.simulation_state.speed_controller != null else -1
+
+		if pause_at_day >= 0:
+			result.pause_at_date = "%02d/%02d/%04d" % [
+				(pause_at_day % CityCalendar.DAYS_PER_YEAR) / CityCalendar.DAYS_PER_MONTH + 1,
+				pause_at_day % CityCalendar.DAYS_PER_MONTH + 1,
+				app.document_state.city.founding_year() + pause_at_day / CityCalendar.DAYS_PER_YEAR,
+			]
 
 	return result
 
@@ -141,6 +150,29 @@ func debug_set_no_disasters(enabled: bool) -> ActionResult:
 	app.interface.refresh_details()
 
 	return ActionResult.new(true, "Random disasters are %s." % ("disabled" if enabled else "enabled"))
+
+
+func debug_run_to_date(month: int, day: int, year: int, resume_speed: int) -> ActionResult:
+	var city := app.document_state.city
+	var controller := app.simulation_state.speed_controller
+
+	if city == null or controller == null:
+		return ActionResult.new(false, "No city is loaded.")
+
+	if month < 1 or month > CityCalendar.MONTHS_PER_YEAR or day < 1 or day > CityCalendar.DAYS_PER_MONTH:
+		return ActionResult.new(false, "The date is not valid. Months are 1 to 12 and days are 1 to 25.")
+
+	var target := DebugActions.age_for_date(city, month, day, year)
+
+	if target <= city.age_in_days():
+		return ActionResult.new(false, "Choose a date after the current date.")
+
+	if controller.speed == GameSpeedController.Speed.PAUSED:
+		app.frame.select_speed(resume_speed if resume_speed > GameSpeedController.Speed.PAUSED else GameSpeedController.Speed.TURTLE)
+
+	controller.pause_at_day = target
+
+	return ActionResult.new(true, "The simulation runs until %02d/%02d/%04d, then pauses." % [month, day, year])
 
 
 func debug_set_detailed_timing(enabled: bool) -> ActionResult:

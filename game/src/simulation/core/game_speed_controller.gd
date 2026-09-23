@@ -28,6 +28,8 @@ var subtick_counter := 0
 var simulation_ready := false
 var interaction_blocked := false
 var terminal_blocked := false
+# city age in days at which the simulation pauses. -1 when there is no target
+var pause_at_day := -1
 
 
 func _init(initial_engine: SimulationEngine) -> void:
@@ -51,6 +53,10 @@ func set_speed(value: int) -> bool:
 		return false
 
 	speed = value
+
+	# a pause from any source cancels the target day
+	if value == Speed.PAUSED:
+		pause_at_day = -1
 
 	return true
 
@@ -121,6 +127,9 @@ func advance_time(
 
 				return result
 
+			if _pause_on_target_day(result):
+				break
+
 			if speed == Speed.AFRICAN_SWALLOW:
 				ran_swallow_day = true
 			else:
@@ -140,6 +149,8 @@ func advance_time(
 			result.error = day_error
 
 			return result
+
+		_pause_on_target_day(result)
 
 		if speed != Speed.AFRICAN_SWALLOW:
 			simulation_ready = false
@@ -193,6 +204,17 @@ func resolve_military_proposal(accepted: bool) -> SimulationTickResult:
 	result.ok = true
 
 	return result
+
+
+# stop at the end of the target day. the remaining base ticks in this call do no work
+func _pause_on_target_day(result: SimulationTickResult) -> bool:
+	if pause_at_day < 0 or engine.city.age_in_days() < pause_at_day:
+		return false
+
+	result.paused_on_target_day = set_speed(Speed.PAUSED)
+	pause_at_day = -1
+
+	return true
 
 
 func _is_day_due() -> bool:

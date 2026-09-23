@@ -62,6 +62,9 @@ func _run() -> void:
 		"timing": {"work_usec": 2500, "steps": {"pollution": 2500}}}]}))
 	debug.toggle()
 	assert(debug.is_open and debug._days.get_root().get_child_count() == 25)
+	assert(debug._date_fields.map(func(spin: SpinBox) -> int: return int(spin.value)) == [2, 3, 1900],
+		"Run to date suggests one month after the current date")
+	assert(debug._target_date.text == "No target date")
 	var day_three := debug._days.get_root().get_child(2)
 	assert(day_three.get_text(0) == "3" and day_three.get_text(2) == "2.500")
 	assert(day_three.get_text(5) == "1")

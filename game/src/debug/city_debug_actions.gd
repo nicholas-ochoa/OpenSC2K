@@ -39,6 +39,12 @@ class DisasterTarget extends RefCounted:
 	var goal := 0
 
 
+# days from the founding date. days run from 1 to 25 in each month
+static func age_for_date(city: CityState, month: int, day: int, year: int) -> int:
+	return ((year - city.founding_year()) * CityCalendar.DAYS_PER_YEAR + (month - 1) * CityCalendar.DAYS_PER_MONTH
+		+ day - 1)
+
+
 static func add_funds(city: CityState, amount: int) -> FundsResult:
 	if city == null or amount <= 0:
 		var result := FundsResult.new()

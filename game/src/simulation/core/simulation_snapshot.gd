@@ -12,7 +12,7 @@ const ENGINE_FIELDS := [
 ]
 const CONTROLLER_FIELDS := [
 	"speed", "accumulator_msec", "fire_elapsed_msec", "subtick_counter", "original_compatibility",
-	"simulation_ready", "interaction_blocked", "terminal_blocked",
+	"simulation_ready", "interaction_blocked", "terminal_blocked", "pause_at_day",
 ]
 
 

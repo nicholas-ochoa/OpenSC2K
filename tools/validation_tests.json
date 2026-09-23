@@ -241,6 +241,12 @@
     "lane": "product"
   },
   {
+    "id": "debug_actions_test",
+    "script": "tests/debug_actions_test.gd",
+    "domain": "simulation",
+    "lane": "product"
+  },
+  {
     "id": "debug_city_tables_test",
     "script": "tests/debug_city_tables_test.gd",
     "domain": "ui",

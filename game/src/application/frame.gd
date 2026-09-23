@@ -96,6 +96,10 @@ func consume_simulation_result(result: SimulationTickResult) -> void:
 	if result.base_ticks > 0:
 		sync_speed_ui()
 
+	if result.paused_on_target_day:
+		app.status_label.theme_type_variation = ""
+		app.status_label.text = "The simulation paused on the target date."
+
 	app.timing_state.simulation_timings.consume(result)
 	var refresh_started := Time.get_ticks_usec()
 	var ran_days: bool = not result.day_results.is_empty()

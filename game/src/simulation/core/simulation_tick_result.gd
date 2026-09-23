@@ -18,3 +18,4 @@ var game_over_events: Array[GameOverEvent] = []
 var music_track_requests := PackedInt32Array()
 var pending_actions := PackedStringArray()
 var job_timings: Dictionary[String, int] = {}
+var paused_on_target_day := false
