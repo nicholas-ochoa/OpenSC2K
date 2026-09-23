@@ -2,6 +2,15 @@ class_name ScurkContextMenu
 extends PopupMenu
 ## Keeps custom shortcut hints in one column and forwards outside right-clicks.
 
+const MAC_KEY_SYMBOLS := {
+	KEY_ESCAPE: "⎋", KEY_TAB: "⇥", KEY_BACKTAB: "⇤",
+	KEY_BACKSPACE: "⌫", KEY_DELETE: "⌦", KEY_ENTER: "↩", KEY_KP_ENTER: "⌤",
+	KEY_PAGEUP: "⇞", KEY_PAGEDOWN: "⇟", KEY_HOME: "↖", KEY_END: "↘",
+	KEY_LEFT: "←", KEY_UP: "↑", KEY_RIGHT: "→", KEY_DOWN: "↓",
+	KEY_SHIFT: "⇧", KEY_ALT: "⌥", KEY_META: "⌘", KEY_CTRL: "⌃",
+	KEY_CAPSLOCK: "⇪", KEY_CLEAR: "⌧", KEY_SPACE: "␣",
+}
+
 var hints: Dictionary[int, String] = {}
 var hint_labels: Array[Label] = []
 var base_end_padding := 0
@@ -9,12 +18,13 @@ var base_end_padding := 0
 
 static func key_hint(key: int) -> String:
 	if not OS.has_feature("macos"):
-		return OS.get_keycode_string(key).replace("Control", "Ctrl").replace("Command", "Cmd").replace("Meta", "Cmd")
+		return OS.get_keycode_string(key).replace("Control", "Ctrl").replace("Command", "Cmd").replace("Meta", "Cmd").replace("Escape", "Esc")
 	var hint := ""
 	for pair in [[KEY_MASK_CTRL, "⌃"], [KEY_MASK_ALT, "⌥"], [KEY_MASK_SHIFT, "⇧"], [KEY_MASK_META, "⌘"]]:
 		if key & pair[0]:
 			hint += pair[1]
-	return hint + OS.get_keycode_string(key & KEY_CODE_MASK)
+	var keycode := key & KEY_CODE_MASK
+	return hint + String(MAC_KEY_SYMBOLS.get(keycode, OS.get_keycode_string(keycode)))
 
 
 func _ready() -> void:
