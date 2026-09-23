@@ -74,7 +74,7 @@ text = "Textures"
 [node name="Textures" type="GridContainer" parent="Margin/Column"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
+size_flags_vertical = 0
 script = ExtResource("textures")
 
 [node name="ColorMenu" type="PopupMenu" parent="."]

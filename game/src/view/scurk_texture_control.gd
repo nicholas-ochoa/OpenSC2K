@@ -55,8 +55,8 @@ func set_patterns(value: Array[PackedInt32Array]) -> void:
 		button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
 		button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		button.custom_minimum_size = Vector2(BUTTON_SIZE, BUTTON_SIZE)
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		button.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 		for state in ["normal", "hover", "pressed", "hover_pressed", "disabled", "focus"]:
 			button.add_theme_color_override("icon_%s_color" % state, Color.WHITE)
 		button.pressed.connect(_select_button.bind(index))
