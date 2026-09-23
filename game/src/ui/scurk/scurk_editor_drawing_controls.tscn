@@ -11,8 +11,6 @@
 [ext_resource type="Texture2D" path="res://src/ui/scurk/icons/rectangle.svg" id="Rectangle"]
 [ext_resource type="Texture2D" path="res://src/ui/scurk/icons/fill.svg" id="Fill"]
 [ext_resource type="Texture2D" path="res://src/ui/scurk/icons/eyedropper.svg" id="Eyedropper"]
-[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/copy.svg" id="Copy"]
-[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/paste.svg" id="Paste"]
 
 [ext_resource type="Texture2D" path="res://src/ui/scurk/icons/rotate_cw.svg" id="RotateCW"]
 [ext_resource type="Texture2D" path="res://src/ui/scurk/icons/rotate_ccw.svg" id="Rotate"]
@@ -172,50 +170,6 @@ vertical_icon_alignment = 1
 expand_icon = true
 theme_override_constants/icon_max_width = 24
 
-[node name="SelectRect" type="Button" parent="Margin/Column/Tools"]
-layout_mode = 2
-icon = ExtResource("select_rect")
-tooltip_text = "Rectangle selection: Shift adds, Ctrl/Cmd subtracts"
-toggle_mode = true
-custom_minimum_size = Vector2(32, 32)
-icon_alignment = 1
-vertical_icon_alignment = 1
-expand_icon = true
-theme_override_constants/icon_max_width = 24
-
-[node name="SelectLasso" type="Button" parent="Margin/Column/Tools"]
-layout_mode = 2
-icon = ExtResource("select_lasso")
-tooltip_text = "Lasso selection: Shift adds, Ctrl/Cmd subtracts"
-toggle_mode = true
-custom_minimum_size = Vector2(32, 32)
-icon_alignment = 1
-vertical_icon_alignment = 1
-expand_icon = true
-theme_override_constants/icon_max_width = 24
-
-[node name="SelectWand" type="Button" parent="Margin/Column/Tools"]
-layout_mode = 2
-icon = ExtResource("select_wand")
-tooltip_text = "Magic wand: select connected palette colors"
-toggle_mode = true
-custom_minimum_size = Vector2(32, 32)
-icon_alignment = 1
-vertical_icon_alignment = 1
-expand_icon = true
-theme_override_constants/icon_max_width = 24
-
-[node name="Move" type="Button" parent="Margin/Column/Tools"]
-layout_mode = 2
-icon = ExtResource("move")
-tooltip_text = "Move selection: drag or use arrow keys; Shift moves 10 pixels"
-toggle_mode = true
-custom_minimum_size = Vector2(32, 32)
-icon_alignment = 1
-vertical_icon_alignment = 1
-expand_icon = true
-theme_override_constants/icon_max_width = 24
-
 [node name="Shade" type="Button" parent="Margin/Column/Tools"]
 layout_mode = 2
 icon = ExtResource("shade")
@@ -242,9 +196,58 @@ theme_override_constants/icon_max_width = 24
 layout_mode = 2
 custom_minimum_size = Vector2(0, 12)
 
+[node name="Selection" type="HBoxContainer" parent="Margin/Column"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 2
+
+[node name="SelectRect" type="Button" parent="Margin/Column/Selection"]
+layout_mode = 2
+icon = ExtResource("select_rect")
+tooltip_text = "Rectangle selection: Shift adds, Ctrl/Cmd subtracts"
+toggle_mode = true
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="SelectLasso" type="Button" parent="Margin/Column/Selection"]
+layout_mode = 2
+icon = ExtResource("select_lasso")
+tooltip_text = "Lasso selection: Shift adds, Ctrl/Cmd subtracts"
+toggle_mode = true
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="SelectWand" type="Button" parent="Margin/Column/Selection"]
+layout_mode = 2
+icon = ExtResource("select_wand")
+tooltip_text = "Magic wand: select connected palette colors"
+toggle_mode = true
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
+[node name="Move" type="Button" parent="Margin/Column/Selection"]
+layout_mode = 2
+icon = ExtResource("move")
+tooltip_text = "Move selection: drag or use arrow keys; Shift moves 10 pixels"
+toggle_mode = true
+custom_minimum_size = Vector2(32, 32)
+icon_alignment = 1
+vertical_icon_alignment = 1
+expand_icon = true
+theme_override_constants/icon_max_width = 24
+
 [node name="Clipboard" type="GridContainer" parent="Margin/Column"]
 layout_mode = 2
-columns = 2
+columns = 4
 size_flags_horizontal = 4
 theme_override_constants/h_separation = 2
 theme_override_constants/v_separation = 2
@@ -252,7 +255,7 @@ theme_override_constants/v_separation = 2
 [node name="Rotate" type="Button" parent="Margin/Column/Clipboard"]
 layout_mode = 2
 icon = ExtResource("Rotate")
-tooltip_text = "Rotate clipboard counterclockwise"
+tooltip_text = "Rotate selection counterclockwise"
 custom_minimum_size = Vector2(32, 32)
 icon_alignment = 1
 vertical_icon_alignment = 1
@@ -262,7 +265,7 @@ theme_override_constants/icon_max_width = 24
 [node name="RotateCW" type="Button" parent="Margin/Column/Clipboard"]
 layout_mode = 2
 icon = ExtResource("RotateCW")
-tooltip_text = "Rotate clipboard clockwise"
+tooltip_text = "Rotate selection clockwise"
 custom_minimum_size = Vector2(32, 32)
 icon_alignment = 1
 vertical_icon_alignment = 1
@@ -272,7 +275,7 @@ theme_override_constants/icon_max_width = 24
 [node name="Horizontal" type="Button" parent="Margin/Column/Clipboard"]
 layout_mode = 2
 icon = ExtResource("Horizontal")
-tooltip_text = "Flip clipboard horizontally"
+tooltip_text = "Flip selection horizontally"
 custom_minimum_size = Vector2(32, 32)
 icon_alignment = 1
 vertical_icon_alignment = 1
@@ -282,27 +285,7 @@ theme_override_constants/icon_max_width = 24
 [node name="Vertical" type="Button" parent="Margin/Column/Clipboard"]
 layout_mode = 2
 icon = ExtResource("Vertical")
-tooltip_text = "Flip clipboard vertically"
-custom_minimum_size = Vector2(32, 32)
-icon_alignment = 1
-vertical_icon_alignment = 1
-expand_icon = true
-theme_override_constants/icon_max_width = 24
-
-[node name="Copy" type="Button" parent="Margin/Column/Clipboard"]
-layout_mode = 2
-icon = ExtResource("Copy")
-tooltip_text = "Copy selection or artwork to clipboard (Ctrl/Cmd+C)"
-custom_minimum_size = Vector2(32, 32)
-icon_alignment = 1
-vertical_icon_alignment = 1
-expand_icon = true
-theme_override_constants/icon_max_width = 24
-
-[node name="Paste" type="Button" parent="Margin/Column/Clipboard"]
-layout_mode = 2
-icon = ExtResource("Paste")
-tooltip_text = "Paste clipboard (Ctrl/Cmd+V): click to place, right-click to cancel"
+tooltip_text = "Flip selection vertically"
 custom_minimum_size = Vector2(32, 32)
 icon_alignment = 1
 vertical_icon_alignment = 1
@@ -376,6 +359,48 @@ text = "Filled shapes"
 
 [node name="Grid" parent="Margin/Column" instance=ExtResource("grid")]
 layout_mode = 2
+
+[node name="GuideDivider" type="HSeparator" parent="Margin/Column"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 12)
+
+[node name="Isometric" type="VBoxContainer" parent="Margin/Column"]
+layout_mode = 2
+
+[node name="Guides" type="CheckBox" parent="Margin/Column/Isometric"]
+text = "Isometric guides"
+button_pressed = false
+
+[node name="GuideFields" type="GridContainer" parent="Margin/Column/Isometric"]
+visible = false
+columns = 2
+
+[node name="SpacingLabel" type="Label" parent="Margin/Column/Isometric/GuideFields"]
+text = "Spacing"
+
+[node name="Spacing" type="SpinBox" parent="Margin/Column/Isometric/GuideFields"]
+min_value = 1.0
+max_value = 256.0
+value = 16.0
+custom_minimum_size = Vector2(80, 0)
+
+[node name="OffsetXLabel" type="Label" parent="Margin/Column/Isometric/GuideFields"]
+text = "X offset"
+
+[node name="OffsetX" type="SpinBox" parent="Margin/Column/Isometric/GuideFields"]
+min_value = -256.0
+max_value = 256.0
+value = 0.0
+custom_minimum_size = Vector2(80, 0)
+
+[node name="OffsetYLabel" type="Label" parent="Margin/Column/Isometric/GuideFields"]
+text = "Y offset"
+
+[node name="OffsetY" type="SpinBox" parent="Margin/Column/Isometric/GuideFields"]
+min_value = -256.0
+max_value = 256.0
+value = 0.0
+custom_minimum_size = Vector2(80, 0)
 
 [node name="Spacer" type="Control" parent="Margin/Column"]
 layout_mode = 2

@@ -100,6 +100,16 @@ func _run() -> void:
 	preview.queue_redraw()
 	await RenderingServer.frame_post_draw
 	assert(viewport.get_texture().get_image().get_pixel(401, 1).is_equal_approx(palette.color(42)))
+	preview.preview_scale = 2
+	preview.set_preview(2, 32, 64, pixels, 128, palette, PackedInt32Array(), false)
+	preview.preview_indices[0] = 42
+	preview._rebuild_texture()
+	preview.queue_redraw()
+	await RenderingServer.frame_post_draw
+	var enlarged := viewport.get_texture().get_image()
+	for point in [Vector2i(401, 1), Vector2i(402, 1), Vector2i(401, 2), Vector2i(402, 2)]:
+		assert(enlarged.get_pixelv(point).is_equal_approx(palette.color(42)))
+	assert(preview.custom_minimum_size == Vector2(66, 130))
 	viewport.free()
 	await _test_clip_display(palette)
 	await _test_modern_display(palette)
@@ -140,6 +150,9 @@ func _test_clip_display(palette: Sc2Palette) -> void:
 			assert(image.get_pixel(right, y).is_equal_approx(Color.WHITE))
 		assert(image.get_pixel(left + 1, 4).is_equal_approx(palette.color(42)))
 		assert(image.get_pixel(right - 1, 4).is_equal_approx(palette.color(42)))
+		var shaded_point := Vector2i(5, 4 + 255 * canvas.zoom)
+		var shaded := image.get_pixelv(shaded_point)
+		assert(shaded.a > 0.0 and shaded.a < 0.3 and shaded.v == 0.0, "Clip display shades outside the lower tile outline")
 		assert(canvas.pixels == before)
 		assert(canvas._point_from_position(Vector2(canvas.DISPLAY_MARGIN, 0)) == Vector2i.ZERO)
 		assert(canvas._point_from_position(Vector2.ZERO).x == -1)

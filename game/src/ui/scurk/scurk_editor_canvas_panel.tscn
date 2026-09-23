@@ -29,47 +29,97 @@ script = ExtResource("pixels")
 layout_mode = 2
 visible = false
 
-[node name="Content" type="HBoxContainer" parent="Row/Previews"]
+[node name="Content" type="VBoxContainer" parent="Row/Previews"]
 layout_mode = 2
 
-[node name="Large" type="VBoxContainer" parent="Row/Previews/Content"]
+[node name="Scroll" type="ScrollContainer" parent="Row/Previews/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Views" type="VBoxContainer" parent="Row/Previews/Content/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Original" type="HBoxContainer" parent="Row/Previews/Content/Scroll/Views"]
+layout_mode = 2
+alignment = 1
+
+[node name="Large" type="VBoxContainer" parent="Row/Previews/Content/Scroll/Views/Original"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="Row/Previews/Content/Large"]
+[node name="Label" type="Label" parent="Row/Previews/Content/Scroll/Views/Original/Large"]
 layout_mode = 2
 text = "Large"
 horizontal_alignment = 1
 
-[node name="Preview" type="Control" parent="Row/Previews/Content/Large"]
+[node name="Preview" type="Control" parent="Row/Previews/Content/Scroll/Views/Original/Large"]
 layout_mode = 2
 script = ExtResource("preview")
 
-[node name="Smaller" type="VBoxContainer" parent="Row/Previews/Content"]
+[node name="Smaller" type="VBoxContainer" parent="Row/Previews/Content/Scroll/Views/Original"]
 layout_mode = 2
 
-[node name="Medium" type="VBoxContainer" parent="Row/Previews/Content/Smaller"]
+[node name="Medium" type="VBoxContainer" parent="Row/Previews/Content/Scroll/Views/Original/Smaller"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="Row/Previews/Content/Smaller/Medium"]
+[node name="Label" type="Label" parent="Row/Previews/Content/Scroll/Views/Original/Smaller/Medium"]
 layout_mode = 2
 text = "Medium"
 horizontal_alignment = 1
 
-[node name="Preview" type="Control" parent="Row/Previews/Content/Smaller/Medium"]
+[node name="Preview" type="Control" parent="Row/Previews/Content/Scroll/Views/Original/Smaller/Medium"]
 layout_mode = 2
 script = ExtResource("preview")
 
-[node name="Small" type="VBoxContainer" parent="Row/Previews/Content/Smaller"]
+[node name="Small" type="VBoxContainer" parent="Row/Previews/Content/Scroll/Views/Original/Smaller"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="Row/Previews/Content/Smaller/Small"]
+[node name="Label" type="Label" parent="Row/Previews/Content/Scroll/Views/Original/Smaller/Small"]
 layout_mode = 2
 text = "Small"
 horizontal_alignment = 1
 
-[node name="Preview" type="Control" parent="Row/Previews/Content/Smaller/Small"]
+[node name="Preview" type="Control" parent="Row/Previews/Content/Scroll/Views/Original/Smaller/Small"]
 layout_mode = 2
 script = ExtResource("preview")
+
+[node name="LargeDouble" type="VBoxContainer" parent="Row/Previews/Content/Scroll/Views"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Row/Previews/Content/Scroll/Views/LargeDouble"]
+layout_mode = 2
+text = "Large x2"
+horizontal_alignment = 1
+
+[node name="Preview" type="Control" parent="Row/Previews/Content/Scroll/Views/LargeDouble"]
+layout_mode = 2
+script = ExtResource("preview")
+preview_scale = 2
+
+[node name="Toggles" type="GridContainer" parent="Row/Previews/Content"]
+layout_mode = 2
+columns = 2
+
+[node name="Large" type="CheckBox" parent="Row/Previews/Content/Toggles"]
+layout_mode = 2
+text = "Large"
+button_pressed = true
+
+[node name="Medium" type="CheckBox" parent="Row/Previews/Content/Toggles"]
+layout_mode = 2
+text = "Medium"
+button_pressed = true
+
+[node name="Small" type="CheckBox" parent="Row/Previews/Content/Toggles"]
+layout_mode = 2
+text = "Small"
+button_pressed = true
+
+[node name="LargeDouble" type="CheckBox" parent="Row/Previews/Content/Toggles"]
+layout_mode = 2
+text = "Large x2"
+button_pressed = true
 
 [node name="Footer" type="MarginContainer" parent="."]
 layout_mode = 2

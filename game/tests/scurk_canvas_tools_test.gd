@@ -9,6 +9,8 @@ func _run() -> void:
 	_test_selection_masks()
 	var canvas := ScurkPixelCanvas.new()
 	root.add_child(canvas)
+	_test_right_click_tools(canvas)
+	_test_selection_transforms(canvas)
 	_test_navigation(canvas)
 	_test_selection_paint(canvas)
 	_test_selection_drag(canvas)
@@ -411,7 +413,8 @@ func _test_paste_during_selection(canvas: ScurkPixelCanvas) -> void:
 			_mouse(canvas, Vector2i(5, 5), false, button)
 			assert(not canvas.paste_active and not canvas.selection_dragging)
 			if cancel:
-				assert(canvas.pixels.count(-1) == 64 and canvas.selection.mask == selected)
+				assert(canvas.pixels.count(-1) == 64 and not canvas.selection.active())
+				canvas.selection.mask = selected.duplicate()
 			else:
 				assert(canvas.pixels[45] == 10 and canvas.pixels[46] == 20)
 				assert(canvas.selection.bounds() == Rect2i(5, 5, 2, 1))
@@ -545,3 +548,66 @@ func _test_layer_display(canvas: ScurkPixelCanvas) -> void:
 	_mouse(canvas, Vector2i(1, 0), true)
 	_mouse(canvas, Vector2i(1, 0), false)
 	assert(picked == [20, 30])
+
+
+func _test_right_click_tools(canvas: ScurkPixelCanvas) -> void:
+	for tool in [canvas.TOOL_SELECT_RECT, canvas.TOOL_SELECT_LASSO, canvas.TOOL_SELECT_WAND, canvas.TOOL_MOVE]:
+		_reset(canvas, 12)
+		canvas.set_tool(tool)
+		canvas.select_all()
+		var before := canvas.pixels.duplicate()
+		_mouse(canvas, Vector2i(2, 2), true, MOUSE_BUTTON_RIGHT)
+		_mouse(canvas, Vector2i(3, 3), false, MOUSE_BUTTON_RIGHT)
+		assert(not canvas.selection.active() and not canvas.stroke_active and canvas.pixels == before)
+		canvas.selection_dragging = true
+		_mouse(canvas, Vector2i(2, 2), true, MOUSE_BUTTON_RIGHT)
+		assert(not canvas.selection_dragging)
+	for tool in [canvas.TOOL_PENCIL, canvas.TOOL_FILL, canvas.TOOL_LINE, canvas.TOOL_RECTANGLE, canvas.TOOL_ELLIPSE, canvas.TOOL_DIAMOND, canvas.TOOL_LEFT_WALL, canvas.TOOL_RIGHT_WALL]:
+		_reset(canvas, 12)
+		canvas.set_tool(tool)
+		_mouse(canvas, Vector2i(2, 2), true, MOUSE_BUTTON_RIGHT)
+		_mouse(canvas, Vector2i(6, 6), false, MOUSE_BUTTON_RIGHT)
+		assert(canvas.pixels.has(55), "Painting tool %d uses the background color on right-click" % tool)
+
+
+func _test_selection_transforms(canvas: ScurkPixelCanvas) -> void:
+	var expected := [PackedInt32Array([3, 6, 2, 5, 1, 4]), PackedInt32Array([4, 1, 5, 2, 6, 3]),
+		PackedInt32Array([3, 2, 1, 6, 5, 4]), PackedInt32Array([4, 5, 6, 1, 2, 3])]
+	for operation in 4:
+		_reset(canvas)
+		canvas.pixels[9] = 1
+		canvas.pixels[10] = 2
+		canvas.pixels[11] = 3
+		canvas.pixels[17] = 4
+		canvas.pixels[18] = 5
+		canvas.pixels[19] = 6
+		canvas.pixels[63] = 99
+		canvas.selection.combine(canvas.selection.rectangle(Vector2i(1, 1), Vector2i(3, 2)))
+		canvas.clipboard_width = 1
+		canvas.clipboard_height = 1
+		canvas.clipboard_pixels = PackedInt32Array([77])
+		canvas.clipboard_mask = PackedByteArray([1])
+		canvas.transform_selection(operation)
+		var end := Vector2i(2, 3) if operation < 2 else Vector2i(3, 2)
+		assert(canvas.copy_region(canvas.pixels, 8, 8, Vector2i.ONE, end).pixels == expected[operation])
+		assert(canvas.selection.bounds() == Rect2i(Vector2i.ONE, end))
+		assert(canvas.pixels[63] == 99 and canvas.clipboard_pixels == PackedInt32Array([77]))
+		if operation < 2:
+			assert(canvas.pixels[11] == -1 and canvas.pixels[19] == -1)
+	# Nonrectangular masks rotate with the selected pixels, including transparent cells.
+	_reset(canvas)
+	canvas.pixels[9] = 10
+	canvas.pixels[10] = 20
+	canvas.pixels[17] = 30
+	var mask := canvas.selection.empty_mask()
+	mask[9] = 1
+	mask[10] = 1
+	mask[17] = 1
+	canvas.selection.combine(mask)
+	canvas.transform_selection(1)
+	assert(canvas.selection.mask[9] == 1 and canvas.selection.mask[10] == 1 and canvas.selection.mask[18] == 1)
+	assert(canvas.selection.mask[17] == 0 and canvas.pixels[9] == 30 and canvas.pixels[18] == 20)
+	var before := canvas.pixels.duplicate()
+	canvas.editing_disabled = true
+	canvas.transform_selection(2)
+	assert(canvas.pixels == before)

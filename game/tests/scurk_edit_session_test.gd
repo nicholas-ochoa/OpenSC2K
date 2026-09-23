@@ -384,6 +384,31 @@ func _test_persistence() -> void:
 		"Successful save clears only owned recovery state")
 	_check(archives.size() == 1 and FileAccess.get_file_as_bytes(archives[0]) == earlier,
 		"Owned recovery cleanup leaves unrelated recovery bytes intact")
+	_store_file(studio.recovery_path, recovery_bytes)
+	studio.recovery_checked = false
+	studio.check_recovery()
+	_check(studio.get_node("Recovery").visible, "An unhandled recovery opens the prompt")
+	var before_ignore := _state()
+	studio.get_node("Recovery").custom_action.emit(&"ignore")
+	_check(not studio.get_node("Recovery").visible, "Ignore closes the prompt")
+	_check(not FileAccess.file_exists(studio.recovery_path), "Ignore removes the automatic recovery candidate")
+	_check_artwork(before_ignore, "Ignore keeps the current artwork")
+	var ignored_path := ""
+	for name in DirAccess.get_files_at(folder):
+		if name.begins_with("recovery-ignored-"):
+			ignored_path = folder.path_join(name)
+	_check(not ignored_path.is_empty() and FileAccess.get_file_as_bytes(ignored_path) == recovery_bytes,
+		"Ignored recovery remains byte-exact for manual recovery")
+	studio.recovery_checked = false
+	studio.check_recovery()
+	_check(not studio.get_node("Recovery").visible, "A later startup does not prompt for the ignored file")
+	_check(editor.session.ignore_recovery().ok, "Ignoring a missing candidate is harmless")
+	_check(ScurkProject.load_path(ignored_path).ok, "The ignored project remains recoverable")
+	assert(studio.autosave())
+	studio.recovery_checked = false
+	studio.check_recovery()
+	_check(studio.get_node("Recovery").visible, "A new autosave can still prompt for recovery")
+	studio.get_node("Recovery").hide()
 	for name in DirAccess.get_files_at(folder):
 		assert(DirAccess.remove_absolute(ProjectSettings.globalize_path(folder.path_join(name))) == OK)
 	assert(DirAccess.remove_absolute(ProjectSettings.globalize_path(folder)) == OK)

@@ -242,7 +242,6 @@ func test_scurk_mif(reference_root: String) -> void:
 			and scurk_editor.brush_size_selector.max_value == 24
 			and scurk_editor.revert_button != null
 			and scurk_editor.revert_name_button != null
-			and scurk_editor.clipboard_paste_button.disabled
 			and scurk_editor.clipboard_action_buttons.size() == 4
 			and not scurk_editor.pixel_canvas.original_textures_loaded
 			and scurk_editor.pixel_canvas.texture_patterns.size() == 42
@@ -250,8 +249,6 @@ func test_scurk_mif(reference_root: String) -> void:
 			and scurk_editor.increment_cycle_button.disabled
 			and scurk_editor.import_bmp_dialog != null
 			and scurk_editor.export_bmp_dialog != null
-			and scurk_editor.clipboard_copy_button != null
-			and scurk_editor.clipboard_paste_button != null
 			and scurk_editor.clear_object_button != null
 			and scurk_editor.clip_region_check != null
 			and scurk_editor.snap_to_grid_check != null
@@ -259,7 +256,7 @@ func test_scurk_mif(reference_root: String) -> void:
 			and scurk_editor.grid_width_selector.max_value == 65
 			and scurk_editor.grid_height_selector.min_value == 1
 			and scurk_editor.grid_height_selector.max_value == 65
-			and scurk_editor.view_previews.size() == 3
+			and scurk_editor.view_previews.size() == 4
 			and scurk_editor.view_previews[0].preview_width == 128
 			and scurk_editor.view_previews[0].preview_height == 256
 			and scurk_editor.view_previews[1].preview_width == 64
@@ -359,12 +356,14 @@ func test_scurk_mif(reference_root: String) -> void:
 			"SCURK Increment Cycle works only while automatic cycling is off",
 		)
 		scurk_editor._set_cycle_colors(true)
-		scurk_editor.clipboard_copy_button.pressed.emit()
+		scurk_editor._studio_action("SelectAll")
+		scurk_editor._studio_action("CopySelection")
 		_check(
-			not scurk_editor.clipboard_paste_button.disabled
+			scurk_editor.pixel_canvas.has_clipboard()
 			and not scurk_editor.clipboard_action_buttons[0].disabled,
-			"SCURK Copy enables Paste and clipboard transforms",
+			"SCURK selection enables transforms and copies to the clipboard",
 		)
+		scurk_editor._studio_action("Deselect")
 		scurk_editor._select_tool(ScurkPixelEditor.TOOL_PENCIL)
 		var original_editor_bytes: PackedByteArray = scurk_editor.tile_set.to_bytes().bytes
 		var edited_pixels := scurk_editor.pixel_canvas.pixels.duplicate()

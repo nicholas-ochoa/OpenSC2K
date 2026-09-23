@@ -34,6 +34,7 @@ func _run() -> void:
 	_test_delete_confirmation()
 	_test_undo_history()
 	_test_clipboard_layers()
+	_test_all_layer_clipboard()
 	_test_clear()
 	_test_recovery_ownership()
 	_test_replace()
@@ -362,10 +363,11 @@ func _test_clipboard_layers() -> void:
 	assert(canvas.tool == ScurkPixelCanvas.TOOL_PENCIL and editor.current_tool == canvas.tool)
 
 
-func _clipboard_key(code: Key, meta: bool) -> void:
+func _clipboard_key(code: Key, meta: bool, shift := false) -> void:
 	editor.pixel_canvas.grab_focus()
 	var event := InputEventKey.new()
 	event.keycode = code
+	event.shift_pressed = shift
 	event.pressed = true
 	event.meta_pressed = meta
 	event.ctrl_pressed = not meta
@@ -664,3 +666,69 @@ func _test_navigation() -> void:
 		await process_frame
 	shifted = canvas.global_position + Vector2(ScurkPixelCanvas.DISPLAY_MARGIN, 0) + point * canvas.zoom
 	assert(canvas.zoom == zoom + 3 and shifted.distance_to(anchor) <= 1.5)
+
+
+func _test_all_layer_clipboard() -> void:
+	_fresh()
+	var canvas := editor.pixel_canvas
+	var base := _solid(-1)
+	base[0] = 10
+	base[1] = 20
+	_commit(base)
+	studio._layer_action("Add")
+	var upper := _solid(-1)
+	upper[1] = 30
+	upper[2] = 40
+	_commit(upper)
+	canvas.selection.combine(canvas.selection.rectangle(Vector2i.ZERO, Vector2i(1, 0)))
+	var mask := canvas.selection.mask.duplicate()
+	var before := studio.project.snapshot()
+	_clipboard_key(KEY_C, false, true)
+	assert(canvas.clipboard_pixels == PackedInt32Array([10, 30]))
+	assert(studio.project.snapshot() == before)
+	_clipboard_key(KEY_X, true, true)
+	assert(_document().layers[0].pixels[0] == -1 and _document().layers[0].pixels[1] == -1)
+	assert(_document().layers[1].pixels[1] == -1 and _document().layers[1].pixels[2] == 40)
+	editor.undo()
+	assert(studio.project.snapshot() == before)
+	editor.redo()
+	assert(_document().layers[0].pixels[0] == -1)
+	editor.undo()
+	canvas.selection.mask = mask
+	_clipboard_key(KEY_C, true, true)
+	# A normal paste flattens the copy onto the active layer only.
+	_clipboard_key(KEY_V, false)
+	canvas.paste_position = Vector2i(4, 0)
+	canvas.commit_paste()
+	assert(_document().layers.size() == 2 and _document().layers[0].pixels == base)
+	assert(_document().layers[1].pixels[4] == 10 and _document().layers[1].pixels[5] == 30)
+	editor.undo()
+	var history_size := editor.undo_stack.size()
+	_clipboard_key(KEY_V, true, true)
+	assert(canvas.paste_active and canvas.paste_new_layer and _document().layers.size() == 2)
+	canvas.cancel_paste()
+	assert(editor.undo_stack.size() == history_size and _document().layers.size() == 2)
+	_clipboard_key(KEY_V, false, true)
+	canvas.paste_position = Vector2i(4, 0)
+	canvas.commit_paste()
+	assert(_document().layers.size() == 3 and editor.undo_stack.size() == history_size + 1)
+	assert(_document().layers[2].pixels[4] == 10 and _document().layers[2].pixels[5] == 30)
+	assert(_document().layers[0].pixels == base and _document().layers[1].pixels == upper)
+	editor.undo()
+	assert(studio.project.snapshot() == before)
+	editor.redo()
+	assert(_document().layers.size() == 3)
+	editor.undo()
+	# Cuts respect hidden and locked layers; new-layer paste works from a locked layer.
+	studio._layer_locked(true)
+	canvas.selection.mask = mask
+	_clipboard_key(KEY_X, false, true)
+	assert(_document().layers[0].pixels[0] == -1 and _document().layers[1].pixels == upper)
+	editor.undo()
+	studio._layer_visible(false)
+	_clipboard_key(KEY_C, false, true)
+	assert(canvas.clipboard_pixels == PackedInt32Array([10, 20]))
+	_clipboard_key(KEY_V, false, true)
+	canvas.paste_position = Vector2i(4, 0)
+	canvas.commit_paste()
+	assert(_document().layers.size() == 3 and _document().layers[2].pixels[4] == 10)

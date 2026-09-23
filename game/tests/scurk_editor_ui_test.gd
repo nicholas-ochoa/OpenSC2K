@@ -22,6 +22,18 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	assert(editor.object_list.get_item_icon(0) != null)
+	var guides := editor.drawing_controls.get_node("Margin/Column/Isometric")
+	guides.get_node("Guides").button_pressed = true
+	guides.get_node("GuideFields/Spacing").value = 24
+	guides.get_node("GuideFields/OffsetX").value = 3
+	guides.get_node("GuideFields/OffsetY").value = -2
+	assert(editor.pixel_canvas.show_isometric_guides)
+	assert(editor.pixel_canvas.paint_options.guide_spacing == Vector2i(24, 12))
+	assert(editor.pixel_canvas.paint_options.guide_offset == Vector2i(3, -2))
+	guides.get_node("Guides").button_pressed = false
+	assert(not editor.pixel_canvas.show_isometric_guides)
+	assert(editor.view_previews[3].preview_indices == editor.view_previews[0].preview_indices)
+	assert(editor.view_previews[3].custom_minimum_size == Vector2(258, 514))
 	_test_clipping_toggle(editor)
 	_test_clipboard_actions(editor)
 	editor.brush_size_selector.value = 24
@@ -154,6 +166,22 @@ func _run() -> void:
 	assert(not editor.export_image_path(folder.path_join("invalid.png"), 3).ok)
 	editor.canvas_panel.show_views_button.button_pressed = true
 	assert(editor.canvas_panel.previews_panel.visible)
+	for index in editor.canvas_panel.preview_checks.size():
+		editor.canvas_panel.preview_checks[index].button_pressed = false
+		assert(not editor.view_preview_panels[index].visible)
+		editor._refresh_view_previews()
+		assert(not editor.view_preview_panels[index].visible, "Artwork refresh retains the view filter")
+		for other in editor.view_preview_panels.size():
+			assert(editor.view_preview_panels[other].visible == (other != index))
+		editor.canvas_panel.preview_checks[index].button_pressed = true
+		assert(editor.view_preview_panels[index].visible)
+	await process_frame
+	await process_frame
+	var enlarged := editor.view_preview_panels[3].get_global_rect()
+	for index in 3:
+		assert(enlarged.position.y >= editor.view_preview_panels[index].get_global_rect().end.y)
+	for check in editor.canvas_panel.preview_checks:
+		assert(editor.get_global_rect().encloses(check.get_global_rect()), "Preview filters stay inside the editor")
 	editor.canvas_panel.show_views_button.button_pressed = false
 	assert(not editor.canvas_panel.previews_panel.visible)
 	# controls stay visible through resize cycles
@@ -332,10 +360,10 @@ func _test_clipboard_actions(editor: ScurkEditorControl) -> void:
 	var artwork := canvas.pixels.duplicate()
 	assert(editor.tool_buttons.size() == 16)
 	editor._select_tool(ScurkPixelCanvas.TOOL_SELECT_RECT)
-	editor.clipboard_copy_button.pressed.emit()
-	assert(not editor.clipboard_paste_button.disabled and not canvas.clipboard_pixels.is_empty())
+	editor._studio_action("CopySelection")
+	assert(canvas.has_clipboard())
 	assert(canvas.tool == ScurkPixelCanvas.TOOL_SELECT_RECT)
-	editor.clipboard_paste_button.pressed.emit()
+	editor._studio_action("PasteSelection")
 	assert(canvas.paste_active and canvas.paste_follow_cursor)
 	assert(canvas.tool == ScurkPixelCanvas.TOOL_SELECT_RECT and canvas.pixels == artwork)
 	canvas.cancel_paste()

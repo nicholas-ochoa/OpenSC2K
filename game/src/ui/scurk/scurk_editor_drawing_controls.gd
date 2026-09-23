@@ -11,11 +11,10 @@ signal rotate_clipboard_clockwise_requested
 signal rotate_clipboard_requested
 signal flip_clipboard_horizontal_requested
 signal flip_clipboard_vertical_requested
-signal copy_requested
-signal paste_requested
 signal brush_size_changed(value: float)
 signal round_brush_changed(enabled: bool)
 signal filled_shapes_changed(enabled: bool)
+signal isometric_guides_changed
 signal grid_visibility_changed(enabled: bool)
 signal grid_snap_changed(enabled: bool)
 signal grid_width_changed(value: float)
@@ -31,8 +30,6 @@ var view_buttons: Array[Button] = []
 var zoom_label: Label
 var tool_buttons: Array[Button] = []
 var clipboard_action_buttons: Array[Button] = []
-var clipboard_copy_button: Button
-var clipboard_paste_button: Button
 var brush_size_selector: SpinBox
 var round_brush_check: CheckBox
 var filled_shapes_check: CheckBox
@@ -67,10 +64,13 @@ func build() -> void:
 
 	var tool_group := ButtonGroup.new()
 
-	for child in $Margin/Column/Tools.get_children():
-		var button := child as Button
+	var names := ["Pencil", "Eraser", "Line", "Diamond", "LeftWall", "RightWall", "Ellipse", "Rectangle",
+		"Fill", "Eyedropper", "SelectRect", "SelectLasso", "SelectWand", "Move", "Shade", "Stamp"]
+	for index in names.size():
+		var group := "Selection" if index in range(10, 14) else "Tools"
+		var button := get_node("Margin/Column/" + group + "/" + names[index]) as Button
 		button.button_group = tool_group
-		button.pressed.connect(tool_selected.emit.bind(tool_buttons.size()))
+		button.pressed.connect(tool_selected.emit.bind(index))
 		tool_buttons.append(button)
 
 	tool_buttons[0].button_pressed = true
@@ -114,18 +114,19 @@ func build() -> void:
 	$"Margin/Column/Clipboard/Vertical".pressed.connect(flip_clipboard_vertical_requested.emit)
 	$"Margin/Column/Clipboard/Vertical".disabled = true
 	clipboard_action_buttons.append($"Margin/Column/Clipboard/Vertical")
-	clipboard_copy_button = $"Margin/Column/Clipboard/Copy"
-	clipboard_paste_button = $"Margin/Column/Clipboard/Paste"
-	clipboard_copy_button.pressed.connect(copy_requested.emit)
-	clipboard_paste_button.pressed.connect(paste_requested.emit)
-	clipboard_paste_button.disabled = true
+	$Margin/Column/Isometric/Guides.toggled.connect(func(enabled: bool) -> void:
+		$Margin/Column/Isometric/GuideFields.visible = enabled
+		isometric_guides_changed.emit())
+	for field in ["Spacing", "OffsetX", "OffsetY"]:
+		get_node("Margin/Column/Isometric/GuideFields/" + field).value_changed.connect(func(_value: float) -> void:
+			isometric_guides_changed.emit())
 	_watch_buttons(self)
 	theme_changed.connect(_refresh_icon_colors)
 	_refresh_icon_colors()
 
 
 func _refresh_icon_colors() -> void:
-	for button in tool_buttons + clipboard_action_buttons + [clipboard_copy_button, clipboard_paste_button]:
+	for button in tool_buttons + clipboard_action_buttons:
 		for state in ["normal", "hover", "pressed", "hover_pressed", "disabled", "focus"]:
 			var color_name := "font_color" if state == "normal" else "font_%s_color" % state
 			button.add_theme_color_override(

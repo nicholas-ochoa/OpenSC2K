@@ -71,7 +71,7 @@ var dirty: bool:
 		return edit_history.dirty or (studio != null and studio.modified)
 var active_workspace := false
 var active_base_width := 0
-var view_preview_signatures := PackedStringArray(["", "", ""])
+var view_preview_signatures := PackedStringArray(["", "", "", ""])
 
 var pointer_status_label: Label
 var unclipped_tiles: Dictionary[int, bool] = {}
@@ -88,8 +88,6 @@ var object_panel: ScurkEditorObjectPanel
 var view_buttons: Array[Button] = []
 var tool_buttons: Array[Button] = []
 var clipboard_action_buttons: Array[Button] = []
-var clipboard_copy_button: Button
-var clipboard_paste_button: Button
 var undo_button: Button
 var redo_button: Button
 var revert_button: Button
@@ -884,19 +882,18 @@ func _bind_interface() -> void:
 	drawing_controls.tool_selected.connect(_select_tool)
 	drawing_controls.rotate_clipboard_requested.connect(_rotate_clipboard)
 	drawing_controls.rotate_clipboard_clockwise_requested.connect(func() -> void:
-		pixel_canvas.rotate_clipboard_clockwise())
+		pixel_canvas.transform_selection(1))
 	drawing_controls.flip_clipboard_horizontal_requested.connect(
 		_flip_clipboard_horizontal
 	)
 	drawing_controls.flip_clipboard_vertical_requested.connect(
 		_flip_clipboard_vertical
 	)
-	drawing_controls.copy_requested.connect(func() -> void: pixel_canvas.copy_selection())
-	drawing_controls.paste_requested.connect(func() -> void: pixel_canvas.begin_paste())
 	drawing_controls.brush_size_changed.connect(_select_brush_size)
 	drawing_controls.round_brush_changed.connect(_set_round_brush)
 	drawing_controls.filled_shapes_changed.connect(_set_filled_shapes)
 	drawing_controls.grid_visibility_changed.connect(_set_grid_visible)
+	drawing_controls.isometric_guides_changed.connect(_set_isometric_guides)
 	drawing_controls.grid_snap_changed.connect(_set_snap_to_grid)
 	drawing_controls.grid_width_changed.connect(_set_grid_width)
 	drawing_controls.grid_height_changed.connect(_set_grid_height)
@@ -906,8 +903,6 @@ func _bind_interface() -> void:
 	zoom_label = drawing_controls.zoom_label
 	tool_buttons = drawing_controls.tool_buttons
 	clipboard_action_buttons = drawing_controls.clipboard_action_buttons
-	clipboard_copy_button = drawing_controls.clipboard_copy_button
-	clipboard_paste_button = drawing_controls.clipboard_paste_button
 	brush_size_selector = drawing_controls.brush_size_selector
 	round_brush_check = drawing_controls.round_brush_check
 	filled_shapes_check = drawing_controls.filled_shapes_check
@@ -968,7 +963,11 @@ func _bind_interface() -> void:
 	_select_palette_index(255, true)
 	studio = $Panel/Content/Body/Studio
 	studio.bind(self)
-	for button in tool_buttons + clipboard_action_buttons + [clipboard_copy_button, clipboard_paste_button]:
+	pixel_canvas.copy_all_layers_requested.connect(studio.copy_all_layers)
+	pixel_canvas.new_layer_paste_committed.connect(studio.paste_on_new_layer)
+	pixel_canvas.selection_changed.connect(_update_transform_buttons)
+	pixel_canvas.state_changed.connect(_update_transform_buttons)
+	for button in tool_buttons + clipboard_action_buttons:
 		button.focus_mode = Control.FOCUS_NONE
 		button.pressed.connect(func() -> void:
 			if pixel_canvas.is_inside_tree():
@@ -1114,6 +1113,16 @@ func _set_filled_shapes(enabled: bool) -> void:
 		pixel_canvas.queue_redraw()
 
 
+func _set_isometric_guides() -> void:
+	var controls := drawing_controls.get_node("Margin/Column/Isometric")
+	pixel_canvas.show_isometric_guides = controls.get_node("Guides").button_pressed
+	var spacing := roundi(controls.get_node("GuideFields/Spacing").value)
+	pixel_canvas.paint_options.guide_spacing = Vector2i(spacing, maxi(1, spacing / 2))
+	pixel_canvas.paint_options.guide_offset = Vector2i(
+		roundi(controls.get_node("GuideFields/OffsetX").value), roundi(controls.get_node("GuideFields/OffsetY").value))
+	pixel_canvas.queue_redraw()
+
+
 func _set_grid_visible(enabled: bool) -> void:
 	if pixel_canvas != null:
 		pixel_canvas.show_grid = enabled
@@ -1204,30 +1213,32 @@ func _select_texture(index: int) -> void:
 
 func _rotate_clipboard() -> void:
 	if pixel_canvas != null:
-		pixel_canvas.rotate_clipboard_counterclockwise()
+		pixel_canvas.transform_selection(0)
 
 
 func _flip_clipboard_horizontal() -> void:
 	if pixel_canvas != null:
-		pixel_canvas.flip_clipboard_horizontal()
+		pixel_canvas.transform_selection(2)
 
 
 func _flip_clipboard_vertical() -> void:
 	if pixel_canvas != null:
-		pixel_canvas.flip_clipboard_vertical()
+		pixel_canvas.transform_selection(3)
 
 
 func _on_clipboard_changed(width: int, height: int) -> void:
 	var available := width > 0 and height > 0
 
-	if clipboard_paste_button != null:
-		clipboard_paste_button.disabled = not available
-
-	for button in clipboard_action_buttons:
-		button.disabled = not available
+	_update_transform_buttons()
 
 	if available:
 		_set_status("SCURK clipboard: %d x %d pixels." % [width, height])
+
+
+func _update_transform_buttons() -> void:
+	var available := pixel_canvas.paste_active or (pixel_canvas.selection.active() and not pixel_canvas.editing_disabled)
+	for button in clipboard_action_buttons:
+		button.disabled = not available
 
 
 func _refresh_sprite() -> void:
@@ -1437,46 +1448,47 @@ func _refresh_rejected_edit(message: String) -> void:
 
 
 func _refresh_view_previews() -> void:
-	if view_previews.size() != ScurkSpriteIds.VIEW_COUNT or view_preview_panels.size() != ScurkSpriteIds.VIEW_COUNT:
+	if view_previews.size() != ScurkEditorCanvasPanel.PREVIEW_VIEWS.size() or view_preview_panels.size() != ScurkEditorCanvasPanel.PREVIEW_VIEWS.size():
 		return
 
 	if is_inside_tree() and not is_visible_in_tree():
 		return
 
 	if tile_set == null or current_large_id < 0:
-		for view in ScurkSpriteIds.VIEW_COUNT:
-			view_previews[view].clear_preview(view)
-			view_preview_panels[view].visible = false
-			view_preview_signatures[view] = ""
+		for index in ScurkEditorCanvasPanel.PREVIEW_VIEWS.size():
+			view_previews[index].clear_preview(ScurkEditorCanvasPanel.PREVIEW_VIEWS[index])
+			canvas_panel.set_preview_available(index, false)
+			view_preview_signatures[index] = ""
 
 		return
 
-	for view in ScurkSpriteIds.VIEW_COUNT:
+	for index in ScurkEditorCanvasPanel.PREVIEW_VIEWS.size():
+		var view: int = ScurkEditorCanvasPanel.PREVIEW_VIEWS[index]
 		var entry: Sc2SpriteArchive.SpriteEntry = _resolved_view_entry(view)
 
 		if entry == null:
-			view_previews[view].clear_preview(view)
-			view_preview_panels[view].visible = false
-			view_preview_signatures[view] = ""
+			view_previews[index].clear_preview(view)
+			canvas_panel.set_preview_available(index, false)
+			view_preview_signatures[index] = ""
 			continue
 
 		var signature := "%d:%d:%d:%d:%s" % [
 			active_base_width, entry.width, entry.height, entry.pixel_hash(), _clipping_enabled(),
 		]
 
-		if view_preview_signatures[view] == signature:
-			view_preview_panels[view].visible = true
+		if view_preview_signatures[index] == signature:
+			canvas_panel.set_preview_available(index, true)
 			continue
 
 		var decoded := entry.decode_indices()
 
 		if not decoded.ok:
-			view_previews[view].clear_preview(view)
-			view_preview_panels[view].visible = false
-			view_preview_signatures[view] = ""
+			view_previews[index].clear_preview(view)
+			canvas_panel.set_preview_available(index, false)
+			view_preview_signatures[index] = ""
 			continue
 
-		view_previews[view].set_preview(
+		view_previews[index].set_preview(
 			view,
 			entry.width,
 			entry.height,
@@ -1486,11 +1498,11 @@ func _refresh_view_previews() -> void:
 			pixel_canvas.clear_background_pixels,
 			_clipping_enabled()
 		)
-		view_previews[view].set_palette_cycle_enabled(
+		view_previews[index].set_palette_cycle_enabled(
 			cycle_colors_check.button_pressed
 		)
-		view_preview_panels[view].visible = true
-		view_preview_signatures[view] = signature
+		canvas_panel.set_preview_available(index, true)
+		view_preview_signatures[index] = signature
 
 
 func _resolved_view_entry(view: int):
@@ -1861,9 +1873,12 @@ func _studio_action(action: String) -> void:
 		"SelectAll": pixel_canvas.select_all()
 		"Deselect": pixel_canvas.clear_selection()
 		"CopySelection": pixel_canvas.copy_selection()
+		"CopyAllLayers": studio.copy_all_layers()
+		"CutAllLayers": studio.copy_all_layers(true)
+		"PasteNewLayer": pixel_canvas.begin_paste(Vector2i(-1, -1), true)
 		"CutSelection": pixel_canvas.cut_selection()
 		"DuplicateSelection": pixel_canvas.duplicate_selection()
 		"DeleteSelection": pixel_canvas.delete_selection()
 		"PasteSelection": pixel_canvas.begin_paste()
-	if is_inside_tree() and action in ["SelectAll", "Deselect", "CopySelection", "CutSelection", "DuplicateSelection", "DeleteSelection", "PasteSelection"]:
+	if is_inside_tree() and action in ["SelectAll", "Deselect", "CopySelection", "CutSelection", "DuplicateSelection", "DeleteSelection", "PasteSelection", "CopyAllLayers", "CutAllLayers", "PasteNewLayer"]:
 		pixel_canvas.grab_focus()

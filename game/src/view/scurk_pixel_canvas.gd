@@ -34,6 +34,8 @@ signal selection_changed
 signal brush_size_requested(size: int)
 signal paint_indices_swap_requested
 signal state_changed
+signal copy_all_layers_requested(cut: bool)
+signal new_layer_paste_committed(pixels: PackedInt32Array)
 
 const MAX_BRUSH_SIZE := 24
 const DISPLAY_MARGIN := 1
@@ -118,6 +120,7 @@ var palette_cycle_accumulator := 0.0
 var edit_mask := PackedByteArray()
 var clip_base_size := -1
 var show_clip_region := false
+var clip_shade_texture: ImageTexture
 var clip_columns := Vector2i(-1, -1)
 var background_view := ScurkSpriteIds.View.LARGE
 var clear_background_pixels := PackedInt32Array()
@@ -150,6 +153,7 @@ var selection_move_dragging := false
 var selection_move_origin := Vector2i.ZERO
 var clipboard_mask := PackedByteArray()
 var paste_active := false
+var paste_new_layer := false
 var paste_position := Vector2i.ZERO
 var paste_follow_cursor := false
 var paste_dragging := false
@@ -280,6 +284,7 @@ func set_edit_region(mask: PackedByteArray, base_size: int) -> void:
 			clip_columns.x = mini(clip_columns.x, x)
 			clip_columns.y = maxi(clip_columns.y, x)
 	_enforce_edit_mask()
+	_update_clip_shade()
 	queue_redraw()
 
 
@@ -288,7 +293,19 @@ func clear_edit_region() -> void:
 	clip_base_size = -1
 	clip_columns = Vector2i(-1, -1)
 	show_clip_region = false
+	clip_shade_texture = null
 	queue_redraw()
+
+
+func _update_clip_shade() -> void:
+	clip_shade_texture = null
+	if edit_mask.is_empty():
+		return
+	var image := Image.create(sprite_width, sprite_height, false, Image.FORMAT_RGBA8)
+	for offset in edit_mask.size():
+		if edit_mask[offset] == 0:
+			image.set_pixel(offset % sprite_width, offset / sprite_width, Color(0, 0, 0, 0.18))
+	clip_shade_texture = ImageTexture.create_from_image(image)
 
 
 func set_clip_region_visible(enabled: bool) -> void:
@@ -1003,15 +1020,17 @@ func selected_mask() -> PackedByteArray:
 	return result
 
 
-func copy_selection(whole_if_empty := true) -> bool:
+func copy_selection(whole_if_empty := true, source := PackedInt32Array()) -> bool:
 	_finish_stroke()
-	if pixels.is_empty() or (not whole_if_empty and not selection.active()):
+	if source.is_empty():
+		source = pixels
+	if pixels.is_empty() or source.size() != pixels.size() or (not whole_if_empty and not selection.active()):
 		return false
 
-	var bounds := selection.bounds() if selection.active() else _artwork_bounds()
+	var bounds := selection.bounds() if selection.active() else _artwork_bounds(source)
 	if not bounds.has_area():
 		return false
-	var copied := copy_region(pixels, sprite_width, sprite_height, bounds.position, bounds.end - Vector2i.ONE)
+	var copied := copy_region(source, sprite_width, sprite_height, bounds.position, bounds.end - Vector2i.ONE)
 	clipboard_width = copied.width
 	clipboard_height = copied.height
 	clipboard_pixels = copied.pixels
@@ -1028,11 +1047,11 @@ func copy_selection(whole_if_empty := true) -> bool:
 	return true
 
 
-func _artwork_bounds() -> Rect2i:
+func _artwork_bounds(source: PackedInt32Array) -> Rect2i:
 	var minimum := Vector2i(sprite_width, sprite_height)
 	var maximum := Vector2i(-1, -1)
-	for offset in pixels.size():
-		if pixels[offset] >= 0:
+	for offset in source.size():
+		if source[offset] >= 0:
 			var point := Vector2i(offset % sprite_width, offset / sprite_width)
 			minimum = minimum.min(point)
 			maximum = maximum.max(point)
@@ -1071,8 +1090,8 @@ func nudge_selection(delta: Vector2i) -> void:
 		commit_paste()
 
 
-func begin_paste(point: Vector2i = Vector2i(-1, -1)) -> bool:
-	if editing_disabled or not has_clipboard():
+func begin_paste(point: Vector2i = Vector2i(-1, -1), new_layer := false) -> bool:
+	if (editing_disabled and not new_layer) or not has_clipboard():
 		return false
 
 	var cursor_point := hover_point
@@ -1081,6 +1100,7 @@ func begin_paste(point: Vector2i = Vector2i(-1, -1)) -> bool:
 	selection_preview.clear()
 	cancel_paste()
 	paste_active = true
+	paste_new_layer = new_layer
 	paste_position = point if point.x >= 0 else cursor_point.max(Vector2i.ZERO)
 	paste_follow_cursor = true
 	paste_selection_before = selection.mask.duplicate()
@@ -1090,11 +1110,12 @@ func begin_paste(point: Vector2i = Vector2i(-1, -1)) -> bool:
 
 
 func commit_paste() -> void:
-	if not paste_active or editing_disabled:
+	if not paste_active or (editing_disabled and not paste_new_layer):
 		return
 
 	var description := "Move selection" if paste_clear_source else "Paste"
 	var changed := _floating_pixels()
+	var new_layer := paste_new_layer
 	var moved_mask := selection.empty_mask()
 	for y in clipboard_height:
 		for x in clipboard_width:
@@ -1102,13 +1123,17 @@ func commit_paste() -> void:
 			if _point_is_valid(target) and _clipboard_contains(y * clipboard_width + x):
 				moved_mask[target.y * sprite_width + target.x] = 1
 	paste_active = false
+	paste_new_layer = false
 	paste_dragging = false
 	selection_move_dragging = false
 	paste_clear_source = false
 	paste_source_mask.clear()
 	selection.combine(moved_mask)
 	selection_changed.emit()
-	_commit_changed_pixels(changed, description)
+	if new_layer:
+		new_layer_paste_committed.emit(changed)
+	else:
+		_commit_changed_pixels(changed, description)
 	state_changed.emit()
 	queue_redraw()
 
@@ -1118,6 +1143,7 @@ func cancel_paste() -> void:
 		selection.mask = paste_selection_before.duplicate()
 		selection_changed.emit()
 	paste_active = false
+	paste_new_layer = false
 	paste_dragging = false
 	selection_move_dragging = false
 	paste_follow_cursor = false
@@ -1138,6 +1164,30 @@ func _begin_selection_move(duplicate: bool) -> bool:
 	paste_clear_source = not duplicate
 	paste_source_mask = source
 	return true
+
+
+func transform_selection(operation: int) -> void:
+	var transforms: Array[Callable] = [rotate_clipboard_counterclockwise,
+		rotate_clipboard_clockwise, flip_clipboard_horizontal, flip_clipboard_vertical]
+	if operation < 0 or operation >= transforms.size():
+		return
+	if paste_active:
+		transforms[operation].call()
+		return
+	if editing_disabled or not selection.active():
+		return
+	var saved_width := clipboard_width
+	var saved_height := clipboard_height
+	var saved_pixels := clipboard_pixels.duplicate()
+	var saved_mask := clipboard_mask.duplicate()
+	if _begin_selection_move(false):
+		transforms[operation].call()
+		commit_paste()
+	clipboard_width = saved_width
+	clipboard_height = saved_height
+	clipboard_pixels = saved_pixels
+	clipboard_mask = saved_mask
+	clipboard_changed.emit(clipboard_width, clipboard_height)
 
 
 func _finish_selection_drag() -> void:
@@ -1173,6 +1223,8 @@ func _floating_pixels() -> PackedInt32Array:
 	var result := pixels.duplicate()
 	if not paste_active:
 		return result
+	if paste_new_layer:
+		result.fill(-1)
 
 	if paste_clear_source and paste_source_mask.size() == result.size():
 		for offset in result.size():
@@ -1187,7 +1239,7 @@ func _floating_pixels() -> PackedInt32Array:
 			var offset := target.y * sprite_width + target.x
 			if edit_mask.size() == result.size() and edit_mask[offset] == 0:
 				continue
-			result[offset] = paint_options.paint_index(pixels[offset], clipboard_pixels[source])
+			result[offset] = clipboard_pixels[source] if paste_new_layer else paint_options.paint_index(pixels[offset], clipboard_pixels[source])
 	return result
 
 
@@ -1277,6 +1329,11 @@ func _handle_editor_input(event: InputEvent) -> bool:
 	if event.pressed and is_inside_tree():
 		grab_focus()
 	var point := _point_from_position(event.position)
+	if event.button_index == MOUSE_BUTTON_RIGHT and tool in [TOOL_SELECT_RECT, TOOL_SELECT_LASSO, TOOL_SELECT_WAND, TOOL_MOVE]:
+		if event.pressed:
+			cancel_paste()
+			clear_selection()
+		return true
 	if paste_active and event.button_index == MOUSE_BUTTON_RIGHT:
 		if event.pressed:
 			cancel_paste()
@@ -1383,13 +1440,19 @@ func _handle_editor_key(event: InputEventKey) -> bool:
 				else:
 					select_all()
 			KEY_C:
-				copy_selection()
+				if event.shift_pressed:
+					copy_all_layers_requested.emit(false)
+				else:
+					copy_selection()
 			KEY_X:
-				cut_selection()
+				if event.shift_pressed:
+					copy_all_layers_requested.emit(true)
+				else:
+					cut_selection()
 			KEY_D:
 				duplicate_selection()
 			KEY_V:
-				begin_paste()
+				begin_paste(Vector2i(-1, -1), event.shift_pressed)
 			_:
 				return false
 		return true
@@ -1845,6 +1908,8 @@ func _draw() -> void:
 	draw_set_transform(Vector2(DISPLAY_MARGIN, 0))
 	_update_display_texture()
 	draw_texture_rect(display_texture, Rect2(Vector2.ZERO, Vector2(sprite_width, sprite_height) * zoom), false)
+	if show_clip_region and clip_shade_texture != null:
+		draw_texture_rect(clip_shade_texture, Rect2(Vector2.ZERO, Vector2(sprite_width, sprite_height) * zoom), false)
 
 	if show_grid:
 		var grid_color := Color(0.0, 0.0, 0.0, 0.18)
@@ -1876,9 +1941,11 @@ func _draw() -> void:
 
 func composite_pixels() -> PackedInt32Array:
 	var result := _floating_pixels() if paste_active else pixels.duplicate()
-	if not active_layer_visible:
+	if not active_layer_visible and not paste_new_layer:
 		result.fill(-1)
 	for offset in result.size():
+		if paste_new_layer and active_layer_visible and result[offset] < 0:
+			result[offset] = pixels[offset]
 		if layer_below_pixels.size() == result.size() and result[offset] < 0:
 			result[offset] = layer_below_pixels[offset]
 		if layer_above_pixels.size() == result.size() and layer_above_pixels[offset] >= 0:
@@ -1893,7 +1960,7 @@ func _update_display_texture() -> void:
 	var state: Array = [sprite_width, sprite_height, background_view, hash(pixels), hash(background),
 		hash(palette.colors) if valid_palette else 0, hash(indices), hash(layer_below_pixels),
 		hash(layer_above_pixels), hash(comparison_pixels), comparison_mode, comparison_hold,
-		highlighted_palette_index, paste_active, paste_position, hash(clipboard_pixels), hash(clipboard_mask),
+		highlighted_palette_index, paste_active, paste_new_layer, paste_position, hash(clipboard_pixels), hash(clipboard_mask),
 		hash(paste_source_mask), paint_options.lock_transparent, hash(selection.mask)]
 	state.append(active_layer_visible)
 	if display_texture != null and display_state == state:

@@ -7,6 +7,8 @@ const DrawingWorkspace = preload("res://src/tools/scurk/scurk_drawing_workspace.
 
 const CYCLE_INTERVAL_SECONDS := Sc2Palette.SCURK_TIMER_INTERVAL_SECONDS
 
+@export var preview_scale := 1
+
 var palette: Sc2Palette
 var view := ScurkSpriteIds.View.LARGE
 var preview_width := 0
@@ -65,7 +67,7 @@ func set_preview(
 
 			preview_indices[y * preview_width + x] = index
 
-	custom_minimum_size = Vector2(preview_width + 2, preview_height + 2)
+	custom_minimum_size = Vector2(preview_width * preview_scale + 2, preview_height * preview_scale + 2)
 	reset_size()
 	_rebuild_texture()
 	queue_redraw()
@@ -78,7 +80,7 @@ func clear_preview(value_view: int) -> void:
 	preview_height = int(DrawingWorkspace.HEIGHT / divisor)
 	preview_indices.resize(preview_width * preview_height)
 	preview_indices.fill(-1)
-	custom_minimum_size = Vector2(preview_width + 2, preview_height + 2)
+	custom_minimum_size = Vector2(preview_width * preview_scale + 2, preview_height * preview_scale + 2)
 	preview_texture = null
 	reset_size()
 	queue_redraw()
@@ -163,12 +165,12 @@ func _rebuild_texture() -> void:
 
 func _draw() -> void:
 	draw_rect(
-		Rect2(Vector2.ZERO, Vector2(preview_width + 2, preview_height + 2)),
+		Rect2(Vector2.ZERO, Vector2(preview_width * preview_scale + 2, preview_height * preview_scale + 2)),
 		Color("404040"), false, 1.0
 	)
 
 	if preview_texture != null:
-		draw_texture(preview_texture, Vector2.ONE)
+		draw_texture_rect(preview_texture, Rect2(Vector2.ONE, Vector2(preview_width, preview_height) * preview_scale), false)
 
 
 func set_cycle_tick(tick: int) -> void:

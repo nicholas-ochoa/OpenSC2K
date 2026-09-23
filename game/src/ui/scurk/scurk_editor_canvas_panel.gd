@@ -15,6 +15,7 @@ const ViewPreview = preload("res://src/view/scurk_view_preview.gd")
 const VIEW_LARGE := ScurkSpriteIds.View.LARGE
 const VIEW_MEDIUM := ScurkSpriteIds.View.MEDIUM
 const VIEW_SMALL := ScurkSpriteIds.View.SMALL
+const PREVIEW_VIEWS := [VIEW_LARGE, VIEW_MEDIUM, VIEW_SMALL, VIEW_LARGE]
 
 var pixel_scroll: ScrollContainer
 var previews_panel: PanelContainer
@@ -22,6 +23,8 @@ var pixel_canvas: ScurkPixelCanvas
 var view_previews: Array[ScurkViewPreview] = []
 var view_preview_panels: Array[Control] = []
 var show_views_button: Button
+var preview_checks: Array[CheckBox] = []
+var preview_available: Array[bool] = []
 
 
 func _ready() -> void:
@@ -38,12 +41,27 @@ func build() -> void:
 	$Footer/Row/Views/Context.pressed.connect(context_requested.emit)
 	show_views_button = $Footer/Row/Views/ShowViews
 	show_views_button.toggled.connect(func(enabled: bool) -> void: previews_panel.visible = enabled)
-	for label in ["Large", "Medium", "Small"]:
-		var column := previews_panel.get_node("Content/" + ("" if label == "Large" else "Smaller/") + label) as Control
+	for label in ["Large", "Medium", "Small", "LargeDouble"]:
+		var prefix := "" if label == "LargeDouble" else ("Original/" if label == "Large" else "Original/Smaller/")
+		var column := previews_panel.get_node("Content/Scroll/Views/" + prefix + label) as Control
 		var preview := column.get_node("Preview") as ScurkViewPreview
-		preview.clear_preview(view_previews.size())
+		preview.clear_preview(PREVIEW_VIEWS[view_previews.size()])
+		var check := previews_panel.get_node("Content/Toggles/" + label) as CheckBox
+		check.toggled.connect(_set_preview_visible.bind(view_previews.size()))
+		preview_checks.append(check)
+		preview_available.append(true)
 		view_previews.append(preview)
 		view_preview_panels.append(column)
+
+
+func set_preview_available(index: int, available: bool) -> void:
+	preview_available[index] = available
+	preview_checks[index].disabled = not available
+	_set_preview_visible(preview_checks[index].button_pressed, index)
+
+
+func _set_preview_visible(enabled: bool, index: int) -> void:
+	view_preview_panels[index].visible = enabled and preview_available[index]
 
 
 func pan_canvas(delta: Vector2) -> void:

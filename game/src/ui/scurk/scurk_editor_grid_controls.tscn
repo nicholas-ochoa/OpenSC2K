@@ -12,7 +12,7 @@ layout_mode = 2
 text = "Show grid"
 button_pressed = true
 
-[node name="Dimensions" type="HBoxContainer" parent="."]
+[node name="Dimensions" type="VBoxContainer" parent="."]
 layout_mode = 2
 
 [node name="WidthRow" type="HBoxContainer" parent="Dimensions"]
@@ -20,7 +20,7 @@ layout_mode = 2
 
 [node name="WidthLabel" type="Label" parent="Dimensions/WidthRow"]
 layout_mode = 2
-text = "W"
+text = "Width"
 tooltip_text = "Grid width"
 size_flags_horizontal = 3
 
@@ -36,7 +36,7 @@ layout_mode = 2
 
 [node name="HeightLabel" type="Label" parent="Dimensions/HeightRow"]
 layout_mode = 2
-text = "H"
+text = "Height"
 tooltip_text = "Grid height"
 size_flags_horizontal = 3
 

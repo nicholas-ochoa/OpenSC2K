@@ -132,6 +132,18 @@ func discard_recovery() -> void:
 		recovery_owned = false
 
 
+func ignore_recovery() -> Result:
+	if not FileAccess.file_exists(recovery_path):
+		return _success()
+	var archived := "%s/recovery-ignored-%d-%d.scurk" % [recovery_path.get_base_dir(), Time.get_unix_time_from_system(), Time.get_ticks_usec()]
+	if DirAccess.rename_absolute(ProjectSettings.globalize_path(recovery_path), ProjectSettings.globalize_path(archived)) != OK:
+		return _failure("Cannot archive the ignored recovery file.")
+	if recovered_source == recovery_path:
+		recovered_source = archived
+	recovery_owned = false
+	return _success()
+
+
 func capture_object(large_id: int) -> void:
 	history.capture_object(document, large_id)
 	object_start = project.snapshot()

@@ -87,6 +87,10 @@ func bind(value: ScurkEditorControl) -> void:
 	$OpenProject.file_selected.connect(load_project)
 	$SaveProject.file_selected.connect(save_project)
 	$Recovery.confirmed.connect(func() -> void: load_project(recovery_path, true))
+	$Recovery.add_button("Ignore", true, "ignore")
+	$Recovery.custom_action.connect(func(action: StringName) -> void:
+		if action == &"ignore":
+			_ignore_recovery())
 	get_node(LAYERS + "/Row/List").item_selected.connect(func(row: int) -> void:
 		_select_layer(int(get_node(LAYERS + "/Row/List").get_item_metadata(row))))
 	for action in ["Add", "Delete", "Up", "Down", "Rename"]:
@@ -109,10 +113,8 @@ func bind(value: ScurkEditorControl) -> void:
 	$Paint/Content/Stamp.toggled.connect(func(enabled: bool) -> void:
 		if enabled:
 			$Paint/Content/Shade.set_pressed_no_signal(false))
-	for option in ["Lock", "Perfect", "Shade", "Stamp", "Iso", "Guides"]:
+	for option in ["Lock", "Perfect", "Shade", "Stamp", "Iso"]:
 		get_node("Paint/Content/" + option).toggled.connect(func(_enabled: bool) -> void: _paint_options_changed())
-	for field in ["Spacing", "OffsetX", "OffsetY"]:
-		get_node("Paint/Content/GuideFields/" + field).value_changed.connect(func(_value: float) -> void: _paint_options_changed())
 	var compare := $Paint/Content/Compare as OptionButton
 	for label in ["Current artwork", "Saved artwork", "Saved overlay", "Changed pixels"]:
 		compare.add_item(label)
@@ -177,6 +179,7 @@ func bind_canvas() -> void:
 	var active: Dictionary = document.layers[int(document.active)]
 	canvas.active_layer_visible = bool(active.visible)
 	canvas.editing_disabled = bool(active.locked) or not bool(active.visible)
+	editor._update_transform_buttons()
 	canvas.comparison_pixels = saved_pixels.get(current, document.original_pixels).duplicate()
 	last_key = current
 	editor.palette_panel.set_used_pixels(project.flatten(current))
@@ -277,6 +280,15 @@ func check_recovery() -> void:
 		$Recovery.popup_centered()
 
 
+func _ignore_recovery() -> void:
+	var result := editor.session.ignore_recovery()
+	if not result.ok:
+		editor._show_error(result.error)
+		return
+	$Recovery.hide()
+	editor._set_status("Recovery ignored. The file is still available from File > Recover Autosave.")
+
+
 func _process(delta: float) -> void:
 	if editor == null or not editor.is_visible_in_tree() or not modified:
 		return
@@ -372,6 +384,38 @@ func _flush_layers() -> void:
 	_refresh_layers()
 
 
+func copy_all_layers(cut := false) -> void:
+	if not project.documents.has(key()):
+		return
+	var canvas := editor.pixel_canvas
+	canvas._finish_stroke()
+	canvas.cancel_paste()
+	if not canvas.copy_selection(true, project.flatten(key())) or not cut:
+		return
+	if not editor._capture_edit_start("Cut from all layers"):
+		return
+	var mask := canvas.selected_mask()
+	for layer: Dictionary in project.documents[key()].layers:
+		if layer.locked or not layer.visible:
+			continue
+		var pixels: PackedInt32Array = layer.pixels.duplicate()
+		for offset in pixels.size():
+			if mask[offset] != 0:
+				pixels[offset] = -1
+		layer.pixels = pixels
+	project.revision += 1
+	_flush_layers()
+
+
+func paste_on_new_layer(pixels: PackedInt32Array) -> void:
+	if not project.documents.has(key()) or not editor._capture_edit_start("Paste on new layer"):
+		return
+	if project.add_layer(key(), "Pasted layer") < 0 or not project.set_active_pixels(key(), pixels):
+		editor._abort_edit("Cannot paste on a new layer.")
+		return
+	_flush_layers()
+
+
 func _confirm_delete_layer() -> void:
 	if key() == pending_delete_key and project.documents.has(pending_delete_key):
 		var layers: Array = project.documents[pending_delete_key].layers
@@ -447,10 +491,6 @@ func _paint_options_changed() -> void:
 	canvas.paint_options.lock_transparent = $Paint/Content/Lock.button_pressed
 	canvas.paint_options.pixel_perfect = $Paint/Content/Perfect.button_pressed
 	canvas.paint_options.isometric_snap = $Paint/Content/Iso.button_pressed
-	canvas.show_isometric_guides = $Paint/Content/Guides.button_pressed
-	var spacing := roundi($Paint/Content/GuideFields/Spacing.value)
-	canvas.paint_options.guide_spacing = Vector2i(spacing, maxi(1, spacing / 2))
-	canvas.paint_options.guide_offset = Vector2i(roundi($Paint/Content/GuideFields/OffsetX.value), roundi($Paint/Content/GuideFields/OffsetY.value))
 	if $Paint/Content/Stamp.button_pressed:
 		editor._select_tool(ScurkPixelCanvas.TOOL_STAMP)
 	elif $Paint/Content/Shade.button_pressed:

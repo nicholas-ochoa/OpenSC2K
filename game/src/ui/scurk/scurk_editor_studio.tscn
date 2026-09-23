@@ -43,6 +43,11 @@ layout_mode = 2
 [node name="Objects" parent="Margin/Column" instance=ExtResource("objects")]
 layout_mode = 2
 
+[node name="TabSpacing" type="Control" parent="Margin/Column"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 8)
+mouse_filter = 2
+
 [node name="Tabs" type="TabContainer" parent="Margin/Column"]
 layout_mode = 2
 size_flags_vertical = 3
@@ -223,40 +228,6 @@ button_pressed = false
 [node name="Iso" type="CheckBox" parent="Paint/Content"]
 text = "Snap lines to isometric directions"
 button_pressed = false
-
-[node name="Guides" type="CheckBox" parent="Paint/Content"]
-text = "Show isometric guides"
-button_pressed = false
-
-[node name="GuideFields" type="GridContainer" parent="Paint/Content"]
-columns = 2
-
-[node name="SpacingLabel" type="Label" parent="Paint/Content/GuideFields"]
-text = "Guide spacing"
-
-[node name="Spacing" type="SpinBox" parent="Paint/Content/GuideFields"]
-min_value = 1.0
-max_value = 256.0
-value = 16.0
-custom_minimum_size = Vector2(80, 0)
-
-[node name="OffsetXLabel" type="Label" parent="Paint/Content/GuideFields"]
-text = "Guide X offset"
-
-[node name="OffsetX" type="SpinBox" parent="Paint/Content/GuideFields"]
-min_value = -256.0
-max_value = 256.0
-value = 0.0
-custom_minimum_size = Vector2(80, 0)
-
-[node name="OffsetYLabel" type="Label" parent="Paint/Content/GuideFields"]
-text = "Guide Y offset"
-
-[node name="OffsetY" type="SpinBox" parent="Paint/Content/GuideFields"]
-min_value = -256.0
-max_value = 256.0
-value = 0.0
-custom_minimum_size = Vector2(80, 0)
 
 [node name="CompareLabel" type="Label" parent="Paint/Content"]
 text = "Compare with saved artwork (hold Backslash for a quick look)"
