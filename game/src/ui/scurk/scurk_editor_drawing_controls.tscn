@@ -184,7 +184,7 @@ theme_override_constants/icon_max_width = 24
 [node name="Stamp" type="Button" parent="Margin/Column/Tools"]
 layout_mode = 2
 icon = ExtResource("stamp")
-tooltip_text = "Stamp brush: save and choose stamps in Project tools"
+tooltip_text = "Stamp brush: choose a stamp in the Stamps tab"
 toggle_mode = true
 custom_minimum_size = Vector2(32, 32)
 icon_alignment = 1
@@ -351,6 +351,12 @@ text = "Round brush"
 [node name="Snap" type="CheckBox" parent="Margin/Column/Brush"]
 layout_mode = 2
 text = "Snap shapes"
+
+[node name="SnapLines" type="CheckBox" parent="Margin/Column/Brush"]
+layout_mode = 2
+visible = false
+text = "Snap lines"
+tooltip_text = "Constrain lines to horizontal, vertical, or 2:1 isometric directions."
 
 [node name="Filled" type="CheckBox" parent="Margin/Column/Brush"]
 layout_mode = 2

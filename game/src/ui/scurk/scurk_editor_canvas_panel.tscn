@@ -145,6 +145,12 @@ button_pressed = true
 layout_mode = 2
 text = "Show clip region"
 
+[node name="Terrain" type="CheckBox" parent="Footer/Row/Clipping"]
+layout_mode = 2
+text = "Show terrain"
+button_pressed = true
+tooltip_text = "Show the background terrain beneath the artwork."
+
 [node name="Views" type="HBoxContainer" parent="Footer/Row"]
 layout_mode = 2
 size_flags_horizontal = 8

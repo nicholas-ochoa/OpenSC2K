@@ -92,6 +92,8 @@ func _run() -> void:
 	_check_pending_clear("Redo")
 	_test_history_rejection(initial, after_valid)
 	_test_active_stroke_history()
+	_test_layer_names()
+	await _test_layer_clicks()
 	_test_persistence()
 	editor.free()
 	await process_frame
@@ -306,6 +308,81 @@ func _test_active_stroke_history() -> void:
 	_check(editor.edit_history.undo_stack.size() == 2, "Stroke after rejected history records one more action")
 	_check_pending_clear("Stroke after rejected history")
 	canvas.foreground_index = foreground
+
+
+func _test_layer_names() -> void:
+	var studio := editor.studio
+	studio.tabs.current_tab = 1
+	var document: Dictionary = studio.project.documents[studio.key()]
+	var index := int(document.active)
+	var original := String(document.layers[index].name)
+	var field := studio.get_node(studio.LAYERS + "/Name") as LineEdit
+	var list := studio.get_node(studio.LAYERS + "/Row/List") as Tree
+	var count := editor.undo_stack.size()
+	for value in ["W", "Wa", "Walls"]:
+		field.text = value
+		field.text_changed.emit(value)
+		_check(document.layers[index].name == value, "Typing changes the layer name immediately")
+		_check(list.get_selected().get_text(1) == value, "Typing updates the selected layer row")
+	_check(editor.undo_stack.size() == count + 1, "A continuous name edit uses one undo action")
+	field.focus_exited.emit()
+	editor.undo()
+	_check(studio.project.documents[studio.key()].layers[index].name == original, "Undo restores the name before typing")
+	editor.redo()
+	_check(field.text == "Walls", "Redo restores the complete typed name")
+	field.text = ""
+	field.text_changed.emit("")
+	field.focus_exited.emit()
+	_check(field.text == "Walls", "An empty name keeps the last valid value")
+	field.text = "Windows"
+	field.text_changed.emit("Windows")
+	field.focus_exited.emit()
+	_check(editor.undo_stack.size() == count + 2, "A new name edit gets a separate undo action")
+	studio._layer_action("Add")
+	var active := int(studio.project.documents[studio.key()].active)
+	studio._layer_visible(false, index)
+	_check(int(studio.project.documents[studio.key()].active) == active, "Visibility can change without selecting the layer")
+	_check(not list.get_root().get_child(1).is_checked(0), "The layer row reflects hidden state")
+	editor.undo()
+	_check(list.get_root().get_child(1).is_checked(0), "Undo restores layer visibility")
+	editor.undo()
+
+
+func _test_layer_clicks() -> void:
+	var was_visible := editor.visible
+	editor.show()
+	var studio := editor.studio
+	studio.tabs.current_tab = 1
+	studio._layer_action("Add")
+	await process_frame
+	var list := studio.get_node(studio.LAYERS + "/Row/List") as Tree
+	var key := studio.key()
+	var active := int(studio.project.documents[key].active)
+	var row := list.get_root().get_child(1)
+	var checkbox := list.get_item_area_rect(row, 0).get_center() + list.global_position
+	await _click_layer_list(checkbox)
+	_check(not studio.project.documents[key].layers[0].visible, "A checkbox click hides its layer")
+	_check(int(studio.project.documents[key].active) == active, "A checkbox click keeps the active layer")
+	_check(not row.is_checked(0), "A checkbox click updates the existing row")
+	await _click_layer_list(checkbox)
+	_check(studio.project.documents[key].layers[0].visible and row.is_checked(0), "A second click shows the layer again")
+	await _click_layer_list(list.get_item_area_rect(row, 1).get_center() + list.global_position)
+	_check(int(studio.project.documents[key].active) == 0, "Clicking a layer name selects that layer")
+	editor.undo()
+	editor.undo()
+	editor.undo()
+	editor.visible = was_visible
+
+
+func _click_layer_list(position: Vector2) -> void:
+	var event := InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.position = position
+	event.pressed = true
+	root.push_input(event, true)
+	event.pressed = false
+	root.push_input(event, true)
+	await process_frame
 
 
 func _test_persistence() -> void:

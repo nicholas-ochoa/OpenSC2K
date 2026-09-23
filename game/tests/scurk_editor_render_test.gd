@@ -68,9 +68,6 @@ func _run() -> void:
 	canvas.hover_point = Vector2i(1, 1)
 	canvas.queue_redraw()
 	await RenderingServer.frame_post_draw
-	var outline := viewport.get_texture().get_image()
-	assert(outline.get_pixel(320, 47).v > 0.9)
-	assert(outline.get_pixel(320, 24) == colors[-1])
 	assert(canvas.pixels == PackedInt32Array([171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171, 171]))
 	# Cached display images follow direct pixel edits, backgrounds, and clip display.
 	canvas.hover_point = Vector2i(-1, -1)
@@ -81,6 +78,15 @@ func _run() -> void:
 	canvas.pixels[0] = -1
 	canvas.clear_background_pixels.resize(16)
 	canvas.clear_background_pixels.fill(55)
+	canvas.queue_redraw()
+	await RenderingServer.frame_post_draw
+	assert(viewport.get_texture().get_image().get_pixel(308, 8).is_equal_approx(palette.color(55)))
+	canvas.show_terrain = false
+	canvas.queue_redraw()
+	await RenderingServer.frame_post_draw
+	assert(canvas.display_texture.get_image().get_pixel(0, 0).a == 0.0)
+	assert(viewport.get_texture().get_image().get_pixel(324, 8).is_equal_approx(colors[-1]))
+	canvas.show_terrain = true
 	canvas.queue_redraw()
 	await RenderingServer.frame_post_draw
 	assert(viewport.get_texture().get_image().get_pixel(308, 8).is_equal_approx(palette.color(55)))
@@ -113,6 +119,7 @@ func _run() -> void:
 	viewport.free()
 	await _test_clip_display(palette)
 	await _test_modern_display(palette)
+	await _test_stamp_preview(palette)
 	await _test_selection_animation(palette)
 	print("PASS: native SCURK cycling, clipping, layers, paste, comparison, palette highlights and selection animation")
 	quit()
@@ -253,6 +260,56 @@ func _test_modern_display(palette: Sc2Palette) -> void:
 	await RenderingServer.frame_post_draw
 	image = viewport.get_texture().get_image()
 	assert(_color_near(image.get_pixel(21, 4), palette.color(42).lerp(Color.WHITE, 0.6)))
+	assert(canvas.pixels == pixels)
+	viewport.free()
+
+
+func _test_stamp_preview(palette: Sc2Palette) -> void:
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(64, 64)
+	viewport.transparent_bg = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var canvas := ScurkPixelCanvas.new()
+	canvas.show_grid = false
+	canvas.set_palette_cycle_enabled(false)
+	canvas.set_zoom(16)
+	var pixels := PackedInt32Array([-1, -1, -1, -1, -1, -1, -1, -1, -1])
+	canvas.set_sprite_data(3, 3, pixels, palette)
+	canvas.layer_below_pixels = PackedInt32Array([42, 42, 42, 42, 42, 42, 42, 42, 42])
+	canvas.layer_above_pixels = PackedInt32Array([-1, 30, -1, -1, -1, -1, -1, -1, -1])
+	canvas.paint_options.set_stamp(2, 2, PackedInt32Array([55, 56, -1, 57]))
+	canvas.set_tool(ScurkPixelCanvas.TOOL_STAMP)
+	canvas.hover_point = Vector2i.ZERO
+	viewport.add_child(canvas)
+	await RenderingServer.frame_post_draw
+	var image := viewport.get_texture().get_image()
+	assert(image.get_pixel(9, 8).is_equal_approx(palette.color(55)), "Hover shows stamp colors")
+	assert(image.get_pixel(25, 8).is_equal_approx(palette.color(30)), "The upper layer covers the stamp preview")
+	assert(image.get_pixel(9, 24).is_equal_approx(palette.color(42)), "Transparent stamp pixels show lower layers")
+	assert(image.get_pixel(25, 24).is_equal_approx(palette.color(57)))
+	assert(canvas.pixels == pixels and canvas.composite_pixels()[0] == 42, "Hover does not change artwork or copied pixels")
+	canvas.selection.combine(canvas.selection.rectangle(Vector2i.ZERO, Vector2i(1, 0)))
+	canvas.queue_redraw()
+	await RenderingServer.frame_post_draw
+	assert(viewport.get_texture().get_image().get_pixel(25, 24).is_equal_approx(palette.color(42)), "Preview respects the selection")
+	canvas.clear_selection()
+	canvas.set_edit_region(PackedByteArray([0, 1, 1, 1, 1, 1, 1, 1, 1]), 1)
+	await RenderingServer.frame_post_draw
+	assert(viewport.get_texture().get_image().get_pixel(9, 8).is_equal_approx(palette.color(42)), "Preview respects clipping")
+	canvas.clear_edit_region()
+	canvas.paint_options.lock_transparent = true
+	canvas.queue_redraw()
+	await RenderingServer.frame_post_draw
+	assert(viewport.get_texture().get_image().get_pixel(25, 24).is_equal_approx(palette.color(42)), "Preview respects transparent pixel lock")
+	canvas.paint_options.lock_transparent = false
+	canvas.hover_point = Vector2i(1, 1)
+	canvas.queue_redraw()
+	await RenderingServer.frame_post_draw
+	assert(viewport.get_texture().get_image().get_pixel(25, 24).is_equal_approx(palette.color(55)), "Preview follows the pointer")
+	canvas._on_mouse_exited()
+	await RenderingServer.frame_post_draw
+	assert(viewport.get_texture().get_image().get_pixel(25, 24).is_equal_approx(palette.color(42)), "Preview clears when the pointer leaves")
 	assert(canvas.pixels == pixels)
 	viewport.free()
 

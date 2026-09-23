@@ -26,6 +26,7 @@ class PixelTarget extends RefCounted:
 
 class PendingEdit extends RefCounted:
 	var description := "Edit artwork"
+	var merge_key := ""
 	var bytes := PackedByteArray()
 	var project_state: Dictionary = {}
 	var blank_shape_ids: Dictionary[int, bool] = {}
@@ -193,7 +194,7 @@ func has_pending_edit() -> bool:
 	return _pending != null
 
 
-func begin_edit(description := "Edit artwork") -> Result:
+func begin_edit(description := "Edit artwork", merge_key := "") -> Result:
 	cancel_edit()
 	if document == null:
 		return _failure("No SCURK tile set is loaded.")
@@ -202,6 +203,7 @@ func begin_edit(description := "Edit artwork") -> Result:
 		return _failure(encoded.error)
 	_pending = PendingEdit.new()
 	_pending.description = description
+	_pending.merge_key = merge_key
 	_pending.bytes = encoded.bytes.duplicate()
 	_pending.project_state = project.snapshot()
 	_pending.blank_shape_ids = history.blank_shape_ids.duplicate()
@@ -250,6 +252,7 @@ func commit_edit() -> Result:
 		return _reject_edit("The project tile set is invalid.")
 	var action := History.Record.new()
 	action.description = _pending.description
+	action.merge_key = _pending.merge_key
 	action.before = _pending.bytes
 	action.after = encoded.bytes.duplicate()
 	action.project_before = _pending.project_state

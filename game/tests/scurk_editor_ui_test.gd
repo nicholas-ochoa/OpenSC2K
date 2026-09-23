@@ -42,13 +42,38 @@ func _run() -> void:
 	assert(editor.brush_size_selector.value == 24)
 	editor.brush_size_selector.value = 1
 	# Only tools that paint with a brush expose its size and shape controls.
+	var snap_lines := editor.drawing_controls.get_node("Margin/Column/Brush/SnapLines") as CheckBox
 	for tool in editor.tool_buttons.size():
 		editor.tool_buttons[tool].pressed.emit()
+		assert(snap_lines.is_visible_in_tree() == (tool == ScurkPixelCanvas.TOOL_LINE))
 		var uses_brush := tool <= ScurkPixelCanvas.TOOL_RECTANGLE or tool in [ScurkPixelCanvas.TOOL_SHADE, ScurkPixelCanvas.TOOL_STAMP]
 		assert(editor.brush_size_selector.is_visible_in_tree() == uses_brush)
 		assert(editor.round_brush_check.is_visible_in_tree() == uses_brush)
 		assert(editor.filled_shapes_check.is_visible_in_tree() == (tool >= ScurkPixelCanvas.TOOL_DIAMOND and tool <= ScurkPixelCanvas.TOOL_RECTANGLE))
+	assert(editor.studio.tabs.current_tab == 2)
+	editor.tool_buttons[ScurkPixelCanvas.TOOL_LINE].pressed.emit()
+	snap_lines.button_pressed = true
+	assert(editor.pixel_canvas.paint_options.isometric_snap)
+	snap_lines.button_pressed = false
+	assert(not editor.pixel_canvas.paint_options.isometric_snap)
 	editor.tool_buttons[ScurkPixelCanvas.TOOL_PENCIL].pressed.emit()
+	var terrain := editor.canvas_panel.get_node("Footer/Row/Clipping/Terrain") as CheckBox
+	var background := editor.pixel_canvas.clear_background_pixels.duplicate()
+	editor.pixel_canvas.clear_background_pixels.resize(Workspace.WIDTH * Workspace.HEIGHT)
+	editor.pixel_canvas.clear_background_pixels.fill(42)
+	editor.view_preview_signatures.fill("")
+	editor._refresh_view_previews()
+	var terrain_indices := editor.view_previews[0].preview_indices.duplicate()
+	terrain.button_pressed = false
+	assert(not editor.pixel_canvas.show_terrain)
+	assert(editor.view_previews[0].preview_indices.count(-1) > terrain_indices.count(-1))
+	terrain.button_pressed = true
+	assert(editor.pixel_canvas.show_terrain)
+	assert(editor.view_previews[0].preview_indices == terrain_indices)
+	editor.pixel_canvas.clear_background_pixels = background
+	editor.view_preview_signatures.fill("")
+	editor._refresh_view_previews()
+	editor.studio.tabs.current_tab = 0
 	# Filtering must select the visible result, including after an empty result.
 	editor.object_search.text = "255"
 	editor._on_search_changed("255")

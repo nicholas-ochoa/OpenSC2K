@@ -895,6 +895,9 @@ func _bind_interface() -> void:
 	drawing_controls.grid_visibility_changed.connect(_set_grid_visible)
 	drawing_controls.isometric_guides_changed.connect(_set_isometric_guides)
 	drawing_controls.grid_snap_changed.connect(_set_snap_to_grid)
+	drawing_controls.line_snap_changed.connect(func(enabled: bool) -> void:
+		pixel_canvas.paint_options.isometric_snap = enabled
+		pixel_canvas.queue_redraw())
 	drawing_controls.grid_width_changed.connect(_set_grid_width)
 	drawing_controls.grid_height_changed.connect(_set_grid_height)
 	drawing_controls.clip_region_changed.connect(_set_clip_region_visible)
@@ -916,6 +919,10 @@ func _bind_interface() -> void:
 	canvas_panel.build()
 	canvas_panel.context_requested.connect(_studio_action.bind("Context"))
 	pixel_canvas = canvas_panel.pixel_canvas
+	canvas_panel.terrain_visibility_changed.connect(func(enabled: bool) -> void:
+		pixel_canvas.show_terrain = enabled
+		pixel_canvas.queue_redraw()
+		_refresh_view_previews())
 	view_previews = canvas_panel.view_previews
 	view_preview_panels = canvas_panel.view_preview_panels
 	sprite_status_label = toolbar.get_node("Row/SpriteStatus")
@@ -1064,6 +1071,8 @@ func _select_view(view: int) -> void:
 func _select_tool(tool_value: int) -> void:
 	current_tool = tool_value
 	drawing_controls.update_tool_controls(tool_value)
+	if tool_value == ScurkPixelCanvas.TOOL_STAMP and studio != null:
+		studio.tabs.current_tab = studio.get_node(studio.STAMPS).get_index()
 
 	if pixel_canvas != null:
 		pixel_canvas.set_tool(tool_value)
@@ -1385,9 +1394,9 @@ static func sprite_role(tile_id: int) -> String:
 	return EditorRules.sprite_role(tile_id)
 
 
-func _capture_edit_start(description := "Edit artwork") -> bool:
+func _capture_edit_start(description := "Edit artwork", merge_key := "") -> bool:
 	studio.sync_editor_state()
-	var result := session.begin_edit(description)
+	var result := session.begin_edit(description, merge_key)
 	if not result.ok:
 		_show_error(result.error)
 	return result.ok
@@ -1472,8 +1481,8 @@ func _refresh_view_previews() -> void:
 			view_preview_signatures[index] = ""
 			continue
 
-		var signature := "%d:%d:%d:%d:%s" % [
-			active_base_width, entry.width, entry.height, entry.pixel_hash(), _clipping_enabled(),
+		var signature := "%d:%d:%d:%d:%s:%s" % [
+			active_base_width, entry.width, entry.height, entry.pixel_hash(), _clipping_enabled(), pixel_canvas.show_terrain,
 		]
 
 		if view_preview_signatures[index] == signature:
@@ -1495,7 +1504,7 @@ func _refresh_view_previews() -> void:
 			decoded.pixels,
 			active_base_width,
 			palette,
-			pixel_canvas.clear_background_pixels,
+			pixel_canvas.clear_background_pixels if pixel_canvas.show_terrain else PackedInt32Array(),
 			_clipping_enabled()
 		)
 		view_previews[index].set_palette_cycle_enabled(

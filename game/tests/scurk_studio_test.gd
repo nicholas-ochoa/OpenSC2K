@@ -106,12 +106,12 @@ func _test_sidebar() -> void:
 	assert(add.is_visible_in_tree())
 	add.pressed.emit()
 	assert(_document().layers.size() == 2)
-	var list := studio.get_node(studio.LAYERS + "/Row/List") as ItemList
-	list.select(1)
-	list.item_selected.emit(1)
+	var list := studio.get_node(studio.LAYERS + "/Row/List") as Tree
+	list.get_root().get_child(1).select(1)
+	list.item_selected.emit()
 	assert(int(_document().active) == 0)
-	list.select(0)
-	list.item_selected.emit(0)
+	list.get_root().get_child(0).select(1)
+	list.item_selected.emit()
 	assert(int(_document().active) == 1)
 	editor._select_tool(ScurkPixelCanvas.TOOL_PENCIL)
 	editor._select_palette_index(99)
@@ -126,7 +126,7 @@ func _test_sidebar() -> void:
 	assert(studio.tabs.current_tab == 1 and list.is_visible_in_tree())
 	assert(canvas.selection.mask == selection)
 	studio.get_node(studio.LAYERS + "/Name").text = "Windows"
-	studio.get_node(studio.LAYERS + "/Row/Actions/Rename").pressed.emit()
+	studio.get_node(studio.LAYERS + "/Name").text_changed.emit("Windows")
 	assert(_document().layers[1].name == "Windows")
 	studio.tabs.current_tab = 2
 	studio.get_node(studio.STAMPS + "/Name").text = "Window stamp"
@@ -142,7 +142,7 @@ func _test_sidebar() -> void:
 	studio.tabs.current_tab = 2
 	assert(stamps.item_count == 1)
 	stamps.select(0)
-	studio.get_node(studio.STAMPS + "/Actions/Use").pressed.emit()
+	stamps.item_selected.emit(0)
 	assert(editor.current_tool == ScurkPixelCanvas.TOOL_STAMP)
 	assert(canvas.paint_options.stamp_pixels.count(99) > 0)
 	studio.tabs.current_tab = 3
@@ -226,10 +226,10 @@ func _test_layers() -> void:
 	studio._select_layer(0)
 	assert(not canvas.paste_active and editor.tile_set.to_bytes().bytes == before_move)
 	assert(_document().layers[1].pixels[offset] == 99 and _document().layers[1].pixels[offset + 4] == -1)
-	var layers := studio.get_node(studio.LAYERS + "/Row/List") as ItemList
-	layers.select(0)
-	layers.item_selected.emit(0)
-	assert(int(_document().active) == int(layers.get_item_metadata(0)) and int(_document().active) == 1)
+	var layers := studio.get_node(studio.LAYERS + "/Row/List") as Tree
+	layers.get_root().get_child(0).select(1)
+	layers.item_selected.emit()
+	assert(int(_document().active) == int(layers.get_selected().get_metadata(1)) and int(_document().active) == 1)
 	canvas.clear_selection()
 	studio._layer_visible(false)
 	assert(studio.project.flatten(studio.key())[offset] == 42 and editor.pixel_canvas.editing_disabled)

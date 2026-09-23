@@ -11,7 +11,6 @@
 [ext_resource type="Texture2D" path="res://src/ui/scurk/icons/layer_delete.svg" id="layer_delete"]
 [ext_resource type="Texture2D" path="res://src/ui/scurk/icons/layer_up.svg" id="layer_up"]
 [ext_resource type="Texture2D" path="res://src/ui/scurk/icons/layer_down.svg" id="layer_down"]
-[ext_resource type="Texture2D" path="res://src/ui/scurk/icons/layer_rename.svg" id="layer_rename"]
 
 [sub_resource type="ShaderMaterial" id="GlassMaterial"]
 shader = ExtResource("glass")
@@ -71,7 +70,9 @@ layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 6
 
-[node name="List" type="ItemList" parent="Margin/Column/Tabs/Layers/Row"]
+[node name="List" type="Tree" parent="Margin/Column/Tabs/Layers/Row"]
+columns = 2
+hide_root = true
 size_flags_horizontal = 3
 size_flags_vertical = 3
 custom_minimum_size = Vector2(0, 160)
@@ -116,23 +117,11 @@ vertical_icon_alignment = 1
 expand_icon = true
 theme_override_constants/icon_max_width = 24
 
-[node name="Rename" type="Button" parent="Margin/Column/Tabs/Layers/Row/Actions"]
-icon = ExtResource("layer_rename")
-tooltip_text = "Rename layer"
-custom_minimum_size = Vector2(32, 32)
-icon_alignment = 1
-vertical_icon_alignment = 1
-expand_icon = true
-theme_override_constants/icon_max_width = 24
-
 [node name="Name" type="LineEdit" parent="Margin/Column/Tabs/Layers"]
 placeholder_text = "Layer name"
+max_length = 256
 
 [node name="State" type="HBoxContainer" parent="Margin/Column/Tabs/Layers"]
-
-[node name="Visible" type="CheckBox" parent="Margin/Column/Tabs/Layers/State"]
-text = "Visible"
-button_pressed = true
 
 [node name="Locked" type="CheckBox" parent="Margin/Column/Tabs/Layers/State"]
 text = "Locked"
@@ -182,9 +171,6 @@ placeholder_text = "Stamp name"
 [node name="Add" type="Button" parent="Margin/Column/Tabs/Stamps/Actions"]
 text = "Save selection"
 
-[node name="Use" type="Button" parent="Margin/Column/Tabs/Stamps/Actions"]
-text = "Use stamp"
-
 [node name="Delete" type="Button" parent="Margin/Column/Tabs/Stamps/Actions"]
 text = "Delete"
 
@@ -223,10 +209,6 @@ text = "Shift-click palette colors to build a dark-to-light ramp."
 
 [node name="Stamp" type="CheckBox" parent="Paint/Content"]
 text = "Stamp brush"
-button_pressed = false
-
-[node name="Iso" type="CheckBox" parent="Paint/Content"]
-text = "Snap lines to isometric directions"
 button_pressed = false
 
 [node name="CompareLabel" type="Label" parent="Paint/Content"]

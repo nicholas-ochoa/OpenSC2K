@@ -3,6 +3,7 @@ extends VBoxContainer
 
 signal zoom_changed(value: int)
 signal context_requested
+signal terrain_visibility_changed(enabled: bool)
 
 var zoom_pending := 0
 var zoom_running := false
@@ -38,6 +39,7 @@ func build() -> void:
 	pixel_scroll = $Row/PixelScroll
 	pixel_canvas = $Row/PixelScroll/Center/PixelCanvas
 	previews_panel = $Row/Previews
+	$Footer/Row/Clipping/Terrain.toggled.connect(terrain_visibility_changed.emit)
 	$Footer/Row/Views/Context.pressed.connect(context_requested.emit)
 	show_views_button = $Footer/Row/Views/ShowViews
 	show_views_button.toggled.connect(func(enabled: bool) -> void: previews_panel.visible = enabled)

@@ -5,6 +5,7 @@ const HISTORY_LIMIT := 24
 
 class Record extends RefCounted:
 	var description := "Edit artwork"
+	var merge_key := ""
 	var before := PackedByteArray()
 	var after := PackedByteArray()
 	var project_before: Dictionary = {}
@@ -53,6 +54,14 @@ func record(action: Record) -> bool:
 		return false
 	if action.before == action.after and action.project_before == action.project_after:
 		return false
+	if not action.merge_key.is_empty() and not undo_stack.is_empty() and redo_stack.is_empty():
+		var previous: Record = undo_stack.back()
+		if previous.merge_key == action.merge_key and previous.project_after == action.project_before:
+			previous.after = action.after
+			previous.project_after = action.project_after
+			previous.blank_after = action.blank_after
+			_update_dirty_bytes(action.after)
+			return true
 	undo_stack.append(action)
 	if undo_stack.size() > HISTORY_LIMIT:
 		undo_stack.pop_front()

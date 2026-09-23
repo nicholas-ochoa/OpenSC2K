@@ -17,6 +17,7 @@ signal filled_shapes_changed(enabled: bool)
 signal isometric_guides_changed
 signal grid_visibility_changed(enabled: bool)
 signal grid_snap_changed(enabled: bool)
+signal line_snap_changed(enabled: bool)
 signal grid_width_changed(value: float)
 signal grid_height_changed(value: float)
 signal clip_region_changed(enabled: bool)
@@ -92,6 +93,7 @@ func build() -> void:
 	grid_check.toggled.connect(func(enabled: bool) -> void: $Margin/Column/Grid/Dimensions.visible = enabled)
 	snap_to_grid_check = $Margin/Column/Brush/Snap
 	snap_to_grid_check.toggled.connect(grid_snap_changed.emit)
+	$Margin/Column/Brush/SnapLines.toggled.connect(line_snap_changed.emit)
 	clip_region_check = $"../Editor/Canvas/Footer/Row/Clipping/Clip"
 	clip_region_check.toggled.connect(clip_region_changed.emit)
 	clip_enabled_check = $"../Editor/Canvas/Footer/Row/Clipping/Limit"
@@ -142,6 +144,7 @@ func update_tool_controls(tool: int) -> void:
 		ScurkPixelCanvas.TOOL_SHADE, ScurkPixelCanvas.TOOL_STAMP,
 	]
 	$Margin/Column/Brush.visible = uses_brush
+	$Margin/Column/Brush/SnapLines.visible = tool == ScurkPixelCanvas.TOOL_LINE
 	filled_shapes_check.visible = uses_brush and tool not in [
 		ScurkPixelCanvas.TOOL_PENCIL, ScurkPixelCanvas.TOOL_ERASER, ScurkPixelCanvas.TOOL_LINE,
 		ScurkPixelCanvas.TOOL_SHADE, ScurkPixelCanvas.TOOL_STAMP,

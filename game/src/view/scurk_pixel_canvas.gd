@@ -124,6 +124,7 @@ var clip_shade_texture: ImageTexture
 var clip_columns := Vector2i(-1, -1)
 var background_view := ScurkSpriteIds.View.LARGE
 var clear_background_pixels := PackedInt32Array()
+var show_terrain := true
 var clip_background_pixels: Array[PackedInt32Array] = []
 var outline_state: Array = []
 var outline_edges := PackedVector2Array()
@@ -1742,6 +1743,8 @@ func tool_footprint() -> Dictionary[Vector2i, bool]:
 		var points: Array[Vector2i] = [hover_point]
 		if _is_shape_tool(tool):
 			var finish := snapped_shape_point(hover_point, grid_width, grid_height, snap_to_grid)
+			if tool == TOOL_LINE and stroke_active:
+				finish = paint_options.constrain_line(shape_start, finish)
 			points = shape_points(tool, shape_start if stroke_active else finish, finish, filled_shapes)
 		for point in points:
 			for target in brush_points(point):
@@ -1753,9 +1756,9 @@ func tool_footprint() -> Dictionary[Vector2i, bool]:
 func _draw_tool_outline() -> void:
 	var state: Array = [
 		hover_point, tool, brush_size, round_brush, filled_shapes, shape_start,
-		stroke_active, grid_width, grid_height, snap_to_grid, clipboard_width,
+		stroke_active, grid_width, grid_height, snap_to_grid, paint_options.isometric_snap, clipboard_width,
 		clipboard_height, clipboard_pixels.size(), sprite_width, sprite_height, pixels, edit_mask, selection.mask,
-		paint_options.stamp_width, paint_options.stamp_height, paint_options.stamp_pixels,
+		paint_options.stamp_width, paint_options.stamp_height, paint_options.stamp_pixels, editing_disabled,
 	]
 	if state != outline_state:
 		outline_state = state
@@ -1774,10 +1777,14 @@ func _draw_tool_outline() -> void:
 	if not outline_edges.is_empty():
 		var scaled := PackedVector2Array()
 		scaled.resize(outline_edges.size())
+		var screen_transform := get_screen_transform()
+		var pixel_size := 1.0 / maxf(absf(screen_transform.get_scale().x), 0.001)
+		var origin := screen_transform * Vector2(DISPLAY_MARGIN, 0)
 		for index in outline_edges.size():
-			scaled[index] = outline_edges[index] * zoom
-		draw_multiline(scaled, Color.BLACK, 3.0)
-		draw_multiline(scaled, Color.WHITE, 1.0)
+			var screen_point := origin + outline_edges[index] * zoom / pixel_size
+			scaled[index] = (screen_point.floor() + Vector2(0.5, 0.5) - origin) * pixel_size
+		draw_multiline(scaled, Color.BLACK, 3.0 * pixel_size)
+		draw_multiline(scaled, Color.WHITE, pixel_size)
 
 
 func _apply_pixel(point: Vector2i, value: int) -> void:
@@ -1939,8 +1946,16 @@ func _draw() -> void:
 		_draw_tool_outline()
 
 
-func composite_pixels() -> PackedInt32Array:
+func composite_pixels(include_stamp_preview := false) -> PackedInt32Array:
 	var result := _floating_pixels() if paste_active else pixels.duplicate()
+	if include_stamp_preview and tool == TOOL_STAMP and not paste_active and not selection_dragging and _point_is_valid(hover_point):
+		for y in paint_options.stamp_height:
+			for x in paint_options.stamp_width:
+				var value := paint_options.stamp_pixels[y * paint_options.stamp_width + x]
+				var point := hover_point + Vector2i(x, y)
+				if value >= 0 and _point_is_editable(point):
+					var offset := point.y * sprite_width + point.x
+					result[offset] = paint_options.paint_index(result[offset], value)
 	if not active_layer_visible and not paste_new_layer:
 		result.fill(-1)
 	for offset in result.size():
@@ -1956,17 +1971,19 @@ func composite_pixels() -> PackedInt32Array:
 func _update_display_texture() -> void:
 	var valid_palette := palette != null and palette.is_valid()
 	var indices := palette.scurk_animation_index_map(palette_cycle_ticks) if valid_palette else PackedInt32Array()
-	var background := clear_background_pixels
+	var background := clear_background_pixels if show_terrain else PackedInt32Array()
 	var state: Array = [sprite_width, sprite_height, background_view, hash(pixels), hash(background),
 		hash(palette.colors) if valid_palette else 0, hash(indices), hash(layer_below_pixels),
 		hash(layer_above_pixels), hash(comparison_pixels), comparison_mode, comparison_hold,
 		highlighted_palette_index, paste_active, paste_new_layer, paste_position, hash(clipboard_pixels), hash(clipboard_mask),
 		hash(paste_source_mask), paint_options.lock_transparent, hash(selection.mask)]
-	state.append(active_layer_visible)
+	state.append_array([active_layer_visible, editing_disabled, selection_dragging, hash(edit_mask),
+		tool, hover_point if tool == TOOL_STAMP else Vector2i(-1, -1), paint_options.stamp_width,
+		paint_options.stamp_height, hash(paint_options.stamp_pixels)])
 	if display_texture != null and display_state == state:
 		return
 
-	var visible_pixels := composite_pixels()
+	var visible_pixels := composite_pixels(true)
 	var mode := 1 if comparison_hold else comparison_mode
 	var comparing := comparison_pixels.size() == visible_pixels.size()
 	var colors: Array[Color] = []

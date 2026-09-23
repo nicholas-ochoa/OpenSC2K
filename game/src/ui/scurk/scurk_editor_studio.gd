@@ -72,6 +72,7 @@ var imported_path := ""
 var import_clipped := 0
 var context_view := ScurkSpriteIds.View.LARGE
 var updating_controls := false
+var layer_rename_merge_key := ""
 var pending_delete_key := ""
 var pending_delete_layer: Dictionary = {}
 
@@ -91,11 +92,20 @@ func bind(value: ScurkEditorControl) -> void:
 	$Recovery.custom_action.connect(func(action: StringName) -> void:
 		if action == &"ignore":
 			_ignore_recovery())
-	get_node(LAYERS + "/Row/List").item_selected.connect(func(row: int) -> void:
-		_select_layer(int(get_node(LAYERS + "/Row/List").get_item_metadata(row))))
-	for action in ["Add", "Delete", "Up", "Down", "Rename"]:
+	var layers := get_node(LAYERS + "/Row/List") as Tree
+	layers.set_column_expand(0, false)
+	layers.set_column_custom_minimum_width(0, 28)
+	layers.item_selected.connect(func() -> void:
+		if not updating_controls and layers.get_selected() != null:
+			_select_layer(int(layers.get_selected().get_metadata(1))))
+	layers.item_edited.connect(func() -> void:
+		var item := layers.get_edited()
+		if item != null and layers.get_edited_column() == 0:
+			_layer_visible(item.is_checked(0), int(item.get_metadata(1))))
+	get_node(LAYERS + "/Name").text_changed.connect(_rename_layer)
+	get_node(LAYERS + "/Name").focus_exited.connect(_finish_layer_rename)
+	for action in ["Add", "Delete", "Up", "Down"]:
 		get_node(LAYERS + "/Row/Actions/" + action).pressed.connect(_layer_action.bind(action))
-	get_node(LAYERS + "/State/Visible").toggled.connect(_layer_visible)
 	get_node(LAYERS + "/State/Locked").toggled.connect(_layer_locked)
 	get_node(HISTORY + "/Actions/Undo").pressed.connect(editor.undo)
 	get_node(HISTORY + "/Actions/Redo").pressed.connect(editor.redo)
@@ -103,7 +113,8 @@ func bind(value: ScurkEditorControl) -> void:
 	$DeleteLayer.confirmed.connect(_confirm_delete_layer)
 	$DeleteLayer.canceled.connect(_cancel_delete_layer)
 	get_node(META + "/Apply").pressed.connect(_metadata_changed)
-	for action in ["Add", "Use", "Delete"]:
+	get_node(STAMPS + "/List").item_selected.connect(_use_stamp)
+	for action in ["Add", "Delete"]:
 		get_node(STAMPS + "/Actions/" + action).pressed.connect(_stamp_action.bind(action))
 	get_node(STAMPS + "/Spacing/Value").value_changed.connect(func(value: float) -> void:
 		editor.pixel_canvas.paint_options.stamp_spacing = roundi(value))
@@ -113,7 +124,7 @@ func bind(value: ScurkEditorControl) -> void:
 	$Paint/Content/Stamp.toggled.connect(func(enabled: bool) -> void:
 		if enabled:
 			$Paint/Content/Shade.set_pressed_no_signal(false))
-	for option in ["Lock", "Perfect", "Shade", "Stamp", "Iso"]:
+	for option in ["Lock", "Perfect", "Shade", "Stamp"]:
 		get_node("Paint/Content/" + option).toggled.connect(func(_enabled: bool) -> void: _paint_options_changed())
 	var compare := $Paint/Content/Compare as OptionButton
 	for label in ["Current artwork", "Saved artwork", "Saved overlay", "Changed pixels"]:
@@ -313,19 +324,60 @@ func _refresh_layers() -> void:
 	if editor == null or not project.documents.has(key()):
 		return
 	updating_controls = true
+	layer_rename_merge_key = ""
 	var document: Dictionary = project.documents[key()]
-	var list := get_node(LAYERS + "/Row/List") as ItemList
-	list.clear()
+	var list := get_node(LAYERS + "/Row/List") as Tree
+	var root := list.get_root()
+	if root == null or root.get_child_count() != document.layers.size():
+		list.clear()
+		root = list.create_item()
+		for index in document.layers.size():
+			list.create_item(root)
+	list.deselect_all()
 	for index in range(document.layers.size() - 1, -1, -1):
 		var layer: Dictionary = document.layers[index]
-		list.add_item("%s%s%s" % [layer.name, " (hidden)" if not layer.visible else "", " (locked)" if layer.locked else ""])
-		list.set_item_metadata(list.item_count - 1, index)
-	list.select(document.layers.size() - 1 - int(document.active))
+		var item := root.get_child(document.layers.size() - 1 - index)
+		item.set_cell_mode(0, TreeItem.CELL_MODE_CHECK)
+		item.set_editable(0, true)
+		item.set_selectable(0, false)
+		item.set_checked(0, layer.visible)
+		item.set_tooltip_text(0, "Show or hide this layer")
+		item.set_text(1, _layer_label(layer))
+		item.set_metadata(1, index)
+		if index == int(document.active):
+			item.select(1)
 	var active: Dictionary = document.layers[int(document.active)]
 	get_node(LAYERS + "/Name").text = active.name
-	get_node(LAYERS + "/State/Visible").set_pressed_no_signal(active.visible)
 	get_node(LAYERS + "/State/Locked").set_pressed_no_signal(active.locked)
 	updating_controls = false
+
+
+func _layer_label(layer: Dictionary) -> String:
+	return String(layer.name) + (" (locked)" if layer.locked else "")
+
+
+func _rename_layer(value: String) -> void:
+	if updating_controls or not project.documents.has(key()) or not ScurkProject._valid_name(value):
+		return
+	var document: Dictionary = project.documents[key()]
+	var index := int(document.active)
+	if document.layers[index].name == value:
+		return
+	if layer_rename_merge_key.is_empty():
+		layer_rename_merge_key = "rename:%s:%d:%d" % [key(), index, Time.get_ticks_usec()]
+	if not editor._capture_edit_start("Rename layer", layer_rename_merge_key):
+		return
+	project.rename_layer(key(), index, value)
+	editor._record_edit()
+	var list := get_node(LAYERS + "/Row/List") as Tree
+	list.get_root().get_child(document.layers.size() - 1 - index).set_text(1, _layer_label(document.layers[index]))
+
+
+func _finish_layer_rename() -> void:
+	layer_rename_merge_key = ""
+	if project.documents.has(key()):
+		var document: Dictionary = project.documents[key()]
+		get_node(LAYERS + "/Name").text = document.layers[int(document.active)].name
 
 
 func _select_layer(index: int) -> void:
@@ -355,16 +407,15 @@ func _layer_action(action: String) -> void:
 		"Add": project.add_layer(key(), "Layer %d" % (project.documents[key()].layers.size() + 1))
 		"Up": project.move_layer(key(), index, index + 1)
 		"Down": project.move_layer(key(), index, index - 1)
-		"Rename": project.rename_layer(key(), index, get_node(LAYERS + "/Name").text)
 	_flush_layers()
 
 
-func _layer_visible(enabled: bool) -> void:
+func _layer_visible(enabled: bool, index := -1) -> void:
 	if updating_controls:
 		return
 	if not editor._capture_edit_start("Layer visibility"):
 		return
-	project.set_layer_visible(key(), int(project.documents[key()].active), enabled)
+	project.set_layer_visible(key(), int(project.documents[key()].active) if index < 0 else index, enabled)
 	_flush_layers()
 
 
@@ -490,7 +541,6 @@ func _paint_options_changed() -> void:
 	var canvas := editor.pixel_canvas
 	canvas.paint_options.lock_transparent = $Paint/Content/Lock.button_pressed
 	canvas.paint_options.pixel_perfect = $Paint/Content/Perfect.button_pressed
-	canvas.paint_options.isometric_snap = $Paint/Content/Iso.button_pressed
 	if $Paint/Content/Stamp.button_pressed:
 		editor._select_tool(ScurkPixelCanvas.TOOL_STAMP)
 	elif $Paint/Content/Shade.button_pressed:
@@ -521,15 +571,18 @@ func _stamp_action(action: String) -> void:
 				return
 			project.remove_stamp(selected[0])
 			editor._record_edit()
-		elif action == "Use":
-			var stamp: Dictionary = project.stamps[selected[0]]
-			editor.pixel_canvas.paint_options.set_stamp(stamp.width, stamp.height, stamp.pixels)
-			editor.pixel_canvas.paint_options.stamp_spacing = stamp.spacing
-			get_node(STAMPS + "/Spacing/Value").value = stamp.spacing
-			editor._select_tool(ScurkPixelCanvas.TOOL_STAMP)
-			if editor.pixel_canvas.is_inside_tree():
-				editor.pixel_canvas.grab_focus()
+
 	_refresh_lists()
+
+
+func _use_stamp(index: int) -> void:
+	if index < 0 or index >= project.stamps.size():
+		return
+	var stamp: Dictionary = project.stamps[index]
+	editor.pixel_canvas.paint_options.set_stamp(stamp.width, stamp.height, stamp.pixels)
+	editor.pixel_canvas.paint_options.stamp_spacing = stamp.spacing
+	get_node(STAMPS + "/Spacing/Value").value = stamp.spacing
+	editor._select_tool(ScurkPixelCanvas.TOOL_STAMP)
 
 
 func _replace_colors() -> void:
