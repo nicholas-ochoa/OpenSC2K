@@ -185,37 +185,6 @@ max_value = 256.0
 value = 8.0
 custom_minimum_size = Vector2(80, 0)
 
-[node name="Paint" type="AcceptDialog" parent="."]
-title = "Paint options"
-exclusive = true
-size = Vector2i(440, 420)
-
-[node name="Content" type="VBoxContainer" parent="Paint"]
-
-[node name="Lock" type="CheckBox" parent="Paint/Content"]
-text = "Lock transparent pixels"
-button_pressed = false
-
-[node name="Perfect" type="CheckBox" parent="Paint/Content"]
-text = "Pixel-perfect pencil"
-button_pressed = false
-
-[node name="Shade" type="CheckBox" parent="Paint/Content"]
-text = "Shading brush"
-button_pressed = false
-
-[node name="RampHint" type="Label" parent="Paint/Content"]
-text = "Shift-click palette colors to build a dark-to-light ramp."
-
-[node name="Stamp" type="CheckBox" parent="Paint/Content"]
-text = "Stamp brush"
-button_pressed = false
-
-[node name="CompareLabel" type="Label" parent="Paint/Content"]
-text = "Compare with saved artwork (hold Backslash for a quick look)"
-
-[node name="Compare" type="OptionButton" parent="Paint/Content"]
-
 [node name="Replace" type="ConfirmationDialog" parent="."]
 title = "Replace color"
 exclusive = true

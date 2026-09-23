@@ -118,20 +118,6 @@ func bind(value: ScurkEditorControl) -> void:
 		get_node(STAMPS + "/Actions/" + action).pressed.connect(_stamp_action.bind(action))
 	get_node(STAMPS + "/Spacing/Value").value_changed.connect(func(value: float) -> void:
 		editor.pixel_canvas.paint_options.stamp_spacing = roundi(value))
-	$Paint/Content/Shade.toggled.connect(func(enabled: bool) -> void:
-		if enabled:
-			$Paint/Content/Stamp.set_pressed_no_signal(false))
-	$Paint/Content/Stamp.toggled.connect(func(enabled: bool) -> void:
-		if enabled:
-			$Paint/Content/Shade.set_pressed_no_signal(false))
-	for option in ["Lock", "Perfect", "Shade", "Stamp"]:
-		get_node("Paint/Content/" + option).toggled.connect(func(_enabled: bool) -> void: _paint_options_changed())
-	var compare := $Paint/Content/Compare as OptionButton
-	for label in ["Current artwork", "Saved artwork", "Saved overlay", "Changed pixels"]:
-		compare.add_item(label)
-	compare.item_selected.connect(func(index: int) -> void:
-		editor.pixel_canvas.comparison_mode = index
-		editor.pixel_canvas.queue_redraw())
 	$Replace.confirmed.connect(_replace_colors)
 	$ImportPreview.confirmed.connect(_apply_import)
 	for field in ["X", "Y"]:
@@ -220,12 +206,6 @@ func _refresh_metadata() -> void:
 	get_node(META + "/Author").text = String(project.metadata.get("author", ""))
 	get_node(META + "/Title").text = String(project.metadata.get("title", ""))
 	get_node(META + "/Notes").text = String(project.metadata.get("notes", ""))
-
-
-func show_paint() -> void:
-	$Paint/Content/Shade.set_pressed_no_signal(editor.current_tool == ScurkPixelCanvas.TOOL_SHADE)
-	$Paint/Content/Stamp.set_pressed_no_signal(editor.current_tool == ScurkPixelCanvas.TOOL_STAMP)
-	$Paint.popup_centered()
 
 
 func show_replace() -> void:
@@ -535,19 +515,6 @@ func _palette_state_changed(state: Dictionary) -> void:
 	project.metadata["palette"] = state.duplicate(true)
 	modified = true
 	editor._update_title()
-
-
-func _paint_options_changed() -> void:
-	var canvas := editor.pixel_canvas
-	canvas.paint_options.lock_transparent = $Paint/Content/Lock.button_pressed
-	canvas.paint_options.pixel_perfect = $Paint/Content/Perfect.button_pressed
-	if $Paint/Content/Stamp.button_pressed:
-		editor._select_tool(ScurkPixelCanvas.TOOL_STAMP)
-	elif $Paint/Content/Shade.button_pressed:
-		editor._select_tool(ScurkPixelCanvas.TOOL_SHADE)
-	elif editor.current_tool in [ScurkPixelCanvas.TOOL_SHADE, ScurkPixelCanvas.TOOL_STAMP]:
-		editor._select_tool(ScurkPixelCanvas.TOOL_PENCIL)
-	canvas.queue_redraw()
 
 
 func _stamp_action(action: String) -> void:

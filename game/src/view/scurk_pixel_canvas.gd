@@ -1551,7 +1551,7 @@ func _gui_input(event: InputEvent) -> void:
 			)
 
 			if event.button_mask & expected_mask:
-				if _is_shape_tool(tool):
+				if is_shape_tool(tool):
 					_preview_shape(point)
 				else:
 					_apply_free_line(point)
@@ -1583,12 +1583,12 @@ func _gui_input(event: InputEvent) -> void:
 				palette_index_picked.emit(index, use_background)
 		elif tool == TOOL_FILL:
 			_apply_fill(point, use_background)
-		elif _is_shape_tool(tool):
+		elif is_shape_tool(tool):
 			_begin_shape(point, event.button_index)
 		else:
 			_begin_stroke(point, event.button_index)
 	else:
-		if stroke_active and _is_shape_tool(tool) and _point_is_valid(point):
+		if stroke_active and is_shape_tool(tool) and _point_is_valid(point):
 			_preview_shape(point)
 
 		_finish_stroke()
@@ -1741,7 +1741,7 @@ func tool_footprint() -> Dictionary[Vector2i, bool]:
 		result[hover_point] = true
 	else:
 		var points: Array[Vector2i] = [hover_point]
-		if _is_shape_tool(tool):
+		if is_shape_tool(tool):
 			var finish := snapped_shape_point(hover_point, grid_width, grid_height, snap_to_grid)
 			if tool == TOOL_LINE and stroke_active:
 				finish = paint_options.constrain_line(shape_start, finish)
@@ -1852,7 +1852,7 @@ func _apply_fill(point: Vector2i, force_background: bool) -> void:
 	queue_redraw()
 
 
-func _is_shape_tool(value: int) -> bool:
+static func is_shape_tool(value: int) -> bool:
 	return value in [
 		TOOL_LINE, TOOL_DIAMOND, TOOL_LEFT_WALL, TOOL_RIGHT_WALL,
 		TOOL_ELLIPSE, TOOL_RECTANGLE,

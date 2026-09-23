@@ -36,6 +36,7 @@ func _run() -> void:
 	assert(editor.view_previews[3].custom_minimum_size == Vector2(258, 514))
 	_test_clipping_toggle(editor)
 	_test_clipboard_actions(editor)
+	_test_paint_sidebar(editor)
 	editor.brush_size_selector.value = 24
 	assert(editor.pixel_canvas.brush_size == 24)
 	editor.brush_size_selector.value = 25
@@ -46,7 +47,7 @@ func _run() -> void:
 	for tool in editor.tool_buttons.size():
 		editor.tool_buttons[tool].pressed.emit()
 		assert(snap_lines.is_visible_in_tree() == (tool == ScurkPixelCanvas.TOOL_LINE))
-		var uses_brush := tool <= ScurkPixelCanvas.TOOL_RECTANGLE or tool in [ScurkPixelCanvas.TOOL_SHADE, ScurkPixelCanvas.TOOL_STAMP]
+		var uses_brush := tool <= ScurkPixelCanvas.TOOL_RECTANGLE or tool == ScurkPixelCanvas.TOOL_SHADE
 		assert(editor.brush_size_selector.is_visible_in_tree() == uses_brush)
 		assert(editor.round_brush_check.is_visible_in_tree() == uses_brush)
 		assert(editor.filled_shapes_check.is_visible_in_tree() == (tool >= ScurkPixelCanvas.TOOL_DIAMOND and tool <= ScurkPixelCanvas.TOOL_RECTANGLE))
@@ -244,6 +245,36 @@ func _run() -> void:
 	quit()
 
 
+func _test_paint_sidebar(editor: ScurkEditorControl) -> void:
+	var paint := editor.drawing_controls.get_node("Margin/Column/Paint")
+	var lock := paint.get_node("Lock") as CheckBox
+	var perfect := paint.get_node("Perfect") as CheckBox
+	editor._select_tool(ScurkPixelCanvas.TOOL_PENCIL)
+	editor.brush_size_selector.value = 1
+	lock.button_pressed = true
+	perfect.button_pressed = true
+	assert(editor.pixel_canvas.paint_options.lock_transparent)
+	assert(editor.pixel_canvas.paint_options.pixel_perfect)
+	assert(lock.is_visible_in_tree() and perfect.is_visible_in_tree())
+	editor.brush_size_selector.value = 2
+	assert(not perfect.is_visible_in_tree())
+	editor.brush_size_selector.value = 1
+	assert(perfect.is_visible_in_tree() and perfect.button_pressed)
+	for tool in editor.tool_buttons.size():
+		editor._select_tool(tool)
+		assert(perfect.is_visible_in_tree() == (tool == ScurkPixelCanvas.TOOL_PENCIL))
+		assert(lock.is_visible_in_tree() == (tool not in [ScurkPixelCanvas.TOOL_EYEDROPPER, ScurkPixelCanvas.TOOL_SHADE]))
+	var compare := editor.canvas_panel.get_node("Footer/Row/Compare/Mode") as OptionButton
+	for mode in range(compare.item_count - 1, -1, -1):
+		compare.select(mode)
+		compare.item_selected.emit(mode)
+		assert(editor.pixel_canvas.comparison_mode == mode)
+	lock.button_pressed = false
+	perfect.button_pressed = false
+	assert(not editor.pixel_canvas.paint_options.lock_transparent and not editor.pixel_canvas.paint_options.pixel_perfect)
+	editor._select_tool(ScurkPixelCanvas.TOOL_PENCIL)
+
+
 func _assert_inside(bounds: Rect2, control: Control) -> void:
 	var rect := control.get_global_rect()
 	assert(rect.position.x >= bounds.position.x and rect.position.y >= bounds.position.y)
@@ -330,7 +361,7 @@ func _test_footprints() -> void:
 			canvas.pixels.fill(5)
 		var before := canvas.pixels.duplicate()
 		var footprint := canvas.tool_footprint()
-		if canvas._is_shape_tool(tool):
+		if canvas.is_shape_tool(tool):
 			canvas._preview_shape(canvas.hover_point)
 		else:
 			canvas._apply_brush(canvas.hover_point)

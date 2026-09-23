@@ -363,6 +363,25 @@ layout_mode = 2
 visible = false
 text = "Filled shapes"
 
+[node name="Paint" type="VBoxContainer" parent="Margin/Column"]
+layout_mode = 2
+
+[node name="Lock" type="CheckBox" parent="Margin/Column/Paint"]
+layout_mode = 2
+text = "Lock transparent pixels"
+tooltip_text = "Preserve the active layer silhouette when painting, erasing, or editing a selection. New-layer paste is not affected."
+
+[node name="Perfect" type="CheckBox" parent="Margin/Column/Paint"]
+layout_mode = 2
+text = "Pixel-perfect pencil"
+tooltip_text = "Remove extra corner pixels from a 1-pixel pencil stroke."
+
+[node name="RampHint" type="Label" parent="Margin/Column/Paint"]
+layout_mode = 2
+visible = false
+text = "Shift-click palette colors from dark to light to build a shade ramp."
+autowrap_mode = 2
+
 [node name="Grid" parent="Margin/Column" instance=ExtResource("grid")]
 layout_mode = 2
 

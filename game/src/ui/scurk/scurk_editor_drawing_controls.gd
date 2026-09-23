@@ -18,6 +18,8 @@ signal isometric_guides_changed
 signal grid_visibility_changed(enabled: bool)
 signal grid_snap_changed(enabled: bool)
 signal line_snap_changed(enabled: bool)
+signal transparency_lock_changed(enabled: bool)
+signal pixel_perfect_changed(enabled: bool)
 signal grid_width_changed(value: float)
 signal grid_height_changed(value: float)
 signal clip_region_changed(enabled: bool)
@@ -94,6 +96,8 @@ func build() -> void:
 	snap_to_grid_check = $Margin/Column/Brush/Snap
 	snap_to_grid_check.toggled.connect(grid_snap_changed.emit)
 	$Margin/Column/Brush/SnapLines.toggled.connect(line_snap_changed.emit)
+	$Margin/Column/Paint/Lock.toggled.connect(transparency_lock_changed.emit)
+	$Margin/Column/Paint/Perfect.toggled.connect(pixel_perfect_changed.emit)
 	clip_region_check = $"../Editor/Canvas/Footer/Row/Clipping/Clip"
 	clip_region_check.toggled.connect(clip_region_changed.emit)
 	clip_enabled_check = $"../Editor/Canvas/Footer/Row/Clipping/Limit"
@@ -136,14 +140,18 @@ func _refresh_icon_colors() -> void:
 			)
 
 
-func update_tool_controls(tool: int) -> void:
+func update_tool_controls(tool: int, brush_size := 1, paste_active := false) -> void:
 	var uses_brush := tool in [
 		ScurkPixelCanvas.TOOL_PENCIL, ScurkPixelCanvas.TOOL_ERASER, ScurkPixelCanvas.TOOL_LINE,
 		ScurkPixelCanvas.TOOL_DIAMOND, ScurkPixelCanvas.TOOL_LEFT_WALL, ScurkPixelCanvas.TOOL_RIGHT_WALL,
 		ScurkPixelCanvas.TOOL_ELLIPSE, ScurkPixelCanvas.TOOL_RECTANGLE,
-		ScurkPixelCanvas.TOOL_SHADE, ScurkPixelCanvas.TOOL_STAMP,
+		ScurkPixelCanvas.TOOL_SHADE,
 	]
 	$Margin/Column/Brush.visible = uses_brush
+	$Margin/Column/Brush/Snap.visible = ScurkPixelCanvas.is_shape_tool(tool)
+	$Margin/Column/Paint/Lock.visible = paste_active or tool not in [ScurkPixelCanvas.TOOL_EYEDROPPER, ScurkPixelCanvas.TOOL_SHADE]
+	$Margin/Column/Paint/Perfect.visible = tool == ScurkPixelCanvas.TOOL_PENCIL and brush_size == 1 and not paste_active
+	$Margin/Column/Paint/RampHint.visible = tool == ScurkPixelCanvas.TOOL_SHADE and not paste_active
 	$Margin/Column/Brush/SnapLines.visible = tool == ScurkPixelCanvas.TOOL_LINE
 	filled_shapes_check.visible = uses_brush and tool not in [
 		ScurkPixelCanvas.TOOL_PENCIL, ScurkPixelCanvas.TOOL_ERASER, ScurkPixelCanvas.TOOL_LINE,

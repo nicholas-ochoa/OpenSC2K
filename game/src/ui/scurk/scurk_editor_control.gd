@@ -895,6 +895,11 @@ func _bind_interface() -> void:
 	drawing_controls.grid_visibility_changed.connect(_set_grid_visible)
 	drawing_controls.isometric_guides_changed.connect(_set_isometric_guides)
 	drawing_controls.grid_snap_changed.connect(_set_snap_to_grid)
+	drawing_controls.transparency_lock_changed.connect(func(enabled: bool) -> void:
+		pixel_canvas.paint_options.lock_transparent = enabled
+		pixel_canvas.queue_redraw())
+	drawing_controls.pixel_perfect_changed.connect(func(enabled: bool) -> void:
+		pixel_canvas.paint_options.pixel_perfect = enabled)
 	drawing_controls.line_snap_changed.connect(func(enabled: bool) -> void:
 		pixel_canvas.paint_options.isometric_snap = enabled
 		pixel_canvas.queue_redraw())
@@ -918,6 +923,9 @@ func _bind_interface() -> void:
 	canvas_panel = get_node("Panel/Content/Body/Editor/Canvas")
 	canvas_panel.build()
 	canvas_panel.context_requested.connect(_studio_action.bind("Context"))
+	canvas_panel.comparison_changed.connect(func(mode: int) -> void:
+		pixel_canvas.comparison_mode = mode
+		pixel_canvas.queue_redraw())
 	pixel_canvas = canvas_panel.pixel_canvas
 	canvas_panel.terrain_visibility_changed.connect(func(enabled: bool) -> void:
 		pixel_canvas.show_terrain = enabled
@@ -1070,7 +1078,7 @@ func _select_view(view: int) -> void:
 
 func _select_tool(tool_value: int) -> void:
 	current_tool = tool_value
-	drawing_controls.update_tool_controls(tool_value)
+	drawing_controls.update_tool_controls(tool_value, pixel_canvas.brush_size, pixel_canvas.paste_active)
 	if tool_value == ScurkPixelCanvas.TOOL_STAMP and studio != null:
 		studio.tabs.current_tab = studio.get_node(studio.STAMPS).get_index()
 
@@ -1109,6 +1117,7 @@ func _select_brush_size(value: float) -> void:
 	pixel_canvas.set_brush(
 		roundi(value), round_brush_check.button_pressed
 	)
+	drawing_controls.update_tool_controls(current_tool, pixel_canvas.brush_size, pixel_canvas.paste_active)
 
 
 func _set_round_brush(enabled: bool) -> void:
@@ -1245,6 +1254,7 @@ func _on_clipboard_changed(width: int, height: int) -> void:
 
 
 func _update_transform_buttons() -> void:
+	drawing_controls.update_tool_controls(current_tool, pixel_canvas.brush_size, pixel_canvas.paste_active)
 	var available := pixel_canvas.paste_active or (pixel_canvas.selection.active() and not pixel_canvas.editing_disabled)
 	for button in clipboard_action_buttons:
 		button.disabled = not available
@@ -1876,7 +1886,6 @@ func _studio_action(action: String) -> void:
 		"RecoverProject": studio.request_recovery()
 		"ProjectSaveAs": studio.request_save(true)
 		"ExportTileSet": request_save_as()
-		"PaintOptions": studio.show_paint()
 		"ReplaceColor": studio.show_replace()
 		"Context": studio.show_context()
 		"SelectAll": pixel_canvas.select_all()

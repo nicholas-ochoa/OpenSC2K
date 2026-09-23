@@ -3,6 +3,7 @@ extends VBoxContainer
 
 signal zoom_changed(value: int)
 signal context_requested
+signal comparison_changed(mode: int)
 signal terrain_visibility_changed(enabled: bool)
 
 var zoom_pending := 0
@@ -39,6 +40,10 @@ func build() -> void:
 	pixel_scroll = $Row/PixelScroll
 	pixel_canvas = $Row/PixelScroll/Center/PixelCanvas
 	previews_panel = $Row/Previews
+	var compare := $Footer/Row/Compare/Mode as OptionButton
+	for label in ["Current artwork", "Saved artwork", "Saved overlay", "Changed pixels"]:
+		compare.add_item(label)
+	compare.item_selected.connect(comparison_changed.emit)
 	$Footer/Row/Clipping/Terrain.toggled.connect(terrain_visibility_changed.emit)
 	$Footer/Row/Views/Context.pressed.connect(context_requested.emit)
 	show_views_button = $Footer/Row/Views/ShowViews

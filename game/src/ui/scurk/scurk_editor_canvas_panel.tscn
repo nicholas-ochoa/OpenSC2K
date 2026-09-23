@@ -151,6 +151,17 @@ text = "Show terrain"
 button_pressed = true
 tooltip_text = "Show the background terrain beneath the artwork."
 
+[node name="Compare" type="HBoxContainer" parent="Footer/Row"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Footer/Row/Compare"]
+layout_mode = 2
+text = "Compare"
+
+[node name="Mode" type="OptionButton" parent="Footer/Row/Compare"]
+layout_mode = 2
+tooltip_text = "Compare with saved artwork. Hold Backslash for a quick view of the saved artwork."
+
 [node name="Views" type="HBoxContainer" parent="Footer/Row"]
 layout_mode = 2
 size_flags_horizontal = 8
