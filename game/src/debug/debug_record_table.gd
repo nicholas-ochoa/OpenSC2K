@@ -22,7 +22,6 @@ var sort_descending := false
 @onready var search: LineEdit = $Controls/Search
 @onready var show_empty: CheckBox = $Controls/ShowEmpty
 @onready var live: CheckBox = $Controls/Live
-@onready var status: Label = $Status
 
 
 func _ready() -> void:
@@ -59,8 +58,7 @@ func _ready() -> void:
 	table.columns = titles.size()
 	_titles = titles
 
-	if kind != "State":
-		table.column_title_clicked.connect(_on_column_title_clicked)
+	table.column_title_clicked.connect(_on_column_title_clicked)
 
 	for column in titles.size():
 		table.set_column_title(column, titles[column])
@@ -73,6 +71,9 @@ func _ready() -> void:
 
 	if not _fitted_columns.is_empty():
 		table.item_collapsed.connect(func(_item: TreeItem) -> void: _fit_columns())
+
+	if kind == "State":
+		sort_by(0)
 
 	show_empty.visible = kind != "State"
 	search.text_changed.connect(func(_text: String) -> void: _filter())
@@ -103,7 +104,6 @@ func refresh_from_host(host: Control, force := false) -> void:
 	var simulation := host.get("simulation_state") as SimulationSessionState
 	var engine: SimulationEngine = simulation.simulation_engine if simulation != null else null
 	update_records(DebugCityTables.collect(kind, city, engine, show_empty.button_pressed))
-	status.text = "No city loaded." if city == null else "%d records • published state • refresh at most once per second" % rows.size()
 
 
 func update_records(records: Array[DebugTableRecord]) -> void:

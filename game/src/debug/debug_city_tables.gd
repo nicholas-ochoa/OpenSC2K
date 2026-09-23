@@ -16,7 +16,7 @@ const STAT_LABELS := {
 	Tiles.BUS_DEPOT: ["Type-specific byte", "Bus tile count / 4", "Bus tile count", "Annual passengers"],
 	Tiles.RAIL_STATION: ["Type-specific byte", "Rail tile count / 4", "Preserved statistic", "Annual passengers"],
 }
-# state tab rows in display order, with their descriptions
+# state tab rows in record order, with their descriptions. the tab sorts them by name
 const ENGINE_FIELDS := {
 	"developed_tiles": "Developed tiles found by the last map scan. -1 until the first scan.",
 	"power_usage_percent": "Percent of power capacity in use at the last power update. -1 until the first update.",
@@ -120,13 +120,24 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 		"State":
 			if engine != null:
 				for key: String in ENGINE_FIELDS:
-					result.append(_field(key, engine.get(key), ENGINE_FIELDS[key]))
+					result.append(_state_field(key, engine.get(key), ENGINE_FIELDS[key]))
 
 				for key: String in RANDOM_FIELDS:
 					var random: RefCounted = engine.get(key)
 
 					if random != null:
-						result.append(_field(key + ".state", random.get("state"), RANDOM_FIELDS[key]))
+						result.append(_state_field(key + ".state", random.get("state"), RANDOM_FIELDS[key]))
+
+	return result
+
+
+# values sort in groups: numbers, then points, then other values as text.
+# the hex column has no value for types other than numbers
+static func _state_field(key: String, value: Variant, detail: String) -> DebugTableRecord:
+	var result := _field(key, value, detail)
+	var number: Variant = value if value is int else null
+	var sort_value: Array = [0, value] if value is int else [1, value.x, value.y] if value is Vector2i else [2, str(value)]
+	result.sort = [key, sort_value, number, detail]
 
 	return result
 

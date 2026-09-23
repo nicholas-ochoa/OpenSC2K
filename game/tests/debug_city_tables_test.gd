@@ -82,6 +82,7 @@ func _run() -> void:
 		host.add_child(panel)
 		panel.refresh_from_host(host, true)
 		_check_object_columns(host)
+		_check_state_sorting(host, engine)
 		var row: TreeItem = panel.rows["1"]
 		row.collapsed = false
 		panel.refresh_from_host(host, true)
@@ -158,6 +159,27 @@ func _check_object_columns(host: Control) -> void:
 	var x_width := table.get_column_width(6)
 	item.collapsed = false
 	assert(table.get_column_width(6) > x_width)
+	panel.free()
+
+
+# state fields start in name order and sort numbers by value
+func _check_state_sorting(host: Control, engine: SimulationEngine) -> void:
+	host.simulation_state.simulation_engine = engine
+	var panel := preload("res://src/debug/debug_record_table.tscn").instantiate() as DebugRecordTable
+	panel.kind = "State"
+	host.add_child(panel)
+	panel.refresh_from_host(host, true)
+	var names := panel.table.get_root().get_children().map(func(item: TreeItem) -> String: return item.get_text(0))
+	var sorted_names := names.duplicate()
+	sorted_names.sort_custom(func(a: String, b: String) -> bool: return a.naturalnocasecmp_to(b) < 0)
+	assert(names == sorted_names and names[0] == "active_disaster_type")
+	panel.table.column_title_clicked.emit(1, MOUSE_BUTTON_LEFT)
+	var numbers := panel.table.get_root().get_children().filter(func(item: TreeItem) -> bool: return item.get_text(1).is_valid_int()) \
+		.map(func(item: TreeItem) -> int: return item.get_text(1).to_int())
+	var sorted_numbers := numbers.duplicate()
+	sorted_numbers.sort()
+	assert(numbers == sorted_numbers and numbers[-1] == 789, "Expected numeric value order")
+	host.simulation_state.simulation_engine = null
 	panel.free()
 
 
