@@ -1,5 +1,7 @@
 [gd_scene format=3]
 
+[ext_resource type="Script" path="res://src/ui/scurk/scurk_context_menu.gd" id="context_menu"]
+
 [ext_resource type="Script" path="res://src/ui/scurk/scurk_editor_control.gd" id="script"]
 [ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_editor_toolbar.tscn" id="toolbar"]
 [ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_editor_drawing_controls.tscn" id="drawing_controls"]
@@ -89,3 +91,4 @@ text_overrun_behavior = 3
 layout_mode = 2
 
 [node name="CanvasMenu" type="PopupMenu" parent="."]
+script = ExtResource("context_menu")

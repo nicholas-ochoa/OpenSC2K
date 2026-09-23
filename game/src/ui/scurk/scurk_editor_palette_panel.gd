@@ -118,14 +118,17 @@ func import_state(state: Dictionary) -> void:
 
 func _show_color_menu(index: int, position: Vector2) -> void:
 	context_color_index = index
-	var menu := $ColorMenu as PopupMenu
+	var menu := $ColorMenu as ScurkContextMenu
 	menu.clear()
+	menu.reset_hints()
 	menu.add_item("Select color %d" % index, ColorAction.SELECT)
 	menu.add_separator()
-	menu.add_check_item("Favorite (Ctrl/Cmd-click)", ColorAction.FAVORITE)
+	menu.add_check_item("Favorite", ColorAction.FAVORITE)
 	menu.set_item_checked(menu.get_item_index(ColorAction.FAVORITE), palette_control.favorite_indices.has(index))
-	menu.add_check_item("Shade ramp step (Shift-click)", ColorAction.RAMP)
+	menu.add_check_item("Shade ramp step", ColorAction.RAMP)
 	menu.set_item_checked(menu.get_item_index(ColorAction.RAMP), palette_control.ramp_indices.has(index))
+	menu.hints[menu.get_item_index(ColorAction.FAVORITE)] = "Cmd-click" if OS.has_feature("macos") else "Ctrl-click"
+	menu.hints[menu.get_item_index(ColorAction.RAMP)] = "Shift-click"
 	menu.add_item("Clear shade ramp", ColorAction.CLEAR_RAMP)
 	menu.set_item_disabled(menu.get_item_index(ColorAction.CLEAR_RAMP), palette_control.ramp_indices.is_empty())
 	var transform := palette_control.get_global_transform_with_canvas() if menu.is_embedded() else palette_control.get_screen_transform()

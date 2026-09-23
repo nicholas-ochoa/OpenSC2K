@@ -1791,9 +1791,10 @@ func _show_canvas_menu(position: Vector2) -> void:
 
 
 func _refresh_canvas_menu() -> void:
-	var menu := $CanvasMenu as PopupMenu
+	var menu := $CanvasMenu as ScurkContextMenu
 	menu.clear()
 	canvas_menu_keys.clear()
+	$CanvasMenu.reset_hints()
 	var has_pixels := not pixel_canvas.pixels.is_empty()
 	var selected := pixel_canvas.selection.active()
 	var floating := pixel_canvas.paste_active
@@ -1826,10 +1827,10 @@ func _refresh_canvas_menu() -> void:
 
 
 func _add_canvas_action(label: String, action: String, enabled: bool, key := 0) -> void:
-	var menu := $CanvasMenu as PopupMenu
+	var menu := $CanvasMenu as ScurkContextMenu
 	if key != 0:
 		var hint := OS.get_keycode_string(key).replace("Command", "Cmd").replace("Control", "Ctrl").replace("Meta", "Cmd")
-		label += " (" + hint + ")"
+		menu.hints[menu.item_count] = hint
 	menu.add_item(label)
 	var index := menu.item_count - 1
 	if key != 0:
@@ -1839,7 +1840,7 @@ func _add_canvas_action(label: String, action: String, enabled: bool, key := 0) 
 
 
 func _canvas_menu_action(id: int) -> void:
-	var menu := $CanvasMenu as PopupMenu
+	var menu := $CanvasMenu as ScurkContextMenu
 	var index := menu.get_item_index(id)
 	if index >= 0 and not menu.is_item_disabled(index):
 		var action := String(menu.get_item_metadata(index))
@@ -1854,7 +1855,7 @@ func _canvas_menu_action(id: int) -> void:
 func _canvas_menu_input(event: InputEvent) -> void:
 	if not event is InputEventKey or not event.pressed or event.echo:
 		return
-	var menu := $CanvasMenu as PopupMenu
+	var menu := $CanvasMenu as ScurkContextMenu
 	for index in canvas_menu_keys:
 		if event.get_keycode_with_modifiers() == canvas_menu_keys[index] and not menu.is_item_disabled(index):
 			menu.set_input_as_handled()

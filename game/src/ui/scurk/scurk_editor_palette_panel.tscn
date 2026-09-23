@@ -1,5 +1,7 @@
 [gd_scene format=3]
 
+[ext_resource type="Script" path="res://src/ui/scurk/scurk_context_menu.gd" id="context_menu"]
+
 [ext_resource type="Script" path="res://src/ui/scurk/scurk_editor_palette_panel.gd" id="script"]
 [ext_resource type="Script" path="res://src/view/scurk_palette_control.gd" id="colors"]
 [ext_resource type="Script" path="res://src/view/scurk_texture_control.gd" id="textures"]
@@ -78,3 +80,4 @@ size_flags_vertical = 0
 script = ExtResource("textures")
 
 [node name="ColorMenu" type="PopupMenu" parent="."]
+script = ExtResource("context_menu")
