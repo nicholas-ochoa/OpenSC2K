@@ -147,12 +147,12 @@ text = "Recover Autosave..."
 
 [node name="CopyAllLayers" type="Button" parent="Actions"]
 layout_mode = 2
-text = "Copy All Layers (Ctrl/Cmd+Shift+C)"
+text = "Copy All Layers"
 
 [node name="CutAllLayers" type="Button" parent="Actions"]
 layout_mode = 2
-text = "Cut from All Layers (Ctrl/Cmd+Shift+X)"
+text = "Cut from All Layers"
 
 [node name="PasteNewLayer" type="Button" parent="Actions"]
 layout_mode = 2
-text = "Paste on New Layer (Ctrl/Cmd+Shift+V)"
+text = "Paste on New Layer"

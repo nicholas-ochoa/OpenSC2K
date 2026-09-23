@@ -48,7 +48,6 @@ var current_view := VIEW_LARGE
 var current_tool := ScurkPixelCanvas.TOOL_PENCIL
 var selected_color_index := 0
 var canvas_menu_point := Vector2i.ZERO
-var canvas_menu_keys: Dictionary[int, int] = {}
 var pending_discard_action := ""
 var edit_history: ScurkEditorHistory:
 	get:
@@ -898,7 +897,6 @@ func _bind_interface() -> void:
 	studio.bind(self)
 	pixel_canvas.context_menu_requested.connect(_show_canvas_menu)
 	$CanvasMenu.id_pressed.connect(_canvas_menu_action)
-	$CanvasMenu.window_input.connect(_canvas_menu_input)
 	pixel_canvas.copy_all_layers_requested.connect(studio.copy_all_layers)
 	pixel_canvas.new_layer_paste_committed.connect(studio.paste_on_new_layer)
 	pixel_canvas.selection_changed.connect(_update_transform_buttons)
@@ -1793,7 +1791,6 @@ func _show_canvas_menu(position: Vector2) -> void:
 func _refresh_canvas_menu() -> void:
 	var menu := $CanvasMenu as ScurkContextMenu
 	menu.clear()
-	canvas_menu_keys.clear()
 	$CanvasMenu.reset_hints()
 	var has_pixels := not pixel_canvas.pixels.is_empty()
 	var selected := pixel_canvas.selection.active()
@@ -1829,11 +1826,9 @@ func _refresh_canvas_menu() -> void:
 func _add_canvas_action(label: String, action: String, enabled: bool, key := 0) -> void:
 	var menu := $CanvasMenu as ScurkContextMenu
 	if key != 0:
-		menu.hints[menu.item_count] = ScurkContextMenu.key_hint(key)
+		menu.set_shortcut_hint(menu.item_count, key)
 	menu.add_item(label)
 	var index := menu.item_count - 1
-	if key != 0:
-		canvas_menu_keys[index] = key
 	menu.set_item_metadata(index, action)
 	menu.set_item_disabled(index, not enabled)
 
@@ -1849,15 +1844,3 @@ func _canvas_menu_action(id: int) -> void:
 		else:
 			_studio_action(action)
 		pixel_canvas.grab_focus()
-
-
-func _canvas_menu_input(event: InputEvent) -> void:
-	if not event is InputEventKey or not event.pressed or event.echo:
-		return
-	var menu := $CanvasMenu as ScurkContextMenu
-	for index in canvas_menu_keys:
-		if event.get_keycode_with_modifiers() == canvas_menu_keys[index] and not menu.is_item_disabled(index):
-			menu.set_input_as_handled()
-			menu.hide()
-			_canvas_menu_action(menu.get_item_id(index))
-			return

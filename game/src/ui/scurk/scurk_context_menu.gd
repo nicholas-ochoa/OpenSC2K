@@ -12,6 +12,7 @@ const MAC_KEY_SYMBOLS := {
 }
 
 var hints: Dictionary[int, String] = {}
+var shortcuts: Dictionary[int, int] = {}
 var hint_labels: Array[Label] = []
 var base_end_padding := 0
 
@@ -28,14 +29,27 @@ static func key_hint(key: int) -> String:
 
 
 func _ready() -> void:
+	bind()
+
+
+func bind() -> void:
+	if about_to_popup.is_connected(_layout_hints):
+		return
 	base_end_padding = get_theme_constant("item_end_padding")
 	about_to_popup.connect(_layout_hints)
 	id_focused.connect(_update_hint_colors)
 	window_input.connect(_outside_click)
+	window_input.connect(_shortcut_input)
+
+
+func set_shortcut_hint(index: int, key: int) -> void:
+	shortcuts[index] = key
+	hints[index] = key_hint(key)
 
 
 func reset_hints() -> void:
 	hints.clear()
+	shortcuts.clear()
 	for label in hint_labels:
 		label.free()
 	hint_labels.clear()
@@ -116,3 +130,14 @@ func _outside_click(event: InputEvent) -> void:
 	set_input_as_handled()
 	hide()
 	target.push_input.call_deferred(forwarded, true)
+
+
+func _shortcut_input(event: InputEvent) -> void:
+	if not event is InputEventKey or not event.pressed or event.echo:
+		return
+	for index in shortcuts:
+		if event.get_keycode_with_modifiers() == shortcuts[index] and not is_item_disabled(index):
+			set_input_as_handled()
+			hide()
+			id_pressed.emit(get_item_id(index))
+			return

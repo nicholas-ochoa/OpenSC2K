@@ -259,6 +259,7 @@ func _run() -> void:
 	DirAccess.remove_absolute(folder)
 	editor.free()
 	await _test_context_menu_input()
+	await _test_menu_bar_shortcuts()
 	print("PASS: SCURK selection, modal names, synchronized cycling, unclipped save/reload, selected-view indexed PNG, views and viewport fit")
 	quit()
 
@@ -570,3 +571,29 @@ func _test_context_menu_input() -> void:
 	assert(menu.visible and clicks.size() == 1)
 	menu.hide()
 	host.free()
+
+func _test_menu_bar_shortcuts() -> void:
+	var toolbar := preload("res://src/ui/scurk/scurk_editor_toolbar.tscn").instantiate() as ScurkEditorToolbar
+	root.add_child(toolbar)
+	var actions: Array[String] = []
+	toolbar.studio_action.connect(func(action: String) -> void: actions.append(action))
+	var menu := (toolbar.get_node("Row/Edit") as MenuButton).get_popup()
+	var event := InputEventKey.new()
+	event.keycode = KEY_C
+	event.pressed = true
+	event.shift_pressed = true
+	event.meta_pressed = OS.has_feature("macos")
+	event.ctrl_pressed = not event.meta_pressed
+	menu.popup()
+	await process_frame
+	menu.window_input.emit(event)
+	assert(actions == ["CopyAllLayers"] and not menu.visible)
+	await process_frame
+	(toolbar.get_node("Actions/CopyAllLayers") as Button).disabled = true
+	menu.popup()
+	await process_frame
+	menu.window_input.emit(event)
+	assert(actions == ["CopyAllLayers"], "Disabled menu action ran: %s" % [actions])
+	menu.hide()
+	toolbar.free()
+

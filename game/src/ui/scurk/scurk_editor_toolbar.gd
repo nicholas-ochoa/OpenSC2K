@@ -59,12 +59,24 @@ func build() -> void:
 
 
 func _bind_menu(menu: MenuButton, entries: Array[String]) -> void:
-	var popup := menu.get_popup()
+	menu.get_popup().set_script(preload("res://src/ui/scurk/scurk_context_menu.gd"))
+	var popup := menu.get_popup() as ScurkContextMenu
+	var command := KEY_MASK_META if OS.has_feature("macos") else KEY_MASK_CTRL
+	var shortcuts := {
+		"Open": command | KEY_O, "Save": command | KEY_S, "SaveAs": command | KEY_MASK_SHIFT | KEY_S,
+		"Undo": command | KEY_Z, "Redo": command | KEY_MASK_SHIFT | KEY_Z if OS.has_feature("macos") else command | KEY_Y,
+		"SelectAll": command | KEY_A, "Deselect": KEY_ESCAPE, "Close": KEY_ESCAPE,
+		"CopySelection": command | KEY_C, "CutSelection": command | KEY_X, "PasteSelection": command | KEY_V,
+		"CopyAllLayers": command | KEY_MASK_SHIFT | KEY_C, "CutAllLayers": command | KEY_MASK_SHIFT | KEY_X,
+		"PasteNewLayer": command | KEY_MASK_SHIFT | KEY_V, "DuplicateSelection": command | KEY_D, "DeleteSelection": KEY_DELETE,
+	}
 	for index in entries.size():
 		if entries[index].is_empty():
 			popup.add_separator()
 		else:
 			popup.add_item((get_node("Actions/" + entries[index]) as Button).text, index)
+			if shortcuts.has(entries[index]):
+				popup.set_shortcut_hint(index, shortcuts[entries[index]])
 
 	popup.about_to_popup.connect(func() -> void:
 		for index in entries.size():
@@ -74,3 +86,4 @@ func _bind_menu(menu: MenuButton, entries: Array[String]) -> void:
 		var action := get_node("Actions/" + entries[index]) as Button
 		if not action.disabled:
 			action.pressed.emit())
+	popup.bind()
