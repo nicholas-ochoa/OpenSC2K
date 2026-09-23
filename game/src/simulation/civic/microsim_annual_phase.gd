@@ -255,10 +255,10 @@ static func _store_arcology_population(annual: MicrosimAnnualContext) -> void:
 	)
 
 
-# demolish every launch-marked structure, pay the launch bonus, and report
-# the launch
+# demolish every launch-marked structure, pay the launch bonus, and request
+# the launch notices that the original shows before and after the launch
 static func _launch_arcologies(annual: MicrosimAnnualContext) -> void:
-	annual.news_items.append(NewsEvent.new(NEWS_ARCOLOGY_LAUNCH_START, 0))
+	annual.notice_ids.append(NOTICE_ARCOLOGY_LAUNCH_START)
 	var text_overlays: PackedByteArray = annual.changed_payloads.XTXT
 
 	for x in annual.map_edge:
@@ -286,7 +286,7 @@ static func _launch_arcologies(annual: MicrosimAnnualContext) -> void:
 		MISC_FUNDS,
 		_to_i32(BinaryData.read_i32_be(annual.misc, MISC_FUNDS) + annual.launch_arcology_records * 100000)
 	)
-	annual.news_items.append(NewsEvent.new(NEWS_ARCOLOGY_LAUNCH_END, 0))
+	annual.notice_ids.append(NOTICE_ARCOLOGY_LAUNCH_END)
 	annual.arcology_launched = true
 	annual.arcology_launch_pending = false
 
@@ -326,6 +326,7 @@ static func _result(annual: MicrosimAnnualContext) -> Result:
 	result.launch_arcology_records = annual.launch_arcology_records
 	result.launched_structures = annual.launched_structures
 	result.news_items = annual.news_items
+	result.notice_ids = annual.notice_ids
 	result.effect_events = annual.effect_events
 	result.sound_events = SoundEvent.from_ids(annual.sound_events)
 	result.view_center_requests = annual.view_center_requests

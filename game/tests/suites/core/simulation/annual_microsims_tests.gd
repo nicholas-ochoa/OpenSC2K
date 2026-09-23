@@ -499,12 +499,10 @@ func test_arcology_launch_phase(reference_root: String) -> void:
 		"Arcology launch returns its four ordered native dust frames",
 	)
 	_check(lfsr.position == 100, "Arcology launch consumes one LFSR value per record")
+	_check(result.news_items.is_empty(), "Arcology launch adds no newspaper stories: %s" % [result.news_items])
 	_check(
-		NewsEvent.same_arrays(result.news_items, [
-			NewsEvent.new(0x211, 0),
-			NewsEvent.new(0x212, 0),
-		]),
-		"Arcology launch reports start and completion news: %s" % [result.news_items],
+		result.notice_ids == PackedInt32Array([529, 530]),
+		"Arcology launch requests the start and completion notices: %s" % result.notice_ids,
 	)
 	_check(SoundEvent.same_arrays(result.sound_events, SoundEvent.from_ids([504])), "Arcology launch reports one explosion sound: %s" % [result.sound_events])
 	_check(result.complete, "Arcology launch completes the annual microsimulation action")

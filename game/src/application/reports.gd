@@ -11,6 +11,8 @@ const MENU_NO_DISASTERS := CityMenuBarView.MENU_NO_DISASTERS
 # message box text from the supplied string table, by string ID
 const NOTICE_TEXT := {
 	292: "Due to the current fiscal crisis, the city council urges you to cut back drastically on city expenditures.",
+	529: "The exodus has begun.",
+	530: "Your launch arcos have departed into space to found new worlds. You have been compensated for their construction.",
 }
 
 # presentation outcome and the complete typed simulation result

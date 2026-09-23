@@ -146,14 +146,14 @@ func _test_main_menu() -> void:
 	)
 	status_bar.prepend_reports(PackedStringArray(["Latest"]))
 	status_bar.prepend_news_items([
-		NewsEvent.new(0x211),
+		NewsEvent.new(0x29),
 		NewsEvent.new(-1),
 	])
 	status_bar.clear_environment()
 	_check(
 		status_bar.recent_reports.size() == 3
 		and status_bar.reports_label.text == CityStatusBarUi.report_name(-1)
-		and status_bar.recent_reports[1] == CityStatusBarUi.report_name(0x211)
+		and status_bar.recent_reports[1] == CityStatusBarUi.report_name(0x29)
 		and not status_bar.rci_graph.demand_available,
 		"City status bar maps news, replaces reports, and clears city values",
 	)

@@ -143,6 +143,14 @@ func _check_notices() -> void:
 	dialog.hide()
 	await process_frame
 	assert(not dialog.visible and not main.frame._simulation_suspended())
+	main.reports.show_notices(PackedInt32Array([529, 530]))
+	assert(dialog.dialog_text == "The exodus has begun.", "The arcology launch notices keep their order")
+	dialog.hide()
+	await process_frame
+	assert(dialog.dialog_text.begins_with("Your launch arcos have departed"))
+	dialog.hide()
+	await process_frame
+	assert(not dialog.visible)
 
 
 func _check_new_windows() -> void:

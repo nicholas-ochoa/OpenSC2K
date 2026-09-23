@@ -27,6 +27,7 @@ var old_arrests: int
 var prison_population: int
 var prison_count: int
 var news_items: Array[NewsEvent]
+var notice_ids: PackedInt32Array
 var random_records_pending: int
 var low_school_score: bool
 var prison_overcrowded: bool
