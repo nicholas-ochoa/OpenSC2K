@@ -3,6 +3,9 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
+const COLOR_COUNT := 256
+const RGB_CHANNELS := 3
+const RGB_BYTES := COLOR_COUNT * RGB_CHANNELS
 const FAST_CYCLE_START := 0xab
 # can't just rotate the palette array, the groups have different cycles
 const FAST_CYCLE_TABLE := [
@@ -81,7 +84,31 @@ static func load_bmp(path: String) -> Sc2Palette:
 
 
 func is_valid() -> bool:
-	return load_error.is_empty() and colors.size() == 256
+	return load_error.is_empty() and colors.size() == COLOR_COUNT
+
+
+func to_rgb_bytes() -> PackedByteArray:
+	if not is_valid():
+		return PackedByteArray()
+	var bytes := PackedByteArray()
+	bytes.resize(RGB_BYTES)
+	for index in COLOR_COUNT:
+		var offset := index * RGB_CHANNELS
+		bytes[offset] = colors[index].r8
+		bytes[offset + 1] = colors[index].g8
+		bytes[offset + 2] = colors[index].b8
+	return bytes
+
+
+static func from_rgb_bytes(bytes: PackedByteArray) -> Sc2Palette:
+	var palette := Sc2Palette.new()
+	if bytes.size() != RGB_BYTES:
+		palette.load_error = "The palette must contain 256 RGB colors."
+		return palette
+	for index in COLOR_COUNT:
+		var offset := index * RGB_CHANNELS
+		palette.colors.append(Color8(bytes[offset], bytes[offset + 1], bytes[offset + 2]))
+	return palette
 
 
 func color(index: int) -> Color:
