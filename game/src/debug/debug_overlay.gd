@@ -137,6 +137,9 @@ func _build_actions(tabs: TabContainer) -> void:
 	_button(cheats, "Call Maxis Man", ("Send Maxis Man to the active disaster. If there is no disaster monster or tornado, " +
 		"he goes to the disaster marker nearest the view center."), func() -> void:
 		_invoke("debug_dispatch_maxis_man"))
+	_button(cheats, "Offer military base", ("Show the military base offer now. The simulation waits for your answer. " +
+		"This is not available if the city already has a base."), func() -> void:
+		_invoke("debug_offer_military_base"))
 	var disasters := _action_section(box, "Disasters", 3)
 	var disaster := OptionButton.new()
 	disaster.size_flags_horizontal = Control.SIZE_EXPAND_FILL

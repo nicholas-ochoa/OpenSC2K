@@ -121,6 +121,33 @@ static func unlock_everything(city: CityState, document: Sc2File) -> Result:
 	return result
 
 
+# open the military prompt now. no day phases run after the answer
+static func offer_military_base(controller: GameSpeedController) -> Result:
+	var engine := controller.engine if controller != null else null
+	var result := Result.new()
+
+	if engine == null or engine.city == null or not engine.city.is_valid():
+		result.error = "No city is loaded."
+	elif engine.terminal_state:
+		result.error = "The game has ended."
+	elif not engine.pending_interaction.is_empty() or controller.interaction_blocked:
+		result.error = "Another prompt is waiting for an answer."
+	elif engine.city.document.misc_u32(Sc2MiscLayout.MILITARY_BASE_TYPE) >= MilitaryProposalPhase.BASE_ARMY:
+		result.error = "The city already has a military base."
+
+	if not result.error.is_empty():
+		return result
+
+	var schedule := SimulationClock.state_for_day(engine.clock.city_days)
+	schedule.actions = PackedStringArray()
+	engine.pending_interaction = "military_proposal"
+	engine.pending_day_schedule = schedule
+	controller.interaction_blocked = true
+	result.ok = true
+
+	return result
+
+
 static func set_no_disasters(city: CityState, enabled: bool) -> Result:
 	if city == null:
 		var result := Result.new()

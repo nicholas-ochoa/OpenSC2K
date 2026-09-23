@@ -249,6 +249,20 @@ func debug_dispatch_maxis_man() -> ActionResult:
 	)
 
 
+func debug_offer_military_base() -> ActionResult:
+	if app.simulation_state.military_proposal_pending:
+		return ActionResult.new(false, "The military base offer is already open.")
+
+	var result := DebugActions.offer_military_base(app.simulation_state.speed_controller)
+
+	if not result.ok:
+		return ActionResult.new(false, result.error)
+
+	app.budget.open_military_proposal()
+
+	return ActionResult.new(true, "The military base offer is open.")
+
+
 func debug_set_visible_altitude_levels(levels: int) -> void:
 	if app.document_state.city == null:
 		return
