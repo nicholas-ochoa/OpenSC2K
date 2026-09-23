@@ -30,6 +30,7 @@ func _run() -> void:
 	await process_frame
 	await _test_sidebar()
 	_test_layers()
+	_test_layer_menu()
 	_test_project()
 	_test_delete_confirmation()
 	_test_undo_history()
@@ -749,3 +750,25 @@ func _test_all_layer_clipboard() -> void:
 	canvas.paste_position = Vector2i(4, 0)
 	canvas.commit_paste()
 	assert(_document().layers.size() == 3 and _document().layers[2].pixels[4] == 10)
+
+
+func _test_layer_menu() -> void:
+	_fresh()
+	studio._refresh_layer_menu()
+	var menu := studio.get_node("LayerMenu") as PopupMenu
+	assert(menu.is_item_disabled(menu.get_item_index(studio.LayerAction.DELETE)))
+	studio._layer_menu_action(studio.LayerAction.ADD)
+	assert(_document().layers.size() == 2)
+	studio._layer_menu_action(studio.LayerAction.VISIBLE)
+	assert(not _document().layers[1].visible)
+	studio._layer_menu_action(studio.LayerAction.LOCKED)
+	assert(_document().layers[1].locked)
+	studio._refresh_layer_menu()
+	assert(menu.is_item_checked(menu.get_item_index(studio.LayerAction.LOCKED)))
+	assert(not menu.is_item_checked(menu.get_item_index(studio.LayerAction.VISIBLE)))
+	studio._layer_menu_action(studio.LayerAction.DOWN)
+	assert(_document().active == 0 and _document().layers[0].locked)
+	studio._layer_menu_action(studio.LayerAction.UP)
+	assert(_document().active == 1)
+	editor.undo()
+	assert(_document().active == 0)

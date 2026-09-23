@@ -329,3 +329,5 @@ title = "Delete layer"
 size = Vector2i(360, 130)
 exclusive = true
 ok_button_text = "Delete"
+
+[node name="LayerMenu" type="PopupMenu" parent="."]

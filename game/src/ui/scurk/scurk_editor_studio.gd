@@ -9,6 +9,7 @@ const HISTORY := "Margin/Column/Tabs/History"
 const META := "Margin/Column/Tabs/Metadata"
 const STAMPS := "Margin/Column/Tabs/Stamps"
 const MAX_SAVED_ID_LIST_SIZE := 1500
+enum LayerAction { ADD, DELETE, UP, DOWN, VISIBLE, LOCKED, RENAME }
 
 var tabs: TabContainer
 var editor: ScurkEditorControl
@@ -92,6 +93,8 @@ func bind(value: ScurkEditorControl) -> void:
 	layers.item_selected.connect(func() -> void:
 		if not updating_controls and layers.get_selected() != null:
 			_select_layer(int(layers.get_selected().get_metadata(1))))
+	layers.gui_input.connect(_layer_list_input)
+	$LayerMenu.id_pressed.connect(_layer_menu_action)
 	layers.item_edited.connect(func() -> void:
 		var item := layers.get_edited()
 		if item != null and layers.get_edited_column() == 0:
@@ -324,6 +327,61 @@ func _refresh_layers() -> void:
 	get_node(LAYERS + "/Name").text = active.name
 	get_node(LAYERS + "/State/Locked").set_pressed_no_signal(active.locked)
 	updating_controls = false
+
+
+func _layer_list_input(event: InputEvent) -> void:
+	if not event is InputEventMouseButton or event.button_index != MOUSE_BUTTON_RIGHT or not event.pressed:
+		return
+	var list := get_node(LAYERS + "/Row/List") as Tree
+	var item := list.get_item_at_position(event.position)
+	if item == null:
+		return
+	_select_layer(int(item.get_metadata(1)))
+	_refresh_layer_menu()
+	$LayerMenu.position = Vector2i(list.get_screen_transform() * event.position)
+	$LayerMenu.popup()
+	list.accept_event()
+
+
+func _refresh_layer_menu() -> void:
+	var menu := $LayerMenu as PopupMenu
+	menu.clear()
+	if not project.documents.has(key()):
+		return
+	var document: Dictionary = project.documents[key()]
+	var index := int(document.active)
+	var layer: Dictionary = document.layers[index]
+	menu.add_item("Add layer", LayerAction.ADD)
+	menu.add_item("Delete layer", LayerAction.DELETE)
+	menu.set_item_disabled(menu.get_item_index(LayerAction.DELETE), document.layers.size() <= 1)
+	menu.add_item("Move up", LayerAction.UP)
+	menu.set_item_disabled(menu.get_item_index(LayerAction.UP), index == document.layers.size() - 1)
+	menu.add_item("Move down", LayerAction.DOWN)
+	menu.set_item_disabled(menu.get_item_index(LayerAction.DOWN), index == 0)
+	menu.add_separator()
+	menu.add_check_item("Visible", LayerAction.VISIBLE)
+	menu.set_item_checked(menu.get_item_index(LayerAction.VISIBLE), layer.visible)
+	menu.add_check_item("Locked", LayerAction.LOCKED)
+	menu.set_item_checked(menu.get_item_index(LayerAction.LOCKED), layer.locked)
+	menu.add_item("Rename", LayerAction.RENAME)
+
+
+func _layer_menu_action(action: int) -> void:
+	if not project.documents.has(key()):
+		return
+	var document: Dictionary = project.documents[key()]
+	var layer: Dictionary = document.layers[int(document.active)]
+	match action:
+		LayerAction.ADD, LayerAction.DELETE, LayerAction.UP, LayerAction.DOWN:
+			_layer_action(["Add", "Delete", "Up", "Down"][action])
+		LayerAction.VISIBLE:
+			_layer_visible(not layer.visible)
+		LayerAction.LOCKED:
+			_layer_locked(not layer.locked)
+		LayerAction.RENAME:
+			var field := get_node(LAYERS + "/Name") as LineEdit
+			field.grab_focus()
+			field.select_all()
 
 
 func _layer_label(layer: Dictionary) -> String:
