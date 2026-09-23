@@ -18,7 +18,7 @@ func _init(application: CityApplication) -> void:
 
 
 func activate_document(
-	document: Sc2File, loaded_scenario: ScenarioState = null, status_text := ""
+	document: Sc2File, loaded_scenario: ScenarioState = null, status_text := "", loaded_from_file := false
 ) -> bool:
 	var disable_compatibility := app.preferences.original_compatibility and document != null and document.is_extended()
 	var compatibility_error := OriginalCompatibility.document_error(document, app.preferences.original_compatibility and not disable_compatibility)
@@ -125,6 +125,20 @@ func activate_document(
 	app.simulation_state.frame_simulation = null
 	app.timing_state.simulation_timings.clear()
 	app.simulation_state.simulation_engine = Simulation.new(app.document_state.city, process_seed, lfsr_seed, game_seed)
+
+	# the load-time utility scan is not a player change. keep a repaired city unsaved
+	if loaded_from_file:
+		var before_scan := document_state.current_document.serialize()
+		var unchanged := before_scan.ok and before_scan.data == document_state.saved_city_snapshot
+
+		if not app.simulation_state.simulation_engine.initialize_loaded_city():
+			status_text += " The power and water scan failed."
+		elif unchanged:
+			var after_scan := document_state.current_document.serialize()
+
+			if after_scan.ok:
+				document_state.saved_city_snapshot = after_scan.data.duplicate()
+
 	app.simulation_state.simulation_engine.vehicle_crashes_enabled = app.view_state.show_vehicles
 	app.simulation_state.speed_controller = GameSpeed.new(app.simulation_state.simulation_engine)
 	app.simulation_state.speed_controller.original_compatibility = app.preferences.original_compatibility

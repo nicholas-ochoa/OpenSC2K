@@ -221,6 +221,8 @@ func check_load() -> void:
 	main.city_files._load_city_unchecked(ProjectSettings.globalize_path(save_path))
 	check(not main.city_files._city_has_unsaved_changes(), "Repaired city loads without new changes")
 	check(main.document_state.current_document.serialize().data == saved, "Actual reload is byte exact")
+	var engine: SimulationEngine = main.simulation_state.simulation_engine
+	check(engine.power_usage_percent >= 0 and engine.water_usage_percent >= 0 and engine.developed_tiles > 0, "File load runs the original utility scans")
 	main.queue_free()
 	await process_frame
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(settings_path))

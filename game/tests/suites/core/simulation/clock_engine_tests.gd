@@ -46,6 +46,27 @@ func test_simulation_clock() -> void:
 	)
 
 
+# a loaded city has utility and developed-tile values before its first scans
+func test_loaded_city_initialization(reference_root: String) -> void:
+	var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
+	var city := CityModel.from_document(document)
+	_check(city.set_age_in_days(20), "Load fixture starts the day before the graph update")
+	_check(document.set_misc_u32(0x1000, 1), "Load fixture disables random disasters")
+	_check(city.set_building_id(10, 10, Tiles.HYDRO_POWER_1), "Load fixture places a hydro plant")
+	_check(city.set_building_id(10, 11, Tiles.LOWER_CLASS_HOMES_1X1_1), "Load fixture places a consumer")
+	_check(city.set_tile_flag(10, 10, 0x80, true) and city.set_tile_flag(10, 11, 0x80, true), "Load fixture tiles are powerable")
+	var engine := Simulation.new(city, 1, 7)
+	_check(engine.power_usage_percent == -1 and engine.developed_tiles == -1, "A new engine starts without utility values")
+	_check(engine.initialize_loaded_city(), "Loaded city initialization completes")
+	_check(engine.power_usage_percent == 2 and city.is_powered(10, 11), "Load initialization scans power")
+	_check(engine.water_usage_percent >= 0 and engine.developed_tiles >= 2, "Load initialization scans water and counts developed tiles")
+	var graph_day := engine.advance_day()
+	_check(
+		graph_day.ok and graph_day.day == 21 and "graphs" in graph_day.applied and graph_day.pending.is_empty(),
+		"The first graph day after a load updates the graphs",
+	)
+
+
 func test_simulation_engine(reference_root: String) -> void:
 	var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 	var city := CityModel.from_document(document)

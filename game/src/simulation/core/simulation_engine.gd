@@ -74,6 +74,45 @@ func _init(
 				break
 
 
+# the original loads a city file, then scans power and water and counts the
+# developed tiles. the power scan uses the process random state
+func initialize_loaded_city() -> bool:
+	if city == null or not city.is_valid():
+		return false
+
+	var power := PowerPhase.run(city, random)
+
+	if not power.ok:
+		return false
+
+	var water := WaterPhase.run(city)
+
+	if not water.ok:
+		return false
+
+	var flags := city.tile_flags.duplicate()
+	var map_edge := city.map_size
+	var developed := 0
+
+	for x in map_edge:
+		for y in map_edge:
+			var index := city.index_of(x, y)
+
+			# the day-three scan has the same count and half-coordinate mark
+			if city.buildings[index] >= BuildingTileIds.FIRST_ROAD or city.zones[index] & Sc2ZoneLayout.TYPE_MASK:
+				flags[city.index_of(x >> 1, y >> 1)] |= Sc2TileFlags.MARK
+				developed += 1
+
+	if not city.replace_tile_flags(flags):
+		return false
+
+	power_usage_percent = power.usage_percent
+	water_usage_percent = water.usage_percent
+	developed_tiles = developed
+
+	return true
+
+
 func advance_moving_things(current_time_msec := -1) -> MovingThingResult:
 	var span := SimulationTimingSpan.new(city.simulation_slice)
 	var result := _timed_advance_moving_things(current_time_msec)

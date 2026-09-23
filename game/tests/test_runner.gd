@@ -168,6 +168,8 @@ func _init() -> void:
 	if _selected("simulation"):
 		ClockEngineTests.new(context).test_simulation_engine(reference_root)
 	if _selected("simulation"):
+		ClockEngineTests.new(context).test_loaded_city_initialization(reference_root)
+	if _selected("simulation"):
 		GameSpeedTests.new(context).test_game_speed_controller(reference_root)
 	if _selected("formats"):
 		CityFilesTests.new(context).test_modified_save(reference_root)

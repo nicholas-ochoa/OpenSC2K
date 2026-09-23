@@ -266,6 +266,7 @@ func _load_city_unchecked(path: String) -> void:
 		loaded_scenario,
 		"Loaded %s. Map view: %s."
 		% [path.get_file(), CityViewMode.key(app.view_state.overlay_mode).capitalize()],
+		true,
 	)
 
 
