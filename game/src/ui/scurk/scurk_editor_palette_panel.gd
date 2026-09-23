@@ -127,8 +127,8 @@ func _show_color_menu(index: int, position: Vector2) -> void:
 	menu.set_item_checked(menu.get_item_index(ColorAction.FAVORITE), palette_control.favorite_indices.has(index))
 	menu.add_check_item("Shade ramp step", ColorAction.RAMP)
 	menu.set_item_checked(menu.get_item_index(ColorAction.RAMP), palette_control.ramp_indices.has(index))
-	menu.hints[menu.get_item_index(ColorAction.FAVORITE)] = "Cmd-click" if OS.has_feature("macos") else "Ctrl-click"
-	menu.hints[menu.get_item_index(ColorAction.RAMP)] = "Shift-click"
+	menu.hints[menu.get_item_index(ColorAction.FAVORITE)] = "⌘-click" if OS.has_feature("macos") else "Ctrl-click"
+	menu.hints[menu.get_item_index(ColorAction.RAMP)] = "⇧-click" if OS.has_feature("macos") else "Shift-click"
 	menu.add_item("Clear shade ramp", ColorAction.CLEAR_RAMP)
 	menu.set_item_disabled(menu.get_item_index(ColorAction.CLEAR_RAMP), palette_control.ramp_indices.is_empty())
 	var transform := palette_control.get_global_transform_with_canvas() if menu.is_embedded() else palette_control.get_screen_transform()

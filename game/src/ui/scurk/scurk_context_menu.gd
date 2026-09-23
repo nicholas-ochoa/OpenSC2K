@@ -7,6 +7,16 @@ var hint_labels: Array[Label] = []
 var base_end_padding := 0
 
 
+static func key_hint(key: int) -> String:
+	if not OS.has_feature("macos"):
+		return OS.get_keycode_string(key).replace("Control", "Ctrl").replace("Command", "Cmd").replace("Meta", "Cmd")
+	var hint := ""
+	for pair in [[KEY_MASK_CTRL, "⌃"], [KEY_MASK_ALT, "⌥"], [KEY_MASK_SHIFT, "⇧"], [KEY_MASK_META, "⌘"]]:
+		if key & pair[0]:
+			hint += pair[1]
+	return hint + OS.get_keycode_string(key & KEY_CODE_MASK)
+
+
 func _ready() -> void:
 	base_end_padding = get_theme_constant("item_end_padding")
 	about_to_popup.connect(_layout_hints)

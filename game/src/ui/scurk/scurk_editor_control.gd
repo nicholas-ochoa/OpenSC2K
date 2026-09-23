@@ -1829,8 +1829,7 @@ func _refresh_canvas_menu() -> void:
 func _add_canvas_action(label: String, action: String, enabled: bool, key := 0) -> void:
 	var menu := $CanvasMenu as ScurkContextMenu
 	if key != 0:
-		var hint := OS.get_keycode_string(key).replace("Command", "Cmd").replace("Control", "Ctrl").replace("Meta", "Cmd")
-		menu.hints[menu.item_count] = hint
+		menu.hints[menu.item_count] = ScurkContextMenu.key_hint(key)
 	menu.add_item(label)
 	var index := menu.item_count - 1
 	if key != 0:
