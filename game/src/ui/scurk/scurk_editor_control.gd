@@ -36,6 +36,8 @@ var configured_palette: Sc2Palette
 var base_large_sprites: Sc2SpriteArchive
 var base_small_medium_sprites: Sc2SpriteArchive
 var reference_directory := ""
+var surface_background_pixels := PackedInt32Array()
+var underground_backgrounds: Dictionary[Vector2i, PackedInt32Array] = {}
 var session: ScurkEditSession = EditSession.new()
 var tile_set: ScurkMif:
 	get:
@@ -134,6 +136,7 @@ func configure(
 ) -> void:
 	tile_thumbnails.clear()
 	thumbnail_signatures.clear()
+	underground_backgrounds.clear()
 	configured_palette = value_palette
 	_use_project_palette()
 	base_large_sprites = value_large_sprites
@@ -145,6 +148,9 @@ func configure(
 	elif pixel_canvas != null:
 		pixel_canvas.set_drawing_graphics(null)
 		_set_status("Using built-in texture patterns and a transparent drawing background.")
+
+	if pixel_canvas != null:
+		surface_background_pixels = pixel_canvas.clear_background_pixels.duplicate()
 
 	if palette_panel != null and pixel_canvas != null:
 		palette_panel.configure(
@@ -1224,6 +1230,7 @@ func _refresh_sprite() -> void:
 		pixel_canvas.set_sprite_data(entry.width, entry.height, decoded.pixels, palette, studio.key() == studio.last_key)
 
 	studio.bind_canvas()
+	pixel_canvas.clear_background_pixels = _drawing_background(current_view, entry)
 	pixel_canvas.set_background_view(current_view)
 	pixel_canvas.set_tool(current_tool)
 	pixel_canvas.set_selected_color(selected_color_index)
@@ -1349,6 +1356,16 @@ func _refresh_rejected_edit(message: String) -> void:
 	_show_error(message)
 
 
+func _drawing_background(view: int, entry: Sc2SpriteArchive.SpriteEntry) -> PackedInt32Array:
+	if ScurkContextScene.kind_for_tile(object_tile_id(current_large_id)) != ScurkContextScene.Kind.UNDERGROUND:
+		return surface_background_pixels
+	var key := Vector2i(view, entry.height)
+	if not underground_backgrounds.has(key):
+		var sprites := base_large_sprites if view == VIEW_LARGE else base_small_medium_sprites
+		underground_backgrounds[key] = ScurkDrawingBackground.underground(sprites, view, entry.height)
+	return underground_backgrounds[key]
+
+
 func _refresh_view_previews() -> void:
 	if view_previews.size() != ScurkEditorCanvasPanel.PREVIEW_VIEWS.size() or view_preview_panels.size() != ScurkEditorCanvasPanel.PREVIEW_VIEWS.size():
 		return
@@ -1374,8 +1391,9 @@ func _refresh_view_previews() -> void:
 			view_preview_signatures[index] = ""
 			continue
 
-		var signature := "%d:%d:%d:%d:%s:%s" % [
-			active_base_width, entry.width, entry.height, entry.pixel_hash(), _clipping_enabled(), pixel_canvas.show_terrain,
+		var background := _drawing_background(view, entry) if pixel_canvas.show_terrain else PackedInt32Array()
+		var signature := "%d:%d:%d:%d:%s:%s:%d" % [
+			active_base_width, entry.width, entry.height, entry.pixel_hash(), _clipping_enabled(), pixel_canvas.show_terrain, hash(background),
 		]
 
 		if view_preview_signatures[index] == signature:
@@ -1397,7 +1415,7 @@ func _refresh_view_previews() -> void:
 			decoded.pixels,
 			active_base_width,
 			palette,
-			pixel_canvas.clear_background_pixels if pixel_canvas.show_terrain else PackedInt32Array(),
+			background,
 			_clipping_enabled()
 		)
 		view_previews[index].set_palette_cycle_enabled(

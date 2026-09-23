@@ -38,6 +38,7 @@ func _run() -> void:
 	assert(editor.view_previews[3].display_bounds == editor.view_previews[0].display_bounds)
 	assert(editor.view_previews[3].custom_minimum_size.y > editor.view_previews[0].custom_minimum_size.y)
 	_test_clipping_toggle(editor)
+	_test_underground_canvas(editor)
 	_test_clipboard_actions(editor)
 	_test_paint_sidebar(editor)
 	editor.brush_size_selector.value = 24
@@ -62,9 +63,9 @@ func _run() -> void:
 	assert(not editor.pixel_canvas.paint_options.isometric_snap)
 	editor.tool_buttons[ScurkPixelCanvas.TOOL_PENCIL].pressed.emit()
 	var terrain := editor.canvas_panel.get_node("Footer/Row/Clipping/Terrain") as CheckBox
-	var background := editor.pixel_canvas.clear_background_pixels.duplicate()
-	editor.pixel_canvas.clear_background_pixels.resize(Workspace.WIDTH * Workspace.HEIGHT)
-	editor.pixel_canvas.clear_background_pixels.fill(42)
+	var background := editor.surface_background_pixels.duplicate()
+	editor.surface_background_pixels.resize(Workspace.WIDTH * Workspace.HEIGHT)
+	editor.surface_background_pixels.fill(42)
 	editor.view_preview_signatures.fill("")
 	editor._refresh_view_previews()
 	var terrain_indices := editor.view_previews[0].preview_indices.duplicate()
@@ -74,7 +75,7 @@ func _run() -> void:
 	terrain.button_pressed = true
 	assert(editor.pixel_canvas.show_terrain)
 	assert(editor.view_previews[0].preview_indices == terrain_indices)
-	editor.pixel_canvas.clear_background_pixels = background
+	editor.surface_background_pixels = background
 	editor.view_preview_signatures.fill("")
 	editor._refresh_view_previews()
 	editor.studio.tabs.current_tab = 0
@@ -572,6 +573,7 @@ func _test_context_menu_input() -> void:
 	menu.hide()
 	host.free()
 
+
 func _test_menu_bar_shortcuts() -> void:
 	var toolbar := preload("res://src/ui/scurk/scurk_editor_toolbar.tscn").instantiate() as ScurkEditorToolbar
 	root.add_child(toolbar)
@@ -597,3 +599,33 @@ func _test_menu_bar_shortcuts() -> void:
 	menu.hide()
 	toolbar.free()
 
+
+func _test_underground_canvas(editor: ScurkEditorControl) -> void:
+	var original_id := editor.current_large_id
+	var original_view := editor.current_view
+	var underground_id := ScurkSpriteIds.LARGE_FIRST + CityUndergroundView.SUBWAY_AND_PIPE_FIRST + UndergroundTileIds.SUBWAY_LR
+	editor.current_large_id = underground_id
+	for view in [ScurkSpriteIds.View.LARGE, ScurkSpriteIds.View.MEDIUM, ScurkSpriteIds.View.SMALL]:
+		editor.current_view = view
+		editor._refresh_sprite()
+		var entry := editor._resolved_view_entry(view) as Sc2SpriteArchive.SpriteEntry
+		var pixels := editor.pixel_canvas.pixels.duplicate()
+		var background := editor.pixel_canvas.clear_background_pixels
+		assert(background.size() == Workspace.WIDTH * Workspace.HEIGHT)
+		assert(background != editor.surface_background_pixels)
+		var sprites := editor.base_large_sprites if view == ScurkSpriteIds.View.LARGE else editor.base_small_medium_sprites
+		var ground := sprites.find_sprite(ScurkEditorControl.view_sprite_id(ScurkSpriteIds.LARGE_FIRST + CityUndergroundView.TERRAIN_WIREFRAME_FIRST, view))
+		var source := ground.decode_indices().pixels
+		var divisor := Workspace.view_divisor(view)
+		var origin := Vector2i((Workspace.WIDTH - ground.width * divisor) / 2, Workspace.HEIGHT - entry.height * divisor)
+		var sample := Vector2i(ground.width / 2, ground.height - 1)
+		var target := origin + sample * divisor
+		assert(background[target.y * Workspace.WIDTH + target.x] == source[sample.y * ground.width + sample.x])
+		editor.pixel_canvas.show_terrain = false
+		editor._refresh_view_previews()
+		assert(editor.pixel_canvas.pixels == pixels)
+		editor.pixel_canvas.show_terrain = true
+	editor.current_large_id = original_id
+	editor.current_view = original_view
+	editor._refresh_sprite()
+	assert(editor.pixel_canvas.clear_background_pixels == editor.surface_background_pixels)
