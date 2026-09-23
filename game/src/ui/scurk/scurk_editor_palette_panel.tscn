@@ -39,24 +39,14 @@ tooltip_text = "Clear the shade ramp. Shift-click palette colors from dark to li
 layout_mode = 2
 script = ExtResource("colors")
 
-[node name="Foreground" type="HBoxContainer" parent="Margin/Column"]
+[node name="SelectedColor" type="HBoxContainer" parent="Margin/Column"]
 layout_mode = 2
 
-[node name="Swatch" type="ColorRect" parent="Margin/Column/Foreground"]
-layout_mode = 2
-custom_minimum_size = Vector2(26, 20)
-
-[node name="Label" type="Label" parent="Margin/Column/Foreground"]
-layout_mode = 2
-
-[node name="Background" type="HBoxContainer" parent="Margin/Column"]
-layout_mode = 2
-
-[node name="Swatch" type="ColorRect" parent="Margin/Column/Background"]
+[node name="Swatch" type="ColorRect" parent="Margin/Column/SelectedColor"]
 layout_mode = 2
 custom_minimum_size = Vector2(26, 20)
 
-[node name="Label" type="Label" parent="Margin/Column/Background"]
+[node name="Label" type="Label" parent="Margin/Column/SelectedColor"]
 layout_mode = 2
 
 [node name="CycleGap" type="Control" parent="Margin/Column"]

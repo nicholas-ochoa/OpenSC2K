@@ -15,8 +15,7 @@ var pattern_names := PackedStringArray():
 	set(value):
 		pattern_names = value
 		_refresh_tooltips()
-var foreground_index := 0
-var background_index := 255
+var selected_color_index := 0
 var selected_index := 0
 var palette_cycle_ticks := 0
 var texture_state: Array = []
@@ -73,9 +72,8 @@ func set_patterns(value: Array[PackedInt32Array]) -> void:
 	_refresh_textures()
 
 
-func set_colors(foreground: int, background: int) -> void:
-	foreground_index = clampi(foreground, 0, 255)
-	background_index = clampi(background, 0, 255)
+func set_selected_color(index: int) -> void:
+	selected_color_index = clampi(index, 0, 255)
 	_refresh_textures()
 
 
@@ -113,14 +111,14 @@ func _refresh_tooltips() -> void:
 
 
 func _texture_tooltip(index: int) -> String:
+	if index == 0:
+		return "Solid color"
+	if index == 1:
+		return "Dithered color and transparency"
+	if index == 2:
+		return "Transparent"
 	if index < pattern_names.size():
 		return pattern_names[index]
-	if index == 0:
-		return "Solid foreground"
-	if index == 1:
-		return "Foreground and background mix"
-	if index == 2:
-		return "Solid background"
 	return "Original SCURK texture %d" % (index - 2)
 
 
@@ -132,7 +130,7 @@ func set_cycle_tick(tick: int) -> void:
 func _refresh_textures() -> void:
 	var valid_palette := palette != null and palette.is_valid()
 	var animation_map := palette.scurk_animation_index_map(palette_cycle_ticks) if valid_palette else PackedInt32Array()
-	var state: Array = [foreground_index, background_index,
+	var state: Array = [selected_color_index,
 		hash(palette.colors) if valid_palette else 0, hash(animation_map)]
 	if texture_state == state:
 		return
@@ -143,6 +141,7 @@ func _refresh_textures() -> void:
 		if pattern.size() == 64:
 			for y in 8:
 				for x in 8:
-					var palette_index := ScurkPaintOptions.resolve_texture_value(pattern[y * 8 + x], foreground_index, background_index)
-					image.set_pixel(x, y, palette.color(animation_map[palette_index]) if valid_palette else Color.MAGENTA)
+					var palette_index := ScurkPaintOptions.resolve_texture_value(pattern[y * 8 + x], selected_color_index)
+					var color := Color.TRANSPARENT if palette_index < 0 else (palette.color(animation_map[palette_index]) if valid_palette else Color.MAGENTA)
+					image.set_pixel(x, y, color)
 		textures[index].update(image)

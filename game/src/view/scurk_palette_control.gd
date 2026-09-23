@@ -3,7 +3,7 @@ extends Control
 
 @warning_ignore_start("integer_division")
 
-signal index_selected(index: int, background: bool)
+signal index_selected(index: int)
 signal index_hovered(index: int)
 signal ramp_changed(indices: PackedInt32Array)
 signal navigation_changed(state: Dictionary)
@@ -18,8 +18,7 @@ const MODE_RAMP := 4
 
 var palette: Sc2Palette
 var cell_size := 18
-var foreground_index := 0
-var background_index := 255
+var selected_color_index := 0
 var palette_cycle_ticks := 0
 var view_mode := MODE_ALL
 var used_indices := PackedInt32Array()
@@ -61,9 +60,8 @@ func set_palette(value: Sc2Palette) -> void:
 	set_cycle_tick(palette_cycle_ticks)
 
 
-func set_selected_indices(foreground: int, background: int) -> void:
-	foreground_index = clampi(foreground, 0, 255)
-	background_index = clampi(background, 0, 255)
+func set_selected_color(index: int) -> void:
+	selected_color_index = clampi(index, 0, 255)
 	queue_redraw()
 
 
@@ -193,7 +191,7 @@ static func _clean_indices(values: Variant, limit := 256) -> PackedInt32Array:
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		_set_hovered(index_at(event.position))
-	if event is InputEventMouseButton and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT] and event.pressed:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		var index := index_at(event.position)
 		if index < 0:
 			return
@@ -202,13 +200,9 @@ func _gui_input(event: InputEvent) -> void:
 		elif event.ctrl_pressed or event.meta_pressed:
 			toggle_favorite(index)
 		else:
-			var background: bool = event.button_index == MOUSE_BUTTON_RIGHT
-			if background:
-				background_index = index
-			else:
-				foreground_index = index
+			selected_color_index = index
 			remember_index(index)
-			index_selected.emit(index, background)
+			index_selected.emit(index)
 		queue_redraw()
 		accept_event()
 
@@ -221,7 +215,7 @@ func _get_tooltip(at_position: Vector2) -> String:
 	var ramp := ramp_indices.find(index)
 	if ramp >= 0:
 		note += " · ramp step %d" % (ramp + 1)
-	return "Palette index %d (0x%02X)%s\nLeft: foreground · Right: background\nShift-click: add/remove ramp step\nCtrl/Cmd-click: add/remove favorite\nHover: highlight matching pixels" % [index, index, note]
+	return "Palette index %d (0x%02X)%s\nClick: select color\nShift-click: add/remove ramp step\nCtrl/Cmd-click: add/remove favorite\nHover: highlight matching pixels" % [index, index, note]
 
 
 func _cell_rect(slot: int) -> Rect2:
@@ -244,12 +238,9 @@ func _draw() -> void:
 		if ramp_indices.has(index):
 			draw_line(rect.position + Vector2(4, cell_size - 3), rect.end - Vector2(3, 3), Color("6eeeff"), 2.0)
 
-	var background_slot := visible_indices.find(background_index)
-	if background_slot >= 0:
-		draw_rect(_cell_rect(background_slot), Color("ff3030"), false, 2.0)
-	var foreground_slot := visible_indices.find(foreground_index)
-	if foreground_slot >= 0:
-		var rect := _cell_rect(foreground_slot)
+	var selected_slot := visible_indices.find(selected_color_index)
+	if selected_slot >= 0:
+		var rect := _cell_rect(selected_slot)
 		draw_rect(rect, Color.WHITE, false, 2.0)
 		draw_rect(rect.grow(-2), Color.BLACK, false, 1.0)
 	if visible_indices.is_empty():

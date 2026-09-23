@@ -452,7 +452,7 @@ func _test_footprints() -> void:
 	assert(footprint.size() < 24 * 24 and footprint.size() > 400)
 	canvas._apply_brush(canvas.hover_point)
 	for point in footprint:
-		assert(canvas.pixel_at(point) == canvas.foreground_index)
+		assert(canvas.pixel_at(point) == canvas.selected_color_index)
 	canvas.set_brush(25, false)
 	assert(canvas.brush_size == 24)
 	canvas.free()

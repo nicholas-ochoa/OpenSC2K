@@ -42,7 +42,7 @@ func _run() -> void:
 	pattern.resize(64)
 	pattern.fill(255)
 	textures.set_patterns([pattern])
-	textures.set_colors(171, 255)
+	textures.set_selected_color(171)
 	viewport.add_child(textures)
 	var colors: Array[Color] = []
 	for tick in [0, 20, 40]:

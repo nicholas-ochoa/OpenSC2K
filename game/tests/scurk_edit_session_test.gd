@@ -128,8 +128,8 @@ func _test_locked_input(initial: Dictionary) -> void:
 	editor.studio.update_modified()
 	assert(canvas.editing_disabled)
 	var locked := _state()
-	var foreground := canvas.foreground_index
-	canvas.foreground_index = 43
+	var foreground := canvas.selected_color_index
+	canvas.selected_color_index = 43
 	var click := InputEventMouseButton.new()
 	click.button_index = MOUSE_BUTTON_LEFT
 	click.position = Vector2(ScurkPixelCanvas.DISPLAY_MARGIN, 0) + Vector2(0.5, 255.5) * canvas.zoom
@@ -140,7 +140,7 @@ func _test_locked_input(initial: Dictionary) -> void:
 	_check_artwork(locked, "Locked canvas input")
 	_check(editor.edit_history.undo_stack.is_empty() and editor.edit_history.redo_stack.is_empty(), "Locked input adds no history")
 	_check_pending_clear("Locked input")
-	canvas.foreground_index = foreground
+	canvas.selected_color_index = foreground
 	assert(editor.studio.project.set_layer_locked(key, 0, false))
 	editor.studio.bind_canvas()
 	editor.studio.update_modified()
@@ -149,15 +149,15 @@ func _test_locked_input(initial: Dictionary) -> void:
 
 func _test_unchanged_stroke(before: Dictionary) -> void:
 	var canvas := editor.pixel_canvas
-	var foreground := canvas.foreground_index
-	canvas.foreground_index = 42
+	var foreground := canvas.selected_color_index
+	canvas.selected_color_index = 42
 	canvas._begin_stroke(Vector2i(0, 255), MOUSE_BUTTON_LEFT)
 	_check(editor.session.has_pending_edit(), "A stroke captures its starting state")
 	canvas._finish_stroke()
 	_check_artwork(before, "Same-color stroke")
 	_check(editor.edit_history.undo_stack.is_empty() and editor.edit_history.redo_stack.is_empty(), "Same-color stroke adds no history")
 	_check_pending_clear("Same-color stroke")
-	canvas.foreground_index = foreground
+	canvas.selected_color_index = foreground
 
 
 func _state() -> Dictionary:
@@ -265,8 +265,8 @@ func _test_active_stroke_history() -> void:
 	editor.studio.sync_editor_state()
 	editor.studio.update_modified()
 	var canvas := editor.pixel_canvas
-	var foreground := canvas.foreground_index
-	canvas.foreground_index = 45
+	var foreground := canvas.selected_color_index
+	canvas.selected_color_index = 45
 	canvas._begin_stroke(Vector2i(0, 255), MOUSE_BUTTON_LEFT)
 	assert(canvas.stroke_changed and editor.session.has_pending_edit())
 	var stroke := canvas.pixels.duplicate()
@@ -284,7 +284,7 @@ func _test_active_stroke_history() -> void:
 	_check(editor.edit_history.undo_stack.size() == 1, "Stroke after empty history records one action")
 	_check_pending_clear("Stroke after empty history")
 	if editor.edit_history.undo_stack.is_empty():
-		canvas.foreground_index = foreground
+		canvas.selected_color_index = foreground
 		return
 
 	# Inject a rejected target while another stroke is active.
@@ -292,7 +292,7 @@ func _test_active_stroke_history() -> void:
 	var saved_bytes := record.before.duplicate()
 	record.before = PackedByteArray([0])
 	var before := _state()
-	canvas.foreground_index = 46
+	canvas.selected_color_index = 46
 	canvas._begin_stroke(Vector2i(0, 255), MOUSE_BUTTON_LEFT)
 	var next_stroke := canvas.pixels.duplicate()
 	editor.undo()
@@ -308,7 +308,7 @@ func _test_active_stroke_history() -> void:
 	_check_pixels(next_stroke, "Stroke after rejected history")
 	_check(editor.edit_history.undo_stack.size() == 2, "Stroke after rejected history records one more action")
 	_check_pending_clear("Stroke after rejected history")
-	canvas.foreground_index = foreground
+	canvas.selected_color_index = foreground
 
 
 func _test_object_revert() -> void:

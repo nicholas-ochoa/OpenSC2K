@@ -46,8 +46,7 @@ var source_path := ""
 var current_large_id := -1
 var current_view := VIEW_LARGE
 var current_tool := ScurkPixelCanvas.TOOL_PENCIL
-var foreground_palette_index := 0
-var background_palette_index := 255
+var selected_color_index := 0
 var pending_discard_action := ""
 var edit_history: ScurkEditorHistory:
 	get:
@@ -150,11 +149,10 @@ func configure(
 		palette_panel.configure(
 			palette,
 			pixel_canvas.texture_patterns,
-			foreground_palette_index, background_palette_index,
+			selected_color_index,
 			value_scurk_graphics.pattern_names if value_scurk_graphics != null else PackedStringArray(),
 		)
-		_select_palette_index(foreground_palette_index, false)
-		_select_palette_index(background_palette_index, true)
+		_select_palette_index(selected_color_index)
 
 	if pick_copy_control != null:
 		pick_copy_control.configure(
@@ -893,8 +891,7 @@ func _bind_interface() -> void:
 	pick_copy_control.close_requested.connect(_pick_copy_closed)
 	pick_copy_control.change_working_requested.connect(_change_pick_working)
 	pick_copy_control.copy_requested.connect(_copy_pick_objects)
-	_select_palette_index(0, false)
-	_select_palette_index(255, true)
+	_select_palette_index(0)
 	studio = $Panel/Content/Body/Studio
 	studio.bind(self)
 	pixel_canvas.context_menu_requested.connect(_show_canvas_menu)
@@ -912,11 +909,7 @@ func _bind_interface() -> void:
 	pixel_canvas.zoom_requested.connect(canvas_panel.zoom_at)
 	canvas_panel.zoom_changed.connect(func(value: int) -> void: zoom_label.text = "%dx" % value)
 	pixel_canvas.brush_size_requested.connect(func(size: int) -> void: brush_size_selector.value = size)
-	pixel_canvas.paint_indices_swap_requested.connect(func() -> void:
-		var foreground := pixel_canvas.foreground_index
-		var background := pixel_canvas.background_index
-		_select_palette_index(foreground)
-		_select_palette_index(background, true))
+
 	toolbar.studio_action.connect(_studio_action)
 	_update_history_buttons()
 
@@ -991,23 +984,14 @@ func _select_tool(tool_value: int) -> void:
 		tool_buttons[index].button_pressed = index == tool_value
 
 
-func _select_palette_index(index: int, background := false) -> void:
+func _select_palette_index(index: int) -> void:
 	if studio != null and not studio.loading and not studio.project.current_mif.is_empty():
 		palette_panel.remember_index(index)
-	if background:
-		background_palette_index = clampi(index, 0, 255)
-	else:
-		foreground_palette_index = clampi(index, 0, 255)
-
+	selected_color_index = clampi(index, 0, 255)
 	if pixel_canvas != null:
-		pixel_canvas.set_paint_indices(
-			foreground_palette_index, background_palette_index
-		)
-
+		pixel_canvas.set_selected_color(selected_color_index)
 	if palette_panel != null:
-		palette_panel.set_colors(
-			foreground_palette_index, background_palette_index
-		)
+		palette_panel.set_selected_color(selected_color_index)
 
 
 func _select_brush_size(value: float) -> void:
@@ -1241,9 +1225,7 @@ func _refresh_sprite() -> void:
 	studio.bind_canvas()
 	pixel_canvas.set_background_view(current_view)
 	pixel_canvas.set_tool(current_tool)
-	pixel_canvas.set_paint_indices(
-		foreground_palette_index, background_palette_index
-	)
+	pixel_canvas.set_selected_color(selected_color_index)
 	pixel_canvas.set_brush(
 		roundi(brush_size_selector.value),
 		round_brush_check.button_pressed

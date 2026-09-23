@@ -12,7 +12,7 @@ class PixelRegion extends RefCounted:
 signal edit_started(description: String)
 signal edit_cancelled
 signal pixels_committed(pixels: PackedInt32Array)
-signal palette_index_picked(index: int, background: bool)
+signal palette_index_picked(index: int)
 signal pointer_changed(point: Vector2i, index: int)
 signal clipboard_changed(width: int, height: int)
 signal pan_requested(delta: Vector2)
@@ -20,7 +20,6 @@ signal zoom_requested(steps: int, local_position: Vector2)
 signal context_menu_requested(position: Vector2)
 signal selection_changed
 signal brush_size_requested(size: int)
-signal paint_indices_swap_requested
 signal state_changed
 signal copy_all_layers_requested(cut: bool)
 signal new_layer_paste_committed(pixels: PackedInt32Array)
@@ -48,9 +47,9 @@ const TOOL_STAMP := 15
 const CYCLE_INTERVAL_SECONDS := Sc2Palette.SCURK_TIMER_INTERVAL_SECONDS
 
 const TEXTURE_NAMES := [
-	"Solid Foreground",
-	"Foreground and Background",
-	"Solid Background",
+	"Solid color",
+	"Dithered color",
+	"Transparent",
 	"Texture 01", "Texture 02", "Texture 03", "Texture 04", "Texture 05",
 	"Texture 06", "Texture 07", "Texture 08", "Texture 09", "Texture 10",
 	"Texture 11", "Texture 12", "Texture 13", "Texture 14", "Texture 15",
@@ -78,8 +77,7 @@ var sprite_height := 0
 var pixels := PackedInt32Array()
 var zoom := 4
 var tool := TOOL_PENCIL
-var foreground_index := 0
-var background_index := 255
+var selected_color_index := 0
 var texture_index := 0
 var brush_size := 1
 var round_brush := false
@@ -298,9 +296,8 @@ func set_clip_region_visible(enabled: bool) -> void:
 	queue_redraw()
 
 
-func set_paint_indices(foreground: int, background: int) -> void:
-	foreground_index = clampi(foreground, 0, 255)
-	background_index = clampi(background, 0, 255)
+func set_selected_color(index: int) -> void:
+	selected_color_index = clampi(index, 0, 255)
 
 
 func set_brush(value_size: int, rounded: bool) -> void:
@@ -614,7 +611,7 @@ static func flood_fill(
 	replacement: int
 ) -> PackedInt32Array:
 	return flood_fill_pattern(
-		value_pixels, width, height, start, replacement, replacement,
+		value_pixels, width, height, start, replacement,
 		TEXTURE_ROWS[0]
 	)
 
@@ -624,8 +621,7 @@ static func flood_fill_pattern(
 	width: int,
 	height: int,
 	start: Vector2i,
-	foreground: int,
-	background: int,
+	selected_color: int,
 	pattern_rows: Array
 ) -> PackedInt32Array:
 	if pattern_rows.size() != 8:
@@ -641,7 +637,7 @@ static func flood_fill_pattern(
 			pattern[y * 8 + x] = 0xff if row_mask & (0x80 >> x) else 0
 
 	return flood_fill_texture(
-		value_pixels, width, height, start, foreground, background, pattern, 8, 8
+		value_pixels, width, height, start, selected_color, pattern, 8, 8
 	)
 
 
@@ -650,8 +646,7 @@ static func flood_fill_texture(
 	width: int,
 	height: int,
 	start: Vector2i,
-	foreground: int,
-	background: int,
+	selected_color: int,
 	pattern_pixels: PackedInt32Array,
 	pattern_width: int,
 	pattern_height: int
@@ -666,10 +661,8 @@ static func flood_fill_texture(
 		or start.y < 0
 		or start.x >= width
 		or start.y >= height
-		or foreground < -1
-		or foreground > 255
-		or background < -1
-		or background > 255
+		or selected_color < -1
+		or selected_color > 255
 		or pattern_width <= 0
 		or pattern_height <= 0
 		or pattern_pixels.size() != pattern_width * pattern_height
@@ -690,7 +683,7 @@ static func flood_fill_texture(
 
 		visited[point_index] = 1
 		result[point_index] = texture_color(
-			point, foreground, background,
+			point, selected_color,
 			pattern_pixels, pattern_width, pattern_height
 		)
 		var neighbors: Array[Vector2i] = [
@@ -713,8 +706,7 @@ static func flood_fill_texture(
 
 static func texture_color(
 	point: Vector2i,
-	foreground: int,
-	background: int,
+	selected_color: int,
 	pattern_pixels: PackedInt32Array,
 	pattern_width: int,
 	pattern_height: int
@@ -724,14 +716,14 @@ static func texture_color(
 		or pattern_height <= 0
 		or pattern_pixels.size() != pattern_width * pattern_height
 	):
-		return foreground
+		return selected_color
 
 	var source := pattern_pixels[
 		posmod(point.y, pattern_height) * pattern_width
 		+ posmod(point.x, pattern_width)
 	]
 
-	return ScurkPaintOptions.resolve_texture_value(source, foreground, background)
+	return ScurkPaintOptions.resolve_texture_value(source, selected_color)
 
 
 static func line_points(start: Vector2i, finish: Vector2i) -> Array[Vector2i]:
@@ -1215,10 +1207,10 @@ func _handle_editor_input(event: InputEvent) -> bool:
 			context_menu_requested.emit(event.position)
 			queue_redraw()
 		return true
-	if event.alt_pressed and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
+	if event.alt_pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var picked := display_pixel_at(point)
 		if event.pressed and picked >= 0:
-			palette_index_picked.emit(picked, event.button_index == MOUSE_BUTTON_RIGHT)
+			palette_index_picked.emit(picked)
 		return true
 	if event.button_index != MOUSE_BUTTON_LEFT:
 		return editing_disabled and tool != TOOL_EYEDROPPER
@@ -1341,10 +1333,6 @@ func _handle_editor_key(event: InputEventKey) -> bool:
 		KEY_BRACKETLEFT, KEY_BRACKETRIGHT:
 			set_brush(brush_size + (-1 if event.keycode == KEY_BRACKETLEFT else 1), round_brush)
 			brush_size_requested.emit(brush_size)
-		KEY_X:
-			var old_foreground := foreground_index
-			set_paint_indices(background_index, old_foreground)
-			paint_indices_swap_requested.emit()
 		_:
 			return false
 	return true
@@ -1424,11 +1412,7 @@ func _gui_input(event: InputEvent) -> void:
 			queue_redraw()
 
 		if stroke_active:
-			var expected_mask := (
-				MOUSE_BUTTON_MASK_RIGHT
-				if stroke_button == MOUSE_BUTTON_RIGHT
-				else MOUSE_BUTTON_MASK_LEFT
-			)
+			var expected_mask := MOUSE_BUTTON_MASK_LEFT
 
 			if event.button_mask & expected_mask:
 				if is_shape_tool(tool):
@@ -1445,7 +1429,7 @@ func _gui_input(event: InputEvent) -> void:
 	if not event is InputEventMouseButton:
 		return
 
-	if event.button_index not in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
+	if event.button_index != MOUSE_BUTTON_LEFT:
 		return
 
 	var point := _point_from_position(event.position)
@@ -1454,15 +1438,13 @@ func _gui_input(event: InputEvent) -> void:
 		if not _point_is_valid(point):
 			return
 
-		var use_background: bool = event.button_index == MOUSE_BUTTON_RIGHT
-
 		if tool == TOOL_EYEDROPPER or event.alt_pressed:
 			var index := display_pixel_at(point)
 
 			if index >= 0:
-				palette_index_picked.emit(index, use_background)
+				palette_index_picked.emit(index)
 		elif tool == TOOL_FILL:
-			_apply_fill(point, use_background)
+			_apply_fill(point)
 		elif is_shape_tool(tool):
 			_begin_shape(point, event.button_index)
 		else:
@@ -1555,21 +1537,15 @@ func _apply_brush(point: Vector2i) -> void:
 		return
 
 	var erase := tool == TOOL_ERASER
-	var force_background := stroke_button == MOUSE_BUTTON_RIGHT
 	for target in brush_points(point):
-		var value := (
-			-1 if erase else (
-				background_index if force_background else texture_color(
-					target, foreground_index, background_index,
-					texture_patterns[texture_index], 8, 8
-				)
-			)
+		var value := -1 if erase else texture_color(
+			target, selected_color_index, texture_patterns[texture_index], 8, 8
 		)
 		if tool == TOOL_SHADE:
 			if shade_visited.has(target):
 				continue
 			shade_visited[target] = true
-			value = paint_options.shade_index(pixel_at(target), -1 if force_background else 0)
+			value = paint_options.shade_index(pixel_at(target))
 		_apply_pixel(target, value)
 
 
@@ -1700,7 +1676,7 @@ func _finish_stroke() -> void:
 	stroke_changed = false
 
 
-func _apply_fill(point: Vector2i, force_background: bool) -> void:
+func _apply_fill(point: Vector2i) -> void:
 	if not _point_is_editable(point):
 		return
 
@@ -1710,14 +1686,9 @@ func _apply_fill(point: Vector2i, force_background: bool) -> void:
 		if not _point_is_editable(Vector2i(offset % sprite_width, offset / sprite_width)):
 			fill_source[offset] = -2
 
-	var changed := (
-		flood_fill(fill_source, sprite_width, sprite_height, point, background_index)
-		if force_background
-		else flood_fill_texture(
-			fill_source, sprite_width, sprite_height, point,
-			foreground_index, background_index,
-			texture_patterns[texture_index], 8, 8
-		)
+	var changed := flood_fill_texture(
+		fill_source, sprite_width, sprite_height, point,
+		selected_color_index, texture_patterns[texture_index], 8, 8
 	)
 
 	for offset in changed.size():

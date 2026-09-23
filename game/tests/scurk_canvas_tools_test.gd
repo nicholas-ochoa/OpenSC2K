@@ -60,7 +60,7 @@ func _reset(canvas: ScurkPixelCanvas, value := -1) -> void:
 	canvas.set_tool(ScurkPixelCanvas.TOOL_PENCIL)
 	canvas.set_zoom(4)
 	canvas.set_brush(1, false)
-	canvas.set_paint_indices(42, 55)
+	canvas.set_selected_color(42)
 
 
 func _mouse(canvas: ScurkPixelCanvas, point: Vector2i, pressed: bool, button := MOUSE_BUTTON_LEFT, shift := false, command := false, alt := false) -> void:
@@ -90,7 +90,7 @@ func _test_navigation(canvas: ScurkPixelCanvas) -> void:
 	var picks: Array = []
 	canvas.zoom_requested.connect(func(steps: int, point: Vector2): zooms.append([steps, point]))
 	canvas.pan_requested.connect(func(delta: Vector2): pans.append(delta))
-	canvas.palette_index_picked.connect(func(index: int, background: bool): picks.append([index, background]))
+	canvas.palette_index_picked.connect(func(index: int): picks.append(index))
 	for button in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_LEFT, MOUSE_BUTTON_WHEEL_RIGHT]:
 		_mouse(canvas, Vector2i(2, 3), true, button)
 	assert(zooms.is_empty())
@@ -136,13 +136,11 @@ func _test_navigation(canvas: ScurkPixelCanvas) -> void:
 	_key(canvas, KEY_SPACE, false)
 	_mouse(canvas, Vector2i(2, 3), true, MOUSE_BUTTON_LEFT, false, false, true)
 	_mouse(canvas, Vector2i(2, 3), false, MOUSE_BUTTON_LEFT, false, false, true)
-	assert(picks == [[12, false]] and canvas.pixels.count(12) == 64)
+	assert(picks == [12] and canvas.pixels.count(12) == 64)
 	_key(canvas, KEY_BRACKETRIGHT)
 	assert(canvas.brush_size == 2)
 	_key(canvas, KEY_BRACKETLEFT)
 	assert(canvas.brush_size == 1)
-	_key(canvas, KEY_X)
-	assert(canvas.foreground_index == 55 and canvas.background_index == 42)
 	canvas.set_zoom(8)
 	canvas.set_tool(ScurkPixelCanvas.TOOL_LINE)
 	assert(canvas.zoom == 8)
@@ -458,7 +456,7 @@ func _test_paint_options(canvas: ScurkPixelCanvas) -> void:
 	_reset(canvas)
 	canvas.pixels[9] = 42
 	canvas.paint_options.lock_transparent = true
-	canvas.set_paint_indices(55, 42)
+	canvas.set_selected_color(55)
 	_mouse(canvas, Vector2i(0, 0), true)
 	_mouse(canvas, Vector2i(0, 0), false)
 	_mouse(canvas, Vector2i(1, 1), true)
@@ -545,7 +543,7 @@ func _test_layer_display(canvas: ScurkPixelCanvas) -> void:
 	assert(canvas.display_pixel_at(Vector2i(1, 0)) == 30)
 	assert(canvas.pixels[0] == 10)
 	var picked: Array[int] = []
-	canvas.palette_index_picked.connect(func(index: int, _background: bool): picked.append(index))
+	canvas.palette_index_picked.connect(func(index: int): picked.append(index))
 	canvas.editing_disabled = true
 	_mouse(canvas, Vector2i.ZERO, true, MOUSE_BUTTON_LEFT, false, false, true)
 	_mouse(canvas, Vector2i.ZERO, false, MOUSE_BUTTON_LEFT, false, false, true)

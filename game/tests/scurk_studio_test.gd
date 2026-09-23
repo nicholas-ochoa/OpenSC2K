@@ -277,7 +277,7 @@ func _test_clipboard_layers() -> void:
 	_fresh()
 	var canvas := editor.pixel_canvas
 	editor._select_tool(ScurkPixelCanvas.TOOL_PENCIL)
-	canvas.set_paint_indices(6, 7)
+	canvas.set_selected_color(6)
 	var source := _solid(-1)
 	var source_point := Vector2i(60, 200)
 	var source_offset := source_point.y * Workspace.WIDTH + source_point.x

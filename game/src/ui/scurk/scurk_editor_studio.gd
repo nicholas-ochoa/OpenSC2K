@@ -206,8 +206,7 @@ func _refresh_metadata() -> void:
 
 
 func show_replace() -> void:
-	$Replace/Content/Fields/From.value = editor.foreground_palette_index
-	$Replace/Content/Fields/To.value = editor.background_palette_index
+	$Replace/Content/Fields/From.value = editor.selected_color_index
 	for view in ScurkSpriteIds.VIEW_COUNT:
 		var check := get_node("Replace/Content/Views/" + ["Large", "Medium", "Small"][view]) as CheckBox
 		check.disabled = not editor._view_is_available(view)

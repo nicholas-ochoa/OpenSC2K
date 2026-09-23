@@ -74,12 +74,12 @@ func _test_stamp() -> void:
 func _test_palette() -> void:
 	var panel := PaletteScene.instantiate() as ScurkEditorPalettePanel
 	root.add_child(panel)
-	panel.configure(Sc2Palette.index_encoding(), [], 42, 255)
+	panel.configure(Sc2Palette.index_encoding(), [], 42)
 	var control := panel.palette_control
 	var hovered: Array[int] = []
 	var selected: Array[int] = []
 	panel.palette_index_hovered.connect(func(index: int) -> void: hovered.append(index))
-	panel.palette_index_selected.connect(func(index: int, _background: bool) -> void: selected.append(index))
+	panel.palette_index_selected.connect(func(index: int) -> void: selected.append(index))
 	panel.set_used_pixels(PackedInt32Array([-1, 171, 42, 42, 252]))
 	panel.palette_view.item_selected.emit(ScurkPaletteControl.MODE_USED)
 	assert(control.visible_indices == PackedInt32Array([42, 171, 252]))

@@ -568,17 +568,17 @@ func test_scurk_mif(reference_root: String) -> void:
 	)
 	var checker_fill := ScurkPixelEditor.flood_fill_pattern(
 		PackedInt32Array([1, 1, 1, 2, 2, 2]), 3, 2, Vector2i(0, 0),
-		7, 8, ScurkPixelEditor.TEXTURE_ROWS[1]
+		7, ScurkPixelEditor.TEXTURE_ROWS[1]
 	)
 	_check(
-		checker_fill == PackedInt32Array([7, 8, 7, 2, 2, 2]),
-		"SCURK texture fill uses foreground and background colors",
+		checker_fill == PackedInt32Array([7, -1, 7, 2, 2, 2]),
+		"SCURK texture fill uses the selected color and transparency",
 	)
 	_check(
-		ScurkPaintOptions.resolve_texture_value(0xff, 7, 8) == 7
-		and ScurkPaintOptions.resolve_texture_value(0xf5, 7, 8) == 8
-		and ScurkPaintOptions.resolve_texture_value(0x00, 7, 8) == 8
-		and ScurkPaintOptions.resolve_texture_value(0x9b, 7, 8) == 0x9b,
+		ScurkPaintOptions.resolve_texture_value(0xff, 7) == 7
+		and ScurkPaintOptions.resolve_texture_value(0xf5, 7) == -1
+		and ScurkPaintOptions.resolve_texture_value(0x00, 7) == -1
+		and ScurkPaintOptions.resolve_texture_value(0x9b, 7) == 0x9b,
 		"SCURK textures map sentinels and keep literal palette indices",
 	)
 	var hollow_box := ScurkPixelEditor.shape_points(
@@ -651,7 +651,7 @@ func test_scurk_mif(reference_root: String) -> void:
 	snap_canvas.set_sprite_data(16, 16, snap_pixels, Palette.index_encoding())
 	snap_canvas.set_zoom(1)
 	snap_canvas.set_tool(ScurkPixelEditor.TOOL_LINE)
-	snap_canvas.set_paint_indices(7, 0)
+	snap_canvas.set_selected_color(7)
 	snap_canvas.set_grid_settings(4, 6, true)
 	var snap_press := InputEventMouseButton.new()
 	snap_press.button_index = MOUSE_BUTTON_LEFT
@@ -674,7 +674,7 @@ func test_scurk_mif(reference_root: String) -> void:
 	stroke_canvas.set_sprite_data(
 		5, 1, PackedInt32Array([-1, -1, -1, -1, -1]), Palette.index_encoding()
 	)
-	stroke_canvas.set_paint_indices(7, 0)
+	stroke_canvas.set_selected_color(7)
 	var stroke_press := InputEventMouseButton.new()
 	stroke_press.button_index = MOUSE_BUTTON_LEFT
 	stroke_press.pressed = true
