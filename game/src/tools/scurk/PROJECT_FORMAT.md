@@ -68,6 +68,11 @@ its gray value. This is an explicit fallback, not an estimate of the artwork's
 colors. The editor uses its configured asset palette when no actual RGB palette
 is embedded. A later save embeds those configured colors if they are available.
 
+Embedded colors apply to the Paint editor and its image exports. MIF files carry
+indices, not this project palette. The game and Place & Print use the configured
+game palette. A project with different embedded RGB colors can look different
+when exported to MIF or used in those views.
+
 Artwork PNGs use eight-bit indexed color and all 256 ordered palette entries.
 Duplicate RGB colors keep their separate indices. Ordinary transparent images
 use a PNG transparency entry at an unused index.
