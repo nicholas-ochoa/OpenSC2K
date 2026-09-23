@@ -493,6 +493,27 @@ func copy_all_layers(cut := false) -> void:
 	_flush_layers()
 
 
+func move_selection_to_new_layer() -> void:
+	var canvas := editor.pixel_canvas
+	if not project.documents.has(key()) or canvas.editing_disabled or canvas.paste_active or not canvas.selection.active():
+		return
+	canvas._finish_stroke()
+	var source := canvas.pixels.duplicate()
+	var target := source.duplicate()
+	target.fill(-1)
+	var mask := canvas.selected_mask()
+	for offset in source.size():
+		if mask[offset] != 0 and canvas.paint_options.paint_index(source[offset], -1) == -1:
+			target[offset] = source[offset]
+			source[offset] = -1
+	if source == canvas.pixels or not editor._capture_edit_start("Move selection to new layer"):
+		return
+	if not project.set_active_pixels(key(), source) or project.add_layer(key(), "Selection") < 0 or not project.set_active_pixels(key(), target):
+		editor._abort_edit("Cannot move the selection to a new layer.")
+		return
+	_flush_layers()
+
+
 func paste_on_new_layer(pixels: PackedInt32Array) -> void:
 	if not project.documents.has(key()) or not editor._capture_edit_start("Paste on new layer"):
 		return

@@ -175,9 +175,11 @@ func _test_selection_paint(canvas: ScurkPixelCanvas) -> void:
 	_mouse(canvas, Vector2i(2, 3), false)
 	assert(canvas.selection.mask.count(1) == 9)
 	canvas.set_tool(ScurkPixelCanvas.TOOL_PENCIL)
+	var paint_mask := canvas.selection.mask.duplicate()
 	_mouse(canvas, Vector2i(0, 0), true)
 	_mouse(canvas, Vector2i(0, 0), false)
-	assert(canvas.pixels.count(42) == 0)
+	assert(canvas.pixels.count(42) == 0 and not canvas.selection.active())
+	canvas.selection.mask = paint_mask
 	_mouse(canvas, Vector2i(1, 1), true)
 	_mouse(canvas, Vector2i(1, 1), false)
 	assert(canvas.pixels.count(42) == 1)
@@ -235,7 +237,8 @@ func _test_selection_drag(canvas: ScurkPixelCanvas) -> void:
 		assert(canvas.composite_pixels()[27] == 10)
 		_key(canvas, KEY_ESCAPE)
 		_mouse(canvas, Vector2i(3, 3), false)
-		assert(not canvas.paste_active and canvas.pixels == before and canvas.selection.mask == mask)
+		assert(not canvas.paste_active and canvas.pixels == before and not canvas.selection.active())
+		canvas.selection.mask = mask.duplicate()
 		assert(commits.size() == count)
 		_mouse(canvas, Vector2i.ONE, true)
 		_motion(canvas, Vector2i(3, 3))
@@ -400,7 +403,7 @@ func _test_paste_during_selection(canvas: ScurkPixelCanvas) -> void:
 		canvas.selection.combine(canvas.selection.rectangle(Vector2i(6, 1), Vector2i(6, 1)))
 		var selected := canvas.selection.mask.duplicate()
 		for cancel in [true, false]:
-			_mouse(canvas, Vector2i.ONE, true)
+			_mouse(canvas, Vector2i.ONE, true, MOUSE_BUTTON_LEFT, true)
 			_motion(canvas, Vector2i(3, 3))
 			assert(canvas.selection_dragging)
 			_key(canvas, KEY_V, true, true)
@@ -408,9 +411,11 @@ func _test_paste_during_selection(canvas: ScurkPixelCanvas) -> void:
 			_motion(canvas, Vector2i(4, 4))
 			_mouse(canvas, Vector2i(4, 4), false)
 			assert(canvas.paste_active and canvas.selection.mask == selected)
-			var button := MOUSE_BUTTON_RIGHT if cancel else MOUSE_BUTTON_LEFT
-			_mouse(canvas, Vector2i(5, 5), true, button)
-			_mouse(canvas, Vector2i(5, 5), false, button)
+			if cancel:
+				_key(canvas, KEY_ESCAPE)
+			else:
+				_mouse(canvas, Vector2i(5, 5), true)
+				_mouse(canvas, Vector2i(5, 5), false)
 			assert(not canvas.paste_active and not canvas.selection_dragging)
 			if cancel:
 				assert(canvas.pixels.count(-1) == 64 and not canvas.selection.active())
@@ -551,23 +556,23 @@ func _test_layer_display(canvas: ScurkPixelCanvas) -> void:
 
 
 func _test_right_click_tools(canvas: ScurkPixelCanvas) -> void:
-	for tool in [canvas.TOOL_SELECT_RECT, canvas.TOOL_SELECT_LASSO, canvas.TOOL_SELECT_WAND, canvas.TOOL_MOVE]:
+	var requests: Array[Vector2] = []
+	var receive := func(position: Vector2) -> void: requests.append(position)
+	canvas.context_menu_requested.connect(receive)
+	for tool in range(canvas.TOOL_STAMP + 1):
 		_reset(canvas, 12)
 		canvas.set_tool(tool)
-		canvas.select_all()
+		canvas.selection.combine(canvas.selection.rectangle(Vector2i(1, 1), Vector2i(3, 3)))
+		var selected := canvas.selection.mask.duplicate()
 		var before := canvas.pixels.duplicate()
 		_mouse(canvas, Vector2i(2, 2), true, MOUSE_BUTTON_RIGHT)
 		_mouse(canvas, Vector2i(3, 3), false, MOUSE_BUTTON_RIGHT)
-		assert(not canvas.selection.active() and not canvas.stroke_active and canvas.pixels == before)
-		canvas.selection_dragging = true
-		_mouse(canvas, Vector2i(2, 2), true, MOUSE_BUTTON_RIGHT)
-		assert(not canvas.selection_dragging)
-	for tool in [canvas.TOOL_PENCIL, canvas.TOOL_FILL, canvas.TOOL_LINE, canvas.TOOL_RECTANGLE, canvas.TOOL_ELLIPSE, canvas.TOOL_DIAMOND, canvas.TOOL_LEFT_WALL, canvas.TOOL_RIGHT_WALL]:
-		_reset(canvas, 12)
-		canvas.set_tool(tool)
-		_mouse(canvas, Vector2i(2, 2), true, MOUSE_BUTTON_RIGHT)
-		_mouse(canvas, Vector2i(6, 6), false, MOUSE_BUTTON_RIGHT)
-		assert(canvas.pixels.has(55), "Painting tool %d uses the background color on right-click" % tool)
+		assert(canvas.selection.mask == selected and not canvas.stroke_active and canvas.pixels == before)
+		_mouse(canvas, Vector2i(6, 6), true)
+		_mouse(canvas, Vector2i(6, 6), false)
+		assert(not canvas.selection.active() and canvas.pixels == before)
+	assert(requests.size() == canvas.TOOL_STAMP + 1)
+	canvas.context_menu_requested.disconnect(receive)
 
 
 func _test_selection_transforms(canvas: ScurkPixelCanvas) -> void:

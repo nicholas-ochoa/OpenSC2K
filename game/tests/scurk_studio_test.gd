@@ -36,6 +36,7 @@ func _run() -> void:
 	_test_undo_history()
 	_test_clipboard_layers()
 	_test_all_layer_clipboard()
+	_test_canvas_menu()
 	_test_clear()
 	_test_recovery_ownership()
 	_test_replace()
@@ -337,7 +338,10 @@ func _test_clipboard_layers() -> void:
 	studio._select_layer(1)
 	canvas.hover_point = destination
 	_clipboard_key(KEY_V, true)
-	_clipboard_click(destination, MOUSE_BUTTON_RIGHT)
+	var escape := InputEventKey.new()
+	escape.keycode = KEY_ESCAPE
+	escape.pressed = true
+	canvas._gui_input(escape)
 	assert(_document().layers[0].pixels == cut and _document().layers[1].pixels == target)
 	assert(editor.edit_history.undo_stack.size() == history_count + 1)
 	_clipboard_key(KEY_V, false)
@@ -772,3 +776,45 @@ func _test_layer_menu() -> void:
 	assert(_document().active == 1)
 	editor.undo()
 	assert(_document().active == 0)
+
+
+func _canvas_action(action: String) -> void:
+	editor._refresh_canvas_menu()
+	var menu := editor.get_node("CanvasMenu") as PopupMenu
+	for index in menu.item_count:
+		if menu.get_item_metadata(index) == action:
+			assert(not menu.is_item_disabled(index))
+			editor._canvas_menu_action(menu.get_item_id(index))
+			return
+	assert(false, "Missing canvas action: " + action)
+
+
+func _test_canvas_menu() -> void:
+	_fresh()
+	var canvas := editor.pixel_canvas
+	var source := _solid(-1)
+	var offset := 200 * Workspace.WIDTH + 60
+	source[offset] = 42
+	source[offset + 1] = 55
+	source[offset + 2] = 73
+	_commit(source)
+	canvas.selection.combine(canvas.selection.rectangle(Vector2i(60, 200), Vector2i(61, 200)))
+	_canvas_action("CopySelection")
+	assert(canvas.clipboard_pixels == PackedInt32Array([42, 55]))
+	_canvas_action("SaveStamp")
+	assert(studio.project.stamps.back().pixels == PackedInt32Array([42, 55]))
+	var count := editor.undo_stack.size()
+	_canvas_action("MoveSelectionToLayer")
+	assert(_document().layers.size() == 2 and editor.undo_stack.size() == count + 1)
+	assert(_document().layers[0].pixels[offset] == -1 and _document().layers[0].pixels[offset + 2] == 73)
+	assert(_document().layers[1].pixels[offset] == 42 and _document().layers[1].pixels[offset + 1] == 55)
+	assert(studio.project.flatten(studio.key()) == source)
+	editor.undo()
+	assert(_document().layers.size() == 1 and studio.project.active_pixels(studio.key()) == source)
+	editor.redo()
+	assert(_document().layers.size() == 2 and studio.project.flatten(studio.key()) == source)
+	canvas.selection.combine(canvas.selection.rectangle(Vector2i(60, 200), Vector2i(61, 200)))
+	_canvas_action("DuplicateSelection")
+	assert(canvas.paste_active and not canvas.paste_clear_source)
+	_canvas_action("CancelPaste")
+	assert(not canvas.paste_active and not canvas.selection.active())

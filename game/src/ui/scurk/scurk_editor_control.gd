@@ -897,6 +897,8 @@ func _bind_interface() -> void:
 	_select_palette_index(255, true)
 	studio = $Panel/Content/Body/Studio
 	studio.bind(self)
+	pixel_canvas.context_menu_requested.connect(_show_canvas_menu)
+	$CanvasMenu.id_pressed.connect(_canvas_menu_action)
 	pixel_canvas.copy_all_layers_requested.connect(studio.copy_all_layers)
 	pixel_canvas.new_layer_paste_committed.connect(studio.paste_on_new_layer)
 	pixel_canvas.selection_changed.connect(_update_transform_buttons)
@@ -1753,6 +1755,24 @@ func _studio_action(action: String) -> void:
 			studio.show_replace()
 		"Context":
 			studio.show_context()
+		"SaveStamp":
+			studio._stamp_action("Add")
+			studio.tabs.current_tab = 2
+		"MoveSelectionToLayer":
+			studio.move_selection_to_new_layer()
+		"FlipHorizontal":
+			pixel_canvas.transform_selection(2)
+		"FlipVertical":
+			pixel_canvas.transform_selection(3)
+		"RotateClockwise":
+			pixel_canvas.transform_selection(1)
+		"RotateCounterclockwise":
+			pixel_canvas.transform_selection(0)
+		"ApplyPaste":
+			pixel_canvas.commit_paste()
+		"CancelPaste":
+			pixel_canvas.cancel_paste()
+			pixel_canvas.clear_selection()
 		"SelectAll":
 			pixel_canvas.select_all()
 		"Deselect":
@@ -1774,4 +1794,60 @@ func _studio_action(action: String) -> void:
 		"PasteSelection":
 			pixel_canvas.begin_paste()
 	if is_inside_tree() and action in ["SelectAll", "Deselect", "CopySelection", "CutSelection", "DuplicateSelection", "DeleteSelection", "PasteSelection", "CopyAllLayers", "CutAllLayers", "PasteNewLayer"]:
+		pixel_canvas.grab_focus()
+
+
+func _show_canvas_menu(position: Vector2) -> void:
+	_refresh_canvas_menu()
+	$CanvasMenu.position = Vector2i(pixel_canvas.get_screen_transform() * position)
+	$CanvasMenu.popup()
+
+
+func _refresh_canvas_menu() -> void:
+	var menu := $CanvasMenu as PopupMenu
+	menu.clear()
+	var has_pixels := not pixel_canvas.pixels.is_empty()
+	var selected := pixel_canvas.selection.active()
+	var floating := pixel_canvas.paste_active
+	var editable := has_pixels and not pixel_canvas.editing_disabled and not floating
+	var command := KEY_MASK_META if OS.has_feature("macos") else KEY_MASK_CTRL
+	_add_canvas_action("Cut", "CutSelection", editable, command | KEY_X)
+	_add_canvas_action("Copy", "CopySelection", has_pixels and not floating, command | KEY_C)
+	_add_canvas_action("Paste", "PasteSelection", editable and pixel_canvas.has_clipboard(), command | KEY_V)
+	_add_canvas_action("Paste on new layer", "PasteNewLayer", has_pixels and not floating and pixel_canvas.has_clipboard(), command | KEY_MASK_SHIFT | KEY_V)
+	if selected and not floating:
+		menu.add_separator()
+		_add_canvas_action("Save selection as stamp", "SaveStamp", true)
+		_add_canvas_action("Move selection to new layer", "MoveSelectionToLayer", editable)
+		_add_canvas_action("Cut from all layers", "CutAllLayers", has_pixels, command | KEY_MASK_SHIFT | KEY_X)
+		_add_canvas_action("Copy from all layers", "CopyAllLayers", has_pixels, command | KEY_MASK_SHIFT | KEY_C)
+		_add_canvas_action("Duplicate", "DuplicateSelection", editable, command | KEY_D)
+		_add_canvas_action("Delete", "DeleteSelection", editable, KEY_DELETE)
+	if selected or floating:
+		menu.add_separator()
+		for pair in [["Flip horizontally", "FlipHorizontal"], ["Flip vertically", "FlipVertical"], ["Rotate clockwise", "RotateClockwise"], ["Rotate counterclockwise", "RotateCounterclockwise"]]:
+			_add_canvas_action(pair[0], pair[1], editable or floating)
+	if floating:
+		menu.add_separator()
+		_add_canvas_action("Apply paste", "ApplyPaste", true, KEY_ENTER)
+		_add_canvas_action("Cancel paste", "CancelPaste", true, KEY_ESCAPE)
+	else:
+		menu.add_separator()
+		_add_canvas_action("Select all", "SelectAll", has_pixels, command | KEY_A)
+		_add_canvas_action("Cancel selection", "Deselect", selected, KEY_ESCAPE)
+
+
+func _add_canvas_action(label: String, action: String, enabled: bool, key := 0) -> void:
+	var menu := $CanvasMenu as PopupMenu
+	menu.add_item(label, -1, key)
+	var index := menu.item_count - 1
+	menu.set_item_metadata(index, action)
+	menu.set_item_disabled(index, not enabled)
+
+
+func _canvas_menu_action(id: int) -> void:
+	var menu := $CanvasMenu as PopupMenu
+	var index := menu.get_item_index(id)
+	if index >= 0 and not menu.is_item_disabled(index):
+		_studio_action(String(menu.get_item_metadata(index)))
 		pixel_canvas.grab_focus()

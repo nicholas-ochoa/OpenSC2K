@@ -87,3 +87,5 @@ text_overrun_behavior = 3
 
 [node name="Dialogs" parent="." instance=ExtResource("dialogs")]
 layout_mode = 2
+
+[node name="CanvasMenu" type="PopupMenu" parent="."]

@@ -114,6 +114,12 @@ func _input(event: InputEvent) -> void:
 		navigation = navigation or event.button_index in [MOUSE_BUTTON_MIDDLE, MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_LEFT, MOUSE_BUTTON_WHEEL_RIGHT]
 		navigation = navigation or (event.button_index == MOUSE_BUTTON_LEFT and Input.is_key_pressed(KEY_SPACE))
 	if not navigation:
+		if event is InputEventMouseButton and event.pressed:
+			if event.button_index == MOUSE_BUTTON_LEFT:
+				pixel_canvas.cancel_paste()
+				pixel_canvas.clear_selection()
+			elif event.button_index == MOUSE_BUTTON_RIGHT:
+				pixel_canvas.context_menu_requested.emit(position - pixel_canvas.global_position)
 		return
 	var local := event.duplicate()
 	local.position = position - pixel_canvas.global_position

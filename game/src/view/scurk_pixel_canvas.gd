@@ -17,6 +17,7 @@ signal pointer_changed(point: Vector2i, index: int)
 signal clipboard_changed(width: int, height: int)
 signal pan_requested(delta: Vector2)
 signal zoom_requested(steps: int, local_position: Vector2)
+signal context_menu_requested(position: Vector2)
 signal selection_changed
 signal brush_size_requested(size: int)
 signal paint_indices_swap_requested
@@ -1205,14 +1206,14 @@ func _handle_editor_input(event: InputEvent) -> bool:
 	if event.pressed and is_inside_tree():
 		grab_focus()
 	var point := _point_from_position(event.position)
-	if event.button_index == MOUSE_BUTTON_RIGHT and tool in [TOOL_SELECT_RECT, TOOL_SELECT_LASSO, TOOL_SELECT_WAND, TOOL_MOVE]:
+	if event.button_index == MOUSE_BUTTON_RIGHT:
 		if event.pressed:
-			cancel_paste()
-			clear_selection()
-		return true
-	if paste_active and event.button_index == MOUSE_BUTTON_RIGHT:
-		if event.pressed:
-			cancel_paste()
+			_finish_stroke()
+			selection_dragging = false
+			selection_preview.clear()
+			hover_point = point
+			context_menu_requested.emit(event.position)
+			queue_redraw()
 		return true
 	if event.alt_pressed and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
 		var picked := display_pixel_at(point)
@@ -1235,6 +1236,9 @@ func _handle_editor_input(event: InputEvent) -> bool:
 		elif paste_dragging:
 			paste_position = point - paste_drag_offset
 			commit_paste()
+		return true
+	if event.pressed and selection.active() and not selection.contains(point) and not (event.shift_pressed or event.ctrl_pressed or event.meta_pressed):
+		clear_selection()
 		return true
 	if tool == TOOL_MOVE:
 		if event.pressed and selection.contains(point) and _begin_selection_move(false):
@@ -1291,6 +1295,7 @@ func _handle_editor_key(event: InputEventKey) -> bool:
 	if event.keycode == KEY_ESCAPE:
 		if paste_active:
 			cancel_paste()
+			clear_selection()
 		elif selection.active() or selection_dragging:
 			clear_selection()
 		else:
