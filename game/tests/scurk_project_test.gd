@@ -1,6 +1,9 @@
 extends SceneTree
 
 const Project = preload("res://src/tools/scurk/scurk_project.gd")
+# Independent version-one bytes: an empty MIF and signed 16-bit pixel vectors.
+const LEGACY_MAGIC := "SCURK-PROJECT\n"
+const LEGACY_MIF := "TUlGRgAAAIhTQzJLSU5GTwAAAHIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABUSUxFAAAAAgAA"
 
 
 func _initialize() -> void:
@@ -87,7 +90,7 @@ func _run() -> void:
 	assert(project.active_pixels("1:0") != decoded.project.active_pixels("1:0"))
 	_test_composition(original)
 	_test_limits(original)
-	_test_invalid(encoded.bytes)
+	_test_invalid(legacy_bytes())
 	_test_storage(project, encoded.bytes)
 	print("PASS: SCURK project layers, stamps, history, metadata, round trip, invalid data and recovery")
 	quit()
@@ -171,10 +174,11 @@ func _test_limits(original: PackedByteArray) -> void:
 
 
 func _test_invalid(valid: PackedByteArray) -> void:
+	assert(Project.from_bytes(valid).ok, "The independent version-one fixture remains readable")
 	assert(not Project.from_bytes(PackedByteArray([0])).ok)
-	assert(not Project.from_bytes(Project.MAGIC.to_utf8_buffer() + "[]".to_utf8_buffer()).ok)
-	assert(not Project.from_bytes(Project.MAGIC.to_utf8_buffer() + "{".to_utf8_buffer()).ok)
-	var source: Dictionary = JSON.parse_string(valid.slice(Project.MAGIC.length()).get_string_from_utf8())
+	assert(not Project.from_bytes(LEGACY_MAGIC.to_utf8_buffer() + "[]".to_utf8_buffer()).ok)
+	assert(not Project.from_bytes(LEGACY_MAGIC.to_utf8_buffer() + "{".to_utf8_buffer()).ok)
+	var source: Dictionary = JSON.parse_string(valid.slice(LEGACY_MAGIC.length()).get_string_from_utf8())
 	for version: Variant in [0, 2, 1.5, "1", null]:
 		var bad := source.duplicate(true)
 		bad.version = version
@@ -260,7 +264,29 @@ func _test_storage(project: ScurkProject, original: PackedByteArray) -> void:
 
 
 func _record_bytes(record: Dictionary) -> PackedByteArray:
-	return Project.MAGIC.to_utf8_buffer() + JSON.stringify(record).to_utf8_buffer()
+	return LEGACY_MAGIC.to_utf8_buffer() + JSON.stringify(record).to_utf8_buffer()
+
+
+static func legacy_bytes() -> PackedByteArray:
+	# Keep this fixture independent of the current project writer and binary helpers.
+	var state := {"current_mif": LEGACY_MIF,
+		"documents": {"1:0": {"width": 2, "height": 2, "active": 1,
+			"original_pixels": "AAABAP///wA=", "custom": ["document"],
+			"layers": [{"name": "Root", "visible": true, "locked": true,
+				"pixels": "AAABAP///wA=", "custom": {"layer": 1}},
+				{"name": "Details", "visible": false, "locked": false, "pixels": "//8qAAUA//8="}]}},
+		"metadata": {"author": "Legacy author", "palette": {"favorites": [171, 172], "ramp": [1, 42]},
+			"custom": {"enabled": true, "items": [null, 4, "roof"]}},
+		"resources": {"reference.bin": "AAH8/w=="},
+		"stamps": [{"name": "Window", "width": 2, "height": 1, "pixels": "/AD//w==", "spacing": 3,
+			"custom": "stamp"}]}
+	var record := state.duplicate(true)
+	record.merge({"version": 1, "original_mif": LEGACY_MIF, "revision": 7,
+		"format": "future project field", "palette": {"future": true},
+		"future_extension": {"tag": "preserve"},
+		"checkpoints": [{"name": "Before", "created": "2000-01-01T00:00:00", "revision": 6,
+			"snapshot": state, "custom": "checkpoint"}]})
+	return LEGACY_MAGIC.to_utf8_buffer() + JSON.stringify(record).to_utf8_buffer()
 
 
 func _same_state(left: Dictionary, right: Dictionary) -> bool:
