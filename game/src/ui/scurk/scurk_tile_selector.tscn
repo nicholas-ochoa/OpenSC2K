@@ -1,0 +1,39 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_tile_row.tscn" id="row"]
+[ext_resource type="Script" path="res://src/ui/scurk/scurk_tile_selector.gd" id="script"]
+
+[node name="Tiles" instance=ExtResource("row")]
+custom_minimum_size = Vector2(310, 48)
+size_flags_horizontal = 3
+script = ExtResource("script")
+
+[node name="Content" parent="." index="0"]
+theme_override_constants/margin_right = 24
+
+[node name="Arrow" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -10.0
+offset_bottom = 10.0
+grow_horizontal = 0
+grow_vertical = 2
+text = "▾"
+
+[node name="Popup" type="PopupPanel" parent="."]
+size = Vector2i(360, 480)
+
+[node name="Scroll" type="ScrollContainer" parent="Popup"]
+offset_right = 360.0
+offset_bottom = 480.0
+horizontal_scroll_mode = 0
+
+[node name="Rows" type="VBoxContainer" parent="Popup/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0

@@ -2,6 +2,8 @@
 
 [ext_resource type="Script" path="res://src/ui/scurk/scurk_editor_object_panel.gd" id="script"]
 
+[ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_tile_selector.tscn" id="tiles"]
+
 [node name="Objects" type="VBoxContainer"]
 script = ExtResource("script")
 
@@ -10,13 +12,8 @@ layout_mode = 2
 placeholder_text = "Filter tiles"
 custom_minimum_size = Vector2(160, 0)
 
-[node name="Tiles" type="OptionButton" parent="."]
+[node name="Tiles" parent="." instance=ExtResource("tiles")]
 layout_mode = 2
-custom_minimum_size = Vector2(310, 0)
-size_flags_horizontal = 3
-fit_to_longest_item = false
-texture_filter = 1
-text_overrun_behavior = 3
 
 [node name="NameDialog" type="ConfirmationDialog" parent="."]
 title = "Tile name"

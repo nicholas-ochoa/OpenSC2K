@@ -8,7 +8,7 @@ signal set_name_requested
 signal revert_name_requested
 
 var object_search: LineEdit
-var object_list: OptionButton
+var object_list: ScurkTileSelector
 var name_edit: LineEdit
 var name_button: Button
 var revert_name_button: Button
@@ -25,8 +25,6 @@ func build() -> void:
 
 	object_search = $Search
 	object_list = $Tiles
-	object_list.get_popup().canvas_item_default_texture_filter = Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_NEAREST
-	object_list.get_popup().max_size = Vector2i(0, 480)
 	name_dialog = $NameDialog
 	name_edit = $NameDialog/Content/Name
 	name_button = name_dialog.get_ok_button()

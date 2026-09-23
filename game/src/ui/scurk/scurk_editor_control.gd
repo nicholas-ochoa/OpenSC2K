@@ -80,7 +80,7 @@ var tile_thumbnails: Dictionary[int, Texture2D] = {}
 var thumbnail_signatures: Dictionary[int, int] = {}
 var source_label: Label
 var object_search: LineEdit
-var object_list: OptionButton
+var object_list: ScurkTileSelector
 var name_edit: LineEdit
 var name_button: Button
 var revert_name_button: Button
@@ -1008,49 +1008,27 @@ func _pick_copy_closed() -> void:
 func _refresh_object_list() -> void:
 	if object_list == null:
 		return
-
-	var selected_id := current_large_id
+	var entries: Array[ScurkTileSelector.Entry] = []
 	var filter := object_search.text.strip_edges().to_lower() if object_search != null else ""
-	object_list.clear()
-
-	if tile_set == null:
-		return
-
-	var selected_found := false
-	for large_id in editable_large_sprite_ids(tile_set, base_large_sprites):
-		var tile_id := object_tile_id(large_id)
-		var tile_name := String(tile_set.names.get(tile_id, ""))
-		var description := tile_name if not tile_name.is_empty() else sprite_role(tile_id)
-		var label := "%03d  %s" % [tile_id, description]
-
-		if not filter.is_empty() and not label.to_lower().contains(filter):
-			continue
-
-		var list_index := object_list.item_count
-		object_list.add_icon_item(_tile_thumbnail(large_id), label)
-		object_list.set_item_metadata(list_index, large_id)
-		object_list.get_popup().set_item_tooltip(
-			list_index,
-			"Sprite family %d: Small %d, Medium %d, Large %d"
-			% [tile_id, view_sprite_id(large_id, VIEW_SMALL), view_sprite_id(large_id, VIEW_MEDIUM), large_id]
-		)
-
-		if large_id == selected_id:
-			object_list.select(list_index)
-			selected_found = true
-
-	if not selected_found and object_list.item_count > 0:
-		object_list.select(0)
-		var replacement_id := int(object_list.get_item_metadata(0))
-
+	if tile_set != null:
+		for large_id in editable_large_sprite_ids(tile_set, base_large_sprites):
+			var tile_id := object_tile_id(large_id)
+			var title := EditorRules.tile_name(tile_id, tile_set.names)
+			var category := sprite_role(tile_id)
+			var search_text := "%03d %s %s" % [tile_id, title, category]
+			if not filter.is_empty() and not search_text.to_lower().contains(filter):
+				continue
+			entries.append(ScurkTileSelector.Entry.new(large_id, title, category, _tile_thumbnail(large_id)))
+	object_list.set_entries(entries, current_large_id)
+	if object_list.selected >= 0:
+		var replacement_id := entries[object_list.selected].large_id
 		if replacement_id != current_large_id:
 			current_large_id = replacement_id
 			_capture_object_start()
 
-
 func _on_object_selected(index: int) -> void:
 	object_list.select(index)
-	var selected_id := int(object_list.get_item_metadata(index))
+	var selected_id := object_list.entries[index].large_id
 
 	if selected_id != current_large_id:
 		current_large_id = selected_id
@@ -1574,7 +1552,7 @@ func _commit_name() -> void:
 	var tile_id := object_tile_id(current_large_id)
 	var value := name_edit.text.strip_edges()
 
-	if value == String(tile_set.names.get(tile_id, sprite_role(tile_id))):
+	if value == EditorRules.tile_name(tile_id, tile_set.names):
 		return
 
 	if not _capture_edit_start("Rename tile"):
@@ -1838,8 +1816,7 @@ func _tile_needs_unclipped_workspace() -> bool:
 
 
 func _refresh_selected_thumbnail() -> void:
-	if object_list.selected >= 0:
-		object_list.set_item_icon(object_list.selected, _tile_thumbnail(current_large_id))
+	object_list.update_thumbnail(current_large_id, _tile_thumbnail(current_large_id))
 
 
 func _tile_thumbnail(large_id: int) -> Texture2D:
@@ -1877,7 +1854,7 @@ func request_edit_name() -> void:
 		return
 
 	var tile_id := object_tile_id(current_large_id)
-	name_edit.text = String(tile_set.names.get(tile_id, sprite_role(tile_id)))
+	name_edit.text = EditorRules.tile_name(tile_id, tile_set.names)
 	object_panel.edit_name()
 
 

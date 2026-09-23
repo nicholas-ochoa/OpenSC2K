@@ -22,6 +22,7 @@ func _run() -> void:
 		_check(ScurkEditorRules.view_sprite_id(1000, view) == -1)
 		_check(ScurkEditorRules.view_sprite_id(1499, view) == -1)
 
+	_test_tile_names()
 	_test_editable_ids()
 	_test_placeable_ids()
 	_test_copy()
@@ -29,6 +30,23 @@ func _run() -> void:
 	_test_view_clamps()
 	print("PASS: SCURK sprite conversion, bounds, selection, copy, saved IDs, and view clamps (%d checks)" % checks)
 	quit()
+
+
+func _test_tile_names() -> void:
+	for tile_id in 256:
+		var expected := QueryStrings.CLEAR_TERRAIN
+		if tile_id >= BuildingTileIds.COMMERCIAL_1X1_FIRST:
+			expected = QueryStrings.TILE_NAMES[tile_id - 0x66]
+		elif tile_id > 0:
+			for index in QueryStrings.GENERAL_NAME_UPPER_BOUNDS.size():
+				if tile_id < QueryStrings.GENERAL_NAME_UPPER_BOUNDS[index]:
+					expected = QueryStrings.TILE_NAMES[index]
+					break
+		_check(ScurkEditorRules.tile_name(tile_id) == expected)
+	_check(ScurkEditorRules.tile_name(1, {1: "Custom rubble"}) == "Custom rubble")
+	_check(ScurkEditorRules.tile_name(1, {1: "  "}) == QueryStrings.tile_name(1))
+	_check(QueryStrings.tile_name(-1).is_empty() and QueryStrings.tile_name(256).is_empty())
+	_check(not ScurkEditorRules.tile_name(499).is_empty())
 
 
 func _test_placeable_ids() -> void:

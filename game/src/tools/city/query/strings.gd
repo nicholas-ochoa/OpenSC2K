@@ -1,6 +1,35 @@
 class_name QueryStrings
 extends RefCounted
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
+# the first strict upper bound greater than xbld selects the name index
+const GENERAL_NAME_UPPER_BOUNDS := [
+	Tiles.RUBBLE_FIRST,
+	Tiles.RADIOACTIVE_WASTE,
+	Tiles.TREE_FIRST,
+	Tiles.SMALL_PARK,
+	Tiles.POWER_LINE_FIRST,
+	Tiles.FIRST_ROAD,
+	Tiles.RAIL_FIRST,
+	Tiles.TUNNEL_FIRST,
+	Tiles.ROAD_POWER_CROSSING_1,
+	Tiles.RAIL_POWER_CROSSING_1,
+	Tiles.HIGHWAY_STRAIGHT_1,
+	Tiles.SUSPENSION_BRIDGE_1,
+	Tiles.RAISING_BRIDGE_TOWER,
+	Tiles.POWER_BRIDGE,
+	Tiles.ONRAMP_FIRST,
+	Tiles.HIGHWAY_SLOPE_FIRST,
+	Tiles.HIGHWAY_BRIDGE,
+	Tiles.RAIL_SUBWAY_FIRST,
+	Tiles.DEVELOPED_FIRST,
+	Tiles.MIDDLE_CLASS_HOMES_1X1_1,
+	Tiles.LUXURY_HOMES_1X1_1,
+	Tiles.COMMERCIAL_1X1_FIRST,
+]
+
+
 # tile names by name index
 const TILE_NAMES: Array[String] = [
 	"Katzenjammers",
@@ -323,3 +352,16 @@ const MICROSIM_LINES := [
 		" for all city marinas)",
 	],
 ]
+
+
+static func tile_name(tile_id: int) -> String:
+	if tile_id == Tiles.EMPTY:
+		return CLEAR_TERRAIN
+	if tile_id < Tiles.EMPTY or tile_id > Tiles.LLAMA_DOME:
+		return ""
+	if tile_id >= Tiles.COMMERCIAL_1X1_FIRST:
+		return TILE_NAMES[tile_id - 0x66]
+	for index in GENERAL_NAME_UPPER_BOUNDS.size():
+		if tile_id < GENERAL_NAME_UPPER_BOUNDS[index]:
+			return TILE_NAMES[index]
+	return ""

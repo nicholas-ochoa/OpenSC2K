@@ -108,3 +108,11 @@ static func sprite_role(tile_id: int) -> String:
 		return "Traffic, moving-object, or effect sprite"
 
 	return "City support sprite"
+
+
+static func tile_name(tile_id: int, custom_names: Dictionary = {}) -> String:
+	var custom := String(custom_names.get(tile_id, "")).strip_edges()
+	if not custom.is_empty():
+		return custom
+	var original := QueryStrings.tile_name(tile_id)
+	return original if not original.is_empty() else "Unnamed sprite %d" % tile_id

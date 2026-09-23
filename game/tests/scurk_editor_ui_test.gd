@@ -12,6 +12,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	_test_footprints()
+	await _test_tile_selector()
 	var assets := OriginalGameAssets.load_root(ProjectSettings.globalize_path("res://../references/SIMCITY2000"))
 	_test_clip_edges(assets)
 	var editor := EditorScene.instantiate() as ScurkEditorControl
@@ -21,7 +22,7 @@ func _run() -> void:
 	assert(editor.show_editor().ok)
 	await process_frame
 	await process_frame
-	assert(editor.object_list.get_item_icon(0) != null)
+	assert(editor.object_list.entries[0].thumbnail != null)
 	var guides := editor.drawing_controls.get_node("Margin/Column/Isometric")
 	guides.get_node("Guides").button_pressed = true
 	guides.get_node("GuideFields/Spacing").value = 24
@@ -78,30 +79,33 @@ func _run() -> void:
 	# Filtering must select the visible result, including after an empty result.
 	editor.object_search.text = "255"
 	editor._on_search_changed("255")
-	assert(editor.object_list.item_count > 0)
-	assert(editor.current_large_id == int(editor.object_list.get_item_metadata(editor.object_list.selected)))
+	assert(editor.object_list.entries.size() > 0)
+	assert(editor.current_large_id == editor.object_list.entries[editor.object_list.selected].large_id)
 	editor.object_search.text = "no matching tile"
 	editor._on_search_changed("")
-	assert(editor.object_list.item_count == 0)
+	assert(editor.object_list.entries.size() == 0)
 	editor.object_search.text = ""
 	editor._on_search_changed("")
-	assert(editor.object_list.item_count == 499)
+	assert(editor.object_list.entries.size() == 499)
 	editor._on_object_selected(0)
 	# The name editor is modal. Apply and revert both retain undo history.
 	editor.request_edit_name()
-	assert(editor.name_edit.text == editor.sprite_role(1))
+	assert(editor.name_edit.text == ScurkEditorRules.tile_name(1))
 	assert(editor.object_panel.name_dialog.visible and editor.object_panel.name_dialog.exclusive)
 	editor.name_edit.text = "Test tile"
 	editor.object_panel.name_dialog.confirmed.emit()
 	editor.object_panel.name_dialog.hide()
 	assert(editor.tile_set.names[1] == "Test tile")
+	assert(editor.object_list.entries[editor.object_list.selected].title == "Test tile")
 	editor.request_edit_name()
 	assert(editor.name_edit.text == "Test tile")
 	editor.object_panel.name_dialog.hide()
 	editor.revert_name_button.pressed.emit()
 	assert(not editor.tile_set.names.has(1))
+	assert(editor.object_list.entries[editor.object_list.selected].title == QueryStrings.tile_name(1))
 	editor.undo()
 	assert(editor.tile_set.names[1] == "Test tile")
+	assert(editor.object_list.entries[editor.object_list.selected].title == "Test tile")
 	editor.undo()
 	# Palette animation uses one tick even while display views are hidden.
 	editor._set_cycle_colors(false)
@@ -245,6 +249,37 @@ func _run() -> void:
 	quit()
 
 
+func _test_tile_selector() -> void:
+	var selector := preload("res://src/ui/scurk/scurk_tile_selector.tscn").instantiate() as ScurkTileSelector
+	root.add_child(selector)
+	var entries: Array[ScurkTileSelector.Entry] = [
+		ScurkTileSelector.Entry.new(1001, "First tile", "Landscape", null),
+		ScurkTileSelector.Entry.new(1002, "Second tile", "Landscape", null),
+		ScurkTileSelector.Entry.new(1201, "Third tile", "Building", null),
+	]
+	selector.set_entries(entries, 1002)
+	assert(selector.selected == 1 and selector.rows.is_empty(), "Popup rows are built only when needed")
+	selector.show_choices()
+	await process_frame
+	await process_frame
+	assert(selector.rows.size() == entries.size())
+	assert(selector.get_node("Popup").visible)
+	assert(selector.rows[1].has_focus())
+	var chosen := [-1]
+	selector.item_selected.connect(func(index: int) -> void: chosen[0] = index)
+	selector.rows[2].pressed.emit()
+	assert(chosen[0] == 2 and selector.selected == 2)
+	assert(not selector.get_node("Popup").visible)
+	selector.set_entries([entries[0]], 1201)
+	assert(selector.selected == 0 and selector.entries[0].large_id == 1001)
+	selector.show_choices()
+	await process_frame
+	assert(selector.rows.size() == 1)
+	selector.set_entries([], 1001)
+	assert(selector.disabled and selector.selected == -1 and not selector.get_node("Popup").visible)
+	selector.free()
+
+
 func _test_paint_sidebar(editor: ScurkEditorControl) -> void:
 	var paint := editor.drawing_controls.get_node("Margin/Column/Paint")
 	var lock := paint.get_node("Lock") as CheckBox
@@ -284,8 +319,8 @@ func _assert_inside(bounds: Rect2, control: Control) -> void:
 func _test_clipping_toggle(editor: ScurkEditorControl) -> void:
 	var before: PackedByteArray = editor.tile_set.to_bytes().bytes
 	for id in [1124, 1127]:
-		for row in editor.object_list.item_count:
-			if int(editor.object_list.get_item_metadata(row)) == id:
+		for row in editor.object_list.entries.size():
+			if editor.object_list.entries[row].large_id == id:
 				editor._on_object_selected(row)
 				break
 		assert(editor.current_large_id == id)

@@ -233,15 +233,4 @@ static func tile_name(city: CityState, point: Vector2i, building := -1) -> Strin
 
 		return QueryStrings.SALT_WATER if city.is_salt_water(point.x, point.y) else QueryStrings.FRESH_WATER
 
-	if building >= Tiles.COMMERCIAL_1X1_FIRST:
-		return QueryStrings.TILE_NAMES[building - 0x66]
-
-	var name_index := 0
-
-	for upper_bound_index in GENERAL_NAME_UPPER_BOUNDS.size():
-		name_index = upper_bound_index
-
-		if building < int(GENERAL_NAME_UPPER_BOUNDS[upper_bound_index]):
-			break
-
-	return QueryStrings.TILE_NAMES[name_index]
+	return QueryStrings.tile_name(building)
