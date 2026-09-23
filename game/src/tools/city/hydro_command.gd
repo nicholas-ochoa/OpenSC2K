@@ -89,6 +89,7 @@ static func apply(
 		return HydroEditResult.rejected("cannot store hydroelectric changes")
 
 	var immediate_power_refresh := false
+	var power_usage_percent := -1
 
 	if city.document.misc_u32(BuildingCommand.MISC_NORMAL_POPULATION) < BuildingCommand.IMMEDIATE_UTILITY_POPULATION_LIMIT:
 		var power_result := Power.run(city, process_random)
@@ -100,6 +101,7 @@ static func apply(
 			return HydroEditResult.rejected("cannot refresh power after hydroelectric placement")
 
 		immediate_power_refresh = true
+		power_usage_percent = power_result.usage_percent
 		changed_payloads = BuildingState._city_payloads(city)
 
 		if changed_payloads.is_empty():
@@ -130,6 +132,7 @@ static func apply(
 	result.random_state_before = process_random_state_before
 	result.random_state_after = process_random.state
 	result.immediate_power_refresh = immediate_power_refresh
+	result.power_usage_percent = power_usage_percent
 
 	return result
 

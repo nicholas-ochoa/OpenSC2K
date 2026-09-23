@@ -44,7 +44,8 @@ func test_hydro_command(reference_root: String) -> void:
 		city.funds() == 600
 		and city.is_powerable(20, 20)
 		and city.is_powered(20, 20)
-		and command.immediate_power_refresh,
+		and command.immediate_power_refresh
+		and command.power_usage_percent == 0,
 		"Low-population hydroelectric placement charges cost and refreshes power",
 	)
 	_check(city.zones[20 * 128 + 20] == 0xf0, "Hydroelectric placement sets all corner bits")
@@ -65,6 +66,7 @@ func test_hydro_command(reference_root: String) -> void:
 		_check(
 			threshold_command.ok
 			and threshold_command.immediate_power_refresh == expect_refresh
+			and (threshold_command.power_usage_percent >= 0) == expect_refresh
 			and city.is_powerable(20, 20)
 			and city.is_powered(20, 20) == expect_refresh,
 			"Hydroelectric power refresh at population %d" % population,

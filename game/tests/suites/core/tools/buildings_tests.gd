@@ -197,6 +197,11 @@ func test_building_command(reference_root: String) -> void:
 		"A low-population building immediately refreshes power and water",
 	)
 	_check(
+		low_population_station.power_usage_percent == 100
+		and low_population_station.water_usage_percent >= 0,
+		"An immediate utility refresh returns its utilization",
+	)
+	_check(
 		not utility_city.is_powered(20, 20)
 		and utility_city.is_powerable(20, 20)
 		and utility_city.is_piped(20, 20),
@@ -242,6 +247,8 @@ func test_building_command(reference_root: String) -> void:
 			threshold_station.ok
 			and threshold_station.immediate_power_refresh == expect_refresh
 			and threshold_station.immediate_water_refresh == expect_refresh
+			and (threshold_station.power_usage_percent >= 0) == expect_refresh
+			and (threshold_station.water_usage_percent >= 0) == expect_refresh
 			and utility_city.is_powered(20, 20) != expect_refresh,
 			"Building utility refresh at population %d" % population,
 		)

@@ -36,6 +36,13 @@ var tracks_random := false
 var random_state_before := 0
 var random_state_after := 0
 
+# utilization from an immediate power or water scan, or -1 when none ran.
+# the application keeps the engine values from before the edit for undo
+var power_usage_percent := -1
+var water_usage_percent := -1
+var power_usage_before := -1
+var water_usage_before := -1
+
 # presentation events for the main thread
 var sound_events: Array[int] = []
 var effect_events: Array[EffectEvent] = []

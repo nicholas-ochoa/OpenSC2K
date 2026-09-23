@@ -376,6 +376,7 @@ func _record_building(
 ) -> void:
 	var building_name: String = Tools.tool(building_group, building_subtool).name
 	app.tool_state.last_edit_command = building
+	_publish_utility_usage(building)
 	var stadium_team_pending := building.stadium_team_selection_required
 
 	if not stadium_team_pending:
@@ -401,6 +402,37 @@ func _record_building(
 		app.status_label.text += " Select a stadium team."
 
 
+# an immediate utility scan after placement updates the engine utilization
+func _publish_utility_usage(command: EditCommandResult) -> void:
+	var engine := app.simulation_state.simulation_engine
+
+	if engine == null:
+		return
+
+	command.power_usage_before = engine.power_usage_percent
+	command.water_usage_before = engine.water_usage_percent
+
+	if command.power_usage_percent >= 0:
+		engine.power_usage_percent = command.power_usage_percent
+
+	if command.water_usage_percent >= 0:
+		engine.water_usage_percent = command.water_usage_percent
+
+
+# undo restores the utility flags, so it also restores their utilization
+func _restore_utility_usage(command: EditCommandResult) -> void:
+	var engine := app.simulation_state.simulation_engine
+
+	if engine == null:
+		return
+
+	if command.power_usage_percent >= 0:
+		engine.power_usage_percent = command.power_usage_before
+
+	if command.water_usage_percent >= 0:
+		engine.water_usage_percent = command.water_usage_before
+
+
 func _finish_simple_edit(
 	edit: SimpleEditFlow.Result, scurk_tool_mode: bool, scurk_tool: ScurkEditTool
 ) -> void:
@@ -415,6 +447,8 @@ func _finish_simple_edit(
 		app.interface.show_error(str(edit.message))
 
 		return
+
+	_publish_utility_usage(command)
 
 	if edit.record_command:
 		app.scurk_workspace.record_edit_command(
@@ -506,6 +540,7 @@ func undo_last_edit() -> void:
 		app.tool_state.dispatch_initialized = dispatch.dispatch_initialized_before
 
 	app.tool_state.last_edit_command = null
+	_restore_utility_usage(command)
 	app.interface.refresh_details()
 	app.static_render.refresh_after_city_edit(command)
 

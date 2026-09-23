@@ -150,6 +150,8 @@ static func apply(
 
 	var immediate_power_refresh := false
 	var immediate_water_refresh := false
+	var power_usage_percent := -1
+	var water_usage_percent := -1
 
 	if BinaryData.read_u32_be(misc, MISC_NORMAL_POPULATION) < IMMEDIATE_UTILITY_POPULATION_LIMIT:
 		var selected_index := city.index_of(selected.x, selected.y)
@@ -165,6 +167,7 @@ static func apply(
 				return BuildingEditResult.rejected("cannot refresh power after placement")
 
 			immediate_power_refresh = true
+			power_usage_percent = power_result.usage_percent
 
 		if selected_index >= 0 and city.tile_flags[selected_index] & FLAG_PIPED:
 			var water_result := Water.run(city)
@@ -177,6 +180,7 @@ static func apply(
 				return BuildingEditResult.rejected("cannot refresh water after placement")
 
 			immediate_water_refresh = true
+			water_usage_percent = water_result.usage_percent
 
 	if immediate_power_refresh or immediate_water_refresh:
 		changed_payloads = BuildingState._city_payloads(city)
@@ -214,6 +218,8 @@ static func apply(
 	result.random_state_after = process_random.state
 	result.immediate_power_refresh = immediate_power_refresh
 	result.immediate_water_refresh = immediate_water_refresh
+	result.power_usage_percent = power_usage_percent
+	result.water_usage_percent = water_usage_percent
 	result.stadium_team_selection_required = tile_id == STADIUM and overlay_id != 0
 
 	if not result.stadium_team_selection_required:
