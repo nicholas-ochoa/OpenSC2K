@@ -264,3 +264,41 @@ func test_january_budget_order(reference_root: String) -> void:
 		day.phase_results.keys().find("annual_microsim") < day.phase_results.keys().find("budget"),
 		"The annual update events come before the monthly budget events",
 	)
+
+
+# after a load, the annual update measures unknown power and water use on a copy
+func test_january_unknown_utilities(_reference_root: String) -> void:
+	var samples := []
+
+	for known in [false, true]:
+		var city := CityModel.from_document(EmptyCityTemplate.create())
+		_check(city.set_age_in_days(299), "Utility fixture selects the last December day")
+		_check(city.document.set_misc_u32(0x0e3c, 1), "Utility fixture sets year end")
+		_check(city.document.set_misc_u32(0x0ff0, 1), "Utility fixture enables Auto Budget")
+		city.set_building_id(10, 10, Tiles.COAL_POWER)
+		city.set_building_id(10, 11, Tiles.WATER_PUMP)
+		city.set_building_id(10, 12, Tiles.LOWER_CLASS_HOMES_1X1_1)
+
+		for y in range(10, 13):
+			city.set_tile_flag(10, y, 0xe0, true)
+
+		var microsims := _filled_bytes(CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE, 0)
+		microsims[8] = Tiles.COAL_POWER
+		_check(city.document.find_chunk("XMIC").set_decoded_payload(microsims), "Utility fixture installs one plant record")
+		var flags_before := city.tile_flags.duplicate()
+		var engine := SimulationEngine.new(city, 7, 7, 7)
+
+		if known:
+			engine.power_usage_percent = samples[0][0]
+			engine.water_usage_percent = samples[0][1]
+
+		var day := engine.advance_day()
+		_check(day.ok and day.complete, "The annual update completes with unknown utilities: %s" % [day.pending])
+		_check(city.tile_flags == flags_before, "The utility measurement does not change XBIT")
+		samples.append([
+			engine.power_usage_percent, engine.water_usage_percent, city.microsim(1).stat_2,
+			engine.random.state, engine.lfsr_random.state,
+		])
+
+	_check(samples[0][0] >= 0 and samples[0][1] >= 0, "The annual update measures power and water use")
+	_check(samples[0] == samples[1], "A measured value gives the same annual result and random state: %s" % [samples])

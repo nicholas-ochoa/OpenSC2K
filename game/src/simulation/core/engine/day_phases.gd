@@ -63,6 +63,7 @@ class Budget extends SimulationDayPhase:
 
 		if settlement.settled_year:
 			context.span.mark("annual_microsim")
+			_measure_unknown_utilities(context)
 			annual = MicrosimAnnualPhase.run(
 				context.city,
 				context.bus_passengers,
@@ -104,6 +105,28 @@ class Budget extends SimulationDayPhase:
 		budget.complete = annual == null or annual.complete
 
 		return budget
+
+	# the original scans power and then water when it loads a city. after a
+	# load, the engine has no value until the first scheduled scan. scan a copy
+	# here so that the annual update does not change the city or its random state
+	func _measure_unknown_utilities(context: SimulationPhaseContext) -> void:
+		if context.power_usage_percent >= 0 and context.water_usage_percent >= 0:
+			return
+
+		var copy := CityState.copy_for_edit(context.city)
+		copy.simulation_slice = context.city.simulation_slice
+
+		if context.power_usage_percent < 0:
+			var power := PowerPhase.run(copy, SimRandom.new(context.random.state))
+
+			if power.ok:
+				context.power_usage_percent = power.usage_percent
+
+		if context.water_usage_percent < 0:
+			var water := WaterPhase.run(copy)
+
+			if water.ok:
+				context.water_usage_percent = water.usage_percent
 
 
 class Power extends SimulationDayPhase:
