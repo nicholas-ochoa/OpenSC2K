@@ -51,7 +51,7 @@ visible = false
 
 [node name="Open" type="Button" parent="Actions"]
 layout_mode = 2
-text = "Open..."
+text = "Open"
 
 [node name="Save" type="Button" parent="Actions"]
 layout_mode = 2
@@ -59,15 +59,15 @@ text = "Save"
 
 [node name="SaveAs" type="Button" parent="Actions"]
 layout_mode = 2
-text = "Save As..."
+text = "Save As"
 
 [node name="Import" type="Button" parent="Actions"]
 layout_mode = 2
-text = "Import Image..."
+text = "Import Image"
 
 [node name="Export" type="Button" parent="Actions"]
 layout_mode = 2
-text = "Export Image..."
+text = "Export Image"
 
 [node name="Close" type="Button" parent="Actions"]
 layout_mode = 2
@@ -83,7 +83,7 @@ text = "Redo"
 
 [node name="Name" type="Button" parent="Actions"]
 layout_mode = 2
-text = "Tile Name..."
+text = "Rename Tile"
 
 [node name="Revert" type="Button" parent="Actions"]
 layout_mode = 2
@@ -99,7 +99,7 @@ text = "Pick & Copy..."
 
 [node name="Settings" type="Button" parent="Actions"]
 layout_mode = 2
-text = "Game Options..."
+text = "Settings"
 
 [node name="About" type="Button" parent="Actions"]
 layout_mode = 2
@@ -107,11 +107,11 @@ text = "About OpenSC2K..."
 
 [node name="ExportTileSet" type="Button" parent="Actions"]
 layout_mode = 2
-text = "Export Tile Set..."
+text = "Export Tile Set"
 
 [node name="ReplaceColor" type="Button" parent="Actions"]
 layout_mode = 2
-text = "Replace Color..."
+text = "Replace Color"
 
 [node name="SelectAll" type="Button" parent="Actions"]
 layout_mode = 2
@@ -143,11 +143,11 @@ text = "Delete Selection"
 
 [node name="RecoverProject" type="Button" parent="Actions"]
 layout_mode = 2
-text = "Recover Autosave..."
+text = "Recover Autosave"
 
 [node name="CopyAllLayers" type="Button" parent="Actions"]
 layout_mode = 2
-text = "Copy All Layers"
+text = "Copy from All Layers"
 
 [node name="CutAllLayers" type="Button" parent="Actions"]
 layout_mode = 2

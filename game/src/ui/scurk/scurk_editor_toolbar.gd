@@ -52,8 +52,8 @@ func build() -> void:
 	redo_button = $Actions/Redo
 	revert_button = $Actions/Revert
 	clear_button = $Actions/Clear
-	_bind_menu($Row/File, ["Open", "Save", "SaveAs", "ExportTileSet", "RecoverProject", "", "Import", "Export", "", "Close"])
-	_bind_menu($Row/Edit, ["Undo", "Redo", "", "SelectAll", "Deselect", "CopySelection", "CutSelection", "PasteSelection", "CopyAllLayers", "CutAllLayers", "PasteNewLayer", "DuplicateSelection", "DeleteSelection", "", "ReplaceColor", "Name", "Revert", "Clear", "PickCopy"])
+	_bind_menu($Row/File, ["Open", "", "Save", "SaveAs", "", "RecoverProject", "", "Import", "Export", "ExportTileSet", "", "Close"])
+	_bind_menu($Row/Edit, ["Undo", "Redo", "", "SelectAll", "Deselect", "", "CutSelection", "CopySelection", "PasteSelection", "", "CutAllLayers", "CopyAllLayers", "PasteNewLayer", "", "DuplicateSelection", "DeleteSelection", "", "ReplaceColor", "Name", "", "Revert", "Clear", "", "PickCopy"])
 	_bind_menu($Row/Options, ["Settings"])
 	_bind_menu($Row/Help, ["About"])
 
