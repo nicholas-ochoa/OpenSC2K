@@ -103,7 +103,7 @@ text = "Settings"
 
 [node name="About" type="Button" parent="Actions"]
 layout_mode = 2
-text = "About OpenSC2K..."
+text = "About"
 
 [node name="ExportTileSet" type="Button" parent="Actions"]
 layout_mode = 2

@@ -23,6 +23,7 @@ func _run() -> void:
 	assert(editor.show_editor().ok)
 	await process_frame
 	await process_frame
+	_test_close_confirmation(editor)
 	assert(editor.object_list.entries[0].thumbnail != null)
 	var guides := editor.drawing_controls.get_node("Margin/Scroll/Column/Isometric")
 	guides.get_node("Guides").button_pressed = true
@@ -629,3 +630,36 @@ func _test_underground_canvas(editor: ScurkEditorControl) -> void:
 	editor.current_view = original_view
 	editor._refresh_sprite()
 	assert(editor.pixel_canvas.clear_background_pixels == editor.surface_background_pixels)
+
+
+func _test_close_confirmation(editor: ScurkEditorControl) -> void:
+	var closed: Array[bool] = []
+	var on_close := func() -> void: closed.append(true)
+	editor.close_requested.connect(on_close)
+	var escape := InputEventKey.new()
+	escape.keycode = KEY_ESCAPE
+	escape.pressed = true
+	var dialog := editor.get_node("Dialogs/Close") as ConfirmationDialog
+	assert(not editor.dirty)
+	editor.pixel_canvas.select_all()
+	editor.object_search.grab_focus()
+	assert(editor.handle_shortcut(escape))
+	assert(not editor.pixel_canvas.selection.active() and not dialog.visible)
+	assert(editor.handle_shortcut(escape))
+	assert(editor.visible and dialog.visible and closed.is_empty())
+	dialog.canceled.emit()
+	dialog.hide()
+	assert(editor.visible and closed.is_empty())
+	assert(editor.handle_shortcut(escape))
+	dialog.confirmed.emit()
+	dialog.hide()
+	assert(not editor.visible and closed.size() == 1)
+	editor.show()
+	editor.studio.modified = true
+	assert(editor.handle_shortcut(escape))
+	assert(editor.visible and editor.discard_dialog.visible and not dialog.visible)
+	editor.discard_dialog.canceled.emit()
+	editor.discard_dialog.hide()
+	assert(editor.dirty and closed.size() == 1)
+	editor.studio.modified = false
+	editor.close_requested.disconnect(on_close)

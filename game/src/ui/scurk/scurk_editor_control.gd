@@ -316,6 +316,10 @@ func request_close() -> void:
 
 		return
 
+	(get_node("Dialogs/Close") as ConfirmationDialog).popup_centered()
+
+
+func _close_editor() -> void:
 	hide()
 	close_requested.emit()
 
@@ -733,6 +737,9 @@ func handle_shortcut(event: InputEventKey) -> bool:
 
 			return true
 
+		if pixel_canvas._handle_editor_key(event):
+			return true
+
 		request_close()
 
 		return true
@@ -894,6 +901,7 @@ func _bind_interface() -> void:
 	dialog_registry.export_options.confirmed.connect(_show_export_file_dialog)
 	discard_dialog = dialog_registry.discard_dialog
 	discard_dialog.confirmed.connect(_confirm_discard)
+	get_node("Dialogs/Close").confirmed.connect(_close_editor)
 	pick_copy_control = dialog_registry.pick_copy_control
 	pick_copy_control.close_requested.connect(_pick_copy_closed)
 	pick_copy_control.change_working_requested.connect(_change_pick_working)
@@ -1613,8 +1621,7 @@ func _confirm_discard() -> void:
 	elif action == "open":
 		_popup_open_dialog()
 	elif action == "close":
-		hide()
-		close_requested.emit()
+		_close_editor()
 
 
 func _set_status(message: String) -> void:

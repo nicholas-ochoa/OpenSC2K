@@ -35,6 +35,12 @@ title = "Export image"
 title = "Unsaved SCURK changes"
 ok_button_text = "Discard"
 
+[node name="Close" type="ConfirmationDialog" parent="."]
+title = "Close SCURK"
+dialog_text = "Close SCURK and return to the main menu?"
+ok_button_text = "Close"
+exclusive = true
+
 [node name="Error" type="AcceptDialog" parent="."]
 title = "SCURK error"
 
