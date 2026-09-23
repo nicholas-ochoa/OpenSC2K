@@ -407,12 +407,12 @@ func _test_simulation_sound_gate() -> void:
 	var gate := WaveSounds.new()
 	_check(gate.request(WaveSounds.SOUND_FLOOD, false, true) and gate.request(WaveSounds.SOUND_EXPLODE, false, true),
 		"Different simulation sounds can start together")
-	gate.advance(999.0)
-	_check(not gate.request(WaveSounds.SOUND_EXPLODE, false, true) and not gate.request(WaveSounds.SOUND_EXPLODE),
-		"A demolition sound from any source waits one second")
-	gate.advance(1.0)
-	_check(gate.request(WaveSounds.SOUND_EXPLODE), "A demolition sound can repeat after one second")
-	gate.advance(1999.0)
+	gate.advance(600.0)
+	_check(not gate.request(WaveSounds.SOUND_EXPLODE, false, true) and gate.request(WaveSounds.SOUND_EXPLODE),
+		"A disaster explosion waits one second, but the bulldozer repeats after three base ticks")
+	gate.advance(600.0)
+	_check(gate.request(WaveSounds.SOUND_EXPLODE, false, true), "A disaster explosion can repeat after its delay")
+	gate.advance(1799.0)
 	_check(not gate.request(WaveSounds.SOUND_FLOOD, false, true), "The flood sound waits three seconds")
 	_check(gate.request(WaveSounds.SOUND_FLOOD), "Player feedback bypasses the simulation delay")
 	gate.stop()
