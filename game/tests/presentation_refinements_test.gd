@@ -112,3 +112,19 @@ func _check_newspaper_options(main: Node) -> void:
 			assert(popup.is_item_checked(popup.get_item_index(option)) == (value != 0))
 			assert(not main.city_dialogs.newspaper_dialog.visible, "A newspaper option does not open a paper")
 			before = value
+
+	var progression: int = city.document.misc_u32(Sc2MiscLayout.PROGRESSION)
+	assert(city.document.set_misc_u32(Sc2MiscLayout.PROGRESSION, 3))
+	var paper_count := NewsQueue.available_paper_count(city.city_status())
+	var choice := paper_count - 1
+	assert(choice == 3 and city.document.misc_u32(Sc2MiscLayout.NEWSPAPER_CHOICE) != choice)
+	main.reports.on_newspaper_menu(choice)
+	assert(main.city_dialogs.newspaper_dialog.visible)
+	main.city_dialogs.newspaper_dialog.hide()
+	assert(city.document.misc_u32(Sc2MiscLayout.NEWSPAPER_CHOICE) == choice, "The menu saves the opened paper")
+	main.reports.refresh_newspaper_menu()
+	assert(popup.is_item_checked(popup.get_item_index(choice)), "The menu marks the saved paper")
+	main.reports.on_newspaper_menu(paper_count)
+	assert(city.document.misc_u32(Sc2MiscLayout.NEWSPAPER_CHOICE) == choice, "An unavailable paper does not change the choice")
+	assert(city.document.set_misc_u32(Sc2MiscLayout.NEWSPAPER_CHOICE, 0))
+	assert(city.document.set_misc_u32(Sc2MiscLayout.PROGRESSION, progression))

@@ -231,6 +231,7 @@ func refresh_newspaper_menu() -> void:
 		NewspaperDialog.newspaper_titles(city, document_state.current_document),
 		city != null and city.newspaper_subscription_enabled(),
 		city != null and city.newspaper_extras_enabled(),
+		city.document.misc_u32(Sc2MiscLayout.NEWSPAPER_CHOICE) if city != null else -1,
 	)
 
 
@@ -244,6 +245,13 @@ func on_newspaper_menu(id: int) -> void:
 		return
 
 	if id < 0 or id >= NewsQueue.available_paper_count(app.document_state.city.city_status()):
+		return
+
+	# the original saves the paper that the player opens. a subscribed or extra
+	# edition opens this paper
+	if not app.document_state.city.document.set_misc_u32(Sc2MiscLayout.NEWSPAPER_CHOICE, id):
+		app.interface.show_error("Cannot store the newspaper choice.")
+
 		return
 
 	if app.document_state.city.music_enabled() and app.simulation_state.simulation_engine != null:

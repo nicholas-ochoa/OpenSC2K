@@ -300,8 +300,9 @@ func set_city_name(display_name: String) -> void:
 	city_label.tooltip_text = display_name
 
 
-# the original menu shows the two newspaper options above the available papers
-func set_newspapers(titles: PackedStringArray, subscribed := false, extras := false) -> void:
+# the original menu shows the two newspaper options above the available papers,
+# and marks the paper that the player opened last
+func set_newspapers(titles: PackedStringArray, subscribed := false, extras := false, selected := -1) -> void:
 	var popup := newspaper_menu.get_popup()
 	popup.clear()
 	newspaper_menu.disabled = titles.is_empty()
@@ -316,7 +317,8 @@ func set_newspapers(titles: PackedStringArray, subscribed := false, extras := fa
 	popup.add_separator()
 
 	for index in titles.size():
-		popup.add_item(titles[index], index)
+		popup.add_radio_check_item(titles[index], index)
+		popup.set_item_checked(popup.get_item_index(index), index == selected)
 
 
 func set_population(display_value: String, available := true) -> void:
