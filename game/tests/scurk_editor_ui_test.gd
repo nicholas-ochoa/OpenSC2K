@@ -247,6 +247,7 @@ func _run() -> void:
 	DirAccess.remove_absolute(folder.path_join("CUSTOM.MIF"))
 	DirAccess.remove_absolute(folder)
 	editor.free()
+	await _test_context_menu_input()
 	print("PASS: SCURK selection, modal names, synchronized cycling, unclipped save/reload, selected-view indexed PNG, views and viewport fit")
 	quit()
 
@@ -522,3 +523,39 @@ func _test_preview_crop() -> void:
 	preview.clear_preview(0)
 	assert(preview.display_bounds.has_area())
 	preview.free()
+
+
+func _test_context_menu_input() -> void:
+	var host := Control.new()
+	root.add_child(host)
+	host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var menu := ScurkContextMenu.new()
+	host.add_child(menu)
+	menu.add_item("Action")
+	var clicks: Array[Vector2] = []
+	host.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
+			clicks.append(event.position)
+			menu.position = Vector2i(event.position)
+			menu.popup()
+	)
+	menu.position = Vector2i(20, 20)
+	menu.popup()
+	await process_frame
+	var event := InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_RIGHT
+	event.pressed = true
+	var destination := Vector2(400, 300)
+	event.position = menu.get_screen_transform().affine_inverse() * (root.get_screen_transform() * destination)
+	menu._outside_click(event)
+	assert(not menu.visible)
+	await process_frame
+	assert(clicks.size() == 1 and clicks[0].is_equal_approx(destination))
+	assert(menu.visible)
+	# An inside right-click must not close or forward the event.
+	event.position = Vector2(2, 2)
+	menu._outside_click(event)
+	await process_frame
+	assert(menu.visible and clicks.size() == 1)
+	menu.hide()
+	host.free()

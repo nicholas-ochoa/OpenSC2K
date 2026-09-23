@@ -1,5 +1,7 @@
 [gd_scene format=3]
 
+[ext_resource type="Script" path="res://src/ui/scurk/scurk_context_menu.gd" id="context_menu"]
+
 [ext_resource type="Script" path="res://src/ui/scurk/scurk_editor_studio.gd" id="script"]
 
 [ext_resource type="Script" path="res://src/view/scurk_context_preview.gd" id="context"]
@@ -331,3 +333,4 @@ exclusive = true
 ok_button_text = "Delete"
 
 [node name="LayerMenu" type="PopupMenu" parent="."]
+script = ExtResource("context_menu")

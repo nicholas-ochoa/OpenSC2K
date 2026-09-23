@@ -11,6 +11,7 @@ func _ready() -> void:
 	base_end_padding = get_theme_constant("item_end_padding")
 	about_to_popup.connect(_layout_hints)
 	id_focused.connect(_update_hint_colors)
+	window_input.connect(_outside_click)
 
 
 func reset_hints() -> void:
@@ -82,3 +83,16 @@ func _update_hint_colors(id: int) -> void:
 		var role := "font_disabled_color" if is_item_disabled(index) else "font_hover_color" if get_item_id(index) == id else "font_accelerator_color"
 		label.add_theme_color_override("font_color", get_theme_color(role))
 
+
+func _outside_click(event: InputEvent) -> void:
+	if not event is InputEventMouseButton or not event.pressed or event.button_index != MOUSE_BUTTON_RIGHT:
+		return
+	if get_visible_rect().has_point(event.position):
+		return
+	var target := get_parent().get_viewport()
+	var forwarded := event.duplicate() as InputEventMouseButton
+	forwarded.position = target.get_screen_transform().affine_inverse() * (get_screen_transform() * event.position)
+	forwarded.global_position = forwarded.position
+	set_input_as_handled()
+	hide()
+	target.push_input.call_deferred(forwarded, true)
