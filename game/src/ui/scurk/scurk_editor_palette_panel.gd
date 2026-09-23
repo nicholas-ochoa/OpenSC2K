@@ -7,6 +7,9 @@ signal shade_ramp_changed(indices: PackedInt32Array)
 signal navigation_changed(state: Dictionary)
 signal texture_selected(index: int)
 
+enum ColorAction { SELECT, FAVORITE, RAMP, CLEAR_RAMP }
+
+var context_color_index := -1
 var palette: Sc2Palette
 var palette_control: ScurkPaletteControl
 var selected_color: ColorRect
@@ -34,6 +37,8 @@ func build() -> void:
 	increment_cycle_button = $Margin/Column/Cycle/Step
 	palette_view = $Margin/Column/ColorsHeader/View
 	ramp_clear_button = $Margin/Column/ColorsHeader/ClearRamp
+	palette_control.context_menu_requested.connect(_show_color_menu)
+	$ColorMenu.id_pressed.connect(_color_menu_action)
 	palette_control.index_selected.connect(palette_index_selected.emit)
 	palette_control.index_hovered.connect(palette_index_hovered.emit)
 	palette_control.ramp_changed.connect(shade_ramp_changed.emit)
@@ -109,3 +114,35 @@ func export_state() -> Dictionary:
 
 func import_state(state: Dictionary) -> void:
 	palette_control.import_state(state)
+
+
+func _show_color_menu(index: int, position: Vector2) -> void:
+	context_color_index = index
+	var menu := $ColorMenu as PopupMenu
+	menu.clear()
+	menu.add_item("Select color %d" % index, ColorAction.SELECT)
+	menu.add_separator()
+	menu.add_check_item("Favorite (Ctrl/Cmd-click)", ColorAction.FAVORITE)
+	menu.set_item_checked(menu.get_item_index(ColorAction.FAVORITE), palette_control.favorite_indices.has(index))
+	menu.add_check_item("Shade ramp step (Shift-click)", ColorAction.RAMP)
+	menu.set_item_checked(menu.get_item_index(ColorAction.RAMP), palette_control.ramp_indices.has(index))
+	menu.add_item("Clear shade ramp", ColorAction.CLEAR_RAMP)
+	menu.set_item_disabled(menu.get_item_index(ColorAction.CLEAR_RAMP), palette_control.ramp_indices.is_empty())
+	menu.position = Vector2i(palette_control.get_screen_transform() * position)
+	menu.popup()
+
+
+func _color_menu_action(action: int) -> void:
+	if context_color_index < 0 or context_color_index > 255:
+		return
+	match action:
+		ColorAction.SELECT:
+			set_selected_color(context_color_index)
+			palette_control.remember_index(context_color_index)
+			palette_index_selected.emit(context_color_index)
+		ColorAction.FAVORITE:
+			palette_control.toggle_favorite(context_color_index)
+		ColorAction.RAMP:
+			palette_control.toggle_ramp_index(context_color_index)
+		ColorAction.CLEAR_RAMP:
+			palette_control.clear_ramp()

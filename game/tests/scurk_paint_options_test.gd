@@ -123,4 +123,19 @@ func _test_palette() -> void:
 	for index in 40:
 		panel.remember_index(index)
 	assert(control.recent_indices.size() == 32 and control.recent_indices[0] == 39 and control.recent_indices[-1] == 8)
+	control.set_view_mode(ScurkPaletteControl.MODE_ALL)
+	var previous := control.selected_color_index
+	click.position = Vector2(19, 0)
+	click.button_index = MOUSE_BUTTON_RIGHT
+	click.meta_pressed = false
+	control._gui_input(click)
+	assert(panel.context_color_index == 1 and control.selected_color_index == previous)
+	panel.get_node("ColorMenu").hide()
+	panel._color_menu_action(panel.ColorAction.FAVORITE)
+	panel._color_menu_action(panel.ColorAction.RAMP)
+	assert(control.favorite_indices.has(1) and control.ramp_indices.has(1))
+	panel._color_menu_action(panel.ColorAction.SELECT)
+	assert(selected[-1] == 1 and control.selected_color_index == 1)
+	panel._color_menu_action(panel.ColorAction.CLEAR_RAMP)
+	assert(control.ramp_indices.is_empty())
 	panel.free()

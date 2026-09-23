@@ -5,6 +5,7 @@ extends Control
 
 signal index_selected(index: int)
 signal index_hovered(index: int)
+signal context_menu_requested(index: int, position: Vector2)
 signal ramp_changed(indices: PackedInt32Array)
 signal navigation_changed(state: Dictionary)
 
@@ -191,6 +192,12 @@ static func _clean_indices(values: Variant, limit := 256) -> PackedInt32Array:
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		_set_hovered(index_at(event.position))
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
+		var index := index_at(event.position)
+		if index >= 0:
+			context_menu_requested.emit(index, event.position)
+			accept_event()
+		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		var index := index_at(event.position)
 		if index < 0:
@@ -215,7 +222,7 @@ func _get_tooltip(at_position: Vector2) -> String:
 	var ramp := ramp_indices.find(index)
 	if ramp >= 0:
 		note += " · ramp step %d" % (ramp + 1)
-	return "Palette index %d (0x%02X)%s\nClick: select color\nShift-click: add/remove ramp step\nCtrl/Cmd-click: add/remove favorite\nHover: highlight matching pixels" % [index, index, note]
+	return "Palette index %d (0x%02X)%s\nClick: select color · Right-click: actions\nShift-click: add/remove ramp step\nCtrl/Cmd-click: add/remove favorite\nHover: highlight matching pixels" % [index, index, note]
 
 
 func _cell_rect(slot: int) -> Rect2:
