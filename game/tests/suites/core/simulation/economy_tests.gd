@@ -230,3 +230,37 @@ func test_budget_phase(reference_root: String) -> void:
 		and ordinance.news_items[0].argument == 5,
 		"Budget stores and reports the selected ordinance",
 	)
+
+
+# the annual facility update runs between the settlement and the monthly work
+func test_january_budget_order(reference_root: String) -> void:
+	var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
+	var city := CityModel.from_document(document)
+	_check(city.set_age_in_days(299), "January order fixture selects the last December day")
+	_check(document.set_misc_u32(0x0e3c, 1), "January order fixture sets year end")
+	_check(document.set_misc_u32(0x0ff0, 1), "January order fixture enables Auto Budget")
+	_check(document.set_misc_u32(0x1000, 1), "January order fixture stops random ordinances")
+	_check(document.set_misc_u32(0x0fa0, 1 << 16), "January order fixture enables Energy Conservation")
+	_check(document.set_misc_u32(0x1020, 0), "January order fixture clears arcology population")
+	_check(document.set_misc_u32(0x102c, 100000), "January order fixture sets normal population")
+	var microsims := _filled_bytes(CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE, 0)
+	microsims[8] = Tiles.PLYMOUTH_ARCOLOGY
+	microsims[8 + 3] = 10
+	microsims[8 + 4] = 0x13
+	microsims[8 + 5] = 0x88
+	_check(document.find_chunk("XMIC").set_decoded_payload(microsims), "January order fixture installs one arcology")
+	var engine := SimulationEngine.new(city, 1, 1, 1)
+	engine.power_usage_percent = 50
+	engine.water_usage_percent = 50
+	var day := engine.advance_day()
+	_check(day.ok and day.complete, "January order fixture completes the day: %s" % day.error)
+	var arcology_population := document.misc_u32(0x1020)
+	_check(arcology_population > 0, "The annual update stores the arcology population")
+	_check(
+		document.misc_i32(0x077c + 3 * 0x6c) == -(arcology_population + 100000),
+		"The January ordinance cost uses the new arcology population: %d" % document.misc_i32(0x077c + 3 * 0x6c),
+	)
+	_check(
+		day.phase_results.keys().find("annual_microsim") < day.phase_results.keys().find("budget"),
+		"The annual update events come before the monthly budget events",
+	)

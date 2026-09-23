@@ -60,12 +60,21 @@ class Result extends PhaseResult:
 	var annual_microsim_update_pending := false
 
 
+# settle the year and do the monthly work, without the annual facility update
 static func run(city: CityState, random: SimRandom, annual_budget_approved := false) -> Result:
+	var settlement := settle_year(city, annual_budget_approved)
+
+	if not settlement.ok or settlement.requires_annual_budget:
+		return settlement
+
+	return run_month(city, random, settlement)
+
+
+# first part of the January budget. the original runs the annual facility
+# update after this part and before run_month
+static func settle_year(city: CityState, annual_budget_approved := false) -> Result:
 	if city == null or not city.is_valid():
 		return _failed("city is invalid")
-
-	if random == null:
-		return _failed("a compatible random generator is required")
 
 	var misc_chunk := city.document.find_chunk("MISC")
 
@@ -75,11 +84,10 @@ static func run(city: CityState, random: SimRandom, annual_budget_approved := fa
 	var span := SimulationTimingSpan.new(city.simulation_slice)
 	span.mark("prepare data")
 	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
-	var month := int((city.age_in_days() % CityCalendar.DAYS_PER_YEAR) / CityCalendar.DAYS_PER_MONTH)
+	var month := _month(city)
 	var funds_before := BinaryData.read_i32_be(misc, MISC_FUNDS)
 	var funds := funds_before
 	var settled_year := false
-	var auto_budget_disabled := false
 
 	if (
 		BinaryData.read_u32_be(misc, MISC_YEAR_END) != 0
@@ -115,9 +123,53 @@ static func run(city: CityState, random: SimRandom, annual_budget_approved := fa
 		BinaryData.write_u32_be(misc, MISC_YEAR_END, 0)
 		BinaryData.write_u32_be(misc, MISC_FUNDS, funds)
 
-		if funds < 0 and BinaryData.read_u32_be(misc, MISC_AUTO_BUDGET) != 0:
-			BinaryData.write_u32_be(misc, MISC_AUTO_BUDGET, 0)
-			auto_budget_disabled = true
+		if not misc_chunk.set_decoded_payload(misc):
+			return _failed("cannot store the annual settlement")
+
+	var result := Result.new()
+	result.ok = true
+	result.month = month
+	result.settled_year = settled_year
+	result.funds_before = funds_before
+	result.funds_after = funds
+	result.annual_microsim_update_pending = settled_year
+	result.complete = not settled_year
+	result.timing = span.finish()
+
+	return result
+
+
+# second part of the budget: the Auto Budget check after a settlement, the
+# monthly history, the next costs, and the random ordinance
+static func run_month(city: CityState, random: SimRandom, settlement: Result) -> Result:
+	if city == null or not city.is_valid():
+		return _failed("city is invalid")
+
+	if random == null:
+		return _failed("a compatible random generator is required")
+
+	if settlement == null or not settlement.ok:
+		return _failed("the annual settlement is missing")
+
+	var misc_chunk := city.document.find_chunk("MISC")
+
+	if misc_chunk == null or misc_chunk.decoded_payload.size() != MISC_SIZE:
+		return _failed("MISC is missing or has the wrong size")
+
+	var span := SimulationTimingSpan.new(city.simulation_slice)
+	span.mark("prepare data")
+	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
+	var month := _month(city)
+	var auto_budget_disabled := false
+
+	# the annual facility update can change funds before this check
+	if (
+		settlement.settled_year
+		and BinaryData.read_i32_be(misc, MISC_FUNDS) < 0
+		and BinaryData.read_u32_be(misc, MISC_AUTO_BUDGET) != 0
+	):
+		BinaryData.write_u32_be(misc, MISC_AUTO_BUDGET, 0)
+		auto_budget_disabled = true
 
 	span.mark("monthly history")
 	for budget_id in BUDGET_COUNT:
@@ -227,15 +279,20 @@ static func run(city: CityState, random: SimRandom, annual_budget_approved := fa
 	var result := Result.new()
 	result.ok = true
 	result.month = month
-	result.settled_year = settled_year
-	result.funds_before = funds_before
+	result.settled_year = settlement.settled_year
+	result.funds_before = settlement.funds_before
 	result.funds_after = BinaryData.read_i32_be(misc, MISC_FUNDS)
 	result.auto_budget_disabled = auto_budget_disabled
 	result.current_costs = current_costs
 	result.news_items = news_items
-	result.annual_microsim_update_pending = settled_year
-	result.complete = not settled_year
+	result.annual_microsim_update_pending = settlement.settled_year
+	result.complete = not settlement.settled_year
 	result.timing = span.finish()
+
+	for label in settlement.timing.steps:
+		result.timing.steps[label] = int(result.timing.steps.get(label, 0)) + settlement.timing.steps[label]
+
+	result.timing.work_usec += settlement.timing.work_usec
 
 	return result
 
@@ -298,6 +355,10 @@ static func set_funding(
 	result.error = ""
 
 	return result
+
+
+static func _month(city: CityState) -> int:
+	return int((city.age_in_days() % CityCalendar.DAYS_PER_YEAR) / CityCalendar.DAYS_PER_MONTH)
 
 
 static func _budget_offset(budget_id: int) -> int:

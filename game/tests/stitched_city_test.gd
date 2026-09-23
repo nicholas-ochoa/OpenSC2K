@@ -4,7 +4,7 @@ extends SceneTree
 # Sydney after 300 days at 10f181ae, with seeds 123/456/789.
 # A deterministic current-model regression, not proof of Windows parity.
 # The a21651a baseline predates the transport, education, military, and crash fixes.
-const YEAR_SHA256 := "56f7ee574b94d6392ad2eb72167a14d70a34e2f4ce59defaf1cbe3b00373f62e"
+const YEAR_SHA256 := "549b52edceb2e1a22389e718d1ee9451fc90e028cc458d9026ac0df069037743"
 
 
 func _init() -> void:
