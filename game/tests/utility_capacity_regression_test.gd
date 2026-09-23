@@ -49,6 +49,10 @@ func _run() -> void:
 
 		for version in versions:
 			check_power(edge, version)
+
+			if edge == 128:
+				check_power_queue_limit(version)
+
 			check_water(edge, version)
 			check_prisons(edge, version)
 			print("PASS: utility capacities edge %d version %d" % [edge, version])
@@ -68,11 +72,12 @@ func check_power(edge: int, version: int) -> void:
 		city.set_building_id(point.x, point.y + index, buildings[index])
 		city.set_tile_flag(point.x, point.y + index, PowerPhase.FLAG_POWERABLE, true)
 
-	var expected := 3 if doc.is_extended() else 1
+	# The original counts every building from 0x70 up, except power plants.
+	var expected := 3
 	var result := PowerPhase.run(city, SimRandom.new(1))
 	check(result.ok and result.generation == 44, "Plant generation stays unchanged")
-	check(result.consumers == expected and result.supplied_consumers == expected, "Power consumer range follows SC2 versus SC2X format")
-	check(result.usage_percent == (expected * 100) / 44, "Power usage reports format-specific consumers")
+	check(result.consumers == expected and result.supplied_consumers == expected, "Power consumers include civic buildings and arcologies")
+	check(result.usage_percent == (expected * 100) / 44, "Power usage counts every consumer")
 
 	for index in buildings.size():
 		check(city.tile_flags[city.index_of(point.x, point.y + index)] & PowerPhase.FLAG_POWERED != 0, "Consumer statistics do not change power distribution")
@@ -81,6 +86,40 @@ func check_power(edge: int, version: int) -> void:
 	var loaded := Sc2File.new()
 	check(loaded.parse(bytes) and loaded.serialize(true).data == bytes, "Power update exact save round trip")
 	check(PowerPhase.run(CityState.from_document(loaded), SimRandom.new(1)).consumers == expected, "Power rules survive reload")
+
+
+# A very wide network overflows the original 512-entry trace queue.
+func check_power_queue_limit(version: int) -> void:
+	var doc := fixture(128, version)
+	var city := CityState.from_document(doc)
+	var powerable := 0
+
+	for x in 128:
+		for y in 128:
+			var hole := x % 2 == 1 and y % 2 == 1
+			city.set_building_id(x, y, Tiles.EMPTY if hole else Tiles.LOWER_CLASS_HOMES_1X1_1)
+			city.set_tile_flag(x, y, PowerPhase.FLAG_POWERABLE, not hole)
+
+			if not hole:
+				powerable += 1
+
+	for index in 30:
+		city.set_building_id(58 + (index % 6) * 2, 58 + (index / 6) * 2, Tiles.FUSION_POWER)
+
+	var result := PowerPhase.run(city, SimRandom.new(1))
+	var powered := 0
+
+	for flags in city.tile_flags:
+		if flags & PowerPhase.FLAG_POWERED:
+			powered += 1
+
+	check(result.ok and result.generation > powerable, "Queue fixture has enough generation for every tile")
+
+	if doc.is_extended():
+		check(powered == powerable and result.consumers == powerable - 30, "SC2X power reaches every tile of a wide network")
+	else:
+		# Values from the original trace, with its dropped queue entries.
+		check(powered == 11915 and result.consumers == 11885 and result.usage_percent == 71, "SC2 power keeps the original trace queue limit")
 
 
 func check_water(edge: int, version: int) -> void:
