@@ -8,6 +8,11 @@ const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
 const Music = preload("res://src/audio/music_director.gd")
 const MENU_NO_DISASTERS := CityMenuBarView.MENU_NO_DISASTERS
 
+# message box text from the supplied string table, by string ID
+const NOTICE_TEXT := {
+	292: "Due to the current fiscal crisis, the city council urges you to cut back drastically on city expenditures.",
+}
+
 # presentation outcome and the complete typed simulation result
 class DisasterReportResult extends RefCounted:
 	var ok := false
@@ -19,6 +24,7 @@ class DisasterReportResult extends RefCounted:
 var app: CityApplication
 var document_state: ActiveDocumentState
 var text_resources: OriginalTextResources
+var pending_notices := PackedStringArray()
 
 
 func _init(application: CityApplication) -> void:
@@ -310,6 +316,41 @@ func refresh_saved_news_summary() -> void:
 		app.city_status_bar.set_reports(reports)
 
 	app.interface.refresh_status_summary()
+
+
+# queue each notice and show them one at a time. the notice dialog suspends
+# the simulation, as the original message box does
+func show_notices(notice_ids: PackedInt32Array) -> void:
+	var dialog := app.city_dialogs.notice_dialog
+
+	if not dialog.visibility_changed.is_connected(_show_next_notice):
+		dialog.visibility_changed.connect(_show_next_notice, CONNECT_DEFERRED)
+
+	for notice_id in notice_ids:
+		if NOTICE_TEXT.has(notice_id):
+			pending_notices.append(NOTICE_TEXT[notice_id])
+
+	# a notice can follow an option change, such as Auto Budget
+	app.menus.sync_city_option_menus()
+	_show_next_notice()
+
+
+func reset_notices() -> void:
+	pending_notices.clear()
+
+	if app.city_dialogs.notice_dialog.visible:
+		app.city_dialogs.notice_dialog.hide()
+
+
+func _show_next_notice() -> void:
+	var dialog := app.city_dialogs.notice_dialog
+
+	if dialog.visible or pending_notices.is_empty():
+		return
+
+	dialog.dialog_text = pending_notices[0]
+	pending_notices.remove_at(0)
+	dialog.popup_centered()
 
 
 func show_game_over_events(events: Array[GameOverEvent]) -> void:

@@ -59,6 +59,7 @@ var newspaper_dialog: NewspaperDialog
 var building_objection_dialog: PictureNoticeDialog
 var library_windows: LibraryRuminateWindows
 var game_over_dialog: AcceptDialog
+var notice_dialog: AcceptDialog
 var scenario_dialog: ScenarioIntroDialog
 var military_dialog: ConfirmationDialog
 var budget_dialog: BudgetDialog
@@ -171,6 +172,13 @@ func _create_event_dialogs() -> void:
 	game_over_dialog.theme = AppUiTheme.current()
 	game_over_dialog.min_size = Vector2i(460, 220)
 	_register(game_over_dialog, "CityEvents", Modality.MODELESS)
+	notice_dialog = AcceptDialog.new()
+	notice_dialog.name = "SimulationNoticeDialog"
+	notice_dialog.theme = AppUiTheme.current()
+	notice_dialog.title = "Notice"
+	notice_dialog.min_size = Vector2i(420, 160)
+	notice_dialog.exclusive = true
+	_register(notice_dialog, "CityEvents", Modality.BLOCKING)
 	scenario_dialog = ScenarioDialogView.instantiate()
 	_register(scenario_dialog, "Startup", Modality.BLOCKING)
 	military_dialog = ConfirmationDialog.new()

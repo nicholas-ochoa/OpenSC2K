@@ -64,7 +64,7 @@ static func _start_fire(city: CityState, random: SimRandom, lfsr_random: SimLfsr
 			return _store_fire(city, original, payloads, point, runtime_events)
 
 	var result := DisasterStartObjectsState._result(DISASTER_FIRE, point, false, true, 0)
-	result.notice_ids = [0xf5]
+	result.notice_ids = PackedInt32Array([0xf5])
 
 	return result
 

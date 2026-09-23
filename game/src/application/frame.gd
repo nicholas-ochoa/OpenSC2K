@@ -161,6 +161,9 @@ func consume_simulation_result(result: SimulationTickResult) -> void:
 	if not result.news_items.is_empty():
 		app.reports.show_news_items(result.news_items)
 
+	if not result.notice_ids.is_empty():
+		app.reports.show_notices(result.notice_ids)
+
 	if not result.game_over_events.is_empty():
 		app.reports.show_game_over_events(result.game_over_events)
 

@@ -48,6 +48,9 @@ const SERVICE_TILE_IDS := {
 
 const NEWS_ORDINANCE := 0x29
 
+# the city council message when negative funds turn off Auto Budget
+const NOTICE_FISCAL_CRISIS := 292
+
 
 class Result extends PhaseResult:
 	var month := 0
@@ -283,6 +286,10 @@ static func run_month(city: CityState, random: SimRandom, settlement: Result) ->
 	result.funds_before = settlement.funds_before
 	result.funds_after = BinaryData.read_i32_be(misc, MISC_FUNDS)
 	result.auto_budget_disabled = auto_budget_disabled
+
+	if auto_budget_disabled:
+		result.notice_ids.append(NOTICE_FISCAL_CRISIS)
+
 	result.current_costs = current_costs
 	result.news_items = news_items
 	result.annual_microsim_update_pending = settlement.settled_year

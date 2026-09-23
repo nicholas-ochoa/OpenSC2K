@@ -290,6 +290,7 @@ func _consume_day_result(result: SimulationTickResult, day: SimulationDayResult)
 		result.sound_events.append_array(phase_result.sound_events)
 		result.music_track_requests.append_array(phase_result.music_track_requests)
 		result.view_center_requests.append_array(phase_result.view_center_requests)
+		result.notice_ids.append_array(phase_result.notice_ids)
 
 	if not result.game_over_events.is_empty():
 		terminal_blocked = true

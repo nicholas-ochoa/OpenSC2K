@@ -16,6 +16,7 @@ var refresh_requests: Array[String] = []
 var interaction_requests: Array[SimulationInteractionRequest] = []
 var game_over_events: Array[GameOverEvent] = []
 var music_track_requests := PackedInt32Array()
+var notice_ids := PackedInt32Array()
 var pending_actions := PackedStringArray()
 var job_timings: Dictionary[String, int] = {}
 var paused_on_target_day := false

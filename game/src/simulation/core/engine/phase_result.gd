@@ -24,6 +24,10 @@ var refresh_requests: Array[String] = []
 var view_center_requests: Array[Vector2i] = []
 var music_track_requests := PackedInt32Array()
 
+# original string IDs for modal message boxes. the interface shows each one
+# and suspends the simulation until the player closes it
+var notice_ids := PackedInt32Array()
+
 # measured work for the timing window
 var timing := SimulationTiming.new()
 

@@ -176,6 +176,7 @@ func test_budget_phase(reference_root: String) -> void:
 		annual.auto_budget_disabled and annual_document.misc_u32(0x0ff0) == 0,
 		"Negative annual funds disable auto budget",
 	)
+	_check(annual.notice_ids == PackedInt32Array([292]), "Negative annual funds request the fiscal crisis notice")
 	_check(
 		annual.annual_microsim_update_pending and not annual.complete,
 		"Annual microsimulation work stays visible",
@@ -302,3 +303,23 @@ func test_january_unknown_utilities(_reference_root: String) -> void:
 
 	_check(samples[0][0] >= 0 and samples[0][1] >= 0, "The annual update measures power and water use")
 	_check(samples[0] == samples[1], "A measured value gives the same annual result and random state: %s" % [samples])
+
+
+# the speed controller passes the fiscal crisis notice to the interface
+func test_fiscal_crisis_notice(reference_root: String) -> void:
+	var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
+	var city := CityModel.from_document(document)
+	_check(city.set_age_in_days(299), "Notice fixture selects the last December day")
+	_check(city.set_funds(0), "Notice fixture clears funds")
+	_check(document.set_misc_u32(0x0e3c, 1), "Notice fixture sets year end")
+	_check(document.set_misc_u32(0x0ff0, 1), "Notice fixture enables Auto Budget")
+	_check(document.set_misc_i32(0x077c + 10 * 0x6c + 8, 12000), "Notice fixture sets a road cost")
+	var engine := SimulationEngine.new(city, 1, 1, 1)
+	engine.power_usage_percent = 50
+	engine.water_usage_percent = 50
+	var controller := GameSpeedController.new(engine)
+	_check(controller.set_speed(GameSpeedController.Speed.CHEETAH), "Notice fixture selects Cheetah")
+	var tick := controller.advance_time(GameSpeedController.BASE_TICK_MSEC)
+	_check(tick.ok and tick.day_results.size() == 1, "Notice fixture runs the January day: %s" % tick.error)
+	_check(city.funds() < 0 and not city.auto_budget_enabled(), "Notice fixture turns off Auto Budget")
+	_check(tick.notice_ids == PackedInt32Array([292]), "The tick result contains the fiscal crisis notice: %s" % tick.notice_ids)

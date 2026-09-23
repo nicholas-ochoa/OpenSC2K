@@ -28,6 +28,7 @@ func _run() -> void:
 	_check_every_window_is_classified()
 	_check_current_classification()
 	_check_scenario_goals()
+	await _check_notices()
 	_check_new_windows()
 	main.queue_free()
 	await process_frame
@@ -64,6 +65,7 @@ func _check_current_classification() -> void:
 		main.city_dialogs.network_connection_dialog, main.city_dialogs.highway_connection_dialog, main.city_dialogs.tunnel_dialog,
 		main.city_dialogs.query_dialog, main.city_dialogs.ordinance_window, main.city_dialogs.building_objection_dialog,
 		main.city_dialogs.scenario_dialog, main.city_dialogs.military_dialog, main.city_dialogs.budget_dialog,
+		main.city_dialogs.notice_dialog,
 		main.main_menu, main.main_overlays.settings_dialog, main.reference_import_dialog, main.main_overlays.save_changes_dialog,
 		main.scurk_editor, main.scurk_place_print, main.scurk_print,
 	]
@@ -126,6 +128,21 @@ func _check_scenario_goals() -> void:
 	assert(popup.get_item_index(CityMenuBar.MENU_SCENARIO_GOALS) == -1)
 	main.reports.on_windows_menu(CityMenuBar.MENU_SCENARIO_GOALS)
 	assert(not main.city_dialogs.scenario_dialog.visible)
+
+
+# simulation notices show one at a time and suspend the simulation
+func _check_notices() -> void:
+	var dialog: AcceptDialog = main.city_dialogs.notice_dialog
+	main.reports.show_notices(PackedInt32Array([292, 1, 292]))
+	assert(dialog.visible and dialog.dialog_text.begins_with("Due to the current fiscal crisis"))
+	assert(main.frame._simulation_suspended(), "A notice suspends the simulation")
+	assert(main.reports.pending_notices.size() == 1, "An unknown notice ID is ignored")
+	dialog.hide()
+	await process_frame
+	assert(dialog.visible, "The next notice follows when the player closes the first")
+	dialog.hide()
+	await process_frame
+	assert(not dialog.visible and not main.frame._simulation_suspended())
 
 
 func _check_new_windows() -> void:

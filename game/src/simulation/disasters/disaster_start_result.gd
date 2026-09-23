@@ -14,7 +14,6 @@ var point := Vector2i.ZERO
 var started := false
 var implemented := false
 var record := 0
-var notice_ids: Array[int] = []
 var map_counter := 0
 var hurricane_counter := 0
 var map_changed := false

@@ -16,6 +16,7 @@ func _init(application: CityApplication) -> void:
 
 func reset_prompts() -> void:
 	app.city_dialogs.budget_dialog.reset_dialogs()
+	app.reports.reset_notices()
 
 	if app.city_dialogs.game_over_dialog.visible:
 		app.city_dialogs.game_over_dialog.hide()
