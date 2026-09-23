@@ -128,7 +128,8 @@ func _show_color_menu(index: int, position: Vector2) -> void:
 	menu.set_item_checked(menu.get_item_index(ColorAction.RAMP), palette_control.ramp_indices.has(index))
 	menu.add_item("Clear shade ramp", ColorAction.CLEAR_RAMP)
 	menu.set_item_disabled(menu.get_item_index(ColorAction.CLEAR_RAMP), palette_control.ramp_indices.is_empty())
-	menu.position = Vector2i(palette_control.get_screen_transform() * position)
+	var transform := palette_control.get_global_transform_with_canvas() if menu.is_embedded() else palette_control.get_screen_transform()
+	menu.position = Vector2i(transform * position)
 	menu.popup()
 
 

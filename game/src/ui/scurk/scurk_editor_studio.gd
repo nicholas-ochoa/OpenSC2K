@@ -337,7 +337,8 @@ func _layer_list_input(event: InputEvent) -> void:
 		return
 	_select_layer(int(item.get_metadata(1)))
 	_refresh_layer_menu()
-	$LayerMenu.position = Vector2i(list.get_screen_transform() * event.position)
+	var transform := list.get_global_transform_with_canvas() if $LayerMenu.is_embedded() else list.get_screen_transform()
+	$LayerMenu.position = Vector2i(transform * event.position)
 	$LayerMenu.popup()
 	list.accept_event()
 

@@ -1080,6 +1080,11 @@ func _transform_clipboard_mask(operation: int) -> void:
 	clipboard_mask = PackedByteArray(Array(values))
 
 
+func _paste_contains(point: Vector2i) -> bool:
+	var local := point - paste_position
+	return Rect2i(0, 0, clipboard_width, clipboard_height).has_point(local) and _clipboard_contains(local.y * clipboard_width + local.x)
+
+
 func _clipboard_contains(offset: int) -> bool:
 	return clipboard_mask.size() != clipboard_pixels.size() or clipboard_mask[offset] != 0
 
@@ -1215,6 +1220,10 @@ func _handle_editor_input(event: InputEvent) -> bool:
 	if event.button_index != MOUSE_BUTTON_LEFT:
 		return editing_disabled and tool != TOOL_EYEDROPPER
 	if paste_active:
+		if event.pressed and not paste_follow_cursor and not _paste_contains(point):
+			cancel_paste()
+			clear_selection()
+			return true
 		if selection_move_dragging:
 			if not event.pressed:
 				paste_position = point - paste_drag_offset

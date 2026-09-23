@@ -818,3 +818,8 @@ func _test_canvas_menu() -> void:
 	assert(canvas.paste_active and not canvas.paste_clear_source)
 	_canvas_action("CancelPaste")
 	assert(not canvas.paste_active and not canvas.selection.active())
+	editor.canvas_menu_point = Vector2i(64, 200)
+	_canvas_action("PasteNewLayer")
+	assert(canvas.paste_active and canvas.paste_new_layer and canvas.paste_position == Vector2i(64, 200))
+	assert(not canvas.paste_follow_cursor)
+	_canvas_action("CancelPaste")

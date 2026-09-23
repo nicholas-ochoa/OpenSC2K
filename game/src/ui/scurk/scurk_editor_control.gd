@@ -47,6 +47,7 @@ var current_large_id := -1
 var current_view := VIEW_LARGE
 var current_tool := ScurkPixelCanvas.TOOL_PENCIL
 var selected_color_index := 0
+var canvas_menu_point := Vector2i.ZERO
 var pending_discard_action := ""
 var edit_history: ScurkEditorHistory:
 	get:
@@ -1780,8 +1781,10 @@ func _studio_action(action: String) -> void:
 
 
 func _show_canvas_menu(position: Vector2) -> void:
+	canvas_menu_point = pixel_canvas._point_from_position(position).clamp(Vector2i.ZERO, Vector2i(pixel_canvas.sprite_width - 1, pixel_canvas.sprite_height - 1).max(Vector2i.ZERO))
 	_refresh_canvas_menu()
-	$CanvasMenu.position = Vector2i(pixel_canvas.get_screen_transform() * position)
+	var transform := pixel_canvas.get_global_transform_with_canvas() if $CanvasMenu.is_embedded() else pixel_canvas.get_screen_transform()
+	$CanvasMenu.position = Vector2i(transform * position)
 	$CanvasMenu.popup()
 
 
@@ -1831,5 +1834,10 @@ func _canvas_menu_action(id: int) -> void:
 	var menu := $CanvasMenu as PopupMenu
 	var index := menu.get_item_index(id)
 	if index >= 0 and not menu.is_item_disabled(index):
-		_studio_action(String(menu.get_item_metadata(index)))
+		var action := String(menu.get_item_metadata(index))
+		if action in ["PasteSelection", "PasteNewLayer"]:
+			pixel_canvas.begin_paste(canvas_menu_point, action == "PasteNewLayer")
+			pixel_canvas.paste_follow_cursor = false
+		else:
+			_studio_action(action)
 		pixel_canvas.grab_focus()
