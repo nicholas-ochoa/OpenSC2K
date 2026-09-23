@@ -26,7 +26,7 @@ static func build(value: String, files := false, translucent_menus := true) -> T
 	legend.set_corner_radius_all(6)
 	result.set_stylebox("panel", "MapLegend", legend)
 	result.set_color("font_color", "MapLegend", Color("eeeeee"))
-	var tooltip := create_box(Color(0.03, 0.04, 0.05, 0.88 if translucent_menus else 1.0), Color(1.0, 1.0, 1.0, 0.45), 1, 7, 5)
+	var tooltip := create_box(Color(0.03, 0.04, 0.05, 0.80 if translucent_menus else 1.0), Color(1.0, 1.0, 1.0, 0.45), 1, 7, 5)
 	tooltip.set_corner_radius_all(3)
 	result.set_stylebox("panel", "TooltipPanel", tooltip)
 	result.set_color("font_color", "TooltipLabel", Color.WHITE)
