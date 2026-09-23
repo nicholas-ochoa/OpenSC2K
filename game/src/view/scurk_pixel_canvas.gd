@@ -1817,7 +1817,7 @@ func _draw() -> void:
 
 	_draw_selection()
 	_draw_guides()
-	if not selection_dragging and not paste_active:
+	if not selection_dragging and not paste_active and tool != TOOL_STAMP:
 		_draw_tool_outline()
 
 
