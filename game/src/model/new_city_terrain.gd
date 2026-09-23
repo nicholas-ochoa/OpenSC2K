@@ -85,21 +85,27 @@ static func generate(
 		return Result.failure("unknown terrain layout")
 
 	var selected := features.duplicate()
+
 	if layout != "classic" and layout not in selected:
 		selected.append(layout)
+
 	for feature in selected:
 		if feature not in LAYOUTS or feature == "classic":
 			return Result.failure("unknown terrain feature")
+
 	if "canyon" in selected:
 		for river_feature in ["meander", "delta", "crossing", "branch", "rejoin", "valley"]:
 			selected.erase(river_feature)
+
 	var extended := not selected.is_empty() or (smooth_slopes and has_ocean and has_river)
 	var island := "island" in selected or "islands" in selected
 	var ocean_requested := has_ocean or "delta" in selected or "peninsula" in selected or "cliffs" in selected
+
 	has_ocean = ocean_requested or island or "bay" in selected
 	has_river = (not island and "canyon" not in selected
 			and (has_river or "valley" in selected or "delta" in selected or "meander" in selected or "crossing" in selected or "branch" in selected
 			or "rejoin" in selected))
+
 	var map_edge: int = document.map_size if document != null else 128
 
 	if document == null or not document.is_valid():
@@ -121,6 +127,7 @@ static func generate(
 		"XTXT": (map_edge * map_edge),
 		"MISC": MISC_SIZE,
 	}
+
 	var payloads := {}
 
 	for chunk_id in required:
@@ -140,6 +147,7 @@ static func generate(
 	var flags: PackedByteArray = payloads.XBIT
 	var text_overlays: PackedByteArray = payloads.XTXT
 	var misc: PackedByteArray = payloads.MISC
+
 	altitude.fill(0)
 	terrain.fill(0)
 	buildings.fill(0)
@@ -152,6 +160,7 @@ static func generate(
 	heights.resize(128 * 128)
 	var coast_flags := PackedByteArray()
 	coast_flags.resize(128 * 128)
+
 	NewTerrainHeights._seed_hills(heights, hills + 11, staged_process)
 
 	for pass_values in INTERPOLATION_PASSES:
@@ -195,6 +204,7 @@ static func generate(
 	BinaryData.write_u32_be(misc, MISC_WATER_LEVEL, water_level)
 	BinaryData.write_u32_be(misc, MISC_HAS_OCEAN, 1 if has_ocean else 0)
 	BinaryData.write_u32_be(misc, MISC_HAS_RIVER, 1 if has_river else 0)
+
 	var all_indices := PackedInt32Array()
 	all_indices.resize((map_edge * map_edge))
 

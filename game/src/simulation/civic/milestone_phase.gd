@@ -56,7 +56,9 @@ static func run(city: CityState) -> Result:
 
 	var old_progression := progression
 	progression += 1
+
 	BinaryData.write_u32_be(misc, MISC_PROGRESSION, progression)
+
 	var reward_id := -1
 	var military_proposal_pending := false
 

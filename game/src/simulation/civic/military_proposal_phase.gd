@@ -73,17 +73,24 @@ static func _resolve(city: CityState, accepted: bool, game_random: GameLcgRandom
 	var terrain: PackedByteArray = chunks.XTER.decoded_payload.duplicate()
 	var underground: PackedByteArray = chunks.XUND.decoded_payload
 	var flags: PackedByteArray = chunks.XBIT.decoded_payload.duplicate()
+
 	span.mark("naval site search")
+
 	var navy_site := NavalBaseSite.find(city)
+
 	if navy_site.has_area() and game_random.next_mod(2) == 1:
 		span.mark("build and store naval base")
 		var changed := _zone_plot(buildings, terrain, underground, flags, zones, misc, navy_site, map_edge)
+
 		for index in changed:
 			# ownership was transferred to the military-other counter above
 			buildings[index] = BuildingTileIds.EMPTY
+
 		BinaryData.write_u32_be(misc, MISC_BASE_TYPE, BASE_NAVY)
+
 		if not _store(city, chunks, zones, misc, {"XBLD": buildings}):
 			return _failed("cannot store the Navy base plot")
+
 		var result := _result(true, BASE_NAVY, navy_site, changed, NOTICE_NAVY)
 		result.view_center_requests = [navy_site.get_center()]
 		return result
@@ -93,7 +100,9 @@ static func _resolve(city: CityState, accepted: bool, game_random: GameLcgRandom
 
 	for _attempt in 24:
 		var origin := Vector2i(game_random.next_mod(map_edge - 9), game_random.next_mod(map_edge - 9))
+
 		last_altitude = city.land_altitude(origin.x, origin.y)
+
 		var valid := 0
 		var level := 0
 
@@ -111,11 +120,13 @@ static func _resolve(city: CityState, accepted: bool, game_random: GameLcgRandom
 			continue
 
 		span.mark("build and store land base")
+
 		var base_type := BASE_AIR_FORCE if valid == level else BASE_ARMY
 		var notice := NOTICE_AIR_FORCE if base_type == BASE_AIR_FORCE else NOTICE_ARMY
 		var changed := _zone_plot(
 			buildings, terrain, underground, flags, zones, misc, Rect2i(origin, Vector2i(8, 8)), map_edge
 		)
+
 		BinaryData.write_u32_be(misc, MISC_BASE_TYPE, base_type)
 
 		if base_type == BASE_ARMY:
@@ -227,12 +238,16 @@ static func _store(
 	map_changes: Dictionary = {},
 ) -> bool:
 	var payloads := {"XZON": zones, "MISC": misc}
+
 	payloads.merge(map_changes)
+
 	var old_payloads := {}
 	var ids := PackedStringArray()
+
 	for id in payloads:
 		old_payloads[id] = chunks[id].decoded_payload.duplicate()
 		ids.append(id)
+
 	return BuildingState._apply_payloads(city, ids, payloads, old_payloads)
 
 
@@ -268,6 +283,7 @@ static func _result(
 	result.site = site
 	result.changed_indices = changed_indices
 	result.notice_id = notice_id
+
 	if accepted:
 		result.view_center_requests.append(
 			site.position + Vector2i(4, 4)

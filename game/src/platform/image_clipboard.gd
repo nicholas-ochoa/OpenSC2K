@@ -160,10 +160,13 @@ static func image_to_indexed(image: Image, palette: Sc2Palette) -> IndexedImageR
 
 	var source: Image = image.duplicate()
 	source.convert(Image.FORMAT_RGBA8)
+
 	var width: int = source.get_width()
 	var height: int = source.get_height()
 	var pixels := PackedInt32Array()
+
 	pixels.resize(width * height)
+
 	var exact_indices := _exact_palette_indices(palette)
 	var mapped_indices: Dictionary[int, int] = {}
 	var remapped_color_count := 0

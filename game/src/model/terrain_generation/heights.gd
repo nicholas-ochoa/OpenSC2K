@@ -5,9 +5,9 @@ extends NewTerrainConstants
 @warning_ignore_start("integer_division")
 
 
-static func _enlarge_landform(source: PackedInt32Array, coast: PackedByteArray,
-	flags: PackedByteArray, edge: int) -> PackedInt32Array:
+static func _enlarge_landform(source: PackedInt32Array, coast: PackedByteArray, flags: PackedByteArray, edge: int) -> PackedInt32Array:
 	var result := PackedInt32Array()
+
 	result.resize(edge * edge)
 
 	for x in edge:
@@ -21,6 +21,7 @@ static func _enlarge_landform(source: PackedInt32Array, coast: PackedByteArray,
 			var bottom := mini(top + 1, 127)
 			var a := lerpf(source[NewTerrainValues._index(left, top)], source[NewTerrainValues._index(right, top)], u - left)
 			var b := lerpf(source[NewTerrainValues._index(left, bottom)], source[NewTerrainValues._index(right, bottom)], u - left)
+
 			result[NewTerrainValues._index(x, y, edge)] = roundi(lerpf(a, b, v - top))
 			flags[NewTerrainValues._index(x, y, edge)] = coast[NewTerrainValues._index(roundi(u), roundi(v))]
 
@@ -33,15 +34,20 @@ static func _grade_layout(heights: PackedInt32Array, edge := 128) -> void:
 	for x in edge:
 		for y in edge:
 			var index := NewTerrainValues._index(x, y, edge)
+
 			for offset in [Vector2i(-1, -1), Vector2i(-1, 0), Vector2i(-1, 1), Vector2i(0, -1)]:
 				var near: Vector2i = Vector2i(x, y) + offset
+
 				if NewTerrainValues._in_bounds(near, edge):
 					heights[index] = mini(heights[index], heights[NewTerrainValues._index(near.x, near.y, edge)] + 1)
+
 	for x in range(edge - 1, -1, -1):
 		for y in range(edge - 1, -1, -1):
 			var index := NewTerrainValues._index(x, y, edge)
+
 			for offset in [Vector2i(1, 1), Vector2i(1, 0), Vector2i(1, -1), Vector2i(0, 1)]:
 				var near: Vector2i = Vector2i(x, y) + offset
+
 				if NewTerrainValues._in_bounds(near, edge):
 					heights[index] = mini(heights[index], heights[NewTerrainValues._index(near.x, near.y, edge)] + 1)
 
@@ -51,35 +57,51 @@ static func _fill_unsupported_slopes(heights: PackedInt32Array, edge: int) -> vo
 	# and propagate a one-level diagonal grade before choosing slope sprites.
 	var queue := PackedInt32Array()
 	var pending := PackedByteArray()
+
 	pending.resize(edge * edge)
 	pending.fill(1)
+
 	for index in heights.size():
 		queue.append(index)
+
 	var cursor := 0
+
 	while cursor < queue.size():
 		var index := queue[cursor]
+
 		cursor += 1
 		pending[index] = 0
+
 		var point := Vector2i(index / edge, index % edge)
 		var mask := 0
 		var maximum := heights[index]
+
 		for neighbor in TerrainTools.NEIGHBOR_OFFSETS.size():
 			var near: Vector2i = point + TerrainTools.NEIGHBOR_OFFSETS[neighbor]
+
 			if NewTerrainValues._in_bounds(near, edge):
 				var height := heights[NewTerrainValues._index(near.x, near.y, edge)]
 				maximum = maxi(maximum, height)
+
 				if height > heights[index]:
 					mask |= TerrainTools.NEIGHBOR_MASKS[neighbor]
+
 		var target := maxi(heights[index], maximum - 1)
+
 		if mask in [5, 10, 15]:
 			target = maxi(target, heights[index] + 1)
+
 		if target == heights[index]:
 			continue
+
 		heights[index] = target
+
 		for offset in TerrainTools.NEIGHBOR_OFFSETS:
 			var near: Vector2i = point + offset
+
 			if NewTerrainValues._in_bounds(near, edge):
 				var next := NewTerrainValues._index(near.x, near.y, edge)
+
 				if not pending[next]:
 					pending[next] = 1
 					queue.append(next)
