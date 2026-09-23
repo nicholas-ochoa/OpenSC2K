@@ -20,61 +20,67 @@ theme_override_constants/margin_top = 6
 theme_override_constants/margin_right = 0
 theme_override_constants/margin_bottom = 0
 
-[node name="Column" type="VBoxContainer" parent="Margin"]
+[node name="Scroll" type="ScrollContainer" parent="Margin"]
 layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Column" type="VBoxContainer" parent="Margin/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 3
 
-[node name="ColorsHeader" type="HBoxContainer" parent="Margin/Column"]
+[node name="ColorsHeader" type="HBoxContainer" parent="Margin/Scroll/Column"]
 layout_mode = 2
 
-[node name="View" type="OptionButton" parent="Margin/Column/ColorsHeader"]
+[node name="View" type="OptionButton" parent="Margin/Scroll/Column/ColorsHeader"]
 layout_mode = 2
 size_flags_horizontal = 3
 tooltip_text = "Choose all, used, recent, or favorite colors, or the ordered shade ramp.\nShift-click colors from dark to light to build a ramp.\nCtrl/Cmd-click a color to add or remove a favorite."
 
-[node name="ClearRamp" type="Button" parent="Margin/Column/ColorsHeader"]
+[node name="ClearRamp" type="Button" parent="Margin/Scroll/Column/ColorsHeader"]
 layout_mode = 2
 text = "Clear ramp"
 tooltip_text = "Clear the shade ramp. Shift-click palette colors from dark to light to build a new ramp."
 
-[node name="Colors" type="Control" parent="Margin/Column"]
+[node name="Colors" type="Control" parent="Margin/Scroll/Column"]
 layout_mode = 2
-size_flags_horizontal = 4
+size_flags_horizontal = 3
 script = ExtResource("colors")
 
-[node name="SelectedColor" type="HBoxContainer" parent="Margin/Column"]
+[node name="SelectedColor" type="HBoxContainer" parent="Margin/Scroll/Column"]
 layout_mode = 2
 
-[node name="Swatch" type="ColorRect" parent="Margin/Column/SelectedColor"]
+[node name="Swatch" type="ColorRect" parent="Margin/Scroll/Column/SelectedColor"]
 layout_mode = 2
 custom_minimum_size = Vector2(26, 20)
 
-[node name="Label" type="Label" parent="Margin/Column/SelectedColor"]
+[node name="Label" type="Label" parent="Margin/Scroll/Column/SelectedColor"]
 layout_mode = 2
 
-[node name="CycleGap" type="Control" parent="Margin/Column"]
+[node name="CycleGap" type="Control" parent="Margin/Scroll/Column"]
 layout_mode = 2
 custom_minimum_size = Vector2(0, 10)
 mouse_filter = 2
 
-[node name="Cycle" type="HBoxContainer" parent="Margin/Column"]
+[node name="Cycle" type="HBoxContainer" parent="Margin/Scroll/Column"]
 layout_mode = 2
 
-[node name="Enabled" type="CheckBox" parent="Margin/Column/Cycle"]
+[node name="Enabled" type="CheckBox" parent="Margin/Scroll/Column/Cycle"]
 layout_mode = 2
 text = "Cycle colors"
 button_pressed = true
 
-[node name="Step" type="Button" parent="Margin/Column/Cycle"]
+[node name="Step" type="Button" parent="Margin/Scroll/Column/Cycle"]
 layout_mode = 2
 text = "Step"
 disabled = true
 
-[node name="TexturesLabel" type="Label" parent="Margin/Column"]
+[node name="TexturesLabel" type="Label" parent="Margin/Scroll/Column"]
 layout_mode = 2
 text = "Textures"
 
-[node name="Textures" type="GridContainer" parent="Margin/Column"]
+[node name="Textures" type="GridContainer" parent="Margin/Scroll/Column"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 0

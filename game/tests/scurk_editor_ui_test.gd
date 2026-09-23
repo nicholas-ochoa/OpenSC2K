@@ -228,6 +228,13 @@ func _run() -> void:
 			editor.canvas_panel, editor.canvas_panel.pixel_scroll, editor.canvas_panel.get_node("Footer")]:
 			_assert_inside(bounds, control)
 		assert(editor.canvas_panel.pixel_scroll.size.x > 0 and editor.canvas_panel.pixel_scroll.size.y > 0)
+		var colors := editor.palette_panel.palette_control
+		for slot in colors.visible_indices.size():
+			var cell := colors._cell_rect(slot)
+			assert(colors.index_at(cell.get_center()) == colors.visible_indices[slot])
+			assert(is_equal_approx(cell.size.x, cell.size.y))
+		assert(is_equal_approx(colors._cell_rect(255).end.x, colors.size.x))
+		assert(is_equal_approx(colors._cell_rect(255).end.y, colors.size.y))
 		var columns := textures.columns
 		var texture_rect := textures.get_global_rect()
 		for frame in 4:
@@ -241,7 +248,11 @@ func _run() -> void:
 			assert(cell.size.x >= 32 and cell.size.y >= 32)
 			assert(cell.position.x >= 0 and cell.position.y >= 0)
 			assert(cell.end.x <= textures.size.x + 0.01 and cell.end.y <= textures.size.y + 0.01)
+		var palette_scroll := editor.palette_panel.get_node("Margin/Scroll") as ScrollContainer
+		palette_scroll.ensure_control_visible(textures)
+		await process_frame
 		assert(textures.get_global_rect().end.y <= editor.size.y)
+		palette_scroll.scroll_vertical = 0
 		assert(textures.index_at(Vector2(-1, 0)) == -1)
 		assert(textures.index_at(Vector2(textures.size.x, 0)) == -1)
 	DirAccess.remove_absolute(folder.path_join("CUSTOM.MIF"))

@@ -18,7 +18,7 @@ const MODE_FAVORITES := 3
 const MODE_RAMP := 4
 
 var palette: Sc2Palette
-var cell_size := 18
+var cell_size := 18.0
 var selected_color_index := 0
 var palette_cycle_ticks := 0
 var view_mode := MODE_ALL
@@ -48,6 +48,13 @@ func _init() -> void:
 	custom_minimum_size = Vector2(COLUMN_COUNT * cell_size, COLUMN_COUNT * cell_size)
 	_refresh_indices()
 	mouse_exited.connect(func() -> void: _set_hovered(-1))
+	resized.connect(_resize_grid)
+
+
+func _resize_grid() -> void:
+	cell_size = maxf(size.x, custom_minimum_size.x) / COLUMN_COUNT
+	custom_minimum_size.y = cell_size * COLUMN_COUNT
+	queue_redraw()
 
 
 func set_palette(value: Sc2Palette) -> void:

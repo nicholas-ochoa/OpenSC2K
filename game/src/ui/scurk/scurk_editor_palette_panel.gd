@@ -29,14 +29,14 @@ func build() -> void:
 	if palette_control != null:
 		return
 
-	palette_control = $Margin/Column/Colors
-	texture_control = $Margin/Column/Textures
-	selected_color = $Margin/Column/SelectedColor/Swatch
-	selected_color_label = $Margin/Column/SelectedColor/Label
-	cycle_colors_check = $Margin/Column/Cycle/Enabled
-	increment_cycle_button = $Margin/Column/Cycle/Step
-	palette_view = $Margin/Column/ColorsHeader/View
-	ramp_clear_button = $Margin/Column/ColorsHeader/ClearRamp
+	palette_control = $Margin/Scroll/Column/Colors
+	texture_control = $Margin/Scroll/Column/Textures
+	selected_color = $Margin/Scroll/Column/SelectedColor/Swatch
+	selected_color_label = $Margin/Scroll/Column/SelectedColor/Label
+	cycle_colors_check = $Margin/Scroll/Column/Cycle/Enabled
+	increment_cycle_button = $Margin/Scroll/Column/Cycle/Step
+	palette_view = $Margin/Scroll/Column/ColorsHeader/View
+	ramp_clear_button = $Margin/Scroll/Column/ColorsHeader/ClearRamp
 	palette_control.context_menu_requested.connect(_show_color_menu)
 	$ColorMenu.id_pressed.connect(_color_menu_action)
 	palette_control.index_selected.connect(palette_index_selected.emit)
