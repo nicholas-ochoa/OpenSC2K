@@ -4,11 +4,10 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
+const Checksum = preload("res://src/formats/crc32.gd")
+
 const SIGNATURE := [137, 80, 78, 71, 13, 10, 26, 10]
 const MAX_DIMENSION := 4096
-
-# build once at script initialization. readers never modify this table
-static var _crc_table: PackedInt64Array = _make_crc_table()
 
 
 static func load_path(path: String, strict_palette := true) -> IndexedImageResult:
@@ -243,22 +242,8 @@ static func _chunk(kind: String, payload: PackedByteArray) -> PackedByteArray:
 	return result
 
 
-static func _make_crc_table() -> PackedInt64Array:
-	var table := PackedInt64Array()
-	table.resize(256)
-	for byte in 256:
-		var value := byte
-		for _bit in 8:
-			value = (value >> 1) ^ (0xedb88320 if value & 1 else 0)
-		table[byte] = value
-	return table
-
-
 static func _crc(bytes: PackedByteArray) -> int:
-	var value := 0xffffffff
-	for byte in bytes:
-		value = (value >> 8) ^ _crc_table[(value ^ byte) & 255]
-	return value ^ 0xffffffff
+	return Checksum.calculate(bytes)
 
 
 static func _u32(bytes: PackedByteArray, offset: int) -> int:
