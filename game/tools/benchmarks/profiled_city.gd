@@ -23,6 +23,11 @@ func _init() -> void:
 	interface = ProfileInterface.new(self)
 	map_render = ProfileMapRender.new(self)
 	static_render = ProfileStaticRender.new(self)
+	# rebind the view callables to the replacement static renderer
+	city_png_export = ApplicationCityPngExport.new(document_state, view_state, asset_state,
+		static_render.city_view_size, static_render.sprite_archive_for_view)
+	effects_audio = ApplicationEffectsAudio.new(document_state, view_state, asset_state,
+		simulation_state, preferences, static_render.city_view_size, static_render.sprite_archive_for_view)
 
 
 class ProfileMovingSprites extends ApplicationMovingSprites:
