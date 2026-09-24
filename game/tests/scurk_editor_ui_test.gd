@@ -600,6 +600,11 @@ func _test_menu_bar_shortcuts() -> void:
 	menu.hide()
 	toolbar.free()
 
+	if OS.has_feature("macos"):
+		assert(ScurkContextMenu.key_hint(KEY_MASK_META | KEY_COMMA) == "⌘,", "A macOS hint shows the key character")
+		assert(ScurkContextMenu.key_hint(KEY_MASK_META | KEY_MASK_SHIFT | KEY_C) == "⇧⌘C")
+		assert(ScurkContextMenu.key_hint(KEY_MASK_META | KEY_ESCAPE) == "⌘⎋")
+
 
 func _test_underground_canvas(editor: ScurkEditorControl) -> void:
 	var original_id := editor.current_large_id

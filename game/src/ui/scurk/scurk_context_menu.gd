@@ -25,6 +25,11 @@ static func key_hint(key: int) -> String:
 		if key & pair[0]:
 			hint += pair[1]
 	var keycode := key & KEY_CODE_MASK
+
+	# printable keys show their character, such as "," instead of "Comma"
+	if keycode > KEY_SPACE and keycode < 127:
+		return hint + char(keycode)
+
 	return hint + String(MAC_KEY_SYMBOLS.get(keycode, OS.get_keycode_string(keycode)))
 
 
