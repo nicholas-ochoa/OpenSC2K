@@ -246,6 +246,7 @@ func test_transport_maintenance(reference_root: String) -> void:
 		"Station decay clears powered, powerable, and flip flags",
 	)
 	_check(station.document.misc_u32(0x0fe8) == 0, "Station decay decrements the subway count")
+	test_subway_station_record_cleanup(reference_root)
 
 	var bridge := _maintenance_fixture(reference_root, Tiles.SUSPENSION_BRIDGE_1, UnderTiles.EMPTY)
 
@@ -401,6 +402,57 @@ func test_transport_maintenance(reference_root: String) -> void:
 	var funded_result := GrowthScan.run(funded.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
 	_check(funded_result.ok and funded_result.decayed_roads == 0, "Full road funding prevents decay")
 	_check(funded.city.building_id(20, 20) == 0x1d, "Full road funding preserves the road")
+
+
+func test_subway_station_record_cleanup(reference_root: String) -> void:
+	var fixture := _maintenance_fixture(reference_root, Tiles.EMPTY, UnderTiles.EMPTY)
+	var document: Sc2File = fixture.document
+	var city: CityState = fixture.city
+	var overlays := [0, 1, 50, 51, 60, 61, 200, 201, 240, 241, 250, 255]
+	var labels := _filled_bytes(Sc2LabelLayout.ORIGINAL_SIZE, 22)
+	var microsims := _filled_bytes(Sc2MicrosimLayout.ORIGINAL_SIZE, 0xa5)
+	var things := _filled_bytes(Sc2ThingLayout.ORIGINAL_SIZE, 3)
+	_check(document.find_chunk("XLAB").set_decoded_payload(labels), "Station cleanup sets label records")
+	_check(document.find_chunk("XMIC").set_decoded_payload(microsims), "Station cleanup sets facility records")
+	_check(document.find_chunk("XTHG").set_decoded_payload(things), "Station cleanup sets moving-thing records")
+
+	for slot in overlays.size():
+		var x := 3 + slot * 4
+		_check(city.set_building_id(x, 1, Tiles.SUBWAY_STATION), "Station cleanup places a station")
+		_check(city.set_underground_id(x, 1, UnderTiles.SUBWAY_ENTRANCE), "Station cleanup places an entrance")
+		_check(city.set_text_overlay_id(x, 1, overlays[slot]), "Station cleanup sets an overlay")
+
+	var funded := GrowthScan.run(city, ZeroRandom.new(), 3, 1, ZeroLfsrRandom.new())
+	_check(funded.ok and funded.removed_subway_stations == 0, "Funded stations keep their records")
+	_check(document.find_chunk("XLAB").decoded_payload == labels, "Funded stations preserve label bytes")
+	_check(document.find_chunk("XMIC").decoded_payload == microsims, "Funded stations preserve facility bytes")
+	_check(document.find_chunk("XTHG").decoded_payload == things, "Funded stations preserve moving-thing bytes")
+	_check(document.set_misc_i32(0x077c + 14 * 0x6c + 4, 0), "Station cleanup removes subway funding")
+	var result := GrowthScan.run(city, ZeroRandom.new(), 3, 1, ZeroLfsrRandom.new())
+	_check(result.ok and result.removed_subway_stations == overlays.size(), "Station cleanup removes the selected stations")
+
+	# The original clears only record markers. Keep all other bytes, including
+	# the shared facility records for overlays 51 through 60.
+	var expected_labels := labels.duplicate()
+	var expected_microsims := microsims.duplicate()
+	var expected_things := things.duplicate()
+
+	for label in [1, 50, 61, 200]:
+		expected_labels[label * Sc2LabelLayout.RECORD_SIZE] = 0
+
+	for record in [10, 149]:
+		expected_microsims[record * Sc2MicrosimLayout.RECORD_SIZE] = 0
+
+	for record in [0, 39]:
+		expected_things[record * Sc2ThingLayout.RECORD_SIZE + Sc2ThingLayout.Field.LABEL] = 0
+
+	_check(document.find_chunk("XLAB").decoded_payload == expected_labels, "Station cleanup clears sign and custom facility label markers only")
+	_check(document.find_chunk("XMIC").decoded_payload == expected_microsims, "Station cleanup clears custom facility types and preserves shared records")
+	_check(document.find_chunk("XTHG").decoded_payload == expected_things, "Station cleanup clears moving-thing attachments without deleting the things")
+	var expected_overlays := [0, 0, 0, 0, 0, 0, 0, 201, 240, 241, 0, 255]
+
+	for slot in overlays.size():
+		_check(city.text_overlay_id(3 + slot * 4, 1) == expected_overlays[slot], "Station cleanup preserves moving-thing and reserved tile overlays")
 
 
 func _maintenance_fixture(reference_root: String, surface_tile: int, underground_tile: int) -> Dictionary:

@@ -142,7 +142,8 @@ class TileScan extends GrowthConstants:
 					span.mark_index(TimingStep.SUBWAY)
 
 				GrowthMaintenance._process_subway_maintenance(
-					terrain, buildings, zones, flags, text_overlays, underground, misc,
+					terrain, buildings, zones, flags, text_overlays, city_payloads.XLAB,
+					microsims, things, underground, misc,
 					tile, random, lfsr_random, counters, map_edge
 				)
 

@@ -171,6 +171,9 @@ static func _process_subway_maintenance(
 	zones: PackedByteArray,
 	flags: PackedByteArray,
 	text_overlays: PackedByteArray,
+	labels: PackedByteArray,
+	microsims: PackedByteArray,
+	things: PackedByteArray,
 	underground: PackedByteArray,
 	misc: PackedByteArray,
 	point: Vector2i,
@@ -212,9 +215,12 @@ static func _process_subway_maintenance(
 		zones[index] &= Sc2ZoneLayout.TYPE_MASK
 		flags[index] &= ~(Sc2TileFlags.FLIPPED | Sc2TileFlags.POWER_MASK) & 0xff
 		var overlay := int(OverlayData.read(text_overlays, index))
+		DemolishEffectsSites._release_overlay(text_overlays, labels, microsims, index)
 
-		if not OverlayData.blocks_thing(overlay) or overlay == NetworkConstants.CONNECTION_LABEL:
-			OverlayData.write(text_overlays, index, 0)
+		# Original demolition detaches the thing but keeps its record and XTXT.
+		if OverlayData.is_thing(overlay):
+			var record := OverlayData.thing_record(overlay)
+			ThingData.write(things, record * Sc2ThingLayout.RECORD_SIZE + Sc2ThingLayout.Field.LABEL, 0)
 
 		_replace_underground(underground, zones, misc, index, UnderTiles.EMPTY)
 		counters.metrics.removed_subway_stations += 1
