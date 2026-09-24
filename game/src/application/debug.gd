@@ -193,9 +193,7 @@ func debug_set_detailed_timing(enabled: bool) -> ActionResult:
 
 	return ActionResult.new(
 		true,
-		"Detailed per-tile timing is %s. It is measured work, so it also slows the phases it reports." % (
-			"on" if enabled else "off"
-		)
+		"Detailed per-tile timing is on. Growth days are slower." if enabled else "Detailed per-tile timing is off."
 	)
 
 

@@ -77,7 +77,7 @@ func _configure_table(tree: Tree, titles: Array) -> void:
 func _build_timing_footer(footer: HBoxContainer) -> void:
 	_detailed_timing_check = CheckBox.new()
 	_detailed_timing_check.text = "Detailed per-tile timing"
-	_detailed_timing_check.tooltip_text = "Break the growth scan into its per-tile steps. The extra clock reads are measured work and slow the phase."
+	_detailed_timing_check.tooltip_text = "Show the time for each step of the growth scan. The timer adds work to each tile, so growth days are slower."
 	_detailed_timing_check.toggled.connect(func(enabled: bool) -> void:
 		_record_action(main_control.debug.call("debug_set_detailed_timing", enabled)))
 	footer.add_child(_detailed_timing_check)
