@@ -22,9 +22,9 @@ var _discard := false
 var _tick_started_usec := 0
 var _hold_until_usec := 0
 var _held_since_usec := -1
-var _paced_label := ""
+var _paced_age := 0
 # measured pacing waits for the next accepted result
-var _pacing_timings: Dictionary[String, int] = {}
+var _pacing_delays: Dictionary[int, int] = {}
 
 
 func _init(source: GameSpeedController) -> void:
@@ -63,13 +63,13 @@ func advance_time(delta_msec: float, now_msec: int, suspended := false) -> Simul
 					publish_usec = Time.get_ticks_usec() - started
 					result.job_timings = {"Main thread / snapshot": snapshot_usec, "Main thread / publish": publish_usec,
 						"Worker / elapsed": last_work_metrics.elapsed_usec, "Worker / frame waits": last_work_metrics.parked_usec}
-					result.job_timings.merge(_pacing_timings)
-					_pacing_timings.clear()
+					result.pacing_delays.merge(_pacing_delays)
+					_pacing_delays.clear()
 					completed_ticks += 1
 
 					if not result.day_results.is_empty():
 						_hold_until_usec = _tick_started_usec + day_period_usec
-						_paced_label = "Day %02d / pacing delay" % (posmod(result.day_results[-1].day, 25) + 1)
+						_paced_age = result.day_results[-1].day
 
 				_working = null
 				_budget = null
@@ -108,7 +108,7 @@ func advance_time(delta_msec: float, now_msec: int, suspended := false) -> Simul
 		return empty
 
 	if _held_since_usec >= 0:
-		_pacing_timings[_paced_label] = int(_pacing_timings.get(_paced_label, 0)) + started - _held_since_usec
+		_pacing_delays[_paced_age] = int(_pacing_delays.get(_paced_age, 0)) + started - _held_since_usec
 		_held_since_usec = -1
 
 	_hold_until_usec = 0

@@ -20,4 +20,6 @@ var notice_ids := PackedInt32Array()
 var newspaper_requested := false
 var pending_actions := PackedStringArray()
 var job_timings: Dictionary[String, int] = {}
+# city age of a paced day -> usec the next day waited after it
+var pacing_delays: Dictionary[int, int] = {}
 var paused_on_target_day := false

@@ -46,7 +46,7 @@ func _ready() -> void:
 	_tabs = tabs
 	tabs.tab_changed.connect(func(_index: int) -> void: _refresh_record_tab())
 	_days = tabs.get_node("Simulation")
-	_configure_table(_days, ["Day", "What happens", "Average ms", "Last ms", "Max ms", "Samples"])
+	_configure_table(_days, ["Day", "What happens", "Average ms", "Last ms", "Max ms", "Samples", "Last w/ Delay"])
 	_build_day_rows()
 	_metrics_tree = tabs.get_node("Metrics")
 	tabs.set_tab_title(tabs.get_tab_idx_from_control(tabs.get_node("Objects")), "Moving Things")
@@ -68,8 +68,8 @@ func _reset_averages() -> void:
 func _configure_table(tree: Tree, titles: Array) -> void:
 	for column in titles.size():
 		tree.set_column_title(column, titles[column])
-		tree.set_column_expand(column, column == (1 if titles.size() == 6 else 0))
-		tree.set_column_custom_minimum_width(column, 68 if column == 0 and titles.size() == 6 else 95)
+		tree.set_column_expand(column, column == (1 if titles.size() == 7 else 0))
+		tree.set_column_custom_minimum_width(column, 68 if column == 0 and titles.size() == 7 else 95)
 
 
 func _build_actions(tabs: TabContainer) -> void:
@@ -364,13 +364,16 @@ func _build_day_rows() -> void:
 		row.set_text(1, SimulationTimingHistory.DAY_SUMMARIES[day])
 		row.set_tooltip_text(1, SimulationTimingHistory.DAY_SUMMARIES[day])
 		row.set_tooltip_text(5, "Day samples combine work resumed after a player prompt. Child steps count individual measurements.")
+		row.set_tooltip_text(6, "Last ms plus the pacing delay before the next day started.")
 		row.collapsed = true
 		_day_rows.append(row)
 
 
 func _refresh_day_rows(history: SimulationTimingHistory) -> void:
 	for day in 25:
-		_stats(_day_rows[day], 2, history.days.get(day) if history != null else null)
+		var sample: SimulationTimingHistory.Sample = history.days.get(day) if history != null else null
+		_stats(_day_rows[day], 2, sample)
+		_day_rows[day].set_text(6, "—" if sample == null else "%.3f" % (float(sample.last_usec + sample.last_delay_usec) / 1000.0))
 
 	var samples: Dictionary[String, SimulationTimingHistory.Sample] = {}
 

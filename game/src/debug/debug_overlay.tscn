@@ -37,7 +37,7 @@ current_tab = 0
 
 [node name="Simulation" type="Tree" parent="DebugWindow/Panel/Margin/Content/Tabs"]
 layout_mode = 2
-columns = 6
+columns = 7
 column_titles_visible = true
 hide_root = true
 metadata/_tab_index = 0

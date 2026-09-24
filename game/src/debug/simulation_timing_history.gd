@@ -26,6 +26,8 @@ class Sample extends RefCounted:
 	var last_usec := 0
 	var max_usec := 0
 	var age := -1
+	# pacing wait after the last sampled day. day slots only
+	var last_delay_usec := 0
 
 
 var days: Dictionary[int, Sample] = {}
@@ -68,6 +70,7 @@ func consume(result: SimulationTickResult) -> void:
 		if row.age != age:
 			row.count += 1
 			row.last_usec = 0
+			row.last_delay_usec = 0
 			row.age = age
 
 		# resuming a blocking interaction adds work to the same day's sample
@@ -107,6 +110,16 @@ func consume(result: SimulationTickResult) -> void:
 
 	for label in result.job_timings:
 		record_step(label, result.job_timings[label])
+
+	# the delay after a day arrives with the result of the next day
+	for age: int in result.pacing_delays:
+		var slot := posmod(age, 25)
+		var delay: int = result.pacing_delays[age]
+		var row: Sample = days.get(slot)
+		record_step("Day %02d / pacing delay" % (slot + 1), delay)
+
+		if row != null and row.age == age:
+			row.last_delay_usec = delay
 
 	if not result.day_results.is_empty():
 		typical_day_usec = _typical_day_usec()

@@ -76,7 +76,7 @@ func _run() -> void:
 		"The mark follows the city date")
 	host.date = "01/03/1900"
 	debug._refresh_metrics()
-	assert(day_three.get_text(5) == "1")
+	assert(day_three.get_text(5) == "1" and day_three.get_text(6) == "2.500")
 	assert(day_three.collapsed and day_three.get_child_count() == 1)
 	assert(day_three.get_child(0).get_text(1).strip_edges() == "pollution")
 	assert(day_three.get_child(0).get_text(2) == "2.500")
@@ -119,6 +119,13 @@ func _run() -> void:
 	debug._refresh_metrics()
 	assert(not debug._step_rows.has("Day 02 / power / network"))
 	assert(debug._step_rows["Day 02 / power"] == power and power.collapsed)
+
+	var paced := SimulationTickResult.new()
+	paced.pacing_delays[2] = 7500
+	host.timing_state.simulation_timings.consume(paced)
+	debug._refresh_metrics()
+	assert(day_three.get_text(3) == "2.500" and day_three.get_text(6) == "10.000", "Last w/ Delay adds the pacing delay")
+	assert(debug._days.get_root().get_child(0).get_text(6) == "—")
 
 	assert(not debug._detailed_timing_check.button_pressed, "Per-tile timing detail stays off by default")
 	debug._detailed_timing_check.button_pressed = true

@@ -207,14 +207,31 @@ func _check_day_pacing() -> void:
 	var runner := FrameSimulationRunner.new(controller)
 	runner.day_period_usec = 150000
 	var first := _finish_tick(runner, 200)
-	assert(first.day_results.size() == 1 and not first.job_timings.has("Day %02d / pacing delay" % (posmod(first.day_results[0].day, 25) + 1)))
-	var label := "Day %02d / pacing delay" % (posmod(first.day_results[0].day, 25) + 1)
+	var age := first.day_results[0].day
+	assert(first.day_results.size() == 1 and first.pacing_delays.is_empty())
 	var held := runner.advance_time(200, 400)
 	assert(held.ok and held.base_ticks == 0 and not runner.is_pending(), "The next day waits for the pacing period")
 	var second := _finish_tick(runner, 0)
 	assert(second.day_results.size() == 1 and second.day_results[0].day == first.day_results[0].day + 1)
-	assert(second.job_timings.has(label) and second.job_timings[label] > 0 and second.job_timings[label] <= 150000,
+	assert(second.pacing_delays.keys() == [age] and second.pacing_delays[age] > 0 and second.pacing_delays[age] <= 150000,
+		"The held time belongs to the fast day")
+	var history := SimulationTimingHistory.new()
+	history.consume(first)
+	var slot := posmod(age, 25)
+	assert(history.days[slot].last_delay_usec == 0, "The delay is unknown until the next day starts")
+	history.consume(second)
+	assert(history.days[slot].last_delay_usec == second.pacing_delays[age])
+	assert(history.steps["Day %02d / pacing delay" % (slot + 1)].last_usec == second.pacing_delays[age],
 		"The held time is a separate step of the fast day")
+	history.consume(first)
+	assert(history.days[slot].last_delay_usec == second.pacing_delays[age], "A repeated day age keeps its delay")
+	history.consume(TimingResults.tick_fixture({"day_results": [{"ok": true, "day": age + 25,
+		"timing": {"work_usec": 100, "steps": {}}}]}))
+	assert(history.days[slot].last_delay_usec == 0, "A new day in the slot clears the old delay")
+	var stale := SimulationTickResult.new()
+	stale.pacing_delays[age] = 5000
+	history.consume(stale)
+	assert(history.days[slot].last_delay_usec == 0, "A delay for an older day does not change the newer sample")
 	runner.close()
 
 	# a tick without a due day is not held
