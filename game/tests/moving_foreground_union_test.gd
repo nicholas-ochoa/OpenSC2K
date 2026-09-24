@@ -14,6 +14,7 @@ class TestSprites extends ApplicationMovingSprites:
 
 
 func _initialize() -> void:
+	_check_packed_masks()
 	var host := CityApplication.new()
 	host.moving_sprites = TestSprites.new(host)
 
@@ -157,3 +158,29 @@ func _initialize() -> void:
 	host.free()
 	print("PASS: all overlapping foreground silhouettes hide trains and other moving sprites")
 	quit()
+
+
+func _check_packed_masks() -> void:
+	for format in [Image.FORMAT_RGBA8, Image.FORMAT_RGBAF]:
+		var sprite := Image.create(13, 7, false, format)
+		var mask := Image.create(13, 7, false, Image.FORMAT_RGBA8)
+		for y in 7:
+			for x in 13:
+				sprite.set_pixel(x, y, Color8(x * 19, y * 31, (x + y) * 11, [0, 1, 127, 255][(x + y) % 4]))
+				mask.set_pixel(x, y, Color8(41, 91, 113, [0, 1, 255][(x * 2 + y) % 3]))
+		var original := sprite.get_data()
+		var expected := sprite.duplicate()
+		var hidden := 0
+		for y in 7:
+			for x in 13:
+				var color := sprite.get_pixel(x, y)
+				if color.a > 0.0 and mask.get_pixel(x, y).a > 0.0:
+					color.a = 0.0
+					expected.set_pixel(x, y, color)
+					hidden += 1
+		var result := IsometricPixelOperations.occlude_dynamic_with_mask(sprite, mask, Vector2i.ZERO)
+		assert(result.occluded_pixels == hidden and result.image.get_data() == expected.get_data())
+		assert(sprite.get_data() == original, "Occlusion must not change the shared source image")
+		assert(IsometricPixelOperations.occlude_dynamic_with_mask(sprite, null, Vector2i.ZERO).image == sprite)
+		mask.fill(Color.TRANSPARENT)
+		assert(IsometricPixelOperations.occlude_dynamic_with_mask(sprite, mask, Vector2i.ZERO).image == sprite)

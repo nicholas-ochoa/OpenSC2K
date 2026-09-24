@@ -136,6 +136,25 @@ static func occlude_dynamic_with_mask(
 	if sprite == null:
 		return OcclusionResult.new(sprite)
 
+	var reads_indices := not same_tile_foreground_indices.is_empty() and (index_image != null or index_reader.is_valid())
+	if occluder_mask == null and not reads_indices:
+		return OcclusionResult.new(sprite)
+
+	# Ordinary moving sprites need only an alpha mask. Work on packed bytes;
+	# preserve the RGB bytes even for hidden pixels, as the general path does.
+	if (not reads_indices and sprite.get_format() == Image.FORMAT_RGBA8 and occluder_mask.get_format() == Image.FORMAT_RGBA8
+			and sprite.get_size() == occluder_mask.get_size()):
+		var pixels := sprite.get_data()
+		var mask := occluder_mask.get_data()
+		var count := 0
+		for alpha in range(3, sprite.get_width() * sprite.get_height() * 4, 4):
+			if pixels[alpha] != 0 and mask[alpha] != 0:
+				pixels[alpha] = 0
+				count += 1
+
+		return OcclusionResult.new(sprite if count == 0 else Image.create_from_data(
+			sprite.get_width(), sprite.get_height(), sprite.has_mipmaps(), Image.FORMAT_RGBA8, pixels), count)
+
 	var visible: Image
 	var occluded_pixels := 0
 
