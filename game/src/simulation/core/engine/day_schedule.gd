@@ -9,6 +9,14 @@ static func _execute_day_schedule(engine: SimulationEngine, schedule: Simulation
 	var applied := PackedStringArray()
 	var pending := PackedStringArray()
 	var phases := SimulationDayPhases.table()
+
+	# extended cities correct their tile counts before the budget reads them
+	if schedule.month_day == 0 and CityTileCounts.exact(engine.city):
+		span.mark("tile recount")
+
+		if CityTileCounts.recount(engine.city) < 0:
+			return SimulationDayResult.failure("cannot store the tile counts")
+
 	var context := _load_context(engine, schedule, annual_budget_approved, span)
 
 	for action in schedule.actions:

@@ -11,6 +11,8 @@ var position := ""
 var detail := ""
 var translation := ""
 var empty := false
+# a highlighted row. the text is the tooltip for every cell
+var warning := ""
 var site: CityRecords.Site
 var cells: Array[String] = []
 var tooltips: Array[String] = []

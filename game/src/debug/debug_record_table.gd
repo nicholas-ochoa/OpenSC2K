@@ -4,6 +4,9 @@ extends VBoxContainer
 
 signal locate_requested(site: Rect2i)
 
+# yellow row background for a record with a warning. it stays readable in light and dark themes
+const WARNING_COLOR := Color(1.0, 0.85, 0.2, 0.3)
+
 @export var kind := "XMIC"
 var rows: Dictionary = {}
 var _last_refresh := -1000
@@ -43,7 +46,7 @@ func _ready() -> void:
 			"Tile": "Building ID in the XBLD tile plane.",
 			"Constant": "BuildingTileIds constant for the ID.",
 			"Name": "Name that the query tool shows for the tile.",
-			"On map": "Number of map tiles with this building ID.",
+			"On map": "Number of map tiles with this building ID outside military zones. Military bases have separate counts.",
 			"Saved count": "Tile count that the city stores in MISC. The edit tools keep it up to date.",
 		}
 	elif kind == "Objects":
@@ -264,6 +267,12 @@ func _set_cells(row: TreeItem, record: DebugTableRecord) -> void:
 		var text := str(cells[column])
 		row.set_text(column, text)
 		row.set_tooltip_text(column, str(tooltips[column]) if column < tooltips.size() else text)
+
+		if record.warning.is_empty():
+			row.clear_custom_bg_color(column)
+		else:
+			row.set_custom_bg_color(column, WARNING_COLOR)
+			row.set_tooltip_text(column, record.warning)
 
 	var sort: Array = record.sort.duplicate()
 

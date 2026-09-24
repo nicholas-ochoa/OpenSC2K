@@ -109,6 +109,8 @@ static func apply_rectangle(
 	if previous_funds < cost:
 		return ZoneEditResult.rejected("insufficient funds", cost)
 
+	var previous_misc := city.document.find_chunk("MISC").decoded_payload.duplicate()
+
 	if not city.replace_zones(changed):
 		return ZoneEditResult.rejected("cannot store updated XZON data")
 
@@ -125,15 +127,15 @@ static func apply_rectangle(
 
 		return ZoneEditResult.rejected("cannot store the updated city funds")
 
+	# the original clears dezoned buildings without a count change. extended cities keep exact counts
+	if CityTileCounts.exact(city):
+		CityTileCounts.recount(city)
+
 	var old_payloads: Dictionary[String, PackedByteArray] = {
 		"XZON": _restore_values(changed, tile_indices, previous_values),
 		"XBLD": _restore_values(changed_buildings, tile_indices, previous_buildings),
-		"MISC": city.document.find_chunk("MISC").decoded_payload.duplicate(),
+		"MISC": previous_misc,
 	}
-
-	if cost > 0:
-		old_payloads.MISC = old_payloads.MISC.duplicate()
-		BinaryData.write_u32_be(old_payloads.MISC, 0x14, previous_funds)
 
 	var new_payloads: Dictionary[String, PackedByteArray] = {
 		"XZON": city.document.find_chunk("XZON").decoded_payload.duplicate(),
@@ -318,6 +320,9 @@ static func undo(city: CityState, command: ZoneEditResult) -> EditCommandResult:
 		city.set_funds(current_funds)
 
 		return EditCommandResult.failure("cannot restore city funds")
+
+	if CityTileCounts.exact(city):
+		CityTileCounts.recount(city)
 
 	return EditCommandResult.undone(indices.size())
 

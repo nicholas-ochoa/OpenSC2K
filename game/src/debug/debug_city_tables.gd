@@ -127,19 +127,24 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 			for id in counts.size():
 				var count := counts[id]
 
-				if count == 0 and not include_empty:
+				var saved := city.document.misc_i32(Sc2MiscLayout.TILE_COUNTS + id * 4)
+
+				if count == 0 and saved == 0 and not include_empty:
 					continue
 
 				var first := city.buildings.find(id) if count > 0 else -1
 				var site := null if first < 0 else CityRecords.Site.new(first / city.map_size, first % city.map_size, 1, 1)
-				var saved := city.document.misc_i32(Sc2MiscLayout.TILE_COUNTS + id * 4)
 				var name := QueryStrings.tile_name(id)
 				var row := DebugTableRecord.new()
 				row.id = str(id)
 				row.cells = ["0x%02X" % id, _tile_constants[id], name, str(count), str(saved)]
 				row.sort = [id, _tile_constants[id], name, count, saved]
 				row.site = site
-				row.empty = count == 0
+				row.empty = count == 0 and saved == 0
+
+				if saved != count:
+					row.warning = _count_difference(city, count, saved)
+
 				result.append(row)
 
 		"State":
@@ -156,23 +161,33 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 	return result
 
 
-# the number of tiles with each building id. the result is shared; do not change it
+# the number of tiles with each building id outside military zones. the result is shared; do not change it
 static func tile_counts(city: CityState) -> PackedInt32Array:
-	var key: Array = [city.get_instance_id(), city.chunk_revision("XBLD")]
+	var key: Array = [city.get_instance_id(), city.chunk_revision("XBLD"), city.chunk_revision("XZON")]
 
 	if key == _tile_count_key:
 		return _tile_counts
 
-	var counts := PackedInt32Array()
-	counts.resize(Tiles.COUNT)
-
-	for building in city.buildings:
-		counts[building] += 1
-
+	var counts := CityTileCounts.count(city)
 	_tile_count_key = key
 	_tile_counts = counts
 
 	return counts
+
+
+static func _count_difference(city: CityState, count: int, saved: int) -> String:
+	var text := "The saved count is %d, but the map has %d.\n" % [saved, count]
+
+	if CityTileCounts.exact(city):
+		return text + "This SC2X city counts the map again at the start of each month. The next recount removes the difference."
+
+	text += ("This city uses the original SimCity 2000 counts. Each tile change adds or subtracts one, and some changes skip " +
+		"the count, so it drifts. Game rules use the saved count.")
+
+	if city.map_size == 128 and saved >= 0x8000 and saved <= 0xffff:
+		text += "\nThe count went below zero and wrapped as a 16-bit value. It is %d." % (saved - 0x10000)
+
+	return text
 
 
 # the first constant name for each building id. aliases follow the tile names

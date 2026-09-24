@@ -174,6 +174,40 @@ func _check_tile_counts(edge: int) -> void:
 		if record.id == str(BuildingTileIds.POLICE_STATION):
 			assert(record.cells[3] == "2" and [record.site.x, record.site.y] == [2, 9])
 
+	# military bases have separate counts. the map count skips them too
+	assert(city.set_zone_id(2, 9, Sc2ZoneLayout.MILITARY))
+	police = _tile_record(city, BuildingTileIds.POLICE_STATION)
+	assert(police.cells[3] == "1")
+
+	# set_building_id does not change the saved counts, so the rows differ
+	assert(not police.warning.is_empty() and ("SC2X" in police.warning) == CityTileCounts.exact(city),
+		"A different saved count explains the counting method of the city")
+	var panel := preload("res://src/debug/debug_record_table.tscn").instantiate() as DebugRecordTable
+	panel.kind = "Tiles"
+	root.add_child(panel)
+	panel.update_records(DebugCityTables.collect("Tiles", city))
+	var row: TreeItem = panel.rows[police.id]
+	assert(row.get_custom_bg_color(4) == DebugRecordTable.WARNING_COLOR and row.get_tooltip_text(4) == police.warning)
+
+	# a saved count that wrapped below zero shows even when the map has no such tile
+	assert(city.document.set_misc_u32(Sc2MiscLayout.TILE_COUNTS + BuildingTileIds.LLAMA_DOME * 4, 0xfffe if edge == 128 else 0xfffffffe))
+	var dome := _tile_record(city, BuildingTileIds.LLAMA_DOME)
+	assert(dome != null and ("16-bit value. It is -2." in dome.warning) == (edge == 128))
+	CityTileCounts.recount(city)
+	var exact_records := DebugCityTables.collect("Tiles", city)
+	assert(exact_records.all(func(record: DebugTableRecord) -> bool: return record.warning.is_empty()))
+	panel.update_records(exact_records)
+	assert(row.get_custom_bg_color(4) == Color() and row.get_tooltip_text(4) == "1", "An exact count clears the highlight")
+	panel.free()
+
+
+func _tile_record(city: CityState, tile_id: int) -> DebugTableRecord:
+	for record in DebugCityTables.collect("Tiles", city):
+		if record.id == str(tile_id):
+			return record
+
+	return null
+
 
 # moving-thing columns fit their widest cell and explain their meaning
 func _check_object_columns(host: Control) -> void:

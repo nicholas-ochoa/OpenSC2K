@@ -82,6 +82,9 @@ func initialize_loaded_city() -> bool:
 	if city == null or not city.is_valid():
 		return false
 
+	if CityTileCounts.exact(city) and CityTileCounts.recount(city) < 0:
+		return false
+
 	var power := PowerPhase.run(city, random)
 
 	if not power.ok:

@@ -48,7 +48,11 @@ static func update_explosion(
 
 		return
 
-	buildings[center_index] = Tiles.EMPTY
+	# the original clears the tile without a count change. extended cities keep exact counts
+	if CityTileCounts.exact(city):
+		GrowthState.replace_building(buildings, zones, misc, center_index, Tiles.EMPTY)
+	else:
+		buildings[center_index] = Tiles.EMPTY
 
 	if ThingData.read(things, offset + 11) == 0 or not allow_disaster_damage:
 		return
