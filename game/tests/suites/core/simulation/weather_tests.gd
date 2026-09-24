@@ -217,6 +217,41 @@ func test_weather_disaster_phase(reference_root: String) -> void:
 		"A zero monthly roll can pass the Fire heat gate and select a map point",
 	)
 
+	var riot_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
+
+	for setting in [
+		[Sc2MiscLayout.DIFFICULTY, 3],
+		[Sc2MiscLayout.WEATHER_TREND, 9],
+		[Sc2MiscLayout.WEATHER_HEAT, 170],
+		[Sc2MiscLayout.NO_DISASTERS, 0],
+		[Sc2MiscLayout.NORMAL_POPULATION, 30000],
+	]:
+		_check(
+			riot_document.set_misc_u32(setting[0], setting[1]),
+			"Riot selector fixture sets MISC 0x%x" % setting[0],
+		)
+
+	var riot_city := CityModel.from_document(riot_document)
+	_check(riot_city.set_age_in_days(30 * 25), "Riot selector fixture reaches Hard wait age")
+
+	# The original uses signed unemployment for both riot candidates (0x0047219a).
+	for candidate in [WeatherDisaster.DISASTER_RIOT, WeatherDisaster.DISASTER_MASS_RIOTS]:
+		for unemployment in [-2147483648, -1, 0, 9, 10, 2147483647]:
+			_check(
+				riot_document.set_misc_u32(Sc2MiscLayout.UNEMPLOYMENT, unemployment),
+				"Riot selector fixture stores signed unemployment %d" % unemployment,
+			)
+			var riot_result := WeatherDisaster.run(
+				riot_city, SequenceRandom.new([0, candidate, 16, 16]), ZeroLfsrRandom.new(),
+				0, 0, 0, 0,
+			)
+			var expected: int = candidate if unemployment >= 10 else WeatherDisaster.DISASTER_NONE
+			_check(
+				riot_result.ok and riot_result.candidate_type == candidate
+				and riot_result.disaster_type == expected,
+				"Riot candidate %d with signed unemployment %d selects %d" % [candidate, unemployment, expected],
+			)
+
 	var toxic_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 
 	for setting in [

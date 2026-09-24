@@ -351,7 +351,7 @@ static func _select_disaster(
 			if candidate == DISASTER_MASS_RIOTS and population < 30000:
 				return result
 
-			if BinaryData.read_u32_be(misc, Sc2MiscLayout.UNEMPLOYMENT) < 10:
+			if BinaryData.read_i32_be(misc, Sc2MiscLayout.UNEMPLOYMENT) < 10:
 				return result
 
 			if (BinaryData.read_u32_be(misc, MISC_WEATHER_HEAT) & 0xff) < 170:
