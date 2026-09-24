@@ -47,6 +47,15 @@ tools/validate_project.sh
 
 The tests use silent audio and need a copy of the original game in the `references/SIMCITY2000` folder.
 
+## AI-Assisted Development
+
+OpenSC2K is developed with the assistance of AI tools, including large language models (LLMs).
+AI is used for tasks such as code generation, refactoring, research, documentation, testing, and debugging.
+All architectural decisions, implementations, and contributions are reviewed and directed by the project maintainer.
+
+See [AI-POLICY.md](AI-POLICY.md) for the project's AI usage and contribution policy.
+
+
 ## License
 
 Project code is under the [MIT license](LICENSE).
