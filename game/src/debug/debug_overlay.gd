@@ -15,6 +15,8 @@ var _metrics: Dictionary = {}
 var _window: Window
 var _days: Tree
 var _day_rows: Array[TreeItem] = []
+# the row for the day of the city date
+var _current_day_row: TreeItem
 var _step_rows: Dictionary = {}
 var _other_steps: TreeItem
 var _tabs: TabContainer
@@ -347,6 +349,7 @@ func _refresh_metrics() -> void:
 	if int(_metrics.get("speed_id", 1)) > 1:
 		_resume_speed = int(_metrics.get("speed_id"))
 	_refresh_day_rows(_history())
+	_mark_current_day()
 
 	_metrics_tree.refresh(_metrics)
 	_refresh_record_tab()
@@ -439,6 +442,29 @@ func _refresh_day_rows(history: SimulationTimingHistory) -> void:
 	if _other_steps != null and _other_steps.get_child_count() == 0:
 		_other_steps.free()
 		_other_steps = null
+
+
+func _mark_current_day() -> void:
+	var parts := str(_metrics.get("date", "")).split("/")
+	var row: TreeItem = null
+
+	if parts.size() == 3 and parts[1].is_valid_int() and int(parts[1]) >= 1 and int(parts[1]) <= _day_rows.size():
+		row = _day_rows[int(parts[1]) - 1]
+
+	if row == _current_day_row:
+		return
+
+	var highlight := _days.get_theme_color("chart_accent", "AppPalette")
+	highlight.a = 0.35
+
+	for column in _days.columns:
+		if _current_day_row != null:
+			_current_day_row.clear_custom_bg_color(column)
+
+		if row != null:
+			row.set_custom_bg_color(column, highlight)
+
+	_current_day_row = row
 
 
 func _stats(item: TreeItem, column: int, row: SimulationTimingHistory.Sample) -> void:

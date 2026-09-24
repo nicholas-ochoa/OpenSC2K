@@ -11,7 +11,7 @@ const GROUPS := {
 const LABELS := {
 	"simulation_slices": "Tick processing", "render_regions": "Map regions",
 	"work": "Worker scheduling", "pending_msec": "Pending simulation time",
-	"snapshot_usec": "Snapshot copy", "publish_usec": "Publish result",
+	"snapshot_usec": "Snapshot copy", "publish_usec": "Publish result", "day_period_usec": "Day pacing period",
 	"max_slice_usec": "Longest work slice", "elapsed_usec": "Worker elapsed time",
 	"parked_usec": "Frame-budget waits", "speed_accumulator_msec": "Game timer accumulator",
 	"max_region_usec": "Slowest region build", "atlas_bytes": "GPU atlas memory",
@@ -29,6 +29,7 @@ const LABELS := {
 const NOTES := {
 	"snapshot_usec": "Copy city state for the simulation worker.",
 	"publish_usec": "Apply the completed worker result on the main thread.",
+	"day_period_usec": "Typical day work time. A faster day waits until this time passes. 0 is off.",
 	"pending_msec": "Simulation time submitted to the pending tick.",
 	"elapsed_usec": "Worker wall time; includes frame-budget waits.",
 	"parked_usec": "Time waiting for another frame's work allowance.",

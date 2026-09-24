@@ -44,6 +44,7 @@ func process(delta: float) -> void:
 
 	if app.simulation_state.frame_simulation != null:
 		app.simulation_state.frame_simulation.budget_usec = FrameSimulationRunner.budget_for_frame(delta)
+		app.simulation_state.frame_simulation.day_period_usec = app.timing_state.simulation_timings.typical_day_usec
 		result = app.simulation_state.frame_simulation.advance_time(delta * 1000.0, Time.get_ticks_msec(), interaction_suspended)
 	else:
 		result = app.simulation_state.speed_controller.advance_time(delta * 1000.0, Time.get_ticks_msec(), interaction_suspended)

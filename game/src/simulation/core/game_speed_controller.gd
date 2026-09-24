@@ -236,14 +236,22 @@ func _pause_on_target_day(result: SimulationTickResult) -> bool:
 	return true
 
 
-func _is_day_due() -> bool:
+# true when advance_time(delta_msec) runs a day or a disaster tick. the delta must not exceed one base tick
+func tick_runs_day(delta_msec: float) -> bool:
+	if simulation_ready:
+		return true
+
+	return accumulator_msec + delta_msec >= BASE_TICK_MSEC and _is_day_due((subtick_counter + 1) & 7)
+
+
+func _is_day_due(counter := subtick_counter) -> bool:
 	match speed:
 		Speed.PAUSED:
-			return subtick_counter == 0
+			return counter == 0
 		Speed.TURTLE:
-			return (subtick_counter & 3) == 0
+			return (counter & 3) == 0
 		Speed.LLAMA:
-			return (subtick_counter & 1) == 0
+			return (counter & 1) == 0
 		Speed.CHEETAH, Speed.AFRICAN_SWALLOW:
 			return true
 

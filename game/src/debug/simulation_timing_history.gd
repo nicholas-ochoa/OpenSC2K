@@ -1,6 +1,8 @@
 class_name SimulationTimingHistory
 extends RefCounted
 # Statistics for accepted simulation results in this session.
+@warning_ignore_start("integer_division")
+
 const DAY_SUMMARIES := [
 	"Budget and month initialization", "Power",
 	"Pollution, land value, services, population density, crime",
@@ -14,6 +16,10 @@ const DAY_SUMMARIES := [
 	"Milestones, scenarios, bankruptcy", "Statistics-window refresh only",
 	"Map and SimNation window refresh, weather and disaster checks",
 ]
+# a day slot is an outlier when its average is this many times faster or slower than the median slot
+const PACING_OUTLIER_RATIO := 4.0
+# pacing starts when this many day slots have samples
+const PACING_MIN_SLOTS := 13
 class Sample extends RefCounted:
 	var count := 0
 	var total_usec := 0
@@ -24,11 +30,14 @@ class Sample extends RefCounted:
 
 var days: Dictionary[int, Sample] = {}
 var steps: Dictionary[String, Sample] = {}
+# mean of the day slot averages without outliers. 0 until enough slots have samples
+var typical_day_usec := 0
 
 
 func clear() -> void:
 	days.clear()
 	steps.clear()
+	typical_day_usec = 0
 
 
 func record_step(label: String, usec: int) -> void:
@@ -98,6 +107,31 @@ func consume(result: SimulationTickResult) -> void:
 
 	for label in result.job_timings:
 		record_step(label, result.job_timings[label])
+
+	if not result.day_results.is_empty():
+		typical_day_usec = _typical_day_usec()
+
+
+func _typical_day_usec() -> int:
+	var averages: Array[float] = []
+
+	for row: Sample in days.values():
+		averages.append(float(row.total_usec) / row.count)
+
+	if averages.size() < PACING_MIN_SLOTS:
+		return 0
+
+	averages.sort()
+	var median := averages[averages.size() / 2]
+	var total := 0.0
+	var kept := 0
+
+	for value in averages:
+		if value * PACING_OUTLIER_RATIO >= median and value <= median * PACING_OUTLIER_RATIO:
+			total += value
+			kept += 1
+
+	return roundi(total / kept)
 
 
 static func _phase_group(label: String) -> String:

@@ -46,7 +46,9 @@ func _initialize() -> void:
 	assert(history.days.is_empty() and history.steps.is_empty())
 	_check_phase_timings(history)
 	_check_growth_detail_flag()
-	print("PASS: simulation timing aggregation, phase detail, displayed days and wait exclusion")
+	_check_typical_day()
+	_check_day_pacing()
+	print("PASS: simulation timing aggregation, phase detail, displayed days, wait exclusion and day pacing")
 	quit()
 
 
@@ -174,3 +176,64 @@ func _check_phase_timings(history: SimulationTimingHistory) -> void:
 	history.consume(TimingResults.tick_fixture({"day_results": [{"ok": false, "day": 1,
 		"timing": {"work_usec": 999, "steps": {"rejected": 999}}}]}))
 	assert(not history.steps.has("Day 02 / rejected"))
+
+
+## The typical day excludes slots more than four times faster or slower than the median slot.
+func _check_typical_day() -> void:
+	var history := SimulationTimingHistory.new()
+	var day_results := []
+
+	for slot in 12:
+		day_results.append({"ok": true, "day": slot, "timing": {"work_usec": 300000, "steps": {}}})
+
+	history.consume(TimingResults.tick_fixture({"day_results": day_results}))
+	assert(history.typical_day_usec == 0, "Pacing waits for samples from most day slots")
+	history.consume(TimingResults.tick_fixture({"day_results": [
+		{"ok": true, "day": 12, "timing": {"work_usec": 100000, "steps": {}}},
+		{"ok": true, "day": 22, "timing": {"work_usec": 1200, "steps": {}}},
+		{"ok": true, "day": 23, "timing": {"work_usec": 70000, "steps": {}}},
+		{"ok": true, "day": 24, "timing": {"work_usec": 1300000, "steps": {}}}]}))
+	assert(history.typical_day_usec == (12 * 300000 + 100000) / 13, "Fast and slow outliers do not change the typical day")
+	history.clear()
+	assert(history.typical_day_usec == 0)
+
+
+## A fast day holds the next day until the pacing period passes. The held time
+## is published as a separate step of that day. Pacing never changes the city.
+func _check_day_pacing() -> void:
+	var city := CityState.from_document(EmptyCityTemplate.create())
+	var controller := GameSpeedController.new(SimulationEngine.new(city, 123, 456, 789))
+	controller.set_speed(GameSpeedController.Speed.CHEETAH)
+	var runner := FrameSimulationRunner.new(controller)
+	runner.day_period_usec = 150000
+	var first := _finish_tick(runner, 200)
+	assert(first.day_results.size() == 1 and not first.job_timings.has("Day %02d / pacing delay" % (posmod(first.day_results[0].day, 25) + 1)))
+	var label := "Day %02d / pacing delay" % (posmod(first.day_results[0].day, 25) + 1)
+	var held := runner.advance_time(200, 400)
+	assert(held.ok and held.base_ticks == 0 and not runner.is_pending(), "The next day waits for the pacing period")
+	var second := _finish_tick(runner, 0)
+	assert(second.day_results.size() == 1 and second.day_results[0].day == first.day_results[0].day + 1)
+	assert(second.job_timings.has(label) and second.job_timings[label] > 0 and second.job_timings[label] <= 150000,
+		"The held time is a separate step of the fast day")
+	runner.close()
+
+	# a tick without a due day is not held
+	controller.set_speed(GameSpeedController.Speed.TURTLE)
+	controller.simulation_ready = false
+	controller.subtick_counter = 0
+	assert(not controller.tick_runs_day(200))
+	controller.subtick_counter = 3
+	assert(controller.tick_runs_day(200) and not controller.tick_runs_day(100))
+
+
+func _finish_tick(runner: FrameSimulationRunner, delta_msec: float) -> SimulationTickResult:
+	var result := runner.advance_time(delta_msec, 0)
+	var deadline := Time.get_ticks_msec() + 5000
+
+	while (runner.is_pending() or result.base_ticks == 0) and Time.get_ticks_msec() < deadline:
+		OS.delay_msec(1)
+		result = runner.advance_time(0, 0)
+
+	assert(result.ok and result.base_ticks > 0, "The worker tick completes")
+
+	return result

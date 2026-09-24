@@ -7,6 +7,7 @@ class MetricsHost extends Control:
 	var queries := 0
 	var terrain_levels := 32
 	var detailed_timing := false
+	var date := "01/03/1900"
 
 
 	func debug_set_visible_altitude_levels(value: int) -> void:
@@ -22,7 +23,7 @@ class MetricsHost extends Control:
 	func debug_metrics() -> Dictionary:
 		queries += 1
 
-		return {"city_name": "Timing test", "date": "01/03/1900", "speed": "Paused",
+		return {"city_name": "Timing test", "date": date, "speed": "Paused",
 			"detailed_timing": detailed_timing}
 
 
@@ -66,7 +67,15 @@ func _run() -> void:
 		"Run to date suggests one month after the current date")
 	assert(debug._target_date.text == "No target date")
 	var day_three := debug._days.get_root().get_child(2)
+	assert(debug._current_day_row == day_three, "The row for the city date is marked")
+	assert(day_three.get_custom_bg_color(0) != Color() and debug._days.get_root().get_child(1).get_custom_bg_color(0) == Color())
 	assert(day_three.get_text(0) == "3" and day_three.get_text(2) == "2.500")
+	host.date = "01/25/1900"
+	debug._refresh_metrics()
+	assert(debug._current_day_row == debug._days.get_root().get_child(24) and day_three.get_custom_bg_color(0) == Color(),
+		"The mark follows the city date")
+	host.date = "01/03/1900"
+	debug._refresh_metrics()
 	assert(day_three.get_text(5) == "1")
 	assert(day_three.collapsed and day_three.get_child_count() == 1)
 	assert(day_three.get_child(0).get_text(1).strip_edges() == "pollution")
