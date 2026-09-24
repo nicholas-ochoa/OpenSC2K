@@ -83,6 +83,9 @@ func _run() -> void:
 		host.add_child(panel)
 		panel.refresh_from_host(host, true)
 		_check_object_columns(host)
+		# record 0 is never used, so the limits are one less than the stored slots
+		assert(DebugCityTables.record_limit("XMIC", city) == city.microsim_count() - 1 and DebugCityTables.record_limit("Tiles", city) == -1)
+		assert(edge != 128 or [DebugCityTables.record_limit("XMIC", city), DebugCityTables.record_limit("Objects", city)] == [149, 39])
 		_check_state_sorting(host, engine)
 		var row: TreeItem = panel.rows["1"]
 		row.collapsed = false
@@ -225,6 +228,7 @@ func _check_object_columns(host: Control) -> void:
 	var font := table.get_theme_font("font")
 	var font_size := table.get_theme_font_size("font_size")
 	var item := panel.rows["1"] as TreeItem
+	assert(panel.total.text.ends_with("Limit: %d" % (host.document_state.city.thing_count() - 1)), "The total shows the record limit")
 
 	for column in table.columns:
 		assert(not table.get_column_title_tooltip_text(column).is_empty())

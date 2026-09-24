@@ -161,6 +161,21 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 	return result
 
 
+# records the game can use in a record table, or -1 for a table without a limit.
+# the game never uses record 0 of XMIC or XTHG
+static func record_limit(kind: String, city: CityState) -> int:
+	if city == null:
+		return -1
+
+	match kind:
+		"XMIC":
+			return city.microsim_count() - 1
+		"Objects":
+			return city.thing_count() - 1
+
+	return -1
+
+
 # the number of tiles with each building id outside military zones. the result is shared; do not change it
 static func tile_counts(city: CityState) -> PackedInt32Array:
 	var key: Array = [city.get_instance_id(), city.chunk_revision("XBLD"), city.chunk_revision("XZON")]

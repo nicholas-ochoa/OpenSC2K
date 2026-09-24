@@ -18,6 +18,8 @@ var _locate_icon: Texture2D
 var _titles: Array = []
 # columns sized to their widest cell after each refresh
 var _fitted_columns: Array[int] = []
+# records the city can hold. -1 when the table has no limit
+var record_limit := -1
 # sorted column and direction; -1 keeps record order
 var sort_column := -1
 var sort_descending := false
@@ -119,6 +121,7 @@ func refresh_from_host(host: Control, force := false) -> void:
 	_last_refresh = Time.get_ticks_msec()
 	var simulation := host.get("simulation_state") as SimulationSessionState
 	var engine: SimulationEngine = simulation.simulation_engine if simulation != null else null
+	record_limit = DebugCityTables.record_limit(kind, city)
 	update_records(DebugCityTables.collect(kind, city, engine, show_empty.button_pressed))
 
 
@@ -391,3 +394,7 @@ func _filter() -> void:
 
 	var noun := "record" if rows.size() == 1 else "records"
 	total.text = "%d %s" % [rows.size(), noun] if shown == rows.size() else "%d of %d %s shown" % [shown, rows.size(), noun]
+
+	if record_limit >= 0:
+		total.text += ". Limit: %d" % record_limit
+		total.tooltip_text = "The city can hold %d records. Record 0 is not used." % record_limit
