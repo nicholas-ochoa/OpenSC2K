@@ -18,33 +18,33 @@ const STAT_LABELS := {
 }
 # state tab rows in record order, with their descriptions. the tab sorts them by name
 const ENGINE_FIELDS := {
-	"developed_tiles": "Developed tiles found by the last map scan. -1 until the first scan.",
-	"power_usage_percent": "Percent of power capacity in use at the last power update. -1 until the first update.",
-	"water_usage_percent": "Percent of water capacity in use at the last water update. -1 until the first update.",
-	"commerce_connections": "Connections to neighbor cities that add to commercial demand.",
-	"industry_connections": "Connections to neighbor cities that add to industrial demand.",
-	"bus_passengers": "Bus passengers counted since the last yearly update. The yearly update writes them to the bus depots.",
-	"rail_passengers": "Rail passengers counted since the last yearly update. The yearly update writes them to the rail stations.",
-	"subway_passengers": "Subway passengers counted since the last yearly update. The yearly update writes them to the subway stations.",
-	"mayor_approval": "Mayor approval from the last update of the mayor's house.",
-	"ship_home": "Tile that the cargo ship returns to. (-1, -1) if the city has no cargo ship.",
-	"pending_interaction": "Player prompt that stops the current day, such as the yearly budget. Empty if there is no prompt.",
-	"terminal_state": "True after the game ends from bankruptcy or a scenario result. The simulation then stops.",
-	"active_disaster_type": "ID of the disaster in progress. 0 if there is no disaster.",
-	"pending_disaster_type": "ID of the disaster that starts on the next day. 0 if there is no disaster.",
-	"pending_disaster_point": "Tile where the pending disaster starts.",
-	"unsupported_disaster_type": "ID of a disaster that could not start because it is not supported yet. 0 if there is none.",
-	"disaster_map_counter": "Countdown for the active disaster. It decreases by one on each disaster tick.",
-	"disaster_hurricane_counter": "Countdown for hurricane wind and floods. It decreases by one on each disaster tick.",
+	"developed_tiles": "Number of tiles with a zone or a structure at the last data-map scan. The value is -1 before the first scan.",
+	"power_usage_percent": "Percentage of the power capacity in use at the last power scan. The value is -1 before the first scan.",
+	"water_usage_percent": "Percentage of the water capacity in use at the last water scan. The value is -1 before the first scan.",
+	"commerce_connections": "Number of connections to neighbor cities that increase commercial demand.",
+	"industry_connections": "Number of connections to neighbor cities that increase industrial demand.",
+	"bus_passengers": "Number of bus passengers since the last yearly update. The yearly update gives this number to the bus depots.",
+	"rail_passengers": "Number of rail passengers since the last yearly update. The yearly update gives this number to the rail stations.",
+	"subway_passengers": "Number of subway passengers since the last yearly update. The yearly update gives this number to the subway stations.",
+	"mayor_approval": "Mayor approval from the last query of the mayor's house.",
+	"ship_home": "The tile where the cargo ship returns. The value is (-1, -1) when the city has no cargo ship.",
+	"pending_interaction": "The player prompt that stops the current day, for example the yearly budget. The value is empty when there is no prompt.",
+	"terminal_state": "True when the game ended because of bankruptcy or a scenario result. When true, the simulation stops.",
+	"active_disaster_type": "The ID of the active disaster. The value is 0 when no disaster is active.",
+	"pending_disaster_type": "The ID of the disaster that starts after the next simulation day. The value is 0 when no disaster waits.",
+	"pending_disaster_point": "The tile where the pending disaster starts.",
+	"unsupported_disaster_type": "The ID of a disaster that did not start because the game does not support it yet. The value is 0 when there is no such disaster.",
+	"disaster_map_counter": "Countdown for the active disaster. Each disaster tick decreases it by one.",
+	"disaster_hurricane_counter": "Countdown for the hurricane wind and floods. Each disaster tick decreases it by one.",
 }
 # tile counts of the last building scan, reused until the building plane changes
 static var _tile_count_key: Array = []
 static var _tile_counts := PackedInt32Array()
 static var _tile_constants := _make_tile_constants()
 const RANDOM_FIELDS := {
-	"random": "State of the main random number generator.",
-	"game_random": "State of the second random number generator.",
-	"lfsr_random": "State of the shift-register random number generator.",
+	"random": "The state of the main random number generator.",
+	"game_random": "The state of the second random number generator.",
+	"lfsr_random": "The state of the linear feedback shift register (LFSR) random number generator.",
 }
 
 
