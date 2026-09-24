@@ -1444,17 +1444,8 @@
     ]
   },
   {
-    "id": "moving_interpolation_test",
-    "script": "tests/moving_interpolation_test.gd",
-    "domain": "rendering",
-    "lane": "product",
-    "requires": [
-      "references/SIMCITY2000"
-    ]
-  },
-  {
-    "id": "moving_blend_app_test",
-    "script": "tests/moving_blend_app_test.gd",
+    "id": "moving_cadence_app_test",
+    "script": "tests/moving_cadence_app_test.gd",
     "domain": "rendering",
     "lane": "product",
     "requires": [
@@ -1479,16 +1470,6 @@
     "lane": "native",
     "requires": [
       "references/SIMCITY2000"
-    ]
-  },
-  {
-    "id": "moving_occlusion_app_native_test",
-    "script": "tests/moving_occlusion_app_native_test.gd",
-    "domain": "rendering",
-    "lane": "native",
-    "requires": [
-      "references/SIMCITY2000",
-      "ext/graphics/pack.json"
     ]
   },
   {

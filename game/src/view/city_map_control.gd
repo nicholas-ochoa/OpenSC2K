@@ -149,7 +149,6 @@ var camera: CityMapCamera = CityMapCamera.new(self)
 var presentation: CityMapPresentation = CityMapPresentation.new(self)
 var selection: CityMapSelection = CityMapSelection.new(self)
 var interaction: CityMapInteraction = CityMapInteraction.new(self)
-var moving_occlusion: CityMapMovingOcclusion = CityMapMovingOcclusion.new(self)
 
 
 func _ready() -> void:
@@ -293,26 +292,6 @@ func shake_view(frames := 24, frame_duration := 0.005, distance := 4.0) -> void:
 
 func set_dynamic_sprites(sprites: Array[CityDynamicVisual]) -> void:
 	presentation.set_dynamic_sprites(sprites)
-
-
-# use gpu occlusion and shadows for moving objects when the base allows it
-func set_moving_occlusion_enabled(value: bool) -> void:
-	moving_occlusion.set_enabled(value)
-
-
-func moving_occlusion_active() -> bool:
-	return moving_occlusion.active()
-
-
-# render-target pixels per source pixel, including zoom and window scale
-func screen_pixels_per_source_pixel() -> float:
-	return zoom_factor * moving_occlusion._screen_transform().get_scale().x
-
-
-# display-only offsets and draw orders for interpolated moving objects, by xthg record
-func set_moving_blend(offsets: Dictionary, orders: Dictionary) -> void:
-	if _dynamic_canvas != null:
-		_dynamic_canvas.set_blend(offsets, orders)
 
 
 func debug_metrics() -> Dictionary:

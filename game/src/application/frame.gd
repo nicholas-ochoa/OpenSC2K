@@ -59,7 +59,6 @@ func process(delta: float) -> void:
 	_advance_palette_animation(delta, interaction_suspended)
 
 	consume_simulation_result(result)
-	app.moving_sprites.advance_blend()
 
 
 # registered windows declare whether they block. other conditions stay listed here
@@ -113,10 +112,6 @@ func consume_simulation_result(result: SimulationTickResult) -> void:
 			break
 
 	var moved_things := app.reports.moving_things_are_active(result.moving_results)
-
-	# start the display blend before the refresh publishes the new positions
-	if not result.moving_results.is_empty():
-		app.moving_sprites.note_moving_tick()
 
 	if ran_days or moved_things or changed_disaster_map:
 		app.tool_state.last_edit_command = null

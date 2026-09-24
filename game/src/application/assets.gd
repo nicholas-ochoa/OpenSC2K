@@ -193,7 +193,7 @@ func _save_import_preferences() -> Error:
 		app.preferences.sound_pack_folder, app.preferences.music_pack_folder, app.preferences.shuffle_music,
 		app.preferences.original_compatibility, app.preferences.warn_sc2x_conversion, app.preferences.default_mayor_name,
 		app.preferences.overview_graphics, app.preferences.ui_theme, app.preferences.dark_underground,
-		app.preferences.translucent_menus, app.preferences.moving_frame_rate,
+		app.preferences.translucent_menus,
 	)
 
 

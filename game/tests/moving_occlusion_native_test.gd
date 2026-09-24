@@ -2,20 +2,20 @@ extends SceneTree
 
 class TestVisual extends CityDynamicVisual:
 	var sprite_id: int
+	var mode: int
 
-## GPU moving-object occlusion and shadows match the CPU rules pixel for pixel.
-##
-## The test draws real region meshes through CityMapControl and the moving
-## sprite shader. It compares each sprite pixel with an independent copy of the
-## CPU rules in ApplicationMovingSprites: every later static silhouette hides a
-## sprite, trains use the crossing masks, and a shadow remaps the static index.
+## Draw the CPU-composed moving sprites through the native palette shader.
+## Compare their pixels with independent foreground, crossing, and shadow rules.
 
 @warning_ignore_start("integer_division")
+
+enum Mode { SPRITE, TRAIN, SHADOW }
 
 const VIEW := 2
 const EDGE := 256
 const CROSSINGS := [0x4f, 0x50, 0x4d, 0x4e, 0x47, 0x48]
 
+var _app: CityApplication
 var _palette: Sc2Palette
 var _sprites: Sc2SpriteArchive
 var _images := {}
@@ -67,6 +67,13 @@ func _run() -> void:
 	assert(batch.ok, "GPU region build failed")
 	var atlas := ImageTexture.create_from_image(batch.atlas_image)
 	var source := CityMapSource.new(CityIsometricRenderer.output_size_for_view(VIEW, city.map_size))
+	_app = CityApplication.new()
+	_app.asset_state.palette_index_encoding = _palette
+	var cache := CityRegionCache.new()
+	cache.region_edge = EDGE
+	cache.native_size = source.size
+	cache.visible.assign(keys)
+	_app.render_caches.region_cache = cache
 	var found := {}
 
 	for region: CityGpuRegionResult in batch.regions:
@@ -75,8 +82,8 @@ func _run() -> void:
 		if not region.gpu_arrays[Mesh.ARRAY_VERTEX].is_empty():
 			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, region.gpu_arrays, [], {}, Mesh.ARRAY_FLAG_USE_2D_VERTICES)
 
-		source.meshes.append(CityMapSource.MeshEntry.new(Vector2(region.bounds.position), mesh, atlas, 1,
-			CityRegionScheduling._depth_mesh(region.depth_arrays), CityRegionScheduling._depth_mesh(region.train_depth_arrays)))
+		source.meshes.append(CityMapSource.MeshEntry.new(Vector2(region.bounds.position), mesh, atlas, 1))
+		cache.entries[region.key] = region
 		_index_regions.append({"bounds": region.bounds,
 			"image": CityGpuDrawList.paint(region.gpu_draws, region.bounds, region.background, region.gpu_draw_grid)})
 
@@ -105,10 +112,8 @@ func _run() -> void:
 	map.zoom_factor = 1.0
 	var center_region := Rect2i(center_key * EDGE, Vector2i.ONE * EDGE)
 	map.source_center = Vector2(center_region.get_center())
-	map.set_moving_occlusion_enabled(true)
 	map.layers._sync_base_layer()
 	map._base_layer.hide()
-	assert(map.moving_occlusion_active(), "GPU occlusion stayed off despite region depth meshes")
 
 	var grid: Array[Vector2i] = []
 
@@ -124,39 +129,30 @@ func _run() -> void:
 		assert(_sprite_image(sprite_id, false).get_width() < 84 and _sprite_image(sprite_id, false).get_height() < 84)
 
 	for choice in ["median", "first", "last"]:
-		await _check_pass(map, viewport, _grid_visuals(grid, airplane, CityMapMovingOcclusion.MODE_SPRITE, choice), {})
+		await _check_pass(map, viewport, _grid_visuals(grid, airplane, Mode.SPRITE, choice))
 
-	await _check_pass(map, viewport, _grid_visuals(grid, train, CityMapMovingOcclusion.MODE_TRAIN, "median"), {})
-	await _check_pass(map, viewport, _grid_visuals(grid, airplane, CityMapMovingOcclusion.MODE_SHADOW, "median"), {})
+	await _check_pass(map, viewport, _grid_visuals(grid, train, Mode.TRAIN, "median"))
+	await _check_pass(map, viewport, _grid_visuals(grid, airplane, Mode.SHADOW, "median"))
 
 	# Trains over the crossing, at the orders around the crossing tile.
 	var focus_order := _order_at(city, focus)
 
 	for delta in [-1, 0, 1, 40]:
 		for offset in [Vector2i(-20, -30), Vector2i(-4, -14), Vector2i(8, -24)]:
-			var visual := _visual(train, focus + offset, CityMapMovingOcclusion.MODE_TRAIN, focus_order + delta, 0)
-			await _check_pass(map, viewport, [visual], {})
+			var visual := _visual(train, focus + offset, Mode.TRAIN, focus_order + delta)
+			await _check_pass(map, viewport, [visual])
 
-	# Blend offsets and orders move the draw without new visuals.
-	var blended := _grid_visuals(grid, airplane, CityMapMovingOcclusion.MODE_SPRITE, "median")
-	var offsets := {}
-	var blend_orders := {}
-
-	for visual in blended:
-		offsets[int(visual.record)] = Vector2(5, -3)
-		blend_orders[int(visual.record)] = int(visual.depth_order) + 30
-
-	await _check_pass(map, viewport, blended, {"offsets": offsets, "orders": blend_orders})
 	assert(_hidden_pixels > 0 and _checked_pixels > _hidden_pixels, "Fixture lacks hidden or visible pixels")
 	assert(_shadow_pixels > 0, "Fixture has no shadow pixels")
-	print("PASS: GPU moving-object occlusion matches CPU rules (%d pixels, %d hidden, %d shadow)" % [_checked_pixels, _hidden_pixels, _shadow_pixels])
+	print("PASS: native moving sprites match foreground, crossing and shadow rules (%d pixels, %d hidden, %d shadow)" % [_checked_pixels, _hidden_pixels, _shadow_pixels])
+	_app.render_caches.region_cache.close()
+	_app.free()
 	viewport.queue_free()
 	await process_frame
 	quit()
 
 
-func _check_pass(map: CityMapControl, viewport: SubViewport, visuals: Array[CityDynamicVisual], blend: Dictionary) -> void:
-	map.set_moving_blend(blend.get("offsets", {}), blend.get("orders", {}))
+func _check_pass(map: CityMapControl, viewport: SubViewport, visuals: Array[CityDynamicVisual]) -> void:
 	map.set_dynamic_sprites(visuals)
 	await RenderingServer.frame_post_draw
 	await RenderingServer.frame_post_draw
@@ -167,11 +163,10 @@ func _check_pass(map: CityMapControl, viewport: SubViewport, visuals: Array[City
 	var first_difference := ""
 
 	for visual: TestVisual in visuals:
-		var record := int(visual.record)
-		var position := Vector2i(visual.position) + Vector2i(blend.get("offsets", {}).get(record, Vector2.ZERO))
-		var order := int(blend.get("orders", {}).get(record, visual.depth_order))
+		var position := Vector2i(visual.position)
+		var order := int(visual.depth_order)
 		var image: Image = _sprite_image(int(visual.sprite_id), false)
-		var expected := _expected(image, position, order, int(visual.gpu_mode))
+		var expected := _expected(image, position, order, int(visual.mode))
 
 		for y in image.get_height():
 			for x in image.get_width():
@@ -187,9 +182,9 @@ func _check_pass(map: CityMapControl, viewport: SubViewport, visuals: Array[City
 					differences += 1
 
 					if first_difference.is_empty():
-						first_difference = "mode %d at %s: wanted %d, got %s" % [int(visual.gpu_mode), screen, wanted, pixel]
+						first_difference = "mode %d at %s: wanted %d, got %s" % [int(visual.mode), screen, wanted, pixel]
 
-	assert(differences == 0, "GPU moving pixels differ at %d pixels; first %s" % [differences, first_difference])
+	assert(differences == 0, "Native moving pixels differ at %d pixels; first %s" % [differences, first_difference])
 
 
 func _expected(image: Image, position: Vector2i, order: int, mode: int) -> PackedInt32Array:
@@ -197,7 +192,7 @@ func _expected(image: Image, position: Vector2i, order: int, mode: int) -> Packe
 	var result := PackedInt32Array()
 	result.resize(width * image.get_height())
 	result.fill(-1)
-	var hidden := _occluder(image.get_size(), position, order, mode == CityMapMovingOcclusion.MODE_TRAIN)
+	var hidden := _occluder(image.get_size(), position, order, mode == Mode.TRAIN)
 
 	for y in image.get_height():
 		for x in width:
@@ -212,7 +207,7 @@ func _expected(image: Image, position: Vector2i, order: int, mode: int) -> Packe
 
 			var palette_index := roundi(image.get_pixel(x, y).r * 255.0)
 
-			if mode == CityMapMovingOcclusion.MODE_SHADOW:
+			if mode == Mode.SHADOW:
 				var under := _static_index(position + Vector2i(x, y))
 				var shadow := CityIsometricRenderer.shadow_palette_index(under)
 
@@ -321,21 +316,28 @@ func _grid_visuals(grid: Array[Vector2i], sprite_id: int, mode: int, choice: Str
 				_:
 					order = covering[covering.size() / 2]
 
-		visuals.append(_visual(sprite_id, grid[index], mode, order, index))
+		visuals.append(_visual(sprite_id, grid[index], mode, order))
 
 	return visuals
 
 
-func _visual(sprite_id: int, position: Vector2i, mode: int, order: int, record: int) -> TestVisual:
+func _visual(sprite_id: int, position: Vector2i, mode: int, order: int) -> TestVisual:
 	var image := _sprite_image(sprite_id, false)
 
 	var result := TestVisual.new()
-	result.texture = ImageTexture.create_from_image(image)
+	var mask := _app.moving_sprites._dynamic_occluder_image(_sprites, 1, position, image.get_size(), order, mode == Mode.TRAIN)
+	var composed: Image
+	if mode == Mode.SHADOW:
+		composed = _app.moving_sprites._dynamic_shadow_image(image, position, mask)
+	else:
+		composed = CityIsometricRenderer.occlude_dynamic_with_mask(image, mask, position, null).image
+	if composed == null:
+		composed = Image.create(image.get_width(), image.get_height(), false, Image.FORMAT_RGBA8)
+	result.texture = ImageTexture.create_from_image(composed)
 	result.position = Vector2(position)
 	result.size = Vector2(image.get_size())
-	result.gpu_mode = mode
+	result.mode = mode
 	result.depth_order = order
-	result.record = record
 	result.sprite_id = sprite_id
 
 	return result

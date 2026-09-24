@@ -38,7 +38,6 @@ func open_settings_dialog() -> void:
 	app.main_overlays.settings_dialog.translucent_menus_check.button_pressed = preferences.translucent_menus
 	app.main_overlays.settings_dialog.default_mayor_edit.text = preferences.default_mayor_name
 	app.main_overlays.settings_dialog.overview_graphics_selector.select(preferences.overview_graphics)
-	app.main_overlays.settings_dialog.select_moving_frame_rate(preferences.moving_frame_rate)
 	app.main_overlays.settings_dialog.original_compatibility_check.button_pressed = preferences.original_compatibility
 	app.main_overlays.settings_dialog.original_compatibility_check.disabled = app.document_state.current_document != null and app.document_state.current_document.is_extended()
 	app.main_overlays.settings_dialog.original_compatibility_check.tooltip_text = ("SC2X cities cannot return to original compatibility."
@@ -118,7 +117,6 @@ func apply_settings() -> void:
 	var overview_changed := preferences.overview_graphics != int(values.overview_graphics)
 	preferences.overview_graphics = int(values.overview_graphics)
 	_set_graphics_preferences(values.zoom_graphics)
-	_set_moving_frame_rate(int(values.moving_frame_rate))
 
 	if overview_changed:
 		app.map_render.close_region_cache()
@@ -159,7 +157,7 @@ func apply_settings() -> void:
 		preferences.city_renderer, preferences.background_audio, preferences.zoom_graphics, preferences.toolbar_sounds,
 		preferences.sound_pack_folder, preferences.music_pack_folder, preferences.shuffle_music, preferences.original_compatibility,
 		preferences.warn_sc2x_conversion, preferences.default_mayor_name, preferences.overview_graphics, preferences.ui_theme, preferences.dark_underground,
-		preferences.translucent_menus, preferences.moving_frame_rate,
+		preferences.translucent_menus,
 	)
 	app.status_label.text = (
 		"Settings saved."
@@ -186,7 +184,6 @@ func load_app_settings() -> void:
 	AppUiTheme.select(preferences.ui_theme, preferences.translucent_menus)
 	preferences.default_mayor_name = str(values.default_mayor_name)
 	preferences.overview_graphics = int(values.overview_graphics)
-	preferences.moving_frame_rate = int(values.moving_frame_rate)
 	preferences.zoom_graphics = values.zoom_graphics
 	preferences.background_audio = values.background_audio
 	preferences.original_compatibility = bool(values.original_compatibility)
@@ -213,22 +210,6 @@ func _set_graphics_preferences(zoom_graphics: Array) -> void:
 	preferences.zoom_graphics = sizes
 	app.map_render.close_region_cache()
 	app.map_render.refresh_map()
-
-
-func _set_moving_frame_rate(value: int) -> void:
-	var rate := SettingsStore.normalize_moving_frame_rate(value)
-
-	if rate == preferences.moving_frame_rate:
-		return
-
-	var depth_changed := (rate > ApplicationMovingSprites.ORIGINAL_FRAME_RATE) != (preferences.moving_frame_rate > ApplicationMovingSprites.ORIGINAL_FRAME_RATE)
-	preferences.moving_frame_rate = rate
-	app.moving_sprites.reset_blend()
-
-	if app.document_state.city != null and app.map_view != null:
-		if depth_changed and app.render_caches.region_cache != null and app.render_caches.region_cache.gpu_enabled:
-			app.render_caches.region_cache.set_occlusion_depth(rate > ApplicationMovingSprites.ORIGINAL_FRAME_RATE)
-		app.moving_sprites.refresh_moving_things()
 
 
 func apply_compatibility_controls() -> void:

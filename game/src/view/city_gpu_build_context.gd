@@ -9,7 +9,6 @@ const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 class Tile extends RefCounted:
 	var draws: Array[CityGpuDrawList.Draw] = []
 	var foreground: Array[CityStaticCommand] = []
-	var foreground_draws: Array[CityGpuDrawList.Draw] = []
 	var revision := -1
 	var reusable := false
 	var inputs := 0
@@ -30,8 +29,6 @@ const MAX_ATLAS_EDGE := 8192
 var atlas_edge := ATLAS_EDGE
 const TILE_CACHE_LIMIT := 16384
 var images: Dictionary = {}
-# derived train crossing masks for the moving-object depth meshes
-var occlusion_masks: Dictionary[String, Image] = {}
 var image_roles: Dictionary[int, ImageRole] = {}
 var _image_key_count := 0
 var tiles: Dictionary[int, Tile] = {}
@@ -89,7 +86,6 @@ func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	var origin := configuration.side_margin + city.map_size * configuration.half_width
 	var order := (x + y) * city.map_size + y
 	var foreground: Array[CityStaticCommand] = []
-	var foreground_draws: Array[CityGpuDrawList.Draw] = []
 	var reusable := false
 
 	if mode == CityViewMode.Mode.UNDERGROUND:
@@ -123,12 +119,10 @@ func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 					CityIsometricRenderer.configure_train_foreground(command, building, configuration)
 
 				foreground.append(command)
-				foreground_draws.append(draw)
 
 	var result := Tile.new()
 	result.draws = recorder.draws
 	result.foreground = foreground
-	result.foreground_draws = foreground_draws
 	result.revision = revision
 	result.reusable = reusable
 

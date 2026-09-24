@@ -18,7 +18,6 @@ class Request extends RefCounted:
 	var subways := true
 	var water_mains := true
 	var generation := 0
-	var occlusion_depth := true
 	var signs: Array[CitySignRequest] = []
 
 
@@ -46,7 +45,7 @@ static func build(request: Request, context: CityGpuBuildContext, uploaded_revis
 		var bounds := Rect2i(key * int(request.edge), Vector2i.ONE * int(request.edge))
 		var result := CityGpuRegionRenderer.render(display, request.palette, request.sprites,
 			bounds, request.view, request.mode, request.pipes, request.subways,
-			context, request.generation, uploaded_revision, false, request.water_mains, request.occlusion_depth)
+			context, request.generation, uploaded_revision, false, request.water_mains)
 
 		if not result.ok:
 			return Result.failure(result.error)
@@ -69,18 +68,6 @@ static func build(request: Request, context: CityGpuBuildContext, uploaded_revis
 
 			region.gpu_arrays[Mesh.ARRAY_TEX_UV] = uvs
 
-			for field in ["depth_arrays", "train_depth_arrays"]:
-				var depth_arrays: Array = region[field]
-
-				if depth_arrays.is_empty():
-					continue
-
-				var depth_uvs: PackedVector2Array = depth_arrays[Mesh.ARRAY_TEX_UV]
-
-				for index in depth_uvs.size():
-					depth_uvs[index] *= float(region.atlas_edge) / context.atlas_edge
-
-				depth_arrays[Mesh.ARRAY_TEX_UV] = depth_uvs
 			region.atlas_edge = context.atlas_edge
 
 	var batch := Result.new()

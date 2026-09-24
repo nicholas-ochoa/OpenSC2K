@@ -109,7 +109,6 @@ func activate_document(
 	app.palette_clock.cycle_ticks = 0
 	app.palette_clock.elapsed_msec = 0.0
 	app.static_render.update_palette_cycle_texture()
-	app.moving_sprites.reset_blend()
 
 	var process_seed := app.tool_state.tool_random.state
 	var game_seed := app.simulation_state.nuisance_random.state

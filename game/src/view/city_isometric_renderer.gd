@@ -157,10 +157,6 @@ static func moving_thing_visual(
 	return IsometricMovingVisuals.moving_thing_visual(city, x, y, view_size, animation_phase)
 
 
-static func moving_thing_anchor(city: CityState, record: int, view_size := VIEW_LARGE) -> IsometricMovingVisuals.Anchor:
-	return IsometricMovingVisuals.moving_thing_anchor(city, record, view_size)
-
-
 static func moving_thing_sprite(thing: ThingRecord, view_size := VIEW_LARGE) -> IsometricMovingVisuals.Sprite:
 	return IsometricMovingVisuals.moving_thing_sprite(thing, view_size)
 

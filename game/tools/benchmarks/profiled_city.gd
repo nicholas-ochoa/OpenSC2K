@@ -6,10 +6,6 @@ var frame_profile := {}
 func _ready() -> void:
 	super._ready()
 	map_view.layers = ProfileLayers.new(map_view, self)
-	var enabled := map_view.moving_occlusion.enabled
-	assert(map_view.moving_occlusion._viewports.is_empty())
-	map_view.moving_occlusion = ProfileOcclusion.new(map_view, self)
-	map_view.moving_occlusion.enabled = enabled
 	render_caches.dynamic_command_cache = ProfileCommandCache.new(self)
 
 
@@ -184,16 +180,3 @@ class ProfileLayers extends CityMapLayers:
 		var started := Time.get_ticks_usec()
 		super._sync_base_layer()
 		owner._record("base_layers", started)
-
-
-class ProfileOcclusion extends CityMapMovingOcclusion:
-	var owner: CityApplication
-
-	func _init(control: CityMapControl, application: CityApplication) -> void:
-		super(control)
-		owner = application
-
-	func _rebuild(source: CityMapSource) -> void:
-		var started := Time.get_ticks_usec()
-		super._rebuild(source)
-		owner._record("occlusion_meshes", started)

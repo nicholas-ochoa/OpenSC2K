@@ -21,7 +21,6 @@ def main():
     parser.add_argument('--city', type=Path, help='Profile a disposable copy of this SC2 or SC2X city.')
     parser.add_argument('--renderer', choices=('gl_compatibility', 'mobile'), default='gl_compatibility')
     parser.add_argument('--large-artwork', action='store_true', help='Use Large artwork at every zoom.')
-    parser.add_argument('--moving-fps', choices=(5, 10, 20, 30, 60), type=int, default=20)
     parser.add_argument('--compare-overview', action='store_true', help='Compare Large and Small artwork at 10%% zoom.')
     parser.add_argument('--output', type=Path, help='Save the console log and macOS memory snapshots here.')
     args = parser.parse_args()
@@ -51,7 +50,6 @@ def main():
                             'XDG_RUNTIME_DIR', 'SystemRoot', 'APPDATA', 'LOCALAPPDATA') if key in os.environ}
             environment['GODOT_AUDIO_DRIVER'] = 'Dummy'
             environment['CITY_BENCH_LARGE_ARTWORK'] = '1' if args.large_artwork or args.compare_overview else '0'
-            environment['CITY_BENCH_MOVING_FPS'] = str(args.moving_fps)
             environment['CITY_BENCH_OVERVIEW_COMPARISON'] = '1' if args.compare_overview else '0'
             environment['CITY_BENCH_LOAD_NOTE'] = os.environ.get('CITY_BENCH_LOAD_NOTE', 'not recorded')
             acknowledgement = project.path / 'profile-ack'

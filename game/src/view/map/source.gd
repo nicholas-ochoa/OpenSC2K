@@ -33,20 +33,13 @@ class MeshEntry:
 	var mesh: Mesh
 	var texture: Texture2D
 	var divisor: int
-	# static foreground depth for moving-object occlusion. null when absent
-	var depth_mesh: Mesh
-	# the same depth with the train crossing rules. null when absent
-	var train_depth_mesh: Mesh
 
 
-	func _init(source_position: Vector2, region_mesh: Mesh, atlas_texture: Texture2D, mesh_divisor: int,
-			region_depth_mesh: Mesh = null, region_train_depth_mesh: Mesh = null) -> void:
+	func _init(source_position: Vector2, region_mesh: Mesh, atlas_texture: Texture2D, mesh_divisor: int) -> void:
 		position = source_position
 		mesh = region_mesh
 		texture = atlas_texture
 		divisor = mesh_divisor
-		depth_mesh = region_depth_mesh
-		train_depth_mesh = region_train_depth_mesh
 
 
 var size: Vector2i
@@ -67,15 +60,3 @@ func _init(source_size: Vector2i, whole_texture: Texture2D = null) -> void:
 
 static func whole(whole_texture: Texture2D) -> CityMapSource:
 	return CityMapSource.new(Vector2i(whole_texture.get_size()), whole_texture)
-
-
-# true when every base entry is a region mesh with moving-object depth
-func has_occlusion_depth() -> bool:
-	if texture != null or not tiles.is_empty() or meshes.is_empty():
-		return false
-
-	for entry in meshes:
-		if entry.depth_mesh == null or entry.train_depth_mesh == null:
-			return false
-
-	return true

@@ -15,7 +15,6 @@ var translucent_menus := true
 var dark_underground := false
 var default_mayor_name := "Mayor"
 var overview_graphics := 0
-var moving_frame_rate := SettingsStore.DEFAULT_MOVING_FRAME_RATE
 var zoom_graphics: Array[int] = SettingsStore.normalize_zoom_graphics(SettingsStore.DEFAULT_ZOOM_GRAPHICS)
 var background_audio := false
 var shuffle_music := false

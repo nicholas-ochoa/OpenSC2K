@@ -40,8 +40,6 @@ func _run() -> void:
 	main.preferences.overview_graphics = 2 if large_artwork else 0
 	main.preferences.zoom_graphics = AppSettingsStore.normalize_zoom_graphics(
 		[2, 2, 2, 2, 2, 2] if large_artwork else [0, 1, 2, 2, 2, 2])
-	main.preferences.moving_frame_rate = AppSettingsStore.normalize_moving_frame_rate(
-		int(OS.get_environment("CITY_BENCH_MOVING_FPS")) if OS.has_environment("CITY_BENCH_MOVING_FPS") else 20)
 	var overview_comparison := OS.get_environment("CITY_BENCH_OVERVIEW_COMPARISON") == "1"
 	main.map_view.zoom_factor = 0.1 if overview_comparison else 1.0
 	if not main.city_session.activate_document(document):
@@ -91,9 +89,6 @@ func _run() -> void:
 	await _measure("large_window_100", 6.0)
 	root.size = Vector2i(1920, 1080)
 	await _settle()
-	main.settings._set_moving_frame_rate(5)
-	await create_timer(2.0).timeout
-	await _measure("moving_5fps_100", 6.0)
 	# Diagnostic release: quantify the hidden menu's retained city and artwork.
 	main.main_menu.city_background.queue_free()
 	await create_timer(2.0).timeout
@@ -160,15 +155,11 @@ func _measure(stage: String, seconds: float) -> void:
 		if main.render_caches.region_cache != null:
 			result["cache"] = main.render_caches.region_cache.metrics()
 		result["dynamic"] = main.map_view.debug_metrics()
-		var buffers: Array = []
-		for viewport in main.map_view.moving_occlusion._viewports:
-			buffers.append({"name": viewport.name, "size": [viewport.size.x, viewport.size.y]})
-		result["occlusion_buffers"] = buffers
 		result["viewport"] = [main.map_view.size.x, main.map_view.size.y]
 		result["zoom_graphics"] = main.preferences.zoom_graphics
 		result["overview_graphics"] = main.preferences.overview_graphics
 		result["actual_artwork_size"] = main.static_render.city_view_size() if main.document_state.city != null else -1
-		result["moving_fps"] = main.preferences.moving_frame_rate
+		result["moving_fps"] = 1000.0 / GameSpeedController.BASE_TICK_MSEC
 		result["original_compatibility"] = main.preferences.original_compatibility
 		if main.document_state.city != null:
 			result["map_edge"] = main.document_state.city.map_size

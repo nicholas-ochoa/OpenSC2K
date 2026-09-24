@@ -191,10 +191,6 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 				mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, region.gpu_arrays, [], {}, Mesh.ARRAY_FLAG_USE_2D_VERTICES)
 
 			region.mesh = mesh
-			region.depth_mesh = _depth_mesh(region.depth_arrays)
-			region.train_depth_mesh = _depth_mesh(region.train_depth_arrays)
-			region.depth_arrays = []
-			region.train_depth_arrays = []
 			region.atlas_texture = worker.atlas
 			region.generation = worker.generation
 			region.last_visible = cache._viewport_serial if key in cache.visible else (cache.entries[key].last_visible if cache.entries.has(key) else 0)
@@ -317,7 +313,6 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 		request.pipes = cache._show_pipes
 		request.subways = cache._show_subways
 		request.generation = cache.generation
-		request.occlusion_depth = cache._occlusion_depth
 		request.signs = cache.sign_requests
 		var error: Error = worker.task.start(CityGpuRegionBatch.build.bind(request, worker.context, worker.atlas_revision))
 
@@ -334,19 +329,6 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 			return true
 
 	return changed
-
-
-# return null for underground regions, which have no moving-object depth
-static func _depth_mesh(arrays: Array) -> ArrayMesh:
-	if arrays.is_empty():
-		return null
-
-	var mesh := ArrayMesh.new()
-
-	if not arrays[Mesh.ARRAY_VERTEX].is_empty():
-		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, Mesh.ARRAY_FLAG_USE_2D_VERTICES)
-
-	return mesh
 
 
 static func _gpu_atlas_bytes(cache: CityRegionCache) -> int:

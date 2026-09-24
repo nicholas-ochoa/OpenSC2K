@@ -32,22 +32,6 @@ class Visual extends Sprite:
 	var view_size: int
 
 
-class Position extends RefCounted:
-	var anchor: Vector2
-	var order: int
-
-
-class Anchor extends Position:
-	var type: int
-	var x: int
-	var y: int
-
-	func _init(kind := 0, point := Vector2i.ZERO) -> void:
-		type = kind
-		x = point.x
-		y = point.y
-
-
 static func moving_thing_visual(
 	city: CityState,
 	x: int,
@@ -121,87 +105,6 @@ static func moving_thing_visual(
 	result.monster = sprite.monster
 	result.layers = sprite.layers
 	result.view_size = view_size
-
-	return result
-
-
-# return the display anchor of one xthg record for display interpolation
-# the anchor uses the same placement terms as the draw commands, without the
-# sprite size. the result is in common large logical pixels. it is null for
-# an unused record and for a type that the moving-object path does not move
-static func moving_thing_anchor(
-	city: CityState, record: int, view_size := VIEW_LARGE
-) -> Anchor:
-	if city == null or not city.is_valid():
-		return null
-
-	var thing := city.thing(record)
-
-	if thing == null:
-		return null
-
-	var type := thing.type
-	var x := thing.x
-	var y := thing.y
-
-	if type <= 0 or type >= THING_MINIMUM_VIEW.size() or city.index_of(x, y) < 0:
-		return null
-
-	if type in [7, 8, 12, 13, 14]:
-		return null
-
-	var configuration := IsometricGeometry.view_configuration(view_size)
-
-	if configuration == null:
-		return null
-
-	var half_width := configuration.half_width
-	var half_height := configuration.half_height
-	var step := configuration.altitude_step
-	var divisor := configuration.divisor
-	var anchor := Vector2i.ZERO
-
-	match type:
-		10, 11:
-			var sprite := train_sprite(city, x, y, thing)
-
-			if sprite == null:
-				return null
-
-			# Trains use the large-view art and placement constants.
-			anchor = Vector2i(
-				(x - y) * HALF_WIDTH + int(sprite.screen_x),
-				(x + y) * HALF_HEIGHT + int(sprite.screen_y) - int(sprite.elevation)
-			)
-			divisor = 1
-		15:
-			anchor = Vector2i(
-				(x - y) * half_width,
-				(x + y) * half_height - city.object_altitude(x, y) * step
-			)
-		5:
-			anchor = Vector2i(
-				(x - y) * half_width,
-				(x + y) * half_height - (city.object_altitude(x, y) + thing.z) * step
-			)
-		_:
-			var px := thing.px
-			var py := thing.py
-			anchor = Vector2i(
-				(x - y) * half_width
-					+ int((px - py) / THING_X_DIVISOR[view_size]),
-				(x + y) * half_height
-					+ int((px + py) / THING_Y_DIVISOR[view_size])
-					- city.object_altitude(x, y) * step
-					- thing.z * half_height
-			)
-
-	var result := Anchor.new()
-	result.type = type
-	result.x = x
-	result.y = y
-	result.anchor = Vector2(anchor * divisor)
-	result.order = (x + y) * city.map_size + y
 
 	return result
 

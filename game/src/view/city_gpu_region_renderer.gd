@@ -5,7 +5,7 @@ const Renderer = preload("res://src/view/city_isometric_renderer.gd")
 
 static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 		bounds: Rect2i, view: int, mode: CityViewMode.Mode, pipes: bool, subways: bool,
-		context: CityGpuBuildContext, revision: int, uploaded_atlas_revision: int, copy_atlas := true, water_mains := true, occlusion_depth := true) -> CityGpuRegionResult:
+		context: CityGpuBuildContext, revision: int, uploaded_atlas_revision: int, copy_atlas := true, water_mains := true) -> CityGpuRegionResult:
 	if (city == null or not city.is_valid() or palette == null or not palette.is_valid() or sprites == null or not sprites.is_valid()
 			or view not in [0, 1, 2] or not CityViewMode.is_map(mode)):
 		return CityGpuRegionResult.failed("invalid GPU region assets")
@@ -25,7 +25,6 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 	var span := Renderer.region_tile_span(configuration, limit, bounds, city.map_size, mode == CityViewMode.Mode.UNDERGROUND)
 	var draws: Array[CityGpuDrawList.Draw] = []
 	var foreground: Array[CityStaticCommand] = []
-	var foreground_draws: Array[CityGpuDrawList.Draw] = []
 	var vertices := PackedVector2Array()
 	var uvs := PackedVector2Array()
 	var indices := PackedInt32Array()
@@ -68,17 +67,6 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 
 				if Rect2i(command.position, command.size).intersects(bounds):
 					foreground.append(command)
-					foreground_draws.append(tile.foreground_draws[index])
-
-	var depth := CityGpuOcclusionDepth.Result.new()
-
-	if mode == CityViewMode.Mode.CITY and occlusion_depth:
-		depth = CityGpuOcclusionDepth.build(foreground, foreground_draws, bounds, context, sprites, palette)
-	elif mode == CityViewMode.Mode.CITY:
-		CityGpuOcclusionDepth.reserve_masks(foreground, foreground_draws, bounds, context, sprites, palette)
-
-	if not context.error.is_empty():
-		return CityGpuRegionResult.failed(context.error)
 
 	var arrays := []
 
@@ -86,17 +74,6 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 	if context.atlas_edge != CityGpuBuildContext.ATLAS_EDGE:
 		for index in uvs.size():
 			uvs[index] *= float(CityGpuBuildContext.ATLAS_EDGE) / context.atlas_edge
-
-		for depth_arrays: Array in [depth.depth, depth.train]:
-			if depth_arrays.is_empty():
-				continue
-
-			var depth_uvs: PackedVector2Array = depth_arrays[Mesh.ARRAY_TEX_UV]
-
-			for index in depth_uvs.size():
-				depth_uvs[index] *= float(CityGpuBuildContext.ATLAS_EDGE) / context.atlas_edge
-
-			depth_arrays[Mesh.ARRAY_TEX_UV] = depth_uvs
 
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = vertices
@@ -114,8 +91,6 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 	result.background = Color.WHITE if mode == CityViewMode.Mode.UNDERGROUND else Color.TRANSPARENT
 	result.bounds = bounds
 	result.occlusion_commands = foreground
-	result.depth_arrays = depth.depth
-	result.train_depth_arrays = depth.train
 	result.occlusion_grid = Renderer.build_occlusion_grid(foreground, configuration.divisor)
 	result.atlas_revision = context.atlas_revision
 	result.atlas_edge = context.atlas_edge

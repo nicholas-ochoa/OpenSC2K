@@ -1,7 +1,6 @@
 class_name CityDynamicVisual
 extends RefCounted
 # one sprite or overlay batch sent to the city canvas
-# a negative gpu mode uses the cpu-composed pixels
 
 var texture: Texture2D
 var index_texture: Texture2D
@@ -14,8 +13,6 @@ var special_overlay: bool = false
 var batch_cache_key: String = ""
 var depth_order: int = -1
 var shadow: bool = false
-var record: int = -1
-var gpu_mode: int = -1
 var special_batch: bool = false
 var hidden: bool = false
 # true when the pixels come from the static image, as a shadow does, and not only from its silhouettes
@@ -42,8 +39,6 @@ func copy() -> CityDynamicVisual:
 	result.batch_cache_key = batch_cache_key
 	result.depth_order = depth_order
 	result.shadow = shadow
-	result.record = record
-	result.gpu_mode = gpu_mode
 	result.special_batch = special_batch
 	result.hidden = hidden
 	result.samples_static = samples_static
@@ -64,8 +59,6 @@ func matches(other: CityDynamicVisual) -> bool:
 		and batch_cache_key == other.batch_cache_key
 		and depth_order == other.depth_order
 		and shadow == other.shadow
-		and record == other.record
-		and gpu_mode == other.gpu_mode
 		and special_batch == other.special_batch
 		and hidden == other.hidden
 	)
@@ -74,8 +67,7 @@ func matches(other: CityDynamicVisual) -> bool:
 # cache stamps compare fields by value while retaining resource identity
 func value_signature() -> Array:
 	return [texture, index_texture, palette_lookup_all, texture_factor, position, size,
-		image, special_overlay, batch_cache_key, depth_order, shadow, record,
-		gpu_mode, special_batch, hidden]
+		image, special_overlay, batch_cache_key, depth_order, shadow, special_batch, hidden]
 
 
 static func build_grid(visuals: Array[CityDynamicVisual]) -> Dictionary[Vector2i, Array]:

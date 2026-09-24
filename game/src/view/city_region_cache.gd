@@ -51,7 +51,6 @@ var _show_water_mains := true
 var _show_pipes := true
 var _show_subways := true
 var _prepared := false
-var _occlusion_depth := true
 var _published_source: CityMapSource
 var _published_viewport := -1
 var _published_indices: Dictionary[Vector2i, int] = {}
@@ -166,21 +165,6 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	_show_pipes = show_pipes
 	_show_subways = show_subways
 	_prepared = mode == CityViewMode.Mode.UNDERGROUND
-
-
-func set_occlusion_depth(value: bool) -> void:
-	if _occlusion_depth == value:
-		return
-
-	_occlusion_depth = value
-	if _snapshot == null:
-		return
-
-	# Retain base meshes while workers replace depth data. In-flight results
-	# from the former mode must not publish. The city and artwork stay fixed.
-	generation += 1
-	_layout_generation += 1
-	_gpu_has_work = true
 
 
 func _keep_source_payloads(city: CityState) -> void:
@@ -447,8 +431,7 @@ func texture() -> CityMapSource:
 
 func _mesh_entry(gpu: CityGpuRegionResult) -> CityMapSource.MeshEntry:
 	if gpu.source_entry == null:
-		gpu.source_entry = CityMapSource.MeshEntry.new(Vector2(gpu.bounds.position * divisor), gpu.mesh, gpu.atlas_texture, divisor,
-			gpu.depth_mesh, gpu.train_depth_mesh)
+		gpu.source_entry = CityMapSource.MeshEntry.new(Vector2(gpu.bounds.position * divisor), gpu.mesh, gpu.atlas_texture, divisor)
 		gpu.source_entry.immutable = true
 	return gpu.source_entry
 

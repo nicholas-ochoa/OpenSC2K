@@ -8,9 +8,6 @@ var visuals: Array[CityDynamicVisual] = []
 var view_scale := 1.0
 var view_offset := Vector2.ZERO
 var visual_revision := 0
-# display interpolation for visuals with a `gpu_mode`, keyed by xthg record
-var blend_offsets: Dictionary = {}
-var blend_orders: Dictionary = {}
 
 
 func set_visuals(
@@ -20,15 +17,6 @@ func set_visuals(
 	visual_revision += 1
 	set_view_transform(scale_value, offset_value)
 	visible = not visuals.is_empty()
-	queue_redraw()
-
-
-func set_blend(offsets: Dictionary, orders: Dictionary) -> void:
-	if offsets == blend_offsets and orders == blend_orders:
-		return
-
-	blend_offsets = offsets
-	blend_orders = orders
 	queue_redraw()
 
 
@@ -170,19 +158,9 @@ func _draw() -> void:
 
 		var source_position: Vector2 = visual.position
 		var source_size: Vector2 = visual.size
-		var item_color := Color.WHITE
-
-		# gpu visuals carry their draw order and mode to the occlusion shader
-		if visual.gpu_mode >= 0:
-			var record := int(visual.record)
-			source_position += blend_offsets.get(record, Vector2.ZERO)
-			item_color = CityMapMovingOcclusion.item_color(
-				int(blend_orders.get(record, visual.depth_order)), int(visual.gpu_mode)
-			)
 
 		draw_texture_rect(
 			texture,
 			Rect2(source_position, source_size),
 			false,
-			item_color,
 		)

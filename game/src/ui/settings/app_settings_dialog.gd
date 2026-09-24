@@ -33,7 +33,6 @@ var theme_selector: OptionButton
 var translucent_menus_check: CheckBox
 var default_mayor_edit: LineEdit
 var renderer_selector: OptionButton
-var moving_frame_rate_selector: OptionButton
 var background_audio_check: CheckBox
 
 
@@ -63,7 +62,6 @@ func _ready() -> void:
 	overview_graphics_selector = %OverviewGraphicsSelector
 	pack_error_label = %PackErrorLabel
 	renderer_selector = %RendererSelector
-	moving_frame_rate_selector = %MovingFrameRateSelector
 	shuffle_music_check = %ShuffleMusicCheck
 	sound_pack_edit = %SoundPackEdit
 	tabs = %Tabs
@@ -151,7 +149,6 @@ func selected_values() -> AppSettingsStore.Values:
 	result.zoom_graphics = _selected_zoom_graphics()
 	result.background_audio = background_audio_check.button_pressed
 	result.city_renderer = "cpu" if renderer_selector.selected == 1 else "gpu"
-	result.moving_frame_rate = moving_frame_rate_selector.get_selected_id()
 	result.music_volume = float(music_slider.value) / 100.0
 	result.effects_volume = float(effects_slider.value) / 100.0
 	result.dark_underground = dark_underground_check.button_pressed
@@ -160,12 +157,6 @@ func selected_values() -> AppSettingsStore.Values:
 	result.graphics_folder = folder_edit.text.strip_edges()
 
 	return result
-
-
-func select_moving_frame_rate(rate: int) -> void:
-	moving_frame_rate_selector.select(moving_frame_rate_selector.get_item_index(
-		AppSettingsStore.normalize_moving_frame_rate(rate)
-	))
 
 
 func _selected_zoom_graphics() -> Array[int]:
