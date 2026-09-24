@@ -35,12 +35,19 @@ layout_mode = 2
 size_flags_vertical = 3
 current_tab = 0
 
-[node name="Simulation" type="Tree" parent="DebugWindow/Panel/Margin/Content/Tabs"]
+[node name="Simulation" type="VBoxContainer" parent="DebugWindow/Panel/Margin/Content/Tabs"]
 layout_mode = 2
+metadata/_tab_index = 0
+
+[node name="Days" type="Tree" parent="DebugWindow/Panel/Margin/Content/Tabs/Simulation"]
+layout_mode = 2
+size_flags_vertical = 3
 columns = 7
 column_titles_visible = true
 hide_root = true
-metadata/_tab_index = 0
+
+[node name="Footer" type="HBoxContainer" parent="DebugWindow/Panel/Margin/Content/Tabs/Simulation"]
+layout_mode = 2
 
 
 [node name="Metrics" type="Tree" parent="DebugWindow/Panel/Margin/Content/Tabs"]

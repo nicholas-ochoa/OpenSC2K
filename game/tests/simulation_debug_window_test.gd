@@ -52,6 +52,11 @@ func _run() -> void:
 	assert(metrics_tree.rows["simulation_slices/snapshot_usec"].get_text(1) == "2.500 ms")
 	assert(metrics_tree.rows["render_regions/cpu_image_bytes"].get_text(1) == "1.00 MiB")
 	assert(metrics_tree.rows["no_disasters"].get_text(1) == "No")
+	assert(metrics_tree._sections.values().all(func(section: TreeItem) -> bool: return not section.collapsed), "Metric groups start expanded")
+	metrics_tree.refresh({"simulation_slices": {"pending": false}, "render_regions": {"pending": false}})
+	assert(metrics_tree.rows["simulation_slices/pending"].get_text(2) != metrics_tree.rows["render_regions/pending"].get_text(2),
+		"A shared key name has a description for each group")
+	assert(debug._detailed_timing_check.get_parent() == debug._days.get_parent().get_node("Footer"), "Timing controls are under the day table")
 	var worker_row: TreeItem = metrics_tree.rows["simulation_slices"]
 	worker_row.collapsed = true
 	metrics_tree.refresh({"simulation_slices": {"snapshot_usec": 4000}, "new_counter": 7})

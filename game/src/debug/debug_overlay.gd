@@ -45,9 +45,10 @@ func _ready() -> void:
 	var tabs: TabContainer = $DebugWindow/Panel/Margin/Content/Tabs
 	_tabs = tabs
 	tabs.tab_changed.connect(func(_index: int) -> void: _refresh_record_tab())
-	_days = tabs.get_node("Simulation")
+	_days = tabs.get_node("Simulation/Days")
 	_configure_table(_days, ["Day", "What happens", "Average ms", "Last ms", "Max ms", "Samples", "Last w/ Delay"])
 	_build_day_rows()
+	_build_timing_footer(tabs.get_node("Simulation/Footer"))
 	_metrics_tree = tabs.get_node("Metrics")
 	tabs.set_tab_title(tabs.get_tab_idx_from_control(tabs.get_node("Objects")), "Moving Things")
 	tabs.set_tab_title(tabs.get_tab_idx_from_control(tabs.get_node("Tiles")), "Tile Counts")
@@ -72,6 +73,19 @@ func _configure_table(tree: Tree, titles: Array) -> void:
 		tree.set_column_custom_minimum_width(column, 68 if column == 0 and titles.size() == 7 else 95)
 
 
+# the detailed-timing checkbox on the left and the reset button on the right, under the day table
+func _build_timing_footer(footer: HBoxContainer) -> void:
+	_detailed_timing_check = CheckBox.new()
+	_detailed_timing_check.text = "Detailed per-tile timing"
+	_detailed_timing_check.tooltip_text = "Break the growth scan into its per-tile steps. The extra clock reads are measured work and slow the phase."
+	_detailed_timing_check.toggled.connect(func(enabled: bool) -> void:
+		_record_action(main_control.debug.call("debug_set_detailed_timing", enabled)))
+	footer.add_child(_detailed_timing_check)
+	var reset := _button(footer, "Reset averages", ("Clear all timing samples on the Simulation tab. " +
+		"The averages, maximums and sample counts start again from zero."), _reset_averages)
+	reset.size_flags_horizontal = Control.SIZE_EXPAND | Control.SIZE_SHRINK_END
+
+
 func _build_actions(tabs: TabContainer) -> void:
 	var scroll := ScrollContainer.new()
 	scroll.name = "Actions"
@@ -87,8 +101,6 @@ func _build_actions(tabs: TabContainer) -> void:
 		else:
 			_resume_speed = int(_metrics.get("speed_id", 2))
 			main_control.frame.call("select_speed", 1))
-	_button(simulation, "Reset averages", ("Clear all timing samples on the Simulation tab. " +
-		"The averages, maximums and sample counts start again from zero."), _reset_averages)
 
 	for action in [["Center map", "debug_center_map", "Move the view to the center of the map."],
 		["Full redraw", "debug_full_redraw", "Draw the map again from the city data. Use this to find drawing errors that stay on the screen."],
@@ -100,12 +112,6 @@ func _build_actions(tabs: TabContainer) -> void:
 
 	_button(simulation, "Print metrics", "Write the current values from the Metrics tab to the console output.", func() -> void:
 		print(_metrics))
-	_detailed_timing_check = CheckBox.new()
-	_detailed_timing_check.text = "Detailed per-tile timing"
-	_detailed_timing_check.tooltip_text = "Break the growth scan into its per-tile steps. The extra clock reads are measured work and slow the phase."
-	_detailed_timing_check.toggled.connect(func(enabled: bool) -> void:
-		_record_action(main_control.debug.call("debug_set_detailed_timing", enabled)))
-	simulation.add_child(_detailed_timing_check)
 	var run_to := _action_section(box, "Run to date", 8)
 
 	for field in [["Month", 1, 12], ["Day", 1, CityCalendar.DAYS_PER_MONTH], ["Year", 0, 9999]]:

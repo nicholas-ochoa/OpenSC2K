@@ -37,6 +37,56 @@ const NOTES := {
 	"texture_bytes_estimate": "Estimate from cached image sizes; not total GPU memory.",
 	"max_region_usec": "Largest recorded region build time.",
 	"wave_sound_suppressed": "Requests blocked by sound replay limits.",
+	"population": "City population.",
+	"funds": "Money in the city treasury.",
+	"tool": "Selected player tool.",
+	"view": "Map view mode.",
+	"zoom": "Map zoom level.",
+	"center_tile": "Map tile at the center of the view.",
+	"visible_altitude_levels": "Terrain levels that show. 32 shows all.",
+	"active_disaster": "Disaster that runs now.",
+	"no_disasters": "Set by Disasters > No Disasters. Saved with the city.",
+	"simulation_slices": "Work on the simulation worker thread.",
+	"simulation_slices/pending": "A worker tick is in progress.",
+	"completed_ticks": "Worker ticks applied to the city.",
+	"cancelled_ticks": "Worker ticks discarded before they were applied. An edit, a pause or a dialog stops the tick.",
+	"work": "Scheduling for the current or last tick.",
+	"slices": "Work periods in the tick. The worker waits for a frame between them.",
+	"waiting": "The worker waits for the next frame.",
+	"simulation_slices/work/cancelled": "The tick was discarded.",
+	"speed_accumulator_msec": "Game time not yet used by a 200 ms base tick.",
+	"render_regions": "Map image regions built in the background.",
+	"gpu": "Regions build on the GPU.",
+	"atlas_bytes": "GPU memory for the region image atlas.",
+	"resident": "Regions in the cache.",
+	"visible": "Regions in the view.",
+	"offscreen_limit": "Most regions kept outside the view.",
+	"cpu_image_bytes": "Memory for cached region images.",
+	"render_regions/completed": "Region builds that finished.",
+	"discarded": "Region builds discarded because they were out of date.",
+	"render_regions/ready": "All visible regions show the current map.",
+	"covered": "All visible regions have an image. An image can be out of date.",
+	"render_regions/pending": "A region build is in progress.",
+	"static_render": "State of the static map render worker.",
+	"render_pending": "A static redraw waits to start.",
+	"static_cache": "Cached static map images.",
+	"dynamic_cache": "Cached dynamic sprite images.",
+	"foreground_cache": "Cached foreground sprite images.",
+	"panning": "The player moves the map view.",
+	"selection_drag": "The player drags a tool across the map.",
+	"sign_entries": "Map signs in the sign cache.",
+	"sign_scans": "Times the map signs were collected again.",
+	"dynamic_visuals": "Moving things and animations drawn now.",
+	"dynamic_revisions": "Times the dynamic sprite list changed.",
+	"transient_effects": "Short map effects that show now.",
+	"wave_sound_id": "Sound effect that plays now.",
+	"wave_sound_ticks": "Ticks before the gate accepts another sound.",
+	"wave_sound_accepted": "Sound requests that played.",
+	"wave_stream_cache": "Sound effect files loaded in memory.",
+	"speed_id": "Game speed number. 1 is paused. 5 is African Swallow.",
+	"active_disaster_id": "Disaster type number. 0 is none.",
+	"detailed_timing": "Per-tile growth timing is on.",
+	"pause_at_date": "Date where Run to date pauses.",
 }
 var rows: Dictionary = {}
 var _sections: Dictionary = {}
@@ -57,7 +107,6 @@ func _ready() -> void:
 		var section := create_item(base)
 		section.set_text(0, caption)
 		section.set_custom_color(0, Color("9cc8ef"))
-		section.collapsed = caption in ["City and view", "Map activity", "Audio", "Internal identifiers"]
 		_sections[caption] = section
 
 
@@ -78,7 +127,6 @@ func refresh(metrics: Dictionary) -> void:
 			if not _sections.has("Other diagnostics"):
 				var section := create_item(get_root())
 				section.set_text(0, "Other diagnostics")
-				section.collapsed = true
 				_sections["Other diagnostics"] = section
 
 			_update_row(_sections["Other diagnostics"], key, key, metrics[key])
@@ -90,7 +138,9 @@ func _update_row(parent: TreeItem, path: String, key: String, value: Variant) ->
 	if row == null:
 		row = create_item(parent)
 		row.set_text(0, LABELS.get(key, key.trim_suffix("_usec").trim_suffix("_msec").capitalize()))
-		row.set_text(2, NOTES.get(key, ""))
+		# a path note is for a key name that has different meanings in different groups
+		row.set_text(2, NOTES.get(path, NOTES.get(key, "")))
+		row.set_tooltip_text(2, row.get_text(2))
 		row.set_tooltip_text(0, path)
 		rows[path] = row
 
