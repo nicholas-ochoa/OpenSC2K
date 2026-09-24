@@ -174,11 +174,20 @@ func test_graph_history(reference_root: String) -> void:
 	_check(
 		GraphView.format_value(0, 9999) == "9999"
 		and GraphView.format_value(0, 10000) == "10k"
-		and GraphView.format_value(14, 999) == "999"
-		and GraphView.format_value(14, 1000) == "1k"
-		and GraphView.format_value(14, 1000000) == "1m",
+		and GraphView.format_value(0, 1000000) == "1m",
 		"Graph window uses the recovered compact number thresholds",
 	)
+
+	for example in [
+		[0, "0k"], [999, "999k"], [1000, "1m"], [250000, "250m"],
+		[999999, "999m"], [1000000, "1b"], [4294967295, "4294b"],
+	]:
+		_check(
+			GraphView.format_value(14, example[0]) == example[1],
+			"National-population graph expands thousands at %d" % example[0],
+		)
+
+	_test_graph_time_labels(city)
 	var month_labels := GraphView.time_labels(city, GraphView.TIME_YEAR)
 	_check(
 		month_labels.size() == 12
@@ -258,3 +267,34 @@ func test_graph_history(reference_root: String) -> void:
 		_check(values.decade[0] == expected[series], "Graph %d stores its July half-year value" % series)
 		_check(values.decade[1] == series * 1000 + 12, "Graph %d shifts half-year history" % series)
 		_check(values.century[0] == series * 1000 + 32, "Graph %d leaves century history in July" % series)
+
+
+func _test_graph_time_labels(city: CityState) -> void:
+	var start_year := city.founding_year()
+	var age := city.age_in_days()
+
+	# Check both sides of each label-position change. The last two cases
+	# distinguish elapsed years from calendar years for a non-decade start.
+	for example in [
+		[1900, 30125, GraphView.TIME_DECADE, ["", "'91", "", "'00"]],
+		[1900, 30150, GraphView.TIME_DECADE, ["'91", "", "'00", ""]],
+		[1900, 30299, GraphView.TIME_DECADE, ["'91", "", "'00", ""]],
+		[1900, 30300, GraphView.TIME_DECADE, ["", "'92", "", "'01"]],
+		[1900, 31499, GraphView.TIME_CENTURY, ["", "'10", "", "'00"]],
+		[1900, 31500, GraphView.TIME_CENTURY, ["'10", "", "'00", ""]],
+		[1900, 32999, GraphView.TIME_CENTURY, ["'10", "", "'00", ""]],
+		[1900, 33000, GraphView.TIME_CENTURY, ["", "'20", "", "'10"]],
+		[1903, 31200, GraphView.TIME_CENTURY, ["", "'10", "", "'00"]],
+		[1903, 31500, GraphView.TIME_CENTURY, ["'10", "", "'00", ""]],
+	]:
+		city.document.set_misc_u32(Sc2MiscLayout.START_YEAR, example[0])
+		city.set_age_in_days(example[1])
+		var labels := GraphView.time_labels(city, example[2])
+		var endpoints := PackedStringArray([labels[0], labels[1], labels[18], labels[19]])
+		_check(
+			labels.size() == 20 and endpoints == PackedStringArray(example[3]),
+			"Graph date labels match scale %d at start %d, age %d" % [example[2], example[0], example[1]],
+		)
+
+	city.document.set_misc_u32(Sc2MiscLayout.START_YEAR, start_year)
+	city.set_age_in_days(age)

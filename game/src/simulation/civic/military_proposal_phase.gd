@@ -32,10 +32,10 @@ class Result extends PhaseResult:
 	var sites: Array[Rect2i] = []
 
 
-static func resolve(city: CityState, accepted: bool, game_random: GameLcgRandom) -> Result:
+static func resolve(city: CityState, accepted: bool, game_random: GameLcgRandom, defer_land_plot := false) -> Result:
 	var span := SimulationTimingSpan.new(city.simulation_slice if city != null else null)
 	span.mark("prepare data")
-	var result := _resolve(city, accepted, game_random, span)
+	var result := _resolve(city, accepted, game_random, span, defer_land_plot)
 
 	if result.ok:
 		result.timing = span.finish()
@@ -43,7 +43,7 @@ static func resolve(city: CityState, accepted: bool, game_random: GameLcgRandom)
 	return result
 
 
-static func _resolve(city: CityState, accepted: bool, game_random: GameLcgRandom, span: SimulationTimingSpan) -> Result:
+static func _resolve(city: CityState, accepted: bool, game_random: GameLcgRandom, span: SimulationTimingSpan, defer_land_plot: bool) -> Result:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
@@ -123,19 +123,20 @@ static func _resolve(city: CityState, accepted: bool, game_random: GameLcgRandom
 
 		var base_type := BASE_AIR_FORCE if valid == level else BASE_ARMY
 		var notice := NOTICE_AIR_FORCE if base_type == BASE_AIR_FORCE else NOTICE_ARMY
-		var changed := _zone_plot(
-			buildings, terrain, underground, flags, zones, misc, Rect2i(origin, Vector2i(8, 8)), map_edge
-		)
+		var site := Rect2i(origin, Vector2i(8, 8))
 
-		BinaryData.write_u32_be(misc, MISC_BASE_TYPE, base_type)
+		if defer_land_plot:
+			BinaryData.write_u32_be(misc, MISC_BASE_TYPE, base_type)
 
-		if base_type == BASE_ARMY:
-			ArmyBaseLayout.build(buildings, terrain, zones, underground, flags, misc, origin, map_edge)
+			if not chunks.MISC.set_decoded_payload(misc):
+				return _failed("cannot store the military base type")
 
-		if not _store(city, chunks, zones, misc, {"XBLD": buildings, "XTER": terrain, "XBIT": flags}):
-			return _failed("cannot store the military base plot")
+			var result := _result(true, base_type, site, PackedInt32Array(), notice)
+			result.complete = false
+			result.view_center_requests.clear()
+			return result
 
-		return _result(true, base_type, Rect2i(origin, Vector2i(8, 8)), changed, notice)
+		return reserve_land_site(city, base_type, site, notice)
 
 	span.mark("missile site search")
 	var sites: Array[Rect2i] = []
@@ -193,6 +194,31 @@ static func _resolve(city: CityState, accepted: bool, game_random: GameLcgRandom
 	result.sites = sites
 
 	return result
+
+
+# The original shows the Army or Air Force notice before it changes the plot.
+static func reserve_land_site(city: CityState, base_type: int, site: Rect2i, notice_id := -1) -> Result:
+	var chunks := _chunks(city)
+
+	if chunks.is_empty() or base_type not in [BASE_ARMY, BASE_AIR_FORCE]:
+		return _failed("military base reservation is invalid")
+
+	var buildings := chunks.XBLD.decoded_payload.duplicate()
+	var terrain := chunks.XTER.decoded_payload.duplicate()
+	var zones := chunks.XZON.decoded_payload.duplicate()
+	var flags := chunks.XBIT.decoded_payload.duplicate()
+	var underground := chunks.XUND.decoded_payload
+	var misc := chunks.MISC.decoded_payload.duplicate()
+	var changed := _zone_plot(buildings, terrain, underground, flags, zones, misc, site, city.map_size)
+	BinaryData.write_u32_be(misc, MISC_BASE_TYPE, base_type)
+
+	if base_type == BASE_ARMY:
+		ArmyBaseLayout.build(buildings, terrain, zones, underground, flags, misc, site.position, city.map_size)
+
+	if not _store(city, chunks, zones, misc, {"XBLD": buildings, "XTER": terrain, "XBIT": flags}):
+		return _failed("cannot store the military base plot")
+
+	return _result(true, base_type, site, changed, notice_id)
 
 
 static func _zone_plot(
@@ -283,6 +309,9 @@ static func _result(
 	result.site = site
 	result.changed_indices = changed_indices
 	result.notice_id = notice_id
+
+	if notice_id >= 0:
+		result.notice_ids.append(notice_id)
 
 	if accepted:
 		result.view_center_requests.append(

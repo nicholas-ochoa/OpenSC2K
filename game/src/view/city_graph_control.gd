@@ -166,9 +166,18 @@ static func display_maxima(value_city: CityState) -> PackedInt64Array:
 
 static func format_value(series: int, value: int) -> String:
 	var absolute := absi(value)
-	var plain_limit := 1000 if series == 14 else 10000
 
-	if absolute < plain_limit:
+	# National population is stored in thousands.
+	if series == 14:
+		if absolute < 1000:
+			return "%dk" % value
+
+		if absolute < 1000000:
+			return "%dm" % (value / 1000)
+
+		return "%db" % (value / 1000000)
+
+	if absolute < 10000:
 		return str(value)
 
 	if absolute < 1000000:
@@ -191,16 +200,17 @@ static func time_labels(value_city: CityState, scale: int) -> PackedStringArray:
 			var month_index := posmod(month - 1 - offset, 12)
 			labels.append(MONTH_NAMES[month_index])
 	elif scale == TIME_DECADE:
-		var newest_half_year := year * 2 + (1 if month >= 7 else 0)
+		var labelled_parity := 1 if month < 7 else 0
 
 		for index in Sc2GraphLayout.DECADE_COUNT:
-			var half_year := newest_half_year - (Sc2GraphLayout.DECADE_COUNT - 1) + index
-			labels.append("'%02d" % posmod(int(half_year / 2), 100))
+			labels.append("'%02d" % posmod(year - 9 + index / 2, 100) if index % 2 == labelled_parity else "")
 	elif scale == TIME_CENTURY:
-		var newest_five_year := int(year / 5) * 5
+		var oldest_decade := ((year - 90) / 10) * 10
+		var elapsed_years := value_city.age_in_days() / CityCalendar.DAYS_PER_YEAR
+		var labelled_parity := 1 if elapsed_years % 10 < 5 else 0
 
 		for index in Sc2GraphLayout.CENTURY_COUNT:
-			labels.append("'%02d" % posmod(newest_five_year - (Sc2GraphLayout.CENTURY_COUNT - 1 - index) * 5, 100))
+			labels.append("'%02d" % posmod(oldest_decade + (index / 2) * 10, 100) if index % 2 == labelled_parity else "")
 
 	return labels
 
@@ -249,11 +259,10 @@ func _draw() -> void:
 
 	for index in point_count:
 		var x := _point_x(plot, index, point_count)
-		var major_tick := time_scale == TIME_YEAR or index % 2 == 1
+		var label := labels[index] if index < labels.size() else ""
 
-		if major_tick:
+		if not label.is_empty():
 			draw_line(Vector2(x, plot.end.y), Vector2(x, plot.end.y + 4), get_theme_color("border", "AppPalette"), 1.0)
-			var label := labels[index] if index < labels.size() else ""
 			var label_width := font.get_string_size(
 				label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
 			).x

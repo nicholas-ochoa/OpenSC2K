@@ -329,30 +329,44 @@ func evaluate_goals(city: CityState) -> Goals:
 		"crime": city.document.misc_u32(Sc2MiscLayout.CITY_CRIME),
 		"traffic": city.document.misc_u32(Sc2MiscLayout.CITY_TRAFFIC),
 	}
+	var original_format := not city.document.is_extended()
+	var required_land_value := land_value_goal
+	var required_life_expectancy := life_expectancy_goal
+	var required_education := education_goal
+
+	if original_format:
+		values.cash_after_bonds = _signed_32(values.cash_after_bonds)
+		values.land_value &= 0xffffffff
+		values.life_expectancy &= 0xffffffff
+		values.education &= 0xffffffff
+		required_land_value &= 0xffffffff
+		required_life_expectancy = _signed_16(required_life_expectancy) & 0xffffffff
+		required_education = _signed_16(required_education) & 0xffffffff
+
 	_check_minimum(unmet, "city_size", values.city_size, city_size_goal, true)
 	_check_minimum(unmet, "residential", values.residential, residential_goal)
 	_check_minimum(unmet, "commercial", values.commercial, commercial_goal)
 	_check_minimum(unmet, "industrial", values.industrial, industrial_goal)
 	_check_minimum(unmet, "cash", values.cash_after_bonds, cash_goal)
-	_check_minimum(unmet, "land_value", values.land_value, land_value_goal)
-	_check_minimum(unmet, "life_expectancy", values.life_expectancy, life_expectancy_goal)
-	_check_minimum(unmet, "education", values.education, education_goal)
-	_check_limit(unmet, "pollution", values.pollution, pollution_limit)
-	_check_limit(unmet, "crime", values.crime, crime_limit)
-	_check_limit(unmet, "traffic", values.traffic, traffic_limit)
+	_check_minimum(unmet, "land_value", values.land_value, required_land_value)
+	_check_minimum(unmet, "life_expectancy", values.life_expectancy, required_life_expectancy)
+	_check_minimum(unmet, "education", values.education, required_education)
+	_check_limit(unmet, "pollution", values.pollution, _signed_32(pollution_limit) if original_format else pollution_limit)
+	_check_limit(unmet, "crime", values.crime, _signed_32(crime_limit) if original_format else crime_limit)
+	_check_limit(unmet, "traffic", values.traffic, _signed_32(traffic_limit) if original_format else traffic_limit)
 
 	if first_building_id != BuildingTileIds.EMPTY:
 		var first_count := city.document.misc_u32(Sc2MiscLayout.TILE_COUNTS + first_building_id * 4)
 		values["first_building_tiles"] = first_count
 
-		if first_count < first_building_tile_count:
+		if (_signed_16(first_count) < _signed_16(first_building_tile_count) if original_format else first_count < first_building_tile_count):
 			unmet.append("first_building")
 
 	if second_building_id != BuildingTileIds.EMPTY:
 		var second_count := city.document.misc_u32(Sc2MiscLayout.TILE_COUNTS + second_building_id * 4)
 		values["second_building_tiles"] = second_count
 
-		if second_count < second_building_tile_count:
+		if (_signed_16(second_count) < _signed_16(second_building_tile_count) if original_format else second_count < second_building_tile_count):
 			unmet.append("second_building")
 
 	var result := Goals.new()
@@ -383,6 +397,16 @@ func set_time_limit_months(value: int) -> bool:
 	time_limit_months = value
 
 	return true
+
+
+static func _signed_16(value: int) -> int:
+	value &= 0xffff
+	return value - 0x10000 if value & 0x8000 else value
+
+
+static func _signed_32(value: int) -> int:
+	value &= 0xffffffff
+	return value - 0x100000000 if value & 0x80000000 else value
 
 
 static func _check_minimum(

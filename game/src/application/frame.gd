@@ -174,6 +174,8 @@ func consume_simulation_result(result: SimulationTickResult) -> void:
 	for request in result.interaction_requests:
 		if request.type == "annual_budget":
 			app.budget.open_budget_dialog(request.funding_values, true)
+		elif request.type == "military_notice":
+			app.reports.military_notice_pending = true
 		elif request.type == "military_proposal":
 			app.budget.open_military_proposal()
 

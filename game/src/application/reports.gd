@@ -10,6 +10,11 @@ const MENU_NO_DISASTERS := CityMenuBarView.MENU_NO_DISASTERS
 
 # message box text from the supplied string table, by string ID
 const NOTICE_TEXT := {
+	241: "The Army has built a base in your city.",
+	242: "An Air Force base has been placed here.",
+	243: "A Naval base is built on your coastline.",
+	244: "Six missile sites have been placed in your city.",
+	411: "The military is unable to find a suitable\nlocation for a base near your city.  You\nhave the thanks of the nation for your\npatriotic acquiesence.  SALUTE!!",
 	292: "Due to the current fiscal crisis, the city council urges you to cut back drastically on city expenditures.",
 	529: "The exodus has begun.",
 	530: "Your launch arcos have departed into space to found new worlds. You have been compensated for their construction.",
@@ -27,6 +32,9 @@ var app: CityApplication
 var document_state: ActiveDocumentState
 var text_resources: OriginalTextResources
 var pending_notices := PackedStringArray()
+var military_notice_pending := false
+var pending_game_over_events: Array[GameOverEvent] = []
+var game_over_terminal := false
 
 
 func _init(application: CityApplication) -> void:
@@ -399,6 +407,7 @@ func show_notices(notice_ids: PackedInt32Array) -> void:
 
 
 func reset_notices() -> void:
+	military_notice_pending = false
 	pending_notices.clear()
 
 	if app.city_dialogs.notice_dialog.visible:
@@ -408,7 +417,14 @@ func reset_notices() -> void:
 func _show_next_notice() -> void:
 	var dialog := app.city_dialogs.notice_dialog
 
-	if dialog.visible or pending_notices.is_empty():
+	if dialog.visible:
+		return
+
+	if pending_notices.is_empty():
+		if military_notice_pending:
+			military_notice_pending = false
+			app.budget.resolve_military_notice()
+
 		return
 
 	dialog.dialog_text = pending_notices[0]
@@ -417,27 +433,59 @@ func _show_next_notice() -> void:
 
 
 func show_game_over_events(events: Array[GameOverEvent]) -> void:
+	var dialog := app.city_dialogs.game_over_dialog
+
+	if not dialog.visibility_changed.is_connected(_show_next_game_over):
+		dialog.visibility_changed.connect(_show_next_game_over, CONNECT_DEFERRED)
+
 	app.simulation_state.game_over_active = true
-	var messages := PackedStringArray()
+	pending_game_over_events.append_array(events)
+	app.city_menu_bar.set_scenario_available(false)
+	_show_next_game_over()
 
-	for event in events:
-		match event.type:
-			"scenario_victory":
-				messages.append("The scenario goals are complete.")
-			"scenario_failure":
-				messages.append("The scenario time limit expired.")
-			"bankruptcy":
-				messages.append("The city is bankrupt. The mayor was impeached.")
 
-	app.city_dialogs.game_over_dialog.title = "Game Over" if events.size() != 1 else (
-		"Scenario Complete"
-		if events[0].type == "scenario_victory"
-		else "Game Over"
-	)
-	app.city_dialogs.game_over_dialog.dialog_text = "\n".join(messages) + "\n\nOpen another city to continue."
-	app.city_dialogs.game_over_dialog.popup_centered()
-	app.status_label.theme_type_variation = "WarningLabel"
-	app.status_label.text = "\n".join(messages)
+func reset_game_over() -> void:
+	pending_game_over_events.clear()
+	game_over_terminal = false
+	app.simulation_state.game_over_active = false
+	app.city_dialogs.game_over_dialog.hide()
+
+
+func _show_next_game_over() -> void:
+	var dialog := app.city_dialogs.game_over_dialog
+
+	if dialog.visible or not app.simulation_state.game_over_active:
+		return
+
+	if pending_game_over_events.is_empty():
+		app.simulation_state.game_over_active = false
+
+		if game_over_terminal:
+			game_over_terminal = false
+			app.city_session.finish_game()
+		elif app.simulation_state.speed_controller != null:
+			app.simulation_state.speed_controller.acknowledge_game_over()
+
+		return
+
+	var event := pending_game_over_events.pop_front() as GameOverEvent
+	game_over_terminal = game_over_terminal or event.is_terminal()
+	var message := ""
+
+	match event.type:
+		"scenario_victory":
+			message = "The scenario goals are complete. You can continue this city."
+		"scenario_failure":
+			message = "The scenario time limit expired."
+		"bankruptcy":
+			message = "The city is bankrupt. The mayor was impeached."
+
+	dialog.title = "Game Over" if event.is_terminal() else "Scenario Complete"
+	dialog.dialog_text = message
+	app.effects_audio.play_sound_ids([event.sound_id])
+	dialog.popup_centered()
+	app.status_label.theme_type_variation = "WarningLabel" if event.is_terminal() else ""
+	app.status_label.text = message
 
 
 func moving_things_are_active(results: Array) -> bool:

@@ -69,6 +69,8 @@ func _check_military_offer() -> void:
 	# a declined offer can be shown again. a city with a base cannot get one
 	assert(CityDebugActions.offer_military_base(controller).ok)
 	assert(controller.resolve_military_proposal(true).ok)
+	assert(controller.interaction_blocked)
+	assert(controller.resolve_military_notice().ok)
 	assert(document.set_misc_u32(Sc2MiscLayout.MILITARY_BASE_TYPE, MilitaryProposalPhase.BASE_ARMY))
 	var refused := CityDebugActions.offer_military_base(controller)
 	assert(not refused.ok and not controller.interaction_blocked)

@@ -9,6 +9,7 @@ const ENGINE_FIELDS := [
 	"pending_disaster_point", "active_disaster_type", "unsupported_disaster_type",
 	"disaster_map_counter", "disaster_hurricane_counter", "midi_playback_active",
 	"vehicle_crashes_enabled",
+	"pending_military_site", "pending_military_base_type",
 ]
 const CONTROLLER_FIELDS := [
 	"speed", "accumulator_msec", "fire_elapsed_msec", "subtick_counter", "original_compatibility",
@@ -29,9 +30,6 @@ static func capture(source: GameSpeedController, budget: SimulationSliceBudget) 
 	var engine := SimulationEngine.new(null)
 	engine.city = city
 	copy_engine(source.engine, engine)
-
-	if source.engine.scenario != null:
-		engine.scenario = ScenarioState.from_document(city.document)
 
 	var controller := GameSpeedController.new(engine)
 	_copy_fields(source, controller, CONTROLLER_FIELDS)
@@ -80,6 +78,7 @@ static func stamp(source: GameSpeedController) -> Array:
 
 static func copy_engine(source: SimulationEngine, target: SimulationEngine) -> void:
 	_copy_fields(source, target, ENGINE_FIELDS)
+	target.scenario = ScenarioState.from_document(target.city.document) if source.scenario != null else null
 	target.clock.city_days = source.clock.city_days
 	target.random.state = source.random.state
 	target.lfsr_random.state = source.lfsr_random.state

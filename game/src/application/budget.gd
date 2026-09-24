@@ -18,8 +18,7 @@ func reset_prompts() -> void:
 	app.city_dialogs.budget_dialog.reset_dialogs()
 	app.reports.reset_notices()
 
-	if app.city_dialogs.game_over_dialog.visible:
-		app.city_dialogs.game_over_dialog.hide()
+	app.reports.reset_game_over()
 
 	if app.city_dialogs.scenario_dialog.visible:
 		app.city_dialogs.scenario_dialog.hide()
@@ -267,13 +266,36 @@ func _resolve_military_proposal(accepted: bool) -> void:
 
 	app.simulation_state.military_proposal_pending = false
 	app.frame.consume_simulation_result(result)
+
+	if not result.interaction_requests.is_empty():
+		return
+
+	_show_military_result(result, accepted)
+
+
+func resolve_military_notice() -> void:
+	var result := app.simulation_state.speed_controller.resolve_military_notice()
+
+	if not result.ok:
+		app.interface.show_error("Cannot finish the military proposal: %s" % result.error)
+		return
+
+	app.frame.consume_simulation_result(result)
+	_show_military_result(result)
+
+
+func _show_military_result(result: SimulationTickResult, accepted := true) -> void:
 	app.interface.refresh_details()
-	app.status_label.theme_type_variation = ""
 
 	var proposal: MilitaryProposalPhase.Result = result.day_results[0].phase_results.military_proposal
 
 	if proposal.base_type in [2, 3, 4, 5]:
 		app.effects_audio.play_sound_ids(ToolSounds.zone_success_events(7))
+
+	if not result.game_over_events.is_empty():
+		return
+
+	app.status_label.theme_type_variation = ""
 
 	match proposal.base_type:
 		2:

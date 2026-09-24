@@ -187,3 +187,31 @@ func activate_document(
 		app.status_label.text = status_text
 
 	return true
+
+
+# Loss returns to city selection. The ended city cannot be continued.
+func finish_game() -> void:
+	if app.simulation_state.frame_simulation != null:
+		app.simulation_state.frame_simulation.close()
+
+	app.simulation_state.frame_simulation = null
+	app.static_render.restart_static_render()
+	app.static_render.invalidate_rendered_city()
+	app.budget.reset_prompts()
+	app.budget.reset_pending_state()
+	app.current_tool.reset_prompts()
+
+	for window in app.city_dialogs.blocking_windows + app.city_dialogs.modeless_windows:
+		window.hide()
+
+	app.simulation_state.speed_controller = null
+	app.simulation_state.simulation_engine = null
+	app.document_state.city = null
+	document_state.current_document = null
+	document_state.current_save_path = ""
+	document_state.saved_city_snapshot = PackedByteArray()
+	document_state.current_city_saved_once = false
+	app.tool_state.last_edit_command = null
+	app.scurk_state.edit_history.clear()
+	app.city_menu_bar.set_scenario_available(false)
+	app.interface.show_main_menu()

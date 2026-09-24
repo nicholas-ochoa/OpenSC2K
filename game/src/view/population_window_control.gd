@@ -194,6 +194,7 @@ func _draw() -> void:
 
 	var values := chart_values(data, mode)
 	var slot_width := plot.size.x / float(COHORT_COUNT)
+	var bar_slot := 0
 
 	for cohort in values.size():
 		var bar_height := plot.size.y * clampf(
@@ -202,13 +203,17 @@ func _draw() -> void:
 
 		if bar_height > 0.0:
 			var bar := Rect2(
-				plot.position.x + slot_width * cohort + 1,
+				plot.position.x + slot_width * bar_slot + 1,
 				plot.end.y - maxf(1.0, bar_height),
 				maxf(1.0, slot_width - 2),
 				maxf(1.0, bar_height),
 			)
 			draw_rect(bar, get_theme_color("chart_accent", "AppPalette"), true)
 			draw_rect(bar, get_theme_color("ink", "AppPalette"), false, 1.0)
+
+		# The original advances the bar position only for nonzero values.
+		if values[cohort] != 0:
+			bar_slot += 1
 
 		if cohort % 2 == 0:
 			var age_label := str(cohort * 5)

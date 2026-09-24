@@ -194,7 +194,7 @@ func test_scenarios(reference_root: String) -> void:
 	victory.commercial_goal = -2147483648
 	victory.industrial_goal = -2147483648
 	victory.cash_goal = -2147483648
-	victory.land_value_goal = -2147483648
+	victory.land_value_goal = 0
 	victory.life_expectancy_goal = 0
 	victory.education_goal = 0
 	victory.pollution_limit = 0

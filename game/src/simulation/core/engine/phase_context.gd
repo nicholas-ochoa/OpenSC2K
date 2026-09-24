@@ -75,6 +75,12 @@ static func persist_news(city: CityState, result: PhaseResult) -> NewsPersistenc
 	var persisted := NewsPersistenceResult.new()
 	persisted.ok = true
 
+	# Monthly aftermath stores its own queue, but still needs an extra edition.
+	if city.document.misc_u32(Sc2MiscLayout.NEWSPAPER_EXTRAS) != 0:
+		for item in result.news_items:
+			if NewsQueue.opens_extra_edition(item.type):
+				result.newspaper_requested = true
+
 	if result.news_queue_updated:
 		return persisted
 
@@ -106,11 +112,6 @@ static func persist_news(city: CityState, result: PhaseResult) -> NewsPersistenc
 		persisted.error = "cannot store newspaper stories"
 
 		return persisted
-
-	if city.document.misc_u32(Sc2MiscLayout.NEWSPAPER_EXTRAS) != 0:
-		for item in result.news_items:
-			if NewsQueue.opens_extra_edition(item.type):
-				result.newspaper_requested = true
 
 	persisted.inserted = insertion.inserted
 	result.news_queue_updated = true

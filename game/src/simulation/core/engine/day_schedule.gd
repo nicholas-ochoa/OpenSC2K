@@ -26,8 +26,10 @@ static func _execute_day_schedule(engine: SimulationEngine, schedule: Simulation
 		context.action = action
 		var result := phase.run(context)
 
-		if result.ok and not result.game_over_events.is_empty():
-			context.terminal_state = true
+		if result.ok:
+			for event in result.game_over_events:
+				context.terminal_state = context.terminal_state or event.is_terminal()
+				context.scenario = null
 
 		_store_context(context, engine)
 
@@ -97,6 +99,8 @@ static func _load_context(
 
 
 static func _store_context(context: SimulationPhaseContext, engine: SimulationEngine) -> void:
+	engine.scenario = context.scenario
+
 	for field in SimulationPhaseContext.ENGINE_STATE:
 		engine.set(field, context.get(field))
 

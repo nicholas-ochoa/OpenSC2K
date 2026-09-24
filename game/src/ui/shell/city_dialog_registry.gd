@@ -171,7 +171,8 @@ func _create_event_dialogs() -> void:
 	game_over_dialog.name = "GameOverDialog"
 	game_over_dialog.theme = AppUiTheme.current()
 	game_over_dialog.min_size = Vector2i(460, 220)
-	_register(game_over_dialog, "CityEvents", Modality.MODELESS)
+	game_over_dialog.exclusive = true
+	_register(game_over_dialog, "CityEvents", Modality.BLOCKING)
 	notice_dialog = AcceptDialog.new()
 	notice_dialog.name = "SimulationNoticeDialog"
 	notice_dialog.theme = AppUiTheme.current()

@@ -35,6 +35,7 @@ func _initialize() -> void:
 			_test_branches(edge, native)
 			_test_station_and_tunnel(edge, native)
 	_test_reused_result()
+	_test_tunnel_turns()
 	_test_map_exits()
 	_test_walking_cache()
 	_test_multimodal()
@@ -135,6 +136,43 @@ func _test_station_and_tunnel(edge: int, native: bool) -> void:
 	city.set_zone_id(20, 29, 3)
 	trip = TransportTrip.run(city, Vector2i(20, 19), 1, 2, SimRandom.new(1))
 	check(trip.reached_destination and trip.cost == 18, "Car traverses tunnel in tunnel mode at road cost")
+
+
+func _test_tunnel_turns() -> void:
+	for bus in [false, true]:
+		for side in [-1, 1]:
+			var city := fixture(128, false)
+			city.set_building_id(20, 20, Tiles.BUS_DEPOT if bus else Tiles.ROAD_STRAIGHT_1)
+			city.set_building_id(20, 21, Tiles.ROAD_STRAIGHT_1)
+			city.set_building_id(20, 22, Tiles.TUNNEL_ENTRANCE_1)
+			for distance in range(3):
+				city.set_tunnel_levels(20 + side * distance, 23, 1)
+			city.set_building_id(20 + side * 3, 23, Tiles.TUNNEL_ENTRANCE_2)
+			city.set_zone_id(20 + side * 6, 23, 3)
+			var trip := TransportTrip.run(city, Vector2i(20, 19), 1, 2, SimRandom.new(1))
+			check(trip.reached_destination and trip.cost == (12 if bus else 18),
+				"Car and bus trips turn either way through connected tunnel depths at the original cost")
+			check(trip.used_bus == bus, "Tunnel turns retain the transport mode")
+			city.set_tunnel_levels(20 + side, 23, 0)
+			check(not TransportTrip.run(city, Vector2i(20, 19), 1, 2, SimRandom.new(1)).reached_destination,
+				"A missing tunnel depth blocks the turn")
+			city.set_building_id(20, 22, Tiles.SUSPENSION_BRIDGE_1)
+			for distance in range(3):
+				city.set_building_id(20 + side * distance, 23, Tiles.SUSPENSION_BRIDGE_1)
+			check(not TransportTrip.run(city, Vector2i(20, 19), 1, 2, SimRandom.new(1)).reached_destination,
+				"Car and bus bridge trips still cannot turn")
+
+		var dead_end := fixture(128, false)
+		dead_end.set_building_id(20, 20, Tiles.BUS_DEPOT if bus else Tiles.ROAD_STRAIGHT_1)
+		dead_end.set_building_id(20, 21, Tiles.ROAD_STRAIGHT_1)
+		dead_end.set_building_id(20, 22, Tiles.TUNNEL_ENTRANCE_1)
+		dead_end.set_tunnel_levels(20, 23, 1)
+		var reach := TripReachAnalysis.inspect(dead_end, Vector2i(20, 20))
+		var reversed := false
+		for link in reach.links:
+			if link.from == Vector2i(20, 22) and link.to == Vector2i(20, 21):
+				reversed = true
+		check(not reversed, "A tunnel dead end does not permit an immediate reverse move")
 
 
 func _test_lane_geometry() -> void:

@@ -23,6 +23,8 @@ var industry_connections := 0
 var traffic_news_deadline_msec := 0
 var pending_interaction := ""
 var pending_day_schedule: SimulationSchedule
+var pending_military_site := Rect2i()
+var pending_military_base_type := 0
 var scenario: ScenarioState
 var terminal_state := false
 var bus_passengers := 0
@@ -265,11 +267,47 @@ func _timed_resolve_military_proposal(accepted: bool) -> SimulationDayResult:
 	if pending_interaction != "military_proposal" or pending_day_schedule == null:
 		return SimulationDayResult.failure("no military proposal interaction is pending")
 
-	var proposal := MilitaryProposalPhase.resolve(city, accepted, game_random)
+	var proposal := MilitaryProposalPhase.resolve(city, accepted, game_random, true)
 
 	if not proposal.ok:
 		return SimulationDayResult.failure(proposal.error)
 
+	if proposal.notice_id >= 0:
+		pending_interaction = "military_notice"
+		pending_military_site = proposal.site if not proposal.complete else Rect2i()
+		pending_military_base_type = proposal.base_type
+		var result := SimulationDayResult.new()
+		result.ok = true
+		result.day = clock.city_days
+		result.schedule = pending_day_schedule
+		result.pending = pending_day_schedule.actions.duplicate()
+		result.phase_results = {"military_proposal": proposal}
+		result.interaction_requests = [SimulationInteractionRequest.new("military_notice")]
+		return result
+
+	return _complete_military_proposal(proposal)
+
+
+func resolve_military_notice() -> SimulationDayResult:
+	if pending_interaction != "military_notice" or pending_day_schedule == null:
+		return SimulationDayResult.failure("no military notice is pending")
+
+	var proposal := MilitaryProposalPhase.Result.new()
+	proposal.ok = true
+	proposal.base_type = pending_military_base_type
+
+	if pending_military_site.has_area():
+		proposal = MilitaryProposalPhase.reserve_land_site(city, pending_military_base_type, pending_military_site)
+
+		if not proposal.ok:
+			return SimulationDayResult.failure(proposal.error)
+
+	pending_military_site = Rect2i()
+	pending_military_base_type = 0
+	return _complete_military_proposal(proposal)
+
+
+func _complete_military_proposal(proposal: MilitaryProposalPhase.Result) -> SimulationDayResult:
 	var original_schedule: SimulationSchedule = pending_day_schedule
 	var remaining_schedule := _schedule_after(original_schedule, "milestones")
 	pending_interaction = ""

@@ -136,11 +136,15 @@ static func trace(
 				break
 
 			var direction: int = random.next_u15() & 3
+			var direction_mask := 0x0f
+
+			if heading < 4:
+				direction_mask = FORWARD_DIRECTION_MASKS[heading] if (TUNNEL_HEADING_MODES >> mode) & 1 else 1 << heading
 
 			for unused in 4:
 				direction = (direction + turn_direction) & 3
 
-				if heading < 4 and direction != heading:
+				if (direction_mask & (1 << direction)) == 0:
 					continue
 
 				var next_point: Vector2i = point + DIRECTIONS[direction]
@@ -177,7 +181,7 @@ static func trace(
 					endpoints[point].exit = true
 
 				var next_mode := advance >> 8
-				var next_heading := direction if (STRAIGHT_HEADING_MODES >> next_mode) & 1 else 4
+				var next_heading := direction if (HEADING_MODES >> next_mode) & 1 else 4
 				var next_key := _state_key(next_index, next_mode, next_heading)
 
 				if collect_reach:

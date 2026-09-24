@@ -206,6 +206,25 @@ func resolve_military_proposal(accepted: bool) -> SimulationTickResult:
 	return result
 
 
+func resolve_military_notice() -> SimulationTickResult:
+	var result := _empty_result()
+
+	if engine == null or not interaction_blocked:
+		result.error = "no military notice is pending"
+		return result
+
+	var day := engine.resolve_military_notice()
+
+	if not day.ok:
+		result.error = day.error
+		return result
+
+	interaction_blocked = false
+	_consume_day_result(result, day)
+	result.ok = true
+	return result
+
+
 # stop at the end of the target day. the remaining base ticks in this call do no work
 func _pause_on_target_day(result: SimulationTickResult) -> bool:
 	if pause_at_day < 0 or engine.city.age_in_days() < pause_at_day:
@@ -293,8 +312,13 @@ func _consume_day_result(result: SimulationTickResult, day: SimulationDayResult)
 		result.notice_ids.append_array(phase_result.notice_ids)
 		result.newspaper_requested = result.newspaper_requested or phase_result.newspaper_requested
 
-	if not result.game_over_events.is_empty():
-		terminal_blocked = true
+	for event in result.game_over_events:
+		terminal_blocked = terminal_blocked or event.is_terminal()
+		interaction_blocked = true
+
+
+func acknowledge_game_over() -> void:
+	interaction_blocked = engine != null and not engine.pending_interaction.is_empty()
 
 
 func _append_runtime_events(result: SimulationTickResult, phase_result: PhaseResult) -> void:

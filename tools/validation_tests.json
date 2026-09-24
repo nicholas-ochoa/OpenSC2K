@@ -1,5 +1,11 @@
 [
   {
+    "id": "day23_outcomes_test",
+    "script": "tests/day23_outcomes_test.gd",
+    "domain": "simulation",
+    "lane": "product"
+  },
+  {
     "id": "bridge_collapse_test",
     "script": "tests/bridge_collapse_test.gd",
     "domain": "simulation",

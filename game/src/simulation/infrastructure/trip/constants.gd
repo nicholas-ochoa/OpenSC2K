@@ -36,8 +36,9 @@ const DESTINATION_ZONE_MASKS := [0xffff, 0xfff8, 0xfff8, 0xffe6, 0xffe6, 0xff9e,
 # modes that reach a zone on foot, as a bit per mode, and the any-rci
 # catchment as a bit per zone. both replace per-call array literals
 const WALK_ACCESS_MODES := (1 << ROAD_MODE) | (1 << BUS_ROAD_MODE) | (1 << BUS_STOP_MODE) | (1 << BUS_RAIL_MODE)
-# bridge and tunnel states keep their direction until they reach the surface
-const STRAIGHT_HEADING_MODES := (1 << ROAD_BRIDGE_MODE) | (1 << BUS_BRIDGE_MODE) | (1 << ROAD_TUNNEL_MODE) | (1 << BUS_TUNNEL_MODE)
+# bridges continue straight; tunnels can turn but cannot immediately reverse
+const TUNNEL_HEADING_MODES := (1 << ROAD_TUNNEL_MODE) | (1 << BUS_TUNNEL_MODE)
+const HEADING_MODES := (1 << ROAD_BRIDGE_MODE) | (1 << BUS_BRIDGE_MODE) | TUNNEL_HEADING_MODES
 const ANY_RCI_ZONE_MASK := 0x7e
 
 

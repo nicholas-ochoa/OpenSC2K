@@ -364,6 +364,43 @@ func test_extra_edition_newspaper(reference_root: String) -> void:
 				"Story %d with extra editions %d requests the newspaper: %s" % [story_type, extras, expected],
 			)
 
+	for extras in [0, 1]:
+		for invention in [0, 7, -1]:
+			var document := EmptyCityTemplate.create()
+			_check(document.set_misc_u32(Sc2MiscLayout.NEWSPAPER_EXTRAS, extras), "Monthly extra-edition fixture sets the option")
+
+			if invention >= 0:
+				_check(document.set_misc_u32(Sc2MiscLayout.INVENTION_YEARS + invention * 4, 1900), "Monthly extra-edition fixture schedules a release")
+
+			var city := CityModel.from_document(document)
+			_check(city.set_age_in_days(20), "Monthly extra-edition fixture starts before day 22")
+			var engine := Simulation.new(city)
+			engine.random = preload("res://tests/support/test_randoms.gd").ZeroRandom.new()
+			engine.developed_tiles = 0
+			engine.power_usage_percent = 0
+			engine.water_usage_percent = 0
+			var day := engine.advance_day()
+			_check(day.ok and day.complete, "Monthly extra-edition day completes: %s" % day.error)
+
+			if not day.ok or not day.complete:
+				continue
+
+			var aftermath: RciAftermathPhase.Result = day.phase_results["rci_aftermath"]
+			_check(aftermath.invention_index == invention, "Monthly extra-edition day releases the scheduled invention or innovation")
+			var before: PackedByteArray = document.find_chunk("MISC").decoded_payload.duplicate()
+			var persisted := engine._persist_news_result(aftermath)
+			_check(
+				persisted.ok and persisted.inserted == 0
+				and document.find_chunk("MISC").decoded_payload == before,
+				"Monthly extra-edition notification does not insert saved stories again",
+			)
+			var tick := SimulationTickResult.new()
+			GameSpeedController.new(engine)._consume_day_result(tick, day)
+			_check(
+				tick.newspaper_requested == (extras != 0 and invention >= 0),
+				"Day 22 forwards release %d with extra editions %d to the newspaper UI" % [invention, extras],
+			)
+
 
 func _load_indexed_u16_resource(reference_root: String, resource_id: int) -> PackedInt32Array:
 	var index := FileAccess.get_file_as_bytes(reference_root.path_join("DATA/DATA_USA.IDX"))
