@@ -25,6 +25,7 @@ var sort_descending := false
 @onready var search: LineEdit = $Controls/Search
 @onready var show_empty: CheckBox = $Controls/ShowEmpty
 @onready var live: CheckBox = $Controls/Live
+@onready var total: Label = $Total
 
 
 func _ready() -> void:
@@ -43,7 +44,7 @@ func _ready() -> void:
 		widths = [0, 0, 0, 0, 0]
 		locate_column = 1
 		tooltips = {
-			"Tile": "Building ID in the XBLD tile plane.",
+			"Tile": "Building ID in the XBLD tile plane, in decimal and hexadecimal.",
 			"Constant": "BuildingTileIds constant for the ID.",
 			"Name": "Name that the query tool shows for the tile.",
 			"On map": "Number of map tiles with this building ID outside military zones. Military bases have separate counts.",
@@ -90,6 +91,7 @@ func _ready() -> void:
 		sort_by(0)
 
 	show_empty.visible = kind != "State"
+	total.visible = kind != "State"
 	search.text_changed.connect(func(_text: String) -> void: _filter())
 	show_empty.toggled.connect(func(_enabled: bool) -> void: refresh_from_host(_host, true))
 	$Controls/Refresh.pressed.connect(func() -> void: refresh_from_host(_host, true))
@@ -373,6 +375,7 @@ static func locate_icon(size: int) -> ImageTexture:
 
 func _filter() -> void:
 	var needle := search.text.strip_edges().to_lower()
+	var shown := 0
 
 	for row: TreeItem in rows.values():
 		var content := ""
@@ -382,3 +385,9 @@ func _filter() -> void:
 				content += " " + item.get_text(column).to_lower()
 
 		row.visible = needle.is_empty() or needle in content
+
+		if row.visible:
+			shown += 1
+
+	var noun := "record" if rows.size() == 1 else "records"
+	total.text = "%d %s" % [rows.size(), noun] if shown == rows.size() else "%d of %d %s shown" % [shown, rows.size(), noun]

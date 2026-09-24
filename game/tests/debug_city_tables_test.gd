@@ -161,7 +161,7 @@ func _check_tile_counts(edge: int) -> void:
 			police = record
 
 	assert(total == edge * edge, "Tile counts cover every map tile")
-	assert(police.cells[0] == "0xD2" and police.cells[1] == "POLICE_STATION" and police.cells[3] == "3")
+	assert(police.cells[0] == "210 (0xD2)" and police.cells[1] == "POLICE_STATION" and police.cells[3] == "3")
 	assert(police.cells[4] == str(city.document.misc_i32(Sc2MiscLayout.TILE_COUNTS + BuildingTileIds.POLICE_STATION * 4)))
 	assert([police.site.x, police.site.y] == [2, 3], "Locate goes to the first tile in scan order")
 	assert(DebugCityTables.collect("Tiles", city, null, true).size() == BuildingTileIds.COUNT)
@@ -187,6 +187,12 @@ func _check_tile_counts(edge: int) -> void:
 	root.add_child(panel)
 	panel.update_records(DebugCityTables.collect("Tiles", city))
 	var row: TreeItem = panel.rows[police.id]
+	assert(panel.total.text == "%d records" % panel.rows.size(), "The total counts the records below the table")
+	panel.search.text = "POLICE_STATION"
+	panel.search.text_changed.emit(panel.search.text)
+	assert(panel.total.text == "1 of %d records shown" % panel.rows.size(), "A filter shows the visible part of the total")
+	panel.search.text = ""
+	panel.search.text_changed.emit("")
 	assert(row.get_custom_bg_color(4) == DebugRecordTable.WARNING_COLOR and row.get_tooltip_text(4) == police.warning)
 
 	# a saved count that wrapped below zero shows even when the map has no such tile

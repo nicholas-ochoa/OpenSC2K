@@ -32,3 +32,6 @@ size_flags_vertical = 3
 columns = 4
 column_titles_visible = true
 hide_root = true
+
+[node name="Total" type="Label" parent="."]
+layout_mode = 2
