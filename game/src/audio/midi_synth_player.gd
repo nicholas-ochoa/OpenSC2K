@@ -854,7 +854,6 @@ func _finish_track() -> void:
 
 	if publish:
 		current_track_id = -1
-		_active = false
 		_thread_playing = false
 
 	_mutex.unlock()
@@ -864,8 +863,13 @@ func _finish_track() -> void:
 
 
 func _finish_on_main(track_id: int, generation: int) -> void:
+	# stay active until track_finished, so no new track can skip the music gap
 	_mutex.lock()
 	var stale := generation != _generation
+
+	if not stale:
+		_active = false
+
 	_mutex.unlock()
 
 	if stale:

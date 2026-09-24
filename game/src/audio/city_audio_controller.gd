@@ -233,12 +233,14 @@ func music_playback_is_active() -> bool:
 	if music_gap_remaining_msec > 0.0 or queued_music_track >= 0:
 		return true
 
+	# a recording stays active until its finished signal clears the stream.
+	# `playing` becomes false first, and a new track then would skip the gap
 	if AudioServer.get_driver_name() == "Dummy":
-		return dummy_music_active or (recording_player != null and recording_player.stream != null and (recording_player.playing or recording_player.stream_paused))
+		return dummy_music_active or (recording_player != null and recording_player.stream != null)
 
 	return (pending_recording != null
 		or (recording_thread != null and recording_request == music_request)
-		or (recording_player != null and recording_player.stream != null and (recording_player.playing or recording_player.stream_paused))
+		or (recording_player != null and recording_player.stream != null)
 		or (music_player != null and music_player.is_track_active()))
 
 

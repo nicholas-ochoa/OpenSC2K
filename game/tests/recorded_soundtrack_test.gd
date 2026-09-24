@@ -68,7 +68,23 @@ func _run() -> void:
 		await process_frame
 
 	assert(not controller.recording_player.playing)
+
+	# A recording stays active after `playing` clears, until `finished` starts the music gap.
+	controller.handle_application_focus_in(true)
+	controller.stop_music()
+	controller.current_track_id = 10001
+	controller.pending_recording = RecordedSoundtrack.Request.new(matches, controller.music_request)
+	deadline = Time.get_ticks_msec() + 15000
+
+	while not controller.recording_player.playing and Time.get_ticks_msec() < deadline:
+		await process_frame
+
+	while controller.current_track_id == 10001 and Time.get_ticks_msec() < deadline:
+		assert(controller.music_playback_is_active(), "A recording ended without the music gap")
+		await process_frame
+
+	assert(controller.current_track_id == -1 and controller.music_gap_remaining_msec == CityAudioController.MUSIC_GAP_MSEC)
 	controller.free()
 	await create_timer(0.1).timeout
-	print("PASS: MP3/Ogg/FLAC decode, track mapping, supplied FLAC, source preservation, asynchronous playback, volume, focus and cancellation")
+	print("PASS: MP3/Ogg/FLAC decode, track mapping, supplied FLAC, source preservation, asynchronous playback, volume, focus, cancellation and the music gap")
 	quit()

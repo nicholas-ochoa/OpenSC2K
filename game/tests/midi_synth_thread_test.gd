@@ -46,7 +46,9 @@ func _run() -> void:
 	assert(player.play_sequence(_short_sequence(), 10002).ok)
 	var waited := 0
 
+	# The track stays active until track_finished, so no request skips the music gap.
 	while finished_tracks.is_empty() and waited < 200:
+		assert(player.is_track_active(), "The track became inactive before track_finished")
 		await process_frame
 		waited += 1
 
