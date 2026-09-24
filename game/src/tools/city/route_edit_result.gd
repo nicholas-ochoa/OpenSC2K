@@ -63,6 +63,12 @@ static func rejected(message: String, charged := 0) -> RouteEditResult:
 	return result
 
 
+# the process-local count that a bought neighbor connection adds to. a road
+# connection adds commerce. rail and highway connections add industry
+func connection_kind() -> String:
+	return "commerce" if command_type == "network" and mode == NetworkConstants.MODE_ROAD else "industry"
+
+
 # add the next bridge-separated segment. the first segment starts the route
 func merge_segment(segment: RouteEditResult) -> void:
 	for field in ["cost", "listed_cost", "dry_cost", "listed_dry_cost", "route_cost", "listed_route_cost", "bridge_cost", "listed_bridge_cost", "bridge_span_length", "graded_tiles", "graded_sections", "connection_cost", "listed_connection_cost"]:

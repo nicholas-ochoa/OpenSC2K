@@ -99,6 +99,7 @@ func apply_network_selection(
 		return
 
 	app.scurk_workspace.record_edit_command(network, free_mode, tool_name)
+	app.city_edits.change_neighbor_connections(network, 1)
 	app.interface.refresh_details()
 	app.static_render.refresh_after_city_edit(network)
 	app.effects_audio.play_tool_success_sound(group_index, subtool_index, free_mode)

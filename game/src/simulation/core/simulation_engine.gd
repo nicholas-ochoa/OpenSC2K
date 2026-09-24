@@ -156,16 +156,23 @@ func _timed_advance_moving_things(current_time_msec := -1) -> MovingThingResult:
 	traffic_news_deadline_msec = result.traffic_news_deadline_msec
 
 	for change in result.connection_count_changes:
-		if change.kind == "commerce":
-			commerce_connections = (commerce_connections + int(change.delta)) & 0xffff
-		else:
-			industry_connections = (industry_connections + int(change.delta)) & 0xffff
+		change_connection_count(change.kind, int(change.delta))
 
 	for request in result.disaster_start_requests:
 		pending_disaster_type = int(request.type)
 		pending_disaster_point = request.point
 
 	return result
+
+
+# neighbor connection counts are process-local 16-bit values, as in the original.
+# a load counts them. a bought connection, explosion damage and undo change them.
+# `kind` is "commerce" or "industry"
+func change_connection_count(kind: String, delta: int) -> void:
+	if kind == "commerce":
+		commerce_connections = (commerce_connections + delta) & 0xffff
+	else:
+		industry_connections = (industry_connections + delta) & 0xffff
 
 
 func advance_day() -> SimulationDayResult:

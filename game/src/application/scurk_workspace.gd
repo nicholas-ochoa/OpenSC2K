@@ -258,6 +258,7 @@ func undo_scurk_place() -> void:
 		return
 
 	var command: EditCommandResult = app.scurk_state.edit_history.redo_stack[-1]
+	app.city_edits.change_neighbor_connections(command, -1)
 	app.tool_state.last_edit_command = app.scurk_state.edit_history.current_command()
 	app.scurk_place_print.set_history_enabled(
 		app.scurk_state.edit_history.can_undo(), app.scurk_state.edit_history.can_redo()
@@ -285,6 +286,7 @@ func _redo_scurk_place() -> void:
 		return
 
 	var command: EditCommandResult = app.scurk_state.edit_history.undo_stack[-1]
+	app.city_edits.change_neighbor_connections(command, 1)
 	app.tool_state.last_edit_command = command
 	app.scurk_place_print.set_history_enabled(
 		app.scurk_state.edit_history.can_undo(), app.scurk_state.edit_history.can_redo()

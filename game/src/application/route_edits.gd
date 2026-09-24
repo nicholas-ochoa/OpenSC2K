@@ -176,6 +176,7 @@ func apply_highway_selection(
 		return
 
 	app.scurk_workspace.record_edit_command(highway, free_mode, "Highway")
+	app.city_edits.change_neighbor_connections(highway, 1)
 	app.interface.refresh_details()
 	app.static_render.refresh_after_city_edit(highway)
 	app.effects_audio.play_tool_success_sound(app.tool_state.selected_group, app.tool_state.selected_subtool, free_mode)

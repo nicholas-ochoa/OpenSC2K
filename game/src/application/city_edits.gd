@@ -402,6 +402,15 @@ func _record_building(
 		app.status_label.text += " Select a stadium team."
 
 
+# a bought neighbor connection changes the engine connection count. undo passes -1
+func change_neighbor_connections(command: EditCommandResult, delta: int) -> void:
+	var engine := app.simulation_state.simulation_engine
+	var route := command as RouteEditResult
+
+	if engine != null and route != null and route.connection_built:
+		engine.change_connection_count(route.connection_kind(), delta)
+
+
 # an immediate utility scan after placement updates the engine utilization
 func _publish_utility_usage(command: EditCommandResult) -> void:
 	var engine := app.simulation_state.simulation_engine
@@ -541,6 +550,7 @@ func undo_last_edit() -> void:
 
 	app.tool_state.last_edit_command = null
 	_restore_utility_usage(command)
+	change_neighbor_connections(command, -1)
 	app.interface.refresh_details()
 	app.static_render.refresh_after_city_edit(command)
 

@@ -207,19 +207,25 @@ static func _failed(message: String) -> Result:
 	return result
 
 
+# the native find skips the tiles without the label low byte. a full scan in
+# script took about 100 ms on a 512 map
 static func connection_counts(city: CityState) -> ConnectionCounts:
-	var map_edge: int = city.map_size if city != null else 128
+	var overlays := city.text_overlays
+	var buildings := city.buildings
+	var cells := OverlayData.count(overlays)
+	var low_byte := CONNECTION_LABEL & 0xff
 	var commerce := 0
 	var industry := 0
+	var index := overlays.find(low_byte)
 
-	for index in (map_edge * map_edge):
-		if city.simulation_slice != null and (index & 127) == 0:
-			city.simulation_slice.checkpoint()
+	# the high bytes of an sc2x label plane follow the low bytes
+	while index >= 0 and index < cells:
+		var tile := buildings[index]
+		var labelled := OverlayData.read(overlays, index) == CONNECTION_LABEL
+		index = overlays.find(low_byte, index + 1)
 
-		if OverlayData.read(city.text_overlays, index) != CONNECTION_LABEL:
+		if not labelled:
 			continue
-
-		var tile := city.buildings[index]
 
 		if _in_ranges(tile, COMMERCE_CONNECTION_RANGES):
 			commerce += 1

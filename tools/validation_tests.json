@@ -713,6 +713,16 @@
     ]
   },
   {
+    "id": "neighbor_connection_count_test",
+    "script": "tests/neighbor_connection_count_test.gd",
+    "domain": "simulation",
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000",
+      "ext/graphics/pack.json"
+    ]
+  },
+  {
     "id": "simulation_suspension_test",
     "script": "tests/simulation_suspension_test.gd",
     "domain": "ui",
