@@ -19,6 +19,13 @@ func _run() -> void:
 	await _drain(cache)
 	assert(cache.gpu_enabled and cache.ready())
 	assert(cache.texture().meshes.size() == cache.visible.size())
+	var first_source := cache.texture()
+	var repeated_source := cache.texture()
+	assert(first_source != repeated_source)
+
+	for index in first_source.meshes.size():
+		assert(first_source.meshes[index] == repeated_source.meshes[index] and first_source.meshes[index].immutable,
+			"Publishing unchanged regions must retain their immutable mesh descriptors")
 	var expected := CityRegionRenderer.render(city, palette, sprites, bounds, 2)
 	assert(expected.ok)
 	var sampled := cache.image_region(bounds)

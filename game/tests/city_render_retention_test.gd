@@ -27,6 +27,7 @@ func _run() -> void:
 	view.city_source = _source([CityMapSource.MeshEntry.new(Vector2.ZERO, mesh_b, texture, 4)])
 	view.layers._sync_base_layer()
 	assert(first.get_meta("divisor") == 4 and first.scale == Vector2.ONE * view.camera._view_scale() * 4, "Cached geometry used the old divisor")
+	_check_region_updates(view, texture)
 	var foreground: Dictionary[int, CitySignVisual] = {1: CitySignVisual.new(texture)}
 	view.set_sign_occlusion_visuals(foreground)
 	var replacement := ImageTexture.create_from_image(Image.create(3, 3, false, Image.FORMAT_LA8))
@@ -80,8 +81,98 @@ func _run() -> void:
 	main.free()
 	view.queue_free()
 	await process_frame
+	if DisplayServer.get_name() != "headless":
+		await _check_region_pixels()
 	print("PASS: GPU node retention, changed mesh replacement, eviction and foreground input ownership")
 	quit()
+
+
+func _check_region_pixels() -> void:
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(256, 256)
+	viewport.transparent_bg = true
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(viewport)
+	var view := CityMapControl.new()
+	view.size = Vector2(viewport.size)
+	viewport.add_child(view)
+	var left := _colored_entry(Vector2(448, 480), Color.RED, 1)
+	var right := _colored_entry(Vector2(576, 544), Color.GREEN, 1)
+	view.city_source = _source([left, right])
+	view.source_center = Vector2(512, 512)
+	view.zoom_factor = 1.0
+	view.layers._sync_base_layer()
+	var before := await _capture_region_pixels(viewport)
+	var changed := _colored_entry(right.position, Color.BLUE, 2)
+	view.city_source = _source([left, changed])
+	assert(view.layers._update_region_meshes(view.camera._view_scale()))
+	view.layers._sync_base_layer()
+	var updated := await _capture_region_pixels(viewport)
+	assert(before.get_data() != updated.get_data(), "Replacing a region did not change the drawn pixels")
+	assert(updated.get_pixel(192, 160).b > 0.9, "The replacement region was not drawn")
+	for zoom in [1.0, 0.5]:
+		view.zoom_factor = zoom
+		view.layers._sync_base_layer()
+		updated = await _capture_region_pixels(viewport)
+		view._tiled_source = null
+		view.layers._sync_base_layer()
+		var reconciled := await _capture_region_pixels(viewport)
+		assert(updated.get_data() == reconciled.get_data(), "Retained region pixels differ from full reconciliation")
+	viewport.queue_free()
+	await process_frame
+	print("PASS: retained region GPU pixels match full reconciliation at two zoom levels")
+
+
+func _colored_entry(position: Vector2, color: Color, divisor: int) -> CityMapSource.MeshEntry:
+	var image := Image.create(2, 2, false, Image.FORMAT_RGBA8)
+	image.fill(color)
+	var mesh := QuadMesh.new()
+	mesh.size = Vector2(24, 24)
+	var entry := CityMapSource.MeshEntry.new(position, mesh, ImageTexture.create_from_image(image), divisor)
+	entry.immutable = true
+	return entry
+
+
+func _capture_region_pixels(viewport: SubViewport) -> Image:
+	await process_frame
+	await RenderingServer.frame_post_draw
+	return viewport.get_texture().get_image()
+
+
+func _check_region_updates(view: CityMapControl, texture: ImageTexture) -> void:
+	var a := CityMapSource.MeshEntry.new(Vector2.ZERO, QuadMesh.new(), texture, 1)
+	var b := CityMapSource.MeshEntry.new(Vector2(256, 0), QuadMesh.new(), texture, 1)
+	a.immutable = true
+	b.immutable = true
+	view.city_source = _source([a, b])
+	view.layers._sync_base_layer()
+	var left := view._mesh_layers[0]
+	var right := view._mesh_layers[1]
+	var changed := CityMapSource.MeshEntry.new(b.position, QuadMesh.new(), texture, 2)
+	changed.immutable = true
+	view.city_source = _source([a, changed])
+	assert(view.layers._update_region_meshes(view.camera._view_scale()))
+	assert(view._mesh_layers[0] == left and left.mesh == a.mesh)
+	assert(view._mesh_layers[1] == right and right.mesh == changed.mesh and right.get_meta("divisor") == 2)
+	view.zoom_factor = 0.5
+	view.layers._sync_base_layer()
+	assert(left.scale == Vector2.ONE * view.camera._view_scale())
+	assert(right.scale == Vector2.ONE * view.camera._view_scale() * 2)
+	view.city_source = _source([changed, a])
+	assert(not view.layers._update_region_meshes(view.camera._view_scale()), "Reordered regions need position reconciliation")
+	view.layers._sync_base_layer()
+	assert(view._mesh_layers[0] == right and view._mesh_layers[1] == left)
+	var moved := CityMapSource.MeshEntry.new(Vector2(512, 0), QuadMesh.new(), texture, 1)
+	view.city_source = _source([moved, a])
+	assert(not view.layers._update_region_meshes(view.camera._view_scale()))
+	view.layers._sync_base_layer()
+	assert(view._mesh_layers[0].position == moved.position * view.camera._view_scale())
+	assert(view._mesh_layers[1] == left)
+	# Public mutable descriptors retain the original reconciliation behavior.
+	moved.position = Vector2(768, 0)
+	view.city_source = _source([moved, a])
+	view.layers._sync_base_layer()
+	assert(view._mesh_layers[0].position == moved.position * view.camera._view_scale())
 
 
 func _check_sign_layout_tokens(view: CityMapControl) -> void:

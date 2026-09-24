@@ -246,7 +246,7 @@ func _sync_base_nodes() -> void:
 
 	var scale := map.camera._view_scale()
 
-	if map._tiled_source != map.city_source:
+	if map._tiled_source != map.city_source and not _update_region_meshes(scale):
 		for tile in map._tile_layers:
 			tile.queue_free()
 
@@ -320,6 +320,40 @@ func _sync_base_nodes() -> void:
 	map._base_layer.show()
 	_sync_base_material()
 	_sync_dynamic_canvas()
+
+
+# A stationary view publishes the same region positions with a few new meshes.
+# Keep the node list and skip unchanged, immutable descriptors. Pans, missing
+# regions, and CPU texture sources still use the full reconciliation above.
+func _update_region_meshes(scale: float) -> bool:
+	var before := map._tiled_source
+	var after := map.city_source
+
+	if (before == null or after.meshes.is_empty() or not before.tiles.is_empty() or not after.tiles.is_empty()
+			or before.meshes.size() != after.meshes.size() or map._mesh_layers.size() != after.meshes.size()):
+		return false
+
+	for index in after.meshes.size():
+		if (not before.meshes[index].immutable or not after.meshes[index].immutable
+				or before.meshes[index].position != after.meshes[index].position):
+			return false
+
+	for index in after.meshes.size():
+		var entry := after.meshes[index]
+
+		if before.meshes[index] == entry:
+			continue
+
+		var mesh := map._mesh_layers[index]
+		mesh.position = entry.position * scale
+		mesh.scale = Vector2.ONE * scale * entry.divisor
+		mesh.mesh = entry.mesh
+		mesh.texture = entry.texture
+		mesh.set_meta("divisor", entry.divisor)
+
+	map._tiled_source = after
+
+	return true
 
 
 func _sync_base_material() -> void:

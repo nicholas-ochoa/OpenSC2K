@@ -405,8 +405,12 @@ func texture() -> CityMapSource:
 		var gpu := entry as CityGpuRegionResult
 
 		if gpu != null:
-			output.meshes.append(CityMapSource.MeshEntry.new(Vector2(gpu.bounds.position * divisor), gpu.mesh, gpu.atlas_texture, divisor,
-				gpu.depth_mesh, gpu.train_depth_mesh))
+			if gpu.source_entry == null:
+				gpu.source_entry = CityMapSource.MeshEntry.new(Vector2(gpu.bounds.position * divisor), gpu.mesh, gpu.atlas_texture, divisor,
+					gpu.depth_mesh, gpu.train_depth_mesh)
+				gpu.source_entry.immutable = true
+
+			output.meshes.append(gpu.source_entry)
 			continue
 
 		output.tiles.append(CityMapSource.TileEntry.new(Vector2(entry.bounds.position * divisor), Vector2(entry.bounds.size * divisor), entry.texture))

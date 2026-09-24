@@ -18,6 +18,8 @@ var mesh: ArrayMesh
 var depth_mesh: ArrayMesh
 var train_depth_mesh: ArrayMesh
 var atlas_texture: ImageTexture
+# Meshes and bounds stay fixed after publication. Views share this descriptor.
+var source_entry: CityMapSource.MeshEntry
 
 
 static func failed(message: String) -> CityGpuRegionResult:

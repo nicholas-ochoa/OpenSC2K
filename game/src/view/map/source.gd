@@ -27,6 +27,8 @@ class TileEntry:
 class MeshEntry:
 	extends RefCounted
 
+	# Region results opt in after upload. Their descriptors never change.
+	var immutable := false
 	var position: Vector2
 	var mesh: Mesh
 	var texture: Texture2D

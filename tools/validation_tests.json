@@ -1129,6 +1129,15 @@
     ]
   },
   {
+    "id": "city_render_retention_test_native",
+    "script": "tests/city_render_retention_test.gd",
+    "domain": "rendering",
+    "lane": "native",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
+  },
+  {
     "id": "render_signature_revision_test",
     "script": "tests/render_signature_revision_test.gd",
     "domain": "rendering",
