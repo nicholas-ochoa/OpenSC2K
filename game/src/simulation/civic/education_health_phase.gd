@@ -124,7 +124,7 @@ static func run(city: CityState, random: SimRandom) -> Result:
 			(city.document.misc_i32(MISC_BUDGETS) / 400)
 		)
 
-	span.mark("mortality and aging")
+	span.mark("mortality, aging and schooling")
 	var deaths := _apply_mortality(population, education, life_expectancy, random)
 	var abandoned_population := city.document.misc_u32(Sc2MiscLayout.ZONE_POPULATIONS + 7 * 4)
 	var pollution_penalty := int(

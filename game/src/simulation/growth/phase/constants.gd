@@ -44,19 +44,27 @@ const CLASS_ABANDONED := 4
 const CHURCH_TILE := Tiles.CHURCH
 
 # fixed timing indices keep per-tile instrumentation inexpensive. tiles replaces
-# the nine per-tile categories unless the debug window asks for detailed timing
+# the ten per-tile categories unless the debug window asks for detailed timing.
+# the order is the execution order: the debug window shows the steps in this order
 enum TimingStep {
-	PREPARE, SCAN, SURFACE, FACILITIES, SUBWAY, SPECIAL_ZONES, TRIPS,
-	POPULATION, COMPLETION, RECOVERY, DENSITY, CHANGES, STORE, TILES,
+	PREPARE, TILES, SCAN, SURFACE, FACILITIES, SPECIAL_ZONES, TRIPS,
+	POPULATION, COMPLETION, RECOVERY, DENSITY, SUBWAY, CHANGES, STORE,
 }
 const TIMING_LABELS := [
-	"prepare and copy city data", "tile scan and eligibility",
-	"surface maintenance", "facility updates and spawning",
-	"subway maintenance", "airport, seaport and military growth",
+	"prepare and copy city data", "all per-tile growth work",
+	"tile scan and eligibility", "surface maintenance",
+	"trains, sailboats and arcologies", "airport, seaport and military growth",
 	"transport trips", "population and abandonment",
 	"construction completion", "abandoned building recovery",
-	"density growth", "find changed chunks",
-	"store growth changes", "all per-tile growth work",
+	"density growth", "subway maintenance",
+	"find changed chunks", "store growth changes",
+]
+# the steps that each timing mode does not measure
+const COARSE_TIMING_STEPS := [TimingStep.TILES]
+const DETAILED_TIMING_STEPS := [
+	TimingStep.SCAN, TimingStep.SURFACE, TimingStep.FACILITIES, TimingStep.SPECIAL_ZONES,
+	TimingStep.TRIPS, TimingStep.POPULATION, TimingStep.COMPLETION, TimingStep.RECOVERY,
+	TimingStep.DENSITY, TimingStep.SUBWAY,
 ]
 
 # scanned tiles between worker checkpoints. a growth tile is expensive, so this

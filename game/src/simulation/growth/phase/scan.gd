@@ -472,6 +472,10 @@ class TileScan extends GrowthConstants:
 		growth.ship_home = counters.ship_home
 		growth.timing = span.finish()
 
+		# report only the steps that this timing mode measures
+		for step: int in (COARSE_TIMING_STEPS if detailed else DETAILED_TIMING_STEPS):
+			growth.timing.steps.erase(TIMING_LABELS[step])
+
 		return growth
 
 

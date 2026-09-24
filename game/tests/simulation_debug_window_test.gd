@@ -132,6 +132,16 @@ func _run() -> void:
 	assert(day_three.get_text(3) == "2.500" and day_three.get_text(6) == "10.000", "Last w/ Delay adds the pacing delay")
 	assert(debug._days.get_root().get_child(0).get_text(6) == "—")
 
+	# steps keep their execution order. a step that first runs in a later month goes after its predecessor
+	for steps in [{"tile recount": 10, "budget": 20, "month_start": 30}, {"tile recount": 10, "budget": 20, "annual_microsim": 40, "month_start": 30}]:
+		host.timing_state.simulation_timings.consume(TimingResults.tick_fixture({"day_results": [{"ok": true, "day": 25,
+			"timing": {"work_usec": 100, "steps": steps}}]}))
+		debug._refresh_metrics()
+
+	var day_one := debug._days.get_root().get_child(0)
+	var order := range(day_one.get_child_count()).map(func(index: int) -> String: return day_one.get_child(index).get_text(1).strip_edges())
+	assert(order == ["tile recount", "budget", "annual_microsim", "month_start"], "Day steps show in execution order")
+
 	assert(not debug._detailed_timing_check.button_pressed, "Per-tile timing detail stays off by default")
 	debug._detailed_timing_check.button_pressed = true
 	assert(host.detailed_timing, "The debug window forwards the detailed-timing request")

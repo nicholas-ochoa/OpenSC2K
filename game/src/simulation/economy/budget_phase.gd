@@ -107,8 +107,8 @@ static func settle_year(city: CityState, annual_budget_approved := false) -> Res
 
 		return interactive
 
-	span.mark("annual settlement")
 	if BinaryData.read_u32_be(misc, MISC_YEAR_END) != 0 and month == 0:
+		span.mark("annual settlement")
 		settled_year = true
 
 		for budget_id in BUDGET_COUNT:

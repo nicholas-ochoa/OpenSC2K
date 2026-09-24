@@ -89,6 +89,7 @@ static func run(city: CityState) -> Result:
 		zone_population[3] + zone_population[4],
 		zone_population[5] + zone_population[6],
 	])
+	span.mark("demand targets")
 	var previous_population := city.document.misc_i32(NORMAL_POPULATION_OFFSET)
 	var normal_population := int(zone_population[0] * 10)
 	var old_residential := city.document.misc_i32(OLD_RESIDENTIAL_POPULATION_OFFSET)

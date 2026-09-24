@@ -199,7 +199,7 @@ static func run_land_value_and_crime(city: CityState) -> PollutionPhase.Result:
 	industrial = NativeGridMath.smooth(industrial, edge, 1, 1, 4, 1, city.simulation_slice)
 	span.mark("population density")
 	var population := NativeGridMath.neighborhood_bytes(weights, edge, 2, 64, city.simulation_slice)
-	span.mark("land value, growth and crime sources")
+	span.mark("land value, population change and crime sources")
 	var land_sum := 0
 	var land := PackedByteArray()
 	var growth := PackedByteArray()

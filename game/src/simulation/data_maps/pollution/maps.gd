@@ -72,7 +72,7 @@ static func build(
 	span.mark("services and population sources")
 	_add_services_and_population_sources(maps)
 
-	span.mark("population and growth")
+	span.mark("population and population change")
 	_compute_population_and_growth(maps, old_population, growth_chunk.decoded_payload)
 	_seed_crime_sources(maps)
 

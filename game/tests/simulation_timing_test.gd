@@ -56,7 +56,7 @@ func _initialize() -> void:
 ## fine steps. Neither mode may change the city, the counters, or the generators.
 func _check_growth_detail_flag() -> void:
 	const PER_TILE_LABELS := ["tile scan and eligibility", "surface maintenance",
-		"facility updates and spawning", "subway maintenance",
+		"trains, sailboats and arcologies", "subway maintenance",
 		"airport, seaport and military growth", "transport trips",
 		"population and abandonment", "construction completion",
 		"abandoned building recovery", "density growth"]
@@ -85,13 +85,13 @@ func _check_growth_detail_flag() -> void:
 		var fine := 0
 
 		for label: String in PER_TILE_LABELS:
-			fine += int(steps[label])
+			assert(steps.has(label) == detailed, "Each timing mode reports only the steps it measures")
+			fine += int(steps.get(label, 0))
 
 		if detailed:
-			assert(steps["all per-tile growth work"] == 0)
+			assert(not steps.has("all per-tile growth work"))
 			assert(fine > 0, "Detailed timing splits the tile loop into its steps")
 		else:
-			assert(fine == 0, "The per-tile steps are not measured by default")
 			assert(steps["all per-tile growth work"] > 0)
 
 		assert(growth.scanned_tiles == 1024 and growth.rci_tiles == 4)
@@ -142,13 +142,17 @@ func _check_phase_timings(history: SimulationTimingHistory) -> void:
 		history.consume(TimingResults.tick_fixture({"day_results": [day]}))
 		history.consume(TimingResults.tick_fixture({"day_results": [day]}))
 
-		var parent_key := "Day %02d / %s" % [posmod(pair[0], 25) + 1, pair[1]]
+		var group := SimulationTimingHistory._phase_group(pair[1])
+		var parent_key := "Day %02d / %s" % [posmod(pair[0], 25) + 1, group]
 		assert(history.steps[parent_key].count == 2, "Phase totals are not counted again when details arrive")
 		assert(history.steps[parent_key].total_usec == day.timing.steps[pair[1]] * 2)
+		var previous := ""
 
 		for label: String in phase.timing.steps:
-			var key := "Day %02d / %s / %s" % [posmod(pair[0], 25) + 1, pair[1], label]
+			var key := "Day %02d / %s / %s" % [posmod(pair[0], 25) + 1, group, label]
 			assert(history.steps.has(key), "Phase details retain their own group and displayed day")
+			assert(history.step_after[key] == previous, "Each step records the step that ran before it")
+			previous = key
 			assert(history.steps[key].count == 2, "Repeated inner calls aggregate once per phase execution")
 			assert(history.steps[key].total_usec == phase.timing.steps[label] * 2)
 

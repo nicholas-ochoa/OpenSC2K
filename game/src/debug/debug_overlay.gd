@@ -395,9 +395,11 @@ func _refresh_day_rows(history: SimulationTimingHistory) -> void:
 		_day_rows[day].set_text(6, "—" if sample == null else "%.3f" % (float(sample.last_usec + sample.last_delay_usec) / 1000.0))
 
 	var samples: Dictionary[String, SimulationTimingHistory.Sample] = {}
+	var step_after: Dictionary[String, String] = {}
 
 	if history != null:
 		samples = history.steps
+		step_after = history.step_after
 
 	# include intermediate groups even when they have no measured total
 	var desired: Dictionary = {}
@@ -421,10 +423,8 @@ func _refresh_day_rows(history: SimulationTimingHistory) -> void:
 			_step_rows[label].free()
 			_step_rows.erase(label)
 
-	var labels := desired.keys()
-	labels.sort()
-
-	for label: String in labels:
+	# the history records parents before their steps, so each parent row exists first
+	for label: String in desired:
 		var row: TreeItem = _step_rows.get(label)
 
 		if row == null:
@@ -452,7 +452,7 @@ func _refresh_day_rows(history: SimulationTimingHistory) -> void:
 
 				parent = _other_steps
 
-			row = _days.create_item(parent)
+			row = _days.create_item(parent, _step_index(parent, step_after.get(label)))
 			row.set_text(1, "      ".repeat(depth) + parts[-1])
 			row.set_tooltip_text(1, label)
 			row.set_tooltip_text(5, ("One sample per measured phase execution. Repeated tile and network work is summed. Phase totals include their " +
@@ -464,6 +464,20 @@ func _refresh_day_rows(history: SimulationTimingHistory) -> void:
 	if _other_steps != null and _other_steps.get_child_count() == 0:
 		_other_steps.free()
 		_other_steps = null
+
+
+# steps show in execution order: after the step that ran before them, or first.
+# a step with an unknown order goes last
+func _step_index(parent: TreeItem, after: Variant) -> int:
+	if after == null:
+		return -1
+
+	var previous: TreeItem = _step_rows.get(after)
+
+	if previous != null and previous.get_parent() == parent:
+		return previous.get_index() + 1
+
+	return 0 if str(after).is_empty() else -1
 
 
 func _mark_current_day() -> void:

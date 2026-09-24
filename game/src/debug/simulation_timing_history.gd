@@ -29,6 +29,9 @@ class Sample extends RefCounted:
 
 var days: Dictionary[int, Sample] = {}
 var steps: Dictionary[String, Sample] = {}
+# the sibling step that ran before each step when it was first recorded. an
+# empty text marks a first step. the debug window keeps the steps in this order
+var step_after: Dictionary[String, String] = {}
 # mean of the day slot averages without outliers. 0 until enough slots have samples
 var typical_day_usec := 0
 
@@ -36,14 +39,19 @@ var typical_day_usec := 0
 func clear() -> void:
 	days.clear()
 	steps.clear()
+	step_after.clear()
 	typical_day_usec = 0
 
 
-func record_step(label: String, usec: int) -> void:
+# `after` is the step that ran before this one in the same group, or null when it is not known
+func record_step(label: String, usec: int, after: Variant = null) -> void:
 	var row: Sample = steps.get(label)
 
 	if row == null:
 		row = Sample.new()
+
+		if after != null:
+			step_after[label] = after
 
 	row.count += 1
 	row.total_usec += usec
@@ -76,14 +84,19 @@ func consume(result: SimulationTickResult) -> void:
 		row.max_usec = maxi(row.max_usec, row.last_usec)
 		days[slot] = row
 
+		var previous := ""
+
 		for label in day.timing.steps:
-			record_step("Day %02d / %s" % [slot + 1, _phase_group(label)], day.timing.steps[label])
+			var day_step := "Day %02d / %s" % [slot + 1, _phase_group(label)]
+			record_step(day_step, day.timing.steps[label], previous)
+			previous = day_step
 
 		var phases := day.phase_results
 
 		for phase_name: String in phases:
 			var phase: PhaseResult = phases[phase_name]
-			var group := _phase_group(phase_name)
+			# day 22 records the calculation as simnation. day 25 has a simnation window refresh
+			var group := "simnation calculation" if phase is SimNationPhase.Result else _phase_group(phase_name)
 			var measured_parent := false
 
 			for label: String in day.timing.steps:
@@ -94,8 +107,12 @@ func consume(result: SimulationTickResult) -> void:
 			if phase.timing.has_total and not measured_parent:
 				record_step("Day %02d / %s" % [slot + 1, group], phase.timing.work_usec)
 
+			var previous_step := ""
+
 			for label in phase.timing.steps:
-				record_step("Day %02d / %s / %s" % [slot + 1, group, label], phase.timing.steps[label])
+				var phase_step := "Day %02d / %s / %s" % [slot + 1, group, label]
+				record_step(phase_step, phase.timing.steps[label], previous_step)
+				previous_step = phase_step
 
 	for item in result.moving_results:
 		if item.ok and not item.timing.is_empty():
@@ -148,9 +165,15 @@ static func _phase_group(label: String) -> String:
 	match label:
 		"pollution_terrain_land_value":
 			return "data maps"
-		"simnation calculation":
-			return "simnation"
 		"pollution_coverage":
 			return "pollution and coverage"
+		"statistics_windows":
+			return "statistics window refresh"
+		"map":
+			return "map refresh"
+		"simnation":
+			return "simnation window refresh"
+		"weather_disaster":
+			return "city status and disasters"
 
 	return label

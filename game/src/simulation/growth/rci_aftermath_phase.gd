@@ -189,7 +189,7 @@ static func run(city: CityState, random: SimRandom, season: int) -> Result:
 	var graphs: PackedByteArray = graph_chunk.decoded_payload
 	var map_changes: Array[MapChange] = []
 
-	span.mark("ecology")
+	span.mark("random tree")
 	_update_random_tree(city, random, buildings, zones, flags, misc, map_changes)
 	span.mark("news decay and selection")
 	var queue_decay := NewsQueue.decay_and_sort(misc)
