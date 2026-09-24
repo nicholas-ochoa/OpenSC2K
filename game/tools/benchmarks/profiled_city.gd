@@ -19,6 +19,7 @@ func _process(delta: float) -> void:
 
 
 func _init() -> void:
+	frame = ProfileFrame.new(self)
 	moving_sprites = ProfileMovingSprites.new(self)
 	interface = ProfileInterface.new(self)
 	map_render = ProfileMapRender.new(self)
@@ -28,6 +29,14 @@ func _init() -> void:
 		static_render.city_view_size, static_render.sprite_archive_for_view)
 	effects_audio = ApplicationEffectsAudio.new(document_state, view_state, asset_state,
 		simulation_state, preferences, static_render.city_view_size, static_render.sprite_archive_for_view)
+
+
+class ProfileFrame extends ApplicationFrame:
+
+	func consume_simulation_result(result: SimulationTickResult) -> void:
+		var started := Time.get_ticks_usec()
+		super.consume_simulation_result(result)
+		app._record("consume_simulation", started)
 
 
 class ProfileMovingSprites extends ApplicationMovingSprites:
@@ -54,6 +63,16 @@ class ProfileInterface extends ApplicationInterface:
 
 
 class ProfileMapRender extends ApplicationMapRender:
+
+	func refresh_region_map(force := true, dirty := Rect2i()) -> void:
+		var before: Array = caches.region_cache.signature.duplicate() if caches.region_cache != null else []
+		var started := Time.get_ticks_usec()
+		super.refresh_region_map(force, dirty)
+		app._record("region_refresh", started)
+		if caches.region_cache != null and before.size() == caches.region_cache.signature.size():
+			for index in before.size():
+				if before[index] != caches.region_cache.signature[index]:
+					app._record("signature_field_%d_changed" % index, Time.get_ticks_usec())
 
 	func refresh_map(force := true) -> void:
 		var started := Time.get_ticks_usec()
