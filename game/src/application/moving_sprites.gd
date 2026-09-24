@@ -386,10 +386,8 @@ func _dynamic_occluder_image(
 		position.x, position.y, size.x, size.y, draw_order, int(is_train),
 		app.static_render_state.epoch, texture_factor,
 	]
-	# `occluder_key_bounds` reads the first four values
-
 	if caches.dynamic_occluder_cache.has(cache_key):
-		return caches.dynamic_occluder_cache[cache_key] as Image
+		return caches.dynamic_occluder_cache[cache_key].image
 
 	var bounds := Rect2i(position, size)
 
@@ -452,16 +450,9 @@ func _dynamic_occluder_image(
 			(overlap.position - position) * texture_factor,
 		)
 
-	caches.dynamic_occluder_cache[cache_key] = mask
+	caches.dynamic_occluder_cache[cache_key] = RenderCaches.OccluderMask.new(bounds, mask)
 
 	return mask
-
-
-# return the screen bounds in a `_dynamic_occluder_image` cache key
-static func occluder_key_bounds(key: String) -> Rect2i:
-	var values := key.split(":", false, 4)
-
-	return Rect2i(int(values[0]), int(values[1]), int(values[2]), int(values[3]))
 
 
 func set_static_occlusion_commands(commands: Array[CityStaticCommand], view_size: int) -> void:

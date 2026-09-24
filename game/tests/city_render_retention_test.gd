@@ -6,6 +6,7 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	_check_changed_areas()
 	var view := CityMapControl.new()
 	root.add_child(view)
 	var mesh_a := QuadMesh.new()
@@ -58,13 +59,16 @@ func _run() -> void:
 		"shadow": shadow,
 		"unoccluded": CityDynamicVisual.new(null, Vector2(100, 100), Vector2(20, 20)),
 	})
-	main.render_caches.dynamic_occluder_cache.assign({"0:0:20:20:5:0:0:1": null, "100:100:20:20:5:0:0:1": null})
+	main.render_caches.dynamic_occluder_cache.assign({
+		"near": RenderCaches.OccluderMask.new(Rect2i(0, 0, 20, 20), null),
+		"far": RenderCaches.OccluderMask.new(Rect2i(100, 100, 20, 20), null),
+	})
 	# the region pixels changed, but its silhouettes changed only near the origin
 	var near: Array[Rect2i] = [Rect2i(0, 0, 256, 256)]
 	var near_silhouettes: Array[Rect2i] = [Rect2i(0, 0, 64, 64)]
 	main.map_render._invalidate_region_foregrounds(near, near_silhouettes)
 	assert(main.render_caches.dynamic_visual_cache.keys() == ["far", "unoccluded"])
-	assert(main.render_caches.dynamic_occluder_cache.keys() == ["100:100:20:20:5:0:0:1"])
+	assert(main.render_caches.dynamic_occluder_cache.keys() == ["far"])
 	assert(not main.render_caches.sign_foreground_cache.has(1) and main.render_caches.sign_foreground_cache.has(2))
 	var whole: Array[Rect2i] = [Rect2i(0, 0, 1024, 1024)]
 	main.map_render._invalidate_region_foregrounds(whole, whole)
@@ -105,6 +109,8 @@ func _check_region_pixels() -> void:
 	var before := await _capture_region_pixels(viewport)
 	var changed := _colored_entry(right.position, Color.BLUE, 2)
 	view.city_source = _source([left, changed])
+	view.city_source.mesh_updates_from = view._tiled_source.get_instance_id()
+	view.city_source.mesh_updates = PackedInt32Array([1])
 	assert(view.layers._update_region_meshes(view.camera._view_scale()))
 	view.layers._sync_base_layer()
 	var updated := await _capture_region_pixels(viewport)
@@ -151,6 +157,8 @@ func _check_region_updates(view: CityMapControl, texture: ImageTexture) -> void:
 	var changed := CityMapSource.MeshEntry.new(b.position, QuadMesh.new(), texture, 2)
 	changed.immutable = true
 	view.city_source = _source([a, changed])
+	view.city_source.mesh_updates_from = view._tiled_source.get_instance_id()
+	view.city_source.mesh_updates = PackedInt32Array([1])
 	assert(view.layers._update_region_meshes(view.camera._view_scale()))
 	assert(view._mesh_layers[0] == left and left.mesh == a.mesh)
 	assert(view._mesh_layers[1] == right and right.mesh == changed.mesh and right.get_meta("divisor") == 2)
@@ -158,6 +166,21 @@ func _check_region_updates(view: CityMapControl, texture: ImageTexture) -> void:
 	view.layers._sync_base_layer()
 	assert(left.scale == Vector2.ONE * view.camera._view_scale())
 	assert(right.scale == Vector2.ONE * view.camera._view_scale() * 2)
+	# A consumer can miss a publication. Its older snapshot needs a full diff.
+	var changed_left := CityMapSource.MeshEntry.new(a.position, QuadMesh.new(), texture, 1)
+	changed_left.immutable = true
+	var skipped := _source([changed_left, changed])
+	skipped.mesh_updates_from = view.city_source.get_instance_id()
+	skipped.mesh_updates = PackedInt32Array([0])
+	var changed_right := CityMapSource.MeshEntry.new(changed.position, QuadMesh.new(), texture, 1)
+	changed_right.immutable = true
+	view.city_source = _source([changed_left, changed_right])
+	view.city_source.mesh_updates_from = skipped.get_instance_id()
+	view.city_source.mesh_updates = PackedInt32Array([1])
+	assert(view.layers._update_region_meshes(view.camera._view_scale()))
+	assert(left.mesh == changed_left.mesh and right.mesh == changed_right.mesh, "Skipped publications lost a mesh replacement")
+	a = changed_left
+	changed = changed_right
 	view.city_source = _source([changed, a])
 	assert(not view.layers._update_region_meshes(view.camera._view_scale()), "Reordered regions need position reconciliation")
 	view.layers._sync_base_layer()
@@ -202,3 +225,19 @@ func _source(meshes: Array[CityMapSource.MeshEntry]) -> CityMapSource:
 	result.meshes = meshes
 
 	return result
+
+
+func _check_changed_areas() -> void:
+	var rectangles: Array[Rect2i] = []
+	for x in [-257, -128, -1, 0, 127, 128, 129, 400, 513]:
+		rectangles.append(Rect2i(x, x + 37, 23, 129))
+	for count in [0, 1, 8, 9]:
+		var areas := rectangles.slice(0, count)
+		var indexed := ApplicationMapRender.ChangedAreas.new(areas)
+		for x in range(-300, 601, 29):
+			for edge in [1, 23, 128, 300]:
+				var bounds := Rect2i(x, x - 17, edge, edge)
+				var expected := false
+				for area in areas:
+					expected = expected or bounds.intersects(area)
+				assert(indexed.intersects(bounds) == expected, "Indexed changes disagree at a cell boundary")

@@ -62,11 +62,17 @@ func _run() -> void:
 
 	# 5 Hz keeps the original steps and the exact CPU occlusion path.
 	main.settings._set_moving_frame_rate(5)
+	assert(main.render_caches.region_cache.covered(), "Changing depth mode must keep the city visible")
+	await _wait_for_regions(main)
+	assert(not main.map_view.city_source.has_occlusion_depth(), "5 Hz must release unused region depth meshes")
 	assert(not main.map_view.moving_occlusion_active())
 	assert(_gpu_visuals(main).is_empty(), "5 Hz uses the CPU visual path")
 	main.moving_sprites.note_moving_tick(start + 2000)
 	assert(main.map_view._dynamic_canvas.blend_offsets.is_empty(), "5 Hz does not blend")
 	main.settings._set_moving_frame_rate(30)
+	assert(main.render_caches.region_cache.covered(), "Enabling depth must keep the city visible")
+	await _wait_for_regions(main)
+	main.moving_sprites.refresh_moving_things()
 	assert(main.map_view.moving_occlusion_active() and _gpu_visuals(main).size() > 0)
 	main.queue_free()
 	await process_frame

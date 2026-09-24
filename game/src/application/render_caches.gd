@@ -29,6 +29,15 @@ class SignForeground extends RefCounted:
 		signature = stamp
 
 
+class OccluderMask extends RefCounted:
+	var bounds: Rect2i
+	var image: Image
+
+	func _init(area: Rect2i, mask: Image) -> void:
+		bounds = area
+		image = mask
+
+
 # region workers and the whole-city static image
 var region_cache: CityRegionCache
 var static_city_image: Image
@@ -41,7 +50,7 @@ var static_view_cache: Dictionary[CityViewMode.Mode, StaticView] = {}
 # moving sprite and sign composition
 var dynamic_sprite_cache: Dictionary[String, CitySpriteResource] = {}
 var dynamic_foreground_cache: Dictionary[String, Image] = {}
-var dynamic_occluder_cache: Dictionary[String, Image] = {}
+var dynamic_occluder_cache: Dictionary[String, OccluderMask] = {}
 var dynamic_visual_cache: Dictionary[String, CityDynamicVisual] = {}
 var dynamic_command_cache := CityDynamicCommandCache.new()
 var foreground_view_rect := Rect2()

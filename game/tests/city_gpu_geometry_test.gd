@@ -64,6 +64,13 @@ func _run() -> void:
 			request.signs = [] as Array[CitySignRequest]
 			var batch := CityGpuRegionBatch.build(request, context, -1)
 			assert(batch.ok and batch.regions.size() == 3 and batch.atlas_image != null)
+			request.occlusion_depth = false
+			var without_depth := CityGpuRegionBatch.build(request, CityGpuBuildContext.new(), -1)
+			assert(without_depth.ok and without_depth.atlas_image.get_data() == batch.atlas_image.get_data(), "Depth mode changed atlas placement")
+			for index in batch.regions.size():
+				assert(without_depth.regions[index].gpu_arrays == batch.regions[index].gpu_arrays)
+				assert(without_depth.regions[index].depth_arrays.is_empty() and without_depth.regions[index].train_depth_arrays.is_empty())
+			request.occlusion_depth = true
 			for region: CityGpuRegionResult in batch.regions:
 				var expected := CityRegionRenderer.render(city, palette, sprites, region.bounds, view, mode)
 				expected.image.convert(Image.FORMAT_LA8)

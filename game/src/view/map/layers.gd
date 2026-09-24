@@ -333,16 +333,18 @@ func _update_region_meshes(scale: float) -> bool:
 			or before.meshes.size() != after.meshes.size() or map._mesh_layers.size() != after.meshes.size()):
 		return false
 
-	for index in after.meshes.size():
-		if (not before.meshes[index].immutable or not after.meshes[index].immutable
-				or before.meshes[index].position != after.meshes[index].position):
-			return false
+	var changed := after.mesh_updates
+	if after.mesh_updates_from != before.get_instance_id():
+		changed = PackedInt32Array()
+		for index in after.meshes.size():
+			if (not before.meshes[index].immutable or not after.meshes[index].immutable
+					or before.meshes[index].position != after.meshes[index].position):
+				return false
+			if before.meshes[index] != after.meshes[index]:
+				changed.append(index)
 
-	for index in after.meshes.size():
+	for index in changed:
 		var entry := after.meshes[index]
-
-		if before.meshes[index] == entry:
-			continue
 
 		var mesh := map._mesh_layers[index]
 		mesh.position = entry.position * scale

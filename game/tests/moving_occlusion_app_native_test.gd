@@ -3,6 +3,10 @@ extends SceneTree
 ## moving-object path (20 Hz) and on the original CPU path (5 Hz). This covers
 ## the region cache, window scale, graphics sizes and screen buffer placement.
 
+class FrozenCommands extends CityDynamicCommandCache:
+	func get_commands(city: CityState, sprites: Sc2SpriteArchive, view: int, _phase: int) -> Array[CityDynamicCommand]:
+		return super.get_commands(city, sprites, view, 0)
+
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -16,11 +20,16 @@ func _run() -> void:
 		return
 
 	OS.set_environment("OPENSC2K_CITY_RENDERER", "gpu")
+	# Keep sampling independent of the desktop's fractional window stretch.
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+	root.size = Vector2i(2560, 1600)
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
 	preload("res://tests/support/app_fixture.gd").configure(main, true)
 	root.add_child(main)
 	await process_frame
 	main.set_process(false)
+	# Depth mode changes can span display animation phases while regions drain.
+	main.render_caches.dynamic_command_cache = FrozenCommands.new()
 	main.main_menu.city_background.set_process(false)
 	assert(main.city_session.activate_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/FLARANGE.SC2")))
 	main.main_menu.hide()
@@ -52,6 +61,7 @@ func _run() -> void:
 
 func _capture(main: Node, rate: int) -> Image:
 	main.settings._set_moving_frame_rate(rate)
+	await _wait_for_regions(main)
 	main.moving_sprites.refresh_moving_things()
 
 	for frame in 3:

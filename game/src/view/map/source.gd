@@ -54,6 +54,10 @@ var size: Vector2i
 var texture: Texture2D
 var tiles: Array[TileEntry] = []
 var meshes: Array[MeshEntry] = []
+# Region snapshots can replace a few entries without changing their order.
+# Keep only the predecessor ID, never a reference that retains older meshes.
+var mesh_updates_from := 0
+var mesh_updates := PackedInt32Array()
 
 
 func _init(source_size: Vector2i, whole_texture: Texture2D = null) -> void:

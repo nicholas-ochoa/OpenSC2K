@@ -159,6 +159,7 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 			cache._viewport_valid = false
 			cache._foreground_reset = true
 			cache.entries.clear()
+			cache._published_source = null
 			cache._layout_generation += 1
 			cache._changed = false
 
@@ -227,17 +228,17 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 				active[key] = true
 
 	var queue: Array[Vector2i] = []
-	queue.assign(cache.visible)
 	# fill holes first, then refresh the oldest visible versions. continuous
 	# simulation updates must not repeatedly rebuild only the center regions
 	var ranked: Array[Vector3i] = []
 
-	for index in queue.size():
-		var key := queue[index]
+	for index in cache.visible.size():
+		var key := cache.visible[index]
+		if active.has(key) or (cache.entries.has(key) and cache.entries[key].generation == cache.generation):
+			continue
 		ranked.append(Vector3i((cache.entries[key].generation if cache.entries.has(key) else -1), index, (key.x << 16) | key.y))
 
 	ranked.sort()
-	queue.clear()
 
 	for rank in ranked:
 		queue.append(Vector2i(rank.z >> 16, rank.z & 0xffff))
@@ -316,6 +317,7 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 		request.pipes = cache._show_pipes
 		request.subways = cache._show_subways
 		request.generation = cache.generation
+		request.occlusion_depth = cache._occlusion_depth
 		request.signs = cache.sign_requests
 		var error: Error = worker.task.start(CityGpuRegionBatch.build.bind(request, worker.context, worker.atlas_revision))
 
@@ -326,6 +328,7 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 			cache.wanted.resize(mini(cache.wanted.size(), cache.visible.size() + CityRegionCache.OFFSCREEN_LIMIT))
 			cache._viewport_valid = false
 			cache.entries.clear()
+			cache._published_source = null
 			cache._layout_generation += 1
 
 			return true

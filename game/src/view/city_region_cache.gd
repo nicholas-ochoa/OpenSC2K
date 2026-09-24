@@ -51,6 +51,11 @@ var _show_water_mains := true
 var _show_pipes := true
 var _show_subways := true
 var _prepared := false
+var _occlusion_depth := true
+var _published_source: CityMapSource
+var _published_viewport := -1
+var _published_indices: Dictionary[Vector2i, int] = {}
+var _source_updates: Dictionary[Vector2i, bool] = {}
 var _task: CityRenderTask
 var _job_key := Vector2i.ZERO
 var _job_generation := 0
@@ -133,6 +138,7 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 				entry.generation = generation
 
 	if reset:
+		_published_source = null
 		_edit_priority.clear()
 		_foreground_reset = true
 		_viewport_valid = false
@@ -160,6 +166,21 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	_show_pipes = show_pipes
 	_show_subways = show_subways
 	_prepared = mode == CityViewMode.Mode.UNDERGROUND
+
+
+func set_occlusion_depth(value: bool) -> void:
+	if _occlusion_depth == value:
+		return
+
+	_occlusion_depth = value
+	if _snapshot == null:
+		return
+
+	# Retain base meshes while workers replace depth data. In-flight results
+	# from the former mode must not publish. The city and artwork stay fixed.
+	generation += 1
+	_layout_generation += 1
+	_gpu_has_work = true
 
 
 func _keep_source_payloads(city: CityState) -> void:
@@ -341,6 +362,7 @@ func tick() -> bool:
 
 # record the screen areas that change when `after` replaces `before`
 func publish_changes(before: CityRegionResult, after: CityRegionResult) -> void:
+	_source_updates[after.bounds.position / region_edge] = true
 	var region := Rect2i(after.bounds.position * divisor, after.bounds.size * divisor)
 	foreground_changes.append(region)
 	var changed: Array[Rect2i] = []
@@ -394,7 +416,13 @@ static func _same_command(left: CityStaticCommand, right: CityStaticCommand) -> 
 
 
 func texture() -> CityMapSource:
+	if gpu_enabled and _published_source != null and _published_viewport == _viewport_serial:
+		var incremental := _updated_source()
+		if incremental != null:
+			return incremental
+
 	var output := CityMapSource.new(native_size * divisor)
+	_published_indices.clear()
 
 	for key in visible:
 		if not entries.has(key):
@@ -405,17 +433,47 @@ func texture() -> CityMapSource:
 		var gpu := entry as CityGpuRegionResult
 
 		if gpu != null:
-			if gpu.source_entry == null:
-				gpu.source_entry = CityMapSource.MeshEntry.new(Vector2(gpu.bounds.position * divisor), gpu.mesh, gpu.atlas_texture, divisor,
-					gpu.depth_mesh, gpu.train_depth_mesh)
-				gpu.source_entry.immutable = true
-
-			output.meshes.append(gpu.source_entry)
+			_published_indices[key] = output.meshes.size()
+			output.meshes.append(_mesh_entry(gpu))
 			continue
 
 		output.tiles.append(CityMapSource.TileEntry.new(Vector2(entry.bounds.position * divisor), Vector2(entry.bounds.size * divisor), entry.texture))
 
+	_source_updates.clear()
+	_published_viewport = _viewport_serial
+	_published_source = output
 	return output
+
+
+func _mesh_entry(gpu: CityGpuRegionResult) -> CityMapSource.MeshEntry:
+	if gpu.source_entry == null:
+		gpu.source_entry = CityMapSource.MeshEntry.new(Vector2(gpu.bounds.position * divisor), gpu.mesh, gpu.atlas_texture, divisor,
+			gpu.depth_mesh, gpu.train_depth_mesh)
+		gpu.source_entry.immutable = true
+	return gpu.source_entry
+
+
+func _updated_source() -> CityMapSource:
+	var output: CityMapSource
+	for key in _source_updates:
+		if not _published_indices.has(key):
+			if key in visible:
+				return null # A missing region arrived. Rebuild the ordered list.
+			continue
+		var gpu := entries.get(key) as CityGpuRegionResult
+		if gpu == null:
+			return null
+		if output == null:
+			output = CityMapSource.new(native_size * divisor)
+			output.meshes.assign(_published_source.meshes)
+			output.mesh_updates_from = _published_source.get_instance_id()
+		var index := _published_indices[key]
+		output.meshes[index] = _mesh_entry(gpu)
+		output.mesh_updates.append(index)
+	_source_updates.clear()
+	if output != null:
+		_published_source = output
+	return _published_source
 
 
 func occlusion_candidates(bounds: Rect2i) -> Array[CityStaticCommand]:
@@ -575,6 +633,9 @@ func close() -> void:
 
 	_task = null
 	entries.clear()
+	_published_source = null
+	_published_indices.clear()
+	_source_updates.clear()
 	source_payloads.clear()
 	_snapshot = null
 	display_city = null

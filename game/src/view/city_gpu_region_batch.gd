@@ -18,6 +18,7 @@ class Request extends RefCounted:
 	var subways := true
 	var water_mains := true
 	var generation := 0
+	var occlusion_depth := true
 	var signs: Array[CitySignRequest] = []
 
 
@@ -45,7 +46,7 @@ static func build(request: Request, context: CityGpuBuildContext, uploaded_revis
 		var bounds := Rect2i(key * int(request.edge), Vector2i.ONE * int(request.edge))
 		var result := CityGpuRegionRenderer.render(display, request.palette, request.sprites,
 			bounds, request.view, request.mode, request.pipes, request.subways,
-			context, request.generation, uploaded_revision, false, request.water_mains)
+			context, request.generation, uploaded_revision, false, request.water_mains, request.occlusion_depth)
 
 		if not result.ok:
 			return Result.failure(result.error)

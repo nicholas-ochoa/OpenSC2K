@@ -21,11 +21,33 @@ func _run() -> void:
 	assert(cache.texture().meshes.size() == cache.visible.size())
 	var first_source := cache.texture()
 	var repeated_source := cache.texture()
-	assert(first_source != repeated_source)
+	assert(first_source == repeated_source, "Unchanged publication must return the same source snapshot")
 
 	for index in first_source.meshes.size():
 		assert(first_source.meshes[index] == repeated_source.meshes[index] and first_source.meshes[index].immutable,
 			"Publishing unchanged regions must retain their immutable mesh descriptors")
+	# Replacing one region must not mutate a retained snapshot or scan all entries.
+	var changed_key := cache.visible[0]
+	var prior_region: CityGpuRegionResult = cache.entries[changed_key]
+	var replacement := CityGpuRegionResult.new()
+	replacement.bounds = prior_region.bounds
+	replacement.mesh = ArrayMesh.new()
+	replacement.atlas_texture = prior_region.atlas_texture
+	cache.publish_changes(prior_region, replacement)
+	cache.entries[changed_key] = replacement
+	var updated := cache.texture()
+	assert(updated != first_source and updated.mesh_updates_from == first_source.get_instance_id())
+	assert(updated.mesh_updates.size() == 1)
+	var changed_index := updated.mesh_updates[0]
+	assert(first_source.meshes[changed_index].mesh == prior_region.mesh)
+	assert(updated.meshes[changed_index].mesh == replacement.mesh)
+	cache.publish_changes(replacement, prior_region)
+	cache.entries[changed_key] = prior_region
+	cache.texture()
+	var previous_source: WeakRef = weakref(first_source)
+	first_source = null
+	repeated_source = null
+	assert(previous_source.get_ref() == null, "Incremental snapshots must not retain their predecessors")
 	var expected := CityRegionRenderer.render(city, palette, sprites, bounds, 2)
 	assert(expected.ok)
 	var sampled := cache.image_region(bounds)

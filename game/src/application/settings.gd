@@ -221,10 +221,13 @@ func _set_moving_frame_rate(value: int) -> void:
 	if rate == preferences.moving_frame_rate:
 		return
 
+	var depth_changed := (rate > ApplicationMovingSprites.ORIGINAL_FRAME_RATE) != (preferences.moving_frame_rate > ApplicationMovingSprites.ORIGINAL_FRAME_RATE)
 	preferences.moving_frame_rate = rate
 	app.moving_sprites.reset_blend()
 
 	if app.document_state.city != null and app.map_view != null:
+		if depth_changed and app.render_caches.region_cache != null and app.render_caches.region_cache.gpu_enabled:
+			app.render_caches.region_cache.set_occlusion_depth(rate > ApplicationMovingSprites.ORIGINAL_FRAME_RATE)
 		app.moving_sprites.refresh_moving_things()
 
 

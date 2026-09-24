@@ -99,6 +99,30 @@ static func build(foreground: Array[CityStaticCommand], draws: Array[CityGpuDraw
 	return result
 
 
+# Keep atlas placement stable when depth meshes are disabled. Only crossing
+# masks add images; ordinary silhouettes already have slots in the base mesh.
+static func reserve_masks(foreground: Array[CityStaticCommand], draws: Array[CityGpuDrawList.Draw], bounds: Rect2i,
+		context: CityGpuBuildContext, sprites: Sc2SpriteArchive, palette: Sc2Palette) -> void:
+	var masks: Array[Quad] = []
+	for index in foreground.size():
+		var command := foreground[index]
+		if command.train_ignore or (command.train_foreground_reference_sprite_id == 0 and command.train_deck_thickness == 0):
+			continue
+		var draw := draws[index]
+		var mask := _train_mask(command, draw.image, context, sprites, palette)
+		if mask == null or not Rect2i(draw.position, mask.get_size()).intersects(bounds):
+			continue
+		var limited := command.train_foreground_requires_depth or command.train_deck_thickness != 0
+		masks.append(Quad.new(mini(command.depth_order, MAX_ORDER) + 2 if limited else ALWAYS, mask,
+			Rect2i(Vector2i.ZERO, mask.get_size()), draw.position))
+	# Preserve painter order for equal depth, including unconditional masks.
+	var ordered := range(masks.size())
+	ordered.sort_custom(func(left: int, right: int) -> bool:
+		return masks[left].value < masks[right].value or (masks[left].value == masks[right].value and left < right))
+	for index in ordered:
+		context.slot(masks[index].image)
+
+
 static func _arrays(quads: Array[Quad], bounds: Rect2i, context: CityGpuBuildContext) -> Array:
 	# a stable sort keeps painter order among equal values
 	var ordered := range(quads.size())

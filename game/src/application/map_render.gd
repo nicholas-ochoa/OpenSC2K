@@ -13,6 +13,38 @@ var app: CityApplication
 var caches: RenderCaches
 
 
+class ChangedAreas extends RefCounted:
+	var rectangles: Array[Rect2i]
+	var grid: Dictionary[Vector2i, Array] = {}
+
+	func _init(areas: Array[Rect2i]) -> void:
+		rectangles = areas
+		if areas.size() > 8:
+			for index in areas.size():
+				IsometricPixelOperations.append_occlusion_bounds(grid, areas[index], index)
+
+	func intersects(bounds: Rect2i) -> bool:
+		if grid.is_empty():
+			for area in rectangles:
+				if bounds.intersects(area):
+					return true
+			return false
+
+		if not bounds.has_area():
+			return false
+		var first := Vector2i((Vector2(bounds.position) / IsometricConstants.OCCLUSION_CELL_SIZE).floor())
+		var last := Vector2i((Vector2(bounds.end - Vector2i.ONE) / IsometricConstants.OCCLUSION_CELL_SIZE).floor())
+		for y in range(first.y, last.y + 1):
+			for x in range(first.x, last.x + 1):
+				var cell := Vector2i(x, y)
+				if not grid.has(cell):
+					continue
+				for index: int in grid[cell]:
+					if bounds.intersects(rectangles[index]):
+						return true
+		return false
+
+
 func _init(application: CityApplication) -> void:
 	app = application
 	caches = application.render_caches
@@ -236,13 +268,14 @@ func refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 
 	if force:
 		caches.region_cache.signature = []
-	elif (not dirty.has_area() and app.view_state.overlay_mode == CityViewMode.Mode.CITY and previous.size() == signature.size()
+	elif (not dirty.has_area() and previous != signature and app.view_state.overlay_mode == CityViewMode.Mode.CITY and previous.size() == signature.size()
 			and previous[9] == signature[9]):
 		# redraw only the regions that show changed tiles. a text overlay signature change
 		# can come from a moving object record, which the tile comparison does not see
 		changes_listed = ApplicationStaticRender.changed_source_rects(app.document_state.city, caches.region_cache.source_payloads,
 			sprites, view_size, changed)
 
+	caches.region_cache.set_occlusion_depth(app.preferences.moving_frame_rate > ApplicationMovingSprites.ORIGINAL_FRAME_RATE)
 	caches.region_cache.configure(app.document_state.city, app.asset_state.palette_index_encoding, sprites, signature, view_size,
 		app.view_state.overlay_mode, app.view_state.surface_visibility, app.view_state.show_underground_pipes,
 		app.view_state.show_underground_subways, dirty, app.view_state.show_underground_water_mains, changed, changes_listed)
@@ -302,14 +335,15 @@ func poll_region_cache() -> void:
 # a moving sprite or overlay that does not sample static pixels depends only on the silhouettes
 func _invalidate_region_foregrounds(changes: Array[Rect2i], occluder_changes: Array[Rect2i]) -> bool:
 	var invalidated := false
+	var pixels := ChangedAreas.new(changes)
+	var silhouettes := ChangedAreas.new(occluder_changes)
 
-	for key in caches.dynamic_occluder_cache.keys():
-		var bounds := ApplicationMovingSprites.occluder_key_bounds(key)
+	if not occluder_changes.is_empty():
+		for key in caches.dynamic_occluder_cache.keys():
+			var bounds := caches.dynamic_occluder_cache[key].bounds
 
-		for changed in occluder_changes:
-			if bounds.intersects(changed):
+			if silhouettes.intersects(bounds):
 				caches.dynamic_occluder_cache.erase(key)
-				break
 
 	for key in caches.dynamic_visual_cache.keys():
 		var visual: CityDynamicVisual = caches.dynamic_visual_cache[key]
@@ -318,22 +352,22 @@ func _invalidate_region_foregrounds(changes: Array[Rect2i], occluder_changes: Ar
 			caches.dynamic_visual_cache.erase(key)
 			continue
 
+		var affected := pixels if visual.samples_static else silhouettes
+		if affected.rectangles.is_empty():
+			continue
+
 		var bounds := Rect2i(Vector2i(visual.position), Vector2i(visual.size))
 
-		for changed in (changes if visual.samples_static else occluder_changes):
-			if bounds.intersects(changed):
-				caches.dynamic_visual_cache.erase(key)
-				invalidated = true
-				break
+		if affected.intersects(bounds):
+			caches.dynamic_visual_cache.erase(key)
+			invalidated = true
 
 	for key in caches.sign_foreground_cache.keys():
 		var bounds: Rect2i = caches.sign_foreground_cache[key].signature[1]
 
-		for changed in changes:
-			if bounds.intersects(changed):
-				caches.sign_foreground_cache.erase(key)
-				invalidated = true
-				break
+		if pixels.intersects(bounds):
+			caches.sign_foreground_cache.erase(key)
+			invalidated = true
 
 	return invalidated
 
