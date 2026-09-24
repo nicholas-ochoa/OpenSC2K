@@ -101,6 +101,17 @@ func _run() -> void:
 	(toolbar.child_tool_buttons[0] as Button).pressed.emit()
 	assert(clicks[0] == 4)
 	toolbar.free()
+
+	var main_menu := preload("res://src/ui/startup/main_menu_control.tscn").instantiate() as MainMenuControl
+	root.add_child(main_menu)
+	var menu_clicks := [0]
+	main_menu.button_clicked.connect(func() -> void:
+		menu_clicks[0] += 1)
+	main_menu.import_button.pressed.emit()
+	main_menu.new_city_button.pressed.emit()
+	main_menu.continue_button.pressed.emit()
+	assert(menu_clicks[0] == 3)
+	main_menu.free()
 	audio.stop_sound_effects()
 	await process_frame
 	audio.free()
@@ -110,7 +121,7 @@ func _run() -> void:
 
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary))
 	await process_frame
-	print("PASS: original pack pixel and byte equality, manifest validation, atomic audio replacement, rapid toolbar feedback, dynamic buttons, settings persistence")
+	print("PASS: original pack pixel and byte equality, manifest validation, atomic audio replacement, rapid toolbar feedback, dynamic buttons, main menu clicks, settings persistence")
 	call_deferred("quit")
 
 

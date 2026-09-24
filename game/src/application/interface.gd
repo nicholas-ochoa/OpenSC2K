@@ -151,6 +151,7 @@ func _build_main_menu() -> void:
 	app.main_overlays.name = "ApplicationOverlays"
 	app.add_child(app.main_overlays)
 	app.main_menu = app.main_overlays.main_menu
+	app.main_menu.button_clicked.connect(play_toolbar_click)
 	app.main_menu.continue_requested.connect(hide_main_menu)
 	app.main_menu.new_city_requested.connect(app.new_city.open_new_city_dialog)
 	app.main_menu.open_city_requested.connect(app.city_files.open_city_dialog)

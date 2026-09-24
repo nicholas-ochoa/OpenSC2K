@@ -1,6 +1,7 @@
 class_name MainMenuControl
 extends ColorRect
 
+signal button_clicked
 signal import_assets_requested
 signal continue_requested
 signal new_city_requested
@@ -42,11 +43,13 @@ func _ready() -> void:
 	import_button = content.get_node("ImportAssets")
 	_refresh_import_style()
 	theme_changed.connect(_refresh_import_style)
+	import_button.pressed.connect(button_clicked.emit)
 	import_button.pressed.connect(import_assets_requested.emit)
 
 	for index in BUTTON_LABELS.size():
 		var button_name: String = BUTTON_LABELS[index].replace(" ", "")
 		var button: Button = content.get_node(button_name)
+		button.pressed.connect(button_clicked.emit)
 		button.pressed.connect(_emit_action.bind(index))
 
 		if index < 5:
