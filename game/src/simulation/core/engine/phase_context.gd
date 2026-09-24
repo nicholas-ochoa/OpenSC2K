@@ -10,7 +10,7 @@ const ENGINE_STATE := [
 	"bus_passengers", "rail_passengers", "subway_passengers", "ship_home",
 	"city_status_resource_id", "commerce_connections", "industry_connections",
 	"mayor_approval", "midi_playback_active", "pending_disaster_type",
-	"pending_disaster_point", "terminal_state",
+	"pending_disaster_point", "terminal_state", "traffic_news_deadline_msec",
 ]
 
 # simulation inputs. the day schedule owns these objects
@@ -48,6 +48,7 @@ var midi_playback_active := false
 var pending_disaster_type := 0
 var pending_disaster_point := Vector2i.ZERO
 var terminal_state := false
+var traffic_news_deadline_msec := 0
 
 
 # store a finished result under `name` and persist its newspaper stories

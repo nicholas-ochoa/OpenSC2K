@@ -78,7 +78,52 @@ func test_growth_phase(reference_root: String) -> void:
 		_check(church.city.zone_id(point.x, point.y) == 0, "Church clears the RCI zone nibble")
 
 	test_special_zone_growth(reference_root)
+	_test_helicopter_creation_deadline()
 	InfrastructureTests.new(context).test_transport_maintenance(reference_root)
+
+
+func _test_helicopter_creation_deadline() -> void:
+	for spawn_case in ["helicopter", "blocked", "no_attempt", "airplane"]:
+		var city := CityState.from_document(EmptyCityTemplate.create(128))
+		_check(city.set_age_in_days(10), "Helicopter fixture starts before day twelve")
+		_check(city.set_zone_id(22, 20, 8), "Helicopter fixture sets an airport zone")
+		_check(city.set_building_id(22, 20, Tiles.RUNWAY), "Helicopter fixture sets a runway")
+		_check(city.set_tile_flag(22, 20, 0x40, true), "Helicopter fixture powers the runway")
+		_check(city.document.find_chunk("XTRF").set_decoded_payload(_filled_bytes(64 * 64, 200)),
+			"Helicopter fixture sets heavy traffic")
+
+		if spawn_case == "blocked":
+			_check(city.set_text_overlay_id(22, 20, 255), "Helicopter fixture blocks aircraft creation")
+
+		var rolls: Array[int] = [1, 0, 0, 40, 20]
+		if spawn_case == "no_attempt":
+			rolls[1] = 1
+		elif spawn_case == "airplane":
+			rolls[2] = 4
+
+		var engine := SimulationEngine.new(city)
+		engine.random = SequenceRandom.new(rolls)
+		engine.lfsr_random = NonzeroLfsrRandom.new()
+		engine.traffic_news_deadline_msec = 6000
+		var day := engine.advance_day()
+		_check(day.ok and day.phase_results.has("growth"), "Aircraft creation day completes: %s" % spawn_case)
+		if not day.ok or not day.phase_results.has("growth"):
+			continue
+
+		var growth: GrowthResult = day.phase_results["growth"]
+		var spawned: bool = spawn_case == "helicopter"
+		_check(growth.spawned_helicopters == int(spawned), "Growth reports helicopter creation: %s" % spawn_case)
+		_check(growth.spawned_airplanes == int(spawn_case == "airplane"), "Growth reports airplane creation: %s" % spawn_case)
+		_check(engine.traffic_news_deadline_msec == (0 if spawned else 6000),
+			"Only successful helicopter creation clears the traffic sound deadline: %s" % spawn_case)
+
+		if spawned:
+			for tick in 11:
+				_check(engine.advance_moving_things(1000 + tick * 100).ok, "New helicopter completes its takeoff tick")
+			var flight := engine.advance_moving_things(2100)
+			_check(flight.ok and flight.sound_events.size() == 1 and flight.sound_events[0].sound_id == 0x1fe,
+				"New helicopter reports heavy traffic before the previous helicopter's deadline")
+			_check(engine.traffic_news_deadline_msec == 7100, "New helicopter starts its own five-second sound deadline")
 
 
 func test_special_zone_growth(reference_root: String) -> void:

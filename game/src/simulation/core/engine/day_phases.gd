@@ -172,6 +172,9 @@ class Growth extends SimulationDayPhase:
 		if growth.ship_home_found:
 			context.ship_home = growth.ship_home
 
+		if growth.spawned_helicopters > 0:
+			context.traffic_news_deadline_msec = 0
+
 		return growth
 
 
