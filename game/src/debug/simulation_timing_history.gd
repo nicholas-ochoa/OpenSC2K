@@ -4,17 +4,14 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 const DAY_SUMMARIES := [
-	"Budget and month initialization", "Power; per-tile pollution and services",
-	"Land value, population density, crime; SC2-grid pollution and services",
-	"Growth: partition 1/16", "Growth: partition 2/16", "Growth: partition 3/16",
-	"Growth: partition 4/16", "Growth: partition 5/16", "Growth: partition 6/16",
-	"Growth: partition 7/16", "Growth: partition 8/16", "Growth: partition 9/16",
-	"Growth: partition 10/16", "Growth: partition 11/16", "Growth: partition 12/16",
-	"Growth: partition 13/16", "Growth: partition 14/16", "Growth: partition 15/16",
-	"Growth: partition 16/16", "Traffic", "Water",
-	"Demand, SimNation, industry, education, health, graphs",
-	"Milestones, scenarios, bankruptcy", "Statistics-window refresh only",
-	"Map and SimNation window refresh, weather and disaster checks",
+	"Budget, month start; yearly budget in January", "Power; pollution, police and fire on per-tile maps",
+	"Land value, population, crime; pollution, police and fire on grid maps",
+	"Growth 1/16", "Growth 2/16", "Growth 3/16", "Growth 4/16", "Growth 5/16", "Growth 6/16",
+	"Growth 7/16", "Growth 8/16", "Growth 9/16", "Growth 10/16", "Growth 11/16", "Growth 12/16",
+	"Growth 13/16", "Growth 14/16", "Growth 15/16", "Growth 16/16", "Traffic", "Water",
+	"Demand, weather, SimNation, industry, education, health, graphs",
+	"Milestones, scenario goals, bankruptcy", "Statistics window refresh",
+	"Map refresh, city status, random disasters",
 ]
 # a day slot is an outlier when its average is this many times faster or slower than the median slot
 const PACING_OUTLIER_RATIO := 4.0
