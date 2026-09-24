@@ -135,7 +135,7 @@ func _run() -> void:
 	assert(not debug._detailed_timing_check.button_pressed, "Per-tile timing detail stays off by default")
 	debug._detailed_timing_check.button_pressed = true
 	assert(host.detailed_timing, "The debug window forwards the detailed-timing request")
-	assert(debug._action_label.text == "Detailed timing is on.")
+	assert(debug._status_label.text == "Detailed timing is on.", "Action messages show in the status bar")
 	host.detailed_timing = false
 	debug._refresh_metrics()
 	assert(not debug._detailed_timing_check.button_pressed, "The checkbox follows the reported state")

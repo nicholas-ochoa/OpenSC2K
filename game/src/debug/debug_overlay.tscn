@@ -20,37 +20,42 @@ anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 
-[node name="Margin" type="MarginContainer" parent="DebugWindow/Panel"]
+[node name="Layout" type="VBoxContainer" parent="DebugWindow/Panel"]
 layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="Margin" type="MarginContainer" parent="DebugWindow/Panel/Layout"]
+layout_mode = 2
+size_flags_vertical = 3
 theme_override_constants/margin_left = 12
 theme_override_constants/margin_top = 12
 theme_override_constants/margin_right = 12
 theme_override_constants/margin_bottom = 12
 
-[node name="Content" type="VBoxContainer" parent="DebugWindow/Panel/Margin"]
+[node name="Content" type="VBoxContainer" parent="DebugWindow/Panel/Layout/Margin"]
 layout_mode = 2
 
-[node name="Tabs" type="TabContainer" parent="DebugWindow/Panel/Margin/Content"]
+[node name="Tabs" type="TabContainer" parent="DebugWindow/Panel/Layout/Margin/Content"]
 layout_mode = 2
 size_flags_vertical = 3
 current_tab = 0
 
-[node name="Simulation" type="VBoxContainer" parent="DebugWindow/Panel/Margin/Content/Tabs"]
+[node name="Simulation" type="VBoxContainer" parent="DebugWindow/Panel/Layout/Margin/Content/Tabs"]
 layout_mode = 2
 metadata/_tab_index = 0
 
-[node name="Days" type="Tree" parent="DebugWindow/Panel/Margin/Content/Tabs/Simulation"]
+[node name="Days" type="Tree" parent="DebugWindow/Panel/Layout/Margin/Content/Tabs/Simulation"]
 layout_mode = 2
 size_flags_vertical = 3
 columns = 7
 column_titles_visible = true
 hide_root = true
 
-[node name="Footer" type="HBoxContainer" parent="DebugWindow/Panel/Margin/Content/Tabs/Simulation"]
+[node name="Footer" type="HBoxContainer" parent="DebugWindow/Panel/Layout/Margin/Content/Tabs/Simulation"]
 layout_mode = 2
 
 
-[node name="Metrics" type="Tree" parent="DebugWindow/Panel/Margin/Content/Tabs"]
+[node name="Metrics" type="Tree" parent="DebugWindow/Panel/Layout/Margin/Content/Tabs"]
 visible = false
 layout_mode = 2
 columns = 3
@@ -59,22 +64,34 @@ hide_root = true
 script = ExtResource("2_metrics")
 metadata/_tab_index = 1
 
-[node name="MicroSims" parent="DebugWindow/Panel/Margin/Content/Tabs" instance=ExtResource("3_records")]
+[node name="MicroSims" parent="DebugWindow/Panel/Layout/Margin/Content/Tabs" instance=ExtResource("3_records")]
 visible = false
 layout_mode = 2
 kind = "XMIC"
 
-[node name="Objects" parent="DebugWindow/Panel/Margin/Content/Tabs" instance=ExtResource("3_records")]
+[node name="Objects" parent="DebugWindow/Panel/Layout/Margin/Content/Tabs" instance=ExtResource("3_records")]
 visible = false
 layout_mode = 2
 kind = "Objects"
 
-[node name="Tiles" parent="DebugWindow/Panel/Margin/Content/Tabs" instance=ExtResource("3_records")]
+[node name="Tiles" parent="DebugWindow/Panel/Layout/Margin/Content/Tabs" instance=ExtResource("3_records")]
 visible = false
 layout_mode = 2
 kind = "Tiles"
 
-[node name="State" parent="DebugWindow/Panel/Margin/Content/Tabs" instance=ExtResource("3_records")]
+[node name="State" parent="DebugWindow/Panel/Layout/Margin/Content/Tabs" instance=ExtResource("3_records")]
 visible = false
 layout_mode = 2
 kind = "State"
+
+[node name="StatusBar" type="PanelContainer" parent="DebugWindow/Panel/Layout"]
+custom_minimum_size = Vector2(0, 31)
+layout_mode = 2
+theme_type_variation = "CityStatusBarPanel"
+
+[node name="Message" type="Label" parent="DebugWindow/Panel/Layout/StatusBar"]
+layout_mode = 2
+mouse_filter = 1
+text = "Ready."
+vertical_alignment = 1
+text_overrun_behavior = 3

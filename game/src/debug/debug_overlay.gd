@@ -21,7 +21,8 @@ var _step_rows: Dictionary = {}
 var _other_steps: TreeItem
 var _tabs: TabContainer
 var _metrics_tree: Tree
-var _action_label: Label
+# the status bar message at the bottom of the window
+var _status_label: Label
 var _resume_speed := 2
 var _terrain_slider: HSlider
 var _terrain_value: Label
@@ -42,8 +43,9 @@ func _ready() -> void:
 	_window.theme = _create_debug_theme()
 	_window.close_requested.connect(toggle)
 	_window.window_input.connect(_input)
-	var tabs: TabContainer = $DebugWindow/Panel/Margin/Content/Tabs
+	var tabs: TabContainer = $DebugWindow/Panel/Layout/Margin/Content/Tabs
 	_tabs = tabs
+	_status_label = $DebugWindow/Panel/Layout/StatusBar/Message
 	tabs.tab_changed.connect(func(_index: int) -> void: _refresh_record_tab())
 	_days = tabs.get_node("Simulation/Days")
 	_configure_table(_days, ["Day", "What happens", "Average ms", "Last ms", "Max ms", "Samples", "Last w/ Delay"])
@@ -142,16 +144,25 @@ func _build_actions(tabs: TabContainer) -> void:
 		_button(cheats, "+$%d" % amount, "Add %s to the city funds." % pair[1], func() -> void:
 			_record_action(main_control.debug.call("debug_add_funds", amount)))
 
+	# the amount and its button share one column, like the buttons above them
+	var set_funds := HBoxContainer.new()
+	set_funds.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	set_funds.add_theme_constant_override("separation", 4)
+	cheats.add_child(set_funds)
 	var funds := SpinBox.new()
 	funds.min_value = CityDebugActions.MIN_FUNDS
 	funds.max_value = CityDebugActions.MAX_FUNDS
 	funds.prefix = "$"
 	funds.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	funds.tooltip_text = "The amount for Set funds. It can be 0 or negative."
-	cheats.add_child(funds)
-	_button(cheats, "Set funds", "Set the city funds to this amount. Use 0 or a negative amount to test debt and bankruptcy.", func() -> void:
-		_record_action(main_control.debug.call("debug_set_funds", int(funds.value))))
-	cheats.add_child(Control.new())
+	set_funds.add_child(funds)
+	var set_button := _button(set_funds, "Set funds", "Set the city funds to this amount. Use 0 or a negative amount to test debt and bankruptcy.",
+		func() -> void:
+			_record_action(main_control.debug.call("debug_set_funds", int(funds.value))))
+	set_button.size_flags_horizontal = Control.SIZE_SHRINK_END
+
+	for _index in 2:
+		cheats.add_child(Control.new())
 	_button(cheats, "Unlock everything", ("Make all inventions, rewards, arcologies and power plants available now. " +
 		"This also removes the Nuclear Free ordinance."), func() -> void:
 		_invoke("debug_unlock_everything"))
@@ -216,9 +227,6 @@ func _build_actions(tabs: TabContainer) -> void:
 	_terrain_slider.value_changed.connect(func(value: float) -> void:
 		_terrain_value.text = str(int(value))
 		main_control.debug.call("debug_set_visible_altitude_levels", int(value)))
-	_action_label = Label.new()
-	_action_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(_action_label)
 
 
 func _action_section(parent: VBoxContainer, caption: String, columns: int) -> GridContainer:
@@ -257,10 +265,15 @@ func _invoke(method: String) -> void:
 
 
 func _record_action(result: ApplicationDebug.ActionResult) -> void:
-	if _action_label != null:
-		_action_label.text = result.message
-
+	set_status(result.message)
 	_refresh_metrics()
+
+
+func set_status(message: String) -> void:
+	if _status_label != null:
+		_status_label.text = message
+		# the label cuts long text. the tooltip shows all of it
+		_status_label.tooltip_text = message
 
 
 func _input(event: InputEvent) -> void:
