@@ -30,12 +30,19 @@ class Result extends PhaseResult:
 	var treatment_sufficient := false
 
 
-# the component tiles stay in the caller's queue. `size` counts them
+# an unbounded trace keeps the component tiles in the caller's queue. `size`
+# counts them. a bounded trace does not keep its tiles
 class Component extends RefCounted:
 	var size := 0
 	var supply := 0
 	var consumers := 0
 	var tower_capacity := 0
+
+
+# water that a component still has to give out in its second pass
+class Distribution extends RefCounted:
+	var served := 0
+	var towers_to_fill := 0
 
 
 static func run(city: CityState) -> Result:
@@ -60,8 +67,13 @@ static func run(city: CityState) -> Result:
 	var pump_base_supply := int((city.document.misc_u32(Sc2MiscLayout.WEATHER_RAIN) & 0xff) / 2)
 	pump_base_supply += city.document.misc_u32(Sc2MiscLayout.WATER_LEVEL) * 5
 
+	# sc2x cities trace without the original queue limit
+	var bounded_queue := not city.document.is_extended()
 	var queue := PackedInt32Array()
-	queue.resize(flags.size())
+
+	if not bounded_queue:
+		queue.resize(flags.size())
+
 	span.mark("find water sources")
 	var sources := _sources_in_scan_order(city, city.compass_rotation())
 
@@ -70,41 +82,40 @@ static func run(city: CityState) -> Result:
 			continue
 
 		span.mark("network traversal and supply")
-		var component := _trace_component(buildings, flags, queue, index, pump_base_supply, map_edge, slice)
+		var component: Component
+
+		if bounded_queue:
+			component = _trace_bounded_component(city, flags, index, pump_base_supply)
+		else:
+			component = _trace_component(buildings, flags, queue, index, pump_base_supply, map_edge, slice)
+
 		span.mark("capacity and tower allocation")
 		var supply: int = component.supply
 		var consumers: int = component.consumers
 		var served := mini(supply, consumers)
 		var tower_capacity: int = component.tower_capacity
 		var stored_units := mini(supply - served, tower_capacity)
-		var towers_to_fill := int((stored_units + 50) / 100)
+		var distribution := Distribution.new()
+		distribution.served = served
+		distribution.towers_to_fill = int((stored_units + 50) / 100)
 
 		total_supply += supply
 		total_consumers += consumers
 		watered_consumers += served
 
 		span.mark("distribute water and fill towers")
+		if bounded_queue:
+			_distribute_bounded(city, flags, index, distribution)
+			span.mark("find water sources")
+
+			continue
+
 		for position in component.size:
 			if slice != null and (position & 1023) == 0:
 				slice.checkpoint()
 
 			var tile := queue[position]
-			var tile_building := buildings[tile]
-
-			if tile_building < FIRST_CONSUMER:
-				if served != 0:
-					flags[tile] |= FLAG_WATERED
-			elif tile_building == WATER_PUMP or tile_building == WATER_TREATMENT or tile_building == DESALINIZATION:
-				if flags[tile] & FLAG_POWERED:
-					flags[tile] |= FLAG_WATERED
-			elif tile_building == WATER_TOWER:
-				if flags[tile] & FLAG_POWERED and towers_to_fill != 0:
-					flags[tile] |= FLAG_WATERED
-					towers_to_fill -= 1
-			elif served != 0:
-				flags[tile] |= FLAG_WATERED
-				served -= 1
-
+			_water_tile(buildings, flags, tile, distribution)
 			flags[tile] &= ~FLAG_MARK & 0xff
 
 		span.mark("find water sources")
@@ -169,9 +180,6 @@ static func _trace_component(
 
 	var last_y := map_edge - 1
 	var tile_count := flags.size()
-	var supply := 0
-	var consumers := 0
-	var tower_capacity := 0
 	var head := 0
 	var tail := 1
 	flags[start] |= FLAG_MARK
@@ -184,24 +192,7 @@ static func _trace_component(
 		var index := queue[head]
 		head += 1
 		var y := index % map_edge
-		var building := buildings[index]
-
-		if building >= FIRST_CONSUMER:
-			if building == WATER_PUMP:
-				if flags[index] & FLAG_POWERED:
-					supply += _pump_supply(flags, index / map_edge, y, pump_base_supply, map_edge)
-			elif building == WATER_TOWER:
-				tower_capacity += 100
-
-				if flags[index] & FLAG_WATERED:
-					supply += 100
-
-				flags[index] &= ~FLAG_WATERED & 0xff
-			elif building == DESALINIZATION:
-				if flags[index] & FLAG_POWERED:
-					supply += _desalinization_supply(flags, index / map_edge, y, map_edge)
-			elif building != WATER_TREATMENT:
-				consumers += 1
+		_count_tile(buildings, flags, index, index / map_edge, y, pump_base_supply, map_edge, result)
 
 		# neighbors in the original order: y - 1, x - 1, y + 1, x + 1
 		var neighbor := index - 1
@@ -233,11 +224,116 @@ static func _trace_component(
 			tail += 1
 
 	result.size = tail
-	result.supply = supply
-	result.consumers = consumers
-	result.tower_capacity = tower_capacity
 
 	return result
+
+
+# the original first pass. it uses the 512-entry trace queue of the power
+# scan and queues only unmarked neighbors, including tiles without pipes
+static func _trace_bounded_component(
+	city: CityState, flags: PackedByteArray, start: int, pump_base_supply: int
+) -> Component:
+	var map_edge: int = city.map_size
+	var buildings := city.buildings
+	var queue := PowerPhase.TraceQueue.new(start)
+	var visited := 0
+	var result := Component.new()
+
+	while not queue.is_empty():
+		if city.simulation_slice != null and (visited & 127) == 0:
+			city.simulation_slice.checkpoint()
+
+		visited += 1
+		var index := queue.pop()
+
+		if flags[index] & FLAG_MARK or not flags[index] & FLAG_PIPED:
+			continue
+
+		var x := int(index / map_edge)
+		var y := index % map_edge
+		_count_tile(buildings, flags, index, x, y, pump_base_supply, map_edge, result)
+		flags[index] |= FLAG_MARK
+		PowerPhase._queue_neighbors(city, flags, queue, x, y, 0)
+
+	return result
+
+
+# the original second pass walks the marked tiles again from the source. a
+# marked tile that the queue drops keeps its mark and gets no water
+static func _distribute_bounded(
+	city: CityState, flags: PackedByteArray, start: int, distribution: Distribution
+) -> void:
+	var map_edge: int = city.map_size
+	var queue := PowerPhase.TraceQueue.new(start)
+	var visited := 0
+
+	while not queue.is_empty():
+		if city.simulation_slice != null and (visited & 127) == 0:
+			city.simulation_slice.checkpoint()
+
+		visited += 1
+		var index := queue.pop()
+
+		if not flags[index] & FLAG_MARK:
+			continue
+
+		_water_tile(city.buildings, flags, index, distribution)
+		flags[index] &= ~FLAG_MARK & 0xff
+		PowerPhase._queue_neighbors(city, flags, queue, int(index / map_edge), index % map_edge, FLAG_MARK)
+
+
+# add one traced tile to the component supply, consumers, and tower capacity
+static func _count_tile(
+	buildings: PackedByteArray,
+	flags: PackedByteArray,
+	index: int,
+	x: int,
+	y: int,
+	pump_base_supply: int,
+	map_edge: int,
+	component: Component
+) -> void:
+	var building := buildings[index]
+
+	if building < FIRST_CONSUMER:
+		return
+
+	if building == WATER_PUMP:
+		if flags[index] & FLAG_POWERED:
+			component.supply += _pump_supply(flags, x, y, pump_base_supply, map_edge)
+	elif building == WATER_TOWER:
+		component.tower_capacity += 100
+
+		if flags[index] & FLAG_WATERED:
+			component.supply += 100
+
+		flags[index] &= ~FLAG_WATERED & 0xff
+	elif building == DESALINIZATION:
+		if flags[index] & FLAG_POWERED:
+			component.supply += _desalinization_supply(flags, x, y, map_edge)
+	elif building != WATER_TREATMENT:
+		component.consumers += 1
+
+
+# second-pass water for one tile of a component
+static func _water_tile(
+	buildings: PackedByteArray, flags: PackedByteArray, tile: int, distribution: Distribution
+) -> void:
+	var tile_building := buildings[tile]
+
+	if tile_building < FIRST_CONSUMER:
+		if distribution.served != 0:
+			flags[tile] |= FLAG_WATERED
+	elif tile_building == WATER_PUMP or tile_building == WATER_TREATMENT or tile_building == DESALINIZATION:
+		if flags[tile] & FLAG_POWERED:
+			flags[tile] |= FLAG_WATERED
+	elif tile_building == WATER_TOWER:
+		if flags[tile] & FLAG_POWERED and distribution.towers_to_fill != 0:
+			flags[tile] |= FLAG_WATERED
+			distribution.towers_to_fill -= 1
+	elif distribution.served != 0:
+		flags[tile] |= FLAG_WATERED
+		distribution.served -= 1
 
 
 static func _pump_supply(

@@ -56,6 +56,7 @@ func _run() -> void:
 
 			if edge == 128:
 				check_power_queue_limit(version)
+				check_water_queue_limit(version)
 
 			check_water(edge, version)
 			check_prisons(edge, version)
@@ -192,6 +193,172 @@ func check_power_queue_limit(version: int) -> void:
 	else:
 		# Values from the original trace, with its dropped queue entries.
 		check(powered == 11915 and result.consumers == 11885 and result.usage_percent == 71, "SC2 power keeps the original trace queue limit")
+
+
+# A very wide pipe network overflows the same 512-entry trace queue.
+func check_water_queue_limit(version: int) -> void:
+	var doc := fixture(128, version)
+	var city := CityState.from_document(doc)
+	var consumers := 0
+	doc.set_misc_u32(Sc2MiscLayout.WATER_LEVEL, 100)
+
+	for x in 128:
+		for y in 128:
+			var hole := x % 2 == 1 and y % 2 == 1
+			city.set_building_id(x, y, Tiles.EMPTY if hole else Tiles.LOWER_CLASS_HOMES_1X1_1)
+			city.set_tile_flag(x, y, Sc2TileFlags.PIPED, not hole)
+
+	for index in 30:
+		var pump := Vector2i(58 + (index % 6) * 2, 58 + (index / 6) * 2)
+		city.set_building_id(pump.x, pump.y, Tiles.WATER_PUMP)
+		city.set_tile_flag(pump.x, pump.y, Sc2TileFlags.POWERED, true)
+
+	for building in city.buildings:
+		if building == Tiles.LOWER_CLASS_HOMES_1X1_1:
+			consumers += 1
+
+	var expected := _original_water(city)
+	var result := WaterPhase.run(city)
+	var watered := 0
+
+	for flags in city.tile_flags:
+		if flags & Sc2TileFlags.WATERED:
+			watered += 1
+
+	check(result.ok and result.supply > consumers, "Water queue fixture has enough supply for every tile")
+
+	if doc.is_extended():
+		check(watered == consumers + 30 and result.watered_consumers == consumers, "SC2X water reaches every tile of a wide network")
+	else:
+		check(city.tile_flags == expected.flags, "SC2 water keeps the original trace queue limit")
+		check(result.watered_consumers == expected.used and result.supply == expected.supply, "SC2 water totals match the original trace")
+		check(watered < consumers, "SC2 water drops tiles of a very wide network")
+
+
+class OriginalWater extends RefCounted:
+	var flags := PackedByteArray()
+	var used := 0
+	var supply := 0
+
+
+# A direct model of the original water scan for a 128 map at rotation 0:
+# a 512-entry ring queue that drops its oldest entry when full.
+func _original_water(city: CityState) -> OriginalWater:
+	var out := OriginalWater.new()
+	var flags := city.tile_flags.duplicate()
+	var buildings := city.buildings
+	var base := int((city.document.misc_u32(Sc2MiscLayout.WEATHER_RAIN) & 0xff) / 2) + city.document.misc_u32(Sc2MiscLayout.WATER_LEVEL) * 5
+
+	for index in flags.size():
+		flags[index] &= ~(Sc2TileFlags.MARK if buildings[index] == Tiles.WATER_TOWER else Sc2TileFlags.MARK | Sc2TileFlags.WATERED) & 0xff
+
+	for y in 128:
+		for x in 128:
+			var start := x * 128 + y
+			var source := buildings[start] == Tiles.WATER_PUMP or buildings[start] == Tiles.DESALINIZATION
+
+			if source and not flags[start] & Sc2TileFlags.WATERED and flags[start] & Sc2TileFlags.POWERED:
+				var supply := 0
+				var consumers := 0
+				var storage := 0
+				var ring := [PackedInt32Array(), 0, 0]
+				ring[0].resize(512)
+				_ring_push(ring, start)
+
+				while ring[1] != ring[2]:
+					var index := _ring_pop(ring)
+
+					if flags[index] & Sc2TileFlags.MARK or not flags[index] & Sc2TileFlags.PIPED:
+						continue
+
+					var building := buildings[index]
+
+					if building == Tiles.WATER_PUMP:
+						if flags[index] & Sc2TileFlags.POWERED:
+							supply += base
+
+							for nx in range(index / 128 - 1, index / 128 + 2):
+								for ny in range(index % 128 - 1, index % 128 + 2):
+									if nx >= 0 and nx < 128 and ny >= 0 and ny < 128 and flags[nx * 128 + ny] & 5 == 4:
+										supply += 10
+					elif building == Tiles.WATER_TOWER:
+						storage += 100
+
+						if flags[index] & Sc2TileFlags.WATERED:
+							supply += 100
+
+						flags[index] &= ~Sc2TileFlags.WATERED & 0xff
+					elif building > 0x6f and building != Tiles.WATER_TREATMENT and building != Tiles.DESALINIZATION:
+						consumers += 1
+
+					flags[index] |= Sc2TileFlags.MARK
+					_ring_neighbors(ring, flags, index, 0)
+
+				consumers = mini(consumers, supply)
+				storage = int((mini(storage, supply - consumers) + 50) / 100)
+				out.used += consumers
+				out.supply += supply
+				_ring_push(ring, start)
+
+				while ring[1] != ring[2]:
+					var index := _ring_pop(ring)
+
+					if not flags[index] & Sc2TileFlags.MARK:
+						continue
+
+					var building := buildings[index]
+
+					if building == Tiles.WATER_PUMP or building == Tiles.WATER_TREATMENT or building == Tiles.DESALINIZATION:
+						if flags[index] & Sc2TileFlags.POWERED:
+							flags[index] |= Sc2TileFlags.WATERED
+					elif building == Tiles.WATER_TOWER:
+						if flags[index] & Sc2TileFlags.POWERED and storage != 0:
+							flags[index] |= Sc2TileFlags.WATERED
+							storage -= 1
+					elif consumers != 0:
+						flags[index] |= Sc2TileFlags.WATERED
+
+						if building > 0x6f:
+							consumers -= 1
+
+					flags[index] &= ~Sc2TileFlags.MARK & 0xff
+					_ring_neighbors(ring, flags, index, Sc2TileFlags.MARK)
+
+	out.flags = flags
+
+	return out
+
+
+func _ring_push(ring: Array, index: int) -> void:
+	ring[0][ring[2]] = index
+	ring[2] = (ring[2] + 1) & 511
+
+	if ring[1] == ring[2]:
+		ring[1] = (ring[1] + 1) & 511
+
+
+func _ring_pop(ring: Array) -> int:
+	var index: int = ring[0][ring[1]]
+	ring[1] = (ring[1] + 1) & 511
+
+	return index
+
+
+func _ring_neighbors(ring: Array, flags: PackedByteArray, index: int, mark: int) -> void:
+	var x := index / 128
+	var y := index % 128
+
+	if y > 0 and flags[index - 1] & Sc2TileFlags.MARK == mark:
+		_ring_push(ring, index - 1)
+
+	if x > 0 and flags[index - 128] & Sc2TileFlags.MARK == mark:
+		_ring_push(ring, index - 128)
+
+	if y < 127 and flags[index + 1] & Sc2TileFlags.MARK == mark:
+		_ring_push(ring, index + 1)
+
+	if x < 127 and flags[index + 128] & Sc2TileFlags.MARK == mark:
+		_ring_push(ring, index + 128)
 
 
 func check_water(edge: int, version: int) -> void:
