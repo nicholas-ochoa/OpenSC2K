@@ -2,7 +2,7 @@
 
 An open-source remake of SimCity 2000, built with Godot.
 
-Join our [Discord community](https://discord.gg/Zp6AqNtrF).
+Join our [Discord community](https://discord.gg/k9S6c3AqcX).
 
 ## Run
 
