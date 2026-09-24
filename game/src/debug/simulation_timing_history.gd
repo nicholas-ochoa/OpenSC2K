@@ -4,8 +4,8 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 const DAY_SUMMARIES := [
-	"Budget and month initialization", "Power",
-	"Pollution, land value, services, population density, crime",
+	"Budget and month initialization", "Power; per-tile pollution and services",
+	"Land value, population density, crime; SC2-grid pollution and services",
 	"Growth: partition 1/16", "Growth: partition 2/16", "Growth: partition 3/16",
 	"Growth: partition 4/16", "Growth: partition 5/16", "Growth: partition 6/16",
 	"Growth: partition 7/16", "Growth: partition 8/16", "Growth: partition 9/16",
@@ -153,5 +153,7 @@ static func _phase_group(label: String) -> String:
 			return "data maps"
 		"simnation calculation":
 			return "simnation"
+		"pollution_coverage":
+			return "pollution and coverage"
 
 	return label

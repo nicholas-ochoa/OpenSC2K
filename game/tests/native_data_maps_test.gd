@@ -28,6 +28,7 @@ func _run() -> void:
 			await check_sliced(edge)
 		print("PASS: native data maps at %d" % edge)
 
+	check_split_schedule()
 	check_legacy_upgrade()
 	check_malformed()
 	print("Native data maps: %d checks, %d failures" % [checks, failures])
@@ -216,6 +217,43 @@ func check_values(edge: int) -> void:
 	check(crime[index + 2] > crime[index + 3], "Adjacent crime cells differ")
 	check(growth[index] == clampi((old_growth * 7 + (int(population[index]) - old_population) * 8 + 128) / 8, 0, 255),
 		"Growth uses previous per-tile state")
+
+
+# the power day stores pollution and service coverage. the data-map day then
+# stores land value, population, growth, and crime. together they equal the full scan
+func check_split_schedule() -> void:
+	var doc := native_document(128)
+	var city := CityState.from_document(doc)
+	var point := Vector2i(40, 40)
+	city.set_building_id(point.x, point.y, Tiles.GAS_POWER)
+
+	for dx in range(-3, 4):
+		for dy in range(-3, 4):
+			city.set_zone_id(point.x + dx, point.y + dy, 4)
+
+	var station := point + Vector2i(6, 0)
+	city.set_building_id(station.x, station.y, PollutionPhase.POLICE_STATION)
+	city.zones[station.x * 128 + station.y] |= PollutionPhase.ZONE_BUILDING_ORIGIN
+	doc.find_chunk("XZON").set_decoded_payload(city.zones)
+	check(city.set_age_in_days(0), "Split schedule starts a month")
+	var expected := CityState.from_document(doc.duplicate_document())
+	var land_before := doc.find_chunk("XVAL").decoded_payload.duplicate()
+	var pollution_before := doc.find_chunk("XPLT").decoded_payload.duplicate()
+	var engine := SimulationEngine.new(city)
+	var power_day := engine.advance_day()
+	check(power_day.ok and power_day.phase_results.has("pollution_coverage"), "Power day runs pollution and coverage")
+	check(doc.find_chunk("XPLT").decoded_payload != pollution_before, "Power day stores pollution")
+	check(doc.find_chunk("XPLC").decoded_payload[station.x * 128 + station.y] > 0, "Power day stores police coverage")
+	check(doc.find_chunk("XVAL").decoded_payload == land_before, "Power day keeps land value")
+	var pollution_after_power := doc.find_chunk("XPLT").decoded_payload.duplicate()
+	var data_day := engine.advance_day()
+	check(data_day.ok and data_day.applied == PackedStringArray(["pollution_terrain_land_value"]), "Data-map day completes")
+	check(SimulationDaySchedule.scanned_data_maps_only(data_day), "Data-map day reports data-map work alone")
+	check(doc.find_chunk("XPLT").decoded_payload == pollution_after_power, "Data-map day keeps pollution")
+	check(doc.find_chunk("XVAL").decoded_payload != land_before, "Data-map day stores land value")
+	check(PowerPhase.run(expected, SimRandom.new(1)).ok and NativeDataMapPhase.run(expected).ok, "Full scan after power")
+	check(expected.set_age_in_days(2), "Full scan matches the split day")
+	check(doc.serialize().data == expected.document.serialize().data, "Split days equal the full scan")
 
 
 func check_legacy_upgrade() -> void:

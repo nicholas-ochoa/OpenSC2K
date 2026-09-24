@@ -14,51 +14,145 @@ static var _density_weights := _make_density_weights()
 static var _residential_values := _make_residential_values()
 static var _land_value_halved := _make_land_value_halved()
 
+# the day-two half of the monthly scan. the power scan runs first on the same
+# day, so station coverage reads the new powered flags
+class PollutionCoverageResult extends PhaseResult:
+	var pollution_total := 0
+	var city_center := Vector2i.ZERO
+
+
+# the full monthly scan. the day schedule runs the two halves on separate days
 static func run(city: CityState) -> PollutionPhase.Result:
 	var span := SimulationTimingSpan.new(city.simulation_slice)
-	span.mark("sources and terrain")
+	var coverage := run_pollution_and_coverage(city)
+
+	if not coverage.ok:
+		return PollutionPhase.failed(coverage.error)
+
+	var result := run_land_value_and_crime(city)
+
+	if result.ok:
+		var steps := coverage.timing.steps.duplicate()
+		steps.merge(result.timing.steps)
+		result.timing = SimulationTiming.new(span.finish().work_usec, steps)
+
+	return result
+
+
+# pollution, city center, and police and fire coverage. these read only the
+# map, the previous pollution and traffic, and the budget
+static func run_pollution_and_coverage(city: CityState) -> PollutionCoverageResult:
+	var span := SimulationTimingSpan.new(city.simulation_slice)
+	span.mark("pollution sources")
 	var edge := city.map_size
 	var count := edge * edge
 	var doc := city.document
-	var old := {}
+	var invalid := _invalid_chunk(doc, count)
 
-	for id in Sc2File.HALF_MAP_CHUNKS + Sc2File.QUARTER_MAP_CHUNKS:
-		var chunk := doc.find_chunk(id)
+	if not invalid.is_empty():
+		return _failed_coverage(invalid)
 
-		if chunk == null or chunk.decoded_payload.size() != count:
-			return PollutionPhase.failed("Native data map %s is missing or invalid" % id)
+	var old_pollution := doc.find_chunk("XPLT").decoded_payload
+	var old_traffic := doc.find_chunk("XTRF").decoded_payload
+	var buildings := city.buildings
+	var pollution_weights := _pollution_weights
+	var sources := PackedInt32Array()
+	sources.resize(count)
+	var center_x_sum := 0
+	var center_y_sum := 0
+	var center_count := 0
 
-		old[id] = chunk.decoded_payload
+	for x in edge:
+		_checkpoint(city)
+		var row := x * edge
 
-	var old_pollution: PackedByteArray = old.XPLT
-	var old_traffic: PackedByteArray = old.XTRF
-	var old_growth: PackedByteArray = old.XROG
-	var old_population: PackedByteArray = old.XPOP
-	var old_crime: PackedByteArray = old.XCRM
+		for y in edge:
+			var index := row + y
+			var building := buildings[index]
+			sources[index] = old_pollution[index] + old_traffic[index] / 5 + pollution_weights[building]
+
+			if building >= PollutionPhase.FIRST_POLLUTING_BUILDING:
+				center_x_sum += x
+				center_y_sum += y
+				center_count += 1
+
+	var center := Vector2i(edge / 2, edge / 2) if center_count == 0 else Vector2i(center_x_sum / center_count, center_y_sum / center_count)
+	var ordinances := doc.misc_u32(PollutionPhase.MISC_ORDINANCES)
+	var divisor := PollutionPhase.pollution_divisor(doc)
+	span.mark("pollution smoothing")
+	var pollution_result := NativeGridMath.smooth_bytes(sources, edge, 4, maxi(divisor, 1) * 2, 1, 2, city.simulation_slice)
+	span.mark("ordinance coverage")
+	var ordinance_coverage := PackedByteArray()
+
+	if ordinances & (PollutionPhase.POLICE_COVERAGE_ORDINANCE | PollutionPhase.FIRE_COVERAGE_ORDINANCE):
+		ordinance_coverage = NativeGridMath.neighborhood_bytes(_occupied_tiles(city), edge, 2, 32, city.simulation_slice)
+
+	var police := PackedByteArray()
+	var fire := PackedByteArray()
+	police.resize(count)
+	fire.resize(count)
+
+	if ordinances & PollutionPhase.POLICE_COVERAGE_ORDINANCE:
+		police = ordinance_coverage.duplicate()
+
+	if ordinances & PollutionPhase.FIRE_COVERAGE_ORDINANCE:
+		fire = ordinance_coverage.duplicate()
+
+	span.mark("station coverage")
+	_add_stations(city, police, fire)
+	span.mark("store maps and totals")
+	var updates := {"XPLT": pollution_result.values, "XPLC": police, "XFIR": fire}
+
+	for id in updates:
+		doc.find_chunk(id).set_decoded_payload(updates[id])
+
+	# misc totals retain the original half-resolution area unit for economic consumers
+	var pollution_total := int(pollution_result.total) / 4
+
+	for update in [[PollutionPhase.MISC_CITY_POLLUTION, pollution_total],
+		[PollutionPhase.MISC_CITY_CENTER_X, center.x], [PollutionPhase.MISC_CITY_CENTER_Y, center.y]]:
+		doc.set_misc_u32(update[0], update[1])
+
+	var result := PollutionCoverageResult.new()
+	result.ok = true
+	result.pollution_total = pollution_total
+	result.city_center = center
+	result.timing = span.finish()
+
+	return result
+
+
+# land value, population density, growth, and crime. these read the pollution,
+# police coverage, and city center that run_pollution_and_coverage stores
+static func run_land_value_and_crime(city: CityState) -> PollutionPhase.Result:
+	var span := SimulationTimingSpan.new(city.simulation_slice)
+	span.mark("land and density sources")
+	var edge := city.map_size
+	var count := edge * edge
+	var doc := city.document
+	var invalid := _invalid_chunk(doc, count)
+
+	if not invalid.is_empty():
+		return PollutionPhase.failed(invalid)
+
+	var pollution := doc.find_chunk("XPLT").decoded_payload
+	var police := doc.find_chunk("XPLC").decoded_payload
+	var old_growth := doc.find_chunk("XROG").decoded_payload
+	var old_population := doc.find_chunk("XPOP").decoded_payload
+	var old_crime := doc.find_chunk("XCRM").decoded_payload
 	var buildings := city.buildings
 	var flags := city.tile_flags
 	var zones := city.zones
 	var terrain := city.terrain
-	var pollution_weights := _pollution_weights
 	var density_weights := _density_weights
 	var residential_values := _residential_values
-	var misc := doc.find_chunk("MISC")
-
-	if misc == null or misc.decoded_payload.size() != Sc2MiscLayout.SIZE:
-		return PollutionPhase.failed("MISC is missing or invalid")
-
-	var sources := PackedInt32Array()
 	var residential := PackedInt32Array()
 	var industrial := PackedInt32Array()
 	var weights := PackedInt32Array()
-	var occupied := PackedInt32Array()
 
-	for values in [sources, residential, industrial, weights, occupied]:
+	for values in [residential, industrial, weights]:
 		values.resize(count)
 
-	var center_x_sum := 0
-	var center_y_sum := 0
-	var center_count := 0
 	var developed := 0
 
 	for x in edge:
@@ -69,12 +163,6 @@ static func run(city: CityState) -> PollutionPhase.Result:
 			var index := row + y
 			var building := buildings[index]
 			var tile_flags := flags[index]
-			sources[index] = old_pollution[index] + old_traffic[index] / 5 + pollution_weights[building]
-
-			if building >= PollutionPhase.FIRST_POLLUTING_BUILDING:
-				center_x_sum += x
-				center_y_sum += y
-				center_count += 1
 
 			if building >= PollutionPhase.FIRST_ROAD or zones[index] & Sc2ZoneLayout.TYPE_MASK:
 				developed += 1
@@ -102,15 +190,8 @@ static func run(city: CityState) -> PollutionPhase.Result:
 			industrial[index] = industrial_value
 			weights[index] = density_weights[building]
 
-			if building >= Tiles.DEVELOPED_FIRST and building < Tiles.HYDRO_POWER_1:
-				occupied[index] = 1
-
-	var center := Vector2i(edge / 2, edge / 2) if center_count == 0 else Vector2i(center_x_sum / center_count, center_y_sum / center_count)
+	var center := Vector2i(doc.misc_u32(PollutionPhase.MISC_CITY_CENTER_X), doc.misc_u32(PollutionPhase.MISC_CITY_CENTER_Y))
 	var ordinances := doc.misc_u32(PollutionPhase.MISC_ORDINANCES)
-	var divisor := PollutionPhase.pollution_divisor(doc)
-	span.mark("pollution smoothing")
-	var pollution_result := NativeGridMath.smooth_bytes(sources, edge, 4, maxi(divisor, 1) * 2, 1, 2, city.simulation_slice)
-	var pollution: PackedByteArray = pollution_result.values
 	span.mark("land desirability filters")
 	residential = NativeGridMath.neighborhood(residential, edge, 2, 16, city.simulation_slice)
 	industrial = NativeGridMath.neighborhood(industrial, edge, 2, 16, city.simulation_slice)
@@ -118,31 +199,14 @@ static func run(city: CityState) -> PollutionPhase.Result:
 	industrial = NativeGridMath.smooth(industrial, edge, 1, 1, 4, 1, city.simulation_slice)
 	span.mark("population density")
 	var population := NativeGridMath.neighborhood_bytes(weights, edge, 2, 64, city.simulation_slice)
-	span.mark("ordinance coverage")
-	var ordinance_coverage := PackedByteArray()
-
-	if ordinances & (PollutionPhase.POLICE_COVERAGE_ORDINANCE | PollutionPhase.FIRE_COVERAGE_ORDINANCE):
-		ordinance_coverage = NativeGridMath.neighborhood_bytes(occupied, edge, 2, 32, city.simulation_slice)
-
-	var police := PackedByteArray()
-	var fire := PackedByteArray()
-	police.resize(count)
-	fire.resize(count)
-
-	if ordinances & PollutionPhase.POLICE_COVERAGE_ORDINANCE:
-		police = ordinance_coverage.duplicate()
-
-	if ordinances & PollutionPhase.FIRE_COVERAGE_ORDINANCE:
-		fire = ordinance_coverage.duplicate()
-
-	span.mark("station coverage")
-	_add_stations(city, police, fire)
 	span.mark("land value, growth and crime sources")
 	var land_sum := 0
 	var land := PackedByteArray()
 	var growth := PackedByteArray()
+	var sources := PackedInt32Array()
 	land.resize(count)
 	growth.resize(count)
+	sources.resize(count)
 	var land_value_halved := _land_value_halved
 	var crime_bonus := 16 if ordinances & PollutionPhase.CRIME_REDUCTION_ORDINANCE else 0
 
@@ -158,7 +222,6 @@ static func run(city: CityState) -> PollutionPhase.Result:
 			growth[index] = clampi((old_growth[index] * 7 + (population_value - old_population_value) * 8 + 128) / 8, 0, 255)
 			var building := buildings[index]
 			var zone := zones[index] & Sc2ZoneLayout.TYPE_MASK
-			sources[index] = 0
 
 			if building < PollutionPhase.FIRST_ROAD and zone == 0:
 				continue
@@ -187,26 +250,59 @@ static func run(city: CityState) -> PollutionPhase.Result:
 
 	span.mark("crime smoothing")
 	var crime_result := NativeGridMath.smooth_bytes(sources, edge, 2, 2, 1, 2, city.simulation_slice)
-	var crime: PackedByteArray = crime_result.values
 	span.mark("store maps and totals")
-	var updates := {"XPLT": pollution, "XVAL": land, "XCRM": crime, "XPLC": police, "XFIR": fire, "XPOP": population, "XROG": growth}
+	var updates := {"XVAL": land, "XCRM": crime_result.values, "XPOP": population, "XROG": growth}
 
 	for id in updates:
 		doc.find_chunk(id).set_decoded_payload(updates[id])
 
-	# misc totals retain the original half-resolution area unit for economic consumers
-	var pollution_total := int(pollution_result.total) / 4
 	var land_total := land_sum / 4
 	var crime_total := int(crime_result.total) / 4
 
-	for update in [[PollutionPhase.MISC_CITY_POLLUTION, pollution_total],
-		[PollutionPhase.MISC_CITY_LAND_VALUE, land_total], [PollutionPhase.MISC_CITY_CRIME, crime_total],
-		[PollutionPhase.MISC_CITY_CENTER_X, center.x], [PollutionPhase.MISC_CITY_CENTER_Y, center.y]]:
+	for update in [[PollutionPhase.MISC_CITY_LAND_VALUE, land_total], [PollutionPhase.MISC_CITY_CRIME, crime_total]]:
 		doc.set_misc_u32(update[0], update[1])
 
 	return PollutionPhase.totals(
-		pollution_total, land_total, crime_total, developed, center, span.finish()
+		doc.misc_u32(PollutionPhase.MISC_CITY_POLLUTION), land_total, crime_total, developed, center, span.finish()
 	)
+
+
+# the name of the first missing or invalid data map, or an empty string
+static func _invalid_chunk(doc: Sc2File, count: int) -> String:
+	for id in Sc2File.HALF_MAP_CHUNKS + Sc2File.QUARTER_MAP_CHUNKS:
+		var chunk := doc.find_chunk(id)
+
+		if chunk == null or chunk.decoded_payload.size() != count:
+			return "Native data map %s is missing or invalid" % id
+
+	var misc := doc.find_chunk("MISC")
+
+	if misc == null or misc.decoded_payload.size() != Sc2MiscLayout.SIZE:
+		return "MISC is missing or invalid"
+
+	return ""
+
+
+static func _failed_coverage(message: String) -> PollutionCoverageResult:
+	var result := PollutionCoverageResult.new()
+	result.error = message
+
+	return result
+
+
+# 1 for each occupied building tile. only the coverage ordinances read this
+static func _occupied_tiles(city: CityState) -> PackedInt32Array:
+	var buildings := city.buildings
+	var occupied := PackedInt32Array()
+	occupied.resize(buildings.size())
+
+	for index in buildings.size():
+		var building := buildings[index]
+
+		if building >= Tiles.DEVELOPED_FIRST and building < Tiles.HYDRO_POWER_1:
+			occupied[index] = 1
+
+	return occupied
 
 
 # derive once from the shared rules; workers only read these tables

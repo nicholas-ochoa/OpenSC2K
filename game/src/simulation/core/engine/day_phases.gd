@@ -143,6 +143,22 @@ class Power extends SimulationDayPhase:
 
 		context.power_usage_percent = power.usage_percent
 
+		# per-tile maps move pollution and service coverage from the data-map
+		# day to here. they need the new powered flags and nothing from day 3
+		if not context.city.document.full_resolution_maps():
+			return power
+
+		context.span.mark("pollution_coverage")
+		var coverage := NativeDataMapPhase.run_pollution_and_coverage(context.city)
+
+		if not coverage.ok:
+			return coverage
+
+		stored = context.record("pollution_coverage", coverage)
+
+		if not stored.ok:
+			return stored
+
 		return power
 
 
@@ -180,7 +196,12 @@ class Growth extends SimulationDayPhase:
 
 class DataMaps extends SimulationDayPhase:
 	func run(context: SimulationPhaseContext) -> PhaseResult:
-		var scan := PollutionPhase.run(context.city)
+		var scan: PollutionPhase.Result
+
+		if context.city.document.full_resolution_maps():
+			scan = NativeDataMapPhase.run_land_value_and_crime(context.city)
+		else:
+			scan = PollutionPhase.run(context.city)
 
 		if not scan.ok:
 			return scan
