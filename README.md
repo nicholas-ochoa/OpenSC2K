@@ -2,6 +2,8 @@
 
 An open-source remake of SimCity 2000, built with Godot.
 
+Join our [Discord community](https://discord.gg/Zp6AqNtrF).
+
 ## Run
 
 Use Godot 4.7 and provide your own copy of SimCity 2000 Special Edition for Windows 95 (1996).
