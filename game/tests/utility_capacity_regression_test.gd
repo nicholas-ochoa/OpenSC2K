@@ -43,12 +43,16 @@ func fixture(edge: int, version: int) -> Sc2File:
 
 
 func _run() -> void:
+	check_scan_helpers()
+
 	for edge in [128, 256, 384, 512]:
 		# Retain legacy widths and every SC2X version at the original and large sizes.
 		var versions: Array = {128: [2, 3], 256: [1], 384: [2], 512: [3]}[edge]
 
 		for version in versions:
 			check_power(edge, version)
+			check_power_trace_order(edge, version)
+			check_water_source_order(edge, version)
 
 			if edge == 128:
 				check_power_queue_limit(version)
@@ -86,6 +90,74 @@ func check_power(edge: int, version: int) -> void:
 	var loaded := Sc2File.new()
 	check(loaded.parse(bytes) and loaded.serialize(true).data == bytes, "Power update exact save round trip")
 	check(PowerPhase.run(CityState.from_document(loaded), SimRandom.new(1)).consumers == expected, "Power rules survive reload")
+
+
+# The bulk flag clear and the building search match a loop over single tiles.
+func check_scan_helpers() -> void:
+	for size in [13, 16384]:
+		var flags := PackedByteArray()
+
+		for index in size:
+			flags.append((index * 71 + 5) % 256)
+
+		var expected := flags.duplicate()
+
+		for index in size:
+			expected[index] &= ~(Sc2TileFlags.MARK | Sc2TileFlags.POWERED) & 0xff
+
+		check(Sc2TileFlags.without(flags, Sc2TileFlags.MARK | Sc2TileFlags.POWERED) == expected, "Bulk flag clear matches a per-tile clear")
+
+	var city := CityState.from_document(fixture(128, 2))
+	var ids := PackedInt32Array([Tiles.GAS_POWER, Tiles.COAL_POWER])
+	var expected_indices := PackedInt32Array()
+
+	for index in [5, 700, 701, 9000, 16383]:
+		city.set_building_id(index / 128, index % 128, ids[index % 2])
+		expected_indices.append(index)
+
+	check(city.building_indices(ids) == expected_indices, "Building search returns tiles in scan order")
+
+
+# With too little capacity, power reaches tiles in the original trace order:
+# the plant, then its y - 1, x - 1, y + 1 and x + 1 neighbors
+func check_power_trace_order(edge: int, version: int) -> void:
+	var city := CityState.from_document(fixture(edge, version))
+	var point := Vector2i(edge / 2, edge / 2)
+
+	for offset in range(-8, 9):
+		city.set_building_id(point.x, point.y + offset, Tiles.GAS_POWER if offset == 0 else Tiles.LOWER_CLASS_HOMES_1X1_1)
+		city.set_tile_flag(point.x, point.y + offset, PowerPhase.FLAG_POWERABLE, true)
+
+	var result := PowerPhase.run(city, SimRandom.new(1))
+	check(result.ok and result.generation == 11, "Gas plant supplies 11 units")
+
+	# the plant uses one unit. the other ten go to the five nearest homes on each side
+	for offset in range(-8, 9):
+		var powered := city.tile_flags[city.index_of(point.x, point.y + offset)] & PowerPhase.FLAG_POWERED != 0
+		check(powered == (absi(offset) <= 5), "Limited power follows the trace order at offset %d" % offset)
+
+
+# Pumps start their networks in a scan order that depends on the compass rotation
+func check_water_source_order(edge: int, version: int) -> void:
+	var city := CityState.from_document(fixture(edge, version))
+	var last := edge - 1
+
+	for point in [Vector2i(0, 0), Vector2i(3, last), Vector2i(last, 2), Vector2i(7, 7), Vector2i(7, 9), Vector2i(9, 7), Vector2i(last, last)]:
+		city.set_building_id(point.x, point.y, Tiles.DESALINIZATION if point.x == 7 else Tiles.WATER_PUMP)
+
+	for rotation in 4:
+		var expected := PackedInt32Array()
+
+		for major in edge:
+			for minor in edge:
+				var x: int = [minor, major, last - minor, last - major][rotation]
+				var y: int = [major, last - minor, last - major, minor][rotation]
+				var building := city.buildings[x * edge + y]
+
+				if building == Tiles.WATER_PUMP or building == Tiles.DESALINIZATION:
+					expected.append(x * edge + y)
+
+		check(WaterPhase._sources_in_scan_order(city, rotation) == expected, "Water sources follow the rotation %d scan order" % rotation)
 
 
 # A very wide network overflows the original 512-entry trace queue.

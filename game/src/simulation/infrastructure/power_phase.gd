@@ -14,6 +14,8 @@ const FIRST_PLANT := Tiles.HYDRO_POWER_1
 const LAST_PLANT := Tiles.COAL_POWER
 const SOLAR_EFFICIENCY_ORDINANCE := OrdinanceIds.ENERGY_CONSERVATION_MASK
 
+static var _plant_ids := PackedInt32Array(range(FIRST_PLANT, LAST_PLANT + 1))
+
 
 class Result extends PhaseResult:
 	var generation := 0
@@ -22,8 +24,10 @@ class Result extends PhaseResult:
 	var usage_percent := 0
 
 
+# an unbounded trace keeps the component tiles in the caller's queue. `size`
+# counts them. a bounded trace does not keep its tiles
 class Component extends RefCounted:
-	var tiles := PackedInt32Array()
+	var size := 0
 	var capacity := 0
 	var consumers := 0
 
@@ -59,8 +63,6 @@ class TraceQueue extends RefCounted:
 
 
 static func run(city: CityState, random: SimRandom) -> Result:
-	var map_edge: int = city.map_size if city != null else 128
-
 	if city == null or not city.is_valid():
 		return _failed("city is invalid")
 
@@ -68,73 +70,70 @@ static func run(city: CityState, random: SimRandom) -> Result:
 		return _failed("random state is required")
 
 	var span := SimulationTimingSpan.new(city.simulation_slice)
-	span.mark("copy tile flags")
-	var flags := city.tile_flags.duplicate()
 	span.mark("clear power and scan marks")
-
-	for index in flags.size():
-		if city.simulation_slice != null and (index & 127) == 0:
-			city.simulation_slice.checkpoint()
-
-		flags[index] &= ~(Sc2TileFlags.MARK | Sc2TileFlags.POWERED) & 0xff
-
+	var flags := Sc2TileFlags.without(city.tile_flags, FLAG_MARK | FLAG_POWERED)
+	var buildings := city.buildings
+	var slice := city.simulation_slice
 	var total_generation := 0
 	var supplied_consumers := 0
 	var total_consumers := 0
 	# sc2x cities trace without the original queue limit
 	var bounded_queue := not city.document.is_extended()
+	var queue := PackedInt32Array()
+
+	if not bounded_queue:
+		queue.resize(flags.size())
+
 	span.mark("find power sources")
+	# the original scans each tile by x, then by y. the plant list has the same order
+	var plants := city.building_indices(_plant_ids)
 
-	for x in map_edge:
-		if city.simulation_slice != null:
-			city.simulation_slice.checkpoint()
+	for index in plants:
+		if flags[index] & FLAG_POWERED:
+			continue
 
-		for y in map_edge:
-			var index := city.index_of(x, y)
-			var building := city.buildings[index]
+		span.mark("network traversal and generation")
+		var component: Component
 
-			if building < FIRST_PLANT or building > LAST_PLANT:
-				continue
+		if bounded_queue:
+			component = _trace_bounded_component(city, flags, index, random)
+		else:
+			component = _trace_component(city, flags, queue, index, random)
 
-			if flags[index] & FLAG_POWERED:
-				continue
+		span.mark("capacity and ordinance totals")
+		var capacity: int = component.capacity
+		var consumers: int = component.consumers
+		total_generation += capacity
+		total_consumers += consumers
 
-			span.mark("network traversal and generation")
-			var component: Component
+		if city.document.misc_u32(Sc2MiscLayout.ORDINANCES) & SOLAR_EFFICIENCY_ORDINANCE:
+			capacity += int(capacity / 12)
 
-			if bounded_queue:
-				component = _trace_bounded_component(city, flags, index, random)
-			else:
-				component = _trace_component(city, flags, x, y, random)
+		supplied_consumers += mini(capacity, consumers)
 
-			span.mark("capacity and ordinance totals")
-			var capacity: int = component.capacity
-			var consumers: int = component.consumers
-			total_generation += capacity
-			total_consumers += consumers
-
-			if city.document.misc_u32(Sc2MiscLayout.ORDINANCES) & SOLAR_EFFICIENCY_ORDINANCE:
-				capacity += int(capacity / 12)
-
-			supplied_consumers += mini(capacity, consumers)
-
-			span.mark("distribute power")
-			if bounded_queue:
-				_distribute_bounded(city, flags, index, capacity)
-				span.mark("find power sources")
-
-				continue
-
-			for component_index in component.tiles:
-				if capacity != 0:
-					if city.buildings[component_index] >= FIRST_CONSUMER:
-						capacity -= 1
-
-					flags[component_index] |= FLAG_POWERED
-
-				flags[component_index] &= ~FLAG_MARK & 0xff
-
+		span.mark("distribute power")
+		if bounded_queue:
+			_distribute_bounded(city, flags, index, capacity)
 			span.mark("find power sources")
+
+			continue
+
+		# power goes to the tiles in trace order until the capacity is used
+		for position in component.size:
+			if slice != null and (position & 1023) == 0:
+				slice.checkpoint()
+
+			var tile := queue[position]
+
+			if capacity != 0:
+				if buildings[tile] >= FIRST_CONSUMER:
+					capacity -= 1
+
+				flags[tile] |= FLAG_POWERED
+
+			flags[tile] &= ~FLAG_MARK & 0xff
+
+		span.mark("find power sources")
 
 	span.mark("store powered tiles")
 	if not city.replace_tile_flags(flags):
@@ -164,51 +163,74 @@ static func _failed(message: String) -> Result:
 	return result
 
 
+# the original marks a tile when the tile leaves the queue, and skips the
+# later copies of the tile. a mark when the tile enters the queue visits the
+# same tiles in the same order, with a queue no larger than the map.
+# `queue` receives the component tiles in trace order
 static func _trace_component(
-	city: CityState, flags: PackedByteArray, start_x: int, start_y: int, random: SimRandom
+	city: CityState, flags: PackedByteArray, queue: PackedInt32Array, start: int, random: SimRandom
 ) -> Component:
-	var map_edge: int = city.map_size if city != null else 128
-	var queue := PackedInt32Array([city.index_of(start_x, start_y)])
-	var queue_position := 0
-	var tiles := PackedInt32Array()
+	var result := Component.new()
+
+	if flags[start] & (FLAG_MARK | FLAG_POWERABLE) != FLAG_POWERABLE:
+		return result
+
+	var map_edge: int = city.map_size
+	var last_y := map_edge - 1
+	var tile_count := flags.size()
+	var buildings := city.buildings
+	var slice := city.simulation_slice
 	var capacity := 0
 	var consumers := 0
+	var head := 0
+	var tail := 1
+	flags[start] |= FLAG_MARK
+	queue[0] = start
 
-	while queue_position < queue.size():
-		if city.simulation_slice != null and (queue_position & 127) == 0:
-			city.simulation_slice.checkpoint()
+	while head < tail:
+		if slice != null and (head & 127) == 0:
+			slice.checkpoint()
 
-		var index := queue[queue_position]
-		queue_position += 1
-
-		if flags[index] & FLAG_MARK or not flags[index] & FLAG_POWERABLE:
-			continue
-
-		flags[index] |= FLAG_MARK
-		tiles.append(index)
-		var x := int(index / map_edge)
+		var index := queue[head]
+		head += 1
 		var y := index % map_edge
-		var building := city.buildings[index]
+		var building := buildings[index]
 
 		if building >= FIRST_PLANT and building <= LAST_PLANT:
-			capacity += _plant_capacity(city, building, x, y, random)
+			capacity += _plant_capacity(city, building, index / map_edge, y, random)
 		elif building >= FIRST_CONSUMER:
 			consumers += 1
 
-		if y > 0:
-			queue.append(city.index_of(x, y - 1))
+		# neighbors in the original order: y - 1, x - 1, y + 1, x + 1
+		var neighbor := index - 1
 
-		if x > 0:
-			queue.append(city.index_of(x - 1, y))
+		if y > 0 and flags[neighbor] & (FLAG_MARK | FLAG_POWERABLE) == FLAG_POWERABLE:
+			flags[neighbor] |= FLAG_MARK
+			queue[tail] = neighbor
+			tail += 1
 
-		if y < map_edge - 1:
-			queue.append(city.index_of(x, y + 1))
+		neighbor = index - map_edge
 
-		if x < map_edge - 1:
-			queue.append(city.index_of(x + 1, y))
+		if neighbor >= 0 and flags[neighbor] & (FLAG_MARK | FLAG_POWERABLE) == FLAG_POWERABLE:
+			flags[neighbor] |= FLAG_MARK
+			queue[tail] = neighbor
+			tail += 1
 
-	var result := Component.new()
-	result.tiles = tiles
+		neighbor = index + 1
+
+		if y < last_y and flags[neighbor] & (FLAG_MARK | FLAG_POWERABLE) == FLAG_POWERABLE:
+			flags[neighbor] |= FLAG_MARK
+			queue[tail] = neighbor
+			tail += 1
+
+		neighbor = index + map_edge
+
+		if neighbor < tile_count and flags[neighbor] & (FLAG_MARK | FLAG_POWERABLE) == FLAG_POWERABLE:
+			flags[neighbor] |= FLAG_MARK
+			queue[tail] = neighbor
+			tail += 1
+
+	result.size = tail
 	result.capacity = capacity
 	result.consumers = consumers
 

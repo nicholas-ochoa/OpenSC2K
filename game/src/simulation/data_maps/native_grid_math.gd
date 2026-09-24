@@ -59,7 +59,7 @@ static func neighborhood(values: PackedInt32Array, edge: int, radius: int, scale
 			var bottom := bottoms[y]
 			var total := integral[right_row + bottom] - integral[left_row + bottom]
 			total -= integral[right_row + top] - integral[left_row + top]
-			result[row + y] = int(total * scale / (height * widths[y]))
+			result[row + y] = total * scale / (height * widths[y])
 
 	return result
 
@@ -112,7 +112,7 @@ static func neighborhood_bytes(values: PackedInt32Array, edge: int, radius: int,
 			var bottom := bottoms[y]
 			var total := integral[right_row + bottom] - integral[left_row + bottom]
 			total -= integral[right_row + top] - integral[left_row + top]
-			result[row + y] = clampi(int(total * scale / (height * widths[y])), 0, 255)
+			result[row + y] = clampi(total * scale / (height * widths[y]), 0, 255)
 
 	return result
 
@@ -155,7 +155,7 @@ static func smooth(values: PackedInt32Array, edge: int, center_weight: int, base
 				var total := values[index] * center_weight
 				total += values[index - near_row] + values[index + near_row]
 				total += values[index - step] + values[index + step]
-				result[index] = int(total / interior_divisor)
+				result[index] = total / interior_divisor
 
 		else:
 			for index in range(first, finish):
@@ -164,7 +164,7 @@ static func smooth(values: PackedInt32Array, edge: int, center_weight: int, base
 				total += values[index - step] + values[index + step]
 				total += values[index - far_row] + values[index + far_row]
 				total += values[index - far_column] + values[index + far_column]
-				result[index] = int(total / interior_divisor)
+				result[index] = total / interior_divisor
 
 	return result
 
@@ -195,8 +195,9 @@ static func smooth_bytes(values: PackedInt32Array, edge: int, center_weight: int
 			var y := rim_index if rim_index < rim_width else edge - 2 * rim_width + rim_index
 			var index := row + y
 			var value := _smooth_edge_value(values, edge, x, y, center_weight, base_divisor, step, rings)
-			result[index] = clampi(value, 0, 255)
-			sum += result[index]
+			value = clampi(value, 0, 255)
+			result[index] = value
+			sum += value
 
 		if not interior_row:
 			continue
@@ -209,8 +210,9 @@ static func smooth_bytes(values: PackedInt32Array, edge: int, center_weight: int
 				var total := values[index] * center_weight
 				total += values[index - near_row] + values[index + near_row]
 				total += values[index - step] + values[index + step]
-				result[index] = clampi(int(total / interior_divisor), 0, 255)
-				sum += result[index]
+				var value := clampi(total / interior_divisor, 0, 255)
+				result[index] = value
+				sum += value
 
 		else:
 			for index in range(first, finish):
@@ -219,8 +221,9 @@ static func smooth_bytes(values: PackedInt32Array, edge: int, center_weight: int
 				total += values[index - step] + values[index + step]
 				total += values[index - far_row] + values[index + far_row]
 				total += values[index - far_column] + values[index + far_column]
-				result[index] = clampi(int(total / interior_divisor), 0, 255)
-				sum += result[index]
+				var value := clampi(total / interior_divisor, 0, 255)
+				result[index] = value
+				sum += value
 
 	var smoothed := SmoothedBytes.new()
 	smoothed.values = result
@@ -254,7 +257,7 @@ static func _smooth_edge_value(values: PackedInt32Array, edge: int, x: int, y: i
 			total += values[index + distance]
 			divisor += 1
 
-	return int(total / divisor)
+	return total / divisor
 
 
 static func bytes(values: PackedInt32Array, budget: SimulationSliceBudget = null) -> PackedByteArray:
@@ -305,7 +308,7 @@ static func apply_service_pattern(values: PackedByteArray, edge: int, origin: Ve
 
 		for dy in range(maxi(-15, -origin.y), mini(16, edge - origin.y)):
 			var index := row + origin.y + dy
-			values[index] = clampi(int(values[index]) + pattern[source_row + dy + 15], 0, 255)
+			values[index] = clampi(values[index] + pattern[source_row + dy + 15], 0, 255)
 
 
 static func _sample(kernel: PackedByteArray, x: int, y: int) -> int:

@@ -30,8 +30,9 @@ class Result extends PhaseResult:
 	var treatment_sufficient := false
 
 
+# the component tiles stay in the caller's queue. `size` counts them
 class Component extends RefCounted:
-	var tiles := PackedInt32Array()
+	var size := 0
 	var supply := 0
 	var consumers := 0
 	var tower_capacity := 0
@@ -44,18 +45,14 @@ static func run(city: CityState) -> Result:
 		return _failed("city is invalid")
 
 	var span := SimulationTimingSpan.new(city.simulation_slice)
-	span.mark("copy tile flags")
-	var flags := city.tile_flags.duplicate()
 	span.mark("clear water and scan marks")
+	var flags := Sc2TileFlags.without(city.tile_flags, FLAG_MARK | FLAG_WATERED)
+	var buildings := city.buildings
+	var slice := city.simulation_slice
 
-	for index in flags.size():
-		if city.simulation_slice != null and (index & 127) == 0:
-			city.simulation_slice.checkpoint()
-
-		flags[index] &= ~FLAG_MARK & 0xff
-
-		if city.buildings[index] != WATER_TOWER:
-			flags[index] &= ~FLAG_WATERED & 0xff
+	# a water tower keeps its stored water
+	for index in city.building_indices([WATER_TOWER]):
+		flags[index] |= city.tile_flags[index] & FLAG_WATERED
 
 	var total_supply := 0
 	var total_consumers := 0
@@ -63,24 +60,17 @@ static func run(city: CityState) -> Result:
 	var pump_base_supply := int((city.document.misc_u32(Sc2MiscLayout.WEATHER_RAIN) & 0xff) / 2)
 	pump_base_supply += city.document.misc_u32(Sc2MiscLayout.WATER_LEVEL) * 5
 
-	span.mark("build source scan order")
-	var source_order := _source_scan_order(city.compass_rotation(), map_edge, city.simulation_slice)
+	var queue := PackedInt32Array()
+	queue.resize(flags.size())
 	span.mark("find water sources")
+	var sources := _sources_in_scan_order(city, city.compass_rotation())
 
-	for index in source_order:
-		if city.simulation_slice != null and (index & 127) == 0:
-			city.simulation_slice.checkpoint()
-
-		var building := city.buildings[index]
-
-		if building != WATER_PUMP and building != DESALINIZATION:
-			continue
-
+	for index in sources:
 		if flags[index] & FLAG_WATERED or not flags[index] & FLAG_POWERED:
 			continue
 
 		span.mark("network traversal and supply")
-		var component := _trace_component(city.buildings, flags, index, pump_base_supply, map_edge, city.simulation_slice)
+		var component := _trace_component(buildings, flags, queue, index, pump_base_supply, map_edge, slice)
 		span.mark("capacity and tower allocation")
 		var supply: int = component.supply
 		var consumers: int = component.consumers
@@ -94,25 +84,28 @@ static func run(city: CityState) -> Result:
 		watered_consumers += served
 
 		span.mark("distribute water and fill towers")
-		for component_index in component.tiles:
-			var tile_building := city.buildings[component_index]
+		for position in component.size:
+			if slice != null and (position & 1023) == 0:
+				slice.checkpoint()
 
-			match tile_building:
-				WATER_PUMP, WATER_TREATMENT, DESALINIZATION:
-					if flags[component_index] & FLAG_POWERED:
-						flags[component_index] |= FLAG_WATERED
-				WATER_TOWER:
-					if flags[component_index] & FLAG_POWERED and towers_to_fill != 0:
-						flags[component_index] |= FLAG_WATERED
-						towers_to_fill -= 1
-				_:
-					if served != 0:
-						flags[component_index] |= FLAG_WATERED
+			var tile := queue[position]
+			var tile_building := buildings[tile]
 
-						if tile_building >= FIRST_CONSUMER:
-							served -= 1
+			if tile_building < FIRST_CONSUMER:
+				if served != 0:
+					flags[tile] |= FLAG_WATERED
+			elif tile_building == WATER_PUMP or tile_building == WATER_TREATMENT or tile_building == DESALINIZATION:
+				if flags[tile] & FLAG_POWERED:
+					flags[tile] |= FLAG_WATERED
+			elif tile_building == WATER_TOWER:
+				if flags[tile] & FLAG_POWERED and towers_to_fill != 0:
+					flags[tile] |= FLAG_WATERED
+					towers_to_fill -= 1
+			elif served != 0:
+				flags[tile] |= FLAG_WATERED
+				served -= 1
 
-			flags[component_index] &= ~FLAG_MARK & 0xff
+			flags[tile] &= ~FLAG_MARK & 0xff
 
 		span.mark("find water sources")
 
@@ -159,92 +152,92 @@ static func _failed(message: String) -> Result:
 	return result
 
 
+# `queue` receives the component tiles in trace order
 static func _trace_component(
 	buildings: PackedByteArray,
 	flags: PackedByteArray,
+	queue: PackedInt32Array,
 	start: int,
 	pump_base_supply: int,
 	map_edge: int = 128,
 	budget: SimulationSliceBudget = null,
 ) -> Component:
-	var queue := PackedInt32Array([start])
-	var queue_position := 0
-	var tiles := PackedInt32Array()
+	var result := Component.new()
+
+	if not flags[start] & FLAG_PIPED:
+		return result
+
+	var last_y := map_edge - 1
+	var tile_count := flags.size()
 	var supply := 0
 	var consumers := 0
 	var tower_capacity := 0
-
-	if not flags[start] & FLAG_PIPED:
-		var result := Component.new()
-		result.tiles = tiles
-		result.supply = supply
-		result.consumers = consumers
-		result.tower_capacity = tower_capacity
-
-		return result
-
+	var head := 0
+	var tail := 1
 	flags[start] |= FLAG_MARK
+	queue[0] = start
 
-	while queue_position < queue.size():
-		if budget != null and (queue_position & 127) == 0:
+	while head < tail:
+		if budget != null and (head & 127) == 0:
 			budget.checkpoint()
 
-		var index := queue[queue_position]
-		queue_position += 1
-		tiles.append(index)
-		var x := int(index / map_edge)
+		var index := queue[head]
+		head += 1
 		var y := index % map_edge
 		var building := buildings[index]
 
 		if building >= FIRST_CONSUMER:
-			match building:
-				WATER_PUMP:
-					if flags[index] & FLAG_POWERED:
-						supply += _pump_supply(flags, x, y, pump_base_supply, map_edge)
-				WATER_TOWER:
-					tower_capacity += 100
+			if building == WATER_PUMP:
+				if flags[index] & FLAG_POWERED:
+					supply += _pump_supply(flags, index / map_edge, y, pump_base_supply, map_edge)
+			elif building == WATER_TOWER:
+				tower_capacity += 100
 
-					if flags[index] & FLAG_WATERED:
-						supply += 100
+				if flags[index] & FLAG_WATERED:
+					supply += 100
 
-					flags[index] &= ~FLAG_WATERED & 0xff
-				WATER_TREATMENT:
-					pass
-				DESALINIZATION:
-					if flags[index] & FLAG_POWERED:
-						supply += _desalinization_supply(flags, x, y, map_edge)
-				_:
-					consumers += 1
+				flags[index] &= ~FLAG_WATERED & 0xff
+			elif building == DESALINIZATION:
+				if flags[index] & FLAG_POWERED:
+					supply += _desalinization_supply(flags, index / map_edge, y, map_edge)
+			elif building != WATER_TREATMENT:
+				consumers += 1
 
-		if y > 0:
-			_queue_piped_tile(queue, flags, index - 1)
+		# neighbors in the original order: y - 1, x - 1, y + 1, x + 1
+		var neighbor := index - 1
 
-		if x > 0:
-			_queue_piped_tile(queue, flags, index - map_edge)
+		if y > 0 and flags[neighbor] & (FLAG_MARK | FLAG_PIPED) == FLAG_PIPED:
+			flags[neighbor] |= FLAG_MARK
+			queue[tail] = neighbor
+			tail += 1
 
-		if y < map_edge - 1:
-			_queue_piped_tile(queue, flags, index + 1)
+		neighbor = index - map_edge
 
-		if x < map_edge - 1:
-			_queue_piped_tile(queue, flags, index + map_edge)
+		if neighbor >= 0 and flags[neighbor] & (FLAG_MARK | FLAG_PIPED) == FLAG_PIPED:
+			flags[neighbor] |= FLAG_MARK
+			queue[tail] = neighbor
+			tail += 1
 
-	var result := Component.new()
-	result.tiles = tiles
+		neighbor = index + 1
+
+		if y < last_y and flags[neighbor] & (FLAG_MARK | FLAG_PIPED) == FLAG_PIPED:
+			flags[neighbor] |= FLAG_MARK
+			queue[tail] = neighbor
+			tail += 1
+
+		neighbor = index + map_edge
+
+		if neighbor < tile_count and flags[neighbor] & (FLAG_MARK | FLAG_PIPED) == FLAG_PIPED:
+			flags[neighbor] |= FLAG_MARK
+			queue[tail] = neighbor
+			tail += 1
+
+	result.size = tail
 	result.supply = supply
 	result.consumers = consumers
 	result.tower_capacity = tower_capacity
 
 	return result
-
-
-static func _queue_piped_tile(
-	queue: PackedInt32Array, flags: PackedByteArray, index: int
-) -> void:
-	if flags[index] & (FLAG_MARK | FLAG_PIPED) != FLAG_PIPED:
-		return
-
-	flags[index] |= FLAG_MARK
-	queue.append(index)
 
 
 static func _pump_supply(
@@ -280,38 +273,36 @@ static func _desalinization_supply(flags: PackedByteArray, x: int, y: int, map_e
 	return supply
 
 
-static func _source_scan_order(rotation: int, map_edge: int = 128, budget: SimulationSliceBudget = null) -> PackedInt32Array:
+# pumps and desalination plants in the order of the original scan for the
+# compass rotation. each rotation scans from a different corner
+static func _sources_in_scan_order(city: CityState, rotation: int) -> PackedInt32Array:
+	var edge := city.map_size
+	var last := edge - 1
+	var tile_count := edge * edge
+	var ranked := PackedInt64Array()
+
+	for index in city.building_indices([WATER_PUMP, DESALINIZATION]):
+		var x := index / edge
+		var y := index % edge
+		var rank := 0
+
+		match rotation & 3:
+			0:
+				rank = y * edge + x
+			1:
+				rank = x * edge + last - y
+			2:
+				rank = (last - y) * edge + last - x
+			3:
+				rank = (last - x) * edge + y
+
+		ranked.append(rank * tile_count + index)
+
+	ranked.sort()
 	var result := PackedInt32Array()
 
-	match rotation & 3:
-		0:
-			for y in map_edge:
-				if budget != null:
-					budget.checkpoint()
-
-				for x in map_edge:
-					result.append(x * map_edge + y)
-		1:
-			for x in map_edge:
-				if budget != null:
-					budget.checkpoint()
-
-				for y in range(map_edge - 1, -1, -1):
-					result.append(x * map_edge + y)
-		2:
-			for y in range(map_edge - 1, -1, -1):
-				if budget != null:
-					budget.checkpoint()
-
-				for x in range(map_edge - 1, -1, -1):
-					result.append(x * map_edge + y)
-		3:
-			for x in range(map_edge - 1, -1, -1):
-				if budget != null:
-					budget.checkpoint()
-
-				for y in map_edge:
-					result.append(x * map_edge + y)
+	for value in ranked:
+		result.append(value % tile_count)
 
 	return result
 

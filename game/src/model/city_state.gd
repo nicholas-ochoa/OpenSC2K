@@ -212,6 +212,24 @@ func replace_buildings(value: PackedByteArray) -> bool:
 	return CityTileEdits.replace_buildings(self, value)
 
 
+# indices of the tiles that hold one of the building ids, in ascending order.
+# this is the order of a scan by x, then by y. a native search per id is much
+# faster than a loop over each tile when the ids are rare
+func building_indices(ids: PackedInt32Array) -> PackedInt32Array:
+	var result := PackedInt32Array()
+
+	for id in ids:
+		var index := buildings.find(id)
+
+		while index >= 0:
+			result.append(index)
+			index = buildings.find(id, index + 1)
+
+	result.sort()
+
+	return result
+
+
 func zone_id(x: int, y: int) -> int:
 	return _byte_at(zones, x, y) & Sc2ZoneLayout.TYPE_MASK
 
