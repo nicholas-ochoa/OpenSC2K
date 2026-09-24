@@ -158,6 +158,15 @@
     "lane": "product"
   },
   {
+    "id": "city_gpu_tile_reuse_test",
+    "script": "tests/city_gpu_tile_reuse_test.gd",
+    "domain": "rendering",
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
+  },
+  {
     "id": "city_gpu_tile_eviction_test",
     "script": "tests/city_gpu_tile_eviction_test.gd",
     "domain": "rendering",

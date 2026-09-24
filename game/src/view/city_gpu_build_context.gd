@@ -10,6 +10,10 @@ class Tile extends RefCounted:
 	var draws: Array[CityGpuDrawList.Draw] = []
 	var foreground: Array[CityStaticCommand] = []
 	var foreground_draws: Array[CityGpuDrawList.Draw] = []
+	var revision := -1
+	var reusable := false
+	var inputs := 0
+	var object_altitude := 0
 
 
 class ImageRole extends RefCounted:
@@ -35,6 +39,9 @@ var _tile_order := PackedInt32Array()
 var _tile_order_head := 0
 var bounds_cache: Dictionary = {}
 var revision := -1
+var _layout: Array = []
+var tile_builds := 0
+var tile_reuses := 0
 var rotation := 0
 var atlas: Image
 var atlas_slots: Dictionary[int, Rect2i] = {}
@@ -49,31 +56,48 @@ func _init() -> void:
 	_tile_order.resize(TILE_CACHE_LIMIT)
 
 
-func set_revision(value: int) -> void:
-	if revision != value:
-		tiles.clear()
-		_tile_order_head = 0
+func set_revision(value: int, layout: Array = []) -> void:
+	if revision != value or _layout != layout:
+		# Only the common surface painter has a complete per-tile input key.
+		# Other drawings expire lazily. Layout changes still discard all tiles.
+		if layout.is_empty() or _layout != layout:
+			tiles.clear()
+			_tile_order_head = 0
+
 		bounds_cache.clear()
 		revision = value
+		_layout = layout
 
 
 func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 		configuration: CityViewConfiguration, x: int, y: int, mode: CityViewMode.Mode, pipes: bool, subways: bool, water_mains := true) -> Tile:
 	var key := city.index_of(x, y)
+	var cached: Tile = tiles.get(key)
 
-	if tiles.has(key):
-		return tiles[key]
+	if cached != null:
+		if cached.revision == revision:
+			return cached
 
+		if cached.reusable and cached.inputs == _tile_inputs(city, x, y, key) and cached.object_altitude == city.object_altitude(x, y):
+			cached.revision = revision
+			tile_reuses += 1
+
+			return cached
+
+	tile_builds += 1
 	var recorder := CityGpuDrawList.new()
 	var origin := configuration.side_margin + city.map_size * configuration.half_width
 	var order := (x + y) * city.map_size + y
 	var foreground: Array[CityStaticCommand] = []
 	var foreground_draws: Array[CityGpuDrawList.Draw] = []
+	var reusable := false
 
 	if mode == CityViewMode.Mode.UNDERGROUND:
 		CityUndergroundView.draw_tile(recorder, city, palette, sprites, images, configuration, origin, x, y, pipes, subways, water_mains)
 	else:
-		if not _fast_tile(recorder, city, palette, sprites, configuration, origin, x, y):
+		reusable = _fast_tile(recorder, city, palette, sprites, configuration, origin, x, y)
+
+		if not reusable:
 			CityIsometricRenderer.draw_tile(recorder, city, palette, sprites, images, configuration, origin, x, y, 0, false, false)
 
 		_register_image_roles()
@@ -105,6 +129,18 @@ func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	result.draws = recorder.draws
 	result.foreground = foreground
 	result.foreground_draws = foreground_draws
+	result.revision = revision
+	result.reusable = reusable
+
+	if reusable:
+		result.inputs = _tile_inputs(city, x, y, key)
+		result.object_altitude = city.object_altitude(x, y)
+
+	if cached != null:
+		# Replacing an expired tile must not add a duplicate FIFO key.
+		tiles[key] = result
+
+		return result
 
 	if tiles.size() >= TILE_CACHE_LIMIT:
 		# fifo bounds geometry memory even during repeated cross-map pans
@@ -117,6 +153,15 @@ func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	tiles[key] = result
 
 	return result
+
+
+# Exact packed inputs, not a hash. The resolved terrain includes neighboring
+# land heights that can turn a shoreline into a waterfall. Layout inputs are
+# checked separately; complex network and underground tiles are never reused.
+func _tile_inputs(city: CityState, x: int, y: int, key: int) -> int:
+	return (int(city.altitude_words[key]) | (CityIsometricRenderer.surface_terrain_id(city, x, y) << 16)
+			| (int(city.buildings[key]) << 24) | (int(city.zones[key]) << 32) | (int(city.tile_flags[key]) << 40)
+			| (int(OverlayData.is_thing(city.text_overlay_id(x, y))) << 48))
 
 
 func slot(image: Image) -> Rect2i:

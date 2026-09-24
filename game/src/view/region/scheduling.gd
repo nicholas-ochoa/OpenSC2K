@@ -206,6 +206,8 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 				cache._edit_priority.erase(key)
 
 			cache.completed_regions += 1
+			cache.tile_builds += region.tile_builds
+			cache.tile_reuses += region.tile_reuses
 			cache.max_region_usec = maxi(cache.max_region_usec, int(region.usec))
 			cache._changed = cache._changed or key in cache.visible
 

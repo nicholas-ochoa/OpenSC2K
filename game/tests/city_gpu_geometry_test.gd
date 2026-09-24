@@ -75,6 +75,35 @@ func _run() -> void:
 					await _check_gpu_pixels(region, expected.image)
 			assert(CityGpuRegionBatch.build(request, context, batch.atlas_revision).atlas_image == null, "Warm batch uploaded an unchanged atlas")
 
+			if view == 2 and mode == CityViewMode.Mode.CITY:
+				request.generation = 4
+				var reused := CityGpuRegionBatch.build(request, context, batch.atlas_revision)
+				assert(reused.ok and context.tile_reuses > 0, "A new revision must reuse unchanged common tiles")
+				var edited := -1
+
+				for key: int in context.tiles:
+					if context.tiles[key].reusable:
+						edited = key
+						break
+
+				assert(edited >= 0)
+				var prior := context.tiles[edited]
+				assert(city.set_tile_flag(edited / city.map_size, edited % city.map_size, Sc2TileFlags.FLIPPED,
+					not city.is_flipped(edited / city.map_size, edited % city.map_size)))
+				request.generation = 9
+				var changed := CityGpuRegionBatch.build(request, context, -1)
+				assert(changed.ok and context.tiles[edited] != prior)
+
+				for region: CityGpuRegionResult in changed.regions:
+					var expected := CityRegionRenderer.render(city, palette, sprites, region.bounds, view, mode)
+					expected.image.convert(Image.FORMAT_LA8)
+					assert(_static_command_values(region.occlusion_commands) == _static_command_values(expected.occlusion_commands))
+					assert(CityGpuDrawList.paint(region.gpu_draws, region.bounds, region.background, region.gpu_draw_grid).get_data() == expected.image.get_data())
+
+					if DisplayServer.get_name() != "headless":
+						region.atlas_image = changed.atlas_image
+						await _check_gpu_pixels(region, expected.image)
+
 	print("PASS: batched GPU regions share one exact atlas at every native view")
 	quit()
 

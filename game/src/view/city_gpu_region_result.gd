@@ -3,6 +3,8 @@ extends CityRegionResult
 
 
 var gpu_arrays: Array = []
+var tile_builds := 0
+var tile_reuses := 0
 var gpu_draws: Array[CityGpuDrawList.Draw] = []
 var gpu_draw_grid: Dictionary[Vector2i, Array] = {}
 var background := Color.TRANSPARENT

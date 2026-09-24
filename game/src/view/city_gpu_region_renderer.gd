@@ -10,7 +10,8 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 			or view not in [0, 1, 2] or not CityViewMode.is_map(mode)):
 		return CityGpuRegionResult.failed("invalid GPU region assets")
 
-	context.set_revision(revision)
+	context.set_revision(revision, [city.map_size, city.visible_altitude_levels, city.compass_rotation(),
+		view, mode, pipes, subways, water_mains, palette, sprites])
 	context.rotation = city.compass_rotation()
 	var configuration := Renderer.view_configuration(view)
 	bounds = bounds.intersection(Rect2i(Vector2i.ZERO, Renderer.output_size_for_view(view, city.map_size)))
@@ -19,6 +20,8 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 		return CityGpuRegionResult.failed("empty GPU region")
 
 	var limit := Renderer.maximum_sprite_size(sprites)
+	var previous_builds := context.tile_builds
+	var previous_reuses := context.tile_reuses
 	var span := Renderer.region_tile_span(configuration, limit, bounds, city.map_size, mode == CityViewMode.Mode.UNDERGROUND)
 	var draws: Array[CityGpuDrawList.Draw] = []
 	var foreground: Array[CityStaticCommand] = []
@@ -99,6 +102,8 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 	arrays[Mesh.ARRAY_INDEX] = indices
 
 	var result := CityGpuRegionResult.new()
+	result.tile_builds = context.tile_builds - previous_builds
+	result.tile_reuses = context.tile_reuses - previous_reuses
 	result.ok = true
 	result.error = ""
 	result.gpu_arrays = arrays
@@ -120,9 +125,18 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 static func _append_quad(rectangle: Rect2, uv: Rect2, vertices: PackedVector2Array,
 		uvs: PackedVector2Array, indices: PackedInt32Array) -> void:
 	var first := vertices.size()
-	vertices.append_array(PackedVector2Array(
-			[rectangle.position, Vector2(rectangle.end.x, rectangle.position.y), rectangle.end, Vector2(rectangle.position.x, rectangle.end.y)]
-	))
+	vertices.append(rectangle.position)
+	vertices.append(Vector2(rectangle.end.x, rectangle.position.y))
+	vertices.append(rectangle.end)
+	vertices.append(Vector2(rectangle.position.x, rectangle.end.y))
 	var scaled := Rect2(uv.position / CityGpuBuildContext.ATLAS_EDGE, uv.size / CityGpuBuildContext.ATLAS_EDGE)
-	uvs.append_array(PackedVector2Array([scaled.position, Vector2(scaled.end.x, scaled.position.y), scaled.end, Vector2(scaled.position.x, scaled.end.y)]))
-	indices.append_array(PackedInt32Array([first, first + 1, first + 2, first, first + 2, first + 3]))
+	uvs.append(scaled.position)
+	uvs.append(Vector2(scaled.end.x, scaled.position.y))
+	uvs.append(scaled.end)
+	uvs.append(Vector2(scaled.position.x, scaled.end.y))
+	indices.append(first)
+	indices.append(first + 1)
+	indices.append(first + 2)
+	indices.append(first)
+	indices.append(first + 2)
+	indices.append(first + 3)

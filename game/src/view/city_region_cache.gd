@@ -40,6 +40,8 @@ var generation := 0
 var completed_regions := 0
 var discarded_regions := 0
 var max_region_usec := 0
+var tile_builds := 0
+var tile_reuses := 0
 var last_error := ""
 var _snapshot: CityState
 var _palette: Sc2Palette
@@ -556,6 +558,7 @@ func metrics() -> Dictionary:
 		bytes += entry.image.get_width() * entry.image.get_height() * (1 if entry.image.get_format() == Image.FORMAT_L8 else 2)
 
 	return {"gpu": gpu_enabled, "atlas_bytes": _gpu_atlas_bytes(), "resident": entries.size(), "visible": visible.size(),
+			"tile_builds": tile_builds, "tile_reuses": tile_reuses,
 			"offscreen_limit": offscreen_limit(), "cpu_image_bytes": bytes, "texture_bytes_estimate": bytes, "completed": completed_regions,
 			"discarded": discarded_regions, "max_region_usec": max_region_usec, "ready": ready(), "covered": covered(), "pending": _task != null or _gpu_pending()}
 
