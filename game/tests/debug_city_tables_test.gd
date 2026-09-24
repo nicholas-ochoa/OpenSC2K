@@ -17,6 +17,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	assert(DebugCityTables.collect("XMIC", null).is_empty())
+	_check_state_rows()
 
 	for edge in [128, 512]:
 		_check_tile_counts(edge)
@@ -261,6 +262,53 @@ func _check_state_sorting(host: Control, engine: SimulationEngine) -> void:
 	assert(numbers == sorted_numbers and numbers[-1] == 789, "Expected numeric value order")
 	host.simulation_state.simulation_engine = null
 	panel.free()
+
+
+# rows for the next day, the speed controller, a waiting prompt and the scenario goals
+func _check_state_rows() -> void:
+	var city := CityState.from_document(EmptyCityTemplate.create(128))
+	assert(city.document.enable_full_resolution_maps() and city.set_age_in_days(25))
+	var engine := SimulationEngine.new(city)
+	var controller := GameSpeedController.new(engine)
+	assert(controller.set_speed(GameSpeedController.Speed.TURTLE))
+	controller.subtick_counter = 1
+	var rows := _state_rows(city, engine, controller)
+	assert(rows["next_day.city_days"].value == "26" and rows["next_day.month_day"].value == "2")
+	assert(rows["next_day.actions"].value == "power, pollution_coverage", "Per-tile maps run pollution with power")
+	assert(rows["next_day.growth_partition"].value == "None")
+	assert(rows["speed_controller.base_ticks_to_next_day"].value == "3", "Turtle starts a day on every fourth base tick")
+	assert(rows["pending_day_schedule"].value == "None" and rows["scenario.active"].value == "false")
+	assert(not rows.has("scenario.months_left"))
+	assert(controller.set_speed(GameSpeedController.Speed.PAUSED) and city.set_age_in_days(27))
+	engine.clock.city_days = 27
+	engine.city_status_resource_id = CityStatusMessages.NEED_FIRST
+	engine.pending_interaction = "military_proposal"
+	engine.pending_day_schedule = SimulationClock.state_for_day(22)
+	engine.pending_military_base_type = 3
+	engine.pending_military_site = Rect2i(4, 5, 6, 6)
+	engine.scenario = ScenarioState.new()
+	engine.scenario.document = city.document
+	engine.scenario.time_limit_months = 12
+	engine.scenario.city_size_goal = 1000
+	rows = _state_rows(city, engine, controller)
+	assert(rows["next_day.growth_partition"].value == "1/16 (step 0, substep 0)")
+	assert(rows["speed_controller.base_ticks_to_next_day"].value == "Paused")
+	assert(rows["city_status_resource_id"].value == "265: Power Plant Needed")
+	assert(rows["pending_day_schedule"].value == "City day 22: scenario, bankruptcy", "The military prompt resumes after milestones")
+	assert(rows["pending_military_base_type"].value == "3: Air Force" and rows["pending_military_site"].value == "(4, 5) 6×6")
+	assert(rows["scenario.months_left"].value == "12")
+	assert(rows["scenario.goal.city_size"].value == "0 / 1000" and not rows["scenario.goal.city_size"].warning.is_empty())
+	assert(rows["scenario.goal.pollution"].value == "0 / no limit" and rows["scenario.goal.pollution"].warning.is_empty())
+	assert(not rows.has("scenario.goal.first_building"))
+
+
+func _state_rows(city: CityState, engine: SimulationEngine, controller: GameSpeedController) -> Dictionary:
+	var rows := {}
+
+	for record in DebugCityTables.collect("State", city, engine, false, controller):
+		rows[record.name] = record
+
+	return rows
 
 
 func _check_sorting() -> void:

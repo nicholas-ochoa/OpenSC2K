@@ -121,8 +121,9 @@ func refresh_from_host(host: Control, force := false) -> void:
 	_last_refresh = Time.get_ticks_msec()
 	var simulation := host.get("simulation_state") as SimulationSessionState
 	var engine: SimulationEngine = simulation.simulation_engine if simulation != null else null
+	var controller: GameSpeedController = simulation.speed_controller if simulation != null else null
 	record_limit = DebugCityTables.record_limit(kind, city)
-	update_records(DebugCityTables.collect(kind, city, engine, show_empty.button_pressed))
+	update_records(DebugCityTables.collect(kind, city, engine, show_empty.button_pressed, controller))
 
 
 func update_records(records: Array[DebugTableRecord]) -> void:

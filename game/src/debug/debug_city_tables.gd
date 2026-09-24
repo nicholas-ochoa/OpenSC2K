@@ -36,7 +36,28 @@ const ENGINE_FIELDS := {
 	"unsupported_disaster_type": "The ID of a disaster that did not start because the game does not support it yet. The value is 0 when there is no such disaster.",
 	"disaster_map_counter": "Countdown for the active disaster. Each disaster tick decreases it by one.",
 	"disaster_hurricane_counter": "Countdown for the hurricane wind and floods. Each disaster tick decreases it by one.",
+	"midi_playback_active": "True when music plays. The monthly music choice uses a random number only when this value is false.",
+	"vehicle_crashes_enabled": "False when the player hides the vehicle layer. Airplanes and helicopters then leave the map and do not crash.",
+	"traffic_news_deadline_msec": "The engine time in ms before which the traffic helicopter cannot give a new traffic report. 0 when there is no wait.",
 }
+# speed controller rows. the controller decides when a base tick runs a day
+const CONTROLLER_FIELDS := {
+	"subtick_counter": "Base tick counter from 0 to 7. The game speed selects the counter values that start a day.",
+	"simulation_ready": "True when the next base tick runs a day.",
+	"interaction_blocked": "True when a player prompt stops the simulation.",
+	"terminal_blocked": "True when the game ended. The simulation then stops.",
+	"fire_elapsed_msec": "Time in ms since the last fire disaster tick. During a fire or a firestorm, a disaster tick waits for 1000 ms.",
+}
+# the scenario goals in the order of ScenarioState.evaluate_goals. a limit goal fails above its value
+const SCENARIO_GOALS := [
+	["city_size", "city_size", "city_size_goal", false], ["residential", "residential", "residential_goal", false],
+	["commercial", "commercial", "commercial_goal", false], ["industrial", "industrial", "industrial_goal", false],
+	["cash", "cash_after_bonds", "cash_goal", false], ["land_value", "land_value", "land_value_goal", false],
+	["life_expectancy", "life_expectancy", "life_expectancy_goal", false], ["education", "education", "education_goal", false],
+	["pollution", "pollution", "pollution_limit", true], ["crime", "crime", "crime_limit", true],
+	["traffic", "traffic", "traffic_limit", true],
+]
+const MILITARY_BASES := ["None", "Declined", "Army", "Air Force", "Navy", "Missile Silos"]
 # tile counts of the last building scan, reused until the building plane changes
 static var _tile_count_key: Array = []
 static var _tile_counts := PackedInt32Array()
@@ -48,7 +69,8 @@ const RANDOM_FIELDS := {
 }
 
 
-static func collect(kind: String, city: CityState, engine: SimulationEngine = null, include_empty := false) -> Array[DebugTableRecord]:
+static func collect(kind: String, city: CityState, engine: SimulationEngine = null, include_empty := false,
+	controller: GameSpeedController = null) -> Array[DebugTableRecord]:
 	var result: Array[DebugTableRecord] = []
 
 	if city == null or not city.is_valid():
@@ -152,6 +174,15 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 				for key: String in ENGINE_FIELDS:
 					result.append(_state_field(key, engine.get(key), ENGINE_FIELDS[key]))
 
+				result.append_array(_engine_detail_rows(city, engine))
+
+				if controller != null:
+					result.append_array(_controller_rows(controller))
+
+				result.append_array(_next_day_rows(city, engine))
+				result.append_array(_scenario_rows(city, engine.scenario))
+
+				# the random states stay last
 				for key: String in RANDOM_FIELDS:
 					var random: RefCounted = engine.get(key)
 
@@ -219,6 +250,127 @@ static func _make_tile_constants() -> PackedStringArray:
 			names[value] = key
 
 	return names
+
+
+# engine values that need a name or a calculation to be useful
+static func _engine_detail_rows(city: CityState, engine: SimulationEngine) -> Array[DebugTableRecord]:
+	var rows: Array[DebugTableRecord] = []
+	var status := engine.city_status_resource_id
+	var status_text := "Not set" if status < 0 else "%d: %s" % [status, CityStatusMessages.text(status)] if status > 0 else "0: None"
+	rows.append(_state_field("city_status_resource_id", status_text,
+		"The monthly status message from the weather and disaster day. The status bar shows this message."))
+	var wait := maxi(engine.traffic_news_deadline_msec - Time.get_ticks_msec(), 0)
+	rows.append(_state_field("traffic_news_wait_msec", wait, "Time in ms until the traffic helicopter can give a new traffic report."))
+	var base := engine.pending_military_base_type
+	var base_name: String = MILITARY_BASES[base] if base >= 0 and base < MILITARY_BASES.size() else "Unknown"
+	rows.append(_state_field("pending_military_base_type", "%d: %s" % [base, base_name],
+		"The military base type that the military notice shows. The value is 0 when no notice waits."))
+	var site := engine.pending_military_site
+	rows.append(_state_field("pending_military_site",
+		"(%d, %d) %d×%d" % [site.position.x, site.position.y, site.size.x, site.size.y] if site.has_area() else "None",
+		"The land that the game reserves for the base after the player closes the military notice."))
+	var schedule := engine.pending_day_schedule
+	var remaining := "None"
+
+	if schedule != null:
+		# the budget prompt stops the day before its first action. the military prompts stop it after milestones
+		if engine.pending_interaction != "annual_budget":
+			schedule = SimulationDaySchedule._schedule_after(engine, schedule, "milestones")
+
+		remaining = "City day %d: %s" % [schedule.city_days, _action_list(city, schedule.actions)]
+
+	rows.append(_state_field("pending_day_schedule", remaining,
+		"The day that waits for the player prompt, and the actions that run after the player answers."))
+
+	return rows
+
+
+static func _controller_rows(controller: GameSpeedController) -> Array[DebugTableRecord]:
+	var rows: Array[DebugTableRecord] = []
+
+	for key: String in CONTROLLER_FIELDS:
+		var value: Variant = controller.get(key)
+		rows.append(_state_field("speed_controller." + key, int(value) if value is float else value, CONTROLLER_FIELDS[key]))
+
+	var ticks: Variant = "Paused" if controller.speed == GameSpeedController.Speed.PAUSED else "Stopped" \
+		if controller.interaction_blocked or controller.terminal_blocked else 1 if controller.simulation_ready else null
+
+	for count in range(1, 9):
+		if ticks == null and controller._is_day_due((controller.subtick_counter + count) & 7):
+			ticks = count
+
+	if ticks == null:
+		ticks = "Unknown"
+
+	rows.append(_state_field("speed_controller.base_ticks_to_next_day", ticks,
+		"Number of 200 ms base ticks until the next day starts at the current speed."))
+
+	return rows
+
+
+# the day that the next day tick runs. a day that waits for a prompt shows in pending_day_schedule
+static func _next_day_rows(city: CityState, engine: SimulationEngine) -> Array[DebugTableRecord]:
+	var schedule := SimulationClock.state_for_day(engine.clock.city_days + 1)
+	var partition := "None"
+
+	if "growth" in schedule.actions:
+		partition = "%d/16 (step %d, substep %d)" % [schedule.month_day - 2, schedule.growth_step, schedule.growth_substep]
+
+	return [
+		_state_field("next_day.city_days", schedule.city_days, "The city age in days after the next day."),
+		_state_field("next_day.month_day", schedule.month_day + 1, "The day of the month for the next day, from 1 to 25."),
+		_state_field("next_day.actions", _action_list(city, schedule.actions),
+			"The actions that the next day runs. On a city with per-tile maps, power also runs pollution_coverage."),
+		_state_field("next_day.growth_partition", partition, "The growth scan part that the next day runs. None on a day without growth."),
+	]
+
+
+# scenario goals with the current values. a row with an unmet goal has a warning
+static func _scenario_rows(city: CityState, scenario: ScenarioState) -> Array[DebugTableRecord]:
+	var rows: Array[DebugTableRecord] = []
+	var active := scenario != null and scenario.is_valid()
+	rows.append(_state_field("scenario.active", active, "True when the city has a scenario with goals and a time limit."))
+
+	if not active:
+		return rows
+
+	rows.append(_state_field("scenario.months_left", scenario.time_limit_months,
+		"Months until the scenario ends. The milestones day decreases it by one while a goal is not met."))
+	var goals := scenario.evaluate_goals(city)
+
+	if not goals.ok:
+		return rows
+
+	var targets: Array = SCENARIO_GOALS.duplicate()
+
+	for pair in [["first_building", "first_building_tiles", "first_building_tile_count", "first_building_id"],
+		["second_building", "second_building_tiles", "second_building_tile_count", "second_building_id"]]:
+		if int(scenario.get(pair[3])) != BuildingTileIds.EMPTY:
+			targets.append([pair[0], pair[1], pair[2], false])
+
+	for goal: Array in targets:
+		var required := int(scenario.get(goal[2]))
+		var actual := int(goals.values.get(goal[1], 0))
+		var text := "%d / %s" % [actual, ("no limit" if required <= 0 else "limit %d" % required) if goal[3] else str(required)]
+		var row := _state_field("scenario.goal." + goal[0], text, ("The current value and the maximum for the scenario to succeed."
+			if goal[3] else "The current value and the minimum for the scenario to succeed."))
+
+		if goal[0] in goals.unmet:
+			row.warning = "This goal is not met."
+
+		rows.append(row)
+
+	return rows
+
+
+# schedule action names. power also runs pollution_coverage on a city with per-tile maps
+static func _action_list(city: CityState, actions: PackedStringArray) -> String:
+	var names := Array(actions)
+
+	if "power" in names and city.document.full_resolution_maps():
+		names.insert(names.find("power") + 1, "pollution_coverage")
+
+	return ", ".join(names) if not names.is_empty() else "None"
 
 
 # values sort in groups: numbers, then points, then other values as text.
