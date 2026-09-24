@@ -165,10 +165,10 @@ static func grow_special_zone(
 				buildings, zones, flags, terrain, misc, point, tile, 1, zone, rotation, map_edge
 			)
 
-		zones[SpecialZoneState._index(point, map_edge)] = (zones[SpecialZoneState._index(point, map_edge)] & Sc2ZoneLayout.CORNERS_MASK) | zone
+			zones[SpecialZoneState._index(point, map_edge)] = (zones[SpecialZoneState._index(point, map_edge)] & Sc2ZoneLayout.CORNERS_MASK) | zone
 
-		if zone == 7:
-			flags[SpecialZoneState._index(point, map_edge)] &= ~Sc2TileFlags.UTILITY_MASK & 0xff
+			if zone == 7:
+				flags[SpecialZoneState._index(point, map_edge)] &= ~Sc2TileFlags.UTILITY_MASK & 0xff
 
 		var result := SpecialZonePlacement.Result.new()
 		result.ok = true
@@ -178,7 +178,7 @@ static func grow_special_zone(
 
 	if SPECIAL_TWO_BY_TWO_TILES.has(tile):
 		return SpecialZonePlacement._place_special_two_by_two(
-			buildings, zones, flags, terrain, misc, point, tile, zone, rotation, map_edge, underground
+			buildings, zones, flags, terrain, misc, point, tile, zone, rotation, map_edge
 		)
 
 	if tile == Tiles.MISSILE_SILO:

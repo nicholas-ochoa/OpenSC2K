@@ -238,7 +238,6 @@ static func _place_special_two_by_two(
 	zone: int,
 	rotation: int,
 	map_edge: int = 128,
-	underground: PackedByteArray = PackedByteArray(),
 ) -> Result:
 	var anchor := Vector2i(point.x & ~1, point.y & ~1)
 
@@ -265,28 +264,13 @@ static func _place_special_two_by_two(
 
 			return result
 
-		# The original checks 0xeb..0xff only at the anchor. sc2kfix checks
-		# the missile-silo restriction across the whole footprint.
+		# The original checks 0xeb..0xff only at the anchor.
 		if point_index == 0 and checked_tile > Tiles.RADAR:
 			var result := Result.new()
 			result.ok = false
 			result.changed_tiles = 0
 
 			return result
-
-		if zone == 7:
-			if (checked_tile >= Tiles.FIRST_ROAD and checked_tile <= Tiles.LAST_ROAD) or checked_tile == Tiles.MISSILE_SILO or checked_tile == Tiles.RADIOACTIVE_WASTE or checked_tile == Tiles.SMALL_PARK:
-				var result := Result.new()
-				result.ok = false
-				result.changed_tiles = 0
-
-				return result
-			if terrain[index] != TerrainTileIds.FLAT or flags[index] & Sc2TileFlags.WATER or (not underground.is_empty() and underground[index] != UnderTiles.EMPTY):
-				var result := Result.new()
-				result.ok = false
-				result.changed_tiles = 0
-
-				return result
 
 		if (zones[index] & Sc2ZoneLayout.TYPE_MASK) != zone:
 			var result := Result.new()
@@ -295,6 +279,8 @@ static func _place_special_two_by_two(
 
 			return result
 
+	# Clear structures before the common placement checks. A failed placement
+	# keeps these changes and still reports success, as in the original.
 	for checked in points:
 		_clear_special_building(buildings, zones, flags, misc, checked, map_edge)
 
