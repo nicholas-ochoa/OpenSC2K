@@ -10,6 +10,7 @@ func _ready() -> void:
 	assert(map_view.moving_occlusion._viewports.is_empty())
 	map_view.moving_occlusion = ProfileOcclusion.new(map_view, self)
 	map_view.moving_occlusion.enabled = enabled
+	render_caches.dynamic_command_cache = ProfileCommandCache.new(self)
 
 
 func _record(name: String, started: int) -> void:
@@ -62,6 +63,13 @@ class ProfileMovingSprites extends ApplicationMovingSprites:
 
 		return result
 
+	func _dynamic_occluder_image(sprites: Sc2SpriteArchive, divisor: int, position: Vector2i,
+			size: Vector2i, order: int, train := false, factor := 1) -> Image:
+		var started := Time.get_ticks_usec()
+		var result := super._dynamic_occluder_image(sprites, divisor, position, size, order, train, factor)
+		app._record("moving_masks", started)
+		return result
+
 
 class ProfileInterface extends ApplicationInterface:
 
@@ -96,6 +104,12 @@ class ProfileMapRender extends ApplicationMapRender:
 		var started := Time.get_ticks_usec()
 		super.poll_region_cache()
 		app._record("poll_regions", started)
+
+	func _invalidate_region_foregrounds(changes: Array[Rect2i], occluder_changes: Array[Rect2i]) -> bool:
+		var started := Time.get_ticks_usec()
+		var result := super._invalidate_region_foregrounds(changes, occluder_changes)
+		app._record("foreground_invalidation", started)
+		return result
 
 	func refresh_sign_occlusion(view_size: int) -> void:
 		var started := Time.get_ticks_usec()
@@ -143,6 +157,19 @@ class ProfileRegionCache extends CityRegionCache:
 		var result := super.texture()
 		owner._record("region_source", started)
 
+		return result
+
+
+class ProfileCommandCache extends CityDynamicCommandCache:
+	var owner: CityApplication
+
+	func _init(application: CityApplication) -> void:
+		owner = application
+
+	func get_commands(city: CityState, sprites: Sc2SpriteArchive, view: int, phase: int) -> Array[CityDynamicCommand]:
+		var started := Time.get_ticks_usec()
+		var result := super.get_commands(city, sprites, view, phase)
+		owner._record("dynamic_commands", started)
 		return result
 
 
