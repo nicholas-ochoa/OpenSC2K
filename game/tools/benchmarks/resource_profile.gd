@@ -17,7 +17,8 @@ func _run() -> void:
 	OS.set_environment("OPENSC2K_CITY_RENDERER", "gpu")
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 	root.size = Vector2i(1920, 1080)
-	report_metadata({"city": "SYDNEY.SC2", "compatibility": true, "window": root.size, "audio": "Dummy"})
+	var city_path := input_path(reference_path("CITIES/SYDNEY.SC2"))
+	report_metadata({"city": city_path, "window": root.size, "audio": "Dummy"})
 	await _measure("engine", 2.0)
 	main = (load("res://main.tscn") as PackedScene).instantiate()
 	main.set_script(load("res://tools/benchmarks/profiled_city.gd"))
@@ -29,7 +30,12 @@ func _run() -> void:
 		return
 	await create_timer(6.0).timeout
 	await _measure("menu", 3.0)
-	main.preferences.original_compatibility = true
+	var document := Sc2File.load_path(city_path)
+	if not document.is_valid():
+		printerr("Cannot load profiling city: ", city_path)
+		quit(1)
+		return
+	main.preferences.original_compatibility = not document.is_extended()
 	var large_artwork := OS.get_environment("CITY_BENCH_LARGE_ARTWORK") == "1"
 	main.preferences.overview_graphics = 2 if large_artwork else 0
 	main.preferences.zoom_graphics = AppSettingsStore.normalize_zoom_graphics(
@@ -38,7 +44,7 @@ func _run() -> void:
 		int(OS.get_environment("CITY_BENCH_MOVING_FPS")) if OS.has_environment("CITY_BENCH_MOVING_FPS") else 20)
 	var overview_comparison := OS.get_environment("CITY_BENCH_OVERVIEW_COMPARISON") == "1"
 	main.map_view.zoom_factor = 0.1 if overview_comparison else 1.0
-	if not main.city_session.activate_document(Sc2File.load_path(reference_path("CITIES/SYDNEY.SC2"))):
+	if not main.city_session.activate_document(document):
 		quit(1)
 		return
 	main.menus.set_overlay(CityViewMode.Mode.CITY)
@@ -50,7 +56,7 @@ func _run() -> void:
 		await _measure("large_turtle_10", 12.0)
 		main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 		main.preferences.overview_graphics = 0
-		if not main.city_session.activate_document(Sc2File.load_path(reference_path("CITIES/SYDNEY.SC2"))):
+		if not main.city_session.activate_document(Sc2File.load_path(city_path)):
 			quit(1)
 			return
 		main.frame.select_speed(GameSpeedController.Speed.PAUSED)
@@ -114,7 +120,9 @@ func _measure(stage: String, seconds: float) -> void:
 	print("BEGIN ", stage, " pid=", OS.get_process_id())
 	if main != null:
 		main.frame_profile.clear()
-		main.timing_state.simulation_timings.clear()
+		# Keep day history: the SC2X worker uses it to pace subsequent days.
+		main.timing_state.simulation_timings.steps.clear()
+		main.timing_state.simulation_timings.step_after.clear()
 	var samples: Array[float] = []
 	var render_cpu := 0.0
 	var render_gpu := 0.0
@@ -161,6 +169,12 @@ func _measure(stage: String, seconds: float) -> void:
 		result["overview_graphics"] = main.preferences.overview_graphics
 		result["actual_artwork_size"] = main.static_render.city_view_size() if main.document_state.city != null else -1
 		result["moving_fps"] = main.preferences.moving_frame_rate
+		result["original_compatibility"] = main.preferences.original_compatibility
+		if main.document_state.city != null:
+			result["map_edge"] = main.document_state.city.map_size
+			result["simulation_worker"] = main.simulation_state.frame_simulation != null
+			if main.simulation_state.frame_simulation != null:
+				result["worker_metrics"] = main.simulation_state.frame_simulation.metrics()
 		var steps := {}
 		for label in main.timing_state.simulation_timings.steps:
 			var row: SimulationTimingHistory.Sample = main.timing_state.simulation_timings.steps[label]
@@ -186,5 +200,5 @@ func _measure(stage: String, seconds: float) -> void:
 
 static func fixture_paths() -> PackedStringArray:
 	var paths := application_paths()
-	paths.append(reference_path("CITIES/SYDNEY.SC2"))
+	paths.append(input_path(reference_path("CITIES/SYDNEY.SC2")))
 	return paths

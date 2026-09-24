@@ -2,8 +2,10 @@
 """Profile a native city workload with disposable preferences and Dummy audio."""
 import argparse
 from contextlib import nullcontext
+import hashlib
 import json
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -16,6 +18,7 @@ from validate_project import Project
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--city', type=Path, help='Profile a disposable copy of this SC2 or SC2X city.')
     parser.add_argument('--renderer', choices=('gl_compatibility', 'mobile'), default='gl_compatibility')
     parser.add_argument('--large-artwork', action='store_true', help='Use Large artwork at every zoom.')
     parser.add_argument('--moving-fps', choices=(5, 10, 20, 30, 60), type=int, default=20)
@@ -35,6 +38,13 @@ def main():
             command = [os.environ.get('GODOT', 'godot'), '--path', str(project.path),
                        '--audio-driver', 'Dummy', '--rendering-method', args.renderer,
                        '--script', 'res://tools/benchmarks/resource_profile.gd']
+            if args.city:
+                source = args.city.expanduser().resolve(strict=True)
+                copied = Path(temporary) / ('profile-city' + source.suffix)
+                shutil.copyfile(source, copied)
+                digest = hashlib.sha256(copied.read_bytes()).hexdigest()
+                print(f'City input: {source}; SHA256 {digest}; using a disposable copy', flush=True)
+                command.extend(['--', str(copied)])
             # Instruments records target environment variables. Inherit only runtime essentials.
             environment = {key: os.environ[key] for key in
                            ('PATH', 'HOME', 'TMPDIR', 'USER', 'LOGNAME', 'DISPLAY', 'WAYLAND_DISPLAY',
