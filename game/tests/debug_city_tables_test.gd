@@ -19,6 +19,7 @@ func _run() -> void:
 	assert(DebugCityTables.collect("XMIC", null).is_empty())
 
 	for edge in [128, 512]:
+		_check_tile_counts(edge)
 		var city := CityState.from_document(EmptyCityTemplate.create(edge))
 		var xmic := city.document.find_chunk("XMIC")
 		xmic.decoded_payload[8] = 0xd2
@@ -137,6 +138,41 @@ func _run() -> void:
 
 	print("PASS: debug city tables sort, decode large-map records, retain expansion, filter, freeze and preserve save bytes")
 	quit()
+
+
+# the tiles tab counts each building id on the whole map and finds its first tile
+func _check_tile_counts(edge: int) -> void:
+	var city := CityState.from_document(EmptyCityTemplate.create(edge))
+	var tiles := [Vector2i(2, 9), Vector2i(2, 3), Vector2i(edge - 1, edge - 1)]
+
+	for point in tiles:
+		assert(city.set_building_id(point.x, point.y, BuildingTileIds.POLICE_STATION))
+
+	assert(city.set_building_id(5, 5, BuildingTileIds.LLAMA_DOME))
+	var before: PackedByteArray = city.document.serialize().data
+	var records := DebugCityTables.collect("Tiles", city)
+	var total := 0
+	var police: DebugTableRecord
+
+	for record in records:
+		total += int(record.sort[3])
+
+		if record.id == str(BuildingTileIds.POLICE_STATION):
+			police = record
+
+	assert(total == edge * edge, "Tile counts cover every map tile")
+	assert(police.cells[0] == "0xD2" and police.cells[1] == "POLICE_STATION" and police.cells[3] == "3")
+	assert(police.cells[4] == str(city.document.misc_i32(Sc2MiscLayout.TILE_COUNTS + BuildingTileIds.POLICE_STATION * 4)))
+	assert([police.site.x, police.site.y] == [2, 3], "Locate goes to the first tile in scan order")
+	assert(DebugCityTables.collect("Tiles", city, null, true).size() == BuildingTileIds.COUNT)
+	assert(city.document.serialize().data == before)
+
+	# an edit changes the building plane, so the next collection counts again
+	assert(city.set_building_id(2, 3, BuildingTileIds.EMPTY))
+
+	for record in DebugCityTables.collect("Tiles", city):
+		if record.id == str(BuildingTileIds.POLICE_STATION):
+			assert(record.cells[3] == "2" and [record.site.x, record.site.y] == [2, 9])
 
 
 # moving-thing columns fit their widest cell and explain their meaning

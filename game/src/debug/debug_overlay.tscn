@@ -62,6 +62,11 @@ visible = false
 layout_mode = 2
 kind = "Objects"
 
+[node name="Tiles" parent="DebugWindow/Panel/Margin/Content/Tabs" instance=ExtResource("3_records")]
+visible = false
+layout_mode = 2
+kind = "Tiles"
+
 [node name="State" parent="DebugWindow/Panel/Margin/Content/Tabs" instance=ExtResource("3_records")]
 visible = false
 layout_mode = 2

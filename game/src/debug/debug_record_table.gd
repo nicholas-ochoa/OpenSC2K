@@ -35,6 +35,17 @@ func _ready() -> void:
 		titles.insert(3, "Position")
 		widths.insert(3, 150)
 		locate_column = 4
+	elif kind == "Tiles":
+		titles = ["Tile", "Constant", "Name", "On map", "Saved count"]
+		widths = [0, 0, 0, 0, 0]
+		locate_column = 1
+		tooltips = {
+			"Tile": "Building ID in the XBLD tile plane.",
+			"Constant": "BuildingTileIds constant for the ID.",
+			"Name": "Name that the query tool shows for the tile.",
+			"On map": "Number of map tiles with this building ID.",
+			"Saved count": "Tile count that the city stores in MISC. The edit tools keep it up to date.",
+		}
 	elif kind == "Objects":
 		titles = ["Object"]
 		widths = [0]

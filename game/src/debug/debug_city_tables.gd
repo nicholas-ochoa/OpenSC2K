@@ -37,6 +37,10 @@ const ENGINE_FIELDS := {
 	"disaster_map_counter": "Countdown for the active disaster. It decreases by one on each disaster tick.",
 	"disaster_hurricane_counter": "Countdown for hurricane wind and floods. It decreases by one on each disaster tick.",
 }
+# tile counts of the last building scan, reused until the building plane changes
+static var _tile_count_key: Array = []
+static var _tile_counts := PackedInt32Array()
+static var _tile_constants := _make_tile_constants()
 const RANDOM_FIELDS := {
 	"random": "State of the main random number generator.",
 	"game_random": "State of the second random number generator.",
@@ -117,6 +121,27 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 				row.fields = [stored]
 				result.append(row)
 
+		"Tiles":
+			var counts := tile_counts(city)
+
+			for id in counts.size():
+				var count := counts[id]
+
+				if count == 0 and not include_empty:
+					continue
+
+				var first := city.buildings.find(id) if count > 0 else -1
+				var site := null if first < 0 else CityRecords.Site.new(first / city.map_size, first % city.map_size, 1, 1)
+				var saved := city.document.misc_i32(Sc2MiscLayout.TILE_COUNTS + id * 4)
+				var name := QueryStrings.tile_name(id)
+				var row := DebugTableRecord.new()
+				row.id = str(id)
+				row.cells = ["0x%02X" % id, _tile_constants[id], name, str(count), str(saved)]
+				row.sort = [id, _tile_constants[id], name, count, saved]
+				row.site = site
+				row.empty = count == 0
+				result.append(row)
+
 		"State":
 			if engine != null:
 				for key: String in ENGINE_FIELDS:
@@ -129,6 +154,41 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 						result.append(_state_field(key + ".state", random.get("state"), RANDOM_FIELDS[key]))
 
 	return result
+
+
+# the number of tiles with each building id. the result is shared; do not change it
+static func tile_counts(city: CityState) -> PackedInt32Array:
+	var key: Array = [city.get_instance_id(), city.chunk_revision("XBLD")]
+
+	if key == _tile_count_key:
+		return _tile_counts
+
+	var counts := PackedInt32Array()
+	counts.resize(Tiles.COUNT)
+
+	for building in city.buildings:
+		counts[building] += 1
+
+	_tile_count_key = key
+	_tile_counts = counts
+
+	return counts
+
+
+# the first constant name for each building id. aliases follow the tile names
+static func _make_tile_constants() -> PackedStringArray:
+	var names := PackedStringArray()
+	names.resize(Tiles.COUNT)
+	var script: Script = Tiles
+	var constants := script.get_script_constant_map()
+
+	for key: String in constants:
+		var value: Variant = constants[key]
+
+		if value is int and value >= 0 and value < names.size() and names[value].is_empty():
+			names[value] = key
+
+	return names
 
 
 # values sort in groups: numbers, then points, then other values as text.
