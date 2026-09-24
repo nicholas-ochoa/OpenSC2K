@@ -3,6 +3,15 @@ extends "res://src/main.gd"
 var frame_profile := {}
 
 
+func _ready() -> void:
+	super._ready()
+	map_view.layers = ProfileLayers.new(map_view, self)
+	var enabled := map_view.moving_occlusion.enabled
+	assert(map_view.moving_occlusion._viewports.is_empty())
+	map_view.moving_occlusion = ProfileOcclusion.new(map_view, self)
+	map_view.moving_occlusion.enabled = enabled
+
+
 func _record(name: String, started: int) -> void:
 	var elapsed := Time.get_ticks_usec() - started
 	var entry: Dictionary = frame_profile.get(name, {"calls": 0, "usec": 0, "max_usec": 0})
@@ -65,6 +74,10 @@ class ProfileInterface extends ApplicationInterface:
 class ProfileMapRender extends ApplicationMapRender:
 
 	func refresh_region_map(force := true, dirty := Rect2i()) -> void:
+		if caches.region_cache == null:
+			caches.region_cache = ProfileRegionCache.new(app)
+			caches.region_cache.gpu_enabled = CityRegionCache.gpu_supported(app.preferences.city_renderer)
+
 		var before: Array = caches.region_cache.signature.duplicate() if caches.region_cache != null else []
 		var started := Time.get_ticks_usec()
 		super.refresh_region_map(force, dirty)
@@ -110,3 +123,50 @@ class ProfileStaticRender extends ApplicationStaticRender:
 		app._record("signature", started)
 
 		return result
+
+
+class ProfileRegionCache extends CityRegionCache:
+	var owner: CityApplication
+
+	func _init(application: CityApplication) -> void:
+		owner = application
+
+	func tick() -> bool:
+		var started := Time.get_ticks_usec()
+		var result := super.tick()
+		owner._record("region_tick", started)
+
+		return result
+
+	func texture() -> CityMapSource:
+		var started := Time.get_ticks_usec()
+		var result := super.texture()
+		owner._record("region_source", started)
+
+		return result
+
+
+class ProfileLayers extends CityMapLayers:
+	var owner: CityApplication
+
+	func _init(control: CityMapControl, application: CityApplication) -> void:
+		super(control)
+		owner = application
+
+	func _sync_base_layer() -> void:
+		var started := Time.get_ticks_usec()
+		super._sync_base_layer()
+		owner._record("base_layers", started)
+
+
+class ProfileOcclusion extends CityMapMovingOcclusion:
+	var owner: CityApplication
+
+	func _init(control: CityMapControl, application: CityApplication) -> void:
+		super(control)
+		owner = application
+
+	func _rebuild(source: CityMapSource) -> void:
+		var started := Time.get_ticks_usec()
+		super._rebuild(source)
+		owner._record("occlusion_meshes", started)
