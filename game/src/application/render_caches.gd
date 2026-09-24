@@ -52,6 +52,7 @@ var dynamic_sprite_cache: Dictionary[String, CitySpriteResource] = {}
 var dynamic_foreground_cache: Dictionary[String, Image] = {}
 var dynamic_occluder_cache: Dictionary[String, OccluderMask] = {}
 var dynamic_visual_cache: Dictionary[String, CityDynamicVisual] = {}
+var dynamic_active_keys: Dictionary[String, bool] = {}
 var dynamic_command_cache := CityDynamicCommandCache.new()
 var foreground_view_rect := Rect2()
 var foreground_complete := false

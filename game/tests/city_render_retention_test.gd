@@ -6,7 +6,6 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	_check_changed_areas()
 	var view := CityMapControl.new()
 	root.add_child(view)
 	var mesh_a := QuadMesh.new()
@@ -74,6 +73,17 @@ func _run() -> void:
 	main.map_render._invalidate_region_foregrounds(whole, whole)
 	assert(main.render_caches.sign_foreground_cache.is_empty())
 	assert(main.render_caches.dynamic_visual_cache.is_empty() and main.render_caches.dynamic_occluder_cache.is_empty())
+	var unused := CityDynamicVisual.new(null, Vector2.ZERO, Vector2(20, 20))
+	main.render_caches.dynamic_visual_cache["unused"] = unused
+	assert(not main.map_render._invalidate_region_foregrounds(near, near_silhouettes), "Evicting an old position must not redraw current sprites")
+	assert(main.render_caches.dynamic_visual_cache.is_empty())
+	main.render_caches.dynamic_visual_cache["current"] = unused
+	main.render_caches.dynamic_active_keys["current"] = true
+	assert(main.map_render._invalidate_region_foregrounds(near, near_silhouettes), "A changed current sprite must redraw")
+	unused.hidden = true
+	unused.samples_static = true
+	main.render_caches.dynamic_visual_cache["current"] = unused
+	assert(main.map_render._invalidate_region_foregrounds(near, [] as Array[Rect2i]), "A static change can reveal a hidden current shadow")
 	var mapping := PackedInt32Array(range(256))
 	var used_indices: Dictionary[int, bool] = {17: true}
 	var colors: int = main.map_render.sign_palette_signature(used_indices, mapping)
@@ -225,19 +235,3 @@ func _source(meshes: Array[CityMapSource.MeshEntry]) -> CityMapSource:
 	result.meshes = meshes
 
 	return result
-
-
-func _check_changed_areas() -> void:
-	var rectangles: Array[Rect2i] = []
-	for x in [-257, -128, -1, 0, 127, 128, 129, 400, 513]:
-		rectangles.append(Rect2i(x, x + 37, 23, 129))
-	for count in [0, 1, 8, 9]:
-		var areas := rectangles.slice(0, count)
-		var indexed := ApplicationMapRender.ChangedAreas.new(areas)
-		for x in range(-300, 601, 29):
-			for edge in [1, 23, 128, 300]:
-				var bounds := Rect2i(x, x - 17, edge, edge)
-				var expected := false
-				for area in areas:
-					expected = expected or bounds.intersects(area)
-				assert(indexed.intersects(bounds) == expected, "Indexed changes disagree at a cell boundary")

@@ -13,38 +13,6 @@ var app: CityApplication
 var caches: RenderCaches
 
 
-class ChangedAreas extends RefCounted:
-	var rectangles: Array[Rect2i]
-	var grid: Dictionary[Vector2i, Array] = {}
-
-	func _init(areas: Array[Rect2i]) -> void:
-		rectangles = areas
-		if areas.size() > 8:
-			for index in areas.size():
-				IsometricPixelOperations.append_occlusion_bounds(grid, areas[index], index)
-
-	func intersects(bounds: Rect2i) -> bool:
-		if grid.is_empty():
-			for area in rectangles:
-				if bounds.intersects(area):
-					return true
-			return false
-
-		if not bounds.has_area():
-			return false
-		var first := Vector2i((Vector2(bounds.position) / IsometricConstants.OCCLUSION_CELL_SIZE).floor())
-		var last := Vector2i((Vector2(bounds.end - Vector2i.ONE) / IsometricConstants.OCCLUSION_CELL_SIZE).floor())
-		for y in range(first.y, last.y + 1):
-			for x in range(first.x, last.x + 1):
-				var cell := Vector2i(x, y)
-				if not grid.has(cell):
-					continue
-				for index: int in grid[cell]:
-					if bounds.intersects(rectangles[index]):
-						return true
-		return false
-
-
 func _init(application: CityApplication) -> void:
 	app = application
 	caches = application.render_caches
@@ -335,15 +303,15 @@ func poll_region_cache() -> void:
 # a moving sprite or overlay that does not sample static pixels depends only on the silhouettes
 func _invalidate_region_foregrounds(changes: Array[Rect2i], occluder_changes: Array[Rect2i]) -> bool:
 	var invalidated := false
-	var pixels := ChangedAreas.new(changes)
-	var silhouettes := ChangedAreas.new(occluder_changes)
 
 	if not occluder_changes.is_empty():
 		for key in caches.dynamic_occluder_cache.keys():
 			var bounds := caches.dynamic_occluder_cache[key].bounds
 
-			if silhouettes.intersects(bounds):
-				caches.dynamic_occluder_cache.erase(key)
+			for changed in occluder_changes:
+				if bounds.intersects(changed):
+					caches.dynamic_occluder_cache.erase(key)
+					break
 
 	for key in caches.dynamic_visual_cache.keys():
 		var visual: CityDynamicVisual = caches.dynamic_visual_cache[key]
@@ -352,22 +320,28 @@ func _invalidate_region_foregrounds(changes: Array[Rect2i], occluder_changes: Ar
 			caches.dynamic_visual_cache.erase(key)
 			continue
 
-		var affected := pixels if visual.samples_static else silhouettes
-		if affected.rectangles.is_empty():
+		var affected := changes if visual.samples_static else occluder_changes
+		if affected.is_empty():
 			continue
 
 		var bounds := Rect2i(Vector2i(visual.position), Vector2i(visual.size))
 
-		if affected.intersects(bounds):
-			caches.dynamic_visual_cache.erase(key)
-			invalidated = true
+		for changed in affected:
+			if bounds.intersects(changed):
+				caches.dynamic_visual_cache.erase(key)
+				# Old positions stay cached for reuse. Evicting one does not
+				# require rebuilding the moving objects currently on screen.
+				invalidated = invalidated or caches.dynamic_active_keys.has(key)
+				break
 
 	for key in caches.sign_foreground_cache.keys():
 		var bounds: Rect2i = caches.sign_foreground_cache[key].signature[1]
 
-		if pixels.intersects(bounds):
-			caches.sign_foreground_cache.erase(key)
-			invalidated = true
+		for changed in changes:
+			if bounds.intersects(changed):
+				caches.sign_foreground_cache.erase(key)
+				invalidated = true
+				break
 
 	return invalidated
 

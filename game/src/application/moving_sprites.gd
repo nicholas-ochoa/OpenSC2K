@@ -163,6 +163,7 @@ func _apply_blend() -> void:
 
 
 func refresh_moving_things(view_size := -1) -> void:
+	caches.dynamic_active_keys.clear()
 	if app.map_view != null:
 		app.map_view.set_moving_occlusion_enabled(app.preferences.moving_frame_rate > ORIGINAL_FRAME_RATE)
 
@@ -216,6 +217,8 @@ func refresh_moving_things(view_size := -1) -> void:
 			continue
 
 		var visual_cache_key := var_to_str([view_size, factor, command.value_signature()])
+		# Include fully hidden shadows: a static change can make them visible.
+		caches.dynamic_active_keys[visual_cache_key] = true
 
 		if caches.dynamic_visual_cache.has(visual_cache_key):
 			var cached: CityDynamicVisual = caches.dynamic_visual_cache[visual_cache_key]
