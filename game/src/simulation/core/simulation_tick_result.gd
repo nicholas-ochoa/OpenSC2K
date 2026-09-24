@@ -18,6 +18,8 @@ var game_over_events: Array[GameOverEvent] = []
 var music_track_requests := PackedInt32Array()
 var notice_ids := PackedInt32Array()
 var newspaper_requested := false
+# -1 opens the saved newspaper choice
+var newspaper_paper := -1
 var pending_actions := PackedStringArray()
 var job_timings: Dictionary[String, int] = {}
 # city age of a paced day -> usec the next day waited after it

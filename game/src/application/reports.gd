@@ -112,6 +112,18 @@ func start_disaster_at_view_center(id: int) -> DisasterReportResult:
 		result.effect_events, result.sound_events
 	)
 	show_news_items(result.news_items)
+	var first_update := result.first_update
+
+	if first_update != null:
+		for requested_point in first_update.view_center_requests:
+			app.map_view.center_on_tile(requested_point)
+
+		app.effects_audio.show_effect_events(first_update.effect_events, first_update.sound_events)
+		show_news_items(first_update.news_items)
+
+		if first_update.newspaper_requested:
+			open_scheduled_newspaper(first_update.newspaper_paper)
+
 	var disaster_name := CityMenuBar.disaster_name(id)
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "%s started." % disaster_name
@@ -304,7 +316,8 @@ func on_help_menu(_id: int) -> void:
 
 # open the newspaper that the simulation requested. the original opens the
 # paper that MISC 0x100c selects
-func open_scheduled_newspaper() -> void:
+# `paper` -1 opens the saved newspaper choice
+func open_scheduled_newspaper(paper := -1) -> void:
 	var city := app.document_state.city
 
 	if city == null or document_state.current_document == null:
@@ -315,7 +328,10 @@ func open_scheduled_newspaper() -> void:
 	if paper_count <= 0:
 		return
 
-	on_newspaper_menu(clampi(city.document.misc_u32(Sc2MiscLayout.NEWSPAPER_CHOICE), 0, paper_count - 1))
+	if paper < 0:
+		paper = city.document.misc_u32(Sc2MiscLayout.NEWSPAPER_CHOICE)
+
+	on_newspaper_menu(clampi(paper, 0, paper_count - 1))
 	app.newspaper_state.scheduled_pending = app.city_dialogs.newspaper_dialog.visible
 
 

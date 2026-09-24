@@ -26,6 +26,9 @@ const MIRRORED_CHUNKS: PackedStringArray = ["ALTM", "XTER", "XBLD", "XZON", "XUN
 var scurk_artwork_stamps: Array[ScurkArtworkStamp] = []
 var map_size := 128
 var simulation_slice: SimulationSliceBudget
+# runtime only; never saved. the most important building class that disaster
+# damage reached, for the story at the disaster end. -1 means none
+var disaster_damage_class := -1
 var document: Sc2File
 var load_error := ""
 

@@ -570,7 +570,8 @@ func test_disaster_map_phase(reference_root: String) -> void:
 	var manual_flood_start := flood_engine.start_disaster(
 		DisasterStart.DISASTER_FLOOD, Vector2i(20, 20)
 	)
-	var manual_flood_tick := flood_engine.advance_disaster_tick()
+	# the start runs the first disaster update in the same step
+	var manual_flood_tick := manual_flood_start.first_update
 	_check(
 		manual_flood_start.ok
 		and manual_flood_start.started
@@ -586,8 +587,47 @@ func test_disaster_map_phase(reference_root: String) -> void:
 	_check(engine_fixture.document.set_misc_u32(0x0004, 2), "Fire engine fixture selects disaster mode")
 	var engine := Simulation.new(engine_fixture.city, 3, 7, 13)
 	engine.active_disaster_type = DisasterStart.DISASTER_FIRE
+	# a police unit on the map leaves at the end. a fire unit without a map label stays
+	var things: PackedByteArray = engine_fixture.document.find_chunk("XTHG").decoded_payload.duplicate()
+	things[1 * Sc2ThingLayout.RECORD_SIZE] = Sc2ThingLayout.Type.POLICE
+	things[2 * Sc2ThingLayout.RECORD_SIZE] = Sc2ThingLayout.Type.FIRE
+	_check(
+		engine_fixture.document.find_chunk("XTHG").set_decoded_payload(things)
+		and engine_fixture.city.set_text_overlay_id(90, 90, OverlayData.thing_id(1)),
+		"Fire engine fixture places a police unit",
+	)
+	# the original keeps the damaged class with the largest story weight and
+	# skips tunnel entrances
+	var class_buildings := PackedByteArray([Tiles.LOWER_CLASS_HOMES_1X1_1, 0xd2, Tiles.TUNNEL_ENTRANCE_1, 0xc6, 0xe4])
+	var class_zones := PackedByteArray([1, 9, 8, 0, 0])
+	var classes := PackedInt32Array()
+	engine_fixture.city.disaster_damage_class = -1
+
+	for index in class_buildings.size():
+		DisasterDamage.record_damage_class(engine_fixture.city, class_buildings, class_zones, index)
+		classes.append(engine_fixture.city.disaster_damage_class)
+
+	_check(classes == PackedInt32Array([1, 21, 21, 10, 10]), "Disaster damage keeps the most important building class: %s" % classes)
+	engine_fixture.city.disaster_damage_class = 9
 	var active_tick := engine.advance_disaster_tick()
 	var ended_tick := engine.advance_disaster_tick()
+	things = engine_fixture.document.find_chunk("XTHG").decoded_payload
+	_check(
+		ended_tick.news_items.size() == 1
+		and ended_tick.news_items[0].type == 0x16
+		and ended_tick.news_items[0].argument == 9
+		and engine_fixture.city.disaster_damage_class == -1
+		and ended_tick.newspaper_requested
+		and ended_tick.newspaper_paper == 0
+		and not active_tick.newspaper_requested,
+		"The fire end posts its summary story for the damaged class and opens the first newspaper",
+	)
+	_check(
+		engine_fixture.city.text_overlay_id(90, 90) == 0
+		and things[1 * Sc2ThingLayout.RECORD_SIZE] == Sc2ThingLayout.Type.NONE
+		and things[2 * Sc2ThingLayout.RECORD_SIZE] == Sc2ThingLayout.Type.FIRE,
+		"The disaster end removes the dispatched units that have a map label",
+	)
 	_check(
 		active_tick.ok
 		and active_tick.active
@@ -748,7 +788,7 @@ func test_disaster_map_phase(reference_root: String) -> void:
 	var toxic_spill_start := toxic_spill_engine.start_disaster(
 		DisasterStart.DISASTER_TOXIC_SPILL, Vector2i(24, 25)
 	)
-	var toxic_spill_tick := toxic_spill_engine.advance_disaster_tick()
+	var toxic_spill_tick := toxic_spill_start.first_update
 	var toxic_spill_end := toxic_spill_engine.advance_disaster_tick()
 	_check(
 		toxic_spill_start.ok

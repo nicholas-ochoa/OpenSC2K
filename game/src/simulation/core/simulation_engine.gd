@@ -360,11 +360,6 @@ func _timed_advance_disaster_tick() -> DisasterMapResult:
 	if not phase_result.ok:
 		return phase_result
 
-	var queue_update := _persist_news_result(phase_result)
-
-	if not queue_update.ok:
-		return DisasterMapResult.failure(queue_update.error)
-
 	disaster_map_counter = phase_result.map_counter
 	disaster_hurricane_counter = phase_result.hurricane_counter
 	var still_active: bool = bool(phase_result.active) or DisasterStartObjectsState.has_active_object(
@@ -378,8 +373,23 @@ func _timed_advance_disaster_tick() -> DisasterMapResult:
 		disaster_map_counter = 0
 		disaster_hurricane_counter = 0
 
+		var finished := DisasterEnd.finish(city, ended_type)
+
+		if not finished.ok:
+			return DisasterMapResult.failure(finished.error)
+
+		phase_result.news_items.append_array(finished.news_items)
+		phase_result.map_changed = phase_result.map_changed or finished.removed_units > 0
+		phase_result.newspaper_requested = true
+		phase_result.newspaper_paper = DisasterEnd.NEWSPAPER_PAPER
+
 		if not city.document.set_misc_u32(Sc2MiscLayout.CITY_MODE, 1):
 			return DisasterMapResult.failure("cannot restore city mode after the disaster")
+
+	var queue_update := _persist_news_result(phase_result)
+
+	if not queue_update.ok:
+		return DisasterMapResult.failure(queue_update.error)
 
 	phase_result.active = still_active
 	phase_result.disaster_type = active_disaster_type if still_active else ended_type
@@ -429,6 +439,12 @@ func start_disaster(disaster_type: int, point: Vector2i) -> DisasterStartResult:
 
 	if not queue_update.ok:
 		return DisasterStartResult.failed(queue_update.error)
+
+	# the original runs the first disaster update in the same step as the start
+	started.first_update = advance_disaster_tick()
+
+	if not started.first_update.ok:
+		return DisasterStartResult.failed(started.first_update.error)
 
 	return started
 
@@ -519,6 +535,14 @@ func _append_pending_disaster(result: SimulationDayResult) -> SimulationDayResul
 			return SimulationDayResult.failure("cannot store active disaster mode")
 
 		result.applied.append("disaster_start")
+
+		# the original runs the first disaster update in the same step as the start
+		var first_update := advance_disaster_tick()
+
+		if not first_update.ok:
+			return SimulationDayResult.failure(first_update.error)
+
+		result.disaster_results.append(first_update)
 	elif not started.complete:
 		unsupported_disaster_type = disaster_type
 		result.pending.append("disaster_start")

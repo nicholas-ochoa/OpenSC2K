@@ -167,7 +167,7 @@ func consume_simulation_result(result: SimulationTickResult) -> void:
 		app.reports.show_notices(result.notice_ids)
 
 	if result.newspaper_requested:
-		app.reports.open_scheduled_newspaper()
+		app.reports.open_scheduled_newspaper(result.newspaper_paper)
 
 	if not result.game_over_events.is_empty():
 		app.reports.show_game_over_events(result.game_over_events)

@@ -10,6 +10,8 @@ var applied := PackedStringArray()
 var pending := PackedStringArray()
 var phase_results: Dictionary[String, PhaseResult] = {}
 var interaction_requests: Array[SimulationInteractionRequest] = []
+# the first disaster update, when a disaster starts after the day
+var disaster_results: Array[DisasterMapResult] = []
 var complete := false
 var timing := SimulationTiming.new(0)
 

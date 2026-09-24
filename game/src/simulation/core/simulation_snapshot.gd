@@ -27,6 +27,7 @@ static func capture(source: GameSpeedController, budget: SimulationSliceBudget) 
 	original.copy_mirrors_to(city)
 
 	city.simulation_slice = budget
+	city.disaster_damage_class = original.disaster_damage_class
 	var engine := SimulationEngine.new(null)
 	engine.city = city
 	copy_engine(source.engine, engine)
@@ -52,6 +53,7 @@ static func publish(completed: GameSpeedController, target: GameSpeedController)
 			into.mutation_revision = from.mutation_revision
 
 	updated.copy_mirrors_to(city, true)
+	city.disaster_damage_class = updated.disaster_damage_class
 
 	copy_engine(completed.engine, target.engine)
 	_copy_fields(completed, target, CONTROLLER_FIELDS)

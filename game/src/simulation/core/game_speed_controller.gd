@@ -318,7 +318,11 @@ func _consume_day_result(result: SimulationTickResult, day: SimulationDayResult)
 		result.music_track_requests.append_array(phase_result.music_track_requests)
 		result.view_center_requests.append_array(phase_result.view_center_requests)
 		result.notice_ids.append_array(phase_result.notice_ids)
-		result.newspaper_requested = result.newspaper_requested or phase_result.newspaper_requested
+		_append_newspaper_request(result, phase_result)
+
+	for disaster in day.disaster_results:
+		result.disaster_results.append(disaster)
+		_append_runtime_events(result, disaster)
 
 	for event in result.game_over_events:
 		terminal_blocked = terminal_blocked or event.is_terminal()
@@ -334,6 +338,18 @@ func _append_runtime_events(result: SimulationTickResult, phase_result: PhaseRes
 	result.effect_events.append_array(phase_result.effect_events)
 	result.sound_events.append_array(phase_result.sound_events)
 	result.view_center_requests.append_array(phase_result.view_center_requests)
+	_append_newspaper_request(result, phase_result)
+
+
+# a request that names a paper replaces a request for the saved choice
+static func _append_newspaper_request(result: SimulationTickResult, phase_result: PhaseResult) -> void:
+	if not phase_result.newspaper_requested:
+		return
+
+	result.newspaper_requested = true
+
+	if phase_result.newspaper_paper >= 0:
+		result.newspaper_paper = phase_result.newspaper_paper
 
 
 func _empty_result() -> SimulationTickResult:

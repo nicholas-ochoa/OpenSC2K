@@ -347,16 +347,21 @@ func test_simulation_engine(reference_root: String) -> void:
 	_check(
 		crash_start.ok
 		and crash_start.applied.has("disaster_start")
-		and crash_scenario_engine.active_disaster_type
-		== DisasterStart.DISASTER_HELICOPTER_CRASH
-		and crash_scenario_city.city_mode() == 2,
-		"A scheduled no-op crash wrapper enters disaster mode",
+		and crash_start.disaster_results.size() == 1,
+		"A scheduled no-op crash wrapper starts and runs its first disaster update",
 	)
-	var crash_end := crash_scenario_engine.advance_disaster_tick()
+	# the original checks the markers and objects in the start step, so a
+	# wrapper without either ends there with its summary story and newspaper
+	var crash_end: DisasterMapResult = crash_start.disaster_results[0] if crash_start.disaster_results.size() == 1 else DisasterMapResult.new()
 	_check(
 		crash_end.ok
 		and crash_end.complete
+		and crash_end.ended_type == DisasterStart.DISASTER_HELICOPTER_CRASH
+		and crash_end.news_items.size() == 1
+		and crash_end.news_items[0].type == 0x19
+		and crash_end.newspaper_requested
+		and crash_end.newspaper_paper == 0
 		and crash_scenario_engine.active_disaster_type == 0
 		and crash_scenario_city.city_mode() == 1,
-		"A no-op crash wrapper ends on the next eligible disaster tick",
+		"A no-op crash wrapper ends in the same step as its start",
 	)

@@ -6,6 +6,14 @@ const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const TEXT_LABEL_BASE := 201
 const SOUND_DAMAGE := 0x1f8
 
+# story weight of each damaged building class, from executable table 0x004e8848.
+# classes 0 to 9 are zone types. class 10 and up are tiles from 0xc6
+const DAMAGE_CLASS_WEIGHTS := [
+	0, 1, 1, 1, 1, 1, 1, 1, 4, 8, 5, 5, 5, 5, 5, 5, 5, 5, 5, 3, 4, 4, 4, 2, 2, 3, 2, 4, 3, 2,
+	3, 2, 8, 8, 2, 4, 8, 1, 4, 1, 1, 8, 1, 1, 3, 8, 2, 2, 2, 1, 1, 4, 1, 1, 2, 2, 2, 1, 3, 2,
+	5, 3, 6, 6, 6, 6, 6,
+]
+
 
 class RuntimeEvents extends RefCounted:
 	var effect_events: Array[EffectEvent] = []
@@ -165,6 +173,7 @@ static func burn_structure(
 	emit_effects := false
 ) -> DemolishPointResult:
 	var map_edge: int = city.map_size if city != null else 128
+	record_damage_class(city, buildings, zones, _index(point, map_edge))
 	var result := DemolishStructures._demolish_point(
 		city, altitude, buildings, terrain, zones, underground,
 		flags, text, labels, microsims, misc, point, random, true, true, emit_effects
@@ -186,6 +195,33 @@ static func burn_structure(
 			)
 
 	return result
+
+
+# keep the most important building class that the disaster damaged. the
+# original skips tunnel entrances and keeps the earlier class on a tie
+static func record_damage_class(
+	city: CityState, buildings: PackedByteArray, zones: PackedByteArray, index: int
+) -> void:
+	if city == null or index < 0:
+		return
+
+	var tile := int(buildings[index])
+
+	if tile >= Tiles.TUNNEL_ENTRANCE_1 and tile <= Tiles.TUNNEL_ENTRANCE_4:
+		return
+
+	var damage_class := int(zones[index]) & Sc2ZoneLayout.TYPE_MASK
+
+	if tile >= Tiles.HYDRO_POWER_1:
+		damage_class = 10 if tile == Tiles.HYDRO_POWER_1 else tile - 0xbd
+
+	if damage_class >= DAMAGE_CLASS_WEIGHTS.size():
+		return
+
+	var current := city.disaster_damage_class
+
+	if current < 0 or int(DAMAGE_CLASS_WEIGHTS[current]) < int(DAMAGE_CLASS_WEIGHTS[damage_class]):
+		city.disaster_damage_class = damage_class
 
 
 static func _altitude_word(altitude: PackedByteArray, index: int) -> int:
