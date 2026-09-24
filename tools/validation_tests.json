@@ -964,6 +964,15 @@
     ]
   },
   {
+    "id": "region_zoom_coverage_test",
+    "script": "tests/region_zoom_coverage_test.gd",
+    "domain": "rendering",
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
+  },
+  {
     "id": "city_gpu_cache_test",
     "script": "tests/city_gpu_cache_test.gd",
     "domain": "rendering",

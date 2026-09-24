@@ -117,9 +117,12 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 
 		var dirty_keys := _region_keys(rects)
 
-		for key in visible:
-			if dirty_keys.has(key):
-				_edit_priority[key] = generation
+		# Only player edits bypass missing-region work. Repeated simulation
+		# changes must not keep newly visible regions at the back of the queue.
+		if dirty.has_area():
+			for key in visible:
+				if dirty_keys.has(key):
+					_edit_priority[key] = generation
 
 		for key in entries:
 			var entry := entries[key]
