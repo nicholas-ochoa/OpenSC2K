@@ -30,7 +30,7 @@ const NOTES := {
 	"snapshot_usec": "Copy city state for the simulation worker.",
 	"publish_usec": "Apply the completed worker result on the main thread.",
 	"day_period_usec": "Typical day work time. A faster day waits until this time passes. 0 is off.",
-	"pending_msec": "Simulation time submitted to the pending tick.",
+	"pending_msec": "Elapsed time that the simulation has not run yet. It grows when the simulation falls behind.",
 	"elapsed_usec": "Worker wall time; includes frame-budget waits.",
 	"parked_usec": "Time waiting for another frame's work allowance.",
 	"max_slice_usec": "Longest uninterrupted work slice.",
