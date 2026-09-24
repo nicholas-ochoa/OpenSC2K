@@ -153,7 +153,7 @@ func _apply_static_edit_patch(command: EditCommandResult) -> bool:
 
 
 static func _collect_changed_tiles(before: PackedByteArray, after: PackedByteArray, stride: int, dirty: PackedByteArray,
-		indices: PackedInt32Array, plane_cells := 0) -> void:
+		indices: PackedInt32Array, plane_cells := 0, byte_mask := 0xff) -> void:
 	# native word comparisons skip unchanged runs without allocating. only
 	# changed words need per-tile gdscript work, including remote power/water
 	# changes after edits
@@ -165,13 +165,17 @@ static func _collect_changed_tiles(before: PackedByteArray, after: PackedByteArr
 	var tile_shift := 1 if stride == 2 else 0
 	var size := mini(before.size(), after.size())
 	var full_bytes := size - size % 8
+	var word_mask := 0
+
+	for shift in range(0, 64, 8):
+		word_mask |= byte_mask << shift
 
 	for offset in range(0, full_bytes, 8):
-		if before.decode_u64(offset) == after.decode_u64(offset):
+		if ((before.decode_u64(offset) ^ after.decode_u64(offset)) & word_mask) == 0:
 			continue
 
 		for byte_offset in range(offset, offset + 8):
-			if before[byte_offset] == after[byte_offset]:
+			if ((before[byte_offset] ^ after[byte_offset]) & byte_mask) == 0:
 				continue
 
 			var index := byte_offset >> tile_shift
@@ -184,7 +188,7 @@ static func _collect_changed_tiles(before: PackedByteArray, after: PackedByteArr
 				indices.append(index)
 
 	for byte_offset in range(full_bytes, size):
-		if before[byte_offset] == after[byte_offset]:
+		if ((before[byte_offset] ^ after[byte_offset]) & byte_mask) == 0:
 			continue
 
 		var index := byte_offset >> tile_shift
@@ -208,7 +212,7 @@ static func _mark_dirty_tile(index: int, dirty: PackedByteArray, indices: Packed
 # mark the tiles whose bytes differ between the payloads of each chunk in `chunk_ids`
 # a chunk that is missing or has another size is skipped
 static func _collect_payload_changes(old_payloads: Dictionary, new_payloads: Dictionary, chunk_ids: Array,
-		map_edge: int, dirty: PackedByteArray, indices: PackedInt32Array) -> void:
+		map_edge: int, dirty: PackedByteArray, indices: PackedInt32Array, surface_only := false) -> void:
 	var cells := map_edge * map_edge
 
 	for chunk_id: String in chunk_ids:
@@ -221,23 +225,20 @@ static func _collect_payload_changes(old_payloads: Dictionary, new_payloads: Dic
 		if new_bytes.size() != old_bytes.size():
 			continue
 
-		if chunk_id == "XTRF":
-			_collect_traffic_changes(old_bytes, new_bytes, map_edge, dirty, indices)
-			continue
-
 		var stride := 2 if chunk_id == "ALTM" or (chunk_id == "XTXT" and map_edge > 128) else 1
 
 		if old_bytes.size() != cells * stride:
 			continue
 
 		_collect_changed_tiles(old_bytes, new_bytes, 1 if chunk_id == "XTXT" else stride,
-			dirty, indices, cells if chunk_id == "XTXT" else 0)
+			dirty, indices, cells if chunk_id == "XTXT" else 0, 0xc6 if surface_only and chunk_id == "XBIT" else 0xff)
 
 
-# mark the tiles whose traffic density crosses a drawing threshold. a traffic
-# cell can cover a square of tiles
-static func _collect_traffic_changes(before: PackedByteArray, after: PackedByteArray, map_edge: int,
-		dirty: PackedByteArray, indices: PackedInt32Array) -> void:
+# Traffic is masked to its road sprite. Only that sprite's bounds can change;
+# terrain, neighboring tiles and the full possible altitude range do not change.
+static func _collect_traffic_rects(city: CityState, before: PackedByteArray, after: PackedByteArray,
+		sprites: Sc2SpriteArchive, view_size: int, rects: Array[Rect2i]) -> void:
+	var map_edge := city.map_size
 	var grid_edge := CityDataGrid.edge(after, map_edge)
 
 	if grid_edge == 0 or before == after:
@@ -248,6 +249,8 @@ static func _collect_traffic_changes(before: PackedByteArray, after: PackedByteA
 	var changed := PackedInt32Array()
 	_collect_changed_tiles(before, after, 1, cells, changed)
 	var scale := map_edge / grid_edge
+	var configuration := IsometricRenderer.view_configuration(view_size)
+	var output := Rect2i(Vector2i.ZERO, IsometricRenderer.output_size_for_view(view_size, map_edge))
 
 	for cell in changed:
 		if _traffic_levels(before[cell]) == _traffic_levels(after[cell]):
@@ -257,7 +260,28 @@ static func _collect_traffic_changes(before: PackedByteArray, after: PackedByteA
 
 		for x in range(first.x, first.x + scale):
 			for y in range(first.y, first.y + scale):
-				_mark_dirty_tile(x * map_edge + y, dirty, indices)
+				var building := city.building_id(x, y)
+
+				if (IsometricStaticVisuals.traffic_level(building, before[cell]) == IsometricStaticVisuals.traffic_level(building, after[cell])
+						or not city.tile_is_visible(x, y) or not IsometricStaticVisuals._should_draw_building(city, x, y, building)):
+					continue
+
+				var entry := sprites.find_sprite(configuration.sprite_base + building)
+				var bounds: Rect2i
+
+				if entry == null:
+					bounds = IsometricRenderer.potential_tile_bounds(configuration, IsometricRenderer.maximum_sprite_size(sprites), x, y, map_edge)
+				else:
+					var base_y := configuration.top_margin + (x + y) * configuration.half_height + configuration.tile_height
+					base_y -= city.object_altitude(x, y) * configuration.altitude_step
+					base_y += IsometricRenderer.building_baseline_offset(building, IsometricRenderer.surface_terrain_id(city, x, y), entry.width, view_size)
+					bounds = Rect2i(configuration.side_margin + (map_edge + x - y) * configuration.half_width,
+						base_y - entry.height, entry.width, entry.height)
+
+				bounds = bounds.intersection(output)
+
+				if bounds.has_area():
+					rects.append(bounds)
 
 
 static func _traffic_levels(density: int) -> Vector2i:
@@ -291,7 +315,13 @@ static func changed_source_rects(city: CityState, old_payloads: Dictionary, spri
 	var dirty := PackedByteArray()
 	dirty.resize(cells)
 	var indices := PackedInt32Array()
-	_collect_payload_changes(old_payloads, new_payloads, ["ALTM", "XBLD", "XTER", "XZON", "XBIT", "XUND", "XTRF"], map_edge, dirty, indices)
+	var surface_only := city.visible_altitude_levels >= 32
+	var chunks := ["ALTM", "XBLD", "XTER", "XZON", "XBIT"]
+
+	if not surface_only:
+		chunks.append("XUND")
+
+	_collect_payload_changes(old_payloads, new_payloads, chunks, map_edge, dirty, indices, surface_only)
 
 	if new_payloads.has("XTXT"):
 		_collect_static_overlay_changes(old_payloads["XTXT"], new_payloads["XTXT"], map_edge, dirty, indices)
@@ -311,6 +341,9 @@ static func changed_source_rects(city: CityState, old_payloads: Dictionary, spri
 
 		if bounds.has_area():
 			rects.append(bounds)
+
+	if new_payloads.has("XTRF"):
+		_collect_traffic_rects(city, old_payloads["XTRF"], new_payloads["XTRF"], sprites, view_size, rects)
 
 	return true
 

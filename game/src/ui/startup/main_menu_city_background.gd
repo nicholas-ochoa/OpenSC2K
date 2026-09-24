@@ -35,6 +35,7 @@ var dynamic_visuals: Array[CityDynamicVisual] = []
 var animation_elapsed := 0.0
 var animation_revision := 0
 var city_name_label: Label
+var _render_suspended := false
 
 
 func _ready() -> void:
@@ -69,7 +70,15 @@ func _ready() -> void:
 
 
 func configure(reference_root: String, palette: Sc2Palette, sprites: Sc2SpriteArchive) -> void:
-	if demo_city != null or palette == null or sprites == null:
+	_render_suspended = false
+
+	if demo_city != null:
+		if static_image == null and render_thread == null:
+			_start_render()
+
+		return
+
+	if palette == null or sprites == null:
 		return
 
 	var paths := PackedStringArray()
@@ -136,7 +145,7 @@ func _process(delta: float) -> void:
 		var result: RenderResult = render_thread.wait_to_finish()
 		render_thread = null
 
-		if result.ok:
+		if result.ok and not _render_suspended:
 			static_image = result.image
 			demo_texture = ImageTexture.create_from_image(static_image)
 			static_layer.texture = demo_texture
@@ -144,7 +153,7 @@ func _process(delta: float) -> void:
 			occlusion_grid = Renderer.build_occlusion_grid(occlusion_commands, 1)
 			_refresh_animation()
 
-	if not is_visible_in_tree() or demo_city == null:
+	if _render_suspended or not is_visible_in_tree() or demo_city == null:
 		return
 
 	elapsed += delta
@@ -330,6 +339,28 @@ func _exit_tree() -> void:
 		render_thread = null
 
 
+# Keep the private simulation for the next menu visit, but release its large
+# render buffers while playing. An in-flight render is drained by _process;
+# hiding the menu must not wait for a worker or upload its obsolete image.
+func release_render_data() -> void:
+	_render_suspended = true
+	_clear_render_data()
+
+
+func _clear_render_data() -> void:
+	demo_texture = null
+	static_layer.texture = null
+	static_image = null
+	cycle_texture = null
+	static_layer.material.set_shader_parameter("animated_palette", null)
+	occlusion_commands.clear()
+	occlusion_grid.clear()
+	sprite_cache.clear()
+	dynamic_visuals.clear()
+	RenderingServer.canvas_item_clear(get_canvas_item())
+	queue_redraw()
+
+
 static func camera_zoom(shot: int, pixel_scale: float) -> float:
 	pixel_scale = maxf(0.001, pixel_scale)
 	# round the minimum up to a whole output pixel to keep camera motion crisp
@@ -345,12 +376,7 @@ func replace_graphics(palette: Sc2Palette, sprites: Sc2SpriteArchive) -> void:
 
 	demo_palette = palette
 	demo_sprites = sprites
-	sprite_cache.clear()
-	dynamic_visuals.clear()
-	occlusion_commands.clear()
-	occlusion_grid.clear()
-	static_image = null
-	static_layer.texture = null
+	_clear_render_data()
 
-	if demo_city != null:
+	if demo_city != null and not _render_suspended:
 		_start_render()

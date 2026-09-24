@@ -209,6 +209,7 @@ func hide_main_menu() -> void:
 
 	if app.main_menu != null:
 		app.main_menu.hide()
+		app.main_menu.city_background.release_render_data()
 
 	if app.document_state.city != null:
 		app.status_label.text = "City ready."

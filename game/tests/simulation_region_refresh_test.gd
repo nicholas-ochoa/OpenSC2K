@@ -27,6 +27,7 @@ func _write(city: CityState, chunk_id: String, index: int, value: int) -> void:
 		bytes[index] = value
 
 	assert(chunk.set_decoded_payload(bytes, true))
+	city.resync_mirrors([chunk_id])
 
 
 func _changed(city: CityState, old_payloads: Dictionary, sprites: Sc2SpriteArchive) -> Array[Rect2i]:
@@ -60,8 +61,11 @@ func _initialize() -> void:
 	var entry := Sc2SpriteArchive.SpriteEntry.new()
 	entry.width = SPRITE_LIMIT.x
 	entry.height = SPRITE_LIMIT.y
+	entry.sprite_id = 1000 + BuildingTileIds.HIGHWAY_STRAIGHT_1
 	sprites.entries.append(entry)
+	sprites.entries_by_id[entry.sprite_id] = entry
 	var city := CityState.from_document(EmptyCityTemplate.create(128))
+	assert(city.set_building_id(40, 50, BuildingTileIds.HIGHWAY_STRAIGHT_1))
 	var tile := 40 * 128 + 50
 	var old := _payloads(city)
 	assert(_changed(city, old, sprites).is_empty())
@@ -80,11 +84,25 @@ func _initialize() -> void:
 	_write(city, "XTRF", cell, IsometricStaticVisuals.HIGHWAY_TRAFFIC_THRESHOLDS.x)
 	assert(_changed(city, old, sprites).is_empty(), "Traffic at a threshold draws no traffic")
 	_write(city, "XTRF", cell, IsometricStaticVisuals.HIGHWAY_TRAFFIC_THRESHOLDS.x + 1)
-	assert(_changed(city, old, sprites) == [_tile_rect(40, 50), _tile_rect(40, 51), _tile_rect(41, 50), _tile_rect(41, 51)])
+	var traffic_rects := _changed(city, old, sprites)
+	assert(traffic_rects.size() == 1 and traffic_rects[0].size == SPRITE_LIMIT and _tile_rect(40, 50).encloses(traffic_rects[0]),
+		"Traffic redraws its road sprite, not all four tiles or the full altitude range")
 	var busy := _payloads(city)
 	_write(city, "XTRF", cell, IsometricStaticVisuals.HIGHWAY_TRAFFIC_THRESHOLDS.y - 1)
 	assert(_changed(city, busy, sprites).is_empty(), "Traffic that stays at one level on every road type skips the redraw")
 	_write(city, "XTRF", cell, 0)
+
+	# Surface redraws exclude utility workspace bits. Cutaways still show pipes.
+	_write(city, "XBIT", tile, Sc2TileFlags.WATERED | Sc2TileFlags.PIPED | Sc2TileFlags.MARK)
+	_write(city, "XUND", tile, 1)
+	assert(_changed(city, old, sprites).is_empty())
+	city.visible_altitude_levels = 16
+	assert(_changed(city, old, sprites) == [_tile_rect(40, 50)])
+	city.visible_altitude_levels = 32
+	_write(city, "XBIT", tile, Sc2TileFlags.POWERABLE)
+	assert(_changed(city, old, sprites) == [_tile_rect(40, 50)])
+	_write(city, "XBIT", tile, 0)
+	_write(city, "XUND", tile, 0)
 
 	_write(city, "XBLD", tile, 1)
 	assert(_changed(city, old, sprites) == [_tile_rect(40, 50)])

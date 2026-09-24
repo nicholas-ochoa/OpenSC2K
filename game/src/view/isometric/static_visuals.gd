@@ -240,15 +240,9 @@ static func traffic_overlay_visual(
 		return null
 
 	var density := city.traffic_density(x, y)
-	var thresholds := TRAFFIC_THRESHOLDS
+	var level := traffic_level(tile, density)
 
-	if (tile >= Tiles.HIGHWAY_STRAIGHT_1 and tile <= Tiles.HIGHWAY_POWER_CROSSING_2) or (tile >= Tiles.HIGHWAY_SLOPE_1 and tile <= Tiles.REINFORCED_HIGHWAY_BRIDGE):
-		thresholds = HIGHWAY_TRAFFIC_THRESHOLDS
-
-	var low_threshold := thresholds.x
-	var high_threshold := thresholds.y
-
-	if density <= low_threshold:
+	if level == 0:
 		return null
 
 	var flip := city.is_flipped(x, y)
@@ -262,7 +256,7 @@ static func traffic_overlay_visual(
 		if (y & 1) != 0:
 			variant = 11
 
-	if density > high_threshold:
+	if level == 2:
 		if variant < 0 or variant >= TRAFFIC_HIGH_VARIANTS.size():
 			return null
 
@@ -283,6 +277,21 @@ static func traffic_overlay_visual(
 	result.density = density
 
 	return result
+
+
+# Shared by the painter and region invalidation. Non-road tiles draw no traffic.
+static func traffic_level(tile: int, density: int) -> int:
+	var index := tile - TRAFFIC_TILE_FIRST
+
+	if index < 0 or index >= TRAFFIC_TILE_VARIANTS.size() or TRAFFIC_TILE_VARIANTS[index] == 0:
+		return 0
+
+	var thresholds := TRAFFIC_THRESHOLDS
+
+	if (tile >= Tiles.HIGHWAY_STRAIGHT_1 and tile <= Tiles.HIGHWAY_POWER_CROSSING_2) or (tile >= Tiles.HIGHWAY_SLOPE_1 and tile <= Tiles.REINFORCED_HIGHWAY_BRIDGE):
+		thresholds = HIGHWAY_TRAFFIC_THRESHOLDS
+
+	return int(density > thresholds.x) + int(density > thresholds.y)
 
 
 static func power_marker_visual(
