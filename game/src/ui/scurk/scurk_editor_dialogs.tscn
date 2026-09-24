@@ -60,3 +60,31 @@ text = "Image size"
 layout_mode = 2
 
 [node name="PickCopy" parent="." instance=ExtResource("pick")]
+
+[node name="GenerateOptions" type="ConfirmationDialog" parent="."]
+title = "Generate smaller sizes"
+exclusive = true
+ok_button_text = "Generate"
+size = Vector2i(390, 190)
+
+[node name="Content" type="VBoxContainer" parent="GenerateOptions"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Source" type="Label" parent="GenerateOptions/Content"]
+layout_mode = 2
+text = "Generate from the Large artwork:"
+
+[node name="Medium" type="CheckBox" parent="GenerateOptions/Content"]
+layout_mode = 2
+text = "Medium (half size)"
+button_pressed = true
+
+[node name="Small" type="CheckBox" parent="GenerateOptions/Content"]
+layout_mode = 2
+text = "Small (quarter size)"
+button_pressed = true
+
+[node name="Notice" type="Label" parent="GenerateOptions/Content"]
+layout_mode = 2
+text = "Replaces artwork and layers in the selected sizes.\nYou can edit the results or undo generation."

@@ -273,6 +273,32 @@ func write_pixels(target: PixelTarget, pixels: PackedInt32Array, replace_active_
 	return _success()
 
 
+func generate_views(
+	large_id: int, source: PackedInt32Array, base_width: int, views: Array[int], clipped: bool
+) -> Result:
+	if not has_pending_edit():
+		return _failure("No SCURK edit is pending.")
+	if views.is_empty():
+		return _reject_edit("Select at least one size to generate.")
+	for view in views:
+		var shape := Workspace.generate_view(source, base_width, view, clipped)
+		if not shape.ok:
+			return _reject_edit(shape.error)
+		var sprite_id := ScurkEditorRules.view_sprite_id(large_id, view)
+		var written := document.set_shape_indices(sprite_id, shape.width, shape.height, shape.pixels)
+		if not written.ok:
+			return _reject_edit(written.error)
+		var key := "%d:%d" % [large_id, view]
+		var pixels := Workspace.from_shape(shape.width, shape.height, shape.pixels, view, base_width, clipped)
+		if not project.ensure_document(key, pixels, Workspace.WIDTH, Workspace.HEIGHT):
+			return _reject_edit("Cannot create the generated artwork document.")
+		var target: Dictionary = project.documents[key]
+		target.layers = [{"name": "Root", "visible": true, "locked": false, "pixels": pixels}]
+		target.active = 0
+		history.mark_shape_blank_state(sprite_id, shape.pixels)
+	return _success()
+
+
 func commit_edit() -> Result:
 	if not has_pending_edit():
 		return _failure("No SCURK edit is pending.")

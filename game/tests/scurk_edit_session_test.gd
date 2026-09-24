@@ -96,6 +96,8 @@ func _run() -> void:
 	_test_object_revert()
 	await _test_layer_clicks()
 	_test_persistence()
+	_test_generation_sampling()
+	_test_size_generation()
 	editor.free()
 	await process_frame
 	print("SCURK edit session: %d checks, %d failures" % [checks, failures])
@@ -614,3 +616,150 @@ func _store_file(path: String, bytes: PackedByteArray) -> void:
 func _same_project_state(left: Dictionary, right: Dictionary) -> bool:
 	# JSON normalizes numeric and array types during a project load.
 	return JSON.parse_string(JSON.stringify(left)) == JSON.parse_string(JSON.stringify(right))
+
+
+func _test_generation_sampling() -> void:
+	# Captured by running WINSCURK.EXE 0x0041435c in an x86 emulator.
+	# EXE SHA-256: fb8fdcbe3903f797b5cbb5bf5f3663d2d1337723e8459647f2dee8088f2467fc.
+	# Hashes cover little-endian signed 32-bit indices, with transparent pixels as -1.
+	var hashes := [
+		"0c06f5c11325b4ee9744219d97659b0e3071e304b2a75013ea950f9622bf6406", "ebe84df02e5152b64f0cf2a3d10bb28988c563745ba650bae38622d52b090eaa",
+		"c161dc05e749f93951162249b749e32e615e4f31a98c5207cb684ca844e689e5", "1c4fab53e758bbb681445c860cc6d91bc8c2254221f2dc3b1b61fe5732bee712",
+		"f8eac3732acd1c65d87db8493f394680e1e27a86a8be67b94b069dbca49ad461", "210ae7ca9020bb6d0bac19612701c1eef060550d887a6049e00b4b24526b5f2d",
+		"f45874f5944414b521a6ca9ca085af59df2d2d1ab00b8a378d9d22b421f55e28", "b2102a17962fd8c28b24eea0730047daa044e69ec4b7ff76cf6d7baa4700e184",
+	]
+	var source := PackedInt32Array()
+	source.resize(128 * 256)
+	for y in 256:
+		for x in 128:
+			source[y * 128 + x] = -1 if y < 17 or (x + y) % 11 == 0 else (x * 7 + y * 13) % 240
+	var index := 0
+	for width in [32, 64, 96, 128]:
+		for view in [1, 2]:
+			var shape := Workspace.generate_view(source, width, view)
+			_check(shape.ok and shape.width == width >> view and shape.height == 240 >> view, "Generated dimensions match the original sampler")
+			var hash := HashingContext.new()
+			hash.start(HashingContext.HASH_SHA256)
+			hash.update(shape.pixels.to_byte_array())
+			_check(hash.finish().hex_encode() == hashes[index], "Generated pixels match original x86 output for base %d, view %d" % [width, view])
+			index += 1
+	source.fill(-1)
+	for view in [1, 2]:
+		var empty := Workspace.generate_view(source, 128, view)
+		_check(empty.ok and empty.width == 128 >> view and empty.height == 1 and empty.pixels.count(-1) == empty.width, "Empty generation retains one transparent row")
+	source.fill(0)
+	for view in [1, 2]:
+		var shape := Workspace.generate_view(source, 32, view, false)
+		_check(shape.width == 128 >> view and shape.height == 256 >> view, "Unclipped generation uses the whole drawing area")
+		_check(shape.pixels[0] == -1 and shape.pixels[1] == 0, "Original left edge omission preserves visible palette index zero")
+	_check(not Workspace.generate_view(source, 128, 0).ok, "Generation cannot replace Large")
+	_check(not Workspace.generate_view(PackedInt32Array(), 128, 1).ok, "Generation rejects an invalid source")
+
+
+func _test_size_generation() -> void:
+	var mif := ScurkMif.from_archives([])
+	for view in 3:
+		var pixels := PackedInt32Array()
+		pixels.resize(128 >> view)
+		pixels.fill(40 + view)
+		assert(mif.set_shape_indices(ScurkEditorRules.view_sprite_id(LARGE_ID, view), pixels.size(), 1, pixels).ok)
+	assert(editor.load_tile_set(mif).ok)
+	editor._set_clipping_enabled(false)
+	var project := editor.studio.project
+	var large_key := editor.studio.key(0)
+	assert(editor._capture_edit_start("Large layers"))
+	assert(project.add_layer(large_key, "Visible detail") == 1)
+	var layer := project.active_pixels(large_key)
+	layer[255 * 128 + 64] = 91
+	assert(project.set_active_pixels(large_key, layer))
+	assert(project.add_layer(large_key, "Hidden detail") == 2)
+	layer[255 * 128 + 64] = 99
+	assert(project.set_active_pixels(large_key, layer))
+	project.documents[large_key].layers[2].visible = false
+	assert(editor._write_pixels(project.flatten(large_key)))
+	assert(editor._record_edit())
+	assert(editor.studio.ensure_view(1))
+	assert(project.add_layer(editor.studio.key(1), "Manual medium") == 1)
+	project.documents[editor.studio.key(1)].layers[1].locked = true
+	editor._select_view(2)
+	var source := project.flatten(large_key)
+	var large: PackedByteArray = editor._resolved_view_entry(0).encoded_pixels.duplicate()
+	var small: PackedByteArray = editor._resolved_view_entry(2).encoded_pixels.duplicate()
+	editor.studio.sync_editor_state()
+	var before := _state()
+	var dialogs := editor.dialog_registry
+	var toolbar := editor.get_node("Panel/Content/Toolbar") as ScurkEditorToolbar
+	toolbar.get_node("Actions/Generate").pressed.emit()
+	_check(dialogs.generate_options.visible, "Edit action opens the generation dialog")
+	dialogs.generate_options.hide()
+	dialogs.generate_options.canceled.emit()
+	_check_artwork(before, "Cancel generation")
+	dialogs.generate_medium.button_pressed = false
+	dialogs.generate_small.button_pressed = false
+	_check(dialogs.generate_options.get_ok_button().disabled, "No selected sizes disables generation")
+	editor._generate_selected_sizes()
+	_check_artwork(before, "Skip generation")
+
+	dialogs.generate_medium.button_pressed = true
+	_check(not dialogs.generate_options.get_ok_button().disabled, "Selecting a size enables generation")
+	dialogs.generate_options.confirmed.emit()
+	_check(editor.current_view == 2, "Generation keeps the selected view")
+	_check(editor._resolved_view_entry(0).encoded_pixels == large and editor._resolved_view_entry(2).encoded_pixels == small, "Medium-only generation preserves Large and Small")
+	var medium: PackedInt32Array = editor._resolved_view_entry(1).decode_indices().pixels
+	_check(medium == Workspace.generate_view(source, 128, 1, false).pixels and medium[32] == 91, "Generation uses visible Large layers even while Small is selected")
+	_check(project.documents[editor.studio.key(1)].layers.size() == 1 and not project.documents[editor.studio.key(1)].layers[0].locked, "Generated artwork replaces target layers and remains editable")
+	_check(editor.undo_stack.size() == before.undo.size() + 1, "Generation records one Undo action")
+	var generated := _state()
+	editor.undo()
+	_check_artwork(before, "Undo generation")
+	editor.redo()
+	_check_artwork(generated, "Redo generation")
+
+	dialogs.generate_medium.button_pressed = false
+	dialogs.generate_small.button_pressed = true
+	editor._generate_selected_sizes()
+	_check(editor._resolved_view_entry(1).decode_indices().pixels == medium, "Small-only generation preserves Medium")
+	_check(editor._resolved_view_entry(2).decode_indices().pixels == Workspace.generate_view(source, 128, 2, false).pixels, "Small is generated directly from Large")
+	editor._select_view(1)
+	var edited := editor.pixel_canvas.pixels.duplicate()
+	edited[255 * 128 + 64] = 73
+	editor.pixel_canvas._commit_changed_pixels(edited, "Manual generated Medium edit")
+	_check(editor._resolved_view_entry(1).decode_indices().pixels[32] == 73, "Generated Medium accepts manual painting")
+	_check(editor._resolved_view_entry(0).encoded_pixels == large, "Manual Medium edits preserve Large")
+	editor._select_view(2)
+	edited = editor.pixel_canvas.pixels.duplicate()
+	edited[255 * 128 + 64] = 74
+	editor.pixel_canvas._commit_changed_pixels(edited, "Manual generated Small edit")
+	_check(editor._resolved_view_entry(2).decode_indices().pixels[16] == 74, "Generated Small accepts manual painting")
+	var small_after: PackedByteArray = editor._resolved_view_entry(2).encoded_pixels.duplicate()
+	editor._select_view(0)
+	project.documents[large_key].active = 0
+	editor._refresh_sprite()
+	edited = editor.pixel_canvas.pixels.duplicate()
+	edited[255 * 128 + 68] = 72
+	editor.pixel_canvas._commit_changed_pixels(edited, "Later Large edit")
+	_check(editor._resolved_view_entry(1).decode_indices().pixels[32] == 73 and editor._resolved_view_entry(2).encoded_pixels == small_after, "Later Large edits do not regenerate smaller sizes")
+
+	dialogs.generate_medium.button_pressed = true
+	var undo_count := editor.undo_stack.size()
+	editor._generate_selected_sizes()
+	_check(editor.undo_stack.size() == undo_count + 1, "Generating both sizes records one Undo action")
+	var folder := "user://scurk-generation-%d.scurk" % OS.get_process_id()
+	assert(editor.studio.save_project(folder))
+	var saved := editor.tile_set.to_bytes().bytes
+	assert(editor.load_path(folder).ok)
+	_check(editor.tile_set.to_bytes().bytes == saved, "Generated artwork survives a project save and reload")
+	assert(DirAccess.remove_absolute(ProjectSettings.globalize_path(folder)) == OK)
+
+	var session := ScurkEditSession.new()
+	var large_only := ScurkMif.from_archives([])
+	assert(large_only.set_shape_indices(1000, 128, 1, PackedInt32Array(Array(range(128)))).ok)
+	assert(session.load_document(large_only).ok)
+	var original := session.document.to_bytes().bytes
+	assert(session.begin_edit("Invalid generation").ok)
+	_check(not session.generate_views(1000, source, 128, [1, 0], false).ok, "Invalid second size rejects generation")
+	_check(session.document.to_bytes().bytes == original and session.project.documents.is_empty() and not session.has_pending_edit(), "Failure rolls back all generated sizes and layers")
+	assert(session.begin_edit("Missing sizes").ok)
+	assert(session.generate_views(1000, source, 128, [1, 2], false).ok)
+	assert(session.commit_edit().ok)
+	_check(session.document.archive.find_sprite(500) != null and session.document.archive.find_sprite(0) != null, "Generation creates missing smaller sizes")

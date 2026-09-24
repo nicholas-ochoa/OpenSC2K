@@ -97,6 +97,10 @@ text = "Clear Object"
 layout_mode = 2
 text = "Pick & Copy..."
 
+[node name="Generate" type="Button" parent="Actions"]
+layout_mode = 2
+text = "Generate Smaller Sizes..."
+
 [node name="Settings" type="Button" parent="Actions"]
 layout_mode = 2
 text = "Settings"

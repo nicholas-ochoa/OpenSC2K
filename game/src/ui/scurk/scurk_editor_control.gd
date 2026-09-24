@@ -689,6 +689,47 @@ func clear_object() -> void:
 	])
 
 
+func request_generate_sizes() -> void:
+	if tile_set == null or not active_workspace or _resolved_view_entry(VIEW_LARGE) == null:
+		_show_error("Select an object with a standard Large drawing area to generate smaller sizes.")
+		return
+	dialog_registry.generate_options.popup_centered()
+
+
+func _generate_selected_sizes() -> void:
+	var views: Array[int] = []
+	if dialog_registry.generate_medium.button_pressed:
+		views.append(VIEW_MEDIUM)
+	if dialog_registry.generate_small.button_pressed:
+		views.append(VIEW_SMALL)
+	if views.is_empty() or tile_set == null or not active_workspace:
+		return
+
+	var entry: Sc2SpriteArchive.SpriteEntry = _resolved_view_entry(VIEW_LARGE)
+	if entry == null:
+		return
+	var decoded := entry.decode_indices()
+	if not decoded.ok:
+		_show_error(decoded.error)
+		return
+	var large_key := studio.key(VIEW_LARGE)
+	var source := studio.project.flatten(large_key) if studio.project.documents.has(large_key) else DrawingWorkspace.from_shape(
+		entry.width, entry.height, decoded.pixels, VIEW_LARGE, active_base_width, _clipping_enabled()
+	)
+	pixel_canvas.cancel_paste()
+	if not _capture_edit_start("Generate smaller sizes"):
+		return
+	var result := session.generate_views(current_large_id, source, active_base_width, views, _clipping_enabled())
+	if not result.ok:
+		_refresh_rejected_edit(result.error)
+		return
+	if not _record_edit():
+		return
+	studio.refresh_restored_state()
+	_update_after_history()
+	_set_status("Generated %s from Large artwork." % ("Medium and Small" if views.size() == 2 else ("Medium" if views[0] == VIEW_MEDIUM else "Small")))
+
+
 func handle_shortcut(event: InputEventKey) -> bool:
 	if not visible or not event.pressed or event.echo:
 		return false
@@ -777,6 +818,7 @@ func _bind_interface() -> void:
 	toolbar.redo_requested.connect(redo)
 	toolbar.revert_requested.connect(revert_object)
 	toolbar.clear_requested.connect(clear_object)
+	toolbar.generate_requested.connect(request_generate_sizes)
 	toolbar.name_requested.connect(request_edit_name)
 	toolbar.settings_requested.connect(settings_requested.emit)
 	toolbar.about_requested.connect(about_requested.emit)
@@ -899,6 +941,7 @@ func _bind_interface() -> void:
 	export_bmp_dialog.file_selected.connect(_export_selected_bmp)
 	error_dialog = dialog_registry.error_dialog
 	dialog_registry.export_options.confirmed.connect(_show_export_file_dialog)
+	dialog_registry.generate_options.confirmed.connect(_generate_selected_sizes)
 	discard_dialog = dialog_registry.discard_dialog
 	discard_dialog.confirmed.connect(_confirm_discard)
 	get_node("Dialogs/Close").confirmed.connect(_close_editor)

@@ -137,6 +137,40 @@ static func shape_from_workspace(
 			var source_x := source_left + x * divisor
 			sampled[y * output_width + x] = clipped[source_y * WIDTH + source_x]
 
+	return _trim_shape(sampled, output_width, output_max_height)
+
+
+## WINSCURK.EXE 0x0041435c samples a bottom-up buffer from its center outward.
+## The loop omits the far-left column of the full 128-pixel workspace.
+static func generate_view(
+	workspace_pixels: PackedInt32Array, base_width: int, view: int, clipping_enabled := true
+) -> IndexedImageResult:
+	if workspace_pixels.size() != WIDTH * HEIGHT or not is_standard_base_width(base_width):
+		return IndexedImageResult.failure("SCURK drawing workspace or base width is invalid.")
+	if view != ScurkSpriteIds.View.MEDIUM and view != ScurkSpriteIds.View.SMALL:
+		return IndexedImageResult.failure("Select Medium or Small for generation.")
+
+	var divisor := view_divisor(view)
+	var output_base_width := base_width if clipping_enabled else WIDTH
+	var output_width := output_base_width / divisor
+	var output_height := HEIGHT / divisor
+	var source_left := (WIDTH - output_base_width) / 2
+	var source := apply_clip_mask(workspace_pixels, base_width) if clipping_enabled else workspace_pixels
+	var sampled := PackedInt32Array()
+	sampled.resize(output_width * output_height)
+	sampled.fill(-1)
+
+	for y in output_height:
+		var source_y := divisor - 1 + y * divisor
+		for x in output_width:
+			var source_x := source_left + x * divisor
+			if source_x > 0:
+				sampled[y * output_width + x] = source[source_y * WIDTH + source_x]
+
+	return _trim_shape(sampled, output_width, output_height)
+
+
+static func _trim_shape(sampled: PackedInt32Array, output_width: int, output_max_height: int) -> IndexedImageResult:
 	var first_visible_row := output_max_height
 
 	for y in output_max_height:

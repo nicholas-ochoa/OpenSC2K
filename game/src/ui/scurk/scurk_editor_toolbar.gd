@@ -13,6 +13,7 @@ signal redo_requested
 signal name_requested
 signal revert_requested
 signal clear_requested
+signal generate_requested
 signal pick_copy_requested
 signal about_requested
 
@@ -46,6 +47,7 @@ func build() -> void:
 	$Actions/Name.pressed.connect(name_requested.emit)
 	$Actions/Revert.pressed.connect(revert_requested.emit)
 	$Actions/Clear.pressed.connect(clear_requested.emit)
+	$Actions/Generate.pressed.connect(generate_requested.emit)
 	$Actions/PickCopy.pressed.connect(pick_copy_requested.emit)
 	save_button = $Actions/Save
 	undo_button = $Actions/Undo
@@ -53,7 +55,7 @@ func build() -> void:
 	revert_button = $Actions/Revert
 	clear_button = $Actions/Clear
 	_bind_menu($Row/File, ["Open", "", "Save", "SaveAs", "", "RecoverProject", "", "Import", "Export", "ExportTileSet", "", "Close"])
-	_bind_menu($Row/Edit, ["Undo", "Redo", "", "SelectAll", "Deselect", "", "CutSelection", "CopySelection", "PasteSelection", "", "CutAllLayers", "CopyAllLayers", "PasteNewLayer", "", "DuplicateSelection", "DeleteSelection", "", "ReplaceColor", "Name", "", "Revert", "Clear", "", "PickCopy"])
+	_bind_menu($Row/Edit, ["Undo", "Redo", "", "SelectAll", "Deselect", "", "CutSelection", "CopySelection", "PasteSelection", "", "CutAllLayers", "CopyAllLayers", "PasteNewLayer", "", "DuplicateSelection", "DeleteSelection", "", "ReplaceColor", "Name", "Generate", "", "Revert", "Clear", "", "PickCopy"])
 	_bind_menu($Row/Options, ["Settings"])
 	_bind_menu($Row/Help, ["About"])
 
