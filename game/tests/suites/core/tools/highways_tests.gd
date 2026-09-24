@@ -259,8 +259,8 @@ func test_highway_command(reference_root: String) -> void:
 	for entry in [
 		[Vector2i(80, 20), 0, false],
 		[Vector2i(81, 20), 0x10, true],
-		[Vector2i(81, 21), 0, false],
-		[Vector2i(80, 21), 0x10, true],
+		[Vector2i(81, 21), 0x10, true],
+		[Vector2i(80, 21), 0, false],
 	]:
 		_check(
 			bridge_city.set_terrain_id(entry[0].x, entry[0].y, entry[1])

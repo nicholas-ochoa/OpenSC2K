@@ -14,6 +14,7 @@ func check(ok: bool, message: String) -> void:
 
 
 func _initialize() -> void:
+	_test_subway_pipe_crossings()
 	for edge in [128, 256, 384, 512]:
 		_test_routes(edge)
 		_test_surface_connections(edge)
@@ -31,6 +32,41 @@ func _fixture(edge: int) -> Dictionary:
 
 func _route(data: Dictionary, start: Vector2i, finish: Vector2i, mode: int, edge: int) -> Array[Vector2i]:
 	return NetworkRoutes.plan_route(data.XBLD, data.XTER, data.XZON, data.XUND, data.XBIT, data.ALTM, start, finish, mode, edge)
+
+
+func _test_subway_pipe_crossings() -> void:
+	var data := _fixture(128)
+	var start := Vector2i(20, 20)
+	for pipe_tile in range(0x10, 0x1f):
+		for direction in 4:
+			var step: Vector2i = NetworkCommand.DIRECTIONS[direction]
+			var crossing := start + step
+			var index := crossing.x * 128 + crossing.y
+			data.XUND[index] = pipe_tile
+			var allowed := (pipe_tile == 0x10 and direction in [1, 3]) or (pipe_tile == 0x11 and direction in [0, 2])
+			var route := _route(data, start, start + step * 2, NetworkCommand.MODE_SUBWAY, 128)
+			check(route.size() == (3 if allowed else 1), "Subway crossing route for pipe %x direction %d" % [pipe_tile, direction])
+			if pipe_tile >= 0x12:
+				NetworkTiles._place_underground(data.XUND, data.XTER, data.XZON, data.XBIT, data.MISC, crossing, false, direction)
+				check(data.XUND[index] == pipe_tile, "Subway writer preserves pipe bend or junction %x" % pipe_tile)
+			data.XUND[index] = 0
+
+	var city := CityState.from_document(EmptyCityTemplate.create(128))
+	city.set_funds(100000)
+	for fixture in [[0x10, 1, 0x20], [0x11, 0, 0x1f], [0x10, 0, 0x10], [0x11, 1, 0x11], [0x1e, 1, 0x1e]]:
+		var step: Vector2i = NetworkCommand.DIRECTIONS[fixture[1]]
+		var crossing := start + step
+		city.set_underground_id(crossing.x, crossing.y, fixture[0])
+		var before: Array = DocumentState.capture(city.document)
+		var preview_city := NetworkPlacementPreview.snapshot_city(city)
+		var preview := NetworkPlacementPreview.apply_preview(preview_city, 7, 1, start, start + step * 2)
+		var result := NetworkCommand.apply(city, 7, 1, start, start + step * 2)
+		var count := 3 if fixture[2] >= 0x1f else 1
+		check(result.ok and result.points.size() == count and city.underground_id(crossing.x, crossing.y) == fixture[2], "Subway placement preserves the pipe and uses the correct crossing")
+		check(result.cost == count * int(ToolCatalog.tool(7, 1).cost), "Subway charges only for placed tiles")
+		check(preview.ok and DocumentState.capture(preview_city.document) == DocumentState.capture(city.document), "Subway crossing preview matches placement")
+		check(NetworkCommand.undo(city, result).ok and DocumentState.capture(city.document) == before, "Subway crossing has exact Undo")
+		city.set_underground_id(crossing.x, crossing.y, 0)
 
 
 func _test_routes(edge: int) -> void:

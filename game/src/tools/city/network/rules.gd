@@ -93,10 +93,7 @@ static func _tile_is_eligible(
 		if under_tile == UnderTiles.EMPTY:
 			return true
 
-		if mode == MODE_PIPE:
-			return under_tile + (direction & 1) == UnderTiles.PIPE_TB
-
-		return under_tile >= UnderTiles.PIPE_FIRST and under_tile <= UnderTiles.PIPE_LAST
+		return under_tile + (direction & 1) == UnderTiles.PIPE_TB
 
 	if flags[index] & FLAG_WATER and terrain_id < TerrainTileIds.CHANNEL_FIRST:
 		return false

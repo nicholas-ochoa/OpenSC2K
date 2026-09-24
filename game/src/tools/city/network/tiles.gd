@@ -233,8 +233,10 @@ static func _place_underground(
 	else:
 		if old_tile == UnderTiles.EMPTY:
 			new_tile = UnderTiles.SUBWAY_FIRST
-		elif old_tile >= UnderTiles.PIPE_FIRST and old_tile <= UnderTiles.PIPE_LAST:
-			new_tile = UnderTiles.PIPE_TB_SUBWAY_LR if (direction & 1) == 0 else UnderTiles.PIPE_LR_SUBWAY_TB
+		elif old_tile == UnderTiles.PIPE_LR:
+			new_tile = UnderTiles.PIPE_LR_SUBWAY_TB
+		elif old_tile == UnderTiles.PIPE_TB:
+			new_tile = UnderTiles.PIPE_TB_SUBWAY_LR
 		else:
 			return
 

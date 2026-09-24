@@ -235,7 +235,7 @@ static func bridge_terrain_code(
 	var result := 0
 
 	for offset in [
-		Vector2i(1, 1), Vector2i(1, 0), Vector2i(0, 1), Vector2i.ZERO,
+		Vector2i(0, 1), Vector2i(1, 1), Vector2i(1, 0), Vector2i.ZERO,
 	]:
 		var point: Vector2i = anchor + offset
 		var terrain_id := int(terrain[point.x * map_edge + point.y])

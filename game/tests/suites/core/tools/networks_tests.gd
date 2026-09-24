@@ -299,13 +299,14 @@ func test_network_command(reference_root: String) -> void:
 		"Pipes can start on an existing pipe without charging it again")
 	_check(Networks.undo(city, pipe_extension).ok and document.serialize().data == pipes_before,
 		"Pipe extension Undo preserves exact bytes")
-	var subway_over_pipe := Networks.apply(city, 7, 1, Vector2i(10, 30), Vector2i(12, 30))
+	var parallel_subway := Networks.apply(city, 7, 1, Vector2i(10, 30), Vector2i(12, 30))
+	_check(not parallel_subway.ok and document.serialize().data == pipes_before,
+		"Subway rejects parallel pipe tiles without changing the city")
+	var subway_over_pipe := Networks.apply(city, 7, 1, Vector2i(11, 29), Vector2i(11, 31))
 	_check(subway_over_pipe.ok and subway_over_pipe.cost == 300 and not subway_over_pipe.stopped_early,
-		"Subway can run under parallel pipe tiles")
-
-	for x in range(10, 13):
-		_check(city.is_piped(x, 30) and city.underground_id(x, 30) in [0x1f, 0x20],
-			"Subway under a pipe keeps the dual-network cell and piped flag")
+		"Subway can cross straight pipe tiles")
+	_check(city.is_piped(11, 30) and city.underground_id(11, 30) == 0x1f,
+		"Subway crossing keeps the dual-network cell and piped flag")
 
 	_check(Networks.undo(city, subway_over_pipe).ok and document.serialize().data == pipes_before,
 		"Subway under pipes has exact Undo")
