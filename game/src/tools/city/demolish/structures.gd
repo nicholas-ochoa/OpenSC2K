@@ -87,16 +87,23 @@ static func _demolish_point(
 			random, emit_effects, false, map_edge
 		)
 
-	if tile_id >= BRIDGE_FIRST and tile_id <= BRIDGE_LAST:
-		return DemolishBridges._demolish_bridge(
-			altitude, buildings, terrain, zones, underground, flags, misc,
-			point, random, emit_effects, map_edge
-		)
+	if (tile_id >= BRIDGE_FIRST and tile_id <= BRIDGE_LAST) or (tile_id >= REINFORCED_BRIDGE_FIRST and tile_id <= REINFORCED_BRIDGE_LAST):
+		var damage_bank := func(bank: Vector2i) -> DemolishPointResult:
+			return _demolish_point(
+				city, altitude, buildings, terrain, zones, underground, flags,
+				text_overlays, labels, microsims, misc, bank, random,
+				true, false, emit_effects, scurk_mode
+			)
 
-	if tile_id >= REINFORCED_BRIDGE_FIRST and tile_id <= REINFORCED_BRIDGE_LAST:
+		if tile_id <= BRIDGE_LAST:
+			return DemolishBridges._demolish_bridge(
+				altitude, buildings, terrain, zones, underground, flags, misc,
+				point, damage_bank, random, emit_effects, map_edge
+			)
+
 		return DemolishBridges._demolish_reinforced_bridge(
 			altitude, buildings, terrain, zones, underground, flags, misc,
-			point, random, emit_effects, map_edge
+			point, damage_bank, random, emit_effects, map_edge
 		)
 
 	if tile_id >= RUNWAY_FIRST and tile_id <= PIER_LAST:

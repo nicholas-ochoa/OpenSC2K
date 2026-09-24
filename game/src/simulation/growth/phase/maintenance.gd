@@ -10,16 +10,16 @@ const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
 static func _process_surface_maintenance(
 	altitude: PackedByteArray,
 	altitudes: PackedInt32Array,
-	terrain: PackedByteArray,
 	buildings: PackedByteArray,
 	zones: PackedByteArray,
-	underground: PackedByteArray,
 	flags: PackedByteArray,
 	misc: PackedByteArray,
 	point: Vector2i,
 	random: SimRandom,
 	lfsr_random: SimLfsrRandom,
 	counters: GrowthMaintenanceResult,
+	city: CityState,
+	payloads: Dictionary,
 	map_edge: int = 128,
 ) -> void:
 	var index := GrowthState._index(point, map_edge)
@@ -48,18 +48,7 @@ static func _process_surface_maintenance(
 		var wind := BinaryData.read_u32_be(misc, Sc2MiscLayout.WEATHER_WIND) & 0xff
 
 		if _maintenance_fails(misc, 12, random, 50, wind):
-			var result: DemolishPointResult
-
-			if tile == Tiles.HIGHWAY_BRIDGE or tile == Tiles.REINFORCED_HIGHWAY_BRIDGE:
-				result = DemolishBridges._demolish_reinforced_bridge(
-					altitude, buildings, terrain, zones, underground, flags, misc,
-					point, random, true, map_edge
-				)
-			else:
-				result = DemolishBridges._demolish_bridge(
-					altitude, buildings, terrain, zones, underground, flags, misc,
-					point, random, true, map_edge
-				)
+			var result := DemolishStructures.damage_structure_payloads(city, payloads, point, random, true)
 
 			if not result.changed:
 				counters.metrics.deferred_bridge_collapses += 1

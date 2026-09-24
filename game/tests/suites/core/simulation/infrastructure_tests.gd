@@ -342,16 +342,14 @@ func test_transport_maintenance(reference_root: String) -> void:
 					"Reinforced collapse fixture places water terrain",
 				)
 				_check(
-					reinforced_span.city.set_tile_flag(point.x, point.y, 0x04, true),
+					reinforced_span.city.set_tile_flag(point.x, point.y, 0x06, true),
 					"Reinforced collapse fixture marks span water",
 				)
 
-	_check(reinforced_span.city.set_building_id(26, 20, Tiles.HIGHWAY_STRAIGHT_1), "Reinforced collapse fixture places its forward bank")
 	_check(reinforced_span.city.set_land_altitude(26, 20, 1), "Reinforced collapse fixture raises its forward bank")
-	_check(reinforced_span.document.set_misc_u32(0x01f0, 16371), "Reinforced collapse fixture counts clear tiles")
+	_check(reinforced_span.document.set_misc_u32(0x01f0, 16372), "Reinforced collapse fixture counts clear tiles")
 	_check(reinforced_span.document.set_misc_u32(0x01f0 + 0x6a * 4, 4), "Reinforced collapse fixture counts pylons")
 	_check(reinforced_span.document.set_misc_u32(0x01f0 + 0x6b * 4, 8), "Reinforced collapse fixture counts normal spans")
-	_check(reinforced_span.document.set_misc_u32(0x01f0 + 0x49 * 4, 1), "Reinforced collapse fixture counts its bank")
 	_check(reinforced_span.document.set_misc_u32(0x0e40, 1), "Reinforced collapse fixture sets sea level")
 	_check(reinforced_span.document.set_misc_i32(0x077c + 12 * 0x6c + 4, 0), "Reinforced collapse fixture removes funding")
 	var reinforced_span_random := SequenceRandom.new([
@@ -379,7 +377,7 @@ func test_transport_maintenance(reference_root: String) -> void:
 		and reinforced_span_result.bridge_effects[4].sprite_id == 1394
 		and reinforced_span_result.bridge_effects[8].sprite_id == 1393
 		and reinforced_span_result.bridge_effects[1].screen_offset == Vector2i(16, -8)
-		and reinforced_span_result.bridge_effects[3].screen_offset == Vector2i(32, 8),
+		and reinforced_span_result.bridge_effects[3].screen_offset == Vector2i(16, 8),
 		"Reinforced collapse shares one sprite across each recovered four-part layout",
 	)
 
@@ -390,11 +388,11 @@ func test_transport_maintenance(reference_root: String) -> void:
 				"Reinforced collapse clears each two-wide span tile",
 			)
 
-	_check(reinforced_span.city.building_id(26, 20) == 0, "Reinforced collapse clears the original forward-bank cell")
-	_check(reinforced_span.city.land_altitude(26, 20) == 0, "Reinforced collapse lowers the forward-bank cell")
+	_check(reinforced_span.city.building_id(26, 20) == 0, "Reinforced collapse keeps the empty forward-bank cell")
+	_check(reinforced_span.city.land_altitude(26, 20) == 1, "Reinforced collapse preserves the forward-bank height")
 	_check(
-		reinforced_span.city.tile_flags[26 * 128 + 20] & 0x04 != 0,
-		"Reinforced collapse restores water on the forward-bank cell",
+		reinforced_span.city.tile_flags[26 * 128 + 20] & 0x04 == 0,
+		"Reinforced collapse leaves the raised forward bank dry",
 	)
 	_check(reinforced_span.document.misc_u32(0x01f0 + 0x6a * 4) == 0, "Reinforced collapse clears its pylon count")
 	_check(reinforced_span.document.misc_u32(0x01f0 + 0x6b * 4) == 0, "Reinforced collapse clears its normal-span count")

@@ -509,31 +509,36 @@ func test_demolish_command(reference_root: String) -> void:
 				var point := Vector2i(80 + section * 2 + x_offset, 80 + y_offset)
 				_check(special_city.set_building_id(point.x, point.y, reinforced_tile), "Reinforced demolition fixture places a span tile")
 				_check(special_city.set_terrain_id(point.x, point.y, 0x30), "Reinforced demolition fixture places water terrain")
-				_check(special_city.set_tile_flag(point.x, point.y, 0x04, true), "Reinforced demolition fixture marks span water")
+				_check(special_city.set_tile_flag(point.x, point.y, 0x06, true), "Reinforced demolition fixture marks span water")
 
 	for bank_point in [Vector2i(78, 80), Vector2i(86, 80)]:
-		_check(special_city.set_building_id(bank_point.x, bank_point.y, Tiles.HIGHWAY_STRAIGHT_1), "Reinforced demolition fixture places a bank")
-		_check(special_city.set_land_altitude(bank_point.x, bank_point.y, 1), "Reinforced demolition fixture raises a bank")
+		for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
+			var point: Vector2i = bank_point + offset
+			_check(special_city.set_building_id(point.x, point.y, Tiles.HIGHWAY_STRAIGHT_1), "Reinforced demolition fixture places a complete bank section")
+			_check(special_city.set_land_altitude(point.x, point.y, 1), "Reinforced demolition fixture raises a bank")
+			_check(special_city.set_building_corners(point.x, point.y, 0xf0), "Reinforced demolition fixture marks straight highway cells")
 
 	var reinforced_bridge := Demolish.apply_path(
 		special_city, 0, 0, [Vector2i(80, 80)], demolition_random
 	)
 	_check(
 		reinforced_bridge.ok
-		and reinforced_bridge.tile_indices.size() == 13
-		and reinforced_bridge.effect_events.size() == 12
+		and reinforced_bridge.tile_indices.size() == 20
+		and reinforced_bridge.effect_events.size() > 12
 		and reinforced_bridge.sound_events == [504],
-		"Demolish clears a reinforced span and the original forward-bank cell",
+		"Demolish clears a reinforced span and demolishes both complete bank sections",
 	)
 
 	for x in range(80, 86):
 		for y in range(80, 82):
 			_check(special_city.building_id(x, y) == 0, "Reinforced demolition clears each span tile")
 
-	_check(special_city.building_id(78, 80) == 0x49, "Reinforced demolition preserves the rear bank")
-	_check(special_city.building_id(86, 80) == 0, "Reinforced demolition clears the forward bank")
-	_check(special_city.land_altitude(86, 80) == 0, "Reinforced demolition lowers the forward bank")
-	_check((special_city.tile_flags[86 * 128 + 80] & 0x04) != 0, "Reinforced demolition restores forward-bank water")
+	for bank_point in [Vector2i(78, 80), Vector2i(86, 80)]:
+		for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
+			var point: Vector2i = bank_point + offset
+			_check(special_city.building_id(point.x, point.y) <= Tiles.RUBBLE_LAST, "Reinforced demolition removes bank highways")
+			_check(special_city.land_altitude(point.x, point.y) == 1, "Reinforced demolition preserves bank heights")
+			_check(not special_city.is_water(point.x, point.y), "Reinforced demolition leaves banks above sea level dry")
 	_check(Demolish.undo(special_city, reinforced_bridge, demolition_random).ok, "Reinforced bridge demolition can be undone")
 
 	_check(special_city.set_terrain_id(60, 60, 0x3d), "Water demolition fixture sets water terrain")

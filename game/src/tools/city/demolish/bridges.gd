@@ -12,6 +12,7 @@ static func _demolish_bridge(
 	flags: PackedByteArray,
 	misc: PackedByteArray,
 	selected: Vector2i,
+	damage_bank: Callable,
 	random: SimRandom = null,
 	emit_effects := false,
 	map_edge: int = 128,
@@ -77,18 +78,10 @@ static func _demolish_bridge(
 		DemolishTerrain._set_land_altitude(altitude, bank_index, maxi(0, land - 1))
 		flags[bank_index] |= FLAG_WATER
 		flags[bank_index] &= ~FLAG_FLIPPED & 0xff
-		TerrainRetile.retile_region(
-			altitude,
-			buildings,
-			terrain,
-			zones,
-			flags,
-			misc,
-			PackedInt32Array([bank_index]),
-			BinaryData.read_u32_be(misc, 0x0e40) & 0x1f, map_edge
+		_retile_bank(
+			altitude, buildings, terrain, zones, underground, flags, misc,
+			bank, damage_bank, points, indices, effect_events, map_edge
 		)
-		points.append(bank)
-		indices.append(bank_index)
 
 	DemolishTerrain._retile_surface_water(terrain, flags, selected, true, map_edge)
 	DemolishTerrain._retile_after_demolition(buildings, terrain, zones, underground, flags, misc, points, PackedByteArray(), map_edge)
@@ -110,6 +103,7 @@ static func _demolish_reinforced_bridge(
 	flags: PackedByteArray,
 	misc: PackedByteArray,
 	selected: Vector2i,
+	damage_bank: Callable,
 	random: SimRandom = null,
 	emit_effects := false,
 	map_edge: int = 128,
@@ -123,24 +117,27 @@ static func _demolish_reinforced_bridge(
 
 		return result
 
-	var anchor_tile := int(buildings[anchor.x * map_edge + anchor.y])
-	# the executable selects the span axis from the section's tile kind
-	# this makes 0x6b advance on x and 0x6a advance on y
-	var direction := Vector2i(2, 0) if anchor_tile == REINFORCED_BRIDGE_LAST else Vector2i(0, 2)
+	var section_kind := HighwayGeometry._section_kind(buildings, zones, flags, anchor, map_edge)
+	var direction := Vector2i(2, 0) if (section_kind & 1) == 0 else Vector2i(0, 2)
 	var first := anchor
 
-	while reinforced_section_is_valid(buildings, first - direction, map_edge):
+	while HighwayGeometry._section_kind(buildings, zones, flags, first - direction, map_edge) >= 13:
 		first -= direction
 
 	var finish := anchor
 
-	while reinforced_section_is_valid(buildings, finish + direction, map_edge):
+	while HighwayGeometry._section_kind(buildings, zones, flags, finish + direction, map_edge) >= 13:
 		finish += direction
 
 	var points: Array[Vector2i] = []
 	var indices := PackedInt32Array()
 	var effect_events: Array[EffectEvent] = []
 	var current := first
+
+	_retile_bank_section(
+		altitude, buildings, terrain, zones, underground, flags, misc,
+		first - direction, damage_bank, points, indices, effect_events, map_edge
+	)
 
 	while true:
 		if emit_effects and random != null:
@@ -149,7 +146,7 @@ static func _demolish_reinforced_bridge(
 
 			for screen_offset in [
 				Vector2i(0, 0), Vector2i(16, -8),
-				Vector2i(32, 0), Vector2i(32, 8),
+				Vector2i(32, 0), Vector2i(16, 8),
 			]:
 				effect_events.append(EffectEvent.new(current, effect_sprite,
 					screen_offset, (random.next_u15() & 1) != 0, 0, DemolishTerrain._water_altitude(altitude, current_index)))
@@ -168,31 +165,10 @@ static func _demolish_reinforced_bridge(
 
 		current += direction
 
-	# The original changes only the origin cell of the forward bank section
-	# on a two-wide bridge. It leaves the bank behind the span alone.
-	var bank := finish + direction
-
-	if DemolishTerrain._point_is_in_bounds(bank, map_edge):
-		var bank_index := bank.x * map_edge + bank.y
-
-		if (flags[bank_index] & FLAG_WATER) == 0:
-			NetworkState.replace_building(buildings, zones, misc, bank_index, Tiles.EMPTY)
-			var land := DemolishTerrain._land_altitude(altitude, bank_index)
-			DemolishTerrain._set_land_altitude(altitude, bank_index, maxi(0, land - 1))
-			flags[bank_index] |= FLAG_WATER
-			flags[bank_index] &= ~FLAG_FLIPPED & 0xff
-			TerrainRetile.retile_region(
-				altitude,
-				buildings,
-				terrain,
-				zones,
-				flags,
-				misc,
-				PackedInt32Array([bank_index]),
-				BinaryData.read_u32_be(misc, 0x0e40) & 0x1f, map_edge
-			)
-			points.append(bank)
-			indices.append(bank_index)
+	_retile_bank_section(
+		altitude, buildings, terrain, zones, underground, flags, misc,
+		finish + direction, damage_bank, points, indices, effect_events, map_edge
+	)
 
 	DemolishTerrain._retile_surface_water(terrain, flags, selected, true, map_edge)
 	DemolishTerrain._retile_after_demolition(buildings, terrain, zones, underground, flags, misc, points, PackedByteArray(), map_edge)
@@ -224,3 +200,63 @@ static func reinforced_section_is_valid(
 			return false
 
 	return true
+
+
+# The original terrain update visits all four bank cells. It can remove a
+# structure and its underground layer, but does not lower the bank first.
+static func _retile_bank_section(
+	altitude: PackedByteArray,
+	buildings: PackedByteArray,
+	terrain: PackedByteArray,
+	zones: PackedByteArray,
+	underground: PackedByteArray,
+	flags: PackedByteArray,
+	misc: PackedByteArray,
+	anchor: Vector2i,
+	damage_bank: Callable,
+	points: Array[Vector2i],
+	indices: PackedInt32Array,
+	effect_events: Array[EffectEvent],
+	map_edge: int,
+) -> void:
+	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
+		var point: Vector2i = anchor + offset
+
+		if DemolishTerrain._point_is_in_bounds(point, map_edge):
+			_retile_bank(
+				altitude, buildings, terrain, zones, underground, flags, misc,
+				point, damage_bank, points, indices, effect_events, map_edge
+			)
+
+
+static func _retile_bank(
+	altitude: PackedByteArray,
+	buildings: PackedByteArray,
+	terrain: PackedByteArray,
+	zones: PackedByteArray,
+	underground: PackedByteArray,
+	flags: PackedByteArray,
+	misc: PackedByteArray,
+	point: Vector2i,
+	damage_bank: Callable,
+	points: Array[Vector2i],
+	indices: PackedInt32Array,
+	effect_events: Array[EffectEvent],
+	map_edge: int,
+) -> void:
+	var index := point.x * map_edge + point.y
+
+	if buildings[index] >= Tiles.SMALL_PARK:
+		var damage: DemolishPointResult = damage_bank.call(point)
+		indices.append_array(damage.indices)
+		effect_events.append_array(damage.effect_events)
+
+	if underground[index] != UndergroundTileIds.EMPTY:
+		BuildingUnderground._replace_underground(underground, zones, misc, index, UndergroundTileIds.EMPTY)
+
+	TerrainRetile.retile_region(
+		altitude, buildings, terrain, zones, flags, misc,
+		PackedInt32Array([index]), BinaryData.read_u32_be(misc, 0x0e40) & 0x1f, map_edge
+	)
+	points.append(point)
+	indices.append(index)

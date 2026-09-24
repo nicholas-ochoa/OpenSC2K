@@ -37,6 +37,7 @@ static func payloads(city: CityState) -> Dictionary[String, PackedByteArray]:
 		["XZON", (map_edge * map_edge)],
 		["XUND", (map_edge * map_edge)],
 		["XTXT", (map_edge * map_edge)],
+		["XLAB", city.document.decoded_size("XLAB")],
 		["XMIC", CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE],
 		["XTHG", city.document.decoded_size("XTHG")],
 		["XBIT", (map_edge * map_edge)],

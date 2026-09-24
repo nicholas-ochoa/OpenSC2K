@@ -8,6 +8,8 @@ extends GrowthConstants
 # member reads were about 4% quicker than passing a context through static helpers
 # keep the busy rci counters here; rare events go in the result
 class TileScan extends GrowthConstants:
+	var city_state: CityState
+	var city_payloads: Dictionary
 	var altitude: PackedByteArray
 	var altitudes: PackedInt32Array
 	var terrain: PackedByteArray
@@ -60,6 +62,8 @@ class TileScan extends GrowthConstants:
 		scan_game_random: GameLcgRandom,
 		scan_span: SimulationTimingSpan
 	) -> void:
+		city_state = city
+		city_payloads = payloads
 		altitude = payloads.ALTM
 		altitudes = city.altitude_words.duplicate()
 		terrain = payloads.XTER
@@ -158,9 +162,9 @@ class TileScan extends GrowthConstants:
 			span.mark_index(TimingStep.SURFACE)
 
 		GrowthMaintenance._process_surface_maintenance(
-			altitude, altitudes, terrain, buildings, zones,
-			underground, flags, misc, tile, random, lfsr_random,
-			counters, map_edge
+			altitude, altitudes, buildings, zones,
+			flags, misc, tile, random, lfsr_random,
+			counters, city_state, city_payloads, map_edge
 		)
 
 		if detailed:
@@ -518,7 +522,7 @@ static func run(
 	var changed_ids := PackedStringArray()
 
 	for chunk_id in [
-		"ALTM", "XTER", "XBLD", "XZON", "XUND", "XTXT", "XMIC", "XTHG",
+		"ALTM", "XTER", "XBLD", "XZON", "XUND", "XTXT", "XLAB", "XMIC", "XTHG",
 		"XBIT", "XTRF", "MISC",
 	]:
 		if payloads[chunk_id] != original[chunk_id]:
