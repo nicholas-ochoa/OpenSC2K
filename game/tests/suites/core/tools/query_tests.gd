@@ -112,17 +112,23 @@ func test_query_info(reference_root: String) -> void:
 		and advanced_general_text.contains("61 / 0x3D"),
 		"General query formats the SC2KFix advanced data section",
 	)
-	var bounds := [1, 60, 120, 180]
-	for boundary in bounds:
+	for band in [[0, 0, "None"], [1, 59, "Low"], [60, 119, "Medium"], [120, 179, "High"], [180, 255, "Very High"]]:
 		_check(
-			QueryDetails.level_name(boundary) != QueryDetails.level_name(boundary + 1),
-			"Query level changes at its recovered threshold",
+			QueryDetails.level_name(band[0]) == band[2] and QueryDetails.level_name(band[1]) == band[2],
+			"Query level %s uses the executable threshold band" % band[2],
 		)
-	for band in [[2, 60], [61, 120], [121, 180]]:
-		_check(
-			QueryDetails.level_name(band[0]) == QueryDetails.level_name(band[1]),
-			"Query level stays constant within a threshold band",
-		)
+	for traffic_tile in [Tiles.ROAD_POWER_CROSSING_1, Tiles.ROAD_RAIL_CROSSING_2, Tiles.HIGHWAY_STRAIGHT_1, Tiles.HIGHWAY_STRAIGHT_2]:
+		_check(city.set_building_id(50, 50, traffic_tile), "Query traffic fixture places a road tile")
+		_check(Queries.inspect(city, Vector2i(50, 50)).shows_traffic, "Query shows traffic for tile 0x%02X" % traffic_tile)
+	_check(city.set_building_id(50, 50, Tiles.RAIL_POWER_CROSSING_1), "Query traffic fixture places a rail crossing")
+	_check(not Queries.inspect(city, Vector2i(50, 50)).shows_traffic, "Query omits traffic for a rail and power crossing")
+	_check(city.set_building_id(50, 50, Tiles.EMPTY), "Query traffic fixture clears its tile")
+	_check(city.set_land_altitude(50, 50, 2), "Query fixture puts land below the water level")
+	var underwater := Queries.inspect(city, Vector2i(50, 50))
+	_check(
+		underwater.altitude_is_depth and not underwater.shows_land_value and not underwater.shows_utilities,
+		"Query omits land value and utilities below the water level",
+	)
 	_check(city.set_building_id(40, 40, Tiles.EMPTY), "Query name fixture clears a terrain tile")
 	_check(city.set_tile_flag(40, 40, 0x04, false), "Query name fixture clears its water flag")
 	_check(

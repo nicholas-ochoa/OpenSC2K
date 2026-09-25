@@ -140,8 +140,8 @@ static func traffic(
 static func _is_traffic_tile(building: int) -> bool:
 	return (
 		(building >= Tiles.ROAD_STRAIGHT_1 and building <= Tiles.ROAD_CROSSROADS)
-		or (building >= Tiles.TUNNEL_ENTRANCE_1 and building <= Tiles.TUNNEL_ENTRANCE_4)
-		or (building >= Tiles.HIGHWAY_ROAD_CROSSING_1 and building <= Tiles.RAIL_BRIDGE_PYLON)
+		or (building >= Tiles.TUNNEL_ENTRANCE_1 and building <= Tiles.ROAD_RAIL_CROSSING_2)
+		or (building >= Tiles.HIGHWAY_STRAIGHT_1 and building <= Tiles.RAIL_BRIDGE_PYLON)
 		or (building >= Tiles.HIGHWAY_ONRAMP_1 and building <= Tiles.REINFORCED_HIGHWAY_BRIDGE)
 	)
 
@@ -152,17 +152,18 @@ static func _is_highway_traffic_tile(building: int) -> bool:
 	)
 
 
+# the executable selects the first level whose threshold is above the value
 static func level_name(value: int) -> String:
-	if value <= 1:
+	if value < 1:
 		return "None"
 
-	if value <= 60:
+	if value < 60:
 		return "Low"
 
-	if value <= 120:
+	if value < 120:
 		return "Medium"
 
-	if value <= 180:
+	if value < 180:
 		return "High"
 
 	return "Very High"

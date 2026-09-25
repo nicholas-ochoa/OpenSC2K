@@ -96,7 +96,7 @@ static func inspect(city: CityState, point: Vector2i) -> QueryResult:
 	result.traffic = QueryDetails.traffic(city, traffic_chunk.decoded_payload, point, building)
 	result.altitude_feet = altitude_feet
 	result.altitude_is_depth = altitude_is_depth
-	result.shows_land_value = not wet_tile or land_altitude < water_level
+	result.shows_land_value = not wet_tile
 	result.land_value = int(land_value_chunk.decoded_payload[detail_index]) + 1
 	result.crime = int(crime_chunk.decoded_payload[detail_index])
 	result.crime_level = QueryDetails.level_name(crime_chunk.decoded_payload[detail_index])
