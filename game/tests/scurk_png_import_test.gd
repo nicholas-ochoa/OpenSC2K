@@ -26,6 +26,7 @@ func _run() -> void:
 	assert(mapped.ok and mapped.remapped_color_count > 0 and mapped.pixels[1] == -1)
 	_test_small_palettes()
 	var assets := OriginalGameAssets.load_root(ProjectSettings.globalize_path("res://../references/SIMCITY2000"))
+	_test_gif_and_bmp_import(assets.palette)
 	var editor := preload("res://src/ui/scurk/scurk_editor_control.tscn").instantiate() as ScurkEditorControl
 	root.add_child(editor)
 	editor.configure(assets.palette, assets.large_sprites, assets.small_medium_sprites, ProjectSettings.globalize_path("res://../references/SIMCITY2000"), assets.scurk_graphics)
@@ -44,13 +45,7 @@ func _run() -> void:
 		editor._refresh_sprite()
 		var before: PackedByteArray = editor.tile_set.to_bytes().bytes
 		assert(editor.import_image_path(path).ok)
-		var png_export := folder.path_join("view-%d.png" % view)
-		var gif_export := folder.path_join("view-%d.gif" % view)
-		assert(editor.export_image_path(png_export).ok)
-		assert(editor.export_image_path(gif_export).ok)
-		assert(IndexedPng.load_path(png_export).pixels == editor._active_output_shape().pixels)
-		DirAccess.remove_absolute(png_export)
-		DirAccess.remove_absolute(gif_export)
+		_check_export_formats(editor, assets.palette, view)
 		var after: PackedByteArray = editor.tile_set.to_bytes().bytes
 		assert(after != before and editor.dirty)
 		assert(editor._active_output_shape().pixels.has(171))
@@ -74,7 +69,7 @@ func _run() -> void:
 	editor.free()
 	DirAccess.remove_absolute(path)
 	DirAccess.remove_absolute(folder)
-	print("PASS: indexed PNG depths, transparency, duplicate indices, remapping, all SCURK views, exact Undo/Redo and invalid imports")
+	print("PASS: indexed PNG, GIF, and BMP import and export, transparency, duplicate indices, remapping, all SCURK views, exact Undo/Redo and invalid imports")
 	quit()
 
 
@@ -102,3 +97,75 @@ func _test_small_palettes() -> void:
 	assert(not IndexedPng.decode(bytes_8).ok)
 	var decoded_8 := IndexedPng.decode(bytes_8, false)
 	assert(decoded_8.ok and decoded_8.pixels == PackedInt32Array([0, -1, 0, -1]))
+
+
+# each export format reads back with the same indices and transparency
+func _check_export_formats(editor: ScurkEditorControl, palette: Sc2Palette, view: int) -> void:
+	var expected := editor._active_output_shape()
+
+	for extension in ["png", "gif", "bmp"]:
+		var export_path := folder.path_join("view-%d.%s" % [view, extension])
+		assert(editor.export_image_path(export_path).ok)
+		var reimported := ScurkImageImport.load_path(export_path, palette)
+		assert(reimported.ok and reimported.remapped_color_count == 0, extension)
+		assert(reimported.width == expected.width and reimported.pixels == expected.pixels, extension)
+		DirAccess.remove_absolute(export_path)
+
+	var animated := folder.path_join("view-%d-animated.gif" % view)
+	assert(editor.export_image_path(animated, -1, ScurkEditorDialogs.EXPORT_ANIMATED_GIF).ok)
+	assert(FileAccess.get_file_as_bytes(animated).hex_encode().contains("NETSCAPE2.0".to_ascii_buffer().hex_encode()))
+	DirAccess.remove_absolute(animated)
+	# a name without an extension takes the extension of the selected format
+	assert(editor.export_image_path(folder.path_join("view-%d" % view), -1, 2).ok)
+	assert(FileAccess.file_exists(folder.path_join("view-%d.bmp" % view)))
+	DirAccess.remove_absolute(folder.path_join("view-%d.bmp" % view))
+
+
+func _test_gif_and_bmp_import(palette: Sc2Palette) -> void:
+	# GIF transparency comes from the file. Other colors map to the city palette.
+	var gif := folder.path_join("import.GIF")
+	var pixels := PackedInt32Array([0, -1, 171, 172])
+	_write(gif, IndexedGif.encode(4, 1, pixels, Sc2Palette.index_encoding()).bytes)
+	var mapped := ScurkImageImport.load_path(gif, palette)
+	assert(mapped.ok and mapped.remapped_color_count > 0 and mapped.pixels[1] == -1 and mapped.pixels[0] >= 0)
+	_write(gif, IndexedGif.encode(4, 1, pixels, palette).bytes)
+	assert(ScurkImageImport.load_path(gif, palette).pixels == pixels)
+	# 8-bit BMP files can have a short color table or RLE8 data. Index 0 is transparent.
+	var bmp := folder.path_join("import.BMP")
+	_write(bmp, _bitmap(palette, 4, PackedByteArray([0, 1, 2, 3]), 0))
+	var short_table := ScurkImageImport.load_path(bmp, palette)
+	assert(short_table.ok and short_table.pixels == PackedInt32Array([-1, 1, 2, 3]))
+	_write(bmp, _bitmap(palette, 4, PackedByteArray([2, 1, 2, 3, 0, 1]), 1))
+	var rle := ScurkImageImport.load_path(bmp, palette)
+	assert(rle.ok and rle.pixels == PackedInt32Array([1, 1, 3, 3]), rle.error)
+	assert(not ScurkImageImport.load_path(folder.path_join("import.TGA"), palette).ok)
+	DirAccess.remove_absolute(gif)
+	DirAccess.remove_absolute(bmp)
+
+
+# a 4 by 1 bitmap with four table colors from the palette
+func _bitmap(palette: Sc2Palette, colors: int, data: PackedByteArray, compression: int) -> PackedByteArray:
+	var bytes := PackedByteArray()
+	bytes.resize(54 + colors * 4)
+	bytes[0] = 0x42
+	bytes[1] = 0x4d
+	bytes.encode_u32(10, 54 + colors * 4)
+	bytes.encode_u32(14, 40)
+	bytes.encode_s32(18, 4)
+	bytes.encode_s32(22, 1)
+	bytes.encode_u16(26, 1)
+	bytes.encode_u16(28, 8)
+	bytes.encode_u32(30, compression)
+	bytes.encode_u32(34, data.size())
+	bytes.encode_u32(46, colors)
+
+	for index in colors:
+		var color := palette.color(index)
+		bytes[54 + index * 4] = color.b8
+		bytes[55 + index * 4] = color.g8
+		bytes[56 + index * 4] = color.r8
+
+	bytes.append_array(data)
+	bytes.encode_u32(2, bytes.size())
+
+	return bytes

@@ -197,7 +197,21 @@ func _run() -> void:
 		assert(bytes[24] == 8 and bytes[25] == 3) # indexed PNG, 8 bits per pixel
 		assert(editor.current_view == 0 and editor.tile_set.to_bytes().bytes == expanded)
 		DirAccess.remove_absolute(path)
+	# the Format list sets the file filter, the file extension, and the encoder
+	editor.request_export_bmp()
+	editor.dialog_registry.export_format.select(2)
+	editor.dialog_registry.export_options.confirmed.emit()
+	editor.dialog_registry.export_options.hide()
+	editor.export_bmp_dialog.hide()
+	assert(editor.export_bmp_dialog.filters == PackedStringArray(["*.bmp ; 256-color indexed BMP"]))
+	assert(editor.export_bmp_dialog.current_file.ends_with(".bmp"))
+	var bitmap_path := folder.path_join("view-0.bmp")
+	editor._export_selected_bmp(bitmap_path)
+	assert(IndexedBmp.decode(FileAccess.get_file_as_bytes(bitmap_path)).width == editor._output_shape_for_view(0).width)
+	DirAccess.remove_absolute(bitmap_path)
+	editor.dialog_registry.export_format.select(0)
 	assert(not editor.export_image_path(folder.path_join("invalid.png"), 3).ok)
+	assert(not editor.export_image_path(folder.path_join("invalid.png"), 0, 4).ok)
 	editor.canvas_panel.show_views_button.button_pressed = true
 	assert(editor.canvas_panel.previews_panel.visible)
 	for index in editor.canvas_panel.preview_checks.size():

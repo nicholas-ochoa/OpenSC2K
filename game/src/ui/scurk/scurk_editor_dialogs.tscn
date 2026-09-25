@@ -22,13 +22,13 @@ title = "Save tile set"
 [node name="Import" type="FileDialog" parent="."]
 access = 2
 file_mode = 0
-filters = PackedStringArray("*.BMP, *.bmp, *.PNG, *.png ; Indexed images (BMP, PNG)")
-title = "Import indexed PNG or BMP"
+filters = PackedStringArray("*.BMP, *.bmp, *.GIF, *.gif, *.PNG, *.png ; Indexed images (BMP, GIF, PNG)")
+title = "Import indexed PNG, GIF, or BMP"
 
 [node name="Export" type="FileDialog" parent="."]
 access = 2
 file_mode = 4
-filters = PackedStringArray("*.png ; 256-color indexed PNG", "*.gif ; Animated GIF (palette cycling)")
+filters = PackedStringArray("*.png ; 256-color indexed PNG")
 title = "Export image"
 
 [node name="Discard" type="ConfirmationDialog" parent="."]
@@ -47,7 +47,7 @@ title = "SCURK error"
 [node name="ExportOptions" type="ConfirmationDialog" parent="."]
 title = "Export image"
 exclusive = true
-size = Vector2i(300, 130)
+size = Vector2i(320, 190)
 
 [node name="Content" type="VBoxContainer" parent="ExportOptions"]
 layout_mode = 2
@@ -58,6 +58,14 @@ text = "Image size"
 
 [node name="View" type="OptionButton" parent="ExportOptions/Content"]
 layout_mode = 2
+
+[node name="FormatLabel" type="Label" parent="ExportOptions/Content"]
+layout_mode = 2
+text = "Format"
+
+[node name="Format" type="OptionButton" parent="ExportOptions/Content"]
+layout_mode = 2
+tooltip_text = "Indexed formats keep the palette indices. The animated GIF shows the palette color cycle."
 
 [node name="PickCopy" parent="." instance=ExtResource("pick")]
 

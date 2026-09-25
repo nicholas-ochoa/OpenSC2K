@@ -70,6 +70,7 @@ var view_preview_signatures := PackedStringArray(["", "", "", ""])
 var pointer_status_label: Label
 var unclipped_tiles: Dictionary[int, bool] = {}
 var pending_export_view := VIEW_LARGE
+var pending_export_format := 0
 var tile_thumbnails: Dictionary[int, Texture2D] = {}
 var thumbnail_signatures: Dictionary[int, int] = {}
 var source_label: Label
@@ -380,6 +381,7 @@ func request_export_bmp() -> void:
 func _show_export_file_dialog() -> void:
 	dialog_registry.export_options.hide()
 	pending_export_view = dialog_registry.export_view.selected
+	pending_export_format = dialog_registry.export_format.selected
 	if pixel_canvas == null or pixel_canvas.sprite_width <= 0:
 		return
 
@@ -387,8 +389,10 @@ func _show_export_file_dialog() -> void:
 	DirAccess.make_dir_recursive_absolute(output_directory)
 	export_bmp_dialog.current_dir = output_directory
 	var view_name: String = ["LARGE", "MEDIUM", "SMALL"][pending_export_view]
-	export_bmp_dialog.current_file = "OBJECT_%03d_%s.png" % [
-		object_tile_id(current_large_id), view_name,
+	var format: Dictionary = ScurkEditorDialogs.EXPORT_FORMATS[pending_export_format]
+	export_bmp_dialog.filters = PackedStringArray([format.filter])
+	export_bmp_dialog.current_file = "OBJECT_%03d_%s.%s" % [
+		object_tile_id(current_large_id), view_name, format.extension,
 	]
 	export_bmp_dialog.popup_centered_ratio(0.75)
 
@@ -418,14 +422,19 @@ func import_image_path(path: String) -> Result:
 	)
 
 
-func export_image_path(path: String, view := -1) -> Result:
+# format selects an entry of ScurkEditorDialogs.EXPORT_FORMATS. without a format,
+# the file extension selects an indexed PNG, GIF, or BMP image
+func export_image_path(path: String, view := -1, format := -1) -> Result:
 	if pixel_canvas == null or pixel_canvas.sprite_width <= 0:
 		return Result.rejected("No SCURK sprite is available to export.")
+
+	if format >= ScurkEditorDialogs.EXPORT_FORMATS.size():
+		return Result.rejected("The image format is not available.")
 
 	var output_path := ProjectSettings.globalize_path(path).simplify_path()
 
 	if output_path.get_extension().is_empty():
-		output_path += ".gif" if export_bmp_dialog.current_filter == 1 else ".png"
+		output_path += "." + str(ScurkEditorDialogs.EXPORT_FORMATS[maxi(format, 0)].extension)
 
 	if path_is_within(output_path, reference_directory):
 		return Result.rejected("The original game data folder is read-only. Use another folder.")
@@ -441,9 +450,14 @@ func export_image_path(path: String, view := -1) -> Result:
 		"png":
 			encoded = IndexedPng.encode(shape.width, shape.height, shape.pixels, palette)
 		"gif":
-			encoded = IndexedGif.encode_cycle(shape.width, shape.height, shape.pixels, palette)
+			if format == ScurkEditorDialogs.EXPORT_ANIMATED_GIF:
+				encoded = IndexedGif.encode_cycle(shape.width, shape.height, shape.pixels, palette)
+			else:
+				encoded = IndexedGif.encode(shape.width, shape.height, shape.pixels, palette)
+		"bmp":
+			encoded = IndexedBitmap.encode(shape.width, shape.height, shape.pixels, palette)
 		_:
-			return Result.rejected("Choose PNG or GIF as the image format.")
+			return Result.rejected("Choose PNG, GIF, or BMP as the image format.")
 
 	if not encoded.ok:
 		return Result.rejected(encoded.error)
@@ -1648,7 +1662,7 @@ func _import_selected_bmp(path: String) -> void:
 
 
 func _export_selected_bmp(path: String) -> void:
-	var result := export_image_path(path, pending_export_view)
+	var result := export_image_path(path, pending_export_view, pending_export_format)
 
 	if not result.ok:
 		_show_error(result.error)
