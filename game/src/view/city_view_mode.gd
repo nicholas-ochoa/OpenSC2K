@@ -12,7 +12,7 @@ const KEYS: Array[String] = [
 	"city", "underground", "density", "growth", "traffic", "pollution", "crime",
 	"police_power", "fire_power", "land_value", "water", "power", "height",
 ]
-# every selectable mode, in view menu order
+# every selectable mode, in view menu ID order
 const DISPLAY_MODES: Array[Mode] = [
 	Mode.CITY, Mode.UNDERGROUND, Mode.DENSITY, Mode.GROWTH, Mode.TRAFFIC, Mode.POLLUTION, Mode.CRIME,
 	Mode.POLICE_POWER, Mode.FIRE_POWER, Mode.LAND_VALUE, Mode.WATER, Mode.POWER, Mode.HEIGHT

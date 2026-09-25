@@ -93,17 +93,24 @@ func check_ui() -> void:
 	main.current_tool.select_tool_group(16)
 	var center: Vector2 = main.map_view.source_center
 	var shared_mesh: ArrayMesh
+	var popup := main.view_menu.get_popup() as PopupMenu
+	# Rebuilding the layer controls must retain every display-mode action.
+	main.menus.set_overlay(CityViewMode.Mode.UNDERGROUND)
+	main.menus.set_overlay(CityViewMode.Mode.CITY)
 
 	for index in CityViewMode.DATA_MODES.size():
 		var mode := CityViewMode.DATA_MODES[index]
-		main.menus.on_view_menu(index + 2)
+		popup.id_pressed.emit(index + 2)
 		check(main.view_state.overlay_mode == mode and main.map_view.data_view_mesh != null, "Menu opens isometric data view")
 
 		if shared_mesh != null and mode != CityViewMode.Mode.HEIGHT:
 			check(main.map_view.data_view_mesh == shared_mesh, "All data modes share terrain geometry")
 
 		shared_mesh = main.map_view.data_view_mesh
-		check(main.view_menu.get_popup().is_item_checked(index + 2), "Selected menu check")
+		for menu_id in CityViewMode.DISPLAY_MODES.size():
+			var item_index := popup.get_item_index(menu_id)
+			check(item_index >= 0 and popup.is_item_radio_checkable(item_index), "Mode retains its radio action")
+			check(popup.is_item_checked(item_index) == (menu_id == index + 2), "Only the selected mode is checked")
 		check(main.city_toolbar.data_view_input.selected == main.city_toolbar.data_view_input.get_item_index(index + 1), "Sidebar follows view menu")
 		check(main.map_view.city_source.size == CityIsometricRenderer.output_size_for_view(2, 16), "Native isometric extent")
 		check(main.map_view.source_center == center, "Switch preserves camera")

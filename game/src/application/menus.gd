@@ -208,7 +208,8 @@ func sync_city_option_menus() -> void:
 func _sync_view_controls() -> void:
 	if app.view_menu != null:
 		for index in CityViewMode.DISPLAY_MODES.size():
-			app.view_menu.get_popup().set_item_checked(index, CityViewMode.DISPLAY_MODES[index] == app.view_state.overlay_mode)
+			var item_index := app.view_menu.get_popup().get_item_index(index)
+			app.view_menu.get_popup().set_item_checked(item_index, CityViewMode.DISPLAY_MODES[index] == app.view_state.overlay_mode)
 
 	var underground_active := app.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND
 
@@ -268,7 +269,7 @@ func _sync_view_controls() -> void:
 func _rebuild_view_layer_menu(underground_active: bool) -> void:
 	var popup := app.view_menu.get_popup()
 
-	while popup.item_count > CityViewMode.DISPLAY_MODES.size() + 1:
+	while popup.item_count > CityViewMode.DISPLAY_MODES.size() + 2:
 		popup.remove_item(popup.item_count - 1)
 
 	if underground_active:

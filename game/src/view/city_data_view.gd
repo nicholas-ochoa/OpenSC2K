@@ -7,7 +7,7 @@ extends RefCounted
 
 const TITLES := [
 	"Density", "Rate of Growth", "Traffic", "Pollution", "Crime",
-	"Police Power", "Fire Power", "Land Value", "Water Supply", "Power Supply", "Height",
+	"Police Power", "Fire Power", "Land Value", "Water Supply", "Power Supply", "Heightmap",
 ]
 const GRID_SHADER := preload("res://src/view/city_data_view_grid.gdshader")
 # saved data maps behind each gradient view. coarse grids sample through citydatagrid
