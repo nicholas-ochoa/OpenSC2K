@@ -42,6 +42,7 @@ func _run() -> void:
 	settings.set_value("graphics", "folder", ProjectSettings.globalize_path("res://../ext/graphics"))
 	assert(settings.save(settings_path) == OK)
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
+	OS.set_environment("OPENSC2K_DATA_PACK", ProjectSettings.globalize_path("res://../ext/data"))
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
 	main.asset_state.reference_root = reference
 	main.preferences.settings_path = settings_path

@@ -6,9 +6,9 @@ func _initialize() -> void:
 
 
 func run() -> void:
-	assert(GameAssetSource.default_reference_root() == MediaPack.default_folder("graphics").path_join("runtime"))
+	assert(DataPack.default_folder() == MediaPack.default_folder("data"))
 
-	for kind in ["graphics", "sound", "music"]:
+	for kind in ["graphics", "sound", "music", "data"]:
 		assert(MediaPack.default_folder(kind) == ProjectSettings.globalize_path("user://packs").path_join(kind))
 
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("user://missing-assets"))

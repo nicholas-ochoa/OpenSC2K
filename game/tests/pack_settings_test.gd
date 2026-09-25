@@ -57,6 +57,7 @@ func _run() -> void:
 	file.close()
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
+	OS.set_environment("OPENSC2K_DATA_PACK", ProjectSettings.globalize_path("res://../ext/data"))
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
 	preload("res://tests/support/app_fixture.gd").configure(main, true)
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path(original_folder))
@@ -92,7 +93,8 @@ func _run() -> void:
 			pickers += 1
 			assert(child.file_mode == FileDialog.FILE_MODE_OPEN_FILE and child.filters[0].begins_with("pack.json"))
 
-	assert(pickers == 3)
+	assert(pickers == 4)
+	assert(dialog.pack_name_labels.data.text == main.asset_state.data_pack.pack_name and main.asset_state.data_pack.is_loaded())
 	assert(dialog.folder_dialog.file_mode == FileDialog.FILE_MODE_OPEN_FILE)
 	assert(dialog.folder_dialog.filters[0].begins_with("pack.json"))
 
@@ -113,6 +115,21 @@ func _run() -> void:
 	assert(main.asset_state.asset_source.graphics_name == original_manifest.name)
 	assert(main.asset_state.base_large_sprites.find_sprite(record.id).decode_indices().pixels != sprite.pixels)
 	assert(main.document_state.city.document.serialize().data == before)
+	# a data pack choice applies and saves. an invalid choice changes nothing
+	var data_path := ProjectSettings.globalize_path("res://../ext/data/pack.json")
+	dialog.data_pack_edit.text = data_path
+	main.settings.apply_settings()
+	assert(main.preferences.data_pack_folder == data_path)
+	assert(AppSettingsStore.load_values(main.preferences.settings_path).data_pack_folder == data_path)
+	assert(main.asset_state.reference_root == data_path.get_base_dir() and main.original_text_resources.library_texts.size() == 4)
+	dialog.data_pack_edit.text = folder.path_join("missing-data/pack.json")
+	# OK hides Settings before it applies the values
+	dialog.hide()
+	main.settings.apply_settings()
+	await process_frame
+	assert(main.graphics_source_error_dialog.visible and main.graphics_source_error_dialog.title == "Data pack")
+	assert(main.preferences.data_pack_folder == data_path and main.asset_state.data_pack.is_loaded())
+	main.graphics_source_error_dialog.hide()
 	main.main_overlays.settings_dialog.hide()
 	main.new_city.open_new_city_dialog()
 	assert(main.city_dialogs.new_city_dialog.mayor_name_input.text == "Alex")

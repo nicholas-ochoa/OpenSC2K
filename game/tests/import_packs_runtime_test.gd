@@ -33,14 +33,20 @@ func run() -> void:
 	result.graphics = relocated.path_join("graphics/pack.json")
 	result.sound = relocated.path_join("sound/pack.json")
 	result.music = relocated.path_join("music/pack.json")
+	result.data = relocated.path_join("data/pack.json")
 	var selected := GameAssetSource.load_source("", "folder", result.graphics)
 	assert(selected.error.is_empty(), selected.error)
-	assert(selected.has_city_template)
 	preload("res://tests/support/imported_asset_checks.gd").check(reference, result.graphics.get_base_dir(), selected.assets)
 	preload("res://tests/support/imported_asset_checks.gd").check_invalid(result.graphics.get_base_dir())
+	preload("res://tests/support/imported_asset_checks.gd").check_data(reference, result.data.get_base_dir())
 	var media_source := GameAssetSource.load_source(source_copy, "folder", media.graphics)
-	assert(media_source.error.is_empty() and media_source.has_city_template, media_source.error)
+	assert(media_source.error.is_empty(), media_source.error)
 	preload("res://tests/support/imported_asset_checks.gd").check(reference, media.graphics.get_base_dir(), media_source.assets)
+	preload("res://tests/support/imported_asset_checks.gd").check_data(reference, media.data.get_base_dir())
+
+	for pack_result in [result, media]:
+		for kind in ["sound", "music"]:
+			assert(MediaPack.load_folder(pack_result.get(kind), kind).import_revision == ImportedPackRevision.CURRENT[kind])
 	assert(selected.assets.large_sprites.entries.size() == 501)
 	assert(MediaPack.load_folder(result.sound, "sound").files.size() == 30)
 	assert(MediaPack.load_folder(result.music, "music").files.size() == 19)
@@ -61,7 +67,13 @@ func run() -> void:
 	main.assets.apply_graphics_source(selected)
 	assert(main.asset_state.assets_ready and not main.main_menu.import_button.visible)
 	assert(main.audio_controller.set_media_packs(result.sound, result.music))
+	assert(main.assets.stale_pack_kinds() == PackedStringArray(["data"]), "A missing data pack needs an import")
+	main.assets.apply_data_pack(DataPack.load_folder(result.data))
+	assert(main.asset_state.reference_root == result.data.get_base_dir())
 	assert(main.original_text_resources.newspaper_data != null and main.asset_state.base_large_sprites != null)
+	assert(main.original_text_resources.library_texts.size() == 4)
+	assert(main.assets.stale_pack_kinds().is_empty())
+	_check_stale_prompt(main, relocated)
 	main.new_city.open_new_city_dialog()
 	assert(main.city_dialogs.new_city_dialog.visible and not main.new_city_state.session.independent_template)
 	main.city_dialogs.new_city_dialog.hide()
@@ -72,3 +84,54 @@ func run() -> void:
 	OriginalGameInstaller.remove_tree(folder)
 	print("PASS: complete pack import, copied cities, non-overwrite, repeat import and runtime activation")
 	quit()
+
+
+# an older revision prompts for a new import of only that pack kind
+func _check_stale_prompt(main: Node, relocated: String) -> void:
+	for kind in ["graphics", "data"]:
+		var path := relocated.path_join(kind).path_join("pack.json")
+		var manifest: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(path))
+		var current := int(manifest.import_revision)
+		manifest.import_revision = current - 1
+		_write_json(path, manifest)
+
+		if kind == "graphics":
+			var older := GameAssetSource.load_source("", "folder", path)
+			assert(older.error.is_empty() and ImportedPackRevision.is_outdated(kind, older.import_revision))
+			main.assets.apply_graphics_source(older)
+		else:
+			var older_data := DataPack.load_folder(path)
+			assert(older_data.is_loaded() and older_data.is_outdated())
+			main.assets.apply_data_pack(older_data)
+
+		assert(main.assets.stale_pack_kinds() == PackedStringArray([kind]))
+		main.assets.prompt_for_stale_packs()
+		var prompt: ConfirmationDialog = main.pack_update_dialog
+		assert(prompt.visible and prompt.dialog_text.contains(ApplicationAssets.PACK_NAMES[kind]))
+		prompt.get_ok_button().pressed.emit()
+		assert(not prompt.visible)
+		assert(main.reference_import_dialog.visible and main.reference_import_dialog.selected_categories() == PackedStringArray([kind]))
+		main.reference_import_dialog.hide()
+		manifest.import_revision = "later"
+		_write_json(path, manifest)
+		assert(not (GraphicsPack.load_root(path).error if kind == "graphics" else DataPack.load_folder(path).error).is_empty())
+		manifest.import_revision = current
+		_write_json(path, manifest)
+
+		if kind == "graphics":
+			main.assets.apply_graphics_source(GameAssetSource.load_source("", "folder", path))
+		else:
+			main.assets.apply_data_pack(DataPack.load_folder(path))
+
+		assert(main.assets.stale_pack_kinds().is_empty())
+
+	# a pack that a person made has no import revision and never needs an import
+	assert(ImportedPackRevision.read({"format": "opensc2k-graphics", "name": "Hand made"}) == ImportedPackRevision.NOT_IMPORTED)
+	assert(ImportedPackRevision.read({"name": "Original SimCity 2000"}) == ImportedPackRevision.UNRECORDED)
+	assert(not ImportedPackRevision.is_outdated("graphics", ImportedPackRevision.NOT_IMPORTED))
+
+
+func _write_json(path: String, value: Dictionary) -> void:
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	file.store_string(JSON.stringify(value))
+	file.close()

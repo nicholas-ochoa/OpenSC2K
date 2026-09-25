@@ -10,6 +10,7 @@ var source_edit: LineEdit
 var graphics_check: CheckBox
 var sound_check: CheckBox
 var music_check: CheckBox
+var data_check: CheckBox
 var import_button: Button
 var close_button: Button
 var result_text: TextEdit
@@ -27,6 +28,7 @@ func _ready() -> void:
 	graphics_check = %GraphicsCheck
 	sound_check = %SoundCheck
 	music_check = %MusicCheck
+	data_check = %DataCheck
 	import_button = %ImportButton
 	close_button = %CloseButton
 	result_text = %ResultText
@@ -36,7 +38,7 @@ func _ready() -> void:
 	source_edit.text_submitted.connect(func(_text: String) -> void: start_import())
 	source_edit.text_changed.connect(func(_text: String) -> void: _update_import_button())
 
-	for check in [graphics_check, sound_check, music_check]:
+	for check in [graphics_check, sound_check, music_check, data_check]:
 		check.toggled.connect(func(_enabled: bool) -> void: _update_import_button())
 
 	browser = FileDialog.new()
@@ -53,7 +55,12 @@ func _ready() -> void:
 	set_process(false)
 
 
-func open() -> void:
+# with categories, select only those asset types. the other types keep their packs
+func open(categories := PackedStringArray()) -> void:
+	if not categories.is_empty():
+		for pair in _category_checks():
+			pair[1].button_pressed = pair[0] in categories
+
 	theme = AppUiTheme.current()
 	browser.theme = AppUiTheme.file_dialog()
 	popup_centered(Vector2i(720, 520))
@@ -63,14 +70,15 @@ func open() -> void:
 func selected_categories() -> PackedStringArray:
 	var categories := PackedStringArray()
 
-	if graphics_check.button_pressed:
-		categories.append("graphics")
-	if sound_check.button_pressed:
-		categories.append("sound")
-	if music_check.button_pressed:
-		categories.append("music")
+	for pair in _category_checks():
+		if pair[1].button_pressed:
+			categories.append(pair[0])
 
 	return categories
+
+
+func _category_checks() -> Array:
+	return [["graphics", graphics_check], ["sound", sound_check], ["music", music_check], ["data", data_check]]
 
 
 func start_import() -> void:
@@ -143,7 +151,7 @@ func _set_busy(value: bool) -> void:
 	%Progress.visible = busy
 	%BusyLabel.visible = busy
 
-	for check in [graphics_check, sound_check, music_check]:
+	for check in [graphics_check, sound_check, music_check, data_check]:
 		check.disabled = busy
 
 	_update_import_button()

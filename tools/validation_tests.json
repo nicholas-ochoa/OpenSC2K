@@ -139,7 +139,8 @@
     "timeout": 90,
     "requires": [
       "references/SIMCITY2000",
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -231,7 +232,8 @@
     "domain": "ui",
     "lane": "product",
     "requires": [
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -298,7 +300,8 @@
     "lane": "product",
     "requires": [
       "references/SIMCITY2000",
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -356,7 +359,8 @@
     "lane": "product",
     "requires": [
       "references/SIMCITY2000",
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -393,7 +397,8 @@
     "lane": "product",
     "requires": [
       "references/SIMCITY2000",
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -403,7 +408,8 @@
     "lane": "product",
     "requires": [
       "references/SIMCITY2000",
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -443,7 +449,8 @@
     "lane": "product",
     "requires": [
       "references/SIMCITY2000",
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -468,7 +475,8 @@
       "--quick"
     ],
     "requires": [
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -483,7 +491,8 @@
     "domain": "simulation",
     "lane": "product",
     "requires": [
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -577,7 +586,8 @@
     "lane": "product",
     "requires": [
       "references/SIMCITY2000",
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -592,7 +602,8 @@
     "domain": "rendering",
     "lane": "product",
     "requires": [
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -669,7 +680,8 @@
     "domain": "ui",
     "lane": "product",
     "requires": [
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -721,7 +733,8 @@
     "lane": "product",
     "requires": [
       "references/SIMCITY2000",
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -731,7 +744,8 @@
     "lane": "product",
     "requires": [
       "references/SIMCITY2000",
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -741,7 +755,8 @@
     "lane": "product",
     "requires": [
       "references/SIMCITY2000",
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -751,7 +766,8 @@
     "lane": "product",
     "requires": [
       "references/SIMCITY2000",
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -761,7 +777,8 @@
     "lane": "product",
     "requires": [
       "references/SIMCITY2000",
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -771,7 +788,8 @@
     "lane": "product",
     "requires": [
       "references/SIMCITY2000",
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -781,7 +799,8 @@
     "lane": "product",
     "requires": [
       "references/SIMCITY2000",
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -820,7 +839,8 @@
     "domain": "tools",
     "lane": "product",
     "requires": [
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -829,7 +849,8 @@
     "domain": "tools",
     "lane": "product",
     "requires": [
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -838,7 +859,8 @@
     "domain": "tools",
     "lane": "product",
     "requires": [
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -857,7 +879,8 @@
     "lane": "product",
     "requires": [
       "references/SIMCITY2000",
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -866,7 +889,8 @@
     "domain": "tools",
     "lane": "product",
     "requires": [
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -912,7 +936,8 @@
     "lane": "product",
     "requires": [
       "references/SIMCITY2000",
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -1012,7 +1037,8 @@
     ],
     "requires": [
       "references/SIMCITY2000",
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -1027,7 +1053,8 @@
     "domain": "rendering",
     "lane": "product",
     "requires": [
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -1037,7 +1064,8 @@
     "lane": "product",
     "requires": [
       "references/SIMCITY2000",
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -1047,7 +1075,8 @@
     "lane": "product",
     "requires": [
       "references/SIMCITY2000",
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -1229,6 +1258,7 @@
     "requires": [
       "references/SIMCITY2000",
       "ext/graphics/pack.json",
+      "ext/data/pack.json",
       "ext/sound/pack.json",
       "ext/music/pack.json"
     ]
@@ -1240,7 +1270,8 @@
     "lane": "product",
     "requires": [
       "references/SIMCITY2000",
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -1249,7 +1280,8 @@
     "domain": "ui",
     "lane": "product",
     "requires": [
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -1403,7 +1435,8 @@
     "lane": "product",
     "requires": [
       "references/SIMCITY2000",
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -1430,7 +1463,8 @@
     "domain": "ui",
     "lane": "product",
     "requires": [
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -1465,7 +1499,8 @@
     "lane": "product",
     "requires": [
       "references/SIMCITY2000",
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -1475,7 +1510,8 @@
     "lane": "product",
     "requires": [
       "references/SIMCITY2000",
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -1493,7 +1529,8 @@
     "domain": "rendering",
     "lane": "native",
     "requires": [
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {
@@ -1530,7 +1567,8 @@
     ],
     "requires": [
       "references/SIMCITY2000",
-      "ext/graphics/pack.json"
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
     ]
   },
   {

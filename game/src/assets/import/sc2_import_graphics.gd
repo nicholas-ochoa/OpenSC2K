@@ -205,6 +205,7 @@ func _append(source: Sc2SpriteArchive, target: Sc2SpriteArchive) -> void:
 func _export(platform: String, label: String) -> void:
 	var manifest := {"format": "opensc2k-graphics", "version": 1, "name": label + " Graphics", "source_platform": platform,
 		"partial": true, "palette": "palette.png", "large_sprites": [], "small_medium_sprites": [], "ui": {}}
+	ImportedPackRevision.stamp("graphics", manifest)
 	var indices := PackedInt32Array()
 
 	for index in 256:

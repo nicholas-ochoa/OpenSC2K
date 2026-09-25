@@ -513,7 +513,7 @@ text = "Original Data"
 [node name="ImportButton" type="Button" parent="Tabs/Import Data/Fields"]
 unique_name_in_owner = true
 layout_mode = 2
-tooltip_text = "Select SIMCITY.EXE to import the graphics, sounds, and music of your SimCity 2000 copy."
+tooltip_text = "Select SIMCITY.EXE to import the graphics, sounds, music, and game data of your SimCity 2000 copy."
 text = "Import SimCity 2000..."
 
 [node name="ImportHintSpacer" type="Control" parent="Tabs/Import Data/Fields"]
@@ -522,6 +522,40 @@ layout_mode = 2
 [node name="ImportHint" type="Label" parent="Tabs/Import Data/Fields"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Import graphics, sounds and music from your SimCity 2000 game files. Choose all asset types or import one type. Each import creates separate packs."
+text = "Import graphics, sounds, music and game data from your SimCity 2000 game files. Choose all asset types or import one type. Each import creates separate packs."
 autowrap_mode = 3
+theme_type_variation = "HelpLabel"
+
+[node name="DataPackLabel" type="Label" parent="Tabs/Import Data/Fields"]
+layout_mode = 2
+text = "Data pack"
+
+[node name="DataPackControls" type="VBoxContainer" parent="Tabs/Import Data/Fields"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BrowseRow" type="HBoxContainer" parent="Tabs/Import Data/Fields/DataPackControls"]
+layout_mode = 2
+
+[node name="DataPackEdit" type="LineEdit" parent="Tabs/Import Data/Fields/DataPackControls/BrowseRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "The pack.json file of a data pack. The data pack supplies text, newspapers, the city template, cities, and scenarios. Leave this empty to use the imported data pack."
+placeholder_text = "Automatic (user://packs/data/pack.json)"
+
+[node name="DataBrowse" type="Button" parent="Tabs/Import Data/Fields/DataPackControls/BrowseRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Browse..."
+
+[node name="DataPackNameSpacer" type="Control" parent="Tabs/Import Data/Fields"]
+layout_mode = 2
+
+[node name="DataPackName" type="Label" parent="Tabs/Import Data/Fields"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+clip_text = true
+text_overrun_behavior = 3
 theme_type_variation = "HelpLabel"

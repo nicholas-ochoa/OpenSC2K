@@ -4,20 +4,14 @@ extends RefCounted
 
 static func check(source: String, pack: String, assets: OriginalGameAssets) -> void:
 	var manifest: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(pack.path_join("pack.json")))
-	assert(not manifest.has("original_data") and manifest.runtime_data == "runtime")
-	assert(not DirAccess.dir_exists_absolute(pack.path_join("original")))
+	# the data pack holds the game data files, not the graphics pack
+	assert(not manifest.has("original_data") and not manifest.has("runtime_data"))
+	assert(manifest.import_revision == ImportedPackRevision.CURRENT.graphics)
+	assert(not DirAccess.dir_exists_absolute(pack.path_join("original")) and not DirAccess.dir_exists_absolute(pack.path_join("runtime")))
 	var files := PackedStringArray()
 	OriginalCityImporter._collect(pack, "", "exe", files)
 	assert(files.is_empty())
-	assert(not FileAccess.file_exists(pack.path_join("runtime/unused.txt")))
 	var expected := OriginalGameAssets.load_root(source)
-	assert(assets.newspaper_data.grammar == expected.newspaper_data.grammar)
-	assert(assets.newspaper_data.bases == expected.newspaper_data.bases)
-	assert(assets.newspaper_data.counts == expected.newspaper_data.counts)
-	assert(assets.newspaper_data.offsets == expected.newspaper_data.offsets)
-	assert(assets.library_texts == expected.library_texts)
-	assert(assets.original_credits == expected.original_credits)
-	assert(FileAccess.get_sha256(pack.path_join("runtime/DEFAULT.SC2")) == FileAccess.get_sha256(source.path_join("DEFAULT.SC2")))
 	assert(assets.city_ui_graphics.controls.is_empty() and assets.city_ui_graphics.hourglass.is_empty())
 	assert(assets.city_ui_graphics.presentation.is_empty() and assets.city_ui_graphics.media.is_empty())
 
@@ -59,6 +53,35 @@ static func check(source: String, pack: String, assets: OriginalGameAssets) -> v
 
 	for i in ScurkGraphics.TEXTURE_IDS.size():
 		assert(assets.scurk_graphics.patterns[i] == textures.entries[i].pixels)
+
+
+# the data pack keeps complete copies of the original data files and no executable
+static func check_data(source: String, folder: String) -> void:
+	var data := DataPack.load_folder(folder)
+	assert(data.is_loaded(), data.error)
+	assert(data.import_revision == ImportedPackRevision.CURRENT.data and not data.is_outdated())
+	var expected := OriginalGameAssets.new()
+	expected.load_text_data(source)
+	assert(data.text.newspaper_data.grammar == expected.newspaper_data.grammar)
+	assert(data.text.newspaper_data.offsets == expected.newspaper_data.offsets)
+	assert(data.text.library_texts == expected.library_texts)
+	assert(data.text.original_credits == expected.original_credits)
+
+	for relative in DataPack.REQUIRED_FILES:
+		assert(FileAccess.get_sha256(folder.path_join(relative)) == FileAccess.get_sha256(source.path_join(relative)), relative)
+
+	for pair in DataPack.FOLDERS:
+		var copied := PackedStringArray()
+		var original := PackedStringArray()
+		OriginalCityImporter._collect(folder, pair[0], pair[1], copied)
+		OriginalCityImporter._collect(source, pair[0], pair[1], original)
+		copied.sort()
+		original.sort()
+		assert(not copied.is_empty() and copied == original, pair[0])
+
+	var executables := PackedStringArray()
+	OriginalCityImporter._collect(folder, "", "exe", executables)
+	assert(executables.is_empty() and not FileAccess.file_exists(folder.path_join("unused.txt")))
 
 
 static func _same_image(actual: Image, expected: Image) -> void:

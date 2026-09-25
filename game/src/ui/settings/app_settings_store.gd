@@ -25,6 +25,7 @@ class Values extends RefCounted:
 	var toolbar_sounds := true
 	var sound_pack_folder := ""
 	var music_pack_folder := ""
+	var data_pack_folder := ""
 	var check_for_updates := false
 
 
@@ -72,6 +73,7 @@ static func load_values(
 	result.toolbar_sounds = bool(config.get_value("audio", "toolbar_sounds", result.toolbar_sounds))
 	result.sound_pack_folder = str(config.get_value("audio", "sound_pack_folder", result.sound_pack_folder))
 	result.music_pack_folder = str(config.get_value("audio", "music_pack_folder", result.music_pack_folder))
+	result.data_pack_folder = str(config.get_value("data", "pack_folder", result.data_pack_folder))
 
 	result.shuffle_music = bool(config.get_value("audio", "shuffle_music", false))
 	result.background_audio = bool(config.get_value("audio", "background_audio", false))
@@ -153,6 +155,7 @@ static func save_values(
 	dark_underground: Variant = null,
 	translucent_menus: Variant = null,
 	check_for_updates: Variant = null,
+	data_pack_folder: Variant = null,
 ) -> Error:
 	var config := ConfigFile.new()
 
@@ -201,6 +204,9 @@ static func save_values(
 
 	if check_for_updates != null:
 		config.set_value("updates", "check_periodically", bool(check_for_updates))
+
+	if data_pack_folder != null:
+		config.set_value("data", "pack_folder", str(data_pack_folder).strip_edges())
 
 	for pair in [["toolbar_sounds", toolbar_sounds], ["sound_pack_folder", sound_pack_folder], ["music_pack_folder", music_pack_folder]]:
 		if pair[1] != null:

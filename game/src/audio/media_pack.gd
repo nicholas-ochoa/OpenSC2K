@@ -4,6 +4,7 @@ extends RefCounted
 
 var error := ""
 var pack_name := ""
+var import_revision := ImportedPackRevision.NOT_IMPORTED
 var files: Dictionary = {}
 
 
@@ -40,6 +41,12 @@ static func load_folder(folder: String, kind: String) -> MediaPack:
 		return pack
 
 	pack.pack_name = data.name
+	pack.import_revision = ImportedPackRevision.read(data)
+
+	if pack.import_revision == ImportedPackRevision.INVALID:
+		pack.error = "import_revision must be a whole number that is not negative"
+
+		return pack
 
 	for key in data.files:
 		var first := 500 if kind == "sound" else 10000

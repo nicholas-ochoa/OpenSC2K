@@ -1,6 +1,6 @@
 class_name Sc2RuntimeExport
 extends RefCounted
-## export only resources used by the game. never retain either executable
+## export the interface graphics that the game uses. never retain either executable
 
 var error := ""
 var count := 0
@@ -60,23 +60,6 @@ func export_data(source: String, folder: String, manifest: Dictionary) -> void:
 			desktop.cursors.append(_desktop(executable, id, app, true))
 
 		manifest.desktop[app] = desktop
-
-	# keep only the referenced records from the two original text containers
-	var text_ids := PackedInt32Array(LibraryRuminateWindows.TEXT_RESOURCE_IDS)
-	text_ids.append(OriginalGameAssets.CREDITS_TEXT_RESOURCE_ID)
-	_resource_subset(source, "TEXT_USA", text_ids)
-	_resource_subset(source, "DATA_USA", PackedInt32Array([1000, 1001, 1002, 1003]))
-	_copy(source, "DEFAULT.SC2")
-
-	# these folders supply the city background and saved-game and scurk selectors
-	for pair in [["CITIES", "sc2"], ["SCENARIO", "scn"], ["SCURKART", "mif"]]:
-		var files := PackedStringArray()
-		OriginalCityImporter._collect(source, pair[0], pair[1], files)
-
-		for relative in files:
-			_copy(source, relative)
-
-	manifest.runtime_data = "runtime"
 
 
 static func _cursor_roles(app: String) -> Array[int]:
@@ -169,52 +152,6 @@ func _desktop(executable: String, id: int, app: String, cursor: bool) -> Diction
 	_png(path, decoded.width, decoded.height, pixels, palette)
 	count += 1
 	return record
-
-
-func _resource_subset(source: String, name: String, ids: PackedInt32Array) -> void:
-	var data := FileAccess.get_file_as_bytes(source.path_join("DATA/%s.DAT" % name))
-	var index := FileAccess.get_file_as_bytes(source.path_join("DATA/%s.IDX" % name))
-	var subset := PackedByteArray()
-	var subset_index := PackedByteArray()
-	var found: Dictionary[int, bool] = {}
-
-	if index.is_empty() or index.size() % 8 != 0:
-		error = "Invalid %s index" % name
-		return
-
-	for offset in range(0, index.size(), 8):
-		var id := index.decode_u32(offset)
-		var start := index.decode_u32(offset + 4)
-		var end := index.decode_u32(offset + 12) if offset + 8 < index.size() else data.size()
-
-		if start > end or end > data.size():
-			error = "Invalid %s resource bounds" % name
-			return
-
-		if id in ids:
-			var at := subset_index.size()
-			subset_index.resize(at + 8)
-			subset_index.encode_u32(at, id)
-			subset_index.encode_u32(at + 4, subset.size())
-			subset.append_array(data.slice(start, end))
-			found[id] = true
-
-	if found.size() != ids.size():
-		error = "Missing required %s text resources" % name
-		return
-
-	_write("runtime/DATA/%s.DAT" % name, subset)
-	_write("runtime/DATA/%s.IDX" % name, subset_index)
-
-
-func _copy(source: String, relative: String) -> void:
-	var bytes := FileAccess.get_file_as_bytes(source.path_join(relative))
-
-	if bytes.is_empty():
-		error = "Cannot import " + relative
-		return
-
-	_write("runtime/" + relative, bytes)
 
 
 func _png(path: String, width: int, height: int, pixels: PackedInt32Array, palette: Sc2Palette) -> void:

@@ -44,6 +44,7 @@ func open_settings_dialog() -> void:
 	app.main_overlays.settings_dialog.toolbar_sounds_check.button_pressed = preferences.toolbar_sounds
 	app.main_overlays.settings_dialog.sound_pack_edit.text = AppSettingsDialog.pack_file_path(preferences.sound_pack_folder)
 	app.main_overlays.settings_dialog.music_pack_edit.text = AppSettingsDialog.pack_file_path(preferences.music_pack_folder)
+	app.main_overlays.settings_dialog.data_pack_edit.text = AppSettingsDialog.pack_file_path(preferences.data_pack_folder)
 	app.main_overlays.settings_dialog.show_values(
 		preferences.music_volume, preferences.effects_volume, preferences.fullscreen,
 		preferences.graphics_source, preferences.graphics_folder, preferences.city_renderer, preferences.background_audio, preferences.zoom_graphics,
@@ -61,6 +62,8 @@ func _refresh_settings_pack_names() -> void:
 	if app.audio_controller != null:
 		app.main_overlays.settings_dialog.set_loaded_pack("sound", app.audio_controller.sound_pack.pack_name, preferences.sound_pack_folder)
 		app.main_overlays.settings_dialog.set_loaded_pack("music", app.audio_controller.music_pack.pack_name, preferences.music_pack_folder)
+
+	app.main_overlays.settings_dialog.set_loaded_pack("data", app.asset_state.data_pack.pack_name, preferences.data_pack_folder)
 
 
 func apply_settings() -> void:
@@ -85,6 +88,20 @@ func apply_settings() -> void:
 			app.assets.show_graphics_source_error(selected.error)
 
 			return
+
+	var data_pack: DataPack
+
+	if values.data_pack_folder != preferences.data_pack_folder:
+		data_pack = DataPack.load_folder(values.data_pack_folder)
+
+		if not data_pack.error.is_empty():
+			app.assets.show_graphics_source_error(data_pack.error, "Data pack")
+
+			return
+
+	if data_pack != null:
+		preferences.data_pack_folder = values.data_pack_folder
+		app.assets.apply_data_pack(data_pack)
 
 	if changed_source:
 		app.assets.apply_graphics_source(selected)
@@ -146,7 +163,7 @@ func apply_settings() -> void:
 		preferences.city_renderer, preferences.background_audio, preferences.zoom_graphics, preferences.toolbar_sounds,
 		preferences.sound_pack_folder, preferences.music_pack_folder, preferences.shuffle_music,
 		preferences.default_mayor_name, preferences.overview_graphics, preferences.ui_theme, preferences.dark_underground,
-		preferences.translucent_menus, preferences.check_for_updates,
+		preferences.translucent_menus, preferences.check_for_updates, preferences.data_pack_folder,
 	)
 	app.status_label.text = (
 		"Settings saved."
@@ -166,6 +183,7 @@ func load_app_settings() -> void:
 	preferences.toolbar_sounds = bool(values.toolbar_sounds)
 	preferences.sound_pack_folder = str(values.sound_pack_folder)
 	preferences.music_pack_folder = str(values.music_pack_folder)
+	preferences.data_pack_folder = str(values.data_pack_folder)
 	preferences.dark_underground = bool(values.dark_underground)
 	app.menus.sync_map_style()
 	preferences.ui_theme = str(values.ui_theme)

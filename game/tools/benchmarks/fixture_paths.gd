@@ -27,6 +27,7 @@ static func application_paths() -> PackedStringArray:
 static func configure_application(main: CityApplication) -> void:
 	main.asset_state.reference_root = reference_path()
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
+	OS.set_environment("OPENSC2K_DATA_PACK", ProjectSettings.globalize_path("res://../ext/data"))
 
 
 func report_metadata(workload: Dictionary) -> void:

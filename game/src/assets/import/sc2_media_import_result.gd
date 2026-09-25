@@ -9,6 +9,7 @@ var root := ""
 var graphics := ""
 var sound := ""
 var music := ""
+var data := ""
 var error := ""
 var warnings := PackedStringArray()
 var counts: Dictionary[String, int] = {}
@@ -18,7 +19,7 @@ var failures: Dictionary[String, String] = {}
 func summary() -> String:
 	var lines := PackedStringArray()
 
-	for kind in ["graphics", "sound", "music"]:
+	for kind in Sc2MediaImporter.CATEGORIES:
 		if counts.has(kind):
 			lines.append("%s: imported %d assets." % [kind.capitalize(), counts[kind]])
 		if failures.has(kind):

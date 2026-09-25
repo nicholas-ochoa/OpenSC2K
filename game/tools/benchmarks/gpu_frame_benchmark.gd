@@ -16,6 +16,7 @@ func _run() -> void:
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
 	main.set_script(load("res://tools/benchmarks/profiled_city.gd"))
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
+	OS.set_environment("OPENSC2K_DATA_PACK", ProjectSettings.globalize_path("res://../ext/data"))
 	configure_application(main)
 	root.add_child(main)
 	if not main.asset_state.assets_ready:

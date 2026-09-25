@@ -2,10 +2,10 @@ class_name Sc2MediaImporter
 extends RefCounted
 ## Convert requested categories independently. Preserve every successful pack.
 
-const CATEGORIES := ["graphics", "sound", "music"]
+const CATEGORIES := ["graphics", "sound", "music", "data"]
 
 
-static func import_assets(path: String, packs_root: String, categories: PackedStringArray = PackedStringArray(["graphics", "sound", "music"])) -> Sc2MediaImportResult:
+static func import_assets(path: String, packs_root: String, categories: PackedStringArray = PackedStringArray(CATEGORIES)) -> Sc2MediaImportResult:
 	var result := Sc2MediaImportResult.new()
 
 	if categories.is_empty():
@@ -58,6 +58,16 @@ static func import_assets(path: String, packs_root: String, categories: PackedSt
 					OriginalGameInstaller.remove_tree(stage.path_join(category))
 			else:
 				result.failures[category] = graphics.error
+
+			continue
+
+		if category == "data":
+			var data_error := Sc2ImportSupport.export_data_pack(source, stage.path_join(category), label, result)
+
+			if not data_error.is_empty():
+				result.failures[category] = data_error
+				result.counts.erase(category)
+				OriginalGameInstaller.remove_tree(stage.path_join(category))
 
 			continue
 
@@ -168,6 +178,7 @@ static func _import_audio(source: Sc2ImportSource, category: String, folder: Str
 		return
 
 	var manifest := {"format": "opensc2k-" + category, "version": 1, "name": label + " " + category.capitalize(), "source_platform": source.platform, "files": entries, "source_assets": origins}
+	ImportedPackRevision.stamp(category, manifest)
 	var write_error := _write(folder.path_join("pack.json"), JSON.stringify(manifest, "\t").to_utf8_buffer())
 
 	if write_error.is_empty():

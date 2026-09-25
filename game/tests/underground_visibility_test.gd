@@ -67,6 +67,7 @@ func _run() -> void:
 
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
+	OS.set_environment("OPENSC2K_DATA_PACK", ProjectSettings.globalize_path("res://../ext/data"))
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
 	preload("res://tests/support/app_fixture.gd").configure(main, true)
 	main.preferences.settings_path = "user://opensc2k-underground-visibility-test.cfg"

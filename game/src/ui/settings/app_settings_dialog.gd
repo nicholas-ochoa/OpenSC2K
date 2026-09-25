@@ -11,6 +11,7 @@ var shuffle_music_check: CheckBox
 var toolbar_sounds_check: CheckBox
 var sound_pack_edit: LineEdit
 var music_pack_edit: LineEdit
+var data_pack_edit: LineEdit
 var pack_name_labels: Dictionary = {}
 var pack_edits: Dictionary = {}
 var loaded_pack_names: Dictionary = {}
@@ -59,6 +60,7 @@ func _ready() -> void:
 	dark_underground_check = %DarkUndergroundCheck
 	fullscreen_check = %FullscreenCheck
 	music_pack_edit = %MusicPackEdit
+	data_pack_edit = %DataPackEdit
 	music_slider = %MusicSlider
 
 	overview_graphics_selector = %OverviewGraphicsSelector
@@ -86,6 +88,7 @@ func _ready() -> void:
 	_bind_pack_controls("graphics", folder_edit, %GraphicsPackName, %GraphicsBrowse)
 	_bind_pack_controls("sound", sound_pack_edit, %SoundPackName, %SoundBrowse)
 	_bind_pack_controls("music", music_pack_edit, %MusicPackName, %MusicBrowse)
+	_bind_pack_controls("data", data_pack_edit, %DataPackName, %DataBrowse)
 	%ImportButton.pressed.connect(_request_original_import)
 	check_updates_now_button.pressed.connect(update_check_requested.emit)
 	about_to_popup.connect(_fit_to_viewport)
@@ -157,6 +160,7 @@ func selected_values() -> AppSettingsStore.Values:
 	result.shuffle_music = shuffle_music_check.button_pressed
 	result.sound_pack_folder = sound_pack_edit.text.strip_edges()
 	result.music_pack_folder = music_pack_edit.text.strip_edges()
+	result.data_pack_folder = data_pack_edit.text.strip_edges()
 	result.zoom_graphics = _selected_zoom_graphics()
 	result.background_audio = background_audio_check.button_pressed
 	result.city_renderer = "cpu" if renderer_selector.selected == 1 else "gpu"

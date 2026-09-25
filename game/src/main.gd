@@ -14,6 +14,7 @@ var sc2x_conversion_dialog: ConfirmationDialog
 var reference_import_dialog: Sc2AssetImportDialog
 var reference_import_error_dialog: AcceptDialog
 var graphics_source_error_dialog: AcceptDialog
+var pack_update_dialog: ConfirmationDialog
 # original text resources and newspaper session
 var original_text_resources := OriginalTextResources.new()
 var newspaper_state := NewspaperSessionState.new()
@@ -100,7 +101,7 @@ func _ready() -> void:
 	get_tree().auto_accept_quit = false
 
 	if asset_state.reference_root.is_empty():
-		asset_state.reference_root = GameAssetSource.default_reference_root()
+		asset_state.reference_root = DataPack.default_folder()
 
 	settings.load_app_settings()
 	assets.build_reference_import_dialogs()

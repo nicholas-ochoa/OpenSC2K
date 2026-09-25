@@ -7,6 +7,7 @@ const UI_FIELDS := ["toolbar_art", "industry_icons", "city_map_icons", "simnatio
 var error := ""
 var pack_name := ""
 var partial := false
+var import_revision := ImportedPackRevision.NOT_IMPORTED
 var palette: Sc2Palette
 var scenario_palette: Sc2Palette
 var large_sprites := Sc2SpriteArchive.new()
@@ -98,6 +99,13 @@ func _load() -> void:
 		return
 
 	pack_name = manifest.name
+	import_revision = ImportedPackRevision.read(manifest)
+
+	if import_revision == ImportedPackRevision.INVALID:
+		_fail("import_revision must be a whole number that is not negative")
+
+		return
+
 	var partial_value: Variant = manifest.get("partial", false)
 
 	if not partial_value is bool:

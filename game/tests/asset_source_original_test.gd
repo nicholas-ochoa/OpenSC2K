@@ -6,8 +6,11 @@ func _initialize() -> void:
 	var reference := ProjectSettings.globalize_path("res://../references/SIMCITY2000")
 	var original := GameAssetSource.load_source(reference, "original", "", "res://../ext/graphics")
 	assert(original.error.is_empty(), original.error)
-	assert(original.uses_graphics_pack and original.has_city_template)
-	assert(original.assets.newspaper_data.is_valid())
+	assert(original.uses_graphics_pack)
+	var data := DataPack.load_folder(ProjectSettings.globalize_path("res://../ext/data"))
+	assert(data.is_loaded() and data.text.newspaper_data.is_valid(), data.error)
+	assert(not DataPack.load_folder("/missing-pack").error.is_empty())
+	assert(DataPack.load_folder("").error.is_empty() and not DataPack.load_folder("").is_loaded())
 	assert(not GameAssetSource.load_source(reference, "original", "", "/missing-pack").error.is_empty())
 	var folder := "user://source-pack-test-%d" % OS.get_process_id()
 	assert(DirAccess.make_dir_recursive_absolute(folder) == OK)
@@ -29,7 +32,7 @@ func _initialize() -> void:
 	for mode in ["folder"]:
 		var external := GameAssetSource.load_source(reference, mode, folder, folder if mode == "auto" else "")
 		assert(external.error.is_empty(), external.error)
-		assert(external.uses_graphics_pack and not external.has_city_template)
+		assert(external.uses_graphics_pack and external.import_revision == ImportedPackRevision.NOT_IMPORTED)
 		assert(external.assets.newspaper_data == null)
 		assert(external.assets.large_sprites.find_sprite(1001).decode_indices().pixels == PackedInt32Array([-1, 1, 171, 172]))
 

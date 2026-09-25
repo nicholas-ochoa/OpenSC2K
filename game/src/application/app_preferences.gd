@@ -9,6 +9,7 @@ var soundtrack_folder := ""
 var toolbar_sounds := true
 var sound_pack_folder := ""
 var music_pack_folder := ""
+var data_pack_folder := ""
 var city_renderer := "gpu"
 var ui_theme := "light"
 var translucent_menus := true

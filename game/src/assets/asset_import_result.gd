@@ -14,6 +14,7 @@ var scenarios := 0
 var graphics := ""
 var sound := ""
 var music := ""
+var data := ""
 
 
 static func failure(message: String) -> AssetImportResult:

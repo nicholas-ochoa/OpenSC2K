@@ -9,6 +9,7 @@ const Random = preload("res://src/simulation/random/sim_random.gd")
 const CityAudio = preload("res://src/audio/city_audio_controller.gd")
 const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
 const DebugOverlayView = preload("res://src/debug/debug_overlay.tscn")
+const PACK_NAMES := {"graphics": "Graphics", "sound": "Sound", "music": "Music", "data": "Game data"}
 
 var app: CityApplication
 var text_resources: OriginalTextResources
@@ -33,13 +34,11 @@ func initialize_runtime() -> void:
 	)
 	app.asset_state.assets_ready = app.asset_state.asset_source.error.is_empty()
 
-	if app.asset_state.assets_ready:
-		app.asset_state.reference_root = app.asset_state.asset_source.reference_root
-	else:
+	if not app.asset_state.assets_ready:
 		app.asset_state.asset_source.assets = OriginalGameAssets.new()
 
+	apply_data_pack(DataPack.load_folder(data_pack_folder()))
 	app.asset_state.runtime_initialized = true
-	app.new_city_state.session.independent_template = not app.asset_state.asset_source.has_city_template
 	app.audio_controller = CityAudio.new()
 	app.effects_audio.bind_audio(app.audio_controller)
 	app.audio_controller.startup_theme_pending = true
@@ -105,6 +104,7 @@ func initialize_runtime() -> void:
 	app.camera_input.refresh_child_tool_icons()
 
 	app.interface.show_main_menu()
+	prompt_for_stale_packs.call_deferred()
 
 
 func build_reference_import_dialogs() -> void:
@@ -117,12 +117,21 @@ func build_reference_import_dialogs() -> void:
 	app.reference_import_error_dialog.exclusive = true
 	app.reference_import_error_dialog.confirmed.connect(show_reference_import_dialog)
 	app.add_child(app.reference_import_error_dialog)
+	app.pack_update_dialog = ConfirmationDialog.new()
+	app.pack_update_dialog.name = "PackUpdateDialog"
+	app.pack_update_dialog.title = "Update imported packs"
+	app.pack_update_dialog.get_ok_button().text = "Import..."
+	app.pack_update_dialog.get_cancel_button().text = "Later"
+	app.pack_update_dialog.exclusive = true
+	app.pack_update_dialog.confirmed.connect(_import_stale_packs)
+	app.add_child(app.pack_update_dialog)
 
-	for dialog in [app.graphics_source_error_dialog, app.reference_import_error_dialog]:
+	for dialog in [app.graphics_source_error_dialog, app.reference_import_error_dialog, app.pack_update_dialog]:
 		dialog.theme = AppUiTheme.file_dialog() if dialog is FileDialog else AppUiTheme.current()
 
 
-func show_graphics_source_error(message: String) -> void:
+func show_graphics_source_error(message: String, title := "Graphics source") -> void:
+	app.graphics_source_error_dialog.title = title
 	app.graphics_source_error_dialog.dialog_text = message
 	app.graphics_source_error_dialog.call_deferred("popup_centered", Vector2i(620, 220))
 
@@ -145,6 +154,16 @@ func activate_imported_packs(result: Sc2MediaImportResult) -> void:
 
 	var notes := PackedStringArray()
 	var active := PackedStringArray()
+
+	if not result.data.is_empty():
+		var data := DataPack.load_folder(result.data)
+
+		if data.error.is_empty():
+			apply_data_pack(data)
+			app.preferences.data_pack_folder = result.data
+			active.append("data")
+		else:
+			notes.append("Data pack saved, but could not be activated: " + data.error)
 
 	if not result.graphics.is_empty():
 		var selected := GameAssetSource.load_source(app.asset_state.reference_root, "folder", result.graphics)
@@ -193,7 +212,7 @@ func _save_import_preferences() -> Error:
 		app.preferences.sound_pack_folder, app.preferences.music_pack_folder, app.preferences.shuffle_music,
 		app.preferences.default_mayor_name,
 		app.preferences.overview_graphics, app.preferences.ui_theme, app.preferences.dark_underground,
-		app.preferences.translucent_menus,
+		app.preferences.translucent_menus, app.preferences.check_for_updates, app.preferences.data_pack_folder,
 	)
 
 
@@ -215,10 +234,11 @@ func _import_original_game(executable_path: String) -> void:
 
 		return
 
-	var selected := GameAssetSource.load_source(install_result.root, "folder", install_result.graphics)
+	var selected := GameAssetSource.load_source("", "folder", install_result.graphics)
+	var data := DataPack.load_folder(install_result.data)
 
-	if not selected.error.is_empty():
-		_show_reference_import_error(selected.error)
+	if not selected.error.is_empty() or not data.error.is_empty():
+		_show_reference_import_error(selected.error + data.error)
 
 		return
 
@@ -229,6 +249,8 @@ func _import_original_game(executable_path: String) -> void:
 	app.preferences.sound_pack_folder = install_result.sound
 	app.preferences.music_pack_folder = install_result.music
 	app.preferences.soundtrack_folder = ""
+	app.preferences.data_pack_folder = install_result.data
+	apply_data_pack(data)
 	apply_graphics_source(selected)
 
 	app.audio_controller.set_media_packs(app.preferences.sound_pack_folder, app.preferences.music_pack_folder)
@@ -241,6 +263,7 @@ func _import_original_game(executable_path: String) -> void:
 		app.preferences.sound_pack_folder, app.preferences.music_pack_folder, app.preferences.shuffle_music,
 		app.preferences.default_mayor_name,
 		app.preferences.overview_graphics, app.preferences.ui_theme, app.preferences.dark_underground,
+		app.preferences.translucent_menus, app.preferences.check_for_updates, app.preferences.data_pack_folder,
 	)
 
 	app.settings.open_import_settings()
@@ -257,12 +280,10 @@ func apply_graphics_source(selected: GameAssetSource) -> void:
 
 	app.asset_state.asset_source = selected
 	app.asset_state.assets_ready = true
-	app.asset_state.reference_root = selected.reference_root
-	app.new_city_state.session.independent_template = not selected.has_city_template
-
 	app.audio_controller.set_original_media_source(app.asset_state.reference_root, false)
 
 	var assets := selected.assets
+	app.asset_state.data_pack.apply_to(assets)
 	text_resources.newspaper_data = assets.newspaper_data
 	text_resources.library_texts = assets.library_texts
 	app.asset_state.palette = assets.palette
@@ -308,6 +329,84 @@ func apply_graphics_source(selected: GameAssetSource) -> void:
 		app.main_menu.city_background.configure(app.asset_state.reference_root, app.asset_state.palette, app.asset_state.large_sprites)
 
 	app.map_render.refresh_map(false)
+
+
+func data_pack_folder() -> String:
+	var override := OS.get_environment("OPENSC2K_DATA_PACK")
+
+	return override if not override.is_empty() else app.preferences.data_pack_folder
+
+
+# the data pack supplies text, newspapers, the city template, cities, and scenarios
+func apply_data_pack(pack: DataPack) -> void:
+	app.asset_state.data_pack = pack
+	app.asset_state.reference_root = pack.root if pack.is_loaded() else DataPack.default_folder()
+	app.new_city_state.session.independent_template = not pack.is_loaded()
+
+	if app.asset_state.asset_source != null and app.asset_state.asset_source.assets != null:
+		pack.apply_to(app.asset_state.asset_source.assets)
+
+	var library_texts: Dictionary[int, String] = {}
+
+	if pack.is_loaded():
+		library_texts = pack.text.library_texts
+
+	text_resources.newspaper_data = pack.text.newspaper_data if pack.is_loaded() else null
+	text_resources.library_texts = library_texts
+
+	if not app.asset_state.runtime_initialized:
+		return
+
+	app.audio_controller.set_original_media_source(app.asset_state.reference_root, false)
+	app.main_overlays.about_dialog.set_assets(app.asset_state.asset_source.assets)
+
+	if app.main_menu.visible and app.asset_state.assets_ready:
+		app.main_menu.city_background.configure(app.asset_state.reference_root, app.asset_state.palette, app.asset_state.large_sprites)
+
+
+# imported packs that need a new import because they are missing or out of date
+func stale_pack_kinds() -> PackedStringArray:
+	var kinds := PackedStringArray()
+
+	if not app.asset_state.assets_ready:
+		return kinds
+
+	if ImportedPackRevision.is_outdated("graphics", app.asset_state.asset_source.import_revision):
+		kinds.append("graphics")
+
+	if app.audio_controller != null:
+		for pair in [["sound", app.audio_controller.sound_pack], ["music", app.audio_controller.music_pack]]:
+			if ImportedPackRevision.is_outdated(pair[0], (pair[1] as MediaPack).import_revision):
+				kinds.append(pair[0])
+
+	if not app.asset_state.data_pack.is_loaded() or app.asset_state.data_pack.is_outdated():
+		kinds.append("data")
+
+	return kinds
+
+
+func prompt_for_stale_packs() -> void:
+	var kinds := stale_pack_kinds()
+
+	if kinds.is_empty() or app.pack_update_dialog == null:
+		return
+
+	var names := PackedStringArray()
+
+	for kind in kinds:
+		names.append(PACK_NAMES[kind])
+
+	app.pack_update_dialog.set_meta("kinds", kinds)
+	app.pack_update_dialog.dialog_text = (
+		"These imported packs are missing or out of date: %s.\n\n" % ", ".join(names)
+		+ "Import your SimCity 2000 game files again to update them. The import keeps your other packs."
+	)
+	app.pack_update_dialog.popup_centered(Vector2i(560, 200))
+
+
+func _import_stale_packs() -> void:
+	if app.reference_import_dialog != null:
+		app.reference_import_dialog.open(app.pack_update_dialog.get_meta("kinds", PackedStringArray()))
 
 
 func refresh_scurk_artwork() -> void:

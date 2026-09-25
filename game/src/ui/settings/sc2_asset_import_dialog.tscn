@@ -73,6 +73,13 @@ layout_mode = 2
 button_pressed = true
 text = "Music"
 
+[node name="DataCheck" type="CheckBox" parent="Background/Margin/Content/Categories"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Text, newspapers, the city template, cities, and scenarios. Needs a complete Windows installation."
+button_pressed = true
+text = "Game data"
+
 [node name="BusyLabel" type="Label" parent="Background/Margin/Content"]
 unique_name_in_owner = true
 layout_mode = 2

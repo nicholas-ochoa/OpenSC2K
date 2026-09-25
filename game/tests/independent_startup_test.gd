@@ -19,6 +19,7 @@ func _run() -> void:
 		assert(not GameAssetSource.load_source(MISSING_ROOT, mode).error.is_empty())
 
 	await _test_main()
+	await _test_missing_data_startup()
 	await _test_invalid_startup()
 	print("PASS: independent startup, 12 New City combinations, generated terrain, monthly and annual dispatch, city round trips, settings and original runtime UI and missing-import handling")
 	quit()
@@ -110,13 +111,16 @@ func _test_settings() -> void:
 func _test_main() -> void:
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
+	OS.set_environment("OPENSC2K_DATA_PACK", ProjectSettings.globalize_path("res://../ext/data"))
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
 	main.asset_state.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
 	root.add_child(main)
 	await process_frame
 	assert(main.asset_state.runtime_initialized and main.main_menu.visible)
 	assert(not main.reference_import_dialog.visible and main.document_state.city == null)
-	assert(not main.audio_controller.original_media_enabled and main.asset_state.asset_source.has_city_template)
+	assert(not main.audio_controller.original_media_enabled and main.asset_state.data_pack.is_loaded())
+	await process_frame
+	assert(not main.pack_update_dialog.visible, "Current imported packs need no new import")
 	main.settings.open_settings_dialog()
 	assert(main.main_overlays.settings_dialog.visible)
 
@@ -163,6 +167,26 @@ func _test_main() -> void:
 	main.queue_free()
 	await process_frame
 	await process_frame
+
+
+# startup asks for a new import of only the missing data pack
+func _test_missing_data_startup() -> void:
+	OS.set_environment("OPENSC2K_DATA_PACK", ProjectSettings.globalize_path(MISSING_ROOT))
+	var main := (load("res://main.tscn") as PackedScene).instantiate()
+	main.preferences.settings_path = SETTINGS
+	root.add_child(main)
+	await process_frame
+	await process_frame
+	assert(main.asset_state.assets_ready and not main.asset_state.data_pack.is_loaded())
+	assert(main.new_city_state.session.independent_template)
+	var prompt: ConfirmationDialog = main.pack_update_dialog
+	assert(prompt.visible and prompt.dialog_text.contains("Game data") and not prompt.dialog_text.contains("Graphics"))
+	prompt.get_cancel_button().pressed.emit()
+	await process_frame
+	assert(not prompt.visible and not main.reference_import_dialog.visible)
+	main.queue_free()
+	await process_frame
+	OS.set_environment("OPENSC2K_DATA_PACK", ProjectSettings.globalize_path("res://../ext/data"))
 
 
 func _test_invalid_startup() -> void:

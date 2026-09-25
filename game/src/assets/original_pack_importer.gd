@@ -48,11 +48,12 @@ static func import_executable(executable: String, packs_root: String, saved_root
 	var outcome := AssetImportResult.new()
 	outcome.ok = true
 	outcome.error = ""
-	outcome.root = target.path_join("graphics/runtime")
+	outcome.root = target.path_join("data")
 	outcome.cities = saved_games.cities
 	outcome.scenarios = saved_games.scenarios
 	outcome.graphics = target.path_join("graphics/pack.json")
 	outcome.sound = target.path_join("sound/pack.json")
 	outcome.music = target.path_join("music/pack.json")
+	outcome.data = target.path_join("data/pack.json")
 
 	return outcome

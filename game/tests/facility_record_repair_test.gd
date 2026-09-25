@@ -195,6 +195,7 @@ func check_load() -> void:
 	var settings_path := "user://facility-repair-%d.cfg" % OS.get_process_id()
 	var save_path := "user://facility-repair-%d.sc2x" % OS.get_process_id()
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
+	OS.set_environment("OPENSC2K_DATA_PACK", ProjectSettings.globalize_path("res://../ext/data"))
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
 	main.set_script(preload("res://tests/support/app_fixture.gd").NoMenuApp)
 	main.asset_state.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")

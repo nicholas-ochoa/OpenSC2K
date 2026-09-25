@@ -33,7 +33,7 @@ func run() -> void:
 	main.settings.open_import_settings()
 	main.main_overlays.settings_dialog.get_node("%ImportButton").pressed.emit()
 	assert(dialog.visible and not main.main_overlays.settings_dialog.visible)
-	assert(dialog.selected_categories() == PackedStringArray(["graphics", "sound", "music"]))
+	assert(dialog.selected_categories() == PackedStringArray(["graphics", "sound", "music", "data"]))
 	assert(main.main_overlays.blocking_windows.has(dialog))
 	dialog._select_source(source)
 	assert(not dialog.import_button.disabled)
@@ -46,7 +46,7 @@ func run() -> void:
 	dialog.start_import()
 	await _finish(dialog)
 	assert(completed == 1 and dialog.last_result.ok and dialog.last_result.partial)
-	assert(dialog.last_result.failures.has("graphics"))
+	assert(dialog.last_result.failures.has("graphics") and dialog.last_result.failures.has("data"))
 	assert(main.preferences.graphics_folder == prior_graphics and main.preferences.graphics_source == prior_mode)
 	assert(main.preferences.sound_pack_folder == dialog.last_result.sound)
 	assert(main.preferences.music_pack_folder == dialog.last_result.music)
@@ -57,6 +57,7 @@ func run() -> void:
 	main.preferences.soundtrack_folder = "custom-recordings"
 	dialog.graphics_check.button_pressed = false
 	dialog.music_check.button_pressed = false
+	dialog.data_check.button_pressed = false
 	assert(dialog.selected_categories() == PackedStringArray(["sound"]))
 	dialog.import_button.pressed.emit()
 	await _finish(dialog)
@@ -79,6 +80,9 @@ func run() -> void:
 	assert(dialog.import_button.disabled)
 	var saved := AppSettingsStore.load_values(main.preferences.settings_path)
 	assert(saved.sound_pack_folder == sound_preference and saved.music_pack_folder == music_preference)
+	# a prompt for stale packs selects only those asset types
+	dialog.open(PackedStringArray(["sound", "data"]))
+	assert(dialog.selected_categories() == PackedStringArray(["sound", "data"]))
 	dialog.close_button.pressed.emit()
 	assert(not dialog.visible and main.main_overlays.settings_dialog.visible)
 	assert(FileAccess.get_file_as_bytes(source.path_join("500.wav")) == voice)

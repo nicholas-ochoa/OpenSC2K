@@ -11,7 +11,7 @@ func export_packs(source: String, target: String) -> AssetImportResult:
 	destination = target
 	error = ""
 
-	for kind in ["graphics", "sound", "music"]:
+	for kind in ["graphics", "sound", "music", "data"]:
 		var folder := destination.path_join(kind)
 
 		if DirAccess.dir_exists_absolute(folder) and (not DirAccess.get_files_at(folder).is_empty() or not DirAccess.get_directories_at(folder).is_empty()):
@@ -24,6 +24,7 @@ func export_packs(source: String, target: String) -> AssetImportResult:
 
 	var manifest := {"format": "opensc2k-graphics", "version": 1, "name": "Original SimCity 2000", "palette": "palette.png",
 			"scenario_palette": "scenario-palette.png", "ui": {}}
+	ImportedPackRevision.stamp("graphics", manifest)
 
 	var indices := PackedInt32Array()
 
@@ -121,6 +122,7 @@ func export_packs(source: String, target: String) -> AssetImportResult:
 
 	for kind in ["sound", "music"]:
 		var media := {"format": "opensc2k-" + kind, "version": 1, "name": "Original SimCity 2000 " + kind, "files": {}}
+		ImportedPackRevision.stamp(kind, media)
 		var first := 500 if kind == "sound" else 10000
 		var count := 30 if kind == "sound" else 19
 		var extension := "WAV" if kind == "sound" else "MID"
@@ -135,6 +137,11 @@ func export_packs(source: String, target: String) -> AssetImportResult:
 
 		if not media_error.is_empty():
 			return AssetImportResult.failure(media_error)
+
+	if error.is_empty():
+		var data := Sc2DataExport.new()
+		data.export_pack(source, destination.path_join("data"), "Original SimCity 2000 data")
+		error = data.error
 
 	var outcome := AssetImportResult.new()
 	outcome.ok = error.is_empty()

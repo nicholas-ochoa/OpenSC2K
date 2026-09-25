@@ -9,6 +9,7 @@ func _initialize() -> void:
 func _run() -> void:
 	var preview := "--preview" in OS.get_cmdline_user_args()
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
+	OS.set_environment("OPENSC2K_DATA_PACK", ProjectSettings.globalize_path("res://../ext/data"))
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
 	if not preview:
 		main.set_script(preload("res://tests/support/app_fixture.gd").NoMenuApp)

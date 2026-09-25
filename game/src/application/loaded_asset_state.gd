@@ -4,6 +4,8 @@ extends RefCounted
 
 # asset source and startup status
 var asset_source: GameAssetSource
+var data_pack := DataPack.new()
+# the data pack folder, which supplies the original game data files
 var reference_root := ""
 var runtime_initialized := false
 var assets_ready := false
