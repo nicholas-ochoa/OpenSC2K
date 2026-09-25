@@ -6,6 +6,12 @@ Join our [Discord community](https://discord.gg/k9S6c3AqcX).
 
 ## Run
 
+Download a package from [GitHub Releases](https://github.com/nicholas-ochoa/OpenSC2K/releases).
+See the [installation instructions](docs/install.md) for Windows, Linux, and macOS.
+The packages include the engine. You do not need to install Godot.
+
+To run from source:
+
 Use Godot 4.7 and provide your own copy of SimCity 2000 Special Edition for Windows 95 (1996).
 
 ```sh
