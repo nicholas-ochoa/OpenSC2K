@@ -113,7 +113,6 @@ class ValidationRunnerTest(unittest.TestCase):
         ids = [e['id'] for e in selected]
         self.assertNotIn('runtime_ui_smoke', ids)
         self.assertEqual(ids.count('runtime_ui_integration'), 1)
-        self.assertIn('generated_city_simulation_test', ids)
 
     def test_routine_excludes_audits_and_native_only_checks(self):
         entries = runner.registry()

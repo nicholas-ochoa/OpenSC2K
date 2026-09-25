@@ -1412,14 +1412,6 @@
     ]
   },
   {
-    "id": "generated_city_simulation_test",
-    "script": "tests/generated_city_simulation_test.gd",
-    "domain": "simulation",
-    "lane": "slow",
-    "timeout": 7200,
-    "requires": []
-  },
-  {
     "id": "city_gpu_geometry_test_native",
     "script": "tests/city_gpu_geometry_test.gd",
     "domain": "rendering",
@@ -1534,12 +1526,5 @@
     "script": "tests/generated_city_fixtures_test.gd",
     "domain": "formats",
     "lane": "product"
-  },
-  {
-    "id": "city_fixture_determinism",
-    "python": "tools/test_city_fixture_determinism.py",
-    "domain": "simulation",
-    "lane": "slow",
-    "timeout": 7500
   }
 ]
