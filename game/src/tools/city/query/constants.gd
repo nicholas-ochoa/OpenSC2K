@@ -35,6 +35,7 @@ const GRADE_NAMES := [
 	"A+",
 ]
 
+# the executable names unused zones 10 and 11 as Seaport and Airport
 const ZONE_NAMES := [
 	"Unzoned",
 	"Residential",
@@ -46,6 +47,8 @@ const ZONE_NAMES := [
 	"Military",
 	"Airport",
 	"Seaport",
+	"Seaport",
+	"Airport",
 ]
 
 const ZONE_DENSITIES := [

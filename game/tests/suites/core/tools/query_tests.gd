@@ -123,6 +123,10 @@ func test_query_info(reference_root: String) -> void:
 	_check(city.set_building_id(50, 50, Tiles.RAIL_POWER_CROSSING_1), "Query traffic fixture places a rail crossing")
 	_check(not Queries.inspect(city, Vector2i(50, 50)).shows_traffic, "Query omits traffic for a rail and power crossing")
 	_check(city.set_building_id(50, 50, Tiles.EMPTY), "Query traffic fixture clears its tile")
+	for zone_name in [[10, "Seaport"], [11, "Airport"]]:
+		_check(city.set_zone_id(50, 50, zone_name[0]), "Query fixture sets an unused zone")
+		_check(Queries.inspect(city, Vector2i(50, 50)).zone_name == zone_name[1], "Query names zone %d" % zone_name[0])
+	_check(city.set_zone_id(50, 50, 0), "Query fixture clears its zone")
 	_check(city.set_land_altitude(50, 50, 2), "Query fixture puts land below the water level")
 	var underwater := Queries.inspect(city, Vector2i(50, 50))
 	_check(
