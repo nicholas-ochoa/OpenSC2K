@@ -66,6 +66,14 @@ class NightlyTest(unittest.TestCase):
                     self.publish()
                 self.assertFalse(any(c[:2] == ('release', 'delete') for c in self.calls))
 
+    def test_failed_draft_is_removed_without_deleting_a_missing_tag(self):
+        self.old['draft'] = True
+        with patch.object(nightly, 'gh', side_effect=self.respond):
+            self.publish()
+        deletes = [c for c in self.calls if c[:2] == ('release', 'delete')]
+        self.assertEqual(len(deletes), 1)
+        self.assertNotIn('--cleanup-tag', deletes[0])
+
     def test_remote_hash_mismatch_prevents_publish_and_cleanup(self):
         self.assets[0]['digest'] = 'sha256:bad'
         with patch.object(nightly, 'gh', side_effect=self.respond), self.assertRaises(ValueError):

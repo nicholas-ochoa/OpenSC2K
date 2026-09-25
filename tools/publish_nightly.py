@@ -87,7 +87,9 @@ def publish(folder, repository, commit, run_id, attempt):
     for release in releases:
         previous = nightly_order(release)
         if previous is not None and previous < order:
-            gh('release', 'delete', release['tag_name'], '--repo', repository, '--yes', '--cleanup-tag')
+            # GitHub creates the tag on publication, not when the draft is created.
+            cleanup = [] if release['draft'] else ['--cleanup-tag']
+            gh('release', 'delete', release['tag_name'], '--repo', repository, '--yes', *cleanup)
 
 
 def main():
