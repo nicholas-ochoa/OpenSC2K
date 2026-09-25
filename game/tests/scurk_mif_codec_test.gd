@@ -18,6 +18,7 @@ func _initialize() -> void:
 	_test_truncation(fixture)
 	_test_invalid_fields(fixture)
 	_test_parse_reuse(fixture)
+	_test_repeated_shapes()
 	var hash := HashingContext.new()
 	hash.start(HashingContext.HASH_SHA256)
 	hash.update("\n".join(errors).to_utf8_buffer())
@@ -124,6 +125,27 @@ func _test_parse_reuse(bytes: PackedByteArray) -> void:
 	assert(mif.parse(bytes), mif.parse_error)
 	assert(mif.archive.is_valid() and mif.overrides.is_valid())
 	assert(mif.to_bytes().bytes == bytes)
+
+
+# Shape states are cached by shape data. Edits and repeated parses must still use each current shape.
+func _test_repeated_shapes() -> void:
+	var transparent := PackedInt32Array([-1, -1, -1, -1, -1, -1])
+	var mif := ScurkMif.from_archives([])
+
+	for pixels in [PackedInt32Array(PIXELS), transparent, PackedInt32Array(PIXELS), transparent]:
+		assert(mif.set_shape_indices(0x1234, 3, 2, pixels).ok)
+		var opaque: bool = pixels != transparent
+		assert(mif.overrides.entries_by_id.has(0x1234) == opaque)
+		var parsed := ScurkMif.new()
+		assert(parsed.parse(mif.to_bytes().bytes), parsed.parse_error)
+		assert(parsed.overrides.entries_by_id.has(0x1234) == opaque)
+		assert(parsed.archive.entries_by_id.has(0x1234))
+
+	# Identical invalid data still reports the sprite that contains it.
+	for id in ["1234", "5678", "1234"]:
+		var bad := ScurkMif.new()
+		assert(not bad.parse(_file([_piece("SHAP", (id + "000100010000000100").hex_decode())])))
+		assert(bad.parse_error.begins_with("sprite %d " % id.hex_to_int()), bad.parse_error)
 
 
 func _reject(bytes: PackedByteArray) -> void:

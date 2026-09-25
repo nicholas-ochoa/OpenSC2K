@@ -39,6 +39,11 @@ var overrides: Sc2SpriteArchive = Sc2SpriteArchive.new()
 var piece_count := 0
 var parse_error := ""
 
+# Decoded shape states by shape data. The state depends only on the key fields.
+# Each parse or edit otherwise decodes every shape again.
+static var _shape_cache: Dictionary = {}
+static var _shape_cache_mutex := Mutex.new()
+
 
 static func load_path(path: String) -> ScurkMif:
 	var result := ScurkMif.new()
@@ -386,21 +391,18 @@ func _parse_shape(
 		bytes.slice(payload_start + 10, payload_end)
 	)
 	entry.allow_unpadded_odd_runs = true
-	var decoded := entry.decode_indices()
+	var state := _shape_state(entry)
 
-	if not decoded.ok:
-		return _fail(decoded.error)
+	if state < 0:
+		return _fail(entry.decode_indices().error)
 
 	shapes.append(entry)
 	archive.entries.append(entry)
 	archive.entries_by_id[entry.sprite_id] = entry
-	var pixels: PackedInt32Array = decoded.pixels
 
-	for pixel in pixels:
-		if pixel >= 0:
-			overrides.entries.append(entry)
-			overrides.entries_by_id[entry.sprite_id] = entry
-			break
+	if state == 1:
+		overrides.entries.append(entry)
+		overrides.entries_by_id[entry.sprite_id] = entry
 
 	piece_records.append(Piece.new("SHAP", entry.sprite_id, bytes.slice(payload_start, payload_end), entry))
 
@@ -485,16 +487,51 @@ func _rebuild_archives() -> void:
 	for entry in shapes:
 		archive.entries.append(entry)
 		archive.entries_by_id[entry.sprite_id] = entry
-		var decoded := entry.decode_indices()
 
-		if not decoded.ok:
-			continue
+		if _shape_state(entry) == 1:
+			overrides.entries.append(entry)
+			overrides.entries_by_id[entry.sprite_id] = entry
 
-		for pixel in decoded.pixels:
-			if pixel >= 0:
-				overrides.entries.append(entry)
-				overrides.entries_by_id[entry.sprite_id] = entry
-				break
+
+# Return 1 for a shape with an opaque pixel, 0 for a blank shape, or -1 if it does not decode.
+# Only successful results are cached. An error message names its sprite and offset.
+static func _shape_state(entry: Sc2SpriteArchive.SpriteEntry) -> int:
+	if not entry._direct_indices.is_empty():
+		return _decode_shape_state(entry)
+
+	var key := [entry.width, entry.height, entry.allow_unpadded_odd_runs, entry.encoded_pixels]
+	_shape_cache_mutex.lock()
+	var cached: Variant = _shape_cache.get(key)
+	_shape_cache_mutex.unlock()
+
+	if cached != null:
+		return cached
+
+	var state := _decode_shape_state(entry)
+
+	if state >= 0:
+		_shape_cache_mutex.lock()
+
+		if _shape_cache.size() >= 16384:
+			_shape_cache.clear()
+
+		_shape_cache[key] = state
+		_shape_cache_mutex.unlock()
+
+	return state
+
+
+static func _decode_shape_state(entry: Sc2SpriteArchive.SpriteEntry) -> int:
+	var decoded := entry.decode_indices()
+
+	if not decoded.ok:
+		return -1
+
+	for pixel in decoded.pixels:
+		if pixel >= 0:
+			return 1
+
+	return 0
 
 
 static func _encode_pixels(
