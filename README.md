@@ -4,20 +4,20 @@ An open-source remake of SimCity 2000, built with Godot.
 
 Join our [Discord community](https://discord.gg/k9S6c3AqcX).
 
-[![OpenSC2K main menu over a waterfront city](.github/screenshots/image1-preview.jpg)](.github/screenshots/image1.png)
+[![OpenSC2K main menu over a waterfront city](.github/screenshots/image1-preview.png)](.github/screenshots/image1.png)
 
 ## Screenshots
 
 Click a thumbnail to view the full screenshot.
 
 <p>
-  <a href=".github/screenshots/image1.png"><img src=".github/screenshots/thumbnails/image1.jpg" width="260" alt="Main menu" /></a>
-  <a href=".github/screenshots/image2.png"><img src=".github/screenshots/thumbnails/image2.jpg" width="260" alt="City and terrain overview" /></a>
-  <a href=".github/screenshots/image3.png"><img src=".github/screenshots/thumbnails/image3.jpg" width="260" alt="Waterfront city with bridges and a seaport" /></a>
+  <a href=".github/screenshots/image1.png"><img src=".github/screenshots/thumbnails/image1.png" width="260" alt="Main menu" /></a>
+  <a href=".github/screenshots/image2.png"><img src=".github/screenshots/thumbnails/image2.png" width="260" alt="City and terrain overview" /></a>
+  <a href=".github/screenshots/image3.png"><img src=".github/screenshots/thumbnails/image3.png" width="260" alt="Waterfront city with bridges and a seaport" /></a>
   <br />
-  <a href=".github/screenshots/image4.png"><img src=".github/screenshots/thumbnails/image4.jpg" width="260" alt="Water supply data view" /></a>
-  <a href=".github/screenshots/image5.png"><img src=".github/screenshots/thumbnails/image5.jpg" width="260" alt="Transport routes in the trip query view" /></a>
-  <a href=".github/screenshots/image6.png"><img src=".github/screenshots/thumbnails/image6.jpg" width="260" alt="SCURK sprite editor" /></a>
+  <a href=".github/screenshots/image4.png"><img src=".github/screenshots/thumbnails/image4.png" width="260" alt="Water supply data view" /></a>
+  <a href=".github/screenshots/image5.png"><img src=".github/screenshots/thumbnails/image5.png" width="260" alt="Transport routes in the trip query view" /></a>
+  <a href=".github/screenshots/image6.png"><img src=".github/screenshots/thumbnails/image6.png" width="260" alt="SCURK sprite editor" /></a>
 </p>
 
 ## Run
