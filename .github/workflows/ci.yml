@@ -1,0 +1,87 @@
+name: CI and nightly
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '23 8 * * *'
+  workflow_dispatch:
+    inputs:
+      publish_nightly:
+        description: Publish a nightly and remove previous nightly releases
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: Test and build desktop packages
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Install test dependencies
+        run: |
+          python -m pip install Pillow
+          command -v ffmpeg || brew install ffmpeg
+      - name: Install Godot and export templates
+        run: bash tools/setup_godot_ci.sh
+      - name: Test generated-data coverage
+        run: tools/validate_project.sh --suite ci --keep-going --output local/ci-results
+      - name: Test release automation
+        run: python -m unittest discover -s tools -p test_release_automation.py
+      - name: Build desktop packages
+        run: python tools/build_desktop_release.py --output local/packages --label "nightly-${GITHUB_SHA::8}"
+      - name: Save packages
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: desktop-packages
+          path: local/packages/*
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+      - name: Save test logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: ci-results
+          path: local/ci-results/
+          retention-days: 7
+
+  nightly:
+    name: Publish latest nightly
+    needs: build
+    if: >-
+      github.repository == 'nicholas-ochoa/OpenSC2K' && github.ref == 'refs/heads/main' &&
+      (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.publish_nightly))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: publish-nightly
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: desktop-packages
+          path: local/packages
+      - name: Publish and remove older nightlies
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/publish_nightly.py --packages local/packages

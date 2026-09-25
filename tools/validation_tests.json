@@ -274,7 +274,10 @@
     "id": "debug_actions_test",
     "script": "tests/debug_actions_test.gd",
     "domain": "simulation",
-    "lane": "product"
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000/CITIES/SYDNEY.SC2"
+    ]
   },
   {
     "id": "debug_city_tables_test",

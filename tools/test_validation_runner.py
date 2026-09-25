@@ -17,6 +17,38 @@ import validate_project as runner
 
 
 class ValidationRunnerTest(unittest.TestCase):
+    def test_fresh_projects_share_the_import_cache(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder) / 'checkout'
+            (root / 'game').mkdir(parents=True)
+            projects = []
+            try:
+                with patch.object(runner, 'ROOT', root):
+                    for name in ('parse', 'worker'):
+                        (Path(folder) / name).mkdir()
+                        projects.append(runner.Project(Path(folder) / name))
+                cache_file = projects[0].path / '.godot/imported-marker'
+                cache_file.write_text('imported')
+                self.assertEqual((projects[1].path / '.godot/imported-marker').read_text(), 'imported')
+                self.assertEqual((root / 'game/.godot/imported-marker').read_text(), 'imported')
+            finally:
+                for project in projects:
+                    project.close()
+
+    def test_ci_selects_generated_data_tests_and_required_tools(self):
+        entries = runner.registry()
+        selected = runner.select(entries, ['ci'], [])
+        self.assertTrue(selected)
+        for entry in selected:
+            self.assertEqual(entry['lane'], 'product')
+            self.assertFalse(entry.get('fixtures'))
+            self.assertLessEqual(set(entry.get('requires', [])), {'ffmpeg', 'pillow'})
+        ids = {entry['id'] for entry in selected}
+        self.assertTrue({'recorded_soundtrack_test', 'scurk_gif_export_test',
+                         'no_assets_startup_test', 'binary_data_test'} <= ids)
+        synthetic = [dict(id='fixture', lane='product', domain='formats', fixtures=['private'])]
+        self.assertEqual(runner.select(synthetic, ['ci'], []), [])
+
     def test_parallel_bound_and_failure_drain(self):
         entered = threading.Barrier(2)
         release = threading.Event()
@@ -225,6 +257,17 @@ class ValidationRunnerTest(unittest.TestCase):
                 self.assertEqual(runner.main(), 1)
             results = json.loads((output / 'summary.json').read_text())['results']
             self.assertEqual(next(r['status'] for r in results if r['id'] == entry['id']), 'FAIL')
+
+    def test_ci_rejects_missing_tools_and_runtime_skips(self):
+        entry = next(e for e in runner.registry() if e['id'] == 'recorded_soundtrack_test')
+        for missing in ([], ['ffmpeg']):
+            with self.subTest(missing=missing), \
+                    patch.object(sys, 'argv', ['validate', '--suite', 'ci']), \
+                    patch.object(runner, 'select', return_value=[entry]), \
+                    patch.object(runner, 'missing_requirements', return_value=missing), \
+                    patch.object(runner, 'execute', return_value=('SKIP', 0, '')), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(runner.main(), 1)
 
     def test_edited_fixture_is_rejected(self):
         with tempfile.TemporaryDirectory() as folder:

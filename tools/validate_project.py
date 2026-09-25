@@ -19,7 +19,7 @@ import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 DOMAINS = ('formats', 'simulation', 'tools', 'rendering', 'scurk', 'ui', 'audio')
-SUITES = ('routine', 'full', 'release', 'audit', 'native', 'slow', 'integration', *DOMAINS)
+SUITES = ('ci', 'routine', 'full', 'release', 'audit', 'native', 'slow', 'integration', *DOMAINS)
 CONSOLE_LOCK = threading.Lock()
 
 
@@ -62,6 +62,8 @@ def select(entries, suites, ids):
         e = dict(original)
         include = e['id'] in ids
         for suite in suites:
+            include |= (suite == 'ci' and e['lane'] == 'product' and not e.get('fixtures')
+                        and set(e.get('requires', [])) <= {'ffmpeg', 'pillow'})
             include |= (suite == 'release')
             include |= (suite == 'full' and e['lane'] in ('product', 'audit', 'slow', 'integration'))
             include |= (suite == 'routine' and e['lane'] == 'product')
@@ -136,6 +138,8 @@ class Project:
         for path in ROOT.iterdir():
             if path.name not in ('game', '.git'):
                 (self.base / path.name).symlink_to(path, target_is_directory=path.is_dir())
+        # A fresh checkout must share the editor import cache with all test projects.
+        (ROOT / 'game/.godot').mkdir(exist_ok=True)
         for path in (ROOT / 'game').iterdir():
             if path.name not in ('project.godot', 'override.cfg'):
                 (self.path / path.name).symlink_to(path, target_is_directory=path.is_dir())
@@ -246,7 +250,7 @@ def main():
             print(f"{e['id']:50} {e['domain']:12} {e['lane']:12}" + (' fixtures=' + ','.join(e['fixtures']) if e.get('fixtures') else ''))
         print(f'{len(entries)} entries; editor parse and startup also run')
         return 0
-    strict = args.strict or 'release' in suites
+    strict = args.strict or bool(set(suites) & {'ci', 'release'})
     output = args.output.resolve() if args.output else None
     if output:
         output.mkdir(parents=True, exist_ok=False)
@@ -284,7 +288,7 @@ def main():
                 return status != 'FAIL'
 
             project.configure('startup')
-            if not run('parse', godot_command(extra=['--editor', '--quit'])):
+            if not run('parse', godot_command(extra=['--editor', '--import'])):
                 return 1
             if not run('startup', godot_command(extra=['--quit-after', '2'])):
                 return 1
