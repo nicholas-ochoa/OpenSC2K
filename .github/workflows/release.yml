@@ -1,0 +1,162 @@
+name: Release
+run-name: "Release ${{ inputs.version || github.event.release.tag_name }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (last published: 0.1.0)'
+        type: string
+        required: true
+      draft:
+        description: Create a draft for review instead of publishing immediately
+        type: boolean
+        default: false
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: manual-release
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    name: Show latest published version
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Require main
+        env:
+          SELECTED_REF: ${{ github.ref }}
+        run: |
+          if [ "$SELECTED_REF" != refs/heads/main ]; then
+            echo 'Run the Release workflow from main.' >&2
+            exit 1
+          fi
+      - name: Show current release and check requested version
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: python3 tools/manual_release.py inspect
+
+  prepare:
+    name: Set project version
+    needs: inspect
+    if: needs.inspect.outputs.version != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    outputs:
+      sha: ${{ steps.prepare.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Commit the version on main
+        id: prepare
+        env:
+          RELEASE_VERSION: ${{ needs.inspect.outputs.version }}
+        run: python3 tools/manual_release.py prepare
+
+  build:
+    name: Test and build release packages
+    needs: [inspect, prepare]
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Install test dependencies
+        run: |
+          python -m pip install Pillow
+          command -v ffmpeg || brew install ffmpeg
+      - name: Install Godot and export templates
+        run: bash tools/setup_godot_ci.sh
+      - name: Run CI
+        run: tools/validate_project.sh --suite ci --keep-going --output local/release-ci-results
+      - name: Test release automation
+        run: python -m unittest discover -s tools -p test_release_automation.py
+      - name: Build versioned packages
+        env:
+          RELEASE_VERSION: ${{ needs.inspect.outputs.version }}
+        run: python tools/build_desktop_release.py --output local/release-packages --label "$RELEASE_VERSION"
+      - name: Save packages
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: release-packages
+          path: local/release-packages/*
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+      - name: Save test logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: release-ci-results
+          path: local/release-ci-results/
+          retention-days: 7
+
+  publish:
+    name: Create GitHub release
+    needs: [inspect, prepare, build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: release-packages
+          path: local/release-packages
+      - name: Verify uploads and create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.inspect.outputs.version }}
+          RELEASE_SHA: ${{ needs.prepare.outputs.sha }}
+          RELEASE_DRAFT: ${{ inputs.draft }}
+        run: python3 tools/manual_release.py publish --packages local/release-packages
+
+  update-hint:
+    name: Update last published version in the form
+    needs: publish
+    if: >-
+      always() && !cancelled() &&
+      ((needs.publish.result == 'success' && !inputs.draft) ||
+       (github.event_name == 'release' && !github.event.release.prerelease))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require the workflow update key
+        env:
+          RELEASE_SSH_KEY: ${{ secrets.RELEASE_SSH_KEY }}
+        run: |
+          if [ -z "$RELEASE_SSH_KEY" ]; then
+            echo '::error::Set RELEASE_SSH_KEY to a write-enabled deploy key. The workflow must push its updated input label.'
+            exit 1
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          ssh-key: ${{ secrets.RELEASE_SSH_KEY }}
+      - name: Commit the latest published version hint
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/manual_release.py sync-hint

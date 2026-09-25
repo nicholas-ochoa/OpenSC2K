@@ -47,3 +47,31 @@ python3 tools/build_desktop_release.py --output local/packages --label 0.1.0
 Use a new output directory. The tool exports the committed tree at `HEAD`.
 It includes install notes, licenses, source and engine versions, and package hashes.
 The macOS app is ad-hoc signed and is not notarized. Windows packages are unsigned.
+
+## Manual stable releases
+
+Open **Actions > Release > Run workflow** and select `main`.
+The version input label shows the last published stable version, for example
+**Version to release (last published: 0.1.0)**. The workflow also fetches the current value for its run summary.
+Nightly prereleases and drafts do not count as published stable versions.
+After publication, the workflow commits the new version into its input label for the next run.
+Publishing a draft through GitHub also updates this label. Failed builds and unpublished drafts leave it unchanged.
+
+To create a release, enter a new version such as `0.1.1` and run the workflow.
+The workflow commits the project version to `main`, runs CI on that exact commit, builds the three
+platform packages, verifies their uploaded hashes, and publishes `v0.1.1` as the latest stable release.
+Select **draft** to leave the release unpublished for review instead.
+The version is set inside the application, in the package names, and in the build information.
+
+Existing releases and tags are not overwritten. The new version must exceed all published stable versions.
+The workflow keeps all prior stable releases. It does not perform nightly cleanup.
+The version commit remains on `main` if testing or building fails; rerun with the same version after resolving
+the failure. If publication leaves a draft, inspect or remove that draft before retrying the same version.
+A concurrent change to `main` can reject the version push; rerun against the updated branch.
+The repository must allow the workflow token to push the version commit to `main`.
+The label update uses the `RELEASE_SSH_KEY` secret, which must contain a write-enabled repository deploy key.
+This lets the job push the workflow file. Its commit uses `[skip ci]` to avoid another CI build.
+If this update fails after publication, the release remains published. Rerun the failed job to update the label.
+
+Run the full local release suite before publishing a stable release. Hosted CI still uses the generated-data
+suite described above because the original game files are not available on GitHub-hosted runners.
