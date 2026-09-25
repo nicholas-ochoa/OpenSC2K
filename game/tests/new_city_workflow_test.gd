@@ -22,7 +22,7 @@ func _run() -> void:
 	_assert_editor_controls(main, false)
 	assert(dialog.get_viewport_rect().grow(1.0).encloses(dialog.panel.get_global_rect()), "New City controls fit the viewport")
 	assert(not dialog.compatibility_input.button_pressed)
-	assert(dialog.native_maps_input.button_pressed)
+	assert(dialog.terrain_options().native_maps)
 	assert(dialog.done_button.disabled and main.new_city_state.session.preview_document == null)
 	for key in ["bay", "delta", "peninsula", "island", "islands", "meander", "crossing", "branch", "rejoin", "valley", "cliffs"]:
 		dialog.reset_features()
@@ -80,8 +80,8 @@ func _run() -> void:
 	dialog.size_input.select(dialog.size_input.get_item_index(512))
 	dialog.compatibility_input.button_pressed = true
 	assert(dialog.size_input.get_selected_id() == 128)
-	assert(dialog.size_input.disabled and dialog.native_maps_input.disabled)
-	assert(not dialog.native_maps_input.button_pressed)
+	assert(dialog.size_input.is_item_disabled(dialog.size_input.get_item_index(512)))
+	assert(not dialog.terrain_options().native_maps)
 	main.audio_controller.application_has_focus = true
 	main.audio_controller.wave_sound_gate.stop()
 	main.new_city.make_new_city_preview()
@@ -124,7 +124,7 @@ func _run() -> void:
 	assert(main.document_state.city == null)
 	dialog.compatibility_input.button_pressed = false
 	dialog.size_input.select(dialog.size_input.get_item_index(16))
-	assert(not dialog.size_input.disabled and not dialog.native_maps_input.disabled)
+	assert(not dialog.size_input.is_item_disabled(dialog.size_input.get_item_index(16)))
 	dialog._random_name()
 	assert(dialog.city_name_input.text.length() <= 30)
 	main.new_city.make_new_city_preview()

@@ -38,11 +38,6 @@ func open_settings_dialog() -> void:
 	app.main_overlays.settings_dialog.translucent_menus_check.button_pressed = preferences.translucent_menus
 	app.main_overlays.settings_dialog.default_mayor_edit.text = preferences.default_mayor_name
 	app.main_overlays.settings_dialog.overview_graphics_selector.select(preferences.overview_graphics)
-	app.main_overlays.settings_dialog.original_compatibility_check.button_pressed = preferences.original_compatibility
-	app.main_overlays.settings_dialog.original_compatibility_check.disabled = app.document_state.current_document != null and app.document_state.current_document.is_extended()
-	app.main_overlays.settings_dialog.original_compatibility_check.tooltip_text = ("SC2X cities cannot return to original compatibility."
-			if app.main_overlays.settings_dialog.original_compatibility_check.disabled else "")
-	app.main_overlays.settings_dialog.warn_sc2x_conversion_check.button_pressed = preferences.warn_sc2x_conversion
 	app.main_overlays.settings_dialog.check_for_updates_check.button_pressed = preferences.check_for_updates
 	app.main_overlays.settings_dialog.set_update_status(preferences.update_checked_at, preferences.update_error)
 	app.main_overlays.settings_dialog.shuffle_music_check.button_pressed = preferences.shuffle_music
@@ -71,12 +66,6 @@ func _refresh_settings_pack_names() -> void:
 func apply_settings() -> void:
 	var values: AppSettingsStore.Values = app.main_overlays.settings_dialog.selected_values()
 
-	if bool(values.original_compatibility) and app.document_state.current_document != null and app.document_state.current_document.is_extended():
-		app.main_overlays.settings_dialog.show_compatibility_error(("This city is SC2X and cannot return to original compatibility. Save it, then open a different original SC2 " +
-			"city or restart the app before enabling compatibility."))
-
-		return
-
 	var pack_error: String = CityAudioController.validate_media_packs(values.sound_pack_folder, values.music_pack_folder)
 
 	if not pack_error.is_empty():
@@ -100,10 +89,7 @@ func apply_settings() -> void:
 	if changed_source:
 		app.assets.apply_graphics_source(selected)
 
-	preferences.original_compatibility = bool(values.original_compatibility)
-	preferences.warn_sc2x_conversion = bool(values.warn_sc2x_conversion)
 	preferences.check_for_updates = bool(values.check_for_updates)
-	apply_compatibility_controls()
 	preferences.graphics_source = values.graphics_source
 	preferences.graphics_folder = values.graphics_folder
 	_set_city_renderer(str(values.city_renderer))
@@ -158,8 +144,8 @@ func apply_settings() -> void:
 		preferences.music_volume, preferences.effects_volume, preferences.fullscreen,
 		preferences.settings_path, preferences.graphics_source, preferences.graphics_folder, preferences.soundtrack_folder,
 		preferences.city_renderer, preferences.background_audio, preferences.zoom_graphics, preferences.toolbar_sounds,
-		preferences.sound_pack_folder, preferences.music_pack_folder, preferences.shuffle_music, preferences.original_compatibility,
-		preferences.warn_sc2x_conversion, preferences.default_mayor_name, preferences.overview_graphics, preferences.ui_theme, preferences.dark_underground,
+		preferences.sound_pack_folder, preferences.music_pack_folder, preferences.shuffle_music,
+		preferences.default_mayor_name, preferences.overview_graphics, preferences.ui_theme, preferences.dark_underground,
 		preferences.translucent_menus, preferences.check_for_updates,
 	)
 	app.status_label.text = (
@@ -189,8 +175,6 @@ func load_app_settings() -> void:
 	preferences.overview_graphics = int(values.overview_graphics)
 	preferences.zoom_graphics = values.zoom_graphics
 	preferences.background_audio = values.background_audio
-	preferences.original_compatibility = bool(values.original_compatibility)
-	preferences.warn_sc2x_conversion = bool(values.warn_sc2x_conversion)
 	preferences.shuffle_music = values.shuffle_music
 	preferences.city_renderer = values.city_renderer
 	preferences.soundtrack_folder = values.soundtrack_folder
@@ -210,7 +194,7 @@ func load_app_settings() -> void:
 
 
 func _set_graphics_preferences(zoom_graphics: Array) -> void:
-	var sizes := SettingsStore.normalize_zoom_graphics(zoom_graphics)
+	var sizes := SettingsStore.normalize_zoom_graphics(zoom_graphics, preferences.overview_graphics)
 
 	if preferences.zoom_graphics == sizes:
 		return
@@ -218,12 +202,3 @@ func _set_graphics_preferences(zoom_graphics: Array) -> void:
 	preferences.zoom_graphics = sizes
 	app.map_render.close_region_cache()
 	app.map_render.refresh_map()
-
-
-func apply_compatibility_controls() -> void:
-	if app.simulation_state.speed_controller != null:
-		app.simulation_state.speed_controller.original_compatibility = preferences.original_compatibility
-		app.simulation_state.speed_controller.fire_elapsed_msec = 0.0
-
-
-	app.city_files.sync_upgrade_city_option()

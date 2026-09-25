@@ -17,8 +17,11 @@ func _run() -> void:
 	var setup := dialog.setup_options()
 	assert(setup.mayor_name == "Test Mayor" and setup.difficulty == 1 and setup.starting_year == 1900)
 	var terrain := dialog.terrain_options()
-	assert(terrain.size == 256 and terrain.native_maps and terrain.smooth_slopes)
+	assert(terrain.size == 256 and terrain.native_maps and terrain.smooth_slopes, "A city without compatibility is SC2X")
 	assert(terrain.features.is_empty())
+
+	for key in dialog.feature_inputs:
+		assert(not dialog.feature_inputs[key].tooltip_text.is_empty(), "Terrain feature %s has a tooltip" % key)
 
 	dialog.city_name_input.text = "  Test City  "
 	dialog.mayor_name_input.text = "  Second Mayor  "
@@ -44,7 +47,7 @@ func _run() -> void:
 	dialog.compatibility_input.button_pressed = true
 	terrain = dialog.terrain_options()
 	assert(terrain.size == 128 and not terrain.native_maps)
-	assert(dialog.size_input.disabled and dialog.native_maps_input.disabled)
+	assert(_only_original_size(dialog) and not dialog.size_input.disabled)
 	assert(terrain.features == ["branch", "bay"])
 	var revision := dialog.generation_revision
 	var landscape := Image.create(8, 8, false, Image.FORMAT_RGBA8)
@@ -58,7 +61,23 @@ func _run() -> void:
 	dialog.reset_fields("Reset Mayor")
 	assert(dialog.preview_view.texture == null and dialog.landscape_background.texture == null)
 	assert(dialog.terrain_options().features.is_empty())
-	assert(not dialog.size_input.disabled and not dialog.native_maps_input.disabled)
+	assert(_all_sizes(dialog))
 	dialog.free()
 	print("PASS: New City setup options, terrain options, compatibility, and preview state")
 	quit()
+
+# compatibility allows only the original 128 × 128 map
+func _only_original_size(dialog: NewCityTerrainDialog) -> bool:
+	for index in dialog.size_input.item_count:
+		if dialog.size_input.is_item_disabled(index) != (dialog.size_input.get_item_id(index) != 128):
+			return false
+
+	return true
+
+
+func _all_sizes(dialog: NewCityTerrainDialog) -> bool:
+	for index in dialog.size_input.item_count:
+		if dialog.size_input.is_item_disabled(index):
+			return false
+
+	return true

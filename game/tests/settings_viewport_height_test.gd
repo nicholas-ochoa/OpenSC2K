@@ -29,12 +29,7 @@ func _run() -> void:
 			_check_height(dialog, height)
 			var scroll := dialog.tabs.get_child(1) as ScrollContainer
 			assert(scroll.get_v_scroll_bar().visible, "Long error text has no scrollbar")
-			dialog.show_compatibility_error("A long compatibility message.\n".repeat(80))
-			await process_frame
-			await process_frame
-			_check_height(dialog, height)
 			dialog.pack_error_label.hide()
-			dialog.compatibility_error_label.hide()
 	viewport.queue_free()
 	await process_frame
 	AppUiTheme.select("light")

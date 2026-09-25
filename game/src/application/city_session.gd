@@ -4,7 +4,6 @@ extends RefCounted
 
 const CityFiles = preload("res://src/formats/city_file_store.gd")
 const CityModel = preload("res://src/model/city_state.gd")
-const SettingsStore = preload("res://src/ui/settings/app_settings_store.gd")
 const Simulation = preload("res://src/simulation/core/simulation_engine.gd")
 const GameSpeed = preload("res://src/simulation/core/game_speed_controller.gd")
 
@@ -20,14 +19,6 @@ func _init(application: CityApplication) -> void:
 func activate_document(
 	document: Sc2File, loaded_scenario: ScenarioState = null, status_text := "", loaded_from_file := false
 ) -> bool:
-	var disable_compatibility := app.preferences.original_compatibility and document != null and document.is_extended()
-	var compatibility_error := OriginalCompatibility.document_error(document, app.preferences.original_compatibility and not disable_compatibility)
-
-	if not compatibility_error.is_empty():
-		app.interface.show_error(compatibility_error)
-
-		return false
-
 	app.map_view.clear_trip_reach()
 	var loaded_city := CityModel.from_document(document)
 
@@ -35,15 +26,6 @@ func activate_document(
 		app.interface.show_error(loaded_city.load_error)
 
 		return false
-
-	if disable_compatibility:
-		app.preferences.original_compatibility = false
-		app.settings.apply_compatibility_controls()
-		var settings_error := SettingsStore.save_original_compatibility(false, app.preferences.settings_path)
-		status_text += " Original compatibility turned off to open this SC2X city."
-
-		if settings_error != OK:
-			status_text += " The preference could not be saved."
 
 	app.newspaper_state.founding_pending = false
 	app.newspaper_state.scheduled_pending = false
@@ -140,7 +122,8 @@ func activate_document(
 
 	app.simulation_state.simulation_engine.vehicle_crashes_enabled = app.view_state.show_vehicles
 	app.simulation_state.speed_controller = GameSpeed.new(app.simulation_state.simulation_engine)
-	app.simulation_state.speed_controller.original_compatibility = app.preferences.original_compatibility
+	# SC2 and SCN cities keep the original fire timing
+	app.simulation_state.speed_controller.original_compatibility = OriginalCompatibility.uses_original_format(document_state.current_document)
 
 	if document_state.current_document.is_extended():
 		app.simulation_state.frame_simulation = FrameSimulationRunner.new(app.simulation_state.speed_controller)
@@ -182,7 +165,7 @@ func activate_document(
 	if loaded_scenario != null:
 		app.budget.open_scenario_intro(loaded_scenario)
 
-	if disable_compatibility or not facility_repair.ok or facility_repair.linked > 0 or facility_repair.unfilled > 0:
+	if not facility_repair.ok or facility_repair.linked > 0 or facility_repair.unfilled > 0:
 		app.status_label.text = status_text
 
 	return true

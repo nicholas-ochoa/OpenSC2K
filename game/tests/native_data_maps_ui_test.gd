@@ -19,10 +19,9 @@ func _run() -> void:
 	main.asset_state.reference_root = ProjectSettings.globalize_path("user://missing-test-originals")
 	root.add_child(main)
 	await process_frame
-	check(main.city_dialogs.new_city_dialog.native_maps_input.button_pressed, "New City defaults to per-tile maps")
-	check(main.city_dialogs.new_city_dialog.terrain_options().native_maps, "New City passes native option")
-	main.city_dialogs.new_city_dialog.native_maps_input.button_pressed = false
-	check(not main.city_dialogs.new_city_dialog.terrain_options().native_maps, "Original grid option remains available")
+	check(main.city_dialogs.new_city_dialog.terrain_options().native_maps, "New City without compatibility uses per-tile maps")
+	main.city_dialogs.new_city_dialog.compatibility_input.button_pressed = true
+	check(not main.city_dialogs.new_city_dialog.terrain_options().native_maps, "Compatibility uses original data maps")
 	main.new_city_state.session.independent_template = true
 	var options := NewCityTerrain.Options.new()
 	options.size = 128
@@ -50,11 +49,7 @@ func _run() -> void:
 	main.document_state.current_save_path = "user://source-city.SC2"
 	main.city_files.sync_upgrade_city_option()
 	check(main.options_menu.get_popup().get_item_index(CityMenuBar.MENU_UPGRADE_SC2X) >= 0, "Original SC2 shows upgrade in Options")
-	main.preferences.original_compatibility = true
-	main.settings.apply_compatibility_controls()
-	check(main.options_menu.get_popup().get_item_index(CityMenuBar.MENU_UPGRADE_SC2X) < 0, "Compatibility preference hides upgrade")
-	main.preferences.original_compatibility = false
-	main.settings.apply_compatibility_controls()
+	check(main.simulation_state.speed_controller.original_compatibility, "An SC2 city uses the original fire timing")
 	main.tool_state.last_edit_command = EditCommandResult.new()
 	main.menus.on_options_menu(CityMenuBar.MENU_UPGRADE_SC2X)
 	check(main.sc2x_conversion_dialog.visible and document.serialize().data == old_bytes, "Warning appears before irreversible conversion")
@@ -65,6 +60,7 @@ func _run() -> void:
 	main.sc2x_conversion_dialog.hide()
 	main.sc2x_conversion_dialog.confirmed.emit()
 	check(document.full_resolution_maps(), "Options upgrades city after confirmation")
+	check(not main.simulation_state.speed_controller.original_compatibility, "An SC2X city uses the extended fire timing")
 	check(main.options_menu.get_popup().get_item_index(CityMenuBar.MENU_UPGRADE_SC2X) < 0, "SC2X hides upgrade")
 	check(main.document_state.current_save_path.is_empty(), "Conversion requires a separate save path")
 	check(main.tool_state.last_edit_command == null, "Old-format undo is cleared")
@@ -80,9 +76,10 @@ func _run() -> void:
 	var second := EmptyCityTemplate.create(128)
 	check(main.city_session.activate_document(second), "Activate another original city")
 	main.document_state.current_save_path = "user://second-city.SC2"
-	main.preferences.warn_sc2x_conversion = false
 	main.city_files.upgrade_city_to_sc2x()
-	check(second.is_extended() and not main.sc2x_conversion_dialog.visible, "Disabled warning permits direct conversion")
+	check(not second.is_extended() and main.sc2x_conversion_dialog.visible, "Conversion always asks first")
+	main.sc2x_conversion_dialog.get_ok_button().pressed.emit()
+	check(second.is_extended() and not main.sc2x_conversion_dialog.visible, "Confirmed warning converts the city")
 	main.city_dialogs.city_save_dialog.hide()
 	main.queue_free()
 	await process_frame

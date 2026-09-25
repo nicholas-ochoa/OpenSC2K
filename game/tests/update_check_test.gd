@@ -120,7 +120,7 @@ func _check_store(path: String) -> void:
 	assert(defaults.update_last_check == 0 and defaults.update_skipped_version.is_empty())
 	assert(defaults.update_checked_at == 0 and defaults.update_error.is_empty())
 	assert(AppSettingsStore.save_update_state(1234, "1.3.0", 1240, "Failure", path) == OK)
-	assert(AppSettingsStore.save_values(0.5, 0.5, false, path, "", "", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, true) == OK)
+	assert(AppSettingsStore.save_values(0.5, 0.5, false, path, "", "", null, null, null, null, null, null, null, null, null, null, null, null, null, true) == OK)
 	var loaded := AppSettingsStore.load_values(path)
 	assert(loaded.check_for_updates)
 	assert(loaded.update_last_check == 1234 and loaded.update_skipped_version == "1.3.0", "Saving settings must keep the update state")
@@ -287,6 +287,8 @@ func _check_settings_dialog() -> void:
 	assert(dialog.update_status_label.visible and dialog.update_status_label.theme_type_variation == &"ErrorLabel")
 	dialog.set_update_status(1790345100, "")
 	assert(dialog.update_status_label.visible and dialog.update_status_label.theme_type_variation == &"HelpLabel")
+	# the dark underground option is on the Graphics tab
+	assert(dialog.tabs.get_child(2).is_ancestor_of(dialog.dark_underground_check))
 	dialog.free()
 	await process_frame
 

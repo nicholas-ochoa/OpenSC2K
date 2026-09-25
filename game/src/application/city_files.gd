@@ -58,7 +58,7 @@ func save_city() -> void:
 
 
 func _can_upgrade_city_to_sc2x() -> bool:
-	if (app.preferences.original_compatibility or app.tool_state.landscape_editor or app.document_state.city == null
+	if (app.tool_state.landscape_editor or app.document_state.city == null
 			or document_state.current_document == null or app.simulation_state.simulation_engine == null):
 		return false
 
@@ -88,7 +88,7 @@ func upgrade_city_to_sc2x(confirmed := false) -> void:
 	if not _can_upgrade_city_to_sc2x():
 		return
 
-	if not document_state.current_document.is_extended() and app.preferences.warn_sc2x_conversion and not confirmed:
+	if not document_state.current_document.is_extended() and not confirmed:
 		if app.sc2x_conversion_dialog == null:
 			app.sc2x_conversion_dialog = ConfirmationDialog.new()
 			app.sc2x_conversion_dialog.title = "Upgrade city to SC2X?"
@@ -113,6 +113,11 @@ func upgrade_city_to_sc2x(confirmed := false) -> void:
 		app.simulation_state.frame_simulation = null
 
 	var enabled := document_state.current_document.enable_full_resolution_maps()
+
+	# an SC2X city uses the extended fire timing
+	if app.simulation_state.speed_controller != null:
+		app.simulation_state.speed_controller.original_compatibility = OriginalCompatibility.uses_original_format(document_state.current_document)
+		app.simulation_state.speed_controller.fire_elapsed_msec = 0.0
 
 	if app.simulation_state.speed_controller != null and document_state.current_document.is_extended():
 		app.simulation_state.frame_simulation = FrameSimulationRunner.new(app.simulation_state.speed_controller)
@@ -283,7 +288,7 @@ func on_save_dialog_canceled() -> void:
 
 
 func _save_copy(path: String) -> bool:
-	var result := CityFiles.save_copy(document_state.current_document, path, app.asset_state.reference_root, app.preferences.original_compatibility)
+	var result := CityFiles.save_copy(document_state.current_document, path, app.asset_state.reference_root)
 
 	if not result.ok:
 		app.interface.show_error(result.error)

@@ -32,7 +32,28 @@ const RIVER_FEATURES := ["delta", "meander", "crossing", "branch", "rejoin", "va
 const OCEAN_FEATURES := ["bay", "delta", "peninsula", "island", "islands", "cliffs"]
 const EXCLUSIVE_GROUPS := [["island", "islands", "peninsula"],
 	["plateau", "ridge", "rolling", "basin"], ["valley", "canyon", "basin"], ["lake", "lakes"], ["plateau", "island"], ["plateau", "islands"]]
-var native_maps_input: CheckBox
+const FEATURE_TOOLTIPS := {
+	"ocean": "Put ocean along the edge of the map.",
+	"river": "Put a river across the map.",
+	"bay": "Cut a bay into the coast.",
+	"meander": "Make the river bend from side to side.",
+	"branch": "Split the river into two branches.",
+	"rejoin": "Split the river around land, then join it again.",
+	"crossing": "Add a second river that flows into the first river.",
+	"delta": "Split the river into channels where it flows into the ocean.",
+	"lake": "Add one lake.",
+	"lakes": "Add two lakes.",
+	"plateau": "Raise a large area of high, flat land.",
+	"ridge": "Add a long line of high land across the map.",
+	"valley": "Put the river in a low valley between higher land.",
+	"rolling": "Make low, smooth hills across the map.",
+	"basin": "Make a low area with higher land around it.",
+	"canyon": "Cut a deep, narrow canyon across the map. A canyon replaces the river.",
+	"cliffs": "Put steep, high land along the coast.",
+	"island": "Put the land on one island in the ocean. An island has no river.",
+	"islands": "Put the land on two islands in the ocean. Islands have no river.",
+	"peninsula": "Make a strip of land that goes out into the ocean.",
+}
 var ocean_input: CheckBox
 var river_input: CheckBox
 var hills_input: HSlider
@@ -60,7 +81,6 @@ func reset_fields(default_mayor: String) -> void:
 	landscape_background.texture = null
 	compatibility_input.set_pressed_no_signal(false)
 	compatibility_changed(false)
-	native_maps_input.set_pressed_no_signal(true)
 	city_name_input.text = "New City"
 	mayor_name_input.text = default_mayor
 	difficulty_input.select(0)
@@ -93,7 +113,6 @@ func terrain_options() -> NewCityTerrain.Options:
 	options.features.assign(selected_features())
 	options.smooth_slopes = true
 	options.size = size_input.get_selected_id()
-	options.native_maps = native_maps_input.button_pressed
 	options.ocean = ocean_input.button_pressed
 	options.river = river_input.button_pressed
 	options.hills = roundi(hills_input.value)
@@ -136,7 +155,6 @@ func _ready() -> void:
 	difficulty_input = get_node("Center/NewCityDialog/Content/Body/Fields/CityFields/DifficultyInput")
 	year_input = get_node("Center/NewCityDialog/Content/Body/Fields/CityFields/YearInput")
 	size_input = get_node("Center/NewCityDialog/Content/Body/Fields/CityFields/SizeInput")
-	native_maps_input = get_node("Center/NewCityDialog/Content/Body/Fields/CityFields/NativeMapsInput")
 	ocean_input = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/OceanRow/OceanInput")
 	river_input = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/OceanRow/RiverInput")
 	hills_input = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/HillsInputGroup/HillsInput")
@@ -167,6 +185,7 @@ func _ready() -> void:
 		feature_inputs.island, feature_inputs.islands, feature_inputs.peninsula]
 	for index in ordered_checks.size():
 		feature_grid.move_child(ordered_checks[index], index)
+	ocean_input.tooltip_text = FEATURE_TOOLTIPS.ocean
 	_compact_feature_rows()
 	theme_changed.connect(_compact_feature_rows)
 	_refresh_feature_constraints()
@@ -181,8 +200,6 @@ func _ready() -> void:
 	title_bar.title_label.text = "New City"
 	title_bar.close_requested.connect(cancel_requested.emit)
 	size_input.item_selected.connect(func(_index: int) -> void: preview_requested.emit())
-
-	native_maps_input.toggled.connect(func(_enabled: bool) -> void: preview_requested.emit())
 	ocean_input.toggled.connect(_feature_changed.bind("ocean"))
 	river_input.toggled.connect(_feature_changed.bind("river"))
 
@@ -195,9 +212,9 @@ func _ready() -> void:
 	terrain_icons["Hills"] = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/HillsRow/TerrainPreview")
 	terrain_icons["Water"] = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/WaterRow/TerrainPreview")
 	terrain_icons["Trees"] = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/TreesRow/TerrainPreview")
-	hills_input.tooltip_text = "Original range: 0–47. Controls hill height. Landforms scale with map size."
-	water_input.tooltip_text = "Original features: stepped sea level and downhill streams. Extra features: wider rivers or more ocean."
-	trees_input.tooltip_text = "Original range: 0–47. Tree cluster count grows with the square of this value."
+	hills_input.tooltip_text = "The height of the hills."
+	water_input.tooltip_text = "The sea level and the number of streams. With terrain features, rivers are wider and there is more ocean."
+	trees_input.tooltip_text = "The number of tree groups."
 	set_control_graphics(control_graphics)
 
 
@@ -223,12 +240,14 @@ func set_control_graphics(graphics: CityUiGraphics) -> void:
 			view.texture = ImageTexture.create_from_image(image)
 
 
+# an SC2 city uses only the original 128 × 128 map
 func compatibility_changed(enabled: bool) -> void:
-	size_input.disabled = enabled
-	native_maps_input.disabled = enabled
+	for index in size_input.item_count:
+		size_input.set_item_disabled(index, enabled and size_input.get_item_id(index) != 128)
+
 	if enabled:
 		size_input.select(size_input.get_item_index(128))
-		native_maps_input.set_pressed_no_signal(false)
+
 	preview_requested.emit()
 
 
@@ -293,7 +312,7 @@ func _refresh_feature_constraints() -> void:
 	var canyon: bool = feature_inputs.canyon.button_pressed
 	var river_blocker: String = "Canyon" if canyon else (feature_inputs[island_key].text if island else "")
 	river_input.disabled = not river_blocker.is_empty()
-	river_input.tooltip_text = "Unavailable while %s is selected. Clear it first." % river_blocker if river_input.disabled else ""
+	river_input.tooltip_text = _feature_tooltip("river", river_blocker)
 	for key in feature_inputs:
 		var reason := ""
 		if (island or canyon) and key in RIVER_FEATURES:
@@ -305,11 +324,23 @@ func _refresh_feature_constraints() -> void:
 						reason = feature_inputs[other].text
 		var check: CheckBox = feature_inputs[key]
 		check.disabled = not reason.is_empty()
-		check.tooltip_text = "Unavailable while %s is selected. Clear it first." % reason if check.disabled else ""
-		if not check.disabled and key in RIVER_FEATURES:
-			check.tooltip_text = "Also enables River."
-		if not check.disabled and key in OCEAN_FEATURES:
-			check.tooltip_text += (" " if not check.tooltip_text.is_empty() else "") + "Also enables Ocean."
+		check.tooltip_text = _feature_tooltip(key, reason)
+
+
+# the feature description, then why it is unavailable or what it also enables
+func _feature_tooltip(key: String, blocker: String) -> String:
+	var lines: Array[String] = [FEATURE_TOOLTIPS[key]]
+
+	if not blocker.is_empty():
+		lines.append("Unavailable while %s is selected. Clear it first." % blocker)
+	else:
+		if key in RIVER_FEATURES:
+			lines.append("Also enables River.")
+
+		if key in OCEAN_FEATURES:
+			lines.append("Also enables Ocean.")
+
+	return "\n".join(lines)
 
 
 func _build_busy_overlay() -> void:

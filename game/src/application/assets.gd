@@ -75,7 +75,7 @@ func initialize_runtime() -> void:
 	text_resources.library_texts = original_assets.library_texts
 	app.asset_state.scurk_graphics = original_assets.scurk_graphics
 	app.interface.build_interface(original_assets)
-	app.settings.apply_compatibility_controls()
+	app.city_files.sync_upgrade_city_option()
 
 	app.desktop_presentation = CityDesktopPresentation.new()
 	app.desktop_presentation.map_view = app.map_view
@@ -191,7 +191,7 @@ func _save_import_preferences() -> Error:
 		app.preferences.settings_path, app.preferences.graphics_source, app.preferences.graphics_folder, app.preferences.soundtrack_folder,
 		app.preferences.city_renderer, app.preferences.background_audio, app.preferences.zoom_graphics, app.preferences.toolbar_sounds,
 		app.preferences.sound_pack_folder, app.preferences.music_pack_folder, app.preferences.shuffle_music,
-		app.preferences.original_compatibility, app.preferences.warn_sc2x_conversion, app.preferences.default_mayor_name,
+		app.preferences.default_mayor_name,
 		app.preferences.overview_graphics, app.preferences.ui_theme, app.preferences.dark_underground,
 		app.preferences.translucent_menus,
 	)
@@ -239,7 +239,7 @@ func _import_original_game(executable_path: String) -> void:
 		app.preferences.settings_path, app.preferences.graphics_source, app.preferences.graphics_folder, app.preferences.soundtrack_folder,
 		app.preferences.city_renderer, app.preferences.background_audio, app.preferences.zoom_graphics, app.preferences.toolbar_sounds,
 		app.preferences.sound_pack_folder, app.preferences.music_pack_folder, app.preferences.shuffle_music,
-		app.preferences.original_compatibility, app.preferences.warn_sc2x_conversion, app.preferences.default_mayor_name,
+		app.preferences.default_mayor_name,
 		app.preferences.overview_graphics, app.preferences.ui_theme, app.preferences.dark_underground,
 	)
 

@@ -22,8 +22,6 @@ class Values extends RefCounted:
 	var zoom_graphics: Array[int] = AppSettingsStore.normalize_zoom_graphics(DEFAULT_ZOOM_GRAPHICS)
 	var background_audio := false
 	var shuffle_music := false
-	var original_compatibility := false
-	var warn_sc2x_conversion := true
 	var toolbar_sounds := true
 	var sound_pack_folder := ""
 	var music_pack_folder := ""
@@ -75,8 +73,6 @@ static func load_values(
 	result.sound_pack_folder = str(config.get_value("audio", "sound_pack_folder", result.sound_pack_folder))
 	result.music_pack_folder = str(config.get_value("audio", "music_pack_folder", result.music_pack_folder))
 
-	result.warn_sc2x_conversion = bool(config.get_value("simulation", "warn_sc2x_conversion", true))
-	result.original_compatibility = bool(config.get_value("simulation", "original_compatibility", false))
 	result.shuffle_music = bool(config.get_value("audio", "shuffle_music", false))
 	result.background_audio = bool(config.get_value("audio", "background_audio", false))
 	result.soundtrack_folder = str(config.get_value("audio", "soundtrack_folder", ""))
@@ -87,7 +83,7 @@ static func load_values(
 
 
 	result.graphics_folder = str(config.get_value("graphics", "folder", ""))
-	result.zoom_graphics = normalize_zoom_graphics(config.get_value("graphics", "zoom_graphics", DEFAULT_ZOOM_GRAPHICS))
+	result.zoom_graphics = normalize_zoom_graphics(config.get_value("graphics", "zoom_graphics", DEFAULT_ZOOM_GRAPHICS), result.overview_graphics)
 	result.city_renderer = normalize_renderer(config.get_value("display", "city_renderer", "gpu"))
 
 	result.check_for_updates = bool(config.get_value("updates", "check_periodically", false))
@@ -107,8 +103,11 @@ static func normalize_renderer(value: Variant) -> String:
 	return "cpu" if str(value) == "cpu" else "gpu"
 
 
-static func normalize_zoom_graphics(value: Variant) -> Array[int]:
+# each zoom level uses the size of the level below it or a larger size. the
+# 10% overview size is the minimum for 25% zoom
+static func normalize_zoom_graphics(value: Variant, overview_size := 0) -> Array[int]:
 	var result: Array[int] = []
+	var minimum := clampi(overview_size, 0, GRAPHICS_SIZES.size() - 1)
 
 	for index in GRAPHICS_ZOOMS.size():
 		var size_index: int = DEFAULT_ZOOM_GRAPHICS[index]
@@ -116,7 +115,7 @@ static func normalize_zoom_graphics(value: Variant) -> Array[int]:
 		if value is Array and index < value.size() and (value[index] is int or value[index] is float):
 			size_index = clampi(int(value[index]), 0, GRAPHICS_SIZES.size() - 1)
 
-		result.append(maxi(size_index, result.back() if not result.is_empty() else 0))
+		result.append(maxi(size_index, result.back() if not result.is_empty() else minimum))
 
 	return result
 
@@ -148,8 +147,6 @@ static func save_values(
 	sound_pack_folder: Variant = null,
 	music_pack_folder: Variant = null,
 	shuffle_music: Variant = null,
-	original_compatibility: Variant = null,
-	warn_sc2x_conversion: Variant = null,
 	default_mayor_name: Variant = null,
 	overview_graphics: Variant = null,
 	ui_theme: Variant = null,
@@ -192,12 +189,6 @@ static func save_values(
 	if city_renderer != null:
 		config.set_value("display", "city_renderer", normalize_renderer(city_renderer))
 
-	if warn_sc2x_conversion != null:
-		config.set_value("simulation", "warn_sc2x_conversion", bool(warn_sc2x_conversion))
-
-	if original_compatibility != null:
-		config.set_value("simulation", "original_compatibility", bool(original_compatibility))
-
 	if shuffle_music != null:
 		config.set_value("audio", "shuffle_music", bool(shuffle_music))
 
@@ -205,7 +196,8 @@ static func save_values(
 		config.set_value("audio", "background_audio", bool(background_audio))
 
 	if zoom_graphics != null:
-		config.set_value("graphics", "zoom_graphics", normalize_zoom_graphics(zoom_graphics))
+		config.set_value("graphics", "zoom_graphics",
+			normalize_zoom_graphics(zoom_graphics, int(config.get_value("graphics", "overview_graphics", 0))))
 
 	if check_for_updates != null:
 		config.set_value("updates", "check_periodically", bool(check_for_updates))
@@ -213,17 +205,6 @@ static func save_values(
 	for pair in [["toolbar_sounds", toolbar_sounds], ["sound_pack_folder", sound_pack_folder], ["music_pack_folder", music_pack_folder]]:
 		if pair[1] != null:
 			config.set_value("audio", pair[0], pair[1])
-
-	return config.save(path)
-
-
-static func save_original_compatibility(enabled: bool, path := SETTINGS_PATH) -> Error:
-	var config := ConfigFile.new()
-
-	if FileAccess.file_exists(path):
-		config.load(path)
-
-	config.set_value("simulation", "original_compatibility", enabled)
 
 	return config.save(path)
 

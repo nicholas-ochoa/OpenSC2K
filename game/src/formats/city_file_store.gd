@@ -3,12 +3,12 @@ extends RefCounted
 
 
 static func save_copy(
-	document: Sc2File, requested_path: String, reference_root: String, original_compatibility := false
+	document: Sc2File, requested_path: String, reference_root: String
 ) -> FileWriteResult:
 	if document == null:
 		return FileWriteResult.failure("No city is loaded.")
 
-	var compatibility_error := OriginalCompatibility.save_error(document, requested_path, original_compatibility)
+	var compatibility_error := OriginalCompatibility.save_error(document, requested_path)
 
 	if not compatibility_error.is_empty():
 		return FileWriteResult.failure(compatibility_error)

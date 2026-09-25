@@ -32,22 +32,15 @@ columns = 2
 
 [node name="DefaultMayorNameLabel" type="Label" parent="Tabs/General/Fields"]
 layout_mode = 2
-text = "Default mayor name"
+text = "Mayor name"
 
 [node name="DefaultMayorEdit" type="LineEdit" parent="Tabs/General/Fields"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
+tooltip_text = "The mayor name for new cities."
 placeholder_text = "Mayor"
 max_length = 23
-
-[node name="MayorHintSpacer" type="Label" parent="Tabs/General/Fields"]
-layout_mode = 2
-
-[node name="MayorHint" type="Label" parent="Tabs/General/Fields"]
-layout_mode = 2
-text = "Used as the mayor name for new cities."
-theme_type_variation = "HelpLabel"
 
 [node name="ThemeLabel" type="Label" parent="Tabs/General/Fields"]
 layout_mode = 2
@@ -56,6 +49,7 @@ text = "Theme"
 [node name="ThemeSelector" type="OptionButton" parent="Tabs/General/Fields"]
 unique_name_in_owner = true
 layout_mode = 2
+tooltip_text = "Use light or dark colors for menus and windows."
 item_count = 2
 selected = 0
 popup/item_0/text = "Light Theme"
@@ -94,24 +88,8 @@ layout_mode = 2
 [node name="FullscreenCheck" type="CheckBox" parent="Tabs/General/Fields"]
 unique_name_in_owner = true
 layout_mode = 2
+tooltip_text = "Run the game in full screen mode when enabled, otherwise run in a resizable window."
 text = "Fullscreen"
-
-[node name="DarkUndergroundSpacer" type="Control" parent="Tabs/General/Fields"]
-layout_mode = 2
-
-[node name="DarkUndergroundCheck" type="CheckBox" parent="Tabs/General/Fields"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Dark underground view"
-
-[node name="UndergroundHintSpacer" type="Control" parent="Tabs/General/Fields"]
-layout_mode = 2
-
-[node name="UndergroundHint" type="Label" parent="Tabs/General/Fields"]
-layout_mode = 2
-theme_type_variation = &"HelpLabel"
-text = "Use a dark background and brighter underground lines."
-autowrap_mode = 2
 
 [node name="UpdatesSpacer" type="Control" parent="Tabs/General/Fields"]
 layout_mode = 2
@@ -171,25 +149,25 @@ columns = 2
 
 [node name="MusicVolumeLabel" type="Label" parent="Tabs/Audio/Content/PackFields"]
 layout_mode = 2
-text = "Music Volume"
-horizontal_alignment = 2
+text = "Music"
 vertical_alignment = 1
 
 [node name="MusicSlider" type="HSlider" parent="Tabs/Audio/Content/PackFields"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(250, 32)
 layout_mode = 2
+tooltip_text = "The volume of the music."
 
 [node name="SoundEffectsVolumeLabel" type="Label" parent="Tabs/Audio/Content/PackFields"]
 layout_mode = 2
-text = "Sound Effects Volume"
-horizontal_alignment = 2
+text = "Sound Effects"
 vertical_alignment = 1
 
 [node name="EffectsSlider" type="HSlider" parent="Tabs/Audio/Content/PackFields"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(250, 32)
 layout_mode = 2
+tooltip_text = "The volume of the sound effects."
 
 [node name="ShuffleSpacer" type="Label" parent="Tabs/Audio/Content/PackFields"]
 layout_mode = 2
@@ -197,6 +175,7 @@ layout_mode = 2
 [node name="BackgroundAudioCheck" type="CheckBox" parent="Tabs/Audio/Content/PackFields"]
 unique_name_in_owner = true
 layout_mode = 2
+tooltip_text = "Continue to play music and sounds when OpenSC2K is not the active window."
 text = "Play music and sounds in background"
 
 [node name="ToolbarSoundSpacer" type="Label" parent="Tabs/Audio/Content/PackFields"]
@@ -205,8 +184,9 @@ layout_mode = 2
 [node name="ToolbarSoundsCheck" type="CheckBox" parent="Tabs/Audio/Content/PackFields"]
 unique_name_in_owner = true
 layout_mode = 2
+tooltip_text = "Play a click sound when you select a toolbar or main menu button."
 button_pressed = true
-text = "Play toolbar sounds"
+text = "Play interface sounds"
 
 [node name="BackgroundAudioSpacer" type="Label" parent="Tabs/Audio/Content/PackFields"]
 layout_mode = 2
@@ -232,6 +212,7 @@ layout_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
+tooltip_text = "The pack.json file of a sound pack. Leave this empty to use the imported sound pack."
 placeholder_text = "Automatic (user://packs/sound/pack.json)"
 
 [node name="SoundBrowse" type="Button" parent="Tabs/Audio/Content/PackFields/SoundPackControls/BrowseRow"]
@@ -265,6 +246,7 @@ layout_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
+tooltip_text = "The pack.json file of a music pack. Leave this empty to use the imported music pack."
 placeholder_text = "Automatic (user://packs/music/pack.json)"
 
 [node name="MusicBrowse" type="Button" parent="Tabs/Audio/Content/PackFields/MusicPackControls/BrowseRow"]
@@ -294,172 +276,177 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 16
 
-[node name="Fields" type="GridContainer" parent="Tabs/Graphics/Content"]
-layout_mode = 2
-theme_override_constants/h_separation = 12
-theme_override_constants/v_separation = 14
-columns = 4
-
-[node name="Scale10ZoomLabel" type="Label" parent="Tabs/Graphics/Content/Fields"]
-layout_mode = 2
-text = "10% zoom"
-
-[node name="OverviewGraphicsSelectorGroup" type="HBoxContainer" parent="Tabs/Graphics/Content/Fields"]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="OverviewGraphicsSelector" type="OptionButton" parent="Tabs/Graphics/Content/Fields/OverviewGraphicsSelectorGroup"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-tooltip_text = "Graphics size for the 10% overview."
-selected = 0
-item_count = 3
-popup/item_0/text = "Small"
-popup/item_0/id = 0
-popup/item_1/text = "Medium"
-popup/item_1/id = 1
-popup/item_2/text = "Large"
-popup/item_2/id = 2
-
-[node name="Scale200ZoomLabel" type="Label" parent="Tabs/Graphics/Content/Fields"]
-layout_mode = 2
-text = "200% zoom"
-
-[node name="Zoom200Group" type="HBoxContainer" parent="Tabs/Graphics/Content/Fields"]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="Zoom200" type="OptionButton" parent="Tabs/Graphics/Content/Fields/Zoom200Group"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-tooltip_text = "Higher zoom levels must use the same graphics size or a larger size."
-selected = 0
-item_count = 3
-popup/item_0/text = "Small"
-popup/item_0/id = 0
-popup/item_1/text = "Medium"
-popup/item_1/id = 1
-popup/item_2/text = "Large"
-popup/item_2/id = 2
-
-[node name="Scale25ZoomLabel" type="Label" parent="Tabs/Graphics/Content/Fields"]
-layout_mode = 2
-text = "25% zoom"
-
-[node name="Zoom25Group" type="HBoxContainer" parent="Tabs/Graphics/Content/Fields"]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="Zoom25" type="OptionButton" parent="Tabs/Graphics/Content/Fields/Zoom25Group"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-tooltip_text = "Higher zoom levels must use the same graphics size or a larger size."
-selected = 0
-item_count = 3
-popup/item_0/text = "Small"
-popup/item_0/id = 0
-popup/item_1/text = "Medium"
-popup/item_1/id = 1
-popup/item_2/text = "Large"
-popup/item_2/id = 2
-
-[node name="Scale300ZoomLabel" type="Label" parent="Tabs/Graphics/Content/Fields"]
-layout_mode = 2
-text = "300% zoom"
-
-[node name="Zoom300Group" type="HBoxContainer" parent="Tabs/Graphics/Content/Fields"]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="Zoom300" type="OptionButton" parent="Tabs/Graphics/Content/Fields/Zoom300Group"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-tooltip_text = "Higher zoom levels must use the same graphics size or a larger size."
-selected = 0
-item_count = 3
-popup/item_0/text = "Small"
-popup/item_0/id = 0
-popup/item_1/text = "Medium"
-popup/item_1/id = 1
-popup/item_2/text = "Large"
-popup/item_2/id = 2
-
-[node name="Scale50ZoomLabel" type="Label" parent="Tabs/Graphics/Content/Fields"]
-layout_mode = 2
-text = "50% zoom"
-
-[node name="Zoom50Group" type="HBoxContainer" parent="Tabs/Graphics/Content/Fields"]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="Zoom50" type="OptionButton" parent="Tabs/Graphics/Content/Fields/Zoom50Group"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-tooltip_text = "Higher zoom levels must use the same graphics size or a larger size."
-selected = 0
-item_count = 3
-popup/item_0/text = "Small"
-popup/item_0/id = 0
-popup/item_1/text = "Medium"
-popup/item_1/id = 1
-popup/item_2/text = "Large"
-popup/item_2/id = 2
-
-[node name="Scale400ZoomLabel" type="Label" parent="Tabs/Graphics/Content/Fields"]
-layout_mode = 2
-text = "400% zoom"
-
-[node name="Zoom400Group" type="HBoxContainer" parent="Tabs/Graphics/Content/Fields"]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="Zoom400" type="OptionButton" parent="Tabs/Graphics/Content/Fields/Zoom400Group"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-tooltip_text = "Higher zoom levels must use the same graphics size or a larger size."
-selected = 0
-item_count = 3
-popup/item_0/text = "Small"
-popup/item_0/id = 0
-popup/item_1/text = "Medium"
-popup/item_1/id = 1
-popup/item_2/text = "Large"
-popup/item_2/id = 2
-
-[node name="Scale100ZoomLabel" type="Label" parent="Tabs/Graphics/Content/Fields"]
-layout_mode = 2
-text = "100% zoom"
-
-[node name="Zoom100Group" type="HBoxContainer" parent="Tabs/Graphics/Content/Fields"]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="Zoom100" type="OptionButton" parent="Tabs/Graphics/Content/Fields/Zoom100Group"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-tooltip_text = "Higher zoom levels must use the same graphics size or a larger size."
-selected = 0
-item_count = 3
-popup/item_0/text = "Small"
-popup/item_0/id = 0
-popup/item_1/text = "Medium"
-popup/item_1/id = 1
-popup/item_2/text = "Large"
-popup/item_2/id = 2
-
 [node name="PackFields" type="GridContainer" parent="Tabs/Graphics/Content"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/h_separation = 14
 theme_override_constants/v_separation = 14
 columns = 2
+
+[node name="GraphicsSizeLabel" type="Label" parent="Tabs/Graphics/Content/PackFields"]
+layout_mode = 2
+size_flags_vertical = 0
+text = "Graphics Size"
+
+[node name="Fields" type="GridContainer" parent="Tabs/Graphics/Content/PackFields"]
+layout_mode = 2
+theme_override_constants/h_separation = 14
+theme_override_constants/v_separation = 14
+columns = 4
+
+[node name="Scale10ZoomLabel" type="Label" parent="Tabs/Graphics/Content/PackFields/Fields"]
+layout_mode = 2
+text = "10%"
+
+[node name="OverviewGraphicsSelectorGroup" type="HBoxContainer" parent="Tabs/Graphics/Content/PackFields/Fields"]
+layout_mode = 2
+
+[node name="OverviewGraphicsSelector" type="OptionButton" parent="Tabs/Graphics/Content/PackFields/Fields/OverviewGraphicsSelectorGroup"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+tooltip_text = "The graphics size at 10% zoom. Larger graphics show more detail.
+Higher zoom levels cannot use a smaller size."
+selected = 0
+item_count = 3
+popup/item_0/text = "Small"
+popup/item_0/id = 0
+popup/item_1/text = "Medium"
+popup/item_1/id = 1
+popup/item_2/text = "Large"
+popup/item_2/id = 2
+
+[node name="Scale200ZoomLabel" type="Label" parent="Tabs/Graphics/Content/PackFields/Fields"]
+layout_mode = 2
+text = "200%"
+
+[node name="Zoom200Group" type="HBoxContainer" parent="Tabs/Graphics/Content/PackFields/Fields"]
+layout_mode = 2
+
+[node name="Zoom200" type="OptionButton" parent="Tabs/Graphics/Content/PackFields/Fields/Zoom200Group"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+tooltip_text = "The graphics size at 200% zoom. Larger graphics show more detail.
+This size cannot be smaller than the size at 100% zoom."
+selected = 0
+item_count = 3
+popup/item_0/text = "Small"
+popup/item_0/id = 0
+popup/item_1/text = "Medium"
+popup/item_1/id = 1
+popup/item_2/text = "Large"
+popup/item_2/id = 2
+
+[node name="Scale25ZoomLabel" type="Label" parent="Tabs/Graphics/Content/PackFields/Fields"]
+layout_mode = 2
+text = "25%"
+
+[node name="Zoom25Group" type="HBoxContainer" parent="Tabs/Graphics/Content/PackFields/Fields"]
+layout_mode = 2
+
+[node name="Zoom25" type="OptionButton" parent="Tabs/Graphics/Content/PackFields/Fields/Zoom25Group"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+tooltip_text = "The graphics size at 25% zoom. Larger graphics show more detail.
+This size cannot be smaller than the size at 10% zoom."
+selected = 0
+item_count = 3
+popup/item_0/text = "Small"
+popup/item_0/id = 0
+popup/item_1/text = "Medium"
+popup/item_1/id = 1
+popup/item_2/text = "Large"
+popup/item_2/id = 2
+
+[node name="Scale300ZoomLabel" type="Label" parent="Tabs/Graphics/Content/PackFields/Fields"]
+layout_mode = 2
+text = "300%"
+
+[node name="Zoom300Group" type="HBoxContainer" parent="Tabs/Graphics/Content/PackFields/Fields"]
+layout_mode = 2
+
+[node name="Zoom300" type="OptionButton" parent="Tabs/Graphics/Content/PackFields/Fields/Zoom300Group"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+tooltip_text = "The graphics size at 300% zoom. Larger graphics show more detail.
+This size cannot be smaller than the size at 200% zoom."
+selected = 0
+item_count = 3
+popup/item_0/text = "Small"
+popup/item_0/id = 0
+popup/item_1/text = "Medium"
+popup/item_1/id = 1
+popup/item_2/text = "Large"
+popup/item_2/id = 2
+
+[node name="Scale50ZoomLabel" type="Label" parent="Tabs/Graphics/Content/PackFields/Fields"]
+layout_mode = 2
+text = "50%"
+
+[node name="Zoom50Group" type="HBoxContainer" parent="Tabs/Graphics/Content/PackFields/Fields"]
+layout_mode = 2
+
+[node name="Zoom50" type="OptionButton" parent="Tabs/Graphics/Content/PackFields/Fields/Zoom50Group"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+tooltip_text = "The graphics size at 50% zoom. Larger graphics show more detail.
+This size cannot be smaller than the size at 25% zoom."
+selected = 0
+item_count = 3
+popup/item_0/text = "Small"
+popup/item_0/id = 0
+popup/item_1/text = "Medium"
+popup/item_1/id = 1
+popup/item_2/text = "Large"
+popup/item_2/id = 2
+
+[node name="Scale400ZoomLabel" type="Label" parent="Tabs/Graphics/Content/PackFields/Fields"]
+layout_mode = 2
+text = "400%"
+
+[node name="Zoom400Group" type="HBoxContainer" parent="Tabs/Graphics/Content/PackFields/Fields"]
+layout_mode = 2
+
+[node name="Zoom400" type="OptionButton" parent="Tabs/Graphics/Content/PackFields/Fields/Zoom400Group"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+tooltip_text = "The graphics size at 400% zoom. Larger graphics show more detail.
+This size cannot be smaller than the size at 300% zoom."
+selected = 0
+item_count = 3
+popup/item_0/text = "Small"
+popup/item_0/id = 0
+popup/item_1/text = "Medium"
+popup/item_1/id = 1
+popup/item_2/text = "Large"
+popup/item_2/id = 2
+
+[node name="Scale100ZoomLabel" type="Label" parent="Tabs/Graphics/Content/PackFields/Fields"]
+layout_mode = 2
+text = "100%"
+
+[node name="Zoom100Group" type="HBoxContainer" parent="Tabs/Graphics/Content/PackFields/Fields"]
+layout_mode = 2
+
+[node name="Zoom100" type="OptionButton" parent="Tabs/Graphics/Content/PackFields/Fields/Zoom100Group"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+tooltip_text = "The graphics size at 100% zoom. Larger graphics show more detail.
+This size cannot be smaller than the size at 50% zoom."
+selected = 0
+item_count = 3
+popup/item_0/text = "Small"
+popup/item_0/id = 0
+popup/item_1/text = "Medium"
+popup/item_1/id = 1
+popup/item_2/text = "Large"
+popup/item_2/id = 2
 
 [node name="GraphicsPackLabel" type="Label" parent="Tabs/Graphics/Content/PackFields"]
 layout_mode = 2
@@ -476,6 +463,7 @@ layout_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
+tooltip_text = "The pack.json file of a graphics pack. Leave this empty to use the imported graphics pack."
 placeholder_text = "Automatic (user://packs/graphics/pack.json)"
 
 [node name="GraphicsBrowse" type="Button" parent="Tabs/Graphics/Content/PackFields/GraphicsPackControls/BrowseRow"]
@@ -493,6 +481,16 @@ layout_mode = 2
 clip_text = true
 text_overrun_behavior = 3
 theme_type_variation = "HelpLabel"
+
+[node name="DarkUndergroundSpacer" type="Control" parent="Tabs/Graphics/Content/PackFields"]
+layout_mode = 2
+
+[node name="DarkUndergroundCheck" type="CheckBox" parent="Tabs/Graphics/Content/PackFields"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Show the underground view on a dark background,
+with brighter lines for pipes, water mains, and subways."
+text = "Dark underground view"
 
 [node name="Import Data" type="ScrollContainer" parent="Tabs"]
 horizontal_scroll_mode = 0
@@ -515,6 +513,7 @@ text = "Original Data"
 [node name="ImportButton" type="Button" parent="Tabs/Import Data/Fields"]
 unique_name_in_owner = true
 layout_mode = 2
+tooltip_text = "Select SIMCITY.EXE to import the graphics, sounds, and music of your SimCity 2000 copy."
 text = "Import SimCity 2000..."
 
 [node name="ImportHintSpacer" type="Control" parent="Tabs/Import Data/Fields"]
@@ -526,52 +525,3 @@ size_flags_horizontal = 3
 text = "Import graphics, sounds and music from your SimCity 2000 game files. Choose all asset types or import one type. Each import creates separate packs."
 autowrap_mode = 3
 theme_type_variation = "HelpLabel"
-
-[node name="Compatibility" type="ScrollContainer" parent="Tabs"]
-horizontal_scroll_mode = 0
-visible = false
-layout_mode = 2
-theme_override_constants/separation = 16
-metadata/_tab_index = 4
-
-[node name="Fields" type="GridContainer" parent="Tabs/Compatibility"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/h_separation = 14
-theme_override_constants/v_separation = 14
-
-[node name="OriginalCompatibilityCheck" type="CheckBox" parent="Tabs/Compatibility/Fields"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Keep compatibility with original SimCity 2000"
-
-[node name="HintMargin" type="MarginContainer" parent="Tabs/Compatibility/Fields"]
-layout_mode = 2
-theme_override_constants/margin_left = 24
-
-[node name="CompatibilityHint" type="Label" parent="Tabs/Compatibility/Fields/HintMargin"]
-custom_minimum_size = Vector2(560, 0)
-layout_mode = 2
-text = "• Use original SC2 cities and SCN scenarios.
-• New cities use the original 128 × 128 map and data grids.
-• Larger maps and per-tile data maps are disabled.
-• Fire uses the original update timing.
-• Opening an SC2X city turns this option off automatically.
-• SC2X cities cannot return to original compatibility.
-• Graphics, audio, and interface improvements remain available."
-autowrap_mode = 3
-theme_type_variation = "HelpLabel"
-
-[node name="WarnSc2xConversionCheck" type="CheckBox" parent="Tabs/Compatibility/Fields"]
-unique_name_in_owner = true
-layout_mode = 2
-button_pressed = true
-text = "Warn before converting an SC2 city to SC2X"
-
-[node name="CompatibilityErrorLabel" type="Label" parent="Tabs/Compatibility/Fields"]
-unique_name_in_owner = true
-visible = false
-custom_minimum_size = Vector2(560, 0)
-layout_mode = 2
-autowrap_mode = 3
-theme_type_variation = "ErrorLabel"

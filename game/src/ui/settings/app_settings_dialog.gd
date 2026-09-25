@@ -7,9 +7,6 @@ signal import_original_requested
 signal update_check_requested
 
 var pack_error_label: Label
-var original_compatibility_check: CheckBox
-var warn_sc2x_conversion_check: CheckBox
-var compatibility_error_label: Label
 var shuffle_music_check: CheckBox
 var toolbar_sounds_check: CheckBox
 var sound_pack_edit: LineEdit
@@ -54,7 +51,6 @@ func _ready() -> void:
 	check_for_updates_check = %CheckForUpdatesCheck
 	check_updates_now_button = %CheckUpdatesNowButton
 	update_status_label = %UpdateStatusLabel
-	compatibility_error_label = %CompatibilityErrorLabel
 	default_mayor_edit = %DefaultMayorEdit
 	theme_selector = %ThemeSelector
 	translucent_menus_check = %TranslucentMenusCheck
@@ -64,7 +60,6 @@ func _ready() -> void:
 	fullscreen_check = %FullscreenCheck
 	music_pack_edit = %MusicPackEdit
 	music_slider = %MusicSlider
-	original_compatibility_check = %OriginalCompatibilityCheck
 
 	overview_graphics_selector = %OverviewGraphicsSelector
 	pack_error_label = %PackErrorLabel
@@ -73,7 +68,6 @@ func _ready() -> void:
 	sound_pack_edit = %SoundPackEdit
 	tabs = %Tabs
 	toolbar_sounds_check = %ToolbarSoundsCheck
-	warn_sc2x_conversion_check = %WarnSc2xConversionCheck
 	folder_row = folder_edit.get_parent() as HBoxContainer
 	zoom_graphics_selectors = [%Zoom25, %Zoom50, %Zoom100, %Zoom200, %Zoom300, %Zoom400]
 
@@ -137,8 +131,7 @@ func show_values(
 	source := "auto", folder := "", city_renderer := "gpu", background_audio := false, zoom_graphics: Array = AppSettingsStore.DEFAULT_ZOOM_GRAPHICS,
 ) -> void:
 	pack_error_label.hide()
-	compatibility_error_label.hide()
-	var normalized := AppSettingsStore.normalize_zoom_graphics(zoom_graphics)
+	var normalized := AppSettingsStore.normalize_zoom_graphics(zoom_graphics, overview_graphics_selector.selected)
 
 	for index in zoom_graphics_selectors.size():
 		zoom_graphics_selectors[index].select(normalized[index])
@@ -160,8 +153,6 @@ func selected_values() -> AppSettingsStore.Values:
 	result.ui_theme = "dark" if theme_selector.selected == 1 else "light"
 	result.translucent_menus = translucent_menus_check.button_pressed
 	result.overview_graphics = overview_graphics_selector.selected
-	result.original_compatibility = original_compatibility_check.button_pressed
-	result.warn_sc2x_conversion = warn_sc2x_conversion_check.button_pressed
 	result.toolbar_sounds = toolbar_sounds_check.button_pressed
 	result.shuffle_music = shuffle_music_check.button_pressed
 	result.sound_pack_folder = sound_pack_edit.text.strip_edges()
@@ -186,7 +177,7 @@ func _selected_zoom_graphics() -> Array[int]:
 	for selector in zoom_graphics_selectors:
 		sizes.append(selector.selected)
 
-	return AppSettingsStore.normalize_zoom_graphics(sizes)
+	return AppSettingsStore.normalize_zoom_graphics(sizes, overview_graphics_selector.selected)
 
 
 func _update_zoom_graphics_choices() -> void:
@@ -197,7 +188,7 @@ func _update_zoom_graphics_choices() -> void:
 		selector.select(sizes[index])
 
 		for size_index in AppSettingsStore.GRAPHICS_SIZES.size():
-			selector.set_item_disabled(size_index, index > 0 and size_index < sizes[index - 1])
+			selector.set_item_disabled(size_index, size_index < (sizes[index - 1] if index > 0 else overview_graphics_selector.selected))
 
 
 func _bind_pack_controls(kind: String, edit: LineEdit, label: Label, browse: Button) -> void:
@@ -256,10 +247,3 @@ func _pack_picker(kind: String, edit: LineEdit) -> FileDialog:
 		edit.text = path)
 
 	return picker
-
-
-func show_compatibility_error(message: String) -> void:
-	compatibility_error_label.text = message
-	compatibility_error_label.show()
-	tabs.current_tab = 4
-	call_deferred("popup_centered")

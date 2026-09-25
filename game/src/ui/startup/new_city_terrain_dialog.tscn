@@ -73,6 +73,7 @@ size_flags_horizontal = 3
 [node name="CityNameInput" type="LineEdit" parent="Center/NewCityDialog/Content/Body/Fields/CityFields/CityNameRow"]
 layout_mode = 2
 size_flags_horizontal = 3
+tooltip_text = "The name of the city."
 max_length = 30
 
 [node name="RandomName" type="Button" parent="Center/NewCityDialog/Content/Body/Fields/CityFields/CityNameRow"]
@@ -80,7 +81,7 @@ layout_mode = 2
 script = ExtResource("3_refresh")
 custom_minimum_size = Vector2(28, 0)
 icon_alignment = 1
-tooltip_text = "Generate a random city name"
+tooltip_text = "Make a random city name."
 
 [node name="MayorNameLabel" type="Label" parent="Center/NewCityDialog/Content/Body/Fields/CityFields"]
 layout_mode = 2
@@ -91,6 +92,7 @@ vertical_alignment = 1
 [node name="MayorNameInput" type="LineEdit" parent="Center/NewCityDialog/Content/Body/Fields/CityFields"]
 layout_mode = 2
 size_flags_horizontal = 3
+tooltip_text = "The name of the mayor."
 max_length = 23
 
 [node name="DifficultyLabel" type="Label" parent="Center/NewCityDialog/Content/Body/Fields/CityFields"]
@@ -102,6 +104,7 @@ vertical_alignment = 1
 [node name="DifficultyInput" type="OptionButton" parent="Center/NewCityDialog/Content/Body/Fields/CityFields"]
 layout_mode = 2
 size_flags_horizontal = 3
+tooltip_text = "The money at the start. Difficulty also sets the national economy."
 selected = 0
 item_count = 3
 popup/item_0/text = "Easy — $20,000"
@@ -120,6 +123,7 @@ vertical_alignment = 1
 [node name="YearInput" type="OptionButton" parent="Center/NewCityDialog/Content/Body/Fields/CityFields"]
 layout_mode = 2
 size_flags_horizontal = 3
+tooltip_text = "The first year of the city. The year sets the buildings and inventions that you can use."
 selected = 0
 item_count = 4
 popup/item_0/text = "1900"
@@ -139,7 +143,8 @@ vertical_alignment = 1
 
 [node name="SizeInput" type="OptionButton" parent="Center/NewCityDialog/Content/Body/Fields/CityFields"]
 layout_mode = 2
-tooltip_text = "Sizes other than 128 × 128 use .sc2x files. They cannot open in the original game."
+tooltip_text = "The number of tiles on each side of the map.
+SimCity 2000 compatibility uses only 128 × 128."
 selected = 3
 item_count = 7
 popup/item_0/text = "16 × 16"
@@ -156,15 +161,6 @@ popup/item_5/text = "384 × 384"
 popup/item_5/id = 384
 popup/item_6/text = "512 × 512"
 popup/item_6/id = 512
-
-[node name="NativeMapsSpacer" type="Control" parent="Center/NewCityDialog/Content/Body/Fields/CityFields"]
-layout_mode = 2
-
-[node name="NativeMapsInput" type="CheckBox" parent="Center/NewCityDialog/Content/Body/Fields/CityFields"]
-layout_mode = 2
-tooltip_text = "Calculate land value, pollution, crime, traffic and services for each tile. Uses SC2X saves, which the original game cannot open."
-button_pressed = true
-text = "Per-tile data maps"
 
 [node name="TerrainDivider" type="HSeparator" parent="Center/NewCityDialog/Content/Body/Fields"]
 layout_mode = 2
@@ -347,6 +343,7 @@ autowrap_mode = 3
 
 [node name="Regenerate" type="Button" parent="Center/NewCityDialog/Content/Body/Preview"]
 layout_mode = 2
+tooltip_text = "Make new terrain with the same settings."
 text = "Regenerate Terrain"
 
 [node name="Buttons" type="HBoxContainer" parent="Center/NewCityDialog/Content"]
@@ -355,6 +352,12 @@ theme_override_constants/separation = 8
 
 [node name="CompatibilityInput" type="CheckBox" parent="Center/NewCityDialog/Content/Buttons"]
 layout_mode = 2
+tooltip_text = "On: make an SC2 city that the original SimCity 2000 can open.
+The map is 128 × 128.
+
+Off: make an SC2X city. The map can use other sizes, and data maps
+such as land value and pollution have one value for each tile.
+The original SimCity 2000 cannot open SC2X cities."
 text = "Maintain SimCity 2000 Compatibility"
 
 [node name="ActionSpacer" type="Control" parent="Center/NewCityDialog/Content/Buttons"]
