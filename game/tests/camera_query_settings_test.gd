@@ -123,11 +123,43 @@ func _run() -> void:
 
 		return
 
+	_test_query_actions(main)
 	main.city_dialogs.query_dialog.close_query()
 	main.queue_free()
 	await process_frame
 	print("PASS: camera momentum, query overview, settings access, Settings renderer and background audio")
 	quit()
+
+
+# Analyze and Ruminate open modal windows above Query. Query and its pending rename stay open.
+func _test_query_actions(main: Node) -> void:
+	var query: CityQueryDialog = main.city_dialogs.query_dialog
+	var action := QueryResult.new()
+	action.kind = "specific"
+	action.action = "city_analysis"
+	main.tool_state.active_query_result = action
+	main.query_choices.run_query_action()
+	assert(main.city_dialogs.analysis_dialog.visible and query.visible, "Analyze keeps Query open below its table")
+	assert(main.frame._simulation_suspended(), "City Analysis suspends the simulation")
+	main.city_dialogs.analysis_dialog.hide()
+	var texts: Dictionary[int, String] = {3000: "One", 3001: "Two", 3002: "Three", 3003: "Four"}
+	main.query_choices.text_resources.library_texts = texts
+	action.action = "library_ruminate"
+	main.query_choices.run_query_action()
+	var library: LibraryRuminateWindows = main.city_dialogs.library_windows
+	assert(library.current_resource_id() == 3000 and query.visible, "Ruminate keeps Query open below the first text")
+	assert(main.frame._simulation_suspended(), "Library text suspends the simulation")
+	var escape := InputEventKey.new()
+	escape.keycode = KEY_ESCAPE
+	escape.pressed = true
+
+	for resource_id in [3001, 3002, 3003]:
+		main.camera_input.unhandled_key_input(escape)
+		assert(library.current_resource_id() == resource_id and query.visible, "Escape closes one Library text")
+
+	library.ok_button.pressed.emit()
+	assert(not library.visible and query.visible, "The last Library text returns to Query")
+	assert(query.rename_is_enabled() and query.facility_name() == "North Police", "Facility actions keep the pending rename")
 
 
 func _test_menu_shortcuts() -> void:

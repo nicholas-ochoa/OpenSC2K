@@ -107,11 +107,35 @@ func _test_main_menu() -> void:
 		3002: "Third",
 		3003: "Fourth",
 	}, Vector2i(1280, 800))
+	var first_height := library_windows.window.size.y
 	_check(
-		library_windows.windows.size() == 4
-		and library_windows.text_views.size() == 4
-		and library_windows.text_views[0].text == "First\nPage",
-		"Library Ruminate container owns its modeless text windows",
+		library_windows.visible
+		and library_windows.current_resource_id() == 3000
+		and library_windows.text_label.text == "First\nPage",
+		"Library Ruminate opens the first text window first",
+	)
+	var shown_ids: Array[int] = []
+
+	while library_windows.visible:
+		shown_ids.append(library_windows.current_resource_id())
+		library_windows.close_page()
+
+	_check(
+		shown_ids == [3000, 3001, 3002, 3003] and library_windows.current_resource_id() == -1,
+		"Library Ruminate shows each text window in turn and closes after the last",
+	)
+	library_windows.show_texts({
+		3000: "Long text ".repeat(400),
+		3001: "Second",
+		3002: "Third",
+		3003: "Fourth",
+	}, Vector2i(1280, 800))
+	_check(
+		library_windows.window.size.y > first_height
+		and Rect2(Vector2.ZERO, Vector2(1280, 800)).encloses(
+			Rect2(library_windows.window.position, library_windows.window.size)
+		),
+		"Library text window grows to fit its text and stays inside the view",
 	)
 	library_windows.free()
 	var route_dialog := RouteConfirmationDialogUi.new()

@@ -75,15 +75,16 @@ func _check_current_classification() -> void:
 		main.city_dialogs.network_connection_dialog, main.city_dialogs.highway_connection_dialog, main.city_dialogs.tunnel_dialog,
 		main.city_dialogs.query_dialog, main.city_dialogs.ordinance_window, main.city_dialogs.building_objection_dialog,
 		main.city_dialogs.scenario_dialog, main.city_dialogs.military_dialog, main.city_dialogs.budget_dialog,
-		main.city_dialogs.notice_dialog, main.city_dialogs.game_over_dialog,
+		main.city_dialogs.notice_dialog, main.city_dialogs.game_over_dialog, main.city_dialogs.analysis_dialog,
+		main.city_dialogs.library_windows,
 		main.main_menu, main.main_overlays.settings_dialog, main.reference_import_dialog, main.main_overlays.save_changes_dialog, main.main_overlays.update_dialog,
 		main.scurk_editor, main.scurk_place_print, main.scurk_print,
 	]
 	var modeless: Array[Node] = [
 		main.city_dialogs.city_open_dialog, main.tile_set_dialog, main.city_dialogs.sign_dialog,
 		main.city_dialogs.graph_window, main.city_dialogs.population_window, main.city_dialogs.industry_window,
-		main.city_dialogs.simnation_window, main.city_dialogs.city_map_window, main.city_dialogs.analysis_dialog,
-		main.city_dialogs.newspaper_dialog, main.city_dialogs.library_windows,
+		main.city_dialogs.simnation_window, main.city_dialogs.city_map_window,
+		main.city_dialogs.newspaper_dialog,
 		main.main_overlays.about_dialog,
 	]
 	var registered_blocking: Array[Node] = main.city_dialogs.blocking_windows + main.main_overlays.blocking_windows

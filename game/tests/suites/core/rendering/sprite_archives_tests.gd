@@ -86,14 +86,17 @@ func test_sprite_archives(reference_root: String) -> void:
 		for resource_id in range(3000, 3004):
 			_check(not str(library_text.strings[resource_id]).is_empty(), "Library text entry %d is not empty" % resource_id)
 
-	var library_rects := LibraryWindowLayout.rects(Vector2i(1280, 800))
-	_check(library_rects.size() == 4, "Library presentation creates four windows")
-
-	for rect in library_rects:
-		_check(
-			Rect2i(Vector2i.ZERO, Vector2i(1280, 800)).encloses(rect),
-			"Library windows stay inside the viewport",
-		)
+	var library_rect := LibraryWindowLayout.rect(Vector2i(1280, 800), Vector2i(480, 300))
+	_check(
+		library_rect == Rect2i(400, 250, 480, 300),
+		"Library text window is centered over the game view",
+	)
+	var tall_rect := LibraryWindowLayout.rect(Vector2i(400, 300), Vector2i(480, 2000))
+	_check(
+		Rect2i(Vector2i.ZERO, Vector2i(400, 300)).encloses(tall_rect)
+		and tall_rect.size == Vector2i(368, 268),
+		"Library text window stays inside a small viewport",
+	)
 
 	_check(
 		not TextUsa.load_ids(

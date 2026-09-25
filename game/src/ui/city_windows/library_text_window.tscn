@@ -16,11 +16,15 @@ theme_override_constants/margin_bottom = 8
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Text" type="TextEdit" parent="Margin/Content"]
+[node name="Scroll" type="ScrollContainer" parent="Margin/Content"]
 layout_mode = 2
 size_flags_vertical = 3
-editable = false
-wrap_mode = 1
+horizontal_scroll_mode = 0
+
+[node name="Text" type="Label" parent="Margin/Content/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3
 
 [node name="Buttons" type="HBoxContainer" parent="Margin/Content"]
 layout_mode = 2

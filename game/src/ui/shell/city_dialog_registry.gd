@@ -148,12 +148,12 @@ func _create_information_windows() -> void:
 	ordinance_window = OrdinanceWindowView.instantiate()
 	_register(ordinance_window, "CityWindows", Modality.BLOCKING)
 	analysis_dialog = AnalysisDialogView.instantiate()
-	_register(analysis_dialog, "CityWindows", Modality.MODELESS)
+	_register(analysis_dialog, "CityWindows", Modality.BLOCKING)
 	newspaper_dialog = NewspaperDialogView.new()
 	_register(newspaper_dialog, "CityWindows", Modality.MODELESS)
 	newspaper_dialog.set_control_graphics(original_assets.city_ui_graphics)
 	library_windows = LibraryWindowsView.new()
-	_register(library_windows, "CityWindows", Modality.MODELESS)
+	_register(library_windows, "CityWindows", Modality.BLOCKING)
 
 
 func _create_event_dialogs() -> void:

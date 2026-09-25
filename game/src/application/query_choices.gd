@@ -257,14 +257,12 @@ func close_query(commit_rename := false) -> bool:
 	return true
 
 
+# the original keeps Query open below the action window
 func run_query_action() -> void:
-	if app.document_state.city == null:
+	if app.document_state.city == null or app.tool_state.active_query_result == null:
 		return
 
-	if not close_query(true):
-		return
-
-	match app.tool_state.active_query_result.action if app.tool_state.active_query_result != null else "":
+	match str(app.tool_state.active_query_result.action):
 		"city_analysis":
 			var analysis := QueryFacilityActions.city_analysis(app.document_state.city)
 

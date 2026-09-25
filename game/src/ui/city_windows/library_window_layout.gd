@@ -3,33 +3,27 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
-const WINDOW_SIZE := Vector2i(480, 300)
-const CASCADE_STEP := Vector2i(28, 28)
+const WINDOW_WIDTH := 480
 const VIEWPORT_MARGIN := 16
 
 
-static func rects(viewport_size: Vector2i, count := 4) -> Array[Rect2i]:
-	var result: Array[Rect2i] = []
+static func window_width(viewport_size: Vector2i) -> int:
+	return mini(WINDOW_WIDTH, maxi(1, viewport_size.x - VIEWPORT_MARGIN * 2))
 
-	if count <= 0 or viewport_size.x <= 0 or viewport_size.y <= 0:
-		return result
 
-	var cascade_size := CASCADE_STEP * (count - 1)
-	var available_size := Vector2i(
-		maxi(1, viewport_size.x - VIEWPORT_MARGIN * 2 - cascade_size.x),
-		maxi(1, viewport_size.y - VIEWPORT_MARGIN * 2 - cascade_size.y),
+static func max_window_height(viewport_size: Vector2i) -> int:
+	return maxi(1, viewport_size.y - VIEWPORT_MARGIN * 2)
+
+
+# the original centers each text window over the game window
+static func rect(viewport_size: Vector2i, window_size: Vector2i) -> Rect2i:
+	var size := Vector2i(
+		clampi(window_size.x, 1, window_width(viewport_size)),
+		clampi(window_size.y, 1, max_window_height(viewport_size)),
 	)
-	var window_size := Vector2i(
-		mini(WINDOW_SIZE.x, available_size.x),
-		mini(WINDOW_SIZE.y, available_size.y),
-	)
-	var group_size := window_size + cascade_size
-	var start := Vector2i(
-		maxi(VIEWPORT_MARGIN, (viewport_size.x - group_size.x) / 2),
-		maxi(VIEWPORT_MARGIN, (viewport_size.y - group_size.y) / 2),
+	var position := Vector2i(
+		maxi(0, (viewport_size.x - size.x) / 2),
+		maxi(0, (viewport_size.y - size.y) / 2),
 	)
 
-	for index in count:
-		result.append(Rect2i(start + CASCADE_STEP * index, window_size))
-
-	return result
+	return Rect2i(position, size)

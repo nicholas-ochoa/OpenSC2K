@@ -111,7 +111,10 @@ func unhandled_key_input(event: InputEvent) -> void:
 		app.get_viewport().set_input_as_handled()
 		return
 
-	if event.keycode == KEY_ESCAPE and app.city_dialogs.query_dialog != null and app.city_dialogs.query_dialog.visible:
+	if event.keycode == KEY_ESCAPE and app.city_dialogs.library_windows != null and app.city_dialogs.library_windows.visible:
+		app.city_dialogs.library_windows.close_page()
+		app.get_viewport().set_input_as_handled()
+	elif event.keycode == KEY_ESCAPE and app.city_dialogs.query_dialog != null and app.city_dialogs.query_dialog.visible:
 		app.query_choices.close_query(false)
 		app.get_viewport().set_input_as_handled()
 	elif event.keycode == KEY_ESCAPE and app.city_dialogs.new_city_dialog != null and app.city_dialogs.new_city_dialog.visible:
