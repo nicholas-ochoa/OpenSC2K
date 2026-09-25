@@ -19,7 +19,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 	if not bounds.has_area():
 		return CityGpuRegionResult.failed("empty GPU region")
 
-	var limit := Renderer.maximum_sprite_size(sprites)
+	var limit := context.sprite_limit(sprites, configuration)
 	var previous_builds := context.tile_builds
 	var previous_reuses := context.tile_reuses
 	var span := Renderer.region_tile_span(configuration, limit, bounds, city.map_size, mode == CityViewMode.Mode.UNDERGROUND)

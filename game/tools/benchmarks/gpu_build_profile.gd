@@ -38,17 +38,19 @@ class ProfiledContext extends CityGpuBuildContext:
 
 
 func _benchmark_initialize() -> void:
-	var city := CityState.from_document(Sc2File.load_path(large_city_path(512)))
-	var sprites := Sc2SpriteArchive.load_path(reference_path("DATA/LARGE.DAT"))
+	var city := CityState.from_document(Sc2File.load_path(input_path(large_city_path(512))))
+	var view := int(OS.get_environment("CITY_BENCH_ARTWORK")) if OS.has_environment("CITY_BENCH_ARTWORK") else 2
+	var sprites := Sc2SpriteArchive.load_path(reference_path("DATA/LARGE.DAT")) if view == 2 else Sc2SpriteArchive.combine([
+		Sc2SpriteArchive.load_path(reference_path("DATA/SMALLMED.DAT")), Sc2SpriteArchive.load_path(reference_path("DATA/SPECIAL.DAT"))])
 	var palette := Sc2Palette.index_encoding()
 	var context := ProfiledContext.new()
-	var center := (CityIsometricRenderer.output_size_for_view(2, 512) / 2) / 256
+	var center := (CityIsometricRenderer.output_size_for_view(view, city.map_size) / 2) / 256
 	var began := Time.get_ticks_usec()
 	var quads := 0
 
 	for y in range(-4, 4):
 		for x in range(-4, 4):
-			var result := CityGpuRegionRenderer.render(city, palette, sprites, Rect2i((center + Vector2i(x, y)) * 256, Vector2i(256, 256)), 2, CityViewMode.Mode.CITY, true, true, context, 1, -1, false)
+			var result := CityGpuRegionRenderer.render(city, palette, sprites, Rect2i((center + Vector2i(x, y)) * 256, Vector2i(256, 256)), view, CityViewMode.Mode.CITY, true, true, context, 1, -1, false)
 			if not (result.ok):
 				printerr("Benchmark check failed: result.ok")
 				quit(1)
@@ -61,5 +63,5 @@ func _benchmark_initialize() -> void:
 
 static func fixture_paths() -> PackedStringArray:
 	return PackedStringArray([
-		large_city_path(512), reference_path("DATA/LARGE.DAT"),
+		input_path(large_city_path(512)), reference_path("DATA/LARGE.DAT"), reference_path("DATA/SMALLMED.DAT"), reference_path("DATA/SPECIAL.DAT"),
 	])

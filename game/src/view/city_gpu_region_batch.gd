@@ -2,6 +2,7 @@ class_name CityGpuRegionBatch
 extends RefCounted
 
 const MAX_REGIONS := 4
+const BUILD_BUDGET_USEC := 32000
 
 
 class Request extends RefCounted:
@@ -18,6 +19,7 @@ class Request extends RefCounted:
 	var subways := true
 	var water_mains := true
 	var generation := 0
+	var budget_usec := 0
 	var signs: Array[CitySignRequest] = []
 
 
@@ -37,6 +39,7 @@ class Result extends RefCounted:
 
 
 static func build(request: Request, context: CityGpuBuildContext, uploaded_revision: int) -> Result:
+	var batch_started := Time.get_ticks_usec()
 	var display: CityState = request.city if request.prepared else CityViewFilter.surface_copy(request.city, request.visibility)
 	var regions: Array[CityGpuRegionResult] = []
 	var divisor := CityIsometricRenderer.view_configuration(request.view).divisor
@@ -57,6 +60,11 @@ static func build(request: Request, context: CityGpuBuildContext, uploaded_revis
 		result.key = key
 		result.usec = Time.get_ticks_usec() - started
 		regions.append(result)
+
+		# Publish completed geometry before starting another expensive region.
+		# The scheduler will request the remaining keys on its next poll.
+		if request.budget_usec > 0 and Time.get_ticks_usec() - batch_started >= request.budget_usec:
+			break
 
 	# a later region can grow the shared atlas after earlier uvs were built
 	for region in regions:

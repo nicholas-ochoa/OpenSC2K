@@ -75,6 +75,21 @@ func _run() -> void:
 					await _check_gpu_pixels(region, expected.image)
 			assert(CityGpuRegionBatch.build(request, context, batch.atlas_revision).atlas_image == null, "Warm batch uploaded an unchanged atlas")
 
+			# Even a spent budget must complete one region. Resume the omitted
+			# keys with the same atlas and preserve the unrestricted batch output.
+			request.budget_usec = 1
+			var remaining := request.keys.duplicate()
+			for expected_region: CityGpuRegionResult in batch.regions:
+				request.keys = remaining
+				var partial := CityGpuRegionBatch.build(request, context, batch.atlas_revision)
+				assert(partial.ok and partial.regions.size() == 1)
+				assert(partial.regions[0].key == expected_region.key)
+				assert(partial.regions[0].gpu_arrays == expected_region.gpu_arrays)
+				assert(partial.atlas_image == null)
+				remaining = remaining.slice(1)
+			request.budget_usec = 0
+			request.keys = [center, center + Vector2i.ONE, center + Vector2i(2, 0)]
+
 			if view == 2 and mode == CityViewMode.Mode.CITY:
 				request.generation = 4
 				var reused := CityGpuRegionBatch.build(request, context, batch.atlas_revision)

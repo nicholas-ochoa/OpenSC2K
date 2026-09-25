@@ -9,6 +9,7 @@ const OFFSCREEN_LIMIT := 12
 const GPU_OFFSCREEN_LIMIT := 384
 const GPU_PREFETCH_LIMIT := 256
 const GPU_REGION_EDGE := 256
+const GPU_SMALL_REGION_EDGE := 128
 const GPU_WORKERS := 2
 # chunks whose tile data the region renderers read
 const SOURCE_CHUNKS: Array[String] = ["ALTM", "XBLD", "XTER", "XZON", "XBIT", "XTXT", "XUND", "XTRF"]
@@ -93,9 +94,6 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 		new_signature: Array, new_view: int, new_mode: CityViewMode.Mode, visibility: Dictionary,
 		show_pipes: bool, show_subways: bool, dirty := Rect2i(), show_water_mains := true,
 		changed: Array[Rect2i] = [], changes_listed := false) -> void:
-	if _snapshot == null:
-		region_edge = GPU_REGION_EDGE if gpu_enabled else REGION_EDGE
-
 	if (signature == new_signature and view_size == new_view and mode == new_mode and _snapshot != null and _show_pipes == show_pipes
 			and _show_subways == show_subways and _show_water_mains == show_water_mains):
 		return
@@ -137,6 +135,7 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 				entry.generation = generation
 
 	if reset:
+		region_edge = (GPU_SMALL_REGION_EDGE if new_view == 0 else GPU_REGION_EDGE) if gpu_enabled else REGION_EDGE
 		_published_source = null
 		_edit_priority.clear()
 		_foreground_reset = true

@@ -148,7 +148,7 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 		cache._gpu_has_work = true
 
 		if worker.layout != cache._layout_generation:
-			cache.discarded_regions += worker.keys.size()
+			cache.discarded_regions += result.regions.size()
 			continue
 
 		if not result.ok:
@@ -266,24 +266,9 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 		if worker.task != null:
 			continue
 
-		var keys: Array[Vector2i] = []
 		# keep the first result quick. warm workers then run bounded batches
 		var limit := CityGpuRegionBatch.MAX_REGIONS if worker.layout == cache._layout_generation else 1
-
-		for key in queue:
-			if active.has(key) or (cache.entries.has(key) and int(cache.entries[key].generation) == cache.generation):
-				continue
-
-			# keep neighboring wide-view regions on the same worker so their tile
-			# geometry and bounds are prepared once. small views use either worker
-			if not cache._edit_priority.has(key) and cache.visible.size() >= 32 and int(key.x / 8) % cache._gpu_workers.size() != worker_index:
-				continue
-
-			keys.append(key)
-			active[key] = true
-
-			if keys.size() >= limit:
-				break
+		var keys := _claim_gpu_keys(cache, queue, active, worker_index, limit)
 
 		if keys.is_empty():
 			continue
@@ -313,6 +298,7 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 		request.pipes = cache._show_pipes
 		request.subways = cache._show_subways
 		request.generation = cache.generation
+		request.budget_usec = CityGpuRegionBatch.BUILD_BUDGET_USEC
 		request.signs = cache.sign_requests
 		var error: Error = worker.task.start(CityGpuRegionBatch.build.bind(request, worker.context, worker.atlas_revision))
 
@@ -329,6 +315,40 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 			return true
 
 	return changed
+
+
+static func _claim_gpu_keys(cache: CityRegionCache, queue: Array[Vector2i], active: Dictionary,
+		worker_index: int, limit: int) -> Array[Vector2i]:
+	var visible: Array[Vector2i] = []
+	var shared: Array[Vector2i] = []
+	var background: Array[Vector2i] = []
+
+	for key in queue:
+		if active.has(key) or (cache.entries.has(key) and cache.entries[key].generation == cache.generation):
+			continue
+
+		var missing := not cache.entries.has(key) and key in cache.visible
+		var urgent := cache._edit_priority.has(key)
+		# Prefer neighboring regions on the same worker to reuse tile geometry.
+		# An uncovered edge can use both workers before either does background work.
+		if not urgent and cache.visible.size() >= 32 and int(key.x / 8) % cache._gpu_workers.size() != worker_index:
+			if missing:
+				shared.append(key)
+		elif missing or urgent:
+			visible.append(key)
+		else:
+			background.append(key)
+
+	var keys: Array[Vector2i] = []
+	for key in visible + shared + background:
+		if active.has(key):
+			continue
+		keys.append(key)
+		active[key] = true
+		if keys.size() >= limit:
+			break
+
+	return keys
 
 
 static func _gpu_atlas_bytes(cache: CityRegionCache) -> int:

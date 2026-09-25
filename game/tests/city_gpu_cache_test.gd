@@ -117,6 +117,27 @@ func _run() -> void:
 	assert(cache.image_region(bounds).get_data() == underground.image.get_data(), "Surface job overwrote an underground region")
 	revision += 2
 
+	# Artwork changes also change region size. Old jobs must not publish keys
+	# from the previous grid, and local samples must still cross exact borders.
+	var small := Sc2SpriteArchive.combine([Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SMALLMED.DAT"), Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SPECIAL.DAT")])
+	cache.configure(city, palette, sprites, [revision + 1], 2, CityViewMode.Mode.UNDERGROUND, {}, true, true)
+	cache.tick()
+	cache.configure(city, palette, small, [revision + 2], 0, CityViewMode.Mode.CITY, {}, true, true)
+	assert(cache.region_edge == CityRegionCache.GPU_SMALL_REGION_EDGE)
+	var native_bounds := Rect2i(cache.native_size / 2 - Vector2i(60, 40), Vector2i(120, 80))
+	cache.update_viewport(Rect2(native_bounds.position * 4, native_bounds.size * 4))
+	await _drain(cache)
+	var overview := CityRegionRenderer.render(city, palette, small, native_bounds, 0)
+	assert(overview.ok)
+	overview.image.resize(native_bounds.size.x * 4, native_bounds.size.y * 4, Image.INTERPOLATE_NEAREST)
+	assert(cache.image_region(Rect2i(native_bounds.position * 4, native_bounds.size * 4)).get_data() == overview.image.get_data())
+	cache.configure(city, palette, sprites, [revision + 3], 2, CityViewMode.Mode.UNDERGROUND, {}, true, true)
+	assert(cache.region_edge == CityRegionCache.GPU_REGION_EDGE)
+	cache.update_viewport(Rect2(bounds))
+	await _drain(cache)
+	assert(cache.image_region(bounds).get_data() == underground.image.get_data())
+	revision += 3
+
 	# Force GPU preparation to fail and check the CPU fallback.
 	for worker in cache._gpu_workers:
 		worker.context.error = "Test atlas failure"

@@ -39,8 +39,30 @@ func _initialize() -> void:
 	cache.generation += 1
 	assert(cache.covered() and not cache.ready() and not cache.prefetch_ready())
 	cache.close()
+	_check_worker_sharing()
 	print("PASS: bounded wide-view prefetch, reduced holes, retained return coverage and stale revision detection")
 	quit()
+
+
+func _check_worker_sharing() -> void:
+	var cache := CityRegionCache.new()
+	cache.generation = 1
+	cache._gpu_workers = [CityRegionCache.RegionWorker.new(), CityRegionCache.RegionWorker.new()]
+	for x in 32:
+		var key := Vector2i(x, 1)
+		cache.visible.append(key)
+		if x not in [8, 9]:
+			var entry := CityGpuRegionResult.new()
+			entry.generation = cache.generation
+			cache.entries[key] = entry
+	var queue: Array[Vector2i] = [Vector2i(8, 1), Vector2i(9, 1), Vector2i(0, 2)]
+	var active := {}
+	var first := CityRegionScheduling._claim_gpu_keys(cache, queue, active, 0, 1)
+	assert(first == [Vector2i(8, 1)], "A worker must fill visible gaps before its own offscreen regions")
+	var second := CityRegionScheduling._claim_gpu_keys(cache, queue, active, 1, 1)
+	assert(second == [Vector2i(9, 1)], "Workers must share gaps without requesting the same region")
+	assert(CityRegionScheduling._claim_gpu_keys(cache, queue, active, 0, 4) == [Vector2i(0, 2)])
+	cache.close()
 
 
 func _fill(cache: CityRegionCache) -> void:

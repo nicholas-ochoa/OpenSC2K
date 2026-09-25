@@ -37,6 +37,7 @@ var _tile_order_head := 0
 var bounds_cache: Dictionary = {}
 var revision := -1
 var _layout: Array = []
+var _sprite_limit := Vector2i.ZERO
 var tile_builds := 0
 var tile_reuses := 0
 var rotation := 0
@@ -60,10 +61,23 @@ func set_revision(value: int, layout: Array = []) -> void:
 		if layout.is_empty() or _layout != layout:
 			tiles.clear()
 			_tile_order_head = 0
+			_sprite_limit = Vector2i.ZERO
 
 		bounds_cache.clear()
 		revision = value
 		_layout = layout
+
+
+func sprite_limit(sprites: Sc2SpriteArchive, config: CityViewConfiguration) -> Vector2i:
+	if _sprite_limit == Vector2i.ZERO:
+		# Static tile painters use only the current artwork's 500 sprite IDs.
+		# SMALLMED also contains larger artwork, which needlessly widens scans.
+		for entry in sprites.entries:
+			if entry.sprite_id >= config.sprite_base and entry.sprite_id < config.sprite_base + 500:
+				_sprite_limit.x = maxi(_sprite_limit.x, entry.width)
+				_sprite_limit.y = maxi(_sprite_limit.y, entry.height)
+
+	return _sprite_limit
 
 
 func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
