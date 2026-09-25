@@ -50,7 +50,7 @@ func _run() -> void:
 	background._process(1.0)
 	assert(background.elapsed == elapsed, "Hidden menu kept simulating")
 
-	main.city_files._load_city_unchecked(ProjectSettings.globalize_path("res://../references/SIMCITY2000/DEFAULT.SC2"))
+	assert(main.city_session.activate_document(EmptyCityTemplate.create()))
 	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 	var city: CityState = main.document_state.city
 	var before: PackedByteArray = city.document.serialize().data

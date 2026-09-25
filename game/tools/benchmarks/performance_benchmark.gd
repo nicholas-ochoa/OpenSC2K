@@ -12,7 +12,7 @@ const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.g
 const Simulation = preload("res://src/simulation/core/simulation_engine.gd")
 const Random = preload("res://src/simulation/random/sim_random.gd")
 const LfsrRandom = preload("res://src/simulation/random/sim_lfsr_random.gd")
-const DEFAULT_CITY_FILE := "SYDNEY.SC2"
+const DEFAULT_CITY_FILE := "res://tests/fixtures/cities/generated-128.SC2"
 const CAPTURE_WARMUP := 5
 const CAPTURE_SAMPLES := 40
 
@@ -23,11 +23,11 @@ func _benchmark_initialize() -> void:
 	var arguments := OS.get_cmdline_user_args()
 
 	if not arguments.is_empty():
-		city_file = arguments[0].get_file()
+		city_file = arguments[0]
 
 	print("benchmark_city: %s" % city_file)
 	var city := CityModel.from_document(
-		Sc2Document.load_path(reference_root.path_join("CITIES").path_join(city_file))
+		Sc2Document.load_path(city_file)
 	)
 	var index_palette := Palette.index_encoding()
 	var sprites := SpriteArchive.load_path(
@@ -448,7 +448,7 @@ func _measure_captures(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteA
 
 static func fixture_paths() -> PackedStringArray:
 	return PackedStringArray([
-		reference_path("CITIES/" + input_path(DEFAULT_CITY_FILE).get_file()), reference_path("DATA/LARGE.DAT"),
+		input_path(DEFAULT_CITY_FILE), reference_path("DATA/LARGE.DAT"),
 		reference_path("SCENARIO/CHARLEST.SCN"),
 	])
 

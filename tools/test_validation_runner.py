@@ -113,7 +113,7 @@ class ValidationRunnerTest(unittest.TestCase):
         ids = [e['id'] for e in selected]
         self.assertNotIn('runtime_ui_smoke', ids)
         self.assertEqual(ids.count('runtime_ui_integration'), 1)
-        self.assertIn('stitched_city_test', ids)
+        self.assertIn('generated_city_simulation_test', ids)
 
     def test_routine_excludes_audits_and_native_only_checks(self):
         entries = runner.registry()
@@ -237,6 +237,7 @@ class ValidationRunnerTest(unittest.TestCase):
             with patch.object(sys, 'argv', ['validate']), \
                     patch.object(runner, 'ROOT', root), \
                     patch.object(runner, 'registry', return_value=[]), \
+                    patch.object(runner, 'verify_city_fixtures'), \
                     patch.object(runner, 'Project'), \
                     patch.object(runner, 'execute', return_value=('PASS', 0, '')) as execute, \
                     contextlib.redirect_stdout(io.StringIO()):
@@ -269,17 +270,25 @@ class ValidationRunnerTest(unittest.TestCase):
                     contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(runner.main(), 1)
 
-    def test_edited_fixture_is_rejected(self):
+    def test_committed_city_fixture_hashes(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
-            target = root / 'local/large-cities'
+            target = root / 'game/tests/fixtures/cities'
             target.mkdir(parents=True)
-            (target / 'validation-build.json').write_text('{}')
-            (target / 'stitched-256.sc2x').write_bytes(b'edited')
-            (target / 'stitched-256.sc2x.json').write_text('{"output_sha256": "old"}')
             with patch.object(runner, 'ROOT', root):
-                with self.assertRaises(ValueError):
-                    runner.fixtures_current({})
+                with self.assertRaisesRegex(ValueError, 'Missing committed'):
+                    runner.verify_city_fixtures()
+                for edge in (128, 256, 384, 512):
+                    extension = 'SC2' if edge == 128 else 'sc2x'
+                    path = target / f'generated-{edge}.{extension}'
+                    path.write_bytes(str(edge).encode())
+                    path.with_name(path.name + '.json').write_text(json.dumps(
+                        {'output_sha256': runner.digest(path)}))
+                runner.verify_city_fixtures()
+                path.write_bytes(b'edited')
+                with self.assertRaisesRegex(ValueError, 'hash mismatch'):
+                    runner.verify_city_fixtures()
+                self.assertEqual(path.read_bytes(), b'edited')
 
     def test_isolated_user_data_matches_godot(self):
         # Give concurrent engine processes separate settings and project files.

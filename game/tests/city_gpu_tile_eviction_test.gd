@@ -5,7 +5,7 @@ extends SceneTree
 
 func _initialize() -> void:
 	var city := CityState.from_document(EmptyCityTemplate.create(256))
-	var sprites := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
+	var sprites := FixtureGraphics.pack().large_sprites
 	assert(city.is_valid() and sprites.is_valid())
 	var palette := Sc2Palette.index_encoding()
 	var config := CityIsometricRenderer.view_configuration(2)

@@ -60,7 +60,7 @@ func _run() -> void:
 	audio.handle_application_focus_in(true)
 	audio.set_background_audio(true)
 
-	main.city_files._load_city_unchecked(reference.path_join("CITIES/CAPEQUES.SC2"))
+	main.city_files._load_city_unchecked(GeneratedCityFixture.path(128))
 	assert(main.document_state.city != null and main.document_state.city.set_music_enabled(false))
 	audio.stop_music()
 	main.interface.open_about_dialog()

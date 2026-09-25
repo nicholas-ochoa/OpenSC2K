@@ -14,12 +14,14 @@ func _run() -> void:
 	_test_preview_crop()
 	_test_footprints()
 	await _test_tile_selector()
-	var assets := OriginalGameAssets.load_root(ProjectSettings.globalize_path("res://../references/SIMCITY2000"))
+	var assets := OriginalGameAssets.new()
+	assert(FixtureGraphics.pack().apply_to(assets))
 	_test_clip_edges(assets)
 	var editor := EditorScene.instantiate() as ScurkEditorControl
 	root.add_child(editor)
 	editor.configure(assets.palette, assets.large_sprites, assets.small_medium_sprites,
-		ProjectSettings.globalize_path("res://../references/SIMCITY2000"), assets.scurk_graphics)
+		"res://tests/fixtures", assets.scurk_graphics)
+	assert(editor.load_tile_set(ScurkMif.from_archives([assets.large_sprites, assets.small_medium_sprites])).ok)
 	assert(editor.show_editor().ok)
 	await process_frame
 	await process_frame

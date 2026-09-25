@@ -4,7 +4,7 @@ extends SceneTree
 
 
 func _initialize() -> void:
-	var doc := Sc2File.load_path(ProjectSettings.globalize_path('res://../references/SIMCITY2000/DEFAULT.SC2'))
+	var doc := EmptyCityTemplate.create()
 	assert(NewCityTerrain.generate(doc, false, false, 0, 0, 0, SimRandom.new(1), GameLcgRandom.new(1)).ok)
 	doc.set_misc_u32(0x0e40, 0)
 	var payloads := {}

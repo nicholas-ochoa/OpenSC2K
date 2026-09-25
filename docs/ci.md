@@ -25,7 +25,7 @@ No repository secrets are required. Only the publication job has permission to w
 `tools/validate_project.sh --suite ci` runs product tests with generated data.
 It also checks editor parsing and startup. It uses Dummy audio and rejects errors and skips.
 Pillow and FFmpeg are required for the selected image and audio tests.
-Tests that require original game files, imported packs, large-city fixtures, or native windows are not selected.
+Tests that require original game files, imported packs, or native windows are not selected.
 The CI selection uses the test registry, so new product tests without those requirements are included automatically.
 
 CI does not replace `--suite release`. Run the full release suite locally before a stable release.

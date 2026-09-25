@@ -24,7 +24,7 @@ func _run() -> void:
 	preload("res://tests/support/app_fixture.gd").configure(main, "--preview" not in OS.get_cmdline_user_args())
 	root.add_child(main)
 	await process_frame
-	main.city_files._load_city_unchecked(ProjectSettings.globalize_path("res://../references/SIMCITY2000/CITIES/SYDNEY.SC2"))
+	main.city_files._load_city_unchecked(ProjectSettings.globalize_path("res://tests/fixtures/cities/generated-128.SC2"))
 	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 	var map: CityMapControl = main.map_view
 	var city: CityState = main.document_state.city

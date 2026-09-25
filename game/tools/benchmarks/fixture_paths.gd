@@ -7,7 +7,7 @@ static func reference_path(relative := "") -> String:
 
 
 static func large_city_path(edge: int) -> String:
-	return ProjectSettings.globalize_path("res://../local/large-cities/stitched-%d.sc2x" % edge)
+	return ProjectSettings.globalize_path("res://tests/fixtures/cities/generated-%d.sc2x" % edge)
 
 
 static func input_path(fallback: String) -> String:

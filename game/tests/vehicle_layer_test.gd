@@ -22,7 +22,7 @@ func _run() -> void:
 ## are shown. A falling plane from a started disaster crashes either way.
 func _check_crash_rules() -> void:
 	for suppress in [false, true]:
-		var city := CityState.from_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/FLARANGE.SC2"))
+		var city := CityState.from_document(Sc2File.load_path("res://tests/fixtures/cities/generated-128.SC2"))
 		# The supplied city saves No Disasters, which already stops every crash.
 		assert(city.set_no_disasters_enabled(false))
 		var tower := _tall_building(city)
@@ -36,7 +36,7 @@ func _check_crash_rules() -> void:
 		else:
 			assert(type == 6 and result.crashed_airplanes == 1, "A shown airplane hits a building")
 
-	var falling := CityState.from_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/FLARANGE.SC2"))
+	var falling := CityState.from_document(Sc2File.load_path("res://tests/fixtures/cities/generated-128.SC2"))
 	assert(falling.set_no_disasters_enabled(false))
 	var record := _place_airplane(falling, Vector2i(40, 40), 7, 0)
 	var crash := MovingThingPhase.run(falling, SimRandom.new(7), SimLfsrRandom.new(9), GameLcgRandom.new(3), Vector2i(-1, -1), true, 1000, 0, true)
@@ -51,7 +51,7 @@ func _check_application() -> void:
 	await process_frame
 	main.set_process(false)
 	main.main_menu.city_background.set_process(false)
-	assert(main.city_session.activate_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/FLARANGE.SC2")))
+	assert(main.city_session.activate_document(Sc2File.load_path("res://tests/fixtures/cities/generated-128.SC2")))
 	var vehicle := -1
 
 	for record in main.document_state.city.thing_count():
@@ -84,7 +84,7 @@ func _check_application() -> void:
 	assert(not menu.is_item_checked(menu.get_item_index(CityMenuBar.MENU_VIEW_VEHICLES)), "The View menu follows the sidebar")
 
 	# Opening another city keeps the layer choice in its new engine.
-	assert(main.city_session.activate_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/CAPE.SC2")))
+	assert(main.city_session.activate_document(Sc2File.load_path("res://tests/fixtures/cities/generated-128.SC2")))
 	assert(not main.simulation_state.simulation_engine.vehicle_crashes_enabled)
 	main.menus.on_view_menu(CityMenuBar.MENU_VIEW_VEHICLES)
 	assert(main.view_state.show_vehicles and main.simulation_state.simulation_engine.vehicle_crashes_enabled, "The View menu shows vehicles again")

@@ -77,7 +77,7 @@ func _check_military_offer() -> void:
 
 
 func _check_moving_things() -> void:
-	var city := CityState.from_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/SYDNEY.SC2"))
+	var city := CityState.from_document(Sc2File.load_path("res://tests/fixtures/cities/generated-128.SC2"))
 	var document := city.document
 	var engine := SimulationEngine.new(city, 123, 456, 789)
 	var removed := CityDebugActions.remove_moving_things(city, document)
@@ -102,6 +102,14 @@ func _check_moving_things() -> void:
 	for pair in [[0, null], [1, null], [2, land], [3, water], [4, rail]]:
 		var point: Vector2i = _find(city, clear_land) if pair[1] == null else pair[1]
 		var spawned := CityDebugActions.spawn_moving_thing(city, document, engine, pair[0], point, 99)
+		# The fixed seed can select a dry map edge. Try each deterministic coast choice.
+		if pair[0] == 2 and not spawned.ok:
+			for seed in range(1, 8):
+				spawned = CityDebugActions.spawn_moving_thing(city, document, engine, 2, point, seed)
+
+				if spawned.ok:
+					break
+
 		assert(spawned.ok, "%s: %s" % [CityDebugActions.SPAWN_TYPES[pair[0]], spawned.error])
 		added += spawned.count
 

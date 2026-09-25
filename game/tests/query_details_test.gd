@@ -8,7 +8,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var palette := Sc2Palette.index_encoding()
-	var sprites := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
+	var sprites := FixtureGraphics.pack().large_sprites
 	assert(sprites.is_valid())
 	var microsim := CityRecords.Microsim.new()
 	microsim.stat_0 = 12
@@ -132,7 +132,7 @@ func _run() -> void:
 		preload("res://tests/support/app_fixture.gd").configure(main)
 		root.add_child(main)
 		await process_frame
-		main.city_files._load_city_unchecked(ProjectSettings.globalize_path("res://../references/SIMCITY2000/CITIES/SYDNEY.SC2"))
+		main.city_files._load_city_unchecked(ProjectSettings.globalize_path("res://tests/fixtures/cities/generated-128.SC2"))
 		main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 		var selected := Vector2i(64, 64)
 

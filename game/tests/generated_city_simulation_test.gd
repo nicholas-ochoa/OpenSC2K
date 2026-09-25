@@ -1,10 +1,10 @@
 extends SceneTree
-## Run build_large_city_fixtures.gd first. This test never saves over a fixture.
+## Committed generated-city simulation regression. Never save over a fixture.
 
-# Sydney after 300 days at e2fdec72, with seeds 123/456/789.
-# A deterministic current-model regression, not proof of Windows parity.
-# The a21651a baseline predates the transport, education, military, and crash fixes.
-const YEAR_SHA256 := "f224f270b403f96a916225813df7ee636080b31425e4dd51ac3c3507d0491118"
+# Generated 128 SC2 after 300 further days, with seeds 123/456/789.
+# The fixed input hash is in its JSON report. See docs/generated-city-fixtures.md.
+# This current-model regression does not prove Windows-game parity.
+const YEAR_SHA256 := "138ed27453b9a007d856ee57f0774f1b06048ddbddc422798e26701eb54ee52a"
 
 
 func _init() -> void:
@@ -20,7 +20,7 @@ func _init() -> void:
 		if not selected.is_empty() and str(edge) not in selected:
 			continue
 
-		var path := "res://../references/SIMCITY2000/CITIES/SYDNEY.SC2" if edge == 128 else "res://../local/large-cities/stitched-%d.sc2x" % edge
+		var path := "res://tests/fixtures/cities/generated-128.SC2" if edge == 128 else "res://tests/fixtures/cities/generated-%d.sc2x" % edge
 		var digest := FileAccess.get_sha256(path)
 		var document := Sc2File.load_path(path)
 

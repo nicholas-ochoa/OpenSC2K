@@ -4,7 +4,7 @@ extends "res://tools/benchmarks/fixture_paths.gd"
 
 
 func _benchmark_initialize() -> void:
-	var city := CityState.from_document(Sc2File.load_path(reference_path("CITIES/CAPEQUES.SC2")))
+	var city := CityState.from_document(Sc2File.load_path(GeneratedCityFixture.path(128)))
 	var samples: Array[Vector2i] = []
 	for x in city.map_size:
 		for y in city.map_size:
@@ -47,5 +47,5 @@ func _benchmark_initialize() -> void:
 
 static func fixture_paths() -> PackedStringArray:
 	return PackedStringArray([
-		reference_path("CITIES/CAPEQUES.SC2"),
+		GeneratedCityFixture.path(128),
 	])

@@ -19,7 +19,7 @@ func _run() -> void:
 	main.preferences.city_renderer = "cpu"
 
 	for target in [Vector2i(25, 91), Vector2i(101, 40)]:
-		var document := Sc2File.load_path(ProjectSettings.globalize_path("res://../references/SIMCITY2000/CITIES/ISLAND.SC2"))
+		var document := Sc2File.load_path(ProjectSettings.globalize_path("res://tests/fixtures/cities/generated-128.SC2"))
 		assert(document.set_misc_u32(0x1018, target.x))
 		assert(document.set_misc_u32(0x101c, target.y))
 		assert(main.city_session.activate_document(document))

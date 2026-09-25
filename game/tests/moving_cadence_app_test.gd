@@ -20,7 +20,7 @@ func _run() -> void:
 	main.set_process(false)
 	main.main_menu.city_background.set_process(false)
 	main.render_caches.dynamic_command_cache = FrozenCommands.new()
-	assert(main.city_session.activate_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/FLARANGE.SC2")))
+	assert(main.city_session.activate_document(Sc2File.load_path("res://tests/fixtures/cities/generated-128.SC2")))
 	main.main_menu.hide()
 	main.map_view.zoom_factor = 1.0
 	var airplane := -1

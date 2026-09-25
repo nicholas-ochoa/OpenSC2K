@@ -46,39 +46,39 @@ func run(reference_root: String, starter: CityState, large: Sc2SpriteArchive) ->
 		raised_surface_matches,
 		"Selection surface follows all corners of a raised flat terrain shape",
 	)
-	var capeques := CityModel.from_document(
-		_load_fixture(reference_root.path_join("CITIES/CAPEQUES.SC2"))
+	var generated_city := CityModel.from_document(
+		_load_fixture(GeneratedCityFixture.path(128))
 	)
-	var capeques_dynamic := IsometricRenderer.dynamic_draw_commands(
-		capeques, large, IsometricRenderer.VIEW_LARGE, 0
+	var generated_city_dynamic := IsometricRenderer.dynamic_draw_commands(
+		generated_city, large, IsometricRenderer.VIEW_LARGE, 0
 	)
-	var capeques_dynamic_moving: Array[CityDynamicCommand] = []
+	var generated_city_dynamic_moving: Array[CityDynamicCommand] = []
 
-	for command in capeques_dynamic:
+	for command in generated_city_dynamic:
 		if command.overlay < 0:
-			capeques_dynamic_moving.append(command)
+			generated_city_dynamic_moving.append(command)
 
 	_check(
-		_dynamic_command_values(capeques_dynamic_moving) == _dynamic_command_values(IsometricDynamicCommands.moving_thing_draw_commands(
-			capeques, large, IsometricRenderer.VIEW_LARGE, 0
+		_dynamic_command_values(generated_city_dynamic_moving) == _dynamic_command_values(IsometricDynamicCommands.moving_thing_draw_commands(
+			generated_city, large, IsometricRenderer.VIEW_LARGE, 0
 		)),
-		"Indexed dynamic lookup preserves Capeques moving-object draw order",
+		"Indexed dynamic lookup preserves generated city moving-object draw order",
 	)
 
 	for expected in [
 		Vector2i(0, 0), Vector2i(18, 44), Vector2i(47, 93),
 		Vector2i(64, 64), Vector2i(96, 31), Vector2i(127, 127),
 	]:
-		var polygon := IsometricRenderer.tile_polygon(capeques, expected.x, expected.y)
+		var polygon := IsometricRenderer.tile_polygon(generated_city, expected.x, expected.y)
 
 		for offset in [Vector2.ZERO, Vector2(5, 2), Vector2(-5, -2)]:
 			var screen_point: Vector2 = (
 				(polygon[0] + polygon[1] + polygon[2] + polygon[3]) * 0.25 + offset
 			)
 			_check(
-				IsometricRenderer.screen_to_tile(capeques, screen_point)
-				== _brute_force_screen_to_tile(capeques, screen_point),
-				"Fast isometric lookup matches the full Capeques scan at %s" % screen_point,
+				IsometricRenderer.screen_to_tile(generated_city, screen_point)
+				== _brute_force_screen_to_tile(generated_city, screen_point),
+				"Fast isometric lookup matches the full generated city scan at %s" % screen_point,
 			)
 	MapInteractionTests.new(context).run(starter, surface_city, surface_point, raised_polygon)
 

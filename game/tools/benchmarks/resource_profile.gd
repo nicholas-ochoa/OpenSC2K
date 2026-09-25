@@ -17,7 +17,7 @@ func _run() -> void:
 	OS.set_environment("OPENSC2K_CITY_RENDERER", "gpu")
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 	root.size = Vector2i(1920, 1080)
-	var city_path := input_path(reference_path("CITIES/SYDNEY.SC2"))
+	var city_path := input_path(GeneratedCityFixture.path(128))
 	report_metadata({"city": city_path, "window": root.size, "audio": "Dummy"})
 	await _measure("engine", 2.0)
 	main = (load("res://main.tscn") as PackedScene).instantiate()
@@ -191,5 +191,5 @@ func _measure(stage: String, seconds: float) -> void:
 
 static func fixture_paths() -> PackedStringArray:
 	var paths := application_paths()
-	paths.append(input_path(reference_path("CITIES/SYDNEY.SC2")))
+	paths.append(input_path(GeneratedCityFixture.path(128)))
 	return paths

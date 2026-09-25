@@ -14,8 +14,8 @@ func _initialize() -> void:
 func _run() -> void:
 	_test_scenes()
 	var sprites := Sc2SpriteArchive.combine([
-		Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT"),
-		Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SMALLMED.DAT"),
+		FixtureGraphics.pack().large_sprites,
+		FixtureGraphics.pack().small_medium_sprites,
 	])
 	assert(sprites.is_valid())
 	var palette := Sc2Palette.index_encoding()

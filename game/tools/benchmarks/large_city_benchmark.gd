@@ -10,7 +10,7 @@ func _benchmark_initialize() -> void:
 		return
 
 	for edge in [128, 256, 384, 512]:
-		var path := reference_path("CITIES/SYDNEY.SC2") if edge == 128 else large_city_path(edge)
+		var path := GeneratedCityFixture.path(128) if edge == 128 else large_city_path(edge)
 		var city := CityState.from_document(Sc2File.load_path(path))
 		if not (city.is_valid()):
 			printerr(city.load_error)
@@ -71,6 +71,6 @@ func _benchmark_initialize() -> void:
 
 static func fixture_paths() -> PackedStringArray:
 	return PackedStringArray([
-		reference_path("DATA/LARGE.DAT"), reference_path("CITIES/SYDNEY.SC2"), large_city_path(256), large_city_path(384),
+		reference_path("DATA/LARGE.DAT"), GeneratedCityFixture.path(128), large_city_path(256), large_city_path(384),
 		large_city_path(512),
 	])

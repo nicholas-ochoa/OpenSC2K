@@ -73,7 +73,7 @@ func _run() -> void:
 		assert(actual.get_pixel(1, 0) == Color.BLACK)
 		assert(source.get_data() == before)
 		# These palette entries are used by original dry and watered pipe sprites.
-		var palette := Sc2Palette.load_bmp("res://../references/SIMCITY2000/BITMAPS/PAL_MSTR.BMP")
+		var palette := FixtureGraphics.pack().palette
 		assert(palette.is_valid())
 		var palette_image := Image.create(256, 1, false, Image.FORMAT_RGBA8)
 		for index in 256:

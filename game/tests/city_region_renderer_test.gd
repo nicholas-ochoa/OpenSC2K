@@ -7,13 +7,13 @@ func _initialize() -> void:
 
 func _run() -> void:
 	_check_configuration_offsets()
-	var large := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
-	var small := Sc2SpriteArchive.combine([Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SMALLMED.DAT"), Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SPECIAL.DAT")])
+	var large := FixtureGraphics.pack().large_sprites
+	var small := FixtureGraphics.pack().small_medium_sprites
 	var palette := Sc2Palette.index_encoding()
 
 	for edge in [128, 512]:
 		# Dense original city for sprite coverage; sparse maximum map for extents.
-		var document := Sc2File.load_path("res://../references/SIMCITY2000/CITIES/SYDNEY.SC2") if edge == 128 else EmptyCityTemplate.create(edge)
+		var document := Sc2File.load_path("res://tests/fixtures/cities/generated-128.SC2") if edge == 128 else EmptyCityTemplate.create(edge)
 		var city := CityState.from_document(document)
 		if edge == 512:
 			for point in [Vector2i(10, 10), Vector2i(256, 256), Vector2i(509, 509)]:

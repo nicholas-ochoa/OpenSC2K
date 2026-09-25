@@ -13,7 +13,7 @@ func _run() -> void:
 	viewport.size = Vector2i(480, 300)
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	root.add_child(viewport)
-	var palette := Sc2Palette.load_bmp("res://../references/SIMCITY2000/BITMAPS/PAL_MSTR.BMP")
+	var palette := FixtureGraphics.pack().palette
 	assert(palette.is_valid())
 	var swatches := ScurkPaletteControl.new()
 	swatches.set_palette(palette)

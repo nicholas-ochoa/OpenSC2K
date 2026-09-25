@@ -21,7 +21,7 @@ func _run() -> void:
 	if not preview:
 		main.set_process(false)
 		main.main_menu.city_background.set_process(false)
-	var doc := Sc2File.load_path("res://../references/SIMCITY2000/CITIES/SYDNEY.SC2") if preview else EmptyCityTemplate.create(128)
+	var doc := Sc2File.load_path("res://tests/fixtures/cities/generated-128.SC2") if preview else EmptyCityTemplate.create(128)
 	if not preview:
 		var city := CityState.from_document(doc)
 		assert(city.set_land_altitude(64, 64, 7))

@@ -904,7 +904,7 @@ func _run_quick(reference_root: String) -> void:
 	root.add_child(main)
 	await process_frame
 	assert(main.asset_state.assets_ready and main.main_menu.visible and main.document_state.city == null)
-	var source := reference_root.path_join("CITIES/ISLAND.SC2")
+	var source := GeneratedCityFixture.path(128)
 	var source_hash := FileAccess.get_sha256(source)
 	main.city_files._load_city_unchecked(source)
 	main.frame.select_speed(GameSpeed.Speed.PAUSED)

@@ -8,8 +8,8 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	var city := CityState.from_document(Sc2File.load_path("res://../local/large-cities/stitched-512.sc2x"))
-	var sprites := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
+	var city := CityState.from_document(Sc2File.load_path("res://tests/fixtures/cities/generated-512.sc2x"))
+	var sprites := FixtureGraphics.pack().large_sprites
 	var palette := Sc2Palette.index_encoding()
 	var cache := CityRegionCache.new()
 	cache.gpu_enabled = true
@@ -119,7 +119,7 @@ func _run() -> void:
 
 	# Artwork changes also change region size. Old jobs must not publish keys
 	# from the previous grid, and local samples must still cross exact borders.
-	var small := Sc2SpriteArchive.combine([Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SMALLMED.DAT"), Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SPECIAL.DAT")])
+	var small := FixtureGraphics.pack().small_medium_sprites
 	cache.configure(city, palette, sprites, [revision + 1], 2, CityViewMode.Mode.UNDERGROUND, {}, true, true)
 	cache.tick()
 	cache.configure(city, palette, small, [revision + 2], 0, CityViewMode.Mode.CITY, {}, true, true)

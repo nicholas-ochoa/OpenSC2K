@@ -5,10 +5,7 @@ extends "res://tools/benchmarks/fixture_paths.gd"
 
 const TimingResults = preload("res://tests/support/timing_results.gd")
 
-const CITIES := [
-	"CAPEQUES.SC2", "BAYVIEW.SC2", "CENTERVL.SC2", "FOURCITI.SC2",
-	"AMAZINGC.SC2", "349ARCO.SC2", "BRIDGEPO.SC2", "EGYPTFAL.SC2",
-]
+const CITIES := [128, 256, 384, 512]
 const DAYS := 60
 
 
@@ -17,8 +14,9 @@ func _benchmark_initialize() -> void:
 		"annual_budget": "keep funding", "military_proposal": "decline"})
 	var lines := PackedStringArray()
 
-	for name: String in CITIES:
-		var path := reference_path("CITIES/") + name
+	for edge: int in CITIES:
+		var path := GeneratedCityFixture.path(edge)
+		var name := path.get_file()
 		var doc := Sc2File.load_path(path)
 
 		if doc == null or not doc.is_valid():
@@ -85,6 +83,6 @@ func _digest(values: PackedStringArray) -> String:
 
 static func fixture_paths() -> PackedStringArray:
 	var paths := PackedStringArray()
-	for city in CITIES:
-		paths.append(reference_path("CITIES/" + city))
+	for edge in CITIES:
+		paths.append(GeneratedCityFixture.path(edge))
 	return paths

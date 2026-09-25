@@ -9,11 +9,11 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var palette := Sc2Palette.index_encoding()
-	var large := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
-	var small := Sc2SpriteArchive.combine([Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SMALLMED.DAT"), Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SPECIAL.DAT")])
+	var large := FixtureGraphics.pack().large_sprites
+	var small := FixtureGraphics.pack().small_medium_sprites
 
 	for edge in [128, 512]:
-		var path := "res://../references/SIMCITY2000/CITIES/SYDNEY.SC2" if edge == 128 else "res://../local/large-cities/stitched-%d.sc2x" % edge
+		var path := "res://tests/fixtures/cities/generated-128.SC2" if edge == 128 else "res://tests/fixtures/cities/generated-%d.sc2x" % edge
 		var city := CityState.from_document(Sc2File.load_path(path))
 
 		for view in ([0, 1, 2] if edge == 128 else [2]):
@@ -30,7 +30,7 @@ func _run() -> void:
 				print("PASS: GPU pixels and foreground %d view %d %s" % [edge, view, CityViewMode.key(mode)])
 
 	# All anchor orientations, cutaway terrain, and hidden water/buildings.
-	var city := CityState.from_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/SYDNEY.SC2"))
+	var city := CityState.from_document(Sc2File.load_path("res://tests/fixtures/cities/generated-128.SC2"))
 
 	for rotation in 4:
 		city.document.set_misc_u32(0x08, rotation)

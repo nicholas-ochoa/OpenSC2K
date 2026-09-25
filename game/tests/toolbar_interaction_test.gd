@@ -11,7 +11,7 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	main.map_view.zoom_factor = 0.25
-	main.city_files.call("_load_city_unchecked", ProjectSettings.globalize_path("res://../references/SIMCITY2000/DEFAULT.SC2"))
+	assert(main.city_session.activate_document(EmptyCityTemplate.create()))
 	main.frame.call("select_speed", GameSpeedController.Speed.PAUSED)
 	var toolbar := main.get("city_toolbar") as CityToolbar
 	var map := main.get("map_view") as CityMapControl

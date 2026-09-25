@@ -8,9 +8,9 @@ const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
 func _initialize() -> void:
 	var palette := Sc2Palette.index_encoding()
-	var large := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
-	var small := Sc2SpriteArchive.combine([Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SMALLMED.DAT"), Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SPECIAL.DAT")])
-	var city := CityState.from_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/SYDNEY.SC2"))
+	var large := FixtureGraphics.pack().large_sprites
+	var small := FixtureGraphics.pack().small_medium_sprites
+	var city := CityState.from_document(Sc2File.load_path("res://tests/fixtures/cities/generated-128.SC2"))
 	assert(city.is_valid() and large.is_valid() and small.is_valid())
 	var overrides := _generate(city)
 	var covered := {}

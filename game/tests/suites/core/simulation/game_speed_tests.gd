@@ -106,24 +106,24 @@ func test_game_speed_controller(reference_root: String) -> void:
 		"African Swallow advances again on the next idle cycle",
 	)
 
-	var island_city := CityModel.from_document(
-		_load_fixture(reference_root.path_join("CITIES/ISLAND.SC2"))
+	var generated_city := CityModel.from_document(
+		_load_fixture(GeneratedCityFixture.path(128))
 	)
-	var island_start_day := island_city.age_in_days()
-	_check(island_city.set_simulation_speed(4), "Island unpause fixture selects Cheetah")
-	var island_controller := GameSpeed.new(Simulation.new(island_city, 1, 7, 13))
-	var island_ticks_ok := true
+	var generated_start_day := generated_city.age_in_days()
+	_check(generated_city.set_simulation_speed(4), "Generated city unpause fixture selects Cheetah")
+	var generated_controller := GameSpeed.new(Simulation.new(generated_city, 1, 7, 13))
+	var generated_ticks_ok := true
 
 	for tick in 25:
-		var island_tick := island_controller.advance_time(200.0, (tick + 1) * 200)
+		var generated_tick := generated_controller.advance_time(200.0, (tick + 1) * 200)
 
-		if not island_tick.ok:
-			island_ticks_ok = false
+		if not generated_tick.ok:
+			generated_ticks_ok = false
 			break
 
 	_check(
-		island_ticks_ok and island_city.age_in_days() >= island_start_day + 25,
-		"Island runs 25 Cheetah ticks after unpause without a script or simulation error",
+		generated_ticks_ok and generated_city.age_in_days() >= generated_start_day + 25,
+		"Generated city runs 25 Cheetah ticks after unpause without a script or simulation error",
 	)
 
 	var refresh_city := CityModel.from_document(_load_fixture(reference_root.path_join("DEFAULT.SC2")))

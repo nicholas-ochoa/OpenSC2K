@@ -6,10 +6,10 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	var city := CityState.from_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/SYDNEY.SC2"))
+	var city := CityState.from_document(Sc2File.load_path("res://tests/fixtures/cities/generated-128.SC2"))
 	var palette := Sc2Palette.index_encoding()
-	var large := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
-	var medium := Sc2SpriteArchive.combine([Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SMALLMED.DAT"), Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SPECIAL.DAT")])
+	var large := FixtureGraphics.pack().large_sprites
+	var medium := FixtureGraphics.pack().small_medium_sprites
 
 	for view in [0, 1, 2]:
 		var sprites := large if view == 2 else medium

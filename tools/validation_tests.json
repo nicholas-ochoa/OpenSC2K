@@ -133,9 +133,6 @@
     "python": "tools/test_benchmark_inputs.py",
     "domain": "tools",
     "lane": "product",
-    "fixtures": [
-      "large-cities"
-    ],
     "timeout": 90,
     "requires": [
       "references/SIMCITY2000",
@@ -148,9 +145,7 @@
     "python": "tools/test_benchmark_failures.py",
     "domain": "tools",
     "lane": "product",
-    "requires": [
-      "references/SIMCITY2000"
-    ]
+    "requires": []
   },
   {
     "id": "city_render_task_test",
@@ -164,7 +159,7 @@
     "domain": "rendering",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000"
+      "ext/graphics/pack.json"
     ]
   },
   {
@@ -173,7 +168,7 @@
     "domain": "rendering",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000"
+      "ext/graphics/pack.json"
     ]
   },
   {
@@ -241,9 +236,7 @@
     "script": "tests/tile_count_test.gd",
     "domain": "simulation",
     "lane": "product",
-    "requires": [
-      "references/SIMCITY2000"
-    ]
+    "requires": []
   },
   {
     "id": "simulation_timing_test",
@@ -263,7 +256,7 @@
     "domain": "rendering",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000"
+      "ext/graphics/pack.json"
     ]
   },
   {
@@ -277,9 +270,7 @@
     "script": "tests/debug_actions_test.gd",
     "domain": "simulation",
     "lane": "product",
-    "requires": [
-      "references/SIMCITY2000/CITIES/SYDNEY.SC2"
-    ]
+    "requires": []
   },
   {
     "id": "debug_city_tables_test",
@@ -299,9 +290,10 @@
     "domain": "audio",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000",
       "ext/graphics/pack.json",
-      "ext/data/pack.json"
+      "ext/data/pack.json",
+      "ext/music/pack.json",
+      "ext/sound/pack.json"
     ]
   },
   {
@@ -322,7 +314,7 @@
     "domain": "rendering",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000"
+      "ext/graphics/pack.json"
     ]
   },
   {
@@ -349,7 +341,7 @@
     "domain": "rendering",
     "lane": "native",
     "requires": [
-      "references/SIMCITY2000"
+      "ext/graphics/pack.json"
     ]
   },
   {
@@ -358,7 +350,6 @@
     "domain": "rendering",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000",
       "ext/graphics/pack.json",
       "ext/data/pack.json"
     ]
@@ -396,7 +387,6 @@
     "domain": "ui",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000",
       "ext/graphics/pack.json",
       "ext/data/pack.json"
     ]
@@ -612,7 +602,7 @@
     "domain": "rendering",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000"
+      "ext/graphics/pack.json"
     ]
   },
   {
@@ -690,7 +680,7 @@
     "domain": "rendering",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000"
+      "ext/graphics/pack.json"
     ]
   },
   {
@@ -698,11 +688,8 @@
     "script": "tests/city_region_cache_test.gd",
     "domain": "rendering",
     "lane": "product",
-    "fixtures": [
-      "large-cities"
-    ],
     "requires": [
-      "references/SIMCITY2000"
+      "ext/graphics/pack.json"
     ]
   },
   {
@@ -711,7 +698,7 @@
     "domain": "rendering",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000"
+      "ext/graphics/pack.json"
     ]
   },
   {
@@ -719,12 +706,7 @@
     "script": "tests/frame_simulation_test.gd",
     "domain": "simulation",
     "lane": "product",
-    "fixtures": [
-      "large-cities"
-    ],
-    "requires": [
-      "references/SIMCITY2000"
-    ]
+    "requires": []
   },
   {
     "id": "toolbar_interaction_test",
@@ -732,7 +714,6 @@
     "domain": "ui",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000",
       "ext/graphics/pack.json",
       "ext/data/pack.json"
     ]
@@ -743,7 +724,6 @@
     "domain": "simulation",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000",
       "ext/graphics/pack.json",
       "ext/data/pack.json"
     ]
@@ -765,7 +745,6 @@
     "domain": "ui",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000",
       "ext/graphics/pack.json",
       "ext/data/pack.json"
     ]
@@ -776,7 +755,6 @@
     "domain": "ui",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000",
       "ext/graphics/pack.json",
       "ext/data/pack.json"
     ]
@@ -787,7 +765,6 @@
     "domain": "tools",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000",
       "ext/graphics/pack.json",
       "ext/data/pack.json"
     ]
@@ -798,7 +775,6 @@
     "domain": "ui",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000",
       "ext/graphics/pack.json",
       "ext/data/pack.json"
     ]
@@ -868,9 +844,7 @@
     "script": "tests/landscape_editor_tools_test.gd",
     "domain": "tools",
     "lane": "product",
-    "requires": [
-      "references/SIMCITY2000"
-    ]
+    "requires": []
   },
   {
     "id": "presentation_refinements_test",
@@ -878,7 +852,6 @@
     "domain": "ui",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000",
       "ext/graphics/pack.json",
       "ext/data/pack.json"
     ]
@@ -945,9 +918,7 @@
     "script": "tests/stream_waterfall_render_test.gd",
     "domain": "rendering",
     "lane": "product",
-    "requires": [
-      "references/SIMCITY2000"
-    ]
+    "requires": []
   },
   {
     "id": "newspaper_web_view_test",
@@ -963,9 +934,7 @@
     "script": "tests/editor_stream_slopes_test.gd",
     "domain": "ui",
     "lane": "product",
-    "requires": [
-      "references/SIMCITY2000"
-    ]
+    "requires": []
   },
   {
     "id": "recorded_soundtrack_test",
@@ -990,11 +959,8 @@
     "script": "tests/city_gpu_geometry_test.gd",
     "domain": "rendering",
     "lane": "product",
-    "fixtures": [
-      "large-cities"
-    ],
     "requires": [
-      "references/SIMCITY2000"
+      "ext/graphics/pack.json"
     ]
   },
   {
@@ -1003,7 +969,7 @@
     "domain": "rendering",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000"
+      "ext/graphics/pack.json"
     ]
   },
   {
@@ -1012,7 +978,7 @@
     "domain": "rendering",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000"
+      "ext/graphics/pack.json"
     ]
   },
   {
@@ -1020,11 +986,8 @@
     "script": "tests/city_gpu_cache_test.gd",
     "domain": "rendering",
     "lane": "product",
-    "fixtures": [
-      "large-cities"
-    ],
     "requires": [
-      "references/SIMCITY2000"
+      "ext/graphics/pack.json"
     ]
   },
   {
@@ -1032,11 +995,7 @@
     "script": "tests/city_foreground_cache_test.gd",
     "domain": "rendering",
     "lane": "product",
-    "fixtures": [
-      "large-cities"
-    ],
     "requires": [
-      "references/SIMCITY2000",
       "ext/graphics/pack.json",
       "ext/data/pack.json"
     ]
@@ -1074,7 +1033,6 @@
     "domain": "rendering",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000",
       "ext/graphics/pack.json",
       "ext/data/pack.json"
     ]
@@ -1085,7 +1043,7 @@
     "domain": "ui",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000"
+      "ext/graphics/pack.json"
     ]
   },
   {
@@ -1100,7 +1058,7 @@
     "domain": "tools",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000"
+      "ext/graphics/pack.json"
     ]
   },
   {
@@ -1121,7 +1079,7 @@
     "domain": "tools",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000"
+      "ext/graphics/pack.json"
     ]
   },
   {
@@ -1136,7 +1094,7 @@
     "domain": "ui",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000"
+      "ext/graphics/pack.json"
     ]
   },
   {
@@ -1145,7 +1103,7 @@
     "domain": "ui",
     "lane": "native",
     "requires": [
-      "references/SIMCITY2000"
+      "ext/graphics/pack.json"
     ]
   },
   {
@@ -1154,7 +1112,7 @@
     "domain": "rendering",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000"
+      "ext/graphics/pack.json"
     ]
   },
   {
@@ -1168,39 +1126,28 @@
     "script": "tests/city_render_retention_test.gd",
     "domain": "rendering",
     "lane": "product",
-    "requires": [
-      "references/SIMCITY2000"
-    ]
+    "requires": []
   },
   {
     "id": "city_render_retention_test_native",
     "script": "tests/city_render_retention_test.gd",
     "domain": "rendering",
     "lane": "native",
-    "requires": [
-      "references/SIMCITY2000"
-    ]
+    "requires": []
   },
   {
     "id": "render_signature_revision_test",
     "script": "tests/render_signature_revision_test.gd",
     "domain": "rendering",
     "lane": "product",
-    "requires": [
-      "references/SIMCITY2000"
-    ]
+    "requires": []
   },
   {
     "id": "static_overlay_signature_test",
     "script": "tests/static_overlay_signature_test.gd",
     "domain": "rendering",
     "lane": "product",
-    "fixtures": [
-      "large-cities"
-    ],
-    "requires": [
-      "references/SIMCITY2000"
-    ]
+    "requires": []
   },
   {
     "id": "city_sign_foreground_test",
@@ -1213,11 +1160,8 @@
     "script": "tests/city_dynamic_command_cache_test.gd",
     "domain": "ui",
     "lane": "product",
-    "fixtures": [
-      "large-cities"
-    ],
     "requires": [
-      "references/SIMCITY2000"
+      "ext/graphics/pack.json"
     ]
   },
   {
@@ -1237,11 +1181,8 @@
     "script": "tests/city_worker_sign_foreground_test.gd",
     "domain": "rendering",
     "lane": "product",
-    "fixtures": [
-      "large-cities"
-    ],
     "requires": [
-      "references/SIMCITY2000"
+      "ext/graphics/pack.json"
     ]
   },
   {
@@ -1269,9 +1210,9 @@
     "domain": "audio",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000",
       "ext/graphics/pack.json",
-      "ext/data/pack.json"
+      "ext/data/pack.json",
+      "ext/sound/pack.json"
     ]
   },
   {
@@ -1290,7 +1231,7 @@
     "domain": "scurk",
     "lane": "native",
     "requires": [
-      "references/SIMCITY2000"
+      "ext/graphics/pack.json"
     ]
   },
   {
@@ -1358,14 +1299,18 @@
     "script": "tests/scurk_context_preview_test.gd",
     "domain": "scurk",
     "lane": "product",
-    "requires": ["references/SIMCITY2000/DATA/LARGE.DAT", "references/SIMCITY2000/DATA/SMALLMED.DAT"]
+    "requires": [
+      "ext/graphics/pack.json"
+    ]
   },
   {
     "id": "scurk_studio_test",
     "script": "tests/scurk_studio_test.gd",
     "domain": "scurk",
     "lane": "product",
-    "requires": ["references/SIMCITY2000"]
+    "requires": [
+      "ext/graphics/pack.json"
+    ]
   },
   {
     "id": "scurk_editor_ui_test",
@@ -1373,7 +1318,7 @@
     "domain": "scurk",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000"
+      "ext/graphics/pack.json"
     ]
   },
   {
@@ -1434,7 +1379,6 @@
     "domain": "ui",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000",
       "ext/graphics/pack.json",
       "ext/data/pack.json"
     ]
@@ -1468,28 +1412,20 @@
     ]
   },
   {
-    "id": "stitched_city_test",
-    "script": "tests/stitched_city_test.gd",
+    "id": "generated_city_simulation_test",
+    "script": "tests/generated_city_simulation_test.gd",
     "domain": "simulation",
     "lane": "slow",
-    "fixtures": [
-      "large-cities"
-    ],
     "timeout": 7200,
-    "requires": [
-      "references/SIMCITY2000"
-    ]
+    "requires": []
   },
   {
     "id": "city_gpu_geometry_test_native",
     "script": "tests/city_gpu_geometry_test.gd",
     "domain": "rendering",
     "lane": "native",
-    "fixtures": [
-      "large-cities"
-    ],
     "requires": [
-      "references/SIMCITY2000"
+      "ext/graphics/pack.json"
     ]
   },
   {
@@ -1498,7 +1434,6 @@
     "domain": "rendering",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000",
       "ext/graphics/pack.json",
       "ext/data/pack.json"
     ]
@@ -1509,7 +1444,6 @@
     "domain": "rendering",
     "lane": "product",
     "requires": [
-      "references/SIMCITY2000",
       "ext/graphics/pack.json",
       "ext/data/pack.json"
     ]
@@ -1520,7 +1454,7 @@
     "domain": "rendering",
     "lane": "native",
     "requires": [
-      "references/SIMCITY2000"
+      "ext/graphics/pack.json"
     ]
   },
   {
@@ -1539,7 +1473,7 @@
     "domain": "rendering",
     "lane": "native",
     "requires": [
-      "references/SIMCITY2000"
+      "ext/graphics/pack.json"
     ]
   },
   {
@@ -1594,5 +1528,18 @@
     "script": "tests/sc2_import_dialog_test.gd",
     "domain": "ui",
     "lane": "product"
+  },
+  {
+    "id": "generated_city_fixtures_test",
+    "script": "tests/generated_city_fixtures_test.gd",
+    "domain": "formats",
+    "lane": "product"
+  },
+  {
+    "id": "city_fixture_determinism",
+    "python": "tools/test_city_fixture_determinism.py",
+    "domain": "simulation",
+    "lane": "slow",
+    "timeout": 7500
   }
 ]

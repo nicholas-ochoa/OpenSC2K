@@ -11,7 +11,7 @@ func _run() -> void:
 		# Full CPU repaint parity is already owned by the headless entry.
 		quit()
 		return
-	var sprites := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SMALLMED.DAT")
+	var sprites := FixtureGraphics.pack().small_medium_sprites
 	assert(sprites.is_valid())
 	var palette := Sc2Palette.index_encoding()
 

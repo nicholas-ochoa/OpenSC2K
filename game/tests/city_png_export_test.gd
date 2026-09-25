@@ -20,7 +20,8 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	main.main_menu.hide()
-	main.city_files._load_city_unchecked(ProjectSettings.globalize_path("res://../references/SIMCITY2000/CITIES/SYDNEY.SC2"))
+	main.asset_state.reference_root = ProjectSettings.globalize_path(GeneratedCityFixture.ROOT)
+	main.city_files._load_city_unchecked(ProjectSettings.globalize_path("res://tests/fixtures/cities/generated-128.SC2"))
 	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 	folder = ProjectSettings.globalize_path("user://png_export_test")
 	DirAccess.make_dir_recursive_absolute(folder)
@@ -61,7 +62,7 @@ func _check_menu_and_dialog() -> void:
 	var graphics: int = main.static_render.city_view_size()
 	assert(options.view_size == graphics, "Graphics start at the size on screen")
 	assert(options.view == "city" and not options.transparent_background and options.signs and options.moving_things)
-	assert(options.path.get_file() == "Sydney_CITY_%s.png" % String(AppSettingsStore.GRAPHICS_SIZES[graphics]).to_upper())
+	assert(options.path.get_file() == "%s_CITY_%s.png" % [main.document_state.city.display_name(), String(AppSettingsStore.GRAPHICS_SIZES[graphics]).to_upper()])
 	var size := ExportJob.output_size(128, graphics)
 	assert(not dialog.get_ok_button().disabled and dialog.summary_label.text.begins_with("Image size: %s × " % DisplayNumberFormat.format(size.x)))
 
@@ -95,6 +96,11 @@ func _check_menu_and_dialog() -> void:
 
 
 func _check_content_options() -> void:
+	# Keep the toggle check independent of the saved vehicles' current occlusion.
+	var city: CityState = main.document_state.city
+	var engine := SimulationEngine.new(city, 123, 456, 789)
+	assert(CityDebugActions.remove_moving_things(city, city.document).ok)
+	assert(CityDebugActions.spawn_moving_thing(city, city.document, engine, 1, Vector2i(20, 20), 99).ok)
 	var things := 0
 
 	for y in main.document_state.city.map_size:

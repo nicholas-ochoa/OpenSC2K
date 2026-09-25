@@ -35,7 +35,7 @@ func _run() -> void:
 	desktop.set_process(false)
 	var original := desktop.graphics
 	var alternate := _alternate_graphics()
-	main.city_files._load_city_unchecked(ProjectSettings.globalize_path("res://../references/SIMCITY2000/CITIES/ISLAND.SC2"))
+	main.city_files._load_city_unchecked(ProjectSettings.globalize_path("res://tests/fixtures/cities/generated-128.SC2"))
 	var map: CityMapControl = main.map_view
 	var saved: PackedByteArray = main.document_state.current_document.serialize().data
 

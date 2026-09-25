@@ -16,13 +16,15 @@ func _initialize() -> void:
 
 func _run() -> void:
 	root.size = Vector2i(1600, 1000)
-	var assets := OriginalGameAssets.load_root(ProjectSettings.globalize_path("res://../references/SIMCITY2000"))
+	var assets := OriginalGameAssets.new()
+	assert(FixtureGraphics.pack().apply_to(assets))
 	editor = EditorScene.instantiate() as ScurkEditorControl
 	root.add_child(editor)
 	studio = editor.studio
 	studio.recovery_path = folder.path_join("recovery.scurk")
 	editor.configure(assets.palette, assets.large_sprites, assets.small_medium_sprites,
-		ProjectSettings.globalize_path("res://../references/SIMCITY2000"), assets.scurk_graphics)
+		"res://tests/fixtures", assets.scurk_graphics)
+	assert(editor.load_tile_set(ScurkMif.from_archives([assets.large_sprites, assets.small_medium_sprites])).ok)
 	assert(editor.show_editor().ok)
 	original = editor.tile_set.to_bytes().bytes
 	editor._set_cycle_colors(false)

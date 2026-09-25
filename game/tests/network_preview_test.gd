@@ -7,7 +7,7 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	var sprites := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
+	var sprites := FixtureGraphics.pack().large_sprites
 	var palette := Sc2Palette.index_encoding()
 
 	for edge in [128, 256, 384, 512]:

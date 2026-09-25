@@ -14,7 +14,7 @@ func _run() -> void:
 	main.set_process(false)
 	main.main_menu.city_background.set_process(false)
 	main.map_view.zoom_factor = 0.25
-	assert(main.city_session.activate_document(Sc2File.load_path("res://../local/large-cities/stitched-256.sc2x")))
+	assert(main.city_session.activate_document(Sc2File.load_path("res://tests/fixtures/cities/generated-256.sc2x")))
 	var deadline := Time.get_ticks_msec() + 30000
 
 	while not main.render_caches.region_cache.ready() and Time.get_ticks_msec() < deadline:

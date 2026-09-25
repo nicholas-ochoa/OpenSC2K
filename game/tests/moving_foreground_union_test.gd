@@ -116,10 +116,8 @@ func _initialize() -> void:
 
 	# Verify that real crossing artwork emits the same-tile mask at each native view.
 	var city := CityState.from_document(EmptyCityTemplate.create(128))
-	var small := Sc2SpriteArchive.combine([
-		Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SMALLMED.DAT"),
-		Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SPECIAL.DAT")])
-	var large := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
+	var small := FixtureGraphics.pack().small_medium_sprites
+	var large := FixtureGraphics.pack().large_sprites
 
 	for view in [CityIsometricRenderer.VIEW_SMALL, CityIsometricRenderer.VIEW_MEDIUM, CityIsometricRenderer.VIEW_LARGE]:
 		var config := CityIsometricRenderer.view_configuration(view)

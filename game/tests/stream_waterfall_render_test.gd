@@ -2,7 +2,7 @@ extends SceneTree
 
 
 func _initialize() -> void:
-	var doc := Sc2File.load_path(ProjectSettings.globalize_path('res://../references/SIMCITY2000/DEFAULT.SC2'))
+	var doc := EmptyCityTemplate.create()
 	var city := CityState.from_document(doc)
 	var index := city.index_of(65, 84)
 	city.terrain[index] = 0x41

@@ -7,7 +7,7 @@ var _revision := 0
 func _initialize() -> void:
 	var city := CityState.from_document(EmptyCityTemplate.create(128))
 	var palette := Sc2Palette.index_encoding()
-	var sprites := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
+	var sprites := FixtureGraphics.pack().large_sprites
 	var context := CityGpuBuildContext.new()
 	var config := CityIsometricRenderer.view_configuration(2)
 	var point := Vector2i(20, 20)

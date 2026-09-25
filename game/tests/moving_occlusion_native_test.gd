@@ -38,8 +38,8 @@ func _run() -> void:
 		return
 
 	_palette = Sc2Palette.index_encoding()
-	_sprites = Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
-	var city := CityState.from_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/FLARANGE.SC2"))
+	_sprites = FixtureGraphics.pack().large_sprites
+	var city := CityState.from_document(Sc2File.load_path("res://tests/fixtures/cities/generated-128.SC2"))
 	var configuration := CityIsometricRenderer.view_configuration(VIEW)
 	var focus := _crossing_point(city, configuration)
 	var center_key := Vector2i(focus / EDGE)

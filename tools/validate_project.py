@@ -105,28 +105,22 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def fixture_identity(godot):
-    # Rebuild fixtures after any runtime source change.
-    paths = [ROOT / 'game/tools/build_large_city_fixtures.gd', ROOT / 'game/project.godot']
-    paths += sorted((ROOT / 'game/src').rglob('*.gd'))
-    paths += sorted((ROOT / 'references/SIMCITY2000/CITIES').glob('*.SC2'))
-    return {'engine': subprocess.check_output([godot, '--version'], text=True).strip(),
-            'inputs': {str(p.relative_to(ROOT)): digest(p) for p in paths}}
-
-
-def fixtures_current(identity):
-    folder = ROOT / 'local/large-cities'
-    stamp = folder / 'validation-build.json'
-    if not stamp.is_file() or json.loads(stamp.read_text()) != identity:
-        return False
-    for edge in (256, 384, 512):
-        path = folder / f'stitched-{edge}.sc2x'
-        report = path.with_suffix('.sc2x.json')
+def verify_city_fixtures():
+    """Committed fixtures are fixed inputs. Never regenerate them during validation."""
+    folder = ROOT / 'game/tests/fixtures/cities'
+    for edge in (128, 256, 384, 512):
+        extension = 'SC2' if edge == 128 else 'sc2x'
+        path = folder / f'generated-{edge}.{extension}'
+        report = path.with_name(path.name + '.json')
         if not path.is_file() or not report.is_file():
-            return False
-        if json.loads(report.read_text()).get('output_sha256') != digest(path):
-            raise ValueError(f'Refuse to reuse an edited fixture: {path}')
-    return True
+            raise ValueError(f'Missing committed city fixture or report: {path}. Restore it from Git.')
+        try:
+            expected = json.loads(report.read_text())['output_sha256']
+        except (ValueError, KeyError, TypeError) as error:
+            raise ValueError(f'Invalid city fixture report: {report}') from error
+        if expected != digest(path):
+            raise ValueError(f'City fixture hash mismatch: {path}. Restore the committed file or '
+                             'review the edit and re-baseline it explicitly; validation will not rebuild it.')
 
 
 class Project:
@@ -304,22 +298,12 @@ def main():
                 else:
                     prepared.append(entry)
 
-            # Shared fixture writes finish before any consumer starts.
-            if not blocked and any(entry.get('fixtures') for entry in prepared):
-                try:
-                    identity = fixture_identity(args.godot)
-                    current = fixtures_current(identity)
-                    if current:
-                        record('large-city-fixtures', 'PASS', reason='Verified source, build, and output hashes; reused')
-                    else:
-                        project.configure('fixtures')
-                        if run('large-city-fixtures', godot_command('tools/build_large_city_fixtures.gd')):
-                            (ROOT / 'local/large-cities/validation-build.json').write_text(json.dumps(identity, indent=2) + '\n')
-                        else:
-                            blocked = True
-                except (ValueError, OSError, subprocess.SubprocessError) as error:
-                    record('large-city-fixtures', 'FAIL', reason=str(error))
-                    blocked = True
+            try:
+                verify_city_fixtures()
+                record('generated-city-fixtures', 'PASS', reason='Verified committed output hashes')
+            except (ValueError, OSError) as error:
+                record('generated-city-fixtures', 'FAIL', reason=str(error))
+                blocked = True
 
             def isolated(group):
                 results = []

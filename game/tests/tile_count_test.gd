@@ -2,6 +2,8 @@ extends SceneTree
 # SC2 cities keep the original running tile counts and their drift.
 # Extended cities recount on load and each month, and keep exact counts.
 
+@warning_ignore_start("integer_division")
+
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
 
@@ -100,7 +102,7 @@ func _check_dezone() -> void:
 # the fire drift that the original has: an explosion clears its tile without a count change
 func _check_explosion() -> void:
 	for extended in [false, true]:
-		var document := Sc2File.load_path("res://../references/SIMCITY2000/CITIES/PARADE.SC2")
+		var document := Sc2File.load_path("res://tests/fixtures/cities/generated-128.SC2")
 
 		if extended:
 			assert(document.enable_full_resolution_maps())
@@ -109,10 +111,21 @@ func _check_explosion() -> void:
 		var engine := SimulationEngine.new(city, 123, 456, 789)
 		assert(engine.initialize_loaded_city())
 		CityTileCounts.recount(city)
-		assert(engine.start_disaster(DisasterStartPhase.DISASTER_FIRE, Vector2i(64, 64)).ok)
+		# Select an actual developed 1x1 tile. Spawn the explosion directly so this
+		# rule does not depend on a particular city's fire spread or coordinates.
+		var index := city.buildings.find(Tiles.LOWER_CLASS_HOMES_1X1_1)
+		assert(index >= 0)
+		var point := Vector2i(index / city.map_size, index % city.map_size)
+		var things := document.find_chunk("XTHG").decoded_payload.duplicate()
+		var text := city.text_overlays.duplicate()
+		assert(DisasterMapState._spawn_explosion(text, things, point, city.land_altitude(point.x, point.y), 0, 0, city.map_size))
+		assert(document.find_chunk("XTHG").set_decoded_payload(things))
+		assert(document.find_chunk("XTXT").set_decoded_payload(text))
+		city.resync_mirrors(["XTXT"])
 
-		for tick in 20:
-			assert(engine.advance_disaster_tick().ok)
+		for tick in 3:
 			assert(engine.advance_moving_things(tick * 200).ok)
+
+		assert(city.building_id(point.x, point.y) == Tiles.EMPTY, "The explosion clears the selected building")
 
 		assert((_saved(city) == CityTileCounts.count(city)) == extended, "Only an extended city counts explosion clearing")

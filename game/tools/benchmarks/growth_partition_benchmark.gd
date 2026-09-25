@@ -15,7 +15,7 @@ func _benchmark_initialize() -> void:
 
 		for step in 4:
 			for substep in 4:
-				var city := CityState.from_document(Sc2File.load_path(reference_path("CITIES/CAPEQUES.SC2")))
+				var city := CityState.from_document(Sc2File.load_path(GeneratedCityFixture.path(128)))
 				var random := SimRandom.new(1)
 				var lfsr := SimLfsrRandom.new(1)
 				var game := GameLcgRandom.new(1)
@@ -41,5 +41,5 @@ func _benchmark_initialize() -> void:
 
 static func fixture_paths() -> PackedStringArray:
 	return PackedStringArray([
-		reference_path("CITIES/CAPEQUES.SC2"),
+		GeneratedCityFixture.path(128),
 	])

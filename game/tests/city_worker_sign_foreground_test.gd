@@ -8,12 +8,12 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	var large := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
-	var small := Sc2SpriteArchive.combine([Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SMALLMED.DAT"), Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SPECIAL.DAT")])
+	var large := FixtureGraphics.pack().large_sprites
+	var small := FixtureGraphics.pack().small_medium_sprites
 	var palette := Sc2Palette.index_encoding()
 
 	for edge in [128, 512]:
-		var path := "res://../references/SIMCITY2000/CITIES/SYDNEY.SC2" if edge == 128 else "res://../local/large-cities/stitched-512.sc2x"
+		var path := "res://tests/fixtures/cities/generated-128.SC2" if edge == 128 else "res://tests/fixtures/cities/generated-512.sc2x"
 		var city := CityState.from_document(Sc2File.load_path(path))
 
 		for view in [0, 1, 2]:

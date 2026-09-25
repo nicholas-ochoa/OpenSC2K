@@ -3,8 +3,8 @@ const CommandCache = preload("res://src/view/city_dynamic_command_cache.gd")
 
 
 func _initialize() -> void:
-	var city := CityState.from_document(Sc2File.load_path("res://../local/large-cities/stitched-512.sc2x"))
-	var sprites := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
+	var city := CityState.from_document(Sc2File.load_path("res://tests/fixtures/cities/generated-512.sc2x"))
+	var sprites := FixtureGraphics.pack().large_sprites
 	var cache := CommandCache.new()
 	assert(_dynamic_command_values(cache.get_commands(city, sprites, 2, 0)) == _dynamic_command_values(CityIsometricRenderer.dynamic_draw_commands(city, sprites, 2, 0)))
 	var count: int = cache.rebuilds

@@ -67,7 +67,7 @@ Open `game/project.godot` in Godot. Run the checks with:
 tools/validate_project.sh
 ```
 
-The tests use silent audio and need a copy of the original game in the `references/SIMCITY2000` folder.
+The tests use silent audio. Generated city fixtures are committed. Original-data audits need `references/SIMCITY2000`; renderer and media tests can also need imported packs in `ext/`. See [fixture generation](docs/generated-city-fixtures.md).
 
 ## AI-Assisted Development
 

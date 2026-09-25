@@ -13,7 +13,7 @@ func _benchmark_initialize() -> void:
 	var small := Sc2SpriteArchive.combine([Sc2SpriteArchive.load_path(reference_path("DATA/SMALLMED.DAT")), Sc2SpriteArchive.load_path(reference_path("DATA/SPECIAL.DAT"))])
 	var repeats := int(OS.get_environment("CITY_BENCH_REPEATS")) if OS.has_environment("CITY_BENCH_REPEATS") else 3
 
-	for path in [reference_path("CITIES/SYDNEY.SC2"), large_city_path(256)]:
+	for path in [GeneratedCityFixture.path(128), large_city_path(256)]:
 		var city := CityState.from_document(Sc2File.load_path(path))
 
 		for view in 3:
@@ -67,5 +67,5 @@ func _benchmark_initialize() -> void:
 static func fixture_paths() -> PackedStringArray:
 	return PackedStringArray([
 		reference_path("DATA/LARGE.DAT"), reference_path("DATA/SMALLMED.DAT"), reference_path("DATA/SPECIAL.DAT"),
-		reference_path("CITIES/SYDNEY.SC2"), large_city_path(256),
+		GeneratedCityFixture.path(128), large_city_path(256),
 	])

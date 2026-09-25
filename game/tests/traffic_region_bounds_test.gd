@@ -9,9 +9,8 @@ var _changed_pixels := 0
 
 func _initialize() -> void:
 	var palette := Sc2Palette.index_encoding()
-	var large := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
-	var small := Sc2SpriteArchive.combine([Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SMALLMED.DAT"),
-		Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SPECIAL.DAT")])
+	var large := FixtureGraphics.pack().large_sprites
+	var small := FixtureGraphics.pack().small_medium_sprites
 	assert(large.is_valid() and small.is_valid())
 
 	for view in [2, 1, 0]:

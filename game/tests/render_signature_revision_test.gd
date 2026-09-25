@@ -3,7 +3,7 @@ extends SceneTree
 ## Prove that it never misses a drawn change and that a running simulation does
 ## not invalidate it while the drawn city stays the same.
 
-const CITY_PATH := "res://../references/SIMCITY2000/CITIES/SYDNEY.SC2"
+const CITY_PATH := "res://tests/fixtures/cities/generated-128.SC2"
 const DAY_COUNT := 24
 
 # Chunks whose revision replaced a whole-map content hash in the signature.
@@ -15,7 +15,7 @@ var failures := 0
 
 func _initialize() -> void:
 	var city := CityState.from_document(Sc2File.load_path(CITY_PATH))
-	check(city.is_valid(), "The supplied city loads: %s" % city.load_error)
+	check(city.is_valid(), "The generated city loads: %s" % city.load_error)
 	check(
 		CityIsometricRenderer.static_visual_signature(city) == CityIsometricRenderer.static_visual_signature(city),
 		"Reading the signature twice without an edit reports no change",
@@ -119,6 +119,7 @@ func _check_simulation_run() -> void:
 	var missed := 0
 	var spurious := 0
 	var underground_spurious := 0
+	var underground_missed := 0
 	var changed_days := 0
 
 	for day in DAY_COUNT:
@@ -131,13 +132,16 @@ func _check_simulation_run() -> void:
 		var next_underground := CityUndergroundView.visual_signature(city, CityIsometricRenderer.VIEW_LARGE)
 		var next_content := _content_signature(city)
 
-		if next_content != content:
+		if next_content.surface != content.surface:
 			changed_days += 1
 
 			if next_signature == signature:
 				missed += 1
 		elif next_signature != signature:
 			spurious += 1
+
+		if next_content.underground != content.underground and next_underground == underground:
+			underground_missed += 1
 
 		if next_content.underground == content.underground and next_underground != underground:
 			underground_spurious += 1
@@ -146,6 +150,7 @@ func _check_simulation_run() -> void:
 		underground = next_underground
 		content = next_content
 
+	check(underground_missed == 0, "Every underground change invalidates its signature")
 	check(changed_days > 0, "The simulation run changes the drawn city at least once")
 	check(missed == 0, "Every drawn change invalidates the signature; missed %d" % missed)
 	check(
@@ -166,13 +171,14 @@ func _content_signature(city: CityState) -> Dictionary:
 		"overlays": IsometricStaticVisuals._compute_static_text_overlay_signature(city, OverlayData.sign_indices(city.text_overlays)),
 	}
 
-	for chunk_id in SURFACE_CHUNKS + UNDERGROUND_CHUNKS:
+	for chunk_id in SURFACE_CHUNKS:
 		var chunk := city.document.find_chunk(chunk_id)
 		result[chunk_id] = hash(chunk.decoded_payload) if chunk != null else 0
 
-	result["underground"] = [result.ALTM, result.XTER, result.XUND, _flag_content(city, 0x30)]
-
-	return result
+	# Pipe flags and XUND affect only the underground drawing.
+	var underground_content := [result.ALTM, result.XTER,
+		hash(city.document.find_chunk("XUND").decoded_payload), _flag_content(city, 0x30)]
+	return {"surface": result, "underground": underground_content}
 
 
 func _flag_content(city: CityState, mask: int) -> int:
