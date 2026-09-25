@@ -111,12 +111,9 @@ func draw_on(canvas: Control, scale: float, offset: Vector2, underground := fals
 	for point in failed_points:
 		_draw_failure(canvas, point, 1.0)
 	canvas.draw_set_transform(Vector2.ZERO)
-	_draw_key(canvas)
 
 
-func _draw_key(canvas: Control) -> void:
-	var font := ThemeDB.fallback_font
-	var lines: PackedStringArray = analysis.summary
+func key_rect(canvas: Control) -> Rect2:
 	var available := Rect2(Vector2.ZERO, canvas.size)
 	# the workspace can extend the map behind the sidebar and menu
 	var workspace := canvas.get_parent()
@@ -125,8 +122,14 @@ func _draw_key(canvas: Control) -> void:
 		if map_space != null:
 			available = Rect2(map_space.global_position - canvas.global_position, map_space.size)
 	var width := minf(500.0, available.size.x - 24.0)
-	var panel := Rect2(available.position + Vector2(12, 12), Vector2(width, 134 + lines.size() * 22))
-	canvas.draw_style_box(canvas.get_theme_stylebox("panel", "MapLegend"), panel)
+	return Rect2(available.position + Vector2(12, 12), Vector2(width, 134 + analysis.summary.size() * 22))
+
+
+func draw_key(canvas: Control) -> void:
+	var font := ThemeDB.fallback_font
+	var lines: PackedStringArray = analysis.summary
+	var width := canvas.size.x
+	var panel := Rect2(Vector2.ZERO, canvas.size)
 	canvas.draw_string(font, panel.position + Vector2(12, 25), "Trip Query", HORIZONTAL_ALIGNMENT_LEFT, width - 24, 17,
 			canvas.get_theme_color("font_color", "MapLegend"))
 	for i in 48:

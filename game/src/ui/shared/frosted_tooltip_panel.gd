@@ -53,5 +53,8 @@ func _exit_tree() -> void:
 func _refresh() -> void:
 	var enabled := _panel.is_visible_in_tree() and AppUiTheme.translucent_menus
 	_panel.material = _glass if enabled else _original_material
+	var style := AppUiTheme.current().get_stylebox("panel", "TooltipPanel") as StyleBoxFlat
+	if style != null:
+		_glass.set_shader_parameter("edge_opacity", style.bg_color.a)
 	# copy the viewport so the blur mipmaps are valid
 	_background_copy.copy_mode = BackBufferCopy.COPY_MODE_VIEWPORT if enabled else BackBufferCopy.COPY_MODE_DISABLED

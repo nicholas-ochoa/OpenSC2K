@@ -111,59 +111,37 @@ func _draw_data_view(scale: float, offset: Vector2) -> void:
 			outline.append(outline[0])
 			map.draw_polyline(outline, Color.WHITE, 1.0)
 
-	_draw_data_key()
 
-	if map.hover_tile.x >= 0:
-		var text := CityDataView.tile_text(map.city, map.data_view_mode, map.hover_tile, map._shift_pressed)
-		var font := ThemeDB.fallback_font
-		var lines := text.split("\n")
-		var width := 0.0
-
-		for line in lines:
-			width = maxf(width, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x)
-
-		var extent := Vector2(width + 20, lines.size() * 24 + 8)
-		var position := map.get_local_mouse_position() + Vector2(18, 24)
-		position.x = clampf(position.x, 4, maxf(4, map.size.x - extent.x - 4))
-		position.y = clampf(position.y, 4, maxf(4, map.size.y - extent.y - 4))
-		map.draw_style_box(_data_legend_box(), Rect2(position, extent))
-
-		for index in lines.size():
-			map.draw_string(font, position + Vector2(10, 22 + index * 24), lines[index], HORIZONTAL_ALIGNMENT_LEFT, -1, 16,
-					map.get_theme_color("font_color", "MapLegend"))
-
-
-func _draw_data_key() -> void:
+func draw_data_key(canvas: Control) -> void:
 	var font := ThemeDB.fallback_font
-	var origin := data_key_origin()
-	map.draw_style_box(_data_legend_box(), Rect2(origin, Vector2(320, 116 if map.data_view_mode == CityViewMode.Mode.HEIGHT else 96)))
+	var origin := Vector2.ZERO
 	var title: String = CityDataView.TITLES[CityViewMode.DATA_MODES.find(map.data_view_mode)]
-	map.draw_string(font, origin + Vector2(12, 24), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, map.get_theme_color("font_color", "MapLegend"))
+	canvas.draw_string(font, origin + Vector2(12, 24), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, map.get_theme_color("font_color", "MapLegend"))
 
 	var states := CityDataView.state_labels(map.data_view_mode)
 
 	if not states.is_empty():
 		for index in states.size():
 			var position := origin + Vector2(12 + index * 100, 38)
-			map.draw_rect(Rect2(position, Vector2(88, 18)), CityDataView.color(CityDataView.state_value(map.data_view_mode, index), map.data_view_mode))
-			map.draw_string(font, position + Vector2(0, 38), states[index], HORIZONTAL_ALIGNMENT_LEFT, -1, 14,
+			canvas.draw_rect(Rect2(position, Vector2(88, 18)), CityDataView.color(CityDataView.state_value(map.data_view_mode, index), map.data_view_mode))
+			canvas.draw_string(font, position + Vector2(0, 38), states[index], HORIZONTAL_ALIGNMENT_LEFT, -1, 14,
 					map.get_theme_color("font_color", "MapLegend"))
 	else:
 		for index in 32:
 			var number := index if map.data_view_mode == CityViewMode.Mode.HEIGHT else roundi(index * 255.0 / 31)
-			map.draw_rect(Rect2(origin + Vector2(12 + index * 9.25, 38), Vector2(9.25, 20)), CityDataView.color(number, map.data_view_mode))
+			canvas.draw_rect(Rect2(origin + Vector2(12 + index * 9.25, 38), Vector2(9.25, 20)), CityDataView.color(number, map.data_view_mode))
 
 		if map.data_view_mode == CityViewMode.Mode.HEIGHT:
-			map.draw_rect(Rect2(origin + Vector2(12, 96), Vector2(18, 10)), Color(0.35, 0.75, 1.0, 0.65))
-			map.draw_string(font, origin + Vector2(38, 106), "Water surface (transparent)", HORIZONTAL_ALIGNMENT_LEFT, -1, 13,
+			canvas.draw_rect(Rect2(origin + Vector2(12, 96), Vector2(18, 10)), Color(0.35, 0.75, 1.0, 0.65))
+			canvas.draw_string(font, origin + Vector2(38, 106), "Water surface (transparent)", HORIZONTAL_ALIGNMENT_LEFT, -1, 13,
 					map.get_theme_color("font_color", "MapLegend"))
 
 		var labels := CityDataView.range_labels(map.data_view_mode)
 		var low := labels[0]
 		var high := labels[1]
-		map.draw_string(font, origin + Vector2(12, 80), low, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, map.get_theme_color("font_color", "MapLegend"))
+		canvas.draw_string(font, origin + Vector2(12, 80), low, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, map.get_theme_color("font_color", "MapLegend"))
 		var high_width := font.get_string_size(high, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
-		map.draw_string(font, origin + Vector2(308 - high_width, 80), high, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, map.get_theme_color("font_color", "MapLegend"))
+		canvas.draw_string(font, origin + Vector2(308 - high_width, 80), high, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, map.get_theme_color("font_color", "MapLegend"))
 
 
 func data_key_origin() -> Vector2:
@@ -174,10 +152,6 @@ func data_key_origin() -> Vector2:
 		if map_space != null:
 			return map_space.global_position - map.global_position + Vector2(12, 12)
 	return Vector2(12, 12)
-
-
-func _data_legend_box() -> StyleBoxFlat:
-	return map.get_theme_stylebox("panel", "MapLegend") as StyleBoxFlat
 
 
 func _ensure_base_layer() -> void:

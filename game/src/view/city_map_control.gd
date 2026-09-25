@@ -92,6 +92,8 @@ var highway_preview := false
 var query_footprint_preview := false
 var scurk_stamp_visuals: Array[CityDynamicVisual] = []
 var trip_reach: TripReachOverlay
+var _legend: CityMapLegend
+var _data_tooltip: CityMapDataTooltip
 var trip_query_underground := false
 var query_city: CityState
 var _shift_pressed := false
@@ -157,6 +159,12 @@ func _ready() -> void:
 	clip_contents = true
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	layers._ensure_base_layer()
+	_legend = CityMapLegend.new()
+	_legend.map = self
+	add_child(_legend)
+	_data_tooltip = CityMapDataTooltip.new()
+	_data_tooltip.map = self
+	add_child(_data_tooltip)
 	resized.connect(camera._on_resized)
 	mouse_exited.connect(selection._clear_hover)
 
@@ -300,6 +308,10 @@ func debug_metrics() -> Dictionary:
 
 func _draw() -> void:
 	presentation._draw()
+	if _legend != null:
+		_legend.refresh()
+	if _data_tooltip != null:
+		_data_tooltip.refresh()
 
 
 func _gui_input(event: InputEvent) -> void:

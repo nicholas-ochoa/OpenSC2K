@@ -876,6 +876,12 @@
     "lane": "product"
   },
   {
+    "id": "map_legend_render_test",
+    "script": "tests/map_legend_render_test.gd",
+    "domain": "ui",
+    "lane": "native"
+  },
+  {
     "id": "frosted_tooltip_render_test",
     "script": "tests/frosted_tooltip_render_test.gd",
     "domain": "ui",
