@@ -5,6 +5,7 @@ extends ConfirmationDialog
 
 signal import_original_requested
 signal update_check_requested
+signal button_clicked
 
 var pack_error_label: Label
 var shuffle_music_check: CheckBox
@@ -89,6 +90,9 @@ func _ready() -> void:
 	_bind_pack_controls("sound", sound_pack_edit, %SoundPackName, %SoundBrowse)
 	_bind_pack_controls("music", music_pack_edit, %MusicPackName, %MusicBrowse)
 	_bind_pack_controls("data", data_pack_edit, %DataPackName, %DataBrowse)
+	_watch_clicks(tabs)
+	tabs.get_tab_bar().tab_clicked.connect(button_clicked.emit.unbind(1))
+	canceled.connect(button_clicked.emit)
 	%ImportButton.pressed.connect(_request_original_import)
 	check_updates_now_button.pressed.connect(update_check_requested.emit)
 	about_to_popup.connect(_fit_to_viewport)
@@ -96,6 +100,30 @@ func _ready() -> void:
 		get_parent().get_viewport().size_changed.connect(_fit_to_viewport)
 	theme_changed.connect(func() -> void: call_deferred("_fit_to_viewport"))
 	_fit_to_viewport()
+
+
+func _watch_clicks(node: Node) -> void:
+	if node is BaseButton:
+		node.pressed.connect(button_clicked.emit)
+
+	if node is OptionButton:
+		node.item_selected.connect(button_clicked.emit.unbind(1))
+	elif node is Slider:
+		node.drag_started.connect(button_clicked.emit)
+		node.gui_input.connect(_on_slider_key_input)
+
+	for child in node.get_children():
+		_watch_clicks(child)
+
+
+func _on_slider_key_input(event: InputEvent) -> void:
+	if not event is InputEventKey:
+		return
+
+	for action in [&"ui_left", &"ui_right", &"ui_up", &"ui_down", &"ui_home", &"ui_end"]:
+		if event.is_action_pressed(action, true):
+			button_clicked.emit()
+			return
 
 
 func _fit_to_viewport() -> void:

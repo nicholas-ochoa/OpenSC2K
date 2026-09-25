@@ -162,7 +162,10 @@ func _build_main_menu() -> void:
 	app.main_menu.about_requested.connect(open_about_dialog)
 	app.main_menu.exit_requested.connect(app.city_files.request_city_exit.bind("quit"))
 
+	app.main_overlays.settings_dialog.button_clicked.connect(play_toolbar_click)
 	app.main_overlays.settings_dialog.confirmed.connect(app.settings.apply_settings)
+	# Save feedback uses the newly applied sound preference and loaded sound pack.
+	app.main_overlays.settings_dialog.confirmed.connect(play_toolbar_click)
 	app.main_overlays.settings_dialog.import_original_requested.connect(app.assets.show_reference_import_dialog)
 	app.main_overlays.settings_dialog.update_check_requested.connect(app.updates.check_now)
 	app.updates.bind_ui(app, app.main_overlays.update_dialog)

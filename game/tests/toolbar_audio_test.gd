@@ -22,6 +22,7 @@ func _run() -> void:
 	main.preferences.toolbar_sounds = false
 	main.city_toolbar.toolbar_buttons[0].pressed.emit()
 	assert(not _has_sound(main, 505))
+	await _check_settings_feedback(main)
 
 	# SCURK uses the same feedback for tools, clipboard transforms, zoom, and views.
 	main.scurk_workspace._ensure_scurk_editor()
@@ -92,16 +93,61 @@ func _run() -> void:
 	assert(main.preferences.sound_pack_folder == old_sound_folder)
 	main.queue_free()
 	await process_frame
-	print("PASS: city and SCURK toolbar preference, Center WAV routing, terrain tractor feedback independent of toolbar setting, city sound mute")
+	print("PASS: city, Settings and SCURK interface feedback, Center WAV routing, independent terrain feedback, city sound mute")
 	quit()
 
 
+func _check_settings_feedback(main: Node) -> void:
+	var dialog := main.main_overlays.settings_dialog as AppSettingsDialog
+	main.preferences.toolbar_sounds = true
+	main.settings.open_settings_dialog()
+	assert(not _has_sound(main, 505), "Loading settings must not play feedback")
+	var key := InputEventKey.new()
+	key.keycode = KEY_RIGHT
+	key.pressed = true
+	var actions: Array[Callable] = [dialog.fullscreen_check.pressed.emit,
+		dialog.theme_selector.pressed.emit, dialog.theme_selector.item_selected.emit.bind(0),
+		dialog.tabs.get_tab_bar().tab_clicked.emit.bind(3), dialog.music_slider.drag_started.emit,
+		dialog.effects_slider.gui_input.emit.bind(key), dialog.get_node("%DataBrowse").pressed.emit,
+		dialog.get_node("%ImportButton").pressed.emit, dialog.confirmed.emit, dialog.canceled.emit]
+
+	for action_index in actions.size():
+		var action := actions[action_index]
+
+		for enabled in [true, false]:
+			main.preferences.toolbar_sounds = enabled
+			main.settings.open_settings_dialog()
+			assert(not _has_sound(main, 505), "Refreshing settings must not play feedback")
+			action.call()
+			assert(_sound_count(main, 505) == int(enabled), "Settings action %d: enabled=%s, clicks=%d" % [
+				action_index, enabled, _sound_count(main, 505)])
+			await _clear(main)
+			main.reference_import_dialog.hide()
+
+			for child in dialog.get_children():
+				if child is FileDialog:
+					child.hide()
+
+	main.preferences.toolbar_sounds = true
+	main.document_state.city.set_sound_enabled(false)
+	dialog.fullscreen_check.pressed.emit()
+	assert(not _has_sound(main, 505), "City sound mute also applies to Settings")
+	main.document_state.city.set_sound_enabled(true)
+	dialog.hide()
+
+
 func _has_sound(main: Node, id: int) -> bool:
+	return _sound_count(main, id) > 0
+
+
+func _sound_count(main: Node, id: int) -> int:
+	var count := 0
+
 	for player in get_nodes_in_group(CityAudioController.SOUND_EFFECT_GROUP):
 		if player.stream == main.audio_controller.wave_stream_cache.get(id):
-			return true
+			count += 1
 
-	return false
+	return count
 
 
 func _clear(main: Node) -> void:
