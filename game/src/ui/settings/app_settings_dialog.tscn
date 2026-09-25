@@ -492,70 +492,67 @@ tooltip_text = "Show the underground view on a dark background,
 with brighter lines for pipes, water mains, and subways."
 text = "Dark underground view"
 
-[node name="Import Data" type="ScrollContainer" parent="Tabs"]
+[node name="Data" type="ScrollContainer" parent="Tabs"]
 horizontal_scroll_mode = 0
 visible = false
 layout_mode = 2
 theme_override_constants/separation = 16
 metadata/_tab_index = 3
 
-[node name="Fields" type="GridContainer" parent="Tabs/Import Data"]
+[node name="Content" type="VBoxContainer" parent="Tabs/Data"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 14
+
+[node name="Fields" type="GridContainer" parent="Tabs/Data/Content"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/h_separation = 14
 theme_override_constants/v_separation = 14
 columns = 2
 
-[node name="OriginalDataLabel" type="Label" parent="Tabs/Import Data/Fields"]
-layout_mode = 2
-text = "Original Data"
-
-[node name="ImportButton" type="Button" parent="Tabs/Import Data/Fields"]
-unique_name_in_owner = true
-layout_mode = 2
-tooltip_text = "Select SIMCITY.EXE to import the graphics, sounds, music, and game data of your SimCity 2000 copy."
-text = "Import SimCity 2000..."
-
-[node name="ImportHintSpacer" type="Control" parent="Tabs/Import Data/Fields"]
-layout_mode = 2
-
-[node name="ImportHint" type="Label" parent="Tabs/Import Data/Fields"]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Import graphics, sounds, music and game data from your SimCity 2000 game files. Choose all asset types or import one type. Each import creates separate packs."
-autowrap_mode = 3
-theme_type_variation = "HelpLabel"
-
-[node name="DataPackLabel" type="Label" parent="Tabs/Import Data/Fields"]
+[node name="DataPackLabel" type="Label" parent="Tabs/Data/Content/Fields"]
 layout_mode = 2
 text = "Data pack"
 
-[node name="DataPackControls" type="VBoxContainer" parent="Tabs/Import Data/Fields"]
+[node name="DataPackControls" type="VBoxContainer" parent="Tabs/Data/Content/Fields"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="BrowseRow" type="HBoxContainer" parent="Tabs/Import Data/Fields/DataPackControls"]
+[node name="BrowseRow" type="HBoxContainer" parent="Tabs/Data/Content/Fields/DataPackControls"]
 layout_mode = 2
 
-[node name="DataPackEdit" type="LineEdit" parent="Tabs/Import Data/Fields/DataPackControls/BrowseRow"]
+[node name="DataPackEdit" type="LineEdit" parent="Tabs/Data/Content/Fields/DataPackControls/BrowseRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 tooltip_text = "The pack.json file of a data pack. The data pack supplies text, newspapers, the city template, cities, and scenarios. Leave this empty to use the imported data pack."
 placeholder_text = "Automatic (user://packs/data/pack.json)"
 
-[node name="DataBrowse" type="Button" parent="Tabs/Import Data/Fields/DataPackControls/BrowseRow"]
+[node name="DataBrowse" type="Button" parent="Tabs/Data/Content/Fields/DataPackControls/BrowseRow"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Browse..."
 
-[node name="DataPackNameSpacer" type="Control" parent="Tabs/Import Data/Fields"]
+[node name="DataPackNameSpacer" type="Control" parent="Tabs/Data/Content/Fields"]
 layout_mode = 2
 
-[node name="DataPackName" type="Label" parent="Tabs/Import Data/Fields"]
+[node name="DataPackName" type="Label" parent="Tabs/Data/Content/Fields"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 clip_text = true
 text_overrun_behavior = 3
 theme_type_variation = "HelpLabel"
+
+[node name="ImportSpacer" type="Control" parent="Tabs/Data/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ImportButton" type="Button" parent="Tabs/Data/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 0
+tooltip_text = "Import graphics, sounds, music, and game data from your copy of SimCity 2000."
+text = "Import Original Assets"
