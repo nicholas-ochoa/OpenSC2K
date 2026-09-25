@@ -11,6 +11,7 @@ class TestVisual extends CityDynamicVisual:
 
 enum Mode { SPRITE, TRAIN, SHADOW }
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const VIEW := 2
 const EDGE := 256
 const CROSSINGS := [0x4f, 0x50, 0x4d, 0x4e, 0x47, 0x48]
@@ -40,6 +41,7 @@ func _run() -> void:
 	_palette = Sc2Palette.index_encoding()
 	_sprites = FixtureGraphics.pack().large_sprites
 	var city := CityState.from_document(Sc2File.load_path("res://tests/fixtures/cities/generated-128.SC2"))
+	_add_rail_crossing(city)
 	var configuration := CityIsometricRenderer.view_configuration(VIEW)
 	var focus := _crossing_point(city, configuration)
 	var center_key := Vector2i(focus / EDGE)
@@ -345,6 +347,21 @@ func _visual(sprite_id: int, position: Vector2i, mode: int, order: int) -> TestV
 
 func _sprite_image(sprite_id: int, flip: bool) -> Image:
 	return CityIsometricRenderer.sprite_image(_sprites, _palette, _images, sprite_id, flip)
+
+
+## The generated fixture has no crossing. Build a rail line across its highway in memory.
+func _add_rail_crossing(city: CityState) -> void:
+	for index in city.buildings.size():
+		if not int(city.buildings[index]) in [Tiles.HIGHWAY_STRAIGHT_1, Tiles.HIGHWAY_STRAIGHT_2]:
+			continue
+
+		var tile := Vector2i(index / city.map_size, index % city.map_size)
+
+		for step in [Vector2i(0, 1), Vector2i(1, 0)]:
+			if NetworkCommand.apply(city, 7, 0, tile - step * 3, tile + step * 4).ok:
+				return
+
+	assert(false, "No rail line can cross the test city highway")
 
 
 func _crossing_point(city: CityState, configuration: CityViewConfiguration) -> Vector2i:
