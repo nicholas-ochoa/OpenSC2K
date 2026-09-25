@@ -19,6 +19,7 @@ var scurk_place_print: ScurkPlacePrintControl
 var scurk_print: ScurkPrintControl
 var about_dialog: AboutDialog
 var save_changes_dialog: SaveChangesDialog
+var update_dialog: UpdateCheckDialog
 
 
 func _ready() -> void:
@@ -43,6 +44,9 @@ func _create_overlays() -> void:
 
 	save_changes_dialog = SaveChangesDialogView.new()
 	_register(save_changes_dialog, self, CityDialogRegistry.Modality.BLOCKING)
+
+	update_dialog = UpdateCheckDialog.new()
+	_register(update_dialog, self, CityDialogRegistry.Modality.BLOCKING)
 
 
 # true when a visible registered overlay suspends the simulation

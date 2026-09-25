@@ -113,6 +113,37 @@ theme_type_variation = &"HelpLabel"
 text = "Use a dark background and brighter underground lines."
 autowrap_mode = 2
 
+[node name="UpdatesSpacer" type="Control" parent="Tabs/General/Fields"]
+layout_mode = 2
+
+[node name="UpdatesRow" type="HBoxContainer" parent="Tabs/General/Fields"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="CheckForUpdatesCheck" type="CheckBox" parent="Tabs/General/Fields/UpdatesRow"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "When OpenSC2K starts, not more than one time each day, it sends a request to GitHub
+to find a newer release of the OpenSC2K project. The request contains only the data
+that is necessary to make the request. OpenSC2K shares no other information."
+text = "Check for updates periodically"
+
+[node name="CheckUpdatesNowButton" type="Button" parent="Tabs/General/Fields/UpdatesRow"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Check GitHub for a newer release now."
+text = "Check now"
+
+[node name="UpdateStatusSpacer" type="Control" parent="Tabs/General/Fields"]
+layout_mode = 2
+
+[node name="UpdateStatusLabel" type="Label" parent="Tabs/General/Fields"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+autowrap_mode = 2
+theme_type_variation = &"HelpLabel"
+
 [node name="Audio" type="ScrollContainer" parent="Tabs"]
 visible = false
 layout_mode = 2

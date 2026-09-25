@@ -17,6 +17,8 @@ const MENU_SCENARIO_GOALS := 8
 const MENU_SAVE_CITY := 7
 const MENU_EXPORT_CITY_PNG := 8
 const MENU_UPGRADE_SC2X := 0x8303
+const MENU_CHECK_FOR_UPDATES := 0x8304
+const MENU_ABOUT := 0
 const MENU_AUTO_BUDGET := 0x8004
 const MENU_AUTO_GOTO := 0x8005
 const MENU_SOUND_EFFECTS := 0x8006
@@ -161,7 +163,7 @@ func _ready() -> void:
 		_on_newspaper_menu,
 	)
 	newspaper_menu.disabled = true
-	_add_menu(menu_row, "Help", [["About", 0]], _on_help_menu)
+	_add_menu(menu_row, "Help", [["Check for updates", MENU_CHECK_FOR_UPDATES], ["", -1], ["About", MENU_ABOUT]], _on_help_menu)
 
 	var menu_spacer := Control.new()
 	menu_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL

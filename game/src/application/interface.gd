@@ -164,6 +164,10 @@ func _build_main_menu() -> void:
 
 	app.main_overlays.settings_dialog.confirmed.connect(app.settings.apply_settings)
 	app.main_overlays.settings_dialog.import_original_requested.connect(app.assets.show_reference_import_dialog)
+	app.main_overlays.settings_dialog.update_check_requested.connect(app.updates.check_now)
+	app.updates.bind_ui(app, app.main_overlays.update_dialog)
+	app.updates.running_changed.connect(app.main_overlays.settings_dialog.set_update_check_running)
+	app.updates.status_changed.connect(app.main_overlays.settings_dialog.set_update_status)
 	app.reference_import_dialog = app.main_overlays.asset_import_dialog
 	app.reference_import_dialog.packs_imported.connect(app.assets.activate_imported_packs)
 	app.reference_import_dialog.dismissed.connect(app.assets._on_reference_import_canceled)

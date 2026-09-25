@@ -91,6 +91,7 @@ var network_edits: ApplicationNetworkEdits = ApplicationNetworkEdits.new(self)
 var query_choices: ApplicationQueryChoices = ApplicationQueryChoices.new(self)
 var route_edits: ApplicationRouteEdits = ApplicationRouteEdits.new(self)
 var debug: ApplicationDebug = ApplicationDebug.new(self)
+var updates := ApplicationUpdates.new(preferences)
 
 
 func _ready() -> void:
@@ -104,6 +105,7 @@ func _ready() -> void:
 	settings.load_app_settings()
 	assets.build_reference_import_dialogs()
 	assets.initialize_runtime()
+	updates.check_on_startup()
 
 
 func _notification(what: int) -> void:

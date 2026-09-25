@@ -310,8 +310,11 @@ func _toggle_newspaper_option(id: int) -> void:
 	]
 
 
-func on_help_menu(_id: int) -> void:
-	app.interface.open_about_dialog()
+func on_help_menu(id: int) -> void:
+	if id == CityMenuBarView.MENU_CHECK_FOR_UPDATES:
+		app.updates.check_now()
+	else:
+		app.interface.open_about_dialog()
 
 
 # open the newspaper that the simulation requested. the original opens the

@@ -1016,6 +1016,12 @@
     ]
   },
   {
+    "id": "update_check_test",
+    "script": "tests/update_check_test.gd",
+    "domain": "ui",
+    "lane": "product"
+  },
+  {
     "id": "renderer_settings_test",
     "script": "tests/renderer_settings_test.gd",
     "domain": "rendering",

@@ -43,6 +43,8 @@ func open_settings_dialog() -> void:
 	app.main_overlays.settings_dialog.original_compatibility_check.tooltip_text = ("SC2X cities cannot return to original compatibility."
 			if app.main_overlays.settings_dialog.original_compatibility_check.disabled else "")
 	app.main_overlays.settings_dialog.warn_sc2x_conversion_check.button_pressed = preferences.warn_sc2x_conversion
+	app.main_overlays.settings_dialog.check_for_updates_check.button_pressed = preferences.check_for_updates
+	app.main_overlays.settings_dialog.set_update_status(preferences.update_checked_at, preferences.update_error)
 	app.main_overlays.settings_dialog.shuffle_music_check.button_pressed = preferences.shuffle_music
 	app.main_overlays.settings_dialog.toolbar_sounds_check.button_pressed = preferences.toolbar_sounds
 	app.main_overlays.settings_dialog.sound_pack_edit.text = AppSettingsDialog.pack_file_path(preferences.sound_pack_folder)
@@ -100,6 +102,7 @@ func apply_settings() -> void:
 
 	preferences.original_compatibility = bool(values.original_compatibility)
 	preferences.warn_sc2x_conversion = bool(values.warn_sc2x_conversion)
+	preferences.check_for_updates = bool(values.check_for_updates)
 	apply_compatibility_controls()
 	preferences.graphics_source = values.graphics_source
 	preferences.graphics_folder = values.graphics_folder
@@ -157,7 +160,7 @@ func apply_settings() -> void:
 		preferences.city_renderer, preferences.background_audio, preferences.zoom_graphics, preferences.toolbar_sounds,
 		preferences.sound_pack_folder, preferences.music_pack_folder, preferences.shuffle_music, preferences.original_compatibility,
 		preferences.warn_sc2x_conversion, preferences.default_mayor_name, preferences.overview_graphics, preferences.ui_theme, preferences.dark_underground,
-		preferences.translucent_menus,
+		preferences.translucent_menus, preferences.check_for_updates,
 	)
 	app.status_label.text = (
 		"Settings saved."
@@ -196,6 +199,11 @@ func load_app_settings() -> void:
 	preferences.fullscreen = values.fullscreen
 	preferences.graphics_source = values.graphics_source
 	preferences.graphics_folder = values.graphics_folder
+	preferences.check_for_updates = values.check_for_updates
+	preferences.update_last_check = values.update_last_check
+	preferences.update_skipped_version = values.update_skipped_version
+	preferences.update_checked_at = values.update_checked_at
+	preferences.update_error = values.update_error
 
 	if preferences.fullscreen:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)

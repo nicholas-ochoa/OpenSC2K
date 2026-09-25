@@ -27,11 +27,17 @@ class Values extends RefCounted:
 	var toolbar_sounds := true
 	var sound_pack_folder := ""
 	var music_pack_folder := ""
+	var check_for_updates := false
 
 
 class LoadedValues extends Values:
 	# legacy file preference is read for migration, but is not a dialog option
 	var soundtrack_folder := ""
+	# update check state, which the update check writes
+	var update_last_check := 0
+	var update_skipped_version := ""
+	var update_checked_at := 0
+	var update_error := ""
 
 
 static func load_values(
@@ -83,6 +89,12 @@ static func load_values(
 	result.graphics_folder = str(config.get_value("graphics", "folder", ""))
 	result.zoom_graphics = normalize_zoom_graphics(config.get_value("graphics", "zoom_graphics", DEFAULT_ZOOM_GRAPHICS))
 	result.city_renderer = normalize_renderer(config.get_value("display", "city_renderer", "gpu"))
+
+	result.check_for_updates = bool(config.get_value("updates", "check_periodically", false))
+	result.update_last_check = int(config.get_value("updates", "last_check", 0))
+	result.update_skipped_version = str(config.get_value("updates", "skipped_version", ""))
+	result.update_checked_at = int(config.get_value("updates", "checked_at", 0))
+	result.update_error = str(config.get_value("updates", "error", ""))
 
 	return result
 
@@ -143,6 +155,7 @@ static func save_values(
 	ui_theme: Variant = null,
 	dark_underground: Variant = null,
 	translucent_menus: Variant = null,
+	check_for_updates: Variant = null,
 ) -> Error:
 	var config := ConfigFile.new()
 
@@ -194,6 +207,9 @@ static func save_values(
 	if zoom_graphics != null:
 		config.set_value("graphics", "zoom_graphics", normalize_zoom_graphics(zoom_graphics))
 
+	if check_for_updates != null:
+		config.set_value("updates", "check_periodically", bool(check_for_updates))
+
 	for pair in [["toolbar_sounds", toolbar_sounds], ["sound_pack_folder", sound_pack_folder], ["music_pack_folder", music_pack_folder]]:
 		if pair[1] != null:
 			config.set_value("audio", pair[0], pair[1])
@@ -208,5 +224,21 @@ static func save_original_compatibility(enabled: bool, path := SETTINGS_PATH) ->
 		config.load(path)
 
 	config.set_value("simulation", "original_compatibility", enabled)
+
+	return config.save(path)
+
+
+static func save_update_state(
+	last_check: int, skipped_version: String, checked_at: int, error: String, path := SETTINGS_PATH
+) -> Error:
+	var config := ConfigFile.new()
+
+	if FileAccess.file_exists(path):
+		config.load(path)
+
+	config.set_value("updates", "last_check", last_check)
+	config.set_value("updates", "skipped_version", skipped_version)
+	config.set_value("updates", "checked_at", checked_at)
+	config.set_value("updates", "error", error)
 
 	return config.save(path)

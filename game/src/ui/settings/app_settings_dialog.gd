@@ -4,6 +4,7 @@ extends ConfirmationDialog
 @warning_ignore_start("integer_division")
 
 signal import_original_requested
+signal update_check_requested
 
 var pack_error_label: Label
 var original_compatibility_check: CheckBox
@@ -34,6 +35,9 @@ var translucent_menus_check: CheckBox
 var default_mayor_edit: LineEdit
 var renderer_selector: OptionButton
 var background_audio_check: CheckBox
+var check_for_updates_check: CheckBox
+var check_updates_now_button: Button
+var update_status_label: Label
 
 
 func _ready() -> void:
@@ -47,6 +51,9 @@ func _ready() -> void:
 	button_row.move_child(get_ok_button(), cancel_index)
 	get_label().visible = false
 	background_audio_check = %BackgroundAudioCheck
+	check_for_updates_check = %CheckForUpdatesCheck
+	check_updates_now_button = %CheckUpdatesNowButton
+	update_status_label = %UpdateStatusLabel
 	compatibility_error_label = %CompatibilityErrorLabel
 	default_mayor_edit = %DefaultMayorEdit
 	theme_selector = %ThemeSelector
@@ -86,6 +93,7 @@ func _ready() -> void:
 	_bind_pack_controls("sound", sound_pack_edit, %SoundPackName, %SoundBrowse)
 	_bind_pack_controls("music", music_pack_edit, %MusicPackName, %MusicBrowse)
 	%ImportButton.pressed.connect(_request_original_import)
+	check_updates_now_button.pressed.connect(update_check_requested.emit)
 	about_to_popup.connect(_fit_to_viewport)
 	if get_parent() != null:
 		get_parent().get_viewport().size_changed.connect(_fit_to_viewport)
@@ -110,6 +118,18 @@ func _fit_to_viewport() -> void:
 func _request_original_import() -> void:
 	hide()
 	import_original_requested.emit()
+
+
+func set_update_check_running(running: bool) -> void:
+	check_updates_now_button.disabled = running
+	check_updates_now_button.text = "Checking..." if running else "Check now"
+
+
+# show the result of the last update check, or nothing before the first check
+func set_update_status(checked_at: int, error: String) -> void:
+	update_status_label.visible = checked_at > 0
+	update_status_label.text = ReleaseUpdateCheck.status_text(checked_at, error)
+	update_status_label.theme_type_variation = &"HelpLabel" if error.is_empty() else &"ErrorLabel"
 
 
 func show_values(
@@ -153,6 +173,7 @@ func selected_values() -> AppSettingsStore.Values:
 	result.effects_volume = float(effects_slider.value) / 100.0
 	result.dark_underground = dark_underground_check.button_pressed
 	result.fullscreen = fullscreen_check.button_pressed
+	result.check_for_updates = check_for_updates_check.button_pressed
 	result.graphics_source = "auto" if folder_edit.text.strip_edges().is_empty() else "folder"
 	result.graphics_folder = folder_edit.text.strip_edges()
 
