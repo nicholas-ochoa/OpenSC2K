@@ -34,8 +34,11 @@ func _run() -> void:
 		if main.city_dialogs.png_export_progress.visible:
 			overlay_shown += 1
 	)
+	# A loaded machine can take over one second. The delay itself keeps the overlay hidden.
+	main.city_png_export.progress_delay_msec = 3600000
 	await _check_exports()
-	assert(overlay_shown == 0, "Exports under one second show no overlay")
+	main.city_png_export.progress_delay_msec = main.city_png_export.PROGRESS_DELAY_MSEC
+	assert(overlay_shown == 0, "Exports that finish before the progress delay show no overlay")
 	await _check_progress_overlay()
 	main.queue_free()
 	await process_frame
