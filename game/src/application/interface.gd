@@ -144,6 +144,7 @@ func build_interface(original_assets: OriginalGameAssets) -> void:
 	_build_main_menu()
 	app.effects_audio.bind_view(app.map_view, app.main_menu)
 	app.main_overlays.about_dialog.set_assets(original_assets)
+	app.settings.apply_ui_scale()
 
 
 func _build_main_menu() -> void:

@@ -183,7 +183,7 @@ func _draw_signs(scale: float, offset: Vector2) -> void:
 
 	_ensure_sign_entries()
 	var view_index := sign_view_index(map.zoom_factor)
-	var display_multiplier := sign_display_multiplier(map.zoom_factor)
+	var display_multiplier := sign_display_multiplier(map.zoom_factor) * map.map_pixel_ratio
 	var font := _get_sign_font()
 	var font_size: int = SIGN_FONT_HEIGHTS[view_index]
 
@@ -196,7 +196,7 @@ func _draw_signs(scale: float, offset: Vector2) -> void:
 		var anchor := offset + Vector2(entry.anchor) * scale
 		var drawing_anchor := anchor
 
-		if display_multiplier > 1.0:
+		if not is_equal_approx(display_multiplier, 1.0):
 			drawing_anchor = Vector2.ZERO
 			map.draw_set_transform(
 				anchor, 0.0, Vector2(display_multiplier, display_multiplier)
@@ -216,7 +216,7 @@ func _draw_signs(scale: float, offset: Vector2) -> void:
 		)
 		_draw_raised_sign_part(layout.post, SIGN_POST_FILL, 1.0)
 
-		if display_multiplier > 1.0:
+		if not is_equal_approx(display_multiplier, 1.0):
 			map.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 		_draw_sign_occlusion(int(entry.key), scale, offset)

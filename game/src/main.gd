@@ -104,14 +104,21 @@ func _ready() -> void:
 		asset_state.reference_root = DataPack.default_folder()
 
 	settings.load_app_settings()
+	get_window().size_changed.connect(_on_window_size_changed)
 	assets.build_reference_import_dialogs()
 	assets.initialize_runtime()
 	updates.check_on_startup()
 
 
+func _on_window_size_changed() -> void:
+	settings.apply_ui_scale()
+
+
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST and is_inside_tree():
 		city_files.request_city_exit("quit")
+	elif what == NOTIFICATION_WM_DPI_CHANGE:
+		settings.apply_ui_scale()
 	elif what == NOTIFICATION_APPLICATION_FOCUS_OUT:
 		effects_audio.handle_application_focus_out()
 	elif what == NOTIFICATION_APPLICATION_FOCUS_IN:

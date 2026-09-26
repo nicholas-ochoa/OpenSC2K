@@ -46,10 +46,20 @@ func open(data: Dictionary) -> void:
 		view.set("devtools", false)
 		view.connect("ipc_message", _on_message)
 		add_child(view)
-		view.call("zoom", DisplayServer.screen_get_scale())
+		view.call("zoom", page_zoom())
 	else:
+		# the interface scale can change between openings
+		view.call("zoom", page_zoom())
 		view.call("set_visible", true)
 		_send_data()
+
+
+# the page follows the display scale, and the UI scale choice reduces it the
+# same way as the interface
+func page_zoom() -> float:
+	var factor := get_window().content_scale_factor if is_inside_tree() else 1.0
+
+	return DisplayServer.screen_get_scale() * factor
 
 
 func close() -> void:

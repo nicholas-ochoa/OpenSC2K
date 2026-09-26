@@ -12,6 +12,7 @@ var music_pack_folder := ""
 var data_pack_folder := ""
 var city_renderer := "gpu"
 var ui_theme := "light"
+var ui_scale := AppUiScale.DEFAULT
 var translucent_menus := true
 var dark_underground := false
 var default_mayor_name := "Mayor"

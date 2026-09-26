@@ -260,7 +260,7 @@ func _zoom_index() -> int:
 
 
 func _view_scale() -> float:
-	return map.zoom_factor
+	return map.zoom_factor * map.map_pixel_ratio
 
 
 func _camera_rect() -> Rect2:
@@ -268,7 +268,15 @@ func _camera_rect() -> Rect2:
 
 
 func _draw_offset(scale: float) -> Vector2:
-	return (_camera_rect().get_center() - map.source_center * scale).round() + map._shake_offset
+	var offset := _camera_rect().get_center() - map.source_center * scale
+
+	if map.screen_pixel_scale == Vector2.ZERO:
+		return offset.round() + map._shake_offset
+
+	# put source pixel edges on screen pixel edges
+	var to_screen := Transform2D.IDENTITY.scaled(map.screen_pixel_scale) * map.get_global_transform_with_canvas()
+
+	return to_screen.affine_inverse() * (to_screen * offset).round() + map._shake_offset
 
 
 func _camera_source_bounds() -> Rect2:
@@ -295,6 +303,26 @@ func _clamp_source_center() -> void:
 				map.source_center[axis], bounds.position[axis] + half_visible[axis],
 				bounds.end[axis] - half_visible[axis]
 			)
+
+
+# screen_pixels is the screen pixels for each interface pixel on each axis, and
+# map_pixels is the whole screen pixels for each source pixel at 100% zoom.
+# Godot rounds the interface layout to whole pixels, so the two screen axes can
+# have slightly different scales. the map corrects the smaller axis so that a
+# source pixel has the same whole number of screen pixels on each axis
+func set_pixel_scales(screen_pixels: Vector2, map_pixels: int) -> void:
+	var aligned := screen_pixels.x > 0.0 and screen_pixels.y > 0.0
+	var reference := maxf(screen_pixels.x, screen_pixels.y)
+	var ratio := float(maxi(1, map_pixels)) / reference if aligned else 1.0
+
+	if map.screen_pixel_scale.is_equal_approx(screen_pixels) and is_equal_approx(map.map_pixel_ratio, ratio):
+		return
+
+	map.screen_pixel_scale = screen_pixels if aligned else Vector2.ZERO
+	map.map_pixel_ratio = ratio
+	map.scale = Vector2.ONE * reference / screen_pixels if aligned else Vector2.ONE
+	map.signs._invalidate_sign_entries()
+	_on_resized()
 
 
 func _on_resized() -> void:

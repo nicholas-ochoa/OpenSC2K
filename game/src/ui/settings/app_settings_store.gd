@@ -10,6 +10,7 @@ const DEFAULT_ZOOM_GRAPHICS := [0, 1, 2, 2, 2, 2]
 class Values extends RefCounted:
 	var default_mayor_name := "Mayor"
 	var ui_theme := "light"
+	var ui_scale := AppUiScale.DEFAULT
 	var translucent_menus := true
 	var dark_underground := false
 	var overview_graphics := 0
@@ -57,6 +58,7 @@ static func load_values(
 	result.dark_underground = bool(config.get_value("display", "dark_underground", false))
 	result.ui_theme = normalize_theme(config.get_value("general", "ui_theme", "light"))
 	result.translucent_menus = bool(config.get_value("general", "translucent_menus", true))
+	result.ui_scale = AppUiScale.normalize(config.get_value("general", "ui_scale", AppUiScale.DEFAULT))
 	result.default_mayor_name = str(config.get_value("general", "default_mayor_name", "Mayor"))
 	result.overview_graphics = clampi(int(config.get_value("graphics", "overview_graphics", 0)), 0, 2)
 	result.music_volume = clampf(
@@ -156,6 +158,7 @@ static func save_values(
 	translucent_menus: Variant = null,
 	check_for_updates: Variant = null,
 	data_pack_folder: Variant = null,
+	ui_scale: Variant = null,
 ) -> Error:
 	var config := ConfigFile.new()
 
@@ -174,6 +177,9 @@ static func save_values(
 
 	if translucent_menus != null:
 		config.set_value("general", "translucent_menus", bool(translucent_menus))
+
+	if ui_scale != null:
+		config.set_value("general", "ui_scale", AppUiScale.normalize(ui_scale))
 
 	if default_mayor_name != null:
 		var mayor := str(default_mayor_name).strip_edges().left(23)

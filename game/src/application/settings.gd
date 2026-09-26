@@ -36,6 +36,7 @@ func open_settings_dialog() -> void:
 	app.main_overlays.settings_dialog.dark_underground_check.button_pressed = preferences.dark_underground
 	app.main_overlays.settings_dialog.theme_selector.select(1 if preferences.ui_theme == "dark" else 0)
 	app.main_overlays.settings_dialog.translucent_menus_check.button_pressed = preferences.translucent_menus
+	app.main_overlays.settings_dialog.ui_scale_selector.select(AppUiScale.option_index(preferences.ui_scale))
 	app.main_overlays.settings_dialog.default_mayor_edit.text = preferences.default_mayor_name
 	app.main_overlays.settings_dialog.overview_graphics_selector.select(preferences.overview_graphics)
 	app.main_overlays.settings_dialog.check_for_updates_check.button_pressed = preferences.check_for_updates
@@ -115,6 +116,8 @@ func apply_settings() -> void:
 	preferences.ui_theme = str(values.ui_theme)
 	preferences.translucent_menus = bool(values.translucent_menus)
 	AppUiTheme.select(preferences.ui_theme, preferences.translucent_menus)
+	preferences.ui_scale = AppUiScale.normalize(values.ui_scale)
+	apply_ui_scale()
 	preferences.default_mayor_name = str(values.default_mayor_name)
 
 	if preferences.default_mayor_name.is_empty():
@@ -163,7 +166,7 @@ func apply_settings() -> void:
 		preferences.city_renderer, preferences.background_audio, preferences.zoom_graphics, preferences.toolbar_sounds,
 		preferences.sound_pack_folder, preferences.music_pack_folder, preferences.shuffle_music,
 		preferences.default_mayor_name, preferences.overview_graphics, preferences.ui_theme, preferences.dark_underground,
-		preferences.translucent_menus, preferences.check_for_updates, preferences.data_pack_folder,
+		preferences.translucent_menus, preferences.check_for_updates, preferences.data_pack_folder, preferences.ui_scale,
 	)
 	app.status_label.text = (
 		"Settings saved."
@@ -189,6 +192,8 @@ func load_app_settings() -> void:
 	preferences.ui_theme = str(values.ui_theme)
 	preferences.translucent_menus = bool(values.translucent_menus)
 	AppUiTheme.select(preferences.ui_theme, preferences.translucent_menus)
+	preferences.ui_scale = values.ui_scale
+	apply_ui_scale()
 	preferences.default_mayor_name = str(values.default_mayor_name)
 	preferences.overview_graphics = int(values.overview_graphics)
 	preferences.zoom_graphics = values.zoom_graphics
@@ -209,6 +214,27 @@ func load_app_settings() -> void:
 
 	if preferences.fullscreen:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+
+
+# scale the interface and keep the city map on whole screen pixels. call this
+# again when the window size or screen changes
+func apply_ui_scale() -> void:
+	var window := app.get_window()
+
+	if window == null:
+		return
+
+	var screen_pixels := AppUiScale.apply(window, preferences.ui_scale)
+
+	if app.map_view == null:
+		return
+
+	# headless windows have no real pixels, so keep one map pixel for each
+	# interface pixel there
+	if DisplayServer.get_name() == "headless":
+		app.map_view.set_pixel_scales(Vector2.ZERO, 1)
+	else:
+		app.map_view.set_pixel_scales(screen_pixels, AppUiScale.map_pixels(AppUiScale.fit_scale(window.size, window.content_scale_size)))
 
 
 func _set_graphics_preferences(zoom_graphics: Array) -> void:

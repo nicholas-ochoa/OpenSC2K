@@ -30,6 +30,7 @@ var fullscreen_check: CheckBox
 var zoom_graphics_selectors: Array[OptionButton] = []
 var overview_graphics_selector: OptionButton
 var theme_selector: OptionButton
+var ui_scale_selector: OptionButton
 var translucent_menus_check: CheckBox
 var default_mayor_edit: LineEdit
 var renderer_selector: OptionButton
@@ -55,6 +56,7 @@ func _ready() -> void:
 	update_status_label = %UpdateStatusLabel
 	default_mayor_edit = %DefaultMayorEdit
 	theme_selector = %ThemeSelector
+	ui_scale_selector = %UiScaleSelector
 	translucent_menus_check = %TranslucentMenusCheck
 	effects_slider = %EffectsSlider
 	folder_edit = %FolderEdit
@@ -183,6 +185,7 @@ func selected_values() -> AppSettingsStore.Values:
 	result.default_mayor_name = default_mayor_edit.text.strip_edges()
 	result.ui_theme = "dark" if theme_selector.selected == 1 else "light"
 	result.translucent_menus = translucent_menus_check.button_pressed
+	result.ui_scale = AppUiScale.OPTIONS[maxi(0, ui_scale_selector.selected)]
 	result.overview_graphics = overview_graphics_selector.selected
 	result.toolbar_sounds = toolbar_sounds_check.button_pressed
 	result.shuffle_music = shuffle_music_check.button_pressed

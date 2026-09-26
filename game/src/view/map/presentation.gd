@@ -198,7 +198,7 @@ func _show_shake_frame(
 
 		return
 
-	map._shake_offset = Vector2(-distance * maxf(1.0, map.zoom_factor), 0.0) if frame & 1 == 0 else Vector2.ZERO
+	map._shake_offset = Vector2(-distance * maxf(1.0, map.zoom_factor) * map.map_pixel_ratio, 0.0) if frame & 1 == 0 else Vector2.ZERO
 	map.layers._sync_base_layer()
 	map.queue_redraw()
 	map.get_tree().create_timer(duration).timeout.connect(
