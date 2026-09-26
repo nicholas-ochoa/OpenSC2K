@@ -314,7 +314,7 @@ class ValidationRunnerTest(unittest.TestCase):
             user, output = result
             self.assertIn('USER_PATH=' + str(user / 'probe'), output)
             self.assertIn('MARKER=' + marker, output)
-            self.assertIn('FRAME_SLEEP=0', output, 'Headless tests do not sleep after each frame')
+            self.assertIn('FRAME_SLEEP=1000', output, 'Headless tests use a short frame sleep')
             self.assertFalse(user.exists())
             user_paths.append(user)
             return True

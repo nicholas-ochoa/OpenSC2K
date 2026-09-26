@@ -151,11 +151,12 @@ class Project:
         text = (ROOT / 'game/project.godot').read_text()
         # An absolute custom directory is sanitized by Godot; use a unique relative name.
         text = re.sub(r'^config/(?:use_custom_user_dir|custom_user_dir_name)=.*\n', '', text, flags=re.M)
-        # Headless Godot sleeps this long after each frame. Tests wait for many frames.
+        # Headless Godot sleeps 6900 usec after each frame, and tests wait for many frames.
+        # A short sleep keeps an idle main loop from taking CPU time from worker threads.
         text = re.sub(r'^run/low_processor_mode_sleep_usec=.*\n', '', text, flags=re.M)
         text = text.replace('[application]', '[application]\nconfig/use_custom_user_dir=true\n'
                             f'config/custom_user_dir_name="{self.name}/{entry_id}"\n'
-                            'run/low_processor_mode_sleep_usec=0')
+                            'run/low_processor_mode_sleep_usec=1000')
         (self.path / 'project.godot').write_text(text)
 
     def close(self):
