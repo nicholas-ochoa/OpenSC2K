@@ -2,11 +2,14 @@
 """Inspect, prepare, and publish a manually requested stable release."""
 import argparse
 import hashlib
+import html
 import json
 import os
 from pathlib import Path
 import re
 import subprocess
+import tempfile
+from urllib.parse import quote
 
 from publish_nightly import gh, package_files
 
@@ -24,6 +27,36 @@ def normalize(value):
 def releases(repository):
     pages = json.loads(gh('api', '--paginate', '--slurp', f'repos/{repository}/releases?per_page=100'))
     return [release for page in pages for release in page]
+
+
+def stable_releases(published):
+    return sorted((r for r in published if not r['draft'] and not r['prerelease']),
+                  key=lambda r: r['published_at'] or '', reverse=True)
+
+
+def commit_notes(repository, commit, previous_tag=None):
+    if subprocess.check_output(['git', 'rev-parse', '--is-shallow-repository'],
+                               cwd=ROOT, text=True).strip() != 'false':
+        raise ValueError('Release notes require full Git history')
+    target = subprocess.check_output(['git', 'rev-parse', '--verify', '--end-of-options', f'{commit}^{{commit}}'],
+                                     cwd=ROOT, text=True).strip()
+    revision = target
+    if previous_tag:
+        previous = subprocess.check_output(
+            ['git', 'rev-parse', '--verify', f'refs/tags/{previous_tag}^{{commit}}'], cwd=ROOT, text=True).strip()
+        revision = f'{previous}..{target}'
+    history = subprocess.check_output(['git', 'log', '--reverse', '--format=%H%x00%s', revision, '--'],
+                                      cwd=ROOT, text=True)
+    commits = [line.split('\0', 1) for line in history.splitlines()]
+    label = f'Changes since {previous_tag}' if previous_tag else 'Commits in this release'
+    notes = f'\n<details>\n<summary>{html.escape(label)} ({len(commits)} commits)</summary>\n\n<ul>\n'
+    for sha, subject in commits:
+        notes += (f'<li><a href="https://github.com/{repository}/commit/{sha}"><code>{sha[:8]}</code></a> '
+                  f'{html.escape(subject)}</li>\n')
+    notes += '</ul>\n\n'
+    if previous_tag:
+        notes += f'[Full comparison](https://github.com/{repository}/compare/{quote(previous_tag, safe="")}...{target})\n\n'
+    return notes + '</details>\n'
 
 
 def output(name, value):
@@ -51,8 +84,7 @@ def available(version, published):
 
 def inspect(requested, repository):
     published = releases(repository)
-    stable = sorted((r for r in published if not r['draft'] and not r['prerelease']),
-                    key=lambda r: r['published_at'] or '', reverse=True)
+    stable = stable_releases(published)
     latest = f"[{stable[0]['tag_name']}]({stable[0]['html_url']})" if stable else 'None'
     summary(f'## Release\n\nMost recently published stable version: **{latest}**\n')
     version = normalize(requested)
@@ -92,7 +124,9 @@ def publish(version, folder, repository, commit, draft):
     info = json.loads(files['build-info.json'].read_text())
     if info['version'] != version or info['label'] != version:
         raise ValueError('Package version does not match the requested release')
-    available(version, releases(repository))
+    published = releases(repository)
+    available(version, published)
+    stable = stable_releases(published)
     tag = 'v' + version
     notes = (f'OpenSC2K {version}\n\n'
              'Includes Windows x64, Linux x64, and universal macOS packages, with SHA-256 checksums.\n\n'
@@ -103,8 +137,12 @@ def publish(version, folder, repository, commit, draft):
              'The full local release suite and cross-platform gameplay checks are not run by this workflow.\n\n'
              'Windows packages are unsigned. The macOS app is ad-hoc signed and is not notarized. '
              'Linux requires GTK 3 and WebKitGTK 4.1.\n')
-    gh('release', 'create', tag, *map(str, files.values()), '--repo', repository, '--target', commit,
-       '--draft', '--title', f'OpenSC2K {version}', '--notes', notes)
+    notes += commit_notes(repository, commit, stable[0]['tag_name'] if stable else None)
+    with tempfile.TemporaryDirectory(prefix='opensc2k-release-notes-') as temporary:
+        notes_path = Path(temporary) / 'notes.md'
+        notes_path.write_text(notes, encoding='utf-8')
+        gh('release', 'create', tag, *map(str, files.values()), '--repo', repository, '--target', commit,
+           '--draft', '--title', f'OpenSC2K {version}', '--notes-file', str(notes_path))
     remote = json.loads(gh('release', 'view', tag, '--repo', repository, '--json', 'assets'))['assets']
     if {asset['name'] for asset in remote} != set(files):
         raise ValueError('Uploaded asset list does not match the packages')
@@ -122,8 +160,7 @@ def publish(version, folder, repository, commit, draft):
 
 
 def sync_hint(repository):
-    stable = sorted((r for r in releases(repository) if not r['draft'] and not r['prerelease']),
-                    key=lambda r: r['published_at'] or '', reverse=True)
+    stable = stable_releases(releases(repository))
     if not stable:
         raise ValueError('No published stable release is available')
     version = normalize(stable[0]['tag_name'])

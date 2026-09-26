@@ -93,6 +93,9 @@ The workflow commits the project version to `main`, runs CI on that exact commit
 platform packages, verifies their uploaded hashes, and publishes `v0.1.1` as the latest stable release.
 Select **draft** to leave the release unpublished for review instead.
 The version is set inside the application, in the package names, and in the build information.
+Stable release notes include a collapsed list of commit messages and links since the last published
+stable release, through the exact build commit. The first stable release includes all prior commits.
+Nightly builds do not include this list.
 
 Existing releases and tags are not overwritten. The new version must exceed all published stable versions.
 The workflow keeps all prior stable releases. It does not perform nightly cleanup.
