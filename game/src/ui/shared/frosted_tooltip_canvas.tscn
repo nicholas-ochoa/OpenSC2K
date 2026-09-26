@@ -5,5 +5,6 @@ layer = 1025
 visible = false
 
 [node name="Surface" type="PanelContainer" parent="."]
+texture_filter = 2
 mouse_filter = 2
 theme_type_variation = &"TooltipPanel"

@@ -270,13 +270,11 @@ func _camera_rect() -> Rect2:
 func _draw_offset(scale: float) -> Vector2:
 	var offset := _camera_rect().get_center() - map.source_center * scale
 
-	if map.screen_pixel_scale == Vector2.ZERO:
+	if map.screen_pixel_scale <= 0.0:
 		return offset.round() + map._shake_offset
 
 	# put source pixel edges on screen pixel edges
-	var to_screen := Transform2D.IDENTITY.scaled(map.screen_pixel_scale) * map.get_global_transform_with_canvas()
-
-	return to_screen.affine_inverse() * (to_screen * offset).round() + map._shake_offset
+	return ScreenPixels.snap(map, offset, map.screen_pixel_scale) + map._shake_offset
 
 
 func _camera_source_bounds() -> Rect2:
@@ -305,22 +303,16 @@ func _clamp_source_center() -> void:
 			)
 
 
-# screen_pixels is the screen pixels for each interface pixel on each axis, and
-# map_pixels is the whole screen pixels for each source pixel at 100% zoom.
-# Godot rounds the interface layout to whole pixels, so the two screen axes can
-# have slightly different scales. the map corrects the smaller axis so that a
-# source pixel has the same whole number of screen pixels on each axis
-func set_pixel_scales(screen_pixels: Vector2, map_pixels: int) -> void:
-	var aligned := screen_pixels.x > 0.0 and screen_pixels.y > 0.0
-	var reference := maxf(screen_pixels.x, screen_pixels.y)
-	var ratio := float(maxi(1, map_pixels)) / reference if aligned else 1.0
+# screen_pixels is the screen pixels for each interface pixel, and map_pixels
+# is the whole screen pixels for each source pixel at 100% zoom
+func set_pixel_scales(screen_pixels: float, map_pixels: int) -> void:
+	var ratio := float(maxi(1, map_pixels)) / screen_pixels if screen_pixels > 0.0 else 1.0
 
-	if map.screen_pixel_scale.is_equal_approx(screen_pixels) and is_equal_approx(map.map_pixel_ratio, ratio):
+	if is_equal_approx(map.screen_pixel_scale, maxf(0.0, screen_pixels)) and is_equal_approx(map.map_pixel_ratio, ratio):
 		return
 
-	map.screen_pixel_scale = screen_pixels if aligned else Vector2.ZERO
+	map.screen_pixel_scale = maxf(0.0, screen_pixels)
 	map.map_pixel_ratio = ratio
-	map.scale = Vector2.ONE * reference / screen_pixels if aligned else Vector2.ONE
 	map.signs._invalidate_sign_entries()
 	_on_resized()
 

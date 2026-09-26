@@ -216,7 +216,7 @@ func load_app_settings() -> void:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 
 
-# scale the interface and keep the city map on whole screen pixels. call this
+# scale the interface and keep pixel artwork on whole screen pixels. call this
 # again when the window size or screen changes
 func apply_ui_scale() -> void:
 	var window := app.get_window()
@@ -225,14 +225,18 @@ func apply_ui_scale() -> void:
 		return
 
 	var screen_pixels := AppUiScale.apply(window, preferences.ui_scale)
+	# headless windows have no real pixels, so keep one artwork pixel for each
+	# interface pixel there
+	var headless := DisplayServer.get_name() == "headless"
+	ScreenPixels.scale = 0.0 if headless else screen_pixels
+	# keep the frosted glass blur in proportion to the interface
+	RenderingServer.global_shader_parameter_set("ui_scale_factor", AppUiScale.relative)
 
 	if app.map_view == null:
 		return
 
-	# headless windows have no real pixels, so keep one map pixel for each
-	# interface pixel there
-	if DisplayServer.get_name() == "headless":
-		app.map_view.set_pixel_scales(Vector2.ZERO, 1)
+	if headless:
+		app.map_view.set_pixel_scales(0.0, 1)
 	else:
 		app.map_view.set_pixel_scales(screen_pixels, AppUiScale.map_pixels(AppUiScale.fit_scale(window.size, window.content_scale_size)))
 

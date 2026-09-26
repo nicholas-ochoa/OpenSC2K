@@ -35,3 +35,10 @@ rendering_device/driver.macos="metal"
 rendering_device/fallback_to_opengl3=true
 textures/vram_compression/import_etc2_astc=true
 environment/defaults/default_clear_color=Color(0.035, 0.047, 0.059, 1)
+
+[shader_globals]
+
+ui_scale_factor={
+"type": "float",
+"value": 1.0
+}

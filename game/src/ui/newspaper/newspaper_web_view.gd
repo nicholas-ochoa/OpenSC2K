@@ -57,9 +57,7 @@ func open(data: Dictionary) -> void:
 # the page follows the display scale, and the UI scale choice reduces it the
 # same way as the interface
 func page_zoom() -> float:
-	var factor := get_window().content_scale_factor if is_inside_tree() else 1.0
-
-	return DisplayServer.screen_get_scale() * factor
+	return DisplayServer.screen_get_scale() * AppUiScale.relative
 
 
 func close() -> void:

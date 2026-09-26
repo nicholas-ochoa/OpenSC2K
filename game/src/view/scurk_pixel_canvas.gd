@@ -163,6 +163,8 @@ func _init() -> void:
 	selection_outline.position = Vector2(DISPLAY_MARGIN, 0)
 	add_child(selection_outline)
 	set_process(true)
+	# scrolling can move the canvas to a fractional screen pixel
+	set_notify_transform(true)
 
 
 func _process(delta: float) -> void:
@@ -190,7 +192,14 @@ func _input(event: InputEvent) -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+	# a UI scale change on the main window moves the screen pixel grid
+	if what == NOTIFICATION_ENTER_TREE:
+		get_tree().root.size_changed.connect(_on_screen_pixels_changed)
+	elif what == NOTIFICATION_EXIT_TREE and get_tree().root.size_changed.is_connected(_on_screen_pixels_changed):
+		get_tree().root.size_changed.disconnect(_on_screen_pixels_changed)
+	elif what == NOTIFICATION_TRANSFORM_CHANGED:
+		queue_redraw()
+	elif what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
 		_stop_panning()
 		if paste_dragging:
 			cancel_paste()
@@ -237,6 +246,21 @@ func clear_sprite() -> void:
 
 func set_zoom(value: int) -> void:
 	zoom = clampi(value, 1, 16)
+	_update_minimum_size()
+	queue_redraw()
+
+
+# interface pixels for each sprite pixel: the zoom on whole screen pixels
+func display_pixel() -> float:
+	return ScreenPixels.length(zoom)
+
+
+# the sprite origin in local space, on a screen pixel corner
+func display_origin() -> Vector2:
+	return ScreenPixels.snap(self, Vector2(DISPLAY_MARGIN, 0))
+
+
+func _on_screen_pixels_changed() -> void:
 	_update_minimum_size()
 	queue_redraw()
 
@@ -1356,7 +1380,8 @@ func _draw_selection() -> void:
 	var mask := selection_preview if selection_dragging else selection.mask
 	var width := sprite_width
 	var height := sprite_height
-	selection_outline.position = Vector2(DISPLAY_MARGIN, 0)
+	var pixel := display_pixel()
+	selection_outline.position = display_origin()
 	if paste_active:
 		width = clipboard_width
 		height = clipboard_height
@@ -1364,12 +1389,12 @@ func _draw_selection() -> void:
 		if mask.size() != width * height:
 			mask.resize(width * height)
 			mask.fill(1)
-		selection_outline.position += Vector2(paste_position * zoom)
+		selection_outline.position += Vector2(paste_position) * pixel
 	if mask.size() != width * height or mask.is_empty():
 		selection_outline.configure(PackedVector2Array(), false)
 		return
 
-	var state: Array = [hash(mask), width, height, zoom]
+	var state: Array = [hash(mask), width, height, pixel]
 	if state != selection_outline_state:
 		selection_outline_state = state
 		selection_outline_edges.clear()
@@ -1383,8 +1408,8 @@ func _draw_selection() -> void:
 				var neighbor: Vector2i = point + steps[edge]
 				if neighbor.x >= 0 and neighbor.y >= 0 and neighbor.x < width and neighbor.y < height and mask[neighbor.y * width + neighbor.x] != 0:
 					continue
-				selection_outline_edges.append((Vector2(point) + corners[edge]) * zoom)
-				selection_outline_edges.append((Vector2(point) + corners[(edge + 1) % 4]) * zoom)
+				selection_outline_edges.append((Vector2(point) + corners[edge]) * pixel)
+				selection_outline_edges.append((Vector2(point) + corners[(edge + 1) % 4]) * pixel)
 	selection_outline.configure(selection_outline_edges, not selection_dragging)
 
 
@@ -1395,7 +1420,7 @@ func _draw_guides() -> void:
 	var lines := paint_options.guide_lines(Vector2i(sprite_width, sprite_height))
 	if not lines.is_empty():
 		for index in lines.size():
-			lines[index] *= zoom
+			lines[index] *= display_pixel()
 		draw_multiline(lines, Color(0.2, 0.8, 1.0, 0.45), 1.0)
 
 
@@ -1646,9 +1671,10 @@ func _draw_tool_outline() -> void:
 		scaled.resize(outline_edges.size())
 		var screen_transform := get_screen_transform()
 		var pixel_size := 1.0 / maxf(absf(screen_transform.get_scale().x), 0.001)
-		var origin := screen_transform * Vector2(DISPLAY_MARGIN, 0)
+		var origin := screen_transform * display_origin()
+		var sprite_pixel := display_pixel()
 		for index in outline_edges.size():
-			var screen_point := origin + outline_edges[index] * zoom / pixel_size
+			var screen_point := origin + outline_edges[index] * sprite_pixel / pixel_size
 			scaled[index] = (screen_point.floor() + Vector2(0.5, 0.5) - origin) * pixel_size
 		draw_multiline(scaled, Color.BLACK, 3.0 * pixel_size)
 		draw_multiline(scaled, Color.WHITE, pixel_size)
@@ -1725,7 +1751,9 @@ func _point_from_position(position: Vector2) -> Vector2i:
 	if zoom <= 0:
 		return Vector2i(-1, -1)
 
-	return Vector2i(floori((position.x - DISPLAY_MARGIN) / zoom), floori(position.y / zoom))
+	var sprite_point := (position - display_origin()) / display_pixel()
+
+	return Vector2i(floori(sprite_point.x), floori(sprite_point.y))
 
 
 func _point_is_valid(point: Vector2i) -> bool:
@@ -1755,8 +1783,11 @@ func _enforce_edit_mask() -> void:
 
 
 func _update_minimum_size() -> void:
+	# an aligned origin can move down by part of an interface pixel
+	var aligned := 1 if ScreenPixels.scale > 0.0 else 0
 	custom_minimum_size = Vector2(
-		maxi(1, sprite_width * zoom) + DISPLAY_MARGIN * 2, maxi(1, sprite_height * zoom)
+		maxf(1.0, ceilf(sprite_width * display_pixel())) + DISPLAY_MARGIN * 2,
+		maxf(1.0, ceilf(sprite_height * display_pixel())) + aligned
 	)
 	reset_size()
 
@@ -1774,11 +1805,12 @@ func _draw() -> void:
 
 		return
 
-	draw_set_transform(Vector2(DISPLAY_MARGIN, 0))
+	var pixel := display_pixel()
+	draw_set_transform(display_origin())
 	_update_display_texture()
-	draw_texture_rect(display_texture, Rect2(Vector2.ZERO, Vector2(sprite_width, sprite_height) * zoom), false)
+	draw_texture_rect(display_texture, Rect2(Vector2.ZERO, Vector2(sprite_width, sprite_height) * pixel), false)
 	if show_clip_region and clip_shade_texture != null:
-		draw_texture_rect(clip_shade_texture, Rect2(Vector2.ZERO, Vector2(sprite_width, sprite_height) * zoom), false)
+		draw_texture_rect(clip_shade_texture, Rect2(Vector2.ZERO, Vector2(sprite_width, sprite_height) * pixel), false)
 
 	if show_grid:
 		var grid_color := Color(0.0, 0.0, 0.0, 0.18)
@@ -1786,16 +1818,16 @@ func _draw() -> void:
 		if grid_width * zoom >= 4:
 			for x in range(0, sprite_width + 1, grid_width):
 				draw_line(
-					Vector2(x * zoom, 0),
-					Vector2(x * zoom, sprite_height * zoom),
+					Vector2(x * pixel, 0),
+					Vector2(x * pixel, sprite_height * pixel),
 					grid_color, 1.0
 				)
 
 		if grid_height * zoom >= 4:
 			for y in range(0, sprite_height + 1, grid_height):
 				draw_line(
-					Vector2(0, y * zoom),
-					Vector2(sprite_width * zoom, y * zoom),
+					Vector2(0, y * pixel),
+					Vector2(sprite_width * pixel, y * pixel),
 					grid_color, 1.0
 				)
 
@@ -1892,7 +1924,10 @@ func clip_guide_rects() -> Array[Rect2]:
 		return []
 
 	# One display pixel outside each editable column range, including at 1x zoom.
+	var pixel := display_pixel()
+	var line := ScreenPixels.length(1.0)
+
 	return [
-		Rect2(clip_columns.x * zoom - 1, 0, 1, sprite_height * zoom),
-		Rect2((clip_columns.y + 1) * zoom, 0, 1, sprite_height * zoom),
+		Rect2(clip_columns.x * pixel - line, 0, line, sprite_height * pixel),
+		Rect2((clip_columns.y + 1) * pixel, 0, line, sprite_height * pixel),
 	]

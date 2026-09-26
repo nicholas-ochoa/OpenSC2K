@@ -63,9 +63,9 @@ var zoom_factor: float = ZOOM_LEVELS[DEFAULT_ZOOM_INDEX]
 # interface pixels for each source pixel at 100% zoom, so that the map keeps
 # whole screen pixels at every interface scale
 var map_pixel_ratio := 1.0
-# screen pixels for each interface pixel on each axis. zero leaves the map
-# offset in whole interface pixels
-var screen_pixel_scale := Vector2.ZERO
+# screen pixels for each interface pixel. zero leaves the map offset in whole
+# interface pixels
+var screen_pixel_scale := 0.0
 var source_center := Vector2.ZERO
 # the unobstructed camera area. rendering still covers the full control
 var camera_view_rect := Rect2():
@@ -232,7 +232,7 @@ func zoom_percent() -> int:
 	return camera.zoom_percent()
 
 
-func set_pixel_scales(screen_pixels: Vector2, map_pixels: int) -> void:
+func set_pixel_scales(screen_pixels: float, map_pixels: int) -> void:
 	camera.set_pixel_scales(screen_pixels, map_pixels)
 
 

@@ -10,6 +10,9 @@ extends RefCounted
 const OPTIONS: Array[float] = [1.0, 1.5, 2.0]
 const DEFAULT := 2.0
 
+# the applied scale compared with the fitted size
+static var relative := 1.0
+
 
 static func normalize(value: Variant) -> float:
 	if not (value is float or value is int):
@@ -53,17 +56,25 @@ static func map_pixels(fit: float) -> int:
 
 
 # sets the window content scale and returns the screen pixels for each
-# interface pixel on each axis
-static func apply(window: Window, ui_scale: float) -> Vector2:
+# interface pixel. the window uses one exact scale on both axes. the project
+# stretch mode rounds the layout to whole interface pixels, which gives the two
+# axes slightly different scales and breaks whole-pixel artwork
+static func apply(window: Window, ui_scale: float) -> float:
 	var window_size := window.size
 	var base_size := window.content_scale_size
-	var factor := content_scale_factor(ui_scale, window_size, base_size)
+	var screen := screen_scale(ui_scale, window_size, base_size)
+	relative = content_scale_factor(ui_scale, window_size, base_size)
 
-	if not is_equal_approx(window.content_scale_factor, factor):
-		window.content_scale_factor = factor
+	if window.content_scale_mode != Window.CONTENT_SCALE_MODE_DISABLED:
+		window.content_scale_mode = Window.CONTENT_SCALE_MODE_DISABLED
 
-	# Godot rounds the layout to whole interface pixels, so use the scales that
-	# it applies
-	var applied := window.get_final_transform().get_scale()
+	if not is_equal_approx(window.content_scale_factor, screen):
+		window.content_scale_factor = screen
 
-	return applied if applied.x > 0.0 and applied.y > 0.0 else Vector2.ONE * screen_scale(ui_scale, window_size, base_size)
+	# the window draws each embedded dialog from its own texture at the dialog
+	# position. at a fractional scale that position falls between screen
+	# pixels, and linear sampling blurs every edge in the dialog. the window
+	# contents keep linear sampling through CityApplication
+	window.canvas_item_default_texture_filter = Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_NEAREST
+
+	return screen

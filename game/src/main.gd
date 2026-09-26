@@ -96,6 +96,9 @@ var updates := ApplicationUpdates.new(preferences)
 
 
 func _ready() -> void:
+	# the window samples embedded dialogs with nearest filtering. keep the
+	# earlier linear default for the application contents
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	add_child(preload("res://src/ui/shared/file_dialog_history.gd").new())
 	add_child(AppTooltips.new())
 	get_tree().auto_accept_quit = false

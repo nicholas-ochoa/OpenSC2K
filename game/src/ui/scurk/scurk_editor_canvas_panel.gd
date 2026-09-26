@@ -85,7 +85,7 @@ func pan_canvas(delta: Vector2) -> void:
 func zoom_at(steps: int, local_position: Vector2) -> void:
 	zoom_pending += steps
 	zoom_anchor = pixel_canvas.global_position + local_position
-	zoom_pixel = (local_position - Vector2(ScurkPixelCanvas.DISPLAY_MARGIN, 0)) / pixel_canvas.zoom
+	zoom_pixel = (local_position - pixel_canvas.display_origin()) / pixel_canvas.display_pixel()
 	if zoom_running:
 		return
 	zoom_running = true
@@ -97,7 +97,7 @@ func zoom_at(steps: int, local_position: Vector2) -> void:
 		zoom_pending = 0
 		zoom_changed.emit(pixel_canvas.zoom)
 		await get_tree().process_frame
-		var shifted := pixel_canvas.global_position + Vector2(ScurkPixelCanvas.DISPLAY_MARGIN, 0) + pixel * pixel_canvas.zoom
+		var shifted := pixel_canvas.global_position + pixel_canvas.display_origin() + pixel * pixel_canvas.display_pixel()
 		pixel_scroll.scroll_horizontal += roundi(shifted.x - anchor.x)
 		pixel_scroll.scroll_vertical += roundi(shifted.y - anchor.y)
 	zoom_running = false
