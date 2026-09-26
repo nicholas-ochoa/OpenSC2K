@@ -3,7 +3,6 @@ extends SceneTree
 @warning_ignore_start("integer_division")
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const DocumentState = preload("res://tests/support/document_state.gd")
 const TimingResults = preload("res://tests/support/timing_results.gd")
 const TestRandoms = preload("res://tests/support/test_randoms.gd")
@@ -189,13 +188,19 @@ func check_values(edge: int) -> void:
 	check(land[index] != land[index + 1], "Land value is calculated per tile")
 	var police := doc.find_chunk("XPLC").decoded_payload
 	var station_index := station.x * edge + station.y
-	check(police[station_index] > police[station_index + 1] and police[station_index + 1] > police[station_index + 2], "Service coverage changes each tile")
+	check(
+		police[station_index] > police[station_index + 1] and police[station_index + 1] > police[station_index + 2],
+		"Service coverage changes each tile",
+	)
 	check(police[station_index + 16] == 0, "Service radius remains in physical tile units")
 	# Run moving objects and disasters with full-size grids.
 	check(MovingThingPhase.run(city, SimRandom.new(1), SimLfsrRandom.new(2), GameLcgRandom.new(3)).ok, "Native moving phase")
 	check(WeatherDisasterPhase._toxic_spill_point(pollution, ZeroLfsrRandom.new(), edge).x == -1, "Low pollution is not a toxic source")
 	pollution[index] = 200
-	check(WeatherDisasterPhase._toxic_spill_point(pollution, ZeroLfsrRandom.new(), edge) == point - Vector2i(5, 5), "Toxic selector scans native coordinates")
+	check(
+		WeatherDisasterPhase._toxic_spill_point(pollution, ZeroLfsrRandom.new(), edge) == point - Vector2i(5, 5),
+		"Toxic selector scans native coordinates",
+	)
 
 	# Check population, growth, and crime values per tile in a dense district.
 	doc = native_document(edge)
@@ -319,7 +324,10 @@ func check_sliced(edge: int) -> void:
 		await process_frame
 		actual = runner.advance_time(0, 200)
 
-	check(not runner.is_pending() and TimingResults.without_timings(actual) == TimingResults.without_timings(expected), "Native sliced events match synchronous events")
+	check(
+		not runner.is_pending() and TimingResults.without_timings(actual) == TimingResults.without_timings(expected),
+		"Native sliced events match synchronous events",
+	)
 	check(DocumentState.capture(other.document) == DocumentState.capture(doc), "Native sliced bytes match synchronous bytes")
 	runner.close()
 

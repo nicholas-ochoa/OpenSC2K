@@ -4,7 +4,18 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
-static func carve(heights: PackedInt32Array, flags: PackedByteArray, sea: int, features: Array, ocean: bool, river: bool, random: GameLcgRandom, water: int, hills: int = 12) -> void:
+
+static func carve(
+	heights: PackedInt32Array,
+	flags: PackedByteArray,
+	sea: int,
+	features: Array,
+	ocean: bool,
+	river: bool,
+	random: GameLcgRandom,
+	water: int,
+	hills: int = 12,
+) -> void:
 	var wetness := float(water) / 47.0
 	var angle := float(random.next_mod(6283)) / 1000.0
 	var phase := float(random.next_mod(6283)) / 1000.0
@@ -116,7 +127,11 @@ static func carve(heights: PackedInt32Array, flags: PackedByteArray, sea: int, f
 					var axis := 0.08 + 0.04 * sin(point.y * 8.0 + phase)
 					var neck_width := lerpf(0.17, 0.14, wetness) * (1.0 + 0.13 * sin(point.y * 12.0 + phase) + rough * 0.20)
 					var neck := (point.x - axis) / neck_width
-					var coast := lerpf(-0.20, -0.25, wetness) + 0.55 * exp(-pow(absf(neck), 4.0)) + rough * 0.045 + 0.016 * sin(point.x * 23.0 + point.y * 13.0 + phase)
+					var coast := lerpf(
+						-0.20,
+						-0.25,
+						wetness,
+					) + 0.55 * exp(-pow(absf(neck), 4.0)) + rough * 0.045 + 0.016 * sin(point.x * 23.0 + point.y * 13.0 + phase)
 					# keep the headland attached to the mainland; channels can cross it
 					wet = point.y > coast
 
@@ -170,7 +185,13 @@ static func carve(heights: PackedInt32Array, flags: PackedByteArray, sea: int, f
 	TerrainElevation.apply(heights, sea, features, angle, phase, noise, hills)
 
 
-static func _meander_channels(paths: Array[PackedVector2Array], width: float, angle: float, phase: float, random: GameLcgRandom) -> Array[PackedVector2Array]:
+static func _meander_channels(
+	paths: Array[PackedVector2Array],
+	width: float,
+	angle: float,
+	phase: float,
+	random: GameLcgRandom,
+) -> Array[PackedVector2Array]:
 	var amplitude := 0.19 + float(random.next_mod(60)) / 1000.0
 	var frequency := TAU * (1.45 + float(random.next_mod(350)) / 1000.0)
 	var bends: Array[Vector2] = []

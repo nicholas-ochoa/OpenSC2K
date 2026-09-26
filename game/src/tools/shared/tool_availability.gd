@@ -1,23 +1,6 @@
 class_name ToolAvailability
 extends RefCounted
 
-class Result extends RefCounted:
-	var ok: bool = false
-	var error: String = ""
-	var group_masks: PackedInt32Array
-	var power_plant_mask: int = 0
-	var released_inventions: PackedByteArray
-	var arcology_count: int = 0
-	var progression: int = 0
-	var military_base_type: int = 0
-
-	static func failure(message: String) -> Result:
-		var result := Result.new()
-		result.error = message
-
-		return result
-
-
 const MISC_PROGRESSION := Sc2MiscLayout.PROGRESSION
 const MISC_GRANTED_REWARDS := Sc2MiscLayout.GRANTED_REWARDS
 const MISC_INVENTION_YEARS := Sc2MiscLayout.INVENTION_YEARS
@@ -26,7 +9,6 @@ const INVENTION_COUNT := 17
 const ARCOLOGY_FIRST_INVENTION := 12
 const ARCOLOGY_LAST_INVENTION := 15
 const ORDINANCE_NUCLEAR_FREE := OrdinanceIds.NUCLEAR_FREE_ZONE_MASK
-
 # supplied executable table at 0x004e9560. the final three groups use direct
 # actions and do not use these submenu masks
 const BASE_GROUP_MASKS := [
@@ -34,7 +16,6 @@ const BASE_GROUP_MASKS := [
 	0x05, 0x05, 0x01, 0x03, 0x03, 0x03,
 	0x0f, 0x0f, 0x1f, 0x00, 0x00, 0x00,
 ]
-
 # power chooser order: coal, hydro, oil, gas, nuclear, wind, solar,
 # microwave, and fusion
 const BASE_POWER_PLANT_MASK := 0x07
@@ -135,7 +116,8 @@ static func is_available(city: CityState, group_index: int, subtool_index: int) 
 	if tool == null:
 		return false
 
-	if group_index >= CityToolIds.Group.SIGNS or (group_index == CityToolIds.Group.LANDSCAPE and subtool_index == CityToolIds.Landscape.FOREST):
+	if (group_index >= CityToolIds.Group.SIGNS
+			or (group_index == CityToolIds.Group.LANDSCAPE and subtool_index == CityToolIds.Landscape.FOREST)):
 		return true
 
 	var result := inspect(city)
@@ -178,3 +160,20 @@ static func rebuild_reward_mask(misc: PackedByteArray) -> int:
 	BinaryData.write_u32_be(misc, MISC_GRANTED_REWARDS, mask)
 
 	return mask
+
+
+class Result extends RefCounted:
+	var ok: bool = false
+	var error: String = ""
+	var group_masks: PackedInt32Array
+	var power_plant_mask: int = 0
+	var released_inventions: PackedByteArray
+	var arcology_count: int = 0
+	var progression: int = 0
+	var military_base_type: int = 0
+
+	static func failure(message: String) -> Result:
+		var result := Result.new()
+		result.error = message
+
+		return result

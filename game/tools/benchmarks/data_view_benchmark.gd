@@ -18,7 +18,8 @@ func _run() -> void:
 		var start := Time.get_ticks_usec()
 		view.set_data_view(city, CityViewMode.Mode.LAND_VALUE)
 		var mesh := view.data_view_mesh
-		print("data_view edge=%d initial_ms=%.2f vertices=%d" % [edge, (Time.get_ticks_usec() - start) / 1000.0, mesh.surface_get_array_len(0)])
+		print("data_view edge=%d initial_ms=%.2f vertices=%d" % [edge, (Time.get_ticks_usec() - start) / 1000.0,
+			mesh.surface_get_array_len(0)])
 		var refresh_usec := 0
 
 		for iteration in 20:

@@ -3,6 +3,12 @@ extends RefCounted
 # Pairs scheduled action names with phases. Add new actions here and
 # in simulation_clock.gd.
 
+const Budget = preload("res://src/simulation/core/engine/day_phases/budget.gd")
+const Power = preload("res://src/simulation/core/engine/day_phases/power.gd")
+const Growth = preload("res://src/simulation/core/engine/day_phases/growth.gd")
+const RciDemand = preload("res://src/simulation/core/engine/day_phases/rci_demand.gd")
+const EducationHealth = preload("res://src/simulation/core/engine/day_phases/education_health.gd")
+const WeatherDisaster = preload("res://src/simulation/core/engine/day_phases/weather_disaster.gd")
 
 # built once on load. the phases hold no mutable state, so the simulation
 # worker and the main thread can share them
@@ -44,154 +50,6 @@ class MonthStart extends SimulationDayPhase:
 			return month_start
 
 		return context.record(context.action, month_start)
-
-
-# the original settles the year, runs the annual facility update, and then
-# does the monthly budget work. the annual update can change funds and the
-# arcology population that the monthly work reads
-class Budget extends SimulationDayPhase:
-	func run(context: SimulationPhaseContext) -> PhaseResult:
-		var settlement := BudgetPhase.settle_year(context.city, context.annual_budget_approved)
-
-		if not settlement.ok:
-			return settlement
-
-		if settlement.requires_annual_budget:
-			return context.record(context.action, settlement)
-
-		var annual: MicrosimAnnualPhase.Result
-
-		if settlement.settled_year:
-			context.span.mark("annual_microsim")
-			_measure_unknown_utilities(context)
-			annual = MicrosimAnnualPhase.run(
-				context.city,
-				context.bus_passengers,
-				context.rail_passengers,
-				context.subway_passengers,
-				context.random,
-				context.lfsr_random,
-				context.game_random,
-				context.power_usage_percent,
-				context.water_usage_percent,
-				false,
-				context.mayor_approval
-			)
-
-			if not annual.ok:
-				return annual
-
-			var stored_annual := context.record("annual_microsim", annual)
-
-			if not stored_annual.ok:
-				return stored_annual
-
-			context.bus_passengers = 0
-			context.rail_passengers = 0
-			context.subway_passengers = 0
-			context.span.mark(context.action)
-
-		var budget := BudgetPhase.run_month(context.city, context.random, settlement)
-
-		if not budget.ok:
-			return budget
-
-		var stored := context.record(context.action, budget)
-
-		if not stored.ok:
-			return stored
-
-		# a completed annual update completes the budget action
-		budget.complete = annual == null or annual.complete
-
-		return budget
-
-	# the original scans power and then water when it loads a city. after a
-	# load, the engine has no value until the first scheduled scan. scan a copy
-	# here so that the annual update does not change the city or its random state
-	func _measure_unknown_utilities(context: SimulationPhaseContext) -> void:
-		if context.power_usage_percent >= 0 and context.water_usage_percent >= 0:
-			return
-
-		var copy := CityState.copy_for_edit(context.city)
-		copy.simulation_slice = context.city.simulation_slice
-
-		if context.power_usage_percent < 0:
-			var power := PowerPhase.run(copy, SimRandom.new(context.random.state))
-
-			if power.ok:
-				context.power_usage_percent = power.usage_percent
-
-		if context.water_usage_percent < 0:
-			var water := WaterPhase.run(copy)
-
-			if water.ok:
-				context.water_usage_percent = water.usage_percent
-
-
-class Power extends SimulationDayPhase:
-	func run(context: SimulationPhaseContext) -> PhaseResult:
-		var power := PowerPhase.run(context.city, context.random)
-
-		if not power.ok:
-			return power
-
-		var stored := context.record(context.action, power)
-
-		if not stored.ok:
-			return stored
-
-		context.power_usage_percent = power.usage_percent
-
-		# per-tile maps move pollution and service coverage from the data-map
-		# day to here. they need the new powered flags and nothing from day 3
-		if not context.city.document.full_resolution_maps():
-			return power
-
-		context.span.mark("pollution_coverage")
-		var coverage := NativeDataMapPhase.run_pollution_and_coverage(context.city)
-
-		if not coverage.ok:
-			return coverage
-
-		stored = context.record("pollution_coverage", coverage)
-
-		if not stored.ok:
-			return stored
-
-		return power
-
-
-class Growth extends SimulationDayPhase:
-	func run(context: SimulationPhaseContext) -> PhaseResult:
-		var growth := GrowthScan.run(
-			context.city,
-			context.random,
-			context.schedule.growth_step,
-			context.schedule.growth_substep,
-			context.lfsr_random,
-			context.game_random
-		)
-
-		if not growth.ok:
-			return growth
-
-		var stored := context.record(context.action, growth)
-
-		if not stored.ok:
-			return stored
-
-		context.bus_passengers = (context.bus_passengers + growth.bus_passengers) & 0xffffffff
-		context.rail_passengers = (context.rail_passengers + growth.rail_passengers) & 0xffffffff
-		context.subway_passengers = (context.subway_passengers + growth.subway_passengers) & 0xffffffff
-
-		if growth.ship_home_found:
-			context.ship_home = growth.ship_home
-
-		if growth.spawned_helicopters > 0:
-			context.traffic_news_deadline_msec = 0
-
-		return growth
 
 
 class DataMaps extends SimulationDayPhase:
@@ -241,97 +99,6 @@ class Traffic extends SimulationDayPhase:
 			return traffic
 
 		return context.record(context.action, traffic)
-
-
-class RciDemand extends SimulationDayPhase:
-	func run(context: SimulationPhaseContext) -> PhaseResult:
-		var music_span := SimulationTimingSpan.new(context.city.simulation_slice)
-		music_span.mark("music choice")
-		var playback_was_active := context.midi_playback_active
-		var selected := MusicDirector.monthly_track(
-			context.city.simulation_speed(), playback_was_active, context.random
-		)
-		var requests := PackedInt32Array()
-
-		if selected >= MusicDirector.FIRST_TRACK_ID:
-			requests.append(selected)
-
-			if context.city.music_enabled():
-				context.midi_playback_active = true
-
-		var music := context.record(
-			"music", MonthlyMusicResult.selected(playback_was_active, requests)
-		)
-
-		if not music.ok:
-			return music
-
-		var music_timing := music_span.finish()
-		var demand := RciDemandPhase.run(context.city)
-
-		if not demand.ok:
-			return demand
-
-		# the music choice runs first in the demand action. show it as the first demand step
-		music_timing.steps.merge(demand.timing.steps)
-		demand.timing.steps = music_timing.steps
-		demand.timing.work_usec += music_timing.work_usec
-
-		var stored := context.record(context.action, demand)
-
-		if not stored.ok:
-			return stored
-
-		context.span.mark("rci_aftermath")
-		var aftermath := RciAftermathPhase.run(
-			context.city, context.random, int(context.schedule.season)
-		)
-
-		if not aftermath.ok:
-			return aftermath
-
-		return context.record("rci_aftermath", aftermath)
-
-
-class EducationHealth extends SimulationDayPhase:
-	func run(context: SimulationPhaseContext) -> PhaseResult:
-		context.span.mark("simnation calculation")
-		var nation := SimNationPhase.run(context.city, context.random)
-
-		if not nation.ok:
-			return nation
-
-		var stored_nation := context.record("simnation", nation)
-
-		if not stored_nation.ok:
-			return stored_nation
-
-		var demand: RciDemandPhase.Result = context.phase_results.get(
-			"rci_demand", RciDemandPhase.Result.new()
-		)
-		var population_growth := maxi(
-			demand.normal_population - demand.previous_population, 0
-		)
-		context.span.mark("industries")
-		var industries := IndustryPhase.run(
-			context.city, context.random, context.lfsr_random, population_growth
-		)
-
-		if not industries.ok:
-			return industries
-
-		var stored_industries := context.record("industries", industries)
-
-		if not stored_industries.ok:
-			return stored_industries
-
-		context.span.mark("education_health")
-		var demographics := EducationHealthPhase.run(context.city, context.random)
-
-		if not demographics.ok:
-			return demographics
-
-		return context.record(context.action, demographics)
 
 
 class Graphs extends SimulationDayPhase:
@@ -403,35 +170,3 @@ class Refresh extends SimulationDayPhase:
 
 	func run(context: SimulationPhaseContext) -> PhaseResult:
 		return context.record(context.action, PhaseResult.refreshing(requests))
-
-
-class WeatherDisaster extends SimulationDayPhase:
-	func run(context: SimulationPhaseContext) -> PhaseResult:
-		var weather := WeatherDisasterPhase.run(
-			context.city,
-			context.random,
-			context.lfsr_random,
-			context.power_usage_percent,
-			context.water_usage_percent,
-			context.commerce_connections,
-			context.industry_connections,
-			context.pending_disaster_point
-		)
-
-		if not weather.ok:
-			return weather
-
-		var stored := context.record(context.action, weather)
-
-		if not stored.ok:
-			return stored
-
-		context.city_status_resource_id = CityStatusMessages.monthly_resource(
-			weather.status_index, context.city.weather_type()
-		)
-
-		if weather.disaster_type != 0:
-			context.pending_disaster_type = weather.disaster_type
-			context.pending_disaster_point = weather.disaster_point
-
-		return weather

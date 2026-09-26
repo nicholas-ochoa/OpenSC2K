@@ -183,7 +183,8 @@ func _check_pixel_art() -> void:
 	# tinted theme icons stay scalable, so they stay sharp at every UI scale
 	var dark := AppUiThemeDefinitions.build("dark")
 
-	for pair in [["unchecked", "CheckBox"], ["radio_unchecked_disabled", "CheckBox"], ["unchecked", "CheckButton"], ["unchecked_disabled_mirrored", "CheckButton"]]:
+	for pair in [["unchecked", "CheckBox"], ["radio_unchecked_disabled", "CheckBox"], ["unchecked", "CheckButton"],
+		["unchecked_disabled_mirrored", "CheckButton"]]:
 		var icon := dark.get_icon(pair[0], pair[1])
 		assert(icon is DPITexture, "%s %s" % pair)
 
@@ -207,7 +208,10 @@ func _check_pixel_art() -> void:
 		dialog.position = position
 		WindowPixelFit.fit(dialog)
 		WindowPixelFit.fit(dialog)
-		assert(dialog.size.x >= 420 and dialog.size.x <= 436 and dialog.size.y >= 530 and dialog.size.y <= 546, "The fit does not grow the dialog each time")
+		assert(
+			dialog.size.x >= 420 and dialog.size.x <= 436 and dialog.size.y >= 530 and dialog.size.y <= 546,
+			"The fit does not grow the dialog each time",
+		)
 
 		for axis in 2:
 			assert(_copies_one_to_one(dialog.position[axis] * 3.615, dialog.size[axis] * 3.615))
@@ -239,7 +243,9 @@ func _check_settings() -> void:
 	var path := "user://ui-scale-test-%d.cfg" % OS.get_process_id()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	assert(AppSettingsStore.load_values(path).ui_scale == AppUiScale.DEFAULT)
-	assert(AppSettingsStore.save_values(0.8, 0.8, false, path, "", "", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 1.5) == OK)
+	var scale_options := AppSettingsStore.SaveOptions.new()
+	scale_options.ui_scale = 1.5
+	assert(AppSettingsStore.save_values(0.8, 0.8, false, path, scale_options) == OK)
 	assert(AppSettingsStore.load_values(path).ui_scale == 1.5)
 	var config := ConfigFile.new()
 	assert(config.load(path) == OK)
@@ -260,7 +266,10 @@ func _check_settings() -> void:
 	main.set_process(false)
 	main.main_menu.city_background.set_process(false)
 	assert(is_equal_approx(root.get_final_transform().get_scale().x, 2.0), "The default scale keeps the earlier interface size")
-	assert(root.canvas_item_default_texture_filter == Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_NEAREST, "Dialogs copy to whole screen pixels")
+	assert(
+		root.canvas_item_default_texture_filter == Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_NEAREST,
+		"Dialogs copy to whole screen pixels",
+	)
 	assert(main.texture_filter == CanvasItem.TEXTURE_FILTER_LINEAR, "Application contents keep linear sampling")
 
 	var newspaper := NewspaperWebView.new()

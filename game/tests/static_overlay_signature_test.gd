@@ -120,8 +120,14 @@ func _check_cache_edits() -> void:
 			var underground := CityUndergroundView.visual_signature(city, CityIsometricRenderer.VIEW_LARGE)
 			assert(city.set_tile_flag(20, 20, mask, true))
 			assert(IsometricStaticVisuals.static_visual_signature(city) == before, "Watered and piped bits do not repaint the surface")
-			assert(CityUndergroundView.visual_signature(city, CityIsometricRenderer.VIEW_LARGE) != underground, "Watered and piped bits repaint underground")
+			assert(
+				CityUndergroundView.visual_signature(city, CityIsometricRenderer.VIEW_LARGE) != underground,
+				"Watered and piped bits repaint underground",
+			)
 
 		var other := CityState.from_document(EmptyCityTemplate.create(edge))
 		assert(IsometricStaticVisuals._static_text_overlay_signature(other) == _reference(other))
-		assert(IsometricStaticVisuals._static_text_overlay_signature(city) == _reference(city), "Switching cities cannot reuse another city's cache")
+		assert(
+			IsometricStaticVisuals._static_text_overlay_signature(city) == _reference(city),
+			"Switching cities cannot reuse another city's cache",
+		)

@@ -5,7 +5,7 @@ extends RefCounted
 
 static func import_saved_games(source_root: String, saved_root: String) -> AssetImportResult:
 	var copied := PackedStringArray()
-	var counts: Dictionary[String, int] = {"cities": 0, "scenarios": 0}
+	var counts: Dictionary[String, int] = { "cities": 0, "scenarios": 0 }
 
 	for entry in [["CITIES", "cities", "sc2"], ["SCENARIO", "scenarios", "scn"]]:
 		var source := source_root.path_join(entry[0])

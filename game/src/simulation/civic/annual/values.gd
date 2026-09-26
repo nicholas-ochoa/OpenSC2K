@@ -21,7 +21,12 @@ static func _raw_population(misc: PackedByteArray, cohort: int) -> int:
 	return BinaryData.read_u32_be(misc, MISC_RAW_POPULATION + cohort * MISC_DEMOGRAPHIC_RECORD_SIZE)
 
 
-static func _find_microsim_location(text_overlays: PackedByteArray, record_id: int, map_edge: int = 128, budget: SimulationSliceBudget = null) -> Vector2i:
+static func _find_microsim_location(
+	text_overlays: PackedByteArray,
+	record_id: int,
+	map_edge: int = 128,
+	budget: SimulationSliceBudget = null,
+) -> Vector2i:
 	if OverlayData.count(text_overlays) != map_edge * map_edge:
 		return Vector2i(-1, -1)
 

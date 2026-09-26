@@ -2,7 +2,6 @@ class_name OriginalPackImporter
 extends RefCounted
 
 
-
 static func import_executable(executable: String, packs_root: String, saved_root := "") -> AssetImportResult:
 	var target := packs_root.path_join("Original-SC2K-%d-%d" % [Time.get_unix_time_from_system(), Time.get_ticks_usec()])
 	var stage := target + ".staging"

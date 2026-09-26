@@ -1,7 +1,6 @@
 class_name Sc2AssetImportDialog
 extends Window
 
-
 signal packs_imported(result: Sc2MediaImportResult)
 signal dismissed
 
@@ -53,6 +52,48 @@ func _ready() -> void:
 	%BrowseFile.pressed.connect(_browse.bind(FileDialog.FILE_MODE_OPEN_FILE))
 	_set_busy(false)
 	set_process(false)
+
+
+func _process(_delta: float) -> void:
+	if _worker == null or _worker.is_alive():
+		return
+
+	last_result = _worker.wait_to_finish() as Sc2MediaImportResult
+	_worker = null
+	set_process(false)
+	_set_busy(false)
+
+	if last_result == null:
+		result_text.text = "The import did not return a result."
+		return
+
+	if last_result.ok:
+		packs_imported.emit(last_result)
+
+	var heading := "Import complete." if last_result.ok else "Import failed."
+
+	if last_result.ok and last_result.partial:
+		heading = "Import finished. Some assets are missing or need attention."
+
+	result_text.text = heading + "\n\n" + last_result.summary()
+
+	if not last_result.root.is_empty():
+		result_text.text += "\n\nSaved packs: " + last_result.root
+
+	if not _activation_notes.is_empty():
+		result_text.text += "\n\n" + "\n".join(_activation_notes)
+
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if visible and event.is_action_pressed("ui_cancel") and not browser.visible:
+		_close()
+		set_input_as_handled()
+
+
+func _exit_tree() -> void:
+	# a shutdown must not abandon a running writer or free its thread handle
+	if _worker != null and _worker.is_started():
+		_worker.wait_to_finish()
 
 
 # with categories, select only those asset types. the other types keep their packs
@@ -108,36 +149,6 @@ func start_import() -> void:
 	set_process(true)
 
 
-func _process(_delta: float) -> void:
-	if _worker == null or _worker.is_alive():
-		return
-
-	last_result = _worker.wait_to_finish() as Sc2MediaImportResult
-	_worker = null
-	set_process(false)
-	_set_busy(false)
-
-	if last_result == null:
-		result_text.text = "The import did not return a result."
-		return
-
-	if last_result.ok:
-		packs_imported.emit(last_result)
-
-	var heading := "Import complete." if last_result.ok else "Import failed."
-
-	if last_result.ok and last_result.partial:
-		heading = "Import finished. Some assets are missing or need attention."
-
-	result_text.text = heading + "\n\n" + last_result.summary()
-
-	if not last_result.root.is_empty():
-		result_text.text += "\n\nSaved packs: " + last_result.root
-
-	if not _activation_notes.is_empty():
-		result_text.text += "\n\n" + "\n".join(_activation_notes)
-
-
 func add_activation_notes(notes: PackedStringArray) -> void:
 	_activation_notes.append_array(notes)
 
@@ -182,15 +193,3 @@ func _close() -> void:
 
 	hide()
 	dismissed.emit()
-
-
-func _unhandled_key_input(event: InputEvent) -> void:
-	if visible and event.is_action_pressed("ui_cancel") and not browser.visible:
-		_close()
-		set_input_as_handled()
-
-
-func _exit_tree() -> void:
-	# a shutdown must not abandon a running writer or free its thread handle
-	if _worker != null and _worker.is_started():
-		_worker.wait_to_finish()

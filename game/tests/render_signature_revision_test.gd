@@ -5,7 +5,6 @@ extends SceneTree
 
 const CITY_PATH := "res://tests/fixtures/cities/generated-128.SC2"
 const DAY_COUNT := 24
-
 # Chunks whose revision replaced a whole-map content hash in the signature.
 const SURFACE_CHUNKS := ["ALTM", "XTER", "XBLD", "XZON", "XTRF"]
 const UNDERGROUND_CHUNKS := ["ALTM", "XTER", "XUND"]
@@ -178,7 +177,7 @@ func _content_signature(city: CityState) -> Dictionary:
 	# Pipe flags and XUND affect only the underground drawing.
 	var underground_content := [result.ALTM, result.XTER,
 		hash(city.document.find_chunk("XUND").decoded_payload), _flag_content(city, 0x30)]
-	return {"surface": result, "underground": underground_content}
+	return { "surface": result, "underground": underground_content }
 
 
 func _flag_content(city: CityState, mask: int) -> int:

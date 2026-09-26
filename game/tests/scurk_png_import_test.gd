@@ -1,6 +1,7 @@
 extends SceneTree
 
 const Fixture = preload("res://tests/indexed_png_test.gd")
+
 var folder := ""
 
 
@@ -29,7 +30,13 @@ func _run() -> void:
 	_test_gif_and_bmp_import(assets.palette)
 	var editor := preload("res://src/ui/scurk/scurk_editor_control.tscn").instantiate() as ScurkEditorControl
 	root.add_child(editor)
-	editor.configure(assets.palette, assets.large_sprites, assets.small_medium_sprites, ProjectSettings.globalize_path("res://../references/SIMCITY2000"), assets.scurk_graphics)
+	editor.configure(
+		assets.palette,
+		assets.large_sprites,
+		assets.small_medium_sprites,
+		ProjectSettings.globalize_path("res://../references/SIMCITY2000"),
+		assets.scurk_graphics,
+	)
 	assert(editor.load_path("res://../references/SIMCITY2000/SCURKART/ORIGINAL.MIF").ok)
 	assert(editor.import_bmp_dialog.filters[0].contains("*.PNG"))
 	pixels.resize(32 * 8)
@@ -69,7 +76,8 @@ func _run() -> void:
 	editor.free()
 	DirAccess.remove_absolute(path)
 	DirAccess.remove_absolute(folder)
-	print("PASS: indexed PNG, GIF, and BMP import and export, transparency, duplicate indices, remapping, all SCURK views, exact Undo/Redo and invalid imports")
+	print(("PASS: indexed PNG, GIF, and BMP import and export, transparency, duplicate indices, "
+		+ "remapping, all SCURK views, exact Undo/Redo and invalid imports"))
 	quit()
 
 
@@ -81,19 +89,27 @@ func _write(path: String, bytes: PackedByteArray) -> void:
 
 # Independent Python struct/zlib fixtures with two palette entries.
 func _test_small_palettes() -> void:
-	var bytes_1 := "89504e470d0a1a0a0000000d4948445200000004000000010103000000c3f29d8e00000006504c5445000000ffffffa5d99fdd0000000274524e53ff00e5b7304a0000000a49444154789c6308000000520051f721d9b70000000049454e44ae426082".hex_decode()
+	var bytes_1 := ("89504e470d0a1a0a0000000d4948445200000004000000010103000000c3f29d8e00000006504c5445000000ffffffa5"
+		+ "d99fdd0000000274524e53ff00e5b7304a0000000a49444154789c6308000000520051f721d9b70000000049454e44ae"
+		+ "426082").hex_decode()
 	assert(not IndexedPng.decode(bytes_1).ok)
 	var decoded_1 := IndexedPng.decode(bytes_1, false)
 	assert(decoded_1.ok and decoded_1.pixels == PackedInt32Array([0, -1, 0, -1]))
-	var bytes_2 := "89504e470d0a1a0a0000000d49484452000000040000000102030000008452e75e00000006504c5445000000ffffffa5d99fdd0000000274524e53ff00e5b7304a0000000a49444154789c6310040000130012a60cbed50000000049454e44ae426082".hex_decode()
+	var bytes_2 := ("89504e470d0a1a0a0000000d49484452000000040000000102030000008452e75e00000006504c5445000000ffffffa5"
+		+ "d99fdd0000000274524e53ff00e5b7304a0000000a49444154789c6310040000130012a60cbed50000000049454e44ae"
+		+ "426082").hex_decode()
 	assert(not IndexedPng.decode(bytes_2).ok)
 	var decoded_2 := IndexedPng.decode(bytes_2, false)
 	assert(decoded_2.ok and decoded_2.pixels == PackedInt32Array([0, -1, 0, -1]))
-	var bytes_4 := "89504e470d0a1a0a0000000d49484452000000040000000104030000000b1212fe00000006504c5445000000ffffffa5d99fdd0000000274524e53ff00e5b7304a0000000b49444154789c6360640400000600033fb6ffa10000000049454e44ae426082".hex_decode()
+	var bytes_4 := ("89504e470d0a1a0a0000000d49484452000000040000000104030000000b1212fe00000006504c5445000000ffffffa5"
+		+ "d99fdd0000000274524e53ff00e5b7304a0000000b49444154789c6360640400000600033fb6ffa10000000049454e44"
+		+ "ae426082").hex_decode()
 	assert(not IndexedPng.decode(bytes_4).ok)
 	var decoded_4 := IndexedPng.decode(bytes_4, false)
 	assert(decoded_4.ok and decoded_4.pixels == PackedInt32Array([0, -1, 0, -1]))
-	var bytes_8 := "89504e470d0a1a0a0000000d4948445200000004000000010803000000cee2ffff00000006504c5445000000ffffffa5d99fdd0000000274524e53ff00e5b7304a0000000d49444154789c63606064600400000900035d3991e40000000049454e44ae426082".hex_decode()
+	var bytes_8 := ("89504e470d0a1a0a0000000d4948445200000004000000010803000000cee2ffff00000006504c5445000000ffffffa5"
+		+ "d99fdd0000000274524e53ff00e5b7304a0000000d49444154789c63606064600400000900035d3991e4000000004945"
+		+ "4e44ae426082").hex_decode()
 	assert(not IndexedPng.decode(bytes_8).ok)
 	var decoded_8 := IndexedPng.decode(bytes_8, false)
 	assert(decoded_8.ok and decoded_8.pixels == PackedInt32Array([0, -1, 0, -1]))

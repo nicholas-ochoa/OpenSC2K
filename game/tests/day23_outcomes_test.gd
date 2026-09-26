@@ -1,9 +1,4 @@
 extends SceneTree
-## Day 23 goal boundaries, modal military results, and scenario completion.
-
-class FixedRandom extends GameLcgRandom:
-	func next_mod(_divisor: int) -> int:
-		return 10
 
 
 func _initialize() -> void:
@@ -56,7 +51,8 @@ func _check_goal_boundaries() -> void:
 		assert(goals.evaluate_goals(city).met, "The unsigned workforce value can meet the sign-extended goal")
 		city.document.set_misc_u32(pair[1], 0)
 
-	for pair in [["pollution_limit", Sc2MiscLayout.CITY_POLLUTION], ["crime_limit", Sc2MiscLayout.CITY_CRIME], ["traffic_limit", Sc2MiscLayout.CITY_TRAFFIC]]:
+	for pair in [["pollution_limit", Sc2MiscLayout.CITY_POLLUTION], ["crime_limit", Sc2MiscLayout.CITY_CRIME],
+		["traffic_limit", Sc2MiscLayout.CITY_TRAFFIC]]:
 		goals = _goals(city)
 		goals.set(pair[0], 0x80000000)
 		city.document.set_misc_u32(pair[1], 0xffffffff)
@@ -169,3 +165,11 @@ func _check_scenario_outcomes() -> void:
 	SimulationSnapshot.publish(captured, source)
 	assert(source.engine.scenario == null and not source.engine.terminal_state)
 	assert(SimulationSnapshot.capture(source, null).engine.scenario == null)
+
+
+## Day 23 goal boundaries, modal military results, and scenario completion.
+
+
+class FixedRandom extends GameLcgRandom:
+	func next_mod(_divisor: int) -> int:
+		return 10

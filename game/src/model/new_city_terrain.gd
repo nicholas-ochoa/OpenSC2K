@@ -5,69 +5,6 @@ extends NewTerrainConstants
 @warning_ignore_start("integer_division")
 
 
-class Options extends RefCounted:
-	var size := 128
-	var native_maps := false
-	var ocean := DEFAULT_OCEAN
-	var river := DEFAULT_RIVER
-	var hills := DEFAULT_HILLS
-	var water := DEFAULT_WATER
-	var trees := DEFAULT_TREES
-	var layout := "classic"
-	var smooth_slopes := false
-	var features: Array[String] = []
-
-	func copy() -> Options:
-		var result := Options.new()
-		result.size = size
-		result.native_maps = native_maps
-		result.ocean = ocean
-		result.river = river
-		result.hills = hills
-		result.water = water
-		result.trees = trees
-		result.layout = layout
-		result.smooth_slopes = smooth_slopes
-		result.features = features.duplicate()
-
-		return result
-
-	func same_values(other: Options) -> bool:
-		return (other != null
-			and size == other.size
-			and native_maps == other.native_maps
-			and ocean == other.ocean
-			and river == other.river
-			and hills == other.hills
-			and water == other.water
-			and trees == other.trees
-			and layout == other.layout
-			and smooth_slopes == other.smooth_slopes
-			and features == other.features)
-
-
-class Result extends RefCounted:
-	var ok := false
-	var error := ""
-	var has_ocean := false
-	var has_river := false
-	var hills := 0
-	var water := 0
-	var trees := 0
-	var water_level := 0
-	var water_tiles := 0
-	var salt_water_tiles := 0
-	var tree_tiles := 0
-	var minimum_altitude := 0
-	var maximum_altitude := 0
-
-	static func failure(message: String) -> Result:
-		var result := Result.new()
-		result.error = message
-
-		return result
-
-
 static func generate(
 	document: Sc2File,
 	has_ocean: bool,
@@ -103,7 +40,8 @@ static func generate(
 
 	has_ocean = ocean_requested or island or "bay" in selected
 	has_river = (not island and "canyon" not in selected
-			and (has_river or "valley" in selected or "delta" in selected or "meander" in selected or "crossing" in selected or "branch" in selected
+			and (has_river or "valley" in selected or "delta" in selected or "meander" in selected or "crossing" in selected
+			or "branch" in selected
 			or "rejoin" in selected))
 
 	var map_edge: int = document.map_size if document != null else 128
@@ -266,3 +204,66 @@ static func generate(
 	result.error = ""
 
 	return result
+
+
+class Options extends RefCounted:
+	var size := 128
+	var native_maps := false
+	var ocean := DEFAULT_OCEAN
+	var river := DEFAULT_RIVER
+	var hills := DEFAULT_HILLS
+	var water := DEFAULT_WATER
+	var trees := DEFAULT_TREES
+	var layout := "classic"
+	var smooth_slopes := false
+	var features: Array[String] = []
+
+	func copy() -> Options:
+		var result := Options.new()
+		result.size = size
+		result.native_maps = native_maps
+		result.ocean = ocean
+		result.river = river
+		result.hills = hills
+		result.water = water
+		result.trees = trees
+		result.layout = layout
+		result.smooth_slopes = smooth_slopes
+		result.features = features.duplicate()
+
+		return result
+
+	func same_values(other: Options) -> bool:
+		return (other != null
+			and size == other.size
+			and native_maps == other.native_maps
+			and ocean == other.ocean
+			and river == other.river
+			and hills == other.hills
+			and water == other.water
+			and trees == other.trees
+			and layout == other.layout
+			and smooth_slopes == other.smooth_slopes
+			and features == other.features)
+
+
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+	var has_ocean := false
+	var has_river := false
+	var hills := 0
+	var water := 0
+	var trees := 0
+	var water_level := 0
+	var water_tiles := 0
+	var salt_water_tiles := 0
+	var tree_tiles := 0
+	var minimum_altitude := 0
+	var maximum_altitude := 0
+
+	static func failure(message: String) -> Result:
+		var result := Result.new()
+		result.error = message
+
+		return result

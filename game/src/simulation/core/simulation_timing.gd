@@ -1,7 +1,6 @@
 class_name SimulationTiming
 extends RefCounted
 
-
 var has_total := false
 var work_usec := 0
 var steps: Dictionary[String, int] = {}

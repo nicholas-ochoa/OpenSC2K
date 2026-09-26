@@ -30,7 +30,15 @@ static func render(city: CityState, point: Vector2i, palette: Sc2Palette, sprite
 	var area := DemolishEffectsSites._building_area(tile)
 
 	if area > 1:
-		var found := DemolishEffectsSites._find_building_site(city.buildings, city.zones, point, tile, area, city.compass_rotation(), city.map_size)
+		var found := DemolishEffectsSites._find_building_site(
+			city.buildings,
+			city.zones,
+			point,
+			tile,
+			area,
+			city.compass_rotation(),
+			city.map_size,
+		)
 
 		if found.has_area():
 			site = found

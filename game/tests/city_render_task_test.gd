@@ -1,5 +1,6 @@
 extends SceneTree
 
+
 func _initialize() -> void:
 	var release := Semaphore.new()
 	var task := CityRenderTask.new()

@@ -1,12 +1,5 @@
 extends SceneTree
 
-class PlotRandom extends GameLcgRandom:
-	var origin: int
-	func _init(value: int) -> void:
-		origin = value
-	func next_mod(limit: int) -> int:
-		return origin % limit
-
 var checks := 0
 var failures := 0
 
@@ -62,3 +55,11 @@ func _initialize() -> void:
 				"Proposal excludes each underground obstruction")
 	print("Army base regression: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
+
+
+class PlotRandom extends GameLcgRandom:
+	var origin: int
+	func _init(value: int) -> void:
+		origin = value
+	func next_mod(limit: int) -> int:
+		return origin % limit

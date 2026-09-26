@@ -7,7 +7,15 @@ extends RefCounted
 const FEATURES := ["plateau", "ridge", "valley", "rolling", "basin", "canyon", "cliffs"]
 
 
-static func apply(heights: PackedInt32Array, sea: int, selected: Array, angle: float, phase: float, noise: FastNoiseLite, hills: int) -> void:
+static func apply(
+	heights: PackedInt32Array,
+	sea: int,
+	selected: Array,
+	angle: float,
+	phase: float,
+	noise: FastNoiseLite,
+	hills: int,
+) -> void:
 	var active := false
 
 	for key in FEATURES:

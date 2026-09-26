@@ -2,11 +2,6 @@ extends SceneTree
 ## Moving objects publish their saved position once per 200 ms simulation tick.
 
 
-class FrozenCommands extends CityDynamicCommandCache:
-	func get_commands(city: CityState, sprites: Sc2SpriteArchive, view: int, _phase: int) -> Array[CityDynamicCommand]:
-		return super.get_commands(city, sprites, view, 0)
-
-
 func _initialize() -> void:
 	call_deferred("_run")
 
@@ -100,3 +95,8 @@ func _wait_for_regions(main: CityApplication) -> void:
 		await process_frame
 		main.map_render.poll_region_cache()
 	assert(main.render_caches.region_cache != null and main.render_caches.region_cache.ready())
+
+
+class FrozenCommands extends CityDynamicCommandCache:
+	func get_commands(city: CityState, sprites: Sc2SpriteArchive, view: int, _phase: int) -> Array[CityDynamicCommand]:
+		return super.get_commands(city, sprites, view, 0)

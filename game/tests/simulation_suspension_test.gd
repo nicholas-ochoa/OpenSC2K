@@ -3,13 +3,6 @@ extends SceneTree
 
 const Modality = CityDialogRegistry.Modality
 
-class RecordingEffects extends ApplicationEffectsAudio:
-	var sound_ids: Array[int] = []
-
-	func play_sound_ids(ids: Array[int]) -> void:
-		sound_ids.append_array(ids)
-
-
 var main: Node
 
 
@@ -71,13 +64,15 @@ func _check_every_window_is_classified() -> void:
 func _check_current_classification() -> void:
 	var blocking: Array[Node] = [
 		main.city_dialogs.city_save_dialog, main.city_dialogs.png_export_dialog, main.city_dialogs.png_export_progress,
-		main.city_dialogs.new_city_dialog, main.city_dialogs.bridge_dialog, main.city_dialogs.tool_choice_dialog, main.city_dialogs.stadium_dialog,
+		main.city_dialogs.new_city_dialog, main.city_dialogs.bridge_dialog, main.city_dialogs.tool_choice_dialog,
+		main.city_dialogs.stadium_dialog,
 		main.city_dialogs.network_connection_dialog, main.city_dialogs.highway_connection_dialog, main.city_dialogs.tunnel_dialog,
 		main.city_dialogs.query_dialog, main.city_dialogs.ordinance_window, main.city_dialogs.building_objection_dialog,
 		main.city_dialogs.scenario_dialog, main.city_dialogs.military_dialog, main.city_dialogs.budget_dialog,
 		main.city_dialogs.notice_dialog, main.city_dialogs.game_over_dialog, main.city_dialogs.analysis_dialog,
 		main.city_dialogs.library_windows,
-		main.main_menu, main.main_overlays.settings_dialog, main.reference_import_dialog, main.main_overlays.save_changes_dialog, main.main_overlays.update_dialog,
+		main.main_menu, main.main_overlays.settings_dialog, main.reference_import_dialog, main.main_overlays.save_changes_dialog,
+		main.main_overlays.update_dialog,
 		main.scurk_editor, main.scurk_place_print, main.scurk_print,
 	]
 	var modeless: Array[Node] = [
@@ -289,3 +284,10 @@ func _show_outcomes(types: Array[String]) -> void:
 		events.append(GameOverEvent.new(type))
 
 	main.reports.show_game_over_events(events)
+
+
+class RecordingEffects extends ApplicationEffectsAudio:
+	var sound_ids: Array[int] = []
+
+	func play_sound_ids(ids: Array[int]) -> void:
+		sound_ids.append_array(ids)

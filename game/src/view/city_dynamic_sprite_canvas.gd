@@ -10,6 +10,23 @@ var view_offset := Vector2.ZERO
 var visual_revision := 0
 
 
+func _draw() -> void:
+	for visual in visuals:
+		var texture: Texture2D = visual.texture as Texture2D
+
+		if texture == null:
+			continue
+
+		var source_position: Vector2 = visual.position
+		var source_size: Vector2 = visual.size
+
+		draw_texture_rect(
+			texture,
+			Rect2(source_position, source_size),
+			false,
+		)
+
+
 func set_visuals(
 	value: Array[CityDynamicVisual], scale_value: float, offset_value: Vector2
 ) -> void:
@@ -147,20 +164,3 @@ static func _visual_bounds(visual: CityDynamicVisual) -> Rect2i:
 		Vector2i(visual.position),
 		Vector2i(visual.size),
 	)
-
-
-func _draw() -> void:
-	for visual in visuals:
-		var texture: Texture2D = visual.texture as Texture2D
-
-		if texture == null:
-			continue
-
-		var source_position: Vector2 = visual.position
-		var source_size: Vector2 = visual.size
-
-		draw_texture_rect(
-			texture,
-			Rect2(source_position, source_size),
-			false,
-		)

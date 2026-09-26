@@ -49,7 +49,8 @@ func _apply_static_edit_patch(command: EditCommandResult) -> bool:
 			return false
 
 		region_start = Time.get_ticks_usec()
-		var dirty := IsometricRenderer.dirty_screen_rect(indices, sprite_archive_for_view(city_view_size()), city_view_size(), Vector2i.ZERO,
+		var dirty := IsometricRenderer.dirty_screen_rect(indices, sprite_archive_for_view(city_view_size()), city_view_size(),
+			Vector2i.ZERO,
 				app.document_state.city.map_size)
 		app.map_render.refresh_region_map(false, dirty)
 		app.timing_state.edit_display_timings.region_ms = (Time.get_ticks_usec() - region_start) / 1000.0
@@ -92,7 +93,7 @@ func _apply_static_edit_patch(command: EditCommandResult) -> bool:
 	):
 		return false
 
-	app.timing_state.edit_display_timings = {"dirty_ms": (Time.get_ticks_usec() - profile_start) / 1000.0}
+	app.timing_state.edit_display_timings = { "dirty_ms": (Time.get_ticks_usec() - profile_start) / 1000.0 }
 	profile_start = Time.get_ticks_usec()
 	var display_city := ViewFilter.surface_copy(app.document_state.city, app.view_state.surface_visibility)
 
@@ -262,7 +263,8 @@ static func _collect_traffic_rects(city: CityState, before: PackedByteArray, aft
 			for y in range(first.y, first.y + scale):
 				var building := city.building_id(x, y)
 
-				if (IsometricStaticVisuals.traffic_level(building, before[cell]) == IsometricStaticVisuals.traffic_level(building, after[cell])
+				if (IsometricStaticVisuals.traffic_level(building, before[cell]) == IsometricStaticVisuals.traffic_level(building,
+						after[cell])
 						or not city.tile_is_visible(x, y) or not IsometricStaticVisuals._should_draw_building(city, x, y, building)):
 					continue
 
@@ -270,11 +272,22 @@ static func _collect_traffic_rects(city: CityState, before: PackedByteArray, aft
 				var bounds: Rect2i
 
 				if entry == null:
-					bounds = IsometricRenderer.potential_tile_bounds(configuration, IsometricRenderer.maximum_sprite_size(sprites), x, y, map_edge)
+					bounds = IsometricRenderer.potential_tile_bounds(
+						configuration,
+						IsometricRenderer.maximum_sprite_size(sprites),
+						x,
+						y,
+						map_edge,
+					)
 				else:
 					var base_y := configuration.top_margin + (x + y) * configuration.half_height + configuration.tile_height
 					base_y -= city.object_altitude(x, y) * configuration.altitude_step
-					base_y += IsometricRenderer.building_baseline_offset(building, IsometricRenderer.surface_terrain_id(city, x, y), entry.width, view_size)
+					base_y += IsometricRenderer.building_baseline_offset(
+						building,
+						IsometricRenderer.surface_terrain_id(city, x, y),
+						entry.width,
+						view_size,
+					)
 					bounds = Rect2i(configuration.side_margin + (map_edge + x - y) * configuration.half_width,
 						base_y - entry.height, entry.width, entry.height)
 
@@ -307,7 +320,8 @@ static func changed_source_rects(city: CityState, old_payloads: Dictionary, spri
 			new_payloads[chunk_id] = chunk.decoded_payload
 
 		# a skipped chunk would hide its changes
-		if old_payloads.has(chunk_id) != new_payloads.has(chunk_id) or (chunk != null and old_payloads[chunk_id].size() != chunk.decoded_payload.size()):
+		if (old_payloads.has(chunk_id) != new_payloads.has(chunk_id)
+				or (chunk != null and old_payloads[chunk_id].size() != chunk.decoded_payload.size())):
 			return false
 
 	var map_edge := city.map_size
@@ -605,7 +619,11 @@ func update_palette_cycle_texture() -> void:
 
 
 func _city_graphics_size() -> int:
-	return SettingsStore.graphics_size_at_zoom(app.preferences.zoom_graphics, app.map_view.zoom_percent(), app.preferences.overview_graphics)
+	return SettingsStore.graphics_size_at_zoom(
+		app.preferences.zoom_graphics,
+		app.map_view.zoom_percent(),
+		app.preferences.overview_graphics,
+	)
 
 
 func city_view_size() -> int:

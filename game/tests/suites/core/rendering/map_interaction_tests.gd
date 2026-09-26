@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Rendering: map interaction checks.
 
 @warning_ignore_start("integer_division")
@@ -78,6 +77,78 @@ func run(
 	)
 	_check(not map_control.center_on_tile(Vector2i(-1, 0)), "Center tool rejects an invalid tile")
 	_check(not map_control.is_left_drag_active(), "Map control starts without an active left drag")
+	_test_scroll_limits(starter)
+
+	_test_signs(map_control, starter, center_tile)
+
+	_test_selection_geometry(map_control, starter, center_tile, surface_city, surface_point, raised_polygon)
+
+	var selection_complete_signals := _test_selection_signals(map_control, starter, center_tile)
+
+	_check(map_control.dynamic_sprites.size() == 1, "Map control accepts a dynamic sprite layer")
+	map_control.layers._ensure_base_layer()
+	var many_dynamic_sprites: Array[CityDynamicVisual] = []
+
+	for index in 1500:
+		many_dynamic_sprites.append(CityDynamicVisual.new(null, Vector2(index, index)))
+
+	map_control.set_dynamic_sprites(many_dynamic_sprites)
+	_check(
+		map_control.dynamic_sprites.size() == 1500
+		and map_control.presentation.dynamic_render_node_count() == 1
+		and map_control._dynamic_canvas is Node2D,
+		"Map control batches 1,500 dynamic sprites in one render node",
+	)
+	var center_requests: Array[Vector2i] = []
+	map_control.center_requested.connect(func(point: Vector2i) -> void:
+		center_requests.append(point))
+	var center_click := InputEventMouseButton.new()
+	center_click.button_index = MOUSE_BUTTON_MIDDLE
+	center_click.position = map_control.size * 0.5
+	center_click.pressed = true
+	map_control.interaction._handle_mouse_button(center_click)
+	_check(center_requests.is_empty(), "Middle-button press waits for release before Center")
+	center_click.pressed = false
+	map_control.interaction._handle_mouse_button(center_click)
+	_check(center_requests == [center_tile] and selection_complete_signals[0] == 1,
+		"Middle click requests Center without applying the selected build tool")
+	var visual_revision := map_control._dynamic_canvas.visual_revision
+	var dynamic_position := map_control._dynamic_canvas.position
+	var middle_press := InputEventMouseButton.new()
+	middle_press.button_index = MOUSE_BUTTON_MIDDLE
+	middle_press.pressed = true
+	map_control.interaction._handle_mouse_button(middle_press)
+	var pan_motion := InputEventMouseMotion.new()
+	pan_motion.relative = Vector2(12, 8)
+	pan_motion.position = Vector2(12, 8)
+	pan_motion.button_mask = MOUSE_BUTTON_MASK_MIDDLE
+	map_control.interaction._handle_mouse_motion(pan_motion)
+	_check(
+		map_control.is_panning()
+		and map_control._dynamic_canvas.visual_revision == visual_revision
+		and map_control._dynamic_canvas.position != dynamic_position,
+		"Middle-button panning moves the cached dynamic canvas without rebuilding it",
+	)
+	var middle_release := InputEventMouseButton.new()
+	middle_release.button_index = MOUSE_BUTTON_MIDDLE
+	middle_release.position = pan_motion.position
+	map_control.interaction._handle_mouse_button(middle_release)
+	_check(center_requests.size() == 1, "Middle drag release does not invoke Center")
+	map_control.interaction._handle_mouse_button(middle_press)
+	pan_motion.button_mask = 0
+	map_control.interaction._handle_mouse_motion(pan_motion)
+	_check(
+		not map_control.is_panning(),
+		"Map panning stops if the pointer no longer reports a pressed pan button",
+	)
+	map_control.set_dynamic_sprites([])
+	_check(map_control.dynamic_sprites.is_empty(), "Map control clears its dynamic sprite layer")
+	_test_marker_batches()
+
+	map_control.free()
+
+
+func _test_scroll_limits(starter: CityState) -> void:
 	var scroll_control := MapControl.new()
 	scroll_control.size = Vector2(400, 300)
 	var scroll_image := Image.create_empty(1000, 800, false, Image.FORMAT_RGBA8)
@@ -112,6 +183,9 @@ func run(
 		"A viewport larger than the city centers the texture and fills each scroll page",
 	)
 	scroll_control.free()
+
+
+func _test_signs(map_control: CityMapControl, starter: CityState, center_tile: Vector2i) -> void:
 	var small_sign := CityMapSigns.sign_layout(
 		Vector2(100, 80), 40.0, IsometricRenderer.VIEW_SMALL
 	)
@@ -177,7 +251,7 @@ func run(
 		map_control._sign_cache_build_count == sign_cache_builds,
 		"Repeated sign drawing reuses the zoom-specific city-sign scan",
 	)
-	map_control.set_sign_occlusion_visuals({sign_city.index_of(64, 64): CitySignVisual.new()})
+	map_control.set_sign_occlusion_visuals({ sign_city.index_of(64, 64): CitySignVisual.new() })
 	_check(
 		map_control.sign_occlusion_visuals.size() == 1,
 		"Map control accepts one localized sign-occlusion layer",
@@ -203,6 +277,12 @@ func run(
 		and later_sign_visuals[0].depth_order == 14,
 		"Only a later overlapping moving sprite occludes a city sign",
 	)
+
+
+func _test_selection_geometry(
+	map_control: CityMapControl, starter: CityState, center_tile: Vector2i,
+	surface_city: CityState, surface_point: Vector2i, raised_polygon: PackedVector2Array
+) -> void:
 	map_control.city = starter
 	map_control.zoom_factor = 1.0
 	map_control.set_signs_visible(false)
@@ -265,7 +345,7 @@ func run(
 	map_control.hover_tile = center_tile
 	_check(
 		map_control.selection._selection_source_polygons() == [
-			IsometricRenderer.terrain_surface_polygon(starter, center_tile.x, center_tile.y)
+			IsometricRenderer.terrain_surface_polygon(starter, center_tile.x, center_tile.y),
 		],
 		"An idle network tool highlights the exact hovered terrain tile",
 	)
@@ -297,6 +377,9 @@ func run(
 		],
 		"Path selection follows a contiguous diagonal route",
 	)
+
+
+func _test_selection_signals(map_control: CityMapControl, starter: CityState, center_tile: Vector2i) -> Array:
 	var selection_cancel_signals := [0]
 	var selection_complete_signals := [0]
 	var selection_start_signals := [0]
@@ -412,64 +495,10 @@ func run(
 		"Shift-click does not start or commit a landscape selection",
 	)
 	map_control.set_dynamic_sprites([CityDynamicVisual.new(null, Vector2(10, 20))])
-	_check(map_control.dynamic_sprites.size() == 1, "Map control accepts a dynamic sprite layer")
-	map_control.layers._ensure_base_layer()
-	var many_dynamic_sprites: Array[CityDynamicVisual] = []
+	return selection_complete_signals
 
-	for index in 1500:
-		many_dynamic_sprites.append(CityDynamicVisual.new(null, Vector2(index, index)))
 
-	map_control.set_dynamic_sprites(many_dynamic_sprites)
-	_check(
-		map_control.dynamic_sprites.size() == 1500
-		and map_control.presentation.dynamic_render_node_count() == 1
-		and map_control._dynamic_canvas is Node2D,
-		"Map control batches 1,500 dynamic sprites in one render node",
-	)
-	var center_requests: Array[Vector2i] = []
-	map_control.center_requested.connect(func(point: Vector2i) -> void:
-		center_requests.append(point))
-	var center_click := InputEventMouseButton.new()
-	center_click.button_index = MOUSE_BUTTON_MIDDLE
-	center_click.position = map_control.size * 0.5
-	center_click.pressed = true
-	map_control.interaction._handle_mouse_button(center_click)
-	_check(center_requests.is_empty(), "Middle-button press waits for release before Center")
-	center_click.pressed = false
-	map_control.interaction._handle_mouse_button(center_click)
-	_check(center_requests == [center_tile] and selection_complete_signals[0] == 1,
-		"Middle click requests Center without applying the selected build tool")
-	var visual_revision := map_control._dynamic_canvas.visual_revision
-	var dynamic_position := map_control._dynamic_canvas.position
-	var middle_press := InputEventMouseButton.new()
-	middle_press.button_index = MOUSE_BUTTON_MIDDLE
-	middle_press.pressed = true
-	map_control.interaction._handle_mouse_button(middle_press)
-	var pan_motion := InputEventMouseMotion.new()
-	pan_motion.relative = Vector2(12, 8)
-	pan_motion.position = Vector2(12, 8)
-	pan_motion.button_mask = MOUSE_BUTTON_MASK_MIDDLE
-	map_control.interaction._handle_mouse_motion(pan_motion)
-	_check(
-		map_control.is_panning()
-		and map_control._dynamic_canvas.visual_revision == visual_revision
-		and map_control._dynamic_canvas.position != dynamic_position,
-		"Middle-button panning moves the cached dynamic canvas without rebuilding it",
-	)
-	var middle_release := InputEventMouseButton.new()
-	middle_release.button_index = MOUSE_BUTTON_MIDDLE
-	middle_release.position = pan_motion.position
-	map_control.interaction._handle_mouse_button(middle_release)
-	_check(center_requests.size() == 1, "Middle drag release does not invoke Center")
-	map_control.interaction._handle_mouse_button(middle_press)
-	pan_motion.button_mask = 0
-	map_control.interaction._handle_mouse_motion(pan_motion)
-	_check(
-		not map_control.is_panning(),
-		"Map panning stops if the pointer no longer reports a pressed pan button",
-	)
-	map_control.set_dynamic_sprites([])
-	_check(map_control.dynamic_sprites.is_empty(), "Map control clears its dynamic sprite layer")
+func _test_marker_batches() -> void:
 	var marker_image := Image.create(4, 4, false, Image.FORMAT_RGBA8)
 	marker_image.fill(Color8(10, 10, 10, 255))
 	var marker_texture := ImageTexture.create_from_image(marker_image)
@@ -506,4 +535,3 @@ func run(
 		and cached_batches[0].texture == batches[0].texture,
 		"Dynamic marker batching reuses unchanged batch textures",
 	)
-	map_control.free()

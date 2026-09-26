@@ -8,7 +8,6 @@ const SUBTOOL_LOWER := CityToolIds.Bulldozer.LOWER
 const MILITARY_ZONE := Sc2ZoneLayout.MILITARY
 const FLAG_WATER := Sc2TileFlags.WATER
 const MAX_RAISE_SOURCE := 29
-
 const NEIGHBOR_OFFSETS := [
 	Vector2i(0, -1), Vector2i(1, -1), Vector2i(1, 0), Vector2i(1, 1),
 	Vector2i(0, 1), Vector2i(-1, 1), Vector2i(-1, 0), Vector2i(-1, -1),

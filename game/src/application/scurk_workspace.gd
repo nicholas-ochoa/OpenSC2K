@@ -1,7 +1,6 @@
 class_name ApplicationScurkWorkspace
 extends RefCounted
 
-
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const ScurkTileSet = preload("res://src/assets/scurk_mif.gd")
 const ScurkPlace = preload("res://src/tools/scurk/scurk_place_command.gd")
@@ -58,7 +57,8 @@ func open_scurk_dialog() -> void:
 
 	_ensure_scurk_editor()
 	app.scurk_editor.configure(
-		app.asset_state.palette, app.asset_state.base_large_sprites, app.asset_state.base_small_medium_sprites, app.asset_state.reference_root,
+		app.asset_state.palette, app.asset_state.base_large_sprites, app.asset_state.base_small_medium_sprites,
+		app.asset_state.reference_root,
 		app.asset_state.scurk_graphics
 	)
 	var initial_path := (
@@ -80,7 +80,9 @@ func open_scurk_dialog() -> void:
 
 			return
 
-	if app.scurk_editor.tile_set == null and app.asset_state.active_scurk_path.is_empty() and app.asset_state.asset_source.uses_graphics_pack:
+	if (app.scurk_editor.tile_set == null
+			and app.asset_state.active_scurk_path.is_empty()
+			and app.asset_state.asset_source.uses_graphics_pack):
 		var created := ScurkMif.from_archives([app.asset_state.base_large_sprites, app.asset_state.base_small_medium_sprites])
 		var loaded := app.scurk_editor.load_tile_set(created)
 
@@ -357,7 +359,12 @@ func _apply_scurk_tile_set(
 	app.asset_state.small_medium_sprites = new_small_medium
 
 	if app.scurk_place_print != null and app.scurk_place_print.visible:
-		app.scurk_place_print.configure(app.asset_state.palette, app.asset_state.large_sprites, tile_set.names, app.asset_state.scurk_graphics)
+		app.scurk_place_print.configure(
+			app.asset_state.palette,
+			app.asset_state.large_sprites,
+			tile_set.names,
+			app.asset_state.scurk_graphics,
+		)
 
 	app.static_render.invalidate_rendered_city()
 

@@ -4,7 +4,7 @@ extends RefCounted
 ## Raise the revision of a pack kind when an importer adds or changes its content.
 ## Packs with an older revision are out of date and need a new import.
 
-const CURRENT: Dictionary[String, int] = {"graphics": 1, "sound": 1, "music": 1, "data": 1}
+const CURRENT: Dictionary[String, int] = { "graphics": 1, "sound": 1, "music": 1, "data": 1 }
 # packs that importers wrote before they recorded a revision
 const UNRECORDED := 1
 # a pack that a person made, not an importer

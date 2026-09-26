@@ -9,7 +9,10 @@ func _benchmark_initialize() -> void:
 	for x in city.map_size:
 		for y in city.map_size:
 			var tile := city.building_id(x, y)
-			if city.zone_id(x, y) in [1, 2, 3, 4, 5, 6] and tile >= BuildingTileIds.DEVELOPED_FIRST and tile <= BuildingTileIds.DEVELOPED_3X3_LAST:
+			if city.zone_id(
+				x,
+				y,
+			) in [1, 2, 3, 4, 5, 6] and tile >= BuildingTileIds.DEVELOPED_FIRST and tile <= BuildingTileIds.DEVELOPED_3X3_LAST:
 				samples.append(Vector2i(x, y))
 	var traffic := city.document.find_chunk("XTRF").decoded_payload.duplicate()
 

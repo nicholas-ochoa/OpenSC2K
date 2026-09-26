@@ -86,7 +86,7 @@ func _load(data_path: String, index_path: String) -> void:
 		resources[record.x] = data.slice(record.y, end)
 
 	for resource_id in [
-		BASE_RESOURCE_ID, COUNT_RESOURCE_ID, OFFSET_RESOURCE_ID, GRAMMAR_RESOURCE_ID
+		BASE_RESOURCE_ID, COUNT_RESOURCE_ID, OFFSET_RESOURCE_ID, GRAMMAR_RESOURCE_ID,
 	]:
 		if not resources.has(resource_id):
 			load_error = "DATA_USA resource %d is missing" % resource_id

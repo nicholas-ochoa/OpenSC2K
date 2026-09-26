@@ -1,13 +1,7 @@
 class_name SpecialZonePlacement
 extends SpecialZoneConstants
 
-
-
 const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
-
-class Result extends RefCounted:
-	var ok := false
-	var changed_tiles := 0
 
 
 static func _place_runway(
@@ -70,7 +64,8 @@ static func _place_runway(
 				result.changed_tiles = 0
 
 				return result
-			if (not terrain.is_empty() and terrain[checked_index] != TerrainTileIds.FLAT) or (not underground.is_empty() and underground[checked_index] != UnderTiles.EMPTY):
+			if ((not terrain.is_empty() and terrain[checked_index] != TerrainTileIds.FLAT)
+					or (not underground.is_empty() and underground[checked_index] != UnderTiles.EMPTY)):
 				var result := Result.new()
 				result.ok = false
 				result.changed_tiles = 0
@@ -358,7 +353,8 @@ static func place_special_item(
 		GrowthSiteRules.set_corners(zones, origin, area, rotation, map_edge)
 
 	for point in points:
-		zones[SpecialZoneState._index(point, map_edge)] = (zones[SpecialZoneState._index(point, map_edge)] & Sc2ZoneLayout.CORNERS_MASK) | zone
+		zones[SpecialZoneState._index(point, map_edge)] = ((zones[SpecialZoneState._index(point, map_edge)] & Sc2ZoneLayout.CORNERS_MASK)
+			| zone)
 
 	return true
 
@@ -378,13 +374,19 @@ static func place_missile_silo(
 	for unused in 2:
 		var left := origin + Vector2i(-1, 0)
 
-		if SpecialZoneState._index(left, map_edge) >= 0 and (zones[SpecialZoneState._index(left, map_edge)] & Sc2ZoneLayout.TYPE_MASK) == zone:
+		if SpecialZoneState._index(
+			left,
+			map_edge,
+		) >= 0 and (zones[SpecialZoneState._index(left, map_edge)] & Sc2ZoneLayout.TYPE_MASK) == zone:
 			origin = left
 
 	for unused in 2:
 		var upper := origin + Vector2i(0, -1)
 
-		if SpecialZoneState._index(upper, map_edge) >= 0 and (zones[SpecialZoneState._index(upper, map_edge)] & Sc2ZoneLayout.TYPE_MASK) == zone:
+		if SpecialZoneState._index(
+			upper,
+			map_edge,
+		) >= 0 and (zones[SpecialZoneState._index(upper, map_edge)] & Sc2ZoneLayout.TYPE_MASK) == zone:
 			origin = upper
 
 	if origin.x < 0 or origin.y < 0 or origin.x > map_edge - 3 or origin.y > map_edge - 3:
@@ -448,3 +450,8 @@ static func _clear_special_building(
 		SpecialZoneState._replace_special_building(buildings, zones, misc, index, Tiles.EMPTY)
 		flags[index] &= ~Sc2TileFlags.POWER_MASK & 0xff
 		zones[index] &= Sc2ZoneLayout.TYPE_MASK
+
+
+class Result extends RefCounted:
+	var ok := false
+	var changed_tiles := 0

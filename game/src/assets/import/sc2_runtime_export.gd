@@ -13,7 +13,7 @@ func export_data(source: String, folder: String, manifest: Dictionary) -> void:
 	_palette = Sc2Palette.load_bmp(source.path_join("BITMAPS/PAL_MSTR.BMP"))
 	var city_exe := source.path_join("SIMCITY.EXE")
 	var scurk_exe := source.path_join("WINSCURK.EXE")
-	var city_ui := {"portraits": [], "terrain": [], "notices": []}
+	var city_ui := { "portraits": [], "terrain": [], "notices": [] }
 
 	for id in CityUiGraphics.PORTRAIT_IDS:
 		city_ui.portraits.append(_bitmap(city_exe, id, "city_ui"))
@@ -24,7 +24,7 @@ func export_data(source: String, folder: String, manifest: Dictionary) -> void:
 		city_ui.notices.append(_loose_bitmap(source.path_join("BITMAPS/%d.BMP" % id), id, "city_ui"))
 
 	manifest.city_ui = city_ui
-	var scurk := {"textures": [], "backgrounds": []}
+	var scurk := { "textures": [], "backgrounds": [] }
 
 	for i in ScurkGraphics.TEXTURE_IDS.size():
 		var record := _bitmap(scurk_exe, ScurkGraphics.TEXTURE_IDS[i], "scurk")
@@ -39,7 +39,7 @@ func export_data(source: String, folder: String, manifest: Dictionary) -> void:
 
 	for app in ["city", "scurk"]:
 		var executable := city_exe if app == "city" else scurk_exe
-		var desktop := {"icons": [], "cursors": []}
+		var desktop := { "icons": [], "cursors": [] }
 
 		for id in ([1] if app == "city" else [1, 3, 5, 7]):
 			desktop.icons.append(_desktop(executable, id, app, false))
@@ -111,7 +111,7 @@ func _image(decoded: IndexedImageResult, id: int, group: String) -> Dictionary:
 	var path := "%s/%d.png" % [group, id]
 	_png(path, decoded.width, decoded.height, decoded.pixels, decoded.palette)
 	count += 1
-	return {"id": id, "png": path}
+	return { "id": id, "png": path }
 
 
 func _desktop(executable: String, id: int, app: String, cursor: bool) -> Dictionary:
@@ -129,7 +129,7 @@ func _desktop(executable: String, id: int, app: String, cursor: bool) -> Diction
 		palette.colors.append(Color.BLACK)
 
 	var pixels := decoded.pixels.duplicate()
-	var record := {"id": id, "png": path}
+	var record := { "id": id, "png": path }
 
 	if cursor:
 		var mask_palette := Sc2Palette.new()

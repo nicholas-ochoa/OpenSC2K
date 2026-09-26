@@ -2,7 +2,6 @@ class_name NewTerrainSurface
 extends NewTerrainConstants
 
 
-
 static func _grow_trees(
 	buildings: PackedByteArray,
 	flags: PackedByteArray,

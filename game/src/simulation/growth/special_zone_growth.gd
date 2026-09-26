@@ -5,6 +5,7 @@ extends SpecialZoneConstants
 @warning_ignore_start("integer_division")
 
 
+# gdstyle:ignore=quality/max-parameters
 static func process(
 	buildings: PackedByteArray,
 	zones: PackedByteArray,

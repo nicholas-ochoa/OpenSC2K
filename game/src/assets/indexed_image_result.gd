@@ -1,7 +1,6 @@
 class_name IndexedImageResult
 extends RefCounted
 
-
 var ok := false
 var error := ""
 var width := 0

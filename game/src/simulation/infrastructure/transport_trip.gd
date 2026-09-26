@@ -2,7 +2,6 @@ class_name TransportTrip
 extends TransportTripConstants
 
 
-
 static func run(
 	city: CityState,
 	origin: Vector2i,

@@ -1,7 +1,6 @@
 class_name CityPngExportDialog
 extends ConfirmationDialog
 
-
 signal export_requested(options: CityPngExportJob.Options)
 
 const ExportJob = preload("res://src/view/city_png_export_job.gd")
@@ -20,7 +19,6 @@ var signs_check: CheckBox
 var moving_things_check: CheckBox
 var summary_label: Label
 var folder_dialog: FileDialog
-
 var _city_name := ""
 var _map_edge := 128
 var _protected_folder := ""
@@ -122,7 +120,8 @@ func validation_error() -> String:
 	if not DirAccess.dir_exists_absolute(folder):
 		return "The folder does not exist."
 
-	if not _protected_folder.is_empty() and (folder.simplify_path() == _protected_folder or folder.simplify_path().begins_with(_protected_folder + "/")):
+	if (not _protected_folder.is_empty()
+			and (folder.simplify_path() == _protected_folder or folder.simplify_path().begins_with(_protected_folder + "/"))):
 		return "The original game data folder is read-only. Choose another folder."
 
 	if file_name.is_empty():

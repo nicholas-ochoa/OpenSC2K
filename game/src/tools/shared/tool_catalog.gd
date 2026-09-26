@@ -1,56 +1,6 @@
 class_name ToolCatalog
 extends RefCounted
 
-class Entry extends RefCounted:
-	var id: String
-	var name: String
-	var cost: int
-	var area: int
-
-	func _init(value_id: String = "", value_name: String = "", value_cost: int = 0, value_area: int = 0) -> void:
-		id = value_id
-		name = value_name
-		cost = value_cost
-		area = value_area
-
-
-class Group extends RefCounted:
-	var id: String
-	var name: String
-	var tools: Array[Entry]
-
-	func _init(value_id: String, value_name: String, value_tools: Array[Entry]) -> void:
-		id = value_id
-		name = value_name
-		tools = value_tools
-
-
-class Tool extends Entry:
-	var group_index: int
-	var subtool_index: int
-	var table_index: int
-	var group_id: String
-	var group_name: String
-
-
-class PowerPlantDetails extends RefCounted:
-	var output_mw: int
-	var grid_capacity: String
-	var pollution: int
-	var service_life: String
-	var note: String
-
-	func _init(output: int, capacity: String, pollution_factor: int, lifetime: String, description: String) -> void:
-		output_mw = output
-		grid_capacity = capacity
-		pollution = pollution_factor
-		service_life = lifetime
-		note = description
-
-	func copy() -> PowerPlantDetails:
-		return PowerPlantDetails.new(output_mw, grid_capacity, pollution, service_life, note)
-
-
 const MAX_SLOTS_PER_GROUP := 12
 
 # power-plant output values are the nominal megawatt values stored in xmic
@@ -94,7 +44,6 @@ static var POWER_PLANT_DETAILS: Dictionary[int, PowerPlantDetails] = {
 		"This plant becomes available after its invention."
 	),
 }
-
 # costs and square cursor areas are confirmed from the supplied executable
 # tables at 0x004dc140 and 0x004dc068. a zero area is a chooser or camera tool
 static var GROUPS: Array[Group] = [
@@ -255,3 +204,53 @@ static func power_plant_details(subtool_index: int) -> PowerPlantDetails:
 	var details: PowerPlantDetails = POWER_PLANT_DETAILS.get(subtool_index)
 
 	return details.copy() if details != null else null
+
+
+class Entry extends RefCounted:
+	var id: String
+	var name: String
+	var cost: int
+	var area: int
+
+	func _init(value_id: String = "", value_name: String = "", value_cost: int = 0, value_area: int = 0) -> void:
+		id = value_id
+		name = value_name
+		cost = value_cost
+		area = value_area
+
+
+class Group extends RefCounted:
+	var id: String
+	var name: String
+	var tools: Array[Entry]
+
+	func _init(value_id: String, value_name: String, value_tools: Array[Entry]) -> void:
+		id = value_id
+		name = value_name
+		tools = value_tools
+
+
+class Tool extends Entry:
+	var group_index: int
+	var subtool_index: int
+	var table_index: int
+	var group_id: String
+	var group_name: String
+
+
+class PowerPlantDetails extends RefCounted:
+	var output_mw: int
+	var grid_capacity: String
+	var pollution: int
+	var service_life: String
+	var note: String
+
+	func _init(output: int, capacity: String, pollution_factor: int, lifetime: String, description: String) -> void:
+		output_mw = output
+		grid_capacity = capacity
+		pollution = pollution_factor
+		service_life = lifetime
+		note = description
+
+	func copy() -> PowerPlantDetails:
+		return PowerPlantDetails.new(output_mw, grid_capacity, pollution, service_life, note)

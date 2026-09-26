@@ -1,13 +1,13 @@
 class_name ScurkCityOutput
 extends RefCounted
 
+
 @warning_ignore_start("integer_division")
 
 const Renderer = preload("res://src/view/city_isometric_renderer.gd")
 const UndergroundView = preload("res://src/view/city_underground_view.gd")
 const ViewFilter = preload("res://src/view/city_view_filter.gd")
 const IndexedBitmap = preload("res://src/assets/indexed_bmp.gd")
-
 const PDF_PAGE_WIDTH := 612.0
 const PDF_PAGE_HEIGHT := 792.0
 const PDF_MARGIN := 36.0
@@ -62,65 +62,6 @@ const FONT_5X7 := {
 	"&": [12, 18, 20, 8, 21, 18, 13],
 	"/": [1, 1, 2, 4, 8, 16, 16],
 }
-
-
-class Options extends RefCounted:
-	var view := "city"
-	var color := true
-	var magnification := 1
-	var entire_city := true
-	var selected_pages := PackedByteArray()
-	var show_pipes := true
-	var show_water_mains := true
-	var moving_things := false
-	var special_overlays := false
-	var transparent_background := false
-	var progress := Callable()
-	var surface_visibility: Dictionary[String, bool] = {}
-
-	func _init() -> void:
-		surface_visibility.assign(ViewFilter.DEFAULT_VISIBILITY)
-
-	func copy() -> Options:
-		var result := Options.new()
-		result.view = view
-		result.color = color
-		result.magnification = magnification
-		result.entire_city = entire_city
-		result.selected_pages = selected_pages.duplicate()
-		result.show_pipes = show_pipes
-		result.show_water_mains = show_water_mains
-		result.moving_things = moving_things
-		result.special_overlays = special_overlays
-		result.transparent_background = transparent_background
-		result.progress = progress
-		result.surface_visibility = surface_visibility.duplicate()
-
-		return result
-
-
-class PageGrid extends RefCounted:
-	var columns: int
-	var rows: int
-	var count: int
-	var view_size: int
-
-	func _init(column_count: int, row_count: int, graphics_size: int) -> void:
-		columns = column_count
-		rows = row_count
-		count = columns * rows
-		view_size = graphics_size
-
-
-class PdfResult extends FileWriteResult:
-	var page_count := 0
-	var available_page_count := 0
-
-	static func rejected(message: String) -> PdfResult:
-		var result := PdfResult.new()
-		result.error = message
-
-		return result
 
 
 static func page_grid(magnification: int) -> PageGrid:
@@ -611,3 +552,62 @@ static func _draw_artwork_stamps(output: Image, city: CityState, palette: Sc2Pal
 					pixel = Color(pixel.r, pixel.r, pixel.r, 1.0)
 
 				output.set_pixelv(target, pixel)
+
+
+class Options extends RefCounted:
+	var view := "city"
+	var color := true
+	var magnification := 1
+	var entire_city := true
+	var selected_pages := PackedByteArray()
+	var show_pipes := true
+	var show_water_mains := true
+	var moving_things := false
+	var special_overlays := false
+	var transparent_background := false
+	var progress := Callable()
+	var surface_visibility: Dictionary[String, bool] = {}
+
+	func _init() -> void:
+		surface_visibility.assign(ViewFilter.DEFAULT_VISIBILITY)
+
+	func copy() -> Options:
+		var result := Options.new()
+		result.view = view
+		result.color = color
+		result.magnification = magnification
+		result.entire_city = entire_city
+		result.selected_pages = selected_pages.duplicate()
+		result.show_pipes = show_pipes
+		result.show_water_mains = show_water_mains
+		result.moving_things = moving_things
+		result.special_overlays = special_overlays
+		result.transparent_background = transparent_background
+		result.progress = progress
+		result.surface_visibility = surface_visibility.duplicate()
+
+		return result
+
+
+class PageGrid extends RefCounted:
+	var columns: int
+	var rows: int
+	var count: int
+	var view_size: int
+
+	func _init(column_count: int, row_count: int, graphics_size: int) -> void:
+		columns = column_count
+		rows = row_count
+		count = columns * rows
+		view_size = graphics_size
+
+
+class PdfResult extends FileWriteResult:
+	var page_count := 0
+	var available_page_count := 0
+
+	static func rejected(message: String) -> PdfResult:
+		var result := PdfResult.new()
+		result.error = message
+
+		return result

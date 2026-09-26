@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Rendering: palette minimap checks.
 
 @warning_ignore_start("integer_division")
@@ -53,70 +52,7 @@ func test_palette_and_minimap(reference_root: String) -> void:
 	if not loaded_palette.is_valid():
 		return
 
-	var encoded := Palette.index_encoding()
-	_check(
-		encoded.is_valid()
-		and encoded.color(0xab).to_rgba32() == Color8(0xab, 0xab, 0xab).to_rgba32(),
-		"Index palette preserves each sprite palette index",
-	)
-	var first_cycle := loaded_palette.animation_index_map(1)
-	_check(
-		first_cycle[0xab] == 0xac
-		and first_cycle[0xb2] == 0xab
-		and first_cycle[0xc8] == 0xcf
-		and first_cycle[0xd0] == 0xd3,
-		"Fast palette cycle follows the recovered forward and reverse groups",
-	)
-	var full_fast_cycle := loaded_palette.animation_index_map(8)
-	_check(
-		full_fast_cycle[0xab] == 0xab
-		and full_fast_cycle[0xc3] == 0xc3
-		and full_fast_cycle[0xd4] == 0xd4,
-		"Fast palette groups return after eight base ticks",
-	)
-	_check(
-		full_fast_cycle[0xe0] == 0xe1
-		and full_fast_cycle[0xe1] == 0xe0
-		and full_fast_cycle[0xee] == 0xee
-		and full_fast_cycle[0xef] == 0xe0,
-		"Slow palette cycle follows the recovered 16-entry table",
-	)
-	var second_slow_cycle := loaded_palette.animation_index_map(16)
-	_check(
-		second_slow_cycle[0xe0] == 0xe0
-		and second_slow_cycle[0xe1] == 0xe1
-		and second_slow_cycle[0xef] == 0xe1,
-		"Slow palette buffer retains the executable's final-entry behavior",
-	)
-	var scurk_before_fast := loaded_palette.scurk_animation_index_map(5)
-	var scurk_first_fast := loaded_palette.scurk_animation_index_map(6)
-	var scurk_second_fast := loaded_palette.scurk_animation_index_map(11)
-	_check(
-		scurk_before_fast[0xab] == 0xab
-		and scurk_first_fast[0xab] == 0xac
-		and scurk_second_fast[0xab] == 0xad,
-		"SCURK fast palette counter steps first at tick six and then every five ticks",
-	)
-	var scurk_before_slow := loaded_palette.scurk_animation_index_map(30)
-	var scurk_first_slow := loaded_palette.scurk_animation_index_map(31)
-	var scurk_second_slow := loaded_palette.scurk_animation_index_map(61)
-	_check(
-		scurk_before_slow[0xe0] == 0xe0
-		and scurk_first_slow[0xe0] == 0xe1
-		and scurk_second_slow[0xe0] == 0xe0,
-		"SCURK slow palette counter steps first at tick 31 and then every 30 ticks",
-	)
-	var animation_image := loaded_palette.animation_image(1)
-	_check(
-		animation_image.get_size() == Vector2i(256, 1)
-		and animation_image.get_pixel(0xab, 0).to_rgba32()
-		== loaded_palette.color(0xac).to_rgba32(),
-		"Animated palette image contains the cycled master colors",
-	)
-	_check(
-		Palette.index_encoding().is_index_encoding,
-		"The synthetic palette identifies its cache-safe index encoding",
-	)
+	_test_palette_animation(loaded_palette)
 
 	var document := _load_fixture(reference_root.path_join("CITIES/STARTER.SC2"))
 	var loaded_city := CityModel.from_document(document)
@@ -264,3 +200,70 @@ func _view_configuration_values(configuration: CityViewConfiguration) -> Array[i
 		configuration.half_width, configuration.half_height,
 		configuration.altitude_step, configuration.top_margin,
 		configuration.side_margin, configuration.sprite_base]
+
+
+func _test_palette_animation(loaded_palette: Sc2Palette) -> void:
+	var encoded := Palette.index_encoding()
+	_check(
+		encoded.is_valid()
+		and encoded.color(0xab).to_rgba32() == Color8(0xab, 0xab, 0xab).to_rgba32(),
+		"Index palette preserves each sprite palette index",
+	)
+	var first_cycle := loaded_palette.animation_index_map(1)
+	_check(
+		first_cycle[0xab] == 0xac
+		and first_cycle[0xb2] == 0xab
+		and first_cycle[0xc8] == 0xcf
+		and first_cycle[0xd0] == 0xd3,
+		"Fast palette cycle follows the recovered forward and reverse groups",
+	)
+	var full_fast_cycle := loaded_palette.animation_index_map(8)
+	_check(
+		full_fast_cycle[0xab] == 0xab
+		and full_fast_cycle[0xc3] == 0xc3
+		and full_fast_cycle[0xd4] == 0xd4,
+		"Fast palette groups return after eight base ticks",
+	)
+	_check(
+		full_fast_cycle[0xe0] == 0xe1
+		and full_fast_cycle[0xe1] == 0xe0
+		and full_fast_cycle[0xee] == 0xee
+		and full_fast_cycle[0xef] == 0xe0,
+		"Slow palette cycle follows the recovered 16-entry table",
+	)
+	var second_slow_cycle := loaded_palette.animation_index_map(16)
+	_check(
+		second_slow_cycle[0xe0] == 0xe0
+		and second_slow_cycle[0xe1] == 0xe1
+		and second_slow_cycle[0xef] == 0xe1,
+		"Slow palette buffer retains the executable's final-entry behavior",
+	)
+	var scurk_before_fast := loaded_palette.scurk_animation_index_map(5)
+	var scurk_first_fast := loaded_palette.scurk_animation_index_map(6)
+	var scurk_second_fast := loaded_palette.scurk_animation_index_map(11)
+	_check(
+		scurk_before_fast[0xab] == 0xab
+		and scurk_first_fast[0xab] == 0xac
+		and scurk_second_fast[0xab] == 0xad,
+		"SCURK fast palette counter steps first at tick six and then every five ticks",
+	)
+	var scurk_before_slow := loaded_palette.scurk_animation_index_map(30)
+	var scurk_first_slow := loaded_palette.scurk_animation_index_map(31)
+	var scurk_second_slow := loaded_palette.scurk_animation_index_map(61)
+	_check(
+		scurk_before_slow[0xe0] == 0xe0
+		and scurk_first_slow[0xe0] == 0xe1
+		and scurk_second_slow[0xe0] == 0xe0,
+		"SCURK slow palette counter steps first at tick 31 and then every 30 ticks",
+	)
+	var animation_image := loaded_palette.animation_image(1)
+	_check(
+		animation_image.get_size() == Vector2i(256, 1)
+		and animation_image.get_pixel(0xab, 0).to_rgba32()
+		== loaded_palette.color(0xac).to_rgba32(),
+		"Animated palette image contains the cycled master colors",
+	)
+	_check(
+		Palette.index_encoding().is_index_encoding,
+		"The synthetic palette identifies its cache-safe index encoding",
+	)

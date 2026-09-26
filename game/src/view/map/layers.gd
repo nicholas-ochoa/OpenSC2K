@@ -1,7 +1,6 @@
 class_name CityMapLayers
 extends CityMapConstants
 
-
 # Retain one mesh. The budget counts its source vertex and index arrays.
 # Driver and resource overhead are separate from this estimate.
 const RETAINED_GEOMETRY_BYTES := 64 * 1024 * 1024
@@ -102,7 +101,12 @@ func _clear_retained_geometry() -> void:
 
 func _draw_data_view(scale: float, offset: Vector2) -> void:
 	if map.hover_tile.x >= 0:
-		var outline := CityDataView.surface_polygon(map.city, map.hover_tile.x, map.hover_tile.y, map.data_view_mode == CityViewMode.Mode.HEIGHT)
+		var outline := CityDataView.surface_polygon(
+			map.city,
+			map.hover_tile.x,
+			map.hover_tile.y,
+			map.data_view_mode == CityViewMode.Mode.HEIGHT,
+		)
 
 		for index in outline.size():
 			outline[index] = offset + outline[index] * scale
@@ -116,20 +120,34 @@ func draw_data_key(canvas: Control) -> void:
 	var font := ThemeDB.fallback_font
 	var origin := Vector2.ZERO
 	var title: String = CityDataView.TITLES[CityViewMode.DATA_MODES.find(map.data_view_mode)]
-	canvas.draw_string(font, origin + Vector2(12, 24), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, map.get_theme_color("font_color", "MapLegend"))
+	canvas.draw_string(
+		font,
+		origin + Vector2(12, 24),
+		title,
+		HORIZONTAL_ALIGNMENT_LEFT,
+		-1,
+		16,
+		map.get_theme_color("font_color", "MapLegend"),
+	)
 
 	var states := CityDataView.state_labels(map.data_view_mode)
 
 	if not states.is_empty():
 		for index in states.size():
 			var position := origin + Vector2(12 + index * 100, 38)
-			canvas.draw_rect(Rect2(position, Vector2(88, 18)), CityDataView.color(CityDataView.state_value(map.data_view_mode, index), map.data_view_mode))
+			canvas.draw_rect(
+				Rect2(position, Vector2(88, 18)),
+				CityDataView.color(CityDataView.state_value(map.data_view_mode, index), map.data_view_mode),
+			)
 			canvas.draw_string(font, position + Vector2(0, 38), states[index], HORIZONTAL_ALIGNMENT_LEFT, -1, 14,
 					map.get_theme_color("font_color", "MapLegend"))
 	else:
 		for index in 32:
 			var number := index if map.data_view_mode == CityViewMode.Mode.HEIGHT else roundi(index * 255.0 / 31)
-			canvas.draw_rect(Rect2(origin + Vector2(12 + index * 9.25, 38), Vector2(9.25, 20)), CityDataView.color(number, map.data_view_mode))
+			canvas.draw_rect(
+				Rect2(origin + Vector2(12 + index * 9.25, 38), Vector2(9.25, 20)),
+				CityDataView.color(number, map.data_view_mode),
+			)
 
 		if map.data_view_mode == CityViewMode.Mode.HEIGHT:
 			canvas.draw_rect(Rect2(origin + Vector2(12, 96), Vector2(18, 10)), Color(0.35, 0.75, 1.0, 0.65))
@@ -139,9 +157,25 @@ func draw_data_key(canvas: Control) -> void:
 		var labels := CityDataView.range_labels(map.data_view_mode)
 		var low := labels[0]
 		var high := labels[1]
-		canvas.draw_string(font, origin + Vector2(12, 80), low, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, map.get_theme_color("font_color", "MapLegend"))
+		canvas.draw_string(
+			font,
+			origin + Vector2(12, 80),
+			low,
+			HORIZONTAL_ALIGNMENT_LEFT,
+			-1,
+			14,
+			map.get_theme_color("font_color", "MapLegend"),
+		)
 		var high_width := font.get_string_size(high, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
-		canvas.draw_string(font, origin + Vector2(308 - high_width, 80), high, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, map.get_theme_color("font_color", "MapLegend"))
+		canvas.draw_string(
+			font,
+			origin + Vector2(308 - high_width, 80),
+			high,
+			HORIZONTAL_ALIGNMENT_LEFT,
+			-1,
+			14,
+			map.get_theme_color("font_color", "MapLegend"),
+		)
 
 
 func data_key_origin() -> Vector2:

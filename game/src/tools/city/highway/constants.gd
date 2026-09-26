@@ -2,7 +2,6 @@ class_name HighwayConstants
 extends RefCounted
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const GROUP_ROADS := CityToolIds.Group.ROADS
 const SUBTOOL_HIGHWAY := CityToolIds.Roads.HIGHWAY
 const RADIOACTIVITY := Tiles.RADIOACTIVE_WASTE
@@ -21,12 +20,11 @@ const BRIDGE_CANCELLED := -2
 const BRIDGE_UNSELECTED := -1
 const BRIDGE_HIGHWAY := 5
 const BRIDGE_REINFORCED := 6
-const BRIDGE_COSTS := {BRIDGE_HIGHWAY: 200, BRIDGE_REINFORCED: 300}
+const BRIDGE_COSTS := { BRIDGE_HIGHWAY: 200, BRIDGE_REINFORCED: 300 }
 const BRIDGE_NAMES := {
 	BRIDGE_HIGHWAY: "Highway Bridge",
 	BRIDGE_REINFORCED: "Reinforced Bridge",
 }
-
 const DIRECTIONS := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
 const SHAPE_BY_CONNECTIONS := [2, 2, 3, 8, 2, 2, 9, 12, 3, 11, 3, 12, 10, 12, 12, 12]
 const GRADED_SHAPE_BY_CONNECTIONS := [2, 2, 3, 3, 2, 2, 3, 2, 3, 3, 3, 2, 3, 2, 2, 2]

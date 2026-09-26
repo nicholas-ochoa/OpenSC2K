@@ -13,7 +13,8 @@ func _run() -> void:
 	var small := FixtureGraphics.pack().small_medium_sprites
 
 	for edge in [128, 512]:
-		var path := "res://tests/fixtures/cities/generated-128.SC2" if edge == 128 else "res://tests/fixtures/cities/generated-%d.sc2x" % edge
+		var path := ("res://tests/fixtures/cities/generated-128.SC2" if edge == 128
+			else "res://tests/fixtures/cities/generated-%d.sc2x" % edge)
 		var city := CityState.from_document(Sc2File.load_path(path))
 
 		for view in ([0, 1, 2] if edge == 128 else [2]):
@@ -35,7 +36,8 @@ func _run() -> void:
 	for rotation in 4:
 		city.document.set_misc_u32(0x08, rotation)
 
-		for visibility in ([{}, {"water": false}, {"buildings": false, "networks": false, "trees": false, "zones": false}] if rotation == 0 else [{}]):
+		for visibility in ([{}, { "water": false }, { "buildings": false, "networks": false, "trees": false, "zones": false }]
+			if rotation == 0 else [{}]):
 			var displayed := CityViewFilter.surface_copy(city, visibility)
 			displayed.visible_altitude_levels = 16 if visibility.is_empty() else 32
 			var bounds := Rect2i((CityIsometricRenderer.output_size_for_view(2, 128) / 2) - Vector2i(128, 64), Vector2i(257, 135))
@@ -68,12 +70,16 @@ func _run() -> void:
 				var expected := CityRegionRenderer.render(city, palette, sprites, region.bounds, view, mode)
 				expected.image.convert(Image.FORMAT_LA8)
 				assert(_static_command_values(region.occlusion_commands) == _static_command_values(expected.occlusion_commands))
-				assert(CityGpuDrawList.paint(region.gpu_draws, region.bounds, region.background, region.gpu_draw_grid).get_data() == expected.image.get_data())
+				assert(CityGpuDrawList.paint(region.gpu_draws, region.bounds, region.background,
+					region.gpu_draw_grid).get_data() == expected.image.get_data())
 
 				if DisplayServer.get_name() != "headless":
 					region.atlas_image = batch.atlas_image
 					await _check_gpu_pixels(region, expected.image)
-			assert(CityGpuRegionBatch.build(request, context, batch.atlas_revision).atlas_image == null, "Warm batch uploaded an unchanged atlas")
+			assert(
+				CityGpuRegionBatch.build(request, context, batch.atlas_revision).atlas_image == null,
+				"Warm batch uploaded an unchanged atlas",
+			)
 
 			# Even a spent budget must complete one region. Resume the omitted
 			# keys with the same atlas and preserve the unrestricted batch output.
@@ -113,7 +119,8 @@ func _run() -> void:
 					var expected := CityRegionRenderer.render(city, palette, sprites, region.bounds, view, mode)
 					expected.image.convert(Image.FORMAT_LA8)
 					assert(_static_command_values(region.occlusion_commands) == _static_command_values(expected.occlusion_commands))
-					assert(CityGpuDrawList.paint(region.gpu_draws, region.bounds, region.background, region.gpu_draw_grid).get_data() == expected.image.get_data())
+					assert(CityGpuDrawList.paint(region.gpu_draws, region.bounds, region.background,
+						region.gpu_draw_grid).get_data() == expected.image.get_data())
 
 					if DisplayServer.get_name() != "headless":
 						region.atlas_image = changed.atlas_image
@@ -123,11 +130,22 @@ func _run() -> void:
 	quit()
 
 
-func _compare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, bounds: Rect2i, view: int, mode: CityViewMode.Mode, context: CityGpuBuildContext) -> void:
+func _compare(
+	city: CityState,
+	palette: Sc2Palette,
+	sprites: Sc2SpriteArchive,
+	bounds: Rect2i,
+	view: int,
+	mode: CityViewMode.Mode,
+	context: CityGpuBuildContext,
+) -> void:
 	var cpu := CityRegionRenderer.render(city, palette, sprites, bounds, view, mode)
 	var gpu := CityGpuRegionRenderer.render(city, palette, sprites, bounds, view, mode, true, true, context, 1, -1)
 	assert(cpu.ok and gpu.ok)
-	assert(_static_command_values(cpu.occlusion_commands) == _static_command_values(gpu.occlusion_commands), "GPU foreground must match CPU command order")
+	assert(
+		_static_command_values(cpu.occlusion_commands) == _static_command_values(gpu.occlusion_commands),
+		"GPU foreground must match CPU command order",
+	)
 	var rasterized := CityGpuDrawList.paint(gpu.gpu_draws, bounds, gpu.background, gpu.gpu_draw_grid)
 	cpu.image.convert(Image.FORMAT_LA8)
 	assert(cpu.image.get_data() == rasterized.get_data(), "GPU draw list differs from CPU pixels")
@@ -163,7 +181,8 @@ func _check_gpu_pixels(result: CityGpuRegionResult, expected: Image) -> void:
 	var expected_bytes := expected.get_data()
 	if actual_bytes != expected_bytes:
 		for index in range(0, actual_bytes.size(), 2):
-			if actual_bytes[index + 1] != expected_bytes[index + 1] or (actual_bytes[index + 1] > 0 and actual_bytes[index] != expected_bytes[index]):
+			if (actual_bytes[index + 1] != expected_bytes[index + 1]
+					or (actual_bytes[index + 1] > 0 and actual_bytes[index] != expected_bytes[index])):
 				differences += 1
 
 	assert(differences == 0, "GPU raster differs at %d pixels" % differences)

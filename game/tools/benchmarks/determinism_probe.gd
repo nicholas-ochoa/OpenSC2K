@@ -1,10 +1,8 @@
 extends "res://tools/benchmarks/fixture_paths.gd"
-
 ## Determinism probe: runs fixed-seed days on populated cities and prints a
 ## serialized save bytes, ordered day results, and all three RNG states.
 
 const TimingResults = preload("res://tests/support/timing_results.gd")
-
 const CITIES := [128, 256, 384, 512]
 const DAYS := 60
 

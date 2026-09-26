@@ -1,12 +1,73 @@
 class_name CityMapPresentation
 extends CityMapConstants
 
-
 var map: CityMapControl
 
 
 func _init(control: CityMapControl) -> void:
 	map = control
+
+
+func _draw() -> void:
+	if map.city_source == null:
+		return
+
+	var scale := map.camera._view_scale()
+	var offset := map.camera._draw_offset(scale)
+
+	if map._price_layer != null:
+		map._price_layer.queue_redraw()
+
+	if map.data_view_mesh != null:
+		map.layers._draw_data_view(scale, offset)
+
+		if map.trip_reach != null:
+			map.trip_reach.draw_on(map, scale, offset, map.trip_query_underground)
+
+		return
+
+	if map._base_layer == null and map.city_source.texture != null:
+		map.draw_texture_rect(
+			map.city_source.texture,
+			Rect2(offset, Vector2(map.city_source.size) * scale),
+			false
+		)
+
+	if map._base_layer == null:
+		_draw_dynamic_sprites(scale, offset)
+
+	_draw_transient_effects(scale, offset)
+	map.signs._draw_signs(scale, offset)
+
+	for stamp in map.scurk_stamp_visuals:
+		map.draw_texture_rect(stamp.texture, Rect2(offset + stamp.position * scale, stamp.texture.get_size() * scale), false)
+
+	if map.city == null:
+		return
+
+	var valid := (not map.placement_validator.is_valid()
+		or bool(map.placement_validator.call(map.selection_end if map.selection_end.x >= 0 else map.hover_tile)))
+
+	for source_polygon in map.selection._selection_source_polygons():
+		var local_polygon := PackedVector2Array()
+
+		for point in source_polygon:
+			local_polygon.append(offset + point * scale)
+
+		map.draw_colored_polygon(local_polygon, Color(0.3, 0.95, 0.45, 0.28) if valid else Color(1.0, 0.15, 0.12, 0.35))
+		local_polygon.append(local_polygon[0])
+		map.draw_polyline(local_polygon, Color(0.55, 1.0, 0.65, 0.9) if valid else Color(1.0, 0.25, 0.2, 0.95), 1.0)
+
+	if map.selection.bulldozer_visible() and map.bulldozer_visual_provider.is_valid():
+		var visual: CityDynamicVisual = map.bulldozer_visual_provider.call(map.hover_tile, map.bulldozer_direction)
+		if visual != null:
+			map.draw_texture_rect(
+				visual.texture, Rect2(offset + visual.position * scale, visual.size * scale),
+				false, CityForegroundPalette.INDEXED_DRAW_COLOR
+			)
+
+	if map.trip_reach != null:
+		map.trip_reach.draw_on(map, scale, offset, map.trip_query_underground)
 
 
 func set_city_view(
@@ -204,67 +265,6 @@ func _show_shake_frame(
 	map.get_tree().create_timer(duration).timeout.connect(
 		map._show_shake_frame.bind(frame + 1, frames, duration, distance, generation)
 	)
-
-
-func _draw() -> void:
-	if map.city_source == null:
-		return
-
-	var scale := map.camera._view_scale()
-	var offset := map.camera._draw_offset(scale)
-
-	if map._price_layer != null:
-		map._price_layer.queue_redraw()
-
-	if map.data_view_mesh != null:
-		map.layers._draw_data_view(scale, offset)
-
-		if map.trip_reach != null:
-			map.trip_reach.draw_on(map, scale, offset, map.trip_query_underground)
-
-		return
-
-	if map._base_layer == null and map.city_source.texture != null:
-		map.draw_texture_rect(
-			map.city_source.texture,
-			Rect2(offset, Vector2(map.city_source.size) * scale),
-			false
-		)
-
-	if map._base_layer == null:
-		_draw_dynamic_sprites(scale, offset)
-
-	_draw_transient_effects(scale, offset)
-	map.signs._draw_signs(scale, offset)
-
-	for stamp in map.scurk_stamp_visuals:
-		map.draw_texture_rect(stamp.texture, Rect2(offset + stamp.position * scale, stamp.texture.get_size() * scale), false)
-
-	if map.city == null:
-		return
-
-	var valid := not map.placement_validator.is_valid() or bool(map.placement_validator.call(map.selection_end if map.selection_end.x >= 0 else map.hover_tile))
-
-	for source_polygon in map.selection._selection_source_polygons():
-		var local_polygon := PackedVector2Array()
-
-		for point in source_polygon:
-			local_polygon.append(offset + point * scale)
-
-		map.draw_colored_polygon(local_polygon, Color(0.3, 0.95, 0.45, 0.28) if valid else Color(1.0, 0.15, 0.12, 0.35))
-		local_polygon.append(local_polygon[0])
-		map.draw_polyline(local_polygon, Color(0.55, 1.0, 0.65, 0.9) if valid else Color(1.0, 0.25, 0.2, 0.95), 1.0)
-
-	if map.selection.bulldozer_visible() and map.bulldozer_visual_provider.is_valid():
-		var visual: CityDynamicVisual = map.bulldozer_visual_provider.call(map.hover_tile, map.bulldozer_direction)
-		if visual != null:
-			map.draw_texture_rect(
-				visual.texture, Rect2(offset + visual.position * scale, visual.size * scale),
-				false, CityForegroundPalette.INDEXED_DRAW_COLOR
-			)
-
-	if map.trip_reach != null:
-		map.trip_reach.draw_on(map, scale, offset, map.trip_query_underground)
 
 
 func _draw_transient_effects(scale: float, offset: Vector2) -> void:

@@ -1,49 +1,5 @@
 extends SceneTree
 
-@warning_ignore_start("integer_division")
-
-class SequenceRandom extends SimRandom:
-	var values: Array[int]
-	var position := 0
-
-	func _init(sequence: Array[int] = [0]) -> void:
-		values = sequence
-
-	func next_u15() -> int:
-		var value := values[position % values.size()]
-		position += 1
-		return value
-
-class SequenceLfsr extends SimLfsrRandom:
-	var values: Array[int]
-	var position := 0
-
-	func _init(sequence: Array[int] = [0]) -> void:
-		values = sequence
-
-	func next_mod(limit: int) -> int:
-		return _next() % limit
-
-	func next_mask(mask: int) -> int:
-		return _next() & mask
-
-	func _next() -> int:
-		var value := values[position % values.size()]
-		position += 1
-		return value
-
-class SequenceGameLcg extends GameLcgRandom:
-	var values: Array[int]
-	var position := 0
-
-	func _init(sequence: Array[int] = [0]) -> void:
-		values = sequence
-
-	func next_mod(limit: int) -> int:
-		var value := values[position % values.size()]
-		position += 1
-		return value % limit
-
 var checks := 0
 var failures := 0
 
@@ -146,7 +102,10 @@ func check_growth_and_facilities(edge: int, native: bool) -> void:
 	# Use a fresh transaction so simulation changes do not enter the Undo check.
 	city = CityState.from_document(fixture(edge, native))
 	built = BuildingCommand.apply(city, 13, 0, Vector2i(edge - 4, edge - 4), SimLfsrRandom.new(1), SimRandom.new(1))
-	check(built.ok and BuildingCommand.undo(city, built, SimLfsrRandom.new(1), SimRandom.new(1)).ok, "Small facility placement supports Undo")
+	check(
+		built.ok and BuildingCommand.undo(city, built, SimLfsrRandom.new(1), SimRandom.new(1)).ok,
+		"Small facility placement supports Undo",
+	)
 	check(city.document.serialize().data == original, "Facility Undo preserves exact bytes")
 
 
@@ -162,7 +121,8 @@ func check_terrain(edge: int) -> void:
 				var repeat_doc := fixture(edge)
 				var repeat_result := NewCityTerrain.generate(repeat_doc, true, true, 12, 5, 0,
 					SimRandom.new(seed), GameLcgRandom.new(seed), layout)
-				check(_terrain_result_values(repeat_result) == _terrain_result_values(result) and repeat_doc.serialize().data == doc.serialize().data,
+				check(_terrain_result_values(repeat_result) == _terrain_result_values(result)
+					and repeat_doc.serialize().data == doc.serialize().data,
 					"Small terrain layout and seed are deterministic")
 	for slider in [0, 47]:
 		var result := NewCityTerrain.generate(fixture(edge), false, false, slider, slider, slider,
@@ -231,3 +191,51 @@ func _terrain_result_values(result: NewCityTerrain.Result) -> Array:
 		result.has_ocean, result.has_river, result.hills, result.water, result.trees,
 		result.water_level, result.water_tiles, result.salt_water_tiles,
 		result.tree_tiles, result.minimum_altitude, result.maximum_altitude]
+
+
+@warning_ignore_start("integer_division")
+
+
+class SequenceRandom extends SimRandom:
+	var values: Array[int]
+	var position := 0
+
+	func _init(sequence: Array[int] = [0]) -> void:
+		values = sequence
+
+	func next_u15() -> int:
+		var value := values[position % values.size()]
+		position += 1
+		return value
+
+
+class SequenceLfsr extends SimLfsrRandom:
+	var values: Array[int]
+	var position := 0
+
+	func _init(sequence: Array[int] = [0]) -> void:
+		values = sequence
+
+	func next_mod(limit: int) -> int:
+		return _next() % limit
+
+	func next_mask(mask: int) -> int:
+		return _next() & mask
+
+	func _next() -> int:
+		var value := values[position % values.size()]
+		position += 1
+		return value
+
+
+class SequenceGameLcg extends GameLcgRandom:
+	var values: Array[int]
+	var position := 0
+
+	func _init(sequence: Array[int] = [0]) -> void:
+		values = sequence
+
+	func next_mod(limit: int) -> int:
+		var value := values[position % values.size()]
+		position += 1
+		return value % limit

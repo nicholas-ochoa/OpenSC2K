@@ -7,7 +7,24 @@ extends RefCounted
 const Budget = preload("res://src/simulation/economy/budget_phase.gd")
 const GROUP_NAMES := ["Property taxes", "Ordinances", "Bond payments", "Police", "Fire", "Health & welfare", "Education", "Roads & transit"]
 const GROUPS := [[0, 1, 2], [3], [4], [5], [6], [7], [8, 9], [10, 11, 12, 13, 14, 15]]
-const NAMES := ["Residential", "Commercial", "Industrial", "Ordinances", "Bonds", "Police", "Fire", "Health", "School", "College", "Road", "Highway", "Bridge", "Rail", "Subway", "Tunnel"]
+const NAMES := [
+	"Residential",
+	"Commercial",
+	"Industrial",
+	"Ordinances",
+	"Bonds",
+	"Police",
+	"Fire",
+	"Health",
+	"School",
+	"College",
+	"Road",
+	"Highway",
+	"Bridge",
+	"Rail",
+	"Subway",
+	"Tunnel",
+]
 const MONTHS := ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 
 var current := PackedInt32Array()
@@ -44,7 +61,8 @@ static func capture(city: CityState, proposed: PackedInt32Array) -> BudgetReport
 
 		var raw_ytd := city.document.misc_i32(offset + Budget.BUDGET_YEAR_TO_DATE)
 		var funded := wrap_i32(cost * proposed[id])
-		var raw_estimate := wrap_i32(funded * CityCalendar.MONTHS_PER_YEAR) if report.year_end else wrap_i32(raw_ytd + funded * (CityCalendar.MONTHS_PER_YEAR - report.actual_months))
+		var raw_estimate := (wrap_i32(funded * CityCalendar.MONTHS_PER_YEAR) if report.year_end
+			else wrap_i32(raw_ytd + funded * (CityCalendar.MONTHS_PER_YEAR - report.actual_months)))
 		var factor: int = Budget.ANNUAL_DIVISOR_FACTORS[id]
 		report.current.append(cost)
 		report.year_to_date.append(raw_ytd / (factor * CityCalendar.MONTHS_PER_YEAR))
@@ -60,8 +78,10 @@ static func capture(city: CityState, proposed: PackedInt32Array) -> BudgetReport
 
 		for month in CityCalendar.MONTHS_PER_YEAR:
 			var actual := month < report.actual_months
-			var month_cost := city.document.misc_i32(offset + Budget.BUDGET_MONTHS + month * Sc2BudgetLayout.MONTH_RECORD_SIZE) if actual else cost
-			var rate := city.document.misc_i32(offset + Budget.BUDGET_MONTHS + month * Sc2BudgetLayout.MONTH_RECORD_SIZE + Sc2BudgetLayout.MONTH_FUNDING) if actual else proposed[id]
+			var month_cost := (city.document.misc_i32(offset + Budget.BUDGET_MONTHS + month * Sc2BudgetLayout.MONTH_RECORD_SIZE) if actual
+				else cost)
+			var rate := (city.document.misc_i32(offset + Budget.BUDGET_MONTHS + month * Sc2BudgetLayout.MONTH_RECORD_SIZE
+				+ Sc2BudgetLayout.MONTH_FUNDING) if actual else proposed[id])
 			costs.append(month_cost)
 			rates.append(rate)
 			running_raw = wrap_i32(running_raw + wrap_i32(month_cost * rate))

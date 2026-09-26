@@ -2,7 +2,6 @@ class_name DemolishEffectsSites
 extends DemolishConstants
 
 
-
 static func append_effect_sequence(
 	destination: Array[EffectEvent], source: Array[EffectEvent], first_frame: int
 ) -> int:

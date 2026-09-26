@@ -4,10 +4,8 @@ extends RefCounted
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const SpriteIds = preload("res://src/tools/scurk/scurk_sprite_ids.gd")
 const Facilities = preload("res://src/model/facility_metadata.gd")
-
 const Buildings = preload("res://src/tools/city/building_command.gd")
 const PickCopy = preload("res://src/tools/scurk/scurk_pick_copy.gd")
-
 const ROAD_FIRST := Tiles.FIRST_ROAD
 const RADIOACTIVITY := Tiles.RADIOACTIVE_WASTE
 const SMALL_PARK := Buildings.SMALL_PARK
@@ -23,9 +21,7 @@ const FLAG_PIPED := Sc2TileFlags.PIPED
 const FLAG_POWERED := Sc2TileFlags.POWERED
 const FLAG_POWERABLE := Sc2TileFlags.POWERABLE
 const STRUCTURE_FLAGS := Sc2TileFlags.STRUCTURE_MASK
-
 const BUDGET_CATEGORY_BY_TILE := Facilities.BUDGET_CATEGORY_BY_TILE
-
 const VARIABLE_ZONE_TILES := {
 	Tiles.CONSTRUCTION_1X1_FIRST: 1,
 	Tiles.CONSTRUCTION_1X1_LAST: 1,
@@ -361,25 +357,38 @@ static func _zone_for_tile(
 	if tile_id >= Tiles.DEVELOPED_FIRST and tile_id <= Tiles.RESIDENTIAL_1X1_LAST:
 		return 1
 
-	if tile_id >= Tiles.RESIDENTIAL_2X2_FIRST and tile_id <= Tiles.RESIDENTIAL_2X2_LAST or tile_id >= Tiles.RESIDENTIAL_3X3_FIRST and tile_id <= Tiles.RESIDENTIAL_3X3_LAST:
+	if (tile_id >= Tiles.RESIDENTIAL_2X2_FIRST
+			and tile_id <= Tiles.RESIDENTIAL_2X2_LAST
+			or tile_id >= Tiles.RESIDENTIAL_3X3_FIRST
+			and tile_id <= Tiles.RESIDENTIAL_3X3_LAST):
 		return 2
 
 	if tile_id >= Tiles.COMMERCIAL_1X1_FIRST and tile_id <= Tiles.COMMERCIAL_1X1_LAST:
 		return 3
 
-	if tile_id >= Tiles.COMMERCIAL_2X2_FIRST and tile_id <= Tiles.COMMERCIAL_2X2_LAST or tile_id >= Tiles.COMMERCIAL_3X3_FIRST and tile_id <= Tiles.COMMERCIAL_3X3_LAST:
+	if (tile_id >= Tiles.COMMERCIAL_2X2_FIRST
+			and tile_id <= Tiles.COMMERCIAL_2X2_LAST
+			or tile_id >= Tiles.COMMERCIAL_3X3_FIRST
+			and tile_id <= Tiles.COMMERCIAL_3X3_LAST):
 		return 4
 
-	if tile_id >= Tiles.INDUSTRIAL_1X1_FIRST and tile_id <= Tiles.INDUSTRIAL_1X1_LAST or tile_id >= Tiles.FACTORY_2X2_5 and tile_id <= Tiles.INDUSTRIAL_2X2_LAST:
+	if (tile_id >= Tiles.INDUSTRIAL_1X1_FIRST
+			and tile_id <= Tiles.INDUSTRIAL_1X1_LAST
+			or tile_id >= Tiles.FACTORY_2X2_5
+			and tile_id <= Tiles.INDUSTRIAL_2X2_LAST):
 		return 5
 
-	if tile_id >= Tiles.INDUSTRIAL_2X2_FIRST and tile_id <= Tiles.FACTORY_2X2_4 or tile_id >= Tiles.INDUSTRIAL_3X3_FIRST and tile_id <= Tiles.INDUSTRIAL_3X3_LAST:
+	if (tile_id >= Tiles.INDUSTRIAL_2X2_FIRST
+			and tile_id <= Tiles.FACTORY_2X2_4
+			or tile_id >= Tiles.INDUSTRIAL_3X3_FIRST
+			and tile_id <= Tiles.INDUSTRIAL_3X3_LAST):
 		return 6
 
 	if tile_id in [Tiles.CONTROL_TOWER_2, Tiles.FIGHTER_JET, Tiles.PARKING_LOT_2, Tiles.TOP_SECRET, Tiles.MISSILE_SILO]:
 		return 7
 
-	if tile_id in [Tiles.CONTROL_TOWER_1, Tiles.AIRPORT_BUILDING_1, Tiles.AIRPORT_BUILDING_2, Tiles.TARMAC, Tiles.HANGAR_1, Tiles.RADAR, Tiles.PARKING_LOT_1, Tiles.HANGAR_2]:
+	if tile_id in [Tiles.CONTROL_TOWER_1, Tiles.AIRPORT_BUILDING_1, Tiles.AIRPORT_BUILDING_2, Tiles.TARMAC, Tiles.HANGAR_1, Tiles.RADAR,
+			Tiles.PARKING_LOT_1, Tiles.HANGAR_2]:
 		return 8
 
 	if tile_id in [Tiles.CRANE, Tiles.LOADING_BAY, Tiles.CARGO_YARD]:

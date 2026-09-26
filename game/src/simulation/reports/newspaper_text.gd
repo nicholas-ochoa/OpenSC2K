@@ -1,10 +1,10 @@
 class_name NewspaperText
 extends RefCounted
 
+
 @warning_ignore_start("integer_division")
 
 const Random = preload("res://src/simulation/random/sim_random.gd")
-
 const MAX_OUTPUT_BYTES := 2047
 const MAX_RECURSION_DEPTH := 128
 const PUBLISHED_SEED_OFFSETS := [28, 49, 56, 63, 70, -1, -1, 42, 35]
@@ -65,16 +65,6 @@ static func token_phrase_id(value: int) -> int:
 	var index := EXTENDED_TOKEN_BYTES.find(token)
 
 	return index + 32 if index >= 0 else 0
-
-
-class Result extends RefCounted:
-	var ok := false
-	var error := ""
-	var headline := ""
-	var article := ""
-	var argument := 0
-	var auxiliary := PackedByteArray()
-	var random_state := 0
 
 
 static func render_story(
@@ -481,3 +471,13 @@ func _failure(message: String) -> Result:
 	result.error = message
 
 	return result
+
+
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+	var headline := ""
+	var article := ""
+	var argument := 0
+	var auxiliary := PackedByteArray()
+	var random_state := 0

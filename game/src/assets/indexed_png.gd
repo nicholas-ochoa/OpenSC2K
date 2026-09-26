@@ -5,7 +5,6 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 const Checksum = preload("res://src/formats/crc32.gd")
-
 const SIGNATURE := [137, 80, 78, 71, 13, 10, 26, 10]
 const MAX_DIMENSION := 4096
 
@@ -73,14 +72,17 @@ static func decode(bytes: PackedByteArray, strict_palette := true) -> IndexedIma
 				bit_depth = payload[8]
 
 				if payload[9] != 3 or bit_depth not in [1, 2, 4, 8] or (strict_palette and bit_depth != 8):
-					return IndexedImageResult.failure("PNG must use 8-bit indexed color" if strict_palette else "PNG must use 1-, 2-, 4-, or 8-bit indexed color")
+					return IndexedImageResult.failure("PNG must use 8-bit indexed color" if strict_palette
+						else "PNG must use 1-, 2-, 4-, or 8-bit indexed color")
 
 				if payload[10] != 0 or payload[11] != 0 or payload[12] > 1:
 					return IndexedImageResult.failure("Unsupported PNG encoding")
 			"PLTE":
-				if (not palette.colors.is_empty() or has_data or has_alpha or length == 0 or length % 3 != 0 or (length / 3) > (1 << bit_depth)
+				if (not palette.colors.is_empty() or has_data or has_alpha or length == 0 or length % 3 != 0
+						or (length / 3) > (1 << bit_depth)
 						or (strict_palette and length != 768)):
-					return IndexedImageResult.failure("PNG must have one 256-color palette before pixel data" if strict_palette else "PNG must have one valid indexed palette before pixel data")
+					return IndexedImageResult.failure("PNG must have one 256-color palette before pixel data" if strict_palette
+						else "PNG must have one valid indexed palette before pixel data")
 
 				palette_count = length / 3
 

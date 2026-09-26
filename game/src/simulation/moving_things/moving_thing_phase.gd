@@ -29,6 +29,78 @@ const COMMIT_ORDER := [
 ]
 
 
+static func run(
+	city: CityState,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
+	game_random: GameLcgRandom = null,
+	ship_home := Vector2i(-1, -1),
+	allow_disaster_damage := true,
+	traffic_news_time_msec := -1,
+	traffic_news_deadline_msec := 0,
+	suppress_vehicle_crashes := false
+) -> MovingThingResult:
+	if city == null or not city.is_valid():
+		return MovingThingResult.failure("city is invalid")
+
+	if random == null:
+		return MovingThingResult.failure("a compatible random generator is required")
+
+	if lfsr_random == null:
+		return MovingThingResult.failure("a compatible LFSR generator is required")
+
+	if game_random == null:
+		game_random = GameLcgRandom.new(1)
+
+	if traffic_news_time_msec < 0:
+		traffic_news_time_msec = Time.get_ticks_msec()
+
+	var tick := TickContext.new(
+		random, lfsr_random, game_random, ship_home, allow_disaster_damage, suppress_vehicle_crashes
+	)
+
+	if not tick.load_payloads(city):
+		return MovingThingResult.failure("moving-thing input chunks are missing or have the wrong size")
+
+	var counters := _new_counters(tick.things, traffic_news_time_msec, traffic_news_deadline_msec)
+	tick.update_records(counters)
+	var failed_chunk := tick.commit_payloads()
+
+	if not failed_chunk.is_empty():
+		return MovingThingResult.failure("cannot store %s after the moving-thing tick" % failed_chunk)
+
+	_mark_complete(counters)
+
+	return counters
+
+
+static func _new_counters(
+	things: PackedByteArray, traffic_news_time_msec: int, traffic_news_deadline_msec: int
+) -> MovingThingResult:
+	var counters := MovingThingResult.new()
+	counters.scanned_records = ThingData.count(things) - 1
+	counters.traffic_news_time_msec = traffic_news_time_msec
+	counters.traffic_news_deadline_msec = traffic_news_deadline_msec
+
+	return counters
+
+
+static func _mark_complete(counters: MovingThingResult) -> void:
+	counters.ok = true
+	counters.sailboats_complete = true
+	counters.train_routes_complete = true
+	counters.helicopters_save_visible_complete = true
+	counters.ships_save_visible_complete = true
+	counters.airplanes_save_visible_complete = true
+	counters.explosion_records_complete = true
+	counters.tornadoes_save_visible_complete = true
+	counters.maxis_man_save_visible_complete = true
+	counters.monsters_save_visible_complete = true
+	counters.explosion_map_damage_complete = counters.deferred_facility_explosion_hits == 0
+	counters.complete = counters.explosion_map_damage_complete
+	counters.error = ""
+
+
 # chunks and working copies for one tick, plus the generators and options
 # the record updates share. the steps are methods because member reads on
 # self are indexed; static steps that read these fields from outside cost
@@ -243,75 +315,3 @@ class TickContext:
 		city.resync_mirrors(committed)
 
 		return ""
-
-
-static func run(
-	city: CityState,
-	random: SimRandom,
-	lfsr_random: SimLfsrRandom,
-	game_random: GameLcgRandom = null,
-	ship_home := Vector2i(-1, -1),
-	allow_disaster_damage := true,
-	traffic_news_time_msec := -1,
-	traffic_news_deadline_msec := 0,
-	suppress_vehicle_crashes := false
-) -> MovingThingResult:
-	if city == null or not city.is_valid():
-		return MovingThingResult.failure("city is invalid")
-
-	if random == null:
-		return MovingThingResult.failure("a compatible random generator is required")
-
-	if lfsr_random == null:
-		return MovingThingResult.failure("a compatible LFSR generator is required")
-
-	if game_random == null:
-		game_random = GameLcgRandom.new(1)
-
-	if traffic_news_time_msec < 0:
-		traffic_news_time_msec = Time.get_ticks_msec()
-
-	var tick := TickContext.new(
-		random, lfsr_random, game_random, ship_home, allow_disaster_damage, suppress_vehicle_crashes
-	)
-
-	if not tick.load_payloads(city):
-		return MovingThingResult.failure("moving-thing input chunks are missing or have the wrong size")
-
-	var counters := _new_counters(tick.things, traffic_news_time_msec, traffic_news_deadline_msec)
-	tick.update_records(counters)
-	var failed_chunk := tick.commit_payloads()
-
-	if not failed_chunk.is_empty():
-		return MovingThingResult.failure("cannot store %s after the moving-thing tick" % failed_chunk)
-
-	_mark_complete(counters)
-
-	return counters
-
-
-static func _new_counters(
-	things: PackedByteArray, traffic_news_time_msec: int, traffic_news_deadline_msec: int
-) -> MovingThingResult:
-	var counters := MovingThingResult.new()
-	counters.scanned_records = ThingData.count(things) - 1
-	counters.traffic_news_time_msec = traffic_news_time_msec
-	counters.traffic_news_deadline_msec = traffic_news_deadline_msec
-
-	return counters
-
-
-static func _mark_complete(counters: MovingThingResult) -> void:
-	counters.ok = true
-	counters.sailboats_complete = true
-	counters.train_routes_complete = true
-	counters.helicopters_save_visible_complete = true
-	counters.ships_save_visible_complete = true
-	counters.airplanes_save_visible_complete = true
-	counters.explosion_records_complete = true
-	counters.tornadoes_save_visible_complete = true
-	counters.maxis_man_save_visible_complete = true
-	counters.monsters_save_visible_complete = true
-	counters.explosion_map_damage_complete = counters.deferred_facility_explosion_hits == 0
-	counters.complete = counters.explosion_map_damage_complete
-	counters.error = ""

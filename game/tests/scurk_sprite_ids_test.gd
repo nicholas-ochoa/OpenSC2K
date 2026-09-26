@@ -43,8 +43,8 @@ func _test_tile_names() -> void:
 					expected = QueryStrings.TILE_NAMES[index]
 					break
 		_check(ScurkEditorRules.tile_name(tile_id) == expected)
-	_check(ScurkEditorRules.tile_name(1, {1: "Custom rubble"}) == "Custom rubble")
-	_check(ScurkEditorRules.tile_name(1, {1: "  "}) == QueryStrings.tile_name(1))
+	_check(ScurkEditorRules.tile_name(1, { 1: "Custom rubble" }) == "Custom rubble")
+	_check(ScurkEditorRules.tile_name(1, { 1: "  " }) == QueryStrings.tile_name(1))
 	_check(QueryStrings.tile_name(-1).is_empty() and QueryStrings.tile_name(256).is_empty())
 	_check(not ScurkEditorRules.tile_name(499).is_empty())
 
@@ -137,7 +137,7 @@ func _test_saved_editor_ids() -> void:
 	studio.restore_editor_state()
 	_check(editor.edit_history.blank_shape_ids.size() == 1500)
 	_check(editor.edit_history.blank_shape_ids.has(0) and editor.edit_history.blank_shape_ids.has(1499))
-	_check(editor.unclipped_tiles == {1499: true})
+	_check(editor.unclipped_tiles == { 1499: true })
 	_check(editor.current_large_id == 1007 and editor.current_view == 2)
 	_check(studio.project.documents.is_empty())
 
@@ -153,8 +153,8 @@ func _test_saved_editor_ids() -> void:
 		"tile": 1007.75, "view": 1.75,
 	}
 	studio.restore_editor_state()
-	_check(editor.edit_history.blank_shape_ids == {0: true, 499: true, 500: true, 999: true, 1000: true, 1499: true})
-	_check(editor.unclipped_tiles == {1000: true, 1499: true})
+	_check(editor.edit_history.blank_shape_ids == { 0: true, 499: true, 500: true, 999: true, 1000: true, 1499: true })
+	_check(editor.unclipped_tiles == { 1000: true, 1499: true })
 	_check(editor.current_large_id == 1007 and editor.current_view == 1)
 
 	for pair in [[-1, 0], [3, 2], ["2", 0], [null, 0]]:
@@ -162,12 +162,12 @@ func _test_saved_editor_ids() -> void:
 		studio.restore_editor_state()
 		_check(editor.current_view == pair[1])
 
-	studio.project.metadata.editor_state = {"tile": 1500, "view": 0}
+	studio.project.metadata.editor_state = { "tile": 1500, "view": 0 }
 	editor.current_view = 2
 	studio.restore_editor_state()
 	_check(editor.current_large_id == 1007 and editor.current_view == 2)
-	for invalid_list in [PackedInt32Array([1007]), {"id": 1007}, "1007", null]:
-		studio.project.metadata.editor_state = {"blank_shape_ids": invalid_list, "unclipped_tile_ids": invalid_list}
+	for invalid_list in [PackedInt32Array([1007]), { "id": 1007 }, "1007", null]:
+		studio.project.metadata.editor_state = { "blank_shape_ids": invalid_list, "unclipped_tile_ids": invalid_list }
 		studio.restore_editor_state()
 		_check(editor.edit_history.blank_shape_ids.is_empty() and editor.unclipped_tiles.is_empty())
 	studio.free()

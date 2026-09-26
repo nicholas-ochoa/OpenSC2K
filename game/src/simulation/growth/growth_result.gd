@@ -1,6 +1,6 @@
+# gdstyle:ignore-file=quality/max-class-variables
 class_name GrowthResult
 extends PhaseResult
-
 
 var scanned_tiles := 0
 var rci_tiles := 0

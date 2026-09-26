@@ -5,8 +5,27 @@ const ProcessRandom = preload("res://src/simulation/random/sim_random.gd")
 const GameRandom = preload("res://src/simulation/random/game_lcg_random.gd")
 const TerrainTools = preload("res://src/tools/landscape/terrain_command.gd")
 const Landscapes = preload("res://src/tools/landscape/landscape_command.gd")
-
-const LAYOUTS := ["classic", "meander", "delta", "peninsula", "crossing", "branch", "rejoin", "bay", "island", "islands", "plateau", "ridge", "valley", "rolling", "basin", "canyon", "cliffs", "lake", "lakes"]
+const LAYOUTS := [
+	"classic",
+	"meander",
+	"delta",
+	"peninsula",
+	"crossing",
+	"branch",
+	"rejoin",
+	"bay",
+	"island",
+	"islands",
+	"plateau",
+	"ridge",
+	"valley",
+	"rolling",
+	"basin",
+	"canyon",
+	"cliffs",
+	"lake",
+	"lakes",
+]
 const MAP_SIZE := 128
 const TILE_COUNT := MAP_SIZE * MAP_SIZE
 const MISC_SIZE := Sc2MiscLayout.SIZE
@@ -20,7 +39,6 @@ const FIRST_TREE := BuildingTileIds.TREE_FIRST
 const LAST_TREE := BuildingTileIds.TREE_LAST
 const FORBIDDEN_COAST := TerrainTileIds.FORBIDDEN_COAST
 const WATERFALL := TerrainTileIds.WATERFALL
-
 const MIN_SLIDER := 0
 const MAX_SLIDER := 47
 const DEFAULT_OCEAN := false
@@ -28,7 +46,6 @@ const DEFAULT_RIVER := true
 const DEFAULT_HILLS := 12
 const DEFAULT_WATER := 5
 const DEFAULT_TREES := 15
-
 const INTERPOLATION_PASSES := [
 	Vector2i(8, 15), Vector2i(4, 7), Vector2i(2, 3), Vector2i(1, 1),
 ]

@@ -1,7 +1,6 @@
 class_name MaxisManResponse
 extends RefCounted
 
-
 const MILITARY_BASE_STATE := 0x0e4c
 const ARRIVAL_SOUND := 513
 const ARRIVAL_OFFSETS := [Vector2i(16, 0), Vector2i(0, 16), Vector2i(-16, 0), Vector2i(0, -16)]

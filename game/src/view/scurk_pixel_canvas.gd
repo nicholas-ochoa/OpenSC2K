@@ -1,13 +1,9 @@
+# gdstyle:ignore-file=quality/max-class-variables
+# gdstyle:ignore-file=quality/max-public-methods
 class_name ScurkPixelCanvas
 extends Control
 
 @warning_ignore_start("integer_division")
-
-class PixelRegion extends RefCounted:
-	var width := 0
-	var height := 0
-	var pixels := PackedInt32Array()
-
 
 signal edit_started(description: String)
 signal edit_cancelled
@@ -45,7 +41,6 @@ const TOOL_MOVE := 13
 const TOOL_SHADE := 14
 const TOOL_STAMP := 15
 const CYCLE_INTERVAL_SECONDS := Sc2Palette.SCURK_TIMER_INTERVAL_SECONDS
-
 const TEXTURE_NAMES := [
 	"Solid color",
 	"Dithered color",
@@ -59,17 +54,7 @@ const TEXTURE_NAMES := [
 	"Texture 31", "Texture 32", "Texture 33", "Texture 34", "Texture 35",
 	"Texture 36", "Texture 37", "Texture 38", "Texture 39",
 ]
-const TEXTURE_ROWS := [
-	[0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
-	[0xaa, 0x55, 0xaa, 0x55, 0xaa, 0x55, 0xaa, 0x55],
-	[0xee, 0xbb, 0xee, 0xbb, 0xee, 0xbb, 0xee, 0xbb],
-	[0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01],
-	[0x81, 0x42, 0x24, 0x18, 0x18, 0x24, 0x42, 0x81],
-	[0x88, 0x00, 0x22, 0x00, 0x88, 0x00, 0x22, 0x00],
-	[0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc],
-	[0xff, 0xff, 0x00, 0x00, 0xff, 0xff, 0x00, 0x00],
-	[0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
-]
+const TEXTURE_ROWS = ScurkPixelOperations.TEXTURE_ROWS
 
 var palette: Sc2Palette
 var sprite_width := 0
@@ -178,7 +163,9 @@ func _process(delta: float) -> void:
 		palette_cycle_accumulator -= CYCLE_INTERVAL_SECONDS
 		palette_cycle_ticks += 1
 
-	if palette != null and before != palette_cycle_ticks and palette.scurk_animation_index_map(before) != palette.scurk_animation_index_map(palette_cycle_ticks):
+	if (palette != null
+			and before != palette_cycle_ticks
+			and palette.scurk_animation_index_map(before) != palette.scurk_animation_index_map(palette_cycle_ticks)):
 		queue_redraw()
 
 
@@ -206,6 +193,112 @@ func _notification(what: int) -> void:
 		space_pressed = false
 		comparison_hold = false
 		queue_redraw()
+
+
+func _gui_input(event: InputEvent) -> void:
+	if _handle_editor_input(event):
+		accept_event()
+		return
+
+	if event is InputEventMouseMotion:
+		var point := _point_from_position(event.position)
+
+		if point != hover_point:
+			hover_point = point
+			pointer_changed.emit(point, display_pixel_at(point))
+			queue_redraw()
+
+		if stroke_active:
+			var expected_mask := MOUSE_BUTTON_MASK_LEFT
+
+			if event.button_mask & expected_mask:
+				if is_shape_tool(tool):
+					_preview_shape(point)
+				else:
+					_apply_free_line(point)
+			else:
+				_finish_stroke()
+
+			accept_event()
+
+		return
+
+	if not event is InputEventMouseButton:
+		return
+
+	if event.button_index != MOUSE_BUTTON_LEFT:
+		return
+
+	var point := _point_from_position(event.position)
+
+	if event.pressed:
+		if not _point_is_valid(point):
+			return
+
+		if tool == TOOL_EYEDROPPER or event.alt_pressed:
+			var index := display_pixel_at(point)
+
+			if index >= 0:
+				palette_index_picked.emit(index)
+		elif tool == TOOL_FILL:
+			_apply_fill(point)
+		elif is_shape_tool(tool):
+			_begin_shape(point, event.button_index)
+		else:
+			if tool == TOOL_SHADE:
+				paint_options.shade_direction = -1 if event.shift_pressed else 1
+			_begin_stroke(point, event.button_index)
+	else:
+		if stroke_active and is_shape_tool(tool) and _point_is_valid(point):
+			_preview_shape(point)
+
+		_finish_stroke()
+
+	accept_event()
+
+
+func _draw() -> void:
+	if sprite_width <= 0 or sprite_height <= 0:
+		selection_outline.configure(PackedVector2Array(), false)
+		draw_rect(Rect2(Vector2.ZERO, size), Color("ffffff"), true)
+
+		return
+
+	var pixel := display_pixel()
+	draw_set_transform(display_origin())
+	_update_display_texture()
+	draw_texture_rect(display_texture, Rect2(Vector2.ZERO, Vector2(sprite_width, sprite_height) * pixel), false)
+	if show_clip_region and clip_shade_texture != null:
+		draw_texture_rect(clip_shade_texture, Rect2(Vector2.ZERO, Vector2(sprite_width, sprite_height) * pixel), false)
+
+	if show_grid:
+		var grid_color := Color(0.0, 0.0, 0.0, 0.18)
+
+		# one interface pixel on whole screen pixels, centered on each edge
+		var line := ScreenPixels.length(1.0)
+		var half := floorf(line * ScreenPixels.scale * 0.5) / ScreenPixels.scale if ScreenPixels.scale > 0.0 else 0.0
+
+		if grid_width * zoom >= 4:
+			for x in range(0, sprite_width + 1, grid_width):
+				if ScreenPixels.scale > 0.0:
+					draw_rect(Rect2(x * pixel - half, 0, line, sprite_height * pixel), grid_color, true)
+				else:
+					draw_line(Vector2(x * pixel, 0), Vector2(x * pixel, sprite_height * pixel), grid_color, 1.0)
+
+		if grid_height * zoom >= 4:
+			for y in range(0, sprite_height + 1, grid_height):
+				if ScreenPixels.scale > 0.0:
+					draw_rect(Rect2(0, y * pixel - half, sprite_width * pixel, line), grid_color, true)
+				else:
+					draw_line(Vector2(0, y * pixel), Vector2(sprite_width * pixel, y * pixel), grid_color, 1.0)
+
+	for guide in clip_guide_rects():
+		draw_rect(guide, Color.WHITE, true)
+
+	_draw_selection()
+	_draw_guides()
+	if not selection_dragging and not paste_active and tool != TOOL_STAMP:
+		_draw_tool_outline()
 
 
 func _stop_panning() -> void:
@@ -439,7 +532,7 @@ func rotate_clipboard_counterclockwise() -> void:
 	if not has_clipboard():
 		return
 
-	var rotated := rotate_counterclockwise(
+	var rotated := ScurkPixelOperations.rotate_counterclockwise(
 		clipboard_pixels, clipboard_width, clipboard_height
 	)
 	_transform_clipboard_mask(0)
@@ -475,7 +568,7 @@ func flip_clipboard_horizontal() -> void:
 		return
 
 	_transform_clipboard_mask(2)
-	clipboard_pixels = flip_horizontal(
+	clipboard_pixels = ScurkPixelOperations.flip_horizontal(
 		clipboard_pixels, clipboard_width, clipboard_height
 	)
 	clipboard_changed.emit(clipboard_width, clipboard_height)
@@ -487,303 +580,18 @@ func flip_clipboard_vertical() -> void:
 		return
 
 	_transform_clipboard_mask(3)
-	clipboard_pixels = flip_vertical(
+	clipboard_pixels = ScurkPixelOperations.flip_vertical(
 		clipboard_pixels, clipboard_width, clipboard_height
 	)
 	clipboard_changed.emit(clipboard_width, clipboard_height)
 	queue_redraw()
 
 
-static func copy_region(
-	value_pixels: PackedInt32Array,
-	width: int,
-	height: int,
-	start: Vector2i,
-	finish: Vector2i
-) -> PixelRegion:
-	if width <= 0 or height <= 0 or value_pixels.size() != width * height:
-		var result := PixelRegion.new()
-		result.width = 0
-		result.height = 0
-		result.pixels = PackedInt32Array()
-
-		return result
-
-	var minimum := Vector2i(
-		clampi(mini(start.x, finish.x), 0, width - 1),
-		clampi(mini(start.y, finish.y), 0, height - 1)
-	)
-	var maximum := Vector2i(
-		clampi(maxi(start.x, finish.x), 0, width - 1),
-		clampi(maxi(start.y, finish.y), 0, height - 1)
-	)
-	var copied_width := maximum.x - minimum.x + 1
-	var copied_height := maximum.y - minimum.y + 1
-	var copied := PackedInt32Array()
-	copied.resize(copied_width * copied_height)
-
-	for y in copied_height:
-		for x in copied_width:
-			copied[y * copied_width + x] = value_pixels[
-				(minimum.y + y) * width + minimum.x + x
-			]
-
-	var result := PixelRegion.new()
-	result.width = copied_width
-	result.height = copied_height
-	result.pixels = copied
-
-	return result
-
-
-static func paste_region(
-	target_pixels: PackedInt32Array,
-	target_width: int,
-	target_height: int,
-	target: Vector2i,
-	source_pixels: PackedInt32Array,
-	source_width: int,
-	source_height: int
-) -> PackedInt32Array:
-	var result := target_pixels.duplicate()
-
-	if (
-		target_width <= 0
-		or target_height <= 0
-		or result.size() != target_width * target_height
-		or source_width <= 0
-		or source_height <= 0
-		or source_pixels.size() != source_width * source_height
-	):
-		return result
-
-	for source_y in source_height:
-		var target_y := target.y + source_y
-
-		if target_y < 0 or target_y >= target_height:
-			continue
-
-		for source_x in source_width:
-			var target_x := target.x + source_x
-
-			if target_x < 0 or target_x >= target_width:
-				continue
-
-			result[target_y * target_width + target_x] = (
-				source_pixels[source_y * source_width + source_x]
-			)
-
-	return result
-
-
-static func rotate_counterclockwise(
-	value_pixels: PackedInt32Array, width: int, height: int
-) -> PackedInt32Array:
-	if width <= 0 or height <= 0 or value_pixels.size() != width * height:
-		return PackedInt32Array()
-
-	var result := PackedInt32Array()
-	result.resize(width * height)
-	var result_width := height
-
-	for y in height:
-		for x in width:
-			var result_x := y
-			var result_y := width - 1 - x
-			result[result_y * result_width + result_x] = value_pixels[y * width + x]
-
-	return result
-
-
-static func flip_horizontal(
-	value_pixels: PackedInt32Array, width: int, height: int
-) -> PackedInt32Array:
-	if width <= 0 or height <= 0 or value_pixels.size() != width * height:
-		return PackedInt32Array()
-
-	var result := PackedInt32Array()
-	result.resize(width * height)
-
-	for y in height:
-		for x in width:
-			result[y * width + width - 1 - x] = value_pixels[y * width + x]
-
-	return result
-
-
-static func flip_vertical(
-	value_pixels: PackedInt32Array, width: int, height: int
-) -> PackedInt32Array:
-	if width <= 0 or height <= 0 or value_pixels.size() != width * height:
-		return PackedInt32Array()
-
-	var result := PackedInt32Array()
-	result.resize(width * height)
-
-	for y in height:
-		for x in width:
-			result[(height - 1 - y) * width + x] = value_pixels[y * width + x]
-
-	return result
-
-
-static func flood_fill(
-	value_pixels: PackedInt32Array,
-	width: int,
-	height: int,
-	start: Vector2i,
-	replacement: int
-) -> PackedInt32Array:
-	return flood_fill_pattern(
-		value_pixels, width, height, start, replacement,
-		TEXTURE_ROWS[0]
-	)
-
-
-static func flood_fill_pattern(
-	value_pixels: PackedInt32Array,
-	width: int,
-	height: int,
-	start: Vector2i,
-	selected_color: int,
-	pattern_rows: Array
-) -> PackedInt32Array:
-	if pattern_rows.size() != 8:
-		return value_pixels.duplicate()
-
-	var pattern := PackedInt32Array()
-	pattern.resize(64)
-
-	for y in 8:
-		var row_mask := int(pattern_rows[y])
-
-		for x in 8:
-			pattern[y * 8 + x] = 0xff if row_mask & (0x80 >> x) else 0
-
-	return flood_fill_texture(
-		value_pixels, width, height, start, selected_color, pattern, 8, 8
-	)
-
-
-static func flood_fill_texture(
-	value_pixels: PackedInt32Array,
-	width: int,
-	height: int,
-	start: Vector2i,
-	selected_color: int,
-	pattern_pixels: PackedInt32Array,
-	pattern_width: int,
-	pattern_height: int
-) -> PackedInt32Array:
-	var result := value_pixels.duplicate()
-
-	if (
-		width <= 0
-		or height <= 0
-		or result.size() != width * height
-		or start.x < 0
-		or start.y < 0
-		or start.x >= width
-		or start.y >= height
-		or selected_color < -1
-		or selected_color > 255
-		or pattern_width <= 0
-		or pattern_height <= 0
-		or pattern_pixels.size() != pattern_width * pattern_height
-	):
-		return result
-
-	var target := result[start.y * width + start.x]
-	var visited := PackedByteArray()
-	visited.resize(width * height)
-	var pending: Array[Vector2i] = [start]
-
-	while not pending.is_empty():
-		var point: Vector2i = pending.pop_back()
-		var point_index := point.y * width + point.x
-
-		if visited[point_index] != 0 or result[point_index] != target:
-			continue
-
-		visited[point_index] = 1
-		result[point_index] = texture_color(
-			point, selected_color,
-			pattern_pixels, pattern_width, pattern_height
-		)
-		var neighbors: Array[Vector2i] = [
-			Vector2i(point.x - 1, point.y),
-			Vector2i(point.x + 1, point.y),
-			Vector2i(point.x, point.y - 1),
-			Vector2i(point.x, point.y + 1),
-		]
-		for neighbor: Vector2i in neighbors:
-			if (
-				neighbor.x >= 0
-				and neighbor.y >= 0
-				and neighbor.x < width
-				and neighbor.y < height
-			):
-				pending.append(neighbor)
-
-	return result
-
-
-static func texture_color(
-	point: Vector2i,
-	selected_color: int,
-	pattern_pixels: PackedInt32Array,
-	pattern_width: int,
-	pattern_height: int
-) -> int:
-	if (
-		pattern_width <= 0
-		or pattern_height <= 0
-		or pattern_pixels.size() != pattern_width * pattern_height
-	):
-		return selected_color
-
-	var source := pattern_pixels[
-		posmod(point.y, pattern_height) * pattern_width
-		+ posmod(point.x, pattern_width)
-	]
-
-	return ScurkPaintOptions.resolve_texture_value(source, selected_color)
-
-
-static func line_points(start: Vector2i, finish: Vector2i) -> Array[Vector2i]:
-	var result: Array[Vector2i] = []
-	var x := start.x
-	var y := start.y
-	var dx := absi(finish.x - x)
-	var sx := 1 if x < finish.x else -1
-	var dy := -absi(finish.y - y)
-	var sy := 1 if y < finish.y else -1
-	var error := dx + dy
-
-	while true:
-		result.append(Vector2i(x, y))
-
-		if x == finish.x and y == finish.y:
-			break
-
-		var doubled := error * 2
-
-		if doubled >= dy:
-			error += dy
-			x += sx
-
-		if doubled <= dx:
-			error += dx
-			y += sy
-
-	return result
-
-
 static func shape_points(
 	shape_tool: int, start: Vector2i, finish: Vector2i, filled: bool
 ) -> Array[Vector2i]:
 	if shape_tool == TOOL_LINE:
-		return line_points(start, finish)
+		return ScurkPixelOperations.line_points(start, finish)
 
 	var result: Array[Vector2i] = []
 	var minimum := Vector2i(mini(start.x, finish.x), mini(start.y, finish.y))
@@ -831,7 +639,7 @@ static func shape_points(
 
 	if shape_tool in [TOOL_LEFT_WALL, TOOL_RIGHT_WALL]:
 		if minimum.x == maximum.x or minimum.y == maximum.y:
-			return line_points(start, finish)
+			return ScurkPixelOperations.line_points(start, finish)
 
 		var half_height := int((maximum.y - minimum.y) / 2)
 		var polygon := PackedVector2Array()
@@ -860,7 +668,7 @@ static func shape_points(
 			for index in polygon.size():
 				var first := Vector2i(polygon[index])
 				var second := Vector2i(polygon[(index + 1) % polygon.size()])
-				result.append_array(line_points(first, second))
+				result.append_array(ScurkPixelOperations.line_points(first, second))
 
 	return result
 
@@ -919,7 +727,7 @@ func copy_selection(whole_if_empty := true, source := PackedInt32Array()) -> boo
 	var bounds := selection.bounds() if selection.active() else _artwork_bounds(source)
 	if not bounds.has_area():
 		return false
-	var copied := copy_region(source, sprite_width, sprite_height, bounds.position, bounds.end - Vector2i.ONE)
+	var copied := ScurkPixelOperations.copy_region(source, sprite_width, sprite_height, bounds.position, bounds.end - Vector2i.ONE)
 	clipboard_width = copied.width
 	clipboard_height = copied.height
 	clipboard_pixels = copied.pixels
@@ -958,7 +766,8 @@ func delete_selection(whole_if_empty := false) -> void:
 
 	var changed := pixels.duplicate()
 	for offset in changed.size():
-		if (not selection.active() or selection.mask[offset] != 0) and _point_is_editable(Vector2i(offset % sprite_width, offset / sprite_width)):
+		if ((not selection.active() or selection.mask[offset] != 0)
+				and _point_is_editable(Vector2i(offset % sprite_width, offset / sprite_width))):
 			changed[offset] = paint_options.paint_index(changed[offset], -1)
 	_commit_changed_pixels(changed, "Delete selection")
 
@@ -1093,14 +902,18 @@ func _transform_clipboard_mask(operation: int) -> void:
 	var values := PackedInt32Array(Array(clipboard_mask))
 	match operation:
 		0:
-			values = rotate_counterclockwise(values, clipboard_width, clipboard_height)
+			values = ScurkPixelOperations.rotate_counterclockwise(values, clipboard_width, clipboard_height)
 		1:
-			values = rotate_counterclockwise(values, clipboard_width, clipboard_height)
-			values = flip_horizontal(flip_vertical(values, clipboard_height, clipboard_width), clipboard_height, clipboard_width)
+			values = ScurkPixelOperations.rotate_counterclockwise(values, clipboard_width, clipboard_height)
+			values = ScurkPixelOperations.flip_horizontal(
+				ScurkPixelOperations.flip_vertical(values, clipboard_height, clipboard_width),
+				clipboard_height,
+				clipboard_width,
+			)
 		2:
-			values = flip_horizontal(values, clipboard_width, clipboard_height)
+			values = ScurkPixelOperations.flip_horizontal(values, clipboard_width, clipboard_height)
 		3:
-			values = flip_vertical(values, clipboard_width, clipboard_height)
+			values = ScurkPixelOperations.flip_vertical(values, clipboard_width, clipboard_height)
 	clipboard_mask = PackedByteArray(Array(values))
 
 
@@ -1133,7 +946,8 @@ func _floating_pixels() -> PackedInt32Array:
 			var offset := target.y * sprite_width + target.x
 			if edit_mask.size() == result.size() and edit_mask[offset] == 0:
 				continue
-			result[offset] = clipboard_pixels[source] if paste_new_layer else paint_options.paint_index(pixels[offset], clipboard_pixels[source])
+			result[offset] = (clipboard_pixels[source] if paste_new_layer
+				else paint_options.paint_index(pixels[offset], clipboard_pixels[source]))
 	return result
 
 
@@ -1213,7 +1027,8 @@ func _handle_editor_input(event: InputEvent) -> bool:
 					direction = Vector2.RIGHT
 			_scroll_canvas(direction * event.factor, event.position, event.ctrl_pressed or event.meta_pressed)
 		return true
-	if event.button_index == MOUSE_BUTTON_MIDDLE or (event.button_index == MOUSE_BUTTON_LEFT and (space_pressed or Input.is_key_pressed(KEY_SPACE) or panning)):
+	if (event.button_index == MOUSE_BUTTON_MIDDLE
+			or (event.button_index == MOUSE_BUTTON_LEFT and (space_pressed or Input.is_key_pressed(KEY_SPACE) or panning))):
 		panning = event.pressed
 		if panning:
 			_finish_stroke()
@@ -1262,7 +1077,10 @@ func _handle_editor_input(event: InputEvent) -> bool:
 			paste_position = point - paste_drag_offset
 			commit_paste()
 		return true
-	if event.pressed and selection.active() and not selection.contains(point) and not (event.shift_pressed or event.ctrl_pressed or event.meta_pressed):
+	if (event.pressed
+			and selection.active()
+			and not selection.contains(point)
+			and not (event.shift_pressed or event.ctrl_pressed or event.meta_pressed)):
 		clear_selection()
 		return true
 	if tool == TOOL_MOVE:
@@ -1274,7 +1092,8 @@ func _handle_editor_input(event: InputEvent) -> bool:
 		return true
 	if tool in [TOOL_SELECT_RECT, TOOL_SELECT_LASSO, TOOL_SELECT_WAND]:
 		if event.pressed:
-			selection_mode = ScurkSelection.SUBTRACT if event.ctrl_pressed or event.meta_pressed else (ScurkSelection.ADD if event.shift_pressed else ScurkSelection.REPLACE)
+			selection_mode = (ScurkSelection.SUBTRACT if event.ctrl_pressed or event.meta_pressed
+				else (ScurkSelection.ADD if event.shift_pressed else ScurkSelection.REPLACE))
 			if selection_mode == ScurkSelection.REPLACE and selection.active() and selection.contains(point):
 				if _begin_selection_move(false):
 					selection_move_dragging = true
@@ -1330,7 +1149,7 @@ func _handle_editor_key(event: InputEventKey) -> bool:
 		commit_paste()
 		return true
 	if event.keycode in [KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN] and (selection.active() or paste_active):
-		var directions := {KEY_LEFT: Vector2i.LEFT, KEY_RIGHT: Vector2i.RIGHT, KEY_UP: Vector2i.UP, KEY_DOWN: Vector2i.DOWN}
+		var directions := { KEY_LEFT: Vector2i.LEFT, KEY_RIGHT: Vector2i.RIGHT, KEY_UP: Vector2i.UP, KEY_DOWN: Vector2i.DOWN }
 		nudge_selection(directions[event.keycode] * (10 if event.shift_pressed else 1))
 		return true
 	if event.keycode in [KEY_DELETE, KEY_BACKSPACE] and selection.active():
@@ -1372,7 +1191,8 @@ func _handle_editor_key(event: InputEventKey) -> bool:
 
 
 func _update_selection_preview() -> void:
-	selection_preview = selection.lasso(selection_path) if tool == TOOL_SELECT_LASSO else selection.rectangle(selection_start, selection_finish)
+	selection_preview = (selection.lasso(selection_path) if tool == TOOL_SELECT_LASSO
+		else selection.rectangle(selection_start, selection_finish))
 	queue_redraw()
 
 
@@ -1406,7 +1226,11 @@ func _draw_selection() -> void:
 			var point := Vector2i(offset % width, offset / width)
 			for edge in 4:
 				var neighbor: Vector2i = point + steps[edge]
-				if neighbor.x >= 0 and neighbor.y >= 0 and neighbor.x < width and neighbor.y < height and mask[neighbor.y * width + neighbor.x] != 0:
+				if (neighbor.x >= 0
+						and neighbor.y >= 0
+						and neighbor.x < width
+						and neighbor.y < height
+						and mask[neighbor.y * width + neighbor.x] != 0):
 					continue
 				selection_outline_edges.append((Vector2(point) + corners[edge]) * pixel)
 				selection_outline_edges.append((Vector2(point) + corners[(edge + 1) % 4]) * pixel)
@@ -1430,68 +1254,6 @@ func _apply_stamp(point: Vector2i) -> void:
 			var value := paint_options.stamp_pixels[y * paint_options.stamp_width + x]
 			if value >= 0:
 				_apply_pixel(point + Vector2i(x, y), value)
-
-
-func _gui_input(event: InputEvent) -> void:
-	if _handle_editor_input(event):
-		accept_event()
-		return
-
-	if event is InputEventMouseMotion:
-		var point := _point_from_position(event.position)
-
-		if point != hover_point:
-			hover_point = point
-			pointer_changed.emit(point, display_pixel_at(point))
-			queue_redraw()
-
-		if stroke_active:
-			var expected_mask := MOUSE_BUTTON_MASK_LEFT
-
-			if event.button_mask & expected_mask:
-				if is_shape_tool(tool):
-					_preview_shape(point)
-				else:
-					_apply_free_line(point)
-			else:
-				_finish_stroke()
-
-			accept_event()
-
-		return
-
-	if not event is InputEventMouseButton:
-		return
-
-	if event.button_index != MOUSE_BUTTON_LEFT:
-		return
-
-	var point := _point_from_position(event.position)
-
-	if event.pressed:
-		if not _point_is_valid(point):
-			return
-
-		if tool == TOOL_EYEDROPPER or event.alt_pressed:
-			var index := display_pixel_at(point)
-
-			if index >= 0:
-				palette_index_picked.emit(index)
-		elif tool == TOOL_FILL:
-			_apply_fill(point)
-		elif is_shape_tool(tool):
-			_begin_shape(point, event.button_index)
-		else:
-			if tool == TOOL_SHADE:
-				paint_options.shade_direction = -1 if event.shift_pressed else 1
-			_begin_stroke(point, event.button_index)
-	else:
-		if stroke_active and is_shape_tool(tool) and _point_is_valid(point):
-			_preview_shape(point)
-
-		_finish_stroke()
-
-	accept_event()
 
 
 func _begin_stroke(point: Vector2i, button: int) -> void:
@@ -1527,7 +1289,7 @@ func _apply_free_line(point: Vector2i) -> void:
 	if not _point_is_valid(last_stroke_point):
 		last_stroke_point = point
 
-	var segment := line_points(last_stroke_point, point)
+	var segment := ScurkPixelOperations.line_points(last_stroke_point, point)
 	if tool == TOOL_PENCIL and brush_size == 1 and paint_options.pixel_perfect:
 		for line_point in segment:
 			if pencil_path.is_empty() or pencil_path[-1] != line_point:
@@ -1573,8 +1335,8 @@ func _apply_brush(point: Vector2i) -> void:
 		return
 
 	var erase := tool == TOOL_ERASER
-	for target in brush_points(point):
-		var value := -1 if erase else texture_color(
+	for target in _brush_points(point):
+		var value := -1 if erase else ScurkPixelOperations.texture_color(
 			target, selected_color_index, texture_patterns[texture_index], 8, 8
 		)
 		if tool == TOOL_SHADE:
@@ -1585,7 +1347,7 @@ func _apply_brush(point: Vector2i) -> void:
 		_apply_pixel(target, value)
 
 
-func brush_points(point: Vector2i) -> Array[Vector2i]:
+func _brush_points(point: Vector2i) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
 	var low := -((brush_size - 1) / 2)
 	var high := low + brush_size - 1
@@ -1639,7 +1401,7 @@ func tool_footprint() -> Dictionary[Vector2i, bool]:
 				finish = paint_options.constrain_line(shape_start, finish)
 			points = shape_points(tool, shape_start if stroke_active else finish, finish, filled_shapes)
 		for point in points:
-			for target in brush_points(point):
+			for target in _brush_points(point):
 				result[target] = true
 
 	return result
@@ -1723,7 +1485,7 @@ func _apply_fill(point: Vector2i) -> void:
 		if not _point_is_editable(Vector2i(offset % sprite_width, offset / sprite_width)):
 			fill_source[offset] = -2
 
-	var changed := flood_fill_texture(
+	var changed := ScurkPixelOperations.flood_fill_texture(
 		fill_source, sprite_width, sprite_height, point,
 		selected_color_index, texture_patterns[texture_index], 8, 8
 	)
@@ -1798,50 +1560,6 @@ func _on_mouse_exited() -> void:
 	queue_redraw()
 
 
-func _draw() -> void:
-	if sprite_width <= 0 or sprite_height <= 0:
-		selection_outline.configure(PackedVector2Array(), false)
-		draw_rect(Rect2(Vector2.ZERO, size), Color("ffffff"), true)
-
-		return
-
-	var pixel := display_pixel()
-	draw_set_transform(display_origin())
-	_update_display_texture()
-	draw_texture_rect(display_texture, Rect2(Vector2.ZERO, Vector2(sprite_width, sprite_height) * pixel), false)
-	if show_clip_region and clip_shade_texture != null:
-		draw_texture_rect(clip_shade_texture, Rect2(Vector2.ZERO, Vector2(sprite_width, sprite_height) * pixel), false)
-
-	if show_grid:
-		var grid_color := Color(0.0, 0.0, 0.0, 0.18)
-
-		# one interface pixel on whole screen pixels, centered on each edge
-		var line := ScreenPixels.length(1.0)
-		var half := floorf(line * ScreenPixels.scale * 0.5) / ScreenPixels.scale if ScreenPixels.scale > 0.0 else 0.0
-
-		if grid_width * zoom >= 4:
-			for x in range(0, sprite_width + 1, grid_width):
-				if ScreenPixels.scale > 0.0:
-					draw_rect(Rect2(x * pixel - half, 0, line, sprite_height * pixel), grid_color, true)
-				else:
-					draw_line(Vector2(x * pixel, 0), Vector2(x * pixel, sprite_height * pixel), grid_color, 1.0)
-
-		if grid_height * zoom >= 4:
-			for y in range(0, sprite_height + 1, grid_height):
-				if ScreenPixels.scale > 0.0:
-					draw_rect(Rect2(0, y * pixel - half, sprite_width * pixel, line), grid_color, true)
-				else:
-					draw_line(Vector2(0, y * pixel), Vector2(sprite_width * pixel, y * pixel), grid_color, 1.0)
-
-	for guide in clip_guide_rects():
-		draw_rect(guide, Color.WHITE, true)
-
-	_draw_selection()
-	_draw_guides()
-	if not selection_dragging and not paste_active and tool != TOOL_STAMP:
-		_draw_tool_outline()
-
-
 func composite_pixels(include_stamp_preview := false) -> PackedInt32Array:
 	var result := _floating_pixels() if paste_active else pixels.duplicate()
 	if include_stamp_preview and tool == TOOL_STAMP and not paste_active and not selection_dragging and _point_is_valid(hover_point):
@@ -1904,7 +1622,11 @@ func _update_display_texture() -> void:
 		if comparing and mode == 2 and comparison_pixels[offset] >= 0:
 			color = color.lerp(colors[comparison_pixels[offset]], 0.5)
 		elif comparing and mode == 3:
-			color = Color(1.0, 0.25, 0.7) if visible_pixels[offset] != comparison_pixels[offset] else Color(color.v * 0.4, color.v * 0.4, color.v * 0.4, color.a)
+			color = Color(
+				1.0,
+				0.25,
+				0.7,
+			) if visible_pixels[offset] != comparison_pixels[offset] else Color(color.v * 0.4, color.v * 0.4, color.v * 0.4, color.a)
 		if highlighted_palette_index >= 0 and artwork_index == highlighted_palette_index:
 			color = color.lerp(Color.WHITE, 0.6)
 		rgba.encode_u32(offset * 4, color.to_abgr32())

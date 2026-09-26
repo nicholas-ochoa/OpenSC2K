@@ -1,6 +1,6 @@
+# gdstyle:ignore-file=quality/max-class-variables
 class_name MicrosimAnnualContext
 extends RefCounted
-
 
 var city: CityState
 var bus_passengers: int

@@ -1,5 +1,7 @@
 class_name CityDataView
 extends RefCounted
+
+
 # display-only tile data. geometry and values come from the active city
 # titles follow cityviewmode.data_modes
 
@@ -17,6 +19,20 @@ const CHUNKS: Dictionary[CityViewMode.Mode, String] = {
 	CityViewMode.Mode.POLICE_POWER: "XPLC", CityViewMode.Mode.FIRE_POWER: "XFIR",
 	CityViewMode.Mode.LAND_VALUE: "XVAL",
 }
+# labels under the gradient bar in the isometric legend
+const RANGE_LABELS := {
+	CityViewMode.Mode.HEIGHT: ["Level 1", "Level 32"],
+}
+# rate of growth stores a steady band around the middle of the byte range
+const GROWTH_DECLINE := 0x7d
+const GROWTH_INCREASE := 0x83
+# modes that read as a few named states instead of a gradient
+const STATE_LABELS := {
+	CityViewMode.Mode.WATER: ["No link", "No supply", "Supplied"],
+	CityViewMode.Mode.POWER: ["No link", "No supply", "Supplied"],
+	CityViewMode.Mode.GROWTH: ["Decline", "Steady", "Growth"],
+}
+
 # low and high ends of each gradient
 static var GRADIENTS: Dictionary[CityViewMode.Mode, PackedColorArray] = {
 	CityViewMode.Mode.DENSITY: PackedColorArray([Color("1f2d3f"), Color("ffd166")]),
@@ -27,21 +43,8 @@ static var GRADIENTS: Dictionary[CityViewMode.Mode, PackedColorArray] = {
 }
 # default gradient for the remaining nuisance maps
 static var DEFAULT_GRADIENT := PackedColorArray([Color("2b5260"), Color("ff694c")])
-# labels under the gradient bar in the isometric legend
-const RANGE_LABELS := {
-	CityViewMode.Mode.HEIGHT: ["Level 1", "Level 32"],
-}
-# rate of growth stores a steady band around the middle of the byte range
-const GROWTH_DECLINE := 0x7d
-const GROWTH_INCREASE := 0x83
 # decline, steady, and growth. the original map reads as a sign, not a scale
 static var GROWTH_COLORS := PackedColorArray([Color("e2453c"), Color("b9c2cd"), Color("35d16a")])
-# modes that read as a few named states instead of a gradient
-const STATE_LABELS := {
-	CityViewMode.Mode.WATER: ["No link", "No supply", "Supplied"],
-	CityViewMode.Mode.POWER: ["No link", "No supply", "Supplied"],
-	CityViewMode.Mode.GROWTH: ["Decline", "Steady", "Growth"],
-}
 
 
 static func value(city: CityState, mode: CityViewMode.Mode, x: int, y: int) -> int:
@@ -119,7 +122,8 @@ static func tile_text(city: CityState, mode: CityViewMode.Mode, point: Vector2i,
 		result = "Land Value: $%d,000 (%s)" % [number + 1, description]
 
 	if exact:
-		var raw := city.tile_flags[city.index_of(point.x, point.y)] if mode in [CityViewMode.Mode.WATER, CityViewMode.Mode.POWER] else number
+		var raw := (city.tile_flags[city.index_of(point.x, point.y)] if mode in [CityViewMode.Mode.WATER, CityViewMode.Mode.POWER]
+			else number)
 		result += "  (%s%d / 0x%02X)" % ["XBIT " if mode in [CityViewMode.Mode.WATER, CityViewMode.Mode.POWER] else "", raw, raw]
 
 	return result

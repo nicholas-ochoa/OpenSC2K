@@ -15,12 +15,6 @@ const THING_SPEEDS := {
 }
 
 
-class TargetResult extends RefCounted:
-	var ok := false
-	var malformed := false
-	var point := Vector2i.ZERO
-
-
 static func update(
 	altitude: PackedByteArray,
 	flags: PackedByteArray,
@@ -63,7 +57,7 @@ static func update(
 			var next_index := _index(next, map_edge)
 			var overlay := int(OverlayData.read(text, next_index)) if next_index >= 0 else 0
 
-			if (overlay > 250 and overlay <= 255):
+			if overlay > 250 and overlay <= 255:
 				if random.next_u15() & 1:
 					OverlayData.write(text, next_index, 0)
 					counters.maxis_man_extinguished_fires += 1
@@ -291,3 +285,9 @@ static func _index(point: Vector2i, map_edge: int = 128) -> int:
 		return -1
 
 	return point.x * map_edge + point.y
+
+
+class TargetResult extends RefCounted:
+	var ok := false
+	var malformed := false
+	var point := Vector2i.ZERO

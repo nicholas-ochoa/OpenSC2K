@@ -1,7 +1,6 @@
 class_name SimulationSchedule
 extends RefCounted
 
-
 var city_days := 0
 var elapsed_years := 0
 var month := 0

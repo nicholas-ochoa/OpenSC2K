@@ -1,7 +1,6 @@
 class_name CitySignForegroundPatch
 extends RefCounted
 
-
 var image: Image
 var bounds := Rect2i()
 var source_bounds := Rect2i()

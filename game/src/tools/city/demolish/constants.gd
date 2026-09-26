@@ -2,9 +2,7 @@ class_name DemolishConstants
 extends RefCounted
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
-
 const GROUP_BULLDOZER := CityToolIds.Group.BULLDOZER
 const SUBTOOL_DEMOLISH := CityToolIds.Bulldozer.DEMOLISH
 const RADIOACTIVITY := Tiles.RADIOACTIVE_WASTE
@@ -44,7 +42,6 @@ const REWARD_BIT_BY_TILE := {
 	Tiles.STATUE: 2,
 	Tiles.LLAMA_DOME: 3,
 }
-
 const CORNER_BOTTOM_LEFT := Sc2ZoneLayout.CORNER_BOTTOM_LEFT
 const CORNER_BOTTOM_RIGHT := Sc2ZoneLayout.CORNER_BOTTOM_RIGHT
 const CORNER_TOP_LEFT := Sc2ZoneLayout.CORNER_TOP_LEFT

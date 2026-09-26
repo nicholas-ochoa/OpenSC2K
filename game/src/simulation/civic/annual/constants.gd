@@ -2,7 +2,6 @@ class_name MicrosimAnnualConstants
 extends RefCounted
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const MISC_SIZE := Sc2MiscLayout.SIZE
 const MISC_CITY_CRIME := Sc2MiscLayout.CITY_CRIME
 const MISC_RAW_POPULATION := Sc2MiscLayout.POPULATION_TABLE
@@ -32,7 +31,6 @@ const POWER_PLANT_COSTS := {
 	Tiles.FUSION_POWER: 40000,
 	Tiles.COAL_POWER: 4000,
 }
-
 const TILE_SMALL_PARK := Tiles.SMALL_PARK
 const TILE_HYDRO_ONE := Tiles.HYDRO_POWER_1
 const TILE_HYDRO_TWO := Tiles.HYDRO_POWER_2

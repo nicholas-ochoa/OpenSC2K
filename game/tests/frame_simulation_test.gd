@@ -1,6 +1,8 @@
 extends SceneTree
+
 const DocumentState = preload("res://tests/support/document_state.gd")
 const TimingResults = preload("res://tests/support/timing_results.gd")
+
 var failures := 0
 
 
@@ -62,16 +64,33 @@ func check_parity(edge: int) -> void:
 			actual = runner.advance_time(0, day * 200)
 
 		check(not runner.is_pending(), "tick completes without blocking frames")
-		check(int(runner.last_work_metrics.elapsed_usec) >= int(runner.last_work_metrics.parked_usec), "elapsed job time includes frame waits")
+		check(
+			int(runner.last_work_metrics.elapsed_usec) >= int(runner.last_work_metrics.parked_usec),
+			"elapsed job time includes frame waits",
+		)
 		check(actual.job_timings.has("Worker / frame waits"), "accepted jobs publish wait timings")
-		check(TimingResults.without_timings(actual) == TimingResults.without_timings(expected), "identical tick events and results at %d day %d" % [edge, day])
-		check(saved_payloads(sliced.engine.city.document) == saved_payloads(sync.engine.city.document), "identical saved payloads at %d day %d" % [edge, day])
-		check(sliced.engine.random.state == sync.engine.random.state and sliced.engine.lfsr_random.state == sync.engine.lfsr_random.state and sliced.engine.game_random.state == sync.engine.game_random.state, "identical random states")
+		check(
+			TimingResults.without_timings(actual) == TimingResults.without_timings(expected),
+			"identical tick events and results at %d day %d" % [edge, day],
+		)
+		check(
+			saved_payloads(sliced.engine.city.document) == saved_payloads(sync.engine.city.document),
+			"identical saved payloads at %d day %d" % [edge, day],
+		)
+		check(
+			sliced.engine.random.state == sync.engine.random.state and sliced.engine.lfsr_random.state == sync.engine.lfsr_random.state
+			and sliced.engine.game_random.state == sync.engine.game_random.state,
+			"identical random states",
+		)
 		slices += int(runner.last_work_metrics.slices)
 
 	check(slices > days.size(), "work spans multiple frame grants")
 	check(sliced.engine.city.document.serialize().data == sync.engine.city.document.serialize().data, "final encoded bytes match")
-	check(sliced.engine.random.get_instance_id() == random_id and sliced.engine.city.get_instance_id() == city_id and sliced.engine.city.document.get_instance_id() == document_id, "publication preserves public identities")
+	check(
+		sliced.engine.random.get_instance_id() == random_id and sliced.engine.city.get_instance_id() == city_id
+		and sliced.engine.city.document.get_instance_id() == document_id,
+		"publication preserves public identities",
+	)
 	runner.close()
 	print("PASS: %d synchronous/sliced day, event, byte and RNG comparisons; %d grants" % [edge, slices])
 
@@ -92,7 +111,11 @@ func check_cancellation() -> void:
 		result = runner.advance_time(0, 200)
 
 	check(runner.cancelled_ticks == 1 and runner.completed_ticks == 1, "stale work discarded and retried")
-	check(TimingResults.without_timings(result) == TimingResults.without_timings(expected) and DocumentState.capture(sliced.engine.city.document) == DocumentState.capture(sync.engine.city.document), "edit survives pending work")
+	check(
+		TimingResults.without_timings(result) == TimingResults.without_timings(expected)
+		and DocumentState.capture(sliced.engine.city.document) == DocumentState.capture(sync.engine.city.document),
+		"edit survives pending work",
+	)
 	runner.advance_time(200, 400)
 	sliced.set_speed(GameSpeedController.Speed.PAUSED)
 	var age := sliced.engine.city.age_in_days()
@@ -121,7 +144,10 @@ func check_special_ticks() -> void:
 		controller.engine.clock.city_days = 299
 
 	var annual := await compare_tick(sync, sliced, runner, 200, "annual update")
-	check(annual.day_results.size() == 1 and annual.day_results[0].phase_results.has("annual_microsim"), "worker executes annual facility update")
+	check(
+		annual.day_results.size() == 1 and annual.day_results[0].phase_results.has("annual_microsim"),
+		"worker executes annual facility update",
+	)
 	check(sliced.engine.city.age_in_days() == 300, "annual update completed")
 	var expected := sync.engine.start_disaster(DisasterStartPhase.DISASTER_FIRE, Vector2i(64, 64))
 	var actual := sliced.engine.start_disaster(DisasterStartPhase.DISASTER_FIRE, Vector2i(64, 64))
@@ -140,7 +166,13 @@ func check_special_ticks() -> void:
 	print("PASS: 512 annual update, fire ticks, shutdown and private arrays")
 
 
-func compare_tick(sync: GameSpeedController, sliced: GameSpeedController, runner: FrameSimulationRunner, now: int, context: String) -> SimulationTickResult:
+func compare_tick(
+	sync: GameSpeedController,
+	sliced: GameSpeedController,
+	runner: FrameSimulationRunner,
+	now: int,
+	context: String,
+) -> SimulationTickResult:
 	var expected := sync.advance_time(200, now)
 	var actual := runner.advance_time(200, now)
 	var deadline := Time.get_ticks_msec() + 30000
@@ -149,10 +181,21 @@ func compare_tick(sync: GameSpeedController, sliced: GameSpeedController, runner
 		await process_frame
 		actual = runner.advance_time(0, now)
 
-	check(not runner.is_pending() and expected.ok and TimingResults.without_timings(actual) == TimingResults.without_timings(expected), context + " results")
+	check(
+		not runner.is_pending() and expected.ok and TimingResults.without_timings(actual) == TimingResults.without_timings(expected),
+		context + " results",
+	)
 	check(DocumentState.capture(sync.engine.city.document) == DocumentState.capture(sliced.engine.city.document), context + " bytes")
-	check(SimulationSnapshot.stamp(sync).slice(-SimulationSnapshot.ENGINE_FIELDS.size() - SimulationSnapshot.CONTROLLER_FIELDS.size()) == SimulationSnapshot.stamp(sliced).slice(-SimulationSnapshot.ENGINE_FIELDS.size() - SimulationSnapshot.CONTROLLER_FIELDS.size()), context + " runtime fields")
-	check(sync.engine.random.state == sliced.engine.random.state and sync.engine.lfsr_random.state == sliced.engine.lfsr_random.state and sync.engine.game_random.state == sliced.engine.game_random.state, context + " random states")
+	check(
+		SimulationSnapshot.stamp(sync).slice(-SimulationSnapshot.ENGINE_FIELDS.size() - SimulationSnapshot.CONTROLLER_FIELDS.size())
+		== SimulationSnapshot.stamp(sliced).slice(-SimulationSnapshot.ENGINE_FIELDS.size() - SimulationSnapshot.CONTROLLER_FIELDS.size()),
+		context + " runtime fields",
+	)
+	check(
+		sync.engine.random.state == sliced.engine.random.state and sync.engine.lfsr_random.state == sliced.engine.lfsr_random.state
+		and sync.engine.game_random.state == sliced.engine.game_random.state,
+		context + " random states",
+	)
 	return actual
 
 
@@ -161,7 +204,10 @@ func check_field_coverage() -> void:
 
 	for property in engine.get_property_list():
 		if int(property.usage) & PROPERTY_USAGE_SCRIPT_VARIABLE:
-			check(property.name in SimulationSnapshot.ENGINE_FIELDS + ["city", "clock", "random", "lfsr_random", "game_random", "scenario"], "snapshot covers engine field " + property.name)
+			check(
+				property.name in SimulationSnapshot.ENGINE_FIELDS + ["city", "clock", "random", "lfsr_random", "game_random", "scenario"],
+				"snapshot covers engine field " + property.name,
+			)
 
 	var controller := GameSpeedController.new(engine)
 

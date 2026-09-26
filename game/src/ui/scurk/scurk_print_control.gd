@@ -5,7 +5,6 @@ signal preview_options_changed(options: ScurkCityOutput.Options)
 signal save_pdf_requested(options: ScurkCityOutput.Options)
 
 const PreviewView = preload("res://src/ui/scurk/scurk_print_preview.gd")
-
 const PANEL_SIZE := Vector2i(760, 680)
 const MAGNIFICATIONS := [1, 2, 4]
 

@@ -61,7 +61,8 @@ func run() -> void:
 	assert(not Sc2ImportXmi.convert(_xmi(PackedByteArray([0xb0, 116, 0, 0xff, 0x2f, 0]))).ok)
 	_test_import(voice, sequence)
 	_test_resource_types(music.bytes)
-	print("PASS: VOC samples, repeats, loops, XMIDI timing and notes, selective packs, partial failure, coexistence and source preservation")
+	print(("PASS: VOC samples, repeats, loops, XMIDI timing and notes, selective packs, partial "
+		+ "failure, coexistence and source preservation"))
 	quit()
 
 

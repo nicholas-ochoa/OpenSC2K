@@ -4,9 +4,7 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const Ordinances = preload("res://src/simulation/economy/ordinance_command.gd")
-
 const MISC_SIZE := Sc2MiscLayout.SIZE
 const MISC_FUNDS := Sc2MiscLayout.FUNDS
 const MISC_BONDS := Sc2MiscLayout.BONDS
@@ -19,25 +17,21 @@ const MISC_AUTO_BUDGET := Sc2MiscLayout.AUTO_BUDGET
 const MISC_NO_DISASTERS := Sc2MiscLayout.NO_DISASTERS
 const MISC_ARCOLOGY_POPULATION := Sc2MiscLayout.ARCOLOGY_POPULATION
 const MISC_NORMAL_POPULATION := Sc2MiscLayout.NORMAL_POPULATION
-
 const BUDGET_COUNT := Sc2BudgetLayout.COUNT
 const BUDGET_RECORD_SIZE := Sc2BudgetLayout.RECORD_SIZE
 const BUDGET_CURRENT := Sc2BudgetLayout.CURRENT
 const BUDGET_FUNDING := Sc2BudgetLayout.FUNDING
 const BUDGET_YEAR_TO_DATE := Sc2BudgetLayout.YEAR_TO_DATE
 const BUDGET_MONTHS := Sc2BudgetLayout.MONTHS
-
 const BUDGET_RESIDENTIAL := Sc2BudgetLayout.RESIDENTIAL
 const BUDGET_ORDINANCES := Sc2BudgetLayout.ORDINANCES
 const BUDGET_BONDS := Sc2BudgetLayout.BONDS
 const BUDGET_POLICE := Sc2BudgetLayout.POLICE
 const BUDGET_FIRE := Sc2BudgetLayout.FIRE
 const BUDGET_ROAD := Sc2BudgetLayout.ROAD
-
 const ANNUAL_DIVISOR_FACTORS := [
 	75, 75, 75, 75, -100, -1, -1, -2, -4, -1, -1000, -500, -400, -250, -250, -250,
 ]
-
 const SERVICE_TILE_IDS := {
 	BUDGET_POLICE: Tiles.POLICE_STATION,
 	BUDGET_FIRE: Tiles.FIRE_STATION,
@@ -45,22 +39,9 @@ const SERVICE_TILE_IDS := {
 	Sc2BudgetLayout.SCHOOL: Tiles.SCHOOL,
 	Sc2BudgetLayout.COLLEGE: Tiles.COLLEGE,
 }
-
 const NEWS_ORDINANCE := 0x29
-
 # the city council message when negative funds turn off Auto Budget
 const NOTICE_FISCAL_CRISIS := 292
-
-
-class Result extends PhaseResult:
-	var month := 0
-	var settled_year := false
-	var funds_before := 0
-	var funds_after := 0
-	var auto_budget_disabled := false
-	var requires_annual_budget := false
-	var current_costs := PackedInt32Array()
-	var annual_microsim_update_pending := false
 
 
 # settle the year and do the monthly work, without the annual facility update
@@ -228,10 +209,13 @@ static func run_month(city: CityState, random: SimRandom, settlement: Result) ->
 		):
 			_add_current(misc, Sc2BudgetLayout.RAIL, count)
 
-		if (tile_id >= Tiles.SUSPENSION_BRIDGE_1 and tile_id <= Tiles.POWER_BRIDGE) or tile_id == Tiles.HIGHWAY_BRIDGE or tile_id == Tiles.REINFORCED_HIGHWAY_BRIDGE:
+		if ((tile_id >= Tiles.SUSPENSION_BRIDGE_1 and tile_id <= Tiles.POWER_BRIDGE)
+				or tile_id == Tiles.HIGHWAY_BRIDGE
+				or tile_id == Tiles.REINFORCED_HIGHWAY_BRIDGE):
 			_add_current(misc, Sc2BudgetLayout.BRIDGE, count)
 
-		if (tile_id >= Tiles.HIGHWAY_SLOPE_1 and tile_id <= Tiles.REINFORCED_HIGHWAY_BRIDGE) or (tile_id >= Tiles.HIGHWAY_STRAIGHT_1 and tile_id <= Tiles.HIGHWAY_POWER_CROSSING_2):
+		if ((tile_id >= Tiles.HIGHWAY_SLOPE_1 and tile_id <= Tiles.REINFORCED_HIGHWAY_BRIDGE)
+				or (tile_id >= Tiles.HIGHWAY_STRAIGHT_1 and tile_id <= Tiles.HIGHWAY_POWER_CROSSING_2)):
 			_add_current(misc, Sc2BudgetLayout.HIGHWAY, count)
 
 		if tile_id >= Tiles.TUNNEL_ENTRANCE_1 and tile_id <= Tiles.TUNNEL_ENTRANCE_4:
@@ -302,6 +286,7 @@ static func run_month(city: CityState, random: SimRandom, settlement: Result) ->
 	result.timing.work_usec += settlement.timing.work_usec
 
 	return result
+
 
 static func _failed(message: String) -> Result:
 	var result := Result.new()
@@ -394,3 +379,14 @@ static func _to_i32(value: int) -> int:
 	var unsigned := value & 0xffffffff
 
 	return unsigned - 0x100000000 if unsigned & 0x80000000 else unsigned
+
+
+class Result extends PhaseResult:
+	var month := 0
+	var settled_year := false
+	var funds_before := 0
+	var funds_after := 0
+	var auto_budget_disabled := false
+	var requires_annual_budget := false
+	var current_costs := PackedInt32Array()
+	var annual_microsim_update_pending := false

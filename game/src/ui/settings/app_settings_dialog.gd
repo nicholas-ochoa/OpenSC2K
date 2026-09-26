@@ -17,12 +17,10 @@ var pack_name_labels: Dictionary = {}
 var pack_edits: Dictionary = {}
 var loaded_pack_names: Dictionary = {}
 var loaded_pack_paths: Dictionary = {}
-
 var tabs: TabContainer
 var folder_edit: LineEdit
 var folder_row: HBoxContainer
 var folder_dialog: FileDialog
-
 var music_slider: HSlider
 var effects_slider: HSlider
 var dark_underground_check: CheckBox
@@ -161,7 +159,8 @@ func set_update_status(checked_at: int, error: String) -> void:
 
 func show_values(
 	music_volume: float, effects_volume: float, fullscreen: bool,
-	source := "auto", folder := "", city_renderer := "gpu", background_audio := false, zoom_graphics: Array = AppSettingsStore.DEFAULT_ZOOM_GRAPHICS,
+	source := "auto", folder := "", city_renderer := "gpu", background_audio := false,
+	zoom_graphics: Array = AppSettingsStore.DEFAULT_ZOOM_GRAPHICS,
 ) -> void:
 	pack_error_label.hide()
 	var normalized := AppSettingsStore.normalize_zoom_graphics(zoom_graphics, overview_graphics_selector.selected)

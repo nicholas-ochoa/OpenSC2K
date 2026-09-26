@@ -1,7 +1,6 @@
 class_name GameOverEvent
 extends RefCounted
 
-
 var type: String
 var funds: int
 var sound_id: int

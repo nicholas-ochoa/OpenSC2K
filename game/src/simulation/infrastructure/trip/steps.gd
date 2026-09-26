@@ -1,13 +1,11 @@
 class_name TransportTripSteps
 extends TransportTripConstants
 
-
-
 # the search passes checked flat indices. a next index of -1 means a map exit
 # keep the points for highway lane geometry
 const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
-
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 
 static func advance(
 	buildings: PackedByteArray,
@@ -175,11 +173,13 @@ static func _move(mode: int, cost: int) -> int:
 
 
 static func _is_road_bridge(tile: int) -> bool:
-	return (tile >= Tiles.SUSPENSION_BRIDGE_1 and tile <= Tiles.POWER_BRIDGE) or tile == Tiles.HIGHWAY_BRIDGE or tile == Tiles.REINFORCED_HIGHWAY_BRIDGE
+	return ((tile >= Tiles.SUSPENSION_BRIDGE_1 and tile <= Tiles.POWER_BRIDGE) or tile == Tiles.HIGHWAY_BRIDGE
+		or tile == Tiles.REINFORCED_HIGHWAY_BRIDGE)
 
 
 static func _is_highway_span(tile: int) -> bool:
-	return (tile >= Tiles.HIGHWAY_SLOPE_FIRST and tile <= Tiles.HIGHWAY_INTERSECTION) or (tile >= Tiles.HIGHWAY_STRAIGHT_1 and tile <= Tiles.HIGHWAY_POWER_CROSSING_2)
+	return ((tile >= Tiles.HIGHWAY_SLOPE_FIRST and tile <= Tiles.HIGHWAY_INTERSECTION)
+		or (tile >= Tiles.HIGHWAY_STRAIGHT_1 and tile <= Tiles.HIGHWAY_POWER_CROSSING_2))
 
 
 static func _index(point: Vector2i, map_edge: int = 128) -> int:

@@ -1,37 +1,5 @@
 class_name IsometricStaticVisuals
 extends IsometricConstants
-# isometric static visuals and a main-thread overlay signature cache
-
-@warning_ignore_start("integer_division")
-
-class Edge extends RefCounted:
-	var sprite_id: int
-	var elevation: int
-
-	func _init(id: int, height: int) -> void:
-		sprite_id = id
-		elevation = height
-
-
-class Ground extends RefCounted:
-	var source: Vector2i
-	var sprite_id: int
-	var offset: Vector2i
-
-	func _init(point: Vector2i, id: int, position: Vector2i) -> void:
-		source = point
-		sprite_id = id
-		offset = position
-
-
-class Traffic extends CitySpriteVisual:
-	var variant: int
-	var density: int
-
-
-class SpecialOverlay extends CitySpriteVisual:
-	var overlay: int
-
 
 const SIGN_PAGE_CELLS := 1024
 # traffic density above x draws light traffic, and above y heavy traffic
@@ -288,7 +256,8 @@ static func traffic_level(tile: int, density: int) -> int:
 
 	var thresholds := TRAFFIC_THRESHOLDS
 
-	if (tile >= Tiles.HIGHWAY_STRAIGHT_1 and tile <= Tiles.HIGHWAY_POWER_CROSSING_2) or (tile >= Tiles.HIGHWAY_SLOPE_1 and tile <= Tiles.REINFORCED_HIGHWAY_BRIDGE):
+	if ((tile >= Tiles.HIGHWAY_STRAIGHT_1 and tile <= Tiles.HIGHWAY_POWER_CROSSING_2)
+			or (tile >= Tiles.HIGHWAY_SLOPE_1 and tile <= Tiles.REINFORCED_HIGHWAY_BRIDGE)):
 		thresholds = HIGHWAY_TRAFFIC_THRESHOLDS
 
 	return int(density > thresholds.x) + int(density > thresholds.y)
@@ -516,7 +485,8 @@ static func _compute_static_text_overlay_signature(city: CityState, indices: Pac
 
 # four occupied corners, one sprite, compass picks the winner
 static func _should_draw_building(city: CityState, x: int, y: int, building_id: int) -> bool:
-	if building_id <= Tiles.HIGHWAY_ONRAMP_4 or (building_id >= Tiles.RAIL_SUBWAY_ENTRANCE_1 and building_id <= Tiles.RAIL_SUBWAY_ENTRANCE_4):
+	if (building_id <= Tiles.HIGHWAY_ONRAMP_4
+			or (building_id >= Tiles.RAIL_SUBWAY_ENTRANCE_1 and building_id <= Tiles.RAIL_SUBWAY_ENTRANCE_4)):
 		return true
 
 	var anchor_masks := [0x80, 0x10, 0x20, 0x40]
@@ -555,3 +525,37 @@ static func building_baseline_offset(
 		return -configuration.altitude_step
 
 	return 0
+
+
+# isometric static visuals and a main-thread overlay signature cache
+
+@warning_ignore_start("integer_division")
+
+
+class Edge extends RefCounted:
+	var sprite_id: int
+	var elevation: int
+
+	func _init(id: int, height: int) -> void:
+		sprite_id = id
+		elevation = height
+
+
+class Ground extends RefCounted:
+	var source: Vector2i
+	var sprite_id: int
+	var offset: Vector2i
+
+	func _init(point: Vector2i, id: int, position: Vector2i) -> void:
+		source = point
+		sprite_id = id
+		offset = position
+
+
+class Traffic extends CitySpriteVisual:
+	var variant: int
+	var density: int
+
+
+class SpecialOverlay extends CitySpriteVisual:
+	var overlay: int

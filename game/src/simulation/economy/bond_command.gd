@@ -1,10 +1,10 @@
 class_name BondCommand
 extends RefCounted
 
+
 @warning_ignore_start("integer_division")
 
 const CityValue = preload("res://src/simulation/economy/city_value_phase.gd")
-
 const MISC_SIZE := Sc2MiscLayout.SIZE
 const MISC_FUNDS := Sc2MiscLayout.FUNDS
 const MISC_BONDS := Sc2MiscLayout.BONDS
@@ -16,34 +16,12 @@ const BUDGET_RECORD_SIZE := Sc2BudgetLayout.RECORD_SIZE
 const BUDGET_BONDS := Sc2BudgetLayout.BONDS
 const BUDGET_CURRENT := Sc2BudgetLayout.CURRENT
 const BUDGET_FUNDING := Sc2BudgetLayout.FUNDING
-
 const BOND_VALUE := 10000
 const MAX_BONDS := 50
 const CREDIT_LIMIT := 6
-
 const CONFIRMATION_UNSELECTED := -1
 const CONFIRMATION_CANCELLED := 0
 const CONFIRMATION_CONFIRMED := 1
-
-
-class Result extends RefCounted:
-	var ok := false
-	var error := ""
-	var status := ""
-	var confirmation_required := false
-	var changed := false
-	var bond_count := 0
-	var funds := 0
-	var city_value := 0
-	var credit_value := 0
-	var rate := 0
-
-
-class MiscInput extends RefCounted:
-	var ok := false
-	var error := ""
-	var chunk: Sc2Chunk
-	var misc := PackedByteArray()
 
 
 static func _failed(message: String) -> Result:
@@ -313,3 +291,23 @@ static func _to_i32(value: int) -> int:
 	var unsigned := value & 0xffffffff
 
 	return unsigned - 0x100000000 if unsigned & 0x80000000 else unsigned
+
+
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+	var status := ""
+	var confirmation_required := false
+	var changed := false
+	var bond_count := 0
+	var funds := 0
+	var city_value := 0
+	var credit_value := 0
+	var rate := 0
+
+
+class MiscInput extends RefCounted:
+	var ok := false
+	var error := ""
+	var chunk: Sc2Chunk
+	var misc := PackedByteArray()

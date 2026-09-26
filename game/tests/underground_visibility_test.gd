@@ -1,6 +1,6 @@
 extends SceneTree
-const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
 
+const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
 const DocumentState = preload("res://tests/support/document_state.gd")
 
 
@@ -15,7 +15,8 @@ func _run() -> void:
 	var view := CityIsometricRenderer.VIEW_LARGE
 	var base := CityIsometricRenderer.view_configuration(view).sprite_base
 	for wet in [false, true]:
-		for underground in [UnderTiles.EMPTY, UnderTiles.SUBWAY_LR, UnderTiles.PIPE_LR, UnderTiles.PIPE_LTBR, UnderTiles.PIPE_TB_SUBWAY_LR, UnderTiles.PIPE_LR_SUBWAY_TB]:
+		for underground in [UnderTiles.EMPTY, UnderTiles.SUBWAY_LR, UnderTiles.PIPE_LR, UnderTiles.PIPE_LTBR, UnderTiles.PIPE_TB_SUBWAY_LR,
+			UnderTiles.PIPE_LR_SUBWAY_TB]:
 			city.set_underground_id(20, 20, underground)
 			city.set_terrain_id(20, 20, 0)
 			city.set_tile_flag(20, 20, 0x20, true)
@@ -38,7 +39,12 @@ func _run() -> void:
 
 	var configuration := CityIsometricRenderer.view_configuration(view)
 	var origin := configuration.side_margin + city.map_size * configuration.half_width
-	var bounds := Rect2i(origin - 80, configuration.top_margin + 40 * configuration.half_height - city.land_altitude(20, 20) * configuration.altitude_step - 80, 200, 200)
+	var bounds := Rect2i(
+		origin - 80,
+		configuration.top_margin + 40 * configuration.half_height - city.land_altitude(20, 20) * configuration.altitude_step - 80,
+		200,
+		200,
+	)
 	var cache := CityRegionCache.new()
 	cache.gpu_enabled = false
 	for pipes in [false, true]:

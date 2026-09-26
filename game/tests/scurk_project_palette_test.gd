@@ -18,7 +18,8 @@ func _run() -> void:
 	assert(not Sc2Palette.from_rgb_bytes(first.to_rgb_bytes() + PackedByteArray([0])).is_valid())
 	var mif := ScurkMif.from_archives([])
 	for view in ScurkSpriteIds.VIEW_COUNT:
-		assert(mif.set_shape_indices(ScurkEditorRules.view_sprite_id(ScurkSpriteIds.LARGE_FIRST, view), 2, 1, PackedInt32Array([17, 23])).ok)
+		assert(mif.set_shape_indices(ScurkEditorRules.view_sprite_id(ScurkSpriteIds.LARGE_FIRST, view), 2, 1,
+			PackedInt32Array([17, 23])).ok)
 	var bytes := mif.to_bytes().bytes
 	var editor := EditorScene.instantiate() as ScurkEditorControl
 	root.add_child(editor)
@@ -77,7 +78,8 @@ func _run() -> void:
 func _palette(offset: int) -> Sc2Palette:
 	var palette := Sc2Palette.new()
 	for index in Sc2Palette.COLOR_COUNT:
-		palette.colors.append(Color8((index + offset) % Sc2Palette.COLOR_COUNT, (255 - index + offset) % Sc2Palette.COLOR_COUNT, (index * 7 + offset) % Sc2Palette.COLOR_COUNT))
+		palette.colors.append(Color8((index + offset) % Sc2Palette.COLOR_COUNT, (255 - index + offset) % Sc2Palette.COLOR_COUNT,
+			(index * 7 + offset) % Sc2Palette.COLOR_COUNT))
 	palette.colors[23] = palette.colors[17]
 	return palette
 

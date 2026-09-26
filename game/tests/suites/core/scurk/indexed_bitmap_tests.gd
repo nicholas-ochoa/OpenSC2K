@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Scurk: indexed bitmap checks.
 
 @warning_ignore_start("integer_division")

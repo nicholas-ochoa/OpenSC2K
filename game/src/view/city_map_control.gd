@@ -1,5 +1,8 @@
+# gdstyle:ignore-file=quality/max-class-variables
+# gdstyle:ignore-file=quality/max-public-methods
 class_name CityMapControl
 extends Control
+
 # scene node for the city map. its public methods are the node api that
 # application and ui code call through map_view. components do the work
 
@@ -120,7 +123,6 @@ var data_view_layer: MeshInstance2D
 var data_view_signature: Array = []
 var data_geometry_signature: Array = []
 var data_value_texture: ImageTexture
-
 var hover_tile := Vector2i(-1, -1)
 var transient_effects: Array[CityTransientEffectVisual] = []
 var dynamic_sprites: Array[CityDynamicVisual] = []
@@ -150,7 +152,6 @@ var _sign_entries_zoom := -1.0
 var _sign_layout_signature: Array = []
 var _external_sign_layout_token: Array = []
 var _sign_cache_build_count := 0
-
 var layers: CityMapLayers = CityMapLayers.new(self)
 var signs: CityMapSigns = CityMapSigns.new(self)
 var camera: CityMapCamera = CityMapCamera.new(self)
@@ -173,6 +174,26 @@ func _ready() -> void:
 	add_child(_data_tooltip)
 	resized.connect(camera._on_resized)
 	mouse_exited.connect(selection._clear_hover)
+
+
+func _draw() -> void:
+	presentation._draw()
+	if _legend != null:
+		_legend.refresh()
+	if _data_tooltip != null:
+		_data_tooltip.refresh()
+
+
+func _gui_input(event: InputEvent) -> void:
+	interaction._gui_input(event)
+
+
+func _input(event: InputEvent) -> void:
+	interaction._input(event)
+
+
+func _process(delta: float) -> void:
+	interaction._process(delta)
 
 
 func set_data_view(value: CityState, mode: CityViewMode.Mode) -> void:
@@ -316,28 +337,8 @@ func debug_metrics() -> Dictionary:
 	return presentation.debug_metrics()
 
 
-func _draw() -> void:
-	presentation._draw()
-	if _legend != null:
-		_legend.refresh()
-	if _data_tooltip != null:
-		_data_tooltip.refresh()
-
-
-func _gui_input(event: InputEvent) -> void:
-	interaction._gui_input(event)
-
-
-func _input(event: InputEvent) -> void:
-	interaction._input(event)
-
-
 func _get_tooltip(at_position: Vector2) -> String:
 	return selection._get_tooltip(at_position)
-
-
-func _process(delta: float) -> void:
-	interaction._process(delta)
 
 
 func show_trip_reach(source: CityState, point: Vector2i) -> TransportTripReachResult:

@@ -1,9 +1,8 @@
 class_name NetworkRoutes
 extends NetworkConstants
 
-
-
 const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
+
 
 static func route(start: Vector2i, finish: Vector2i) -> Array[Vector2i]:
 	var result: Array[Vector2i] = [start]
@@ -101,7 +100,20 @@ static func plan_route(
 				or next.y > maxi(start.y, finish.y))):
 			break
 
-		if not _step_is_eligible(buildings, terrain, zones, underground, flags, altitude, current, next, mode, direction, keep_straight, map_edge):
+		if not _step_is_eligible(
+			buildings,
+			terrain,
+			zones,
+			underground,
+			flags,
+			altitude,
+			current,
+			next,
+			mode,
+			direction,
+			keep_straight,
+			map_edge,
+		):
 			var alternate := _alternate_direction(current, finish, direction)
 
 			if keep_straight or alternate < 0:
@@ -109,7 +121,20 @@ static func plan_route(
 
 			next = current + DIRECTIONS[alternate]
 
-			if not _step_is_eligible(buildings, terrain, zones, underground, flags, altitude, current, next, mode, alternate, keep_straight, map_edge):
+			if not _step_is_eligible(
+				buildings,
+				terrain,
+				zones,
+				underground,
+				flags,
+				altitude,
+				current,
+				next,
+				mode,
+				alternate,
+				keep_straight,
+				map_edge,
+			):
 				break
 
 			direction = alternate
@@ -158,11 +183,17 @@ static func _route_keeps_direction(buildings: PackedByteArray, terrain: PackedBy
 	if mode < MODE_SUBWAY:
 		var tile := int(buildings[index])
 
-		return NetworkRules._surface_fixed_axis(tile, mode) >= 0 or (tile > Tiles.SMALL_PARK and tile + (direction & 1) in [Tiles.POWER_LINE_STRAIGHT_2, Tiles.ROAD_STRAIGHT_2, Tiles.RAIL_STRAIGHT_2, Tiles.HIGHWAY_STRAIGHT_2])
+		return NetworkRules._surface_fixed_axis(
+			tile,
+			mode,
+		) >= 0 or (tile > Tiles.SMALL_PARK
+			and tile + (direction & 1) in [Tiles.POWER_LINE_STRAIGHT_2, Tiles.ROAD_STRAIGHT_2,
+			Tiles.RAIL_STRAIGHT_2, Tiles.HIGHWAY_STRAIGHT_2])
 
 	var tile := int(underground[index])
 
-	return tile in [UnderTiles.PIPE_TB_SUBWAY_LR, UnderTiles.PIPE_LR_SUBWAY_TB] or (tile != UnderTiles.EMPTY and tile + (direction & 1) in [UnderTiles.SUBWAY_TB, UnderTiles.PIPE_TB])
+	return (tile in [UnderTiles.PIPE_TB_SUBWAY_LR, UnderTiles.PIPE_LR_SUBWAY_TB]
+		or (tile != UnderTiles.EMPTY and tile + (direction & 1) in [UnderTiles.SUBWAY_TB, UnderTiles.PIPE_TB]))
 
 
 static func _primary_direction(current: Vector2i, finish: Vector2i) -> int:

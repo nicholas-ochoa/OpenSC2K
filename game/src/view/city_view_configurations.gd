@@ -2,7 +2,6 @@
 class_name CityViewConfigurations
 extends IsometricConstants
 
-
 static var _small := CityViewConfiguration.new(VIEW_SMALL, 4,
 	Vector2i(8, 5), Vector2i(4, 2), 3, Vector2i(8, 128), 0)
 static var _medium := CityViewConfiguration.new(VIEW_MEDIUM, 2,

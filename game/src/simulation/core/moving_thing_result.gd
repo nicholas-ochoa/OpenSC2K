@@ -1,26 +1,6 @@
+# gdstyle:ignore-file=quality/max-class-variables
 class_name MovingThingResult
 extends PhaseResult
-
-
-class ConnectionChange extends RefCounted:
-	var kind: String
-	var delta: int
-	var point: Vector2i
-
-	func _init(connection_kind: String, count_delta: int, location: Vector2i) -> void:
-		kind = connection_kind
-		delta = count_delta
-		point = location
-
-
-class DisasterRequest extends RefCounted:
-	var type: int
-	var point: Vector2i
-
-	func _init(disaster_type: int, location: Vector2i) -> void:
-		type = disaster_type
-		point = location
-
 
 var scanned_records := 0
 var active_airplanes := 0
@@ -96,3 +76,23 @@ static func failure(message: String) -> MovingThingResult:
 	result.error = message
 
 	return result
+
+
+class ConnectionChange extends RefCounted:
+	var kind: String
+	var delta: int
+	var point: Vector2i
+
+	func _init(connection_kind: String, count_delta: int, location: Vector2i) -> void:
+		kind = connection_kind
+		delta = count_delta
+		point = location
+
+
+class DisasterRequest extends RefCounted:
+	var type: int
+	var point: Vector2i
+
+	func _init(disaster_type: int, location: Vector2i) -> void:
+		type = disaster_type
+		point = location

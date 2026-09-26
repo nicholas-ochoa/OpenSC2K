@@ -28,7 +28,7 @@ func export_pack(source: String, folder: String, pack_name: String, platform := 
 
 		count += 1
 
-	var manifest := {"format": DataPack.FORMAT, "version": 1, "name": pack_name}
+	var manifest := { "format": DataPack.FORMAT, "version": 1, "name": pack_name }
 
 	if not platform.is_empty():
 		manifest.source_platform = platform

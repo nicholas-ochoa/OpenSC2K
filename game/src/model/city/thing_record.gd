@@ -4,7 +4,6 @@ extends RefCounted
 # a read copies the values. a later write to xthg does not change this record
 
 const Field = Sc2ThingLayout.Field
-
 const FIELDS: Array[String] = ["type", "direction", "state", "x", "y", "z", "px", "py", "dx", "dy", "label", "goal"]
 
 var type := 0

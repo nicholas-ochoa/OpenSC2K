@@ -14,7 +14,8 @@ func export_packs(source: String, target: String) -> AssetImportResult:
 	for kind in ["graphics", "sound", "music", "data"]:
 		var folder := destination.path_join(kind)
 
-		if DirAccess.dir_exists_absolute(folder) and (not DirAccess.get_files_at(folder).is_empty() or not DirAccess.get_directories_at(folder).is_empty()):
+		if (DirAccess.dir_exists_absolute(folder)
+				and (not DirAccess.get_files_at(folder).is_empty() or not DirAccess.get_directories_at(folder).is_empty())):
 			return AssetImportResult.failure("Refusing to overwrite an existing pack: " + folder)
 
 	var assets := OriginalGameAssets.load_root(source)
@@ -47,7 +48,7 @@ func export_packs(source: String, target: String) -> AssetImportResult:
 			var size_folder := "large" if pair[0] == "large_sprites" else ("small" if entry.sprite_id < 500 else "medium")
 			var relative := "%s/%04d-%d.png" % [size_folder, index, entry.sprite_id]
 			_write_png("graphics/" + relative, entry.width, entry.height, pixels.pixels, assets.palette)
-			records.append({"id": entry.sprite_id, "png": relative})
+			records.append({ "id": entry.sprite_id, "png": relative })
 			index += 1
 
 		manifest[pair[0]] = records
@@ -122,7 +123,7 @@ func export_packs(source: String, target: String) -> AssetImportResult:
 		return AssetImportResult.failure(loaded.error)
 
 	for kind in ["sound", "music"]:
-		var media := {"format": "opensc2k-" + kind, "version": 1, "name": "Original SimCity 2000 " + kind, "files": {}}
+		var media := { "format": "opensc2k-" + kind, "version": 1, "name": "Original SimCity 2000 " + kind, "files": {} }
 		ImportedPackRevision.stamp(kind, media)
 		var first := 500 if kind == "sound" else 10000
 		var count := 30 if kind == "sound" else 19

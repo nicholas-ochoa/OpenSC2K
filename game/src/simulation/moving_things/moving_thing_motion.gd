@@ -97,7 +97,10 @@ static func move(
 	if tile_delta == Vector2i.ZERO:
 		return 0
 
-	var current := Vector2i(ThingData.read(things, offset + Sc2ThingLayout.Field.X), ThingData.read(things, offset + Sc2ThingLayout.Field.Y))
+	var current := Vector2i(
+		ThingData.read(things, offset + Sc2ThingLayout.Field.X),
+		ThingData.read(things, offset + Sc2ThingLayout.Field.Y),
+	)
 	var current_index := _index(current, map_edge)
 
 	if current_index < 0:

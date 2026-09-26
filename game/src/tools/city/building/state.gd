@@ -4,7 +4,6 @@ extends BuildingConstants
 const ChunkCommit = preload("res://src/model/city/ordered_chunk_commit.gd")
 
 
-
 static func update_building_count(
 	misc: PackedByteArray, zone: int, old_building: int, new_building: int, map_edge: int = 128
 ) -> void:

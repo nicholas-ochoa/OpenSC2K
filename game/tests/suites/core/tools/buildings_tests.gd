@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Tools: buildings checks.
 
 @warning_ignore_start("integer_division")
@@ -147,6 +146,155 @@ func test_building_command(reference_root: String) -> void:
 	var random := LfsrRandom.new(1)
 	var process_random := Random.new(1)
 
+	_test_immediate_utilities(reference_root)
+
+	var coal := Buildings.apply(city, 3, 2, Vector2i(20, 20), random, process_random)
+	_check(coal.ok, "Coal plant placement succeeds: %s" % coal.error)
+	_check(coal.site == Rect2i(19, 19, 4, 4), "Coal plant uses the original asymmetric footprint")
+	_check(coal.tile_indices.size() == 16, "Coal plant changes sixteen map tiles")
+	_check(city.funds() == 16000, "Coal plant charges its tool cost once")
+	_check(city.building_id(19, 19) == 0xcf and city.building_id(22, 22) == 0xcf, "Coal plant fills its footprint")
+	_check(city.tile_flags[19 * 128 + 19] & 0xe0 == 0xe0, "Coal plant sets structure utility flags")
+	_check(city.zones[19 * 128 + 19] == 0x10, "Rotation zero stores the bottom-left corner")
+	_check(city.zones[22 * 128 + 19] == 0x20, "Rotation zero stores the bottom-right corner")
+	_check(city.zones[22 * 128 + 22] == 0x40, "Rotation zero stores the top-left corner")
+	_check(city.zones[19 * 128 + 22] == 0x80, "Rotation zero stores the top-right corner")
+	_check(coal.overlay_id == 61 and city.text_overlay_id(19, 19) == 61, "Coal plant attaches the first dynamic microsim label")
+	_check(not city.label(61).is_empty(), "Coal plant gets the original default label")
+	_check(city.microsim(10).tile_id == 0xcf and city.microsim(10).stat_1 == 200, "Coal plant initializes its XMIC capacity")
+	_check(document.misc_u32(0x01f0) == 16368, "Coal plant decrements clear tile count")
+	_check(document.misc_u32(0x01f0 + 0xcf * 4) == 16, "Coal plant increments its tile count")
+	_check(Buildings.undo(city, coal, random, process_random).ok, "Coal plant placement can be undone")
+	_check(city.funds() == 20000 and city.building_id(19, 19) == 0, "Building undo restores funds and tiles")
+	_check(city.text_overlay_id(19, 19) == 0 and city.microsim(10).tile_id == 0, "Building undo restores XTXT and XMIC")
+
+	var police := Buildings.apply(city, 13, 0, Vector2i(30, 30), random, process_random)
+	_check(police.ok, "Police station placement succeeds")
+	_check(document.misc_u32(0x077c + 5 * 0x6c) == 3, "Police station increments the current budget count")
+	_check(city.microsim(10).stat_1 == 160, "Police station starts with the funded population cap")
+	_check(Buildings.undo(city, police, random, process_random).ok, "Police station placement can be undone")
+	var fire := Buildings.apply(city, 13, 1, Vector2i(34, 30), random, process_random)
+	_check(fire.ok, "Fire station placement succeeds")
+	_check(
+		city.microsim(10).stat_1 == 40 and city.microsim(10).stat_2 == 4,
+		"Fire station starts with the funded population cap and four engines",
+	)
+	_check(Buildings.undo(city, fire, random, process_random).ok, "Fire station placement can be undone")
+	var city_hall := Buildings.apply(city, 5, 1, Vector2i(38, 30), random, process_random)
+	_check(city_hall.ok, "City Hall placement succeeds")
+	_check(
+		city.microsim(10).stat_1 == 200
+		and city.microsim(10).stat_2 == city.current_year(),
+		"City Hall starts with its population cap and construction year",
+	)
+	_check(Buildings.undo(city, city_hall, random, process_random).ok, "City Hall placement can be undone")
+	var museum := Buildings.apply(city, 12, 3, Vector2i(42, 30), random, process_random)
+	_check(museum.ok, "Museum placement succeeds")
+	_check(city.microsim(7).stat_0 == 100, "Museum system starts with score byte 100")
+	_check(Buildings.undo(city, museum, random, process_random).ok, "Museum placement can be undone")
+	_check(city.set_building_id(40, 40, Tiles.POWER_LINE_STRAIGHT_1), "Small park rejection fixture places a power line")
+	var blocked_park := Buildings.apply(
+		city, 14, 0, Vector2i(40, 40), random, process_random
+	)
+	_check(
+		not blocked_park.ok
+		and not blocked_park.error.is_empty()
+		and city.building_id(40, 40) == 0x0e,
+		"Small park cannot replace a power line",
+	)
+	_check(city.set_building_id(40, 40, Tiles.EMPTY), "Small park rejection fixture clears its power line")
+	var park := Buildings.apply(city, 14, 0, Vector2i(40, 40), random, process_random)
+	_check(park.ok, "Small park placement succeeds")
+	_check(city.tile_flags[40 * 128 + 40] & 0xe0 == 0x20, "Small park gets only the piped structure flag")
+	_check(city.building_corners(40, 40) == 0xf0, "One-tile building gets all corner bits")
+	_check(Buildings.undo(city, park, random, process_random).ok, "Small park placement can be undone")
+	var first_bus := Buildings.apply(city, 6, 4, Vector2i(70, 70), random, process_random)
+	var second_bus := Buildings.apply(city, 6, 4, Vector2i(73, 70), random, process_random)
+	_check(first_bus.ok and second_bus.ok, "Bus depots use the shared placement command")
+	_check(first_bus.overlay_id == 52 and second_bus.overlay_id == 52, "Bus depots share fixed microsim record one")
+	_check(not city.label(52).is_empty(), "Fixed bus microsim gets its default system label")
+	_check(city.microsim(1).tile_id == 0xec and city.microsim(1).stat_1 == 2, "Fixed bus microsim aggregates two depots")
+	_check(Buildings.undo(city, second_bus, random, process_random).ok, "Fixed microsim aggregation can be undone")
+	_check(city.microsim(1).stat_1 == 1, "Fixed microsim undo restores the prior aggregate")
+	var mayor_random_before := process_random.state
+	var mayor_house := Buildings.apply(city, 5, 0, Vector2i(80, 80), random, process_random)
+	_check(mayor_house.ok and mayor_house.overlay_id == 61, "Mayor house allocates a dynamic microsim")
+	_check(document.misc_u32(ToolAvailability.MISC_GRANTED_REWARDS) == 0x0e, "Mayor house placement consumes its saved reward bit")
+	_check(not city.label(61).is_empty(), "Mayor house gets its default label")
+	_check(city.microsim(10).stat_1 == city.current_year(), "Mayor house stores its construction year")
+	_check(city.microsim(10).stat_2 >= 10 and city.microsim(10).stat_2 <= 39, "Mayor house initializes the recovered age statistic")
+	_check(Buildings.undo(city, mayor_house, random, process_random).ok, "Mayor house placement can be undone")
+	_check(document.misc_u32(ToolAvailability.MISC_GRANTED_REWARDS) == 0x0f, "Mayor house undo restores its reward bit")
+	_check(process_random.state == mayor_random_before, "Building undo restores the process random state")
+	var llama_random := Random.new(123)
+	var expected_llama_random := Random.new(123)
+	var expected_llama_stat := expected_llama_random.next_u15() & 0x3f
+	var llama := Buildings.apply(city, 5, 3, Vector2i(84, 80), random, llama_random)
+	_check(llama.ok, "Llama Dome placement succeeds")
+	_check(
+		city.microsim(10).stat_3 == expected_llama_stat,
+		"US Llama Dome placement stores one masked process-random value",
+	)
+	_check(Buildings.undo(city, llama, random, llama_random).ok, "Llama Dome placement can be undone")
+	var australian_random := Random.new(456)
+	var australian_state := australian_random.state
+	var australian_llama := Buildings.apply(
+		city, 5, 3, Vector2i(84, 80), random, australian_random, true
+	)
+	_check(australian_llama.ok, "Australian Llama Dome placement succeeds")
+	_check(
+		city.microsim(10).stat_3 == city.current_year()
+		and australian_random.state == australian_state,
+		"Australian Llama Dome stores its construction year without random use",
+	)
+	_check(
+		Buildings.undo(city, australian_llama, random, australian_random).ok,
+		"Australian Llama Dome placement can be undone",
+	)
+
+	_check(city.set_underground_id(59, 60, UnderTiles.PIPE_LTBR), "Pump fixture places an adjacent isolated pipe")
+	_test_building_services(city, document, random, process_random)
+
+	var edge := Buildings.apply(city, 3, 2, Vector2i(1, 1), random, process_random)
+	_check(not edge.ok and not edge.error.is_empty(), "Four-tile building rejects the inner map edge")
+	_check(city.set_building_id(20, 20, Tiles.ROAD_STRAIGHT_1), "Blocked-site fixture places a road")
+	var blocked := Buildings.apply(city, 3, 2, Vector2i(20, 20), random, process_random)
+	_check(not blocked.ok and not blocked.error.is_empty(), "Building placement rejects a road")
+	_check(city.set_building_id(20, 20, Tiles.EMPTY), "Blocked-site fixture removes the road")
+	_check(city.set_zone_id(20, 20, 7), "Military fixture sets a military zone")
+	var military := Buildings.apply(city, 3, 2, Vector2i(20, 20), random, process_random)
+	_check(not military.ok and not military.error.is_empty(), "Building placement rejects military zones")
+	_check(city.set_zone_id(20, 20, 0), "Military fixture clears the military zone")
+
+	for x in range(50, 53):
+		for y in range(50, 53):
+			_check(city.set_tile_flag(x, y, 0x04, x == 50), "Marina fixture sets shoreline water")
+
+	var marina := Buildings.apply(city, 14, 4, Vector2i(51, 51), random, process_random)
+	_check(marina.ok, "Marina placement accepts mixed land and water")
+	_check(Buildings.undo(city, marina, random, process_random).ok, "Marina placement can be undone")
+
+	for y in range(50, 53):
+		_check(city.set_tile_flag(50, y, 0x04, false), "Marina dry fixture removes water")
+
+	var dry_marina := Buildings.apply(city, 14, 4, Vector2i(51, 51), random, process_random)
+	_check(not dry_marina.ok and not dry_marina.error.is_empty(), "Marina rejects an all-dry site")
+
+	_test_resident_objections(reference_root)
+
+	_check(city.set_funds(3999), "Building funds fixture sets insufficient funds")
+	var insufficient_lfsr_before := random.state
+	var unaffordable := Buildings.apply(city, 3, 2, Vector2i(60, 60), random, process_random)
+	_check(
+		not unaffordable.ok
+		and not unaffordable.error.is_empty()
+		and not unaffordable.lfsr_advanced
+		and random.state == insufficient_lfsr_before,
+		"Insufficient building funds stop before the nuisance LFSR call",
+	)
+
+
+func _test_immediate_utilities(reference_root: String) -> void:
 	var utility_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 
 	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
@@ -262,111 +410,8 @@ func test_building_command(reference_root: String) -> void:
 			"Threshold building placement can be undone",
 		)
 
-	var coal := Buildings.apply(city, 3, 2, Vector2i(20, 20), random, process_random)
-	_check(coal.ok, "Coal plant placement succeeds: %s" % coal.error)
-	_check(coal.site == Rect2i(19, 19, 4, 4), "Coal plant uses the original asymmetric footprint")
-	_check(coal.tile_indices.size() == 16, "Coal plant changes sixteen map tiles")
-	_check(city.funds() == 16000, "Coal plant charges its tool cost once")
-	_check(city.building_id(19, 19) == 0xcf and city.building_id(22, 22) == 0xcf, "Coal plant fills its footprint")
-	_check(city.tile_flags[19 * 128 + 19] & 0xe0 == 0xe0, "Coal plant sets structure utility flags")
-	_check(city.zones[19 * 128 + 19] == 0x10, "Rotation zero stores the bottom-left corner")
-	_check(city.zones[22 * 128 + 19] == 0x20, "Rotation zero stores the bottom-right corner")
-	_check(city.zones[22 * 128 + 22] == 0x40, "Rotation zero stores the top-left corner")
-	_check(city.zones[19 * 128 + 22] == 0x80, "Rotation zero stores the top-right corner")
-	_check(coal.overlay_id == 61 and city.text_overlay_id(19, 19) == 61, "Coal plant attaches the first dynamic microsim label")
-	_check(not city.label(61).is_empty(), "Coal plant gets the original default label")
-	_check(city.microsim(10).tile_id == 0xcf and city.microsim(10).stat_1 == 200, "Coal plant initializes its XMIC capacity")
-	_check(document.misc_u32(0x01f0) == 16368, "Coal plant decrements clear tile count")
-	_check(document.misc_u32(0x01f0 + 0xcf * 4) == 16, "Coal plant increments its tile count")
-	_check(Buildings.undo(city, coal, random, process_random).ok, "Coal plant placement can be undone")
-	_check(city.funds() == 20000 and city.building_id(19, 19) == 0, "Building undo restores funds and tiles")
-	_check(city.text_overlay_id(19, 19) == 0 and city.microsim(10).tile_id == 0, "Building undo restores XTXT and XMIC")
 
-	var police := Buildings.apply(city, 13, 0, Vector2i(30, 30), random, process_random)
-	_check(police.ok, "Police station placement succeeds")
-	_check(document.misc_u32(0x077c + 5 * 0x6c) == 3, "Police station increments the current budget count")
-	_check(city.microsim(10).stat_1 == 160, "Police station starts with the funded population cap")
-	_check(Buildings.undo(city, police, random, process_random).ok, "Police station placement can be undone")
-	var fire := Buildings.apply(city, 13, 1, Vector2i(34, 30), random, process_random)
-	_check(fire.ok, "Fire station placement succeeds")
-	_check(
-		city.microsim(10).stat_1 == 40 and city.microsim(10).stat_2 == 4,
-		"Fire station starts with the funded population cap and four engines",
-	)
-	_check(Buildings.undo(city, fire, random, process_random).ok, "Fire station placement can be undone")
-	var city_hall := Buildings.apply(city, 5, 1, Vector2i(38, 30), random, process_random)
-	_check(city_hall.ok, "City Hall placement succeeds")
-	_check(
-		city.microsim(10).stat_1 == 200
-		and city.microsim(10).stat_2 == city.current_year(),
-		"City Hall starts with its population cap and construction year",
-	)
-	_check(Buildings.undo(city, city_hall, random, process_random).ok, "City Hall placement can be undone")
-	var museum := Buildings.apply(city, 12, 3, Vector2i(42, 30), random, process_random)
-	_check(museum.ok, "Museum placement succeeds")
-	_check(city.microsim(7).stat_0 == 100, "Museum system starts with score byte 100")
-	_check(Buildings.undo(city, museum, random, process_random).ok, "Museum placement can be undone")
-	_check(city.set_building_id(40, 40, Tiles.POWER_LINE_STRAIGHT_1), "Small park rejection fixture places a power line")
-	var blocked_park := Buildings.apply(
-		city, 14, 0, Vector2i(40, 40), random, process_random
-	)
-	_check(
-		not blocked_park.ok
-		and not blocked_park.error.is_empty()
-		and city.building_id(40, 40) == 0x0e,
-		"Small park cannot replace a power line",
-	)
-	_check(city.set_building_id(40, 40, Tiles.EMPTY), "Small park rejection fixture clears its power line")
-	var park := Buildings.apply(city, 14, 0, Vector2i(40, 40), random, process_random)
-	_check(park.ok, "Small park placement succeeds")
-	_check(city.tile_flags[40 * 128 + 40] & 0xe0 == 0x20, "Small park gets only the piped structure flag")
-	_check(city.building_corners(40, 40) == 0xf0, "One-tile building gets all corner bits")
-	_check(Buildings.undo(city, park, random, process_random).ok, "Small park placement can be undone")
-	var first_bus := Buildings.apply(city, 6, 4, Vector2i(70, 70), random, process_random)
-	var second_bus := Buildings.apply(city, 6, 4, Vector2i(73, 70), random, process_random)
-	_check(first_bus.ok and second_bus.ok, "Bus depots use the shared placement command")
-	_check(first_bus.overlay_id == 52 and second_bus.overlay_id == 52, "Bus depots share fixed microsim record one")
-	_check(not city.label(52).is_empty(), "Fixed bus microsim gets its default system label")
-	_check(city.microsim(1).tile_id == 0xec and city.microsim(1).stat_1 == 2, "Fixed bus microsim aggregates two depots")
-	_check(Buildings.undo(city, second_bus, random, process_random).ok, "Fixed microsim aggregation can be undone")
-	_check(city.microsim(1).stat_1 == 1, "Fixed microsim undo restores the prior aggregate")
-	var mayor_random_before := process_random.state
-	var mayor_house := Buildings.apply(city, 5, 0, Vector2i(80, 80), random, process_random)
-	_check(mayor_house.ok and mayor_house.overlay_id == 61, "Mayor house allocates a dynamic microsim")
-	_check(document.misc_u32(ToolAvailability.MISC_GRANTED_REWARDS) == 0x0e, "Mayor house placement consumes its saved reward bit")
-	_check(not city.label(61).is_empty(), "Mayor house gets its default label")
-	_check(city.microsim(10).stat_1 == city.current_year(), "Mayor house stores its construction year")
-	_check(city.microsim(10).stat_2 >= 10 and city.microsim(10).stat_2 <= 39, "Mayor house initializes the recovered age statistic")
-	_check(Buildings.undo(city, mayor_house, random, process_random).ok, "Mayor house placement can be undone")
-	_check(document.misc_u32(ToolAvailability.MISC_GRANTED_REWARDS) == 0x0f, "Mayor house undo restores its reward bit")
-	_check(process_random.state == mayor_random_before, "Building undo restores the process random state")
-	var llama_random := Random.new(123)
-	var expected_llama_random := Random.new(123)
-	var expected_llama_stat := expected_llama_random.next_u15() & 0x3f
-	var llama := Buildings.apply(city, 5, 3, Vector2i(84, 80), random, llama_random)
-	_check(llama.ok, "Llama Dome placement succeeds")
-	_check(
-		city.microsim(10).stat_3 == expected_llama_stat,
-		"US Llama Dome placement stores one masked process-random value",
-	)
-	_check(Buildings.undo(city, llama, random, llama_random).ok, "Llama Dome placement can be undone")
-	var australian_random := Random.new(456)
-	var australian_state := australian_random.state
-	var australian_llama := Buildings.apply(
-		city, 5, 3, Vector2i(84, 80), random, australian_random, true
-	)
-	_check(australian_llama.ok, "Australian Llama Dome placement succeeds")
-	_check(
-		city.microsim(10).stat_3 == city.current_year()
-		and australian_random.state == australian_state,
-		"Australian Llama Dome stores its construction year without random use",
-	)
-	_check(
-		Buildings.undo(city, australian_llama, random, australian_random).ok,
-		"Australian Llama Dome placement can be undone",
-	)
-
-	_check(city.set_underground_id(59, 60, UnderTiles.PIPE_LTBR), "Pump fixture places an adjacent isolated pipe")
+func _test_building_services(city: CityState, document: Sc2File, random: SimLfsrRandom, process_random: SimRandom) -> void:
 	var pump := Buildings.apply(city, 4, 1, Vector2i(60, 60), random, process_random)
 	_check(pump.ok, "Water pump placement succeeds")
 	_check(city.underground_id(59, 60) == 0x11 and city.underground_id(60, 60) == 0x11, "Water pump reconnects its adjacent pipe")
@@ -381,7 +426,10 @@ func test_building_command(reference_root: String) -> void:
 	_check(city.underground_id(65, 65) == 0x23, "Subway station writes the underground entrance")
 	_check(city.underground_id(64, 65) == 0x02, "Subway station reconnects its adjacent subway")
 	_check(document.misc_u32(0x0fe8) == 2, "Subway station increments the saved subway count")
-	_check(not city.is_piped(65, 65) and not city.is_powered(65, 65) and city.is_powerable(65, 65) and subway_station.immediate_power_refresh, "Subway station clears piped and refreshes its isolated power state")
+	_check(
+		not city.is_piped(65, 65) and not city.is_powered(65, 65) and city.is_powerable(65, 65) and subway_station.immediate_power_refresh,
+		"Subway station clears piped and refreshes its isolated power state",
+	)
 	_check(Buildings.undo(city, subway_station, random, process_random).ok, "Subway station underground changes can be undone")
 	_check(document.misc_u32(0x0fe8) == 1, "Subway station undo restores the saved subway count")
 
@@ -466,31 +514,8 @@ func test_building_command(reference_root: String) -> void:
 	)
 	_check(document.set_misc_u32(Buildings.MISC_STADIUM_TEAMS, 0), "Building fixture restores stadium teams")
 
-	var edge := Buildings.apply(city, 3, 2, Vector2i(1, 1), random, process_random)
-	_check(not edge.ok and not edge.error.is_empty(), "Four-tile building rejects the inner map edge")
-	_check(city.set_building_id(20, 20, Tiles.ROAD_STRAIGHT_1), "Blocked-site fixture places a road")
-	var blocked := Buildings.apply(city, 3, 2, Vector2i(20, 20), random, process_random)
-	_check(not blocked.ok and not blocked.error.is_empty(), "Building placement rejects a road")
-	_check(city.set_building_id(20, 20, Tiles.EMPTY), "Blocked-site fixture removes the road")
-	_check(city.set_zone_id(20, 20, 7), "Military fixture sets a military zone")
-	var military := Buildings.apply(city, 3, 2, Vector2i(20, 20), random, process_random)
-	_check(not military.ok and not military.error.is_empty(), "Building placement rejects military zones")
-	_check(city.set_zone_id(20, 20, 0), "Military fixture clears the military zone")
 
-	for x in range(50, 53):
-		for y in range(50, 53):
-			_check(city.set_tile_flag(x, y, 0x04, x == 50), "Marina fixture sets shoreline water")
-
-	var marina := Buildings.apply(city, 14, 4, Vector2i(51, 51), random, process_random)
-	_check(marina.ok, "Marina placement accepts mixed land and water")
-	_check(Buildings.undo(city, marina, random, process_random).ok, "Marina placement can be undone")
-
-	for y in range(50, 53):
-		_check(city.set_tile_flag(50, y, 0x04, false), "Marina dry fixture removes water")
-
-	var dry_marina := Buildings.apply(city, 14, 4, Vector2i(51, 51), random, process_random)
-	_check(not dry_marina.ok and not dry_marina.error.is_empty(), "Marina rejects an all-dry site")
-
+func _test_resident_objections(reference_root: String) -> void:
 	var nuisance_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 
 	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
@@ -590,15 +615,4 @@ func test_building_command(reference_root: String) -> void:
 		and nuisance_edge.lfsr_advanced
 		and edge_lfsr.state == 2,
 		"A nuisance building consumes its LFSR value before the footprint limit",
-	)
-
-	_check(city.set_funds(3999), "Building funds fixture sets insufficient funds")
-	var insufficient_lfsr_before := random.state
-	var unaffordable := Buildings.apply(city, 3, 2, Vector2i(60, 60), random, process_random)
-	_check(
-		not unaffordable.ok
-		and not unaffordable.error.is_empty()
-		and not unaffordable.lfsr_advanced
-		and random.state == insufficient_lfsr_before,
-		"Insufficient building funds stop before the nuisance LFSR call",
 	)

@@ -69,11 +69,11 @@ func _read(source: Sc2ImportSource) -> void:
 			for index in 256:
 				_palette.colors.append(Color8(bytes[index * 4 + 2], bytes[index * 4 + 1], bytes[index * 4]))
 
-	for field: String in {"toolbar_art": 2, "industry_icons": 178, "city_map_icons": 247}:
+	for field: String in { "toolbar_art": 2, "industry_icons": 178, "city_map_icons": 247 }:
 		if source.platform == "Windows Network Edition":
 			continue
 
-		var id: int = {"toolbar_art": 2, "industry_icons": 178, "city_map_icons": 247}[field]
+		var id: int = { "toolbar_art": 2, "industry_icons": 178, "city_map_icons": 247 }[field]
 		var key := "2/%d" % id
 
 		if _typed.has(key):
@@ -229,7 +229,7 @@ func _export(platform: String, label: String) -> void:
 			var decoded := entry.decode_indices()
 			var relative := "%s/%04d-%d.png" % [pair[0], index, entry.sprite_id]
 			_png(relative, entry.width, entry.height, decoded.pixels, _palette)
-			records.append({"id": entry.sprite_id, "png": relative})
+			records.append({ "id": entry.sprite_id, "png": relative })
 			count += 1
 
 		manifest[pair[0]] = records
@@ -254,7 +254,8 @@ func _export(platform: String, label: String) -> void:
 			warnings.append("Graphics are missing %d standard large sprite IDs. This can occur in demos or incomplete copies." % missing)
 
 	if _ui.size() < GraphicsPack.UI_FIELDS.size():
-		warnings.append("Graphics include %d of %d core interface images. Missing interface artwork uses the available base images or built-in controls." % [_ui.size(), GraphicsPack.UI_FIELDS.size()])
+		warnings.append(("Graphics include %d of %d core interface images. Missing interface artwork uses the "
+			+ "available base images or built-in controls.") % [_ui.size(), GraphicsPack.UI_FIELDS.size()])
 
 	_write("pack.json", JSON.stringify(manifest, "\t").to_utf8_buffer())
 

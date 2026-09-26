@@ -1,7 +1,6 @@
 class_name ApplicationNetworkEdits
 extends RefCounted
 
-
 const Tools = preload("res://src/tools/shared/tool_catalog.gd")
 const Networks = preload("res://src/tools/city/network_command.gd")
 const Highways = preload("res://src/tools/city/highway_command.gd")
@@ -132,7 +131,7 @@ func apply_network_selection(
 		]
 	else:
 		app.status_label.text = "Built %d %s tiles for $%s." % [
-			dry_count, tool_name, app.interface.format_number(network.cost)
+			dry_count, tool_name, app.interface.format_number(network.cost),
 		]
 
 		if network.bridge_cancelled:

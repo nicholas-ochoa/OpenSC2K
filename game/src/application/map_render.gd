@@ -236,7 +236,8 @@ func refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 
 	if force:
 		caches.region_cache.signature = []
-	elif (not dirty.has_area() and previous != signature and app.view_state.overlay_mode == CityViewMode.Mode.CITY and previous.size() == signature.size()
+	elif (not dirty.has_area()
+			and previous != signature and app.view_state.overlay_mode == CityViewMode.Mode.CITY and previous.size() == signature.size()
 			and previous[9] == signature[9]):
 		# redraw only the regions that show changed tiles. a text overlay signature change
 		# can come from a moving object record, which the tile comparison does not see
@@ -251,7 +252,14 @@ func refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 		var labels := app.document_state.city.document.find_chunk("XLAB")
 		# reuse the altitude revision and the sign/dispatch signature already
 		# computed for this snapshot
-		caches.region_cache.sign_layout_token = [app.document_state.city.map_size, signature[1], signature[2], signature[3], signature[9], hash(labels.decoded_payload) if labels != null else 0]
+		caches.region_cache.sign_layout_token = [
+			app.document_state.city.map_size,
+			signature[1],
+			signature[2],
+			signature[3],
+			signature[9],
+			hash(labels.decoded_payload) if labels != null else 0,
+		]
 	else:
 		caches.region_cache.sign_layout_token = []
 

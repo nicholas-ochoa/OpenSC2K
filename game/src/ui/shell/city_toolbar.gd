@@ -1,28 +1,13 @@
 class_name CityToolbar
 extends Panel
 
+
 @warning_ignore_start("integer_division")
 
 signal button_clicked
 signal brush_changed
 signal regenerate_requested
 signal start_city_requested
-
-var start_city_button: Button
-var landscape_editor := false
-var brush_controls: VBoxContainer
-var brush_size_input: SpinBox
-var brush_shape_input: OptionButton
-var _brush_wheel_updated_ms := -50
-var landscape_tools: GridContainer
-var regenerate_button: Button
-var landscape_buttons: Dictionary = {}
-const LANDSCAPE_TOOL_ORDER := [
-	Vector2i(CityToolIds.Group.BULLDOZER, CityToolIds.Bulldozer.RAISE), Vector2i(CityToolIds.Group.BULLDOZER, CityToolIds.Bulldozer.LOWER), Vector2i(CityToolIds.Group.BULLDOZER, CityToolIds.Bulldozer.STRETCH), Vector2i(CityToolIds.Group.BULLDOZER, CityToolIds.Bulldozer.LEVEL),
-	Vector2i(CityToolIds.Group.BULLDOZER, CityToolIds.Bulldozer.RAISE_SEA), Vector2i(CityToolIds.Group.BULLDOZER, CityToolIds.Bulldozer.LOWER_SEA), Vector2i(CityToolIds.Group.LANDSCAPE, CityToolIds.Landscape.WATER), Vector2i(CityToolIds.Group.LANDSCAPE, CityToolIds.Landscape.STREAM),
-	Vector2i(CityToolIds.Group.LANDSCAPE, CityToolIds.Landscape.TREES), Vector2i(CityToolIds.Group.LANDSCAPE, CityToolIds.Landscape.FOREST), Vector2i(CityToolIds.Group.QUERY, CityToolIds.Query.QUERY), Vector2i(CityToolIds.Group.CENTERING, CityToolIds.Centering.CENTER),
-]
-
 signal group_requested(index: int)
 signal subtool_requested(index: int)
 signal rotate_requested(counter_clockwise: bool)
@@ -34,10 +19,38 @@ signal underground_water_mains_visibility_requested(visible: bool)
 signal underground_pipes_visibility_requested(visible: bool)
 signal underground_subways_visibility_requested(visible: bool)
 
+const LANDSCAPE_TOOL_ORDER := [
+	Vector2i(
+		CityToolIds.Group.BULLDOZER,
+		CityToolIds.Bulldozer.RAISE,
+	), Vector2i(
+		CityToolIds.Group.BULLDOZER,
+		CityToolIds.Bulldozer.LOWER,
+	), Vector2i(
+		CityToolIds.Group.BULLDOZER,
+		CityToolIds.Bulldozer.STRETCH,
+	), Vector2i(CityToolIds.Group.BULLDOZER, CityToolIds.Bulldozer.LEVEL),
+	Vector2i(
+		CityToolIds.Group.BULLDOZER,
+		CityToolIds.Bulldozer.RAISE_SEA,
+	), Vector2i(
+		CityToolIds.Group.BULLDOZER,
+		CityToolIds.Bulldozer.LOWER_SEA,
+	), Vector2i(
+		CityToolIds.Group.LANDSCAPE,
+		CityToolIds.Landscape.WATER,
+	), Vector2i(CityToolIds.Group.LANDSCAPE, CityToolIds.Landscape.STREAM),
+	Vector2i(
+		CityToolIds.Group.LANDSCAPE,
+		CityToolIds.Landscape.TREES,
+	), Vector2i(
+		CityToolIds.Group.LANDSCAPE,
+		CityToolIds.Landscape.FOREST,
+	), Vector2i(CityToolIds.Group.QUERY, CityToolIds.Query.QUERY), Vector2i(CityToolIds.Group.CENTERING, CityToolIds.Centering.CENTER),
+]
 const Tools = preload("res://src/tools/shared/tool_catalog.gd")
 const HoldMenu = preload("res://src/ui/shell/city_tool_hold_menu.gd")
 const HOLD_SECONDS := 0.45
-var data_view_input: OptionButton
 const GROUP_ICON_REGIONS := [
 	Rect2i(0, 0, 23, 23), Rect2i(24, 0, 26, 23), Rect2i(50, 0, 20, 23),
 	Rect2i(70, 0, 25, 23), Rect2i(95, 0, 21, 23), Rect2i(116, 0, 24, 23),
@@ -47,6 +60,16 @@ const GROUP_ICON_REGIONS := [
 	Rect2i(348, 0, 29, 23), Rect2i(377, 0, 26, 23), Rect2i(510, 0, 21, 23),
 ]
 
+var start_city_button: Button
+var landscape_editor := false
+var brush_controls: VBoxContainer
+var brush_size_input: SpinBox
+var brush_shape_input: OptionButton
+var _brush_wheel_updated_ms := -50
+var landscape_tools: GridContainer
+var regenerate_button: Button
+var landscape_buttons: Dictionary = {}
+var data_view_input: OptionButton
 var hold_menu: CityToolHoldMenu
 var _hold_generation := 0
 var _held_group := -1
@@ -54,16 +77,13 @@ var _hold_opened := false
 var _current_city: CityState
 var _icon_provider := Callable()
 var _selected_subtool := 0
-
 var toolbar_art: Image
 var toolbar_buttons: Array[Button] = []
 var rotate_counter_clockwise_button: Button
 var rotate_clockwise_button: Button
 var zoom_out_button: Button
 var zoom_in_button: Button
-var active_tool_group_label: Label
 var child_tool_scroll: ScrollContainer
-var child_tool_grid: GridContainer
 var child_tool_buttons: Dictionary = {}
 var child_palette: CityChildToolPalette
 var view_layers_heading: Label
@@ -97,7 +117,11 @@ func _ready() -> void:
 		data_view_input.add_item(entry[0], entry[1])
 
 	data_view_input.select(0)
-	view_mode_buttons = {CityViewMode.Mode.CITY: %CityView, CityViewMode.Mode.UNDERGROUND: %UndergroundView, CityViewMode.Mode.HEIGHT: %HeightView}
+	view_mode_buttons = {
+		CityViewMode.Mode.CITY: %CityView,
+		CityViewMode.Mode.UNDERGROUND: %UndergroundView,
+		CityViewMode.Mode.HEIGHT: %HeightView,
+	}
 	view_visibility_checks = {
 		"buildings": %BuildingsVisible, "networks": %NetworksVisible,
 		"water": %WaterVisible, "trees": %TreesVisible,
@@ -137,9 +161,7 @@ func _ready() -> void:
 
 	child_palette.build()
 	child_palette.subtool_requested.connect(subtool_requested.emit)
-	active_tool_group_label = child_palette.heading
 	child_tool_scroll = child_palette.scroll
-	child_tool_grid = child_palette.grid
 	child_tool_buttons = child_palette.buttons
 
 	for mode in view_mode_buttons:

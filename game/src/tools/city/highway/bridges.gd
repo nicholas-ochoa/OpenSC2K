@@ -9,26 +9,6 @@ const WEIGHT_SHORE := 0x0001
 const SLOPED_LAND_MASK := 0x0f00
 
 
-class Plan extends RefCounted:
-	var ok := false
-	var error := ""
-	var start := Vector2i.ZERO
-	var direction := 0
-	var span_length := 0
-	var reinforced_allowed := false
-
-	static func failure(message: String) -> Plan:
-		var result := Plan.new()
-		result.error = message
-
-		return result
-
-
-class Placement extends RefCounted:
-	var sections: Array[Vector2i] = []
-	var endpoint_sections: Array[Vector2i] = []
-
-
 static func bridge_type_name(bridge_type: int) -> String:
 	return String(BRIDGE_NAMES.get(bridge_type, "Unknown Bridge"))
 
@@ -251,7 +231,8 @@ static func _bridge_terrain_weight(terrain_id: int) -> int:
 	if terrain_id >= TerrainTileIds.SLOPE_TOP_LEFT and terrain_id <= TerrainTileIds.LAND_LAST:
 		return WEIGHT_SLOPED_LAND
 
-	if (terrain_id >= TerrainTileIds.DEEP_WATER_FIRST and terrain_id <= TerrainTileIds.SHORE_FIRST) or terrain_id == TerrainTileIds.SURFACE_WATER_OPEN:
+	if ((terrain_id >= TerrainTileIds.DEEP_WATER_FIRST and terrain_id <= TerrainTileIds.SHORE_FIRST)
+			or terrain_id == TerrainTileIds.SURFACE_WATER_OPEN):
 		return WEIGHT_OPEN_WATER
 
 	if (
@@ -435,3 +416,23 @@ static func _write_reinforced_bridge_section(
 		var point: Vector2i = anchor + offsets[offset_index]
 		var index := point.x * map_edge + point.y
 		zones[index] = (zones[index] & Sc2ZoneLayout.CORNERS_MASK) | zone_types[offset_index]
+
+
+class Plan extends RefCounted:
+	var ok := false
+	var error := ""
+	var start := Vector2i.ZERO
+	var direction := 0
+	var span_length := 0
+	var reinforced_allowed := false
+
+	static func failure(message: String) -> Plan:
+		var result := Plan.new()
+		result.error = message
+
+		return result
+
+
+class Placement extends RefCounted:
+	var sections: Array[Vector2i] = []
+	var endpoint_sections: Array[Vector2i] = []

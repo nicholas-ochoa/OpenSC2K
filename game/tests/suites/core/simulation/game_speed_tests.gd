@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Simulation: game speed checks.
 
 @warning_ignore_start("integer_division")
@@ -11,6 +10,12 @@ const GameSpeed = preload("res://src/simulation/core/game_speed_controller.gd")
 
 
 func test_game_speed_controller(reference_root: String) -> void:
+	_test_speed_cadence(reference_root)
+	_test_refresh_and_music(reference_root)
+	_test_blocking_requests(reference_root)
+
+
+func _test_speed_cadence(reference_root: String) -> void:
 	var paused_document := _load_fixture(reference_root.path_join("CITIES/STARTER.SC2"))
 	var paused_city := CityModel.from_document(paused_document)
 	_check(paused_city.simulation_speed() == 1, "STARTER stores the paused simulation speed")
@@ -106,6 +111,8 @@ func test_game_speed_controller(reference_root: String) -> void:
 		"African Swallow advances again on the next idle cycle",
 	)
 
+
+func _test_refresh_and_music(reference_root: String) -> void:
 	var generated_city := CityModel.from_document(
 		_load_fixture(GeneratedCityFixture.path(128))
 	)
@@ -164,6 +171,8 @@ func test_game_speed_controller(reference_root: String) -> void:
 		"Controller forwards a monthly MIDI track request",
 	)
 
+
+func _test_blocking_requests(reference_root: String) -> void:
 	var budget_city := CityModel.from_document(_load_fixture(reference_root.path_join("DEFAULT.SC2")))
 	_check(budget_city.set_age_in_days(24), "Controller budget fixture selects day 24")
 	_check(budget_city.set_simulation_speed(4), "Controller budget fixture stores Cheetah speed")

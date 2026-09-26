@@ -1,7 +1,6 @@
 class_name CityUiGraphics
 extends RefCounted
 
-
 const CONTROL_SIZES: Dictionary[String, Vector2i] = {
 	"ADVICED": Vector2i(30, 25), "ADVICEF": Vector2i(30, 25), "ADVICEU": Vector2i(30, 25),
 	"BOOKD": Vector2i(30, 24), "BOOKF": Vector2i(30, 24), "BOOKU": Vector2i(30, 24),
@@ -13,7 +12,7 @@ const CONTROL_SIZES: Dictionary[String, Vector2i] = {
 const HOURGLASS_IDS := [189, 190, 191, 192, 193, 194, 195, 196]
 const PORTRAIT_IDS := [197, 198, 199, 200, 201, 202, 203, 204]
 const PORTRAIT_SIZE := Vector2i(64, 82)
-const TERRAIN_SIZES := {139: Vector2i(65, 65), 207: Vector2i(544, 19), "TERRAIN.BMP": Vector2i(341, 19)}
+const TERRAIN_SIZES := { 139: Vector2i(65, 65), 207: Vector2i(544, 19), "TERRAIN.BMP": Vector2i(341, 19) }
 const TERRAIN_ROLES := [
 	"raise", "lower", "stretch", "level", "sea_raise", "sea_lower", "water", "stream", "tree",
 	"forest", "center", "zoom_out", "zoom_in", "rotate_left", "rotate_right", "help", "hills",
@@ -25,9 +24,33 @@ const TERRAIN_LOOSE_ROLES := [
 	"water_amount", "trees_amount",
 ]
 const TERRAIN_WIDTHS := [19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 16, 13, 8]
-const MEDIA_IDS := [261, 262, 263, 264, 265, 266, 267, 268, 269, 270, "WILL0D.BMP", "WILL0U.BMP", "WILL1D.BMP", "WILL1U.BMP", "WILL2D.BMP", "WILL2U.BMP", "WILL3D.BMP", "WILL3U.BMP", "WILL4D.BMP", "WILL4U.BMP"]
+const MEDIA_IDS := [
+	261,
+	262,
+	263,
+	264,
+	265,
+	266,
+	267,
+	268,
+	269,
+	270,
+	"WILL0D.BMP",
+	"WILL0U.BMP",
+	"WILL1D.BMP",
+	"WILL1U.BMP",
+	"WILL2D.BMP",
+	"WILL2U.BMP",
+	"WILL3D.BMP",
+	"WILL3U.BMP",
+	"WILL4D.BMP",
+	"WILL4U.BMP",
+]
 const NOTICE_IDS := [400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411]
-const PRESENTATION_SIZES: Dictionary[String, Vector2i] = {"128.BMP": Vector2i(106, 53), "2000WIN.BMP": Vector2i(371, 331), "ABOUT.BMP": Vector2i(480, 299), "PRESNTS.BMP": Vector2i(238, 198), "TITLESCR.BMP": Vector2i(644, 484), "PAL_LOAD.BMP": Vector2i(101, 101), "PAL_MSTR.BMP": Vector2i(101, 101), "PAL_STTC.BMP": Vector2i(101, 101)}
+const PRESENTATION_SIZES: Dictionary[String, Vector2i] = { "128.BMP": Vector2i(106, 53), "2000WIN.BMP": Vector2i(371, 331),
+	"ABOUT.BMP": Vector2i(480, 299), "PRESNTS.BMP": Vector2i(238, 198), "TITLESCR.BMP": Vector2i(644, 484),
+	"PAL_LOAD.BMP": Vector2i(101, 101), "PAL_MSTR.BMP": Vector2i(101, 101), "PAL_STTC.BMP": Vector2i(101, 101) }
+
 var error := ""
 var controls: Dictionary[String, Image] = {}
 var hourglass: Array[Image] = []
@@ -130,7 +153,16 @@ func _load(value: Variant, read_png: Callable, _palette: Sc2Palette) -> void:
 
 			return
 
-		var ids: Array = {"controls": CONTROL_SIZES.keys(), "hourglass": HOURGLASS_IDS, "portraits": PORTRAIT_IDS, "terrain": TERRAIN_SIZES.keys(), "media": MEDIA_IDS, "notices": NOTICE_IDS, "presentation": PRESENTATION_SIZES.keys(), "checks": [CheckControlGraphics.RESOURCE_ID]}[group]
+		var ids: Array = {
+			"controls": CONTROL_SIZES.keys(),
+			"hourglass": HOURGLASS_IDS,
+			"portraits": PORTRAIT_IDS,
+			"terrain": TERRAIN_SIZES.keys(),
+			"media": MEDIA_IDS,
+			"notices": NOTICE_IDS,
+			"presentation": PRESENTATION_SIZES.keys(),
+			"checks": [CheckControlGraphics.RESOURCE_ID],
+		}[group]
 		var records: Variant = value[group]
 
 		if not records is Array or records.is_empty():

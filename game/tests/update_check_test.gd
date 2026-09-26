@@ -5,24 +5,6 @@ const Check = preload("res://src/platform/release_update_check.gd")
 const SettingsScene = preload("res://src/ui/settings/app_settings_dialog.tscn")
 
 
-class FakeUpdates extends ApplicationUpdates:
-	var sent := 0
-	var send_error := OK
-	var opened: Array[String] = []
-
-	func _init(app_preferences: AppPreferences) -> void:
-		super(app_preferences)
-		current_version = "1.2.3"
-
-	func _open_url(url: String) -> void:
-		opened.append(url)
-
-	func _send_request() -> Error:
-		sent += 1
-
-		return send_error
-
-
 func _initialize() -> void:
 	call_deferred("_run")
 
@@ -37,7 +19,8 @@ func _run() -> void:
 	await _check_settings_dialog()
 	await _check_help_menu()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
-	print("PASS: release version rules, GitHub responses and rate limits, stored update state, dialog actions, daily and manual checks, settings and Help menu")
+	print(("PASS: release version rules, GitHub responses and rate limits, stored update state, "
+		+ "dialog actions, daily and manual checks, settings and Help menu"))
 	quit()
 
 
@@ -69,7 +52,7 @@ func _check_versions() -> void:
 
 
 func _release_body(tag: String, page: String) -> PackedByteArray:
-	return JSON.stringify({"tag_name": tag, "html_url": page}).to_utf8_buffer()
+	return JSON.stringify({ "tag_name": tag, "html_url": page }).to_utf8_buffer()
 
 
 func _check_responses() -> void:
@@ -84,7 +67,14 @@ func _check_responses() -> void:
 	assert(older.status == Check.Status.UP_TO_DATE)
 
 	# open only a release page of this project
-	var foreign := Check.read_response(HTTPRequest.RESULT_SUCCESS, 200, PackedStringArray(), _release_body("v2.0.0", "https://example.com/"), "1.2.3", 0)
+	var foreign := Check.read_response(
+		HTTPRequest.RESULT_SUCCESS,
+		200,
+		PackedStringArray(),
+		_release_body("v2.0.0", "https://example.com/"),
+		"1.2.3",
+		0,
+	)
 	assert(foreign.status == Check.Status.UPDATE_AVAILABLE and foreign.url == Check.LATEST_RELEASE_PAGE)
 
 	for body in ["not json", "[]", "{}", "{\"tag_name\": 5}", "{\"tag_name\": \"latest\"}"]:
@@ -120,7 +110,9 @@ func _check_store(path: String) -> void:
 	assert(defaults.update_last_check == 0 and defaults.update_skipped_version.is_empty())
 	assert(defaults.update_checked_at == 0 and defaults.update_error.is_empty())
 	assert(AppSettingsStore.save_update_state(1234, "1.3.0", 1240, "Failure", path) == OK)
-	assert(AppSettingsStore.save_values(0.5, 0.5, false, path, "", "", null, null, null, null, null, null, null, null, null, null, null, null, null, true) == OK)
+	var update_options := AppSettingsStore.SaveOptions.new()
+	update_options.check_for_updates = true
+	assert(AppSettingsStore.save_values(0.5, 0.5, false, path, update_options) == OK)
 	var loaded := AppSettingsStore.load_values(path)
 	assert(loaded.check_for_updates)
 	assert(loaded.update_last_check == 1234 and loaded.update_skipped_version == "1.3.0", "Saving settings must keep the update state")
@@ -314,3 +306,21 @@ func _check_help_menu() -> void:
 	assert(requested == [CityMenuBar.MENU_CHECK_FOR_UPDATES])
 	menu_bar.free()
 	await process_frame
+
+
+class FakeUpdates extends ApplicationUpdates:
+	var sent := 0
+	var send_error := OK
+	var opened: Array[String] = []
+
+	func _init(app_preferences: AppPreferences) -> void:
+		super(app_preferences)
+		current_version = "1.2.3"
+
+	func _open_url(url: String) -> void:
+		opened.append(url)
+
+	func _send_request() -> Error:
+		sent += 1
+
+		return send_error

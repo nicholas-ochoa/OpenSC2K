@@ -29,7 +29,6 @@ var show_neighbors := true:
 		if show_neighbors != value:
 			show_neighbors = value
 			_rebuild()
-
 var _palette: Sc2Palette
 var _sprites: Sc2SpriteArchive
 var _artwork_entry: Sc2SpriteArchive.SpriteEntry
@@ -43,8 +42,22 @@ func _ready() -> void:
 	get_tree().root.size_changed.connect(queue_redraw)
 
 
+func _draw() -> void:
+	if snapshot == null:
+		return
+	var scale := minf(size.x / FRAME_SIZE.x, size.y / FRAME_SIZE.y)
+	# the largest fit with whole screen pixels for each artwork pixel
+	if ScreenPixels.scale > 0.0:
+		scale = ScreenPixels.fit_scale(scale)
+	elif scale >= 1.0:
+		scale = floorf(scale)
+	var extent := Vector2(FRAME_SIZE) * scale
+	draw_texture_rect(snapshot, Rect2(((size - extent) * 0.5).floor(), extent), false)
+
+
 func configure(pixels: PackedInt32Array, width: int, height: int, tile_size: int,
-	palette: Sc2Palette, sprites: Sc2SpriteArchive, view := CityIsometricRenderer.VIEW_LARGE, selected_tile := Tiles.LARGE_APARTMENT_BUILDING_3X3_1) -> void:
+	palette: Sc2Palette, sprites: Sc2SpriteArchive, view := CityIsometricRenderer.VIEW_LARGE,
+	selected_tile := Tiles.LARGE_APARTMENT_BUILDING_3X3_1) -> void:
 	tile_id = selected_tile
 	_palette = palette
 	_sprites = sprites
@@ -114,22 +127,10 @@ func _rebuild() -> void:
 				CityIsometricRenderer.draw_tile(output, snapshot_city, _palette, sprites, cache,
 					configuration, origin_x, x, y, 0, false, false)
 			if support_target:
-				var anchor_height := underground_ground.height if scene.kind == ContextScene.Kind.UNDERGROUND and underground_ground != null else artwork_image.get_height()
+				var anchor_height := (underground_ground.height if scene.kind == ContextScene.Kind.UNDERGROUND
+					and underground_ground != null else artwork_image.get_height())
 				var point := Vector2i(origin_x + (x - y) * config.half_width,
 					configuration.top_margin + (x + y) * config.half_height + config.tile_height - anchor_height)
 				output.blend_rect(artwork_image, Rect2i(Vector2i.ZERO, artwork_image.get_size()), point)
 	snapshot = ImageTexture.create_from_image(output)
 	queue_redraw()
-
-
-func _draw() -> void:
-	if snapshot == null:
-		return
-	var scale := minf(size.x / FRAME_SIZE.x, size.y / FRAME_SIZE.y)
-	# the largest fit with whole screen pixels for each artwork pixel
-	if ScreenPixels.scale > 0.0:
-		scale = ScreenPixels.fit_scale(scale)
-	elif scale >= 1.0:
-		scale = floorf(scale)
-	var extent := Vector2(FRAME_SIZE) * scale
-	draw_texture_rect(snapshot, Rect2(((size - extent) * 0.5).floor(), extent), false)

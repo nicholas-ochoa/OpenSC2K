@@ -71,7 +71,8 @@ func _initialize() -> void:
 	assert(ApplicationStaticRender.changed_source_rects(wide, old, large, 2, rects))
 	assert(rects.size() == 1, "A highway threshold must not dirty a road or empty tiles")
 	assert(_changed_pixels > 0)
-	print("PASS: traffic bounds contain %d changed pixels in %d tile comparisons, all artwork sizes and extended-map edges" % [_changed_pixels, _comparisons])
+	print("PASS: traffic bounds contain %d changed pixels in %d tile comparisons, all artwork sizes and extended-map edges" % [
+		_changed_pixels, _comparisons])
 	quit()
 
 
@@ -128,7 +129,10 @@ func _check_pixels(before: Array[CityGpuDrawList], after: Array[CityGpuDrawList]
 
 				var offset := word * 2 + pixel
 				var point := bounds.position + Vector2i(offset % bounds.size.x, offset / bounds.size.x)
-				assert(rects.any(func(rect: Rect2i) -> bool: return rect.has_point(point)), "Traffic changed outside its dirty bounds at %s" % point)
+				assert(
+					rects.any(func(rect: Rect2i) -> bool: return rect.has_point(point)),
+					"Traffic changed outside its dirty bounds at %s" % point,
+				)
 				_changed_pixels += 1
 
 		_comparisons += 1

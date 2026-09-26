@@ -41,7 +41,10 @@ func _init() -> void:
 		if FileAccess.file_exists(path) or FileAccess.file_exists(path + ".json"):
 			var report: Variant = JSON.parse_string(FileAccess.get_file_as_string(path + ".json"))
 
-			if not regenerate or not FileAccess.file_exists(path) or not report is Dictionary or report.get("output_sha256", "") != FileAccess.get_sha256(path):
+			if (not regenerate
+					or not FileAccess.file_exists(path)
+					or not report is Dictionary
+					or report.get("output_sha256", "") != FileAccess.get_sha256(path)):
 				push_error("Refuse to overwrite an existing or edited fixture. Use --regenerate only for unchanged fixtures: " + path)
 				quit(1)
 				return
@@ -204,7 +207,10 @@ func clear_site(site: Rect2i) -> bool:
 		for y in range(site.position.y, site.end.y):
 			var index := city.index_of(x, y)
 
-			if index < 0 or city.terrain[index] != 0 or city.tile_flags[index] & Sc2TileFlags.WATER or city.buildings[index] >= Tiles.FIRST_ROAD:
+			if (index < 0
+					or city.terrain[index] != 0
+					or city.tile_flags[index] & Sc2TileFlags.WATER
+					or city.buildings[index] >= Tiles.FIRST_ROAD):
 				return false
 
 	return true

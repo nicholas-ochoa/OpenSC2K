@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Rendering: static overlay checks.
 
 @warning_ignore_start("integer_division")
@@ -160,6 +159,14 @@ func run(reference_root: String, large: Sc2SpriteArchive) -> void:
 		),
 		"Subway-to-rail tiles draw without zone anchor bits",
 	)
+	_test_network_and_power_overlays(overlay_document, overlay_city, overlay_point)
+
+	_test_disaster_overlays(overlay_city, overlay_point, large)
+
+	_test_edge_stacks(overlay_city)
+
+
+func _test_network_and_power_overlays(overlay_document: Sc2File, overlay_city: CityState, overlay_point: Vector2i) -> void:
 	var compass_masks := [0x80, 0x10, 0x20, 0x40]
 	_check(
 		overlay_city.set_building_corners(
@@ -289,6 +296,9 @@ func run(reference_root: String, large: Sc2SpriteArchive) -> void:
 		overlay_city.set_tile_flag(overlay_point.x, overlay_point.y, 0x04, false),
 		"Fire view fixture uses a land tile",
 	)
+
+
+func _test_disaster_overlays(overlay_city: CityState, overlay_point: Vector2i, large: Sc2SpriteArchive) -> void:
 	var fire_visual := IsometricStaticVisuals.fire_overlay_visual(
 		overlay_city, overlay_point.x, overlay_point.y, IsometricRenderer.VIEW_LARGE, 3
 	)
@@ -402,6 +412,9 @@ func run(reference_root: String, large: Sc2SpriteArchive) -> void:
 		).sprite_id == 493,
 		"Special marker 0xfe uses its native small effect frame",
 	)
+
+
+func _test_edge_stacks(overlay_city: CityState) -> void:
 	var edge_point := Vector2i(127, 64)
 	_check(
 		overlay_city.set_land_altitude(edge_point.x, edge_point.y, 3),

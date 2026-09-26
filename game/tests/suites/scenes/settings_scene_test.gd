@@ -1,6 +1,7 @@
 extends "res://tests/support/scene_case.gd"
 
 const SettingsScene = preload("res://src/ui/settings/app_settings_dialog.tscn")
+
 var import_requests := 0
 
 

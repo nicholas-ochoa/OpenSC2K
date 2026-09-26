@@ -2,23 +2,6 @@ class_name TerrainEditHeights
 extends TerrainEditConstants
 
 
-
-class Plan extends RefCounted:
-	var valid := false
-	var insufficient := false
-	var heights := PackedInt32Array()
-	var modified := PackedInt32Array()
-	var zone_indices := PackedInt32Array()
-	var funds := 0
-	var cost := 0
-
-	static func invalid(insufficient_funds := false) -> Plan:
-		var result := Plan.new()
-		result.insufficient = insufficient_funds
-
-		return result
-
-
 static func plan_raise(
 	heights: PackedInt32Array,
 	zones: PackedByteArray,
@@ -268,3 +251,19 @@ static func _set_water_altitude(altitude: PackedByteArray, index: int, value: in
 
 static func _point_is_in_bounds(point: Vector2i, map_edge: int = 128) -> bool:
 	return point.x >= 0 and point.x < map_edge and point.y >= 0 and point.y < map_edge
+
+
+class Plan extends RefCounted:
+	var valid := false
+	var insufficient := false
+	var heights := PackedInt32Array()
+	var modified := PackedInt32Array()
+	var zone_indices := PackedInt32Array()
+	var funds := 0
+	var cost := 0
+
+	static func invalid(insufficient_funds := false) -> Plan:
+		var result := Plan.new()
+		result.insufficient = insufficient_funds
+
+		return result

@@ -2,33 +2,10 @@ class_name ImageClipboard
 extends RefCounted
 
 const IndexedBitmap = preload("res://src/assets/indexed_bmp.gd")
-
 const TEMP_DIRECTORY := "user://clipboard"
 const TEMP_PNG_FILENAME := "scurk-copy.png"
 const TEMP_BMP_FILENAME := "scurk-copy.bmp"
 const TEMP_DIB_FILENAME := "scurk-copy.dib"
-
-
-class Result extends RefCounted:
-	var ok := false
-	var error := ""
-
-	static func failure(message: String) -> Result:
-		var result := Result.new()
-		result.error = message
-
-		return result
-
-
-class Command extends Result:
-	var executable := ""
-	var arguments := PackedStringArray()
-
-	static func rejected(message: String) -> Command:
-		var result := Command.new()
-		result.error = message
-
-		return result
 
 
 static func copy_indexed(
@@ -496,3 +473,25 @@ static func _rgb_key(color: Color) -> int:
 		| clampi(roundi(color.g * 255.0), 0, 255) << 8
 		| clampi(roundi(color.b * 255.0), 0, 255)
 	)
+
+
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+
+	static func failure(message: String) -> Result:
+		var result := Result.new()
+		result.error = message
+
+		return result
+
+
+class Command extends Result:
+	var executable := ""
+	var arguments := PackedStringArray()
+
+	static func rejected(message: String) -> Command:
+		var result := Command.new()
+		result.error = message
+
+		return result

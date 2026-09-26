@@ -3,12 +3,10 @@ extends VBoxContainer
 
 signal mode_changed(mode: String)
 signal center_requested(point: Vector2i)
-
 signal isometric_view_requested(mode: CityViewMode.Mode)
 
 const Minimap = preload("res://src/view/city_minimap.gd")
 const Preview = preload("res://src/view/city_map_preview_control.gd")
-
 const TAB_NAMES := [
 	"City", "Transit", "Power", "Water", "Population", "Police",
 	"Pollution", "Land Value", "Services",
@@ -57,6 +55,7 @@ const MODE_VIEWS := {
 	"land_value": CityViewMode.Mode.LAND_VALUE,
 	"fire_power": CityViewMode.Mode.FIRE_POWER,
 }
+
 var city: CityState
 var palette: Sc2Palette
 var icon_sheet: Image

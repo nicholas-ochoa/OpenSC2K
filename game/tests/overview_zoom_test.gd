@@ -2,6 +2,7 @@ extends SceneTree
 
 # The animated menu has its own tests. Do not render a random second city here.
 
+
 func _initialize() -> void:
 	call_deferred("_run")
 
@@ -41,7 +42,8 @@ func _run() -> void:
 	assert(main.static_render.city_view_size() == CityIsometricRenderer.VIEW_SMALL)
 	assert(AppSettingsStore.graphics_size_at_zoom(main.preferences.zoom_graphics, 25) == 2, "Graphics choice indices changed")
 
-	for mode: CityViewMode.Mode in [CityViewMode.Mode.UNDERGROUND, CityViewMode.Mode.HEIGHT, CityViewMode.Mode.LAND_VALUE, CityViewMode.Mode.CITY]:
+	for mode: CityViewMode.Mode in [CityViewMode.Mode.UNDERGROUND, CityViewMode.Mode.HEIGHT, CityViewMode.Mode.LAND_VALUE,
+		CityViewMode.Mode.CITY]:
 		main.menus.set_overlay(mode)
 		assert(map.zoom_percent() == 10)
 		var point := Vector2i(64, 64)

@@ -9,7 +9,13 @@ var bytes := PackedByteArray()
 var source := ""
 
 
-static func make(record_name: String, payload: PackedByteArray, origin: String, resource_type := "", resource_id := -1) -> Sc2ImportResource:
+static func make(
+	record_name: String,
+	payload: PackedByteArray,
+	origin: String,
+	resource_type := "",
+	resource_id := -1,
+) -> Sc2ImportResource:
 	var result := Sc2ImportResource.new()
 	result.name = record_name
 	result.bytes = payload

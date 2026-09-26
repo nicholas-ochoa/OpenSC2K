@@ -1,7 +1,6 @@
 class_name CheckControlGraphics
 extends RefCounted
 
-
 const RESOURCE_ID := "CTL3D_3DCHECK"
 const CELL_SIZE := Vector2i(14, 13)
 const SHEET_SIZE := Vector2i(70, 39)

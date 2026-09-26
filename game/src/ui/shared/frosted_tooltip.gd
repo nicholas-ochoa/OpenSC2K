@@ -40,6 +40,10 @@ func _exit_tree() -> void:
 		_popup.canvas_cull_mask = _canvas_mask
 
 
+func _process(_delta: float) -> void:
+	_sync_geometry()
+
+
 func _refresh_theme() -> void:
 	if _refreshing:
 		return
@@ -61,10 +65,6 @@ func _refresh_visibility() -> void:
 	if _layer != null:
 		_layer.visible = _enabled and _popup.visible
 	set_process(_enabled and _popup.visible)
-	_sync_geometry()
-
-
-func _process(_delta: float) -> void:
 	_sync_geometry()
 
 

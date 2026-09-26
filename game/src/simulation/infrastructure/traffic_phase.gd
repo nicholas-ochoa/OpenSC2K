@@ -5,10 +5,6 @@ const MAP_SIZE := 64
 const VALUE_COUNT := MAP_SIZE * MAP_SIZE
 
 
-class Result extends PhaseResult:
-	var traffic_count := 0
-
-
 static func run(city: CityState) -> Result:
 	var map_edge: int = city.map_size if city != null else 128
 
@@ -60,3 +56,7 @@ static func _failed(message: String) -> Result:
 	result.error = message
 
 	return result
+
+
+class Result extends PhaseResult:
+	var traffic_count := 0

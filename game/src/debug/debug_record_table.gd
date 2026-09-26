@@ -1,13 +1,13 @@
 class_name DebugRecordTable
 extends VBoxContainer
 
-
 signal locate_requested(site: Rect2i)
 
 # yellow row background for a record with a warning. it stays readable in light and dark themes
 const WARNING_COLOR := Color(1.0, 0.85, 0.2, 0.3)
 
 @export var kind := "XMIC"
+
 var rows: Dictionary = {}
 var _last_refresh := -1000
 var _host: Control
@@ -23,6 +23,7 @@ var record_limit := -1
 # sorted column and direction; -1 keeps record order
 var sort_column := -1
 var sort_descending := false
+
 @onready var table: Tree = $Table
 @onready var search: LineEdit = $Controls/Search
 @onready var show_empty: CheckBox = $Controls/ShowEmpty

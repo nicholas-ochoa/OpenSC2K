@@ -10,14 +10,6 @@ var _glass: ShaderMaterial
 var _original_material: Material
 
 
-static func bind(panel: PanelContainer) -> void:
-	if panel.has_meta(BINDING_META) and is_instance_valid(panel.get_meta(BINDING_META)):
-		return
-	var binding := FrostedTooltipPanel.new()
-	panel.set_meta(BINDING_META, binding)
-	panel.add_child(binding)
-
-
 func _ready() -> void:
 	_panel = get_parent() as PanelContainer
 	_original_material = _panel.material
@@ -48,6 +40,14 @@ func _exit_tree() -> void:
 			signal_value.disconnect(_refresh)
 	if is_instance_valid(_background_copy):
 		_background_copy.queue_free()
+
+
+static func bind(panel: PanelContainer) -> void:
+	if panel.has_meta(BINDING_META) and is_instance_valid(panel.get_meta(BINDING_META)):
+		return
+	var binding := FrostedTooltipPanel.new()
+	panel.set_meta(BINDING_META, binding)
+	panel.add_child(binding)
 
 
 func _refresh() -> void:

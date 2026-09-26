@@ -2,43 +2,6 @@ class_name HighwayEdit
 extends HighwayConstants
 
 
-
-class SegmentPlan:
-	var city: CityState
-	var map_edge: int
-	var group_index: int
-	var subtool_index: int
-	var start: Vector2i
-	var finish: Vector2i
-	var free_mode: bool
-	var old_payloads: Dictionary
-	var sections: Array[Vector2i] = []
-	var bridge_plan: HighwayBridges.Plan
-	var bridge_attempted := false
-	var listed_route_cost := 0
-	var route_cost := 0
-	var selected_bridge := BRIDGE_UNSELECTED
-	var listed_bridge_cost := 0
-	var bridge_cost := 0
-	var bridge_built := false
-	var bridge_error := ""
-	var connection_choice := CONNECTION_UNSELECTED
-	var connection_anchor := Vector2i.ZERO
-	var connection_available := false
-	var connection_affordable := false
-	var connection_cost := 0
-	var connection_built := false
-	var cost := 0
-	var changed_payloads: Dictionary
-	var graded_sections := 0
-	var bridge_sections: Array[Vector2i] = []
-	var bridge_endpoint_sections: Array[Vector2i] = []
-
-
-	func has_bridge() -> bool:
-		return bridge_plan != null and bridge_plan.ok
-
-
 static func apply_segment(
 	city: CityState,
 	group_index: int,
@@ -472,7 +435,14 @@ static func preview_valid(city: CityState, selected: Vector2i) -> bool:
 		return HighwayGeometry._section_is_existing_highway(city.buildings, anchor, map_edge) or city.funds() >= 100
 
 	if HighwayGeometry._section_has_water(city.tile_flags, anchor, map_edge):
-		var bridge := HighwayBridges.plan_bridge_from_start(city.buildings, city.terrain, altitude, anchor, city.compass_rotation(), map_edge)
+		var bridge := HighwayBridges.plan_bridge_from_start(
+			city.buildings,
+			city.terrain,
+			altitude,
+			anchor,
+			city.compass_rotation(),
+			map_edge,
+		)
 
 		if bridge.ok:
 			for choice in HighwayBridges._bridge_choices(bridge):
@@ -495,7 +465,14 @@ static func preview_error(city: CityState, selected: Vector2i) -> String:
 
 	if HighwayGeometry._section_has_water(city.tile_flags, anchor, map_edge):
 		var altitude: PackedByteArray = city.document.find_chunk("ALTM").decoded_payload
-		var bridge := HighwayBridges.plan_bridge_from_start(city.buildings, city.terrain, altitude, anchor, city.compass_rotation(), map_edge)
+		var bridge := HighwayBridges.plan_bridge_from_start(
+			city.buildings,
+			city.terrain,
+			altitude,
+			anchor,
+			city.compass_rotation(),
+			map_edge,
+		)
 
 		if not bridge.ok:
 			return bridge.error
@@ -514,7 +491,45 @@ static func preview_error(city: CityState, selected: Vector2i) -> String:
 		if not HighwayGeometry._building_is_allowed(tile_id):
 			return "Clear the structure in the highway footprint first."
 
-		if tile_id > Tiles.POWER_LINE_STRAIGHT_1 and not HighwayGeometry._is_highway_tile(tile_id) and not HighwayGeometry._network_can_cross(tile_id, direction):
+		if (tile_id > Tiles.POWER_LINE_STRAIGHT_1
+				and not HighwayGeometry._is_highway_tile(tile_id)
+				and not HighwayGeometry._network_can_cross(tile_id, direction)):
 			return "The existing network cannot cross a highway in this direction."
 
 	return "The 2 by 2 highway section has incompatible elevations or slopes."
+
+
+class SegmentPlan:
+	var city: CityState
+	var map_edge: int
+	var group_index: int
+	var subtool_index: int
+	var start: Vector2i
+	var finish: Vector2i
+	var free_mode: bool
+	var old_payloads: Dictionary
+	var sections: Array[Vector2i] = []
+	var bridge_plan: HighwayBridges.Plan
+	var bridge_attempted := false
+	var listed_route_cost := 0
+	var route_cost := 0
+	var selected_bridge := BRIDGE_UNSELECTED
+	var listed_bridge_cost := 0
+	var bridge_cost := 0
+	var bridge_built := false
+	var bridge_error := ""
+	var connection_choice := CONNECTION_UNSELECTED
+	var connection_anchor := Vector2i.ZERO
+	var connection_available := false
+	var connection_affordable := false
+	var connection_cost := 0
+	var connection_built := false
+	var cost := 0
+	var changed_payloads: Dictionary
+	var graded_sections := 0
+	var bridge_sections: Array[Vector2i] = []
+	var bridge_endpoint_sections: Array[Vector2i] = []
+
+
+	func has_bridge() -> bool:
+		return bridge_plan != null and bridge_plan.ok

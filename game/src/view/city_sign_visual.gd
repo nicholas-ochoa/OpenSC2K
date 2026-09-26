@@ -1,7 +1,6 @@
 class_name CitySignVisual
 extends RefCounted
 
-
 var indexed := false
 var indices: Image
 var texture: Texture2D

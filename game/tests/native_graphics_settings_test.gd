@@ -16,11 +16,20 @@ func _run() -> void:
 	assert(values.zoom_graphics == [0, 1, 2, 2, 2, 2])
 	assert(values.graphics_source == "folder")
 	assert(values.graphics_folder == "/example/custom-pack")
-	assert(AppSettingsStore.save_values(0.5, 0.5, false, path, "folder", values.graphics_folder, null, "gpu", false, values.zoom_graphics) == OK)
+	var graphics_options := AppSettingsStore.SaveOptions.new()
+	graphics_options.graphics_source = "folder"
+	graphics_options.graphics_folder = values.graphics_folder
+	graphics_options.city_renderer = "gpu"
+	graphics_options.background_audio = false
+	graphics_options.zoom_graphics = values.zoom_graphics
+	assert(AppSettingsStore.save_values(0.5, 0.5, false, path, graphics_options) == OK)
 	assert(AppSettingsStore.load_values(path).zoom_graphics == values.zoom_graphics)
 	assert(values.overview_graphics == 0)
 	assert(values.default_mayor_name == "Mayor")
-	assert(AppSettingsStore.save_values(0.5, 0.5, false, path, "", "", null, null, null, null, null, null, null, null, "Alex", 2) == OK)
+	var city_options := AppSettingsStore.SaveOptions.new()
+	city_options.default_mayor_name = "Alex"
+	city_options.overview_graphics = 2
+	assert(AppSettingsStore.save_values(0.5, 0.5, false, path, city_options) == OK)
 	var updated := AppSettingsStore.load_values(path)
 	assert(updated.default_mayor_name == "Alex")
 	assert(updated.overview_graphics == 2)

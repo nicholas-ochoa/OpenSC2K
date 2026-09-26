@@ -1,7 +1,6 @@
 class_name RotationEditResult
 extends EditCommandResult
 
-
 var counter_clockwise := false
 var old_compass := 0
 var new_compass := 0

@@ -1,18 +1,6 @@
 class_name SimpleEditFlow
 extends RefCounted
 
-class Result extends RefCounted:
-	var handled: bool = false
-	var command: EditCommandResult
-	var record_command: bool = false
-	var refresh_details: bool = false
-	var show_effects: bool = false
-	var refresh_news_summary: bool = false
-	var play_success_sound: bool = false
-	var play_failure_sound: bool = false
-	var message: String = ""
-
-
 const Tools = preload("res://src/tools/shared/tool_catalog.gd")
 const DisplayNumbers = preload("res://src/ui/shared/display_number_format.gd")
 const Landscapes = preload("res://src/tools/landscape/landscape_command.gd")
@@ -132,10 +120,10 @@ static func _result(
 		command is DemolishEditResult and command.ok and (command as DemolishEditResult).easter_events > 0
 	)
 	result.play_success_sound = kind in [
-		"landscape", "hydro", "subway_to_rail", "onramp", "zone"
+		"landscape", "hydro", "subway_to_rail", "onramp", "zone",
 	]
 	result.play_failure_sound = kind in [
-		"landscape", "hydro", "subway_to_rail", "onramp", "zone"
+		"landscape", "hydro", "subway_to_rail", "onramp", "zone",
 	]
 
 	if not command.ok:
@@ -188,7 +176,7 @@ static func _success_message(
 		"demolish":
 			var demolition := command as DemolishEditResult
 			var message := "Applied %d demolition actions for $%s." % [
-				demolition.action_count, DisplayNumbers.format(demolition.cost)
+				demolition.action_count, DisplayNumbers.format(demolition.cost),
 			]
 
 			if demolition.skipped_specialized > 0:
@@ -241,3 +229,15 @@ static func _success_message(
 				command.tile_indices.size(),
 				DisplayNumbers.format(command.cost),
 			]
+
+
+class Result extends RefCounted:
+	var handled: bool = false
+	var command: EditCommandResult
+	var record_command: bool = false
+	var refresh_details: bool = false
+	var show_effects: bool = false
+	var refresh_news_summary: bool = false
+	var play_success_sound: bool = false
+	var play_failure_sound: bool = false
+	var message: String = ""

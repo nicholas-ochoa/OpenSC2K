@@ -1,7 +1,6 @@
 class_name BridgeChoice
 extends RefCounted
 
-
 var type: int
 var name: String
 var cost_per_tile: int

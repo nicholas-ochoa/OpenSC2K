@@ -34,32 +34,6 @@ const STREAM_CHUNK := 32768
 const GZIP_HEADER := [0x1f, 0x8b, 8, 0, 0, 0, 0, 0, 0, 255]
 const GZIP_TRAILER_SIZE := 8
 
-class Result extends RefCounted:
-	var ok := false
-	var error := ""
-	var bytes := PackedByteArray()
-	var members: Dictionary[String, PackedByteArray] = {}
-
-
-class Entry extends RefCounted:
-	var path := ""
-	var name := PackedByteArray()
-	var flags := 0
-	var method := STORED
-	var crc := 0
-	var compressed_size := 0
-	var size := 0
-	var local_offset := 0
-	var data_offset := 0
-	var end_offset := 0
-
-
-class Directory extends RefCounted:
-	var count := 0
-	var size := 0
-	var offset := 0
-	var end := 0
-
 
 static func encode(members: Dictionary[String, PackedByteArray], max_data_bytes := MAX_MEMBER_BYTES) -> Result:
 	if max_data_bytes < 0 or max_data_bytes > MAX_MEMBER_BYTES:
@@ -92,7 +66,11 @@ static func encode(members: Dictionary[String, PackedByteArray], max_data_bytes 
 		if not payload.is_empty():
 			var gzip := payload.compress(FileAccess.COMPRESSION_GZIP)
 			# Godot emits a fixed GZIP header. Its trailer supplies the native CRC.
-			if gzip.size() < GZIP_HEADER.size() + GZIP_TRAILER_SIZE or gzip[0] != 0x1f or gzip[1] != 0x8b or gzip[2] != DEFLATE or gzip[3] != 0:
+			if (gzip.size() < GZIP_HEADER.size() + GZIP_TRAILER_SIZE
+					or gzip[0] != 0x1f
+					or gzip[1] != 0x8b
+					or gzip[2] != DEFLATE
+					or gzip[3] != 0):
 				return _failure("Cannot compress the project ZIP member.")
 			if gzip.decode_u32(gzip.size() - 4) != entry.size:
 				return _failure("The project ZIP compressed size is invalid.")
@@ -213,7 +191,9 @@ static func _find_end(bytes: PackedByteArray) -> int:
 
 
 static func _supported(entry: Entry) -> bool:
-	return entry.flags & ~ALLOWED_FLAGS == 0 and (entry.method == DEFLATE or (entry.method == STORED and entry.flags & DEFLATE_OPTIONS == 0 and entry.size == entry.compressed_size))
+	return (entry.flags & ~ALLOWED_FLAGS == 0
+		and (entry.method == DEFLATE
+		or (entry.method == STORED and entry.flags & DEFLATE_OPTIONS == 0 and entry.size == entry.compressed_size)))
 
 
 static func _valid_path(path: String) -> bool:
@@ -288,12 +268,16 @@ static func _read_local(bytes: PackedByteArray, entry: Entry, directory_offset: 
 		return false
 	if entry.flags & DESCRIPTOR_FLAG == 0:
 		return local.crc == entry.crc and local.compressed_size == entry.compressed_size and local.size == entry.size
-	if (local.crc != 0 and local.crc != entry.crc) or (local.compressed_size != 0 and local.compressed_size != entry.compressed_size) or (local.size != 0 and local.size != entry.size):
+	if ((local.crc != 0 and local.crc != entry.crc)
+			or (local.compressed_size != 0 and local.compressed_size != entry.compressed_size)
+			or (local.size != 0 and local.size != entry.size)):
 		return false
 	var descriptor := entry.end_offset
 	var fields_size := 20 if zip64 else 12
 	# The optional signature can also be a valid CRC. Check both interpretations.
-	if descriptor + 4 <= directory_offset and bytes.decode_u32(descriptor) == DESCRIPTOR_SIGNATURE and _descriptor_matches(bytes, descriptor + 4, entry, zip64, directory_offset):
+	if (descriptor + 4 <= directory_offset
+			and bytes.decode_u32(descriptor) == DESCRIPTOR_SIGNATURE
+			and _descriptor_matches(bytes, descriptor + 4, entry, zip64, directory_offset)):
 		entry.end_offset = descriptor + 4 + fields_size
 		return true
 	if _descriptor_matches(bytes, descriptor, entry, zip64, directory_offset):
@@ -334,9 +318,17 @@ static func _read_directory(bytes: PackedByteArray, end: int) -> Directory:
 		var count := bytes.decode_u64(position + 32)
 		var size := bytes.decode_u64(position + 40)
 		var offset := bytes.decode_u64(position + 48)
-		if count < 0 or count > MAX_MEMBERS or count != bytes.decode_u64(position + 24) or size < 0 or size > MAX_FILE_BYTES or offset < 0 or offset > MAX_FILE_BYTES:
+		if (count < 0
+				or count > MAX_MEMBERS
+				or count != bytes.decode_u64(position + 24)
+				or size < 0
+				or size > MAX_FILE_BYTES
+				or offset < 0
+				or offset > MAX_FILE_BYTES):
 			return null
-		if (result.count != ZIP16_MAX and result.count != count) or (result.size != ZIP32_MAX and result.size != size) or (result.offset != ZIP32_MAX and result.offset != offset):
+		if ((result.count != ZIP16_MAX and result.count != count)
+				or (result.size != ZIP32_MAX and result.size != size)
+				or (result.offset != ZIP32_MAX and result.offset != offset)):
 			return null
 		result.count = count
 		result.size = size
@@ -446,3 +438,30 @@ static func _failure(message: String) -> Result:
 	var result := Result.new()
 	result.error = message
 	return result
+
+
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+	var bytes := PackedByteArray()
+	var members: Dictionary[String, PackedByteArray] = {}
+
+
+class Entry extends RefCounted:
+	var path := ""
+	var name := PackedByteArray()
+	var flags := 0
+	var method := STORED
+	var crc := 0
+	var compressed_size := 0
+	var size := 0
+	var local_offset := 0
+	var data_offset := 0
+	var end_offset := 0
+
+
+class Directory extends RefCounted:
+	var count := 0
+	var size := 0
+	var offset := 0
+	var end := 0

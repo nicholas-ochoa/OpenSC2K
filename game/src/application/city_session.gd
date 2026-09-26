@@ -1,7 +1,6 @@
 class_name ApplicationCitySession
 extends RefCounted
 
-
 const CityFiles = preload("res://src/formats/city_file_store.gd")
 const CityModel = preload("res://src/model/city_state.gd")
 const Simulation = preload("res://src/simulation/core/simulation_engine.gd")
@@ -56,7 +55,8 @@ func activate_document(
 	app.map_view.pending_loaded_center = Vector2i(-1, -1)
 
 	if not document.source_path.is_empty():
-		app.map_view.pending_loaded_center = Vector2i(clampi(document.misc_u32(Sc2MiscLayout.CITY_CENTER_X), 0, app.document_state.city.map_size - 1),
+		app.map_view.pending_loaded_center = Vector2i(clampi(document.misc_u32(Sc2MiscLayout.CITY_CENTER_X), 0,
+			app.document_state.city.map_size - 1),
 				clampi(document.misc_u32(Sc2MiscLayout.CITY_CENTER_Y), 0, app.document_state.city.map_size - 1))
 
 	app.current_tool.select_tool_group(CityToolIds.Group.CENTERING)
@@ -123,7 +123,8 @@ func activate_document(
 	app.simulation_state.simulation_engine.vehicle_crashes_enabled = app.view_state.show_vehicles
 	app.simulation_state.speed_controller = GameSpeed.new(app.simulation_state.simulation_engine)
 	# SC2 and SCN cities keep the original fire timing
-	app.simulation_state.speed_controller.original_compatibility = OriginalCompatibility.uses_original_format(document_state.current_document)
+	app.simulation_state.speed_controller.original_compatibility = OriginalCompatibility.uses_original_format(
+		document_state.current_document)
 
 	if document_state.current_document.is_extended():
 		app.simulation_state.frame_simulation = FrameSimulationRunner.new(app.simulation_state.speed_controller)

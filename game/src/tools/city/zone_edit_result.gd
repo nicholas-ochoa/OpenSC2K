@@ -1,7 +1,6 @@
 class_name ZoneEditResult
 extends EditCommandResult
 
-
 var zone_type := 0
 var dragged := false
 var charged_tiles := 0

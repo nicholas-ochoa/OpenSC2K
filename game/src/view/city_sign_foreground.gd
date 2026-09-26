@@ -2,16 +2,6 @@ class_name CitySignForeground
 extends RefCounted
 
 
-
-class Mask extends RefCounted:
-	var image: Image
-	var position: Vector2i
-
-	func _init(sprite: Image, destination: Vector2i) -> void:
-		image = sprite
-		position = destination
-
-
 static func static_pixels(sampled: Image, masks: Array[Mask], bounds: Rect2i) -> Image:
 	var mask := Image.create(bounds.size.x, bounds.size.y, false, Image.FORMAT_RGBA8)
 	mask.fill(Color.TRANSPARENT)
@@ -63,3 +53,12 @@ static func used_indices(image: Image) -> Dictionary[int, bool]:
 			result[int(bytes[offset])] = true
 
 	return result
+
+
+class Mask extends RefCounted:
+	var image: Image
+	var position: Vector2i
+
+	func _init(sprite: Image, destination: Vector2i) -> void:
+		image = sprite
+		position = destination

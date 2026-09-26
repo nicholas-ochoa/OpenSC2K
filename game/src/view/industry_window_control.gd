@@ -3,15 +3,6 @@ extends Control
 
 signal tax_rates_changed
 
-class Snapshot extends RefCounted:
-	var ok: bool = false
-	var error: String = ""
-	var ratios: PackedInt64Array
-	var tax_rates: PackedInt32Array
-	var demands: PackedInt32Array
-	var industrial_tax: int
-
-
 enum Mode {
 	RATIOS,
 	TAX_RATES,
@@ -47,90 +38,6 @@ func _init() -> void:
 	tooltip_text = "In Tax Rates view, drag a bar to set its surcharge. Hold Alt to set all industries."
 
 
-func set_city(value: CityState) -> void:
-	city = value
-	queue_redraw()
-
-
-func set_mode(value: int) -> void:
-	if value < Mode.RATIOS or value > Mode.DEMAND:
-		return
-
-	mode = value
-	dragging_tax = false
-	queue_redraw()
-
-
-func set_icon_strip(value: Image) -> void:
-	icon_strip = null if value == null or value.is_empty() else ImageTexture.create_from_image(value)
-	queue_redraw()
-
-
-func refresh() -> void:
-	queue_redraw()
-
-
-static func snapshot(value_city: CityState) -> Snapshot:
-	if value_city == null or not value_city.is_valid():
-		var result := Snapshot.new()
-		result.ok = false
-		result.error = "city is invalid"
-
-		return result
-
-	var ratios := PackedInt64Array()
-	var tax_rates := PackedInt32Array()
-	var demands := PackedInt32Array()
-
-	for industry in INDUSTRY_COUNT:
-		var offset := MISC_INDUSTRIES + industry * INDUSTRY_STRIDE
-		demands.append(_to_i16(value_city.document.misc_u32(offset)))
-		tax_rates.append(_to_i16(value_city.document.misc_u32(offset + Sc2IndustryLayout.TAX_RATE)))
-		ratios.append(value_city.document.misc_u32(offset + Sc2IndustryLayout.RATIO))
-
-	var industrial_tax_offset := (
-		MISC_BUDGETS + BUDGET_INDUSTRIAL * BUDGET_RECORD_SIZE + BUDGET_FUNDING
-	)
-
-	var result := Snapshot.new()
-	result.ok = true
-	result.ratios = ratios
-	result.tax_rates = tax_rates
-	result.demands = demands
-	result.industrial_tax = value_city.document.misc_i32(industrial_tax_offset)
-	result.error = ""
-
-	return result
-
-
-static func values_for_mode(data: Snapshot, selected_mode: int) -> Array[int]:
-	var values: Array[int] = []
-
-	if not data.ok:
-		return values
-
-	if selected_mode == Mode.RATIOS:
-		values.assign(Array(data.ratios))
-	elif selected_mode == Mode.TAX_RATES:
-		values.assign(Array(data.tax_rates))
-	else:
-		values.assign(Array(data.demands))
-
-	return values
-
-
-static func maximum_for_mode(data: Snapshot, selected_mode: int) -> int:
-	if selected_mode < Mode.RATIOS or selected_mode > Mode.DEMAND:
-		return 1
-
-	var maximum := int(INITIAL_MAXIMUMS[selected_mode])
-
-	for value in values_for_mode(data, selected_mode):
-		maximum = maxi(maximum, int(value))
-
-	return maximum
-
-
 func _gui_input(event: InputEvent) -> void:
 	if mode != Mode.TAX_RATES or city == null or not city.is_valid():
 		return
@@ -153,24 +60,6 @@ func _input(event: InputEvent) -> void:
 			dragging_tax = false
 	elif event is InputEventMouseMotion:
 		_apply_tax_pointer(get_local_mouse_position(), event.alt_pressed)
-
-
-func _apply_tax_pointer(pointer: Vector2, apply_all: bool) -> void:
-	var plot := _plot_rect()
-
-	if not plot.has_point(pointer):
-		return
-
-	var row_height := plot.size.y / float(INDUSTRY_COUNT)
-	var industry := clampi(int((pointer.y - plot.position.y) / row_height), 0, INDUSTRY_COUNT - 1)
-	var data := snapshot(city)
-	var maximum := maximum_for_mode(data, Mode.TAX_RATES)
-	var value := int((pointer.x - plot.position.x) * maximum / plot.size.x)
-	var result := IndustryTaxCommand.set_tax_rate(city, industry, value, apply_all)
-
-	if result.ok and result.changed:
-		queue_redraw()
-		tax_rates_changed.emit()
 
 
 func _draw() -> void:
@@ -266,6 +155,108 @@ func _draw() -> void:
 		)
 
 
+func set_city(value: CityState) -> void:
+	city = value
+	queue_redraw()
+
+
+func set_mode(value: int) -> void:
+	if value < Mode.RATIOS or value > Mode.DEMAND:
+		return
+
+	mode = value
+	dragging_tax = false
+	queue_redraw()
+
+
+func set_icon_strip(value: Image) -> void:
+	icon_strip = null if value == null or value.is_empty() else ImageTexture.create_from_image(value)
+	queue_redraw()
+
+
+func refresh() -> void:
+	queue_redraw()
+
+
+static func snapshot(value_city: CityState) -> Snapshot:
+	if value_city == null or not value_city.is_valid():
+		var result := Snapshot.new()
+		result.ok = false
+		result.error = "city is invalid"
+
+		return result
+
+	var ratios := PackedInt64Array()
+	var tax_rates := PackedInt32Array()
+	var demands := PackedInt32Array()
+
+	for industry in INDUSTRY_COUNT:
+		var offset := MISC_INDUSTRIES + industry * INDUSTRY_STRIDE
+		demands.append(_to_i16(value_city.document.misc_u32(offset)))
+		tax_rates.append(_to_i16(value_city.document.misc_u32(offset + Sc2IndustryLayout.TAX_RATE)))
+		ratios.append(value_city.document.misc_u32(offset + Sc2IndustryLayout.RATIO))
+
+	var industrial_tax_offset := (
+		MISC_BUDGETS + BUDGET_INDUSTRIAL * BUDGET_RECORD_SIZE + BUDGET_FUNDING
+	)
+
+	var result := Snapshot.new()
+	result.ok = true
+	result.ratios = ratios
+	result.tax_rates = tax_rates
+	result.demands = demands
+	result.industrial_tax = value_city.document.misc_i32(industrial_tax_offset)
+	result.error = ""
+
+	return result
+
+
+static func values_for_mode(data: Snapshot, selected_mode: int) -> Array[int]:
+	var values: Array[int] = []
+
+	if not data.ok:
+		return values
+
+	if selected_mode == Mode.RATIOS:
+		values.assign(Array(data.ratios))
+	elif selected_mode == Mode.TAX_RATES:
+		values.assign(Array(data.tax_rates))
+	else:
+		values.assign(Array(data.demands))
+
+	return values
+
+
+static func maximum_for_mode(data: Snapshot, selected_mode: int) -> int:
+	if selected_mode < Mode.RATIOS or selected_mode > Mode.DEMAND:
+		return 1
+
+	var maximum := int(INITIAL_MAXIMUMS[selected_mode])
+
+	for value in values_for_mode(data, selected_mode):
+		maximum = maxi(maximum, int(value))
+
+	return maximum
+
+
+func _apply_tax_pointer(pointer: Vector2, apply_all: bool) -> void:
+	var plot := _plot_rect()
+
+	if not plot.has_point(pointer):
+		return
+
+	var row_height := plot.size.y / float(INDUSTRY_COUNT)
+	var industry := clampi(int((pointer.y - plot.position.y) / row_height), 0, INDUSTRY_COUNT - 1)
+	var data := snapshot(city)
+	var maximum := maximum_for_mode(data, Mode.TAX_RATES)
+	var value := int((pointer.x - plot.position.x) * maximum / plot.size.x)
+	var result := IndustryTaxCommand.set_tax_rate(city, industry, value, apply_all)
+
+	if result.ok and result.changed:
+		queue_redraw()
+		tax_rates_changed.emit()
+
+
 func _plot_rect() -> Rect2:
 	var left := maxf(250.0, size.x * 0.48)
 	var height := maxf(1.0, size.y - 16.0)
@@ -299,3 +290,12 @@ static func _to_i16(value: int) -> int:
 	var word := value & 0xffff
 
 	return word - 0x10000 if word & 0x8000 else word
+
+
+class Snapshot extends RefCounted:
+	var ok: bool = false
+	var error: String = ""
+	var ratios: PackedInt64Array
+	var tax_rates: PackedInt32Array
+	var demands: PackedInt32Array
+	var industrial_tax: int

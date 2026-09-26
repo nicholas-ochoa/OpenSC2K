@@ -74,7 +74,11 @@ func _run() -> void:
 		var metrics := cache.metrics()
 		print("BACKEND %s atlas_MiB=%.2f" % ["GPU" if metrics.gpu else "CPU", metrics.atlas_bytes / 1048576.0])
 		var full_size := CityIsometricRenderer.output_size_for_view(2, edge)
-		print("SIZE %d viewport=%s activation_ms=%.2f first_region_ms=%.2f visible_ready_ms=%.2f main_poll_max_ms=%.2f resident=%d visible=%d cpu_images_MiB=%.2f texture_MiB_estimate=%.2f old_full_index_MiB=%.2f" % [edge, main.map_view.size, activation_ms, first_ms, visible_ms, max_poll_usec / 1000.0, metrics.resident, metrics.visible, metrics.cpu_image_bytes / 1048576.0, metrics.texture_bytes_estimate / 1048576.0, full_size.x * full_size.y * 2 / 1048576.0])
+		print(("SIZE %d viewport=%s activation_ms=%.2f first_region_ms=%.2f visible_ready_ms=%.2f "
+			+ "main_poll_max_ms=%.2f resident=%d visible=%d cpu_images_MiB=%.2f "
+			+ "texture_MiB_estimate=%.2f old_full_index_MiB=%.2f") % [edge, main.map_view.size, activation_ms, first_ms, visible_ms,
+			max_poll_usec / 1000.0, metrics.resident, metrics.visible, metrics.cpu_image_bytes / 1048576.0,
+			metrics.texture_bytes_estimate / 1048576.0, full_size.x * full_size.y * 2 / 1048576.0])
 
 	main.queue_free()
 	await process_frame

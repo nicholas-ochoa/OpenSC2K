@@ -1,6 +1,7 @@
 extends SceneTree
 
 const Budget = preload("res://src/simulation/economy/budget_phase.gd")
+
 var city: CityState
 var values: PackedInt32Array
 
@@ -65,7 +66,8 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	var ordinance_bounds := dialog.tabs.get_global_rect()
-	for field: Control in dialog.ordinance_control.ordinance_checks + dialog.ordinance_control.ordinance_amounts + dialog.ordinance_control.category_amounts:
+	for field: Control in (dialog.ordinance_control.ordinance_checks + dialog.ordinance_control.ordinance_amounts
+		+ dialog.ordinance_control.category_amounts):
 		assert(ordinance_bounds.encloses(field.get_global_rect()), "Ordinance control clipped at minimum window size")
 	dialog.tabs.current_tab = 2
 	await process_frame

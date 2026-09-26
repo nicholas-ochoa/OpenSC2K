@@ -2,7 +2,6 @@ class_name NewTerrainValues
 extends NewTerrainConstants
 
 
-
 static func _recount_buildings(
 	buildings: PackedByteArray, misc: PackedByteArray
 ) -> void:

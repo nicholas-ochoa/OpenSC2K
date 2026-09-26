@@ -21,6 +21,44 @@ func _init() -> void:
 	_update_tooltip()
 
 
+func _draw() -> void:
+	var font := get_theme_default_font()
+	var font_size := 11
+	var baseline := floorf(size.y * 0.5)
+	draw_string(
+		font,
+		Vector2(2, baseline + 4),
+		"RCI",
+		HORIZONTAL_ALIGNMENT_LEFT,
+		-1,
+		font_size,
+		get_theme_color("ink", "AppPalette"),
+	)
+	var graph_rect := Rect2(
+		GRAPH_LEFT,
+		2,
+		maxf(1.0, size.x - GRAPH_LEFT - 2.0),
+		maxf(1.0, size.y - 4.0),
+	)
+	draw_rect(graph_rect, get_theme_color("paper", "AppPalette"), true)
+	draw_line(
+		Vector2(graph_rect.position.x, floorf(graph_rect.get_center().y)),
+		Vector2(graph_rect.end.x, floorf(graph_rect.get_center().y)),
+		get_theme_color("grid", "AppPalette"),
+		1.0,
+	)
+	var bars: Array[Rect2] = []
+
+	if demand_available:
+		bars = bar_rects(demand, graph_rect)
+
+	for index in bars.size():
+		if bars[index].size.y > 0.0:
+			draw_rect(bars[index], ZONE_COLORS[index], true)
+
+	draw_rect(graph_rect, get_theme_color("border", "AppPalette"), false, 1.0)
+
+
 func set_demand(value: Vector3i) -> void:
 	demand = Vector3i(
 		clampi(value.x, -MAX_DEMAND, MAX_DEMAND),
@@ -79,41 +117,3 @@ static func demand_tooltip(value: Vector3i) -> String:
 
 func _update_tooltip() -> void:
 	tooltip_text = demand_tooltip(demand) if demand_available else "RCI demand is not available."
-
-
-func _draw() -> void:
-	var font := get_theme_default_font()
-	var font_size := 11
-	var baseline := floorf(size.y * 0.5)
-	draw_string(
-		font,
-		Vector2(2, baseline + 4),
-		"RCI",
-		HORIZONTAL_ALIGNMENT_LEFT,
-		-1,
-		font_size,
-		get_theme_color("ink", "AppPalette"),
-	)
-	var graph_rect := Rect2(
-		GRAPH_LEFT,
-		2,
-		maxf(1.0, size.x - GRAPH_LEFT - 2.0),
-		maxf(1.0, size.y - 4.0),
-	)
-	draw_rect(graph_rect, get_theme_color("paper", "AppPalette"), true)
-	draw_line(
-		Vector2(graph_rect.position.x, floorf(graph_rect.get_center().y)),
-		Vector2(graph_rect.end.x, floorf(graph_rect.get_center().y)),
-		get_theme_color("grid", "AppPalette"),
-		1.0,
-	)
-	var bars: Array[Rect2] = []
-
-	if demand_available:
-		bars = bar_rects(demand, graph_rect)
-
-	for index in bars.size():
-		if bars[index].size.y > 0.0:
-			draw_rect(bars[index], ZONE_COLORS[index], true)
-
-	draw_rect(graph_rect, get_theme_color("border", "AppPalette"), false, 1.0)

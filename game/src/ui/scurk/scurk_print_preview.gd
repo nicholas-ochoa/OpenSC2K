@@ -19,55 +19,6 @@ func _ready() -> void:
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 
 
-func set_magnification(value: int) -> bool:
-	var grid := Output.page_grid(value)
-
-	if grid == null:
-		return false
-
-	magnification = value
-	columns = int(grid.columns)
-	rows = int(grid.rows)
-	selected_pages.resize(int(grid.count))
-	selected_pages.fill(1)
-	queue_redraw()
-	selection_changed.emit()
-
-	return true
-
-
-func set_entire_city(value: bool) -> void:
-	entire_city = value
-	queue_redraw()
-
-
-func set_preview_image(image: Image) -> void:
-	if image == null or image.is_empty():
-		preview_texture = null
-	else:
-		preview_texture = ImageTexture.create_from_image(image)
-
-	queue_redraw()
-
-
-func select_all(value := true) -> void:
-	selected_pages.fill(1 if value else 0)
-	queue_redraw()
-	selection_changed.emit()
-
-
-func selected_page_count() -> int:
-	if entire_city:
-		return selected_pages.size()
-
-	var count := 0
-
-	for selected in selected_pages:
-		count += 1 if selected != 0 else 0
-
-	return count
-
-
 func _draw() -> void:
 	var bounds := Rect2(Vector2.ZERO, size)
 	draw_rect(bounds, Color("ffffff"))
@@ -137,3 +88,52 @@ func _gui_input(event: InputEvent) -> void:
 	queue_redraw()
 	selection_changed.emit()
 	accept_event()
+
+
+func set_magnification(value: int) -> bool:
+	var grid := Output.page_grid(value)
+
+	if grid == null:
+		return false
+
+	magnification = value
+	columns = int(grid.columns)
+	rows = int(grid.rows)
+	selected_pages.resize(int(grid.count))
+	selected_pages.fill(1)
+	queue_redraw()
+	selection_changed.emit()
+
+	return true
+
+
+func set_entire_city(value: bool) -> void:
+	entire_city = value
+	queue_redraw()
+
+
+func set_preview_image(image: Image) -> void:
+	if image == null or image.is_empty():
+		preview_texture = null
+	else:
+		preview_texture = ImageTexture.create_from_image(image)
+
+	queue_redraw()
+
+
+func select_all(value := true) -> void:
+	selected_pages.fill(1 if value else 0)
+	queue_redraw()
+	selection_changed.emit()
+
+
+func selected_page_count() -> int:
+	if entire_city:
+		return selected_pages.size()
+
+	var count := 0
+
+	for selected in selected_pages:
+		count += 1 if selected != 0 else 0
+
+	return count

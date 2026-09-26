@@ -2,15 +2,12 @@ class_name CityRotationCommand
 extends RefCounted
 
 const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
-
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const MAP_SIZE := CityState.MAP_SIZE
 const COMPASS_OFFSET := Sc2MiscLayout.COMPASS
 const TILE_COUNT_OFFSET := Sc2MiscLayout.TILE_COUNTS
 const MILITARY_ZONE := Sc2ZoneLayout.MILITARY
 const FLIP_FLAG := 0x02
-
 const REQUIRED_CHUNKS := [
 	["MISC", Sc2MiscLayout.SIZE],
 	["ALTM", 32768],
@@ -163,7 +160,8 @@ static func _duplicate_payloads(payloads: Dictionary[String, PackedByteArray]) -
 
 
 static func _apply_payloads(
-	city: CityState, chunk_ids: PackedStringArray, payloads: Dictionary[String, PackedByteArray], rollback: Dictionary[String, PackedByteArray]
+	city: CityState, chunk_ids: PackedStringArray, payloads: Dictionary[String, PackedByteArray],
+	rollback: Dictionary[String, PackedByteArray]
 ) -> bool:
 	var applied := PackedStringArray()
 
@@ -258,9 +256,24 @@ static func _surface_table(counter_clockwise: bool) -> PackedByteArray:
 		[Tiles.POWER_LINE_CURVE_1, Tiles.POWER_LINE_CURVE_2, Tiles.POWER_LINE_CURVE_3, Tiles.POWER_LINE_CURVE_4],
 		[Tiles.POWER_LINE_JUNCTION_1, Tiles.POWER_LINE_JUNCTION_2, Tiles.POWER_LINE_JUNCTION_3, Tiles.POWER_LINE_JUNCTION_4],
 		[Tiles.ROAD_SLOPE_1, Tiles.ROAD_SLOPE_2, Tiles.ROAD_SLOPE_3, Tiles.ROAD_SLOPE_4],
-		[Tiles.ROAD_CURVE_1, Tiles.ROAD_CURVE_2, Tiles.ROAD_CURVE_3, Tiles.ROAD_CURVE_4], [Tiles.ROAD_JUNCTION_1, Tiles.ROAD_JUNCTION_2, Tiles.ROAD_JUNCTION_3, Tiles.ROAD_JUNCTION_4],
-		[Tiles.RAIL_SLOPE_1, Tiles.RAIL_SLOPE_2, Tiles.RAIL_SLOPE_3, Tiles.RAIL_SLOPE_4], [Tiles.RAIL_CURVE_1, Tiles.RAIL_CURVE_2, Tiles.RAIL_CURVE_3, Tiles.RAIL_CURVE_4],
-		[Tiles.RAIL_JUNCTION_1, Tiles.RAIL_JUNCTION_2, Tiles.RAIL_JUNCTION_3, Tiles.RAIL_JUNCTION_4], [Tiles.RAIL_SLOPE_5, Tiles.RAIL_SLOPE_6, Tiles.RAIL_SLOPE_7, Tiles.RAIL_SLOPE_8],
+		[
+			Tiles.ROAD_CURVE_1,
+			Tiles.ROAD_CURVE_2,
+			Tiles.ROAD_CURVE_3,
+			Tiles.ROAD_CURVE_4,
+		], [Tiles.ROAD_JUNCTION_1, Tiles.ROAD_JUNCTION_2, Tiles.ROAD_JUNCTION_3, Tiles.ROAD_JUNCTION_4],
+		[
+			Tiles.RAIL_SLOPE_1,
+			Tiles.RAIL_SLOPE_2,
+			Tiles.RAIL_SLOPE_3,
+			Tiles.RAIL_SLOPE_4,
+		], [Tiles.RAIL_CURVE_1, Tiles.RAIL_CURVE_2, Tiles.RAIL_CURVE_3, Tiles.RAIL_CURVE_4],
+		[
+			Tiles.RAIL_JUNCTION_1,
+			Tiles.RAIL_JUNCTION_2,
+			Tiles.RAIL_JUNCTION_3,
+			Tiles.RAIL_JUNCTION_4,
+		], [Tiles.RAIL_SLOPE_5, Tiles.RAIL_SLOPE_6, Tiles.RAIL_SLOPE_7, Tiles.RAIL_SLOPE_8],
 		[Tiles.TUNNEL_ENTRANCE_1, Tiles.TUNNEL_ENTRANCE_2, Tiles.TUNNEL_ENTRANCE_3, Tiles.TUNNEL_ENTRANCE_4],
 		[Tiles.HIGHWAY_SLOPE_1, Tiles.HIGHWAY_SLOPE_2, Tiles.HIGHWAY_SLOPE_3, Tiles.HIGHWAY_SLOPE_4],
 		[Tiles.HIGHWAY_CURVE_1, Tiles.HIGHWAY_CURVE_2, Tiles.HIGHWAY_CURVE_3, Tiles.HIGHWAY_CURVE_4],
@@ -275,18 +288,79 @@ static func _surface_table(counter_clockwise: bool) -> PackedByteArray:
 static func _terrain_table(counter_clockwise: bool) -> PackedByteArray:
 	var table := _identity_table(TerrainTileIds.ROTATION_TABLE_SIZE)
 
-	for invalid in [TerrainTileIds.UNUSED_0E, TerrainTileIds.UNUSED_0F, TerrainTileIds.UNUSED_1E, TerrainTileIds.UNUSED_1F, TerrainTileIds.UNUSED_2F, TerrainTileIds.UNUSED_3F, TerrainTileIds.UNUSED_46, TerrainTileIds.UNUSED_47]:
+	for invalid in [TerrainTileIds.UNUSED_0E, TerrainTileIds.UNUSED_0F, TerrainTileIds.UNUSED_1E, TerrainTileIds.UNUSED_1F,
+		TerrainTileIds.UNUSED_2F, TerrainTileIds.UNUSED_3F, TerrainTileIds.UNUSED_46, TerrainTileIds.UNUSED_47]:
 		table[invalid] = TerrainTileIds.FLAT
 
 	_swap(table, TerrainTileIds.CHANNEL_NS, TerrainTileIds.CHANNEL_EW)
 
 	for cycle in [
-		[TerrainTileIds.SLOPE_TOP_LEFT, TerrainTileIds.SLOPE_TOP_RIGHT, TerrainTileIds.SLOPE_BOTTOM_RIGHT, TerrainTileIds.SLOPE_BOTTOM_LEFT], [TerrainTileIds.RAISED_EXCEPT_BOTTOM, TerrainTileIds.RAISED_EXCEPT_LEFT, TerrainTileIds.RAISED_EXCEPT_TOP, TerrainTileIds.RAISED_EXCEPT_RIGHT],
-		[TerrainTileIds.CORNER_TOP, TerrainTileIds.CORNER_RIGHT, TerrainTileIds.CORNER_BOTTOM, TerrainTileIds.CORNER_LEFT], [TerrainTileIds.DEEP_WATER_SLOPE_TOP_LEFT, TerrainTileIds.DEEP_WATER_SLOPE_TOP_RIGHT, TerrainTileIds.DEEP_WATER_SLOPE_BOTTOM_RIGHT, TerrainTileIds.DEEP_WATER_SLOPE_BOTTOM_LEFT],
-		[TerrainTileIds.DEEP_WATER_RAISED_EXCEPT_BOTTOM, TerrainTileIds.DEEP_WATER_RAISED_EXCEPT_LEFT, TerrainTileIds.DEEP_WATER_RAISED_EXCEPT_TOP, TerrainTileIds.DEEP_WATER_RAISED_EXCEPT_RIGHT], [TerrainTileIds.DEEP_WATER_CORNER_TOP, TerrainTileIds.DEEP_WATER_CORNER_RIGHT, TerrainTileIds.DEEP_WATER_CORNER_BOTTOM, TerrainTileIds.DEEP_WATER_CORNER_LEFT],
-		[TerrainTileIds.SHORE_SLOPE_TOP_LEFT, TerrainTileIds.SHORE_SLOPE_TOP_RIGHT, TerrainTileIds.SHORE_SLOPE_BOTTOM_RIGHT, TerrainTileIds.SHORE_SLOPE_BOTTOM_LEFT], [TerrainTileIds.SHORE_RAISED_EXCEPT_BOTTOM, TerrainTileIds.SHORE_RAISED_EXCEPT_LEFT, TerrainTileIds.SHORE_RAISED_EXCEPT_TOP, TerrainTileIds.SHORE_RAISED_EXCEPT_RIGHT],
-		[TerrainTileIds.SHORE_CORNER_TOP, TerrainTileIds.SHORE_CORNER_RIGHT, TerrainTileIds.SHORE_CORNER_BOTTOM, TerrainTileIds.SHORE_CORNER_LEFT], [TerrainTileIds.SURFACE_WATER_NES, TerrainTileIds.SURFACE_WATER_ESW, TerrainTileIds.SURFACE_WATER_NSW, TerrainTileIds.SURFACE_WATER_NEW],
-		[TerrainTileIds.SURFACE_WATER_ES, TerrainTileIds.SURFACE_WATER_SW, TerrainTileIds.SURFACE_WATER_NW, TerrainTileIds.SURFACE_WATER_NE], [TerrainTileIds.SURFACE_WATER_BANK_NW, TerrainTileIds.SURFACE_WATER_BANK_NE, TerrainTileIds.SURFACE_WATER_BANK_SE, TerrainTileIds.SURFACE_WATER_BANK_SW],
+		[
+			TerrainTileIds.SLOPE_TOP_LEFT,
+			TerrainTileIds.SLOPE_TOP_RIGHT,
+			TerrainTileIds.SLOPE_BOTTOM_RIGHT,
+			TerrainTileIds.SLOPE_BOTTOM_LEFT,
+		], [
+			TerrainTileIds.RAISED_EXCEPT_BOTTOM,
+			TerrainTileIds.RAISED_EXCEPT_LEFT,
+			TerrainTileIds.RAISED_EXCEPT_TOP,
+			TerrainTileIds.RAISED_EXCEPT_RIGHT,
+		],
+		[
+			TerrainTileIds.CORNER_TOP,
+			TerrainTileIds.CORNER_RIGHT,
+			TerrainTileIds.CORNER_BOTTOM,
+			TerrainTileIds.CORNER_LEFT,
+		], [
+			TerrainTileIds.DEEP_WATER_SLOPE_TOP_LEFT,
+			TerrainTileIds.DEEP_WATER_SLOPE_TOP_RIGHT,
+			TerrainTileIds.DEEP_WATER_SLOPE_BOTTOM_RIGHT,
+			TerrainTileIds.DEEP_WATER_SLOPE_BOTTOM_LEFT,
+		],
+		[
+			TerrainTileIds.DEEP_WATER_RAISED_EXCEPT_BOTTOM,
+			TerrainTileIds.DEEP_WATER_RAISED_EXCEPT_LEFT,
+			TerrainTileIds.DEEP_WATER_RAISED_EXCEPT_TOP,
+			TerrainTileIds.DEEP_WATER_RAISED_EXCEPT_RIGHT,
+		], [
+			TerrainTileIds.DEEP_WATER_CORNER_TOP,
+			TerrainTileIds.DEEP_WATER_CORNER_RIGHT,
+			TerrainTileIds.DEEP_WATER_CORNER_BOTTOM,
+			TerrainTileIds.DEEP_WATER_CORNER_LEFT,
+		],
+		[
+			TerrainTileIds.SHORE_SLOPE_TOP_LEFT,
+			TerrainTileIds.SHORE_SLOPE_TOP_RIGHT,
+			TerrainTileIds.SHORE_SLOPE_BOTTOM_RIGHT,
+			TerrainTileIds.SHORE_SLOPE_BOTTOM_LEFT,
+		], [
+			TerrainTileIds.SHORE_RAISED_EXCEPT_BOTTOM,
+			TerrainTileIds.SHORE_RAISED_EXCEPT_LEFT,
+			TerrainTileIds.SHORE_RAISED_EXCEPT_TOP,
+			TerrainTileIds.SHORE_RAISED_EXCEPT_RIGHT,
+		],
+		[
+			TerrainTileIds.SHORE_CORNER_TOP,
+			TerrainTileIds.SHORE_CORNER_RIGHT,
+			TerrainTileIds.SHORE_CORNER_BOTTOM,
+			TerrainTileIds.SHORE_CORNER_LEFT,
+		], [
+			TerrainTileIds.SURFACE_WATER_NES,
+			TerrainTileIds.SURFACE_WATER_ESW,
+			TerrainTileIds.SURFACE_WATER_NSW,
+			TerrainTileIds.SURFACE_WATER_NEW,
+		],
+		[
+			TerrainTileIds.SURFACE_WATER_ES,
+			TerrainTileIds.SURFACE_WATER_SW,
+			TerrainTileIds.SURFACE_WATER_NW,
+			TerrainTileIds.SURFACE_WATER_NE,
+		], [
+			TerrainTileIds.SURFACE_WATER_BANK_NW,
+			TerrainTileIds.SURFACE_WATER_BANK_NE,
+			TerrainTileIds.SURFACE_WATER_BANK_SE,
+			TerrainTileIds.SURFACE_WATER_BANK_SW,
+		],
 		[TerrainTileIds.CHANNEL_E, TerrainTileIds.CHANNEL_S, TerrainTileIds.CHANNEL_W, TerrainTileIds.CHANNEL_N],
 	]:
 		_set_cycle(table, cycle, counter_clockwise)
@@ -300,7 +374,8 @@ static func _underground_table(counter_clockwise: bool) -> PackedByteArray:
 	for invalid in [UnderTiles.UNUSED_24, UnderTiles.UNUSED_25, UnderTiles.UNUSED_26, UnderTiles.UNUSED_27]:
 		table[invalid] = UnderTiles.EMPTY
 
-	for pair in [[UnderTiles.SUBWAY_LR, UnderTiles.SUBWAY_TB], [UnderTiles.PIPE_LR, UnderTiles.PIPE_TB], [UnderTiles.PIPE_TB_SUBWAY_LR, UnderTiles.PIPE_LR_SUBWAY_TB]]:
+	for pair in [[UnderTiles.SUBWAY_LR, UnderTiles.SUBWAY_TB], [UnderTiles.PIPE_LR, UnderTiles.PIPE_TB],
+		[UnderTiles.PIPE_TB_SUBWAY_LR, UnderTiles.PIPE_LR_SUBWAY_TB]]:
 		_swap(table, pair[0], pair[1])
 
 	for cycle in [
@@ -308,7 +383,12 @@ static func _underground_table(counter_clockwise: bool) -> PackedByteArray:
 		[UnderTiles.SUBWAY_BR, UnderTiles.SUBWAY_BL, UnderTiles.SUBWAY_TL, UnderTiles.SUBWAY_TR],
 		[UnderTiles.SUBWAY_RTB, UnderTiles.SUBWAY_LBR, UnderTiles.SUBWAY_TLB, UnderTiles.SUBWAY_LTR],
 		[UnderTiles.PIPE_HTB, UnderTiles.PIPE_LHR, UnderTiles.PIPE_THB, UnderTiles.PIPE_HLR],
-		[UnderTiles.PIPE_BR, UnderTiles.PIPE_BL, UnderTiles.PIPE_TL, UnderTiles.PIPE_TR], [UnderTiles.PIPE_RTB, UnderTiles.PIPE_LBR, UnderTiles.PIPE_TLB, UnderTiles.PIPE_LTR],
+		[
+			UnderTiles.PIPE_BR,
+			UnderTiles.PIPE_BL,
+			UnderTiles.PIPE_TL,
+			UnderTiles.PIPE_TR,
+		], [UnderTiles.PIPE_RTB, UnderTiles.PIPE_LBR, UnderTiles.PIPE_TLB, UnderTiles.PIPE_LTR],
 	]:
 		_set_cycle(table, cycle, counter_clockwise)
 
@@ -338,9 +418,19 @@ static func _rotate_special_surface(
 	counter_clockwise: bool
 ) -> void:
 	var ramp_tiles := (
-		[Tiles.HIGHWAY_ONRAMP_2, Tiles.HIGHWAY_ONRAMP_1, Tiles.HIGHWAY_ONRAMP_4, Tiles.HIGHWAY_ONRAMP_3, Tiles.HIGHWAY_ONRAMP_4, Tiles.HIGHWAY_ONRAMP_3, Tiles.HIGHWAY_ONRAMP_2, Tiles.HIGHWAY_ONRAMP_1]
+		[
+			Tiles.HIGHWAY_ONRAMP_2,
+			Tiles.HIGHWAY_ONRAMP_1,
+			Tiles.HIGHWAY_ONRAMP_4,
+			Tiles.HIGHWAY_ONRAMP_3,
+			Tiles.HIGHWAY_ONRAMP_4,
+			Tiles.HIGHWAY_ONRAMP_3,
+			Tiles.HIGHWAY_ONRAMP_2,
+			Tiles.HIGHWAY_ONRAMP_1,
+		]
 		if counter_clockwise
-		else [Tiles.HIGHWAY_ONRAMP_4, Tiles.HIGHWAY_ONRAMP_3, Tiles.HIGHWAY_ONRAMP_2, Tiles.HIGHWAY_ONRAMP_1, Tiles.HIGHWAY_ONRAMP_2, Tiles.HIGHWAY_ONRAMP_1, Tiles.HIGHWAY_ONRAMP_4, Tiles.HIGHWAY_ONRAMP_3]
+		else [Tiles.HIGHWAY_ONRAMP_4, Tiles.HIGHWAY_ONRAMP_3, Tiles.HIGHWAY_ONRAMP_2, Tiles.HIGHWAY_ONRAMP_1, Tiles.HIGHWAY_ONRAMP_2,
+		Tiles.HIGHWAY_ONRAMP_1, Tiles.HIGHWAY_ONRAMP_4, Tiles.HIGHWAY_ONRAMP_3]
 	)
 
 	for index in buildings.size():
@@ -353,7 +443,8 @@ static func _rotate_special_surface(
 			flags[index] = (flags[index] & ~Sc2TileFlags.FLIPPED & 0xff) | (FLIP_FLAG if ramp_index < 4 else 0)
 			continue
 
-		if not ((tile >= Tiles.SUSPENSION_BRIDGE_1 and tile <= Tiles.POWER_BRIDGE) or tile == Tiles.HIGHWAY_BRIDGE or tile == Tiles.REINFORCED_HIGHWAY_BRIDGE):
+		if not ((tile >= Tiles.SUSPENSION_BRIDGE_1 and tile <= Tiles.POWER_BRIDGE) or tile == Tiles.HIGHWAY_BRIDGE
+				or tile == Tiles.REINFORCED_HIGHWAY_BRIDGE):
 			continue
 
 		if counter_clockwise:
@@ -402,8 +493,16 @@ static func _replace_building(
 	if (zones[index] & Sc2ZoneLayout.TYPE_MASK) != MILITARY_ZONE:
 		var old_offset := TILE_COUNT_OFFSET + old_tile * 4
 		var new_offset := TILE_COUNT_OFFSET + new_tile * 4
-		BinaryData.write_u32_be(misc, old_offset, (BinaryData.read_u32_be(misc, old_offset) - 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
-		BinaryData.write_u32_be(misc, new_offset, (BinaryData.read_u32_be(misc, new_offset) + 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
+		BinaryData.write_u32_be(
+			misc,
+			old_offset,
+			(BinaryData.read_u32_be(misc, old_offset) - 1) & (0xffff if buildings.size() == 16384 else 0xffffffff),
+		)
+		BinaryData.write_u32_be(
+			misc,
+			new_offset,
+			(BinaryData.read_u32_be(misc, new_offset) + 1) & (0xffff if buildings.size() == 16384 else 0xffffffff),
+		)
 
 	buildings[index] = new_tile
 
@@ -419,7 +518,11 @@ static func _rotate_things(things: PackedByteArray, counter_clockwise: bool, map
 
 		if type == 3 and map_edge > 128:
 			var home := ThingData.ship_home(things, record, Vector2i(-1, -1))
-			ThingData.set_ship_home(things, record, Vector2i(home.y, map_edge - 1 - home.x) if counter_clockwise else Vector2i(map_edge - 1 - home.y, home.x))
+			ThingData.set_ship_home(
+				things,
+				record,
+				Vector2i(home.y, map_edge - 1 - home.x) if counter_clockwise else Vector2i(map_edge - 1 - home.y, home.x),
+			)
 
 		var old_x := int(ThingData.read(things, offset + 3))
 		var old_y := int(ThingData.read(things, offset + 4))

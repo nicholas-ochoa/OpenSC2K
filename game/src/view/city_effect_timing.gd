@@ -2,15 +2,6 @@ class_name CityEffectTiming
 extends RefCounted
 
 
-class DustTiming extends RefCounted:
-	var first: int
-	var start: int
-
-	func _init(first_frame: int, start_frame: int) -> void:
-		first = first_frame
-		start = start_frame
-
-
 static func parallel_dust_events(events: Array[EffectEvent]) -> Array[EffectEvent]:
 	var groups: Dictionary[Vector2i, Array] = {}
 
@@ -50,3 +41,12 @@ static func parallel_dust_events(events: Array[EffectEvent]) -> Array[EffectEven
 		result.append(event)
 
 	return result
+
+
+class DustTiming extends RefCounted:
+	var first: int
+	var start: int
+
+	func _init(first_frame: int, start_frame: int) -> void:
+		first = first_frame
+		start = start_frame

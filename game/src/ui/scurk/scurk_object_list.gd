@@ -3,15 +3,6 @@ extends ItemList
 
 signal objects_dropped(large_ids: PackedInt32Array)
 
-class CopyObjectsDrag extends RefCounted:
-	var source_instance: int
-	var large_ids: PackedInt32Array
-
-	func _init(source: int, ids: PackedInt32Array) -> void:
-		source_instance = source
-		large_ids = ids
-
-
 var drag_source := false
 var drop_target := false
 
@@ -69,3 +60,12 @@ func _drop_data(_at_position: Vector2, data: Variant) -> void:
 		return
 
 	objects_dropped.emit(data.large_ids)
+
+
+class CopyObjectsDrag extends RefCounted:
+	var source_instance: int
+	var large_ids: PackedInt32Array
+
+	func _init(source: int, ids: PackedInt32Array) -> void:
+		source_instance = source
+		large_ids = ids

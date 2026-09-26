@@ -1,9 +1,8 @@
 class_name SpecialZoneState
 extends SpecialZoneConstants
 
-
-
 const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
+
 
 static func replace_building(
 	buildings: PackedByteArray,
@@ -30,8 +29,16 @@ static func _replace_special_building(
 	var military := (zones[index] & Sc2ZoneLayout.TYPE_MASK) == Sc2ZoneLayout.MILITARY
 	var old_offset := _special_count_offset(old_tile, military)
 	var new_offset := _special_count_offset(new_tile, military)
-	BinaryData.write_u32_be(misc, old_offset, (BinaryData.read_u32_be(misc, old_offset) - 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
-	BinaryData.write_u32_be(misc, new_offset, (BinaryData.read_u32_be(misc, new_offset) + 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
+	BinaryData.write_u32_be(
+		misc,
+		old_offset,
+		(BinaryData.read_u32_be(misc, old_offset) - 1) & (0xffff if buildings.size() == 16384 else 0xffffffff),
+	)
+	BinaryData.write_u32_be(
+		misc,
+		new_offset,
+		(BinaryData.read_u32_be(misc, new_offset) + 1) & (0xffff if buildings.size() == 16384 else 0xffffffff),
+	)
 	buildings[index] = new_tile
 
 

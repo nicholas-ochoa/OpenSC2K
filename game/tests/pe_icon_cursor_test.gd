@@ -59,7 +59,8 @@ func _initialize() -> void:
 				assert(not PeIconCursorResource.decode_image(bad, true).ok)
 
 	_test_groups()
-	print("PASS: indexed icon/cursor DIB rows, 1/4/8-bit masks, all four AND/XOR outcomes, hotspots, truncated data, invalid headers/palettes/indices and group records")
+	print(("PASS: indexed icon/cursor DIB rows, 1/4/8-bit masks, all four AND/XOR outcomes, hotspots, "
+		+ "truncated data, invalid headers/palettes/indices and group records"))
 	quit()
 
 

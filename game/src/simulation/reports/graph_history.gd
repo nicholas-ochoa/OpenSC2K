@@ -1,6 +1,7 @@
 class_name GraphHistory
 extends RefCounted
 
+
 @warning_ignore_start("integer_division")
 
 const SERIES_COUNT := Sc2GraphLayout.SERIES_COUNT
@@ -14,17 +15,9 @@ const MISC_NATIONAL_FEDERAL_RATE := Sc2MiscLayout.NATIONAL_FEDERAL_RATE
 const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
 const MISC_BUDGETS := Sc2MiscLayout.BUDGETS
 const MISC_ARCOLOGY_POPULATION := Sc2MiscLayout.ARCOLOGY_POPULATION
-
 const BUDGET_ROAD := Sc2BudgetLayout.ROAD
 const FIRST_ARCOLOGY := BuildingTileIds.PLYMOUTH_ARCOLOGY
 const LAST_ARCOLOGY := BuildingTileIds.LAUNCH_ARCOLOGY
-
-
-class Result extends PhaseResult:
-	var month := 0
-	var elapsed_years := 0
-	var values := PackedInt64Array()
-	var unemployment := 0
 
 
 static func run(
@@ -236,3 +229,10 @@ static func _write_value(data: PackedByteArray, series: int, index: int, value: 
 
 static func _divide_toward_zero(value: int, divisor: int) -> int:
 	return int(value / divisor)
+
+
+class Result extends PhaseResult:
+	var month := 0
+	var elapsed_years := 0
+	var values := PackedInt64Array()
+	var unemployment := 0

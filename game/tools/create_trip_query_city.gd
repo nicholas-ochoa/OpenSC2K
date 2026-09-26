@@ -20,7 +20,13 @@ func _initialize() -> void:
 		return
 	TripQueryFixture.add_tunnel_scenario(city, Vector2i(80, 6))
 	for size in range(1, 5):
-		var route := TripQueryFixture.add_route(city, size, size, ["road", "rail", "highway", "rail"][size - 1], Vector2i(82, 12 + size * 16))
+		var route := TripQueryFixture.add_route(
+			city,
+			size,
+			size,
+			["road", "rail", "highway", "rail"][size - 1],
+			Vector2i(82, 12 + size * 16),
+		)
 		var label := "%d %dx%d to %dx%d %s" % [size + 6, size, size, size, size, route.network]
 		assert(SignCommand.set_sign(city, route.source.position + Vector2i(0, -3), label).ok)
 		if size == 4:

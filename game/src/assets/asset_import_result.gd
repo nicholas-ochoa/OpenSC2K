@@ -1,7 +1,6 @@
 class_name AssetImportResult
 extends RefCounted
 
-
 var ok := false
 var error := ""
 var path := ""

@@ -1,4 +1,5 @@
 extends SceneTree
+
 const ForegroundPalette = preload("res://src/view/city_foreground_palette.gd")
 
 

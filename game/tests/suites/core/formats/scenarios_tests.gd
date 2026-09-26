@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Formats: scenarios checks.
 
 @warning_ignore_start("integer_division")
@@ -119,37 +118,7 @@ func test_scenarios(reference_root: String) -> void:
 	_check(template_count == 5, "Five supplied scenarios contain a TMPL chunk")
 	_check(template_without_chunk_count == 13, "Thirteen supplied scenarios omit the optional TMPL chunk")
 
-	var malformed_template_document := _load_fixture(
-		reference_root.path_join("SCENARIO/CHARLEST.SCN")
-	).duplicate_document()
-	var malformed_template_chunk := malformed_template_document.find_chunk("TMPL")
-	var malformed_template_data := malformed_template_chunk.decoded_payload.duplicate()
-	malformed_template_data.resize(malformed_template_data.size() - 1)
-	_check(
-		malformed_template_chunk.set_decoded_payload(malformed_template_data),
-		"Scenario fixture truncates TMPL",
-	)
-	_check(
-		not ScenarioModel.from_document(malformed_template_document).template_fields().ok,
-		"TMPL reader rejects a truncated field",
-	)
-	var unknown_template_document := _load_fixture(
-		reference_root.path_join("SCENARIO/CHARLEST.SCN")
-	).duplicate_document()
-	var unknown_template_chunk := unknown_template_document.find_chunk("TMPL")
-	var unknown_template_data := unknown_template_chunk.decoded_payload.duplicate()
-
-	for index in range(18, 22):
-		unknown_template_data[index] = 0x58
-
-	_check(
-		unknown_template_chunk.set_decoded_payload(unknown_template_data),
-		"Scenario fixture changes a TMPL type",
-	)
-	_check(
-		not ScenarioModel.from_document(unknown_template_document).template_fields().ok,
-		"TMPL reader rejects an unknown field type",
-	)
+	_test_template_validation(reference_root)
 
 	var city_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 	var city := CityModel.from_document(city_document)
@@ -223,4 +192,38 @@ func test_scenarios(reference_root: String) -> void:
 		and bankrupt.game_over_events[0].type == "bankruptcy"
 		and bankrupt.game_over_events[0].funds == -100001,
 		"Funds below negative one hundred thousand emit bankruptcy",
+	)
+
+
+func _test_template_validation(reference_root: String) -> void:
+	var malformed_template_document := _load_fixture(
+		reference_root.path_join("SCENARIO/CHARLEST.SCN")
+	).duplicate_document()
+	var malformed_template_chunk := malformed_template_document.find_chunk("TMPL")
+	var malformed_template_data := malformed_template_chunk.decoded_payload.duplicate()
+	malformed_template_data.resize(malformed_template_data.size() - 1)
+	_check(
+		malformed_template_chunk.set_decoded_payload(malformed_template_data),
+		"Scenario fixture truncates TMPL",
+	)
+	_check(
+		not ScenarioModel.from_document(malformed_template_document).template_fields().ok,
+		"TMPL reader rejects a truncated field",
+	)
+	var unknown_template_document := _load_fixture(
+		reference_root.path_join("SCENARIO/CHARLEST.SCN")
+	).duplicate_document()
+	var unknown_template_chunk := unknown_template_document.find_chunk("TMPL")
+	var unknown_template_data := unknown_template_chunk.decoded_payload.duplicate()
+
+	for index in range(18, 22):
+		unknown_template_data[index] = 0x58
+
+	_check(
+		unknown_template_chunk.set_decoded_payload(unknown_template_data),
+		"Scenario fixture changes a TMPL type",
+	)
+	_check(
+		not ScenarioModel.from_document(unknown_template_document).template_fields().ok,
+		"TMPL reader rejects an unknown field type",
 	)

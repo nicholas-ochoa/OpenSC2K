@@ -1,5 +1,7 @@
 class_name DesktopCursorPresenter
 extends Node
+
+
 # this cursor is an operation on the screen, not just an image
 # native pointers for ordinary art; a small gpu patch for original xor art
 
@@ -36,6 +38,10 @@ func _ready() -> void:
 	_layer.add_child(_patch)
 	_layer.hide()
 	_copy.hide()
+
+
+func _exit_tree() -> void:
+	clear_cursor()
 
 
 func set_graphics(value: DesktopGraphics) -> void:
@@ -129,7 +135,3 @@ static func mask_image(masked: PeIconCursorResource.DecodedImage) -> Image:
 			image.set_pixel(x, y, color)
 
 	return image
-
-
-func _exit_tree() -> void:
-	clear_cursor()

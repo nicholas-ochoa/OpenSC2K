@@ -1,30 +1,6 @@
 extends SceneTree
+
 const DocumentState = preload("res://tests/support/document_state.gd")
-
-class ProcessRandom extends SimRandom:
-	var values: Array[int]
-	var calls := 0
-
-	func _init(sequence: Array[int]) -> void:
-		values = sequence
-
-	func next_u15() -> int:
-		var value := values[calls % values.size()]
-		calls += 1
-		return value
-
-
-class GateRandom extends SimLfsrRandom:
-	var value := 0
-	var calls := 0
-
-	func _init(result := 0) -> void:
-		value = result
-
-	func next_mask(mask: int) -> int:
-		calls += 1
-		return value & mask
-
 
 var fixtures: Dictionary = {}
 var checks := 0
@@ -138,7 +114,10 @@ func _test_targets(edge: int, native: bool, types: Array) -> void:
 			"Disaster %d stores original hero fields at edge %d" % [type, edge])
 		check(random.calls == (2 if type in [3, 13] else 1), "Only riot target selection takes a second process value")
 		check(city.text_overlay_id(point.x, point.y) == OverlayData.thing_id(1), "Hero is linked to its arrival tile")
-		check(SoundEvent.same_arrays(result.sound_events, SoundEvent.from_ids([520, 513])) and result.view_center_requests == [target, point], "Arrival events follow the disaster events")
+		check(
+			SoundEvent.same_arrays(result.sound_events, SoundEvent.from_ids([520, 513])) and result.view_center_requests == [target, point],
+			"Arrival events follow the disaster events",
+		)
 		# Save encoding depends on format/size, not which disaster selected the goal.
 		if type == types[-1] and ((edge == 128 and not native) or (edge == 512 and native)):
 			var serialized: PackedByteArray = city.document.serialize().data
@@ -188,12 +167,18 @@ func _test_engine(edge: int, native: bool) -> void:
 	var queued := scheduled._append_pending_disaster(day)
 	check(direct.ok and (direct.maxis_man_response != null), "Manual disaster starts automatic hero")
 	check(queued.ok and (queued.phase_results.disaster_start.maxis_man_response != null), "Queued disaster starts automatic hero")
-	check(DocumentState.capture(city.document) == DocumentState.capture(copy.document), "Manual and queued paths publish identical city bytes")
+	check(
+		DocumentState.capture(city.document) == DocumentState.capture(copy.document),
+		"Manual and queued paths publish identical city bytes",
+	)
 	check(manual.random.state == scheduled.random.state and manual.lfsr_random.state == 4, "Both paths consume exactly one response gate")
 	var before: Array = DocumentState.capture(city.document)
 	var seed := manual.random.state
 	check(not manual.start_disaster(7, target).ok, "Active disaster rejects a second start")
-	check(DocumentState.capture(city.document) == before and manual.random.state == seed and manual.lfsr_random.state == 4, "Rejected second start has no response side effects")
+	check(
+		DocumentState.capture(city.document) == before and manual.random.state == seed and manual.lfsr_random.state == 4,
+		"Rejected second start has no response side effects",
+	)
 	var tick := manual.advance_moving_things(0)
 	check(tick.ok and tick.malformed_records == 0, "Automatic hero runs through the normal moving-object update")
 
@@ -204,10 +189,19 @@ func _test_engine(edge: int, native: bool) -> void:
 	var controller := GameSpeedController.new(SimulationEngine.new(fixture(edge, native), 123, 2))
 	var snapshot := SimulationSnapshot.capture(controller, null)
 	var response := snapshot.engine.start_disaster(7, target)
-	check((response.maxis_man_response != null) and controller.engine.city.thing(2).type == 0, "Worker hero remains private until publication")
+	check(
+		(response.maxis_man_response != null) and controller.engine.city.thing(2).type == 0,
+		"Worker hero remains private until publication",
+	)
 	SimulationSnapshot.publish(snapshot, controller)
-	check(DocumentState.capture(controller.engine.city.document) == DocumentState.capture(snapshot.engine.city.document), "Worker publication preserves hero bytes and links")
-	check(controller.engine.random.state == snapshot.engine.random.state and controller.engine.lfsr_random.state == 4, "Worker publication preserves response RNG")
+	check(
+		DocumentState.capture(controller.engine.city.document) == DocumentState.capture(snapshot.engine.city.document),
+		"Worker publication preserves hero bytes and links",
+	)
+	check(
+		controller.engine.random.state == snapshot.engine.random.state and controller.engine.lfsr_random.state == 4,
+		"Worker publication preserves response RNG",
+	)
 
 
 func _test_extended_target() -> void:
@@ -219,4 +213,32 @@ func _test_extended_target() -> void:
 	city.document.find_chunk("XTHG").set_decoded_payload(things)
 	var response := MaxisManResponse.apply(city, start_result(Vector2i(400, 400), 7, record), ProcessRandom.new([0]), GateRandom.new())
 	var goal: int = response.maxis_man_response.goal
-	check(ThingData.is_record_target(goal) and ThingData.target_record(goal) == record, "Hero targets a high SC2X record without confusing disaster markers")
+	check(
+		ThingData.is_record_target(goal) and ThingData.target_record(goal) == record,
+		"Hero targets a high SC2X record without confusing disaster markers",
+	)
+
+
+class ProcessRandom extends SimRandom:
+	var values: Array[int]
+	var calls := 0
+
+	func _init(sequence: Array[int]) -> void:
+		values = sequence
+
+	func next_u15() -> int:
+		var value := values[calls % values.size()]
+		calls += 1
+		return value
+
+
+class GateRandom extends SimLfsrRandom:
+	var value := 0
+	var calls := 0
+
+	func _init(result := 0) -> void:
+		value = result
+
+	func next_mask(mask: int) -> int:
+		calls += 1
+		return value & mask

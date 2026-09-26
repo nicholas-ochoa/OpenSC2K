@@ -1,6 +1,7 @@
 class_name OrdinanceCommand
 extends RefCounted
 
+
 @warning_ignore_start("integer_division")
 
 const MISC_SIZE := Sc2MiscLayout.SIZE
@@ -10,17 +11,14 @@ const MISC_YEAR_END := Sc2MiscLayout.YEAR_END
 const MISC_ORDINANCES := Sc2MiscLayout.ORDINANCES
 const MISC_ARCOLOGY_POPULATION := Sc2MiscLayout.ARCOLOGY_POPULATION
 const MISC_NORMAL_POPULATION := Sc2MiscLayout.NORMAL_POPULATION
-
 const BUDGET_RECORD_SIZE := Sc2BudgetLayout.RECORD_SIZE
 const BUDGET_CURRENT := Sc2BudgetLayout.CURRENT
 const BUDGET_YEAR_TO_DATE := Sc2BudgetLayout.YEAR_TO_DATE
 const BUDGET_RESIDENTIAL := Sc2BudgetLayout.RESIDENTIAL
 const BUDGET_ORDINANCES := Sc2BudgetLayout.ORDINANCES
-
 const ORDINANCE_COUNT := OrdinanceIds.COUNT
 const DISPLAY_CURRENT_DIVISOR := 75
 const DISPLAY_ANNUAL_DIVISOR := 900
-
 const NAMES := [
 	"1% Sales Tax",
 	"1% Income Tax",
@@ -43,7 +41,6 @@ const NAMES := [
 	"Homeless Shelter",
 	"Pollution Controls",
 ]
-
 const CATEGORY_NAMES := [
 	"Finance",
 	"Safety & Health",
@@ -105,20 +102,6 @@ static func current_cost_for_misc(misc: PackedByteArray) -> int:
 			total = _to_i32(total + costs[ordinance_id])
 
 	return total
-
-
-class Result extends RefCounted:
-	var ok := false
-	var error := ""
-	var changed := false
-	var flags := 0
-	var current_raw := 0
-	var raw_costs := PackedInt32Array()
-	var item_amounts := PackedInt32Array()
-	var category_amounts := PackedInt32Array()
-	var year_to_date_amount := 0
-	var estimated_amount := 0
-	var month := 0
 
 
 static func failed(message: String) -> Result:
@@ -291,3 +274,17 @@ static func _to_i32(value: int) -> int:
 	var unsigned := value & 0xffffffff
 
 	return unsigned - 0x100000000 if unsigned & 0x80000000 else unsigned
+
+
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+	var changed := false
+	var flags := 0
+	var current_raw := 0
+	var raw_costs := PackedInt32Array()
+	var item_amounts := PackedInt32Array()
+	var category_amounts := PackedInt32Array()
+	var year_to_date_amount := 0
+	var estimated_amount := 0
+	var month := 0

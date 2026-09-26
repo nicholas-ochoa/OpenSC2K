@@ -76,7 +76,8 @@ func _run() -> void:
 	assert(dialog.folder_row.visible)
 
 	for kind in ["sound", "music"]:
-		var active_name: String = main.audio_controller.sound_pack.pack_name if kind == "sound" else main.audio_controller.music_pack.pack_name
+		var active_name: String = (main.audio_controller.sound_pack.pack_name if kind == "sound"
+			else main.audio_controller.music_pack.pack_name)
 		assert(dialog.pack_name_labels[kind].text == active_name)
 		var edit: LineEdit = dialog.pack_edits[kind]
 		var old_path := edit.text

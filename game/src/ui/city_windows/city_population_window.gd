@@ -1,7 +1,6 @@
 class_name CityPopulationWindow
 extends Window
 
-
 var population_control: PopulationWindowControl
 var mode_buttons: Array[CheckBox] = []
 

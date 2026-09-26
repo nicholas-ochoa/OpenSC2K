@@ -1,4 +1,5 @@
 extends SceneTree
+
 var cache: CityRegionCache
 var city: CityState
 var sprites: Sc2SpriteArchive
@@ -98,7 +99,10 @@ func _run() -> void:
 	var retained_texture: Texture2D = cache.entries[keys[2]].texture
 	configure([100000], 1, dirty)
 	assert(cache.entries[keys[1]].generation == stale_generation, "A local edit cannot mark an older simulation region current")
-	assert(cache.entries[keys[2]].generation == cache.generation and cache.entries[keys[2]].texture == retained_texture, "Local edit replaced an unaffected region")
+	assert(
+		cache.entries[keys[2]].generation == cache.generation and cache.entries[keys[2]].texture == retained_texture,
+		"Local edit replaced an unaffected region",
+	)
 	var expected_signs := PackedInt32Array()
 
 	for index in city.map_size * city.map_size:
@@ -112,7 +116,8 @@ func _run() -> void:
 	cache.update_viewport(Rect2(-10000, -10000, 10, 10))
 	assert(cache.entries.is_empty())
 	cache.close()
-	print("PASS: visible-first scheduling, bounded residency, pan eviction, zoom invalidation, native sampling, continuous updates and indexed signs")
+	print(("PASS: visible-first scheduling, bounded residency, pan eviction, zoom invalidation, "
+		+ "native sampling, continuous updates and indexed signs"))
 	quit()
 
 

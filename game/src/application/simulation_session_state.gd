@@ -1,7 +1,6 @@
 class_name SimulationSessionState
 extends RefCounted
 
-
 const GameRandom = preload("res://src/simulation/random/game_lcg_random.gd")
 
 var simulation_engine: SimulationEngine

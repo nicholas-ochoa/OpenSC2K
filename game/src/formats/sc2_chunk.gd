@@ -63,4 +63,3 @@ func payload_for_write() -> PackedByteArray:
 		return RleCodec.encode(decoded_payload)
 
 	return decoded_payload.duplicate()
-

@@ -90,7 +90,8 @@ func run() -> void:
 	main.queue_free()
 	await process_frame
 	assert(OriginalGameInstaller.remove_tree(temporary) == OK)
-	print("PASS: import scene, background completion, busy close guard, all/selective categories, partial failure, activation, preserved preferences and coexistence")
+	print(("PASS: import scene, background completion, busy close guard, all/selective categories, "
+		+ "partial failure, activation, preserved preferences and coexistence"))
 	quit()
 
 

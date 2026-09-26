@@ -1,6 +1,6 @@
+# gdstyle:ignore-file=quality/max-class-variables
 class_name CityApplication
 extends Control
-
 
 # active city, document, and save state
 var document_state := ActiveDocumentState.new()
@@ -32,7 +32,6 @@ var timing_state := TimingState.new()
 var render_caches := RenderCaches.new()
 var static_render_state := StaticRenderState.new()
 var palette_clock := PaletteAnimationClock.new()
-
 # scene controls and pending ui workflows
 var audio_controller: CityAudioController
 var map_view: CityMapControl
@@ -64,7 +63,6 @@ var desktop_presentation: CityDesktopPresentation
 var scurk_place_print: ScurkPlacePrintControl
 var scurk_print: ScurkPrintControl
 var debug_overlay: CityDebugOverlay
-
 # shared state for the controllers; rules and scene ownership stay elsewhere
 var assets: ApplicationAssets = ApplicationAssets.new(self)
 var interface: ApplicationInterface = ApplicationInterface.new(self)
@@ -114,10 +112,6 @@ func _ready() -> void:
 	updates.check_on_startup()
 
 
-func _on_window_size_changed() -> void:
-	settings.apply_ui_scale()
-
-
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST and is_inside_tree():
 		city_files.request_city_exit("quit")
@@ -153,3 +147,7 @@ func _input(event: InputEvent) -> void:
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	camera_input.unhandled_key_input(event)
+
+
+func _on_window_size_changed() -> void:
+	settings.apply_ui_scale()

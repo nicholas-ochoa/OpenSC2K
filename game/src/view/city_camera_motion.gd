@@ -1,9 +1,11 @@
 class_name CityCameraMotion
 extends RefCounted
+
 const SPEED := 650.0
 const ACCELERATION := 5200.0
 const BRAKING := 6500.0
-const DIRECTIONS := {KEY_W: Vector2.UP, KEY_A: Vector2.LEFT, KEY_S: Vector2.DOWN, KEY_D: Vector2.RIGHT}
+const DIRECTIONS := { KEY_W: Vector2.UP, KEY_A: Vector2.LEFT, KEY_S: Vector2.DOWN, KEY_D: Vector2.RIGHT }
+
 var velocity := Vector2.ZERO
 var held_keys: Dictionary[int, bool] = {}
 

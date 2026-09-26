@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Rendering: moving visual checks.
 
 @warning_ignore_start("integer_division")
@@ -132,6 +131,21 @@ func run(
 		and plane_commands[1].position == expected_plane_position,
 		"Moving overlay commands use the recovered baseline and shadow positions",
 	)
+	_test_occlusion(starter, large)
+
+	_test_visual_signatures(starter, large)
+
+	for expected in [Vector2i.ZERO, Vector2i(24, 93), Vector2i(64, 64), Vector2i(127, 127)]:
+		var polygon := IsometricRenderer.tile_polygon(starter, expected.x, expected.y)
+		var center := (polygon[0] + polygon[1] + polygon[2] + polygon[3]) * 0.25
+		_check(
+			IsometricRenderer.screen_to_tile(starter, center) == expected,
+			"Isometric screen lookup finds tile %s" % expected,
+		)
+	return starter
+
+
+func _test_occlusion(starter: CityState, large: Sc2SpriteArchive) -> void:
 	var moving_fixture := Image.create(2, 2, false, Image.FORMAT_RGBA8)
 	moving_fixture.fill(Color.WHITE)
 	var occluder_fixture := Image.create(2, 2, false, Image.FORMAT_RGBA8)
@@ -200,6 +214,9 @@ func run(
 		and occlusion_candidates.size() < static_occluders.size(),
 		"The occlusion grid keeps all local overlaps and rejects distant sprites",
 	)
+
+
+func _test_visual_signatures(starter: CityState, large: Sc2SpriteArchive) -> void:
 	var static_signature := IsometricRenderer.static_visual_signature(starter)
 	_check(
 		starter.set_text_overlay_id(64, 64, 201),
@@ -260,12 +277,3 @@ func run(
 
 	_check(found_dynamic_special, "The dynamic city layer draws a special map marker")
 	_check(starter.set_text_overlay_id(64, 64, 0), "Static-signature fixture clears its marker")
-
-	for expected in [Vector2i.ZERO, Vector2i(24, 93), Vector2i(64, 64), Vector2i(127, 127)]:
-		var polygon := IsometricRenderer.tile_polygon(starter, expected.x, expected.y)
-		var center := (polygon[0] + polygon[1] + polygon[2] + polygon[3]) * 0.25
-		_check(
-			IsometricRenderer.screen_to_tile(starter, center) == expected,
-			"Isometric screen lookup finds tile %s" % expected,
-		)
-	return starter

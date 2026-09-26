@@ -1,43 +1,9 @@
+# gdstyle:ignore-file=quality/max-class-variables
 class_name MicrosimAnnualPhase
 extends MicrosimAnnualValues
 
 
 @warning_ignore_start("integer_division")
-
-
-class Result extends PhaseResult:
-	var updated_subway_records := 0
-	var updated_bus_records := 0
-	var updated_rail_records := 0
-	var updated_hydro_records := 0
-	var updated_wind_records := 0
-	var updated_city_hall_records := 0
-	var updated_museum_records := 0
-	var updated_park_records := 0
-	var updated_library_records := 0
-	var updated_hospital_records := 0
-	var updated_police_records := 0
-	var updated_fire_records := 0
-	var updated_school_records := 0
-	var updated_stadium_records := 0
-	var updated_prison_records := 0
-	var updated_college_records := 0
-	var updated_power_records := 0
-	var updated_zoo_records := 0
-	var updated_statue_records := 0
-	var updated_mayor_house_records := 0
-	var updated_water_facility_records := 0
-	var updated_marina_records := 0
-	var updated_arcology_records := 0
-	var updated_llamadome_records := 0
-	var random_records_pending := 0
-	var demolished_power_records: Array[PowerPlantExpiry] = []
-	var expired_power_records: Array[PowerPlantExpiry] = []
-	var arcology_launch_pending := false
-	var arcology_launched := false
-	var launch_arcology_records := 0
-	var launched_structures := 0
-	var passenger_counters_reset := true
 
 
 static func run(
@@ -353,3 +319,38 @@ static func _failed(message: String) -> Result:
 	result.error = message
 
 	return result
+
+
+class Result extends PhaseResult:
+	var updated_subway_records := 0
+	var updated_bus_records := 0
+	var updated_rail_records := 0
+	var updated_hydro_records := 0
+	var updated_wind_records := 0
+	var updated_city_hall_records := 0
+	var updated_museum_records := 0
+	var updated_park_records := 0
+	var updated_library_records := 0
+	var updated_hospital_records := 0
+	var updated_police_records := 0
+	var updated_fire_records := 0
+	var updated_school_records := 0
+	var updated_stadium_records := 0
+	var updated_prison_records := 0
+	var updated_college_records := 0
+	var updated_power_records := 0
+	var updated_zoo_records := 0
+	var updated_statue_records := 0
+	var updated_mayor_house_records := 0
+	var updated_water_facility_records := 0
+	var updated_marina_records := 0
+	var updated_arcology_records := 0
+	var updated_llamadome_records := 0
+	var random_records_pending := 0
+	var demolished_power_records: Array[PowerPlantExpiry] = []
+	var expired_power_records: Array[PowerPlantExpiry] = []
+	var arcology_launch_pending := false
+	var arcology_launched := false
+	var launch_arcology_records := 0
+	var launched_structures := 0
+	var passenger_counters_reset := true

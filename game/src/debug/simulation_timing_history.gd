@@ -1,5 +1,7 @@
 class_name SimulationTimingHistory
 extends RefCounted
+
+
 # Statistics for accepted simulation results in this session.
 @warning_ignore_start("integer_division")
 
@@ -17,15 +19,6 @@ const DAY_SUMMARIES := [
 const PACING_OUTLIER_RATIO := 4.0
 # pacing starts when this many day slots have samples
 const PACING_MIN_SLOTS := 13
-class Sample extends RefCounted:
-	var count := 0
-	var total_usec := 0
-	var last_usec := 0
-	var max_usec := 0
-	var age := -1
-	# pacing wait after the last sampled day. day slots only
-	var last_delay_usec := 0
-
 
 var days: Dictionary[int, Sample] = {}
 var steps: Dictionary[String, Sample] = {}
@@ -177,3 +170,13 @@ static func _phase_group(label: String) -> String:
 			return "city status and disasters"
 
 	return label
+
+
+class Sample extends RefCounted:
+	var count := 0
+	var total_usec := 0
+	var last_usec := 0
+	var max_usec := 0
+	var age := -1
+	# pacing wait after the last sampled day. day slots only
+	var last_delay_usec := 0

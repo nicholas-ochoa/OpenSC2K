@@ -1,6 +1,6 @@
+# gdstyle:ignore-file=quality/max-class-variables
 class_name QueryResult
 extends RefCounted
-
 
 var ok := false
 var shows_traffic := false
@@ -9,7 +9,6 @@ var shows_land_value := false
 var shows_utilities := false
 var powered := false
 var watered := false
-
 var error := ""
 var kind := ""
 var title := ""
@@ -22,7 +21,6 @@ var action := ""
 var corner_name := ""
 var underground_name := ""
 var microsim_label := ""
-
 var overlay_id := 0
 var zone_id := 0
 var sprite_id := 0

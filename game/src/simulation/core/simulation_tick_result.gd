@@ -1,7 +1,6 @@
 class_name SimulationTickResult
 extends RefCounted
 
-
 var ok := false
 var error := ""
 var base_ticks := 0

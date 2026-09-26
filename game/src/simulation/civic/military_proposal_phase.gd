@@ -2,34 +2,22 @@ class_name MilitaryProposalPhase
 extends RefCounted
 
 const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
-
 const MISC_SIZE := Sc2MiscLayout.SIZE
 const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
 const MISC_BASE_TYPE := Sc2MiscLayout.MILITARY_BASE_TYPE
 const MISC_MILITARY_TILE_COUNTS := Sc2MiscLayout.MILITARY_TILE_COUNTS
 const ZONE_MILITARY := 7
 const FLAG_WATER := Sc2TileFlags.WATER
-
 const BASE_DECLINED := 1
 const BASE_ARMY := 2
 const BASE_AIR_FORCE := 3
 const BASE_NAVY := 4
 const BASE_MISSILE_SILOS := 5
-
 const NOTICE_ARMY := 0xf1
 const NOTICE_AIR_FORCE := 0xf2
 const NOTICE_NAVY := 0xf3
 const NOTICE_MISSILE_SILOS := 0xf4
 const NOTICE_NO_SITE := 0x19b
-
-
-class Result extends PhaseResult:
-	var accepted := false
-	var base_type := 0
-	var site := Rect2i()
-	var changed_indices := PackedInt32Array()
-	var notice_id := -1
-	var sites: Array[Rect2i] = []
 
 
 static func resolve(city: CityState, accepted: bool, game_random: GameLcgRandom, defer_land_plot := false) -> Result:
@@ -43,7 +31,13 @@ static func resolve(city: CityState, accepted: bool, game_random: GameLcgRandom,
 	return result
 
 
-static func _resolve(city: CityState, accepted: bool, game_random: GameLcgRandom, span: SimulationTimingSpan, defer_land_plot: bool) -> Result:
+static func _resolve(
+	city: CityState,
+	accepted: bool,
+	game_random: GameLcgRandom,
+	span: SimulationTimingSpan,
+	defer_land_plot: bool,
+) -> Result:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
@@ -88,7 +82,7 @@ static func _resolve(city: CityState, accepted: bool, game_random: GameLcgRandom
 
 		BinaryData.write_u32_be(misc, MISC_BASE_TYPE, BASE_NAVY)
 
-		if not _store(city, chunks, zones, misc, {"XBLD": buildings}):
+		if not _store(city, chunks, zones, misc, { "XBLD": buildings }):
 			return _failed("cannot store the Navy base plot")
 
 		var result := _result(true, BASE_NAVY, navy_site, changed, NOTICE_NAVY)
@@ -215,7 +209,7 @@ static func reserve_land_site(city: CityState, base_type: int, site: Rect2i, not
 	if base_type == BASE_ARMY:
 		ArmyBaseLayout.build(buildings, terrain, zones, underground, flags, misc, site.position, city.map_size)
 
-	if not _store(city, chunks, zones, misc, {"XBLD": buildings, "XTER": terrain, "XBIT": flags}):
+	if not _store(city, chunks, zones, misc, { "XBLD": buildings, "XTER": terrain, "XBIT": flags }):
 		return _failed("cannot store the military base plot")
 
 	return _result(true, base_type, site, changed, notice_id)
@@ -263,7 +257,7 @@ static func _store(
 	city: CityState, chunks: Dictionary, zones: PackedByteArray, misc: PackedByteArray,
 	map_changes: Dictionary = {},
 ) -> bool:
-	var payloads := {"XZON": zones, "MISC": misc}
+	var payloads := { "XZON": zones, "MISC": misc }
 
 	payloads.merge(map_changes)
 
@@ -341,3 +335,12 @@ static func _increment_military_other(misc: PackedByteArray, map_edge: int = 128
 		MISC_MILITARY_TILE_COUNTS,
 		(BinaryData.read_u32_be(misc, MISC_MILITARY_TILE_COUNTS) + 1) & (0xffff if map_edge == 128 else 0xffffffff)
 	)
+
+
+class Result extends PhaseResult:
+	var accepted := false
+	var base_type := 0
+	var site := Rect2i()
+	var changed_indices := PackedInt32Array()
+	var notice_id := -1
+	var sites: Array[Rect2i] = []

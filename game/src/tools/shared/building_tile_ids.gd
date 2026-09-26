@@ -4,13 +4,11 @@ extends RefCounted
 ## Numbered variants identify distinct artwork with the same description.
 
 const EMPTY := 0x00
-
 const RUBBLE_1 := 0x01
 const RUBBLE_2 := 0x02
 const RUBBLE_3 := 0x03
 const RUBBLE_4 := 0x04
 const RADIOACTIVE_WASTE := 0x05
-
 const TREES_1 := 0x06
 const TREES_2 := 0x07
 const TREES_3 := 0x08
@@ -18,9 +16,7 @@ const TREES_4 := 0x09
 const TREES_5 := 0x0a
 const TREES_6 := 0x0b
 const TREES_7 := 0x0c
-
 const SMALL_PARK := 0x0d
-
 const POWER_LINE_STRAIGHT_1 := 0x0e
 const POWER_LINE_STRAIGHT_2 := 0x0f
 const POWER_LINE_SLOPE_1 := 0x10
@@ -36,7 +32,6 @@ const POWER_LINE_JUNCTION_2 := 0x19
 const POWER_LINE_JUNCTION_3 := 0x1a
 const POWER_LINE_JUNCTION_4 := 0x1b
 const POWER_LINE_CROSSROADS := 0x1c
-
 const ROAD_STRAIGHT_1 := 0x1d
 const ROAD_STRAIGHT_2 := 0x1e
 const ROAD_SLOPE_1 := 0x1f
@@ -52,7 +47,6 @@ const ROAD_JUNCTION_2 := 0x28
 const ROAD_JUNCTION_3 := 0x29
 const ROAD_JUNCTION_4 := 0x2a
 const ROAD_CROSSROADS := 0x2b
-
 const RAIL_STRAIGHT_1 := 0x2c
 const RAIL_STRAIGHT_2 := 0x2d
 const RAIL_SLOPE_1 := 0x2e
@@ -68,24 +62,20 @@ const RAIL_JUNCTION_2 := 0x37
 const RAIL_JUNCTION_3 := 0x38
 const RAIL_JUNCTION_4 := 0x39
 const RAIL_CROSSROADS := 0x3a
-
 const RAIL_SLOPE_5 := 0x3b
 const RAIL_SLOPE_6 := 0x3c
 const RAIL_SLOPE_7 := 0x3d
 const RAIL_SLOPE_8 := 0x3e
-
 const TUNNEL_ENTRANCE_1 := 0x3f
 const TUNNEL_ENTRANCE_2 := 0x40
 const TUNNEL_ENTRANCE_3 := 0x41
 const TUNNEL_ENTRANCE_4 := 0x42
-
 const ROAD_POWER_CROSSING_1 := 0x43
 const ROAD_POWER_CROSSING_2 := 0x44
 const ROAD_RAIL_CROSSING_1 := 0x45
 const ROAD_RAIL_CROSSING_2 := 0x46
 const RAIL_POWER_CROSSING_1 := 0x47
 const RAIL_POWER_CROSSING_2 := 0x48
-
 const HIGHWAY_STRAIGHT_1 := 0x49
 const HIGHWAY_STRAIGHT_2 := 0x4a
 const HIGHWAY_ROAD_CROSSING_1 := 0x4b
@@ -94,7 +84,6 @@ const HIGHWAY_RAIL_CROSSING_1 := 0x4d
 const HIGHWAY_RAIL_CROSSING_2 := 0x4e
 const HIGHWAY_POWER_CROSSING_1 := 0x4f
 const HIGHWAY_POWER_CROSSING_2 := 0x50
-
 const SUSPENSION_BRIDGE_1 := 0x51
 const SUSPENSION_BRIDGE_2 := 0x52
 const SUSPENSION_BRIDGE_3 := 0x53
@@ -107,17 +96,14 @@ const RAISING_BRIDGE_OPEN := 0x59
 const RAIL_BRIDGE := 0x5a
 const RAIL_BRIDGE_PYLON := 0x5b
 const POWER_BRIDGE := 0x5c
-
 const HIGHWAY_ONRAMP_1 := 0x5d
 const HIGHWAY_ONRAMP_2 := 0x5e
 const HIGHWAY_ONRAMP_3 := 0x5f
 const HIGHWAY_ONRAMP_4 := 0x60
-
 const HIGHWAY_SLOPE_1 := 0x61
 const HIGHWAY_SLOPE_2 := 0x62
 const HIGHWAY_SLOPE_3 := 0x63
 const HIGHWAY_SLOPE_4 := 0x64
-
 const HIGHWAY_CURVE_1 := 0x65
 const HIGHWAY_CURVE_2 := 0x66
 const HIGHWAY_CURVE_3 := 0x67
@@ -125,12 +111,10 @@ const HIGHWAY_CURVE_4 := 0x68
 const HIGHWAY_INTERSECTION := 0x69
 const HIGHWAY_BRIDGE := 0x6a
 const REINFORCED_HIGHWAY_BRIDGE := 0x6b
-
 const RAIL_SUBWAY_ENTRANCE_1 := 0x6c
 const RAIL_SUBWAY_ENTRANCE_2 := 0x6d
 const RAIL_SUBWAY_ENTRANCE_3 := 0x6e
 const RAIL_SUBWAY_ENTRANCE_4 := 0x6f
-
 const LOWER_CLASS_HOMES_1X1_1 := 0x70
 const LOWER_CLASS_HOMES_1X1_2 := 0x71
 const LOWER_CLASS_HOMES_1X1_3 := 0x72
@@ -143,7 +127,6 @@ const LUXURY_HOMES_1X1_1 := 0x78
 const LUXURY_HOMES_1X1_2 := 0x79
 const LUXURY_HOMES_1X1_3 := 0x7a
 const LUXURY_HOMES_1X1_4 := 0x7b
-
 const GAS_STATION_1X1_1 := 0x7c
 const BED_BREAKFAST_INN_1X1 := 0x7d
 const CONVENIENCE_STORE_1X1 := 0x7e
@@ -152,17 +135,14 @@ const SMALL_OFFICE_BUILDING_1X1 := 0x80
 const OFFICE_BUILDING_1X1 := 0x81
 const WAREHOUSE_1X1_1 := 0x82
 const CASSIDYS_TOY_STORE_1X1 := 0x83
-
 const WAREHOUSE_1X1_2 := 0x84
 const CHEMICAL_STORAGE_1X1 := 0x85
 const WAREHOUSE_1X1_3 := 0x86
 const INDUSTRIAL_SUBSTATION_1X1 := 0x87
-
 const CONSTRUCTION_1X1_1 := 0x88
 const CONSTRUCTION_1X1_2 := 0x89
 const ABANDONED_1X1_1 := 0x8a
 const ABANDONED_1X1_2 := 0x8b
-
 const CHEAP_APARTMENTS_2X2 := 0x8c
 const APARTMENTS_2X2_1 := 0x8d
 const APARTMENTS_2X2_2 := 0x8e
@@ -171,7 +151,6 @@ const NICE_APARTMENTS_2X2_2 := 0x90
 const CONDOMINIUM_2X2_1 := 0x91
 const CONDOMINIUM_2X2_2 := 0x92
 const CONDOMINIUM_2X2_3 := 0x93
-
 const SHOPPING_CENTER_2X2 := 0x94
 const GROCERY_STORE_2X2 := 0x95
 const OFFICE_BUILDING_2X2_1 := 0x96
@@ -182,7 +161,6 @@ const OFFICE_BUILDING_2X2_3 := 0x9a
 const OFFICE_BUILDING_2X2_4 := 0x9b
 const OFFICE_BUILDING_2X2_5 := 0x9c
 const OFFICE_BUILDING_2X2_6 := 0x9d
-
 const WAREHOUSE_2X2 := 0x9e
 const CHEMICAL_PROCESSING_2X2 := 0x9f
 const FACTORY_2X2_1 := 0xa0
@@ -191,7 +169,6 @@ const FACTORY_2X2_3 := 0xa2
 const FACTORY_2X2_4 := 0xa3
 const FACTORY_2X2_5 := 0xa4
 const FACTORY_2X2_6 := 0xa5
-
 const CONSTRUCTION_2X2_1 := 0xa6
 const CONSTRUCTION_2X2_2 := 0xa7
 const CONSTRUCTION_2X2_3 := 0xa8
@@ -200,12 +177,10 @@ const ABANDONED_2X2_1 := 0xaa
 const ABANDONED_2X2_2 := 0xab
 const ABANDONED_2X2_3 := 0xac
 const ABANDONED_2X2_4 := 0xad
-
 const LARGE_APARTMENT_BUILDING_3X3_1 := 0xae
 const LARGE_APARTMENT_BUILDING_3X3_2 := 0xaf
 const CONDOMINIUM_3X3_1 := 0xb0
 const CONDOMINIUM_3X3_2 := 0xb1
-
 const OFFICE_PARK_3X3 := 0xb2
 const OFFICE_TOWER_3X3_1 := 0xb3
 const MINI_MALL_3X3 := 0xb4
@@ -216,19 +191,16 @@ const OFFICE_TOWER_3X3_3 := 0xb8
 const PARKING_LOT_3X3 := 0xb9
 const HISTORIC_OFFICE_BUILDING_3X3 := 0xba
 const CORPORATE_HEADQUARTERS_3X3 := 0xbb
-
 const CHEMICAL_PROCESSING_3X3 := 0xbc
 const LARGE_FACTORY_3X3 := 0xbd
 const INDUSTRIAL_THINGAMAJIG_3X3 := 0xbe
 const FACTORY_3X3 := 0xbf
 const LARGE_WAREHOUSE_3X3 := 0xc0
 const WAREHOUSE_3X3 := 0xc1
-
 const CONSTRUCTION_3X3_1 := 0xc2
 const CONSTRUCTION_3X3_2 := 0xc3
 const ABANDONED_3X3_1 := 0xc4
 const ABANDONED_3X3_2 := 0xc5
-
 const HYDRO_POWER_1 := 0xc6
 const HYDRO_POWER_2 := 0xc7
 const WIND_POWER := 0xc8
@@ -239,7 +211,6 @@ const SOLAR_POWER := 0xcc
 const MICROWAVE_POWER := 0xcd
 const FUSION_POWER := 0xce
 const COAL_POWER := 0xcf
-
 const CITY_HALL := 0xd0
 const HOSPITAL := 0xd1
 const POLICE_STATION := 0xd2
@@ -253,7 +224,6 @@ const COLLEGE := 0xd9
 const ZOO := 0xda
 const STATUE := 0xdb
 const WATER_PUMP := 0xdc
-
 const RUNWAY := 0xdd
 const RUNWAY_CROSSING := 0xde
 const PIER := 0xdf
@@ -268,7 +238,6 @@ const FIGHTER_JET := 0xe7
 const HANGAR_1 := 0xe8
 const SUBWAY_STATION := 0xe9
 const RADAR := 0xea
-
 const WATER_TOWER := 0xeb
 const BUS_DEPOT := 0xec
 const RAIL_STATION := 0xed
@@ -285,13 +254,11 @@ const CHURCH := 0xf7
 const MARINA := 0xf8
 const MISSILE_SILO := 0xf9
 const DESALINIZATION := 0xfa
-
 const PLYMOUTH_ARCOLOGY := 0xfb
 const FOREST_ARCOLOGY := 0xfc
 const DARCO_ARCOLOGY := 0xfd
 const LAUNCH_ARCOLOGY := 0xfe
 const LLAMA_DOME := 0xff
-
 # Inclusive category and footprint bounds.
 const RUBBLE_FIRST := RUBBLE_1
 const RUBBLE_LAST := RUBBLE_4
@@ -347,7 +314,6 @@ const CONSTRUCTION_3X3_FIRST := CONSTRUCTION_3X3_1
 const CONSTRUCTION_3X3_LAST := CONSTRUCTION_3X3_2
 const ABANDONED_3X3_FIRST := ABANDONED_3X3_1
 const DEVELOPED_3X3_LAST := ABANDONED_3X3_2
-
 # Inclusive footprint ranges after the developed-building ranges.
 const SMALL_POWER_LAST := WIND_POWER
 const LARGE_POWER_LAST := COAL_POWER
@@ -358,6 +324,5 @@ const INFRASTRUCTURE_2X2_LAST := CHURCH
 const INFRASTRUCTURE_3X3_LAST := DESALINIZATION
 const ARCOLOGY_FIRST := PLYMOUTH_ARCOLOGY
 const ARCOLOGY_LAST := LAUNCH_ARCOLOGY
-
 const MAX_ID := LLAMA_DOME
 const COUNT := 0x100

@@ -1,4 +1,5 @@
 extends "res://src/main.gd"
+
 ## Inclusive CPU timings for the native frame benchmark only.
 var frame_profile := {}
 
@@ -7,15 +8,6 @@ func _ready() -> void:
 	super._ready()
 	map_view.layers = ProfileLayers.new(map_view, self)
 	render_caches.dynamic_command_cache = ProfileCommandCache.new(self)
-
-
-func _record(name: String, started: int) -> void:
-	var elapsed := Time.get_ticks_usec() - started
-	var entry: Dictionary = frame_profile.get(name, {"calls": 0, "usec": 0, "max_usec": 0})
-	entry.calls += 1
-	entry.usec += elapsed
-	entry.max_usec = maxi(entry.max_usec, elapsed)
-	frame_profile[name] = entry
 
 
 func _process(delta: float) -> void:
@@ -35,6 +27,15 @@ func _init() -> void:
 		static_render.city_view_size, static_render.sprite_archive_for_view)
 	effects_audio = ApplicationEffectsAudio.new(document_state, view_state, asset_state,
 		simulation_state, preferences, static_render.city_view_size, static_render.sprite_archive_for_view)
+
+
+func _record(name: String, started: int) -> void:
+	var elapsed := Time.get_ticks_usec() - started
+	var entry: Dictionary = frame_profile.get(name, { "calls": 0, "usec": 0, "max_usec": 0 })
+	entry.calls += 1
+	entry.usec += elapsed
+	entry.max_usec = maxi(entry.max_usec, elapsed)
+	frame_profile[name] = entry
 
 
 class ProfileFrame extends ApplicationFrame:

@@ -3,8 +3,8 @@ extends DisasterStartConstants
 
 @warning_ignore_start("integer_division")
 
-
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 
 static func _start_flood(city: CityState, requested_point: Vector2i, lfsr_random: SimLfsrRandom) -> DisasterStartResult:
 	var map_edge: int = city.map_size if city != null else 128

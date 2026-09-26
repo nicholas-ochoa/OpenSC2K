@@ -4,17 +4,12 @@ extends TransportTripConstants
 
 @warning_ignore_start("integer_division")
 
-
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
-class Endpoint extends RefCounted:
-	var exit := false
-	var destination := false
-	var limited := false
 
 
 # a caller may reuse a private result for ordinary growth trips. reach queries
 # allocate an independent subclass and retain their own nodes and links
+# gdstyle:ignore=quality/max-parameters
 static func trace(
 	buildings: PackedByteArray,
 	zones: PackedByteArray,
@@ -80,8 +75,8 @@ static func trace(
 	var costs := PackedInt32Array([0])
 	var headings := PackedInt32Array([4])
 	var parents := PackedInt32Array([-1])
-	var pending: Dictionary[int, Array] = {0: [0]}
-	var best: Dictionary[int, int] = {_state_key(start_index, modes[0], 4): 0}
+	var pending: Dictionary[int, Array] = { 0: [0] }
+	var best: Dictionary[int, int] = { _state_key(start_index, modes[0], 4): 0 }
 	var reachable: Array[TransportTripReachResult.ReachNode] = []
 	var links: Array[TransportTripReachResult.Link] = []
 	var destinations: Dictionary[Vector2i, int] = {}
@@ -213,37 +208,7 @@ static func trace(
 		if winner >= 0 and not collect_reach:
 			break
 
-	var path: Array[int] = []
-	var cursor := winner
-
-	while cursor >= 0:
-		path.push_front(cursor)
-		cursor = parents[cursor]
-
-	var used_bus := false
-	var used_rail := false
-	var used_subway := false
-
-	if winner >= 0 and traffic_weight > 0:
-		for index in path:
-			var mode := modes[index]
-			used_bus = used_bus or mode == BUS_STOP_MODE
-			used_rail = used_rail or mode == RAIL_STATION_MODE
-			used_subway = used_subway or mode == SUBWAY_STATION_MODE
-
-			if not collect_reach and mode in [ROAD_MODE, HIGHWAY_MODE, ROAD_BRIDGE_MODE]:
-				var point := points[index]
-				var traffic_index := CityDataGrid.index(traffic, map_edge, point.x, point.y)
-				traffic[traffic_index] = mini(int(traffic[traffic_index]) + traffic_weight, 0xff)
-
-	result.ok = true
-	result.reached_destination = winner >= 0
-	result.cost = costs[winner] if winner >= 0 else 0
-	result.path_length = path.size()
-	result.used_bus = used_bus
-	result.used_rail = used_rail
-	result.used_subway = used_subway
-	result.expanded_states = expanded
+	_record_path(result, winner, parents, modes, points, costs, traffic, traffic_weight, map_edge, collect_reach, expanded)
 
 	if collect_reach:
 		var limit_points: Dictionary[Vector2i, String] = {}
@@ -358,3 +323,47 @@ static func _find_transport(buildings: PackedByteArray, origin: Vector2i, map_ed
 			return (SUBWAY_STATION_MODE << (14 if map_edge == 128 else 18)) | index
 
 	return -1
+
+
+static func _record_path(
+	result: TransportTripResult, winner: int, parents: PackedInt32Array, modes: PackedInt32Array,
+	points: Array[Vector2i], costs: PackedInt32Array, traffic: PackedByteArray,
+	traffic_weight: int, map_edge: int, collect_reach: bool, expanded: int
+) -> void:
+	var path: Array[int] = []
+	var cursor := winner
+
+	while cursor >= 0:
+		path.push_front(cursor)
+		cursor = parents[cursor]
+
+	var used_bus := false
+	var used_rail := false
+	var used_subway := false
+
+	if winner >= 0 and traffic_weight > 0:
+		for index in path:
+			var mode := modes[index]
+			used_bus = used_bus or mode == BUS_STOP_MODE
+			used_rail = used_rail or mode == RAIL_STATION_MODE
+			used_subway = used_subway or mode == SUBWAY_STATION_MODE
+
+			if not collect_reach and mode in [ROAD_MODE, HIGHWAY_MODE, ROAD_BRIDGE_MODE]:
+				var point := points[index]
+				var traffic_index := CityDataGrid.index(traffic, map_edge, point.x, point.y)
+				traffic[traffic_index] = mini(int(traffic[traffic_index]) + traffic_weight, 0xff)
+
+	result.ok = true
+	result.reached_destination = winner >= 0
+	result.cost = costs[winner] if winner >= 0 else 0
+	result.path_length = path.size()
+	result.used_bus = used_bus
+	result.used_rail = used_rail
+	result.used_subway = used_subway
+	result.expanded_states = expanded
+
+
+class Endpoint extends RefCounted:
+	var exit := false
+	var destination := false
+	var limited := false

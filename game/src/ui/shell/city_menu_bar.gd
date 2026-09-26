@@ -11,7 +11,6 @@ signal newspaper_menu_requested(id: int)
 signal help_menu_requested(id: int)
 
 const ShortcutMenu = preload("res://src/ui/scurk/scurk_context_menu.gd")
-
 const MENU_SETTINGS := 0x8302
 const MENU_SCENARIO_GOALS := 8
 const MENU_SAVE_CITY := 7

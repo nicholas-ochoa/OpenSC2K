@@ -1,7 +1,6 @@
 class_name PeBitmapIdsResult
 extends RefCounted
 
-
 var ok := false
 var error := ""
 var ids := PackedInt32Array()

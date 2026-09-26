@@ -1,8 +1,15 @@
 class_name GrowthConstants
 extends RefCounted
 
-const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+# fixed timing indices keep per-tile instrumentation inexpensive. tiles replaces
+# the ten per-tile categories unless the debug window asks for detailed timing.
+# the order is the execution order: the debug window shows the steps in this order
+enum TimingStep {
+	PREPARE, TILES, SCAN, SURFACE, FACILITIES, SPECIAL_ZONES, TRIPS,
+	POPULATION, COMPLETION, RECOVERY, DENSITY, SUBWAY, CHANGES, STORE,
+}
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const MovingThings = preload("res://src/simulation/moving_things/moving_thing_spawner.gd")
 const SpecialZoneGrowth = preload("res://src/simulation/growth/special_zone_growth.gd")
 const MAP_VALUE_COUNT := 64 * 64
@@ -42,14 +49,6 @@ const CLASS_RESIDENTIAL := 0
 const CLASS_CONSTRUCTION := 3
 const CLASS_ABANDONED := 4
 const CHURCH_TILE := Tiles.CHURCH
-
-# fixed timing indices keep per-tile instrumentation inexpensive. tiles replaces
-# the ten per-tile categories unless the debug window asks for detailed timing.
-# the order is the execution order: the debug window shows the steps in this order
-enum TimingStep {
-	PREPARE, TILES, SCAN, SURFACE, FACILITIES, SPECIAL_ZONES, TRIPS,
-	POPULATION, COMPLETION, RECOVERY, DENSITY, SUBWAY, CHANGES, STORE,
-}
 const TIMING_LABELS := [
 	"prepare and copy city data", "all per-tile growth work",
 	"tile scan and eligibility", "surface maintenance",
@@ -66,7 +65,6 @@ const DETAILED_TIMING_STEPS := [
 	TimingStep.TRIPS, TimingStep.POPULATION, TimingStep.COMPLETION, TimingStep.RECOVERY,
 	TimingStep.DENSITY, TimingStep.SUBWAY,
 ]
-
 # scanned tiles between worker checkpoints. a growth tile is expensive, so this
 # stride stays far below one rendered frame
 const CHECKPOINT_TILE_MASK := 15

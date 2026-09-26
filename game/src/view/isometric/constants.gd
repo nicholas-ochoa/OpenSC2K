@@ -2,7 +2,6 @@ class_name IsometricConstants
 extends RefCounted
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const TILE_WIDTH := 32
 # 17 pixels of art on a 16-pixel diamond, keep the shared edge
 const TILE_HEIGHT := 17
@@ -57,7 +56,7 @@ const TRAFFIC_HIGH_VARIANTS: PackedInt32Array = [
 	0, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41,
 	15, 16, 17, 18, 42, 43, 44, 45, 46, 47, 48, 49, 50,
 ]
-const DISPATCH_SPRITE_OFFSETS := {7: 382, 8: 383, 14: 384}
+const DISPATCH_SPRITE_OFFSETS := { 7: 382, 8: 383, 14: 384 }
 const TEXT_THING_BASE := 201
 const THING_SPRITES: PackedInt32Array = [
 	0, 1359, 1364, 1369, 1390, 1490, 1387, 1382, 1383,

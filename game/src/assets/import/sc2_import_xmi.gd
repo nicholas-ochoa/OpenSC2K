@@ -6,12 +6,6 @@ extends RefCounted
 const MAX_EVENTS := 200000
 const MAX_TICK := 0x0fffffff
 
-class TimedEvent extends RefCounted:
-	var tick := 0
-	var order := 0
-	var bytes := PackedByteArray()
-
-
 var error := ""
 var _streams: Array[PackedByteArray] = []
 var _events: Array[TimedEvent] = []
@@ -240,3 +234,9 @@ static func _vlq(value: int) -> PackedByteArray:
 		value >>= 7
 
 	return bytes
+
+
+class TimedEvent extends RefCounted:
+	var tick := 0
+	var order := 0
+	var bytes := PackedByteArray()

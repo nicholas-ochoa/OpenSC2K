@@ -26,7 +26,8 @@ func _run() -> void:
 	await process_frame
 	main.main_menu.city_background.set_process(false)
 	var full_size_graphics := OS.get_environment("CITY_BENCH_HIRES") != "0"
-	main.preferences.zoom_graphics = AppSettingsStore.normalize_zoom_graphics([2, 2, 2, 2, 2, 2] if full_size_graphics else [0, 1, 2, 2, 2, 2])
+	main.preferences.zoom_graphics = AppSettingsStore.normalize_zoom_graphics([2, 2, 2, 2, 2, 2] if full_size_graphics
+		else [0, 1, 2, 2, 2, 2])
 	var seconds := float(OS.get_environment("CITY_BENCH_SECONDS")) if OS.has_environment("CITY_BENCH_SECONDS") else 30.0
 
 	for speed in [GameSpeedController.Speed.PAUSED, GameSpeedController.Speed.CHEETAH]:
@@ -89,8 +90,13 @@ func _run() -> void:
 				return
 			print("CACHE ", main.render_caches.region_cache.metrics(), " DYNAMIC ", main.map_view.debug_metrics())
 			print("PROFILE ", main.frame_profile)
-			print("STATE date=%d/%d/%d blocked=%s" % [main.document_state.city.current_year(), main.document_state.city.current_month(), main.document_state.city.current_day(), main.simulation_state.speed_controller.interaction_blocked or main.simulation_state.speed_controller.terminal_blocked])
-			print("FRAME speed=%d zoom=%.2f hires=%s viewport=%s frames=%d avg_fps=%.2f p95_ms=%.2f p99_ms=%.2f max_ms=%.2f over_60_budget_pct=%.2f" % [speed, zoom, full_size_graphics, main.map_view.size, samples.size(), samples.size() * 1000.0 / total, samples[int(samples.size() * 0.95)], samples[int(samples.size() * 0.99)], samples.back(), 100.0 * late / samples.size()])
+			print("STATE date=%d/%d/%d blocked=%s" % [main.document_state.city.current_year(), main.document_state.city.current_month(),
+				main.document_state.city.current_day(),
+				main.simulation_state.speed_controller.interaction_blocked or main.simulation_state.speed_controller.terminal_blocked])
+			print(("FRAME speed=%d zoom=%.2f hires=%s viewport=%s frames=%d avg_fps=%.2f p95_ms=%.2f "
+				+ "p99_ms=%.2f max_ms=%.2f over_60_budget_pct=%.2f") % [speed, zoom, full_size_graphics, main.map_view.size, samples.size(),
+				samples.size() * 1000.0 / total, samples[int(samples.size() * 0.95)], samples[int(samples.size() * 0.99)], samples.back(),
+				100.0 * late / samples.size()])
 
 	main.queue_free()
 	await process_frame

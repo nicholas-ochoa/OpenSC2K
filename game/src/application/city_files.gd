@@ -1,7 +1,6 @@
 class_name ApplicationCityFiles
 extends RefCounted
 
-
 const Sc2Document = preload("res://src/formats/sc2_file.gd")
 const CityFiles = preload("res://src/formats/city_file_store.gd")
 const ScenarioModel = preload("res://src/model/scenario_state.gd")
@@ -65,7 +64,8 @@ func _can_upgrade_city_to_sc2x() -> bool:
 	if document_state.current_document.is_extended() or document_state.current_document.full_resolution_maps():
 		return false
 
-	var path := document_state.current_save_path if not document_state.current_save_path.is_empty() else document_state.current_document.source_path
+	var path := (document_state.current_save_path if not document_state.current_save_path.is_empty()
+		else document_state.current_document.source_path)
 
 	return path.get_extension().to_lower() == "sc2"
 
@@ -92,7 +92,8 @@ func upgrade_city_to_sc2x(confirmed := false) -> void:
 		if app.sc2x_conversion_dialog == null:
 			app.sc2x_conversion_dialog = ConfirmationDialog.new()
 			app.sc2x_conversion_dialog.title = "Upgrade city to SC2X?"
-			app.sc2x_conversion_dialog.dialog_text = ("This permanently converts this city to SC2X.\nIt cannot return to SC2 or use original compatibility.\nThe " +
+			app.sc2x_conversion_dialog.dialog_text = (
+				"This permanently converts this city to SC2X.\nIt cannot return to SC2 or use original compatibility.\nThe " +
 				"original SimCity 2000 cannot open SC2X files.\n\nSave a separate SC2X copy. Your existing SC2 file stays " +
 				"unchanged.")
 			app.sc2x_conversion_dialog.get_ok_button().text = "Upgrade to SC2X"
@@ -116,7 +117,8 @@ func upgrade_city_to_sc2x(confirmed := false) -> void:
 
 	# an SC2X city uses the extended fire timing
 	if app.simulation_state.speed_controller != null:
-		app.simulation_state.speed_controller.original_compatibility = OriginalCompatibility.uses_original_format(document_state.current_document)
+		app.simulation_state.speed_controller.original_compatibility = OriginalCompatibility.uses_original_format(
+			document_state.current_document)
 		app.simulation_state.speed_controller.fire_elapsed_msec = 0.0
 
 	if app.simulation_state.speed_controller != null and document_state.current_document.is_extended():
@@ -161,7 +163,8 @@ func open_save_dialog() -> void:
 	if save_name.is_empty():
 		save_name = "New City"
 
-	app.city_dialogs.city_save_dialog.filters = PackedStringArray(["*.sc2x ; Extended cities"] if document_state.current_document.is_extended()
+	app.city_dialogs.city_save_dialog.filters = PackedStringArray(["*.sc2x ; Extended cities"]
+		if document_state.current_document.is_extended()
 			else ["*.SC2, *.sc2 ; SimCity 2000 cities"])
 	app.city_dialogs.city_save_dialog.current_file = save_name + (".sc2x" if document_state.current_document.is_extended() else ".SC2")
 	app.city_dialogs.city_save_dialog.popup_centered_ratio(0.8)

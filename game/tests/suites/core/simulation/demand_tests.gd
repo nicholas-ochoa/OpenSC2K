@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Simulation: demand checks.
 
 @warning_ignore_start("integer_division")
@@ -73,6 +72,12 @@ func test_rci_demand(reference_root: String) -> void:
 
 
 func test_rci_aftermath(reference_root: String) -> void:
+	_test_tree_growth(reference_root)
+	_test_news(reference_root)
+	_test_arcologies_and_radioactivity(reference_root)
+
+
+func _test_tree_growth(reference_root: String) -> void:
 	_check(
 		RciAftermath.WEATHER_TRANSITIONS.size() == 384
 		and RciAftermath.weather_transition(0, 0, 7) == 8
@@ -168,6 +173,8 @@ func test_rci_aftermath(reference_root: String) -> void:
 		)
 		_check(tree_random.position == 16, "Tree, news, invention, and weather checks consume 16 random values")
 
+
+func _test_news(reference_root: String) -> void:
 	var news_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 	_check(news_document.set_misc_u32(0x000c, 1900), "News fixture sets the founding year")
 	_check(news_document.set_misc_u32(0x0048, 50), "News fixture sets low health")
@@ -258,6 +265,8 @@ func test_rci_aftermath(reference_root: String) -> void:
 			"The monthly RCI phase stores source-table priorities",
 		)
 
+
+func _test_arcologies_and_radioactivity(reference_root: String) -> void:
 	var arcology_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 	_check(arcology_document.set_misc_u32(ToolAvailability.MISC_PROGRESSION, 6), "Arcology release fixture sets metropolis progression")
 	_check(arcology_document.set_misc_u32(ToolAvailability.MISC_GRANTED_REWARDS, 0), "Arcology release fixture clears rewards")
@@ -283,7 +292,10 @@ func test_rci_aftermath(reference_root: String) -> void:
 	)
 	var arcology_flags: PackedByteArray = arcology_document.find_chunk("XBIT").decoded_payload.duplicate()
 	arcology_flags[40 * CityState.MAP_SIZE + 40] |= 0x04
-	_check(arcology_document.find_chunk("XBIT").set_decoded_payload(arcology_flags), "Arcology release fixture makes its ecology point water")
+	_check(
+		arcology_document.find_chunk("XBIT").set_decoded_payload(arcology_flags),
+		"Arcology release fixture makes its ecology point water",
+	)
 	var arcology_city := CityModel.from_document(arcology_document)
 	_check(arcology_city.set_age_in_days(300), "Arcology release fixture selects 1901")
 	var arcology_release := RciAftermath.run(

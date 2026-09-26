@@ -50,7 +50,8 @@ func _benchmark_initialize() -> void:
 	var hashing := HashingContext.new()
 	hashing.start(HashingContext.HASH_SHA256)
 	hashing.update(saved.data)
-	print("PROOF %s days=%s sha256=%s r=%d l=%d g=%d" % [path.get_file(), str(days), hashing.finish().hex_encode(), engine.random.state, engine.lfsr_random.state, engine.game_random.state])
+	print("PROOF %s days=%s sha256=%s r=%d l=%d g=%d" % [path.get_file(), str(days), hashing.finish().hex_encode(), engine.random.state,
+		engine.lfsr_random.state, engine.game_random.state])
 
 	var total := 0
 
@@ -58,7 +59,8 @@ func _benchmark_initialize() -> void:
 		total += elapsed
 
 	times.sort()
-	print("TIME mean_us=%.1f median_us=%d min_us=%d max_us=%d" % [float(total) / times.size(), times[times.size() / 2], times[0], times[-1]])
+	print("TIME mean_us=%.1f median_us=%d min_us=%d max_us=%d" % [float(total) / times.size(), times[times.size() / 2], times[0],
+		times[-1]])
 	quit()
 
 

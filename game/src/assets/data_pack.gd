@@ -43,7 +43,10 @@ static func load_folder(folder: String) -> DataPack:
 
 	var manifest: Dictionary = json.data
 
-	if manifest.get("format") != FORMAT or manifest.get("version") != 1 or not manifest.get("name") is String or str(manifest.name).strip_edges().is_empty():
+	if (manifest.get("format") != FORMAT
+			or manifest.get("version") != 1
+			or not manifest.get("name") is String
+			or str(manifest.name).strip_edges().is_empty()):
 		pack.error = "Invalid data manifest format, version, or name"
 
 		return pack

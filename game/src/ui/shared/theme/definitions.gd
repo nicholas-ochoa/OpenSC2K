@@ -2,7 +2,6 @@ class_name AppUiThemeDefinitions
 extends RefCounted
 
 
-
 static func build(value: String, files := false, translucent_menus := true) -> Theme:
 	var dark := value == "dark"
 	var result := _dark_theme() if dark else _light_file_dialog_theme() if files else _light_theme()
@@ -123,7 +122,8 @@ static func _light_theme() -> Theme:
 			empty.content_margin_bottom = 4
 			result.set_stylebox(state, type_name, empty)
 		result.set_color("font_disabled_color", type_name, Color("606060"))
-	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled", "normal_mirrored", "hover_mirrored", "pressed_mirrored", "disabled_mirrored"]:
+	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled", "normal_mirrored", "hover_mirrored",
+		"pressed_mirrored", "disabled_mirrored"]:
 		var option_box := _copy_style(result, "OptionButton", state)
 		option_box.set_corner_radius_all(0)
 		result.set_stylebox(state, "OptionButton", option_box)
@@ -230,7 +230,10 @@ static func _dark_theme() -> Theme:
 
 
 static func _copy_style(source: Theme, type_name: String, state: String) -> StyleBoxFlat:
-	var style := source.get_stylebox(state, type_name) if source.has_stylebox(state, type_name) else ThemeDB.get_default_theme().get_stylebox(state, type_name)
+	var style := source.get_stylebox(
+		state,
+		type_name,
+	) if source.has_stylebox(state, type_name) else ThemeDB.get_default_theme().get_stylebox(state, type_name)
 	return style.duplicate() as StyleBoxFlat
 
 
@@ -301,7 +304,8 @@ static func _light_file_dialog_theme() -> Theme:
 	result.set_color("font_uneditable_color", "LineEdit", Color("505050"))
 	result.set_color("title_button_color", "Tree", Color("383838"))
 	for type_name in ["Label", "Button", "OptionButton", "CheckBox", "LineEdit", "ItemList", "Tree", "PopupMenu"]:
-		for color_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color", "font_disabled_color", "font_selected_color", "font_hovered_color", "font_hovered_selected_color"]:
+		for color_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color",
+			"font_disabled_color", "font_selected_color", "font_hovered_color", "font_hovered_selected_color"]:
 			result.set_color(color_name, type_name, Color("383838"))
 	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
 		result.set_color("icon_" + state + "_color", "Button", Color("383838"))

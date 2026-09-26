@@ -68,13 +68,19 @@ func show_tool_group(
 	var first_available_subtool := -1
 
 	for subtool_index in group.tools.size():
-		if not free_landscape and LandscapeEditorCommand.supports_tool(group_index, subtool_index) and not (group_index == CityToolIds.Group.LANDSCAPE and subtool_index == CityToolIds.Landscape.FOREST):
+		if not free_landscape and LandscapeEditorCommand.supports_tool(
+			group_index,
+			subtool_index,
+		) and not (group_index == CityToolIds.Group.LANDSCAPE and subtool_index == CityToolIds.Landscape.FOREST):
 			continue
 
-		if free_landscape and ((group_index == CityToolIds.Group.BULLDOZER and subtool_index == CityToolIds.Bulldozer.DEZONE) or (group_index == CityToolIds.Group.QUERY and subtool_index != CityToolIds.Query.QUERY)):
+		if (free_landscape
+				and ((group_index == CityToolIds.Group.BULLDOZER and subtool_index == CityToolIds.Bulldozer.DEZONE)
+				or (group_index == CityToolIds.Group.QUERY and subtool_index != CityToolIds.Query.QUERY))):
 			continue
 
-		if (group_index == CityToolIds.Group.POWER and subtool_index == CityToolIds.Power.PLANTS) or (group_index == CityToolIds.Group.REWARDS and subtool_index == CityToolIds.Rewards.ARCOLOGIES):
+		if ((group_index == CityToolIds.Group.POWER and subtool_index == CityToolIds.Power.PLANTS)
+				or (group_index == CityToolIds.Group.REWARDS and subtool_index == CityToolIds.Rewards.ARCOLOGIES)):
 			continue
 
 		if ToolState.is_tool_variant(group_index, subtool_index):
@@ -182,14 +188,19 @@ func tool_button_tooltip(
 
 	const FACILITY_DETAILS := {
 		"220": "Requires power and pipes. Output depends on weather and nearby water; each adjacent fresh-water tile adds 10 supply units.",
-		"235": "Stores 100 water units per tower tile. Stores surplus supply and releases stored water when needed. Requires a pipe connection.",
+		"235": ("Stores 100 water units per tower tile. Stores surplus supply and releases stored water "
+			+ "when needed. Requires a pipe connection."),
 		"211": "Fire coverage scales with funding. Unpowered stations have half strength. Supports emergency fire dispatch.",
-		"210": "Police coverage scales with funding and the prison bonus. Unpowered stations have half strength. Coverage reduces local crime.",
-		"209": "At full funding, each hospital supplies 25 units of capacity to the health phase. Funding cuts reduce capacity proportionally.",
-		"217": "At full funding, each college supplies 50 units of capacity to the education phase. Serves the college-age population group.",
+		"210": ("Police coverage scales with funding and the prison bonus. Unpowered stations have half "
+			+ "strength. Coverage reduces local crime."),
+		"209": ("At full funding, each hospital supplies 25 units of capacity to the health phase. Funding "
+			+ "cuts reduce capacity proportionally."),
+		"217": ("At full funding, each college supplies 50 units of capacity to the education phase. "
+			+ "Serves the college-age population group."),
 		"215": "Recreation facility. Choose the team name after placement. Query shows annual attendance and financial statistics.",
 		"216": "Prison facilities contribute to the police-strength bonus. Query shows annual prison statistics.",
-		"244": "Treats 2,000 watered consumers per plant. Sufficient treatment improves the pollution calculation. It does not generate water.",
+		"244": ("Treats 2,000 watered consumers per plant. Sufficient treatment improves the pollution "
+			+ "calculation. It does not generate water."),
 		"250": "Requires power and pipes. Each adjacent salt-water tile adds 20 supply units. Coastal placement improves output.",
 		"245": "Supports education. Query shows its annual education statistic. Ruminate opens the library reports.",
 		"214": "At full funding, each school supplies 15 units of capacity to the education phase. Serves younger population groups.",

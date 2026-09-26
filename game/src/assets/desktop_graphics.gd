@@ -1,25 +1,19 @@
 class_name DesktopGraphics
 extends RefCounted
+
+
 # optional folder-pack icons and cursors for both original applications
 
 @warning_ignore_start("integer_division")
 
-const CITY_SYSTEM_GROUPS: Dictionary[int, int] = {30977: 11, 30979: 15, 30980: 12, 30981: 21, 30982: 14, 30983: 19, 30984: 17, 30985: 18, 30986: 20, 30987: 16, 30988: 13}
-const ICON_GROUPS: Dictionary[String, Dictionary] = {"city": {2: [1, 2], 3: [9, 10], 77: [7, 8], 181: [3, 4], 182: [5, 6]}, "scurk": {1: [3, 4], 2: [1, 2], 3: [5, 6], 4: [7, 8]}}
-class Cursor extends RefCounted:
-	var image: Image
-	var hotspot := Vector2i.ZERO
-	var masked: PeIconCursorResource.DecodedImage
-
-	func _init(picture: Image, point: Vector2i, mask: PeIconCursorResource.DecodedImage = null) -> void:
-		image = picture
-		hotspot = point
-		masked = mask
-
+const CITY_SYSTEM_GROUPS: Dictionary[int, int] = { 30977: 11, 30979: 15, 30980: 12, 30981: 21, 30982: 14, 30983: 19, 30984: 17, 30985: 18,
+	30986: 20, 30987: 16, 30988: 13 }
+const ICON_GROUPS: Dictionary[String, Dictionary] = { "city": { 2: [1, 2], 3: [9, 10], 77: [7, 8], 181: [3, 4], 182: [5, 6] },
+	"scurk": { 1: [3, 4], 2: [1, 2], 3: [5, 6], 4: [7, 8] } }
 
 var error := ""
-var icons: Dictionary[String, Dictionary] = {"city": {}, "scurk": {}}
-var cursors: Dictionary[String, Dictionary] = {"city": {}, "scurk": {}}
+var icons: Dictionary[String, Dictionary] = { "city": {}, "scurk": {} }
+var cursors: Dictionary[String, Dictionary] = { "city": {}, "scurk": {} }
 
 
 static func load_manifest(value: Variant, read_png: Callable, palette: Sc2Palette) -> DesktopGraphics:
@@ -33,7 +27,8 @@ static func load_original(reference_root: String) -> DesktopGraphics:
 	var graphics := DesktopGraphics.new()
 
 	for app in ["city", "scurk"]:
-		var directory := PeBitmapResource._load_resource_directory(reference_root.path_join("SIMCITY.EXE" if app == "city" else "WINSCURK.EXE"))
+		var directory := PeBitmapResource._load_resource_directory(reference_root.path_join("SIMCITY.EXE" if app == "city"
+			else "WINSCURK.EXE"))
 
 		if not directory.ok:
 			graphics.error = directory.error
@@ -43,7 +38,10 @@ static func load_original(reference_root: String) -> DesktopGraphics:
 		for kind in ["icons", "cursors"]:
 			for id in resource_ids(app, kind):
 				var resource := PeIconCursorResource.resource_from_directory(directory, 3 if kind == "icons" else 1, id)
-				var decoded := PeIconCursorResource.decode_image(resource.bytes, kind == "cursors") if resource.ok else PeIconCursorResource.DecodedImage.failure(resource.error)
+				var decoded := PeIconCursorResource.decode_image(
+					resource.bytes,
+					kind == "cursors",
+				) if resource.ok else PeIconCursorResource.DecodedImage.failure(resource.error)
 
 				if not decoded.ok:
 					graphics.error = decoded.error
@@ -156,7 +154,11 @@ func _load(value: Variant, read_png: Callable, _palette: Sc2Palette) -> void:
 			var selected: Array[int] = []
 
 			for record in records:
-				if not record is Dictionary or not (record.get("id") is int or record.get("id") is float) or record.id != int(record.id) or int(record.id) not in ids or int(record.id) in selected:
+				if (not record is Dictionary
+						or not (record.get("id") is int or record.get("id") is float)
+						or record.id != int(record.id)
+						or int(record.id) not in ids
+						or int(record.id) in selected):
 					error = "Invalid or duplicate desktop resource ID"
 					return
 
@@ -183,7 +185,10 @@ func _load(value: Variant, read_png: Callable, _palette: Sc2Palette) -> void:
 						return
 
 					for coordinate in coordinates:
-						if not (coordinate is int or coordinate is float) or coordinate != int(coordinate) or coordinate < 0 or coordinate >= 32:
+						if (not (coordinate is int or coordinate is float)
+								or coordinate != int(coordinate)
+								or coordinate < 0
+								or coordinate >= 32):
 							error = "Cursor hotspot must be inside its 32 by 32 image"
 
 							return
@@ -239,3 +244,14 @@ func _load(value: Variant, read_png: Callable, _palette: Sc2Palette) -> void:
 					cursors[app][ids[i]] = Cursor.new(PeIconCursorResource.transparent_image(decoded).image, hotspot, decoded)
 				else:
 					cursors[app][ids[i]] = Cursor.new(image, hotspot)
+
+
+class Cursor extends RefCounted:
+	var image: Image
+	var hotspot := Vector2i.ZERO
+	var masked: PeIconCursorResource.DecodedImage
+
+	func _init(picture: Image, point: Vector2i, mask: PeIconCursorResource.DecodedImage = null) -> void:
+		image = picture
+		hotspot = point
+		masked = mask

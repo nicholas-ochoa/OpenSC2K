@@ -1,12 +1,12 @@
 class_name CityDebugActions
 extends RefCounted
 
+
 @warning_ignore_start("integer_division")
 
 const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
 const DisasterStart = preload("res://src/simulation/disasters/disaster_start_phase.gd")
 const MovingThingSpawner = preload("res://src/simulation/moving_things/moving_thing_spawner.gd")
-
 const MAX_FUNDS := 0x7fffffff
 const MIN_FUNDS := -0x80000000
 const MISC_SIZE := Sc2MiscLayout.SIZE
@@ -16,40 +16,6 @@ const MAXIS_TARGET_OVERLAY_FIRST := 241
 # order of the debug spawn list
 const SPAWN_TYPES := ["Helicopter", "Airplane", "Cargo ship", "Sailboats", "Train"]
 const SPAWN_SEARCH_RADIUS := 16
-
-
-class Result extends RefCounted:
-	var ok := false
-	var error := ""
-
-
-class FundsResult extends Result:
-	var new_funds := 0
-
-
-class EndDisasterResult extends Result:
-	var active_type := 0
-	var cleared_markers := 0
-	var cleared_objects := 0
-
-
-class DispatchResult extends Result:
-	var start := Vector2i.ZERO
-	var target := Vector2i.ZERO
-
-
-class SpawnResult extends Result:
-	var point := Vector2i.ZERO
-	var count := 0
-
-
-class RemoveResult extends Result:
-	var count := 0
-
-
-class DisasterTarget extends RefCounted:
-	var point := Vector2i.ZERO
-	var goal := 0
 
 
 # days from the founding date. days run from 1 to 25 in each month
@@ -720,3 +686,37 @@ static func _maxis_man_start(city: CityState, target: Vector2i) -> Vector2i:
 				return point
 
 	return Vector2i(-1, -1)
+
+
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+
+
+class FundsResult extends Result:
+	var new_funds := 0
+
+
+class EndDisasterResult extends Result:
+	var active_type := 0
+	var cleared_markers := 0
+	var cleared_objects := 0
+
+
+class DispatchResult extends Result:
+	var start := Vector2i.ZERO
+	var target := Vector2i.ZERO
+
+
+class SpawnResult extends Result:
+	var point := Vector2i.ZERO
+	var count := 0
+
+
+class RemoveResult extends Result:
+	var count := 0
+
+
+class DisasterTarget extends RefCounted:
+	var point := Vector2i.ZERO
+	var goal := 0

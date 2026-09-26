@@ -1,6 +1,7 @@
 extends SceneTree
 ## Published snapshots survive later city edits and independent command copies.
 
+
 func _initialize() -> void:
 	for edge in [128, 256]:
 		var city := CityState.from_document(EmptyCityTemplate.create(edge))

@@ -21,7 +21,8 @@ func _run() -> void:
 			var cache := CityRegionCache.new()
 			cache.gpu_enabled = true
 			cache.configure(city, palette, sprites, [1], view, CityViewMode.Mode.CITY, {}, true, true)
-			var origin := Vector2i((cache.native_size / 2) / CityRegionCache.GPU_REGION_EDGE) * CityRegionCache.GPU_REGION_EDGE * cache.divisor
+			var origin := Vector2i(
+				(cache.native_size / 2) / CityRegionCache.GPU_REGION_EDGE) * CityRegionCache.GPU_REGION_EDGE * cache.divisor
 			var bounds := Rect2i(origin - Vector2i(13, 9), Vector2i(83, 127))
 			cache.set_sign_requests([
 				CitySignRequest.new(1, bounds, -1),

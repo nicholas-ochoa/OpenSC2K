@@ -3,8 +3,8 @@ extends DisasterStartConstants
 
 @warning_ignore_start("integer_division")
 
-
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 
 static func _start_toxic_spill(city: CityState, point: Vector2i) -> DisasterStartResult:
 	var map_edge: int = city.map_size if city != null else 128

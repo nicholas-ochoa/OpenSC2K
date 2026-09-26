@@ -131,15 +131,15 @@ static func check_invalid(pack: String) -> void:
 
 				read_png = func(path): return invalid if path == record.and_png else loaded._read_png(path)
 
-		var rejected := DesktopGraphics.load_manifest({"city": {"cursors": records}}, read_png, loaded.palette)
+		var rejected := DesktopGraphics.load_manifest({ "city": { "cursors": records } }, read_png, loaded.palette)
 		assert(not rejected.error.is_empty(), change)
 		loaded.error = ""
 
 	for id in [197.5, 999]:
 		var record: Dictionary = manifest.city_ui.portraits[0].duplicate()
 		record.id = id
-		var rejected := CityUiGraphics.load_manifest({"portraits": [record]}, loaded._read_png, loaded.palette)
+		var rejected := CityUiGraphics.load_manifest({ "portraits": [record] }, loaded._read_png, loaded.palette)
 		assert(not rejected.error.is_empty())
 
 	var portrait: Dictionary = manifest.city_ui.portraits[0]
-	assert(not CityUiGraphics.load_manifest({"portraits": [portrait, portrait]}, loaded._read_png, loaded.palette).error.is_empty())
+	assert(not CityUiGraphics.load_manifest({ "portraits": [portrait, portrait] }, loaded._read_png, loaded.palette).error.is_empty())

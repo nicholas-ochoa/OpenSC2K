@@ -1,5 +1,4 @@
 extends RefCounted
-
 ## Shared assertions, fixture data, and binary helpers for core suites.
 
 @warning_ignore_start("integer_division")
@@ -9,7 +8,6 @@ const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const CityModel = preload("res://src/model/city_state.gd")
 const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
 const DisasterMap = preload("res://src/simulation/disasters/map/constants.gd")
-
 const CoreTestContext = preload("res://tests/support/core_test_context.gd")
 
 var context: CoreTestContext
@@ -150,14 +148,14 @@ func _fire_map_fixture(
 		["XTHG", _filled_bytes(CityState.THING_COUNT * CityState.THING_RECORD_SIZE, 0)],
 	]:
 		if not document.find_chunk(entry[0]).set_decoded_payload(entry[1]):
-			return {"document": document, "city": null}
+			return { "document": document, "city": null }
 
 	document.set_misc_u32(0x01f0, CityState.TILE_COUNT - int(tile != 0))
 
 	if tile != 0:
 		document.set_misc_u32(0x01f0 + tile * 4, 1)
 
-	return {"document": document, "city": CityModel.from_document(document)}
+	return { "document": document, "city": CityModel.from_document(document) }
 
 
 func _special_growth_fixture(reference_root: String) -> Dictionary:
@@ -203,7 +201,7 @@ func _special_growth_fixture(reference_root: String) -> Dictionary:
 	_check(document.set_misc_u32(0x0e4c, 0), "Special growth fixture clears military base type")
 	_check(document.set_misc_u32(0x0fe8, 0), "Special growth fixture clears the subway count")
 
-	return {"document": document, "city": CityModel.from_document(document)}
+	return { "document": document, "city": CityModel.from_document(document) }
 
 
 func _set_airplane(

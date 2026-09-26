@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Simulation: growth checks.
 
 @warning_ignore_start("integer_division")
@@ -127,6 +126,11 @@ func _test_helicopter_creation_deadline() -> void:
 
 
 func test_special_zone_growth(reference_root: String) -> void:
+	_test_special_zone_placement(reference_root)
+	_test_special_zone_vehicles(reference_root)
+
+
+func _test_special_zone_placement(reference_root: String) -> void:
 	var airport := _special_growth_fixture(reference_root)
 
 	for x in range(20, 25):
@@ -239,6 +243,8 @@ func test_special_zone_growth(reference_root: String) -> void:
 	_check(air_force.city.underground_id(23, 21) == 1, "Military runway preserves subway")
 	_check(air_force.document.misc_u32(0x01f0 + 0xdd * 4) == 1, "Military runways keep civilian counts separate")
 
+
+func _test_special_zone_vehicles(reference_root: String) -> void:
 	var aircraft := _special_growth_fixture(reference_root)
 	_check(aircraft.city.set_zone_id(20, 20, 8), "Aircraft fixture sets an airport zone")
 	_check(aircraft.city.set_building_id(20, 20, Tiles.RUNWAY), "Aircraft fixture places a runway")
@@ -541,4 +547,4 @@ func _growth_fixture(
 	_check(document.set_misc_u32(0x01f0, 16379), "Growth fixture counts clear tiles")
 	_check(document.set_misc_u32(0x01f0 + origin_building * 4, 1), "Growth fixture counts origin tile")
 
-	return {"document": document, "city": CityModel.from_document(document)}
+	return { "document": document, "city": CityModel.from_document(document) }

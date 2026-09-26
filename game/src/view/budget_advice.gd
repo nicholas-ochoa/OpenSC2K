@@ -5,7 +5,6 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const ADVICE: Array[String] = [
 	"I have no advice at this time.",
 	"We should float a bond to pay for city expansion.",
@@ -87,7 +86,8 @@ static func select(city: CityState, report: BudgetReport, advisor: int, random: 
 				choice = 4
 			elif credit + _signed_word(doc.misc_u32(Sc2MiscLayout.NATIONAL_FEDERAL_RATE)) + 1 < 4:
 				choice = 2
-			elif report.estimated_raw[4] > BudgetReport.wrap_i32(report.estimated_raw[0] + report.estimated_raw[1] + report.estimated_raw[2]):
+			elif report.estimated_raw[4] > BudgetReport.wrap_i32(report.estimated_raw[0] + report.estimated_raw[1]
+					+ report.estimated_raw[2]):
 				choice = 3
 		3:
 			choice = 5
@@ -110,13 +110,18 @@ static func select(city: CityState, report: BudgetReport, advisor: int, random: 
 				choice = 9
 			else:
 				var selected := random.next_u15() % 3
-				choice = 26 if flags & [OrdinanceIds.PUBLIC_SMOKING_BAN_MASK, OrdinanceIds.CPR_TRAINING_MASK, OrdinanceIds.FREE_CLINICS_MASK][selected] else 23 + selected
+				choice = 26 if flags & [
+					OrdinanceIds.PUBLIC_SMOKING_BAN_MASK,
+					OrdinanceIds.CPR_TRAINING_MASK,
+					OrdinanceIds.FREE_CLINICS_MASK,
+				][selected] else 23 + selected
 		6:
 			var schools := _signed_word(doc.misc_u32(Sc2MiscLayout.TILE_COUNTS + Tiles.SCHOOL * 4))
 			var colleges := _signed_word(doc.misc_u32(Sc2MiscLayout.TILE_COUNTS + Tiles.COLLEGE * 4))
 			var school_capacity := BudgetReport.wrap_i32((schools * 15 / 9) * report.funding[8]) & 0xffffffff
 			var college_capacity := BudgetReport.wrap_i32((colleges * 50 / 16) * report.funding[9]) & 0xffffffff
-			if school_capacity < ((doc.misc_u32(Sc2MiscLayout.POPULATION_TABLE + 12) + doc.misc_u32(Sc2MiscLayout.POPULATION_TABLE + 24)) & 0xffffffff):
+			if school_capacity < ((doc.misc_u32(Sc2MiscLayout.POPULATION_TABLE + 12)
+					+ doc.misc_u32(Sc2MiscLayout.POPULATION_TABLE + 24)) & 0xffffffff):
 				choice = 28
 			elif college_capacity < doc.misc_u32(Sc2MiscLayout.POPULATION_TABLE + 36):
 				choice = 29

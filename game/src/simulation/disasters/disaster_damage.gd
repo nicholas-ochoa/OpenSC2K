@@ -2,10 +2,8 @@ class_name DisasterDamage
 extends RefCounted
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const TEXT_LABEL_BASE := 201
 const SOUND_DAMAGE := 0x1f8
-
 # story weight of each damaged building class, from executable table 0x004e8848.
 # classes 0 to 9 are zone types. class 10 and up are tiles from 0xc6
 const DAMAGE_CLASS_WEIGHTS := [
@@ -13,12 +11,6 @@ const DAMAGE_CLASS_WEIGHTS := [
 	3, 2, 8, 8, 2, 4, 8, 1, 4, 1, 1, 8, 1, 1, 3, 8, 2, 2, 2, 1, 1, 4, 1, 1, 2, 2, 2, 1, 3, 2,
 	5, 3, 6, 6, 6, 6, 6,
 ]
-
-
-class RuntimeEvents extends RefCounted:
-	var effect_events: Array[EffectEvent] = []
-	var sound_events: Array[int] = []
-	var next_effect_frame := 0
 
 
 static func new_runtime_events() -> RuntimeEvents:
@@ -35,6 +27,7 @@ static func append_damage_events(runtime_events: RuntimeEvents, damage: Demolish
 	runtime_events.sound_events.append(SOUND_DAMAGE)
 
 
+# gdstyle:ignore=quality/max-parameters
 static func apply(
 	city: CityState,
 	altitude: PackedByteArray,
@@ -67,7 +60,7 @@ static func apply(
 	var result_code := 1
 
 	if overlay > 0:
-		if (overlay == 0 or OverlayData.is_sign(overlay)):
+		if overlay == 0 or OverlayData.is_sign(overlay):
 			labels[overlay * CityState.LABEL_RECORD_SIZE] = 0
 		elif OverlayData.is_facility(overlay):
 			var damage := burn_structure(
@@ -96,6 +89,7 @@ static func apply(
 	return result_code
 
 
+# gdstyle:ignore=quality/max-parameters
 static func apply_flood(
 	city: CityState,
 	altitude: PackedByteArray,
@@ -127,7 +121,7 @@ static func apply_flood(
 	var overlay := int(OverlayData.read(text, index))
 
 	if overlay > 0:
-		if (overlay == 0 or OverlayData.is_sign(overlay)):
+		if overlay == 0 or OverlayData.is_sign(overlay):
 			labels[overlay * CityState.LABEL_RECORD_SIZE] = 0
 		elif OverlayData.is_facility(overlay):
 			var damage := burn_structure(
@@ -153,6 +147,7 @@ static func apply_flood(
 	return 1
 
 
+# gdstyle:ignore=quality/max-parameters
 static func burn_structure(
 	city: CityState,
 	altitude: PackedByteArray,
@@ -233,3 +228,9 @@ static func _index(point: Vector2i, map_edge: int = 128) -> int:
 		return -1
 
 	return point.x * map_edge + point.y
+
+
+class RuntimeEvents extends RefCounted:
+	var effect_events: Array[EffectEvent] = []
+	var sound_events: Array[int] = []
+	var next_effect_frame := 0

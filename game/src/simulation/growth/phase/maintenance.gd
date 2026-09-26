@@ -4,9 +4,10 @@ extends GrowthConstants
 
 @warning_ignore_start("integer_division")
 
-
 const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
 
+
+# gdstyle:ignore=quality/max-parameters
 static func _process_surface_maintenance(
 	altitude: PackedByteArray,
 	altitudes: PackedInt32Array,
@@ -87,6 +88,7 @@ static func _process_surface_maintenance(
 			counters.metrics.decayed_highway_tiles += 1
 
 
+# gdstyle:ignore=quality/max-parameters
 static func _process_microsim_growth(
 	buildings: PackedByteArray,
 	zones: PackedByteArray,
@@ -165,6 +167,7 @@ static func _process_microsim_growth(
 	counters.metrics.arcologies_updated += 1
 
 
+# gdstyle:ignore=quality/max-parameters
 static func _process_subway_maintenance(
 	terrain: PackedByteArray,
 	buildings: PackedByteArray,
@@ -247,11 +250,13 @@ static func _maintenance_fails(
 
 
 static func _is_bridge_budget_tile(tile: int) -> bool:
-	return (tile >= Tiles.SUSPENSION_BRIDGE_1 and tile <= Tiles.POWER_BRIDGE) or tile == Tiles.HIGHWAY_BRIDGE or tile == Tiles.REINFORCED_HIGHWAY_BRIDGE
+	return ((tile >= Tiles.SUSPENSION_BRIDGE_1 and tile <= Tiles.POWER_BRIDGE) or tile == Tiles.HIGHWAY_BRIDGE
+		or tile == Tiles.REINFORCED_HIGHWAY_BRIDGE)
 
 
 static func _is_highway_budget_tile(tile: int) -> bool:
-	return (tile >= Tiles.HIGHWAY_STRAIGHT_1 and tile <= Tiles.HIGHWAY_POWER_CROSSING_2) or (tile >= Tiles.HIGHWAY_SLOPE_FIRST and tile <= Tiles.HIGHWAY_INTERSECTION)
+	return ((tile >= Tiles.HIGHWAY_STRAIGHT_1 and tile <= Tiles.HIGHWAY_POWER_CROSSING_2)
+		or (tile >= Tiles.HIGHWAY_SLOPE_FIRST and tile <= Tiles.HIGHWAY_INTERSECTION))
 
 
 static func _replace_underground(

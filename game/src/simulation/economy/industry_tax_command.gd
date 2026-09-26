@@ -1,14 +1,6 @@
 class_name IndustryTaxCommand
 extends RefCounted
 
-
-class Result extends RefCounted:
-	var ok: bool = false
-	var error: String = ""
-	var changed: bool = false
-	var value: int
-
-
 const INDUSTRY_COUNT := Sc2IndustryLayout.COUNT
 const INDUSTRY_STRIDE := Sc2IndustryLayout.RECORD_SIZE
 const MISC_INDUSTRIES := Sc2MiscLayout.INDUSTRIES
@@ -75,3 +67,10 @@ static func set_tax_rate(
 	result.error = ""
 
 	return result
+
+
+class Result extends RefCounted:
+	var ok: bool = false
+	var error: String = ""
+	var changed: bool = false
+	var value: int

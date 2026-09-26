@@ -2,9 +2,7 @@ class_name TrainThingTick
 extends RefCounted
 
 const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
-
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const RECORD_SIZE := CityState.THING_RECORD_SIZE
 const FIRST_RECORD := 1
 const LAST_RECORD := CityState.THING_COUNT - 1

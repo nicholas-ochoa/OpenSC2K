@@ -1,24 +1,12 @@
 class_name FacilityRecordRepair
 extends RefCounted
+
+
 # Repair SC2X facility records on activation. Parsing and simulation snapshots keep the saved bytes.
 
 @warning_ignore_start("integer_division")
 
 const Facilities = preload("res://src/model/facility_metadata.gd")
-
-
-class Result extends RefCounted:
-	var ok := false
-	var error := ""
-	var created := 0
-	var linked := 0
-	var unfilled := 0
-
-	static func failure(message: String) -> Result:
-		var result := Result.new()
-		result.error = message
-
-		return result
 
 
 static func apply(city: CityState) -> Result:
@@ -172,3 +160,17 @@ static func _overlay_target(
 		id = ThingData.read(things, offset + 10)
 
 	return target
+
+
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+	var created := 0
+	var linked := 0
+	var unfilled := 0
+
+	static func failure(message: String) -> Result:
+		var result := Result.new()
+		result.error = message
+
+		return result

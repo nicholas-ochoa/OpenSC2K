@@ -1,7 +1,6 @@
 class_name PeIndexedBatchResult
 extends RefCounted
 
-
 var ok := false
 var error := ""
 var entries: Array[IndexedImageResult] = []

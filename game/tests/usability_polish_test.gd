@@ -75,7 +75,13 @@ func _run() -> void:
 			var output := Image.create(dimensions.x, dimensions.y, false, Image.FORMAT_L8 if indexed else Image.FORMAT_RGBA8)
 			output.fill(Color.BLACK)
 			var empty_hash := hash(output.get_data())
-			ScurkCityOutput._draw_artwork_stamps(output, city, main.asset_state.palette_index_encoding if indexed else main.asset_state.palette, main.static_render.sprite_archive_for_view(view), view)
+			ScurkCityOutput._draw_artwork_stamps(
+				output,
+				city,
+				main.asset_state.palette_index_encoding if indexed else main.asset_state.palette,
+				main.static_render.sprite_archive_for_view(view),
+				view,
+			)
 			assert(hash(output.get_data()) != empty_hash, "Artwork missing from print or indexed bitmap output")
 
 	main.budget.open_manual_budget()
@@ -105,5 +111,6 @@ func _run() -> void:
 	assert(FileAccess.get_file_as_bytes(background.source_path) == source_bytes)
 	main.queue_free()
 	await process_frame
-	print("PASS: overlapping dust, graphics default, isolated menu simulation, SCURK stamps and history, Budget prompts, main-menu confirmation")
+	print(("PASS: overlapping dust, graphics default, isolated menu simulation, SCURK stamps and "
+		+ "history, Budget prompts, main-menu confirmation"))
 	quit()

@@ -2,27 +2,6 @@ class_name ZoneCommand
 extends RefCounted
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
-class Preview extends RefCounted:
-	var ok := false
-	var error := ""
-	var zone_type := 0
-	var dragged := false
-	var charged_tiles := 0
-	var changed_tiles := 0
-	var terrain_surcharges := 0
-	var cost := 0
-	var listed_cost := 0
-	var affordable := false
-	var free_mode := false
-
-	static func failure(message: String) -> Preview:
-		var result := Preview.new()
-		result.error = message
-
-		return result
-
-
 const GROUP_PORTS := CityToolIds.Group.PORTS
 const GROUP_BULLDOZER := CityToolIds.Group.BULLDOZER
 const SUBTOOL_DEZONE := CityToolIds.Bulldozer.DEZONE
@@ -39,7 +18,6 @@ const TERRAIN_REQUIRES_SURCHARGE := [
 	false, false, false, false, false, true, true, true,
 	true, true, true, true, true, false, false, false,
 ]
-
 const ZONE_TYPES := {
 	GROUP_PORTS: [9, 8],
 	GROUP_RESIDENTIAL: [1, 2],
@@ -397,3 +375,23 @@ static func _values_at(data: PackedByteArray, indices: PackedInt32Array) -> Pack
 		result.append(data[index])
 
 	return result
+
+
+class Preview extends RefCounted:
+	var ok := false
+	var error := ""
+	var zone_type := 0
+	var dragged := false
+	var charged_tiles := 0
+	var changed_tiles := 0
+	var terrain_surcharges := 0
+	var cost := 0
+	var listed_cost := 0
+	var affordable := false
+	var free_mode := false
+
+	static func failure(message: String) -> Preview:
+		var result := Preview.new()
+		result.error = message
+
+		return result

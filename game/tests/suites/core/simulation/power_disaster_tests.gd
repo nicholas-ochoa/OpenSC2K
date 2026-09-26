@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Simulation: power disaster checks.
 
 @warning_ignore_start("integer_division")
@@ -17,6 +16,12 @@ const SparseRandom = TestRandoms.SparseRandom
 
 
 func run(reference_root: String) -> void:
+	_test_meltdown(reference_root)
+	_test_missing_nuclear_plant(reference_root)
+	_test_microwave(reference_root)
+
+
+func _test_meltdown(reference_root: String) -> void:
 	var meltdown_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 
 	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
@@ -211,6 +216,8 @@ func run(reference_root: String) -> void:
 				"Meltdown radiation core covers plant tile %d,%d" % [x, y],
 			)
 
+
+func _test_missing_nuclear_plant(reference_root: String) -> void:
 	var no_plant_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 	_check(
 		no_plant_document.find_chunk("XBLD").set_decoded_payload(
@@ -235,6 +242,8 @@ func run(reference_root: String) -> void:
 		"Meltdown does not start or consume random state when the city has no nuclear plant",
 	)
 
+
+func _test_microwave(reference_root: String) -> void:
 	var microwave_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 
 	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:

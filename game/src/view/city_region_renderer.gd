@@ -45,7 +45,20 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 				continue
 
 			if mode == CityViewMode.Mode.UNDERGROUND:
-				Underground.draw_tile(image, city, palette, sprites, cache, local, origin - bounds.position.x, x, y, show_pipes, show_subways, show_water_mains)
+				Underground.draw_tile(
+					image,
+					city,
+					palette,
+					sprites,
+					cache,
+					local,
+					origin - bounds.position.x,
+					x,
+					y,
+					show_pipes,
+					show_subways,
+					show_water_mains,
+				)
 			else:
 				Renderer.draw_tile(image, city, palette, sprites, cache, local, origin - bounds.position.x, x, y, 0, false, false)
 				var order := diagonal * city.map_size + y

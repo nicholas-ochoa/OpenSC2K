@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Simulation: disaster map checks.
 
 @warning_ignore_start("integer_division")
@@ -15,6 +14,17 @@ const SequenceRandom = TestRandoms.SequenceRandom
 
 
 func test_disaster_map_phase(reference_root: String) -> void:
+	_test_fire(reference_root)
+	_test_toxic(reference_root)
+	_test_riots(reference_root)
+	_test_dispatch(reference_root)
+	_test_floods(reference_root)
+	_test_engine_and_dispatch(reference_root)
+	_test_hurricane(reference_root)
+	_test_engine_disaster_lifecycle(reference_root)
+
+
+func _test_fire(reference_root: String) -> void:
 	var water := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.TREES_1, true)
 	var water_random := SequenceRandom.new([0])
 	var water_lfsr := SequenceLfsrRandom.new([])
@@ -136,6 +146,8 @@ func test_disaster_map_phase(reference_root: String) -> void:
 		"A special burning structure can leave the recovered toxic marker",
 	)
 
+
+func _test_toxic(reference_root: String) -> void:
 	var expired_toxic := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.TREES_1)
 	_check(
 		expired_toxic.city.set_text_overlay_id(20, 20, DisasterMap.TOXIC_OVERLAY),
@@ -260,6 +272,8 @@ func test_disaster_map_phase(reference_root: String) -> void:
 		"Toxic abandonment consumes the normal building-selection random value",
 	)
 
+
+func _test_riots(reference_root: String) -> void:
 	var idle_riot := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.TREES_1)
 	_check(
 		idle_riot.city.set_text_overlay_id(20, 20, DisasterMap.RIOT_OVERLAY_REVERSE),
@@ -364,6 +378,8 @@ func test_disaster_map_phase(reference_root: String) -> void:
 		"A low riot damage choice starts fire through the shared disaster helper",
 	)
 
+
+func _test_dispatch(reference_root: String) -> void:
 	var fire_dispatch := _dispatch_map_fixture(
 		reference_root, Dispatch.TYPE_FIRE, Vector2i(20, 20)
 	)
@@ -460,6 +476,8 @@ func test_disaster_map_phase(reference_root: String) -> void:
 		"A failed police fire gate does not block its separate riot-suppression attempt",
 	)
 
+
+func _test_floods(reference_root: String) -> void:
 	var flood := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.TREES_1)
 	_check(
 		flood.city.set_text_overlay_id(20, 20, 0xfc)
@@ -583,6 +601,8 @@ func test_disaster_map_phase(reference_root: String) -> void:
 		"The engine keeps the flood lifetime counter from start through recurring ticks",
 	)
 
+
+func _test_engine_and_dispatch(reference_root: String) -> void:
 	var engine_fixture := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.TREES_1, true)
 	_check(engine_fixture.document.set_misc_u32(0x0004, 2), "Fire engine fixture selects disaster mode")
 	var engine := Simulation.new(engine_fixture.city, 3, 7, 13)
@@ -696,6 +716,8 @@ func test_disaster_map_phase(reference_root: String) -> void:
 		"The combined scan consumes random state in X-before-Y marker order",
 	)
 
+
+func _test_hurricane(reference_root: String) -> void:
 	var hurricane_tick_fixture := _fire_map_fixture(
 		reference_root, Vector2i(20, 21), Tiles.LOWER_CLASS_HOMES_1X1_2
 	)
@@ -758,6 +780,8 @@ func test_disaster_map_phase(reference_root: String) -> void:
 		"A hurricane tick consumes only its sound and LFSR gates when both reject",
 	)
 
+
+func _test_engine_disaster_lifecycle(reference_root: String) -> void:
 	var toxic_engine_fixture := _fire_map_fixture(reference_root, Vector2i(20, 20), Tiles.TREES_1)
 	_check(
 		toxic_engine_fixture.city.set_text_overlay_id(20, 20, DisasterMap.TOXIC_OVERLAY)
@@ -838,7 +862,13 @@ func test_disaster_map_phase(reference_root: String) -> void:
 		and pollution_engine.active_disaster_type == 0
 		and pollution_engine_fixture.city.city_mode() == 1,
 		"Pollution enters disaster mode, runs toxic clouds, and restores city mode: %s %s %s active=%d mode=%d"
-		% [pollution_engine_start, pollution_tick, pollution_end, pollution_engine.active_disaster_type, pollution_engine_fixture.city.city_mode()],
+		% [
+			pollution_engine_start,
+			pollution_tick,
+			pollution_end,
+			pollution_engine.active_disaster_type,
+			pollution_engine_fixture.city.city_mode(),
+		],
 	)
 
 	var riot_engine_document := _load_fixture(

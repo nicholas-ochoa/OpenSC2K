@@ -32,6 +32,73 @@ var animated_indices := PackedInt32Array()
 var cycle_indices := PackedInt32Array()
 
 
+func _init() -> void:
+	mouse_filter = Control.MOUSE_FILTER_STOP
+	custom_minimum_size = Vector2(COLUMN_COUNT * cell_size, COLUMN_COUNT * cell_size)
+	_refresh_indices()
+	mouse_exited.connect(func() -> void: _set_hovered(-1))
+	resized.connect(_resize_grid)
+
+
+func _gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		_set_hovered(index_at(event.position))
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
+		var index := index_at(event.position)
+		if index >= 0:
+			context_menu_requested.emit(index, event.position)
+			accept_event()
+		return
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		var index := index_at(event.position)
+		if index < 0:
+			return
+		if event.shift_pressed:
+			toggle_ramp_index(index)
+		elif event.ctrl_pressed or event.meta_pressed:
+			toggle_favorite(index)
+		else:
+			selected_color_index = index
+			remember_index(index)
+			index_selected.emit(index)
+		queue_redraw()
+		accept_event()
+
+
+func _draw() -> void:
+	for slot in visible_indices.size():
+		var index := visible_indices[slot]
+		var rect := _cell_rect(slot)
+		var color := palette.color(display_palette_index(index)) if palette != null and palette.is_valid() else Color.MAGENTA
+		draw_rect(rect, color, true)
+		draw_rect(rect, Color(0.0, 0.0, 0.0, 0.3), false, 1.0)
+		if animated_indices.has(index):
+			var center := rect.position + Vector2(cell_size - 4, 4)
+			draw_circle(center, 2.5, Color.BLACK)
+			draw_circle(center, 1.5, Color.WHITE)
+		if favorite_indices.has(index):
+			draw_rect(Rect2(rect.position + Vector2(2, cell_size - 5), Vector2(3, 3)), Color("ffdc70"))
+		if ramp_indices.has(index):
+			draw_line(rect.position + Vector2(4, cell_size - 3), rect.end - Vector2(3, 3), Color("6eeeff"), 2.0)
+
+	var selected_slot := visible_indices.find(selected_color_index)
+	if selected_slot >= 0:
+		var rect := _cell_rect(selected_slot)
+		draw_rect(rect, Color.WHITE, false, 2.0)
+		draw_rect(rect.grow(-2), Color.BLACK, false, 1.0)
+	if visible_indices.is_empty():
+		var font := get_theme_default_font()
+		draw_string(
+			font,
+			Vector2(6, 22),
+			"No colors in this view.",
+			HORIZONTAL_ALIGNMENT_LEFT,
+			-1,
+			13,
+			get_theme_color("font_color", "Label"),
+		)
+
+
 func set_cycle_tick(tick: int) -> void:
 	palette_cycle_ticks = tick
 	if palette != null and palette.is_valid():
@@ -41,14 +108,6 @@ func set_cycle_tick(tick: int) -> void:
 
 func display_palette_index(index: int) -> int:
 	return cycle_indices[index] if index >= 0 and index < cycle_indices.size() else index
-
-
-func _init() -> void:
-	mouse_filter = Control.MOUSE_FILTER_STOP
-	custom_minimum_size = Vector2(COLUMN_COUNT * cell_size, COLUMN_COUNT * cell_size)
-	_refresh_indices()
-	mouse_exited.connect(func() -> void: _set_hovered(-1))
-	resized.connect(_resize_grid)
 
 
 func _resize_grid() -> void:
@@ -125,7 +184,7 @@ func clear_ramp() -> void:
 
 
 func export_state() -> Dictionary:
-	return {"recent": Array(recent_indices), "favorites": Array(favorite_indices), "ramp": Array(ramp_indices)}
+	return { "recent": Array(recent_indices), "favorites": Array(favorite_indices), "ramp": Array(ramp_indices) }
 
 
 func import_state(state: Dictionary) -> void:
@@ -196,31 +255,6 @@ static func _clean_indices(values: Variant, limit := 256) -> PackedInt32Array:
 	return result
 
 
-func _gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseMotion:
-		_set_hovered(index_at(event.position))
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
-		var index := index_at(event.position)
-		if index >= 0:
-			context_menu_requested.emit(index, event.position)
-			accept_event()
-		return
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-		var index := index_at(event.position)
-		if index < 0:
-			return
-		if event.shift_pressed:
-			toggle_ramp_index(index)
-		elif event.ctrl_pressed or event.meta_pressed:
-			toggle_favorite(index)
-		else:
-			selected_color_index = index
-			remember_index(index)
-			index_selected.emit(index)
-		queue_redraw()
-		accept_event()
-
-
 func _get_tooltip(at_position: Vector2) -> String:
 	var index := index_at(at_position)
 	if index < 0:
@@ -229,34 +263,14 @@ func _get_tooltip(at_position: Vector2) -> String:
 	var ramp := ramp_indices.find(index)
 	if ramp >= 0:
 		note += " · ramp step %d" % (ramp + 1)
-	return "Palette index %d (0x%02X)%s\nClick: select color · Right-click: actions\nShift-click: add/remove ramp step\nCtrl/Cmd-click: add/remove favorite\nHover: highlight matching pixels" % [index, index, note]
+	return ("Palette index %d (0x%02X)%s\nClick: select color · Right-click: actions\nShift-click: "
+		+ "add/remove ramp step\nCtrl/Cmd-click: add/remove favorite\nHover: highlight matching "
+		+ "pixels") % [
+		index,
+		index,
+		note,
+	]
 
 
 func _cell_rect(slot: int) -> Rect2:
 	return Rect2((slot % COLUMN_COUNT) * cell_size, (slot / COLUMN_COUNT) * cell_size, cell_size, cell_size)
-
-
-func _draw() -> void:
-	for slot in visible_indices.size():
-		var index := visible_indices[slot]
-		var rect := _cell_rect(slot)
-		var color := palette.color(display_palette_index(index)) if palette != null and palette.is_valid() else Color.MAGENTA
-		draw_rect(rect, color, true)
-		draw_rect(rect, Color(0.0, 0.0, 0.0, 0.3), false, 1.0)
-		if animated_indices.has(index):
-			var center := rect.position + Vector2(cell_size - 4, 4)
-			draw_circle(center, 2.5, Color.BLACK)
-			draw_circle(center, 1.5, Color.WHITE)
-		if favorite_indices.has(index):
-			draw_rect(Rect2(rect.position + Vector2(2, cell_size - 5), Vector2(3, 3)), Color("ffdc70"))
-		if ramp_indices.has(index):
-			draw_line(rect.position + Vector2(4, cell_size - 3), rect.end - Vector2(3, 3), Color("6eeeff"), 2.0)
-
-	var selected_slot := visible_indices.find(selected_color_index)
-	if selected_slot >= 0:
-		var rect := _cell_rect(selected_slot)
-		draw_rect(rect, Color.WHITE, false, 2.0)
-		draw_rect(rect.grow(-2), Color.BLACK, false, 1.0)
-	if visible_indices.is_empty():
-		var font := get_theme_default_font()
-		draw_string(font, Vector2(6, 22), "No colors in this view.", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, get_theme_color("font_color", "Label"))

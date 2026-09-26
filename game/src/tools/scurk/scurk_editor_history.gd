@@ -3,17 +3,6 @@ extends RefCounted
 
 const HISTORY_LIMIT := 24
 
-class Record extends RefCounted:
-	var description := "Edit artwork"
-	var merge_key := ""
-	var before := PackedByteArray()
-	var after := PackedByteArray()
-	var project_before: Dictionary = {}
-	var project_after: Dictionary = {}
-	var blank_before: Dictionary[int, bool] = {}
-	var blank_after: Dictionary[int, bool] = {}
-
-
 var saved_bytes := PackedByteArray()
 var undo_stack: Array[Record] = []
 var redo_stack: Array[Record] = []
@@ -87,3 +76,14 @@ func update_dirty(document: ScurkMif) -> void:
 
 func _update_dirty_bytes(encoded_bytes: PackedByteArray) -> void:
 	dirty = encoded_bytes != saved_bytes
+
+
+class Record extends RefCounted:
+	var description := "Edit artwork"
+	var merge_key := ""
+	var before := PackedByteArray()
+	var after := PackedByteArray()
+	var project_before: Dictionary = {}
+	var project_after: Dictionary = {}
+	var blank_before: Dictionary[int, bool] = {}
+	var blank_after: Dictionary[int, bool] = {}

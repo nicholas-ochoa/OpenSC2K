@@ -4,12 +4,6 @@ extends RefCounted
 const INDEX_RECORD_SIZE := 8
 
 
-class Result extends RefCounted:
-	var ok := false
-	var error := ""
-	var strings: Dictionary[int, String] = {}
-
-
 static func load_ids(
 	data_path: String, index_path: String, resource_ids: PackedInt32Array
 ) -> Result:
@@ -91,3 +85,9 @@ static func _failure(message: String) -> Result:
 	outcome.error = message
 
 	return outcome
+
+
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+	var strings: Dictionary[int, String] = {}

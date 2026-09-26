@@ -18,7 +18,7 @@ func _run() -> void:
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 	root.size = Vector2i(1920, 1080)
 	var city_path := input_path(GeneratedCityFixture.path(128))
-	report_metadata({"city": city_path, "window": root.size, "audio": "Dummy"})
+	report_metadata({ "city": city_path, "window": root.size, "audio": "Dummy" })
 	await _measure("engine", 2.0)
 	main = (load("res://main.tscn") as PackedScene).instantiate()
 	main.set_script(load("res://tools/benchmarks/profiled_city.gd"))
@@ -169,7 +169,7 @@ func _measure(stage: String, seconds: float) -> void:
 		var steps := {}
 		for label in main.timing_state.simulation_timings.steps:
 			var row: SimulationTimingHistory.Sample = main.timing_state.simulation_timings.steps[label]
-			steps[label] = {"count": row.count, "total_usec": row.total_usec, "max_usec": row.max_usec}
+			steps[label] = { "count": row.count, "total_usec": row.total_usec, "max_usec": row.max_usec }
 		result["simulation_steps"] = steps
 	var acknowledgement := OS.get_environment("CITY_BENCH_ACK")
 	var previously_paused := paused

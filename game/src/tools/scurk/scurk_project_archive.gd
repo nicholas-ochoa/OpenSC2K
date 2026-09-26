@@ -16,6 +16,105 @@ const PNG_HEADER_SIZE := 33
 const PNG_WIDTH_OFFSET := 16
 const PNG_HEIGHT_OFFSET := 20
 
+
+# The caller validates the logical record before encoding it.
+static func encode(record: Dictionary, palette_rgb: PackedByteArray) -> Result:
+	var encoder := Encoder.new()
+	encoder.palette = Sc2Palette.index_encoding() if palette_rgb.is_empty() else Sc2Palette.from_rgb_bytes(palette_rgb)
+	if not encoder.palette.is_valid():
+		return failure("The project palette is invalid.")
+	var project := encoder.snapshot(record, "current")
+	encoder.members["original.mif"] = record.original_mif
+	project.original_mif = "original.mif"
+	var checkpoints: Array = project.get("checkpoints", [])
+	for index in checkpoints.size():
+		checkpoints[index].snapshot = encoder.snapshot(record.checkpoints[index].snapshot, "checkpoints/%04d" % index)
+	if not encoder.error.is_empty():
+		return failure(encoder.error)
+	var colors: Array = []
+	for color: Color in encoder.palette.colors:
+		colors.append([color.r8, color.g8, color.b8])
+	encoder.members[PALETTE] = JSON.stringify({ "kind": "index-encoding" if palette_rgb.is_empty() else "rgb", "colors": colors },
+		"\t").to_utf8_buffer()
+	encoder.members[MANIFEST] = JSON.stringify({ "format": FORMAT, "version": VERSION, "palette": PALETTE, "project": project },
+		"\t").to_utf8_buffer()
+	var packed := Zip.encode(encoder.members)
+	if not packed.ok:
+		return failure(packed.error)
+	var result := Result.new()
+	result.ok = true
+	result.bytes = packed.bytes
+	return result
+
+
+static func decode(bytes: PackedByteArray) -> Result:
+	var unpacked := Zip.decode(bytes, Limits.MAX_FILE_BYTES)
+	if not unpacked.ok:
+		return failure(unpacked.error)
+	var decoder := Decoder.new()
+	decoder.members = unpacked.members
+	var manifest := decoder.json(MANIFEST)
+	if not decoder.error.is_empty():
+		return failure(decoder.error)
+	if manifest.get("format") != FORMAT or not Limits.integer_in(manifest.get("version"), VERSION, VERSION):
+		return failure("The project archive format or version is not supported.")
+	for key: Variant in manifest:
+		if key not in ["format", "version", "palette", "project"]:
+			return failure("The project archive manifest has an unsupported field.")
+	var palette := decoder.json(manifest.get("palette"))
+	for key: Variant in palette:
+		if key not in ["kind", "colors"]:
+			return failure("The project palette has an unsupported field.")
+	var kind: Variant = palette.get("kind")
+	var colors: Variant = palette.get("colors")
+	if (not decoder.error.is_empty()
+			or kind not in ["rgb", "index-encoding"]
+			or not colors is Array
+			or colors.size() != Sc2Palette.COLOR_COUNT):
+		return failure("The project palette is invalid.")
+	for color: Variant in colors:
+		if not color is Array or color.size() != Sc2Palette.RGB_CHANNELS:
+			return failure("The project palette color is invalid.")
+		for channel: Variant in color:
+			if not Limits.integer_in(channel, 0, 255):
+				return failure("The project palette color is invalid.")
+			decoder.palette_rgb.append(int(channel))
+	if kind == "index-encoding" and decoder.palette_rgb != Sc2Palette.index_encoding().to_rgb_bytes():
+		return failure("The project index palette is invalid.")
+	if not manifest.get("project") is Dictionary:
+		return failure("The project record is invalid.")
+	var source: Dictionary = manifest.project
+	var record := decoder.snapshot(source)
+	if not decoder.error.is_empty():
+		return failure(decoder.error)
+	record.original_mif = decoder.blob(source.get("original_mif"))
+	var checkpoints: Variant = record.get("checkpoints", [])
+	if not checkpoints is Array or checkpoints.size() > Limits.MAX_CHECKPOINTS:
+		return failure("The project history is invalid.")
+	for entry: Variant in checkpoints:
+		if not entry is Dictionary or not entry.get("snapshot") is Dictionary:
+			return failure("The project checkpoint is invalid.")
+		entry.snapshot = decoder.snapshot(entry.snapshot)
+		if not decoder.error.is_empty():
+			return failure(decoder.error)
+	if not decoder.error.is_empty():
+		return failure(decoder.error)
+	for path: String in decoder.members:
+		if not decoder.used_members.has(path):
+			return failure("The project archive contains an unreferenced member: " + path)
+	var result := Result.new()
+	result.ok = true
+	result.record = record
+	result.palette_rgb = decoder.palette_rgb if kind == "rgb" else PackedByteArray()
+	return result
+
+
+static func failure(message: String) -> Result:
+	var result := Result.new()
+	result.error = message
+	return result
+
+
 class Result extends RefCounted:
 	var ok := false
 	var error := ""
@@ -30,7 +129,7 @@ class Encoder extends RefCounted:
 	var error := ""
 
 	func pixels(value: PackedInt32Array, width: int, height: int, path: String) -> Dictionary:
-		var descriptor := {"image": path}
+		var descriptor := { "image": path }
 		var used: Dictionary[int, bool] = {}
 		for color in value:
 			used[color] = true
@@ -69,10 +168,20 @@ class Encoder extends RefCounted:
 			var key: String = keys[index]
 			var document: Dictionary = record.documents[key]
 			var directory := "%s/documents/%04d" % [prefix, index]
-			document.original_pixels = pixels(document.original_pixels, int(document.width), int(document.height), directory + "/original.png")
+			document.original_pixels = pixels(
+				document.original_pixels,
+				int(document.width),
+				int(document.height),
+				directory + "/original.png",
+			)
 			for layer_index in document.layers.size():
 				var layer: Dictionary = document.layers[layer_index]
-				layer.pixels = pixels(layer.pixels, int(document.width), int(document.height), "%s/layers/%04d.png" % [directory, layer_index])
+				layer.pixels = pixels(
+					layer.pixels,
+					int(document.width),
+					int(document.height),
+					"%s/layers/%04d.png" % [directory, layer_index],
+				)
 		keys = value.get("resources", {}).keys()
 		keys.sort()
 		for index in keys.size():
@@ -133,7 +242,9 @@ class Decoder extends RefCounted:
 		if not error.is_empty():
 			return PackedInt32Array()
 		# Check dimensions before the PNG decoder can allocate its output image.
-		if bytes.size() < PNG_HEADER_SIZE or Binary.read_u32_be(bytes, PNG_WIDTH_OFFSET) != width or Binary.read_u32_be(bytes, PNG_HEIGHT_OFFSET) != height:
+		if (bytes.size() < PNG_HEADER_SIZE
+				or Binary.read_u32_be(bytes, PNG_WIDTH_OFFSET) != width
+				or Binary.read_u32_be(bytes, PNG_HEIGHT_OFFSET) != height):
 			error = "A project PNG has the wrong dimensions."
 			return PackedInt32Array()
 		var decoded := Png.decode(bytes)
@@ -210,96 +321,3 @@ class Decoder extends RefCounted:
 			if not error.is_empty():
 				return {}
 		return record
-
-
-# The caller validates the logical record before encoding it.
-static func encode(record: Dictionary, palette_rgb: PackedByteArray) -> Result:
-	var encoder := Encoder.new()
-	encoder.palette = Sc2Palette.index_encoding() if palette_rgb.is_empty() else Sc2Palette.from_rgb_bytes(palette_rgb)
-	if not encoder.palette.is_valid():
-		return failure("The project palette is invalid.")
-	var project := encoder.snapshot(record, "current")
-	encoder.members["original.mif"] = record.original_mif
-	project.original_mif = "original.mif"
-	var checkpoints: Array = project.get("checkpoints", [])
-	for index in checkpoints.size():
-		checkpoints[index].snapshot = encoder.snapshot(record.checkpoints[index].snapshot, "checkpoints/%04d" % index)
-	if not encoder.error.is_empty():
-		return failure(encoder.error)
-	var colors: Array = []
-	for color: Color in encoder.palette.colors:
-		colors.append([color.r8, color.g8, color.b8])
-	encoder.members[PALETTE] = JSON.stringify({"kind": "index-encoding" if palette_rgb.is_empty() else "rgb", "colors": colors}, "\t").to_utf8_buffer()
-	encoder.members[MANIFEST] = JSON.stringify({"format": FORMAT, "version": VERSION, "palette": PALETTE, "project": project}, "\t").to_utf8_buffer()
-	var packed := Zip.encode(encoder.members)
-	if not packed.ok:
-		return failure(packed.error)
-	var result := Result.new()
-	result.ok = true
-	result.bytes = packed.bytes
-	return result
-
-
-static func decode(bytes: PackedByteArray) -> Result:
-	var unpacked := Zip.decode(bytes, Limits.MAX_FILE_BYTES)
-	if not unpacked.ok:
-		return failure(unpacked.error)
-	var decoder := Decoder.new()
-	decoder.members = unpacked.members
-	var manifest := decoder.json(MANIFEST)
-	if not decoder.error.is_empty():
-		return failure(decoder.error)
-	if manifest.get("format") != FORMAT or not Limits.integer_in(manifest.get("version"), VERSION, VERSION):
-		return failure("The project archive format or version is not supported.")
-	for key: Variant in manifest:
-		if key not in ["format", "version", "palette", "project"]:
-			return failure("The project archive manifest has an unsupported field.")
-	var palette := decoder.json(manifest.get("palette"))
-	for key: Variant in palette:
-		if key not in ["kind", "colors"]:
-			return failure("The project palette has an unsupported field.")
-	var kind: Variant = palette.get("kind")
-	var colors: Variant = palette.get("colors")
-	if not decoder.error.is_empty() or kind not in ["rgb", "index-encoding"] or not colors is Array or colors.size() != Sc2Palette.COLOR_COUNT:
-		return failure("The project palette is invalid.")
-	for color: Variant in colors:
-		if not color is Array or color.size() != Sc2Palette.RGB_CHANNELS:
-			return failure("The project palette color is invalid.")
-		for channel: Variant in color:
-			if not Limits.integer_in(channel, 0, 255):
-				return failure("The project palette color is invalid.")
-			decoder.palette_rgb.append(int(channel))
-	if kind == "index-encoding" and decoder.palette_rgb != Sc2Palette.index_encoding().to_rgb_bytes():
-		return failure("The project index palette is invalid.")
-	if not manifest.get("project") is Dictionary:
-		return failure("The project record is invalid.")
-	var source: Dictionary = manifest.project
-	var record := decoder.snapshot(source)
-	if not decoder.error.is_empty():
-		return failure(decoder.error)
-	record.original_mif = decoder.blob(source.get("original_mif"))
-	var checkpoints: Variant = record.get("checkpoints", [])
-	if not checkpoints is Array or checkpoints.size() > Limits.MAX_CHECKPOINTS:
-		return failure("The project history is invalid.")
-	for entry: Variant in checkpoints:
-		if not entry is Dictionary or not entry.get("snapshot") is Dictionary:
-			return failure("The project checkpoint is invalid.")
-		entry.snapshot = decoder.snapshot(entry.snapshot)
-		if not decoder.error.is_empty():
-			return failure(decoder.error)
-	if not decoder.error.is_empty():
-		return failure(decoder.error)
-	for path: String in decoder.members:
-		if not decoder.used_members.has(path):
-			return failure("The project archive contains an unreferenced member: " + path)
-	var result := Result.new()
-	result.ok = true
-	result.record = record
-	result.palette_rgb = decoder.palette_rgb if kind == "rgb" else PackedByteArray()
-	return result
-
-
-static func failure(message: String) -> Result:
-	var result := Result.new()
-	result.error = message
-	return result

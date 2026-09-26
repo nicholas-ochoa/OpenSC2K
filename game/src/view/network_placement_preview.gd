@@ -1,57 +1,6 @@
 class_name NetworkPlacementPreview
 extends CanvasGroup
 
-
-@warning_ignore_start("integer_division")
-
-class Request extends RefCounted:
-	var city: CityState
-	var group: int
-	var tool: int
-	var start: Vector2i
-	var finish: Vector2i
-	var view: int
-	var palette: Sc2Palette
-	var sprites: Sc2SpriteArchive
-	var underground: bool
-	var free_mode: bool
-	var cache: Dictionary
-
-	func _init(source: CityState, tool_group: int, subtool: int, first: Vector2i, last: Vector2i,
-		graphics_size: int, colors: Sc2Palette, artwork: Sc2SpriteArchive, below_ground: bool,
-		free := false, images: Dictionary = {}) -> void:
-		city = source
-		group = tool_group
-		tool = subtool
-		start = first
-		finish = last
-		view = graphics_size
-		palette = colors
-		sprites = artwork
-		underground = below_ground
-		free_mode = free
-		cache = images
-
-
-class Result extends RefCounted:
-	var draws: Array[CityGpuDrawList.Draw] = []
-	var command: EditCommandResult
-	var divisor := 1
-	var candidate_count := 0
-	var tile_count := 0
-
-
-class Visual extends RefCounted:
-	var texture: ImageTexture
-	var source: Rect2i
-	var position: Vector2i
-
-	func _init(image_texture: ImageTexture, area: Rect2i, destination: Vector2i) -> void:
-		texture = image_texture
-		source = area
-		position = destination
-
-
 var worker: Thread
 var pending: Request
 var request_key := ""
@@ -76,8 +25,67 @@ func _init() -> void:
 	painter.draw.connect(_draw_preview)
 
 
+func _process(_delta: float) -> void:
+	if worker != null and not worker.is_alive():
+		# release the slot before checking the return value. a script failure can
+		# return null; a typed assignment here used to leave a joined worker stuck
+		var completed := worker
+		worker = null
+		var value: Variant = completed.wait_to_finish()
+		var result: Result = value if value is Result else Result.new()
+
+		if worker_generation == generation and not request_key.is_empty():
+			visuals.clear()
+			_read_price(result.command)
+			divisor = result.divisor
+			for draw in result.draws:
+				var source: Image = draw.image
+				var key := source.get_instance_id()
+
+				if not texture_cache.has(key):
+					texture_cache[key] = ImageTexture.create_from_image(source)
+
+				visuals.append(Visual.new(texture_cache[key], draw.source, draw.position))
+
+			if map_view != null:
+				map_view.queue_redraw()
+
+			painter.queue_redraw()
+
+	if worker == null and pending != null:
+		var job := pending
+		pending = null
+		# copy on the main thread; the worker never reads live simulation data
+		job.city = snapshot_city(job.city)
+		worker_generation = generation
+		worker = Thread.new()
+
+		if worker.start(build.bind(job), Thread.PRIORITY_LOW) != OK:
+			worker = null
+			clear()
+
+	if map_view != null:
+		var view_scale := map_view.camera._view_scale()
+		position = map_view.camera._draw_offset(view_scale)
+		scale = Vector2.ONE * view_scale * divisor
+
+		# only an active request owns the anchored price. an idle preview must
+		# leave a zone or other tool price alone
+		if not request_key.is_empty():
+			if cost < 0:
+				map_view.clear_selection_price()
+			else:
+				map_view.set_selection_price(cost, affordable)
+
+
+func _exit_tree() -> void:
+	if worker != null:
+		worker.wait_to_finish()
+
+
 static func supports_tool(group: int, tool: int) -> bool:
-	return (NetworkCommand.supports_tool(group, tool) or HighwayCommand.supports_tool(group, tool) or TunnelCommand.supports_tool(group, tool)
+	return (NetworkCommand.supports_tool(group, tool) or HighwayCommand.supports_tool(group, tool)
+		or TunnelCommand.supports_tool(group, tool)
 			or OnrampCommand.supports_tool(group, tool) or SubwayToRailCommand.supports_tool(group, tool))
 
 
@@ -140,59 +148,6 @@ func request(city: CityState, group: int, tool: int, start: Vector2i, finish: Ve
 			sprites, underground, free_mode, sprite_cache)
 
 
-func _process(_delta: float) -> void:
-	if worker != null and not worker.is_alive():
-		# release the slot before checking the return value. a script failure can
-		# return null; a typed assignment here used to leave a joined worker stuck
-		var completed := worker
-		worker = null
-		var value: Variant = completed.wait_to_finish()
-		var result: Result = value if value is Result else Result.new()
-
-		if worker_generation == generation and not request_key.is_empty():
-			visuals.clear()
-			_read_price(result.command)
-			divisor = result.divisor
-			for draw in result.draws:
-				var source: Image = draw.image
-				var key := source.get_instance_id()
-
-				if not texture_cache.has(key):
-					texture_cache[key] = ImageTexture.create_from_image(source)
-
-				visuals.append(Visual.new(texture_cache[key], draw.source, draw.position))
-
-			if map_view != null:
-				map_view.queue_redraw()
-
-			painter.queue_redraw()
-
-	if worker == null and pending != null:
-		var job := pending
-		pending = null
-		# copy on the main thread; the worker never reads live simulation data
-		job.city = snapshot_city(job.city)
-		worker_generation = generation
-		worker = Thread.new()
-
-		if worker.start(build.bind(job), Thread.PRIORITY_LOW) != OK:
-			worker = null
-			clear()
-
-	if map_view != null:
-		var view_scale := map_view.camera._view_scale()
-		position = map_view.camera._draw_offset(view_scale)
-		scale = Vector2.ONE * view_scale * divisor
-
-		# only an active request owns the anchored price. an idle preview must
-		# leave a zone or other tool price alone
-		if not request_key.is_empty():
-			if cost < 0:
-				map_view.clear_selection_price()
-			else:
-				map_view.set_selection_price(cost, affordable)
-
-
 func _read_price(command: EditCommandResult) -> void:
 	if command != null and command.ok:
 		cost = command.cost
@@ -211,17 +166,19 @@ func _read_price(command: EditCommandResult) -> void:
 	affordable = true
 
 
-func _exit_tree() -> void:
-	if worker != null:
-		worker.wait_to_finish()
-
-
 func _draw_preview() -> void:
 	for visual in visuals:
 		painter.draw_texture_rect_region(visual.texture, Rect2(visual.position, visual.source.size), visual.source)
 
 
-static func apply_preview(city: CityState, group: int, tool: int, start: Vector2i, finish: Vector2i, free_mode := false) -> EditCommandResult:
+static func apply_preview(
+	city: CityState,
+	group: int,
+	tool: int,
+	start: Vector2i,
+	finish: Vector2i,
+	free_mode := false,
+) -> EditCommandResult:
 	if NetworkCommand.supports_tool(group, tool) or HighwayCommand.supports_tool(group, tool):
 		var bridge := -1
 		var connection := -1
@@ -323,3 +280,54 @@ static func candidate_indices(command: EditCommandResult, start: Vector2i, finis
 
 static func snapshot_city(source: CityState) -> CityState:
 	return CityState.copy_for_edit(source)
+
+
+@warning_ignore_start("integer_division")
+
+
+class Request extends RefCounted:
+	var city: CityState
+	var group: int
+	var tool: int
+	var start: Vector2i
+	var finish: Vector2i
+	var view: int
+	var palette: Sc2Palette
+	var sprites: Sc2SpriteArchive
+	var underground: bool
+	var free_mode: bool
+	var cache: Dictionary
+
+	func _init(source: CityState, tool_group: int, subtool: int, first: Vector2i, last: Vector2i,
+		graphics_size: int, colors: Sc2Palette, artwork: Sc2SpriteArchive, below_ground: bool,
+		free := false, images: Dictionary = {}) -> void:
+		city = source
+		group = tool_group
+		tool = subtool
+		start = first
+		finish = last
+		view = graphics_size
+		palette = colors
+		sprites = artwork
+		underground = below_ground
+		free_mode = free
+		cache = images
+
+
+class Result extends RefCounted:
+	var draws: Array[CityGpuDrawList.Draw] = []
+	var command: EditCommandResult
+	var divisor := 1
+	var candidate_count := 0
+	var tile_count := 0
+
+
+class Visual extends RefCounted:
+	var texture: ImageTexture
+	var source: Rect2i
+	var position: Vector2i
+
+	func _init(image_texture: ImageTexture, area: Rect2i, destination: Vector2i) -> void:
+		texture = image_texture
+		source = area
+		position = destination

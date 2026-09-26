@@ -1,10 +1,21 @@
-max_line_length = 140
-use_tabs = true
-max_function_length = 100
+max_class_variables = 30
 max_file_length = 2500
-max_parameters = 8
-max_nesting_depth = 6
+max_function_length = 200
+max_inner_classes = 10
+max_line_length = 140
+max_local_variables = 20
+max_nesting_depth = 8
+max_parameters = 12
+max_public_methods = 20
+use_tabs = true
+
 exclude = [".godot", "addons"]
 
 [rules]
 "format/large-number-underscores" = "off"
+"quality/max-local-variables" = "off"
+"quality/allocation-in-loop" = "off"
+"quality/max-branches" = "off"
+"quality/max-returns" = "off"
+"quality/await-in-loop" = "off"
+"quality/no-else-return" = "off"

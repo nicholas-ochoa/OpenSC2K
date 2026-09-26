@@ -24,7 +24,7 @@ func _initialize() -> void:
 	assert(not OrdinanceCommand.set_enabled(city, -1, true).ok)
 	assert(not OrdinanceCommand.set_enabled(city, 20, true).ok)
 	assert(city.document.find_chunk("MISC").decoded_payload == before)
-	var deltas := [{1: 1, 14: -1}, {0: 1, 12: -1, 15: -1, 18: -1}, {13: -1, 19: 1}]
+	var deltas := [{ 1: 1, 14: -1 }, { 0: 1, 12: -1, 15: -1, 18: -1 }, { 13: -1, 19: 1 }]
 	var flag_cases: Array[int] = [0, 0xfffff, 0x80000000, 0x854003]
 
 	for bit in 20:

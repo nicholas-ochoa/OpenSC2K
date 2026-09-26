@@ -5,19 +5,6 @@ signal item_selected(index: int)
 
 const RowScene = preload("res://src/ui/scurk/scurk_tile_row.tscn")
 
-class Entry extends RefCounted:
-	var large_id: int
-	var title: String
-	var category: String
-	var thumbnail: Texture2D
-
-	func _init(id: int, name: String, group: String, image: Texture2D) -> void:
-		large_id = id
-		title = name
-		category = group
-		thumbnail = image
-
-
 var entries: Array[Entry] = []
 var selected := -1
 var rows: Array[ScurkTileRow] = []
@@ -113,3 +100,16 @@ func _choose(index: int) -> void:
 	select(index)
 	$Popup.hide()
 	item_selected.emit(index)
+
+
+class Entry extends RefCounted:
+	var large_id: int
+	var title: String
+	var category: String
+	var thumbnail: Texture2D
+
+	func _init(id: int, name: String, group: String, image: Texture2D) -> void:
+		large_id = id
+		title = name
+		category = group
+		thumbnail = image

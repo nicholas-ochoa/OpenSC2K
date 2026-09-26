@@ -19,8 +19,8 @@ func _initialize() -> void:
 	png.close()
 	var manifest := {"format": "opensc2k-graphics", "version": 1, "name": "External fixture",
 		"palette": "tile.png", "scenario_palette": "tile.png", "ui": {},
-		"large_sprites": [{"id": 1001, "png": "tile.png"}],
-		"small_medium_sprites": [{"id": 1, "png": "tile.png"}]}
+		"large_sprites": [{ "id": 1001, "png": "tile.png" }],
+		"small_medium_sprites": [{ "id": 1, "png": "tile.png" }]}
 
 	for field in GraphicsPack.UI_FIELDS:
 		manifest.ui[field] = "tile.png"

@@ -10,7 +10,6 @@ const SaveChangesDialogView = preload("res://src/ui/shared/save_changes_dialog.g
 var scurk_workspace: Control
 var blocking_windows: Array[Node] = []
 var modeless_windows: Array[Node] = []
-
 var main_menu: MainMenuControl
 var settings_dialog: AppSettingsDialog
 var asset_import_dialog: Sc2AssetImportDialog
@@ -85,7 +84,8 @@ func ensure_scurk_editor() -> ScurkEditorControl:
 
 func ensure_scurk_place_print() -> ScurkPlacePrintControl:
 	if scurk_place_print == null:
-		scurk_place_print = (load("res://src/ui/scurk/scurk_place_print_control.tscn") as PackedScene).instantiate() as ScurkPlacePrintControl
+		scurk_place_print = (load(
+			"res://src/ui/scurk/scurk_place_print_control.tscn") as PackedScene).instantiate() as ScurkPlacePrintControl
 		_register(scurk_place_print, _scurk_parent(), CityDialogRegistry.Modality.BLOCKING)
 
 	return scurk_place_print

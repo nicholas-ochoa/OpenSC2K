@@ -1,7 +1,6 @@
 class_name ApplicationAssets
 extends RefCounted
 
-
 const Palette = preload("res://src/assets/sc2_palette.gd")
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const SettingsStore = preload("res://src/ui/settings/app_settings_store.gd")
@@ -9,7 +8,7 @@ const Random = preload("res://src/simulation/random/sim_random.gd")
 const CityAudio = preload("res://src/audio/city_audio_controller.gd")
 const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
 const DebugOverlayView = preload("res://src/debug/debug_overlay.tscn")
-const PACK_NAMES := {"graphics": "Graphics", "sound": "Sound", "music": "Music", "data": "Game data"}
+const PACK_NAMES := { "graphics": "Graphics", "sound": "Sound", "music": "Music", "data": "Game data" }
 
 var app: CityApplication
 var text_resources: OriginalTextResources
@@ -205,14 +204,8 @@ func activate_imported_packs(result: Sc2MediaImportResult) -> void:
 
 
 func _save_import_preferences() -> Error:
-	return SettingsStore.save_values(
-		app.preferences.music_volume, app.preferences.effects_volume, app.preferences.fullscreen,
-		app.preferences.settings_path, app.preferences.graphics_source, app.preferences.graphics_folder, app.preferences.soundtrack_folder,
-		app.preferences.city_renderer, app.preferences.background_audio, app.preferences.zoom_graphics, app.preferences.toolbar_sounds,
-		app.preferences.sound_pack_folder, app.preferences.music_pack_folder, app.preferences.shuffle_music,
-		app.preferences.default_mayor_name,
-		app.preferences.overview_graphics, app.preferences.ui_theme, app.preferences.dark_underground,
-		app.preferences.translucent_menus, app.preferences.check_for_updates, app.preferences.data_pack_folder,
+	return SettingsStore.save_values(app.preferences.music_volume, app.preferences.effects_volume, app.preferences.fullscreen,
+		app.preferences.settings_path, app.preferences.save_options(false),
 	)
 
 
@@ -256,14 +249,8 @@ func _import_original_game(executable_path: String) -> void:
 	app.audio_controller.set_media_packs(app.preferences.sound_pack_folder, app.preferences.music_pack_folder)
 	app.audio_controller.set_soundtrack_folder("")
 
-	var saved := SettingsStore.save_values(
-		app.preferences.music_volume, app.preferences.effects_volume, app.preferences.fullscreen,
-		app.preferences.settings_path, app.preferences.graphics_source, app.preferences.graphics_folder, app.preferences.soundtrack_folder,
-		app.preferences.city_renderer, app.preferences.background_audio, app.preferences.zoom_graphics, app.preferences.toolbar_sounds,
-		app.preferences.sound_pack_folder, app.preferences.music_pack_folder, app.preferences.shuffle_music,
-		app.preferences.default_mayor_name,
-		app.preferences.overview_graphics, app.preferences.ui_theme, app.preferences.dark_underground,
-		app.preferences.translucent_menus, app.preferences.check_for_updates, app.preferences.data_pack_folder,
+	var saved := SettingsStore.save_values(app.preferences.music_volume, app.preferences.effects_volume, app.preferences.fullscreen,
+		app.preferences.settings_path, app.preferences.save_options(false),
 	)
 
 	app.settings.open_import_settings()
@@ -296,8 +283,10 @@ func apply_graphics_source(selected: GameAssetSource) -> void:
 	app.asset_state.small_medium_sprites = app.asset_state.base_small_medium_sprites
 
 	if app.asset_state.active_scurk_tile_set != null:
-		app.asset_state.large_sprites = SpriteArchive.combine([app.asset_state.base_large_sprites, app.asset_state.active_scurk_tile_set.overrides])
-		app.asset_state.small_medium_sprites = SpriteArchive.combine([app.asset_state.base_small_medium_sprites, app.asset_state.active_scurk_tile_set.overrides])
+		app.asset_state.large_sprites = SpriteArchive.combine([app.asset_state.base_large_sprites,
+			app.asset_state.active_scurk_tile_set.overrides])
+		app.asset_state.small_medium_sprites = SpriteArchive.combine([app.asset_state.base_small_medium_sprites,
+			app.asset_state.active_scurk_tile_set.overrides])
 
 	app.static_render.invalidate_rendered_city()
 	app.static_render.update_palette_cycle_texture()
@@ -430,7 +419,8 @@ func refresh_scurk_artwork() -> void:
 
 			var texture := ImageTexture.create_from_image(rendered.image)
 			var anchor: Vector2 = CityIsometricRenderer.tile_polygon(app.document_state.city, stamp.point.x, stamp.point.y)[2]
-			app.map_view.scurk_stamp_visuals.append(CityDynamicVisual.new(texture, anchor - Vector2(texture.get_width() / 2.0, texture.get_height() - 1)))
+			app.map_view.scurk_stamp_visuals.append(CityDynamicVisual.new(texture,
+				anchor - Vector2(texture.get_width() / 2.0, texture.get_height() - 1)))
 
 	app.map_view.queue_redraw()
 

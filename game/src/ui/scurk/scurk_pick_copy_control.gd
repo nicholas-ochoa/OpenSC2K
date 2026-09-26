@@ -8,7 +8,6 @@ signal copy_requested(
 )
 
 const PickCopy = preload("res://src/tools/scurk/scurk_pick_copy.gd")
-
 const VIEW_LARGE := ScurkSpriteIds.View.LARGE
 const VIEW_MEDIUM := ScurkSpriteIds.View.MEDIUM
 const VIEW_SMALL := ScurkSpriteIds.View.SMALL
@@ -27,7 +26,6 @@ var current_view := VIEW_LARGE
 var source_icon_cache := {}
 var working_icon_cache := {}
 var working_index_by_id := {}
-
 var group_selector: OptionButton
 var view_buttons: Array[Button] = []
 var source_name_label: Label

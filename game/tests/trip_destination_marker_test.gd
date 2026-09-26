@@ -16,7 +16,7 @@ func _initialize() -> void:
 			var result := TransportTripReachResult.new()
 			result.origin = Vector2i(10, 10)
 			result.limit = 100
-			result.destinations = {points[0]: 10, points[1]: 20}
+			result.destinations = { points[0]: 10, points[1]: 20 }
 			var before: PackedByteArray = city.document.serialize().data
 			var overlay := TripReachOverlay.new()
 			overlay.rebuild(city, result)

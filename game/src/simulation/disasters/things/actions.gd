@@ -1,10 +1,10 @@
 class_name DisasterThingActions
 extends DisasterThingConstants
 
-
-
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
+
+# gdstyle:ignore=quality/max-parameters
 static func _monster_damage(
 	city: CityState,
 	altitude: PackedByteArray,

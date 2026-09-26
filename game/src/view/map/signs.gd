@@ -1,23 +1,6 @@
 class_name CityMapSigns
 extends CityMapConstants
 
-
-@warning_ignore_start("integer_division")
-
-class Entry extends RefCounted:
-	var key: int
-	var anchor: Vector2
-	var label: String
-	var text_width: float
-	var bounds: Rect2i
-	var draw_order: int
-
-
-class Layout extends RefCounted:
-	var panel: Rect2
-	var post: Rect2
-
-
 var map: CityMapControl
 
 
@@ -98,7 +81,14 @@ func _ensure_sign_entries() -> void:
 		sign_values.append(OverlayData.read(map.city.text_overlays, index))
 
 	var labels := map.city.document.find_chunk("XLAB")
-	var signature := [map_edge, map.city.visible_altitude_levels, map.city.compass_rotation(), hash(map.city.altitude_words), hash(sign_values), hash(labels.decoded_payload) if labels != null else 0]
+	var signature := [
+		map_edge,
+		map.city.visible_altitude_levels,
+		map.city.compass_rotation(),
+		hash(map.city.altitude_words),
+		hash(sign_values),
+		hash(labels.decoded_payload) if labels != null else 0,
+	]
 
 	if map._sign_layout_signature == signature and is_equal_approx(map._sign_entries_zoom, map.zoom_factor):
 		map._sign_entries_city = map.city
@@ -344,3 +334,20 @@ func _draw_raised_sign_part(rect: Rect2, fill: Color, multiplier: float) -> void
 		Vector2(left + edge, bottom - 2.0 * edge),
 		SIGN_EDGE_MIDDLE, edge, false,
 	)
+
+
+@warning_ignore_start("integer_division")
+
+
+class Entry extends RefCounted:
+	var key: int
+	var anchor: Vector2
+	var label: String
+	var text_width: float
+	var bounds: Rect2i
+	var draw_order: int
+
+
+class Layout extends RefCounted:
+	var panel: Rect2
+	var post: Rect2

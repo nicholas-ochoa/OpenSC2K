@@ -1,7 +1,6 @@
 class_name CityDynamicCommand
 extends CitySpriteVisual
 
-
 var position := Vector2i.ZERO
 var shadow := false
 var depth_order := -1

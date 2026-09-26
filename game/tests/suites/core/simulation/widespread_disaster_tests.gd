@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Simulation: widespread disaster checks.
 
 @warning_ignore_start("integer_division")
@@ -12,6 +11,14 @@ const SparseRandom = TestRandoms.SparseRandom
 
 
 func run(reference_root: String) -> void:
+	_test_volcanoes(reference_root)
+	_test_firestorms(reference_root)
+	_test_mass_floods(reference_root)
+	_test_hurricanes(reference_root)
+	_test_tornadoes_and_crash_wrappers(reference_root)
+
+
+func _test_volcanoes(reference_root: String) -> void:
 	var volcano_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 
 	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
@@ -110,6 +117,8 @@ func run(reference_root: String) -> void:
 		"Volcano charges 1,000 temporary dollars for each rejected water raise",
 	)
 
+
+func _test_firestorms(reference_root: String) -> void:
 	var firestorm_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 
 	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
@@ -199,6 +208,8 @@ func run(reference_root: String) -> void:
 		"Firestorm reports failure after its full run-length-127 spiral finds no dry cell",
 	)
 
+
+func _test_mass_floods(reference_root: String) -> void:
 	var mass_flood_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 
 	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
@@ -300,11 +311,13 @@ func run(reference_root: String) -> void:
 		"Mass Floods consumes point values but skips the Flood helper for invalid candidates",
 	)
 
+
+func _test_hurricanes(reference_root: String) -> void:
 	var hurricane_cases := [
-		{"rotation": 3, "direction": 0, "damage": 20, "flood": 50, "lfsr": 70},
-		{"rotation": 0, "direction": 1, "damage": 20, "flood": 100, "lfsr": 120},
-		{"rotation": 1, "direction": 2, "damage": 10, "flood": 100, "lfsr": 110},
-		{"rotation": 2, "direction": 3, "damage": 20, "flood": 50, "lfsr": 70},
+		{ "rotation": 3, "direction": 0, "damage": 20, "flood": 50, "lfsr": 70 },
+		{ "rotation": 0, "direction": 1, "damage": 20, "flood": 100, "lfsr": 120 },
+		{ "rotation": 1, "direction": 2, "damage": 10, "flood": 100, "lfsr": 110 },
+		{ "rotation": 2, "direction": 3, "damage": 20, "flood": 50, "lfsr": 70 },
 	]
 
 	for hurricane_case in hurricane_cases:
@@ -421,9 +434,17 @@ func run(reference_root: String) -> void:
 		"Fire falls back to two game-LFSR coordinates after the spiral fails",
 	)
 
+
+func _test_tornadoes_and_crash_wrappers(reference_root: String) -> void:
 	var tornado_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
-	_check(tornado_document.find_chunk("XTHG").set_decoded_payload(_filled_bytes(CityState.THING_COUNT * CityState.THING_RECORD_SIZE, 0)), "Tornado start fixture clears XTHG")
-	_check(tornado_document.find_chunk("XTXT").set_decoded_payload(_filled_bytes(CityState.TILE_COUNT, 0)), "Tornado start fixture clears XTXT")
+	_check(
+		tornado_document.find_chunk("XTHG").set_decoded_payload(_filled_bytes(CityState.THING_COUNT * CityState.THING_RECORD_SIZE, 0)),
+		"Tornado start fixture clears XTHG",
+	)
+	_check(
+		tornado_document.find_chunk("XTXT").set_decoded_payload(_filled_bytes(CityState.TILE_COUNT, 0)),
+		"Tornado start fixture clears XTXT",
+	)
 	var tornado_city := CityModel.from_document(tornado_document)
 	_check(tornado_city.set_land_altitude(127, 0, 11), "Tornado start fixture raises the clamped point")
 	var tornado := DisasterStart.start(tornado_city, DisasterStart.DISASTER_TORNADO, Vector2i(200, -3), SequenceRandom.new([5, 6, 7]))

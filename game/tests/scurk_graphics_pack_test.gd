@@ -12,7 +12,12 @@ func _initialize() -> void:
 	# Synthetic indexed fixtures test the format without bundled artwork.
 	var palette := Sc2Palette.index_encoding()
 	palette.colors[11] = palette.colors[10]
-	var files := {"tile.png": Vector2i(8, 8), "background.png": Vector2i(128, 256), "control.png": Vector2i(20, 20), "other-palette.png": Vector2i(8, 8)}
+	var files := {
+		"tile.png": Vector2i(8, 8),
+		"background.png": Vector2i(128, 256),
+		"control.png": Vector2i(20, 20),
+		"other-palette.png": Vector2i(8, 8),
+	}
 
 	for id in ScurkGraphics.WORKSPACE_SIZES:
 		files["workspace-%d.png" % id] = ScurkGraphics.WORKSPACE_SIZES[id]
@@ -36,8 +41,8 @@ func _initialize() -> void:
 	var manifest := {
 		"format": "opensc2k-graphics", "version": 1, "name": "SCURK fixture",
 		"palette": "tile.png", "scenario_palette": "other-palette.png",
-		"large_sprites": [{"id": 1001, "png": "tile.png"}],
-		"small_medium_sprites": [{"id": 1, "png": "tile.png"}], "ui": {},
+		"large_sprites": [{ "id": 1001, "png": "tile.png" }],
+		"small_medium_sprites": [{ "id": 1, "png": "tile.png" }], "ui": {},
 	}
 
 	for field in GraphicsPack.UI_FIELDS:
@@ -45,13 +50,13 @@ func _initialize() -> void:
 
 	var no_scurk := _load(manifest)
 	assert(no_scurk.error.is_empty() and no_scurk.scurk_graphics == null)
-	manifest.scurk = {"textures": [], "backgrounds": []}
+	manifest.scurk = { "textures": [], "backgrounds": [] }
 
 	for id in ScurkGraphics.TEXTURE_IDS:
-		manifest.scurk.textures.append({"id": id, "name": "Material %d" % id, "png": "tile.png"})
+		manifest.scurk.textures.append({ "id": id, "name": "Material %d" % id, "png": "tile.png" })
 
 	for id in ScurkGraphics.BACKGROUND_IDS:
-		manifest.scurk.backgrounds.append({"id": id, "png": "background.png"})
+		manifest.scurk.backgrounds.append({ "id": id, "png": "background.png" })
 
 	var valid := _load(manifest)
 	assert(valid.error.is_empty() and valid.scurk_graphics.patterns.size() == 42)
@@ -59,7 +64,7 @@ func _initialize() -> void:
 	manifest.scurk.controls = []
 
 	for id in ScurkGraphics.CONTROL_IDS:
-		manifest.scurk.controls.append({"id": id, "png": "control.png"})
+		manifest.scurk.controls.append({ "id": id, "png": "control.png" })
 
 	valid = _load(manifest)
 	assert(valid.error.is_empty() and valid.scurk_graphics.control_images.size() == 27)
@@ -67,7 +72,7 @@ func _initialize() -> void:
 	manifest.scurk.workspace = []
 
 	for id in ScurkGraphics.WORKSPACE_SIZES:
-		manifest.scurk.workspace.append({"id": id, "png": "workspace-%d.png" % id})
+		manifest.scurk.workspace.append({ "id": id, "png": "workspace-%d.png" % id })
 
 	valid = _load(manifest)
 	assert(valid.error.is_empty() and valid.scurk_graphics.workspace_images.size() == 36)
@@ -75,14 +80,18 @@ func _initialize() -> void:
 	manifest.scurk.presentation = []
 
 	for id in ScurkGraphics.PRESENTATION_SIZES:
-		manifest.scurk.presentation.append({"id": id, "png": "presentation-%d.png" % id})
+		manifest.scurk.presentation.append({ "id": id, "png": "presentation-%d.png" % id })
 
 	valid = _load(manifest)
 	assert(valid.error.is_empty() and valid.scurk_graphics.presentation_images.size() == 3)
 	var assets := OriginalGameAssets.new()
 	assert(valid.apply_to(assets) and assets.scurk_graphics == valid.scurk_graphics)
 
-	for change in ["section_type", "missing_backgrounds", "extra_field", "short_textures", "duplicate_id", "fractional_id", "empty_name", "bad_path", "wrong_size", "transparent", "palette", "controls_type", "short_controls", "duplicate_control", "control_size", "control_path", "workspace_type", "short_workspace", "workspace_id", "workspace_size", "workspace_path", "palette_cell", "presentation_type", "short_presentation", "presentation_id", "presentation_size", "presentation_path", "title_alpha", "presentation_palette"]:
+	for change in ["section_type", "missing_backgrounds", "extra_field", "short_textures", "duplicate_id", "fractional_id", "empty_name",
+		"bad_path", "wrong_size", "transparent", "palette", "controls_type", "short_controls", "duplicate_control", "control_size",
+		"control_path", "workspace_type", "short_workspace", "workspace_id", "workspace_size", "workspace_path", "palette_cell",
+		"presentation_type", "short_presentation", "presentation_id", "presentation_size", "presentation_path", "title_alpha",
+		"presentation_palette"]:
 		var bad: Dictionary = manifest.duplicate(true)
 
 		match change:
@@ -170,13 +179,17 @@ func _initialize() -> void:
 		assert(not rejected.apply_to(assets), change)
 		assert(assets.scurk_graphics == valid.scurk_graphics and assets.large_sprites == valid.large_sprites)
 
-	assert(no_scurk.apply_to(assets) and assets.scurk_graphics == valid.scurk_graphics, "Omitted optional sections retain the active original base")
+	assert(
+		no_scurk.apply_to(assets) and assets.scurk_graphics == valid.scurk_graphics,
+		"Omitted optional sections retain the active original base",
+	)
 
 	for name in files.keys() + ["invalid.png", "pack.json"]:
 		assert(DirAccess.remove_absolute(directory.path_join(name)) == OK)
 
 	assert(DirAccess.remove_absolute(directory) == OK)
-	print("PASS: optional SCURK pack loading, atomic application, exact resource order, names, palette, dimensions, opaque instructions, safe paths and invalid-set rejection")
+	print(("PASS: optional SCURK pack loading, atomic application, exact resource order, names, "
+		+ "palette, dimensions, opaque instructions, safe paths and invalid-set rejection"))
 	quit()
 
 

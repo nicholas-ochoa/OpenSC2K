@@ -1,15 +1,6 @@
 class_name StadiumTeamDialog
 extends ConfirmationDialog
 
-class Team extends RefCounted:
-	var id: int
-	var name: String
-
-	func _init(team_id: int, team_name: String) -> void:
-		id = team_id
-		name = team_name
-
-
 var team_selector: OptionButton
 var name_input: LineEdit
 
@@ -56,3 +47,12 @@ func _select_team(item_index: int) -> void:
 
 	name_input.text = team_selector.get_item_text(item_index)
 	name_input.select_all()
+
+
+class Team extends RefCounted:
+	var id: int
+	var name: String
+
+	func _init(team_id: int, team_name: String) -> void:
+		id = team_id
+		name = team_name

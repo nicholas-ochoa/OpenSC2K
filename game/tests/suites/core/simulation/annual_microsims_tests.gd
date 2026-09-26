@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Simulation: annual microsims checks.
 
 @warning_ignore_start("integer_division")
@@ -115,7 +114,15 @@ func test_annual_service_microsim_phase(reference_root: String) -> void:
 	var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 	var city := CityModel.from_document(document)
 	var microsims := _filled_bytes(CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE, 0)
-	var service_tiles := [Tiles.HOSPITAL, Tiles.POLICE_STATION, Tiles.FIRE_STATION, Tiles.SCHOOL, Tiles.STADIUM, Tiles.PRISON, Tiles.COLLEGE]
+	var service_tiles := [
+		Tiles.HOSPITAL,
+		Tiles.POLICE_STATION,
+		Tiles.FIRE_STATION,
+		Tiles.SCHOOL,
+		Tiles.STADIUM,
+		Tiles.PRISON,
+		Tiles.COLLEGE,
+	]
 
 	for index in service_tiles.size():
 		microsims[(index + 1) * 8] = service_tiles[index]
@@ -201,7 +208,6 @@ func test_annual_service_microsim_phase(reference_root: String) -> void:
 	_check(random.position == 12, "Annual services consume process random values in record order")
 
 
-
 func test_annual_prison_overcrowding(reference_root: String) -> void:
 	for case in [[700, 107, true], [500, 105, false]]:
 		var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
@@ -229,11 +235,22 @@ func test_annual_prison_overcrowding(reference_root: String) -> void:
 			"Only more than 105 hundred prisoners reports prison overcrowding: %s" % [result.news_items],
 		)
 
+
 func test_annual_special_microsim_phase(reference_root: String) -> void:
 	var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 	var city := CityModel.from_document(document)
 	var microsims := _filled_bytes(CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE, 0)
-	var special_tiles := [Tiles.GAS_POWER, Tiles.ZOO, Tiles.STATUE, Tiles.MAYOR_HOUSE, Tiles.WATER_TREATMENT, Tiles.MARINA, Tiles.PLYMOUTH_ARCOLOGY, Tiles.LAUNCH_ARCOLOGY, Tiles.LLAMA_DOME]
+	var special_tiles := [
+		Tiles.GAS_POWER,
+		Tiles.ZOO,
+		Tiles.STATUE,
+		Tiles.MAYOR_HOUSE,
+		Tiles.WATER_TREATMENT,
+		Tiles.MARINA,
+		Tiles.PLYMOUTH_ARCOLOGY,
+		Tiles.LAUNCH_ARCOLOGY,
+		Tiles.LLAMA_DOME,
+	]
 
 	for index in special_tiles.size():
 		microsims[(index + 1) * 8] = special_tiles[index]
@@ -504,5 +521,8 @@ func test_arcology_launch_phase(reference_root: String) -> void:
 		result.notice_ids == PackedInt32Array([529, 530]),
 		"Arcology launch requests the start and completion notices: %s" % result.notice_ids,
 	)
-	_check(SoundEvent.same_arrays(result.sound_events, SoundEvent.from_ids([504])), "Arcology launch reports one explosion sound: %s" % [result.sound_events])
+	_check(
+		SoundEvent.same_arrays(result.sound_events, SoundEvent.from_ids([504])),
+		"Arcology launch reports one explosion sound: %s" % [result.sound_events],
+	)
 	_check(result.complete, "Arcology launch completes the annual microsimulation action")

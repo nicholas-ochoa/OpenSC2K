@@ -4,7 +4,6 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const MODES := [
 	"structures",
 	"zones",
@@ -25,7 +24,6 @@ const MODES := [
 	"schools",
 	"colleges",
 ]
-
 const ZONE_COLORS := [0, 59, 59, 92, 92, 50, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 const POWER_LINE_FIRST := Tiles.POWER_LINE_STRAIGHT_1
 const POWER_LINE_LAST := Tiles.POWER_LINE_CROSSROADS

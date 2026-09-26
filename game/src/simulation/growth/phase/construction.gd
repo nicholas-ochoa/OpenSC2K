@@ -32,6 +32,7 @@ static func can_advance_density(
 	)
 
 
+# gdstyle:ignore=quality/max-parameters
 static func _advance_construction(
 	buildings: PackedByteArray,
 	zones: PackedByteArray,

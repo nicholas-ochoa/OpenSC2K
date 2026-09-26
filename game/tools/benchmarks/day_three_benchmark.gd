@@ -1,5 +1,4 @@
 extends "res://tools/benchmarks/fixture_paths.gd"
-
 ## Repeat one fixed-seed data-map day. Pass a city path after --.
 ## Headless timings exclude rendering. Work time includes OS preemption.
 @warning_ignore_start("integer_division")
@@ -101,8 +100,8 @@ func _run_sample(source: Sc2File, sliced: bool) -> Dictionary:
 	return {"edge": city.map_size, "frames_while_pending": frames, "elapsed_usec": elapsed,
 		"max_main_call_usec": max_call_usec, "proof": proof,
 		"worker": runner.last_work_metrics.debug_fields() if runner.last_work_metrics != null else {},
-		"day": {"work_usec": day.timing.work_usec, "steps": day.timing.steps},
-		"phase": {"work_usec": day.phase_results[PHASE].timing.work_usec, "steps": day.phase_results[PHASE].timing.steps},
+		"day": { "work_usec": day.timing.work_usec, "steps": day.timing.steps },
+		"phase": { "work_usec": day.phase_results[PHASE].timing.work_usec, "steps": day.phase_results[PHASE].timing.steps },
 		"job": result.job_timings}
 
 

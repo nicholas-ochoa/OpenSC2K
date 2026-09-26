@@ -1,10 +1,9 @@
 class_name CityViewMode
 extends RefCounted
 
-
 enum Mode {
 	NONE = -1, CITY, UNDERGROUND, DENSITY, GROWTH, TRAFFIC, POLLUTION, CRIME,
-	POLICE_POWER, FIRE_POWER, LAND_VALUE, WATER, POWER, HEIGHT
+	POLICE_POWER, FIRE_POWER, LAND_VALUE, WATER, POWER, HEIGHT,
 }
 
 # string keys for status text, debug output, and dialog options
@@ -15,12 +14,12 @@ const KEYS: Array[String] = [
 # every selectable mode, in view menu ID order
 const DISPLAY_MODES: Array[Mode] = [
 	Mode.CITY, Mode.UNDERGROUND, Mode.DENSITY, Mode.GROWTH, Mode.TRAFFIC, Mode.POLLUTION, Mode.CRIME,
-	Mode.POLICE_POWER, Mode.FIRE_POWER, Mode.LAND_VALUE, Mode.WATER, Mode.POWER, Mode.HEIGHT
+	Mode.POLICE_POWER, Mode.FIRE_POWER, Mode.LAND_VALUE, Mode.WATER, Mode.POWER, Mode.HEIGHT,
 ]
 # isometric data views, in sidebar order
 const DATA_MODES: Array[Mode] = [
 	Mode.DENSITY, Mode.GROWTH, Mode.TRAFFIC, Mode.POLLUTION, Mode.CRIME,
-	Mode.POLICE_POWER, Mode.FIRE_POWER, Mode.LAND_VALUE, Mode.WATER, Mode.POWER, Mode.HEIGHT
+	Mode.POLICE_POWER, Mode.FIRE_POWER, Mode.LAND_VALUE, Mode.WATER, Mode.POWER, Mode.HEIGHT,
 ]
 
 

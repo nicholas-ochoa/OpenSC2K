@@ -8,30 +8,16 @@ signal terrain_regeneration_requested
 
 const NewCity = preload("res://src/model/new_city_setup.gd")
 const NewTerrain = preload("res://src/model/new_city_terrain.gd")
-
-var city_name_input: LineEdit
-var mayor_name_input: LineEdit
-var difficulty_input: OptionButton
-var year_input: OptionButton
-var size_input: OptionButton
-var compatibility_input: CheckBox
-var feature_inputs: Dictionary = {}
-var generating := false
-var generation_revision := 0
-var _dragging := false
-var _peek := false
-var _drag_offset := Vector2.ZERO
-var _busy_overlay: Control
-var _busy_spinner: Control
-@onready var panel: PanelContainer = $Center/NewCityDialog
-var done_button: Button
-var candidate_valid := false
-var landscape_background: TextureRect
 const LAYOUTS = NewTerrain.LAYOUTS
 const RIVER_FEATURES := ["delta", "meander", "crossing", "branch", "rejoin", "valley"]
 const OCEAN_FEATURES := ["bay", "delta", "peninsula", "island", "islands", "cliffs"]
 const EXCLUSIVE_GROUPS := [["island", "islands", "peninsula"],
-	["plateau", "ridge", "rolling", "basin"], ["valley", "canyon", "basin"], ["lake", "lakes"], ["plateau", "island"], ["plateau", "islands"]]
+	[
+		"plateau",
+		"ridge",
+		"rolling",
+		"basin",
+	], ["valley", "canyon", "basin"], ["lake", "lakes"], ["plateau", "island"], ["plateau", "islands"]]
 const FEATURE_TOOLTIPS := {
 	"ocean": "Put ocean along the edge of the map.",
 	"river": "Put a river across the map.",
@@ -54,26 +40,160 @@ const FEATURE_TOOLTIPS := {
 	"islands": "Put the land on two islands in the ocean. Islands have no river.",
 	"peninsula": "Make a strip of land that goes out into the ocean.",
 }
+
+var city_name_input: LineEdit
+var mayor_name_input: LineEdit
+var difficulty_input: OptionButton
+var year_input: OptionButton
+var size_input: OptionButton
+var compatibility_input: CheckBox
+var feature_inputs: Dictionary = {}
+var generating := false
+var generation_revision := 0
+var _dragging := false
+var _peek := false
+var _drag_offset := Vector2.ZERO
+var _busy_overlay: Control
+var _busy_spinner: Control
+var done_button: Button
+var candidate_valid := false
+var landscape_background: TextureRect
 var ocean_input: CheckBox
 var river_input: CheckBox
 var hills_input: HSlider
 var water_input: HSlider
 var trees_input: HSlider
-var hills_value: Label
-var water_value: Label
-var trees_value: Label
 var preview_view: TextureRect
 var preview_status: Label
 var preview_timer: Timer
 var terrain_icons: Dictionary = {}
 var control_graphics: CityUiGraphics
 
+@onready var panel: PanelContainer = $Center/NewCityDialog
 
-class SetupOptions extends RefCounted:
-	var city_name := ""
-	var mayor_name := ""
-	var difficulty := 0
-	var starting_year := 0
+
+func _ready() -> void:
+	hide()
+	landscape_background = TextureRect.new()
+	landscape_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	landscape_background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	landscape_background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	landscape_background.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	landscape_background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(landscape_background)
+	move_child(landscape_background, 0)
+	city_name_input = get_node("Center/NewCityDialog/Content/Body/Fields/CityFields/CityNameRow/CityNameInput")
+	mayor_name_input = get_node("Center/NewCityDialog/Content/Body/Fields/CityFields/MayorNameInput")
+	difficulty_input = get_node("Center/NewCityDialog/Content/Body/Fields/CityFields/DifficultyInput")
+	year_input = get_node("Center/NewCityDialog/Content/Body/Fields/CityFields/YearInput")
+	size_input = get_node("Center/NewCityDialog/Content/Body/Fields/CityFields/SizeInput")
+	ocean_input = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/OceanRow/OceanInput")
+	river_input = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/OceanRow/RiverInput")
+	hills_input = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/HillsInputGroup/HillsInput")
+	water_input = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/WaterInputGroup/WaterInput")
+	trees_input = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/TreesInputGroup/TreesInput")
+	var hills_value: Label = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/HillsInputGroup/HillsValue")
+	var water_value: Label = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/WaterInputGroup/WaterValue")
+	var trees_value: Label = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/TreesInputGroup/TreesValue")
+	preview_view = get_node("Center/NewCityDialog/Content/Body/Preview/PreviewFrame/TerrainPreview")
+	preview_status = get_node("Center/NewCityDialog/Content/Body/Preview/PreviewStatus")
+	preview_timer = get_node("PreviewTimer")
+	compatibility_input = $Center/NewCityDialog/Content/Buttons/CompatibilityInput
+	done_button = $Center/NewCityDialog/Content/Buttons/Start
+	var feature_titles := {"meander": "Meandering River", "delta": "River Delta", "peninsula": "Peninsula",
+		"crossing": "Intersecting rivers", "branch": "Forked River",
+		"rejoin": "Split and rejoin river", "bay": "Ocean bay", "island": "Single Island", "islands": "Two islands", "plateau": "Plateau",
+		"ridge": "Mountain Ridge",
+		"valley": "River Valley", "rolling": "Rolling Hills", "basin": "Basin", "canyon": "Canyon", "cliffs": "Coastal Cliffs",
+		"lake": "Single Lake", "lakes": "Two Lakes"}
+	for key in feature_titles:
+		var check := CheckBox.new()
+		check.text = feature_titles[key]
+		$Center/NewCityDialog/Content/Body/Fields/TerrainFields/OceanRow.add_child(check)
+		feature_inputs[key] = check
+		check.toggled.connect(_feature_changed.bind(key))
+	var feature_grid: GridContainer = $Center/NewCityDialog/Content/Body/Fields/TerrainFields/OceanRow
+	var ordered_checks := [ocean_input, feature_inputs.bay, river_input, feature_inputs.meander,
+		feature_inputs.branch, feature_inputs.rejoin, feature_inputs.crossing, feature_inputs.delta,
+		feature_inputs.lake, feature_inputs.lakes, feature_inputs.plateau, feature_inputs.ridge, feature_inputs.valley,
+		feature_inputs.rolling,
+		feature_inputs.basin, feature_inputs.canyon, feature_inputs.cliffs,
+		feature_inputs.island, feature_inputs.islands, feature_inputs.peninsula]
+	for index in ordered_checks.size():
+		feature_grid.move_child(ordered_checks[index], index)
+	ocean_input.tooltip_text = FEATURE_TOOLTIPS.ocean
+	_compact_feature_rows()
+	theme_changed.connect(_compact_feature_rows)
+	_refresh_feature_constraints()
+	ocean_input.minimum_size_changed.connect(_align_features_label)
+	_align_features_label()
+	visibility_changed.connect(_visibility_changed)
+	resized.connect(_clamp_panel)
+	_build_busy_overlay()
+	compatibility_input.toggled.connect(compatibility_changed)
+	$Center/NewCityDialog/Content/Body/Fields/CityFields/CityNameRow/RandomName.pressed.connect(_random_name)
+	var title_bar: DialogTitleBar = $Center/NewCityDialog/Content/TitleBar
+	title_bar.title_label.text = "New City"
+	title_bar.close_requested.connect(cancel_requested.emit)
+	size_input.item_selected.connect(func(_index: int) -> void: preview_requested.emit())
+	ocean_input.toggled.connect(_feature_changed.bind("ocean"))
+	river_input.toggled.connect(_feature_changed.bind("river"))
+
+	for pair in [[hills_input, hills_value], [water_input, water_value], [trees_input, trees_value]]:
+		var slider: HSlider = pair[0]
+		var label: Label = pair[1]
+		label.text = str(roundi(slider.value))
+		slider.value_changed.connect(_slider_changed.bind(label))
+
+	$Center/NewCityDialog/Content/Body/Preview/Regenerate.pressed.connect(terrain_regeneration_requested.emit)
+	$Center/NewCityDialog/Content/Buttons/Cancel.pressed.connect(cancel_requested.emit)
+	$Center/NewCityDialog/Content/Buttons/Start.pressed.connect(build_requested.emit)
+	terrain_icons["Hills"] = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/HillsRow/TerrainPreview")
+	terrain_icons["Water"] = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/WaterRow/TerrainPreview")
+	terrain_icons["Trees"] = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/TreesRow/TerrainPreview")
+	hills_input.tooltip_text = "The height of the hills."
+	water_input.tooltip_text = "The sea level and the number of streams. With terrain features, rivers are wider and there is more ocean."
+	trees_input.tooltip_text = "The number of tree groups."
+	set_control_graphics(control_graphics)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and is_node_ready():
+		panel.modulate.a = 1.0
+		_busy_overlay.modulate.a = 1.0
+		color.a = 0.22
+		_peek = false
+		_dragging = false
+
+
+func _input(event: InputEvent) -> void:
+	if not visible:
+		return
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_RIGHT:
+			if not event.pressed or panel.get_global_rect().has_point(event.position):
+				_peek = event.pressed
+				panel.modulate.a = 0.0 if _peek else 1.0
+				_busy_overlay.modulate.a = panel.modulate.a
+				color.a = 0.0 if _peek else 0.22
+				get_viewport().set_input_as_handled()
+		elif event.button_index == MOUSE_BUTTON_LEFT:
+			var title: DialogTitleBar = $Center/NewCityDialog/Content/TitleBar
+			if (event.pressed
+					and title.get_global_rect().has_point(event.position)
+					and not title.close_button.get_global_rect().has_point(event.position)):
+				_dragging = true
+				_drag_offset = event.position - panel.global_position
+				get_viewport().set_input_as_handled()
+			elif not event.pressed and _dragging:
+				_dragging = false
+				get_viewport().set_input_as_handled()
+	elif event is InputEventMouseMotion and _dragging:
+		panel.global_position = event.position - _drag_offset
+		_clamp_panel()
+		get_viewport().set_input_as_handled()
+	if _peek:
+		get_viewport().set_input_as_handled()
 
 
 func reset_fields(default_mayor: String) -> void:
@@ -91,7 +211,6 @@ func reset_fields(default_mayor: String) -> void:
 	hills_input.value = NewTerrain.DEFAULT_HILLS
 	water_input.value = NewTerrain.DEFAULT_WATER
 	trees_input.value = NewTerrain.DEFAULT_TREES
-	_update_slider_labels()
 
 
 func focus_city_name() -> void:
@@ -129,100 +248,16 @@ func show_preview(landscape: Image, minimap: Image, status: String) -> void:
 	preview_status.text = status
 
 
-func _update_slider_labels() -> void:
-	hills_value.text = str(roundi(hills_input.value))
-	water_value.text = str(roundi(water_input.value))
-	trees_value.text = str(roundi(trees_input.value))
-
-
-func _slider_changed(_value: float) -> void:
-	_update_slider_labels()
+func _slider_changed(value: float, label: Label) -> void:
+	label.text = str(roundi(value))
 	preview_requested.emit()
-
-
-func _ready() -> void:
-	hide()
-	landscape_background = TextureRect.new()
-	landscape_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	landscape_background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	landscape_background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	landscape_background.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	landscape_background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(landscape_background)
-	move_child(landscape_background, 0)
-	city_name_input = get_node("Center/NewCityDialog/Content/Body/Fields/CityFields/CityNameRow/CityNameInput")
-	mayor_name_input = get_node("Center/NewCityDialog/Content/Body/Fields/CityFields/MayorNameInput")
-	difficulty_input = get_node("Center/NewCityDialog/Content/Body/Fields/CityFields/DifficultyInput")
-	year_input = get_node("Center/NewCityDialog/Content/Body/Fields/CityFields/YearInput")
-	size_input = get_node("Center/NewCityDialog/Content/Body/Fields/CityFields/SizeInput")
-	ocean_input = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/OceanRow/OceanInput")
-	river_input = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/OceanRow/RiverInput")
-	hills_input = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/HillsInputGroup/HillsInput")
-	water_input = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/WaterInputGroup/WaterInput")
-	trees_input = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/TreesInputGroup/TreesInput")
-	hills_value = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/HillsInputGroup/HillsValue")
-	water_value = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/WaterInputGroup/WaterValue")
-	trees_value = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/TreesInputGroup/TreesValue")
-	preview_view = get_node("Center/NewCityDialog/Content/Body/Preview/PreviewFrame/TerrainPreview")
-	preview_status = get_node("Center/NewCityDialog/Content/Body/Preview/PreviewStatus")
-	preview_timer = get_node("PreviewTimer")
-	compatibility_input = $Center/NewCityDialog/Content/Buttons/CompatibilityInput
-	done_button = $Center/NewCityDialog/Content/Buttons/Start
-	var feature_titles := {"meander": "Meandering River", "delta": "River Delta", "peninsula": "Peninsula", "crossing": "Intersecting rivers", "branch": "Forked River",
-		"rejoin": "Split and rejoin river", "bay": "Ocean bay", "island": "Single Island", "islands": "Two islands", "plateau": "Plateau", "ridge": "Mountain Ridge",
-		"valley": "River Valley", "rolling": "Rolling Hills", "basin": "Basin", "canyon": "Canyon", "cliffs": "Coastal Cliffs", "lake": "Single Lake", "lakes": "Two Lakes"}
-	for key in feature_titles:
-		var check := CheckBox.new()
-		check.text = feature_titles[key]
-		$Center/NewCityDialog/Content/Body/Fields/TerrainFields/OceanRow.add_child(check)
-		feature_inputs[key] = check
-		check.toggled.connect(_feature_changed.bind(key))
-	var feature_grid: GridContainer = $Center/NewCityDialog/Content/Body/Fields/TerrainFields/OceanRow
-	var ordered_checks := [ocean_input, feature_inputs.bay, river_input, feature_inputs.meander,
-		feature_inputs.branch, feature_inputs.rejoin, feature_inputs.crossing, feature_inputs.delta,
-		feature_inputs.lake, feature_inputs.lakes, feature_inputs.plateau, feature_inputs.ridge, feature_inputs.valley, feature_inputs.rolling,
-		feature_inputs.basin, feature_inputs.canyon, feature_inputs.cliffs,
-		feature_inputs.island, feature_inputs.islands, feature_inputs.peninsula]
-	for index in ordered_checks.size():
-		feature_grid.move_child(ordered_checks[index], index)
-	ocean_input.tooltip_text = FEATURE_TOOLTIPS.ocean
-	_compact_feature_rows()
-	theme_changed.connect(_compact_feature_rows)
-	_refresh_feature_constraints()
-	ocean_input.minimum_size_changed.connect(_align_features_label)
-	_align_features_label()
-	visibility_changed.connect(_visibility_changed)
-	resized.connect(_clamp_panel)
-	_build_busy_overlay()
-	compatibility_input.toggled.connect(compatibility_changed)
-	$Center/NewCityDialog/Content/Body/Fields/CityFields/CityNameRow/RandomName.pressed.connect(_random_name)
-	var title_bar: DialogTitleBar = $Center/NewCityDialog/Content/TitleBar
-	title_bar.title_label.text = "New City"
-	title_bar.close_requested.connect(cancel_requested.emit)
-	size_input.item_selected.connect(func(_index: int) -> void: preview_requested.emit())
-	ocean_input.toggled.connect(_feature_changed.bind("ocean"))
-	river_input.toggled.connect(_feature_changed.bind("river"))
-
-	for slider in [hills_input, water_input, trees_input]:
-		slider.value_changed.connect(_slider_changed)
-
-	$Center/NewCityDialog/Content/Body/Preview/Regenerate.pressed.connect(terrain_regeneration_requested.emit)
-	$Center/NewCityDialog/Content/Buttons/Cancel.pressed.connect(cancel_requested.emit)
-	$Center/NewCityDialog/Content/Buttons/Start.pressed.connect(build_requested.emit)
-	terrain_icons["Hills"] = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/HillsRow/TerrainPreview")
-	terrain_icons["Water"] = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/WaterRow/TerrainPreview")
-	terrain_icons["Trees"] = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/TreesRow/TerrainPreview")
-	hills_input.tooltip_text = "The height of the hills."
-	water_input.tooltip_text = "The sea level and the number of streams. With terrain features, rivers are wider and there is more ocean."
-	trees_input.tooltip_text = "The number of tree groups."
-	set_control_graphics(control_graphics)
 
 
 func set_control_graphics(graphics: CityUiGraphics) -> void:
 	control_graphics = graphics
 
 	for label in terrain_icons:
-		var role: String = {"Hills": "hills", "Water": "water_amount", "Trees": "trees_amount"}[label]
+		var role: String = { "Hills": "hills", "Water": "water_amount", "Trees": "trees_amount" }[label]
 		var image: Image = null if graphics == null else graphics.terrain_icon(role)
 		var view: TextureRect = terrain_icons[label]
 		view.texture = null
@@ -261,7 +296,8 @@ func invalidate() -> void:
 func _random_name() -> void:
 	var selected := selected_features()
 	var feature := "classic"
-	for key in ["islands", "island", "lake", "lakes", "plateau", "ridge", "valley", "rolling", "basin", "canyon", "cliffs", "delta", "peninsula", "bay", "meander", "rejoin", "branch", "crossing"]:
+	for key in ["islands", "island", "lake", "lakes", "plateau", "ridge", "valley", "rolling", "basin", "canyon", "cliffs", "delta",
+		"peninsula", "bay", "meander", "rejoin", "branch", "crossing"]:
 		if key in selected:
 			feature = key
 			break
@@ -399,43 +435,6 @@ func _clamp_panel() -> void:
 	panel.position = panel.position.clamp(Vector2.ZERO, (size - panel.size).max(Vector2.ZERO)).round()
 
 
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and is_node_ready():
-		panel.modulate.a = 1.0
-		_busy_overlay.modulate.a = 1.0
-		color.a = 0.22
-		_peek = false
-		_dragging = false
-
-
-func _input(event: InputEvent) -> void:
-	if not visible:
-		return
-	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_RIGHT:
-			if not event.pressed or panel.get_global_rect().has_point(event.position):
-				_peek = event.pressed
-				panel.modulate.a = 0.0 if _peek else 1.0
-				_busy_overlay.modulate.a = panel.modulate.a
-				color.a = 0.0 if _peek else 0.22
-				get_viewport().set_input_as_handled()
-		elif event.button_index == MOUSE_BUTTON_LEFT:
-			var title: DialogTitleBar = $Center/NewCityDialog/Content/TitleBar
-			if event.pressed and title.get_global_rect().has_point(event.position) and not title.close_button.get_global_rect().has_point(event.position):
-				_dragging = true
-				_drag_offset = event.position - panel.global_position
-				get_viewport().set_input_as_handled()
-			elif not event.pressed and _dragging:
-				_dragging = false
-				get_viewport().set_input_as_handled()
-	elif event is InputEventMouseMotion and _dragging:
-		panel.global_position = event.position - _drag_offset
-		_clamp_panel()
-		get_viewport().set_input_as_handled()
-	if _peek:
-		get_viewport().set_input_as_handled()
-
-
 func _align_features_label() -> void:
 	var label: Label = $Center/NewCityDialog/Content/Body/Fields/TerrainFields/FeaturesLabel
 	label.custom_minimum_size.y = ocean_input.get_combined_minimum_size().y
@@ -448,3 +447,10 @@ func _compact_feature_rows() -> void:
 			style.content_margin_top = 1
 			style.content_margin_bottom = 1
 			check.add_theme_stylebox_override(state, style)
+
+
+class SetupOptions extends RefCounted:
+	var city_name := ""
+	var mayor_name := ""
+	var difficulty := 0
+	var starting_year := 0

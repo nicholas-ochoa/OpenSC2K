@@ -1,3 +1,4 @@
+# gdstyle:ignore-file=quality/max-public-methods
 class_name ScurkProject
 extends RefCounted
 
@@ -18,18 +19,6 @@ const MAX_HEIGHT := Limits.MAX_HEIGHT
 const MAX_RESOURCES := Limits.MAX_RESOURCES
 const STATE_FIELDS := ["current_mif", "documents", "metadata", "resources", "stamps"]
 const PROJECT_FIELDS := STATE_FIELDS + ["original_mif", "revision", "checkpoints"]
-
-class Result extends RefCounted:
-	var ok := false
-	var error := ""
-	var bytes := PackedByteArray()
-	var project: ScurkProject
-
-	static func failure(message: String) -> Result:
-		var result := Result.new()
-		result.error = message
-		return result
-
 
 var palette_rgb := PackedByteArray()
 var original_mif := PackedByteArray()
@@ -176,11 +165,11 @@ func delete_layer(key: String, index: int) -> bool:
 	return true
 
 
-func rename_layer(key: String, index: int, name: String) -> bool:
-	if not _has_layer(key, index) or not _valid_name(name):
+func rename_layer(key: String, index: int, new_name: String) -> bool:
+	if not _has_layer(key, index) or not _valid_name(new_name):
 		return false
-	if documents[key].layers[index].name != name:
-		documents[key].layers[index].name = name
+	if documents[key].layers[index].name != new_name:
+		documents[key].layers[index].name = new_name
 		revision += 1
 	return true
 
@@ -454,7 +443,8 @@ static func _valid_state(state: Dictionary, depth := 0, project_record := false)
 			return false
 		if not _json_fields(document, ["original_pixels", "layers"], depth + 2):
 			return false
-		if not document.get("original_pixels") is PackedInt32Array or not _valid_pixels(document.original_pixels, document.width, document.height):
+		if (not document.get("original_pixels") is PackedInt32Array
+				or not _valid_pixels(document.original_pixels, document.width, document.height)):
 			return false
 		var layers: Variant = document.get("layers")
 		if not layers is Array or layers.is_empty() or layers.size() > MAX_LAYERS:
@@ -550,7 +540,7 @@ static func _json_safe(value: Variant, depth := 0) -> bool:
 
 
 static func _new_layer(name: String, pixels: PackedInt32Array) -> Dictionary:
-	return {"name": name, "visible": true, "locked": false, "pixels": pixels.duplicate()}
+	return { "name": name, "visible": true, "locked": false, "pixels": pixels.duplicate() }
 
 
 func _active_layer(key: String) -> Dictionary:
@@ -578,3 +568,15 @@ func _success() -> Result:
 	result.ok = true
 	result.project = self
 	return result
+
+
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+	var bytes := PackedByteArray()
+	var project: ScurkProject
+
+	static func failure(message: String) -> Result:
+		var result := Result.new()
+		result.error = message
+		return result

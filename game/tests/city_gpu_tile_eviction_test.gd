@@ -3,6 +3,7 @@ extends SceneTree
 
 @warning_ignore_start("integer_division")
 
+
 func _initialize() -> void:
 	var city := CityState.from_document(EmptyCityTemplate.create(256))
 	var sprites := FixtureGraphics.pack().large_sprites

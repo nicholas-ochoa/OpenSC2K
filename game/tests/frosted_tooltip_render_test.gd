@@ -1,17 +1,5 @@
 extends SceneTree
 
-@warning_ignore_start("integer_division")
-
-class Checker extends Control:
-	var first := Color.BLACK
-	var second := Color.WHITE
-
-
-	func _draw() -> void:
-		for y in range(0, int(size.y), 4):
-			for x in range(0, int(size.x), 4):
-				draw_rect(Rect2(x, y, 4, 4), first if (x / 4 + y / 4) % 2 == 0 else second)
-
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -148,3 +136,17 @@ func _contrast(image: Image, area: Rect2i) -> float:
 
 func _distance(first: Color, second: Color) -> float:
 	return maxf(absf(first.r - second.r), maxf(absf(first.g - second.g), absf(first.b - second.b)))
+
+
+@warning_ignore_start("integer_division")
+
+
+class Checker extends Control:
+	var first := Color.BLACK
+	var second := Color.WHITE
+
+
+	func _draw() -> void:
+		for y in range(0, int(size.y), 4):
+			for x in range(0, int(size.x), 4):
+				draw_rect(Rect2(x, y, 4, 4), first if (x / 4 + y / 4) % 2 == 0 else second)

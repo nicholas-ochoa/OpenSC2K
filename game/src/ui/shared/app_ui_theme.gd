@@ -1,7 +1,6 @@
 class_name AppUiTheme
 extends RefCounted
 
-
 static var selected := "light"
 static var translucent_menus := true
 static var _current: Theme

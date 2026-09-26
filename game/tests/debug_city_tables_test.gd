@@ -1,14 +1,6 @@
 extends SceneTree
 
-class Host extends Control:
-	var debug: Control = self
-	var document_state := ActiveDocumentState.new()
-	var simulation_state := SimulationSessionState.new()
-	var map_view: CityMapControl
-
-
-	func debug_metrics() -> Dictionary:
-		return {}
+const RECORD_TABLE_SCENE = preload("res://src/debug/debug_record_table.tscn")
 
 
 func _initialize() -> void:
@@ -80,12 +72,13 @@ func _run() -> void:
 		var host := Host.new()
 		host.document_state.city = city
 		root.add_child(host)
-		var panel := preload("res://src/debug/debug_record_table.tscn").instantiate() as DebugRecordTable
+		var panel := RECORD_TABLE_SCENE.instantiate() as DebugRecordTable
 		host.add_child(panel)
 		panel.refresh_from_host(host, true)
 		_check_object_columns(host)
 		# record 0 is never used, so the limits are one less than the stored slots
-		assert(DebugCityTables.record_limit("XMIC", city) == city.microsim_count() - 1 and DebugCityTables.record_limit("Tiles", city) == -1)
+		assert(DebugCityTables.record_limit("XMIC", city) == city.microsim_count() - 1
+			and DebugCityTables.record_limit("Tiles", city) == -1)
 		assert(edge != 128 or [DebugCityTables.record_limit("XMIC", city), DebugCityTables.record_limit("Objects", city)] == [149, 39])
 		_check_state_sorting(host, engine)
 		var row: TreeItem = panel.rows["1"]
@@ -186,7 +179,7 @@ func _check_tile_counts(edge: int) -> void:
 	# set_building_id does not change the saved counts, so the rows differ
 	assert(not police.warning.is_empty() and ("SC2X" in police.warning) == CityTileCounts.exact(city),
 		"A different saved count explains the counting method of the city")
-	var panel := preload("res://src/debug/debug_record_table.tscn").instantiate() as DebugRecordTable
+	var panel := RECORD_TABLE_SCENE.instantiate() as DebugRecordTable
 	panel.kind = "Tiles"
 	root.add_child(panel)
 	panel.update_records(DebugCityTables.collect("Tiles", city))
@@ -221,7 +214,7 @@ func _tile_record(city: CityState, tile_id: int) -> DebugTableRecord:
 
 # moving-thing columns fit their widest cell and explain their meaning
 func _check_object_columns(host: Control) -> void:
-	var panel := preload("res://src/debug/debug_record_table.tscn").instantiate() as DebugRecordTable
+	var panel := RECORD_TABLE_SCENE.instantiate() as DebugRecordTable
 	panel.kind = "Objects"
 	host.add_child(panel)
 	panel.refresh_from_host(host, true)
@@ -246,7 +239,7 @@ func _check_object_columns(host: Control) -> void:
 # state fields start in name order and sort numbers by value
 func _check_state_sorting(host: Control, engine: SimulationEngine) -> void:
 	host.simulation_state.simulation_engine = engine
-	var panel := preload("res://src/debug/debug_record_table.tscn").instantiate() as DebugRecordTable
+	var panel := RECORD_TABLE_SCENE.instantiate() as DebugRecordTable
 	panel.kind = "State"
 	host.add_child(panel)
 	panel.refresh_from_host(host, true)
@@ -312,12 +305,13 @@ func _state_rows(city: CityState, engine: SimulationEngine, controller: GameSpee
 
 
 func _check_sorting() -> void:
-	var panel := preload("res://src/debug/debug_record_table.tscn").instantiate() as DebugRecordTable
+	var panel := RECORD_TABLE_SCENE.instantiate() as DebugRecordTable
 	root.add_child(panel)
 	var records: Array[DebugTableRecord] = []
 
 	# Record 2 is off-map. Sort 0x2A after 0x10 by value, not by digit count.
-	for entry in [[0, "Record 0", 0x2A, CityRecords.Site.new(13, 4, 1, 1)], [2, "Record 2", 0x10, null], [10, "Record 10", 0xD2, CityRecords.Site.new(3, 9, 1, 1)]]:
+	for entry in [[0, "Record 0", 0x2a, CityRecords.Site.new(13, 4, 1, 1)], [2, "Record 2", 0x10, null],
+		[10, "Record 10", 0xd2, CityRecords.Site.new(3, 9, 1, 1)]]:
 		var site: CityRecords.Site = entry[3]
 		var record := DebugTableRecord.new()
 		record.id = str(entry[0])
@@ -357,3 +351,14 @@ func _check_sorting() -> void:
 	assert(order.call() == ["Record 0", "Record 2", "Record 10", "Record 5"])
 	assert(not panel.rows["10"].collapsed)
 	panel.free()
+
+
+class Host extends Control:
+	var debug: Control = self
+	var document_state := ActiveDocumentState.new()
+	var simulation_state := SimulationSessionState.new()
+	var map_view: CityMapControl
+
+
+	func debug_metrics() -> Dictionary:
+		return {}

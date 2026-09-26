@@ -1,7 +1,6 @@
 class_name CitySpriteVisual
 extends RefCounted
 
-
 var sprite_id: int
 var flip: bool
 

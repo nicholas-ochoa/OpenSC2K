@@ -2,7 +2,6 @@ class_name NetworkState
 extends NetworkConstants
 
 
-
 static func replace_building(
 	buildings: PackedByteArray,
 	zones: PackedByteArray,
@@ -27,8 +26,16 @@ static func replace_building(
 			MILITARY_TILE_COUNT_INDEX.get(new_tile, 0)
 		) * 4
 
-	BinaryData.write_u32_be(misc, old_offset, (BinaryData.read_u32_be(misc, old_offset) - 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
-	BinaryData.write_u32_be(misc, new_offset, (BinaryData.read_u32_be(misc, new_offset) + 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
+	BinaryData.write_u32_be(
+		misc,
+		old_offset,
+		(BinaryData.read_u32_be(misc, old_offset) - 1) & (0xffff if buildings.size() == 16384 else 0xffffffff),
+	)
+	BinaryData.write_u32_be(
+		misc,
+		new_offset,
+		(BinaryData.read_u32_be(misc, new_offset) + 1) & (0xffff if buildings.size() == 16384 else 0xffffffff),
+	)
 	buildings[index] = new_tile
 
 

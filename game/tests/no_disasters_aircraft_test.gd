@@ -34,7 +34,17 @@ func check_aircraft(edge: int, enabled: bool, fixture: String) -> void:
 	city.set_building_id(point.x, point.y, building)
 	var things := city.document.find_chunk("XTHG").decoded_payload.duplicate()
 	var record := city.thing_count() - 1
-	var fields := {0: type, 1: 2, 2: state, 3: point.x, 4: point.y, 5: 1 if fixture == "landing" else (2 if helicopter else 0), 6: 8, 7: 8, 10: 61}
+	var fields := {
+		0: type,
+		1: 2,
+		2: state,
+		3: point.x,
+		4: point.y,
+		5: 1 if fixture == "landing" else (2 if helicopter else 0),
+		6: 8,
+		7: 8,
+		10: 61,
+	}
 
 	for field in fields:
 		ThingData.write(things, record * 12 + field, fields[field])

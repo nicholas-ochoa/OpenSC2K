@@ -135,11 +135,27 @@ func draw_key(canvas: Control) -> void:
 	for i in 48:
 		canvas.draw_rect(Rect2(panel.position + Vector2(12 + i * (width - 24) / 48.0, 36),
 			Vector2((width - 24) / 48.0 + 1, 12)), heat_color(i / 47.0))
-	canvas.draw_string(font, panel.position + Vector2(12, 67), "Low cost", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, canvas.get_theme_color("font_color", "MapLegend"))
+	canvas.draw_string(
+		font,
+		panel.position + Vector2(12, 67),
+		"Low cost",
+		HORIZONTAL_ALIGNMENT_LEFT,
+		-1,
+		14,
+		canvas.get_theme_color("font_color", "MapLegend"),
+	)
 	canvas.draw_string(font, panel.position + Vector2(width - 108, 67), "Near trip limit", HORIZONTAL_ALIGNMENT_LEFT, -1, 14,
 			canvas.get_theme_color("font_color", "MapLegend"))
 	_draw_origin(canvas, panel.position + Vector2(20, 98), 0.7)
-	canvas.draw_string(font, panel.position + Vector2(34, 94), "Origin", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, canvas.get_theme_color("font_color", "MapLegend"))
+	canvas.draw_string(
+		font,
+		panel.position + Vector2(34, 94),
+		"Origin",
+		HORIZONTAL_ALIGNMENT_LEFT,
+		-1,
+		14,
+		canvas.get_theme_color("font_color", "MapLegend"),
+	)
 	_draw_destination(canvas, panel.position + Vector2(122, 90), 0.8)
 	canvas.draw_string(font, panel.position + Vector2(138, 94), "Destinations", HORIZONTAL_ALIGNMENT_LEFT, width - 150, 14,
 			canvas.get_theme_color("font_color", "MapLegend"))
@@ -157,7 +173,15 @@ func draw_key(canvas: Control) -> void:
 			icon + Vector2(-1, 4), icon + Vector2(6, -5)]), Color("57de91"), 2.5, true)
 	else:
 		_draw_failure(canvas, icon, 1.0)
-	canvas.draw_string(font, panel.position + Vector2(status_x, 120), status, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, canvas.get_theme_color("font_color", "MapLegend"))
+	canvas.draw_string(
+		font,
+		panel.position + Vector2(status_x, 120),
+		status,
+		HORIZONTAL_ALIGNMENT_LEFT,
+		-1,
+		14,
+		canvas.get_theme_color("font_color", "MapLegend"),
+	)
 	for i in lines.size():
 		canvas.draw_string(font, panel.position + Vector2(12, 144 + i * 22), lines[i], HORIZONTAL_ALIGNMENT_LEFT, width - 24, 14,
 				canvas.get_theme_color("font_color", "MapLegend"))

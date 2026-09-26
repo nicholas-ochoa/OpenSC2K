@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Tools: catalog checks.
 
 @warning_ignore_start("integer_division")
@@ -159,7 +158,10 @@ func test_tool_availability(reference_root: String) -> void:
 		and released.group_masks[4] == 0x1f,
 		"Transport and water inventions extend their exact executable masks",
 	)
-	_check(document.set_misc_u32(ToolAvailability.MISC_ORDINANCES, ToolAvailability.ORDINANCE_NUCLEAR_FREE), "Tool availability fixture enacts Nuclear-Free Zone")
+	_check(
+		document.set_misc_u32(ToolAvailability.MISC_ORDINANCES, ToolAvailability.ORDINANCE_NUCLEAR_FREE),
+		"Tool availability fixture enacts Nuclear-Free Zone",
+	)
 	_check(
 		not ToolAvailability.is_available(city, 3, 6),
 		"Nuclear-Free Zone hides an invented nuclear power plant",
@@ -182,7 +184,10 @@ func test_tool_availability(reference_root: String) -> void:
 		and not ToolAvailability.is_available(city, 5, 6),
 		"One released arcology enables the chooser and its first entry",
 	)
-	_check(document.set_misc_u32(ToolAvailability.MISC_INVENTION_YEARS + 15 * 4, 0), "Tool availability fixture releases a second arcology slot")
+	_check(
+		document.set_misc_u32(ToolAvailability.MISC_INVENTION_YEARS + 15 * 4, 0),
+		"Tool availability fixture releases a second arcology slot",
+	)
 	_check(
 		ToolAvailability.is_available(city, 5, 5)
 		and ToolAvailability.is_available(city, 5, 6)

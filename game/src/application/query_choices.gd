@@ -1,7 +1,6 @@
 class_name ApplicationQueryChoices
 extends RefCounted
 
-
 const Tools = preload("res://src/tools/shared/tool_catalog.gd")
 const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
 const Signs = preload("res://src/tools/city/sign_command.gd")
@@ -216,7 +215,12 @@ func open_query(point: Vector2i) -> void:
 	if not action.is_empty():
 		action_text = str(QueryStrings.ACTIONS.get(action, ""))
 
-	var neighborhood := QueryNeighborhood.render(app.document_state.city, point, app.asset_state.palette_index_encoding, app.asset_state.large_sprites)
+	var neighborhood := QueryNeighborhood.render(
+		app.document_state.city,
+		point,
+		app.asset_state.palette_index_encoding,
+		app.asset_state.large_sprites,
+	)
 	app.city_dialogs.query_dialog.show_query(
 		str(result.title),
 		str(result.title) if is_specific else "",

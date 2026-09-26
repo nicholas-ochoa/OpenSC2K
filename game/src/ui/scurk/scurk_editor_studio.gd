@@ -1,7 +1,18 @@
+# gdstyle:ignore-file=quality/max-public-methods
 class_name ScurkEditorStudio
 extends PanelContainer
 
 @warning_ignore_start("integer_division")
+
+enum LayerAction {
+	ADD,
+	DELETE,
+	UP,
+	DOWN,
+	VISIBLE,
+	LOCKED,
+	RENAME,
+}
 
 const Workspace = preload("res://src/tools/scurk/scurk_drawing_workspace.gd")
 const LAYERS := "Margin/Column/Tabs/Layers"
@@ -9,7 +20,6 @@ const HISTORY := "Margin/Column/Tabs/History"
 const META := "Margin/Column/Tabs/Metadata"
 const STAMPS := "Margin/Column/Tabs/Stamps"
 const MAX_SAVED_ID_LIST_SIZE := 1500
-enum LayerAction { ADD, DELETE, UP, DOWN, VISIBLE, LOCKED, RENAME }
 
 var tabs: TabContainer
 var editor: ScurkEditorControl
@@ -71,6 +81,16 @@ var updating_controls := false
 var layer_rename_merge_key := ""
 var pending_delete_key := ""
 var pending_delete_layer: Dictionary = {}
+
+
+func _process(delta: float) -> void:
+	if editor == null or not editor.is_visible_in_tree() or not modified:
+		return
+	autosave_elapsed += delta
+	if autosave_elapsed < 30.0:
+		return
+	autosave_elapsed = 0.0
+	autosave()
 
 
 func bind(value: ScurkEditorControl) -> void:
@@ -186,7 +206,7 @@ func refresh_restored_state() -> void:
 	restore_editor_state()
 	last_key = ""
 	loading = true
-	editor.palette_panel.import_state(palette_state())
+	editor.palette_panel.import_state(_palette_state())
 	loading = false
 	_refresh_lists()
 	_refresh_metadata()
@@ -232,7 +252,7 @@ func load_project(path: String, recovered := false) -> bool:
 		return false
 	loading = true
 	editor._bind_session_document()
-	editor.palette_panel.import_state(palette_state())
+	editor.palette_panel.import_state(_palette_state())
 	loading = false
 	_refresh_lists()
 	_refresh_metadata()
@@ -244,7 +264,7 @@ func load_project(path: String, recovered := false) -> bool:
 func save_project(path: String) -> bool:
 	if path.get_extension().to_lower() != "scurk":
 		path += ".scurk"
-	if editor.path_is_within(path, editor.reference_directory):
+	if ScurkEditorRules.path_is_within(path, editor.reference_directory):
 		editor._show_error("The original game data folder is read-only. Use another folder.")
 		return false
 	sync_editor_state()
@@ -274,16 +294,6 @@ func _ignore_recovery() -> void:
 		return
 	$Recovery.hide()
 	editor._set_status("Recovery ignored. The file is still available from File > Recover Autosave.")
-
-
-func _process(delta: float) -> void:
-	if editor == null or not editor.is_visible_in_tree() or not modified:
-		return
-	autosave_elapsed += delta
-	if autosave_elapsed < 30.0:
-		return
-	autosave_elapsed = 0.0
-	autosave()
 
 
 func autosave() -> bool:
@@ -508,7 +518,10 @@ func move_selection_to_new_layer() -> void:
 			source[offset] = -1
 	if source == canvas.pixels or not editor._capture_edit_start("Move selection to new layer"):
 		return
-	if not project.set_active_pixels(key(), source) or project.add_layer(key(), "Selection") < 0 or not project.set_active_pixels(key(), target):
+	if not project.set_active_pixels(
+		key(),
+		source,
+	) or project.add_layer(key(), "Selection") < 0 or not project.set_active_pixels(key(), target):
 		editor._abort_edit("Cannot move the selection to a new layer.")
 		return
 	_flush_layers()
@@ -705,8 +718,15 @@ func _import_pixels() -> PackedInt32Array:
 func _refresh_import() -> void:
 	var pixels := _import_pixels()
 	var canvas := editor.pixel_canvas
-	$ImportPreview/Content/Image.texture = PixelArtTexture.wrap(ScurkContextPreview.indexed_texture(pixels, canvas.sprite_width, canvas.sprite_height, editor.palette))
-	$ImportPreview/Content/Summary.text = "%d x %d pixels; %d colors remapped; %d pixels clipped.\nTransparent pixels are preserved. Imports replace the active layer." % [imported.width, imported.height, imported.remapped_color_count, import_clipped]
+	$ImportPreview/Content/Image.texture = PixelArtTexture.wrap(ScurkContextPreview.indexed_texture(pixels, canvas.sprite_width,
+		canvas.sprite_height, editor.palette))
+	$ImportPreview/Content/Summary.text = ("%d x %d pixels; %d colors remapped; %d pixels clipped.\n"
+		+ "Transparent pixels are preserved. Imports replace the active layer.") % [
+		imported.width,
+		imported.height,
+		imported.remapped_color_count,
+		import_clipped,
+	]
 	$ImportPreview.get_ok_button().disabled = canvas.editing_disabled
 
 
@@ -741,14 +761,15 @@ func _refresh_context() -> void:
 	var shape := editor._output_shape_for_view(context_view)
 	if not shape.ok:
 		return
-	var city_view: int = [CityIsometricRenderer.VIEW_LARGE, CityIsometricRenderer.VIEW_MEDIUM, CityIsometricRenderer.VIEW_SMALL][context_view]
+	var city_view: int = [
+		CityIsometricRenderer.VIEW_LARGE,
+		CityIsometricRenderer.VIEW_MEDIUM,
+		CityIsometricRenderer.VIEW_SMALL,
+	][context_view]
 	view.configure(shape.pixels, shape.width, shape.height,
 		maxi(1, editor.active_base_width / 32), editor.palette,
-		Sc2SpriteArchive.combine([editor.base_large_sprites, editor.base_small_medium_sprites, editor.tile_set.overrides]), city_view, editor.object_tile_id(editor.current_large_id))
-
-
-func update_modified() -> void:
-	editor.session.update_modified()
+		Sc2SpriteArchive.combine([editor.base_large_sprites, editor.base_small_medium_sprites, editor.tile_set.overrides]), city_view,
+		ScurkEditorRules.object_tile_id(editor.current_large_id))
 
 
 func sync_editor_state() -> void:
@@ -777,10 +798,14 @@ func restore_editor_state() -> void:
 			editor.unclipped_tiles[int(id)] = true
 	var tile_value: Variant = state.get("tile", editor.current_large_id)
 	var tile := int(tile_value) if tile_value is int or tile_value is float else editor.current_large_id
-	if editor.editable_large_sprite_ids(editor.tile_set, editor.base_large_sprites).has(tile):
+	if ScurkEditorRules.editable_large_sprite_ids(editor.tile_set, editor.base_large_sprites).has(tile):
 		editor.current_large_id = tile
 		var view_value: Variant = state.get("view", ScurkSpriteIds.View.LARGE)
-		editor.current_view = clampi(int(view_value), ScurkSpriteIds.View.LARGE, ScurkSpriteIds.View.SMALL) if view_value is int or view_value is float else ScurkSpriteIds.View.LARGE
+		editor.current_view = clampi(
+			int(view_value),
+			ScurkSpriteIds.View.LARGE,
+			ScurkSpriteIds.View.SMALL,
+		) if view_value is int or view_value is float else ScurkSpriteIds.View.LARGE
 
 
 func ensure_view(view: int) -> bool:
@@ -792,8 +817,20 @@ func ensure_view(view: int) -> bool:
 	var decoded := entry.decode_indices()
 	if not decoded.ok:
 		return false
-	var pixels := Workspace.from_shape(entry.width, entry.height, decoded.pixels, view, editor.active_base_width, editor._clipping_enabled()) if editor.active_workspace else decoded.pixels
-	return project.ensure_document(key(view), pixels, Workspace.WIDTH if editor.active_workspace else entry.width, Workspace.HEIGHT if editor.active_workspace else entry.height)
+	var pixels := Workspace.from_shape(
+		entry.width,
+		entry.height,
+		decoded.pixels,
+		view,
+		editor.active_base_width,
+		editor._clipping_enabled(),
+	) if editor.active_workspace else decoded.pixels
+	return project.ensure_document(
+		key(view),
+		pixels,
+		Workspace.WIDTH if editor.active_workspace else entry.width,
+		Workspace.HEIGHT if editor.active_workspace else entry.height,
+	)
 
 
 func clear_view(view: int) -> void:
@@ -803,11 +840,11 @@ func clear_view(view: int) -> void:
 	var blank := PackedInt32Array()
 	blank.resize(int(document.width) * int(document.height))
 	blank.fill(-1)
-	document.layers = [{"name": "Root", "visible": true, "locked": false, "pixels": blank}]
+	document.layers = [{ "name": "Root", "visible": true, "locked": false, "pixels": blank }]
 	document.active = 0
 
 
-func palette_state() -> Dictionary:
+func _palette_state() -> Dictionary:
 	var value: Variant = project.metadata.get("palette", {})
 	return value if value is Dictionary else {}
 
@@ -828,7 +865,3 @@ func request_recovery() -> void:
 func show_recovery_files() -> void:
 	$RecoveryFiles.current_dir = ProjectSettings.globalize_path(recovery_path.get_base_dir())
 	$RecoveryFiles.popup_centered_ratio(0.75)
-
-
-func discard_recovery() -> void:
-	editor.session.discard_recovery()

@@ -1,14 +1,6 @@
 class_name DisasterStartResult
 extends PhaseResult
 
-
-class MaxisManArrival extends RefCounted:
-	var record := 0
-	var point := Vector2i.ZERO
-	var target := Vector2i.ZERO
-	var goal := 0
-
-
 var disaster_type := 0
 var point := Vector2i.ZERO
 var started := false
@@ -41,3 +33,10 @@ static func failed(message: String) -> DisasterStartResult:
 	result.error = message
 
 	return result
+
+
+class MaxisManArrival extends RefCounted:
+	var record := 0
+	var point := Vector2i.ZERO
+	var target := Vector2i.ZERO
+	var goal := 0

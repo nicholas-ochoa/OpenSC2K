@@ -4,11 +4,9 @@ extends BuildingTileIds
 const Topology = preload("res://src/model/network_topology.gd")
 const Facilities = preload("res://src/model/facility_metadata.gd")
 const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
-
 const Availability = preload("res://src/tools/shared/tool_availability.gd")
 const Power = preload("res://src/simulation/infrastructure/power_phase.gd")
 const Water = preload("res://src/simulation/infrastructure/water_phase.gd")
-
 const MISC_FUNDS := Sc2MiscLayout.FUNDS
 const MISC_ARCOLOGY_POPULATION := Sc2MiscLayout.ARCOLOGY_POPULATION
 const MISC_NORMAL_POPULATION := Sc2MiscLayout.NORMAL_POPULATION
@@ -17,7 +15,6 @@ const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
 const MISC_BUDGETS := Sc2MiscLayout.BUDGETS
 const MISC_SUBWAY_COUNT := Sc2MiscLayout.SUBWAY_COUNT
 const BUDGET_RECORD_SIZE := Sc2BudgetLayout.RECORD_SIZE
-
 const MILITARY_ZONE := Sc2ZoneLayout.MILITARY
 const FLAG_WATER := Sc2TileFlags.WATER
 const FLAG_PIPED := Sc2TileFlags.PIPED
@@ -50,11 +47,8 @@ const SOUND_NUISANCE := 0x200
 const NUISANCE_BITMAP_ID := 403
 const NUISANCE_STRING_ID := 106
 const NUISANCE_OBJECTION := "Your citizens urge you to\r\n reconsider the placement\r\nof this facility"
-
 const BUDGET_CATEGORY_BY_TILE := Facilities.BUDGET_CATEGORY_BY_TILE
-
 const MICROSIM_TYPE_BY_TILE := Facilities.MICROSIM_TYPE_BY_TILE
-
 const DEFAULT_MICROSIM_LABELS := {
 	HYDRO_POWER_1: "Hydro Power",
 	HYDRO_POWER_2: "Hydro Power",
@@ -92,7 +86,6 @@ const DEFAULT_MICROSIM_LABELS := {
 	LAUNCH_ARCOLOGY: "Launch Arco",
 	LLAMA_DOME: "Llama Dome",
 }
-
 const TILE_BY_TOOL := {
 	38: COAL_POWER,
 	40: OIL_POWER,
@@ -131,7 +124,6 @@ const TILE_BY_TOOL := {
 	171: STADIUM,
 	172: MARINA,
 }
-
 const NUISANCE_TILES := {
 	GAS_POWER: true,
 	OIL_POWER: true,
@@ -140,7 +132,6 @@ const NUISANCE_TILES := {
 	PRISON: true,
 	WATER_TREATMENT: true,
 }
-
 const CORNER_BOTTOM_LEFT := Sc2ZoneLayout.CORNER_BOTTOM_LEFT
 const CORNER_BOTTOM_RIGHT := Sc2ZoneLayout.CORNER_BOTTOM_RIGHT
 const CORNER_TOP_LEFT := Sc2ZoneLayout.CORNER_TOP_LEFT

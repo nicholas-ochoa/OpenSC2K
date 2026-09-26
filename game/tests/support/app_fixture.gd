@@ -2,17 +2,6 @@ extends RefCounted
 ## Explicit read-only assets for application tests. Preferences stay in user://.
 
 
-# Use only when the test does not exercise menu visibility or its private simulation.
-class NoMenuInterface extends ApplicationInterface:
-	func show_main_menu() -> void:
-		pass
-
-
-class NoMenuApp extends "res://src/main.gd":
-	func _init() -> void:
-		interface = NoMenuInterface.new(self)
-
-
 static func configure(main: Node, skip_menu_city := false) -> void:
 	if skip_menu_city:
 		main.set_script(NoMenuApp)
@@ -33,3 +22,18 @@ static func configure(main: Node, skip_menu_city := false) -> void:
 			settings.set_value("audio", key, ProjectSettings.globalize_path("res://../ext/" + kind))
 
 	assert(settings.save(main.preferences.settings_path) == OK)
+
+
+# Use only when the test does not exercise menu visibility or its private simulation.
+class NoMenuInterface extends ApplicationInterface:
+	func show_main_menu() -> void:
+		pass
+
+
+# The base class uses a script path. gdstyle incorrectly reads this method as an outer class method.
+class NoMenuApp extends "res://src/main.gd":
+
+
+	# gdstyle:ignore=order/class-member-order
+	func _init() -> void:
+		interface = NoMenuInterface.new(self)

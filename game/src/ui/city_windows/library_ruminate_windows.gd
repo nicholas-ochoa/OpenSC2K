@@ -3,7 +3,6 @@ extends Control
 
 const WindowLayout = preload("res://src/ui/city_windows/library_window_layout.gd")
 const TextWindowScene = preload("res://src/ui/city_windows/library_text_window.tscn")
-
 const TEXT_RESOURCE_IDS := [3000, 3001, 3002, 3003]
 # above the Query overlay, which stays open below the text
 const OVERLAY_Z_INDEX := 1000

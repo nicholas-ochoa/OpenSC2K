@@ -3,6 +3,7 @@ extends PanelContainer
 ## State samples ignore input; live examples below them retain normal behavior.
 
 const STATES := ["Normal", "Hover", "Pressed", "Hover + pressed", "Disabled", "Focus"]
+
 var preview_dialogs: Array[Window] = []
 
 
@@ -20,7 +21,13 @@ func _rebuild(theme_index: int) -> void:
 		page.queue_free()
 	theme = AppUiTheme.build("light" if theme_index == 0 else "dark")
 	# Give the catalog a readable canvas without changing the shared game theme.
-	var canvas := AppUiThemeDefinitions.create_box(Color("c0c0c0"), Color("808080"), 1, 12, 12) if theme_index == 0 else theme.get_stylebox("panel", "PanelContainer")
+	var canvas := AppUiThemeDefinitions.create_box(
+		Color("c0c0c0"),
+		Color("808080"),
+		1,
+		12,
+		12,
+	) if theme_index == 0 else theme.get_stylebox("panel", "PanelContainer")
 	add_theme_stylebox_override("panel", canvas)
 	%Tabs.add_theme_stylebox_override("panel", canvas if theme_index == 0 else theme.get_stylebox("panel", "TabContainer"))
 	_buttons_page()
@@ -241,7 +248,11 @@ func _choices_page() -> void:
 
 func _fields_page() -> void:
 	var page := _page("Text fields")
-	_section(page, "LineEdit states", "Read-only is the non-editable text state. Selection, caret, clear button, and context menu are available in the live fields.")
+	_section(
+		page,
+		"LineEdit states",
+		"Read-only is the non-editable text state. Selection, caret, clear button, and context menu are available in the live fields.",
+	)
 	var grid := _matrix(page, ["Normal", "Placeholder", "Read-only", "Focus", "Selected", "Password"])
 	_label(grid, "LineEdit")
 	for state in ["Normal", "Placeholder", "Read-only", "Focus", "Selected", "Password"]:
@@ -279,18 +290,30 @@ func _fields_page() -> void:
 		var cell := _cell(row, state)
 		var edit := TextEdit.new()
 		edit.custom_minimum_size = Vector2(260, 150)
-		edit.text = "A sample city description.\nSelect text to inspect selection colors.\nUse the context menu for editing." if state != "Placeholder" else ""
+		edit.text = ("A sample city description.\nSelect text to inspect selection colors.\nUse the context menu for editing."
+			if state != "Placeholder" else "")
 		edit.placeholder_text = "Enter a city description..."
 		edit.editable = state != "Read-only"
 		cell.add_child(edit)
-	_section(page, "Validation messages", "These colors are explicit semantic examples. They are separate from the native text-field states.")
-	for sample in [["Help: Choose a pack.json file.", "606060"], ["Error: This pack could not be loaded.", "d02020" if %ThemeSelector.selected == 0 else "ff7777"], ["Success: Pack loaded.", "16803a" if %ThemeSelector.selected == 0 else "64db99"]]:
+	_section(
+		page,
+		"Validation messages",
+		"These colors are explicit semantic examples. They are separate from the native text-field states.",
+	)
+	for sample in [["Help: Choose a pack.json file.", "606060"],
+		["Error: This pack could not be loaded.", "d02020" if %ThemeSelector.selected == 0 else "ff7777"],
+		["Success: Pack loaded.", "16803a" if %ThemeSelector.selected == 0 else "64db99"]]:
 		_label(page, sample[0]).add_theme_color_override("font_color", Color(sample[1]))
 
 
 func _ranges_page() -> void:
 	var page := _page("Ranges")
-	_section(page, "Slider states", "Normal, highlighted, disabled, and focus use native theme resources. Godot shares the highlighted slider artwork for hover and drag.")
+	_section(
+		page,
+		"Slider states",
+		("Normal, highlighted, disabled, and focus use native theme resources. Godot shares the "
+			+ "highlighted slider artwork for hover and drag."),
+	)
 	var row := _row(page)
 	for state in ["Normal", "Hover / drag", "Disabled", "Focus"]:
 		var cell := _cell(row, state)
@@ -344,7 +367,12 @@ func _ranges_page() -> void:
 
 func _lists_page() -> void:
 	var page := _page("Lists & tabs")
-	_section(page, "ItemList and Tree", "Try hover, selection, keyboard focus, scrolling, expand/collapse, checkboxes, and editing. Disabled items and read-only cells are included.")
+	_section(
+		page,
+		"ItemList and Tree",
+		("Try hover, selection, keyboard focus, scrolling, expand/collapse, checkboxes, and "
+			+ "editing. Disabled items and read-only cells are included."),
+	)
 	var row := _row(page)
 	var list_cell := _cell(row, "ItemList: focused and unfocused selection")
 	var list := ItemList.new()
@@ -401,7 +429,11 @@ func _lists_page() -> void:
 
 func _menus_page() -> void:
 	var page := _page("Menus & dialogs")
-	_section(page, "Live menus", "Open each menu to inspect normal, hover, disabled, checked, radio, separator, shortcut, and submenu items.")
+	_section(
+		page,
+		"Live menus",
+		"Open each menu to inspect normal, hover, disabled, checked, radio, separator, shortcut, and submenu items.",
+	)
 	var row := _row(page)
 	var menu := MenuButton.new()
 	menu.text = "Sample menu"
@@ -426,7 +458,12 @@ func _menus_page() -> void:
 		if id in [3, 4]:
 			popup.set_item_checked(id, not popup.is_item_checked(id))
 		_status("Menu item: %d" % id))
-	_section(page, "Dialog examples", "Each opens a real window with this preview theme. File selection only updates the sample status; it does not read or write the selected file.")
+	_section(
+		page,
+		"Dialog examples",
+		("Each opens a real window with this preview theme. File selection only updates the sample "
+			+ "status; it does not read or write the selected file."),
+	)
 	row = _row(page)
 	var notice := AcceptDialog.new()
 	notice.title = "Sample notice"
@@ -452,7 +489,8 @@ func _menus_page() -> void:
 	_button(row, "File dialog...").pressed.connect(func() -> void: file.popup_centered(Vector2i(800, 520)))
 	_section(page, "Tooltip")
 	var tooltip_button := _button(page, "Hover here for a multiline tooltip")
-	tooltip_button.tooltip_text = "Sample tooltip\nSecond line with help for this control.\nTooltips use the shared TooltipPanel and TooltipLabel styles."
+	tooltip_button.tooltip_text = (
+		"Sample tooltip\nSecond line with help for this control.\nTooltips use the shared TooltipPanel and TooltipLabel styles.")
 	_section(page, "Custom title bar used by app panels")
 	var title := DialogTitleBar.new("Sample modeless window")
 	page.add_child(title)
@@ -481,7 +519,10 @@ func _text_page() -> void:
 	panel.add_child(content)
 	_label(content, "PanelContainer with shared panel style")
 	_label(content, "Default body text: population 125,400")
-	_label(content, "Secondary help text").add_theme_color_override("font_color", Color("505050") if %ThemeSelector.selected == 0 else Color("606060"))
+	_label(
+		content,
+		"Secondary help text",
+	).add_theme_color_override("font_color", Color("505050") if %ThemeSelector.selected == 0 else Color("606060"))
 	content.add_child(HSeparator.new())
 	_label(content, "Horizontal separator above")
 	row.add_child(VSeparator.new())
@@ -490,7 +531,9 @@ func _text_page() -> void:
 	rich.bbcode_enabled = true
 	rich.fit_content = true
 	rich.custom_minimum_size = Vector2(360, 120)
-	rich.text = "[b]Rich text heading[/b]\nNormal, [i]italic[/i], and [u]underlined[/u] text.\n[color=#800000]Error message example.[/color]\n• First indented explanation\n• Second explanation"
+	rich.text = ("[b]Rich text heading[/b]\nNormal, [i]italic[/i], and [u]underlined[/u] "
+		+ "text.\n[color=#800000]Error message example.[/color]\n• First indented explanation\n• "
+		+ "Second explanation")
 	right.add_child(rich)
 	_section(page, "TextureRect and ColorRect", "These are display controls. They have no native hover, pressed, or disabled states.")
 	row = _row(page)
@@ -507,16 +550,32 @@ func _text_page() -> void:
 		swatch.custom_minimum_size = Vector2(120, 64)
 		cell.add_child(swatch)
 	_section(page, "Layout reference")
-	_label(page, "Margin / HBox / VBox / Grid / Center / Scroll / Split containers arrange controls.\nTheir visible effects are spacing, alignment, clipping, scrolling, and dividers.")
+	_label(
+		page,
+		("Margin / HBox / VBox / Grid / Center / Scroll / Split containers arrange controls.\nTheir "
+			+ "visible effects are spacing, alignment, clipping, scrolling, and dividers."),
+	)
 	_section(page, "Review checklist")
-	_label(page, "1. Borders and backgrounds\n2. Text contrast and disabled contrast\n3. Hover and pressed feedback\n4. Keyboard focus and selection\n5. Padding, row height, and alignment\n6. Check marks, arrows, and other icons\n7. Dialog, menu, and tooltip consistency")
+	_label(
+		page,
+		("1. Borders and backgrounds\n2. Text contrast and disabled contrast\n3. Hover and pressed "
+			+ "feedback\n4. Keyboard focus and selection\n5. Padding, row height, and alignment\n6. "
+			+ "Check marks, arrows, and other icons\n7. Dialog, menu, and tooltip consistency"),
+	)
 
 
 func _theme_parts_page() -> void:
 	var page := _page("All theme states")
-	_section(page, "Complete theme-state reference", "Fixed samples of every style box and state icon for the controls below. These show individual theme parts; use the other pages to see them assembled in real controls.")
+	_section(
+		page,
+		"Complete theme-state reference",
+		("Fixed samples of every style box and state icon for the controls below. These show "
+			+ "individual theme parts; use the other pages to see them assembled in real controls."),
+	)
 	var native_theme := ThemeDB.get_default_theme()
-	for type_name in ["Button", "CheckBox", "CheckButton", "OptionButton", "MenuButton", "LinkButton", "LineEdit", "TextEdit", "SpinBox", "HSlider", "VSlider", "HScrollBar", "VScrollBar", "ProgressBar", "ItemList", "Tree", "TabContainer", "TabBar", "PopupMenu", "AcceptDialog", "Window", "FileDialog", "Panel", "PanelContainer", "TooltipPanel", "HSeparator", "VSeparator", "HSplitContainer"]:
+	for type_name in ["Button", "CheckBox", "CheckButton", "OptionButton", "MenuButton", "LinkButton", "LineEdit", "TextEdit", "SpinBox",
+		"HSlider", "VSlider", "HScrollBar", "VScrollBar", "ProgressBar", "ItemList", "Tree", "TabContainer", "TabBar", "PopupMenu",
+		"AcceptDialog", "Window", "FileDialog", "Panel", "PanelContainer", "TooltipPanel", "HSeparator", "VSeparator", "HSplitContainer"]:
 		_section(page, type_name)
 		var grid := GridContainer.new()
 		grid.columns = 4
@@ -556,7 +615,10 @@ func _theme_parts_page() -> void:
 			var cell := _cell(grid, str(icon_name).replace("_", " ").capitalize())
 			cell.custom_minimum_size.x = 245
 			var icon := TextureRect.new()
-			icon.texture = theme.get_icon(icon_name, type_name) if theme.has_icon(icon_name, type_name) else native_theme.get_icon(icon_name, type_name)
+			icon.texture = theme.get_icon(
+				icon_name,
+				type_name,
+			) if theme.has_icon(icon_name, type_name) else native_theme.get_icon(icon_name, type_name)
 			icon.custom_minimum_size = Vector2(245, 32)
 			icon.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 			cell.add_child(icon)

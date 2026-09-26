@@ -33,7 +33,10 @@ func _initialize() -> void:
 	cache.update_viewport(Rect2(bounds.position - Vector2(0, 512), bounds.size))
 	var first_key := Vector2i(cache._viewport_rect.position / cache.region_edge)
 	var last_key := Vector2i((cache._viewport_rect.end - Vector2i.ONE) / cache.region_edge)
-	assert(Vector2i((first_key.x + last_key.x) / 2, first_key.y - 4) in cache.wanted, "No prefetched regions ahead of vertical camera motion")
+	assert(
+		Vector2i((first_key.x + last_key.x) / 2, first_key.y - 4) in cache.wanted,
+		"No prefetched regions ahead of vertical camera motion",
+	)
 	_fill(cache)
 	# Retained old revisions provide coverage but still need an update.
 	cache.generation += 1

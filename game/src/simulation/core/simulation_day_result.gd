@@ -1,7 +1,6 @@
 class_name SimulationDayResult
 extends RefCounted
 
-
 var ok := false
 var error := ""
 var day := 0

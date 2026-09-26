@@ -20,7 +20,7 @@ func _run() -> void:
 
 	var zoom := float(OS.get_environment("CITY_BENCH_ZOOM")) if OS.has_environment("CITY_BENCH_ZOOM") else 0.25
 	var size := Vector2(1909, 733) / zoom
-	report_metadata({"zoom": zoom, "artwork": view, "viewport": Vector2(1909, 733)})
+	report_metadata({ "zoom": zoom, "artwork": view, "viewport": Vector2(1909, 733) })
 	var start := Vector2(cache.native_size * cache.divisor) / 2 - size / 2
 
 	var cold_only := OS.get_environment("CITY_BENCH_COLD_ONLY") == "1"
@@ -64,7 +64,8 @@ func _run() -> void:
 			printerr("Benchmark check failed: cache.ready()")
 			quit(1)
 			return
-		print("PAN edge=%d offset=%s missing=%d first_ms=%.2f half_ms=%.2f ready_ms=%.2f max_poll_ms=%.2f metrics=%s" % [cache.region_edge, offset, missing, first, half, (Time.get_ticks_usec() - began) / 1000.0, max_poll / 1000.0, cache.metrics()])
+		print("PAN edge=%d offset=%s missing=%d first_ms=%.2f half_ms=%.2f ready_ms=%.2f max_poll_ms=%.2f metrics=%s" % [cache.region_edge,
+			offset, missing, first, half, (Time.get_ticks_usec() - began) / 1000.0, max_poll / 1000.0, cache.metrics()])
 		if cold_only:
 			continue
 		var warm := Time.get_ticks_msec() + 2000
@@ -105,7 +106,8 @@ func _run() -> void:
 				frames += 1
 				await process_frame
 
-			print("CONTINUOUS screen_pixels_per_second=%s frames=%d uncovered_frames=%d max_missing_regions=%d" % [velocity * zoom, frames, missing_frames, max_missing])
+			print("CONTINUOUS screen_pixels_per_second=%s frames=%d uncovered_frames=%d max_missing_regions=%d" % [velocity * zoom, frames,
+				missing_frames, max_missing])
 
 	cache.close()
 	quit()
@@ -113,5 +115,6 @@ func _run() -> void:
 
 static func fixture_paths() -> PackedStringArray:
 	return PackedStringArray([
-		input_path(large_city_path(512)), reference_path("DATA/LARGE.DAT"), reference_path("DATA/SMALLMED.DAT"), reference_path("DATA/SPECIAL.DAT"),
+		input_path(large_city_path(512)), reference_path("DATA/LARGE.DAT"), reference_path("DATA/SMALLMED.DAT"),
+		reference_path("DATA/SPECIAL.DAT"),
 	])

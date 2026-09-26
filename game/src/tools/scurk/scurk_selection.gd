@@ -88,7 +88,11 @@ func lasso(points: PackedVector2Array) -> PackedByteArray:
 				result[y * width + x] = 1
 				continue
 			for edge in polygon.size():
-				if Geometry2D.get_closest_point_to_segment(point, polygon[edge], polygon[(edge + 1) % polygon.size()]).distance_squared_to(point) < 0.01:
+				if Geometry2D.get_closest_point_to_segment(
+					point,
+					polygon[edge],
+					polygon[(edge + 1) % polygon.size()],
+				).distance_squared_to(point) < 0.01:
 					result[y * width + x] = 1
 					break
 

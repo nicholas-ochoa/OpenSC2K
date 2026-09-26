@@ -1,17 +1,6 @@
 class_name ToolEditState
 extends RefCounted
 
-class Result extends RefCounted:
-	var available: bool = false
-	var enabled: bool = false
-	var selection: String = "point"
-	var area: int = 1
-	var landscape: bool = false
-	var show_status: bool = false
-	var status_text: String = ""
-	var status_detail: String = ""
-
-
 const Tools = preload("res://src/tools/shared/tool_catalog.gd")
 const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
 const Zones = preload("res://src/tools/city/zone_command.gd")
@@ -179,53 +168,13 @@ static func normal(
 	result.landscape = is_landscape
 	result.show_status = city != null
 	result.status_text = tool.name if tool != null else "Tool"
-	result.status_detail = _normal_status_detail(
-		city,
-		tool,
-		available,
-		group_index,
-		subtool_index,
-		is_zone,
-		is_landscape,
-		is_building,
-		is_network,
-		is_hydro,
-		is_subway_to_rail,
-		is_onramp,
-		is_tunnel,
-		is_highway,
-		is_demolish,
-		is_terrain,
-		is_dispatch,
-		is_sign,
-		is_query,
-		is_center,
-	)
+	result.status_detail = _normal_status_detail(city, tool, available, group_index, subtool_index)
 
 	return result
 
 
 static func _normal_status_detail(
-	city: CityState,
-	tool: ToolCatalog.Tool,
-	available: bool,
-	group_index: int,
-	subtool_index: int,
-	is_zone: bool,
-	is_landscape: bool,
-	is_building: bool,
-	is_network: bool,
-	is_hydro: bool,
-	is_subway_to_rail: bool,
-	is_onramp: bool,
-	is_tunnel: bool,
-	is_highway: bool,
-	is_demolish: bool,
-	is_terrain: bool,
-	is_dispatch: bool,
-	is_sign: bool,
-	is_query: bool,
-	is_center: bool,
+	city: CityState, tool: ToolCatalog.Tool, available: bool, group_index: int, subtool_index: int
 ) -> String:
 	if city == null:
 		return ""
@@ -238,43 +187,43 @@ static func _normal_status_detail(
 	if is_tool_chooser(group_index, subtool_index):
 		return "%s selected. Select an available type from the choice window." % tool_name
 
-	if is_zone:
+	if Zones.supports_tool(group_index, subtool_index):
 		return "%s selected. Drag on the city map to zone. Use the mouse wheel to zoom and the right or middle button to pan." % tool_name
 
 	if group_index == CityToolIds.Group.LANDSCAPE and subtool_index == CityToolIds.Landscape.FOREST:
 		return "Place Forest selected. Hold to scatter trees in a seven-tile brush. Each tree placement costs $3. Hold Shift to Query."
 
-	if is_landscape:
+	if Landscapes.supports_tool(group_index, subtool_index):
 		return "%s selected. Drag to fill an area. Hold Shift to draw a line." % tool_name
 
-	if is_building:
+	if Buildings.supports_tool(group_index, subtool_index):
 		return "%s selected. Click a clear city site to build it." % tool_name
 
-	if is_network:
+	if Networks.supports_tool(group_index, subtool_index):
 		return "%s selected. Drag between city tiles to build a route." % tool_name
 
-	if is_hydro:
+	if Hydro.supports_tool(group_index, subtool_index):
 		return "Hydroelectric Power Plant selected. Click an unused waterfall tile."
 
-	if is_subway_to_rail:
+	if SubwayToRail.supports_tool(group_index, subtool_index):
 		return "Subway-to-Rail Connection selected. Click beside a rail or subway."
 
-	if is_onramp:
+	if Onramps.supports_tool(group_index, subtool_index):
 		return "On-ramp selected. Click on clear terrain between a highway and a perpendicular road."
 
-	if is_tunnel:
+	if Tunnels.supports_tool(group_index, subtool_index):
 		return "Tunnel selected. Click a cardinal slope that faces through a hill."
 
-	if is_highway:
+	if Highways.supports_tool(group_index, subtool_index):
 		return "Highway selected. Drag between city tiles to build a two-tile-wide route."
 
-	if is_demolish:
+	if Demolish.supports_tool(group_index, subtool_index):
 		return "Demolish selected. Drag to paint. Hold Shift before dragging to demolish a box."
 
-	if is_terrain:
+	if TerrainTools.supports_tool(group_index, subtool_index):
 		return "%s selected. Click or drag across terrain." % tool_name
 
-	if is_dispatch:
+	if Dispatch.supports_tool(group_index, subtool_index):
 		var inspected := Dispatch.availability(city)
 		var count := 0
 
@@ -283,16 +232,27 @@ static func _normal_status_detail(
 
 		return "%s selected. Click dry, unlabeled terrain to deploy one of %d available units." % [tool_name, count]
 
-	if is_sign:
+	if group_index == CityToolIds.Group.SIGNS:
 		return "Place Sign selected. Click a city tile to add, edit, or remove a user sign."
 
-	if is_query and subtool_index == CityToolIds.Query.TRIP_REACH:
+	if group_index == CityToolIds.Group.QUERY and subtool_index == CityToolIds.Query.TRIP_REACH:
 		return "Trip Query selected. Click a zone or network tile to show potential routes, trip cost, and growth access."
 
-	if is_query:
+	if group_index == CityToolIds.Group.QUERY:
 		return "Query selected. Click a city tile to inspect it."
 
-	if is_center:
+	if group_index == CityToolIds.Group.CENTERING:
 		return "Center View selected. Click a city tile to center the map on it."
 
 	return "%s is in the original tool catalog. Its command is not implemented yet." % tool_name
+
+
+class Result extends RefCounted:
+	var available: bool = false
+	var enabled: bool = false
+	var selection: String = "point"
+	var area: int = 1
+	var landscape: bool = false
+	var show_status: bool = false
+	var status_text: String = ""
+	var status_detail: String = ""

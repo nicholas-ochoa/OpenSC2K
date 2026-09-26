@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Tools: connections checks.
 
 @warning_ignore_start("integer_division")
@@ -102,7 +101,10 @@ func test_subway_to_rail_command(reference_root: String) -> void:
 	_check(city.underground_id(20, 20) == 0x23, "Subway-to-rail placement writes underground entrance 0x23")
 	_check(document.misc_u32(0x0fe8) == 1, "Subway-to-rail increments the saved subway count")
 	_check(city.zones[20 * 128 + 20] == 0xf3, "Subway-to-rail placement preserves the zone and sets all corners")
-	_check(city.funds() == 0 and surface.cost == 0 and surface.listed_cost == 250, "Subway-to-rail reproduces the executable's missing cost deduction")
+	_check(
+		city.funds() == 0 and surface.cost == 0 and surface.listed_cost == 250,
+		"Subway-to-rail reproduces the executable's missing cost deduction",
+	)
 	_check(SubwayToRail.undo(city, surface).ok, "Subway-to-rail placement can be undone")
 	_check(city.building_id(20, 20) == 0 and city.underground_id(20, 20) == 0, "Subway-to-rail undo restores surface and underground maps")
 	_check(document.misc_u32(0x0fe8) == 0, "Subway-to-rail undo restores the saved subway count")
@@ -237,7 +239,10 @@ func test_tunnel_command(reference_root: String) -> void:
 	_check(command.ok, "East-facing tunnel succeeds: %s" % command.error)
 	_check(command.finish == Vector2i(22, 20) and command.points.size() == 3, "Tunnel finds the first tile at the start altitude")
 	_check(city.building_id(20, 20) == 0x41 and city.building_id(22, 20) == 0x3f, "Tunnel writes paired east and west entrances")
-	_check(city.tunnel_levels(20, 20) == 1 and city.tunnel_levels(21, 20) == 2 and city.tunnel_levels(22, 20) == 1, "Tunnel writes recovered ALTM depths")
+	_check(
+		city.tunnel_levels(20, 20) == 1 and city.tunnel_levels(21, 20) == 2 and city.tunnel_levels(22, 20) == 1,
+		"Tunnel writes recovered ALTM depths",
+	)
 	_check(city.building_id(19, 20) == 0x1e, "Tunnel reconnects an adjacent road")
 	_check(command.cost == 450 and city.funds() == 550, "Tunnel charges each traversed tile")
 	_check(Tunnels.undo(city, command).ok, "Tunnel placement can be undone")

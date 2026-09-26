@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Tools: highways checks.
 
 @warning_ignore_start("integer_division")
@@ -51,7 +50,10 @@ func test_highway_command(reference_root: String) -> void:
 	_check(city.funds() == 1000 and city.building_id(12, 10) == 0, "Highway undo restores funds and tiles")
 
 	var turn := Highways.apply(city, 6, 1, Vector2i(10, 10), Vector2i(12, 12))
-	_check(turn.ok and turn.sections == [Vector2i(10, 10), Vector2i(10, 12), Vector2i(12, 12)], "Highway route follows the recovered dominant-axis rule")
+	_check(
+		turn.ok and turn.sections == [Vector2i(10, 10), Vector2i(10, 12), Vector2i(12, 12)],
+		"Highway route follows the recovered dominant-axis rule",
+	)
 	_check(city.building_id(10, 10) == 0x49, "Highway turn starts with a vertical section")
 	_check(city.building_id(10, 12) == 0x65, "North-east highway turn uses shaped tile 0x65")
 	_check(city.building_id(12, 12) == 0x4a, "Highway turn ends with a horizontal section")
@@ -80,6 +82,14 @@ func test_highway_command(reference_root: String) -> void:
 		"Highway bridge start requires a valid 2-by-2 shoreline",
 	)
 
+	_test_bridges(reference_root)
+
+	_test_neighbor_connections(reference_root)
+
+	_test_slopes(reference_root)
+
+
+func _test_bridges(reference_root: String) -> void:
 	var bridge_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 
 	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
@@ -256,35 +266,10 @@ func test_highway_command(reference_root: String) -> void:
 	_check(Highways.undo(bridge_city, unaffordable_bridge).ok, "Unaffordable bridge prefix can be undone")
 	_check(bridge_city.set_funds(5000), "Highway bridge fixture restores funds")
 
-	for entry in [
-		[Vector2i(80, 20), 0, false],
-		[Vector2i(81, 20), 0x10, true],
-		[Vector2i(81, 21), 0x10, true],
-		[Vector2i(80, 21), 0, false],
-	]:
-		_check(
-			bridge_city.set_terrain_id(entry[0].x, entry[0].y, entry[1])
-			and bridge_city.set_tile_flag(entry[0].x, entry[0].y, 0x04, entry[2]),
-			"Direct highway bridge fixture writes its shoreline mask",
-		)
+	_test_direct_bridge_plan(bridge_city, bridge_document)
 
-	var direct_plan := HighwayBridges.plan_bridge_from_start(
-		bridge_document.find_chunk("XBLD").decoded_payload,
-		bridge_document.find_chunk("XTER").decoded_payload,
-		bridge_document.find_chunk("ALTM").decoded_payload,
-		Vector2i(80, 20),
-		0
-	)
-	_check(
-		HighwayBridges.bridge_terrain_code(
-			bridge_document.find_chunk("XTER").decoded_payload, Vector2i(80, 20)
-		) == 0x9060
-		and direct_plan.ok
-		and direct_plan.direction == 1
-		and direct_plan.span_length == 3,
-		"Direct highway bridge uses the recovered 2-by-2 shoreline direction table",
-	)
 
+func _test_neighbor_connections(reference_root: String) -> void:
 	var connection_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 
 	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
@@ -359,6 +344,8 @@ func test_highway_command(reference_root: String) -> void:
 		"Highway connection undo restores the route, label, and funds",
 	)
 
+
+func _test_slopes(reference_root: String) -> void:
 	var grade_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 
 	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
@@ -456,6 +443,41 @@ func test_highway_command(reference_root: String) -> void:
 	)
 	_check(Highways.undo(grade_city, east_grade).ok, "The east grade can be undone")
 
+	_test_neighbor_grades(grade_city, grade_document)
+
+
+func _test_direct_bridge_plan(bridge_city: CityState, bridge_document: Sc2File) -> void:
+	for entry in [
+		[Vector2i(80, 20), 0, false],
+		[Vector2i(81, 20), 0x10, true],
+		[Vector2i(81, 21), 0x10, true],
+		[Vector2i(80, 21), 0, false],
+	]:
+		_check(
+			bridge_city.set_terrain_id(entry[0].x, entry[0].y, entry[1])
+			and bridge_city.set_tile_flag(entry[0].x, entry[0].y, 0x04, entry[2]),
+			"Direct highway bridge fixture writes its shoreline mask",
+		)
+
+	var direct_plan := HighwayBridges.plan_bridge_from_start(
+		bridge_document.find_chunk("XBLD").decoded_payload,
+		bridge_document.find_chunk("XTER").decoded_payload,
+		bridge_document.find_chunk("ALTM").decoded_payload,
+		Vector2i(80, 20),
+		0
+	)
+	_check(
+		HighwayBridges.bridge_terrain_code(
+			bridge_document.find_chunk("XTER").decoded_payload, Vector2i(80, 20)
+		) == 0x9060
+		and direct_plan.ok
+		and direct_plan.direction == 1
+		and direct_plan.span_length == 3,
+		"Direct highway bridge uses the recovered 2-by-2 shoreline direction table",
+	)
+
+
+func _test_neighbor_grades(grade_city: CityState, grade_document: Sc2File) -> void:
 	var high_neighbor_points := [
 		Vector2i(58, 60),
 		Vector2i(59, 60),

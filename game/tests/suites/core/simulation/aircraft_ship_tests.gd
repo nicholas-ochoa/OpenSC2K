@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Simulation: aircraft ship checks.
 
 @warning_ignore_start("integer_division")
@@ -12,6 +11,11 @@ const SequenceRandom = TestRandoms.SequenceRandom
 
 
 func run(reference_root: String) -> void:
+	_test_aircraft(reference_root)
+	_test_ships(reference_root)
+
+
+func _test_aircraft(reference_root: String) -> void:
 	var airplane := _special_growth_fixture(reference_root)
 	_set_airplane(airplane, 1, Vector2i(20, 20), Vector2i(20, 20), 2, 0, 0)
 	_check(airplane.city.set_building_id(20, 20, Tiles.RUNWAY), "Airplane takeoff fixture places a runway")
@@ -102,7 +106,10 @@ func run(reference_root: String) -> void:
 
 	var low_plane := _special_growth_fixture(reference_root)
 	_set_airplane(low_plane, 1, Vector2i(20, 20), Vector2i(30, 20), 2, 2, 11)
-	_check(low_plane.city.set_building_id(20, 20, Tiles.CORPORATE_HEADQUARTERS_3X3), "Low airplane fixture places the tallest small-map building sprite")
+	_check(
+		low_plane.city.set_building_id(20, 20, Tiles.CORPORATE_HEADQUARTERS_3X3),
+		"Low airplane fixture places the tallest small-map building sprite",
+	)
 	var low_plane_result := MovingThingTick.run(
 		low_plane.city, SequenceRandom.new([1]), NonzeroLfsrRandom.new()
 	)
@@ -144,6 +151,8 @@ func run(reference_root: String) -> void:
 		"Falling airplane rotates its saved direction but moves in its prior direction",
 	)
 
+
+func _test_ships(reference_root: String) -> void:
 	var ship := _special_growth_fixture(reference_root)
 	_set_ship(ship, 1, Vector2i(20, 20), Vector2i(30, 20), 2, 0)
 	_check(ship.city.set_tile_flag(20, 20, 0x04, true), "Cargo-ship fixture marks current water")

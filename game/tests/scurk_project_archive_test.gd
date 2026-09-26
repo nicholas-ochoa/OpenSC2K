@@ -34,7 +34,8 @@ func _run() -> void:
 	_test_checkpoints(restored.project, project)
 	_test_invalid(members, manifest)
 	_test_storage(project, encoded.bytes)
-	print("SCURK project archive: %d checks, %d failures; ZIP-only input, indexed layers, masks, palette, checkpoints, malformed members and atomic saves" % [checks, failures])
+	print(("SCURK project archive: %d checks, %d failures; ZIP-only input, indexed layers, masks, "
+		+ "palette, checkpoints, malformed members and atomic saves") % [checks, failures])
 	quit(1 if failures else 0)
 
 
@@ -46,7 +47,10 @@ func _test_index_encoding(project: ScurkProject) -> void:
 	assert(encoded.ok, encoded.error)
 	var members: Dictionary[String, PackedByteArray] = Zip.decode(encoded.bytes).members
 	var palette: Dictionary = JSON.parse_string(members["palette.json"].get_string_from_utf8())
-	_check(palette.kind == "index-encoding" and palette.colors.size() == 256, "Projects without RGB colors declare an index-encoding palette")
+	_check(
+		palette.kind == "index-encoding" and palette.colors.size() == 256,
+		"Projects without RGB colors declare an index-encoding palette",
+	)
 	for index in 256:
 		_check(palette.colors[index] == _canonical([index, index, index]), "The fallback palette encodes each index")
 	var restored := Project.from_bytes(encoded.bytes)
@@ -65,14 +69,14 @@ func _fixture() -> ScurkProject:
 	assert(project.set_active_pixels("1:0", PackedInt32Array([-1, 42, 5, -1])))
 	assert(project.set_layer_visible("1:0", 1, false))
 	project.documents["1:0"].custom = ["document"]
-	project.documents["1:0"].layers[0].custom = {"layer": 1}
+	project.documents["1:0"].layers[0].custom = { "layer": 1 }
 	assert(project.add_stamp("Window", 2, 1, PackedInt32Array([252, -1]), 3) == 0)
 	project.stamps[0].custom = "stamp"
-	project.metadata = {"author": "Original author", "palette": {"favorites": [171, 172], "ramp": [1, 42]},
-		"custom": {"enabled": true, "items": [null, 4, "roof"]}}
+	project.metadata = {"author": "Original author", "palette": { "favorites": [171, 172], "ramp": [1, 42] },
+		"custom": { "enabled": true, "items": [null, 4, "roof"] }}
 	project.resources["reference.bin"] = PackedByteArray([0, 1, 252, 255])
-	project.extra_fields = {"format": "future project field", "palette": {"future": true},
-		"future_extension": {"tag": "preserve"}}
+	project.extra_fields = {"format": "future project field", "palette": { "future": true },
+		"future_extension": { "tag": "preserve" }}
 	assert(project.add_checkpoint("Before") == 0)
 	project.checkpoints[0].created = "2000-01-01T00:00:00"
 	project.checkpoints[0].custom = "checkpoint"
@@ -85,17 +89,17 @@ func _fixture() -> ScurkProject:
 	var cover := pixels.duplicate()
 	cover.fill(42)
 	assert(project.set_active_pixels(DOCUMENT_KEY, cover))
-	project.documents[DOCUMENT_KEY].custom = {"document": [1, true, null]}
+	project.documents[DOCUMENT_KEY].custom = { "document": [1, true, null] }
 	project.documents[DOCUMENT_KEY].layers[0].custom = "hidden detail"
 	project.documents[DOCUMENT_KEY].layers[1].custom = "visible detail"
 	assert(project.add_stamp("All indexed states", 128, 3, pixels, 256) == 1)
 	project.stamps[1].custom = ["stamp", 7]
 	project.resources[RESOURCE_KEY] = PackedByteArray([0, 1, 252, 255])
 	project.resources["empty.bin"] = PackedByteArray()
-	project.metadata.custom = {"list": [null, true, 7.5, "雪"], "nested": {"keep": false}}
+	project.metadata.custom = { "list": [null, true, 7.5, "雪"], "nested": { "keep": false } }
 	assert(project.add_checkpoint("First archive") == 1)
 	project.checkpoints[1].created = "2000-01-02T00:00:00"
-	project.checkpoints[1].custom = {"checkpoint": 1}
+	project.checkpoints[1].custom = { "checkpoint": 1 }
 	assert(mif.parse(project.current_mif))
 	mif.info_payload[17] = 77
 	assert(mif.set_name(1, "Current tile").ok)
@@ -106,15 +110,18 @@ func _fixture() -> ScurkProject:
 	project.metadata.author = "Archive author"
 	assert(project.add_checkpoint("Second archive") == 2)
 	project.checkpoints[2].created = "2000-01-03T00:00:00"
-	project.checkpoints[2].custom = {"checkpoint": 2}
+	project.checkpoints[2].custom = { "checkpoint": 2 }
 	return project
 
 
 func _test_members(project: ScurkProject, members: Dictionary[String, PackedByteArray], manifest: Dictionary) -> void:
-	_check(manifest.format == "opensc2k-scurk" and manifest.version == 2 and manifest.palette == "palette.json", "The manifest identifies version two")
+	_check(
+		manifest.format == "opensc2k-scurk" and manifest.version == 2 and manifest.palette == "palette.json",
+		"The manifest identifies version two",
+	)
 	_check(members["original.mif"] == project.original_mif, "Original MIF is a byte-exact member")
 	_check(members["current/current.mif"] == project.current_mif, "Current MIF is a byte-exact member")
-	_check(manifest.project.format == "future project field" and manifest.project.palette == {"future": true},
+	_check(manifest.project.format == "future project field" and manifest.project.palette == { "future": true },
 		"The archive envelope preserves colliding unknown project fields")
 	var record: Dictionary = manifest.project
 	var document: Dictionary = record.documents[DOCUMENT_KEY]
@@ -137,14 +144,23 @@ func _test_members(project: ScurkProject, members: Dictionary[String, PackedByte
 	var palette: Dictionary = JSON.parse_string(members["palette.json"].get_string_from_utf8())
 	_check(palette.kind == "rgb" and palette.colors.size() == 256, "Actual RGB colors are declared separately from UI preferences")
 	for index in 256:
-		_check(palette.colors[index] == _canonical(Array(project.palette_rgb.slice(index * 3, index * 3 + 3))), "All palette RGB bytes survive")
-	_check(record.metadata.palette == _canonical({"favorites": [171, 172], "ramp": [1, 42]}), "Palette navigation preferences stay in metadata")
+		_check(
+			palette.colors[index] == _canonical(Array(project.palette_rgb.slice(index * 3, index * 3 + 3))),
+			"All palette RGB bytes survive",
+		)
+	_check(
+		record.metadata.palette == _canonical({ "favorites": [171, 172], "ramp": [1, 42] }),
+		"Palette navigation preferences stay in metadata",
+	)
 
 
 func _test_checkpoints(restored: ScurkProject, original: ScurkProject) -> void:
 	for index in original.checkpoints.size():
 		_check(restored.restore_checkpoint(index), "Each archived checkpoint can be restored")
-		_check(_canonical(restored.snapshot()) == _canonical(original.checkpoints[index].snapshot), "Checkpoint restoration keeps every snapshot field")
+		_check(
+			_canonical(restored.snapshot()) == _canonical(original.checkpoints[index].snapshot),
+			"Checkpoint restoration keeps every snapshot field",
+		)
 		_check(restored.original_mif == original.original_mif, "Checkpoint restoration keeps original MIF bytes")
 	var expected: Dictionary = original.checkpoints[1].snapshot.duplicate(true)
 	assert(restored.restore_checkpoint(1))
@@ -159,11 +175,13 @@ func _test_invalid(members: Dictionary[String, PackedByteArray], manifest: Dicti
 		"version": 1, "revision": 0, "original_mif": mif, "current_mif": mif})).to_utf8_buffer())
 	_check(not text.ok and not text.error.is_empty() and text.project == null, "The old text container is rejected")
 	var descriptor: Dictionary = manifest.project.documents[DOCUMENT_KEY].layers[0].pixels
-	for path: String in ["project.json", "palette.json", "original.mif", "current/current.mif", descriptor.image, descriptor.transparency_mask]:
+	for path: String in ["project.json", "palette.json", "original.mif", "current/current.mif", descriptor.image,
+		descriptor.transparency_mask]:
 		var bad := members.duplicate()
 		bad.erase(path)
 		_reject(bad, "Missing required archive member")
-	for path: String in ["project.json", "palette.json", "original.mif", "current/current.mif", descriptor.image, descriptor.transparency_mask]:
+	for path: String in ["project.json", "palette.json", "original.mif", "current/current.mif", descriptor.image,
+		descriptor.transparency_mask]:
 		var bad := members.duplicate()
 		bad[path] = PackedByteArray([0])
 		_reject(bad, "Invalid required archive member")

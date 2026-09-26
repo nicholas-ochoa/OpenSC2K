@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Tools: query checks.
 
 @warning_ignore_start("integer_division")
@@ -171,6 +170,12 @@ func test_query_info(reference_root: String) -> void:
 	var tower := Queries.inspect(city, Vector2i(31, 29))
 	_check(tower.water_detail.contains("30000"), "Query counts stored tower water")
 
+	_test_facility_queries(city, document)
+
+	_test_city_analysis(city, document)
+
+
+func _test_facility_queries(city: CityState, document: Sc2File) -> void:
 	var microsim_data := document.find_chunk("XMIC").decoded_payload.duplicate()
 	microsim_data[0] = 0xd0
 	microsim_data[1] = 7
@@ -309,6 +314,8 @@ func test_query_info(reference_root: String) -> void:
 		"Specific query maps each recovered facility sound class",
 	)
 
+
+func _test_city_analysis(city: CityState, document: Sc2File) -> void:
 	var analysis_misc := document.find_chunk("MISC").decoded_payload.duplicate()
 
 	for tile_id in range(QueryFacilityActions.FIRST_BUILDING, 0x100):

@@ -65,9 +65,11 @@ func _check_menu_and_dialog() -> void:
 	var graphics: int = main.static_render.city_view_size()
 	assert(options.view_size == graphics, "Graphics start at the size on screen")
 	assert(options.view == "city" and not options.transparent_background and options.signs and options.moving_things)
-	assert(options.path.get_file() == "%s_CITY_%s.png" % [main.document_state.city.display_name(), String(AppSettingsStore.GRAPHICS_SIZES[graphics]).to_upper()])
+	assert(options.path.get_file() == "%s_CITY_%s.png" % [main.document_state.city.display_name(),
+		String(AppSettingsStore.GRAPHICS_SIZES[graphics]).to_upper()])
 	var size := ExportJob.output_size(128, graphics)
-	assert(not dialog.get_ok_button().disabled and dialog.summary_label.text.begins_with("Image size: %s × " % DisplayNumberFormat.format(size.x)))
+	assert(not dialog.get_ok_button().disabled
+		and dialog.summary_label.text.begins_with("Image size: %s × " % DisplayNumberFormat.format(size.x)))
 
 	dialog.view_selector.select(1)
 	dialog.view_selector.item_selected.emit(1)
@@ -137,7 +139,13 @@ func _check_render_progress() -> void:
 	var options := ScurkCityOutput.Options.new()
 	options.view = "underground"
 	options.progress = func(value: float) -> void: values.append(value)
-	var result := ScurkCityOutput.render(main.document_state.city, main.asset_state.palette, main.static_render.sprite_archive_for_view(Renderer.VIEW_SMALL), Renderer.VIEW_SMALL, options)
+	var result := ScurkCityOutput.render(
+		main.document_state.city,
+		main.asset_state.palette,
+		main.static_render.sprite_archive_for_view(Renderer.VIEW_SMALL),
+		Renderer.VIEW_SMALL,
+		options,
+	)
 	assert(result.ok and values.size() == main.document_state.city.map_size * 2 - 1)
 
 	for index in range(1, values.size()):

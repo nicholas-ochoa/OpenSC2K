@@ -21,7 +21,6 @@ const SUBWAY_MODE := 13
 const ADVANCE_BLOCKED := -1
 const ADVANCE_SUCCESS := -2
 const POINT_INDEX_MASK := 0x3fff
-
 const TRANSPORT_OFFSETS := [
 	Vector2i(0, 1), Vector2i(1, 0), Vector2i(0, -1), Vector2i(-1, 0),
 	Vector2i(0, 2), Vector2i(2, 0), Vector2i(0, -2), Vector2i(-2, 0),
@@ -40,15 +39,17 @@ const WALK_ACCESS_MODES := (1 << ROAD_MODE) | (1 << BUS_ROAD_MODE) | (1 << BUS_S
 const TUNNEL_HEADING_MODES := (1 << ROAD_TUNNEL_MODE) | (1 << BUS_TUNNEL_MODE)
 const HEADING_MODES := (1 << ROAD_BRIDGE_MODE) | (1 << BUS_BRIDGE_MODE) | TUNNEL_HEADING_MODES
 const ANY_RCI_ZONE_MASK := 0x7e
-
-
 # independent corrected lane model. port bits: north, east, south, west
 # straight sections have one direction per lane. curves connect the ingress
 # and egress corners of their two-by-two footprint with right-hand traffic
-const HIGHWAY_PORTS: Dictionary[int, int] = {BuildingTileIds.HIGHWAY_STRAIGHT_1: 5, BuildingTileIds.HIGHWAY_STRAIGHT_2: 10, BuildingTileIds.HIGHWAY_ROAD_CROSSING_1: 5, BuildingTileIds.HIGHWAY_ROAD_CROSSING_2: 10,
-	BuildingTileIds.HIGHWAY_RAIL_CROSSING_1: 5, BuildingTileIds.HIGHWAY_RAIL_CROSSING_2: 10, BuildingTileIds.HIGHWAY_POWER_CROSSING_1: 5, BuildingTileIds.HIGHWAY_POWER_CROSSING_2: 10,
-	BuildingTileIds.HIGHWAY_SLOPE_1: 10, BuildingTileIds.HIGHWAY_SLOPE_2: 5, BuildingTileIds.HIGHWAY_SLOPE_3: 10, BuildingTileIds.HIGHWAY_SLOPE_4: 5,
-	BuildingTileIds.HIGHWAY_CURVE_1: 3, BuildingTileIds.HIGHWAY_CURVE_2: 6, BuildingTileIds.HIGHWAY_CURVE_3: 12, BuildingTileIds.HIGHWAY_CURVE_4: 9, BuildingTileIds.HIGHWAY_INTERSECTION: 15}
+const HIGHWAY_PORTS: Dictionary[int, int] = {BuildingTileIds.HIGHWAY_STRAIGHT_1: 5, BuildingTileIds.HIGHWAY_STRAIGHT_2: 10,
+	BuildingTileIds.HIGHWAY_ROAD_CROSSING_1: 5, BuildingTileIds.HIGHWAY_ROAD_CROSSING_2: 10,
+	BuildingTileIds.HIGHWAY_RAIL_CROSSING_1: 5, BuildingTileIds.HIGHWAY_RAIL_CROSSING_2: 10,
+	BuildingTileIds.HIGHWAY_POWER_CROSSING_1: 5, BuildingTileIds.HIGHWAY_POWER_CROSSING_2: 10,
+	BuildingTileIds.HIGHWAY_SLOPE_1: 10, BuildingTileIds.HIGHWAY_SLOPE_2: 5,
+	BuildingTileIds.HIGHWAY_SLOPE_3: 10, BuildingTileIds.HIGHWAY_SLOPE_4: 5,
+	BuildingTileIds.HIGHWAY_CURVE_1: 3, BuildingTileIds.HIGHWAY_CURVE_2: 6,
+	BuildingTileIds.HIGHWAY_CURVE_3: 12, BuildingTileIds.HIGHWAY_CURVE_4: 9, BuildingTileIds.HIGHWAY_INTERSECTION: 15}
 const LANE_CORNERS := [Vector2i(0, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(1, 0)]
 const INGRESS_CORNERS := [0, 3, 2, 1]
 const EGRESS_CORNERS := [3, 2, 1, 0]

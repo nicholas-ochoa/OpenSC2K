@@ -2,19 +2,6 @@ class_name HighwayPlacement
 extends HighwayConstants
 
 
-class Result extends RefCounted:
-	var ok := false
-	var error := ""
-	var kind := 0
-	var graded := false
-
-	static func failure(message: String) -> Result:
-		var result := Result.new()
-		result.error = message
-
-		return result
-
-
 static func _place_straight_section(
 	buildings: PackedByteArray,
 	zones: PackedByteArray,
@@ -317,9 +304,19 @@ static func _place_graded_section(
 		5:
 			terrain_pattern = [TerrainTileIds.RAISED, TerrainTileIds.RAISED, TerrainTileIds.SLOPE_TOP_RIGHT, TerrainTileIds.SLOPE_TOP_RIGHT]
 		6:
-			terrain_pattern = [TerrainTileIds.SLOPE_BOTTOM_RIGHT, TerrainTileIds.RAISED, TerrainTileIds.RAISED, TerrainTileIds.SLOPE_BOTTOM_RIGHT]
+			terrain_pattern = [
+				TerrainTileIds.SLOPE_BOTTOM_RIGHT,
+				TerrainTileIds.RAISED,
+				TerrainTileIds.RAISED,
+				TerrainTileIds.SLOPE_BOTTOM_RIGHT,
+			]
 		7:
-			terrain_pattern = [TerrainTileIds.SLOPE_BOTTOM_LEFT, TerrainTileIds.SLOPE_BOTTOM_LEFT, TerrainTileIds.RAISED, TerrainTileIds.RAISED]
+			terrain_pattern = [
+				TerrainTileIds.SLOPE_BOTTOM_LEFT,
+				TerrainTileIds.SLOPE_BOTTOM_LEFT,
+				TerrainTileIds.RAISED,
+				TerrainTileIds.RAISED,
+			]
 		_:
 			return
 
@@ -368,3 +365,16 @@ static func _write_shape(
 		NetworkState.replace_building(buildings, zones, misc, index, tile_id)
 
 	BuildingSites.set_corners(zones, Rect2i(anchor, Vector2i(2, 2)), 2, rotation, map_edge)
+
+
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+	var kind := 0
+	var graded := false
+
+	static func failure(message: String) -> Result:
+		var result := Result.new()
+		result.error = message
+
+		return result

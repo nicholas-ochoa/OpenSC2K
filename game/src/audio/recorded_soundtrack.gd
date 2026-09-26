@@ -1,22 +1,10 @@
 class_name RecordedSoundtrack
 extends RefCounted
+
+
 # external recordings use the original numeric midi resource ids
 
 const EXTENSIONS := ["flac", "ogg", "mp3"]
-
-
-class Result extends RefCounted:
-	var stream: AudioStream
-	var path := ""
-
-
-class Request extends RefCounted:
-	var paths := PackedStringArray()
-	var request := 0
-
-	func _init(source_paths: PackedStringArray, request_id: int) -> void:
-		paths = source_paths
-		request = request_id
 
 
 static func find_tracks(folder: String, track_id: int) -> PackedStringArray:
@@ -107,3 +95,17 @@ static func ffmpeg_executable() -> String:
 			return candidate
 
 	return "ffmpeg"
+
+
+class Result extends RefCounted:
+	var stream: AudioStream
+	var path := ""
+
+
+class Request extends RefCounted:
+	var paths := PackedStringArray()
+	var request := 0
+
+	func _init(source_paths: PackedStringArray, request_id: int) -> void:
+		paths = source_paths
+		request = request_id

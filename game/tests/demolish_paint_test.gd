@@ -1,6 +1,6 @@
 extends SceneTree
-const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const DocumentState = preload("res://tests/support/document_state.gd")
 
 

@@ -4,7 +4,6 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const MISC_SIZE := Sc2MiscLayout.SIZE
 const MISC_CITY_POLLUTION := Sc2MiscLayout.CITY_POLLUTION
 const MISC_POPULATION_TABLE := Sc2MiscLayout.POPULATION_TABLE
@@ -12,40 +11,19 @@ const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
 const MISC_BUDGETS := Sc2MiscLayout.BUDGETS
 const MISC_ORDINANCES := Sc2MiscLayout.ORDINANCES
 const MISC_NORMAL_POPULATION := Sc2MiscLayout.NORMAL_POPULATION
-
 const POPULATION_STRIDE := 12
 const POPULATION_COHORTS := 20
 const RAW_POPULATION_FIELD := 0
 const EDUCATION_FIELD := 4
 const LIFE_EXPECTANCY_FIELD := 8
-
 const HOSPITAL_TILE := Tiles.HOSPITAL
 const SCHOOL_TILE := Tiles.SCHOOL
 const COLLEGE_TILE := Tiles.COLLEGE
-
 const ORDINANCE_PUBLIC_SMOKING_BAN := OrdinanceIds.PUBLIC_SMOKING_BAN_MASK
 const ORDINANCE_FREE_CLINICS := OrdinanceIds.FREE_CLINICS_MASK
 const ORDINANCE_PRO_READING := OrdinanceIds.PRO_READING_MASK
 const ORDINANCE_ANTI_DRUG := OrdinanceIds.ANTI_DRUG_MASK
 const ORDINANCE_CPR_TRAINING := OrdinanceIds.CPR_TRAINING_MASK
-
-
-class Result extends PhaseResult:
-	var population := 0
-	var deaths := 0
-	var births := 0
-	var immigrants := 0
-	var emigrants := 0
-	var health_capacity := 0
-	var school_capacity := 0
-	var college_capacity := 0
-	var newborn_life_expectancy := 0
-	var pollution_penalty := 0
-	var workforce_population := 0
-	var workforce_percent := 0
-	var workforce_le := 0
-	var workforce_eq := 0
-	var empty_city := false
 
 
 static func run(city: CityState, random: SimRandom) -> Result:
@@ -448,3 +426,21 @@ static func _write_tables(
 
 static func _u32(value: int) -> int:
 	return value & 0xffffffff
+
+
+class Result extends PhaseResult:
+	var population := 0
+	var deaths := 0
+	var births := 0
+	var immigrants := 0
+	var emigrants := 0
+	var health_capacity := 0
+	var school_capacity := 0
+	var college_capacity := 0
+	var newborn_life_expectancy := 0
+	var pollution_penalty := 0
+	var workforce_population := 0
+	var workforce_percent := 0
+	var workforce_le := 0
+	var workforce_eq := 0
+	var empty_city := false

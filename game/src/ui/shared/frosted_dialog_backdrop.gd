@@ -1,6 +1,5 @@
 extends Node
 
-
 const CanvasScene = preload("res://src/ui/shared/frosted_dialog_canvas.tscn")
 
 @export var content_panels: Array[NodePath] = []
@@ -25,6 +24,11 @@ func _ready() -> void:
 	_dialog.visibility_changed.connect(_refresh_visibility)
 	_dialog.size_changed.connect(_sync_geometry)
 	_refresh_theme()
+
+
+func _process(_delta: float) -> void:
+	# window dragging has no position_changed signal
+	_sync_geometry()
 
 
 func _refresh_theme() -> void:
@@ -71,11 +75,6 @@ func _refresh_theme() -> void:
 func _refresh_visibility() -> void:
 	_layer.visible = _enabled and _dialog.visible
 	set_process(_layer.visible)
-	_sync_geometry()
-
-
-func _process(_delta: float) -> void:
-	# window dragging has no position_changed signal
 	_sync_geometry()
 
 

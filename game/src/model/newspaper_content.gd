@@ -1,12 +1,6 @@
 class_name NewspaperContent
 extends RefCounted
 
-class ExtraStory extends RefCounted:
-	var headline := ""
-	var article := ""
-	var page := 0
-
-
 var layout_index := 0
 var title_text := ""
 var date_text := ""
@@ -30,7 +24,15 @@ var picture_texture: Texture2D
 var continuation_random := RandomNumberGenerator.new()
 
 
-func set_page(layout: int, title: String, date: String, price: String, opinion: String, weather: String, headings: PackedStringArray) -> void:
+func set_page(
+	layout: int,
+	title: String,
+	date: String,
+	price: String,
+	opinion: String,
+	weather: String,
+	headings: PackedStringArray,
+) -> void:
 	layout_index = clampi(layout, 0, 2)
 	title_text = title
 	date_text = date
@@ -86,10 +88,17 @@ func payload(papers: PackedStringArray, selected: int) -> Dictionary:
 	var story_payloads: Array[Dictionary] = []
 
 	for story in extra_stories:
-		story_payloads.append({"headline": story.headline, "article": story.article, "page": story.page})
+		story_payloads.append({ "headline": story.headline, "article": story.article, "page": story.page })
 
 	return {"title": title_text, "headline": headline_for_slot(0), "date": date_text, "price": price_text, "weather": weather_text,
 			"weather_heading": weather_heading, "weather_headline": weather_headline, "weather_article": weather_article,
 			"weather_page": weather_page, "opinion_page": opinion_page, "extra_stories": story_payloads, "opinion": opinion_text,
-			"opinion_heading": opinion_heading, "opinion_headline": opinion_headline, "opinion_article": opinion_article, "headlines": headlines,
+			"opinion_heading": opinion_heading, "opinion_headline": opinion_headline, "opinion_article": opinion_article,
+			"headlines": headlines,
 			"articles": articles, "pages": continuation_pages, "picture": picture, "papers": papers, "selected": selected}
+
+
+class ExtraStory extends RefCounted:
+	var headline := ""
+	var article := ""
+	var page := 0

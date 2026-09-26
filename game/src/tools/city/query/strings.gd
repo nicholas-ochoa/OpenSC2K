@@ -2,7 +2,6 @@ class_name QueryStrings
 extends RefCounted
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 # the first strict upper bound greater than xbld selects the name index
 const GENERAL_NAME_UPPER_BOUNDS := [
 	Tiles.RUBBLE_FIRST,
@@ -28,8 +27,6 @@ const GENERAL_NAME_UPPER_BOUNDS := [
 	Tiles.LUXURY_HOMES_1X1_1,
 	Tiles.COMMERCIAL_1X1_FIRST,
 ]
-
-
 # tile names by name index
 const TILE_NAMES: Array[String] = [
 	"Katzenjammers",
@@ -192,8 +189,7 @@ const FRESH_WATER := "Fresh water"
 const SALT_WATER := "Salt water"
 const SAILBOAT := "First Light (Capt. J. Scirica)"
 const SPORTS: Array[String] = ["Football", "Baseball", "Soccer", "Cricket", "Rugby"]
-const ACTIONS := {"city_analysis": "Analyze", "library_ruminate": "Ruminate"}
-
+const ACTIONS := { "city_analysis": "Analyze", "library_ruminate": "Ruminate" }
 # information lines for each xmic type
 const MICROSIM_LINES := [
 	[],

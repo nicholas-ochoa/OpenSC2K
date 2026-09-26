@@ -223,7 +223,10 @@ func _check_labels_and_round_trip(edge: int) -> void:
 
 	var before: PackedByteArray = city.document.serialize().data
 	var command := SignCommand.set_sign(city, Vector2i(4, 5), "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	_check(command.ok and command.label_id == label_id and command.text == "ABCDEFGHIJKLMNOPQRSTUVW", "Sign command allocates the original or first extended slot")
+	_check(
+		command.ok and command.label_id == label_id and command.text == "ABCDEFGHIJKLMNOPQRSTUVW",
+		"Sign command allocates the original or first extended slot",
+	)
 	_check(SignCommand.undo(city, command).ok, "Undo sign command")
 	_check(city.document.serialize().data == before, "Sign undo restores label tails and city bytes")
 
@@ -270,7 +273,10 @@ func _check_graph_periods() -> void:
 				var fresh: bool = index == 0 or (index == 12 and half_year) or (index == 32 and five_year)
 				var shifted: bool = (index > 0 and index < 12) or (index > 12 and index < 32 and half_year) or (index > 32 and five_year)
 				var expected: int = current[series] & 0xffffffff if fresh else 0x80000000 + series * 256 + index - (1 if shifted else 0)
-				_check(BinaryData.read_u32_be(stored, (series * 52 + index) * 4) == expected, "Graph period writes retain series boundaries")
+				_check(
+					BinaryData.read_u32_be(stored, (series * 52 + index) * 4) == expected,
+					"Graph period writes retain series boundaries",
+				)
 
 			var graph := city.graph_series(series)
 			_check(graph.year.size() == 12 and graph.decade.size() == 20 and graph.century.size() == 20,

@@ -1,21 +1,6 @@
 class_name DispatchCommand
 extends RefCounted
 
-class Availability extends RefCounted:
-	var ok: bool = false
-	var error: String = ""
-	var police: int = 0
-	var fire: int = 0
-	var military: int = 0
-	var base_type: int = 0
-
-	static func failure(message: String) -> Availability:
-		var result := Availability.new()
-		result.error = message
-
-		return result
-
-
 const GROUP_DISPATCH := CityToolIds.Group.DISPATCH
 const FLAG_WATER := Sc2TileFlags.WATER
 const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
@@ -219,7 +204,9 @@ static func _clear_existing_dispatch(things: PackedByteArray, text: PackedByteAr
 	for index in (map_edge * map_edge):
 		var overlay := int(OverlayData.read(text, index))
 
-		if not OverlayData.is_thing(overlay) or OverlayData.thing_record(overlay) < FIRST_THING or OverlayData.thing_record(overlay) >= ThingData.count(things):
+		if (not OverlayData.is_thing(overlay)
+				or OverlayData.thing_record(overlay) < FIRST_THING
+				or OverlayData.thing_record(overlay) >= ThingData.count(things)):
 			continue
 
 		var thing_index := OverlayData.thing_record(overlay)
@@ -295,3 +282,18 @@ static func recall_all(city: CityState) -> DispatchEditResult:
 	result.new_text = text
 
 	return result
+
+
+class Availability extends RefCounted:
+	var ok: bool = false
+	var error: String = ""
+	var police: int = 0
+	var fire: int = 0
+	var military: int = 0
+	var base_type: int = 0
+
+	static func failure(message: String) -> Availability:
+		var result := Availability.new()
+		result.error = message
+
+		return result

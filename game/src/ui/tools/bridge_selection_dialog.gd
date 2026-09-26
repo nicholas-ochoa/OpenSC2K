@@ -1,22 +1,13 @@
 class_name BridgeSelectionDialog
 extends ConfirmationDialog
 
+signal choice_requested(index: int)
+
+
 @warning_ignore_start("integer_division")
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const Numbers = preload("res://src/ui/shared/display_number_format.gd")
-
-signal choice_requested(index: int)
-
-class PreviewTile extends RefCounted:
-	var image: Image
-	var position: Vector2i
-
-	func _init(pixels: Image, origin: Vector2i) -> void:
-		image = pixels
-		position = origin
-
 
 var choice_buttons: Array[Button] = []
 var preview_controls: Array[TextureRect] = []
@@ -76,7 +67,6 @@ func set_choices(
 		choice_labels[choice_index].text = choice_button.text
 
 
-
 func show_choices(
 	span_length: int,
 	request_type: String,
@@ -102,7 +92,8 @@ func preview_image(request_type: String, bridge_type: int) -> Texture2D:
 
 	if highway and bridge_type == HighwayCommand.BRIDGE_REINFORCED:
 		for section in 4:
-			_append_preview_tile(tiles, 1000 + (Tiles.REINFORCED_HIGHWAY_BRIDGE if section % 2 == 0 else Tiles.HIGHWAY_BRIDGE), _preview_baseline(section * 2, 0)
+			_append_preview_tile(tiles, 1000 + (Tiles.REINFORCED_HIGHWAY_BRIDGE if section % 2 == 0 else Tiles.HIGHWAY_BRIDGE),
+				_preview_baseline(section * 2, 0)
 					+ Vector2i(0, CityIsometricRenderer.HALF_HEIGHT * 2), true)
 	else:
 		for x in count:
@@ -132,7 +123,11 @@ func preview_image(request_type: String, bridge_type: int) -> Texture2D:
 	var factor := minf(1.0, minf(228.0 / assembled.get_width(), 128.0 / assembled.get_height()))
 
 	if factor < 1.0:
-		assembled.resize(maxi(1, roundi(assembled.get_width() * factor)), maxi(1, roundi(assembled.get_height() * factor)), Image.INTERPOLATE_NEAREST)
+		assembled.resize(
+			maxi(1, roundi(assembled.get_width() * factor)),
+			maxi(1, roundi(assembled.get_height() * factor)),
+			Image.INTERPOLATE_NEAREST,
+		)
 
 	var output := Image.create(240, 140, false, Image.FORMAT_RGBA8)
 	output.fill(Color.TRANSPARENT)
@@ -160,3 +155,12 @@ func _append_preview_tile(tiles: Array[PreviewTile], sprite_id: int, baseline: V
 
 static func _preview_baseline(x: int, y: int) -> Vector2i:
 	return Vector2i((x - y) * CityIsometricRenderer.HALF_WIDTH, (x + y) * CityIsometricRenderer.HALF_HEIGHT)
+
+
+class PreviewTile extends RefCounted:
+	var image: Image
+	var position: Vector2i
+
+	func _init(pixels: Image, origin: Vector2i) -> void:
+		image = pixels
+		position = origin

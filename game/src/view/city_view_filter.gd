@@ -4,7 +4,6 @@ extends RefCounted
 # xthg types in the vehicles layer: airplanes, helicopters, cargo ships,
 # sailboats, and surface and subway trains. disaster objects stay visible
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const VEHICLE_THING_TYPES := [1, 2, 3, 9, 10, 11, 12, 13]
 const DEFAULT_VISIBILITY := {
 	"buildings": true,

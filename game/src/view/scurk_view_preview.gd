@@ -1,10 +1,10 @@
 class_name ScurkViewPreview
 extends Control
 
+
 @warning_ignore_start("integer_division")
 
 const DrawingWorkspace = preload("res://src/tools/scurk/scurk_drawing_workspace.gd")
-
 const CYCLE_INTERVAL_SECONDS := Sc2Palette.SCURK_TIMER_INTERVAL_SECONDS
 
 @export var preview_scale := 1
@@ -13,7 +13,6 @@ const CYCLE_INTERVAL_SECONDS := Sc2Palette.SCURK_TIMER_INTERVAL_SECONDS
 
 var artwork_bounds := Rect2i()
 var display_bounds := Rect2i()
-
 var palette: Sc2Palette
 var view := ScurkSpriteIds.View.LARGE
 var preview_width := 0
@@ -33,6 +32,36 @@ func _init() -> void:
 	# a UI scale change on the main window changes the whole-pixel size
 	ready.connect(func() -> void: get_tree().root.size_changed.connect(_on_screen_pixels_changed))
 	set_process(true)
+
+
+func _process(delta: float) -> void:
+	if not palette_cycle_enabled or not is_visible_in_tree():
+		return
+
+	palette_cycle_accumulator += delta
+	var changed := false
+
+	while palette_cycle_accumulator >= CYCLE_INTERVAL_SECONDS:
+		palette_cycle_accumulator -= CYCLE_INTERVAL_SECONDS
+		palette_cycle_ticks += 1
+		changed = true
+
+	if changed:
+		_rebuild_texture()
+		queue_redraw()
+
+
+func _draw() -> void:
+	var frame := Rect2(Vector2.ZERO, custom_minimum_size)
+	draw_rect(frame, Color("404040"), false, 1.0)
+	var label_height := _label_size() + 6 if not size_label.is_empty() else 0
+	if preview_texture != null:
+		var extent := _art_extent()
+		var position := Vector2(floorf((frame.size.x - extent.x) * 0.5), 1 + label_height)
+		draw_texture_rect_region(preview_texture, Rect2(position, extent), Rect2(display_bounds))
+	if not size_label.is_empty():
+		draw_string(get_theme_default_font(), Vector2(5, _label_size() + 2), size_label,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, _label_size(), get_theme_color("font_color", "Label"))
 
 
 func set_preview(
@@ -117,23 +146,6 @@ func increment_palette_cycle() -> void:
 	queue_redraw()
 
 
-func _process(delta: float) -> void:
-	if not palette_cycle_enabled or not is_visible_in_tree():
-		return
-
-	palette_cycle_accumulator += delta
-	var changed := false
-
-	while palette_cycle_accumulator >= CYCLE_INTERVAL_SECONDS:
-		palette_cycle_accumulator -= CYCLE_INTERVAL_SECONDS
-		palette_cycle_ticks += 1
-		changed = true
-
-	if changed:
-		_rebuild_texture()
-		queue_redraw()
-
-
 func _rebuild_texture() -> void:
 	if (
 		preview_width <= 0
@@ -190,7 +202,10 @@ func _update_preview_size() -> void:
 
 # the artwork size at the preview scale, on whole screen pixels
 func _art_extent() -> Vector2:
-	return Vector2(ScreenPixels.art_length(display_bounds.size.x, preview_scale), ScreenPixels.art_length(display_bounds.size.y, preview_scale))
+	return Vector2(
+		ScreenPixels.art_length(display_bounds.size.x, preview_scale),
+		ScreenPixels.art_length(display_bounds.size.y, preview_scale),
+	)
 
 
 func _on_screen_pixels_changed() -> void:
@@ -200,19 +215,6 @@ func _on_screen_pixels_changed() -> void:
 
 func _label_size() -> int:
 	return 14 if view == ScurkSpriteIds.View.LARGE else (12 if view == ScurkSpriteIds.View.MEDIUM else 10)
-
-
-func _draw() -> void:
-	var frame := Rect2(Vector2.ZERO, custom_minimum_size)
-	draw_rect(frame, Color("404040"), false, 1.0)
-	var label_height := _label_size() + 6 if not size_label.is_empty() else 0
-	if preview_texture != null:
-		var extent := _art_extent()
-		var position := Vector2(floorf((frame.size.x - extent.x) * 0.5), 1 + label_height)
-		draw_texture_rect_region(preview_texture, Rect2(position, extent), Rect2(display_bounds))
-	if not size_label.is_empty():
-		draw_string(get_theme_default_font(), Vector2(5, _label_size() + 2), size_label,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, _label_size(), get_theme_color("font_color", "Label"))
 
 
 func set_cycle_tick(tick: int) -> void:

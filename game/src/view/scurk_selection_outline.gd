@@ -25,20 +25,6 @@ func _notification(what: int) -> void:
 		_update_processing()
 
 
-func configure(value: PackedVector2Array, animate: bool) -> void:
-	if edges == value and animated == animate:
-		return
-
-	edges = value.duplicate()
-	animated = animate
-	phase = 0
-	_elapsed = 0.0
-	visible = not edges.is_empty()
-	_rebuild_dashes()
-	_update_processing()
-	queue_redraw()
-
-
 func _process(delta: float) -> void:
 	if not animated or edges.is_empty() or not is_visible_in_tree():
 		return
@@ -51,6 +37,32 @@ func _process(delta: float) -> void:
 	_elapsed = fmod(_elapsed, FRAME_SECONDS)
 	phase = (phase + steps) % DASH_PERIOD
 	_rebuild_dashes()
+	queue_redraw()
+
+
+func _draw() -> void:
+	if edges.is_empty():
+		return
+
+	draw_multiline(edges, Color.BLACK, 1.0 if animated else 3.0)
+	if animated:
+		if not _white_edges.is_empty():
+			draw_multiline(_white_edges, Color.WHITE, 1.0)
+	else:
+		draw_multiline(edges, Color.WHITE, 1.0)
+
+
+func configure(value: PackedVector2Array, animate: bool) -> void:
+	if edges == value and animated == animate:
+		return
+
+	edges = value.duplicate()
+	animated = animate
+	phase = 0
+	_elapsed = 0.0
+	visible = not edges.is_empty()
+	_rebuild_dashes()
+	_update_processing()
 	queue_redraw()
 
 
@@ -84,15 +96,3 @@ func _rebuild_dashes() -> void:
 				_white_edges.append(first + direction * offset)
 				_white_edges.append(first + direction * finish)
 			offset = finish
-
-
-func _draw() -> void:
-	if edges.is_empty():
-		return
-
-	draw_multiline(edges, Color.BLACK, 1.0 if animated else 3.0)
-	if animated:
-		if not _white_edges.is_empty():
-			draw_multiline(_white_edges, Color.WHITE, 1.0)
-	else:
-		draw_multiline(edges, Color.WHITE, 1.0)

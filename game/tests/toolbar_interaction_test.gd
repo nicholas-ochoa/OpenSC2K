@@ -39,11 +39,13 @@ func _run() -> void:
 	main.current_tool.call("select_subtool", 2)
 	assert(main.view_state.overlay_mode == CityViewMode.Mode.CITY)
 	main.current_tool.call("select_tool_group", 4)
-	assert(main.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND and toolbar.view_mode_buttons[CityViewMode.Mode.UNDERGROUND].button_pressed)
+	assert(main.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND
+		and toolbar.view_mode_buttons[CityViewMode.Mode.UNDERGROUND].button_pressed)
 	main.menus.call("set_overlay", CityViewMode.Mode.CITY)
 	main.current_tool.call("select_tool_group", 7)
 	main.current_tool.call("select_subtool", 1)
-	assert(main.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND and toolbar.view_mode_buttons[CityViewMode.Mode.UNDERGROUND].button_pressed)
+	assert(main.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND
+		and toolbar.view_mode_buttons[CityViewMode.Mode.UNDERGROUND].button_pressed)
 	main.menus.call("set_overlay", CityViewMode.Mode.CITY)
 	main.current_tool.call("select_tool_group", 17)
 	assert(not map.show_selection_preview)
@@ -138,41 +140,8 @@ func _run() -> void:
 		map.selection._clear_selection()
 
 	map.shift_line_enabled = false
-	# Held brush emits on its cadence and stops after the selection clears.
-	var brush := CityMapControl.new()
-	brush.edit_enabled = true
-	brush.continuous_placement = true
-	brush.selection_start = Vector2i(40, 40)
-	brush.hover_tile = Vector2i(40, 40)
-	var dabs: Array[Vector2i] = []
-	brush.selection_completed.connect(func(_start, finish, _path, _dragged):
-		dabs.append(finish))
-	brush._process(0.29)
-	assert(dabs.is_empty())
-	brush._process(0.02)
-	assert(dabs == [Vector2i(40, 40)])
-	brush.hover_tile = Vector2i(42, 42)
-	brush._process(0.3)
-	assert(dabs.back() == Vector2i(42, 42) and dabs.size() == 2)
-	brush.selection._clear_selection()
-	brush._process(1.0)
-	assert(dabs.size() == 2)
-	brush.free()
-	# Shift changes the same in-progress path in either direction.
-	map.landscape_brush = false
-	map.set_edit_enabled(true, "path", 1, true)
-	map.shift_rectangle_enabled = true
-	map.selection_start = Vector2i(80, 80)
-	map.selection_end = Vector2i(83, 82)
-	map.selection._rebuild_selection_path()
-	assert(map.selection_path.size() == 6)
-	shift.pressed = true
-	map._input(shift)
-	assert(map.selection_path.size() == 12)
-	shift.pressed = false
-	map._input(shift)
-	assert(map.selection_path.size() == 6)
-	map.selection._clear_selection()
+	_test_brush_and_drag_input(main, map, shift)
+
 	# Dual underground cells can display either or both networks without edits.
 	city.set_underground_id(90, 90, UndergroundTileIds.PIPE_TB_SUBWAY_LR)
 	var pipe_only := CityUndergroundView.tile_sprite_ids(city, 90, 90, 2, true, false)
@@ -210,7 +179,15 @@ func _run() -> void:
 	assert(" ".join(paper.published_articles).contains(str(city.population())))
 
 	for layout in range(3):
-		paper.page.set_page(layout, "Test Gazette", "September 8", "25 cents", "Opinion", "Weather", PackedStringArray(["A", "B", "C", "D", "E"]))
+		paper.page.set_page(
+			layout,
+			"Test Gazette",
+			"September 8",
+			"25 cents",
+			"Opinion",
+			"Weather",
+			PackedStringArray(["A", "B", "C", "D", "E"]),
+		)
 		paper.page.set_articles(paper.published_articles)
 		assert(not paper.page.articles[1].is_empty())
 
@@ -219,7 +196,8 @@ func _run() -> void:
 	_test_fire_clock(city)
 	main.queue_free()
 	await process_frame
-	print("PASS: toolbar interactions, placement validity, rail transitions, dispatch recall, landscape rectangles, fire timing, newspaper articles and display options")
+	print(("PASS: toolbar interactions, placement validity, rail transitions, dispatch recall, "
+		+ "landscape rectangles, fire timing, newspaper articles and display options"))
 	quit()
 
 
@@ -254,6 +232,61 @@ func _test_network_drag_price(main: Node, map: CityMapControl, city: CityState) 
 	assert(map.selection_price < 0, "Ending the drag removes the route price")
 
 
+func _test_fire_clock(city: CityState) -> void:
+	var engine := CountingEngine.new(city)
+	engine.active_disaster_type = 1
+	var controller := GameSpeedController.new(engine)
+	controller.set_speed(GameSpeedController.Speed.AFRICAN_SWALLOW)
+
+	for frame in range(120):
+		assert(controller.advance_time(1000.0 / 120.0).ok)
+
+	assert(engine.fire_ticks <= 1)
+	controller.advance_time(1000.0)
+	assert(engine.fire_ticks == 2)
+	controller.set_speed(GameSpeedController.Speed.PAUSED)
+	controller.advance_time(5000.0)
+	assert(engine.fire_ticks == 2)
+
+
+func _test_brush_and_drag_input(main: CityApplication, map: CityMapControl, shift: InputEventKey) -> void:
+	# Held brush emits on its cadence and stops after the selection clears.
+	var brush := CityMapControl.new()
+	brush.edit_enabled = true
+	brush.continuous_placement = true
+	brush.selection_start = Vector2i(40, 40)
+	brush.hover_tile = Vector2i(40, 40)
+	var dabs: Array[Vector2i] = []
+	brush.selection_completed.connect(func(_start, finish, _path, _dragged):
+		dabs.append(finish))
+	brush._process(0.29)
+	assert(dabs.is_empty())
+	brush._process(0.02)
+	assert(dabs == [Vector2i(40, 40)])
+	brush.hover_tile = Vector2i(42, 42)
+	brush._process(0.3)
+	assert(dabs.back() == Vector2i(42, 42) and dabs.size() == 2)
+	brush.selection._clear_selection()
+	brush._process(1.0)
+	assert(dabs.size() == 2)
+	brush.free()
+	# Shift changes the same in-progress path in either direction.
+	map.landscape_brush = false
+	map.set_edit_enabled(true, "path", 1, true)
+	map.shift_rectangle_enabled = true
+	map.selection_start = Vector2i(80, 80)
+	map.selection_end = Vector2i(83, 82)
+	map.selection._rebuild_selection_path()
+	assert(map.selection_path.size() == 6)
+	shift.pressed = true
+	map._input(shift)
+	assert(map.selection_path.size() == 12)
+	shift.pressed = false
+	map._input(shift)
+	assert(map.selection_path.size() == 6)
+	map.selection._clear_selection()
+
+
 class CountingEngine extends SimulationEngine:
 	var fire_ticks := 0
 
@@ -272,20 +305,3 @@ class CountingEngine extends SimulationEngine:
 		result.ok = true
 
 		return result
-
-
-func _test_fire_clock(city: CityState) -> void:
-	var engine := CountingEngine.new(city)
-	engine.active_disaster_type = 1
-	var controller := GameSpeedController.new(engine)
-	controller.set_speed(GameSpeedController.Speed.AFRICAN_SWALLOW)
-
-	for frame in range(120):
-		assert(controller.advance_time(1000.0 / 120.0).ok)
-
-	assert(engine.fire_ticks <= 1)
-	controller.advance_time(1000.0)
-	assert(engine.fire_ticks == 2)
-	controller.set_speed(GameSpeedController.Speed.PAUSED)
-	controller.advance_time(5000.0)
-	assert(engine.fire_ticks == 2)

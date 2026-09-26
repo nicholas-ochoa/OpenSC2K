@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Rendering: sprite archives checks.
 
 @warning_ignore_start("integer_division")
@@ -19,93 +18,8 @@ const TrainMonsterVisualTests = preload("res://tests/suites/core/rendering/train
 
 
 func test_sprite_archives(reference_root: String) -> void:
-	var toolbar := PeBitmap.load_numeric(reference_root.path_join("SIMCITY.EXE"), 2)
-	_check(toolbar.ok, "Windows toolbar bitmap resource loads: %s" % toolbar.error)
+	_test_interface_assets(reference_root)
 
-	if toolbar.ok:
-		_check(
-			toolbar.image.get_size() == Vector2i(865, 23),
-			"Windows toolbar bitmap resource has its confirmed size",
-		)
-
-	var scurk_executable := reference_root.path_join("WINSCURK.EXE")
-	var scurk_bitmap_ids := PeBitmap.list_numeric_bitmap_ids(scurk_executable)
-	_check(
-		scurk_bitmap_ids.ok
-		and scurk_bitmap_ids.ids.has(25000)
-		and scurk_bitmap_ids.ids.has(25041),
-		"Windows PE bitmap loader enumerates the complete SCURK texture range",
-	)
-	var scurk_foreground_texture := PeBitmap.load_numeric_indexed8(
-		scurk_executable, 25039
-	)
-	var scurk_material_texture := PeBitmap.load_numeric_indexed8(
-		scurk_executable, 25000
-	)
-	_check(
-		scurk_foreground_texture.ok
-		and scurk_foreground_texture.width == 8
-		and scurk_foreground_texture.height == 8
-		and scurk_foreground_texture.pixels.size() == 64
-		and scurk_foreground_texture.pixels[0] == 0xff
-		and scurk_foreground_texture.pixels[63] == 0xff
-		and scurk_material_texture.ok
-		and scurk_material_texture.pixels[0] == 0xff
-		and scurk_material_texture.pixels[1] == 0xf5
-		and scurk_material_texture.pixels[2] == 0x9b,
-		"Windows PE bitmap loader preserves original SCURK texture indices",
-	)
-	var protest_bitmap := Image.load_from_file(
-		reference_root.path_join("BITMAPS/403.BMP")
-	)
-	_check(
-		protest_bitmap != null and not protest_bitmap.is_empty(),
-		"Forest protest bitmap loads",
-	)
-
-	if protest_bitmap != null and not protest_bitmap.is_empty():
-		_check(
-			protest_bitmap.get_size() == Vector2i(155, 100),
-			"Forest protest bitmap has its executable size",
-		)
-
-	_check(
-		not PeBitmap.load_numeric(reference_root.path_join("SIMCITY.EXE"), 0xffff).ok,
-		"Windows bitmap loader rejects a missing numeric resource",
-	)
-	var library_text := TextUsa.load_ids(
-		reference_root.path_join("DATA/TEXT_USA.DAT"),
-		reference_root.path_join("DATA/TEXT_USA.IDX"),
-		PackedInt32Array([3000, 3001, 3002, 3003]),
-	)
-	_check(library_text.ok, "Indexed Library text loads: %s" % library_text.error)
-
-	if library_text.ok:
-		_check(library_text.strings.size() == 4, "Indexed Library text returns all four requested entries")
-
-		for resource_id in range(3000, 3004):
-			_check(not str(library_text.strings[resource_id]).is_empty(), "Library text entry %d is not empty" % resource_id)
-
-	var library_rect := LibraryWindowLayout.rect(Vector2i(1280, 800), Vector2i(480, 300))
-	_check(
-		library_rect == Rect2i(400, 250, 480, 300),
-		"Library text window is centered over the game view",
-	)
-	var tall_rect := LibraryWindowLayout.rect(Vector2i(400, 300), Vector2i(480, 2000))
-	_check(
-		Rect2i(Vector2i.ZERO, Vector2i(400, 300)).encloses(tall_rect)
-		and tall_rect.size == Vector2i(368, 268),
-		"Library text window stays inside a small viewport",
-	)
-
-	_check(
-		not TextUsa.load_ids(
-			reference_root.path_join("DATA/TEXT_USA.DAT"),
-			reference_root.path_join("DATA/TEXT_USA.IDX"),
-			PackedInt32Array([0x7fffffff]),
-		).ok,
-		"Indexed text loader rejects a missing resource ID",
-	)
 	var expected_counts := {
 		"LARGE.DAT": 501,
 		"SMALLMED.DAT": 904,
@@ -226,3 +140,93 @@ func test_sprite_archives(reference_root: String) -> void:
 	MapGeometryTests.new(context).run(reference_root, starter, large)
 	UndergroundFilterTests.new(context).run(starter, large, small_medium)
 	TrainMonsterVisualTests.new(context).run(starter, large, small_medium)
+
+
+func _test_interface_assets(reference_root: String) -> void:
+	var toolbar := PeBitmap.load_numeric(reference_root.path_join("SIMCITY.EXE"), 2)
+	_check(toolbar.ok, "Windows toolbar bitmap resource loads: %s" % toolbar.error)
+
+	if toolbar.ok:
+		_check(
+			toolbar.image.get_size() == Vector2i(865, 23),
+			"Windows toolbar bitmap resource has its confirmed size",
+		)
+
+	var scurk_executable := reference_root.path_join("WINSCURK.EXE")
+	var scurk_bitmap_ids := PeBitmap.list_numeric_bitmap_ids(scurk_executable)
+	_check(
+		scurk_bitmap_ids.ok
+		and scurk_bitmap_ids.ids.has(25000)
+		and scurk_bitmap_ids.ids.has(25041),
+		"Windows PE bitmap loader enumerates the complete SCURK texture range",
+	)
+	var scurk_foreground_texture := PeBitmap.load_numeric_indexed8(
+		scurk_executable, 25039
+	)
+	var scurk_material_texture := PeBitmap.load_numeric_indexed8(
+		scurk_executable, 25000
+	)
+	_check(
+		scurk_foreground_texture.ok
+		and scurk_foreground_texture.width == 8
+		and scurk_foreground_texture.height == 8
+		and scurk_foreground_texture.pixels.size() == 64
+		and scurk_foreground_texture.pixels[0] == 0xff
+		and scurk_foreground_texture.pixels[63] == 0xff
+		and scurk_material_texture.ok
+		and scurk_material_texture.pixels[0] == 0xff
+		and scurk_material_texture.pixels[1] == 0xf5
+		and scurk_material_texture.pixels[2] == 0x9b,
+		"Windows PE bitmap loader preserves original SCURK texture indices",
+	)
+	var protest_bitmap := Image.load_from_file(
+		reference_root.path_join("BITMAPS/403.BMP")
+	)
+	_check(
+		protest_bitmap != null and not protest_bitmap.is_empty(),
+		"Forest protest bitmap loads",
+	)
+
+	if protest_bitmap != null and not protest_bitmap.is_empty():
+		_check(
+			protest_bitmap.get_size() == Vector2i(155, 100),
+			"Forest protest bitmap has its executable size",
+		)
+
+	_check(
+		not PeBitmap.load_numeric(reference_root.path_join("SIMCITY.EXE"), 0xffff).ok,
+		"Windows bitmap loader rejects a missing numeric resource",
+	)
+	var library_text := TextUsa.load_ids(
+		reference_root.path_join("DATA/TEXT_USA.DAT"),
+		reference_root.path_join("DATA/TEXT_USA.IDX"),
+		PackedInt32Array([3000, 3001, 3002, 3003]),
+	)
+	_check(library_text.ok, "Indexed Library text loads: %s" % library_text.error)
+
+	if library_text.ok:
+		_check(library_text.strings.size() == 4, "Indexed Library text returns all four requested entries")
+
+		for resource_id in range(3000, 3004):
+			_check(not str(library_text.strings[resource_id]).is_empty(), "Library text entry %d is not empty" % resource_id)
+
+	var library_rect := LibraryWindowLayout.rect(Vector2i(1280, 800), Vector2i(480, 300))
+	_check(
+		library_rect == Rect2i(400, 250, 480, 300),
+		"Library text window is centered over the game view",
+	)
+	var tall_rect := LibraryWindowLayout.rect(Vector2i(400, 300), Vector2i(480, 2000))
+	_check(
+		Rect2i(Vector2i.ZERO, Vector2i(400, 300)).encloses(tall_rect)
+		and tall_rect.size == Vector2i(368, 268),
+		"Library text window stays inside a small viewport",
+	)
+
+	_check(
+		not TextUsa.load_ids(
+			reference_root.path_join("DATA/TEXT_USA.DAT"),
+			reference_root.path_join("DATA/TEXT_USA.IDX"),
+			PackedInt32Array([0x7fffffff]),
+		).ok,
+		"Indexed text loader rejects a missing resource ID",
+	)

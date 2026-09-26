@@ -1,15 +1,14 @@
 class_name IndustryPhase
 extends RefCounted
 
+
 @warning_ignore_start("integer_division")
 
 const MISC_SIZE := Sc2MiscLayout.SIZE
 const MISC_START_YEAR := Sc2MiscLayout.START_YEAR
 const MISC_CITY_DAYS := Sc2MiscLayout.CITY_DAYS
 const MISC_ORDINANCES := Sc2MiscLayout.ORDINANCES
-
 const INDUSTRY_COUNT := Sc2IndustryLayout.COUNT
-
 const INDUSTRY_NAMES := [
 	"Steel/Mining",
 	"Textiles",
@@ -23,7 +22,6 @@ const INDUSTRY_NAMES := [
 	"Electronics",
 	"Tourism",
 ]
-
 # five 50-year rows from executable table 0x004e9458
 const WORLD_DEMAND := [
 	[20, 20, 10, 10, 15, 5, 0, 15, 8, 0, 10],
@@ -32,28 +30,10 @@ const WORLD_DEMAND := [
 	[20, 50, 20, 10, 20, 30, 40, 30, 40, 80, 40],
 	[10, 20, 10, 10, 20, 20, 50, 30, 20, 80, 50],
 ]
-
 const ORDINANCE_CLEAN_INDUSTRY := OrdinanceIds.POLLUTION_CONTROLS_MASK
 const POLLUTING_INDUSTRIES := [0, 1, 2, 5]
 const MID_EQ_INDUSTRIES := [2, 5, 7, 8, 6, 9]
 const HIGH_EQ_INDUSTRIES := [6, 9]
-
-
-class Result extends PhaseResult:
-	var start_year := 0
-	var elapsed_years := 0
-	var world_demands := PackedInt32Array()
-	var demands := PackedInt32Array()
-	var adjusted_demands := PackedInt32Array()
-	var ratios := PackedInt64Array()
-	var ratio_total_before := 0
-	var ratio_total_after := 0
-	var industrial_population := 0
-	var positive_demand_total := 0
-	var pollution_share := 0
-	var pollution_bonus := 0
-	var maximum_share := 0
-	var mix_bonus := 0
 
 
 static func run(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom, population_growth: int) -> Result:
@@ -202,6 +182,7 @@ static func run(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom, 
 
 	return result
 
+
 static func _failed(message: String) -> Result:
 	var result := Result.new()
 	result.error = message
@@ -254,3 +235,20 @@ static func _to_i16(value: int) -> int:
 	var word := value & 0xffff
 
 	return word - 0x10000 if word & 0x8000 else word
+
+
+class Result extends PhaseResult:
+	var start_year := 0
+	var elapsed_years := 0
+	var world_demands := PackedInt32Array()
+	var demands := PackedInt32Array()
+	var adjusted_demands := PackedInt32Array()
+	var ratios := PackedInt64Array()
+	var ratio_total_before := 0
+	var ratio_total_after := 0
+	var industrial_population := 0
+	var positive_demand_total := 0
+	var pollution_share := 0
+	var pollution_bonus := 0
+	var maximum_share := 0
+	var mix_bonus := 0

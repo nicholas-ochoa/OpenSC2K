@@ -1,30 +1,6 @@
 class_name SimNationWindowControl
 extends Control
 
-@warning_ignore_start("integer_division")
-
-class Neighbor extends RefCounted:
-	var index: int
-	var name_index: int
-	var population: int
-	var value: int
-	var fame: int
-
-
-class Snapshot extends RefCounted:
-	var ok: bool = false
-	var error: String = ""
-	var city_name: String = ""
-	var normal_population: int
-	var arcology_population: int
-	var arcology_count: int
-	var arcology_adjustment: int
-	var display_population: int
-	var national_population: int
-	var compass: int
-	var neighbors: Array[Neighbor] = []
-
-
 const LOGICAL_SIZE := Vector2(204.0, 160.0)
 const SPRITE_SIZE := Vector2(128.0, 64.0)
 const SPRITE_ROW_COUNT := 6
@@ -52,7 +28,6 @@ const LABEL_POSITIONS := [
 	Vector2(40.0, 100.0),
 ]
 const NATIONAL_LABEL_POSITION := Vector2(100.0, 143.0)
-
 const NEIGHBOR_NAMES: Array[String] = [
 	"Oak Creek", "Denmont", "Fort Verdegris", "Schwinton", "Mill Valley", "Petaluma",
 	"PortVille", "Ashland", "Eubancs", "Aurac", "Tent Pegs", "Cherryton",
@@ -73,6 +48,56 @@ func _init() -> void:
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	# a UI scale change on the main window moves the screen pixel grid
 	ready.connect(func() -> void: get_tree().root.size_changed.connect(queue_redraw))
+
+
+func _draw() -> void:
+	draw_rect(Rect2(Vector2.ZERO, size), get_theme_color("map_canvas", "AppPalette"), true)
+	var data := snapshot(city)
+
+	if not data.ok:
+		_draw_centered_message("No city is loaded.")
+
+		return
+
+	var scale := Vector2(size.x / LOGICAL_SIZE.x, size.y / LOGICAL_SIZE.y)
+	# the largest layout scale with whole screen pixels for each sprite pixel,
+	# centered in the view
+	scale = Vector2(ScreenPixels.fit_scale(scale.x), ScreenPixels.fit_scale(scale.y))
+	draw_set_transform((size - LOGICAL_SIZE * scale) * 0.5)
+
+	if sprite_sheet != null:
+		_draw_settlement(SPRITE_POSITIONS[0], int(data.normal_population), false, scale)
+		var displayed := display_neighbor_indices(int(data.compass))
+
+		for position_index in displayed.size():
+			var neighbor: Neighbor = data.neighbors[displayed[position_index]]
+			_draw_settlement(
+				SPRITE_POSITIONS[position_index + 1],
+				int(neighbor.population),
+				int(neighbor.name_index) == 0,
+				scale,
+			)
+
+	var font_size := clampi(roundi(10.0 * minf(scale.x, scale.y)), 10, 28)
+	_draw_record_label(
+		str(data.city_name), int(data.display_population), LABEL_POSITIONS[0] * scale, font_size
+	)
+	var displayed := display_neighbor_indices(int(data.compass))
+
+	for position_index in displayed.size():
+		var neighbor: Neighbor = data.neighbors[displayed[position_index]]
+		_draw_record_label(
+			neighbor_name(int(neighbor.name_index)),
+			int(neighbor.population),
+			LABEL_POSITIONS[position_index + 1] * scale,
+			font_size,
+		)
+
+	_draw_outlined_text(
+		NATIONAL_POPULATION % int(data.national_population),
+		NATIONAL_LABEL_POSITION * scale,
+		font_size,
+	)
 
 
 func set_city(value: CityState) -> void:
@@ -205,56 +230,6 @@ static func prepare_sprite_sheet(source: Image) -> Image:
 	return prepared
 
 
-func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), get_theme_color("map_canvas", "AppPalette"), true)
-	var data := snapshot(city)
-
-	if not data.ok:
-		_draw_centered_message("No city is loaded.")
-
-		return
-
-	var scale := Vector2(size.x / LOGICAL_SIZE.x, size.y / LOGICAL_SIZE.y)
-	# the largest layout scale with whole screen pixels for each sprite pixel,
-	# centered in the view
-	scale = Vector2(ScreenPixels.fit_scale(scale.x), ScreenPixels.fit_scale(scale.y))
-	draw_set_transform((size - LOGICAL_SIZE * scale) * 0.5)
-
-	if sprite_sheet != null:
-		_draw_settlement(SPRITE_POSITIONS[0], int(data.normal_population), false, scale)
-		var displayed := display_neighbor_indices(int(data.compass))
-
-		for position_index in displayed.size():
-			var neighbor: Neighbor = data.neighbors[displayed[position_index]]
-			_draw_settlement(
-				SPRITE_POSITIONS[position_index + 1],
-				int(neighbor.population),
-				int(neighbor.name_index) == 0,
-				scale,
-			)
-
-	var font_size := clampi(roundi(10.0 * minf(scale.x, scale.y)), 10, 28)
-	_draw_record_label(
-		str(data.city_name), int(data.display_population), LABEL_POSITIONS[0] * scale, font_size
-	)
-	var displayed := display_neighbor_indices(int(data.compass))
-
-	for position_index in displayed.size():
-		var neighbor: Neighbor = data.neighbors[displayed[position_index]]
-		_draw_record_label(
-			neighbor_name(int(neighbor.name_index)),
-			int(neighbor.population),
-			LABEL_POSITIONS[position_index + 1] * scale,
-			font_size,
-		)
-
-	_draw_outlined_text(
-		NATIONAL_POPULATION % int(data.national_population),
-		NATIONAL_LABEL_POSITION * scale,
-		font_size,
-	)
-
-
 func _draw_settlement(
 	logical_position: Vector2, population: int, ocean: bool, scale: Vector2
 ) -> void:
@@ -323,3 +298,28 @@ static func _divide_toward_zero(numerator: int, denominator: int) -> int:
 		return -int((-numerator) / denominator)
 
 	return int(numerator / denominator)
+
+
+@warning_ignore_start("integer_division")
+
+
+class Neighbor extends RefCounted:
+	var index: int
+	var name_index: int
+	var population: int
+	var value: int
+	var fame: int
+
+
+class Snapshot extends RefCounted:
+	var ok: bool = false
+	var error: String = ""
+	var city_name: String = ""
+	var normal_population: int
+	var arcology_population: int
+	var arcology_count: int
+	var arcology_adjustment: int
+	var display_population: int
+	var national_population: int
+	var compass: int
+	var neighbors: Array[Neighbor] = []

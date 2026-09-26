@@ -101,7 +101,7 @@ func _test_pack(header: PackedByteArray, pixels: PackedByteArray) -> void:
 		palette[index * 3 + 1] = 255 - index
 		palette[index * 3 + 2] = index / 2
 
-	var files := {"LARGE.HED": header, "LARGE.DAT": pixels, "SMALL.HED": header, "SMALL.DAT": pixels, "MINE.PAL": palette}
+	var files := { "LARGE.HED": header, "LARGE.DAT": pixels, "SMALL.HED": header, "SMALL.DAT": pixels, "MINE.PAL": palette }
 	var archive := PackedByteArray()
 	archive.resize(files.size() * 16)
 	var record := 0
@@ -116,7 +116,8 @@ func _test_pack(header: PackedByteArray, pixels: PackedByteArray) -> void:
 		archive.append_array(files[name])
 		record += 1
 
-	var temporary := ProjectSettings.globalize_path("res://../local/sc2-import-graphics-%d-%d" % [OS.get_process_id(), Time.get_ticks_usec()])
+	var temporary := ProjectSettings.globalize_path("res://../local/sc2-import-graphics-%d-%d" % [OS.get_process_id(),
+		Time.get_ticks_usec()])
 	var source := temporary.path_join("source")
 	assert(DirAccess.make_dir_recursive_absolute(source) == OK)
 	var path := source.path_join("SC2000.DAT")

@@ -1,5 +1,7 @@
 class_name AboutArtwork
 extends Control
+
+
 # display-only composition from imported large sprites. no source pixels are saved
 
 const CANVAS_SIZE := Vector2(280, 280)
@@ -24,6 +26,36 @@ func _ready() -> void:
 	resized.connect(queue_redraw)
 	# a UI scale change on the main window moves the screen pixel grid
 	get_tree().root.size_changed.connect(queue_redraw)
+
+
+func _process(delta: float) -> void:
+	animation_time += delta
+	queue_redraw()
+
+
+func _draw() -> void:
+	if not available:
+		return
+
+	# the largest fit with whole screen pixels for each artwork pixel
+	var scale_factor := ScreenPixels.fit_scale(minf(size.x / CANVAS_SIZE.x, size.y / CANVAS_SIZE.y))
+	var origin := (size - CANVAS_SIZE * scale_factor) * 0.5
+	draw_set_transform(origin, 0.0, Vector2.ONE * scale_factor)
+	var pose_index := int(monster_time() * 0.5) & 3
+	var body := MONSTER_POSITION + Vector2i(0, int(drop_offset()))
+	var layers := CityIsometricRenderer.monster_pose_layers(
+		body, UPPER_POSES[pose_index] | (0x80 if beam_active() else 0),
+		LOWER_POSES[pose_index], int(eye_open())
+	)
+	for layer in layers:
+		_draw_sprite(layer.sprite_id, Vector2(layer.screen_x, layer.screen_y), layer.flip)
+
+	_draw_sprite(1208, Vector2(104, 190), false)
+	for index in visible_fire_count():
+		var id := fire_frame(index)
+		var texture: Texture2D = textures[Vector2i(id, index & 1)]
+		draw_texture(texture, FIRE_POSITIONS[index] - Vector2(0, texture.get_height()))
+	draw_set_transform(Vector2.ZERO)
 
 
 func set_assets(assets: OriginalGameAssets) -> void:
@@ -61,11 +93,6 @@ func set_active(value: bool, restart := true) -> void:
 	queue_redraw()
 
 
-func _process(delta: float) -> void:
-	animation_time += delta
-	queue_redraw()
-
-
 func monster_time() -> float:
 	return maxf(0.0, animation_time - ENTRANCE_DELAY)
 
@@ -92,31 +119,6 @@ func visible_fire_count() -> int:
 
 func fire_frame(index: int) -> int:
 	return 1396 + ((int(animation_time * 8.0) + index) & 3)
-
-
-func _draw() -> void:
-	if not available:
-		return
-
-	# the largest fit with whole screen pixels for each artwork pixel
-	var scale_factor := ScreenPixels.fit_scale(minf(size.x / CANVAS_SIZE.x, size.y / CANVAS_SIZE.y))
-	var origin := (size - CANVAS_SIZE * scale_factor) * 0.5
-	draw_set_transform(origin, 0.0, Vector2.ONE * scale_factor)
-	var pose_index := int(monster_time() * 0.5) & 3
-	var body := MONSTER_POSITION + Vector2i(0, int(drop_offset()))
-	var layers := CityIsometricRenderer.monster_pose_layers(
-		body, UPPER_POSES[pose_index] | (0x80 if beam_active() else 0),
-		LOWER_POSES[pose_index], int(eye_open())
-	)
-	for layer in layers:
-		_draw_sprite(layer.sprite_id, Vector2(layer.screen_x, layer.screen_y), layer.flip)
-
-	_draw_sprite(1208, Vector2(104, 190), false)
-	for index in visible_fire_count():
-		var id := fire_frame(index)
-		var texture: Texture2D = textures[Vector2i(id, index & 1)]
-		draw_texture(texture, FIRE_POSITIONS[index] - Vector2(0, texture.get_height()))
-	draw_set_transform(Vector2.ZERO)
 
 
 func _draw_sprite(id: int, position: Vector2, flip: bool) -> void:

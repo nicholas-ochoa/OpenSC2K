@@ -1,11 +1,22 @@
+# gdstyle:ignore-file=quality/max-public-methods
 class_name Sc2File
 extends RefCounted
+
+enum TilePlane {
+	ALTITUDE,
+	TERRAIN,
+	BUILDINGS,
+	ZONES,
+	UNDERGROUND,
+	TEXT,
+	FLAGS,
+}
+
 
 @warning_ignore_start("integer_division")
 
 const ChunkType = preload("res://src/formats/sc2_chunk.gd")
 const RleCodec = preload("res://src/formats/maxis_rle.gd")
-
 const DECODED_SIZES: Dictionary[String, int] = {
 	"CNAM": 32,
 	"MISC": Sc2MiscLayout.SIZE,
@@ -29,7 +40,6 @@ const DECODED_SIZES: Dictionary[String, int] = {
 	"XROG": 1024,
 	"XGRP": Sc2GraphLayout.SIZE,
 }
-
 const RAW_CHUNKS: Dictionary[String, bool] = {
 	"CNAM": true,
 	"ALTM": true,
@@ -38,9 +48,7 @@ const RAW_CHUNKS: Dictionary[String, bool] = {
 	"PICT": true,
 	"TMPL": true,
 }
-
 const MAP_SIZES := [16, 32, 64, 128, 256, 384, 512]
-enum TilePlane { ALTITUDE, TERRAIN, BUILDINGS, ZONES, UNDERGROUND, TEXT, FLAGS }
 const FULL_MAP_CHUNKS := ["ALTM", "XTER", "XBLD", "XZON", "XUND", "XTXT", "XBIT"]
 # these maps aren't all the same size; traffic uses half, services use a quarter
 const HALF_MAP_CHUNKS := ["XTRF", "XPLT", "XVAL", "XCRM"]
@@ -48,12 +56,10 @@ const QUARTER_MAP_CHUNKS := ["XPLC", "XFIR", "XPOP", "XROG"]
 
 var map_size := 128
 var large_version := 2
-
 var chunks: Array[Sc2Chunk] = []
 var source_bytes := PackedByteArray()
 var source_path := ""
 var parse_error := ""
-
 # Cache the first occurrence of each chunk ID. Worker lookups only read
 # the cache; rebuild it when the chunk list changes. A size mismatch
 # falls back to a scan. Store positions so the cache cannot keep chunks alive.

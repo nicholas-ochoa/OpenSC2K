@@ -78,5 +78,7 @@ func _initialize() -> void:
 		assert(not PeBitmapResource.load_named(path, name).ok)
 
 	assert(PeBitmapResource.load_numeric(path, 2).ok)
-	print("PASS: exact UTF-16 resource names, root-relative offsets, numeric separation, all truncated prefixes, malformed directories and all 14 supplied named bitmaps against independent RGBA hashes")
+	print(("PASS: exact UTF-16 resource names, root-relative offsets, numeric separation, all "
+		+ "truncated prefixes, malformed directories and all 14 supplied named bitmaps against "
+		+ "independent RGBA hashes"))
 	quit()

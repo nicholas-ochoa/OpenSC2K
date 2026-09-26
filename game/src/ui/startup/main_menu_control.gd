@@ -61,6 +61,14 @@ func _ready() -> void:
 			new_city_button = button
 
 
+func _process(delta: float) -> void:
+	if assets_ready or import_border == null:
+		return
+
+	flash_time += delta
+	import_border.border_color = Color("ffb000") if fmod(flash_time, 1.2) < 0.6 else Color("805800")
+
+
 func show_menu(can_continue: bool) -> void:
 	if continue_button != null:
 		continue_button.visible = can_continue
@@ -109,14 +117,6 @@ func set_assets_ready(value: bool) -> void:
 
 	import_button.visible = not value
 	set_process(not value)
-
-
-func _process(delta: float) -> void:
-	if assets_ready or import_border == null:
-		return
-
-	flash_time += delta
-	import_border.border_color = Color("ffb000") if fmod(flash_time, 1.2) < 0.6 else Color("805800")
 
 
 func _refresh_import_style() -> void:

@@ -4,12 +4,10 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const MISC_SIZE := Sc2MiscLayout.SIZE
 const MISC_CITY_VALUE := Sc2MiscLayout.CITY_VALUE
 const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
 const MISC_SUBWAY_COUNT := Sc2MiscLayout.SUBWAY_COUNT
-
 # these rules reproduce the supplied executable at 0x0046a270. some values are
 # defects. in particular, each underground subway tile subtracts one dollar
 # the executable indexes shifted cost tables for 0xc6 through 0xcf. these are
@@ -63,16 +61,6 @@ const BUILDING_RULES := {
 	Tiles.DARCO_ARCOLOGY: [16, 150000],
 	Tiles.LAUNCH_ARCOLOGY: [16, 200000],
 }
-
-
-class Result extends PhaseResult:
-	var city_value := 0
-
-
-class MiscInput extends RefCounted:
-	var ok := false
-	var error := ""
-	var misc := PackedByteArray()
 
 
 static func _failed(message: String) -> Result:
@@ -165,7 +153,10 @@ static func _tile_count(misc: PackedByteArray, tile_id: int, map_edge: int = 128
 
 
 static func _read_count(misc: PackedByteArray, offset: int, map_edge: int) -> int:
-	return _read_i16_low(misc, offset) if map_edge == 128 else ((misc[offset] << 24) | (misc[offset + 1] << 16) | (misc[offset + 2] << 8) | misc[offset + 3])
+	return _read_i16_low(
+		misc,
+		offset,
+	) if map_edge == 128 else ((misc[offset] << 24) | (misc[offset + 1] << 16) | (misc[offset + 2] << 8) | misc[offset + 3])
 
 
 static func _add_value(current: int, count: int, cost: int) -> int:
@@ -188,3 +179,13 @@ static func _to_i32(value: int) -> int:
 	var unsigned := value & 0xffffffff
 
 	return unsigned - 0x100000000 if unsigned & 0x80000000 else unsigned
+
+
+class Result extends PhaseResult:
+	var city_value := 0
+
+
+class MiscInput extends RefCounted:
+	var ok := false
+	var error := ""
+	var misc := PackedByteArray()

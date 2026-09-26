@@ -2,17 +2,6 @@ extends RefCounted
 ## Generated inputs shared by the overlay parity test and CPU benchmark.
 
 
-class Fixture extends RefCounted:
-	var name: String
-	var city: CityState
-	var result: TransportTripReachResult
-
-	func _init(label: String, source: CityState, analysis: TransportTripReachResult) -> void:
-		name = label
-		city = source
-		result = analysis
-
-
 static func road() -> Fixture:
 	var city := CityState.from_document(EmptyCityTemplate.create(128))
 	var route := TripQueryFixture.add_route(city, 2, 3, "road")
@@ -83,3 +72,14 @@ static func digest(overlay: RefCounted) -> String:
 	hash.start(HashingContext.HASH_SHA256)
 	hash.update(var_to_bytes(values(overlay)))
 	return hash.finish().hex_encode()
+
+
+class Fixture extends RefCounted:
+	var name: String
+	var city: CityState
+	var result: TransportTripReachResult
+
+	func _init(label: String, source: CityState, analysis: TransportTripReachResult) -> void:
+		name = label
+		city = source
+		result = analysis

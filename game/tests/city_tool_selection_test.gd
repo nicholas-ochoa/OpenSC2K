@@ -1,38 +1,6 @@
 extends SceneTree
 
 
-class TestToolbar extends CityToolbar:
-	func show_tool_group(_group_index: int, _city: CityState, _icon_provider: Callable = Callable()) -> int:
-		return 0
-
-
-class TestMenus extends ApplicationMenus:
-	func set_overlay(mode: CityViewMode.Mode) -> void:
-		app.view_state.overlay_mode = mode
-
-
-class TestCurrentTool extends ApplicationCurrentTool:
-	func update_edit_state() -> void:
-		pass
-
-
-	func _sync_child_tool_selection() -> void:
-		pass
-
-
-class TestStaticRender extends ApplicationStaticRender:
-	func refresh_after_city_edit(_command: EditCommandResult) -> void:
-		pass
-
-
-class TestCityEdits extends ApplicationCityEdits:
-	var applied_tools: Array[Vector2i] = []
-
-
-	func apply_map_selection(_start: Vector2i, _finish: Vector2i, _path: Array[Vector2i], _dragged: bool) -> void:
-		applied_tools.append(Vector2i(app.tool_state.selected_group, app.tool_state.selected_subtool))
-
-
 func _initialize() -> void:
 	_run.call_deferred()
 
@@ -132,7 +100,8 @@ func _edit_state(city: CityState) -> void:
 		for mode: CityViewMode.Mode in [CityViewMode.Mode.CITY, CityViewMode.Mode.UNDERGROUND, CityViewMode.Mode.CRIME]:
 			var state := ToolEditState.normal(city, mode, row[0], row[1])
 			assert(state.available and state.show_status)
-			var enabled: bool = mode == CityViewMode.Mode.CITY or (mode == CityViewMode.Mode.UNDERGROUND and row[5]) or (mode == CityViewMode.Mode.CRIME and row[6])
+			var enabled: bool = (mode == CityViewMode.Mode.CITY or (mode == CityViewMode.Mode.UNDERGROUND and row[5])
+				or (mode == CityViewMode.Mode.CRIME and row[6]))
 			assert(state.enabled == enabled, "Tool (%d, %d), view %d" % [row[0], row[1], mode])
 			assert(state.selection == row[2] and state.area == row[3] and state.landscape == row[4])
 		var missing := ToolEditState.normal(null, CityViewMode.Mode.CITY, row[0], row[1])
@@ -266,3 +235,35 @@ func _scurk_zone_selection(tool: ScurkEditTool) -> void:
 	assert(city.zone_id(point.x, point.y) == tool.zone and city.funds() == funds)
 	assert(ZoneCommand.undo(city, command).ok)
 	assert(city.document.serialize().data == before)
+
+
+class TestToolbar extends CityToolbar:
+	func show_tool_group(_group_index: int, _city: CityState, _icon_provider: Callable = Callable()) -> int:
+		return 0
+
+
+class TestMenus extends ApplicationMenus:
+	func set_overlay(mode: CityViewMode.Mode) -> void:
+		app.view_state.overlay_mode = mode
+
+
+class TestCurrentTool extends ApplicationCurrentTool:
+	func update_edit_state() -> void:
+		pass
+
+
+	func _sync_child_tool_selection() -> void:
+		pass
+
+
+class TestStaticRender extends ApplicationStaticRender:
+	func refresh_after_city_edit(_command: EditCommandResult) -> void:
+		pass
+
+
+class TestCityEdits extends ApplicationCityEdits:
+	var applied_tools: Array[Vector2i] = []
+
+
+	func apply_map_selection(_start: Vector2i, _finish: Vector2i, _path: Array[Vector2i], _dragged: bool) -> void:
+		applied_tools.append(Vector2i(app.tool_state.selected_group, app.tool_state.selected_subtool))

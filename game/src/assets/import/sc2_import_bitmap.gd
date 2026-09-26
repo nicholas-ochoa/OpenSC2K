@@ -26,7 +26,11 @@ static func decode(data: PackedByteArray, file_header := false) -> IndexedImageR
 	var compression := int(data.decode_u32(start + 16))
 	var count := int(data.decode_u32(start + 32))
 
-	if header_size < 40 or not Sc2ImportContainer.has_range(data, start, header_size) or width < 1 or width > 4096 or height < 1 or height > 4096 or data.decode_u16(start + 12) != 1:
+	if header_size < 40 or not Sc2ImportContainer.has_range(
+		data,
+		start,
+		header_size,
+	) or width < 1 or width > 4096 or height < 1 or height > 4096 or data.decode_u16(start + 12) != 1:
 		return IndexedImageResult.failure("Invalid bitmap dimensions or header.")
 
 	if bits not in [1, 4, 8] or compression not in [0, 1] or (compression == 1 and (bits != 8 or signed_height < 0)):

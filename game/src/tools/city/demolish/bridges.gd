@@ -2,7 +2,6 @@ class_name DemolishBridges
 extends DemolishConstants
 
 
-
 static func _demolish_bridge(
 	altitude: PackedByteArray,
 	buildings: PackedByteArray,
@@ -42,22 +41,21 @@ static func _demolish_bridge(
 		finish = next
 
 	var points: Array[Vector2i] = []
-	var indices := PackedInt32Array()
-	var effect_events: Array[EffectEvent] = []
+	var result := DemolishPointResult.new()
 	var current := first
 
 	while true:
 		var index := current.x * map_edge + current.y
 
 		if emit_effects and random != null:
-			effect_events.append(EffectEvent.new(current, BRIDGE_DEBRIS_SPRITE + (random.next_u15() & 3),
+			result.effect_events.append(EffectEvent.new(current, BRIDGE_DEBRIS_SPRITE + (random.next_u15() & 3),
 				Vector2i.ZERO, (random.next_u15() & 1) != 0, 0, DemolishTerrain._water_altitude(altitude, index)))
 
 		NetworkState.replace_building(buildings, zones, misc, index, Tiles.EMPTY)
 		zones[index] &= Sc2ZoneLayout.TYPE_MASK
 		flags[index] &= ~FLAG_FLIPPED & 0xff
 		points.append(current)
-		indices.append(index)
+		result.indices.append(index)
 
 		if current == finish:
 			break
@@ -80,16 +78,13 @@ static func _demolish_bridge(
 		flags[bank_index] &= ~FLAG_FLIPPED & 0xff
 		_retile_bank(
 			altitude, buildings, terrain, zones, underground, flags, misc,
-			bank, damage_bank, points, indices, effect_events, map_edge
+			bank, damage_bank, points, result, map_edge
 		)
 
 	DemolishTerrain._retile_surface_water(terrain, flags, selected, true, map_edge)
 	DemolishTerrain._retile_after_demolition(buildings, terrain, zones, underground, flags, misc, points, PackedByteArray(), map_edge)
 
-	var result := DemolishPointResult.new()
 	result.changed = true
-	result.indices = indices
-	result.effect_events = effect_events
 
 	return result
 
@@ -130,13 +125,12 @@ static func _demolish_reinforced_bridge(
 		finish += direction
 
 	var points: Array[Vector2i] = []
-	var indices := PackedInt32Array()
-	var effect_events: Array[EffectEvent] = []
+	var result := DemolishPointResult.new()
 	var current := first
 
 	_retile_bank_section(
 		altitude, buildings, terrain, zones, underground, flags, misc,
-		first - direction, damage_bank, points, indices, effect_events, map_edge
+		first - direction, damage_bank, points, result, map_edge
 	)
 
 	while true:
@@ -148,7 +142,7 @@ static func _demolish_reinforced_bridge(
 				Vector2i(0, 0), Vector2i(16, -8),
 				Vector2i(32, 0), Vector2i(16, 8),
 			]:
-				effect_events.append(EffectEvent.new(current, effect_sprite,
+				result.effect_events.append(EffectEvent.new(current, effect_sprite,
 					screen_offset, (random.next_u15() & 1) != 0, 0, DemolishTerrain._water_altitude(altitude, current_index)))
 
 		for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
@@ -158,7 +152,7 @@ static func _demolish_reinforced_bridge(
 			zones[index] &= Sc2ZoneLayout.TYPE_MASK
 			flags[index] &= ~FLAG_FLIPPED & 0xff
 			points.append(point)
-			indices.append(index)
+			result.indices.append(index)
 
 		if current == finish:
 			break
@@ -167,16 +161,13 @@ static func _demolish_reinforced_bridge(
 
 	_retile_bank_section(
 		altitude, buildings, terrain, zones, underground, flags, misc,
-		finish + direction, damage_bank, points, indices, effect_events, map_edge
+		finish + direction, damage_bank, points, result, map_edge
 	)
 
 	DemolishTerrain._retile_surface_water(terrain, flags, selected, true, map_edge)
 	DemolishTerrain._retile_after_demolition(buildings, terrain, zones, underground, flags, misc, points, PackedByteArray(), map_edge)
 
-	var result := DemolishPointResult.new()
 	result.changed = true
-	result.indices = indices
-	result.effect_events = effect_events
 
 	return result
 
@@ -215,8 +206,7 @@ static func _retile_bank_section(
 	anchor: Vector2i,
 	damage_bank: Callable,
 	points: Array[Vector2i],
-	indices: PackedInt32Array,
-	effect_events: Array[EffectEvent],
+	result: DemolishPointResult,
 	map_edge: int,
 ) -> void:
 	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
@@ -225,7 +215,7 @@ static func _retile_bank_section(
 		if DemolishTerrain._point_is_in_bounds(point, map_edge):
 			_retile_bank(
 				altitude, buildings, terrain, zones, underground, flags, misc,
-				point, damage_bank, points, indices, effect_events, map_edge
+				point, damage_bank, points, result, map_edge
 			)
 
 
@@ -240,16 +230,15 @@ static func _retile_bank(
 	point: Vector2i,
 	damage_bank: Callable,
 	points: Array[Vector2i],
-	indices: PackedInt32Array,
-	effect_events: Array[EffectEvent],
+	result: DemolishPointResult,
 	map_edge: int,
 ) -> void:
 	var index := point.x * map_edge + point.y
 
 	if buildings[index] >= Tiles.SMALL_PARK:
 		var damage: DemolishPointResult = damage_bank.call(point)
-		indices.append_array(damage.indices)
-		effect_events.append_array(damage.effect_events)
+		result.indices.append_array(damage.indices)
+		result.effect_events.append_array(damage.effect_events)
 
 	if underground[index] != UndergroundTileIds.EMPTY:
 		BuildingUnderground._replace_underground(underground, zones, misc, index, UndergroundTileIds.EMPTY)
@@ -259,4 +248,4 @@ static func _retile_bank(
 		PackedInt32Array([index]), BinaryData.read_u32_be(misc, 0x0e40) & 0x1f, map_edge
 	)
 	points.append(point)
-	indices.append(index)
+	result.indices.append(index)

@@ -161,7 +161,8 @@ static func terrain_section_shape(
 
 
 static func _terrain_class(terrain_id: int) -> int:
-	if (terrain_id >= TerrainTileIds.SLOPE_TOP_LEFT and terrain_id <= TerrainTileIds.SLOPE_BOTTOM_LEFT) or (terrain_id >= TerrainTileIds.DEEP_WATER_SLOPE_BOTTOM_RIGHT and terrain_id <= TerrainTileIds.SHORE_RAISED_EXCEPT_LEFT):
+	if ((terrain_id >= TerrainTileIds.SLOPE_TOP_LEFT and terrain_id <= TerrainTileIds.SLOPE_BOTTOM_LEFT)
+			or (terrain_id >= TerrainTileIds.DEEP_WATER_SLOPE_BOTTOM_RIGHT and terrain_id <= TerrainTileIds.SHORE_RAISED_EXCEPT_LEFT)):
 		return 1
 
 	if terrain_id >= TerrainTileIds.RAISED_EXCEPT_BOTTOM and terrain_id <= TerrainTileIds.RAISED_EXCEPT_RIGHT:
@@ -215,7 +216,8 @@ static func _building_is_allowed(tile_id: int) -> bool:
 static func _network_can_cross(tile_id: int, direction: int) -> bool:
 	var directional_id := tile_id + (direction & 1)
 
-	return directional_id == Tiles.POWER_LINE_STRAIGHT_2 or directional_id == Tiles.ROAD_STRAIGHT_2 or directional_id == Tiles.RAIL_STRAIGHT_2 or directional_id == Tiles.TUNNEL_ENTRANCE_2
+	return (directional_id == Tiles.POWER_LINE_STRAIGHT_2 or directional_id == Tiles.ROAD_STRAIGHT_2
+		or directional_id == Tiles.RAIL_STRAIGHT_2 or directional_id == Tiles.TUNNEL_ENTRANCE_2)
 
 
 static func _section_kind(

@@ -1,63 +1,9 @@
 extends SceneTree
 
+
 @warning_ignore_start("integer_division")
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
-class SequenceRandom extends SimRandom:
-	var values: Array[int]
-	var position := 0
-
-
-	func _init(sequence: Array[int] = [0]) -> void:
-		values = sequence
-
-
-	func next_u15() -> int:
-		var value := values[position % values.size()]
-		position += 1
-
-		return value
-
-
-class SequenceLfsr extends SimLfsrRandom:
-	var values: Array[int]
-	var position := 0
-
-
-	func _init(sequence: Array[int] = [0]) -> void:
-		values = sequence
-
-
-	func next_mod(limit: int) -> int:
-		return _next() % limit
-
-
-	func next_mask(mask: int) -> int:
-		return _next() & mask
-
-
-	func _next() -> int:
-		var value := values[position % values.size()]
-		position += 1
-
-		return value
-
-
-class SequenceGameLcg extends GameLcgRandom:
-	var values: Array[int]
-	var position := 0
-
-
-	func _init(sequence: Array[int] = [0]) -> void:
-		values = sequence
-
-
-	func next_mod(limit: int) -> int:
-		var value := values[position % values.size()]
-		position += 1
-
-		return value % limit
 
 var failures := 0
 var checks := 0
@@ -317,3 +263,59 @@ func check_growth_dispatch(edge: int) -> void:
 
 	check(scanned == edge * edge, "Growth partitions cover each map tile once")
 	check(advanced >= 16, "%d growth dispatch advances far developed sites: %d" % [edge, advanced])
+
+
+class SequenceRandom extends SimRandom:
+	var values: Array[int]
+	var position := 0
+
+
+	func _init(sequence: Array[int] = [0]) -> void:
+		values = sequence
+
+
+	func next_u15() -> int:
+		var value := values[position % values.size()]
+		position += 1
+
+		return value
+
+
+class SequenceLfsr extends SimLfsrRandom:
+	var values: Array[int]
+	var position := 0
+
+
+	func _init(sequence: Array[int] = [0]) -> void:
+		values = sequence
+
+
+	func next_mod(limit: int) -> int:
+		return _next() % limit
+
+
+	func next_mask(mask: int) -> int:
+		return _next() & mask
+
+
+	func _next() -> int:
+		var value := values[position % values.size()]
+		position += 1
+
+		return value
+
+
+class SequenceGameLcg extends GameLcgRandom:
+	var values: Array[int]
+	var position := 0
+
+
+	func _init(sequence: Array[int] = [0]) -> void:
+		values = sequence
+
+
+	func next_mod(limit: int) -> int:
+		var value := values[position % values.size()]
+		position += 1
+
+		return value % limit

@@ -2,6 +2,7 @@ class_name NewspaperWebView
 extends Node
 
 signal action_requested(action: Dictionary)
+
 var view: Control
 var payload: Dictionary = {}
 var ready_for_data := false
@@ -63,7 +64,7 @@ func page_zoom() -> float:
 func close() -> void:
 	if view != null:
 		# clear the old page before the native surface is shown on the next opening
-		view.call("post_message", JSON.stringify({"action": "hide"}))
+		view.call("post_message", JSON.stringify({ "action": "hide" }))
 		view.call("set_visible", false)
 		view.call("focus_parent")
 

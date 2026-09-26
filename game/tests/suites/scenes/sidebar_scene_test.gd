@@ -1,6 +1,7 @@
 extends "res://tests/support/scene_case.gd"
 
 const SidebarScene = preload("res://src/ui/shell/city_toolbar.tscn")
+
 var clicks := 0
 var requested_modes: Array[CityViewMode.Mode] = []
 var rotations: Array[bool] = []

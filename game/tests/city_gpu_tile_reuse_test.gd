@@ -119,4 +119,4 @@ func _measure_reuse(palette: Sc2Palette, sprites: Sc2SpriteArchive, config: City
 			for y in 32:
 				context.tile(city, palette, sprites, config, x, y, CityViewMode.Mode.CITY, true, true)
 
-	return {"usec": Time.get_ticks_usec() - started, "builds": context.tile_builds, "reuses": context.tile_reuses}
+	return { "usec": Time.get_ticks_usec() - started, "builds": context.tile_builds, "reuses": context.tile_reuses }

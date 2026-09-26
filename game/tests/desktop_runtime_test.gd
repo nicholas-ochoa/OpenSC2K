@@ -91,7 +91,7 @@ func _run() -> void:
 		root.gui_cancel_drag()
 
 	assert(desktop.cursor_selection(target, 1024) == null)
-	target.force_drag({"kind": "unrelated"}, null)
+	target.force_drag({ "kind": "unrelated" }, null)
 	assert(desktop.cursor_selection(target, 1024) == null)
 	root.gui_cancel_drag()
 	target.queue_free()
@@ -157,7 +157,8 @@ func _run() -> void:
 	main.queue_free()
 	await process_frame
 	assert(Input.mouse_mode == Input.MOUSE_MODE_VISIBLE)
-	print("PASS: original cursor table, display-width boundaries, 69 city tools, paint tools, original/alternate display, cursor cache, mask bytes, cleanup and unchanged city")
+	print(("PASS: original cursor table, display-width boundaries, 69 city tools, paint tools, "
+		+ "original/alternate display, cursor cache, mask bytes, cleanup and unchanged city"))
 	quit()
 
 

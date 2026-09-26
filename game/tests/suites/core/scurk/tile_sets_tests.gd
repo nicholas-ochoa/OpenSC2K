@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Scurk: tile sets checks.
 
 @warning_ignore_start("integer_division")
@@ -47,7 +46,7 @@ func test_scurk_mif(reference_root: String) -> void:
 	_check(original.is_valid(), "ORIGINAL.MIF parses: %s" % original.parse_error)
 
 	if original.is_valid():
-		var editable_ids := ScurkEditorControl.editable_large_sprite_ids(original)
+		var editable_ids := ScurkEditorRules.editable_large_sprite_ids(original)
 		var grouped_ids := ScurkPickCopy.group_large_ids(ScurkPickCopy.GROUP_ALL)
 		var grouped_unique := {}
 
@@ -63,11 +62,11 @@ func test_scurk_mif(reference_root: String) -> void:
 		)
 		_check(
 			editable_ids.size() == 186
-			and ScurkEditorControl.view_sprite_id(editable_ids[0], ScurkEditorControl.VIEW_LARGE)
+			and ScurkEditorRules.view_sprite_id(editable_ids[0], ScurkEditorControl.VIEW_LARGE)
 				== editable_ids[0]
-			and ScurkEditorControl.view_sprite_id(editable_ids[0], ScurkEditorControl.VIEW_MEDIUM)
+			and ScurkEditorRules.view_sprite_id(editable_ids[0], ScurkEditorControl.VIEW_MEDIUM)
 				== editable_ids[0] - 500
-			and ScurkEditorControl.view_sprite_id(editable_ids[0], ScurkEditorControl.VIEW_SMALL)
+			and ScurkEditorRules.view_sprite_id(editable_ids[0], ScurkEditorControl.VIEW_SMALL)
 				== editable_ids[0] - 1000,
 			"SCURK editor exposes 186 objects with direct three-view sprite IDs",
 		)
@@ -102,7 +101,7 @@ func test_scurk_mif(reference_root: String) -> void:
 		editor_small_medium = SpriteArchive.combine([
 			editor_small_medium, editor_special,
 		])
-		var complete_editor_ids := ScurkEditorControl.editable_large_sprite_ids(
+		var complete_editor_ids := ScurkEditorRules.editable_large_sprite_ids(
 			original, editor_large
 		)
 		_check(
@@ -111,108 +110,10 @@ func test_scurk_mif(reference_root: String) -> void:
 			and complete_editor_ids[complete_editor_ids.size() - 1] == 1499,
 			"SCURK editor catalog exposes every original large sprite family",
 		)
-		var one_tile_mask := ScurkWorkspace.clip_mask(32)
-		var four_tile_mask := ScurkWorkspace.clip_mask(128)
-		_check(
-			one_tile_mask.size() == 128 * 256
-			and one_tile_mask[255 * 128 + 62] == 0
-			and one_tile_mask[255 * 128 + 63] == 1
-			and one_tile_mask[255 * 128 + 64] == 1
-			and one_tile_mask[255 * 128 + 65] == 0
-			and one_tile_mask[254 * 128 + 61] == 1
-			and one_tile_mask[254 * 128 + 65] == 1
-			and one_tile_mask[254 * 128 + 66] == 1
-			and one_tile_mask[254 * 128 + 67] == 0
-			and one_tile_mask[0 * 128 + 47] == 0
-			and one_tile_mask[0 * 128 + 48] == 1
-			and one_tile_mask[0 * 128 + 80] == 0
-			and four_tile_mask[224 * 128 + 0] == 0
-			and four_tile_mask[223 * 128 + 0] == 1,
-			"SCURK clip mask includes both tile edges",
-		)
-		var blank_workspace := PackedInt32Array()
-		blank_workspace.resize(ScurkWorkspace.WIDTH * ScurkWorkspace.HEIGHT)
-		blank_workspace.fill(-1)
-		var blank_large := ScurkWorkspace.shape_from_workspace(blank_workspace, 32, 0)
-		var blank_medium := ScurkWorkspace.shape_from_workspace(blank_workspace, 32, 1)
-		var blank_small := ScurkWorkspace.shape_from_workspace(blank_workspace, 32, 2)
-		_check(
-			blank_large.ok and blank_large.width == 32 and blank_large.height == 1
-			and blank_medium.ok and blank_medium.width == 16 and blank_medium.height == 1
-			and blank_small.ok and blank_small.width == 8 and blank_small.height == 1,
-			"SCURK Clear Object keeps each fixed base width and one transparent row",
-		)
-		var sample_shape := PackedInt32Array()
-		sample_shape.resize(96 * 3)
-		sample_shape.fill(-1)
-		sample_shape[48] = 7
-		sample_shape[96 + 47] = 8
-		sample_shape[2 * 96 + 47] = 9
-		var sample_workspace := ScurkWorkspace.from_shape(
-			96, 3, sample_shape, ScurkEditorControl.VIEW_LARGE, 96
-		)
-		var sample_round_trip := ScurkWorkspace.shape_from_workspace(
-			sample_workspace, 96, ScurkEditorControl.VIEW_LARGE
-		)
-		_check(
-			sample_round_trip.ok
-			and sample_round_trip.width == 96
-			and sample_round_trip.height == 3
-			and sample_round_trip.pixels == sample_shape,
-			"SCURK drawing workspace preserves pixels inside the clip region",
-		)
-		var pick_working := ScurkTileSet.load_path(
-			scurk_directory.path_join("ORIGINAL.MIF")
-		)
-		var pick_source := ScurkTileSet.load_path(
-			scurk_directory.path_join("FUTURE.MIF")
-		)
-		var pick_target := ScurkPickCopy.group_large_ids(
-			ScurkPickCopy.GROUP_RESIDENTIAL
-		)[0]
-		var pick_result := ScurkPickCopy.copy_objects(
-			pick_working,
-			pick_source,
-			PackedInt32Array([pick_target]),
-			editor_large,
-			editor_small_medium
-		)
-		var copied_views_match := true
+		_test_workspace_shapes()
 
-		for pick_view in 3:
-			var pick_sprite_id := pick_target - pick_view * 500
-			var source_entry := ScurkPickCopy.resolved_entry(
-				pick_source, pick_sprite_id, editor_large, editor_small_medium
-			)
-			var working_entry := pick_working.overrides.find_sprite(pick_sprite_id)
-			copied_views_match = (
-				copied_views_match
-				and source_entry != null
-				and working_entry != null
-				and source_entry.decode_indices().pixels
-					== working_entry.decode_indices().pixels
-			)
+		_test_pick_copy_data(scurk_directory, editor_large, editor_small_medium)
 
-		_check(
-			pick_result.ok
-			and pick_result.object_count == 1
-			and pick_result.shape_count == 3
-			and copied_views_match,
-			"SCURK Pick & Copy replaces all three equivalent object views",
-		)
-		var invalid_pick_bytes: PackedByteArray = pick_working.to_bytes().bytes
-		var invalid_pick := ScurkPickCopy.copy_objects(
-			pick_working,
-			pick_source,
-			PackedInt32Array([999]),
-			editor_large,
-			editor_small_medium
-		)
-		_check(
-			not invalid_pick.ok
-			and pick_working.to_bytes().bytes == invalid_pick_bytes,
-			"SCURK Pick & Copy rejects an invalid object without another edit",
-		)
 		var scurk_editor := ScurkEditor.instantiate() as ScurkEditorControl
 		scurk_editor._ready()
 		scurk_editor.configure(
@@ -224,349 +125,484 @@ func test_scurk_mif(reference_root: String) -> void:
 		if scurk_editor.pick_copy_control.source_list == null:
 			scurk_editor.pick_copy_control._ready()
 
-		var editor_load := scurk_editor.load_path(
-			scurk_directory.path_join("ORIGINAL.MIF")
+		_test_editor_pick_copy(scurk_editor, scurk_directory, editable_ids, editor_large, editor_small_medium)
+
+		_test_editor_undo(scurk_editor, editor_palette)
+
+		_test_editor_files(scurk_editor, scurk_directory, editor_palette, editable_ids)
+
+	_test_pixel_shapes()
+
+	_test_canvas_strokes()
+
+	_test_clipboard_and_palette()
+
+	_test_partial_archives(scurk_directory, reference_root)
+
+
+func _test_workspace_shapes() -> void:
+	var one_tile_mask := ScurkWorkspace.clip_mask(32)
+	var four_tile_mask := ScurkWorkspace.clip_mask(128)
+	_check(
+		one_tile_mask.size() == 128 * 256
+		and one_tile_mask[255 * 128 + 62] == 0
+		and one_tile_mask[255 * 128 + 63] == 1
+		and one_tile_mask[255 * 128 + 64] == 1
+		and one_tile_mask[255 * 128 + 65] == 0
+		and one_tile_mask[254 * 128 + 61] == 1
+		and one_tile_mask[254 * 128 + 65] == 1
+		and one_tile_mask[254 * 128 + 66] == 1
+		and one_tile_mask[254 * 128 + 67] == 0
+		and one_tile_mask[0 * 128 + 47] == 0
+		and one_tile_mask[0 * 128 + 48] == 1
+		and one_tile_mask[0 * 128 + 80] == 0
+		and four_tile_mask[224 * 128 + 0] == 0
+		and four_tile_mask[223 * 128 + 0] == 1,
+		"SCURK clip mask includes both tile edges",
+	)
+	var blank_workspace := PackedInt32Array()
+	blank_workspace.resize(ScurkWorkspace.WIDTH * ScurkWorkspace.HEIGHT)
+	blank_workspace.fill(-1)
+	var blank_large := ScurkWorkspace.shape_from_workspace(blank_workspace, 32, 0)
+	var blank_medium := ScurkWorkspace.shape_from_workspace(blank_workspace, 32, 1)
+	var blank_small := ScurkWorkspace.shape_from_workspace(blank_workspace, 32, 2)
+	_check(
+		blank_large.ok and blank_large.width == 32 and blank_large.height == 1
+		and blank_medium.ok and blank_medium.width == 16 and blank_medium.height == 1
+		and blank_small.ok and blank_small.width == 8 and blank_small.height == 1,
+		"SCURK Clear Object keeps each fixed base width and one transparent row",
+	)
+	var sample_shape := PackedInt32Array()
+	sample_shape.resize(96 * 3)
+	sample_shape.fill(-1)
+	sample_shape[48] = 7
+	sample_shape[96 + 47] = 8
+	sample_shape[2 * 96 + 47] = 9
+	var sample_workspace := ScurkWorkspace.from_shape(
+		96, 3, sample_shape, ScurkEditorControl.VIEW_LARGE, 96
+	)
+	var sample_round_trip := ScurkWorkspace.shape_from_workspace(
+		sample_workspace, 96, ScurkEditorControl.VIEW_LARGE
+	)
+	_check(
+		sample_round_trip.ok
+		and sample_round_trip.width == 96
+		and sample_round_trip.height == 3
+		and sample_round_trip.pixels == sample_shape,
+		"SCURK drawing workspace preserves pixels inside the clip region",
+	)
+
+
+func _test_pick_copy_data(scurk_directory: String, editor_large: Sc2SpriteArchive, editor_small_medium: Sc2SpriteArchive) -> void:
+	var pick_working := ScurkTileSet.load_path(
+		scurk_directory.path_join("ORIGINAL.MIF")
+	)
+	var pick_source := ScurkTileSet.load_path(
+		scurk_directory.path_join("FUTURE.MIF")
+	)
+	var pick_target := ScurkPickCopy.group_large_ids(
+		ScurkPickCopy.GROUP_RESIDENTIAL
+	)[0]
+	var pick_result := ScurkPickCopy.copy_objects(
+		pick_working,
+		pick_source,
+		PackedInt32Array([pick_target]),
+		editor_large,
+		editor_small_medium
+	)
+	var copied_views_match := true
+
+	for pick_view in 3:
+		var pick_sprite_id := pick_target - pick_view * 500
+		var source_entry := ScurkPickCopy.resolved_entry(
+			pick_source, pick_sprite_id, editor_large, editor_small_medium
 		)
-		_check(
-			editor_load.ok
-			and scurk_editor.object_list.entries.size() == 499
-			and scurk_editor.pixel_canvas.sprite_width == ScurkWorkspace.WIDTH
-			and scurk_editor.pixel_canvas.sprite_height == ScurkWorkspace.HEIGHT
-			and scurk_editor.active_workspace,
-			"SCURK editor loads all tile, terrain, network, and support sprites",
+		var working_entry := pick_working.overrides.find_sprite(pick_sprite_id)
+		copied_views_match = (
+			copied_views_match
+			and source_entry != null
+			and working_entry != null
+			and source_entry.decode_indices().pixels
+				== working_entry.decode_indices().pixels
 		)
-		_check(
-			scurk_editor.tool_buttons.size() == 16
-			and scurk_editor.palette_panel.texture_control.patterns.size()
-				== ScurkPixelEditor.TEXTURE_NAMES.size()
-			and scurk_editor.brush_size_selector.max_value == 24
-			and scurk_editor.revert_button != null
-			and scurk_editor.revert_name_button != null
-			and scurk_editor.clipboard_action_buttons.size() == 4
-			and scurk_editor.pixel_canvas.texture_patterns.size() == 42
-			and scurk_editor.cycle_colors_check.button_pressed
-			and scurk_editor.increment_cycle_button.disabled
-			and scurk_editor.import_bmp_dialog != null
-			and scurk_editor.export_bmp_dialog != null
-			and scurk_editor.clear_object_button != null
-			and scurk_editor.clip_region_check != null
-			and scurk_editor.snap_to_grid_check != null
-			and scurk_editor.grid_width_selector.min_value == 1
-			and scurk_editor.grid_width_selector.max_value == 65
-			and scurk_editor.grid_height_selector.min_value == 1
-			and scurk_editor.grid_height_selector.max_value == 65
-			and scurk_editor.view_previews.size() == 4
-			and scurk_editor.view_previews[0].preview_width == 128
-			and scurk_editor.view_previews[0].preview_height == 256
-			and scurk_editor.view_previews[1].preview_width == 64
-			and scurk_editor.view_previews[1].preview_height == 128
-			and scurk_editor.view_previews[2].preview_width == 32
-			and scurk_editor.view_previews[2].preview_height == 64
-			and scurk_editor.pixel_canvas.clear_background_pixels.size()
-			== ScurkWorkspace.WIDTH * ScurkWorkspace.HEIGHT
-			and scurk_editor.pick_copy_control != null,
-			"SCURK editor exposes the recovered paint, clip, and brush controls",
-		)
-		scurk_editor.grid_width_selector.value = 8
-		scurk_editor.grid_height_selector.value = 6
-		scurk_editor.snap_to_grid_check.button_pressed = true
-		scurk_editor._apply_grid_settings()
-		_check(
-			scurk_editor.pixel_canvas.grid_width == 8
-			and scurk_editor.pixel_canvas.grid_height == 6
-			and scurk_editor.pixel_canvas.snap_to_grid,
-			"SCURK Grid Settings apply independent 1-through-65 dimensions",
-		)
-		scurk_editor.request_pick_copy()
-		var same_source := scurk_editor.pick_copy_control.load_source_path(
-			scurk_directory.path_join("ORIGINAL.MIF")
-		)
-		var future_source := scurk_editor.pick_copy_control.load_source_path(
-			scurk_directory.path_join("FUTURE.MIF")
-		)
-		_check(
-			scurk_editor.pick_copy_control.visible
-			and not same_source.ok
-			and not same_source.error.is_empty()
-			and future_source.ok
-			and scurk_editor.pick_copy_control.source_list.item_count == 24
-			and scurk_editor.pick_copy_control.working_list.item_count == 24,
-			"SCURK Pick & Copy keeps distinct source and working object sets",
-		)
-		scurk_editor.pick_copy_control._select_group(
-			ScurkPickCopy.GROUP_COMMERCIAL
-		)
-		_check(
-			scurk_editor.pick_copy_control.source_list.item_count == 28
-			and scurk_editor.pick_copy_control.working_list.item_count == 28,
-			"SCURK Pick & Copy filters both object sets by group",
-		)
-		var pick_editor_before: PackedByteArray = scurk_editor.tile_set.to_bytes().bytes
-		var pick_editor_id := ScurkPickCopy.group_large_ids(
-			ScurkPickCopy.GROUP_COMMERCIAL
-		)[0]
-		scurk_editor._copy_pick_objects(
+
+	_check(
+		pick_result.ok
+		and pick_result.object_count == 1
+		and pick_result.shape_count == 3
+		and copied_views_match,
+		"SCURK Pick & Copy replaces all three equivalent object views",
+	)
+	var invalid_pick_bytes: PackedByteArray = pick_working.to_bytes().bytes
+	var invalid_pick := ScurkPickCopy.copy_objects(
+		pick_working,
+		pick_source,
+		PackedInt32Array([999]),
+		editor_large,
+		editor_small_medium
+	)
+	_check(
+		not invalid_pick.ok
+		and pick_working.to_bytes().bytes == invalid_pick_bytes,
+		"SCURK Pick & Copy rejects an invalid object without another edit",
+	)
+
+
+func _test_editor_pick_copy(scurk_editor: ScurkEditorControl, scurk_directory: String, editable_ids: PackedInt32Array,
+		editor_large: Sc2SpriteArchive, editor_small_medium: Sc2SpriteArchive) -> void:
+	var editor_load := scurk_editor.load_path(
+		scurk_directory.path_join("ORIGINAL.MIF")
+	)
+	_check(
+		editor_load.ok
+		and scurk_editor.object_list.entries.size() == 499
+		and scurk_editor.pixel_canvas.sprite_width == ScurkWorkspace.WIDTH
+		and scurk_editor.pixel_canvas.sprite_height == ScurkWorkspace.HEIGHT
+		and scurk_editor.active_workspace,
+		"SCURK editor loads all tile, terrain, network, and support sprites",
+	)
+	_check(
+		scurk_editor.tool_buttons.size() == 16
+		and scurk_editor.palette_panel.texture_control.patterns.size()
+			== ScurkPixelEditor.TEXTURE_NAMES.size()
+		and scurk_editor.brush_size_selector.max_value == 24
+		and scurk_editor.revert_button != null
+		and scurk_editor.revert_name_button != null
+		and scurk_editor.clipboard_action_buttons.size() == 4
+		and scurk_editor.pixel_canvas.texture_patterns.size() == 42
+		and scurk_editor.cycle_colors_check.button_pressed
+		and scurk_editor.increment_cycle_button.disabled
+		and scurk_editor.import_bmp_dialog != null
+		and scurk_editor.export_bmp_dialog != null
+		and scurk_editor.clear_object_button != null
+		and scurk_editor.clip_region_check != null
+		and scurk_editor.snap_to_grid_check != null
+		and scurk_editor.grid_width_selector.min_value == 1
+		and scurk_editor.grid_width_selector.max_value == 65
+		and scurk_editor.grid_height_selector.min_value == 1
+		and scurk_editor.grid_height_selector.max_value == 65
+		and scurk_editor.view_previews.size() == 4
+		and scurk_editor.view_previews[0].preview_width == 128
+		and scurk_editor.view_previews[0].preview_height == 256
+		and scurk_editor.view_previews[1].preview_width == 64
+		and scurk_editor.view_previews[1].preview_height == 128
+		and scurk_editor.view_previews[2].preview_width == 32
+		and scurk_editor.view_previews[2].preview_height == 64
+		and scurk_editor.pixel_canvas.clear_background_pixels.size()
+		== ScurkWorkspace.WIDTH * ScurkWorkspace.HEIGHT
+		and scurk_editor.pick_copy_control != null,
+		"SCURK editor exposes the recovered paint, clip, and brush controls",
+	)
+	scurk_editor.grid_width_selector.value = 8
+	scurk_editor.grid_height_selector.value = 6
+	scurk_editor.snap_to_grid_check.button_pressed = true
+	scurk_editor._apply_grid_settings()
+	_check(
+		scurk_editor.pixel_canvas.grid_width == 8
+		and scurk_editor.pixel_canvas.grid_height == 6
+		and scurk_editor.pixel_canvas.snap_to_grid,
+		"SCURK Grid Settings apply independent 1-through-65 dimensions",
+	)
+	scurk_editor.request_pick_copy()
+	var same_source := scurk_editor.pick_copy_control.load_source_path(
+		scurk_directory.path_join("ORIGINAL.MIF")
+	)
+	var future_source := scurk_editor.pick_copy_control.load_source_path(
+		scurk_directory.path_join("FUTURE.MIF")
+	)
+	_check(
+		scurk_editor.pick_copy_control.visible
+		and not same_source.ok
+		and not same_source.error.is_empty()
+		and future_source.ok
+		and scurk_editor.pick_copy_control.source_list.item_count == 24
+		and scurk_editor.pick_copy_control.working_list.item_count == 24,
+		"SCURK Pick & Copy keeps distinct source and working object sets",
+	)
+	scurk_editor.pick_copy_control._select_group(
+		ScurkPickCopy.GROUP_COMMERCIAL
+	)
+	_check(
+		scurk_editor.pick_copy_control.source_list.item_count == 28
+		and scurk_editor.pick_copy_control.working_list.item_count == 28,
+		"SCURK Pick & Copy filters both object sets by group",
+	)
+	var pick_editor_before: PackedByteArray = scurk_editor.tile_set.to_bytes().bytes
+	var pick_editor_id := ScurkPickCopy.group_large_ids(
+		ScurkPickCopy.GROUP_COMMERCIAL
+	)[0]
+	scurk_editor._copy_pick_objects(
+		scurk_editor.pick_copy_control.source_set,
+		PackedInt32Array([pick_editor_id]),
+		"Test copy"
+	)
+	var pick_editor_views_match := true
+
+	for pick_editor_view in 3:
+		var pick_editor_sprite := pick_editor_id - pick_editor_view * 500
+		var pick_editor_source_entry := ScurkPickCopy.resolved_entry(
 			scurk_editor.pick_copy_control.source_set,
-			PackedInt32Array([pick_editor_id]),
-			"Test copy"
+			pick_editor_sprite,
+			editor_large,
+			editor_small_medium
 		)
-		var pick_editor_views_match := true
-
-		for pick_editor_view in 3:
-			var pick_editor_sprite := pick_editor_id - pick_editor_view * 500
-			var pick_editor_source_entry := ScurkPickCopy.resolved_entry(
-				scurk_editor.pick_copy_control.source_set,
-				pick_editor_sprite,
-				editor_large,
-				editor_small_medium
-			)
-			pick_editor_views_match = (
-				pick_editor_views_match
-				and pick_editor_source_entry.decode_indices().pixels
-					== scurk_editor.tile_set.overrides.find_sprite(
-						pick_editor_sprite
-					).decode_indices().pixels
-			)
-
-		_check(
-			scurk_editor.dirty
-			and scurk_editor.undo_stack.size() == 1
-			and pick_editor_views_match,
-			"SCURK Pick & Copy is one three-view editor transaction",
-		)
-		scurk_editor.undo()
-		_check(
-			scurk_editor.tile_set.to_bytes().bytes == pick_editor_before,
-			"SCURK Undo restores a Pick & Copy transaction",
-		)
-		scurk_editor.pick_copy_control.request_close()
-		scurk_editor._set_cycle_colors(false)
-		var cycle_before := scurk_editor.pixel_canvas.palette_cycle_ticks
-		scurk_editor._increment_cycle()
-		_check(
-			not scurk_editor.increment_cycle_button.disabled
-			and scurk_editor.pixel_canvas.palette_cycle_ticks
-				== cycle_before + Palette.SCURK_INCREMENT_TIMER_TICKS
-			and scurk_editor.pixel_canvas.display_palette_index(Palette.FAST_CYCLE_START)
-				== editor_palette.scurk_animation_index_map(
-					cycle_before + Palette.SCURK_INCREMENT_TIMER_TICKS
-				)[Palette.FAST_CYCLE_START],
-			"SCURK Increment Cycle works only while automatic cycling is off",
-		)
-		scurk_editor._set_cycle_colors(true)
-		scurk_editor._studio_action("SelectAll")
-		scurk_editor._studio_action("CopySelection")
-		_check(
-			scurk_editor.pixel_canvas.has_clipboard()
-			and not scurk_editor.clipboard_action_buttons[0].disabled,
-			"SCURK selection enables transforms and copies to the clipboard",
-		)
-		scurk_editor._studio_action("Deselect")
-		scurk_editor._select_tool(ScurkPixelEditor.TOOL_PENCIL)
-		var original_editor_bytes: PackedByteArray = scurk_editor.tile_set.to_bytes().bytes
-		var edited_pixels := scurk_editor.pixel_canvas.pixels.duplicate()
-		var editable_pixel := 100 * ScurkWorkspace.WIDTH + 64
-		edited_pixels[editable_pixel] = (
-			1 if edited_pixels[editable_pixel] != 1 else 2
-		)
-		scurk_editor._capture_edit_start()
-		scurk_editor._commit_pixels(edited_pixels)
-		var changed_editor_bytes: PackedByteArray = scurk_editor.tile_set.to_bytes().bytes
-		_check(
-			scurk_editor.dirty
-			and changed_editor_bytes != original_editor_bytes
-			and scurk_editor.undo_stack.size() == 1,
-			"SCURK pixel edits update the MIF document and enter undo history",
-		)
-		scurk_editor.undo()
-		_check(
-			not scurk_editor.dirty
-			and scurk_editor.tile_set.to_bytes().bytes == original_editor_bytes,
-			"SCURK Undo restores the byte-identical loaded MIF document",
-		)
-		scurk_editor.redo()
-		_check(
-			scurk_editor.dirty
-			and scurk_editor.tile_set.to_bytes().bytes == changed_editor_bytes,
-			"SCURK Redo restores the edited MIF document",
-		)
-		scurk_editor.undo()
-		var object_edit_pixels := scurk_editor.pixel_canvas.pixels.duplicate()
-		object_edit_pixels[editable_pixel] = (
-			3 if object_edit_pixels[editable_pixel] != 3 else 4
-		)
-		scurk_editor._capture_edit_start()
-		scurk_editor._commit_pixels(object_edit_pixels)
-		var object_edit_bytes: PackedByteArray = scurk_editor.tile_set.to_bytes().bytes
-		scurk_editor.revert_object()
-		_check(
-			scurk_editor.tile_set.to_bytes().bytes == original_editor_bytes,
-			"SCURK Revert restores the exact object-selection document state",
-		)
-		scurk_editor.undo()
-		_check(
-			scurk_editor.tile_set.to_bytes().bytes == object_edit_bytes,
-			"SCURK Revert enters exact-byte Undo history",
-		)
-		scurk_editor.redo()
-		var current_tile_id := ScurkEditorControl.object_tile_id(scurk_editor.current_large_id)
-		scurk_editor.name_edit.text = "Temporary Query Name"
-		scurk_editor._commit_name()
-		_check(
-			scurk_editor.tile_set.names.get(current_tile_id, "") == "Temporary Query Name",
-			"SCURK Rename writes a custom query name",
-		)
-		scurk_editor.revert_name()
-		_check(
-			not scurk_editor.tile_set.names.has(current_tile_id),
-			"SCURK Revert Name removes the custom NAME piece",
-		)
-		scurk_editor.undo()
-		_check(
-			scurk_editor.tile_set.names.get(current_tile_id, "") == "Temporary Query Name",
-			"SCURK Revert Name enters Undo history",
-		)
-		scurk_editor.redo()
-		var reference_save := scurk_editor.save_path(
-			scurk_directory.path_join("DO_NOT_WRITE.MIF")
-		)
-		_check(
-			not reference_save.ok and not reference_save.error.is_empty(),
-			"SCURK editor refuses to write inside the reference directory",
-		)
-		var scratch_path := ProjectSettings.globalize_path(
-			"user://test-scurk-editor-output.MIF"
-		)
-		var editor_save := scurk_editor.save_path(scratch_path)
-		_check(
-			editor_save.ok
-			and FileAccess.get_file_as_bytes(scratch_path)
-				== FileAccess.get_file_as_bytes(scurk_directory.path_join("ORIGINAL.MIF")),
-			"SCURK editor saves an unchanged MIF byte-identically",
-		)
-		var added_sprite_id := 1256
-		var added_before: PackedByteArray = scurk_editor.tile_set.to_bytes().bytes
-		scurk_editor.current_large_id = added_sprite_id
-		scurk_editor.current_view = ScurkEditorControl.VIEW_LARGE
-		scurk_editor._capture_object_start()
-		scurk_editor._refresh_sprite()
-		var added_pixels := scurk_editor.pixel_canvas.pixels.duplicate()
-		var added_editable_pixel := 100 * ScurkWorkspace.WIDTH + 64
-		added_pixels[added_editable_pixel] = (
-			7 if added_pixels[added_editable_pixel] != 7 else 8
-		)
-		scurk_editor._capture_edit_start()
-		scurk_editor._commit_pixels(added_pixels)
-		_check(
-			scurk_editor.tile_set.overrides.find_sprite(added_sprite_id) != null,
-			"SCURK editor appends a previously absent terrain sprite to MIF",
-		)
-		scurk_editor.undo()
-		_check(
-			scurk_editor.tile_set.to_bytes().bytes == added_before
-			and scurk_editor.tile_set.overrides.find_sprite(added_sprite_id) == null,
-			"SCURK Undo removes an appended full-catalog sprite exactly",
-		)
-		var scratch_bmp_path := ProjectSettings.globalize_path(
-			"user://test-scurk-editor-output.BMP"
-		)
-		var editor_export := scurk_editor.export_bmp_path(scratch_bmp_path)
-		var exported_bitmap := IndexedBitmap.decode(
-			FileAccess.get_file_as_bytes(scratch_bmp_path)
-		)
-		var expected_export := scurk_editor._active_output_shape()
-		var expected_export_pixels: PackedInt32Array = expected_export.pixels.duplicate()
-
-		for pixel_index in expected_export_pixels.size():
-			if expected_export_pixels[pixel_index] < 0:
-				expected_export_pixels[pixel_index] = 0
-
-		_check(
-			editor_export.ok
-			and exported_bitmap.ok
-			and exported_bitmap.width == expected_export.width
-			and exported_bitmap.height == expected_export.height
-			and exported_bitmap.pixels == expected_export_pixels,
-			"SCURK editor exports its clipped active object view as an indexed BMP",
-		)
-		var imported_pixels := PackedInt32Array([-1, 1, 2, 3, 4, 5])
-		var import_fixture := IndexedBitmap.save_path(
-			scratch_bmp_path, 3, 2, imported_pixels, editor_palette
-		)
-		var editor_import := scurk_editor.import_bmp_path(scratch_bmp_path)
-		var imported_output := scurk_editor._active_output_shape()
-		_check(
-			import_fixture.ok
-			and editor_import.ok
-			and scurk_editor.pixel_canvas.sprite_width == ScurkWorkspace.WIDTH
-			and scurk_editor.pixel_canvas.sprite_height == ScurkWorkspace.HEIGHT
-			and imported_output.width == scurk_editor.active_base_width
-			and imported_output.height == 2
-			and imported_output.pixels.has(1)
-			and imported_output.pixels.has(2)
-			and imported_output.pixels.has(4)
-			and not imported_output.pixels.has(3)
-			and imported_output.pixels.has(5)
-			and scurk_editor.dirty,
-			"SCURK editor centers and clips an imported bitmap without changing its base",
-		)
-		scurk_editor.current_large_id = editable_ids[0]
-		scurk_editor.current_view = ScurkEditorControl.VIEW_LARGE
-		scurk_editor._refresh_sprite()
-		var before_clear: PackedByteArray = scurk_editor.tile_set.to_bytes().bytes
-		scurk_editor.clear_object()
-		var cleared_views_are_blank := true
-		var clear_mismatch := ""
-
-		for clear_view in range(3):
-			var clear_entry := scurk_editor.tile_set.archive.find_sprite(
-				editable_ids[0] - clear_view * 500
-			)
-			var clear_decoded := clear_entry.decode_indices() if clear_entry != null else IndexedImageResult.new()
-			var clear_view_is_blank: bool = (
-				clear_entry != null
-				and clear_entry.width
-					== int(scurk_editor.active_base_width / ScurkWorkspace.view_divisor(clear_view))
-				and clear_entry.height == 1
-				and clear_decoded.ok
-				and not clear_decoded.pixels.has(0)
-			)
-
-			if not clear_view_is_blank and clear_mismatch.is_empty():
-				clear_mismatch = "view %d: %s" % [clear_view, str(clear_decoded)]
-
-			cleared_views_are_blank = cleared_views_are_blank and clear_view_is_blank
-
-		_check(
-			cleared_views_are_blank and scurk_editor.undo_stack.size() > 0,
-			"SCURK Clear Object clears all three views with their fixed base widths: %s"
-				% clear_mismatch,
-		)
-		scurk_editor.undo()
-		_check(
-			scurk_editor.tile_set.to_bytes().bytes == before_clear,
-			"SCURK Clear Object has exact-byte Undo",
+		pick_editor_views_match = (
+			pick_editor_views_match
+			and pick_editor_source_entry.decode_indices().pixels
+				== scurk_editor.tile_set.overrides.find_sprite(
+					pick_editor_sprite
+				).decode_indices().pixels
 		)
 
-		if FileAccess.file_exists(scratch_path):
-			DirAccess.remove_absolute(scratch_path)
+	_check(
+		scurk_editor.dirty
+		and scurk_editor.undo_stack.size() == 1
+		and pick_editor_views_match,
+		"SCURK Pick & Copy is one three-view editor transaction",
+	)
+	scurk_editor.undo()
+	_check(
+		scurk_editor.tile_set.to_bytes().bytes == pick_editor_before,
+		"SCURK Undo restores a Pick & Copy transaction",
+	)
+	scurk_editor.pick_copy_control.request_close()
 
-		if FileAccess.file_exists(scratch_bmp_path):
-			DirAccess.remove_absolute(scratch_bmp_path)
 
-		scurk_editor.free()
+func _test_editor_undo(scurk_editor: ScurkEditorControl, editor_palette: Sc2Palette) -> void:
+	scurk_editor._set_cycle_colors(false)
+	var cycle_before := scurk_editor.pixel_canvas.palette_cycle_ticks
+	scurk_editor._increment_cycle()
+	_check(
+		not scurk_editor.increment_cycle_button.disabled
+		and scurk_editor.pixel_canvas.palette_cycle_ticks
+			== cycle_before + Palette.SCURK_INCREMENT_TIMER_TICKS
+		and scurk_editor.pixel_canvas.display_palette_index(Palette.FAST_CYCLE_START)
+			== editor_palette.scurk_animation_index_map(
+				cycle_before + Palette.SCURK_INCREMENT_TIMER_TICKS
+			)[Palette.FAST_CYCLE_START],
+		"SCURK Increment Cycle works only while automatic cycling is off",
+	)
+	scurk_editor._set_cycle_colors(true)
+	scurk_editor._studio_action("SelectAll")
+	scurk_editor._studio_action("CopySelection")
+	_check(
+		scurk_editor.pixel_canvas.has_clipboard()
+		and not scurk_editor.clipboard_action_buttons[0].disabled,
+		"SCURK selection enables transforms and copies to the clipboard",
+	)
+	scurk_editor._studio_action("Deselect")
+	scurk_editor._select_tool(ScurkPixelEditor.TOOL_PENCIL)
+	var original_editor_bytes: PackedByteArray = scurk_editor.tile_set.to_bytes().bytes
+	var edited_pixels := scurk_editor.pixel_canvas.pixels.duplicate()
+	var editable_pixel := 100 * ScurkWorkspace.WIDTH + 64
+	edited_pixels[editable_pixel] = (
+		1 if edited_pixels[editable_pixel] != 1 else 2
+	)
+	scurk_editor._capture_edit_start()
+	scurk_editor._commit_pixels(edited_pixels)
+	var changed_editor_bytes: PackedByteArray = scurk_editor.tile_set.to_bytes().bytes
+	_check(
+		scurk_editor.dirty
+		and changed_editor_bytes != original_editor_bytes
+		and scurk_editor.undo_stack.size() == 1,
+		"SCURK pixel edits update the MIF document and enter undo history",
+	)
+	scurk_editor.undo()
+	_check(
+		not scurk_editor.dirty
+		and scurk_editor.tile_set.to_bytes().bytes == original_editor_bytes,
+		"SCURK Undo restores the byte-identical loaded MIF document",
+	)
+	scurk_editor.redo()
+	_check(
+		scurk_editor.dirty
+		and scurk_editor.tile_set.to_bytes().bytes == changed_editor_bytes,
+		"SCURK Redo restores the edited MIF document",
+	)
+	scurk_editor.undo()
+	var object_edit_pixels := scurk_editor.pixel_canvas.pixels.duplicate()
+	object_edit_pixels[editable_pixel] = (
+		3 if object_edit_pixels[editable_pixel] != 3 else 4
+	)
+	scurk_editor._capture_edit_start()
+	scurk_editor._commit_pixels(object_edit_pixels)
+	var object_edit_bytes: PackedByteArray = scurk_editor.tile_set.to_bytes().bytes
+	scurk_editor.revert_object()
+	_check(
+		scurk_editor.tile_set.to_bytes().bytes == original_editor_bytes,
+		"SCURK Revert restores the exact object-selection document state",
+	)
+	scurk_editor.undo()
+	_check(
+		scurk_editor.tile_set.to_bytes().bytes == object_edit_bytes,
+		"SCURK Revert enters exact-byte Undo history",
+	)
+	scurk_editor.redo()
+	var current_tile_id := ScurkEditorRules.object_tile_id(scurk_editor.current_large_id)
+	scurk_editor.name_edit.text = "Temporary Query Name"
+	scurk_editor._commit_name()
+	_check(
+		scurk_editor.tile_set.names.get(current_tile_id, "") == "Temporary Query Name",
+		"SCURK Rename writes a custom query name",
+	)
+	scurk_editor.revert_name()
+	_check(
+		not scurk_editor.tile_set.names.has(current_tile_id),
+		"SCURK Revert Name removes the custom NAME piece",
+	)
+	scurk_editor.undo()
+	_check(
+		scurk_editor.tile_set.names.get(current_tile_id, "") == "Temporary Query Name",
+		"SCURK Revert Name enters Undo history",
+	)
+	scurk_editor.redo()
 
+
+func _test_editor_files(
+	scurk_editor: ScurkEditorControl, scurk_directory: String, editor_palette: Sc2Palette, editable_ids: PackedInt32Array
+) -> void:
+	var reference_save := scurk_editor.save_path(
+		scurk_directory.path_join("DO_NOT_WRITE.MIF")
+	)
+	_check(
+		not reference_save.ok and not reference_save.error.is_empty(),
+		"SCURK editor refuses to write inside the reference directory",
+	)
+	var scratch_path := ProjectSettings.globalize_path(
+		"user://test-scurk-editor-output.MIF"
+	)
+	var editor_save := scurk_editor.save_path(scratch_path)
+	_check(
+		editor_save.ok
+		and FileAccess.get_file_as_bytes(scratch_path)
+			== FileAccess.get_file_as_bytes(scurk_directory.path_join("ORIGINAL.MIF")),
+		"SCURK editor saves an unchanged MIF byte-identically",
+	)
+	var added_sprite_id := 1256
+	var added_before: PackedByteArray = scurk_editor.tile_set.to_bytes().bytes
+	scurk_editor.current_large_id = added_sprite_id
+	scurk_editor.current_view = ScurkEditorControl.VIEW_LARGE
+	scurk_editor._capture_object_start()
+	scurk_editor._refresh_sprite()
+	var added_pixels := scurk_editor.pixel_canvas.pixels.duplicate()
+	var added_editable_pixel := 100 * ScurkWorkspace.WIDTH + 64
+	added_pixels[added_editable_pixel] = (
+		7 if added_pixels[added_editable_pixel] != 7 else 8
+	)
+	scurk_editor._capture_edit_start()
+	scurk_editor._commit_pixels(added_pixels)
+	_check(
+		scurk_editor.tile_set.overrides.find_sprite(added_sprite_id) != null,
+		"SCURK editor appends a previously absent terrain sprite to MIF",
+	)
+	scurk_editor.undo()
+	_check(
+		scurk_editor.tile_set.to_bytes().bytes == added_before
+		and scurk_editor.tile_set.overrides.find_sprite(added_sprite_id) == null,
+		"SCURK Undo removes an appended full-catalog sprite exactly",
+	)
+	var scratch_bmp_path := ProjectSettings.globalize_path(
+		"user://test-scurk-editor-output.BMP"
+	)
+	var editor_export := scurk_editor.export_bmp_path(scratch_bmp_path)
+	var exported_bitmap := IndexedBitmap.decode(
+		FileAccess.get_file_as_bytes(scratch_bmp_path)
+	)
+	var expected_export := scurk_editor._active_output_shape()
+	var expected_export_pixels: PackedInt32Array = expected_export.pixels.duplicate()
+
+	for pixel_index in expected_export_pixels.size():
+		if expected_export_pixels[pixel_index] < 0:
+			expected_export_pixels[pixel_index] = 0
+
+	_check(
+		editor_export.ok
+		and exported_bitmap.ok
+		and exported_bitmap.width == expected_export.width
+		and exported_bitmap.height == expected_export.height
+		and exported_bitmap.pixels == expected_export_pixels,
+		"SCURK editor exports its clipped active object view as an indexed BMP",
+	)
+	var imported_pixels := PackedInt32Array([-1, 1, 2, 3, 4, 5])
+	var import_fixture := IndexedBitmap.save_path(
+		scratch_bmp_path, 3, 2, imported_pixels, editor_palette
+	)
+	var editor_import := scurk_editor.import_bmp_path(scratch_bmp_path)
+	var imported_output := scurk_editor._active_output_shape()
+	_check(
+		import_fixture.ok
+		and editor_import.ok
+		and scurk_editor.pixel_canvas.sprite_width == ScurkWorkspace.WIDTH
+		and scurk_editor.pixel_canvas.sprite_height == ScurkWorkspace.HEIGHT
+		and imported_output.width == scurk_editor.active_base_width
+		and imported_output.height == 2
+		and imported_output.pixels.has(1)
+		and imported_output.pixels.has(2)
+		and imported_output.pixels.has(4)
+		and not imported_output.pixels.has(3)
+		and imported_output.pixels.has(5)
+		and scurk_editor.dirty,
+		"SCURK editor centers and clips an imported bitmap without changing its base",
+	)
+	scurk_editor.current_large_id = editable_ids[0]
+	scurk_editor.current_view = ScurkEditorControl.VIEW_LARGE
+	scurk_editor._refresh_sprite()
+	var before_clear: PackedByteArray = scurk_editor.tile_set.to_bytes().bytes
+	scurk_editor.clear_object()
+	var cleared_views_are_blank := true
+	var clear_mismatch := ""
+
+	for clear_view in range(3):
+		var clear_entry := scurk_editor.tile_set.archive.find_sprite(
+			editable_ids[0] - clear_view * 500
+		)
+		var clear_decoded := clear_entry.decode_indices() if clear_entry != null else IndexedImageResult.new()
+		var clear_view_is_blank: bool = (
+			clear_entry != null
+			and clear_entry.width
+				== int(scurk_editor.active_base_width / ScurkWorkspace.view_divisor(clear_view))
+			and clear_entry.height == 1
+			and clear_decoded.ok
+			and not clear_decoded.pixels.has(0)
+		)
+
+		if not clear_view_is_blank and clear_mismatch.is_empty():
+			clear_mismatch = "view %d: %s" % [clear_view, str(clear_decoded)]
+
+		cleared_views_are_blank = cleared_views_are_blank and clear_view_is_blank
+
+	_check(
+		cleared_views_are_blank and scurk_editor.undo_stack.size() > 0,
+		"SCURK Clear Object clears all three views with their fixed base widths: %s"
+			% clear_mismatch,
+	)
+	scurk_editor.undo()
+	_check(
+		scurk_editor.tile_set.to_bytes().bytes == before_clear,
+		"SCURK Clear Object has exact-byte Undo",
+	)
+
+	if FileAccess.file_exists(scratch_path):
+		DirAccess.remove_absolute(scratch_path)
+
+	if FileAccess.file_exists(scratch_bmp_path):
+		DirAccess.remove_absolute(scratch_bmp_path)
+
+	scurk_editor.free()
+
+
+func _test_pixel_shapes() -> void:
 	var fill_source := PackedInt32Array([
 		1, 1, -1,
 		1, 2, -1,
 	])
-	var filled := ScurkPixelEditor.flood_fill(fill_source, 3, 2, Vector2i(0, 0), 9)
+	var filled := ScurkPixelOperations.flood_fill(fill_source, 3, 2, Vector2i(0, 0), 9)
 	_check(
 		filled == PackedInt32Array([9, 9, -1, 9, 2, -1])
 		and fill_source == PackedInt32Array([1, 1, -1, 1, 2, -1]),
 		"SCURK fill edits only the connected palette region",
 	)
-	var checker_fill := ScurkPixelEditor.flood_fill_pattern(
+	var checker_fill := ScurkPixelOperations.flood_fill_pattern(
 		PackedInt32Array([1, 1, 1, 2, 2, 2]), 3, 2, Vector2i(0, 0),
 		7, ScurkPixelEditor.TEXTURE_ROWS[1]
 	)
@@ -596,7 +632,7 @@ func test_scurk_mif(reference_root: String) -> void:
 		"SCURK box tool supports hollow and filled previews",
 	)
 	_check(
-		ScurkPixelEditor.line_points(Vector2i(0, 0), Vector2i(4, 2))
+		ScurkPixelOperations.line_points(Vector2i(0, 0), Vector2i(4, 2))
 			== [
 				Vector2i(0, 0), Vector2i(1, 1), Vector2i(2, 1),
 				Vector2i(3, 2), Vector2i(4, 2),
@@ -627,6 +663,9 @@ func test_scurk_mif(reference_root: String) -> void:
 		) == Vector2i(6, 9),
 		"SCURK shape snapping rounds half steps forward on each grid axis",
 	)
+
+
+func _test_canvas_strokes() -> void:
 	var view_window := ScurkViewWindow.new()
 	var preview_background := PackedInt32Array()
 	preview_background.resize(ScurkWorkspace.WIDTH * ScurkWorkspace.HEIGHT)
@@ -711,8 +750,11 @@ func test_scurk_mif(reference_root: String) -> void:
 		"SCURK drawing tools erase pixels outside the active object base",
 	)
 	clip_canvas.free()
+
+
+func _test_clipboard_and_palette() -> void:
 	var clipboard_source := PackedInt32Array([1, 2, 3, 4, 5, 6])
-	var copied_region := ScurkPixelEditor.copy_region(
+	var copied_region := ScurkPixelOperations.copy_region(
 		clipboard_source, 3, 2, Vector2i(1, 0), Vector2i(2, 1)
 	)
 	_check(
@@ -722,11 +764,11 @@ func test_scurk_mif(reference_root: String) -> void:
 		"SCURK Copy extracts an inclusive rectangular pixel region",
 	)
 	_check(
-		ScurkPixelEditor.rotate_counterclockwise(clipboard_source, 3, 2)
+		ScurkPixelOperations.rotate_counterclockwise(clipboard_source, 3, 2)
 			== PackedInt32Array([3, 6, 2, 5, 1, 4])
-		and ScurkPixelEditor.flip_horizontal(clipboard_source, 3, 2)
+		and ScurkPixelOperations.flip_horizontal(clipboard_source, 3, 2)
 			== PackedInt32Array([3, 2, 1, 6, 5, 4])
-		and ScurkPixelEditor.flip_vertical(clipboard_source, 3, 2)
+		and ScurkPixelOperations.flip_vertical(clipboard_source, 3, 2)
 			== PackedInt32Array([4, 5, 6, 1, 2, 3]),
 		"SCURK clipboard rotate and flip operations preserve palette indices",
 	)
@@ -734,7 +776,7 @@ func test_scurk_mif(reference_root: String) -> void:
 	paste_target.resize(12)
 	paste_target.fill(0)
 	_check(
-		ScurkPixelEditor.paste_region(
+		ScurkPixelOperations.paste_region(
 			paste_target, 4, 3, Vector2i(2, 2),
 			clipboard_source, 3, 2
 		) == PackedInt32Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2]),
@@ -794,6 +836,8 @@ func test_scurk_mif(reference_root: String) -> void:
 	)
 	palette_grid.free()
 
+
+func _test_partial_archives(scurk_directory: String, reference_root: String) -> void:
 	var city_hall := ScurkTileSet.load_path(scurk_directory.path_join("CITYHAL.MIF"))
 	_check(city_hall.is_valid(), "CITYHAL.MIF parses: %s" % city_hall.parse_error)
 

@@ -5,33 +5,6 @@ extends IsometricConstants
 @warning_ignore_start("integer_division")
 
 
-class Layer extends CitySpriteVisual:
-	var screen_x: int
-	var screen_y: int
-
-
-class Sprite extends CitySpriteVisual:
-	var train := false
-	var screen_x := 0
-	var screen_y := 0
-	var elevation := 0
-	var variant := 0
-	var tornado := false
-	var monster := false
-	var layers: Array[Layer] = []
-
-
-class Visual extends Sprite:
-	var record: int
-	var type: int
-	var x: int
-	var y: int
-	var z: int
-	var px: int
-	var py: int
-	var view_size: int
-
-
 static func moving_thing_visual(
 	city: CityState,
 	x: int,
@@ -412,3 +385,30 @@ static func _monster_layer(
 	result.flip = flip
 
 	return result
+
+
+class Layer extends CitySpriteVisual:
+	var screen_x: int
+	var screen_y: int
+
+
+class Sprite extends CitySpriteVisual:
+	var train := false
+	var screen_x := 0
+	var screen_y := 0
+	var elevation := 0
+	var variant := 0
+	var tornado := false
+	var monster := false
+	var layers: Array[Layer] = []
+
+
+class Visual extends Sprite:
+	var record: int
+	var type: int
+	var x: int
+	var y: int
+	var z: int
+	var px: int
+	var py: int
+	var view_size: int

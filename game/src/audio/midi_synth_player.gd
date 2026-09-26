@@ -1,3 +1,4 @@
+# gdstyle:ignore-file=quality/max-class-variables
 class_name MidiSynthPlayer
 extends Node
 
@@ -6,7 +7,6 @@ extends Node
 signal track_finished(track_id: int)
 
 const MidiFile = preload("res://src/audio/standard_midi_file.gd")
-
 const SAMPLE_RATE := 22050.0
 const BUFFER_LENGTH_SECONDS := 1.0
 const PREFILL_SECONDS := 0.20
@@ -22,46 +22,11 @@ const WAVETABLE_SIZE := 2048
 const PREFILL_FRAMES := int(PREFILL_SECONDS * SAMPLE_RATE)
 const IDLE_POLL_MSEC := 10
 
-
 static var _family_0_table := PackedFloat32Array()
 static var _family_1_table := PackedFloat32Array()
 static var _family_2_table := PackedFloat32Array()
 static var _family_6_table := PackedFloat32Array()
 static var _family_7_table := PackedFloat32Array()
-
-
-class PlaybackResult extends RefCounted:
-	var ok := false
-	var error := ""
-	var track_id := -1
-	var duration_seconds := 0.0
-
-	static func failure(message: String) -> PlaybackResult:
-		var result := PlaybackResult.new()
-		result.error = message
-
-		return result
-
-
-class Voice:
-	extends RefCounted
-
-	var channel := 0
-	var note := 0
-	var program := 0
-	var family := 0
-	var velocity := 0.0
-	var frequency := 440.0
-	var phase := 0.0
-	var secondary_phase := 0.0
-	var age_seconds := 0.0
-	var envelope := 0.0
-	var release_rate := 4.0
-	var releasing := false
-	var held_by_pedal := false
-	var percussion := false
-	var noise_state := 1
-
 
 # guarded by _mutex. the main thread publishes commands and reads status; the
 # synth thread owns every render field below the _playback handover
@@ -1027,3 +992,36 @@ func set_paused(value: bool) -> void:
 
 	if _audio_player != null:
 		_audio_player.stream_paused = value
+
+
+class PlaybackResult extends RefCounted:
+	var ok := false
+	var error := ""
+	var track_id := -1
+	var duration_seconds := 0.0
+
+	static func failure(message: String) -> PlaybackResult:
+		var result := PlaybackResult.new()
+		result.error = message
+
+		return result
+
+
+class Voice:
+	extends RefCounted
+
+	var channel := 0
+	var note := 0
+	var program := 0
+	var family := 0
+	var velocity := 0.0
+	var frequency := 440.0
+	var phase := 0.0
+	var secondary_phase := 0.0
+	var age_seconds := 0.0
+	var envelope := 0.0
+	var release_rate := 4.0
+	var releasing := false
+	var held_by_pedal := false
+	var percussion := false
+	var noise_state := 1

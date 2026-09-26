@@ -92,7 +92,15 @@ func _check_dezone() -> void:
 		assert(city.set_zone_id(point.x, point.y, 1) and city.set_building_id(point.x, point.y, Tiles.RUBBLE_1))
 		CityTileCounts.recount(city)
 		var before := city.document.serialize().data
-		var command := ZoneCommand.apply_rectangle(city, CityToolIds.Group.BULLDOZER, CityToolIds.Bulldozer.DEZONE, point, point, false, true)
+		var command := ZoneCommand.apply_rectangle(
+			city,
+			CityToolIds.Group.BULLDOZER,
+			CityToolIds.Bulldozer.DEZONE,
+			point,
+			point,
+			false,
+			true,
+		)
 		assert(command.ok and city.building_id(point.x, point.y) == Tiles.EMPTY)
 		var exact := _saved(city) == CityTileCounts.count(city)
 		assert(exact == (edge != 128), "Only an extended city counts dezoned rubble")

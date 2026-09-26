@@ -41,7 +41,10 @@ func _run() -> void:
 				if Rect2i(command.position * divisor, command.size * divisor).intersects(bounds):
 					actual.append(command)
 
-			assert(_static_command_values(actual, false) == _static_command_values(expected, false), "Regional foreground order differs at view %d" % view)
+			assert(
+				_static_command_values(actual, false) == _static_command_values(expected, false),
+				"Regional foreground order differs at view %d" % view,
+			)
 
 		cache.close()
 

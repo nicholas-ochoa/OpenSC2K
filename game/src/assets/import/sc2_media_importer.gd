@@ -5,7 +5,11 @@ extends RefCounted
 const CATEGORIES := ["graphics", "sound", "music", "data"]
 
 
-static func import_assets(path: String, packs_root: String, categories: PackedStringArray = PackedStringArray(CATEGORIES)) -> Sc2MediaImportResult:
+static func import_assets(
+	path: String,
+	packs_root: String,
+	categories: PackedStringArray = PackedStringArray(CATEGORIES),
+) -> Sc2MediaImportResult:
 	var result := Sc2MediaImportResult.new()
 
 	if categories.is_empty():
@@ -32,7 +36,12 @@ static func import_assets(path: String, packs_root: String, categories: PackedSt
 		return result
 
 	var label := "SimCity 2000 — " + source.platform
-	var unique := "%s-%d-%d-%d" % [source.platform.validate_filename().replace(" ", "-"), Time.get_unix_time_from_system(), OS.get_process_id(), Time.get_ticks_usec()]
+	var unique := "%s-%d-%d-%d" % [
+		source.platform.validate_filename().replace(" ", "-"),
+		Time.get_unix_time_from_system(),
+		OS.get_process_id(),
+		Time.get_ticks_usec(),
+	]
 	var target := destination.path_join(unique)
 	var stage := target + ".staging"
 
@@ -143,7 +152,10 @@ static func _import_audio(source: Sc2ImportSource, category: String, folder: Str
 			bytes = converted.bytes
 
 		if category == "sound":
-			if bytes.size() < 12 or bytes.slice(0, 4).get_string_from_ascii() != "RIFF" or bytes.slice(8, 12).get_string_from_ascii() != "WAVE" or AudioStreamWAV.load_from_buffer(bytes) == null:
+			if (bytes.size() < 12
+					or bytes.slice(0, 4).get_string_from_ascii() != "RIFF"
+					or bytes.slice(8, 12).get_string_from_ascii() != "WAVE"
+					or AudioStreamWAV.load_from_buffer(bytes) == null):
 				result.warnings.append("Sound %d is not a readable WAV file." % id)
 				continue
 		else:
@@ -170,14 +182,21 @@ static func _import_audio(source: Sc2ImportSource, category: String, folder: Str
 			return
 
 		entries[str(id)] = name
-		origins[str(id)] = {"container": resource.source.get_file(), "record": resource.name}
+		origins[str(id)] = { "container": resource.source.get_file(), "record": resource.name }
 
 	if entries.is_empty():
 		result.failures[category] = "No convertible %s assets with known game IDs were found." % category
 		OriginalGameInstaller.remove_tree(folder)
 		return
 
-	var manifest := {"format": "opensc2k-" + category, "version": 1, "name": label + " " + category.capitalize(), "source_platform": source.platform, "files": entries, "source_assets": origins}
+	var manifest := {
+		"format": "opensc2k-" + category,
+		"version": 1,
+		"name": label + " " + category.capitalize(),
+		"source_platform": source.platform,
+		"files": entries,
+		"source_assets": origins,
+	}
 	ImportedPackRevision.stamp(category, manifest)
 	var write_error := _write(folder.path_join("pack.json"), JSON.stringify(manifest, "\t").to_utf8_buffer())
 
@@ -192,7 +211,9 @@ static func _import_audio(source: Sc2ImportSource, category: String, folder: Str
 	result.counts[category] = entries.size()
 
 	if entries.size() < last - first + 1:
-		result.warnings.append("%s contains %d of %d standard asset IDs. Missing entries need assets from the base game." % [category.capitalize(), entries.size(), last - first + 1])
+		result.warnings.append(
+			"%s contains %d of %d standard asset IDs. Missing entries need assets from the base game." % [category.capitalize(),
+			entries.size(), last - first + 1])
 
 
 static func _write(path: String, bytes: PackedByteArray) -> String:

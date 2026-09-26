@@ -5,22 +5,6 @@ extends NetworkConstants
 @warning_ignore_start("integer_division")
 
 
-class Plan extends RefCounted:
-	var ok := false
-	var error := ""
-	var start := Vector2i.ZERO
-	var direction := 0
-	var span_length := 0
-	var direction_allowed := false
-
-	static func failure(message: String, allowed := false) -> Plan:
-		var result := Plan.new()
-		result.error = message
-		result.direction_allowed = allowed
-
-		return result
-
-
 static func bridge_type_name(bridge_type: int) -> String:
 	if bridge_type < 0 or bridge_type >= BRIDGE_NAMES.size():
 		return "Unknown Bridge"
@@ -283,6 +267,23 @@ static func _bridge_tile(
 
 			var pattern_index := (span_index - first_pattern) % 5
 
-			return Tiles.SUSPENSION_BRIDGE_1 + pattern_index if direction == 0 or direction == 3 else Tiles.SUSPENSION_BRIDGE_5 - pattern_index
+			return (Tiles.SUSPENSION_BRIDGE_1 + pattern_index if direction == 0 or direction == 3
+				else Tiles.SUSPENSION_BRIDGE_5 - pattern_index)
 		_:
 			return Tiles.ROAD_BRIDGE
+
+
+class Plan extends RefCounted:
+	var ok := false
+	var error := ""
+	var start := Vector2i.ZERO
+	var direction := 0
+	var span_length := 0
+	var direction_allowed := false
+
+	static func failure(message: String, allowed := false) -> Plan:
+		var result := Plan.new()
+		result.error = message
+		result.direction_allowed = allowed
+
+		return result

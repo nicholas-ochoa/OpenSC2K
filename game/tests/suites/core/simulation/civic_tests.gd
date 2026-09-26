@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Simulation: civic checks.
 
 @warning_ignore_start("integer_division")

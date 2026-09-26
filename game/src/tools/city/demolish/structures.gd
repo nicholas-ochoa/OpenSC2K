@@ -2,7 +2,6 @@ class_name DemolishStructures
 extends DemolishConstants
 
 
-
 static func structure_area(tile_id: int) -> int:
 	return DemolishEffectsSites._building_area(tile_id)
 
@@ -46,6 +45,7 @@ static func damage_structure_payloads(
 	)
 
 
+# gdstyle:ignore=quality/max-parameters
 static func _demolish_point(
 	city: CityState,
 	altitude: PackedByteArray,
@@ -109,7 +109,7 @@ static func _demolish_point(
 	if tile_id >= RUNWAY_FIRST and tile_id <= PIER_LAST:
 		return DemolishTransport._demolish_transport_component(
 			altitude, buildings, terrain, zones, underground, flags, misc,
-			point, tile_id, random, emit_effects, scurk_mode, map_edge
+			point, random, emit_effects, scurk_mode, map_edge
 		)
 
 	if DemolishTransport._is_highway_tile(tile_id):
@@ -257,6 +257,7 @@ static func _demolish_point(
 	return result
 
 
+# gdstyle:ignore=quality/max-parameters
 static func _demolish_underground_point(
 	city: CityState,
 	altitude: PackedByteArray,

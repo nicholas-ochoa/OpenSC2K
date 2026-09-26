@@ -1,4 +1,5 @@
 extends SceneTree
+
 const DocumentState = preload("res://tests/support/document_state.gd")
 
 
@@ -11,7 +12,14 @@ func _initialize() -> void:
 			var base := edge - 24
 			var before: Array = DocumentState.capture(city.document)
 			var preview_city := CityState.copy_for_edit(city)
-			var command := NetworkCommand.apply(city, group, 0, Vector2i(base, 20), Vector2i(base + 12, 20), NetworkCommand.BRIDGE_ROAD_CAUSEWAY if group == 6 else -1)
+			var command := NetworkCommand.apply(
+				city,
+				group,
+				0,
+				Vector2i(base, 20),
+				Vector2i(base + 12, 20),
+				NetworkCommand.BRIDGE_ROAD_CAUSEWAY if group == 6 else -1,
+			)
 			assert(command.ok and command.bridge_built)
 			assert(command.dry_points.size() == 9)
 
@@ -22,7 +30,10 @@ func _initialize() -> void:
 			var artwork := NetworkPlacementPreview.build(NetworkPlacementPreview.Request.new(preview_city, group, 0,
 				Vector2i(base, 20), Vector2i(base + 12, 20), 2, palette, sprites, false))
 			assert(not artwork.draws.is_empty() and preview_city.building_id(base + 12, 20) != 0)
-			assert(DocumentState.capture(preview_city.document) == DocumentState.capture(city.document), "Bridge preview matches the complete placed route")
+			assert(
+				DocumentState.capture(preview_city.document) == DocumentState.capture(city.document),
+				"Bridge preview matches the complete placed route",
+			)
 			assert(NetworkCommand.undo(city, command).ok)
 			assert(DocumentState.capture(city.document) == before, "One Undo restores both banks and the bridge")
 
@@ -65,7 +76,16 @@ func _initialize() -> void:
 		assert(city.building_id(base + 8, 20) == 0 and not limited.continuation_error.is_empty())
 		assert(NetworkCommand.undo(city, limited).ok)
 		assert(city.set_funds(0))
-		var free_route := NetworkCommand.apply(city, 6, 0, Vector2i(base, 20), Vector2i(base + 20, 20), NetworkCommand.BRIDGE_ROAD_CAUSEWAY, -1, true)
+		var free_route := NetworkCommand.apply(
+			city,
+			6,
+			0,
+			Vector2i(base, 20),
+			Vector2i(base + 20, 20),
+			NetworkCommand.BRIDGE_ROAD_CAUSEWAY,
+			-1,
+			true,
+		)
 		assert(free_route.ok and free_route.cost == 0 and free_route.bridge_count == 2)
 		assert(NetworkCommand.undo(city, free_route).ok)
 	print("PASS: bridge continuation, costs, deferred connections and one-step Undo at all map sizes")

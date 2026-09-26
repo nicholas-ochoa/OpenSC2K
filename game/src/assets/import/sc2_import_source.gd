@@ -24,13 +24,15 @@ static func scan(path: String) -> Sc2ImportSource:
 
 	if FileAccess.file_exists(selected):
 		if selected.get_extension().to_lower() in ["pkg", "dmg", "iso", "zip", "7z", "rar"]:
-			source.error = "Install the game or extract its files first. For GOG, select the installed game folder or macOS .app instead of the installer."
+			source.error = ("Install the game or extract its files first. For GOG, select the installed game folder or "
+				+ "macOS .app instead of the installer.")
 			return source
 
 		var selected_file := FileAccess.open(selected, FileAccess.READ)
 
 		if selected_file != null and selected_file.get_length() > MAX_FILE_BYTES:
-			source.error = "This file exceeds the import size limit. Install the game or extract its files first, then select its game folder or macOS .app."
+			source.error = ("This file exceeds the import size limit. Install the game or extract its files first, "
+				+ "then select its game folder or macOS .app.")
 			return source
 
 		source.root = selected.get_base_dir()
@@ -59,7 +61,8 @@ static func scan(path: String) -> Sc2ImportSource:
 	if source._platforms.size() == 1:
 		source.platform = source._platforms.keys()[0]
 	elif source._platforms.size() > 1:
-		source.error = "This folder contains assets from multiple platforms (%s). Select one game's folder." % ", ".join(source._platforms.keys())
+		source.error = "This folder contains assets from multiple platforms (%s). Select one game's folder." % ", ".join(
+			source._platforms.keys())
 	elif not source.resources.is_empty():
 		# Loose standard media is useful even when its original executable is gone.
 		source.platform = "Unidentified SC2K"
@@ -111,7 +114,8 @@ func _read(path: String, explicitly_selected: bool) -> void:
 	var resource_fork := extension == "rsrc" or name.begins_with("._")
 	var executable := extension in ["exe", "dll", "wad"]
 	var mac_candidate := extension == "bin" or upper.contains("SIMCITY") or upper.contains("SIM CITY")
-	var loose := extension in ["wav", "mid", "midi", "xmi", "voc", "bmp", "pal", "dat", "idx", "mif", "hed", "bin", "raw", "rsc", "spr", "scl", "db"]
+	var loose := extension in ["wav", "mid", "midi", "xmi", "voc", "bmp", "pal", "dat", "idx", "mif", "hed", "bin", "raw", "rsc", "spr",
+		"scl", "db"]
 
 	if not explicitly_selected and not resource_fork and not executable and not loose and not mac_candidate:
 		return
@@ -142,7 +146,8 @@ func _read(path: String, explicitly_selected: bool) -> void:
 			var header := int(bytes.decode_u32(60))
 			var family := "Windows 3.x" if bytes.slice(header, header + 2).get_string_from_ascii() == "NE" else "Windows"
 
-			var game_program := upper.contains("SC2000") or upper.contains("SC2K") or upper.contains("SIMCITY") or upper in ["SIMDEMO.EXE", "2KCLIENT.EXE"]
+			var game_program := (upper.contains("SC2000") or upper.contains("SC2K") or upper.contains("SIMCITY")
+				or upper in ["SIMDEMO.EXE", "2KCLIENT.EXE"])
 
 			for resource in parsed.resources:
 				if resource.type == "2" and resource.id in [178, 247]:

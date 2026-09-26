@@ -9,15 +9,6 @@ const Random = preload("res://src/simulation/random/sim_random.gd")
 const DisasterStart = preload("res://src/simulation/disasters/disaster_start_phase.gd")
 const DebugActions = preload("res://src/debug/city_debug_actions.gd")
 
-class ActionResult extends RefCounted:
-	var ok := false
-	var message := ""
-
-	func _init(succeeded: bool, text: String) -> void:
-		ok = succeeded
-		message = text
-
-
 var app: CityApplication
 
 
@@ -218,7 +209,11 @@ func debug_start_disaster(disaster_type: int) -> ActionResult:
 
 
 func debug_end_disaster() -> ActionResult:
-	var result := DebugActions.end_disaster(app.document_state.city, app.document_state.current_document, app.simulation_state.simulation_engine)
+	var result := DebugActions.end_disaster(
+		app.document_state.city,
+		app.document_state.current_document,
+		app.simulation_state.simulation_engine,
+	)
 
 	if not result.ok:
 		return ActionResult.new(false, result.error)
@@ -326,3 +321,12 @@ func debug_set_visible_altitude_levels(levels: int) -> void:
 	app.map_view.signs._invalidate_sign_entries()
 	app.static_render.invalidate_view_render()
 	app.map_render.refresh_map(false)
+
+
+class ActionResult extends RefCounted:
+	var ok := false
+	var message := ""
+
+	func _init(succeeded: bool, text: String) -> void:
+		ok = succeeded
+		message = text

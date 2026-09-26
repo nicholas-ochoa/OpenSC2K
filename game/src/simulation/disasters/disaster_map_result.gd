@@ -1,7 +1,6 @@
 class_name DisasterMapResult
 extends PhaseResult
 
-
 var active := false
 var map_counter := 0
 var hurricane_counter := 0

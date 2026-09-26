@@ -23,7 +23,6 @@ const ENTRY_BLOCKS_DIRECTION := [
 	true, false, true, false,  # UNUSED_0E
 	true, false, true, false,  # UNUSED_0F
 ]
-
 const VERTICAL_TERRAIN_BLOCKS := {
 	TerrainTileIds.SLOPE_TOP_LEFT: true,
 	TerrainTileIds.SLOPE_BOTTOM_RIGHT: true,
@@ -57,7 +56,8 @@ const HORIZONTAL_TERRAIN_BLOCKS := {
 
 
 static func allows_entry(terrain_id: int, direction: int) -> bool:
-	return terrain_id >= TerrainTileIds.CHANNEL_FIRST or not ENTRY_BLOCKS_DIRECTION[(terrain_id & TerrainTileIds.SHAPE_MASK) * 4 + direction]
+	return (terrain_id >= TerrainTileIds.CHANNEL_FIRST
+		or not ENTRY_BLOCKS_DIRECTION[(terrain_id & TerrainTileIds.SHAPE_MASK) * 4 + direction])
 
 
 static func allows_connection(terrain_id: int, direction: int) -> bool:
@@ -69,7 +69,14 @@ static func allows_connection(terrain_id: int, direction: int) -> bool:
 
 
 # going downhill isn't just uphill with a minus sign
-static func allows_height_step(current_terrain: int, current_height: int, next_terrain: int, next_height: int, keep_straight: bool, rail: bool) -> bool:
+static func allows_height_step(
+	current_terrain: int,
+	current_height: int,
+	next_terrain: int,
+	next_height: int,
+	keep_straight: bool,
+	rail: bool,
+) -> bool:
 	# supplied executable 0x00448f50. preserve its asymmetric tests; this is
 	# not a general maximum-height-difference or bridge-clearance rule
 	if keep_straight:

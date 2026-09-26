@@ -62,7 +62,13 @@ static func publish(completed: GameSpeedController, target: GameSpeedController)
 static func stamp(source: GameSpeedController) -> Array:
 	var engine := source.engine
 	var doc := engine.city.document
-	var result: Array = [doc.get_instance_id(), engine.clock.city_days, engine.random.state, engine.lfsr_random.state, engine.game_random.state]
+	var result: Array = [
+		doc.get_instance_id(),
+		engine.clock.city_days,
+		engine.random.state,
+		engine.lfsr_random.state,
+		engine.game_random.state,
+	]
 
 	for chunk in doc.chunks:
 		result.append(chunk.get_instance_id())

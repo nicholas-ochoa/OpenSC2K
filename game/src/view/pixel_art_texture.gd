@@ -1,5 +1,7 @@
 class_name PixelArtTexture
 extends Texture2D
+
+
 # Draws a pixel-art texture with a whole number of screen pixels for each
 # artwork pixel at the scale that ScreenPixels holds. The reported size is in
 # whole interface pixels for layout. Each drawing uses the exact whole-pixel
@@ -11,6 +13,10 @@ extends Texture2D
 var source: Texture2D
 # interface pixels for each artwork pixel when drawn at its own size
 var base := 1.0
+
+
+func _draw(to_canvas_item: RID, pos: Vector2, modulate: Color, transpose: bool) -> void:
+	_draw_rect(to_canvas_item, Rect2(pos, get_size()), false, modulate, transpose)
 
 
 # wraps texture, or returns null or an already wrapped texture unchanged
@@ -48,10 +54,6 @@ func _is_pixel_opaque(x: int, y: int) -> bool:
 	var point := Vector2i(Vector2(x, y) * Vector2(source.get_size()) / Vector2(get_size()))
 
 	return image == null or not Rect2i(Vector2i.ZERO, image.get_size()).has_point(point) or image.get_pixelv(point).a > 0.5
-
-
-func _draw(to_canvas_item: RID, pos: Vector2, modulate: Color, transpose: bool) -> void:
-	_draw_rect(to_canvas_item, Rect2(pos, get_size()), false, modulate, transpose)
 
 
 func _draw_rect(to_canvas_item: RID, rect: Rect2, tile: bool, modulate: Color, transpose: bool) -> void:

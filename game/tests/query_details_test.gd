@@ -1,4 +1,5 @@
 extends SceneTree
+
 const DocumentState = preload("res://tests/support/document_state.gd")
 
 

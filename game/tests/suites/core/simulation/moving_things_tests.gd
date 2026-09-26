@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Simulation: moving things checks.
 
 @warning_ignore_start("integer_division")
@@ -17,6 +16,13 @@ const HelicopterRailTests = preload("res://tests/suites/core/simulation/helicopt
 
 
 func test_moving_thing_phase(reference_root: String) -> void:
+	_test_explosions(reference_root)
+	_test_tornadoes(reference_root)
+	_test_maxis_man(reference_root)
+	_test_monsters(reference_root)
+
+
+func _test_explosions(reference_root: String) -> void:
 	var explosion := _special_growth_fixture(reference_root)
 	_set_explosion(explosion, 1, Vector2i(20, 20), 5, 0, 0)
 	_check(explosion.city.set_building_id(20, 20, Tiles.NICE_APARTMENTS_2X2_2), "Explosion fixture places its center building")
@@ -178,6 +184,8 @@ func test_moving_thing_phase(reference_root: String) -> void:
 		"Explosion damage reports the original commerce-connection decrement",
 	)
 
+
+func _test_tornadoes(reference_root: String) -> void:
 	var tornado := _special_growth_fixture(reference_root)
 	_set_tornado(tornado, 1, Vector2i(20, 20), 2)
 	_check(tornado.city.set_building_id(20, 20, Tiles.ROAD_STRAIGHT_1), "Tornado fixture places a road")
@@ -232,6 +240,8 @@ func test_moving_thing_phase(reference_root: String) -> void:
 		"Tornado expires on its recovered first low-byte random gate",
 	)
 
+
+func _test_maxis_man(reference_root: String) -> void:
 	var maxis_man := _special_growth_fixture(reference_root)
 	_set_maxis_man(maxis_man, 1, Vector2i(20, 20), 0, 241, Vector2i(30, 20))
 	_check(maxis_man.city.set_text_overlay_id(30, 20, 241), "Maxis Man fixture places its fixed target")
@@ -290,6 +300,8 @@ func test_moving_thing_phase(reference_root: String) -> void:
 		"Maxis Man replaces the target with a spreading explosion",
 	)
 
+
+func _test_monsters(reference_root: String) -> void:
 	var monster := _special_growth_fixture(reference_root)
 	_check(monster.document.set_misc_u32(0x1018, 30), "Monster fixture sets city-center X")
 	_check(monster.document.set_misc_u32(0x101c, 20), "Monster fixture sets city-center Y")

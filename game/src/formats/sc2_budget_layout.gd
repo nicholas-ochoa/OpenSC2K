@@ -10,7 +10,6 @@ const YEAR_TO_DATE := 0x08
 const MONTHS := 0x0c
 const MONTH_RECORD_SIZE := 8
 const MONTH_FUNDING := 4
-
 const RESIDENTIAL := 0
 const COMMERCIAL := 1
 const INDUSTRIAL := 2

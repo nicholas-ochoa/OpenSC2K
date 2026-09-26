@@ -4,7 +4,12 @@ extends RefCounted
 # The caller owns the state.
 
 
-static func _execute_day_schedule(engine: SimulationEngine, schedule: SimulationSchedule, annual_budget_approved: bool, span: SimulationTimingSpan) -> SimulationDayResult:
+static func _execute_day_schedule(
+	engine: SimulationEngine,
+	schedule: SimulationSchedule,
+	annual_budget_approved: bool,
+	span: SimulationTimingSpan,
+) -> SimulationDayResult:
 
 	var applied := PackedStringArray()
 	var pending := PackedStringArray()

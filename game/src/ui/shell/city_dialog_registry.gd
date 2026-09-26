@@ -1,5 +1,13 @@
+# gdstyle:ignore-file=quality/max-class-variables
 class_name CityDialogRegistry
 extends Control
+
+# whether a visible window suspends the simulation. each registered window
+# declares one value. statistics windows are modeless, as in the original game
+enum Modality {
+	BLOCKING,
+	MODELESS,
+}
 
 # Scene dialogs stay visible in the editor and hide themselves in _ready().
 const FileDialogs = preload("res://src/ui/shared/file_dialog_factory.gd")
@@ -25,14 +33,9 @@ const LibraryWindowsView = preload("res://src/ui/city_windows/library_ruminate_w
 const ScenarioDialogView = preload("res://src/ui/startup/scenario_intro_dialog.tscn")
 const BudgetDialogView = preload("res://src/ui/city_windows/budget_dialog.tscn")
 
-# whether a visible window suspends the simulation. each registered window
-# declares one value. statistics windows are modeless, as in the original game
-enum Modality { BLOCKING, MODELESS }
-
 var dialog_groups: Dictionary = {}
 var blocking_windows: Array[Node] = []
 var modeless_windows: Array[Node] = []
-
 var original_assets: OriginalGameAssets
 var city_open_dialog: FileDialog
 var city_save_dialog: FileDialog

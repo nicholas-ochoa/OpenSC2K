@@ -1,17 +1,13 @@
 class_name MonthStartPhase
 extends RefCounted
 
+
 @warning_ignore_start("integer_division")
 
 const MISC_SIZE := Sc2MiscLayout.SIZE
 const ZONE_POPULATION_COUNT := 8
-
 # the original opens the subscribed newspaper after the April and August budget
 const SUBSCRIPTION_MONTHS := [3, 7]
-
-
-class Result extends PhaseResult:
-	var cleared_population_fields := 0
 
 
 static func run(city: CityState) -> Result:
@@ -48,3 +44,7 @@ static func _failed(message: String) -> Result:
 	result.error = message
 
 	return result
+
+
+class Result extends PhaseResult:
+	var cleared_population_fields := 0

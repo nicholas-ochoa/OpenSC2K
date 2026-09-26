@@ -2,33 +2,13 @@ class_name ScurkMif
 extends RefCounted
 
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
-
 const INFO_LENGTH := 0x72
 const FILE_HEADER_LENGTH := 12
 
-class Result extends RefCounted:
-	var ok := false
-	var error := ""
-
-	static func failure(message: String) -> Result:
-		var result := Result.new()
-		result.error = message
-
-		return result
-
-
-class Piece extends RefCounted:
-	var tag := ""
-	var sprite_id := -1
-	var raw_payload := PackedByteArray()
-	var entry: Sc2SpriteArchive.SpriteEntry
-
-	func _init(kind: String, id: int, payload: PackedByteArray, sprite: Sc2SpriteArchive.SpriteEntry = null) -> void:
-		tag = kind
-		sprite_id = id
-		raw_payload = payload
-		entry = sprite
-
+# Decoded shape states by shape data. The state depends only on the key fields.
+# Each parse or edit otherwise decodes every shape again.
+static var _shape_cache: Dictionary = {}
+static var _shape_cache_mutex := Mutex.new()
 
 var info_payload := PackedByteArray()
 var shapes: Array[Sc2SpriteArchive.SpriteEntry] = []
@@ -38,11 +18,6 @@ var archive: Sc2SpriteArchive = Sc2SpriteArchive.new()
 var overrides: Sc2SpriteArchive = Sc2SpriteArchive.new()
 var piece_count := 0
 var parse_error := ""
-
-# Decoded shape states by shape data. The state depends only on the key fields.
-# Each parse or edit otherwise decodes every shape again.
-static var _shape_cache: Dictionary = {}
-static var _shape_cache_mutex := Mutex.new()
 
 
 static func load_path(path: String) -> ScurkMif:
@@ -587,3 +562,27 @@ static func _append_u32_be(bytes: PackedByteArray, value: int) -> void:
 	bytes.append((value >> 16) & 0xff)
 	bytes.append((value >> 8) & 0xff)
 	bytes.append(value & 0xff)
+
+
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+
+	static func failure(message: String) -> Result:
+		var result := Result.new()
+		result.error = message
+
+		return result
+
+
+class Piece extends RefCounted:
+	var tag := ""
+	var sprite_id := -1
+	var raw_payload := PackedByteArray()
+	var entry: Sc2SpriteArchive.SpriteEntry
+
+	func _init(kind: String, id: int, payload: PackedByteArray, sprite: Sc2SpriteArchive.SpriteEntry = null) -> void:
+		tag = kind
+		sprite_id = id
+		raw_payload = payload
+		entry = sprite

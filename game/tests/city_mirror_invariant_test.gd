@@ -66,7 +66,7 @@ func tornado_city(edge: int) -> CityState:
 	var things := city.document.find_chunk("XTHG").decoded_payload.duplicate()
 	var record := city.thing_count() - 1
 
-	var fields := {0: 15, 1: 2, 2: 0, 3: point.x, 4: point.y, 5: 0, 6: 8, 7: 8, 10: 0}
+	var fields := { 0: 15, 1: 2, 2: 0, 3: point.x, 4: point.y, 5: 0, 6: 8, 7: 8, 10: 0 }
 
 	for field in fields:
 		ThingData.write(things, record * 12 + field, fields[field])
@@ -241,7 +241,7 @@ func _check_landscape_commands() -> void:
 func _check_display_copy_is_exempt() -> void:
 	var city := CityState.from_document(EmptyCityTemplate.create(128))
 	city.set_building_id(30, 40, Tiles.POLICE_STATION)
-	var hidden := CityViewFilter.surface_copy(city, {"buildings": false})
+	var hidden := CityViewFilter.surface_copy(city, { "buildings": false })
 	check(hidden.document == city.document, "The display copy shares the document")
 	check(hidden.buildings[30 * 128 + 40] == 0, "The display copy hides the building")
 	check(city.document.find_chunk("XBLD").decoded_payload[30 * 128 + 40] == 0xd2,

@@ -1,8 +1,8 @@
 class_name DisasterMapFireFlood
 extends DisasterMapConstants
 
-
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 
 static func run_fire(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> DisasterMapResult:
 	var map_edge: int = city.map_size if city != null else 128

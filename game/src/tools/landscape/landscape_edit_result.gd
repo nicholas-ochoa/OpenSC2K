@@ -3,7 +3,6 @@ extends EditCommandResult
 # trees, forest, water, and stream paths. a paint-brush drag merges its
 # strokes into one undo
 
-
 var skipped_insufficient := 0
 
 

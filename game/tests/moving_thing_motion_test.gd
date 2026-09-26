@@ -55,11 +55,15 @@ func _initialize() -> void:
 				things.fill(0)
 				prepare(text, things, record, origin, edge)
 				ThingData.write(things, record * 12, kind)
-				var accepted: bool = (kind in [1, 2] if caller == AirThingMotion else kind == 16 if caller == MaxisManThingTick else kind in [5, 15])
+				var accepted: bool = (kind in [1, 2] if caller == AirThingMotion else kind == 16 if caller == MaxisManThingTick
+					else kind in [5, 15])
 				var result: int = caller._move_thing_eight_way(kind, text, things, record, 2, edge)
 				check((result >= 0) == accepted, "caller type policy")
 				if not accepted:
-					check(ThingData.read(things, record * 12) == 0 and OverlayData.read(text, origin.x * edge + origin.y) == 0, "unsupported type removed")
+					check(
+						ThingData.read(things, record * 12) == 0 and OverlayData.read(text, origin.x * edge + origin.y) == 0,
+						"unsupported type removed",
+					)
 	print("Moving motion checks: %d failures" % failures)
 	quit(1 if failures else 0)
 

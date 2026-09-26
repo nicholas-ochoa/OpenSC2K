@@ -1,6 +1,7 @@
 extends SceneTree
 ## Tick preparation stays private until commit, including lazy disaster writes.
 
+
 func _initialize() -> void:
 	for edge in [128, 256]:
 		for kind in [9, 6]:

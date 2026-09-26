@@ -1,5 +1,4 @@
 extends SceneTree
-
 ## Select and run core suites with one shared result and fixture context.
 
 const CoreTestContext = preload("res://tests/support/core_test_context.gd")

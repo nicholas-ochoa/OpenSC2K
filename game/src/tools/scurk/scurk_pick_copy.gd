@@ -3,19 +3,6 @@ extends RefCounted
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const SpriteIds = preload("res://src/tools/scurk/scurk_sprite_ids.gd")
-
-class Result extends ScurkMif.Result:
-	var object_count := 0
-	var shape_count := 0
-
-
-class PreparedShape extends RefCounted:
-	var sprite_id := 0
-	var width := 0
-	var height := 0
-	var pixels := PackedInt32Array()
-
-
 const GROUP_RESIDENTIAL := 0
 const GROUP_COMMERCIAL := 1
 const GROUP_INDUSTRIAL := 2
@@ -27,7 +14,6 @@ const GROUP_ANIMATING_I := 7
 const GROUP_ANIMATING_II := 8
 const GROUP_CONSTRUCTION := 9
 const GROUP_ALL := 10
-
 const GROUP_NAMES := [
 	"Residential",
 	"Commercial",
@@ -41,7 +27,6 @@ const GROUP_NAMES := [
 	"Construction",
 	"All",
 ]
-
 # original.mif stores these objects in group order. each value is a city tile id,
 # except the animating groups, which list sprite ids above the tile range.
 # Add SpriteIds.LARGE_FIRST to select the large-view sprite.
@@ -241,3 +226,20 @@ static func _failure(message: String) -> Result:
 	result.shape_count = 0
 
 	return result
+
+
+# The base type is nested. gdstyle incorrectly reads these members as outer class members.
+class Result extends ScurkMif.Result:
+
+
+	# gdstyle:ignore=order/class-member-order
+	var object_count := 0
+	# gdstyle:ignore=order/class-member-order
+	var shape_count := 0
+
+
+class PreparedShape extends RefCounted:
+	var sprite_id := 0
+	var width := 0
+	var height := 0
+	var pixels := PackedInt32Array()

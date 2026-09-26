@@ -4,7 +4,6 @@ extends RefCounted
 
 const SIZE := 4800
 const WORD_SIZE := 4
-
 const CITY_MODE := 0x0004
 const COMPASS := 0x0008
 const START_YEAR := 0x000c

@@ -53,7 +53,10 @@ static func refresh_sign_occlusion(render: ApplicationMapRender, view_size: int)
 		var moving_candidates: Array[CityDynamicVisual] = []
 		var moving_signature: Array = []
 
-		for moving_index in ApplicationMapRender.IsometricRenderer.occlusion_candidate_indices(render.caches.dynamic_sign_occlusion_grid, bounds):
+		for moving_index in ApplicationMapRender.IsometricRenderer.occlusion_candidate_indices(
+			render.caches.dynamic_sign_occlusion_grid,
+			bounds,
+		):
 			var visual := render.caches.dynamic_sign_occluders[moving_index]
 			moving_candidates.append(visual)
 			moving_signature.append(visual.value_signature())
@@ -75,7 +78,12 @@ static func refresh_sign_occlusion(render: ApplicationMapRender, view_size: int)
 
 			continue
 
-		var foreground: Image = render.caches.region_cache.sign_foreground(key, bounds, int(entry.draw_order), factor) if gpu_palette else null
+		var foreground: Image = render.caches.region_cache.sign_foreground(
+			key,
+			bounds,
+			int(entry.draw_order),
+			factor,
+		) if gpu_palette else null
 
 		if foreground == null:
 			var masks: Array[CitySignForeground.Mask] = []
@@ -89,7 +97,13 @@ static func refresh_sign_occlusion(render: ApplicationMapRender, view_size: int)
 				if not bounds.intersects(Rect2i(position, Vector2i(command.size) * divisor)):
 					continue
 
-				var resource := render.app.moving_sprites.dynamic_sprite_resource(sprite_archive, int(command.sprite_id), bool(command.flip), divisor, factor)
+				var resource := render.app.moving_sprites.dynamic_sprite_resource(
+					sprite_archive,
+					int(command.sprite_id),
+					bool(command.flip),
+					divisor,
+					factor,
+				)
 
 				if resource != null:
 					masks.append(CitySignForeground.Mask.new(resource.image, position * factor))
@@ -102,7 +116,12 @@ static func refresh_sign_occlusion(render: ApplicationMapRender, view_size: int)
 			var moving_image: Image = visual.image
 
 			if moving_image != null:
-				CitySignForeground.add_moving(foreground, moving_image, Vector2i(visual.position) * factor, Rect2i(bounds.position * factor, bounds.size * factor))
+				CitySignForeground.add_moving(
+					foreground,
+					moving_image,
+					Vector2i(visual.position) * factor,
+					Rect2i(bounds.position * factor, bounds.size * factor),
+				)
 
 		var used_indices: Dictionary[int, bool] = {}
 

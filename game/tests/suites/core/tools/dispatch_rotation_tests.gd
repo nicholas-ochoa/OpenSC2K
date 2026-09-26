@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Tools: dispatch rotation checks.
 
 @warning_ignore_start("integer_division")
@@ -70,7 +69,10 @@ func test_dispatch_command(reference_root: String) -> void:
 	var fire := Dispatch.apply(city, 2, 1, Vector2i(20, 20), 0, false)
 	_check(fire.ok and fire.available == 2 and city.thing(fire.thing_index).type == 8, "Fire dispatch adds an XTHG fire unit")
 	var military := Dispatch.apply(city, 2, 2, Vector2i(21, 20), 0, false)
-	_check(military.ok and military.available == 3 and city.thing(military.thing_index).type == 14, "Military dispatch adds an XTHG military unit")
+	_check(
+		military.ok and military.available == 3 and city.thing(military.thing_index).type == 14,
+		"Military dispatch adds an XTHG military unit",
+	)
 	_check(Dispatch.undo(city, military).ok, "Military dispatch can be undone")
 	_check(city.set_tile_flag(30, 30, 0x04, true), "Dispatch water fixture marks a water tile")
 	var water := Dispatch.apply(city, 2, 1, Vector2i(30, 30), fire.slot_index, false)

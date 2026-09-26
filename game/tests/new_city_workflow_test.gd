@@ -141,6 +141,52 @@ func _run() -> void:
 	assert(main.tool_state.landscape_editor)
 	for id in ["ALTM", "XTER", "XBLD", "XBIT"]:
 		assert(main.document_state.current_document.find_chunk(id).decoded_payload == generated.find_chunk(id).decoded_payload)
+	await _test_landscape_controls(main)
+
+	var original: PackedByteArray = main.document_state.current_document.serialize().data
+	main.new_city.reopen_terrain_dialog()
+	assert(dialog.visible and dialog.done_button.disabled)
+	_assert_editor_controls(main, false)
+	dialog.water_input.value += 1
+	main.new_city.cancel_new_city()
+	assert(main.document_state.current_document.serialize().data == original and main.tool_state.landscape_editor)
+	_assert_editor_controls(main, true)
+	main.new_city.reopen_terrain_dialog()
+	main.new_city.make_new_city_preview()
+	while main.new_city_state.preview_job != null:
+		await process_frame
+	main.new_city.create_new_city()
+	assert(main.tool_state.landscape_editor and not dialog.visible)
+	_assert_editor_controls(main, true)
+	main.new_city.start_city()
+	assert(not main.city_toolbar.regenerate_button.visible)
+	assert(main.city_toolbar.child_palette.visible)
+	main.new_city.open_new_city_dialog()
+	main.new_city.make_new_city_preview()
+	main.new_city.cancel_new_city()
+	while main.new_city_state.preview_job != null:
+		await process_frame
+	assert(not dialog.visible and main.new_city_state.session.preview_document == null)
+	main.new_city.open_new_city_dialog()
+	main.new_city.make_new_city_preview()
+	dialog.hills_input.value += 1
+	while main.new_city_state.preview_job != null:
+		await process_frame
+	assert(not dialog.candidate_valid and main.new_city_state.session.preview_document == null)
+	main.new_city.cancel_new_city()
+	main.queue_free()
+	await process_frame
+	print("New City workflow checks passed")
+	quit()
+
+
+func _assert_editor_controls(main: Node, expected: bool) -> void:
+	for control in [main.city_menu_bar, main.city_toolbar, main.city_status_bar]:
+		assert(control.is_visible_in_tree() == expected)
+	assert(main.map_view.is_visible_in_tree())
+
+
+func _test_landscape_controls(main: CityApplication) -> void:
 	assert(main.city_toolbar.regenerate_button.visible)
 	assert(not main.city_toolbar.child_palette.visible)
 	assert(main.city_toolbar.landscape_buttons.size() == 12)
@@ -196,46 +242,9 @@ func _run() -> void:
 	assert(main.city_toolbar.brush_controls.visible)
 	assert(main.map_view.brush_size == 5)
 	for tool in 4:
-		var expected := TerrainToolIcons.terrain_action(main.asset_state.asset_source.assets.city_ui_graphics, ["tree", "water", "stream", "forest"][tool])
-		assert(PixelArtTexture.unwrap(main.camera_input.tool_button_icon(1, tool)).get_image().get_data() == expected.get_image().get_data())
-	var original: PackedByteArray = main.document_state.current_document.serialize().data
-	main.new_city.reopen_terrain_dialog()
-	assert(dialog.visible and dialog.done_button.disabled)
-	_assert_editor_controls(main, false)
-	dialog.water_input.value += 1
-	main.new_city.cancel_new_city()
-	assert(main.document_state.current_document.serialize().data == original and main.tool_state.landscape_editor)
-	_assert_editor_controls(main, true)
-	main.new_city.reopen_terrain_dialog()
-	main.new_city.make_new_city_preview()
-	while main.new_city_state.preview_job != null:
-		await process_frame
-	main.new_city.create_new_city()
-	assert(main.tool_state.landscape_editor and not dialog.visible)
-	_assert_editor_controls(main, true)
-	main.new_city.start_city()
-	assert(not main.city_toolbar.regenerate_button.visible)
-	assert(main.city_toolbar.child_palette.visible)
-	main.new_city.open_new_city_dialog()
-	main.new_city.make_new_city_preview()
-	main.new_city.cancel_new_city()
-	while main.new_city_state.preview_job != null:
-		await process_frame
-	assert(not dialog.visible and main.new_city_state.session.preview_document == null)
-	main.new_city.open_new_city_dialog()
-	main.new_city.make_new_city_preview()
-	dialog.hills_input.value += 1
-	while main.new_city_state.preview_job != null:
-		await process_frame
-	assert(not dialog.candidate_valid and main.new_city_state.session.preview_document == null)
-	main.new_city.cancel_new_city()
-	main.queue_free()
-	await process_frame
-	print("New City workflow checks passed")
-	quit()
-
-
-func _assert_editor_controls(main: Node, expected: bool) -> void:
-	for control in [main.city_menu_bar, main.city_toolbar, main.city_status_bar]:
-		assert(control.is_visible_in_tree() == expected)
-	assert(main.map_view.is_visible_in_tree())
+		var expected := TerrainToolIcons.terrain_action(
+			main.asset_state.asset_source.assets.city_ui_graphics,
+			["tree", "water", "stream", "forest"][tool],
+		)
+		assert(PixelArtTexture.unwrap(main.camera_input.tool_button_icon(1, tool)).get_image().get_data()
+			== expected.get_image().get_data())

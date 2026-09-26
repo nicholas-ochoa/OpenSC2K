@@ -1,20 +1,5 @@
 extends SceneTree
 
-@warning_ignore_start("integer_division")
-
-class FixedRandom extends SimRandom:
-
-
-	func next_u15() -> int:
-		return 0
-
-
-class FixedLfsrRandom extends SimLfsrRandom:
-
-
-	func next_mask(_mask: int) -> int:
-		return 0
-
 var failures := 0
 var checks := 0
 
@@ -107,8 +92,14 @@ func check_maps(edge: int, native: bool) -> void:
 			check(pollution[(grid_edge / 2) * grid_edge + (grid_edge / 2)] == 170, "Uniform interior decays from 255 to 170")
 			check(pollution[0] == 145, "Corner omits absent pollution samples")
 
-		check(doc.find_chunk("XVAL").decoded_payload.count(0) == doc.find_chunk("XVAL").decoded_payload.size(), "Empty land does not retain old land values")
-		check(doc.find_chunk("XCRM").decoded_payload.count(0) == doc.find_chunk("XCRM").decoded_payload.size(), "Empty land does not retain or amplify old crime")
+		check(
+			doc.find_chunk("XVAL").decoded_payload.count(0) == doc.find_chunk("XVAL").decoded_payload.size(),
+			"Empty land does not retain old land values",
+		)
+		check(
+			doc.find_chunk("XCRM").decoded_payload.count(0) == doc.find_chunk("XCRM").decoded_payload.size(),
+			"Empty land does not retain or amplify old crime",
+		)
 
 		for field in [["XPLT", 0x34], ["XVAL", 0x28], ["XCRM", 0x2c]]:
 			var sum := total(doc.find_chunk(field[0]).decoded_payload)
@@ -177,7 +168,10 @@ func check_district(edge: int, native: bool) -> void:
 	check(PollutionPhase.run(CityState.from_document(high_crime)).ok, "High-crime district calculates land and crime")
 	var land := doc.find_chunk("XVAL").decoded_payload
 	var index := CityDataGrid.index(land, edge, point.x, point.y)
-	check(high_crime.find_chunk("XVAL").decoded_payload[index] == maxi(int(land[index]) - 85, 0), "Prior crime subtracts 255 / 3 from commercial land value")
+	check(
+		high_crime.find_chunk("XVAL").decoded_payload[index] == maxi(int(land[index]) - 85, 0),
+		"Prior crime subtracts 255 / 3 from commercial land value",
+	)
 	var crime := doc.find_chunk("XCRM").decoded_payload
 	check(crime[index] > 0 and crime[index] < 255, "Dense district produces bounded nonzero crime")
 	check(high_crime.find_chunk("XCRM").decoded_payload[index] >= crime[index], "Lower land value increases crime pressure")
@@ -205,4 +199,24 @@ func check_district(edge: int, native: bool) -> void:
 	check(traffic == expected_traffic, "Traversed traffic saturates at 255; all other cells stay unchanged")
 	city.set_zone_id(origin.x, origin.y + 4, 1)
 	trip = TransportTrip.run(city, origin, 1, 2, SimRandom.new(1))
-	check(trip.ok and not trip.reached_destination and doc.find_chunk("XTRF").decoded_payload == traffic, "Failed road trip leaves traffic unchanged")
+	check(
+		trip.ok and not trip.reached_destination and doc.find_chunk("XTRF").decoded_payload == traffic,
+		"Failed road trip leaves traffic unchanged",
+	)
+
+
+@warning_ignore_start("integer_division")
+
+
+class FixedRandom extends SimRandom:
+
+
+	func next_u15() -> int:
+		return 0
+
+
+class FixedLfsrRandom extends SimLfsrRandom:
+
+
+	func next_mask(_mask: int) -> int:
+		return 0

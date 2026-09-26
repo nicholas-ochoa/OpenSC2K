@@ -13,7 +13,8 @@ func _run() -> void:
 
 	for edge in [128, 512]:
 		# Dense original city for sprite coverage; sparse maximum map for extents.
-		var document := Sc2File.load_path("res://tests/fixtures/cities/generated-128.SC2") if edge == 128 else EmptyCityTemplate.create(edge)
+		var document := (Sc2File.load_path("res://tests/fixtures/cities/generated-128.SC2") if edge == 128
+			else EmptyCityTemplate.create(edge))
 		var city := CityState.from_document(document)
 		if edge == 512:
 			for point in [Vector2i(10, 10), Vector2i(256, 256), Vector2i(509, 509)]:
@@ -24,7 +25,8 @@ func _run() -> void:
 		for view in ([0, 1, 2] if edge == 128 else [CityIsometricRenderer.VIEW_SMALL]):
 			var sprites := large if view == CityIsometricRenderer.VIEW_LARGE else small
 
-			for mode: CityViewMode.Mode in ([CityViewMode.Mode.CITY, CityViewMode.Mode.UNDERGROUND] if edge == 128 else [CityViewMode.Mode.CITY]):
+			for mode: CityViewMode.Mode in ([CityViewMode.Mode.CITY, CityViewMode.Mode.UNDERGROUND] if edge == 128
+				else [CityViewMode.Mode.CITY]):
 				var full: AssetImageResult
 
 				if mode == CityViewMode.Mode.CITY:
@@ -39,7 +41,10 @@ func _run() -> void:
 					var bounds := Rect2i(Vector2i(Vector2(size) * fraction), Vector2i(517, 263)).intersection(Rect2i(Vector2i.ZERO, size))
 					var region := CityRegionRenderer.render(city, palette, sprites, bounds, view, mode)
 					assert(region.ok)
-					assert(region.image.get_data() == full.image.get_region(bounds).get_data(), "Region pixels differ: %d %d %s %s" % [edge, view, CityViewMode.key(mode), bounds])
+					assert(
+						region.image.get_data() == full.image.get_region(bounds).get_data(),
+						"Region pixels differ: %d %d %s %s" % [edge, view, CityViewMode.key(mode), bounds],
+					)
 					assert(region.tiles_drawn < edge * edge, "Region render scanned the whole map")
 
 				print("PASS: %d view %d %s regional pixels match whole-map painter" % [edge, view, CityViewMode.key(mode)])

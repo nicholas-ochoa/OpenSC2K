@@ -1,7 +1,6 @@
 class_name TransportTripResult
 extends RefCounted
 
-
 var ok := false
 var error := ""
 var reached_destination := false

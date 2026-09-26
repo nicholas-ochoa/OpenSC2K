@@ -3,7 +3,6 @@ extends RefCounted
 ## Facility types and budget categories shared by placement, query, and repair.
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const MICROSIM_TYPE_BY_TILE := {
 	Tiles.HYDRO_POWER_1: 21,
 	Tiles.HYDRO_POWER_2: 21,
@@ -41,7 +40,6 @@ const MICROSIM_TYPE_BY_TILE := {
 	Tiles.LAUNCH_ARCOLOGY: 15,
 	Tiles.LLAMA_DOME: 16,
 }
-
 const BUDGET_CATEGORY_BY_TILE := {
 	Tiles.HOSPITAL: Sc2BudgetLayout.HEALTH,
 	Tiles.POLICE_STATION: Sc2BudgetLayout.POLICE,

@@ -1,9 +1,10 @@
-
 @warning_ignore_start("integer_division")
 
 # Frozen pre-optimization oracle from e5f6abd9; used only by regression tests.
 extends RefCounted
+
 const NativeGridMath = preload("res://tests/support/native_grid_reference.gd")
+
 ## SC2X v3 rules. These are independent per-tile rules, not executable parity.
 
 
@@ -86,13 +87,19 @@ static func run(city: CityState) -> PollutionPhase.Result:
 	var center := Vector2i(edge / 2, edge / 2) if center_count == 0 else Vector2i(center_sum.x / center_count, center_sum.y / center_count)
 	var ordinances := doc.misc_u32(PollutionPhase.MISC_ORDINANCES)
 	var divisor := PollutionPhase.pollution_divisor(doc)
-	var pollution := NativeGridMath.bytes(NativeGridMath.smooth(sources, edge, 4, maxi(divisor, 1) * 2, 1, 2, city.simulation_slice), city.simulation_slice)
+	var pollution := NativeGridMath.bytes(
+		NativeGridMath.smooth(sources, edge, 4, maxi(divisor, 1) * 2, 1, 2, city.simulation_slice),
+		city.simulation_slice,
+	)
 	residential = NativeGridMath.neighborhood(residential, edge, 2, 16, city.simulation_slice)
 	industrial = NativeGridMath.neighborhood(industrial, edge, 2, 16, city.simulation_slice)
 	residential = NativeGridMath.smooth(residential, edge, 1, 1, 4, 1, city.simulation_slice)
 	industrial = NativeGridMath.smooth(industrial, edge, 1, 1, 4, 1, city.simulation_slice)
 	var population := NativeGridMath.bytes(NativeGridMath.neighborhood(weights, edge, 2, 64, city.simulation_slice), city.simulation_slice)
-	var ordinance_coverage := NativeGridMath.bytes(NativeGridMath.neighborhood(occupied, edge, 2, 32, city.simulation_slice), city.simulation_slice)
+	var ordinance_coverage := NativeGridMath.bytes(
+		NativeGridMath.neighborhood(occupied, edge, 2, 32, city.simulation_slice),
+		city.simulation_slice,
+	)
 	var police := PackedByteArray()
 	var fire := PackedByteArray()
 	police.resize(count)
@@ -154,7 +161,7 @@ static func run(city: CityState) -> PollutionPhase.Result:
 					sources[index] += 16
 
 	var crime := NativeGridMath.bytes(NativeGridMath.smooth(sources, edge, 2, 2, 1, 2, city.simulation_slice), city.simulation_slice)
-	var updates := {"XPLT": pollution, "XVAL": land, "XCRM": crime, "XPLC": police, "XFIR": fire, "XPOP": population, "XROG": growth}
+	var updates := { "XPLT": pollution, "XVAL": land, "XCRM": crime, "XPLC": police, "XFIR": fire, "XPOP": population, "XROG": growth }
 
 	for id in updates:
 		doc.find_chunk(id).set_decoded_payload(updates[id])
@@ -190,7 +197,8 @@ static func _add_stations(city: CityState, police: PackedByteArray, fire: Packed
 			var strength := 0
 
 			if building == PollutionPhase.POLICE_STATION:
-				strength = ((city.document.misc_i32(PollutionPhase.MISC_PRISON_BONUS) + 5) * PollutionPhase._budget_funding(city, PollutionPhase.BUDGET_POLICE)) / 2
+				strength = ((city.document.misc_i32(PollutionPhase.MISC_PRISON_BONUS) + 5) * PollutionPhase._budget_funding(city,
+					PollutionPhase.BUDGET_POLICE)) / 2
 			elif building == PollutionPhase.FIRE_STATION:
 				strength = (PollutionPhase._budget_funding(city, PollutionPhase.BUDGET_FIRE) * 5) / 2
 			else:

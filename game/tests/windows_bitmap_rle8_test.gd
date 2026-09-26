@@ -69,5 +69,7 @@ func _initialize() -> void:
 
 		assert(not PeBitmapResource._decode_indexed8_dib(bad, 1202).ok, change)
 
-	print("PASS: Windows RLE8 runs, absolute padding, deltas, bottom-up order, exact indices, malformed inputs and all four supplied compressed resources against independent RGBA hashes")
+	print(("PASS: Windows RLE8 runs, absolute padding, deltas, bottom-up order, exact indices, "
+		+ "malformed inputs and all four supplied compressed resources against independent RGBA "
+		+ "hashes"))
 	quit()

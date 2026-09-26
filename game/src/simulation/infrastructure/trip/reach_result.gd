@@ -1,6 +1,31 @@
 class_name TransportTripReachResult
 extends TransportTripResult
+
+var reachable: Array[ReachNode] = []
+var links: Array[Link] = []
+var destinations: Dictionary[Vector2i, int] = {}
+var limit_points: Dictionary[Vector2i, String] = {}
+var limit := 0
+var start := Vector2i(-1, -1)
+var origin := Vector2i(-1, -1)
+var clicked := Vector2i(-1, -1)
+var summary := PackedStringArray()
+var rci := false
+var powered := false
+var demand := 0
+var access_tiles: Dictionary[Vector2i, int] = {}
+var origin_tiles: Dictionary[Vector2i, int] = {}
+
+
+static func rejected(message: String) -> TransportTripReachResult:
+	var result := TransportTripReachResult.new()
+	result.error = message
+
+	return result
+
+
 # read-only route exploration and its displayed building coverage
+
 
 class ReachNode extends RefCounted:
 	var point: Vector2i
@@ -26,26 +51,3 @@ class Link extends RefCounted:
 		from_mode = source_mode
 		mode = travel_mode
 		cost = trip_cost
-
-
-var reachable: Array[ReachNode] = []
-var links: Array[Link] = []
-var destinations: Dictionary[Vector2i, int] = {}
-var limit_points: Dictionary[Vector2i, String] = {}
-var limit := 0
-var start := Vector2i(-1, -1)
-var origin := Vector2i(-1, -1)
-var clicked := Vector2i(-1, -1)
-var summary := PackedStringArray()
-var rci := false
-var powered := false
-var demand := 0
-var access_tiles: Dictionary[Vector2i, int] = {}
-var origin_tiles: Dictionary[Vector2i, int] = {}
-
-
-static func rejected(message: String) -> TransportTripReachResult:
-	var result := TransportTripReachResult.new()
-	result.error = message
-
-	return result

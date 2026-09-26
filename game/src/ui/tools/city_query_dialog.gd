@@ -1,11 +1,10 @@
 class_name CityQueryDialog
 extends ColorRect
 
-const NeighborhoodPreview = preload("res://src/ui/tools/query_neighborhood_preview.gd")
-
-
 signal close_requested(commit_rename: bool)
 signal action_requested
+
+const NeighborhoodPreview = preload("res://src/ui/tools/query_neighborhood_preview.gd")
 
 var title_label: Label
 var name_input: LineEdit
@@ -97,7 +96,7 @@ func _populate_summary(details: String, info: QueryResult) -> void:
 
 	var lines := details.split("\n")
 
-	if (info != null and info.point.x >= 0):
+	if info != null and info.point.x >= 0:
 		var point: Vector2i = info.point
 		lines.insert(1, "Location: X: %d, Y: %d, Z: %d" % [point.x, point.y, int(info.altitude_raw) & 0x1f])
 

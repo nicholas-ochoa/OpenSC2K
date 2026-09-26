@@ -1,5 +1,18 @@
 class_name ScurkContextScene
 extends RefCounted
+
+enum Kind {
+	BUILDING,
+	ROAD,
+	RAIL,
+	POWER,
+	HIGHWAY,
+	UNDERGROUND,
+	TERRAIN,
+	LANDSCAPE,
+	SUPPORT,
+}
+
 ## Builds a disposable city around the selected artwork.
 
 @warning_ignore_start("integer_division")
@@ -7,8 +20,6 @@ extends RefCounted
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
 const MAP_SIZE := 16
-
-enum Kind { BUILDING, ROAD, RAIL, POWER, HIGHWAY, UNDERGROUND, TERRAIN, LANDSCAPE, SUPPORT }
 
 var city: CityState
 var tile_id := 0
@@ -35,7 +46,10 @@ func build(selected_tile: int, footprint: int, networks: bool, neighbors: bool) 
 
 
 static func kind_for_tile(tile: int) -> int:
-	if (tile >= CityUndergroundView.TERRAIN_WIREFRAME_FIRST and tile <= CityUndergroundView.SUBWAY_AND_PIPE_FIRST + UnderTiles.SUBWAY_ENTRANCE) or (tile >= CityUndergroundView.SUBWAY_AND_PIPE_FIRST + UnderTiles.PIPE_FIRST + CityUndergroundView.WATERED_PIPE_OFFSET and tile <= CityUndergroundView.WATERED_TERRAIN):
+	if ((tile >= CityUndergroundView.TERRAIN_WIREFRAME_FIRST
+			and tile <= CityUndergroundView.SUBWAY_AND_PIPE_FIRST + UnderTiles.SUBWAY_ENTRANCE)
+			or (tile >= CityUndergroundView.SUBWAY_AND_PIPE_FIRST + UnderTiles.PIPE_FIRST + CityUndergroundView.WATERED_PIPE_OFFSET
+			and tile <= CityUndergroundView.WATERED_TERRAIN)):
 		return Kind.UNDERGROUND
 	if tile >= 0x100 and tile <= 0x122:
 		return Kind.TERRAIN
@@ -47,9 +61,14 @@ static func kind_for_tile(tile: int) -> int:
 		return Kind.POWER
 	if tile <= Tiles.ROAD_CROSSROADS:
 		return Kind.ROAD
-	if tile <= Tiles.RAIL_LAST or tile in [Tiles.RAIL_BRIDGE, Tiles.RAIL_BRIDGE_PYLON] or tile in range(Tiles.RAIL_SUBWAY_FIRST, Tiles.RAIL_SUBWAY_LAST + 1):
+	if (tile <= Tiles.RAIL_LAST
+			or tile in [Tiles.RAIL_BRIDGE, Tiles.RAIL_BRIDGE_PYLON]
+			or tile in range(Tiles.RAIL_SUBWAY_FIRST, Tiles.RAIL_SUBWAY_LAST + 1)):
 		return Kind.RAIL
-	if tile in range(Tiles.HIGHWAY_STRAIGHT_1, Tiles.HIGHWAY_POWER_CROSSING_2 + 1) or tile in range(Tiles.ONRAMP_FIRST, Tiles.REINFORCED_HIGHWAY_BRIDGE + 1):
+	if tile in range(
+		Tiles.HIGHWAY_STRAIGHT_1,
+		Tiles.HIGHWAY_POWER_CROSSING_2 + 1,
+	) or tile in range(Tiles.ONRAMP_FIRST, Tiles.REINFORCED_HIGHWAY_BRIDGE + 1):
 		return Kind.HIGHWAY
 	if tile < Tiles.DEVELOPED_FIRST:
 		return Kind.ROAD if tile <= Tiles.ROAD_RAIL_CROSSING_2 or tile >= Tiles.SUSPENSION_BRIDGE_1 else Kind.RAIL
@@ -80,7 +99,9 @@ func _build_neighborhood(footprint: int, networks: bool, neighbors: bool) -> voi
 		_stamp(distant, tile_id)
 		var candidates: Array[int] = []
 		for candidate in range(Tiles.DEVELOPED_FIRST, Tiles.MAX_ID + 1):
-			if candidate != tile_id and family_for_tile(candidate) == family_for_tile(tile_id) and DemolishStructures.structure_area(candidate) == footprint:
+			if (candidate != tile_id
+					and family_for_tile(candidate) == family_for_tile(tile_id)
+					and DemolishStructures.structure_area(candidate) == footprint):
 				candidates.append(candidate)
 		if candidates.is_empty():
 			candidates.append(tile_id)
@@ -105,10 +126,11 @@ func _build_network(networks: bool, neighbors: bool) -> void:
 				city.set_building_id(x, 7, Tiles.HIGHWAY_STRAIGHT_2)
 				city.set_building_id(x, 8, Tiles.HIGHWAY_STRAIGHT_2)
 		else:
-			var group: int = {Kind.ROAD: 6, Kind.RAIL: 7, Kind.POWER: 3}[kind]
+			var group: int = { Kind.ROAD: 6, Kind.RAIL: 7, Kind.POWER: 3 }[kind]
 			_route(group, 0, Vector2i(2, 7), Vector2i(13, 7))
 			_route(group, 0, Vector2i(7, 2), Vector2i(7, 13))
-			if tile_id in [Tiles.ROAD_POWER_CROSSING_1, Tiles.ROAD_POWER_CROSSING_2, Tiles.RAIL_POWER_CROSSING_1, Tiles.RAIL_POWER_CROSSING_2]:
+			if tile_id in [Tiles.ROAD_POWER_CROSSING_1, Tiles.ROAD_POWER_CROSSING_2, Tiles.RAIL_POWER_CROSSING_1,
+					Tiles.RAIL_POWER_CROSSING_2]:
 				_route(3, 0, Vector2i(10, 2), Vector2i(10, 13))
 			elif tile_id in [Tiles.ROAD_RAIL_CROSSING_1, Tiles.ROAD_RAIL_CROSSING_2]:
 				_route(7, 0, Vector2i(10, 2), Vector2i(10, 13))
@@ -131,7 +153,8 @@ func _build_underground(networks: bool, neighbors: bool) -> void:
 	var subtool := 0 if pipe else 1
 	_route(group, subtool, Vector2i(2, 7), Vector2i(13, 7))
 	_route(group, subtool, Vector2i(7, 2), Vector2i(7, 13))
-	if source <= CityUndergroundView.SUBWAY_AND_PIPE_FIRST or source >= CityUndergroundView.SUBWAY_AND_PIPE_FIRST + UnderTiles.PIPE_TB_SUBWAY_LR:
+	if (source <= CityUndergroundView.SUBWAY_AND_PIPE_FIRST
+			or source >= CityUndergroundView.SUBWAY_AND_PIPE_FIRST + UnderTiles.PIPE_TB_SUBWAY_LR):
 		_route(7, 1, Vector2i(3, 3), Vector2i(12, 3))
 		_route(4, 0, Vector2i(3, 10), Vector2i(12, 10))
 	if watered:
@@ -155,7 +178,11 @@ func _build_landscape(networks: bool, neighbors: bool) -> void:
 	elif kind == Kind.LANDSCAPE:
 		if neighbors:
 			for point in [Vector2i(6, 7), Vector2i(7, 5), Vector2i(5, 9), Vector2i(10, 9)]:
-				city.set_building_id(point.x, point.y, Tiles.TREES_1 + (point.x + point.y) % 7 if tile_id >= Tiles.TREES_1 else Tiles.RUBBLE_1)
+				city.set_building_id(
+					point.x,
+					point.y,
+					Tiles.TREES_1 + (point.x + point.y) % 7 if tile_id >= Tiles.TREES_1 else Tiles.RUBBLE_1,
+				)
 		for site in target_sites:
 			city.set_building_id(site.position.x, site.position.y, tile_id)
 	elif networks:

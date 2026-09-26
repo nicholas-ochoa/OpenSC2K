@@ -1,10 +1,8 @@
 class_name ApplicationEffectsAudio
 extends RefCounted
 
-
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const ToolSounds = preload("res://src/audio/tool_sound_rules.gd")
-
 
 var document_state: ActiveDocumentState
 var view_state: ViewState

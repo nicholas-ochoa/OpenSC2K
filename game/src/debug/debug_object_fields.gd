@@ -1,15 +1,17 @@
 class_name DebugObjectFields
 extends RefCounted
+
+
 # meanings follow the current tick/renderer consumers, not a universal xthg enum
 
 const EIGHT := ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
 const FOUR := ["N", "E", "S", "W"]
 const STATES := {
-	1: {0: "Taking off", 1: "Landing", 2: "Cruising", 3: "Approaching target", 4: "Aligning with runway", 7: "Falling spiral"},
-	2: {0: "Taking off", 2: "Flying to target", 3: "Descending", 4: "Waiting on ground", 5: "Crashing"},
-	3: {0: "Under way", 1: "Turning toward target", 2: "Finding clear route", 3: "Docked", 4: "Departing"},
-	5: {0: "Descending toward city", 1: "Attacking", 2: "Rising", 3: "Retreat / military reaction"},
-	16: {0: "Pursuing target", 1: "Avoiding collision", 2: "Moving onward"},
+	1: { 0: "Taking off", 1: "Landing", 2: "Cruising", 3: "Approaching target", 4: "Aligning with runway", 7: "Falling spiral" },
+	2: { 0: "Taking off", 2: "Flying to target", 3: "Descending", 4: "Waiting on ground", 5: "Crashing" },
+	3: { 0: "Under way", 1: "Turning toward target", 2: "Finding clear route", 3: "Docked", 4: "Departing" },
+	5: { 0: "Descending toward city", 1: "Attacking", 2: "Rising", 3: "Retreat / military reaction" },
+	16: { 0: "Pursuing target", 1: "Avoiding collision", 2: "Moving onward" },
 }
 const FIELDS := ["type", "direction", "state", "x", "y", "z", "px", "py", "dx", "dy", "label", "goal"]
 # debug table column order; these fields show their translation instead of the stored number
@@ -29,12 +31,6 @@ const COLUMN_TOOLTIPS := {
 	"dy": "Target tile Y for aircraft and ships, or the fixed target Y for Maxis Man. Monsters keep sprite data here.",
 	"label": "Map label or marker under the moving thing. It is put back when the moving thing moves away.",
 }
-
-
-class TableCells extends RefCounted:
-	var cells: Array[String] = []
-	var raw: Array[String] = []
-	var tooltips: Array[String] = []
 
 
 static func type_name(value: int) -> String:
@@ -93,7 +89,7 @@ static func goal(record: ThingRecord, city: CityState) -> String:
 
 	match int(record.type):
 		5:
-			return {0: "Normal demolition / fire", 1: "Radiation", 2: "Create water", 3: "Create wind power"}.get(value,
+			return { 0: "Normal demolition / fire", 1: "Radiation", 2: "Create water", 3: "Create wind power" }.get(value,
 					"Unknown damage mode; demolition still attempted")
 		6:
 			return "No spread damage" if value == 0 else "Spread damage enabled"
@@ -123,7 +119,8 @@ static func fields(record: ThingRecord, city: CityState) -> Array[DebugTableReco
 				meaning = "Object type"
 				translated = type_name(value)
 			"direction":
-				meaning = "Animation frame" if type == 6 else "Preserved direction field" if type in [0, 7, 8, 14] else "Grid direction (north is decreasing Y)"
+				meaning = ("Animation frame" if type == 6 else "Preserved direction field" if type in [0, 7, 8, 14]
+					else "Grid direction (north is decreasing Y)")
 				translated = direction(record)
 			"state":
 				meaning = "Behavior state"
@@ -220,3 +217,9 @@ static func _overlay(value: int) -> String:
 		return "Sign / label %d" % value
 
 	return "Special map marker"
+
+
+class TableCells extends RefCounted:
+	var cells: Array[String] = []
+	var raw: Array[String] = []
+	var tooltips: Array[String] = []

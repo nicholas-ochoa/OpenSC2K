@@ -4,7 +4,6 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const RECORD_SIZE := CityState.THING_RECORD_SIZE
 const TEXT_LABEL_BASE := 201
 const TYPE_EXPLOSION := Sc2ThingLayout.Type.EXPLOSION
@@ -25,7 +24,8 @@ const PIER_DELTAS := [
 	Vector2i(2, 0), Vector2i(0, 2), Vector2i(-2, 0), Vector2i(0, -2),
 ]
 const ROUTE_BUILDINGS := {
-	Tiles.SUSPENSION_BRIDGE_1: true, Tiles.SUSPENSION_BRIDGE_2: true, Tiles.SUSPENSION_BRIDGE_4: true, Tiles.SUSPENSION_BRIDGE_5: true, Tiles.RAISING_BRIDGE_CLOSED: true,
+	Tiles.SUSPENSION_BRIDGE_1: true, Tiles.SUSPENSION_BRIDGE_2: true, Tiles.SUSPENSION_BRIDGE_4: true, Tiles.SUSPENSION_BRIDGE_5: true,
+	Tiles.RAISING_BRIDGE_CLOSED: true,
 	Tiles.RAISING_BRIDGE_OPEN: true, Tiles.RAIL_BRIDGE_PYLON: true, Tiles.POWER_BRIDGE: true, Tiles.REINFORCED_HIGHWAY_BRIDGE: true,
 }
 

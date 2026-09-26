@@ -1,9 +1,8 @@
 class_name NetworkTiles
 extends NetworkConstants
 
-
-
 const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
+
 
 static func _place_surface(
 	buildings: PackedByteArray,
@@ -70,18 +69,39 @@ static func _surface_replacement(old_tile: int, mode: int) -> int:
 		if old_tile < Tiles.POWER_LINE_FIRST:
 			return Tiles.FIRST_ROAD
 
-		return {Tiles.POWER_LINE_FIRST: Tiles.ROAD_POWER_CROSSING_2, Tiles.POWER_LINE_STRAIGHT_2: Tiles.ROAD_POWER_CROSSING_1, Tiles.RAIL_FIRST: Tiles.ROAD_RAIL_CROSSING_2, Tiles.RAIL_STRAIGHT_2: Tiles.ROAD_RAIL_CROSSING_1, Tiles.HIGHWAY_STRAIGHT_1: Tiles.HIGHWAY_ROAD_CROSSING_1, Tiles.HIGHWAY_STRAIGHT_2: Tiles.HIGHWAY_ROAD_CROSSING_2}.get(old_tile, -1)
+		return {
+			Tiles.POWER_LINE_FIRST: Tiles.ROAD_POWER_CROSSING_2,
+			Tiles.POWER_LINE_STRAIGHT_2: Tiles.ROAD_POWER_CROSSING_1,
+			Tiles.RAIL_FIRST: Tiles.ROAD_RAIL_CROSSING_2,
+			Tiles.RAIL_STRAIGHT_2: Tiles.ROAD_RAIL_CROSSING_1,
+			Tiles.HIGHWAY_STRAIGHT_1: Tiles.HIGHWAY_ROAD_CROSSING_1,
+			Tiles.HIGHWAY_STRAIGHT_2: Tiles.HIGHWAY_ROAD_CROSSING_2,
+		}.get(old_tile, -1)
 
 	if mode == MODE_RAIL:
 		if old_tile < Tiles.POWER_LINE_FIRST:
 			return Tiles.RAIL_FIRST
 
-		return {Tiles.POWER_LINE_FIRST: Tiles.RAIL_POWER_CROSSING_2, Tiles.POWER_LINE_STRAIGHT_2: Tiles.RAIL_POWER_CROSSING_1, Tiles.FIRST_ROAD: Tiles.ROAD_RAIL_CROSSING_1, Tiles.ROAD_STRAIGHT_2: Tiles.ROAD_RAIL_CROSSING_2, Tiles.HIGHWAY_STRAIGHT_1: Tiles.HIGHWAY_RAIL_CROSSING_1, Tiles.HIGHWAY_STRAIGHT_2: Tiles.HIGHWAY_RAIL_CROSSING_2}.get(old_tile, -1)
+		return {
+			Tiles.POWER_LINE_FIRST: Tiles.RAIL_POWER_CROSSING_2,
+			Tiles.POWER_LINE_STRAIGHT_2: Tiles.RAIL_POWER_CROSSING_1,
+			Tiles.FIRST_ROAD: Tiles.ROAD_RAIL_CROSSING_1,
+			Tiles.ROAD_STRAIGHT_2: Tiles.ROAD_RAIL_CROSSING_2,
+			Tiles.HIGHWAY_STRAIGHT_1: Tiles.HIGHWAY_RAIL_CROSSING_1,
+			Tiles.HIGHWAY_STRAIGHT_2: Tiles.HIGHWAY_RAIL_CROSSING_2,
+		}.get(old_tile, -1)
 
 	if old_tile < Tiles.POWER_LINE_FIRST:
 		return Tiles.POWER_LINE_FIRST
 
-	return {Tiles.FIRST_ROAD: Tiles.ROAD_POWER_CROSSING_1, Tiles.ROAD_STRAIGHT_2: Tiles.ROAD_POWER_CROSSING_2, Tiles.RAIL_FIRST: Tiles.RAIL_POWER_CROSSING_1, Tiles.RAIL_STRAIGHT_2: Tiles.RAIL_POWER_CROSSING_2, Tiles.HIGHWAY_STRAIGHT_1: Tiles.HIGHWAY_POWER_CROSSING_1, Tiles.HIGHWAY_STRAIGHT_2: Tiles.HIGHWAY_POWER_CROSSING_2}.get(old_tile, -1)
+	return {
+		Tiles.FIRST_ROAD: Tiles.ROAD_POWER_CROSSING_1,
+		Tiles.ROAD_STRAIGHT_2: Tiles.ROAD_POWER_CROSSING_2,
+		Tiles.RAIL_FIRST: Tiles.RAIL_POWER_CROSSING_1,
+		Tiles.RAIL_STRAIGHT_2: Tiles.RAIL_POWER_CROSSING_2,
+		Tiles.HIGHWAY_STRAIGHT_1: Tiles.HIGHWAY_POWER_CROSSING_1,
+		Tiles.HIGHWAY_STRAIGHT_2: Tiles.HIGHWAY_POWER_CROSSING_2,
+	}.get(old_tile, -1)
 
 
 static func _retile_surface_neighborhood(

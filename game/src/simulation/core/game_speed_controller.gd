@@ -17,13 +17,13 @@ const SPEED_NAMES: Dictionary[int, String] = {
 	Speed.CHEETAH: "Cheetah",
 	Speed.AFRICAN_SWALLOW: "African Swallow",
 }
+const FIRE_TICK_MSEC := 1000.0
 
 var engine: SimulationEngine
 var speed := Speed.PAUSED
 var accumulator_msec := 0.0
 var fire_elapsed_msec := 0.0
 var original_compatibility := false
-const FIRE_TICK_MSEC := 1000.0
 var subtick_counter := 0
 var simulation_ready := false
 var interaction_blocked := false

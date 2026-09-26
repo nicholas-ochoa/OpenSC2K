@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Simulation: clock engine checks.
 
 @warning_ignore_start("integer_division")
@@ -68,6 +67,13 @@ func test_loaded_city_initialization(reference_root: String) -> void:
 
 
 func test_simulation_engine(reference_root: String) -> void:
+	_test_daily_schedule(reference_root)
+	_test_silent_and_annual_budget(reference_root)
+	_test_military_proposal(reference_root)
+	_test_scenario_disasters(reference_root)
+
+
+func _test_daily_schedule(reference_root: String) -> void:
 	var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 	var city := CityModel.from_document(document)
 	_check(city.set_age_in_days(0), "Simulation engine test resets the city day")
@@ -178,6 +184,8 @@ func test_simulation_engine(reference_root: String) -> void:
 	_check(latest.pending.is_empty(), "Normal month-start budget work is complete")
 	_check(latest.phase_results.has("budget"), "Simulation engine exposes the budget result")
 
+
+func _test_silent_and_annual_budget(reference_root: String) -> void:
 	var silent_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 	var silent_city := CityModel.from_document(silent_document)
 	_check(
@@ -242,6 +250,8 @@ func test_simulation_engine(reference_root: String) -> void:
 		"Annual resolution clears the engine passenger counters",
 	)
 
+
+func _test_military_proposal(reference_root: String) -> void:
 	var military_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 	_check(_clear_news_records(military_document), "Military engine fixture clears story records")
 	var military_city := CityModel.from_document(military_document)
@@ -292,6 +302,8 @@ func test_simulation_engine(reference_root: String) -> void:
 		"Deferred bankruptcy runs after the military decision",
 	)
 
+
+func _test_scenario_disasters(reference_root: String) -> void:
 	var monster_scenario_document := _load_fixture(reference_root.path_join("SCENARIO/ATLANTA.SCN"))
 	var monster_scenario_city := CityModel.from_document(monster_scenario_document)
 	_check(monster_scenario_city.set_age_in_days(0), "Monster scenario engine fixture resets the day")
@@ -317,7 +329,10 @@ func test_simulation_engine(reference_root: String) -> void:
 		"An active scenario disaster blocks direct calendar advancement",
 	)
 	var monster_things := _filled_bytes(CityState.THING_COUNT * CityState.THING_RECORD_SIZE, 0)
-	_check(monster_scenario_document.find_chunk("XTHG").set_decoded_payload(monster_things), "Monster scenario fixture ends the moving object")
+	_check(
+		monster_scenario_document.find_chunk("XTHG").set_decoded_payload(monster_things),
+		"Monster scenario fixture ends the moving object",
+	)
 	var ended_monster := monster_scenario_engine.advance_disaster_tick()
 	_check(
 		ended_monster.ok
@@ -352,7 +367,8 @@ func test_simulation_engine(reference_root: String) -> void:
 	)
 	# the original checks the markers and objects in the start step, so a
 	# wrapper without either ends there with its summary story and newspaper
-	var crash_end: DisasterMapResult = crash_start.disaster_results[0] if crash_start.disaster_results.size() == 1 else DisasterMapResult.new()
+	var crash_end: DisasterMapResult = (crash_start.disaster_results[0] if crash_start.disaster_results.size() == 1
+		else DisasterMapResult.new())
 	_check(
 		crash_end.ok
 		and crash_end.complete

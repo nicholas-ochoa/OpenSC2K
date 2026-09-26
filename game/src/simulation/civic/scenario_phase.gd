@@ -2,13 +2,6 @@ class_name ScenarioPhase
 extends RefCounted
 
 
-class Result extends PhaseResult:
-	var active := false
-	var outcome := ""
-	var remaining_months := 0
-	var unmet := PackedStringArray()
-
-
 static func run(scenario: ScenarioState, city: CityState) -> Result:
 	if scenario == null:
 		var inactive := Result.new()
@@ -62,3 +55,10 @@ static func _failed(message: String) -> Result:
 	result.error = message
 
 	return result
+
+
+class Result extends PhaseResult:
+	var active := false
+	var outcome := ""
+	var remaining_months := 0
+	var unmet := PackedStringArray()

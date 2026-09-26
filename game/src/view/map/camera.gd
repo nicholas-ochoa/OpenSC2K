@@ -1,13 +1,6 @@
 class_name CityMapCamera
 extends CityMapConstants
 
-
-class ScrollState extends RefCounted:
-	var content := Vector2.ZERO
-	var page := Vector2.ZERO
-	var value := Vector2.ZERO
-
-
 var map: CityMapControl
 
 
@@ -322,3 +315,9 @@ func _on_resized() -> void:
 	map.layers._sync_base_layer()
 	map.queue_redraw()
 	map.viewport_changed.emit()
+
+
+class ScrollState extends RefCounted:
+	var content := Vector2.ZERO
+	var page := Vector2.ZERO
+	var value := Vector2.ZERO

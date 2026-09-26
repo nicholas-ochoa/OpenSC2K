@@ -66,6 +66,7 @@ func _run() -> void:
 	print("PASS: New City setup options, terrain options, compatibility, and preview state")
 	quit()
 
+
 # compatibility allows only the original 128 × 128 map
 func _only_original_size(dialog: NewCityTerrainDialog) -> bool:
 	for index in dialog.size_input.item_count:

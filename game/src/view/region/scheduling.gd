@@ -6,9 +6,11 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 
-
 static func update_viewport(cache: CityRegionCache, source_rect: Rect2) -> void:
-	var rect := Rect2i(Vector2i((source_rect.position / cache.divisor).floor()), Vector2i((source_rect.size / cache.divisor).ceil()) + Vector2i.ONE)
+	var rect := Rect2i(
+		Vector2i((source_rect.position / cache.divisor).floor()),
+		Vector2i((source_rect.size / cache.divisor).ceil()) + Vector2i.ONE,
+	)
 	rect = rect.intersection(Rect2i(Vector2i.ZERO, cache.native_size))
 
 	if cache._viewport_valid and rect == cache._viewport_rect:
@@ -47,7 +49,10 @@ static func update_viewport(cache: CityRegionCache, source_rect: Rect2) -> void:
 	var nearby: Array[Vector2i] = []
 
 	for y in range(maxi(0, first.y - top_margin), mini(ceili(float(cache.native_size.y) / cache.region_edge), last.y + bottom_margin + 1)):
-		for x in range(maxi(0, first.x - side_margin), mini(ceili(float(cache.native_size.x) / cache.region_edge), last.x + side_margin + 1)):
+		for x in range(
+			maxi(0, first.x - side_margin),
+			mini(ceili(float(cache.native_size.x) / cache.region_edge), last.x + side_margin + 1),
+		):
 			var key := Vector2i(x, y)
 
 			if x >= first.x and x <= last.x and y >= first.y and y <= last.y:
@@ -65,7 +70,8 @@ static func update_viewport(cache: CityRegionCache, source_rect: Rect2) -> void:
 
 		for key in cache.visible:
 			if key not in old_visible:
-				cache._visibility_changes.append(Rect2i(key * cache.region_edge * cache.divisor, Vector2i.ONE * cache.region_edge * cache.divisor))
+				cache._visibility_changes.append(Rect2i(key * cache.region_edge * cache.divisor,
+					Vector2i.ONE * cache.region_edge * cache.divisor))
 
 	for key in cache._edit_priority.keys():
 		if key not in cache.visible:
@@ -124,6 +130,14 @@ static func _gpu_pending(cache: CityRegionCache) -> bool:
 			return true
 
 	return false
+
+
+static func _gpu_workers_busy(cache: CityRegionCache) -> bool:
+	for worker in cache._gpu_workers:
+		if worker.task == null:
+			return false
+
+	return true
 
 
 static func _close_gpu_workers(cache: CityRegionCache) -> void:
@@ -193,7 +207,8 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 			region.mesh = mesh
 			region.atlas_texture = worker.atlas
 			region.generation = worker.generation
-			region.last_visible = cache._viewport_serial if key in cache.visible else (cache.entries[key].last_visible if cache.entries.has(key) else 0)
+			region.last_visible = (cache._viewport_serial if key in cache.visible
+				else (cache.entries[key].last_visible if cache.entries.has(key) else 0))
 			region.gpu_arrays = []
 			region.atlas_image = null
 			cache.publish_changes(cache.entries.get(key), region)
@@ -212,8 +227,7 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 	var changed := cache._changed
 	cache._changed = false
 
-	if not cache._gpu_has_work or cache._gpu_workers.all(func(worker: CityRegionCache.RegionWorker) -> bool:
-		return worker.task != null):
+	if not cache._gpu_has_work or _gpu_workers_busy(cache):
 		return changed
 
 	var active := {}

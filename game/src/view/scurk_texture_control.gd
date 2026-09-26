@@ -142,6 +142,7 @@ func _refresh_textures() -> void:
 			for y in 8:
 				for x in 8:
 					var palette_index := ScurkPaintOptions.resolve_texture_value(pattern[y * 8 + x], selected_color_index)
-					var color := Color.TRANSPARENT if palette_index < 0 else (palette.color(animation_map[palette_index]) if valid_palette else Color.MAGENTA)
+					var color := (Color.TRANSPARENT if palette_index < 0
+						else (palette.color(animation_map[palette_index]) if valid_palette else Color.MAGENTA))
 					image.set_pixel(x, y, color)
 		textures[index].update(image)

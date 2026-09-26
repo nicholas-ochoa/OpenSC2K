@@ -5,59 +5,6 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 
-class Site extends RefCounted:
-	var x: int
-	var y: int
-	var width: int
-	var height: int
-	var tiles: int
-
-	func _init(left: int, top: int, columns: int, rows: int, tile_count := 0) -> void:
-		x = left
-		y = top
-		width = columns
-		height = rows
-		tiles = tile_count
-
-
-class Microsim extends RefCounted:
-	var tile_id := BuildingTileIds.EMPTY
-	var stat_0 := 0
-	var stat_1 := 0
-	var stat_2 := 0
-	var stat_3 := 0
-
-	func statistic(index: int) -> int:
-		match index:
-			0:
-				return stat_0
-			1:
-				return stat_1
-			2:
-				return stat_2
-			3:
-				return stat_3
-
-		return 0
-
-
-class GraphSeries extends RefCounted:
-	var year := PackedInt64Array()
-	var decade := PackedInt64Array()
-	var century := PackedInt64Array()
-
-	func values_for_period(period: String) -> PackedInt64Array:
-		match period:
-			"year":
-				return year
-			"decade":
-				return decade
-			"century":
-				return century
-
-		return PackedInt64Array()
-
-
 static func city_name(city: CityState) -> String:
 	return city.document.city_name()
 
@@ -278,3 +225,56 @@ static func microsim_sites(city: CityState) -> Dictionary[int, Site]:
 	city._microsim_sites_key = key
 
 	return city._microsim_sites
+
+
+class Site extends RefCounted:
+	var x: int
+	var y: int
+	var width: int
+	var height: int
+	var tiles: int
+
+	func _init(left: int, top: int, columns: int, rows: int, tile_count := 0) -> void:
+		x = left
+		y = top
+		width = columns
+		height = rows
+		tiles = tile_count
+
+
+class Microsim extends RefCounted:
+	var tile_id := BuildingTileIds.EMPTY
+	var stat_0 := 0
+	var stat_1 := 0
+	var stat_2 := 0
+	var stat_3 := 0
+
+	func statistic(index: int) -> int:
+		match index:
+			0:
+				return stat_0
+			1:
+				return stat_1
+			2:
+				return stat_2
+			3:
+				return stat_3
+
+		return 0
+
+
+class GraphSeries extends RefCounted:
+	var year := PackedInt64Array()
+	var decade := PackedInt64Array()
+	var century := PackedInt64Array()
+
+	func values_for_period(period: String) -> PackedInt64Array:
+		match period:
+			"year":
+				return year
+			"decade":
+				return decade
+			"century":
+				return century
+
+		return PackedInt64Array()

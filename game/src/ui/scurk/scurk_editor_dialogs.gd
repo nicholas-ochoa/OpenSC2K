@@ -3,10 +3,10 @@ extends Control
 
 # image export formats, in the order of the Format list
 const EXPORT_FORMATS := [
-	{"label": "Indexed PNG", "extension": "png", "filter": "*.png ; 256-color indexed PNG"},
-	{"label": "Indexed GIF", "extension": "gif", "filter": "*.gif ; 256-color indexed GIF"},
-	{"label": "Indexed BMP", "extension": "bmp", "filter": "*.bmp ; 256-color indexed BMP"},
-	{"label": "Animated GIF (palette cycling)", "extension": "gif", "filter": "*.gif ; Animated GIF (palette cycling)"},
+	{ "label": "Indexed PNG", "extension": "png", "filter": "*.png ; 256-color indexed PNG" },
+	{ "label": "Indexed GIF", "extension": "gif", "filter": "*.gif ; 256-color indexed GIF" },
+	{ "label": "Indexed BMP", "extension": "bmp", "filter": "*.bmp ; 256-color indexed BMP" },
+	{ "label": "Animated GIF (palette cycling)", "extension": "gif", "filter": "*.gif ; Animated GIF (palette cycling)" },
 ]
 const EXPORT_ANIMATED_GIF := 3
 
@@ -17,8 +17,6 @@ var export_bmp_dialog: FileDialog
 var discard_dialog: ConfirmationDialog
 var error_dialog: AcceptDialog
 var pick_copy_control: ScurkPickCopyControl
-
-
 var export_options: ConfirmationDialog
 var export_view: OptionButton
 var export_format: OptionButton

@@ -1,7 +1,6 @@
 class_name MediaPack
 extends RefCounted
 
-
 var error := ""
 var pack_name := ""
 var import_revision := ImportedPackRevision.NOT_IMPORTED

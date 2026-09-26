@@ -10,67 +10,6 @@ const TEMPLATE_TYPE_SIZES := {
 	"DLNG": 4,
 }
 
-class TemplateField extends RefCounted:
-	var name := ""
-	var type_code := ""
-	var size := 0
-	var scenario_offset := 0
-
-
-class PictureIndices extends RefCounted:
-	var ok := false
-	var error := ""
-	var width := 0
-	var height := 0
-	var pixels := PackedByteArray()
-
-	static func rejected(message: String) -> PictureIndices:
-		var result := PictureIndices.new()
-		result.error = message
-
-		return result
-
-
-class PictureImage extends AssetImageResult:
-	var width := 0
-	var height := 0
-	var replacement := false
-
-	static func rejected(message: String) -> PictureImage:
-		var result := PictureImage.new()
-		result.error = message
-
-		return result
-
-
-class Template extends RefCounted:
-	var ok := false
-	var error := ""
-	var present := false
-	var fields: Array[TemplateField] = []
-	var scenario_size := 0
-
-	static func rejected(message: String) -> Template:
-		var result := Template.new()
-		result.error = message
-
-		return result
-
-
-class Goals extends RefCounted:
-	var ok := false
-	var error := ""
-	var met := false
-	var unmet := PackedStringArray()
-	var values: Dictionary[String, int] = {}
-
-	static func rejected(message: String) -> Goals:
-		var result := Goals.new()
-		result.error = message
-
-		return result
-
-
 var document: Sc2File
 var load_error := ""
 var format_size := 0
@@ -359,14 +298,15 @@ func evaluate_goals(city: CityState) -> Goals:
 		var first_count := city.document.misc_u32(Sc2MiscLayout.TILE_COUNTS + first_building_id * 4)
 		values["first_building_tiles"] = first_count
 
-		if (_signed_16(first_count) < _signed_16(first_building_tile_count) if original_format else first_count < first_building_tile_count):
+		if _signed_16(first_count) < _signed_16(first_building_tile_count) if original_format else first_count < first_building_tile_count:
 			unmet.append("first_building")
 
 	if second_building_id != BuildingTileIds.EMPTY:
 		var second_count := city.document.misc_u32(Sc2MiscLayout.TILE_COUNTS + second_building_id * 4)
 		values["second_building_tiles"] = second_count
 
-		if (_signed_16(second_count) < _signed_16(second_building_tile_count) if original_format else second_count < second_building_tile_count):
+		if (_signed_16(second_count) < _signed_16(second_building_tile_count) if original_format
+				else second_count < second_building_tile_count):
 			unmet.append("second_building")
 
 	var result := Goals.new()
@@ -443,3 +383,64 @@ func _text_chunk(expected_header: int) -> String:
 		return chunk.decoded_payload.slice(4, end).get_string_from_ascii()
 
 	return ""
+
+
+class TemplateField extends RefCounted:
+	var name := ""
+	var type_code := ""
+	var size := 0
+	var scenario_offset := 0
+
+
+class PictureIndices extends RefCounted:
+	var ok := false
+	var error := ""
+	var width := 0
+	var height := 0
+	var pixels := PackedByteArray()
+
+	static func rejected(message: String) -> PictureIndices:
+		var result := PictureIndices.new()
+		result.error = message
+
+		return result
+
+
+class PictureImage extends AssetImageResult:
+	var width := 0
+	var height := 0
+	var replacement := false
+
+	static func rejected(message: String) -> PictureImage:
+		var result := PictureImage.new()
+		result.error = message
+
+		return result
+
+
+class Template extends RefCounted:
+	var ok := false
+	var error := ""
+	var present := false
+	var fields: Array[TemplateField] = []
+	var scenario_size := 0
+
+	static func rejected(message: String) -> Template:
+		var result := Template.new()
+		result.error = message
+
+		return result
+
+
+class Goals extends RefCounted:
+	var ok := false
+	var error := ""
+	var met := false
+	var unmet := PackedStringArray()
+	var values: Dictionary[String, int] = {}
+
+	static func rejected(message: String) -> Goals:
+		var result := Goals.new()
+		result.error = message
+
+		return result

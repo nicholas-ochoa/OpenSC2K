@@ -1,7 +1,6 @@
 class_name ApplicationCameraInput
 extends RefCounted
 
-
 const Tools = preload("res://src/tools/shared/tool_catalog.gd")
 const Zones = preload("res://src/tools/city/zone_command.gd")
 const ToolSounds = preload("res://src/audio/tool_sound_rules.gd")
@@ -15,7 +14,10 @@ func _init(application: CityApplication) -> void:
 
 
 func camera_keys_allowed() -> bool:
-	if app.document_state.city == null or app.map_view == null or not app.map_view.is_visible_in_tree() or not DisplayServer.window_is_focused():
+	if (app.document_state.city == null
+			or app.map_view == null
+			or not app.map_view.is_visible_in_tree()
+			or not DisplayServer.window_is_focused()):
 		return false
 
 	var focus := app.get_viewport().gui_get_focus_owner()
@@ -23,7 +25,8 @@ func camera_keys_allowed() -> bool:
 	if focus is LineEdit or focus is TextEdit:
 		return false
 
-	for overlay in [app.main_menu, app.city_dialogs.new_city_dialog, app.city_dialogs.query_dialog, app.scurk_editor, app.scurk_place_print, app.scurk_print, app.main_overlays.settings_dialog, app.main_overlays.save_changes_dialog]:
+	for overlay in [app.main_menu, app.city_dialogs.new_city_dialog, app.city_dialogs.query_dialog, app.scurk_editor, app.scurk_place_print,
+		app.scurk_print, app.main_overlays.settings_dialog, app.main_overlays.save_changes_dialog]:
 		if overlay != null and overlay.visible:
 			return false
 
@@ -79,7 +82,7 @@ func unhandled_key_input(event: InputEvent) -> void:
 		return
 
 	if camera_keys_allowed() and not event.is_command_or_control_pressed() and not event.alt_pressed:
-		var directions := {KEY_W: Vector2.UP, KEY_A: Vector2.LEFT, KEY_S: Vector2.DOWN, KEY_D: Vector2.RIGHT}
+		var directions := { KEY_W: Vector2.UP, KEY_A: Vector2.LEFT, KEY_S: Vector2.DOWN, KEY_D: Vector2.RIGHT }
 
 		if directions.has(event.physical_keycode):
 			app.view_state.camera_motion.press(event.physical_keycode)
@@ -147,17 +150,24 @@ func tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
 
 
 func _tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
-	if group_index == CityToolIds.Group.LANDSCAPE and subtool_index in [CityToolIds.Landscape.TREES, CityToolIds.Landscape.WATER, CityToolIds.Landscape.STREAM, CityToolIds.Landscape.FOREST]:
+	if (group_index == CityToolIds.Group.LANDSCAPE
+			and subtool_index in [CityToolIds.Landscape.TREES, CityToolIds.Landscape.WATER, CityToolIds.Landscape.STREAM,
+			CityToolIds.Landscape.FOREST]):
 		return TerrainToolIcons.terrain_action(app.asset_state.asset_source.assets.city_ui_graphics,
 			["tree", "water", "stream", "forest"][subtool_index])
 
-	if group_index == CityToolIds.Group.BULLDOZER and subtool_index in [CityToolIds.Bulldozer.LEVEL, CityToolIds.Bulldozer.RAISE, CityToolIds.Bulldozer.LOWER]:
+	if (group_index == CityToolIds.Group.BULLDOZER
+			and subtool_index in [CityToolIds.Bulldozer.LEVEL, CityToolIds.Bulldozer.RAISE, CityToolIds.Bulldozer.LOWER]):
 		return TerrainToolIcons.terrain_action(
 			app.asset_state.asset_source.assets.city_ui_graphics, ["", "level", "raise", "lower"][subtool_index]
 		)
 
-	if group_index == CityToolIds.Group.BULLDOZER and subtool_index in [CityToolIds.Bulldozer.STRETCH, CityToolIds.Bulldozer.RAISE_SEA, CityToolIds.Bulldozer.LOWER_SEA]:
-		return TerrainToolIcons.terrain_action(app.asset_state.asset_source.assets.city_ui_graphics, ["stretch", "sea_raise", "sea_lower"][subtool_index - CityToolIds.Bulldozer.STRETCH])
+	if (group_index == CityToolIds.Group.BULLDOZER
+			and subtool_index in [CityToolIds.Bulldozer.STRETCH, CityToolIds.Bulldozer.RAISE_SEA, CityToolIds.Bulldozer.LOWER_SEA]):
+		return TerrainToolIcons.terrain_action(
+			app.asset_state.asset_source.assets.city_ui_graphics,
+			["stretch", "sea_raise", "sea_lower"][subtool_index - CityToolIds.Bulldozer.STRETCH],
+		)
 
 	if app.asset_state.palette == null or app.asset_state.large_sprites == null or not app.asset_state.large_sprites.is_valid():
 		return app.city_toolbar.group_icon(group_index) if app.city_toolbar != null else null
@@ -187,7 +197,8 @@ func _tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
 	if entry == null:
 		return app.city_toolbar.group_icon(group_index) if app.city_toolbar != null else null
 
-	var rendered := entry.create_image(app.palette_clock.toolbar_palette if app.palette_clock.toolbar_palette != null else app.asset_state.palette)
+	var rendered := entry.create_image(app.palette_clock.toolbar_palette if app.palette_clock.toolbar_palette != null
+		else app.asset_state.palette)
 
 	if not rendered.ok:
 		return app.city_toolbar.group_icon(group_index) if app.city_toolbar != null else null
@@ -315,9 +326,14 @@ func on_map_selection_started() -> void:
 	app.tool_state.level_brush_altitude = -1
 
 	if app.new_city.level_brush_active() and app.document_state.city != null:
-		app.tool_state.level_brush_altitude = app.document_state.city.land_altitude(app.map_view.selection_start.x, app.map_view.selection_start.y)
+		app.tool_state.level_brush_altitude = app.document_state.city.land_altitude(
+			app.map_view.selection_start.x,
+			app.map_view.selection_start.y,
+		)
 
-	if app.tool_state.landscape_editor and app.tool_state.selected_group == CityToolIds.Group.BULLDOZER and app.tool_state.selected_subtool == CityToolIds.Bulldozer.STRETCH:
+	if (app.tool_state.landscape_editor
+			and app.tool_state.selected_group == CityToolIds.Group.BULLDOZER
+			and app.tool_state.selected_subtool == CityToolIds.Bulldozer.STRETCH):
 		app.tool_state.terrain_stretch.begin(app.map_view.selection_start)
 
 	if app.tool_state.selected_group != CityToolIds.Group.BULLDOZER:
@@ -394,7 +410,10 @@ func on_map_selection_changed(
 
 		return
 
-	if app.document_state.city != null and NetworkPlacementPreview.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
+	if app.document_state.city != null and NetworkPlacementPreview.supports_tool(
+		app.tool_state.selected_group,
+		app.tool_state.selected_subtool,
+	):
 		# route preview owns the anchored price
 		return
 

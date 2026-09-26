@@ -17,10 +17,7 @@ func _run() -> void:
 	assert(AppSettingsStore.load_values(path).ui_theme == "light")
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("user://missing-test-art"))
-	var main := (load("res://main.tscn") as PackedScene).instantiate()
-	main.asset_state.reference_root = ProjectSettings.globalize_path("user://missing-test-originals")
-	main.preferences.settings_path = path
-	root.add_child(main)
+	var main := _create_main(path)
 	await process_frame
 	main.set_process(false)
 	main.main_menu.city_background.set_process(false)
@@ -53,7 +50,10 @@ func _run() -> void:
 		assert(main.document_state.city.document.serialize().data == before)
 		var late := FileDialogFactory.city_open()
 		main.add_child(late)
-		assert(late.theme.get_color("font_color", "Label") == AppUiTheme.file_dialog().get_color("font_color", "Label"), "New dialogs use the active theme")
+		assert(
+			late.theme.get_color("font_color", "Label") == AppUiTheme.file_dialog().get_color("font_color", "Label"),
+			"New dialogs use the active theme",
+		)
 		late.free()
 	main.scurk_workspace._ensure_scurk_editor()
 	main.scurk_editor.show()
@@ -68,7 +68,8 @@ func _run() -> void:
 	assert(main.document_state.city.document.serialize().data == before)
 	# Style selection follows the published texture mode, independent of renderer.
 	# Actual CPU/GPU pixels belong to dark_underground_shader_test.
-	for state in [[CityViewMode.Mode.UNDERGROUND, true, true], [CityViewMode.Mode.UNDERGROUND, false, false], [CityViewMode.Mode.CITY, true, false]]:
+	for state in [[CityViewMode.Mode.UNDERGROUND, true, true], [CityViewMode.Mode.UNDERGROUND, false, false],
+		[CityViewMode.Mode.CITY, true, false]]:
 		main.render_caches.static_render_mode = state[0]
 		main.map_view.base_palette_lookup_all = state[1]
 		main.preferences.dark_underground = true
@@ -82,10 +83,7 @@ func _run() -> void:
 	assert(main.document_state.city.document.serialize().data == before)
 	main.free()
 	await process_frame
-	var restored := (load("res://main.tscn") as PackedScene).instantiate()
-	restored.preferences.settings_path = path
-	restored.asset_state.reference_root = ProjectSettings.globalize_path("user://missing-test-originals")
-	root.add_child(restored)
+	var restored := _create_main(path)
 	await process_frame
 	assert(restored.preferences.ui_theme == "dark")
 	assert(restored.preferences.dark_underground)
@@ -95,3 +93,11 @@ func _run() -> void:
 	await process_frame
 	print("PASS: theme save/cancel/reload, live and lazy themes, renderer flags and unchanged city")
 	quit()
+
+
+func _create_main(settings_path: String) -> CityApplication:
+	var main := (load("res://main.tscn") as PackedScene).instantiate() as CityApplication
+	main.asset_state.reference_root = ProjectSettings.globalize_path("user://missing-test-originals")
+	main.preferences.settings_path = settings_path
+	root.add_child(main)
+	return main

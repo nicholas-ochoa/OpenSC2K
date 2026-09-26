@@ -274,9 +274,12 @@ static func configure_train_foreground(command: CityStaticCommand, building_id: 
 	if reference != 0:
 		command.train_foreground_reference_sprite_id = reference
 
-	command.train_ignore = (building_id >= Tiles.POWER_LINE_STRAIGHT_1 and building_id <= Tiles.POWER_LINE_CROSSROADS) or building_id in [Tiles.ROAD_POWER_CROSSING_1, Tiles.ROAD_POWER_CROSSING_2, Tiles.RAIL_POWER_CROSSING_1, Tiles.RAIL_POWER_CROSSING_2]
+	command.train_ignore = ((building_id >= Tiles.POWER_LINE_STRAIGHT_1 and building_id <= Tiles.POWER_LINE_CROSSROADS)
+		or building_id in [Tiles.ROAD_POWER_CROSSING_1, Tiles.ROAD_POWER_CROSSING_2, Tiles.RAIL_POWER_CROSSING_1,
+		Tiles.RAIL_POWER_CROSSING_2])
 
-	if (building_id >= Tiles.HIGHWAY_STRAIGHT_1 and building_id <= Tiles.HIGHWAY_POWER_CROSSING_2) or (building_id >= Tiles.HIGHWAY_SLOPE_1 and building_id <= Tiles.REINFORCED_HIGHWAY_BRIDGE):
+	if ((building_id >= Tiles.HIGHWAY_STRAIGHT_1 and building_id <= Tiles.HIGHWAY_POWER_CROSSING_2)
+			or (building_id >= Tiles.HIGHWAY_SLOPE_1 and building_id <= Tiles.REINFORCED_HIGHWAY_BRIDGE)):
 		command.train_deck_thickness = configuration.view_size + 1
 
 		if building_id in [Tiles.HIGHWAY_POWER_CROSSING_1, Tiles.HIGHWAY_POWER_CROSSING_2]:

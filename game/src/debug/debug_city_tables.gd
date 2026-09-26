@@ -1,9 +1,9 @@
 class_name DebugCityTables
 extends RefCounted
+
 # Read the published city snapshot. Reuse cached scans; do not serialize or draw random values.
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const FACILITIES = BuildingCommand.DEFAULT_MICROSIM_LABELS
 const STAT_LABELS := {
 	Tiles.HOSPITAL: ["Score", "Patients", "Staff", "Half funding"],
@@ -25,20 +25,25 @@ const ENGINE_FIELDS := {
 	"industry_connections": "Number of connections to neighbor cities that increase industrial demand.",
 	"bus_passengers": "Number of bus passengers since the last yearly update. The yearly update gives this number to the bus depots.",
 	"rail_passengers": "Number of rail passengers since the last yearly update. The yearly update gives this number to the rail stations.",
-	"subway_passengers": "Number of subway passengers since the last yearly update. The yearly update gives this number to the subway stations.",
+	"subway_passengers": ("Number of subway passengers since the last yearly update. The yearly update gives this "
+		+ "number to the subway stations."),
 	"mayor_approval": "Mayor approval from the last query of the mayor's house.",
 	"ship_home": "The tile where the cargo ship returns. The value is (-1, -1) when the city has no cargo ship.",
-	"pending_interaction": "The player prompt that stops the current day, for example the yearly budget. The value is empty when there is no prompt.",
+	"pending_interaction": ("The player prompt that stops the current day, for example the yearly budget. The value is "
+		+ "empty when there is no prompt."),
 	"terminal_state": "True when the game ended because of bankruptcy or a scenario result. When true, the simulation stops.",
 	"active_disaster_type": "The ID of the active disaster. The value is 0 when no disaster is active.",
 	"pending_disaster_type": "The ID of the disaster that starts after the next simulation day. The value is 0 when no disaster waits.",
 	"pending_disaster_point": "The tile where the pending disaster starts.",
-	"unsupported_disaster_type": "The ID of a disaster that did not start because the game does not support it yet. The value is 0 when there is no such disaster.",
+	"unsupported_disaster_type": ("The ID of a disaster that did not start because the game does not support it yet. The "
+		+ "value is 0 when there is no such disaster."),
 	"disaster_map_counter": "Countdown for the active disaster. Each disaster tick decreases it by one.",
 	"disaster_hurricane_counter": "Countdown for the hurricane wind and floods. Each disaster tick decreases it by one.",
 	"midi_playback_active": "True when music plays. The monthly music choice uses a random number only when this value is false.",
-	"vehicle_crashes_enabled": "False when the player hides the vehicle layer. Airplanes and helicopters then leave the map and do not crash.",
-	"traffic_news_deadline_msec": "The engine time in ms before which the traffic helicopter cannot give a new traffic report. 0 when there is no wait.",
+	"vehicle_crashes_enabled": ("False when the player hides the vehicle layer. Airplanes and helicopters then leave the "
+		+ "map and do not crash."),
+	"traffic_news_deadline_msec": ("The engine time in ms before which the traffic helicopter cannot give a new traffic "
+		+ "report. 0 when there is no wait."),
 }
 # speed controller rows. the controller decides when a base tick runs a day
 const CONTROLLER_FIELDS := {
@@ -58,15 +63,16 @@ const SCENARIO_GOALS := [
 	["traffic", "traffic", "traffic_limit", true],
 ]
 const MILITARY_BASES := ["None", "Declined", "Army", "Air Force", "Navy", "Missile Silos"]
-# tile counts of the last building scan, reused until the building plane changes
-static var _tile_count_key: Array = []
-static var _tile_counts := PackedInt32Array()
-static var _tile_constants := _make_tile_constants()
 const RANDOM_FIELDS := {
 	"random": "The state of the main random number generator.",
 	"game_random": "The state of the second random number generator.",
 	"lfsr_random": "The state of the linear feedback shift register (LFSR) random number generator.",
 }
+
+# tile counts of the last building scan, reused until the building plane changes
+static var _tile_count_key: Array = []
+static var _tile_counts := PackedInt32Array()
+static var _tile_constants := _make_tile_constants()
 
 
 static func collect(kind: String, city: CityState, engine: SimulationEngine = null, include_empty := false,
@@ -88,7 +94,10 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 
 				var fields: Array[DebugTableRecord] = []
 				fields.append(_field("tile_id", tile, "Type"))
-				var labels: Array = STAT_LABELS.get(tile, ["Type-specific byte", "Type-specific statistic", "Type-specific statistic", "Type-specific statistic"])
+				var labels: Array = STAT_LABELS.get(
+					tile,
+					["Type-specific byte", "Type-specific statistic", "Type-specific statistic", "Type-specific statistic"],
+				)
 
 				for index in 4:
 					fields.append(_field("stat_%d" % index, record.statistic(index) if record != null else 0,

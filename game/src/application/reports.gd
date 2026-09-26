@@ -1,34 +1,25 @@
 class_name ApplicationReports
 extends RefCounted
 
-
-const CityMapView = preload("res://src/view/city_map_window_control.gd")
 const CityMenuBarView = preload("res://src/ui/shell/city_menu_bar.gd")
 const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
 const Music = preload("res://src/audio/music_director.gd")
 const MENU_NO_DISASTERS := CityMenuBarView.MENU_NO_DISASTERS
-
 # message box text from the supplied string table, by string ID
 const NOTICE_TEXT := {
 	241: "The Army has built a base in your city.",
 	242: "An Air Force base has been placed here.",
 	243: "A Naval base is built on your coastline.",
 	244: "Six missile sites have been placed in your city.",
-	411: "The military is unable to find a suitable\nlocation for a base near your city.  You\nhave the thanks of the nation for your\npatriotic acquiesence.  SALUTE!!",
+	411: ("The military is unable to find a suitable\nlocation for a base near your city.  You\nhave "
+		+ "the thanks of the nation for your\npatriotic acquiesence.  SALUTE!!"),
 	292: "Due to the current fiscal crisis, the city council urges you to cut back drastically on city expenditures.",
 	529: "The exodus has begun.",
 	530: "Your launch arcos have departed into space to found new worlds. You have been compensated for their construction.",
 }
 
-# presentation outcome and the complete typed simulation result
-class DisasterReportResult extends RefCounted:
-	var ok := false
-	var error := ""
-	var name := ""
-	var phase_result: DisasterStartResult
-
-
 var app: CityApplication
+var city_map: ApplicationCityMapReports
 var document_state: ActiveDocumentState
 var text_resources: OriginalTextResources
 var pending_notices := PackedStringArray()
@@ -39,6 +30,7 @@ var game_over_terminal := false
 
 func _init(application: CityApplication) -> void:
 	app = application
+	city_map = ApplicationCityMapReports.new(application)
 	document_state = application.document_state
 	text_resources = application.original_text_resources
 
@@ -148,7 +140,7 @@ func on_windows_menu(id: int) -> void:
 	elif id == 5:
 		_open_simnation_window()
 	elif id == 6:
-		open_city_map_window()
+		city_map.open_window()
 	elif id == 7:
 		app.debug_overlay.toggle()
 	elif id == CityMenuBarView.MENU_SCENARIO_GOALS:
@@ -205,44 +197,6 @@ func _open_simnation_window() -> void:
 		return
 
 	app.city_dialogs.simnation_window.show_city(app.document_state.city)
-
-
-func open_city_map_window() -> void:
-	if app.document_state.city == null or app.city_dialogs.city_map_window == null:
-		return
-
-	app.city_dialogs.city_map_window.toggle_city(app.document_state.city, app.asset_state.palette, city_map_viewport_outline())
-
-
-func on_city_map_mode_changed(mode: String) -> void:
-	app.status_label.theme_type_variation = ""
-	app.status_label.text = "City Map: %s" % CityMapView.MODE_NAMES.get(mode, mode)
-
-
-# the city map window drives the isometric view while its checkbox is on
-func on_city_map_isometric_view_requested(mode: CityViewMode.Mode) -> void:
-	if app.document_state.city == null or app.view_state.overlay_mode == mode:
-		return
-
-	app.menus.set_overlay(mode)
-
-
-func on_city_map_center_requested(point: Vector2i) -> void:
-	app.map_view.center_on_tile(point)
-	app.status_label.theme_type_variation = ""
-	app.status_label.text = "City view centered at %d, %d." % [point.x, point.y]
-
-
-func city_map_viewport_outline() -> PackedVector2Array:
-	if app.map_view == null or not CityViewMode.DISPLAY_MODES.has(app.view_state.overlay_mode):
-		return PackedVector2Array()
-
-	return app.map_view.visible_tile_outline()
-
-
-func refresh_city_map_viewport() -> void:
-	if app.city_dialogs.city_map_window != null:
-		app.city_dialogs.city_map_window.refresh_viewport(city_map_viewport_outline())
 
 
 func refresh_newspaper_menu() -> void:
@@ -306,7 +260,7 @@ func _toggle_newspaper_option(id: int) -> void:
 	refresh_newspaper_menu()
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "Newspaper %s %s." % [
-		"subscription" if subscription else "extra editions", "enabled" if enabled else "disabled"
+		"subscription" if subscription else "extra editions", "enabled" if enabled else "disabled",
 	]
 
 
@@ -524,3 +478,11 @@ func moving_things_are_active(results: Array) -> bool:
 				return true
 
 	return false
+
+
+# presentation outcome and the complete typed simulation result
+class DisasterReportResult extends RefCounted:
+	var ok := false
+	var error := ""
+	var name := ""
+	var phase_result: DisasterStartResult

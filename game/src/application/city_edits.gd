@@ -1,7 +1,6 @@
 class_name ApplicationCityEdits
 extends RefCounted
 
-
 const Tools = preload("res://src/tools/shared/tool_catalog.gd")
 const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
 const SimpleEdits = preload("res://src/tools/shared/simple_edit_flow.gd")
@@ -39,7 +38,10 @@ func apply_map_selection(
 
 	var tool := app.tool_state
 
-	if tool.landscape_editor and (tool.selected_group not in [CityToolIds.Group.BULLDOZER, CityToolIds.Group.LANDSCAPE, CityToolIds.Group.QUERY, CityToolIds.Group.CENTERING] or (tool.selected_group == CityToolIds.Group.BULLDOZER and tool.selected_subtool == CityToolIds.Bulldozer.DEZONE)):
+	if (tool.landscape_editor
+			and (tool.selected_group not in [CityToolIds.Group.BULLDOZER, CityToolIds.Group.LANDSCAPE, CityToolIds.Group.QUERY,
+			CityToolIds.Group.CENTERING]
+			or (tool.selected_group == CityToolIds.Group.BULLDOZER and tool.selected_subtool == CityToolIds.Bulldozer.DEZONE))):
 		app.interface.show_error("Select Start City before building structures.")
 		return
 
@@ -218,7 +220,14 @@ func _apply_landscape_editor_terrain(start: Vector2i, dragged: bool) -> bool:
 
 		return true
 
-	var command := LandscapeEditorCommand.apply(app.document_state.city, tool.selected_group, tool.selected_subtool, start, tool.tool_random, levels)
+	var command := LandscapeEditorCommand.apply(
+		app.document_state.city,
+		tool.selected_group,
+		tool.selected_subtool,
+		start,
+		tool.tool_random,
+		levels,
+	)
 	_finish_simple_edit(SimpleEdits._result("terrain", command, tool.selected_group, tool.selected_subtool, true), false, null)
 
 	return true
@@ -234,19 +243,38 @@ func _apply_landscape_brush(start: Vector2i, path: Array[Vector2i]) -> bool:
 
 	if tool.selected_group == CityToolIds.Group.BULLDOZER:
 		var origin := app.map_view.selection_start if app.map_view.selection_start.x >= 0 else start
-		var target := tool.level_brush_altitude if tool.level_brush_altitude >= 0 else app.document_state.city.land_altitude(origin.x, origin.y)
+		var target := tool.level_brush_altitude if tool.level_brush_altitude >= 0 else app.document_state.city.land_altitude(
+			origin.x,
+			origin.y,
+		)
 		var command := TerrainTools.apply_path(app.document_state.city, tool.selected_group, tool.selected_subtool,
 			origin, path, tool.tool_random, tool.landscape_editor, target)
 
 		if command.ok or command.error != "no terrain height changed":
-			_finish_simple_edit(SimpleEdits._result("terrain", command, tool.selected_group, tool.selected_subtool, tool.landscape_editor), false, null)
+			_finish_simple_edit(
+				SimpleEdits._result("terrain", command, tool.selected_group, tool.selected_subtool, tool.landscape_editor),
+				false,
+				null,
+			)
 
 		return true
 
-	var command := LandscapeCommand.apply_path(app.document_state.city, tool.selected_group, tool.selected_subtool, path, tool.tool_random, tool.landscape_editor, true)
+	var command := LandscapeCommand.apply_path(
+		app.document_state.city,
+		tool.selected_group,
+		tool.selected_subtool,
+		path,
+		tool.tool_random,
+		tool.landscape_editor,
+		true,
+	)
 
 	if command.ok or command.error != "no eligible tiles changed":
-		_finish_simple_edit(SimpleEdits._result("landscape", command, tool.selected_group, tool.selected_subtool, tool.landscape_editor), false, null)
+		_finish_simple_edit(
+			SimpleEdits._result("landscape", command, tool.selected_group, tool.selected_subtool, tool.landscape_editor),
+			false,
+			null,
+		)
 
 	return true
 
@@ -474,7 +502,10 @@ func _finish_simple_edit(
 	if edit.show_effects:
 		app.effects_audio.show_effect_events(command.effect_events, SoundEvent.from_ids(command.sound_events))
 
-	if app.tool_state.selected_group == CityToolIds.Group.BULLDOZER and app.tool_state.selected_subtool in [CityToolIds.Bulldozer.LEVEL, CityToolIds.Bulldozer.RAISE, CityToolIds.Bulldozer.LOWER, CityToolIds.Bulldozer.STRETCH, CityToolIds.Bulldozer.RAISE_SEA, CityToolIds.Bulldozer.LOWER_SEA] and not command.changed_ids.is_empty():
+	if (app.tool_state.selected_group == CityToolIds.Group.BULLDOZER
+			and app.tool_state.selected_subtool in [CityToolIds.Bulldozer.LEVEL, CityToolIds.Bulldozer.RAISE, CityToolIds.Bulldozer.LOWER,
+			CityToolIds.Bulldozer.STRETCH, CityToolIds.Bulldozer.RAISE_SEA, CityToolIds.Bulldozer.LOWER_SEA]
+			and not command.changed_ids.is_empty()):
 		app.effects_audio.stop_tool_loop_sound()
 		var sound_ids: Array[int] = [ToolSounds.SOUND_TRACTOR]
 		app.effects_audio.play_sound_ids(sound_ids)
@@ -515,7 +546,8 @@ func undo_last_edit() -> void:
 		result = Landscapes.undo(app.document_state.city, command as LandscapeEditResult, app.tool_state.tool_random)
 	elif command_type == "building":
 		result = Buildings.undo(
-			app.document_state.city, command as BuildingEditResult, app.simulation_state.simulation_engine.lfsr_random, app.tool_state.tool_random
+			app.document_state.city, command as BuildingEditResult, app.simulation_state.simulation_engine.lfsr_random,
+			app.tool_state.tool_random
 		)
 	elif command_type == "network":
 		result = Networks.undo(app.document_state.city, command as RouteEditResult)

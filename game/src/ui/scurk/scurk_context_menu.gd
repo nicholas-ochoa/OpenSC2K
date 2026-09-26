@@ -17,9 +17,14 @@ var hint_labels: Array[Label] = []
 var base_end_padding := 0
 
 
+func _ready() -> void:
+	bind()
+
+
 static func key_hint(key: int) -> String:
 	if not OS.has_feature("macos"):
-		return OS.get_keycode_string(key).replace("Control", "Ctrl").replace("Command", "Cmd").replace("Meta", "Cmd").replace("Escape", "Esc")
+		return OS.get_keycode_string(key).replace("Control", "Ctrl").replace("Command", "Cmd").replace("Meta", "Cmd").replace("Escape",
+			"Esc")
 	var hint := ""
 	for pair in [[KEY_MASK_CTRL, "⌃"], [KEY_MASK_ALT, "⌥"], [KEY_MASK_SHIFT, "⇧"], [KEY_MASK_META, "⌘"]]:
 		if key & pair[0]:
@@ -31,10 +36,6 @@ static func key_hint(key: int) -> String:
 		return hint + char(keycode)
 
 	return hint + String(MAC_KEY_SYMBOLS.get(keycode, OS.get_keycode_string(keycode)))
-
-
-func _ready() -> void:
-	bind()
 
 
 func bind() -> void:
@@ -119,7 +120,8 @@ func _find_scroll(node: Node) -> ScrollContainer:
 func _update_hint_colors(id: int) -> void:
 	for label in hint_labels:
 		var index: int = label.get_meta("item")
-		var role := "font_disabled_color" if is_item_disabled(index) else "font_hover_color" if get_item_id(index) == id else "font_accelerator_color"
+		var role := ("font_disabled_color" if is_item_disabled(index) else "font_hover_color" if get_item_id(index) == id
+			else "font_accelerator_color")
 		label.add_theme_color_override("font_color", get_theme_color(role))
 
 

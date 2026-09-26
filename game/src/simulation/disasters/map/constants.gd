@@ -17,7 +17,11 @@ const TYPE_POLICE := Sc2ThingLayout.Type.POLICE
 const TYPE_FIRE_DISPATCH := 8
 const TYPE_MILITARY := Sc2ThingLayout.Type.MILITARY
 const TEXT_THING_BASE := 201
-const SPECIAL_TOXIC_BUILDINGS := {BuildingTileIds.CHEMICAL_STORAGE_1X1: true, BuildingTileIds.CHEMICAL_PROCESSING_2X2: true, BuildingTileIds.CHEMICAL_PROCESSING_3X3: true}
+const SPECIAL_TOXIC_BUILDINGS := {
+	BuildingTileIds.CHEMICAL_STORAGE_1X1: true,
+	BuildingTileIds.CHEMICAL_PROCESSING_2X2: true,
+	BuildingTileIds.CHEMICAL_PROCESSING_3X3: true,
+}
 const CARDINAL_DIRECTIONS := [
 	Vector2i(-1, 0), Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1),
 ]

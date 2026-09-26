@@ -28,13 +28,23 @@ func _run() -> void:
 				if not Geometry2D.is_point_in_polygon(sample, polygon):
 					continue
 
-				assert(CityIsometricRenderer.screen_to_tile(city, sample) == point, "Slope %d at map size %d, point %s" % [shape, edge, sample])
+				assert(
+					CityIsometricRenderer.screen_to_tile(city, sample) == point,
+					"Slope %d at map size %d, point %s" % [shape, edge, sample],
+				)
 
 				if not Geometry2D.is_point_in_polygon(sample, flat):
 					checked_raised += 1
 
 		city.set_terrain_id(point.x, point.y, 0x10)
-		assert(CityIsometricRenderer.terrain_surface_polygon(city, point.x, point.y) == CityIsometricRenderer.tile_polygon(city, point.x, point.y), "Water keeps its flat selectable surface")
+		assert(
+			CityIsometricRenderer.terrain_surface_polygon(
+				city,
+				point.x,
+				point.y,
+			) == CityIsometricRenderer.tile_polygon(city, point.x, point.y),
+			"Water keeps its flat selectable surface",
+		)
 
 	assert(checked_raised > 80, "Exercise the raised regions missed by a flat diamond")
 	print("PASS: slope hit testing covers every dry slope and all four map sizes")

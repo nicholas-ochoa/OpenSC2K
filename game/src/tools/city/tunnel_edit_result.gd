@@ -1,7 +1,6 @@
 class_name TunnelEditResult
 extends EditCommandResult
 
-
 var start := Vector2i(-1, -1)
 var finish := Vector2i(-1, -1)
 var start_tile := BuildingTileIds.EMPTY

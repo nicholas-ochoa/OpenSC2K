@@ -1,4 +1,5 @@
 extends SceneTree
+
 const DocumentState = preload("res://tests/support/document_state.gd")
 
 
@@ -9,7 +10,9 @@ func _initialize() -> void:
 func _run() -> void:
 	var path := "user://renderer_settings_%d.cfg" % OS.get_process_id()
 	assert(AppSettingsStore.load_values(path).city_renderer == "gpu")
-	assert(AppSettingsStore.save_values(0.5, 0.5, false, path, "", "", null, "cpu") == OK)
+	var renderer_options := AppSettingsStore.SaveOptions.new()
+	renderer_options.city_renderer = "cpu"
+	assert(AppSettingsStore.save_values(0.5, 0.5, false, path, renderer_options) == OK)
 	assert(AppSettingsStore.load_values(path).city_renderer == "cpu")
 	assert(AppSettingsStore.save_values(0.4, 0.4, false, path) == OK)
 	assert(AppSettingsStore.load_values(path).city_renderer == "cpu")

@@ -1,7 +1,6 @@
 class_name ViewState
 extends RefCounted
 
-
 var overlay_mode := CityViewMode.Mode.CITY
 var surface_visibility := {
 	"buildings": true,

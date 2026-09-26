@@ -3,7 +3,6 @@ extends RefCounted
 
 const Topology = preload("res://src/model/network_topology.gd")
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const MISC_FUNDS := Sc2MiscLayout.FUNDS
 const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
 const MISC_MILITARY_TILE_COUNTS := Sc2MiscLayout.MILITARY_TILE_COUNTS
@@ -12,13 +11,11 @@ const FLAG_WATER := Sc2TileFlags.WATER
 const FLAG_FLIPPED := Sc2TileFlags.FLIPPED
 const FLAG_PIPED := Sc2TileFlags.PIPED
 const FLAG_POWERABLE := Sc2TileFlags.POWERABLE
-
 const MODE_ROAD := 0
 const MODE_RAIL := 1
 const MODE_POWER := 2
 const MODE_SUBWAY := 3
 const MODE_PIPE := 4
-
 const BRIDGE_CANCELLED := -2
 const BRIDGE_UNSELECTED := -1
 const BRIDGE_WIRE := 0
@@ -26,14 +23,12 @@ const BRIDGE_RAIL := 1
 const BRIDGE_ROAD_CAUSEWAY := 2
 const BRIDGE_ROAD_RAISING := 3
 const BRIDGE_ROAD_SUSPENSION := 4
-
 const CONNECTION_LABEL := Sc2OverlayLayout.CONNECTION_MARKER
 const CONNECTION_UNSELECTED := -1
 const CONNECTION_CANCELLED := 0
 const CONNECTION_CONFIRMED := 1
 const ROAD_CONNECTION_COST := 1000
 const RAIL_CONNECTION_COST := 1500
-
 const BRIDGE_NAMES := [
 	"Raised Wires",
 	"Rail Bridge",
@@ -47,7 +42,6 @@ const BRIDGE_SHORE_DIRECTIONS := [
 	0, 2, 4, 8, 1, 6, 12, 9,
 	3, 0, 0, 0, 0, 0, 0, 0,
 ]
-
 const NETWORK_TOOLS := {
 	36: MODE_POWER,
 	48: MODE_PIPE,
@@ -55,7 +49,6 @@ const NETWORK_TOOLS := {
 	84: MODE_RAIL,
 	85: MODE_SUBWAY,
 }
-
 const NETWORK_SHAPES := Topology.SHAPE_OFFSET_BY_CONNECTION_MASK
 const DIRECTIONS := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
 const TERRAIN_REQUIRES_GRADING := [
@@ -93,7 +86,8 @@ const GRADED_TERRAIN := [
 	# CORNER_RIGHT
 	TerrainTileIds.SLOPE_TOP_RIGHT, TerrainTileIds.SLOPE_BOTTOM_RIGHT, TerrainTileIds.SLOPE_TOP_RIGHT, TerrainTileIds.SLOPE_BOTTOM_RIGHT,
 	# CORNER_BOTTOM
-	TerrainTileIds.SLOPE_BOTTOM_LEFT, TerrainTileIds.SLOPE_BOTTOM_RIGHT, TerrainTileIds.SLOPE_BOTTOM_LEFT, TerrainTileIds.SLOPE_BOTTOM_RIGHT,
+	TerrainTileIds.SLOPE_BOTTOM_LEFT, TerrainTileIds.SLOPE_BOTTOM_RIGHT,
+	TerrainTileIds.SLOPE_BOTTOM_LEFT, TerrainTileIds.SLOPE_BOTTOM_RIGHT,
 	# CORNER_LEFT
 	TerrainTileIds.SLOPE_BOTTOM_LEFT, TerrainTileIds.SLOPE_TOP_LEFT, TerrainTileIds.SLOPE_BOTTOM_LEFT, TerrainTileIds.SLOPE_TOP_LEFT,
 	# RAISED

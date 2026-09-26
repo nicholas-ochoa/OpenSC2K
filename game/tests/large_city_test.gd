@@ -37,7 +37,10 @@ func check_size(edge: int) -> void:
 		check(preview.ok and preview.city.map_size == edge, "Preview size")
 		var created := session.create_city("", "Large City", "Mayor", 1, 1900, options, PackedByteArray())
 		check(created.ok and created.document.map_size == edge, "UI creation size")
-		check(preview.document.find_chunk("ALTM").decoded_payload == created.document.find_chunk("ALTM").decoded_payload, "Preview matches created terrain")
+		check(
+			preview.document.find_chunk("ALTM").decoded_payload == created.document.find_chunk("ALTM").decoded_payload,
+			"Preview matches created terrain",
+		)
 	var document := EmptyCityTemplate.create(edge)
 	var city := CityState.from_document(document)
 	check(city.map_size == edge, "City size")
@@ -124,7 +127,8 @@ func check_large_counts(edge: int) -> void:
 	var graphs := GraphHistory.calculate_current_values(city, edge * edge, 25, 50)
 	check(graphs.ok and graphs.values.size() == 16, "graph values cover full map %d" % edge)
 
-	for change in [GrowthState.replace_building, NetworkState.replace_building, CityRotationCommand._replace_building, RciAftermathPhase._replace_building, SpecialZoneState.replace_building]:
+	for change in [GrowthState.replace_building, NetworkState.replace_building, CityRotationCommand._replace_building,
+		RciAftermathPhase._replace_building, SpecialZoneState.replace_building]:
 		var buildings := PackedByteArray()
 		buildings.resize(edge * edge)
 		var zones := buildings.duplicate()

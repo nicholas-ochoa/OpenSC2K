@@ -8,32 +8,6 @@ const History = preload("res://src/tools/scurk/scurk_editor_history.gd")
 const ObjectState = preload("res://src/tools/scurk/scurk_object_state.gd")
 const Workspace = preload("res://src/tools/scurk/scurk_drawing_workspace.gd")
 
-class Result extends RefCounted:
-	var ok := false
-	var error := ""
-	var changed := false
-
-
-class PixelTarget extends RefCounted:
-	var key := ""
-	var sprite_id := -1
-	var width := 0
-	var height := 0
-	var workspace := false
-	var base_width := 0
-	var view := ScurkSpriteIds.View.LARGE
-	var clipped := false
-
-
-class PendingEdit extends RefCounted:
-	var description := "Edit artwork"
-	var merge_key := ""
-	var bytes := PackedByteArray()
-	var project_state: Dictionary = {}
-	var blank_shape_ids: Dictionary[int, bool] = {}
-	var modified := false
-
-
 var document: ScurkMif
 var project: ScurkProject = Project.new()
 var history: ScurkEditorHistory = History.new()
@@ -59,7 +33,7 @@ func load_document(value: ScurkMif) -> Result:
 	var initialized := fresh.initialize(encoded.bytes)
 	if not initialized.ok:
 		return _failure(initialized.error)
-	fresh.metadata["editor_state"] = {"blank_shape_ids": [], "unclipped_tile_ids": []}
+	fresh.metadata["editor_state"] = { "blank_shape_ids": [], "unclipped_tile_ids": [] }
 	document = value
 	project = fresh
 	history.reset(encoded.bytes)
@@ -104,9 +78,13 @@ func save_project(path: String) -> Result:
 	_capture_saved_state()
 	history.mark_saved(project.current_mif)
 	modified = false
-	if recovery_owned and FileAccess.file_exists(recovery_path) and ProjectSettings.globalize_path(recovery_path).simplify_path() != project_path.simplify_path():
+	if (recovery_owned
+			and FileAccess.file_exists(recovery_path)
+			and ProjectSettings.globalize_path(recovery_path).simplify_path() != project_path.simplify_path()):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(recovery_path))
-	if not recovered_source.is_empty() and FileAccess.file_exists(recovered_source) and ProjectSettings.globalize_path(recovered_source).simplify_path() != project_path.simplify_path():
+	if (not recovered_source.is_empty()
+			and FileAccess.file_exists(recovered_source)
+			and ProjectSettings.globalize_path(recovered_source).simplify_path() != project_path.simplify_path()):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(recovered_source))
 	recovery_owned = false
 	recovered_source = ""
@@ -137,7 +115,11 @@ func discard_recovery() -> void:
 func ignore_recovery() -> Result:
 	if not FileAccess.file_exists(recovery_path):
 		return _success()
-	var archived := "%s/recovery-ignored-%d-%d.scurk" % [recovery_path.get_base_dir(), Time.get_unix_time_from_system(), Time.get_ticks_usec()]
+	var archived := "%s/recovery-ignored-%d-%d.scurk" % [
+		recovery_path.get_base_dir(),
+		Time.get_unix_time_from_system(),
+		Time.get_ticks_usec(),
+	]
 	if DirAccess.rename_absolute(ProjectSettings.globalize_path(recovery_path), ProjectSettings.globalize_path(archived)) != OK:
 		return _failure("Cannot archive the ignored recovery file.")
 	if recovered_source == recovery_path:
@@ -153,7 +135,11 @@ func capture_object(large_id: int, unclipped := false) -> void:
 
 
 func can_revert_object(large_id: int) -> bool:
-	return object_start != null and object_start.large_id == large_id and document != null and not object_start.matches(document, project, history.blank_shape_ids)
+	return object_start != null and object_start.large_id == large_id and document != null and not object_start.matches(
+		document,
+		project,
+		history.blank_shape_ids,
+	)
 
 
 func revert_object(large_id: int) -> Result:
@@ -293,7 +279,7 @@ func generate_views(
 		if not project.ensure_document(key, pixels, Workspace.WIDTH, Workspace.HEIGHT):
 			return _reject_edit("Cannot create the generated artwork document.")
 		var target: Dictionary = project.documents[key]
-		target.layers = [{"name": "Root", "visible": true, "locked": false, "pixels": pixels}]
+		target.layers = [{ "name": "Root", "visible": true, "locked": false, "pixels": pixels }]
 		target.active = 0
 		history.mark_shape_blank_state(sprite_id, shape.pixels)
 	return _success()
@@ -385,3 +371,29 @@ static func _failure(message: String) -> Result:
 	var result := Result.new()
 	result.error = message
 	return result
+
+
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+	var changed := false
+
+
+class PixelTarget extends RefCounted:
+	var key := ""
+	var sprite_id := -1
+	var width := 0
+	var height := 0
+	var workspace := false
+	var base_width := 0
+	var view := ScurkSpriteIds.View.LARGE
+	var clipped := false
+
+
+class PendingEdit extends RefCounted:
+	var description := "Edit artwork"
+	var merge_key := ""
+	var bytes := PackedByteArray()
+	var project_state: Dictionary = {}
+	var blank_shape_ids: Dictionary[int, bool] = {}
+	var modified := false

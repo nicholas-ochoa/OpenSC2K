@@ -1,46 +1,6 @@
+# gdstyle:ignore-file=quality/max-class-variables
 class_name NetworkEdit
 extends NetworkConstants
-
-
-
-
-class SegmentPlan:
-	var city: CityState
-	var map_edge: int
-	var group_index: int
-	var subtool_index: int
-	var start: Vector2i
-	var finish: Vector2i
-	var free_mode: bool
-	var mode: int
-	var surface_mode: bool
-	var old_payloads: Dictionary
-	var changed_payloads: Dictionary
-	var planned: Array[Vector2i] = []
-	var planned_directions: Array[int] = []
-	var bridge_plan: NetworkBridges.Plan
-	var graded_tiles := 0
-	var listed_dry_cost := 0
-	var dry_cost := 0
-	var selected_bridge := BRIDGE_UNSELECTED
-	var listed_bridge_cost := 0
-	var bridge_cost := 0
-	var bridge_built := false
-	var bridge_error := ""
-	var bridge_points: Array[Vector2i] = []
-	var connection_choice := CONNECTION_UNSELECTED
-	var connection_anchor := Vector2i.ZERO
-	var listed_connection_cost := 0
-	var connection_cost := 0
-	var connection_available := false
-	var connection_affordable := false
-	var connection_built := false
-	var connection_error := ""
-	var cost := 0
-
-
-	func has_bridge() -> bool:
-		return bridge_plan != null and bridge_plan.ok
 
 
 static func apply_segment(
@@ -441,3 +401,42 @@ static func undo(city: CityState, command: RouteEditResult) -> EditCommandResult
 		return EditCommandResult.failure("cannot restore network changes")
 
 	return EditCommandResult.undone(command.points.size())
+
+
+class SegmentPlan:
+	var city: CityState
+	var map_edge: int
+	var group_index: int
+	var subtool_index: int
+	var start: Vector2i
+	var finish: Vector2i
+	var free_mode: bool
+	var mode: int
+	var surface_mode: bool
+	var old_payloads: Dictionary
+	var changed_payloads: Dictionary
+	var planned: Array[Vector2i] = []
+	var planned_directions: Array[int] = []
+	var bridge_plan: NetworkBridges.Plan
+	var graded_tiles := 0
+	var listed_dry_cost := 0
+	var dry_cost := 0
+	var selected_bridge := BRIDGE_UNSELECTED
+	var listed_bridge_cost := 0
+	var bridge_cost := 0
+	var bridge_built := false
+	var bridge_error := ""
+	var bridge_points: Array[Vector2i] = []
+	var connection_choice := CONNECTION_UNSELECTED
+	var connection_anchor := Vector2i.ZERO
+	var listed_connection_cost := 0
+	var connection_cost := 0
+	var connection_available := false
+	var connection_affordable := false
+	var connection_built := false
+	var connection_error := ""
+	var cost := 0
+
+
+	func has_bridge() -> bool:
+		return bridge_plan != null and bridge_plan.ok

@@ -2,7 +2,6 @@ class_name EmptyCityTemplate
 extends RefCounted
 
 
-
 static func create(map_edge: int = 128) -> Sc2File:
 	var document := Sc2File.new()
 

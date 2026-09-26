@@ -6,11 +6,6 @@ extends RefCounted
 # integer spatial filters for the independent sc2x per-tile simulation
 
 
-class SmoothedBytes extends RefCounted:
-	var values := PackedByteArray()
-	var total := 0
-
-
 static func neighborhood(values: PackedInt32Array, edge: int, radius: int, scale: int,
 	budget: SimulationSliceBudget = null) -> PackedInt32Array:
 	var stride := edge + 1
@@ -313,3 +308,8 @@ static func apply_service_pattern(values: PackedByteArray, edge: int, origin: Ve
 
 static func _sample(kernel: PackedByteArray, x: int, y: int) -> int:
 	return kernel[x * 7 + y] if x >= 0 and x < 7 and y >= 0 and y < 7 else 0
+
+
+class SmoothedBytes extends RefCounted:
+	var values := PackedByteArray()
+	var total := 0

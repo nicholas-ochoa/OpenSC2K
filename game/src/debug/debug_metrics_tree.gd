@@ -1,10 +1,28 @@
 extends Tree
 
 const GROUPS := {
-	"City and view": ["population", "funds", "tool", "view", "zoom", "center_tile", "visible_altitude_levels", "active_disaster", "no_disasters"],
+	"City and view": [
+		"population",
+		"funds",
+		"tool",
+		"view",
+		"zoom",
+		"center_tile",
+		"visible_altitude_levels",
+		"active_disaster",
+		"no_disasters",
+	],
 	"Simulation worker": ["simulation_slices", "speed_accumulator_msec"],
 	"Rendering and memory": ["render_regions", "static_render", "render_pending", "static_cache", "dynamic_cache", "foreground_cache"],
-	"Map activity": ["panning", "selection_drag", "sign_entries", "sign_scans", "dynamic_visuals", "dynamic_revisions", "transient_effects"],
+	"Map activity": [
+		"panning",
+		"selection_drag",
+		"sign_entries",
+		"sign_scans",
+		"dynamic_visuals",
+		"dynamic_revisions",
+		"transient_effects",
+	],
 	"Audio": ["wave_sound_id", "wave_sound_ticks", "wave_sound_accepted", "wave_sound_suppressed", "wave_stream_cache"],
 	"Internal identifiers": ["speed_id", "active_disaster_id"],
 }
@@ -88,6 +106,7 @@ const NOTES := {
 	"detailed_timing": "Yes when the growth scan records the time of each step.",
 	"pause_at_date": "The date when Run to date stops the simulation.",
 }
+
 var rows: Dictionary = {}
 var _sections: Dictionary = {}
 
@@ -115,7 +134,7 @@ func refresh(metrics: Dictionary) -> void:
 	for row: TreeItem in rows.values():
 		row.set_text(1, "—")
 
-	var assigned := {"city_name": true, "date": true, "speed": true}
+	var assigned := { "city_name": true, "date": true, "speed": true }
 
 	for caption in GROUPS:
 		for key: String in GROUPS[caption]:

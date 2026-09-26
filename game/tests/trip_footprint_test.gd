@@ -118,7 +118,10 @@ func _test_building_coverage() -> void:
 	for x in range(block.position.x + 1, block.end.x - 1):
 		for y in range(block.position.y + 1, block.end.y - 1):
 			var point := Vector2i(x, y)
-			check(result.destinations.has(point) == ((city.zones[city.index_of(x, y)] & 15) == 3), "Every compatible building in the filled block has a checkmark")
+			check(
+				result.destinations.has(point) == ((city.zones[city.index_of(x, y)] & 15) == 3),
+				"Every compatible building in the filled block has a checkmark",
+			)
 	var network := TripReachAnalysis.inspect(city, block.position)
 	check(network.destinations.size() == 36, "Direct network query shows every RCI building in its catchment")
 	city = CityState.from_document(EmptyCityTemplate.create(128))
@@ -164,7 +167,6 @@ func _test_scenarios() -> void:
 		check(overlay.arrow_colors.size() * 2 == overlay.arrows.size(), "Arrow segments retain one color per segment")
 
 
-
 func _test_subway_scenario() -> void:
 	var city := CityState.from_document(EmptyCityTemplate.create(128))
 	city.set_funds(1000000)
@@ -185,7 +187,10 @@ func _test_subway_scenario() -> void:
 		var color := TripReachOverlay.route_color(link, result.limit)
 		if underground:
 			subway_links += 1
-		check(color == TripReachOverlay.heat_color(float(link.cost) / result.limit), "Surface and subway links use the same trip-cost heatmap")
+		check(
+			color == TripReachOverlay.heat_color(float(link.cost) / result.limit),
+			"Surface and subway links use the same trip-cost heatmap",
+		)
 	check(subway_links > 0, "Subway fixture has underground links")
 	var overlay := TripReachOverlay.new()
 	overlay.rebuild(city, result)

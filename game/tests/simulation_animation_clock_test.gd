@@ -1,4 +1,5 @@
 extends SceneTree
+
 const Main = preload("res://src/main.gd")
 
 

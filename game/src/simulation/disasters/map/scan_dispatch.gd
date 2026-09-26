@@ -1,8 +1,8 @@
 class_name DisasterMapScanDispatch
 extends DisasterMapConstants
 
-
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 
 static func run_all(
 	city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom, map_counter: int, hurricane_counter := 0
@@ -25,41 +25,7 @@ static func run_all(
 
 	var payloads := DisasterMapState._duplicate_payloads(original)
 	var counter := maxi(map_counter - 1, 0)
-	var counters: Dictionary[String, int] = {
-		"fire_markers_scanned": 0,
-		"fire_updates": 0,
-		"spread_attempts": 0,
-		"spread_fires": 0,
-		"water_extinctions": 0,
-		"coverage_extinctions": 0,
-		"structure_collapses": 0,
-		"created_explosions": 0,
-		"toxic_markers": 0,
-		"flood_markers_scanned": 0,
-		"flood_updates": 0,
-		"flood_spread_attempts": 0,
-		"spread_floods": 0,
-		"expired_floods": 0,
-		"random_extinctions": 0,
-		"damaged_structures": 0,
-		"toxic_markers_scanned": 0,
-		"toxic_updates": 0,
-		"lfsr_expirations": 0,
-		"water_expirations": 0,
-		"moved_markers": 0,
-		"blocked_moves": 0,
-		"abandoned_structures": 0,
-		"riot_markers_scanned": 0,
-		"riot_updates": 0,
-		"expired_riots": 0,
-		"damage_attempts": 0,
-		"started_fires": 0,
-		"traffic_cells_cleared": 0,
-		"propagated_riots": 0,
-		"blocked_propagations": 0,
-		"hurricane_damage_attempts": 0,
-		"hurricane_damaged_structures": 0,
-	}
+	var counters := _new_map_counters()
 	var dispatch: Dictionary[String, int] = {
 		"dispatch_markers_scanned": 0,
 		"fire_suppression_attempts": 0,
@@ -391,3 +357,41 @@ static func _extinguish_dispatch_fire(
 		)
 
 	return true
+
+
+static func _new_map_counters() -> Dictionary[String, int]:
+	return {
+		"fire_markers_scanned": 0,
+		"fire_updates": 0,
+		"spread_attempts": 0,
+		"spread_fires": 0,
+		"water_extinctions": 0,
+		"coverage_extinctions": 0,
+		"structure_collapses": 0,
+		"created_explosions": 0,
+		"toxic_markers": 0,
+		"flood_markers_scanned": 0,
+		"flood_updates": 0,
+		"flood_spread_attempts": 0,
+		"spread_floods": 0,
+		"expired_floods": 0,
+		"random_extinctions": 0,
+		"damaged_structures": 0,
+		"toxic_markers_scanned": 0,
+		"toxic_updates": 0,
+		"lfsr_expirations": 0,
+		"water_expirations": 0,
+		"moved_markers": 0,
+		"blocked_moves": 0,
+		"abandoned_structures": 0,
+		"riot_markers_scanned": 0,
+		"riot_updates": 0,
+		"expired_riots": 0,
+		"damage_attempts": 0,
+		"started_fires": 0,
+		"traffic_cells_cleared": 0,
+		"propagated_riots": 0,
+		"blocked_propagations": 0,
+		"hurricane_damage_attempts": 0,
+		"hurricane_damaged_structures": 0,
+	}

@@ -124,10 +124,13 @@ func _test_indexed_resources() -> void:
 	_store(data_path, "ABCD".to_ascii_buffer())
 	_store(index_path, index)
 	var text := TextUsaResource.load_ids(data_path, index_path, PackedInt32Array([1, 2]))
-	check(text.ok and text.strings == {1: "AB", 2: "CD"}, "little-endian text index")
+	check(text.ok and text.strings == { 1: "AB", 2: "CD" }, "little-endian text index")
 	for bad in [index.slice(0, 7), "01000000ffffffff".hex_decode(), "01000000020000000200000001000000".hex_decode()]:
 		_store(index_path, bad)
-		check(not TextUsaResource.load_ids(data_path, index_path, PackedInt32Array([1])).ok, "text rejects partial, invalid or unordered offsets")
+		check(
+			not TextUsaResource.load_ids(data_path, index_path, PackedInt32Array([1])).ok,
+			"text rejects partial, invalid or unordered offsets",
+		)
 
 	var data := PackedByteArray()
 	data.resize(11004)
@@ -138,7 +141,10 @@ func _test_indexed_resources() -> void:
 	_store(data_path, data)
 	_store(index_path, index)
 	var grammar := DataUsaResource.load_path(data_path, index_path)
-	check(grammar.is_valid() and grammar.phrase_bytes(0) == PackedByteArray([66]) and grammar.phrase_bytes(1) == PackedByteArray([65]), "mixed-endian data tables")
+	check(
+		grammar.is_valid() and grammar.phrase_bytes(0) == PackedByteArray([66]) and grammar.phrase_bytes(1) == PackedByteArray([65]),
+		"mixed-endian data tables",
+	)
 	for bad in [index.slice(0, 31), "e8030000ffffffff".hex_decode(), "e803000002000000e903000001000000".hex_decode()]:
 		_store(index_path, bad)
 		check(not DataUsaResource.load_path(data_path, index_path).is_valid(), "data rejects partial, invalid or unordered offsets")
@@ -158,7 +164,10 @@ func _test_scenario_picture() -> void:
 	chunk.decoded_payload = "80000000020001001122".hex_decode()
 	scenario.document.chunks.append(chunk)
 	var picture := scenario.picture_indices()
-	check(picture.ok and picture.width == 2 and picture.height == 1 and picture.pixels == PackedByteArray([0x11, 0x22]), "PICT little-endian dimensions")
+	check(
+		picture.ok and picture.width == 2 and picture.height == 1 and picture.pixels == PackedByteArray([0x11, 0x22]),
+		"PICT little-endian dimensions",
+	)
 	for bad in [PackedByteArray(), "80000000020001".hex_decode(), "8000000000000100".hex_decode(), "800000000200010011".hex_decode()]:
 		chunk.decoded_payload = bad
 		check(not scenario.picture_indices().ok, "PICT rejects invalid header, empty dimensions or incomplete rows")

@@ -2,8 +2,13 @@ class_name TripQueryFixture
 extends RefCounted
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
-const SOURCE_TILES := [Tiles.EMPTY, Tiles.LOWER_CLASS_HOMES_1X1_1, Tiles.CHEAP_APARTMENTS_2X2, Tiles.LARGE_APARTMENT_BUILDING_3X3_1, Tiles.PLYMOUTH_ARCOLOGY]
+const SOURCE_TILES := [
+	Tiles.EMPTY,
+	Tiles.LOWER_CLASS_HOMES_1X1_1,
+	Tiles.CHEAP_APARTMENTS_2X2,
+	Tiles.LARGE_APARTMENT_BUILDING_3X3_1,
+	Tiles.PLYMOUTH_ARCOLOGY,
+]
 const DESTINATION_TILES := [Tiles.EMPTY, Tiles.GAS_STATION_1X1_1, Tiles.SHOPPING_CENTER_2X2, Tiles.OFFICE_PARK_3X3, Tiles.PLYMOUTH_ARCOLOGY]
 
 
@@ -59,7 +64,12 @@ static func add_block(city: CityState, origin := Vector2i(70, 20)) -> Rect2i:
 				city.set_building_id(x, y, Tiles.ROAD_STRAIGHT_2 if y in [block.position.y, block.end.y - 1] else Tiles.ROAD_STRAIGHT_1)
 			else:
 				var residential := (x + y) % 2 == 0
-				stamp(city, Rect2i(x, y, 1, 1), Tiles.LOWER_CLASS_HOMES_1X1_1 if residential else Tiles.GAS_STATION_1X1_1, 1 if residential else 3)
+				stamp(
+					city,
+					Rect2i(x, y, 1, 1),
+					Tiles.LOWER_CLASS_HOMES_1X1_1 if residential else Tiles.GAS_STATION_1X1_1,
+					1 if residential else 3,
+				)
 	# A spur deliberately ends without a destination.
 	for x in range(block.end.x, block.end.x + 9):
 		city.set_building_id(x, block.position.y + 3, Tiles.ROAD_STRAIGHT_2)
@@ -184,4 +194,4 @@ static func add_full_interchange_scenario(city: CityState, base: Vector2i) -> Di
 	for destination in destinations:
 		stamp(city, Rect2i(destination, Vector2i(2, 2)), Tiles.SHOPPING_CENTER_2X2, 3)
 	assert(SignCommand.set_sign(city, base + Vector2i(15, 0), "11 Highway - four ramps per end").ok)
-	return {"origin": origin, "ramps": ramps, "destinations": destinations}
+	return { "origin": origin, "ramps": ramps, "destinations": destinations }

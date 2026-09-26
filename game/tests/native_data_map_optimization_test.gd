@@ -1,4 +1,5 @@
 extends SceneTree
+
 const Reference = preload("res://tests/support/native_data_map_reference.gd")
 const Results = preload("res://tests/support/timing_results.gd")
 
@@ -13,7 +14,8 @@ func _run() -> void:
 	for edge in [128, 512]:
 		var modes := [0]
 		if edge == 128:
-			modes.append(PollutionPhase.POLICE_COVERAGE_ORDINANCE | PollutionPhase.FIRE_COVERAGE_ORDINANCE | PollutionPhase.CRIME_REDUCTION_ORDINANCE)
+			modes.append(PollutionPhase.POLICE_COVERAGE_ORDINANCE | PollutionPhase.FIRE_COVERAGE_ORDINANCE
+				| PollutionPhase.CRIME_REDUCTION_ORDINANCE)
 		for ordinances in modes:
 			var doc := EmptyCityTemplate.create(edge)
 			assert(doc.enable_full_resolution_maps())

@@ -2,7 +2,6 @@ class_name DemolishTransport
 extends DemolishConstants
 
 
-
 static func _is_highway_tile(tile_id: int) -> bool:
 	return (
 		(tile_id >= HIGHWAY_STRAIGHT_FIRST and tile_id <= HIGHWAY_STRAIGHT_LAST)
@@ -25,7 +24,7 @@ static func _demolish_tunnel(
 	map_edge: int = 128,
 ) -> DemolishPointResult:
 	var direction: Vector2i = [
-		Vector2i(-1, 0), Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1)
+		Vector2i(-1, 0), Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1),
 	][tile_id - TUNNEL_FIRST]
 	var points: Array[Vector2i] = [start]
 	var current := start + direction
@@ -88,12 +87,12 @@ static func _demolish_transport_component(
 	flags: PackedByteArray,
 	misc: PackedByteArray,
 	start: Vector2i,
-	tile_id: int,
 	random: SimRandom,
 	emit_effects: bool,
 	scurk_mode := false,
 	map_edge: int = 128,
 ) -> DemolishPointResult:
+	var tile_id := int(buildings[start.x * map_edge + start.y])
 	var first := RUNWAY_FIRST if tile_id <= RUNWAY_LAST else PIER_FIRST
 	var last := RUNWAY_LAST if tile_id <= RUNWAY_LAST else PIER_LAST
 	var make_rubble := first == RUNWAY_FIRST
@@ -157,6 +156,7 @@ static func _demolish_transport_component(
 	return result
 
 
+# gdstyle:ignore=quality/max-parameters
 static func _demolish_highway_section(
 	altitude: PackedByteArray,
 	buildings: PackedByteArray,

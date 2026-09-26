@@ -5,6 +5,12 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
+enum Status {
+	UPDATE_AVAILABLE,
+	UP_TO_DATE,
+	FAILED,
+}
+
 const REPOSITORY := "nicholas-ochoa/OpenSC2K"
 # the latest release excludes drafts and prereleases, so nightlies never match
 const LATEST_RELEASE_API := "https://api.github.com/repos/" + REPOSITORY + "/releases/latest"
@@ -20,15 +26,6 @@ const REQUEST_HEADERS := [
 const CHECK_INTERVAL_SECONDS := 24 * 60 * 60
 const TIMEOUT_SECONDS := 20.0
 const BODY_SIZE_LIMIT := 1024 * 1024
-
-enum Status { UPDATE_AVAILABLE, UP_TO_DATE, FAILED }
-
-
-class Outcome extends RefCounted:
-	var status := Status.FAILED
-	var version := ""
-	var url := LATEST_RELEASE_PAGE
-	var message := ""
 
 
 static func current_version() -> String:
@@ -93,7 +90,8 @@ static func read_response(
 	match result:
 		HTTPRequest.RESULT_SUCCESS:
 			pass
-		HTTPRequest.RESULT_CANT_RESOLVE, HTTPRequest.RESULT_CANT_CONNECT, HTTPRequest.RESULT_CONNECTION_ERROR, HTTPRequest.RESULT_NO_RESPONSE:
+		HTTPRequest.RESULT_CANT_RESOLVE, HTTPRequest.RESULT_CANT_CONNECT, \
+				HTTPRequest.RESULT_CONNECTION_ERROR, HTTPRequest.RESULT_NO_RESPONSE:
 			return failed("Cannot connect to GitHub. Check the internet connection, then try again.")
 		HTTPRequest.RESULT_TLS_HANDSHAKE_ERROR:
 			return failed("Cannot make a secure connection to GitHub.")
@@ -177,3 +175,10 @@ static func header_value(headers: PackedStringArray, header_name: String) -> Str
 			return header.substr(prefix.length()).strip_edges()
 
 	return ""
+
+
+class Outcome extends RefCounted:
+	var status := Status.FAILED
+	var version := ""
+	var url := LATEST_RELEASE_PAGE
+	var message := ""

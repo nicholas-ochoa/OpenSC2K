@@ -1,11 +1,4 @@
 extends SceneTree
-## SC2X building footprints can touch every edge without shifting on rotation.
-
-@warning_ignore_start("integer_division")
-
-class ZeroRandom extends SimRandom:
-	func next_u15() -> int:
-		return 0
 
 
 func _initialize() -> void:
@@ -208,3 +201,13 @@ func _check_reload(city: CityState) -> void:
 	var restored := CityState.from_document(loaded)
 	assert(restored.buildings == city.buildings and restored.zones == city.zones)
 	_check_rotations(restored)
+
+
+## SC2X building footprints can touch every edge without shifting on rotation.
+
+@warning_ignore_start("integer_division")
+
+
+class ZeroRandom extends SimRandom:
+	func next_u15() -> int:
+		return 0

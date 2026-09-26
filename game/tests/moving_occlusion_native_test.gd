@@ -1,15 +1,14 @@
 extends SceneTree
-
-class TestVisual extends CityDynamicVisual:
-	var sprite_id: int
-	var mode: int
-
 ## Draw the CPU-composed moving sprites through the native palette shader.
 ## Compare their pixels with independent foreground, crossing, and shadow rules.
 
 @warning_ignore_start("integer_division")
 
-enum Mode { SPRITE, TRAIN, SHADOW }
+enum Mode {
+	SPRITE,
+	TRAIN,
+	SHADOW,
+}
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const VIEW := 2
@@ -146,7 +145,8 @@ func _run() -> void:
 
 	assert(_hidden_pixels > 0 and _checked_pixels > _hidden_pixels, "Fixture lacks hidden or visible pixels")
 	assert(_shadow_pixels > 0, "Fixture has no shadow pixels")
-	print("PASS: native moving sprites match foreground, crossing and shadow rules (%d pixels, %d hidden, %d shadow)" % [_checked_pixels, _hidden_pixels, _shadow_pixels])
+	print("PASS: native moving sprites match foreground, crossing and shadow rules (%d pixels, %d hidden, %d shadow)" % [_checked_pixels,
+		_hidden_pixels, _shadow_pixels])
 	_app.render_caches.region_cache.close()
 	_app.free()
 	viewport.queue_free()
@@ -270,7 +270,11 @@ func _train_mask(command: CityStaticCommand, surface: Image) -> Image:
 		if command.train_deck_reference_sprite_id != 0:
 			var background := _sprite_image(int(command.train_deck_reference_sprite_id), bool(command.flip))
 			deck_surface = Image.create(surface.get_width(), surface.get_height(), false, Image.FORMAT_RGBA8)
-			deck_surface.blit_rect(background, Rect2i(Vector2i.ZERO, background.get_size()), Vector2i(0, surface.get_height() - background.get_height()))
+			deck_surface.blit_rect(
+				background,
+				Rect2i(Vector2i.ZERO, background.get_size()),
+				Vector2i(0, surface.get_height() - background.get_height()),
+			)
 
 		return CityIsometricRenderer.highway_train_deck_mask(deck_surface, int(command.train_deck_thickness))
 
@@ -398,3 +402,8 @@ func _identity_palette() -> ImageTexture:
 		image.set_pixel(index, 0, Color8(index, index, index, 255))
 
 	return ImageTexture.create_from_image(image)
+
+
+class TestVisual extends CityDynamicVisual:
+	var sprite_id: int
+	var mode: int

@@ -5,7 +5,6 @@ extends RefCounted
 const PAGE_SIZE := Vector2i(640, 400)
 const SECTION_COUNT := 11
 const STORY_RECT_INDICES := [4, 7, 8, 9, 10]
-
 # each row contains the 11 rect values initialized by executable function
 # 0x00476ff0. the order is title, date, price, picture, main story,
 # opinion, weather, and four secondary stories
@@ -50,14 +49,12 @@ const LAYOUT_RECTS := [
 		Rect2i(512, 339, 128, 61),
 	],
 ]
-
 # these are the executable's point sizes for the same 11 sections
 const FONT_SIZES := [
 	[24, 12, 12, 0, 32, 12, 12, 10, 10, 10, 10],
 	[24, 12, 12, 0, 30, 12, 12, 10, 10, 10, 10],
 	[24, 10, 10, 1, 10, 0, 0, 10, 10, 10, 10],
 ]
-
 # 0 is left, 1 is center, and 2 is right in the original text helper
 const ALIGNMENTS := [
 	[1, 0, 2, 1, 1, 0, 0, 1, 1, 1, 1],
@@ -81,4 +78,3 @@ static func story_rect(layout: int, slot: int) -> Rect2i:
 		return Rect2i()
 
 	return section_rect(layout, STORY_RECT_INDICES[slot])
-

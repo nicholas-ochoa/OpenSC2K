@@ -6,7 +6,6 @@ const Random = preload("res://src/simulation/random/sim_random.gd")
 const GameRandom = preload("res://src/simulation/random/game_lcg_random.gd")
 const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
 const Terrain = preload("res://src/model/new_city_terrain.gd")
-
 const MISC_SIZE := Sc2MiscLayout.SIZE
 const GRAPH_SIZE := Sc2GraphLayout.SIZE
 const MISC_START_YEAR := Sc2MiscLayout.START_YEAR
@@ -32,7 +31,6 @@ const FOUNDING_STORY_TYPE := 2
 const GRAPH_GNP := 13
 const GRAPH_NATIONAL_POPULATION := 14
 const GRAPH_VALUE_COUNT := Sc2GraphLayout.VALUES_PER_SERIES
-
 const STARTING_YEARS := [1900, 1950, 2000, 2050]
 const NATIONAL_POPULATIONS := {
 	1900: 10000,
@@ -40,35 +38,12 @@ const NATIONAL_POPULATIONS := {
 	2000: 60000,
 	2050: 150000,
 }
-
 # The 17 invention years at SIMCITY.EXE 0x004e99e8 are signed little-endian
 # words, unlike the big-endian save fields.
 const INVENTION_BASE_YEARS := [
 	1940, 1950, 1980, 1970, 2020, 2050, 1920, 1920, 1910,
 	1900, 1925, 1980, 1990, 2040, 2090, 2140, 2190,
 ]
-
-
-class Result extends RefCounted:
-	var ok := false
-	var error := ""
-	var stage := ""
-	var document: Sc2File
-	var city_name := ""
-	var mayor_name := ""
-	var difficulty := 0
-	var starting_year := 0
-	var invention_years := PackedInt32Array()
-	var terrain: NewCityTerrain.Result
-	var process_state := 0
-	var game_state := 0
-
-	static func failure(message: String, failed_stage := "") -> Result:
-		var result := Result.new()
-		result.error = message
-		result.stage = failed_stage
-
-		return result
 
 
 static func create(
@@ -268,3 +243,25 @@ static func _copy_range(
 ) -> void:
 	for index in length:
 		target[offset + index] = source[offset + index]
+
+
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+	var stage := ""
+	var document: Sc2File
+	var city_name := ""
+	var mayor_name := ""
+	var difficulty := 0
+	var starting_year := 0
+	var invention_years := PackedInt32Array()
+	var terrain: NewCityTerrain.Result
+	var process_state := 0
+	var game_state := 0
+
+	static func failure(message: String, failed_stage := "") -> Result:
+		var result := Result.new()
+		result.error = message
+		result.stage = failed_stage
+
+		return result

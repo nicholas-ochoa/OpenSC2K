@@ -1,5 +1,6 @@
 class_name CityDynamicCommandCache
 extends RefCounted
+
 # cache painter commands independently of static-region publication
 var signature: Array = []
 var commands: Array[CityDynamicCommand] = []

@@ -22,7 +22,6 @@ const CORNER_LEFT := 0x0c
 const RAISED := 0x0d
 const UNUSED_0E := 0x0e
 const UNUSED_0F := 0x0f
-
 const DEEP_WATER_FLAT := 0x10
 const DEEP_WATER_SLOPE_TOP_LEFT := 0x11
 const DEEP_WATER_SLOPE_TOP_RIGHT := 0x12
@@ -37,7 +36,6 @@ const DEEP_WATER_CORNER_RIGHT := 0x1a
 const DEEP_WATER_CORNER_BOTTOM := 0x1b
 const DEEP_WATER_CORNER_LEFT := 0x1c
 const DEEP_WATER_RAISED := 0x1d
-
 const SHORE_FLAT := 0x20
 const SHORE_SLOPE_TOP_LEFT := 0x21
 const SHORE_SLOPE_TOP_RIGHT := 0x22
@@ -56,7 +54,6 @@ const UNUSED_1E := 0x1e
 const UNUSED_1F := 0x1f
 const FORBIDDEN_COAST := 0x2e
 const UNUSED_2F := 0x2f
-
 const SURFACE_WATER_OPEN := 0x30
 const SURFACE_WATER_NES := 0x31
 const SURFACE_WATER_ESW := 0x32
@@ -73,7 +70,6 @@ const SURFACE_WATER_BANK_SW := 0x3c
 const SURFACE_WATER_POND := 0x3d
 const WATERFALL := 0x3e
 const UNUSED_3F := 0x3f
-
 const CHANNEL_NS := 0x40
 const CHANNEL_EW := 0x41
 const CHANNEL_E := 0x42
@@ -82,7 +78,6 @@ const CHANNEL_W := 0x44
 const CHANNEL_N := 0x45
 const UNUSED_46 := 0x46
 const UNUSED_47 := 0x47
-
 # The native range checks include unused codes. Keep those bounds intact.
 const LAND_FIRST := FLAT
 const LAND_LAST := UNUSED_0F

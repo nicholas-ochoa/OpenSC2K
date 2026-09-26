@@ -1,5 +1,7 @@
 extends SceneTree
 
+const ImportedAssetChecks = preload("res://tests/support/imported_asset_checks.gd")
+
 
 func _initialize() -> void:
 	call_deferred("run")
@@ -20,7 +22,11 @@ func run() -> void:
 	var unused := FileAccess.open(source_copy.path_join("unused.txt"), FileAccess.WRITE)
 	unused.store_string("Do not retain unrelated source files")
 	unused.close()
-	var result := OriginalPackImporter.import_executable(source_copy.path_join("SIMCITY.EXE"), folder.path_join("packs"), folder.path_join("saved"))
+	var result := OriginalPackImporter.import_executable(
+		source_copy.path_join("SIMCITY.EXE"),
+		folder.path_join("packs"),
+		folder.path_join("saved"),
+	)
 	assert(result.ok, result.error)
 	var media := Sc2MediaImporter.import_assets(source_copy, folder.path_join("media"))
 	assert(media.ok and media.failures.is_empty(), media.summary())
@@ -36,13 +42,13 @@ func run() -> void:
 	result.data = relocated.path_join("data/pack.json")
 	var selected := GameAssetSource.load_source("", "folder", result.graphics)
 	assert(selected.error.is_empty(), selected.error)
-	preload("res://tests/support/imported_asset_checks.gd").check(reference, result.graphics.get_base_dir(), selected.assets)
-	preload("res://tests/support/imported_asset_checks.gd").check_invalid(result.graphics.get_base_dir())
-	preload("res://tests/support/imported_asset_checks.gd").check_data(reference, result.data.get_base_dir())
+	ImportedAssetChecks.check(reference, result.graphics.get_base_dir(), selected.assets)
+	ImportedAssetChecks.check_invalid(result.graphics.get_base_dir())
+	ImportedAssetChecks.check_data(reference, result.data.get_base_dir())
 	var media_source := GameAssetSource.load_source(source_copy, "folder", media.graphics)
 	assert(media_source.error.is_empty(), media_source.error)
-	preload("res://tests/support/imported_asset_checks.gd").check(reference, media.graphics.get_base_dir(), media_source.assets)
-	preload("res://tests/support/imported_asset_checks.gd").check_data(reference, media.data.get_base_dir())
+	ImportedAssetChecks.check(reference, media.graphics.get_base_dir(), media_source.assets)
+	ImportedAssetChecks.check_data(reference, media.data.get_base_dir())
 
 	for pack_result in [result, media]:
 		for kind in ["sound", "music"]:
@@ -126,8 +132,8 @@ func _check_stale_prompt(main: Node, relocated: String) -> void:
 		assert(main.assets.stale_pack_kinds().is_empty())
 
 	# a pack that a person made has no import revision and never needs an import
-	assert(ImportedPackRevision.read({"format": "opensc2k-graphics", "name": "Hand made"}) == ImportedPackRevision.NOT_IMPORTED)
-	assert(ImportedPackRevision.read({"name": "Original SimCity 2000"}) == ImportedPackRevision.UNRECORDED)
+	assert(ImportedPackRevision.read({ "format": "opensc2k-graphics", "name": "Hand made" }) == ImportedPackRevision.NOT_IMPORTED)
+	assert(ImportedPackRevision.read({ "name": "Original SimCity 2000" }) == ImportedPackRevision.UNRECORDED)
 	assert(not ImportedPackRevision.is_outdated("graphics", ImportedPackRevision.NOT_IMPORTED))
 
 

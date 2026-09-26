@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Simulation: disaster start checks.
 
 @warning_ignore_start("integer_division")
@@ -14,6 +13,14 @@ const WidespreadDisasterTests = preload("res://tests/suites/core/simulation/wide
 
 
 func test_disaster_start_phase(reference_root: String) -> void:
+	_test_monster_and_fire(reference_root)
+	_test_flood_and_toxic(reference_root)
+	_test_pollution(reference_root)
+	_test_riots(reference_root)
+	_test_earthquakes(reference_root)
+
+
+func _test_monster_and_fire(reference_root: String) -> void:
 	var monster_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 	var things := _filled_bytes(CityState.THING_COUNT * CityState.THING_RECORD_SIZE, 0)
 	things[CityState.THING_RECORD_SIZE] = 14
@@ -56,7 +63,10 @@ func test_disaster_start_phase(reference_root: String) -> void:
 		and monster_city.text_overlay_id(20, 20) == 202,
 		"Monster disaster stores its random fields, prior label, goal, and XTXT link",
 	)
-	_check(DisasterStartObjectsState.has_active_object(monster_city, DisasterStart.DISASTER_MONSTER), "Monster activity is visible to the disaster controller")
+	_check(
+		DisasterStartObjectsState.has_active_object(monster_city, DisasterStart.DISASTER_MONSTER),
+		"Monster activity is visible to the disaster controller",
+	)
 
 	var fire_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 	var fire_buildings := _filled_bytes(CityState.TILE_COUNT, Tiles.EMPTY)
@@ -101,6 +111,8 @@ func test_disaster_start_phase(reference_root: String) -> void:
 		"A first-point fire consumes only the two process-random center offsets",
 	)
 
+
+func _test_flood_and_toxic(reference_root: String) -> void:
 	var flood_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 	var flood_terrain := _filled_bytes(CityState.TILE_COUNT, 0)
 	var flood_source := Vector2i(20, 20)
@@ -178,6 +190,8 @@ func test_disaster_start_phase(reference_root: String) -> void:
 		"Toxic Spill rejects an out-of-map compatibility API point",
 	)
 
+
+func _test_pollution(reference_root: String) -> void:
 	var pollution_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 	var pollution_text := _filled_bytes(CityState.TILE_COUNT, 0)
 	var pollution_point := Vector2i(10, 10)
@@ -238,6 +252,8 @@ func test_disaster_start_phase(reference_root: String) -> void:
 		% [missed_pollution, missed_pollution_random.position],
 	)
 
+
+func _test_riots(reference_root: String) -> void:
 	var riot_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 	var riot_buildings := _filled_bytes(CityState.TILE_COUNT, Tiles.EMPTY)
 
@@ -364,6 +380,8 @@ func test_disaster_start_phase(reference_root: String) -> void:
 		"Mass Riots stores each marker and appends the common siren after riot sounds",
 	)
 
+
+func _test_earthquakes(reference_root: String) -> void:
 	var earthquake_point := Vector2i(64, 64)
 	var earthquake_damage_point := Vector2i(32, 32)
 	var earthquake_fixture := _fire_map_fixture(

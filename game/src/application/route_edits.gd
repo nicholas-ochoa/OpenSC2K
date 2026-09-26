@@ -1,7 +1,6 @@
 class_name ApplicationRouteEdits
 extends RefCounted
 
-
 const Tunnels = preload("res://src/tools/city/tunnel_command.gd")
 const Highways = preload("res://src/tools/city/highway_command.gd")
 
@@ -77,7 +76,7 @@ func apply_tunnel_selection(
 	app.effects_audio.play_tool_success_sound(app.tool_state.selected_group, app.tool_state.selected_subtool, free_mode)
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "Built a %d-tile tunnel for $%s." % [
-		tunnel.points.size(), app.interface.format_number(tunnel.cost)
+		tunnel.points.size(), app.interface.format_number(tunnel.cost),
 	]
 
 
@@ -201,11 +200,11 @@ func apply_highway_selection(
 			]
 	elif highway.connection_built:
 		app.status_label.text = "Built %d highway sections and a neighboring-city connection for $%s." % [
-			highway.sections.size(), app.interface.format_number(highway.cost)
+			highway.sections.size(), app.interface.format_number(highway.cost),
 		]
 	else:
 		app.status_label.text = "Built %d highway sections for $%s." % [
-			highway.sections.size(), app.interface.format_number(highway.cost)
+			highway.sections.size(), app.interface.format_number(highway.cost),
 		]
 
 		if highway.connection_cancelled:

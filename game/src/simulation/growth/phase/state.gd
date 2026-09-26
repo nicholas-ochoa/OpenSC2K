@@ -20,8 +20,16 @@ static func replace_building(
 	if (zones[index] & Sc2ZoneLayout.TYPE_MASK) != 7:
 		var old_offset := MISC_TILE_COUNTS + old_tile * 4
 		var new_offset := MISC_TILE_COUNTS + new_tile * 4
-		BinaryData.write_u32_be(misc, old_offset, (BinaryData.read_u32_be(misc, old_offset) - 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
-		BinaryData.write_u32_be(misc, new_offset, (BinaryData.read_u32_be(misc, new_offset) + 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
+		BinaryData.write_u32_be(
+			misc,
+			old_offset,
+			(BinaryData.read_u32_be(misc, old_offset) - 1) & (0xffff if buildings.size() == 16384 else 0xffffffff),
+		)
+		BinaryData.write_u32_be(
+			misc,
+			new_offset,
+			(BinaryData.read_u32_be(misc, new_offset) + 1) & (0xffff if buildings.size() == 16384 else 0xffffffff),
+		)
 
 	buildings[index] = new_tile
 

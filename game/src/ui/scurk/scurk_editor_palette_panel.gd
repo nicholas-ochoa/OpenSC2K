@@ -7,7 +7,12 @@ signal shade_ramp_changed(indices: PackedInt32Array)
 signal navigation_changed(state: Dictionary)
 signal texture_selected(index: int)
 
-enum ColorAction { SELECT, FAVORITE, RAMP, CLEAR_RAMP }
+enum ColorAction {
+	SELECT,
+	FAVORITE,
+	RAMP,
+	CLEAR_RAMP,
+}
 
 var context_color_index := -1
 var palette: Sc2Palette

@@ -55,7 +55,8 @@ func _run() -> void:
 			quit(1)
 			return
 		runner.close()
-		print("SIZE %d sync_max_ms=%.3f frame_call_max_ms=%.3f snapshot_max_ms=%.3f worker_slice_max_ms=%.3f grants=%d frames=%d" % [edge, max_sync_usec / 1000.0, max_frame_usec / 1000.0, max_snapshot_usec / 1000.0, max_work_usec / 1000.0, grants, frames])
+		print("SIZE %d sync_max_ms=%.3f frame_call_max_ms=%.3f snapshot_max_ms=%.3f worker_slice_max_ms=%.3f grants=%d frames=%d" % [edge,
+			max_sync_usec / 1000.0, max_frame_usec / 1000.0, max_snapshot_usec / 1000.0, max_work_usec / 1000.0, grants, frames])
 
 	quit()
 

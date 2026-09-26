@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Simulation: news checks.
 
 @warning_ignore_start("integer_division")
@@ -12,6 +11,12 @@ const NewspaperTables = preload("res://src/model/newspaper_layout.gd")
 
 
 func test_news_queue(reference_root: String) -> void:
+	_test_news_initialization(reference_root)
+	_test_news_queue_updates(reference_root)
+	_test_news_persistence(reference_root)
+
+
+func _test_news_initialization(reference_root: String) -> void:
 	var source_priorities := _load_indexed_u16_resource(reference_root, 1004)
 	var source_decays := _load_indexed_u16_resource(reference_root, 1005)
 	_check(
@@ -91,6 +96,8 @@ func test_news_queue(reference_root: String) -> void:
 		"Newspaper page exposes the executable's three fixed layouts",
 	)
 
+
+func _test_news_queue_updates(reference_root: String) -> void:
 	var misc := _filled_bytes(NewsQueue.MISC_SIZE, 0)
 	var decay_types := PackedInt32Array([2, 6, 7, 46, 39, 42, 61])
 	var decay_priorities := PackedInt32Array([900, 100, 40, 500, 250, 150, 100])
@@ -194,6 +201,8 @@ func test_news_queue(reference_root: String) -> void:
 		"Newspaper insertion skips non-story runtime notifications",
 	)
 
+
+func _test_news_persistence(reference_root: String) -> void:
 	var engine_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 	_check(_clear_news_records(engine_document), "Engine newspaper fixture clears story records")
 	var engine_city := CityModel.from_document(engine_document)
@@ -370,7 +379,10 @@ func test_extra_edition_newspaper(reference_root: String) -> void:
 			_check(document.set_misc_u32(Sc2MiscLayout.NEWSPAPER_EXTRAS, extras), "Monthly extra-edition fixture sets the option")
 
 			if invention >= 0:
-				_check(document.set_misc_u32(Sc2MiscLayout.INVENTION_YEARS + invention * 4, 1900), "Monthly extra-edition fixture schedules a release")
+				_check(
+					document.set_misc_u32(Sc2MiscLayout.INVENTION_YEARS + invention * 4, 1900),
+					"Monthly extra-edition fixture schedules a release",
+				)
 
 			var city := CityModel.from_document(document)
 			_check(city.set_age_in_days(20), "Monthly extra-edition fixture starts before day 22")

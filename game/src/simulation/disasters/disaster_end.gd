@@ -4,7 +4,6 @@ extends RefCounted
 # are gone (0x0045cf10): a summary story, the removal of the police, fire, and
 # military units that the disaster sent, and a newspaper
 
-
 # summary story type for each disaster type, from the switch at 0x0045d179
 const STORY_TYPES := {
 	1: 0x16, 12: 0x16,
@@ -22,21 +21,12 @@ const STORY_TYPES := {
 	16: 0x22,
 	17: 0x19,
 }
-
 # units that leave the map at the disaster end
 const DISPATCH_TYPES := [
 	Sc2ThingLayout.Type.POLICE, Sc2ThingLayout.Type.FIRE, Sc2ThingLayout.Type.MILITARY,
 ]
-
 # the original opens the first newspaper here, not the player's choice
 const NEWSPAPER_PAPER := 0
-
-
-class Result extends RefCounted:
-	var ok := false
-	var error := ""
-	var news_items: Array[NewsEvent] = []
-	var removed_units := 0
 
 
 static func finish(city: CityState, disaster_type: int) -> Result:
@@ -111,3 +101,10 @@ static func _remove_dispatched_units(city: CityState) -> int:
 		return -1
 
 	return removed
+
+
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+	var news_items: Array[NewsEvent] = []
+	var removed_units := 0

@@ -1,3 +1,4 @@
+# gdstyle:ignore-file=quality/max-public-methods
 class_name CityState
 extends RefCounted
 
@@ -31,7 +32,6 @@ var simulation_slice: SimulationSliceBudget
 var disaster_damage_class := -1
 var document: Sc2File
 var load_error := ""
-
 var altitude_words := PackedInt32Array()
 var terrain := PackedByteArray()
 var buildings := PackedByteArray()

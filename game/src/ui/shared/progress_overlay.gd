@@ -1,7 +1,6 @@
 class_name ProgressOverlay
 extends Control
 
-
 var title_label: Label
 var bar: ProgressBar
 var detail_label: Label

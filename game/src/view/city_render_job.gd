@@ -5,18 +5,6 @@ const Renderer = preload("res://src/view/city_isometric_renderer.gd")
 const UndergroundView = preload("res://src/view/city_underground_view.gd")
 const ViewFilter = preload("res://src/view/city_view_filter.gd")
 
-class Result extends RefCounted:
-	var ok := false
-	var error := ""
-	var index_image: Image
-	var occlusion_commands: Array[CityStaticCommand] = []
-	var signature: Array = []
-	var view_size := Renderer.VIEW_LARGE
-	var epoch := 0
-	var render_mode := CityViewMode.Mode.CITY
-	var display_city: CityState
-
-
 var city_snapshot: CityState
 var index_palette: Sc2Palette
 var sprites: Sc2SpriteArchive
@@ -85,3 +73,15 @@ func run() -> Result:
 	result.display_city = city_snapshot
 
 	return result
+
+
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+	var index_image: Image
+	var occlusion_commands: Array[CityStaticCommand] = []
+	var signature: Array = []
+	var view_size := Renderer.VIEW_LARGE
+	var epoch := 0
+	var render_mode := CityViewMode.Mode.CITY
+	var display_city: CityState

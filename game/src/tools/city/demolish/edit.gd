@@ -165,21 +165,7 @@ static func apply_path(
 	)
 
 	if scurk_mode:
-		changed_payloads.XTER = old_payloads.XTER.duplicate()
-		changed_payloads.ALTM = old_payloads.ALTM.duplicate()
-		var scurk_zones: PackedByteArray = changed_payloads.XZON
-		var old_zones: PackedByteArray = old_payloads.XZON
-		var scurk_flags: PackedByteArray = changed_payloads.XBIT
-		var old_flags: PackedByteArray = old_payloads.XBIT
-
-		for index in (map_edge * map_edge):
-			scurk_zones[index] = (
-				(scurk_zones[index] & Sc2ZoneLayout.CORNERS_MASK) | (old_zones[index] & Sc2ZoneLayout.TYPE_MASK)
-			)
-			scurk_flags[index] = (
-				(scurk_flags[index] & ~FLAG_WATER & 0xff)
-				| (old_flags[index] & FLAG_WATER)
-			)
+		_restore_scurk_terrain(changed_payloads, old_payloads, map_edge)
 
 	var changed_ids := PackedStringArray()
 
@@ -249,3 +235,21 @@ static func undo(city: CityState, command: DemolishEditResult, random: SimRandom
 	random.state = command.random_state_before
 
 	return EditCommandResult.undone(command.tile_indices.size())
+
+
+static func _restore_scurk_terrain(changed_payloads: Dictionary, old_payloads: Dictionary, map_edge: int) -> void:
+	changed_payloads.XTER = old_payloads.XTER.duplicate()
+	changed_payloads.ALTM = old_payloads.ALTM.duplicate()
+	var scurk_zones: PackedByteArray = changed_payloads.XZON
+	var old_zones: PackedByteArray = old_payloads.XZON
+	var scurk_flags: PackedByteArray = changed_payloads.XBIT
+	var old_flags: PackedByteArray = old_payloads.XBIT
+
+	for index in (map_edge * map_edge):
+		scurk_zones[index] = (
+			(scurk_zones[index] & Sc2ZoneLayout.CORNERS_MASK) | (old_zones[index] & Sc2ZoneLayout.TYPE_MASK)
+		)
+		scurk_flags[index] = (
+			(scurk_flags[index] & ~FLAG_WATER & 0xff)
+			| (old_flags[index] & FLAG_WATER)
+		)

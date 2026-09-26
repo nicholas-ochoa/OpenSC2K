@@ -43,7 +43,9 @@ static func success_events(group_index: int, subtool_index: int) -> Array[int]:
 			if subtool_index >= CityToolIds.Water.PIPES and subtool_index <= CityToolIds.Water.DESALINIZATION:
 				return [SOUND_BUILD]
 		CityToolIds.Group.REWARDS:
-			if subtool_index != CityToolIds.Rewards.ARCOLOGIES and subtool_index >= CityToolIds.Rewards.MAYORS_HOUSE and subtool_index <= CityToolIds.Rewards.LAUNCH:
+			if (subtool_index != CityToolIds.Rewards.ARCOLOGIES
+					and subtool_index >= CityToolIds.Rewards.MAYORS_HOUSE
+					and subtool_index <= CityToolIds.Rewards.LAUNCH):
 				return [SOUND_REWARD]
 		CityToolIds.Group.ROADS:
 			if subtool_index == CityToolIds.Roads.BUS_DEPOT:
@@ -100,7 +102,8 @@ static func failure_events(
 	if group_index < CityToolIds.Group.POWER or group_index > CityToolIds.Group.RECREATION:
 		return []
 
-	if (group_index == CityToolIds.Group.POWER and subtool_index == CityToolIds.Power.PLANTS) or (group_index == CityToolIds.Group.REWARDS and subtool_index == CityToolIds.Rewards.ARCOLOGIES):
+	if ((group_index == CityToolIds.Group.POWER and subtool_index == CityToolIds.Power.PLANTS)
+			or (group_index == CityToolIds.Group.REWARDS and subtool_index == CityToolIds.Rewards.ARCOLOGIES)):
 		return []
 
 	return [SOUND_ERROR]

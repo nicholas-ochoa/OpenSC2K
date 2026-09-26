@@ -1,7 +1,6 @@
 extends SceneTree
 
 
-
 func _initialize() -> void:
 	call_deferred("run_check")
 

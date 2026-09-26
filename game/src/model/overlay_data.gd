@@ -5,7 +5,6 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 const Layout = preload("res://src/formats/sc2_overlay_layout.gd")
-
 const EXTRA_FACILITY := Layout.EXTRA_FACILITY
 const EXTRA_SIGN := Layout.EXTRA_SIGN
 const EXTRA_THING := Layout.EXTRA_THING
@@ -52,15 +51,18 @@ static func blocks_thing(id: int) -> bool:
 
 
 static func facility_id(record: int) -> int:
-	return record + Layout.ORIGINAL_FACILITY_FIRST if record < Sc2MicrosimLayout.ORIGINAL_COUNT else EXTRA_FACILITY + record - Sc2MicrosimLayout.ORIGINAL_COUNT
+	return (record + Layout.ORIGINAL_FACILITY_FIRST if record < Sc2MicrosimLayout.ORIGINAL_COUNT
+		else EXTRA_FACILITY + record - Sc2MicrosimLayout.ORIGINAL_COUNT)
 
 
 static func facility_record(id: int) -> int:
-	return id - Layout.ORIGINAL_FACILITY_FIRST if id <= Layout.ORIGINAL_FACILITY_LAST else id - EXTRA_FACILITY + Sc2MicrosimLayout.ORIGINAL_COUNT
+	return (id - Layout.ORIGINAL_FACILITY_FIRST if id <= Layout.ORIGINAL_FACILITY_LAST
+		else id - EXTRA_FACILITY + Sc2MicrosimLayout.ORIGINAL_COUNT)
 
 
 static func thing_id(record: int) -> int:
-	return record + Layout.ORIGINAL_THING_FIRST if record < Sc2ThingLayout.ORIGINAL_COUNT else EXTRA_THING + record - Sc2ThingLayout.ORIGINAL_COUNT
+	return (record + Layout.ORIGINAL_THING_FIRST if record < Sc2ThingLayout.ORIGINAL_COUNT
+		else EXTRA_THING + record - Sc2ThingLayout.ORIGINAL_COUNT)
 
 
 static func thing_record(id: int) -> int:

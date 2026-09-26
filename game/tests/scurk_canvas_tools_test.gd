@@ -63,7 +63,15 @@ func _reset(canvas: ScurkPixelCanvas, value := -1) -> void:
 	canvas.set_selected_color(42)
 
 
-func _mouse(canvas: ScurkPixelCanvas, point: Vector2i, pressed: bool, button := MOUSE_BUTTON_LEFT, shift := false, command := false, alt := false) -> void:
+func _mouse(
+	canvas: ScurkPixelCanvas,
+	point: Vector2i,
+	pressed: bool,
+	button := MOUSE_BUTTON_LEFT,
+	shift := false,
+	command := false,
+	alt := false,
+) -> void:
 	var event := InputEventMouseButton.new()
 	event.position = Vector2(point * canvas.zoom) + Vector2(canvas.DISPLAY_MARGIN + 1, 1)
 	event.button_index = button
@@ -595,7 +603,7 @@ func _test_selection_transforms(canvas: ScurkPixelCanvas) -> void:
 		canvas.clipboard_mask = PackedByteArray([1])
 		canvas.transform_selection(operation)
 		var end := Vector2i(2, 3) if operation < 2 else Vector2i(3, 2)
-		assert(canvas.copy_region(canvas.pixels, 8, 8, Vector2i.ONE, end).pixels == expected[operation])
+		assert(ScurkPixelOperations.copy_region(canvas.pixels, 8, 8, Vector2i.ONE, end).pixels == expected[operation])
 		assert(canvas.selection.bounds() == Rect2i(Vector2i.ONE, end))
 		assert(canvas.pixels[63] == 99 and canvas.clipboard_pixels == PackedInt32Array([77]))
 		if operation < 2:

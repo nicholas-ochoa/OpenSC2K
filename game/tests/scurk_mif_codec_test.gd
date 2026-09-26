@@ -22,7 +22,8 @@ func _initialize() -> void:
 	var hash := HashingContext.new()
 	hash.start(HashingContext.HASH_SHA256)
 	hash.update("\n".join(errors).to_utf8_buffer())
-	print("PASS: generated SCURK MIF bytes, duplicates, high-byte fields, %d rejected inputs and parse recovery; errors_sha256=%s" % [rejected, hash.finish().hex_encode()])
+	print("PASS: generated SCURK MIF bytes, duplicates, high-byte fields, %d rejected inputs and parse recovery; errors_sha256=%s" % [
+		rejected, hash.finish().hex_encode()])
 	quit()
 
 
@@ -32,7 +33,7 @@ func _test_round_trip(bytes: PackedByteArray) -> void:
 	assert(mif.parse(bytes), mif.parse_error)
 	assert(mif.info_payload == _info())
 	assert(mif.piece_count == 3 and mif.piece_records.size() == 3)
-	assert(mif.names == {0x1234: "Oak"})
+	assert(mif.names == { 0x1234: "Oak" })
 	assert(mif.shapes.size() == 2)
 	assert(mif.shapes[0].sprite_id == 0x1234 and mif.shapes[0].width == 3 and mif.shapes[0].height == 2)
 	assert(mif.shapes[0].decode_indices().pixels == PackedInt32Array(PIXELS))

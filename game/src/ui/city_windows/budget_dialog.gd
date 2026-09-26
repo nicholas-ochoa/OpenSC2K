@@ -14,6 +14,7 @@ signal sound_requested(sound_ids: Array[int])
 signal ordinances_changed
 signal update_failed(message: String)
 
+const ADVISOR_ICON = preload("res://src/ui/city_windows/icons/budget_advisor.svg")
 const Budget = preload("res://src/simulation/economy/budget_phase.gd")
 const Bonds = preload("res://src/simulation/economy/bond_command.gd")
 const BUDGET_NAMES := BudgetReport.NAMES
@@ -81,7 +82,7 @@ func _ready() -> void:
 	_build_rows()
 	var bond_advice: Button = $Margin/Content/Tabs/Bonds/Actions/Advice
 	bond_advice.text = ""
-	bond_advice.icon = preload("res://src/ui/city_windows/icons/budget_advisor.svg")
+	bond_advice.icon = ADVISOR_ICON
 	bond_advice.tooltip_text = "Ask the bond advisor"
 	action_buttons.append(bond_advice)
 	_style_actions()
@@ -137,13 +138,15 @@ func _build_rows() -> void:
 		var actions := HBoxContainer.new()
 		rows.add_child(actions)
 		var history := Button.new()
-		history.icon = preload("res://src/ui/city_windows/icons/budget_details.svg") if group in [1, 2] else preload("res://src/ui/city_windows/icons/budget_history.svg")
-		history.tooltip_text = "Open the %s tab" % ("Ordinances" if group == 1 else "Bonds") if group in [1, 2] else "Show monthly history for %s" % BudgetReport.GROUP_NAMES[group].to_lower()
+		history.icon = (preload("res://src/ui/city_windows/icons/budget_details.svg") if group in [1, 2]
+			else preload("res://src/ui/city_windows/icons/budget_history.svg"))
+		history.tooltip_text = ("Open the %s tab" % ("Ordinances" if group == 1 else "Bonds") if group in [1, 2]
+			else "Show monthly history for %s" % BudgetReport.GROUP_NAMES[group].to_lower())
 		history.pressed.connect(_open_details.bind(group))
 		actions.add_child(history)
 		action_buttons.append(history)
 		var advice := Button.new()
-		advice.icon = preload("res://src/ui/city_windows/icons/budget_advisor.svg")
+		advice.icon = ADVISOR_ICON
 		advice.tooltip_text = "Ask the %s advisor" % BudgetReport.GROUP_NAMES[group].to_lower()
 		advice.pressed.connect(advisor_requested.emit.bind(group))
 		actions.add_child(advice)
@@ -197,7 +200,11 @@ func set_city(value: CityState) -> void:
 
 func open_budget(values: PackedInt32Array, annual: bool, auto_budget: bool) -> void:
 	title = "Annual Budget" if annual else "Budget"
-	$Margin/Content/Heading.text = title if city == null else "%s · %s %d" % [city.display_name(), BudgetReport.MONTHS[city.current_month() - 1], city.current_year()]
+	$Margin/Content/Heading.text = title if city == null else "%s · %s %d" % [
+		city.display_name(),
+		BudgetReport.MONTHS[city.current_month() - 1],
+		city.current_year(),
+	]
 	notice_label.text = "Review last year’s totals." if annual else "Review income, service funding and the year-end forecast."
 	auto_budget_check.button_pressed = auto_budget
 	get_cancel_button().disabled = annual
@@ -308,7 +315,12 @@ func refresh_report() -> void:
 	for group in BudgetReport.GROUPS.size():
 		_set_amount(ytd_labels[group], BudgetReport.group_amount(report.year_to_date, group))
 		_set_amount(estimate_labels[group], BudgetReport.group_amount(report.estimated, group))
-	var totals := [report.ytd_cash, report.estimated_cash, city.funds(), BudgetReport.wrap_i32(city.funds() + (report.ytd_cash if report.year_end else report.estimated_cash))]
+	var totals := [
+		report.ytd_cash,
+		report.estimated_cash,
+		city.funds(),
+		BudgetReport.wrap_i32(city.funds() + (report.ytd_cash if report.year_end else report.estimated_cash)),
+	]
 	total_captions[3].text = "Funds after settlement" if report.year_end else "Year-end funds"
 	total_captions[1].text = "Projected annual flow" if report.year_end else "Year-end cash flow"
 	for index in totals.size():
@@ -321,7 +333,13 @@ func _setup_table(table: Tree, titles: Array) -> void:
 	table.theme = AppUiTheme.file_dialog()
 	var dark := AppUiTheme.selected == "dark"
 	for state in ["title_button_normal", "title_button_hover", "title_button_pressed"]:
-		var header := AppUiThemeDefinitions.create_box(Color("4b5563") if dark else Color("e2e8f0"), Color("788699") if dark else Color("b7c3d2"), 1, 6, 5)
+		var header := AppUiThemeDefinitions.create_box(
+			Color("4b5563") if dark else Color("e2e8f0"),
+			Color("788699") if dark else Color("b7c3d2"),
+			1,
+			6,
+			5,
+		)
 		table.add_theme_stylebox_override(state, header)
 	table.add_theme_color_override("title_button_color", Color("f8fafc") if dark else Color("253247"))
 	table.clear()
@@ -388,7 +406,13 @@ func _refresh_bond_table() -> void:
 	var value := CityValuePhase.calculate(city)
 	var city_value := value.city_value if value.ok else city.document.misc_u32(Bonds.MISC_CITY_VALUE)
 	var credit := clampi(BudgetAdvice._signed_word(((count * 25000) & 0xffffffff) / maxi((city_value + 1) & 0xffffffff, 1)), 0, 6)
-	bond_summary_label.text = "Outstanding: %s   ·   Credit: %s   ·   Bank rate: %d%%   ·   Next bond: %d%%   ·   City value: %s" % [BudgetReport.currency(count * Bonds.BOND_VALUE), ["AAA", "AA", "A", "B", "C", "D", "F"][credit], federal, federal + 1, BudgetReport.currency(city_value * 1000)]
+	bond_summary_label.text = "Outstanding: %s   ·   Credit: %s   ·   Bank rate: %d%%   ·   Next bond: %d%%   ·   City value: %s" % [
+		BudgetReport.currency(count * Bonds.BOND_VALUE),
+		["AAA", "AA", "A", "B", "C", "D", "F"][credit],
+		federal,
+		federal + 1,
+		BudgetReport.currency(city_value * 1000),
+	]
 
 
 func set_bond_state(bond_count: int, funds: int, average_fixed: int, _oldest_rate: int) -> void:
@@ -418,7 +442,8 @@ func open_bond_confirmation(action: String, rate: int) -> void:
 	pending_bond_action = action
 	bond_dialog.theme = AppUiTheme.current()
 	bond_dialog.title = "Issue Bond" if action == "issue" else "Repay Bond"
-	bond_dialog.dialog_text = "Issue a $10,000 bond at %d%%?" % rate if action == "issue" else "Repay the oldest $10,000 bond at %d%%?" % rate
+	bond_dialog.dialog_text = ("Issue a $10,000 bond at %d%%?" % rate if action == "issue"
+		else "Repay the oldest $10,000 bond at %d%%?" % rate)
 	bond_dialog.popup_centered()
 
 

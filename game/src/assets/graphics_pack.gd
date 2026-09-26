@@ -196,7 +196,14 @@ func _load() -> void:
 		if error.is_empty() and not scenario_graphics.error.is_empty():
 			_fail(scenario_graphics.error)
 
-	if error.is_empty() and large_sprites.entries.is_empty() and small_medium_sprites.entries.is_empty() and ui_images.is_empty() and scurk_graphics == null and city_ui_graphics == null and desktop_graphics == null and scenario_graphics == null:
+	if (error.is_empty()
+			and large_sprites.entries.is_empty()
+			and small_medium_sprites.entries.is_empty()
+			and ui_images.is_empty()
+			and scurk_graphics == null
+			and city_ui_graphics == null
+			and desktop_graphics == null
+			and scenario_graphics == null):
 		_fail("Graphics pack contains no assets")
 
 

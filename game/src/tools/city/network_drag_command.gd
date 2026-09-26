@@ -2,7 +2,6 @@ class_name NetworkDragCommand
 extends RefCounted
 
 
-
 static func apply(
 	city: CityState, group: int, tool: int, start: Vector2i, finish: Vector2i,
 	bridge: int, connection: int, free_mode: bool, highway: bool
@@ -24,7 +23,8 @@ static func apply(
 		var segment: RouteEditResult
 
 		for attempt in 3:
-			segment = (HighwayEdit.apply_segment(working, group, tool, cursor, endpoint, selected_connection, selected_bridge, free_mode) if highway
+			segment = (HighwayEdit.apply_segment(working, group, tool, cursor, endpoint, selected_connection, selected_bridge, free_mode)
+				if highway
 					else NetworkEdit.apply_segment(working, group, tool, cursor, endpoint, selected_bridge, selected_connection, free_mode))
 
 			if segment.bridge_selection_required and bridge != -1:

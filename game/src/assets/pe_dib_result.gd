@@ -1,7 +1,6 @@
 class_name PeDibResult
 extends RefCounted
 
-
 var ok := false
 var error := ""
 var bytes := PackedByteArray()

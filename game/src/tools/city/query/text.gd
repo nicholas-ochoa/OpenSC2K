@@ -2,7 +2,6 @@ class_name QueryText
 extends QueryConstants
 
 
-
 static func format_text(info: QueryResult) -> String:
 	if not info.ok:
 		return "Query failed: %s" % info.error

@@ -1,7 +1,6 @@
 class_name SimulationInteractionRequest
 extends RefCounted
 
-
 var type: String
 var funding_values := PackedInt32Array()
 var auto_budget := false

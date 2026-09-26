@@ -131,7 +131,8 @@ static func macintosh(data: PackedByteArray, origin: String) -> Sc2ImportContain
 			if relative + 4 + length > data_length:
 				return result._fail("The Macintosh resource data is truncated.")
 
-			result.resources.append(Sc2ImportResource.make("%s/%d" % [type, id], fork.slice(start + 4, start + 4 + length), origin, type, id))
+			result.resources.append(Sc2ImportResource.make("%s/%d" % [type, id], fork.slice(start + 4, start + 4 + length), origin, type,
+				id))
 
 	return result
 
@@ -211,7 +212,8 @@ func _read_ne(data: PackedByteArray, header: int, origin: String) -> Sc2ImportCo
 			if not has_range(data, start, size):
 				return _fail("The NE resource data is truncated.")
 
-			resources.append(Sc2ImportResource.make(name, data.slice(start, start + size), origin, type, id & 0x7fff if id & 0x8000 else -1))
+			resources.append(Sc2ImportResource.make(name, data.slice(start, start + size), origin, type,
+				id & 0x7fff if id & 0x8000 else -1))
 
 		cursor += count * 12
 
@@ -243,7 +245,16 @@ static func _pe_offset(data: PackedByteArray, sections: int, count: int, rva: in
 	return -1
 
 
-func _pe_directory(data: PackedByteArray, root: int, directory: int, sections: int, section_count: int, origin: String, names: Array[String], depth: int) -> void:
+func _pe_directory(
+	data: PackedByteArray,
+	root: int,
+	directory: int,
+	sections: int,
+	section_count: int,
+	origin: String,
+	names: Array[String],
+	depth: int,
+) -> void:
 	if not error.is_empty():
 		return
 
@@ -292,7 +303,8 @@ func _pe_directory(data: PackedByteArray, root: int, directory: int, sections: i
 			_fail("The PE resource data is truncated.")
 			return
 
-		resources.append(Sc2ImportResource.make(path[1], data.slice(start, start + size), origin, path[0], int(path[1]) if path[1].is_valid_int() else -1))
+		resources.append(Sc2ImportResource.make(path[1], data.slice(start, start + size), origin, path[0],
+			int(path[1]) if path[1].is_valid_int() else -1))
 
 
 func _fail(message: String) -> Sc2ImportContainer:

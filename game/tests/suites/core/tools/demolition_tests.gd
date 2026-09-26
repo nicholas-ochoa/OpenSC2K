@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Tools: demolition checks.
 
 @warning_ignore_start("integer_division")
@@ -94,6 +93,14 @@ func test_demolish_command(reference_root: String) -> void:
 	)
 	_check(Buildings.undo(city, city_hall, placement_random, process_random).ok, "Reward demolition fixture removes City Hall")
 
+	_test_surface_demolition(reference_root, demolition_random)
+
+	_test_underground_demolition(reference_root)
+
+	_test_network_demolition(reference_root, demolition_random)
+
+
+func _test_surface_demolition(reference_root: String, demolition_random: SimRandom) -> void:
 	var simple_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 
 	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
@@ -239,6 +246,8 @@ func test_demolish_command(reference_root: String) -> void:
 	_check(Demolish.undo(simple_city, removed_highway, demolition_random).ok, "Highway demolition can be undone")
 	_check(Highways.undo(simple_city, placed_highway).ok, "Highway fixture can be removed after demolition undo")
 
+
+func _test_underground_demolition(reference_root: String) -> void:
 	var underground_document := _load_fixture(
 		reference_root.path_join("DEFAULT.SC2")
 	)
@@ -405,6 +414,8 @@ func test_demolish_command(reference_root: String) -> void:
 		"Underground demolition fixture removes the restored station",
 	)
 
+
+func _test_network_demolition(reference_root: String, demolition_random: SimRandom) -> void:
 	var special_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 
 	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
@@ -454,7 +465,10 @@ func test_demolish_command(reference_root: String) -> void:
 	_check(special_city.building_id(45, 45) == 0xdd, "Runway demolition preserves a separate component")
 
 	for point in [Vector2i(40, 40), Vector2i(41, 40), Vector2i(41, 41)]:
-		_check(special_city.building_id(point.x, point.y) >= 1 and special_city.building_id(point.x, point.y) <= 4, "Demolished runway becomes rubble")
+		_check(
+			special_city.building_id(point.x, point.y) >= 1 and special_city.building_id(point.x, point.y) <= 4,
+			"Demolished runway becomes rubble",
+		)
 
 	_check(Demolish.undo(special_city, runway, demolition_random).ok, "Runway demolition can be undone")
 
@@ -514,7 +528,10 @@ func test_demolish_command(reference_root: String) -> void:
 	for bank_point in [Vector2i(78, 80), Vector2i(86, 80)]:
 		for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 			var point: Vector2i = bank_point + offset
-			_check(special_city.set_building_id(point.x, point.y, Tiles.HIGHWAY_STRAIGHT_1), "Reinforced demolition fixture places a complete bank section")
+			_check(
+				special_city.set_building_id(point.x, point.y, Tiles.HIGHWAY_STRAIGHT_1),
+				"Reinforced demolition fixture places a complete bank section",
+			)
 			_check(special_city.set_land_altitude(point.x, point.y, 1), "Reinforced demolition fixture raises a bank")
 			_check(special_city.set_building_corners(point.x, point.y, 0xf0), "Reinforced demolition fixture marks straight highway cells")
 

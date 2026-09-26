@@ -1,7 +1,6 @@
 class_name ApplicationFrame
 extends RefCounted
 
-
 const Simulation = preload("res://src/simulation/core/simulation_engine.gd")
 const GameSpeed = preload("res://src/simulation/core/game_speed_controller.gd")
 

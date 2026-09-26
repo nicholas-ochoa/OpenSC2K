@@ -1,11 +1,5 @@
 extends SceneTree
 
-class TestCamera extends CityMapCamera:
-
-
-	func _tile_at(_point: Vector2) -> Vector2i:
-		return Vector2i(60, 60)
-
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -43,3 +37,10 @@ func _run() -> void:
 	await process_frame
 	print("PASS: immediate invalid placement tooltip")
 	quit()
+
+
+class TestCamera extends CityMapCamera:
+
+
+	func _tile_at(_point: Vector2) -> Vector2i:
+		return Vector2i(60, 60)

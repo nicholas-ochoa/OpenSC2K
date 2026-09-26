@@ -184,226 +184,11 @@ func _benchmark_initialize() -> void:
 		% [Time.get_ticks_usec() - started, edit_occlusion_grid.size()]
 	)
 
-	var points := PackedVector2Array()
-
-	for x in range(0, CityModel.MAP_SIZE, 8):
-		for y in range(0, CityModel.MAP_SIZE, 8):
-			var polygon := Renderer.tile_polygon(city, x, y)
-			points.append(
-				(polygon[0] + polygon[1] + polygon[2] + polygon[3]) * 0.25
-			)
-
-	started = Time.get_ticks_usec()
-	var checksum := Vector2i.ZERO
-
-	for point in points:
-		checksum += Renderer.screen_to_tile(city, point)
-
-	var elapsed := Time.get_ticks_usec() - started
-	print(
-		"map_hit_test: %d us for %d points; checksum=%s"
-		% [elapsed, points.size(), checksum]
-	)
-	started = Time.get_ticks_usec()
-
-	for _signature_index in 40:
-		Renderer.static_visual_signature(city)
-
-	print("static_signature_40: %d us" % (Time.get_ticks_usec() - started))
-	_measure_captures(city, index_palette, sprites)
-	started = Time.get_ticks_usec()
-
-	for dynamic_index in 40:
-		Renderer.dynamic_draw_commands(city, sprites, Renderer.VIEW_LARGE, dynamic_index)
-
-	print("dynamic_layer_40: %d us" % (Time.get_ticks_usec() - started))
-	var scenario_city := CityModel.from_document(
-		Sc2Document.load_path(reference_root.path_join("SCENARIO/CHARLEST.SCN"))
-	)
-	var scenario_simulation := Simulation.new(scenario_city, 1, 7, 13)
-	var scenario_day := scenario_simulation.advance_day()
-	if not scenario_day.ok:
-		printerr("CHARLEST.SCN initial day failed: %s" % scenario_day.error)
-		quit(1)
+	_measure_picking_and_layers(city, index_palette, sprites)
+	if not _measure_hurricane_rendering(reference_root, sprites, index_palette):
 		return
-
-
-	for _hurricane_tick in 30:
-		var hurricane_tick := scenario_simulation.advance_disaster_tick()
-
-		if not hurricane_tick.ok:
-			printerr("Charleston hurricane benchmark failed: %s" % hurricane_tick.error)
-			quit(1)
-
-			return
-
-	var hurricane_commands := Renderer.dynamic_draw_commands(
-		scenario_city, sprites, Renderer.VIEW_LARGE, 30
-	)
-	var hurricane_visuals: Array[CityDynamicVisual] = []
-	var hurricane_images := {}
-
-	for command in hurricane_commands:
-		if command.overlay < 0:
-			continue
-
-		var image_key := "%d:%d" % [command.sprite_id, int(command.flip)]
-		var marker_image: Image = hurricane_images.get(image_key) as Image
-
-		if marker_image == null:
-			var marker := sprites.find_sprite(command.sprite_id)
-
-			if marker == null:
-				continue
-
-			var marker_result := marker.create_image(index_palette)
-
-			if not marker_result.ok:
-				continue
-
-			marker_image = marker_result.image
-
-			if command.flip:
-				marker_image = marker_image.duplicate()
-				marker_image.flip_x()
-
-			hurricane_images[image_key] = marker_image
-
-		var visual := CityDynamicVisual.new(null, Vector2(command.position), Vector2(marker_image.get_size()))
-		visual.image = marker_image
-		visual.special_overlay = true
-		visual.batch_cache_key = image_key + ":" + str(command.position)
-		hurricane_visuals.append(visual)
-
-	started = Time.get_ticks_usec()
-	var hurricane_batch_cache: Dictionary[String, CityDynamicVisual] = {}
-	var hurricane_batches := DynamicSpriteCanvas.batch_special_visuals(
-		hurricane_visuals, hurricane_batch_cache
-	)
-	var hurricane_cold_batch_usec := Time.get_ticks_usec() - started
-	started = Time.get_ticks_usec()
-
-	for _batch_index in 40:
-		hurricane_batches = DynamicSpriteCanvas.batch_special_visuals(
-			hurricane_visuals, hurricane_batch_cache
-		)
-
-	print(
-		"hurricane_batch: cold=%d us; warm_40=%d us; visuals=%d; batches=%d"
-		% [
-			hurricane_cold_batch_usec,
-			Time.get_ticks_usec() - started,
-			hurricane_visuals.size(),
-			hurricane_batches.size(),
-		]
-	)
-	var dynamic_canvas := DynamicSpriteCanvas.new()
-	var canvas_visuals: Array[CityDynamicVisual] = []
-
-	for command in hurricane_commands:
-		var visual := CityDynamicVisual.new(null, Vector2(command.position))
-		visual.depth_order = command.depth_order
-		visual.record = command.record
-		visual.shadow = command.shadow
-		canvas_visuals.append(visual)
-
-	started = Time.get_ticks_usec()
-
-	for _canvas_index in 40:
-		dynamic_canvas.set_visuals(canvas_visuals, 1.0, Vector2.ZERO)
-
-	print(
-		"hurricane_dynamic_canvas_40: %d us; commands=%d; ok=%s"
-		% [
-			Time.get_ticks_usec() - started,
-			hurricane_commands.size(),
-			scenario_day.ok,
-		]
-	)
-	dynamic_canvas.free()
-
-	var split_disaster_city := CityModel.from_document(city.document.duplicate_document())
-	var split_random := Random.new(1)
-	var split_lfsr := LfsrRandom.new(1)
-	started = Time.get_ticks_usec()
-
-	for _disaster_index in 40:
-		var fire_tick := DisasterMapFireFlood.run_fire(
-			split_disaster_city, split_random, split_lfsr
-		)
-		var dispatch_tick := DisasterMapScanDispatch.run_dispatch(
-			split_disaster_city, split_random, split_lfsr
-		)
-		if not fire_tick.ok or not dispatch_tick.ok:
-			printerr("%s split disaster tick %d failed: %s %s" % [city_file, _disaster_index, fire_tick.error, dispatch_tick.error])
-			quit(1)
-			return
-
-	print(
-		"split_disaster_map_40: %d us; ok=true"
-		% [Time.get_ticks_usec() - started]
-	)
-	var unified_disaster_city := CityModel.from_document(city.document.duplicate_document())
-	var unified_random := Random.new(1)
-	var unified_lfsr := LfsrRandom.new(1)
-	started = Time.get_ticks_usec()
-
-	for _disaster_index in 40:
-		var unified_tick := DisasterMapScanDispatch.run_all(
-			unified_disaster_city, unified_random, unified_lfsr, 0
-		)
-		if not unified_tick.ok:
-			printerr("%s unified disaster tick %d failed: %s" % [city_file, _disaster_index, unified_tick.error])
-			quit(1)
-			return
-
-	print(
-		"unified_disaster_map_40: %d us; ok=true"
-		% [Time.get_ticks_usec() - started]
-	)
-
-	var simulation_city := CityModel.from_document(city.document.duplicate_document())
-	var simulation := Simulation.new(simulation_city, 1, 1, 1)
-	var simulation_started := Time.get_ticks_usec()
-	var slowest_day_usec := 0
-	var slowest_actions := PackedStringArray()
-
-	for _day in 25:
-		started = Time.get_ticks_usec()
-		var day := simulation.advance_day()
-		var day_usec := Time.get_ticks_usec() - started
-
-		if not day.ok:
-			printerr("%s simulation benchmark failed: %s" % [city_file, day.error])
-			quit(1)
-
-			return
-
-		if day_usec > slowest_day_usec:
-			slowest_day_usec = day_usec
-			slowest_actions = day.applied
-
-	print(
-		"simulation_25_days: %d us; slowest_day=%d us; actions=%s"
-		% [
-			Time.get_ticks_usec() - simulation_started,
-			slowest_day_usec,
-			", ".join(slowest_actions),
-		]
-	)
-
-	started = Time.get_ticks_usec()
-
-	for tick in 40:
-		var moving := simulation.advance_moving_things(tick * 200)
-
-		if not moving.ok:
-			printerr("Capeques moving benchmark failed: %s" % moving.error)
-			quit(1)
-
-			return
-
-	print("moving_40_ticks: %d us" % (Time.get_ticks_usec() - started))
+	if not _measure_disaster_and_simulation_ticks(city, city_file):
+		return
 	quit()
 
 
@@ -414,7 +199,7 @@ func _print_measurement(label: String, started: int, ok: bool) -> void:
 func _measure_captures(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive) -> void:
 	var controller := GameSpeedController.new(SimulationEngine.new(city, 123, 456, 789))
 	var regions := CityRegionCache.new()
-	var samples := {"full_image_capture": [], "region_configure_capture": [], "simulation_capture": []}
+	var samples := { "full_image_capture": [], "region_configure_capture": [], "simulation_capture": [] }
 
 	for index in CAPTURE_WARMUP + CAPTURE_SAMPLES:
 		var started := Time.get_ticks_usec()
@@ -468,3 +253,227 @@ func _static_command_values(commands: Array[CityStaticCommand], include_region :
 		values.append(fields)
 
 	return values
+
+
+func _measure_picking_and_layers(city: CityState, index_palette: Sc2Palette, sprites: Sc2SpriteArchive) -> void:
+	var points := PackedVector2Array()
+
+	for x in range(0, CityModel.MAP_SIZE, 8):
+		for y in range(0, CityModel.MAP_SIZE, 8):
+			var polygon := Renderer.tile_polygon(city, x, y)
+			points.append(
+				(polygon[0] + polygon[1] + polygon[2] + polygon[3]) * 0.25
+			)
+
+	var started := Time.get_ticks_usec()
+	var checksum := Vector2i.ZERO
+
+	for point in points:
+		checksum += Renderer.screen_to_tile(city, point)
+
+	var elapsed := Time.get_ticks_usec() - started
+	print(
+		"map_hit_test: %d us for %d points; checksum=%s"
+		% [elapsed, points.size(), checksum]
+	)
+	started = Time.get_ticks_usec()
+
+	for _signature_index in 40:
+		Renderer.static_visual_signature(city)
+
+	print("static_signature_40: %d us" % (Time.get_ticks_usec() - started))
+	_measure_captures(city, index_palette, sprites)
+	started = Time.get_ticks_usec()
+
+	for dynamic_index in 40:
+		Renderer.dynamic_draw_commands(city, sprites, Renderer.VIEW_LARGE, dynamic_index)
+
+	print("dynamic_layer_40: %d us" % (Time.get_ticks_usec() - started))
+
+
+func _measure_hurricane_rendering(reference_root: String, sprites: Sc2SpriteArchive, index_palette: Sc2Palette) -> bool:
+	var scenario_city := CityModel.from_document(
+		Sc2Document.load_path(reference_root.path_join("SCENARIO/CHARLEST.SCN"))
+	)
+	var scenario_simulation := Simulation.new(scenario_city, 1, 7, 13)
+	var scenario_day := scenario_simulation.advance_day()
+	if not scenario_day.ok:
+		printerr("CHARLEST.SCN initial day failed: %s" % scenario_day.error)
+		quit(1)
+		return false
+	for _hurricane_tick in 30:
+		var hurricane_tick := scenario_simulation.advance_disaster_tick()
+
+		if not hurricane_tick.ok:
+			printerr("Charleston hurricane benchmark failed: %s" % hurricane_tick.error)
+			quit(1)
+
+			return false
+	var hurricane_commands := Renderer.dynamic_draw_commands(
+		scenario_city, sprites, Renderer.VIEW_LARGE, 30
+	)
+	var hurricane_visuals: Array[CityDynamicVisual] = []
+	var hurricane_images := {}
+
+	for command in hurricane_commands:
+		if command.overlay < 0:
+			continue
+
+		var image_key := "%d:%d" % [command.sprite_id, int(command.flip)]
+		var marker_image: Image = hurricane_images.get(image_key) as Image
+
+		if marker_image == null:
+			var marker := sprites.find_sprite(command.sprite_id)
+
+			if marker == null:
+				continue
+
+			var marker_result := marker.create_image(index_palette)
+
+			if not marker_result.ok:
+				continue
+
+			marker_image = marker_result.image
+
+			if command.flip:
+				marker_image = marker_image.duplicate()
+				marker_image.flip_x()
+
+			hurricane_images[image_key] = marker_image
+
+		var visual := CityDynamicVisual.new(null, Vector2(command.position), Vector2(marker_image.get_size()))
+		visual.image = marker_image
+		visual.special_overlay = true
+		visual.batch_cache_key = image_key + ":" + str(command.position)
+		hurricane_visuals.append(visual)
+
+	var started := Time.get_ticks_usec()
+	var hurricane_batch_cache: Dictionary[String, CityDynamicVisual] = {}
+	var hurricane_batches := DynamicSpriteCanvas.batch_special_visuals(
+		hurricane_visuals, hurricane_batch_cache
+	)
+	var hurricane_cold_batch_usec := Time.get_ticks_usec() - started
+	started = Time.get_ticks_usec()
+
+	for _batch_index in 40:
+		hurricane_batches = DynamicSpriteCanvas.batch_special_visuals(
+			hurricane_visuals, hurricane_batch_cache
+		)
+
+	print(
+		"hurricane_batch: cold=%d us; warm_40=%d us; visuals=%d; batches=%d"
+		% [
+			hurricane_cold_batch_usec,
+			Time.get_ticks_usec() - started,
+			hurricane_visuals.size(),
+			hurricane_batches.size(),
+		]
+	)
+	var dynamic_canvas := DynamicSpriteCanvas.new()
+	var canvas_visuals: Array[CityDynamicVisual] = []
+
+	for command in hurricane_commands:
+		var visual := CityDynamicVisual.new(null, Vector2(command.position))
+		visual.depth_order = command.depth_order
+		visual.shadow = command.shadow
+		canvas_visuals.append(visual)
+
+	started = Time.get_ticks_usec()
+
+	for _canvas_index in 40:
+		dynamic_canvas.set_visuals(canvas_visuals, 1.0, Vector2.ZERO)
+
+	print(
+		"hurricane_dynamic_canvas_40: %d us; commands=%d; ok=%s"
+		% [
+			Time.get_ticks_usec() - started,
+			hurricane_commands.size(),
+			scenario_day.ok,
+		]
+	)
+	dynamic_canvas.free()
+
+	return true
+
+
+func _measure_disaster_and_simulation_ticks(city: CityState, city_file: String) -> bool:
+	var split_disaster_city := CityModel.from_document(city.document.duplicate_document())
+	var split_random := Random.new(1)
+	var split_lfsr := LfsrRandom.new(1)
+	var started := Time.get_ticks_usec()
+
+	for _disaster_index in 40:
+		var fire_tick := DisasterMapFireFlood.run_fire(
+			split_disaster_city, split_random, split_lfsr
+		)
+		var dispatch_tick := DisasterMapScanDispatch.run_dispatch(
+			split_disaster_city, split_random, split_lfsr
+		)
+		if not fire_tick.ok or not dispatch_tick.ok:
+			printerr("%s split disaster tick %d failed: %s %s" % [city_file, _disaster_index, fire_tick.error, dispatch_tick.error])
+			quit(1)
+			return false
+	print(
+		"split_disaster_map_40: %d us; ok=true"
+		% [Time.get_ticks_usec() - started]
+	)
+	var unified_disaster_city := CityModel.from_document(city.document.duplicate_document())
+	var unified_random := Random.new(1)
+	var unified_lfsr := LfsrRandom.new(1)
+	started = Time.get_ticks_usec()
+
+	for _disaster_index in 40:
+		var unified_tick := DisasterMapScanDispatch.run_all(
+			unified_disaster_city, unified_random, unified_lfsr, 0
+		)
+		if not unified_tick.ok:
+			printerr("%s unified disaster tick %d failed: %s" % [city_file, _disaster_index, unified_tick.error])
+			quit(1)
+			return false
+	print(
+		"unified_disaster_map_40: %d us; ok=true"
+		% [Time.get_ticks_usec() - started]
+	)
+
+	var simulation_city := CityModel.from_document(city.document.duplicate_document())
+	var simulation := Simulation.new(simulation_city, 1, 1, 1)
+	var simulation_started := Time.get_ticks_usec()
+	var slowest_day_usec := 0
+	var slowest_actions := PackedStringArray()
+
+	for _day in 25:
+		started = Time.get_ticks_usec()
+		var day := simulation.advance_day()
+		var day_usec := Time.get_ticks_usec() - started
+
+		if not day.ok:
+			printerr("%s simulation benchmark failed: %s" % [city_file, day.error])
+			quit(1)
+
+			return false
+		if day_usec > slowest_day_usec:
+			slowest_day_usec = day_usec
+			slowest_actions = day.applied
+
+	print(
+		"simulation_25_days: %d us; slowest_day=%d us; actions=%s"
+		% [
+			Time.get_ticks_usec() - simulation_started,
+			slowest_day_usec,
+			", ".join(slowest_actions),
+		]
+	)
+
+	started = Time.get_ticks_usec()
+
+	for tick in 40:
+		var moving := simulation.advance_moving_things(tick * 200)
+
+		if not moving.ok:
+			printerr("Capeques moving benchmark failed: %s" % moving.error)
+			quit(1)
+
+			return false
+	print("moving_40_ticks: %d us" % (Time.get_ticks_usec() - started))
+
+	return true

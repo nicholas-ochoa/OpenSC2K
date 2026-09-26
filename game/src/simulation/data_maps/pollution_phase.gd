@@ -5,14 +5,6 @@ extends PollutionValues
 @warning_ignore_start("integer_division")
 
 
-class Result extends PhaseResult:
-	var pollution_total := 0
-	var land_value_total := 0
-	var crime_total := 0
-	var developed_tiles := 0
-	var city_center := Vector2i.ZERO
-
-
 static func run(city: CityState) -> Result:
 	var map_edge: int = city.map_size if city != null else 128
 
@@ -122,3 +114,11 @@ static func failed(message: String) -> Result:
 	result.error = message
 
 	return result
+
+
+class Result extends PhaseResult:
+	var pollution_total := 0
+	var land_value_total := 0
+	var crime_total := 0
+	var developed_tiles := 0
+	var city_center := Vector2i.ZERO

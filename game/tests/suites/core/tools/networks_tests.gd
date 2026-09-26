@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Tools: networks checks.
 
 @warning_ignore_start("integer_division")
@@ -71,6 +70,19 @@ func test_network_command(reference_root: String) -> void:
 
 		_check(Networks.undo(city, base).ok, "Reuse fixture restores the original map")
 
+	_test_neighbor_connections(city, document)
+
+	_test_crossings_and_subways(city, document)
+
+	_test_bridge_choices(city, document)
+
+	_test_bridge_types(city, document)
+
+	var unaffordable := Networks.apply(city, 3, 0, Vector2i(50, 50), Vector2i(51, 50))
+	_check(not unaffordable.ok and not unaffordable.error.is_empty(), "Network command reports insufficient funds")
+
+
+func _test_neighbor_connections(city: CityState, document: Sc2File) -> void:
 	var road_connection_request := Networks.apply(
 		city, 6, 0, Vector2i(124, 40), Vector2i(127, 40)
 	)
@@ -220,6 +232,8 @@ func test_network_command(reference_root: String) -> void:
 	)
 	_check(city.set_funds(10000), "Road connection fixture restores funds")
 
+
+func _test_crossings_and_subways(city: CityState, document: Sc2File) -> void:
 	_check(city.set_building_id(20, 20, Tiles.ROAD_STRAIGHT_1), "Rail crossover fixture places a road")
 	var rail_crossing := Networks.apply(city, 7, 0, Vector2i(20, 20), Vector2i(21, 20))
 	_check(rail_crossing.ok and city.building_id(20, 20) == 0x45, "Rail tool creates the recovered road crossover")
@@ -329,6 +343,8 @@ func test_network_command(reference_root: String) -> void:
 	_check(partial.cost == 20, "Partial road route charges only its planned prefix")
 	_check(Networks.undo(city, partial).ok, "Partial road route can be undone")
 
+
+func _test_bridge_choices(city: CityState, document: Sc2File) -> void:
 	for x in range(80, 89):
 		_check(city.set_land_altitude(x, 20, 4), "Bridge fixture sets land altitude")
 		_check(city.set_water_altitude(x, 20, 5), "Bridge fixture sets water altitude")
@@ -441,6 +457,8 @@ func test_network_command(reference_root: String) -> void:
 		"Causeway undo restores funds, terrain, altitude, and water",
 	)
 
+
+func _test_bridge_types(city: CityState, document: Sc2File) -> void:
 	var raising_bridge := Networks.apply(
 		city,
 		6,
@@ -537,5 +555,3 @@ func test_network_command(reference_root: String) -> void:
 	_check(city.set_funds(10000), "Network fixture restores funds after bridge checks")
 
 	_check(city.set_funds(1), "Network funds fixture sets insufficient funds")
-	var unaffordable := Networks.apply(city, 3, 0, Vector2i(50, 50), Vector2i(51, 50))
-	_check(not unaffordable.ok and not unaffordable.error.is_empty(), "Network command reports insufficient funds")

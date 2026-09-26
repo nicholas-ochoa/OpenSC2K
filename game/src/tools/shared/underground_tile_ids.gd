@@ -39,14 +39,12 @@ const PIPE_LR_SUBWAY_TB := 0x20
 const UNKNOWN := 0x21
 const MISSILE_SILO := 0x22
 const SUBWAY_ENTRANCE := 0x23
-
 # Unused XUND values cleared by the native rotation table.
 const UNUSED_24 := 0x24
 const UNUSED_25 := 0x25
 const UNUSED_26 := 0x26
 const UNUSED_27 := 0x27
 const ROTATION_TABLE_SIZE := 0x28
-
 # Inclusive network bounds.
 const SUBWAY_FIRST := SUBWAY_LR
 const SUBWAY_LAST := SUBWAY_LTBR

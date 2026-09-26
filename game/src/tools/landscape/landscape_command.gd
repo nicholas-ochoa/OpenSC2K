@@ -5,7 +5,6 @@ extends RefCounted
 
 const ChunkCommit = preload("res://src/model/city/ordered_chunk_commit.gd")
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const GROUP_NATURE := CityToolIds.Group.LANDSCAPE
 const FULL_MAP_SIZE := CityState.MAP_SIZE
 const SUBTOOL_TREES := CityToolIds.Landscape.TREES
@@ -20,18 +19,8 @@ const WATERFALL := TerrainTileIds.WATERFALL
 const MISC_FUNDS := Sc2MiscLayout.FUNDS
 const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
 const MILITARY_ZONE := Sc2ZoneLayout.MILITARY
-
 const CARDINAL_WATER_SHAPES := [13, 21, 18, 8, 19, 16, 5, 1, 20, 7, 17, 4, 6, 3, 2]
 const DIAGONAL_WATER_SHAPES := [0, 9, 10, 0, 11, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0]
-
-
-class WaterTransition extends RefCounted:
-	var value: int
-	var early_return: bool
-
-	func _init(terrain_value: int, skip_update: bool) -> void:
-		value = terrain_value
-		early_return = skip_update
 
 
 static func supports_tool(group_index: int, subtool_index: int) -> bool:
@@ -398,3 +387,12 @@ static func _apply_payloads(
 	city: CityState, chunk_ids: PackedStringArray, payloads: Dictionary, rollback: Dictionary
 ) -> bool:
 	return ChunkCommit.apply(city, chunk_ids, payloads, rollback)
+
+
+class WaterTransition extends RefCounted:
+	var value: int
+	var early_return: bool
+
+	func _init(terrain_value: int, skip_update: bool) -> void:
+		value = terrain_value
+		early_return = skip_update

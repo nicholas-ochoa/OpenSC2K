@@ -255,7 +255,8 @@ func set_city_status(engine: SimulationEngine, paused: bool) -> void:
 			status_style = "SuccessLabel"
 		elif engine.active_disaster_type != 0:
 			var disaster := engine.active_disaster_type
-			city_status_text = CityStatusMessages.DISASTERS[disaster] if disaster > 0 and disaster < CityStatusMessages.DISASTERS.size() else ""
+			city_status_text = (CityStatusMessages.DISASTERS[disaster] if disaster > 0 and disaster < CityStatusMessages.DISASTERS.size()
+				else "")
 			priority_status = true
 			status_style = "ErrorLabel"
 

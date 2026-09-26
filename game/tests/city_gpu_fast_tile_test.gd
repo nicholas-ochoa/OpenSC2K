@@ -3,8 +3,8 @@ extends SceneTree
 ## Every tile that the shortcut accepts must record the same draws, in the same
 ## order, as the one tile painter. The other tiles must go to the painter.
 
-
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 
 func _initialize() -> void:
 	var palette := Sc2Palette.index_encoding()
@@ -17,12 +17,12 @@ func _initialize() -> void:
 
 	# Views, rotations, and hidden altitudes are independent of the tile content.
 	var setups := [
-		{"view": 2, "rotation": 0, "levels": 32, "overrides": true, "routing": true},
-		{"view": 2, "rotation": 1, "levels": 32, "overrides": true},
-		{"view": 2, "rotation": 2, "levels": 12, "overrides": true},
-		{"view": 2, "rotation": 3, "levels": 32, "overrides": false},
-		{"view": 1, "rotation": 1, "levels": 12, "overrides": true},
-		{"view": 0, "rotation": 2, "levels": 32, "overrides": true},
+		{ "view": 2, "rotation": 0, "levels": 32, "overrides": true, "routing": true },
+		{ "view": 2, "rotation": 1, "levels": 32, "overrides": true },
+		{ "view": 2, "rotation": 2, "levels": 12, "overrides": true },
+		{ "view": 2, "rotation": 3, "levels": 32, "overrides": false },
+		{ "view": 1, "rotation": 1, "levels": 12, "overrides": true },
+		{ "view": 0, "rotation": 2, "levels": 32, "overrides": true },
 	]
 
 	for setup: Dictionary in setups:
@@ -78,7 +78,9 @@ func _generate(city: CityState) -> PackedInt32Array:
 		assert(city.set_terrain_id(x, y, random.randi_range(0x00, 0x45)))
 		assert(city.set_land_altitude(x, y, land))
 		assert(city.set_water_altitude(x, y, land if random.randf() < 0.5 else random.randi_range(0, 31)))
-		buildings[index] = [0, random.randi_range(Tiles.RUBBLE_FIRST, Tiles.SMALL_PARK), random.randi_range(Tiles.POWER_LINE_FIRST, Tiles.RAIL_SUBWAY_LAST), random.randi_range(Tiles.DEVELOPED_FIRST, Tiles.MAX_ID)][random.randi_range(0, 3)]
+		buildings[index] = [0, random.randi_range(Tiles.RUBBLE_FIRST, Tiles.SMALL_PARK),
+			random.randi_range(Tiles.POWER_LINE_FIRST, Tiles.RAIL_SUBWAY_LAST),
+			random.randi_range(Tiles.DEVELOPED_FIRST, Tiles.MAX_ID)][random.randi_range(0, 3)]
 		zones[index] = random.randi_range(0, 0xff) if random.randf() < 0.75 else random.randi_range(0, 0x0f)
 		flags[index] = random.randi_range(0, 0xff)
 		overlays[index] = random.randi_range(201, 240) if random.randf() < 0.05 else 0
@@ -114,7 +116,13 @@ func _compare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, s
 			covered.compared = int(covered.get("compared", 0)) + 1
 
 			if setup.has("routing"):
-				assert(_same(context.tile(city, palette, sprites, configuration, x, y, CityViewMode.Mode.CITY, false, false).draws, reference.draws), "GPU tile (%d, %d) differs from the tile painter" % [x, y])
+				assert(
+					_same(
+						context.tile(city, palette, sprites, configuration, x, y, CityViewMode.Mode.CITY, false, false).draws,
+						reference.draws,
+					),
+					"GPU tile (%d, %d) differs from the tile painter" % [x, y],
+				)
 
 			if slow.values().has(true):
 				assert(not taken, "Unexpected shortcut at tile (%d, %d)" % [x, y])
@@ -126,7 +134,17 @@ func _compare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, s
 				continue
 
 			assert(taken, "Shortcut not used at tile (%d, %d)" % [x, y])
-			assert(_same(shortcut.draws, reference.draws), "Shortcut differs at (%d, %d) view %d rotation %d: %s != %s" % [x, y, setup.view, city.compass_rotation(), _describe(shortcut.draws), _describe(reference.draws)])
+			assert(
+				_same(shortcut.draws, reference.draws),
+				"Shortcut differs at (%d, %d) view %d rotation %d: %s != %s" % [
+					x,
+					y,
+					setup.view,
+					city.compass_rotation(),
+					_describe(shortcut.draws),
+					_describe(reference.draws),
+				],
+			)
 			_record(city, x, y, odd, setup, covered)
 
 

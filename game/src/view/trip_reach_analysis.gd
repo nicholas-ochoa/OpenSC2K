@@ -3,8 +3,8 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
-
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 
 static func inspect(city: CityState, clicked: Vector2i) -> TransportTripReachResult:
 	if city == null or not city.is_valid() or city.index_of(clicked.x, clicked.y) < 0:

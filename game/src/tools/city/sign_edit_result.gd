@@ -1,7 +1,6 @@
 class_name SignEditResult
 extends EditCommandResult
 
-
 var point := Vector2i(-1, -1)
 var tile_index := -1
 var label_id := 0

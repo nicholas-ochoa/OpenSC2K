@@ -9,6 +9,25 @@ extends RefCounted
 #   the visible regions
 # - extent only: `texture` is null and there are no entries (data views)
 
+var size: Vector2i
+# the whole-map texture, or null when the map draws from entries or not at all
+var texture: Texture2D
+var tiles: Array[TileEntry] = []
+var meshes: Array[MeshEntry] = []
+# Region snapshots can replace a few entries without changing their order.
+# Keep only the predecessor ID, never a reference that retains older meshes.
+var mesh_updates_from := 0
+var mesh_updates := PackedInt32Array()
+
+
+func _init(source_size: Vector2i, whole_texture: Texture2D = null) -> void:
+	size = source_size
+	texture = whole_texture
+
+
+static func whole(whole_texture: Texture2D) -> CityMapSource:
+	return CityMapSource.new(Vector2i(whole_texture.get_size()), whole_texture)
+
 
 class TileEntry:
 	extends RefCounted
@@ -40,23 +59,3 @@ class MeshEntry:
 		mesh = region_mesh
 		texture = atlas_texture
 		divisor = mesh_divisor
-
-
-var size: Vector2i
-# the whole-map texture, or null when the map draws from entries or not at all
-var texture: Texture2D
-var tiles: Array[TileEntry] = []
-var meshes: Array[MeshEntry] = []
-# Region snapshots can replace a few entries without changing their order.
-# Keep only the predecessor ID, never a reference that retains older meshes.
-var mesh_updates_from := 0
-var mesh_updates := PackedInt32Array()
-
-
-func _init(source_size: Vector2i, whole_texture: Texture2D = null) -> void:
-	size = source_size
-	texture = whole_texture
-
-
-static func whole(whole_texture: Texture2D) -> CityMapSource:
-	return CityMapSource.new(Vector2i(whole_texture.get_size()), whole_texture)

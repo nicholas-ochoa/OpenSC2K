@@ -1,27 +1,6 @@
 class_name PopulationWindowControl
 extends Control
 
-@warning_ignore_start("integer_division")
-
-class Cohort extends RefCounted:
-	var age_start: int
-	var population: int
-	var education_points: int
-	var life_points: int
-	var education_quotient: int
-	var life_expectancy: int
-
-
-class Snapshot extends RefCounted:
-	var ok: bool = false
-	var error: String = ""
-	var cohorts: Array[Cohort] = []
-	var total_population: int
-	var workforce_percent: int
-	var workforce_life_expectancy: int
-	var workforce_education_quotient: int
-
-
 enum Mode {
 	POPULATION,
 	HEALTH,
@@ -42,6 +21,99 @@ func _init() -> void:
 	theme_changed.connect(queue_redraw)
 	custom_minimum_size = Vector2(600, 330)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
+func _draw() -> void:
+	draw_rect(Rect2(Vector2.ZERO, size), get_theme_color("paper", "AppPalette"), true)
+	draw_rect(Rect2(Vector2.ZERO, size), get_theme_color("border", "AppPalette"), false, 1.0)
+	var data := snapshot(city)
+
+	if not data.ok:
+		_draw_centered_message("No city is loaded.")
+
+		return
+
+	var font := get_theme_default_font()
+	var font_size := 12
+	var plot := Rect2(58, 36, maxf(1.0, size.x - 78.0), maxf(1.0, size.y - 92.0))
+
+	for step in 7:
+		var y := plot.end.y - plot.size.y * float(step) / 6.0
+		draw_line(Vector2(plot.position.x, y), Vector2(plot.end.x, y), get_theme_color("grid", "AppPalette"), 1.0)
+		var label := y_axis_label(mode, step)
+
+		if not label.is_empty():
+			var label_width := font.get_string_size(
+				label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
+			).x
+			draw_string(
+				font, Vector2(plot.position.x - label_width - 5, y + 4), label,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, get_theme_color("ink", "AppPalette")
+			)
+
+	draw_line(plot.position, Vector2(plot.position.x, plot.end.y), get_theme_color("border", "AppPalette"), 1.0)
+	draw_line(Vector2(plot.position.x, plot.end.y), plot.end, get_theme_color("border", "AppPalette"), 1.0)
+
+	var values := chart_values(data, mode)
+	var slot_width := plot.size.x / float(COHORT_COUNT)
+	var bar_slot := 0
+
+	for cohort in values.size():
+		var bar_height := plot.size.y * clampf(
+			float(values[cohort]) / float(CHART_MAXIMUM), 0.0, 1.0
+		)
+
+		if bar_height > 0.0:
+			var bar := Rect2(
+				plot.position.x + slot_width * bar_slot + 1,
+				plot.end.y - maxf(1.0, bar_height),
+				maxf(1.0, slot_width - 2),
+				maxf(1.0, bar_height),
+			)
+			draw_rect(bar, get_theme_color("chart_accent", "AppPalette"), true)
+			draw_rect(bar, get_theme_color("ink", "AppPalette"), false, 1.0)
+
+		# The original advances the bar position only for nonzero values.
+		if values[cohort] != 0:
+			bar_slot += 1
+
+		if cohort % 2 == 0:
+			var age_label := str(cohort * 5)
+			var x := plot.position.x + slot_width * (cohort + 0.5)
+			var width := font.get_string_size(
+				age_label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
+			).x
+			draw_string(
+				font, Vector2(x - width * 0.5, plot.end.y + 16), age_label,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, get_theme_color("ink", "AppPalette")
+			)
+
+	# the original marks ages 20 through 55, not a value on the vertical axis
+	var workforce_left := plot.position.x + slot_width * 4.0
+	var workforce_right := plot.position.x + slot_width * 11.0
+	var bracket_y := plot.position.y + 2.0
+	var bracket_center := (workforce_left + workforce_right) * 0.5
+	var workforce_color := get_theme_color("ink", "AppPalette")
+	draw_polyline(PackedVector2Array([
+		Vector2(workforce_left, plot.end.y), Vector2(workforce_left, bracket_y),
+		Vector2(workforce_right, bracket_y), Vector2(workforce_right, plot.end.y),
+	]), workforce_color, 1.0)
+	draw_polyline(PackedVector2Array([
+		Vector2(bracket_center, bracket_y), Vector2(bracket_center, plot.position.y - 16),
+		Vector2(bracket_center + 6, plot.position.y - 16),
+	]), workforce_color, 1.0)
+	draw_string(
+		font, Vector2(bracket_center + 12, plot.position.y - 12), indicator_text(data, mode),
+		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, workforce_color
+	)
+	var age_title := "Resident Age"
+	var age_title_width := font.get_string_size(
+		age_title, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
+	).x
+	draw_string(
+		font, Vector2(plot.get_center().x - age_title_width * 0.5, plot.end.y + 34), age_title,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, get_theme_color("ink", "AppPalette")
+	)
 
 
 func set_city(value: CityState) -> void:
@@ -161,99 +233,6 @@ static func y_axis_label(selected_mode: int, step: int) -> String:
 	return "%d eq" % (step * 25)
 
 
-func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), get_theme_color("paper", "AppPalette"), true)
-	draw_rect(Rect2(Vector2.ZERO, size), get_theme_color("border", "AppPalette"), false, 1.0)
-	var data := snapshot(city)
-
-	if not data.ok:
-		_draw_centered_message("No city is loaded.")
-
-		return
-
-	var font := get_theme_default_font()
-	var font_size := 12
-	var plot := Rect2(58, 36, maxf(1.0, size.x - 78.0), maxf(1.0, size.y - 92.0))
-
-	for step in 7:
-		var y := plot.end.y - plot.size.y * float(step) / 6.0
-		draw_line(Vector2(plot.position.x, y), Vector2(plot.end.x, y), get_theme_color("grid", "AppPalette"), 1.0)
-		var label := y_axis_label(mode, step)
-
-		if not label.is_empty():
-			var label_width := font.get_string_size(
-				label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
-			).x
-			draw_string(
-				font, Vector2(plot.position.x - label_width - 5, y + 4), label,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, get_theme_color("ink", "AppPalette")
-			)
-
-	draw_line(plot.position, Vector2(plot.position.x, plot.end.y), get_theme_color("border", "AppPalette"), 1.0)
-	draw_line(Vector2(plot.position.x, plot.end.y), plot.end, get_theme_color("border", "AppPalette"), 1.0)
-
-	var values := chart_values(data, mode)
-	var slot_width := plot.size.x / float(COHORT_COUNT)
-	var bar_slot := 0
-
-	for cohort in values.size():
-		var bar_height := plot.size.y * clampf(
-			float(values[cohort]) / float(CHART_MAXIMUM), 0.0, 1.0
-		)
-
-		if bar_height > 0.0:
-			var bar := Rect2(
-				plot.position.x + slot_width * bar_slot + 1,
-				plot.end.y - maxf(1.0, bar_height),
-				maxf(1.0, slot_width - 2),
-				maxf(1.0, bar_height),
-			)
-			draw_rect(bar, get_theme_color("chart_accent", "AppPalette"), true)
-			draw_rect(bar, get_theme_color("ink", "AppPalette"), false, 1.0)
-
-		# The original advances the bar position only for nonzero values.
-		if values[cohort] != 0:
-			bar_slot += 1
-
-		if cohort % 2 == 0:
-			var age_label := str(cohort * 5)
-			var x := plot.position.x + slot_width * (cohort + 0.5)
-			var width := font.get_string_size(
-				age_label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
-			).x
-			draw_string(
-				font, Vector2(x - width * 0.5, plot.end.y + 16), age_label,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, get_theme_color("ink", "AppPalette")
-			)
-
-	# the original marks ages 20 through 55, not a value on the vertical axis
-	var workforce_left := plot.position.x + slot_width * 4.0
-	var workforce_right := plot.position.x + slot_width * 11.0
-	var bracket_y := plot.position.y + 2.0
-	var bracket_center := (workforce_left + workforce_right) * 0.5
-	var workforce_color := get_theme_color("ink", "AppPalette")
-	draw_polyline(PackedVector2Array([
-		Vector2(workforce_left, plot.end.y), Vector2(workforce_left, bracket_y),
-		Vector2(workforce_right, bracket_y), Vector2(workforce_right, plot.end.y),
-	]), workforce_color, 1.0)
-	draw_polyline(PackedVector2Array([
-		Vector2(bracket_center, bracket_y), Vector2(bracket_center, plot.position.y - 16),
-		Vector2(bracket_center + 6, plot.position.y - 16),
-	]), workforce_color, 1.0)
-	draw_string(
-		font, Vector2(bracket_center + 12, plot.position.y - 12), indicator_text(data, mode),
-		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, workforce_color
-	)
-	var age_title := "Resident Age"
-	var age_title_width := font.get_string_size(
-		age_title, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
-	).x
-	draw_string(
-		font, Vector2(plot.get_center().x - age_title_width * 0.5, plot.end.y + 34), age_title,
-		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, get_theme_color("ink", "AppPalette")
-	)
-
-
 func _draw_centered_message(message: String) -> void:
 	var font := get_theme_default_font()
 	var font_size := 14
@@ -264,3 +243,25 @@ func _draw_centered_message(message: String) -> void:
 		font, Vector2((size.x - width) * 0.5, size.y * 0.5), message,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, get_theme_color("ink", "AppPalette")
 	)
+
+
+@warning_ignore_start("integer_division")
+
+
+class Cohort extends RefCounted:
+	var age_start: int
+	var population: int
+	var education_points: int
+	var life_points: int
+	var education_quotient: int
+	var life_expectancy: int
+
+
+class Snapshot extends RefCounted:
+	var ok: bool = false
+	var error: String = ""
+	var cohorts: Array[Cohort] = []
+	var total_population: int
+	var workforce_percent: int
+	var workforce_life_expectancy: int
+	var workforce_education_quotient: int

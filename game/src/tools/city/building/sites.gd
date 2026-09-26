@@ -2,7 +2,6 @@ class_name BuildingSites
 extends BuildingConstants
 
 
-
 static func supports_tool(group_index: int, subtool_index: int) -> bool:
 	return TILE_BY_TOOL.has(group_index * ToolCatalog.MAX_SLOTS_PER_GROUP + subtool_index)
 

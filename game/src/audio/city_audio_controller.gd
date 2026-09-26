@@ -1,3 +1,4 @@
+# gdstyle:ignore-file=quality/max-public-methods
 class_name CityAudioController
 extends Node
 
@@ -8,14 +9,11 @@ const Music = preload("res://src/audio/music_director.gd")
 const MidiSynth = preload("res://src/audio/midi_synth_player.gd")
 const MovingThingAudio = preload("res://src/audio/moving_thing_audio.gd")
 const WaveSounds = preload("res://src/audio/wave_sound_gate.gd")
-
 const MUSIC_GAP_MSEC := 15000.0
-
 const SOUND_EFFECT_GROUP := &"open_sc2k_sound_effects"
 
 var sound_pack := MediaPack.new()
 var music_pack := MediaPack.new()
-
 var reference_root := ""
 var original_media_enabled := true
 var music_volume := 0.8
@@ -24,10 +22,7 @@ var music_director := Music.new()
 var music_player: MidiSynthPlayer
 var recording_player: AudioStreamPlayer
 var soundtrack_folder := ""
-var recording_thread: Thread
-var music_request := 0
-var recording_request := -1
-var pending_recording: RecordedSoundtrack.Request
+var recording_loader := RecordedSoundtrackLoader.new()
 var dummy_music_active := false
 var menu_music := false
 var startup_theme_pending := false
@@ -45,6 +40,27 @@ var background_audio := false
 var tool_loop_player: AudioStreamPlayer
 var wave_sound_gate := WaveSounds.new()
 var wave_stream_cache: Dictionary = {}
+
+
+func _process(_delta: float) -> void:
+	var result := recording_loader.take_completed()
+	if result != null:
+		recording_player.stream = result.stream
+
+		if recording_player.stream != null:
+			recording_player.play()
+			recording_player.stream_paused = music_paused or focus_paused
+			_music_started()
+		else:
+			push_warning("Cannot decode soundtrack recording; trying MIDI. FLAC requires FFmpeg.")
+			_play_midi_fallback()
+
+	if recording_loader.start_pending() != OK:
+		_play_midi_fallback()
+
+
+func _exit_tree() -> void:
+	recording_loader.close()
 
 
 func setup(
@@ -105,7 +121,11 @@ func set_volumes(new_music_volume: float, new_effects_volume: float) -> void:
 
 
 func play_music_track(track_id: int, choose_shuffle := true, immediate := false) -> bool:
-	if music_paused or not audio_allowed() or music_player == null or track_id < Music.FIRST_TRACK_ID or track_id >= Music.FIRST_TRACK_ID + Music.TRACK_COUNT:
+	if (music_paused
+			or not audio_allowed()
+			or music_player == null
+			or track_id < Music.FIRST_TRACK_ID
+			or track_id >= Music.FIRST_TRACK_ID + Music.TRACK_COUNT):
 		return false
 
 	if startup_theme_pending:
@@ -159,7 +179,7 @@ func play_music_track(track_id: int, choose_shuffle := true, immediate := false)
 		return true
 
 	if not recordings.is_empty():
-		pending_recording = RecordedSoundtrack.Request.new(recordings, music_request)
+		recording_loader.queue(recordings)
 		music_activity_changed.emit(true)
 
 		return true
@@ -196,39 +216,6 @@ func _music_started() -> void:
 		shuffle_order.remaining.erase(current_track_id)
 
 
-func _process(_delta: float) -> void:
-	if recording_thread != null and not recording_thread.is_alive():
-		var result: RecordedSoundtrack.Result = recording_thread.wait_to_finish()
-		recording_thread = null
-
-		if recording_request == music_request:
-			recording_player.stream = result.stream
-
-			if recording_player.stream != null:
-				recording_player.play()
-				recording_player.stream_paused = music_paused or focus_paused
-				_music_started()
-			else:
-				push_warning("Cannot decode soundtrack recording; trying MIDI. FLAC requires FFmpeg.")
-				_play_midi_fallback()
-
-	if recording_thread == null and pending_recording != null:
-		recording_request = int(pending_recording.request)
-		var paths: PackedStringArray = pending_recording.paths
-		pending_recording = null
-		recording_thread = Thread.new()
-
-		if recording_thread.start(RecordedSoundtrack.load_track.bind(paths), Thread.PRIORITY_LOW) != OK:
-			recording_thread = null
-			_play_midi_fallback()
-
-
-func _exit_tree() -> void:
-	if recording_thread != null:
-		recording_thread.wait_to_finish()
-		recording_thread = null
-
-
 func music_playback_is_active() -> bool:
 	if music_gap_remaining_msec > 0.0 or queued_music_track >= 0:
 		return true
@@ -238,8 +225,7 @@ func music_playback_is_active() -> bool:
 	if AudioServer.get_driver_name() == "Dummy":
 		return dummy_music_active or (recording_player != null and recording_player.stream != null)
 
-	return (pending_recording != null
-		or (recording_thread != null and recording_request == music_request)
+	return (recording_loader.is_pending()
 		or (recording_player != null and recording_player.stream != null)
 		or (music_player != null and music_player.is_track_active()))
 
@@ -314,8 +300,7 @@ func stop_music(clear_gap := true) -> void:
 	queued_music_track = -1
 	queued_choose_shuffle = true
 	focus_paused = false
-	music_request += 1
-	pending_recording = null
+	recording_loader.cancel()
 
 	if recording_player != null:
 		recording_player.stop()

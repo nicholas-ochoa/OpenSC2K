@@ -1,18 +1,5 @@
 class_name CityDesktopPresentation
 extends Node
-# own cursor display only over an active drawing surface
-
-class CursorSelection extends RefCounted:
-	var app: String
-	var group: int
-	# a negative shape keeps the hovered control's own cursor shape
-	var shape: int
-
-	func _init(cursor_app: String, cursor_group: int, cursor_shape := -1) -> void:
-		app = cursor_app
-		group = cursor_group
-		shape = cursor_shape
-
 
 var graphics: DesktopGraphics
 var map_view: CityMapControl
@@ -32,12 +19,6 @@ func _ready() -> void:
 	add_child(presenter)
 	var texture := load(ProjectSettings.get_setting("application/config/icon", "")) as Texture2D
 	_project_icon = texture.get_image() if texture != null else null
-
-
-func set_graphics(value: DesktopGraphics) -> void:
-	graphics = value
-	presenter.set_graphics(value)
-	icon_key = ""
 
 
 func _input(event: InputEvent) -> void:
@@ -68,6 +49,17 @@ func _process(_delta: float) -> void:
 		selection.shape if selection.shape >= 0 else hovered.get_cursor_shape(hovered.get_local_mouse_position()))
 
 
+func _exit_tree() -> void:
+	if _project_icon != null:
+		DisplayServer.set_icon(_project_icon)
+
+
+func set_graphics(value: DesktopGraphics) -> void:
+	graphics = value
+	presenter.set_graphics(value)
+	icon_key = ""
+
+
 func cursor_selection(hovered: Control, display_width: int) -> CursorSelection:
 	if hovered == null or not hovered.is_visible_in_tree():
 		return null
@@ -77,7 +69,10 @@ func cursor_selection(hovered: Control, display_width: int) -> CursorSelection:
 
 		if map_view.is_panning():
 			role = 10 # godot middle-button panning uses the supplied hand artwork
-		elif map_view.shift_query_enabled and not map_view.shift_line_enabled and not map_view.shift_rectangle_enabled and Input.is_key_pressed(KEY_SHIFT):
+		elif (map_view.shift_query_enabled
+				and not map_view.shift_line_enabled
+				and not map_view.shift_rectangle_enabled
+				and Input.is_key_pressed(KEY_SHIFT)):
 			role = 23
 
 		if role == 0:
@@ -126,6 +121,16 @@ func _update_icon() -> void:
 		DisplayServer.set_icon(icon_image)
 
 
-func _exit_tree() -> void:
-	if _project_icon != null:
-		DisplayServer.set_icon(_project_icon)
+# own cursor display only over an active drawing surface
+
+
+class CursorSelection extends RefCounted:
+	var app: String
+	var group: int
+	# a negative shape keeps the hovered control's own cursor shape
+	var shape: int
+
+	func _init(cursor_app: String, cursor_group: int, cursor_shape := -1) -> void:
+		app = cursor_app
+		group = cursor_group
+		shape = cursor_shape

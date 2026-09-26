@@ -26,9 +26,12 @@ func _run() -> void:
 	assert(first.mesh == mesh_b and first.get_meta("divisor") == 2)
 	view.city_source = _source([CityMapSource.MeshEntry.new(Vector2.ZERO, mesh_b, texture, 4)])
 	view.layers._sync_base_layer()
-	assert(first.get_meta("divisor") == 4 and first.scale == Vector2.ONE * view.camera._view_scale() * 4, "Cached geometry used the old divisor")
+	assert(
+		first.get_meta("divisor") == 4 and first.scale == Vector2.ONE * view.camera._view_scale() * 4,
+		"Cached geometry used the old divisor",
+	)
 	_check_region_updates(view, texture)
-	var foreground: Dictionary[int, CitySignVisual] = {1: CitySignVisual.new(texture)}
+	var foreground: Dictionary[int, CitySignVisual] = { 1: CitySignVisual.new(texture) }
 	view.set_sign_occlusion_visuals(foreground)
 	var replacement := ImageTexture.create_from_image(Image.create(3, 3, false, Image.FORMAT_LA8))
 	foreground[1].texture = replacement
@@ -75,7 +78,10 @@ func _run() -> void:
 	assert(main.render_caches.dynamic_visual_cache.is_empty() and main.render_caches.dynamic_occluder_cache.is_empty())
 	var unused := CityDynamicVisual.new(null, Vector2.ZERO, Vector2(20, 20))
 	main.render_caches.dynamic_visual_cache["unused"] = unused
-	assert(not main.map_render._invalidate_region_foregrounds(near, near_silhouettes), "Evicting an old position must not redraw current sprites")
+	assert(
+		not main.map_render._invalidate_region_foregrounds(near, near_silhouettes),
+		"Evicting an old position must not redraw current sprites",
+	)
 	assert(main.render_caches.dynamic_visual_cache.is_empty())
 	main.render_caches.dynamic_visual_cache["current"] = unused
 	main.render_caches.dynamic_active_keys["current"] = true
@@ -85,7 +91,7 @@ func _run() -> void:
 	main.render_caches.dynamic_visual_cache["current"] = unused
 	assert(main.map_render._invalidate_region_foregrounds(near, [] as Array[Rect2i]), "A static change can reveal a hidden current shadow")
 	var mapping := PackedInt32Array(range(256))
-	var used_indices: Dictionary[int, bool] = {17: true}
+	var used_indices: Dictionary[int, bool] = { 17: true }
 	var colors: int = main.map_render.sign_palette_signature(used_indices, mapping)
 	mapping[161] = 162
 	assert(main.map_render.sign_palette_signature(used_indices, mapping) == colors)

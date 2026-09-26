@@ -1,16 +1,4 @@
 extends SceneTree
-class QuietRandom extends SimRandom:
-
-
-	func next_u15() -> int:
-		return 1
-
-
-class QuietLfsrRandom extends SimLfsrRandom:
-
-
-	func next_mod(_limit: int) -> int:
-		return 1
 
 
 func _initialize() -> void:
@@ -50,3 +38,17 @@ func _initialize() -> void:
 
 	print("PASS: ship exits in all eight directions")
 	quit()
+
+
+class QuietRandom extends SimRandom:
+
+
+	func next_u15() -> int:
+		return 1
+
+
+class QuietLfsrRandom extends SimLfsrRandom:
+
+
+	func next_mod(_limit: int) -> int:
+		return 1

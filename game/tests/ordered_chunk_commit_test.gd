@@ -4,14 +4,6 @@ const Commit = preload("res://src/model/city/ordered_chunk_commit.gd")
 const IDS: PackedStringArray = ["XBLD", "ALTM", "XUND", "XTXT", "XBIT", "MISC"]
 
 
-class ObservedChunk extends Sc2Chunk:
-	var writes: Array[String] = []
-
-	func set_decoded_payload(value: PackedByteArray, transfer_ownership := false) -> bool:
-		writes.append(chunk_id)
-		return super.set_decoded_payload(value, transfer_ownership)
-
-
 func _initialize() -> void:
 	for operation in [BuildingState._apply_payloads, LandscapeCommand._apply_payloads, Commit.apply]:
 		_test_success(operation, 16)
@@ -186,3 +178,11 @@ func _test_commands() -> void:
 	_check_mirrors(city)
 	misc.expected_decoded_size -= 1
 	assert(_bytes(city) == before)
+
+
+class ObservedChunk extends Sc2Chunk:
+	var writes: Array[String] = []
+
+	func set_decoded_payload(value: PackedByteArray, transfer_ownership := false) -> bool:
+		writes.append(chunk_id)
+		return super.set_decoded_payload(value, transfer_ownership)

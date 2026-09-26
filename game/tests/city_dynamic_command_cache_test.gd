@@ -1,4 +1,5 @@
 extends SceneTree
+
 const CommandCache = preload("res://src/view/city_dynamic_command_cache.gd")
 
 
@@ -6,7 +7,8 @@ func _initialize() -> void:
 	var city := CityState.from_document(Sc2File.load_path("res://tests/fixtures/cities/generated-512.sc2x"))
 	var sprites := FixtureGraphics.pack().large_sprites
 	var cache := CommandCache.new()
-	assert(_dynamic_command_values(cache.get_commands(city, sprites, 2, 0)) == _dynamic_command_values(CityIsometricRenderer.dynamic_draw_commands(city, sprites, 2, 0)))
+	assert(_dynamic_command_values(cache.get_commands(city, sprites, 2, 0))
+		== _dynamic_command_values(CityIsometricRenderer.dynamic_draw_commands(city, sprites, 2, 0)))
 	var count: int = cache.rebuilds
 	cache.get_commands(city, sprites, 2, 0)
 	assert(cache.rebuilds == count)
@@ -14,17 +16,20 @@ func _initialize() -> void:
 	for field in ["altitude_words", "terrain", "buildings", "zones", "text_overlays", "tile_flags"]:
 		var original: int = city.get(field)[100]
 		city.get(field)[100] = original ^ 1
-		assert(_dynamic_command_values(cache.get_commands(city, sprites, 2, 0)) == _dynamic_command_values(CityIsometricRenderer.dynamic_draw_commands(city, sprites, 2, 0)))
+		assert(_dynamic_command_values(cache.get_commands(city, sprites, 2, 0))
+			== _dynamic_command_values(CityIsometricRenderer.dynamic_draw_commands(city, sprites, 2, 0)))
 		assert(cache.rebuilds > count)
 		count = cache.rebuilds
 		city.get(field)[100] = original
 
 	var things := city.document.find_chunk("XTHG")
 	things.decoded_payload[1] ^= 1
-	assert(_dynamic_command_values(cache.get_commands(city, sprites, 2, 1)) == _dynamic_command_values(CityIsometricRenderer.dynamic_draw_commands(city, sprites, 2, 1)))
+	assert(_dynamic_command_values(cache.get_commands(city, sprites, 2, 1))
+		== _dynamic_command_values(CityIsometricRenderer.dynamic_draw_commands(city, sprites, 2, 1)))
 	assert(cache.rebuilds > count)
 	city.visible_altitude_levels = 8
-	assert(_dynamic_command_values(cache.get_commands(city, sprites, 2, 1)) == _dynamic_command_values(CityIsometricRenderer.dynamic_draw_commands(city, sprites, 2, 1)))
+	assert(_dynamic_command_values(cache.get_commands(city, sprites, 2, 1))
+		== _dynamic_command_values(CityIsometricRenderer.dynamic_draw_commands(city, sprites, 2, 1)))
 	_check_display_clock(city, sprites)
 	print("PASS: unchanged dynamic command reuse, packed state changes, animation and cutaway parity")
 	quit()

@@ -1,22 +1,18 @@
 class_name BuildingEditResult
 extends EditCommandResult
 
-
 var tile_id := BuildingTileIds.EMPTY
 var overlay_id := 0
-
 var lfsr_state_before := 0
 var lfsr_state_after := 0
 # small cities refresh power and water at once after placement
 var immediate_power_refresh := false
 var immediate_water_refresh := false
-
 # a new stadium with a microsimulation record waits for a team
 var stadium_team_selection_required := false
 var stadium_team_index := -1
 var stadium_team_label := 0
 var stadium_team_name := ""
-
 # rejection details. residents can refuse a nuisance building
 var residential_tiles := 0
 var resident_objection := false

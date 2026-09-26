@@ -91,7 +91,10 @@ https://creativecommons.org/licenses/by-sa/4.0/
 
 ORIGINAL GAME
 
-SimCity 2000 and its imported graphics, text, sound, and music belong to their respective rights holders. They are not covered by OpenSC2K's MIT license.
+""" + (
+		"SimCity 2000 and its imported graphics, text, sound, and music belong to their respective rights holders. "
+		+ "They are not covered by OpenSC2K's MIT license."
+	) + """
 
 """ + (
 		"OpenSC2K is an independent project. It is not affiliated with, sponsored by, or endorsed by Electronic "
@@ -113,7 +116,10 @@ func _original_credits_document(credits: String) -> String:
 	)
 	if credits.is_empty():
 		return introduction + "The original credits are unavailable. Import a complete supported game installation to view them."
-	return introduction + "Credits from the imported SimCity 2000 for Windows 95 installation:\n\n" + credits.replace("\r\n", "\n").strip_edges()
+	return introduction + "Credits from the imported SimCity 2000 for Windows 95 installation:\n\n" + credits.replace(
+		"\r\n",
+		"\n",
+	).strip_edges()
 
 
 func _add_license(label: String, text: String) -> void:

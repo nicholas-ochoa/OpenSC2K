@@ -1,3 +1,4 @@
+# gdstyle:ignore-file=quality/max-class-variables
 class_name ScurkEditorControl
 extends ColorRect
 
@@ -15,17 +16,6 @@ const DrawingWorkspace = preload("res://src/tools/scurk/scurk_drawing_workspace.
 const EditSession = preload("res://src/tools/scurk/scurk_edit_session.gd")
 const EditorRules = preload("res://src/tools/scurk/scurk_editor_rules.gd")
 const ToolbarView = preload("res://src/ui/scurk/scurk_editor_toolbar.gd")
-
-class Result extends ScurkMif.Result:
-	var path := ""
-
-	static func rejected(message: String) -> Result:
-		var result := Result.new()
-		result.error = message
-
-		return result
-
-
 const VIEW_LARGE := ScurkSpriteIds.View.LARGE
 const VIEW_MEDIUM := ScurkSpriteIds.View.MEDIUM
 const VIEW_SMALL := ScurkSpriteIds.View.SMALL
@@ -66,7 +56,6 @@ var dirty: bool:
 var active_workspace := false
 var active_base_width := 0
 var view_preview_signatures := PackedStringArray(["", "", "", ""])
-
 var pointer_status_label: Label
 var unclipped_tiles: Dictionary[int, bool] = {}
 var pending_export_view := VIEW_LARGE
@@ -127,6 +116,16 @@ func _ready() -> void:
 	AppUiTheme.bind_canvas(self)
 	hide()
 	_bind_interface()
+
+
+func _process(delta: float) -> void:
+	if pixel_canvas == null or not is_visible_in_tree():
+		return
+
+	var before := pixel_canvas.palette_cycle_ticks
+	pixel_canvas._process(delta)
+	if before != pixel_canvas.palette_cycle_ticks:
+		_sync_palette_cycle()
 
 
 func configure(
@@ -237,7 +236,7 @@ func _bind_session_document(path := "") -> void:
 	unclipped_tiles.clear()
 	view_preview_signatures.fill("")
 	source_path = ProjectSettings.globalize_path(path).simplify_path() if not path.is_empty() else ""
-	var ids := editable_large_sprite_ids(tile_set, base_large_sprites)
+	var ids := EditorRules.editable_large_sprite_ids(tile_set, base_large_sprites)
 	current_large_id = ids[0] if not ids.is_empty() else -1
 	current_view = VIEW_LARGE
 	studio.restore_editor_state()
@@ -274,7 +273,7 @@ func save_path(path: String) -> Result:
 	if output_path.get_extension().to_lower() != "mif":
 		output_path += ".MIF"
 
-	if path_is_within(output_path, reference_directory):
+	if EditorRules.path_is_within(output_path, reference_directory):
 		return Result.rejected("The original game data folder is read-only. Use another folder.")
 
 	var parent := output_path.get_base_dir()
@@ -326,7 +325,7 @@ func _close_editor() -> void:
 	close_requested.emit()
 
 
-func request_open() -> void:
+func _request_open() -> void:
 	if dirty:
 		pending_discard_action = "open"
 		discard_dialog.dialog_text = "Discard the unsaved SCURK changes and open another tile set?"
@@ -337,24 +336,24 @@ func request_open() -> void:
 	_popup_open_dialog()
 
 
-func request_save() -> void:
+func _request_save() -> void:
 	studio.request_save()
 
 
-func request_save_as() -> void:
+func _request_save_as() -> void:
 	var output_directory := ProjectSettings.globalize_path("user://tile_sets")
 	DirAccess.make_dir_recursive_absolute(output_directory)
 	save_dialog.current_dir = output_directory
 	var proposed := source_path.get_file()
 
-	if proposed.is_empty() or path_is_within(source_path, reference_directory):
+	if proposed.is_empty() or EditorRules.path_is_within(source_path, reference_directory):
 		proposed = "CUSTOM.MIF"
 
 	save_dialog.current_file = proposed
 	save_dialog.popup_centered_ratio(0.75)
 
 
-func request_import_bmp() -> void:
+func _request_import_bmp() -> void:
 	if tile_set == null or current_large_id < 0:
 		return
 
@@ -393,7 +392,7 @@ func _show_export_file_dialog() -> void:
 	var format: Dictionary = ScurkEditorDialogs.EXPORT_FORMATS[pending_export_format]
 	export_bmp_dialog.filters = PackedStringArray([format.filter])
 	export_bmp_dialog.current_file = "OBJECT_%03d_%s.%s" % [
-		object_tile_id(current_large_id), view_name, format.extension,
+		EditorRules.object_tile_id(current_large_id), view_name, format.extension,
 	]
 	export_bmp_dialog.popup_centered_ratio(0.75)
 
@@ -437,7 +436,7 @@ func export_image_path(path: String, view := -1, format := -1) -> Result:
 	if output_path.get_extension().is_empty():
 		output_path += "." + str(ScurkEditorDialogs.EXPORT_FORMATS[maxi(format, 0)].extension)
 
-	if path_is_within(output_path, reference_directory):
+	if EditorRules.path_is_within(output_path, reference_directory):
 		return Result.rejected("The original game data folder is read-only. Use another folder.")
 
 	var shape := _active_output_shape() if view < 0 else _output_shape_for_view(view)
@@ -499,7 +498,7 @@ func export_bmp_path(path: String) -> Result:
 	if output_path.get_extension().to_lower() != "bmp":
 		output_path += ".BMP"
 
-	if path_is_within(output_path, reference_directory):
+	if EditorRules.path_is_within(output_path, reference_directory):
 		return Result.rejected("The original game data folder is read-only. Use another folder.")
 
 	var directory_error := DirAccess.make_dir_recursive_absolute(output_path.get_base_dir())
@@ -524,7 +523,7 @@ func export_bmp_path(path: String) -> Result:
 		return Result.rejected(result.error)
 
 	_set_status("Exported sprite %d to %s." % [
-		view_sprite_id(current_large_id, current_view), output_path.get_file(),
+		EditorRules.view_sprite_id(current_large_id, current_view), output_path.get_file(),
 	])
 
 	var outcome := Result.new()
@@ -587,7 +586,7 @@ func _copy_pick_objects(
 
 
 func _change_pick_working() -> void:
-	request_open()
+	_request_open()
 
 
 func _replace_active_view(
@@ -598,7 +597,14 @@ func _replace_active_view(
 		return Result.rejected("The active layer is locked or hidden.")
 	if not _capture_edit_start("Import image"):
 		return Result.rejected("Cannot start the image import.")
-	var workspace := DrawingWorkspace.from_shape(width, height, pixels, current_view, active_base_width, _clipping_enabled()) if active_workspace else pixels
+	var workspace := DrawingWorkspace.from_shape(
+		width,
+		height,
+		pixels,
+		current_view,
+		active_base_width,
+		_clipping_enabled(),
+	) if active_workspace else pixels
 	if not _commit_pixels(workspace):
 		return Result.rejected("Cannot apply the image to this tile.")
 	_set_status("%s. Remapped %d colors." % [description, remapped_color_count])
@@ -638,11 +644,12 @@ func revert_object() -> void:
 		_update_after_history()
 		_set_status("Reverted the current object to its state when selected.")
 
+
 func revert_name() -> void:
 	if tile_set == null or current_large_id < 0:
 		return
 
-	var tile_id := object_tile_id(current_large_id)
+	var tile_id := EditorRules.object_tile_id(current_large_id)
 
 	if not tile_set.names.has(tile_id):
 		return
@@ -685,7 +692,7 @@ func clear_object() -> void:
 		blank.resize(maxi(1, width))
 		blank.fill(-1)
 		var result := tile_set.set_shape_indices(
-			view_sprite_id(current_large_id, view), maxi(1, width), 1, blank
+			EditorRules.view_sprite_id(current_large_id, view), maxi(1, width), 1, blank
 		)
 
 		if not result.ok:
@@ -693,7 +700,7 @@ func clear_object() -> void:
 
 			return
 
-		edit_history.blank_shape_ids[view_sprite_id(current_large_id, view)] = true
+		edit_history.blank_shape_ids[EditorRules.view_sprite_id(current_large_id, view)] = true
 		studio.clear_view(view)
 		changed_views += 1
 
@@ -704,7 +711,7 @@ func clear_object() -> void:
 	])
 
 
-func request_generate_sizes() -> void:
+func _request_generate_sizes() -> void:
 	if tile_set == null or not active_workspace or _resolved_view_entry(VIEW_LARGE) == null:
 		_show_error("Select an object with a standard Large drawing area to generate smaller sizes.")
 		return
@@ -742,7 +749,8 @@ func _generate_selected_sizes() -> void:
 		return
 	studio.refresh_restored_state()
 	_update_after_history()
-	_set_status("Generated %s from Large artwork." % ("Medium and Small" if views.size() == 2 else ("Medium" if views[0] == VIEW_MEDIUM else "Small")))
+	_set_status("Generated %s from Large artwork." % ("Medium and Small" if views.size() == 2
+		else ("Medium" if views[0] == VIEW_MEDIUM else "Small")))
 
 
 func handle_shortcut(event: InputEventKey) -> bool:
@@ -763,14 +771,14 @@ func handle_shortcut(event: InputEventKey) -> bool:
 
 	if command and event.keycode == KEY_S:
 		if event.shift_pressed:
-			request_save_as()
+			_request_save_as()
 		else:
-			request_save()
+			studio.request_save()
 
 		return true
 
 	if command and event.keycode == KEY_O:
-		request_open()
+		_request_open()
 
 		return true
 
@@ -803,37 +811,19 @@ func handle_shortcut(event: InputEventKey) -> bool:
 	return false
 
 
-static func editable_large_sprite_ids(
-	value: ScurkMif, base_large: Sc2SpriteArchive = null
-) -> PackedInt32Array:
-	return EditorRules.editable_large_sprite_ids(value, base_large)
-
-
-static func view_sprite_id(large_sprite_id: int, view: int) -> int:
-	return EditorRules.view_sprite_id(large_sprite_id, view)
-
-
-static func object_tile_id(large_sprite_id: int) -> int:
-	return EditorRules.object_tile_id(large_sprite_id)
-
-
-static func path_is_within(path: String, directory: String) -> bool:
-	return EditorRules.path_is_within(path, directory)
-
-
 func _bind_interface() -> void:
 	var toolbar := get_node("Panel/Content/Toolbar") as ToolbarView
 	toolbar.build()
-	toolbar.open_requested.connect(request_open)
-	toolbar.save_requested.connect(request_save)
-	toolbar.import_bmp_requested.connect(request_import_bmp)
+	toolbar.open_requested.connect(_request_open)
+	toolbar.save_requested.connect(_request_save)
+	toolbar.import_bmp_requested.connect(_request_import_bmp)
 	toolbar.export_bmp_requested.connect(request_export_bmp)
 	toolbar.pick_copy_requested.connect(request_pick_copy)
 	toolbar.undo_requested.connect(undo)
 	toolbar.redo_requested.connect(redo)
 	toolbar.revert_requested.connect(revert_object)
 	toolbar.clear_requested.connect(clear_object)
-	toolbar.generate_requested.connect(request_generate_sizes)
+	toolbar.generate_requested.connect(_request_generate_sizes)
 	toolbar.name_requested.connect(request_edit_name)
 	toolbar.settings_requested.connect(settings_requested.emit)
 	toolbar.about_requested.connect(about_requested.emit)
@@ -998,10 +988,10 @@ func _refresh_object_list() -> void:
 	var entries: Array[ScurkTileSelector.Entry] = []
 	var filter := object_search.text.strip_edges().to_lower() if object_search != null else ""
 	if tile_set != null:
-		for large_id in editable_large_sprite_ids(tile_set, base_large_sprites):
-			var tile_id := object_tile_id(large_id)
+		for large_id in EditorRules.editable_large_sprite_ids(tile_set, base_large_sprites):
+			var tile_id := EditorRules.object_tile_id(large_id)
 			var title := EditorRules.tile_name(tile_id, tile_set.names)
-			var category := sprite_role(tile_id)
+			var category := EditorRules.sprite_role(tile_id)
 			var search_text := "%03d %s %s" % [tile_id, title, category]
 			if not filter.is_empty() and not search_text.to_lower().contains(filter):
 				continue
@@ -1137,16 +1127,6 @@ func _set_clip_region_visible(enabled: bool) -> void:
 		pixel_canvas.set_clip_region_visible(enabled and not clip_region_check.disabled)
 
 
-func _process(delta: float) -> void:
-	if pixel_canvas == null or not is_visible_in_tree():
-		return
-
-	var before := pixel_canvas.palette_cycle_ticks
-	pixel_canvas._process(delta)
-	if before != pixel_canvas.palette_cycle_ticks:
-		_sync_palette_cycle()
-
-
 func _sync_palette_cycle() -> void:
 	var tick := pixel_canvas.palette_cycle_ticks
 	palette_panel.set_cycle_tick(tick)
@@ -1232,7 +1212,7 @@ func _refresh_sprite() -> void:
 		return
 
 	_update_view_buttons()
-	var sprite_id := view_sprite_id(current_large_id, current_view)
+	var sprite_id := EditorRules.view_sprite_id(current_large_id, current_view)
 	var entry := tile_set.overrides.find_sprite(sprite_id)
 	var source := "MIF override"
 
@@ -1310,7 +1290,7 @@ func _refresh_sprite() -> void:
 	_apply_grid_settings()
 	_refresh_view_previews()
 	_refresh_selected_thumbnail()
-	var tile_id := object_tile_id(current_large_id)
+	var tile_id := EditorRules.object_tile_id(current_large_id)
 	var can_name := tile_id >= 0
 	name_edit.editable = can_name
 	name_button.disabled = not can_name
@@ -1349,15 +1329,11 @@ func _view_is_available(view: int) -> bool:
 	if tile_set == null or current_large_id < 0:
 		return false
 
-	var sprite_id := view_sprite_id(current_large_id, view)
+	var sprite_id := EditorRules.view_sprite_id(current_large_id, view)
 
 	return PickCopy.resolved_entry(
 		tile_set, sprite_id, base_large_sprites, base_small_medium_sprites
 	) != null
-
-
-static func sprite_role(tile_id: int) -> String:
-	return EditorRules.sprite_role(tile_id)
 
 
 func _capture_edit_start(description := "Edit artwork", merge_key := "") -> bool:
@@ -1399,7 +1375,7 @@ func _write_pixels(value_pixels: PackedInt32Array) -> bool:
 func _pixel_target() -> ScurkEditSession.PixelTarget:
 	var target := EditSession.PixelTarget.new()
 	target.key = studio.key()
-	target.sprite_id = view_sprite_id(current_large_id, current_view)
+	target.sprite_id = EditorRules.view_sprite_id(current_large_id, current_view)
 	target.width = pixel_canvas.sprite_width
 	target.height = pixel_canvas.sprite_height
 	target.workspace = active_workspace
@@ -1423,7 +1399,7 @@ func _refresh_rejected_edit(message: String) -> void:
 
 
 func _drawing_background(view: int, entry: Sc2SpriteArchive.SpriteEntry) -> PackedInt32Array:
-	if ScurkContextScene.kind_for_tile(object_tile_id(current_large_id)) != ScurkContextScene.Kind.UNDERGROUND:
+	if ScurkContextScene.kind_for_tile(EditorRules.object_tile_id(current_large_id)) != ScurkContextScene.Kind.UNDERGROUND:
 		return surface_background_pixels
 	var key := Vector2i(view, entry.height)
 	if not underground_backgrounds.has(key):
@@ -1433,7 +1409,8 @@ func _drawing_background(view: int, entry: Sc2SpriteArchive.SpriteEntry) -> Pack
 
 
 func _refresh_view_previews() -> void:
-	if view_previews.size() != ScurkEditorCanvasPanel.PREVIEW_VIEWS.size() or view_preview_panels.size() != ScurkEditorCanvasPanel.PREVIEW_VIEWS.size():
+	if (view_previews.size() != ScurkEditorCanvasPanel.PREVIEW_VIEWS.size()
+			or view_preview_panels.size() != ScurkEditorCanvasPanel.PREVIEW_VIEWS.size()):
 		return
 
 	if is_inside_tree() and not is_visible_in_tree():
@@ -1459,7 +1436,8 @@ func _refresh_view_previews() -> void:
 
 		var background := _drawing_background(view, entry) if pixel_canvas.show_terrain else PackedInt32Array()
 		var signature := "%d:%d:%d:%d:%s:%s:%d" % [
-			active_base_width, entry.width, entry.height, entry.pixel_hash(), _clipping_enabled(), pixel_canvas.show_terrain, hash(background),
+			active_base_width, entry.width, entry.height, entry.pixel_hash(), _clipping_enabled(), pixel_canvas.show_terrain,
+			hash(background),
 		]
 
 		if view_preview_signatures[index] == signature:
@@ -1495,7 +1473,7 @@ func _resolved_view_entry(view: int):
 	if tile_set == null or current_large_id < 0:
 		return null
 
-	var sprite_id := view_sprite_id(current_large_id, view)
+	var sprite_id := EditorRules.view_sprite_id(current_large_id, view)
 	var entry: Variant = tile_set.overrides.find_sprite(sprite_id)
 
 	if entry == null and edit_history.blank_shape_ids.has(sprite_id):
@@ -1538,7 +1516,7 @@ func _commit_name() -> void:
 	if tile_set == null or current_large_id < 0:
 		return
 
-	var tile_id := object_tile_id(current_large_id)
+	var tile_id := EditorRules.object_tile_id(current_large_id)
 	var value := name_edit.text.strip_edges()
 
 	if value == EditorRules.tile_name(tile_id, tile_set.names):
@@ -1673,7 +1651,7 @@ func _confirm_discard() -> void:
 	var action := pending_discard_action
 	pending_discard_action = ""
 
-	studio.discard_recovery()
+	session.discard_recovery()
 	if action == "recover":
 		studio.show_recovery_files()
 	elif action == "open":
@@ -1743,14 +1721,14 @@ func _fit_canvas_after_layout() -> void:
 
 func _tile_needs_unclipped_workspace() -> bool:
 	for view in ScurkSpriteIds.VIEW_COUNT:
-		var entry := tile_set.overrides.find_sprite(view_sprite_id(current_large_id, view))
+		var entry := tile_set.overrides.find_sprite(EditorRules.view_sprite_id(current_large_id, view))
 		if entry == null:
 			continue
 
 		if entry.width * DrawingWorkspace.view_divisor(view) > active_base_width:
 			return true
 
-		if path_is_within(source_path, reference_directory):
+		if EditorRules.path_is_within(source_path, reference_directory):
 			continue
 
 		var decoded := entry.decode_indices()
@@ -1804,7 +1782,7 @@ func request_edit_name() -> void:
 	if tile_set == null or current_large_id < 0:
 		return
 
-	var tile_id := object_tile_id(current_large_id)
+	var tile_id := EditorRules.object_tile_id(current_large_id)
 	name_edit.text = EditorRules.tile_name(tile_id, tile_set.names)
 	object_panel.edit_name()
 
@@ -1816,7 +1794,7 @@ func _studio_action(action: String) -> void:
 		"ProjectSaveAs":
 			studio.request_save(true)
 		"ExportTileSet":
-			request_save_as()
+			_request_save_as()
 		"ReplaceColor":
 			studio.show_replace()
 		"Context":
@@ -1859,12 +1837,15 @@ func _studio_action(action: String) -> void:
 			pixel_canvas.delete_selection()
 		"PasteSelection":
 			pixel_canvas.begin_paste()
-	if is_inside_tree() and action in ["SelectAll", "Deselect", "CopySelection", "CutSelection", "DuplicateSelection", "DeleteSelection", "PasteSelection", "CopyAllLayers", "CutAllLayers", "PasteNewLayer"]:
+	if (is_inside_tree()
+			and action in ["SelectAll", "Deselect", "CopySelection", "CutSelection", "DuplicateSelection", "DeleteSelection",
+			"PasteSelection", "CopyAllLayers", "CutAllLayers", "PasteNewLayer"]):
 		pixel_canvas.grab_focus()
 
 
 func _show_canvas_menu(position: Vector2) -> void:
-	canvas_menu_point = pixel_canvas._point_from_position(position).clamp(Vector2i.ZERO, Vector2i(pixel_canvas.sprite_width - 1, pixel_canvas.sprite_height - 1).max(Vector2i.ZERO))
+	canvas_menu_point = pixel_canvas._point_from_position(position).clamp(Vector2i.ZERO,
+		Vector2i(pixel_canvas.sprite_width - 1, pixel_canvas.sprite_height - 1).max(Vector2i.ZERO))
 	_refresh_canvas_menu()
 	var transform := pixel_canvas.get_global_transform_with_canvas() if $CanvasMenu.is_embedded() else pixel_canvas.get_screen_transform()
 	$CanvasMenu.position = Vector2i(transform * position)
@@ -1883,7 +1864,12 @@ func _refresh_canvas_menu() -> void:
 	_add_canvas_action("Cut", "CutSelection", editable, command | KEY_X)
 	_add_canvas_action("Copy", "CopySelection", has_pixels and not floating, command | KEY_C)
 	_add_canvas_action("Paste", "PasteSelection", editable and pixel_canvas.has_clipboard(), command | KEY_V)
-	_add_canvas_action("Paste on new layer", "PasteNewLayer", has_pixels and not floating and pixel_canvas.has_clipboard(), command | KEY_MASK_SHIFT | KEY_V)
+	_add_canvas_action(
+		"Paste on new layer",
+		"PasteNewLayer",
+		has_pixels and not floating and pixel_canvas.has_clipboard(),
+		command | KEY_MASK_SHIFT | KEY_V,
+	)
 	if selected and not floating:
 		menu.add_separator()
 		_add_canvas_action("Save selection as stamp", "SaveStamp", true)
@@ -1894,7 +1880,8 @@ func _refresh_canvas_menu() -> void:
 		_add_canvas_action("Delete", "DeleteSelection", editable, KEY_DELETE)
 	if selected or floating:
 		menu.add_separator()
-		for pair in [["Flip horizontally", "FlipHorizontal"], ["Flip vertically", "FlipVertical"], ["Rotate clockwise", "RotateClockwise"], ["Rotate counterclockwise", "RotateCounterclockwise"]]:
+		for pair in [["Flip horizontally", "FlipHorizontal"], ["Flip vertically", "FlipVertical"], ["Rotate clockwise", "RotateClockwise"],
+			["Rotate counterclockwise", "RotateCounterclockwise"]]:
 			_add_canvas_action(pair[0], pair[1], editable or floating)
 	if floating:
 		menu.add_separator()
@@ -1927,3 +1914,19 @@ func _canvas_menu_action(id: int) -> void:
 		else:
 			_studio_action(action)
 		pixel_canvas.grab_focus()
+
+
+# The base type is nested. gdstyle incorrectly reads these members as outer class members.
+class Result extends ScurkMif.Result:
+
+
+	# gdstyle:ignore=order/class-member-order
+	var path := ""
+
+
+	# gdstyle:ignore=order/class-member-order
+	static func rejected(message: String) -> Result:
+		var result := Result.new()
+		result.error = message
+
+		return result

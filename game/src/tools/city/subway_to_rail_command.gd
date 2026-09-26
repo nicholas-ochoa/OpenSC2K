@@ -2,9 +2,7 @@ class_name SubwayToRailCommand
 extends RefCounted
 
 const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
-
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const GROUP_RAIL := CityToolIds.Group.RAIL
 const SUBTOOL_CONNECTION := CityToolIds.Rail.SUBWAY_TO_RAIL
 const CONNECTOR_FIRST := Tiles.RAIL_SUBWAY_ENTRANCE_1

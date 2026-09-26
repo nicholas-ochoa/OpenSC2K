@@ -2,7 +2,6 @@ class_name TerrainCommand
 extends TerrainEditConstants
 
 
-
 static func supports_tool(group_index: int, subtool_index: int) -> bool:
 	return group_index == GROUP_BULLDOZER and subtool_index >= SUBTOOL_LEVEL and subtool_index <= SUBTOOL_LOWER
 
@@ -74,17 +73,9 @@ static func apply_path(
 		if index < 0:
 			continue
 
-		var operation := subtool_index
-
+		var operation := _height_operation(subtool_index, altitude, index, target_altitude)
 		if operation == SUBTOOL_LEVEL:
-			var current_altitude := TerrainEditHeights.land_altitude(altitude, index)
-
-			if current_altitude < target_altitude:
-				operation = SUBTOOL_RAISE
-			elif current_altitude > target_altitude:
-				operation = SUBTOOL_LOWER
-			else:
-				continue
+			continue
 
 		var heights := TerrainEditHeights._decode_heights(altitude, map_edge)
 		var trial: TerrainEditHeights.Plan
@@ -253,3 +244,15 @@ static func undo(city: CityState, command: TerrainEditResult, random: SimRandom 
 		random.state = command.random_state_before
 
 	return EditCommandResult.undone(command.tile_indices.size())
+
+
+static func _height_operation(subtool_index: int, altitude: PackedByteArray, index: int, target_altitude: int) -> int:
+	if subtool_index != SUBTOOL_LEVEL:
+		return subtool_index
+
+	var current_altitude := TerrainEditHeights.land_altitude(altitude, index)
+	if current_altitude < target_altitude:
+		return SUBTOOL_RAISE
+	if current_altitude > target_altitude:
+		return SUBTOOL_LOWER
+	return SUBTOOL_LEVEL

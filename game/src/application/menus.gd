@@ -1,7 +1,6 @@
 class_name ApplicationMenus
 extends RefCounted
 
-
 const Zones = preload("res://src/tools/city/zone_command.gd")
 const Signs = preload("res://src/tools/city/sign_command.gd")
 const CityMenuBarView = preload("res://src/ui/shell/city_menu_bar.gd")
@@ -147,7 +146,7 @@ func on_view_menu(id: int) -> void:
 
 	match id:
 		MENU_VIEW_CITY_MAP:
-			app.reports.open_city_map_window()
+			app.reports.city_map.open_window()
 		MENU_VIEW_BUILDINGS:
 			set_surface_visibility(not bool(app.view_state.surface_visibility.buildings), "buildings")
 		MENU_VIEW_NETWORKS:

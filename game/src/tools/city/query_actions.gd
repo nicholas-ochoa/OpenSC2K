@@ -4,49 +4,6 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
-class RenameResult extends RefCounted:
-	var ok := false
-	var error := ""
-	var overlay_id := 0
-	var old_value := ""
-	var new_value := ""
-
-	static func failure(message: String) -> RenameResult:
-		var result := RenameResult.new()
-		result.error = message
-
-		return result
-
-
-class Category extends RefCounted:
-	var id: int
-	var name: String
-	var acres: int
-	var percent: int
-
-	func _init(category_id: int, category_name: String, area: int, share: int) -> void:
-		id = category_id
-		name = category_name
-		acres = area
-		percent = share
-
-
-class Analysis extends RefCounted:
-	var ok := false
-	var error := ""
-	var header := ""
-	var counts := PackedInt32Array()
-	var total := 0
-	var categories: Array[Category] = []
-
-	static func failure(message: String) -> Analysis:
-		var result := Analysis.new()
-		result.error = message
-
-		return result
-
-
 const FIRST_BUILDING := Tiles.SMALL_PARK
 const CATEGORY_COUNT := 12
 const CATEGORY_UNCOUNTED := 0
@@ -64,7 +21,6 @@ const CATEGORY_ARCOLOGIES := 11
 const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
 const FIRST_MICROSIM_LABEL := 51
 const LAST_MICROSIM_LABEL := 200
-
 # a building belongs to the first row whose tile bound is above its id
 const CATEGORY_BY_TILE_BOUND := [
 	[Tiles.POWER_LINE_FIRST, CATEGORY_RECREATION],
@@ -108,7 +64,6 @@ const CATEGORY_BY_TILE_BOUND := [
 	[Tiles.LLAMA_DOME, CATEGORY_ARCOLOGIES],
 	[Tiles.EMPTY, CATEGORY_RECREATION],
 ]
-
 const ANALYSIS_HEADER := "LAND USE\t\tACRES\t% of CITY"
 const CATEGORY_NAMES: Array[String] = [
 	"", "Transportation", "Power", "Water", "Residential", "Commercial", "Industrial",
@@ -211,3 +166,45 @@ static func format_city_analysis(analysis: Analysis) -> String:
 		)
 
 	return "\n".join(lines)
+
+
+class RenameResult extends RefCounted:
+	var ok := false
+	var error := ""
+	var overlay_id := 0
+	var old_value := ""
+	var new_value := ""
+
+	static func failure(message: String) -> RenameResult:
+		var result := RenameResult.new()
+		result.error = message
+
+		return result
+
+
+class Category extends RefCounted:
+	var id: int
+	var name: String
+	var acres: int
+	var percent: int
+
+	func _init(category_id: int, category_name: String, area: int, share: int) -> void:
+		id = category_id
+		name = category_name
+		acres = area
+		percent = share
+
+
+class Analysis extends RefCounted:
+	var ok := false
+	var error := ""
+	var header := ""
+	var counts := PackedInt32Array()
+	var total := 0
+	var categories: Array[Category] = []
+
+	static func failure(message: String) -> Analysis:
+		var result := Analysis.new()
+		result.error = message
+
+		return result

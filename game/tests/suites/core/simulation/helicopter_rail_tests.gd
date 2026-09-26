@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Simulation: helicopter rail checks.
 
 @warning_ignore_start("integer_division")
@@ -18,6 +17,12 @@ const ZeroGameRandom = TestRandoms.ZeroGameRandom
 
 
 func run(reference_root: String) -> void:
+	_test_helicopters(reference_root)
+	_test_sailboats(reference_root)
+	_test_trains(reference_root)
+
+
+func _test_helicopters(reference_root: String) -> void:
 	var helicopter := _special_growth_fixture(reference_root)
 	_set_helicopter(helicopter, 1, Vector2i(20, 20), Vector2i(30, 20), 2, 0, 0)
 	var takeoff_result := MovingThingTick.run(
@@ -162,6 +167,8 @@ func run(reference_root: String) -> void:
 		"Helicopter collision with an arcology becomes a non-spreading explosion",
 	)
 
+
+func _test_sailboats(reference_root: String) -> void:
 	var moving := _special_growth_fixture(reference_root)
 	_set_sailboat(moving, 1, Vector2i(20, 20), 1)
 	_check(moving.city.set_tile_flag(20, 20, 0x04, true), "Moving sailboat fixture marks its current water")
@@ -227,6 +234,8 @@ func run(reference_root: String) -> void:
 	_check(marina.city.thing(1).type == 0, "Marina arrival releases the sailboat record")
 	_check(marina.city.text_overlay_id(20, 20) == 0, "Marina arrival clears the sailboat link")
 
+
+func _test_trains(reference_root: String) -> void:
 	var train := _special_growth_fixture(reference_root)
 
 	for x in range(20, 23):

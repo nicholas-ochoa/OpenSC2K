@@ -1,9 +1,10 @@
 extends SceneTree
+
 const DocumentState = preload("res://tests/support/document_state.gd")
+const TOOLS := [Vector2i(6, 0), Vector2i(7, 0), Vector2i(3, 0), Vector2i(7, 1), Vector2i(4, 0)]
 
 var checks := 0
 var failures := 0
-const TOOLS := [Vector2i(6, 0), Vector2i(7, 0), Vector2i(3, 0), Vector2i(7, 1), Vector2i(4, 0)]
 
 
 func check(ok: bool, message: String) -> void:
@@ -62,9 +63,15 @@ func _test_subway_pipe_crossings() -> void:
 		var preview := NetworkPlacementPreview.apply_preview(preview_city, 7, 1, start, start + step * 2)
 		var result := NetworkCommand.apply(city, 7, 1, start, start + step * 2)
 		var count := 3 if fixture[2] >= 0x1f else 1
-		check(result.ok and result.points.size() == count and city.underground_id(crossing.x, crossing.y) == fixture[2], "Subway placement preserves the pipe and uses the correct crossing")
+		check(
+			result.ok and result.points.size() == count and city.underground_id(crossing.x, crossing.y) == fixture[2],
+			"Subway placement preserves the pipe and uses the correct crossing",
+		)
 		check(result.cost == count * int(ToolCatalog.tool(7, 1).cost), "Subway charges only for placed tiles")
-		check(preview.ok and DocumentState.capture(preview_city.document) == DocumentState.capture(city.document), "Subway crossing preview matches placement")
+		check(
+			preview.ok and DocumentState.capture(preview_city.document) == DocumentState.capture(city.document),
+			"Subway crossing preview matches placement",
+		)
 		check(NetworkCommand.undo(city, result).ok and DocumentState.capture(city.document) == before, "Subway crossing has exact Undo")
 		city.set_underground_id(crossing.x, crossing.y, 0)
 
@@ -78,17 +85,29 @@ func _test_routes(edge: int) -> void:
 			var next := start + step
 			var index := next.x * edge + next.y
 			data.XTER[index] = 1 if direction % 2 == 0 else 2
-			check(_route(data, start, start + step * 2, mode, edge) == [start], "Reject sideways slope mode %d direction %d edge %d" % [mode, direction, edge])
+			check(
+				_route(data, start, start + step * 2, mode, edge) == [start],
+				"Reject sideways slope mode %d direction %d edge %d" % [mode, direction, edge],
+			)
 			data.XTER[index] = 2 if direction % 2 == 0 else 1
-			check(_route(data, start, start + step * 2, mode, edge).size() == 3, "Allow aligned slope mode %d direction %d" % [mode, direction])
+			check(
+				_route(data, start, start + step * 2, mode, edge).size() == 3,
+				"Allow aligned slope mode %d direction %d" % [mode, direction],
+			)
 			data.XTER[index] = 0
 			data.XTER[start.x * edge + start.y] = 13
-			check(_route(data, start, next, mode, edge) == [start], "Reject raised flat to lower flat mode %d direction %d" % [mode, direction])
+			check(
+				_route(data, start, next, mode, edge) == [start],
+				"Reject raised flat to lower flat mode %d direction %d" % [mode, direction],
+			)
 			data.XTER[start.x * edge + start.y] = 0
 
 	# Rail cannot turn directly onto a non-flat tile. Roads may do so.
 	data.XTER[(start.x + 1) * edge + start.y + 1] = 2
-	check(_route(data, start, start + Vector2i(2, 1), NetworkCommand.MODE_RAIL, edge) == [start, start + Vector2i(1, 0)], "Rail stops before turn onto grade")
+	check(
+		_route(data, start, start + Vector2i(2, 1), NetworkCommand.MODE_RAIL, edge) == [start, start + Vector2i(1, 0)],
+		"Rail stops before turn onto grade",
+	)
 	check(_route(data, start, start + Vector2i(2, 1), NetworkCommand.MODE_ROAD, edge).size() == 3, "Road retains permitted turn onto grade")
 	data.XTER[(start.x + 1) * edge + start.y + 1] = 0
 
@@ -98,7 +117,10 @@ func _test_routes(edge: int) -> void:
 	var next_index := (start.x + 1) * edge + start.y
 	NetworkRules.set_land_altitude(data.ALTM, next_index, NetworkRules.land_altitude(data.ALTM, next_index) + 1)
 	check(_route(data, start, start + Vector2i(2, 0), NetworkCommand.MODE_RAIL, edge) == [start], "Rail rejects unequal slope bases")
-	check(_route(data, start, start + Vector2i(2, 0), NetworkCommand.MODE_ROAD, edge).size() == 3, "Road retains original non-rail slope rule")
+	check(
+		_route(data, start, start + Vector2i(2, 0), NetworkCommand.MODE_ROAD, edge).size() == 3,
+		"Road retains original non-rail slope rule",
+	)
 
 
 func _test_surface_connections(edge: int) -> void:
@@ -121,7 +143,10 @@ func _test_surface_connections(edge: int) -> void:
 			data.XTER[near_index] = 1 if direction % 2 == 0 else 2
 			data.XBLD[near_index] = base + 2 if direction % 2 == 0 else base + 3
 			NetworkTiles.retile_surface(data.XBLD, data.XTER, data.XZON, data.XBIT, data.MISC, point, mode, data.XTXT, edge)
-			check(data.XBLD[center] == base + (1 if direction % 2 == 0 else 0), "No false side junction mode %d direction %d edge %d" % [mode, direction, edge])
+			check(
+				data.XBLD[center] == base + (1 if direction % 2 == 0 else 0),
+				"No false side junction mode %d direction %d edge %d" % [mode, direction, edge],
+			)
 			for cell in [point, near, left, right]:
 				data.XBLD[cell.x * edge + cell.y] = BuildingTileIds.EMPTY
 				data.XBIT[cell.x * edge + cell.y] = 0
@@ -141,17 +166,24 @@ func _test_transactions(edge: int) -> void:
 		var result := NetworkCommand.apply(city, tool.x, tool.y, start, start + Vector2i(0, 2))
 		check(result.ok and result.points.size() == 1, "Placement keeps valid prefix mode %d edge %d" % [mode, edge])
 		check(result.cost == int(ToolCatalog.tool(tool.x, tool.y).cost), "Charge only the valid prefix")
-		check(preview.ok and DocumentState.capture(preview_city.document) == DocumentState.capture(city.document), "Preview and placement bytes agree")
+		check(
+			preview.ok and DocumentState.capture(preview_city.document) == DocumentState.capture(city.document),
+			"Preview and placement bytes agree",
+		)
 		var loaded := Sc2File.new()
 		check(loaded.parse(city.document.serialize().data), "Saved corrected route reloads")
-		check(NetworkCommand.undo(city, result).ok and DocumentState.capture(city.document) == before, "Exact terrain, flags, costs and network Undo")
+		check(
+			NetworkCommand.undo(city, result).ok and DocumentState.capture(city.document) == before,
+			"Exact terrain, flags, costs and network Undo",
+		)
 
 
 func _test_reused_crossings(edge: int) -> void:
 	var data := _fixture(edge)
 	var start := Vector2i(edge - 12, edge - 12)
 	# Reusing a crossing is free, but each network still follows its fixed axis.
-	for fixture in [[0, 0x43, 0], [0, 0x44, 1], [1, 0x45, 1], [1, 0x46, 0], [2, 0x47, 1], [2, 0x48, 0], [3, 0x1f, 0], [3, 0x20, 1], [4, 0x1f, 1], [4, 0x20, 0]]:
+	for fixture in [[0, 0x43, 0], [0, 0x44, 1], [1, 0x45, 1], [1, 0x46, 0], [2, 0x47, 1], [2, 0x48, 0], [3, 0x1f, 0], [3, 0x20, 1],
+		[4, 0x1f, 1], [4, 0x20, 0]]:
 		var mode: int = fixture[0]
 		var axis: int = fixture[2]
 		var layer: PackedByteArray = data.XBLD if mode < 3 else data.XUND
@@ -159,7 +191,10 @@ func _test_reused_crossings(edge: int) -> void:
 		var cross_step := Vector2i(valid_step.y, valid_step.x)
 		var near := start + cross_step
 		layer[near.x * edge + near.y] = fixture[1]
-		check(_route(data, start, start + cross_step * 2, mode, edge) == [start], "Reuse rejects wrong crossing axis mode %d tile %x" % [mode, fixture[1]])
+		check(
+			_route(data, start, start + cross_step * 2, mode, edge) == [start],
+			"Reuse rejects wrong crossing axis mode %d tile %x" % [mode, fixture[1]],
+		)
 		layer[near.x * edge + near.y] = 0
 		near = start + valid_step
 		layer[near.x * edge + near.y] = fixture[1]
@@ -185,5 +220,11 @@ func _test_underground_grading(edge: int) -> void:
 					continue
 				var expected: int = 13 if shape < 9 else [[2, 1, 2, 1], [2, 3, 2, 3], [4, 3, 4, 3], [4, 1, 4, 1]][shape - 9][direction]
 				check(city.terrain_id(start.x, start.y) == expected, "Underground terrain matches the selected axis")
-				check(result.graded_tiles == 1 and result.cost == result.points.size() * int(ToolCatalog.tool(tool.x, tool.y).cost) + 25, "Underground grading costs 25 per adjusted tile")
-				check(NetworkCommand.undo(city, result).ok and DocumentState.capture(city.document) == before, "Underground grading has exact Undo")
+				check(
+					result.graded_tiles == 1 and result.cost == result.points.size() * int(ToolCatalog.tool(tool.x, tool.y).cost) + 25,
+					"Underground grading costs 25 per adjusted tile",
+				)
+				check(
+					NetworkCommand.undo(city, result).ok and DocumentState.capture(city.document) == before,
+					"Underground grading has exact Undo",
+				)

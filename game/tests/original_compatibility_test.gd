@@ -1,21 +1,5 @@
 extends SceneTree
 
-class RecordingEngine extends SimulationEngine:
-
-
-	func advance_disaster_tick() -> DisasterMapResult:
-		var result := DisasterMapResult.new()
-		result.ok = true
-
-		return result
-
-
-	func advance_moving_things(_current_time_msec := -1) -> MovingThingResult:
-		var result := MovingThingResult.new()
-		result.ok = true
-
-		return result
-
 var checks := 0
 var failures := 0
 var save_path := "user://compatibility-test-%d.SC2" % OS.get_process_id()
@@ -61,12 +45,18 @@ func check_formats() -> void:
 				var file := FileAccess.open(save_path, FileAccess.WRITE)
 				file.store_string("keep existing file")
 				file.close()
-				check(not CityFileStore.save_copy(doc, save_path, "res://../references/SIMCITY2000").ok, "Save rejects SC2X contents with an SC2 filename")
+				check(
+					not CityFileStore.save_copy(doc, save_path, "res://../references/SIMCITY2000").ok,
+					"Save rejects SC2X contents with an SC2 filename",
+				)
 				check(FileAccess.get_file_as_string(save_path) == "keep existing file", "Rejected save does not truncate target")
 			else:
 				check(CityFileStore.save_copy(doc, save_path, "res://../references/SIMCITY2000").ok, "Save original city")
 				check(FileAccess.get_file_as_bytes(save_path) == doc.serialize().data, "Original save stays byte-identical")
-				check(not CityFileStore.save_copy(doc, save_path + "x", "res://../references/SIMCITY2000").ok, "An SC2 city rejects the SC2X extension")
+				check(
+					not CityFileStore.save_copy(doc, save_path + "x", "res://../references/SIMCITY2000").ok,
+					"An SC2 city rejects the SC2X extension",
+				)
 
 			check(saved_payloads(doc) == original, "Policy does not convert or mutate city")
 
@@ -97,7 +87,10 @@ func check_formats() -> void:
 	chunk.set_decoded_payload(PackedByteArray([1, 2, 3]))
 	doc.chunks.append(chunk)
 	check(CityFileStore.save_copy(doc, save_path, "res://../references/SIMCITY2000").ok, "Original unknown chunks remain supported")
-	check(Sc2File.load_path(ProjectSettings.globalize_path(save_path)).find_chunk("TEST").decoded_payload == chunk.decoded_payload, "Unknown original bytes survive")
+	check(
+		Sc2File.load_path(ProjectSettings.globalize_path(save_path)).find_chunk("TEST").decoded_payload == chunk.decoded_payload,
+		"Unknown original bytes survive",
+	)
 
 
 func check_fire_clock() -> void:
@@ -109,7 +102,10 @@ func check_fire_clock() -> void:
 			controller.set_speed(GameSpeedController.Speed.CHEETAH)
 			controller.original_compatibility = original
 			var result := controller.advance_time(1000, 1000)
-			check(result.ok and result.disaster_results.size() == (5 if original else 1), "SC2 cities use original fire and firestorm cadence")
+			check(
+				result.ok and result.disaster_results.size() == (5 if original else 1),
+				"SC2 cities use original fire and firestorm cadence",
+			)
 			var captured := SimulationSnapshot.capture(controller, null)
 			check(captured.original_compatibility == original, "Simulation snapshot retains the fire cadence")
 
@@ -128,7 +124,10 @@ func check_ui() -> void:
 	dialog.compatibility_input.button_pressed = true
 	check(dialog.size_input.is_item_disabled(dialog.size_input.get_item_index(512)), "New City disables other map sizes")
 	dialog.size_input.select(dialog.size_input.get_item_index(512))
-	check(dialog.terrain_options().size == 128 and not dialog.terrain_options().native_maps, "Creation guard survives programmatic UI selection")
+	check(
+		dialog.terrain_options().size == 128 and not dialog.terrain_options().native_maps,
+		"Creation guard survives programmatic UI selection",
+	)
 	main.new_city_state.session.independent_template = true
 	main.new_city_state.session.begin(123, 456)
 	var options: NewCityTerrain.Options = dialog.terrain_options()
@@ -140,7 +139,15 @@ func check_ui() -> void:
 	options.river = false
 	var generated: NewCityTerrainSession.PreviewResult = main.new_city_state.session.generate_preview("", options, false)
 	check(generated.ok and not generated.document.is_extended(), "Compatibility generates original-format preview")
-	var created: NewCitySetup.Result = main.new_city_state.session.create_city("", "Compatible", "Mayor", 1, 1900, options, PackedByteArray())
+	var created: NewCitySetup.Result = main.new_city_state.session.create_city(
+		"",
+		"Compatible",
+		"Mayor",
+		1,
+		1900,
+		options,
+		PackedByteArray(),
+	)
 	check(created.ok and not created.document.is_extended(), "Compatibility creates original-format city")
 	dialog.compatibility_input.button_pressed = false
 	check(not dialog.size_input.is_item_disabled(dialog.size_input.get_item_index(512)), "Clearing compatibility restores map sizes")
@@ -164,7 +171,10 @@ func check_ui() -> void:
 	extended_file.store_buffer(extended.serialize().data)
 	extended_file.close()
 	main.city_files._load_city_unchecked(ProjectSettings.globalize_path(save_path))
-	check(main.document_state.current_document.is_extended() and main.document_state.current_document.map_size == 256, "SC2X loads normally even with an SC2 filename")
+	check(
+		main.document_state.current_document.is_extended() and main.document_state.current_document.map_size == 256,
+		"SC2X loads normally even with an SC2 filename",
+	)
 	check(not main.simulation_state.speed_controller.original_compatibility, "SC2X city uses extended fire timing")
 	check(main.city_session.activate_document(doc), "Return to SC2 city")
 	check(main.simulation_state.speed_controller.original_compatibility, "SC2 timing returns with the SC2 city")
@@ -181,7 +191,10 @@ func check_reference_files(path: String) -> void:
 			continue
 
 		var doc := Sc2File.load_path(ProjectSettings.globalize_path(path.path_join(filename)))
-		check(doc.is_valid() and OriginalCompatibility.uses_original_format(doc) and OriginalCompatibility.document_error(doc).is_empty(), "Supplied file is SC2: " + filename)
+		check(
+			doc.is_valid() and OriginalCompatibility.uses_original_format(doc) and OriginalCompatibility.document_error(doc).is_empty(),
+			"Supplied file is SC2: " + filename,
+		)
 		# Exact corpus rebuilds belong to test_runner; this check owns the policy gate.
 
 
@@ -190,3 +203,20 @@ func saved_payloads(document: Sc2File) -> Array:
 	for chunk in document.chunks:
 		values.append(chunk.decoded_payload.duplicate())
 	return values
+
+
+class RecordingEngine extends SimulationEngine:
+
+
+	func advance_disaster_tick() -> DisasterMapResult:
+		var result := DisasterMapResult.new()
+		result.ok = true
+
+		return result
+
+
+	func advance_moving_things(_current_time_msec := -1) -> MovingThingResult:
+		var result := MovingThingResult.new()
+		result.ok = true
+
+		return result

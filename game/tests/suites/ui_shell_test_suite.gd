@@ -84,77 +84,8 @@ func _test_main_menu() -> void:
 		== PackedInt32Array([0, 1, 2, 3, 4, 5, 6, 9, 10]),
 		"SCURK Place & Print omits both non-placeable animation groups",
 	)
-	var analysis_dialog := CityAnalysisDialogUi.instantiate() as CityAnalysisDialog
-	analysis_dialog._ready()
-	analysis_dialog.set_categories([
-		QueryActions.Category.new(0, "Roads", 12, 34),
-	])
-	var analysis_root := analysis_dialog.table.get_root()
-	var analysis_item := analysis_root.get_first_child()
-	_check(
-		analysis_dialog.table.columns == 3
-		and analysis_item.get_text(0) == "Roads"
-		and analysis_item.get_text(1) == "12"
-		and analysis_item.get_text(2) == "34%",
-		"City Analysis dialog shows category names, areas, and percentages",
-	)
-	analysis_dialog.free()
-	var library_windows := LibraryRuminateWindowsUi.new()
-	library_windows._ready()
-	library_windows.show_texts({
-		3000: "First\r\nPage",
-		3001: "Second",
-		3002: "Third",
-		3003: "Fourth",
-	}, Vector2i(1280, 800))
-	var first_height := library_windows.window.size.y
-	_check(
-		library_windows.visible
-		and library_windows.current_resource_id() == 3000
-		and library_windows.text_label.text == "First\nPage",
-		"Library Ruminate opens the first text window first",
-	)
-	var shown_ids: Array[int] = []
+	_test_information_dialogs()
 
-	while library_windows.visible:
-		shown_ids.append(library_windows.current_resource_id())
-		library_windows.close_page()
-
-	_check(
-		shown_ids == [3000, 3001, 3002, 3003] and library_windows.current_resource_id() == -1,
-		"Library Ruminate shows each text window in turn and closes after the last",
-	)
-	library_windows.show_texts({
-		3000: "Long text ".repeat(400),
-		3001: "Second",
-		3002: "Third",
-		3003: "Fourth",
-	}, Vector2i(1280, 800))
-	_check(
-		library_windows.window.size.y > first_height
-		and Rect2(Vector2.ZERO, Vector2(1280, 800)).encloses(
-			Rect2(library_windows.window.position, library_windows.window.size)
-		),
-		"Library text window grows to fit its text and stays inside the view",
-	)
-	library_windows.free()
-	var route_dialog := RouteConfirmationDialogUi.new()
-	route_dialog.configure(
-		"Neighbor Connection",
-		"Build a road connection?",
-		"Build Connection",
-		"Keep Road",
-	)
-	route_dialog.set_message("Build a rail connection?", "Keep Rail")
-	_check(
-		route_dialog.title == "Neighbor Connection"
-		and route_dialog.dialog_text == "Build a rail connection?"
-		and route_dialog.exclusive
-		and route_dialog.get_ok_button().text == "Build Connection"
-		and route_dialog.get_cancel_button().text == "Keep Rail",
-		"Route confirmation dialog owns its prompt and button labels",
-	)
-	route_dialog.free()
 	var status_bar := preload("res://src/ui/shell/city_status_bar.tscn").instantiate() as CityStatusBar
 	status_bar._ready()
 	status_bar.set_environment(Vector3i(300, -200, 100), "Sunny")
@@ -301,3 +232,77 @@ func _test_budget_dialog() -> void:
 
 func _check(condition: bool, message: String) -> void:
 	check_callback.call(condition, message)
+
+
+func _test_information_dialogs() -> void:
+	var analysis_dialog := CityAnalysisDialogUi.instantiate() as CityAnalysisDialog
+	analysis_dialog._ready()
+	analysis_dialog.set_categories([
+		QueryActions.Category.new(0, "Roads", 12, 34),
+	])
+	var analysis_root := analysis_dialog.table.get_root()
+	var analysis_item := analysis_root.get_first_child()
+	_check(
+		analysis_dialog.table.columns == 3
+		and analysis_item.get_text(0) == "Roads"
+		and analysis_item.get_text(1) == "12"
+		and analysis_item.get_text(2) == "34%",
+		"City Analysis dialog shows category names, areas, and percentages",
+	)
+	analysis_dialog.free()
+	var library_windows := LibraryRuminateWindowsUi.new()
+	library_windows._ready()
+	library_windows.show_texts({
+		3000: "First\r\nPage",
+		3001: "Second",
+		3002: "Third",
+		3003: "Fourth",
+	}, Vector2i(1280, 800))
+	var first_height := library_windows.window.size.y
+	_check(
+		library_windows.visible
+		and library_windows.current_resource_id() == 3000
+		and library_windows.text_label.text == "First\nPage",
+		"Library Ruminate opens the first text window first",
+	)
+	var shown_ids: Array[int] = []
+
+	while library_windows.visible:
+		shown_ids.append(library_windows.current_resource_id())
+		library_windows.close_page()
+
+	_check(
+		shown_ids == [3000, 3001, 3002, 3003] and library_windows.current_resource_id() == -1,
+		"Library Ruminate shows each text window in turn and closes after the last",
+	)
+	library_windows.show_texts({
+		3000: "Long text ".repeat(400),
+		3001: "Second",
+		3002: "Third",
+		3003: "Fourth",
+	}, Vector2i(1280, 800))
+	_check(
+		library_windows.window.size.y > first_height
+		and Rect2(Vector2.ZERO, Vector2(1280, 800)).encloses(
+			Rect2(library_windows.window.position, library_windows.window.size)
+		),
+		"Library text window grows to fit its text and stays inside the view",
+	)
+	library_windows.free()
+	var route_dialog := RouteConfirmationDialogUi.new()
+	route_dialog.configure(
+		"Neighbor Connection",
+		"Build a road connection?",
+		"Build Connection",
+		"Keep Road",
+	)
+	route_dialog.set_message("Build a rail connection?", "Keep Rail")
+	_check(
+		route_dialog.title == "Neighbor Connection"
+		and route_dialog.dialog_text == "Build a rail connection?"
+		and route_dialog.exclusive
+		and route_dialog.get_ok_button().text == "Build Connection"
+		and route_dialog.get_cancel_button().text == "Keep Rail",
+		"Route confirmation dialog owns its prompt and button labels",
+	)
+	route_dialog.free()

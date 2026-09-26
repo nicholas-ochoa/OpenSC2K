@@ -15,7 +15,7 @@ static func capture(document: ScurkMif, project: ScurkProject, id: int, blank_id
 	for index in document.piece_records.size():
 		var piece := document.piece_records[index]
 		if state._contains_piece(piece):
-			state.pieces.append({"tag": piece.tag, "id": piece.sprite_id, "payload": piece.raw_payload.duplicate(), "position": index})
+			state.pieces.append({ "tag": piece.tag, "id": piece.sprite_id, "payload": piece.raw_payload.duplicate(), "position": index })
 	for view in ScurkSpriteIds.VIEW_COUNT:
 		state.remember_document(project, "%d:%d" % [id, view])
 		var sprite_id := ScurkEditorRules.view_sprite_id(id, view)

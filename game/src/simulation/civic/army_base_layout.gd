@@ -1,11 +1,10 @@
 class_name ArmyBaseLayout
 extends RefCounted
 
-
-
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const ZONE_TYPE_MASK := Sc2ZoneLayout.TYPE_MASK
 const ALL_BUILDING_CORNERS := 0xf0
+
 
 static func build(
 	buildings: PackedByteArray, terrain: PackedByteArray, zones: PackedByteArray,
@@ -33,7 +32,9 @@ static func _strip(
 		var point: Vector2i = start + step * distance
 		var index: int = point.x * edge + point.y
 
-		if (zones[index] & ZONE_TYPE_MASK) != NetworkConstants.MILITARY_ZONE or underground[index] != UndergroundTileIds.EMPTY or flags[index] & NetworkConstants.FLAG_WATER:
+		if ((zones[index] & ZONE_TYPE_MASK) != NetworkConstants.MILITARY_ZONE
+				or underground[index] != UndergroundTileIds.EMPTY
+				or flags[index] & NetworkConstants.FLAG_WATER):
 			continue
 
 		var tile := int(buildings[index])
@@ -60,7 +61,9 @@ static func _strip(
 		if distance == 7 and placed < 2:
 			continue
 
-		if terrain[index] == TerrainTileIds.FLAT and (zones[index] & ZONE_TYPE_MASK) == NetworkConstants.MILITARY_ZONE and buildings[index] in [Tiles.ROAD_STRAIGHT_1, Tiles.ROAD_STRAIGHT_2]:
+		if (terrain[index] == TerrainTileIds.FLAT
+				and (zones[index] & ZONE_TYPE_MASK) == NetworkConstants.MILITARY_ZONE
+				and buildings[index] in [Tiles.ROAD_STRAIGHT_1, Tiles.ROAD_STRAIGHT_2]):
 			SpecialZoneState._replace_special_building(buildings, zones, misc, index, Tiles.RUNWAY_CROSSING)
 			zones[index] |= ALL_BUILDING_CORNERS
 			flags[index] &= ~Sc2TileFlags.UTILITY_MASK & 0xff

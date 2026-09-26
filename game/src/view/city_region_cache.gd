@@ -1,3 +1,4 @@
+# gdstyle:ignore-file=quality/max-class-variables
 class_name CityRegionCache
 extends RefCounted
 
@@ -15,15 +16,6 @@ const GPU_WORKERS := 2
 const SOURCE_CHUNKS: Array[String] = ["ALTM", "XBLD", "XTER", "XZON", "XBIT", "XTXT", "XUND", "XTRF"]
 # above this count, report the whole region as changed foreground geometry
 const MAX_OCCLUDER_CHANGES := 32
-class RegionWorker extends RefCounted:
-	var task: CityRenderTask
-	var context: CityGpuBuildContext
-	var atlas: ImageTexture
-	var atlas_revision := -1
-	var layout := -1
-	var generation := -1
-	var keys: Array[Vector2i] = []
-
 
 var region_edge := REGION_EDGE
 var gpu_enabled := gpu_supported()
@@ -90,6 +82,7 @@ static func gpu_supported(preference := "gpu") -> bool:
 
 # `dirty` and `changed` bound the changed screen areas. without them every region
 # draws again, unless `changes_listed` tells that `changed` lists every change
+# gdstyle:ignore=quality/max-parameters
 func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 		new_signature: Array, new_view: int, new_mode: CityViewMode.Mode, visibility: Dictionary,
 		show_pipes: bool, show_subways: bool, dirty := Rect2i(), show_water_mains := true,
@@ -249,7 +242,11 @@ func sign_foreground(key: int, bounds: Rect2i, order: int, texture_factor := 1) 
 
 		if patch.texture_factor != divisor * texture_factor:
 			image = image.duplicate()
-			image.resize(patch.bounds.size.x * divisor * texture_factor, patch.bounds.size.y * divisor * texture_factor, Image.INTERPOLATE_NEAREST)
+			image.resize(
+				patch.bounds.size.x * divisor * texture_factor,
+				patch.bounds.size.y * divisor * texture_factor,
+				Image.INTERPOLATE_NEAREST,
+			)
 
 		var world := Rect2i(patch.bounds.position * divisor, patch.bounds.size * divisor)
 		var overlap := bounds.intersection(world)
@@ -292,7 +289,9 @@ func tick() -> bool:
 		if not result.ok:
 			last_error = result.error
 			_changed = true
-		elif _job_layout == _layout_generation and _job_key in wanted and (not entries.has(_job_key) or int(entries[_job_key].generation) <= _job_generation):
+		elif (_job_layout == _layout_generation
+				and _job_key in wanted
+				and (not entries.has(_job_key) or int(entries[_job_key].generation) <= _job_generation)):
 			if _job_generation == generation:
 				_snapshot = result.display_city
 				display_city = _snapshot
@@ -327,7 +326,8 @@ func tick() -> bool:
 			_job_layout = _layout_generation
 			_task = CityRenderTask.new()
 			var bounds := Rect2i(key * region_edge, Vector2i(region_edge, region_edge))
-			var error := _task.start(_render.bind(_snapshot, _palette, _sprites, bounds, view_size, mode, _visibility, _prepared, _show_pipes,
+			var error := _task.start(_render.bind(_snapshot, _palette, _sprites, bounds, view_size, mode, _visibility, _prepared,
+				_show_pipes,
 					_show_subways, _show_water_mains))
 
 			if error != OK:
@@ -420,7 +420,8 @@ func texture() -> CityMapSource:
 			output.meshes.append(_mesh_entry(gpu))
 			continue
 
-		output.tiles.append(CityMapSource.TileEntry.new(Vector2(entry.bounds.position * divisor), Vector2(entry.bounds.size * divisor), entry.texture))
+		output.tiles.append(CityMapSource.TileEntry.new(Vector2(entry.bounds.position * divisor), Vector2(entry.bounds.size * divisor),
+			entry.texture))
 
 	_source_updates.clear()
 	_published_viewport = _viewport_serial
@@ -604,7 +605,8 @@ func metrics() -> Dictionary:
 	return {"gpu": gpu_enabled, "atlas_bytes": _gpu_atlas_bytes(), "resident": entries.size(), "visible": visible.size(),
 			"tile_builds": tile_builds, "tile_reuses": tile_reuses,
 			"offscreen_limit": offscreen_limit(), "cpu_image_bytes": bytes, "texture_bytes_estimate": bytes, "completed": completed_regions,
-			"discarded": discarded_regions, "max_region_usec": max_region_usec, "ready": ready(), "covered": covered(), "pending": _task != null or _gpu_pending()}
+			"discarded": discarded_regions, "max_region_usec": max_region_usec, "ready": ready(), "covered": covered(),
+			"pending": _task != null or _gpu_pending()}
 
 
 func close() -> void:
@@ -624,19 +626,11 @@ func close() -> void:
 
 
 static func _render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, bounds: Rect2i, view: int,
-		render_mode: CityViewMode.Mode, visibility: Dictionary, prepared: bool, pipes: bool, subways: bool, water_mains: bool,
-		gpu_context: CityGpuBuildContext = null, revision := 0, atlas_revision := -1, foreground_requests: Array[CitySignRequest] = []) -> CityRegionResult:
+		render_mode: CityViewMode.Mode, visibility: Dictionary, prepared: bool, pipes: bool, subways: bool,
+		water_mains: bool) -> CityRegionResult:
 	var started := Time.get_ticks_usec()
 	var display := city if prepared else CityViewFilter.surface_copy(city, visibility)
-	var result: CityRegionResult = (CityGpuRegionRenderer.render(display, palette, sprites, bounds, view, render_mode, pipes, subways, gpu_context, revision,
-			atlas_revision, true, water_mains) if gpu_context != null
-			else CityRegionRenderer.render(display, palette, sprites, bounds, view, render_mode, pipes, subways, water_mains))
-
-	if result.ok and gpu_context != null and render_mode == CityViewMode.Mode.CITY:
-		var gpu := result as CityGpuRegionResult
-		gpu.sign_foregrounds = CityGpuSignForegrounds.build(gpu, foreground_requests, palette, sprites, gpu_context,
-				CityIsometricRenderer.view_configuration(view).divisor)
-
+	var result := CityRegionRenderer.render(display, palette, sprites, bounds, view, render_mode, pipes, subways, water_mains)
 	result.display_city = display
 	result.usec = Time.get_ticks_usec() - started
 
@@ -657,3 +651,13 @@ func _tick_gpu() -> bool:
 
 func _gpu_atlas_bytes() -> int:
 	return CityRegionScheduling._gpu_atlas_bytes(self)
+
+
+class RegionWorker extends RefCounted:
+	var task: CityRenderTask
+	var context: CityGpuBuildContext
+	var atlas: ImageTexture
+	var atlas_revision := -1
+	var layout := -1
+	var generation := -1
+	var keys: Array[Vector2i] = []

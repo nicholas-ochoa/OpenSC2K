@@ -1,9 +1,8 @@
 class_name NetworkRules
 extends NetworkConstants
 
-
-
 const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
+
 
 static func supports_tool(group_index: int, subtool_index: int) -> bool:
 	return NETWORK_TOOLS.has(group_index * ToolCatalog.MAX_SLOTS_PER_GROUP + subtool_index)
@@ -115,17 +114,39 @@ static func _tile_is_eligible(
 
 	var directional_id := building + (direction & 1)
 
-	return directional_id == Tiles.POWER_LINE_STRAIGHT_2 or directional_id == Tiles.ROAD_STRAIGHT_2 or directional_id == Tiles.RAIL_STRAIGHT_2 or directional_id == Tiles.HIGHWAY_STRAIGHT_2
+	return (directional_id == Tiles.POWER_LINE_STRAIGHT_2 or directional_id == Tiles.ROAD_STRAIGHT_2
+		or directional_id == Tiles.RAIL_STRAIGHT_2 or directional_id == Tiles.HIGHWAY_STRAIGHT_2)
 
 
 static func _surface_fixed_axis(tile_id: int, mode: int) -> int:
 	# existing mixed crossings cannot turn. this is a geometry constraint,
 	# separate from whether reuse is free or a future saved edge is blocked
 	if mode == MODE_ROAD:
-		return {Tiles.ROAD_POWER_CROSSING_1: 0, Tiles.ROAD_POWER_CROSSING_2: 1, Tiles.ROAD_RAIL_CROSSING_1: 0, Tiles.ROAD_RAIL_CROSSING_2: 1, Tiles.HIGHWAY_ROAD_CROSSING_1: 1, Tiles.HIGHWAY_ROAD_CROSSING_2: 0}.get(tile_id, -1)
+		return {
+			Tiles.ROAD_POWER_CROSSING_1: 0,
+			Tiles.ROAD_POWER_CROSSING_2: 1,
+			Tiles.ROAD_RAIL_CROSSING_1: 0,
+			Tiles.ROAD_RAIL_CROSSING_2: 1,
+			Tiles.HIGHWAY_ROAD_CROSSING_1: 1,
+			Tiles.HIGHWAY_ROAD_CROSSING_2: 0,
+		}.get(tile_id, -1)
 	if mode == MODE_RAIL:
-		return {Tiles.ROAD_RAIL_CROSSING_1: 1, Tiles.ROAD_RAIL_CROSSING_2: 0, Tiles.RAIL_POWER_CROSSING_1: 0, Tiles.RAIL_POWER_CROSSING_2: 1, Tiles.HIGHWAY_RAIL_CROSSING_1: 1, Tiles.HIGHWAY_RAIL_CROSSING_2: 0}.get(tile_id, -1)
-	return {Tiles.ROAD_POWER_CROSSING_1: 1, Tiles.ROAD_POWER_CROSSING_2: 0, Tiles.RAIL_POWER_CROSSING_1: 1, Tiles.RAIL_POWER_CROSSING_2: 0, Tiles.HIGHWAY_POWER_CROSSING_1: 1, Tiles.HIGHWAY_POWER_CROSSING_2: 0}.get(tile_id, -1)
+		return {
+			Tiles.ROAD_RAIL_CROSSING_1: 1,
+			Tiles.ROAD_RAIL_CROSSING_2: 0,
+			Tiles.RAIL_POWER_CROSSING_1: 0,
+			Tiles.RAIL_POWER_CROSSING_2: 1,
+			Tiles.HIGHWAY_RAIL_CROSSING_1: 1,
+			Tiles.HIGHWAY_RAIL_CROSSING_2: 0,
+		}.get(tile_id, -1)
+	return {
+		Tiles.ROAD_POWER_CROSSING_1: 1,
+		Tiles.ROAD_POWER_CROSSING_2: 0,
+		Tiles.RAIL_POWER_CROSSING_1: 1,
+		Tiles.RAIL_POWER_CROSSING_2: 0,
+		Tiles.HIGHWAY_POWER_CROSSING_1: 1,
+		Tiles.HIGHWAY_POWER_CROSSING_2: 0,
+	}.get(tile_id, -1)
 
 
 static func _reuses_surface(tile_id: int, mode: int) -> bool:

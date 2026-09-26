@@ -19,7 +19,10 @@ func _init(application: CityApplication) -> void:
 func refresh_moving_things(view_size := -1) -> void:
 	caches.dynamic_active_keys.clear()
 
-	if app.document_state.city == null or app.asset_state.palette == null or app.map_view == null or app.view_state.overlay_mode != CityViewMode.Mode.CITY:
+	if (app.document_state.city == null
+			or app.asset_state.palette == null
+			or app.map_view == null
+			or app.view_state.overlay_mode != CityViewMode.Mode.CITY):
 		caches.dynamic_sign_occluders.clear()
 		caches.dynamic_sign_occlusion_grid.clear()
 
@@ -297,7 +300,13 @@ func _dynamic_train_foreground_image(
 
 		# a highway/power crossing uses the wire-free highway as its mask
 		if command.train_deck_reference_sprite_id != 0:
-			var background := dynamic_sprite_resource(sprite_archive, int(command.train_deck_reference_sprite_id), bool(command.flip), divisor, texture_factor)
+			var background := dynamic_sprite_resource(
+				sprite_archive,
+				int(command.train_deck_reference_sprite_id),
+				bool(command.flip),
+				divisor,
+				texture_factor,
+			)
 
 			if background != null:
 				deck_surface = Image.create(surface.get_width(), surface.get_height(), false, Image.FORMAT_RGBA8)
@@ -342,7 +351,7 @@ func demolish_brush_visual(tile: Vector2i, direction: int) -> CityDynamicVisual:
 	if app.document_state.city == null or archive == null or app.asset_state.palette == null:
 		return null
 
-	var sprite := IsometricRenderer.moving_thing_sprite(ThingRecord.from_fields({"type": 4, "direction": direction}), view_size)
+	var sprite := IsometricRenderer.moving_thing_sprite(ThingRecord.from_fields({ "type": 4, "direction": direction }), view_size)
 	var entry := archive.find_sprite(int(sprite.sprite_id))
 	if entry == null:
 		return null
@@ -451,7 +460,10 @@ func _dynamic_shadow_image(
 			if output_x < 0 or output_x >= app.map_render.static_image_size().x:
 				continue
 
-			var current: Color = sampled.get_pixel(source_x, source_y) if sampled != null else caches.static_city_image.get_pixel(output_x, output_y)
+			var current: Color = sampled.get_pixel(
+				source_x,
+				source_y,
+			) if sampled != null else caches.static_city_image.get_pixel(output_x, output_y)
 			var palette_index := roundi(current.r * 255.0)
 			var changed_index := IsometricRenderer.shadow_palette_index(palette_index)
 

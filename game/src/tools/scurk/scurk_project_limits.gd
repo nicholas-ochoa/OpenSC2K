@@ -14,7 +14,8 @@ const MAX_HEIGHT := 256
 
 
 static func integer_in(value: Variant, minimum: int, maximum: int) -> bool:
-	return (value is int or value is float) and is_finite(float(value)) and float(value) == floor(float(value)) and value >= minimum and value <= maximum
+	return ((value is int or value is float) and is_finite(float(value)) and float(value) == floor(float(value)) and value >= minimum
+		and value <= maximum)
 
 
 static func valid_dimensions(width: Variant, height: Variant) -> bool:

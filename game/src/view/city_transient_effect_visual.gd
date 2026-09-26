@@ -1,7 +1,6 @@
 class_name CityTransientEffectVisual
 extends RefCounted
 
-
 var texture: Texture2D
 var position: Vector2
 var frame: int

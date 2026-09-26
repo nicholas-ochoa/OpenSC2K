@@ -22,8 +22,6 @@ const THING_SPEEDS := {
 	TYPE_AIRPLANE: 16,
 	TYPE_HELICOPTER: 8,
 }
-
-
 # final supplied smallmed.dat metadata heights for sprite ids 0x71 through 0xfa
 const BUILDING_SPRITE_HEIGHTS_FIRST := 0x71
 const BUILDING_SPRITE_HEIGHTS := [

@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Rendering: map geometry checks.
 
 @warning_ignore_start("integer_division")
@@ -59,7 +58,8 @@ func run(reference_root: String, starter: CityState, large: Sc2SpriteArchive) ->
 			generated_city_dynamic_moving.append(command)
 
 	_check(
-		_dynamic_command_values(generated_city_dynamic_moving) == _dynamic_command_values(IsometricDynamicCommands.moving_thing_draw_commands(
+		_dynamic_command_values(generated_city_dynamic_moving) == _dynamic_command_values(
+		IsometricDynamicCommands.moving_thing_draw_commands(
 			generated_city, large, IsometricRenderer.VIEW_LARGE, 0
 		)),
 		"Indexed dynamic lookup preserves generated city moving-object draw order",

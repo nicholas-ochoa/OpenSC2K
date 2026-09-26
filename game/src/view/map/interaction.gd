@@ -1,7 +1,6 @@
 class_name CityMapInteraction
 extends CityMapConstants
 
-
 var map: CityMapControl
 
 
@@ -20,6 +19,37 @@ func _gui_input(event: InputEvent) -> void:
 		_handle_mouse_button(event)
 	elif event is InputEventMouseMotion:
 		_handle_mouse_motion(event)
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.keycode == KEY_SHIFT:
+		map._shift_pressed = event.pressed
+
+		if map.stretch_terrain and map.selection_start.x >= 0:
+			map.stretch_changed.emit(map.stretch_height_delta, event.pressed)
+
+		if (map.shift_rectangle_enabled or map.shift_line_enabled) and map.selection_start.x >= 0:
+			map.selection._rebuild_selection_path()
+			map.selection_changed.emit(map.selection_start, map.selection_end, map.selection_path.duplicate(), map.selection_moved)
+
+		map.queue_redraw()
+
+
+func _process(delta: float) -> void:
+	if not map.continuous_placement or map.brush_box_selection or not map.edit_enabled or map.selection_start.x < 0:
+		map._brush_elapsed = 0.0
+
+		return
+
+	map._brush_elapsed += delta
+
+	if map._brush_elapsed < (0.1 if map.selection.uses_paint_brush() else 0.3):
+		return
+
+	map._brush_elapsed = 0.0
+
+	if map.hover_tile.x >= 0:
+		map.selection._emit_brush_dab(map.hover_tile, true)
 
 
 func _handle_mouse_button(event: InputEventMouseButton) -> void:
@@ -195,34 +225,3 @@ func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 			map.queue_redraw()
 
 		map.accept_event()
-
-
-func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.keycode == KEY_SHIFT:
-		map._shift_pressed = event.pressed
-
-		if map.stretch_terrain and map.selection_start.x >= 0:
-			map.stretch_changed.emit(map.stretch_height_delta, event.pressed)
-
-		if (map.shift_rectangle_enabled or map.shift_line_enabled) and map.selection_start.x >= 0:
-			map.selection._rebuild_selection_path()
-			map.selection_changed.emit(map.selection_start, map.selection_end, map.selection_path.duplicate(), map.selection_moved)
-
-		map.queue_redraw()
-
-
-func _process(delta: float) -> void:
-	if not map.continuous_placement or map.brush_box_selection or not map.edit_enabled or map.selection_start.x < 0:
-		map._brush_elapsed = 0.0
-
-		return
-
-	map._brush_elapsed += delta
-
-	if map._brush_elapsed < (0.1 if map.selection.uses_paint_brush() else 0.3):
-		return
-
-	map._brush_elapsed = 0.0
-
-	if map.hover_tile.x >= 0:
-		map.selection._emit_brush_dab(map.hover_tile, true)

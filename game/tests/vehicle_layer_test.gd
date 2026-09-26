@@ -3,6 +3,7 @@ extends SceneTree
 @warning_ignore_start("integer_division")
 
 const AirConstants = preload("res://src/simulation/moving_things/air/constants.gd")
+
 ## The Vehicles layer hides vehicles, drops their sounds and stops their
 ## spontaneous crashes. Disaster objects and started disasters are unchanged.
 
@@ -27,7 +28,17 @@ func _check_crash_rules() -> void:
 		assert(city.set_no_disasters_enabled(false))
 		var tower := _tall_building(city)
 		var record := _place_airplane(city, tower, 2, 0)
-		var result := MovingThingPhase.run(city, SimRandom.new(7), SimLfsrRandom.new(9), GameLcgRandom.new(3), Vector2i(-1, -1), true, 1000, 0, suppress)
+		var result := MovingThingPhase.run(
+			city,
+			SimRandom.new(7),
+			SimLfsrRandom.new(9),
+			GameLcgRandom.new(3),
+			Vector2i(-1, -1),
+			true,
+			1000,
+			0,
+			suppress,
+		)
 		assert(result.ok)
 		var type := int(city.thing(record).type)
 
@@ -39,7 +50,17 @@ func _check_crash_rules() -> void:
 	var falling := CityState.from_document(Sc2File.load_path("res://tests/fixtures/cities/generated-128.SC2"))
 	assert(falling.set_no_disasters_enabled(false))
 	var record := _place_airplane(falling, Vector2i(40, 40), 7, 0)
-	var crash := MovingThingPhase.run(falling, SimRandom.new(7), SimLfsrRandom.new(9), GameLcgRandom.new(3), Vector2i(-1, -1), true, 1000, 0, true)
+	var crash := MovingThingPhase.run(
+		falling,
+		SimRandom.new(7),
+		SimLfsrRandom.new(9),
+		GameLcgRandom.new(3),
+		Vector2i(-1, -1),
+		true,
+		1000,
+		0,
+		true,
+	)
 	assert(crash.ok and int(falling.thing(record).type) == 6, "A started plane crash still crashes while vehicles are hidden")
 
 
@@ -87,7 +108,10 @@ func _check_application() -> void:
 	assert(main.city_session.activate_document(Sc2File.load_path("res://tests/fixtures/cities/generated-128.SC2")))
 	assert(not main.simulation_state.simulation_engine.vehicle_crashes_enabled)
 	main.menus.on_view_menu(CityMenuBar.MENU_VIEW_VEHICLES)
-	assert(main.view_state.show_vehicles and main.simulation_state.simulation_engine.vehicle_crashes_enabled, "The View menu shows vehicles again")
+	assert(
+		main.view_state.show_vehicles and main.simulation_state.simulation_engine.vehicle_crashes_enabled,
+		"The View menu shows vehicles again",
+	)
 	assert(main.city_toolbar.view_visibility_checks.vehicles.button_pressed)
 	main.queue_free()
 	await process_frame

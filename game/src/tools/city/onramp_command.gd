@@ -2,7 +2,6 @@ class_name OnrampCommand
 extends RefCounted
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const GROUP_ROADS := CityToolIds.Group.ROADS
 const SUBTOOL_ONRAMP := CityToolIds.Roads.ONRAMP
 const MAX_CLEAR_BUILDING := Tiles.SMALL_PARK
@@ -14,7 +13,6 @@ const ROAD_LAST := Tiles.ROAD_CROSSROADS
 const ROAD_INTERSECTION := Tiles.ROAD_CROSSROADS
 const RAMP_FIRST := Tiles.HIGHWAY_ONRAMP_1
 const FLAG_FLIPPED := Sc2TileFlags.FLIPPED
-
 # neighbor masks use north, east, south, and west bits. each value selects
 # the road directions that can connect to the adjacent highway arrangement
 const ROAD_MASK_BY_HIGHWAY_MASK := [0, 10, 5, 12, 10, 0, 9, 0, 5, 6, 0, 0, 3, 0, 0, 0]

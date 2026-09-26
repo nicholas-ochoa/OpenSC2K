@@ -1,7 +1,6 @@
 class_name ApplicationSettings
 extends RefCounted
 
-
 const SettingsStore = preload("res://src/ui/settings/app_settings_store.gd")
 
 var app: CityApplication
@@ -48,7 +47,8 @@ func open_settings_dialog() -> void:
 	app.main_overlays.settings_dialog.data_pack_edit.text = AppSettingsDialog.pack_file_path(preferences.data_pack_folder)
 	app.main_overlays.settings_dialog.show_values(
 		preferences.music_volume, preferences.effects_volume, preferences.fullscreen,
-		preferences.graphics_source, preferences.graphics_folder, preferences.city_renderer, preferences.background_audio, preferences.zoom_graphics,
+		preferences.graphics_source, preferences.graphics_folder, preferences.city_renderer, preferences.background_audio,
+		preferences.zoom_graphics,
 	)
 	_refresh_settings_pack_names()
 
@@ -57,7 +57,8 @@ func _refresh_settings_pack_names() -> void:
 	if app.main_overlays.settings_dialog == null:
 		return
 
-	app.main_overlays.settings_dialog.set_loaded_pack("graphics", app.asset_state.asset_source.graphics_name if app.asset_state.assets_ready else "",
+	app.main_overlays.settings_dialog.set_loaded_pack("graphics",
+		app.asset_state.asset_source.graphics_name if app.asset_state.assets_ready else "",
 		preferences.graphics_folder if preferences.graphics_source == "folder" else "")
 
 	if app.audio_controller != null:
@@ -77,7 +78,8 @@ func apply_settings() -> void:
 
 		return
 
-	var changed_source: bool = values.graphics_source != preferences.graphics_source or values.graphics_folder != preferences.graphics_folder
+	var changed_source: bool = (values.graphics_source != preferences.graphics_source
+		or values.graphics_folder != preferences.graphics_folder)
 	var media_packs_changed: bool = (values.sound_pack_folder != preferences.sound_pack_folder
 			or values.music_pack_folder != preferences.music_pack_folder or (not app.asset_state.assets_ready and changed_source))
 	var selected: GameAssetSource
@@ -160,13 +162,8 @@ func apply_settings() -> void:
 			else DisplayServer.WINDOW_MODE_WINDOWED
 		)
 
-	var error := SettingsStore.save_values(
-		preferences.music_volume, preferences.effects_volume, preferences.fullscreen,
-		preferences.settings_path, preferences.graphics_source, preferences.graphics_folder, preferences.soundtrack_folder,
-		preferences.city_renderer, preferences.background_audio, preferences.zoom_graphics, preferences.toolbar_sounds,
-		preferences.sound_pack_folder, preferences.music_pack_folder, preferences.shuffle_music,
-		preferences.default_mayor_name, preferences.overview_graphics, preferences.ui_theme, preferences.dark_underground,
-		preferences.translucent_menus, preferences.check_for_updates, preferences.data_pack_folder, preferences.ui_scale,
+	var error := SettingsStore.save_values(preferences.music_volume, preferences.effects_volume, preferences.fullscreen,
+		preferences.settings_path, preferences.save_options(),
 	)
 	app.status_label.text = (
 		"Settings saved."

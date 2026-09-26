@@ -57,7 +57,8 @@ func _run() -> void:
 		var uses_brush := tool <= ScurkPixelCanvas.TOOL_RECTANGLE or tool == ScurkPixelCanvas.TOOL_SHADE
 		assert(editor.brush_size_selector.is_visible_in_tree() == uses_brush)
 		assert(editor.round_brush_check.is_visible_in_tree() == uses_brush)
-		assert(editor.filled_shapes_check.is_visible_in_tree() == (tool >= ScurkPixelCanvas.TOOL_DIAMOND and tool <= ScurkPixelCanvas.TOOL_RECTANGLE))
+		assert(editor.filled_shapes_check.is_visible_in_tree() == (tool >= ScurkPixelCanvas.TOOL_DIAMOND
+			and tool <= ScurkPixelCanvas.TOOL_RECTANGLE))
 	assert(editor.studio.tabs.current_tab == 2)
 	editor.tool_buttons[ScurkPixelCanvas.TOOL_LINE].pressed.emit()
 	snap_lines.button_pressed = true
@@ -156,66 +157,8 @@ func _run() -> void:
 	editor._select_view(0)
 	assert(editor.tile_set.to_bytes().bytes == before_clip_controls)
 	editor.clip_region_check.button_pressed = false
-	# A pixel outside the original tile survives commit, undo, save, and reload.
-	var original: PackedByteArray = editor.tile_set.to_bytes().bytes
-	editor._set_clipping_enabled(false)
-	assert(editor.pixel_canvas.edit_mask.is_empty())
-	var pixels := editor.pixel_canvas.pixels.duplicate()
-	pixels[240 * Workspace.WIDTH] = 171
-	editor._capture_edit_start()
-	editor._commit_pixels(pixels)
-	var expanded: PackedByteArray = editor.tile_set.to_bytes().bytes
-	assert(expanded != original)
-	assert(editor._resolved_view_entry(0).width == 128)
-	assert(editor.pixel_canvas.pixels[240 * Workspace.WIDTH] == 171)
-	editor.undo()
-	assert(editor.tile_set.to_bytes().bytes == original)
-	editor.redo()
-	assert(editor.tile_set.to_bytes().bytes == expanded)
-	editor._on_object_selected(1)
-	assert(editor._clipping_enabled())
-	editor._on_object_selected(0)
-	assert(not editor._clipping_enabled())
-	var folder := "user://scurk-ui-%d" % OS.get_process_id()
-	assert(editor.save_path(folder.path_join("CUSTOM.MIF")).ok)
-	assert(editor.load_path(folder.path_join("CUSTOM.MIF")).ok)
-	assert(not editor._clipping_enabled())
-	assert(editor.pixel_canvas.pixels[240 * Workspace.WIDTH] == 171)
-	# Export any view without changing the active view or indexed artwork.
-	for view in 3:
-		editor.request_export_bmp()
-		editor.dialog_registry.export_view.select(view)
-		editor.dialog_registry.export_options.confirmed.emit()
-		editor.dialog_registry.export_options.hide()
-		editor.export_bmp_dialog.hide()
-		assert(editor.pending_export_view == view)
-		var path := folder.path_join("view-%d.png" % view)
-		editor._export_selected_bmp(path)
-		var decoded := IndexedPng.load_path(path)
-		var expected := editor._output_shape_for_view(view)
-		assert(decoded.ok and decoded.width == expected.width and decoded.height == expected.height)
-		assert(decoded.pixels == expected.pixels and decoded.palette.colors == assets.palette.colors)
-		var bytes := FileAccess.get_file_as_bytes(path)
-		assert(bytes[24] == 8 and bytes[25] == 3) # indexed PNG, 8 bits per pixel
-		assert(editor.current_view == 0 and editor.tile_set.to_bytes().bytes == expanded)
-		DirAccess.remove_absolute(path)
-	# the Format list sets the file filter, the file extension, and the encoder
-	editor.request_export_bmp()
-	editor.dialog_registry.export_format.select(2)
-	editor.dialog_registry.export_options.confirmed.emit()
-	editor.dialog_registry.export_options.hide()
-	editor.export_bmp_dialog.hide()
-	assert(editor.export_bmp_dialog.filters == PackedStringArray(["*.bmp ; 256-color indexed BMP"]))
-	assert(editor.export_bmp_dialog.current_file.ends_with(".bmp"))
-	var bitmap_path := folder.path_join("view-0.bmp")
-	editor._export_selected_bmp(bitmap_path)
-	assert(IndexedBmp.decode(FileAccess.get_file_as_bytes(bitmap_path)).width == editor._output_shape_for_view(0).width)
-	DirAccess.remove_absolute(bitmap_path)
-	editor.dialog_registry.export_format.select(0)
-	assert(not editor.export_image_path(folder.path_join("invalid.png"), 3).ok)
-	assert(not editor.export_image_path(folder.path_join("invalid.png"), 0, 4).ok)
-	editor.canvas_panel.show_views_button.button_pressed = true
-	assert(editor.canvas_panel.previews_panel.visible)
+	var folder := _test_expanded_artwork_and_export(editor, assets)
+
 	for index in editor.canvas_panel.preview_checks.size():
 		editor.canvas_panel.preview_checks[index].button_pressed = false
 		assert(not editor.view_preview_panels[index].visible)
@@ -234,51 +177,15 @@ func _run() -> void:
 		assert(editor.get_global_rect().encloses(check.get_global_rect()), "Preview filters stay inside the editor")
 	editor.canvas_panel.show_views_button.button_pressed = false
 	assert(not editor.canvas_panel.previews_panel.visible)
-	# controls stay visible through resize cycles
-	var textures := editor.palette_panel.texture_control
-	for viewport_size in [Vector2(1024, 768), Vector2(1280, 800), Vector2(1600, 1000), Vector2(1024, 768)]:
-		editor.size = viewport_size
-		for frame in 4:
-			await process_frame
-		var bounds := editor.get_global_rect()
-		for control: Control in [editor.get_node("Panel/Content"), editor.get_node("Panel/Content/Toolbar"),
-			editor.get_node("Panel/Content/Body"), editor.studio, editor.get_node("Panel/Content/StatusBar"),
-			editor.canvas_panel, editor.canvas_panel.pixel_scroll, editor.canvas_panel.get_node("Footer")]:
-			_assert_inside(bounds, control)
-		assert(editor.canvas_panel.pixel_scroll.size.x > 0 and editor.canvas_panel.pixel_scroll.size.y > 0)
-		var colors := editor.palette_panel.palette_control
-		for slot in colors.visible_indices.size():
-			var cell := colors._cell_rect(slot)
-			assert(colors.index_at(cell.get_center()) == colors.visible_indices[slot])
-			assert(is_equal_approx(cell.size.x, cell.size.y))
-		assert(is_equal_approx(colors._cell_rect(255).end.x, colors.size.x))
-		assert(is_equal_approx(colors._cell_rect(255).end.y, colors.size.y))
-		var columns := textures.columns
-		var texture_rect := textures.get_global_rect()
-		for frame in 4:
-			await process_frame
-			assert(textures.columns == columns and textures.get_global_rect() == texture_rect)
-		for index in textures.patterns.size():
-			var cell := textures.cell_rect(index)
-			assert(textures.index_at(cell.get_center()) == index)
-			textures.buttons[index].pressed.emit()
-			assert(editor.pixel_canvas.texture_index == index)
-			assert(cell.size.x >= 32 and cell.size.y >= 32)
-			assert(cell.position.x >= 0 and cell.position.y >= 0)
-			assert(cell.end.x <= textures.size.x + 0.01 and cell.end.y <= textures.size.y + 0.01)
-		var palette_scroll := editor.palette_panel.get_node("Margin/Scroll") as ScrollContainer
-		palette_scroll.ensure_control_visible(textures)
-		await process_frame
-		assert(textures.get_global_rect().end.y <= editor.size.y)
-		palette_scroll.scroll_vertical = 0
-		assert(textures.index_at(Vector2(-1, 0)) == -1)
-		assert(textures.index_at(Vector2(textures.size.x, 0)) == -1)
+	await _test_resize_layout(editor)
 	DirAccess.remove_absolute(folder.path_join("CUSTOM.MIF"))
 	DirAccess.remove_absolute(folder)
+
 	editor.free()
 	await _test_context_menu_input()
 	await _test_menu_bar_shortcuts()
-	print("PASS: SCURK selection, modal names, synchronized cycling, unclipped save/reload, selected-view indexed PNG, views and viewport fit")
+	print(("PASS: SCURK selection, modal names, synchronized cycling, unclipped save/reload, "
+		+ "selected-view indexed PNG, views and viewport fit"))
 	quit()
 
 
@@ -355,7 +262,10 @@ func _test_paint_sidebar(editor: ScurkEditorControl) -> void:
 
 func _assert_inside(bounds: Rect2, control: Control) -> void:
 	var rect := control.get_global_rect()
-	assert(rect.position.x >= bounds.position.x and rect.position.y >= bounds.position.y, "%s: %s starts outside %s" % [control.get_path(), rect, bounds])
+	assert(
+		rect.position.x >= bounds.position.x and rect.position.y >= bounds.position.y,
+		"%s: %s starts outside %s" % [control.get_path(), rect, bounds],
+	)
 	assert(rect.end.x <= bounds.end.x and rect.end.y <= bounds.end.y, "%s: %s ends outside %s" % [control.get_path(), rect, bounds])
 
 
@@ -387,7 +297,7 @@ func _test_clip_edges(assets: OriginalGameAssets) -> void:
 		var base := assets.large_sprites.find_sprite(id)
 		for view in 3:
 			var archive := assets.large_sprites if view == 0 else assets.small_medium_sprites
-			var entry := archive.find_sprite(ScurkEditorControl.view_sprite_id(id, view))
+			var entry := archive.find_sprite(ScurkEditorRules.view_sprite_id(id, view))
 			var decoded := entry.decode_indices()
 			assert(decoded.ok)
 			var raw := Workspace.from_shape(entry.width, entry.height, decoded.pixels, view, base.width, false)
@@ -636,7 +546,8 @@ func _test_underground_canvas(editor: ScurkEditorControl) -> void:
 		assert(background.size() == Workspace.WIDTH * Workspace.HEIGHT)
 		assert(background != editor.surface_background_pixels)
 		var sprites := editor.base_large_sprites if view == ScurkSpriteIds.View.LARGE else editor.base_small_medium_sprites
-		var ground := sprites.find_sprite(ScurkEditorControl.view_sprite_id(ScurkSpriteIds.LARGE_FIRST + CityUndergroundView.TERRAIN_WIREFRAME_FIRST, view))
+		var ground := sprites.find_sprite(ScurkEditorRules.view_sprite_id(ScurkSpriteIds.LARGE_FIRST
+			+ CityUndergroundView.TERRAIN_WIREFRAME_FIRST, view))
 		var source := ground.decode_indices().pixels
 		var divisor := Workspace.view_divisor(view)
 		var origin := Vector2i((Workspace.WIDTH - ground.width * divisor) / 2, Workspace.HEIGHT - entry.height * divisor)
@@ -684,3 +595,109 @@ func _test_close_confirmation(editor: ScurkEditorControl) -> void:
 	assert(editor.dirty and closed.size() == 1)
 	editor.studio.modified = false
 	editor.close_requested.disconnect(on_close)
+
+
+func _test_expanded_artwork_and_export(editor: ScurkEditorControl, assets: OriginalGameAssets) -> String:
+	# A pixel outside the original tile survives commit, undo, save, and reload.
+	var original: PackedByteArray = editor.tile_set.to_bytes().bytes
+	editor._set_clipping_enabled(false)
+	assert(editor.pixel_canvas.edit_mask.is_empty())
+	var pixels := editor.pixel_canvas.pixels.duplicate()
+	pixels[240 * Workspace.WIDTH] = 171
+	editor._capture_edit_start()
+	editor._commit_pixels(pixels)
+	var expanded: PackedByteArray = editor.tile_set.to_bytes().bytes
+	assert(expanded != original)
+	assert(editor._resolved_view_entry(0).width == 128)
+	assert(editor.pixel_canvas.pixels[240 * Workspace.WIDTH] == 171)
+	editor.undo()
+	assert(editor.tile_set.to_bytes().bytes == original)
+	editor.redo()
+	assert(editor.tile_set.to_bytes().bytes == expanded)
+	editor._on_object_selected(1)
+	assert(editor._clipping_enabled())
+	editor._on_object_selected(0)
+	assert(not editor._clipping_enabled())
+	var folder := "user://scurk-ui-%d" % OS.get_process_id()
+	assert(editor.save_path(folder.path_join("CUSTOM.MIF")).ok)
+	assert(editor.load_path(folder.path_join("CUSTOM.MIF")).ok)
+	assert(not editor._clipping_enabled())
+	assert(editor.pixel_canvas.pixels[240 * Workspace.WIDTH] == 171)
+	# Export any view without changing the active view or indexed artwork.
+	for view in 3:
+		editor.request_export_bmp()
+		editor.dialog_registry.export_view.select(view)
+		editor.dialog_registry.export_options.confirmed.emit()
+		editor.dialog_registry.export_options.hide()
+		editor.export_bmp_dialog.hide()
+		assert(editor.pending_export_view == view)
+		var path := folder.path_join("view-%d.png" % view)
+		editor._export_selected_bmp(path)
+		var decoded := IndexedPng.load_path(path)
+		var expected := editor._output_shape_for_view(view)
+		assert(decoded.ok and decoded.width == expected.width and decoded.height == expected.height)
+		assert(decoded.pixels == expected.pixels and decoded.palette.colors == assets.palette.colors)
+		var bytes := FileAccess.get_file_as_bytes(path)
+		assert(bytes[24] == 8 and bytes[25] == 3) # indexed PNG, 8 bits per pixel
+		assert(editor.current_view == 0 and editor.tile_set.to_bytes().bytes == expanded)
+		DirAccess.remove_absolute(path)
+	# the Format list sets the file filter, the file extension, and the encoder
+	editor.request_export_bmp()
+	editor.dialog_registry.export_format.select(2)
+	editor.dialog_registry.export_options.confirmed.emit()
+	editor.dialog_registry.export_options.hide()
+	editor.export_bmp_dialog.hide()
+	assert(editor.export_bmp_dialog.filters == PackedStringArray(["*.bmp ; 256-color indexed BMP"]))
+	assert(editor.export_bmp_dialog.current_file.ends_with(".bmp"))
+	var bitmap_path := folder.path_join("view-0.bmp")
+	editor._export_selected_bmp(bitmap_path)
+	assert(IndexedBmp.decode(FileAccess.get_file_as_bytes(bitmap_path)).width == editor._output_shape_for_view(0).width)
+	DirAccess.remove_absolute(bitmap_path)
+	editor.dialog_registry.export_format.select(0)
+	assert(not editor.export_image_path(folder.path_join("invalid.png"), 3).ok)
+	assert(not editor.export_image_path(folder.path_join("invalid.png"), 0, 4).ok)
+	editor.canvas_panel.show_views_button.button_pressed = true
+	assert(editor.canvas_panel.previews_panel.visible)
+	return folder
+
+
+func _test_resize_layout(editor: ScurkEditorControl) -> void:
+	# controls stay visible through resize cycles
+	var textures := editor.palette_panel.texture_control
+	for viewport_size in [Vector2(1024, 768), Vector2(1280, 800), Vector2(1600, 1000), Vector2(1024, 768)]:
+		editor.size = viewport_size
+		for frame in 4:
+			await process_frame
+		var bounds := editor.get_global_rect()
+		for control: Control in [editor.get_node("Panel/Content"), editor.get_node("Panel/Content/Toolbar"),
+			editor.get_node("Panel/Content/Body"), editor.studio, editor.get_node("Panel/Content/StatusBar"),
+			editor.canvas_panel, editor.canvas_panel.pixel_scroll, editor.canvas_panel.get_node("Footer")]:
+			_assert_inside(bounds, control)
+		assert(editor.canvas_panel.pixel_scroll.size.x > 0 and editor.canvas_panel.pixel_scroll.size.y > 0)
+		var colors := editor.palette_panel.palette_control
+		for slot in colors.visible_indices.size():
+			var cell := colors._cell_rect(slot)
+			assert(colors.index_at(cell.get_center()) == colors.visible_indices[slot])
+			assert(is_equal_approx(cell.size.x, cell.size.y))
+		assert(is_equal_approx(colors._cell_rect(255).end.x, colors.size.x))
+		assert(is_equal_approx(colors._cell_rect(255).end.y, colors.size.y))
+		var columns := textures.columns
+		var texture_rect := textures.get_global_rect()
+		for frame in 4:
+			await process_frame
+			assert(textures.columns == columns and textures.get_global_rect() == texture_rect)
+		for index in textures.patterns.size():
+			var cell := textures.cell_rect(index)
+			assert(textures.index_at(cell.get_center()) == index)
+			textures.buttons[index].pressed.emit()
+			assert(editor.pixel_canvas.texture_index == index)
+			assert(cell.size.x >= 32 and cell.size.y >= 32)
+			assert(cell.position.x >= 0 and cell.position.y >= 0)
+			assert(cell.end.x <= textures.size.x + 0.01 and cell.end.y <= textures.size.y + 0.01)
+		var palette_scroll := editor.palette_panel.get_node("Margin/Scroll") as ScrollContainer
+		palette_scroll.ensure_control_visible(textures)
+		await process_frame
+		assert(textures.get_global_rect().end.y <= editor.size.y)
+		palette_scroll.scroll_vertical = 0
+		assert(textures.index_at(Vector2(-1, 0)) == -1)
+		assert(textures.index_at(Vector2(textures.size.x, 0)) == -1)

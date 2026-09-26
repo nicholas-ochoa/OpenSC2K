@@ -1,18 +1,5 @@
 extends SceneTree
 
-@warning_ignore_start("integer_division")
-
-class ChoiceRandom extends GameLcgRandom:
-	var choice: int
-
-
-	func _init(value: int) -> void:
-		choice = value
-
-
-	func next_mod(limit: int) -> int:
-		return choice % limit
-
 var checks := 0
 var failures := 0
 
@@ -43,7 +30,10 @@ func _initialize() -> void:
 			var funds := city.funds()
 			var proposal := MilitaryProposalPhase.resolve(city, true, ChoiceRandom.new(1))
 			check(proposal.ok and proposal.base_type == 4 and proposal.notice_id == 0xf3, "Accepted proposal can select Navy")
-			check(proposal.changed_indices.size() == 40 and proposal.view_center_requests == [site.get_center()], "Naval proposal publishes plot and center")
+			check(
+				proposal.changed_indices.size() == 40 and proposal.view_center_requests == [site.get_center()],
+				"Naval proposal publishes plot and center",
+			)
 			check(city.funds() == funds and doc.misc_u32(0x0fa8) == 40, "Navy transfers counters without cost")
 			for index in proposal.changed_indices:
 				check((city.zones[index] & 15) == 7 and city.buildings[index] == 0, "Navy reserves clear land")
@@ -122,3 +112,18 @@ func saved_payloads(document: Sc2File) -> Array:
 	for chunk in document.chunks:
 		values.append(chunk.decoded_payload.duplicate())
 	return values
+
+
+@warning_ignore_start("integer_division")
+
+
+class ChoiceRandom extends GameLcgRandom:
+	var choice: int
+
+
+	func _init(value: int) -> void:
+		choice = value
+
+
+	func next_mod(limit: int) -> int:
+		return choice % limit

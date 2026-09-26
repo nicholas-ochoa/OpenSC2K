@@ -1,7 +1,9 @@
 class_name FrameSimulationRunner
 extends RefCounted
+
 # one isolated tick at a time. the main thread publishes only complete ticks
 const DEFAULT_BUDGET_USEC := 8000
+
 var controller: GameSpeedController
 var budget_usec := DEFAULT_BUDGET_USEC
 var pending_msec := 0.0

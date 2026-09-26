@@ -2,16 +2,6 @@ class_name IsometricPixelOperations
 extends IsometricConstants
 
 
-
-class OcclusionResult extends RefCounted:
-	var image: Image
-	var occluded_pixels: int
-
-	func _init(visible: Image, count := 0) -> void:
-		image = visible
-		occluded_pixels = count
-
-
 static func foreground_difference_mask(sprite: Image, background: Image) -> Image:
 	if sprite == null:
 		return null
@@ -179,7 +169,10 @@ static func occlude_dynamic_with_mask(
 				and map_point.y >= 0
 				and (index_reader.is_valid() or (map_point.x < index_image.get_width() and map_point.y < index_image.get_height()))
 			):
-				var encoded: Color = index_reader.call(map_point.x, map_point.y) if index_reader.is_valid() else index_image.get_pixelv(map_point)
+				var encoded: Color = index_reader.call(
+					map_point.x,
+					map_point.y,
+				) if index_reader.is_valid() else index_image.get_pixelv(map_point)
 				var palette_index := roundi(encoded.r * 255.0)
 				hidden = same_tile_foreground_indices.has(palette_index)
 
@@ -347,3 +340,12 @@ static func highway_train_deck_mask(surface: Image, thickness: int) -> Image:
 				mask.set_pixel(x, y, Color.TRANSPARENT)
 
 	return mask
+
+
+class OcclusionResult extends RefCounted:
+	var image: Image
+	var occluded_pixels: int
+
+	func _init(visible: Image, count := 0) -> void:
+		image = visible
+		occluded_pixels = count

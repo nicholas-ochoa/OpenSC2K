@@ -4,7 +4,6 @@ extends SceneTree
 
 # Narrow byte overlays at 128, and the wide SC2X two-plane layout at 256.
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const EDGES := [128, 256]
 const MIRRORS := {
 	"XTER": "terrain", "XBLD": "buildings", "XZON": "zones",

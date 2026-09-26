@@ -2,7 +2,6 @@ class_name BuildingUnderground
 extends BuildingConstants
 
 
-
 static func _place_pipe(
 	underground: PackedByteArray,
 	terrain: PackedByteArray,
@@ -15,7 +14,9 @@ static func _place_pipe(
 	var index := point.x * map_edge + point.y
 	var old_tile := int(underground[index])
 
-	if (old_tile >= UNDER_PIPE_FIRST and old_tile <= UNDER_PIPE_LAST) or old_tile == UNDER_PIPE_SUBWAY_LR or old_tile == UNDER_PIPE_SUBWAY_TB:
+	if ((old_tile >= UNDER_PIPE_FIRST and old_tile <= UNDER_PIPE_LAST)
+			or old_tile == UNDER_PIPE_SUBWAY_LR
+			or old_tile == UNDER_PIPE_SUBWAY_TB):
 		return
 
 	var new_tile := -1

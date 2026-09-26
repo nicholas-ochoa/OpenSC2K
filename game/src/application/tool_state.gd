@@ -1,6 +1,34 @@
 class_name ToolState
 extends RefCounted
 
+const Random = preload("res://src/simulation/random/sim_random.gd")
+
+# selected tool
+var selected_group: int = CityToolIds.Group.RESIDENTIAL
+var selected_subtool: int = CityToolIds.Residential.LIGHT
+var selected_tool_available := false
+# edit state
+var last_edit_command: EditCommandResult
+var tool_random := Random.new(1)
+var dispatch_cycles := PackedInt32Array([0, 0, 0])
+var dispatch_initialized := false
+# landscape editing
+var landscape_brush_command: EditCommandResult
+var level_brush_altitude := -1
+var landscape_editor := false
+var terrain_stretch := TerrainStretchSession.new()
+# pending tool prompts
+var pending_sign_tile := Vector2i(-1, -1)
+var pending_bridge_request: BridgeRequest
+var pending_tool_choices: ToolChoices
+var pending_stadium_command: BuildingEditResult
+var pending_network_connection: ConnectionRequest
+var pending_highway_connection: ConnectionRequest
+var pending_tunnel_request: TunnelRequest
+var active_query_result: QueryResult
+var pending_building_objection_group := -1
+var pending_building_objection_subtool := -1
+
 
 class BridgeRequest extends RefCounted:
 	var start: Vector2i
@@ -56,39 +84,17 @@ class ConnectionRequest extends RefCounted:
 	var bridge_type: int
 	var free_mode: bool
 
-	func _init(value_start: Vector2i, value_finish: Vector2i, value_group_index: int, value_subtool_index: int, value_bridge_type: int, value_free_mode: bool) -> void:
+	func _init(
+		value_start: Vector2i,
+		value_finish: Vector2i,
+		value_group_index: int,
+		value_subtool_index: int,
+		value_bridge_type: int,
+		value_free_mode: bool,
+	) -> void:
 		start = value_start
 		finish = value_finish
 		group_index = value_group_index
 		subtool_index = value_subtool_index
 		bridge_type = value_bridge_type
 		free_mode = value_free_mode
-
-
-const Random = preload("res://src/simulation/random/sim_random.gd")
-
-# selected tool
-var selected_group: int = CityToolIds.Group.RESIDENTIAL
-var selected_subtool: int = CityToolIds.Residential.LIGHT
-var selected_tool_available := false
-# edit state
-var last_edit_command: EditCommandResult
-var tool_random := Random.new(1)
-var dispatch_cycles := PackedInt32Array([0, 0, 0])
-var dispatch_initialized := false
-# landscape editing
-var landscape_brush_command: EditCommandResult
-var level_brush_altitude := -1
-var landscape_editor := false
-var terrain_stretch := TerrainStretchSession.new()
-# pending tool prompts
-var pending_sign_tile := Vector2i(-1, -1)
-var pending_bridge_request: BridgeRequest
-var pending_tool_choices: ToolChoices
-var pending_stadium_command: BuildingEditResult
-var pending_network_connection: ConnectionRequest
-var pending_highway_connection: ConnectionRequest
-var pending_tunnel_request: TunnelRequest
-var active_query_result: QueryResult
-var pending_building_objection_group := -1
-var pending_building_objection_subtool := -1

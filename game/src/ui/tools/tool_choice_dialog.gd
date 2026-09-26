@@ -1,9 +1,9 @@
 class_name ToolChoiceDialog
 extends ConfirmationDialog
 
-const Numbers = preload("res://src/ui/shared/display_number_format.gd")
-
 signal choice_requested(index: int)
+
+const Numbers = preload("res://src/ui/shared/display_number_format.gd")
 
 var choice_buttons: Array[Button] = []
 

@@ -1,7 +1,6 @@
 class_name ScurkEditTool
 extends RefCounted
 
-
 var name: String
 var group: int
 var subtool: int

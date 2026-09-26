@@ -301,7 +301,10 @@ func _test_stamp_preview(palette: Sc2Palette) -> void:
 	canvas.paint_options.lock_transparent = true
 	canvas.queue_redraw()
 	await RenderingServer.frame_post_draw
-	assert(viewport.get_texture().get_image().get_pixel(25, 24).is_equal_approx(palette.color(42)), "Preview respects transparent pixel lock")
+	assert(
+		viewport.get_texture().get_image().get_pixel(25, 24).is_equal_approx(palette.color(42)),
+		"Preview respects transparent pixel lock",
+	)
 	canvas.paint_options.lock_transparent = false
 	canvas.hover_point = Vector2i(1, 1)
 	canvas.queue_redraw()
@@ -309,7 +312,10 @@ func _test_stamp_preview(palette: Sc2Palette) -> void:
 	assert(viewport.get_texture().get_image().get_pixel(25, 24).is_equal_approx(palette.color(55)), "Preview follows the pointer")
 	canvas._on_mouse_exited()
 	await RenderingServer.frame_post_draw
-	assert(viewport.get_texture().get_image().get_pixel(25, 24).is_equal_approx(palette.color(42)), "Preview clears when the pointer leaves")
+	assert(
+		viewport.get_texture().get_image().get_pixel(25, 24).is_equal_approx(palette.color(42)),
+		"Preview clears when the pointer leaves",
+	)
 	assert(canvas.pixels == pixels)
 	viewport.free()
 
@@ -374,4 +380,5 @@ func _test_selection_animation(palette: Sc2Palette) -> void:
 
 
 func _color_near(value: Color, expected: Color) -> bool:
-	return absf(value.r - expected.r) < 0.01 and absf(value.g - expected.g) < 0.01 and absf(value.b - expected.b) < 0.01 and absf(value.a - expected.a) < 0.01
+	return (absf(value.r - expected.r) < 0.01 and absf(value.g - expected.g) < 0.01 and absf(value.b - expected.b) < 0.01
+		and absf(value.a - expected.a) < 0.01)

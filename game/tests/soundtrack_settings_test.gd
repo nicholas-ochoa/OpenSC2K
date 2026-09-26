@@ -9,7 +9,10 @@ func _run() -> void:
 	var path := "user://test_soundtrack_settings_%d.cfg" % OS.get_process_id()
 	var folder := ProjectSettings.globalize_path("res://../references/SIMCITY2000/OST")
 	assert(AppSettingsStore.load_values(path).soundtrack_folder == "")
-	assert(AppSettingsStore.save_values(0.5, 0.3, false, path, "auto", "", folder) == OK)
+	var recording_options := AppSettingsStore.SaveOptions.new()
+	recording_options.graphics_source = "auto"
+	recording_options.soundtrack_folder = folder
+	assert(AppSettingsStore.save_values(0.5, 0.3, false, path, recording_options) == OK)
 	assert(AppSettingsStore.load_values(path).soundtrack_folder == folder)
 	assert(AppSettingsStore.save_values(0.2, 0.3, false, path) == OK)
 	assert(AppSettingsStore.load_values(path).soundtrack_folder == folder)
@@ -31,7 +34,10 @@ func _run() -> void:
 	controller.handle_application_focus_out()
 	controller.set_soundtrack_folder("/missing/OST", true)
 	assert(not controller.music_playback_is_active())
-	assert(AppSettingsStore.save_values(0.2, 0.3, false, path, "auto", "", "") == OK)
+	var clear_recording_options := AppSettingsStore.SaveOptions.new()
+	clear_recording_options.graphics_source = "auto"
+	clear_recording_options.soundtrack_folder = ""
+	assert(AppSettingsStore.save_values(0.2, 0.3, false, path, clear_recording_options) == OK)
 	assert(AppSettingsStore.load_values(path).soundtrack_folder == "")
 	controller.free()
 	dialog.free()

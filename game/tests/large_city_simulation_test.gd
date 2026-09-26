@@ -19,7 +19,11 @@ func _init() -> void:
 		# All starts at minimum/maximum extents; original dispatch is covered by core.
 		# Native grids retain fire, direct map damage, and moving-object starts.
 		var native := "--native" in OS.get_cmdline_user_args()
-		var disasters: Array = range(1, 19) if not native and edge in [16, 512] else [DisasterStartPhase.DISASTER_FIRE, DisasterStartPhase.DISASTER_EARTHQUAKE, DisasterStartPhase.DISASTER_MONSTER]
+		var disasters: Array = range(
+			1,
+			19,
+		) if not native and edge in [16, 512] else [DisasterStartPhase.DISASTER_FIRE, DisasterStartPhase.DISASTER_EARTHQUAKE,
+		DisasterStartPhase.DISASTER_MONSTER]
 		for disaster in disasters:
 			print("Checking %d disaster %d" % [edge, disaster])
 			var document := fixture(edge)
@@ -41,7 +45,9 @@ func _init() -> void:
 			# Every entry point above accepts every relevant record/grid width.
 			# Map and moving continuations are shared: exercise each branch at 16/128,
 			# and fire/flood/object publication at the largest extent.
-			if edge > 128 and disaster not in [DisasterStartPhase.DISASTER_FIRE, DisasterStartPhase.DISASTER_FLOOD, DisasterStartPhase.DISASTER_MONSTER]:
+			if (edge > 128
+					and disaster not in [DisasterStartPhase.DISASTER_FIRE, DisasterStartPhase.DISASTER_FLOOD,
+					DisasterStartPhase.DISASTER_MONSTER]):
 				continue
 			for tick in (2 if edge == 16 else 1):
 				check(engine.advance_moving_things(tick * 200).ok, "moving disaster tick")
@@ -49,7 +55,10 @@ func _init() -> void:
 				if engine.active_disaster_type != 0:
 					check(engine.advance_disaster_tick().ok, "map disaster tick")
 
-			if engine.active_disaster_type != 0 or engine.pending_disaster_type != 0 or DisasterStartObjectsState.has_active_object(city, disaster):
+			if engine.active_disaster_type != 0 or engine.pending_disaster_type != 0 or DisasterStartObjectsState.has_active_object(
+				city,
+				disaster,
+			):
 				check(CityDebugActions.end_disaster(city, document, engine).ok, "clear disaster %d" % edge)
 
 			check(not DisasterStartObjectsState.has_active_object(city, disaster), "objects cleared")

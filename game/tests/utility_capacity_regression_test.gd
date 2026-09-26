@@ -1,14 +1,9 @@
 extends SceneTree
 
+
 @warning_ignore_start("integer_division")
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
-class FixedRandom extends SimRandom:
-
-
-	func next_u15() -> int:
-		return 0
 
 var checks := 0
 var failures := 0
@@ -47,7 +42,7 @@ func _run() -> void:
 
 	for edge in [128, 256, 384, 512]:
 		# Retain legacy widths and every SC2X version at the original and large sizes.
-		var versions: Array = {128: [2, 3], 256: [1], 384: [2], 512: [3]}[edge]
+		var versions: Array = { 128: [2, 3], 256: [1], 384: [2], 512: [3] }[edge]
 
 		for version in versions:
 			check_power(edge, version)
@@ -85,7 +80,10 @@ func check_power(edge: int, version: int) -> void:
 	check(result.usage_percent == (expected * 100) / 44, "Power usage counts every consumer")
 
 	for index in buildings.size():
-		check(city.tile_flags[city.index_of(point.x, point.y + index)] & PowerPhase.FLAG_POWERED != 0, "Consumer statistics do not change power distribution")
+		check(
+			city.tile_flags[city.index_of(point.x, point.y + index)] & PowerPhase.FLAG_POWERED != 0,
+			"Consumer statistics do not change power distribution",
+		)
 
 	var bytes: PackedByteArray = doc.serialize().data
 	var loaded := Sc2File.new()
@@ -143,7 +141,8 @@ func check_water_source_order(edge: int, version: int) -> void:
 	var city := CityState.from_document(fixture(edge, version))
 	var last := edge - 1
 
-	for point in [Vector2i(0, 0), Vector2i(3, last), Vector2i(last, 2), Vector2i(7, 7), Vector2i(7, 9), Vector2i(9, 7), Vector2i(last, last)]:
+	for point in [Vector2i(0, 0), Vector2i(3, last), Vector2i(last, 2), Vector2i(7, 7), Vector2i(7, 9), Vector2i(9, 7),
+		Vector2i(last, last)]:
 		city.set_building_id(point.x, point.y, Tiles.DESALINIZATION if point.x == 7 else Tiles.WATER_PUMP)
 
 	for rotation in 4:
@@ -192,7 +191,10 @@ func check_power_queue_limit(version: int) -> void:
 		check(powered == powerable and result.consumers == powerable - 30, "SC2X power reaches every tile of a wide network")
 	else:
 		# Values from the original trace, with its dropped queue entries.
-		check(powered == 11915 and result.consumers == 11885 and result.usage_percent == 71, "SC2 power keeps the original trace queue limit")
+		check(
+			powered == 11915 and result.consumers == 11885 and result.usage_percent == 71,
+			"SC2 power keeps the original trace queue limit",
+		)
 
 
 # A very wide pipe network overflows the same 512-entry trace queue.
@@ -235,12 +237,6 @@ func check_water_queue_limit(version: int) -> void:
 		check(watered < consumers, "SC2 water drops tiles of a very wide network")
 
 
-class OriginalWater extends RefCounted:
-	var flags := PackedByteArray()
-	var used := 0
-	var supply := 0
-
-
 # A direct model of the original water scan for a 128 map at rotation 0:
 # a 512-entry ring queue that drops its oldest entry when full.
 func _original_water(city: CityState) -> OriginalWater:
@@ -274,13 +270,7 @@ func _original_water(city: CityState) -> OriginalWater:
 					var building := buildings[index]
 
 					if building == Tiles.WATER_PUMP:
-						if flags[index] & Sc2TileFlags.POWERED:
-							supply += base
-
-							for nx in range(index / 128 - 1, index / 128 + 2):
-								for ny in range(index % 128 - 1, index % 128 + 2):
-									if nx >= 0 and nx < 128 and ny >= 0 and ny < 128 and flags[nx * 128 + ny] & 5 == 4:
-										supply += 10
+						supply += _original_pump_supply(flags, index, base)
 					elif building == Tiles.WATER_TOWER:
 						storage += 100
 
@@ -327,6 +317,19 @@ func _original_water(city: CityState) -> OriginalWater:
 	out.flags = flags
 
 	return out
+
+
+func _original_pump_supply(flags: PackedByteArray, index: int, base: int) -> int:
+	if not flags[index] & Sc2TileFlags.POWERED:
+		return 0
+
+	var supply := base
+	for nx in range(index / 128 - 1, index / 128 + 2):
+		for ny in range(index % 128 - 1, index % 128 + 2):
+			if nx >= 0 and nx < 128 and ny >= 0 and ny < 128 and flags[nx * 128 + ny] & 5 == 4:
+				supply += 10
+
+	return supply
 
 
 func _ring_push(ring: Array, index: int) -> void:
@@ -381,7 +384,10 @@ func check_water(edge: int, version: int) -> void:
 		var result := WaterPhase.run(city)
 		check(result.ok and result.treatment_capacity == expected_capacity, "Water treatment retains full SC2X count and legacy SC2 width")
 		check(result.treatment_sufficient == (expected_capacity >= 0), "Treatment sufficiency follows computed capacity")
-		check(doc.misc_u32(WaterPhase.MISC_TILE_COUNTS + WaterPhase.WATER_TREATMENT * 4) == count, "Treatment calculation does not rewrite saved tile count")
+		check(
+			doc.misc_u32(WaterPhase.MISC_TILE_COUNTS + WaterPhase.WATER_TREATMENT * 4) == count,
+			"Treatment calculation does not rewrite saved tile count",
+		)
 
 
 func check_prisons(edge: int, version: int) -> void:
@@ -418,3 +424,16 @@ func check_prisons(edge: int, version: int) -> void:
 	var bytes: PackedByteArray = doc.serialize().data
 	var loaded := Sc2File.new()
 	check(loaded.parse(bytes) and loaded.serialize(true).data == bytes, "Annual prison exact save round trip")
+
+
+class FixedRandom extends SimRandom:
+
+
+	func next_u15() -> int:
+		return 0
+
+
+class OriginalWater extends RefCounted:
+	var flags := PackedByteArray()
+	var used := 0
+	var supply := 0

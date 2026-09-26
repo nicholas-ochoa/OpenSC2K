@@ -12,7 +12,7 @@ func _run() -> void:
 		printerr("Invalid sample count")
 		quit(1)
 		return
-	report_metadata({"samples": samples, "timed_work": "cold and reopened set_data_view calls; excludes drawing"})
+	report_metadata({ "samples": samples, "timed_work": "cold and reopened set_data_view calls; excludes drawing" })
 	for edge in [128, 512]:
 		for terrain in [false, true]:
 			var doc := EmptyCityTemplate.create(edge)
@@ -31,7 +31,7 @@ func _run() -> void:
 					return
 			var city := CityState.from_document(doc)
 			var display := CityState.from_document(doc.duplicate_document())
-			print("FIXTURE ", JSON.stringify({"edge":edge,"terrain":terrain,"sha256":bytes_sha256(doc.serialize(true).data)}))
+			print("FIXTURE ", JSON.stringify({ "edge": edge, "terrain": terrain, "sha256": bytes_sha256(doc.serialize(true).data) }))
 			for mode in [CityViewMode.Mode.LAND_VALUE, CityViewMode.Mode.HEIGHT]:
 				for sample in samples:
 					var view := CityMapControl.new()
@@ -48,13 +48,16 @@ func _run() -> void:
 							if array != null:
 								source_bytes += array.to_byte_array().size()
 					view.clear_data_view()
-					view.set_city_view(display, CityMapSource.new(CityIsometricRenderer.output_size_for_view(CityIsometricRenderer.VIEW_LARGE, edge)))
+					view.set_city_view(
+						display,
+						CityMapSource.new(CityIsometricRenderer.output_size_for_view(CityIsometricRenderer.VIEW_LARGE, edge)),
+					)
 					start = Time.get_ticks_usec()
 					view.set_data_view(city, mode)
 					var reopened := Time.get_ticks_usec() - start
-					print(JSON.stringify({"edge":edge,"terrain":terrain,"mode":mode,"sample":sample,
-						"cold_usec":cold,"reopen_usec":reopened,"mesh_reused":mesh_id == view.data_view_mesh.get_instance_id(),
-						"source_array_bytes":source_bytes}))
+					print(JSON.stringify({"edge": edge, "terrain": terrain, "mode": mode, "sample": sample,
+						"cold_usec": cold, "reopen_usec": reopened, "mesh_reused": mesh_id == view.data_view_mesh.get_instance_id(),
+						"source_array_bytes": source_bytes}))
 					view.free()
 	quit()
 

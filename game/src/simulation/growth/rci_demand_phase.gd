@@ -4,7 +4,6 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const ZONE_POPULATION_OFFSET := Sc2MiscLayout.ZONE_POPULATIONS
 const DEMAND_OFFSET := Sc2MiscLayout.DEMAND
 const BUDGET_RECORD_SIZE := Sc2BudgetLayout.RECORD_SIZE
@@ -15,19 +14,16 @@ const NORMAL_POPULATION_OFFSET := Sc2MiscLayout.NORMAL_POPULATION
 const INDUSTRIAL_MIX_BONUS_OFFSET := Sc2MiscLayout.INDUSTRIAL_MIX_BONUS
 const OLD_RESIDENTIAL_POPULATION_OFFSET := Sc2MiscLayout.OLD_RESIDENTIAL_POPULATION
 const GARBAGE_OFFSET := Sc2MiscLayout.GARBAGE
-
 const CONNECTION_LABEL := Sc2OverlayLayout.CONNECTION_MARKER
 const RATIO_SCALE := 600.0
 const COMMERCIAL_SCALE := 0.000006666666666666667
 const INDUSTRIAL_MIX_SCALE := 0.01
 const MINIMUM_INDUSTRIAL_TARGET := 15.0
-
 const TAX_EFFECT := [
 	200, 160, 120, 100, 75, 50, 25, 0, -25, -50, -100, -150,
 	-200, -250, -300, -350, -400, -450, -500, -550, -600, -650, -700,
 ]
 const INDUSTRIAL_DIFFICULTY := [0.0, 1.2, 1.1, 0.95]
-
 const COMMERCE_CONNECTION_RANGES := [
 	Vector2i(Tiles.ROAD_STRAIGHT_1, Tiles.ROAD_CROSSROADS),
 	Vector2i(Tiles.TUNNEL_ENTRANCE_1, Tiles.TUNNEL_ENTRANCE_4),
@@ -39,21 +35,6 @@ const INDUSTRY_CONNECTION_RANGES := [
 	Vector2i(Tiles.ROAD_RAIL_CROSSING_1, Tiles.HIGHWAY_POWER_CROSSING_2),
 	Vector2i(Tiles.HIGHWAY_SLOPE_1, Tiles.HIGHWAY_INTERSECTION),
 ]
-
-
-class Result extends PhaseResult:
-	var previous_population := 0
-	var normal_population := 0
-	var tax_population := PackedInt64Array()
-	var targets: Array[float] = []
-	var demands := PackedInt32Array()
-	var commerce_connections := 0
-	var industry_connections := 0
-
-
-class ConnectionCounts extends RefCounted:
-	var commerce := 0
-	var industry := 0
 
 
 static func run(city: CityState) -> Result:
@@ -200,6 +181,7 @@ static func run(city: CityState) -> Result:
 
 	return result
 
+
 static func _failed(message: String) -> Result:
 	var result := Result.new()
 	result.error = message
@@ -275,3 +257,18 @@ static func _ordinance_adjusted_tax_rate(category: int, rate: int, flags: int) -
 				rate += 1
 
 	return maxi(rate, 0)
+
+
+class Result extends PhaseResult:
+	var previous_population := 0
+	var normal_population := 0
+	var tax_population := PackedInt64Array()
+	var targets: Array[float] = []
+	var demands := PackedInt32Array()
+	var commerce_connections := 0
+	var industry_connections := 0
+
+
+class ConnectionCounts extends RefCounted:
+	var commerce := 0
+	var industry := 0

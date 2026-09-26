@@ -31,3 +31,29 @@ var update_last_check := 0
 var update_skipped_version := ""
 var update_checked_at := 0
 var update_error := ""
+
+
+func save_options(include_ui_scale := true) -> SettingsStore.SaveOptions:
+	var options := SettingsStore.SaveOptions.new()
+	options.graphics_source = graphics_source
+	options.graphics_folder = graphics_folder
+	options.soundtrack_folder = soundtrack_folder
+	options.city_renderer = city_renderer
+	options.background_audio = background_audio
+	options.zoom_graphics = zoom_graphics
+	options.toolbar_sounds = toolbar_sounds
+	options.sound_pack_folder = sound_pack_folder
+	options.music_pack_folder = music_pack_folder
+	options.shuffle_music = shuffle_music
+	options.default_mayor_name = default_mayor_name
+	options.overview_graphics = overview_graphics
+	options.ui_theme = ui_theme
+	options.dark_underground = dark_underground
+	options.translucent_menus = translucent_menus
+	options.check_for_updates = check_for_updates
+	options.data_pack_folder = data_pack_folder
+
+	if include_ui_scale:
+		options.ui_scale = ui_scale
+
+	return options

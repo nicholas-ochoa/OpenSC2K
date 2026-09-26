@@ -276,7 +276,6 @@ func _render_offline(
 	return rendered
 
 
-
 func _test_tool_sound_rules() -> void:
 	_check(
 		ToolSounds.success_events(1, 0) == [503]

@@ -3,7 +3,6 @@ extends SceneTree
 
 const Zip = preload("res://src/tools/scurk/scurk_zip.gd")
 const Checksum = preload("res://src/formats/crc32.gd")
-
 const PYTHON_STORED := (
 	"504b03041400000000000000210023dd8a58080000000800000005000000612e62696e41424300ff414243504b03041400000000000000210049b8aa0e400000" +
 	"00400000000c0000006e65737465642f622e62696e5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a" +
@@ -12,7 +11,6 @@ const PYTHON_STORED := (
 	"000000400000000c000000000000000000000080012b0000006e65737465642f622e62696e504b01021403140000000000000021000000000000000000000000" +
 	"00050000000000000000000000800195000000656d707479504b05060000000003000300a0000000b80000000000"
 )
-
 const PYTHON_DEFLATED := (
 	"504b03041400000008000000210023dd8a580a0000000800000005000000612e62696e73747266f8efe8e40c00504b03041400000008000000210049b8aa0e06" +
 	"000000400000000c0000006e65737465642f622e62696e8b8aa20c0000504b03041400000008000000210000000000020000000000000005000000656d707479" +
@@ -20,24 +18,20 @@ const PYTHON_DEFLATED := (
 	"000000210049b8aa0e06000000400000000c000000000000000000000080012d0000006e65737465642f622e62696e504b010214031400000008000000210000" +
 	"000000020000000000000005000000000000000000000080015d000000656d707479504b05060000000003000300a0000000820000000000"
 )
-
 const PYTHON_DESCRIPTOR := (
 	"504b030414000800080028b0365d0000000000000000000000000e00000064657363726970746f722e62696ecb48cdc9c957482bcacf55282e294a4dcc4d4d51" +
 	"88f20c0000504b0708e4ecd6031900000017000000504b0102140314000800080028b0365de4ecd60319000000170000000e0000000000000000000000800100" +
 	"00000064657363726970746f722e62696e504b050600000000010001003c000000550000000000"
 )
-
 const PYTHON_DESCRIPTOR_CRC := (
 	"504b0304140008000000b8b0365d000000000000000000000000070000006372632e62696eac0a7ad5504b07080400000004000000504b010214031400080000" +
 	"00b8b0365d504b070804000000040000000700000000000000000000008001000000006372632e62696e504b0506000000000100010035000000350000000000"
 )
-
 const PYTHON_ZIP64 := (
 	"504b03042d000000080000002100a36852e1ffffffffffffffff0a001400666f726365642e62696e01001000120000000000000014000000000000004bcb2f4a" +
 	"4e4d5188f20c30335148cb4ccd490100504b01022d032d000000080000002100a36852e114000000120000000a0000000000000000000000800100000000666f" +
 	"726365642e62696e504b0506000000000100010038000000500000000000"
 )
-
 const PYTHON_ZIP64_DESCRIPTOR := (
 	"504b03042d00080008000000210000000000ffffffffffffffff0a001400666f726365642e62696e01001000000000000000000000000000000000004bcb2f4a" +
 	"4e4d5188f20c30335148cb4ccd490100504b0708a36852e114000000000000001200000000000000504b01022d032d000800080000002100a36852e114000000" +
@@ -130,12 +124,12 @@ func _test_writer() -> void:
 	var empty: Dictionary[String, PackedByteArray] = {}
 	_check(Zip.decode(Zip.encode(empty).bytes).ok)
 	for name in ["", "/absolute", "../parent", "a/../b", "./a", "a//b", "a/", "C:/a", "a\\b"]:
-		var invalid: Dictionary[String, PackedByteArray] = {name: PackedByteArray([1])}
+		var invalid: Dictionary[String, PackedByteArray] = { name: PackedByteArray([1]) }
 		_check(not Zip.encode(invalid).ok)
 
 
 func _test_preflight() -> void:
-	var input: Dictionary[String, PackedByteArray] = {"data": PackedByteArray([1, 2, 3])}
+	var input: Dictionary[String, PackedByteArray] = { "data": PackedByteArray([1, 2, 3]) }
 	_check(Zip.encode(input, 3).ok and not Zip.encode(input, 2).ok)
 	_check(not Zip.encode(input, -1).ok and not Zip.encode(input, Zip.MAX_MEMBER_BYTES + 1).ok)
 	var bytes := PYTHON_DEFLATED.hex_decode()
@@ -197,7 +191,7 @@ func _test_invalid_archives() -> void:
 			changed[30 + index] = unsafe.unicode_at(index)
 			changed[central + 46 + index] = unsafe.unicode_at(index)
 		_check(not Zip.decode(changed).ok)
-	var pair: Dictionary[String, PackedByteArray] = {"a": PackedByteArray([1]), "b": PackedByteArray([2])}
+	var pair: Dictionary[String, PackedByteArray] = { "a": PackedByteArray([1]), "b": PackedByteArray([2]) }
 	changed = Zip.encode(pair).bytes
 	central = _central(changed)
 	var second := central + 47
@@ -258,7 +252,7 @@ func _test_file_and_member_limits() -> void:
 	var pixels := PackedByteArray()
 	pixels.resize(Zip.MAX_MEMBER_BYTES)
 	pixels.fill(0)
-	var members: Dictionary[String, PackedByteArray] = {"pixels": pixels}
+	var members: Dictionary[String, PackedByteArray] = { "pixels": pixels }
 	var encoded := Zip.encode(members)
 	_check(encoded.ok and encoded.bytes.size() < Zip.MAX_FILE_BYTES)
 	members["extra"] = PackedByteArray([1])

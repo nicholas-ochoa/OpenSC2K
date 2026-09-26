@@ -2,7 +2,6 @@ class_name HydroCommand
 extends RefCounted
 
 const Power = preload("res://src/simulation/infrastructure/power_phase.gd")
-
 const GROUP_POWER := CityToolIds.Group.POWER
 const SUBTOOL_HYDRO := CityToolIds.Power.HYDRO
 const TERRAIN_WATERFALL_A := 0x2e

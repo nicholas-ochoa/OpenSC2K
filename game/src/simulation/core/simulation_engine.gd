@@ -1,3 +1,4 @@
+# gdstyle:ignore-file=quality/max-class-variables
 class_name SimulationEngine
 extends RefCounted
 
@@ -291,7 +292,7 @@ func _timed_resolve_military_proposal(accepted: bool) -> SimulationDayResult:
 		result.day = clock.city_days
 		result.schedule = pending_day_schedule
 		result.pending = pending_day_schedule.actions.duplicate()
-		result.phase_results = {"military_proposal": proposal}
+		result.phase_results = { "military_proposal": proposal }
 		result.interaction_requests = [SimulationInteractionRequest.new("military_notice")]
 		return result
 
@@ -329,7 +330,7 @@ func _complete_military_proposal(proposal: MilitaryProposalPhase.Result) -> Simu
 
 	var applied := PackedStringArray(["milestones"])
 	applied.append_array(result.applied)
-	var phase_results: Dictionary[String, PhaseResult] = {"military_proposal": proposal}
+	var phase_results: Dictionary[String, PhaseResult] = { "military_proposal": proposal }
 
 	for phase_name in result.phase_results:
 		phase_results[phase_name] = result.phase_results[phase_name]

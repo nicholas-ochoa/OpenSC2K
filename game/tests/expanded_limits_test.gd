@@ -1,4 +1,5 @@
 extends SceneTree
+
 var failures := 0
 
 
@@ -43,10 +44,29 @@ func _init() -> void:
 			if not selected_records.has(record):
 				micro[record * CityState.MICROSIM_RECORD_SIZE] = 0xd2
 		for record in selected_records:
-			var id := BuildingFacilities.provision_microsim(micro, labels, overlays, 0xd2, 2050, rng, document.find_chunk("MISC").decoded_payload)
+			var id := BuildingFacilities.provision_microsim(
+				micro,
+				labels,
+				overlays,
+				0xd2,
+				2050,
+				rng,
+				document.find_chunk("MISC").decoded_payload,
+			)
 			check(id == OverlayData.facility_id(record), "facility boundary allocation %d" % record)
 
-		check(BuildingFacilities.provision_microsim(micro, labels, overlays, 0xd2, 2050, rng, document.find_chunk("MISC").decoded_payload) == 0, "capacity enforced")
+		check(
+			BuildingFacilities.provision_microsim(
+				micro,
+				labels,
+				overlays,
+				0xd2,
+				2050,
+				rng,
+				document.find_chunk("MISC").decoded_payload,
+			) == 0,
+			"capacity enforced",
+		)
 		document.find_chunk("XMIC").set_decoded_payload(micro)
 		document.find_chunk("XLAB").set_decoded_payload(labels)
 		var things := document.find_chunk("XTHG").decoded_payload.duplicate()
@@ -86,7 +106,10 @@ func _init() -> void:
 			ThingData.set_ship_home(things, last, Vector2i(edge - 1, edge - 2))
 			ThingData.write(things, last * 12 + 1, 6)
 			ThingData.write(things, last * 12 + 2, 2)
-			check(ThingData.ship_home(things, last, Vector2i.ZERO) == Vector2i(edge - 1, edge - 2), "ship home survives direction and state changes")
+			check(
+				ThingData.ship_home(things, last, Vector2i.ZERO) == Vector2i(edge - 1, edge - 2),
+				"ship home survives direction and state changes",
+			)
 			document.find_chunk("XTHG").set_decoded_payload(things)
 			var rotation_before: PackedByteArray = document.serialize().data
 

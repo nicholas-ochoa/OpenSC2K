@@ -1,4 +1,5 @@
 extends SceneTree
+
 const DocumentState = preload("res://tests/support/document_state.gd")
 
 var checks := 0
@@ -36,15 +37,35 @@ func _test_direct_bridge(direction: int) -> void:
 			city.set_tile_flag(point.x, point.y, 0x04, true)
 	var data := NetworkState.city_payloads(city)
 	var plan := HighwayBridges.plan_bridge_from_start(data.XBLD, data.XTER, data.ALTM, start, 0)
-	check(HighwayBridges.bridge_terrain_code(data.XTER, start) == [0xc030, 0x9060, 0x30c0, 0x6090][direction], "Highway shoreline cells use the original order direction %d" % direction)
-	check(plan.ok and plan.direction == direction and plan.span_length == 3, "Highway bridge faces the opposite bank direction %d" % direction)
+	check(
+		HighwayBridges.bridge_terrain_code(data.XTER, start) == [0xc030, 0x9060, 0x30c0, 0x6090][direction],
+		"Highway shoreline cells use the original order direction %d" % direction,
+	)
+	check(
+		plan.ok and plan.direction == direction and plan.span_length == 3,
+		"Highway bridge faces the opposite bank direction %d" % direction,
+	)
 	var before: Array = DocumentState.capture(city.document)
 	var preview_city := NetworkPlacementPreview.snapshot_city(city)
-	var preview := HighwayCommand.apply(preview_city, 6, 1, start, start, HighwayCommand.CONNECTION_UNSELECTED, HighwayCommand.BRIDGE_HIGHWAY)
+	var preview := HighwayCommand.apply(
+		preview_city,
+		6,
+		1,
+		start,
+		start,
+		HighwayCommand.CONNECTION_UNSELECTED,
+		HighwayCommand.BRIDGE_HIGHWAY,
+	)
 	var result := HighwayCommand.apply(city, 6, 1, start, start, HighwayCommand.CONNECTION_UNSELECTED, HighwayCommand.BRIDGE_HIGHWAY)
 	check(result.ok and result.bridge_built and result.bridge_exit == start + step * 6, "Direct highway bridge reaches the expected bank")
-	check(result.cost == 3 * int(HighwayCommand.BRIDGE_COSTS[HighwayCommand.BRIDGE_HIGHWAY]), "Direct highway bridge charges the correct span")
-	check(preview.ok and DocumentState.capture(preview_city.document) == DocumentState.capture(city.document), "Direct highway bridge preview matches placement")
+	check(
+		result.cost == 3 * int(HighwayCommand.BRIDGE_COSTS[HighwayCommand.BRIDGE_HIGHWAY]),
+		"Direct highway bridge charges the correct span",
+	)
+	check(
+		preview.ok and DocumentState.capture(preview_city.document) == DocumentState.capture(city.document),
+		"Direct highway bridge preview matches placement",
+	)
 	check(HighwayCommand.undo(city, result).ok and DocumentState.capture(city.document) == before, "Direct highway bridge has exact Undo")
 
 
@@ -69,7 +90,13 @@ func _test_crossing(edge: int, direction: int) -> void:
 		check(result.ok, "Highway crossing builds")
 		if not result.ok:
 			continue
-		check(result.sections.has(crossing + step * 2) and not result.sections.has(crossing + side * 2), "Keep incoming axis through crossing %x direction %d edge %d" % [tile_id, direction, edge])
-		check(preview_result.ok and DocumentState.capture(preview.document) == DocumentState.capture(city.document), "Highway preview has identical bytes")
+		check(
+			result.sections.has(crossing + step * 2) and not result.sections.has(crossing + side * 2),
+			"Keep incoming axis through crossing %x direction %d edge %d" % [tile_id, direction, edge],
+		)
+		check(
+			preview_result.ok and DocumentState.capture(preview.document) == DocumentState.capture(city.document),
+			"Highway preview has identical bytes",
+		)
 		check(result.cost == result.sections.size() * 100, "Highway section prices remain unchanged")
 		check(HighwayCommand.undo(city, result).ok and DocumentState.capture(city.document) == before, "Crossing route has exact Undo")

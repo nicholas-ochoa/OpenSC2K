@@ -1,8 +1,8 @@
 extends SceneTree
 
 @warning_ignore_start("integer_division")
-const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const DocumentState = preload("res://tests/support/document_state.gd")
 
 var fixtures: Dictionary = {}
@@ -313,8 +313,14 @@ func _test_dead_end_turns() -> void:
 		var middle := a + Vector2i(11, 1)
 		var middle_across := a + Vector2i(11, 0)
 		for rotation in (4 if edge == 128 else 1):
-			check(TransportTripSteps.highway_step(city.buildings, end_lane, return_lane, edge), "Open highway end permits a median turnaround")
-			check(not TransportTripSteps.highway_step(city.buildings, middle, middle_across, edge), "Connected highway does not permit a median shortcut")
+			check(
+				TransportTripSteps.highway_step(city.buildings, end_lane, return_lane, edge),
+				"Open highway end permits a median turnaround",
+			)
+			check(
+				not TransportTripSteps.highway_step(city.buildings, middle, middle_across, edge),
+				"Connected highway does not permit a median shortcut",
+			)
 			for mode in [TransportTrip.HIGHWAY_MODE, TransportTrip.BUS_HIGHWAY_MODE]:
 				check(TransportTripSteps.advance(city.buildings, city.zones, city.underground,
 					city.text_overlays, city.altitude_words, end_lane, return_lane,

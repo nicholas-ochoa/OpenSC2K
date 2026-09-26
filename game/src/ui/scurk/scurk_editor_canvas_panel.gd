@@ -8,19 +8,17 @@ signal terrain_visibility_changed(enabled: bool)
 signal clip_region_changed(enabled: bool)
 signal clip_enabled_changed(enabled: bool)
 
-var clip_region_check: CheckBox
-var clip_enabled_check: CheckBox
-
-var zoom_pending := 0
-var zoom_running := false
-var zoom_anchor := Vector2.ZERO
-var zoom_pixel := Vector2.ZERO
-
 const VIEW_LARGE := ScurkSpriteIds.View.LARGE
 const VIEW_MEDIUM := ScurkSpriteIds.View.MEDIUM
 const VIEW_SMALL := ScurkSpriteIds.View.SMALL
 const PREVIEW_VIEWS := [VIEW_LARGE, VIEW_MEDIUM, VIEW_SMALL, VIEW_LARGE]
 
+var clip_region_check: CheckBox
+var clip_enabled_check: CheckBox
+var zoom_pending := 0
+var zoom_running := false
+var zoom_anchor := Vector2.ZERO
+var zoom_pixel := Vector2.ZERO
 var pixel_scroll: ScrollContainer
 var previews_panel: PanelContainer
 var pixel_canvas: ScurkPixelCanvas
@@ -33,6 +31,33 @@ var preview_available: Array[bool] = []
 
 func _ready() -> void:
 	build()
+
+
+func _input(event: InputEvent) -> void:
+	if pixel_canvas == null or not is_visible_in_tree() or not (event is InputEventMouse or event is InputEventPanGesture):
+		return
+	var position: Vector2 = event.position
+	if (not pixel_canvas.panning
+			and (not pixel_scroll.get_global_rect().has_point(position) or pixel_canvas.get_global_rect().has_point(position))):
+		return
+	var navigation := pixel_canvas.panning or event is InputEventPanGesture
+	if event is InputEventMouseButton:
+		navigation = (navigation
+			or event.button_index in [MOUSE_BUTTON_MIDDLE, MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_LEFT,
+			MOUSE_BUTTON_WHEEL_RIGHT])
+		navigation = navigation or (event.button_index == MOUSE_BUTTON_LEFT and Input.is_key_pressed(KEY_SPACE))
+	if not navigation:
+		if event is InputEventMouseButton and event.pressed:
+			if event.button_index == MOUSE_BUTTON_LEFT:
+				pixel_canvas.cancel_paste()
+				pixel_canvas.clear_selection()
+			elif event.button_index == MOUSE_BUTTON_RIGHT:
+				pixel_canvas.context_menu_requested.emit(position - pixel_canvas.global_position)
+		return
+	var local := event.duplicate()
+	local.position = position - pixel_canvas.global_position
+	if pixel_canvas._handle_editor_input(local):
+		get_viewport().set_input_as_handled()
 
 
 func build() -> void:
@@ -101,27 +126,3 @@ func zoom_at(steps: int, local_position: Vector2) -> void:
 		pixel_scroll.scroll_horizontal += roundi(shifted.x - anchor.x)
 		pixel_scroll.scroll_vertical += roundi(shifted.y - anchor.y)
 	zoom_running = false
-
-
-func _input(event: InputEvent) -> void:
-	if pixel_canvas == null or not is_visible_in_tree() or not (event is InputEventMouse or event is InputEventPanGesture):
-		return
-	var position: Vector2 = event.position
-	if not pixel_canvas.panning and (not pixel_scroll.get_global_rect().has_point(position) or pixel_canvas.get_global_rect().has_point(position)):
-		return
-	var navigation := pixel_canvas.panning or event is InputEventPanGesture
-	if event is InputEventMouseButton:
-		navigation = navigation or event.button_index in [MOUSE_BUTTON_MIDDLE, MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_LEFT, MOUSE_BUTTON_WHEEL_RIGHT]
-		navigation = navigation or (event.button_index == MOUSE_BUTTON_LEFT and Input.is_key_pressed(KEY_SPACE))
-	if not navigation:
-		if event is InputEventMouseButton and event.pressed:
-			if event.button_index == MOUSE_BUTTON_LEFT:
-				pixel_canvas.cancel_paste()
-				pixel_canvas.clear_selection()
-			elif event.button_index == MOUSE_BUTTON_RIGHT:
-				pixel_canvas.context_menu_requested.emit(position - pixel_canvas.global_position)
-		return
-	var local := event.duplicate()
-	local.position = position - pixel_canvas.global_position
-	if pixel_canvas._handle_editor_input(local):
-		get_viewport().set_input_as_handled()

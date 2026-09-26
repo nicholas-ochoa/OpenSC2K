@@ -5,18 +5,6 @@ extends IsometricConstants
 @warning_ignore_start("integer_division")
 
 
-class PatchResult extends AssetImageResult:
-	var native_rect := Rect2i()
-	var output_rect := Rect2i()
-	var tiles_drawn := 0
-
-	static func rejected(message: String) -> PatchResult:
-		var result := PatchResult.new()
-		result.error = message
-
-		return result
-
-
 static func create_image(
 	city: CityState,
 	palette: Sc2Palette,
@@ -153,7 +141,8 @@ static func patch_static_image(
 	var top_extra := 32 * configuration.altitude_step + sprite_limit.y
 	var first_diagonal := maxi(0, floori(float(native_rect.position.y - top_margin - bottom_extra) / half_height))
 	var last_diagonal := mini(2 * (map_edge - 1), ceili(float(native_rect.end.y - top_margin + top_extra) / half_height))
-	var first_difference := floori(float(native_rect.position.x - full_origin_x - sprite_limit.x - configuration.tile_width - 1) / half_width)
+	var first_difference := floori(
+		float(native_rect.position.x - full_origin_x - sprite_limit.x - configuration.tile_width - 1) / half_width)
 	var last_difference := ceili(float(native_rect.end.x - full_origin_x + sprite_limit.x) / half_width)
 
 	for diagonal in range(first_diagonal, last_diagonal + 1):
@@ -455,3 +444,15 @@ static func draw_moving_thing(
 			output.blend_rect(
 				sprite, Rect2i(Vector2i.ZERO, sprite.get_size()), position
 			)
+
+
+class PatchResult extends AssetImageResult:
+	var native_rect := Rect2i()
+	var output_rect := Rect2i()
+	var tiles_drawn := 0
+
+	static func rejected(message: String) -> PatchResult:
+		var result := PatchResult.new()
+		result.error = message
+
+		return result

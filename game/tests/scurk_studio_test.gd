@@ -99,7 +99,10 @@ func _test_sidebar() -> void:
 		await process_frame
 		assert(canvas.is_visible_in_tree() and canvas.selection.mask == selection)
 		assert(editor.object_search.is_visible_in_tree() and editor.object_list.is_visible_in_tree())
-		assert(canvas.zoom == 12 and canvas.get_global_rect() == canvas_rect, "%d zoom %d rect %s expected %s" % [tab, canvas.zoom, canvas.get_global_rect(), canvas_rect])
+		assert(
+			canvas.zoom == 12 and canvas.get_global_rect() == canvas_rect,
+			"%d zoom %d rect %s expected %s" % [tab, canvas.zoom, canvas.get_global_rect(), canvas_rect],
+		)
 		assert(Vector2i(scroll.scroll_horizontal, scroll.scroll_vertical) == position)
 		canvas.grab_focus()
 		assert(root.gui_get_focus_owner() == canvas)
@@ -639,7 +642,8 @@ func _test_context() -> void:
 		assert(not button.disabled)
 		button.pressed.emit()
 		assert(studio.context_view == view)
-		assert(preview.view_size == [CityIsometricRenderer.VIEW_LARGE, CityIsometricRenderer.VIEW_MEDIUM, CityIsometricRenderer.VIEW_SMALL][view])
+		assert(preview.view_size == [CityIsometricRenderer.VIEW_LARGE, CityIsometricRenderer.VIEW_MEDIUM,
+			CityIsometricRenderer.VIEW_SMALL][view])
 		assert(button.button_pressed)
 		var shape := editor._output_shape_for_view(view)
 		assert(preview.artwork.get_size() == Vector2(shape.width, shape.height))

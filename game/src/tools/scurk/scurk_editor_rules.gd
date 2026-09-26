@@ -3,7 +3,6 @@ extends RefCounted
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const SpriteIds = preload("res://src/tools/scurk/scurk_sprite_ids.gd")
-
 const VIEW_LARGE := SpriteIds.View.LARGE
 const VIEW_MEDIUM := SpriteIds.View.MEDIUM
 const VIEW_SMALL := SpriteIds.View.SMALL

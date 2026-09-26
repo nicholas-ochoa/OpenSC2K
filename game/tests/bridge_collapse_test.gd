@@ -194,7 +194,13 @@ func check_tool_undo() -> void:
 	assert(city.set_funds(100))
 	var before: Array = DocumentState.capture(city.document)
 	var random := SimRandom.new(17)
-	var command := DemolishEdit.apply_path(city, DemolishConstants.GROUP_BULLDOZER, DemolishConstants.SUBTOOL_DEMOLISH, [Vector2i(3, 20)], random)
+	var command := DemolishEdit.apply_path(
+		city,
+		DemolishConstants.GROUP_BULLDOZER,
+		DemolishConstants.SUBTOOL_DEMOLISH,
+		[Vector2i(3, 20)],
+		random,
+	)
 	assert(command.ok, command.error)
 	assert(city.building_id(5, 20) == 0 and city.underground_id(0, 20) == 0)
 	assert(DemolishEdit.undo(city, command, random).ok)

@@ -1,5 +1,6 @@
 class_name CityForegroundPalette
 extends RefCounted
+
 # the reserved draw color marks indexed foreground commands, not image pixels
 # other city overlay commands retain their normal texture and vertex colors
 const INDEXED_DRAW_COLOR := Color.MAGENTA

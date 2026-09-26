@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Rendering: train monster visual checks.
 
 @warning_ignore_start("integer_division")
@@ -190,6 +189,10 @@ func run(starter: CityState, large: Sc2SpriteArchive, small_medium: Sc2SpriteArc
 		and actual_crossing_mask.occluded_pixels == foreground_overlap,
 		"The train draws over the rail deck but stays behind the full power-line foreground",
 	)
+	_test_turns_and_disaster_sprites(starter, large, small_medium)
+
+
+func _test_turns_and_disaster_sprites(starter: CityState, large: Sc2SpriteArchive, small_medium: Sc2SpriteArchive) -> void:
 	_check(starter.set_building_id(64, 64, Tiles.RAIL_JUNCTION_1), "Train drawing fixture adds a turn tile")
 	var turning_train := IsometricRenderer.train_sprite(starter, 64, 64, ThingRecord.from_fields({
 		"type": 11, "dx": 1,
@@ -230,7 +233,11 @@ func run(starter: CityState, large: Sc2SpriteArchive, small_medium: Sc2SpriteArc
 		"Tornado view selects its native small frame and altitude scale",
 	)
 	_check(
-		IsometricGeometry.bridge_effect_position(starter, EffectEvent.new(Vector2i(64, 64), 0, Vector2i(16, -8)), 10) == Vector2i(2096, 1518),
+		IsometricGeometry.bridge_effect_position(
+			starter,
+			EffectEvent.new(Vector2i(64, 64), 0, Vector2i(16, -8)),
+			10,
+		) == Vector2i(2096, 1518),
 		"Bridge debris view uses water altitude and the recovered screen offset",
 	)
 	var default_effect_position := IsometricRenderer.transient_effect_position(

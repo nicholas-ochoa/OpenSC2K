@@ -43,20 +43,21 @@ func _run() -> void:
 		assert(pack.files.size() == (30 if kind == "sound" else 19))
 
 		for path in pack.files.values():
-			assert(FileAccess.get_sha256(path) == FileAccess.get_sha256(ProjectSettings.globalize_path("res://../references/SIMCITY2000/SOUNDS").path_join(path.get_file())))
+			assert(FileAccess.get_sha256(path) == FileAccess.get_sha256(
+				ProjectSettings.globalize_path("res://../references/SIMCITY2000/SOUNDS").path_join(path.get_file())))
 
 	var temporary := "user://media-pack-test-%d" % OS.get_process_id()
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(temporary))
-	var manifest := {"format": "opensc2k-sound", "version": 1, "name": "Test", "files": {}}
+	var manifest := { "format": "opensc2k-sound", "version": 1, "name": "Test", "files": {} }
 	_write_manifest(temporary, manifest)
 	assert(MediaPack.load_folder(temporary, "sound").error.is_empty())
 
 	for invalid in ["../505.WAV", "/505.WAV", "a\\505.WAV", "missing.wav", "a//b.wav"]:
-		manifest.files = {"505": invalid}
+		manifest.files = { "505": invalid }
 		_write_manifest(temporary, manifest)
 		assert(not MediaPack.load_folder(temporary, "sound").error.is_empty())
 
-	manifest.files = {"499": "505.WAV"}
+	manifest.files = { "499": "505.WAV" }
 	_write_manifest(temporary, manifest)
 	assert(not MediaPack.load_folder(temporary, "sound").error.is_empty())
 	var audio := CityAudioController.new()
@@ -85,9 +86,15 @@ func _run() -> void:
 	assert(get_nodes_in_group(CityAudioController.SOUND_EFFECT_GROUP).size() == count + 2)
 	var config := temporary.path_join("settings.cfg")
 	assert(AppSettingsStore.load_values(config).toolbar_sounds)
-	assert(AppSettingsStore.save_values(0.5, 0.5, false, config, "auto", "", null, null, null, null, false, base.path_join("sound"), base.path_join("music")) == OK)
+	var pack_options := AppSettingsStore.SaveOptions.new()
+	pack_options.graphics_source = "auto"
+	pack_options.toolbar_sounds = false
+	pack_options.sound_pack_folder = base.path_join("sound")
+	pack_options.music_pack_folder = base.path_join("music")
+	assert(AppSettingsStore.save_values(0.5, 0.5, false, config, pack_options) == OK)
 	var values := AppSettingsStore.load_values(config)
-	assert(not values.toolbar_sounds and values.sound_pack_folder == base.path_join("sound") and values.music_pack_folder == base.path_join("music"))
+	assert(not values.toolbar_sounds and values.sound_pack_folder == base.path_join("sound")
+		and values.music_pack_folder == base.path_join("music"))
 	var toolbar := preload("res://src/ui/shell/city_toolbar.tscn").instantiate() as CityToolbar
 	toolbar.toolbar_art = original.toolbar_art
 	root.add_child(toolbar)
@@ -121,7 +128,9 @@ func _run() -> void:
 
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary))
 	await process_frame
-	print("PASS: original pack pixel and byte equality, manifest validation, atomic audio replacement, rapid toolbar feedback, dynamic buttons, main menu clicks, settings persistence")
+	print(("PASS: original pack pixel and byte equality, manifest validation, atomic audio "
+		+ "replacement, rapid toolbar feedback, dynamic buttons, main menu clicks, settings "
+		+ "persistence"))
 	call_deferred("quit")
 
 

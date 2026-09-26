@@ -1,4 +1,5 @@
 extends SceneTree
+
 const DocumentState = preload("res://tests/support/document_state.gd")
 
 
@@ -24,7 +25,10 @@ func _run() -> void:
 			assert(not result.draws.is_empty(), "Preview artwork for %s on %d map" % [tool, edge])
 			var placed := CityState.from_document(city.document.duplicate_document())
 			assert(NetworkPlacementPreview.apply_preview(placed, tool.x, tool.y, start, finish).ok)
-			assert(DocumentState.capture(preview_city.document) == DocumentState.capture(placed.document), "Preview uses the actual placement result")
+			assert(
+				DocumentState.capture(preview_city.document) == DocumentState.capture(placed.document),
+				"Preview uses the actual placement result",
+			)
 			assert(DocumentState.capture(city.document) == before, "Preview never changes live city bytes")
 
 	for edge in [128, 512]:

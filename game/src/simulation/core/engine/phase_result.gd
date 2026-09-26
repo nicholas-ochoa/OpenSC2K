@@ -2,20 +2,15 @@ class_name PhaseResult
 extends RefCounted
 # Common phase results. Subclasses add their own fields.
 
-
-
 var ok := false
 var error := ""
-
 # false when the phase must run again on a later slice of the same day
 # a phase that reports no progress has finished
 var complete := true
-
 # newspaper stories for the saved queue, and whether they reached it
 var news_items: Array[NewsEvent] = []
 var news_queue_updated := false
 var news_queue_inserted := 0
-
 # presentation events for the main thread
 var sound_events: Array[SoundEvent] = []
 var effect_events: Array[EffectEvent] = []
@@ -23,16 +18,13 @@ var game_over_events: Array[GameOverEvent] = []
 var refresh_requests: Array[String] = []
 var view_center_requests: Array[Vector2i] = []
 var music_track_requests := PackedInt32Array()
-
 # original string IDs for modal message boxes. the interface shows each one
 # and suspends the simulation until the player closes it
 var notice_ids := PackedInt32Array()
-
 # true when the original opens the newspaper after this work. the paper is
 # the saved newspaper choice, unless newspaper_paper names one
 var newspaper_requested := false
 var newspaper_paper := -1
-
 # measured work for the timing window
 var timing := SimulationTiming.new()
 

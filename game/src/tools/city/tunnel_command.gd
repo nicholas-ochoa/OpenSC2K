@@ -2,9 +2,7 @@ class_name TunnelCommand
 extends RefCounted
 
 const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
-
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const GROUP_ROADS := CityToolIds.Group.ROADS
 const SUBTOOL_TUNNEL := CityToolIds.Roads.TUNNEL
 const MAX_CLEAR_BUILDING := Tiles.SMALL_PARK

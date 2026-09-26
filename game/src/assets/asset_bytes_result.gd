@@ -5,7 +5,6 @@ extends RefCounted
 var ok := false
 var error := ""
 var bytes := PackedByteArray()
-
 var frame_count := 0
 var duration_cs := 0
 

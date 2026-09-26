@@ -1,4 +1,5 @@
 extends SceneTree
+
 const Reference = preload("res://tests/support/native_grid_reference.gd")
 
 

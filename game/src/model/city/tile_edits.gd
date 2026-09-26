@@ -285,7 +285,11 @@ static func set_water_altitude(city: CityState, x: int, y: int, value: int) -> b
 	if index < 0:
 		return false
 
-	return city._set_altitude_word(x, y, (city.altitude_words[index] & ~Sc2AltitudeLayout.WATER_MASK) | (value << Sc2AltitudeLayout.WATER_SHIFT))
+	return city._set_altitude_word(
+		x,
+		y,
+		(city.altitude_words[index] & ~Sc2AltitudeLayout.WATER_MASK) | (value << Sc2AltitudeLayout.WATER_SHIFT),
+	)
 
 
 static func set_tunnel_levels(city: CityState, x: int, y: int, value: int) -> bool:
@@ -297,7 +301,11 @@ static func set_tunnel_levels(city: CityState, x: int, y: int, value: int) -> bo
 	if index < 0:
 		return false
 
-	return city._set_altitude_word(x, y, (city.altitude_words[index] & ~Sc2AltitudeLayout.TUNNEL_FIELD_MASK) | (value << Sc2AltitudeLayout.TUNNEL_SHIFT))
+	return city._set_altitude_word(
+		x,
+		y,
+		(city.altitude_words[index] & ~Sc2AltitudeLayout.TUNNEL_FIELD_MASK) | (value << Sc2AltitudeLayout.TUNNEL_SHIFT),
+	)
 
 
 # the chunk behind a mirrored tile plane, when a single byte at index is safe

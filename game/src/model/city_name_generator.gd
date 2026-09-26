@@ -3,6 +3,7 @@ extends RefCounted
 
 const DATA_PATH := "res://assets/data/city_names.json"
 
+
 static func generate(layout := "classic", random: RandomNumberGenerator = null,
 	path := DATA_PATH) -> String:
 	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))

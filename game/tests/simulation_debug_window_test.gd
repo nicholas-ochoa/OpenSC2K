@@ -1,30 +1,6 @@
 extends SceneTree
+
 const TimingResults = preload("res://tests/support/timing_results.gd")
-
-class MetricsHost extends Control:
-	var debug: Control = self
-	var timing_state := TimingState.new()
-	var queries := 0
-	var terrain_levels := 32
-	var detailed_timing := false
-	var date := "01/03/1900"
-
-
-	func debug_set_visible_altitude_levels(value: int) -> void:
-		terrain_levels = value
-
-
-	func debug_set_detailed_timing(enabled: bool) -> ApplicationDebug.ActionResult:
-		detailed_timing = enabled
-
-		return ApplicationDebug.ActionResult.new(true, "Detailed timing is %s." % ("on" if enabled else "off"))
-
-
-	func debug_metrics() -> Dictionary:
-		queries += 1
-
-		return {"city_name": "Timing test", "date": date, "speed": "Paused",
-			"detailed_timing": detailed_timing}
 
 
 func _initialize() -> void:
@@ -47,25 +23,31 @@ func _run() -> void:
 	debug._process(0.25)
 	assert(host.queries == 2, "Hidden debug UI does not collect metrics")
 	var metrics_tree: Tree = debug._metrics_tree
-	metrics_tree.refresh({"simulation_slices": {"snapshot_usec": 2500, "work": {"parked_usec": 12000}},
-		"render_regions": {"cpu_image_bytes": 1048576}, "no_disasters": false})
+	metrics_tree.refresh({"simulation_slices": { "snapshot_usec": 2500, "work": { "parked_usec": 12000 } },
+		"render_regions": { "cpu_image_bytes": 1048576 }, "no_disasters": false})
 	assert(metrics_tree.rows["simulation_slices/snapshot_usec"].get_text(1) == "2.500 ms")
 	assert(metrics_tree.rows["render_regions/cpu_image_bytes"].get_text(1) == "1.00 MiB")
 	assert(metrics_tree.rows["no_disasters"].get_text(1) == "No")
-	assert(metrics_tree._sections.values().all(func(section: TreeItem) -> bool: return not section.collapsed), "Metric groups start expanded")
-	metrics_tree.refresh({"simulation_slices": {"pending": false}, "render_regions": {"pending": false}})
+	assert(
+		metrics_tree._sections.values().all(func(section: TreeItem) -> bool: return not section.collapsed),
+		"Metric groups start expanded",
+	)
+	metrics_tree.refresh({ "simulation_slices": { "pending": false }, "render_regions": { "pending": false } })
 	assert(metrics_tree.rows["simulation_slices/pending"].get_text(2) != metrics_tree.rows["render_regions/pending"].get_text(2),
 		"A shared key name has a description for each group")
-	assert(debug._detailed_timing_check.get_parent() == debug._days.get_parent().get_node("Footer"), "Timing controls are under the day table")
+	assert(
+		debug._detailed_timing_check.get_parent() == debug._days.get_parent().get_node("Footer"),
+		"Timing controls are under the day table",
+	)
 	var worker_row: TreeItem = metrics_tree.rows["simulation_slices"]
 	worker_row.collapsed = true
-	metrics_tree.refresh({"simulation_slices": {"snapshot_usec": 4000}, "new_counter": 7})
+	metrics_tree.refresh({ "simulation_slices": { "snapshot_usec": 4000 }, "new_counter": 7 })
 	assert(metrics_tree.rows["simulation_slices"] == worker_row and worker_row.collapsed)
 	assert(metrics_tree.rows["simulation_slices/snapshot_usec"].get_text(1) == "4.000 ms")
 	assert(metrics_tree.rows["simulation_slices/work/parked_usec"].get_text(1) == "—")
 	assert(metrics_tree.rows["new_counter"].get_text(1) == "7")
 	host.timing_state.simulation_timings.consume(TimingResults.tick_fixture({"day_results": [{"ok": true, "day": 2,
-		"timing": {"work_usec": 2500, "steps": {"pollution": 2500}}}]}))
+		"timing": { "work_usec": 2500, "steps": { "pollution": 2500 } }}]}))
 	debug.toggle()
 	assert(debug.is_open and debug._days.get_root().get_child_count() == 25)
 	assert(debug._date_fields.map(func(spin: SpinBox) -> int: return int(spin.value)) == [2, 3, 1900],
@@ -87,8 +69,8 @@ func _run() -> void:
 	assert(day_three.get_child(0).get_text(2) == "2.500")
 	day_three.collapsed = false
 	host.timing_state.simulation_timings.consume(TimingResults.tick_fixture({"day_results": [{"ok": true, "day": 3,
-		"timing": {"work_usec": 900, "steps": {"pollution": 900}}}],
-		"job_timings": {"worker elapsed": 6000}}))
+		"timing": { "work_usec": 900, "steps": { "pollution": 900 } }}],
+		"job_timings": { "worker elapsed": 6000 }}))
 	debug._refresh_metrics()
 	assert(debug._days.get_root().get_child(2) == day_three and not day_three.collapsed)
 	assert(day_three.get_child_count() == 1 and day_three.get_child(0).get_text(2) == "2.500")
@@ -96,9 +78,9 @@ func _run() -> void:
 	assert(debug._other_steps.collapsed and debug._other_steps.get_child(0).get_text(2) == "6.000")
 	for pair in [[1, "power"], [3, "growth"], [19, "traffic"], [20, "water"]]:
 		var phase := PhaseResult.new()
-		phase.timing = SimulationTiming.new(-1, {"measured detail": 6000})
+		phase.timing = SimulationTiming.new(-1, { "measured detail": 6000 })
 		host.timing_state.simulation_timings.consume(TimingResults.tick_fixture({"day_results": [{"ok": true, "day": pair[0],
-			"timing": {"work_usec": 7000, "steps": {pair[1]: 7000}},
+			"timing": { "work_usec": 7000, "steps": { pair[1]: 7000 } },
 			"phase_results": {pair[1]:
 				phase}}]}))
 
@@ -133,9 +115,10 @@ func _run() -> void:
 	assert(debug._days.get_root().get_child(0).get_text(6) == "—")
 
 	# steps keep their execution order. a step that first runs in a later month goes after its predecessor
-	for steps in [{"tile recount": 10, "budget": 20, "month_start": 30}, {"tile recount": 10, "budget": 20, "annual_microsim": 40, "month_start": 30}]:
+	for steps in [{ "tile recount": 10, "budget": 20, "month_start": 30 },
+		{ "tile recount": 10, "budget": 20, "annual_microsim": 40, "month_start": 30 }]:
 		host.timing_state.simulation_timings.consume(TimingResults.tick_fixture({"day_results": [{"ok": true, "day": 25,
-			"timing": {"work_usec": 100, "steps": steps}}]}))
+			"timing": { "work_usec": 100, "steps": steps }}]}))
 		debug._refresh_metrics()
 
 	var day_one := debug._days.get_root().get_child(0)
@@ -171,3 +154,29 @@ func _run() -> void:
 	await process_frame
 	print("PASS: native debug window builds, displays timing rows and stays idle while hidden")
 	quit()
+
+
+class MetricsHost extends Control:
+	var debug: Control = self
+	var timing_state := TimingState.new()
+	var queries := 0
+	var terrain_levels := 32
+	var detailed_timing := false
+	var date := "01/03/1900"
+
+
+	func debug_set_visible_altitude_levels(value: int) -> void:
+		terrain_levels = value
+
+
+	func debug_set_detailed_timing(enabled: bool) -> ApplicationDebug.ActionResult:
+		detailed_timing = enabled
+
+		return ApplicationDebug.ActionResult.new(true, "Detailed timing is %s." % ("on" if enabled else "off"))
+
+
+	func debug_metrics() -> Dictionary:
+		queries += 1
+
+		return {"city_name": "Timing test", "date": date, "speed": "Paused",
+			"detailed_timing": detailed_timing}

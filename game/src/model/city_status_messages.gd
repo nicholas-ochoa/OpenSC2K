@@ -1,7 +1,6 @@
 class_name CityStatusMessages
 extends RefCounted
 
-
 const NEED_FIRST := 265
 const NEED_COUNT := 15
 const BROWNOUT := 280

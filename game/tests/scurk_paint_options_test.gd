@@ -118,7 +118,7 @@ func _test_palette() -> void:
 	assert(control.index_at(Vector2.ZERO) == 171 and control.index_at(Vector2(19, 0)) == 42)
 	panel.ramp_clear_button.pressed.emit()
 	assert(control.index_at(Vector2.ZERO) == -1)
-	panel.import_state({"favorites": [42, -1, 42, 256, "bad", 3.5], "ramp": "bad"})
+	panel.import_state({ "favorites": [42, -1, 42, 256, "bad", 3.5], "ramp": "bad" })
 	assert(control.favorite_indices == PackedInt32Array([42]) and control.ramp_indices.is_empty())
 	for index in 40:
 		panel.remember_index(index)

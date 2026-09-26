@@ -15,7 +15,7 @@ func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	var path := args[0] if not args.is_empty() else "user://gif-cycle-test.gif"
 	_write(path, encoded.bytes)
-	var metadata := {"width":32, "height":16, "pixels":Array(pixels), "frames": []}
+	var metadata := { "width": 32, "height": 16, "pixels": Array(pixels), "frames": [] }
 
 	for tick in 120:
 		metadata.frames.append(Array(palette.scurk_animation_index_map(31 + tick)))
@@ -46,7 +46,7 @@ func _check_static(pixels: PackedInt32Array, palette: Sc2Palette, path: String) 
 	assert(decoded.ok and decoded.width == 32 and decoded.height == 16 and decoded.pixels == pixels)
 	assert(decoded.palette.colors == palette.colors)
 	_write(path, encoded.bytes)
-	_write(path + ".json", JSON.stringify({"width": 32, "height": 16, "pixels": Array(pixels)}).to_utf8_buffer())
+	_write(path + ".json", JSON.stringify({ "width": 32, "height": 16, "pixels": Array(pixels) }).to_utf8_buffer())
 	var every_index := PackedInt32Array()
 
 	for index in 256:

@@ -1,5 +1,7 @@
 class_name IndexedGif
 extends RefCounted
+
+
 # gif89a export and indexed gif import. the cycle export has full frames with
 # local palettes and a repeating scurk cycle
 
@@ -11,14 +13,14 @@ const MAX_CODES := 4096
 const INTERLACE_PASSES := [[0, 8], [4, 8], [2, 4], [1, 2]]
 
 
-class Frame extends RefCounted:
-	var start := 0
-	var mapping := PackedInt32Array()
-	var signature := PackedInt32Array()
-
-
 static func encode_cycle(width: int, height: int, pixels: PackedInt32Array, palette: Sc2Palette) -> AssetBytesResult:
-	if width < 1 or height < 1 or width > 128 or height > 256 or pixels.size() != width * height or palette == null or not palette.is_valid():
+	if (width < 1
+			or height < 1
+			or width > 128
+			or height > 256
+			or pixels.size() != width * height
+			or palette == null
+			or not palette.is_valid()):
 		return AssetBytesResult.failure("Invalid SCURK GIF dimensions, pixels, or palette.")
 
 	var used := PackedByteArray()
@@ -108,7 +110,13 @@ static func encode_cycle(width: int, height: int, pixels: PackedInt32Array, pale
 
 # one frame with the palette in its original index order
 static func encode(width: int, height: int, pixels: PackedInt32Array, palette: Sc2Palette) -> AssetBytesResult:
-	if width < 1 or height < 1 or width > MAX_DIMENSION or height > MAX_DIMENSION or pixels.size() != width * height or palette == null or not palette.is_valid():
+	if (width < 1
+			or height < 1
+			or width > MAX_DIMENSION
+			or height > MAX_DIMENSION
+			or pixels.size() != width * height
+			or palette == null
+			or not palette.is_valid()):
 		return AssetBytesResult.failure("Invalid GIF dimensions, pixels, or palette.")
 
 	var used := PackedByteArray()
@@ -489,3 +497,9 @@ static func _literal_lzw(pixels: PackedByteArray) -> PackedByteArray:
 		output.append(buffer & 255)
 
 	return output
+
+
+class Frame extends RefCounted:
+	var start := 0
+	var mapping := PackedInt32Array()
+	var signature := PackedInt32Array()

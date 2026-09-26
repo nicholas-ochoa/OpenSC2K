@@ -1,3 +1,4 @@
+# gdstyle:ignore-file=quality/max-public-methods
 class_name CityIsometricRenderer
 extends IsometricConstants
 # Public entry points for view/isometric/. Application code uses this class;

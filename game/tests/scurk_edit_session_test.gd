@@ -32,7 +32,7 @@ func _run() -> void:
 	editor._set_clipping_enabled(false)
 	await process_frame
 	editor.studio.sync_editor_state()
-	editor.studio.update_modified()
+	editor.session.update_modified()
 	assert(editor.active_workspace and editor.pixel_canvas.sprite_width == 128 and editor.pixel_canvas.sprite_height == 256)
 	var initial := _state()
 	_test_no_op_and_cancel(initial)
@@ -77,7 +77,10 @@ func _run() -> void:
 	next[255 * 128] = 44
 	editor.pixel_canvas._commit_changed_pixels(next, NEXT_DESCRIPTION)
 	_check_pixels(next, "Edit after failure")
-	_check(editor.edit_history.undo_stack.size() == 1 and editor.edit_history.redo_stack.is_empty(), "Valid edit replaces redo with one action")
+	_check(
+		editor.edit_history.undo_stack.size() == 1 and editor.edit_history.redo_stack.is_empty(),
+		"Valid edit replaces redo with one action",
+	)
 	if not editor.edit_history.undo_stack.is_empty():
 		var action: ScurkEditorHistory.Record = editor.edit_history.undo_stack.back()
 		_check(action.description == NEXT_DESCRIPTION, "Valid edit has its own description")
@@ -127,7 +130,7 @@ func _test_locked_input(initial: Dictionary) -> void:
 	var key := editor.studio.key()
 	assert(editor.studio.project.set_layer_locked(key, 0, true))
 	editor.studio.bind_canvas()
-	editor.studio.update_modified()
+	editor.session.update_modified()
 	assert(canvas.editing_disabled)
 	var locked := _state()
 	var foreground := canvas.selected_color_index
@@ -145,7 +148,7 @@ func _test_locked_input(initial: Dictionary) -> void:
 	canvas.selected_color_index = foreground
 	assert(editor.studio.project.set_layer_locked(key, 0, false))
 	editor.studio.bind_canvas()
-	editor.studio.update_modified()
+	editor.session.update_modified()
 	_check_artwork(initial, "Unlocked fixture")
 
 
@@ -186,7 +189,8 @@ func _check_artwork(expected: Dictionary, label: String) -> void:
 	_check(editor.studio.project.current_mif == expected.mif, label + " keeps project MIF synchronized")
 	_check_pixels(expected.pixels, label)
 	_check(editor.edit_history.blank_shape_ids == expected.blank, label + " preserves blank-shape state")
-	_check(editor.studio.modified == expected.modified and editor.dirty == expected.dirty and editor.edit_history.dirty == expected.history_dirty,
+	_check(editor.studio.modified == expected.modified and editor.dirty == expected.dirty
+		and editor.edit_history.dirty == expected.history_dirty,
 		label + " preserves modified flags")
 
 
@@ -265,7 +269,7 @@ func _test_active_stroke_history() -> void:
 	assert(document.parse(editor.tile_set.to_bytes().bytes))
 	assert(editor.load_tile_set(document).ok)
 	editor.studio.sync_editor_state()
-	editor.studio.update_modified()
+	editor.session.update_modified()
 	var canvas := editor.pixel_canvas
 	var foreground := canvas.selected_color_index
 	canvas.selected_color_index = 45
@@ -365,11 +369,14 @@ func _test_object_revert() -> void:
 		var other := session.document.archive.find_sprite(ScurkEditorRules.view_sprite_id(1001, view))
 		_check(other.decode_indices().pixels == PackedInt32Array([99, 99]), "Revert preserves each other object's MIF view")
 	_check(not project.documents.has("1000:2"), "Revert drops a view first opened after its edit")
-	_check(session.document.names[0] == "Initial 1000" and session.document.names[1] == "Keep this name", "Revert restores only the selected name")
+	_check(
+		session.document.names[0] == "Initial 1000" and session.document.names[1] == "Keep this name",
+		"Revert restores only the selected name",
+	)
 	_check(session.document.info_payload[23] == 173, "Revert preserves opaque MIF information")
 	_check(project.metadata.author == before.metadata.author and project.resources == before.resources and project.stamps == before.stamps,
 		"Revert preserves project metadata, resources, and stamps")
-	_check(session.history.blank_shape_ids == {1001: true} and project.metadata.editor_state.unclipped_tile_ids == [1001],
+	_check(session.history.blank_shape_ids == { 1001: true } and project.metadata.editor_state.unclipped_tile_ids == [1001],
 		"Revert restores only the selected object's blank and clip state")
 	var after := project.snapshot()
 	assert(session.undo().ok)
@@ -599,7 +606,8 @@ func _check_saved_project(path: String, label: String) -> void:
 	_check(loaded.ok and _same_project_state(loaded.project.snapshot(), studio.project.snapshot()), label + " stores the current project")
 	_check(studio.saved_state == studio.project.snapshot() and studio.saved_checkpoints == studio.project.checkpoints,
 		label + " records project baselines")
-	_check(studio.saved_pixels[studio.key()] == editor.pixel_canvas.pixels and editor.pixel_canvas.comparison_pixels == editor.pixel_canvas.pixels,
+	_check(studio.saved_pixels[studio.key()] == editor.pixel_canvas.pixels
+		and editor.pixel_canvas.comparison_pixels == editor.pixel_canvas.pixels,
 		label + " records pixel baselines")
 	_check(editor.edit_history.saved_bytes == editor.tile_set.to_bytes().bytes, label + " records the MIF baseline")
 	_check(not studio.modified and not editor.dirty and studio.project_path == ProjectSettings.globalize_path(path),
@@ -623,10 +631,14 @@ func _test_generation_sampling() -> void:
 	# EXE SHA-256: fb8fdcbe3903f797b5cbb5bf5f3663d2d1337723e8459647f2dee8088f2467fc.
 	# Hashes cover little-endian signed 32-bit indices, with transparent pixels as -1.
 	var hashes := [
-		"0c06f5c11325b4ee9744219d97659b0e3071e304b2a75013ea950f9622bf6406", "ebe84df02e5152b64f0cf2a3d10bb28988c563745ba650bae38622d52b090eaa",
-		"c161dc05e749f93951162249b749e32e615e4f31a98c5207cb684ca844e689e5", "1c4fab53e758bbb681445c860cc6d91bc8c2254221f2dc3b1b61fe5732bee712",
-		"f8eac3732acd1c65d87db8493f394680e1e27a86a8be67b94b069dbca49ad461", "210ae7ca9020bb6d0bac19612701c1eef060550d887a6049e00b4b24526b5f2d",
-		"f45874f5944414b521a6ca9ca085af59df2d2d1ab00b8a378d9d22b421f55e28", "b2102a17962fd8c28b24eea0730047daa044e69ec4b7ff76cf6d7baa4700e184",
+		"0c06f5c11325b4ee9744219d97659b0e3071e304b2a75013ea950f9622bf6406",
+		"ebe84df02e5152b64f0cf2a3d10bb28988c563745ba650bae38622d52b090eaa",
+		"c161dc05e749f93951162249b749e32e615e4f31a98c5207cb684ca844e689e5",
+		"1c4fab53e758bbb681445c860cc6d91bc8c2254221f2dc3b1b61fe5732bee712",
+		"f8eac3732acd1c65d87db8493f394680e1e27a86a8be67b94b069dbca49ad461",
+		"210ae7ca9020bb6d0bac19612701c1eef060550d887a6049e00b4b24526b5f2d",
+		"f45874f5944414b521a6ca9ca085af59df2d2d1ab00b8a378d9d22b421f55e28",
+		"b2102a17962fd8c28b24eea0730047daa044e69ec4b7ff76cf6d7baa4700e184",
 	]
 	var source := PackedInt32Array()
 	source.resize(128 * 256)
@@ -637,16 +649,25 @@ func _test_generation_sampling() -> void:
 	for width in [32, 64, 96, 128]:
 		for view in [1, 2]:
 			var shape := Workspace.generate_view(source, width, view)
-			_check(shape.ok and shape.width == width >> view and shape.height == 240 >> view, "Generated dimensions match the original sampler")
+			_check(
+				shape.ok and shape.width == width >> view and shape.height == 240 >> view,
+				"Generated dimensions match the original sampler",
+			)
 			var hash := HashingContext.new()
 			hash.start(HashingContext.HASH_SHA256)
 			hash.update(shape.pixels.to_byte_array())
-			_check(hash.finish().hex_encode() == hashes[index], "Generated pixels match original x86 output for base %d, view %d" % [width, view])
+			_check(
+				hash.finish().hex_encode() == hashes[index],
+				"Generated pixels match original x86 output for base %d, view %d" % [width, view],
+			)
 			index += 1
 	source.fill(-1)
 	for view in [1, 2]:
 		var empty := Workspace.generate_view(source, 128, view)
-		_check(empty.ok and empty.width == 128 >> view and empty.height == 1 and empty.pixels.count(-1) == empty.width, "Empty generation retains one transparent row")
+		_check(
+			empty.ok and empty.width == 128 >> view and empty.height == 1 and empty.pixels.count(-1) == empty.width,
+			"Empty generation retains one transparent row",
+		)
 	source.fill(0)
 	for view in [1, 2]:
 		var shape := Workspace.generate_view(source, 32, view, false)
@@ -704,10 +725,19 @@ func _test_size_generation() -> void:
 	_check(not dialogs.generate_options.get_ok_button().disabled, "Selecting a size enables generation")
 	dialogs.generate_options.confirmed.emit()
 	_check(editor.current_view == 2, "Generation keeps the selected view")
-	_check(editor._resolved_view_entry(0).encoded_pixels == large and editor._resolved_view_entry(2).encoded_pixels == small, "Medium-only generation preserves Large and Small")
+	_check(
+		editor._resolved_view_entry(0).encoded_pixels == large and editor._resolved_view_entry(2).encoded_pixels == small,
+		"Medium-only generation preserves Large and Small",
+	)
 	var medium: PackedInt32Array = editor._resolved_view_entry(1).decode_indices().pixels
-	_check(medium == Workspace.generate_view(source, 128, 1, false).pixels and medium[32] == 91, "Generation uses visible Large layers even while Small is selected")
-	_check(project.documents[editor.studio.key(1)].layers.size() == 1 and not project.documents[editor.studio.key(1)].layers[0].locked, "Generated artwork replaces target layers and remains editable")
+	_check(
+		medium == Workspace.generate_view(source, 128, 1, false).pixels and medium[32] == 91,
+		"Generation uses visible Large layers even while Small is selected",
+	)
+	_check(
+		project.documents[editor.studio.key(1)].layers.size() == 1 and not project.documents[editor.studio.key(1)].layers[0].locked,
+		"Generated artwork replaces target layers and remains editable",
+	)
 	_check(editor.undo_stack.size() == before.undo.size() + 1, "Generation records one Undo action")
 	var generated := _state()
 	editor.undo()
@@ -719,7 +749,10 @@ func _test_size_generation() -> void:
 	dialogs.generate_small.button_pressed = true
 	editor._generate_selected_sizes()
 	_check(editor._resolved_view_entry(1).decode_indices().pixels == medium, "Small-only generation preserves Medium")
-	_check(editor._resolved_view_entry(2).decode_indices().pixels == Workspace.generate_view(source, 128, 2, false).pixels, "Small is generated directly from Large")
+	_check(
+		editor._resolved_view_entry(2).decode_indices().pixels == Workspace.generate_view(source, 128, 2, false).pixels,
+		"Small is generated directly from Large",
+	)
 	editor._select_view(1)
 	var edited := editor.pixel_canvas.pixels.duplicate()
 	edited[255 * 128 + 64] = 73
@@ -738,7 +771,10 @@ func _test_size_generation() -> void:
 	edited = editor.pixel_canvas.pixels.duplicate()
 	edited[255 * 128 + 68] = 72
 	editor.pixel_canvas._commit_changed_pixels(edited, "Later Large edit")
-	_check(editor._resolved_view_entry(1).decode_indices().pixels[32] == 73 and editor._resolved_view_entry(2).encoded_pixels == small_after, "Later Large edits do not regenerate smaller sizes")
+	_check(
+		editor._resolved_view_entry(1).decode_indices().pixels[32] == 73 and editor._resolved_view_entry(2).encoded_pixels == small_after,
+		"Later Large edits do not regenerate smaller sizes",
+	)
 
 	dialogs.generate_medium.button_pressed = true
 	var undo_count := editor.undo_stack.size()
@@ -758,8 +794,14 @@ func _test_size_generation() -> void:
 	var original := session.document.to_bytes().bytes
 	assert(session.begin_edit("Invalid generation").ok)
 	_check(not session.generate_views(1000, source, 128, [1, 0], false).ok, "Invalid second size rejects generation")
-	_check(session.document.to_bytes().bytes == original and session.project.documents.is_empty() and not session.has_pending_edit(), "Failure rolls back all generated sizes and layers")
+	_check(
+		session.document.to_bytes().bytes == original and session.project.documents.is_empty() and not session.has_pending_edit(),
+		"Failure rolls back all generated sizes and layers",
+	)
 	assert(session.begin_edit("Missing sizes").ok)
 	assert(session.generate_views(1000, source, 128, [1, 2], false).ok)
 	assert(session.commit_edit().ok)
-	_check(session.document.archive.find_sprite(500) != null and session.document.archive.find_sprite(0) != null, "Generation creates missing smaller sizes")
+	_check(
+		session.document.archive.find_sprite(500) != null and session.document.archive.find_sprite(0) != null,
+		"Generation creates missing smaller sizes",
+	)

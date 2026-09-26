@@ -11,18 +11,15 @@ const QUEUE_COUNT := 7
 const STORY_RECORD_COUNT := 9
 const STORY_FIELD_COUNT := 6
 const STORY_RECORD_SIZE := STORY_FIELD_COUNT * 4
-
 const STORY_TYPE_FIELD := 0
 const PRIORITY_FIELD := 1
 const ARGUMENT_FIELD := 2
 const FIRST_AUXILIARY_FIELD := 3
-
 const PAPER_NAME_FIELD := 0
 const PAPER_LAYOUT_FIELD := 1
 const PAPER_PRICE_FIELD := 2
 const PAPER_OPINION_FIELD := 3
 const PAPER_WEATHER_FIELD := 4
-
 # data_usa resources 1004 and 1005 are big-endian unsigned 16-bit tables
 # the supplied executable byte-swaps them after loading
 const STORY_PRIORITIES := [
@@ -35,7 +32,6 @@ const STORY_PRIORITIES := [
 	500, 200, 200, 200, 200, 200, 200, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ]
-
 const STORY_DECAYS := [
 	0, 0, 500, 500, 250, 250, 10, 50, 50, 50,
 	50, 50, 50, 50, 50, 50, 50, 50, 50, 50,
@@ -46,35 +42,6 @@ const STORY_DECAYS := [
 	500, 50, 50, 50, 50, 50, 50, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ]
-
-
-class Result extends RefCounted:
-	var ok := false
-	var error := ""
-	var random_calls := 0
-	var slot := 0
-	var priority := 0
-	var inserted := 0
-
-
-class StoryRecord extends RefCounted:
-	var type := 0
-	var priority := 0
-	var argument := 0
-	var auxiliary := PackedByteArray()
-
-	func _init(story_type := 0, story_argument := 0, story_auxiliary := PackedByteArray()) -> void:
-		type = story_type
-		argument = story_argument
-		auxiliary = story_auxiliary
-
-
-class PaperRecord extends RefCounted:
-	var name := 0
-	var layout := 0
-	var price := 0
-	var opinion := 0
-	var weather := 0
 
 
 static func is_story_type(story_type: int) -> bool:
@@ -424,3 +391,32 @@ static func _failure(message: String) -> Result:
 	result.error = message
 
 	return result
+
+
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+	var random_calls := 0
+	var slot := 0
+	var priority := 0
+	var inserted := 0
+
+
+class StoryRecord extends RefCounted:
+	var type := 0
+	var priority := 0
+	var argument := 0
+	var auxiliary := PackedByteArray()
+
+	func _init(story_type := 0, story_argument := 0, story_auxiliary := PackedByteArray()) -> void:
+		type = story_type
+		argument = story_argument
+		auxiliary = story_auxiliary
+
+
+class PaperRecord extends RefCounted:
+	var name := 0
+	var layout := 0
+	var price := 0
+	var opinion := 0
+	var weather := 0

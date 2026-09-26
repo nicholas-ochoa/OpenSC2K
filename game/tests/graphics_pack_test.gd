@@ -13,8 +13,8 @@ func _initialize() -> void:
 	var manifest := {
 		"format": "opensc2k-graphics", "version": 1, "name": "Independent test",
 		"palette": "sprite.png", "scenario_palette": "sprite.png",
-		"large_sprites": [{"id": 1001, "png": "sprite.png"}, {"id": 1001, "png": "sprite.png"}],
-		"small_medium_sprites": [{"id": 1, "png": "sprite.png"}], "ui": {},
+		"large_sprites": [{ "id": 1001, "png": "sprite.png" }, { "id": 1001, "png": "sprite.png" }],
+		"small_medium_sprites": [{ "id": 1, "png": "sprite.png" }], "ui": {},
 	}
 
 	for field in Pack.UI_FIELDS:

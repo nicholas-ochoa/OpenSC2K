@@ -40,7 +40,12 @@ func _changed(city: CityState, old_payloads: Dictionary, sprites: Sc2SpriteArchi
 func _tile_rect(x: int, y: int) -> Rect2i:
 	var configuration := CityIsometricRenderer.view_configuration(VIEW)
 	var bounds := CityIsometricRenderer.potential_tile_bounds(configuration, SPRITE_LIMIT, x, y, 128)
-	bounds = bounds.grow_individual(configuration.half_width, configuration.half_height, configuration.half_width, configuration.half_height)
+	bounds = bounds.grow_individual(
+		configuration.half_width,
+		configuration.half_height,
+		configuration.half_width,
+		configuration.half_height,
+	)
 
 	return bounds.intersection(Rect2i(Vector2i.ZERO, CityIsometricRenderer.output_size_for_view(VIEW, 128)))
 

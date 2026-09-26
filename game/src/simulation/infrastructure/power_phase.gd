@@ -4,7 +4,6 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const MAP_SIZE := CityState.MAP_SIZE
 const FLAG_MARK := Sc2TileFlags.MARK
 const FLAG_POWERED := Sc2TileFlags.POWERED
@@ -15,51 +14,6 @@ const LAST_PLANT := Tiles.COAL_POWER
 const SOLAR_EFFICIENCY_ORDINANCE := OrdinanceIds.ENERGY_CONSERVATION_MASK
 
 static var _plant_ids := PackedInt32Array(range(FIRST_PLANT, LAST_PLANT + 1))
-
-
-class Result extends PhaseResult:
-	var generation := 0
-	var consumers := 0
-	var supplied_consumers := 0
-	var usage_percent := 0
-
-
-# an unbounded trace keeps the component tiles in the caller's queue. `size`
-# counts them. a bounded trace does not keep its tiles
-class Component extends RefCounted:
-	var size := 0
-	var capacity := 0
-	var consumers := 0
-
-
-# the original trace queue for SC2 cities. it has 512 slots. a push into a
-# full queue drops the oldest entry, so a very wide network can lose tiles
-class TraceQueue extends RefCounted:
-	const SIZE := 512
-
-	var entries := PackedInt32Array()
-	var head := 0
-	var tail := 0
-
-	func _init(start: int) -> void:
-		entries.resize(SIZE)
-		push(start)
-
-	func is_empty() -> bool:
-		return head == tail
-
-	func push(index: int) -> void:
-		entries[tail] = index
-		tail = (tail + 1) & (SIZE - 1)
-
-		if tail == head:
-			head = (head + 1) & (SIZE - 1)
-
-	func pop() -> int:
-		var index := entries[head]
-		head = (head + 1) & (SIZE - 1)
-
-		return index
 
 
 static func run(city: CityState, random: SimRandom) -> Result:
@@ -354,3 +308,48 @@ static func _plant_capacity(
 			return 44
 
 	return 0
+
+
+class Result extends PhaseResult:
+	var generation := 0
+	var consumers := 0
+	var supplied_consumers := 0
+	var usage_percent := 0
+
+
+# an unbounded trace keeps the component tiles in the caller's queue. `size`
+# counts them. a bounded trace does not keep its tiles
+class Component extends RefCounted:
+	var size := 0
+	var capacity := 0
+	var consumers := 0
+
+
+# the original trace queue for SC2 cities. it has 512 slots. a push into a
+# full queue drops the oldest entry, so a very wide network can lose tiles
+class TraceQueue extends RefCounted:
+	const SIZE := 512
+
+	var entries := PackedInt32Array()
+	var head := 0
+	var tail := 0
+
+	func _init(start: int) -> void:
+		entries.resize(SIZE)
+		push(start)
+
+	func is_empty() -> bool:
+		return head == tail
+
+	func push(index: int) -> void:
+		entries[tail] = index
+		tail = (tail + 1) & (SIZE - 1)
+
+		if tail == head:
+			head = (head + 1) & (SIZE - 1)
+
+	func pop() -> int:
+		var index := entries[head]
+		head = (head + 1) & (SIZE - 1)
+
+		return index

@@ -1,6 +1,8 @@
 extends SceneTree
+
 const History = preload("res://src/ui/shared/file_dialog_history.gd")
 const PATH := "user://file-dialog-history-test.cfg"
+
 var history: Node
 
 

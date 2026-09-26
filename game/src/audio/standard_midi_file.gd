@@ -1,41 +1,6 @@
 class_name StandardMidiFile
 extends RefCounted
 
-class TrackResult extends RefCounted:
-	var ok := false
-	var error := ""
-	var next_order := 0
-	var end_tick := 0
-
-	static func failure(message: String) -> TrackResult:
-		var result := TrackResult.new()
-		result.error = message
-
-		return result
-
-
-class VariableLengthResult extends RefCounted:
-	var ok := false
-	var error := ""
-	var value := 0
-	var next := 0
-
-
-class Event extends RefCounted:
-	var tick := 0
-	var order := 0
-	var track := 0
-	var type := ""
-	var channel := 0
-	var note := 0
-	var velocity := 0
-	var controller := 0
-	var value := 0
-	var program := 0
-	var microseconds_per_quarter := 0
-	var time_seconds := 0.0
-
-
 var format_type := -1
 var track_count := 0
 var ticks_per_quarter := 0
@@ -377,3 +342,38 @@ static func _ascii(data: PackedByteArray, offset: int, length: int) -> String:
 		return ""
 
 	return data.slice(offset, offset + length).get_string_from_ascii()
+
+
+class TrackResult extends RefCounted:
+	var ok := false
+	var error := ""
+	var next_order := 0
+	var end_tick := 0
+
+	static func failure(message: String) -> TrackResult:
+		var result := TrackResult.new()
+		result.error = message
+
+		return result
+
+
+class VariableLengthResult extends RefCounted:
+	var ok := false
+	var error := ""
+	var value := 0
+	var next := 0
+
+
+class Event extends RefCounted:
+	var tick := 0
+	var order := 0
+	var track := 0
+	var type := ""
+	var channel := 0
+	var note := 0
+	var velocity := 0
+	var controller := 0
+	var value := 0
+	var program := 0
+	var microseconds_per_quarter := 0
+	var time_seconds := 0.0

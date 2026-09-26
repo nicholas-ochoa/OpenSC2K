@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Simulation: weather checks.
 
 @warning_ignore_start("integer_division")
@@ -12,6 +11,12 @@ const SequenceRandom = TestRandoms.SequenceRandom
 
 
 func test_weather_disaster_phase(reference_root: String) -> void:
+	_test_weather_gates(reference_root)
+	_test_weather_disasters(reference_root)
+	_test_pollution_and_invalid_city(reference_root)
+
+
+func _test_weather_gates(reference_root: String) -> void:
 	var power_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 
 	for setting in [
@@ -136,6 +141,8 @@ func test_weather_disaster_phase(reference_root: String) -> void:
 		"Easy cities cannot receive a natural disaster before month 100",
 	)
 
+
+func _test_weather_disasters(reference_root: String) -> void:
 	var hurricane_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 
 	for setting in [
@@ -252,6 +259,8 @@ func test_weather_disaster_phase(reference_root: String) -> void:
 				"Riot candidate %d with signed unemployment %d selects %d" % [candidate, unemployment, expected],
 			)
 
+
+func _test_pollution_and_invalid_city(reference_root: String) -> void:
 	var toxic_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 
 	for setting in [

@@ -2,60 +2,50 @@ class_name EditCommandResult
 extends RefCounted
 # Shared edit and undo data. Tool subclasses add their own fields.
 
-
 # outcome. a failed edit leaves the city unchanged and reports `error`
 var ok := false
 var error := ""
-
 # tool family, for example "building" or "zone". undo dispatches on it
 var command_type := ""
 var group_index := -1
 var subtool_index := -1
-
 # funds charged. `listed_cost` is the catalog cost before free-mode and
 # executable rules. free mode is scurk place & print and the terrain editor
 var cost := 0
 var listed_cost := 0
 var free_mode := false
-
 # decoded chunk payloads before and after the edit, keyed by chunk id. undo
 # and redo exchange the `changed_ids` entries. published payload arrays are
 # read-only. replace dictionary entries to extend an edit; never modify bytes
 var changed_ids := PackedStringArray()
 var old_payloads: Dictionary[String, PackedByteArray] = {}
 var new_payloads: Dictionary[String, PackedByteArray] = {}
-
 # map positions that the renderer repaints
 var tile_indices := PackedInt32Array()
 var points: Array[Vector2i] = []
 var site := Rect2i()
-
 # tool random state around the edit. scurk history checks and restores it
 # when `tracks_random` is true
 var tracks_random := false
 var random_state_before := 0
 var random_state_after := 0
-
 # utilization from an immediate power or water scan, or -1 when none ran.
 # the application keeps the engine values from before the edit for undo
 var power_usage_percent := -1
 var water_usage_percent := -1
 var power_usage_before := -1
 var water_usage_before := -1
-
 # presentation events for the main thread
 var sound_events: Array[int] = []
 var effect_events: Array[EffectEvent] = []
-
 # undo and redo results: the number of tiles restored
 var restored_tiles := 0
-
 # set when scurk place & print history owns this edit
 var scurk_place_history := false
 var scurk_tool_name := ""
-
 # runtime-only reflection plan. script variables do not change between copies
 var _copy_names := PackedStringArray()
+
 
 static func failure(message: String) -> EditCommandResult:
 	var result := EditCommandResult.new()

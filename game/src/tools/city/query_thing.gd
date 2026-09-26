@@ -1,7 +1,6 @@
 class_name QueryThing
 extends ThingRecord
 
-
 var record := -1
 var type_name := ""
 var direction_name := ""

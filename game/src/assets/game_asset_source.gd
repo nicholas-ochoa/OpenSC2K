@@ -4,6 +4,7 @@ extends RefCounted
 # supplies the game data files
 
 const MODES := ["auto", "original", "folder"]
+
 var assets: OriginalGameAssets
 var import_revision := ImportedPackRevision.NOT_IMPORTED
 var uses_graphics_pack := false

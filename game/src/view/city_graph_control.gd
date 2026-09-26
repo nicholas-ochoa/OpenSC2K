@@ -3,17 +3,6 @@ extends Control
 
 @warning_ignore_start("integer_division")
 
-class Endpoint extends RefCounted:
-	var series: int
-	var point: Vector2
-	var value: int
-
-	func _init(series_index: int, position: Vector2, latest_value: int) -> void:
-		series = series_index
-		point = position
-		value = latest_value
-
-
 const SERIES_COUNT := Sc2GraphLayout.SERIES_COUNT
 const DEFAULT_SELECTED_MASK := 0x000f
 const TIME_YEAR := 0
@@ -73,6 +62,79 @@ func _init() -> void:
 	theme_changed.connect(queue_redraw)
 	custom_minimum_size = Vector2(620, 330)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
+func _draw() -> void:
+	var frame := Rect2(Vector2.ZERO, size)
+	draw_rect(frame, get_theme_color("paper", "AppPalette"), true)
+	draw_rect(frame, get_theme_color("border", "AppPalette"), false, 1.0)
+
+	if city == null or not city.is_valid():
+		_draw_centered_message("No city is loaded.")
+
+		return
+
+	var font := get_theme_default_font()
+	var font_size := 12
+	var plot := Rect2(44, 18, maxf(1.0, size.x - 132.0), maxf(1.0, size.y - 55.0))
+
+	for step in 5:
+		var y := plot.position.y + plot.size.y * float(step) / 4.0
+		draw_line(
+			Vector2(plot.position.x, y), Vector2(plot.end.x, y),
+			get_theme_color("grid", "AppPalette"), 1.0
+		)
+
+	draw_line(plot.position, Vector2(plot.position.x, plot.end.y), get_theme_color("border", "AppPalette"), 1.0)
+	draw_line(Vector2(plot.position.x, plot.end.y), plot.end, get_theme_color("border", "AppPalette"), 1.0)
+
+	var labels := time_labels(city, time_scale)
+	var point_count := Sc2GraphLayout.YEAR_COUNT if time_scale == TIME_YEAR else (
+		Sc2GraphLayout.CENTURY_COUNT if time_scale == TIME_CENTURY else Sc2GraphLayout.DECADE_COUNT
+	)
+
+	for index in point_count:
+		var x := _point_x(plot, index, point_count)
+		var label := labels[index] if index < labels.size() else ""
+
+		if not label.is_empty():
+			draw_line(Vector2(x, plot.end.y), Vector2(x, plot.end.y + 4), get_theme_color("border", "AppPalette"), 1.0)
+			var label_width := font.get_string_size(
+				label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
+			).x
+			draw_string(
+				font, Vector2(x - label_width * 0.5, plot.end.y + 17), label,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, get_theme_color("ink", "AppPalette")
+			)
+
+	var maxima := display_maxima(city)
+	var endpoints: Array[Endpoint] = []
+
+	for series in SERIES_COUNT:
+		if (selected_mask & (1 << series)) == 0:
+			continue
+
+		var history := history_for_scale(city, series, time_scale)
+
+		if history.size() != point_count:
+			continue
+
+		var points := PackedVector2Array()
+
+		for index in history.size():
+			points.append(Vector2(
+				_point_x(plot, index, point_count),
+				_value_y(plot, history[index], maxima[series])
+			))
+
+		if points.size() >= 2:
+			draw_polyline(points, _series_color(series), 1.0, false)
+
+		endpoints.append(Endpoint.new(
+			series, points[points.size() - 1], history[history.size() - 1]
+		))
+
+	_draw_endpoint_labels(plot, endpoints, font, font_size)
 
 
 func set_city(value: CityState) -> void:
@@ -228,79 +290,6 @@ static func _scale_key(scale: int) -> String:
 	return ""
 
 
-func _draw() -> void:
-	var frame := Rect2(Vector2.ZERO, size)
-	draw_rect(frame, get_theme_color("paper", "AppPalette"), true)
-	draw_rect(frame, get_theme_color("border", "AppPalette"), false, 1.0)
-
-	if city == null or not city.is_valid():
-		_draw_centered_message("No city is loaded.")
-
-		return
-
-	var font := get_theme_default_font()
-	var font_size := 12
-	var plot := Rect2(44, 18, maxf(1.0, size.x - 132.0), maxf(1.0, size.y - 55.0))
-
-	for step in 5:
-		var y := plot.position.y + plot.size.y * float(step) / 4.0
-		draw_line(
-			Vector2(plot.position.x, y), Vector2(plot.end.x, y),
-			get_theme_color("grid", "AppPalette"), 1.0
-		)
-
-	draw_line(plot.position, Vector2(plot.position.x, plot.end.y), get_theme_color("border", "AppPalette"), 1.0)
-	draw_line(Vector2(plot.position.x, plot.end.y), plot.end, get_theme_color("border", "AppPalette"), 1.0)
-
-	var labels := time_labels(city, time_scale)
-	var point_count := Sc2GraphLayout.YEAR_COUNT if time_scale == TIME_YEAR else (
-		Sc2GraphLayout.CENTURY_COUNT if time_scale == TIME_CENTURY else Sc2GraphLayout.DECADE_COUNT
-	)
-
-	for index in point_count:
-		var x := _point_x(plot, index, point_count)
-		var label := labels[index] if index < labels.size() else ""
-
-		if not label.is_empty():
-			draw_line(Vector2(x, plot.end.y), Vector2(x, plot.end.y + 4), get_theme_color("border", "AppPalette"), 1.0)
-			var label_width := font.get_string_size(
-				label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
-			).x
-			draw_string(
-				font, Vector2(x - label_width * 0.5, plot.end.y + 17), label,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, get_theme_color("ink", "AppPalette")
-			)
-
-	var maxima := display_maxima(city)
-	var endpoints: Array[Endpoint] = []
-
-	for series in SERIES_COUNT:
-		if (selected_mask & (1 << series)) == 0:
-			continue
-
-		var history := history_for_scale(city, series, time_scale)
-
-		if history.size() != point_count:
-			continue
-
-		var points := PackedVector2Array()
-
-		for index in history.size():
-			points.append(Vector2(
-				_point_x(plot, index, point_count),
-				_value_y(plot, history[index], maxima[series])
-			))
-
-		if points.size() >= 2:
-			draw_polyline(points, _series_color(series), 1.0, false)
-
-		endpoints.append(Endpoint.new(
-			series, points[points.size() - 1], history[history.size() - 1]
-		))
-
-	_draw_endpoint_labels(plot, endpoints, font, font_size)
-
-
 func _draw_endpoint_labels(
 	plot: Rect2, endpoints: Array[Endpoint], font: Font, font_size: int
 ) -> void:
@@ -344,7 +333,7 @@ func _draw_endpoint_labels(
 		var series: int = endpoint.series
 		var color: Color = _series_color(series)
 		var label := "%s %s" % [
-			SERIES_MARKERS[series], format_value(series, int(endpoint.value))
+			SERIES_MARKERS[series], format_value(series, int(endpoint.value)),
 		]
 		draw_line(point, Vector2(plot.end.x + 5, label_y), color, 1.0)
 		draw_string(
@@ -381,3 +370,14 @@ func _value_y(plot: Rect2, value: int, maximum: int) -> float:
 func _series_color(series: int) -> Color:
 	var original: Color = SERIES_COLORS[series]
 	return original.lerp(Color.WHITE, 0.5) if AppUiTheme.selected == "dark" else original
+
+
+class Endpoint extends RefCounted:
+	var series: int
+	var point: Vector2
+	var value: int
+
+	func _init(series_index: int, position: Vector2, latest_value: int) -> void:
+		series = series_index
+		point = position
+		value = latest_value

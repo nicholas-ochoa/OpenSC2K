@@ -5,6 +5,7 @@ extends SceneTree
 # Supplied executable 0x4419ae..0x441a9b: highway direction, road direction, XBLD.
 const CASES := [[1, 0, 0x5f], [3, 0, 0x5e], [0, 1, 0x5d], [2, 1, 0x60],
 	[1, 2, 0x60], [3, 2, 0x5d], [0, 3, 0x5e], [2, 3, 0x5f]]
+
 var failures := 0
 var checks := 0
 
@@ -62,7 +63,10 @@ func _initialize() -> void:
 						rotated_road = CityRotationCommand.rotate_point(rotated_road, edge, ccw)
 					var hd := OnrampCommand.DIRECTIONS.find(rotated_highway - rotated_point)
 					var rd := OnrampCommand.DIRECTIONS.find(rotated_road - rotated_point)
-					check(rotated.building_id(rotated_point.x, rotated_point.y) == OnrampCommand._ramp_tile(1 << hd, rd), "Rotation agrees with placement")
+					check(
+						rotated.building_id(rotated_point.x, rotated_point.y) == OnrampCommand._ramp_tile(1 << hd, rd),
+						"Rotation agrees with placement",
+					)
 					check(rotated.is_flipped(rotated_point.x, rotated_point.y) == (rd % 2 == 0), "Rotated mirror agrees with placement")
 
 		commands.reverse()

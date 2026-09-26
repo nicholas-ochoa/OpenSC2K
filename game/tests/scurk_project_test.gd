@@ -50,11 +50,11 @@ func _run() -> void:
 	assert(project.add_stamp("Window", 2, 1, PackedInt32Array([252, -1]), 3) == 0)
 	assert(project.add_stamp("Bad", 2, 1, PackedInt32Array([42]), 1) == -1)
 	assert(project.add_stamp("Bad", 1, 1, PackedInt32Array([42]), 0) == -1)
-	project.metadata = {"author": "Author", "license": "CC0", "custom": {"enabled": true, "items": [null, 4, "roof"]}}
+	project.metadata = { "author": "Author", "license": "CC0", "custom": { "enabled": true, "items": [null, 4, "roof"] } }
 	project.resources["reference.bin"] = PackedByteArray([0, 1, 252, 255])
-	project.extra_fields["future_extension"] = {"tag": "preserve"}
+	project.extra_fields["future_extension"] = { "tag": "preserve" }
 	project.documents["1:0"].custom = ["keep"]
-	project.documents["1:0"].layers[0].custom = {"keep": true}
+	project.documents["1:0"].layers[0].custom = { "keep": true }
 	project.stamps[0].custom = "keep"
 	assert(project.add_checkpoint("Original") == 0)
 	var checkpoint := project.snapshot()
@@ -167,7 +167,7 @@ func _test_limits(original: PackedByteArray) -> void:
 	assert(project.checkpoints[0].name == "Version 1")
 	assert(not project.restore_checkpoint(-1))
 	assert(not project.restore_checkpoint(Project.MAX_CHECKPOINTS))
-	assert(not project.restore_snapshot({"current_mif": PackedByteArray()}))
+	assert(not project.restore_snapshot({ "current_mif": PackedByteArray() }))
 	assert(Project.from_bytes(project.to_bytes().bytes).ok)
 	project.documents["1:0"].layers[0].pixels[0] = 65536
 	assert(not project.to_bytes().ok)
@@ -220,9 +220,9 @@ func _test_invalid(source: Dictionary) -> void:
 		var bad := source.duplicate(true)
 		bad.documents["1:0"].layers[0].pixels[0] = index
 		_reject_record(bad)
-	for pixels: Variant in [PackedInt32Array([0]), PackedByteArray([0, 1, 2, 3]), [0, 1, 2, 3], "pixels"]:
+	for invalid_pixels: Variant in [PackedInt32Array([0]), PackedByteArray([0, 1, 2, 3]), [0, 1, 2, 3], "pixels"]:
 		var bad := source.duplicate(true)
-		bad.documents["1:0"].layers[0].pixels = pixels
+		bad.documents["1:0"].layers[0].pixels = invalid_pixels
 		_reject_record(bad)
 	for revision: Variant in [-1, 1.5, "1", null]:
 		var bad := source.duplicate(true)
@@ -331,17 +331,17 @@ func _test_model_boundaries(original: PackedByteArray) -> void:
 			bad[field][key] = value
 			_reject_record(bad)
 	for owner: String in ["layer", "stamp", "checkpoint"]:
-		for name: String in ["a".repeat(256), "a".repeat(257), " "]:
+		for candidate_name: String in ["a".repeat(256), "a".repeat(257), " "]:
 			var record := source.duplicate(true)
 			match owner:
 				"layer":
-					record.documents["1:0"].layers[0].name = name
+					record.documents["1:0"].layers[0].name = candidate_name
 				"stamp":
-					record.stamps[0].name = name
+					record.stamps[0].name = candidate_name
 				"checkpoint":
-					record.checkpoints[0].name = name
-			assert(Project.from_dictionary(record).ok == (name.length() == 256))
-	for value: Variant in [NAN, INF, {0: "invalid key"}]:
+					record.checkpoints[0].name = candidate_name
+			assert(Project.from_dictionary(record).ok == (candidate_name.length() == 256))
+	for value: Variant in [NAN, INF, { 0: "invalid key" }]:
 		var bad := source.duplicate(true)
 		bad.custom = value
 		_reject_record(bad)
@@ -371,8 +371,8 @@ func _test_data_budget(source: Dictionary) -> void:
 	var tail := PackedByteArray()
 	tail.resize(Project.MAX_DATA_BYTES - Project.MAX_MIF_BYTES * 3 - overhead)
 	var record := source.duplicate(true)
-	record.resources = {"first": block, "second": block}
-	record.checkpoints[0].snapshot.resources = {"third": block, "tail": tail}
+	record.resources = { "first": block, "second": block }
+	record.checkpoints[0].snapshot.resources = { "third": block, "tail": tail }
 	assert(Project.from_dictionary(record).ok, "The aggregate logical byte limit is inclusive")
 	tail.append(0)
 	record.checkpoints[0].snapshot.resources.tail = tail

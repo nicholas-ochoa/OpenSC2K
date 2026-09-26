@@ -12,8 +12,7 @@ const AMBIENT_REPLAY_MSEC := 15000.0
 # presentation preference: the delay before a simulation event sound, such as a fire, plays again
 const EVENT_REPLAY_MSEC := 10000.0
 # presentation preference: shorter delays for the flood and for buildings that a disaster destroys
-const EVENT_REPLAY_OVERRIDE_MSEC := {SOUND_FLOOD: 3000.0, SOUND_EXPLODE: 1000.0}
-
+const EVENT_REPLAY_OVERRIDE_MSEC := { SOUND_FLOOD: 3000.0, SOUND_EXPLODE: 1000.0 }
 # supplied executable table 0x004ea858 before its initialization pass
 const RAW_DURATION_MSEC := [
 	492, 153, 1485, 129, 1156, 221, 1064, 1657, 1510, 1511,
@@ -24,7 +23,6 @@ const RAW_DURATION_MSEC := [
 # replay delays of ambient and simulation event sounds
 var _ambient_remaining: Dictionary = {}
 var _event_remaining: Dictionary = {}
-
 var current_sound_id := -1
 var remaining_ticks := 0
 var accepted_count := 0

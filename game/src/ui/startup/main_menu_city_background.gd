@@ -6,15 +6,6 @@ const MINIMUM_ZOOM := 0.5
 const SHOT_MAGNIFICATIONS := [3, 2, 1, 1]
 const Cleanup = preload("res://src/debug/city_debug_actions.gd")
 
-class CameraFrame extends RefCounted:
-	var offset := Vector2.ZERO
-	var scale := 1.0
-
-
-class RenderResult extends AssetImageResult:
-	var occlusion_commands: Array[CityStaticCommand] = []
-
-
 # this city has no connection to the player's document, save path, or ui events
 var demo_city: CityState
 var controller: GameSpeedController
@@ -67,6 +58,67 @@ func _ready() -> void:
 	city_name_label.add_theme_constant_override("shadow_offset_y", 2)
 	city_name_label.add_theme_font_size_override("font_size", 20)
 	add_child(city_name_label)
+
+
+func _process(delta: float) -> void:
+	if render_thread != null and not render_thread.is_alive():
+		var result: RenderResult = render_thread.wait_to_finish()
+		render_thread = null
+
+		if result.ok and not _render_suspended:
+			static_image = result.image
+			demo_texture = ImageTexture.create_from_image(static_image)
+			static_layer.texture = demo_texture
+			occlusion_commands.assign(result.occlusion_commands)
+			occlusion_grid = Renderer.build_occlusion_grid(occlusion_commands, 1)
+			_refresh_animation()
+
+	if _render_suspended or not is_visible_in_tree() or demo_city == null:
+		return
+
+	elapsed += delta
+	animation_elapsed += delta
+	refresh_elapsed += delta
+	# Discard this private city's UI and sound events. A blocking event can still stop its clock.
+	controller.advance_time(minf(delta, 0.2) * 1000.0)
+
+	if controller.engine.pending_disaster_type != 0 or controller.engine.active_disaster_type != 0:
+		Cleanup.end_disaster(demo_city, demo_city.document, controller.engine)
+
+	if refresh_elapsed >= 10.0 and render_thread == null:
+		refresh_elapsed = 0.0
+		_start_render()
+
+	if animation_elapsed >= 0.1:
+		animation_elapsed = fmod(animation_elapsed, 0.1)
+		_refresh_animation()
+
+	var camera := _camera()
+	static_layer.position = camera.offset
+	static_layer.scale = Vector2.ONE * float(camera.scale)
+	queue_redraw()
+
+
+func _draw() -> void:
+	if demo_texture == null or demo_city == null:
+		return
+
+	var camera := _camera()
+
+	for visual in dynamic_visuals:
+		draw_texture_rect(
+			visual.texture,
+			Rect2(camera.offset + visual.position * float(camera.scale), visual.texture.get_size() * float(camera.scale)),
+			false,
+		)
+
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0.0, 0.0, 0.0, 0.14))
+
+
+func _exit_tree() -> void:
+	if render_thread != null:
+		render_thread.wait_to_finish()
+		render_thread = null
 
 
 func configure(reference_root: String, palette: Sc2Palette, sprites: Sc2SpriteArchive) -> void:
@@ -140,45 +192,6 @@ static func _collect_cities(folder: String, paths: PackedStringArray) -> void:
 		_collect_cities(folder.path_join(child), paths)
 
 
-func _process(delta: float) -> void:
-	if render_thread != null and not render_thread.is_alive():
-		var result: RenderResult = render_thread.wait_to_finish()
-		render_thread = null
-
-		if result.ok and not _render_suspended:
-			static_image = result.image
-			demo_texture = ImageTexture.create_from_image(static_image)
-			static_layer.texture = demo_texture
-			occlusion_commands.assign(result.occlusion_commands)
-			occlusion_grid = Renderer.build_occlusion_grid(occlusion_commands, 1)
-			_refresh_animation()
-
-	if _render_suspended or not is_visible_in_tree() or demo_city == null:
-		return
-
-	elapsed += delta
-	animation_elapsed += delta
-	refresh_elapsed += delta
-	# Discard this private city's UI and sound events. A blocking event can still stop its clock.
-	controller.advance_time(minf(delta, 0.2) * 1000.0)
-
-	if controller.engine.pending_disaster_type != 0 or controller.engine.active_disaster_type != 0:
-		Cleanup.end_disaster(demo_city, demo_city.document, controller.engine)
-
-	if refresh_elapsed >= 10.0 and render_thread == null:
-		refresh_elapsed = 0.0
-		_start_render()
-
-	if animation_elapsed >= 0.1:
-		animation_elapsed = fmod(animation_elapsed, 0.1)
-		_refresh_animation()
-
-	var camera := _camera()
-	static_layer.position = camera.offset
-	static_layer.scale = Vector2.ONE * float(camera.scale)
-	queue_redraw()
-
-
 func _start_render() -> void:
 	var snapshot := CityState.from_document(demo_city.document.duplicate_document())
 	render_thread = Thread.new()
@@ -217,19 +230,6 @@ func _camera() -> CameraFrame:
 	result.scale = scale
 
 	return result
-
-
-
-func _draw() -> void:
-	if demo_texture == null or demo_city == null:
-		return
-
-	var camera := _camera()
-
-	for visual in dynamic_visuals:
-		draw_texture_rect(visual.texture, Rect2(camera.offset + visual.position * float(camera.scale), visual.texture.get_size() * float(camera.scale)), false)
-
-	draw_rect(Rect2(Vector2.ZERO, size), Color(0.0, 0.0, 0.0, 0.14))
 
 
 func _refresh_animation() -> void:
@@ -276,7 +276,10 @@ func _refresh_animation() -> void:
 				for x in image.get_width():
 					var point := position + Vector2i(x, y)
 
-					if image.get_pixel(x, y).a == 0.0 or point.x < 0 or point.y < 0 or point.x >= static_image.get_width() or point.y >= static_image.get_height():
+					if image.get_pixel(
+						x,
+						y,
+					).a == 0.0 or point.x < 0 or point.y < 0 or point.x >= static_image.get_width() or point.y >= static_image.get_height():
 						continue
 
 					var index := roundi(static_image.get_pixelv(point).r * 255.0)
@@ -333,12 +336,6 @@ func _occlude(image: Image, position: Vector2i, order: int) -> Image:
 	return image
 
 
-func _exit_tree() -> void:
-	if render_thread != null:
-		render_thread.wait_to_finish()
-		render_thread = null
-
-
 # Keep the private simulation for the next menu visit, but release its large
 # render buffers while playing. An in-flight render is drained by _process;
 # hiding the menu must not wait for a worker or upload its obsolete image.
@@ -380,3 +377,12 @@ func replace_graphics(palette: Sc2Palette, sprites: Sc2SpriteArchive) -> void:
 
 	if demo_city != null and not _render_suspended:
 		_start_render()
+
+
+class CameraFrame extends RefCounted:
+	var offset := Vector2.ZERO
+	var scale := 1.0
+
+
+class RenderResult extends AssetImageResult:
+	var occlusion_commands: Array[CityStaticCommand] = []

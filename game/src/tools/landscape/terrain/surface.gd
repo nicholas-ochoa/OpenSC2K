@@ -4,15 +4,7 @@ extends TerrainEditConstants
 
 @warning_ignore_start("integer_division")
 
-
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
-class ClearResult extends RefCounted:
-	var ok := false
-	var indices := PackedInt32Array()
-	var effect_events: Array[EffectEvent] = []
-	var sound_events: Array[int] = []
-	var random_used := false
 
 
 static func _expanded_indices(indices: PackedInt32Array, map_edge: int = 128) -> PackedInt32Array:
@@ -31,6 +23,7 @@ static func _expanded_indices(indices: PackedInt32Array, map_edge: int = 128) ->
 	return result
 
 
+# gdstyle:ignore=quality/max-parameters
 static func _clear_terrain_conflicts(
 	city: CityState,
 	altitude: PackedByteArray,
@@ -141,3 +134,11 @@ static func _append_effect_sequence(
 		frame_count = maxi(frame_count, source_frame + 1)
 
 	return first_frame + frame_count
+
+
+class ClearResult extends RefCounted:
+	var ok := false
+	var indices := PackedInt32Array()
+	var effect_events: Array[EffectEvent] = []
+	var sound_events: Array[int] = []
+	var random_used := false

@@ -1,5 +1,7 @@
 class_name SimulationPhaseContext
 extends RefCounted
+
+
 # The schedule copies ENGINE_STATE from the engine, then writes it back
 # after each action. Keep these names in SimulationSnapshot.ENGINE_FIELDS
 # so snapshots include all simulation state.
@@ -22,16 +24,12 @@ var scenario: ScenarioState
 var span: SimulationTimingSpan
 var schedule: SimulationSchedule
 var annual_budget_approved := false
-
 # the action being run, which names its result
 var action := ""
-
 # results in completion order. the controller reads the events in this order
 var phase_results: Dictionary[String, PhaseResult] = {}
-
 # set by a phase that must stop the day and ask the player a question
 var interaction_request: SimulationInteractionRequest
-
 # engine state. see engine_state
 var developed_tiles := -1
 var power_usage_percent := -1
@@ -62,12 +60,6 @@ func record(name: String, result: PhaseResult) -> PhaseResult:
 	phase_results[name] = result
 
 	return result
-
-
-class NewsPersistenceResult extends RefCounted:
-	var ok := false
-	var error := ""
-	var inserted := 0
 
 
 # insert the stories of one result into the saved newspaper queue
@@ -125,3 +117,9 @@ static func failed(message: String) -> PhaseResult:
 	result.error = message
 
 	return result
+
+
+class NewsPersistenceResult extends RefCounted:
+	var ok := false
+	var error := ""
+	var inserted := 0

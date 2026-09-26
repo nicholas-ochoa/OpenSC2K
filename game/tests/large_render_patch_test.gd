@@ -18,7 +18,17 @@ func _run() -> void:
 	# Near/middle/far patches at the smallest and largest supported extents.
 	for edge in [128, 512]:
 		var city := CityState.from_document(EmptyCityTemplate.create(edge))
-		var before := CityIsometricRenderer.create_image(city, palette, sprites, CityIsometricRenderer.VIEW_SMALL, 0, false, true, false, false)
+		var before := CityIsometricRenderer.create_image(
+			city,
+			palette,
+			sprites,
+			CityIsometricRenderer.VIEW_SMALL,
+			0,
+			false,
+			true,
+			false,
+			false,
+		)
 		assert(before.ok)
 		var dirty := PackedInt32Array()
 
@@ -26,7 +36,17 @@ func _run() -> void:
 			city.set_building_id(point.x, point.y, BuildingTileIds.ROAD_STRAIGHT_1)
 			dirty.append(city.index_of(point.x, point.y))
 
-		var full := CityIsometricRenderer.create_image(city, palette, sprites, CityIsometricRenderer.VIEW_SMALL, 0, false, true, false, false)
+		var full := CityIsometricRenderer.create_image(
+			city,
+			palette,
+			sprites,
+			CityIsometricRenderer.VIEW_SMALL,
+			0,
+			false,
+			true,
+			false,
+			false,
+		)
 		var patch := CityIsometricRenderer.patch_static_image(before.image, city, palette, sprites, dirty, CityIsometricRenderer.VIEW_SMALL)
 		assert(patch.ok)
 		assert(patch.image.get_data() == full.image.get_data(), "Partial draw differs from full draw at %d" % edge)

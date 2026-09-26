@@ -1,11 +1,9 @@
 class_name DemolishEditResult
 extends EditCommandResult
 
-
 var underground_view := false
 var scurk_mode := false
 var action_count := 0
-
 var skipped_specialized := 0
 var skipped_insufficient := 0
 # forest protests keep the tree and add a saved news story

@@ -4,11 +4,6 @@ extends RefCounted
 const BANKRUPTCY_LIMIT := -100000
 
 
-class Result extends PhaseResult:
-	var bankrupt := false
-	var funds := 0
-
-
 static func run(city: CityState) -> Result:
 	if city == null or not city.is_valid():
 		return _failed("city is invalid")
@@ -34,3 +29,8 @@ static func _failed(message: String) -> Result:
 	result.error = message
 
 	return result
+
+
+class Result extends PhaseResult:
+	var bankrupt := false
+	var funds := 0

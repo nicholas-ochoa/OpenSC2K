@@ -1,7 +1,6 @@
 class_name ApplicationNewCity
 extends RefCounted
 
-
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const TerrainTools = preload("res://src/tools/landscape/terrain_command.gd")
 const GameSpeed = preload("res://src/simulation/core/game_speed_controller.gd")

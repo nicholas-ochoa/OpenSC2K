@@ -48,7 +48,10 @@ func _run() -> void:
 				if edge == 128 or (edge == 512 and native and mode == CityViewMode.Mode.LAND_VALUE):
 					var image := CityDataView.value_image(city, mode)
 					var scale: int = edge / image.get_width()
-					check(roundi(image.get_pixel(point.y / scale, point.x / scale).r * 255) == 173, "Texture retains far value and column-major coordinates")
+					check(
+						roundi(image.get_pixel(point.y / scale, point.x / scale).r * 255) == 173,
+						"Texture retains far value and column-major coordinates",
+					)
 				check(CityDataView.value(city, mode, point.x, point.y + 1) == (0 if native else 173), "Native/legacy resolution")
 
 			city.set_tile_flag(point.x, point.y, 0x80, true)
@@ -111,7 +114,10 @@ func check_ui() -> void:
 			var item_index := popup.get_item_index(menu_id)
 			check(item_index >= 0 and popup.is_item_radio_checkable(item_index), "Mode retains its radio action")
 			check(popup.is_item_checked(item_index) == (menu_id == index + 2), "Only the selected mode is checked")
-		check(main.city_toolbar.data_view_input.selected == main.city_toolbar.data_view_input.get_item_index(index + 1), "Sidebar follows view menu")
+		check(
+			main.city_toolbar.data_view_input.selected == main.city_toolbar.data_view_input.get_item_index(index + 1),
+			"Sidebar follows view menu",
+		)
 		check(main.map_view.city_source.size == CityIsometricRenderer.output_size_for_view(2, 16), "Native isometric extent")
 		check(main.map_view.source_center == center, "Switch preserves camera")
 		check(main.map_view.edit_enabled, "Query stays enabled")
@@ -121,7 +127,8 @@ func check_ui() -> void:
 		check(main.map_view.data_view_layer.visible and main.map_view.data_view_layer.material != null, "Grid shader is active")
 		check(DocumentState.capture(doc) == before, "View changes preserve saved city")
 
-	main.city_toolbar.data_view_input.item_selected.emit(main.city_toolbar.data_view_input.get_item_index(CityViewMode.DATA_MODES.find(CityViewMode.Mode.LAND_VALUE) + 1))
+	main.city_toolbar.data_view_input.item_selected.emit(
+		main.city_toolbar.data_view_input.get_item_index(CityViewMode.DATA_MODES.find(CityViewMode.Mode.LAND_VALUE) + 1))
 	check(main.view_state.overlay_mode == CityViewMode.Mode.LAND_VALUE, "Sidebar opens data view")
 	var old_mesh: ArrayMesh = main.map_view.data_view_mesh
 	var data := doc.find_chunk("XVAL").decoded_payload.duplicate()
@@ -129,7 +136,10 @@ func check_ui() -> void:
 	doc.find_chunk("XVAL").set_decoded_payload(data)
 	main.map_render.refresh_map(false)
 	check(main.map_view.data_view_mesh == old_mesh, "Changed simulation grid retains geometry")
-	check(main.map_view.data_view_signature == CityDataView.signature(main.document_state.city, CityViewMode.Mode.LAND_VALUE), "Updated texture tracks current data revision")
+	check(
+		main.map_view.data_view_signature == CityDataView.signature(main.document_state.city, CityViewMode.Mode.LAND_VALUE),
+		"Updated texture tracks current data revision",
+	)
 
 	if DisplayServer.get_name() != "headless":
 		check(roundi(main.map_view.data_value_texture.get_image().get_pixel(4, 4).r * 255) == 255, "Changed grid uploads current value")
@@ -138,17 +148,26 @@ func check_ui() -> void:
 	main.menus.set_overlay(CityViewMode.Mode.LAND_VALUE)
 	check(main.map_view.data_view_mesh == old_mesh, "City view round trip retains data geometry across display snapshots")
 
-	check(CityDataView.tile_text(main.document_state.city, CityViewMode.Mode.LAND_VALUE, Vector2i(4, 4), true).contains("255 / 0xFF"), "Exact hover value")
+	check(
+		CityDataView.tile_text(main.document_state.city, CityViewMode.Mode.LAND_VALUE, Vector2i(4, 4), true).contains("255 / 0xFF"),
+		"Exact hover value",
+	)
 	main.current_tool.select_tool_group(17)
 	check(main.view_state.overlay_mode == CityViewMode.Mode.LAND_VALUE and main.map_view.edit_enabled, "Center preserves data view")
 	main.menus.set_overlay(CityViewMode.Mode.UNDERGROUND)
-	check(main.map_view.data_view_mesh == null and main.map_view.data_view_mode == CityViewMode.Mode.NONE, "Underground restores normal renderer")
+	check(
+		main.map_view.data_view_mesh == null and main.map_view.data_view_mode == CityViewMode.Mode.NONE,
+		"Underground restores normal renderer",
+	)
 	main.menus.set_overlay(CityViewMode.Mode.CRIME)
 	main.current_tool.select_tool_group(0)
 	check(main.view_state.overlay_mode == CityViewMode.Mode.CITY, "Demolish leaves analysis view for surface editing")
 	main.menus.set_overlay(CityViewMode.Mode.CRIME)
 	main.current_tool.select_tool_group(6)
-	check(main.view_state.overlay_mode == CityViewMode.Mode.CITY and main.map_view.data_view_mesh == null, "Construction restores city view")
+	check(
+		main.view_state.overlay_mode == CityViewMode.Mode.CITY and main.map_view.data_view_mesh == null,
+		"Construction restores city view",
+	)
 	main.queue_free()
 	await process_frame
 
@@ -159,7 +178,10 @@ func check_height_and_walls() -> void:
 	for level in [0, 15, 31]:
 		city.set_land_altitude(level, 0, level)
 		check(CityDataView.value(city, CityViewMode.Mode.HEIGHT, level, 0) == level, "Height uses the stored five bits")
-		check(CityDataView.tile_text(city, CityViewMode.Mode.HEIGHT, Vector2i(level, 0), true).ends_with("(%d / 0x%02X)" % [level, level]), "Shift retains raw decimal and hex height")
+		check(
+			CityDataView.tile_text(city, CityViewMode.Mode.HEIGHT, Vector2i(level, 0), true).ends_with("(%d / 0x%02X)" % [level, level]),
+			"Shift retains raw decimal and hex height",
+		)
 	var heights := CityDataView.value_image(city, CityViewMode.Mode.HEIGHT)
 	check(roundi(heights.get_pixel(0, 31).r * 255) == 31, "Height texture retains highest land level")
 	city.set_water_altitude(31, 0, 10)
@@ -170,7 +192,10 @@ func check_height_and_walls() -> void:
 	city.set_tile_flag(0, 0, 0x04, true)
 	var geometry_signature := CityDataView.geometry_signature(city, CityViewMode.Mode.HEIGHT)
 	city.set_tile_flag(0, 0, 0x40, true)
-	check(CityDataView.geometry_signature(city, CityViewMode.Mode.HEIGHT) == geometry_signature, "Power changes do not rebuild height geometry")
+	check(
+		CityDataView.geometry_signature(city, CityViewMode.Mode.HEIGHT) == geometry_signature,
+		"Power changes do not rebuild height geometry",
+	)
 	var ground := CityDataView.surface_polygon(city, 0, 0, true)
 	var water := CityIsometricRenderer.tile_polygon(city, 0, 0)
 	check(ground[0].y - water[0].y == 8 * CityIsometricRenderer.ALTITUDE_STEP, "Seabed stays below separate water plane")
@@ -243,7 +268,10 @@ func check_shader() -> void:
 		var output := viewport.get_texture().get_image()
 		var actual := output.get_pixel(32, 32)
 		var expected := CityDataView.color(number, mode)
-		check(absf(actual.r - expected.r) < 0.02 and absf(actual.g - expected.g) < 0.02 and absf(actual.b - expected.b) < 0.02, "GPU colors use the exact far tile: " + CityViewMode.key(mode))
+		check(
+			absf(actual.r - expected.r) < 0.02 and absf(actual.g - expected.g) < 0.02 and absf(actual.b - expected.b) < 0.02,
+			"GPU colors use the exact far tile: " + CityViewMode.key(mode),
+		)
 
 	viewport.queue_free()
 	await process_frame
@@ -258,4 +286,7 @@ func check_land_value_amounts() -> void:
 		chunk.set_decoded_payload(data)
 		var query := QueryInfo.inspect(city, Vector2i.ZERO)
 		check(QueryText.format_text(query).contains("$%d,000/acre" % (raw + 1)), "Tooltip dollar scale agrees with Query")
-		check(CityDataView.tile_text(city, CityViewMode.Mode.LAND_VALUE, Vector2i.ZERO).contains("$%d,000" % (raw + 1)), "Land Value uses the saved dollar scale")
+		check(
+			CityDataView.tile_text(city, CityViewMode.Mode.LAND_VALUE, Vector2i.ZERO).contains("$%d,000" % (raw + 1)),
+			"Land Value uses the saved dollar scale",
+		)

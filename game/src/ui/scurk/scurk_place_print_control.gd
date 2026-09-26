@@ -9,12 +9,25 @@ signal undo_requested
 signal redo_requested
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const Place = preload("res://src/tools/scurk/scurk_place_command.gd")
 const PickCopy = preload("res://src/tools/scurk/scurk_pick_copy.gd")
-
 const MODE_OBJECTS := 0
 const MODE_EDIT_TOOLS := 1
+const THUMBNAIL_SIZE := 64
+const PANEL_SIZE := Vector2i(440, 680)
+const ZONE_CHOICES := [
+	["Automatic", 0],
+	["Light Residential", 1],
+	["Dense Residential", 2],
+	["Light Commercial", 3],
+	["Dense Commercial", 4],
+	["Light Industrial", 5],
+	["Dense Industrial", 6],
+	["Military", 7],
+	["Airport or Seaport", 8],
+	["Special", 9],
+]
+
 static var EDIT_TOOLS: Array[ScurkEditTool] = [
 	ScurkEditTool.new("Bulldozer", CityToolIds.Group.BULLDOZER, CityToolIds.Bulldozer.DEMOLISH, -1, "either"),
 	ScurkEditTool.new("Level Terrain", CityToolIds.Group.BULLDOZER, CityToolIds.Bulldozer.LEVEL, -1, "city"),
@@ -44,21 +57,6 @@ static var EDIT_TOOLS: Array[ScurkEditTool] = [
 	ScurkEditTool.new("Center", CityToolIds.Group.CENTERING, CityToolIds.Centering.CENTER, -1, "either"),
 ]
 
-const THUMBNAIL_SIZE := 64
-const PANEL_SIZE := Vector2i(440, 680)
-const ZONE_CHOICES := [
-	["Automatic", 0],
-	["Light Residential", 1],
-	["Dense Residential", 2],
-	["Light Commercial", 3],
-	["Dense Commercial", 4],
-	["Light Industrial", 5],
-	["Dense Industrial", 6],
-	["Military", 7],
-	["Airport or Seaport", 8],
-	["Special", 9],
-]
-
 var palette: Sc2Palette
 var sprites: Sc2SpriteArchive
 var custom_names: Dictionary = {}
@@ -66,7 +64,6 @@ var current_group := PickCopy.GROUP_RESIDENTIAL
 var selected_tile_id := -1
 var selected_edit_index := 0
 var icon_cache: Dictionary = {}
-
 var instructions: Label
 var mode_selector: OptionButton
 var group_row: HBoxContainer
@@ -153,7 +150,7 @@ func set_workspace_images(images: Dictionary) -> void:
 		if int(tool.zone) >= 0:
 			id = 1202
 		else:
-			id = {0: 1200, 1: 1201, 3: 1205, 4: 1201, 6: 1203, 7: 1204, 17: 1210}.get(int(tool.group), 1200)
+			id = { 0: 1200, 1: 1201, 3: 1205, 4: 1201, 6: 1203, 7: 1204, 17: 1210 }.get(int(tool.group), 1200)
 
 		tool_list.set_item_icon(i, textures.get(id))
 

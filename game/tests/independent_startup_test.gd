@@ -21,7 +21,9 @@ func _run() -> void:
 	await _test_main()
 	await _test_missing_data_startup()
 	await _test_invalid_startup()
-	print("PASS: independent startup, 12 New City combinations, generated terrain, monthly and annual dispatch, city round trips, settings and original runtime UI and missing-import handling")
+	print(("PASS: independent startup, 12 New City combinations, generated terrain, monthly and "
+		+ "annual dispatch, city round trips, settings and original runtime UI and missing-import "
+		+ "handling"))
 	quit()
 
 
@@ -99,7 +101,10 @@ func _round_trip_city(document: Sc2File) -> void:
 
 
 func _test_settings() -> void:
-	assert(AppSettingsStore.save_values(0.2, 0.4, false, SETTINGS, "folder", "user://example-pack") == OK)
+	var graphics_options := AppSettingsStore.SaveOptions.new()
+	graphics_options.graphics_source = "folder"
+	graphics_options.graphics_folder = "user://example-pack"
+	assert(AppSettingsStore.save_values(0.2, 0.4, false, SETTINGS, graphics_options) == OK)
 	var values := AppSettingsStore.load_values(SETTINGS)
 	assert(values.graphics_source == "folder" and values.graphics_folder == "user://example-pack")
 	assert(AppSettingsStore.save_values(0.3, 0.6, false, SETTINGS) == OK)
@@ -112,7 +117,7 @@ func _test_main() -> void:
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
 	OS.set_environment("OPENSC2K_DATA_PACK", ProjectSettings.globalize_path("res://../ext/data"))
-	var main := (load("res://main.tscn") as PackedScene).instantiate()
+	var main := _create_main()
 	main.asset_state.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
 	root.add_child(main)
 	await process_frame
@@ -172,7 +177,7 @@ func _test_main() -> void:
 # startup asks for a new import of only the missing data pack
 func _test_missing_data_startup() -> void:
 	OS.set_environment("OPENSC2K_DATA_PACK", ProjectSettings.globalize_path(MISSING_ROOT))
-	var main := (load("res://main.tscn") as PackedScene).instantiate()
+	var main := _create_main()
 	main.preferences.settings_path = SETTINGS
 	root.add_child(main)
 	await process_frame
@@ -191,7 +196,7 @@ func _test_missing_data_startup() -> void:
 
 func _test_invalid_startup() -> void:
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "unknown")
-	var main := (load("res://main.tscn") as PackedScene).instantiate()
+	var main := _create_main()
 	main.asset_state.reference_root = ProjectSettings.globalize_path(MISSING_ROOT)
 	root.add_child(main)
 	await process_frame
@@ -203,3 +208,7 @@ func _test_invalid_startup() -> void:
 	main.queue_free()
 	await process_frame
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
+
+
+func _create_main() -> CityApplication:
+	return (load("res://main.tscn") as PackedScene).instantiate() as CityApplication

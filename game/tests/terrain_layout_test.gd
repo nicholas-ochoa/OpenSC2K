@@ -48,13 +48,17 @@ func _run() -> void:
 			if layout in ["crossing", "branch", "rejoin"]:
 				assert(_components(city, true) == 1)
 				var dry_regions := _components(city, false)
-				assert(dry_regions == {"crossing": 3, "branch": 3, "rejoin": 3}[layout], "%s %s: %s regions" % [edge, layout, dry_regions])
+				assert(
+					dry_regions == { "crossing": 3, "branch": 3, "rejoin": 3 }[layout],
+					"%s %s: %s regions" % [edge, layout, dry_regions],
+				)
 			if layout in ["bay", "peninsula"]:
 				assert(_components(city, true) == 1 and _components(city, false) == 1)
 			if layout == "plateau":
 				var edge_high := 0
 				for coordinate in edge:
-					for point in [Vector2i(coordinate, 0), Vector2i(coordinate, edge - 1), Vector2i(0, coordinate), Vector2i(edge - 1, coordinate)]:
+					for point in [Vector2i(coordinate, 0), Vector2i(coordinate, edge - 1), Vector2i(0, coordinate),
+						Vector2i(edge - 1, coordinate)]:
 						edge_high = maxi(edge_high, city.land_altitude(point.x, point.y))
 				assert(edge_high >= 9, "Plateau stops before the map edge")
 			if layout in ["lake", "lakes"]:

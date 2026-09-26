@@ -17,7 +17,17 @@ func _benchmark_initialize() -> void:
 			quit(1)
 			return
 		var begin := Time.get_ticks_usec()
-		var rendered := CityIsometricRenderer.create_image(city, Sc2Palette.index_encoding(), sprites, CityIsometricRenderer.VIEW_LARGE, 0, false, true, false, false)
+		var rendered := CityIsometricRenderer.create_image(
+			city,
+			Sc2Palette.index_encoding(),
+			sprites,
+			CityIsometricRenderer.VIEW_LARGE,
+			0,
+			false,
+			true,
+			false,
+			false,
+		)
 		if not (rendered.ok):
 			printerr("Benchmark check failed: rendered.ok")
 			quit(1)
@@ -30,7 +40,16 @@ func _benchmark_initialize() -> void:
 		for trial in 3:
 			for mode in 2:
 				begin = Time.get_ticks_usec()
-				var patch := CityIsometricRenderer.patch_static_image(rendered.image, city, Sc2Palette.index_encoding(), sprites, PackedInt32Array([city.index_of(point.x, point.y)]), CityIsometricRenderer.VIEW_LARGE, 0, mode == 0)
+				var patch := CityIsometricRenderer.patch_static_image(
+					rendered.image,
+					city,
+					Sc2Palette.index_encoding(),
+					sprites,
+					PackedInt32Array([city.index_of(point.x, point.y)]),
+					CityIsometricRenderer.VIEW_LARGE,
+					0,
+					mode == 0,
+				)
 				if not (patch.ok):
 					printerr("Benchmark check failed: patch.ok")
 					quit(1)
@@ -64,7 +83,8 @@ func _benchmark_initialize() -> void:
 			total += elapsed
 			worst = maxf(worst, elapsed)
 
-		print("SIZE %d render_ms=%.2f patch_copy_median_ms=%.2f patch_in_place_median_ms=%.2f month_ms=%.2f worst_day_ms=%.2f" % [edge, render_ms, times[0][1], times[1][1], total, worst])
+		print("SIZE %d render_ms=%.2f patch_copy_median_ms=%.2f patch_in_place_median_ms=%.2f month_ms=%.2f worst_day_ms=%.2f" % [edge,
+			render_ms, times[0][1], times[1][1], total, worst])
 
 	quit()
 

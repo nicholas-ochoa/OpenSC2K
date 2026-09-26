@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Scurk: placement checks.
 
 @warning_ignore_start("integer_division")
@@ -25,32 +24,7 @@ const TerrainTools = preload("res://src/tools/landscape/terrain_command.gd")
 
 
 func test_scurk_place_command(reference_root: String) -> void:
-	_check(
-		ScurkOutput.page_grid(1).count == 2
-		and ScurkOutput.page_grid(1).columns == 2
-		and ScurkOutput.page_grid(2).count == 8
-		and ScurkOutput.page_grid(2).columns == 4
-		and ScurkOutput.page_grid(4).count == 28
-		and ScurkOutput.page_grid(4).columns == 7
-		and ScurkOutput.page_grid(3) == null,
-		"SCURK printing uses the executable's 2, 8, and 28-page grids",
-	)
-	_check(
-		ScurkPlace.placeable_large_ids(ScurkPickCopy.GROUP_ALL).size() == 500
-		and ScurkPlace.is_placeable_tile(Tiles.ROAD_STRAIGHT_1)
-		and ScurkPlace.is_placeable_tile(0x167)
-		and not ScurkPlace.is_placeable_tile(500),
-		"SCURK Place & Print exposes every sprite family, including networks and artwork",
-	)
-	_check(
-		ScurkPlace.footprint(0x70, Vector2i(20, 20))
-			== Rect2i(20, 20, 1, 1)
-		and ScurkPlace.footprint(0xae, Vector2i(20, 20))
-			== Rect2i(19, 19, 3, 3)
-		and ScurkPlace.footprint(0xcf, Vector2i(20, 20))
-			== Rect2i(19, 19, 4, 4),
-		"SCURK Place & Print uses the native object base and anchor rules",
-	)
+	_test_supported_objects()
 
 	var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 
@@ -222,6 +196,41 @@ func test_scurk_place_command(reference_root: String) -> void:
 		"SCURK Place & Print fixture removes the marina",
 	)
 
+	_test_free_tools(city, process_random)
+
+	_test_print_output(reference_root)
+
+
+func _test_supported_objects() -> void:
+	_check(
+		ScurkOutput.page_grid(1).count == 2
+		and ScurkOutput.page_grid(1).columns == 2
+		and ScurkOutput.page_grid(2).count == 8
+		and ScurkOutput.page_grid(2).columns == 4
+		and ScurkOutput.page_grid(4).count == 28
+		and ScurkOutput.page_grid(4).columns == 7
+		and ScurkOutput.page_grid(3) == null,
+		"SCURK printing uses the executable's 2, 8, and 28-page grids",
+	)
+	_check(
+		ScurkPlace.placeable_large_ids(ScurkPickCopy.GROUP_ALL).size() == 500
+		and ScurkPlace.is_placeable_tile(Tiles.ROAD_STRAIGHT_1)
+		and ScurkPlace.is_placeable_tile(0x167)
+		and not ScurkPlace.is_placeable_tile(500),
+		"SCURK Place & Print exposes every sprite family, including networks and artwork",
+	)
+	_check(
+		ScurkPlace.footprint(0x70, Vector2i(20, 20))
+			== Rect2i(20, 20, 1, 1)
+		and ScurkPlace.footprint(0xae, Vector2i(20, 20))
+			== Rect2i(19, 19, 3, 3)
+		and ScurkPlace.footprint(0xcf, Vector2i(20, 20))
+			== Rect2i(19, 19, 4, 4),
+		"SCURK Place & Print uses the native object base and anchor rules",
+	)
+
+
+func _test_free_tools(city: CityState, process_random: SimRandom) -> void:
 	var free_zone := Zones.apply_rectangle(
 		city,
 		8,
@@ -392,6 +401,8 @@ func test_scurk_place_command(reference_root: String) -> void:
 		"SCURK free highways use exact shared Undo",
 	)
 
+
+func _test_print_output(reference_root: String) -> void:
 	# Output options and file encoding do not need a full original-size city.
 	var print_city := CityModel.from_document(EmptyCityTemplate.create(16))
 	var output_palette := Palette.load_bmp(

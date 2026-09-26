@@ -1,6 +1,7 @@
 class_name CityDebugOverlay
 extends Node
 
+
 @warning_ignore_start("integer_division")
 
 const SAMPLE_INTERVAL_SECONDS := 0.25
@@ -8,6 +9,7 @@ const DISASTER_NAMES := ["Fire", "Flood", "Riot", "Toxic Spill", "Air Crash",
 	"Earthquake", "Tornado", "Monster", "Meltdown", "Microwave", "Volcano",
 	"Firestorm", "Mass Riots", "Mass Floods", "Pollution", "Hurricane",
 	"Helicopter Crash", "Plane Crash"]
+
 var main_control: Control
 var is_open := false
 var _sample_elapsed := 0.0
@@ -33,10 +35,6 @@ var _date_fields: Array[SpinBox] = []
 var _target_date: Label
 
 
-func setup(value: Control) -> void:
-	main_control = value
-
-
 func _ready() -> void:
 	_window = $DebugWindow
 	_window.hide()
@@ -59,6 +57,30 @@ func _ready() -> void:
 	_build_actions(tabs)
 
 
+func _input(event: InputEvent) -> void:
+	if not event is InputEventKey or not event.pressed or event.echo:
+		return
+
+	if event.keycode == KEY_F12 or (event.keycode == KEY_ESCAPE and is_open):
+		toggle()
+		get_viewport().set_input_as_handled()
+
+
+func _process(delta: float) -> void:
+	if not is_open:
+		return
+
+	_sample_elapsed += delta
+
+	if _sample_elapsed >= SAMPLE_INTERVAL_SECONDS:
+		_sample_elapsed = 0.0
+		_refresh_metrics()
+
+
+func setup(value: Control) -> void:
+	main_control = value
+
+
 func _reset_averages() -> void:
 	var history := _history()
 
@@ -79,7 +101,8 @@ func _configure_table(tree: Tree, titles: Array) -> void:
 func _build_timing_footer(footer: HBoxContainer) -> void:
 	_detailed_timing_check = CheckBox.new()
 	_detailed_timing_check.text = "Detailed per-tile timing"
-	_detailed_timing_check.tooltip_text = "Show the time for each step of the growth scan. The timer adds work to each tile, so growth days are slower."
+	_detailed_timing_check.tooltip_text = (
+		"Show the time for each step of the growth scan. The timer adds work to each tile, so growth days are slower.")
 	_detailed_timing_check.toggled.connect(func(enabled: bool) -> void:
 		_record_action(main_control.debug.call("debug_set_detailed_timing", enabled)))
 	footer.add_child(_detailed_timing_check)
@@ -105,7 +128,11 @@ func _build_actions(tabs: TabContainer) -> void:
 			main_control.frame.call("select_speed", 1))
 
 	for action in [["Center map", "debug_center_map", "Move the view to the center of the map."],
-		["Full redraw", "debug_full_redraw", "Draw the map again from the city data. Use this to find drawing errors that stay on the screen."],
+		[
+			"Full redraw",
+			"debug_full_redraw",
+			"Draw the map again from the city data. Use this to find drawing errors that stay on the screen.",
+		],
 		["Clear render caches", "debug_clear_render_caches",
 			"Delete all cached map and sprite images, then draw the map again. Use this to find errors from old cached images."]]:
 		var method := str(action[1])
@@ -128,7 +155,8 @@ func _build_actions(tabs: TabContainer) -> void:
 		run_to.add_child(spin)
 		_date_fields.append(spin)
 
-	var run_button := _button(run_to, "Run to date", ("Run the simulation at the current speed until the date, then pause. If the game is paused, " +
+	var run_button := _button(run_to, "Run to date",
+		("Run the simulation at the current speed until the date, then pause. If the game is paused, " +
 		"it runs at the speed it had before the pause. A pause before the date cancels the run."), func() -> void:
 		_record_action(main_control.debug.call("debug_run_to_date", int(_date_fields[0].value), int(_date_fields[1].value),
 			int(_date_fields[2].value), _resume_speed)))
@@ -156,7 +184,8 @@ func _build_actions(tabs: TabContainer) -> void:
 	funds.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	funds.tooltip_text = "The amount for Set funds. It can be 0 or negative."
 	set_funds.add_child(funds)
-	var set_button := _button(set_funds, "Set funds", "Set the city funds to this amount. Use 0 or a negative amount to test debt and bankruptcy.",
+	var set_button := _button(set_funds, "Set funds",
+		"Set the city funds to this amount. Use 0 or a negative amount to test debt and bankruptcy.",
 		func() -> void:
 			_record_action(main_control.debug.call("debug_set_funds", int(funds.value))))
 	set_button.size_flags_horizontal = Control.SIZE_SHRINK_END
@@ -203,7 +232,8 @@ func _build_actions(tabs: TabContainer) -> void:
 		_invoke("debug_end_disaster"))
 	_no_disasters_check = CheckBox.new()
 	_no_disasters_check.text = "Disable random disasters"
-	_no_disasters_check.tooltip_text = "Stop random disasters. This is the Disasters > No Disasters menu option, and it is saved with the city."
+	_no_disasters_check.tooltip_text = (
+		"Stop random disasters. This is the Disasters > No Disasters menu option, and it is saved with the city.")
 	_no_disasters_check.toggled.connect(func(enabled: bool) -> void:
 		_record_action(main_control.debug.call("debug_set_no_disasters", enabled)))
 	disasters.add_child(_no_disasters_check)
@@ -276,15 +306,6 @@ func set_status(message: String) -> void:
 		_status_label.tooltip_text = message
 
 
-func _input(event: InputEvent) -> void:
-	if not event is InputEventKey or not event.pressed or event.echo:
-		return
-
-	if event.keycode == KEY_F12 or (event.keycode == KEY_ESCAPE and is_open):
-		toggle()
-		get_viewport().set_input_as_handled()
-
-
 func toggle() -> void:
 	is_open = not is_open
 
@@ -325,17 +346,6 @@ func _locate_on_map(site: Rect2i) -> void:
 
 	if map_view != null and map_view.center_on_tiles(site.position, site.end - Vector2i.ONE) and is_open:
 		toggle()
-
-
-func _process(delta: float) -> void:
-	if not is_open:
-		return
-
-	_sample_elapsed += delta
-
-	if _sample_elapsed >= SAMPLE_INTERVAL_SECONDS:
-		_sample_elapsed = 0.0
-		_refresh_metrics()
 
 
 func _history() -> SimulationTimingHistory:
@@ -455,7 +465,8 @@ func _refresh_day_rows(history: SimulationTimingHistory) -> void:
 			row = _days.create_item(parent, _step_index(parent, step_after.get(label)))
 			row.set_text(1, "      ".repeat(depth) + parts[-1])
 			row.set_tooltip_text(1, label)
-			row.set_tooltip_text(5, ("One sample per measured phase execution. Repeated tile and network work is summed. Phase totals include their " +
+			row.set_tooltip_text(5,
+				("One sample per measured phase execution. Repeated tile and network work is summed. Phase totals include their " +
 				"detail rows; do not add both. Groups without measured totals show a dash."))
 			_step_rows[label] = row
 
@@ -518,6 +529,7 @@ func _stats(item: TreeItem, column: int, row: SimulationTimingHistory.Sample) ->
 
 static func _create_debug_theme() -> Theme:
 	return AppUiTheme.current()
+
 
 func _refresh_record_tab(force := false) -> void:
 	if not is_open or _tabs == null:

@@ -5,20 +5,14 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 # SC2X v3 per-tile rules. These differ from the original executable's coarse-grid rules.
 
-
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+
 # per-building tables. the per-tile loops read one table entry in place of a
 # chain of range tests or a dictionary lookup
 static var _pollution_weights := _make_pollution_weights()
 static var _density_weights := _make_density_weights()
 static var _residential_values := _make_residential_values()
 static var _land_value_halved := _make_land_value_halved()
-
-# the day-two half of the monthly scan. the power scan runs first on the same
-# day, so station coverage reads the new powered flags
-class PollutionCoverageResult extends PhaseResult:
-	var pollution_total := 0
-	var city_center := Vector2i.ZERO
 
 
 # the full monthly scan. the day schedule runs the two halves on separate days
@@ -101,7 +95,7 @@ static func run_pollution_and_coverage(city: CityState) -> PollutionCoverageResu
 	span.mark("station coverage")
 	_add_stations(city, police, fire)
 	span.mark("store maps and totals")
-	var updates := {"XPLT": pollution_result.values, "XPLC": police, "XFIR": fire}
+	var updates := { "XPLT": pollution_result.values, "XPLC": police, "XFIR": fire }
 
 	for id in updates:
 		doc.find_chunk(id).set_decoded_payload(updates[id])
@@ -251,7 +245,7 @@ static func run_land_value_and_crime(city: CityState) -> PollutionPhase.Result:
 	span.mark("crime smoothing")
 	var crime_result := NativeGridMath.smooth_bytes(sources, edge, 2, 2, 1, 2, city.simulation_slice)
 	span.mark("store maps and totals")
-	var updates := {"XVAL": land, "XCRM": crime_result.values, "XPOP": population, "XROG": growth}
+	var updates := { "XVAL": land, "XCRM": crime_result.values, "XPOP": population, "XROG": growth }
 
 	for id in updates:
 		doc.find_chunk(id).set_decoded_payload(updates[id])
@@ -360,7 +354,8 @@ static func _make_land_value_halved() -> PackedByteArray:
 static func _add_stations(city: CityState, police: PackedByteArray, fire: PackedByteArray) -> void:
 	var edge := city.map_size
 	var patterns: Dictionary = {}
-	var police_strength := (city.document.misc_i32(PollutionPhase.MISC_PRISON_BONUS) + 5) * PollutionPhase._budget_funding(city, PollutionPhase.BUDGET_POLICE) / 2
+	var police_strength := (city.document.misc_i32(PollutionPhase.MISC_PRISON_BONUS) + 5) * PollutionPhase._budget_funding(city,
+		PollutionPhase.BUDGET_POLICE) / 2
 	var fire_strength := PollutionPhase._budget_funding(city, PollutionPhase.BUDGET_FIRE) * 5 / 2
 
 	# the station list is in the order of a scan by x, then by y
@@ -379,9 +374,21 @@ static func _add_stations(city: CityState, police: PackedByteArray, fire: Packed
 		if not patterns.has(strength):
 			patterns[strength] = NativeGridMath.service_pattern(strength)
 
-		NativeGridMath.apply_service_pattern(police if building == PollutionPhase.POLICE_STATION else fire, edge, Vector2i(index / edge, index % edge), patterns[strength])
+		NativeGridMath.apply_service_pattern(
+			police if building == PollutionPhase.POLICE_STATION else fire,
+			edge,
+			Vector2i(index / edge, index % edge),
+			patterns[strength],
+		)
 
 
 static func _checkpoint(city: CityState) -> void:
 	if city.simulation_slice != null:
 		city.simulation_slice.checkpoint()
+
+
+# the day-two half of the monthly scan. the power scan runs first on the same
+# day, so station coverage reads the new powered flags
+class PollutionCoverageResult extends PhaseResult:
+	var pollution_total := 0
+	var city_center := Vector2i.ZERO

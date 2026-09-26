@@ -1,6 +1,7 @@
 class_name MayorApprovalPhase
 extends RefCounted
 
+
 @warning_ignore_start("integer_division")
 
 const MISC_SIZE := Sc2MiscLayout.SIZE
@@ -17,15 +18,6 @@ const GRAPH_CRIME := 7
 const GRAPH_VALUE_COUNT := Sc2GraphLayout.VALUES_PER_SERIES
 const TILE_MAYOR_HOUSE := BuildingTileIds.MAYOR_HOUSE
 const NEWS_HIGH_APPROVAL := 0x201
-
-
-class Result extends PhaseResult:
-	var approval := 0
-	var previous_approval := 0
-	var weights := PackedInt32Array()
-	var survey_counts := PackedInt32Array()
-	var ranking := PackedInt32Array()
-	var updated_mayor_house_records := 0
 
 
 static func failed(message: String) -> Result:
@@ -179,3 +171,12 @@ static func _to_i16(value: int) -> int:
 	var wrapped := value & 0xffff
 
 	return wrapped - 0x10000 if wrapped >= 0x8000 else wrapped
+
+
+class Result extends PhaseResult:
+	var approval := 0
+	var previous_approval := 0
+	var weights := PackedInt32Array()
+	var survey_counts := PackedInt32Array()
+	var ranking := PackedInt32Array()
+	var updated_mayor_house_records := 0

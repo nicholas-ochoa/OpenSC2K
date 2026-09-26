@@ -2,7 +2,6 @@ class_name DemolishTerrain
 extends DemolishConstants
 
 
-
 static func _remove_surface_water(
 	altitude: PackedByteArray,
 	buildings: PackedByteArray,

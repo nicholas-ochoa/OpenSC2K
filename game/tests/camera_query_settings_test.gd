@@ -53,7 +53,9 @@ func _run() -> void:
 	assert(motion.held_keys.is_empty(), "Blocked input left held keys active")
 	var path := "user://background_audio_test_%d.cfg" % OS.get_process_id()
 	assert(not AppSettingsStore.load_values(path).background_audio)
-	assert(AppSettingsStore.save_values(0.5, 0.5, false, path, "", "", null, null, true) == OK)
+	var background_options := AppSettingsStore.SaveOptions.new()
+	background_options.background_audio = true
+	assert(AppSettingsStore.save_values(0.5, 0.5, false, path, background_options) == OK)
 	assert(AppSettingsStore.load_values(path).background_audio)
 	assert(AppSettingsStore.save_values(0.4, 0.4, false, path) == OK)
 	assert(AppSettingsStore.load_values(path).background_audio)
@@ -142,7 +144,7 @@ func _test_query_actions(main: Node) -> void:
 	assert(main.city_dialogs.analysis_dialog.visible and query.visible, "Analyze keeps Query open below its table")
 	assert(main.frame._simulation_suspended(), "City Analysis suspends the simulation")
 	main.city_dialogs.analysis_dialog.hide()
-	var texts: Dictionary[int, String] = {3000: "One", 3001: "Two", 3002: "Three", 3003: "Four"}
+	var texts: Dictionary[int, String] = { 3000: "One", 3001: "Two", 3002: "Three", 3003: "Four" }
 	main.query_choices.text_resources.library_texts = texts
 	action.action = "library_ruminate"
 	main.query_choices.run_query_action()

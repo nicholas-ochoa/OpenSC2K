@@ -13,7 +13,7 @@ func _initialize() -> void:
 
 	assert(city.document.find_chunk("XBIT").set_decoded_payload(flags))
 	city.resync_mirrors(["XBIT"])
-	var filtered := CityViewFilter.surface_copy(city, {"water": false})
+	var filtered := CityViewFilter.surface_copy(city, { "water": false })
 
 	for value in 256:
 		var x := value / 16

@@ -1,5 +1,6 @@
 extends SceneTree
 
+
 func _initialize() -> void:
 	var noise := FastNoiseLite.new()
 	noise.seed = 71

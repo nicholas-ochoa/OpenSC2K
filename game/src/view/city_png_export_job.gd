@@ -1,31 +1,13 @@
 class_name CityPngExportJob
 extends RefCounted
+
 # render a whole city view to a png file on a worker thread
 
 const Renderer = preload("res://src/view/city_isometric_renderer.gd")
 const ScurkCityOutput = preload("res://src/assets/scurk_city_output.gd")
 const ViewFilter = preload("res://src/view/city_view_filter.gd")
-
 const STAGE_RENDER := "render"
 const STAGE_WRITE := "write"
-
-class Options extends RefCounted:
-	var path := ""
-	var view_size := Renderer.VIEW_LARGE
-	var view := "city"
-	var transparent_background := false
-	var signs := true
-	var moving_things := true
-
-
-class Progress extends RefCounted:
-	var stage := ""
-	var fraction := 0.0
-
-
-class Result extends FileWriteResult:
-	var size := Vector2i.ZERO
-
 
 var city_snapshot: CityState
 var palette: Sc2Palette
@@ -40,7 +22,6 @@ var show_underground_pipes := true
 var show_underground_water_mains := true
 var path := ""
 var thread: Thread
-
 var _mutex := Mutex.new()
 var _stage := STAGE_RENDER
 var _fraction := 0.0
@@ -130,3 +111,21 @@ func _failure(message: String) -> Result:
 	result.size = Vector2i.ZERO
 
 	return result
+
+
+class Options extends RefCounted:
+	var path := ""
+	var view_size := Renderer.VIEW_LARGE
+	var view := "city"
+	var transparent_background := false
+	var signs := true
+	var moving_things := true
+
+
+class Progress extends RefCounted:
+	var stage := ""
+	var fraction := 0.0
+
+
+class Result extends FileWriteResult:
+	var size := Vector2i.ZERO

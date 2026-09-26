@@ -1,7 +1,6 @@
 class_name DesktopCursorRules
 extends RefCounted
 
-
 # simcity.exe 004ea7f8, consumed by 0047f7ac
 const CITY_TOOLS := [2, 3, 28, 8, 19, 24, 21, 22, 25, 4, 5, 6, 7, 20, 26, 27, 23, 11]
 

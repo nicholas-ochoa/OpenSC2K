@@ -1,7 +1,6 @@
 class_name ActiveDocumentState
 extends RefCounted
 
-
 var city: CityState
 var current_document: Sc2File
 var saved_city_snapshot := PackedByteArray()

@@ -37,8 +37,14 @@ func _initialize() -> void:
 					var flags := city.tile_flags.duplicate()
 					var route_bytes := saved_payloads(doc)
 					var existing := HighwayCommand.apply(city, 6, 1, start, finish, HighwayCommand.CONNECTION_CONFIRMED)
-					check(existing.ok and city.buildings == shape and city.terrain == terrain, "Connecting a pre-existing route preserves its shape")
-					check(HighwayCommand.undo(city, existing).ok and saved_payloads(doc) == route_bytes, "Connection-only Undo preserves existing route")
+					check(
+						existing.ok and city.buildings == shape and city.terrain == terrain,
+						"Connecting a pre-existing route preserves its shape",
+					)
+					check(
+						HighwayCommand.undo(city, existing).ok and saved_payloads(doc) == route_bytes,
+						"Connection-only Undo preserves existing route",
+					)
 					check(HighwayCommand.undo(city, canceled).ok and saved_payloads(doc) == initial, "Canceled route has exact Undo")
 					var connected := HighwayCommand.apply(city, 6, 1, start, finish, HighwayCommand.CONNECTION_CONFIRMED)
 					check(connected.ok and connected.connection_built, "Confirm highway neighbor connection")
@@ -57,7 +63,16 @@ func _initialize() -> void:
 					check(placed.ok, "Place isolated border highway")
 					shape = city.buildings.duplicate()
 					connected = HighwayCommand.apply(city, 6, 1, finish, finish, HighwayCommand.CONNECTION_CONFIRMED)
-					check(connected.ok and city.buildings == shape, "Connecting existing edge %s direction %d: ok=%s error=%s shape=%s" % [finish, direction, connected.ok, connected.error, city.buildings == shape])
+					check(
+						connected.ok and city.buildings == shape,
+						"Connecting existing edge %s direction %d: ok=%s error=%s shape=%s" % [
+							finish,
+							direction,
+							connected.ok,
+							connected.error,
+							city.buildings == shape,
+						],
+					)
 	print("Highway connection geometry: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
 

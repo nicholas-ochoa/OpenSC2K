@@ -35,7 +35,8 @@ static func load_path(path: String, palette: Sc2Palette) -> IndexedImageResult:
 
 		if not mapping.has(color_index):
 			var color: Color = decoded.palette.color(color_index)
-			mapping[color_index] = color_index if IndexedBmp._same_rgb(color, palette.color(color_index)) else IndexedBmp._nearest_palette_index(color, palette)
+			mapping[color_index] = (color_index if IndexedBmp._same_rgb(color, palette.color(color_index))
+				else IndexedBmp._nearest_palette_index(color, palette))
 
 			if mapping[color_index] != color_index:
 				remapped += 1

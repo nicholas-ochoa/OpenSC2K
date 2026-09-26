@@ -1,7 +1,6 @@
 class_name AssetImageResult
 extends RefCounted
 
-
 var ok := false
 var error := ""
 var image: Image

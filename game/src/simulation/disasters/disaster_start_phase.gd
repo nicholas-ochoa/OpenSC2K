@@ -2,7 +2,6 @@ class_name DisasterStartPhase
 extends DisasterStartConstants
 
 
-
 static func start(
 	city: CityState, disaster_type: int, point: Vector2i, random: SimRandom, lfsr_random: SimLfsrRandom = null
 ) -> DisasterStartResult:

@@ -5,47 +5,6 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 
-class GroupEntry extends RefCounted:
-	var id := 0
-	var width := 0
-	var height := 0
-	var planes := 0
-	var bits := 0
-	var length := 0
-
-
-class GroupResult extends RefCounted:
-	var ok := false
-	var error := ""
-	var entries: Array[GroupEntry] = []
-
-	static func failure(message: String) -> GroupResult:
-		var result := GroupResult.new()
-		result.error = message
-
-		return result
-
-
-class DecodedImage extends RefCounted:
-	var ok := false
-	var error := ""
-	var width := 0
-	var height := 0
-	var bits := 0
-	var hotspot := Vector2i.ZERO
-	var palette := PackedColorArray()
-	var pixels := PackedInt32Array()
-	var and_mask := PackedByteArray()
-	var inverting_pixels := 0
-	var trailing_bytes := 0
-
-	static func failure(message: String) -> DecodedImage:
-		var result := DecodedImage.new()
-		result.error = message
-
-		return result
-
-
 static func load_image(path: String, resource_id: int, cursor := false) -> DecodedImage:
 	var resource := load_resource(path, 1 if cursor else 3, resource_id)
 
@@ -263,3 +222,44 @@ static func transparent_image(decoded: DecodedImage) -> AssetImageResult:
 	result.error = ""
 
 	return result
+
+
+class GroupEntry extends RefCounted:
+	var id := 0
+	var width := 0
+	var height := 0
+	var planes := 0
+	var bits := 0
+	var length := 0
+
+
+class GroupResult extends RefCounted:
+	var ok := false
+	var error := ""
+	var entries: Array[GroupEntry] = []
+
+	static func failure(message: String) -> GroupResult:
+		var result := GroupResult.new()
+		result.error = message
+
+		return result
+
+
+class DecodedImage extends RefCounted:
+	var ok := false
+	var error := ""
+	var width := 0
+	var height := 0
+	var bits := 0
+	var hotspot := Vector2i.ZERO
+	var palette := PackedColorArray()
+	var pixels := PackedInt32Array()
+	var and_mask := PackedByteArray()
+	var inverting_pixels := 0
+	var trailing_bytes := 0
+
+	static func failure(message: String) -> DecodedImage:
+		var result := DecodedImage.new()
+		result.error = message
+
+		return result

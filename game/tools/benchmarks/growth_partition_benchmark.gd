@@ -1,5 +1,4 @@
 extends "res://tools/benchmarks/fixture_paths.gd"
-
 ## Growth partition wall time over all sixteen step/substep partitions.
 ## Each partition runs on a fresh city so the scan sees identical input.
 

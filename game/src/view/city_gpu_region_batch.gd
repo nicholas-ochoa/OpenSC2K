@@ -5,39 +5,6 @@ const MAX_REGIONS := 4
 const BUILD_BUDGET_USEC := 32000
 
 
-class Request extends RefCounted:
-	var city: CityState
-	var prepared := false
-	var visibility: Dictionary = {}
-	var palette: Sc2Palette
-	var sprites: Sc2SpriteArchive
-	var keys: Array[Vector2i] = []
-	var edge := 0
-	var view := 0
-	var mode := CityViewMode.Mode.CITY
-	var pipes := true
-	var subways := true
-	var water_mains := true
-	var generation := 0
-	var budget_usec := 0
-	var signs: Array[CitySignRequest] = []
-
-
-class Result extends RefCounted:
-	var ok := false
-	var error := ""
-	var regions: Array[CityGpuRegionResult] = []
-	var display_city: CityState
-	var atlas_revision := -1
-	var atlas_image: Image
-
-	static func failure(message: String) -> Result:
-		var result := Result.new()
-		result.error = message
-
-		return result
-
-
 static func build(request: Request, context: CityGpuBuildContext, uploaded_revision: int) -> Result:
 	var batch_started := Time.get_ticks_usec()
 	var display: CityState = request.city if request.prepared else CityViewFilter.surface_copy(request.city, request.visibility)
@@ -86,3 +53,36 @@ static func build(request: Request, context: CityGpuBuildContext, uploaded_revis
 	batch.atlas_image = context.atlas.duplicate() if context.atlas != null and context.atlas_revision != uploaded_revision else null
 
 	return batch
+
+
+class Request extends RefCounted:
+	var city: CityState
+	var prepared := false
+	var visibility: Dictionary = {}
+	var palette: Sc2Palette
+	var sprites: Sc2SpriteArchive
+	var keys: Array[Vector2i] = []
+	var edge := 0
+	var view := 0
+	var mode := CityViewMode.Mode.CITY
+	var pipes := true
+	var subways := true
+	var water_mains := true
+	var generation := 0
+	var budget_usec := 0
+	var signs: Array[CitySignRequest] = []
+
+
+class Result extends RefCounted:
+	var ok := false
+	var error := ""
+	var regions: Array[CityGpuRegionResult] = []
+	var display_city: CityState
+	var atlas_revision := -1
+	var atlas_image: Image
+
+	static func failure(message: String) -> Result:
+		var result := Result.new()
+		result.error = message
+
+		return result

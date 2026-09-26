@@ -1,10 +1,10 @@
 class_name DisasterThingTick
 extends DisasterThingConstants
 
-
-
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
+
+# gdstyle:ignore=quality/max-parameters
 static func update_explosion(
 	city: CityState,
 	altitude: PackedByteArray,
@@ -75,7 +75,11 @@ static func update_explosion(
 		elif damage_result == 4:
 			caused_damage = true
 			counters.spread_explosion_fires += 1
-			DisasterThingActions._record_connection_count_change(counters, buildings[DisasterThingActions._index(damaged, map_edge)], damaged)
+			DisasterThingActions._record_connection_count_change(
+				counters,
+				buildings[DisasterThingActions._index(damaged, map_edge)],
+				damaged,
+			)
 		elif damage_result == 2:
 			caused_damage = true
 			counters.rubble_explosion_hits += 1
@@ -90,6 +94,7 @@ static func update_explosion(
 		counters.disaster_start_requests.append(MovingThingResult.DisasterRequest.new(requested_type, center))
 
 
+# gdstyle:ignore=quality/max-parameters
 static func update_monster(
 	city: CityState,
 	altitude: PackedByteArray,
@@ -223,6 +228,7 @@ static func update_monster(
 		DisasterThingActions._queue_thing_sound(counters, SOUND_MONSTER_DAMAGE, things, record)
 
 
+# gdstyle:ignore=quality/max-parameters
 static func update_tornado(
 	city: CityState,
 	altitude: PackedByteArray,

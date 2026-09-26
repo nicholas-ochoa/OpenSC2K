@@ -4,7 +4,6 @@ extends Control
 signal center_requested(point: Vector2i)
 
 const MAP_SIZE := 128
-
 const BORDER := 2.0
 
 var map_texture: Texture2D
@@ -20,25 +19,6 @@ func _ready() -> void:
 	gui_input.connect(_on_gui_input)
 	# a UI scale change on the main window moves the screen pixel grid
 	get_tree().root.size_changed.connect(queue_redraw)
-
-
-func set_map(image: Image) -> void:
-	map_texture = null if image == null or image.is_empty() else ImageTexture.create_from_image(image)
-	queue_redraw()
-
-
-func set_viewport_outline(points: PackedVector2Array) -> void:
-	viewport_outline = points.duplicate()
-	queue_redraw()
-
-
-func map_rect() -> Rect2:
-	# leave room for the border inside the control, which clips its contents
-	var edge := maxf(0.0, minf(size.x, size.y) - BORDER * 2.0)
-	# give each map pixel the same whole number of screen pixels
-	edge = ScreenPixels.whole_cells(edge, map_texture.get_width() if map_texture != null else MAP_SIZE)
-
-	return Rect2(ScreenPixels.snap(self, (size - Vector2(edge, edge)) * 0.5), Vector2(edge, edge))
 
 
 func _draw() -> void:
@@ -61,6 +41,25 @@ func _draw() -> void:
 	local.append(local[0])
 	draw_polyline(local, Color("202020"), 3.0, false)
 	draw_polyline(local, Color("ffffff"), 1.0, false)
+
+
+func set_map(image: Image) -> void:
+	map_texture = null if image == null or image.is_empty() else ImageTexture.create_from_image(image)
+	queue_redraw()
+
+
+func set_viewport_outline(points: PackedVector2Array) -> void:
+	viewport_outline = points.duplicate()
+	queue_redraw()
+
+
+func map_rect() -> Rect2:
+	# leave room for the border inside the control, which clips its contents
+	var edge := maxf(0.0, minf(size.x, size.y) - BORDER * 2.0)
+	# give each map pixel the same whole number of screen pixels
+	edge = ScreenPixels.whole_cells(edge, map_texture.get_width() if map_texture != null else MAP_SIZE)
+
+	return Rect2(ScreenPixels.snap(self, (size - Vector2(edge, edge)) * 0.5), Vector2(edge, edge))
 
 
 func _on_gui_input(event: InputEvent) -> void:

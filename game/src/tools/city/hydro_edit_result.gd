@@ -1,7 +1,6 @@
 class_name HydroEditResult
 extends EditCommandResult
 
-
 var tile_id := BuildingTileIds.EMPTY
 var overlay_id := 0
 var immediate_power_refresh := false

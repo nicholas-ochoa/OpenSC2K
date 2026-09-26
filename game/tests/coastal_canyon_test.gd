@@ -2,6 +2,7 @@ extends SceneTree
 
 @warning_ignore_start("integer_division")
 
+
 func _initialize() -> void:
 	for edge in [128]:
 		for feature in ["cliffs", "canyon", "valley"]:

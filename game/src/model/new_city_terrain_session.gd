@@ -8,24 +8,6 @@ const NewTerrain = preload("res://src/model/new_city_terrain.gd")
 const Random = preload("res://src/simulation/random/sim_random.gd")
 const GameRandom = preload("res://src/simulation/random/game_lcg_random.gd")
 
-class PreviewResult extends RefCounted:
-	var ok := false
-	var error := ""
-	var stage := ""
-	var terrain: NewCityTerrain.Result
-	var document: Sc2File
-	var city: CityState
-	var landscape_image: Image
-	var minimap_image: Image
-
-	static func failure(message: String, failed_stage: String) -> PreviewResult:
-		var result := PreviewResult.new()
-		result.error = message
-		result.stage = failed_stage
-
-		return result
-
-
 var preview_document: Sc2File
 var independent_template := false
 var preview_options: NewCityTerrain.Options
@@ -144,3 +126,21 @@ func create_city(
 
 func _load_template(path: String) -> Sc2File:
 	return EmptyCityTemplate.create() if independent_template else Sc2Document.load_path(path)
+
+
+class PreviewResult extends RefCounted:
+	var ok := false
+	var error := ""
+	var stage := ""
+	var terrain: NewCityTerrain.Result
+	var document: Sc2File
+	var city: CityState
+	var landscape_image: Image
+	var minimap_image: Image
+
+	static func failure(message: String, failed_stage: String) -> PreviewResult:
+		var result := PreviewResult.new()
+		result.error = message
+		result.stage = failed_stage
+
+		return result

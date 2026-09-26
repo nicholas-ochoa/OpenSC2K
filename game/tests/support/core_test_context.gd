@@ -1,5 +1,4 @@
 extends RefCounted
-
 ## Share result counts and read-only fixture inputs across core suites.
 
 const Sc2Document = preload("res://src/formats/sc2_file.gd")

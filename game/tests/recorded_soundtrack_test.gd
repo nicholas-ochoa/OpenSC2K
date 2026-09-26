@@ -22,7 +22,9 @@ func _run() -> void:
 
 	for extension in ["mp3", "ogg", "flac"]:
 		var path := folder.path_join("10001 - Test." + extension)
-		assert(OS.execute(RecordedSoundtrack.ffmpeg_executable(), PackedStringArray(["-nostdin", "-v", "error", "-y", "-i", folder.path_join("source.wav"), "-ac", "2", "-strict", "-2", "-c:a", {"ogg": "vorbis", "mp3": "libmp3lame", "flac": "flac"}[extension], path])) == 0)
+		assert(OS.execute(RecordedSoundtrack.ffmpeg_executable(),
+			PackedStringArray(["-nostdin", "-v", "error", "-y", "-i", folder.path_join("source.wav"), "-ac", "2", "-strict", "-2", "-c:a",
+			{ "ogg": "vorbis", "mp3": "libmp3lame", "flac": "flac" }[extension], path])) == 0)
 		var loaded := RecordedSoundtrack.load_track(PackedStringArray([path]))
 		assert(loaded.stream != null and loaded.stream.get_length() >= 0.9)
 
@@ -48,7 +50,7 @@ func _run() -> void:
 	controller.soundtrack_folder = folder
 	# Exercise the asynchronous path with Dummy output, without bypassing decode.
 	controller.current_track_id = 10001
-	controller.pending_recording = RecordedSoundtrack.Request.new(matches, controller.music_request)
+	controller.recording_loader.queue(matches)
 	var deadline := Time.get_ticks_msec() + 15000
 
 	while not controller.recording_player.playing and Time.get_ticks_msec() < deadline:
@@ -58,13 +60,14 @@ func _run() -> void:
 	controller.set_volumes(0.1, 0.0)
 	assert(is_equal_approx(controller.recording_player.volume_linear, 0.1))
 	controller.handle_application_focus_out()
-	assert(controller.recording_player.stream != null and controller.recording_player.stream_paused and controller.pending_recording == null)
+	assert(controller.recording_player.stream != null and controller.recording_player.stream_paused
+		and controller.recording_loader.pending == null)
 	# Stop the request before its worker finishes; check that playback stays stopped.
-	controller.pending_recording = RecordedSoundtrack.Request.new(matches, controller.music_request)
+	controller.recording_loader.queue(matches)
 	controller._process(0)
 	controller.stop_music()
 
-	while controller.recording_thread != null:
+	while controller.recording_loader.thread != null:
 		await process_frame
 
 	assert(not controller.recording_player.playing)
@@ -73,7 +76,7 @@ func _run() -> void:
 	controller.handle_application_focus_in(true)
 	controller.stop_music()
 	controller.current_track_id = 10001
-	controller.pending_recording = RecordedSoundtrack.Request.new(matches, controller.music_request)
+	controller.recording_loader.queue(matches)
 	deadline = Time.get_ticks_msec() + 15000
 
 	while not controller.recording_player.playing and Time.get_ticks_msec() < deadline:
@@ -86,5 +89,6 @@ func _run() -> void:
 	assert(controller.current_track_id == -1 and controller.music_gap_remaining_msec == CityAudioController.MUSIC_GAP_MSEC)
 	controller.free()
 	await create_timer(0.1).timeout
-	print("PASS: MP3/Ogg/FLAC decode, track mapping, supplied FLAC, source preservation, asynchronous playback, volume, focus, cancellation and the music gap")
+	print(("PASS: MP3/Ogg/FLAC decode, track mapping, supplied FLAC, source preservation, "
+		+ "asynchronous playback, volume, focus, cancellation and the music gap"))
 	quit()

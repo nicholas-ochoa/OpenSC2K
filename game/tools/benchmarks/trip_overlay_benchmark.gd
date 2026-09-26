@@ -2,7 +2,7 @@ extends "res://tools/benchmarks/fixture_paths.gd"
 ## CPU overlay preparation only. Fixture creation and route analysis are untimed.
 
 const Fixtures = preload("res://tests/support/trip_overlay_fixtures.gd")
-const BATCHES := {"road": 100, "mixed": 20, "modes": 100, "dense_128": 1, "dense_512": 1}
+const BATCHES := { "road": 100, "mixed": 20, "modes": 100, "dense_128": 1, "dense_512": 1 }
 
 
 func _benchmark_initialize() -> void:

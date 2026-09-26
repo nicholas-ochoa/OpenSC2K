@@ -2,7 +2,11 @@ class_name ScurkSpriteIds
 extends RefCounted
 ## Sprite ranges for the SCURK object editor.
 
-enum View { LARGE = 0, MEDIUM = 1, SMALL = 2 }
+enum View {
+	LARGE = 0,
+	MEDIUM = 1,
+	SMALL = 2,
+}
 
 const OBJECT_COUNT := 500
 const VIEW_COUNT := 3

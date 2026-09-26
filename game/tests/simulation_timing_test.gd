@@ -1,6 +1,6 @@
 extends SceneTree
-const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const TimingResults = preload("res://tests/support/timing_results.gd")
 
 
@@ -9,7 +9,7 @@ func _initialize() -> void:
 
 	for sample in [[2, 4000], [27, 8000], [27, 2000]]:
 		history.consume(TimingResults.tick_fixture({"day_results": [{"ok": true, "day": sample[0],
-			"timing": {"work_usec": sample[1], "steps": {"pollution": sample[1]}}}]}))
+			"timing": { "work_usec": sample[1], "steps": { "pollution": sample[1] } }}]}))
 
 	assert(history.days[2].count == 2)
 	assert(history.days[2].total_usec == 14000 and history.days[2].last_usec == 10000)
@@ -139,8 +139,8 @@ func _check_phase_timings(history: SimulationTimingHistory) -> void:
 		assert(total <= phase.timing.work_usec)
 		var before: PackedByteArray = city.document.serialize().data
 		var states := [engine.random.state, engine.lfsr_random.state, engine.game_random.state]
-		history.consume(TimingResults.tick_fixture({"day_results": [day]}))
-		history.consume(TimingResults.tick_fixture({"day_results": [day]}))
+		history.consume(TimingResults.tick_fixture({ "day_results": [day] }))
+		history.consume(TimingResults.tick_fixture({ "day_results": [day] }))
 
 		var group := SimulationTimingHistory._phase_group(pair[1])
 		var parent_key := "Day %02d / %s" % [posmod(pair[0], 25) + 1, group]
@@ -161,9 +161,9 @@ func _check_phase_timings(history: SimulationTimingHistory) -> void:
 
 	# Preserve the existing data-map group while accepting other timed phases.
 	var map_phase := PhaseResult.new()
-	map_phase.timing = SimulationTiming.new(-1, {"smoothing": 300})
+	map_phase.timing = SimulationTiming.new(-1, { "smoothing": 300 })
 	history.consume(TimingResults.tick_fixture({"day_results": [{"ok": true, "day": 2,
-		"timing": {"work_usec": 500, "steps": {"pollution_terrain_land_value": 450}},
+		"timing": { "work_usec": 500, "steps": { "pollution_terrain_land_value": 450 } },
 		"phase_results": {"pollution_terrain_land_value":
 			map_phase}}]}))
 	assert(history.steps["Day 03 / data maps / smoothing"].last_usec == 300)
@@ -173,12 +173,12 @@ func _check_phase_timings(history: SimulationTimingHistory) -> void:
 	var proposal := MilitaryProposalPhase.resolve(proposal_city, true, GameLcgRandom.new(789))
 	assert(proposal.ok and proposal.timing.steps.has("naval site search"))
 	history.consume(TimingResults.tick_fixture({"day_results": [{"ok": true, "day": 22,
-		"timing": {"work_usec": proposal.timing.work_usec, "steps": {}},
-		"phase_results": {"military_proposal": proposal}}]}))
+		"timing": { "work_usec": proposal.timing.work_usec, "steps": {} },
+		"phase_results": { "military_proposal": proposal }}]}))
 	assert(history.steps["Day 23 / military_proposal"].count == 1)
 	assert(history.steps["Day 23 / military_proposal"].last_usec == proposal.timing.work_usec)
 	history.consume(TimingResults.tick_fixture({"day_results": [{"ok": false, "day": 1,
-		"timing": {"work_usec": 999, "steps": {"rejected": 999}}}]}))
+		"timing": { "work_usec": 999, "steps": { "rejected": 999 } }}]}))
 	assert(not history.steps.has("Day 02 / rejected"))
 
 
@@ -188,15 +188,15 @@ func _check_typical_day() -> void:
 	var day_results := []
 
 	for slot in 12:
-		day_results.append({"ok": true, "day": slot, "timing": {"work_usec": 300000, "steps": {}}})
+		day_results.append({ "ok": true, "day": slot, "timing": { "work_usec": 300000, "steps": {} } })
 
-	history.consume(TimingResults.tick_fixture({"day_results": day_results}))
+	history.consume(TimingResults.tick_fixture({ "day_results": day_results }))
 	assert(history.typical_day_usec == 0, "Pacing waits for samples from most day slots")
 	history.consume(TimingResults.tick_fixture({"day_results": [
-		{"ok": true, "day": 12, "timing": {"work_usec": 100000, "steps": {}}},
-		{"ok": true, "day": 22, "timing": {"work_usec": 1200, "steps": {}}},
-		{"ok": true, "day": 23, "timing": {"work_usec": 70000, "steps": {}}},
-		{"ok": true, "day": 24, "timing": {"work_usec": 1300000, "steps": {}}}]}))
+		{ "ok": true, "day": 12, "timing": { "work_usec": 100000, "steps": {} } },
+		{ "ok": true, "day": 22, "timing": { "work_usec": 1200, "steps": {} } },
+		{ "ok": true, "day": 23, "timing": { "work_usec": 70000, "steps": {} } },
+		{ "ok": true, "day": 24, "timing": { "work_usec": 1300000, "steps": {} } }]}))
 	assert(history.typical_day_usec == (12 * 300000 + 100000) / 13, "Fast and slow outliers do not change the typical day")
 	history.clear()
 	assert(history.typical_day_usec == 0)
@@ -230,7 +230,7 @@ func _check_day_pacing() -> void:
 	history.consume(first)
 	assert(history.days[slot].last_delay_usec == second.pacing_delays[age], "A repeated day age keeps its delay")
 	history.consume(TimingResults.tick_fixture({"day_results": [{"ok": true, "day": age + 25,
-		"timing": {"work_usec": 100, "steps": {}}}]}))
+		"timing": { "work_usec": 100, "steps": {} }}]}))
 	assert(history.days[slot].last_delay_usec == 0, "A new day in the slot clears the old delay")
 	var stale := SimulationTickResult.new()
 	stale.pacing_delays[age] = 5000

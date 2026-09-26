@@ -1,4 +1,5 @@
 extends SceneTree
+
 var main: Control
 var point := Vector2i(60, 60)
 
@@ -26,7 +27,10 @@ func _run() -> void:
 	assert(main.document_state.current_document.serialize().data != bytes, "Terrain did not change during the drag")
 	await _wait_for_render()
 	assert(main.map_view.is_left_drag_active())
-	assert(hash(main.render_caches.static_city_image.get_data()) != displayed_before, "The displayed terrain must update during the held drag")
+	assert(
+		hash(main.render_caches.static_city_image.get_data()) != displayed_before,
+		"The displayed terrain must update during the held drag",
+	)
 	var raised: PackedByteArray = main.document_state.current_document.serialize().data
 	_motion(-36, false)
 	assert(main.document_state.current_document.serialize().data == raised, "Repeated pointer motion raised the tile again")
@@ -59,7 +63,8 @@ func _run() -> void:
 	main.audio_controller.stop_sound_effects()
 	main.queue_free()
 	await process_frame
-	print("PASS: live stretch before release, Shift deferral and switching, no repeated raise, cancellation, reversed drag and single exact Undo")
+	print(("PASS: live stretch before release, Shift deferral and switching, no repeated raise, "
+		+ "cancellation, reversed drag and single exact Undo"))
 	quit()
 
 

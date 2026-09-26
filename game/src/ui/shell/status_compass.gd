@@ -1,6 +1,8 @@
 @tool
 class_name StatusCompass
 extends Control
+
+
 # an original split pointer with fixed diagonal positions and quarter turns
 
 var compass_rotation := 0
@@ -9,23 +11,6 @@ var compass_rotation := 0
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_THEME_CHANGED or what == NOTIFICATION_RESIZED:
 		queue_redraw()
-
-
-func set_compass(value: int) -> void:
-	var next_rotation := (value & 3) if value >= 0 else -1
-
-	if compass_rotation != next_rotation:
-		compass_rotation = next_rotation
-		queue_redraw()
-
-	tooltip_text = "Map compass: no city loaded." if value < 0 else (
-		"North points %s." % ["lower-right", "upper-right", "upper-left", "lower-left"][compass_rotation]
-	)
-
-
-# keep the 45-degree compass; it doesn't use the map projection
-static func north_direction(value: int) -> Vector2:
-	return [Vector2(1, 1), Vector2(1, -1), Vector2(-1, -1), Vector2(-1, 1)][value & 3]
 
 
 func _draw() -> void:
@@ -54,3 +39,20 @@ func _draw() -> void:
 		Vector2(2, 2.5), Vector2(1, 2.5), Vector2(-1, -0.5),
 		Vector2(-1, 2.5),
 	]), ink)
+
+
+func set_compass(value: int) -> void:
+	var next_rotation := (value & 3) if value >= 0 else -1
+
+	if compass_rotation != next_rotation:
+		compass_rotation = next_rotation
+		queue_redraw()
+
+	tooltip_text = "Map compass: no city loaded." if value < 0 else (
+		"North points %s." % ["lower-right", "upper-right", "upper-left", "lower-left"][compass_rotation]
+	)
+
+
+# keep the 45-degree compass; it doesn't use the map projection
+static func north_direction(value: int) -> Vector2:
+	return [Vector2(1, 1), Vector2(1, -1), Vector2(-1, -1), Vector2(-1, 1)][value & 3]

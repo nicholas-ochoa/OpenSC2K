@@ -6,7 +6,9 @@ extends RefCounted
 
 # editor-only operations. work on a private document and publish one undo unit
 static func supports_tool(group: int, subtool: int) -> bool:
-	return (group == CityToolIds.Group.BULLDOZER and subtool in [CityToolIds.Bulldozer.STRETCH, CityToolIds.Bulldozer.RAISE_SEA, CityToolIds.Bulldozer.LOWER_SEA]) or (group == CityToolIds.Group.LANDSCAPE and subtool in [CityToolIds.Landscape.STREAM, CityToolIds.Landscape.FOREST])
+	return ((group == CityToolIds.Group.BULLDOZER
+		and subtool in [CityToolIds.Bulldozer.STRETCH, CityToolIds.Bulldozer.RAISE_SEA, CityToolIds.Bulldozer.LOWER_SEA])
+		or (group == CityToolIds.Group.LANDSCAPE and subtool in [CityToolIds.Landscape.STREAM, CityToolIds.Landscape.FOREST]))
 
 
 static func apply(city: CityState, group: int, subtool: int, point: Vector2i, random: SimRandom, stretch_levels := 1) -> TerrainEditResult:
@@ -21,7 +23,15 @@ static func apply(city: CityState, group: int, subtool: int, point: Vector2i, ra
 
 	if group == CityToolIds.Group.BULLDOZER and subtool == CityToolIds.Bulldozer.STRETCH:
 		for step in mini(31, absi(stretch_levels)):
-			var result := TerrainCommand.apply_path(staged, CityToolIds.Group.BULLDOZER, CityToolIds.Bulldozer.RAISE if stretch_levels > 0 else CityToolIds.Bulldozer.LOWER, point, [point], staged_random, true)
+			var result := TerrainCommand.apply_path(
+				staged,
+				CityToolIds.Group.BULLDOZER,
+				CityToolIds.Bulldozer.RAISE if stretch_levels > 0 else CityToolIds.Bulldozer.LOWER,
+				point,
+				[point],
+				staged_random,
+				true,
+			)
 
 			if not result.ok:
 				break
@@ -44,18 +54,33 @@ static func apply(city: CityState, group: int, subtool: int, point: Vector2i, ra
 		if group == CityToolIds.Group.LANDSCAPE:
 			var previous_terrain: PackedByteArray = payloads.XTER.duplicate()
 			var previous_flags: PackedByteArray = payloads.XBIT.duplicate()
-			NewTerrainSurface._make_stream(payloads.ALTM, payloads.XBLD, payloads.XTER, payloads.XZON, payloads.XBIT, payloads.XTXT, payloads.MISC,
+			NewTerrainSurface._make_stream(payloads.ALTM, payloads.XBLD, payloads.XTER, payloads.XZON, payloads.XBIT, payloads.XTXT,
+				payloads.MISC,
 					point, 128, staged_random, map_edge)
 			_finish_stream_slopes(payloads, previous_terrain, previous_flags, map_edge)
 		else:
-			var sea := clampi(staged.document.misc_u32(Sc2MiscLayout.WATER_LEVEL) + (1 if subtool == CityToolIds.Bulldozer.RAISE_SEA else -1), 0, 31)
+			var sea := clampi(
+				staged.document.misc_u32(Sc2MiscLayout.WATER_LEVEL) + (1 if subtool == CityToolIds.Bulldozer.RAISE_SEA else -1),
+				0,
+				31,
+			)
 			BinaryData.write_u32_be(payloads.MISC, Sc2MiscLayout.WATER_LEVEL, sea)
 			var indices := PackedInt32Array()
 
 			for index in (map_edge * map_edge):
 				indices.append(index)
 
-			TerrainRetile.retile_region(payloads.ALTM, payloads.XBLD, payloads.XTER, payloads.XZON, payloads.XBIT, payloads.MISC, indices, sea, map_edge)
+			TerrainRetile.retile_region(
+				payloads.ALTM,
+				payloads.XBLD,
+				payloads.XTER,
+				payloads.XZON,
+				payloads.XBIT,
+				payloads.MISC,
+				indices,
+				sea,
+				map_edge,
+			)
 
 		for id in payloads:
 			staged.document.find_chunk(id).set_decoded_payload(payloads[id])
@@ -103,7 +128,12 @@ static func apply(city: CityState, group: int, subtool: int, point: Vector2i, ra
 	return command
 
 
-static func _finish_stream_slopes(payloads: Dictionary, previous_terrain: PackedByteArray, previous_flags: PackedByteArray, map_edge: int = 128) -> void:
+static func _finish_stream_slopes(
+	payloads: Dictionary,
+	previous_terrain: PackedByteArray,
+	previous_flags: PackedByteArray,
+	map_edge: int = 128,
+) -> void:
 	# editor repair only: preserve the recovered generator's path and rng order
 	var terrain: PackedByteArray = payloads.XTER
 	var flags: PackedByteArray = payloads.XBIT
@@ -122,6 +152,9 @@ static func _finish_stream_slopes(payloads: Dictionary, previous_terrain: Packed
 		for delta in [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]:
 			var near: Vector2i = point + delta
 
-			if TerrainEditHeights._point_is_in_bounds(near, map_edge) and TerrainEditHeights.land_altitude(altitude, near.x * map_edge + near.y) > height:
+			if TerrainEditHeights._point_is_in_bounds(
+				near,
+				map_edge,
+			) and TerrainEditHeights.land_altitude(altitude, near.x * map_edge + near.y) > height:
 				terrain[index] = TerrainTileIds.WATERFALL
 				break

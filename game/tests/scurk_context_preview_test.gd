@@ -37,10 +37,21 @@ func _run() -> void:
 		assert(center == Preview.FRAME_CENTER)
 		_check_sites(preview.snapshot_city)
 	assert(sprites.find_sprite(1000 + tile) == before)
-	for sample in [[Tiles.ROAD_STRAIGHT_2, Tiles.ROAD_STRAIGHT_2], [CityUndergroundView.SUBWAY_AND_PIPE_FIRST + UndergroundTileIds.PIPE_TB, CityUndergroundView.SUBWAY_AND_PIPE_FIRST + UndergroundTileIds.PIPE_LR]]:
+	for sample in [[Tiles.ROAD_STRAIGHT_2, Tiles.ROAD_STRAIGHT_2],
+		[CityUndergroundView.SUBWAY_AND_PIPE_FIRST + UndergroundTileIds.PIPE_TB,
+		CityUndergroundView.SUBWAY_AND_PIPE_FIRST + UndergroundTileIds.PIPE_LR]]:
 		tile = sample[0]
 		var entry := sprites.find_sprite(1000 + tile)
-		preview.configure(entry.decode_indices().pixels, entry.width, entry.height, 1, palette, sprites, CityIsometricRenderer.VIEW_LARGE, tile)
+		preview.configure(
+			entry.decode_indices().pixels,
+			entry.width,
+			entry.height,
+			1,
+			palette,
+			sprites,
+			CityIsometricRenderer.VIEW_LARGE,
+			tile,
+		)
 		var point := Vector2i(8, 7)
 		var sprite_id := 1000 + preview.snapshot_city.building_id(point.x, point.y)
 		if preview.scene.kind == ContextScene.Kind.UNDERGROUND:
@@ -54,7 +65,8 @@ func _run() -> void:
 
 func _test_scenes() -> void:
 	var scene := ContextScene.new()
-	for tile in [Tiles.MIDDLE_CLASS_HOMES_1X1_1, Tiles.APARTMENTS_2X2_1, Tiles.LARGE_APARTMENT_BUILDING_3X3_1, Tiles.OFFICE_BUILDING_2X2_1, Tiles.FACTORY_3X3, Tiles.COAL_POWER, Tiles.HOSPITAL]:
+	for tile in [Tiles.MIDDLE_CLASS_HOMES_1X1_1, Tiles.APARTMENTS_2X2_1, Tiles.LARGE_APARTMENT_BUILDING_3X3_1, Tiles.OFFICE_BUILDING_2X2_1,
+		Tiles.FACTORY_3X3, Tiles.COAL_POWER, Tiles.HOSPITAL]:
 		var area := DemolishStructures.structure_area(tile)
 		scene.build(tile, area, true, true)
 		assert(scene.kind == ContextScene.Kind.BUILDING and scene.target_sites.size() == 2)
@@ -72,12 +84,14 @@ func _test_scenes() -> void:
 		_check_sites(city)
 		scene.build(tile, area, false, false)
 		assert(scene.target_sites.size() == 1 and scene.city.buildings.count(tile) == area * area)
-	for pair in [[Tiles.ROAD_STRAIGHT_1, ContextScene.Kind.ROAD], [Tiles.RAIL_STRAIGHT_1, ContextScene.Kind.RAIL], [Tiles.POWER_LINE_STRAIGHT_1, ContextScene.Kind.POWER], [Tiles.HIGHWAY_STRAIGHT_1, ContextScene.Kind.HIGHWAY]]:
+	for pair in [[Tiles.ROAD_STRAIGHT_1, ContextScene.Kind.ROAD], [Tiles.RAIL_STRAIGHT_1, ContextScene.Kind.RAIL],
+		[Tiles.POWER_LINE_STRAIGHT_1, ContextScene.Kind.POWER], [Tiles.HIGHWAY_STRAIGHT_1, ContextScene.Kind.HIGHWAY]]:
 		scene.build(pair[0], 1, true, true)
 		assert(scene.kind == pair[1])
 		assert(ContextScene.kind_for_tile(scene.city.building_id(8, 7)) == pair[1])
 		assert(scene.city.building_id(7, 7) == pair[0] and scene.city.building_id(10, 7) == pair[0])
-	for tile in [CityUndergroundView.TERRAIN_WIREFRAME_FIRST, CityUndergroundView.SUBWAY_AND_PIPE_FIRST + UndergroundTileIds.SUBWAY_LR, CityUndergroundView.SUBWAY_AND_PIPE_FIRST + UndergroundTileIds.PIPE_TB, CityUndergroundView.WATERED_TERRAIN]:
+	for tile in [CityUndergroundView.TERRAIN_WIREFRAME_FIRST, CityUndergroundView.SUBWAY_AND_PIPE_FIRST + UndergroundTileIds.SUBWAY_LR,
+		CityUndergroundView.SUBWAY_AND_PIPE_FIRST + UndergroundTileIds.PIPE_TB, CityUndergroundView.WATERED_TERRAIN]:
 		scene.build(tile, 1, true, true)
 		assert(scene.kind == ContextScene.Kind.UNDERGROUND)
 		assert(scene.city.buildings.count(Tiles.EMPTY) == ContextScene.MAP_SIZE * ContextScene.MAP_SIZE)
@@ -99,7 +113,9 @@ func _check_sprite_pixels(preview: ScurkContextPreview, sprites: Sc2SpriteArchiv
 		for y in source.image.get_height():
 			var color := source.image.get_pixel(x, y)
 			var ground_y := y - (source.image.get_height() - config.tile_height)
-			if color.a > 0.0 and absf(x - config.half_width + 0.5) / config.half_width + absf(ground_y - config.half_height) / config.half_height < 0.8:
+			if (color.a > 0.0
+					and absf(x - config.half_width + 0.5) / config.half_width
+					+ absf(ground_y - config.half_height) / config.half_height < 0.8):
 				checked += 1
 				assert(output.get_pixelv(offset + Vector2i(x, y)).is_equal_approx(color), "Preview sprite pixel %d at %s" % [id, tile])
 	assert(checked > 0)
@@ -124,7 +140,8 @@ func _test_underground_alignment(preview: ScurkContextPreview, sprites: Sc2Sprit
 	preview.show_neighbors = false
 	for view in [CityIsometricRenderer.VIEW_LARGE, CityIsometricRenderer.VIEW_MEDIUM, CityIsometricRenderer.VIEW_SMALL]:
 		var config := CityIsometricRenderer.view_configuration(view)
-		for tile in [UndergroundTileIds.SUBWAY_LR, UndergroundTileIds.PIPE_TB, UndergroundTileIds.PIPE_TB + CityUndergroundView.WATERED_PIPE_OFFSET]:
+		for tile in [UndergroundTileIds.SUBWAY_LR, UndergroundTileIds.PIPE_TB,
+			UndergroundTileIds.PIPE_TB + CityUndergroundView.WATERED_PIPE_OFFSET]:
 			var tile_id: int = CityUndergroundView.SUBWAY_AND_PIPE_FIRST + tile
 			var entry := sprites.find_sprite(config.sprite_base + tile_id)
 			var pixels := entry.decode_indices().pixels
@@ -153,5 +170,20 @@ func _test_underground_alignment(preview: ScurkContextPreview, sprites: Sc2Sprit
 				for y in diagonal + 1:
 					var x := diagonal - y
 					if x < ContextScene.MAP_SIZE and y < ContextScene.MAP_SIZE:
-						CityUndergroundView.draw_tile(expected, city, palette, source, cache, preview.configuration, preview.origin_x, x, y, true, true)
-			assert(preview.snapshot.get_image().get_data() == expected.get_data(), "Underground context differs from the city renderer: %d, view %d" % [tile_id, view])
+						CityUndergroundView.draw_tile(
+							expected,
+							city,
+							palette,
+							source,
+							cache,
+							preview.configuration,
+							preview.origin_x,
+							x,
+							y,
+							true,
+							true,
+						)
+			assert(
+				preview.snapshot.get_image().get_data() == expected.get_data(),
+				"Underground context differs from the city renderer: %d, view %d" % [tile_id, view],
+			)

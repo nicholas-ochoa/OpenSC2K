@@ -1,7 +1,6 @@
 class_name ApplicationBudget
 extends RefCounted
 
-
 const ToolSounds = preload("res://src/audio/tool_sound_rules.gd")
 const Budget = preload("res://src/simulation/economy/budget_phase.gd")
 const Bonds = preload("res://src/simulation/economy/bond_command.gd")

@@ -5,19 +5,6 @@ extends IsometricConstants
 @warning_ignore_start("integer_division")
 
 
-class Entry extends RefCounted:
-	var order: int
-	var record: int
-	var point: Vector2i
-	var special: bool
-
-	func _init(draw_order: int, thing_record: int, tile: Vector2i, is_special: bool) -> void:
-		order = draw_order
-		record = thing_record
-		point = tile
-		special = is_special
-
-
 static func moving_thing_draw_commands(
 	city: CityState,
 	sprites: Sc2SpriteArchive,
@@ -324,3 +311,16 @@ static func _moving_draw_command(
 	result.shadow = shadow
 
 	return result
+
+
+class Entry extends RefCounted:
+	var order: int
+	var record: int
+	var point: Vector2i
+	var special: bool
+
+	func _init(draw_order: int, thing_record: int, tile: Vector2i, is_special: bool) -> void:
+		order = draw_order
+		record = thing_record
+		point = tile
+		special = is_special

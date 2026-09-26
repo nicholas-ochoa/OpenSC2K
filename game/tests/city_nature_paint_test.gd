@@ -1,4 +1,5 @@
 extends SceneTree
+
 const DocumentState = preload("res://tests/support/document_state.gd")
 
 
@@ -68,7 +69,8 @@ func _run() -> void:
 			assert(main.tool_state.last_edit_command.cost > 0)
 			if tool != 3:
 				for x in range(start.x, start.x + 11):
-					assert(main.document_state.city.is_water(x, start.y) if tool == 1 else main.document_state.city.building_id(x, start.y) in range(6, 13))
+					assert(main.document_state.city.is_water(x, start.y) if tool == 1
+						else main.document_state.city.building_id(x, start.y) in range(6, 13))
 			assert(LandscapeCommand.undo(main.document_state.city, main.tool_state.last_edit_command, main.tool_state.tool_random).ok)
 			assert(DocumentState.capture(main.document_state.current_document) == before and main.tool_state.tool_random.state == rng)
 

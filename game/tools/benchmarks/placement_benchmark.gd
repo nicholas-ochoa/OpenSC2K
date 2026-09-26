@@ -50,10 +50,15 @@ func _run() -> void:
 		main.effects_audio.call("play_tool_success_sound", tool.x, tool.y)
 		var sound_ms := (Time.get_ticks_usec() - start) / 1000.0
 		print("PLACEMENT %s command=%.2f details=%.2f display=%.2f sound=%.2f ms" % [
-			ToolCatalog.tool(tool.x, tool.y).name, command_ms, details_ms, display_ms, sound_ms
+			ToolCatalog.tool(tool.x, tool.y).name, command_ms, details_ms, display_ms, sound_ms,
 		])
 		print(main.timing_state.edit_display_timings)
-		BuildingCommand.undo(city, command, (main.simulation_state.simulation_engine as SimulationEngine).lfsr_random, main.tool_state.tool_random)
+		BuildingCommand.undo(
+			city,
+			command,
+			(main.simulation_state.simulation_engine as SimulationEngine).lfsr_random,
+			main.tool_state.tool_random,
+		)
 		main.map_render.call("refresh_map", false)
 
 		var render_state := main.get("static_render_state") as StaticRenderState

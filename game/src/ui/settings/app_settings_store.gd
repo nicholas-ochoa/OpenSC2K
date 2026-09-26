@@ -7,39 +7,6 @@ const GRAPHICS_SIZES := ["Small", "Medium", "Large"]
 const DEFAULT_ZOOM_GRAPHICS := [0, 1, 2, 2, 2, 2]
 
 
-class Values extends RefCounted:
-	var default_mayor_name := "Mayor"
-	var ui_theme := "light"
-	var ui_scale := AppUiScale.DEFAULT
-	var translucent_menus := true
-	var dark_underground := false
-	var overview_graphics := 0
-	var music_volume := 0.8
-	var effects_volume := 0.8
-	var fullscreen := false
-	var graphics_source := "auto"
-	var graphics_folder := ""
-	var city_renderer := "gpu"
-	var zoom_graphics: Array[int] = AppSettingsStore.normalize_zoom_graphics(DEFAULT_ZOOM_GRAPHICS)
-	var background_audio := false
-	var shuffle_music := false
-	var toolbar_sounds := true
-	var sound_pack_folder := ""
-	var music_pack_folder := ""
-	var data_pack_folder := ""
-	var check_for_updates := false
-
-
-class LoadedValues extends Values:
-	# legacy file preference is read for migration, but is not a dialog option
-	var soundtrack_folder := ""
-	# update check state, which the update check writes
-	var update_last_check := 0
-	var update_skipped_version := ""
-	var update_checked_at := 0
-	var update_error := ""
-
-
 static func load_values(
 	path := SETTINGS_PATH,
 	default_music_volume := 0.8,
@@ -87,7 +54,10 @@ static func load_values(
 
 
 	result.graphics_folder = str(config.get_value("graphics", "folder", ""))
-	result.zoom_graphics = normalize_zoom_graphics(config.get_value("graphics", "zoom_graphics", DEFAULT_ZOOM_GRAPHICS), result.overview_graphics)
+	result.zoom_graphics = normalize_zoom_graphics(
+		config.get_value("graphics", "zoom_graphics", DEFAULT_ZOOM_GRAPHICS),
+		result.overview_graphics,
+	)
 	result.city_renderer = normalize_renderer(config.get_value("display", "city_renderer", "gpu"))
 
 	result.check_for_updates = bool(config.get_value("updates", "check_periodically", false))
@@ -137,84 +107,68 @@ static func graphics_size_at_zoom(sizes: Array[int], zoom_percent: int, overview
 
 
 static func save_values(
-	music_volume: float,
-	effects_volume: float,
-	fullscreen: bool,
-	path := SETTINGS_PATH,
-	graphics_source := "",
-	graphics_folder := "",
-	soundtrack_folder: Variant = null,
-	city_renderer: Variant = null,
-	background_audio: Variant = null,
-	zoom_graphics: Variant = null,
-	toolbar_sounds: Variant = null,
-	sound_pack_folder: Variant = null,
-	music_pack_folder: Variant = null,
-	shuffle_music: Variant = null,
-	default_mayor_name: Variant = null,
-	overview_graphics: Variant = null,
-	ui_theme: Variant = null,
-	dark_underground: Variant = null,
-	translucent_menus: Variant = null,
-	check_for_updates: Variant = null,
-	data_pack_folder: Variant = null,
-	ui_scale: Variant = null,
+	music_volume: float, effects_volume: float, fullscreen: bool,
+	path := SETTINGS_PATH, options: SaveOptions = null,
 ) -> Error:
+	if options == null:
+		options = SaveOptions.new()
+
 	var config := ConfigFile.new()
 
 	if FileAccess.file_exists(path):
 		config.load(path)
 
-	if not graphics_source.is_empty():
-		config.set_value("graphics", "source", graphics_source)
-		config.set_value("graphics", "folder", graphics_folder)
+	if not options.graphics_source.is_empty():
+		config.set_value("graphics", "source", options.graphics_source)
+		config.set_value("graphics", "folder", options.graphics_folder)
 
-	if dark_underground != null:
-		config.set_value("display", "dark_underground", bool(dark_underground))
+	if options.dark_underground != null:
+		config.set_value("display", "dark_underground", bool(options.dark_underground))
 
-	if ui_theme != null:
-		config.set_value("general", "ui_theme", normalize_theme(ui_theme))
+	if options.ui_theme != null:
+		config.set_value("general", "ui_theme", normalize_theme(options.ui_theme))
 
-	if translucent_menus != null:
-		config.set_value("general", "translucent_menus", bool(translucent_menus))
+	if options.translucent_menus != null:
+		config.set_value("general", "translucent_menus", bool(options.translucent_menus))
 
-	if ui_scale != null:
-		config.set_value("general", "ui_scale", AppUiScale.normalize(ui_scale))
+	if options.ui_scale != null:
+		config.set_value("general", "ui_scale", AppUiScale.normalize(options.ui_scale))
 
-	if default_mayor_name != null:
-		var mayor := str(default_mayor_name).strip_edges().left(23)
+	if options.default_mayor_name != null:
+		var mayor := str(options.default_mayor_name).strip_edges().left(23)
 		config.set_value("general", "default_mayor_name", "Mayor" if mayor.is_empty() else mayor)
 
-	if overview_graphics != null:
-		config.set_value("graphics", "overview_graphics", clampi(int(overview_graphics), 0, 2))
+	if options.overview_graphics != null:
+		config.set_value("graphics", "overview_graphics", clampi(int(options.overview_graphics), 0, 2))
 
-	if soundtrack_folder != null:
-		config.set_value("audio", "soundtrack_folder", str(soundtrack_folder).strip_edges())
+	if options.soundtrack_folder != null:
+		config.set_value("audio", "soundtrack_folder", str(options.soundtrack_folder).strip_edges())
 
 	config.set_value("audio", "music_volume", clampf(music_volume, 0.0, 1.0))
 	config.set_value("audio", "effects_volume", clampf(effects_volume, 0.0, 1.0))
 	config.set_value("display", "fullscreen", fullscreen)
 
-	if city_renderer != null:
-		config.set_value("display", "city_renderer", normalize_renderer(city_renderer))
+	if options.city_renderer != null:
+		config.set_value("display", "city_renderer", normalize_renderer(options.city_renderer))
 
-	if shuffle_music != null:
-		config.set_value("audio", "shuffle_music", bool(shuffle_music))
+	if options.shuffle_music != null:
+		config.set_value("audio", "shuffle_music", bool(options.shuffle_music))
 
-	if background_audio != null:
-		config.set_value("audio", "background_audio", bool(background_audio))
+	if options.background_audio != null:
+		config.set_value("audio", "background_audio", bool(options.background_audio))
 
-	if zoom_graphics != null:
+	if options.zoom_graphics != null:
 		config.set_value("graphics", "zoom_graphics",
-			normalize_zoom_graphics(zoom_graphics, int(config.get_value("graphics", "overview_graphics", 0))))
+			normalize_zoom_graphics(options.zoom_graphics, int(config.get_value("graphics", "overview_graphics", 0))))
 
-	if check_for_updates != null:
-		config.set_value("updates", "check_periodically", bool(check_for_updates))
+	if options.check_for_updates != null:
+		config.set_value("updates", "check_periodically", bool(options.check_for_updates))
 
-	if data_pack_folder != null:
-		config.set_value("data", "pack_folder", str(data_pack_folder).strip_edges())
+	if options.data_pack_folder != null:
+		config.set_value("data", "pack_folder", str(options.data_pack_folder).strip_edges())
 
-	for pair in [["toolbar_sounds", toolbar_sounds], ["sound_pack_folder", sound_pack_folder], ["music_pack_folder", music_pack_folder]]:
+	for pair in [["toolbar_sounds", options.toolbar_sounds], ["sound_pack_folder", options.sound_pack_folder],
+		["music_pack_folder", options.music_pack_folder]]:
 		if pair[1] != null:
 			config.set_value("audio", pair[0], pair[1])
 
@@ -235,3 +189,58 @@ static func save_update_state(
 	config.set_value("updates", "error", error)
 
 	return config.save(path)
+
+
+class Values extends RefCounted:
+	var default_mayor_name := "Mayor"
+	var ui_theme := "light"
+	var ui_scale := AppUiScale.DEFAULT
+	var translucent_menus := true
+	var dark_underground := false
+	var overview_graphics := 0
+	var music_volume := 0.8
+	var effects_volume := 0.8
+	var fullscreen := false
+	var graphics_source := "auto"
+	var graphics_folder := ""
+	var city_renderer := "gpu"
+	var zoom_graphics: Array[int] = AppSettingsStore.normalize_zoom_graphics(DEFAULT_ZOOM_GRAPHICS)
+	var background_audio := false
+	var shuffle_music := false
+	var toolbar_sounds := true
+	var sound_pack_folder := ""
+	var music_pack_folder := ""
+	var data_pack_folder := ""
+	var check_for_updates := false
+
+
+class LoadedValues extends Values:
+	# legacy file preference is read for migration, but is not a dialog option
+	var soundtrack_folder := ""
+	# update check state, which the update check writes
+	var update_last_check := 0
+	var update_skipped_version := ""
+	var update_checked_at := 0
+	var update_error := ""
+
+
+# Null leaves a saved value unchanged. An empty graphics source keeps both graphics fields.
+class SaveOptions extends RefCounted:
+	var graphics_source := ""
+	var graphics_folder := ""
+	var soundtrack_folder: Variant = null
+	var city_renderer: Variant = null
+	var background_audio: Variant = null
+	var zoom_graphics: Variant = null
+	var toolbar_sounds: Variant = null
+	var sound_pack_folder: Variant = null
+	var music_pack_folder: Variant = null
+	var shuffle_music: Variant = null
+	var default_mayor_name: Variant = null
+	var overview_graphics: Variant = null
+	var ui_theme: Variant = null
+	var dark_underground: Variant = null
+	var translucent_menus: Variant = null
+	var check_for_updates: Variant = null
+	var data_pack_folder: Variant = null
+	var ui_scale: Variant = null

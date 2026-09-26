@@ -168,7 +168,11 @@ func _selection_source_polygons() -> Array[PackedVector2Array]:
 	var polygons: Array[PackedVector2Array] = []
 
 	for tile in tiles:
-		var polygon := Renderer.tile_polygon(map.city, tile.x, tile.y) if map.terrain_diamond_preview else Renderer.terrain_surface_polygon(map.city, tile.x, tile.y)
+		var polygon := Renderer.tile_polygon(
+			map.city,
+			tile.x,
+			tile.y,
+		) if map.terrain_diamond_preview else Renderer.terrain_surface_polygon(map.city, tile.x, tile.y)
 
 		if polygon.size() == 4:
 			polygons.append(polygon)

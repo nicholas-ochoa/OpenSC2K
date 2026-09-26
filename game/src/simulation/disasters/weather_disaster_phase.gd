@@ -4,7 +4,6 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const MISC_SIZE := Sc2MiscLayout.SIZE
 const POLLUTION_SIZE := 64 * 64
 const MISC_CITY_DAYS := Sc2MiscLayout.CITY_DAYS
@@ -19,12 +18,10 @@ const MISC_CITY_CENTER_X := Sc2MiscLayout.CITY_CENTER_X
 const MISC_CITY_CENTER_Y := Sc2MiscLayout.CITY_CENTER_Y
 const MISC_ARCOLOGY_POPULATION := Sc2MiscLayout.ARCOLOGY_POPULATION
 const MISC_NORMAL_POPULATION := Sc2MiscLayout.NORMAL_POPULATION
-
 const BUDGET_RECORD_SIZE := Sc2BudgetLayout.RECORD_SIZE
 const BUDGET_CURRENT := Sc2BudgetLayout.CURRENT
 const BUDGET_RESIDENTIAL := Sc2BudgetLayout.RESIDENTIAL
 const BUDGET_ROAD := Sc2BudgetLayout.ROAD
-
 const TILE_HOSPITAL := Tiles.HOSPITAL
 const TILE_POLICE := Tiles.POLICE_STATION
 const TILE_FIRE := Tiles.FIRE_STATION
@@ -41,7 +38,6 @@ const TILE_RAIL_STATION := Tiles.RAIL_STATION
 const TILE_MICROWAVE_PLANT := Tiles.MICROWAVE_POWER
 const TILE_NUCLEAR_PLANT := Tiles.NUCLEAR_POWER
 const TILE_MARINA := Tiles.MARINA
-
 const NEWS_DEMAND_BASE := 0x2e
 const STATUS_NONE := -1
 const STATUS_WEATHER := -2
@@ -60,7 +56,6 @@ const STATUS_MARINA := 11
 const STATUS_PARK := 12
 const STATUS_INDUSTRIAL_CONNECTION := 13
 const STATUS_COMMERCIAL_CONNECTION := 14
-
 const DISASTER_NONE := 0
 const DISASTER_FIRE := 1
 const DISASTER_FLOOD := 2
@@ -76,20 +71,9 @@ const DISASTER_MASS_FLOODS := 14
 const DISASTER_POLLUTION := 15
 const DISASTER_HURRICANE := 16
 const DISASTER_PLANE_CRASH := 18
-
 # indexed by the saved difficulty. values are simulation months. the supplied
 # executable stores 0, 100, 60, and 30 at 0x004e9908
 const DISASTER_WAIT_MONTHS := [0, 100, 60, 30]
-
-
-class Result extends PhaseResult:
-	var status_index := -1
-	var status_news_type := -1
-	var disaster_type := 0
-	var disaster_point := Vector2i.ZERO
-	var wait_months := 0
-	var disaster_roll := 0
-	var candidate_type := 0
 
 
 static func run(
@@ -462,3 +446,13 @@ static func _failed(message: String) -> Result:
 	result.error = message
 
 	return result
+
+
+class Result extends PhaseResult:
+	var status_index := -1
+	var status_news_type := -1
+	var disaster_type := 0
+	var disaster_point := Vector2i.ZERO
+	var wait_months := 0
+	var disaster_roll := 0
+	var candidate_type := 0

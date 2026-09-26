@@ -1,6 +1,8 @@
 class_name ApplicationCityPngExport
 extends RefCounted
 
+signal error_reported(message: String)
+signal status_changed(message: String)
 
 const CityModel = preload("res://src/model/city_state.gd")
 const ExportJob = preload("res://src/view/city_png_export_job.gd")
@@ -9,9 +11,6 @@ const STAGE_TEXT := {
 	ExportJob.STAGE_RENDER: "Drawing the city…",
 	ExportJob.STAGE_WRITE: "Writing the PNG file…",
 }
-
-signal error_reported(message: String)
-signal status_changed(message: String)
 
 var document_state: ActiveDocumentState
 var view_state: ViewState

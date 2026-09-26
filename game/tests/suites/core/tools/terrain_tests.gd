@@ -1,5 +1,4 @@
 extends "res://tests/support/core_test_suite.gd"
-
 ## Tools: terrain checks.
 
 @warning_ignore_start("integer_division")
@@ -183,6 +182,10 @@ func test_terrain_command(reference_root: String) -> void:
 		"Terrain undo restores the complete structure and overlay",
 	)
 
+	_test_basin_retile(document)
+
+
+func _test_basin_retile(document: Sc2File) -> void:
 	var basin_altitude := _filled_bytes(CityState.TILE_COUNT * 2, 0)
 	var basin_buildings := _filled_bytes(CityState.TILE_COUNT, Tiles.EMPTY)
 	var basin_terrain := _filled_bytes(CityState.TILE_COUNT, 0)

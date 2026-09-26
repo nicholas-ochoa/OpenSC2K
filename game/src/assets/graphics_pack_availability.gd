@@ -2,16 +2,6 @@ class_name GraphicsPackAvailability
 extends RefCounted
 
 
-
-class Count extends RefCounted:
-	var valid := 0
-	var total := 0
-
-
-class Result extends RefCounted:
-	var sizes: Array[Count] = []
-
-
 static func inspect(small_medium: Sc2SpriteArchive, large: Sc2SpriteArchive) -> Result:
 	var sizes: Array[Count] = []
 
@@ -33,3 +23,12 @@ static func inspect(small_medium: Sc2SpriteArchive, large: Sc2SpriteArchive) -> 
 	result.sizes = sizes
 
 	return result
+
+
+class Count extends RefCounted:
+	var valid := 0
+	var total := 0
+
+
+class Result extends RefCounted:
+	var sizes: Array[Count] = []

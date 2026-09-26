@@ -1,7 +1,6 @@
 class_name ApplicationCurrentTool
 extends RefCounted
 
-
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const Tools = preload("res://src/tools/shared/tool_catalog.gd")
 const ToolState = preload("res://src/tools/shared/tool_edit_state.gd")
@@ -90,13 +89,15 @@ func select_tool_group(index: int) -> void:
 func _auto_select_underground() -> void:
 	# query, camera and bulldozer work in both views
 	if (app.tool_state.selected_group in [CityToolIds.Group.QUERY, CityToolIds.Group.CENTERING]
-			or (CityViewMode.is_map(app.view_state.overlay_mode) and Demolish.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool))):
+			or (CityViewMode.is_map(app.view_state.overlay_mode)
+			and Demolish.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool))):
 		return
 
 	if app.document_state.city == null:
 		return
 
-	var underground_tool := ((app.tool_state.selected_group == CityToolIds.Group.WATER and app.tool_state.selected_subtool == CityToolIds.Water.PIPES)
+	var underground_tool := ((app.tool_state.selected_group == CityToolIds.Group.WATER
+		and app.tool_state.selected_subtool == CityToolIds.Water.PIPES)
 			or (app.tool_state.selected_group == CityToolIds.Group.RAIL and app.tool_state.selected_subtool == CityToolIds.Rail.SUBWAY))
 	var target := CityViewMode.Mode.UNDERGROUND if underground_tool else CityViewMode.Mode.CITY
 
@@ -194,8 +195,10 @@ func update_edit_state() -> void:
 	app.map_view.shift_rectangle_enabled = ((bool(state.landscape) and app.tool_state.selected_subtool != CityToolIds.Landscape.FOREST)
 			or (app.tool_state.landscape_editor and app.tool_state.selected_group == CityToolIds.Group.BULLDOZER
 			and app.tool_state.selected_subtool in [CityToolIds.Bulldozer.LEVEL, CityToolIds.Bulldozer.RAISE, CityToolIds.Bulldozer.LOWER]))
-	app.map_view.continuous_placement = app.tool_state.selected_group == CityToolIds.Group.LANDSCAPE and app.tool_state.selected_subtool == CityToolIds.Landscape.FOREST
-	app.map_view.shift_line_enabled = app.tool_state.selected_group == CityToolIds.Group.LANDSCAPE and app.tool_state.selected_subtool in [CityToolIds.Landscape.TREES, CityToolIds.Landscape.WATER]
+	app.map_view.continuous_placement = (app.tool_state.selected_group == CityToolIds.Group.LANDSCAPE
+		and app.tool_state.selected_subtool == CityToolIds.Landscape.FOREST)
+	app.map_view.shift_line_enabled = (app.tool_state.selected_group == CityToolIds.Group.LANDSCAPE
+		and app.tool_state.selected_subtool in [CityToolIds.Landscape.TREES, CityToolIds.Landscape.WATER])
 
 	if app.map_view.shift_line_enabled:
 		state.selection = "rectangle"
@@ -203,23 +206,30 @@ func update_edit_state() -> void:
 
 	app.map_view.placement_validator = _placement_preview_valid
 
-	if app.tool_state.landscape_editor and LandscapeEditorCommand.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
+	if app.tool_state.landscape_editor and LandscapeEditorCommand.supports_tool(
+		app.tool_state.selected_group,
+		app.tool_state.selected_subtool,
+	):
 		state.enabled = true
 		state.available = true
 		app.tool_state.selected_tool_available = true
 		state.selection = "point"
-		state.area = 7 if app.tool_state.selected_group == CityToolIds.Group.LANDSCAPE and app.tool_state.selected_subtool == CityToolIds.Landscape.FOREST else 1
+		state.area = (7 if app.tool_state.selected_group == CityToolIds.Group.LANDSCAPE
+			and app.tool_state.selected_subtool == CityToolIds.Landscape.FOREST else 1)
 		state.status_text = str(Tools.tool(app.tool_state.selected_group, app.tool_state.selected_subtool).name)
-		state.status_detail = ("Drag up or down to stretch terrain live. Hold Shift to apply on release." if app.tool_state.selected_group == CityToolIds.Group.BULLDOZER
+		state.status_detail = ("Drag up or down to stretch terrain live. Hold Shift to apply on release."
+			if app.tool_state.selected_group == CityToolIds.Group.BULLDOZER
 				and app.tool_state.selected_subtool == CityToolIds.Bulldozer.STRETCH else "Free landscape editor tool.")
 
 	var level_brush := app.new_city.level_brush_active()
 	app.map_view.landscape_brush = ((level_brush or app.tool_state.selected_group == CityToolIds.Group.LANDSCAPE
 			and app.tool_state.selected_subtool in [CityToolIds.Landscape.TREES, CityToolIds.Landscape.WATER, CityToolIds.Landscape.FOREST])
 			and not (app.scurk_place_print != null and app.scurk_place_print.visible))
-	app.map_view.demolish_brush = (app.tool_state.selected_group == CityToolIds.Group.BULLDOZER and app.tool_state.selected_subtool == CityToolIds.Bulldozer.DEMOLISH
+	app.map_view.demolish_brush = (app.tool_state.selected_group == CityToolIds.Group.BULLDOZER
+		and app.tool_state.selected_subtool == CityToolIds.Bulldozer.DEMOLISH
 			and not app.tool_state.landscape_editor and not (app.scurk_place_print != null and app.scurk_place_print.visible))
-	app.map_view.bulldozer_visual_provider = app.moving_sprites.demolish_brush_visual if app.view_state.overlay_mode == CityViewMode.Mode.CITY else Callable()
+	app.map_view.bulldozer_visual_provider = (app.moving_sprites.demolish_brush_visual
+		if app.view_state.overlay_mode == CityViewMode.Mode.CITY else Callable())
 	app.city_toolbar.brush_controls.visible = app.tool_state.landscape_editor and app.map_view.landscape_brush and not level_brush
 
 	if level_brush:
@@ -242,8 +252,10 @@ func update_edit_state() -> void:
 	app.map_view.placement_error_provider = _placement_preview_error
 	app.map_view.show_selection_preview = app.tool_state.selected_group != CityToolIds.Group.CENTERING
 	app.map_view.terrain_diamond_preview = (app.tool_state.selected_group == CityToolIds.Group.BULLDOZER
-			and app.tool_state.selected_subtool in [CityToolIds.Bulldozer.RAISE, CityToolIds.Bulldozer.LOWER, CityToolIds.Bulldozer.STRETCH])
-	app.map_view.highway_preview = app.tool_state.selected_group == CityToolIds.Group.ROADS and app.tool_state.selected_subtool == CityToolIds.Roads.HIGHWAY
+			and app.tool_state.selected_subtool in [CityToolIds.Bulldozer.RAISE, CityToolIds.Bulldozer.LOWER,
+			CityToolIds.Bulldozer.STRETCH])
+	app.map_view.highway_preview = (app.tool_state.selected_group == CityToolIds.Group.ROADS
+		and app.tool_state.selected_subtool == CityToolIds.Roads.HIGHWAY)
 	app.map_view.query_footprint_preview = app.tool_state.selected_group == CityToolIds.Group.QUERY
 
 	if app.tool_state.selected_group != CityToolIds.Group.QUERY or app.tool_state.selected_subtool != CityToolIds.Query.TRIP_REACH:
@@ -285,7 +297,8 @@ func _placement_preview_error(point: Vector2i) -> String:
 		if site.size.x == 0 or not Rect2i(0, 0, map_edge, map_edge).encloses(site):
 			return "The object footprint extends outside the map."
 
-		return ("" if tile_id > BuildingTileIds.MAX_ID else ScurkPlace._site_error(app.document_state.city.buildings, app.document_state.city.terrain,
+		return ("" if tile_id > BuildingTileIds.MAX_ID
+			else ScurkPlace._site_error(app.document_state.city.buildings, app.document_state.city.terrain,
 				app.document_state.city.tile_flags, site, tile_id, map_edge))
 
 	if Buildings.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
@@ -300,13 +313,27 @@ func _placement_preview_error(point: Vector2i) -> String:
 		if app.document_state.city.buildings[index] != BuildingTileIds.EMPTY:
 			return "Clear the existing structure first."
 
-		return "" if app.document_state.city.terrain[index] in [TerrainTileIds.FORBIDDEN_COAST, TerrainTileIds.WATERFALL] else "Hydroelectric power requires a waterfall tile."
+		return ("" if app.document_state.city.terrain[index] in [TerrainTileIds.FORBIDDEN_COAST, TerrainTileIds.WATERFALL]
+			else "Hydroelectric power requires a waterfall tile.")
 
 	if Onramps.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
-		return Onramps.apply(app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool, point, false, true).error
+		return Onramps.apply(
+			app.document_state.city,
+			app.tool_state.selected_group,
+			app.tool_state.selected_subtool,
+			point,
+			false,
+			true,
+		).error
 
 	if SubwayToRail.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
-		return SubwayToRail.apply(app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool, point, true).error
+		return SubwayToRail.apply(
+			app.document_state.city,
+			app.tool_state.selected_group,
+			app.tool_state.selected_subtool,
+			point,
+			true,
+		).error
 
 	if Tunnels.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
 		var proposal := Tunnels.apply(app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool, point)
@@ -327,7 +354,8 @@ func update_network_preview() -> void:
 		return
 
 	if (app.document_state.city == null or not app.camera_input.camera_keys_allowed() or not app.map_view.edit_enabled
-			or app.map_view.is_panning() or not NetworkPlacementPreview.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool)):
+			or app.map_view.is_panning()
+			or not NetworkPlacementPreview.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool)):
 		app.network_preview.clear()
 
 		return
@@ -346,6 +374,7 @@ func update_network_preview() -> void:
 
 	if sprites != null and app.asset_state.palette != null:
 		app.network_preview.request(
-			app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool, start, finish, view, app.asset_state.palette, sprites,
+			app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool, start, finish, view,
+			app.asset_state.palette, sprites,
 			app.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND, app.scurk_workspace.scurk_edit_tool_active()
 		)

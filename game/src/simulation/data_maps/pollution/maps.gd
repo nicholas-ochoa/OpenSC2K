@@ -6,36 +6,6 @@ extends PollutionValues
 # compute coarse maps in their original scan and checkpoint order
 
 
-# inputs, scratch grids, and outputs shared by the coarse-map passes. each
-# pass copies the fields it needs into locals before its grid loop
-class CoarseMaps:
-	var city: CityState
-	var slice: SimulationSliceBudget
-	var map_edge: int
-	var half_edge: int
-	var quarter_edge: int
-	var buildings: PackedByteArray
-	var zones: PackedByteArray
-	# full-size scratch grid. it holds terrain desirability, then population
-	# sources, then crime sources
-	var temporary: PackedInt32Array
-	var flags: PackedByteArray
-	var ordinances: int
-	var pollution: PackedByteArray
-	var land_value: PackedByteArray
-	var police: PackedByteArray
-	var fire: PackedByteArray
-	var population: PackedByteArray
-	var growth: PackedByteArray
-	var crime: PackedByteArray
-	var total := 0
-	var land_value_total := 0
-	var crime_total := 0
-	var center_x := 0
-	var center_y := 0
-	var developed_tiles := 0
-
-
 static func build(
 	city: CityState, span: SimulationTimingSpan, map_edge: int,
 	traffic_chunk: Sc2Chunk, pollution_chunk: Sc2Chunk, crime_chunk: Sc2Chunk,
@@ -553,3 +523,33 @@ static func _smooth_crime(maps: CoarseMaps) -> void:
 
 	maps.crime = crime
 	maps.crime_total = crime_total
+
+
+# inputs, scratch grids, and outputs shared by the coarse-map passes. each
+# pass copies the fields it needs into locals before its grid loop
+class CoarseMaps:
+	var city: CityState
+	var slice: SimulationSliceBudget
+	var map_edge: int
+	var half_edge: int
+	var quarter_edge: int
+	var buildings: PackedByteArray
+	var zones: PackedByteArray
+	# full-size scratch grid. it holds terrain desirability, then population
+	# sources, then crime sources
+	var temporary: PackedInt32Array
+	var flags: PackedByteArray
+	var ordinances: int
+	var pollution: PackedByteArray
+	var land_value: PackedByteArray
+	var police: PackedByteArray
+	var fire: PackedByteArray
+	var population: PackedByteArray
+	var growth: PackedByteArray
+	var crime: PackedByteArray
+	var total := 0
+	var land_value_total := 0
+	var crime_total := 0
+	var center_x := 0
+	var center_y := 0
+	var developed_tiles := 0

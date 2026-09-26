@@ -82,7 +82,9 @@ func _run() -> void:
 	await create_timer(0.1).timeout
 	main.queue_free()
 	await process_frame
-	print("PASS: pixel-aligned wide and close shots, enabled landscape tools, founding sound and paper, paused reading and opening music, HTML-only content, and separate tunnel/subway cutoff depths")
+	print(("PASS: pixel-aligned wide and close shots, enabled landscape tools, founding sound and "
+		+ "paper, paused reading and opening music, HTML-only content, and separate tunnel/subway "
+		+ "cutoff depths"))
 	quit()
 
 
@@ -102,7 +104,8 @@ func _check_newspaper_options(main: Node) -> void:
 	assert(city.newspaper_extras_enabled() and not city.newspaper_subscription_enabled())
 
 	for option in [CityMenuBar.MENU_NEWSPAPER_SUBSCRIPTION, CityMenuBar.MENU_NEWSPAPER_EXTRAS]:
-		var offset: int = Sc2MiscLayout.NEWSPAPER_SUBSCRIPTION if option == CityMenuBar.MENU_NEWSPAPER_SUBSCRIPTION else Sc2MiscLayout.NEWSPAPER_EXTRAS
+		var offset: int = (Sc2MiscLayout.NEWSPAPER_SUBSCRIPTION if option == CityMenuBar.MENU_NEWSPAPER_SUBSCRIPTION
+			else Sc2MiscLayout.NEWSPAPER_EXTRAS)
 		var before: int = city.document.misc_u32(offset)
 
 		for _toggle in 2:

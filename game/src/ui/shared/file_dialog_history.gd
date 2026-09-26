@@ -2,12 +2,17 @@ class_name FileDialogHistory
 extends Node
 
 const HISTORY_PATH := "user://file-dialog-history.cfg"
+
 var storage_path := HISTORY_PATH
 
 
 func _ready() -> void:
 	restore_history()
 	get_tree().node_added.connect(_node_added)
+
+
+func _exit_tree() -> void:
+	save_history()
 
 
 func _node_added(node: Node) -> void:
@@ -19,10 +24,6 @@ func _visibility_changed(dialog: FileDialog) -> void:
 	if not dialog.visible:
 		# filedialog can update recents after emitting its close signal
 		save_history.call_deferred()
-
-
-func _exit_tree() -> void:
-	save_history()
 
 
 func restore_history() -> void:

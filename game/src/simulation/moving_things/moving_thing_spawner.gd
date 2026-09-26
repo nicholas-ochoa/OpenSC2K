@@ -1,10 +1,10 @@
 class_name MovingThingSpawner
 extends RefCounted
 
+
 @warning_ignore_start("integer_division")
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const MAP_SIZE := 128
 const RECORD_SIZE := Sc2ThingLayout.RECORD_SIZE
 const Field = Sc2ThingLayout.Field
@@ -29,14 +29,6 @@ const TRAIN_DIRECTION_ORDERS := [
 	[0, 3, 1, 2],
 	[0, 1, 3, 2],
 ]
-
-
-class Result extends RefCounted:
-	var spawned := false
-	var record := 0
-	var point := Vector2i.ZERO
-	var target := Vector2i.ZERO
-	var goal := 0
 
 
 static func count_type(things: PackedByteArray, thing_type: int) -> int:
@@ -490,3 +482,11 @@ static func _index(point: Vector2i, map_edge: int = 128) -> int:
 		return -1
 
 	return point.x * map_edge + point.y
+
+
+class Result extends RefCounted:
+	var spawned := false
+	var record := 0
+	var point := Vector2i.ZERO
+	var target := Vector2i.ZERO
+	var goal := 0

@@ -1,7 +1,6 @@
 class_name ApplicationInterface
 extends RefCounted
 
-
 const DisplayNumbers = preload("res://src/ui/shared/display_number_format.gd")
 const CityWorkspaceView = preload("res://src/ui/shell/city_workspace.tscn")
 const CityDialogsView = preload("res://src/ui/shell/city_dialog_registry.gd")
@@ -75,7 +74,7 @@ func build_interface(original_assets: OriginalGameAssets) -> void:
 	app.map_view.query_requested.connect(app.query_choices.open_query)
 	app.map_view.center_requested.connect(app.camera_input.center_map_on_tile)
 	app.map_view.zoom_changed.connect(app.camera_input.on_city_zoom_changed)
-	app.map_view.viewport_changed.connect(app.reports.refresh_city_map_viewport)
+	app.map_view.viewport_changed.connect(app.reports.city_map.refresh_viewport)
 	app.city_status_bar = app.city_workspace.status_bar
 	app.city_status_bar.disaster_locate_requested.connect(app.camera_input.center_map_on_disaster)
 	app.status_label = app.city_status_bar.message_label
@@ -121,9 +120,9 @@ func build_interface(original_assets: OriginalGameAssets) -> void:
 	app.city_dialogs.query_dialog.close_requested.connect(app.query_choices.close_query)
 	app.city_dialogs.query_dialog.action_requested.connect(app.query_choices.run_query_action)
 	app.city_dialogs.industry_window.tax_rates_changed.connect(app.reports.on_industry_tax_rates_changed)
-	app.city_dialogs.city_map_window.mode_changed.connect(app.reports.on_city_map_mode_changed)
-	app.city_dialogs.city_map_window.center_requested.connect(app.reports.on_city_map_center_requested)
-	app.city_dialogs.city_map_window.isometric_view_requested.connect(app.reports.on_city_map_isometric_view_requested)
+	app.city_dialogs.city_map_window.mode_changed.connect(app.reports.city_map.on_mode_changed)
+	app.city_dialogs.city_map_window.center_requested.connect(app.reports.city_map.on_center_requested)
+	app.city_dialogs.city_map_window.isometric_view_requested.connect(app.reports.city_map.on_isometric_view_requested)
 	app.city_dialogs.ordinance_window.ordinances_changed.connect(app.reports.on_ordinances_changed)
 	app.city_dialogs.ordinance_window.update_failed.connect(show_error)
 	app.city_dialogs.newspaper_dialog.visibility_changed.connect(app.new_city.on_founding_newspaper_visibility_changed)
@@ -252,7 +251,11 @@ func refresh_details() -> void:
 		app.city_dialogs.ordinance_window.refresh_city()
 
 	if app.city_dialogs.city_map_window != null:
-		app.city_dialogs.city_map_window.refresh_city(app.document_state.city, app.asset_state.palette, app.reports.city_map_viewport_outline())
+		app.city_dialogs.city_map_window.refresh_city(
+			app.document_state.city,
+			app.asset_state.palette,
+			app.reports.city_map.viewport_outline(),
+		)
 
 	var demand := app.document_state.city.rci_demand()
 	var weather_trend := app.document_state.city.document.misc_u32(RciAftermath.MISC_WEATHER_TREND) & 0xff

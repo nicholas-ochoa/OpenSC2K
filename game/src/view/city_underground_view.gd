@@ -2,9 +2,7 @@ class_name CityUndergroundView
 extends RefCounted
 
 const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
-
 const Geometry = preload("res://src/view/isometric/geometry.gd")
-
 const TERRAIN_WIREFRAME_FIRST := 0x131
 const SUBWAY_AND_PIPE_FIRST := 0x13e
 const PIPED_TERRAIN := 0x15f
@@ -323,7 +321,8 @@ static func draw_tile(
 		if not show_subways or not city.underground_level_is_visible(x, y, 1):
 			return
 
-		if not (underground in range(UnderTiles.SUBWAY_FIRST, UnderTiles.PIPE_FIRST) or underground in [UnderTiles.PIPE_TB_SUBWAY_LR, UnderTiles.PIPE_LR_SUBWAY_TB, UnderTiles.SUBWAY_ENTRANCE]):
+		if not (underground in range(UnderTiles.SUBWAY_FIRST, UnderTiles.PIPE_FIRST)
+				or underground in [UnderTiles.PIPE_TB_SUBWAY_LR, UnderTiles.PIPE_LR_SUBWAY_TB, UnderTiles.SUBWAY_ENTRANCE]):
 			return
 
 	for sprite_id in tile_sprite_ids(

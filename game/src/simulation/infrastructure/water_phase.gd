@@ -4,7 +4,6 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 const MAP_SIZE := CityState.MAP_SIZE
 const FLAG_SALT_WATER := Sc2TileFlags.SALT_WATER
 const FLAG_WATER := Sc2TileFlags.WATER
@@ -19,30 +18,6 @@ const WATER_PUMP := Tiles.WATER_PUMP
 const WATER_TOWER := Tiles.WATER_TOWER
 const WATER_TREATMENT := Tiles.WATER_TREATMENT
 const DESALINIZATION := Tiles.DESALINIZATION
-
-
-class Result extends PhaseResult:
-	var supply := 0
-	var consumers := 0
-	var watered_consumers := 0
-	var usage_percent := 0
-	var treatment_capacity := 0
-	var treatment_sufficient := false
-
-
-# an unbounded trace keeps the component tiles in the caller's queue. `size`
-# counts them. a bounded trace does not keep its tiles
-class Component extends RefCounted:
-	var size := 0
-	var supply := 0
-	var consumers := 0
-	var tower_capacity := 0
-
-
-# water that a component still has to give out in its second pass
-class Distribution extends RefCounted:
-	var served := 0
-	var towers_to_fill := 0
 
 
 static func run(city: CityState) -> Result:
@@ -407,3 +382,27 @@ static func _to_i16(value: int) -> int:
 	value &= 0xffff
 
 	return value - 0x10000 if value >= 0x8000 else value
+
+
+class Result extends PhaseResult:
+	var supply := 0
+	var consumers := 0
+	var watered_consumers := 0
+	var usage_percent := 0
+	var treatment_capacity := 0
+	var treatment_sufficient := false
+
+
+# an unbounded trace keeps the component tiles in the caller's queue. `size`
+# counts them. a bounded trace does not keep its tiles
+class Component extends RefCounted:
+	var size := 0
+	var supply := 0
+	var consumers := 0
+	var tower_capacity := 0
+
+
+# water that a component still has to give out in its second pass
+class Distribution extends RefCounted:
+	var served := 0
+	var towers_to_fill := 0

@@ -88,7 +88,15 @@ func _test_data_tooltips(map: CityMapControl, viewport: SubViewport, background:
 		var tint: Color = map.get_theme_stylebox("panel", "TooltipPanel").bg_color
 		var expected := Color(0.5, 0.5, 0.5).lerp(Color(tint, 1.0), tint.a)
 		var blurred := viewport.get_texture().get_image()
-		assert(_contrast(blurred, area) < 0.02, "Data hover tooltips must blur background detail: %s, contrast=%f, area=%s, tooltip=%s" % [CityViewMode.key(mode), _contrast(blurred, area), area, tooltip.get_rect()])
+		assert(
+			_contrast(blurred, area) < 0.02,
+			"Data hover tooltips must blur background detail: %s, contrast=%f, area=%s, tooltip=%s" % [
+				CityViewMode.key(mode),
+				_contrast(blurred, area),
+				area,
+				tooltip.get_rect(),
+			],
+		)
 		assert(_distance(blurred.get_pixelv(area.get_center()), expected) < 0.025, "Data hover tooltips must sample the map")
 		AppUiTheme.select("dark", false)
 		await _frames()

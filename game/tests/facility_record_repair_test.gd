@@ -4,7 +4,6 @@ extends SceneTree
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
-
 var checks := 0
 var failures := 0
 
@@ -71,7 +70,10 @@ func check_repair(edge: int, rotation: int) -> void:
 	CityState.from_document(untouched)
 	check(saved_payloads(untouched) == original, "Model creation does not repair snapshots")
 	var result := FacilityRecordRepair.apply(city)
-	check(result.ok and result.linked == tiles.size() and result.unfilled == 0, "All facility types repaired at %d rotation %d" % [edge, rotation])
+	check(
+		result.ok and result.linked == tiles.size() and result.unfilled == 0,
+		"All facility types repaired at %d rotation %d" % [edge, rotation],
+	)
 
 	for n in sites.size():
 		var site := sites[n]
@@ -173,15 +175,18 @@ func check_shared_and_obstacles() -> void:
 	check(city.document.find_chunk("XMIC").decoded_payload == micro, "Existing shared statistics are not reset or counted twice")
 	stamp(city, Tiles.POLICE_STATION, Vector2i(240, 240))
 	var things := city.document.find_chunk("XTHG").decoded_payload.duplicate()
-	for field in {0: 2, 3: 240, 4: 240}:
-		ThingData.write(things, 12 + field, {0: 2, 3: 240, 4: 240}[field])
+	for field in { 0: 2, 3: 240, 4: 240 }:
+		ThingData.write(things, 12 + field, { 0: 2, 3: 240, 4: 240 }[field])
 	city.document.find_chunk("XTHG").set_decoded_payload(things)
 	var text := city.text_overlays.duplicate()
 	OverlayData.write(text, 240 * 256 + 240, 202)
 	city.replace_text_overlays(text)
 	check(FacilityRecordRepair.apply(city).linked == 1, "Repair reaches facility beneath aircraft")
 	check(city.text_overlay_id(240, 240) == 202, "Aircraft overlay is preserved")
-	check(ThingData.read(city.document.find_chunk("XTHG").decoded_payload, 22) == city.text_overlay_id(241, 240), "Aircraft restores repaired facility link")
+	check(
+		ThingData.read(city.document.find_chunk("XTHG").decoded_payload, 22) == city.text_overlay_id(241, 240),
+		"Aircraft restores repaired facility link",
+	)
 	stamp(city, Tiles.FIRE_STATION, Vector2i(230, 230))
 	city.set_text_overlay_id(230, 230, 1)
 	stamp(city, Tiles.SCHOOL, Vector2i(220, 220))
@@ -223,7 +228,10 @@ func check_load() -> void:
 	check(not main.city_files._city_has_unsaved_changes(), "Repaired city loads without new changes")
 	check(main.document_state.current_document.serialize().data == saved, "Actual reload is byte exact")
 	var engine: SimulationEngine = main.simulation_state.simulation_engine
-	check(engine.power_usage_percent >= 0 and engine.water_usage_percent >= 0 and engine.developed_tiles > 0, "File load runs the original utility scans")
+	check(
+		engine.power_usage_percent >= 0 and engine.water_usage_percent >= 0 and engine.developed_tiles > 0,
+		"File load runs the original utility scans",
+	)
 	main.queue_free()
 	await process_frame
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(settings_path))

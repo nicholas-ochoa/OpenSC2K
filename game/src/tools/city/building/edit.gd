@@ -2,7 +2,6 @@ class_name BuildingEdit
 extends BuildingConstants
 
 
-
 static func apply(
 	city: CityState,
 	group_index: int,
@@ -97,21 +96,7 @@ static func apply(
 		australian_locale
 	)
 
-	var placed_flags := FLAG_PIPED if tile_id == SMALL_PARK or tile_id == BIG_PARK else STRUCTURE_FLAGS
-	var tile_indices := PackedInt32Array()
-
-	for x in range(site.position.x, site.end.x):
-		for y in range(site.position.y, site.end.y):
-			var index := x * map_edge + y
-			BuildingState.update_building_count(misc, zones[index] & Sc2ZoneLayout.TYPE_MASK, buildings[index], tile_id, map_edge)
-			buildings[index] = tile_id
-			zones[index] = 0
-			flags[index] = (flags[index] & ~Sc2TileFlags.STRUCTURE_MASK & 0xff) | placed_flags
-
-			if overlay_id != 0:
-				OverlayData.write(text_overlays, index, overlay_id)
-
-			tile_indices.append(index)
+	var tile_indices := _write_footprint(buildings, zones, flags, misc, text_overlays, site, tile_id, overlay_id, map_edge)
 
 	BuildingSites.set_corners(zones, site, area, city.compass_rotation(), map_edge)
 
@@ -122,19 +107,7 @@ static func apply(
 	elif tile_id == SUBWAY_STATION:
 		BuildingUnderground._place_subway_station(underground, terrain, zones, flags, misc, selected, map_edge)
 
-	if BUDGET_CATEGORY_BY_TILE.has(tile_id):
-		var budget_offset: int = MISC_BUDGETS + int(BUDGET_CATEGORY_BY_TILE[tile_id]) * BUDGET_RECORD_SIZE
-		BinaryData.write_u32_be(misc, budget_offset, BinaryData.read_u32_be(misc, budget_offset) + 1)
-
-	if group_index == CityToolIds.Group.REWARDS and subtool_index < CityToolIds.Rewards.ARCOLOGIES:
-		var reward_mask := Availability.rebuild_reward_mask(misc)
-		BinaryData.write_u32_be(
-			misc,
-			Availability.MISC_GRANTED_REWARDS,
-			reward_mask & ~(1 << subtool_index)
-		)
-
-	BinaryData.write_u32_be(misc, MISC_FUNDS, city.funds() - cost)
+	_update_budget(misc, tile_id, group_index, subtool_index, city.funds() - cost)
 
 	var changed_ids := PackedStringArray()
 
@@ -269,3 +242,42 @@ static func undo(
 	process_random.state = command.random_state_before
 
 	return EditCommandResult.undone(command.tile_indices.size())
+
+
+static func _write_footprint(
+	buildings: PackedByteArray, zones: PackedByteArray, flags: PackedByteArray, misc: PackedByteArray,
+	text_overlays: PackedByteArray, site: Rect2i, tile_id: int, overlay_id: int, map_edge: int
+) -> PackedInt32Array:
+	var placed_flags := FLAG_PIPED if tile_id == SMALL_PARK or tile_id == BIG_PARK else STRUCTURE_FLAGS
+	var tile_indices := PackedInt32Array()
+
+	for x in range(site.position.x, site.end.x):
+		for y in range(site.position.y, site.end.y):
+			var index := x * map_edge + y
+			BuildingState.update_building_count(misc, zones[index] & Sc2ZoneLayout.TYPE_MASK, buildings[index], tile_id, map_edge)
+			buildings[index] = tile_id
+			zones[index] = 0
+			flags[index] = (flags[index] & ~Sc2TileFlags.STRUCTURE_MASK & 0xff) | placed_flags
+
+			if overlay_id != 0:
+				OverlayData.write(text_overlays, index, overlay_id)
+
+			tile_indices.append(index)
+
+	return tile_indices
+
+
+static func _update_budget(misc: PackedByteArray, tile_id: int, group_index: int, subtool_index: int, funds: int) -> void:
+	if BUDGET_CATEGORY_BY_TILE.has(tile_id):
+		var budget_offset: int = MISC_BUDGETS + int(BUDGET_CATEGORY_BY_TILE[tile_id]) * BUDGET_RECORD_SIZE
+		BinaryData.write_u32_be(misc, budget_offset, BinaryData.read_u32_be(misc, budget_offset) + 1)
+
+	if group_index == CityToolIds.Group.REWARDS and subtool_index < CityToolIds.Rewards.ARCOLOGIES:
+		var reward_mask := Availability.rebuild_reward_mask(misc)
+		BinaryData.write_u32_be(
+			misc,
+			Availability.MISC_GRANTED_REWARDS,
+			reward_mask & ~(1 << subtool_index)
+		)
+
+	BinaryData.write_u32_be(misc, MISC_FUNDS, funds)

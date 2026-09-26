@@ -1,5 +1,6 @@
 extends SceneTree
 
+
 func _initialize() -> void:
 	call_deferred("_run")
 
@@ -37,7 +38,8 @@ func _run() -> void:
 		if edge == 128:
 			var again := _generate(edge, 1)
 			assert(doc.serialize().data == again.serialize().data)
-		for features in [["meander", "delta", "peninsula", "bay", "ridge", "valley", "cliffs", "lakes"], ["meander", "delta", "peninsula", "bay"], ["meander", "bay"], ["meander", "branch", "rejoin", "crossing"]]:
+		for features in [["meander", "delta", "peninsula", "bay", "ridge", "valley", "cliffs", "lakes"],
+			["meander", "delta", "peninsula", "bay"], ["meander", "bay"], ["meander", "branch", "rejoin", "crossing"]]:
 			var combined := EmptyCityTemplate.create(edge)
 			assert(NewCityTerrain.generate(combined, true, true, 12, 5, 0,
 				SimRandom.new(1), GameLcgRandom.new(1), "classic", features, true).ok)

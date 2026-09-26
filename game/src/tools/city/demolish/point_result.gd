@@ -1,7 +1,6 @@
 class_name DemolishPointResult
 extends RefCounted
 
-
 var changed := false
 var error := ""
 var specialized := false

@@ -2,16 +2,6 @@ extends SceneTree
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
-class TestSprites extends ApplicationMovingSprites:
-	var images: Dictionary = {}
-
-
-	func dynamic_sprite_resource(_archive: Sc2SpriteArchive, sprite_id: int, _flip: bool, _divisor: int, _factor := 1) -> CitySpriteResource:
-		var result := CitySpriteResource.new()
-		result.image = images[sprite_id]
-
-		return result
-
 
 func _initialize() -> void:
 	_check_packed_masks()
@@ -105,9 +95,14 @@ func _initialize() -> void:
 	assert(bands.get_pixel(0, 6).a == 0.0, "Pillars between composite highway decks cannot cover train")
 	assert(bands.get_pixel(0, 12).a > 0.0, "Second highway deck remains in foreground")
 
-	for tile in [Tiles.POWER_LINE_STRAIGHT_1, Tiles.POWER_LINE_CROSSROADS, Tiles.ROAD_POWER_CROSSING_1, Tiles.ROAD_POWER_CROSSING_2, Tiles.RAIL_POWER_CROSSING_1, Tiles.RAIL_POWER_CROSSING_2, Tiles.HIGHWAY_POWER_CROSSING_1, Tiles.HIGHWAY_POWER_CROSSING_2]:
+	for tile in [Tiles.POWER_LINE_STRAIGHT_1, Tiles.POWER_LINE_CROSSROADS, Tiles.ROAD_POWER_CROSSING_1, Tiles.ROAD_POWER_CROSSING_2,
+		Tiles.RAIL_POWER_CROSSING_1, Tiles.RAIL_POWER_CROSSING_2, Tiles.HIGHWAY_POWER_CROSSING_1, Tiles.HIGHWAY_POWER_CROSSING_2]:
 		var command := CityStaticCommand.new()
-		CityIsometricRenderer.configure_train_foreground(command, tile, CityIsometricRenderer.view_configuration(CityIsometricRenderer.VIEW_LARGE))
+		CityIsometricRenderer.configure_train_foreground(
+			command,
+			tile,
+			CityIsometricRenderer.view_configuration(CityIsometricRenderer.VIEW_LARGE),
+		)
 
 		if tile in [0x4f, 0x50]:
 			assert(command.train_deck_reference_sprite_id == 1000 + (0x49 if tile == 0x4f else 0x4a))
@@ -182,3 +177,20 @@ func _check_packed_masks() -> void:
 		assert(IsometricPixelOperations.occlude_dynamic_with_mask(sprite, null, Vector2i.ZERO).image == sprite)
 		mask.fill(Color.TRANSPARENT)
 		assert(IsometricPixelOperations.occlude_dynamic_with_mask(sprite, mask, Vector2i.ZERO).image == sprite)
+
+
+class TestSprites extends ApplicationMovingSprites:
+	var images: Dictionary = {}
+
+
+	func dynamic_sprite_resource(
+		_archive: Sc2SpriteArchive,
+		sprite_id: int,
+		_flip: bool,
+		_divisor: int,
+		_factor := 1,
+	) -> CitySpriteResource:
+		var result := CitySpriteResource.new()
+		result.image = images[sprite_id]
+
+		return result

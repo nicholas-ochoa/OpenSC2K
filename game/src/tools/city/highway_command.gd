@@ -18,7 +18,17 @@ static func apply(
 	bridge_type := BRIDGE_UNSELECTED,
 	free_mode := false
 ) -> RouteEditResult:
-	return NetworkDragCommand.apply(city, group_index, subtool_index, selected_start, selected_finish, bridge_type, connection_choice, free_mode, true)
+	return NetworkDragCommand.apply(
+		city,
+		group_index,
+		subtool_index,
+		selected_start,
+		selected_finish,
+		bridge_type,
+		connection_choice,
+		free_mode,
+		true,
+	)
 
 
 static func undo(city: CityState, command: RouteEditResult) -> EditCommandResult:

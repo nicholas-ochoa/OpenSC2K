@@ -5,12 +5,10 @@ extends AcceptDialog
 
 const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
 const NewspaperTextGenerator = preload("res://src/simulation/reports/newspaper_text.gd")
-
 const MONTH_NAMES := [
 	"January", "February", "March", "April", "May", "June",
 	"July", "August", "September", "October", "November", "December",
 ]
-
 const WEATHER_HEADINGS: Array[String] = [
 	"Weather Corner", "Weather Report", "Today's Weather", "Weather with Merle", "Weather Forecast",
 	"Weather Talk",
@@ -35,7 +33,6 @@ var news_names: Dictionary = {}
 var session_seed := 0
 var selected_newspaper := 0
 var published_articles := PackedStringArray()
-
 var page := NewspaperContent.new()
 var paper_titles := PackedStringArray()
 var control_graphics: CityUiGraphics
@@ -182,7 +179,14 @@ func _populate_page() -> void:
 			var report := _local_report(slot)
 
 			if newspaper_data != null and newspaper_data.is_valid():
-				var article := NewspaperTextGenerator.render_story(newspaper_data, record, seed, city.display_name(), city.mayor_name(), teams)
+				var article := NewspaperTextGenerator.render_story(
+					newspaper_data,
+					record,
+					seed,
+					city.display_name(),
+					city.mayor_name(),
+					teams,
+				)
 
 				if article.ok:
 					report.article = article.article
@@ -207,7 +211,8 @@ func _populate_page() -> void:
 		elif slot == 8:
 			opinion_headline = headline
 			var subjects := ["traffic", "pollution", "crime", "unemployment", "taxes", "education", "health"]
-			opinion_article = "Residents are concerned about %s. The mayor can review current city conditions in the graphs and city maps." % subjects[subject]
+			opinion_article = ("Residents are concerned about %s. The mayor can review current city conditions in the "
+				+ "graphs and city maps.") % subjects[subject]
 
 			if newspaper_data != null and newspaper_data.is_valid():
 				var opinion := NewspaperTextGenerator.render_story(
@@ -256,7 +261,7 @@ func _extra_stories(misc: PackedByteArray, teams: PackedStringArray) -> Array[Ne
 	# reading the newspaper mustn't spend the city's random numbers
 	# remake-only filler uses private deterministic seeds and never updates misc
 	var base_seed := session_seed + (city.age_in_days() / CityCalendar.DAYS_PER_MONTH) + selected_newspaper * 500
-	var seen := {page.headline_for_slot(0): true}
+	var seen := { page.headline_for_slot(0): true }
 
 	for headline in page.headlines:
 		seen[headline] = true

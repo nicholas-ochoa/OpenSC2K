@@ -1,11 +1,5 @@
 extends SceneTree
 
-@warning_ignore_start("integer_division")
-
-class FixedRandom extends SimRandom:
-	func next_u15() -> int:
-		return 32767
-
 var failures := 0
 var checks := 0
 
@@ -55,3 +49,11 @@ func _initialize() -> void:
 						"Saved cohort education remains bounded during repeated decay")
 	print("EQ decay regression: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
+
+
+@warning_ignore_start("integer_division")
+
+
+class FixedRandom extends SimRandom:
+	func next_u15() -> int:
+		return 32767
