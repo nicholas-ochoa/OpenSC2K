@@ -9,6 +9,10 @@ const Checksum = preload("res://src/formats/crc32.gd")
 const SIGNATURE := [137, 80, 78, 71, 13, 10, 26, 10]
 const MAX_DIMENSION := 4096
 
+# Index palette chunks by palette size, bit depth, and transparency table.
+static var _index_palette_cache: Dictionary = {}
+static var _index_palette_mutex := Mutex.new()
+
 
 static func load_path(path: String, strict_palette := true) -> IndexedImageResult:
 	if not FileAccess.file_exists(path):
@@ -82,14 +86,13 @@ static func decode(bytes: PackedByteArray, strict_palette := true) -> IndexedIma
 
 				for index in palette_count:
 					palette.colors.append(Color8(payload[index * 3], payload[index * 3 + 1], payload[index * 3 + 2]))
-					# decode the palette index as gray so equal rgb colors don't merge
-					# decode the index itself as gray, rather than map rgb back to a color
-					payload[index * 3] = index
-					payload[index * 3 + 1] = index
-					payload[index * 3 + 2] = index
 
 				while palette.colors.size() < 256:
 					palette.colors.append(Color.BLACK)
+
+				# The index palette replaces this chunk before the first IDAT, after tRNS is known.
+				position += length + 12
+				continue
 			"tRNS":
 				if has_alpha or has_data or not palette.is_valid() or length < 1 or length > palette_count:
 					return IndexedImageResult.failure("Invalid PNG transparency table")
@@ -103,12 +106,15 @@ static func decode(bytes: PackedByteArray, strict_palette := true) -> IndexedIma
 
 					alpha[index] = payload[index]
 
-				# keep all decoded indices visible. apply transparency after decoding
+				# The index palette applies this table. Hidden pixels keep their decoded index.
 				position += length + 12
 				continue
 			"IDAT":
 				if not palette.is_valid() or ended_data:
 					return IndexedImageResult.failure("Invalid PNG pixel-data order")
+
+				if not has_data:
+					rewritten.append_array(_index_palette_chunks(palette_count, bit_depth, alpha))
 
 				has_data = true
 			"IEND":
@@ -124,7 +130,8 @@ static func decode(bytes: PackedByteArray, strict_palette := true) -> IndexedIma
 				position += length + 12
 				continue
 
-		rewritten.append_array(_chunk(kind, payload))
+		# The checksum is verified, so the original chunk bytes are reused.
+		rewritten.append_array(bytes.slice(position, position + length + 12))
 		position += length + 12
 
 		if finished:
@@ -139,17 +146,8 @@ static func decode(bytes: PackedByteArray, strict_palette := true) -> IndexedIma
 		return IndexedImageResult.failure("Cannot decode PNG pixel data")
 
 	image.convert(Image.FORMAT_RGBA8)
-	var rgba := image.get_data()
-	var pixels := PackedInt32Array()
-	pixels.resize(width * height)
-
-	for index in pixels.size():
-		var value := int(rgba[index * 4])
-
-		if value >= palette_count:
-			return IndexedImageResult.failure("PNG pixel is outside its palette")
-
-		pixels[index] = value if alpha[value] == 255 else -1
+	# Each RGBA8 pixel of the index palette reads as its little-endian index value.
+	var pixels := image.get_data().to_int32_array()
 
 	var outcome := IndexedImageResult.new()
 	outcome.ok = true
@@ -229,6 +227,42 @@ static func encode(
 	outcome.bytes = output
 
 	return outcome
+
+
+# Opaque index i decodes to RGBA (i, 0, 0, 0), and a transparent index decodes to
+# (255, 255, 255, 255), or -1. The decoder reads an index past a short palette as
+# entry 0, so the unused entries up to the bit depth repeat entry 0.
+static func _index_palette_chunks(palette_count: int, bit_depth: int, alpha: PackedByteArray) -> PackedByteArray:
+	var key := [palette_count, bit_depth, alpha]
+	_index_palette_mutex.lock()
+	var cached: Variant = _index_palette_cache.get(key)
+	_index_palette_mutex.unlock()
+
+	if cached != null:
+		return cached
+
+	var colors := PackedByteArray()
+	var transparency := PackedByteArray()
+
+	for entry in 1 << bit_depth:
+		var index := entry if entry < palette_count else 0
+
+		if alpha[index] == 255:
+			colors.append_array(PackedByteArray([index, 0, 0]))
+			transparency.append(0)
+		else:
+			colors.append_array(PackedByteArray([255, 255, 255]))
+			transparency.append(255)
+
+	var chunks := _chunk("PLTE", colors) + _chunk("tRNS", transparency)
+	_index_palette_mutex.lock()
+
+	if _index_palette_cache.size() >= 256:
+		_index_palette_cache.clear()
+
+	_index_palette_cache[key] = chunks
+	_index_palette_mutex.unlock()
+	return chunks
 
 
 static func _chunk(kind: String, payload: PackedByteArray) -> PackedByteArray:
