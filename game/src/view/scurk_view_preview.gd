@@ -30,6 +30,8 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	visibility_changed.connect(_refresh_visible_texture)
+	# a UI scale change on the main window changes the whole-pixel size
+	ready.connect(func() -> void: get_tree().root.size_changed.connect(_on_screen_pixels_changed))
 	set_process(true)
 
 
@@ -178,12 +180,22 @@ func _update_preview_size() -> void:
 	if crop_to_artwork:
 		var bounds := artwork_bounds if artwork_bounds.has_area() else Rect2i(preview_width / 2, preview_height / 2, 1, 1)
 		display_bounds = bounds.grow(4).intersection(display_bounds)
-	var extent := Vector2(display_bounds.size * preview_scale) + Vector2(2, 2)
+	var extent := _art_extent() + Vector2(2, 2)
 	if not size_label.is_empty():
 		extent.x = maxf(extent.x, get_theme_default_font().get_string_size(size_label, HORIZONTAL_ALIGNMENT_LEFT, -1, _label_size()).x + 10)
 		extent.y += _label_size() + 6
 	custom_minimum_size = extent
 	reset_size()
+
+
+# the artwork size at the preview scale, on whole screen pixels
+func _art_extent() -> Vector2:
+	return Vector2(ScreenPixels.art_length(display_bounds.size.x, preview_scale), ScreenPixels.art_length(display_bounds.size.y, preview_scale))
+
+
+func _on_screen_pixels_changed() -> void:
+	_update_preview_size()
+	queue_redraw()
 
 
 func _label_size() -> int:
@@ -195,7 +207,7 @@ func _draw() -> void:
 	draw_rect(frame, Color("404040"), false, 1.0)
 	var label_height := _label_size() + 6 if not size_label.is_empty() else 0
 	if preview_texture != null:
-		var extent := Vector2(display_bounds.size * preview_scale)
+		var extent := _art_extent()
 		var position := Vector2(floorf((frame.size.x - extent.x) * 0.5), 1 + label_height)
 		draw_texture_rect_region(preview_texture, Rect2(position, extent), Rect2(display_bounds))
 	if not size_label.is_empty():

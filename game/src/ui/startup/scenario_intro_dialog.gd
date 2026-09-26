@@ -19,7 +19,7 @@ func _ready() -> void:
 func set_briefing(scenario_name: String, picture: Image, description: String) -> void:
 	title = "Scenario: %s" % scenario_name
 	picture_view.texture = (
-		ImageTexture.create_from_image(picture) if picture != null else null
+		PixelArtTexture.wrap(ImageTexture.create_from_image(picture)) if picture != null else null
 	)
 	var briefing := description.replace("\r\n", "\n").replace("\r", "\n").strip_edges()
 	text_view.text = briefing.trim_prefix("Extended Description:").strip_edges()

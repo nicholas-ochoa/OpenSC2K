@@ -100,6 +100,7 @@ func _ready() -> void:
 	# earlier linear default for the application contents
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	add_child(preload("res://src/ui/shared/file_dialog_history.gd").new())
+	add_child(WindowPixelFit.new())
 	add_child(AppTooltips.new())
 	get_tree().auto_accept_quit = false
 

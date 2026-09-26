@@ -39,6 +39,8 @@ func _ready() -> void:
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	resized.connect(queue_redraw)
+	# a UI scale change on the main window moves the screen pixel grid
+	get_tree().root.size_changed.connect(queue_redraw)
 
 
 func configure(pixels: PackedInt32Array, width: int, height: int, tile_size: int,
@@ -124,7 +126,10 @@ func _draw() -> void:
 	if snapshot == null:
 		return
 	var scale := minf(size.x / FRAME_SIZE.x, size.y / FRAME_SIZE.y)
-	if scale >= 1.0:
+	# the largest fit with whole screen pixels for each artwork pixel
+	if ScreenPixels.scale > 0.0:
+		scale = ScreenPixels.fit_scale(scale)
+	elif scale >= 1.0:
 		scale = floorf(scale)
 	var extent := Vector2(FRAME_SIZE) * scale
 	draw_texture_rect(snapshot, Rect2(((size - extent) * 0.5).floor(), extent), false)

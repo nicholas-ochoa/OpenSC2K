@@ -403,7 +403,7 @@ func show_advice(index: int, advice: int, assets: OriginalGameAssets) -> void:
 	var portrait: TextureRect = $Advisor/Content/Portrait
 	portrait.texture = null
 	if assets != null and assets.city_ui_graphics != null and assets.city_ui_graphics.portraits.has(197 + index):
-		portrait.texture = ImageTexture.create_from_image(assets.city_ui_graphics.portraits[197 + index])
+		portrait.texture = PixelArtTexture.wrap(ImageTexture.create_from_image(assets.city_ui_graphics.portraits[197 + index]))
 	portrait.visible = portrait.texture != null
 	$Advisor/Content/Advice.text = BudgetAdvice.ADVICE[advice]
 	advisor_dialog.popup_centered()

@@ -61,7 +61,7 @@ func set_patterns(value: Array[PackedInt32Array]) -> void:
 			button.add_theme_color_override("icon_%s_color" % state, Color.WHITE)
 		button.pressed.connect(_select_button.bind(index))
 		var texture := ImageTexture.create_from_image(Image.create(8, 8, false, Image.FORMAT_RGBA8))
-		button.icon = texture
+		button.icon = PixelArtTexture.wrap(texture)
 		textures.append(texture)
 		buttons.append(button)
 		add_child(button)

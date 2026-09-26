@@ -140,9 +140,11 @@ func set_workspace_images(images: Dictionary) -> void:
 
 	for id in images:
 		if id >= 1200 and id <= 1215:
-			textures[id] = ImageTexture.create_from_image(images[id])
+			textures[id] = PixelArtTexture.wrap(ImageTexture.create_from_image(images[id]))
 
 	tool_list.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	mode_selector.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	object_list.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 
 	for i in EDIT_TOOLS.size():
 		var tool: ScurkEditTool = EDIT_TOOLS[i]
@@ -478,7 +480,7 @@ func _object_icon(tile_id: int) -> Texture2D:
 			Image.INTERPOLATE_NEAREST
 		)
 
-	var texture := ImageTexture.create_from_image(image)
+	var texture := PixelArtTexture.wrap(ImageTexture.create_from_image(image))
 	icon_cache[tile_id] = texture
 
 	return texture

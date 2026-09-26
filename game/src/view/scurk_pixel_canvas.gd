@@ -1815,21 +1815,23 @@ func _draw() -> void:
 	if show_grid:
 		var grid_color := Color(0.0, 0.0, 0.0, 0.18)
 
+		# one interface pixel on whole screen pixels, centered on each edge
+		var line := ScreenPixels.length(1.0)
+		var half := floorf(line * ScreenPixels.scale * 0.5) / ScreenPixels.scale if ScreenPixels.scale > 0.0 else 0.0
+
 		if grid_width * zoom >= 4:
 			for x in range(0, sprite_width + 1, grid_width):
-				draw_line(
-					Vector2(x * pixel, 0),
-					Vector2(x * pixel, sprite_height * pixel),
-					grid_color, 1.0
-				)
+				if ScreenPixels.scale > 0.0:
+					draw_rect(Rect2(x * pixel - half, 0, line, sprite_height * pixel), grid_color, true)
+				else:
+					draw_line(Vector2(x * pixel, 0), Vector2(x * pixel, sprite_height * pixel), grid_color, 1.0)
 
 		if grid_height * zoom >= 4:
 			for y in range(0, sprite_height + 1, grid_height):
-				draw_line(
-					Vector2(0, y * pixel),
-					Vector2(sprite_width * pixel, y * pixel),
-					grid_color, 1.0
-				)
+				if ScreenPixels.scale > 0.0:
+					draw_rect(Rect2(0, y * pixel - half, sprite_width * pixel, line), grid_color, true)
+				else:
+					draw_line(Vector2(0, y * pixel), Vector2(sprite_width * pixel, y * pixel), grid_color, 1.0)
 
 	for guide in clip_guide_rects():
 		draw_rect(guide, Color.WHITE, true)

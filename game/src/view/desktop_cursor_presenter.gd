@@ -28,6 +28,8 @@ func _ready() -> void:
 	_patch = TextureRect.new()
 	_patch.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_patch.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_patch.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_patch.stretch_mode = TextureRect.STRETCH_SCALE
 	var shader_material := ShaderMaterial.new()
 	shader_material.shader = XOR_SHADER
 	_patch.material = shader_material
@@ -77,7 +79,6 @@ func present(app: String, group: int, point: Vector2, shape: int) -> void:
 			Input.set_custom_mouse_cursor(_textures[key], shape, Vector2(record.hotspot))
 		else:
 			_patch.texture = _textures[key]
-			_patch.size = Vector2(32, 32)
 			_layer.show()
 			_copy.show()
 
@@ -86,7 +87,10 @@ func present(app: String, group: int, point: Vector2, shape: int) -> void:
 				_owns_hidden_mouse = true
 
 	if record.image == null:
-		_patch.position = point.floor() - Vector2(record.hotspot)
+		# whole screen pixels for each cursor pixel
+		var pixel := ScreenPixels.art_length(1.0)
+		_patch.size = Vector2(32, 32) * pixel
+		_patch.position = point.floor() - Vector2(record.hotspot) * pixel
 		_copy.rect = Rect2(_patch.position, _patch.size)
 
 

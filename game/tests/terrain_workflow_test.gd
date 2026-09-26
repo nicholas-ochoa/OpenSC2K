@@ -61,7 +61,7 @@ func _run() -> void:
 
 	for subtool in [6, 7]:
 		var expected := TerrainToolIcons.terrain_action(main.asset_state.asset_source.assets.city_ui_graphics, "sea_raise" if subtool == 6 else "sea_lower")
-		assert(main.camera_input.tool_button_icon(0, subtool).get_image().get_data() == expected.get_image().get_data())
+		assert(PixelArtTexture.unwrap(main.camera_input.tool_button_icon(0, subtool)).get_image().get_data() == expected.get_image().get_data())
 
 	var funds: int = main.document_state.city.funds()
 	var day: int = main.document_state.city.age_in_days()

@@ -705,7 +705,7 @@ func _import_pixels() -> PackedInt32Array:
 func _refresh_import() -> void:
 	var pixels := _import_pixels()
 	var canvas := editor.pixel_canvas
-	$ImportPreview/Content/Image.texture = ScurkContextPreview.indexed_texture(pixels, canvas.sprite_width, canvas.sprite_height, editor.palette)
+	$ImportPreview/Content/Image.texture = PixelArtTexture.wrap(ScurkContextPreview.indexed_texture(pixels, canvas.sprite_width, canvas.sprite_height, editor.palette))
 	$ImportPreview/Content/Summary.text = "%d x %d pixels; %d colors remapped; %d pixels clipped.\nTransparent pixels are preserved. Imports replace the active layer." % [imported.width, imported.height, imported.remapped_color_count, import_clipped]
 	$ImportPreview.get_ok_button().disabled = canvas.editing_disabled
 

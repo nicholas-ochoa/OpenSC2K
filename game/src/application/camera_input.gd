@@ -141,6 +141,10 @@ func choose_tool_group(group_index: int) -> void:
 
 
 func tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
+	return PixelArtTexture.wrap(_tool_button_icon(group_index, subtool_index))
+
+
+func _tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
 	if group_index == CityToolIds.Group.LANDSCAPE and subtool_index in [CityToolIds.Landscape.TREES, CityToolIds.Landscape.WATER, CityToolIds.Landscape.STREAM, CityToolIds.Landscape.FOREST]:
 		return TerrainToolIcons.terrain_action(app.asset_state.asset_source.assets.city_ui_graphics,
 			["tree", "water", "stream", "forest"][subtool_index])

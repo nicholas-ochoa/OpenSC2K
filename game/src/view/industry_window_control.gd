@@ -42,6 +42,8 @@ func _init() -> void:
 	custom_minimum_size = Vector2(600, 340)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	# a UI scale change on the main window moves the screen pixel grid
+	ready.connect(func() -> void: get_tree().root.size_changed.connect(queue_redraw))
 	tooltip_text = "In Tax Rates view, drag a bar to set its surcharge. Hold Alt to set all industries."
 
 
@@ -181,10 +183,10 @@ func _draw() -> void:
 		return
 
 	var plot := _plot_rect()
-	var content := Rect2(8, 8, size.x - 16, size.y - 16)
-	var icon_width := 48.0
+	# the icon strip keeps whole screen pixels for each artwork pixel
+	var icon_width := ScreenPixels.whole_cells(48.0, icon_strip.get_width()) if icon_strip != null else 48.0
 	var names_right := plot.position.x - icon_width - 8.0
-	var icons := Rect2(names_right + 5.0, content.position.y, icon_width, content.size.y)
+	var icons := Rect2(names_right + 5.0, plot.position.y, icon_width, plot.size.y)
 	var row_height := plot.size.y / float(INDUSTRY_COUNT)
 	var font := get_theme_default_font()
 	var font_size := 13
@@ -266,8 +268,14 @@ func _draw() -> void:
 
 func _plot_rect() -> Rect2:
 	var left := maxf(250.0, size.x * 0.48)
+	var height := maxf(1.0, size.y - 16.0)
 
-	return Rect2(left, 8.0, maxf(1.0, size.x - left - 12.0), maxf(1.0, size.y - 16.0))
+	# the rows share the icon strip height, on whole screen pixels for each
+	# artwork pixel
+	if icon_strip != null:
+		height = ScreenPixels.whole_cells(height, icon_strip.get_height())
+
+	return Rect2(left, 8.0, maxf(1.0, size.x - left - 12.0), height)
 
 
 func _draw_centered_message(message: String) -> void:

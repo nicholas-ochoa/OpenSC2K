@@ -195,6 +195,7 @@ func _add_object_item(
 		label += "\n" + custom_name
 
 	var icon := _object_icon(value, large_id, source)
+	list.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	var item_index := list.add_item(label, icon)
 	list.set_item_metadata(item_index, large_id)
 	list.set_item_tooltip(item_index, "%s object %d; sprite %d" % [
@@ -243,7 +244,7 @@ func _object_icon(value: ScurkMif, large_id: int, source: bool) -> Texture2D:
 			Image.INTERPOLATE_NEAREST
 		)
 
-	var texture := ImageTexture.create_from_image(image)
+	var texture := PixelArtTexture.wrap(ImageTexture.create_from_image(image))
 	cache[key] = texture
 
 	return texture

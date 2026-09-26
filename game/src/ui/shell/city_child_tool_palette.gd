@@ -230,6 +230,7 @@ func _create_button(
 	button.text = str(tool.name) if free_landscape else "%s\n%s" % [tool.name, _tool_price(tool)]
 	button.clip_text = true
 	button.theme_type_variation = "ArtworkButton"
+	button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	button.icon = (
 		icon_provider.call(group_index, subtool_index)
 		if icon_provider.is_valid()

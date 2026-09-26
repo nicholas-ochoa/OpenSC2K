@@ -22,6 +22,8 @@ func _ready() -> void:
 	clip_contents = true
 	set_process(false)
 	resized.connect(queue_redraw)
+	# a UI scale change on the main window moves the screen pixel grid
+	get_tree().root.size_changed.connect(queue_redraw)
 
 
 func set_assets(assets: OriginalGameAssets) -> void:
@@ -96,7 +98,8 @@ func _draw() -> void:
 	if not available:
 		return
 
-	var scale_factor := minf(size.x / CANVAS_SIZE.x, size.y / CANVAS_SIZE.y)
+	# the largest fit with whole screen pixels for each artwork pixel
+	var scale_factor := ScreenPixels.fit_scale(minf(size.x / CANVAS_SIZE.x, size.y / CANVAS_SIZE.y))
 	var origin := (size - CANVAS_SIZE * scale_factor) * 0.5
 	draw_set_transform(origin, 0.0, Vector2.ONE * scale_factor)
 	var pose_index := int(monster_time() * 0.5) & 3

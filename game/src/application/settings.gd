@@ -228,7 +228,7 @@ func apply_ui_scale() -> void:
 	# headless windows have no real pixels, so keep one artwork pixel for each
 	# interface pixel there
 	var headless := DisplayServer.get_name() == "headless"
-	ScreenPixels.scale = 0.0 if headless else screen_pixels
+	ScreenPixels.set_scale(0.0 if headless else screen_pixels)
 	# keep the frosted glass blur in proportion to the interface
 	RenderingServer.global_shader_parameter_set("ui_scale_factor", AppUiScale.relative)
 

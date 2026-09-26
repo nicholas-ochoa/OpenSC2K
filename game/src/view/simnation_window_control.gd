@@ -71,6 +71,8 @@ func _init() -> void:
 	custom_minimum_size = Vector2(408, 320)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	# a UI scale change on the main window moves the screen pixel grid
+	ready.connect(func() -> void: get_tree().root.size_changed.connect(queue_redraw))
 
 
 func set_city(value: CityState) -> void:
@@ -213,6 +215,10 @@ func _draw() -> void:
 		return
 
 	var scale := Vector2(size.x / LOGICAL_SIZE.x, size.y / LOGICAL_SIZE.y)
+	# the largest layout scale with whole screen pixels for each sprite pixel,
+	# centered in the view
+	scale = Vector2(ScreenPixels.fit_scale(scale.x), ScreenPixels.fit_scale(scale.y))
+	draw_set_transform((size - LOGICAL_SIZE * scale) * 0.5)
 
 	if sprite_sheet != null:
 		_draw_settlement(SPRITE_POSITIONS[0], int(data.normal_population), false, scale)

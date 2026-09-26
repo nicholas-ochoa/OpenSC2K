@@ -197,7 +197,7 @@ func _run() -> void:
 	assert(main.map_view.brush_size == 5)
 	for tool in 4:
 		var expected := TerrainToolIcons.terrain_action(main.asset_state.asset_source.assets.city_ui_graphics, ["tree", "water", "stream", "forest"][tool])
-		assert(main.camera_input.tool_button_icon(1, tool).get_image().get_data() == expected.get_image().get_data())
+		assert(PixelArtTexture.unwrap(main.camera_input.tool_button_icon(1, tool)).get_image().get_data() == expected.get_image().get_data())
 	var original: PackedByteArray = main.document_state.current_document.serialize().data
 	main.new_city.reopen_terrain_dialog()
 	assert(dialog.visible and dialog.done_button.disabled)

@@ -80,6 +80,7 @@ func _ready() -> void:
 	tab_bar.name = "CityMapTabs"
 	tab_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tab_bar.tab_changed.connect(_on_tab_changed)
+	tab_bar.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	add_child(tab_bar)
 
 	preview = Preview.new()
@@ -172,7 +173,7 @@ func _rebuild_tabs() -> void:
 			and icon_sheet.get_width() >= (index + 1) * 26
 		):
 			var region := icon_sheet.get_region(Rect2i(index * 26, 0, 26, 20))
-			icon = ImageTexture.create_from_image(region)
+			icon = PixelArtTexture.wrap(ImageTexture.create_from_image(region))
 
 		tab_bar.add_tab("", icon)
 		tab_bar.set_tab_tooltip(index, TAB_NAMES[index])

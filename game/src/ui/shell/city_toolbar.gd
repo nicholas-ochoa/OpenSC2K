@@ -250,6 +250,7 @@ func _add_group_button(
 	button.button_group = button_group
 	button.tooltip_text = Tools.GROUPS[group_index].name
 	button.theme_type_variation = "ArtworkButton"
+	button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	button.icon = group_icon(group_index)
 	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -292,7 +293,7 @@ func _toolbar_icon(region: Rect2i) -> Texture2D:
 
 	var bounds := Rect2i(minimum, maximum - minimum + Vector2i.ONE)
 
-	return ImageTexture.create_from_image(image.get_region(bounds))
+	return PixelArtTexture.wrap(ImageTexture.create_from_image(image.get_region(bounds)))
 
 
 func _on_surface_visibility_toggled(visible: bool, layer: String) -> void:
@@ -399,6 +400,7 @@ func replace_artwork(value: Image) -> void:
 func _refresh_artwork_buttons(node: Node) -> void:
 	if node is Button and node.has_meta("toolbar_region"):
 		node.theme_type_variation = "ArtworkButton"
+		node.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		node.icon = _toolbar_icon(node.get_meta("toolbar_region"))
 		node.text = node.tooltip_text.left(1) if node.icon == null else ""
 
@@ -423,12 +425,13 @@ func _build_landscape_tools() -> void:
 		button.icon = _icon_provider.call(group, tool) if _icon_provider.is_valid() else null
 		if group in [CityToolIds.Group.BULLDOZER, CityToolIds.Group.LANDSCAPE] and button.icon != null:
 			# terrain symbols are 19-pixel native icons, like the city toolbar
-			var native_icon := button.icon.get_image()
+			var native_icon := PixelArtTexture.unwrap(button.icon).get_image()
 			native_icon.resize(native_icon.get_width() / 2,
 				(native_icon.get_height() / 2), Image.INTERPOLATE_NEAREST)
-			button.icon = ImageTexture.create_from_image(native_icon)
+			button.icon = PixelArtTexture.wrap(ImageTexture.create_from_image(native_icon))
 		button.text = button.tooltip_text if button.icon == null else ""
 		button.theme_type_variation = "ArtworkButton"
+		button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		button.pressed.connect(func() -> void:
 			group_requested.emit(group)
 			subtool_requested.emit(tool))

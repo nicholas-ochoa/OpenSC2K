@@ -122,8 +122,8 @@ func terrain_options() -> NewCityTerrain.Options:
 
 
 func show_preview(landscape: Image, minimap: Image, status: String) -> void:
-	landscape_background.texture = ImageTexture.create_from_image(landscape)
-	preview_view.texture = ImageTexture.create_from_image(minimap)
+	landscape_background.texture = PixelArtTexture.wrap(ImageTexture.create_from_image(landscape))
+	preview_view.texture = PixelArtTexture.wrap(ImageTexture.create_from_image(minimap))
 	candidate_valid = true
 	done_button.disabled = false
 	preview_status.text = status
@@ -237,7 +237,7 @@ func set_control_graphics(graphics: CityUiGraphics) -> void:
 					if image.get_pixel(x, y).is_equal_approx(background):
 						image.set_pixel(x, y, Color.TRANSPARENT)
 
-			view.texture = ImageTexture.create_from_image(image)
+			view.texture = PixelArtTexture.wrap(ImageTexture.create_from_image(image))
 
 
 # an SC2 city uses only the original 128 × 128 map

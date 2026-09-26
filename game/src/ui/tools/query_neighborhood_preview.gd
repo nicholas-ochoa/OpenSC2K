@@ -47,7 +47,13 @@ var texture: Texture2D:
 		queue_redraw()
 
 
+func _ready() -> void:
+	# a UI scale change on the main window moves the screen pixel grid
+	get_tree().root.size_changed.connect(queue_redraw)
+
+
 func _draw() -> void:
 	if texture != null:
-		var target := texture.get_size() * zoom
+		# the zoom on whole screen pixels for each artwork pixel
+		var target := Vector2(ScreenPixels.art_length(texture.get_width(), zoom), ScreenPixels.art_length(texture.get_height(), zoom))
 		draw_texture_rect(texture, Rect2((size - target) * 0.5, target), false)

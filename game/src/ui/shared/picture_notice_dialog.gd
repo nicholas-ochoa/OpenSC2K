@@ -30,7 +30,7 @@ func configure(
 
 
 func set_picture(picture: Image) -> void:
-	picture_view.texture = null if picture == null else ImageTexture.create_from_image(picture)
+	picture_view.texture = null if picture == null else PixelArtTexture.wrap(ImageTexture.create_from_image(picture))
 
 
 func show_message(message_text: String, normalize_newlines := false) -> void:

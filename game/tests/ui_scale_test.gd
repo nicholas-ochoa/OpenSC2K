@@ -10,6 +10,7 @@ func _run() -> void:
 	_check_scale_rules()
 	_check_map_pixels()
 	_check_pixel_views()
+	await _check_pixel_art()
 	await _check_settings()
 	print("PASS: UI scale fit, saved choice, window scale, and whole-pixel map, minimap, SCURK canvas, and dialog copy")
 	quit()
@@ -135,6 +136,67 @@ func _check_pixel_views() -> void:
 
 	canvas.free()
 	ScreenPixels.scale = 0.0
+
+
+func _check_pixel_art() -> void:
+	var screen := 2.71125
+	ScreenPixels.set_scale(screen)
+	var image := Image.create(16, 12, false, Image.FORMAT_RGBA8)
+	image.fill(Color.RED)
+	var art := PixelArtTexture.wrap(ImageTexture.create_from_image(image)) as PixelArtTexture
+	assert(PixelArtTexture.wrap(art) == art and PixelArtTexture.unwrap(art).get_width() == 16)
+
+	# at its own size each artwork pixel covers the nearest whole screen pixels
+	var own := art.whole_rect(Rect2(Vector2(5, 5), art.get_size()), Vector2(16, 12))
+	assert(is_equal_approx(own.size.x * screen, 48.0) and is_equal_approx(own.size.y * screen, 36.0))
+	assert(Rect2(Vector2(5, 5), art.get_size()).encloses(own.grow(-0.001)), "The drawing stays in the reported size")
+
+	# a larger request uses the largest whole scale that fits inside it
+	var fitted := art.whole_rect(Rect2(0, 0, 64, 48), Vector2(16, 12))
+	assert(is_equal_approx(fitted.size.x * screen, 16.0 * 10.0) and Rect2(0, 0, 64, 48).encloses(fitted))
+
+	# a covered part fills its rectangle with fewer, whole-pixel artwork pixels
+	var covered := art.covered_region(Rect2(0, 0, 64, 48), Rect2(4, 3, 8, 6), false)
+	assert(is_equal_approx(64.0 * screen / covered.size.x, 22.0) and covered.size.x <= 8.0)
+	assert(covered.get_center().is_equal_approx(Vector2(8, 6)))
+
+	# artwork smaller than one screen pixel for each artwork pixel is unchanged
+	assert(art.whole_rect(Rect2(0, 0, 4, 3), Vector2(16, 12)) == Rect2(0, 0, 4, 3))
+
+	# a scale change resizes the controls that show the artwork
+	var button := Button.new()
+	button.icon = art
+	root.add_child(button)
+	var before := button.get_combined_minimum_size()
+	ScreenPixels.set_scale(1.35)
+	await process_frame
+	assert(art.get_width() == 12 and button.get_combined_minimum_size().x < before.x)
+	button.free()
+
+	# an embedded dialog grows a little so that the main window copies it one
+	# pixel for one, and a moved dialog fits again from its own size
+	ScreenPixels.set_scale(3.615)
+	var dialog := Window.new()
+	dialog.size = Vector2i(420, 530)
+	dialog.position = Vector2i(1206, 213)
+	root.add_child(dialog)
+	dialog.show()
+	assert(dialog.is_embedded())
+
+	for position in [Vector2i(1206, 213), Vector2i(333, 71), Vector2i(1703, 270)]:
+		dialog.position = position
+		WindowPixelFit.fit(dialog)
+		WindowPixelFit.fit(dialog)
+		assert(dialog.size.x >= 420 and dialog.size.x <= 436 and dialog.size.y >= 530 and dialog.size.y <= 546, "The fit does not grow the dialog each time")
+
+		for axis in 2:
+			assert(_copies_one_to_one(dialog.position[axis] * 3.615, dialog.size[axis] * 3.615))
+
+	var fitted_size := dialog.size
+	WindowPixelFit.fit(dialog)
+	assert(dialog.size == fitted_size, "A still dialog keeps its fitted size")
+	dialog.free()
+	ScreenPixels.set_scale(0.0)
 
 
 func _copies_one_to_one(start: float, pixels: float) -> bool:

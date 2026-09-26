@@ -71,7 +71,8 @@ func set_choices(
 			]
 		)
 		choice_button.tooltip_text = "Build %s" % choice.name
-		preview_controls[choice_index].texture = preview_image(request_type, int(choice.type))
+		preview_controls[choice_index].texture = PixelArtTexture.wrap(preview_image(request_type, int(choice.type)))
+		preview_controls[choice_index].texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		choice_labels[choice_index].text = choice_button.text
 
 
