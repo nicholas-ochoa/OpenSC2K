@@ -90,7 +90,7 @@ jobs:
           path: private-assets
           ssh-key: ${{ secrets.TEST_ASSETS_SSH_KEY }}
           persist-credentials: false
-      - name: Run private checks with safe results only
+      - name: Run private asset checks
         run: |
           ln -s "$GITHUB_WORKSPACE/private-assets/references" references
           ln -s "$GITHUB_WORKSPACE/private-assets/ext" ext
@@ -98,7 +98,7 @@ jobs:
       - name: Remove private inputs and generated files
         if: always()
         run: rm -rf private-assets references ext local game/.godot
-      # No artifact uploads or caches in this job. Raw test output is never published.
+      # No artifact uploads or caches in this job.
 
   nightly:
     name: Publish latest nightly

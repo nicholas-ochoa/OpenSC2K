@@ -51,17 +51,16 @@ the `main` branch. The job does not run for pull requests.
 
 `tools/run_private_asset_checks.py` selects the headless `full` checks that the
 generated-data `ci` suite does not cover. Missing inputs, skipped checks, and
-incomplete results fail the job. It uses Dummy audio. Native checks remain local.
+test errors fail the job. It uses Dummy audio. Native checks remain local.
 
-Raw output and detailed reports stay in temporary files and are deleted after the
-run. Only known check names and fixed status values appear in public logs and the
-job summary. The job uploads no artifacts and saves no caches. Inputs and generated
-files are removed at the end. Package builds run on a separate runner without these assets.
+Full test output, warnings, and failure details appear in the GitHub Actions log.
+The job uploads no artifacts and saves no caches. Inputs and generated files are
+removed at the end. Package builds run on a separate runner without these assets.
 Nightly publication requires both test jobs to pass.
 
 To update the inputs, commit and push them in the private repository, then update
 the pinned asset commit in `.github/workflows/ci.yml`. To diagnose a failed check,
-run its reported test ID locally with the private inputs. Do not publish raw logs,
+read the Actions log or run its test ID locally with the private inputs. Do not upload
 screenshots, saves, extracted packs, or other files produced from the original assets.
 
 ## Build tools

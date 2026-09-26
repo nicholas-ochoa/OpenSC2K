@@ -27,49 +27,25 @@ class ValidationRunnerTest(unittest.TestCase):
         self.assertEqual(public | private, full)
         self.assertTrue({'test_runner', 'media_pack_test', 'runtime_ui_integration'} <= private)
 
-    def test_private_report_drops_asset_text_and_rejects_invalid_results(self):
-        names = ['parse', 'startup', 'generated-city-fixtures', 'fixture_test', 'diff-check']
-        results = [dict(id=name, status='PASS', reason='PRIVATE ASSET TEXT') for name in names]
-        report, passed = private_checks.safe_report(dict(results=results), ['fixture_test'])
-        self.assertTrue(passed)
-        self.assertNotIn('PRIVATE', report)
-        self.assertFalse(private_checks.safe_report(dict(results=results), ['fixture_test'], 1)[1])
-        for extra in (dict(id='PRIVATE ASSET TEXT', status='PASS'),
-                      dict(id='fixture_test', status='PRIVATE ASSET TEXT'), results[0]):
-            report, passed = private_checks.safe_report(dict(results=results + [extra]), ['fixture_test'])
-            self.assertFalse(passed)
-            self.assertNotIn('PRIVATE', report)
-        for status in ('FAIL', 'SKIP'):
-            changed = [dict(id=r['id'], status=status) for r in results]
-            self.assertFalse(private_checks.safe_report(dict(results=changed), ['fixture_test'])[1])
-        self.assertFalse(private_checks.safe_report(dict(results=[]), ['fixture_test'])[1])
-
-    def test_private_runner_never_publishes_raw_output_and_removes_logs(self):
-        folders = []
-
-        def execute(command, *, cwd, stdout, stderr):
-            output = Path(command[command.index('--output') + 1])
-            folders.append(output.parent)
-            stdout.write(b'PRIVATE ASSET TEXT\n')
-            output.mkdir()
-            results = [dict(id=name, status='PASS', reason='PRIVATE ASSET TEXT') for name in
-                       ('parse', 'startup', 'generated-city-fixtures', 'fixture_test', 'diff-check')]
-            (output / 'summary.json').write_text(json.dumps(dict(results=results)))
-            return subprocess.CompletedProcess(command, 0)
-
-        with patch.object(private_checks, 'private_entries', return_value=[dict(id='fixture_test')]), \
-                patch.object(private_checks.subprocess, 'run', side_effect=execute), \
-                patch.dict(os.environ, {'GITHUB_STEP_SUMMARY': ''}), \
-                contextlib.redirect_stdout(io.StringIO()) as console:
-            self.assertEqual(private_checks.main(), 0)
-        self.assertNotIn('PRIVATE ASSET TEXT', console.getvalue())
-        self.assertTrue(all(not folder.exists() for folder in folders))
-
-    def test_private_runner_suppresses_exception_details(self):
-        with patch.object(private_checks, 'private_entries', side_effect=ValueError('PRIVATE ASSET TEXT')), \
-                contextlib.redirect_stdout(io.StringIO()) as console:
-            self.assertEqual(private_checks.main(), 1)
-        self.assertNotIn('PRIVATE ASSET TEXT', console.getvalue())
+    def test_private_runner_preserves_output_and_exit_status(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / 'tools').mkdir()
+            (root / 'tools/validate_project.py').write_text(
+                "import sys\n"
+                "assert sys.argv[1:] == ['--strict', '--keep-going', '--test', 'fixture_test']\n"
+                "print('Full test output')\n"
+                "print('Failure details', file=sys.stderr)\n"
+                "sys.exit(7)\n")
+            code = ("import pathlib, sys; import run_private_asset_checks as checks; "
+                    "checks.runner.ROOT = pathlib.Path(sys.argv[1]); "
+                    "checks.private_entries = lambda: [dict(id='fixture_test')]; "
+                    "sys.exit(checks.main())")
+            result = subprocess.run([sys.executable, '-c', code, folder],
+                                    cwd=runner.ROOT / 'tools', capture_output=True, text=True)
+        self.assertEqual(result.returncode, 7)
+        self.assertEqual(result.stdout, 'Full test output\n')
+        self.assertEqual(result.stderr, 'Failure details\n')
 
     def test_fresh_projects_share_the_import_cache(self):
         with tempfile.TemporaryDirectory() as folder:
