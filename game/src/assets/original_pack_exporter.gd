@@ -115,7 +115,8 @@ func export_packs(source: String, target: String) -> AssetImportResult:
 		return AssetImportResult.failure(runtime.error)
 
 	_write("graphics/pack.json", JSON.stringify(manifest, "\t").to_utf8_buffer())
-	var loaded := GraphicsPack.load_root(destination.path_join("graphics"))
+	# Check the pack as the game loads it. Importers do not load it again.
+	var loaded := GameAssetSource.load_source("", "folder", destination.path_join("graphics"))
 
 	if not loaded.error.is_empty():
 		return AssetImportResult.failure(loaded.error)

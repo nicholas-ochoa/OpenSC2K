@@ -18,13 +18,8 @@ static func import_executable(executable: String, packs_root: String, saved_root
 	if destination == origin or destination.begins_with(origin + "/") or origin.begins_with(destination + "/"):
 		return AssetImportResult.failure("Choose an import destination separate from the source game folder.")
 
+	# The exporter checks the graphics pack as the game loads it.
 	var exported := OriginalPackExporter.new().export_packs(source, stage)
-
-	if exported.ok:
-		var checked := GameAssetSource.load_source("", "folder", stage.path_join("graphics/pack.json"))
-
-		if not checked.error.is_empty():
-			exported = AssetImportResult.failure(checked.error)
 
 	var saved_games := AssetImportResult.new()
 	saved_games.ok = true
