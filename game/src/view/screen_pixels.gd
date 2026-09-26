@@ -8,6 +8,9 @@ extends RefCounted
 static var scale := 0.0
 # pixel-art textures that change size with the scale
 static var _textures: Array[WeakRef] = []
+# the list size at which freed textures are removed. palette cycling replaces
+# toolbar icons several times each second
+static var _compact_at := 64
 
 
 # sets the scale and tells each watched texture that its size changed
@@ -30,6 +33,10 @@ static func set_scale(value: float) -> void:
 
 static func watch(texture: Texture2D) -> void:
 	_textures.append(weakref(texture))
+
+	if _textures.size() >= _compact_at:
+		_textures = _textures.filter(func(texture_ref: WeakRef) -> bool: return texture_ref.get_ref() != null)
+		_compact_at = maxi(64, _textures.size() * 2)
 
 
 # the whole screen pixels for each artwork pixel that base interface pixels

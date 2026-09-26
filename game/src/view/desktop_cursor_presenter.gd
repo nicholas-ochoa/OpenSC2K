@@ -87,8 +87,12 @@ func present(app: String, group: int, point: Vector2, shape: int) -> void:
 				_owns_hidden_mouse = true
 
 	if record.image == null:
-		# whole screen pixels for each cursor pixel
-		var pixel := ScreenPixels.art_length(1.0)
+		# match the native cursors, which the system draws at its display scale
+		# and not at the UI scale, on whole screen pixels
+		var pixel := 1.0
+
+		if ScreenPixels.scale > 0.0:
+			pixel = maxi(1, roundi(DisplayServer.screen_get_scale())) / ScreenPixels.scale
 		_patch.size = Vector2(32, 32) * pixel
 		_patch.position = point.floor() - Vector2(record.hotspot) * pixel
 		_copy.rect = Rect2(_patch.position, _patch.size)

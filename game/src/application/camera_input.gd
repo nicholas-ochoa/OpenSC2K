@@ -56,8 +56,10 @@ func update_keyboard_camera(delta: float) -> void:
 	app.view_state.camera_tap = Vector2.ZERO
 
 	if app.map_view != null:
+		# the camera speed is in map pixels at 100% zoom, so the UI scale does
+		# not change how fast the city moves
 		app.map_view.pan_screen(app.view_state.camera_motion.step(direction, delta, enabled and not app.map_view.is_panning()
-				and not app.map_view.is_left_drag_active()))
+				and not app.map_view.is_left_drag_active()) * app.map_view.map_pixel_ratio)
 
 
 func input(event: InputEvent) -> void:

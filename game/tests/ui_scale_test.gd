@@ -173,7 +173,27 @@ func _check_pixel_art() -> void:
 	assert(art.get_width() == 12 and button.get_combined_minimum_size().x < before.x)
 	button.free()
 
-	# an embedded dialog grows a little so that the main window copies it one
+	# freed artwork leaves the scale-change list, as palette cycling replaces
+	# toolbar icons several times each second
+	for index in 300:
+		PixelArtTexture.wrap(ImageTexture.create_from_image(image))
+
+	assert(ScreenPixels._textures.size() < 200)
+
+	# tinted theme icons stay scalable, so they stay sharp at every UI scale
+	var dark := AppUiThemeDefinitions.build("dark")
+
+	for pair in [["unchecked", "CheckBox"], ["radio_unchecked_disabled", "CheckBox"], ["unchecked", "CheckButton"], ["unchecked_disabled_mirrored", "CheckButton"]]:
+		var icon := dark.get_icon(pair[0], pair[1])
+		assert(icon is DPITexture, "%s %s" % pair)
+
+	var tinted := dark.get_icon("unchecked", "CheckBox").get_image()
+	var center := tinted.get_pixel(8, 8)
+	var expected := Color("aeb8c4")
+	assert(Vector4(center.r, center.g, center.b, center.a).distance_to(Vector4(expected.r, expected.g, expected.b, 1.0)) < 0.02,
+		"The tint keeps its color and full opacity")
+
+		# an embedded dialog grows a little so that the main window copies it one
 	# pixel for one, and a moved dialog fits again from its own size
 	ScreenPixels.set_scale(3.615)
 	var dialog := Window.new()

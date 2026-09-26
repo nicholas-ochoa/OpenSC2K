@@ -192,11 +192,17 @@ static func _dark_theme() -> Theme:
 	result.set_color("button_unchecked_color", "CheckButton", Color.WHITE)
 	# preserve the switch's separate track and thumb tones while lifting dark pixels
 	for icon_name in ["unchecked", "unchecked_disabled", "unchecked_mirrored", "unchecked_disabled_mirrored"]:
-		var image := result.get_icon(icon_name, "CheckButton").get_image()
+		var icon := result.get_icon(icon_name, "CheckButton")
+		var lift := func(color: Color) -> Color: return color.lerp(Color.WHITE, 0.35)
+		# keep a scalable icon sharp at every UI scale
+		if icon is DPITexture:
+			result.set_icon(icon_name, "CheckButton", _recolored_svg(icon, lift, false))
+			continue
+		var image := icon.get_image()
 		for y in image.get_height():
 			for x in image.get_width():
 				var pixel := image.get_pixel(x, y)
-				var lifted := Color(pixel.r, pixel.g, pixel.b).lerp(Color.WHITE, 0.35)
+				var lifted: Color = lift.call(Color(pixel.r, pixel.g, pixel.b))
 				lifted.a = pixel.a
 				image.set_pixel(x, y, lifted)
 		result.set_icon(icon_name, "CheckButton", ImageTexture.create_from_image(image))
@@ -229,6 +235,9 @@ static func _copy_style(source: Theme, type_name: String, state: String) -> Styl
 
 
 static func _tinted_icon(texture: Texture2D, color: Color) -> Texture2D:
+	# keep a scalable icon sharp at every UI scale
+	if texture is DPITexture:
+		return _recolored_svg(texture, func(_color: Color) -> Color: return color, true)
 	var image := texture.get_image()
 	if image == null:
 		return texture
@@ -244,6 +253,37 @@ static func _tinted_icon(texture: Texture2D, color: Color) -> Texture2D:
 			pixel.a *= image.get_pixel(x, y).a / maximum_alpha
 			image.set_pixel(x, y, pixel)
 	return ImageTexture.create_from_image(image)
+
+
+# rewrites each SVG color through recolor. full_opacity scales the opacities so
+# that the most opaque part is fully opaque, like a tint of the rasterized icon
+static func _recolored_svg(texture: DPITexture, recolor: Callable, full_opacity: bool) -> DPITexture:
+	var source := texture.get_source()
+	var colors := RegEx.create_from_string("#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\\b")
+	source = _replace_matches(source, colors, func(found: RegExMatch) -> String:
+		return "#" + (recolor.call(Color.html(found.get_string())) as Color).to_html(false))
+	if full_opacity:
+		# the drawn icon gives the largest opacity, including parts without an
+		# opacity of their own
+		var image := texture.get_image()
+		var maximum := 0.0
+		for y in image.get_height():
+			for x in image.get_width():
+				maximum = maxf(maximum, image.get_pixel(x, y).a)
+		if maximum > 0.0 and maximum < 1.0:
+			var opacities := RegEx.create_from_string("(fill-opacity|stroke-opacity|opacity)=\"([0-9.]+)\"")
+			source = _replace_matches(source, opacities, func(found: RegExMatch) -> String:
+				return "%s=\"%s\"" % [found.get_string(1), minf(1.0, found.get_string(2).to_float() / maximum)])
+	return DPITexture.create_from_string(source, texture.base_scale, texture.saturation, texture.color_map)
+
+
+static func _replace_matches(text: String, pattern: RegEx, replacement: Callable) -> String:
+	var result := ""
+	var end := 0
+	for found in pattern.search_all(text):
+		result += text.substr(end, found.get_start() - end) + str(replacement.call(found))
+		end = found.get_end()
+	return result + text.substr(end)
 
 
 static func _light_file_dialog_theme() -> Theme:

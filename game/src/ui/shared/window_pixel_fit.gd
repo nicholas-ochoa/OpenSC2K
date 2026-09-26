@@ -9,44 +9,14 @@ extends Node
 # a position that no window has, for a window that was not seen before
 const UNSEEN := Vector2i(-2147483648, -2147483648)
 
-var _windows: Array[WeakRef] = []
-
-
-func _ready() -> void:
-	get_tree().node_added.connect(_on_node_added)
-	_add_existing(get_tree().root)
-
-
-func _add_existing(node: Node) -> void:
-	_on_node_added(node)
-
-	for child in node.get_children(true):
-		_add_existing(child)
-
-
-func _on_node_added(node: Node) -> void:
-	if node is Window and node != get_tree().root:
-		_windows.append(weakref(node))
-
 
 func _process(_delta: float) -> void:
 	if ScreenPixels.scale <= 0.0:
 		return
 
-	var live: Array[WeakRef] = []
-
-	for window_ref in _windows:
-		var window := window_ref.get_ref() as Window
-
-		if window == null or not window.is_inside_tree():
-			continue
-
-		live.append(window_ref)
-
-		if window.visible and window.is_embedded():
+	for window in get_tree().root.get_embedded_subwindows():
+		if window.visible:
 			fit(window)
-
-	_windows = live
 
 
 # fits one window. the fit depends on the position, and a dragged window has
