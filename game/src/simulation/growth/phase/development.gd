@@ -17,18 +17,19 @@ static func _abandon(
 	rotation: int,
 	land_value: PackedByteArray,
 	map_edge: int = 128,
+	allow_edge_buildings := false,
 ) -> void:
 	match density:
 		1:
 			place_zone(
 				buildings, zones, flags, misc, land_value, point,
-				1, CLASS_ABANDONED, random, rotation, map_edge
+				1, CLASS_ABANDONED, random, rotation, map_edge, allow_edge_buildings
 			)
 		2:
 			if pattern == 0:
 				place_zone(
 					buildings, zones, flags, misc, land_value, point,
-					2, CLASS_ABANDONED, random, rotation, map_edge
+					2, CLASS_ABANDONED, random, rotation, map_edge, allow_edge_buildings
 				)
 			else:
 				for abandoned_point in [
@@ -39,18 +40,18 @@ static func _abandon(
 				]:
 					place_zone(
 						buildings, zones, flags, misc, land_value, abandoned_point,
-						1, CLASS_ABANDONED, random, rotation, map_edge
+						1, CLASS_ABANDONED, random, rotation, map_edge, allow_edge_buildings
 					)
 		3:
 			place_zone(
 				buildings, zones, flags, misc, land_value, point,
-				3 if pattern == 0 else 2, CLASS_ABANDONED, random, rotation, map_edge
+				3 if pattern == 0 else 2, CLASS_ABANDONED, random, rotation, map_edge, allow_edge_buildings
 			)
 		4:
 			if pattern == 0:
 				place_zone(
 					buildings, zones, flags, misc, land_value, point,
-					4, CLASS_ABANDONED, random, rotation, map_edge
+					4, CLASS_ABANDONED, random, rotation, map_edge, allow_edge_buildings
 				)
 			else:
 				for abandoned_point in [
@@ -65,7 +66,7 @@ static func _abandon(
 				]:
 					place_zone(
 						buildings, zones, flags, misc, land_value, abandoned_point,
-						1, CLASS_ABANDONED, random, rotation, map_edge
+						1, CLASS_ABANDONED, random, rotation, map_edge, allow_edge_buildings
 					)
 
 				var selection: int = random.next_u15() & 3
@@ -79,7 +80,7 @@ static func _abandon(
 					3,
 					CLASS_ABANDONED,
 					random,
-					rotation, map_edge,
+					rotation, map_edge, allow_edge_buildings,
 				)
 
 
@@ -95,6 +96,7 @@ static func place_zone(
 	random: SimRandom,
 	rotation: int,
 	map_edge: int = 128,
+	allow_edge_buildings := false,
 ) -> bool:
 	var tile: int
 
@@ -120,16 +122,18 @@ static func place_zone(
 		return true
 
 	var radius := int(density / 2)
+	var site_position := Vector2i(anchor.x, anchor.y - radius)
 
-	if (
+	if allow_edge_buildings:
+		if not Rect2i(0, 0, map_edge, map_edge).encloses(Rect2i(site_position, Vector2i.ONE * (radius + 1))):
+			return false
+	elif (
 		anchor.x <= 1
 		or anchor.y <= 1
 		or anchor.x > map_edge - 2 - radius
 		or anchor.y > map_edge - 2 - radius
 	):
 		return false
-
-	var site_position := Vector2i(anchor.x, anchor.y - radius)
 
 	for x in range(site_position.x, site_position.x + radius + 1):
 		for y in range(site_position.y, site_position.y + radius + 1):
@@ -151,11 +155,15 @@ static func _place_church(
 	anchor: Vector2i,
 	rotation: int,
 	map_edge: int = 128,
+	allow_edge_buildings := false,
 ) -> bool:
-	if anchor.x <= 0 or anchor.y <= 0 or anchor.x >= (map_edge - 1) or anchor.y >= (map_edge - 1):
-		return false
-
 	var position := Vector2i(anchor.x, anchor.y - 1)
+
+	if allow_edge_buildings:
+		if not Rect2i(0, 0, map_edge, map_edge).encloses(Rect2i(position, Vector2i(2, 2))):
+			return false
+	elif anchor.x <= 0 or anchor.y <= 0 or anchor.x >= (map_edge - 1) or anchor.y >= (map_edge - 1):
+		return false
 
 	for x in range(position.x, position.x + 2):
 		for y in range(position.y, position.y + 2):

@@ -45,12 +45,13 @@ static func _advance_construction(
 	random: SimRandom,
 	rotation: int,
 	map_edge: int = 128,
+	allow_edge_buildings := false,
 ) -> bool:
 	match density:
 		0:
 			return GrowthDevelopment.place_zone(
 				buildings, zones, flags, misc, land_value, point,
-				1, CLASS_CONSTRUCTION, random, rotation, map_edge
+				1, CLASS_CONSTRUCTION, random, rotation, map_edge, allow_edge_buildings
 			)
 		1:
 			var height := altitudes[GrowthState._index(point, map_edge)] & Sc2AltitudeLayout.LEVEL_MASK
@@ -65,7 +66,7 @@ static func _advance_construction(
 			):
 				return GrowthDevelopment.place_zone(
 					buildings, zones, flags, misc, land_value, down,
-					2, CLASS_CONSTRUCTION, random, rotation, map_edge
+					2, CLASS_CONSTRUCTION, random, rotation, map_edge, allow_edge_buildings
 				)
 
 			var up := point + Vector2i(0, -1)
@@ -78,7 +79,7 @@ static func _advance_construction(
 			):
 				return GrowthDevelopment.place_zone(
 					buildings, zones, flags, misc, land_value, point,
-					2, CLASS_CONSTRUCTION, random, rotation, map_edge
+					2, CLASS_CONSTRUCTION, random, rotation, map_edge, allow_edge_buildings
 				)
 
 			var left := point + Vector2i(-1, 0)
@@ -91,7 +92,7 @@ static func _advance_construction(
 			):
 				return GrowthDevelopment.place_zone(
 					buildings, zones, flags, misc, land_value, down_left,
-					2, CLASS_CONSTRUCTION, random, rotation, map_edge
+					2, CLASS_CONSTRUCTION, random, rotation, map_edge, allow_edge_buildings
 				)
 
 			var up_left := point + Vector2i(-1, -1)
@@ -103,17 +104,17 @@ static func _advance_construction(
 			):
 				return GrowthDevelopment.place_zone(
 					buildings, zones, flags, misc, land_value, left,
-					2, CLASS_CONSTRUCTION, random, rotation, map_edge
+					2, CLASS_CONSTRUCTION, random, rotation, map_edge, allow_edge_buildings
 				)
 		2:
 			return GrowthDevelopment.place_zone(
 				buildings, zones, flags, misc, land_value, point,
-				3, CLASS_CONSTRUCTION, random, rotation, map_edge
+				3, CLASS_CONSTRUCTION, random, rotation, map_edge, allow_edge_buildings
 			)
 		3:
 			return _advance_to_density_four(
 				buildings, zones, flags, misc, land_value, altitudes,
-				point, zone, random, rotation, map_edge
+				point, zone, random, rotation, map_edge, allow_edge_buildings
 			)
 
 	return false
@@ -131,6 +132,7 @@ static func _advance_to_density_four(
 	random: SimRandom,
 	rotation: int,
 	map_edge: int = 128,
+	allow_edge_buildings := false,
 ) -> bool:
 	var height := altitudes[GrowthState._index(point, map_edge)] & Sc2AltitudeLayout.LEVEL_MASK
 
@@ -162,12 +164,12 @@ static func _advance_to_density_four(
 			if index >= 0 and buildings[index] > Tiles.DEVELOPED_1X1_LAST:
 				_clear_growth_building(
 					buildings, zones, flags, misc, land_value,
-					checked_point, random, rotation, map_edge
+					checked_point, random, rotation, map_edge, allow_edge_buildings
 				)
 
 		return GrowthDevelopment.place_zone(
 			buildings, zones, flags, misc, land_value, anchor,
-			4, CLASS_CONSTRUCTION, random, rotation, map_edge
+			4, CLASS_CONSTRUCTION, random, rotation, map_edge, allow_edge_buildings
 		)
 
 	return false
@@ -200,6 +202,7 @@ static func _clear_growth_building(
 	random: SimRandom,
 	rotation: int,
 	map_edge: int = 128,
+	allow_edge_buildings := false,
 ) -> void:
 	var direction: int
 
@@ -232,7 +235,7 @@ static func _clear_growth_building(
 	]:
 		GrowthDevelopment.place_zone(
 			buildings, zones, flags, misc, land_value, abandoned_point,
-			1, CLASS_ABANDONED, random, rotation, map_edge
+			1, CLASS_ABANDONED, random, rotation, map_edge, allow_edge_buildings
 		)
 
 

@@ -238,6 +238,7 @@ static func _place_special_two_by_two(
 	zone: int,
 	rotation: int,
 	map_edge: int = 128,
+	allow_edge_buildings := false,
 ) -> Result:
 	var anchor := Vector2i(point.x & ~1, point.y & ~1)
 
@@ -286,7 +287,7 @@ static func _place_special_two_by_two(
 
 	var before := buildings.duplicate()
 	place_special_item(
-		buildings, zones, flags, terrain, misc, anchor, tile, 2, zone, rotation, map_edge
+		buildings, zones, flags, terrain, misc, anchor, tile, 2, zone, rotation, map_edge, allow_edge_buildings
 	)
 
 	for checked in points:
@@ -321,6 +322,7 @@ static func place_special_item(
 	zone: int,
 	rotation: int,
 	map_edge: int = 128,
+	allow_edge_buildings := false,
 ) -> bool:
 	var origin := anchor - Vector2i.ONE if area > 2 else anchor
 	var points: Array[Vector2i] = []
@@ -330,7 +332,7 @@ static func place_special_item(
 			var point := Vector2i(x, y)
 			var index := SpecialZoneState._index(point, map_edge)
 
-			if index < 0 or (area > 1 and (x < 1 or y < 1 or x > map_edge - 2 or y > map_edge - 2)):
+			if index < 0 or (not allow_edge_buildings and area > 1 and (x < 1 or y < 1 or x > map_edge - 2 or y > map_edge - 2)):
 				return false
 
 			if buildings[index] >= Tiles.FIRST_ROAD or buildings[index] == Tiles.RADIOACTIVE_WASTE or buildings[index] == Tiles.SMALL_PARK:

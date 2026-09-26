@@ -111,7 +111,7 @@ static func apply(
 	var area := DemolishStructures.structure_area(tile_id)
 	var site := BuildingSites.footprint(selected, area)
 
-	if not BuildingSites._footprint_is_in_bounds(site, area, map_edge):
+	if not BuildingSites._footprint_is_in_bounds(site, area, map_edge, city.document.is_extended()):
 		return EditCommandResult.failure("object does not fit inside the map")
 
 	var old_payloads := BuildingState._city_payloads(city)

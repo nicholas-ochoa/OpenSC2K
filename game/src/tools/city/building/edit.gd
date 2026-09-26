@@ -72,7 +72,7 @@ static func apply(
 
 			return objection
 
-	if not BuildingSites._footprint_is_in_bounds(site, area, map_edge):
+	if not BuildingSites._footprint_is_in_bounds(site, area, map_edge, city.document.is_extended()):
 		var outside := BuildingEditResult.rejected("building does not fit inside the map", cost)
 		outside.lfsr_advanced = lfsr_random.state != lfsr_state_before
 

@@ -20,6 +20,7 @@ static func process(
 	rotation: int,
 	counters: GrowthMaintenanceResult,
 	map_edge: int = 128,
+	allow_edge_buildings := false,
 ) -> void:
 	var index := SpecialZoneState._index(point, map_edge)
 	var zone := int(zones[index]) & 0x0f
@@ -85,13 +86,13 @@ static func process(
 		point,
 		selected_tile,
 		zone,
-		rotation, map_edge,
+		rotation, map_edge, allow_edge_buildings,
 	)
 
 	if not placed.ok and fallback_tile >= 0:
 		placed = SpecialZoneSelection.grow_special_zone(
 			buildings, zones, underground, flags, terrain, altitudes, misc,
-			point, fallback_tile, zone, rotation, map_edge
+			point, fallback_tile, zone, rotation, map_edge, allow_edge_buildings
 		)
 
 	counters.metrics.special_tiles_placed += placed.changed_tiles

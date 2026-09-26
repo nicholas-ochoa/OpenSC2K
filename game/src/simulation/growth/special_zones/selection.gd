@@ -138,6 +138,7 @@ static func grow_special_zone(
 	zone: int,
 	rotation: int,
 	map_edge: int = 128,
+	allow_edge_buildings := false,
 ) -> SpecialZonePlacement.Result:
 	if zone != 7 and not GrowthSiteRules.has_power(flags, point.x, point.y, map_edge):
 		var result := SpecialZonePlacement.Result.new()
@@ -178,7 +179,7 @@ static func grow_special_zone(
 
 	if SPECIAL_TWO_BY_TWO_TILES.has(tile):
 		return SpecialZonePlacement._place_special_two_by_two(
-			buildings, zones, flags, terrain, misc, point, tile, zone, rotation, map_edge
+			buildings, zones, flags, terrain, misc, point, tile, zone, rotation, map_edge, allow_edge_buildings
 		)
 
 	if tile == Tiles.MISSILE_SILO:

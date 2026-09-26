@@ -1,5 +1,18 @@
 [
   {
+    "id": "sc2x_edge_render_test",
+    "script": "tests/sc2x_edge_render_test.gd",
+    "domain": "rendering",
+    "lane": "native",
+    "requires": ["ext/graphics/pack.json"]
+  },
+  {
+    "id": "sc2x_edge_buildings_test",
+    "script": "tests/sc2x_edge_buildings_test.gd",
+    "domain": "simulation",
+    "lane": "product"
+  },
+  {
     "id": "day23_outcomes_test",
     "script": "tests/day23_outcomes_test.gd",
     "domain": "simulation",

@@ -49,7 +49,7 @@ static func preview_error(city: CityState, group: int, subtool: int, point: Vect
 
 	var site := footprint(point, int(tool.area))
 
-	if not _footprint_is_in_bounds(site, int(tool.area), map_edge):
+	if not _footprint_is_in_bounds(site, int(tool.area), map_edge, city.document.is_extended()):
 		return "The building footprint extends outside the map."
 
 	var error := _site_error(city.buildings, city.terrain, city.zones, city.tile_flags, site, tile_for_tool(group, subtool), map_edge)
@@ -57,11 +57,11 @@ static func preview_error(city: CityState, group: int, subtool: int, point: Vect
 	return error
 
 
-static func _footprint_is_in_bounds(site: Rect2i, area: int, map_edge: int = 128) -> bool:
+static func _footprint_is_in_bounds(site: Rect2i, area: int, map_edge: int = 128, allow_edge_buildings := false) -> bool:
 	if site.size != Vector2i(area, area):
 		return false
 
-	if area == 1:
+	if area == 1 or allow_edge_buildings:
 		return site.position.x >= 0 and site.position.y >= 0 and site.end.x <= map_edge and site.end.y <= map_edge
 
 	return site.position.x >= 1 and site.position.y >= 1 and site.end.x <= (map_edge - 1) and site.end.y <= (map_edge - 1)

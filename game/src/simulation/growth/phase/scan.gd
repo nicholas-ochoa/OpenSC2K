@@ -27,6 +27,7 @@ class TileScan extends GrowthConstants:
 	var misc: PackedByteArray
 	var walking_access: Array[PackedByteArray] = []
 	var trip_result := TransportTripResult.new()
+	var allow_edge_buildings: bool
 	var map_edge: int
 	var rotation: int
 	var anchor_mask: int
@@ -79,6 +80,7 @@ class TileScan extends GrowthConstants:
 		land_value = payloads.XVAL
 		crime = payloads.XCRM
 		misc = payloads.MISC
+		allow_edge_buildings = city.document.is_extended()
 		map_edge = city.map_size
 		rotation = city.compass_rotation() & 3
 		anchor_mask = ANCHOR_MASKS[rotation]
@@ -196,7 +198,7 @@ class TileScan extends GrowthConstants:
 			tile,
 			random,
 			rotation,
-			counters, map_edge,
+			counters, map_edge, allow_edge_buildings,
 		)
 
 
@@ -319,7 +321,7 @@ class TileScan extends GrowthConstants:
 			random.next_u15() & 1,
 			random,
 			rotation,
-			land_value, map_edge,
+			land_value, map_edge, allow_edge_buildings,
 		)
 		abandoned_buildings += 1
 
@@ -341,7 +343,7 @@ class TileScan extends GrowthConstants:
 			and zone < 3
 		):
 			GrowthDevelopment._place_church(
-				buildings, zones, flags, misc, tile, rotation, map_edge
+				buildings, zones, flags, misc, tile, rotation, map_edge, allow_edge_buildings
 			)
 			_invalidate_church_walking_access(tile)
 			churches_built += 1
@@ -356,7 +358,7 @@ class TileScan extends GrowthConstants:
 				density,
 				int((zone - 1) / 2),
 				random,
-				rotation, map_edge,
+				rotation, map_edge, allow_edge_buildings,
 			)
 
 		completed_construction += 1
@@ -388,7 +390,7 @@ class TileScan extends GrowthConstants:
 			density,
 			int((zone - 1) / 2),
 			random,
-			rotation, map_edge,
+			rotation, map_edge, allow_edge_buildings,
 		)
 		recovered_buildings += 1
 
@@ -416,7 +418,7 @@ class TileScan extends GrowthConstants:
 			density,
 			zone,
 			random,
-			rotation, map_edge,
+			rotation, map_edge, allow_edge_buildings,
 		)
 
 		if not advanced:
