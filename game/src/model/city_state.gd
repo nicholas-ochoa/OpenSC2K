@@ -77,20 +77,29 @@ static func from_document(source: Sc2File) -> CityState:
 
 			return city
 
-	city.altitude_words.resize((city.map_size * city.map_size))
+	var tile_count := city.map_size * city.map_size
+	city.altitude_words.resize(tile_count)
 	var altitude_data := source.find_chunk("ALTM").decoded_payload
 	var overlay_data := source.find_chunk("XTXT").decoded_payload
 
-	for index in (city.map_size * city.map_size):
-		if city.map_size > 128 and not OverlayData.valid_id(OverlayData.read(overlay_data, index), city.map_size):
-			city.load_error = "Extended tile link exceeds the city record capacity"
+	if city.map_size > 128:
+		# Every ID with a zero high byte is an original ID. Check only the other tiles.
+		var high_bytes := overlay_data.slice(OverlayData.count(overlay_data))
 
-			return city
+		if high_bytes.count(0) != high_bytes.size():
+			for index in tile_count:
+				if high_bytes[index] != 0 and not OverlayData.valid_id(OverlayData.read(overlay_data, index), city.map_size):
+					city.load_error = "Extended tile link exceeds the city record capacity"
 
-		var byte_offset := index * 2
-		city.altitude_words[index] = (
-			(altitude_data[byte_offset] << 8) | altitude_data[byte_offset + 1]
-		)
+					return city
+
+	var words := PackedInt32Array()
+	words.resize(tile_count)
+
+	for index in tile_count:
+		words[index] = (altitude_data[index * 2] << 8) | altitude_data[index * 2 + 1]
+
+	city.altitude_words = words
 
 	city.terrain = source.find_chunk("XTER").decoded_payload.duplicate()
 	city.buildings = source.find_chunk("XBLD").decoded_payload.duplicate()

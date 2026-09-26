@@ -11,6 +11,7 @@ func _initialize() -> void:
 	_check_sizes()
 	_check_thing_capacity_and_upgrade()
 	_check_overlay_boundaries()
+	_check_loaded_links_and_altitude()
 	_check_labels_and_round_trip(128)
 	_check_labels_and_round_trip(256)
 	_check_microsim_fields()
@@ -147,6 +148,24 @@ func _check_overlay_boundaries() -> void:
 	_check(OverlayData.sign_indices(narrow) == narrow_expected, "Original sign scan preserves its partial tail")
 	_check(OverlayData.find(wide, 250) == 8 and OverlayData.occurrences(wide, 250) == 1,
 		"Connection marker lookup uses the full overlay ID")
+
+
+# A load rejects an extended link past the record capacity, at any tile.
+func _check_loaded_links_and_altitude() -> void:
+	for id in [705, 706]:
+		var document := EmptyCityTemplate.create(256)
+		var overlays := document.find_chunk("XTXT").decoded_payload
+		OverlayData.write(overlays, 256 * 256 - 1, id)
+		_check(document.find_chunk("XTXT").set_decoded_payload(overlays), "Write extended link")
+		var altitude := document.find_chunk("ALTM").decoded_payload
+		altitude[2 * 300] = 0x12
+		altitude[2 * 300 + 1] = 0x34
+		_check(document.find_chunk("ALTM").set_decoded_payload(altitude), "Write altitude word")
+		var city := CityState.from_document(document)
+		_check(city.is_valid() == (id == 705), "Extended link %d at the last tile of a 256 map" % id)
+
+		if city.is_valid():
+			_check(city.altitude_words.size() == 256 * 256 and city.altitude_words[300] == 0x1234, "Big-endian altitude words")
 
 
 func _check_labels_and_round_trip(edge: int) -> void:
