@@ -302,7 +302,8 @@ class ValidationRunnerTest(unittest.TestCase):
                         '\tvar file = FileAccess.open("user://same-name.cfg", FileAccess.WRITE)\n'
                         f'\tfile.store_string("{marker}")\n\tfile.close()\n'
                         '\tprint("USER_PATH=", OS.get_user_data_dir())\n'
-                        '\tprint("MARKER=", FileAccess.get_file_as_string("user://same-name.cfg"))\n\tquit()\n')
+                        '\tprint("MARKER=", FileAccess.get_file_as_string("user://same-name.cfg"))\n'
+                        '\tprint("FRAME_SLEEP=", OS.low_processor_usage_mode_sleep_usec)\n\tquit()\n')
                     output = subprocess.check_output(['godot', '--headless', '--audio-driver', 'Dummy',
                                                       '--path', str(project.path), '--script', 'res://probe.gd'], text=True)
                     return project.user, output
@@ -313,6 +314,7 @@ class ValidationRunnerTest(unittest.TestCase):
             user, output = result
             self.assertIn('USER_PATH=' + str(user / 'probe'), output)
             self.assertIn('MARKER=' + marker, output)
+            self.assertIn('FRAME_SLEEP=0', output, 'Headless tests do not sleep after each frame')
             self.assertFalse(user.exists())
             user_paths.append(user)
             return True

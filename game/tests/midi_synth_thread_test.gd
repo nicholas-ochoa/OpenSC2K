@@ -44,13 +44,13 @@ func _run() -> void:
 
 	# A short sequence reaches its end, so the thread has to report it.
 	assert(player.play_sequence(_short_sequence(), 10002).ok)
-	var waited := 0
+	# Frames can be very short in tests. Wait for the synth thread by time.
+	var deadline := Time.get_ticks_msec() + 3000
 
 	# The track stays active until track_finished, so no request skips the music gap.
-	while finished_tracks.is_empty() and waited < 200:
+	while finished_tracks.is_empty() and Time.get_ticks_msec() < deadline:
 		assert(player.is_track_active(), "The track became inactive before track_finished")
 		await process_frame
-		waited += 1
 
 	assert(finished_tracks == PackedInt32Array([10002]), "track_finished reports the ended track")
 	assert(finished_on_main, "track_finished arrived off the main thread")
