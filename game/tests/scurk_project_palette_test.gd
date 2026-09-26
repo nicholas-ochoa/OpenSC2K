@@ -46,6 +46,9 @@ func _run() -> void:
 	assert(editor.load_tile_set(fresh).ok)
 	_check_palette(editor, third)
 	assert(editor.session.project.palette_rgb == third.to_rgb_bytes())
+	# Loading a project with other embedded colors replaces kept thumbnails.
+	assert(editor.studio.load_project(path))
+	_check_palette(editor, first)
 
 	# Non-UI projects can retain an explicit index-only palette fallback.
 	var index_only := ScurkProject.new()
@@ -87,3 +90,6 @@ func _check_palette(editor: ScurkEditorControl, expected: Sc2Palette) -> void:
 	assert(editor.palette_panel.palette_control.palette.to_rgb_bytes() == rgb)
 	assert(editor.palette_panel.texture_control.palette.to_rgb_bytes() == rgb)
 	assert(editor.pick_copy_control.palette.to_rgb_bytes() == rgb)
+	# The 2x1 shape scales to 32x16 and is centered in its 32x32 thumbnail.
+	var thumbnail := editor.object_list.entries[editor.object_list.selected].thumbnail.get_image()
+	assert(thumbnail.get_pixel(0, 16).is_equal_approx(expected.color(17)))

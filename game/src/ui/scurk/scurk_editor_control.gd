@@ -73,6 +73,7 @@ var pending_export_view := VIEW_LARGE
 var pending_export_format := 0
 var tile_thumbnails: Dictionary[int, Texture2D] = {}
 var thumbnail_signatures: Dictionary[int, int] = {}
+var palette_signature := 0
 var source_label: Label
 var object_search: LineEdit
 var object_list: ScurkTileSelector
@@ -232,8 +233,6 @@ func _bind_session_document(path := "") -> void:
 		pick_copy_control.configure(
 			palette, base_large_sprites, base_small_medium_sprites, reference_directory
 		)
-	tile_thumbnails.clear()
-	thumbnail_signatures.clear()
 	studio.reset_view()
 	unclipped_tiles.clear()
 	view_preview_signatures.fill("")
@@ -262,6 +261,8 @@ func _use_project_palette() -> void:
 		palette = Sc2Palette.from_rgb_bytes(session.project.palette_rgb)
 	elif tile_set != null and palette != null and palette.is_valid() and not palette.is_index_encoding:
 		session.project.palette_rgb = palette.to_rgb_bytes()
+	# Thumbnails keep their images across loads. The palette is part of each signature.
+	palette_signature = hash([palette.is_index_encoding, palette.colors]) if palette != null else 0
 
 
 func save_path(path: String) -> Result:
@@ -1778,7 +1779,7 @@ func _tile_thumbnail(large_id: int) -> Texture2D:
 	if entry == null or palette == null:
 		return null
 
-	var signature: int = hash([entry.width, entry.height, entry.pixel_hash()])
+	var signature: int = hash([entry.width, entry.height, entry.pixel_hash(), palette_signature])
 	if thumbnail_signatures.get(large_id, -1) == signature:
 		return tile_thumbnails[large_id]
 
