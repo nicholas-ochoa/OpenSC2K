@@ -23,6 +23,7 @@ concurrency:
 jobs:
   build:
     name: Test and build desktop packages
+    environment: ${{ github.event_name == 'pull_request' && 'pull-request-ci' || 'public-ci' }}
     runs-on: macos-15
     timeout-minutes: 30
     steps:
@@ -60,9 +61,48 @@ jobs:
           path: local/ci-results/
           retention-days: 7
 
+  private-assets:
+    name: Test private original-game assets
+    if: >-
+      github.repository == 'nicholas-ochoa/OpenSC2K' && github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    environment: private-test-assets
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Install test dependencies
+        run: |
+          python -m pip install Pillow
+          command -v ffmpeg || brew install ffmpeg
+      - name: Install Godot
+        run: bash tools/setup_godot_ci.sh
+      - name: Check out private inputs
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: nicholas-ochoa/OpenSC2K-Test-Assets
+          ref: b814d492f6c5e98c066ff41d34edeb4b5cab6a01
+          path: private-assets
+          ssh-key: ${{ secrets.TEST_ASSETS_SSH_KEY }}
+          persist-credentials: false
+      - name: Run private checks with safe results only
+        run: |
+          ln -s "$GITHUB_WORKSPACE/private-assets/references" references
+          ln -s "$GITHUB_WORKSPACE/private-assets/ext" ext
+          python tools/run_private_asset_checks.py
+      - name: Remove private inputs and generated files
+        if: always()
+        run: rm -rf private-assets references ext local game/.godot
+      # No artifact uploads or caches in this job. Raw test output is never published.
+
   nightly:
     name: Publish latest nightly
-    needs: build
+    needs: [build, private-assets]
     if: >-
       github.repository == 'nicholas-ochoa/OpenSC2K' && github.ref == 'refs/heads/main' &&
       (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.publish_nightly))

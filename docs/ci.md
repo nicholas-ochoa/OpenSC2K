@@ -3,7 +3,15 @@
 The **CI and nightly** GitHub Actions workflow runs on pull requests and pushes to `main`.
 It tests the project and builds Windows x64, Linux x64, and universal macOS packages.
 Packages are available as the `desktop-packages` workflow artifact for one day.
-Test logs are retained for seven days.
+Generated-data test logs are retained for seven days.
+Private asset tests run in a separate job and upload no artifacts.
+
+## Pull-request approval
+
+GitHub requires approval for workflows from all external contributors.
+The CI build job also uses the `pull-request-ci` environment for pull requests.
+That environment requires approval from `nicholas-ochoa` before any build steps run,
+including for same-repository pull requests. Private assets are never supplied to PR jobs.
 
 ## Nightly releases
 
@@ -18,7 +26,8 @@ Stable releases, including `v0.1.0`, are not changed. A nightly does not replace
 To run it manually, select **Actions > CI and nightly > Run workflow** on `main`.
 Select **Publish a nightly and remove previous nightly releases** to publish the result.
 Leave it clear to run tests and build packages only.
-No repository secrets are required. Only the publication job has permission to write releases.
+The private test job uses the `TEST_ASSETS_SSH_KEY` environment secret.
+Only the publication job has permission to write releases.
 
 ## Test coverage
 
@@ -29,8 +38,31 @@ Tests that require original game files, imported packs, or native windows are no
 The CI selection uses the test registry, so new product tests without those requirements are included automatically.
 
 CI does not replace `--suite release`. Run the full release suite locally before a stable release.
-GitHub-hosted runners do not have the original SimCity 2000 files. Their package builds do not prove
-Windows or Linux gameplay, native GPU rendering, or original-game compatibility.
+Package builds do not prove Windows or Linux gameplay, native GPU rendering, or
+original-game compatibility.
+
+## Private asset coverage
+
+Trusted `main` pushes, nightly runs, and manual runs also test a pinned commit from
+the private `nicholas-ochoa/OpenSC2K-Test-Assets` repository. Its `references/` and
+`ext/` folders are available only in the separate private test job. The read-only
+deploy key is an environment secret in `private-test-assets`, which permits only
+the `main` branch. The job does not run for pull requests.
+
+`tools/run_private_asset_checks.py` selects the headless `full` checks that the
+generated-data `ci` suite does not cover. Missing inputs, skipped checks, and
+incomplete results fail the job. It uses Dummy audio. Native checks remain local.
+
+Raw output and detailed reports stay in temporary files and are deleted after the
+run. Only known check names and fixed status values appear in public logs and the
+job summary. The job uploads no artifacts and saves no caches. Inputs and generated
+files are removed at the end. Package builds run on a separate runner without these assets.
+Nightly publication requires both test jobs to pass.
+
+To update the inputs, commit and push them in the private repository, then update
+the pinned asset commit in `.github/workflows/ci.yml`. To diagnose a failed check,
+run its reported test ID locally with the private inputs. Do not publish raw logs,
+screenshots, saves, extracted packs, or other files produced from the original assets.
 
 ## Build tools
 
@@ -73,5 +105,6 @@ The label update uses the `RELEASE_SSH_KEY` secret, which must contain a write-e
 This lets the job push the workflow file. Its commit uses `[skip ci]` to avoid another CI build.
 If this update fails after publication, the release remains published. Rerun the failed job to update the label.
 
-Run the full local release suite before publishing a stable release. Hosted CI still uses the generated-data
-suite described above because the original game files are not available on GitHub-hosted runners.
+Run the full local release suite before publishing a stable release. The stable-release workflow
+uses the generated-data suite. The separate private asset job belongs to CI and nightly builds;
+it does not replace the local native checks required for a stable release.
