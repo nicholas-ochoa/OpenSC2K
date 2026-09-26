@@ -41,17 +41,21 @@ static func _grow_trees(
 
 
 static func _finish_ocean(flags: PackedByteArray, map_edge: int = 128) -> void:
+	var both := FLAG_SALT_WATER | FLAG_WATER
+	var fresh_mask := ~FLAG_SALT_WATER & 0xff
+
+	# Index x * map_edge + y.
 	for _pass_index in 4:
 		for y in range(1, map_edge):
 			for x in range(1, map_edge):
-				var index := NewTerrainValues._index(x, y, map_edge)
-				var water_bits := flags[index] & (FLAG_SALT_WATER | FLAG_WATER)
+				var index := x * map_edge + y
+				var water_bits := flags[index] & both
 
 				if water_bits == FLAG_SALT_WATER:
-					flags[index] &= ~FLAG_SALT_WATER & 0xff
-				elif water_bits == (FLAG_SALT_WATER | FLAG_WATER):
-					flags[NewTerrainValues._index(x, y - 1, map_edge)] |= FLAG_SALT_WATER
-					flags[NewTerrainValues._index(x - 1, y, map_edge)] |= FLAG_SALT_WATER
+					flags[index] &= fresh_mask
+				elif water_bits == both:
+					flags[index - 1] |= FLAG_SALT_WATER
+					flags[index - map_edge] |= FLAG_SALT_WATER
 
 
 static func _make_stream(

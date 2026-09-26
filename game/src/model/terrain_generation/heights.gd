@@ -19,11 +19,13 @@ static func _enlarge_landform(source: PackedInt32Array, coast: PackedByteArray, 
 			var v := float(y) * 127.0 / float(edge - 1)
 			var top := floori(v)
 			var bottom := mini(top + 1, 127)
-			var a := lerpf(source[NewTerrainValues._index(left, top)], source[NewTerrainValues._index(right, top)], u - left)
-			var b := lerpf(source[NewTerrainValues._index(left, bottom)], source[NewTerrainValues._index(right, bottom)], u - left)
+			# The source landform has 128 tiles per side. Index x * edge + y.
+			var a := lerpf(source[left * 128 + top], source[right * 128 + top], u - left)
+			var b := lerpf(source[left * 128 + bottom], source[right * 128 + bottom], u - left)
+			var index := x * edge + y
 
-			result[NewTerrainValues._index(x, y, edge)] = roundi(lerpf(a, b, v - top))
-			flags[NewTerrainValues._index(x, y, edge)] = coast[NewTerrainValues._index(roundi(u), roundi(v))]
+			result[index] = roundi(lerpf(a, b, v - top))
+			flags[index] = coast[roundi(u) * 128 + roundi(v)]
 
 	return result
 
@@ -31,25 +33,46 @@ static func _enlarge_landform(source: PackedInt32Array, coast: PackedByteArray, 
 static func _grade_layout(heights: PackedInt32Array, edge := 128) -> void:
 	# native slopes span at most one level across a tile, including diagonals
 	# two distance-transform sweeps constrain all eight neighbors
+	# Index x * edge + y. Each sweep reads the neighbors that it has already updated.
 	for x in edge:
 		for y in edge:
-			var index := NewTerrainValues._index(x, y, edge)
+			var index := x * edge + y
+			var height := heights[index]
 
-			for offset in [Vector2i(-1, -1), Vector2i(-1, 0), Vector2i(-1, 1), Vector2i(0, -1)]:
-				var near: Vector2i = Vector2i(x, y) + offset
+			if x > 0:
+				var previous_row := index - edge
+				height = mini(height, heights[previous_row] + 1)
 
-				if NewTerrainValues._in_bounds(near, edge):
-					heights[index] = mini(heights[index], heights[NewTerrainValues._index(near.x, near.y, edge)] + 1)
+				if y > 0:
+					height = mini(height, heights[previous_row - 1] + 1)
+
+				if y + 1 < edge:
+					height = mini(height, heights[previous_row + 1] + 1)
+
+			if y > 0:
+				height = mini(height, heights[index - 1] + 1)
+
+			heights[index] = height
 
 	for x in range(edge - 1, -1, -1):
 		for y in range(edge - 1, -1, -1):
-			var index := NewTerrainValues._index(x, y, edge)
+			var index := x * edge + y
+			var height := heights[index]
 
-			for offset in [Vector2i(1, 1), Vector2i(1, 0), Vector2i(1, -1), Vector2i(0, 1)]:
-				var near: Vector2i = Vector2i(x, y) + offset
+			if x + 1 < edge:
+				var next_row := index + edge
+				height = mini(height, heights[next_row] + 1)
 
-				if NewTerrainValues._in_bounds(near, edge):
-					heights[index] = mini(heights[index], heights[NewTerrainValues._index(near.x, near.y, edge)] + 1)
+				if y > 0:
+					height = mini(height, heights[next_row - 1] + 1)
+
+				if y + 1 < edge:
+					height = mini(height, heights[next_row + 1] + 1)
+
+			if y + 1 < edge:
+				height = mini(height, heights[index + 1] + 1)
+
+			heights[index] = height
 
 
 static func _fill_unsupported_slopes(heights: PackedInt32Array, edge: int) -> void:
@@ -64,6 +87,15 @@ static func _fill_unsupported_slopes(heights: PackedInt32Array, edge: int) -> vo
 	for index in heights.size():
 		queue.append(index)
 
+	# Neighbor steps and masks in TerrainTools order. Index x * edge + y.
+	var steps_x := PackedInt32Array()
+	var steps_y := PackedInt32Array()
+	var masks := PackedInt32Array(TerrainTools.NEIGHBOR_MASKS)
+
+	for offset: Vector2i in TerrainTools.NEIGHBOR_OFFSETS:
+		steps_x.append(offset.x)
+		steps_y.append(offset.y)
+
 	var cursor := 0
 
 	while cursor < queue.size():
@@ -72,35 +104,39 @@ static func _fill_unsupported_slopes(heights: PackedInt32Array, edge: int) -> vo
 		cursor += 1
 		pending[index] = 0
 
-		var point := Vector2i(index / edge, index % edge)
+		var x := index / edge
+		var y := index % edge
+		var height := heights[index]
 		var mask := 0
-		var maximum := heights[index]
+		var maximum := height
 
-		for neighbor in TerrainTools.NEIGHBOR_OFFSETS.size():
-			var near: Vector2i = point + TerrainTools.NEIGHBOR_OFFSETS[neighbor]
+		for neighbor in 8:
+			var near_x := x + steps_x[neighbor]
+			var near_y := y + steps_y[neighbor]
 
-			if NewTerrainValues._in_bounds(near, edge):
-				var height := heights[NewTerrainValues._index(near.x, near.y, edge)]
-				maximum = maxi(maximum, height)
+			if near_x >= 0 and near_x < edge and near_y >= 0 and near_y < edge:
+				var near_height := heights[near_x * edge + near_y]
+				maximum = maxi(maximum, near_height)
 
-				if height > heights[index]:
-					mask |= TerrainTools.NEIGHBOR_MASKS[neighbor]
+				if near_height > height:
+					mask |= masks[neighbor]
 
-		var target := maxi(heights[index], maximum - 1)
+		var target := maxi(height, maximum - 1)
 
-		if mask in [5, 10, 15]:
-			target = maxi(target, heights[index] + 1)
+		if mask == 5 or mask == 10 or mask == 15:
+			target = maxi(target, height + 1)
 
-		if target == heights[index]:
+		if target == height:
 			continue
 
 		heights[index] = target
 
-		for offset in TerrainTools.NEIGHBOR_OFFSETS:
-			var near: Vector2i = point + offset
+		for neighbor in 8:
+			var near_x := x + steps_x[neighbor]
+			var near_y := y + steps_y[neighbor]
 
-			if NewTerrainValues._in_bounds(near, edge):
-				var next := NewTerrainValues._index(near.x, near.y, edge)
+			if near_x >= 0 and near_x < edge and near_y >= 0 and near_y < edge:
+				var next := near_x * edge + near_y
 
 				if not pending[next]:
 					pending[next] = 1
@@ -224,14 +260,16 @@ static func _carve_river(
 static func _smooth(heights: PackedInt32Array, map_edge: int = 128) -> void:
 	var source := heights.duplicate()
 
+	# Index x * map_edge + y.
 	for x in map_edge:
 		for y in map_edge:
-			var center := source[NewTerrainValues._index(x, y, map_edge)]
-			var north := source[NewTerrainValues._index(x, y - 1, map_edge)] if y > 0 else center
-			var east := source[NewTerrainValues._index(x + 1, y, map_edge)] if x < map_edge - 1 else center
-			var south := source[NewTerrainValues._index(x, y + 1, map_edge)] if y < map_edge - 1 else center
-			var west := source[NewTerrainValues._index(x - 1, y, map_edge)] if x > 0 else center
-			heights[NewTerrainValues._index(x, y, map_edge)] = (((north + east + south + west) >> 2) + center) >> 1
+			var index := x * map_edge + y
+			var center := source[index]
+			var north := source[index - 1] if y > 0 else center
+			var east := source[index + map_edge] if x < map_edge - 1 else center
+			var south := source[index + 1] if y < map_edge - 1 else center
+			var west := source[index - map_edge] if x > 0 else center
+			heights[index] = (((north + east + south + west) >> 2) + center) >> 1
 
 
 static func _scale_heights(heights: PackedInt32Array, map_edge: int = 128) -> void:
@@ -254,25 +292,27 @@ static func _grade_heights(heights: PackedInt32Array, map_edge: int = 128) -> vo
 
 
 static func _grade_cell(heights: PackedInt32Array, x: int, y: int, map_edge: int = 128) -> void:
-	var index := NewTerrainValues._index(x, y, map_edge)
+	# Index x * map_edge + y. Visit neighbors in CARDINAL_OFFSETS order: north, east, south, west.
+	var index := x * map_edge + y
 	var current := heights[index]
-	var must_lower := false
 
-	for offset in CARDINAL_OFFSETS:
-		var near: Vector2i = Vector2i(x, y) + offset
-
-		if NewTerrainValues._in_bounds(near, map_edge) and heights[NewTerrainValues._index(near.x, near.y, map_edge)] + 1 < current:
-			must_lower = true
-			break
-
-	if not must_lower:
+	if not ((y > 0 and heights[index - 1] + 1 < current)
+			or (x + 1 < map_edge and heights[index + map_edge] + 1 < current)
+			or (y + 1 < map_edge and heights[index + 1] + 1 < current)
+			or (x > 0 and heights[index - map_edge] + 1 < current)):
 		return
 
 	current -= 1
 	heights[index] = current
 
-	for offset in CARDINAL_OFFSETS:
-		var near: Vector2i = Vector2i(x, y) + offset
+	if y > 0 and current < heights[index - 1]:
+		_grade_cell(heights, x, y - 1, map_edge)
 
-		if NewTerrainValues._in_bounds(near, map_edge) and current < heights[NewTerrainValues._index(near.x, near.y, map_edge)]:
-			_grade_cell(heights, near.x, near.y, map_edge)
+	if x + 1 < map_edge and current < heights[index + map_edge]:
+		_grade_cell(heights, x + 1, y, map_edge)
+
+	if y + 1 < map_edge and current < heights[index + 1]:
+		_grade_cell(heights, x, y + 1, map_edge)
+
+	if x > 0 and current < heights[index - map_edge]:
+		_grade_cell(heights, x - 1, y, map_edge)

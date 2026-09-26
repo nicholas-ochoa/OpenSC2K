@@ -63,6 +63,20 @@ static func carve(heights: PackedInt32Array, flags: PackedByteArray, sea: int, f
 	noise.fractal_octaves = 3
 
 	var scale := lerpf(1.08, 0.83, wetness)
+	# Each path bounding box contains every segment box that _near_channel checks.
+	var path_minimums := PackedVector2Array()
+	var path_maximums := PackedVector2Array()
+
+	for path in paths:
+		var low := Vector2(INF, INF)
+		var high := Vector2(-INF, -INF)
+
+		for path_point in path:
+			low = Vector2(minf(low.x, path_point.x), minf(low.y, path_point.y))
+			high = Vector2(maxf(high.x, path_point.x), maxf(high.y, path_point.y))
+
+		path_minimums.append(low)
+		path_maximums.append(high)
 
 	for x in 128:
 		for y in 128:
@@ -115,8 +129,15 @@ static func carve(heights: PackedInt32Array, flags: PackedByteArray, sea: int, f
 					if "meander" in features:
 						local_width = width * (1.0 + rough * 0.20 + 0.06 * sin(point.y * 10.0 + phase))
 
-					for path in paths:
-						if _near_channel(point, path, local_width):
+					for path_index in paths.size():
+						var low := path_minimums[path_index]
+						var high := path_maximums[path_index]
+
+						if (point.x < low.x - local_width or point.x > high.x + local_width
+								or point.y < low.y - local_width or point.y > high.y + local_width):
+							continue
+
+						if _near_channel(point, paths[path_index], local_width):
 							wet = true
 							break
 

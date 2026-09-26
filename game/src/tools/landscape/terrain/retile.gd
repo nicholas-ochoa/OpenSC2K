@@ -18,19 +18,29 @@ static func retile_region(
 	sea_level: int,
 	map_edge: int = 128,
 ) -> void:
+	# Neighbor steps and masks in NEIGHBOR_OFFSETS order. Land altitude is the masked low byte.
+	var steps_x := PackedInt32Array()
+	var steps_y := PackedInt32Array()
+	var masks := PackedInt32Array(NEIGHBOR_MASKS)
+	var level_mask := Sc2AltitudeLayout.LEVEL_MASK
+
+	for offset: Vector2i in NEIGHBOR_OFFSETS:
+		steps_x.append(offset.x)
+		steps_y.append(offset.y)
+
 	for index in indices:
-		var point := Vector2i(int(index / map_edge), index % map_edge)
-		var land := TerrainEditHeights.land_altitude(altitude, index)
+		var x := index / map_edge
+		var y := index % map_edge
+		var land := altitude[index * 2 + 1] & level_mask
 		var higher_mask := 0
 
 		for neighbor_index in 8:
-			var neighbor: Vector2i = point + NEIGHBOR_OFFSETS[neighbor_index]
+			var near_x := x + steps_x[neighbor_index]
+			var near_y := y + steps_y[neighbor_index]
 
-			if TerrainEditHeights._point_is_in_bounds(neighbor, map_edge):
-				var checked_index := neighbor.x * map_edge + neighbor.y
-
-				if TerrainEditHeights.land_altitude(altitude, checked_index) > land:
-					higher_mask |= NEIGHBOR_MASKS[neighbor_index]
+			if (near_x >= 0 and near_x < map_edge and near_y >= 0 and near_y < map_edge
+					and (altitude[(near_x * map_edge + near_y) * 2 + 1] & level_mask) > land):
+				higher_mask |= masks[neighbor_index]
 
 		var shape := int(TERRAIN_SHAPES[higher_mask])
 
