@@ -25,3 +25,5 @@ ghidra/
 /ext/sound/
 /ext/music/
 /ext/data/
+
+.gdls/
