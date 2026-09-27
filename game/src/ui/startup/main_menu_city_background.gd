@@ -26,7 +26,7 @@ var dynamic_visuals: Array[CityDynamicVisual] = []
 var animation_elapsed := 0.0
 var animation_revision := 0
 var city_name_label: Label
-var _render_suspended := false
+var _discard_render := false
 
 
 func _ready() -> void:
@@ -65,7 +65,8 @@ func _process(delta: float) -> void:
 		var result: RenderResult = render_thread.wait_to_finish()
 		render_thread = null
 
-		if result.ok and not _render_suspended:
+		# a render that was running at release belongs to the released city
+		if result.ok and not _discard_render:
 			static_image = result.image
 			demo_texture = ImageTexture.create_from_image(static_image)
 			static_layer.texture = demo_texture
@@ -73,7 +74,12 @@ func _process(delta: float) -> void:
 			occlusion_grid = Renderer.build_occlusion_grid(occlusion_commands, 1)
 			_refresh_animation()
 
-	if _render_suspended or not is_visible_in_tree() or demo_city == null:
+		_discard_render = false
+
+		if demo_city != null and static_image == null:
+			_start_render()
+
+	if not is_visible_in_tree() or demo_city == null:
 		return
 
 	elapsed += delta
@@ -122,8 +128,6 @@ func _exit_tree() -> void:
 
 
 func configure(reference_root: String, palette: Sc2Palette, sprites: Sc2SpriteArchive) -> void:
-	_render_suspended = false
-
 	if demo_city != null:
 		if static_image == null and render_thread == null:
 			_start_render()
@@ -175,7 +179,10 @@ func configure(reference_root: String, palette: Sc2Palette, sprites: Sc2SpriteAr
 	Cleanup.end_disaster(demo_city, demo_city.document, engine)
 	controller = GameSpeedController.new(engine)
 	controller.set_speed(GameSpeedController.Speed.TURTLE)
-	_start_render()
+
+	# _process starts the render after it drains a worker from the released city
+	if render_thread == null:
+		_start_render()
 
 
 static func _collect_cities(folder: String, paths: PackedStringArray) -> void:
@@ -336,11 +343,20 @@ func _occlude(image: Image, sprite_position: Vector2i, order: int) -> Image:
 	return image
 
 
-# Keep the private simulation for the next menu visit, but release its large
-# render buffers while playing. An in-flight render is drained by _process;
-# hiding the menu must not wait for a worker or upload its obsolete image.
-func release_render_data() -> void:
-	_render_suspended = true
+# Release the private city, its simulation, and its render buffers while
+# playing. The next menu visit loads a new city. An in-flight render is drained
+# by _process; hiding the menu must not wait for a worker or upload its image.
+func release_city() -> void:
+	_discard_render = render_thread != null
+	demo_city = null
+	controller = null
+	source_path = ""
+	demo_palette = null
+	demo_sprites = null
+	elapsed = 0.0
+	refresh_elapsed = 0.0
+	animation_elapsed = 0.0
+	city_name_label.text = ""
 	_clear_render_data()
 
 
@@ -371,12 +387,15 @@ func replace_graphics(palette: Sc2Palette, sprites: Sc2SpriteArchive) -> void:
 		render_thread.wait_to_finish()
 		render_thread = null
 
-	demo_palette = palette
-	demo_sprites = sprites
+	_discard_render = false
 	_clear_render_data()
 
-	if demo_city != null and not _render_suspended:
-		_start_render()
+	if demo_city == null:
+		return
+
+	demo_palette = palette
+	demo_sprites = sprites
+	_start_render()
 
 
 class CameraFrame extends RefCounted:
