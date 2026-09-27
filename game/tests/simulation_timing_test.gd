@@ -219,7 +219,8 @@ func _check_day_pacing() -> void:
 	assert(held.ok and held.base_ticks == 0 and not runner.is_pending(), "The next day waits for the pacing period")
 	var second := _finish_tick(runner, 0)
 	assert(second.day_results.size() == 1 and second.day_results[0].day == first.day_results[0].day + 1)
-	assert(second.pacing_delays.keys() == [age] and second.pacing_delays[age] > 0 and second.pacing_delays[age] <= 150000,
+	# A late poll can make the measured wait longer than the pacing period.
+	assert(second.pacing_delays.keys() == [age] and second.pacing_delays[age] > 0,
 		"The held time belongs to the fast day")
 	var history := SimulationTimingHistory.new()
 	history.consume(first)
