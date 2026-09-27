@@ -40,6 +40,10 @@ theme_override_font_sizes/font_size = 70
 text = "SC2K"
 vertical_alignment = 2
 
+[node name="Version" type="Label" parent="Content"]
+layout_mode = 2
+horizontal_alignment = 1
+
 [node name="Tabs" type="TabContainer" parent="Content"]
 layout_mode = 2
 size_flags_vertical = 3
