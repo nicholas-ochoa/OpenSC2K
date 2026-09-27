@@ -5,12 +5,12 @@ extends MicrosimAnnualValues
 @warning_ignore_start("integer_division")
 
 
-static func update_city_hall(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
+static func update_city_hall(annual: MicrosimAnnualContext, offset: int) -> void:
 	BinaryData.write_u16_be(annual.microsims, offset + 2, _population_cap(annual.misc, 200, 900, annual.map_edge))
 	annual.counts.city_hall += 1
 
 
-static func update_museum(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
+static func update_museum(annual: MicrosimAnnualContext, offset: int) -> void:
 	var museum_count := _tile_count(annual.misc, TILE_MUSEUM, annual.map_edge)
 	var college_funding := _budget_funding(annual.misc, BUDGET_COLLEGE)
 	BinaryData.write_u16_be(
@@ -26,7 +26,7 @@ static func update_museum(annual: MicrosimAnnualContext, record_id: int, offset:
 	annual.counts.museum += 1
 
 
-static func update_big_park(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
+static func update_big_park(annual: MicrosimAnnualContext, offset: int) -> void:
 	var old_visitors := BinaryData.read_u16_be(annual.microsims, offset + 4)
 	var park_visitors := mini(old_visitors * 412, 65000)
 	park_visitors = mini(
@@ -44,7 +44,7 @@ static func update_big_park(annual: MicrosimAnnualContext, record_id: int, offse
 	annual.counts.park += 1
 
 
-static func update_stadium(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
+static func update_stadium(annual: MicrosimAnnualContext, offset: int) -> void:
 	if annual.random == null:
 		annual.random_records_pending += 1
 		return
@@ -65,7 +65,7 @@ static func update_stadium(annual: MicrosimAnnualContext, record_id: int, offset
 	annual.counts.stadium += 1
 
 
-static func update_zoo(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
+static func update_zoo(annual: MicrosimAnnualContext, offset: int) -> void:
 	if annual.game_random == null:
 		annual.random_records_pending += 1
 		return
@@ -77,7 +77,7 @@ static func update_zoo(annual: MicrosimAnnualContext, record_id: int, offset: in
 	annual.counts.zoo += 1
 
 
-static func update_statue(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
+static func update_statue(annual: MicrosimAnnualContext, offset: int) -> void:
 	if annual.random == null:
 		annual.random_records_pending += 1
 		return
@@ -86,26 +86,26 @@ static func update_statue(annual: MicrosimAnnualContext, record_id: int, offset:
 	annual.counts.statue += 1
 
 
-static func update_subway_station(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
+static func update_subway_station(annual: MicrosimAnnualContext, offset: int) -> void:
 	BinaryData.write_u16_be(annual.microsims, offset + 2, annual.subway_count)
 	BinaryData.write_u16_be(annual.microsims, offset + 6, annual.subway_passengers)
 	annual.updated_subway += 1
 
 
-static func update_bus_depot(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
+static func update_bus_depot(annual: MicrosimAnnualContext, offset: int) -> void:
 	BinaryData.write_u16_be(annual.microsims, offset + 2, int(annual.bus_count / 4))
 	BinaryData.write_u16_be(annual.microsims, offset + 4, annual.bus_count)
 	BinaryData.write_u16_be(annual.microsims, offset + 6, annual.bus_passengers)
 	annual.updated_bus += 1
 
 
-static func update_rail_station(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
+static func update_rail_station(annual: MicrosimAnnualContext, offset: int) -> void:
 	BinaryData.write_u16_be(annual.microsims, offset + 2, int(annual.rail_count / 4))
 	BinaryData.write_u16_be(annual.microsims, offset + 6, annual.rail_passengers)
 	annual.updated_rail += 1
 
 
-static func update_mayor_house(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
+static func update_mayor_house(annual: MicrosimAnnualContext, offset: int) -> void:
 	BinaryData.write_u16_be(annual.microsims, offset + 4, annual.mayor_approval)
 
 	if BinaryData.read_u16_be(annual.microsims, offset + 6) != 0:
@@ -115,7 +115,7 @@ static func update_mayor_house(annual: MicrosimAnnualContext, record_id: int, of
 	annual.counts.mayor_house += 1
 
 
-static func update_library(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
+static func update_library(annual: MicrosimAnnualContext, offset: int) -> void:
 	var library_count := _tile_count(annual.misc, TILE_LIBRARY, annual.map_edge)
 	var school_funding := _budget_funding(annual.misc, BUDGET_SCHOOL)
 	BinaryData.write_u16_be(
@@ -137,7 +137,7 @@ static func update_library(annual: MicrosimAnnualContext, record_id: int, offset
 	annual.counts.library += 1
 
 
-static func update_marina(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
+static func update_marina(annual: MicrosimAnnualContext, offset: int) -> void:
 	if annual.lfsr_random == null:
 		annual.random_records_pending += 1
 		return
@@ -154,7 +154,7 @@ static func update_marina(annual: MicrosimAnnualContext, record_id: int, offset:
 	annual.counts.marina += 1
 
 
-static func update_llamadome(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
+static func update_llamadome(annual: MicrosimAnnualContext, offset: int) -> void:
 	if annual.random == null:
 		annual.random_records_pending += 1
 		return

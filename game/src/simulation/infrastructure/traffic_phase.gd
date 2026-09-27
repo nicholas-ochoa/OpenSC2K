@@ -6,8 +6,6 @@ const VALUE_COUNT := MAP_SIZE * MAP_SIZE
 
 
 static func run(city: CityState) -> Result:
-	var map_edge: int = city.map_size if city != null else 128
-
 	if city == null or not city.is_valid():
 		return _failed("city is invalid")
 

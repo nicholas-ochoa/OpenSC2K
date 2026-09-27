@@ -5,22 +5,22 @@ var selected_choice := -1
 
 
 func run() -> void:
-	var sign := preload("res://src/ui/tools/city_sign_dialog.tscn").instantiate() as CitySignDialog
-	root.add_child(sign)
-	sign.confirmed.connect(func() -> void: confirmations += 1)
-	sign.show_text("Old sign")
+	var sign_dialog := preload("res://src/ui/tools/city_sign_dialog.tscn").instantiate() as CitySignDialog
+	root.add_child(sign_dialog)
+	sign_dialog.confirmed.connect(func() -> void: confirmations += 1)
+	sign_dialog.show_text("Old sign")
 	await process_frame
-	assert(sign.text_input.has_focus())
-	sign.text_input.text = "A new sign"
-	assert(sign.entered_text() == "A new sign")
-	sign.text_input.text = "x".repeat(32)
-	assert(sign.entered_text().length() == 23, "Sign input respects the saved XLAB limit")
-	sign.get_ok_button().pressed.emit()
-	assert(confirmations == 1 and not sign.visible)
-	sign.show_text("")
-	assert(sign.entered_text().is_empty())
-	sign.hide()
-	sign.free()
+	assert(sign_dialog.text_input.has_focus())
+	sign_dialog.text_input.text = "A new sign"
+	assert(sign_dialog.entered_text() == "A new sign")
+	sign_dialog.text_input.text = "x".repeat(32)
+	assert(sign_dialog.entered_text().length() == 23, "Sign input respects the saved XLAB limit")
+	sign_dialog.get_ok_button().pressed.emit()
+	assert(confirmations == 1 and not sign_dialog.visible)
+	sign_dialog.show_text("")
+	assert(sign_dialog.entered_text().is_empty())
+	sign_dialog.hide()
+	sign_dialog.free()
 	var stadium := preload("res://src/ui/tools/stadium_team_dialog.tscn").instantiate() as StadiumTeamDialog
 	root.add_child(stadium)
 	stadium.show_teams([StadiumTeamDialog.Team.new(4, "Lions"), StadiumTeamDialog.Team.new(9, "Bears")])

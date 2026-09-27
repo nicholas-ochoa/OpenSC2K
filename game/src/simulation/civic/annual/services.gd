@@ -3,7 +3,7 @@ extends MicrosimAnnualValues
 # update services records without changing record or random-call order
 
 
-static func update_hospital(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
+static func update_hospital(annual: MicrosimAnnualContext, offset: int) -> void:
 	if annual.random == null:
 		annual.random_records_pending += 1
 		return
@@ -35,7 +35,7 @@ static func update_hospital(annual: MicrosimAnnualContext, record_id: int, offse
 	annual.counts.hospital += 1
 
 
-static func update_police_station(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
+static func update_police_station(annual: MicrosimAnnualContext, offset: int) -> void:
 	if annual.random == null:
 		annual.random_records_pending += 1
 		return
@@ -62,7 +62,7 @@ static func update_police_station(annual: MicrosimAnnualContext, record_id: int,
 	annual.counts.police += 1
 
 
-static func update_fire_station(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
+static func update_fire_station(annual: MicrosimAnnualContext, offset: int) -> void:
 	if annual.random == null:
 		annual.random_records_pending += 1
 		return
@@ -78,7 +78,7 @@ static func update_fire_station(annual: MicrosimAnnualContext, record_id: int, o
 	annual.counts.fire += 1
 
 
-static func update_school(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
+static func update_school(annual: MicrosimAnnualContext, offset: int) -> void:
 	if annual.random == null:
 		annual.random_records_pending += 1
 		return
@@ -120,7 +120,7 @@ static func update_school(annual: MicrosimAnnualContext, record_id: int, offset:
 	annual.counts.school += 1
 
 
-static func update_prison(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
+static func update_prison(annual: MicrosimAnnualContext, offset: int) -> void:
 	if annual.random == null:
 		annual.random_records_pending += 1
 		return
@@ -166,7 +166,7 @@ static func update_prison(annual: MicrosimAnnualContext, record_id: int, offset:
 	annual.counts.prison += 1
 
 
-static func update_college(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
+static func update_college(annual: MicrosimAnnualContext, offset: int) -> void:
 	if annual.random == null:
 		annual.random_records_pending += 1
 		return

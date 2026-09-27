@@ -114,7 +114,7 @@ func _run() -> void:
 	var center_region := Rect2i(center_key * EDGE, Vector2i.ONE * EDGE)
 	map.source_center = Vector2(center_region.get_center())
 	map.layers._sync_base_layer()
-	map._base_layer.hide()
+	map.layers.base_layer.hide()
 
 	var grid: Array[Vector2i] = []
 

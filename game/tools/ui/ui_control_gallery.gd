@@ -212,9 +212,9 @@ func _choices_page() -> void:
 		for state in STATES:
 			var button: Button
 			if kind == "OptionButton":
-				var option := OptionButton.new()
-				option.add_item("Medium")
-				button = option
+				var state_option := OptionButton.new()
+				state_option.add_item("Medium")
+				button = state_option
 			elif kind.begins_with("CheckButton"):
 				button = CheckButton.new()
 			else:
@@ -317,18 +317,18 @@ func _ranges_page() -> void:
 	var row := _row(page)
 	for state in ["Normal", "Hover / drag", "Disabled", "Focus"]:
 		var cell := _cell(row, state)
-		var slider := HSlider.new()
-		slider.custom_minimum_size = Vector2(200, 36)
-		slider.value = 50
-		cell.add_child(slider)
-		slider.editable = state != "Disabled"
+		var state_slider := HSlider.new()
+		state_slider.custom_minimum_size = Vector2(200, 36)
+		state_slider.value = 50
+		cell.add_child(state_slider)
+		state_slider.editable = state != "Disabled"
 		if state == "Hover / drag":
-			slider.add_theme_icon_override("grabber", slider.get_theme_icon("grabber_highlight"))
-			slider.add_theme_stylebox_override("grabber_area", slider.get_theme_stylebox("grabber_area_highlight"))
+			state_slider.add_theme_icon_override("grabber", state_slider.get_theme_icon("grabber_highlight"))
+			state_slider.add_theme_stylebox_override("grabber_area", state_slider.get_theme_stylebox("grabber_area_highlight"))
 		if state == "Focus":
-			slider.add_theme_icon_override("grabber", slider.get_theme_icon("grabber_highlight"))
-			slider.add_theme_stylebox_override("slider", slider.get_theme_stylebox("focus"))
-		_freeze(slider)
+			state_slider.add_theme_icon_override("grabber", state_slider.get_theme_icon("grabber_highlight"))
+			state_slider.add_theme_stylebox_override("slider", state_slider.get_theme_stylebox("focus"))
+		_freeze(state_slider)
 	_section(page, "Live sliders and scroll bars")
 	row = _row(page)
 	var horizontal := _cell(row, "Horizontal: drag or use arrow keys")
@@ -394,9 +394,9 @@ func _lists_page() -> void:
 	tree.hide_root = true
 	tree_cell.add_child(tree)
 	var root_item := tree.create_item()
-	for name in ["Police", "Fire", "Education"]:
+	for service_name in ["Police", "Fire", "Education"]:
 		var item := tree.create_item(root_item)
-		item.set_text(0, name)
+		item.set_text(0, service_name)
 		item.set_text(1, "100%")
 		item.set_editable(1, true)
 		item.set_cell_mode(2, TreeItem.CELL_MODE_CHECK)
@@ -405,7 +405,7 @@ func _lists_page() -> void:
 		var child := tree.create_item(item)
 		child.set_text(0, "District detail")
 		child.set_text(1, "Read-only")
-		item.collapsed = name != "Police"
+		item.collapsed = service_name != "Police"
 	_section(page, "TabContainer states")
 	var tabs := TabContainer.new()
 	tabs.custom_minimum_size.y = 130
@@ -439,7 +439,10 @@ func _menus_page() -> void:
 	menu.text = "Sample menu"
 	row.add_child(menu)
 	var popup := menu.get_popup()
-	popup.add_item("Open sample", 0, KEY_MASK_CTRL | KEY_O)
+	var open_key := InputEventKey.new()
+	open_key.keycode = KEY_O
+	open_key.ctrl_pressed = true
+	popup.add_item("Open sample", 0, open_key.get_keycode_with_modifiers())
 	popup.add_item("Unavailable action", 1)
 	popup.set_item_disabled(1, true)
 	popup.add_separator("Options")

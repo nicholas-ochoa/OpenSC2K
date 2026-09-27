@@ -23,9 +23,9 @@ static func html_document() -> String:
 		"MAGUNTIA": "res://assets/fonts/unifrakturmaguntia/UnifrakturMaguntia-Book.ttf",
 	}
 
-	for name in mastheads:
-		var masthead := load(mastheads[name]) as FontFile
-		html = html.replace("__NEWSPAPER_%s_FONT__" % name, Marshalls.raw_to_base64(masthead.data))
+	for masthead_name in mastheads:
+		var masthead := load(mastheads[masthead_name]) as FontFile
+		html = html.replace("__NEWSPAPER_%s_FONT__" % masthead_name, Marshalls.raw_to_base64(masthead.data))
 
 	return html
 

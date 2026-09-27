@@ -4,7 +4,6 @@ extends RefCounted
 const CityModel = preload("res://src/model/city_state.gd")
 const Random = preload("res://src/simulation/random/sim_random.gd")
 const GameRandom = preload("res://src/simulation/random/game_lcg_random.gd")
-const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
 const Terrain = preload("res://src/model/new_city_terrain.gd")
 const MISC_SIZE := Sc2MiscLayout.SIZE
 const GRAPH_SIZE := Sc2GraphLayout.SIZE

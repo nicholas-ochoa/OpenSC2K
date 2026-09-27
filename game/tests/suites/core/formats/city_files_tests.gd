@@ -4,7 +4,6 @@ extends "res://tests/support/core_test_suite.gd"
 @warning_ignore_start("integer_division")
 
 const Sc2Document = preload("res://src/formats/sc2_file.gd")
-const CityFileStore = preload("res://src/formats/city_file_store.gd")
 
 
 func test_reference_corpus(reference_root: String) -> void:

@@ -29,13 +29,13 @@ func _init() -> void:
 		simulation_state, preferences, static_render.city_view_size, static_render.sprite_archive_for_view)
 
 
-func _record(name: String, started: int) -> void:
+func _record(profile_name: String, started: int) -> void:
 	var elapsed := Time.get_ticks_usec() - started
-	var entry: Dictionary = frame_profile.get(name, { "calls": 0, "usec": 0, "max_usec": 0 })
+	var entry: Dictionary = frame_profile.get(profile_name, { "calls": 0, "usec": 0, "max_usec": 0 })
 	entry.calls += 1
 	entry.usec += elapsed
 	entry.max_usec = maxi(entry.max_usec, elapsed)
-	frame_profile[name] = entry
+	frame_profile[profile_name] = entry
 
 
 class ProfileFrame extends ApplicationFrame:

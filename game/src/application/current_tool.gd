@@ -3,7 +3,6 @@ extends RefCounted
 
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const Tools = preload("res://src/tools/shared/tool_catalog.gd")
-const ToolState = preload("res://src/tools/shared/tool_edit_state.gd")
 const Buildings = preload("res://src/tools/city/building_command.gd")
 const Hydro = preload("res://src/tools/city/hydro_command.gd")
 const SubwayToRail = preload("res://src/tools/city/subway_to_rail_command.gd")
@@ -145,9 +144,6 @@ func select_subtool(index: int) -> void:
 			and index in [CityToolIds.Bulldozer.RAISE_SEA, CityToolIds.Bulldozer.LOWER_SEA]):
 		app.city_edits.apply_map_selection(Vector2i.ZERO, Vector2i.ZERO, [Vector2i.ZERO], false)
 
-	if app.tool_state.selected_tool_available and ToolState.is_tool_chooser(app.tool_state.selected_group, app.tool_state.selected_subtool):
-		app.query_choices.open_tool_choice_dialog(app.tool_state.selected_group)
-
 
 func _sync_child_tool_selection() -> void:
 	if app.city_toolbar != null:
@@ -177,17 +173,17 @@ func update_edit_state() -> void:
 
 		if app.scurk_place_print.is_object_mode():
 			app.map_view.desktop_cursor_role = 9
-			state = ToolState.scurk_object(
+			state = ToolEditState.scurk_object(
 				app.document_state.city, app.view_state.overlay_mode, app.scurk_place_print.selected_tile_id
 			)
 		else:
 			var cursor_tool := app.scurk_place_print.selected_edit_tool()
 			app.map_view.desktop_cursor_role = DesktopCursorRules.city_tool(cursor_tool.group, cursor_tool.subtool)
-			state = ToolState.scurk_tool(
+			state = ToolEditState.scurk_tool(
 				app.document_state.city, app.scurk_place_print.selected_edit_tool()
 			)
 	else:
-		state = ToolState.normal(
+		state = ToolEditState.normal(
 			app.document_state.city, app.view_state.overlay_mode, app.tool_state.selected_group, app.tool_state.selected_subtool
 		)
 		app.tool_state.selected_tool_available = bool(state.available)

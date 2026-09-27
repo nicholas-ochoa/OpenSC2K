@@ -142,7 +142,10 @@ func _load() -> void:
 	if not _load_sprites(manifest.get("small_medium_sprites", []), small_medium_sprites):
 		return
 
-	var ui: Variant = manifest.get("ui", {} if partial else null)
+	var ui: Variant = manifest.get("ui")
+
+	if partial and not manifest.has("ui"):
+		ui = {}
 
 	if not ui is Dictionary:
 		_fail("ui must be an object")

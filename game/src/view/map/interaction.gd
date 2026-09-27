@@ -2,6 +2,12 @@ class_name CityMapInteraction
 extends CityMapConstants
 
 var map: CityMapControl
+var _stretch_press_y := 0.0
+var shift_pressed := false
+var _brush_elapsed := 0.0
+var panning := false
+var _middle_click_pending := false
+var _middle_press_position := Vector2.ZERO
 
 
 func _init(control: CityMapControl) -> void:
@@ -23,7 +29,7 @@ func _gui_input(event: InputEvent) -> void:
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.keycode == KEY_SHIFT:
-		map._shift_pressed = event.pressed
+		shift_pressed = event.pressed
 
 		if map.stretch_terrain and map.selection_start.x >= 0:
 			map.stretch_changed.emit(map.stretch_height_delta, event.pressed)
@@ -37,16 +43,16 @@ func _input(event: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	if not map.continuous_placement or map.brush_box_selection or not map.edit_enabled or map.selection_start.x < 0:
-		map._brush_elapsed = 0.0
+		_brush_elapsed = 0.0
 
 		return
 
-	map._brush_elapsed += delta
+	_brush_elapsed += delta
 
-	if map._brush_elapsed < (0.1 if map.selection.uses_paint_brush() else 0.3):
+	if _brush_elapsed < (0.1 if map.selection.uses_paint_brush() else 0.3):
 		return
 
-	map._brush_elapsed = 0.0
+	_brush_elapsed = 0.0
 
 	if map.hover_tile.x >= 0:
 		map.selection._emit_brush_dab(map.hover_tile, true)
@@ -66,7 +72,7 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 		return
 
 	if event.button_index == MOUSE_BUTTON_RIGHT and event.pressed and map.selection.cancel_active_selection():
-		map._panning = false
+		panning = false
 		map.accept_event()
 
 		return
@@ -74,19 +80,19 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 	if event.button_index == MOUSE_BUTTON_MIDDLE or event.button_index == MOUSE_BUTTON_RIGHT:
 		if event.button_index == MOUSE_BUTTON_MIDDLE:
 			if event.pressed:
-				map._middle_click_pending = true
-				map._middle_press_position = event.position
-			elif map._middle_click_pending:
-				var tile := map.camera._tile_at(event.position)
+				_middle_click_pending = true
+				_middle_press_position = event.position
+			elif _middle_click_pending:
+				var center_tile := map.camera._tile_at(event.position)
 
-				if tile.x >= 0 and event.position.distance_to(map._middle_press_position) <= 4.0:
-					map.center_requested.emit(tile)
+				if center_tile.x >= 0 and event.position.distance_to(_middle_press_position) <= 4.0:
+					map.center_requested.emit(center_tile)
 
-				map._middle_click_pending = false
+				_middle_click_pending = false
 		else:
-			map._middle_click_pending = false
+			_middle_click_pending = false
 
-		map._panning = event.pressed
+		panning = event.pressed
 		map.accept_event()
 
 		return
@@ -95,10 +101,10 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 		return
 
 	var tile := map.camera._tile_at(event.position)
-	map._shift_pressed = event.shift_pressed
+	shift_pressed = event.shift_pressed
 
 	if event.pressed:
-		map._shift_pressed = event.shift_pressed
+		shift_pressed = event.shift_pressed
 
 		if map.shift_query_enabled and not map.shift_rectangle_enabled and not map.shift_line_enabled and event.shift_pressed:
 			if tile.x >= 0:
@@ -113,7 +119,7 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 
 		if tile.x >= 0:
 			map.hover_tile = tile
-			map._stretch_press_y = event.position.y
+			_stretch_press_y = event.position.y
 			map.stretch_height_delta = 0
 			map.brush_box_selection = map.selection.uses_paint_brush() and map.shift_rectangle_enabled and event.shift_pressed
 			map.selection_start = tile
@@ -121,8 +127,8 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 			map.selection_moved = false
 			map.selection._rebuild_selection_path()
 			map.selection_started.emit()
-			map._brush_elapsed = 0.0
-			map._last_brush_tile = Vector2i(-1, -1)
+			_brush_elapsed = 0.0
+			map.selection.last_brush_tile = Vector2i(-1, -1)
 
 			if map.continuous_placement and not map.brush_box_selection:
 				map.selection._emit_brush_dab(tile, false)
@@ -141,10 +147,10 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 			if map.stretch_terrain:
 				map.selection_end = map.selection_start
 				map.selection_path.assign([map.selection_start])
-				map.stretch_height_delta = roundi((map._stretch_press_y - event.position.y) / 12.0)
-				map.selection_moved = map.selection_moved or absf(map._stretch_press_y - event.position.y) >= 6.0
+				map.stretch_height_delta = roundi((_stretch_press_y - event.position.y) / 12.0)
+				map.selection_moved = map.selection_moved or absf(_stretch_press_y - event.position.y) >= 6.0
 
-			if map.selection.uses_paint_brush() and not map.brush_box_selection and tile.x >= 0 and tile != map._last_brush_tile:
+			if map.selection.uses_paint_brush() and not map.brush_box_selection and tile.x >= 0 and tile != map.selection.last_brush_tile:
 				map.selection._emit_brush_dab(tile, true)
 
 			if not map.continuous_placement or map.brush_box_selection:
@@ -165,24 +171,24 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 	map.selection._hide_placement_error()
 
-	if map._shift_pressed != event.shift_pressed:
-		map._shift_pressed = event.shift_pressed
+	if shift_pressed != event.shift_pressed:
+		shift_pressed = event.shift_pressed
 		map.selection._rebuild_selection_path()
 		map.queue_redraw()
 
 	if (
-		map._panning
+		panning
 		and (
 			event.button_mask
 			& (MOUSE_BUTTON_MASK_MIDDLE | MOUSE_BUTTON_MASK_RIGHT)
 		) == 0
 	):
-		map._panning = false
-		map._middle_click_pending = false
+		panning = false
+		_middle_click_pending = false
 
-	if map._panning:
-		if event.position.distance_to(map._middle_press_position) > 4.0:
-			map._middle_click_pending = false
+	if panning:
+		if event.position.distance_to(_middle_press_position) > 4.0:
+			_middle_click_pending = false
 
 		map.source_center -= event.relative / map.camera._view_scale()
 		map.camera._clamp_source_center()
@@ -194,7 +200,7 @@ func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 		return
 
 	if map.stretch_terrain and map.selection_start.x >= 0:
-		map.stretch_height_delta = roundi((map._stretch_press_y - event.position.y) / 12.0)
+		map.stretch_height_delta = roundi((_stretch_press_y - event.position.y) / 12.0)
 		map.hover_tile = map.selection_start
 		map.selection_moved = map.selection_moved or map.stretch_height_delta != 0
 		map.stretch_changed.emit(map.stretch_height_delta, event.shift_pressed)

@@ -7,7 +7,6 @@ signal music_notice(message: String)
 
 const Music = preload("res://src/audio/music_director.gd")
 const MidiSynth = preload("res://src/audio/midi_synth_player.gd")
-const MovingThingAudio = preload("res://src/audio/moving_thing_audio.gd")
 const WaveSounds = preload("res://src/audio/wave_sound_gate.gd")
 const MUSIC_GAP_MSEC := 15000.0
 const SOUND_EFFECT_GROUP := &"open_sc2k_sound_effects"

@@ -22,12 +22,12 @@ static func copy_region(
 	finish: Vector2i
 ) -> PixelRegion:
 	if width <= 0 or height <= 0 or value_pixels.size() != width * height:
-		var result := PixelRegion.new()
-		result.width = 0
-		result.height = 0
-		result.pixels = PackedInt32Array()
+		var empty_region := PixelRegion.new()
+		empty_region.width = 0
+		empty_region.height = 0
+		empty_region.pixels = PackedInt32Array()
 
-		return result
+		return empty_region
 
 	var minimum := Vector2i(
 		clampi(mini(start.x, finish.x), 0, width - 1),

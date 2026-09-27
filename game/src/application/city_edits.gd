@@ -2,7 +2,6 @@ class_name ApplicationCityEdits
 extends RefCounted
 
 const Tools = preload("res://src/tools/shared/tool_catalog.gd")
-const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
 const SimpleEdits = preload("res://src/tools/shared/simple_edit_flow.gd")
 const Zones = preload("res://src/tools/city/zone_command.gd")
 const Signs = preload("res://src/tools/city/sign_command.gd")
@@ -247,12 +246,12 @@ func _apply_landscape_brush(start: Vector2i, path: Array[Vector2i]) -> bool:
 			origin.x,
 			origin.y,
 		)
-		var command := TerrainTools.apply_path(app.document_state.city, tool.selected_group, tool.selected_subtool,
+		var terrain_command := TerrainTools.apply_path(app.document_state.city, tool.selected_group, tool.selected_subtool,
 			origin, path, tool.tool_random, tool.landscape_editor, target)
 
-		if command.ok or command.error != "no terrain height changed":
+		if terrain_command.ok or terrain_command.error != "no terrain height changed":
 			_finish_simple_edit(
-				SimpleEdits._result("terrain", command, tool.selected_group, tool.selected_subtool, tool.landscape_editor),
+				SimpleEdits._result("terrain", terrain_command, tool.selected_group, tool.selected_subtool, tool.landscape_editor),
 				false,
 				null,
 			)

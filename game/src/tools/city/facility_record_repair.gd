@@ -62,18 +62,18 @@ static func apply(city: CityState) -> Result:
 				for sy in range(y, site.end.y):
 					var index := sx * edge + sy
 					var target := _overlay_target(text, things, index, edge)
-					var id := OverlayData.read(text, target) if target >= 0 else (
+					var existing_id := OverlayData.read(text, target) if target >= 0 else (
 						ThingData.read(things, -target - 1) if target != -1 else -1
 					)
 
-					if OverlayData.is_facility(id):
-						var record := OverlayData.facility_record(id)
-						var saved_tile := int(microsims[record * 8]) if record < city.microsim_count() else 0
+					if OverlayData.is_facility(existing_id):
+						var existing_record := OverlayData.facility_record(existing_id)
+						var saved_tile := int(microsims[existing_record * 8]) if existing_record < city.microsim_count() else 0
 						has_record = has_record or saved_tile == tile or (
-							kind > 16 and saved_tile != BuildingTileIds.EMPTY and record == kind - 16
+							kind > 16 and saved_tile != BuildingTileIds.EMPTY and existing_record == kind - 16
 						)
 
-					if id != 0:
+					if existing_id != 0:
 						blocked = true
 					else:
 						targets.append(target)

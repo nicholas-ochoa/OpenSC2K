@@ -40,5 +40,5 @@ func refresh_city(value: CityState) -> void:
 		industry_control.set_city(value)
 
 
-func _on_mode_selected(mode: int) -> void:
-	industry_control.set_mode(mode)
+func _on_mode_selected(selected_mode: int) -> void:
+	industry_control.set_mode(selected_mode)

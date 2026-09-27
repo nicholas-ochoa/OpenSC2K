@@ -19,7 +19,8 @@ const MAX_OCCLUDER_CHANGES := 32
 
 var region_edge := REGION_EDGE
 var gpu_enabled := gpu_supported()
-var _gpu_workers: Array[RegionWorker] = []
+# Shared with CityRegionScheduling; each cache owns its worker lifetime.
+var gpu_workers: Array[RegionWorker] = []
 var entries: Dictionary[Vector2i, CityRegionResult] = {}
 var wanted: Array[Vector2i] = []
 var visible: Array[Vector2i] = []
@@ -54,7 +55,7 @@ var _job_generation := 0
 var _layout_generation := 0
 var _job_layout := 0
 var _changed := false
-var _viewport_rect := Rect2i()
+var viewport_rect := Rect2i()
 var _viewport_valid := false
 var foreground_changes: Array[Rect2i] = []
 # the parts of `foreground_changes` where the static foreground silhouettes changed
@@ -67,7 +68,7 @@ var sign_layout_token: Array = []
 var _foreground_reset := true
 var _gpu_has_work := true
 var _viewport_serial := 0
-var _gpu_schedule_serial := 0
+var gpu_schedule_serial := 0
 var _edit_priority: Dictionary[Vector2i, int] = {}
 # decoded payloads of the configured city. a later configure compares them to
 # find the changed tiles. packed arrays share data until the city writes again
@@ -260,10 +261,6 @@ func update_viewport(source_rect: Rect2) -> void:
 	CityRegionScheduling.update_viewport(self, source_rect)
 
 
-static func _sort_regions(keys: Array[Vector2i], center: Vector2, first: Vector2i, last: Vector2i, rings: bool) -> void:
-	CityRegionScheduling._sort_regions(keys, center, first, last, rings)
-
-
 func _trim_retained_regions() -> void:
 	CityRegionScheduling._trim_retained_regions(self)
 
@@ -437,7 +434,7 @@ func _mesh_entry(gpu: CityGpuRegionResult) -> CityMapSource.MeshEntry:
 
 
 func _updated_source() -> CityMapSource:
-	var output: CityMapSource
+	var output: CityMapSource = null
 	for key in _source_updates:
 		if not _published_indices.has(key):
 			if key in visible:

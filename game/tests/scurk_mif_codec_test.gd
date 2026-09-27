@@ -19,11 +19,11 @@ func _initialize() -> void:
 	_test_invalid_fields(fixture)
 	_test_parse_reuse(fixture)
 	_test_repeated_shapes()
-	var hash := HashingContext.new()
-	hash.start(HashingContext.HASH_SHA256)
-	hash.update("\n".join(errors).to_utf8_buffer())
+	var hasher := HashingContext.new()
+	hasher.start(HashingContext.HASH_SHA256)
+	hasher.update("\n".join(errors).to_utf8_buffer())
 	print("PASS: generated SCURK MIF bytes, duplicates, high-byte fields, %d rejected inputs and parse recovery; errors_sha256=%s" % [
-		rejected, hash.finish().hex_encode()])
+		rejected, hasher.finish().hex_encode()])
 	quit()
 
 

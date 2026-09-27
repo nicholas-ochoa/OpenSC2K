@@ -7,8 +7,8 @@ const FEEDBACK := 0x1bf5
 var state := 1
 
 
-func _init(seed := 1) -> void:
-	state = int(seed) & 0xffff
+func _init(initial_seed := 1) -> void:
+	state = int(initial_seed) & 0xffff
 
 
 func next_word() -> int:

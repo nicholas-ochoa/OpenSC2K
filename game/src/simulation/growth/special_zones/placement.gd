@@ -125,11 +125,11 @@ static func _place_runway(
 		placed_tiles += 1
 		current += direction
 
-	var result := Result.new()
-	result.ok = true
-	result.changed_tiles = changed_tiles
+	var success := Result.new()
+	success.ok = true
+	success.changed_tiles = changed_tiles
 
-	return result
+	return success
 
 
 static func _place_crane_and_pier(
@@ -215,11 +215,11 @@ static func _place_crane_and_pier(
 
 		changed_tiles += 1
 
-	var result := Result.new()
-	result.ok = true
-	result.changed_tiles = changed_tiles
+	var success := Result.new()
+	success.ok = true
+	success.changed_tiles = changed_tiles
 
-	return result
+	return success
 
 
 static func _place_special_two_by_two(
@@ -298,11 +298,11 @@ static func _place_special_two_by_two(
 		var index := SpecialZoneState._index(checked, map_edge)
 		changed_tiles += int(buildings[index] != before[index])
 
-	var result := Result.new()
-	result.ok = true
-	result.changed_tiles = changed_tiles
+	var success := Result.new()
+	success.ok = true
+	success.changed_tiles = changed_tiles
 
-	return result
+	return success
 
 
 static func place_special_item(
@@ -410,11 +410,11 @@ static func place_missile_silo(
 
 	GrowthSiteRules.set_corners(zones, origin, 3, rotation, map_edge)
 
-	var result := Result.new()
-	result.ok = true
-	result.changed_tiles = changed_tiles
+	var success := Result.new()
+	success.ok = true
+	success.changed_tiles = changed_tiles
 
-	return result
+	return success
 
 
 static func _clear_special_building(

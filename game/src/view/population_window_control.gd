@@ -1,6 +1,8 @@
 class_name PopulationWindowControl
 extends Control
 
+@warning_ignore_start("integer_division")
+
 enum Mode {
 	POPULATION,
 	HEALTH,
@@ -125,7 +127,7 @@ func set_mode(value: int) -> void:
 	if value < Mode.POPULATION or value > Mode.EDUCATION:
 		return
 
-	mode = value
+	mode = value as Mode
 	queue_redraw()
 
 
@@ -135,11 +137,11 @@ func refresh() -> void:
 
 static func snapshot(value_city: CityState) -> Snapshot:
 	if value_city == null or not value_city.is_valid():
-		var result := Snapshot.new()
-		result.ok = false
-		result.error = "city is invalid"
+		var failure := Snapshot.new()
+		failure.ok = false
+		failure.error = "city is invalid"
 
-		return result
+		return failure
 
 	var cohorts: Array[Cohort] = []
 
@@ -154,10 +156,10 @@ static func snapshot(value_city: CityState) -> Snapshot:
 		entry.education_points = education_points
 		entry.life_points = life_points
 		entry.education_quotient = (
-			int(education_points / population) if population > 0 else 0
+			education_points / population if population > 0 else 0
 		)
 		entry.life_expectancy = (
-			int(life_points / population) if population > 0 else 0
+			life_points / population if population > 0 else 0
 		)
 		cohorts.append(entry)
 
@@ -186,14 +188,14 @@ static func chart_values(data: Snapshot, selected_mode: int) -> PackedInt32Array
 		var value := 0
 
 		if selected_mode == Mode.POPULATION and total > 0:
-			value = int((population * 600) / total)
+			value = (population * 600) / total
 
 			if population > 0 and value == 0:
 				value = 1
 		elif selected_mode == Mode.HEALTH and population > 0:
-			value = int(cohort.life_points / population)
+			value = cohort.life_points / population
 		elif selected_mode == Mode.EDUCATION and population > 0:
-			value = int(cohort.education_points * 15 / (population * 25))
+			value = cohort.education_points * 15 / (population * 25)
 
 		result.append(value)
 
@@ -225,7 +227,7 @@ static func indicator_text(data: Snapshot, selected_mode: int) -> String:
 
 static func y_axis_label(selected_mode: int, step: int) -> String:
 	if selected_mode == Mode.POPULATION:
-		return "%d%%" % int((step * 5) / 2) if step % 2 == 0 else ""
+		return "%d%%" % ((step * 5) / 2) if step % 2 == 0 else ""
 
 	if selected_mode == Mode.HEALTH:
 		return "%d yrs" % (step * 15)
@@ -243,9 +245,6 @@ func _draw_centered_message(message: String) -> void:
 		font, Vector2((size.x - width) * 0.5, size.y * 0.5), message,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, get_theme_color("ink", "AppPalette")
 	)
-
-
-@warning_ignore_start("integer_division")
 
 
 class Cohort extends RefCounted:

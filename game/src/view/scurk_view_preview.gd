@@ -57,8 +57,8 @@ func _draw() -> void:
 	var label_height := _label_size() + 6 if not size_label.is_empty() else 0
 	if preview_texture != null:
 		var extent := _art_extent()
-		var position := Vector2(floorf((frame.size.x - extent.x) * 0.5), 1 + label_height)
-		draw_texture_rect_region(preview_texture, Rect2(position, extent), Rect2(display_bounds))
+		var art_position := Vector2(floorf((frame.size.x - extent.x) * 0.5), 1 + label_height)
+		draw_texture_rect_region(preview_texture, Rect2(art_position, extent), Rect2(display_bounds))
 	if not size_label.is_empty():
 		draw_string(get_theme_default_font(), Vector2(5, _label_size() + 2), size_label,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, _label_size(), get_theme_color("font_color", "Label"))
@@ -74,7 +74,7 @@ func set_preview(
 	background_workspace: PackedInt32Array,
 	clipping_enabled := true
 ) -> void:
-	view = clampi(value_view, ScurkSpriteIds.View.LARGE, ScurkSpriteIds.View.SMALL)
+	view = clampi(value_view, ScurkSpriteIds.View.LARGE, ScurkSpriteIds.View.SMALL) as ScurkSpriteIds.View
 	palette = value_palette
 	var divisor := DrawingWorkspace.view_divisor(view)
 	preview_width = DrawingWorkspace.WIDTH / divisor
@@ -115,7 +115,7 @@ func set_preview(
 
 
 func clear_preview(value_view: int) -> void:
-	view = clampi(value_view, ScurkSpriteIds.View.LARGE, ScurkSpriteIds.View.SMALL)
+	view = clampi(value_view, ScurkSpriteIds.View.LARGE, ScurkSpriteIds.View.SMALL) as ScurkSpriteIds.View
 	var divisor := DrawingWorkspace.view_divisor(view)
 	preview_width = DrawingWorkspace.WIDTH / divisor
 	preview_height = DrawingWorkspace.HEIGHT / divisor

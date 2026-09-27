@@ -13,16 +13,16 @@ func _run() -> void:
 	var texture := ImageTexture.create_from_image(Image.create(2, 2, false, Image.FORMAT_LA8))
 	view.city_source = _source([CityMapSource.MeshEntry.new(Vector2.ZERO, mesh_a, texture, 1)])
 	view.layers._sync_base_layer()
-	var first: MeshInstance2D = view._mesh_layers[0]
+	var first: MeshInstance2D = view.layers._mesh_layers[0]
 	view.city_source = _source([
 		CityMapSource.MeshEntry.new(Vector2.ZERO, mesh_a, texture, 1),
 		CityMapSource.MeshEntry.new(Vector2(256, 0), mesh_b, texture, 1),
 	])
 	view.layers._sync_base_layer()
-	assert(view._mesh_layers[0] == first, "Publishing a region replaced unchanged mesh nodes")
+	assert(view.layers._mesh_layers[0] == first, "Publishing a region replaced unchanged mesh nodes")
 	view.city_source = _source([CityMapSource.MeshEntry.new(Vector2.ZERO, mesh_b, texture, 2)])
 	view.layers._sync_base_layer()
-	assert(view._mesh_layers.size() == 1 and view._mesh_layers[0] == first)
+	assert(view.layers._mesh_layers.size() == 1 and view.layers._mesh_layers[0] == first)
 	assert(first.mesh == mesh_b and first.get_meta("divisor") == 2)
 	view.city_source = _source([CityMapSource.MeshEntry.new(Vector2.ZERO, mesh_b, texture, 4)])
 	view.layers._sync_base_layer()
@@ -40,9 +40,9 @@ func _run() -> void:
 	assert(view.sign_occlusion_visuals[1].texture == replacement)
 	var dynamic := CityDynamicVisual.new(texture, Vector2(5, 7))
 	view.set_dynamic_sprites([dynamic])
-	var revision := view._dynamic_canvas.visual_revision
+	var revision := view.layers.dynamic_canvas.visual_revision
 	view.set_dynamic_sprites([dynamic.copy()])
-	assert(view._dynamic_canvas.visual_revision == revision, "Unchanged visual fields rebuilt the canvas")
+	assert(view.layers.dynamic_canvas.visual_revision == revision, "Unchanged visual fields rebuilt the canvas")
 	dynamic.position = Vector2(15, 17)
 	assert(view.dynamic_sprites[0].position == Vector2(5, 7), "Changing input altered a retained dynamic visual")
 	view.set_dynamic_sprites([dynamic])
@@ -125,7 +125,7 @@ func _check_region_pixels() -> void:
 	var before := await _capture_region_pixels(viewport)
 	var changed := _colored_entry(right.position, Color.BLUE, 2)
 	view.city_source = _source([left, changed])
-	view.city_source.mesh_updates_from = view._tiled_source.get_instance_id()
+	view.city_source.mesh_updates_from = view.layers._tiled_source.get_instance_id()
 	view.city_source.mesh_updates = PackedInt32Array([1])
 	assert(view.layers._update_region_meshes(view.camera._view_scale()))
 	view.layers._sync_base_layer()
@@ -136,7 +136,7 @@ func _check_region_pixels() -> void:
 		view.zoom_factor = zoom
 		view.layers._sync_base_layer()
 		updated = await _capture_region_pixels(viewport)
-		view._tiled_source = null
+		view.layers._tiled_source = null
 		view.layers._sync_base_layer()
 		var reconciled := await _capture_region_pixels(viewport)
 		assert(updated.get_data() == reconciled.get_data(), "Retained region pixels differ from full reconciliation")
@@ -168,16 +168,16 @@ func _check_region_updates(view: CityMapControl, texture: ImageTexture) -> void:
 	b.immutable = true
 	view.city_source = _source([a, b])
 	view.layers._sync_base_layer()
-	var left := view._mesh_layers[0]
-	var right := view._mesh_layers[1]
+	var left := view.layers._mesh_layers[0]
+	var right := view.layers._mesh_layers[1]
 	var changed := CityMapSource.MeshEntry.new(b.position, QuadMesh.new(), texture, 2)
 	changed.immutable = true
 	view.city_source = _source([a, changed])
-	view.city_source.mesh_updates_from = view._tiled_source.get_instance_id()
+	view.city_source.mesh_updates_from = view.layers._tiled_source.get_instance_id()
 	view.city_source.mesh_updates = PackedInt32Array([1])
 	assert(view.layers._update_region_meshes(view.camera._view_scale()))
-	assert(view._mesh_layers[0] == left and left.mesh == a.mesh)
-	assert(view._mesh_layers[1] == right and right.mesh == changed.mesh and right.get_meta("divisor") == 2)
+	assert(view.layers._mesh_layers[0] == left and left.mesh == a.mesh)
+	assert(view.layers._mesh_layers[1] == right and right.mesh == changed.mesh and right.get_meta("divisor") == 2)
 	view.zoom_factor = 0.5
 	view.layers._sync_base_layer()
 	assert(left.scale == Vector2.ONE * view.camera._view_scale())
@@ -200,40 +200,43 @@ func _check_region_updates(view: CityMapControl, texture: ImageTexture) -> void:
 	view.city_source = _source([changed, a])
 	assert(not view.layers._update_region_meshes(view.camera._view_scale()), "Reordered regions need position reconciliation")
 	view.layers._sync_base_layer()
-	assert(view._mesh_layers[0] == right and view._mesh_layers[1] == left)
+	assert(view.layers._mesh_layers[0] == right and view.layers._mesh_layers[1] == left)
 	var moved := CityMapSource.MeshEntry.new(Vector2(512, 0), QuadMesh.new(), texture, 1)
 	view.city_source = _source([moved, a])
 	assert(not view.layers._update_region_meshes(view.camera._view_scale()))
 	view.layers._sync_base_layer()
-	assert(view._mesh_layers[0].position == moved.position * view.camera._view_scale())
-	assert(view._mesh_layers[1] == left)
+	assert(view.layers._mesh_layers[0].position == moved.position * view.camera._view_scale())
+	assert(view.layers._mesh_layers[1] == left)
 	# Public mutable descriptors retain the original reconciliation behavior.
 	moved.position = Vector2(768, 0)
 	view.city_source = _source([moved, a])
 	view.layers._sync_base_layer()
-	assert(view._mesh_layers[0].position == moved.position * view.camera._view_scale())
+	assert(view.layers._mesh_layers[0].position == moved.position * view.camera._view_scale())
 
 
 func _check_sign_layout_tokens(view: CityMapControl) -> void:
 	var city := CityState.from_document(Sc2File.load_path("res://tests/fixtures/cities/generated-128.SC2"))
 	view.set_city_view(city, view.city_source, null, false, true, [1])
-	var scans := view._sign_cache_build_count
+	var scans := view.signs.sign_cache_build_count
 	var copy := CityState.from_document(city.document.duplicate_document())
 	view.set_city_view(copy, view.city_source, null, false, true, [1])
-	assert(view._sign_entries_city == copy and view._sign_cache_build_count == scans)
+	assert(view.signs.sign_entries_city == copy and view.signs.sign_cache_build_count == scans)
 	assert(copy.set_label(1, "Updated label"))
 	view.set_city_view(copy, view.city_source, null, false, true, [2])
-	assert(view._sign_cache_build_count == scans + 1, "Changed labels were not checked on the current city")
+	assert(view.signs.sign_cache_build_count == scans + 1, "Changed labels were not checked on the current city")
 	view.zoom_factor = 0.25
 	view.set_city_view(copy, view.city_source, null, false, true, [2])
-	assert(view._sign_cache_build_count == scans + 2, "Zoom left stale sign dimensions")
+	assert(view.signs.sign_cache_build_count == scans + 2, "Zoom left stale sign dimensions")
 	view.signs._invalidate_sign_entries()
-	assert(view._external_sign_layout_token.is_empty())
+	assert(view.signs.external_sign_layout_token.is_empty())
 	view.set_animated_palette(ImageTexture.create_from_image(Image.create(256, 1, false, Image.FORMAT_RGBA8)))
 	view.set_city_view(copy, _source([]), null, true, true, [2])
-	assert(view._base_material.get_shader_parameter("palette_cycle_enabled"), "Indexed base sources cycle without a separate index texture")
+	assert(
+		view.layers._base_material.get_shader_parameter("palette_cycle_enabled"),
+		"Indexed base sources cycle without a separate index texture"
+	)
 	view.set_city_view(copy, _source([]), null, false, true, [2])
-	assert(not view._base_material.get_shader_parameter("palette_cycle_enabled"))
+	assert(not view.layers._base_material.get_shader_parameter("palette_cycle_enabled"))
 
 
 func _source(meshes: Array[CityMapSource.MeshEntry]) -> CityMapSource:

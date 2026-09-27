@@ -50,7 +50,7 @@ func _run() -> void:
 func _finish_workers(cache: CityRegionCache) -> void:
 	var deadline := Time.get_ticks_msec() + 10000
 
-	for worker in cache._gpu_workers:
+	for worker in cache.gpu_workers:
 		while worker.task != null and worker.task.is_running():
 			assert(Time.get_ticks_msec() < deadline, "Region worker did not finish")
 			await process_frame

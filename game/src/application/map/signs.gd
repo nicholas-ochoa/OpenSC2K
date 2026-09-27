@@ -57,24 +57,25 @@ static func refresh_sign_occlusion(render: ApplicationMapRender, view_size: int)
 			render.caches.dynamic_sign_occlusion_grid,
 			bounds,
 		):
-			var visual := render.caches.dynamic_sign_occluders[moving_index]
-			moving_candidates.append(visual)
-			moving_signature.append(visual.value_signature())
+			var moving_visual := render.caches.dynamic_sign_occluders[moving_index]
+			moving_candidates.append(moving_visual)
+			moving_signature.append(moving_visual.value_signature())
 
 		var signature := [view_size, bounds, int(entry.draw_order), moving_signature]
 		var key := int(entry.key)
 
 		if render.caches.sign_foreground_cache.has(key) and render.caches.sign_foreground_cache[key].signature == signature:
-			var cached := render.caches.sign_foreground_cache[key]
+			var cached_foreground := render.caches.sign_foreground_cache[key]
 
-			if cached.indices != null:
-				var palette_signature := 0 if gpu_palette else render.sign_palette_signature(cached.used_indices, color_indices)
+			if cached_foreground.indices != null:
+				var palette_signature := 0 if gpu_palette else render.sign_palette_signature(cached_foreground.used_indices, color_indices)
 
-				if not gpu_palette and int(cached.palette_signature) != palette_signature:
-					cached.visual.texture = ImageTexture.create_from_image(render.sign_palette_image(cached.indices, color_indices))
-					cached.palette_signature = palette_signature
+				if not gpu_palette and int(cached_foreground.palette_signature) != palette_signature:
+					cached_foreground.visual.texture = ImageTexture.create_from_image(
+						render.sign_palette_image(cached_foreground.indices, color_indices))
+					cached_foreground.palette_signature = palette_signature
 
-				visuals[key] = cached.visual
+				visuals[key] = cached_foreground.visual
 
 			continue
 
@@ -161,7 +162,7 @@ static func refresh_sign_occlusion(render: ApplicationMapRender, view_size: int)
 	render.app.map_view.set_sign_occlusion_visuals(visuals)
 
 
-static func sign_palette_signature(render: ApplicationMapRender, used: Dictionary[int, bool], mapping: PackedInt32Array) -> int:
+static func sign_palette_signature(used: Dictionary[int, bool], mapping: PackedInt32Array) -> int:
 	var colors := PackedInt32Array()
 
 	for index in used:

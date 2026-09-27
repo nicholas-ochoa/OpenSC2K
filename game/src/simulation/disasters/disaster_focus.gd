@@ -1,6 +1,8 @@
 class_name DisasterFocus
 extends DisasterStartConstants
 
+@warning_ignore_start("integer_division")
+
 const MARKER_OVERLAYS := {
 	DisasterMapConstants.FIRE_OVERLAY: true,
 	DisasterMapConstants.TOXIC_OVERLAY: true,

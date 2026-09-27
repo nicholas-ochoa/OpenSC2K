@@ -2,7 +2,6 @@ class_name ToolEditState
 extends RefCounted
 
 const Tools = preload("res://src/tools/shared/tool_catalog.gd")
-const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
 const Zones = preload("res://src/tools/city/zone_command.gd")
 const Landscapes = preload("res://src/tools/landscape/landscape_command.gd")
 const Buildings = preload("res://src/tools/city/building_command.gd")
@@ -16,14 +15,6 @@ const Demolish = preload("res://src/tools/city/demolish_command.gd")
 const TerrainTools = preload("res://src/tools/landscape/terrain_command.gd")
 const Dispatch = preload("res://src/tools/city/dispatch_command.gd")
 const ScurkPlace = preload("res://src/tools/scurk/scurk_place_command.gd")
-
-
-static func is_tool_chooser(group_index: int, subtool_index: int) -> bool:
-	return false
-
-
-static func is_tool_variant(group_index: int, subtool_index: int) -> bool:
-	return false
 
 
 static func scurk_object(
@@ -183,9 +174,6 @@ static func _normal_status_detail(
 
 	if not available:
 		return "%s is not available in this city." % tool_name
-
-	if is_tool_chooser(group_index, subtool_index):
-		return "%s selected. Select an available type from the choice window." % tool_name
 
 	if Zones.supports_tool(group_index, subtool_index):
 		return "%s selected. Drag on the city map to zone. Use the mouse wheel to zoom and the right or middle button to pan." % tool_name

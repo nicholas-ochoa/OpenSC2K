@@ -187,14 +187,14 @@ static func _trim_shape(sampled: PackedInt32Array, output_width: int, output_max
 		blank.resize(output_width)
 		blank.fill(-1)
 
-		var result := IndexedImageResult.new()
-		result.ok = true
-		result.width = output_width
-		result.height = 1
-		result.pixels = blank
-		result.error = ""
+		var blank_result := IndexedImageResult.new()
+		blank_result.ok = true
+		blank_result.width = output_width
+		blank_result.height = 1
+		blank_result.pixels = blank
+		blank_result.error = ""
 
-		return result
+		return blank_result
 
 	var output_height := output_max_height - first_visible_row
 	var output := PackedInt32Array()

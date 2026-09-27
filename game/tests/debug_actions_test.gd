@@ -30,15 +30,15 @@ func _check_run_to_date() -> void:
 	var target := CityDebugActions.age_for_date(city, 2, 4, city.founding_year())
 	assert(target == CityCalendar.DAYS_PER_MONTH + 3)
 	controller.pause_at_day = target
-	var paused := false
+	var reached_pause := false
 
 	# fast speed runs one day per base tick. the pause stops the rest of the frame
 	for frame in 20:
 		var result := controller.advance_time(GameSpeedController.BASE_TICK_MSEC * 4.0, frame * 1000)
 		assert(result.ok, result.error)
-		paused = paused or result.paused_on_target_day
+		reached_pause = reached_pause or result.paused_on_target_day
 
-	assert(paused and city.age_in_days() == target, "Expected a pause on day %d, not %d" % [target, city.age_in_days()])
+	assert(reached_pause and city.age_in_days() == target, "Expected a pause on day %d, not %d" % [target, city.age_in_days()])
 	assert(controller.speed == GameSpeedController.Speed.PAUSED and controller.pause_at_day == -1)
 	assert(city.simulation_speed() == GameSpeedController.Speed.PAUSED, "The saved speed follows the pause")
 
@@ -104,8 +104,8 @@ func _check_moving_things() -> void:
 		var spawned := CityDebugActions.spawn_moving_thing(city, document, engine, pair[0], point, 99)
 		# The fixed seed can select a dry map edge. Try each deterministic coast choice.
 		if pair[0] == 2 and not spawned.ok:
-			for seed in range(1, 8):
-				spawned = CityDebugActions.spawn_moving_thing(city, document, engine, 2, point, seed)
+			for random_seed in range(1, 8):
+				spawned = CityDebugActions.spawn_moving_thing(city, document, engine, 2, point, random_seed)
 
 				if spawned.ok:
 					break

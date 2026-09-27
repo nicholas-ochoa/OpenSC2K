@@ -208,7 +208,7 @@ static func moving_thing_draw_commands_for_visual(
 		var monster_has_shadow := city.building_id(visual.x, visual.y) < Tiles.LOWER_CLASS_HOMES_1X1_2
 
 		for layer in visual.layers:
-			var destination := Vector2i(
+			var layer_destination := Vector2i(
 				monster_origin_x + layer.screen_x,
 				monster_origin_y + layer.screen_y
 			)
@@ -216,14 +216,14 @@ static func moving_thing_draw_commands_for_visual(
 			if monster_has_shadow:
 				commands.append(_moving_draw_command(
 					layer.sprite_id, layer.flip,
-					destination + Vector2i(
+					layer_destination + Vector2i(
 						0, configuration.half_height * visual.z
 					),
 					true
 				))
 
 			commands.append(_moving_draw_command(
-				layer.sprite_id, layer.flip, destination, false
+				layer.sprite_id, layer.flip, layer_destination, false
 			))
 
 		return commands

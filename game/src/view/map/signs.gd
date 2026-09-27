@@ -1,7 +1,16 @@
 class_name CityMapSigns
 extends CityMapConstants
 
+@warning_ignore_start("integer_division")
+
 var map: CityMapControl
+var _sign_font: SystemFont
+var sign_entries: Array[CityMapSigns.Entry] = []
+var sign_entries_city: CityState
+var sign_entries_zoom := -1.0
+var _sign_layout_signature: Array = []
+var external_sign_layout_token: Array = []
+var sign_cache_build_count := 0
 
 
 func _init(control: CityMapControl) -> void:
@@ -54,7 +63,7 @@ func sign_source_entries() -> Array[CitySignRequest]:
 	_ensure_sign_entries()
 	var entries: Array[CitySignRequest] = []
 
-	for entry in map._sign_entries:
+	for entry in sign_entries:
 		entries.append(CitySignRequest.new(entry.key, entry.bounds, entry.draw_order))
 
 	return entries
@@ -63,12 +72,12 @@ func sign_source_entries() -> Array[CitySignRequest]:
 func _ensure_sign_entries() -> void:
 	var map_edge: int = map.city.map_size if map.city != null else 128
 
-	if map._sign_entries_city == map.city and is_equal_approx(map._sign_entries_zoom, map.zoom_factor):
+	if sign_entries_city == map.city and is_equal_approx(sign_entries_zoom, map.zoom_factor):
 		return
 
 	if map.city == null:
-		map._sign_entries.clear()
-		map._sign_entries_city = null
+		sign_entries.clear()
+		sign_entries_city = null
 
 		return
 
@@ -90,16 +99,16 @@ func _ensure_sign_entries() -> void:
 		hash(labels.decoded_payload) if labels != null else 0,
 	]
 
-	if map._sign_layout_signature == signature and is_equal_approx(map._sign_entries_zoom, map.zoom_factor):
-		map._sign_entries_city = map.city
+	if _sign_layout_signature == signature and is_equal_approx(sign_entries_zoom, map.zoom_factor):
+		sign_entries_city = map.city
 
 		return
 
-	map._sign_layout_signature = signature
-	map._sign_entries.clear()
-	map._sign_entries_city = map.city
-	map._sign_entries_zoom = map.zoom_factor
-	map._sign_cache_build_count += 1
+	_sign_layout_signature = signature
+	sign_entries.clear()
+	sign_entries_city = map.city
+	sign_entries_zoom = map.zoom_factor
+	sign_cache_build_count += 1
 	var view_index := sign_view_index(map.zoom_factor)
 	var divisor := Renderer.view_configuration(view_index).divisor
 	var font := _get_sign_font()
@@ -107,7 +116,7 @@ func _ensure_sign_entries() -> void:
 	var positions: Array[Vector2i] = []
 
 	for index in sign_indices:
-		var x := int(index / map_edge)
+		var x := index / map_edge
 		var y := index % map_edge
 		positions.append(Vector2i((x + y) * map_edge + y, index))
 
@@ -115,7 +124,7 @@ func _ensure_sign_entries() -> void:
 		return a.x < b.x)
 
 	for entry in positions:
-		var x := int(entry.y / map_edge)
+		var x := entry.y / map_edge
 		var y := entry.y % map_edge
 
 		if not map.city.tile_is_visible(x, y):
@@ -144,25 +153,25 @@ func _ensure_sign_entries() -> void:
 			view_index, divisor,
 		)
 		var bounds: Rect2 = layout.panel.merge(layout.post)
-		var sign := Entry.new()
-		sign.key = map.city.index_of(x, y)
-		sign.anchor = polygon[0] + Vector2(0, -8)
-		sign.label = label_text
-		sign.text_width = native_width
-		sign.bounds = Rect2i(
+		var sign_entry := Entry.new()
+		sign_entry.key = map.city.index_of(x, y)
+		sign_entry.anchor = polygon[0] + Vector2(0, -8)
+		sign_entry.label = label_text
+		sign_entry.text_width = native_width
+		sign_entry.bounds = Rect2i(
 			Vector2i(floori(bounds.position.x), floori(bounds.position.y)),
 			Vector2i(ceili(bounds.size.x), ceili(bounds.size.y)),
 		)
-		sign.draw_order = (x + y) * map_edge + y
-		map._sign_entries.append(sign)
+		sign_entry.draw_order = (x + y) * map_edge + y
+		sign_entries.append(sign_entry)
 
 
 func _invalidate_sign_entries() -> void:
-	map._external_sign_layout_token.clear()
-	map._sign_layout_signature.clear()
-	map._sign_entries.clear()
-	map._sign_entries_city = null
-	map._sign_entries_zoom = -1.0
+	external_sign_layout_token.clear()
+	_sign_layout_signature.clear()
+	sign_entries.clear()
+	sign_entries_city = null
+	sign_entries_zoom = -1.0
 
 
 func _draw_signs(scale: float, offset: Vector2) -> void:
@@ -177,7 +186,7 @@ func _draw_signs(scale: float, offset: Vector2) -> void:
 	var font := _get_sign_font()
 	var font_size: int = SIGN_FONT_HEIGHTS[view_index]
 
-	for entry in map._sign_entries:
+	for entry in sign_entries:
 		if not Rect2(entry.bounds).intersects(map.camera.visible_source_rect()):
 			continue
 
@@ -297,13 +306,13 @@ static func sign_layout(
 
 
 func _get_sign_font() -> Font:
-	if map._sign_font == null:
-		map._sign_font = SystemFont.new()
+	if _sign_font == null:
+		_sign_font = SystemFont.new()
 		# the executable asks for "ariel", windows substitutes arial
-		map._sign_font.font_names = PackedStringArray(["Arial"])
-		map._sign_font.font_weight = 600
+		_sign_font.font_names = PackedStringArray(["Arial"])
+		_sign_font.font_weight = 600
 
-	return map._sign_font
+	return _sign_font
 
 
 func _draw_raised_sign_part(rect: Rect2, fill: Color, multiplier: float) -> void:
@@ -334,9 +343,6 @@ func _draw_raised_sign_part(rect: Rect2, fill: Color, multiplier: float) -> void
 		Vector2(left + edge, bottom - 2.0 * edge),
 		SIGN_EDGE_MIDDLE, edge, false,
 	)
-
-
-@warning_ignore_start("integer_division")
 
 
 class Entry extends RefCounted:

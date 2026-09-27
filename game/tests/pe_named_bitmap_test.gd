@@ -70,9 +70,9 @@ func _initialize() -> void:
 		assert(result.ok, str(result.error))
 		var image: Image = result.image
 		image.convert(Image.FORMAT_RGBA8)
-		var hash := HashingContext.new()
-		assert(hash.start(HashingContext.HASH_SHA256) == OK and hash.update(image.get_data()) == OK)
-		assert(hash.finish().hex_encode() == expected[name], "named bitmap decoder agreement: " + name)
+		var hasher := HashingContext.new()
+		assert(hasher.start(HashingContext.HASH_SHA256) == OK and hasher.update(image.get_data()) == OK)
+		assert(hasher.finish().hex_encode() == expected[name], "named bitmap decoder agreement: " + name)
 
 	for name in ["", "adviceu", "MISSING", "2"]:
 		assert(not PeBitmapResource.load_named(path, name).ok)

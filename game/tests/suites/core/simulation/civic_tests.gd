@@ -6,7 +6,6 @@ extends "res://tests/support/core_test_suite.gd"
 const Milestones = preload("res://src/simulation/civic/milestone_phase.gd")
 const MilitaryProposal = preload("res://src/simulation/civic/military_proposal_phase.gd")
 const MayorApproval = preload("res://src/simulation/civic/mayor_approval_phase.gd")
-const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
 const TestRandoms = preload("res://tests/support/test_randoms.gd")
 const SequenceRandom = TestRandoms.SequenceRandom
 const SequenceGameModuloRandom = TestRandoms.SequenceGameModuloRandom

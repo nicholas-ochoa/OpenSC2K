@@ -84,7 +84,7 @@ static func _demolish_point(
 	if tile_id >= TUNNEL_FIRST and tile_id <= TUNNEL_LAST:
 		return DemolishTransport._demolish_tunnel(
 			altitude, buildings, terrain, zones, flags, misc, point, tile_id,
-			random, emit_effects, false, map_edge
+			random, emit_effects, map_edge
 		)
 
 	if (tile_id >= BRIDGE_FIRST and tile_id <= BRIDGE_LAST) or (tile_id >= REINFORCED_BRIDGE_FIRST and tile_id <= REINFORCED_BRIDGE_LAST):
@@ -148,11 +148,11 @@ static func _demolish_point(
 
 		DemolishTerrain._remove_surface_water(altitude, buildings, terrain, zones, flags, misc, point, map_edge)
 
-		var result := DemolishPointResult.new()
-		result.changed = true
-		result.indices = PackedInt32Array([index])
+		var water_result := DemolishPointResult.new()
+		water_result.changed = true
+		water_result.indices = PackedInt32Array([index])
 
-		return result
+		return water_result
 
 	if tile_id < Tiles.SMALL_PARK:
 		if not scurk_mode and tile_id >= Tiles.TREE_FIRST and random.next_u15() % 20 == 0:
@@ -179,12 +179,12 @@ static func _demolish_point(
 			buildings, terrain, zones, underground, flags, misc, [point], text_overlays, map_edge
 		)
 
-		var result := DemolishPointResult.new()
-		result.changed = true
-		result.indices = PackedInt32Array([index])
-		result.effect_events = network_effects
+		var network_result := DemolishPointResult.new()
+		network_result.changed = true
+		network_result.indices = PackedInt32Array([index])
+		network_result.effect_events = network_effects
 
-		return result
+		return network_result
 
 	var area := DemolishEffectsSites._building_area(tile_id)
 	var site := DemolishEffectsSites._find_building_site(buildings, zones, point, tile_id, area, city.compass_rotation(), map_edge)
@@ -249,12 +249,12 @@ static func _demolish_point(
 		else:
 			DemolishTerrain._remove_surface_water(altitude, buildings, terrain, zones, flags, misc, point, map_edge)
 
-	var result := DemolishPointResult.new()
-	result.changed = true
-	result.indices = indices
-	result.effect_events = effect_events
+	var building_result := DemolishPointResult.new()
+	building_result.changed = true
+	building_result.indices = indices
+	building_result.effect_events = effect_events
 
-	return result
+	return building_result
 
 
 # gdstyle:ignore=quality/max-parameters
@@ -344,9 +344,9 @@ static func _demolish_underground_point(
 		buildings, terrain, zones, underground, flags, misc, [point], text_overlays, map_edge
 	)
 
-	var result := DemolishPointResult.new()
-	result.changed = true
-	result.indices = indices
-	result.effect_events = effect_events
+	var underground_result := DemolishPointResult.new()
+	underground_result.changed = true
+	underground_result.indices = indices
+	underground_result.effect_events = effect_events
 
-	return result
+	return underground_result

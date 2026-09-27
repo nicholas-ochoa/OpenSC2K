@@ -144,53 +144,53 @@ static func _update_facility_records(annual: MicrosimAnnualContext) -> void:
 
 		match int(annual.microsims[offset]):
 			TILE_HYDRO_ONE, TILE_HYDRO_TWO:
-				MicrosimAnnualUtilities.update_hydro_one(annual, record_id, offset)
+				MicrosimAnnualUtilities.update_hydro_one(annual, offset)
 			TILE_WIND_POWER:
-				MicrosimAnnualUtilities.update_wind_power(annual, record_id, offset)
+				MicrosimAnnualUtilities.update_wind_power(annual, offset)
 			var power_tile when power_tile >= TILE_POWER_FIRST and power_tile <= TILE_POWER_LAST:
 				MicrosimAnnualUtilities.update_power(annual, record_id, offset, power_tile)
 			TILE_CITY_HALL:
-				MicrosimAnnualAmenities.update_city_hall(annual, record_id, offset)
+				MicrosimAnnualAmenities.update_city_hall(annual, offset)
 			TILE_HOSPITAL:
-				MicrosimAnnualServices.update_hospital(annual, record_id, offset)
+				MicrosimAnnualServices.update_hospital(annual, offset)
 			TILE_POLICE_STATION:
-				MicrosimAnnualServices.update_police_station(annual, record_id, offset)
+				MicrosimAnnualServices.update_police_station(annual, offset)
 			TILE_FIRE_STATION:
-				MicrosimAnnualServices.update_fire_station(annual, record_id, offset)
+				MicrosimAnnualServices.update_fire_station(annual, offset)
 			TILE_MUSEUM:
-				MicrosimAnnualAmenities.update_museum(annual, record_id, offset)
+				MicrosimAnnualAmenities.update_museum(annual, offset)
 			TILE_BIG_PARK:
-				MicrosimAnnualAmenities.update_big_park(annual, record_id, offset)
+				MicrosimAnnualAmenities.update_big_park(annual, offset)
 			TILE_SCHOOL:
-				MicrosimAnnualServices.update_school(annual, record_id, offset)
+				MicrosimAnnualServices.update_school(annual, offset)
 			TILE_STADIUM:
-				MicrosimAnnualAmenities.update_stadium(annual, record_id, offset)
+				MicrosimAnnualAmenities.update_stadium(annual, offset)
 			TILE_PRISON:
-				MicrosimAnnualServices.update_prison(annual, record_id, offset)
+				MicrosimAnnualServices.update_prison(annual, offset)
 			TILE_COLLEGE:
-				MicrosimAnnualServices.update_college(annual, record_id, offset)
+				MicrosimAnnualServices.update_college(annual, offset)
 			TILE_ZOO:
-				MicrosimAnnualAmenities.update_zoo(annual, record_id, offset)
+				MicrosimAnnualAmenities.update_zoo(annual, offset)
 			TILE_STATUE:
-				MicrosimAnnualAmenities.update_statue(annual, record_id, offset)
+				MicrosimAnnualAmenities.update_statue(annual, offset)
 			TILE_SUBWAY_STATION:
-				MicrosimAnnualAmenities.update_subway_station(annual, record_id, offset)
+				MicrosimAnnualAmenities.update_subway_station(annual, offset)
 			TILE_BUS_DEPOT:
-				MicrosimAnnualAmenities.update_bus_depot(annual, record_id, offset)
+				MicrosimAnnualAmenities.update_bus_depot(annual, offset)
 			TILE_RAIL_STATION:
-				MicrosimAnnualAmenities.update_rail_station(annual, record_id, offset)
+				MicrosimAnnualAmenities.update_rail_station(annual, offset)
 			TILE_MAYOR_HOUSE:
-				MicrosimAnnualAmenities.update_mayor_house(annual, record_id, offset)
+				MicrosimAnnualAmenities.update_mayor_house(annual, offset)
 			TILE_WATER_TREATMENT, TILE_DESALINIZATION:
-				MicrosimAnnualUtilities.update_water_treatment(annual, record_id, offset)
+				MicrosimAnnualUtilities.update_water_treatment(annual, offset)
 			TILE_LIBRARY:
-				MicrosimAnnualAmenities.update_library(annual, record_id, offset)
+				MicrosimAnnualAmenities.update_library(annual, offset)
 			TILE_MARINA:
-				MicrosimAnnualAmenities.update_marina(annual, record_id, offset)
+				MicrosimAnnualAmenities.update_marina(annual, offset)
 			var arcology_tile when arcology_tile >= TILE_ARCOLOGY_FIRST and arcology_tile <= TILE_ARCOLOGY_LAST:
-				MicrosimAnnualUtilities.update_arcology(annual, record_id, offset, arcology_tile)
+				MicrosimAnnualUtilities.update_arcology(annual, offset, arcology_tile)
 			TILE_LLAMADOME:
-				MicrosimAnnualAmenities.update_llamadome(annual, record_id, offset)
+				MicrosimAnnualAmenities.update_llamadome(annual, offset)
 
 
 # store the arrest total and prison bonus. report a low school score, then

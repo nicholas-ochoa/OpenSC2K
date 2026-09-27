@@ -45,13 +45,13 @@ func _initialize() -> void:
 				var loaded := Sc2File.new()
 				check(loaded.parse(bytes) and loaded.serialize().data == bytes, "Prepared Army base round trips exactly")
 			# Per-cell underground protection: no partial ownership transfer at obstacles.
-			var doc := EmptyCityTemplate.create(edge)
+			var obstructed_doc := EmptyCityTemplate.create(edge)
 			if native:
-				doc.enable_full_resolution_maps()
-			var city := CityState.from_document(doc)
-			city.set_underground_id(12, 10, UndergroundTileIds.SUBWAY_LR)
-			var result := MilitaryProposalPhase.resolve(city, true, PlotRandom.new(10))
-			check(result.ok and city.zone_id(12, 10) == 0 and city.underground_id(12, 10) == 1,
+				obstructed_doc.enable_full_resolution_maps()
+			var obstructed_city := CityState.from_document(obstructed_doc)
+			obstructed_city.set_underground_id(12, 10, UndergroundTileIds.SUBWAY_LR)
+			var result := MilitaryProposalPhase.resolve(obstructed_city, true, PlotRandom.new(10))
+			check(result.ok and obstructed_city.zone_id(12, 10) == 0 and obstructed_city.underground_id(12, 10) == 1,
 				"Proposal excludes each underground obstruction")
 	print("Army base regression: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)

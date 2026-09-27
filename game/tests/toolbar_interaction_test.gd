@@ -140,7 +140,7 @@ func _run() -> void:
 		map.selection._clear_selection()
 
 	map.shift_line_enabled = false
-	_test_brush_and_drag_input(main, map, shift)
+	_test_brush_and_drag_input(map, shift)
 
 	# Dual underground cells can display either or both networks without edits.
 	city.set_underground_id(90, 90, UndergroundTileIds.PIPE_TB_SUBWAY_LR)
@@ -249,7 +249,7 @@ func _test_fire_clock(city: CityState) -> void:
 	assert(engine.fire_ticks == 2)
 
 
-func _test_brush_and_drag_input(main: CityApplication, map: CityMapControl, shift: InputEventKey) -> void:
+func _test_brush_and_drag_input(map: CityMapControl, shift: InputEventKey) -> void:
 	# Held brush emits on its cadence and stops after the selection clears.
 	var brush := CityMapControl.new()
 	brush.edit_enabled = true

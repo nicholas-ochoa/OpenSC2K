@@ -57,8 +57,8 @@ func check_size(edge: int) -> void:
 	var road := NetworkCommand.apply(city, 6, 0, corner, corner + Vector2i(0, 4))
 	check(road.ok, "Far road tool: " + road.error)
 	check(NetworkCommand.undo(city, road).ok, "Far road undo")
-	var sign := SignCommand.set_sign(city, corner, "Far corner")
-	check(sign.ok and SignCommand.undo(city, sign).ok, "Far sign and undo")
+	var sign_edit := SignCommand.set_sign(city, corner, "Far corner")
+	check(sign_edit.ok and SignCommand.undo(city, sign_edit).ok, "Far sign and undo")
 	var points: Array[Vector2i] = [corner]
 	var raised := TerrainCommand.apply_path(city, 0, 2, corner, points, SimRandom.new(1), true)
 	check(raised.ok, "Far terrain edit: " + raised.error)

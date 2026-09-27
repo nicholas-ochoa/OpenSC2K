@@ -11,7 +11,6 @@ enum TimingStep {
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const MovingThings = preload("res://src/simulation/moving_things/moving_thing_spawner.gd")
-const SpecialZoneGrowth = preload("res://src/simulation/growth/special_zone_growth.gd")
 const MAP_VALUE_COUNT := 64 * 64
 const MISC_SIZE := Sc2MiscLayout.SIZE
 const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS

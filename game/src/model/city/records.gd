@@ -152,8 +152,8 @@ static func microsim_sites(city: CityState) -> Dictionary[int, Site]:
 	var key := [text.get_instance_id(), text.mutation_revision,
 		things.get_instance_id() if things != null else 0, things.mutation_revision if things != null else -1]
 
-	if key == city._microsim_sites_key:
-		return city._microsim_sites
+	if key == city.microsim_site_cache_key:
+		return city.microsim_site_cache
 
 	var overlays := text.decoded_payload
 	var tile_count := city.map_size * city.map_size
@@ -213,18 +213,18 @@ static func microsim_sites(city: CityState) -> Dictionary[int, Site]:
 
 		bounds[at + 4] += 1
 
-	city._microsim_sites = {}
+	city.microsim_site_cache = {}
 
 	for record in records:
 		var at := record * 5
 
 		if bounds[at + 4] > 0:
-			city._microsim_sites[record] = Site.new(bounds[at], bounds[at + 1], bounds[at + 2] - bounds[at] + 1,
+			city.microsim_site_cache[record] = Site.new(bounds[at], bounds[at + 1], bounds[at + 2] - bounds[at] + 1,
 				bounds[at + 3] - bounds[at + 1] + 1, bounds[at + 4])
 
-	city._microsim_sites_key = key
+	city.microsim_site_cache_key = key
 
-	return city._microsim_sites
+	return city.microsim_site_cache
 
 
 class Site extends RefCounted:

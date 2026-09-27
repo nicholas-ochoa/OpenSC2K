@@ -49,7 +49,7 @@ func _check_crash_rules() -> void:
 
 	var falling := CityState.from_document(Sc2File.load_path("res://tests/fixtures/cities/generated-128.SC2"))
 	assert(falling.set_no_disasters_enabled(false))
-	var record := _place_airplane(falling, Vector2i(40, 40), 7, 0)
+	var falling_record := _place_airplane(falling, Vector2i(40, 40), 7, 0)
 	var crash := MovingThingPhase.run(
 		falling,
 		SimRandom.new(7),
@@ -61,7 +61,7 @@ func _check_crash_rules() -> void:
 		0,
 		true,
 	)
-	assert(crash.ok and int(falling.thing(record).type) == 6, "A started plane crash still crashes while vehicles are hidden")
+	assert(crash.ok and int(falling.thing(falling_record).type) == 6, "A started plane crash still crashes while vehicles are hidden")
 
 
 func _check_application() -> void:

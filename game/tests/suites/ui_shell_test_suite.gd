@@ -1,7 +1,6 @@
 extends RefCounted
 
 const NewCity = preload("res://src/model/new_city_setup.gd")
-const NewCityTerrain = preload("res://src/model/new_city_terrain.gd")
 const Budget = preload("res://src/simulation/economy/budget_phase.gd")
 const RciStatus = preload("res://src/view/rci_status_control.gd")
 const SettingsStoreUi = preload("res://src/ui/settings/app_settings_store.gd")

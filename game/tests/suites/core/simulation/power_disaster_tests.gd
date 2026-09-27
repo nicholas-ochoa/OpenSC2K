@@ -7,7 +7,6 @@ const Random = preload("res://src/simulation/random/sim_random.gd")
 const LfsrRandom = preload("res://src/simulation/random/sim_lfsr_random.gd")
 const DisasterStart = preload("res://src/simulation/disasters/disaster_start_phase.gd")
 const Growth = preload("res://src/simulation/growth/phase/constants.gd")
-const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
 const Buildings = preload("res://src/tools/city/building_command.gd")
 const TestRandoms = preload("res://tests/support/test_randoms.gd")
 const SequenceLfsrRandom = TestRandoms.SequenceLfsrRandom

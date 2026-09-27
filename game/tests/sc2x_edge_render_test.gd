@@ -1,6 +1,8 @@
 extends "res://tests/city_gpu_geometry_test.gd"
 ## Compare edge building pixels in the region painter and native GPU renderer.
 
+@warning_ignore_start("integer_division")
+
 
 static func edge_city() -> CityState:
 	var city := CityState.from_document(EmptyCityTemplate.create(32))

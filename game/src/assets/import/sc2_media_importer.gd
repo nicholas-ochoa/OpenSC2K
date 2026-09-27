@@ -174,10 +174,10 @@ static func _import_audio(source: Sc2ImportSource, category: String, folder: Str
 			continue
 
 		var name := "%d.%s" % [id, extension]
-		var write_error := _write(folder.path_join(name), bytes)
+		var audio_write_error := _write(folder.path_join(name), bytes)
 
-		if not write_error.is_empty():
-			result.failures[category] = write_error
+		if not audio_write_error.is_empty():
+			result.failures[category] = audio_write_error
 			OriginalGameInstaller.remove_tree(folder)
 			return
 

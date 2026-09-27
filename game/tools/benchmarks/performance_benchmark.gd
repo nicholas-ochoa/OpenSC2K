@@ -66,7 +66,7 @@ func _benchmark_initialize() -> void:
 		return
 
 	started = Time.get_ticks_usec()
-	var initial_texture := ImageTexture.create_from_image(initial.image)
+	var _initial_texture := ImageTexture.create_from_image(initial.image)
 	print(
 		"static_texture_upload: %d us; format=%d; bytes=%d"
 		% [
@@ -75,7 +75,7 @@ func _benchmark_initialize() -> void:
 			initial.image.get_data_size(),
 		]
 	)
-	initial_texture = null
+	_initial_texture = null
 
 	var job := RenderJob.new()
 	job.city_snapshot = city
@@ -217,11 +217,11 @@ func _measure_captures(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteA
 			samples.region_configure_capture.append(elapsed)
 
 		started = Time.get_ticks_usec()
-		var simulation_snapshot := SimulationSnapshot.capture(controller, null)
+		var _simulation_snapshot := SimulationSnapshot.capture(controller, null)
 		elapsed = Time.get_ticks_usec() - started
 		if index >= CAPTURE_WARMUP:
 			samples.simulation_capture.append(elapsed)
-		simulation_snapshot = null
+		_simulation_snapshot = null
 
 	regions.close()
 	for name in samples:

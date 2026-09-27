@@ -3,14 +3,14 @@ extends MicrosimAnnualValues
 # update utilities records without changing record or random-call order
 
 
-static func update_hydro_one(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
+static func update_hydro_one(annual: MicrosimAnnualContext, offset: int) -> void:
 	var hydro_count := _tile_count(annual.misc, TILE_HYDRO_ONE, annual.map_edge) + _tile_count(annual.misc, TILE_HYDRO_TWO, annual.map_edge)
 	BinaryData.write_u16_be(annual.microsims, offset + 2, hydro_count)
 	BinaryData.write_u16_be(annual.microsims, offset + 4, hydro_count * 20)
 	annual.counts.hydro += 1
 
 
-static func update_wind_power(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
+static func update_wind_power(annual: MicrosimAnnualContext, offset: int) -> void:
 	var wind_count := _tile_count(annual.misc, TILE_WIND_POWER, annual.map_edge)
 	BinaryData.write_u16_be(annual.microsims, offset + 2, wind_count)
 	BinaryData.write_u16_be(annual.microsims, offset + 4, wind_count * 4)
@@ -70,7 +70,7 @@ static func update_power(annual: MicrosimAnnualContext, record_id: int, offset: 
 	annual.counts.power += 1
 
 
-static func update_water_treatment(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
+static func update_water_treatment(annual: MicrosimAnnualContext, offset: int) -> void:
 	if annual.random == null:
 		annual.random_records_pending += 1
 		return
@@ -96,7 +96,7 @@ static func update_water_treatment(annual: MicrosimAnnualContext, record_id: int
 	annual.counts.water_facility += 1
 
 
-static func update_arcology(annual: MicrosimAnnualContext, record_id: int, offset: int, arcology_tile: int) -> void:
+static func update_arcology(annual: MicrosimAnnualContext, offset: int, arcology_tile: int) -> void:
 	if annual.lfsr_random == null:
 		annual.random_records_pending += 1
 		return

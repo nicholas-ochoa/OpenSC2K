@@ -349,7 +349,7 @@ func _test_footprints() -> void:
 			canvas.pixels.fill(5)
 		var before := canvas.pixels.duplicate()
 		var footprint := canvas.tool_footprint()
-		if canvas.is_shape_tool(tool):
+		if ScurkPixelCanvas.is_shape_tool(tool):
 			canvas._preview_shape(canvas.hover_point)
 		else:
 			canvas._apply_brush(canvas.hover_point)
@@ -389,10 +389,10 @@ func _test_footprints() -> void:
 	canvas.hover_point = Vector2i(15, 15)
 	assert(canvas.tool_footprint().size() == 24 * 24)
 	canvas.set_brush(24, true)
-	var footprint := canvas.tool_footprint()
-	assert(footprint.size() < 24 * 24 and footprint.size() > 400)
+	var ellipse_footprint := canvas.tool_footprint()
+	assert(ellipse_footprint.size() < 24 * 24 and ellipse_footprint.size() > 400)
 	canvas._apply_brush(canvas.hover_point)
-	for point in footprint:
+	for point in ellipse_footprint:
 		assert(canvas.pixel_at(point) == canvas.selected_color_index)
 	canvas.set_brush(25, false)
 	assert(canvas.brush_size == 24)
@@ -419,12 +419,12 @@ func _test_clipboard_actions(editor: ScurkEditorControl) -> void:
 	assert(point.x >= 0)
 	canvas.selection.combine(canvas.selection.rectangle(point, point))
 	for command in [KEY_C, KEY_X, KEY_V]:
-		var event := InputEventKey.new()
-		event.keycode = command
-		event.pressed = true
-		event.ctrl_pressed = true
+		var shortcut_event := InputEventKey.new()
+		shortcut_event.keycode = command
+		shortcut_event.pressed = true
+		shortcut_event.ctrl_pressed = true
 		editor.object_list.grab_focus()
-		assert(editor.handle_shortcut(event))
+		assert(editor.handle_shortcut(shortcut_event))
 		assert(canvas.tool == ScurkPixelCanvas.TOOL_SELECT_RECT)
 		if command == KEY_C:
 			assert(canvas.clipboard_width == 1 and canvas.clipboard_height == 1)
@@ -473,10 +473,10 @@ func _test_context_menu_input() -> void:
 	host.add_child(menu)
 	menu.add_item("Action")
 	var clicks: Array[Vector2] = []
-	host.gui_input.connect(func(event: InputEvent) -> void:
-		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
-			clicks.append(event.position)
-			menu.position = Vector2i(event.position)
+	host.gui_input.connect(func(input_event: InputEvent) -> void:
+		if input_event is InputEventMouseButton and input_event.pressed and input_event.button_index == MOUSE_BUTTON_RIGHT:
+			clicks.append(input_event.position)
+			menu.position = Vector2i(input_event.position)
 			menu.popup()
 	)
 	menu.position = Vector2i(20, 20)

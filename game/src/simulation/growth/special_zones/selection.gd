@@ -191,8 +191,8 @@ static func grow_special_zone(
 			buildings, zones, underground, misc, point, zone, rotation, map_edge
 		)
 
-	var result := SpecialZonePlacement.Result.new()
-	result.ok = true
-	result.changed_tiles = 0
+	var unchanged_result := SpecialZonePlacement.Result.new()
+	unchanged_result.ok = true
+	unchanged_result.changed_tiles = 0
 
-	return result
+	return unchanged_result

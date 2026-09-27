@@ -10,18 +10,18 @@ func _run() -> void:
 	var dry_bank_maps := 0
 	var first_document: Sc2File
 	var first_components: Array
-	for seed in [1, 5, 7]:
-		var doc := _generate(128, seed)
+	for random_seed in [1, 5, 7]:
+		var doc := _generate(128, random_seed)
 		var components := _water_components(CityState.from_document(doc))
 		assert(not components.is_empty())
-		if seed == 1:
+		if random_seed == 1:
 			first_document = doc
 			first_components = components
 		if components.size() > 1:
 			lake_maps += 1
 		else:
 			dry_bank_maps += 1
-		print("Meander seed ", seed, ": ", components.size(), " water bodies")
+		print("Meander seed ", random_seed, ": ", components.size(), " water bodies")
 	assert(lake_maps > 0 and dry_bank_maps > 0, "Expected seeds both with and without oxbow lakes")
 	for edge in [128]:
 		var doc := first_document
@@ -70,10 +70,10 @@ func _run() -> void:
 	quit()
 
 
-func _generate(edge: int, seed: int) -> Sc2File:
+func _generate(edge: int, random_seed: int) -> Sc2File:
 	var doc := EmptyCityTemplate.create(edge)
 	assert(NewCityTerrain.generate(doc, false, true, 12, 5, 0,
-		SimRandom.new(seed), GameLcgRandom.new(seed), "classic", ["meander"], true).ok)
+		SimRandom.new(random_seed), GameLcgRandom.new(random_seed), "classic", ["meander"], true).ok)
 	return doc
 
 

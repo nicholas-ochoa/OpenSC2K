@@ -14,7 +14,7 @@ var destination_hashes: Dictionary[String, String] = {}
 
 
 func _init() -> void:
-	var root := GeneratedCityFixture.ROOT
+	var fixture_root := GeneratedCityFixture.ROOT
 	var regenerate := false
 	var selected := GeneratedCityFixture.SIZES.duplicate()
 
@@ -22,7 +22,7 @@ func _init() -> void:
 		if argument == "--regenerate":
 			regenerate = true
 		elif argument.begins_with("--output="):
-			root = argument.trim_prefix("--output=")
+			fixture_root = argument.trim_prefix("--output=")
 		elif argument.begins_with("--size="):
 			selected = [int(argument.trim_prefix("--size="))]
 		else:
@@ -33,7 +33,7 @@ func _init() -> void:
 	# Preflight every destination before generating or writing any output.
 	for edge in selected:
 		assert(edge in GeneratedCityFixture.SIZES, "Unsupported fixture size")
-		var path := GeneratedCityFixture.path(edge, root)
+		var path := GeneratedCityFixture.path(edge, fixture_root)
 
 		for destination in [path, path + ".json"]:
 			destination_hashes[destination] = FileAccess.get_sha256(destination) if FileAccess.file_exists(destination) else ""
@@ -49,17 +49,17 @@ func _init() -> void:
 				quit(1)
 				return
 
-	assert(DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(root)) == OK)
+	assert(DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(fixture_root)) == OK)
 
 	for edge in selected:
-		if not build(edge, root):
+		if not build(edge, fixture_root):
 			quit(1)
 			return
 
 	quit()
 
 
-func build(edge: int, root: String) -> bool:
+func build(edge: int, fixture_root: String) -> bool:
 	command_failed = false
 	random = SimRandom.new(17000 + edge)
 	lfsr = SimLfsrRandom.new(23000 + edge)
@@ -180,7 +180,7 @@ func build(edge: int, root: String) -> bool:
 	print("Coverage ", GeneratedCityFixture.counts(city))
 	var coverage := GeneratedCityFixture.validate(city.document, edge)
 	assert(not coverage.is_empty(), "Fixture validation failed; no file was written")
-	var path := GeneratedCityFixture.path(edge, root)
+	var path := GeneratedCityFixture.path(edge, fixture_root)
 	for destination in [path, path + ".json"]:
 		var current := FileAccess.get_sha256(destination) if FileAccess.file_exists(destination) else ""
 		assert(current == destination_hashes[destination], "Destination changed during generation: " + destination)

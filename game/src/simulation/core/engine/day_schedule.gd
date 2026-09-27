@@ -130,7 +130,7 @@ static func scanned_data_maps_only(day: SimulationDayResult) -> bool:
 	return results.values()[0] is PollutionPhase.Result
 
 
-static func _schedule_after(engine: SimulationEngine, schedule: SimulationSchedule, completed_action: String) -> SimulationSchedule:
+static func _schedule_after(schedule: SimulationSchedule, completed_action: String) -> SimulationSchedule:
 	var remaining := schedule.copy()
 	remaining.actions = PackedStringArray()
 	var found := false

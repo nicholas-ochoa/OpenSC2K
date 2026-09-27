@@ -2,6 +2,9 @@ class_name CityMapPresentation
 extends CityMapConstants
 
 var map: CityMapControl
+var _effect_generation := 0
+var _shake_generation := 0
+var shake_offset := Vector2.ZERO
 
 
 func _init(control: CityMapControl) -> void:
@@ -15,8 +18,8 @@ func _draw() -> void:
 	var scale := map.camera._view_scale()
 	var offset := map.camera._draw_offset(scale)
 
-	if map._price_layer != null:
-		map._price_layer.queue_redraw()
+	if map.layers.price_layer != null:
+		map.layers.price_layer.queue_redraw()
 
 	if map.data_view_mesh != null:
 		map.layers._draw_data_view(scale, offset)
@@ -26,14 +29,14 @@ func _draw() -> void:
 
 		return
 
-	if map._base_layer == null and map.city_source.texture != null:
+	if map.layers.base_layer == null and map.city_source.texture != null:
 		map.draw_texture_rect(
 			map.city_source.texture,
 			Rect2(offset, Vector2(map.city_source.size) * scale),
 			false
 		)
 
-	if map._base_layer == null:
+	if map.layers.base_layer == null:
 		_draw_dynamic_sprites(scale, offset)
 
 	_draw_transient_effects(scale, offset)
@@ -80,9 +83,10 @@ func set_city_view(
 ) -> void:
 	var reset_center := map.city_source == null or map.city_source.size != source.size
 	var old_center := map.source_center
-	var old_sign_scans := map._sign_cache_build_count
-	var reuse_layout := (preserve_sign_cache and not sign_layout_token.is_empty() and sign_layout_token == map._external_sign_layout_token
-			and map._sign_entries_city != null and is_equal_approx(map._sign_entries_zoom, map.zoom_factor))
+	var old_sign_scans := map.signs.sign_cache_build_count
+	var reuse_layout := (preserve_sign_cache and not sign_layout_token.is_empty()
+			and sign_layout_token == map.signs.external_sign_layout_token
+			and map.signs.sign_entries_city != null and is_equal_approx(map.signs.sign_entries_zoom, map.zoom_factor))
 
 	if not preserve_sign_cache or map.city != value:
 		map._preserve_sign_layout = preserve_sign_cache
@@ -90,11 +94,11 @@ func set_city_view(
 		map._preserve_sign_layout = false
 
 	if reuse_layout:
-		map._sign_entries_city = value
-	elif not sign_layout_token.is_empty() and sign_layout_token != map._external_sign_layout_token:
-		map._sign_entries_city = null
+		map.signs.sign_entries_city = value
+	elif not sign_layout_token.is_empty() and sign_layout_token != map.signs.external_sign_layout_token:
+		map.signs.sign_entries_city = null
 
-	map._external_sign_layout_token = sign_layout_token.duplicate()
+	map.signs.external_sign_layout_token = sign_layout_token.duplicate()
 	map.city_source = source
 	map.palette_index_texture = index_texture
 	map.base_palette_lookup_all = palette_lookup_all
@@ -115,7 +119,7 @@ func set_city_view(
 	if preserve_sign_cache:
 		map.signs._ensure_sign_entries()
 
-	if (not preserve_sign_cache or reset_center or old_center != map.source_center or old_sign_scans != map._sign_cache_build_count
+	if (not preserve_sign_cache or reset_center or old_center != map.source_center or old_sign_scans != map.signs.sign_cache_build_count
 			or map.hover_tile.x >= 0 or map.selection_start.x >= 0):
 		map.queue_redraw()
 
@@ -123,7 +127,7 @@ func set_city_view(
 
 
 func show_transient_effects(effects: Array[CityTransientEffectVisual], duration := 0.1) -> void:
-	map._effect_generation += 1
+	_effect_generation += 1
 	map.transient_effects.clear()
 	map.queue_redraw()
 
@@ -138,13 +142,13 @@ func show_transient_effects(effects: Array[CityTransientEffectVisual], duration 
 		last_frame = maxi(last_frame, effect.frame)
 
 	_show_transient_effect_frame(
-		sequence, 0, last_frame, maxf(0.0, float(duration)), map._effect_generation
+		sequence, 0, last_frame, maxf(0.0, float(duration)), _effect_generation
 	)
 
 
 func shake_view(frames := 24, frame_duration := 0.005, distance := 4.0) -> void:
-	map._shake_generation += 1
-	map._shake_offset = Vector2.ZERO
+	_shake_generation += 1
+	shake_offset = Vector2.ZERO
 
 	if frames <= 0 or not map.is_inside_tree():
 		map.layers._sync_base_layer()
@@ -157,7 +161,7 @@ func shake_view(frames := 24, frame_duration := 0.005, distance := 4.0) -> void:
 		frames,
 		maxf(0.0, float(frame_duration)),
 		maxf(0.0, float(distance)),
-		map._shake_generation
+		_shake_generation
 	)
 
 
@@ -180,8 +184,8 @@ func set_dynamic_sprites(sprites: Array[CityDynamicVisual]) -> void:
 
 	map.dynamic_sprites = retained
 
-	if map._dynamic_canvas != null:
-		map._dynamic_canvas.set_visuals(
+	if map.layers.dynamic_canvas != null:
+		map.layers.dynamic_canvas.set_visuals(
 			map.dynamic_sprites, map.camera._view_scale(), map.camera._draw_offset(map.camera._view_scale())
 		)
 	else:
@@ -189,29 +193,29 @@ func set_dynamic_sprites(sprites: Array[CityDynamicVisual]) -> void:
 
 
 func dynamic_render_node_count() -> int:
-	return int(map._dynamic_canvas != null)
+	return int(map.layers.dynamic_canvas != null)
 
 
 func debug_metrics() -> Dictionary:
 	return {
 		"zoom": "%d%%" % map.camera.zoom_percent(),
 		"center_tile": str(map.camera.center_tile()),
-		"panning": map._panning,
+		"panning": map.interaction.panning,
 		"selection_drag": map.selection.is_left_drag_active(),
-		"sign_entries": map._sign_entries.size(),
-		"sign_scans": map._sign_cache_build_count,
+		"sign_entries": map.signs.sign_entries.size(),
+		"sign_scans": map.signs.sign_cache_build_count,
 		"dynamic_visuals": (
-			map._dynamic_canvas.visual_count() if map._dynamic_canvas != null else 0
+			map.layers.dynamic_canvas.visual_count() if map.layers.dynamic_canvas != null else 0
 		),
 		"dynamic_revisions": (
-			map._dynamic_canvas.visual_revision if map._dynamic_canvas != null else 0
+			map.layers.dynamic_canvas.visual_revision if map.layers.dynamic_canvas != null else 0
 		),
 		"transient_effects": map.transient_effects.size(),
 	}
 
 
 func _expire_transient_effects(generation: int) -> void:
-	if generation != map._effect_generation:
+	if generation != _effect_generation:
 		return
 
 	map.transient_effects.clear()
@@ -225,7 +229,7 @@ func _show_transient_effect_frame(
 	duration: float,
 	generation: int
 ) -> void:
-	if generation != map._effect_generation:
+	if generation != _effect_generation:
 		return
 
 	map.transient_effects.clear()
@@ -249,17 +253,17 @@ func _show_transient_effect_frame(
 func _show_shake_frame(
 	frame: int, frames: int, duration: float, distance: float, generation: int
 ) -> void:
-	if generation != map._shake_generation:
+	if generation != _shake_generation:
 		return
 
 	if frame >= frames:
-		map._shake_offset = Vector2.ZERO
+		shake_offset = Vector2.ZERO
 		map.layers._sync_base_layer()
 		map.queue_redraw()
 
 		return
 
-	map._shake_offset = Vector2(-distance * maxf(1.0, map.zoom_factor) * map.map_pixel_ratio, 0.0) if frame & 1 == 0 else Vector2.ZERO
+	shake_offset = Vector2(-distance * maxf(1.0, map.zoom_factor) * map.map_pixel_ratio, 0.0) if frame & 1 == 0 else Vector2.ZERO
 	map.layers._sync_base_layer()
 	map.queue_redraw()
 	map.get_tree().create_timer(duration).timeout.connect(

@@ -172,11 +172,11 @@ func _update_import_button() -> void:
 	import_button.disabled = busy or source_edit.text.strip_edges().is_empty() or selected_categories().is_empty()
 
 
-func _browse(mode: FileDialog.FileMode) -> void:
+func _browse(file_mode: FileDialog.FileMode) -> void:
 	if busy:
 		return
 
-	browser.file_mode = mode
+	browser.file_mode = file_mode
 	browser.current_file = ""
 	browser.popup_centered_ratio(0.8)
 

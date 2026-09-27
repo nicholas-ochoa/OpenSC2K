@@ -65,10 +65,10 @@ static func apply(city: CityState, group: int, subtool: int, point: Vector2i, ra
 				31,
 			)
 			BinaryData.write_u32_be(payloads.MISC, Sc2MiscLayout.WATER_LEVEL, sea)
-			var indices := PackedInt32Array()
+			var water_indices := PackedInt32Array()
 
 			for index in (map_edge * map_edge):
-				indices.append(index)
+				water_indices.append(index)
 
 			TerrainRetile.retile_region(
 				payloads.ALTM,
@@ -77,7 +77,7 @@ static func apply(city: CityState, group: int, subtool: int, point: Vector2i, ra
 				payloads.XZON,
 				payloads.XBIT,
 				payloads.MISC,
-				indices,
+				water_indices,
 				sea,
 				map_edge,
 			)

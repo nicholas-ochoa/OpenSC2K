@@ -125,9 +125,9 @@ func debug_set_funds(amount: int) -> ActionResult:
 
 	app.interface.refresh_details()
 
-	var sign := "-" if result.new_funds < 0 else ""
+	var funds_sign := "-" if result.new_funds < 0 else ""
 
-	return ActionResult.new(true, "Funds are now %s$%s." % [sign, app.interface.format_number(absi(int(result.new_funds)))])
+	return ActionResult.new(true, "Funds are now %s$%s." % [funds_sign, app.interface.format_number(absi(int(result.new_funds)))])
 
 
 func debug_unlock_everything() -> ActionResult:

@@ -11,7 +11,7 @@ static func _abandon(
 	flags: PackedByteArray,
 	misc: PackedByteArray,
 	point: Vector2i,
-	density: int,
+	zone_density: int,
 	pattern: int,
 	random: SimRandom,
 	rotation: int,
@@ -19,7 +19,7 @@ static func _abandon(
 	map_edge: int = 128,
 	allow_edge_buildings := false,
 ) -> void:
-	match density:
+	match zone_density:
 		1:
 			place_zone(
 				buildings, zones, flags, misc, land_value, point,
@@ -91,7 +91,7 @@ static func place_zone(
 	misc: PackedByteArray,
 	land_value: PackedByteArray,
 	anchor: Vector2i,
-	density: int,
+	zone_density: int,
 	building_class: int,
 	random: SimRandom,
 	rotation: int,
@@ -100,16 +100,16 @@ static func place_zone(
 ) -> bool:
 	var tile: int
 
-	if density == 1 and building_class == CLASS_RESIDENTIAL:
+	if zone_density == 1 and building_class == CLASS_RESIDENTIAL:
 		var value_index := CityDataGrid.index(land_value, map_edge, anchor.x, anchor.y)
 		var value_group := mini(int(land_value[value_index]) >> 6, 2)
 		tile = BUILDING_BASE[1] + value_group * 4 + (random.next_u15() & 3)
 	else:
-		var table_index := density + building_class * 4
+		var table_index := zone_density + building_class * 4
 		var tile_range: int = BUILDING_RANGE[table_index]
 		tile = BUILDING_BASE[table_index] + random.next_u15() % tile_range
 
-	if density == 1:
+	if zone_density == 1:
 		var index := GrowthState._index(anchor, map_edge)
 
 		if index < 0:
@@ -121,7 +121,7 @@ static func place_zone(
 
 		return true
 
-	var radius := int(density / 2)
+	var radius := int(zone_density / 2)
 	var site_position := Vector2i(anchor.x, anchor.y - radius)
 
 	if allow_edge_buildings:

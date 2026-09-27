@@ -1,7 +1,6 @@
 class_name ApplicationScurkOutput
 extends RefCounted
 
-const ScurkCityOutput = preload("res://src/assets/scurk_city_output.gd")
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 
 var app: CityApplication

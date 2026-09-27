@@ -233,7 +233,7 @@ func show_tool_group(
 
 func sync_child_tool_selection(group_index: int, subtool_index: int) -> void:
 	_selected_subtool = subtool_index
-	child_palette.sync_selection(group_index, subtool_index)
+	child_palette.sync_selection(subtool_index)
 	for key in landscape_buttons:
 		landscape_buttons[key].set_pressed_no_signal(key == Vector2i(group_index, subtool_index))
 
@@ -318,8 +318,8 @@ func _toolbar_icon(region: Rect2i) -> Texture2D:
 	return PixelArtTexture.wrap(ImageTexture.create_from_image(image.get_region(bounds)))
 
 
-func _on_surface_visibility_toggled(visible: bool, layer: String) -> void:
-	surface_visibility_requested.emit(visible, layer)
+func _on_surface_visibility_toggled(layer_visible: bool, layer: String) -> void:
+	surface_visibility_requested.emit(layer_visible, layer)
 
 
 func sync_view_mode(mode: CityViewMode.Mode) -> void:

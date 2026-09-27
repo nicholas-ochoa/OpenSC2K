@@ -96,7 +96,7 @@ func run(
 	_check(
 		map_control.dynamic_sprites.size() == 1500
 		and map_control.presentation.dynamic_render_node_count() == 1
-		and map_control._dynamic_canvas is Node2D,
+		and map_control.layers.dynamic_canvas is Node2D,
 		"Map control batches 1,500 dynamic sprites in one render node",
 	)
 	var center_requests: Array[Vector2i] = []
@@ -112,8 +112,8 @@ func run(
 	map_control.interaction._handle_mouse_button(center_click)
 	_check(center_requests == [center_tile] and selection_complete_signals[0] == 1,
 		"Middle click requests Center without applying the selected build tool")
-	var visual_revision := map_control._dynamic_canvas.visual_revision
-	var dynamic_position := map_control._dynamic_canvas.position
+	var visual_revision := map_control.layers.dynamic_canvas.visual_revision
+	var dynamic_position := map_control.layers.dynamic_canvas.position
 	var middle_press := InputEventMouseButton.new()
 	middle_press.button_index = MOUSE_BUTTON_MIDDLE
 	middle_press.pressed = true
@@ -125,8 +125,8 @@ func run(
 	map_control.interaction._handle_mouse_motion(pan_motion)
 	_check(
 		map_control.is_panning()
-		and map_control._dynamic_canvas.visual_revision == visual_revision
-		and map_control._dynamic_canvas.position != dynamic_position,
+		and map_control.layers.dynamic_canvas.visual_revision == visual_revision
+		and map_control.layers.dynamic_canvas.position != dynamic_position,
 		"Middle-button panning moves the cached dynamic canvas without rebuilding it",
 	)
 	var middle_release := InputEventMouseButton.new()
@@ -245,10 +245,10 @@ func _test_signs(map_control: CityMapControl, starter: CityState, center_tile: V
 			"Sign source bounds match zoom %.2f" % zoom_fixture[0],
 		)
 
-	var sign_cache_builds := map_control._sign_cache_build_count
+	var sign_cache_builds := map_control.signs.sign_cache_build_count
 	map_control.sign_source_entries()
 	_check(
-		map_control._sign_cache_build_count == sign_cache_builds,
+		map_control.signs.sign_cache_build_count == sign_cache_builds,
 		"Repeated sign drawing reuses the zoom-specific city-sign scan",
 	)
 	map_control.set_sign_occlusion_visuals({ sign_city.index_of(64, 64): CitySignVisual.new() })

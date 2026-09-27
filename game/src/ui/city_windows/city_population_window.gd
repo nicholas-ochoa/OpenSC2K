@@ -33,6 +33,6 @@ func refresh_city(value: CityState) -> void:
 		population_control.set_city(value)
 
 
-func _on_mode_selected(mode: int) -> void:
-	population_control.set_mode(mode)
-	title = mode_buttons[mode].text
+func _on_mode_selected(selected_mode: int) -> void:
+	population_control.set_mode(selected_mode)
+	title = mode_buttons[selected_mode].text

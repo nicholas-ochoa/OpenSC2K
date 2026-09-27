@@ -3,7 +3,6 @@ extends AcceptDialog
 
 @warning_ignore_start("integer_division")
 
-const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
 const NewspaperTextGenerator = preload("res://src/simulation/reports/newspaper_text.gd")
 const MONTH_NAMES := [
 	"January", "February", "March", "April", "May", "June",
@@ -154,16 +153,16 @@ func _populate_page() -> void:
 			continue
 
 		var story_type := int(record.type)
-		var seed := NewspaperTextGenerator.published_seed(
+		var story_seed := NewspaperTextGenerator.published_seed(
 			session_seed, city.age_in_days(), selected_newspaper, slot
 		)
 		var headline: String = news_names.get(story_type, "City report")
 
-		if seed >= 0 and newspaper_data != null and newspaper_data.is_valid():
+		if story_seed >= 0 and newspaper_data != null and newspaper_data.is_valid():
 			var rendered := NewspaperTextGenerator.render_headline(
 				newspaper_data,
 				record,
-				seed,
+				story_seed,
 				city.display_name(),
 				city.mayor_name(),
 				teams,
@@ -182,7 +181,7 @@ func _populate_page() -> void:
 				var article := NewspaperTextGenerator.render_story(
 					newspaper_data,
 					record,
-					seed,
+					story_seed,
 					city.display_name(),
 					city.mayor_name(),
 					teams,
@@ -202,7 +201,7 @@ func _populate_page() -> void:
 
 			if newspaper_data != null and newspaper_data.is_valid():
 				var forecast := NewspaperTextGenerator.render_story(
-					newspaper_data, record, seed, city.display_name(), city.mayor_name(), teams
+					newspaper_data, record, story_seed, city.display_name(), city.mayor_name(), teams
 				)
 
 				if forecast.ok:
@@ -216,7 +215,7 @@ func _populate_page() -> void:
 
 			if newspaper_data != null and newspaper_data.is_valid():
 				var opinion := NewspaperTextGenerator.render_story(
-					newspaper_data, record, seed, city.display_name(), city.mayor_name(), teams
+					newspaper_data, record, story_seed, city.display_name(), city.mayor_name(), teams
 				)
 
 				if opinion.ok:

@@ -65,11 +65,11 @@ static func payloads(city: CityState) -> Dictionary[String, PackedByteArray]:
 	return result
 
 
-static func duplicate_payloads(payloads: Dictionary) -> Dictionary[String, PackedByteArray]:
+static func duplicate_payloads(source_payloads: Dictionary) -> Dictionary[String, PackedByteArray]:
 	var result: Dictionary[String, PackedByteArray] = {}
 
-	for chunk_id in payloads:
-		result[chunk_id] = payloads[chunk_id].duplicate()
+	for chunk_id in source_payloads:
+		result[chunk_id] = source_payloads[chunk_id].duplicate()
 
 	return result
 
@@ -77,7 +77,7 @@ static func duplicate_payloads(payloads: Dictionary) -> Dictionary[String, Packe
 static func _apply_payloads(
 	city: CityState,
 	chunk_ids: PackedStringArray,
-	payloads: Dictionary,
+	updated_payloads: Dictionary,
 	rollback: Dictionary
 ) -> bool:
 	var applied := PackedStringArray()
@@ -88,7 +88,7 @@ static func _apply_payloads(
 
 		var chunk := city.document.find_chunk(chunk_id)
 
-		if chunk == null or not chunk.set_decoded_payload(payloads[chunk_id]):
+		if chunk == null or not chunk.set_decoded_payload(updated_payloads[chunk_id]):
 			for rollback_id in applied:
 				city.document.find_chunk(rollback_id).set_decoded_payload(rollback[rollback_id])
 

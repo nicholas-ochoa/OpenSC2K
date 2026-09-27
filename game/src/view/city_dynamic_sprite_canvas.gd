@@ -122,11 +122,11 @@ static func _append_special_batch(
 		if source == null:
 			continue
 
-		var position := Vector2i(visual.position)
+		var sprite_position := Vector2i(visual.position)
 		image.blend_rect(
 			source,
 			Rect2i(Vector2i.ZERO, source.get_size()),
-			(position - bounds.position) * factor,
+			(sprite_position - bounds.position) * factor,
 		)
 
 	var texture := ImageTexture.create_from_image(image)

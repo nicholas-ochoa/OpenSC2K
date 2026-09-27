@@ -1,7 +1,8 @@
 extends SceneTree
 
+@warning_ignore_start("integer_division")
+
 const ExportJob = preload("res://src/view/city_png_export_job.gd")
-const ScurkCityOutput = preload("res://src/assets/scurk_city_output.gd")
 const Renderer = preload("res://src/view/city_isometric_renderer.gd")
 
 var main: Node

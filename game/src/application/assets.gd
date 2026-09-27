@@ -6,7 +6,6 @@ const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const SettingsStore = preload("res://src/ui/settings/app_settings_store.gd")
 const Random = preload("res://src/simulation/random/sim_random.gd")
 const CityAudio = preload("res://src/audio/city_audio_controller.gd")
-const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
 const DebugOverlayView = preload("res://src/debug/debug_overlay.tscn")
 const PACK_NAMES := { "graphics": "Graphics", "sound": "Sound", "music": "Music", "data": "Game data" }
 

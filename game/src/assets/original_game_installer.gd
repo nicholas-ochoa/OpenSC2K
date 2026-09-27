@@ -52,7 +52,7 @@ static func validate_executable(
 	var outcome := AssetImportResult.new()
 	outcome.ok = true
 	outcome.path = path
-	outcome.hash = actual_hash
+	outcome.executable_hash = actual_hash
 
 	return outcome
 
@@ -82,7 +82,7 @@ static func validate_install_root(
 	var outcome := AssetImportResult.new()
 	outcome.ok = true
 	outcome.root = root
-	outcome.hash = executable_result.hash
+	outcome.executable_hash = executable_result.executable_hash
 
 	return outcome
 
@@ -180,7 +180,7 @@ static func install_from_executable(
 	var outcome := AssetImportResult.new()
 	outcome.ok = true
 	outcome.root = destination
-	outcome.hash = staged_result.hash
+	outcome.executable_hash = staged_result.executable_hash
 	outcome.previous_root = previous_root
 
 	return outcome

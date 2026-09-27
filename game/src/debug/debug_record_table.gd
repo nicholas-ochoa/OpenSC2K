@@ -285,7 +285,11 @@ func _set_cells(row: TreeItem, record: DebugTableRecord) -> void:
 
 	if not sort.is_empty() and locate_column >= 0:
 		var site: CityRecords.Site = record.site
-		sort.insert(locate_column, null if site == null else [site.x, site.y])
+
+		if site == null:
+			sort.insert(locate_column, null)
+		else:
+			sort.insert(locate_column, [site.x, site.y])
 
 	row.set_meta("sort", sort)
 
@@ -351,19 +355,19 @@ func locate_on_map(item: TreeItem) -> void:
 
 
 # crosshair drawn at runtime: a ring, a centre dot and four ticks, antialiased
-static func locate_icon(size: int) -> ImageTexture:
-	var image := Image.create_empty(size, size, false, Image.FORMAT_RGBA8)
+static func locate_icon(icon_size: int) -> ImageTexture:
+	var image := Image.create_empty(icon_size, icon_size, false, Image.FORMAT_RGBA8)
 	var samples := 4
 
-	for py in size:
-		for px in size:
+	for py in icon_size:
+		for px in icon_size:
 			var covered := 0
 
 			for sy in samples:
 				for sx in samples:
 					# unit coordinates in -1..1 with the icon centre at 0
-					var u := ((px + (sx + 0.5) / samples) / size) * 2.0 - 1.0
-					var v := ((py + (sy + 0.5) / samples) / size) * 2.0 - 1.0
+					var u := ((px + (sx + 0.5) / samples) / icon_size) * 2.0 - 1.0
+					var v := ((py + (sy + 0.5) / samples) / icon_size) * 2.0 - 1.0
 					var radius := sqrt(u * u + v * v)
 					var ring := radius >= 0.58 and radius <= 0.74
 					var dot := radius <= 0.2

@@ -272,7 +272,11 @@ static func terrain_region(index: int) -> Rect2i:
 
 
 func terrain_icon(role: String, loose := false) -> Image:
-	var id: Variant = "TERRAIN.BMP" if loose else 207
+	var id: Variant = 207
+
+	if loose:
+		id = "TERRAIN.BMP"
+
 	var index := (TERRAIN_LOOSE_ROLES if loose else TERRAIN_ROLES).find(role)
 
 	if not terrain.has(id) or index < 0:

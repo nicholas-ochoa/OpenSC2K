@@ -4,8 +4,6 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
-const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
 const MISC_SIZE := Sc2MiscLayout.SIZE
 const MISC_START_YEAR := Sc2MiscLayout.START_YEAR
 const MISC_WEATHER_HEAT := Sc2MiscLayout.WEATHER_HEAT

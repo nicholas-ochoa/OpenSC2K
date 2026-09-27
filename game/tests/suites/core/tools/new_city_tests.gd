@@ -9,8 +9,6 @@ const Water = preload("res://src/simulation/infrastructure/water_phase.gd")
 const Bonds = preload("res://src/simulation/economy/bond_command.gd")
 const GameRandom = preload("res://src/simulation/random/game_lcg_random.gd")
 const NewCity = preload("res://src/model/new_city_setup.gd")
-const NewCityTerrain = preload("res://src/model/new_city_terrain.gd")
-const NewCityTerrainSession = preload("res://src/model/new_city_terrain_session.gd")
 
 
 func test_new_city_terrain(reference_root: String) -> void:

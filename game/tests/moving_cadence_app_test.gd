@@ -50,7 +50,7 @@ func _run() -> void:
 			var after := _airplane_position(main, airplane)
 			moved = moved or after != before
 			var found := false
-			for visual in main.map_view._dynamic_canvas.visuals:
+			for visual in main.map_view.layers.dynamic_canvas.visuals:
 				if visual.position == after and not visual.shadow:
 					found = true
 			assert(found, "The tick must immediately display the saved airplane position")
@@ -83,7 +83,7 @@ func _airplane_position(main: CityApplication, record: int) -> Vector2:
 
 func _visual_positions(main: CityApplication) -> Array[Vector2]:
 	var positions: Array[Vector2] = []
-	for visual in main.map_view._dynamic_canvas.visuals:
+	for visual in main.map_view.layers.dynamic_canvas.visuals:
 		positions.append(visual.position)
 	return positions
 
@@ -98,5 +98,5 @@ func _wait_for_regions(main: CityApplication) -> void:
 
 
 class FrozenCommands extends CityDynamicCommandCache:
-	func get_commands(city: CityState, sprites: Sc2SpriteArchive, view: int, _phase: int) -> Array[CityDynamicCommand]:
+	func get_commands(city: CityState, sprites: Sc2SpriteArchive, view: int, _animation_phase: int) -> Array[CityDynamicCommand]:
 		return super.get_commands(city, sprites, view, 0)

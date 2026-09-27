@@ -195,9 +195,9 @@ func import_state(state: Dictionary) -> void:
 	ramp_changed.emit(ramp_indices.duplicate())
 
 
-func index_at(position: Vector2) -> int:
-	var column := floori(position.x / cell_size)
-	var row := floori(position.y / cell_size)
+func index_at(pointer_position: Vector2) -> int:
+	var column := floori(pointer_position.x / cell_size)
+	var row := floori(pointer_position.y / cell_size)
 	if column < 0 or row < 0 or column >= COLUMN_COUNT or row >= COLUMN_COUNT:
 		return -1
 

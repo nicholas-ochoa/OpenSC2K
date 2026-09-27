@@ -61,29 +61,29 @@ func _test_generated_cities() -> void:
 	session.begin(1, 1)
 	var preview := session.generate_preview(MISSING_ROOT.path_join("DEFAULT.SC2"), options, false)
 	assert(preview.ok, str(preview))
-	var made := session.create_city(MISSING_ROOT.path_join("DEFAULT.SC2"), "Coast", "Mayor", 1, 1900, options, PackedByteArray())
-	assert(made.ok, str(made))
+	var coastal_setup := session.create_city(MISSING_ROOT.path_join("DEFAULT.SC2"), "Coast", "Mayor", 1, 1900, options, PackedByteArray())
+	assert(coastal_setup.ok, str(coastal_setup))
 
 	for chunk_id in ["ALTM", "XTER", "XBLD", "XUND", "XZON"]:
-		assert(made.document.find_chunk(chunk_id).decoded_payload == preview.document.find_chunk(chunk_id).decoded_payload)
+		assert(coastal_setup.document.find_chunk(chunk_id).decoded_payload == preview.document.find_chunk(chunk_id).decoded_payload)
 
-	var city := CityState.from_document(made.document)
-	city.set_auto_budget_enabled(true)
-	var simulation := SimulationEngine.new(city, 1, 1, 1)
+	var coastal_city := CityState.from_document(coastal_setup.document)
+	coastal_city.set_auto_budget_enabled(true)
+	var simulation := SimulationEngine.new(coastal_city, 1, 1, 1)
 
 	# Exercise a month of all dispatch phases, then the annual boundary.
 	for day in 25:
 		var advanced := simulation.advance_day()
 		assert(advanced.ok, str(advanced))
 
-	assert(city.age_in_days() == 25)
-	assert(city.set_age_in_days(299))
+	assert(coastal_city.age_in_days() == 25)
+	assert(coastal_city.set_age_in_days(299))
 	simulation.clock.city_days = 299
 	assert(simulation.advance_day().ok)
-	assert(city.age_in_days() == 300 and city.current_year() == 1901)
-	_round_trip_city(city.document)
+	assert(coastal_city.age_in_days() == 300 and coastal_city.current_year() == 1901)
+	_round_trip_city(coastal_city.document)
 	var path := ProjectSettings.globalize_path("user://independent-city-%d.SC2" % OS.get_process_id())
-	var saved := CityFileStore.save_copy(city.document, path, ProjectSettings.globalize_path(MISSING_ROOT))
+	var saved := CityFileStore.save_copy(coastal_city.document, path, ProjectSettings.globalize_path(MISSING_ROOT))
 	assert(saved.ok, str(saved))
 	var reloaded := Sc2File.load_path(path)
 	assert(reloaded.is_valid() and reloaded.serialize().data == saved.data)

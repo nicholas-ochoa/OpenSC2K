@@ -4,8 +4,6 @@ extends VBoxContainer
 signal subtool_requested(index: int)
 
 const Tools = preload("res://src/tools/shared/tool_catalog.gd")
-const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
-const ToolState = preload("res://src/tools/shared/tool_edit_state.gd")
 const DisplayNumbers = preload("res://src/ui/shared/display_number_format.gd")
 
 var free_landscape := false
@@ -83,9 +81,6 @@ func show_tool_group(
 				or (group_index == CityToolIds.Group.REWARDS and subtool_index == CityToolIds.Rewards.ARCOLOGIES)):
 			continue
 
-		if ToolState.is_tool_variant(group_index, subtool_index):
-			continue
-
 		var available := free_landscape or city == null or ToolAvailability.is_available(
 			city, group_index, subtool_index
 		)
@@ -105,7 +100,7 @@ func show_tool_group(
 	return maxi(0, first_available_subtool)
 
 
-func sync_selection(group_index: int, subtool_index: int) -> void:
+func sync_selection(subtool_index: int) -> void:
 	var displayed_subtool := subtool_index
 
 	for button_subtool in buttons:

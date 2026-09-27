@@ -1,7 +1,6 @@
 class_name MilestonePhase
 extends RefCounted
 
-const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
 const MISC_SIZE := Sc2MiscLayout.SIZE
 const MISC_PROGRESSION := Sc2MiscLayout.PROGRESSION
 const MISC_GRANTED_REWARDS := Sc2MiscLayout.GRANTED_REWARDS

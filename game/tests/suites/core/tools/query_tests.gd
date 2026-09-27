@@ -5,7 +5,6 @@ extends "res://tests/support/core_test_suite.gd"
 
 const Queries = preload("res://src/tools/city/query_info.gd")
 const QueryFacilityActions = preload("res://src/tools/city/query_actions.gd")
-const QueryPresentation = preload("res://src/view/query_presentation.gd")
 
 
 func test_query_info(reference_root: String) -> void:

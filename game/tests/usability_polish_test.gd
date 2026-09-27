@@ -1,7 +1,6 @@
 extends SceneTree
 
 const Place = preload("res://src/tools/scurk/scurk_place_command.gd")
-const ToolState = preload("res://src/tools/shared/tool_edit_state.gd")
 
 
 func _initialize() -> void:
@@ -58,7 +57,7 @@ func _run() -> void:
 	var stamp := Place.apply(city, 359, Vector2i(32, 32), rng)
 	assert(stamp.ok and city.scurk_artwork_stamps.size() == 1)
 	assert(city.document.serialize().data == before and rng.state == 123)
-	assert(ToolState.scurk_object(city, CityViewMode.Mode.CITY, 359).area == 1)
+	assert(ToolEditState.scurk_object(city, CityViewMode.Mode.CITY, 359).area == 1)
 	var copied := stamp.copy() as ScurkPlaceResult
 	copied.new_stamps[0].point = Vector2i(31, 32)
 	assert(city.scurk_artwork_stamps[0].point == Vector2i(32, 32))

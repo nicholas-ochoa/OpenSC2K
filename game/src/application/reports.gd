@@ -2,7 +2,6 @@ class_name ApplicationReports
 extends RefCounted
 
 const CityMenuBarView = preload("res://src/ui/shell/city_menu_bar.gd")
-const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
 const Music = preload("res://src/audio/music_director.gd")
 const MENU_NO_DISASTERS := CityMenuBarView.MENU_NO_DISASTERS
 # message box text from the supplied string table, by string ID

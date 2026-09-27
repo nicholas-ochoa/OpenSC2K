@@ -50,26 +50,26 @@ func _initialize() -> void:
 	_custom_sprite(large, 1000 + BuildingTileIds.ROAD_STRAIGHT_1, Vector2i(19, 23), 0xa1)
 	_custom_sprite(large, 1400, Vector2i(73, 41), 5)
 	var custom_points: Array[Vector2i] = [Vector2i(60, 60)]
-	var images := {}
-	var custom_before := _paint_tiles(custom_city, palette, large, 2, custom_points, images)
+	var custom_images := {}
+	var custom_before := _paint_tiles(custom_city, palette, large, 2, custom_points, custom_images)
 	var custom_old := _payloads(custom_city)
 	_write(custom_city, "XTRF", 30 * 64 + 30, 86)
 	var custom_rects: Array[Rect2i] = []
 	assert(ApplicationStaticRender.changed_source_rects(custom_city, custom_old, large, 2, custom_rects))
 	assert(custom_rects.size() == 1 and custom_rects[0].size == Vector2i(19, 23))
-	_check_pixels(custom_before, _paint_tiles(custom_city, palette, large, 2, custom_points, images), custom_rects)
+	_check_pixels(custom_before, _paint_tiles(custom_city, palette, large, 2, custom_points, custom_images), custom_rects)
 
 	# A traffic cell on an extended map covers a different number of tiles.
 	var wide := CityState.from_document(EmptyCityTemplate.create(512))
 	assert(wide.set_building_id(510, 510, BuildingTileIds.ROAD_STRAIGHT_1))
 	assert(wide.set_building_id(511, 511, BuildingTileIds.HIGHWAY_STRAIGHT_1))
 	var old := _payloads(wide)
-	var traffic := wide.document.find_chunk("XTRF").decoded_payload.duplicate()
-	traffic.fill(29)
-	assert(wide.document.find_chunk("XTRF").set_decoded_payload(traffic, true))
-	var rects: Array[Rect2i] = []
-	assert(ApplicationStaticRender.changed_source_rects(wide, old, large, 2, rects))
-	assert(rects.size() == 1, "A highway threshold must not dirty a road or empty tiles")
+	var highway_traffic := wide.document.find_chunk("XTRF").decoded_payload.duplicate()
+	highway_traffic.fill(29)
+	assert(wide.document.find_chunk("XTRF").set_decoded_payload(highway_traffic, true))
+	var highway_rects: Array[Rect2i] = []
+	assert(ApplicationStaticRender.changed_source_rects(wide, old, large, 2, highway_rects))
+	assert(highway_rects.size() == 1, "A highway threshold must not dirty a road or empty tiles")
 	assert(_changed_pixels > 0)
 	print("PASS: traffic bounds contain %d changed pixels in %d tile comparisons, all artwork sizes and extended-map edges" % [
 		_changed_pixels, _comparisons])

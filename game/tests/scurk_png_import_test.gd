@@ -47,7 +47,7 @@ func _run() -> void:
 	_write(path, IndexedPng.encode(32, 8, pixels, assets.palette).bytes)
 	var source_hash := FileAccess.get_sha256(path)
 
-	for view in 3:
+	for view: ScurkSpriteIds.View in [ScurkSpriteIds.View.LARGE, ScurkSpriteIds.View.MEDIUM, ScurkSpriteIds.View.SMALL]:
 		editor.current_view = view
 		editor._refresh_sprite()
 		var before: PackedByteArray = editor.tile_set.to_bytes().bytes

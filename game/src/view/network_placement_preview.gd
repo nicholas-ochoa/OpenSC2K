@@ -1,6 +1,8 @@
 class_name NetworkPlacementPreview
 extends CanvasGroup
 
+@warning_ignore_start("integer_division")
+
 var worker: Thread
 var pending: Request
 var request_key := ""
@@ -38,14 +40,14 @@ func _process(_delta: float) -> void:
 			visuals.clear()
 			_read_price(result.command)
 			divisor = result.divisor
-			for draw in result.draws:
-				var source: Image = draw.image
+			for draw_command in result.draws:
+				var source: Image = draw_command.image
 				var key := source.get_instance_id()
 
 				if not texture_cache.has(key):
 					texture_cache[key] = ImageTexture.create_from_image(source)
 
-				visuals.append(Visual.new(texture_cache[key], draw.source, draw.position))
+				visuals.append(Visual.new(texture_cache[key], draw_command.source, draw_command.position))
 
 			if map_view != null:
 				map_view.queue_redraw()
@@ -282,9 +284,6 @@ static func snapshot_city(source: CityState) -> CityState:
 	return CityState.copy_for_edit(source)
 
 
-@warning_ignore_start("integer_division")
-
-
 class Request extends RefCounted:
 	var city: CityState
 	var group: int
@@ -300,7 +299,7 @@ class Request extends RefCounted:
 
 	func _init(source: CityState, tool_group: int, subtool: int, first: Vector2i, last: Vector2i,
 		graphics_size: int, colors: Sc2Palette, artwork: Sc2SpriteArchive, below_ground: bool,
-		free := false, images: Dictionary = {}) -> void:
+		free_build := false, images: Dictionary = {}) -> void:
 		city = source
 		group = tool_group
 		tool = subtool
@@ -310,7 +309,7 @@ class Request extends RefCounted:
 		palette = colors
 		sprites = artwork
 		underground = below_ground
-		free_mode = free
+		free_mode = free_build
 		cache = images
 
 

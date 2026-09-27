@@ -212,26 +212,26 @@ func _test_invalid(source: Dictionary) -> void:
 	assert(Project.from_dictionary(source).ok)
 	assert(not Project.from_bytes(PackedByteArray([0])).ok)
 	for dimensions in [Vector2(-1, 2), Vector2(0, 2), Vector2(129, 2), Vector2(2, 257), Vector2(1.5, 2)]:
-		var bad := source.duplicate(true)
-		bad.documents["1:0"].width = dimensions.x
-		bad.documents["1:0"].height = dimensions.y
-		_reject_record(bad)
+		var invalid_dimensions := source.duplicate(true)
+		invalid_dimensions.documents["1:0"].width = dimensions.x
+		invalid_dimensions.documents["1:0"].height = dimensions.y
+		_reject_record(invalid_dimensions)
 	for index in [-2, 256, 32767]:
-		var bad := source.duplicate(true)
-		bad.documents["1:0"].layers[0].pixels[0] = index
-		_reject_record(bad)
+		var invalid_index := source.duplicate(true)
+		invalid_index.documents["1:0"].layers[0].pixels[0] = index
+		_reject_record(invalid_index)
 	for invalid_pixels: Variant in [PackedInt32Array([0]), PackedByteArray([0, 1, 2, 3]), [0, 1, 2, 3], "pixels"]:
-		var bad := source.duplicate(true)
-		bad.documents["1:0"].layers[0].pixels = invalid_pixels
-		_reject_record(bad)
+		var invalid_buffer := source.duplicate(true)
+		invalid_buffer.documents["1:0"].layers[0].pixels = invalid_pixels
+		_reject_record(invalid_buffer)
 	for revision: Variant in [-1, 1.5, "1", null]:
-		var bad := source.duplicate(true)
-		bad.revision = revision
-		_reject_record(bad)
+		var invalid_revision := source.duplicate(true)
+		invalid_revision.revision = revision
+		_reject_record(invalid_revision)
 	for flag: String in ["visible", "locked"]:
-		var bad := source.duplicate(true)
-		bad.documents["1:0"].layers[0][flag] = 1
-		_reject_record(bad)
+		var invalid_flag := source.duplicate(true)
+		invalid_flag.documents["1:0"].layers[0][flag] = 1
+		_reject_record(invalid_flag)
 	var bad := source.duplicate(true)
 	bad.documents["1:0"].original_pixels = PackedInt32Array([0])
 	_reject_record(bad)

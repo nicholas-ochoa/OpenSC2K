@@ -181,13 +181,13 @@ static func _route_keeps_direction(buildings: PackedByteArray, terrain: PackedBy
 		return true
 
 	if mode < MODE_SUBWAY:
-		var tile := int(buildings[index])
+		var surface_tile := int(buildings[index])
 
 		return NetworkRules._surface_fixed_axis(
-			tile,
+			surface_tile,
 			mode,
-		) >= 0 or (tile > Tiles.SMALL_PARK
-			and tile + (direction & 1) in [Tiles.POWER_LINE_STRAIGHT_2, Tiles.ROAD_STRAIGHT_2,
+		) >= 0 or (surface_tile > Tiles.SMALL_PARK
+			and surface_tile + (direction & 1) in [Tiles.POWER_LINE_STRAIGHT_2, Tiles.ROAD_STRAIGHT_2,
 			Tiles.RAIL_STRAIGHT_2, Tiles.HIGHWAY_STRAIGHT_2])
 
 	var tile := int(underground[index])

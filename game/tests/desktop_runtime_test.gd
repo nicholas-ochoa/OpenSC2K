@@ -58,9 +58,9 @@ func _run() -> void:
 		var large := desktop.cursor_selection(map, 1024)
 		assert(large.app == small.app and large.group == small.group and large.shape == small.shape)
 
-	map._panning = true
+	map.interaction.panning = true
 	assert(desktop.cursor_selection(map, 1024).group == 1010)
-	map._panning = false
+	map.interaction.panning = false
 	map.edit_enabled = false
 	assert(desktop.cursor_selection(map, 1024) == null)
 	assert(desktop.cursor_selection(main.city_menu_bar.file_menu, 1024) == null)

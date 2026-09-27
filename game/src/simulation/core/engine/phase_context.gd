@@ -63,12 +63,12 @@ func record(name: String, result: PhaseResult) -> PhaseResult:
 
 
 # insert the stories of one result into the saved newspaper queue
-static func persist_news(city: CityState, result: PhaseResult) -> NewsPersistenceResult:
+static func persist_news(value_city: CityState, result: PhaseResult) -> NewsPersistenceResult:
 	var persisted := NewsPersistenceResult.new()
 	persisted.ok = true
 
 	# Monthly aftermath stores its own queue, but still needs an extra edition.
-	if city.document.misc_u32(Sc2MiscLayout.NEWSPAPER_EXTRAS) != 0:
+	if value_city.document.misc_u32(Sc2MiscLayout.NEWSPAPER_EXTRAS) != 0:
 		for item in result.news_items:
 			if NewsQueue.opens_extra_edition(item.type):
 				result.newspaper_requested = true
@@ -79,7 +79,7 @@ static func persist_news(city: CityState, result: PhaseResult) -> NewsPersistenc
 	if result.news_items.is_empty():
 		return persisted
 
-	var misc_chunk := city.document.find_chunk("MISC")
+	var misc_chunk := value_city.document.find_chunk("MISC")
 
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != NewsQueue.MISC_SIZE:
 		persisted.ok = false

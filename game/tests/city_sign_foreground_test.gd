@@ -49,13 +49,13 @@ func _initialize() -> void:
 	quit()
 
 
-func _image(size: Vector2i, format: Image.Format, seed: int) -> Image:
+func _image(size: Vector2i, format: Image.Format, random_seed: int) -> Image:
 	var image := Image.create(size.x, size.y, false, Image.FORMAT_RGBA8)
 
 	for y in size.y:
 		for x in size.x:
-			var index := (x * 19 + y * 37 + seed) & 255
-			image.set_pixel(x, y, Color8(index, index, index, 0 if (x + y + seed) % 3 == 0 else 255))
+			var index := (x * 19 + y * 37 + random_seed) & 255
+			image.set_pixel(x, y, Color8(index, index, index, 0 if (x + y + random_seed) % 3 == 0 else 255))
 
 	image.convert(format)
 

@@ -193,14 +193,14 @@ func template_fields() -> Template:
 	var chunk := document.find_chunk("TMPL") if document != null else null
 
 	if chunk == null:
-		var result := Template.new()
-		result.ok = true
-		result.present = false
-		result.fields = []
-		result.scenario_size = 0
-		result.error = ""
+		var absent_template := Template.new()
+		absent_template.ok = true
+		absent_template.present = false
+		absent_template.fields = []
+		absent_template.scenario_size = 0
+		absent_template.error = ""
 
-		return result
+		return absent_template
 
 	var data := chunk.decoded_payload
 

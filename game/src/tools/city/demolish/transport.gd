@@ -20,7 +20,6 @@ static func _demolish_tunnel(
 	tile_id: int,
 	random: SimRandom,
 	emit_effects: bool,
-	scurk_mode := false,
 	map_edge: int = 128,
 ) -> DemolishPointResult:
 	var direction: Vector2i = [
@@ -70,12 +69,12 @@ static func _demolish_tunnel(
 	for point in points:
 		indices.append(point.x * map_edge + point.y)
 
-	var result := DemolishPointResult.new()
-	result.changed = true
-	result.indices = indices
-	result.effect_events = effect_events
+	var tunnel_result := DemolishPointResult.new()
+	tunnel_result.changed = true
+	tunnel_result.indices = indices
+	tunnel_result.effect_events = effect_events
 
-	return result
+	return tunnel_result
 
 
 static func _demolish_transport_component(
@@ -244,9 +243,9 @@ static func _demolish_highway_section(
 			text_overlays, {}, map_edge
 		)
 
-	var result := DemolishPointResult.new()
-	result.changed = true
-	result.indices = indices
-	result.effect_events = effect_events
+	var highway_result := DemolishPointResult.new()
+	highway_result.changed = true
+	highway_result.indices = indices
+	highway_result.effect_events = effect_events
 
-	return result
+	return highway_result

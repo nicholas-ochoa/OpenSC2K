@@ -164,7 +164,7 @@ func set_mode(value: int) -> void:
 	if value < Mode.RATIOS or value > Mode.DEMAND:
 		return
 
-	mode = value
+	mode = value as Mode
 	dragging_tax = false
 	queue_redraw()
 
@@ -180,11 +180,11 @@ func refresh() -> void:
 
 static func snapshot(value_city: CityState) -> Snapshot:
 	if value_city == null or not value_city.is_valid():
-		var result := Snapshot.new()
-		result.ok = false
-		result.error = "city is invalid"
+		var failure := Snapshot.new()
+		failure.ok = false
+		failure.error = "city is invalid"
 
-		return result
+		return failure
 
 	var ratios := PackedInt64Array()
 	var tax_rates := PackedInt32Array()

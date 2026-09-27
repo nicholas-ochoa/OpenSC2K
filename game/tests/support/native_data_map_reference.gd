@@ -3,7 +3,7 @@
 # Frozen pre-optimization oracle from e5f6abd9; used only by regression tests.
 extends RefCounted
 
-const NativeGridMath = preload("res://tests/support/native_grid_reference.gd")
+const NativeGridReference = preload("res://tests/support/native_grid_reference.gd")
 
 ## SC2X v3 rules. These are independent per-tile rules, not executable parity.
 
@@ -87,17 +87,18 @@ static func run(city: CityState) -> PollutionPhase.Result:
 	var center := Vector2i(edge / 2, edge / 2) if center_count == 0 else Vector2i(center_sum.x / center_count, center_sum.y / center_count)
 	var ordinances := doc.misc_u32(PollutionPhase.MISC_ORDINANCES)
 	var divisor := PollutionPhase.pollution_divisor(doc)
-	var pollution := NativeGridMath.bytes(
-		NativeGridMath.smooth(sources, edge, 4, maxi(divisor, 1) * 2, 1, 2, city.simulation_slice),
+	var pollution := NativeGridReference.bytes(
+		NativeGridReference.smooth(sources, edge, 4, maxi(divisor, 1) * 2, 1, 2, city.simulation_slice),
 		city.simulation_slice,
 	)
-	residential = NativeGridMath.neighborhood(residential, edge, 2, 16, city.simulation_slice)
-	industrial = NativeGridMath.neighborhood(industrial, edge, 2, 16, city.simulation_slice)
-	residential = NativeGridMath.smooth(residential, edge, 1, 1, 4, 1, city.simulation_slice)
-	industrial = NativeGridMath.smooth(industrial, edge, 1, 1, 4, 1, city.simulation_slice)
-	var population := NativeGridMath.bytes(NativeGridMath.neighborhood(weights, edge, 2, 64, city.simulation_slice), city.simulation_slice)
-	var ordinance_coverage := NativeGridMath.bytes(
-		NativeGridMath.neighborhood(occupied, edge, 2, 32, city.simulation_slice),
+	residential = NativeGridReference.neighborhood(residential, edge, 2, 16, city.simulation_slice)
+	industrial = NativeGridReference.neighborhood(industrial, edge, 2, 16, city.simulation_slice)
+	residential = NativeGridReference.smooth(residential, edge, 1, 1, 4, 1, city.simulation_slice)
+	industrial = NativeGridReference.smooth(industrial, edge, 1, 1, 4, 1, city.simulation_slice)
+	var population := NativeGridReference.bytes(
+		NativeGridReference.neighborhood(weights, edge, 2, 64, city.simulation_slice), city.simulation_slice)
+	var ordinance_coverage := NativeGridReference.bytes(
+		NativeGridReference.neighborhood(occupied, edge, 2, 32, city.simulation_slice),
 		city.simulation_slice,
 	)
 	var police := PackedByteArray()
@@ -160,7 +161,8 @@ static func run(city: CityState) -> PollutionPhase.Result:
 				if ordinances & PollutionPhase.CRIME_REDUCTION_ORDINANCE:
 					sources[index] += 16
 
-	var crime := NativeGridMath.bytes(NativeGridMath.smooth(sources, edge, 2, 2, 1, 2, city.simulation_slice), city.simulation_slice)
+	var crime := NativeGridReference.bytes(
+		NativeGridReference.smooth(sources, edge, 2, 2, 1, 2, city.simulation_slice), city.simulation_slice)
 	var updates := { "XPLT": pollution, "XVAL": land, "XCRM": crime, "XPLC": police, "XFIR": fire, "XPOP": population, "XROG": growth }
 
 	for id in updates:
@@ -208,7 +210,7 @@ static func _add_stations(city: CityState, police: PackedByteArray, fire: Packed
 				strength /= 2
 
 			_checkpoint(city)
-			NativeGridMath.add_service(police if building == PollutionPhase.POLICE_STATION else fire, edge, Vector2i(x, y), strength)
+			NativeGridReference.add_service(police if building == PollutionPhase.POLICE_STATION else fire, edge, Vector2i(x, y), strength)
 
 
 static func _sum(values: PackedByteArray, city: CityState) -> int:

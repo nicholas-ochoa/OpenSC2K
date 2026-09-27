@@ -36,9 +36,10 @@ func _ready() -> void:
 func _input(event: InputEvent) -> void:
 	if pixel_canvas == null or not is_visible_in_tree() or not (event is InputEventMouse or event is InputEventPanGesture):
 		return
-	var position: Vector2 = event.position
+	var pointer_position: Vector2 = event.position
 	if (not pixel_canvas.panning
-			and (not pixel_scroll.get_global_rect().has_point(position) or pixel_canvas.get_global_rect().has_point(position))):
+			and (not pixel_scroll.get_global_rect().has_point(pointer_position)
+				or pixel_canvas.get_global_rect().has_point(pointer_position))):
 		return
 	var navigation := pixel_canvas.panning or event is InputEventPanGesture
 	if event is InputEventMouseButton:
@@ -52,10 +53,10 @@ func _input(event: InputEvent) -> void:
 				pixel_canvas.cancel_paste()
 				pixel_canvas.clear_selection()
 			elif event.button_index == MOUSE_BUTTON_RIGHT:
-				pixel_canvas.context_menu_requested.emit(position - pixel_canvas.global_position)
+				pixel_canvas.context_menu_requested.emit(pointer_position - pixel_canvas.global_position)
 		return
 	var local := event.duplicate()
-	local.position = position - pixel_canvas.global_position
+	local.position = pointer_position - pixel_canvas.global_position
 	if pixel_canvas._handle_editor_input(local):
 		get_viewport().set_input_as_handled()
 

@@ -22,7 +22,6 @@ func _check_scale_rules() -> void:
 	assert(AppUiScale.normalize(1) == 1.0)
 	assert(AppUiScale.normalize(9.0) == 2.0)
 	assert(AppUiScale.normalize("invalid") == AppUiScale.DEFAULT)
-	assert(AppUiScale.DEFAULT == 2.0, "2.0 is the fitted size that the interface used before the option")
 
 	# window, choice, screen pixels for each interface pixel
 	for case in [
@@ -242,7 +241,7 @@ func _copies_one_to_one(start: float, pixels: float) -> bool:
 func _check_settings() -> void:
 	var path := "user://ui-scale-test-%d.cfg" % OS.get_process_id()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
-	assert(AppSettingsStore.load_values(path).ui_scale == AppUiScale.DEFAULT)
+	assert(AppSettingsStore.load_values(path).ui_scale == 2.0, "Missing settings keep the original interface scale")
 	var scale_options := AppSettingsStore.SaveOptions.new()
 	scale_options.ui_scale = 1.5
 	assert(AppSettingsStore.save_values(0.8, 0.8, false, path, scale_options) == OK)

@@ -173,10 +173,10 @@ func _test_engine(edge: int, native: bool) -> void:
 	)
 	check(manual.random.state == scheduled.random.state and manual.lfsr_random.state == 4, "Both paths consume exactly one response gate")
 	var before: Array = DocumentState.capture(city.document)
-	var seed := manual.random.state
+	var random_seed := manual.random.state
 	check(not manual.start_disaster(7, target).ok, "Active disaster rejects a second start")
 	check(
-		DocumentState.capture(city.document) == before and manual.random.state == seed and manual.lfsr_random.state == 4,
+		DocumentState.capture(city.document) == before and manual.random.state == random_seed and manual.lfsr_random.state == 4,
 		"Rejected second start has no response side effects",
 	)
 	var tick := manual.advance_moving_things(0)

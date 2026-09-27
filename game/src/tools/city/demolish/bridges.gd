@@ -106,11 +106,11 @@ static func _demolish_reinforced_bridge(
 	var anchor := Vector2i(selected.x & ~1, selected.y & ~1)
 
 	if not reinforced_section_is_valid(buildings, anchor, map_edge):
-		var result := DemolishPointResult.new()
-		result.changed = false
-		result.specialized = true
+		var unchanged_result := DemolishPointResult.new()
+		unchanged_result.changed = false
+		unchanged_result.specialized = true
 
-		return result
+		return unchanged_result
 
 	var section_kind := HighwayGeometry._section_kind(buildings, zones, flags, anchor, map_edge)
 	var direction := Vector2i(2, 0) if (section_kind & 1) == 0 else Vector2i(0, 2)

@@ -359,12 +359,12 @@ func serialize(force_rebuild: bool = false) -> BinaryResult:
 			break
 
 	if not force_rebuild and not has_changes and not source_bytes.is_empty():
-		var outcome := BinaryResult.new()
-		outcome.ok = true
-		outcome.data = source_bytes.duplicate()
-		outcome.error = ""
+		var unchanged_result := BinaryResult.new()
+		unchanged_result.ok = true
+		unchanged_result.data = source_bytes.duplicate()
+		unchanged_result.error = ""
 
-		return outcome
+		return unchanged_result
 
 	var body := PackedByteArray()
 	body.append_array(("SCLG" if is_extended() else "SCDH").to_ascii_buffer())

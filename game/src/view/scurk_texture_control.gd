@@ -98,9 +98,9 @@ func cell_rect(index: int) -> Rect2:
 	return buttons[index].get_rect()
 
 
-func index_at(position: Vector2) -> int:
+func index_at(pointer_position: Vector2) -> int:
 	for index in buttons.size():
-		if cell_rect(index).has_point(position):
+		if cell_rect(index).has_point(pointer_position):
 			return index
 	return -1
 

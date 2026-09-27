@@ -145,7 +145,7 @@ static func occlude_dynamic_with_mask(
 		return OcclusionResult.new(sprite if count == 0 else Image.create_from_data(
 			sprite.get_width(), sprite.get_height(), sprite.has_mipmaps(), Image.FORMAT_RGBA8, pixels), count)
 
-	var visible: Image
+	var visible: Image = null
 	var occluded_pixels := 0
 
 	for source_y in sprite.get_height():

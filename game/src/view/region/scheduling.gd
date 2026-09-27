@@ -13,11 +13,11 @@ static func update_viewport(cache: CityRegionCache, source_rect: Rect2) -> void:
 	)
 	rect = rect.intersection(Rect2i(Vector2i.ZERO, cache.native_size))
 
-	if cache._viewport_valid and rect == cache._viewport_rect:
+	if cache._viewport_valid and rect == cache.viewport_rect:
 		return
 
-	var movement := Vector2(rect.get_center() - cache._viewport_rect.get_center()) if cache._viewport_valid else Vector2.ZERO
-	cache._viewport_rect = rect
+	var movement := Vector2(rect.get_center() - cache.viewport_rect.get_center()) if cache._viewport_valid else Vector2.ZERO
+	cache.viewport_rect = rect
 	cache._viewport_valid = true
 	cache._gpu_has_work = true
 	cache._viewport_serial += 1
@@ -61,9 +61,9 @@ static func update_viewport(cache: CityRegionCache, source_rect: Rect2) -> void:
 				nearby.append(key)
 
 	var center := Vector2(rect.get_center()) / cache.region_edge - Vector2(0.5, 0.5)
-	cache._sort_regions(cache.visible, center, first, last, false)
+	_sort_regions(cache.visible, center, first, last, false)
 	var ahead := center + movement.limit_length(cache.region_edge * margin) / cache.region_edge if cache.gpu_enabled else center
-	cache._sort_regions(nearby, ahead, first, last, cache.gpu_enabled)
+	_sort_regions(nearby, ahead, first, last, cache.gpu_enabled)
 
 	if old_visible != cache.visible:
 		cache._changed = true
@@ -125,7 +125,7 @@ static func _trim_retained_regions(cache: CityRegionCache) -> void:
 
 
 static func _gpu_pending(cache: CityRegionCache) -> bool:
-	for worker in cache._gpu_workers:
+	for worker in cache.gpu_workers:
 		if worker.task != null:
 			return true
 
@@ -133,7 +133,7 @@ static func _gpu_pending(cache: CityRegionCache) -> bool:
 
 
 static func _gpu_workers_busy(cache: CityRegionCache) -> bool:
-	for worker in cache._gpu_workers:
+	for worker in cache.gpu_workers:
 		if worker.task == null:
 			return false
 
@@ -141,19 +141,19 @@ static func _gpu_workers_busy(cache: CityRegionCache) -> bool:
 
 
 static func _close_gpu_workers(cache: CityRegionCache) -> void:
-	for worker in cache._gpu_workers:
+	for worker in cache.gpu_workers:
 		if worker.task != null:
 			worker.task.finish()
 
-	cache._gpu_workers.clear()
+	cache.gpu_workers.clear()
 
 
 static func _tick_gpu(cache: CityRegionCache) -> bool:
-	if cache._gpu_workers.is_empty():
+	if cache.gpu_workers.is_empty():
 		for index in mini(CityRegionCache.GPU_WORKERS, maxi(1, OS.get_processor_count() - 2)):
-			cache._gpu_workers.append(CityRegionCache.RegionWorker.new())
+			cache.gpu_workers.append(CityRegionCache.RegionWorker.new())
 
-	for worker in cache._gpu_workers:
+	for worker in cache.gpu_workers:
 		if worker.task == null or worker.task.is_running():
 			continue
 
@@ -232,7 +232,7 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 
 	var active := {}
 
-	for worker in cache._gpu_workers:
+	for worker in cache.gpu_workers:
 		if worker.task != null and worker.layout == cache._layout_generation:
 			for key in worker.keys:
 				active[key] = true
@@ -253,11 +253,11 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 	for rank in ranked:
 		queue.append(Vector2i(rank.z >> 16, rank.z & 0xffff))
 
-	cache._gpu_schedule_serial += 1
+	cache.gpu_schedule_serial += 1
 
 	# reserve some work for missing look-ahead regions even when simulation
 	# changes keep the visible regions continuously out of date
-	if cache.covered() and cache._gpu_schedule_serial % 3 == 0:
+	if cache.covered() and cache.gpu_schedule_serial % 3 == 0:
 		var missing_prefetch: Array[Vector2i] = []
 
 		for key in cache.wanted.slice(cache.visible.size()):
@@ -274,8 +274,8 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 	queue = urgent + queue
 	cache._gpu_has_work = false
 
-	for worker_index in cache._gpu_workers.size():
-		var worker := cache._gpu_workers[worker_index]
+	for worker_index in cache.gpu_workers.size():
+		var worker := cache.gpu_workers[worker_index]
 
 		if worker.task != null:
 			continue
@@ -345,7 +345,7 @@ static func _claim_gpu_keys(cache: CityRegionCache, queue: Array[Vector2i], acti
 		var urgent := cache._edit_priority.has(key)
 		# Prefer neighboring regions on the same worker to reuse tile geometry.
 		# An uncovered edge can use both workers before either does background work.
-		if not urgent and cache.visible.size() >= 32 and int(key.x / 8) % cache._gpu_workers.size() != worker_index:
+		if not urgent and cache.visible.size() >= 32 and int(key.x / 8) % cache.gpu_workers.size() != worker_index:
 			if missing:
 				shared.append(key)
 		elif missing or urgent:
@@ -376,7 +376,7 @@ static func _gpu_atlas_bytes(cache: CityRegionCache) -> int:
 			seen[texture.get_instance_id()] = true
 			bytes += texture.get_width() * texture.get_height() * 2
 
-	for worker in cache._gpu_workers:
+	for worker in cache.gpu_workers:
 		if worker.atlas != null and not seen.has(worker.atlas.get_instance_id()):
 			seen[worker.atlas.get_instance_id()] = true
 			bytes += worker.atlas.get_width() * worker.atlas.get_height() * 2

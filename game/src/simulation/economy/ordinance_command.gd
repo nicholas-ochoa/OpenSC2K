@@ -183,13 +183,13 @@ static func synchronize_current(city: CityState) -> Result:
 	var current := current_cost_for_misc(misc)
 
 	if BinaryData.read_i32_be(misc, budget_offset + BUDGET_CURRENT) == current:
-		var result := Result.new()
-		result.ok = true
-		result.changed = false
-		result.current_raw = current
-		result.error = ""
+		var unchanged_result := Result.new()
+		unchanged_result.ok = true
+		unchanged_result.changed = false
+		unchanged_result.current_raw = current
+		unchanged_result.error = ""
 
-		return result
+		return unchanged_result
 
 	var changed := misc.duplicate()
 	BinaryData.write_u32_be(changed, budget_offset + BUDGET_CURRENT, current)

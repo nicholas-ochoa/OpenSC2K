@@ -2,7 +2,6 @@ extends SceneTree
 
 const AppFixture = preload("res://tests/support/app_fixture.gd")
 const GameSpeed = preload("res://src/simulation/core/game_speed_controller.gd")
-const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
 const DisasterStart = preload("res://src/simulation/disasters/disaster_start_phase.gd")
 const Music = preload("res://src/audio/music_director.gd")
 

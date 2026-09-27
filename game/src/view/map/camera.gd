@@ -2,6 +2,8 @@ class_name CityMapCamera
 extends CityMapConstants
 
 var map: CityMapControl
+var _next_wheel_zoom_msec := 0
+var _last_wheel_zoom_msec := 0
 
 
 func _init(control: CityMapControl) -> void:
@@ -33,10 +35,10 @@ func wheel_zoom(
 	# example with smooth or momentum scrolling. each ignored event extends the
 	# interval, up to a limit after the last zoom, so a continuous scroll still
 	# steps through levels
-	if current_time_msec < map._next_wheel_zoom_msec:
-		map._next_wheel_zoom_msec = mini(
+	if current_time_msec < _next_wheel_zoom_msec:
+		_next_wheel_zoom_msec = mini(
 			current_time_msec + WHEEL_ZOOM_DEBOUNCE_MSEC,
-			map._last_wheel_zoom_msec + WHEEL_ZOOM_MAX_DEBOUNCE_MSEC
+			_last_wheel_zoom_msec + WHEEL_ZOOM_MAX_DEBOUNCE_MSEC
 		)
 
 		return false
@@ -44,8 +46,8 @@ func wheel_zoom(
 	var changed := _change_zoom(1 if direction > 0 else -1, local_point)
 
 	if changed:
-		map._last_wheel_zoom_msec = current_time_msec
-		map._next_wheel_zoom_msec = current_time_msec + WHEEL_ZOOM_DEBOUNCE_MSEC
+		_last_wheel_zoom_msec = current_time_msec
+		_next_wheel_zoom_msec = current_time_msec + WHEEL_ZOOM_DEBOUNCE_MSEC
 
 	return changed
 
@@ -73,7 +75,7 @@ func pan_screen(displacement: Vector2) -> void:
 
 
 func is_panning() -> bool:
-	return map._panning
+	return map.interaction.panning
 
 
 func center_on_tile(point: Vector2i) -> bool:
@@ -264,10 +266,10 @@ func _draw_offset(scale: float) -> Vector2:
 	var offset := _camera_rect().get_center() - map.source_center * scale
 
 	if map.screen_pixel_scale <= 0.0:
-		return offset.round() + map._shake_offset
+		return offset.round() + map.presentation.shake_offset
 
 	# put source pixel edges on screen pixel edges
-	return ScreenPixels.snap(map, offset, map.screen_pixel_scale) + map._shake_offset
+	return ScreenPixels.snap(map, offset, map.screen_pixel_scale) + map.presentation.shake_offset
 
 
 func _camera_source_bounds() -> Rect2:

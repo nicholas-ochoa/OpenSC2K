@@ -50,11 +50,11 @@ static func load_track(paths: PackedStringArray) -> Result:
 
 			return result
 
-	var result := Result.new()
-	result.stream = null
-	result.path = ""
+	var missing_track := Result.new()
+	missing_track.stream = null
+	missing_track.path = ""
 
-	return result
+	return missing_track
 
 
 static func _load_flac(path: String) -> AudioStreamWAV:

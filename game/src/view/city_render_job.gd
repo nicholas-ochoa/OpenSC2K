@@ -35,15 +35,15 @@ func run() -> Result:
 		)
 
 	if not indexed.ok:
-		var result := Result.new()
-		result.ok = false
-		result.error = indexed.error
-		result.signature = signature
-		result.view_size = view_size
-		result.epoch = epoch
-		result.render_mode = render_mode
+		var failure := Result.new()
+		failure.ok = false
+		failure.error = indexed.error
+		failure.signature = signature
+		failure.view_size = view_size
+		failure.epoch = epoch
+		failure.render_mode = render_mode
 
-		return result
+		return failure
 
 	var index_image: Image = indexed.image
 

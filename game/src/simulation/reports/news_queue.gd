@@ -176,10 +176,10 @@ static func insert_items(misc: PackedByteArray, news_items: Array[NewsEvent]) ->
 		if not is_story_type(story_type):
 			continue
 
-		var result := insert(misc, story_type, int(item.argument))
+		var item_result := insert(misc, story_type, int(item.argument))
 
-		if not result.ok:
-			return result
+		if not item_result.ok:
+			return item_result
 
 		inserted += 1
 

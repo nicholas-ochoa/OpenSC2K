@@ -5,6 +5,7 @@ extends CityMapConstants
 @warning_ignore_start("integer_division")
 
 var map: CityMapControl
+var last_brush_tile := Vector2i(-1, -1)
 
 
 func _init(control: CityMapControl) -> void:
@@ -136,7 +137,7 @@ func _selection_source_polygons() -> Array[PackedVector2Array]:
 	if map.network_preview_active:
 		if map.hover_tile.x >= 0:
 			tiles.append(map.hover_tile)
-	elif map.query_footprint_preview and map._shift_pressed:
+	elif map.query_footprint_preview and map.interaction.shift_pressed:
 		tiles = _query_footprint_tiles(map.hover_tile)
 	elif map.brush_box_selection:
 		tiles = map.selection_path.duplicate()
@@ -204,12 +205,12 @@ func _draw_selection_price() -> void:
 		Vector2(-1, -1), Vector2(0, -1), Vector2(1, -1), Vector2(-1, 0),
 		Vector2(1, 0), Vector2(-1, 1), Vector2(0, 1), Vector2(1, 1),
 	]:
-		map._price_layer.draw_string(
+		map.layers.price_layer.draw_string(
 			font, anchor + outline, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14,
 			Color.WHITE,
 		)
 
-	map._price_layer.draw_string(
+	map.layers.price_layer.draw_string(
 		font, anchor, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, color
 	)
 
@@ -225,8 +226,8 @@ func _rebuild_selection_path() -> void:
 
 		return
 
-	if ((map.selection_mode == "rectangle" and not (map.shift_line_enabled and map._shift_pressed)) or map.brush_box_selection
-			or (map.shift_rectangle_enabled and map._shift_pressed and not uses_paint_brush())):
+	if ((map.selection_mode == "rectangle" and not (map.shift_line_enabled and map.interaction.shift_pressed)) or map.brush_box_selection
+			or (map.shift_rectangle_enabled and map.interaction.shift_pressed and not uses_paint_brush())):
 		var minimum := Vector2i(
 			mini(map.selection_start.x, map.selection_end.x),
 			mini(map.selection_start.y, map.selection_end.y),
@@ -261,7 +262,7 @@ func _clear_selection() -> void:
 	map.selection_start = Vector2i(-1, -1)
 	map.selection_end = Vector2i(-1, -1)
 	map.selection_path.clear()
-	map._last_brush_tile = Vector2i(-1, -1)
+	last_brush_tile = Vector2i(-1, -1)
 	map.selection_moved = false
 	clear_selection_price()
 
@@ -372,7 +373,7 @@ func _emit_brush_dab(tile: Vector2i, dragged: bool) -> void:
 	var points: Array[Vector2i] = [tile]
 	if uses_paint_brush():
 		points.clear()
-		var previous := map._last_brush_tile if map._last_brush_tile.x >= 0 else tile
+		var previous := last_brush_tile if last_brush_tile.x >= 0 else tile
 		var movement := tile - previous
 		if movement != Vector2i.ZERO:
 			if absi(movement.x) > absi(movement.y):
@@ -387,7 +388,7 @@ func _emit_brush_dab(tile: Vector2i, dragged: bool) -> void:
 				if not seen.has(point):
 					seen[point] = true
 					points.append(point)
-		map._last_brush_tile = tile
+		last_brush_tile = tile
 	map.selection_completed.emit(tile, tile, points, dragged)
 
 

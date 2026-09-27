@@ -7,7 +7,7 @@ const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const MapInteractionTests = preload("res://tests/suites/core/rendering/map_interaction_tests.gd")
 
 
-func run(reference_root: String, starter: CityState, large: Sc2SpriteArchive) -> void:
+func run(starter: CityState, large: Sc2SpriteArchive) -> void:
 	var surface_city := CityModel.from_document(starter.document.duplicate_document())
 	var surface_point := Vector2i(64, 64)
 	_check(

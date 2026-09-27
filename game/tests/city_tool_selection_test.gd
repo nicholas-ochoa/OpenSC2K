@@ -238,7 +238,7 @@ func _scurk_zone_selection(tool: ScurkEditTool) -> void:
 
 
 class TestToolbar extends CityToolbar:
-	func show_tool_group(_group_index: int, _city: CityState, _icon_provider: Callable = Callable()) -> int:
+	func show_tool_group(_group_index: int, _city: CityState, _icons: Callable = Callable()) -> int:
 		return 0
 
 

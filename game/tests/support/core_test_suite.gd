@@ -6,7 +6,6 @@ extends RefCounted
 const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const CityModel = preload("res://src/model/city_state.gd")
-const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
 const DisasterMap = preload("res://src/simulation/disasters/map/constants.gd")
 const CoreTestContext = preload("res://tests/support/core_test_context.gd")
 

@@ -201,11 +201,11 @@ func _gui_input(event: InputEvent) -> void:
 		return
 
 	if event is InputEventMouseMotion:
-		var point := _point_from_position(event.position)
+		var motion_point := _point_from_position(event.position)
 
-		if point != hover_point:
-			hover_point = point
-			pointer_changed.emit(point, display_pixel_at(point))
+		if motion_point != hover_point:
+			hover_point = motion_point
+			pointer_changed.emit(motion_point, display_pixel_at(motion_point))
 			queue_redraw()
 
 		if stroke_active:
@@ -213,9 +213,9 @@ func _gui_input(event: InputEvent) -> void:
 
 			if event.button_mask & expected_mask:
 				if is_shape_tool(tool):
-					_preview_shape(point)
+					_preview_shape(motion_point)
 				else:
-					_apply_free_line(point)
+					_apply_free_line(motion_point)
 			else:
 				_finish_stroke()
 
@@ -851,7 +851,7 @@ func cancel_paste() -> void:
 	queue_redraw()
 
 
-func _begin_selection_move(duplicate: bool) -> bool:
+func _begin_selection_move(keep_source: bool) -> bool:
 	if editing_disabled or not selection.active() or not copy_selection():
 		return false
 
@@ -859,7 +859,7 @@ func _begin_selection_move(duplicate: bool) -> bool:
 	var origin := selection.bounds().position
 	begin_paste(origin)
 	paste_follow_cursor = false
-	paste_clear_source = not duplicate
+	paste_clear_source = not keep_source
 	paste_source_mask = source
 	return true
 
@@ -961,13 +961,13 @@ func _commit_changed_pixels(changed: PackedInt32Array, description: String) -> v
 	queue_redraw()
 
 
-func _scroll_canvas(delta: Vector2, position: Vector2, zoom_modifier: bool) -> void:
+func _scroll_canvas(delta: Vector2, pointer_position: Vector2, zoom_modifier: bool) -> void:
 	if zoom_modifier:
 		scroll_zoom_delta -= delta.y if delta.y != 0.0 else delta.x
 		var steps := int(scroll_zoom_delta)
 		if steps != 0:
 			scroll_zoom_delta -= steps
-			zoom_requested.emit(steps, position)
+			zoom_requested.emit(steps, pointer_position)
 	else:
 		scroll_zoom_delta = 0.0
 		pan_requested.emit(-delta * SCROLL_PAN_STEP)
@@ -987,7 +987,7 @@ func _handle_editor_input(event: InputEvent) -> bool:
 				pan_requested.emit(event.relative)
 				return true
 			_stop_panning()
-		var point := _point_from_position(event.position)
+		var motion_point := _point_from_position(event.position)
 		if paste_active:
 			if paste_dragging and not (event.button_mask & MOUSE_BUTTON_MASK_LEFT) and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 				if selection_move_dragging:
@@ -996,16 +996,16 @@ func _handle_editor_input(event: InputEvent) -> bool:
 					commit_paste()
 				return true
 			if paste_dragging:
-				paste_position = point - paste_drag_offset
+				paste_position = motion_point - paste_drag_offset
 			elif paste_follow_cursor:
-				paste_position = point
-			hover_point = point
+				paste_position = motion_point
+			hover_point = motion_point
 			queue_redraw()
 			return true
 		if selection_dragging:
-			selection_finish = point
+			selection_finish = motion_point
 			if tool == TOOL_SELECT_LASSO:
-				selection_path.append(Vector2(point))
+				selection_path.append(Vector2(motion_point))
 			_update_selection_preview()
 			return true
 		return false
@@ -1256,7 +1256,7 @@ func _apply_stamp(point: Vector2i) -> void:
 				_apply_pixel(point + Vector2i(x, y), value)
 
 
-func _begin_stroke(point: Vector2i, button: int) -> void:
+func _begin_stroke(point: Vector2i, button: MouseButton) -> void:
 	stroke_active = true
 	stroke_changed = false
 	stroke_button = button
@@ -1270,7 +1270,7 @@ func _begin_stroke(point: Vector2i, button: int) -> void:
 	_apply_brush(point)
 
 
-func _begin_shape(point: Vector2i, button: int) -> void:
+func _begin_shape(point: Vector2i, button: MouseButton) -> void:
 	stroke_active = true
 	stroke_changed = false
 	stroke_button = button
@@ -1296,7 +1296,7 @@ func _apply_free_line(point: Vector2i) -> void:
 				pencil_path.append(line_point)
 		pixels = stroke_base_pixels.duplicate()
 		stroke_changed = false
-		for line_point in paint_options.pixel_perfect_path(pencil_path):
+		for line_point in ScurkPaintOptions.pixel_perfect_path(pencil_path):
 			_apply_brush(line_point)
 	elif tool == TOOL_STAMP:
 		for index in range(1, segment.size()):
@@ -1509,11 +1509,11 @@ static func is_shape_tool(value: int) -> bool:
 	]
 
 
-func _point_from_position(position: Vector2) -> Vector2i:
+func _point_from_position(pointer_position: Vector2) -> Vector2i:
 	if zoom <= 0:
 		return Vector2i(-1, -1)
 
-	var sprite_point := (position - display_origin()) / display_pixel()
+	var sprite_point := (pointer_position - display_origin()) / display_pixel()
 
 	return Vector2i(floori(sprite_point.x), floori(sprite_point.y))
 
@@ -1639,7 +1639,7 @@ func _update_display_texture() -> void:
 
 
 func set_background_view(view: int) -> void:
-	background_view = clampi(view, ScurkSpriteIds.View.LARGE, ScurkSpriteIds.View.SMALL)
+	background_view = clampi(view, ScurkSpriteIds.View.LARGE, ScurkSpriteIds.View.SMALL) as ScurkSpriteIds.View
 	queue_redraw()
 
 

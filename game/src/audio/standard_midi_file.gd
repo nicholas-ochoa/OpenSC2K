@@ -163,13 +163,13 @@ func _parse_track(
 					| (int(data[cursor + 1]) << 8)
 					| int(data[cursor + 2])
 				)
-				var event := Event.new()
-				event.tick = tick
-				event.order = order
-				event.track = track_index
-				event.type = "tempo"
-				event.microseconds_per_quarter = microseconds
-				events.append(event)
+				var tempo_event := Event.new()
+				tempo_event.tick = tick
+				tempo_event.order = order
+				tempo_event.track = track_index
+				tempo_event.type = "tempo"
+				tempo_event.microseconds_per_quarter = microseconds
+				events.append(tempo_event)
 				order += 1
 
 			cursor += meta_length.value
@@ -328,13 +328,13 @@ static func _read_variable_length(data: PackedByteArray, offset: int, end: int) 
 
 			return result
 
-	var result := VariableLengthResult.new()
-	result.ok = false
-	result.value = 0
-	result.next = cursor
-	result.error = "invalid value"
+	var invalid_value := VariableLengthResult.new()
+	invalid_value.ok = false
+	invalid_value.value = 0
+	invalid_value.next = cursor
+	invalid_value.error = "invalid value"
 
-	return result
+	return invalid_value
 
 
 static func _ascii(data: PackedByteArray, offset: int, length: int) -> String:

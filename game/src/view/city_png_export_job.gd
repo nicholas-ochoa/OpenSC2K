@@ -4,7 +4,6 @@ extends RefCounted
 # render a whole city view to a png file on a worker thread
 
 const Renderer = preload("res://src/view/city_isometric_renderer.gd")
-const ScurkCityOutput = preload("res://src/assets/scurk_city_output.gd")
 const ViewFilter = preload("res://src/view/city_view_filter.gd")
 const STAGE_RENDER := "render"
 const STAGE_WRITE := "write"

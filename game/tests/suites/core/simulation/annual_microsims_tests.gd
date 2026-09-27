@@ -6,7 +6,6 @@ extends "res://tests/support/core_test_suite.gd"
 const Random = preload("res://src/simulation/random/sim_random.gd")
 const LfsrRandom = preload("res://src/simulation/random/sim_lfsr_random.gd")
 const AnnualMicrosims = preload("res://src/simulation/civic/microsim_annual_phase.gd")
-const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
 const Buildings = preload("res://src/tools/city/building_command.gd")
 const TestRandoms = preload("res://tests/support/test_randoms.gd")
 const ZeroRandom = TestRandoms.ZeroRandom

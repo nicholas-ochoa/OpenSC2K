@@ -17,12 +17,12 @@ static func load_ids(
 		wanted[resource_id] = true
 
 	if wanted.is_empty():
-		var outcome := Result.new()
-		outcome.ok = true
-		outcome.strings = result
-		outcome.error = ""
+		var empty_result := Result.new()
+		empty_result.ok = true
+		empty_result.strings = result
+		empty_result.error = ""
 
-		return outcome
+		return empty_result
 
 	var data := FileAccess.get_file_as_bytes(data_path)
 

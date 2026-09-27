@@ -213,7 +213,7 @@ func _dynamic_occluder_image(
 			caches.static_occlusion_commands, divisor
 		)
 
-	var mask: Image
+	var mask: Image = null
 
 	# Bounding boxes include transparent pixels. Combine all later silhouettes
 	# to find the foreground that actually covers the sprite.
@@ -330,15 +330,15 @@ func _dynamic_train_foreground_image(
 	if caches.dynamic_foreground_cache.has(key):
 		return caches.dynamic_foreground_cache[key]
 
-	var reference := dynamic_sprite_resource(
+	var reference_sprite := dynamic_sprite_resource(
 		sprite_archive, reference_sprite_id, bool(command.flip), divisor, texture_factor
 	)
 
-	if reference == null:
+	if reference_sprite == null:
 		return surface
 
 	var foreground := IsometricRenderer.foreground_difference_mask(
-		surface, reference.image
+		surface, reference_sprite.image
 	)
 	caches.dynamic_foreground_cache[key] = foreground
 

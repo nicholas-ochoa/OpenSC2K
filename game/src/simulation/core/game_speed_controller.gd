@@ -39,7 +39,7 @@ func _init(initial_engine: SimulationEngine) -> void:
 		var saved_speed := engine.city.simulation_speed()
 
 		if SPEED_NAMES.has(saved_speed):
-			speed = saved_speed
+			speed = saved_speed as Speed
 
 
 func set_speed(value: int) -> bool:
@@ -52,7 +52,7 @@ func set_speed(value: int) -> bool:
 	if not engine.city.set_simulation_speed(value):
 		return false
 
-	speed = value
+	speed = value as Speed
 
 	# a pause from any source cancels the target day
 	if value == Speed.PAUSED:

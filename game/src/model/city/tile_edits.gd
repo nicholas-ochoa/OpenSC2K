@@ -198,7 +198,7 @@ static func masked_tile_flag_signature(city: CityState, mask: int) -> int:
 		"CityState tile-flag signature cache is main-thread only")
 	var byte_mask := mask & 0xff
 	var revision := city.chunk_revision("XBIT")
-	var cached: CitySignatureCache.MaskedFlags = city._masked_tile_flag_signatures.get(byte_mask)
+	var cached: CitySignatureCache.MaskedFlags = city.masked_tile_flag_signatures.get(byte_mask)
 
 	if cached != null and revision >= 0 and cached.revision == revision and cached.size == city.tile_flags.size():
 		return cached.value
@@ -259,7 +259,7 @@ static func masked_tile_flag_signature(city: CityState, mask: int) -> int:
 	cached.source = source_signature
 	cached.size = city.tile_flags.size()
 	cached.value = value
-	city._masked_tile_flag_signatures[byte_mask] = cached
+	city.masked_tile_flag_signatures[byte_mask] = cached
 
 	return value
 

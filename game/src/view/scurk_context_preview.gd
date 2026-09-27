@@ -45,13 +45,13 @@ func _ready() -> void:
 func _draw() -> void:
 	if snapshot == null:
 		return
-	var scale := minf(size.x / FRAME_SIZE.x, size.y / FRAME_SIZE.y)
+	var preview_scale := minf(size.x / FRAME_SIZE.x, size.y / FRAME_SIZE.y)
 	# the largest fit with whole screen pixels for each artwork pixel
 	if ScreenPixels.scale > 0.0:
-		scale = ScreenPixels.fit_scale(scale)
-	elif scale >= 1.0:
-		scale = floorf(scale)
-	var extent := Vector2(FRAME_SIZE) * scale
+		preview_scale = ScreenPixels.fit_scale(preview_scale)
+	elif preview_scale >= 1.0:
+		preview_scale = floorf(preview_scale)
+	var extent := Vector2(FRAME_SIZE) * preview_scale
 	draw_texture_rect(snapshot, Rect2(((size - extent) * 0.5).floor(), extent), false)
 
 

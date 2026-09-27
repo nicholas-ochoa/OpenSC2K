@@ -22,10 +22,10 @@ func show_tools(
 	selected_subtool: int, anchor: Rect2
 ) -> void:
 	palette.show_tool_group(group_index, city, icon_provider)
-	palette.sync_selection(group_index, selected_subtool)
+	palette.sync_selection(selected_subtool)
 	var available_height := maxi(180, int(get_parent().get_viewport_rect().size.y * 0.6))
 	var height := mini(available_height, palette.buttons.size() * 43 + 40)
-	popup(Rect2i(Vector2i(anchor.end.x + 4, anchor.position.y), Vector2i(300, height)))
+	popup(Rect2i(Vector2i(int(anchor.end.x + 4), int(anchor.position.y)), Vector2i(300, height)))
 
 
 func _select_subtool(index: int) -> void:

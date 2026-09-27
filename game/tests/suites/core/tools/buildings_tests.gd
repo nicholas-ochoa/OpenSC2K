@@ -6,7 +6,6 @@ extends "res://tests/support/core_test_suite.gd"
 const Random = preload("res://src/simulation/random/sim_random.gd")
 const LfsrRandom = preload("res://src/simulation/random/sim_lfsr_random.gd")
 const Water = preload("res://src/simulation/infrastructure/water_phase.gd")
-const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
 const Landscapes = preload("res://src/tools/landscape/landscape_command.gd")
 const Buildings = preload("res://src/tools/city/building_command.gd")
 const GameRandom = preload("res://src/simulation/random/game_lcg_random.gd")

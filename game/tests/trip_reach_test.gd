@@ -64,8 +64,8 @@ func _test_highway(edge: int, native: bool) -> void:
 	city.set_zone_id(origin.x, origin.y, 1)
 	city.set_zone_id(destination.x, destination.y, 3)
 	var first_cost := -1
-	for seed in [1, 2, 7, 29]:
-		var result := TransportTrip.run(city, origin, 1, 2, SimRandom.new(seed))
+	for random_seed in [1, 2, 7, 29]:
+		var result := TransportTrip.run(city, origin, 1, 2, SimRandom.new(random_seed))
 		check(result.ok and result.reached_destination, "Every seed reaches a valid highway destination at edge %d" % edge)
 		if first_cost < 0:
 			first_cost = result.cost
@@ -98,8 +98,8 @@ func _test_branches(edge: int, native: bool) -> void:
 	for x in range(20, 61):
 		city.set_building_id(x, 20, Tiles.ROAD_STRAIGHT_1)
 	city.set_zone_id(20, 21, 3)
-	for seed in [1, 7, 29]:
-		check(TransportTrip.run(city, Vector2i(19, 20), 1, 2, SimRandom.new(seed)).reached_destination,
+	for random_seed in [1, 7, 29]:
+		check(TransportTrip.run(city, Vector2i(19, 20), 1, 2, SimRandom.new(random_seed)).reached_destination,
 			"Long dead-end branch cannot hide a short destination")
 	city.set_zone_id(20, 21, 0)
 	city.set_zone_id(61, 20, 3)

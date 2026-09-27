@@ -182,7 +182,7 @@ func _update_fps(delta: float) -> void:
 		return
 
 	app.timing_state.fps_update_seconds = fmod(app.timing_state.fps_update_seconds, 0.25)
-	app.city_menu_bar.set_fps(Engine.get_frames_per_second())
+	app.city_menu_bar.set_fps(int(Engine.get_frames_per_second()))
 
 	if app.city_status_bar != null:
 		app.city_status_bar.refresh_tooltips()

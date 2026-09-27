@@ -133,8 +133,8 @@ func bind(value: ScurkEditorControl) -> void:
 	get_node(STAMPS + "/List").item_selected.connect(_use_stamp)
 	for action in ["Add", "Delete"]:
 		get_node(STAMPS + "/Actions/" + action).pressed.connect(_stamp_action.bind(action))
-	get_node(STAMPS + "/Spacing/Value").value_changed.connect(func(value: float) -> void:
-		editor.pixel_canvas.paint_options.stamp_spacing = roundi(value))
+	get_node(STAMPS + "/Spacing/Value").value_changed.connect(func(spacing: float) -> void:
+		editor.pixel_canvas.paint_options.stamp_spacing = roundi(spacing))
 	$Replace.confirmed.connect(_replace_colors)
 	$ImportPreview.confirmed.connect(_apply_import)
 	for field in ["X", "Y"]:
@@ -613,12 +613,12 @@ func _stamp_action(action: String) -> void:
 		if not editor.pixel_canvas.copy_selection(false):
 			editor._set_status("Select pixels to save a stamp.")
 			return
-		var name := String(get_node(STAMPS + "/Name").text).strip_edges()
-		if name.is_empty():
-			name = "Stamp %d" % (project.stamps.size() + 1)
+		var stamp_name := String(get_node(STAMPS + "/Name").text).strip_edges()
+		if stamp_name.is_empty():
+			stamp_name = "Stamp %d" % (project.stamps.size() + 1)
 		if not editor._capture_edit_start("Add stamp"):
 			return
-		project.add_stamp(name, editor.pixel_canvas.clipboard_width, editor.pixel_canvas.clipboard_height,
+		project.add_stamp(stamp_name, editor.pixel_canvas.clipboard_width, editor.pixel_canvas.clipboard_height,
 			editor.pixel_canvas.clipboard_pixels, editor.pixel_canvas.paint_options.stamp_spacing)
 		editor._record_edit()
 	elif not selected.is_empty():
@@ -658,7 +658,7 @@ func _replace_colors() -> void:
 	for view: int in views:
 		if not editor._view_is_available(view):
 			continue
-		editor.current_view = view
+		editor.current_view = view as ScurkSpriteIds.View
 		editor._refresh_sprite()
 		var document: Dictionary = project.documents[key()]
 		for layer: Dictionary in document.layers:
@@ -748,7 +748,7 @@ func show_context() -> void:
 func _select_context_view(value: int) -> void:
 	if not editor._view_is_available(value):
 		return
-	context_view = value
+	context_view = value as ScurkSpriteIds.View
 	_refresh_context()
 
 
@@ -805,7 +805,7 @@ func restore_editor_state() -> void:
 			int(view_value),
 			ScurkSpriteIds.View.LARGE,
 			ScurkSpriteIds.View.SMALL,
-		) if view_value is int or view_value is float else ScurkSpriteIds.View.LARGE
+		) as ScurkSpriteIds.View if view_value is int or view_value is float else ScurkSpriteIds.View.LARGE
 
 
 func ensure_view(view: int) -> bool:

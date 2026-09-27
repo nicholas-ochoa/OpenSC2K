@@ -17,8 +17,8 @@ func _run() -> void:
 		quit(1)
 		return
 	await process_frame
-	var reference_path := ProjectSettings.globalize_path(reference_path("DEFAULT.SC2"))
-	main.city_files.call("_load_city_unchecked", reference_path)
+	var city_path := ProjectSettings.globalize_path(reference_path("DEFAULT.SC2"))
+	main.city_files.call("_load_city_unchecked", city_path)
 	main.frame.call("select_speed", GameSpeedController.Speed.PAUSED)
 
 	for frame in 5:

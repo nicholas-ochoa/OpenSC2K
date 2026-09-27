@@ -95,7 +95,7 @@ func check_ui() -> void:
 	var before: Array = DocumentState.capture(doc)
 	main.current_tool.select_tool_group(16)
 	var center: Vector2 = main.map_view.source_center
-	var shared_mesh: ArrayMesh
+	var shared_mesh: ArrayMesh = null
 	var popup := main.view_menu.get_popup() as PopupMenu
 	# Rebuilding the layer controls must retain every display-mode action.
 	main.menus.set_overlay(CityViewMode.Mode.UNDERGROUND)

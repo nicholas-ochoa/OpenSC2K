@@ -227,7 +227,7 @@ func _object_icon(value: ScurkMif, large_id: int, source: bool) -> Texture2D:
 		return null
 
 	var image: Image = rendered.image.duplicate()
-	var scale := minf(
+	var thumbnail_scale := minf(
 		1.0,
 		minf(
 			float(THUMBNAIL_SIZE) / float(maxi(1, image.get_width())),
@@ -235,10 +235,10 @@ func _object_icon(value: ScurkMif, large_id: int, source: bool) -> Texture2D:
 		)
 	)
 
-	if scale < 1.0:
+	if thumbnail_scale < 1.0:
 		image.resize(
-			maxi(1, floori(image.get_width() * scale)),
-			maxi(1, floori(image.get_height() * scale)),
+			maxi(1, floori(image.get_width() * thumbnail_scale)),
+			maxi(1, floori(image.get_height() * thumbnail_scale)),
 			Image.INTERPOLATE_NEAREST
 		)
 
@@ -254,7 +254,7 @@ func _select_group(index: int) -> void:
 
 
 func _select_view(view: int) -> void:
-	current_view = view
+	current_view = view as ScurkSpriteIds.View
 
 	for index in view_buttons.size():
 		view_buttons[index].button_pressed = index == view
@@ -279,13 +279,13 @@ func _sync_working_selection() -> void:
 
 
 func _update_buttons() -> void:
-	var ready := source_set != null and working_set != null
+	var sets_ready := source_set != null and working_set != null
 
 	if copy_selected_button != null:
-		copy_selected_button.disabled = not ready or source_list.selected_large_ids().is_empty()
+		copy_selected_button.disabled = not sets_ready or source_list.selected_large_ids().is_empty()
 
 	if copy_all_button != null:
-		copy_all_button.disabled = not ready
+		copy_all_button.disabled = not sets_ready
 
 
 func _request_copy_selected() -> void:

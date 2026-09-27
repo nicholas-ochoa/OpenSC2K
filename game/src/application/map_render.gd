@@ -367,7 +367,7 @@ func refresh_sign_occlusion(view_size: int) -> void:
 
 
 func sign_palette_signature(used: Dictionary[int, bool], mapping: PackedInt32Array) -> int:
-	return ApplicationMapSigns.sign_palette_signature(self, used, mapping)
+	return ApplicationMapSigns.sign_palette_signature(used, mapping)
 
 
 func sign_palette_image(indexed: Image, mapping: PackedInt32Array) -> Image:

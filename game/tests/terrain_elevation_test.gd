@@ -37,11 +37,11 @@ func _initialize() -> void:
 		assert(Array(heights).max() <= 31)
 	for feature in ["rolling", "basin"]:
 		var outputs: Array[PackedInt32Array] = []
-		for seed in [71, 912]:
+		for random_seed in [71, 912]:
 			var heights := PackedInt32Array()
 			heights.resize(128 * 128)
 			heights.fill(6)
-			noise.seed = seed
+			noise.seed = random_seed
 			TerrainElevation.apply(heights, 4, [feature], 0.0, 1.0, noise, 12)
 			outputs.append(heights)
 		var changed := 0

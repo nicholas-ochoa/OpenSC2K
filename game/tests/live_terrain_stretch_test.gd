@@ -72,7 +72,7 @@ func _begin() -> void:
 	main.map_view.selection_start = point
 	main.map_view.selection_end = point
 	main.map_view.selection_moved = false
-	main.map_view._stretch_press_y = 200.0
+	main.map_view.interaction._stretch_press_y = 200.0
 	main.camera_input.on_map_selection_started()
 
 

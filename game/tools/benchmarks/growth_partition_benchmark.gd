@@ -2,13 +2,15 @@ extends "res://tools/benchmarks/fixture_paths.gd"
 ## Growth partition wall time over all sixteen step/substep partitions.
 ## Each partition runs on a fresh city so the scan sees identical input.
 
+@warning_ignore_start("integer_division")
+
 const ROUNDS := 5
 
 
 func _benchmark_initialize() -> void:
 	var totals := PackedInt64Array()
 
-	for round in ROUNDS:
+	for round_index in ROUNDS:
 		var elapsed := 0
 		var scanned := 0
 
@@ -21,7 +23,7 @@ func _benchmark_initialize() -> void:
 				var started := Time.get_ticks_usec()
 				var result := GrowthScan.run(city, random, step, substep, lfsr, game)
 				if not result.ok:
-					printerr("CAPEQUES.SC2 growth round %d partition %d/%d failed: %s" % [round, step, substep, result.error])
+					printerr("CAPEQUES.SC2 growth round %d partition %d/%d failed: %s" % [round_index, step, substep, result.error])
 					quit(1)
 					return
 
@@ -29,7 +31,7 @@ func _benchmark_initialize() -> void:
 				scanned += result.scanned_tiles
 
 		totals.append(elapsed)
-		print("round %d: %d usec, %d tiles scanned" % [round, elapsed, scanned])
+		print("round %d: %d usec, %d tiles scanned" % [round_index, elapsed, scanned])
 
 	var sorted_totals := Array(totals)
 	sorted_totals.sort()

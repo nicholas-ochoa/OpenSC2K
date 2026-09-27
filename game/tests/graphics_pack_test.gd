@@ -5,9 +5,9 @@ const Pack = preload("res://src/assets/graphics_pack.gd")
 
 
 func _initialize() -> void:
-	var root := "user://graphics-pack-test-%d" % Time.get_ticks_usec()
-	assert(DirAccess.make_dir_recursive_absolute(root) == OK)
-	var png := FileAccess.open(root.path_join("sprite.png"), FileAccess.WRITE)
+	var pack_root := "user://graphics-pack-test-%d" % Time.get_ticks_usec()
+	assert(DirAccess.make_dir_recursive_absolute(pack_root) == OK)
+	var png := FileAccess.open(pack_root.path_join("sprite.png"), FileAccess.WRITE)
 	png.store_buffer(Fixture.FIXTURE.hex_decode())
 	png.close()
 	var manifest := {
@@ -20,18 +20,18 @@ func _initialize() -> void:
 	for field in Pack.UI_FIELDS:
 		manifest.ui[field] = "sprite.png"
 
-	_write_manifest(root, manifest)
-	var loaded := Pack.load_root(root)
+	_write_manifest(pack_root, manifest)
+	var loaded := Pack.load_root(pack_root)
 	assert(loaded.error.is_empty(), loaded.error)
-	assert(Pack.load_root(root.path_join("pack.json")).error.is_empty())
-	assert(DirAccess.rename_absolute(root.path_join("pack.json"), root.path_join("manifest.json")) == OK)
-	assert(not Pack.load_root(root).error.is_empty(), "Retired manifest filename is not loaded")
-	assert(DirAccess.rename_absolute(root.path_join("manifest.json"), root.path_join("pack.json")) == OK)
+	assert(Pack.load_root(pack_root.path_join("pack.json")).error.is_empty())
+	assert(DirAccess.rename_absolute(pack_root.path_join("pack.json"), pack_root.path_join("manifest.json")) == OK)
+	assert(not Pack.load_root(pack_root).error.is_empty(), "Retired manifest filename is not loaded")
+	assert(DirAccess.rename_absolute(pack_root.path_join("manifest.json"), pack_root.path_join("pack.json")) == OK)
 	assert(loaded.large_sprites.entries.size() == 2)
 	assert(not loaded.small_medium_sprites.redraw_small_highway_ground)
 	manifest.redraw_small_highway_ground = true
-	_write_manifest(root, manifest)
-	var with_ground := Pack.load_root(root)
+	_write_manifest(pack_root, manifest)
+	var with_ground := Pack.load_root(pack_root)
 	assert(with_ground.error.is_empty() and with_ground.small_medium_sprites.redraw_small_highway_ground)
 	assert(Sc2SpriteArchive.combine([loaded.large_sprites, with_ground.small_medium_sprites]).redraw_small_highway_ground)
 	var parsed := Sc2SpriteArchive.new()
@@ -39,8 +39,8 @@ func _initialize() -> void:
 	assert(parsed.parse(PackedByteArray([0, 0])))
 	assert(not parsed.redraw_small_highway_ground)
 	manifest.redraw_small_highway_ground = 1
-	_write_manifest(root, manifest)
-	assert(not Pack.load_root(root).error.is_empty())
+	_write_manifest(pack_root, manifest)
+	assert(not Pack.load_root(pack_root).error.is_empty())
 	manifest.erase("redraw_small_highway_ground")
 	var sprite: Sc2SpriteArchive.SpriteEntry = loaded.large_sprites.find_sprite(1001)
 	assert(sprite.duplicate_index == 1)
@@ -58,37 +58,38 @@ func _initialize() -> void:
 	var assets := OriginalGameAssets.new()
 	assert(loaded.apply_to(assets))
 	assert(assets.large_sprites == loaded.large_sprites)
-	_write_manifest(root, manifest)
-	var standalone := GameAssetSource.load_source("", "folder", root)
+	_write_manifest(pack_root, manifest)
+	var standalone := GameAssetSource.load_source("", "folder", pack_root)
 	assert(standalone.error.is_empty(), standalone.error)
 	assert(standalone.assets.large_sprites.find_sprite(1001).decode_indices().pixels == sprite.decode_indices().pixels)
 
 	for bad_path in ["../sprite.png", "/sprite.png", "res://sprite.png", "a\\sprite.png", "./sprite.png"]:
 		manifest.palette = bad_path
-		_write_manifest(root, manifest)
-		var bad := Pack.load_root(root)
+		_write_manifest(pack_root, manifest)
+		var bad := Pack.load_root(pack_root)
 		assert(not bad.error.is_empty())
 		assert(not bad.apply_to(assets))
 		assert(assets.large_sprites == loaded.large_sprites)
 
 	manifest.palette = "missing.png"
-	_write_manifest(root, manifest)
-	assert(not Pack.load_root(root).error.is_empty())
+	_write_manifest(pack_root, manifest)
+	assert(not Pack.load_root(pack_root).error.is_empty())
 	manifest.palette = "sprite.png"
 	manifest.large_sprites[0].id = 1.5
-	_write_manifest(root, manifest)
-	assert(not Pack.load_root(root).error.is_empty())
+	_write_manifest(pack_root, manifest)
+	assert(not Pack.load_root(pack_root).error.is_empty())
 	manifest.large_sprites[0].id = 1001
 	manifest.ui.erase("toolbar_art")
-	_write_manifest(root, manifest)
-	assert(not Pack.load_root(root).error.is_empty())
+	_write_manifest(pack_root, manifest)
+	assert(not Pack.load_root(pack_root).error.is_empty())
 	manifest.partial = true
 	manifest.erase("scenario_palette")
 	manifest.small_medium_sprites = []
-	_write_manifest(root, manifest)
-	var partial := Pack.load_root(root)
+	_write_manifest(pack_root, manifest)
+	var partial := Pack.load_root(pack_root)
 	assert(partial.error.is_empty(), partial.error)
-	assert(not GameAssetSource.load_source("", "folder", root).error.is_empty(), "One sprite size group cannot activate without a base")
+	assert(not GameAssetSource.load_source("", "folder", pack_root).error.is_empty(),
+		"One sprite size group cannot activate without a base")
 	var kept_small := assets.small_medium_sprites
 	var kept_scenario := assets.scenario_palette
 	var kept_toolbar := assets.toolbar_art
@@ -98,24 +99,24 @@ func _initialize() -> void:
 	var different := Sc2Palette.index_encoding()
 	assets.palette = different
 	var kept_large := assets.large_sprites
-	assert(not Pack.load_root(root).apply_to(assets))
+	assert(not Pack.load_root(pack_root).apply_to(assets))
 	assert(assets.palette == different and assets.large_sprites == kept_large)
 	manifest.large_sprites = []
-	_write_manifest(root, manifest)
-	assert(not GameAssetSource.load_source("", "folder", root).error.is_empty(), "UI-only packs cannot supply a city on first run")
-	assert(Pack.load_root(root).apply_to(assets))
+	_write_manifest(pack_root, manifest)
+	assert(not GameAssetSource.load_source("", "folder", pack_root).error.is_empty(), "UI-only packs cannot supply a city on first run")
+	assert(Pack.load_root(pack_root).apply_to(assets))
 	assert(assets.palette == different and assets.large_sprites == kept_large)
 	manifest.ui = {}
-	_write_manifest(root, manifest)
-	assert(not Pack.load_root(root).error.is_empty(), "Empty partial packs are invalid")
-	DirAccess.remove_absolute(root.path_join("sprite.png"))
-	DirAccess.remove_absolute(root.path_join("pack.json"))
-	DirAccess.remove_absolute(root)
+	_write_manifest(pack_root, manifest)
+	assert(not Pack.load_root(pack_root).error.is_empty(), "Empty partial packs are invalid")
+	DirAccess.remove_absolute(pack_root.path_join("sprite.png"))
+	DirAccess.remove_absolute(pack_root.path_join("pack.json"))
+	DirAccess.remove_absolute(pack_root)
 	print("PASS: graphics pack loading, duplicate IDs, indexed rendering, UI, invalid packs")
 	quit()
 
 
-func _write_manifest(root: String, manifest: Dictionary) -> void:
-	var file := FileAccess.open(root.path_join("pack.json"), FileAccess.WRITE)
+func _write_manifest(pack_root: String, manifest: Dictionary) -> void:
+	var file := FileAccess.open(pack_root.path_join("pack.json"), FileAccess.WRITE)
 	file.store_string(JSON.stringify(manifest))
 	file.close()

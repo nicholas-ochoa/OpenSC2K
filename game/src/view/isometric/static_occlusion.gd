@@ -269,10 +269,10 @@ static func _append_occluder(
 
 
 static func configure_train_foreground(command: CityStaticCommand, building_id: int, configuration: CityViewConfiguration) -> void:
-	var reference := train_power_foreground_reference_sprite_id(building_id, configuration.sprite_base)
+	var reference_sprite_id := train_power_foreground_reference_sprite_id(building_id, configuration.sprite_base)
 
-	if reference != 0:
-		command.train_foreground_reference_sprite_id = reference
+	if reference_sprite_id != 0:
+		command.train_foreground_reference_sprite_id = reference_sprite_id
 
 	command.train_ignore = ((building_id >= Tiles.POWER_LINE_STRAIGHT_1 and building_id <= Tiles.POWER_LINE_CROSSROADS)
 		or building_id in [Tiles.ROAD_POWER_CROSSING_1, Tiles.ROAD_POWER_CROSSING_2, Tiles.RAIL_POWER_CROSSING_1,
@@ -283,7 +283,7 @@ static func configure_train_foreground(command: CityStaticCommand, building_id: 
 		command.train_deck_thickness = configuration.view_size + 1
 
 		if building_id in [Tiles.HIGHWAY_POWER_CROSSING_1, Tiles.HIGHWAY_POWER_CROSSING_2]:
-			command.train_deck_reference_sprite_id = reference
+			command.train_deck_reference_sprite_id = reference_sprite_id
 
 		command.train_foreground_requires_depth = true
 

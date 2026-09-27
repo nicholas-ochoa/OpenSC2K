@@ -1,5 +1,8 @@
 class_name IsometricStaticVisuals
 extends IsometricConstants
+# isometric static visuals and a main-thread overlay signature cache
+
+@warning_ignore_start("integer_division")
 
 const SIGN_PAGE_CELLS := 1024
 # traffic density above x draws light traffic, and above y heavy traffic
@@ -402,7 +405,7 @@ static func _static_text_overlay_signature(city: CityState) -> int:
 	assert(OS.get_thread_caller_id() == OS.get_main_thread_id(),
 		"Static overlay signature cache is main-thread only")
 	var key: Array[int] = [city.chunk_revision("XTXT"), city.chunk_revision("XTHG")]
-	var cache := city._static_text_overlay_cache
+	var cache := city.static_text_overlay_cache
 
 	if cache != null and cache.key == key:
 		return cache.value
@@ -445,7 +448,7 @@ static func _static_text_overlay_signature(city: CityState) -> int:
 	var value := _compute_static_text_overlay_signature(city, indices)
 	cache.key = key
 	cache.value = value
-	city._static_text_overlay_cache = cache
+	city.static_text_overlay_cache = cache
 
 	return value
 
@@ -519,17 +522,12 @@ static func building_baseline_offset(
 		return configuration.half_height
 
 	if building_id >= Tiles.DEVELOPED_FIRST:
-		return int(sprite_width / 4) - configuration.half_height
+		return sprite_width / 4 - configuration.half_height
 
 	if terrain_id == TerrainTileIds.RAISED:
 		return -configuration.altitude_step
 
 	return 0
-
-
-# isometric static visuals and a main-thread overlay signature cache
-
-@warning_ignore_start("integer_division")
 
 
 class Edge extends RefCounted:

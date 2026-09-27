@@ -70,19 +70,19 @@ func test_network_command(reference_root: String) -> void:
 
 		_check(Networks.undo(city, base).ok, "Reuse fixture restores the original map")
 
-	_test_neighbor_connections(city, document)
+	_test_neighbor_connections(city)
 
 	_test_crossings_and_subways(city, document)
 
-	_test_bridge_choices(city, document)
+	_test_bridge_choices(city)
 
-	_test_bridge_types(city, document)
+	_test_bridge_types(city)
 
 	var unaffordable := Networks.apply(city, 3, 0, Vector2i(50, 50), Vector2i(51, 50))
 	_check(not unaffordable.ok and not unaffordable.error.is_empty(), "Network command reports insufficient funds")
 
 
-func _test_neighbor_connections(city: CityState, document: Sc2File) -> void:
+func _test_neighbor_connections(city: CityState) -> void:
 	var road_connection_request := Networks.apply(
 		city, 6, 0, Vector2i(124, 40), Vector2i(127, 40)
 	)
@@ -344,7 +344,7 @@ func _test_crossings_and_subways(city: CityState, document: Sc2File) -> void:
 	_check(Networks.undo(city, partial).ok, "Partial road route can be undone")
 
 
-func _test_bridge_choices(city: CityState, document: Sc2File) -> void:
+func _test_bridge_choices(city: CityState) -> void:
 	for x in range(80, 89):
 		_check(city.set_land_altitude(x, 20, 4), "Bridge fixture sets land altitude")
 		_check(city.set_water_altitude(x, 20, 5), "Bridge fixture sets water altitude")
@@ -458,7 +458,7 @@ func _test_bridge_choices(city: CityState, document: Sc2File) -> void:
 	)
 
 
-func _test_bridge_types(city: CityState, document: Sc2File) -> void:
+func _test_bridge_types(city: CityState) -> void:
 	var raising_bridge := Networks.apply(
 		city,
 		6,

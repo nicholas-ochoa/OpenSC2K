@@ -26,15 +26,15 @@ func _initialize() -> void:
 			assert(tick.commit_payloads().is_empty())
 			assert(city.buildings == city.document.find_chunk("XBLD").decoded_payload)
 			assert(city.text_overlays == city.document.find_chunk("XTXT").decoded_payload)
-		var city := CityState.from_document(EmptyCityTemplate.create(edge))
-		var tick := MovingThingPhase.TickContext.new(SimRandom.new(1), SimLfsrRandom.new(2),
+		var commit_city := CityState.from_document(EmptyCityTemplate.create(edge))
+		var commit_tick := MovingThingPhase.TickContext.new(SimRandom.new(1), SimLfsrRandom.new(2),
 			GameLcgRandom.new(3), Vector2i(-1, -1), true, false)
-		assert(tick.load_payloads(city))
-		var before := city.document.find_chunk("XTHG").decoded_payload.duplicate()
-		tick.things[12] = 9
-		tick.text[0] = 1
-		city.document.find_chunk("XTXT").expected_decoded_size += 1
-		assert(tick.commit_payloads() == "XTXT")
-		assert(city.document.find_chunk("XTHG").decoded_payload == before, "Failed commit rolls back earlier chunks")
+		assert(commit_tick.load_payloads(commit_city))
+		var before := commit_city.document.find_chunk("XTHG").decoded_payload.duplicate()
+		commit_tick.things[12] = 9
+		commit_tick.text[0] = 1
+		commit_city.document.find_chunk("XTXT").expected_decoded_size += 1
+		assert(commit_tick.commit_payloads() == "XTXT")
+		assert(commit_city.document.find_chunk("XTHG").decoded_payload == before, "Failed commit rolls back earlier chunks")
 	print("PASS: moving-object preparation isolation, disaster writes, mirrors and rollback")
 	quit()

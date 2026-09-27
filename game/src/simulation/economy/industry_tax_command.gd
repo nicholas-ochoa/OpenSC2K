@@ -60,13 +60,13 @@ static func set_tax_rate(
 
 		return result
 
-	var result := Result.new()
-	result.ok = true
-	result.changed = changed
-	result.value = tax_rate
-	result.error = ""
+	var success := Result.new()
+	success.ok = true
+	success.changed = changed
+	success.value = tax_rate
+	success.error = ""
 
-	return result
+	return success
 
 
 class Result extends RefCounted:

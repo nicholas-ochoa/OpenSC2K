@@ -141,13 +141,13 @@ class SpriteEntry extends RefCounted:
 
 	func decode_indices() -> IndexedImageResult:
 		if not _direct_indices.is_empty():
-			var outcome := IndexedImageResult.new()
-			outcome.ok = true
-			outcome.pixels = _direct_indices.duplicate()
-			outcome.rows = height
-			outcome.error = ""
+			var direct_result := IndexedImageResult.new()
+			direct_result.ok = true
+			direct_result.pixels = _direct_indices.duplicate()
+			direct_result.rows = height
+			direct_result.error = ""
 
-			return outcome
+			return direct_result
 
 		var pixels := PackedInt32Array()
 		pixels.resize(width * height)

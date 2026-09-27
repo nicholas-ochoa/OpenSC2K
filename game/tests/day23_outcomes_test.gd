@@ -118,8 +118,8 @@ func _check_military_notices() -> void:
 		assert(city.zone_id(10, 10) == (7 if terrain == 0 else 0))
 
 	var declined := _military_controller(0)
-	var result := declined.resolve_military_proposal(false)
-	assert(result.ok and result.notice_ids.is_empty() and declined.terminal_blocked)
+	var declined_result := declined.resolve_military_proposal(false)
+	assert(declined_result.ok and declined_result.notice_ids.is_empty() and declined.terminal_blocked)
 
 
 func _scenario_city() -> CityState:

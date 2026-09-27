@@ -50,9 +50,9 @@ func refresh_city(
 
 
 # keeps the isometric view checkbox honest when the city view changes elsewhere
-func sync_view_mode(mode: CityViewMode.Mode) -> void:
+func sync_view_mode(view_mode: CityViewMode.Mode) -> void:
 	if map_control != null:
-		map_control.sync_view_mode(mode)
+		map_control.sync_view_mode(view_mode)
 
 
 func refresh_viewport(viewport_outline: PackedVector2Array) -> void:

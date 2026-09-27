@@ -43,16 +43,17 @@ var tile_flags := PackedByteArray()
 # draw the terrain as dry land. this array is never written to an sc2 chunk
 var visible_altitude_levels := 32 # display only; never serialized
 var object_altitude_overrides := PackedInt32Array()
+# Shared cache state for the stateless city and rendering helpers.
 # Only the main thread fills these lazy caches. Workers also read CityState,
 # so filling them from workers would race on the dictionaries.
 # CityTileEdits, CityRecords, and IsometricStaticVisuals check this in debug builds.
 # Masked XBIT signatures use revisions, with a content check as fallback.
-var _masked_tile_flag_signatures: Dictionary[int, CitySignatureCache.MaskedFlags] = {}
+var masked_tile_flag_signatures: Dictionary[int, CitySignatureCache.MaskedFlags] = {}
 # runtime-only sign pages and static overlay content, keyed by xtxt/xthg revisions
-var _static_text_overlay_cache: CitySignatureCache.TextOverlays
+var static_text_overlay_cache: CitySignatureCache.TextOverlays
 # runtime-only microsim footprints, rebuilt when xtxt or xthg changes
-var _microsim_sites: Dictionary[int, CityRecords.Site] = {}
-var _microsim_sites_key := []
+var microsim_site_cache: Dictionary[int, CityRecords.Site] = {}
+var microsim_site_cache_key := []
 
 
 static func from_document(source: Sc2File) -> CityState:

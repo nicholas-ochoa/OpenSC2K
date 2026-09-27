@@ -48,9 +48,9 @@ func _initialize() -> void:
 		assert(rendered.ok, str(rendered.error))
 		var image: Image = rendered.image
 		image.convert(Image.FORMAT_RGBA8)
-		var hash := HashingContext.new()
-		assert(hash.start(HashingContext.HASH_SHA256) == OK and hash.update(image.get_data()) == OK)
-		assert(hash.finish().hex_encode() == expected[id], "independent decoder agreement for %d" % id)
+		var hasher := HashingContext.new()
+		assert(hasher.start(HashingContext.HASH_SHA256) == OK and hasher.update(image.get_data()) == OK)
+		assert(hasher.finish().hex_encode() == expected[id], "independent decoder agreement for %d" % id)
 
 	for change in ["top_down", "palette", "truncated", "size", "planes"]:
 		var bad := PeBitmapResource.load_numeric_dib(path, 1202)

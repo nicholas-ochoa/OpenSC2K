@@ -4,9 +4,7 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
-const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
 const DisasterStart = preload("res://src/simulation/disasters/disaster_start_phase.gd")
-const MovingThingSpawner = preload("res://src/simulation/moving_things/moving_thing_spawner.gd")
 const MAX_FUNDS := 0x7fffffff
 const MIN_FUNDS := -0x80000000
 const MISC_SIZE := Sc2MiscLayout.SIZE
@@ -41,11 +39,11 @@ static func add_funds(city: CityState, amount: int) -> FundsResult:
 
 		return result
 
-	var result := FundsResult.new()
-	result.ok = true
-	result.new_funds = new_funds
+	var success := FundsResult.new()
+	success.ok = true
+	success.new_funds = new_funds
 
-	return result
+	return success
 
 
 static func set_funds(city: CityState, amount: int) -> FundsResult:
@@ -110,10 +108,10 @@ static func unlock_everything(city: CityState, document: Sc2File) -> Result:
 
 		return result
 
-	var result := Result.new()
-	result.ok = true
+	var success := Result.new()
+	success.ok = true
 
-	return result
+	return success
 
 
 # open the military prompt now. no day phases run after the answer
@@ -158,10 +156,10 @@ static func set_no_disasters(city: CityState, enabled: bool) -> Result:
 
 		return result
 
-	var result := Result.new()
-	result.ok = true
+	var success := Result.new()
+	success.ok = true
 
-	return result
+	return success
 
 
 static func end_disaster(
@@ -243,13 +241,13 @@ static func end_disaster(
 	city.resync_mirrors(["XTXT"])
 	_reset_disaster_engine(engine)
 
-	var result := EndDisasterResult.new()
-	result.ok = true
-	result.active_type = active_type
-	result.cleared_markers = cleared_markers
-	result.cleared_objects = disaster_records.size()
+	var success := EndDisasterResult.new()
+	success.ok = true
+	success.active_type = active_type
+	success.cleared_markers = cleared_markers
+	success.cleared_objects = disaster_records.size()
 
-	return result
+	return success
 
 
 static func dispatch_maxis_man(
@@ -331,12 +329,12 @@ static func dispatch_maxis_man(
 
 	city.resync_mirrors(["XTXT"])
 
-	var result := DispatchResult.new()
-	result.ok = true
-	result.start = start
-	result.target = target.point
+	var success := DispatchResult.new()
+	success.ok = true
+	success.start = start
+	success.target = target.point
 
-	return result
+	return success
 
 
 # add a moving thing on the nearest suitable tile to the view center. the spawn
@@ -347,7 +345,7 @@ static func spawn_moving_thing(
 	engine: SimulationEngine,
 	kind: int,
 	view_center: Vector2i,
-	seed: int,
+	random_seed: int,
 ) -> SpawnResult:
 	var result := SpawnResult.new()
 
@@ -369,9 +367,9 @@ static func spawn_moving_thing(
 	var things := old_things.duplicate()
 	var text: PackedByteArray = city.text_overlays.duplicate()
 	var buildings: PackedByteArray = document.find_chunk("XBLD").decoded_payload
-	var random := SimRandom.new(seed)
-	var lfsr_random := SimLfsrRandom.new(maxi(1, seed & 0xffff))
-	var game_random := GameLcgRandom.new(seed)
+	var random := SimRandom.new(random_seed)
+	var lfsr_random := SimLfsrRandom.new(maxi(1, random_seed & 0xffff))
+	var game_random := GameLcgRandom.new(random_seed)
 
 	var nearby := _nearest_tiles(view_center, map_edge)
 	result.point = Vector2i(-1, -1)
@@ -638,11 +636,11 @@ static func _disaster_target(
 			var offset := record * CityState.THING_RECORD_SIZE
 
 			if int(ThingData.read(things, offset)) in [5, 15]:
-				var result := DisasterTarget.new()
-				result.point = Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
-				result.goal = ThingData.target_id(record)
+				var moving_target := DisasterTarget.new()
+				moving_target.point = Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
+				moving_target.goal = ThingData.target_id(record)
 
-				return result
+				return moving_target
 
 	var nearest := Vector2i(-1, -1)
 	var nearest_distance := MAX_FUNDS

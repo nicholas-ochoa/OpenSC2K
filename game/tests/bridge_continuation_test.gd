@@ -58,36 +58,38 @@ func _initialize() -> void:
 			assert(HighwayCommand.undo(city, connected).ok)
 			assert(DocumentState.capture(city.document) == before)
 
-		var city := _fixture(edge, false)
-		var base := edge - 24
+		var multi_city := _fixture(edge, false)
+		var multi_base := edge - 24
 
-		for x in range(base + 12, base + 16):
-			assert(city.set_land_altitude(x, 20, 4))
-			assert(city.set_tile_flag(x, 20, 4, true))
-			assert(city.set_terrain_id(x, 20, 0x21 if x == base + 12 else 0x10))
+		for x in range(multi_base + 12, multi_base + 16):
+			assert(multi_city.set_land_altitude(x, 20, 4))
+			assert(multi_city.set_tile_flag(x, 20, 4, true))
+			assert(multi_city.set_terrain_id(x, 20, 0x21 if x == multi_base + 12 else 0x10))
 
-		var before: Array = DocumentState.capture(city.document)
-		var multi := NetworkCommand.apply(city, 6, 0, Vector2i(base, 20), Vector2i(base + 20, 20), NetworkCommand.BRIDGE_ROAD_CAUSEWAY)
-		assert(multi.ok and multi.bridge_count == 2 and city.building_id(base + 20, 20) != 0)
-		assert(NetworkCommand.undo(city, multi).ok and DocumentState.capture(city.document) == before)
-		assert(city.set_funds(140))
-		var limited := NetworkCommand.apply(city, 6, 0, Vector2i(base, 20), Vector2i(base + 20, 20), NetworkCommand.BRIDGE_ROAD_CAUSEWAY)
-		assert(limited.ok and limited.cost == 140 and city.funds() == 0)
-		assert(city.building_id(base + 8, 20) == 0 and not limited.continuation_error.is_empty())
-		assert(NetworkCommand.undo(city, limited).ok)
-		assert(city.set_funds(0))
+		var multi_before: Array = DocumentState.capture(multi_city.document)
+		var multi := NetworkCommand.apply(multi_city, 6, 0, Vector2i(multi_base, 20), Vector2i(multi_base + 20, 20),
+			NetworkCommand.BRIDGE_ROAD_CAUSEWAY)
+		assert(multi.ok and multi.bridge_count == 2 and multi_city.building_id(multi_base + 20, 20) != 0)
+		assert(NetworkCommand.undo(multi_city, multi).ok and DocumentState.capture(multi_city.document) == multi_before)
+		assert(multi_city.set_funds(140))
+		var limited := NetworkCommand.apply(multi_city, 6, 0, Vector2i(multi_base, 20), Vector2i(multi_base + 20, 20),
+			NetworkCommand.BRIDGE_ROAD_CAUSEWAY)
+		assert(limited.ok and limited.cost == 140 and multi_city.funds() == 0)
+		assert(multi_city.building_id(multi_base + 8, 20) == 0 and not limited.continuation_error.is_empty())
+		assert(NetworkCommand.undo(multi_city, limited).ok)
+		assert(multi_city.set_funds(0))
 		var free_route := NetworkCommand.apply(
-			city,
+			multi_city,
 			6,
 			0,
-			Vector2i(base, 20),
-			Vector2i(base + 20, 20),
+			Vector2i(multi_base, 20),
+			Vector2i(multi_base + 20, 20),
 			NetworkCommand.BRIDGE_ROAD_CAUSEWAY,
 			-1,
 			true,
 		)
 		assert(free_route.ok and free_route.cost == 0 and free_route.bridge_count == 2)
-		assert(NetworkCommand.undo(city, free_route).ok)
+		assert(NetworkCommand.undo(multi_city, free_route).ok)
 	print("PASS: bridge continuation, costs, deferred connections and one-step Undo at all map sizes")
 	quit()
 

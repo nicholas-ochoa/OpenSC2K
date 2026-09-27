@@ -121,7 +121,6 @@ static func _start_mass_riots(city: CityState, point: Vector2i, random: SimRando
 
 
 static func _riot_map_payloads(city: CityState) -> Dictionary[String, PackedByteArray]:
-	var map_edge: int = city.map_size if city != null else 128
 	var result: Dictionary[String, PackedByteArray] = {}
 
 	for chunk_id in ["XBLD", "XBIT", "XTXT"]:

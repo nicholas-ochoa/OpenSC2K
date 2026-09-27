@@ -1,6 +1,8 @@
 class_name WaveSoundGate
 extends RefCounted
 
+@warning_ignore_start("integer_division")
+
 const SOUND_FIRST := 500
 const SOUND_LAST := 529
 const SOUND_EXPLODE := 504

@@ -70,7 +70,7 @@ static func token_phrase_id(value: int) -> int:
 static func render_story(
 	data: DataUsaResource,
 	record: NewsQueue.StoryRecord,
-	seed: int,
+	story_seed: int,
 	city_text: String,
 	mayor_text: String,
 	teams: PackedStringArray
@@ -83,7 +83,7 @@ static func render_story(
 
 	renderer.shared_choices.resize(DataUsaResource.TABLE_ENTRY_COUNT)
 	renderer.shared_choices.fill(-1)
-	renderer.random = Random.new(seed)
+	renderer.random = Random.new(story_seed)
 	var headline_bytes := renderer._render_selected(0)
 
 	if not renderer.error.is_empty():
@@ -91,7 +91,7 @@ static func render_story(
 
 	var headline := renderer._title_case(renderer._decode_oem(headline_bytes, true))
 
-	renderer.random = Random.new(seed)
+	renderer.random = Random.new(story_seed)
 	var article_bytes := renderer._render_selected(1)
 
 	if not renderer.error.is_empty():
@@ -115,7 +115,7 @@ static func render_story(
 static func render_headline(
 	data: DataUsaResource,
 	record: NewsQueue.StoryRecord,
-	seed: int,
+	story_seed: int,
 	city_text: String,
 	mayor_text: String,
 	teams: PackedStringArray
@@ -128,7 +128,7 @@ static func render_headline(
 
 	renderer.shared_choices.resize(DataUsaResource.TABLE_ENTRY_COUNT)
 	renderer.shared_choices.fill(-1)
-	renderer.random = Random.new(seed)
+	renderer.random = Random.new(story_seed)
 	var headline_bytes := renderer._render_selected(0)
 
 	if not renderer.error.is_empty():

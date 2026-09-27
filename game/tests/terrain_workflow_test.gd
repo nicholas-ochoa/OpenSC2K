@@ -44,10 +44,10 @@ func _run() -> void:
 		assert(main.map_view.shift_rectangle_enabled)
 		main.map_view.selection_start = Vector2i(40, 40)
 		main.map_view.selection_end = Vector2i(42, 43)
-		main.map_view._shift_pressed = true
+		main.map_view.interaction.shift_pressed = true
 		main.map_view.selection._rebuild_selection_path()
 		assert(main.map_view.selection_path.size() == 12)
-		main.map_view._shift_pressed = false
+		main.map_view.interaction.shift_pressed = false
 		main.map_view.selection._rebuild_selection_path()
 		assert(main.map_view.selection_path.size() == 6)
 

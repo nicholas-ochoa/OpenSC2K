@@ -653,11 +653,11 @@ func _test_generation_sampling() -> void:
 				shape.ok and shape.width == width >> view and shape.height == 240 >> view,
 				"Generated dimensions match the original sampler",
 			)
-			var hash := HashingContext.new()
-			hash.start(HashingContext.HASH_SHA256)
-			hash.update(shape.pixels.to_byte_array())
+			var hasher := HashingContext.new()
+			hasher.start(HashingContext.HASH_SHA256)
+			hasher.update(shape.pixels.to_byte_array())
 			_check(
-				hash.finish().hex_encode() == hashes[index],
+				hasher.finish().hex_encode() == hashes[index],
 				"Generated pixels match original x86 output for base %d, view %d" % [width, view],
 			)
 			index += 1

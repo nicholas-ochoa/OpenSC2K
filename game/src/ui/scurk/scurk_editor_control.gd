@@ -380,7 +380,7 @@ func request_export_bmp() -> void:
 
 func _show_export_file_dialog() -> void:
 	dialog_registry.export_options.hide()
-	pending_export_view = dialog_registry.export_view.selected
+	pending_export_view = dialog_registry.export_view.selected as ScurkSpriteIds.View
 	pending_export_format = dialog_registry.export_format.selected
 	if pixel_canvas == null or pixel_canvas.sprite_width <= 0:
 		return
@@ -971,7 +971,7 @@ func _bind_interface() -> void:
 	pixel_canvas.pan_requested.connect(canvas_panel.pan_canvas)
 	pixel_canvas.zoom_requested.connect(canvas_panel.zoom_at)
 	canvas_panel.zoom_changed.connect(func(value: int) -> void: zoom_label.text = "%dx" % value)
-	pixel_canvas.brush_size_requested.connect(func(size: int) -> void: brush_size_selector.value = size)
+	pixel_canvas.brush_size_requested.connect(func(brush_size: int) -> void: brush_size_selector.value = brush_size)
 
 	toolbar.studio_action.connect(_studio_action)
 	_update_history_buttons()
@@ -1024,7 +1024,7 @@ func _select_view(view: int) -> void:
 	if not _view_is_available(view):
 		return
 
-	current_view = view
+	current_view = view as ScurkSpriteIds.View
 
 	for index in view_buttons.size():
 		view_buttons[index].button_pressed = index == view
@@ -1843,12 +1843,12 @@ func _studio_action(action: String) -> void:
 		pixel_canvas.grab_focus()
 
 
-func _show_canvas_menu(position: Vector2) -> void:
-	canvas_menu_point = pixel_canvas._point_from_position(position).clamp(Vector2i.ZERO,
+func _show_canvas_menu(canvas_position: Vector2) -> void:
+	canvas_menu_point = pixel_canvas._point_from_position(canvas_position).clamp(Vector2i.ZERO,
 		Vector2i(pixel_canvas.sprite_width - 1, pixel_canvas.sprite_height - 1).max(Vector2i.ZERO))
 	_refresh_canvas_menu()
 	var transform := pixel_canvas.get_global_transform_with_canvas() if $CanvasMenu.is_embedded() else pixel_canvas.get_screen_transform()
-	$CanvasMenu.position = Vector2i(transform * position)
+	$CanvasMenu.position = Vector2i(transform * canvas_position)
 	$CanvasMenu.popup()
 
 

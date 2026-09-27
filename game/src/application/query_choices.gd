@@ -2,7 +2,6 @@ class_name ApplicationQueryChoices
 extends RefCounted
 
 const Tools = preload("res://src/tools/shared/tool_catalog.gd")
-const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
 const Signs = preload("res://src/tools/city/sign_command.gd")
 const Queries = preload("res://src/tools/city/query_info.gd")
 const QueryFacilityActions = preload("res://src/tools/city/query_actions.gd")
@@ -22,8 +21,13 @@ func open_tool_choice_dialog(group_index: int) -> void:
 	if app.document_state.city == null or (group_index != CityToolIds.Group.POWER and group_index != CityToolIds.Group.REWARDS):
 		return
 
-	var first_subtool: int = CityToolIds.Power.COAL if group_index == CityToolIds.Group.POWER else CityToolIds.Rewards.PLYMOUTH
-	var final_subtool: int = CityToolIds.Power.FUSION if group_index == CityToolIds.Group.POWER else CityToolIds.Rewards.LAUNCH
+	var first_subtool: int = CityToolIds.Rewards.PLYMOUTH
+	var final_subtool: int = CityToolIds.Rewards.LAUNCH
+
+	if group_index == CityToolIds.Group.POWER:
+		first_subtool = CityToolIds.Power.COAL
+		final_subtool = CityToolIds.Power.FUSION
+
 	var choices: Array[int] = []
 
 	for subtool_index in range(first_subtool, final_subtool + 1):

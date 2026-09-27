@@ -75,11 +75,11 @@ func _run() -> void:
 		main.preferences.dark_underground = true
 		main.menus.sync_map_style()
 		assert(main.map_view.dark_underground == state[2])
-		assert(main.map_view._base_material.get_shader_parameter("dark_underground") == state[2])
+		assert(main.map_view.layers._base_material.get_shader_parameter("dark_underground") == state[2])
 		main.preferences.dark_underground = false
 		main.menus.sync_map_style()
 		assert(not main.map_view.dark_underground)
-		assert(not main.map_view._base_material.get_shader_parameter("dark_underground"))
+		assert(not main.map_view.layers._base_material.get_shader_parameter("dark_underground"))
 	assert(main.document_state.city.document.serialize().data == before)
 	main.free()
 	await process_frame

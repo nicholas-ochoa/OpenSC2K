@@ -177,18 +177,18 @@ func _test_invalid(members: Dictionary[String, PackedByteArray], manifest: Dicti
 	var descriptor: Dictionary = manifest.project.documents[DOCUMENT_KEY].layers[0].pixels
 	for path: String in ["project.json", "palette.json", "original.mif", "current/current.mif", descriptor.image,
 		descriptor.transparency_mask]:
-		var bad := members.duplicate()
-		bad.erase(path)
-		_reject(bad, "Missing required archive member")
+		var missing_member := members.duplicate()
+		missing_member.erase(path)
+		_reject(missing_member, "Missing required archive member")
 	for path: String in ["project.json", "palette.json", "original.mif", "current/current.mif", descriptor.image,
 		descriptor.transparency_mask]:
-		var bad := members.duplicate()
-		bad[path] = PackedByteArray([0])
-		_reject(bad, "Invalid required archive member")
+		var invalid_member := members.duplicate()
+		invalid_member[path] = PackedByteArray([0])
+		_reject(invalid_member, "Invalid required archive member")
 	for version: Variant in [0, 1, 3, 2.5, "2", null]:
-		var bad := manifest.duplicate(true)
-		bad.version = version
-		_reject_manifest(members, bad, "Unsupported archive version")
+		var invalid_version := manifest.duplicate(true)
+		invalid_version.version = version
+		_reject_manifest(members, invalid_version, "Unsupported archive version")
 	var unknown := members.duplicate()
 	unknown["unused.bin"] = PackedByteArray([1])
 	_reject(unknown, "Unreferenced archive members are rejected")

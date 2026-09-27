@@ -167,7 +167,7 @@ func refresh() -> void:
 
 
 static func history_for_scale(
-	value_city: CityState, series: int, scale: int
+	value_city: CityState, series: int, selected_time_scale: int
 ) -> PackedInt64Array:
 	var ordered := PackedInt64Array()
 
@@ -175,7 +175,7 @@ static func history_for_scale(
 		return ordered
 
 	var record := value_city.graph_series(series)
-	var key := _scale_key(scale)
+	var key := _scale_key(selected_time_scale)
 
 	if record == null or key.is_empty():
 		return ordered
@@ -248,7 +248,7 @@ static func format_value(series: int, value: int) -> String:
 	return "%dm" % int(value / 1000000)
 
 
-static func time_labels(value_city: CityState, scale: int) -> PackedStringArray:
+static func time_labels(value_city: CityState, selected_time_scale: int) -> PackedStringArray:
 	var labels := PackedStringArray()
 
 	if value_city == null:
@@ -257,16 +257,16 @@ static func time_labels(value_city: CityState, scale: int) -> PackedStringArray:
 	var year := value_city.current_year()
 	var month := value_city.current_month()
 
-	if scale == TIME_YEAR:
+	if selected_time_scale == TIME_YEAR:
 		for offset in range(Sc2GraphLayout.YEAR_COUNT - 1, -1, -1):
 			var month_index := posmod(month - 1 - offset, 12)
 			labels.append(MONTH_NAMES[month_index])
-	elif scale == TIME_DECADE:
+	elif selected_time_scale == TIME_DECADE:
 		var labelled_parity := 1 if month < 7 else 0
 
 		for index in Sc2GraphLayout.DECADE_COUNT:
 			labels.append("'%02d" % posmod(year - 9 + index / 2, 100) if index % 2 == labelled_parity else "")
-	elif scale == TIME_CENTURY:
+	elif selected_time_scale == TIME_CENTURY:
 		var oldest_decade := ((year - 90) / 10) * 10
 		var elapsed_years := value_city.age_in_days() / CityCalendar.DAYS_PER_YEAR
 		var labelled_parity := 1 if elapsed_years % 10 < 5 else 0
@@ -277,14 +277,14 @@ static func time_labels(value_city: CityState, scale: int) -> PackedStringArray:
 	return labels
 
 
-static func _scale_key(scale: int) -> String:
-	if scale == TIME_YEAR:
+static func _scale_key(selected_time_scale: int) -> String:
+	if selected_time_scale == TIME_YEAR:
 		return "year"
 
-	if scale == TIME_DECADE:
+	if selected_time_scale == TIME_DECADE:
 		return "decade"
 
-	if scale == TIME_CENTURY:
+	if selected_time_scale == TIME_CENTURY:
 		return "century"
 
 	return ""

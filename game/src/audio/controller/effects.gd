@@ -30,7 +30,7 @@ static func play_sound_events(
 		return
 
 	for sound_event in sound_events:
-		var sound_id := CityAudioController.MovingThingAudio.event_sound_id(
+		var sound_id := MovingThingAudio.event_sound_id(
 			sound_event, overlay_mode, view_size
 		)
 

@@ -74,8 +74,8 @@ func _check_city_name_fallback(newspaper: NewspaperDialog) -> void:
 		reference_root.path_join("DATA/DATA_USA.IDX"),
 	)
 	assert(data.is_valid())
-	var seed := -28 - (city.age_in_days() / 25)
-	newspaper.open_reports(city, document, data, {}, seed, 0)
+	var story_seed := -28 - (city.age_in_days() / 25)
+	newspaper.open_reports(city, document, data, {}, story_seed, 0)
 	var payload := newspaper._web_payload()
 	assert(payload.headline == "BABAR Awakens!!")
 	assert(str(payload.articles[0]).contains("BABAR"))
@@ -83,7 +83,7 @@ func _check_city_name_fallback(newspaper: NewspaperDialog) -> void:
 	assert(city.city_name().is_empty())
 	newspaper.hide()
 
-	newspaper.open_reports(city, document, null, {}, seed, 0)
+	newspaper.open_reports(city, document, null, {}, story_seed, 0)
 	assert(str(newspaper._web_payload().headlines[0]).begins_with("BABAR counts "))
 	newspaper.hide()
 	var before := document.serialize().data as PackedByteArray

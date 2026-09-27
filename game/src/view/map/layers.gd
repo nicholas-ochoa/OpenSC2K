@@ -6,6 +6,18 @@ extends CityMapConstants
 const RETAINED_GEOMETRY_BYTES := 64 * 1024 * 1024
 
 var map: CityMapControl
+# the price label draws above the network preview layer, not under it
+var price_layer: Node2D
+var _tile_layers: Array[TextureRect] = []
+var _mesh_layers: Array[MeshInstance2D] = []
+var _mesh_view_scale := -1.0
+var _tiled_source: CityMapSource
+var base_layer: TextureRect
+var _base_material: ShaderMaterial
+var dynamic_canvas: CityDynamicSpriteCanvas
+var _dynamic_material: ShaderMaterial
+var _palette_shader: Shader
+var _foreground_palette_material: ShaderMaterial
 var _retained_data_mesh: ArrayMesh
 var _retained_data_signature: Array = []
 
@@ -80,8 +92,8 @@ func clear_data_view() -> void:
 	map.data_geometry_signature.clear()
 	map.data_value_texture = null
 
-	if map._dynamic_canvas != null:
-		map._dynamic_canvas.show()
+	if dynamic_canvas != null:
+		dynamic_canvas.show()
 
 	_sync_base_layer()
 	map.queue_redraw()
@@ -189,35 +201,35 @@ func data_key_origin() -> Vector2:
 
 
 func _ensure_base_layer() -> void:
-	if map._base_layer != null:
+	if base_layer != null:
 		return
 
-	map._base_layer = TextureRect.new()
-	map._base_layer.name = "CityBaseLayer"
-	map._base_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	map._base_layer.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	map._base_layer.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	map._base_layer.stretch_mode = TextureRect.STRETCH_SCALE
-	map._base_layer.show_behind_parent = true
-	map._price_layer = Node2D.new()
-	map._price_layer.name = "SelectionPriceLayer"
-	map._price_layer.z_index = PRICE_LAYER_Z_INDEX
-	map._price_layer.draw.connect(map.selection._draw_selection_price)
-	map.add_child(map._price_layer)
-	map._foreground_palette_material = CityForegroundPalette.create_material(map.animated_palette_texture)
-	map.material = map._foreground_palette_material
-	map._palette_shader = PALETTE_CYCLE_SHADER
-	map._base_material = _new_palette_material()
-	map._base_layer.material = map._base_material
-	map.add_child(map._base_layer)
-	map._dynamic_canvas = DynamicSpriteCanvas.new()
-	map._dynamic_canvas.name = "DynamicSpriteCanvas"
-	map._dynamic_canvas.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	map._dynamic_canvas.show_behind_parent = true
-	map._dynamic_material = _new_palette_material()
-	map._dynamic_canvas.material = map._dynamic_material
-	map.add_child(map._dynamic_canvas)
-	map._dynamic_canvas.set_visuals(
+	base_layer = TextureRect.new()
+	base_layer.name = "CityBaseLayer"
+	base_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	base_layer.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	base_layer.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	base_layer.stretch_mode = TextureRect.STRETCH_SCALE
+	base_layer.show_behind_parent = true
+	price_layer = Node2D.new()
+	price_layer.name = "SelectionPriceLayer"
+	price_layer.z_index = PRICE_LAYER_Z_INDEX
+	price_layer.draw.connect(map.selection._draw_selection_price)
+	map.add_child(price_layer)
+	_foreground_palette_material = CityForegroundPalette.create_material(map.animated_palette_texture)
+	map.material = _foreground_palette_material
+	_palette_shader = PALETTE_CYCLE_SHADER
+	_base_material = _new_palette_material()
+	base_layer.material = _base_material
+	map.add_child(base_layer)
+	dynamic_canvas = DynamicSpriteCanvas.new()
+	dynamic_canvas.name = "DynamicSpriteCanvas"
+	dynamic_canvas.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	dynamic_canvas.show_behind_parent = true
+	_dynamic_material = _new_palette_material()
+	dynamic_canvas.material = _dynamic_material
+	map.add_child(dynamic_canvas)
+	dynamic_canvas.set_visuals(
 		map.dynamic_sprites, map.camera._view_scale(), map.camera._draw_offset(map.camera._view_scale())
 	)
 	_sync_base_layer()
@@ -235,36 +247,36 @@ func _sync_base_nodes() -> void:
 			map.data_view_layer.scale = Vector2.ONE * data_scale
 			map.data_view_layer.show()
 
-		if map._base_layer != null:
-			map._base_layer.hide()
+		if base_layer != null:
+			base_layer.hide()
 
-		if map._dynamic_canvas != null:
-			map._dynamic_canvas.hide()
+		if dynamic_canvas != null:
+			dynamic_canvas.hide()
 
 		return
 
-	if map._base_layer == null:
+	if base_layer == null:
 		return
 
 	if map.city_source == null:
-		map._base_layer.hide()
+		base_layer.hide()
 
 		return
 
 	var scale := map.camera._view_scale()
 
-	if map._tiled_source != map.city_source and not _update_region_meshes(scale):
-		for tile in map._tile_layers:
+	if _tiled_source != map.city_source and not _update_region_meshes(scale):
+		for tile in _tile_layers:
 			tile.queue_free()
 
-		map._tile_layers.clear()
+		_tile_layers.clear()
 		var retained_meshes := {}
 
-		for mesh in map._mesh_layers:
+		for mesh in _mesh_layers:
 			retained_meshes[mesh.get_meta("source_position")] = mesh
 
-		map._mesh_layers.clear()
-		map._tiled_source = map.city_source
+		_mesh_layers.clear()
+		_tiled_source = map.city_source
 
 		for entry in map.city_source.tiles:
 			var tile := TextureRect.new()
@@ -274,21 +286,21 @@ func _sync_base_nodes() -> void:
 			tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			tile.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			tile.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			tile.material = map._base_material
-			map._base_layer.add_child(tile)
-			map._tile_layers.append(tile)
+			tile.material = _base_material
+			base_layer.add_child(tile)
+			_tile_layers.append(tile)
 
 		for entry in map.city_source.meshes:
 			var mesh: MeshInstance2D = retained_meshes.get(entry.position)
 
 			if mesh == null:
 				mesh = MeshInstance2D.new()
-				map._base_layer.add_child(mesh)
+				base_layer.add_child(mesh)
 			else:
 				retained_meshes.erase(entry.position)
 
 				if mesh.mesh == entry.mesh and mesh.texture == entry.texture and int(mesh.get_meta("divisor")) == entry.divisor:
-					map._mesh_layers.append(mesh)
+					_mesh_layers.append(mesh)
 					continue
 
 			mesh.position = Vector2(entry.position) * scale
@@ -303,28 +315,28 @@ func _sync_base_nodes() -> void:
 			mesh.set_meta("source_position", entry.position)
 			mesh.set_meta("divisor", entry.divisor)
 			mesh.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			mesh.material = map._base_material
-			map._mesh_layers.append(mesh)
+			mesh.material = _base_material
+			_mesh_layers.append(mesh)
 		for mesh: MeshInstance2D in retained_meshes.values():
 			mesh.hide()
 			mesh.queue_free()
 
-	map._base_layer.texture = map.city_source.texture
+	base_layer.texture = map.city_source.texture
 
-	for tile in map._tile_layers:
+	for tile in _tile_layers:
 		tile.position = Vector2(tile.get_meta("source_position")) * scale
 		tile.size = Vector2(tile.get_meta("source_size")) * scale
 
-	if not is_equal_approx(map._mesh_view_scale, scale):
-		for mesh in map._mesh_layers:
+	if not is_equal_approx(_mesh_view_scale, scale):
+		for mesh in _mesh_layers:
 			mesh.position = Vector2(mesh.get_meta("source_position")) * scale
 			mesh.scale = Vector2.ONE * scale * int(mesh.get_meta("divisor"))
 
-		map._mesh_view_scale = scale
+		_mesh_view_scale = scale
 
-	map._base_layer.position = map.camera._draw_offset(scale)
-	map._base_layer.size = Vector2(map.city_source.size) * scale
-	map._base_layer.show()
+	base_layer.position = map.camera._draw_offset(scale)
+	base_layer.size = Vector2(map.city_source.size) * scale
+	base_layer.show()
 	_sync_base_material()
 	_sync_dynamic_canvas()
 
@@ -333,11 +345,11 @@ func _sync_base_nodes() -> void:
 # Keep the node list and skip unchanged, immutable descriptors. Pans, missing
 # regions, and CPU texture sources still use the full reconciliation above.
 func _update_region_meshes(scale: float) -> bool:
-	var before := map._tiled_source
+	var before := _tiled_source
 	var after := map.city_source
 
 	if (before == null or after.meshes.is_empty() or not before.tiles.is_empty() or not after.tiles.is_empty()
-			or before.meshes.size() != after.meshes.size() or map._mesh_layers.size() != after.meshes.size()):
+			or before.meshes.size() != after.meshes.size() or _mesh_layers.size() != after.meshes.size()):
 		return false
 
 	var changed := after.mesh_updates
@@ -353,62 +365,62 @@ func _update_region_meshes(scale: float) -> bool:
 	for index in changed:
 		var entry := after.meshes[index]
 
-		var mesh := map._mesh_layers[index]
+		var mesh := _mesh_layers[index]
 		mesh.position = entry.position * scale
 		mesh.scale = Vector2.ONE * scale * entry.divisor
 		mesh.mesh = entry.mesh
 		mesh.texture = entry.texture
 		mesh.set_meta("divisor", entry.divisor)
 
-	map._tiled_source = after
+	_tiled_source = after
 
 	return true
 
 
 func _sync_base_material() -> void:
-	if map._foreground_palette_material != null:
-		map._foreground_palette_material.set_shader_parameter("foreground_palette", map.animated_palette_texture)
+	if _foreground_palette_material != null:
+		_foreground_palette_material.set_shader_parameter("foreground_palette", map.animated_palette_texture)
 
-	if map._base_material == null:
+	if _base_material == null:
 		return
 
-	map._base_material.set_shader_parameter("dark_underground", map.dark_underground)
-	map._base_material.set_shader_parameter("dark_underground_palette", map.dark_underground_palette_texture)
-	map._base_material.set_shader_parameter("palette_indices", map.palette_index_texture)
-	map._base_material.set_shader_parameter("animated_palette", map.animated_palette_texture)
+	_base_material.set_shader_parameter("dark_underground", map.dark_underground)
+	_base_material.set_shader_parameter("dark_underground_palette", map.dark_underground_palette_texture)
+	_base_material.set_shader_parameter("palette_indices", map.palette_index_texture)
+	_base_material.set_shader_parameter("animated_palette", map.animated_palette_texture)
 	# with palette_lookup_all, the base texture holds the indices itself
-	map._base_material.set_shader_parameter(
+	_base_material.set_shader_parameter(
 		"palette_cycle_enabled",
 		(map.palette_index_texture != null or map.base_palette_lookup_all) and map.animated_palette_texture != null,
 	)
-	map._base_material.set_shader_parameter("palette_lookup_all", map.base_palette_lookup_all)
+	_base_material.set_shader_parameter("palette_lookup_all", map.base_palette_lookup_all)
 
-	if map._dynamic_material != null:
-		map._dynamic_material.set_shader_parameter(
+	if _dynamic_material != null:
+		_dynamic_material.set_shader_parameter(
 			"animated_palette", map.animated_palette_texture
 		)
-		map._dynamic_material.set_shader_parameter(
+		_dynamic_material.set_shader_parameter(
 			"palette_cycle_enabled", map.animated_palette_texture != null
 		)
-		map._dynamic_material.set_shader_parameter("palette_lookup_all", true)
+		_dynamic_material.set_shader_parameter("palette_lookup_all", true)
 
 
 func _sync_dynamic_canvas() -> void:
-	if map._dynamic_canvas == null:
+	if dynamic_canvas == null:
 		return
 
 	if map.city_source == null:
-		map._dynamic_canvas.hide()
+		dynamic_canvas.hide()
 
 		return
 
 	var scale := map.camera._view_scale()
 	var offset := map.camera._draw_offset(scale)
-	map._dynamic_canvas.set_view_transform(scale, offset)
+	dynamic_canvas.set_view_transform(scale, offset)
 
 
 func _new_palette_material() -> ShaderMaterial:
 	var material := ShaderMaterial.new()
-	material.shader = map._palette_shader
+	material.shader = _palette_shader
 
 	return material

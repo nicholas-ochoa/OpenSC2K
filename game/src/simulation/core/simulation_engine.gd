@@ -5,7 +5,6 @@ extends RefCounted
 const RciAftermath = preload("res://src/simulation/growth/rci_aftermath_phase.gd")
 const SimNation = preload("res://src/simulation/civic/simnation_phase.gd")
 const Industries = preload("res://src/simulation/growth/industry_phase.gd")
-const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
 const WeatherDisaster = preload("res://src/simulation/disasters/weather_disaster_phase.gd")
 const Music = preload("res://src/audio/music_director.gd")
 
@@ -495,7 +494,7 @@ func _execute_day_schedule(schedule: SimulationSchedule, annual_budget_approved:
 
 
 func _schedule_after(schedule: SimulationSchedule, completed_action: String) -> SimulationSchedule:
-	return SimulationDaySchedule._schedule_after(self, schedule, completed_action)
+	return SimulationDaySchedule._schedule_after(schedule, completed_action)
 
 
 func _persist_news_result(result: PhaseResult) -> SimulationPhaseContext.NewsPersistenceResult:

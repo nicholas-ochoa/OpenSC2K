@@ -31,7 +31,7 @@ func _run() -> void:
 					main.map_view.selection_start = point
 					main.map_view.selection_end = point
 					main.camera_input.on_map_selection_started()
-					main.map_view._last_brush_tile = Vector2i(-1, -1)
+					main.map_view.selection.last_brush_tile = Vector2i(-1, -1)
 					main.map_view.selection._emit_brush_dab(point, false)
 					main.map_view.selection._emit_brush_dab(point + Vector2i(18, 0), true)
 					assert(main.tool_state.last_edit_command.ok)
@@ -80,7 +80,7 @@ func _check_level_brush(main: Node, origin: Vector2i) -> void:
 		main.map_view.selection_start = point
 		main.map_view.selection_end = point
 		main.camera_input.on_map_selection_started()
-		main.map_view._last_brush_tile = Vector2i(-1, -1)
+		main.map_view.selection.last_brush_tile = Vector2i(-1, -1)
 		main.map_view.selection._emit_brush_dab(point, false)
 		main.map_view.selection._emit_brush_dab(point + Vector2i(18, 0), true)
 		assert(main.tool_state.last_edit_command.ok and main.tool_state.last_edit_command.command_type == "terrain")

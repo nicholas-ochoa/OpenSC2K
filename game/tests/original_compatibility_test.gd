@@ -81,12 +81,13 @@ func check_formats() -> void:
 	check(OriginalCompatibility.terrain_options(options, false).same_values(expected), "Other cities use per-tile data maps")
 	check(options.size == 512 and not options.native_maps, "Creation policy leaves caller options unchanged")
 	# Round-trip an unknown chunk through a compatible save.
-	var doc := EmptyCityTemplate.create(128)
+	var extended_doc := EmptyCityTemplate.create(128)
 	var chunk := Sc2Chunk.new()
 	chunk.chunk_id = "TEST"
 	chunk.set_decoded_payload(PackedByteArray([1, 2, 3]))
-	doc.chunks.append(chunk)
-	check(CityFileStore.save_copy(doc, save_path, "res://../references/SIMCITY2000").ok, "Original unknown chunks remain supported")
+	extended_doc.chunks.append(chunk)
+	check(CityFileStore.save_copy(extended_doc, save_path, "res://../references/SIMCITY2000").ok,
+		"Original unknown chunks remain supported")
 	check(
 		Sc2File.load_path(ProjectSettings.globalize_path(save_path)).find_chunk("TEST").decoded_payload == chunk.decoded_payload,
 		"Unknown original bytes survive",

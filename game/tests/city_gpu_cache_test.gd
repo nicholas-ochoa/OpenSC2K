@@ -62,7 +62,7 @@ func _run() -> void:
 		await _drain(cache)
 		assert(cache.entries.size() <= cache.visible.size() + cache.offscreen_limit())
 
-		for worker in cache._gpu_workers:
+		for worker in cache.gpu_workers:
 			assert(worker.context.tiles.size() <= CityGpuBuildContext.TILE_CACHE_LIMIT)
 
 	# Player edits take the next available worker ahead of stale background work.
@@ -72,7 +72,7 @@ func _run() -> void:
 	cache.configure(city, palette, sprites, [2], 2, CityViewMode.Mode.CITY, {}, true, true,
 		Rect2i(edited * cache.region_edge, Vector2i.ONE * cache.region_edge))
 	cache.tick()
-	assert(cache._gpu_workers[0].keys[0] == edited, "Background region ran before the player edit")
+	assert(cache.gpu_workers[0].keys[0] == edited, "Background region ran before the player edit")
 	await _drain(cache)
 	assert(cache._edit_priority.is_empty(), "Completed edit still has render priority")
 	# Keep updating while waiting for previously missing regions.
@@ -139,7 +139,7 @@ func _run() -> void:
 	revision += 3
 
 	# Force GPU preparation to fail and check the CPU fallback.
-	for worker in cache._gpu_workers:
+	for worker in cache.gpu_workers:
 		worker.context.error = "Test atlas failure"
 
 	cache.configure(city, palette, sprites, [revision + 1], 2, CityViewMode.Mode.UNDERGROUND, {}, true, true)

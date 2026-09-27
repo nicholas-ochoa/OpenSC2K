@@ -45,7 +45,7 @@ static func folder_select() -> FileDialog:
 	return _create(FileDialog.FILE_MODE_OPEN_DIR, [])
 
 
-static func _create(file_mode: int, filters: Array) -> FileDialog:
+static func _create(file_mode: FileDialog.FileMode, filters: Array) -> FileDialog:
 	var dialog := FileDialog.new()
 	dialog.theme = AppUiTheme.file_dialog()
 	dialog.access = FileDialog.ACCESS_FILESYSTEM

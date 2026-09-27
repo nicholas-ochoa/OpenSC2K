@@ -195,13 +195,13 @@ static func _collect_cities(folder: String, paths: PackedStringArray) -> void:
 func _start_render() -> void:
 	var snapshot := CityState.from_document(demo_city.document.duplicate_document())
 	render_thread = Thread.new()
-	var error := render_thread.start(_render.bind(snapshot, demo_palette, demo_sprites), Thread.PRIORITY_LOW)
+	var error := render_thread.start(_render.bind(snapshot, demo_sprites), Thread.PRIORITY_LOW)
 
 	if error != OK:
 		render_thread = null
 
 
-static func _render(snapshot: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive) -> RenderResult:
+static func _render(snapshot: CityState, sprites: Sc2SpriteArchive) -> RenderResult:
 	var rendered := Renderer.create_image(snapshot, Sc2Palette.index_encoding(), sprites, Renderer.VIEW_LARGE, 0, false, true, false, false)
 	var result := RenderResult.new()
 	result.ok = rendered.ok
@@ -222,12 +222,12 @@ func _camera() -> CameraFrame:
 	var travel := fmod(elapsed, 24.0) - 12.0
 	center += Vector2(travel * 2.0, travel)
 	var pixel_scale := maxf(0.001, get_viewport_transform().get_scale().x)
-	var scale := camera_zoom(shot, pixel_scale)
-	var offset := ((size / 2.0 - center * scale) * pixel_scale).round() / pixel_scale
+	var zoom_factor := camera_zoom(shot, pixel_scale)
+	var offset := ((size / 2.0 - center * zoom_factor) * pixel_scale).round() / pixel_scale
 
 	var result := CameraFrame.new()
 	result.offset = offset
-	result.scale = scale
+	result.scale = zoom_factor
 
 	return result
 
@@ -269,12 +269,12 @@ func _refresh_animation() -> void:
 		if command.flip:
 			image.flip_x()
 
-		var position := Vector2i(command.position)
+		var sprite_position := Vector2i(command.position)
 
 		if command.shadow:
 			for y in image.get_height():
 				for x in image.get_width():
-					var point := position + Vector2i(x, y)
+					var point := sprite_position + Vector2i(x, y)
 
 					if image.get_pixel(
 						x,
@@ -286,13 +286,13 @@ func _refresh_animation() -> void:
 					image.set_pixel(x, y, colors.colors[Renderer.shadow_palette_index(index)])
 
 		if command.static_occlusion:
-			image = _occlude(image, position, int(command.depth_order))
+			image = _occlude(image, sprite_position, int(command.depth_order))
 
-		dynamic_visuals.append(CityDynamicVisual.new(ImageTexture.create_from_image(image), Vector2(position)))
+		dynamic_visuals.append(CityDynamicVisual.new(ImageTexture.create_from_image(image), Vector2(sprite_position)))
 
 
-func _occlude(image: Image, position: Vector2i, order: int) -> Image:
-	var bounds := Rect2i(position, image.get_size())
+func _occlude(image: Image, sprite_position: Vector2i, order: int) -> Image:
+	var bounds := Rect2i(sprite_position, image.get_size())
 
 	for index in Renderer.occlusion_candidate_indices(occlusion_grid, bounds):
 		var command := occlusion_commands[index]
@@ -319,19 +319,19 @@ func _occlude(image: Image, position: Vector2i, order: int) -> Image:
 			if not rendered.ok:
 				continue
 
-			var mask: Image = rendered.image
+			var rendered_mask: Image = rendered.image
 
 			if command.flip:
-				mask.flip_x()
+				rendered_mask.flip_x()
 
-			sprite_cache[key] = mask
+			sprite_cache[key] = rendered_mask
 
 		var mask: Image = sprite_cache[key]
 
 		for y in range(overlap.position.y, overlap.end.y):
 			for x in range(overlap.position.x, overlap.end.x):
 				if mask.get_pixel(x - origin.x, y - origin.y).a > 0.0:
-					image.set_pixel(x - position.x, y - position.y, Color.TRANSPARENT)
+					image.set_pixel(x - sprite_position.x, y - sprite_position.y, Color.TRANSPARENT)
 
 	return image
 

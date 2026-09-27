@@ -7,8 +7,6 @@ const Power = preload("res://src/simulation/infrastructure/power_phase.gd")
 const Bonds = preload("res://src/simulation/economy/bond_command.gd")
 const Transport = preload("res://src/simulation/infrastructure/transport_trip.gd")
 const Tools = preload("res://src/tools/shared/tool_catalog.gd")
-const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
-const ToolEditState = preload("res://src/tools/shared/tool_edit_state.gd")
 const Dispatch = preload("res://src/tools/city/dispatch_command.gd")
 
 
@@ -132,12 +130,6 @@ func test_tool_availability(reference_root: String) -> void:
 		and scurk_zone_state.enabled
 		and scurk_zone_state.selection == "rectangle",
 		"Tool edit state classifies SCURK object and edit modes",
-	)
-	_check(
-		not ToolEditState.is_tool_chooser(5, 4)
-		and not ToolEditState.is_tool_variant(5, 5)
-		and not ToolEditState.is_tool_variant(5, 4),
-		"Tool edit state owns reward chooser and variant rules",
 	)
 
 	for invention_index in range(12):

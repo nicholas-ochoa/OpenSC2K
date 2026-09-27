@@ -3,6 +3,8 @@ extends RefCounted
 
 # Read the published city snapshot. Reuse cached scans; do not serialize or draw random values.
 
+@warning_ignore_start("integer_division")
+
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const FACILITIES = BuildingCommand.DEFAULT_MICROSIM_LABELS
 const STAT_LABELS := {
@@ -284,7 +286,7 @@ static func _engine_detail_rows(city: CityState, engine: SimulationEngine) -> Ar
 	if schedule != null:
 		# the budget prompt stops the day before its first action. the military prompts stop it after milestones
 		if engine.pending_interaction != "annual_budget":
-			schedule = SimulationDaySchedule._schedule_after(engine, schedule, "milestones")
+			schedule = SimulationDaySchedule._schedule_after(schedule, "milestones")
 
 		remaining = "City day %d: %s" % [schedule.city_days, _action_list(city, schedule.actions)]
 
@@ -301,8 +303,14 @@ static func _controller_rows(controller: GameSpeedController) -> Array[DebugTabl
 		var value: Variant = controller.get(key)
 		rows.append(_state_field("speed_controller." + key, int(value) if value is float else value, CONTROLLER_FIELDS[key]))
 
-	var ticks: Variant = "Paused" if controller.speed == GameSpeedController.Speed.PAUSED else "Stopped" \
-		if controller.interaction_blocked or controller.terminal_blocked else 1 if controller.simulation_ready else null
+	var ticks: Variant = null
+
+	if controller.speed == GameSpeedController.Speed.PAUSED:
+		ticks = "Paused"
+	elif controller.interaction_blocked or controller.terminal_blocked:
+		ticks = "Stopped"
+	elif controller.simulation_ready:
+		ticks = 1
 
 	for count in range(1, 9):
 		if ticks == null and controller._is_day_due((controller.subtick_counter + count) & 7):
@@ -394,7 +402,10 @@ static func _state_field(key: String, value: Variant, detail: String) -> DebugTa
 
 
 static func _site_sort(site: CityRecords.Site) -> Variant:
-	return null if site == null else [site.x, site.y, site.width * site.height]
+	if site == null:
+		return null
+
+	return [site.x, site.y, site.width * site.height]
 
 
 static func _field(key: String, value: Variant, detail: String) -> DebugTableRecord:

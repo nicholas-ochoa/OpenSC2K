@@ -60,9 +60,9 @@ func advance_time(delta_msec: float, now_msec: int, suspended := false) -> Simul
 				pending_msec = maxf(0.0, pending_msec - _submitted_msec)
 
 				if result.ok:
-					var started := Time.get_ticks_usec()
+					var publish_started := Time.get_ticks_usec()
 					SimulationSnapshot.publish(_working, controller)
-					publish_usec = Time.get_ticks_usec() - started
+					publish_usec = Time.get_ticks_usec() - publish_started
 					result.job_timings = {"Main thread / snapshot": snapshot_usec, "Main thread / publish": publish_usec,
 						"Worker / elapsed": last_work_metrics.elapsed_usec, "Worker / frame waits": last_work_metrics.parked_usec}
 					result.pacing_delays.merge(_pacing_delays)

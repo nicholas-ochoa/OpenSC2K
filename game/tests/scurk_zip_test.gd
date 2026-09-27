@@ -72,8 +72,8 @@ func _test_external_archives() -> void:
 		var bytes: PackedByteArray = encoded.hex_decode()
 		var result := Zip.decode(bytes)
 		_check(result.ok and result.members == expected)
-		var end := bytes.size() - 22
-		bytes.encode_u16(end + 20, 3)
+		var archive_end := bytes.size() - 22
+		bytes.encode_u16(archive_end + 20, 3)
 		bytes.append_array("zip".to_utf8_buffer())
 		_check(Zip.decode(bytes).members == expected)
 	var ambiguous := Zip.decode(PYTHON_DESCRIPTOR_CRC.hex_decode())
@@ -238,9 +238,9 @@ func _test_zip64_count() -> void:
 	var locator := encoded.bytes.size() - 42
 	var record := int(encoded.bytes.decode_u64(locator + 8))
 	for offset in [record + 24, record + 32, record + 40, record + 48, locator + 8]:
-		var invalid := encoded.bytes.duplicate()
-		invalid.encode_u64(offset, 0x7fffffffffffffff)
-		_check(not Zip.decode(invalid).ok)
+		var invalid_offset := encoded.bytes.duplicate()
+		invalid_offset.encode_u64(offset, 0x7fffffffffffffff)
+		_check(not Zip.decode(invalid_offset).ok)
 	var invalid := encoded.bytes.duplicate()
 	invalid.encode_u32(locator + 16, 2)
 	_check(not Zip.decode(invalid).ok)

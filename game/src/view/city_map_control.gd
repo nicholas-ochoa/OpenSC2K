@@ -6,19 +6,30 @@ extends Control
 # scene node for the city map. its public methods are the node api that
 # application and ui code call through map_view. components do the work
 
+@warning_ignore("unused_signal")
+
 signal selection_completed(
 	start: Vector2i, finish: Vector2i, path: Array[Vector2i], dragged: bool
 )
+@warning_ignore("unused_signal")
 signal selection_changed(
 	start: Vector2i, finish: Vector2i, path: Array[Vector2i], dragged: bool
 )
+@warning_ignore("unused_signal")
 signal stretch_changed(levels: int, deferred: bool)
+@warning_ignore("unused_signal")
 signal selection_started()
+@warning_ignore("unused_signal")
 signal selection_finished()
+@warning_ignore("unused_signal")
 signal selection_canceled()
+@warning_ignore("unused_signal")
 signal query_requested(point: Vector2i)
+@warning_ignore("unused_signal")
 signal center_requested(point: Vector2i)
+@warning_ignore("unused_signal")
 signal zoom_changed(percent: int)
+@warning_ignore("unused_signal")
 signal viewport_changed()
 
 const Renderer = CityMapConstants.Renderer
@@ -85,8 +96,6 @@ var selection_path: Array[Vector2i] = []
 var selection_moved := false
 var selection_price := -1
 var selection_price_affordable := true
-# the price label draws above the network preview layer, not under it
-var _price_layer: Node2D
 var placement_error_provider := Callable()
 var placement_error_popup: PanelContainer
 var placement_error_label: Label
@@ -95,7 +104,6 @@ var show_selection_preview := true
 var terrain_diamond_preview := false
 var stretch_terrain := false
 var stretch_height_delta := 0
-var _stretch_press_y := 0.0
 var network_preview_active := false
 var highway_preview := false
 var query_footprint_preview := false
@@ -105,7 +113,6 @@ var _legend: CityMapLegend
 var _data_tooltip: CityMapDataTooltip
 var trip_query_underground := false
 var query_city: CityState
-var _shift_pressed := false
 var shift_line_enabled := false
 var continuous_placement := false
 var landscape_brush := false
@@ -115,8 +122,6 @@ var bulldozer_direction := 0
 var brush_box_selection := false
 var brush_size := 1
 var brush_round := false
-var _last_brush_tile := Vector2i(-1, -1)
-var _brush_elapsed := 0.0
 var data_view_mode := CityViewMode.Mode.NONE
 var data_view_mesh: ArrayMesh
 var data_view_layer: MeshInstance2D
@@ -127,31 +132,6 @@ var hover_tile := Vector2i(-1, -1)
 var transient_effects: Array[CityTransientEffectVisual] = []
 var dynamic_sprites: Array[CityDynamicVisual] = []
 var sign_occlusion_visuals: Dictionary[int, CitySignVisual] = {}
-var _panning := false
-var _middle_click_pending := false
-var _middle_press_position := Vector2.ZERO
-var _effect_generation := 0
-var _shake_generation := 0
-var _shake_offset := Vector2.ZERO
-var _next_wheel_zoom_msec := 0
-var _last_wheel_zoom_msec := 0
-var _tile_layers: Array[TextureRect] = []
-var _mesh_layers: Array[MeshInstance2D] = []
-var _mesh_view_scale := -1.0
-var _tiled_source: CityMapSource
-var _base_layer: TextureRect
-var _base_material: ShaderMaterial
-var _dynamic_canvas: CityDynamicSpriteCanvas
-var _dynamic_material: ShaderMaterial
-var _palette_shader: Shader
-var _foreground_palette_material: ShaderMaterial
-var _sign_font: SystemFont
-var _sign_entries: Array[CityMapSigns.Entry] = []
-var _sign_entries_city: CityState
-var _sign_entries_zoom := -1.0
-var _sign_layout_signature: Array = []
-var _external_sign_layout_token: Array = []
-var _sign_cache_build_count := 0
 var layers: CityMapLayers = CityMapLayers.new(self)
 var signs: CityMapSigns = CityMapSigns.new(self)
 var camera: CityMapCamera = CityMapCamera.new(self)

@@ -1,5 +1,7 @@
 extends SceneTree
 
+@warning_ignore_start("integer_division")
+
 var failures := 0
 var checks := 0
 
@@ -203,9 +205,6 @@ func check_district(edge: int, native: bool) -> void:
 		trip.ok and not trip.reached_destination and doc.find_chunk("XTRF").decoded_payload == traffic,
 		"Failed road trip leaves traffic unchanged",
 	)
-
-
-@warning_ignore_start("integer_division")
 
 
 class FixedRandom extends SimRandom:

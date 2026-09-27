@@ -80,12 +80,12 @@ static func spawn_helicopter(
 	ThingData.write(things, offset + Field.LABEL, OverlayData.read(text, index))
 	OverlayData.write(text, index, OverlayData.thing_id(record))
 
-	var result := Result.new()
-	result.spawned = true
-	result.record = record
-	result.point = point
+	var spawn_result := Result.new()
+	spawn_result.spawned = true
+	spawn_result.record = record
+	spawn_result.point = point
 
-	return result
+	return spawn_result
 
 
 static func spawn_airplane(
@@ -165,12 +165,12 @@ static func spawn_airplane(
 	ThingData.write(things, offset + Field.LABEL, OverlayData.read(text, attached_index))
 	OverlayData.write(text, attached_index, OverlayData.thing_id(record))
 
-	var result := Result.new()
-	result.spawned = true
-	result.record = record
-	result.point = attached
+	var spawn_result := Result.new()
+	spawn_result.spawned = true
+	spawn_result.record = record
+	spawn_result.point = attached
 
-	return result
+	return spawn_result
 
 
 static func spawn_ship(
@@ -242,13 +242,13 @@ static func spawn_ship(
 	OverlayData.write(text, start_index, OverlayData.thing_id(record))
 	ThingData.set_ship_home(things, record, start)
 
-	var result := Result.new()
-	result.spawned = true
-	result.record = record
-	result.point = start
-	result.target = target
+	var spawn_result := Result.new()
+	spawn_result.spawned = true
+	spawn_result.record = record
+	spawn_result.point = start
+	spawn_result.target = target
 
-	return result
+	return spawn_result
 
 
 static func spawn_sailboats(
@@ -342,14 +342,14 @@ static func spawn_maxis_man(
 	ThingData.write(things, offset + Field.GOAL, goal)
 	OverlayData.write(text, index, OverlayData.thing_id(record))
 
-	var result := Result.new()
-	result.spawned = true
-	result.record = record
-	result.point = point
-	result.target = target
-	result.goal = goal
+	var spawn_result := Result.new()
+	spawn_result.spawned = true
+	spawn_result.record = record
+	spawn_result.point = point
+	spawn_result.target = target
+	spawn_result.goal = goal
 
-	return result
+	return spawn_result
 
 
 static func spawn_train(

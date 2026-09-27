@@ -70,21 +70,21 @@ static func value(city: CityState, mode: CityViewMode.Mode, x: int, y: int) -> i
 	return chunk.decoded_payload[index] if index >= 0 else -1
 
 
-static func color(value: int, mode: CityViewMode.Mode) -> Color:
-	if value < 0:
+static func color(data_value: int, mode: CityViewMode.Mode) -> Color:
+	if data_value < 0:
 		return Color("535b67")
 
 	if mode == CityViewMode.Mode.HEIGHT:
-		return Color.from_hsv((31 - clampi(value, 0, 31)) / 31.0 * 0.75, 0.85, 0.95)
+		return Color.from_hsv((31 - clampi(data_value, 0, 31)) / 31.0 * 0.75, 0.85, 0.95)
 
 	if mode in [CityViewMode.Mode.WATER, CityViewMode.Mode.POWER]:
-		return [Color("687381"), Color("e25c46"), Color("42bde8") if mode == CityViewMode.Mode.WATER else Color("f4d35e")][value]
+		return [Color("687381"), Color("e25c46"), Color("42bde8") if mode == CityViewMode.Mode.WATER else Color("f4d35e")][data_value]
 
-	var amount := clampf(value / 255.0, 0.0, 1.0)
+	var amount := clampf(data_value / 255.0, 0.0, 1.0)
 
 	if mode == CityViewMode.Mode.GROWTH:
 		# the original map reads as a sign. exact amounts stay in the hover text
-		return GROWTH_COLORS[growth_state(value)]
+		return GROWTH_COLORS[growth_state(data_value)]
 
 	var gradient: PackedColorArray = GRADIENTS.get(mode, DEFAULT_GRADIENT)
 
@@ -181,11 +181,11 @@ static func geometry_signature(city: CityState, mode := CityViewMode.Mode.NONE) 
 static func value_image(city: CityState, mode: CityViewMode.Mode) -> Image:
 	if CHUNKS.has(mode):
 		var chunk := city.document.find_chunk(CHUNKS[mode])
-		var data := chunk.decoded_payload if chunk != null else PackedByteArray()
-		var edge := CityDataGrid.edge(data, city.map_size)
+		var chunk_data := chunk.decoded_payload if chunk != null else PackedByteArray()
+		var edge := CityDataGrid.edge(chunk_data, city.map_size)
 
 		if edge > 0:
-			return Image.create_from_data(edge, edge, false, Image.FORMAT_R8, data)
+			return Image.create_from_data(edge, edge, false, Image.FORMAT_R8, chunk_data)
 
 		return Image.create(city.map_size, city.map_size, false, Image.FORMAT_R8)
 

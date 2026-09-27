@@ -12,7 +12,7 @@ const NewspaperTables = preload("res://src/model/newspaper_layout.gd")
 
 func test_news_queue(reference_root: String) -> void:
 	_test_news_initialization(reference_root)
-	_test_news_queue_updates(reference_root)
+	_test_news_queue_updates()
 	_test_news_persistence(reference_root)
 
 
@@ -97,7 +97,7 @@ func _test_news_initialization(reference_root: String) -> void:
 	)
 
 
-func _test_news_queue_updates(reference_root: String) -> void:
+func _test_news_queue_updates() -> void:
 	var misc := _filled_bytes(NewsQueue.MISC_SIZE, 0)
 	var decay_types := PackedInt32Array([2, 6, 7, 46, 39, 42, 61])
 	var decay_priorities := PackedInt32Array([900, 100, 40, 500, 250, 150, 100])
@@ -301,11 +301,11 @@ func test_newspaper_text(reference_root: String) -> void:
 
 	for slot in [0, 1, 2, 3, 4, 7, 8]:
 		var record := NewsQueue.story_record(misc, slot)
-		var seed := NewspaperTextGenerator.published_seed(
+		var story_seed := NewspaperTextGenerator.published_seed(
 			0x1234, city.age_in_days(), 0, slot
 		)
 		var rendered := NewspaperTextGenerator.render_story(
-			data, record, seed, city.city_name(), city.mayor_name(), teams
+			data, record, story_seed, city.city_name(), city.mayor_name(), teams
 		)
 		_check(rendered.ok, "Newspaper story slot %d renders: %s" % [slot, rendered.error])
 
@@ -319,7 +319,7 @@ func test_newspaper_text(reference_root: String) -> void:
 			"Newspaper story slot %d decodes each source character" % slot,
 		)
 		var repeated := NewspaperTextGenerator.render_story(
-			data, record, seed, city.city_name(), city.mayor_name(), teams
+			data, record, story_seed, city.city_name(), city.mayor_name(), teams
 		)
 		_check(
 			repeated.ok
@@ -330,7 +330,7 @@ func test_newspaper_text(reference_root: String) -> void:
 			"Newspaper story slot %d is deterministic for one display seed" % slot,
 		)
 		var headline_only := NewspaperTextGenerator.render_headline(
-			data, record, seed, city.city_name(), city.mayor_name(), teams
+			data, record, story_seed, city.city_name(), city.mayor_name(), teams
 		)
 		_check(
 			headline_only.ok and headline_only.headline == rendered.headline,

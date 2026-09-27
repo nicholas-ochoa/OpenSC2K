@@ -1,6 +1,8 @@
 class_name SimNationWindowControl
 extends Control
 
+@warning_ignore_start("integer_division")
+
 const LOGICAL_SIZE := Vector2(204.0, 160.0)
 const SPRITE_SIZE := Vector2(128.0, 64.0)
 const SPRITE_ROW_COUNT := 6
@@ -59,28 +61,28 @@ func _draw() -> void:
 
 		return
 
-	var scale := Vector2(size.x / LOGICAL_SIZE.x, size.y / LOGICAL_SIZE.y)
+	var layout_scale := Vector2(size.x / LOGICAL_SIZE.x, size.y / LOGICAL_SIZE.y)
 	# the largest layout scale with whole screen pixels for each sprite pixel,
 	# centered in the view
-	scale = Vector2(ScreenPixels.fit_scale(scale.x), ScreenPixels.fit_scale(scale.y))
-	draw_set_transform((size - LOGICAL_SIZE * scale) * 0.5)
+	layout_scale = Vector2(ScreenPixels.fit_scale(layout_scale.x), ScreenPixels.fit_scale(layout_scale.y))
+	draw_set_transform((size - LOGICAL_SIZE * layout_scale) * 0.5)
 
 	if sprite_sheet != null:
-		_draw_settlement(SPRITE_POSITIONS[0], int(data.normal_population), false, scale)
-		var displayed := display_neighbor_indices(int(data.compass))
+		_draw_settlement(SPRITE_POSITIONS[0], int(data.normal_population), false, layout_scale)
+		var settlement_neighbors := display_neighbor_indices(int(data.compass))
 
-		for position_index in displayed.size():
-			var neighbor: Neighbor = data.neighbors[displayed[position_index]]
+		for position_index in settlement_neighbors.size():
+			var neighbor: Neighbor = data.neighbors[settlement_neighbors[position_index]]
 			_draw_settlement(
 				SPRITE_POSITIONS[position_index + 1],
 				int(neighbor.population),
 				int(neighbor.name_index) == 0,
-				scale,
+				layout_scale,
 			)
 
-	var font_size := clampi(roundi(10.0 * minf(scale.x, scale.y)), 10, 28)
+	var font_size := clampi(roundi(10.0 * minf(layout_scale.x, layout_scale.y)), 10, 28)
 	_draw_record_label(
-		str(data.city_name), int(data.display_population), LABEL_POSITIONS[0] * scale, font_size
+		str(data.city_name), int(data.display_population), LABEL_POSITIONS[0] * layout_scale, font_size
 	)
 	var displayed := display_neighbor_indices(int(data.compass))
 
@@ -89,13 +91,13 @@ func _draw() -> void:
 		_draw_record_label(
 			neighbor_name(int(neighbor.name_index)),
 			int(neighbor.population),
-			LABEL_POSITIONS[position_index + 1] * scale,
+			LABEL_POSITIONS[position_index + 1] * layout_scale,
 			font_size,
 		)
 
 	_draw_outlined_text(
 		NATIONAL_POPULATION % int(data.national_population),
-		NATIONAL_LABEL_POSITION * scale,
+		NATIONAL_LABEL_POSITION * layout_scale,
 		font_size,
 	)
 
@@ -117,11 +119,11 @@ func refresh() -> void:
 
 static func snapshot(value_city: CityState) -> Snapshot:
 	if value_city == null or not value_city.is_valid():
-		var result := Snapshot.new()
-		result.ok = false
-		result.error = "city is invalid"
+		var failure := Snapshot.new()
+		failure.ok = false
+		failure.error = "city is invalid"
 
-		return result
+		return failure
 
 	var neighbors: Array[Neighbor] = []
 
@@ -141,7 +143,7 @@ static func snapshot(value_city: CityState) -> Snapshot:
 	for tile_id in range(FIRST_ARCOLOGY, LAST_ARCOLOGY + 1):
 		arcology_tiles += value_city.document.misc_i32(MISC_TILE_COUNTS + tile_id * 4)
 
-	var arcology_count := _divide_toward_zero(arcology_tiles, 16)
+	var arcology_count := arcology_tiles / 16
 	var arcology_adjustment := 0
 
 	if arcology_count > 140:
@@ -167,13 +169,13 @@ static func snapshot(value_city: CityState) -> Snapshot:
 
 
 static func display_neighbor_indices(compass: int) -> PackedInt32Array:
-	var rotation := compass & 3
+	var compass_rotation := compass & 3
 
 	return PackedInt32Array([
-		(rotation + 2) & 3,
-		(rotation - 1) & 3,
-		rotation,
-		(rotation + 1) & 3,
+		(compass_rotation + 2) & 3,
+		(compass_rotation - 1) & 3,
+		compass_rotation,
+		(compass_rotation + 1) & 3,
 	])
 
 
@@ -231,27 +233,27 @@ static func prepare_sprite_sheet(source: Image) -> Image:
 
 
 func _draw_settlement(
-	logical_position: Vector2, population: int, ocean: bool, scale: Vector2
+	logical_position: Vector2, population: int, ocean: bool, layout_scale: Vector2
 ) -> void:
 	var source_index := sprite_index(population, ocean)
 	draw_texture_rect_region(
 		sprite_sheet,
-		Rect2(logical_position * scale, SPRITE_SIZE * scale),
+		Rect2(logical_position * layout_scale, SPRITE_SIZE * layout_scale),
 		Rect2(0, source_index * SPRITE_SIZE.y, SPRITE_SIZE.x, SPRITE_SIZE.y),
 	)
 
 
-func _draw_record_label(label: String, population: int, position: Vector2, font_size: int) -> void:
+func _draw_record_label(label: String, population: int, label_position: Vector2, font_size: int) -> void:
 	if population != 0:
 		_draw_outlined_text(
 			str(population),
-			position,
+			label_position,
 			font_size,
 		)
 
-		position.y += get_theme_default_font().get_height(font_size)
+		label_position.y += get_theme_default_font().get_height(font_size)
 
-	_draw_outlined_text(label, position, font_size)
+	_draw_outlined_text(label, label_position, font_size)
 
 
 func _draw_outlined_text(text: String, center: Vector2, font_size: int) -> void:
@@ -291,16 +293,6 @@ static func _to_i16(value: int) -> int:
 	var low := value & 0xffff
 
 	return low - 0x10000 if low & 0x8000 else low
-
-
-static func _divide_toward_zero(numerator: int, denominator: int) -> int:
-	if numerator < 0:
-		return -int((-numerator) / denominator)
-
-	return int(numerator / denominator)
-
-
-@warning_ignore_start("integer_division")
 
 
 class Neighbor extends RefCounted:

@@ -121,5 +121,5 @@ func fire_frame(index: int) -> int:
 	return 1396 + ((int(animation_time * 8.0) + index) & 3)
 
 
-func _draw_sprite(id: int, position: Vector2, flip: bool) -> void:
-	draw_texture(textures[Vector2i(id, int(flip))], position)
+func _draw_sprite(id: int, draw_position: Vector2, flip: bool) -> void:
+	draw_texture(textures[Vector2i(id, int(flip))], draw_position)

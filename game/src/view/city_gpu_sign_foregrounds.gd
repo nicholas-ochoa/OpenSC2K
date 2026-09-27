@@ -24,10 +24,11 @@ static func build(region: CityGpuRegionResult, requests: Array[CitySignRequest],
 			if not bounds.intersects(Rect2i(command.position, command.size)):
 				continue
 
-			var image := CityIsometricRenderer.sprite_image(sprites, palette, context.images, int(command.sprite_id), bool(command.flip))
+			var mask_image := CityIsometricRenderer.sprite_image(
+				sprites, palette, context.images, int(command.sprite_id), bool(command.flip))
 
-			if image != null:
-				masks.append(CitySignForeground.Mask.new(image, Vector2i(command.position)))
+			if mask_image != null:
+				masks.append(CitySignForeground.Mask.new(mask_image, Vector2i(command.position)))
 		var sampled := CityGpuDrawList.paint(region.gpu_draws, bounds, region.background, region.gpu_draw_grid)
 		var image := CitySignForeground.static_pixels(sampled, masks, bounds)
 		var patch := CitySignForegroundPatch.new()

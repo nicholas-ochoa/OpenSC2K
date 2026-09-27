@@ -45,7 +45,7 @@ func build(selected_tile: int, footprint: int, networks: bool, neighbors: bool) 
 		_build_landscape(networks, neighbors)
 
 
-static func kind_for_tile(tile: int) -> int:
+static func kind_for_tile(tile: int) -> Kind:
 	if ((tile >= CityUndergroundView.TERRAIN_WIREFRAME_FIRST
 			and tile <= CityUndergroundView.SUBWAY_AND_PIPE_FIRST + UnderTiles.SUBWAY_ENTRANCE)
 			or (tile >= CityUndergroundView.SUBWAY_AND_PIPE_FIRST + UnderTiles.PIPE_FIRST + CityUndergroundView.WATERED_PIPE_OFFSET

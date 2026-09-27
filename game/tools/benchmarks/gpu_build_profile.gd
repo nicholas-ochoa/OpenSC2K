@@ -1,5 +1,7 @@
 extends "res://tools/benchmarks/fixture_paths.gd"
 
+@warning_ignore_start("integer_division")
+
 
 func _benchmark_initialize() -> void:
 	var city := CityState.from_document(Sc2File.load_path(input_path(large_city_path(512))))
@@ -48,8 +50,6 @@ static func fixture_paths() -> PackedStringArray:
 
 
 ## Inclusive build costs. Timers add overhead; use the pan benchmark for latency.
-
-@warning_ignore_start("integer_division")
 
 
 class ProfiledContext extends CityGpuBuildContext:

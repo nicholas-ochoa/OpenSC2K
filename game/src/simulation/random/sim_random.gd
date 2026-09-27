@@ -7,8 +7,8 @@ const INCREMENT := 2531011
 var state := 1
 
 
-func _init(seed := 1) -> void:
-	state = int(seed) & 0xffffffff
+func _init(initial_seed := 1) -> void:
+	state = int(initial_seed) & 0xffffffff
 
 
 func next_u15() -> int:

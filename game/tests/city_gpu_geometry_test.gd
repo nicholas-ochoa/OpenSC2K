@@ -15,18 +15,18 @@ func _run() -> void:
 	for edge in [128, 512]:
 		var path := ("res://tests/fixtures/cities/generated-128.SC2" if edge == 128
 			else "res://tests/fixtures/cities/generated-%d.sc2x" % edge)
-		var city := CityState.from_document(Sc2File.load_path(path))
+		var fixture_city := CityState.from_document(Sc2File.load_path(path))
 
 		for view in ([0, 1, 2] if edge == 128 else [2]):
 			var sprites := large if view == 2 else small
 
 			for mode: CityViewMode.Mode in [CityViewMode.Mode.CITY, CityViewMode.Mode.UNDERGROUND]:
 				var context := CityGpuBuildContext.new()
-				var size := CityIsometricRenderer.output_size_for_view(view, city.map_size)
+				var size := CityIsometricRenderer.output_size_for_view(view, fixture_city.map_size)
 
 				for center in [size / 2, Vector2i(size.x / 2, size.y - 160)]:
 					var bounds := Rect2i(center - Vector2i(128, 64), Vector2i(257, 135))
-					await _compare(city, palette, sprites, bounds, view, mode, context)
+					await _compare(fixture_city, palette, sprites, bounds, view, mode, context)
 
 				print("PASS: GPU pixels and foreground %d view %d %s" % [edge, view, CityViewMode.key(mode)])
 

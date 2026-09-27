@@ -123,7 +123,7 @@ func import_state(state: Dictionary) -> void:
 	palette_control.import_state(state)
 
 
-func _show_color_menu(index: int, position: Vector2) -> void:
+func _show_color_menu(index: int, palette_position: Vector2) -> void:
 	context_color_index = index
 	var menu := $ColorMenu as ScurkContextMenu
 	menu.clear()
@@ -139,7 +139,7 @@ func _show_color_menu(index: int, position: Vector2) -> void:
 	menu.add_item("Clear shade ramp", ColorAction.CLEAR_RAMP)
 	menu.set_item_disabled(menu.get_item_index(ColorAction.CLEAR_RAMP), palette_control.ramp_indices.is_empty())
 	var transform := palette_control.get_global_transform_with_canvas() if menu.is_embedded() else palette_control.get_screen_transform()
-	menu.position = Vector2i(transform * position)
+	menu.position = Vector2i(transform * palette_position)
 	menu.popup()
 
 

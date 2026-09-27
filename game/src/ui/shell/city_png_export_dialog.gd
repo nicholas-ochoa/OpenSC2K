@@ -143,8 +143,8 @@ func _refresh() -> void:
 
 	var error := validation_error()
 	get_ok_button().disabled = not error.is_empty()
-	var size := output_size()
-	var text := "Image size: %s × %s pixels." % [NumberFormat.format(size.x), NumberFormat.format(size.y)]
+	var image_size := output_size()
+	var text := "Image size: %s × %s pixels." % [NumberFormat.format(image_size.x), NumberFormat.format(image_size.y)]
 
 	if not error.is_empty():
 		text = error

@@ -30,7 +30,7 @@ static func select(story_type: int, session_seed: int, city_days: int, paper_ind
 	return 400 + random.next_u15() % 12
 
 
-static func filler_lines(rect: Rect2i, seed: int) -> Array[Rect2i]:
+static func filler_lines(rect: Rect2i, story_seed: int) -> Array[Rect2i]:
 	# 0x0047aca0 supplies the geometry. the review uses its own stable seed;
 	# the original whole-page painter's random side effects remain separate
 	var lines: Array[Rect2i] = []
@@ -38,7 +38,7 @@ static func filler_lines(rect: Rect2i, seed: int) -> Array[Rect2i]:
 	if rect.size.x < 18 or rect.size.y < 5:
 		return lines
 
-	var random := SimRandom.new(seed)
+	var random := SimRandom.new(story_seed)
 	var row := 0
 	var row_count := int(rect.size.y / 5)
 

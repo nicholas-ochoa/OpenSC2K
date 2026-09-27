@@ -8,7 +8,6 @@ const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
 const TextUsa = preload("res://src/assets/text_usa_resource.gd")
-const LibraryWindowLayout = preload("res://src/ui/city_windows/library_window_layout.gd")
 const StaticImageTests = preload("res://tests/suites/core/rendering/static_image_tests.gd")
 const StaticOverlayTests = preload("res://tests/suites/core/rendering/static_overlay_tests.gd")
 const MovingVisualTests = preload("res://tests/suites/core/rendering/moving_visual_tests.gd")
@@ -137,7 +136,7 @@ func test_sprite_archives(reference_root: String) -> void:
 	# All archives decode above; representative city/view asset checks cover mapping.
 	# Corpus parsing and byte-exact rebuilds belong to CityFilesTests.
 	starter = MovingVisualTests.new(context).run(starter_document, starter, large)
-	MapGeometryTests.new(context).run(reference_root, starter, large)
+	MapGeometryTests.new(context).run(starter, large)
 	UndergroundFilterTests.new(context).run(starter, large, small_medium)
 	TrainMonsterVisualTests.new(context).run(starter, large, small_medium)
 

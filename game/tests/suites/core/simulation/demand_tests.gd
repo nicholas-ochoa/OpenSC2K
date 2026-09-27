@@ -5,7 +5,6 @@ extends "res://tests/support/core_test_suite.gd"
 
 const RciDemand = preload("res://src/simulation/growth/rci_demand_phase.gd")
 const RciAftermath = preload("res://src/simulation/growth/rci_aftermath_phase.gd")
-const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
 const TestRandoms = preload("res://tests/support/test_randoms.gd")
 const SequenceRandom = TestRandoms.SequenceRandom
 

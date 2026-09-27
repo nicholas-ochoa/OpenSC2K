@@ -1,5 +1,7 @@
 extends SceneTree
 
+@warning_ignore_start("integer_division")
+
 var checks := 0
 var failures := 0
 
@@ -76,8 +78,8 @@ func check_storage(edge: int, native: bool) -> void:
 func check_growth_and_facilities(edge: int, native: bool) -> void:
 	for rotation in 4:
 		for density in range(2, 5):
-			var city := CityState.from_document(fixture(edge, native))
-			var p := GrowthState.payloads(city)
+			var growth_city := CityState.from_document(fixture(edge, native))
+			var p := GrowthState.payloads(growth_city)
 			var radius := density / 2
 			var anchor := Vector2i(edge - 2 - radius, edge - 2 - radius)
 			check(GrowthDevelopment.place_zone(p.XBLD, p.XZON, p.XBIT, p.MISC, p.XVAL,
@@ -110,17 +112,17 @@ func check_growth_and_facilities(edge: int, native: bool) -> void:
 
 
 func check_terrain(edge: int) -> void:
-	for seed in [123]:
+	for random_seed in [123]:
 		# Representative resampling shapes: dry ground, channel, islands, coast, lakes.
 		for layout in (["classic", "branch", "islands", "cliffs", "lakes"] if edge == 16 else ["classic"]):
 			var doc := fixture(edge)
 			var result := NewCityTerrain.generate(doc, true, true, 12, 5, 0,
-				SimRandom.new(seed), GameLcgRandom.new(seed), layout)
-			check(result.ok, "Small terrain layout %s at %d seed %d" % [layout, edge, seed])
+				SimRandom.new(random_seed), GameLcgRandom.new(random_seed), layout)
+			check(result.ok, "Small terrain layout %s at %d seed %d" % [layout, edge, random_seed])
 			if layout == "classic":
 				var repeat_doc := fixture(edge)
 				var repeat_result := NewCityTerrain.generate(repeat_doc, true, true, 12, 5, 0,
-					SimRandom.new(seed), GameLcgRandom.new(seed), layout)
+					SimRandom.new(random_seed), GameLcgRandom.new(random_seed), layout)
 				check(_terrain_result_values(repeat_result) == _terrain_result_values(result)
 					and repeat_doc.serialize().data == doc.serialize().data,
 					"Small terrain layout and seed are deterministic")
@@ -135,14 +137,14 @@ func check_terrain(edge: int) -> void:
 func check_vehicles(edge: int) -> void:
 	for direction in 4:
 		for coordinate_roll in [0, 32767]:
-			var doc := fixture(edge)
-			var things := doc.find_chunk("XTHG").decoded_payload.duplicate()
-			var text := doc.find_chunk("XTXT").decoded_payload.duplicate()
+			var airplane_doc := fixture(edge)
+			var airplane_things := airplane_doc.find_chunk("XTHG").decoded_payload.duplicate()
+			var airplane_text := airplane_doc.find_chunk("XTXT").decoded_payload.duplicate()
 			var random := SequenceRandom.new([0, direction, coordinate_roll])
-			var result := MovingThingSpawner.spawn_airplane(things, text, Vector2i(5, 5), 0, random, edge)
+			var result := MovingThingSpawner.spawn_airplane(airplane_things, airplane_text, Vector2i(5, 5), 0, random, edge)
 			check(result.spawned, "Small map admits an incoming airplane")
-			var point: Vector2i = result.point
-			check(point.x >= 0 and point.y >= 0 and point.x < edge and point.y < edge,
+			var entry_point: Vector2i = result.point
+			check(entry_point.x >= 0 and entry_point.y >= 0 and entry_point.x < edge and entry_point.y < edge,
 				"Aircraft entry from every edge stays inside small map")
 			check(random.position == 3, "Aircraft entry preserves random-call count")
 	var doc := fixture(edge)
@@ -191,9 +193,6 @@ func _terrain_result_values(result: NewCityTerrain.Result) -> Array:
 		result.has_ocean, result.has_river, result.hills, result.water, result.trees,
 		result.water_level, result.water_tiles, result.salt_water_tiles,
 		result.tree_tiles, result.minimum_altitude, result.maximum_altitude]
-
-
-@warning_ignore_start("integer_division")
 
 
 class SequenceRandom extends SimRandom:

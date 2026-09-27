@@ -110,32 +110,32 @@ func _test_building_coverage() -> void:
 				CityRotationCommand.apply(city, false)
 				origin = CityRotationCommand.rotate_point(origin, edge, false)
 				target = CityRotationCommand.rotate_point(target, edge, false)
-	var city := CityState.from_document(EmptyCityTemplate.create(128))
-	var block := TripQueryFixture.add_block(city)
-	var origin := block.position + Vector2i(3, 3)
-	var result := TripReachAnalysis.inspect(city, origin)
+	var coverage_city := CityState.from_document(EmptyCityTemplate.create(128))
+	var block := TripQueryFixture.add_block(coverage_city)
+	var block_origin := block.position + Vector2i(3, 3)
+	var coverage_result := TripReachAnalysis.inspect(coverage_city, block_origin)
 	var overlay := TripReachOverlay.new()
 	for x in range(block.position.x + 1, block.end.x - 1):
 		for y in range(block.position.y + 1, block.end.y - 1):
 			var point := Vector2i(x, y)
 			check(
-				result.destinations.has(point) == ((city.zones[city.index_of(x, y)] & 15) == 3),
+				coverage_result.destinations.has(point) == ((coverage_city.zones[coverage_city.index_of(x, y)] & 15) == 3),
 				"Every compatible building in the filled block has a checkmark",
 			)
-	var network := TripReachAnalysis.inspect(city, block.position)
+	var network := TripReachAnalysis.inspect(coverage_city, block.position)
 	check(network.destinations.size() == 36, "Direct network query shows every RCI building in its catchment")
-	city = CityState.from_document(EmptyCityTemplate.create(128))
-	var route := TripQueryFixture.add_route(city, 2, 3, "road")
-	result = TripReachAnalysis.inspect(city, route.origin)
-	overlay.rebuild(city, result)
+	coverage_city = CityState.from_document(EmptyCityTemplate.create(128))
+	var route := TripQueryFixture.add_route(coverage_city, 2, 3, "road")
+	coverage_result = TripReachAnalysis.inspect(coverage_city, route.origin)
+	overlay.rebuild(coverage_city, coverage_result)
 	check(overlay.destinations.size() == 1, "Multi-tile destination has one centered checkmark")
-	city = CityState.from_document(EmptyCityTemplate.create(128))
+	coverage_city = CityState.from_document(EmptyCityTemplate.create(128))
 	for x in range(20, 40):
-		city.set_building_id(x, 20, Tiles.RAIL_STRAIGHT_2)
-	TripQueryFixture.stamp(city, Rect2i(30, 23, 1, 1), Tiles.GAS_STATION_1X1_1, 3)
-	result = TripReachAnalysis.inspect(city, Vector2i(20, 20))
-	check(result.destinations.is_empty(), "Bare rail has no walking destination catchment")
-	check(result.access_tiles.is_empty(), "Bare rail does not label nearby buildings as having access")
+		coverage_city.set_building_id(x, 20, Tiles.RAIL_STRAIGHT_2)
+	TripQueryFixture.stamp(coverage_city, Rect2i(30, 23, 1, 1), Tiles.GAS_STATION_1X1_1, 3)
+	coverage_result = TripReachAnalysis.inspect(coverage_city, Vector2i(20, 20))
+	check(coverage_result.destinations.is_empty(), "Bare rail has no walking destination catchment")
+	check(coverage_result.access_tiles.is_empty(), "Bare rail does not label nearby buildings as having access")
 
 
 func _test_scenarios() -> void:

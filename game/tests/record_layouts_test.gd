@@ -93,10 +93,10 @@ func _check_overlay_boundaries() -> void:
 		251, 254, 255, 256, 4095, 4096, 8191, 8192, 65535]
 
 	for id in boundaries:
-		var sign: bool = (id >= 1 and id <= 50) or (id >= 4096 and id < 8192)
+		var is_sign_id: bool = (id >= 1 and id <= 50) or (id >= 4096 and id < 8192)
 		var facility: bool = (id >= 51 and id <= 200) or (id >= 256 and id < 4096)
 		var thing: bool = (id >= 201 and id <= 240) or id >= 8192
-		_check(OverlayData.is_sign(id) == sign, "Sign boundary %d" % id)
+		_check(OverlayData.is_sign(id) == is_sign_id, "Sign boundary %d" % id)
 		_check(OverlayData.is_facility(id) == facility, "Facility boundary %d" % id)
 		_check(OverlayData.is_thing(id) == thing, "Thing boundary %d" % id)
 		_check(OverlayData.blocks_thing(id) == (thing or (id >= 241 and id <= 255)),
@@ -117,8 +117,8 @@ func _check_overlay_boundaries() -> void:
 			_check(OverlayData.valid_id(last, row[0]) and not OverlayData.valid_id(last + 1, row[0]),
 				"Extended capacity boundary at edge %d" % row[0])
 
-		var ids := OverlayData.sign_ids((row[2] + 1) * 25)
-		_check(ids.size() == row[4] and ids[0] == 1 and ids[49] == 50 and ids[50] == 4096 and ids[-1] == row[2],
+		var sign_ids := OverlayData.sign_ids((row[2] + 1) * 25)
+		_check(sign_ids.size() == row[4] and sign_ids[0] == 1 and sign_ids[49] == 50 and sign_ids[50] == 4096 and sign_ids[-1] == row[2],
 			"Sign allocation skips the reserved label ranges")
 
 	var narrow := PackedByteArray()

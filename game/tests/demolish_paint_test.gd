@@ -143,10 +143,10 @@ func _run() -> void:
 		buildings[main.document_state.city.index_of(start.x, start.y)] = Tiles.TREES_1
 		assert(main.document_state.city.replace_buildings(buildings))
 		var probe := SimRandom.new()
-		for seed in range(1, 1000):
-			probe.state = seed
+		for random_seed in range(1, 1000):
+			probe.state = random_seed
 			if probe.next_u15() % 20 == 0:
-				main.tool_state.tool_random.state = seed
+				main.tool_state.tool_random.state = random_seed
 				break
 		rng = main.tool_state.tool_random.state
 		before = DocumentState.capture(main.document_state.current_document)

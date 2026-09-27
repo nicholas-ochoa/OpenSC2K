@@ -182,12 +182,12 @@ static func _resolve(
 	if not _store(city, chunks, zones, misc):
 		return _failed("cannot store the military missile sites")
 
-	var result := _result(
+	var missile_result := _result(
 		true, BASE_MISSILE_SILOS, sites[-1], changed_indices, NOTICE_MISSILE_SILOS
 	)
-	result.sites = sites
+	missile_result.sites = sites
 
-	return result
+	return missile_result
 
 
 # The original shows the Army or Air Force notice before it changes the plot.

@@ -163,7 +163,7 @@ func _test_saved_editor_ids() -> void:
 		_check(editor.current_view == pair[1])
 
 	studio.project.metadata.editor_state = { "tile": 1500, "view": 0 }
-	editor.current_view = 2
+	editor.current_view = ScurkSpriteIds.View.SMALL
 	studio.restore_editor_state()
 	_check(editor.current_large_id == 1007 and editor.current_view == 2)
 	for invalid_list in [PackedInt32Array([1007]), { "id": 1007 }, "1007", null]:
@@ -183,7 +183,7 @@ func _test_view_clamps() -> void:
 		preview.clear_preview(row[0])
 		_check(canvas.background_view == row[1] and preview.view == row[1])
 		_check(preview.preview_width == row[2] and preview.preview_height == row[3])
-	_check(ScurkDrawingWorkspace.clip_mask(32) == ScurkDrawingWorkspace.clip_mask(32, 0))
+	_check(ScurkDrawingWorkspace.clip_mask(32) == ScurkDrawingWorkspace.clip_mask(32, ScurkSpriteIds.View.LARGE))
 	_check(ScurkDrawingWorkspace.view_divisor(-1) == 1 and ScurkDrawingWorkspace.view_divisor(3) == 1)
 	canvas.free()
 	preview.free()

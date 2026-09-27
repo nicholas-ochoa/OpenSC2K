@@ -135,11 +135,11 @@ static func _maxis_man_target(
 
 		var target_offset := ThingData.target_record(goal) * RECORD_SIZE
 
-		var result := TargetResult.new()
-		result.ok = true
-		result.point = Vector2i(ThingData.read(things, target_offset + 3), ThingData.read(things, target_offset + 4))
+		var moving_target := TargetResult.new()
+		moving_target.ok = true
+		moving_target.point = Vector2i(ThingData.read(things, target_offset + 3), ThingData.read(things, target_offset + 4))
 
-		return result
+		return moving_target
 
 	var target := Vector2i(ThingData.read(things, offset + 8), ThingData.read(things, offset + 9))
 	var target_index := _index(target, map_edge)
@@ -168,10 +168,10 @@ static func _maxis_man_target(
 
 				return result
 
-	var result := TargetResult.new()
-	result.ok = false
+	var missing_target := TargetResult.new()
+	missing_target.ok = false
 
-	return result
+	return missing_target
 
 
 static func _move_maxis_man(

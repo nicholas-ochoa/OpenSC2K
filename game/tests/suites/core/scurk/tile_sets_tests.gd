@@ -8,7 +8,6 @@ const IndexedBitmap = preload("res://src/assets/indexed_bmp.gd")
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const ScurkTileSet = preload("res://src/assets/scurk_mif.gd")
 const ScurkEditor = preload("res://src/ui/scurk/scurk_editor_control.tscn")
-const ScurkPickCopy = preload("res://src/tools/scurk/scurk_pick_copy.gd")
 const ScurkWorkspace = preload("res://src/tools/scurk/scurk_drawing_workspace.gd")
 const ScurkPixelEditor = preload("res://src/view/scurk_pixel_canvas.gd")
 const ScurkViewWindow = preload("res://src/view/scurk_view_preview.gd")
@@ -125,7 +124,7 @@ func test_scurk_mif(reference_root: String) -> void:
 		if scurk_editor.pick_copy_control.source_list == null:
 			scurk_editor.pick_copy_control._ready()
 
-		_test_editor_pick_copy(scurk_editor, scurk_directory, editable_ids, editor_large, editor_small_medium)
+		_test_editor_pick_copy(scurk_editor, scurk_directory, editor_large, editor_small_medium)
 
 		_test_editor_undo(scurk_editor, editor_palette)
 
@@ -248,7 +247,7 @@ func _test_pick_copy_data(scurk_directory: String, editor_large: Sc2SpriteArchiv
 	)
 
 
-func _test_editor_pick_copy(scurk_editor: ScurkEditorControl, scurk_directory: String, editable_ids: PackedInt32Array,
+func _test_editor_pick_copy(scurk_editor: ScurkEditorControl, scurk_directory: String,
 		editor_large: Sc2SpriteArchive, editor_small_medium: Sc2SpriteArchive) -> void:
 	var editor_load := scurk_editor.load_path(
 		scurk_directory.path_join("ORIGINAL.MIF")

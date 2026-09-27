@@ -68,10 +68,10 @@ static func values(overlay: RefCounted) -> Array:
 
 
 static func digest(overlay: RefCounted) -> String:
-	var hash := HashingContext.new()
-	hash.start(HashingContext.HASH_SHA256)
-	hash.update(var_to_bytes(values(overlay)))
-	return hash.finish().hex_encode()
+	var hasher := HashingContext.new()
+	hasher.start(HashingContext.HASH_SHA256)
+	hasher.update(var_to_bytes(values(overlay)))
+	return hasher.finish().hex_encode()
 
 
 class Fixture extends RefCounted:

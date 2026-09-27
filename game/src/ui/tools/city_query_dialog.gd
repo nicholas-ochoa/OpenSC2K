@@ -48,7 +48,7 @@ func _ready() -> void:
 
 func show_query(
 	query_title: String,
-	facility_name: String,
+	initial_name: String,
 	is_specific: bool,
 	details_text: String,
 	action_text: String,
@@ -59,7 +59,7 @@ func show_query(
 ) -> void:
 	title_label.text = "Query — %s" % query_title
 	name_input.visible = is_specific
-	name_input.text = facility_name if is_specific else ""
+	name_input.text = initial_name if is_specific else ""
 	name_input.editable = false
 	rename_button.visible = is_specific
 	action_button.visible = not action_text.is_empty()

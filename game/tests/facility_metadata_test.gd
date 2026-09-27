@@ -139,7 +139,7 @@ func _check_budgets_and_demolition() -> void:
 		_check(city.document.serialize().data == before, "Placement undo restores the city bytes")
 		_check(random.state == 7 and lfsr.state == 11, "Placement undo restores both RNG states")
 
-	var before := city.document.serialize().data
+	var before_park := city.document.serialize().data
 	var park := BuildingCommand.apply(city, 14, 0, POINT, lfsr, random)
 	_check(park.ok, "Place a building without a facility budget category")
 
@@ -147,4 +147,4 @@ func _check_budgets_and_demolition() -> void:
 		_check(city.document.misc_u32(0x077c + budget * 0x6c) == 0, "Small park leaves budgets unchanged")
 
 	_check(BuildingCommand.undo(city, park, lfsr, random).ok, "Undo small park")
-	_check(city.document.serialize().data == before, "Small park undo preserves city bytes")
+	_check(city.document.serialize().data == before_park, "Small park undo preserves city bytes")

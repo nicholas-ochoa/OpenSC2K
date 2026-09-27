@@ -22,7 +22,7 @@ func refresh() -> void:
 	visible = map.city_source != null and map.city != null and map.data_view_mesh != null and map.hover_tile.x >= 0
 	if not visible:
 		return
-	_label.text = CityDataView.tile_text(map.city, map.data_view_mode, map.hover_tile, map._shift_pressed)
+	_label.text = CityDataView.tile_text(map.city, map.data_view_mode, map.hover_tile, map.interaction.shift_pressed)
 	size = get_combined_minimum_size()
 	var point := map.get_local_mouse_position() + Vector2(18, 24)
 	point.x = clampf(point.x, 4, maxf(4, map.size.x - size.x - 4))
