@@ -41,6 +41,15 @@ CI does not replace `--suite release`. Run the full release suite locally before
 Package builds do not prove Windows or Linux gameplay, native GPU rendering, or
 original-game compatibility.
 
+`tools/validate_project.sh --suite native` runs all selected native tests in one
+Godot process with Dummy audio. It opens one window with keyboard focus disabled.
+Test dialogs stay inside that window. This also applies with `--jobs 1` and when
+native tests run alongside headless tests. Each test keeps its own result, timeout,
+and optional log. Scenes, preferences, and UI state are reset between tests.
+A script error, crash, or timeout stops the batch and marks unfinished tests as failures.
+Use `--test <id>` to rerun a single test. Native test scripts use the `scene-batch`
+driver in `tools/validation_tests.json`; run them through the validation command.
+
 ## Private asset coverage
 
 Trusted `main` pushes, nightly runs, and manual runs also test a pinned commit from

@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/support/scene_test_case.gd"
 ## Check the shared frost shader through the map's data and trip legends.
 
 const TooltipRenderTest = preload("res://tests/frosted_tooltip_render_test.gd")

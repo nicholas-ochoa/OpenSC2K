@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/support/scene_test_case.gd"
 
 
 func _initialize() -> void:

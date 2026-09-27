@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/support/scene_test_case.gd"
 ## Draw the CPU-composed moving sprites through the native palette shader.
 ## Compare their pixels with independent foreground, crossing, and shadow rules.
 

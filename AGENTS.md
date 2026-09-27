@@ -42,8 +42,8 @@ For code changes, use
 The runner checks source diffs, Godot parsing, and project startup with Dummy audio.
 Its diff check excludes documentation and Markdown.
 Independent groups use half the logical CPUs, capped at eight workers by default.
-Use `--jobs 1` for per-test performance measurements. Native windows run in one
-sequential group alongside headless checks. Stateful pairs keep their order and
+Use `--jobs 1` for per-test performance measurements. Native tests share one Godot
+process and one window with keyboard focus disabled. Stateful pairs keep their order and
 shared disposable preferences. Shared fixture preparation finishes first.
 Use `--list` to review the selected coverage.
 

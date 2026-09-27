@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/support/scene_test_case.gd"
 
 const ForegroundPalette = preload("res://src/view/city_foreground_palette.gd")
 

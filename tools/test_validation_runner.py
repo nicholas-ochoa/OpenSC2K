@@ -122,7 +122,100 @@ class ValidationRunnerTest(unittest.TestCase):
         history = [group for group in groups if group[0].get('state') == 'file-history']
         self.assertEqual([[e['args'] for e in group] for group in history], [[['write'], ['read']]])
         serial = runner.execution_groups(entries, parallel=False)
-        self.assertEqual([e['id'] for group in serial for e in group], [e['id'] for e in entries])
+        self.assertCountEqual([e['id'] for group in serial for e in group], [e['id'] for e in entries])
+        self.assertEqual([[e['id'] for e in group] for group in serial if group[0]['lane'] == 'native'], [native])
+
+    def test_scene_batch_rejects_incomplete_and_shutdown_failures(self):
+        entries = [dict(id='a'), dict(id='b')]
+        first = ('SCENE_CASE_START {"id":"a","pid":1}\nPASS: a\n'
+                 'SCENE_CASE_END {"id":"a","code":0,"seconds":1}\n')
+        cases = [('', ['FAIL', 'FAIL']),
+                 (first, ['FAIL', 'FAIL']),
+                 (first.replace('PASS: a', 'ERROR: engine') + 'SCENE_CASE_START {"id":"b","pid":1}\n'
+                  'SCENE_CASE_END {"id":"b","code":0,"seconds":1}\n', ['FAIL', 'PASS']),
+                 (first + 'SCENE_CASE_START {"id":"b","pid":1}\nSCRIPT ERROR: broken\n', ['PASS', 'FAIL']),
+                 (first + 'SCENE_CASE_START {"id":"b","pid":1}\n'
+                  'SCENE_CASE_END {"id":"b","code":0,"seconds":1}\nERROR: shutdown\n', ['PASS', 'FAIL'])]
+        for content, expected in cases:
+            with self.subTest(content=content):
+                result = runner.scene_batch_results(entries, ('FAIL', 3, content))
+                self.assertEqual([r[1][0] for r in result], expected)
+                self.assertEqual([r[0] for r in result], ['a', 'b'])
+        incomplete = runner.scene_batch_results(entries, ('PASS', 1, first))
+        self.assertEqual([r[1][0] for r in incomplete], ['PASS', 'FAIL'])
+        with self.assertRaises(ValueError):
+            runner.scene_batch_results(entries, ('PASS', 1, 'SCENE_CASE_START {"id":"b"}\n'))
+
+    def test_scene_cases_share_process_and_clean_up(self):
+        first = ('assert(root.get_child_count() == 1)\n'
+                 '\troot.add_child(Node.new())\n'
+                 '\troot.content_scale_factor = 1.5\n'
+                 '\tget_tree().auto_accept_quit = false\n'
+                 '\tAppUiTheme.select("dark", false)\n'
+                 '\tOS.set_environment("OPENSC2K_GRAPHICS_PACK", "changed")\n'
+                 '\tvar file = FileAccess.open("user://leftover.cfg", FileAccess.WRITE)\n'
+                 '\tfile.store_string("leftover")\n\tfile.close()\n'
+                 '\tDirAccess.make_dir_recursive_absolute("user://shader_cache")\n'
+                 '\tfile = FileAccess.open("user://shader_cache/keep", FileAccess.WRITE)\n'
+                 '\tfile.store_string("cache")\n\tfile.close()\n'
+                 '\tquit()')
+        second = ('assert(root.get_child_count() == 1)\n'
+                  '\tassert(root.content_scale_factor == 1.0)\n'
+                  '\tassert(get_tree().auto_accept_quit)\n'
+                  '\tassert(AppUiTheme.selected == "light" and AppUiTheme.translucent_menus)\n'
+                  '\tassert(OS.get_environment("OPENSC2K_GRAPHICS_PACK") != "changed")\n'
+                  '\tassert(not FileAccess.file_exists("user://leftover.cfg"))\n'
+                  '\tassert(FileAccess.get_file_as_string("user://shader_cache/keep") == "cache")\n'
+                  '\tawait process_frame\n\tquit()')
+        result = self.run_scene_fixtures([first, second])
+        self.assertEqual([r[1][0] for r in result], ['PASS', 'PASS'], result)
+        pids = [json.loads(r[1][2].splitlines()[0].removeprefix('SCENE_CASE_START '))['pid'] for r in result]
+        self.assertEqual(pids[0], pids[1])
+
+    def test_scene_case_failure_skip_and_timeout(self):
+        cases = [(['quit(2)', 'quit()'], True, ['FAIL', 'PASS']),
+                 (['quit(2)', 'quit()'], False, ['FAIL', 'FAIL']),
+                 (['print("SKIP: fixture")\n\tquit()', 'quit()'], True, ['SKIP', 'PASS']),
+                 (['assert(false, "fixture failure")', 'quit()'], True, ['FAIL', 'FAIL']),
+                 (['await get_tree().create_timer(30).timeout\n\tquit()', 'quit()'], True, ['FAIL', 'FAIL'])]
+        for bodies, keep_going, expected in cases:
+            with self.subTest(bodies=bodies, keep_going=keep_going):
+                result = self.run_scene_fixtures(bodies, keep_going)
+                self.assertEqual([r[1][0] for r in result], expected, result)
+
+    def run_scene_fixtures(self, bodies, keep_going=True):
+        with tempfile.TemporaryDirectory() as folder:
+            project = runner.Project(folder)
+            try:
+                entries = []
+                for index, body in enumerate(bodies):
+                    name = f'case_{index}'
+                    (project.path / (name + '.gd')).write_text(
+                        'extends "res://tests/support/scene_test_case.gd"\n'
+                        'func _initialize():\n\tcall_deferred("_run")\n'
+                        'func _run():\n\t' + body + '\n')
+                    entries.append(dict(id=name, script=name + '.gd', lane='product', timeout=2))
+                with contextlib.redirect_stdout(io.StringIO()):
+                    return runner.run_scene_batch(entries, project, 'godot', None, keep_going)
+            finally:
+                project.close()
+
+    def test_progress_watchdog_resets_for_each_case_and_stops_blocked_process(self):
+        with tempfile.TemporaryDirectory() as folder:
+            progress = Path(folder) / 'progress.json'
+            code = ('import json, pathlib, sys, time\n'
+                    'path = pathlib.Path(sys.argv[1])\n'
+                    'for name in ("a", "b", "c"):\n'
+                    ' path.write_text(json.dumps(dict(id=name, timeout=1)))\n'
+                    ' time.sleep(0.6)\n')
+            with contextlib.redirect_stdout(io.StringIO()):
+                passed = runner.execute([sys.executable, '-c', code, str(progress)], timeout=1, progress=progress)
+                progress.unlink()
+                failed = runner.execute([sys.executable, '-c', code + 'time.sleep(30)', str(progress)],
+                                        timeout=1, progress=progress)
+            self.assertEqual(passed[0], 'PASS')
+            self.assertEqual(failed[0], 'FAIL')
+            self.assertLess(failed[1], 5)
 
     def test_registry_covers_every_script(self):
         entries = runner.registry()

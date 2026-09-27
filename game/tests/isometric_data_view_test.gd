@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/support/scene_test_case.gd"
 
 @warning_ignore_start("integer_division")
 

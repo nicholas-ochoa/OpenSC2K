@@ -4,7 +4,8 @@
     "script": "tests/sc2x_edge_render_test.gd",
     "domain": "rendering",
     "lane": "native",
-    "requires": ["ext/graphics/pack.json"]
+    "requires": ["ext/graphics/pack.json"],
+    "driver": "scene-batch"
   },
   {
     "id": "sc2x_edge_buildings_test",
@@ -361,7 +362,8 @@
     "lane": "native",
     "requires": [
       "ext/graphics/pack.json"
-    ]
+    ],
+    "driver": "scene-batch"
   },
   {
     "id": "underground_visibility_test",
@@ -613,7 +615,8 @@
     "requires": [
       "ext/graphics/pack.json",
       "ext/data/pack.json"
-    ]
+    ],
+    "driver": "scene-batch"
   },
   {
     "id": "large_render_patch_test",
@@ -622,7 +625,8 @@
     "lane": "product",
     "requires": [
       "ext/graphics/pack.json"
-    ]
+    ],
+    "driver": "scene-batch"
   },
   {
     "id": "small_city_test",
@@ -895,13 +899,15 @@
     "id": "map_legend_render_test",
     "script": "tests/map_legend_render_test.gd",
     "domain": "ui",
-    "lane": "native"
+    "lane": "native",
+    "driver": "scene-batch"
   },
   {
     "id": "frosted_tooltip_render_test",
     "script": "tests/frosted_tooltip_render_test.gd",
     "domain": "ui",
-    "lane": "native"
+    "lane": "native",
+    "driver": "scene-batch"
   },
   {
     "id": "placement_error_tooltip_test",
@@ -980,7 +986,8 @@
     "lane": "product",
     "requires": [
       "ext/graphics/pack.json"
-    ]
+    ],
+    "driver": "scene-batch"
   },
   {
     "id": "city_gpu_fast_tile_test",
@@ -1114,7 +1121,8 @@
     "lane": "product",
     "requires": [
       "ext/graphics/pack.json"
-    ]
+    ],
+    "driver": "scene-batch"
   },
   {
     "id": "menu_background_lifecycle_test_native",
@@ -1123,7 +1131,8 @@
     "lane": "native",
     "requires": [
       "ext/graphics/pack.json"
-    ]
+    ],
+    "driver": "scene-batch"
   },
   {
     "id": "traffic_region_bounds_test",
@@ -1145,14 +1154,16 @@
     "script": "tests/city_render_retention_test.gd",
     "domain": "rendering",
     "lane": "product",
-    "requires": []
+    "requires": [],
+    "driver": "scene-batch"
   },
   {
     "id": "city_render_retention_test_native",
     "script": "tests/city_render_retention_test.gd",
     "domain": "rendering",
     "lane": "native",
-    "requires": []
+    "requires": [],
+    "driver": "scene-batch"
   },
   {
     "id": "render_signature_revision_test",
@@ -1187,7 +1198,8 @@
     "id": "city_foreground_palette_test",
     "script": "tests/city_foreground_palette_test.gd",
     "domain": "rendering",
-    "lane": "native"
+    "lane": "native",
+    "driver": "scene-batch"
   },
   {
     "id": "masked_flag_signature_test",
@@ -1251,7 +1263,8 @@
     "lane": "native",
     "requires": [
       "ext/graphics/pack.json"
-    ]
+    ],
+    "driver": "scene-batch"
   },
   {
     "id": "scurk_edit_session_test",
@@ -1437,7 +1450,8 @@
     "lane": "native",
     "requires": [
       "ext/graphics/pack.json"
-    ]
+    ],
+    "driver": "scene-batch"
   },
   {
     "id": "moving_cadence_app_test",
@@ -1466,7 +1480,8 @@
     "lane": "native",
     "requires": [
       "ext/graphics/pack.json"
-    ]
+    ],
+    "driver": "scene-batch"
   },
   {
     "id": "isometric_data_view_test_native",
@@ -1476,7 +1491,8 @@
     "requires": [
       "ext/graphics/pack.json",
       "ext/data/pack.json"
-    ]
+    ],
+    "driver": "scene-batch"
   },
   {
     "id": "large_render_patch_test_native",
@@ -1485,7 +1501,8 @@
     "lane": "native",
     "requires": [
       "ext/graphics/pack.json"
-    ]
+    ],
+    "driver": "scene-batch"
   },
   {
     "id": "graphics_test_palette_padding_preserves_encoded_indices",

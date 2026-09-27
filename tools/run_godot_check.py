@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Run one Godot check; script errors must fail even if Godot stays open."""
+import json
 import os
+from pathlib import Path
 import subprocess
 import sys
 import tempfile
@@ -19,8 +21,19 @@ def main():
         offset = 0
         failed = False
         tail = b""
+        progress_id = None
+        progress_path = os.environ.get("GODOT_TEST_PROGRESS_FILE")
         try:
             while True:
+                if progress_path:
+                    try:
+                        progress = json.loads(Path(progress_path).read_text())
+                        if progress['id'] != progress_id:
+                            progress_id = progress['id']
+                            timeout = float(progress['timeout'])
+                            start = time.monotonic()
+                    except (OSError, ValueError, KeyError):
+                        pass  # The engine may be replacing the progress record.
                 reader.seek(offset)
                 data = reader.read()
                 offset += len(data)

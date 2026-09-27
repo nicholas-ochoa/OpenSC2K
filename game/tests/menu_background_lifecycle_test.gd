@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/support/scene_test_case.gd"
 ## Hidden menu buffers are released, late workers are drained, and reopening works.
 
 

@@ -36,6 +36,8 @@ def registry():
     registered = set()
     members = set()
     for entry in entries:
+        if entry.get('lane') == 'native' and entry.get('driver') != 'scene-batch':
+            raise ValueError('Native tests must use the scene-batch driver: ' + entry['id'])
         path = ROOT / 'game' / entry['script'] if 'script' in entry else ROOT / entry['python']
         if not path.is_file():
             raise ValueError(f'Required registered file is missing: {path}')
@@ -147,7 +149,7 @@ class Project:
         self.user = data / self.name
         self.user.mkdir(parents=True)
 
-    def configure(self, entry_id):
+    def configure(self, entry_id, native=False):
         text = (ROOT / 'game/project.godot').read_text()
         # An absolute custom directory is sanitized by Godot; use a unique relative name.
         text = re.sub(r'^config/(?:use_custom_user_dir|custom_user_dir_name)=.*\n', '', text, flags=re.M)
@@ -158,13 +160,21 @@ class Project:
                             f'config/custom_user_dir_name="{self.name}/{entry_id}"\n'
                             'run/low_processor_mode_sleep_usec=1000')
         (self.path / 'project.godot').write_text(text)
+        if native:
+            # Apply before window creation. Dialogs stay inside this one window.
+            (self.path / 'override.cfg').write_text(
+                '[display]\nwindow/size/no_focus=true\nwindow/size/mode=0\n'
+                'window/size/window_width_override=640\nwindow/size/window_height_override=400\n'
+                'window/subwindows/embed_subwindows=true\n')
 
     def close(self):
         shutil.rmtree(self.user)
 
 
-def execute(command, log=None, timeout=900, name=''):
+def execute(command, log=None, timeout=900, name='', progress=None):
     environment = dict(os.environ, GODOT_AUDIO_DRIVER='Dummy', GODOT_TEST_TIMEOUT_SECONDS=str(timeout))
+    if progress:
+        environment['GODOT_TEST_PROGRESS_FILE'] = str(progress)
     start = time.monotonic()
     lines = []
     with log.open('w') if log else nullcontext() as output:
@@ -185,12 +195,12 @@ def execute(command, log=None, timeout=900, name=''):
 
 
 def execution_groups(entries, parallel=True):
-    """Keep native windows serial and persistence pairs ordered in one private project."""
+    """Keep all native cases in one process, also when --jobs is 1."""
     groups = []
     shared = {}
     for entry in entries:
         key = ('state', entry['state']) if entry.get('state') else (
-            ('native',) if parallel and entry['lane'] == 'native' else None)
+            ('native',) if entry['lane'] == 'native' else None)
         if key is not None and key in shared:
             shared[key].append(entry)
         else:
@@ -203,6 +213,68 @@ def execution_groups(entries, parallel=True):
         groups.sort(key=lambda group: not (group[0]['lane'] in ('native', 'slow', 'integration')
                                           or group[0]['id'] == 'test_runner'))
     return groups
+
+
+def scene_batch_results(entries, result, output=None):
+    """Split batch output while rejecting missing, truncated, or reordered results."""
+    status, duration, content = result
+    results = []
+    active = None
+    lines = []
+    for line in content.splitlines(keepends=True):
+        if line.startswith('SCENE_CASE_START '):
+            event = json.loads(line.removeprefix('SCENE_CASE_START '))
+            expected = entries[len(results)]['id'] if len(results) < len(entries) else None
+            if active is not None or event['id'] != expected:
+                raise ValueError('Invalid scene batch start: ' + line)
+            active = event['id']
+            lines = [line]
+        elif line.startswith('SCENE_CASE_END '):
+            event = json.loads(line.removeprefix('SCENE_CASE_END '))
+            if active is None or event['id'] != active:
+                raise ValueError('Invalid scene batch end: ' + line)
+            lines.append(line)
+            case_content = ''.join(lines)
+            case_status = ('FAIL' if event['code'] or 'ERROR:' in case_content else
+                           'SKIP' if re.search(r'^SKIP:', case_content, re.M) else 'PASS')
+            results.append((active, (case_status, event['seconds'], case_content)))
+            active = None
+            lines = []
+        else:
+            lines.append(line)
+    if active is not None or not results or (status == 'FAIL' and all(r[1][0] != 'FAIL' for r in results)):
+        # A script error, crash, timeout, or shutdown error must not become a pass.
+        name = active or (results[-1][0] if results else entries[0]['id'])
+        failure = ('FAIL', round(max(0, duration - sum(r[1][1] for r in results)), 3), ''.join(lines))
+        if active is None and results:
+            previous = results.pop()[1]
+            failure = ('FAIL', previous[1] + failure[1], previous[2] + failure[2])
+        results.append((name, failure))
+    for entry in entries[len(results):]:
+        results.append((entry['id'], ('FAIL', 0, 'Scene batch stopped before this test ran.\n')))
+    if output:
+        for name, (_, _, case_content) in results:
+            (output / (name + '.log')).write_text(case_content)
+    return results
+
+
+def run_scene_batch(group, project, godot, output, keep_going):
+    native = group[0]['lane'] == 'native'
+    name = 'native-batch' if native else group[0]['id']
+    project.configure(name, native=native)
+    progress = project.base / 'scene-progress.json'
+    manifest = project.base / 'scene-batch.json'
+    entries = [dict(entry, timeout=entry.get('timeout', float(os.environ.get('GODOT_TEST_TIMEOUT_SECONDS', '900'))))
+               for entry in group]
+    manifest.write_text(json.dumps(dict(entries=entries, progress=str(progress), keep_going=keep_going,
+                                       profile=(project.user / name).as_posix())))
+    command = [godot, '--audio-driver', 'Dummy', '--path', str(project.path),
+               *(['--single-window'] if native else ['--headless']),
+               '--script', 'res://tests/support/scene_test_batch.gd', '--', str(manifest)]
+    report(f'RUN  {name} ({len(group)} cases in one Godot process)')
+    result = execute(command, output / (name + '.log') if output else None,
+                     entries[0]['timeout'], name, progress=progress)
+    return scene_batch_results(entries, result, output)
 
 
 def run_parallel(entries, jobs, execute_entry, completed, keep_going):
@@ -314,6 +386,9 @@ def main():
                 with tempfile.TemporaryDirectory(prefix='city-check-') as folder:
                     isolated_project = Project(folder)
                     try:
+                        if group[0].get('driver') == 'scene-batch':
+                            return run_scene_batch(group, isolated_project, args.godot, output,
+                                                   args.keep_going)
                         for entry in group:
                             name = entry['id']
                             isolated_project.configure(entry.get('state', name))

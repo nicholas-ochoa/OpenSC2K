@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/support/scene_test_case.gd"
 ## Exercise the shared map shader on CPU texture and GPU mesh draw paths.
 
 
