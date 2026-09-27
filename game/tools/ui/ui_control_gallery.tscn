@@ -29,19 +29,21 @@ size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 24
 text = "UI Control Gallery"
 
-[node name="ThemeLabel" type="Label" parent="Margin/Content/Header"]
-layout_mode = 2
-text = "Preview theme"
-
-[node name="ThemeSelector" type="OptionButton" parent="Margin/Content/Header"]
+[node name="ThemeToggle" type="Button" parent="Margin/Content/Header"]
 unique_name_in_owner = true
 layout_mode = 2
-item_count = 2
-selected = 0
-popup/item_0/text = "Light Theme"
-popup/item_0/id = 0
-popup/item_1/text = "Dark Theme"
-popup/item_1/id = 1
+toggle_mode = true
+text = "Switch to Dark"
+tooltip_text = "Toggle the gallery between light and dark themes."
+
+[node name="ScaleLabel" type="Label" parent="Margin/Content/Header"]
+layout_mode = 2
+text = "UI scale"
+
+[node name="ScaleSelector" type="OptionButton" parent="Margin/Content/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Saved for this gallery only. OpenSC2K settings are unchanged."
 
 [node name="Help" type="Label" parent="Margin/Content"]
 layout_mode = 2
@@ -56,4 +58,4 @@ size_flags_vertical = 3
 [node name="Status" type="Label" parent="Margin/Content"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Preview only • Dummy data • No saved settings or city files are changed"
+text = "Preview only • UI scale is saved for this gallery • Game settings and city files are unchanged"

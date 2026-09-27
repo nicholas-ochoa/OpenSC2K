@@ -3,23 +3,54 @@ extends PanelContainer
 ## State samples ignore input; live examples below them retain normal behavior.
 
 const STATES := ["Normal", "Hover", "Pressed", "Hover + pressed", "Disabled", "Focus"]
+const UI_SCALES: Array[float] = [1.0, 1.25, 1.5, 1.75, 2.0]
 
 var preview_dialogs: Array[Window] = []
+var dark_theme := false
+var settings_path := "user://ui_control_gallery.cfg"
 
 
 func _ready() -> void:
-	%ThemeSelector.item_selected.connect(_rebuild)
-	_rebuild(0)
+	%ThemeToggle.toggled.connect(_toggle_theme)
+	for scale_value in UI_SCALES:
+		%ScaleSelector.add_item("%d%%" % roundi(scale_value * 100.0))
+	var config := ConfigFile.new()
+	config.load(settings_path)
+	var saved_scale: Variant = config.get_value("gallery", "ui_scale", 1.0)
+	var scale_index := 0
+	if saved_scale is float or saved_scale is int:
+		scale_index = maxi(0, UI_SCALES.find(float(saved_scale)))
+	%ScaleSelector.select(scale_index)
+	get_window().content_scale_factor = UI_SCALES[scale_index]
+	%ScaleSelector.item_selected.connect(_select_scale)
+	_rebuild()
 
 
-func _rebuild(theme_index: int) -> void:
+func _select_scale(index: int) -> void:
+	get_window().content_scale_factor = UI_SCALES[index]
+	var config := ConfigFile.new()
+	config.set_value("gallery", "ui_scale", UI_SCALES[index])
+	if config.save(settings_path) != OK:
+		_status("Could not save the gallery UI scale")
+	else:
+		_status("Gallery UI scale saved")
+
+
+func _toggle_theme(enabled: bool) -> void:
+	dark_theme = enabled
+	_rebuild()
+
+
+func _rebuild() -> void:
+	var selected_tab: int = maxi(%Tabs.current_tab, 0)
+	%ThemeToggle.text = "Switch to Light" if dark_theme else "Switch to Dark"
 	for dialog in preview_dialogs:
 		dialog.queue_free()
 	preview_dialogs.clear()
 	for page in %Tabs.get_children():
 		%Tabs.remove_child(page)
 		page.queue_free()
-	theme = AppUiTheme.build("light" if theme_index == 0 else "dark")
+	theme = AppUiTheme.build("dark" if dark_theme else "light")
 	# Give the catalog a readable canvas without changing the shared game theme.
 	var canvas := AppUiThemeDefinitions.create_box(
 		Color("c0c0c0"),
@@ -27,9 +58,10 @@ func _rebuild(theme_index: int) -> void:
 		1,
 		12,
 		12,
-	) if theme_index == 0 else theme.get_stylebox("panel", "PanelContainer")
+	) if not dark_theme else theme.get_stylebox("panel", "PanelContainer")
 	add_theme_stylebox_override("panel", canvas)
-	%Tabs.add_theme_stylebox_override("panel", canvas if theme_index == 0 else theme.get_stylebox("panel", "TabContainer"))
+	%Tabs.add_theme_stylebox_override("panel", canvas if not dark_theme else theme.get_stylebox("panel", "TabContainer"))
+	_sampler_page()
 	_buttons_page()
 	_choices_page()
 	_fields_page()
@@ -38,7 +70,7 @@ func _rebuild(theme_index: int) -> void:
 	_menus_page()
 	_text_page()
 	_theme_parts_page()
-	%Tabs.current_tab = 0
+	%Tabs.current_tab = selected_tab
 
 
 func _page(title: String) -> VBoxContainer:
@@ -158,6 +190,149 @@ func _status(text: String) -> void:
 	%Status.text = text + " • Preview only"
 
 
+func _sampler_page() -> void:
+	var page := _page("Sampler")
+	_section(page, "Control sampler", "Try a mix of live controls. Switch themes to compare their appearance.")
+	var row := _row(page)
+	var fields := _cell(row, "Text and numbers")
+	var name_edit := LineEdit.new()
+	name_edit.text = "Sample City"
+	name_edit.clear_button_enabled = true
+	name_edit.tooltip_text = "City name: try typing, selection, and the context menu."
+	fields.add_child(name_edit)
+	var placeholder := LineEdit.new()
+	placeholder.placeholder_text = "Enter mayor name"
+	fields.add_child(placeholder)
+	var readonly := LineEdit.new()
+	readonly.text = "Read-only field"
+	readonly.editable = false
+	fields.add_child(readonly)
+	var password := LineEdit.new()
+	password.text = "Sample password"
+	password.secret = true
+	fields.add_child(password)
+	var spin := SpinBox.new()
+	spin.value = 50
+	spin.suffix = "%"
+	fields.add_child(spin)
+	var description := TextEdit.new()
+	description.text = "A sample city description.\nSelect or edit this text."
+	description.custom_minimum_size = Vector2(220, 90)
+	fields.add_child(description)
+
+	var choices := _cell(row, "Choices and actions")
+	var check := CheckBox.new()
+	check.text = "Retain compatibility"
+	check.button_pressed = true
+	choices.add_child(check)
+	var switch := CheckButton.new()
+	switch.text = "Enable notifications"
+	choices.add_child(switch)
+	var radios := _row(choices)
+	var group := ButtonGroup.new()
+	for caption in ["Small", "Large"]:
+		var radio := CheckBox.new()
+		radio.text = caption
+		radio.button_group = group
+		radio.button_pressed = caption == "Small"
+		radios.add_child(radio)
+	var option := OptionButton.new()
+	for caption in ["GPU (recommended)", "CPU", "Unavailable option"]:
+		option.add_item(caption)
+	option.set_item_disabled(2, true)
+	choices.add_child(option)
+	var actions := _row(choices)
+	_button(actions, "Save Changes")
+	_button(actions, "Unavailable").disabled = true
+	var toggle := _button(choices, "Toggle button")
+	toggle.toggle_mode = true
+	var link := LinkButton.new()
+	link.text = "Sample link"
+	link.pressed.connect(func() -> void: _status("Sample link selected"))
+	choices.add_child(link)
+	var menu := MenuButton.new()
+	menu.text = "Sample menu"
+	choices.add_child(menu)
+	menu.get_popup().add_item("Open sample")
+	menu.get_popup().add_separator()
+	menu.get_popup().add_item("Unavailable action")
+	menu.get_popup().set_item_disabled(2, true)
+	menu.get_popup().id_pressed.connect(func(_id: int) -> void: _status("Sample menu selected"))
+
+	var ranges := _cell(row, "Ranges and progress")
+	var progress := ProgressBar.new()
+	progress.value = 45
+	progress.custom_minimum_size.y = 28
+	var slider := HSlider.new()
+	slider.value = progress.value
+	slider.custom_minimum_size = Vector2(200, 32)
+	slider.value_changed.connect(func(value: float) -> void: progress.value = value)
+	ranges.add_child(slider)
+	ranges.add_child(progress)
+	var scroll := HScrollBar.new()
+	scroll.page = 25
+	scroll.value = 35
+	ranges.add_child(scroll)
+	var vertical := _row(ranges)
+	var vslider := VSlider.new()
+	vslider.value = 60
+	vslider.custom_minimum_size = Vector2(32, 110)
+	vertical.add_child(vslider)
+	var vscroll := VScrollBar.new()
+	vscroll.page = 25
+	vscroll.value = 35
+	vscroll.custom_minimum_size = Vector2(24, 110)
+	vertical.add_child(vscroll)
+	var notice := AcceptDialog.new()
+	notice.title = "Sample notice"
+	notice.dialog_text = "This is a preview dialog. No data is saved."
+	_add_dialog(notice)
+	_button(ranges, "Open dialog...").pressed.connect(func() -> void: notice.popup_centered(Vector2i(420, 160)))
+
+	page.add_child(HSeparator.new())
+	row = _row(page)
+	var list_cell := _cell(row, "Item list")
+	var list := ItemList.new()
+	list.custom_minimum_size = Vector2(220, 160)
+	for caption in ["Sample City", "River Town", "Lake City", "Unavailable city"]:
+		list.add_item(caption)
+	list.set_item_disabled(3, true)
+	list.select(0)
+	list_cell.add_child(list)
+	var tree_cell := _cell(row, "Tree and editable cells")
+	var tree := Tree.new()
+	tree.custom_minimum_size = Vector2(220, 160)
+	tree.columns = 2
+	tree.column_titles_visible = true
+	tree.set_column_title(0, "Service")
+	tree.set_column_title(1, "Enabled")
+	tree.hide_root = true
+	tree_cell.add_child(tree)
+	var root_item := tree.create_item()
+	for caption in ["Police", "Fire", "Education"]:
+		var item := tree.create_item(root_item)
+		item.set_text(0, caption)
+		item.set_cell_mode(1, TreeItem.CELL_MODE_CHECK)
+		item.set_checked(1, true)
+		item.set_editable(1, true)
+		var child := tree.create_item(item)
+		child.set_text(0, "District detail")
+		item.collapsed = true
+	var panels := _cell(row, "Tabs, panels, and rich text")
+	var tabs := TabContainer.new()
+	tabs.custom_minimum_size = Vector2(220, 160)
+	panels.add_child(tabs)
+	for caption in ["General", "Details", "Disabled"]:
+		var panel := PanelContainer.new()
+		panel.name = caption
+		tabs.add_child(panel)
+		var rich := RichTextLabel.new()
+		rich.bbcode_enabled = true
+		rich.text = "[b]Sample City[/b]\nPopulation: 125,400\n[i]Preview text[/i]"
+		panel.add_child(rich)
+	tabs.set_tab_disabled(2, true)
+
+
 func _buttons_page() -> void:
 	var page := _page("Buttons")
 	_section(page, "Fixed button states", "These are theme-state samples. They stay in the labeled state and do not accept input.")
@@ -166,7 +341,7 @@ func _buttons_page() -> void:
 		_label(grid, kind)
 		for state in STATES:
 			var button := _button(grid, "Save Changes" if kind == "Button" else "Sample")
-			button.flat = kind == "Flat button" and %ThemeSelector.selected != 0
+			button.flat = kind == "Flat button" and dark_theme
 			if kind == "Icon + text":
 				button.icon = get_theme_icon("folder", "FileDialog")
 			if kind == "Toggle button":
@@ -192,7 +367,7 @@ func _buttons_page() -> void:
 	icon_button.icon = get_theme_icon("folder", "FileDialog")
 	icon_button.tooltip_text = "Open folder (sample)"
 	var texture_button := TextureButton.new()
-	if %ThemeSelector.selected == 0:
+	if not dark_theme:
 		texture_button.self_modulate = Color("202020")
 	texture_button.texture_normal = get_theme_icon("close", "Window")
 	texture_button.texture_pressed = get_theme_icon("close_pressed", "Window")
@@ -301,8 +476,8 @@ func _fields_page() -> void:
 		"These colors are explicit semantic examples. They are separate from the native text-field states.",
 	)
 	for sample in [["Help: Choose a pack.json file.", "606060"],
-		["Error: This pack could not be loaded.", "d02020" if %ThemeSelector.selected == 0 else "ff7777"],
-		["Success: Pack loaded.", "16803a" if %ThemeSelector.selected == 0 else "64db99"]]:
+		["Error: This pack could not be loaded.", "d02020" if not dark_theme else "ff7777"],
+		["Success: Pack loaded.", "16803a" if not dark_theme else "64db99"]]:
 		_label(page, sample[0]).add_theme_color_override("font_color", Color(sample[1]))
 
 
@@ -486,7 +661,7 @@ func _menus_page() -> void:
 	file.filters = PackedStringArray(["*.json ; JSON files", "*.tscn ; Scene files"])
 	file.use_native_dialog = false
 	_add_dialog(file)
-	if %ThemeSelector.selected == 0:
+	if not dark_theme:
 		file.theme = AppUiTheme.build("light", true)
 	file.file_selected.connect(func(_path: String) -> void: _status("Sample file selected; no file was opened"))
 	_button(row, "File dialog...").pressed.connect(func() -> void: file.popup_centered(Vector2i(800, 520)))
@@ -497,7 +672,7 @@ func _menus_page() -> void:
 	_section(page, "Custom title bar used by app panels")
 	var title := DialogTitleBar.new("Sample modeless window")
 	page.add_child(title)
-	if %ThemeSelector.selected == 1:
+	if dark_theme:
 		title.color = (theme.get_stylebox("embedded_border", "Window") as StyleBoxFlat).bg_color
 		title.title_label.add_theme_font_size_override("font_size", 13)
 	title.close_requested.connect(func() -> void: _status("Sample title-bar close pressed"))
@@ -525,7 +700,7 @@ func _text_page() -> void:
 	_label(
 		content,
 		"Secondary help text",
-	).add_theme_color_override("font_color", Color("505050") if %ThemeSelector.selected == 0 else Color("606060"))
+	).add_theme_color_override("font_color", Color("505050") if not dark_theme else Color("606060"))
 	content.add_child(HSeparator.new())
 	_label(content, "Horizontal separator above")
 	row.add_child(VSeparator.new())

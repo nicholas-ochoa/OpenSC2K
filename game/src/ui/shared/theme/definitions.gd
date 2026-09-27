@@ -128,9 +128,19 @@ static func _light_theme() -> Theme:
 		option_box.set_corner_radius_all(0)
 		result.set_stylebox(state, "OptionButton", option_box)
 	for type_name in ["LineEdit", "TextEdit"]:
-		var readonly := _copy_style(result, type_name, "read_only")
-		readonly.bg_color = Color("c8c8c8")
-		result.set_stylebox("read_only", type_name, readonly)
+		for state in ["normal", "read_only"]:
+			var field := _copy_style(result, "OptionButton", "normal")
+			var original := _copy_style(result, type_name, state)
+			for side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
+				field.set_content_margin(side, original.get_content_margin(side))
+			if state == "read_only":
+				field.bg_color = Color("c8c8c8")
+			result.set_stylebox(state, type_name, field)
+		result.set_stylebox("focus", type_name, _copy_style(result, "OptionButton", "focus"))
+		result.set_color("font_color", type_name, result.get_color("font_color", "OptionButton"))
+		result.set_color("font_placeholder_color", type_name, Color("606060"))
+		result.set_color("caret_color", type_name, Color("101010"))
+	result.set_icon("clear", "LineEdit", _tinted_icon(ThemeDB.get_default_theme().get_icon("clear", "LineEdit"), Color("383838")))
 	result.set_color("font_uneditable_color", "LineEdit", Color("505050"))
 	result.set_color("font_readonly_color", "TextEdit", Color("505050"))
 	for type_name in ["HSlider", "VSlider"]:
@@ -162,15 +172,23 @@ static func _dark_theme() -> Theme:
 			result.set_font_size(size_name, type_name, 13)
 	var panel := _copy_style(result, "TabContainer", "panel")
 	panel.bg_color = Color("383d43")
+	panel.border_color = Color("69727e")
+	panel.set_border_width_all(1)
 	panel.set_content_margin_all(12)
 	result.set_stylebox("panel", "TabContainer", panel)
-	var selected_tab := _copy_style(result, "TabContainer", "tab_selected")
-	selected_tab.bg_color = panel.bg_color
-	result.set_stylebox("tab_selected", "TabContainer", selected_tab)
+	for state in ["tab_selected", "tab_unselected", "tab_hovered", "tab_disabled"]:
+		var tab := _copy_style(result, "TabContainer", state)
+		tab.border_color = Color("9099a5") if state == "tab_selected" else panel.border_color
+		tab.set_border_width_all(1)
+		tab.border_width_bottom = 0
+		if state == "tab_selected":
+			tab.bg_color = panel.bg_color
+		result.set_stylebox(state, "TabContainer", tab)
 	for type_name in ["Button", "OptionButton"]:
+		var background := Color("41474f") if type_name == "OptionButton" else Color("50565e")
 		for state in ["normal", "disabled"]:
 			var box := _copy_style(result, type_name, state)
-			box.bg_color = Color("50565e") if state == "normal" else Color("353a40")
+			box.bg_color = background if state == "normal" else Color("353a40")
 			box.border_color = Color("9099a5") if state == "normal" else Color("69727e")
 			box.set_border_width_all(1)
 			result.set_stylebox(state, type_name, box)
@@ -208,9 +226,16 @@ static func _dark_theme() -> Theme:
 		result.set_icon(icon_name, "CheckButton", ImageTexture.create_from_image(image))
 	for type_name in ["LineEdit", "TextEdit"]:
 		for state in ["normal", "read_only"]:
-			var field := _copy_style(result, type_name, state)
-			field.bg_color = Color("41474f") if state == "normal" else Color("3b4149")
+			var field := _copy_style(result, "OptionButton", "normal" if state == "normal" else "disabled")
+			var original := result.get_stylebox(state, type_name)
+			# Keep text padding without the select box's arrow space.
+			for side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
+				field.set_content_margin(side, original.get_content_margin(side))
 			result.set_stylebox(state, type_name, field)
+		result.set_stylebox("focus", type_name, _copy_style(result, "OptionButton", "focus"))
+		result.set_color("font_color", type_name, result.get_color("font_color", "OptionButton"))
+		result.set_color("font_uneditable_color" if type_name == "LineEdit" else "font_readonly_color",
+			type_name, result.get_color("font_disabled_color", "OptionButton"))
 	var fill := _copy_style(result, "ProgressBar", "fill")
 	fill.bg_color = Color("087e8b")
 	result.set_stylebox("fill", "ProgressBar", fill)
@@ -313,8 +338,6 @@ static func _light_file_dialog_theme() -> Theme:
 		result.set_stylebox("panel", type_name, create_box(Color("dedede"), Color("808080"), 1, 4, 4))
 		for state in ["selected", "selected_focus", "hovered", "hovered_selected", "hovered_selected_focus", "hover"]:
 			result.set_stylebox(state, type_name, create_box(Color("aec8e5"), Color("6a88aa"), 1, 4, 4))
-	for state in ["normal", "read_only"]:
-		result.set_stylebox(state, "LineEdit", create_box(Color("eeeeee"), Color("808080"), 1, 4, 4))
 	result.set_color("folder_icon_color", "FileDialog", Color.WHITE)
 	result.set_color("file_icon_color", "FileDialog", Color.WHITE)
 	return result

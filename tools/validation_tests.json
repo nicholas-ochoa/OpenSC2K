@@ -350,6 +350,12 @@
     "lane": "product"
   },
   {
+    "id": "ui_control_gallery_test",
+    "script": "tests/ui_control_gallery_test.gd",
+    "domain": "ui",
+    "lane": "product"
+  },
+  {
     "id": "settings_viewport_height_test",
     "script": "tests/settings_viewport_height_test.gd",
     "domain": "ui",
