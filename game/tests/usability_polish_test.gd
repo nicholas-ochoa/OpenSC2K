@@ -33,7 +33,8 @@ func _run() -> void:
 	assert(main.static_render.city_view_size() == CityIsometricRenderer.VIEW_LARGE)
 	var background := main.main_menu.city_background as MainMenuCityBackground
 	assert(background.demo_city != null)
-	var source_bytes := FileAccess.get_file_as_bytes(background.source_path)
+	var source_path := background.source_path
+	var source_bytes := FileAccess.get_file_as_bytes(source_path)
 	assert(background.demo_city.no_disasters_enabled())
 	assert(background.demo_city.auto_budget_enabled())
 	assert(not background.demo_city.sound_enabled())
@@ -42,7 +43,7 @@ func _run() -> void:
 	for step in 20:
 		background._process(0.2)
 
-	assert(FileAccess.get_file_as_bytes(background.source_path) == source_bytes)
+	assert(FileAccess.get_file_as_bytes(source_path) == source_bytes)
 	assert(main.document_state.city == null and main.document_state.current_document == null)
 	main.main_menu.hide()
 	var elapsed := background.elapsed
@@ -107,7 +108,7 @@ func _run() -> void:
 	await process_frame
 	assert(main.main_menu.visible and main.document_state.city == city)
 	assert(city.document.serialize().data == before)
-	assert(FileAccess.get_file_as_bytes(background.source_path) == source_bytes)
+	assert(FileAccess.get_file_as_bytes(source_path) == source_bytes)
 	main.queue_free()
 	await process_frame
 	print(("PASS: overlapping dust, graphics default, isolated menu simulation, SCURK stamps and "

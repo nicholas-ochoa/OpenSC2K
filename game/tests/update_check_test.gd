@@ -279,8 +279,8 @@ func _check_settings_dialog() -> void:
 	assert(dialog.update_status_label.visible and dialog.update_status_label.theme_type_variation == &"ErrorLabel")
 	dialog.set_update_status(1790345100, "")
 	assert(dialog.update_status_label.visible and dialog.update_status_label.theme_type_variation == &"HelpLabel")
-	# the dark underground option is on the Graphics tab
-	assert(dialog.tabs.get_child(2).is_ancestor_of(dialog.dark_underground_check))
+	# the dark underground option is on the General tab
+	assert(dialog.tabs.get_child(0).is_ancestor_of(dialog.dark_underground_check))
 	dialog.free()
 	await process_frame
 

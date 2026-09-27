@@ -7,6 +7,8 @@ signal import_original_requested
 signal update_check_requested
 signal button_clicked
 
+const DATA_TAB := 3
+
 var pack_error_label: Label
 var shuffle_music_check: CheckBox
 var toolbar_sounds_check: CheckBox
@@ -256,8 +258,8 @@ func _refresh_pack_name(kind: String) -> void:
 func show_pack_error(message: String) -> void:
 	pack_error_label.text = message
 	pack_error_label.show()
-	tabs.current_tab = 1
-	(tabs.get_child(1) as ScrollContainer).scroll_vertical = 0
+	tabs.current_tab = DATA_TAB
+	(tabs.get_child(DATA_TAB) as ScrollContainer).scroll_vertical = 0
 	call_deferred("popup_centered")
 
 

@@ -27,7 +27,7 @@ func _run() -> void:
 			await process_frame
 			await process_frame
 			_check_height(dialog, height)
-			var scroll := dialog.tabs.get_child(1) as ScrollContainer
+			var scroll := dialog.tabs.get_child(AppSettingsDialog.DATA_TAB) as ScrollContainer
 			assert(scroll.get_v_scroll_bar().visible, "Long error text has no scrollbar")
 			dialog.pack_error_label.hide()
 	viewport.queue_free()

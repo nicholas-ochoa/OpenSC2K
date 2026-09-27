@@ -27,15 +27,18 @@ metadata/_tab_index = 0
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/h_separation = 14
-theme_override_constants/v_separation = 14
+theme_override_constants/v_separation = 8
 columns = 2
 
 [node name="DefaultMayorNameLabel" type="Label" parent="Tabs/General/Fields"]
+custom_minimum_size = Vector2(150, 32)
 layout_mode = 2
+vertical_alignment = 1
 text = "Mayor name"
 
 [node name="DefaultMayorEdit" type="LineEdit" parent="Tabs/General/Fields"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
 size_flags_horizontal = 3
 tooltip_text = "The mayor name for new cities."
@@ -43,11 +46,14 @@ placeholder_text = "Mayor"
 max_length = 23
 
 [node name="ThemeLabel" type="Label" parent="Tabs/General/Fields"]
+custom_minimum_size = Vector2(150, 32)
 layout_mode = 2
+vertical_alignment = 1
 text = "Theme"
 
 [node name="ThemeSelector" type="OptionButton" parent="Tabs/General/Fields"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
 tooltip_text = "Use light or dark colors for menus and windows."
 item_count = 2
@@ -58,21 +64,38 @@ popup/item_1/text = "Dark Theme"
 popup/item_1/id = 1
 
 [node name="TranslucentMenusSpacer" type="Control" parent="Tabs/General/Fields"]
+custom_minimum_size = Vector2(150, 32)
 layout_mode = 2
 
 [node name="TranslucentMenusCheck" type="CheckBox" parent="Tabs/General/Fields"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
 tooltip_text = "Use translucent backgrounds with a frosted glass effect."
 button_pressed = true
 text = "Translucent interface"
 
-[node name="UiScaleLabel" type="Label" parent="Tabs/General/Fields"]
+[node name="DarkUndergroundSpacer" type="Control" parent="Tabs/General/Fields"]
+custom_minimum_size = Vector2(150, 32)
 layout_mode = 2
+
+[node name="DarkUndergroundCheck" type="CheckBox" parent="Tabs/General/Fields"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+tooltip_text = "Show the underground view on a dark background,
+with brighter lines for pipes, water mains, and subways."
+text = "Dark underground view"
+
+[node name="UiScaleLabel" type="Label" parent="Tabs/General/Fields"]
+custom_minimum_size = Vector2(150, 32)
+layout_mode = 2
+vertical_alignment = 1
 text = "UI scale"
 
 [node name="UiScaleSelector" type="OptionButton" parent="Tabs/General/Fields"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
 tooltip_text = "Size of menus, windows, and text. 2.0 is the standard size. Smaller values show more of the city. The city map keeps its own sharp pixel size."
 item_count = 3
@@ -85,11 +108,14 @@ popup/item_2/text = "2.0"
 popup/item_2/id = 2
 
 [node name="RendererLabel" type="Label" parent="Tabs/General/Fields"]
+custom_minimum_size = Vector2(150, 32)
 layout_mode = 2
+vertical_alignment = 1
 text = "Renderer"
 
 [node name="RendererSelector" type="OptionButton" parent="Tabs/General/Fields"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
 tooltip_text = "Use this renderer now and for new cities. If GPU setup fails, use the CPU renderer."
 selected = 0
@@ -100,15 +126,18 @@ popup/item_1/text = "CPU"
 popup/item_1/id = 1
 
 [node name="FullscreenSpacer" type="Control" parent="Tabs/General/Fields"]
+custom_minimum_size = Vector2(150, 32)
 layout_mode = 2
 
 [node name="FullscreenCheck" type="CheckBox" parent="Tabs/General/Fields"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
 tooltip_text = "Run the game in full screen mode when enabled, otherwise run in a resizable window."
 text = "Fullscreen"
 
 [node name="UpdatesSpacer" type="Control" parent="Tabs/General/Fields"]
+custom_minimum_size = Vector2(150, 32)
 layout_mode = 2
 
 [node name="UpdatesRow" type="HBoxContainer" parent="Tabs/General/Fields"]
@@ -117,6 +146,7 @@ theme_override_constants/separation = 14
 
 [node name="CheckForUpdatesCheck" type="CheckBox" parent="Tabs/General/Fields/UpdatesRow"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
 tooltip_text = "When OpenSC2K starts, not more than one time each day, it sends a request to GitHub
 to find a newer release of the OpenSC2K project. The request contains only the data
@@ -125,17 +155,21 @@ text = "Check for updates periodically"
 
 [node name="CheckUpdatesNowButton" type="Button" parent="Tabs/General/Fields/UpdatesRow"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
 tooltip_text = "Check GitHub for a newer release now."
 text = "Check now"
 
 [node name="UpdateStatusSpacer" type="Control" parent="Tabs/General/Fields"]
+custom_minimum_size = Vector2(150, 32)
 layout_mode = 2
 
 [node name="UpdateStatusLabel" type="Label" parent="Tabs/General/Fields"]
 unique_name_in_owner = true
 visible = false
+custom_minimum_size = Vector2(150, 32)
 layout_mode = 2
+vertical_alignment = 1
 autowrap_mode = 2
 theme_type_variation = &"HelpLabel"
 
@@ -150,21 +184,15 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 16
 
-[node name="PackErrorLabel" type="Label" parent="Tabs/Audio/Content"]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-autowrap_mode = 3
-theme_type_variation = "ErrorLabel"
-
 [node name="PackFields" type="GridContainer" parent="Tabs/Audio/Content"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/h_separation = 14
-theme_override_constants/v_separation = 14
+theme_override_constants/v_separation = 8
 columns = 2
 
 [node name="MusicVolumeLabel" type="Label" parent="Tabs/Audio/Content/PackFields"]
+custom_minimum_size = Vector2(150, 32)
 layout_mode = 2
 text = "Music"
 vertical_alignment = 1
@@ -176,6 +204,7 @@ layout_mode = 2
 tooltip_text = "The volume of the music."
 
 [node name="SoundEffectsVolumeLabel" type="Label" parent="Tabs/Audio/Content/PackFields"]
+custom_minimum_size = Vector2(150, 32)
 layout_mode = 2
 text = "Sound Effects"
 vertical_alignment = 1
@@ -187,100 +216,41 @@ layout_mode = 2
 tooltip_text = "The volume of the sound effects."
 
 [node name="ShuffleSpacer" type="Label" parent="Tabs/Audio/Content/PackFields"]
+custom_minimum_size = Vector2(150, 32)
 layout_mode = 2
+vertical_alignment = 1
 
 [node name="BackgroundAudioCheck" type="CheckBox" parent="Tabs/Audio/Content/PackFields"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
 tooltip_text = "Continue to play music and sounds when OpenSC2K is not the active window."
 text = "Play music and sounds in background"
 
 [node name="ToolbarSoundSpacer" type="Label" parent="Tabs/Audio/Content/PackFields"]
+custom_minimum_size = Vector2(150, 32)
 layout_mode = 2
+vertical_alignment = 1
 
 [node name="ToolbarSoundsCheck" type="CheckBox" parent="Tabs/Audio/Content/PackFields"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
 tooltip_text = "Play a click sound when you select a toolbar or main menu button."
 button_pressed = true
 text = "Play interface sounds"
 
 [node name="BackgroundAudioSpacer" type="Label" parent="Tabs/Audio/Content/PackFields"]
+custom_minimum_size = Vector2(150, 32)
 layout_mode = 2
+vertical_alignment = 1
 
 [node name="ShuffleMusicCheck" type="CheckBox" parent="Tabs/Audio/Content/PackFields"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
 tooltip_text = "Play all 19 tracks, including menu and special music, once per shuffle cycle."
 text = "Shuffle all music"
-
-[node name="SoundPackLabel" type="Label" parent="Tabs/Audio/Content/PackFields"]
-layout_mode = 2
-text = "Sound Pack"
-
-[node name="SoundPackControls" type="VBoxContainer" parent="Tabs/Audio/Content/PackFields"]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="BrowseRow" type="HBoxContainer" parent="Tabs/Audio/Content/PackFields/SoundPackControls"]
-layout_mode = 2
-
-[node name="SoundPackEdit" type="LineEdit" parent="Tabs/Audio/Content/PackFields/SoundPackControls/BrowseRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-tooltip_text = "The pack.json file of a sound pack. Leave this empty to use the imported sound pack."
-placeholder_text = "Automatic (user://packs/sound/pack.json)"
-
-[node name="SoundBrowse" type="Button" parent="Tabs/Audio/Content/PackFields/SoundPackControls/BrowseRow"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Browse..."
-
-[node name="SoundPackNameSpacer" type="Control" parent="Tabs/Audio/Content/PackFields"]
-layout_mode = 2
-
-[node name="SoundPackName" type="Label" parent="Tabs/Audio/Content/PackFields"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(150, 0)
-layout_mode = 2
-clip_text = true
-text_overrun_behavior = 3
-theme_type_variation = "HelpLabel"
-
-[node name="MusicPackLabel" type="Label" parent="Tabs/Audio/Content/PackFields"]
-layout_mode = 2
-text = "Music Pack"
-
-[node name="MusicPackControls" type="VBoxContainer" parent="Tabs/Audio/Content/PackFields"]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="BrowseRow" type="HBoxContainer" parent="Tabs/Audio/Content/PackFields/MusicPackControls"]
-layout_mode = 2
-
-[node name="MusicPackEdit" type="LineEdit" parent="Tabs/Audio/Content/PackFields/MusicPackControls/BrowseRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-tooltip_text = "The pack.json file of a music pack. Leave this empty to use the imported music pack."
-placeholder_text = "Automatic (user://packs/music/pack.json)"
-
-[node name="MusicBrowse" type="Button" parent="Tabs/Audio/Content/PackFields/MusicPackControls/BrowseRow"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Browse..."
-
-[node name="MusicPackNameSpacer" type="Control" parent="Tabs/Audio/Content/PackFields"]
-layout_mode = 2
-
-[node name="MusicPackName" type="Label" parent="Tabs/Audio/Content/PackFields"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(150, 0)
-layout_mode = 2
-clip_text = true
-text_overrun_behavior = 3
-theme_type_variation = "HelpLabel"
 
 [node name="Graphics" type="ScrollContainer" parent="Tabs"]
 visible = false
@@ -297,30 +267,28 @@ theme_override_constants/separation = 16
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/h_separation = 14
-theme_override_constants/v_separation = 14
+theme_override_constants/v_separation = 8
 columns = 2
 
 [node name="GraphicsSizeLabel" type="Label" parent="Tabs/Graphics/Content/PackFields"]
+custom_minimum_size = Vector2(150, 32)
 layout_mode = 2
 size_flags_vertical = 0
+vertical_alignment = 1
 text = "Graphics Size"
 
 [node name="Fields" type="GridContainer" parent="Tabs/Graphics/Content/PackFields"]
 layout_mode = 2
 theme_override_constants/h_separation = 14
-theme_override_constants/v_separation = 14
+theme_override_constants/v_separation = 8
 columns = 4
-
-[node name="Scale10ZoomLabel" type="Label" parent="Tabs/Graphics/Content/PackFields/Fields"]
-layout_mode = 2
-text = "10%"
 
 [node name="OverviewGraphicsSelectorGroup" type="HBoxContainer" parent="Tabs/Graphics/Content/PackFields/Fields"]
 layout_mode = 2
 
 [node name="OverviewGraphicsSelector" type="OptionButton" parent="Tabs/Graphics/Content/PackFields/Fields/OverviewGraphicsSelectorGroup"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(120, 0)
+custom_minimum_size = Vector2(120, 32)
 layout_mode = 2
 tooltip_text = "The graphics size at 10% zoom. Larger graphics show more detail.
 Higher zoom levels cannot use a smaller size."
@@ -333,16 +301,17 @@ popup/item_1/id = 1
 popup/item_2/text = "Large"
 popup/item_2/id = 2
 
-[node name="Scale200ZoomLabel" type="Label" parent="Tabs/Graphics/Content/PackFields/Fields"]
+[node name="Scale10ZoomLabel" type="Label" parent="Tabs/Graphics/Content/PackFields/Fields"]
 layout_mode = 2
-text = "200%"
+vertical_alignment = 1
+text = "10%"
 
 [node name="Zoom200Group" type="HBoxContainer" parent="Tabs/Graphics/Content/PackFields/Fields"]
 layout_mode = 2
 
 [node name="Zoom200" type="OptionButton" parent="Tabs/Graphics/Content/PackFields/Fields/Zoom200Group"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(120, 0)
+custom_minimum_size = Vector2(120, 32)
 layout_mode = 2
 tooltip_text = "The graphics size at 200% zoom. Larger graphics show more detail.
 This size cannot be smaller than the size at 100% zoom."
@@ -355,16 +324,17 @@ popup/item_1/id = 1
 popup/item_2/text = "Large"
 popup/item_2/id = 2
 
-[node name="Scale25ZoomLabel" type="Label" parent="Tabs/Graphics/Content/PackFields/Fields"]
+[node name="Scale200ZoomLabel" type="Label" parent="Tabs/Graphics/Content/PackFields/Fields"]
 layout_mode = 2
-text = "25%"
+vertical_alignment = 1
+text = "200%"
 
 [node name="Zoom25Group" type="HBoxContainer" parent="Tabs/Graphics/Content/PackFields/Fields"]
 layout_mode = 2
 
 [node name="Zoom25" type="OptionButton" parent="Tabs/Graphics/Content/PackFields/Fields/Zoom25Group"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(120, 0)
+custom_minimum_size = Vector2(120, 32)
 layout_mode = 2
 tooltip_text = "The graphics size at 25% zoom. Larger graphics show more detail.
 This size cannot be smaller than the size at 10% zoom."
@@ -377,16 +347,17 @@ popup/item_1/id = 1
 popup/item_2/text = "Large"
 popup/item_2/id = 2
 
-[node name="Scale300ZoomLabel" type="Label" parent="Tabs/Graphics/Content/PackFields/Fields"]
+[node name="Scale25ZoomLabel" type="Label" parent="Tabs/Graphics/Content/PackFields/Fields"]
 layout_mode = 2
-text = "300%"
+vertical_alignment = 1
+text = "25%"
 
 [node name="Zoom300Group" type="HBoxContainer" parent="Tabs/Graphics/Content/PackFields/Fields"]
 layout_mode = 2
 
 [node name="Zoom300" type="OptionButton" parent="Tabs/Graphics/Content/PackFields/Fields/Zoom300Group"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(120, 0)
+custom_minimum_size = Vector2(120, 32)
 layout_mode = 2
 tooltip_text = "The graphics size at 300% zoom. Larger graphics show more detail.
 This size cannot be smaller than the size at 200% zoom."
@@ -399,16 +370,17 @@ popup/item_1/id = 1
 popup/item_2/text = "Large"
 popup/item_2/id = 2
 
-[node name="Scale50ZoomLabel" type="Label" parent="Tabs/Graphics/Content/PackFields/Fields"]
+[node name="Scale300ZoomLabel" type="Label" parent="Tabs/Graphics/Content/PackFields/Fields"]
 layout_mode = 2
-text = "50%"
+vertical_alignment = 1
+text = "300%"
 
 [node name="Zoom50Group" type="HBoxContainer" parent="Tabs/Graphics/Content/PackFields/Fields"]
 layout_mode = 2
 
 [node name="Zoom50" type="OptionButton" parent="Tabs/Graphics/Content/PackFields/Fields/Zoom50Group"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(120, 0)
+custom_minimum_size = Vector2(120, 32)
 layout_mode = 2
 tooltip_text = "The graphics size at 50% zoom. Larger graphics show more detail.
 This size cannot be smaller than the size at 25% zoom."
@@ -421,16 +393,17 @@ popup/item_1/id = 1
 popup/item_2/text = "Large"
 popup/item_2/id = 2
 
-[node name="Scale400ZoomLabel" type="Label" parent="Tabs/Graphics/Content/PackFields/Fields"]
+[node name="Scale50ZoomLabel" type="Label" parent="Tabs/Graphics/Content/PackFields/Fields"]
 layout_mode = 2
-text = "400%"
+vertical_alignment = 1
+text = "50%"
 
 [node name="Zoom400Group" type="HBoxContainer" parent="Tabs/Graphics/Content/PackFields/Fields"]
 layout_mode = 2
 
 [node name="Zoom400" type="OptionButton" parent="Tabs/Graphics/Content/PackFields/Fields/Zoom400Group"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(120, 0)
+custom_minimum_size = Vector2(120, 32)
 layout_mode = 2
 tooltip_text = "The graphics size at 400% zoom. Larger graphics show more detail.
 This size cannot be smaller than the size at 300% zoom."
@@ -443,16 +416,17 @@ popup/item_1/id = 1
 popup/item_2/text = "Large"
 popup/item_2/id = 2
 
-[node name="Scale100ZoomLabel" type="Label" parent="Tabs/Graphics/Content/PackFields/Fields"]
+[node name="Scale400ZoomLabel" type="Label" parent="Tabs/Graphics/Content/PackFields/Fields"]
 layout_mode = 2
-text = "100%"
+vertical_alignment = 1
+text = "400%"
 
 [node name="Zoom100Group" type="HBoxContainer" parent="Tabs/Graphics/Content/PackFields/Fields"]
 layout_mode = 2
 
 [node name="Zoom100" type="OptionButton" parent="Tabs/Graphics/Content/PackFields/Fields/Zoom100Group"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(120, 0)
+custom_minimum_size = Vector2(120, 32)
 layout_mode = 2
 tooltip_text = "The graphics size at 100% zoom. Larger graphics show more detail.
 This size cannot be smaller than the size at 50% zoom."
@@ -465,49 +439,21 @@ popup/item_1/id = 1
 popup/item_2/text = "Large"
 popup/item_2/id = 2
 
-[node name="GraphicsPackLabel" type="Label" parent="Tabs/Graphics/Content/PackFields"]
+[node name="Scale100ZoomLabel" type="Label" parent="Tabs/Graphics/Content/PackFields/Fields"]
 layout_mode = 2
-text = "Graphics pack"
+vertical_alignment = 1
+text = "100%"
 
-[node name="GraphicsPackControls" type="VBoxContainer" parent="Tabs/Graphics/Content/PackFields"]
+[node name="GraphicsSizeHelpSpacer" type="Control" parent="Tabs/Graphics/Content/PackFields"]
+layout_mode = 2
+
+[node name="GraphicsSizeHelp" type="Label" parent="Tabs/Graphics/Content/PackFields"]
 layout_mode = 2
 size_flags_horizontal = 3
-
-[node name="BrowseRow" type="HBoxContainer" parent="Tabs/Graphics/Content/PackFields/GraphicsPackControls"]
-layout_mode = 2
-
-[node name="FolderEdit" type="LineEdit" parent="Tabs/Graphics/Content/PackFields/GraphicsPackControls/BrowseRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-tooltip_text = "The pack.json file of a graphics pack. Leave this empty to use the imported graphics pack."
-placeholder_text = "Automatic (user://packs/graphics/pack.json)"
-
-[node name="GraphicsBrowse" type="Button" parent="Tabs/Graphics/Content/PackFields/GraphicsPackControls/BrowseRow"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Browse..."
-
-[node name="GraphicsPackNameSpacer" type="Control" parent="Tabs/Graphics/Content/PackFields"]
-layout_mode = 2
-
-[node name="GraphicsPackName" type="Label" parent="Tabs/Graphics/Content/PackFields"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(150, 0)
-layout_mode = 2
-clip_text = true
-text_overrun_behavior = 3
 theme_type_variation = "HelpLabel"
-
-[node name="DarkUndergroundSpacer" type="Control" parent="Tabs/Graphics/Content/PackFields"]
-layout_mode = 2
-
-[node name="DarkUndergroundCheck" type="CheckBox" parent="Tabs/Graphics/Content/PackFields"]
-unique_name_in_owner = true
-layout_mode = 2
-tooltip_text = "Show the underground view on a dark background,
-with brighter lines for pipes, water mains, and subways."
-text = "Dark underground view"
+theme_override_font_sizes/font_size = 12
+text = "Choose the graphics size for each zoom level. Larger graphics show more detail. Higher zoom levels cannot use a smaller size."
+autowrap_mode = 2
 
 [node name="Data" type="ScrollContainer" parent="Tabs"]
 horizontal_scroll_mode = 0
@@ -522,26 +468,38 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 14
 
+[node name="PackErrorLabel" type="Label" parent="Tabs/Data/Content"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+autowrap_mode = 3
+theme_type_variation = "ErrorLabel"
+
 [node name="Fields" type="GridContainer" parent="Tabs/Data/Content"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/h_separation = 14
-theme_override_constants/v_separation = 14
+theme_override_constants/v_separation = 16
 columns = 2
 
 [node name="DataPackLabel" type="Label" parent="Tabs/Data/Content/Fields"]
+custom_minimum_size = Vector2(150, 32)
 layout_mode = 2
+size_flags_vertical = 0
+vertical_alignment = 1
 text = "Data pack"
 
 [node name="DataPackControls" type="VBoxContainer" parent="Tabs/Data/Content/Fields"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 2
 
 [node name="BrowseRow" type="HBoxContainer" parent="Tabs/Data/Content/Fields/DataPackControls"]
 layout_mode = 2
 
 [node name="DataPackEdit" type="LineEdit" parent="Tabs/Data/Content/Fields/DataPackControls/BrowseRow"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
 size_flags_horizontal = 3
 tooltip_text = "The pack.json file of a data pack. The data pack supplies text, newspapers, the city template, cities, and scenarios. Leave this empty to use the imported data pack."
@@ -549,13 +507,11 @@ placeholder_text = "Automatic (user://packs/data/pack.json)"
 
 [node name="DataBrowse" type="Button" parent="Tabs/Data/Content/Fields/DataPackControls/BrowseRow"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
 text = "Browse..."
 
-[node name="DataPackNameSpacer" type="Control" parent="Tabs/Data/Content/Fields"]
-layout_mode = 2
-
-[node name="DataPackName" type="Label" parent="Tabs/Data/Content/Fields"]
+[node name="DataPackName" type="Label" parent="Tabs/Data/Content/Fields/DataPackControls"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
@@ -563,12 +519,124 @@ clip_text = true
 text_overrun_behavior = 3
 theme_type_variation = "HelpLabel"
 
-[node name="ImportSpacer" type="Control" parent="Tabs/Data/Content"]
+[node name="GraphicsPackLabel" type="Label" parent="Tabs/Data/Content/Fields"]
+custom_minimum_size = Vector2(150, 32)
 layout_mode = 2
-size_flags_vertical = 3
+size_flags_vertical = 0
+vertical_alignment = 1
+text = "Graphics pack"
 
-[node name="ImportButton" type="Button" parent="Tabs/Data/Content"]
+[node name="GraphicsPackControls" type="VBoxContainer" parent="Tabs/Data/Content/Fields"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="BrowseRow" type="HBoxContainer" parent="Tabs/Data/Content/Fields/GraphicsPackControls"]
+layout_mode = 2
+
+[node name="FolderEdit" type="LineEdit" parent="Tabs/Data/Content/Fields/GraphicsPackControls/BrowseRow"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "The pack.json file of a graphics pack. Leave this empty to use the imported graphics pack."
+placeholder_text = "Automatic (user://packs/graphics/pack.json)"
+
+[node name="GraphicsBrowse" type="Button" parent="Tabs/Data/Content/Fields/GraphicsPackControls/BrowseRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+text = "Browse..."
+
+[node name="GraphicsPackName" type="Label" parent="Tabs/Data/Content/Fields/GraphicsPackControls"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+clip_text = true
+text_overrun_behavior = 3
+theme_type_variation = "HelpLabel"
+
+[node name="SoundPackLabel" type="Label" parent="Tabs/Data/Content/Fields"]
+custom_minimum_size = Vector2(150, 32)
+layout_mode = 2
+size_flags_vertical = 0
+vertical_alignment = 1
+text = "Sound pack"
+
+[node name="SoundPackControls" type="VBoxContainer" parent="Tabs/Data/Content/Fields"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="BrowseRow" type="HBoxContainer" parent="Tabs/Data/Content/Fields/SoundPackControls"]
+layout_mode = 2
+
+[node name="SoundPackEdit" type="LineEdit" parent="Tabs/Data/Content/Fields/SoundPackControls/BrowseRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "The pack.json file of a sound pack. Leave this empty to use the imported sound pack."
+placeholder_text = "Automatic (user://packs/sound/pack.json)"
+
+[node name="SoundBrowse" type="Button" parent="Tabs/Data/Content/Fields/SoundPackControls/BrowseRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+text = "Browse..."
+
+[node name="SoundPackName" type="Label" parent="Tabs/Data/Content/Fields/SoundPackControls"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+clip_text = true
+text_overrun_behavior = 3
+theme_type_variation = "HelpLabel"
+
+[node name="MusicPackLabel" type="Label" parent="Tabs/Data/Content/Fields"]
+custom_minimum_size = Vector2(150, 32)
+layout_mode = 2
+size_flags_vertical = 0
+vertical_alignment = 1
+text = "Music pack"
+
+[node name="MusicPackControls" type="VBoxContainer" parent="Tabs/Data/Content/Fields"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="BrowseRow" type="HBoxContainer" parent="Tabs/Data/Content/Fields/MusicPackControls"]
+layout_mode = 2
+
+[node name="MusicPackEdit" type="LineEdit" parent="Tabs/Data/Content/Fields/MusicPackControls/BrowseRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "The pack.json file of a music pack. Leave this empty to use the imported music pack."
+placeholder_text = "Automatic (user://packs/music/pack.json)"
+
+[node name="MusicBrowse" type="Button" parent="Tabs/Data/Content/Fields/MusicPackControls/BrowseRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+text = "Browse..."
+
+[node name="MusicPackName" type="Label" parent="Tabs/Data/Content/Fields/MusicPackControls"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+clip_text = true
+text_overrun_behavior = 3
+theme_type_variation = "HelpLabel"
+
+[node name="ImportSpacer" type="Control" parent="Tabs/Data/Content/Fields"]
+custom_minimum_size = Vector2(150, 32)
+layout_mode = 2
+
+[node name="ImportButton" type="Button" parent="Tabs/Data/Content/Fields"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
 size_flags_horizontal = 0
 tooltip_text = "Import graphics, sounds, music, and game data from your copy of SimCity 2000."

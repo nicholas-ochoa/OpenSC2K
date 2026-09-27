@@ -109,7 +109,7 @@ func _run() -> void:
 	assert(main.asset_state.asset_source.graphics_name == "Runtime test")
 	assert(dialog.pack_name_labels.graphics.text == "Runtime test")
 	assert(main.asset_state.base_large_sprites.find_sprite(record.id).decode_indices().pixels == sprite.pixels)
-	assert(main.main_menu.city_background.demo_sprites == main.asset_state.large_sprites)
+	assert(main.main_menu.city_background.demo_city == null and main.main_menu.city_background.demo_sprites == null)
 	assert(main.document_state.city.document.serialize().data == before)
 	dialog.folder_edit.text = original_folder.path_join("pack.json")
 	main.settings.apply_settings()

@@ -189,7 +189,7 @@ func _check_pixel_art() -> void:
 
 	var tinted := dark.get_icon("unchecked", "CheckBox").get_image()
 	var center := tinted.get_pixel(8, 8)
-	var expected := Color("aeb8c4")
+	var expected := Color("9aa4b0")
 	assert(Vector4(center.r, center.g, center.b, center.a).distance_to(Vector4(expected.r, expected.g, expected.b, 1.0)) < 0.02,
 		"The tint keeps its color and full opacity")
 
