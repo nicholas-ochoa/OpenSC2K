@@ -28,6 +28,8 @@ signal query_requested(point: Vector2i)
 @warning_ignore("unused_signal")
 signal center_requested(point: Vector2i)
 @warning_ignore("unused_signal")
+signal bulldoze_requested(point: Vector2i)
+@warning_ignore("unused_signal")
 signal zoom_changed(percent: int)
 @warning_ignore("unused_signal")
 signal viewport_changed()
@@ -48,6 +50,7 @@ const SIGN_EDGE_MIDDLE = CityMapConstants.SIGN_EDGE_MIDDLE
 const SIGN_EDGE_DARK = CityMapConstants.SIGN_EDGE_DARK
 const SIGN_TEXT_COLOR = CityMapConstants.SIGN_TEXT_COLOR
 const PALETTE_CYCLE_SHADER = CityMapConstants.PALETTE_CYCLE_SHADER
+const ContextMenu = preload("res://src/view/map/context_menu.gd")
 
 var _preserve_sign_layout := false
 var city: CityState:
@@ -71,6 +74,9 @@ var shift_rectangle_enabled := false
 var selection_mode := "rectangle"
 var point_footprint_area := 1
 var shift_query_enabled := false
+var right_button_action := CityMapConstants.BUTTON_ACTION_CENTER
+var middle_button_action := CityMapConstants.BUTTON_ACTION_CENTER
+var context_menu: ContextMenu
 var desktop_cursor_app := "city"
 var desktop_cursor_role := 0
 var zoom_factor: float = ZOOM_LEVELS[DEFAULT_ZOOM_INDEX]
@@ -153,6 +159,9 @@ func _ready() -> void:
 	_data_tooltip = CityMapDataTooltip.new()
 	_data_tooltip.map = self
 	add_child(_data_tooltip)
+	context_menu = ContextMenu.new()
+	context_menu.map = self
+	add_child(context_menu)
 	resized.connect(camera._on_resized)
 	mouse_exited.connect(selection._clear_hover)
 

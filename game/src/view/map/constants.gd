@@ -20,3 +20,6 @@ const SIGN_EDGE_MIDDLE := Color("838383")
 const SIGN_EDGE_DARK := Color("575757")
 const SIGN_TEXT_COLOR := Color("000030")
 const PALETTE_CYCLE_SHADER := preload("res://src/view/map/palette_cycle.gdshader")
+# the action of a middle or right click on the map. a drag always pans
+const BUTTON_ACTION_CENTER := "center"
+const BUTTON_ACTION_CONTEXT_MENU := "context_menu"

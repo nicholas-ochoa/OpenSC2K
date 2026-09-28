@@ -114,6 +114,25 @@ func run(
 	map_control.interaction._handle_mouse_button(center_click)
 	_check(center_requests == [center_tile] and selection_complete_signals[0] == 1,
 		"Middle click requests Center without applying the selected build tool")
+	center_click.button_index = MOUSE_BUTTON_RIGHT
+	center_click.pressed = true
+	map_control.interaction._handle_mouse_button(center_click)
+	center_click.pressed = false
+	map_control.interaction._handle_mouse_button(center_click)
+	_check(center_requests == [center_tile, center_tile] and selection_complete_signals[0] == 1,
+		"Right click requests Center without applying the selected build tool")
+	_test_context_menu(map_control, center_tile, center_requests, selection_complete_signals)
+	center_click.pressed = true
+	map_control.interaction._handle_mouse_button(center_click)
+	var right_drag := InputEventMouseMotion.new()
+	right_drag.relative = Vector2(12, 8)
+	right_drag.position = center_click.position + right_drag.relative
+	right_drag.button_mask = MOUSE_BUTTON_MASK_RIGHT
+	map_control.interaction._handle_mouse_motion(right_drag)
+	center_click.pressed = false
+	center_click.position = right_drag.position
+	map_control.interaction._handle_mouse_button(center_click)
+	_check(center_requests.size() == 2, "Right drag release does not invoke Center")
 	var visual_revision := map_control.layers.dynamic_canvas.visual_revision
 	var dynamic_position := map_control.layers.dynamic_canvas.position
 	var middle_press := InputEventMouseButton.new()
@@ -135,7 +154,7 @@ func run(
 	middle_release.button_index = MOUSE_BUTTON_MIDDLE
 	middle_release.position = pan_motion.position
 	map_control.interaction._handle_mouse_button(middle_release)
-	_check(center_requests.size() == 1, "Middle drag release does not invoke Center")
+	_check(center_requests.size() == 2, "Middle drag release does not invoke Center")
 	map_control.interaction._handle_mouse_button(middle_press)
 	pan_motion.button_mask = 0
 	map_control.interaction._handle_mouse_motion(pan_motion)
@@ -502,6 +521,68 @@ func _test_selection_signals(map_control: CityMapControl, starter: CityState, ce
 
 # SIMCITY.EXE builds with a single-click tool on the press and again on each
 # new tile while the left button stays down
+# a button set to Context Menu opens the map menu on release. each menu item
+# requests its action for the clicked tile. the other button still centers
+func _test_context_menu(
+	map_control: CityMapControl, center_tile: Vector2i, center_requests: Array[Vector2i], selection_complete_signals: Array
+) -> void:
+	var menu := RecordingContextMenu.new()
+	menu.map = map_control
+	map_control.context_menu = menu
+	map_control.right_button_action = CityMapConstants.BUTTON_ACTION_CONTEXT_MENU
+	var query_requests: Array[Vector2i] = []
+	var bulldoze_requests: Array[Vector2i] = []
+	map_control.query_requested.connect(func(point: Vector2i) -> void:
+		query_requests.append(point))
+	map_control.bulldoze_requested.connect(func(point: Vector2i) -> void:
+		bulldoze_requests.append(point))
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_RIGHT
+	click.position = map_control.size * 0.5
+	click.pressed = true
+	map_control.interaction._handle_mouse_button(click)
+	_check(menu.opened == 0, "Context Menu waits for release")
+	click.pressed = false
+	map_control.interaction._handle_mouse_button(click)
+	_check(menu.opened == 1 and menu.point == center_tile and center_requests.size() == 2 and selection_complete_signals[0] == 1,
+		"Right click opens the map menu for the clicked tile without Center or the selected tool")
+	_check([menu.get_item_text(0), menu.get_item_text(1), menu.get_item_text(2)] == ["Center Map", "Query Tile", "Bulldoze Tile"],
+		"The map menu shows the original items in order")
+	menu.id_pressed.emit(CityMapContextMenu.Item.CENTER)
+	menu.id_pressed.emit(CityMapContextMenu.Item.QUERY)
+	menu.id_pressed.emit(CityMapContextMenu.Item.BULLDOZE)
+	_check(center_requests.size() == 3 and center_requests[2] == center_tile and query_requests == [center_tile]
+		and bulldoze_requests == [center_tile], "Map menu items request Center, Query, and Bulldoze for the tile")
+	click.button_index = MOUSE_BUTTON_MIDDLE
+	click.pressed = true
+	map_control.interaction._handle_mouse_button(click)
+	click.pressed = false
+	map_control.interaction._handle_mouse_button(click)
+	_check(menu.opened == 1 and center_requests.size() == 4, "Middle click keeps its own Center Map action")
+	map_control.middle_button_action = CityMapConstants.BUTTON_ACTION_CONTEXT_MENU
+	map_control.right_button_action = CityMapConstants.BUTTON_ACTION_CENTER
+	click.pressed = true
+	map_control.interaction._handle_mouse_button(click)
+	click.pressed = false
+	map_control.interaction._handle_mouse_button(click)
+	_check(menu.opened == 2 and center_requests.size() == 4, "Middle click opens the map menu when set to Context Menu")
+	map_control.middle_button_action = CityMapConstants.BUTTON_ACTION_CENTER
+	map_control.context_menu = null
+	menu.free()
+	# keep the later counts of this suite
+	center_requests.resize(2)
+
+
+# records the menu opening. this suite has no scene tree for a popup
+class RecordingContextMenu extends CityMapContextMenu:
+	var opened := 0
+
+
+	func open_at(tile: Vector2i, _map_position: Vector2) -> void:
+		point = tile
+		opened += 1
+
+
 func _test_repeat_placement(starter: CityState, center_tile: Vector2i) -> void:
 	var map_control := MapControl.new()
 	map_control.city = starter

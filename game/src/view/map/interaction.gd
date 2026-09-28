@@ -6,8 +6,8 @@ var _stretch_press_y := 0.0
 var shift_pressed := false
 var _brush_elapsed := 0.0
 var panning := false
-var _middle_click_pending := false
-var _middle_press_position := Vector2.ZERO
+var _center_click_button := MOUSE_BUTTON_NONE
+var _center_press_position := Vector2.ZERO
 
 
 func _init(control: CityMapControl) -> void:
@@ -77,20 +77,18 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 
 		return
 
+	# middle and right clicks center the map or open the map menu for any selected tool. a drag pans the map
 	if event.button_index == MOUSE_BUTTON_MIDDLE or event.button_index == MOUSE_BUTTON_RIGHT:
-		if event.button_index == MOUSE_BUTTON_MIDDLE:
-			if event.pressed:
-				_middle_click_pending = true
-				_middle_press_position = event.position
-			elif _middle_click_pending:
-				var center_tile := map.camera._tile_at(event.position)
+		if event.pressed:
+			_center_click_button = event.button_index
+			_center_press_position = event.position
+		elif _center_click_button == event.button_index:
+			var click_tile := map.camera._tile_at(event.position)
 
-				if center_tile.x >= 0 and event.position.distance_to(_middle_press_position) <= 4.0:
-					map.center_requested.emit(center_tile)
+			if click_tile.x >= 0 and event.position.distance_to(_center_press_position) <= 4.0:
+				_button_click(event.button_index, click_tile, event.position)
 
-				_middle_click_pending = false
-		else:
-			_middle_click_pending = false
+			_center_click_button = MOUSE_BUTTON_NONE
 
 		panning = event.pressed
 		map.accept_event()
@@ -175,6 +173,15 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 	map.accept_event()
 
 
+func _button_click(button: MouseButton, tile: Vector2i, position: Vector2) -> void:
+	var action := map.right_button_action if button == MOUSE_BUTTON_RIGHT else map.middle_button_action
+
+	if action == BUTTON_ACTION_CONTEXT_MENU:
+		map.context_menu.open_at(tile, position)
+	else:
+		map.center_requested.emit(tile)
+
+
 func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 	map.selection._hide_placement_error()
 
@@ -191,11 +198,11 @@ func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 		) == 0
 	):
 		panning = false
-		_middle_click_pending = false
+		_center_click_button = MOUSE_BUTTON_NONE
 
 	if panning:
-		if event.position.distance_to(_middle_press_position) > 4.0:
-			_middle_click_pending = false
+		if event.position.distance_to(_center_press_position) > 4.0:
+			_center_click_button = MOUSE_BUTTON_NONE
 
 		map.source_center -= event.relative / map.camera._view_scale()
 		map.camera._clamp_source_center()

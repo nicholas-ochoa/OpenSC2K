@@ -57,6 +57,18 @@ func _run() -> void:
 	dialog.overview_graphics_selector.select(0)
 	dialog.overview_graphics_selector.item_selected.emit(0)
 	assert(not dialog.zoom_graphics_selectors[0].is_item_disabled(0), "A smaller 10% size allows every 25% size")
+	# mouse buttons center the map by default. each button keeps its own saved action
+	assert(updated.right_button_action == "center" and updated.middle_button_action == "center")
+	dialog.show_button_actions("context_menu", "center")
+	assert(dialog.selected_values().right_button_action == "context_menu")
+	assert(dialog.selected_values().middle_button_action == "center")
+	var control_options := AppSettingsStore.SaveOptions.new()
+	control_options.right_button_action = "center"
+	control_options.middle_button_action = "context_menu"
+	assert(AppSettingsStore.save_values(0.5, 0.5, false, path, control_options) == OK)
+	var controls := AppSettingsStore.load_values(path)
+	assert(controls.right_button_action == "center" and controls.middle_button_action == "context_menu")
+	assert(AppSettingsStore.normalize_button_action("invalid") == "center")
 	dialog.queue_free()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	print("PASS: native graphics settings, retained pack selection")

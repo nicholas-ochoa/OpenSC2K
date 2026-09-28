@@ -28,7 +28,7 @@ func _set_city_renderer(value: String) -> void:
 
 func open_import_settings() -> void:
 	open_settings_dialog()
-	app.main_overlays.settings_dialog.tabs.current_tab = 3
+	app.main_overlays.settings_dialog.tabs.current_tab = AppSettingsDialog.DATA_TAB
 
 
 func open_settings_dialog() -> void:
@@ -45,6 +45,7 @@ func open_settings_dialog() -> void:
 	app.main_overlays.settings_dialog.sound_pack_edit.text = AppSettingsDialog.pack_file_path(preferences.sound_pack_folder)
 	app.main_overlays.settings_dialog.music_pack_edit.text = AppSettingsDialog.pack_file_path(preferences.music_pack_folder)
 	app.main_overlays.settings_dialog.data_pack_edit.text = AppSettingsDialog.pack_file_path(preferences.data_pack_folder)
+	app.main_overlays.settings_dialog.show_button_actions(preferences.right_button_action, preferences.middle_button_action)
 	app.main_overlays.settings_dialog.show_values(
 		preferences.music_volume, preferences.effects_volume, preferences.fullscreen,
 		preferences.graphics_source, preferences.graphics_folder, preferences.city_renderer, preferences.background_audio,
@@ -110,6 +111,9 @@ func apply_settings() -> void:
 		app.assets.apply_graphics_source(selected)
 
 	preferences.check_for_updates = bool(values.check_for_updates)
+	preferences.right_button_action = SettingsStore.normalize_button_action(values.right_button_action)
+	preferences.middle_button_action = SettingsStore.normalize_button_action(values.middle_button_action)
+	apply_mouse_buttons()
 	preferences.graphics_source = values.graphics_source
 	preferences.graphics_folder = values.graphics_folder
 	_set_city_renderer(str(values.city_renderer))
@@ -208,6 +212,9 @@ func load_app_settings() -> void:
 	preferences.update_skipped_version = values.update_skipped_version
 	preferences.update_checked_at = values.update_checked_at
 	preferences.update_error = values.update_error
+	preferences.right_button_action = values.right_button_action
+	preferences.middle_button_action = values.middle_button_action
+	apply_mouse_buttons()
 
 	if preferences.fullscreen:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
@@ -236,6 +243,15 @@ func apply_ui_scale() -> void:
 		app.map_view.set_pixel_scales(0.0, 1)
 	else:
 		app.map_view.set_pixel_scales(screen_pixels, AppUiScale.map_pixels(AppUiScale.fit_scale(window.size, window.content_scale_size)))
+
+
+# give the map the middle and right click actions. call this again when the map is created
+func apply_mouse_buttons() -> void:
+	if app.map_view == null:
+		return
+
+	app.map_view.right_button_action = preferences.right_button_action
+	app.map_view.middle_button_action = preferences.middle_button_action
 
 
 func _set_graphics_preferences(zoom_graphics: Array) -> void:

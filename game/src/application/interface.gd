@@ -73,6 +73,7 @@ func build_interface(original_assets: OriginalGameAssets) -> void:
 	app.map_view.selection_canceled.connect(app.camera_input.on_map_selection_canceled)
 	app.map_view.query_requested.connect(app.query_choices.open_query)
 	app.map_view.center_requested.connect(app.camera_input.center_map_on_tile)
+	app.map_view.bulldoze_requested.connect(app.city_edits.bulldoze_tile)
 	app.map_view.zoom_changed.connect(app.camera_input.on_city_zoom_changed)
 	app.map_view.viewport_changed.connect(app.reports.city_map.refresh_viewport)
 	app.city_status_bar = app.city_workspace.status_bar
@@ -144,6 +145,7 @@ func build_interface(original_assets: OriginalGameAssets) -> void:
 	app.effects_audio.bind_view(app.map_view, app.main_menu)
 	app.main_overlays.about_dialog.set_assets(original_assets)
 	app.settings.apply_ui_scale()
+	app.settings.apply_mouse_buttons()
 
 
 func _build_main_menu() -> void:

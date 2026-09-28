@@ -267,6 +267,29 @@ func _run_quick(reference_root: String) -> void:
 	assert(city.document.serialize().data != before)
 	main.city_edits.undo_last_edit()
 	assert(city.document.serialize().data == before, "Undo restores all saved bytes")
+	# the map menu Bulldoze Tile demolishes one tile and keeps the selected tool
+	main.city_edits.apply_map_selection(point, point, path, false)
+	var planted: PackedByteArray = city.document.serialize().data
+	main.map_view.bulldoze_requested.emit(point)
+	assert(main.tool_state.last_edit_command.command_type == "demolish")
+	assert(city.document.serialize().data != planted, "Bulldoze Tile clears the planted tile")
+	assert(main.tool_state.selected_group == 1 and main.tool_state.selected_subtool == 0)
+	main.city_edits.undo_last_edit()
+	assert(city.document.serialize().data == planted, "Undo restores the bulldozed tile")
+	main.preferences.right_button_action = CityMapConstants.BUTTON_ACTION_CONTEXT_MENU
+	main.settings.apply_mouse_buttons()
+	var right_click := InputEventMouseButton.new()
+	right_click.button_index = MOUSE_BUTTON_RIGHT
+	right_click.position = main.map_view.size * 0.5
+	right_click.pressed = true
+	main.map_view.interaction._handle_mouse_button(right_click)
+	right_click.pressed = false
+	main.map_view.interaction._handle_mouse_button(right_click)
+	assert(main.map_view.context_menu.visible and main.map_view.context_menu.point.x >= 0,
+		"Right click opens the map menu when the setting is Context Menu")
+	main.map_view.context_menu.hide()
+	main.preferences.right_button_action = CityMapConstants.BUTTON_ACTION_CENTER
+	main.settings.apply_mouse_buttons()
 	main.settings.open_settings_dialog()
 	assert(main.main_overlays.settings_dialog.visible)
 	main.main_overlays.settings_dialog.hide()

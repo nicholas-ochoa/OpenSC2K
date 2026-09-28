@@ -96,6 +96,30 @@ func apply_map_selection(
 	_finish_simple_edit(zone_edit, scurk_tool_mode, scurk_tool)
 
 
+# the map menu bulldozes one tile as the Bulldozer tool does. the selected tool
+# does not change. a tile with nothing to bulldoze is not reported
+func bulldoze_tile(point: Vector2i) -> void:
+	if app.document_state.city == null:
+		return
+
+	var tool := app.tool_state
+	var group := tool.selected_group
+	var subtool := tool.selected_subtool
+	tool.selected_group = CityToolIds.Group.BULLDOZER
+	tool.selected_subtool = CityToolIds.Bulldozer.DEMOLISH
+	var path: Array[Vector2i] = [point]
+	var simple_edit := SimpleEdits.apply_supported(
+		app.document_state.city, tool.selected_group, tool.selected_subtool, point, point, path, tool.tool_random,
+		app.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND, tool.landscape_editor
+	)
+
+	if simple_edit.handled and simple_edit.command.error != "no eligible tiles changed":
+		_finish_simple_edit(simple_edit, false, null)
+
+	tool.selected_group = group
+	tool.selected_subtool = subtool
+
+
 # while the scurk place-and-print window is open, place an object at finish or
 # select the window's edit tool. returns false when the selection is handled
 # or no edit tool is chosen

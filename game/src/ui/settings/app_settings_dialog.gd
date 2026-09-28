@@ -7,7 +7,7 @@ signal import_original_requested
 signal update_check_requested
 signal button_clicked
 
-const DATA_TAB := 3
+const DATA_TAB := 4
 
 var pack_error_label: Label
 var shuffle_music_check: CheckBox
@@ -38,6 +38,8 @@ var background_audio_check: CheckBox
 var check_for_updates_check: CheckBox
 var check_updates_now_button: Button
 var update_status_label: Label
+var right_button_selector: OptionButton
+var middle_button_selector: OptionButton
 
 
 func _ready() -> void:
@@ -74,6 +76,8 @@ func _ready() -> void:
 	tabs = %Tabs
 	toolbar_sounds_check = %ToolbarSoundsCheck
 	folder_row = folder_edit.get_parent() as HBoxContainer
+	right_button_selector = %RightButtonSelector
+	middle_button_selector = %MiddleButtonSelector
 	zoom_graphics_selectors = [%Zoom25, %Zoom50, %Zoom100, %Zoom200, %Zoom300, %Zoom400]
 
 	# acceptdialog owns the standard buttons and content placement
@@ -181,6 +185,11 @@ func show_values(
 	popup_centered()
 
 
+func show_button_actions(right_action: String, middle_action: String) -> void:
+	right_button_selector.select(maxi(0, AppSettingsStore.BUTTON_ACTIONS.find(right_action)))
+	middle_button_selector.select(maxi(0, AppSettingsStore.BUTTON_ACTIONS.find(middle_action)))
+
+
 func selected_values() -> AppSettingsStore.Values:
 	var result := AppSettingsStore.Values.new()
 	result.default_mayor_name = default_mayor_edit.text.strip_edges()
@@ -201,6 +210,8 @@ func selected_values() -> AppSettingsStore.Values:
 	result.dark_underground = dark_underground_check.button_pressed
 	result.fullscreen = fullscreen_check.button_pressed
 	result.check_for_updates = check_for_updates_check.button_pressed
+	result.right_button_action = AppSettingsStore.BUTTON_ACTIONS[maxi(0, right_button_selector.selected)]
+	result.middle_button_action = AppSettingsStore.BUTTON_ACTIONS[maxi(0, middle_button_selector.selected)]
 	result.graphics_source = "auto" if folder_edit.text.strip_edges().is_empty() else "folder"
 	result.graphics_folder = folder_edit.text.strip_edges()
 

@@ -4,6 +4,9 @@ extends RefCounted
 const GRAPHICS_ZOOMS := [25, 50, 100, 200, 300, 400]
 const GRAPHICS_SIZES := ["Small", "Medium", "Large"]
 const DEFAULT_ZOOM_GRAPHICS := [0, 1, 2, 2, 2, 2]
+# the order of the mouse button choices in the settings dialog
+const BUTTON_ACTIONS := [CityMapConstants.BUTTON_ACTION_CENTER, CityMapConstants.BUTTON_ACTION_CONTEXT_MENU]
+const DEFAULT_BUTTON_ACTION := CityMapConstants.BUTTON_ACTION_CENTER
 
 
 static func default_path() -> String:
@@ -68,6 +71,8 @@ static func load_values(
 	result.update_skipped_version = str(config.get_value("updates", "skipped_version", ""))
 	result.update_checked_at = int(config.get_value("updates", "checked_at", 0))
 	result.update_error = str(config.get_value("updates", "error", ""))
+	result.right_button_action = normalize_button_action(config.get_value("controls", "right_button", DEFAULT_BUTTON_ACTION))
+	result.middle_button_action = normalize_button_action(config.get_value("controls", "middle_button", DEFAULT_BUTTON_ACTION))
 
 	return result
 
@@ -78,6 +83,10 @@ static func normalize_theme(value: Variant) -> String:
 
 static func normalize_renderer(value: Variant) -> String:
 	return "cpu" if str(value) == "cpu" else "gpu"
+
+
+static func normalize_button_action(value: Variant) -> String:
+	return str(value) if str(value) in BUTTON_ACTIONS else DEFAULT_BUTTON_ACTION
 
 
 # each zoom level uses the size of the level below it or a larger size. the
@@ -170,6 +179,12 @@ static func save_values(
 	if options.data_pack_folder != null:
 		config.set_value("data", "pack_folder", AppPaths.stored_path(str(options.data_pack_folder).strip_edges()))
 
+	if options.right_button_action != null:
+		config.set_value("controls", "right_button", normalize_button_action(options.right_button_action))
+
+	if options.middle_button_action != null:
+		config.set_value("controls", "middle_button", normalize_button_action(options.middle_button_action))
+
 	for pair in [["toolbar_sounds", options.toolbar_sounds], ["sound_pack_folder", options.sound_pack_folder],
 		["music_pack_folder", options.music_pack_folder]]:
 		if pair[1] != null:
@@ -215,6 +230,8 @@ class Values extends RefCounted:
 	var music_pack_folder := ""
 	var data_pack_folder := ""
 	var check_for_updates := false
+	var right_button_action := DEFAULT_BUTTON_ACTION
+	var middle_button_action := DEFAULT_BUTTON_ACTION
 
 
 class LoadedValues extends Values:
@@ -247,3 +264,5 @@ class SaveOptions extends RefCounted:
 	var check_for_updates: Variant = null
 	var data_pack_folder: Variant = null
 	var ui_scale: Variant = null
+	var right_button_action: Variant = null
+	var middle_button_action: Variant = null
