@@ -27,6 +27,7 @@ func _run() -> void:
 	assert(editor.show_editor().ok)
 	await process_frame
 	await process_frame
+	await _test_pick_copy_preview(assets, editor.pick_copy_control)
 	_test_close_confirmation(editor)
 	await _test_tile_browser(editor)
 	assert(editor.object_list.entries[0].thumbnail != null)
@@ -209,6 +210,74 @@ func _test_tile_selector() -> void:
 	selector.set_entries([], 1001)
 	assert(selector.disabled and selector.selected == -1 and not selector.get_node("Popup").visible)
 	selector.free()
+
+
+func _test_pick_copy_preview(assets: OriginalGameAssets, picker: ScurkPickCopyControl) -> void:
+	picker.configure(assets.palette, assets.large_sprites, assets.small_medium_sprites, "")
+	var working := ScurkMif.from_archives([assets.large_sprites, assets.small_medium_sprites])
+	var source := ScurkMif.from_archives([assets.large_sprites, assets.small_medium_sprites])
+	var ids := ScurkPickCopy.group_large_ids(ScurkPickCopy.GROUP_RESIDENTIAL)
+	for view in ScurkSpriteIds.VIEW_COUNT:
+		assert(source.set_shape_indices(ids[0] - view * 500, 2, 2, PackedInt32Array([10 + view, 20, 30, 40])).ok)
+	picker.open_with_working(working, "")
+	assert(picker.preview_before.texture == null and picker.preview_after.texture == null)
+	picker.source_set = source
+	picker._refresh_lists()
+	picker.source_list.select(0)
+	picker.source_list.multi_selected.emit(0, true)
+	assert(picker.preview_large_id == ids[0])
+	assert(picker.working_list.selected_large_ids() == PackedInt32Array([ids[0]]))
+	assert(not picker.copy_selected_button.disabled)
+	for view in ScurkSpriteIds.VIEW_COUNT:
+		picker._select_view(view)
+		var source_image := ScurkPickCopy.resolved_entry(source, ids[0] - view * 500,
+			assets.large_sprites, assets.small_medium_sprites).create_image(assets.palette).image
+		var working_image := ScurkPickCopy.resolved_entry(working, ids[0] - view * 500,
+			assets.large_sprites, assets.small_medium_sprites).create_image(assets.palette).image
+		assert(PixelArtTexture.unwrap(picker.preview_after.texture).get_image().get_data() == source_image.get_data())
+		assert(PixelArtTexture.unwrap(picker.preview_before.texture).get_image().get_data() == working_image.get_data())
+
+	# Multiple selection previews each matching destination without changing the copy selection.
+	picker.source_list.select(1, false)
+	picker.source_list.multi_selected.emit(1, true)
+	assert(picker.preview_large_id == ids[1] and not picker.preview_previous.disabled)
+	picker.preview_previous.pressed.emit()
+	assert(picker.preview_large_id == ids[0] and not picker.preview_next.disabled)
+	picker.preview_next.pressed.emit()
+	assert(picker.preview_large_id == ids[1])
+	assert(picker.working_list.selected_large_ids() == PackedInt32Array([ids[0], ids[1]]))
+	picker.working_list.select(2)
+	picker.working_list.multi_selected.emit(2, true)
+	assert(picker.working_list.selected_large_ids() == PackedInt32Array([ids[0], ids[1]]))
+	var requests: Array[PackedInt32Array] = []
+	var capture := func(_source: ScurkMif, selected: PackedInt32Array, _description: String) -> void:
+		requests.append(selected)
+	# Test the selection signal without changing the editor's separate working document.
+	var editor_copy := Callable(picker.get_parent().get_parent(), "_copy_pick_objects")
+	picker.copy_requested.disconnect(editor_copy)
+	picker.copy_requested.connect(capture)
+	picker.copy_selected_button.pressed.emit()
+	assert(requests == [PackedInt32Array([ids[0], ids[1]])])
+	var copied := ScurkPickCopy.copy_objects(working, source, requests[0], assets.large_sprites, assets.small_medium_sprites)
+	assert(copied.ok and copied.shape_count == 6)
+	picker.copy_completed(copied)
+	picker.preview_previous.pressed.emit()
+	assert(PixelArtTexture.unwrap(picker.preview_before.texture).get_image().get_data()
+		== PixelArtTexture.unwrap(picker.preview_after.texture).get_image().get_data())
+
+	# A group change removes stale selection and artwork. The preview fits the window.
+	picker._select_group(ScurkPickCopy.GROUP_COMMERCIAL)
+	assert(picker.preview_before.texture == null and picker.preview_after.texture == null)
+	assert(picker.copy_selected_button.disabled)
+	await process_frame
+	await process_frame
+	assert(Rect2(Vector2.ZERO, Vector2(root.size)).encloses(picker.get_global_rect()))
+	assert(picker.get_global_rect().encloses(picker.preview_before.get_global_rect()))
+	assert(picker.source_list.size.y >= 120 and picker.working_list.size.y >= 120)
+	assert(picker.get_global_rect().encloses(picker.copy_selected_button.get_global_rect()))
+	picker.copy_requested.disconnect(capture)
+	picker.copy_requested.connect(editor_copy)
+	picker.request_close()
 
 
 func _test_paint_sidebar(editor: ScurkEditorControl) -> void:

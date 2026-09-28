@@ -28,6 +28,7 @@ func _get_drag_data(at_position: Vector2) -> Variant:
 	if not is_selected(item_index):
 		deselect_all()
 		select(item_index)
+		multi_selected.emit(item_index, true)
 
 	var large_ids := selected_large_ids()
 
@@ -35,13 +36,22 @@ func _get_drag_data(at_position: Vector2) -> Variant:
 		return null
 
 	var preview := PanelContainer.new()
+	var content := VBoxContainer.new()
+	var artwork := TextureRect.new()
+	artwork.custom_minimum_size = Vector2(88, 88)
+	artwork.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	artwork.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	artwork.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	artwork.texture = get_item_icon(item_index)
 	var preview_label := Label.new()
 	preview_label.text = (
 		"Copy object %d" % ScurkEditorRules.object_tile_id(large_ids[0])
 		if large_ids.size() == 1
 		else "Copy %d objects" % large_ids.size()
 	)
-	preview.add_child(preview_label)
+	preview.add_child(content)
+	content.add_child(artwork)
+	content.add_child(preview_label)
 	set_drag_preview(preview)
 
 	return CopyObjectsDrag.new(get_instance_id(), large_ids)

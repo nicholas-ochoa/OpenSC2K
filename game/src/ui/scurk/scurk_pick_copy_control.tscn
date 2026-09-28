@@ -34,13 +34,13 @@ theme_override_constants/separation = 6
 
 [node name="ChangeSource" type="Button" parent="Content/Controls"]
 layout_mode = 2
-tooltip_text = "Choose the read-only object set to copy from."
-text = "Change Source..."
+tooltip_text = "Open a source MIF file. Its graphics are copied into the working set."
+text = "Open Source..."
 
 [node name="ChangeWorking" type="Button" parent="Content/Controls"]
 layout_mode = 2
-tooltip_text = "Choose the object set that receives copied graphics."
-text = "Change Working..."
+tooltip_text = "Open the working set that receives the copied graphics."
+text = "Open Working..."
 
 [node name="SourceControlsDivider" type="VSeparator" parent="Content/Controls"]
 layout_mode = 2
@@ -80,6 +80,10 @@ popup/item_10/id = 10
 [node name="ViewControlsDivider" type="VSeparator" parent="Content/Controls"]
 layout_mode = 2
 
+[node name="PreviewSizeLabel" type="Label" parent="Content/Controls"]
+layout_mode = 2
+text = "Preview size"
+
 [node name="Large" type="Button" parent="Content/Controls"]
 layout_mode = 2
 toggle_mode = true
@@ -99,20 +103,25 @@ toggle_mode = true
 button_group = SubResource("ButtonGroup_py6sq")
 text = "Small"
 
-[node name="Sets" type="HSplitContainer" parent="Content"]
+[node name="Instructions" type="Label" parent="Content"]
+layout_mode = 2
+text = "Copy source graphics → replace matching working objects. Every copy includes Large, Medium, and Small."
+autowrap_mode = 3
+
+[node name="Sets" type="HBoxContainer" parent="Content"]
 layout_mode = 2
 size_flags_vertical = 3
-split_offsets = PackedInt32Array(570)
-split_offset = 570
+theme_override_constants/separation = 12
 
 [node name="SourceObjectSetRow" type="VBoxContainer" parent="Content/Sets"]
 custom_minimum_size = Vector2(430, 0)
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 5
 
 [node name="SourceObjectSetLabel" type="Label" parent="Content/Sets/SourceObjectSetRow"]
 layout_mode = 2
-text = "Source Object Set"
+text = "1. Source — select graphics to copy"
 
 [node name="SourceNameLabel" type="Label" parent="Content/Sets/SourceObjectSetRow"]
 layout_mode = 2
@@ -125,6 +134,9 @@ size_flags_vertical = 3
 select_mode = 1
 max_columns = 0
 same_column_width = true
+fixed_column_width = 150
+max_text_lines = 2
+text_overrun_behavior = 3
 icon_mode = 0
 fixed_icon_size = Vector2i(88, 88)
 script = ExtResource("3_ya3l6")
@@ -132,11 +144,12 @@ script = ExtResource("3_ya3l6")
 [node name="WorkingObjectSetRow" type="VBoxContainer" parent="Content/Sets"]
 custom_minimum_size = Vector2(430, 0)
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 5
 
 [node name="WorkingObjectSetLabel" type="Label" parent="Content/Sets/WorkingObjectSetRow"]
 layout_mode = 2
-text = "Working Object Set"
+text = "2. Working — matching objects to replace"
 
 [node name="WorkingNameLabel" type="Label" parent="Content/Sets/WorkingObjectSetRow"]
 layout_mode = 2
@@ -149,9 +162,79 @@ size_flags_vertical = 3
 select_mode = 1
 max_columns = 0
 same_column_width = true
+fixed_column_width = 150
+max_text_lines = 2
+text_overrun_behavior = 3
 icon_mode = 0
 fixed_icon_size = Vector2i(88, 88)
 script = ExtResource("3_ya3l6")
+
+[node name="Preview" type="VBoxContainer" parent="Content"]
+layout_mode = 2
+
+[node name="Selection" type="HBoxContainer" parent="Content/Preview"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Content/Preview/Selection"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Select source objects to preview their matching replacements."
+text_overrun_behavior = 3
+
+[node name="Previous" type="Button" parent="Content/Preview/Selection"]
+layout_mode = 2
+tooltip_text = "Preview the previous selected object."
+text = "Previous"
+disabled = true
+
+[node name="Next" type="Button" parent="Content/Preview/Selection"]
+layout_mode = 2
+tooltip_text = "Preview the next selected object."
+text = "Next"
+disabled = true
+
+[node name="Images" type="HBoxContainer" parent="Content/Preview"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Before" type="VBoxContainer" parent="Content/Preview/Images"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="Content/Preview/Images/Before"]
+layout_mode = 2
+text = "Before: current working graphics"
+horizontal_alignment = 1
+
+[node name="Artwork" type="TextureRect" parent="Content/Preview/Images/Before"]
+custom_minimum_size = Vector2(0, 144)
+layout_mode = 2
+texture_filter = 1
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Arrow" type="Label" parent="Content/Preview/Images"]
+layout_mode = 2
+text = "→"
+vertical_alignment = 1
+
+[node name="After" type="VBoxContainer" parent="Content/Preview/Images"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="Content/Preview/Images/After"]
+layout_mode = 2
+text = "After copy: source graphics"
+horizontal_alignment = 1
+
+[node name="Artwork" type="TextureRect" parent="Content/Preview/Images/After"]
+custom_minimum_size = Vector2(0, 144)
+layout_mode = 2
+texture_filter = 1
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
 
 [node name="Actions" type="HBoxContainer" parent="Content"]
 layout_mode = 2
@@ -159,20 +242,20 @@ theme_override_constants/separation = 7
 
 [node name="CopySelectedButton" type="Button" parent="Content/Actions"]
 layout_mode = 2
-tooltip_text = "Replace each equivalent working object with its selected source graphics."
+tooltip_text = "Replace the matching working objects in all three sizes. You can undo this change."
 disabled = true
 text = "Copy Selected"
 
 [node name="CopyAllButton" type="Button" parent="Content/Actions"]
 layout_mode = 2
-tooltip_text = "Replace every working object in the selected group."
+tooltip_text = "Replace all matching objects in this group, in all three sizes."
 disabled = true
 text = "Copy All"
 
 [node name="CopyHint" type="Label" parent="Content/Actions"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Ctrl-click or Shift-click to select more objects. You can also drag source objects onto the working set."
+text = "Ctrl/Cmd-click or Shift-click selects more. Drag or double-click to copy into matching slots."
 autowrap_mode = 3
 theme_type_variation = "HelpLabel"
 
@@ -183,7 +266,7 @@ vertical_alignment = 1
 text_overrun_behavior = 3
 
 [node name="SourceDialog" type="FileDialog" parent="."]
-title = "Open a File"
+title = "Open Source Graphics (MIF)"
 file_mode = 0
 access = 2
 filters = PackedStringArray("*.MIF, *.mif ; SCURK tile sets")

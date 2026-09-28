@@ -4,6 +4,11 @@
 [ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_pick_copy_control.tscn" id="pick"]
 
 [node name="Dialogs" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 script = ExtResource("script")
 mouse_filter = 2
 

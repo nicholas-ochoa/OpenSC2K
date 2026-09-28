@@ -37,6 +37,12 @@ var copy_all_button: Button
 var status_label: Label
 var source_dialog: FileDialog
 var confirm_all_dialog: ConfirmationDialog
+var preview_large_id := -1
+var preview_before: TextureRect
+var preview_after: TextureRect
+var preview_label: Label
+var preview_previous: Button
+var preview_next: Button
 
 
 func _ready() -> void:
@@ -52,6 +58,13 @@ func _ready() -> void:
 	status_label = get_node("Content/StatusLabel")
 	source_dialog = get_node("SourceDialog")
 	confirm_all_dialog = get_node("CopyConfirmation")
+	preview_before = $Content/Preview/Images/Before/Artwork
+	preview_after = $Content/Preview/Images/After/Artwork
+	preview_label = $Content/Preview/Selection/Label
+	preview_previous = $Content/Preview/Selection/Previous
+	preview_next = $Content/Preview/Selection/Next
+	preview_previous.pressed.connect(_step_preview.bind(-1))
+	preview_next.pressed.connect(_step_preview.bind(1))
 	get_node("Content/TitleBar").close_requested.connect(request_close)
 	get_node("Content/Controls/ChangeSource").pressed.connect(request_source)
 	get_node("Content/Controls/GroupSelector").item_selected.connect(_select_group)
@@ -61,6 +74,7 @@ func _ready() -> void:
 	get_node("Content/Sets/SourceObjectSetRow/SourceList").multi_selected.connect(_source_selection_changed)
 	get_node("Content/Sets/SourceObjectSetRow/SourceList").item_activated.connect(_source_item_activated)
 	get_node("Content/Sets/WorkingObjectSetRow/WorkingList").objects_dropped.connect(_objects_dropped)
+	working_list.multi_selected.connect(_working_selection_changed)
 	get_node("Content/Actions/CopySelectedButton").pressed.connect(_request_copy_selected)
 	get_node("Content/Actions/CopyAllButton").pressed.connect(_request_copy_all)
 	get_node("SourceDialog").file_selected.connect(_source_selected)
@@ -101,7 +115,7 @@ func open_with_working(value: ScurkMif, path: String) -> void:
 	move_to_front()
 
 	if source_set == null:
-		_set_status("Choose a different source object set, then select objects to copy.")
+		_set_status("Choose a source MIF file. Select its objects on the left to preview the replacements.")
 	elif is_inside_tree():
 		source_list.grab_focus()
 
@@ -186,29 +200,26 @@ func _add_object_item(
 	list: ScurkObjectList, value: ScurkMif, large_id: int, source: bool
 ) -> int:
 	var tile_id := ScurkEditorRules.object_tile_id(large_id)
-	var custom_name := String(value.names.get(tile_id, "")) if value != null else ""
-	var label := "%03d" % tile_id
-
-	if not custom_name.is_empty():
-		label += "\n" + custom_name
+	var label := "%03d\n%s" % [tile_id, ScurkEditorRules.tile_name(tile_id, value.names if value != null else {})]
 
 	var icon := _object_icon(value, large_id, source)
 	list.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	var item_index := list.add_item(label, icon)
 	list.set_item_metadata(item_index, large_id)
-	list.set_item_tooltip(item_index, "%s object %d; sprite %d" % [
+	list.set_item_tooltip(item_index, "%s\n%s object %d; sprite %d" % [
+		ScurkEditorRules.tile_name(tile_id, value.names if value != null else {}),
 		"Source" if source else "Working", tile_id, ScurkEditorRules.view_sprite_id(large_id, current_view),
 	])
 
 	return item_index
 
 
-func _object_icon(value: ScurkMif, large_id: int, source: bool) -> Texture2D:
+func _object_icon(value: ScurkMif, large_id: int, source: bool, thumbnail := true) -> Texture2D:
 	if value == null or palette == null or not palette.is_valid():
 		return null
 
 	var cache := source_icon_cache if source else working_icon_cache
-	var key := "%d:%d" % [current_view, large_id]
+	var key := "%d:%d:%s" % [current_view, large_id, thumbnail]
 
 	if cache.has(key):
 		return cache[key]
@@ -235,7 +246,7 @@ func _object_icon(value: ScurkMif, large_id: int, source: bool) -> Texture2D:
 		)
 	)
 
-	if thumbnail_scale < 1.0:
+	if thumbnail and thumbnail_scale < 1.0:
 		image.resize(
 			maxi(1, floori(image.get_width() * thumbnail_scale)),
 			maxi(1, floori(image.get_height() * thumbnail_scale)),
@@ -262,7 +273,9 @@ func _select_view(view: int) -> void:
 	_refresh_lists()
 
 
-func _source_selection_changed(_index: int, _selected: bool) -> void:
+func _source_selection_changed(index: int, selected: bool) -> void:
+	if selected:
+		preview_large_id = int(source_list.get_item_metadata(index))
 	_sync_working_selection()
 	_update_buttons()
 
@@ -276,6 +289,49 @@ func _sync_working_selection() -> void:
 	for large_id in source_list.selected_large_ids():
 		if working_index_by_id.has(large_id):
 			working_list.select(working_index_by_id[large_id], false)
+	_refresh_preview()
+
+
+func _working_selection_changed(index: int, _selected: bool) -> void:
+	var large_id := int(working_list.get_item_metadata(index))
+	if source_list.selected_large_ids().has(large_id):
+		preview_large_id = large_id
+	_sync_working_selection()
+
+
+func _refresh_preview() -> void:
+	var selected := source_list.selected_large_ids()
+	var ready_to_preview := source_set != null and working_set != null and not selected.is_empty()
+	preview_before.texture = null
+	preview_after.texture = null
+	preview_previous.disabled = true
+	preview_next.disabled = true
+	if not ready_to_preview:
+		preview_large_id = -1
+		preview_label.text = "Select source objects to preview their matching replacements."
+		return
+
+	if not selected.has(preview_large_id):
+		preview_large_id = selected[0]
+	var index := selected.find(preview_large_id)
+	var tile_id := ScurkEditorRules.object_tile_id(preview_large_id)
+	preview_label.text = "%d of %d selected · %s (object %03d) · %s preview" % [
+		index + 1, selected.size(), ScurkEditorRules.tile_name(tile_id, working_set.names), tile_id,
+		["Large", "Medium", "Small"][current_view],
+	]
+	preview_before.texture = _object_icon(working_set, preview_large_id, false, false)
+	preview_after.texture = _object_icon(source_set, preview_large_id, true, false)
+	preview_previous.disabled = index == 0
+	preview_next.disabled = index == selected.size() - 1
+
+
+func _step_preview(direction: int) -> void:
+	var selected := source_list.selected_large_ids()
+	if selected.is_empty():
+		return
+	var index := clampi(selected.find(preview_large_id) + direction, 0, selected.size() - 1)
+	preview_large_id = selected[index]
+	_refresh_preview()
 
 
 func _update_buttons() -> void:
@@ -283,9 +339,11 @@ func _update_buttons() -> void:
 
 	if copy_selected_button != null:
 		copy_selected_button.disabled = not sets_ready or source_list.selected_large_ids().is_empty()
+		copy_selected_button.text = "Copy Selected (%d) →" % source_list.selected_large_ids().size()
 
 	if copy_all_button != null:
 		copy_all_button.disabled = not sets_ready
+		copy_all_button.text = "Copy All in %s…" % PickCopy.GROUP_NAMES[current_group]
 
 
 func _request_copy_selected() -> void:
@@ -314,8 +372,9 @@ func _request_copy_all() -> void:
 
 	var object_count := ScurkPickCopy.group_large_ids(current_group).size()
 	confirm_all_dialog.dialog_text = (
-		"Replace all %d working objects in the %s group?"
-		% [object_count, ScurkPickCopy.GROUP_NAMES[current_group]]
+		("Copy graphics from %s into %s?\n\n"
+		+ "Replace all %d matching objects in %s, including Large, Medium, and Small.\nYou can undo this change.")
+		% [source_name_label.text, working_name_label.text, object_count, ScurkPickCopy.GROUP_NAMES[current_group]]
 	)
 	confirm_all_dialog.popup_centered()
 
