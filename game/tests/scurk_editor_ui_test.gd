@@ -275,6 +275,19 @@ func _test_pick_copy_preview(assets: OriginalGameAssets, picker: ScurkPickCopyCo
 	assert(picker.get_global_rect().encloses(picker.preview_before.get_global_rect()))
 	assert(picker.source_list.size.y >= 120 and picker.working_list.size.y >= 120)
 	assert(picker.get_global_rect().encloses(picker.copy_selected_button.get_global_rect()))
+	var source_scroll := picker.source_list.get_v_scroll_bar()
+	var working_scroll := picker.working_list.get_v_scroll_bar()
+	var scroll_end := source_scroll.max_value - source_scroll.page
+	assert(scroll_end > 0)
+	source_scroll.value = scroll_end * 0.75
+	await process_frame
+	assert(source_scroll.value > 0 and is_equal_approx(source_scroll.value, working_scroll.value))
+	working_scroll.value = scroll_end * 0.25
+	await process_frame
+	assert(working_scroll.value < scroll_end * 0.5 and is_equal_approx(source_scroll.value, working_scroll.value))
+	picker._select_view(ScurkSpriteIds.View.LARGE)
+	await process_frame
+	assert(is_equal_approx(source_scroll.value, working_scroll.value))
 	picker.copy_requested.disconnect(capture)
 	picker.copy_requested.connect(editor_copy)
 	picker.request_close()

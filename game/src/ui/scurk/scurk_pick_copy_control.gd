@@ -53,6 +53,8 @@ func _ready() -> void:
 	working_name_label = get_node("Content/Sets/WorkingObjectSetRow/WorkingNameLabel")
 	source_list = get_node("Content/Sets/SourceObjectSetRow/SourceList")
 	working_list = get_node("Content/Sets/WorkingObjectSetRow/WorkingList")
+	source_list.get_v_scroll_bar().value_changed.connect(_sync_scroll.bind(working_list))
+	working_list.get_v_scroll_bar().value_changed.connect(_sync_scroll.bind(source_list))
 	copy_selected_button = get_node("Content/Actions/CopySelectedButton")
 	copy_all_button = get_node("Content/Actions/CopyAllButton")
 	status_label = get_node("Content/StatusLabel")
@@ -85,6 +87,11 @@ func _ready() -> void:
 	working_list.drop_target = true
 	source_dialog.theme = AppUiTheme.file_dialog()
 	confirm_all_dialog.theme = AppUiTheme.current()
+
+
+func _sync_scroll(scroll_value: float, target: ScurkObjectList) -> void:
+	# An unchanged Range value emits no signal, which stops the return update.
+	target.get_v_scroll_bar().value = scroll_value
 
 
 func configure(
