@@ -30,6 +30,18 @@ To run from source:
 
 Use Godot 4.7 and provide your own copy of SimCity 2000 Special Edition for Windows 95 (1996).
 
+Before the first run of a fresh checkout, run this command from the repository root:
+
+```sh
+godot --headless --audio-driver Dummy --path game --editor --import
+```
+
+Wait for the command to finish. It builds the local `game/.godot` cache, including the script class index
+and imported resources. Git excludes this generated folder. Without this step, a fresh checkout can show
+a black screen with script errors. Opening `game/project.godot` in the Godot editor also builds the cache.
+
+Then start the game:
+
 ```sh
 godot --path game
 ```
