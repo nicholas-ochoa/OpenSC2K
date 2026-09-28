@@ -48,7 +48,7 @@ static func validate_assets(
 
 			var zone := city.zone_id(x, y)
 
-			if zone > 0 and city.building_id(x, y) == Tiles.EMPTY:
+			if zone > 0 and shows_zone_under(city.building_id(x, y)):
 				var zone_sprite: int = configuration.sprite_base + 290 + zone
 
 				if sprites.find_sprite(zone_sprite) == null:
@@ -484,6 +484,13 @@ static func _compute_static_text_overlay_signature(city: CityState, indices: Pac
 				values.append_array([thing.type, thing.direction, thing.state, thing.x, thing.y, thing.z, thing.px, thing.py])
 
 	return hash(values)
+
+
+# trees and power lines are drawn over the zone, so the zone stays visible
+static func shows_zone_under(building_id: int) -> bool:
+	return (building_id == Tiles.EMPTY
+		or (building_id >= Tiles.TREES_1 and building_id <= Tiles.TREES_7)
+		or (building_id >= Tiles.POWER_LINE_STRAIGHT_1 and building_id <= Tiles.POWER_LINE_CROSSROADS))
 
 
 # four occupied corners, one sprite, compass picks the winner

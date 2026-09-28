@@ -271,7 +271,8 @@ func intersects(city: CityState, sprites: Sc2SpriteArchive, config: CityViewConf
 			if marker != null:
 				bounds = bounds.merge(Rect2i(screen_x + int(entry.width / 2) - int(marker.width / 2), object_y - marker.height,
 					marker.width, marker.height))
-	elif city.zone_id(x, y) > 0:
+
+	if city.zone_id(x, y) > 0 and IsometricStaticVisuals.shows_zone_under(building):
 		var zone := sprites.find_sprite(config.sprite_base + 290 + city.zone_id(x, y))
 
 		if zone != null:
@@ -334,12 +335,13 @@ func _fast_tile(recorder: CityGpuDrawList, city: CityState, palette: Sc2Palette,
 			CityIsometricRenderer.terrain_sprite_id(terrain, (flags & Sc2TileFlags.WATER) != 0, config.sprite_base),
 				false, Vector2i(screen_x, base_y))
 
-	if building == Tiles.EMPTY:
+	if IsometricStaticVisuals.shows_zone_under(building):
 		var zone := int(city.zones[key]) & 15
 
 		if zone > 0:
 			_append_sprite(recorder, sprites, palette, config.sprite_base + 290 + zone, false, Vector2i(screen_x, base_y))
 
+	if building == Tiles.EMPTY:
 		return true
 
 	if building >= Tiles.DEVELOPED_FIRST and (int(city.zones[key]) & Sc2ZoneLayout.CORNER_TOP_RIGHT[rotation]) == 0:

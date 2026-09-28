@@ -257,7 +257,7 @@ static func draw_tile(
 
 	var zone := city.zone_id(x, y)
 
-	if zone > 0 and building_id == BuildingTileIds.EMPTY:
+	if zone > 0 and IsometricStaticVisuals.shows_zone_under(building_id):
 		var zone_image := IsometricPixelOperations.sprite_image(
 			sprites, palette, cache, configuration.sprite_base + 290 + zone, false
 		)

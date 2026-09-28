@@ -722,6 +722,15 @@
     ]
   },
   {
+    "id": "zone_under_trees_render_test",
+    "script": "tests/zone_under_trees_render_test.gd",
+    "domain": "rendering",
+    "lane": "product",
+    "requires": [
+      "ext/graphics/pack.json"
+    ]
+  },
+  {
     "id": "city_region_occlusion_test",
     "script": "tests/city_region_occlusion_test.gd",
     "domain": "rendering",

@@ -160,7 +160,7 @@ static func tile_occlusion_commands(
 
 	var zone := city.zone_id(x, y)
 
-	if zone > 0 and building_id == BuildingTileIds.EMPTY:
+	if zone > 0 and IsometricStaticVisuals.shows_zone_under(building_id):
 		_append_occluder(
 			commands, sprites, configuration.sprite_base + 290 + zone, false,
 			Vector2i(screen_x, base_y + configuration.tile_height), draw_order
