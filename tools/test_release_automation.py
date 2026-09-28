@@ -8,7 +8,9 @@ import tempfile
 import subprocess
 import unittest
 from unittest.mock import patch
+import zipfile
 
+import build_desktop_release as packages
 import publish_nightly as nightly
 import manual_release as stable
 
@@ -130,7 +132,7 @@ class NightlyTest(unittest.TestCase):
         self.folder = Path(self.temporary.name)
         self.commit = 'a' * 40
         hashes = {}
-        for platform in ('windows-x64.zip', 'linux-x64.tar.gz', 'macos-universal.dmg'):
+        for platform in ('windows-x64.zip', 'windows-x64-portable.zip', 'linux-x64.tar.gz', 'macos-universal.dmg'):
             name = f'OpenSC2K-nightly-aaaaaaaa-{platform}'
             (self.folder / name).write_bytes(platform.encode())
             hashes[name] = hashlib.sha256(platform.encode()).hexdigest()
@@ -212,6 +214,21 @@ class NightlyTest(unittest.TestCase):
         with patch.object(nightly, 'gh', side_effect=self.respond):
             self.publish()
         self.assertEqual(len(self.calls), 1)
+
+
+class PackageTest(unittest.TestCase):
+    def test_portable_zip_adds_empty_data_folder(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary) / 'build'
+            folder.mkdir()
+            (folder / 'OpenSC2K.exe').write_bytes(b'exe')
+            packages.write_zip(Path(temporary) / 'standard.zip', folder, 'OpenSC2K-x')
+            packages.write_zip(Path(temporary) / 'portable.zip', folder, 'OpenSC2K-x-portable', 'data/')
+            with zipfile.ZipFile(Path(temporary) / 'standard.zip') as stream:
+                self.assertEqual(stream.namelist(), ['OpenSC2K-x/OpenSC2K.exe'])
+            with zipfile.ZipFile(Path(temporary) / 'portable.zip') as stream:
+                self.assertEqual(stream.namelist(), ['OpenSC2K-x-portable/OpenSC2K.exe', 'OpenSC2K-x-portable/data/'])
+                self.assertTrue(stream.getinfo('OpenSC2K-x-portable/data/').is_dir())
 
 
 if __name__ == '__main__':

@@ -26,6 +26,16 @@ def checked_godot(godot, project, *arguments):
                     *arguments], check=True)
 
 
+def write_zip(package, folder, name, *directories):
+    with zipfile.ZipFile(package, 'w', zipfile.ZIP_DEFLATED) as stream:
+        for path in sorted(folder.rglob('*')):
+            stream.write(path, Path(name) / path.relative_to(folder))
+        for directory in directories:
+            stream.writestr(f'{name}/{directory}', b'')
+    with zipfile.ZipFile(package) as stream:
+        assert stream.testzip() is None
+
+
 def build(output, label, godot):
     if sys.platform != 'darwin':
         raise ValueError('Desktop packaging requires macOS to create and sign the app and DMG')
@@ -62,11 +72,11 @@ def build(output, label, godot):
             if platform == 'windows-x64':
                 assert (folder / 'godot_wry.dll').is_file()
                 package = output / (name + '.zip')
-                with zipfile.ZipFile(package, 'w', zipfile.ZIP_DEFLATED) as stream:
-                    for path in sorted(folder.rglob('*')):
-                        stream.write(path, Path(name) / path.relative_to(folder))
-                with zipfile.ZipFile(package) as stream:
-                    assert stream.testzip() is None
+                write_zip(package, folder, name)
+                # the data folder beside the executable selects portable mode
+                portable = output / (name + '-portable.zip')
+                write_zip(portable, folder, name + '-portable', 'data/')
+                packages.append(portable)
             elif platform == 'linux-x64':
                 assert (folder / 'libgodot_wry.so').is_file()
                 (folder / binary).chmod(0o755)

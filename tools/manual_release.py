@@ -129,7 +129,7 @@ def publish(version, folder, repository, commit, draft):
     stable = stable_releases(published)
     tag = 'v' + version
     notes = (f'OpenSC2K {version}\n\n'
-             'Includes Windows x64, Linux x64, and universal macOS packages, with SHA-256 checksums.\n\n'
+             'Includes Windows x64 (standard and portable), Linux x64, and universal macOS packages, with SHA-256 checksums.\n\n'
              'Your own SimCity 2000 Special Edition for Windows 95 (1996) files are required. '
              'Original game assets are not included.\n\n'
              f'[Installation instructions](https://github.com/{repository}/blob/{commit}/docs/install.md)\n\n'

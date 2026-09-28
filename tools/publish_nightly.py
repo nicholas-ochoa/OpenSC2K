@@ -33,9 +33,9 @@ def package_files(folder, commit):
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.+-]{0,79}', label):
         raise ValueError('Invalid package label')
     expected = {f'OpenSC2K-{label}-{platform}' for platform in
-                ('windows-x64.zip', 'linux-x64.tar.gz', 'macos-universal.dmg')}
+                ('windows-x64.zip', 'windows-x64-portable.zip', 'linux-x64.tar.gz', 'macos-universal.dmg')}
     if set(hashes) != expected:
-        raise ValueError('Expected exactly three platform packages')
+        raise ValueError('Expected exactly four desktop packages')
     files = {path.name: path for path in folder.iterdir() if path.is_file()}
     if set(files) != expected | {'SHA256SUMS.txt', 'build-info.json'}:
         raise ValueError('Unexpected or missing release files')
@@ -59,7 +59,7 @@ def publish(folder, repository, commit, run_id, attempt):
         print('A newer or identical nightly is already published; keep it.')
         return
     notes = (f'{MARKER}\nAutomated nightly from `{commit}`. This is a development build.\n\n'
-             'Includes Windows x64, Linux x64, and universal macOS packages. '
+             'Includes Windows x64 (standard and portable), Linux x64, and universal macOS packages. '
              'Your own SimCity 2000 Special Edition for Windows 95 (1996) files are required.\n\n'
              'CI passed the generated-data suite, editor parsing, and startup checks with Dummy audio. '
              'The full local release suite and cross-platform gameplay checks are not run here.\n\n'
