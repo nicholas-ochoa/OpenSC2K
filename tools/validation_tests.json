@@ -977,6 +977,12 @@
     ]
   },
   {
+    "id": "app_paths_test",
+    "script": "tests/app_paths_test.gd",
+    "domain": "ui",
+    "lane": "product"
+  },
+  {
     "id": "soundtrack_settings_test",
     "script": "tests/soundtrack_settings_test.gd",
     "domain": "audio",

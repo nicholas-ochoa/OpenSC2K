@@ -36,8 +36,8 @@ func restore_history() -> void:
 
 func save_history() -> void:
 	var config := ConfigFile.new()
-	config.set_value("folders", "favorites", FileDialog.get_favorite_list())
-	config.set_value("folders", "recents", FileDialog.get_recent_list())
+	config.set_value("folders", "favorites", _stored(FileDialog.get_favorite_list()))
+	config.set_value("folders", "recents", _stored(FileDialog.get_recent_list()))
 	var error := config.save(storage_path)
 
 	if error != OK:
@@ -51,7 +51,16 @@ static func _paths(value: Variant) -> PackedStringArray:
 		return result
 
 	for item in value:
-		if item is String and not item.is_empty() and item not in result:
-			result.append(item)
+		if item is String and not item.is_empty() and AppPaths.loaded_path(item) not in result:
+			result.append(AppPaths.loaded_path(item))
+
+	return result
+
+
+static func _stored(paths: PackedStringArray) -> PackedStringArray:
+	var result := PackedStringArray()
+
+	for path in paths:
+		result.append(AppPaths.stored_path(path))
 
 	return result

@@ -43,20 +43,20 @@ static func load_values(
 	)
 
 	result.toolbar_sounds = bool(config.get_value("audio", "toolbar_sounds", result.toolbar_sounds))
-	result.sound_pack_folder = str(config.get_value("audio", "sound_pack_folder", result.sound_pack_folder))
-	result.music_pack_folder = str(config.get_value("audio", "music_pack_folder", result.music_pack_folder))
-	result.data_pack_folder = str(config.get_value("data", "pack_folder", result.data_pack_folder))
+	result.sound_pack_folder = AppPaths.loaded_path(str(config.get_value("audio", "sound_pack_folder", result.sound_pack_folder)))
+	result.music_pack_folder = AppPaths.loaded_path(str(config.get_value("audio", "music_pack_folder", result.music_pack_folder)))
+	result.data_pack_folder = AppPaths.loaded_path(str(config.get_value("data", "pack_folder", result.data_pack_folder)))
 
 	result.shuffle_music = bool(config.get_value("audio", "shuffle_music", false))
 	result.background_audio = bool(config.get_value("audio", "background_audio", false))
-	result.soundtrack_folder = str(config.get_value("audio", "soundtrack_folder", ""))
+	result.soundtrack_folder = AppPaths.loaded_path(str(config.get_value("audio", "soundtrack_folder", "")))
 	result.fullscreen = bool(
 		config.get_value("display", "fullscreen", result.fullscreen)
 	)
 	result.graphics_source = str(config.get_value("graphics", "source", "auto"))
 
 
-	result.graphics_folder = str(config.get_value("graphics", "folder", ""))
+	result.graphics_folder = AppPaths.loaded_path(str(config.get_value("graphics", "folder", "")))
 	result.zoom_graphics = normalize_zoom_graphics(
 		config.get_value("graphics", "zoom_graphics", DEFAULT_ZOOM_GRAPHICS),
 		result.overview_graphics,
@@ -123,7 +123,7 @@ static func save_values(
 
 	if not options.graphics_source.is_empty():
 		config.set_value("graphics", "source", options.graphics_source)
-		config.set_value("graphics", "folder", options.graphics_folder)
+		config.set_value("graphics", "folder", AppPaths.stored_path(options.graphics_folder))
 
 	if options.dark_underground != null:
 		config.set_value("display", "dark_underground", bool(options.dark_underground))
@@ -145,7 +145,7 @@ static func save_values(
 		config.set_value("graphics", "overview_graphics", clampi(int(options.overview_graphics), 0, 2))
 
 	if options.soundtrack_folder != null:
-		config.set_value("audio", "soundtrack_folder", str(options.soundtrack_folder).strip_edges())
+		config.set_value("audio", "soundtrack_folder", AppPaths.stored_path(str(options.soundtrack_folder).strip_edges()))
 
 	config.set_value("audio", "music_volume", clampf(music_volume, 0.0, 1.0))
 	config.set_value("audio", "effects_volume", clampf(effects_volume, 0.0, 1.0))
@@ -168,12 +168,12 @@ static func save_values(
 		config.set_value("updates", "check_periodically", bool(options.check_for_updates))
 
 	if options.data_pack_folder != null:
-		config.set_value("data", "pack_folder", str(options.data_pack_folder).strip_edges())
+		config.set_value("data", "pack_folder", AppPaths.stored_path(str(options.data_pack_folder).strip_edges()))
 
 	for pair in [["toolbar_sounds", options.toolbar_sounds], ["sound_pack_folder", options.sound_pack_folder],
 		["music_pack_folder", options.music_pack_folder]]:
 		if pair[1] != null:
-			config.set_value("audio", pair[0], pair[1])
+			config.set_value("audio", pair[0], pair[1] if pair[1] is bool else AppPaths.stored_path(str(pair[1])))
 
 	return config.save(path)
 
