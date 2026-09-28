@@ -67,8 +67,15 @@ jobs:
           RELEASE_VERSION: ${{ needs.inspect.outputs.version }}
         run: python3 tools/manual_release.py prepare
 
+  test:
+    name: Test
+    needs: [inspect, prepare]
+    uses: ./.github/workflows/test.yml
+    with:
+      ref: ${{ needs.prepare.outputs.sha }}
+
   build:
-    name: Test and build release packages
+    name: Build release packages
     needs: [inspect, prepare]
     runs-on: macos-15
     timeout-minutes: 30
@@ -80,16 +87,8 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
-      - name: Install test dependencies
-        run: |
-          python -m pip install Pillow
-          command -v ffmpeg || brew install ffmpeg
       - name: Install Godot and export templates
         run: bash tools/setup_godot_ci.sh
-      - name: Run CI
-        run: tools/validate_project.sh --suite ci --keep-going --output local/release-ci-results
-      - name: Test release automation
-        run: python -m unittest discover -s tools -p test_release_automation.py
       - name: Build versioned packages
         env:
           RELEASE_VERSION: ${{ needs.inspect.outputs.version }}
@@ -102,17 +101,10 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
-      - name: Save test logs
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: release-ci-results
-          path: local/release-ci-results/
-          retention-days: 7
 
   publish:
     name: Create GitHub release
-    needs: [inspect, prepare, build]
+    needs: [inspect, prepare, test, build]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

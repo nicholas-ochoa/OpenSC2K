@@ -19,7 +19,7 @@ import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 DOMAINS = ('formats', 'simulation', 'tools', 'rendering', 'scurk', 'ui', 'audio')
-SUITES = ('ci', 'routine', 'full', 'release', 'audit', 'native', 'slow', 'integration', *DOMAINS)
+SUITES = ('headless', 'renderer', 'release', *DOMAINS)
 CONSOLE_LOCK = threading.Lock()
 
 
@@ -64,16 +64,13 @@ def select(entries, suites, ids):
         e = dict(original)
         include = e['id'] in ids
         for suite in suites:
-            include |= (suite == 'ci' and e['lane'] == 'product' and not e.get('fixtures')
-                        and set(e.get('requires', [])) <= {'ffmpeg', 'pillow'})
             include |= (suite == 'release')
-            include |= (suite == 'full' and e['lane'] in ('product', 'audit', 'slow', 'integration'))
-            include |= (suite == 'routine' and e['lane'] == 'product')
-            include |= (suite == e['lane'] and suite != 'product')
+            include |= (suite == 'headless' and e['lane'] in ('product', 'integration'))
+            include |= (suite == 'renderer' and e['lane'] == 'native')
             include |= (suite == e['domain'] and e['lane'] == 'product')
         if e['id'] == 'test_runner' and set(suites) & set(DOMAINS):
             include = True
-            if not (set(suites) & {'routine', 'full', 'release'}) and e['id'] not in ids:
+            if not (set(suites) & {'headless', 'release'}) and e['id'] not in ids:
                 e['args'] = ['{references}', *[d for d in DOMAINS if d in suites]]
         if include:
             result.append(e)
@@ -210,7 +207,7 @@ def execution_groups(entries, parallel=True):
                 shared[key] = group
     if parallel:
         # Start broad checks early so they do not form a long serial tail.
-        groups.sort(key=lambda group: not (group[0]['lane'] in ('native', 'slow', 'integration')
+        groups.sort(key=lambda group: not (group[0]['lane'] in ('native', 'integration')
                                           or group[0]['id'] == 'test_runner'))
     return groups
 
@@ -313,14 +310,14 @@ def main():
     if args.jobs < 1:
         parser.error('--jobs must be at least 1')
     started = time.monotonic()
-    suites = args.suite or ([] if args.test else ['routine'])
+    suites = args.suite or ([] if args.test else ['headless'])
     entries = select(registry(), suites, args.test)
     if args.list:
         for e in entries:
             print(f"{e['id']:50} {e['domain']:12} {e['lane']:12}" + (' fixtures=' + ','.join(e['fixtures']) if e.get('fixtures') else ''))
         print(f'{len(entries)} entries; editor parse and startup also run')
         return 0
-    strict = args.strict or bool(set(suites) & {'ci', 'release'})
+    strict = args.strict or 'release' in suites
     output = args.output.resolve() if args.output else None
     if output:
         output.mkdir(parents=True, exist_ok=False)

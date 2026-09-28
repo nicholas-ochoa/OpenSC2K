@@ -13,40 +13,10 @@ import unittest
 from unittest.mock import Mock, patch
 
 import run_godot_check as godot_check
-import run_private_asset_checks as private_checks
 import validate_project as runner
 
 
 class ValidationRunnerTest(unittest.TestCase):
-    def test_private_selection_completes_headless_coverage(self):
-        entries = runner.registry()
-        public = {e['id'] for e in runner.select(entries, ['ci'], [])}
-        private = {e['id'] for e in private_checks.private_entries()}
-        full = {e['id'] for e in runner.select(entries, ['full'], [])}
-        self.assertFalse(public & private)
-        self.assertEqual(public | private, full)
-        self.assertTrue({'test_runner', 'media_pack_test', 'runtime_ui_integration'} <= private)
-
-    def test_private_runner_preserves_output_and_exit_status(self):
-        with tempfile.TemporaryDirectory() as folder:
-            root = Path(folder)
-            (root / 'tools').mkdir()
-            (root / 'tools/validate_project.py').write_text(
-                "import sys\n"
-                "assert sys.argv[1:] == ['--strict', '--keep-going', '--test', 'fixture_test']\n"
-                "print('Full test output')\n"
-                "print('Failure details', file=sys.stderr)\n"
-                "sys.exit(7)\n")
-            code = ("import pathlib, sys; import run_private_asset_checks as checks; "
-                    "checks.runner.ROOT = pathlib.Path(sys.argv[1]); "
-                    "checks.private_entries = lambda: [dict(id='fixture_test')]; "
-                    "sys.exit(checks.main())")
-            result = subprocess.run([sys.executable, '-c', code, folder],
-                                    cwd=runner.ROOT / 'tools', capture_output=True, text=True)
-        self.assertEqual(result.returncode, 7)
-        self.assertEqual(result.stdout, 'Full test output\n')
-        self.assertEqual(result.stderr, 'Failure details\n')
-
     def test_fresh_projects_share_the_import_cache(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder) / 'checkout'
@@ -64,20 +34,6 @@ class ValidationRunnerTest(unittest.TestCase):
             finally:
                 for project in projects:
                     project.close()
-
-    def test_ci_selects_generated_data_tests_and_required_tools(self):
-        entries = runner.registry()
-        selected = runner.select(entries, ['ci'], [])
-        self.assertTrue(selected)
-        for entry in selected:
-            self.assertEqual(entry['lane'], 'product')
-            self.assertFalse(entry.get('fixtures'))
-            self.assertLessEqual(set(entry.get('requires', [])), {'ffmpeg', 'pillow'})
-        ids = {entry['id'] for entry in selected}
-        self.assertTrue({'recorded_soundtrack_test', 'scurk_gif_export_test',
-                         'no_assets_startup_test', 'binary_data_test'} <= ids)
-        synthetic = [dict(id='fixture', lane='product', domain='formats', fixtures=['private'])]
-        self.assertEqual(runner.select(synthetic, ['ci'], []), [])
 
     def test_parallel_bound_and_failure_drain(self):
         entered = threading.Barrier(2)
@@ -231,17 +187,17 @@ class ValidationRunnerTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             runner.select(entries, [], ['missing-test'])
 
-    def test_full_selects_full_workflow_once(self):
-        selected = runner.select(runner.registry(), ['full', 'integration'], [])
+    def test_headless_selects_full_workflow_once(self):
+        selected = runner.select(runner.registry(), ['headless'], [])
         ids = [e['id'] for e in selected]
         self.assertNotIn('runtime_ui_smoke', ids)
         self.assertEqual(ids.count('runtime_ui_integration'), 1)
 
-    def test_routine_excludes_audits_and_native_only_checks(self):
+    def test_headless_excludes_native_only_checks(self):
         entries = runner.registry()
-        selected = runner.select(entries, ['routine'], [])
-        self.assertTrue(all(e['lane'] == 'product' for e in selected))
-        native = runner.select(entries, ['native'], [])
+        selected = runner.select(entries, ['headless'], [])
+        self.assertTrue(all(e['lane'] in ('product', 'integration') for e in selected))
+        native = runner.select(entries, ['renderer'], [])
         self.assertTrue(native)
         self.assertTrue(all(e['lane'] == 'native' for e in native))
         self.assertIn('city_gpu_geometry_test', {e['id'] for e in selected})
@@ -381,11 +337,11 @@ class ValidationRunnerTest(unittest.TestCase):
             results = json.loads((output / 'summary.json').read_text())['results']
             self.assertEqual(next(r['status'] for r in results if r['id'] == entry['id']), 'FAIL')
 
-    def test_ci_rejects_missing_tools_and_runtime_skips(self):
+    def test_strict_rejects_missing_tools_and_runtime_skips(self):
         entry = next(e for e in runner.registry() if e['id'] == 'recorded_soundtrack_test')
         for missing in ([], ['ffmpeg']):
             with self.subTest(missing=missing), \
-                    patch.object(sys, 'argv', ['validate', '--suite', 'ci']), \
+                    patch.object(sys, 'argv', ['validate', '--strict']), \
                     patch.object(runner, 'select', return_value=[entry]), \
                     patch.object(runner, 'missing_requirements', return_value=missing), \
                     patch.object(runner, 'execute', return_value=('SKIP', 0, '')), \

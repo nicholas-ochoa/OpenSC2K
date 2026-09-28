@@ -48,19 +48,18 @@ shared disposable preferences. Shared fixture preparation finishes first.
 Use `--list` to review the selected coverage.
 
 - Domains: `formats`, `simulation`, `tools`, `rendering`, `scurk`, `ui`, and `audio`.
-- Run `routine` before merge. It retains functional product coverage.
-- Run `full` for shared codec, city-model, grid, snapshot, or simulation changes.
-  It includes product tests, reference audits, and populated-city soaks.
-- Run `audit` for decoder, importer, resource mapping, palette, audit-tool, or
-  reference-corpus changes. It retains the independent decoder comparisons.
-- Run `native` for renderer or shader changes. Use computer-use automation for
+- Run `headless` before merge. It is the default suite. It includes all
+  headless product tests and the full runtime UI workflow.
+- Run `renderer` for renderer or shader changes. Use computer-use automation for
   live input and visual review. Headless checks do not prove GPU pixel output.
-- Run `release` before release. It includes full and native checks and rejects
-  missing prerequisites or skipped coverage.
+- Run `release` before release. It includes `headless` and `renderer` checks
+  and rejects missing prerequisites or skipped coverage.
+- CI runs `headless` with the original-game assets on `main` and on pull requests
+  from this repository.
 - Documentation-only changes do not require automated validation.
 
 The `formats` core selection retains load and byte-exact round-trip checks for
-all supplied cities and scenarios. The full aggregate retains every functional core case.
+all supplied cities and scenarios. The `headless` suite retains every functional core case.
 Cover each distinct rule, format, direction, and relevant map boundary. Avoid full
 size/mode/rotation cross products when the tested rules are independent. Batch
 compatible cases in one fixture and retain representative end-to-end checks.

@@ -1,0 +1,53 @@
+name: Test
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Commit to test (default is the commit that started the caller)
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Run tests with original-game assets
+    # Pull requests wait for approval in pull-request-ci before any step runs.
+    environment: ${{ github.event_name == 'pull_request' && 'pull-request-ci' || 'private-test-assets' }}
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Install test dependencies
+        run: |
+          python -m pip install Pillow
+          command -v ffmpeg || brew install ffmpeg
+      - name: Install Godot
+        run: bash tools/setup_godot_ci.sh
+      - name: Check out private inputs
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: nicholas-ochoa/OpenSC2K-Test-Assets
+          ref: b814d492f6c5e98c066ff41d34edeb4b5cab6a01
+          path: private-assets
+          ssh-key: ${{ secrets.TEST_ASSETS_SSH_KEY }}
+          persist-credentials: false
+      - name: Run tests
+        run: |
+          ln -s "$GITHUB_WORKSPACE/private-assets/references" references
+          ln -s "$GITHUB_WORKSPACE/private-assets/ext" ext
+          tools/validate_project.sh --strict --keep-going
+      - name: Test release automation
+        run: python -m unittest discover -s tools -p test_release_automation.py
+      - name: Remove private inputs and generated files
+        if: always()
+        run: rm -rf private-assets references ext local game/.godot
+      # No artifact uploads or caches in this job.
