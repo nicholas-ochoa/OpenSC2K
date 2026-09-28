@@ -248,20 +248,12 @@ static func draw_tile(
 	var is_highway_composite := building_id >= Tiles.HIGHWAY_SLOPE_1 and building_id <= Tiles.REINFORCED_HIGHWAY_BRIDGE
 
 	if building_id < Tiles.DEVELOPED_FIRST and not is_highway_composite:
-		var terrain := IsometricPixelOperations.sprite_image(
+		var ground := IsometricPixelOperations.sprite_image(
 			sprites, palette, cache,
-			IsometricGeometry.terrain_sprite_id(terrain_id, city.is_water(x, y), configuration.sprite_base),
+			IsometricStaticVisuals.ground_sprite_id(city, x, y, terrain_id, building_id, configuration.sprite_base),
 			false
 		)
-		IsometricPixelOperations._blend_on_base(output, terrain, screen_x, base_y, configuration.tile_height)
-
-	var zone := city.zone_id(x, y)
-
-	if zone > 0 and IsometricStaticVisuals.shows_zone_under(building_id):
-		var zone_image := IsometricPixelOperations.sprite_image(
-			sprites, palette, cache, configuration.sprite_base + 290 + zone, false
-		)
-		IsometricPixelOperations._blend_on_base(output, zone_image, screen_x, base_y, configuration.tile_height)
+		IsometricPixelOperations._blend_on_base(output, ground, screen_x, base_y, configuration.tile_height)
 
 	var building_image: Image
 

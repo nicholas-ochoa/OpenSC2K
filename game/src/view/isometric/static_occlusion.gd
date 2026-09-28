@@ -154,16 +154,8 @@ static func tile_occlusion_commands(
 	if building_id < Tiles.DEVELOPED_FIRST and not is_highway_composite:
 		_append_occluder(
 			commands, sprites,
-			IsometricGeometry.terrain_sprite_id(terrain_id, city.is_water(x, y), configuration.sprite_base),
+			IsometricStaticVisuals.ground_sprite_id(city, x, y, terrain_id, building_id, configuration.sprite_base),
 			false, Vector2i(screen_x, base_y + configuration.tile_height), draw_order
-		)
-
-	var zone := city.zone_id(x, y)
-
-	if zone > 0 and IsometricStaticVisuals.shows_zone_under(building_id):
-		_append_occluder(
-			commands, sprites, configuration.sprite_base + 290 + zone, false,
-			Vector2i(screen_x, base_y + configuration.tile_height), draw_order
 		)
 
 	if building_id > BuildingTileIds.EMPTY and IsometricStaticVisuals._should_draw_building(city, x, y, building_id):

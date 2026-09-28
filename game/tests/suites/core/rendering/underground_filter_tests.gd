@@ -148,7 +148,8 @@ func run(starter: CityState, large: Sc2SpriteArchive, small_medium: Sc2SpriteArc
 		filtered.building_id(10, 10) == 0
 		and filtered.building_id(11, 10) == 0
 		and filtered.building_id(12, 10) == 0
-		and filtered.zone_id(13, 10) == 0
+		and filtered.ground_override(10, 10) == 303
+		and filtered.zone_id(13, 10) == 2
 		and filtered.terrain_id(14, 10) == 0
 		and filtered.terrain_id(15, 10) == 0x0d
 		and not filtered.is_water(14, 10),

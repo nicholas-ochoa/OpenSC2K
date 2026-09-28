@@ -48,11 +48,17 @@ static func validate_assets(
 
 			var zone := city.zone_id(x, y)
 
-			if zone > 0 and shows_zone_under(city.building_id(x, y)):
+			if zone > 0 and shows_zone_under(city.terrain_id(x, y), city.building_id(x, y)):
 				var zone_sprite: int = configuration.sprite_base + 290 + zone
 
 				if sprites.find_sprite(zone_sprite) == null:
 					missing[zone_sprite] = true
+
+			if city.ground_override(x, y) >= 0:
+				var ground_sprite: int = configuration.sprite_base + city.ground_override(x, y)
+
+				if sprites.find_sprite(ground_sprite) == null:
+					missing[ground_sprite] = true
 
 			var building := city.building_id(x, y)
 
@@ -486,11 +492,24 @@ static func _compute_static_text_overlay_signature(city: CityState, indices: Pac
 	return hash(values)
 
 
-# trees and power lines are drawn over the zone, so the zone stays visible
-static func shows_zone_under(building_id: int) -> bool:
-	return (building_id == Tiles.EMPTY
-		or (building_id >= Tiles.TREES_1 and building_id <= Tiles.TREES_7)
-		or (building_id >= Tiles.POWER_LINE_STRAIGHT_1 and building_id <= Tiles.POWER_LINE_CROSSROADS))
+# the original draws the zone in place of flat ground, under rubble, trees,
+# parks, and power lines too. roads and developed buildings hide it
+static func shows_zone_under(terrain_id: int, building_id: int) -> bool:
+	return terrain_id == TerrainTileIds.FLAT and building_id <= Tiles.POWER_LINE_CROSSROADS
+
+
+static func ground_sprite_id(city: CityState, x: int, y: int, terrain_id: int, building_id: int, sprite_base: int) -> int:
+	var override := city.ground_override(x, y)
+
+	if override >= 0:
+		return sprite_base + override
+
+	var zone := city.zone_id(x, y)
+
+	if zone > 0 and shows_zone_under(terrain_id, building_id):
+		return sprite_base + 290 + zone
+
+	return IsometricGeometry.terrain_sprite_id(terrain_id, city.is_water(x, y), sprite_base)
 
 
 # four occupied corners, one sprite, compass picks the winner

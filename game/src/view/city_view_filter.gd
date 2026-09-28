@@ -5,6 +5,11 @@ extends RefCounted
 # sailboats, and surface and subway trains. disaster objects stay visible
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const VEHICLE_THING_TYPES := [1, 2, 3, 9, 10, 11, 12, 13]
+# the original draws a lot in place of a hidden building: 300 residential,
+# 301 commercial, 302 industrial, 303 no zone, 304 military and ports
+const HIDDEN_BUILDING_LOTS: PackedInt32Array = [
+	303, 300, 300, 301, 301, 302, 302, 304, 304, 304, 304, 304, 304, 304, 304, 304,
+]
 const DEFAULT_VISIBILITY := {
 	"buildings": true,
 	"networks": true,
@@ -40,18 +45,29 @@ static func surface_copy(source: CityState, visibility: Dictionary) -> CityState
 		result.object_altitude_overrides.resize((map_edge * map_edge))
 		result.object_altitude_overrides.fill(-1)
 
+	if not show_buildings or not show_zones:
+		result.ground_overrides.resize(map_edge * map_edge)
+		result.ground_overrides.fill(-1)
+
 	for index in (map_edge * map_edge):
 		var building := int(result.buildings[index])
 
-		if not show_buildings and building >= Tiles.DEVELOPED_FIRST:
-			result.buildings[index] = Tiles.EMPTY
+		# the original keeps zones on open ground. with zones hidden, it draws
+		# the zone in place of a zoned building. with buildings hidden, it draws a lot
+		if building >= Tiles.DEVELOPED_FIRST and (not show_buildings or not show_zones):
+			var zone := int(result.zones[index]) & Sc2ZoneLayout.TYPE_MASK
+
+			if not show_zones and zone > 0:
+				result.ground_overrides[index] = 290 + zone
+			elif not show_buildings:
+				result.ground_overrides[index] = HIDDEN_BUILDING_LOTS[zone]
+
+			if result.ground_overrides[index] >= 0:
+				result.buildings[index] = Tiles.EMPTY
 		elif not show_networks and building >= Tiles.POWER_LINE_STRAIGHT_1 and building <= Tiles.RAIL_SUBWAY_ENTRANCE_4:
 			result.buildings[index] = Tiles.EMPTY
 		elif not show_trees and building >= Tiles.TREES_1 and building <= Tiles.TREES_7:
 			result.buildings[index] = Tiles.EMPTY
-
-		if not show_zones:
-			result.zones[index] &= Sc2ZoneLayout.CORNERS_MASK
 
 		if not show_water:
 			if result.tile_flags[index] & Sc2TileFlags.WATER:

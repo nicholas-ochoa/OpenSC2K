@@ -43,6 +43,9 @@ var tile_flags := PackedByteArray()
 # draw the terrain as dry land. this array is never written to an sc2 chunk
 var visible_altitude_levels := 32 # display only; never serialized
 var object_altitude_overrides := PackedInt32Array()
+# display-only copies can draw a ground sprite offset in place of a hidden
+# building. -1 keeps the normal ground. this array is never written to an sc2 chunk
+var ground_overrides := PackedInt32Array()
 # Shared cache state for the stateless city and rendering helpers.
 # Only the main thread fills these lazy caches. Workers also read CityState,
 # so filling them from workers would race on the dictionaries.
@@ -182,6 +185,15 @@ func water_altitude(x: int, y: int) -> int:
 	var index := index_of(x, y)
 
 	return 0 if index < 0 else (altitude_words[index] >> Sc2AltitudeLayout.WATER_SHIFT) & Sc2AltitudeLayout.LEVEL_MASK
+
+
+func ground_override(x: int, y: int) -> int:
+	var index := index_of(x, y)
+
+	if index < 0 or ground_overrides.size() != map_size * map_size:
+		return -1
+
+	return ground_overrides[index]
 
 
 func object_altitude(x: int, y: int) -> int:

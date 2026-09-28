@@ -722,8 +722,8 @@
     ]
   },
   {
-    "id": "zone_under_trees_render_test",
-    "script": "tests/zone_under_trees_render_test.gd",
+    "id": "zone_ground_render_test",
+    "script": "tests/zone_ground_render_test.gd",
     "domain": "rendering",
     "lane": "product",
     "requires": [

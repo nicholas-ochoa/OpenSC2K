@@ -152,7 +152,7 @@ func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 func _tile_inputs(city: CityState, x: int, y: int, key: int) -> int:
 	return (int(city.altitude_words[key]) | (CityIsometricRenderer.surface_terrain_id(city, x, y) << 16)
 			| (int(city.buildings[key]) << 24) | (int(city.zones[key]) << 32) | (int(city.tile_flags[key]) << 40)
-			| (int(OverlayData.is_thing(city.text_overlay_id(x, y))) << 48))
+			| (int(OverlayData.is_thing(city.text_overlay_id(x, y))) << 48) | ((city.ground_override(x, y) + 1) << 49))
 
 
 func slot(image: Image) -> Rect2i:
@@ -248,7 +248,7 @@ func intersects(city: CityState, sprites: Sc2SpriteArchive, config: CityViewConf
 	var flat_y := config.top_margin + (x + y) * config.half_height
 	var altitude := city.water_altitude(x, y) if terrain >= TerrainTileIds.DEEP_WATER_FIRST else city.land_altitude(x, y)
 	var base_y := flat_y - altitude * config.altitude_step + config.tile_height
-	var terrain_entry := sprites.find_sprite(CityIsometricRenderer.terrain_sprite_id(terrain, city.is_water(x, y), config.sprite_base))
+	var terrain_entry := sprites.find_sprite(IsometricStaticVisuals.ground_sprite_id(city, x, y, terrain, building, config.sprite_base))
 
 	if terrain_entry == null:
 		return true
@@ -271,12 +271,6 @@ func intersects(city: CityState, sprites: Sc2SpriteArchive, config: CityViewConf
 			if marker != null:
 				bounds = bounds.merge(Rect2i(screen_x + int(entry.width / 2) - int(marker.width / 2), object_y - marker.height,
 					marker.width, marker.height))
-
-	if city.zone_id(x, y) > 0 and IsometricStaticVisuals.shows_zone_under(building):
-		var zone := sprites.find_sprite(config.sprite_base + 290 + city.zone_id(x, y))
-
-		if zone != null:
-			bounds = bounds.merge(Rect2i(screen_x, base_y - zone.height, zone.width, zone.height))
 
 	bounds_cache[key] = bounds
 
@@ -332,14 +326,8 @@ func _fast_tile(recorder: CityGpuDrawList, city: CityState, palette: Sc2Palette,
 
 	if building < Tiles.DEVELOPED_FIRST:
 		_append_sprite(recorder, sprites, palette,
-			CityIsometricRenderer.terrain_sprite_id(terrain, (flags & Sc2TileFlags.WATER) != 0, config.sprite_base),
+			IsometricStaticVisuals.ground_sprite_id(city, x, y, terrain, building, config.sprite_base),
 				false, Vector2i(screen_x, base_y))
-
-	if IsometricStaticVisuals.shows_zone_under(building):
-		var zone := int(city.zones[key]) & 15
-
-		if zone > 0:
-			_append_sprite(recorder, sprites, palette, config.sprite_base + 290 + zone, false, Vector2i(screen_x, base_y))
 
 	if building == Tiles.EMPTY:
 		return true
