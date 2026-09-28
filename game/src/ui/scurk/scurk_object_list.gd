@@ -1,10 +1,11 @@
 class_name ScurkObjectList
 extends ItemList
 
-signal objects_dropped(large_ids: PackedInt32Array)
+signal objects_dropped(large_ids: PackedInt32Array, destination_id: int)
 
 var drag_source := false
 var drop_target := false
+var remap_drops := false
 
 
 func selected_large_ids() -> PackedInt32Array:
@@ -57,19 +58,22 @@ func _get_drag_data(at_position: Vector2) -> Variant:
 	return CopyObjectsDrag.new(get_instance_id(), large_ids)
 
 
-func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
-	return (
-		drop_target
-		and data is CopyObjectsDrag
-		and not data.large_ids.is_empty()
-	)
+func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
+	if not drop_target or not data is CopyObjectsDrag or data.large_ids.is_empty():
+		return false
+	if not remap_drops:
+		return true
+	var index := get_item_at_position(at_position, true)
+	return (data.large_ids.size() == 1 and index >= 0
+		and ScurkPickCopy.can_copy_to(data.large_ids[0], int(get_item_metadata(index))))
 
 
-func _drop_data(_at_position: Vector2, data: Variant) -> void:
-	if not _can_drop_data(_at_position, data):
+func _drop_data(at_position: Vector2, data: Variant) -> void:
+	if not _can_drop_data(at_position, data):
 		return
 
-	objects_dropped.emit(data.large_ids)
+	var destination_id := int(get_item_metadata(get_item_at_position(at_position, true))) if remap_drops else -1
+	objects_dropped.emit(data.large_ids, destination_id)
 
 
 class CopyObjectsDrag extends RefCounted:

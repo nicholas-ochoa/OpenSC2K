@@ -545,7 +545,7 @@ func request_pick_copy() -> void:
 
 
 func _copy_pick_objects(
-	source: ScurkMif, large_ids: PackedInt32Array, description: String
+	source: ScurkMif, large_ids: PackedInt32Array, description: String, destination_ids := PackedInt32Array()
 ) -> void:
 	if tile_set == null:
 		return
@@ -564,7 +564,8 @@ func _copy_pick_objects(
 		source,
 		large_ids,
 		base_large_sprites,
-		base_small_medium_sprites
+		base_small_medium_sprites,
+		destination_ids
 	)
 
 	if not result.ok:
@@ -573,7 +574,7 @@ func _copy_pick_objects(
 
 		return
 
-	for large_id in large_ids:
+	for large_id in large_ids if destination_ids.is_empty() else destination_ids:
 		for view in ScurkSpriteIds.VIEW_COUNT:
 			studio.project.documents.erase("%d:%d" % [large_id, view])
 	_record_edit()

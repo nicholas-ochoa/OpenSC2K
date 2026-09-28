@@ -28,6 +28,7 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	await _test_pick_copy_preview(assets, editor.pick_copy_control)
+	await _test_pick_copy_destination(editor, assets)
 	_test_close_confirmation(editor)
 	await _test_tile_browser(editor)
 	assert(editor.object_list.entries[0].thumbnail != null)
@@ -250,7 +251,8 @@ func _test_pick_copy_preview(assets: OriginalGameAssets, picker: ScurkPickCopyCo
 	picker.working_list.multi_selected.emit(2, true)
 	assert(picker.working_list.selected_large_ids() == PackedInt32Array([ids[0], ids[1]]))
 	var requests: Array[PackedInt32Array] = []
-	var capture := func(_source: ScurkMif, selected: PackedInt32Array, _description: String) -> void:
+	var capture := func(_source: ScurkMif, selected: PackedInt32Array, _description: String, _destinations: PackedInt32Array) -> void:
+		assert(_destinations.is_empty())
 		requests.append(selected)
 	# Test the selection signal without changing the editor's separate working document.
 	var editor_copy := Callable(picker.get_parent().get_parent(), "_copy_pick_objects")
@@ -291,6 +293,97 @@ func _test_pick_copy_preview(assets: OriginalGameAssets, picker: ScurkPickCopyCo
 	picker.copy_requested.disconnect(capture)
 	picker.copy_requested.connect(editor_copy)
 	picker.request_close()
+
+
+func _test_pick_copy_destination(editor: ScurkEditorControl, assets: OriginalGameAssets) -> void:
+	var picker := editor.pick_copy_control
+	var checkbox := picker.get_node("Content/CopyMode/AllowDestination") as CheckBox
+	var destination_group := picker.get_node("Content/CopyMode/DestinationGroup") as OptionButton
+	assert(not checkbox.button_pressed)
+	var original: PackedByteArray = editor.tile_set.to_bytes().bytes
+	var source := ScurkMif.from_archives([])
+	var source_id := 1000 + BuildingTileIds.CHEMICAL_PROCESSING_3X3
+	var destination_id := 1000 + BuildingTileIds.LARGE_APARTMENT_BUILDING_3X3_1
+	for view in 3:
+		assert(source.set_shape_indices(source_id - view * 500, 2, 2, PackedInt32Array([10 + view, -1, 30, 40])).ok)
+	var source_bytes: PackedByteArray = source.to_bytes().bytes
+	picker.open_with_working(editor.tile_set, "")
+	picker.source_set = source
+	picker.source_icon_cache.clear()
+	checkbox.button_pressed = true
+	picker.group_selector.select(ScurkPickCopy.GROUP_INDUSTRIAL)
+	picker.group_selector.item_selected.emit(ScurkPickCopy.GROUP_INDUSTRIAL)
+	destination_group.select(ScurkPickCopy.GROUP_RESIDENTIAL)
+	destination_group.item_selected.emit(ScurkPickCopy.GROUP_RESIDENTIAL)
+	picker.source_list.select(0)
+	picker.source_list.item_selected.emit(0)
+	assert(picker.copy_selected_button.disabled)
+	picker.working_list.select(4) # A 2x2 destination rejects this 3x3 source.
+	picker.working_list.item_selected.emit(4)
+	assert(picker.copy_selected_button.disabled)
+	picker._request_copy_selected()
+	assert(editor.tile_set.to_bytes().bytes == original)
+	picker.working_list.select(0)
+	picker.working_list.item_selected.emit(0)
+	assert(not picker.copy_selected_button.disabled)
+	assert(picker.source_list.selected_large_ids() == PackedInt32Array([source_id]))
+	assert(picker.working_list.selected_large_ids() == PackedInt32Array([destination_id]))
+	var expected_source := source.archive.find_sprite(source_id - picker.current_view * 500).create_image(assets.palette).image
+	var expected_target := ScurkPickCopy.resolved_entry(editor.tile_set, destination_id - picker.current_view * 500,
+		assets.large_sprites, assets.small_medium_sprites).create_image(assets.palette).image
+	assert(PixelArtTexture.unwrap(picker.preview_after.texture).get_image().get_data() == expected_source.get_data())
+	assert(PixelArtTexture.unwrap(picker.preview_before.texture).get_image().get_data() == expected_target.get_data())
+	await process_frame
+	await process_frame
+	var source_scroll := picker.source_list.get_v_scroll_bar()
+	var working_scroll := picker.working_list.get_v_scroll_bar()
+	working_scroll.value = 0
+	source_scroll.value = source_scroll.max_value - source_scroll.page
+	assert(source_scroll.value > 0 and working_scroll.value == 0)
+	source_scroll.value = 0
+	var drag := ScurkObjectList.CopyObjectsDrag.new(picker.source_list.get_instance_id(), PackedInt32Array([source_id]))
+	assert(picker.working_list._can_drop_data(picker.working_list.get_item_rect(0).get_center(), drag))
+	assert(not picker.working_list._can_drop_data(picker.working_list.get_item_rect(4).get_center(), drag))
+	assert(not picker.working_list._can_drop_data(Vector2(-1, -1), drag))
+	# Keep the source's editable layers while replacing the destination's layers.
+	editor._select_object(source_id)
+	var source_key := editor.studio.key()
+	var source_document: Dictionary = editor.studio.project.documents[source_key].duplicate(true)
+	editor._select_object(destination_id)
+	var destination_key := editor.studio.key()
+	var destination_document: Dictionary = editor.studio.project.documents[destination_key].duplicate(true)
+	editor._select_object(source_id)
+	var history_count := editor.undo_stack.size()
+	picker.copy_selected_button.pressed.emit()
+	assert(editor.undo_stack.size() == history_count + 1)
+	assert(not editor.studio.project.documents.has(destination_key))
+	assert(editor.studio.project.documents[source_key] == source_document)
+	for view in 3:
+		assert(editor.tile_set.overrides.find_sprite(destination_id - view * 500).decode_indices().pixels
+			== source.archive.find_sprite(source_id - view * 500).decode_indices().pixels)
+	assert(source.to_bytes().bytes == source_bytes)
+	var copied: PackedByteArray = editor.tile_set.to_bytes().bytes
+	editor.undo()
+	assert(editor.tile_set.to_bytes().bytes == original)
+	assert(editor.studio.project.documents[destination_key] == destination_document)
+	assert(PixelArtTexture.unwrap(picker.preview_before.texture).get_image().get_data() == expected_target.get_data())
+	editor.redo()
+	assert(editor.tile_set.to_bytes().bytes == copied)
+	editor.undo()
+	await process_frame
+	picker.working_list._drop_data(picker.working_list.get_item_rect(0).get_center(), drag)
+	assert(editor.tile_set.to_bytes().bytes == copied)
+	editor.undo()
+	# Disable remapping: restore matching groups, multi-selection and linked scrolling.
+	checkbox.button_pressed = false
+	assert(not picker.working_list.remap_drops)
+	assert(picker.source_list.select_mode == ItemList.SELECT_MULTI)
+	assert(picker.working_list.selected_large_ids() == picker.source_list.selected_large_ids())
+	assert(picker.source_list.item_count == picker.working_list.item_count)
+	picker.request_close()
+	var restored := ScurkMif.new()
+	assert(restored.parse(original) and editor.load_tile_set(restored).ok)
+	editor._select_object(1001)
 
 
 func _test_paint_sidebar(editor: ScurkEditorControl) -> void:

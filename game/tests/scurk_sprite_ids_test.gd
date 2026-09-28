@@ -26,6 +26,7 @@ func _run() -> void:
 	_test_editable_ids()
 	_test_placeable_ids()
 	_test_copy()
+	_test_copy_destinations()
 	_test_saved_editor_ids()
 	_test_view_clamps()
 	print("PASS: SCURK sprite conversion, bounds, selection, copy, saved IDs, and view clamps (%d checks)" % checks)
@@ -113,6 +114,53 @@ func _test_copy() -> void:
 		for object_id in ScurkPickCopy.GROUP_TILE_IDS[group]:
 			expected.append(1000 + object_id)
 		_check(ScurkPickCopy.group_large_ids(group) == expected)
+
+
+func _test_copy_destinations() -> void:
+	var source := ScurkMif.from_archives([])
+	var working := ScurkMif.from_archives([])
+	var sources := PackedInt32Array([1000 + BuildingTileIds.CHEMICAL_STORAGE_1X1,
+		1000 + BuildingTileIds.FACTORY_2X2_1, 1000 + BuildingTileIds.CHEMICAL_PROCESSING_3X3,
+		1000 + BuildingTileIds.COAL_POWER])
+	var destinations := PackedInt32Array([1000 + BuildingTileIds.LOWER_CLASS_HOMES_1X1_1,
+		1000 + BuildingTileIds.CHEAP_APARTMENTS_2X2, 1000 + BuildingTileIds.LARGE_APARTMENT_BUILDING_3X3_1,
+		1000 + BuildingTileIds.PLYMOUTH_ARCOLOGY])
+	for index in sources.size():
+		_check(ScurkPickCopy.footprint_size(sources[index]) == index + 1)
+		_check(ScurkPickCopy.footprint_size(destinations[index]) == index + 1)
+		for view in 3:
+			_check(source.set_shape_indices(sources[index] - view * 500, 2, 2,
+				PackedInt32Array([index + view, -1, 255, 20 + view])).ok)
+			_check(working.set_shape_indices(destinations[index] - view * 500, 1, 1, PackedInt32Array([42])).ok)
+	working.names[destinations[2] - 1000] = "Keep residential name"
+	var source_bytes: PackedByteArray = source.to_bytes().bytes
+	var result := ScurkPickCopy.copy_objects(working, source, sources, source.archive, source.archive, destinations)
+	_check(result.ok and result.object_count == 4 and result.shape_count == 12)
+	for index in sources.size():
+		for view in 3:
+			var expected := source.archive.find_sprite(sources[index] - view * 500)
+			var actual := working.archive.find_sprite(destinations[index] - view * 500)
+			_check(actual.width == expected.width and actual.height == expected.height)
+			_check(actual.decode_indices().pixels == expected.decode_indices().pixels)
+			_check(working.archive.find_sprite(sources[index] - view * 500) == null)
+	_check(source.to_bytes().bytes == source_bytes)
+	_check(working.names[destinations[2] - 1000] == "Keep residential name")
+	var before: PackedByteArray = working.to_bytes().bytes
+	for invalid in [PackedInt32Array([destinations[0]]),
+		PackedInt32Array([destinations[0], destinations[1], destinations[0], destinations[3]]),
+		PackedInt32Array([destinations[0], destinations[1], 1500, destinations[3]]),
+		PackedInt32Array([destinations[0], destinations[1], 1499, destinations[3]])]:
+		result = ScurkPickCopy.copy_objects(working, source, sources, source.archive, source.archive, invalid)
+		_check(not result.ok and working.to_bytes().bytes == before)
+	_check(not ScurkPickCopy.can_copy_to(999, destinations[0]))
+	_check(not ScurkPickCopy.can_copy_to(1499, 1498))
+	_check(ScurkPickCopy.can_copy_to(1499, 1499))
+	# No explicit destinations retains the original ID-to-ID behavior.
+	var matching := ScurkMif.from_archives([])
+	result = ScurkPickCopy.copy_objects(matching, source, sources, source.archive, source.archive)
+	_check(result.ok and matching.to_bytes().bytes == source_bytes)
+	var saved := ScurkMif.new()
+	_check(saved.parse(before) and saved.to_bytes().bytes == before)
 
 
 func _object_set() -> ScurkMif:

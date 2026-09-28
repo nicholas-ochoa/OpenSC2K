@@ -108,6 +108,24 @@ layout_mode = 2
 text = "Copy source graphics → replace matching working objects. Every copy includes Large, Medium, and Small."
 autowrap_mode = 3
 
+[node name="CopyMode" type="HBoxContainer" parent="Content"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="AllowDestination" type="CheckBox" parent="Content/CopyMode"]
+layout_mode = 2
+text = "Allow a different destination with the same footprint"
+tooltip_text = "Off: copy matching tile IDs. On: choose one source and any destination with the same map footprint, such as 3×3."
+
+[node name="DestinationLabel" type="Label" parent="Content/CopyMode"]
+visible = false
+layout_mode = 2
+text = "Destination group"
+
+[node name="DestinationGroup" type="OptionButton" parent="Content/CopyMode"]
+visible = false
+layout_mode = 2
+
 [node name="Sets" type="HBoxContainer" parent="Content"]
 layout_mode = 2
 size_flags_vertical = 3

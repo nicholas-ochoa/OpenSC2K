@@ -119,7 +119,8 @@ static func copy_objects(
 	source: ScurkMif,
 	large_ids: PackedInt32Array,
 	base_large: Sc2SpriteArchive,
-	base_small_medium: Sc2SpriteArchive
+	base_small_medium: Sc2SpriteArchive,
+	destination_ids := PackedInt32Array()
 ) -> Result:
 	if working == null or not working.is_valid():
 		return _failure("The working object set is invalid.")
@@ -136,17 +137,27 @@ static func copy_objects(
 	if base_small_medium == null or not base_small_medium.is_valid():
 		return _failure("The original small and medium sprites are not available.")
 
+	if not destination_ids.is_empty() and destination_ids.size() != large_ids.size():
+		return _failure("Choose one destination for each source object.")
+
 	var prepared: Array[PreparedShape] = []
 	var seen := {}
 
-	for large_id in large_ids:
+	for index in large_ids.size():
+		var large_id := large_ids[index]
+		var destination_id := large_id if destination_ids.is_empty() else destination_ids[index]
 		if large_id < SpriteIds.LARGE_FIRST or large_id > SpriteIds.LARGE_LAST:
 			return _failure("Object sprite %d is outside the SCURK range." % large_id)
 
-		if seen.has(large_id):
+		if not can_copy_to(large_id, destination_id):
+			return _failure("Source and destination must have the same tile footprint.")
+
+		if seen.has(destination_id):
+			if seen[destination_id] != large_id:
+				return _failure("Choose only one source for each destination object.")
 			continue
 
-		seen[large_id] = true
+		seen[destination_id] = large_id
 
 		for view in SpriteIds.VIEW_COUNT:
 			var sprite_id := ScurkEditorRules.view_sprite_id(large_id, view)
@@ -163,7 +174,7 @@ static func copy_objects(
 				return _failure(decoded.error)
 
 			var shape := PreparedShape.new()
-			shape.sprite_id = sprite_id
+			shape.sprite_id = ScurkEditorRules.view_sprite_id(destination_id, view)
 			shape.width = entry.width
 			shape.height = entry.height
 			shape.pixels = decoded.pixels
@@ -184,6 +195,21 @@ static func copy_objects(
 	result.shape_count = prepared.size()
 
 	return result
+
+
+static func footprint_size(large_id: int) -> int:
+	var tile_id := ScurkEditorRules.object_tile_id(large_id)
+	return DemolishStructures.structure_area(tile_id) if tile_id >= 0 and tile_id <= Tiles.MAX_ID else 0
+
+
+static func can_copy_to(source_id: int, destination_id: int) -> bool:
+	if (source_id < SpriteIds.LARGE_FIRST or source_id > SpriteIds.LARGE_LAST
+			or destination_id < SpriteIds.LARGE_FIRST or destination_id > SpriteIds.LARGE_LAST):
+		return false
+	if source_id == destination_id:
+		return true
+	var footprint := footprint_size(source_id)
+	return footprint > 0 and footprint == footprint_size(destination_id)
 
 
 static func resolved_entry(
