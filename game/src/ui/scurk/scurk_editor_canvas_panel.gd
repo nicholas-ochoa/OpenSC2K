@@ -36,6 +36,10 @@ func _ready() -> void:
 func _input(event: InputEvent) -> void:
 	if pixel_canvas == null or not is_visible_in_tree() or not (event is InputEventMouse or event is InputEventPanGesture):
 		return
+	if not pixel_canvas.panning:
+		var hovered := get_viewport().gui_get_hovered_control()
+		if hovered == null or (hovered != pixel_scroll and not pixel_scroll.is_ancestor_of(hovered)):
+			return
 	var pointer_position: Vector2 = event.position
 	if $Row/PixelArea/Objects.get_global_rect().has_point(pointer_position):
 		return

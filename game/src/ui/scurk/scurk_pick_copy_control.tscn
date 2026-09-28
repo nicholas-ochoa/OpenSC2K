@@ -28,24 +28,29 @@ layout_mode = 2
 color = Color(0.25, 0.25, 0.25, 1)
 script = ExtResource("2_mh0cu")
 
-[node name="Controls" type="HBoxContainer" parent="Content"]
+[node name="Toolbar" type="ScrollContainer" parent="Content"]
+layout_mode = 2
+follow_focus = true
+vertical_scroll_mode = 0
+
+[node name="Controls" type="HBoxContainer" parent="Content/Toolbar"]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="ChangeSource" type="Button" parent="Content/Controls"]
+[node name="ChangeSource" type="Button" parent="Content/Toolbar/Controls"]
 layout_mode = 2
 tooltip_text = "Open a source MIF file. Its graphics are copied into the working set."
 text = "Open Source Tileset"
 
-[node name="SourceControlsDivider" type="VSeparator" parent="Content/Controls"]
+[node name="SourceControlsDivider" type="VSeparator" parent="Content/Toolbar/Controls"]
 layout_mode = 2
 
-[node name="ObjectGroupLabel" type="Label" parent="Content/Controls"]
+[node name="ObjectGroupLabel" type="Label" parent="Content/Toolbar/Controls"]
 layout_mode = 2
 text = "Object Group"
 vertical_alignment = 1
 
-[node name="GroupSelector" type="OptionButton" parent="Content/Controls"]
+[node name="GroupSelector" type="OptionButton" parent="Content/Toolbar/Controls"]
 layout_mode = 2
 selected = 0
 item_count = 11
@@ -72,61 +77,58 @@ popup/item_9/id = 9
 popup/item_10/text = "All"
 popup/item_10/id = 10
 
-[node name="ViewControlsDivider" type="VSeparator" parent="Content/Controls"]
+[node name="DestinationLabel" type="Label" parent="Content/Toolbar/Controls"]
+visible = false
+layout_mode = 2
+text = "Destination group"
+
+[node name="DestinationGroup" type="OptionButton" parent="Content/Toolbar/Controls"]
+visible = false
 layout_mode = 2
 
-[node name="AllowDestination" type="CheckBox" parent="Content/Controls"]
+[node name="ViewControlsDivider" type="VSeparator" parent="Content/Toolbar/Controls"]
+layout_mode = 2
+
+[node name="AllowDestination" type="CheckBox" parent="Content/Toolbar/Controls"]
 layout_mode = 2
 text = "Allow different destination"
 tooltip_text = "Off: copy matching tile IDs. On: choose one source and any destination with the same map footprint, such as 3×3."
 
-[node name="DestinationControlsDivider" type="VSeparator" parent="Content/Controls"]
+[node name="DifferencesOnly" type="CheckBox" parent="Content/Toolbar/Controls"]
+layout_mode = 2
+text = "Show differences only"
+tooltip_text = "Compare matching tile IDs in both tilesets. Show tiles whose graphics differ in Large, Medium, or Small."
+
+[node name="HighlightDifferences" type="CheckBox" parent="Content/Toolbar/Controls"]
+layout_mode = 2
+text = "Highlight differences"
+tooltip_text = "Show changed pixels in pink in the bottom comparison. Compare palette indices and transparency, with sprites aligned at their bottom center."
+
+[node name="DestinationControlsDivider" type="VSeparator" parent="Content/Toolbar/Controls"]
 layout_mode = 2
 
-[node name="PreviewSizeLabel" type="Label" parent="Content/Controls"]
+[node name="PreviewSizeLabel" type="Label" parent="Content/Toolbar/Controls"]
 layout_mode = 2
 text = "Preview size"
 
-[node name="Large" type="Button" parent="Content/Controls"]
+[node name="Large" type="Button" parent="Content/Toolbar/Controls"]
 layout_mode = 2
 toggle_mode = true
 button_pressed = true
 button_group = SubResource("ButtonGroup_py6sq")
 text = "Large"
 
-[node name="Medium" type="Button" parent="Content/Controls"]
+[node name="Medium" type="Button" parent="Content/Toolbar/Controls"]
 layout_mode = 2
 toggle_mode = true
 button_group = SubResource("ButtonGroup_py6sq")
 text = "Medium"
 
-[node name="Small" type="Button" parent="Content/Controls"]
+[node name="Small" type="Button" parent="Content/Toolbar/Controls"]
 layout_mode = 2
 toggle_mode = true
 button_group = SubResource("ButtonGroup_py6sq")
 text = "Small"
-
-[node name="CopyMode" type="HBoxContainer" parent="Content"]
-layout_mode = 2
-theme_override_constants/separation = 12
-
-[node name="DifferencesOnly" type="CheckBox" parent="Content/CopyMode"]
-layout_mode = 2
-text = "Show differences only"
-tooltip_text = "Compare matching tile IDs in both tilesets. Show tiles whose graphics differ in Large, Medium, or Small."
-
-[node name="DestinationGroupDivider" type="VSeparator" parent="Content/CopyMode"]
-visible = false
-layout_mode = 2
-
-[node name="DestinationLabel" type="Label" parent="Content/CopyMode"]
-visible = false
-layout_mode = 2
-text = "Destination group"
-
-[node name="DestinationGroup" type="OptionButton" parent="Content/CopyMode"]
-visible = false
-layout_mode = 2
 
 [node name="Sets" type="HBoxContainer" parent="Content"]
 layout_mode = 2
@@ -249,6 +251,24 @@ text = "After copy: source graphics"
 horizontal_alignment = 1
 
 [node name="Artwork" type="TextureRect" parent="Content/Preview/Images/After"]
+custom_minimum_size = Vector2(0, 144)
+layout_mode = 2
+texture_filter = 1
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Differences" type="VBoxContainer" parent="Content/Preview/Images"]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="Content/Preview/Images/Differences"]
+layout_mode = 2
+text = "Changed pixels (pink)"
+horizontal_alignment = 1
+
+[node name="Artwork" type="TextureRect" parent="Content/Preview/Images/Differences"]
 custom_minimum_size = Vector2(0, 144)
 layout_mode = 2
 texture_filter = 1

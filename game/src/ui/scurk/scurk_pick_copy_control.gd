@@ -46,16 +46,18 @@ var preview_next: Button
 
 func _ready() -> void:
 	hide()
-	group_selector = get_node("Content/Controls/GroupSelector")
-	view_buttons.assign([get_node("Content/Controls/Large"), get_node("Content/Controls/Medium"), get_node("Content/Controls/Small")])
+	group_selector = get_node("Content/Toolbar/Controls/GroupSelector")
+	view_buttons.assign([get_node("Content/Toolbar/Controls/Large"), get_node("Content/Toolbar/Controls/Medium"),
+		get_node("Content/Toolbar/Controls/Small")])
 	source_name_label = get_node("Content/Sets/SourceObjectSetRow/SourceNameLabel")
 	source_list = get_node("Content/Sets/SourceObjectSetRow/SourceList")
 	working_list = get_node("Content/Sets/WorkingObjectSetRow/WorkingList")
 	source_list.item_selected.connect(_source_selection_changed.bind(true))
 	working_list.item_selected.connect(_working_selection_changed.bind(true))
-	$Content/Controls/AllowDestination.toggled.connect(_destination_mode_changed)
-	$Content/CopyMode/DifferencesOnly.toggled.connect(func(_enabled: bool) -> void: _refresh_lists())
-	var destination_group := $Content/CopyMode/DestinationGroup as OptionButton
+	$Content/Toolbar/Controls/AllowDestination.toggled.connect(_destination_mode_changed)
+	$Content/Toolbar/Controls/DifferencesOnly.toggled.connect(func(_enabled: bool) -> void: _refresh_lists())
+	$Content/Toolbar/Controls/HighlightDifferences.toggled.connect(func(_enabled: bool) -> void: _refresh_difference_preview())
+	var destination_group := $Content/Toolbar/Controls/DestinationGroup as OptionButton
 	for group in PickCopy.GROUP_NAMES.size():
 		destination_group.add_item(PickCopy.GROUP_NAMES[group], group)
 	destination_group.item_selected.connect(_destination_group_changed)
@@ -73,11 +75,11 @@ func _ready() -> void:
 	preview_previous.pressed.connect(_step_preview.bind(-1))
 	preview_next.pressed.connect(_step_preview.bind(1))
 	get_node("Content/TitleBar").close_requested.connect(request_close)
-	get_node("Content/Controls/ChangeSource").pressed.connect(request_source)
-	get_node("Content/Controls/GroupSelector").item_selected.connect(_select_group)
-	get_node("Content/Controls/Large").pressed.connect(_select_view.bind(VIEW_LARGE))
-	get_node("Content/Controls/Medium").pressed.connect(_select_view.bind(VIEW_MEDIUM))
-	get_node("Content/Controls/Small").pressed.connect(_select_view.bind(VIEW_SMALL))
+	get_node("Content/Toolbar/Controls/ChangeSource").pressed.connect(request_source)
+	get_node("Content/Toolbar/Controls/GroupSelector").item_selected.connect(_select_group)
+	get_node("Content/Toolbar/Controls/Large").pressed.connect(_select_view.bind(VIEW_LARGE))
+	get_node("Content/Toolbar/Controls/Medium").pressed.connect(_select_view.bind(VIEW_MEDIUM))
+	get_node("Content/Toolbar/Controls/Small").pressed.connect(_select_view.bind(VIEW_SMALL))
 	get_node("Content/Sets/SourceObjectSetRow/SourceList").multi_selected.connect(_source_selection_changed)
 	get_node("Content/Sets/SourceObjectSetRow/SourceList").item_activated.connect(_source_item_activated)
 	get_node("Content/Sets/WorkingObjectSetRow/WorkingList").objects_dropped.connect(_objects_dropped)
@@ -101,7 +103,7 @@ func _sync_scroll(scroll_value: float, target: ScurkObjectList) -> void:
 
 
 func _remapping() -> bool:
-	return $Content/Controls/AllowDestination.button_pressed
+	return $Content/Toolbar/Controls/AllowDestination.button_pressed
 
 
 func _destination_mode_changed(enabled: bool) -> void:
@@ -115,11 +117,10 @@ func _destination_mode_changed(enabled: bool) -> void:
 		for index in source_list.item_count:
 			if int(source_list.get_item_metadata(index)) == selected[0]:
 				source_list.select(index)
-	$Content/CopyMode/DestinationGroupDivider.visible = enabled
-	$Content/CopyMode/DestinationLabel.visible = enabled
-	$Content/CopyMode/DestinationGroup.visible = enabled
-	$Content/CopyMode/DestinationGroup.select(current_group)
-	$Content/Controls/ObjectGroupLabel.text = "Source group" if enabled else "Object Group"
+	$Content/Toolbar/Controls/DestinationLabel.visible = enabled
+	$Content/Toolbar/Controls/DestinationGroup.visible = enabled
+	$Content/Toolbar/Controls/DestinationGroup.select(current_group)
+	$Content/Toolbar/Controls/ObjectGroupLabel.text = "Source group" if enabled else "Object Group"
 	$Content/Sets/WorkingObjectSetRow/WorkingObjectSetLabel.text = (
 		"2. Working — select the destination" if enabled else "2. Working — matching objects to replace"
 	)
@@ -253,7 +254,7 @@ func _refresh_working_list() -> void:
 	var destinations := working_list.selected_large_ids()
 	working_list.clear()
 	working_index_by_id.clear()
-	var working_group: int = $Content/CopyMode/DestinationGroup.get_selected_id() if _remapping() else current_group
+	var working_group: int = $Content/Toolbar/Controls/DestinationGroup.get_selected_id() if _remapping() else current_group
 	for large_id in PickCopy.group_large_ids(working_group):
 		if not _passes_difference_filter(large_id):
 			continue
@@ -266,7 +267,7 @@ func _refresh_working_list() -> void:
 
 
 func _passes_difference_filter(large_id: int) -> bool:
-	if not $Content/CopyMode/DifferencesOnly.button_pressed:
+	if not $Content/Toolbar/Controls/DifferencesOnly.button_pressed:
 		return true
 	if source_set == null or working_set == null:
 		return false
@@ -416,24 +417,60 @@ func _sync_working_selection() -> void:
 	_refresh_preview()
 
 
-func _working_selection_changed(index: int, _selected: bool) -> void:
+func _working_selection_changed(index: int, selected: bool) -> void:
 	if _remapping():
 		_refresh_preview()
 		_update_buttons()
 		return
-	var large_id := int(working_list.get_item_metadata(index))
-	if source_list.selected_large_ids().has(large_id):
-		preview_large_id = large_id
-	_sync_working_selection()
+	var selected_ids := working_list.selected_large_ids()
+	source_list.deselect_all()
+	for source_index in source_list.item_count:
+		if int(source_list.get_item_metadata(source_index)) in selected_ids:
+			source_list.select(source_index, false)
+	if selected:
+		preview_large_id = int(working_list.get_item_metadata(index))
+	_refresh_preview()
+	_update_buttons()
 
 
 func _refresh_preview() -> void:
+	_refresh_artwork_preview()
+	_refresh_difference_preview()
+
+
+func _refresh_difference_preview() -> void:
+	var panel := $Content/Preview/Images/Differences as VBoxContainer
+	panel.visible = $Content/Toolbar/Controls/HighlightDifferences.button_pressed
+	var artwork := panel.get_node("Artwork") as TextureRect
+	var label := panel.get_node("Label") as Label
+	artwork.texture = null
+	label.text = "Changed pixels (pink)"
+	if not panel.visible or preview_before.texture == null or preview_after.texture == null:
+		return
+	var source_id := preview_large_id
+	var destination_id := preview_large_id
+	if _remapping():
+		source_id = source_list.selected_large_ids()[0]
+		destination_id = working_list.selected_large_ids()[0]
+	var before := PickCopy.resolved_entry(working_set,
+		ScurkEditorRules.view_sprite_id(destination_id, current_view), base_large, base_small_medium)
+	var after := PickCopy.resolved_entry(source_set,
+		ScurkEditorRules.view_sprite_id(source_id, current_view), base_large, base_small_medium)
+	var difference := ScurkCopyDifference.compare(before, after, palette)
+	if difference.image != null:
+		artwork.texture = PixelArtTexture.wrap(ImageTexture.create_from_image(difference.image))
+		label.text = "%d changed pixels (pink)" % difference.changed_pixels
+
+
+func _refresh_artwork_preview() -> void:
 	var selected := source_list.selected_large_ids()
 	var ready_to_preview := source_set != null and working_set != null and not selected.is_empty()
 	preview_before.texture = null
 	preview_after.texture = null
 	preview_previous.disabled = true
 	preview_next.disabled = true
+	preview_previous.visible = not _remapping() and selected.size() > 1
+	preview_next.visible = preview_previous.visible
 	if _remapping():
 		_refresh_destination_preview()
 		return

@@ -30,7 +30,7 @@ func _run() -> void:
 		editor.canvas_panel.show_views_button.pressed.emit,
 		editor.canvas_panel.get_node("Footer/Row/Compare/Mode").get_popup().index_pressed.emit.bind(1),
 		editor.dialog_registry.generate_medium.pressed.emit,
-		editor.pick_copy_control.get_node("Content/Controls/Large").pressed.emit,
+		editor.pick_copy_control.get_node("Content/Toolbar/Controls/Large").pressed.emit,
 		editor.studio.get_node("Margin/Column/Tabs/History/Actions/Undo").pressed.emit]
 	for index in actions.size():
 		_expect_click(actions[index], "Editor action %d" % index)

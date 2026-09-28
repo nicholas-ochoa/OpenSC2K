@@ -28,9 +28,11 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	await _test_pick_copy_preview(assets, editor.pick_copy_control)
+	await _test_pick_copy_wheel(editor)
 	await _test_pick_copy_destination(editor, assets)
 	_test_pick_copy_differences(editor, assets)
 	_test_pick_copy_animation(editor, assets)
+	_test_copy_difference(assets)
 	_test_close_confirmation(editor)
 	await _test_tile_browser(editor)
 	assert(editor.object_list.entries[0].thumbnail != null)
@@ -251,6 +253,14 @@ func _test_pick_copy_preview(assets: OriginalGameAssets, picker: ScurkPickCopyCo
 	assert(picker.working_list.selected_large_ids() == PackedInt32Array([ids[0], ids[1]]))
 	picker.working_list.select(2)
 	picker.working_list.multi_selected.emit(2, true)
+	assert(picker.source_list.selected_large_ids() == PackedInt32Array([ids[2]]))
+	assert(picker.preview_large_id == ids[2] and not picker.preview_previous.visible)
+	picker.working_list.select(0)
+	picker.working_list.multi_selected.emit(0, true)
+	picker.working_list.select(1, false)
+	picker.working_list.multi_selected.emit(1, true)
+	assert(picker.source_list.selected_large_ids() == PackedInt32Array([ids[0], ids[1]]))
+	assert(picker.preview_previous.visible and picker.preview_next.visible)
 	assert(picker.working_list.selected_large_ids() == PackedInt32Array([ids[0], ids[1]]))
 	var requests: Array[PackedInt32Array] = []
 	var capture := func(_source: ScurkMif, selected: PackedInt32Array, _description: String, _destinations: PackedInt32Array) -> void:
@@ -297,10 +307,81 @@ func _test_pick_copy_preview(assets: OriginalGameAssets, picker: ScurkPickCopyCo
 	picker.request_close()
 
 
+func _test_pick_copy_wheel(editor: ScurkEditorControl) -> void:
+	var picker := editor.pick_copy_control
+	var delay: float = ProjectSettings.get_setting("gui/timers/tooltip_delay_sec")
+	ProjectSettings.set_setting("gui/timers/tooltip_delay_sec", 0.01)
+	var viewport := SubViewport.new()
+	viewport.size = root.size
+	viewport.gui_embed_subwindows = true
+	root.add_child(viewport)
+	editor.reparent(viewport)
+	var tooltips := AppTooltips.new()
+	viewport.add_child(tooltips)
+	editor.request_pick_copy()
+	picker._select_group(ScurkPickCopy.GROUP_ALL)
+	await process_frame
+	viewport.notify_mouse_entered()
+	for list in [picker.source_list, picker.working_list]:
+		list.get_v_scroll_bar().value = 0
+		var point: Vector2 = list.global_position + list.get_item_rect(1).get_center()
+		var motion := InputEventMouseMotion.new()
+		motion.position = point
+		motion.global_position = point
+		motion.relative = Vector2(32, 0)
+		viewport.push_input(motion, true)
+		await create_timer(0.15).timeout
+		await process_frame
+		await process_frame
+		if list == picker.source_list:
+			assert(_visible_tooltip(viewport), "Show a real tooltip before checking wheel input")
+		var wheel := InputEventMouseButton.new()
+		wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
+		wheel.pressed = true
+		wheel.position = point
+		wheel.global_position = point
+		viewport.push_input(wheel, true)
+		await process_frame
+		assert(list.get_v_scroll_bar().value > 0, "Wheel input after a tooltip must reach the copy list")
+		assert(is_equal_approx(picker.source_list.get_v_scroll_bar().value, picker.working_list.get_v_scroll_bar().value))
+	picker.request_close()
+	editor.reparent(root)
+	viewport.free()
+	ProjectSettings.set_setting("gui/timers/tooltip_delay_sec", delay)
+
+
+func _visible_tooltip(node: Node) -> bool:
+	if node is PopupPanel and node.theme_type_variation == &"TooltipPanel" and node.visible:
+		return true
+	for child in node.get_children(true):
+		if _visible_tooltip(child):
+			return true
+	return false
+
+
+func _test_copy_difference(assets: OriginalGameAssets) -> void:
+	var before := Sc2SpriteArchive.entry_from_indices(1000, 2, 2, PackedInt32Array([10, 20, -1, 40]))
+	var after := Sc2SpriteArchive.entry_from_indices(1000, 2, 2, PackedInt32Array([11, -1, 30, 40]))
+	var diff := ScurkCopyDifference.compare(before, after, assets.palette)
+	assert(diff.changed_pixels == 3)
+	assert(diff.image.get_pixel(0, 0).is_equal_approx(ScurkCopyDifference.CHANGED_COLOR))
+	assert(diff.image.get_pixel(1, 0).is_equal_approx(ScurkCopyDifference.CHANGED_COLOR))
+	assert(diff.image.get_pixel(0, 1).is_equal_approx(ScurkCopyDifference.CHANGED_COLOR))
+	assert(diff.image.get_pixel(1, 1).a < 0.5)
+	# Padding aligns at the bottom center, including newly added and removed artwork.
+	var padded := Sc2SpriteArchive.entry_from_indices(1000, 4, 3,
+		PackedInt32Array([-1, -1, -1, -1, -1, 10, 20, -1, -1, -1, 40, -1]))
+	assert(ScurkCopyDifference.compare(before, padded, assets.palette).changed_pixels == 0)
+	assert(ScurkCopyDifference.compare(padded, before, assets.palette).changed_pixels == 0)
+	assert(ScurkCopyDifference.compare(before, before, assets.palette).changed_pixels == 0)
+
+
 func _test_pick_copy_differences(editor: ScurkEditorControl, assets: OriginalGameAssets) -> void:
 	var picker := editor.pick_copy_control
-	var filter := picker.get_node("Content/CopyMode/DifferencesOnly") as CheckBox
-	var remap := picker.get_node("Content/Controls/AllowDestination") as CheckBox
+	var filter := picker.get_node("Content/Toolbar/Controls/DifferencesOnly") as CheckBox
+	var remap := picker.get_node("Content/Toolbar/Controls/AllowDestination") as CheckBox
+	var highlight := picker.get_node("Content/Toolbar/Controls/HighlightDifferences") as CheckBox
+	var difference_art := picker.get_node("Content/Preview/Images/Differences/Artwork") as TextureRect
 	assert(not filter.button_pressed)
 	var working := ScurkMif.from_archives([assets.large_sprites, assets.small_medium_sprites])
 	var source := ScurkMif.from_archives([assets.large_sprites, assets.small_medium_sprites])
@@ -324,6 +405,12 @@ func _test_pick_copy_differences(editor: ScurkEditorControl, assets: OriginalGam
 	filter.button_pressed = true
 	assert(picker._shown_source_ids() == ids.slice(0, 3))
 	assert(picker.working_list.item_count == 3)
+	picker.source_list.select(0)
+	picker.source_list.multi_selected.emit(0, true)
+	highlight.button_pressed = true
+	picker._select_view(ScurkSpriteIds.View.LARGE)
+	assert(difference_art.texture != null)
+	assert(PixelArtTexture.unwrap(difference_art.texture).get_image().get_pixel(0, 0).is_equal_approx(ScurkCopyDifference.CHANGED_COLOR))
 	for view in ScurkSpriteIds.VIEW_COUNT:
 		picker._select_view(view)
 		assert(picker._shown_source_ids() == ids.slice(0, 3))
@@ -349,11 +436,13 @@ func _test_pick_copy_differences(editor: ScurkEditorControl, assets: OriginalGam
 	assert(picker.source_list.item_count == 0 and picker.working_list.item_count == 0)
 	assert(picker.copy_selected_button.disabled and picker.copy_all_button.disabled)
 	assert(picker.preview_before.texture == null and picker.preview_after.texture == null)
+	assert(difference_art.texture == null)
 	var restored := ScurkMif.new()
 	assert(restored.parse(original))
 	picker.open_with_working(restored, "")
 	assert(picker._shown_source_ids() == ids.slice(0, 3))
 	filter.button_pressed = false
+	highlight.button_pressed = false
 	assert(picker.source_list.item_count == ids.size() and picker.working_list.item_count == ids.size())
 	picker.request_close()
 
@@ -406,8 +495,8 @@ func _test_pick_copy_animation(editor: ScurkEditorControl, assets: OriginalGameA
 
 func _test_pick_copy_destination(editor: ScurkEditorControl, assets: OriginalGameAssets) -> void:
 	var picker := editor.pick_copy_control
-	var checkbox := picker.get_node("Content/Controls/AllowDestination") as CheckBox
-	var destination_group := picker.get_node("Content/CopyMode/DestinationGroup") as OptionButton
+	var checkbox := picker.get_node("Content/Toolbar/Controls/AllowDestination") as CheckBox
+	var destination_group := picker.get_node("Content/Toolbar/Controls/DestinationGroup") as OptionButton
 	assert(not checkbox.button_pressed)
 	var original: PackedByteArray = editor.tile_set.to_bytes().bytes
 	var source := ScurkMif.from_archives([])
@@ -804,6 +893,11 @@ func _test_menu_bar_shortcuts() -> void:
 	root.add_child(toolbar)
 	var actions: Array[String] = []
 	toolbar.studio_action.connect(func(action: String) -> void: actions.append(action))
+	toolbar.pick_copy_requested.connect(func() -> void: actions.append("PickCopy"))
+	var files := (toolbar.get_node("Row/File") as MenuButton).get_popup()
+	files.id_pressed.emit(7)
+	assert(actions == ["PickCopy"])
+	actions.clear()
 	var menu := (toolbar.get_node("Row/Edit") as MenuButton).get_popup()
 	var event := InputEventKey.new()
 	event.keycode = KEY_C

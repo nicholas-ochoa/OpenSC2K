@@ -55,7 +55,8 @@ func build() -> void:
 	redo_button = $Actions/Redo
 	revert_button = $Actions/Revert
 	clear_button = $Actions/Clear
-	_bind_menu($Row/File, ["Open", "", "Save", "SaveAs", "", "RecoverProject", "", "Import", "Export", "ExportTileSet", "", "Close"])
+	_bind_menu($Row/File, ["Open", "", "Save", "SaveAs", "", "RecoverProject",
+		"", "PickCopy", "Import", "Export", "ExportTileSet", "", "Close"])
 	_bind_menu(
 		$Row/Edit,
 		[
@@ -82,8 +83,6 @@ func build() -> void:
 			"",
 			"Revert",
 			"Clear",
-			"",
-			"PickCopy",
 		],
 	)
 	_bind_menu($Row/Options, ["Settings"])
