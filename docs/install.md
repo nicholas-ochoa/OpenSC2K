@@ -17,6 +17,26 @@ The package is not code signed.
 The newspaper uses Microsoft Edge WebView2. If the runtime is missing, install the
 [Evergreen WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/).
 
+### Portable version
+
+The Windows x64 portable ZIP keeps all user files in the `data` folder beside `OpenSC2K.exe`.
+Use it on a removable drive or in a folder that you can write to.
+Do not extract it to `Program Files`.
+
+The `data` folder contains:
+
+- `settings.cfg` for settings
+- `packs` for imported graphics, sound, music, and data packs
+- `cities` and `scenarios` for saved games
+- `scurk` and other SCURK output folders
+- `godot_wry` for newspaper browser data
+
+To change a standard installation to a portable installation, make an empty `data` folder beside `OpenSC2K.exe`.
+To use the Windows user profile again, move or remove the `data` folder.
+OpenSC2K does not move files between the two locations.
+The standard version keeps user files in `%APPDATA%\Godot\app_userdata\OpenSC2K`.
+The Godot engine writes its log files to the `logs` folder in that location in both versions.
+
 ## Linux
 
 Use the Linux x64 archive on an x86-64 system with glibc 2.34 or later.
