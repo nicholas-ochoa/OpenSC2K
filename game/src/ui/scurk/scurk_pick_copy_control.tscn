@@ -35,12 +35,7 @@ theme_override_constants/separation = 6
 [node name="ChangeSource" type="Button" parent="Content/Controls"]
 layout_mode = 2
 tooltip_text = "Open a source MIF file. Its graphics are copied into the working set."
-text = "Open Source..."
-
-[node name="ChangeWorking" type="Button" parent="Content/Controls"]
-layout_mode = 2
-tooltip_text = "Open the working set that receives the copied graphics."
-text = "Open Working..."
+text = "Open Source Tileset"
 
 [node name="SourceControlsDivider" type="VSeparator" parent="Content/Controls"]
 layout_mode = 2
@@ -80,6 +75,14 @@ popup/item_10/id = 10
 [node name="ViewControlsDivider" type="VSeparator" parent="Content/Controls"]
 layout_mode = 2
 
+[node name="AllowDestination" type="CheckBox" parent="Content/Controls"]
+layout_mode = 2
+text = "Allow different destination"
+tooltip_text = "Off: copy matching tile IDs. On: choose one source and any destination with the same map footprint, such as 3×3."
+
+[node name="DestinationControlsDivider" type="VSeparator" parent="Content/Controls"]
+layout_mode = 2
+
 [node name="PreviewSizeLabel" type="Label" parent="Content/Controls"]
 layout_mode = 2
 text = "Preview size"
@@ -103,19 +106,18 @@ toggle_mode = true
 button_group = SubResource("ButtonGroup_py6sq")
 text = "Small"
 
-[node name="Instructions" type="Label" parent="Content"]
-layout_mode = 2
-text = "Copy source graphics → replace matching working objects. Every copy includes Large, Medium, and Small."
-autowrap_mode = 3
-
 [node name="CopyMode" type="HBoxContainer" parent="Content"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="AllowDestination" type="CheckBox" parent="Content/CopyMode"]
+[node name="DifferencesOnly" type="CheckBox" parent="Content/CopyMode"]
 layout_mode = 2
-text = "Allow a different destination with the same footprint"
-tooltip_text = "Off: copy matching tile IDs. On: choose one source and any destination with the same map footprint, such as 3×3."
+text = "Show differences only"
+tooltip_text = "Compare matching tile IDs in both tilesets. Show tiles whose graphics differ in Large, Medium, or Small."
+
+[node name="DestinationGroupDivider" type="VSeparator" parent="Content/CopyMode"]
+visible = false
+layout_mode = 2
 
 [node name="DestinationLabel" type="Label" parent="Content/CopyMode"]
 visible = false
@@ -269,13 +271,6 @@ layout_mode = 2
 tooltip_text = "Replace all matching objects in this group, in all three sizes."
 disabled = true
 text = "Copy All"
-
-[node name="CopyHint" type="Label" parent="Content/Actions"]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Ctrl/Cmd-click or Shift-click selects more. Drag or double-click to copy into matching slots."
-autowrap_mode = 3
-theme_type_variation = "HelpLabel"
 
 [node name="StatusLabel" type="Label" parent="Content"]
 custom_minimum_size = Vector2(0, 26)

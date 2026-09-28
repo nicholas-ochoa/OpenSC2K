@@ -587,10 +587,6 @@ func _copy_pick_objects(
 	)
 
 
-func _change_pick_working() -> void:
-	_request_open()
-
-
 func _replace_active_view(
 	width: int, height: int, pixels: PackedInt32Array,
 	description: String, remapped_color_count: int
@@ -957,7 +953,6 @@ func _bind_interface() -> void:
 	get_node("Dialogs/Close").confirmed.connect(_close_editor)
 	pick_copy_control = dialog_registry.pick_copy_control
 	pick_copy_control.close_requested.connect(_pick_copy_closed)
-	pick_copy_control.change_working_requested.connect(_change_pick_working)
 	pick_copy_control.copy_requested.connect(_copy_pick_objects)
 	_select_palette_index(0)
 	studio = $Panel/Content/Body/Studio
@@ -1153,6 +1148,7 @@ func _set_clip_region_visible(enabled: bool) -> void:
 func _sync_palette_cycle() -> void:
 	var tick := pixel_canvas.palette_cycle_ticks
 	palette_panel.set_cycle_tick(tick)
+	pick_copy_control.set_cycle_tick(tick)
 	for preview in view_previews:
 		preview.set_cycle_tick(tick)
 

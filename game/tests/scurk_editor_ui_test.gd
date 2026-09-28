@@ -29,6 +29,8 @@ func _run() -> void:
 	await process_frame
 	await _test_pick_copy_preview(assets, editor.pick_copy_control)
 	await _test_pick_copy_destination(editor, assets)
+	_test_pick_copy_differences(editor, assets)
+	_test_pick_copy_animation(editor, assets)
 	_test_close_confirmation(editor)
 	await _test_tile_browser(editor)
 	assert(editor.object_list.entries[0].thumbnail != null)
@@ -295,9 +297,116 @@ func _test_pick_copy_preview(assets: OriginalGameAssets, picker: ScurkPickCopyCo
 	picker.request_close()
 
 
+func _test_pick_copy_differences(editor: ScurkEditorControl, assets: OriginalGameAssets) -> void:
+	var picker := editor.pick_copy_control
+	var filter := picker.get_node("Content/CopyMode/DifferencesOnly") as CheckBox
+	var remap := picker.get_node("Content/Controls/AllowDestination") as CheckBox
+	assert(not filter.button_pressed)
+	var working := ScurkMif.from_archives([assets.large_sprites, assets.small_medium_sprites])
+	var source := ScurkMif.from_archives([assets.large_sprites, assets.small_medium_sprites])
+	var ids := ScurkPickCopy.group_large_ids(ScurkPickCopy.GROUP_RESIDENTIAL)
+	var pixels := PackedInt32Array([10, 20, -1, 40])
+	for value in [source, working]:
+		for index in 4:
+			for view in ScurkSpriteIds.VIEW_COUNT:
+				assert(value.set_shape_indices(ids[index] - view * 500, 2, 2, pixels).ok)
+	# Changes in any size count. Names and different sprite encodings do not.
+	assert(source.set_shape_indices(ids[0], 2, 2, PackedInt32Array([11, 20, -1, 40])).ok)
+	assert(source.set_shape_indices(ids[1] - 500, 4, 1, pixels).ok)
+	assert(source.set_shape_indices(ids[2] - 1000, 2, 2, PackedInt32Array([10, 20, 30, 40])).ok)
+	source.names[ScurkEditorRules.object_tile_id(ids[3])] = "Different name, same graphics"
+	var encoded_source := ScurkMif.new()
+	assert(encoded_source.parse(source.to_bytes().bytes))
+	picker.source_set = encoded_source
+	picker.source_icon_cache.clear()
+	picker._select_group(ScurkPickCopy.GROUP_RESIDENTIAL)
+	picker.open_with_working(working, "")
+	filter.button_pressed = true
+	assert(picker._shown_source_ids() == ids.slice(0, 3))
+	assert(picker.working_list.item_count == 3)
+	for view in ScurkSpriteIds.VIEW_COUNT:
+		picker._select_view(view)
+		assert(picker._shown_source_ids() == ids.slice(0, 3))
+	remap.button_pressed = true
+	picker.source_list.select(0)
+	picker.source_list.item_selected.emit(0)
+	assert(picker.working_list.item_count == 3)
+	remap.button_pressed = false
+	var editor_copy := Callable(editor, "_copy_pick_objects")
+	var requests: Array[PackedInt32Array] = []
+	var capture := func(_source: ScurkMif, selected: PackedInt32Array, _description: String, _destinations: PackedInt32Array) -> void:
+		requests.append(selected)
+	picker.copy_requested.disconnect(editor_copy)
+	picker.copy_requested.connect(capture)
+	picker._copy_all_confirmed()
+	assert(requests == [ids.slice(0, 3)])
+	picker.copy_requested.disconnect(capture)
+	picker.copy_requested.connect(editor_copy)
+	var original := working.to_bytes().bytes
+	var copied := ScurkPickCopy.copy_objects(working, encoded_source, ids.slice(0, 3), assets.large_sprites, assets.small_medium_sprites)
+	assert(copied.ok)
+	picker.copy_completed(copied)
+	assert(picker.source_list.item_count == 0 and picker.working_list.item_count == 0)
+	assert(picker.copy_selected_button.disabled and picker.copy_all_button.disabled)
+	assert(picker.preview_before.texture == null and picker.preview_after.texture == null)
+	var restored := ScurkMif.new()
+	assert(restored.parse(original))
+	picker.open_with_working(restored, "")
+	assert(picker._shown_source_ids() == ids.slice(0, 3))
+	filter.button_pressed = false
+	assert(picker.source_list.item_count == ids.size() and picker.working_list.item_count == ids.size())
+	picker.request_close()
+
+
+func _test_pick_copy_animation(editor: ScurkEditorControl, assets: OriginalGameAssets) -> void:
+	var picker := editor.pick_copy_control
+	var working := ScurkMif.from_archives([assets.large_sprites, assets.small_medium_sprites])
+	var source := ScurkMif.from_archives([assets.large_sprites, assets.small_medium_sprites])
+	var large_id := ScurkPickCopy.group_large_ids(ScurkPickCopy.GROUP_RESIDENTIAL)[0]
+	for value in [source, working]:
+		for view in ScurkSpriteIds.VIEW_COUNT:
+			assert(value.set_shape_indices(large_id - view * 500, 2, 2, PackedInt32Array([171, 224, 10, -1])).ok)
+	var source_bytes := source.to_bytes().bytes
+	var working_bytes := working.to_bytes().bytes
+	picker.source_set = source
+	picker.source_icon_cache.clear()
+	picker._select_group(ScurkPickCopy.GROUP_RESIDENTIAL)
+	picker.open_with_working(working, "")
+	picker.source_list.select(0)
+	picker.source_list.multi_selected.emit(0, true)
+	editor._set_cycle_colors(false)
+	for view in ScurkSpriteIds.VIEW_COUNT:
+		picker._select_view(view)
+		picker.set_cycle_tick(0)
+		var icons: Array[ScurkPickCopyControl.ObjectIcon] = [
+			picker.working_icon_cache["%d:%d:false" % [view, large_id]],
+			picker.source_icon_cache["%d:%d:false" % [view, large_id]],
+			picker.source_icon_cache["%d:%d:true" % [view, large_id]],
+			picker.working_icon_cache["%d:%d:true" % [view, large_id]],
+		]
+		assert(icons[0].texture == picker.preview_before.texture and icons[1].texture == picker.preview_after.texture)
+		assert(icons[2].texture == picker.source_list.get_item_icon(0) and icons[3].texture == picker.working_list.get_item_icon(0))
+		editor.pixel_canvas.palette_cycle_ticks = 31
+		editor._sync_palette_cycle()
+		var mapping := assets.palette.scurk_animation_index_map(31)
+		# The headless texture driver retains the initial upload. Check the updated image data.
+		for icon in icons:
+			var animated := icon.image
+			assert(animated.get_pixel(0, 0).is_equal_approx(assets.palette.color(mapping[171])))
+			assert(animated.get_pixel(1, 0).is_equal_approx(assets.palette.color(mapping[224])))
+			assert(animated.get_pixel(0, 1).is_equal_approx(assets.palette.color(10)))
+			assert(animated.get_pixel(1, 1).a == 0.0)
+		picker.set_cycle_tick(0)
+		for icon in icons:
+			assert(icon.image.get_pixel(0, 0).is_equal_approx(assets.palette.color(171)))
+	assert(source.to_bytes().bytes == source_bytes and working.to_bytes().bytes == working_bytes)
+	editor._set_cycle_colors(true)
+	picker.request_close()
+
+
 func _test_pick_copy_destination(editor: ScurkEditorControl, assets: OriginalGameAssets) -> void:
 	var picker := editor.pick_copy_control
-	var checkbox := picker.get_node("Content/CopyMode/AllowDestination") as CheckBox
+	var checkbox := picker.get_node("Content/Controls/AllowDestination") as CheckBox
 	var destination_group := picker.get_node("Content/CopyMode/DestinationGroup") as OptionButton
 	assert(not checkbox.button_pressed)
 	var original: PackedByteArray = editor.tile_set.to_bytes().bytes
@@ -315,11 +424,31 @@ func _test_pick_copy_destination(editor: ScurkEditorControl, assets: OriginalGam
 	picker.group_selector.item_selected.emit(ScurkPickCopy.GROUP_INDUSTRIAL)
 	destination_group.select(ScurkPickCopy.GROUP_RESIDENTIAL)
 	destination_group.item_selected.emit(ScurkPickCopy.GROUP_RESIDENTIAL)
+	assert(picker.working_set == editor.tile_set)
+	assert(picker.working_list.item_count == 0)
 	picker.source_list.select(0)
 	picker.source_list.item_selected.emit(0)
 	assert(picker.copy_selected_button.disabled)
-	picker.working_list.select(4) # A 2x2 destination rejects this 3x3 source.
-	picker.working_list.item_selected.emit(4)
+	assert(picker.working_list.item_count == 4)
+	for index in picker.working_list.item_count:
+		assert(ScurkPickCopy.footprint_size(int(picker.working_list.get_item_metadata(index))) == 3)
+	picker.working_list.select(0)
+	picker.working_list.item_selected.emit(0)
+	# Changing the source footprint hides incompatible destinations and clears their selection.
+	picker.source_list.select(1)
+	picker.source_list.item_selected.emit(1)
+	assert(picker.working_list.item_count == 8 and picker.working_list.selected_large_ids().is_empty())
+	assert(picker.preview_before.texture == null)
+	for index in picker.working_list.item_count:
+		assert(ScurkPickCopy.footprint_size(int(picker.working_list.get_item_metadata(index))) == 2)
+	picker.source_list.select(0)
+	picker.source_list.item_selected.emit(0)
+	destination_group.select(ScurkPickCopy.GROUP_POWER)
+	destination_group.item_selected.emit(ScurkPickCopy.GROUP_POWER)
+	assert(picker.working_list.item_count == 0 and picker.copy_selected_button.disabled)
+	destination_group.select(ScurkPickCopy.GROUP_RESIDENTIAL)
+	destination_group.item_selected.emit(ScurkPickCopy.GROUP_RESIDENTIAL)
+	assert(picker.working_list.item_count == 4)
 	assert(picker.copy_selected_button.disabled)
 	picker._request_copy_selected()
 	assert(editor.tile_set.to_bytes().bytes == original)
@@ -343,7 +472,9 @@ func _test_pick_copy_destination(editor: ScurkEditorControl, assets: OriginalGam
 	source_scroll.value = 0
 	var drag := ScurkObjectList.CopyObjectsDrag.new(picker.source_list.get_instance_id(), PackedInt32Array([source_id]))
 	assert(picker.working_list._can_drop_data(picker.working_list.get_item_rect(0).get_center(), drag))
-	assert(not picker.working_list._can_drop_data(picker.working_list.get_item_rect(4).get_center(), drag))
+	var incompatible_drag := ScurkObjectList.CopyObjectsDrag.new(picker.source_list.get_instance_id(),
+		PackedInt32Array([1000 + BuildingTileIds.CHEMICAL_PROCESSING_2X2]))
+	assert(not picker.working_list._can_drop_data(picker.working_list.get_item_rect(0).get_center(), incompatible_drag))
 	assert(not picker.working_list._can_drop_data(Vector2(-1, -1), drag))
 	# Keep the source's editable layers while replacing the destination's layers.
 	editor._select_object(source_id)

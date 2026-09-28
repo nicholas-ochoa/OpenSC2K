@@ -2,7 +2,6 @@ class_name ScurkPickCopyControl
 extends PanelContainer
 
 signal close_requested
-signal change_working_requested
 signal copy_requested(
 	source: ScurkMif, large_ids: PackedInt32Array, description: String, destination_ids: PackedInt32Array
 )
@@ -14,6 +13,7 @@ const VIEW_SMALL := ScurkSpriteIds.View.SMALL
 const THUMBNAIL_SIZE := 88
 
 var palette: Sc2Palette
+var palette_cycle_ticks := 0
 var base_large: Sc2SpriteArchive
 var base_small_medium: Sc2SpriteArchive
 var reference_directory := ""
@@ -25,16 +25,15 @@ var current_group := ScurkPickCopy.GROUP_RESIDENTIAL
 var current_view := VIEW_LARGE
 var source_icon_cache := {}
 var working_icon_cache := {}
+var difference_cache := {}
 var working_index_by_id := {}
 var group_selector: OptionButton
 var view_buttons: Array[Button] = []
 var source_name_label: Label
-var working_name_label: Label
 var source_list: ScurkObjectList
 var working_list: ScurkObjectList
 var copy_selected_button: Button
 var copy_all_button: Button
-var status_label: Label
 var source_dialog: FileDialog
 var confirm_all_dialog: ConfirmationDialog
 var preview_large_id := -1
@@ -50,12 +49,12 @@ func _ready() -> void:
 	group_selector = get_node("Content/Controls/GroupSelector")
 	view_buttons.assign([get_node("Content/Controls/Large"), get_node("Content/Controls/Medium"), get_node("Content/Controls/Small")])
 	source_name_label = get_node("Content/Sets/SourceObjectSetRow/SourceNameLabel")
-	working_name_label = get_node("Content/Sets/WorkingObjectSetRow/WorkingNameLabel")
 	source_list = get_node("Content/Sets/SourceObjectSetRow/SourceList")
 	working_list = get_node("Content/Sets/WorkingObjectSetRow/WorkingList")
 	source_list.item_selected.connect(_source_selection_changed.bind(true))
 	working_list.item_selected.connect(_working_selection_changed.bind(true))
-	$Content/CopyMode/AllowDestination.toggled.connect(_destination_mode_changed)
+	$Content/Controls/AllowDestination.toggled.connect(_destination_mode_changed)
+	$Content/CopyMode/DifferencesOnly.toggled.connect(func(_enabled: bool) -> void: _refresh_lists())
 	var destination_group := $Content/CopyMode/DestinationGroup as OptionButton
 	for group in PickCopy.GROUP_NAMES.size():
 		destination_group.add_item(PickCopy.GROUP_NAMES[group], group)
@@ -64,7 +63,6 @@ func _ready() -> void:
 	working_list.get_v_scroll_bar().value_changed.connect(_sync_scroll.bind(source_list))
 	copy_selected_button = get_node("Content/Actions/CopySelectedButton")
 	copy_all_button = get_node("Content/Actions/CopyAllButton")
-	status_label = get_node("Content/StatusLabel")
 	source_dialog = get_node("SourceDialog")
 	confirm_all_dialog = get_node("CopyConfirmation")
 	preview_before = $Content/Preview/Images/Before/Artwork
@@ -89,7 +87,6 @@ func _ready() -> void:
 	get_node("SourceDialog").file_selected.connect(_source_selected)
 	get_node("CopyConfirmation").confirmed.connect(_copy_all_confirmed)
 	$Content/TitleBar.title_label.text = "SCURK Pick & Copy"
-	$Content/Controls/ChangeWorking.pressed.connect(change_working_requested.emit)
 	source_list.drag_source = true
 	working_list.drop_target = true
 	source_dialog.theme = AppUiTheme.file_dialog()
@@ -104,7 +101,7 @@ func _sync_scroll(scroll_value: float, target: ScurkObjectList) -> void:
 
 
 func _remapping() -> bool:
-	return $Content/CopyMode/AllowDestination.button_pressed
+	return $Content/Controls/AllowDestination.button_pressed
 
 
 func _destination_mode_changed(enabled: bool) -> void:
@@ -118,20 +115,13 @@ func _destination_mode_changed(enabled: bool) -> void:
 		for index in source_list.item_count:
 			if int(source_list.get_item_metadata(index)) == selected[0]:
 				source_list.select(index)
+	$Content/CopyMode/DestinationGroupDivider.visible = enabled
 	$Content/CopyMode/DestinationLabel.visible = enabled
 	$Content/CopyMode/DestinationGroup.visible = enabled
 	$Content/CopyMode/DestinationGroup.select(current_group)
 	$Content/Controls/ObjectGroupLabel.text = "Source group" if enabled else "Object Group"
 	$Content/Sets/WorkingObjectSetRow/WorkingObjectSetLabel.text = (
 		"2. Working — select the destination" if enabled else "2. Working — matching objects to replace"
-	)
-	$Content/Instructions.text = (
-		"Choose one source and one destination with the same footprint. All three sizes are copied; names and behavior stay unchanged."
-		if enabled else "Copy source graphics → replace matching working objects. Every copy includes Large, Medium, and Small."
-	)
-	$Content/Actions/CopyHint.text = (
-		"Select a destination or drag onto it. Lists scroll separately in this mode."
-		if enabled else "Ctrl/Cmd-click or Shift-click selects more. Drag or double-click to copy into matching slots."
 	)
 	copy_all_button.visible = not enabled
 	copy_selected_button.tooltip_text = (
@@ -239,28 +229,73 @@ func _refresh_lists() -> void:
 		return
 
 	var selected := source_list.selected_large_ids()
-	var destinations := working_list.selected_large_ids()
 	source_list.clear()
-	working_list.clear()
-	working_index_by_id.clear()
+	difference_cache.clear()
 	source_name_label.text = source_path.get_file() if source_set != null else "No source selected"
+	var working_name_label := $Content/Sets/WorkingObjectSetRow/WorkingNameLabel as Label
 	working_name_label.text = working_path.get_file() if not working_path.is_empty() else "Unsaved working set"
 	var large_ids := ScurkPickCopy.group_large_ids(current_group)
 
 	for large_id in large_ids:
+		if not _passes_difference_filter(large_id):
+			continue
 		var source_index := _add_object_item(source_list, source_set, large_id, true)
 		if large_id in selected:
 			source_list.select(source_index, false)
 
+	_refresh_working_list()
+	_sync_working_selection()
+	_update_buttons()
+
+
+func _refresh_working_list() -> void:
+	var selected := source_list.selected_large_ids()
+	var destinations := working_list.selected_large_ids()
+	working_list.clear()
+	working_index_by_id.clear()
 	var working_group: int = $Content/CopyMode/DestinationGroup.get_selected_id() if _remapping() else current_group
 	for large_id in PickCopy.group_large_ids(working_group):
+		if not _passes_difference_filter(large_id):
+			continue
+		if _remapping() and (source_set == null or selected.size() != 1 or not PickCopy.can_copy_to(selected[0], large_id)):
+			continue
 		var working_index := _add_object_item(working_list, working_set, large_id, false)
 		working_index_by_id[large_id] = working_index
 		if _remapping() and large_id in destinations:
 			working_list.select(working_index, false)
 
-	_sync_working_selection()
-	_update_buttons()
+
+func _passes_difference_filter(large_id: int) -> bool:
+	if not $Content/CopyMode/DifferencesOnly.button_pressed:
+		return true
+	if source_set == null or working_set == null:
+		return false
+	if not difference_cache.has(large_id):
+		difference_cache[large_id] = _object_differs(large_id)
+	return difference_cache[large_id]
+
+
+func _object_differs(large_id: int) -> bool:
+	for view in ScurkSpriteIds.VIEW_COUNT:
+		var sprite_id := ScurkEditorRules.view_sprite_id(large_id, view)
+		var source := PickCopy.resolved_entry(source_set, sprite_id, base_large, base_small_medium)
+		var working := PickCopy.resolved_entry(working_set, sprite_id, base_large, base_small_medium)
+		if source == working:
+			continue
+		if source == null or working == null or source.width != working.width or source.height != working.height:
+			return true
+		var source_pixels := source.decode_indices()
+		var working_pixels := working.decode_indices()
+		if not source_pixels.ok or not working_pixels.ok or source_pixels.pixels != working_pixels.pixels:
+			return true
+	return false
+
+
+func _shown_source_ids() -> PackedInt32Array:
+	var ids := PackedInt32Array()
+	for index in source_list.item_count:
+		ids.append(int(source_list.get_item_metadata(index)))
+	return ids
 
 
 func _add_object_item(
@@ -290,7 +325,9 @@ func _object_icon(value: ScurkMif, large_id: int, source: bool, thumbnail := tru
 	var key := "%d:%d:%s" % [current_view, large_id, thumbnail]
 
 	if cache.has(key):
-		return cache[key]
+		var cached: ObjectIcon = cache[key]
+		cached.set_cycle(palette, palette.scurk_animation_index_map(palette_cycle_ticks))
+		return cached.texture
 
 	var sprite_id := ScurkEditorRules.view_sprite_id(large_id, current_view)
 	var entry := ScurkPickCopy.resolved_entry(
@@ -300,7 +337,7 @@ func _object_icon(value: ScurkMif, large_id: int, source: bool, thumbnail := tru
 	if entry == null:
 		return null
 
-	var rendered := entry.create_image(palette)
+	var rendered := entry.create_image(Sc2Palette.index_encoding())
 
 	if not rendered.ok:
 		return null
@@ -321,10 +358,24 @@ func _object_icon(value: ScurkMif, large_id: int, source: bool, thumbnail := tru
 			Image.INTERPOLATE_NEAREST
 		)
 
-	var texture := PixelArtTexture.wrap(ImageTexture.create_from_image(image))
-	cache[key] = texture
+	var icon := ObjectIcon.new(image, palette)
+	icon.set_cycle(palette, palette.scurk_animation_index_map(palette_cycle_ticks))
+	cache[key] = icon
 
-	return texture
+	return icon.texture
+
+
+func set_cycle_tick(tick: int) -> void:
+	var previous := palette_cycle_ticks
+	palette_cycle_ticks = tick
+	if not is_visible_in_tree() or palette == null or not palette.is_valid():
+		return
+	var mapping := palette.scurk_animation_index_map(tick)
+	if mapping == palette.scurk_animation_index_map(previous):
+		return
+	for cache in [source_icon_cache, working_icon_cache]:
+		for icon: ObjectIcon in cache.values():
+			icon.set_cycle(palette, mapping)
 
 
 func _select_group(index: int) -> void:
@@ -344,6 +395,8 @@ func _select_view(view: int) -> void:
 func _source_selection_changed(index: int, selected: bool) -> void:
 	if selected:
 		preview_large_id = int(source_list.get_item_metadata(index))
+	if _remapping():
+		_refresh_working_list()
 	_sync_working_selection()
 	_update_buttons()
 
@@ -412,6 +465,9 @@ func _refresh_destination_preview() -> void:
 	var source_id := selected[0]
 	preview_after.texture = _object_icon(source_set, source_id, true, false)
 	if destinations.size() != 1:
+		if working_list.item_count == 0:
+			preview_label.text = "No compatible tiles in this destination group. Choose another group."
+			return
 		if PickCopy.footprint_size(source_id) == 0:
 			preview_label.text = "This sprite has no map footprint. Choose the same tile ID as its destination."
 			return
@@ -460,7 +516,7 @@ func _update_buttons() -> void:
 			copy_selected_button.text = "Copy to Destination →"
 
 	if copy_all_button != null:
-		copy_all_button.disabled = not sets_ready
+		copy_all_button.disabled = not sets_ready or source_list.item_count == 0
 		copy_all_button.text = "Copy All in %s…" % PickCopy.GROUP_NAMES[current_group]
 
 
@@ -501,10 +557,13 @@ func _request_copy_all() -> void:
 	if source_set == null or _remapping():
 		return
 
-	var object_count := ScurkPickCopy.group_large_ids(current_group).size()
+	var object_count := source_list.item_count
+	if object_count == 0:
+		return
+	var working_name_label := $Content/Sets/WorkingObjectSetRow/WorkingNameLabel as Label
 	confirm_all_dialog.dialog_text = (
 		("Copy graphics from %s into %s?\n\n"
-		+ "Replace all %d matching objects in %s, including Large, Medium, and Small.\nYou can undo this change.")
+		+ "Replace the %d shown objects in %s, including Large, Medium, and Small.\nYou can undo this change.")
 		% [source_name_label.text, working_name_label.text, object_count, ScurkPickCopy.GROUP_NAMES[current_group]]
 	)
 	confirm_all_dialog.popup_centered()
@@ -516,7 +575,7 @@ func _copy_all_confirmed() -> void:
 
 	copy_requested.emit(
 		source_set,
-		ScurkPickCopy.group_large_ids(current_group),
+		_shown_source_ids(),
 		"Copy All %s" % ScurkPickCopy.GROUP_NAMES[current_group],
 		PackedInt32Array()
 	)
@@ -530,6 +589,7 @@ func _source_selected(path: String) -> void:
 
 
 func _set_status(message: String, error := false) -> void:
+	var status_label := $Content/StatusLabel as Label
 	if status_label == null:
 		return
 
@@ -551,3 +611,40 @@ func _failure(message: String) -> ScurkMif.Result:
 	result.error = message
 
 	return result
+
+
+class ObjectIcon:
+	extends RefCounted
+
+	var texture: Texture2D
+	var image: Image
+	var rgba: PackedByteArray
+	var cycle_offsets := PackedInt32Array()
+	var cycle_indices := PackedInt32Array()
+	var cycle_map := PackedInt32Array()
+
+
+	func _init(index_image: Image, value_palette: Sc2Palette) -> void:
+		rgba = index_image.get_data()
+		for pixel in index_image.get_width() * index_image.get_height():
+			var offset := pixel * 4
+			if rgba[offset + 3] == 0:
+				continue
+			var index := int(rgba[offset])
+			rgba.encode_u32(offset, value_palette.color(index).to_abgr32())
+			if ((index >= Sc2Palette.FAST_CYCLE_START and index < Sc2Palette.FAST_CYCLE_START + Sc2Palette.FAST_CYCLE_TABLE.size())
+					or (index >= Sc2Palette.SLOW_CYCLE_START and index < Sc2Palette.SLOW_CYCLE_START + Sc2Palette.SLOW_CYCLE_TABLE.size())):
+				cycle_offsets.append(offset)
+				cycle_indices.append(index)
+		image = Image.create_from_data(index_image.get_width(), index_image.get_height(), false, Image.FORMAT_RGBA8, rgba)
+		texture = PixelArtTexture.wrap(ImageTexture.create_from_image(image))
+
+
+	func set_cycle(value_palette: Sc2Palette, mapping: PackedInt32Array) -> void:
+		if cycle_offsets.is_empty() or cycle_map == mapping:
+			return
+		cycle_map = mapping
+		for pixel in cycle_offsets.size():
+			rgba.encode_u32(cycle_offsets[pixel], value_palette.color(mapping[cycle_indices[pixel]]).to_abgr32())
+		image.set_data(image.get_width(), image.get_height(), false, Image.FORMAT_RGBA8, rgba)
+		(PixelArtTexture.unwrap(texture) as ImageTexture).update(image)
