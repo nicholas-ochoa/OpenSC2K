@@ -3,6 +3,7 @@ extends Control
 
 @warning_ignore_start("integer_division")
 
+signal button_clicked
 signal index_selected(index: int)
 signal index_hovered(index: int)
 signal context_menu_requested(index: int, position: Vector2)
@@ -46,6 +47,7 @@ func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
 		var index := index_at(event.position)
 		if index >= 0:
+			button_clicked.emit()
 			context_menu_requested.emit(index, event.position)
 			accept_event()
 		return
@@ -53,6 +55,7 @@ func _gui_input(event: InputEvent) -> void:
 		var index := index_at(event.position)
 		if index < 0:
 			return
+		button_clicked.emit()
 		if event.shift_pressed:
 			toggle_ramp_index(index)
 		elif event.ctrl_pressed or event.meta_pressed:

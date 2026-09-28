@@ -44,6 +44,7 @@ func _run() -> void:
 	editor.tool_buttons[0].pressed.emit()
 	assert(not _has_sound(main, 505))
 	main.document_state.city.set_sound_enabled(true)
+	await _check_scurk_windows(main)
 	main.preferences.toolbar_sounds = false
 
 	# Terrain use still plays the tractor with toolbar feedback disabled.
@@ -95,6 +96,26 @@ func _run() -> void:
 	await process_frame
 	print("PASS: city, Settings and SCURK interface feedback, Center WAV routing, independent terrain feedback, city sound mute")
 	quit()
+
+
+func _check_scurk_windows(main: Node) -> void:
+	main.scurk_workspace.ensure_scurk_place_print()
+	main.scurk_output._ensure_scurk_print()
+	var actions: Array[Callable] = [
+		main.scurk_place_print.get_node("Panel/Margin/Content/HistoryActions/Close").pressed.emit,
+		main.scurk_print.buildings_check.pressed.emit,
+	]
+	for action in actions:
+		for enabled in [true, false]:
+			main.preferences.toolbar_sounds = enabled
+			action.call()
+			assert(_sound_count(main, 505) == int(enabled), "SCURK windows must honor interface sound settings")
+			await _clear(main)
+		main.preferences.toolbar_sounds = true
+		main.document_state.city.set_sound_enabled(false)
+		action.call()
+		assert(not _has_sound(main, 505), "City sound mute also applies to SCURK windows")
+		main.document_state.city.set_sound_enabled(true)
 
 
 func _check_settings_feedback(main: Node) -> void:

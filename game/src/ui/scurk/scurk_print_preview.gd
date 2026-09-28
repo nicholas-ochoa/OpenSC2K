@@ -1,6 +1,7 @@
 class_name ScurkPrintPreview
 extends Control
 
+signal button_clicked
 signal selection_changed
 
 const Output = preload("res://src/assets/scurk_city_output.gd")
@@ -87,6 +88,7 @@ func _gui_input(event: InputEvent) -> void:
 	selected_pages[page_index] = 0 if selected_pages[page_index] != 0 else 1
 	queue_redraw()
 	selection_changed.emit()
+	button_clicked.emit()
 	accept_event()
 
 

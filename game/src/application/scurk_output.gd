@@ -15,6 +15,7 @@ func _ensure_scurk_print() -> void:
 		return
 
 	app.scurk_print = app.main_overlays.ensure_scurk_print()
+	app.scurk_print.button_clicked.connect(app.interface.play_toolbar_click)
 	app.scurk_print.preview_options_changed.connect(_refresh_scurk_print_preview)
 	app.scurk_print.save_pdf_requested.connect(_open_scurk_print_pdf_dialog)
 	app.desktop_presentation.print_dialog = app.scurk_print

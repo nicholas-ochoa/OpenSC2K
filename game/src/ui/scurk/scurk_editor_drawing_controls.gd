@@ -1,7 +1,6 @@
 class_name ScurkEditorDrawingControls
 extends PanelContainer
 
-signal button_clicked
 signal view_selected(view: int)
 signal zoom_fit_requested
 signal zoom_out_requested
@@ -118,7 +117,6 @@ func build() -> void:
 	for field in ["Spacing", "OffsetX", "OffsetY"]:
 		get_node("Margin/Scroll/Column/Isometric/GuideFields/" + field).value_changed.connect(func(_value: float) -> void:
 			isometric_guides_changed.emit())
-	_watch_buttons(self)
 	theme_changed.connect(_refresh_icon_colors)
 	_refresh_icon_colors()
 
@@ -150,11 +148,3 @@ func update_tool_controls(tool: int, brush_size := 1, paste_active := false, pas
 		ScurkPixelCanvas.TOOL_PENCIL, ScurkPixelCanvas.TOOL_ERASER, ScurkPixelCanvas.TOOL_LINE,
 		ScurkPixelCanvas.TOOL_SHADE, ScurkPixelCanvas.TOOL_STAMP,
 	]
-
-
-func _watch_buttons(node: Node) -> void:
-	if node is BaseButton:
-		node.pressed.connect(button_clicked.emit)
-
-	for child in node.get_children():
-		_watch_buttons(child)

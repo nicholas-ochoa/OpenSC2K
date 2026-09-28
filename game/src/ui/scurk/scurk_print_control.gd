@@ -1,6 +1,8 @@
 class_name ScurkPrintControl
 extends Window
 
+signal button_clicked
+
 signal preview_options_changed(options: ScurkCityOutput.Options)
 signal save_pdf_requested(options: ScurkCityOutput.Options)
 
@@ -61,6 +63,7 @@ func _ready() -> void:
 	get_node("Panel/Margin/Content/Actions/ClearAllButton").pressed.connect(get_node("Panel/Margin/Content/Preview").select_all.bind(false))
 	get_node("Panel/Margin/Content/Actions/SavePdfButton").pressed.connect(_request_pdf)
 	get_node("Panel/Margin/Content/Actions/Close").pressed.connect(hide)
+	ScurkInterfaceFeedback.bind(self, button_clicked.emit)
 
 
 func configure(

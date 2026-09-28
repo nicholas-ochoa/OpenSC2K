@@ -28,6 +28,7 @@ func ensure_scurk_place_print() -> void:
 		return
 
 	app.scurk_place_print = app.main_overlays.ensure_scurk_place_print()
+	app.scurk_place_print.button_clicked.connect(app.interface.play_toolbar_click)
 	app.scurk_place_print.tile_selected.connect(_select_scurk_place_tile)
 	app.scurk_place_print.edit_tool_selected.connect(_select_scurk_edit_tool)
 	app.scurk_place_print.export_bmp_requested.connect(app.scurk_output._open_scurk_city_export)

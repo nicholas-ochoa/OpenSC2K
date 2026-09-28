@@ -1,6 +1,8 @@
 class_name ScurkPlacePrintControl
 extends Window
 
+signal button_clicked
+
 signal tile_selected(tile_id: int)
 signal edit_tool_selected(group_index: int, subtool_index: int, zone_type: int)
 signal export_bmp_requested
@@ -113,6 +115,7 @@ func _ready() -> void:
 
 	tool_list.select(selected_edit_index)
 	_sync_mode_controls()
+	ScurkInterfaceFeedback.bind(self, button_clicked.emit)
 
 
 func configure(
