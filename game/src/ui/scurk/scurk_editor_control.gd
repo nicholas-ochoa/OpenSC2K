@@ -837,7 +837,7 @@ func _bind_interface() -> void:
 	source_label = get_node("Panel/Content/StatusBar/Row/File")
 	pointer_status_label = get_node("Panel/Content/StatusBar/Row/Pointer")
 
-	object_panel = get_node("Panel/Content/Body/Studio/Margin/Column/Objects")
+	object_panel = get_node("Panel/Content/Body/Editor/Canvas/Row/PixelArea/Objects")
 	object_panel.build()
 	object_panel.object_selected.connect(_on_object_selected)
 	object_panel.name_submitted.connect(_commit_name)

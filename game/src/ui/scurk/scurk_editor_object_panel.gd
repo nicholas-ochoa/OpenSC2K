@@ -1,5 +1,5 @@
 class_name ScurkEditorObjectPanel
-extends VBoxContainer
+extends HBoxContainer
 
 signal object_selected(index: int)
 signal name_submitted
@@ -27,6 +27,7 @@ func build() -> void:
 	name_button = name_dialog.get_ok_button()
 	revert_name_button = $NameDialog/Content/Revert
 	object_list.item_selected.connect(object_selected.emit)
+	$Browse.pressed.connect(object_list.show_choices)
 	name_dialog.confirmed.connect(set_name_requested.emit)
 	name_edit.text_submitted.connect(func(_text: String) -> void:
 		name_submitted.emit()

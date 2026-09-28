@@ -4,11 +4,16 @@
 
 [ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_tile_selector.tscn" id="tiles"]
 
-[node name="Objects" type="VBoxContainer"]
+[node name="Objects" type="HBoxContainer"]
 script = ExtResource("script")
 
 [node name="Tiles" parent="." instance=ExtResource("tiles")]
 layout_mode = 2
+
+[node name="Browse" type="Button" parent="."]
+layout_mode = 2
+text = "Browse"
+tooltip_text = "Browse tiles"
 
 [node name="NameDialog" type="ConfirmationDialog" parent="."]
 title = "Tile name"

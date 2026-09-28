@@ -37,6 +37,8 @@ func _input(event: InputEvent) -> void:
 	if pixel_canvas == null or not is_visible_in_tree() or not (event is InputEventMouse or event is InputEventPanGesture):
 		return
 	var pointer_position: Vector2 = event.position
+	if $Row/PixelArea/Objects.get_global_rect().has_point(pointer_position):
+		return
 	if (not pixel_canvas.panning
 			and (not pixel_scroll.get_global_rect().has_point(pointer_position)
 				or pixel_canvas.get_global_rect().has_point(pointer_position))):
@@ -65,8 +67,8 @@ func build() -> void:
 	if pixel_canvas != null:
 		return
 
-	pixel_scroll = $Row/PixelScroll
-	pixel_canvas = $Row/PixelScroll/Center/PixelCanvas
+	pixel_scroll = $Row/PixelArea/PixelScroll
+	pixel_canvas = $Row/PixelArea/PixelScroll/Center/PixelCanvas
 	previews_panel = $Row/Previews
 	clip_region_check = $"Footer/Row/Clipping/Clip"
 	clip_region_check.toggled.connect(clip_region_changed.emit)

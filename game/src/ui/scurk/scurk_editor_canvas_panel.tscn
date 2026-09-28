@@ -4,6 +4,8 @@
 [ext_resource type="Script" path="res://src/view/scurk_pixel_canvas.gd" id="pixels"]
 [ext_resource type="Script" path="res://src/view/scurk_view_preview.gd" id="preview"]
 
+[ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_editor_object_panel.tscn" id="objects"]
+
 [node name="Canvas" type="VBoxContainer"]
 script = ExtResource("script")
 
@@ -11,19 +13,32 @@ script = ExtResource("script")
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="PixelScroll" type="ScrollContainer" parent="Row"]
+[node name="PixelArea" type="Control" parent="Row"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="Center" type="CenterContainer" parent="Row/PixelScroll"]
+[node name="PixelScroll" type="ScrollContainer" parent="Row/PixelArea"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Center" type="CenterContainer" parent="Row/PixelArea/PixelScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="PixelCanvas" type="Control" parent="Row/PixelScroll/Center"]
+[node name="PixelCanvas" type="Control" parent="Row/PixelArea/PixelScroll/Center"]
 layout_mode = 2
 script = ExtResource("pixels")
+
+[node name="Objects" parent="Row/PixelArea" instance=ExtResource("objects")]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 402.0
+offset_bottom = 48.0
 
 [node name="Previews" type="PanelContainer" parent="Row"]
 layout_mode = 2

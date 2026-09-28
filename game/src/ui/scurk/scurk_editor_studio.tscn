@@ -7,7 +7,6 @@
 [ext_resource type="Script" path="res://src/view/scurk_context_preview.gd" id="context"]
 
 [ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_editor_palette_panel.tscn" id="palette"]
-[ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_editor_object_panel.tscn" id="objects"]
 [ext_resource type="Shader" path="res://src/ui/shared/frosted_panel.gdshader" id="glass"]
 [ext_resource type="Texture2D" path="res://src/ui/scurk/icons/layer_add.svg" id="layer_add"]
 [ext_resource type="Texture2D" path="res://src/ui/scurk/icons/layer_delete.svg" id="layer_delete"]
@@ -34,14 +33,6 @@ theme_override_constants/margin_bottom = 6
 
 [node name="Column" type="VBoxContainer" parent="Margin"]
 layout_mode = 2
-
-[node name="Objects" parent="Margin/Column" instance=ExtResource("objects")]
-layout_mode = 2
-
-[node name="TabSpacing" type="Control" parent="Margin/Column"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 8)
-mouse_filter = 2
 
 [node name="Tabs" type="TabContainer" parent="Margin/Column"]
 layout_mode = 2
