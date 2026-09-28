@@ -22,7 +22,7 @@ func open_city_dialog() -> void:
 	if not app.asset_state.assets_ready:
 		return
 
-	var city_directory := ProjectSettings.globalize_path("user://cities")
+	var city_directory := AppPaths.path("cities")
 
 	if DirAccess.dir_exists_absolute(city_directory):
 		app.city_dialogs.city_open_dialog.current_dir = city_directory
@@ -36,7 +36,7 @@ func open_scenario_dialog() -> void:
 	if not app.asset_state.assets_ready:
 		return
 
-	var scenario_directory := ProjectSettings.globalize_path("user://scenarios")
+	var scenario_directory := AppPaths.path("scenarios")
 
 	if DirAccess.dir_exists_absolute(scenario_directory):
 		app.city_dialogs.city_open_dialog.current_dir = scenario_directory
@@ -152,7 +152,7 @@ func open_save_dialog() -> void:
 	if document_state.current_document == null:
 		return
 
-	var save_directory := ProjectSettings.globalize_path("user://cities")
+	var save_directory := AppPaths.path("cities")
 	DirAccess.make_dir_recursive_absolute(save_directory)
 	app.city_dialogs.city_save_dialog.current_dir = save_directory
 	var save_name := document_state.current_document.source_path.get_file().get_basename()

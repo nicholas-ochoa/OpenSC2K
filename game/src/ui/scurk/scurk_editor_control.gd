@@ -341,7 +341,7 @@ func _request_save() -> void:
 
 
 func _request_save_as() -> void:
-	var output_directory := ProjectSettings.globalize_path("user://tile_sets")
+	var output_directory := AppPaths.path("tile_sets")
 	DirAccess.make_dir_recursive_absolute(output_directory)
 	save_dialog.current_dir = output_directory
 	var proposed := source_path.get_file()
@@ -385,7 +385,7 @@ func _show_export_file_dialog() -> void:
 	if pixel_canvas == null or pixel_canvas.sprite_width <= 0:
 		return
 
-	var output_directory := ProjectSettings.globalize_path("user://scurk_exports")
+	var output_directory := AppPaths.path("scurk_exports")
 	DirAccess.make_dir_recursive_absolute(output_directory)
 	export_bmp_dialog.current_dir = output_directory
 	var view_name: String = ["LARGE", "MEDIUM", "SMALL"][pending_export_view]

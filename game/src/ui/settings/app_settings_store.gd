@@ -1,14 +1,17 @@
 class_name AppSettingsStore
 extends RefCounted
 
-const SETTINGS_PATH := "user://settings.cfg"
 const GRAPHICS_ZOOMS := [25, 50, 100, 200, 300, 400]
 const GRAPHICS_SIZES := ["Small", "Medium", "Large"]
 const DEFAULT_ZOOM_GRAPHICS := [0, 1, 2, 2, 2, 2]
 
 
+static func default_path() -> String:
+	return AppPaths.path("settings.cfg")
+
+
 static func load_values(
-	path := SETTINGS_PATH,
+	path := default_path(),
 	default_music_volume := 0.8,
 	default_effects_volume := 0.8,
 	default_fullscreen := false
@@ -108,7 +111,7 @@ static func graphics_size_at_zoom(sizes: Array[int], zoom_percent: int, overview
 
 static func save_values(
 	music_volume: float, effects_volume: float, fullscreen: bool,
-	path := SETTINGS_PATH, options: SaveOptions = null,
+	path := default_path(), options: SaveOptions = null,
 ) -> Error:
 	if options == null:
 		options = SaveOptions.new()
@@ -176,7 +179,7 @@ static func save_values(
 
 
 static func save_update_state(
-	last_check: int, skipped_version: String, checked_at: int, error: String, path := SETTINGS_PATH
+	last_check: int, skipped_version: String, checked_at: int, error: String, path := default_path()
 ) -> Error:
 	var config := ConfigFile.new()
 

@@ -32,7 +32,7 @@ func _open_scurk_city_export() -> void:
 
 		return
 
-	var output_directory := ProjectSettings.globalize_path("user://scurk_exports")
+	var output_directory := AppPaths.path("scurk_exports")
 	DirAccess.make_dir_recursive_absolute(output_directory)
 	app.scurk_city_export_dialog.current_dir = output_directory
 	var output_name := app.document_state.city.city_name().validate_filename()
@@ -119,7 +119,7 @@ func _open_scurk_print_pdf_dialog(options: ScurkCityOutput.Options) -> void:
 		return
 
 	app.scurk_state.pending_print_options = options.copy()
-	var output_directory := ProjectSettings.globalize_path("user://scurk_prints")
+	var output_directory := AppPaths.path("scurk_prints")
 	DirAccess.make_dir_recursive_absolute(output_directory)
 	app.scurk_print_pdf_dialog.current_dir = output_directory
 	var output_name := app.document_state.city.city_name().validate_filename()

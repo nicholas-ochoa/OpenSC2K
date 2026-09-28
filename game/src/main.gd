@@ -111,6 +111,18 @@ func _ready() -> void:
 	assets.initialize_runtime()
 	updates.check_on_startup()
 
+	if not AppPaths.error().is_empty():
+		_show_data_folder_error()
+
+
+func _show_data_folder_error() -> void:
+	var dialog := AcceptDialog.new()
+	dialog.title = "Portable data folder"
+	dialog.dialog_text = AppPaths.error()
+	dialog.exclusive = true
+	add_child(dialog)
+	dialog.popup_centered.call_deferred()
+
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST and is_inside_tree():

@@ -238,7 +238,7 @@ func request_save(save_as := false) -> void:
 	if not save_as and not project_path.is_empty():
 		save_project(project_path)
 		return
-	var directory := ProjectSettings.globalize_path("user://scurk/projects") if project_path.is_empty() else project_path.get_base_dir()
+	var directory := AppPaths.path("scurk/projects") if project_path.is_empty() else project_path.get_base_dir()
 	DirAccess.make_dir_recursive_absolute(directory)
 	$SaveProject.current_dir = directory
 	$SaveProject.current_file = "Untitled.scurk" if project_path.is_empty() else project_path.get_file()

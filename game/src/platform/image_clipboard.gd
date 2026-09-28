@@ -2,7 +2,7 @@ class_name ImageClipboard
 extends RefCounted
 
 const IndexedBitmap = preload("res://src/assets/indexed_bmp.gd")
-const TEMP_DIRECTORY := "user://clipboard"
+const TEMP_DIRECTORY := "clipboard"
 const TEMP_PNG_FILENAME := "scurk-copy.png"
 const TEMP_BMP_FILENAME := "scurk-copy.bmp"
 const TEMP_DIB_FILENAME := "scurk-copy.dib"
@@ -18,7 +18,7 @@ static func copy_indexed(
 		return Result.failure("Image clipboard output is not available in headless mode.")
 
 	var platform := OS.get_name()
-	var directory := ProjectSettings.globalize_path(TEMP_DIRECTORY)
+	var directory := AppPaths.path(TEMP_DIRECTORY)
 	var directory_error := DirAccess.make_dir_recursive_absolute(directory)
 
 	if directory_error != OK:
@@ -280,7 +280,7 @@ static func _copy_command(
 
 
 static func _paste_native_indexed(platform: String, palette: Sc2Palette) -> IndexedImageResult:
-	var directory := ProjectSettings.globalize_path(TEMP_DIRECTORY)
+	var directory := AppPaths.path(TEMP_DIRECTORY)
 	var directory_error := DirAccess.make_dir_recursive_absolute(directory)
 
 	if directory_error != OK:

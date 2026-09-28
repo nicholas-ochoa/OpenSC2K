@@ -218,7 +218,7 @@ func _show_reference_import_error(message: String) -> void:
 
 func _import_original_game(executable_path: String) -> void:
 	var install_result := OriginalPackImporter.import_executable(
-		executable_path, ProjectSettings.globalize_path("user://packs"), ProjectSettings.globalize_path("user://")
+		executable_path, AppPaths.path("packs"), AppPaths.root()
 	)
 
 	if not install_result.ok:

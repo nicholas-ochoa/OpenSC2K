@@ -8,7 +8,7 @@ var files: Dictionary = {}
 
 
 static func default_folder(kind: String) -> String:
-	return ProjectSettings.globalize_path("user://packs").path_join(kind)
+	return AppPaths.path("packs").path_join(kind)
 
 
 static func load_folder(folder: String, kind: String) -> MediaPack:

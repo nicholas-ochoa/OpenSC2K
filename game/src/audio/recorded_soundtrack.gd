@@ -59,7 +59,7 @@ static func load_track(paths: PackedStringArray) -> Result:
 
 static func _load_flac(path: String) -> AudioStreamWAV:
 	# decode off the main thread. cache 16-bit pcm, without changing the source
-	var cache_dir := ProjectSettings.globalize_path("user://soundtrack-cache")
+	var cache_dir := AppPaths.path("soundtrack-cache")
 
 	if DirAccess.make_dir_recursive_absolute(cache_dir) != OK:
 		return null

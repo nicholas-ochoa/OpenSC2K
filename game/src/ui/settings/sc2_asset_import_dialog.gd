@@ -4,7 +4,7 @@ extends Window
 signal packs_imported(result: Sc2MediaImportResult)
 signal dismissed
 
-var packs_root := "user://packs"
+var packs_root := AppPaths.path("packs")
 var source_edit: LineEdit
 var graphics_check: CheckBox
 var sound_check: CheckBox

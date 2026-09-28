@@ -1,9 +1,7 @@
 class_name FileDialogHistory
 extends Node
 
-const HISTORY_PATH := "user://file-dialog-history.cfg"
-
-var storage_path := HISTORY_PATH
+var storage_path := AppPaths.path("file-dialog-history.cfg")
 
 
 func _ready() -> void:

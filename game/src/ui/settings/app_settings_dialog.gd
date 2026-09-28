@@ -237,6 +237,7 @@ func _bind_pack_controls(kind: String, edit: LineEdit, label: Label, browse: But
 		picker.popup_centered_ratio(0.8))
 	pack_name_labels[kind] = label
 	pack_edits[kind] = edit
+	edit.placeholder_text = "Automatic (%s)" % MediaPack.default_folder(kind).path_join("pack.json")
 	edit.text_changed.connect(func(_text: String) -> void:
 		_refresh_pack_name(kind))
 

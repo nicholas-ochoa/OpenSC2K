@@ -10,8 +10,8 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var path := "user://gallery-test-%d.cfg" % OS.get_process_id()
-	var game_settings_existed := FileAccess.file_exists(AppSettingsStore.SETTINGS_PATH)
-	var game_settings := FileAccess.get_file_as_bytes(AppSettingsStore.SETTINGS_PATH) if game_settings_existed else PackedByteArray()
+	var game_settings_existed := FileAccess.file_exists(AppSettingsStore.default_path())
+	var game_settings := FileAccess.get_file_as_bytes(AppSettingsStore.default_path()) if game_settings_existed else PackedByteArray()
 	var original_scale := root.content_scale_factor
 	var gallery := GALLERY.instantiate()
 	gallery.settings_path = path
@@ -53,9 +53,9 @@ func _run() -> void:
 	root.add_child(gallery)
 	assert(root.content_scale_factor == 1.0, "Invalid saved scale uses the gallery default")
 	gallery.free()
-	assert(FileAccess.file_exists(AppSettingsStore.SETTINGS_PATH) == game_settings_existed)
+	assert(FileAccess.file_exists(AppSettingsStore.default_path()) == game_settings_existed)
 	if game_settings_existed:
-		assert(FileAccess.get_file_as_bytes(AppSettingsStore.SETTINGS_PATH) == game_settings)
+		assert(FileAccess.get_file_as_bytes(AppSettingsStore.default_path()) == game_settings)
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	root.content_scale_factor = original_scale
 	await process_frame
