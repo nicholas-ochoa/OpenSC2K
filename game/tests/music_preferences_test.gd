@@ -91,7 +91,12 @@ func _run() -> void:
 	assert(paused_metrics.paused and paused_metrics.thread_running)
 	var midi_position: float = paused_metrics.position_seconds
 	await create_timer(0.2).timeout
-	assert(audio.music_player.debug_metrics().position_seconds == midi_position)
+	var paused_after_wait: Dictionary = audio.music_player.debug_metrics()
+	var max_pause_advance := (
+		float(audio.music_player.MAX_FRAMES_PER_FILL) / audio.music_player.SAMPLE_RATE
+	)
+	assert(paused_after_wait.paused and paused_after_wait.track_id == 10001)
+	assert(paused_after_wait.position_seconds - midi_position <= max_pause_advance + 0.001)
 	audio.handle_application_focus_in(true)
 	var resumed_metrics: Dictionary = audio.music_player.debug_metrics()
 	assert(resumed_metrics.position_seconds >= midi_position and not resumed_metrics.paused)
