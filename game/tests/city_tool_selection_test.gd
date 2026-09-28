@@ -110,6 +110,26 @@ func _edit_state(city: CityState) -> void:
 	var recall := ToolEditState.normal(city, CityViewMode.Mode.CITY, CityToolIds.Group.DISPATCH, CityToolIds.Dispatch.RECALL)
 	assert(recall.available and not recall.enabled)
 
+	# Single-click placement repeats while the button is held. Drag and view tools do not.
+	var repeats := [
+		[CityToolIds.Group.WATER, CityToolIds.Water.PUMP, true],
+		[CityToolIds.Group.SERVICES, CityToolIds.Services.POLICE_STATION, true],
+		[CityToolIds.Group.POWER, CityToolIds.Power.HYDRO, true],
+		[CityToolIds.Group.ROADS, CityToolIds.Roads.TUNNEL, true],
+		[CityToolIds.Group.ROADS, CityToolIds.Roads.ONRAMP, true],
+		[CityToolIds.Group.RAIL, CityToolIds.Rail.SUBWAY_TO_RAIL, true],
+		[CityToolIds.Group.DISPATCH, CityToolIds.Dispatch.FIRE, true],
+		[CityToolIds.Group.WATER, CityToolIds.Water.PIPES, false],
+		[CityToolIds.Group.LANDSCAPE, CityToolIds.Landscape.FOREST, false],
+		[CityToolIds.Group.RESIDENTIAL, CityToolIds.Residential.LIGHT, false],
+		[CityToolIds.Group.SIGNS, CityToolIds.Signs.SIGN, false],
+		[CityToolIds.Group.QUERY, CityToolIds.Query.QUERY, false],
+		[CityToolIds.Group.CENTERING, CityToolIds.Centering.CENTER, false],
+	]
+	for row: Array in repeats:
+		var state := ToolEditState.normal(city, CityViewMode.Mode.CITY, row[0], row[1])
+		assert(state.repeat_placement == row[2], "Repeat placement for tool (%d, %d)" % [row[0], row[1]])
+
 
 func _selection(city: CityState) -> void:
 	var app := CityApplication.new()

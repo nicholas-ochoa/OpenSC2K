@@ -137,6 +137,9 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 				map.selection_start, map.selection_end, map.selection_path.duplicate(), false
 			)
 			map.queue_redraw()
+
+			if map.repeat_placement:
+				map.selection._emit_repeat_placement(tile, false)
 	else:
 		if map.selection_start.x >= 0:
 			if tile.x >= 0 and tile != map.selection_end:
@@ -153,7 +156,11 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 			if map.selection.uses_paint_brush() and not map.brush_box_selection and tile.x >= 0 and tile != map.selection.last_brush_tile:
 				map.selection._emit_brush_dab(tile, true)
 
-			if not map.continuous_placement or map.brush_box_selection:
+			var placed_while_held := (
+				(map.continuous_placement or map.repeat_placement) and not map.brush_box_selection
+			)
+
+			if not placed_while_held:
 				map.selection_completed.emit(
 					map.selection_start,
 					map.selection_end,
@@ -216,6 +223,13 @@ func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 		map.queue_redraw()
 
 	if map.edit_enabled and map.selection_start.x >= 0:
+		# a dialog that opens during a repeated placement can take the release
+		if map.repeat_placement and (event.button_mask & MOUSE_BUTTON_MASK_LEFT) == 0:
+			map.selection._end_held_placement()
+			map.accept_event()
+
+			return
+
 		if tile.x >= 0 and tile != map.selection_end:
 			map.selection_end = tile
 			map.selection_moved = true
@@ -229,5 +243,8 @@ func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 				true,
 			)
 			map.queue_redraw()
+
+			if map.repeat_placement:
+				map.selection._emit_repeat_placement(tile, true)
 
 		map.accept_event()

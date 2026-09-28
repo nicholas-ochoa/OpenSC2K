@@ -193,6 +193,7 @@ func update_edit_state() -> void:
 			and app.tool_state.selected_subtool in [CityToolIds.Bulldozer.LEVEL, CityToolIds.Bulldozer.RAISE, CityToolIds.Bulldozer.LOWER]))
 	app.map_view.continuous_placement = (app.tool_state.selected_group == CityToolIds.Group.LANDSCAPE
 		and app.tool_state.selected_subtool == CityToolIds.Landscape.FOREST)
+	app.map_view.repeat_placement = bool(state.repeat_placement) and not app.tool_state.landscape_editor
 	app.map_view.shift_line_enabled = (app.tool_state.selected_group == CityToolIds.Group.LANDSCAPE
 		and app.tool_state.selected_subtool in [CityToolIds.Landscape.TREES, CityToolIds.Landscape.WATER])
 

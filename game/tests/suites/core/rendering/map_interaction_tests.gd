@@ -85,6 +85,8 @@ func run(
 
 	var selection_complete_signals := _test_selection_signals(map_control, starter, center_tile)
 
+	_test_repeat_placement(starter, center_tile)
+
 	_check(map_control.dynamic_sprites.size() == 1, "Map control accepts a dynamic sprite layer")
 	map_control.layers._ensure_base_layer()
 	var many_dynamic_sprites: Array[CityDynamicVisual] = []
@@ -496,6 +498,95 @@ func _test_selection_signals(map_control: CityMapControl, starter: CityState, ce
 	)
 	map_control.set_dynamic_sprites([CityDynamicVisual.new(null, Vector2(10, 20))])
 	return selection_complete_signals
+
+
+# SIMCITY.EXE builds with a single-click tool on the press and again on each
+# new tile while the left button stays down
+func _test_repeat_placement(starter: CityState, center_tile: Vector2i) -> void:
+	var map_control := MapControl.new()
+	map_control.city = starter
+	map_control.size = Vector2(800, 600)
+	map_control.center_on_tile(center_tile)
+	map_control.city_source = CityMapSource.whole(ImageTexture.create_from_image(
+		Image.create(1, 1, false, Image.FORMAT_RGBA8)
+	))
+	map_control.set_edit_enabled(true, "point")
+	map_control.repeat_placement = true
+	var placed: Array[Vector2i] = []
+	var dragged: Array[bool] = []
+	var finished := [0]
+	map_control.selection_completed.connect(func(
+		_start: Vector2i, finish: Vector2i, _path: Array[Vector2i], moved: bool
+	) -> void:
+		placed.append(finish)
+		dragged.append(moved)
+	)
+	map_control.selection_finished.connect(func() -> void:
+		finished[0] += 1
+	)
+
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.position = map_control.size * 0.5
+	map_control.interaction._handle_mouse_button(press)
+	_check(placed == [center_tile] and dragged == [false], "Repeated placement builds on the press")
+
+	var motion := InputEventMouseMotion.new()
+	motion.button_mask = MOUSE_BUTTON_MASK_LEFT
+	motion.position = press.position + Vector2(1, 0)
+	map_control.interaction._handle_mouse_motion(motion)
+	_check(placed.size() == 1, "Repeated placement waits for the cursor to enter another tile")
+
+	var targets: Array[Vector2i] = [center_tile + Vector2i(1, 0), center_tile + Vector2i(2, 0)]
+
+	for target in targets:
+		motion.position = _tile_screen_center(map_control, starter, target)
+		map_control.interaction._handle_mouse_motion(motion)
+
+	_check(
+		placed == [center_tile, targets[0], targets[1]] and dragged == [false, true, true],
+		"Repeated placement builds again on each new tile while held",
+	)
+
+	var release := InputEventMouseButton.new()
+	release.button_index = MOUSE_BUTTON_LEFT
+	release.position = motion.position
+	map_control.interaction._handle_mouse_button(release)
+	_check(
+		placed.size() == 3 and finished[0] == 1 and not map_control.is_left_drag_active(),
+		"Repeated placement release does not build again",
+	)
+
+	map_control.interaction._handle_mouse_button(press)
+	motion.button_mask = 0
+	motion.position = _tile_screen_center(map_control, starter, targets[0])
+	map_control.interaction._handle_mouse_motion(motion)
+	_check(
+		placed.size() == 4 and finished[0] == 2 and not map_control.is_left_drag_active(),
+		"Repeated placement stops when the pointer no longer reports the left button",
+	)
+
+	map_control.repeat_placement = false
+	map_control.interaction._handle_mouse_button(press)
+	motion.button_mask = MOUSE_BUTTON_MASK_LEFT
+	map_control.interaction._handle_mouse_motion(motion)
+	release.position = motion.position
+	map_control.interaction._handle_mouse_button(release)
+	_check(
+		placed.size() == 5 and dragged[4] and placed[4] == targets[0],
+		"A point tool without repeated placement builds once on release",
+	)
+
+	map_control.free()
+
+
+func _tile_screen_center(map_control: CityMapControl, city: CityState, tile: Vector2i) -> Vector2:
+	var polygon := IsometricRenderer.tile_polygon(city, tile.x, tile.y)
+
+	return map_control.camera._draw_offset(map_control.camera._view_scale()) + (
+		polygon[0] + polygon[1] + polygon[2] + polygon[3]
+	) * 0.25 * map_control.camera._view_scale()
 
 
 func _test_marker_batches() -> void:

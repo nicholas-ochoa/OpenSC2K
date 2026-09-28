@@ -315,10 +315,13 @@ func on_map_selection_canceled() -> void:
 		not app.map_view.uses_paint_brush() or app.tool_state.landscape_brush_command != null
 	)
 
-	app.status_label.text = (
-		"Brush stopped. Use Undo to remove its last edit."
-		if painted else "Selection canceled. No action was taken."
-	)
+	if app.map_view.repeat_placement:
+		app.status_label.text = "Placement stopped. Use Undo to remove the last placement."
+	else:
+		app.status_label.text = (
+			"Brush stopped. Use Undo to remove its last edit."
+			if painted else "Selection canceled. No action was taken."
+		)
 
 
 func on_map_selection_started() -> void:

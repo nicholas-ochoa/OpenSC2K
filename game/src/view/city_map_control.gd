@@ -115,6 +115,7 @@ var trip_query_underground := false
 var query_city: CityState
 var shift_line_enabled := false
 var continuous_placement := false
+var repeat_placement := false
 var landscape_brush := false
 var demolish_brush := false
 var bulldozer_visual_provider := Callable()

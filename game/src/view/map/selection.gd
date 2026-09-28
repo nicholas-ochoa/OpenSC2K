@@ -392,6 +392,26 @@ func _emit_brush_dab(tile: Vector2i, dragged: bool) -> void:
 	map.selection_completed.emit(tile, tile, points, dragged)
 
 
+# a repeating point tool builds on the press and again on each new tile while
+# the left button stays down. the release does not build
+func _emit_repeat_placement(tile: Vector2i, dragged: bool) -> void:
+	var points: Array[Vector2i] = [tile]
+	map.selection_completed.emit(tile, tile, points, dragged)
+
+	# a placement can select another tool, as a reward selects Center
+	if not map.repeat_placement or not map.edit_enabled:
+		_end_held_placement()
+
+
+func _end_held_placement() -> void:
+	if not is_left_drag_active():
+		return
+
+	_clear_selection()
+	map.queue_redraw()
+	map.selection_finished.emit()
+
+
 func brush_tiles(center: Vector2i) -> Array[Vector2i]:
 	var points: Array[Vector2i] = []
 	if map.city == null or center.x < 0:

@@ -101,14 +101,23 @@ static func normal(
 	var is_sign := group_index == CityToolIds.Group.SIGNS
 	var is_query := group_index == CityToolIds.Group.QUERY
 	var is_center := group_index == CityToolIds.Group.CENTERING
+
+	# runs the click action again each time the held cursor enters another tile.
+	# Tools with their own drag loop and Query, Center, and Sign do not repeat.
+	var repeats_placement := (
+		is_building or is_hydro or is_subway_to_rail or is_onramp or is_tunnel or is_dispatch
+	)
+
 	var point_area := (
 		Tools.tool(group_index, subtool_index).area
 		if is_building else 1
 	)
+
 	var is_underground_network := (
 		(group_index == CityToolIds.Group.WATER and subtool_index == CityToolIds.Water.PIPES)
 		or (group_index == CityToolIds.Group.RAIL and subtool_index == CityToolIds.Rail.SUBWAY)
 	)
+
 	var supported := (
 		is_zone
 		or is_landscape
@@ -157,6 +166,7 @@ static func normal(
 	result.selection = selection
 	result.area = point_area
 	result.landscape = is_landscape
+	result.repeat_placement = repeats_placement
 	result.show_status = city != null
 	result.status_text = tool.name if tool != null else "Tool"
 	result.status_detail = _normal_status_detail(city, tool, available, group_index, subtool_index)
@@ -185,7 +195,7 @@ static func _normal_status_detail(
 		return "%s selected. Drag to fill an area. Hold Shift to draw a line." % tool_name
 
 	if Buildings.supports_tool(group_index, subtool_index):
-		return "%s selected. Click a clear city site to build it." % tool_name
+		return "%s selected. Click a clear city site to build it. Drag to build more." % tool_name
 
 	if Networks.supports_tool(group_index, subtool_index):
 		return "%s selected. Drag between city tiles to build a route." % tool_name
@@ -241,6 +251,7 @@ class Result extends RefCounted:
 	var selection: String = "point"
 	var area: int = 1
 	var landscape: bool = false
+	var repeat_placement: bool = false
 	var show_status: bool = false
 	var status_text: String = ""
 	var status_detail: String = ""
