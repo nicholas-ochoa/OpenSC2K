@@ -64,7 +64,6 @@ var tile_thumbnails: Dictionary[int, Texture2D] = {}
 var thumbnail_signatures: Dictionary[int, int] = {}
 var palette_signature := 0
 var source_label: Label
-var object_search: LineEdit
 var object_list: ScurkTileSelector
 var name_edit: LineEdit
 var name_button: Button
@@ -840,12 +839,10 @@ func _bind_interface() -> void:
 
 	object_panel = get_node("Panel/Content/Body/Studio/Margin/Column/Objects")
 	object_panel.build()
-	object_panel.search_changed.connect(_on_search_changed)
 	object_panel.object_selected.connect(_on_object_selected)
 	object_panel.name_submitted.connect(_commit_name)
 	object_panel.set_name_requested.connect(_commit_name)
 	object_panel.revert_name_requested.connect(revert_name)
-	object_search = object_panel.object_search
 	object_list = object_panel.object_list
 	name_edit = object_panel.name_edit
 	name_button = object_panel.name_button
@@ -986,15 +983,11 @@ func _refresh_object_list() -> void:
 	if object_list == null:
 		return
 	var entries: Array[ScurkTileSelector.Entry] = []
-	var filter := object_search.text.strip_edges().to_lower() if object_search != null else ""
 	if tile_set != null:
 		for large_id in EditorRules.editable_large_sprite_ids(tile_set, base_large_sprites):
 			var tile_id := EditorRules.object_tile_id(large_id)
 			var title := EditorRules.tile_name(tile_id, tile_set.names)
 			var category := EditorRules.sprite_role(tile_id)
-			var search_text := "%03d %s %s" % [tile_id, title, category]
-			if not filter.is_empty() and not search_text.to_lower().contains(filter):
-				continue
 			entries.append(ScurkTileSelector.Entry.new(large_id, title, category, _tile_thumbnail(large_id)))
 	object_list.set_entries(entries, current_large_id)
 	if object_list.selected >= 0:
@@ -1014,10 +1007,6 @@ func _select_object(large_id: int) -> void:
 	_refresh_sprite()
 	if changed:
 		_capture_object_start()
-
-
-func _on_search_changed(_value: String) -> void:
-	_refresh_object_list()
 
 
 func _select_view(view: int) -> void:

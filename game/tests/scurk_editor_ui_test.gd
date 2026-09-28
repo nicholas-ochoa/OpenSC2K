@@ -83,19 +83,7 @@ func _run() -> void:
 	editor.view_preview_signatures.fill("")
 	editor._refresh_view_previews()
 	editor.studio.tabs.current_tab = 0
-	# Filtering must select the visible result, including after an empty result.
-	editor.object_search.text = "255"
-	editor._on_search_changed("255")
-	assert(editor.object_list.entries.size() > 0)
-	assert(editor.current_large_id == editor.object_list.entries[editor.object_list.selected].large_id)
-	editor.object_search.text = "no matching tile"
-	editor._on_search_changed("")
-	assert(editor.object_list.entries.size() == 0)
-	editor.object_search.text = ""
-	editor._on_search_changed("")
-	assert(editor.object_list.entries.size() == 499)
 	editor._on_object_selected(0)
-	# The name editor is modal. Apply and revert both retain undo history.
 	editor.request_edit_name()
 	assert(editor.name_edit.text == ScurkEditorRules.tile_name(1))
 	assert(editor.object_panel.name_dialog.visible and editor.object_panel.name_dialog.exclusive)
@@ -439,7 +427,7 @@ func _test_clipboard_actions(editor: ScurkEditorControl) -> void:
 	event.keycode = KEY_X
 	event.pressed = true
 	event.meta_pressed = true
-	editor.object_search.grab_focus()
+	editor.studio.get_node(editor.studio.META + "/Author").grab_focus()
 	assert(not editor.handle_shortcut(event))
 	assert(canvas.pixels == artwork)
 	canvas.clear_selection()
@@ -574,7 +562,7 @@ func _test_close_confirmation(editor: ScurkEditorControl) -> void:
 	var dialog := editor.get_node("Dialogs/Close") as ConfirmationDialog
 	assert(not editor.dirty)
 	editor.pixel_canvas.select_all()
-	editor.object_search.grab_focus()
+	editor.studio.get_node(editor.studio.META + "/Author").grab_focus()
 	assert(editor.handle_shortcut(escape))
 	assert(not editor.pixel_canvas.selection.active() and not dialog.visible)
 	assert(editor.handle_shortcut(escape))

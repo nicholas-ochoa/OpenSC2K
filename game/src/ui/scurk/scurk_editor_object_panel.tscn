@@ -7,11 +7,6 @@
 [node name="Objects" type="VBoxContainer"]
 script = ExtResource("script")
 
-[node name="Search" type="LineEdit" parent="."]
-layout_mode = 2
-placeholder_text = "Filter tiles"
-custom_minimum_size = Vector2(160, 0)
-
 [node name="Tiles" parent="." instance=ExtResource("tiles")]
 layout_mode = 2
 

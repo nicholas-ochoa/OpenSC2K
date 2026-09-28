@@ -98,7 +98,7 @@ func _test_sidebar() -> void:
 		studio.tabs.current_tab = tab
 		await process_frame
 		assert(canvas.is_visible_in_tree() and canvas.selection.mask == selection)
-		assert(editor.object_search.is_visible_in_tree() and editor.object_list.is_visible_in_tree())
+		assert(editor.object_list.is_visible_in_tree())
 		assert(
 			canvas.zoom == 12 and canvas.get_global_rect() == canvas_rect,
 			"%d zoom %d rect %s expected %s" % [tab, canvas.zoom, canvas.get_global_rect(), canvas_rect],
