@@ -11,6 +11,8 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	root.size = Vector2i(1280, 800)
+	root.gui_embed_subwindows = true
 	_test_preview_crop()
 	_test_footprints()
 	await _test_tile_selector()
@@ -704,8 +706,10 @@ func _test_tile_browser(editor: ScurkEditorControl) -> void:
 	assert(browser.visible and browser.exclusive)
 	assert(browser.cards.size() == selector.entries.size())
 	assert(browser.cards.size() == 499)
+	for card in browser.cards:
+		assert(card.visible)
 	assert(editor.canvas_panel.pixel_scroll.get_global_rect().encloses(editor.object_panel.get_global_rect()))
-	assert(browser.size.x <= root.size.x and browser.size.y <= root.size.y)
+	assert(browser.size.x <= root.size.x and browser.size.y <= root.size.y, "Browser %s exceeds viewport %s" % [browser.size, root.size])
 	browser.search.text = "255"
 	browser.search.text_changed.emit("255")
 	var matched := 0

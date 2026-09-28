@@ -71,7 +71,7 @@ func _filter_cards() -> void:
 	for index in entries.size():
 		var entry := entries[index]
 		var searchable := "%03d %s %s" % [ScurkEditorRules.object_tile_id(entry.large_id), entry.title, entry.category]
-		cards[index].visible = category_checks[entry.category].button_pressed and searchable.to_lower().contains(query)
+		cards[index].visible = category_checks[entry.category].button_pressed and (query.is_empty() or searchable.to_lower().contains(query))
 		if cards[index].visible:
 			count += 1
 	results.text = "%d tiles" % count if count > 0 else "No matching tiles"
