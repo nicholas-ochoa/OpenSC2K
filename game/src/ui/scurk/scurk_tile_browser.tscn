@@ -1,0 +1,40 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/scurk/scurk_tile_browser.gd" id="script"]
+
+[node name="SelectTile" type="AcceptDialog"]
+title = "Select Tile"
+size = Vector2i(1040, 760)
+exclusive = true
+script = ExtResource("script")
+
+[node name="Content" type="VBoxContainer" parent="."]
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 1028.0
+offset_bottom = 711.0
+theme_override_constants/separation = 12
+
+[node name="Search" type="LineEdit" parent="Content"]
+layout_mode = 2
+placeholder_text = "Filter tiles"
+clear_button_enabled = true
+
+[node name="Categories" type="HFlowContainer" parent="Content"]
+layout_mode = 2
+theme_override_constants/h_separation = 12
+
+[node name="Scroll" type="ScrollContainer" parent="Content"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Grid" type="GridContainer" parent="Content/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 12
+columns = 4
+
+[node name="Results" type="Label" parent="Content"]
+layout_mode = 2

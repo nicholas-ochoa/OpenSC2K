@@ -26,6 +26,7 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	_test_close_confirmation(editor)
+	await _test_tile_browser(editor)
 	assert(editor.object_list.entries[0].thumbnail != null)
 	var guides := editor.drawing_controls.get_node("Margin/Scroll/Column/Isometric")
 	guides.get_node("Guides").button_pressed = true
@@ -427,6 +428,7 @@ func _test_clipboard_actions(editor: ScurkEditorControl) -> void:
 	event.keycode = KEY_X
 	event.pressed = true
 	event.meta_pressed = true
+	editor.studio.tabs.current_tab = 4
 	editor.studio.get_node(editor.studio.META + "/Author").grab_focus()
 	assert(not editor.handle_shortcut(event))
 	assert(canvas.pixels == artwork)
@@ -562,6 +564,7 @@ func _test_close_confirmation(editor: ScurkEditorControl) -> void:
 	var dialog := editor.get_node("Dialogs/Close") as ConfirmationDialog
 	assert(not editor.dirty)
 	editor.pixel_canvas.select_all()
+	editor.studio.tabs.current_tab = 4
 	editor.studio.get_node(editor.studio.META + "/Author").grab_focus()
 	assert(editor.handle_shortcut(escape))
 	assert(not editor.pixel_canvas.selection.active() and not dialog.visible)
@@ -689,3 +692,51 @@ func _test_resize_layout(editor: ScurkEditorControl) -> void:
 		palette_scroll.scroll_vertical = 0
 		assert(textures.index_at(Vector2(-1, 0)) == -1)
 		assert(textures.index_at(Vector2(textures.size.x, 0)) == -1)
+
+
+func _test_tile_browser(editor: ScurkEditorControl) -> void:
+	var current_id := editor.current_large_id
+	var selector := editor.object_list
+	var browser := editor.tile_browser
+	editor.object_panel.get_node("Browse").pressed.emit()
+	await process_frame
+	await process_frame
+	assert(browser.visible and browser.exclusive)
+	assert(browser.cards.size() == selector.entries.size())
+	assert(browser.cards.size() == 499)
+	assert(editor.canvas_panel.pixel_scroll.get_global_rect().encloses(editor.object_panel.get_global_rect()))
+	assert(browser.size.x <= root.size.x and browser.size.y <= root.size.y)
+	browser.search.text = "255"
+	browser.search.text_changed.emit("255")
+	var matched := 0
+	var match_index := -1
+	for index in browser.cards.size():
+		if browser.cards[index].visible:
+			matched += 1
+			match_index = index
+	assert(matched == 1)
+	assert(browser.entries[match_index].large_id == 1255)
+	var category := browser.entries[match_index].category
+	browser.category_checks[category].button_pressed = false
+	assert(not browser.cards[match_index].visible)
+	assert(editor.current_large_id == current_id)
+	browser.category_checks[category].button_pressed = true
+	assert(browser.cards[match_index].visible)
+	browser.search.text = "no matching tile"
+	browser.search.text_changed.emit(browser.search.text)
+	for card in browser.cards:
+		assert(not card.visible)
+	assert(editor.current_large_id == current_id)
+	browser.search.text = "255"
+	browser.search.text_changed.emit("255")
+	var graphic := browser.cards[match_index].get_child(0) as TextureRect
+	assert(graphic.texture != null and graphic.texture.get_width() > 32)
+	browser.cards[match_index].pressed.emit()
+	assert(not browser.visible and editor.current_large_id == 1255)
+	assert(selector.entries[selector.selected].large_id == 1255)
+	editor._browse_tiles()
+	assert(browser.search.text == "255")
+	browser.hide()
+	assert(editor.current_large_id == 1255)
+	browser.search.clear()
+	editor._on_object_selected(0)

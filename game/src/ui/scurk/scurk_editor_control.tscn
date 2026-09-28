@@ -10,6 +10,8 @@
 
 [ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_editor_studio.tscn" id="studio"]
 
+[ext_resource type="PackedScene" path="res://src/ui/scurk/scurk_tile_browser.tscn" id="tile_browser"]
+
 [node name="SCURKEditor" type="ColorRect"]
 script = ExtResource("script")
 anchors_preset = 15
@@ -92,3 +94,5 @@ layout_mode = 2
 
 [node name="CanvasMenu" type="PopupMenu" parent="."]
 script = ExtResource("context_menu")
+
+[node name="SelectTile" parent="." instance=ExtResource("tile_browser")]

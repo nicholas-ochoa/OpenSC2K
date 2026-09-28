@@ -2,6 +2,7 @@ class_name ScurkEditorObjectPanel
 extends HBoxContainer
 
 signal object_selected(index: int)
+signal browse_requested
 signal name_submitted
 signal set_name_requested
 signal revert_name_requested
@@ -27,7 +28,7 @@ func build() -> void:
 	name_button = name_dialog.get_ok_button()
 	revert_name_button = $NameDialog/Content/Revert
 	object_list.item_selected.connect(object_selected.emit)
-	$Browse.pressed.connect(object_list.show_choices)
+	$Browse.pressed.connect(browse_requested.emit)
 	name_dialog.confirmed.connect(set_name_requested.emit)
 	name_edit.text_submitted.connect(func(_text: String) -> void:
 		name_submitted.emit()

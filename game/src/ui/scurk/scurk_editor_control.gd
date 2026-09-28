@@ -64,6 +64,7 @@ var tile_thumbnails: Dictionary[int, Texture2D] = {}
 var thumbnail_signatures: Dictionary[int, int] = {}
 var palette_signature := 0
 var source_label: Label
+var tile_browser: ScurkTileBrowser
 var object_list: ScurkTileSelector
 var name_edit: LineEdit
 var name_button: Button
@@ -840,6 +841,12 @@ func _bind_interface() -> void:
 	object_panel = get_node("Panel/Content/Body/Editor/Canvas/Row/PixelArea/Objects")
 	object_panel.build()
 	object_panel.object_selected.connect(_on_object_selected)
+	object_panel.browse_requested.connect(_browse_tiles)
+	tile_browser = $SelectTile
+	tile_browser.tile_selected.connect(_choose_browsed_tile)
+	tile_browser.visibility_changed.connect(func() -> void:
+		if not tile_browser.visible and is_visible_in_tree():
+			object_list.grab_focus())
 	object_panel.name_submitted.connect(_commit_name)
 	object_panel.set_name_requested.connect(_commit_name)
 	object_panel.revert_name_requested.connect(revert_name)
@@ -994,6 +1001,32 @@ func _refresh_object_list() -> void:
 		var replacement_id := entries[object_list.selected].large_id
 		if replacement_id != current_large_id:
 			_select_object(replacement_id)
+
+
+func _browse_tiles() -> void:
+	tile_browser.show_tiles(object_list.entries, current_large_id, _tile_artwork)
+
+
+func _choose_browsed_tile(large_id: int) -> void:
+	for index in object_list.entries.size():
+		if object_list.entries[index].large_id == large_id:
+			_on_object_selected(index)
+			return
+
+
+func _tile_artwork(large_id: int) -> Texture2D:
+	var entry := PickCopy.resolved_entry(tile_set, large_id, base_large_sprites, base_small_medium_sprites)
+	if edit_history.blank_shape_ids.has(large_id):
+		entry = tile_set.archive.find_sprite(large_id)
+	if entry == null or palette == null:
+		return null
+	var rendered := entry.create_image(palette)
+	if not rendered.ok:
+		return null
+	var bounds := rendered.image.get_used_rect()
+	if not bounds.has_area():
+		return null
+	return ImageTexture.create_from_image(rendered.image.get_region(bounds))
 
 
 func _on_object_selected(index: int) -> void:
