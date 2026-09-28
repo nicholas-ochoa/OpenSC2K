@@ -44,6 +44,7 @@ func open(data: Dictionary) -> void:
 		view.set("transparent", true)
 		view.set("forward_input_events", false)
 		view.set("incognito", true)
+		view.set("data_directory", AppPaths.path("godot_wry"))
 		view.set("devtools", false)
 		view.connect("ipc_message", _on_message)
 		add_child(view)
