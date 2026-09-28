@@ -276,6 +276,13 @@ mouse_filter = 2
 expand_mode = 1
 stretch_mode = 5
 
+[node name="OtherSizesNote" type="Label" parent="Content/Preview/Images/Differences"]
+visible = false
+layout_mode = 2
+text = "Differences found in other tile sizes."
+horizontal_alignment = 1
+autowrap_mode = 3
+
 [node name="Actions" type="HBoxContainer" parent="Content"]
 layout_mode = 2
 theme_override_constants/separation = 7

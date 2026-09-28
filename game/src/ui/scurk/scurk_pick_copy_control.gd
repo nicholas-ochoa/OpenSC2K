@@ -14,6 +14,7 @@ const THUMBNAIL_SIZE := 88
 
 var palette: Sc2Palette
 var palette_cycle_ticks := 0
+var palette_cycle_accumulator := 0.0
 var base_large: Sc2SpriteArchive
 var base_small_medium: Sc2SpriteArchive
 var reference_directory := ""
@@ -29,7 +30,6 @@ var difference_cache := {}
 var working_index_by_id := {}
 var group_selector: OptionButton
 var view_buttons: Array[Button] = []
-var source_name_label: Label
 var source_list: ScurkObjectList
 var working_list: ScurkObjectList
 var copy_selected_button: Button
@@ -49,7 +49,6 @@ func _ready() -> void:
 	group_selector = get_node("Content/Toolbar/Controls/GroupSelector")
 	view_buttons.assign([get_node("Content/Toolbar/Controls/Large"), get_node("Content/Toolbar/Controls/Medium"),
 		get_node("Content/Toolbar/Controls/Small")])
-	source_name_label = get_node("Content/Sets/SourceObjectSetRow/SourceNameLabel")
 	source_list = get_node("Content/Sets/SourceObjectSetRow/SourceList")
 	working_list = get_node("Content/Sets/WorkingObjectSetRow/WorkingList")
 	source_list.item_selected.connect(_source_selection_changed.bind(true))
@@ -93,6 +92,16 @@ func _ready() -> void:
 	working_list.drop_target = true
 	source_dialog.theme = AppUiTheme.file_dialog()
 	confirm_all_dialog.theme = AppUiTheme.current()
+
+
+func _process(delta: float) -> void:
+	if not is_visible_in_tree():
+		return
+	palette_cycle_accumulator += delta
+	var ticks := floori(palette_cycle_accumulator / Sc2Palette.SCURK_TIMER_INTERVAL_SECONDS)
+	if ticks > 0:
+		palette_cycle_accumulator -= ticks * Sc2Palette.SCURK_TIMER_INTERVAL_SECONDS
+		set_cycle_tick(palette_cycle_ticks + ticks)
 
 
 func _sync_scroll(scroll_value: float, target: ScurkObjectList) -> void:
@@ -232,6 +241,7 @@ func _refresh_lists() -> void:
 	var selected := source_list.selected_large_ids()
 	source_list.clear()
 	difference_cache.clear()
+	var source_name_label := $Content/Sets/SourceObjectSetRow/SourceNameLabel as Label
 	source_name_label.text = source_path.get_file() if source_set != null else "No source selected"
 	var working_name_label := $Content/Sets/WorkingObjectSetRow/WorkingNameLabel as Label
 	working_name_label.text = working_path.get_file() if not working_path.is_empty() else "Unsaved working set"
@@ -278,18 +288,23 @@ func _passes_difference_filter(large_id: int) -> bool:
 
 func _object_differs(large_id: int) -> bool:
 	for view in ScurkSpriteIds.VIEW_COUNT:
-		var sprite_id := ScurkEditorRules.view_sprite_id(large_id, view)
-		var source := PickCopy.resolved_entry(source_set, sprite_id, base_large, base_small_medium)
-		var working := PickCopy.resolved_entry(working_set, sprite_id, base_large, base_small_medium)
-		if source == working:
-			continue
-		if source == null or working == null or source.width != working.width or source.height != working.height:
-			return true
-		var source_pixels := source.decode_indices()
-		var working_pixels := working.decode_indices()
-		if not source_pixels.ok or not working_pixels.ok or source_pixels.pixels != working_pixels.pixels:
+		if _view_differs(large_id, large_id, view):
 			return true
 	return false
+
+
+func _view_differs(source_id: int, destination_id: int, view: int) -> bool:
+	var source := PickCopy.resolved_entry(source_set,
+		ScurkEditorRules.view_sprite_id(source_id, view), base_large, base_small_medium)
+	var working := PickCopy.resolved_entry(working_set,
+		ScurkEditorRules.view_sprite_id(destination_id, view), base_large, base_small_medium)
+	if source == working:
+		return false
+	if source == null or working == null or source.width != working.width or source.height != working.height:
+		return true
+	var source_pixels := source.decode_indices()
+	var working_pixels := working.decode_indices()
+	return not source_pixels.ok or not working_pixels.ok or source_pixels.pixels != working_pixels.pixels
 
 
 func _shown_source_ids() -> PackedInt32Array:
@@ -443,6 +458,8 @@ func _refresh_difference_preview() -> void:
 	panel.visible = $Content/Toolbar/Controls/HighlightDifferences.button_pressed
 	var artwork := panel.get_node("Artwork") as TextureRect
 	var label := panel.get_node("Label") as Label
+	var note := panel.get_node("OtherSizesNote") as Label
+	note.hide()
 	artwork.texture = null
 	label.text = "Changed pixels (pink)"
 	if not panel.visible or preview_before.texture == null or preview_after.texture == null:
@@ -460,6 +477,11 @@ func _refresh_difference_preview() -> void:
 	if difference.image != null:
 		artwork.texture = PixelArtTexture.wrap(ImageTexture.create_from_image(difference.image))
 		label.text = "%d changed pixels (pink)" % difference.changed_pixels
+		if difference.changed_pixels == 0:
+			for view in ScurkSpriteIds.VIEW_COUNT:
+				if view != current_view and _view_differs(source_id, destination_id, view):
+					note.show()
+					break
 
 
 func _refresh_artwork_preview() -> void:
@@ -597,6 +619,7 @@ func _request_copy_all() -> void:
 	var object_count := source_list.item_count
 	if object_count == 0:
 		return
+	var source_name_label := $Content/Sets/SourceObjectSetRow/SourceNameLabel as Label
 	var working_name_label := $Content/Sets/WorkingObjectSetRow/WorkingNameLabel as Label
 	confirm_all_dialog.dialog_text = (
 		("Copy graphics from %s into %s?\n\n"

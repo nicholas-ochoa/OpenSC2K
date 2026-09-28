@@ -382,6 +382,7 @@ func _test_pick_copy_differences(editor: ScurkEditorControl, assets: OriginalGam
 	var remap := picker.get_node("Content/Toolbar/Controls/AllowDestination") as CheckBox
 	var highlight := picker.get_node("Content/Toolbar/Controls/HighlightDifferences") as CheckBox
 	var difference_art := picker.get_node("Content/Preview/Images/Differences/Artwork") as TextureRect
+	var other_sizes_note := picker.get_node("Content/Preview/Images/Differences/OtherSizesNote") as Label
 	assert(not filter.button_pressed)
 	var working := ScurkMif.from_archives([assets.large_sprites, assets.small_medium_sprites])
 	var source := ScurkMif.from_archives([assets.large_sprites, assets.small_medium_sprites])
@@ -414,6 +415,7 @@ func _test_pick_copy_differences(editor: ScurkEditorControl, assets: OriginalGam
 	for view in ScurkSpriteIds.VIEW_COUNT:
 		picker._select_view(view)
 		assert(picker._shown_source_ids() == ids.slice(0, 3))
+		assert(other_sizes_note.visible == (view != ScurkSpriteIds.View.LARGE))
 	remap.button_pressed = true
 	picker.source_list.select(0)
 	picker.source_list.item_selected.emit(0)
@@ -437,6 +439,7 @@ func _test_pick_copy_differences(editor: ScurkEditorControl, assets: OriginalGam
 	assert(picker.copy_selected_button.disabled and picker.copy_all_button.disabled)
 	assert(picker.preview_before.texture == null and picker.preview_after.texture == null)
 	assert(difference_art.texture == null)
+	assert(not other_sizes_note.visible)
 	var restored := ScurkMif.new()
 	assert(restored.parse(original))
 	picker.open_with_working(restored, "")
@@ -464,9 +467,12 @@ func _test_pick_copy_animation(editor: ScurkEditorControl, assets: OriginalGameA
 	picker.source_list.select(0)
 	picker.source_list.multi_selected.emit(0, true)
 	editor._set_cycle_colors(false)
+	var canvas_visible := editor.pixel_canvas.visible
+	editor.pixel_canvas.hide()
 	for view in ScurkSpriteIds.VIEW_COUNT:
 		picker._select_view(view)
 		picker.set_cycle_tick(0)
+		picker.palette_cycle_accumulator = 0.0
 		var icons: Array[ScurkPickCopyControl.ObjectIcon] = [
 			picker.working_icon_cache["%d:%d:false" % [view, large_id]],
 			picker.source_icon_cache["%d:%d:false" % [view, large_id]],
@@ -475,8 +481,8 @@ func _test_pick_copy_animation(editor: ScurkEditorControl, assets: OriginalGameA
 		]
 		assert(icons[0].texture == picker.preview_before.texture and icons[1].texture == picker.preview_after.texture)
 		assert(icons[2].texture == picker.source_list.get_item_icon(0) and icons[3].texture == picker.working_list.get_item_icon(0))
-		editor.pixel_canvas.palette_cycle_ticks = 31
-		editor._sync_palette_cycle()
+		picker._process(Sc2Palette.SCURK_TIMER_INTERVAL_SECONDS * 31.5)
+		assert(picker.palette_cycle_ticks == 31)
 		var mapping := assets.palette.scurk_animation_index_map(31)
 		# The headless texture driver retains the initial upload. Check the updated image data.
 		for icon in icons:
@@ -489,8 +495,12 @@ func _test_pick_copy_animation(editor: ScurkEditorControl, assets: OriginalGameA
 		for icon in icons:
 			assert(icon.image.get_pixel(0, 0).is_equal_approx(assets.palette.color(171)))
 	assert(source.to_bytes().bytes == source_bytes and working.to_bytes().bytes == working_bytes)
+	editor.pixel_canvas.visible = canvas_visible
 	editor._set_cycle_colors(true)
 	picker.request_close()
+	var tick := picker.palette_cycle_ticks
+	picker._process(1.0)
+	assert(picker.palette_cycle_ticks == tick, "Closed previews must not advance the palette clock")
 
 
 func _test_pick_copy_destination(editor: ScurkEditorControl, assets: OriginalGameAssets) -> void:

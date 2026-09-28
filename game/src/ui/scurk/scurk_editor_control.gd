@@ -1148,7 +1148,6 @@ func _set_clip_region_visible(enabled: bool) -> void:
 func _sync_palette_cycle() -> void:
 	var tick := pixel_canvas.palette_cycle_ticks
 	palette_panel.set_cycle_tick(tick)
-	pick_copy_control.set_cycle_tick(tick)
 	for preview in view_previews:
 		preview.set_cycle_tick(tick)
 
