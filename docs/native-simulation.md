@@ -28,6 +28,7 @@ Godot checks. Rebuild the library after each change to `native/simulation`.
   - `growth`, `infrastructure`, `data_maps`, `economy`, `civic`, `reports`, `disasters`,
     and `moving` hold the rules of each part of the simulation.
   - `tools` holds the edit rules that the simulation shares with the player tools, such as demolition.
+    `tools/rotation.rs` turns the city for `CityRotationCommand`.
   - `testing.rs` has test cities and scripted random generators.
 - `src/formats` holds the city file codecs. `rle.rs` decodes and encodes the Maxis run-length
   code of compressed chunks. `MaxisRle` calls it through `NativeMaxisRle`.

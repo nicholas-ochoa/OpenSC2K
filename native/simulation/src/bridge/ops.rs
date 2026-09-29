@@ -82,6 +82,7 @@ pub const OPERATIONS: &[&str] = &[
     "rci.connection_counts",
     "budget.requires_annual_budget",
     "budget.funding_values",
+    "rotation",
 ];
 
 pub struct Outcome {
@@ -279,6 +280,9 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
         }
         "mayor_approval" => {
             Outcome::value(crate::sim::civic::mayor::run(city, &mut randoms.random, convert::int(args, "previous_approval", 0)).to_value())
+        }
+        "rotation" => {
+            Outcome::value(crate::sim::tools::rotation::rotate(city, convert::boolean(args, "counter_clockwise", false)).to_value())
         }
         "tile_recount" => Outcome::value(Value::Int(crate::sim::civic::mayor::recount_tiles(city))),
         "military.resolve" => {

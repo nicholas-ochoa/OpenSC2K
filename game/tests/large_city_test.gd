@@ -124,8 +124,8 @@ func check_large_counts(edge: int) -> void:
 	var graphs := GraphHistory.calculate_current_values(city, edge * edge, 25, 50)
 	check(graphs.ok and graphs.values.size() == 16, "graph values cover full map %d" % edge)
 
-	# the native growth, aftermath, and special-zone counters have their own width tests
-	for change in [NetworkState.replace_building, CityRotationCommand._replace_building]:
+	# the native growth, aftermath, rotation, and special-zone counters have their own width tests
+	for change in [NetworkState.replace_building]:
 		var buildings := PackedByteArray()
 		buildings.resize(edge * edge)
 		var zones := buildings.duplicate()

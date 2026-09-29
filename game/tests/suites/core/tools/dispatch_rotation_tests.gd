@@ -91,21 +91,6 @@ func test_city_rotation(reference_root: String) -> void:
 		CityRotation.rotate_point(Vector2i(10, 20), 128, false) == Vector2i(107, 10),
 		"Clockwise rotation transforms a full-map point",
 	)
-	_check(
-		CityRotation.surface_tile_after_rotation(Tiles.ROAD_SLOPE_1, true) == 0x22
-		and CityRotation.surface_tile_after_rotation(Tiles.ROAD_SLOPE_1, false) == 0x20,
-		"Rotation uses the recovered surface-network lookup tables",
-	)
-	_check(
-		CityRotation.terrain_tile_after_rotation(0x01, true) == 0x04
-		and CityRotation.terrain_tile_after_rotation(0x01, false) == 0x02,
-		"Rotation uses the recovered terrain lookup tables",
-	)
-	_check(
-		CityRotation.underground_tile_after_rotation(UnderTiles.SUBWAY_HTB, true) == 0x06
-		and CityRotation.underground_tile_after_rotation(UnderTiles.SUBWAY_HTB, false) == 0x04,
-		"Rotation uses the recovered underground lookup tables",
-	)
 
 	var document := _load_fixture(reference_root.path_join("CITIES/STARTER.SC2"))
 	var things: PackedByteArray = document.find_chunk("XTHG").decoded_payload.duplicate()
@@ -140,8 +125,7 @@ func test_city_rotation(reference_root: String) -> void:
 	_check(city.set_underground_id(15, 10, UnderTiles.SUBWAY_HTB), "Rotation fixture stores a directional subway")
 	var old_payloads := {}
 
-	for specification in CityRotation.REQUIRED_CHUNKS:
-		var chunk_id: String = specification[0]
+	for chunk_id in CityRotation.REQUIRED_CHUNKS:
 		old_payloads[chunk_id] = document.find_chunk(chunk_id).decoded_payload.duplicate()
 
 	var old_compass := city.compass_rotation()
@@ -209,8 +193,7 @@ func test_city_rotation(reference_root: String) -> void:
 	var restored := CityRotation.apply(city, false)
 	_check(restored.ok, "Inverse clockwise city rotation succeeds: %s" % restored.error)
 
-	for specification in CityRotation.REQUIRED_CHUNKS:
-		var chunk_id: String = specification[0]
+	for chunk_id in CityRotation.REQUIRED_CHUNKS:
 		_check(
 			document.find_chunk(chunk_id).decoded_payload == old_payloads[chunk_id],
 			"Opposite rotations restore %s bytes" % chunk_id,
