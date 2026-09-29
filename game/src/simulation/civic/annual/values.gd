@@ -42,32 +42,6 @@ static func _find_microsim_location(
 	return Vector2i(-1, -1)
 
 
-static func _population_cap(misc: PackedByteArray, maximum: int, divisor: int, map_edge: int = 128) -> int:
-	if divisor == 0:
-		divisor = 100
-
-	var arcology_count := 0
-
-	for tile_id in range(Tiles.PLYMOUTH_ARCOLOGY, Tiles.LLAMA_DOME):
-		arcology_count += _tile_count(misc, tile_id, map_edge)
-
-	arcology_count = _divide_toward_zero(arcology_count, 16)
-	var arcology_adjustment := 0
-
-	if arcology_count >= 141:
-		arcology_adjustment = arcology_count * 20000 - 2800000
-
-	var total_population := (
-		arcology_adjustment
-		+ BinaryData.read_u32_be(misc, MISC_ARCOLOGY_POPULATION)
-		+ BinaryData.read_u32_be(misc, MISC_NORMAL_POPULATION)
-	)
-	var available := int(total_population / divisor) & (0xffff if map_edge == 128 else 0xffffffff)
-	var signed_maximum := _to_i16(maximum)
-
-	return signed_maximum if signed_maximum <= available else available
-
-
 static func _to_i16(value: int) -> int:
 	var wrapped := value & 0xffff
 

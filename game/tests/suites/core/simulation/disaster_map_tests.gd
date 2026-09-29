@@ -616,18 +616,6 @@ func _test_engine_and_dispatch(reference_root: String) -> void:
 		and engine_fixture.city.set_text_overlay_id(90, 90, OverlayData.thing_id(1)),
 		"Fire engine fixture places a police unit",
 	)
-	# the original keeps the damaged class with the largest story weight and
-	# skips tunnel entrances
-	var class_buildings := PackedByteArray([Tiles.LOWER_CLASS_HOMES_1X1_1, 0xd2, Tiles.TUNNEL_ENTRANCE_1, 0xc6, 0xe4])
-	var class_zones := PackedByteArray([1, 9, 8, 0, 0])
-	var classes := PackedInt32Array()
-	engine_fixture.city.disaster_damage_class = -1
-
-	for index in class_buildings.size():
-		DisasterDamage.record_damage_class(engine_fixture.city, class_buildings, class_zones, index)
-		classes.append(engine_fixture.city.disaster_damage_class)
-
-	_check(classes == PackedInt32Array([1, 21, 21, 10, 10]), "Disaster damage keeps the most important building class: %s" % classes)
 	engine_fixture.city.disaster_damage_class = 9
 	var active_tick := engine.advance_disaster_tick()
 	var ended_tick := engine.advance_disaster_tick()

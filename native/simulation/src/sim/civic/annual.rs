@@ -911,3 +911,22 @@ impl Annual<'_, '_> {
         self.counts.college += 1;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sim::bytes::write_u32_be;
+    use crate::sim::testing::empty_city;
+
+    /// Classic cities read 16-bit signed counts. Larger maps read full counts.
+    #[test]
+    fn counts_and_population_caps_keep_the_map_width() {
+        for edge in [16i64, 32, 64, 128, 256, 384, 512, 640, 1024] {
+            let mut city = empty_city(edge);
+            write_u32_be(&mut city.misc.data, misc_layout::TILE_COUNTS + 0xd2 * 4, 40000);
+            assert_eq!(tile_count(&city.misc.data, 0xd2, edge), if edge == 128 { -25536 } else { 40000 });
+            write_u32_be(&mut city.misc.data, misc_layout::NORMAL_POPULATION, 65536 * 900);
+            assert_eq!(population_cap(&city.misc.data, 200, 900, edge), if edge == 128 { 0 } else { 200 }, "availability does not wrap");
+        }
+    }
+}

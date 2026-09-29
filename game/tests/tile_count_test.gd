@@ -126,7 +126,7 @@ func _check_explosion() -> void:
 		var point := Vector2i(index / city.map_size, index % city.map_size)
 		var things := document.find_chunk("XTHG").decoded_payload.duplicate()
 		var text := city.text_overlays.duplicate()
-		assert(DisasterMapState._spawn_explosion(text, things, point, city.land_altitude(point.x, point.y), 0, 0, city.map_size))
+		_spawn_explosion(text, things, point, city.land_altitude(point.x, point.y), city.map_size)
 		assert(document.find_chunk("XTHG").set_decoded_payload(things))
 		assert(document.find_chunk("XTXT").set_decoded_payload(text))
 		city.resync_mirrors(["XTXT"])
@@ -137,3 +137,20 @@ func _check_explosion() -> void:
 		assert(city.building_id(point.x, point.y) == Tiles.EMPTY, "The explosion clears the selected building")
 
 		assert((_saved(city) == CityTileCounts.count(city)) == extended, "Only an extended city counts explosion clearing")
+
+
+# a new explosion record on `point`, linked from the text overlay
+func _spawn_explosion(text: PackedByteArray, things: PackedByteArray, point: Vector2i, height: int, edge: int) -> void:
+	var record := 1
+
+	while ThingData.read(things, record * CityState.THING_RECORD_SIZE) != 0:
+		record += 1
+
+	var offset := record * CityState.THING_RECORD_SIZE
+	var index := point.x * edge + point.y
+
+	for field in [[0, Sc2ThingLayout.Type.EXPLOSION], [3, point.x], [4, point.y], [5, height], [6, 8], [7, 8],
+			[10, OverlayData.read(text, index)]]:
+		ThingData.write(things, offset + field[0], field[1])
+
+	OverlayData.write(text, index, OverlayData.thing_id(record))

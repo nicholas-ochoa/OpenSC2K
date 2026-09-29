@@ -187,12 +187,6 @@ func check_values(edge: int) -> void:
 	check(police[station_index + 16] == 0, "Service radius remains in physical tile units")
 	# Run moving objects and disasters with full-size grids.
 	check(MovingThingPhase.run(city, SimRandom.new(1), SimLfsrRandom.new(2), GameLcgRandom.new(3)).ok, "Native moving phase")
-	check(WeatherDisasterPhase._toxic_spill_point(pollution, ZeroLfsrRandom.new(), edge).x == -1, "Low pollution is not a toxic source")
-	pollution[index] = 200
-	check(
-		WeatherDisasterPhase._toxic_spill_point(pollution, ZeroLfsrRandom.new(), edge) == point - Vector2i(5, 5),
-		"Toxic selector scans native coordinates",
-	)
 
 	# Check population, growth, and crime values per tile in a dense district.
 	doc = native_document(edge)
@@ -272,23 +266,11 @@ func check_legacy_upgrade() -> void:
 
 func check_wide_counts(edge: int) -> void:
 	var doc := EmptyCityTemplate.create(edge)
-	doc.set_misc_u32(MicrosimAnnualPhase.MISC_TILE_COUNTS + 0xd2 * 4, 40000)
+	# the native annual, weather, and aftermath counts have their own width tests
+	doc.set_misc_u32(Sc2MiscLayout.NORMAL_POPULATION, 65536 * 900)
 	var misc := doc.find_chunk("MISC").decoded_payload
-	var expected := -25536 if edge == 128 else 40000
-	check(MicrosimAnnualPhase._tile_count(misc, 0xd2, edge) == expected, "Annual tile count width")
-	check(WeatherDisasterPhase._tile_count(misc, 0xd2, edge) == expected, "Weather tile count width")
-	doc.set_misc_u32(MicrosimAnnualPhase.MISC_NORMAL_POPULATION, 65536 * 900)
-	misc = doc.find_chunk("MISC").decoded_payload
-	expected = 0 if edge == 128 else 200
-	check(MicrosimAnnualPhase._population_cap(misc, 200, 900, edge) == expected, "Annual population availability does not wrap")
+	var expected := 0 if edge == 128 else 200
 	check(BuildingFacilities.population_cap(misc, 200, 900, edge) == expected, "Placement population availability does not wrap")
-	doc.set_misc_u32(RciAftermathPhase.MISC_TILE_COUNTS + RciAftermathPhase.STADIUM_TILE * 4, 40000)
-	doc.set_misc_u32(RciAftermathPhase.MISC_STADIUM_TEAMS, 1)
-	var news: Array[NewsEvent] = []
-	RciAftermathPhase._append_general_news(ZeroRandom.new(), doc.find_chunk("MISC").decoded_payload,
-		doc.find_chunk("XGRP").decoded_payload, news, edge)
-	check(NewsEvent.contains(news, RciAftermathPhase.NEWS_SPORTS, 0) == (edge != 128),
-		"Sports news uses wide stadium count")
 	var micro := doc.find_chunk("XMIC").decoded_payload.duplicate()
 	BuildingFacilities.initialize_microsim(micro, misc, 10, 0xd0, 1900, SimRandom.new(1), false, false, edge)
 	check((micro[10 * 8 + 2] * 256 + micro[10 * 8 + 3]) == expected, "Placement passes map size to population cap")

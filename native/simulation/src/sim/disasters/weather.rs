@@ -487,3 +487,31 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+mod count_tests {
+    use super::*;
+    use crate::sim::bytes::write_u32_be;
+    use crate::sim::testing::{empty_city, empty_full_resolution_city, sequence_lfsr};
+
+    #[test]
+    fn tile_counts_keep_the_map_width() {
+        for edge in [16i64, 32, 64, 128, 256, 384, 512, 640, 1024] {
+            let mut city = empty_city(edge);
+            write_u32_be(&mut city.misc.data, misc_layout::TILE_COUNTS + 0xd2 * 4, 40000);
+            assert_eq!(tile_count(&city.misc.data, 0xd2, edge), if edge == 128 { -25536 } else { 40000 });
+        }
+    }
+
+    /// The toxic spill search scans per-tile pollution in native coordinates.
+    #[test]
+    fn toxic_spills_start_at_high_native_pollution() {
+        for edge in [128i64, 512] {
+            let mut city = empty_full_resolution_city(edge);
+            let point = Vec2i::new(edge - 32, edge - 32);
+            assert_eq!(toxic_spill_point(&city.xplt.data, &mut sequence_lfsr(&[0]), edge).x, -1, "low pollution is not a toxic source");
+            city.xplt.data[(point.x * edge + point.y) as usize] = 200;
+            assert_eq!(toxic_spill_point(&city.xplt.data, &mut sequence_lfsr(&[0]), edge), point - Vec2i::new(5, 5));
+        }
+    }
+}

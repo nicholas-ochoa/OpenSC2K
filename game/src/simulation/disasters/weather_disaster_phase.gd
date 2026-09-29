@@ -76,41 +76,6 @@ const DISASTER_PLANE_CRASH := 18
 const DISASTER_WAIT_MONTHS := [0, 100, 60, 30]
 
 
-static func _toxic_spill_point(
-	pollution: PackedByteArray, lfsr_random: SimLfsrRandom,
-	map_edge: int = 128,
-) -> Vector2i:
-	var highest := 0
-	var point := Vector2i(-1, -1)
-	var grid_edge := CityDataGrid.edge(pollution, map_edge)
-
-	if grid_edge == 0:
-		return point
-
-	var scale := map_edge / grid_edge
-
-	for x in grid_edge:
-		for y in grid_edge:
-			var value := int(pollution[x * grid_edge + y])
-
-			if value <= 0x95 or value <= highest:
-				continue
-
-			if lfsr_random.next_mod(10) != 0:
-				continue
-
-			highest = value
-			point = Vector2i(
-				x * scale + lfsr_random.next_mod(10) - 5,
-				y * scale + lfsr_random.next_mod(10) - 5
-			)
-
-	if point.x < 0 or point.x > (map_edge - 1) or point.y < 0 or point.y > (map_edge - 1) or highest == 0:
-		return Vector2i(-1, -1)
-
-	return point
-
-
 static func _tile_count(misc: PackedByteArray, tile_id: int, map_edge: int = 128) -> int:
 	var value := BinaryData.read_u32_be(misc, MISC_TILE_COUNTS + tile_id * 4)
 

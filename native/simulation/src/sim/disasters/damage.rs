@@ -243,3 +243,25 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+mod class_tests {
+    use super::*;
+
+    /// The original keeps the damaged class with the largest story weight and
+    /// skips tunnel entrances.
+    #[test]
+    fn damage_keeps_the_most_important_building_class() {
+        let buildings = [tiles::LOWER_CLASS_HOMES_1X1_1 as u8, 0xd2, tiles::TUNNEL_ENTRANCE_1 as u8, 0xc6, 0xe4];
+        let zones = [1u8, 9, 8, 0, 0];
+        let mut class = -1;
+        let mut classes = Vec::new();
+
+        for index in 0..buildings.len() as i64 {
+            record_damage_class(&mut class, &buildings, &zones, index);
+            classes.push(class);
+        }
+
+        assert_eq!(classes, vec![1, 21, 21, 10, 10]);
+    }
+}

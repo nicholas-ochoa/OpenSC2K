@@ -1731,3 +1731,29 @@ fn start_volcano(city: &mut City, center: Vec2i, random: Option<&mut SimRandom>)
     result.map_changed = map_changed;
     result
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Extended cities select the same shore as the original square search.
+    #[test]
+    fn flood_shores_keep_the_original_search_order() {
+        for edge in [128i64, 256, 384, 512, 640, 1024] {
+            let mut legacy = vec![0u8; 128 * 128];
+            let mut enlarged = vec![0u8; (edge * edge) as usize];
+            let shift = Vec2i::new(edge - 128, edge - 128);
+
+            for point in [Vec2i::new(4, 4), Vec2i::new(12, 4), Vec2i::new(4, 12), Vec2i::new(12, 12), Vec2i::new(80, 100)] {
+                legacy[(point.x * 128 + point.y) as usize] = 0x20;
+                let moved = point + shift;
+                enlarged[(moved.x * edge + moved.y) as usize] = 0x20;
+            }
+
+            for origin in [Vec2i::new(8, 8), Vec2i::ZERO, Vec2i::new(127, 127), Vec2i::new(90, 90)] {
+                let expected = find_flood_shore(&legacy, origin, 128);
+                assert_eq!(find_flood_shore(&enlarged, origin + shift, edge), expected + shift, "edge {edge} origin {origin:?}");
+            }
+        }
+    }
+}

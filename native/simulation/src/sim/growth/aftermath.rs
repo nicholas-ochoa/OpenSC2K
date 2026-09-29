@@ -346,3 +346,24 @@ fn release_invention(age_in_days: i64, random: &mut SimRandom, misc: &mut [u8], 
 
     -1
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sim::bytes::write_u32_be;
+    use crate::sim::testing::{empty_city, sequence_random};
+
+    /// Sports news reads the stadium count at the width of the map.
+    #[test]
+    fn sports_news_uses_the_wide_stadium_count() {
+        for edge in [16i64, 32, 64, 128, 256, 384, 512, 640, 1024] {
+            let mut city = empty_city(edge);
+            write_u32_be(&mut city.misc.data, misc_layout::TILE_COUNTS + tiles::STADIUM * 4, 40000);
+            write_u32_be(&mut city.misc.data, misc_layout::STADIUM_TEAMS, 1);
+            let mut news = Vec::new();
+            append_general_news(&mut sequence_random(&[0]), &city.misc.data, &city.xgrp.data, &mut news, edge);
+            let sports = news.iter().any(|item| item.type_ == NEWS_SPORTS && item.argument == 0);
+            assert_eq!(sports, edge != 128);
+        }
+    }
+}

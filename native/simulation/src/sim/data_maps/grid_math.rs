@@ -195,3 +195,69 @@ pub fn apply_service_pattern(values: &mut [u8], edge: i64, origin_x: i64, origin
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The frozen smoothing oracle: each value plus its ring neighbors inside the map.
+    fn reference_smooth(values: &[i32], edge: usize, center_weight: i64, base_divisor: i64, step: i64, rings: i64) -> Vec<i32> {
+        let edge_i = edge as i64;
+        let mut result = vec![0i32; values.len()];
+
+        for x in 0..edge_i {
+            for y in 0..edge_i {
+                let index = x * edge_i + y;
+                let mut total = values[index as usize] as i64 * center_weight;
+                let mut divisor = base_divisor;
+
+                for ring in 1..=rings {
+                    let distance = ring * step;
+
+                    if x >= distance {
+                        total += values[(index - distance * edge_i) as usize] as i64;
+                        divisor += 1;
+                    }
+
+                    if x + distance < edge_i {
+                        total += values[(index + distance * edge_i) as usize] as i64;
+                        divisor += 1;
+                    }
+
+                    if y >= distance {
+                        total += values[(index - distance) as usize] as i64;
+                        divisor += 1;
+                    }
+
+                    if y + distance < edge_i {
+                        total += values[(index + distance) as usize] as i64;
+                        divisor += 1;
+                    }
+                }
+
+                result[index as usize] = (total / divisor) as i32;
+            }
+        }
+
+        result
+    }
+
+    /// Signed smoothing, clipped borders, and byte totals match the oracle.
+    #[test]
+    fn smoothing_matches_the_oracle() {
+        let pattern = [i32::MIN, i32::MAX, -991, 0, 1024, 127];
+
+        for edge in [1usize, 3, 8, 17, 128, 256, 384, 512] {
+            let values: Vec<i32> = (0..edge * edge).map(|index| pattern[index % 6]).collect();
+
+            for (step, rings) in [(1, 1), (1, 2), (4, 1), (2, 2), (2, 3), (0, 2)] {
+                let expected = reference_smooth(&values, edge, 3, 3, step, rings);
+                assert_eq!(smooth(&values, edge, 3, 3, step, rings), expected);
+                let expected_bytes: Vec<u8> = expected.iter().map(|value| (*value).clamp(0, 255) as u8).collect();
+                let (bytes, total) = smooth_bytes(&values, edge, 3, 3, step, rings);
+                assert_eq!(bytes, expected_bytes);
+                assert_eq!(total, expected_bytes.iter().map(|value| *value as i64).sum::<i64>());
+            }
+        }
+    }
+}

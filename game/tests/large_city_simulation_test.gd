@@ -9,8 +9,6 @@ var fixtures: Dictionary = {}
 func _init() -> void:
 	for edge in Sc2File.MAP_SIZES:
 		check_charts(edge)
-		if edge >= 128:
-			check_flood_order(edge)
 		if edge in [16, 128, 512]:
 			check_far_services_and_year(edge)
 		else:
@@ -105,24 +103,6 @@ func check(condition: bool, message: String) -> void:
 	if not condition:
 		failures += 1
 		push_error(message)
-
-
-func check_flood_order(edge: int) -> void:
-	var legacy := PackedByteArray()
-	legacy.resize(128 * 128)
-	var enlarged := PackedByteArray()
-	enlarged.resize(edge * edge)
-	var shift := Vector2i(edge - 128, edge - 128)
-
-	for point in [Vector2i(4, 4), Vector2i(12, 4), Vector2i(4, 12), Vector2i(12, 12), Vector2i(80, 100)]:
-		legacy[point.x * 128 + point.y] = 0x20
-		var translated: Vector2i = point + shift
-		enlarged[translated.x * edge + translated.y] = 0x20
-
-	for origin in [Vector2i(8, 8), Vector2i.ZERO, Vector2i(127, 127), Vector2i(90, 90)]:
-		var expected := DisasterStartFloodWeather.find_flood_shore(legacy, origin)
-		var actual := DisasterStartFloodWeather.find_flood_shore(enlarged, origin + shift, edge)
-		check(actual == expected + shift, "flood search order %d at %s" % [edge, origin])
 
 
 func check_far_services_and_year(edge: int) -> void:

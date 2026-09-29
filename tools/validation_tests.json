@@ -212,12 +212,6 @@
     "lane": "product"
   },
   {
-    "id": "native_grid_interior_test",
-    "script": "tests/native_grid_interior_test.gd",
-    "domain": "simulation",
-    "lane": "product"
-  },
-  {
     "id": "overview_zoom_test",
     "script": "tests/overview_zoom_test.gd",
     "domain": "ui",

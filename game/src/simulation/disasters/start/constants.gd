@@ -1,7 +1,6 @@
 class_name DisasterStartConstants
 extends RefCounted
 
-const DisasterMapDamage = preload("res://src/simulation/disasters/disaster_damage.gd")
 const DISASTER_NONE := 0
 const DISASTER_FIRE := 1
 const DISASTER_FLOOD := 2
