@@ -41,6 +41,12 @@ func _run() -> void:
 		started = Time.get_ticks_usec()
 		var first_ms := -1.0
 		var visible_ms := -1.0
+		var covered_ms := -1.0
+		# emulate simulation revisions that change a few scattered regions
+		var churn := int(OS.get_environment("CITY_BENCH_CHURN_FRAMES")) if OS.has_environment("CITY_BENCH_CHURN_FRAMES") else 0
+		var random := RandomNumberGenerator.new()
+		random.seed = 2000
+		var frame := 0
 		var max_poll_usec := 0
 		var deadline := Time.get_ticks_msec() + 30000
 
@@ -59,6 +65,25 @@ func _run() -> void:
 			if cache.ready() and visible_ms < 0:
 				visible_ms = (Time.get_ticks_usec() - started) / 1000.0
 
+			if cache.covered() and covered_ms < 0:
+				covered_ms = (Time.get_ticks_usec() - started) / 1000.0
+
+			frame += 1
+
+			if churn > 0 and frame % churn == 0:
+				var changed: Array[Rect2i] = []
+				var extent := cache.native_size * cache.divisor
+
+				for index in 4:
+					changed.append(Rect2i(random.randi_range(0, extent.x - 64), random.randi_range(0, extent.y - 64), 64, 64))
+
+				cache.configure(main.document_state.city, main.asset_state.palette_index_encoding, cache._sprites,
+					cache.signature + [frame], cache.view_size, cache.mode, cache._visibility, cache._show_pipes, cache._show_subways,
+					Rect2i(), cache._show_water_mains, changed, true)
+
+				if covered_ms >= 0:
+					break
+
 			if not (cache.entries.size() <= cache.visible.size() + cache.offscreen_limit()):
 				printerr("Benchmark check failed: cache.entries.size() <= cache.visible.size() + cache.offscreen_limit()")
 				quit(1)
@@ -69,7 +94,7 @@ func _run() -> void:
 
 			await process_frame
 
-		if not (cache.ready() and cache.prefetch_ready()):
+		if churn == 0 and not (cache.ready() and cache.prefetch_ready()):
 			printerr("Benchmark check failed: cache.ready() and cache.prefetch_ready()")
 			quit(1)
 			return
@@ -80,9 +105,9 @@ func _run() -> void:
 		print("BACKEND %s atlas_MiB=%.2f view=%d region_edge=%d" % ["GPU" if metrics.gpu else "CPU", metrics.atlas_bytes / 1048576.0,
 			cache.view_size, cache.region_edge])
 		var full_size := CityIsometricRenderer.output_size_for_view(2, edge)
-		print(("SIZE %d viewport=%s activation_ms=%.2f first_region_ms=%.2f visible_ready_ms=%.2f "
+		print(("SIZE %d viewport=%s activation_ms=%.2f first_region_ms=%.2f visible_ready_ms=%.2f covered_ms=%.2f "
 			+ "main_poll_max_ms=%.2f resident=%d visible=%d cpu_images_MiB=%.2f "
-			+ "texture_MiB_estimate=%.2f old_full_index_MiB=%.2f") % [edge, main.map_view.size, activation_ms, first_ms, visible_ms,
+			+ "texture_MiB_estimate=%.2f old_full_index_MiB=%.2f") % [edge, main.map_view.size, activation_ms, first_ms, visible_ms, covered_ms,
 			max_poll_usec / 1000.0, metrics.resident, metrics.visible, metrics.cpu_image_bytes / 1048576.0,
 			metrics.texture_bytes_estimate / 1048576.0, full_size.x * full_size.y * 2 / 1048576.0])
 

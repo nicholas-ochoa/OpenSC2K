@@ -23,6 +23,8 @@ var _tile_order_head := 0
 var bound_rects := PackedInt32Array()
 var bound_inputs := PackedInt64Array()
 var bound_extras := PackedInt64Array()
+# the revision in which the region renderer last checked each tile's keys
+var bound_stamps := PackedInt32Array()
 var _maximum_altitude := -1
 var revision := -1
 var _layout: Array = []
@@ -357,6 +359,8 @@ func prepare_bounds(city: CityState) -> void:
 	bound_extras.resize(cells)
 	bound_extras.fill(0)
 	bound_rects.resize(cells * 4)
+	bound_stamps.resize(cells)
+	bound_stamps.fill(-0x7fffffff)
 
 
 # The highest land, water, or object altitude in the city. Region spans use it

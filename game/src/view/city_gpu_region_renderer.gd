@@ -52,9 +52,11 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 	var rects := context.bound_rects
 	var inputs := context.bound_inputs
 	var extras := context.bound_extras
+	var stamps := context.bound_stamps
 	context.bound_rects = PackedInt32Array()
 	context.bound_inputs = PackedInt64Array()
 	context.bound_extras = PackedInt64Array()
+	context.bound_stamps = PackedInt32Array()
 	var edge := city.map_size
 	var cells := edge * edge
 	var altitudes := city.altitude_words
@@ -82,29 +84,36 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 
 			if not underground:
 				var index := x * edge + y
-				input = ((altitudes[index] & 0xffff) | (terrains[index] << 16) | (buildings[index] << 24)
-					| (zones[index] << 32) | (flags[index] << 40) | (1 << 62))
-				extra = 1 << 62
-
-				if overlay_planes > 0:
-					extra |= overlays[index] | ((overlays[cells + index] << 8) if overlay_planes == 2 else 0)
-
-				if not grounds.is_empty():
-					extra |= (grounds[index] + 1) << 16
-
-				if not objects.is_empty():
-					extra |= (objects[index] + 1) << 40
-
 				var at := index * 4
 
-				if inputs[index] != input or extras[index] != extra:
-					var found := context.tile_bounds(city, sprites, configuration, x, y, mode)
-					inputs[index] = input
-					extras[index] = extra
-					rects[at] = found.position.x
-					rects[at + 1] = found.position.y
-					rects[at + 2] = found.size.x
-					rects[at + 3] = found.size.y
+				# a tile checked earlier in this revision keeps its keys and bounds
+				if stamps[index] != revision:
+					input = ((altitudes[index] & 0xffff) | (terrains[index] << 16) | (buildings[index] << 24)
+						| (zones[index] << 32) | (flags[index] << 40) | (1 << 62))
+					extra = 1 << 62
+
+					if overlay_planes > 0:
+						extra |= overlays[index] | ((overlays[cells + index] << 8) if overlay_planes == 2 else 0)
+
+					if not grounds.is_empty():
+						extra |= (grounds[index] + 1) << 16
+
+					if not objects.is_empty():
+						extra |= (objects[index] + 1) << 40
+
+					stamps[index] = revision
+
+					if inputs[index] != input or extras[index] != extra:
+						var found := context.tile_bounds(city, sprites, configuration, x, y, mode)
+						inputs[index] = input
+						extras[index] = extra
+						rects[at] = found.position.x
+						rects[at + 1] = found.position.y
+						rects[at + 2] = found.size.x
+						rects[at + 3] = found.size.y
+				else:
+					input = inputs[index]
+					extra = extras[index]
 
 				var width := rects[at + 2]
 
@@ -153,6 +162,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 	context.bound_rects = rects
 	context.bound_inputs = inputs
 	context.bound_extras = extras
+	context.bound_stamps = stamps
 
 	if not error.is_empty():
 		return CityGpuRegionResult.failed(error)
