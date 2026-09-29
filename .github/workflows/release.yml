@@ -73,6 +73,7 @@ jobs:
     uses: ./.github/workflows/test.yml
     with:
       ref: ${{ needs.prepare.outputs.sha }}
+    secrets: inherit
 
   build:
     name: Build release packages

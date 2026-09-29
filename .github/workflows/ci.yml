@@ -28,6 +28,7 @@ jobs:
       github.repository == 'nicholas-ochoa/OpenSC2K' &&
       (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     uses: ./.github/workflows/test.yml
+    secrets: inherit
 
   build:
     name: Build desktop packages
