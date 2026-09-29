@@ -23,6 +23,16 @@ static func run(city: CityState, random: SimRandom) -> Result:
 	if random == null:
 		return _failed("random state is required")
 
+	return NativeSimulationBridge.run("power", city, random, null, null).result
+
+
+static func _run_gdscript(city: CityState, random: SimRandom) -> Result:
+	if city == null or not city.is_valid():
+		return _failed("city is invalid")
+
+	if random == null:
+		return _failed("random state is required")
+
 	var span := SimulationTimingSpan.new(city.simulation_slice)
 	span.mark("clear power and scan marks")
 	var flags := Sc2TileFlags.without(city.tile_flags, FLAG_MARK | FLAG_POWERED)

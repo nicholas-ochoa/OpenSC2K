@@ -9,6 +9,13 @@ static func run(city: CityState) -> Result:
 	if city == null or not city.is_valid():
 		return _failed("city is invalid")
 
+	return NativeSimulationBridge.run("traffic", city, null, null, null).result
+
+
+static func _run_gdscript(city: CityState) -> Result:
+	if city == null or not city.is_valid():
+		return _failed("city is invalid")
+
 	var chunk := city.document.find_chunk("XTRF")
 
 	if chunk == null or chunk.decoded_payload.size() != city.document.decoded_size("XTRF"):

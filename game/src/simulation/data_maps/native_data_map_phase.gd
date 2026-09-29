@@ -17,13 +17,17 @@ static var _land_value_halved := _make_land_value_halved()
 
 # the full monthly scan. the day schedule runs the two halves on separate days
 static func run(city: CityState) -> PollutionPhase.Result:
+	return NativeSimulationBridge.run("data_maps.native", city, null, null, null).result
+
+
+static func _gdscript_run(city: CityState) -> PollutionPhase.Result:
 	var span := SimulationTimingSpan.new(city.simulation_slice)
-	var coverage := run_pollution_and_coverage(city)
+	var coverage := _gdscript_run_pollution_and_coverage(city)
 
 	if not coverage.ok:
 		return PollutionPhase.failed(coverage.error)
 
-	var result := run_land_value_and_crime(city)
+	var result := _gdscript_run_land_value_and_crime(city)
 
 	if result.ok:
 		var steps := coverage.timing.steps.duplicate()
@@ -36,6 +40,10 @@ static func run(city: CityState) -> PollutionPhase.Result:
 # pollution, city center, and police and fire coverage. these read only the
 # map, the previous pollution and traffic, and the budget
 static func run_pollution_and_coverage(city: CityState) -> PollutionCoverageResult:
+	return NativeSimulationBridge.run("data_maps.coverage", city, null, null, null).result
+
+
+static func _gdscript_run_pollution_and_coverage(city: CityState) -> PollutionCoverageResult:
 	var span := SimulationTimingSpan.new(city.simulation_slice)
 	span.mark("pollution sources")
 	var edge := city.map_size
@@ -119,6 +127,10 @@ static func run_pollution_and_coverage(city: CityState) -> PollutionCoverageResu
 # land value, population density, growth, and crime. these read the pollution,
 # police coverage, and city center that run_pollution_and_coverage stores
 static func run_land_value_and_crime(city: CityState) -> PollutionPhase.Result:
+	return NativeSimulationBridge.run("data_maps.land_value", city, null, null, null).result
+
+
+static func _gdscript_run_land_value_and_crime(city: CityState) -> PollutionPhase.Result:
 	var span := SimulationTimingSpan.new(city.simulation_slice)
 	span.mark("land and density sources")
 	var edge := city.map_size

@@ -14,10 +14,22 @@ use godot::prelude::*;
 use super::convert;
 use crate::sim::city::City;
 use crate::sim::random::Randoms;
+use crate::sim::data_maps;
 use crate::sim::growth;
+use crate::sim::infrastructure::{power, traffic, water};
 use crate::sim::value::{ToValue, Value};
 
-pub const OPERATIONS: &[&str] = &["echo", "growth"];
+pub const OPERATIONS: &[&str] = &[
+    "echo",
+    "growth",
+    "pollution",
+    "data_maps.native",
+    "data_maps.coverage",
+    "data_maps.land_value",
+    "power",
+    "water",
+    "traffic",
+];
 
 pub struct Outcome {
     pub error: String,
@@ -39,7 +51,8 @@ pub fn run(request: &VarDictionary) -> VarDictionary {
     let args = convert::dictionary(request, "args");
     let mut city = convert::city(request);
     let mut randoms = convert::randoms(request);
-    let outcome = dispatch(&op, &args, &mut city, &mut randoms);
+    let budget = super::budgets::get(convert::int(request, "budget", 0));
+    let outcome = crate::sim::budget::with_budget(budget, || dispatch(&op, &args, &mut city, &mut randoms));
     let mut response = VarDictionary::new();
     response.set("ok", outcome.error.is_empty());
     response.set("error", outcome.error.as_str());
@@ -58,6 +71,19 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
             let detailed = convert::boolean(args, "detailed", false);
             Outcome::value(growth::run(city, randoms, step, substep, detailed).to_value())
         }
+        "pollution" => {
+            if city.full_resolution_maps() {
+                Outcome::value(data_maps::native::run(city).to_value())
+            } else {
+                Outcome::value(data_maps::coarse::run(city).to_value())
+            }
+        }
+        "data_maps.native" => Outcome::value(data_maps::native::run(city).to_value()),
+        "data_maps.coverage" => Outcome::value(data_maps::native::run_pollution_and_coverage(city).to_value()),
+        "data_maps.land_value" => Outcome::value(data_maps::native::run_land_value_and_crime(city).to_value()),
+        "power" => Outcome::value(power::run(city, &mut randoms.random).to_value()),
+        "water" => Outcome::value(water::run(city).to_value()),
+        "traffic" => Outcome::value(traffic::run(city).to_value()),
         "echo" => Outcome::value(Value::Int(convert::int(args, "value", 0) + city.map_size)),
         _ => Outcome::failure(format!("unknown native simulation operation: {op}")),
     }

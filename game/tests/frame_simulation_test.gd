@@ -37,9 +37,9 @@ func check_parity(edge: int) -> void:
 	var sync := make_controller(edge)
 	var sliced := make_controller(edge)
 	var runner := FrameSimulationRunner.new(sliced)
-	# Use a short lease for the small fixture so it exercises resumed work
-	# even when every 128-tile job fits within the normal frame budget.
-	runner.budget_usec = 1000 if edge == 128 else 16000
+	# Use the shortest lease so the jobs exercise resumed work. Native days
+	# fit within a normal frame budget at both sizes.
+	runner.budget_usec = 100
 	var random_id := sliced.engine.random.get_instance_id()
 	var city_id := sliced.engine.city.get_instance_id()
 	var document_id := sliced.engine.city.document.get_instance_id()

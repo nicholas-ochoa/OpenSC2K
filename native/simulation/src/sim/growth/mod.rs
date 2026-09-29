@@ -289,10 +289,17 @@ impl TileScan {
         let mut x = step;
 
         while x < edge {
+            crate::sim::budget::checkpoint();
             let mut y = substep;
 
             while y < edge {
                 tile_count += 1;
+
+                // The scanned-tile count strides the worker checkpoint.
+                if tile_count & 15 == 0 {
+                    crate::sim::budget::checkpoint();
+                }
+
                 let index = x * edge + y;
                 let zone_byte = city.xzon.data[index as usize] as i64;
                 let zone_type = zone_byte & zone::TYPE_MASK;

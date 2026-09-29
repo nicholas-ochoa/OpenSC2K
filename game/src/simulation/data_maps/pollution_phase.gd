@@ -6,13 +6,20 @@ extends PollutionValues
 
 
 static func run(city: CityState) -> Result:
+	if city == null or not city.is_valid():
+		return failed("city is invalid")
+
+	return NativeSimulationBridge.run("pollution", city, null, null, null).result
+
+
+static func _run_gdscript(city: CityState) -> Result:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
 		return failed("city is invalid")
 
 	if city.document.full_resolution_maps():
-		return NativeDataMapPhase.run(city)
+		return NativeDataMapPhase._gdscript_run(city)
 
 	var span := SimulationTimingSpan.new(city.simulation_slice)
 	span.mark("pollution sources")

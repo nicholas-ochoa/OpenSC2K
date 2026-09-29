@@ -21,6 +21,13 @@ const DESALINIZATION := Tiles.DESALINIZATION
 
 
 static func run(city: CityState) -> Result:
+	if city == null or not city.is_valid():
+		return _failed("city is invalid")
+
+	return NativeSimulationBridge.run("water", city, null, null, null).result
+
+
+static func _run_gdscript(city: CityState) -> Result:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():

@@ -1,7 +1,5 @@
 //! Common phase results and measured work time.
 
-use std::time::Instant;
-
 use super::events::{EffectEvent, GameOverEvent, NewsEvent, SoundEvent, Timing};
 use super::geom::Vec2i;
 use super::value::{Ints32, OrderedMap, ToValue, Value};
@@ -118,21 +116,16 @@ impl PlainPhaseResult {
     }
 }
 
-/// Elapsed work time, as SimulationTimingSpan. Frame waits are excluded when a
-/// slice budget reports them.
+/// Elapsed work time, as SimulationTimingSpan. Waits for the next frame grant
+/// are excluded. Preemption is still included.
 pub struct TimingSpan {
-    started: Instant,
-    step_started: Instant,
+    started: i64,
+    step_started: i64,
     current_step: String,
     steps: OrderedMap<i64>,
     indexed_labels: &'static [&'static str],
     indexed_totals: Vec<i64>,
     current_index: i64,
-    parked_usec: fn() -> i64,
-}
-
-fn no_parking() -> i64 {
-    0
 }
 
 impl TimingSpan {
@@ -141,7 +134,7 @@ impl TimingSpan {
     }
 
     pub fn with_labels(labels: &'static [&'static str]) -> Self {
-        let now = Instant::now();
+        let now = Self::now();
 
         Self {
             started: now,
@@ -151,20 +144,18 @@ impl TimingSpan {
             indexed_labels: labels,
             indexed_totals: vec![0; labels.len()],
             current_index: -1,
-            parked_usec: no_parking,
         }
     }
 
-    fn elapsed(from: Instant, to: Instant) -> i64 {
-        to.duration_since(from).as_micros() as i64
+    fn now() -> i64 {
+        super::budget::now_usec() - super::budget::parked_usec()
     }
 
     pub fn mark(&mut self, label: &str) {
-        let now = Instant::now();
+        let now = Self::now();
 
         if !self.current_step.is_empty() {
-            let spent = Self::elapsed(self.step_started, now);
-            let total = self.steps.get(&self.current_step).copied().unwrap_or(0) + spent;
+            let total = self.steps.get(&self.current_step).copied().unwrap_or(0) + now - self.step_started;
             let step = self.current_step.clone();
             self.steps.set(&step, total);
         }
@@ -175,10 +166,10 @@ impl TimingSpan {
 
     /// Use fixed indices for hot loops. A span uses indexed or string marks, not both.
     pub fn mark_index(&mut self, index: i64) {
-        let now = Instant::now();
+        let now = Self::now();
 
         if self.current_index >= 0 {
-            self.indexed_totals[self.current_index as usize] += Self::elapsed(self.step_started, now);
+            self.indexed_totals[self.current_index as usize] += now - self.step_started;
         }
 
         self.current_index = index;
@@ -196,9 +187,7 @@ impl TimingSpan {
             }
         }
 
-        let total = Self::elapsed(self.started, Instant::now()) - (self.parked_usec)();
-
-        Timing::new(total.max(0), self.steps.clone())
+        Timing::new(Self::now() - self.started, self.steps.clone())
     }
 }
 

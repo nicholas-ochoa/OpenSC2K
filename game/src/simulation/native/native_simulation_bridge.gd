@@ -12,6 +12,11 @@ const CHUNK_IDS: PackedStringArray = [
 static var classes := {
 	"PhaseResult": PhaseResult,
 	"GrowthResult": GrowthResult,
+	"PollutionPhase.Result": PollutionPhase.Result,
+	"NativeDataMapPhase.PollutionCoverageResult": NativeDataMapPhase.PollutionCoverageResult,
+	"PowerPhase.Result": PowerPhase.Result,
+	"WaterPhase.Result": WaterPhase.Result,
+	"TrafficPhase.Result": TrafficPhase.Result,
 	"EffectEvent": EffectEvent,
 	"SimulationTiming": SimulationTiming,
 }
@@ -43,6 +48,8 @@ static func run(
 			_script(game_random, GameLcgRandom),
 		],
 		"args": args,
+		# native loops park at frame boundaries with this lease
+		"budget": city.simulation_slice.handle if city.simulation_slice != null else 0,
 	}
 	var response: Dictionary = NativeSimulation.run(request)
 
