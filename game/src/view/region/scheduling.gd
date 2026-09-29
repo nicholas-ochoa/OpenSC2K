@@ -207,8 +207,28 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 				cache.display_city = cache._snapshot
 				cache._prepared = true
 
+			# Upload one atlas copy per texture. A later copy holds every sprite
+			# of an earlier copy of the same size.
+			var pending: Image = null
+
 			for region in regions:
+				if region.atlas_image != null:
+					if worker.atlas == null or worker.atlas.get_size() != Vector2(region.atlas_image.get_size()):
+						if pending != null:
+							worker.atlas.update(pending)
+							pending = null
+
+						# Keep the old atlas texture with meshes whose UVs still use its size.
+						worker.atlas = ImageTexture.create_from_image(region.atlas_image)
+					else:
+						pending = region.atlas_image
+
+					worker.atlas_revision = int(region.atlas_revision)
+
 				_publish_region(cache, worker, region)
+
+			if pending != null:
+				worker.atlas.update(pending)
 		else:
 			cache.discarded_regions += regions.size()
 
@@ -365,20 +385,12 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 	return changed
 
 
-# Accept one streamed region. Upload its atlas copy even when the region is no
-# longer wanted: the stream sends later sprites against that upload.
+# Accept one streamed region after its atlas copy is in `worker.atlas`. The
+# caller keeps a copy even when the region is no longer wanted: the stream
+# sends later sprites against that upload.
 static func _publish_region(cache: CityRegionCache, worker: CityRegionCache.RegionWorker, region: CityGpuRegionResult) -> void:
 	var key: Vector2i = region.key
 	worker.keys.erase(key)
-
-	if region.atlas_image != null:
-		if worker.atlas == null or worker.atlas.get_size() != Vector2(region.atlas_image.get_size()):
-			# Keep the old atlas texture with meshes whose UVs still use its size.
-			worker.atlas = ImageTexture.create_from_image(region.atlas_image)
-		else:
-			worker.atlas.update(region.atlas_image)
-
-		worker.atlas_revision = int(region.atlas_revision)
 
 	if not cache.wanted_keys.has(key) or (cache.entries.has(key) and int(cache.entries[key].generation) > worker.generation):
 		cache.discarded_regions += 1
