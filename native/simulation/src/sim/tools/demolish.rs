@@ -6,11 +6,11 @@ use super::network::{self, replace_building};
 use super::terrain;
 use super::underground;
 use super::{CORNER_BOTTOM_LEFT, CORNER_BOTTOM_RIGHT, CORNER_TOP_LEFT, CORNER_TOP_RIGHT, Maps};
+use crate::formats::sc2x::labels as label_records;
 use crate::sim::bytes::{read_u32_be, write_u32_be};
 use crate::sim::events::EffectEvent;
 use crate::sim::geom::{Rect2i, Vec2i};
 use crate::sim::ids::building_tile_ids as tiles;
-use crate::sim::ids::sc2label_layout;
 use crate::sim::ids::sc2microsim_layout;
 use crate::sim::ids::sc2misc_layout as misc_layout;
 use crate::sim::ids::sc2overlay_layout;
@@ -207,7 +207,7 @@ fn site_matches(buildings: &[u8], zones: &[u8], site: Rect2i, tile: i64, rotatio
 }
 
 /// DemolishEffectsSites._release_overlay.
-pub fn release_overlay(text_overlays: &mut [u8], labels: &mut [u8], microsims: &mut [u8], index: i64) {
+pub fn release_overlay(text_overlays: &mut [u8], labels: &mut [u8], wide_labels: bool, microsims: &mut [u8], index: i64) {
     let label_id = overlay::read(text_overlays, index);
 
     if label_id == 0 {
@@ -219,11 +219,11 @@ pub fn release_overlay(text_overlays: &mut [u8], labels: &mut [u8], microsims: &
     }
 
     if overlay::is_sign(label_id) {
-        crate::sim::bytes::put(labels, label_id * sc2label_layout::RECORD_SIZE, 0);
+        label_records::clear(labels, label_id as usize, wide_labels);
     } else if overlay::is_facility(label_id) && overlay::facility_record(label_id) >= MICROSIM_DYNAMIC_FIRST {
         let record = overlay::facility_record(label_id);
         crate::sim::bytes::put(microsims, record * sc2microsim_layout::RECORD_SIZE, 0);
-        crate::sim::bytes::put(labels, label_id * sc2label_layout::RECORD_SIZE, 0);
+        label_records::clear(labels, label_id as usize, wide_labels);
     }
 }
 
@@ -388,7 +388,7 @@ pub fn demolish_point(
             replace_building(maps.buildings, maps.zones, maps.misc, changed_index, rubble);
             maps.zones[c] = (maps.zones[c] as i64 & zone::TYPE_MASK) as u8;
             maps.flags[c] = (maps.flags[c] as i64 & FLAG_CLEAR_AFTER_STRUCTURE) as u8;
-            release_overlay(maps.text_overlays, maps.labels, maps.microsims, changed_index);
+            release_overlay(maps.text_overlays, maps.labels, maps.wide_labels, maps.microsims, changed_index);
             indices.push(changed_index);
             changed_points.push(Vec2i::new(x, y));
         }
@@ -931,7 +931,7 @@ fn demolish_highway_section(
         replace_building(maps.buildings, maps.zones, maps.misc, index, replacement);
         maps.zones[i] = (maps.zones[i] as i64 & zone::TYPE_MASK) as u8;
         maps.flags[i] = (maps.flags[i] as i64 & FLAG_CLEAR_AFTER_STRUCTURE) as u8;
-        release_overlay(maps.text_overlays, maps.labels, maps.microsims, index);
+        release_overlay(maps.text_overlays, maps.labels, maps.wide_labels, maps.microsims, index);
         points.push(point);
         indices.push(index);
     }

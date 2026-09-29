@@ -11,10 +11,13 @@ const EXTRA_THING := Layout.EXTRA_THING
 
 
 # the overlay layout keys off the payload size alone. a wide sc2x map stores a
-# low and a high plane, so its cell count is half its bytes
+# low and a high plane, so its cell count is half its bytes. an sc2x version 4
+# working document uses both planes at every map size. no square narrow plane
+# of a supported map size has one of these sizes
 static func cells_for(byte_count: int) -> int:
 	return (byte_count / 2) if (
-		byte_count == 131072 or byte_count == 294912 or byte_count == 524288
+		byte_count == 512 or byte_count == 2048 or byte_count == 8192 or byte_count == 32768
+		or byte_count == 131072 or byte_count == 294912 or byte_count == 524288
 		or byte_count == 819200 or byte_count == 2097152
 	) else byte_count
 

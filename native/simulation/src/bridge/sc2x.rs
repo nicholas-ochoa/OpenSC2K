@@ -385,6 +385,18 @@ impl NativeSc2x {
         result.set("next_sign_id", split.next_sign_id as i64);
         result.set("next_object_id", split.next_object_id as i64);
         result.set("issues", &strings(&split.issues));
+        result.set(
+            "object_ids",
+            &PackedInt64Array::from(
+                split
+                    .xthg
+                    .things
+                    .iter()
+                    .map(|thing| thing.object_id as i64)
+                    .collect::<Vec<_>>()
+                    .as_slice(),
+            ),
+        );
         result
     }
 

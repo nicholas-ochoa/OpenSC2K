@@ -26,6 +26,8 @@ pub struct Maps<'a> {
     pub flags: &'a mut [u8],
     pub text_overlays: &'a mut [u8],
     pub labels: &'a mut [u8],
+    /// True for the wide label records of an SC2X version 4 working document.
+    pub wide_labels: bool,
     pub microsims: &'a mut [u8],
     pub misc: &'a mut [u8],
 }
@@ -43,6 +45,7 @@ impl City {
             flags: &mut self.xbit.data,
             text_overlays: &mut self.xtxt.data,
             labels: &mut self.xlab.data,
+            wide_labels: self.large_version >= 4,
             microsims: &mut self.xmic.data,
             misc: &mut self.misc.data,
         }
@@ -62,6 +65,7 @@ pub struct CityParts<'a> {
 impl City {
     /// Borrow the edit maps with XTHG, XTRF, XPLT, XVAL, and XCRM.
     pub fn parts(&mut self) -> CityParts<'_> {
+        let wide_labels = self.large_version >= 4;
         let City {
             map_size,
             altm,
@@ -93,6 +97,7 @@ impl City {
                 flags: &mut xbit.data,
                 text_overlays: &mut xtxt.data,
                 labels: &mut xlab.data,
+                wide_labels,
                 microsims: &mut xmic.data,
                 misc: &mut misc.data,
             },

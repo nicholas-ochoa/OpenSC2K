@@ -97,6 +97,7 @@ impl City {
     /// Borrow the disaster maps. This does not mark the chunks written.
     pub fn disaster_maps(&mut self) -> DisasterMaps<'_> {
         let rotation = self.compass_rotation();
+        let wide_labels = self.large_version >= 4;
         let City {
             map_size,
             altm,
@@ -128,6 +129,7 @@ impl City {
                 flags: &mut xbit.data,
                 text_overlays: &mut xtxt.data,
                 labels: &mut xlab.data,
+                wide_labels,
                 microsims: &mut xmic.data,
                 misc: &mut misc.data,
             },

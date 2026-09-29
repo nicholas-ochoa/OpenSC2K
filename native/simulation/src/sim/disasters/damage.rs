@@ -4,7 +4,6 @@ use super::{DisasterMaps, RuntimeEvents, altitude_word, index};
 use crate::sim::geom::Vec2i;
 use crate::sim::grid;
 use crate::sim::ids::building_tile_ids as tiles;
-use crate::sim::ids::sc2label_layout;
 use crate::sim::ids::sc2tile_flags as flag_bits;
 use crate::sim::ids::sc2zone_layout as zone;
 use crate::sim::ids::terrain_tile_ids as terrain_ids;
@@ -38,11 +37,9 @@ pub fn append_damage_events(events: Option<&mut RuntimeEvents>, damage: &PointRe
 
 /// A sign label clear. An extended sign ID past the label records changes nothing,
 /// as a failed GDScript packed-array store.
-fn clear_sign_label(labels: &mut [u8], overlay_id: i64) {
-    let offset = overlay_id * sc2label_layout::RECORD_SIZE;
-
-    if offset >= 0 && (offset as usize) < labels.len() {
-        labels[offset as usize] = 0;
+fn clear_sign_label(labels: &mut [u8], overlay_id: i64, wide_labels: bool) {
+    if overlay_id >= 0 {
+        crate::formats::sc2x::labels::clear(labels, overlay_id as usize, wide_labels);
     }
 }
 
@@ -73,7 +70,7 @@ pub fn apply(
 
     if overlay_id > 0 {
         if overlay::is_sign(overlay_id) {
-            clear_sign_label(maps.maps.labels, overlay_id);
+            clear_sign_label(maps.maps.labels, overlay_id, maps.maps.wide_labels);
         } else if overlay::is_facility(overlay_id) {
             let damage = burn_structure(maps, point, random, lfsr, true, false, true);
             append_damage_events(events, &damage);
@@ -126,7 +123,7 @@ pub fn apply_flood(
 
     if overlay_id > 0 {
         if overlay::is_sign(overlay_id) {
-            clear_sign_label(maps.maps.labels, overlay_id);
+            clear_sign_label(maps.maps.labels, overlay_id, maps.maps.wide_labels);
         } else if overlay::is_facility(overlay_id) {
             let damage = burn_structure(maps, point, random, lfsr, false, false, true);
             append_damage_events(events, &damage);

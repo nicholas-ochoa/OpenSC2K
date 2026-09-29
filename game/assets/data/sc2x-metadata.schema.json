@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:opensc2k:sc2x:metadata:4",
+  "title": "SC2X v4 essential metadata and saved state",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "file_version", "map", "city", "identity_counters", "simulation"],
+  "properties": {
+    "$schema": {"const": "metadata.schema.json"},
+    "format": {"const": "OpenSC2K.SC2X"},
+    "file_version": {"const": 4},
+    "map": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["size"],
+      "properties": {"size": {"type": "integer", "minimum": 1, "maximum": 65535}}
+    },
+    "city": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "mayor_name", "stadium_teams"],
+      "properties": {
+        "name": {"$ref": "#/$defs/name", "minLength": 1},
+        "mayor_name": {"$ref": "#/$defs/name"},
+        "stadium_teams": {
+          "type": "array", "minItems": 5, "maxItems": 5,
+          "items": {"$ref": "#/$defs/name"}
+        }
+      }
+    },
+    "identity_counters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["next_sign_id", "next_object_id"],
+      "properties": {
+        "next_sign_id": {"$ref": "#/$defs/u32", "minimum": 1},
+        "next_object_id": {"$ref": "#/$defs/u32", "minimum": 1}
+      }
+    },
+    "simulation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rng_states", "phase_state"],
+      "properties": {
+        "rng_states": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["process_random", "lfsr_random", "game_random"],
+          "properties": {
+            "process_random": {"$ref": "#/$defs/u32"},
+            "lfsr_random": {"$ref": "#/$defs/u32"},
+            "game_random": {"$ref": "#/$defs/u32"}
+          }
+        },
+        "phase_state": {"type": "object"}
+      }
+    },
+    "required_features": {
+      "type": "array", "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "legacy": {"type": "object"},
+    "extensions": {"type": "object"}
+  },
+  "$defs": {
+    "name": {"type": "string", "maxLength": 64, "pattern": "^[^\\u0000]*$"},
+    "u32": {"type": "integer", "minimum": 0, "maximum": 4294967295}
+  }
+}

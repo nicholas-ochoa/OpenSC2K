@@ -1,6 +1,8 @@
 class_name ThingData
 extends RefCounted
-# sclg stores equal low and high record planes. scdh remains byte-exact
+# sclg stores equal low and high record planes. scdh remains byte-exact. only
+# the original 480-byte table has one plane; an sc2x version 4 working table
+# can be smaller and still has two planes
 
 @warning_ignore_start("integer_division")
 
@@ -11,10 +13,14 @@ const Type = Sc2ThingLayout.Type
 const ShipHome = Sc2ThingLayout.ShipHomeField
 
 
+static func split_planes(data: PackedByteArray) -> bool:
+	return data.size() != BASE_SIZE
+
+
 static func read(data: PackedByteArray, index: int) -> int:
 	var value := int(data[index])
 
-	if data.size() > BASE_SIZE and _wide(data, index):
+	if data.size() != BASE_SIZE and _wide(data, index):
 		value |= int(data[(data.size() / 2) + index]) << 8
 
 	return value
@@ -23,13 +29,13 @@ static func read(data: PackedByteArray, index: int) -> int:
 static func write(data: PackedByteArray, index: int, value: int) -> void:
 	data[index] = value & 0xff
 
-	if data.size() > BASE_SIZE and not (data[index - index % RECORD_SIZE] == Type.SHIP
+	if data.size() != BASE_SIZE and not (data[index - index % RECORD_SIZE] == Type.SHIP
 			and index % RECORD_SIZE in [Field.TYPE, Field.DIRECTION, Field.STATE, Field.Z]):
 		data[(data.size() / 2) + index] = (value >> 8) & 0xff if _wide(data, index) else 0
 
 
 static func count(data: PackedByteArray) -> int:
-	return data.size() / (Sc2ThingLayout.EXTENDED_RECORD_SIZE if data.size() > BASE_SIZE else RECORD_SIZE)
+	return data.size() / (Sc2ThingLayout.EXTENDED_RECORD_SIZE if data.size() != BASE_SIZE else RECORD_SIZE)
 
 
 # only some fields widen, and which ones depends on the object type
@@ -57,7 +63,7 @@ static func is_record_target(goal: int) -> bool:
 
 # ship home lives in spare bytes; add one because zero means missing
 static func set_ship_home(data: PackedByteArray, record: int, point: Vector2i) -> void:
-	if data.size() <= BASE_SIZE:
+	if data.size() == BASE_SIZE:
 		return
 
 	var offset := (data.size() / 2) + record * RECORD_SIZE
@@ -69,7 +75,7 @@ static func set_ship_home(data: PackedByteArray, record: int, point: Vector2i) -
 
 
 static func ship_home(data: PackedByteArray, record: int, fallback: Vector2i) -> Vector2i:
-	if data.size() <= BASE_SIZE:
+	if data.size() == BASE_SIZE:
 		return fallback
 
 	var offset := (data.size() / 2) + record * RECORD_SIZE

@@ -296,7 +296,7 @@ pub fn process_subway(
         maps.zones[i] = (maps.zones[i] as i64 & zone::TYPE_MASK) as u8;
         maps.flags[i] = (maps.flags[i] as i64 & !(flag_bits::FLIPPED | flag_bits::POWER_MASK) & 0xff) as u8;
         let linked = overlay::read(maps.text_overlays, index);
-        demolish::release_overlay(maps.text_overlays, maps.labels, maps.microsims, index);
+        demolish::release_overlay(maps.text_overlays, maps.labels, maps.wide_labels, maps.microsims, index);
 
         // Original demolition detaches the thing but keeps its record and XTXT.
         if overlay::is_thing(linked) {

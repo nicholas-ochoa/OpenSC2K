@@ -90,9 +90,21 @@ pub fn erase(labels: &mut [u8], id: usize, wide: bool) {
     }
 }
 
-/// A wide table that holds every label ID through `last_id`.
+/// A wide table that holds every label ID through `last_id`. Its size is never
+/// a multiple of the legacy record size, so a byte table shows its layout.
 pub fn wide_table(last_id: usize) -> Vec<u8> {
-    vec![0; (last_id.max(TEAM_LABEL_FIRST + TEAM_COUNT - 1) + 1) * WIDE_RECORD_SIZE]
+    let mut records = last_id.max(TEAM_LABEL_FIRST + TEAM_COUNT - 1) + 1;
+
+    if (records * WIDE_RECORD_SIZE).is_multiple_of(LEGACY_RECORD_SIZE) {
+        records += 1;
+    }
+
+    vec![0; records * WIDE_RECORD_SIZE]
+}
+
+/// True for a wide table. Legacy tables are whole 25-byte records.
+pub fn is_wide_table(labels: &[u8]) -> bool {
+    !labels.len().is_multiple_of(LEGACY_RECORD_SIZE)
 }
 
 #[cfg(test)]
@@ -115,6 +127,13 @@ mod tests {
     fn wide_labels_hold_256_bytes_and_cut_at_characters() {
         let mut labels = wide_table(260);
         assert_eq!(labels.len(), 261 * WIDE_RECORD_SIZE);
+        assert!(is_wide_table(&labels));
+        assert_eq!(
+            wide_table(274).len(),
+            276 * WIDE_RECORD_SIZE,
+            "275 records would be whole legacy records"
+        );
+        assert!(!is_wide_table(&[0; LEGACY_RECORD_SIZE * 256]));
         let long = "\u{1F999}".repeat(64);
         assert!(write_wide(&mut labels, 260, &long));
         assert_eq!(read(&labels, 260, true).unwrap(), long);

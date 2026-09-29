@@ -15,6 +15,9 @@ static func set_sign(city: CityState, point: Vector2i, text: String) -> SignEdit
 	if tile_index < 0:
 		return SignEditResult.rejected("sign position is outside the city")
 
+	if CitySignTable.uses_table(city):
+		return _set_table_sign(city, point, tile_index, text)
+
 	var old_overlay := OverlayData.read(city.text_overlays, tile_index)
 
 	if old_overlay != 0 and not OverlayData.is_sign(old_overlay):
@@ -86,6 +89,9 @@ static func undo(city: CityState, command: SignEditResult) -> EditCommandResult:
 	if tile_index < 0 or tile_index >= (map_edge * map_edge):
 		return EditCommandResult.failure("sign undo tile is invalid")
 
+	if CitySignTable.uses_table(city):
+		return _undo_table_sign(city, command)
+
 	if not OverlayData.is_sign(label_id):
 		return EditCommandResult.failure("sign undo label is invalid")
 
@@ -143,3 +149,54 @@ static func _restore_label_record(
 		changed[record_offset + index] = record[index]
 
 	return label_chunk.set_decoded_payload(changed)
+
+
+# An SC2X version 4 sign shares its tile with any facility, object, or marker.
+# The command swaps the whole XSGN payload.
+static func _set_table_sign(city: CityState, point: Vector2i, tile_index: int, text: String) -> SignEditResult:
+	var chunk := city.document.find_chunk(CitySignTable.CHUNK_ID)
+
+	if chunk == null:
+		return SignEditResult.rejected("XSGN data is missing")
+
+	var changed := CitySignTable.with_text(city, point, text)
+
+	if not changed.ok:
+		return SignEditResult.rejected(changed.error)
+
+	var old_payload := chunk.decoded_payload
+
+	if not chunk.set_decoded_payload(changed.payload):
+		return SignEditResult.rejected("cannot store the sign")
+
+	var metadata := city.document.sc2x_metadata
+
+	if int(changed.sign_id) >= metadata.next_sign_id:
+		metadata.next_sign_id = int(changed.sign_id) + 1
+
+	var result := SignEditResult.new()
+	result.ok = true
+	result.command_type = "sign"
+	result.point = point
+	result.tile_index = tile_index
+	result.label_id = int(changed.sign_id)
+	result.old_record = old_payload
+	result.new_record = chunk.decoded_payload
+	result.text = text
+
+	return result
+
+
+static func _undo_table_sign(city: CityState, command: SignEditResult) -> EditCommandResult:
+	var chunk := city.document.find_chunk(CitySignTable.CHUNK_ID)
+
+	if chunk == null:
+		return EditCommandResult.failure("XSGN data is missing")
+
+	if chunk.decoded_payload != command.new_record:
+		return EditCommandResult.failure("city changed after this sign command")
+
+	if not chunk.set_decoded_payload(command.old_record):
+		return EditCommandResult.failure("cannot restore the signs")
+
+	return EditCommandResult.undone(1)

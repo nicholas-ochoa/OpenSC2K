@@ -126,7 +126,7 @@ static func assign_stadium_team(
 	updated_command.stadium_team_selection_required = false
 	updated_command.stadium_team_index = team_index
 	updated_command.stadium_team_label = STADIUM_TEAM_LABEL_BASE + team_index
-	updated_command.stadium_team_name = team_name.left(23)
+	updated_command.stadium_team_name = team_name.left(city.document.name_limit())
 
 	updated_command.retain_changed_payloads()
 
@@ -194,9 +194,8 @@ static func provision_microsim(
 	)
 
 	var label_id := OverlayData.facility_id(record_id)
-	var label_offset := label_id * CityState.LABEL_RECORD_SIZE
 
-	if microsim_type <= 16 or labels[label_offset] == 0:
+	if microsim_type <= 16 or Sc2LabelLayout.is_empty_record(labels, label_id):
 		write_label(labels, label_id, str(DEFAULT_MICROSIM_LABELS.get(tile_id, "")))
 
 	return label_id
@@ -350,17 +349,4 @@ static func _to_i16(value: int) -> int:
 
 
 static func write_label(labels: PackedByteArray, label_id: int, value: String) -> void:
-	var encoded := value.to_ascii_buffer()
-
-	if encoded.size() > 23:
-		encoded = encoded.slice(0, 23)
-
-	var offset := label_id * CityState.LABEL_RECORD_SIZE
-
-	for record_byte in CityState.LABEL_RECORD_SIZE:
-		labels[offset + record_byte] = 0
-
-	labels[offset] = encoded.size()
-
-	for index in encoded.size():
-		labels[offset + 1 + index] = encoded[index]
+	Sc2LabelLayout.write(labels, label_id, value)

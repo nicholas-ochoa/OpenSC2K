@@ -181,9 +181,15 @@ impl City {
         self.map_size * self.map_size
     }
 
-    /// Sc2File.full_resolution_maps.
+    /// Sc2File.full_resolution_maps. SCLG version 3 and SC2X version 4 use per-tile data maps.
     pub fn full_resolution_maps(&self) -> bool {
-        self.large_version == 3
+        self.large_version >= 3
+    }
+
+    /// An SC2X version 4 working document. Its tile index has two planes at
+    /// every map size, and its record tables have per-document capacities.
+    pub fn is_sc2x_working(&self) -> bool {
+        self.large_version >= 4
     }
 
     /// Sc2File.is_extended.
@@ -200,6 +206,14 @@ impl City {
 
         if self.full_resolution_maps() && (HALF.contains(&id) || QUARTER.contains(&id)) {
             return edge * edge;
+        }
+
+        if self.is_sc2x_working() {
+            match id {
+                "XTXT" => return edge * edge * 2,
+                "XMIC" | "XTHG" | "XLAB" => return self.chunk(id).map_or(-1, |chunk| chunk.data.len() as i64),
+                _ => {}
+            }
         }
 
         if edge > 128 && self.large_version >= 2 {

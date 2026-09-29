@@ -185,8 +185,8 @@ static func _release_overlay(
 		OverlayData.write(text_overlays, index, 0)
 
 	if OverlayData.is_sign(label_id):
-		labels[label_id * CityState.LABEL_RECORD_SIZE] = 0
+		Sc2LabelLayout.clear(labels, label_id)
 	elif OverlayData.is_facility(label_id) and OverlayData.facility_record(label_id) >= BuildingCommand.MICROSIM_DYNAMIC_FIRST:
 		var record_id := OverlayData.facility_record(label_id)
 		microsims[record_id * CityState.MICROSIM_RECORD_SIZE] = 0
-		labels[label_id * CityState.LABEL_RECORD_SIZE] = 0
+		Sc2LabelLayout.clear(labels, label_id)

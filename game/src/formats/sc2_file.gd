@@ -55,6 +55,7 @@ const HALF_MAP_CHUNKS := ["XTRF", "XPLT", "XVAL", "XCRM"]
 const QUARTER_MAP_CHUNKS := ["XPLC", "XFIR", "XPOP", "XROG"]
 
 var map_size := 128
+# 1 through 3 are SCLG versions. 4 marks an SC2X version 4 working document
 var large_version := 2
 var chunks: Array[Sc2Chunk] = []
 var source_bytes := PackedByteArray()
@@ -67,6 +68,22 @@ var _chunk_cache: Dictionary[String, int] = {}
 var _chunk_cache_size := -1
 # typed tile-plane slots follow full_map_chunks and share its invalidation rule
 var _tile_chunks: Array[Sc2Chunk] = []
+# SC2X version 4 state outside the working chunks. See Sc2xDocument.
+var sc2x_metadata: Sc2xMetadata
+# the XLAB.bin compatibility table. Names never come from it
+var sc2x_compat_labels := PackedByteArray()
+# persistent identity, name, and object type of each XTHG slot
+var sc2x_object_ids := PackedInt64Array()
+var sc2x_object_kinds := PackedByteArray()
+var sc2x_object_names := PackedStringArray()
+# source order of each TEXT occurrence
+var sc2x_text_orders := PackedInt64Array()
+# preserved chunks: {chunk_id, occurrence, source_order, flags, payload, entry}
+var sc2x_preserved: Array[Dictionary] = []
+# archive entries that are not structures, kept for the next save
+var sc2x_extra_entries: Dictionary[String, PackedByteArray] = {}
+# required features that this version does not support; the city is read-only
+var sc2x_unsupported_features := PackedStringArray()
 
 
 static func load_path(path: String) -> Sc2File:
@@ -97,6 +114,16 @@ func parse(bytes: PackedByteArray) -> bool:
 	parse_error = ""
 	map_size = 128
 	large_version = 2
+	_clear_sc2x_state()
+
+	# the signature selects the reader, not the file extension
+	if Sc2xDocument.is_archive(bytes):
+		if not Sc2xDocument.load_bytes(self, bytes):
+			return false
+
+		source_bytes = bytes.duplicate()
+
+		return true
 
 	if bytes.size() < 12:
 		return _fail("File is shorter than the 12-byte FORM header")
@@ -192,6 +219,33 @@ func is_valid() -> bool:
 	return parse_error.is_empty()
 
 
+# An SC2X version 4 working document
+func is_sc2x() -> bool:
+	return large_version == 4
+
+
+# Empty when the city can be edited and simulated. A version 4 file that
+# requires unknown features can only be inspected.
+func compatibility_error() -> String:
+	if sc2x_unsupported_features.is_empty():
+		return ""
+
+	return "This city needs features that this version of OpenSC2K does not have: %s. It can be inspected but not played." % (
+		", ".join(sc2x_unsupported_features))
+
+
+func _clear_sc2x_state() -> void:
+	sc2x_metadata = null
+	sc2x_compat_labels = PackedByteArray()
+	sc2x_object_ids = PackedInt64Array()
+	sc2x_object_kinds = PackedByteArray()
+	sc2x_object_names = PackedStringArray()
+	sc2x_text_orders = PackedInt64Array()
+	sc2x_preserved = []
+	sc2x_extra_entries = {}
+	sc2x_unsupported_features = PackedStringArray()
+
+
 # simulation may share immutable file bytes; decoded payloads always remain private
 func duplicate_document(share_source_bytes := false) -> Sc2File:
 	var result := Sc2File.new()
@@ -200,6 +254,15 @@ func duplicate_document(share_source_bytes := false) -> Sc2File:
 	result.source_bytes = source_bytes if share_source_bytes else source_bytes.duplicate()
 	result.source_path = source_path
 	result.parse_error = parse_error
+	result.sc2x_metadata = sc2x_metadata.copy() if sc2x_metadata != null else null
+	result.sc2x_compat_labels = sc2x_compat_labels.duplicate()
+	result.sc2x_object_ids = sc2x_object_ids.duplicate()
+	result.sc2x_object_kinds = sc2x_object_kinds.duplicate()
+	result.sc2x_object_names = sc2x_object_names.duplicate()
+	result.sc2x_text_orders = sc2x_text_orders.duplicate()
+	result.sc2x_preserved = sc2x_preserved.duplicate(true)
+	result.sc2x_extra_entries = sc2x_extra_entries.duplicate(true)
+	result.sc2x_unsupported_features = sc2x_unsupported_features.duplicate()
 
 	for chunk in chunks:
 		var copied := Sc2Chunk.new()
@@ -285,6 +348,9 @@ func _scan_chunk(chunk_id: String, occurrence: int) -> Sc2Chunk:
 
 
 func city_name() -> String:
+	if is_sc2x():
+		return sc2x_metadata.city_name if sc2x_metadata != null else ""
+
 	var chunk := find_chunk("CNAM")
 
 	if chunk == null or chunk.decoded_payload.size() < 2:
@@ -298,7 +364,18 @@ func city_name() -> String:
 	return chunk.decoded_payload.slice(1, end).get_string_from_ascii()
 
 
+# SC2 and SCN names hold 30 ASCII bytes. An SC2X name holds 64 characters.
 func set_city_name(value: String) -> bool:
+	if is_sc2x():
+		var name := Sc2xMetadata.limit_name(value)
+
+		if sc2x_metadata == null or name.is_empty():
+			return false
+
+		sc2x_metadata.city_name = name
+
+		return true
+
 	var chunk := find_chunk("CNAM")
 
 	if chunk == null or chunk.decoded_payload.size() != DECODED_SIZES.CNAM:
@@ -322,6 +399,10 @@ func set_city_name(value: String) -> bool:
 # Some supplied cities have no CNAM chunk. The Windows game stores 0x1f in the first byte.
 # Other files put CNAM last, so the new chunk goes at the end. Returns the existing chunk if there is one
 func add_city_name_chunk() -> Sc2Chunk:
+	# an SC2X version 4 city keeps its name in metadata
+	if is_sc2x():
+		return null
+
 	var existing := find_chunk("CNAM")
 
 	if existing != null:
@@ -373,6 +454,9 @@ func set_misc_i32(offset: int, value: int) -> bool:
 
 
 func serialize(force_rebuild: bool = false) -> BinaryResult:
+	if is_sc2x():
+		return Sc2xDocument.encode(self)
+
 	var has_changes := false
 
 	for chunk in chunks:
@@ -456,6 +540,18 @@ func decoded_size(chunk_id: String) -> int:
 	if full_resolution_maps() and chunk_id in HALF_MAP_CHUNKS + QUARTER_MAP_CHUNKS:
 		return map_size * map_size
 
+	# a working document keeps the record capacities of its file
+	if is_sc2x():
+		match chunk_id:
+			"XTXT":
+				return map_size * map_size * 2
+			"XMIC", "XTHG", "XLAB", "XSGN":
+				var chunk := find_chunk(chunk_id)
+
+				return chunk.decoded_payload.size() if chunk != null else -1
+			"CNAM":
+				return -1
+
 	if map_size > 128 and large_version >= 2:
 		var factor := (map_size * map_size) / 16384
 
@@ -488,7 +584,7 @@ func decoded_size(chunk_id: String) -> int:
 
 
 func resize_empty_map(edge: int) -> bool:
-	if edge not in MAP_SIZES:
+	if edge not in MAP_SIZES or (is_sc2x() and edge != map_size):
 		return false
 
 	if edge == map_size:
@@ -547,7 +643,41 @@ func is_extended() -> bool:
 
 
 func full_resolution_maps() -> bool:
-	return large_version == 3
+	return large_version >= 3
+
+
+# The most characters in a label, sign, or record name
+func name_limit() -> int:
+	return Sc2xMetadata.MAX_NAME_CODE_POINTS if is_sc2x() else Sc2LabelLayout.MAX_TEXT_BYTES
+
+
+# The most characters in the city name
+func city_name_limit() -> int:
+	return Sc2xMetadata.MAX_NAME_CODE_POINTS if is_sc2x() else 30
+
+
+# Bytes per record of the runtime label table. A working document uses wide
+# UTF-8 records; see Sc2LabelLayout.
+func label_record_size() -> int:
+	return Sc2LabelLayout.WIDE_RECORD_SIZE if is_sc2x() else Sc2LabelLayout.RECORD_SIZE
+
+
+# A digest of the content that a save writes. It changes when a save would
+# write a different city.
+func content_digest() -> PackedByteArray:
+	if is_sc2x():
+		return Sc2xDocument.content_digest(self)
+
+	var serialized := serialize()
+
+	if not serialized.ok:
+		return PackedByteArray()
+
+	var context := HashingContext.new()
+	context.start(HashingContext.HASH_SHA256)
+	context.update(serialized.data)
+
+	return context.finish()
 
 
 func enable_full_resolution_maps() -> bool:

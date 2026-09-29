@@ -95,6 +95,7 @@ func open_stadium_dialog(command: BuildingEditResult) -> void:
 			team_index, BuildingFacilities.stadium_team_name(app.document_state.city, team_index)
 		))
 
+	app.city_dialogs.stadium_dialog.set_max_length(app.document_state.city.document.name_limit())
 	app.city_dialogs.stadium_dialog.show_teams(teams)
 
 
@@ -152,6 +153,15 @@ func _restore_stadium_dialog() -> void:
 
 
 func open_sign_dialog(point: Vector2i) -> void:
+	# an sc2x version 4 sign can share a tile with any facility or object
+	app.city_dialogs.sign_dialog.set_max_length(app.document_state.city.document.name_limit())
+
+	if CitySignTable.uses_table(app.document_state.city):
+		app.tool_state.pending_sign_tile = point
+		app.city_dialogs.sign_dialog.show_text(CitySignTable.text_at(app.document_state.city, point))
+
+		return
+
 	var overlay := app.document_state.city.text_overlay_id(point.x, point.y)
 
 	if overlay != 0 and not OverlayData.is_sign(overlay):
@@ -225,6 +235,7 @@ func open_query(point: Vector2i) -> void:
 		app.asset_state.palette_index_encoding,
 		app.asset_state.large_sprites,
 	)
+	app.city_dialogs.query_dialog.set_max_length(app.document_state.city.document.name_limit())
 	app.city_dialogs.query_dialog.show_query(
 		str(result.title),
 		str(result.title) if is_specific else "",

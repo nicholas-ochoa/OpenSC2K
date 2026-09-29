@@ -22,48 +22,26 @@ static func mayor_name(city: CityState) -> String:
 	return city.label(0)
 
 
+# an sc2x version 4 working document keeps wide utf-8 records; see Sc2LabelLayout
 static func label(city: CityState, label_id: int) -> String:
-	if label_id < 0 or label_id >= city.document.decoded_size("XLAB") / CityState.LABEL_RECORD_SIZE:
-		return ""
-
 	var chunk := city.document.find_chunk("XLAB")
 
-	if chunk == null:
+	if chunk == null or chunk.decoded_payload.size() != city.document.decoded_size("XLAB"):
 		return ""
 
-	var offset := label_id * CityState.LABEL_RECORD_SIZE
-	var declared_length: int = mini(chunk.decoded_payload[offset + Sc2LabelLayout.LENGTH_OFFSET], Sc2LabelLayout.MAX_TEXT_BYTES)
-	var start := offset + Sc2LabelLayout.TEXT_OFFSET
-	var end := start
-
-	while end < start + declared_length and chunk.decoded_payload[end] != 0:
-		end += 1
-
-	return chunk.decoded_payload.slice(start, end).get_string_from_ascii()
+	return Sc2LabelLayout.read(chunk.decoded_payload, label_id)
 
 
 static func set_label(city: CityState, label_id: int, value: String) -> bool:
-	if label_id < 0 or label_id >= city.document.decoded_size("XLAB") / CityState.LABEL_RECORD_SIZE:
-		return false
-
 	var chunk := city.document.find_chunk("XLAB")
 
-	if chunk == null:
+	if chunk == null or chunk.decoded_payload.size() != city.document.decoded_size("XLAB"):
 		return false
 
-	var encoded := value.to_ascii_buffer()
-
-	if encoded.size() > Sc2LabelLayout.MAX_TEXT_BYTES:
-		encoded = encoded.slice(0, Sc2LabelLayout.MAX_TEXT_BYTES)
-
 	var changed := chunk.decoded_payload.duplicate()
-	var offset := label_id * CityState.LABEL_RECORD_SIZE
-	changed[offset + Sc2LabelLayout.LENGTH_OFFSET] = encoded.size()
 
-	for index in encoded.size():
-		changed[offset + Sc2LabelLayout.TEXT_OFFSET + index] = encoded[index]
-
-	changed[offset + Sc2LabelLayout.TEXT_OFFSET + encoded.size()] = 0
+	if not Sc2LabelLayout.write(changed, label_id, value):
+		return false
 
 	return chunk.set_decoded_payload(changed)
 
@@ -91,14 +69,9 @@ static func microsim(city: CityState, microsim_id: int) -> Microsim:
 
 # null for a record outside xthg
 static func thing(city: CityState, thing_id: int) -> ThingRecord:
-	if thing_id < 0 or thing_id >= city.document.decoded_size("XTHG") / (
-		Sc2ThingLayout.EXTENDED_RECORD_SIZE if city.map_size > 128 else Sc2ThingLayout.RECORD_SIZE
-	):
-		return null
-
 	var chunk := city.document.find_chunk("XTHG")
 
-	if chunk == null:
+	if chunk == null or thing_id < 0 or thing_id >= ThingData.count(chunk.decoded_payload):
 		return null
 
 	return ThingRecord.read(chunk.decoded_payload, thing_id * CityState.THING_RECORD_SIZE)

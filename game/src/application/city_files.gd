@@ -60,10 +60,12 @@ func open_rename_dialog() -> void:
 	if document_state.current_document == null or app.document_state.city == null:
 		return
 
+	app.city_dialogs.city_rename_dialog.set_max_length(document_state.current_document.city_name_limit())
 	app.city_dialogs.city_rename_dialog.show_name(app.document_state.city.city_name())
 
 
-# the saved name holds 30 ASCII characters. a file without CNAM gets one
+# an sc2 name holds 30 ASCII characters, and a file without CNAM gets one.
+# an sc2x version 4 name holds 64 characters in metadata
 func rename_city() -> void:
 	var document := document_state.current_document
 

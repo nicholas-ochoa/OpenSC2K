@@ -149,6 +149,7 @@ pub fn generate(city: &mut City, landform: &Landform, random: &mut SimRandom) ->
             flags: &mut flags,
             text_overlays: &mut text_overlays,
             labels: &mut labels,
+            wide_labels: false,
             microsims: &mut microsims,
             misc: &mut misc,
         };

@@ -2,6 +2,7 @@
 
 use super::DisasterMaps;
 use super::damage;
+use crate::formats::sc2x::labels as label_records;
 use crate::sim::bytes::{self, write_u32_be};
 use crate::sim::geom::Vec2i;
 use crate::sim::ids::building_tile_ids as tiles;
@@ -358,7 +359,7 @@ fn monster_damage(
             crate::sim::tools::terrain::place_water(&mut maps.maps, point);
         }
         3 => {
-            let overlay_id = provision_wind_power(maps.maps.microsims, maps.maps.labels);
+            let overlay_id = provision_wind_power(maps.maps.microsims, maps.maps.labels, maps.maps.wide_labels);
             replace_building(maps.maps.buildings, maps.maps.zones, maps.maps.misc, tile_index, tiles::WIND_POWER);
             maps.maps.zones[i] = zone::CORNERS_MASK as u8;
             maps.maps.flags[i] = ((maps.maps.flags[i] as i64 & !flag_bits::STRUCTURE_MASK & 0xff) | flag_bits::STRUCTURE_MASK) as u8;
@@ -377,7 +378,7 @@ fn monster_damage(
 
 /// BuildingFacilities.provision_microsim for a wind power plant. Wind power uses
 /// the fixed record 4 and adds one plant and four power units to it.
-fn provision_wind_power(microsims: &mut [u8], labels: &mut [u8]) -> i64 {
+fn provision_wind_power(microsims: &mut [u8], labels: &mut [u8], wide_labels: bool) -> i64 {
     const WIND_RECORD: i64 = 4;
     let offset = WIND_RECORD * sc2microsim_layout::RECORD_SIZE;
     microsims[offset as usize] = tiles::WIND_POWER as u8;
@@ -386,6 +387,15 @@ fn provision_wind_power(microsims: &mut [u8], labels: &mut [u8]) -> i64 {
     let power = bytes::read_u16_be(microsims, offset + 4);
     bytes::write_u16_be(microsims, offset + 4, power + 4);
     let label_id = overlay::facility_id(WIND_RECORD);
+
+    if wide_labels {
+        if label_records::read(labels, label_id as usize, true).is_some_and(|name| name.is_empty()) {
+            label_records::write_wide(labels, label_id as usize, "Wind Power");
+        }
+
+        return label_id;
+    }
+
     let label_offset = (label_id * sc2label_layout::RECORD_SIZE) as usize;
 
     if labels[label_offset] == 0 {

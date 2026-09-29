@@ -19,3 +19,8 @@ func show_text(value: String) -> void:
 
 func entered_text() -> String:
 	return text_input.text
+
+
+# SC2 and SCN names are shorter than SC2X version 4 names. See Sc2File.name_limit.
+func set_max_length(value: int) -> void:
+	text_input.max_length = value

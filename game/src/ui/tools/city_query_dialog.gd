@@ -162,3 +162,8 @@ func _enable_rename() -> void:
 	name_input.editable = true
 	name_input.grab_focus()
 	name_input.select_all()
+
+
+# SC2 and SCN names are shorter than SC2X version 4 names. See Sc2File.name_limit.
+func set_max_length(value: int) -> void:
+	name_input.max_length = value
