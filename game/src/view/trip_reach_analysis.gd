@@ -26,7 +26,7 @@ static func inspect(city: CityState, clicked: Vector2i) -> TransportTripReachRes
 			mode = TransportTrip.SUBWAY_MODE
 
 		if mode >= 0:
-			start = (mode << (14 if city.map_size == 128 else 18)) | index
+			start = (mode << TransportTripConstants.point_shift(city.map_size)) | index
 
 	var traffic := city.document.find_chunk("XTRF").decoded_payload
 

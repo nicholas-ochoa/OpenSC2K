@@ -48,7 +48,7 @@ const RAW_CHUNKS: Dictionary[String, bool] = {
 	"PICT": true,
 	"TMPL": true,
 }
-const MAP_SIZES := [16, 32, 64, 128, 256, 384, 512]
+const MAP_SIZES := [16, 32, 64, 128, 256, 384, 512, 640, 1024]
 const FULL_MAP_CHUNKS := ["ALTM", "XTER", "XBLD", "XZON", "XUND", "XTXT", "XBIT"]
 # these maps aren't all the same size; traffic uses half, services use a quarter
 const HALF_MAP_CHUNKS := ["XTRF", "XPLT", "XVAL", "XCRM"]
@@ -441,7 +441,7 @@ func decoded_size(chunk_id: String) -> int:
 			"XTXT":
 				return map_size * map_size * 2
 			"XMIC":
-				return Sc2MicrosimLayout.ORIGINAL_SIZE * factor
+				return Sc2OverlayLayout.facility_capacity(factor) * Sc2MicrosimLayout.RECORD_SIZE
 			"XLAB":
 				return (
 					Sc2OverlayLayout.EXTRA_SIGN

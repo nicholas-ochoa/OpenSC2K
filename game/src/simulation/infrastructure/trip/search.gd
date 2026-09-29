@@ -65,13 +65,13 @@ static func trace(
 	# cost buckets are a bounded dijkstra queue. reaching the limit discards one
 	# candidate, not the remaining search. equal-cost choices still use the rng
 	var turn_direction := 1 if random.next_u15() & 1 else 3
-	var start_index := start & (POINT_INDEX_MASK if map_edge == 128 else 0x3ffff)
+	var start_index := start & (POINT_INDEX_MASK if map_edge == 128 else LARGE_POINT_INDEX_MASK)
 	var points: Array[Vector2i] = [Vector2i(start_index / map_edge, start_index % map_edge)]
 	# the flat index of each state, kept beside points so expansion never has to
 	# recompute it from the vector2i. points still carries directions arithmetic,
 	# the traffic write, and the collect_reach outputs
 	var indices := PackedInt32Array([start_index])
-	var modes := PackedInt32Array([start >> (14 if map_edge == 128 else 18)])
+	var modes := PackedInt32Array([start >> point_shift(map_edge)])
 	var costs := PackedInt32Array([0])
 	var headings := PackedInt32Array([4])
 	var parents := PackedInt32Array([-1])
@@ -311,16 +311,16 @@ static func _find_transport(buildings: PackedByteArray, origin: Vector2i, map_ed
 		var tile := int(buildings[index])
 
 		if NetworkTileMembership.surface_road(tile):
-			return (ROAD_MODE << (14 if map_edge == 128 else 18)) | index
+			return (ROAD_MODE << point_shift(map_edge)) | index
 
 		if tile == Tiles.BUS_DEPOT:
-			return (BUS_STOP_MODE << (14 if map_edge == 128 else 18)) | index
+			return (BUS_STOP_MODE << point_shift(map_edge)) | index
 
 		if tile == Tiles.RAIL_STATION:
-			return (RAIL_STATION_MODE << (14 if map_edge == 128 else 18)) | index
+			return (RAIL_STATION_MODE << point_shift(map_edge)) | index
 
 		if tile == Tiles.SUBWAY_STATION:
-			return (SUBWAY_STATION_MODE << (14 if map_edge == 128 else 18)) | index
+			return (SUBWAY_STATION_MODE << point_shift(map_edge)) | index
 
 	return -1
 

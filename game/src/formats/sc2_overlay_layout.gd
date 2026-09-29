@@ -15,3 +15,8 @@ const CONNECTION_MARKER := 0xfa
 const EXTRA_FACILITY := ORIGINAL_MAX_ID + 1
 const EXTRA_SIGN := 4096
 const EXTRA_THING := 8192
+
+
+# extra facility ids end below EXTRA_SIGN. only 1024 tile cities reach this cap
+static func facility_capacity(factor: int) -> int:
+	return mini(Sc2MicrosimLayout.ORIGINAL_COUNT * factor, Sc2MicrosimLayout.ORIGINAL_COUNT + EXTRA_SIGN - EXTRA_FACILITY)

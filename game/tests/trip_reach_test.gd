@@ -349,7 +349,7 @@ func _compare_walking_cache(scan: GrowthScan.TileScan, point: Vector2i, zone: in
 	var direct_random := SimRandom.new(123)
 	var cached_traffic := scan.traffic.duplicate()
 	var direct_traffic := scan.traffic.duplicate()
-	var start := (mode << (14 if scan.map_edge == 128 else 18)) | (point.x * scan.map_edge + point.y)
+	var start := (mode << TransportTripConstants.point_shift(scan.map_edge)) | (point.x * scan.map_edge + point.y)
 	var direct := TransportTripSearch.trace(scan.buildings, scan.zones, scan.underground,
 		scan.text_overlays, scan.altitudes, direct_traffic, point, zone, 2,
 		direct_random, 10, scan.map_edge, false, start)
@@ -419,7 +419,7 @@ func _test_map_exits() -> void:
 			if wrapped >= 0 and wrapped < city.zones.size():
 				city.zones[wrapped] = 3
 			for mode: int in (range(14) if direction == 0 and edge == 128 else [TransportTrip.ROAD_MODE]):
-				var start := (mode << (14 if edge == 128 else 18)) | index
+				var start := (mode << TransportTripConstants.point_shift(edge)) | index
 				OverlayData.write(city.text_overlays, index, 0)
 				var blocked := TransportTripSearch.trace(city.buildings, city.zones, city.underground,
 					city.text_overlays, city.altitude_words, traffic, point, 1, 0,

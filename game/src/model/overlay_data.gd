@@ -13,7 +13,10 @@ const EXTRA_THING := Layout.EXTRA_THING
 # the overlay layout keys off the payload size alone. a wide sc2x map stores a
 # low and a high plane, so its cell count is half its bytes
 static func cells_for(byte_count: int) -> int:
-	return (byte_count / 2) if byte_count == 131072 or byte_count == 294912 or byte_count == 524288 else byte_count
+	return (byte_count / 2) if (
+		byte_count == 131072 or byte_count == 294912 or byte_count == 524288
+		or byte_count == 819200 or byte_count == 2097152
+	) else byte_count
 
 
 static func count(data: PackedByteArray) -> int:
@@ -115,7 +118,7 @@ static func valid_id(id: int, edge: int) -> bool:
 	var factor := (edge * edge) / 16384
 
 	return (
-		(is_facility(id) and facility_record(id) < Sc2MicrosimLayout.ORIGINAL_COUNT * factor)
+		(is_facility(id) and facility_record(id) < Layout.facility_capacity(factor))
 		or (is_sign(id) and id < EXTRA_SIGN + Layout.ORIGINAL_SIGN_COUNT * factor - Layout.ORIGINAL_SIGN_COUNT)
 		or (is_thing(id) and thing_record(id) < Sc2ThingLayout.ORIGINAL_COUNT * factor)
 	)

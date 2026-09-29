@@ -6,11 +6,12 @@ var failures := 0
 func _init() -> void:
 	check_upgrade()
 
-	for edge in [128, 256, 384, 512]:
+	for edge in [128, 256, 384, 512, 640, 1024]:
 		var document := EmptyCityTemplate.create(edge)
 		var city := CityState.from_document(document)
 		var factor: int = edge * edge / 16384
-		check(city.microsim_count() == 150 * factor, "facility capacity")
+		check(city.microsim_count() == mini(150 * factor, 3990), "facility capacity")
+		check(OverlayData.facility_id(city.microsim_count() - 1) < OverlayData.EXTRA_SIGN, "facility IDs stay below sign IDs")
 		check(city.thing_count() == 40 * factor, "object capacity")
 		var signs := OverlayData.sign_ids(document.decoded_size("XLAB"))
 		check(signs.size() == 50 * factor, "sign capacity")

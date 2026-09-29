@@ -21,6 +21,8 @@ const SUBWAY_MODE := 13
 const ADVANCE_BLOCKED := -1
 const ADVANCE_SUCCESS := -2
 const POINT_INDEX_MASK := 0x3fff
+# sc2x start points keep 20 index bits for 1024 tile maps
+const LARGE_POINT_INDEX_MASK := 0xfffff
 const TRANSPORT_OFFSETS := [
 	Vector2i(0, 1), Vector2i(1, 0), Vector2i(0, -1), Vector2i(-1, 0),
 	Vector2i(0, 2), Vector2i(2, 0), Vector2i(0, -2), Vector2i(-2, 0),
@@ -53,3 +55,8 @@ const HIGHWAY_PORTS: Dictionary[int, int] = {BuildingTileIds.HIGHWAY_STRAIGHT_1:
 const LANE_CORNERS := [Vector2i(0, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(1, 0)]
 const INGRESS_CORNERS := [0, 3, 2, 1]
 const EGRESS_CORNERS := [3, 2, 1, 0]
+
+
+# the mode sits above the start index. 128 tile maps keep the original 14 bits
+static func point_shift(map_edge: int) -> int:
+	return 14 if map_edge == 128 else 20
