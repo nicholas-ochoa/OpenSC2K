@@ -4,6 +4,8 @@ extends RefCounted
 const Sc2Document = preload("res://src/formats/sc2_file.gd")
 const CityFiles = preload("res://src/formats/city_file_store.gd")
 const ScenarioModel = preload("res://src/model/scenario_state.gd")
+# a larger SC2X city compresses and writes its save on a worker thread
+const BACKGROUND_SAVE_EDGE := 256
 
 var app: CityApplication
 var document_state: ActiveDocumentState
@@ -11,6 +13,8 @@ var pending_city_exit_action := ""
 var pending_city_exit_path := ""
 var pending_city_exit_waiting_for_save := false
 var pending_sc2x_document: Sc2File
+var save_in_progress := false
+var save_task_id := -1
 
 
 func _init(application: CityApplication) -> void:
@@ -251,8 +255,7 @@ func save_pending_city_exit() -> void:
 
 		return
 
-	if _save_copy(document_state.current_save_path):
-		_continue_pending_city_exit()
+	_save_copy(document_state.current_save_path, _continue_pending_city_exit)
 
 
 func on_save_changes_action(action: StringName) -> void:
@@ -337,10 +340,7 @@ func _loaded_scenario(document: Sc2File) -> ScenarioState:
 
 
 func on_save_path_selected(path: String) -> void:
-	var saved := _save_copy(path)
-
-	if saved and pending_city_exit_waiting_for_save:
-		_continue_pending_city_exit()
+	_save_copy(path, _continue_pending_city_exit if pending_city_exit_waiting_for_save else Callable())
 
 
 func on_save_dialog_canceled() -> void:
@@ -348,23 +348,61 @@ func on_save_dialog_canceled() -> void:
 		cancel_pending_city_exit()
 
 
-func _save_copy(path: String) -> bool:
-	var result := CityFiles.save_copy(
-		document_state.current_document, path, app.asset_state.reference_root, app.simulation_state.speed_controller)
+# Returns true when the save finished now. A larger SC2X city prepares its
+# save here and writes it on a worker thread; `on_saved` runs after a
+# successful save in both cases.
+func _save_copy(path: String, on_saved := Callable()) -> bool:
+	if save_in_progress:
+		app.interface.show_error("The city is still being saved.")
+
+		return false
+
+	var document := document_state.current_document
+	var prepared := CityFiles.prepare(document, path, app.asset_state.reference_root, app.simulation_state.speed_controller)
+
+	if not prepared.ok:
+		app.interface.show_error(prepared.error)
+
+		return false
+
+	if document.is_sc2x() and document.map_size > BACKGROUND_SAVE_EDGE:
+		save_in_progress = true
+		app.status_label.theme_type_variation = ""
+		app.status_label.text = "Saving city: %s" % prepared.path
+		save_task_id = WorkerThreadPool.add_task(func() -> void:
+			var written := CityFiles.write(prepared)
+			_finish_save.call_deferred(document, prepared, written, on_saved))
+
+		return false
+
+	return _finish_save(document, prepared, CityFiles.write(prepared), on_saved)
+
+
+func _finish_save(document: Sc2File, prepared: CityFiles.PreparedSave, result: FileWriteResult, on_saved: Callable) -> bool:
+	save_in_progress = false
+
+	if save_task_id >= 0:
+		WorkerThreadPool.wait_for_task_completion(save_task_id)
+		save_task_id = -1
 
 	if not result.ok:
 		app.interface.show_error(result.error)
 
 		return false
 
-	var output_path: String = result.path
-	document_state.current_document.source_path = output_path
-	document_state.current_save_path = output_path
-	document_state.current_city_saved_once = true
-	document_state.saved_city_snapshot = document_state.current_document.content_snapshot()
-	app.status_label.theme_type_variation = ""
-	app.status_label.text = "Saved city: %s" % output_path
-	sync_upgrade_city_option()
+	# the content snapshot is the saved content, even when the city changed meanwhile
+	document.source_path = result.path
+
+	if document_state.current_document == document:
+		document_state.current_save_path = result.path
+		document_state.current_city_saved_once = true
+		document_state.saved_city_snapshot = prepared.snapshot
+		app.status_label.theme_type_variation = ""
+		app.status_label.text = "Saved city: %s" % result.path
+		sync_upgrade_city_option()
+
+	if on_saved.is_valid():
+		on_saved.call()
 
 	return true
 

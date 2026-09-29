@@ -465,10 +465,22 @@ func _check_saves() -> void:
 	document.sc2x_metadata.city_name = "Second Name"
 	_check(CityFileStore.save_copy(document, path, "").ok and FileAccess.get_file_as_bytes(path) != first, "A save replaces the file")
 	_check(Sc2File.load_path(path).city_name() == "Second Name", "The saved name loads")
-	var bad := CityFileStore.write_verified(path, PackedByteArray([1, 2, 3]), document)
+	var bad := CityFileStore.write_verified(path, PackedByteArray([1, 2, 3]), Sc2xDocument.entries(document))
 	_check(not bad.ok and Sc2File.load_path(path).city_name() == "Second Name", "A failed check keeps the previous save")
 	var leftovers := Array(DirAccess.get_files_at("user://")).filter(func(name: String) -> bool: return name.ends_with(".tmp"))
 	_check(leftovers.is_empty(), "A failed save removes its temporary file")
+	# a worker thread writes the content that prepare copied, even when the city changes meanwhile
+	var prepared := CityFileStore.prepare(document, path, "")
+	document.sc2x_metadata.city_name = "Changed After Prepare"
+	document.find_chunk("XBLD").write_decoded_byte(0, 0x2b)
+	var task := WorkerThreadPool.add_task(func() -> void: prepared.set_meta("result", CityFileStore.write(prepared)))
+	WorkerThreadPool.wait_for_task_completion(task)
+	var background: FileWriteResult = prepared.get_meta("result")
+	var written := Sc2File.load_path(path)
+	_check(prepared.ok and background.ok and written.city_name() == "Second Name" and written.find_chunk("XBLD").decoded_payload[0] == 0,
+		"A background save writes the prepared content")
+	_check(prepared.snapshot == Sc2xDocument.content_digest(written) and prepared.snapshot != document.content_snapshot(),
+		"The prepared snapshot matches the saved file, not the later changes")
 	document.sc2x_converted_from = ProjectSettings.globalize_path(path)
 	_check(not CityFileStore.save_copy(document, path, "").ok, "A converted city never replaces its source file")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))

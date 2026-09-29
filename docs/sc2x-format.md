@@ -161,7 +161,9 @@ the next save.
 
 Supported sizes and record capacities limit what a working document can link: at most
 3,990 facility records and no XTHG capacity of 20 (its table would look like an original
-single-plane table). A file that exceeds them can be inspected but not opened.
+single-plane table). The loader reports a file that exceeds them. Facility links and moving
+objects therefore still share the runtime tile index; a later version can give them separate
+runtime indexes without a file change.
 
 ## Conversion
 
@@ -187,9 +189,20 @@ are version 4 cities.
 
 ## Saving
 
-A save writes a temporary file beside the target, closes it, reads it back, loads it, and
-checks that it holds the same entries before it replaces the target. A failure keeps the
-previous file.
+`CityFileStore.prepare` checks the target, stores the simulation state, and copies the raw
+entries on the main thread. `CityFileStore.write` compresses the copy, writes a temporary
+file beside the target, closes it, reads it back, loads it, and checks that it holds the same
+entries before it replaces the target. A failure keeps the previous file. Cities larger than
+256 tiles write on a worker thread, so the game keeps running during the save.
+
+Measured on this computer (Spiralopolis test cities, converted from SCLG version 3):
+
+| Map | SCLG file | Raw entries | SC2X v4 file | Load | Prepare | Compress and write |
+| --- | --- | --- | --- | --- | --- | --- |
+| 512 | 3,027,844 | 4,449,580 | 966,006 | 12 ms | 12 ms | 395 ms |
+| 1024 | 11,882,820 | 17,250,193 | 2,027,091 | 35 ms | 47 ms | 784 ms |
+
+The supplied 128-tile cities save as 6 to 58 KB, against 54 to 125 KB in the original format.
 
 A city can be saved only at a completed simulation day. While the annual budget or a
 military decision waits for the player, the save reports what to finish first.
@@ -228,7 +241,18 @@ vehicle caps of each map size.
 | 2048 | 8,192 | 512 | 1,024 | 32 | 16 | 16 | 32 | 128 |
 
 The 2048 profile is a storage target only. The game does not create or open 2048 maps.
-New signs stop at the sign budget. An imported collection can keep a larger capacity.
+
+- A new city uses these capacities exactly. An imported collection keeps a larger capacity;
+  creation then stops while the active records fill the budget, and nothing is deleted.
+- A facility that needs an individual record (slots 10 and up) is refused with a message when
+  the budget is full. An arcology never takes the record of another facility.
+- The vehicle caps apply to every creation path, including disaster aircraft. The train cap
+  counts surface and subway engines. A train takes its three records at once and never uses
+  record 0. Each sailboat of a batch checks the cap.
+- New moving objects stop when the active records reach the pool budget (capacity − 1).
+- New signs stop at the sign budget.
+
+SC2, SCN, and SCLG cities keep the original allocation rules.
 
 ## Code
 

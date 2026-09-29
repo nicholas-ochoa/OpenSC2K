@@ -358,9 +358,10 @@ static func encode(document: Sc2File) -> BinaryResult:
 static func content_digest(document: Sc2File) -> PackedByteArray:
 	var prepared := entries(document)
 
-	if not prepared.ok:
-		return PackedByteArray()
+	return digest_entries(prepared) if prepared.ok else PackedByteArray()
 
+
+static func digest_entries(prepared: EntriesResult) -> PackedByteArray:
 	var context := HashingContext.new()
 	context.start(HashingContext.HASH_SHA256)
 
@@ -370,7 +371,10 @@ static func content_digest(document: Sc2File) -> PackedByteArray:
 		size.resize(8)
 		size.encode_u64(0, prepared.members[name].size())
 		context.update(size)
-		context.update(prepared.members[name])
+
+		# the hashing context rejects an empty update
+		if not prepared.members[name].is_empty():
+			context.update(prepared.members[name])
 
 	return context.finish()
 
