@@ -36,24 +36,27 @@ def write_zip(package, folder, name, *directories):
         assert stream.testzip() is None
 
 
-# the native simulation library of each package, relative to its package folder
-NATIVE_LIBRARIES = {
-    'windows-x64': ('windows-x86_64', 'opensc2k_simulation.dll', 'opensc2k_simulation.dll'),
-    'linux-x64': ('linux-x86_64', 'libopensc2k_simulation.so', 'libopensc2k_simulation.so'),
-    'macos-universal': ('macos', 'libopensc2k_simulation.dylib',
-                        'OpenSC2K.app/Contents/Frameworks/libopensc2k_simulation.dylib'),
+# Native libraries are independent extensions with the same platform layout.
+NATIVE_MODULES = ('simulation', 'rendering')
+NATIVE_PLATFORMS = {
+    'windows-x64': ('windows-x86_64', 'opensc2k_{}.dll', 'opensc2k_{}.dll'),
+    'linux-x64': ('linux-x86_64', 'libopensc2k_{}.so', 'libopensc2k_{}.so'),
+    'macos-universal': ('macos', 'libopensc2k_{}.dylib',
+                        'OpenSC2K.app/Contents/Frameworks/libopensc2k_{}.dylib'),
 }
 
 
 def install_native(native, project):
-    """Copy the prebuilt native simulation libraries into the exported project."""
-    for folder, library, _ in NATIVE_LIBRARIES.values():
-        source = native / folder / library
-        if not source.is_file():
-            raise ValueError(f'Missing native simulation library: {source}')
-        target = project / 'bin/opensc2k_simulation' / folder / library
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source, target)
+    """Copy each prebuilt extension into the exported project."""
+    for module in NATIVE_MODULES:
+        for folder, template, _ in NATIVE_PLATFORMS.values():
+            library = template.format(module)
+            source = native / f'opensc2k_{module}' / folder / library
+            if not source.is_file():
+                raise ValueError(f'Missing native {module} library: {source}')
+            target = project / 'bin' / f'opensc2k_{module}' / folder / library
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target)
 
 
 def build(output, label, godot, native):
@@ -89,7 +92,9 @@ def build(output, label, godot, native):
             checked_godot(godot, project, '--export-release', preset, str(folder / binary))
             shutil.copy2(source / 'LICENSE', folder / 'LICENSE.txt')
             shutil.copy2(source / 'docs/install.md', folder / 'INSTALL.md')
-            assert (folder / NATIVE_LIBRARIES[platform][2]).is_file(), f'{platform} lacks the native simulation'
+            for module in NATIVE_MODULES:
+                expected_library = NATIVE_PLATFORMS[platform][2].format(module)
+                assert (folder / expected_library).is_file(), f'{platform} lacks native {module}'
             (folder / 'VERSION.txt').write_text(f'OpenSC2K {version}\nBuild: {label}\nCommit: {commit}\nGodot: {engine}\n')
             if platform == 'windows-x64':
                 assert (folder / 'godot_wry.dll').is_file()
@@ -126,8 +131,8 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--label', required=True)
     parser.add_argument('--godot', default=os.environ.get('GODOT', 'godot'))
-    parser.add_argument('--native', type=Path, default=ROOT / 'game/bin/opensc2k_simulation',
-                        help='Folder with the native library of each platform, as tools/build_native.py --package writes it')
+    parser.add_argument('--native', type=Path, default=ROOT / 'game/bin',
+                        help='Folder with each native extension and platform, as tools/build_native.py --package writes it')
     args = parser.parse_args()
     build(args.output.resolve(), args.label, args.godot, args.native.resolve())
 

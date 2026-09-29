@@ -231,5 +231,30 @@ class PackageTest(unittest.TestCase):
                 self.assertTrue(stream.getinfo('OpenSC2K-x-portable/data/').is_dir())
 
 
+class NativePackageTest(unittest.TestCase):
+    def test_install_copies_both_extensions_for_every_platform(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            native = root / 'native'
+            project = root / 'game'
+            expected = {}
+            for module in packages.NATIVE_MODULES:
+                for folder, template, _ in packages.NATIVE_PLATFORMS.values():
+                    relative = Path(f'opensc2k_{module}') / folder / template.format(module)
+                    payload = str(relative).encode()
+                    source = native / relative
+                    source.parent.mkdir(parents=True, exist_ok=True)
+                    source.write_bytes(payload)
+                    expected[relative] = payload
+            packages.install_native(native, project)
+            self.assertEqual(len(expected), 6)
+            for relative, payload in expected.items():
+                self.assertEqual((project / 'bin' / relative).read_bytes(), payload)
+            missing = native / 'opensc2k_rendering/macos/libopensc2k_rendering.dylib'
+            missing.unlink()
+            with self.assertRaisesRegex(ValueError, 'Missing native rendering library'):
+                packages.install_native(native, project)
+
+
 if __name__ == '__main__':
     unittest.main()

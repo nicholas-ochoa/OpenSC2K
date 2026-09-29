@@ -1,0 +1,16 @@
+[configuration]
+
+entry_symbol = "opensc2k_rendering_init"
+compatibility_minimum = 4.7
+reloadable = false
+
+[libraries]
+
+macos.debug = "res://bin/opensc2k_rendering/macos/libopensc2k_rendering.dylib"
+macos.release = "res://bin/opensc2k_rendering/macos/libopensc2k_rendering.dylib"
+linux.debug.x86_64 = "res://bin/opensc2k_rendering/linux-x86_64/libopensc2k_rendering.so"
+linux.release.x86_64 = "res://bin/opensc2k_rendering/linux-x86_64/libopensc2k_rendering.so"
+linux.debug.arm64 = "res://bin/opensc2k_rendering/linux-arm64/libopensc2k_rendering.so"
+linux.release.arm64 = "res://bin/opensc2k_rendering/linux-arm64/libopensc2k_rendering.so"
+windows.debug.x86_64 = "res://bin/opensc2k_rendering/windows-x86_64/opensc2k_rendering.dll"
+windows.release.x86_64 = "res://bin/opensc2k_rendering/windows-x86_64/opensc2k_rendering.dll"

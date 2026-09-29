@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the native simulation library and copy it into the Godot project.
+"""Build the native libraries and copy them into the Godot project.
 
 With no options, build the library for this computer. Use --package to build
 the library that a desktop package needs on this platform: a universal library
@@ -14,15 +14,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-CRATE = ROOT / 'native/simulation'
-OUTPUT = ROOT / 'game/bin/opensc2k_simulation'
-NAME = 'opensc2k_simulation'
-# the library of each package platform, as the .gdextension file names it
-PACKAGE_LIBRARIES = {
-    'macos': f'lib{NAME}.dylib',
-    'linux-x86_64': f'lib{NAME}.so',
-    'windows-x86_64': f'{NAME}.dll',
-}
+MODULES = ('simulation', 'rendering')
 MACOS_TARGETS = ('aarch64-apple-darwin', 'x86_64-apple-darwin')
 
 
@@ -36,21 +28,23 @@ def host_folder():
     return f'linux-{arch}'
 
 
-def library_name():
+def library_name(module):
+    name = f'opensc2k_{module}'
     if sys.platform == 'darwin':
-        return f'lib{NAME}.dylib'
+        return f'lib{name}.dylib'
     if sys.platform == 'win32':
-        return f'{NAME}.dll'
-    return f'lib{NAME}.so'
+        return f'{name}.dll'
+    return f'lib{name}.so'
 
 
-def _cargo(arguments, quiet):
+def _cargo(module, arguments, quiet):
+    crate = ROOT / 'native' / module
     if shutil.which('cargo') is None:
-        raise OSError('cargo is required to build the native simulation (https://rustup.rs)')
-    command = ['cargo', *arguments, '--manifest-path', str(CRATE / 'Cargo.toml')]
+        raise OSError('cargo is required to build the native libraries (https://rustup.rs)')
+    command = ['cargo', *arguments, '--manifest-path', str(crate / 'Cargo.toml')]
     if quiet:
         command.append('--quiet')
-    subprocess.run(command, cwd=CRATE, check=True)
+    subprocess.run(command, cwd=crate, check=True)
 
 
 def _install(built, target):
@@ -65,35 +59,45 @@ def _install(built, target):
 
 
 def build(profile='release', quiet=False):
-    """Build the host library. Cargo skips the work when the sources are unchanged."""
-    _cargo(['build', *(['--release'] if profile == 'release' else [])], quiet)
-    built = CRATE / 'target' / profile / library_name()
-    return _install(built, OUTPUT / host_folder() / library_name())
+    """Build the host libraries. Cargo skips unchanged sources."""
+    targets = []
+    for module in MODULES:
+        _cargo(module, ['build', *(['--release'] if profile == 'release' else [])], quiet)
+        built = ROOT / 'native' / module / 'target' / profile / library_name(module)
+        target = ROOT / 'game/bin' / f'opensc2k_{module}' / host_folder() / library_name(module)
+        targets.append(_install(built, target))
+    return targets
 
 
 def build_package(quiet=False):
-    """Build the release library of a desktop package for this platform."""
+    """Build the release libraries of a desktop package for this platform."""
     if sys.platform == 'darwin':
-        slices = []
-        for triple in MACOS_TARGETS:
-            subprocess.run(['rustup', 'target', 'add', triple], cwd=CRATE, check=True)
-            _cargo(['build', '--release', '--target', triple], quiet)
-            slices.append(str(CRATE / 'target' / triple / 'release' / library_name()))
-        universal = CRATE / 'target' / 'universal' / library_name()
-        universal.parent.mkdir(parents=True, exist_ok=True)
-        subprocess.run(['lipo', '-create', *slices, '-output', str(universal)], check=True)
-        return _install(universal, OUTPUT / 'macos' / library_name())
-    if host_folder() not in PACKAGE_LIBRARIES:
+        targets = []
+        for module in MODULES:
+            crate = ROOT / 'native' / module
+            slices = []
+            for triple in MACOS_TARGETS:
+                subprocess.run(['rustup', 'target', 'add', triple], cwd=crate, check=True)
+                _cargo(module, ['build', '--release', '--target', triple], quiet)
+                slices.append(str(crate / 'target' / triple / 'release' / library_name(module)))
+            universal = crate / 'target' / 'universal' / library_name(module)
+            universal.parent.mkdir(parents=True, exist_ok=True)
+            subprocess.run(['lipo', '-create', *slices, '-output', str(universal)], check=True)
+            targets.append(_install(universal, ROOT / 'game/bin' / f'opensc2k_{module}' / 'macos' / library_name(module)))
+        return targets
+    if host_folder() not in ('linux-x86_64', 'windows-x86_64'):
         raise OSError(f'desktop packages do not include {host_folder()}')
     return build('release', quiet)
 
 
 def test(quiet=False):
-    """Run the native simulation unit tests."""
-    command = ['cargo', 'test', '--release', '--manifest-path', str(CRATE / 'Cargo.toml')]
-    if quiet:
-        command.append('--quiet')
-    subprocess.run(command, cwd=CRATE, check=True, capture_output=quiet)
+    """Run unit tests for each native library."""
+    for module in MODULES:
+        crate = ROOT / 'native' / module
+        command = ['cargo', 'test', '--release', '--manifest-path', str(crate / 'Cargo.toml')]
+        if quiet:
+            command.append('--quiet')
+        subprocess.run(command, cwd=crate, check=True, capture_output=quiet)
 
 
 def main():
@@ -101,8 +105,9 @@ def main():
     parser.add_argument('--debug', action='store_true', help='Build without optimizations')
     parser.add_argument('--package', action='store_true', help='Build the library of a desktop package')
     args = parser.parse_args()
-    target = build_package() if args.package else build('debug' if args.debug else 'release')
-    print(f'Native simulation: {target.relative_to(ROOT)}')
+    targets = build_package() if args.package else build('debug' if args.debug else 'release')
+    for target in targets:
+        print(f'Native library: {target.relative_to(ROOT)}')
     return 0
 
 

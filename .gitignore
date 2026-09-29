@@ -28,6 +28,7 @@ ghidra/
 
 .gdls/
 
-# Native simulation build output
+# Native library build output
 /native/simulation/target/
+/native/rendering/target/
 /game/bin/

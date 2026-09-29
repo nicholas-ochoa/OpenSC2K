@@ -37,6 +37,17 @@ Load and save cities that the supplied game can use.
 
 ## Validation gates
 
+For Rust changes, run these commands from each affected native crate directory:
+
+```sh
+cargo fmt
+cargo fmt --check
+cargo clippy --all-targets --all-features -- -D warnings
+```
+
+Fix formatting and Clippy findings before committing Rust changes.
+Run the crate's unit tests with `cargo test --release`.
+
 For code changes, use
 `tools/validate_project.sh --suite <domain>` or explicit `--test <id>` entries.
 The runner checks source diffs, Godot parsing, and project startup with Dummy audio.
