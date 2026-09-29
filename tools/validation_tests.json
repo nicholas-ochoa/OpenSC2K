@@ -1553,5 +1553,21 @@
     "script": "tests/generated_city_fixtures_test.gd",
     "domain": "formats",
     "lane": "product"
+  },
+  {
+    "id": "city_native_region_test",
+    "script": "tests/city_native_region_test.gd",
+    "domain": "rendering",
+    "lane": "product",
+    "requires": ["ext/graphics/pack.json"],
+    "driver": "scene-batch"
+  },
+  {
+    "id": "city_native_region_test_native",
+    "script": "tests/city_native_region_test.gd",
+    "domain": "rendering",
+    "lane": "native",
+    "requires": ["ext/graphics/pack.json"],
+    "driver": "scene-batch"
   }
 ]

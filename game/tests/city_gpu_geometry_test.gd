@@ -22,6 +22,7 @@ func _run() -> void:
 
 			for mode: CityViewMode.Mode in [CityViewMode.Mode.CITY, CityViewMode.Mode.UNDERGROUND]:
 				var context := CityGpuBuildContext.new()
+				context.use_native = false # Retained GDScript implementation checks.
 				var size := CityIsometricRenderer.output_size_for_view(view, fixture_city.map_size)
 
 				for center in [size / 2, Vector2i(size.x / 2, size.y - 160)]:
@@ -49,6 +50,7 @@ func _run() -> void:
 		for mode: CityViewMode.Mode in [CityViewMode.Mode.CITY, CityViewMode.Mode.UNDERGROUND]:
 			var sprites := large if view == 2 else small
 			var context := CityGpuBuildContext.new()
+			context.use_native = false # Retained GDScript implementation checks.
 			var center := (CityIsometricRenderer.output_size_for_view(view, city.map_size) / 2) / 256
 			var request := CityGpuRegionBatch.Request.new()
 			request.city = city

@@ -63,7 +63,7 @@ func _run() -> void:
 		assert(cache.entries.size() <= cache.visible.size() + cache.offscreen_limit())
 
 		for worker in cache.gpu_workers:
-			assert(worker.context.tiles.size() <= CityGpuBuildContext.TILE_CACHE_LIMIT)
+			assert(worker.context.cached_tile_count() <= CityGpuBuildContext.TILE_CACHE_LIMIT)
 
 	# Player edits take the next available worker ahead of stale background work.
 	var edited: Vector2i = cache.visible[-1]

@@ -9,6 +9,11 @@ const ATLAS_EDGE := 2048
 const MAX_ATLAS_EDGE := 8192
 const TILE_CACHE_LIMIT := 16384
 
+# Keep the GDScript implementation as an explicit comparison path.
+var use_native := OS.get_environment("OPENSC2K_REGION_BUILDER") != "gdscript"
+var native_builder: CityNativeRegionBuilder
+var native_cached_tiles := 0
+
 var atlas_edge := ATLAS_EDGE
 var images: Dictionary = {}
 var image_roles: Dictionary[int, ImageRole] = {}
@@ -677,3 +682,7 @@ class ImageRole extends RefCounted:
 	func _init(id: int, flipped: bool) -> void:
 		sprite_id = id
 		flip = flipped
+
+
+func cached_tile_count() -> int:
+	return native_cached_tiles if use_native else tiles.size()

@@ -15,6 +15,14 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 			or view not in [0, 1, 2] or not CityViewMode.is_map(mode)):
 		return CityGpuRegionResult.failed("invalid GPU region assets")
 
+	if context.use_native:
+		if not context.error.is_empty():
+			return CityGpuRegionResult.failed(context.error)
+		if context.native_builder == null:
+			context.native_builder = CityNativeRegionBuilder.new()
+		return context.native_builder.render(city, palette, sprites, bounds, view, mode, pipes, subways,
+			context, revision, uploaded_atlas_revision, copy_atlas, water_mains)
+
 	context.set_revision(revision, [city.map_size, city.visible_altitude_levels, city.compass_rotation(),
 		view, mode, pipes, subways, water_mains, palette, sprites])
 	context.rotation = city.compass_rotation()

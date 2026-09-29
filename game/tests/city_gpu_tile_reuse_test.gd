@@ -9,6 +9,7 @@ func _initialize() -> void:
 	var palette := Sc2Palette.index_encoding()
 	var sprites := FixtureGraphics.pack().large_sprites
 	var context := CityGpuBuildContext.new()
+	context.use_native = false # Retained GDScript implementation checks.
 	var config := CityIsometricRenderer.view_configuration(2)
 	var point := Vector2i(20, 20)
 	var key := city.index_of(point.x, point.y)
@@ -109,6 +110,7 @@ func _next(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 func _measure_reuse(palette: Sc2Palette, sprites: Sc2SpriteArchive, config: CityViewConfiguration, retain: bool) -> Dictionary:
 	var city := CityState.from_document(EmptyCityTemplate.create(128))
 	var context := CityGpuBuildContext.new()
+	context.use_native = false # Retained GDScript implementation checks.
 	var started := Time.get_ticks_usec()
 
 	for revision in 11:
