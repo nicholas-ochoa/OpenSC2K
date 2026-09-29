@@ -57,16 +57,26 @@ const TIMING_LABELS: [&str; 14] = [
     "store growth changes",
 ];
 const COARSE_TIMING_STEPS: [i64; 1] = [TILES];
-const DETAILED_TIMING_STEPS: [i64; 10] =
-    [SCAN, SURFACE, FACILITIES, SPECIAL_ZONES, TRIPS, POPULATION, COMPLETION, RECOVERY, DENSITY, SUBWAY];
+const DETAILED_TIMING_STEPS: [i64; 10] = [
+    SCAN,
+    SURFACE,
+    FACILITIES,
+    SPECIAL_ZONES,
+    TRIPS,
+    POPULATION,
+    COMPLETION,
+    RECOVERY,
+    DENSITY,
+    SUBWAY,
+];
 
 /// Chunks that growth may change, in the order it commits them.
-const GROWTH_CHUNKS: [&str; 12] =
-    ["ALTM", "XTER", "XBLD", "XZON", "XUND", "XTXT", "XLAB", "XMIC", "XTHG", "XBIT", "XTRF", "MISC"];
+const GROWTH_CHUNKS: [&str; 12] = [
+    "ALTM", "XTER", "XBLD", "XZON", "XUND", "XTXT", "XLAB", "XMIC", "XTHG", "XBIT", "XTRF", "MISC",
+];
 /// Chunks that growth needs with their document sizes.
 const INPUT_CHUNKS: [&str; 15] = [
-    "ALTM", "XTER", "XBLD", "XZON", "XUND", "XTXT", "XLAB", "XMIC", "XTHG", "XBIT", "XTRF", "XPLT", "XVAL", "XCRM",
-    "MISC",
+    "ALTM", "XTER", "XBLD", "XZON", "XUND", "XTXT", "XLAB", "XMIC", "XTHG", "XBIT", "XTRF", "XPLT", "XVAL", "XCRM", "MISC",
 ];
 
 gd_phase_result! {
@@ -184,8 +194,10 @@ pub fn run(city: &mut City, randoms: &mut Randoms, step: i64, substep: i64, deta
         return GrowthResult::failed("growth input chunks are missing or have the wrong size");
     }
 
-    let originals: Vec<Vec<u8>> =
-        GROWTH_CHUNKS.iter().map(|id| city.chunk(id).map(|chunk| chunk.data.clone()).unwrap_or_default()).collect();
+    let originals: Vec<Vec<u8>> = GROWTH_CHUNKS
+        .iter()
+        .map(|id| city.chunk(id).map(|chunk| chunk.data.clone()).unwrap_or_default())
+        .collect();
     let map_edge = city.map_size;
     let rotation = city.compass_rotation() & 3;
     let allow_edge_buildings = city.is_extended();
@@ -212,7 +224,10 @@ pub fn run(city: &mut City, randoms: &mut Randoms, step: i64, substep: i64, deta
         anchor_mask: ANCHOR_MASKS[rotation as usize],
         allow_edge_buildings,
         detailed,
-        counters: Counters { ship_home: Vec2i::NONE, ..Default::default() },
+        counters: Counters {
+            ship_home: Vec2i::NONE,
+            ..Default::default()
+        },
         walking_access: vec![vec![0u8; (map_edge * map_edge) as usize]; 4],
         scratch: TripScratch::default(),
         totals: Totals::default(),
@@ -389,7 +404,18 @@ impl TileScan {
             span.mark_index(SPECIAL_ZONES);
         }
 
-        let City { altm, xbld, xter, xzon, xund, xbit, xtxt, misc, xthg, .. } = city;
+        let City {
+            altm,
+            xbld,
+            xter,
+            xzon,
+            xund,
+            xbit,
+            xtxt,
+            misc,
+            xthg,
+            ..
+        } = city;
         let mut maps = special::SpecialMaps {
             buildings: &mut xbld.data,
             zones: &mut xzon.data,
@@ -481,7 +507,10 @@ impl TileScan {
             span.mark_index(POPULATION);
         }
 
-        if density > 0 && status == STATUS_NORMAL && self.count_population_or_abandon(city, randoms, tile, zone_type, density, 4000 - growth_pressure) {
+        if density > 0
+            && status == STATUS_NORMAL
+            && self.count_population_or_abandon(city, randoms, tile, zone_type, density, 4000 - growth_pressure)
+        {
             return true;
         }
 
@@ -710,7 +739,11 @@ impl TileScan {
         growth.base.timing = span.finish();
 
         // Report only the steps that this timing mode measures.
-        let removed: &[i64] = if self.detailed { &COARSE_TIMING_STEPS } else { &DETAILED_TIMING_STEPS };
+        let removed: &[i64] = if self.detailed {
+            &COARSE_TIMING_STEPS
+        } else {
+            &DETAILED_TIMING_STEPS
+        };
 
         for step in removed {
             growth.base.timing.steps.erase(TIMING_LABELS[*step as usize]);
@@ -738,7 +771,10 @@ mod tests {
             anchor_mask: ANCHOR_MASKS[rotation as usize],
             allow_edge_buildings: city.is_extended(),
             detailed: false,
-            counters: Counters { ship_home: Vec2i::NONE, ..Default::default() },
+            counters: Counters {
+                ship_home: Vec2i::NONE,
+                ..Default::default()
+            },
             walking_access: vec![vec![0u8; (map_edge * map_edge) as usize]; 4],
             scratch: TripScratch::default(),
             totals: Totals::default(),
@@ -747,11 +783,18 @@ mod tests {
     }
 
     fn zero_randoms() -> Randoms {
-        Randoms { random: sequence_random(&[0]), ..Randoms::new(1, 1, 1) }
+        Randoms {
+            random: sequence_random(&[0]),
+            ..Randoms::new(1, 1, 1)
+        }
     }
 
     fn extended_city(edge: i64) -> City {
-        if edge == 128 { empty_full_resolution_city(edge) } else { empty_city(edge) }
+        if edge == 128 {
+            empty_full_resolution_city(edge)
+        } else {
+            empty_city(edge)
+        }
     }
 
     fn sites(edge: i64, area: i64) -> [Vec2i; 8] {
@@ -848,7 +891,13 @@ mod tests {
                     let before = city.xbld.data.clone();
                     let mut random = sequence_random(&[0]);
                     let mut maps = scan.zone_maps(&mut city);
-                    assert!(!development::place_zone(&mut maps, origin + Vec2i::new(0, area - 1), density, 2, &mut random));
+                    assert!(!development::place_zone(
+                        &mut maps,
+                        origin + Vec2i::new(0, area - 1),
+                        density,
+                        2,
+                        &mut random
+                    ));
                     assert_eq!(city.xbld.data, before);
                 }
             }
@@ -884,7 +933,18 @@ mod tests {
                 city.xzon.data.fill(zone_type as u8);
                 city.xbit.data.fill(flag_bits::POWERED as u8);
                 let tile = if zone_type == 8 { tiles::HANGAR_2 } else { tiles::CARGO_YARD };
-                let City { xbld, xzon, xund, xbit, xter, altm, xtxt, xthg, misc, .. } = &mut city;
+                let City {
+                    xbld,
+                    xzon,
+                    xund,
+                    xbit,
+                    xter,
+                    altm,
+                    xtxt,
+                    xthg,
+                    misc,
+                    ..
+                } = &mut city;
                 let mut maps = special::SpecialMaps {
                     buildings: &mut xbld.data,
                     zones: &mut xzon.data,
@@ -937,13 +997,27 @@ mod tests {
                         };
                         let mut traffic = city.xtrf.data.clone();
                         let access = scan.walking_access[2].as_mut_slice();
-                        trip::trace(&maps, &mut traffic, point, 3, 2, &mut SimRandom::new(123), 10, start, Some(access), &mut scan.scratch);
+                        trip::trace(
+                            &maps,
+                            &mut traffic,
+                            point,
+                            3,
+                            2,
+                            &mut SimRandom::new(123),
+                            10,
+                            start,
+                            Some(access),
+                            &mut scan.scratch,
+                        );
                     }
                 }
             };
 
             trace_from(&mut city, &mut scan);
-            assert_eq!(scan.walking_access[2][access_index], 2, "a residential zone gives commercial walking access");
+            assert_eq!(
+                scan.walking_access[2][access_index], 2,
+                "a residential zone gives commercial walking access"
+            );
             write_u32_be(&mut city.misc.data, misc_layout::NORMAL_POPULATION, 10000);
             write_u32_be(&mut city.misc.data, misc_layout::TILE_COUNTS + tiles::CHURCH * 4, 0);
 
@@ -955,7 +1029,10 @@ mod tests {
 
             assert_eq!(scan.totals.churches_built, 1, "construction places the church");
             trace_from(&mut city, &mut scan);
-            assert_eq!(scan.walking_access[2][access_index], 1, "the church removes cached commercial walking access");
+            assert_eq!(
+                scan.walking_access[2][access_index], 1,
+                "the church removes cached commercial walking access"
+            );
         }
     }
 }
@@ -973,7 +1050,14 @@ mod power_tests {
 
             for x in [0, 1, 2, edge - 2, edge - 1] {
                 for y in [0, 1, 2, edge - 2, edge - 1] {
-                    for offset in [Vec2i::ZERO, Vec2i::new(-1, 0), Vec2i::new(1, 0), Vec2i::new(0, -1), Vec2i::new(0, 1), Vec2i::new(1, 1)] {
+                    for offset in [
+                        Vec2i::ZERO,
+                        Vec2i::new(-1, 0),
+                        Vec2i::new(1, 0),
+                        Vec2i::new(0, -1),
+                        Vec2i::new(0, 1),
+                        Vec2i::new(1, 1),
+                    ] {
                         flags.fill(0);
                         let source = Vec2i::new(x, y) + offset;
                         let inside = source.x >= 0 && source.y >= 0 && source.x < edge && source.y < edge;

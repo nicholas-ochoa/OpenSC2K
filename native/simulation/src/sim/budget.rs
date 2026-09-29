@@ -59,7 +59,10 @@ impl Default for SliceBudget {
 impl SliceBudget {
     pub fn new() -> Self {
         Self {
-            state: Mutex::new(State { created_usec: now_usec(), ..Default::default() }),
+            state: Mutex::new(State {
+                created_usec: now_usec(),
+                ..Default::default()
+            }),
             resume: Condvar::new(),
             deadline: AtomicI64::new(0),
             stopped: AtomicBool::new(false),

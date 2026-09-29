@@ -16,12 +16,19 @@ fn registry() -> &'static Mutex<HashMap<i64, Arc<SliceBudget>>> {
 pub fn create() -> i64 {
     static NEXT: AtomicI64 = AtomicI64::new(1);
     let handle = NEXT.fetch_add(1, Ordering::Relaxed);
-    registry().lock().unwrap_or_else(|poisoned| poisoned.into_inner()).insert(handle, Arc::new(SliceBudget::new()));
+    registry()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .insert(handle, Arc::new(SliceBudget::new()));
     handle
 }
 
 pub fn get(handle: i64) -> Option<Arc<SliceBudget>> {
-    registry().lock().unwrap_or_else(|poisoned| poisoned.into_inner()).get(&handle).cloned()
+    registry()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&handle)
+        .cloned()
 }
 
 pub fn free(handle: i64) {

@@ -105,7 +105,10 @@ pub fn record_point(data: &[u8], record: i64) -> Vec2i {
 pub fn queue_thing_sound(counters: &mut MovingThingResult, sound_id: i64, data: &[u8], record: i64) {
     let thing_type = things::read(data, record * things::RECORD_SIZE);
     let point = record_point(data, record);
-    counters.base.sound_events.push(SoundEvent::for_thing(sound_id, thing_type, record, point));
+    counters
+        .base
+        .sound_events
+        .push(SoundEvent::for_thing(sound_id, thing_type, record, point));
 }
 
 /// A record index read that ignores records past the end, as a failed
@@ -124,14 +127,6 @@ pub fn record_type(data: &[u8], record: i64) -> i64 {
 /// A spawned explosion record, as the MaxisManThingTick, TrainThingTick, and
 /// DisasterMapState _spawn_explosion helpers.
 #[allow(clippy::too_many_arguments)]
-pub fn spawn_explosion(
-    text: &mut [u8],
-    data: &mut [u8],
-    point: Vec2i,
-    height: i64,
-    state: i64,
-    goal: i64,
-    map_edge: i64,
-) -> bool {
+pub fn spawn_explosion(text: &mut [u8], data: &mut [u8], point: Vec2i, height: i64, state: i64, goal: i64, map_edge: i64) -> bool {
     crate::sim::disasters::map::spawn_explosion(text, data, point, height, state, goal, map_edge)
 }

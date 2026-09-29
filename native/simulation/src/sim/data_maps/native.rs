@@ -2,8 +2,8 @@
 //! the coarse grids of the original executable.
 
 use super::grid_math;
-use super::{CoverageResult, PollutionResult, building_pollution, land_value_halved, population_weight};
 use super::{CRIME_REDUCTION_ORDINANCE, FIRE_COVERAGE_ORDINANCE, POLICE_COVERAGE_ORDINANCE, ZONE_BUILDING_ORIGIN};
+use super::{CoverageResult, PollutionResult, building_pollution, land_value_halved, population_weight};
 use crate::sim::city::City;
 use crate::sim::geom::Vec2i;
 use crate::sim::ids::building_tile_ids as tiles;
@@ -36,7 +36,11 @@ fn density_weight(building: i64) -> i64 {
     if building >= tiles::DEVELOPED_FIRST && building < tiles::HYDRO_POWER_1 {
         population_weight(building)
     } else if building >= tiles::HYDRO_POWER_1 {
-        if (tiles::PLYMOUTH_ARCOLOGY..=tiles::LAUNCH_ARCOLOGY).contains(&building) { 12 } else { 2 }
+        if (tiles::PLYMOUTH_ARCOLOGY..=tiles::LAUNCH_ARCOLOGY).contains(&building) {
+            12
+        } else {
+            2
+        }
     } else {
         0
     }
@@ -103,15 +107,13 @@ pub fn run_pollution_and_coverage(city: &mut City) -> CoverageResult {
     let mut center_count = 0i64;
 
     for x in 0..edge {
-
         crate::sim::budget::checkpoint();
         let row = x * edge;
 
         for y in 0..edge {
             let index = row + y;
             let building = buildings[index] as i64;
-            sources[index] =
-                (old_pollution[index] as i64 + old_traffic[index] as i64 / 5 + pollution_weight(building)) as i32;
+            sources[index] = (old_pollution[index] as i64 + old_traffic[index] as i64 / 5 + pollution_weight(building)) as i32;
 
             if building >= tiles::DEVELOPED_FIRST {
                 center_x_sum += x as i64;
@@ -163,7 +165,11 @@ pub fn run_pollution_and_coverage(city: &mut City) -> CoverageResult {
     city.set_misc_u32(misc_layout::CITY_CENTER_X, center.x);
     city.set_misc_u32(misc_layout::CITY_CENTER_Y, center.y);
 
-    let mut result = CoverageResult { pollution_total, city_center: center, ..Default::default() };
+    let mut result = CoverageResult {
+        pollution_total,
+        city_center: center,
+        ..Default::default()
+    };
     result.base_mut().ok = true;
     result.base_mut().timing = span.finish();
     result
@@ -290,7 +296,6 @@ pub fn run_land_value_and_crime(city: &mut City) -> PollutionResult {
     let crime_bonus = if ordinances & CRIME_REDUCTION_ORDINANCE != 0 { 16 } else { 0 };
 
     for x in 0..edge {
-
         crate::sim::budget::checkpoint();
         let row = x * edge;
         let distance_x = (center.x - x as i64).abs();
@@ -299,8 +304,7 @@ pub fn run_land_value_and_crime(city: &mut City) -> PollutionResult {
             let index = row + y;
             let population_value = population[index] as i64;
             let old_population_value = old_population[index] as i64;
-            growth[index] =
-                ((old_growth[index] as i64 * 7 + (population_value - old_population_value) * 8 + 128) / 8).clamp(0, 255) as u8;
+            growth[index] = ((old_growth[index] as i64 * 7 + (population_value - old_population_value) * 8 + 128) / 8).clamp(0, 255) as u8;
             let building = buildings[index] as i64;
             let zone_type = zones[index] as i64 & zone::TYPE_MASK;
 

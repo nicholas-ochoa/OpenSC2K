@@ -33,7 +33,10 @@ impl SimRandom {
     const INCREMENT: i64 = 2531011;
 
     pub fn new(seed: i64) -> Self {
-        Self { state: seed & 0xffff_ffff, script: None }
+        Self {
+            state: seed & 0xffff_ffff,
+            script: None,
+        }
     }
 
     #[inline]
@@ -59,7 +62,10 @@ impl SimLfsrRandom {
     const FEEDBACK: i64 = 0x1bf5;
 
     pub fn new(seed: i64) -> Self {
-        Self { state: seed & 0xffff, script: None }
+        Self {
+            state: seed & 0xffff,
+            script: None,
+        }
     }
 
     #[inline]
@@ -112,7 +118,10 @@ impl GameLcgRandom {
     const INCREMENT: i64 = 12345;
 
     pub fn new(seed: i64) -> Self {
-        Self { state: seed & 0xffff_ffff, script: None }
+        Self {
+            state: seed & 0xffff_ffff,
+            script: None,
+        }
     }
 
     #[inline]
@@ -141,7 +150,11 @@ pub struct Randoms {
 
 impl Randoms {
     pub fn new(random: i64, lfsr: i64, game: i64) -> Self {
-        Self { random: SimRandom::new(random), lfsr: SimLfsrRandom::new(lfsr), game: GameLcgRandom::new(game) }
+        Self {
+            random: SimRandom::new(random),
+            lfsr: SimLfsrRandom::new(lfsr),
+            game: GameLcgRandom::new(game),
+        }
     }
 }
 

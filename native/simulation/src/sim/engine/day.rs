@@ -59,7 +59,12 @@ impl ToValue for EngineState {
             ("traffic_news_deadline_msec", Value::Int(self.traffic_news_deadline_msec)),
         ];
 
-        Value::Dict(fields.into_iter().map(|(name, value)| (Value::Str(name.to_string()), value)).collect())
+        Value::Dict(
+            fields
+                .into_iter()
+                .map(|(name, value)| (Value::Str(name.to_string()), value))
+                .collect(),
+        )
     }
 }
 
@@ -88,7 +93,10 @@ pub struct DayOutcome {
 
 impl DayOutcome {
     fn failure(message: impl Into<String>) -> Self {
-        Self { error: message.into(), ..Default::default() }
+        Self {
+            error: message.into(),
+            ..Default::default()
+        }
     }
 }
 
@@ -113,7 +121,13 @@ impl PhaseOutcome {
     }
 
     fn failed(message: impl Into<String>) -> Self {
-        Self { ok: false, error: message.into(), complete: true, game_over: false, terminal: false }
+        Self {
+            ok: false,
+            error: message.into(),
+            complete: true,
+            game_over: false,
+            terminal: false,
+        }
     }
 }
 
@@ -319,8 +333,12 @@ fn run_phase(context: &mut Context, action: &str) -> PhaseOutcome {
         "education_health" => run_education_health(context),
         "graphs" => {
             let state = &context.state;
-            let result =
-                graphs::run(context.city, state.developed_tiles, state.power_usage_percent, state.water_usage_percent);
+            let result = graphs::run(
+                context.city,
+                state.developed_tiles,
+                state.power_usage_percent,
+                state.water_usage_percent,
+            );
             context.finish(action, result)
         }
         "milestones" => {
@@ -650,8 +668,12 @@ fn run_weather(context: &mut Context) -> PhaseOutcome {
 
 impl ToValue for DayOutcome {
     fn to_value(&self) -> Value {
-        let phase_results =
-            Value::Dict(self.phase_results.iter().map(|(name, value)| (Value::Str(name.clone()), value.clone())).collect());
+        let phase_results = Value::Dict(
+            self.phase_results
+                .iter()
+                .map(|(name, value)| (Value::Str(name.clone()), value.clone()))
+                .collect(),
+        );
         let fields = [
             ("ok", Value::Bool(self.error.is_empty())),
             ("error", Value::Str(self.error.clone())),
@@ -663,6 +685,11 @@ impl ToValue for DayOutcome {
             ("timing", self.timing.to_value()),
         ];
 
-        Value::Dict(fields.into_iter().map(|(name, value)| (Value::Str(name.to_string()), value)).collect())
+        Value::Dict(
+            fields
+                .into_iter()
+                .map(|(name, value)| (Value::Str(name.to_string()), value))
+                .collect(),
+        )
     }
 }

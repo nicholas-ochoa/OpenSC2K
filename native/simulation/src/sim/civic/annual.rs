@@ -173,7 +173,10 @@ fn raw_population(misc: &[u8], cohort: i64) -> i64 {
 }
 
 fn arcology_count(misc: &[u8], map_edge: i64) -> i64 {
-    (tiles::PLYMOUTH_ARCOLOGY..=tiles::LAUNCH_ARCOLOGY).map(|tile| tile_count(misc, tile, map_edge)).sum::<i64>() / 16
+    (tiles::PLYMOUTH_ARCOLOGY..=tiles::LAUNCH_ARCOLOGY)
+        .map(|tile| tile_count(misc, tile, map_edge))
+        .sum::<i64>()
+        / 16
 }
 
 fn service_score(numerator: i64, denominator: i64, slope: i64, best_limit: i64, zero_limit: i64) -> i64 {
@@ -195,7 +198,10 @@ fn service_score(numerator: i64, denominator: i64, slope: i64, best_limit: i64, 
 }
 
 fn adjusted_population(misc: &[u8], map_edge: i64) -> i64 {
-    let count = (tiles::PLYMOUTH_ARCOLOGY..tiles::LLAMA_DOME).map(|tile| tile_count(misc, tile, map_edge)).sum::<i64>() / 16;
+    let count = (tiles::PLYMOUTH_ARCOLOGY..tiles::LLAMA_DOME)
+        .map(|tile| tile_count(misc, tile, map_edge))
+        .sum::<i64>()
+        / 16;
     let adjustment = if count > 140 { (count * 5 - 700) * 4000 } else { 0 };
 
     read_u32_be(misc, misc_layout::ARCOLOGY_POPULATION) + adjustment + read_u32_be(misc, misc_layout::NORMAL_POPULATION)
@@ -203,7 +209,10 @@ fn adjusted_population(misc: &[u8], map_edge: i64) -> i64 {
 
 fn population_cap(misc: &[u8], maximum: i64, divisor: i64, map_edge: i64) -> i64 {
     let divisor = if divisor == 0 { 100 } else { divisor };
-    let count = (tiles::PLYMOUTH_ARCOLOGY..tiles::LLAMA_DOME).map(|tile| tile_count(misc, tile, map_edge)).sum::<i64>() / 16;
+    let count = (tiles::PLYMOUTH_ARCOLOGY..tiles::LLAMA_DOME)
+        .map(|tile| tile_count(misc, tile, map_edge))
+        .sum::<i64>()
+        / 16;
     let adjustment = if count >= 141 { count * 20000 - 2800000 } else { 0 };
     let total = adjustment + read_u32_be(misc, misc_layout::ARCOLOGY_POPULATION) + read_u32_be(misc, misc_layout::NORMAL_POPULATION);
     let available = (total / divisor) & if map_edge == 128 { 0xffff } else { 0xffff_ffff };
@@ -257,7 +266,10 @@ pub fn run(city: &mut City, inputs: &mut AnnualInputs) -> AnnualResult {
         return AnnualResult::failed("annual map payloads are missing or invalid");
     }
 
-    let originals: Vec<Vec<u8>> = CHANGED_CHUNKS.iter().map(|id| city.chunk(id).map(|chunk| chunk.data.clone()).unwrap_or_default()).collect();
+    let originals: Vec<Vec<u8>> = CHANGED_CHUNKS
+        .iter()
+        .map(|id| city.chunk(id).map(|chunk| chunk.data.clone()).unwrap_or_default())
+        .collect();
     let map_edge = city.map_size;
     let misc = &city.misc.data;
     let mut annual = Annual {
@@ -438,7 +450,11 @@ impl Annual<'_, '_> {
     fn store_prison_and_school_totals(&mut self, city: &mut City) {
         let misc = &mut city.misc.data;
         write_u32_be(misc, misc_layout::OLD_ARRESTS, self.old_arrests);
-        let bonus = if self.prison_count < 1 || self.prison_population / self.prison_count > 79 { 0 } else { 1 };
+        let bonus = if self.prison_count < 1 || self.prison_population / self.prison_count > 79 {
+            0
+        } else {
+            1
+        };
         write_u32_be(misc, misc_layout::PRISON_BONUS, bonus);
 
         if self.low_school_score {
@@ -482,7 +498,11 @@ impl Annual<'_, '_> {
         }
 
         let funds = read_i32_be(&city.misc.data, misc_layout::FUNDS);
-        write_u32_be(&mut city.misc.data, misc_layout::FUNDS, to_i32(funds + self.launch_arcology_records * 100000));
+        write_u32_be(
+            &mut city.misc.data,
+            misc_layout::FUNDS,
+            to_i32(funds + self.launch_arcology_records * 100000),
+        );
         self.notice_ids.push(NOTICE_ARCOLOGY_LAUNCH_END);
         self.arcology_launched = true;
         self.arcology_launch_pending = false;
@@ -499,7 +519,11 @@ impl Annual<'_, '_> {
         let power_random = random.next_u15();
 
         if self.inputs.power_usage_percent >= 0 {
-            write_u16_be(&mut city.xmic.data, offset + 4, (power_random & 0x07) + self.inputs.power_usage_percent);
+            write_u16_be(
+                &mut city.xmic.data,
+                offset + 4,
+                (power_random & 0x07) + self.inputs.power_usage_percent,
+            );
         } else {
             self.random_records_pending += 1;
         }
@@ -529,17 +553,19 @@ impl Annual<'_, '_> {
                     write_u32_be(&mut city.misc.data, misc_layout::FUNDS, funds - plant_cost);
                     city.xmic.data[age] = 0;
                 } else {
-                    let expired = PowerPlantExpiry { record, tile, x: location.x, y: location.y };
+                    let expired = PowerPlantExpiry {
+                        record,
+                        tile,
+                        x: location.x,
+                        y: location.y,
+                    };
                     let random = self.inputs.random.as_deref_mut().expect("checked above");
                     let mut maps = city.maps();
                     let demolition = demolish::damage_structure(&mut maps, location, random, self.rotation, true);
 
                     if demolition.changed {
-                        self.next_effect_frame = demolish::append_effect_sequence(
-                            &mut self.effect_events,
-                            &demolition.effect_events,
-                            self.next_effect_frame,
-                        );
+                        self.next_effect_frame =
+                            demolish::append_effect_sequence(&mut self.effect_events, &demolition.effect_events, self.next_effect_frame);
                         self.demolished_power_records.push(expired);
                         self.sound_events.push(SOUND_EXPLOSION);
 
@@ -590,8 +616,8 @@ impl Annual<'_, '_> {
         let count = arcology_count(misc, self.map_edge).max(1);
         let capacity = read_u16_be(microsims, offset + 2);
         let arcology_capacity = population_cap(misc, to_i16((capacity * 1000) / 10), count * 20, self.map_edge) & 0xffff;
-        let tax_effect = (60 - budget_funding(misc, 0) - budget_funding(misc, 1) - budget_funding(misc, 2)) / 6
-            + microsims[offset as usize + 1] as i64;
+        let tax_effect =
+            (60 - budget_funding(misc, 0) - budget_funding(misc, 1) - budget_funding(misc, 2)) / 6 + microsims[offset as usize + 1] as i64;
         let growth = ((tax_effect * 5 - 50) * 40).min(arcology_capacity);
         let population = read_u16_be(microsims, offset + 4);
         let next_population = (growth + population / 50 + population).min(capacity * 1000);
@@ -691,7 +717,11 @@ impl Annual<'_, '_> {
         let microsims = &mut city.xmic.data;
         let library_count = tile_count(misc, tiles::LIBRARY, self.map_edge);
         let school_funding = budget_funding(misc, budget::SCHOOL);
-        write_u16_be(microsims, offset + 2, population_cap(misc, to_i16(library_count * school_funding * 4), 18, self.map_edge));
+        write_u16_be(
+            microsims,
+            offset + 2,
+            population_cap(misc, to_i16(library_count * school_funding * 4), 18, self.map_edge),
+        );
         let books = read_u16_be(microsims, offset + 4) + (school_funding - 50) * library_count;
 
         if books > 0 && books < 32000 {
@@ -712,7 +742,11 @@ impl Annual<'_, '_> {
 
         let misc = &city.misc.data;
         let boats = lfsr.next_mod(20) + tile_count(misc, tiles::MARINA, self.map_edge) * 8;
-        write_u16_be(&mut city.xmic.data, offset + 2, population_cap(misc, to_i16(boats), 150, self.map_edge));
+        write_u16_be(
+            &mut city.xmic.data,
+            offset + 2,
+            population_cap(misc, to_i16(boats), 150, self.map_edge),
+        );
         self.counts.marina += 1;
     }
 
@@ -780,7 +814,11 @@ impl Annual<'_, '_> {
         let microsims = &mut city.xmic.data;
         let police_funding = budget_funding(misc, budget::POLICE);
         microsims[offset as usize + 1] = police_funding as u8;
-        write_u16_be(microsims, offset + 2, population_cap(misc, to_i16(police_funding * 2), 90, self.map_edge));
+        write_u16_be(
+            microsims,
+            offset + 2,
+            population_cap(misc, to_i16(police_funding * 2), 90, self.map_edge),
+        );
         let police_count = tile_count(misc, tiles::POLICE_STATION, self.map_edge).max(1);
         let crime_per_station = read_u32_be(misc, misc_layout::CITY_CRIME) / police_count;
         write_u16_be(microsims, offset + 4, crime_per_station);
@@ -833,8 +871,7 @@ impl Annual<'_, '_> {
 
         let capacity = population_cap(misc, to_i16(students), 20, self.map_edge);
         write_u16_be(microsims, offset + 2, capacity);
-        let quality =
-            ((random.next_u15() & 0x07) + (school_funding * 6) / 10 + microsims[offset as usize + 1] as i64 - 12).max(0);
+        let quality = ((random.next_u15() & 0x07) + (school_funding * 6) / 10 + microsims[offset as usize + 1] as i64 - 12).max(0);
         let staff = population_cap(misc, to_i16(quality), 100, self.map_edge);
         write_u16_be(microsims, offset + 4, staff);
         let score = service_score(capacity, staff, 3, 15, 52);
@@ -861,7 +898,11 @@ impl Annual<'_, '_> {
 
         write_u16_be(microsims, offset + 2, population_cap(misc, to_i16(prisoners), 20, self.map_edge));
         let police_funding = budget_funding(misc, budget::POLICE);
-        write_u16_be(microsims, offset + 4, population_cap(misc, to_i16(police_funding * 3), 120, self.map_edge));
+        write_u16_be(
+            microsims,
+            offset + 4,
+            population_cap(misc, to_i16(police_funding * 3), 120, self.map_edge),
+        );
         let prison_stat = prisoners / 100;
         write_u16_be(microsims, offset + 6, prison_stat);
         self.prison_population += to_i16(prison_stat);
@@ -926,7 +967,11 @@ mod tests {
             write_u32_be(&mut city.misc.data, misc_layout::TILE_COUNTS + 0xd2 * 4, 40000);
             assert_eq!(tile_count(&city.misc.data, 0xd2, edge), if edge == 128 { -25536 } else { 40000 });
             write_u32_be(&mut city.misc.data, misc_layout::NORMAL_POPULATION, 65536 * 900);
-            assert_eq!(population_cap(&city.misc.data, 200, 900, edge), if edge == 128 { 0 } else { 200 }, "availability does not wrap");
+            assert_eq!(
+                population_cap(&city.misc.data, 200, 900, edge),
+                if edge == 128 { 0 } else { 200 },
+                "availability does not wrap"
+            );
         }
     }
 

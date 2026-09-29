@@ -125,8 +125,10 @@ pub fn run(
     result.status_index = status_index;
     result.status_news_type = if status_index >= 0 { NEWS_DEMAND_BASE + status_index } else { -1 };
     result.base.news_items = news_items;
-    result.base.refresh_requests =
-        ["toolbar", "map", "simnation", "weather_disaster"].iter().map(|request| request.to_string()).collect();
+    result.base.refresh_requests = ["toolbar", "map", "simnation", "weather_disaster"]
+        .iter()
+        .map(|request| request.to_string())
+        .collect();
     result.base.timing = span.finish();
     result
 }
@@ -207,7 +209,11 @@ fn status_index(
     if count(tiles::RUNWAY) + count(tiles::RUNWAY_CROSSING) + commerce_connections < commercial_population / 2000 {
         let airport_release_year = read_u32_be(misc, misc_layout::INVENTION_YEARS + 6 * 4) & 0xffff;
 
-        return if airport_release_year == 0 { STATUS_AIRPORT } else { STATUS_COMMERCIAL_CONNECTION };
+        return if airport_release_year == 0 {
+            STATUS_AIRPORT
+        } else {
+            STATUS_COMMERCIAL_CONNECTION
+        };
     }
 
     let recreation = count(tiles::BIG_PARK) / 3 + count(tiles::STADIUM) + count(tiles::ZOO) + count(tiles::MARINA);
@@ -462,9 +468,14 @@ mod tests {
             write_u32_be(misc, misc_layout::HAS_RIVER, 1);
             write_u32_be(misc, misc_layout::TILE_COUNTS + tiles::RUNWAY * 4, 1);
 
-            for candidate in
-                [DISASTER_FIRE, DISASTER_EARTHQUAKE, DISASTER_TORNADO, DISASTER_FLOOD, DISASTER_MASS_FLOODS, DISASTER_PLANE_CRASH]
-            {
+            for candidate in [
+                DISASTER_FIRE,
+                DISASTER_EARTHQUAKE,
+                DISASTER_TORNADO,
+                DISASTER_FLOOD,
+                DISASTER_MASS_FLOODS,
+                DISASTER_PLANE_CRASH,
+            ] {
                 let mut sequence = vec![0, candidate];
 
                 if candidate == DISASTER_FIRE {
@@ -482,7 +493,11 @@ mod tests {
                 )
                 .unwrap();
                 assert_eq!(result.disaster_type, candidate);
-                assert_eq!(result.disaster_point, Vec2i::new(edge - 2, edge - 2), "disaster {candidate} passes the map edge");
+                assert_eq!(
+                    result.disaster_point,
+                    Vec2i::new(edge - 2, edge - 2),
+                    "disaster {candidate} passes the map edge"
+                );
             }
         }
     }
@@ -509,9 +524,16 @@ mod count_tests {
         for edge in [128i64, 512] {
             let mut city = empty_full_resolution_city(edge);
             let point = Vec2i::new(edge - 32, edge - 32);
-            assert_eq!(toxic_spill_point(&city.xplt.data, &mut sequence_lfsr(&[0]), edge).x, -1, "low pollution is not a toxic source");
+            assert_eq!(
+                toxic_spill_point(&city.xplt.data, &mut sequence_lfsr(&[0]), edge).x,
+                -1,
+                "low pollution is not a toxic source"
+            );
             city.xplt.data[(point.x * edge + point.y) as usize] = 200;
-            assert_eq!(toxic_spill_point(&city.xplt.data, &mut sequence_lfsr(&[0]), edge), point - Vec2i::new(5, 5));
+            assert_eq!(
+                toxic_spill_point(&city.xplt.data, &mut sequence_lfsr(&[0]), edge),
+                point - Vec2i::new(5, 5)
+            );
         }
     }
 }

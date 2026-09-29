@@ -59,8 +59,25 @@ pub struct CityParts<'a> {
 impl City {
     /// Borrow the edit maps with XTHG, XTRF, XPLT, XVAL, and XCRM.
     pub fn parts(&mut self) -> CityParts<'_> {
-        let City { map_size, altm, xbld, xter, xzon, xund, xbit, xtxt, xlab, xmic, misc, xthg, xtrf, xplt, xval, xcrm, .. } =
-            self;
+        let City {
+            map_size,
+            altm,
+            xbld,
+            xter,
+            xzon,
+            xund,
+            xbit,
+            xtxt,
+            xlab,
+            xmic,
+            misc,
+            xthg,
+            xtrf,
+            xplt,
+            xval,
+            xcrm,
+            ..
+        } = self;
 
         CityParts {
             maps: Maps {
@@ -183,7 +200,9 @@ mod tests {
     /// Military tiles move their own count slots. Other tiles use the civilian counts.
     #[test]
     fn military_counts_use_the_original_slots() {
-        let counted = [0xdd, 0xde, 0xef, 0xf2, 0xea, 0xe3, 0xe4, 0xe5, 0xf1, 0xe0, 0xe2, 0xe7, 0xe8, 0xf6, 0xf9];
+        let counted = [
+            0xdd, 0xde, 0xef, 0xf2, 0xea, 0xe3, 0xe4, 0xe5, 0xf1, 0xe0, 0xe2, 0xe7, 0xe8, 0xf6, 0xf9,
+        ];
         let mut base = vec![90u8; 4800];
 
         for byte in &mut base[0xfa8..0xfe8] {

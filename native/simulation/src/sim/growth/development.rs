@@ -112,13 +112,7 @@ pub fn status(tile: i64) -> i64 {
 }
 
 /// GrowthDevelopment.place_zone.
-pub fn place_zone(
-    maps: &mut ZoneMaps,
-    anchor: Vec2i,
-    zone_density: i64,
-    building_class: i64,
-    random: &mut SimRandom,
-) -> bool {
+pub fn place_zone(maps: &mut ZoneMaps, anchor: Vec2i, zone_density: i64, building_class: i64, random: &mut SimRandom) -> bool {
     let edge = maps.map_edge;
     let tile;
 
@@ -210,7 +204,13 @@ pub fn abandon(maps: &mut ZoneMaps, point: Vec2i, zone_density: i64, pattern: i6
                 }
 
                 let selection = random.next_u15() & 3;
-                place_zone(maps, point + Vec2i::new(selection & 1, -(selection / 2)), 3, CLASS_ABANDONED, random);
+                place_zone(
+                    maps,
+                    point + Vec2i::new(selection & 1, -(selection / 2)),
+                    3,
+                    CLASS_ABANDONED,
+                    random,
+                );
             }
         }
         _ => {}
@@ -354,7 +354,10 @@ fn advance_to_density_four(maps: &mut ZoneMaps, point: Vec2i, zone_type: i64, ra
             anchor + Vec2i::new(1, 0),
         ];
 
-        if !perimeter.iter().all(|&checked| can_build_site(maps, checked, height, zone_type, 0xae)) {
+        if !perimeter
+            .iter()
+            .all(|&checked| can_build_site(maps, checked, height, zone_type, 0xae))
+        {
             continue;
         }
 
@@ -378,10 +381,42 @@ fn advance_to_density_four(maps: &mut ZoneMaps, point: Vec2i, zone_type: i64, ra
 
 fn has_density_four_road(buildings: &[u8], anchor: Vec2i, map_edge: i64) -> bool {
     let checks = [
-        (anchor + Vec2i::new(-1, 1), [tiles::ROAD_CURVE_1, tiles::ROAD_JUNCTION_1, tiles::ROAD_JUNCTION_2, tiles::ROAD_CROSSROADS]),
-        (anchor + Vec2i::new(-1, -3), [tiles::ROAD_CURVE_2, tiles::ROAD_JUNCTION_2, tiles::ROAD_JUNCTION_3, tiles::ROAD_CROSSROADS]),
-        (anchor + Vec2i::new(3, -3), [tiles::ROAD_CURVE_3, tiles::ROAD_JUNCTION_3, tiles::ROAD_JUNCTION_4, tiles::ROAD_CROSSROADS]),
-        (anchor + Vec2i::new(3, 1), [tiles::ROAD_CURVE_4, tiles::ROAD_JUNCTION_4, tiles::ROAD_JUNCTION_1, tiles::ROAD_CROSSROADS]),
+        (
+            anchor + Vec2i::new(-1, 1),
+            [
+                tiles::ROAD_CURVE_1,
+                tiles::ROAD_JUNCTION_1,
+                tiles::ROAD_JUNCTION_2,
+                tiles::ROAD_CROSSROADS,
+            ],
+        ),
+        (
+            anchor + Vec2i::new(-1, -3),
+            [
+                tiles::ROAD_CURVE_2,
+                tiles::ROAD_JUNCTION_2,
+                tiles::ROAD_JUNCTION_3,
+                tiles::ROAD_CROSSROADS,
+            ],
+        ),
+        (
+            anchor + Vec2i::new(3, -3),
+            [
+                tiles::ROAD_CURVE_3,
+                tiles::ROAD_JUNCTION_3,
+                tiles::ROAD_JUNCTION_4,
+                tiles::ROAD_CROSSROADS,
+            ],
+        ),
+        (
+            anchor + Vec2i::new(3, 1),
+            [
+                tiles::ROAD_CURVE_4,
+                tiles::ROAD_JUNCTION_4,
+                tiles::ROAD_JUNCTION_1,
+                tiles::ROAD_CROSSROADS,
+            ],
+        ),
     ];
 
     for (point, accepted) in checks {
@@ -427,7 +462,15 @@ mod tests {
 
     fn maps(city: &mut City, rotation: i64) -> ZoneMaps<'_> {
         let map_edge = city.map_size;
-        let City { xbld, xzon, xbit, misc, xval, altm, .. } = city;
+        let City {
+            xbld,
+            xzon,
+            xbit,
+            misc,
+            xval,
+            altm,
+            ..
+        } = city;
 
         ZoneMaps {
             buildings: &mut xbld.data,
@@ -443,7 +486,11 @@ mod tests {
     }
 
     fn cities(edge: i64) -> Vec<City> {
-        if edge < 128 { vec![empty_city(edge), empty_full_resolution_city(edge)] } else { vec![empty_city(edge)] }
+        if edge < 128 {
+            vec![empty_city(edge), empty_full_resolution_city(edge)]
+        } else {
+            vec![empty_city(edge)]
+        }
     }
 
     /// Classic growth keeps one free tile at each map edge on every map size.
@@ -459,14 +506,24 @@ mod tests {
 
                         for anchor in anchors {
                             let mut city = base.clone();
-                            let placed = place_zone(&mut maps(&mut city, rotation), anchor, density, CLASS_CONSTRUCTION, &mut sequence_random(&[0]));
+                            let placed = place_zone(
+                                &mut maps(&mut city, rotation),
+                                anchor,
+                                density,
+                                CLASS_CONSTRUCTION,
+                                &mut sequence_random(&[0]),
+                            );
                             assert!(placed, "edge {edge} density {density} rotation {rotation} at {anchor:?}");
                             let count = city.xbld.data.iter().filter(|tile| **tile != 0).count() as i64;
                             assert_eq!(count, (radius + 1) * (radius + 1), "the growth footprint size");
                         }
 
                         let outside = if edge >= 128 {
-                            vec![Vec2i::new(edge - 1 - radius, 20), Vec2i::new(20, edge - 1 - radius), Vec2i::new(1, 20)]
+                            vec![
+                                Vec2i::new(edge - 1 - radius, 20),
+                                Vec2i::new(20, edge - 1 - radius),
+                                Vec2i::new(1, 20),
+                            ]
                         } else {
                             vec![far + Vec2i::new(1, 1)]
                         };
@@ -474,7 +531,13 @@ mod tests {
                         for anchor in outside {
                             let mut city = base.clone();
                             let before = city.xbld.data.clone();
-                            let placed = place_zone(&mut maps(&mut city, rotation), anchor, density, CLASS_CONSTRUCTION, &mut sequence_random(&[0]));
+                            let placed = place_zone(
+                                &mut maps(&mut city, rotation),
+                                anchor,
+                                density,
+                                CLASS_CONSTRUCTION,
+                                &mut sequence_random(&[0]),
+                            );
                             assert!(!placed, "growth keeps the true edge margin");
                             assert_eq!(city.xbld.data, before, "rejected growth does not write buildings");
                         }

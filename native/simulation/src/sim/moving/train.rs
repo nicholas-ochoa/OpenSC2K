@@ -117,7 +117,10 @@ pub fn update(
         return;
     }
 
-    if [record, first_car, second_car].iter().any(|checked| record_index(data, *checked, edge) < 0) {
+    if [record, first_car, second_car]
+        .iter()
+        .any(|checked| record_index(data, *checked, edge) < 0)
+    {
         remove_train(text, data, record, first_car, second_car, edge);
         counters.removed_trains += 1;
         counters.malformed_records += 1;
@@ -143,7 +146,11 @@ pub fn update(
     let current_tile = maps.buildings[index(current, edge) as usize] as i64;
 
     if (tiles::RAIL_SUBWAY_FIRST..=tiles::DEVELOPED_FIRST).contains(&current_tile) {
-        let converted = if engine_type == TYPE_TRAIN_ENGINE { TYPE_SUBWAY_ENGINE } else { TYPE_TRAIN_ENGINE };
+        let converted = if engine_type == TYPE_TRAIN_ENGINE {
+            TYPE_SUBWAY_ENGINE
+        } else {
+            TYPE_TRAIN_ENGINE
+        };
         things::write(data, offset, converted);
         engine_type = things::read(data, offset);
     }
@@ -151,7 +158,11 @@ pub fn update(
     direction = things::read(data, offset + 1) & 0x0f;
 
     if lfsr.next_mod(4) == 0 {
-        let turn_direction = if lfsr.next_mod(2) == 0 { (direction - 1) & 3 } else { (direction + 1) & 3 };
+        let turn_direction = if lfsr.next_mod(2) == 0 {
+            (direction - 1) & 3
+        } else {
+            (direction + 1) & 3
+        };
 
         if route_is_valid(maps, text, current + CARDINAL_DIRECTIONS[turn_direction as usize], engine_type) {
             direction = turn_direction;
@@ -327,8 +338,16 @@ mod tests {
             things::write(&mut data, last * RECORD_SIZE + 6, edge - 7);
             things::write(&mut data, last * RECORD_SIZE + 7, edge - 8);
             copy_record(&mut data, last, last - 1);
-            assert_eq!(things::read(&data, (last - 1) * RECORD_SIZE + 6), edge - 7, "the copy keeps a wide coordinate");
-            assert_eq!(things::read(&data, last * RECORD_SIZE + 2), last - 1, "the car link keeps its width");
+            assert_eq!(
+                things::read(&data, (last - 1) * RECORD_SIZE + 6),
+                edge - 7,
+                "the copy keeps a wide coordinate"
+            );
+            assert_eq!(
+                things::read(&data, last * RECORD_SIZE + 2),
+                last - 1,
+                "the car link keeps its width"
+            );
             assert_eq!(things::read(&data, (last - 1) * RECORD_SIZE), TYPE_TRAIN_CAR);
         }
     }

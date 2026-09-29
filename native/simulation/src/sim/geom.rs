@@ -44,7 +44,10 @@ pub struct Rect2i {
 
 impl Rect2i {
     pub const fn new(x: i64, y: i64, width: i64, height: i64) -> Self {
-        Self { position: Vec2i::new(x, y), size: Vec2i::new(width, height) }
+        Self {
+            position: Vec2i::new(x, y),
+            size: Vec2i::new(width, height),
+        }
     }
 
     pub const fn from(position: Vec2i, size: Vec2i) -> Self {

@@ -46,11 +46,17 @@ fn neighborhood_values(values: &[i32], edge: usize, radius: i64, scale: i64) -> 
 }
 
 pub fn neighborhood(values: &[i32], edge: usize, radius: i64, scale: i64) -> Vec<i32> {
-    neighborhood_values(values, edge, radius, scale).into_iter().map(|value| value as i32).collect()
+    neighborhood_values(values, edge, radius, scale)
+        .into_iter()
+        .map(|value| value as i32)
+        .collect()
 }
 
 pub fn neighborhood_bytes(values: &[i32], edge: usize, radius: i64, scale: i64) -> Vec<u8> {
-    neighborhood_values(values, edge, radius, scale).into_iter().map(|value| value.clamp(0, 255) as u8).collect()
+    neighborhood_values(values, edge, radius, scale)
+        .into_iter()
+        .map(|value| value.clamp(0, 255) as u8)
+        .collect()
 }
 
 fn smooth_edge_value(values: &[i32], edge: i64, x: i64, y: i64, center_weight: i64, base_divisor: i64, step: i64, rings: i64) -> i64 {
@@ -86,15 +92,7 @@ fn smooth_edge_value(values: &[i32], edge: i64, x: i64, y: i64, center_weight: i
 }
 
 /// Weighted cross smoothing. `store` receives each value and its index.
-fn smooth_into(
-    values: &[i32],
-    edge: i64,
-    center_weight: i64,
-    base_divisor: i64,
-    step: i64,
-    rings: i64,
-    mut store: impl FnMut(usize, i64),
-) {
+fn smooth_into(values: &[i32], edge: i64, center_weight: i64, base_divisor: i64, step: i64, rings: i64, mut store: impl FnMut(usize, i64)) {
     let margin = step * rings;
     let near_row = step * edge;
     let far_row = 2 * near_row;
@@ -112,7 +110,11 @@ fn smooth_into(
 
         // Visit only the clipped rim here. Interior cells use fixed offsets below.
         for rim_index in 0..rim_count {
-            let y = if rim_index < rim_width { rim_index } else { edge - 2 * rim_width + rim_index };
+            let y = if rim_index < rim_width {
+                rim_index
+            } else {
+                edge - 2 * rim_width + rim_index
+            };
             let value = smooth_edge_value(values, edge, x, y, center_weight, base_divisor, step, rings);
             store((row + y) as usize, value);
         }
@@ -157,7 +159,11 @@ pub fn smooth_bytes(values: &[i32], edge: usize, center_weight: i64, base_diviso
 }
 
 fn sample(kernel: &[u8], x: i64, y: i64) -> i64 {
-    if (0..7).contains(&x) && (0..7).contains(&y) { kernel[(x * 7 + y) as usize] as i64 } else { 0 }
+    if (0..7).contains(&x) && (0..7).contains(&y) {
+        kernel[(x * 7 + y) as usize] as i64
+    } else {
+        0
+    }
 }
 
 /// The 31 by 31 per-tile coverage pattern of one station strength.

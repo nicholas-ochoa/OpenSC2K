@@ -3,7 +3,7 @@
 pub mod annual;
 pub mod education;
 pub mod mayor;
-pub mod military;
 pub mod milestones;
+pub mod military;
 pub mod nation;
 pub mod scenario;

@@ -54,7 +54,12 @@ pub fn run(city: &mut City) -> MilestoneResult {
     let mut misc = city.misc.data.clone();
     let mut progression = read_u32_be(&misc, misc_layout::PROGRESSION) & 0xffff;
     let population = read_u32_be(&misc, misc_layout::NORMAL_POPULATION);
-    let mut result = MilestoneResult { old_progression: progression, progression, population, ..Default::default() };
+    let mut result = MilestoneResult {
+        old_progression: progression,
+        progression,
+        population,
+        ..Default::default()
+    };
     result.base_mut().ok = true;
 
     if progression >= PROGRESSION_REQUIREMENTS.len() as i64 {

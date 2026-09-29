@@ -132,12 +132,7 @@ pub fn start(
 }
 
 /// The tornado and monster part of DisasterStartPhase.start.
-fn start_moving_disaster(
-    city: &mut City,
-    disaster_type: i64,
-    point: Vec2i,
-    random: Option<&mut SimRandom>,
-) -> DisasterStartResult {
+fn start_moving_disaster(city: &mut City, disaster_type: i64, point: Vec2i, random: Option<&mut SimRandom>) -> DisasterStartResult {
     let Some(random) = random else {
         return DisasterStartResult::failed(RANDOM_REQUIRED);
     };
@@ -253,7 +248,9 @@ fn count_type(thing_data: &[u8], thing_type: i64) -> i64 {
 }
 
 fn first_free_record(thing_data: &[u8]) -> i64 {
-    (1..things::count(thing_data)).find(|record| things::read(thing_data, record * things::RECORD_SIZE) == 0).unwrap_or(0)
+    (1..things::count(thing_data))
+        .find(|record| things::read(thing_data, record * things::RECORD_SIZE) == 0)
+        .unwrap_or(0)
 }
 
 fn remove_thing(thing_data: &mut [u8], text: &mut [u8], record: i64, map_edge: i64) {
@@ -609,16 +606,18 @@ fn write_radioactivity(maps: &mut super::DisasterMaps, point: Vec2i) -> bool {
     }
 
     let old_tile = maps.maps.buildings[tile_index as usize] as i64;
-    replace_special_building(maps.maps.buildings, maps.maps.zones, maps.maps.misc, tile_index, tiles::RADIOACTIVE_WASTE);
+    replace_special_building(
+        maps.maps.buildings,
+        maps.maps.zones,
+        maps.maps.misc,
+        tile_index,
+        tiles::RADIOACTIVE_WASTE,
+    );
 
     old_tile != tiles::RADIOACTIVE_WASTE
 }
 
-fn start_microwave(
-    city: &mut City,
-    random: Option<&mut SimRandom>,
-    lfsr: Option<&mut SimLfsrRandom>,
-) -> DisasterStartResult {
+fn start_microwave(city: &mut City, random: Option<&mut SimRandom>, lfsr: Option<&mut SimLfsrRandom>) -> DisasterStartResult {
     let Some(random) = random else {
         return DisasterStartResult::failed(RANDOM_REQUIRED);
     };
@@ -1009,7 +1008,9 @@ fn start_hurricane(
     result.counters.set("damage_scans", damage_scans);
     result.counters.set("damage_attempts", damage_points.len() as i64);
     result.damage_points = damage_points;
-    result.counters.set("flood_attempts", if direction == 0 || direction == 3 { 50 } else { 100 });
+    result
+        .counters
+        .set("flood_attempts", if direction == 0 || direction == 3 { 50 } else { 100 });
     result.counters.set("flood_writes", flood_points.len() as i64);
     result.flood_points = flood_points;
     result.map_changed = map_changed;
@@ -1347,8 +1348,7 @@ fn start_firestorm(
 const MAX_RAISE_SOURCE: i64 = 29;
 const NEIGHBOR_OFFSETS: [Vec2i; 8] = EIGHT_DIRECTIONS;
 const CARDINAL_OFFSETS: [Vec2i; 4] = FIRE_SPIRAL;
-const RAISE_DEPENDENCY_OFFSETS: [Vec2i; 4] =
-    [Vec2i::new(-1, 0), Vec2i::new(0, -1), Vec2i::new(1, 0), Vec2i::new(0, 1)];
+const RAISE_DEPENDENCY_OFFSETS: [Vec2i; 4] = [Vec2i::new(-1, 0), Vec2i::new(0, -1), Vec2i::new(1, 0), Vec2i::new(0, 1)];
 
 /// Insertion-ordered unique indices, as a PackedInt32Array with has() checks.
 #[derive(Default)]
@@ -1398,14 +1398,7 @@ fn is_military(zones: &[u8], index: i64) -> bool {
 }
 
 /// TerrainEditHeights.plan_raise. None is an invalid plan.
-fn plan_raise(
-    heights: &[i64],
-    zones: &[u8],
-    buildings: &[u8],
-    start: Vec2i,
-    funds: i64,
-    map_edge: i64,
-) -> Option<RaisePlan> {
+fn plan_raise(heights: &[i64], zones: &[u8], buildings: &[u8], start: Vec2i, funds: i64, map_edge: i64) -> Option<RaisePlan> {
     let mut visiting = HashSet::new();
     let mut visited = HashSet::new();
     let mut postorder = Vec::new();
@@ -1414,7 +1407,10 @@ fn plan_raise(
         return None;
     }
 
-    let mut trial = TrialHeights { base: heights, changes: std::collections::HashMap::new() };
+    let mut trial = TrialHeights {
+        base: heights,
+        changes: std::collections::HashMap::new(),
+    };
     let mut modified = OrderedIndices::default();
     let mut zone_indices = Vec::new();
     let mut remaining = funds;
@@ -1438,7 +1434,12 @@ fn plan_raise(
         return None;
     }
 
-    Some(RaisePlan { changes: trial.changes, modified, zone_indices, funds: remaining })
+    Some(RaisePlan {
+        changes: trial.changes,
+        modified,
+        zone_indices,
+        funds: remaining,
+    })
 }
 
 fn collect_raise_dependencies(
@@ -1493,13 +1494,7 @@ fn collect_raise_dependencies(
     true
 }
 
-fn normalize_cardinal_slopes(
-    heights: &mut TrialHeights,
-    buildings: &[u8],
-    point: Vec2i,
-    modified: &mut OrderedIndices,
-    map_edge: i64,
-) {
+fn normalize_cardinal_slopes(heights: &mut TrialHeights, buildings: &[u8], point: Vec2i, modified: &mut OrderedIndices, map_edge: i64) {
     let tile_index = point.x * map_edge + point.y;
 
     for offset in CARDINAL_OFFSETS {
@@ -1548,14 +1543,7 @@ fn expanded_indices(indices: &[i64], map_edge: i64) -> Vec<i64> {
     result.order
 }
 
-fn volcano_raise_is_valid(
-    heights: &[i64],
-    zones: &[u8],
-    flags: &[u8],
-    point: Vec2i,
-    visited: &mut HashSet<i64>,
-    map_edge: i64,
-) -> bool {
+fn volcano_raise_is_valid(heights: &[i64], zones: &[u8], flags: &[u8], point: Vec2i, visited: &mut HashSet<i64>, map_edge: i64) -> bool {
     let tile_index = index(point, map_edge);
 
     if tile_index < 0 || visited.contains(&tile_index) {
@@ -1611,8 +1599,9 @@ fn start_volcano(city: &mut City, center: Vec2i, random: Option<&mut SimRandom>)
     let edge = city.map_size;
     let maps = city.disaster_maps();
     let maps = maps.maps;
-    let mut heights: Vec<i64> =
-        (0..(edge * edge) as usize).map(|tile| maps.altitude[tile * 2 + 1] as i64 & 0x1f).collect();
+    let mut heights: Vec<i64> = (0..(edge * edge) as usize)
+        .map(|tile| maps.altitude[tile * 2 + 1] as i64 & 0x1f)
+        .collect();
     let mut remaining_budget = VOLCANO_BUDGET;
     let mut iterations = 0;
     let mut successful_raises = 0;
@@ -1744,7 +1733,13 @@ mod tests {
             let mut enlarged = vec![0u8; (edge * edge) as usize];
             let shift = Vec2i::new(edge - 128, edge - 128);
 
-            for point in [Vec2i::new(4, 4), Vec2i::new(12, 4), Vec2i::new(4, 12), Vec2i::new(12, 12), Vec2i::new(80, 100)] {
+            for point in [
+                Vec2i::new(4, 4),
+                Vec2i::new(12, 4),
+                Vec2i::new(4, 12),
+                Vec2i::new(12, 12),
+                Vec2i::new(80, 100),
+            ] {
                 legacy[(point.x * 128 + point.y) as usize] = 0x20;
                 let moved = point + shift;
                 enlarged[(moved.x * edge + moved.y) as usize] = 0x20;
@@ -1752,7 +1747,11 @@ mod tests {
 
             for origin in [Vec2i::new(8, 8), Vec2i::ZERO, Vec2i::new(127, 127), Vec2i::new(90, 90)] {
                 let expected = find_flood_shore(&legacy, origin, 128);
-                assert_eq!(find_flood_shore(&enlarged, origin + shift, edge), expected + shift, "edge {edge} origin {origin:?}");
+                assert_eq!(
+                    find_flood_shore(&enlarged, origin + shift, edge),
+                    expected + shift,
+                    "edge {edge} origin {origin:?}"
+                );
             }
         }
     }

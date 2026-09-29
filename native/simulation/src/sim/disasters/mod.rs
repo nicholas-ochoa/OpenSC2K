@@ -25,12 +25,14 @@ pub const RIOT_OVERLAY_REVERSE: i64 = 0xfe;
 pub const CARDINAL_DIRECTIONS: [Vec2i; 4] = [Vec2i::new(-1, 0), Vec2i::new(0, -1), Vec2i::new(1, 0), Vec2i::new(0, 1)];
 
 /// The chunks that the DisasterStart phases copy and store.
-pub const START_CHUNKS: [&str; 11] =
-    ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTRF", "XTXT", "XLAB", "XMIC", "MISC"];
+pub const START_CHUNKS: [&str; 11] = [
+    "ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTRF", "XTXT", "XLAB", "XMIC", "MISC",
+];
 
 /// The chunks that the DisasterMap phases copy and store.
-pub const MAP_CHUNKS: [&str; 14] =
-    ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTRF", "XVAL", "XTXT", "XLAB", "XMIC", "XTHG", "XFIR", "MISC"];
+pub const MAP_CHUNKS: [&str; 14] = [
+    "ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTRF", "XVAL", "XTXT", "XLAB", "XMIC", "XTHG", "XFIR", "MISC",
+];
 
 /// A copy of chunks before an edit. GDScript edits copies and stores the
 /// changed copies. This edits the chunks and compares them with the copy.
@@ -46,7 +48,10 @@ impl Snapshot {
             return None;
         }
 
-        let originals = ids.iter().map(|id| city.chunk(id).map(|chunk| chunk.data.clone()).unwrap_or_default()).collect();
+        let originals = ids
+            .iter()
+            .map(|id| city.chunk(id).map(|chunk| chunk.data.clone()).unwrap_or_default())
+            .collect();
 
         Some(Self { ids, originals })
     }

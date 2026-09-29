@@ -1,7 +1,7 @@
 //! Explosion, monster, and tornado ticks, as DisasterThingTick and DisasterThingActions.
 
-use super::damage;
 use super::DisasterMaps;
+use super::damage;
 use crate::sim::bytes::{self, write_u32_be};
 use crate::sim::geom::Vec2i;
 use crate::sim::ids::building_tile_ids as tiles;
@@ -46,7 +46,11 @@ fn record_connection_count_change(counters: &mut MovingThingResult, tile: i64, p
         || tile == tiles::HIGHWAY_ROAD_CROSSING_2
         || (tiles::HIGHWAY_ONRAMP_1..=tiles::HIGHWAY_ONRAMP_4).contains(&tile);
     let kind = if commerce { "commerce" } else { "industry" };
-    counters.connection_count_changes.push(ConnectionChange { kind: kind.to_string(), delta: -1, point });
+    counters.connection_count_changes.push(ConnectionChange {
+        kind: kind.to_string(),
+        delta: -1,
+        point,
+    });
 }
 
 /// DisasterThingTick.update_explosion.
@@ -132,7 +136,10 @@ pub fn update_explosion(
     if caused_damage && tick_city.city_mode != 2 {
         let requested_type = if disaster_type != 0 { disaster_type } else { 1 };
         write_u32_be(maps.maps.misc, misc_layout::DISASTER_TYPE, requested_type);
-        counters.disaster_start_requests.push(DisasterRequest { type_: requested_type, point: center });
+        counters.disaster_start_requests.push(DisasterRequest {
+            type_: requested_type,
+            point: center,
+        });
     }
 }
 
@@ -355,8 +362,7 @@ fn monster_damage(
             let overlay_id = provision_wind_power(maps.maps.microsims, maps.maps.labels);
             replace_building(maps.maps.buildings, maps.maps.zones, maps.maps.misc, tile_index, tiles::WIND_POWER);
             maps.maps.zones[i] = zone::CORNERS_MASK as u8;
-            maps.maps.flags[i] =
-                ((maps.maps.flags[i] as i64 & !flag_bits::STRUCTURE_MASK & 0xff) | flag_bits::STRUCTURE_MASK) as u8;
+            maps.maps.flags[i] = ((maps.maps.flags[i] as i64 & !flag_bits::STRUCTURE_MASK & 0xff) | flag_bits::STRUCTURE_MASK) as u8;
 
             if overlay_id != 0 {
                 overlay::write(maps.maps.text_overlays, tile_index, overlay_id);
@@ -425,7 +431,13 @@ fn place_water(maps: &mut DisasterMaps, point: Vec2i) -> bool {
 
     if !early_return {
         maps.maps.terrain[i] = value as u8;
-        update_building_count(maps.maps.misc, maps.maps.zones[i] as i64 & zone::TYPE_MASK, old_building, tiles::EMPTY, edge);
+        update_building_count(
+            maps.maps.misc,
+            maps.maps.zones[i] as i64 & zone::TYPE_MASK,
+            old_building,
+            tiles::EMPTY,
+            edge,
+        );
         maps.maps.buildings[i] = tiles::EMPTY as u8;
         crate::sim::tools::terrain::set_water_altitude(
             maps.maps.altitude,

@@ -126,7 +126,15 @@ struct PlotMaps<'a> {
 
 fn plot_maps(city: &mut City) -> PlotMaps<'_> {
     let map_edge = city.map_size;
-    let City { xbld, xter, xzon, xund, xbit, misc, .. } = city;
+    let City {
+        xbld,
+        xter,
+        xzon,
+        xund,
+        xbit,
+        misc,
+        ..
+    } = city;
 
     PlotMaps {
         buildings: &mut xbld.data,
@@ -174,12 +182,7 @@ fn store(city: &mut City, ids: &[&str]) {
 }
 
 /// MilitaryProposalPhase.resolve. A stored proposal has step timing.
-pub fn resolve(
-    city: &mut City,
-    accepted: bool,
-    game: Option<&mut GameLcgRandom>,
-    defer_land_plot: bool,
-) -> MilitaryProposalResult {
+pub fn resolve(city: &mut City, accepted: bool, game: Option<&mut GameLcgRandom>, defer_land_plot: bool) -> MilitaryProposalResult {
     let mut span = TimingSpan::new();
     span.mark("prepare data");
     let mut result = resolve_steps(city, accepted, game, defer_land_plot, &mut span);
@@ -271,7 +274,11 @@ fn resolve_steps(
 
         span.mark("build and store land base");
         let base_type = if valid == level { BASE_AIR_FORCE } else { BASE_ARMY };
-        let notice = if base_type == BASE_AIR_FORCE { NOTICE_AIR_FORCE } else { NOTICE_ARMY };
+        let notice = if base_type == BASE_AIR_FORCE {
+            NOTICE_AIR_FORCE
+        } else {
+            NOTICE_ARMY
+        };
         let site = Rect2i::from(origin, Vec2i::new(8, 8));
 
         if defer_land_plot {
@@ -410,7 +417,17 @@ fn army_strip(maps: &mut PlotMaps, start: Vec2i, step: Vec2i) {
 
         grade_surface_terrain(maps.terrain, maps.flags, point, direction, edge);
         replace_special_building(maps.buildings, maps.zones, maps.misc, i as i64, tiles::ROAD_STRAIGHT_1);
-        retile_surface_neighborhood(maps.buildings, maps.terrain, maps.zones, maps.flags, maps.misc, point, MODE_ROAD, &[], edge);
+        retile_surface_neighborhood(
+            maps.buildings,
+            maps.terrain,
+            maps.zones,
+            maps.flags,
+            maps.misc,
+            point,
+            MODE_ROAD,
+            &[],
+            edge,
+        );
         placed += 1;
     }
 
@@ -549,7 +566,11 @@ mod tests {
         city.xbld.data.fill(tiles::SMALL_PARK as u8);
         let inland = INLAND_STEPS[rotation as usize];
         let along = Vec2i::new(-inland.y, inland.x);
-        let shore = if rotation == 1 || rotation == 2 { Vec2i::new(edge - 12, edge - 12) } else { Vec2i::new(edge - 18, edge - 20) };
+        let shore = if rotation == 1 || rotation == 2 {
+            Vec2i::new(edge - 12, edge - 12)
+        } else {
+            Vec2i::new(edge - 18, edge - 20)
+        };
 
         for column in -1..11 {
             for row in -6..4 {
@@ -569,18 +590,41 @@ mod tests {
     #[test]
     fn naval_bases_reserve_a_shore_that_grows_a_pier() {
         for edge in [128i64, 256, 384, 512] {
-            let rotations: Vec<i64> = if edge == 128 { vec![0, 1, 2, 3] } else { vec![[128, 256, 384, 512].iter().position(|value| *value == edge).unwrap() as i64] };
+            let rotations: Vec<i64> = if edge == 128 {
+                vec![0, 1, 2, 3]
+            } else {
+                vec![[128, 256, 384, 512].iter().position(|value| *value == edge).unwrap() as i64]
+            };
 
             for rotation in rotations {
                 let mut city = naval_fixture(edge, rotation);
                 let site = find_naval_site(&city);
-                assert_eq!(site.size.x * site.size.y, 40, "a naval site exists at edge {edge} rotation {rotation}");
+                assert_eq!(
+                    site.size.x * site.size.y,
+                    40,
+                    "a naval site exists at edge {edge} rotation {rotation}"
+                );
                 let proposal = resolve(&mut city, true, Some(&mut sequence_game(&[1])), false);
                 assert!(proposal.base.ok && proposal.base_type == BASE_NAVY && proposal.notice_id == NOTICE_NAVY);
                 assert_eq!(proposal.changed_indices.0.len(), 40);
-                assert_eq!(city.misc_u32(misc_layout::MILITARY_TILE_COUNTS), 40, "the Navy moves the counts without cost");
+                assert_eq!(
+                    city.misc_u32(misc_layout::MILITARY_TILE_COUNTS),
+                    40,
+                    "the Navy moves the counts without cost"
+                );
                 let map_edge = city.map_size;
-                let City { xbld, xzon, xund, xbit, xter, altm, xtxt, xthg, misc, .. } = &mut city;
+                let City {
+                    xbld,
+                    xzon,
+                    xund,
+                    xbit,
+                    xter,
+                    altm,
+                    xtxt,
+                    xthg,
+                    misc,
+                    ..
+                } = &mut city;
                 let mut maps = SpecialMaps {
                     buildings: &mut xbld.data,
                     zones: &mut xzon.data,

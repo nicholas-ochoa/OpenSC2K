@@ -175,7 +175,12 @@ impl<T> OrderedMap<T> {
 
 impl<T: ToValue> ToValue for OrderedMap<T> {
     fn to_value(&self) -> Value {
-        Value::Dict(self.0.iter().map(|(key, value)| (Value::Str(key.clone()), value.to_value())).collect())
+        Value::Dict(
+            self.0
+                .iter()
+                .map(|(key, value)| (Value::Str(key.clone()), value.to_value()))
+                .collect(),
+        )
     }
 }
 

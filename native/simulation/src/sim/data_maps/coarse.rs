@@ -1,8 +1,8 @@
 //! The original coarse data maps, as PollutionPhase and PollutionMaps. The
 //! passes keep their scan order.
 
-use super::{PollutionResult, building_pollution, land_value_halved, population_weight};
 use super::{CRIME_REDUCTION_ORDINANCE, FIRE_COVERAGE_ORDINANCE, POLICE_COVERAGE_ORDINANCE, ZONE_BUILDING_ORIGIN};
+use super::{PollutionResult, building_pollution, land_value_halved, population_weight};
 use crate::sim::city::City;
 use crate::sim::geom::Vec2i;
 use crate::sim::ids::building_tile_ids as tiles;
@@ -142,7 +142,6 @@ pub fn run(city: &mut City) -> PollutionResult {
     let old_pollution = &city.xplt.data;
 
     for x in 0..half {
-
         crate::sim::budget::checkpoint();
         for y in 0..half {
             let map_index = x * half + y;
@@ -172,7 +171,6 @@ pub fn run(city: &mut City) -> PollutionResult {
     let mut total = 0i64;
 
     for x in 0..half {
-
         crate::sim::budget::checkpoint();
         for y in 0..half {
             let source = x * edge + y;
@@ -213,7 +211,6 @@ pub fn run(city: &mut City) -> PollutionResult {
     let mut center_divisor = 1i64;
 
     for x in 0..edge {
-
         crate::sim::budget::checkpoint();
         for y in 0..edge {
             let index = x * edge + y;
@@ -238,7 +235,6 @@ pub fn run(city: &mut City) -> PollutionResult {
     let mut developed_tiles = 0i64;
 
     for x in 0..edge {
-
         crate::sim::budget::checkpoint();
         let quarter_x = x >> 2;
         let residential_row = quarter_x * edge;
@@ -299,7 +295,6 @@ pub fn run(city: &mut City) -> PollutionResult {
     let mut land_value_total = 0i64;
 
     for x in 0..half {
-
         crate::sim::budget::checkpoint();
         let full_x = x * 2;
 
@@ -385,7 +380,6 @@ pub fn run(city: &mut City) -> PollutionResult {
     let (police_strength, fire_strength) = super::station_strengths(city);
 
     for x in 1..edge - 1 {
-
         crate::sim::budget::checkpoint();
         let service_x = x >> 2;
         let temporary_row = service_x * edge;
@@ -435,7 +429,6 @@ pub fn run(city: &mut City) -> PollutionResult {
     let mut growth = vec![0u8; quarter * quarter];
 
     for x in 0..quarter {
-
         crate::sim::budget::checkpoint();
         for y in 0..quarter {
             let index = x * quarter + y;
@@ -478,7 +471,6 @@ pub fn run(city: &mut City) -> PollutionResult {
     let mut crime_total = 0i64;
 
     for x in 0..half {
-
         crate::sim::budget::checkpoint();
         for y in 0..half {
             let index = x * edge + y;

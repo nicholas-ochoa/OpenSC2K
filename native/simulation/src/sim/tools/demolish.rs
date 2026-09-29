@@ -43,7 +43,10 @@ impl PointResult {
     }
 
     fn specialized() -> Self {
-        Self { specialized: true, ..Default::default() }
+        Self {
+            specialized: true,
+            ..Default::default()
+        }
     }
 }
 
@@ -162,15 +165,7 @@ pub fn building_area(tile: i64) -> i64 {
 }
 
 /// DemolishEffectsSites._find_building_site. An empty rectangle means none.
-pub fn find_building_site(
-    buildings: &[u8],
-    zones: &[u8],
-    selected: Vec2i,
-    tile: i64,
-    area: i64,
-    rotation: i64,
-    map_edge: i64,
-) -> Rect2i {
+pub fn find_building_site(buildings: &[u8], zones: &[u8], selected: Vec2i, tile: i64, area: i64, rotation: i64, map_edge: i64) -> Rect2i {
     if area == 1 {
         return Rect2i::from(selected, Vec2i::new(1, 1));
     }
@@ -261,8 +256,7 @@ pub fn demolish_point(
     let i = index as usize;
     let tile = maps.buildings[i] as i64;
 
-    if !force_damage && ((maps.zones[i] as i64 & zone::TYPE_MASK) == zone::MILITARY || tile == tiles::RADIOACTIVE_WASTE)
-    {
+    if !force_damage && ((maps.zones[i] as i64 & zone::TYPE_MASK) == zone::MILITARY || tile == tiles::RADIOACTIVE_WASTE) {
         return PointResult::unchanged();
     }
 
@@ -308,12 +302,20 @@ pub fn demolish_point(
             edge,
         );
 
-        return PointResult { changed: true, indices: vec![index], ..Default::default() };
+        return PointResult {
+            changed: true,
+            indices: vec![index],
+            ..Default::default()
+        };
     }
 
     if tile < tiles::SMALL_PARK {
         if !scurk_mode && tile >= tiles::TREE_FIRST && random.next_u15() % 20 == 0 {
-            return PointResult { changed: true, easter_event: true, ..Default::default() };
+            return PointResult {
+                changed: true,
+                easter_event: true,
+                ..Default::default()
+            };
         }
 
         let mut network_effects = Vec::new();
@@ -350,7 +352,12 @@ pub fn demolish_point(
             edge,
         );
 
-        return PointResult { changed: true, indices: vec![index], effect_events: network_effects, ..Default::default() };
+        return PointResult {
+            changed: true,
+            indices: vec![index],
+            effect_events: network_effects,
+            ..Default::default()
+        };
     }
 
     let area = building_area(tile);
@@ -360,8 +367,11 @@ pub fn demolish_point(
         return PointResult::unchanged();
     }
 
-    let effect_events =
-        if emit_effects { structure_effects(maps.altitude, maps.flags, site, area, random, edge) } else { Vec::new() };
+    let effect_events = if emit_effects {
+        structure_effects(maps.altitude, maps.flags, site, area, random, edge)
+    } else {
+        Vec::new()
+    };
     let mut indices = Vec::new();
     let mut changed_points = Vec::new();
 
@@ -424,7 +434,12 @@ pub fn demolish_point(
         }
     }
 
-    PointResult { changed: true, indices, effect_events, ..Default::default() }
+    PointResult {
+        changed: true,
+        indices,
+        effect_events,
+        ..Default::default()
+    }
 }
 
 pub fn is_highway_tile(tile: i64) -> bool {
@@ -438,8 +453,7 @@ fn in_bounds(point: Vec2i, map_edge: i64) -> bool {
 
 fn demolish_tunnel(maps: &mut Maps, start: Vec2i, tile: i64, random: &mut SimRandom, emit_effects: bool) -> PointResult {
     let edge = maps.map_edge;
-    let direction = [Vec2i::new(-1, 0), Vec2i::new(0, -1), Vec2i::new(1, 0), Vec2i::new(0, 1)]
-        [(tile - tiles::TUNNEL_FIRST) as usize];
+    let direction = [Vec2i::new(-1, 0), Vec2i::new(0, -1), Vec2i::new(1, 0), Vec2i::new(0, 1)][(tile - tiles::TUNNEL_FIRST) as usize];
     let mut points = vec![start];
     let mut current = start + direction;
 
@@ -483,7 +497,12 @@ fn demolish_tunnel(maps: &mut Maps, start: Vec2i, tile: i64, random: &mut SimRan
 
     let indices = points.iter().map(|point| point.x * edge + point.y).collect();
 
-    PointResult { changed: true, indices, effect_events, ..Default::default() }
+    PointResult {
+        changed: true,
+        indices,
+        effect_events,
+        ..Default::default()
+    }
 }
 
 /// Damage a bridge bank. This is the damage_bank callable of the original.
@@ -541,8 +560,11 @@ fn demolish_bridge(
 ) -> PointResult {
     let edge = maps.map_edge;
     let selected_index = (selected.x * edge + selected.y) as usize;
-    let direction =
-        if maps.flags[selected_index] as i64 & flag_bits::FLIPPED != 0 { Vec2i::new(1, 0) } else { Vec2i::new(0, 1) };
+    let direction = if maps.flags[selected_index] as i64 & flag_bits::FLIPPED != 0 {
+        Vec2i::new(1, 0)
+    } else {
+        Vec2i::new(0, 1)
+    };
     let is_bridge = |tile: i64| (tiles::SUSPENSION_BRIDGE_1..=tiles::POWER_BRIDGE).contains(&tile);
     let mut first = selected;
 
@@ -580,7 +602,9 @@ fn demolish_bridge(
             let sprite = BRIDGE_DEBRIS_SPRITE + (random.next_u15() & 3);
             let flip = random.next_u15() & 1 != 0;
             let height = terrain::water_altitude(maps.altitude, index);
-            result.effect_events.push(EffectEvent::new(current, sprite, Vec2i::ZERO, flip, 0, height));
+            result
+                .effect_events
+                .push(EffectEvent::new(current, sprite, Vec2i::ZERO, flip, 0, height));
         }
 
         replace_building(maps.buildings, maps.zones, maps.misc, index, tiles::EMPTY);
@@ -703,7 +727,16 @@ fn demolish_reinforced_bridge(
     let mut points = Vec::new();
     let mut result = PointResult::default();
     let mut current = first;
-    retile_bank_section(maps, first - direction, random, rotation, emit_effects, scurk_mode, &mut points, &mut result);
+    retile_bank_section(
+        maps,
+        first - direction,
+        random,
+        rotation,
+        emit_effects,
+        scurk_mode,
+        &mut points,
+        &mut result,
+    );
 
     loop {
         if emit_effects {
@@ -713,7 +746,9 @@ fn demolish_reinforced_bridge(
             for screen_offset in [Vec2i::new(0, 0), Vec2i::new(16, -8), Vec2i::new(32, 0), Vec2i::new(16, 8)] {
                 let flip = random.next_u15() & 1 != 0;
                 let height = terrain::water_altitude(maps.altitude, current_index);
-                result.effect_events.push(EffectEvent::new(current, sprite, screen_offset, flip, 0, height));
+                result
+                    .effect_events
+                    .push(EffectEvent::new(current, sprite, screen_offset, flip, 0, height));
             }
         }
 
@@ -735,7 +770,16 @@ fn demolish_reinforced_bridge(
         current = current + direction;
     }
 
-    retile_bank_section(maps, finish + direction, random, rotation, emit_effects, scurk_mode, &mut points, &mut result);
+    retile_bank_section(
+        maps,
+        finish + direction,
+        random,
+        rotation,
+        emit_effects,
+        scurk_mode,
+        &mut points,
+        &mut result,
+    );
     terrain::retile_surface_water(maps.terrain, maps.flags, selected, true, edge);
     terrain::retile_after_demolition(
         maps.buildings,
@@ -761,8 +805,11 @@ fn demolish_transport_component(
 ) -> PointResult {
     let edge = maps.map_edge;
     let tile = maps.buildings[(start.x * edge + start.y) as usize] as i64;
-    let (first, last) =
-        if tile <= tiles::RUNWAY_CROSSING { (tiles::RUNWAY, tiles::RUNWAY_CROSSING) } else { (tiles::PIER, tiles::CRANE) };
+    let (first, last) = if tile <= tiles::RUNWAY_CROSSING {
+        (tiles::RUNWAY, tiles::RUNWAY_CROSSING)
+    } else {
+        (tiles::PIER, tiles::CRANE)
+    };
     let make_rubble = first == tiles::RUNWAY;
     let mut stack = vec![start];
     let mut visited = vec![false; (edge * edge) as usize];
@@ -832,7 +879,12 @@ fn demolish_transport_component(
         edge,
     );
 
-    PointResult { changed: !component.is_empty(), indices, effect_events, ..Default::default() }
+    PointResult {
+        changed: !component.is_empty(),
+        indices,
+        effect_events,
+        ..Default::default()
+    }
 }
 
 fn demolish_highway_section(
@@ -900,8 +952,7 @@ fn demolish_highway_section(
     for direction in DIRECTIONS {
         let adjacent = anchor + Vec2i::new(direction.x * 2, direction.y * 2);
 
-        if highway::anchor_is_in_bounds(adjacent, edge)
-            && highway::section_kind(maps.buildings, maps.zones, maps.flags, adjacent, edge) > 1
+        if highway::anchor_is_in_bounds(adjacent, edge) && highway::section_kind(maps.buildings, maps.zones, maps.flags, adjacent, edge) > 1
         {
             adjacent_sections.push(adjacent);
         }
@@ -911,7 +962,12 @@ fn demolish_highway_section(
         highway::retile_affected_sections(maps, &adjacent_sections, rotation);
     }
 
-    PointResult { changed: true, indices, effect_events, ..Default::default() }
+    PointResult {
+        changed: true,
+        indices,
+        effect_events,
+        ..Default::default()
+    }
 }
 
 /// Keep the network mode constants reachable for callers of this module.

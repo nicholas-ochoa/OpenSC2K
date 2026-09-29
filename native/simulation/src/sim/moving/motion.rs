@@ -210,13 +210,20 @@ mod tests {
 
             assert_eq!(advance(16, &mut text, &mut data, record, 2, edge), 1, "blocked tiles skipped");
             assert_eq!(things::read(&data, offset + 3), origin.x + 3);
-            assert_eq!(overlay::read(&text, (origin.x + 1) * edge + origin.y), 251, "blocked overlay retained");
+            assert_eq!(
+                overlay::read(&text, (origin.x + 1) * edge + origin.y),
+                251,
+                "blocked overlay retained"
+            );
 
             let mut text = vec![0u8; text_size];
             let mut data = vec![0u8; thing_size];
             prepare(&mut text, &mut data, record, Vec2i::ZERO, edge);
             assert_eq!(advance(16, &mut text, &mut data, record, 7, edge), -1, "map exit");
-            assert!(things::read(&data, offset) == 0 && overlay::read(&text, 0) == 0, "exit removes record");
+            assert!(
+                things::read(&data, offset) == 0 && overlay::read(&text, 0) == 0,
+                "exit removes record"
+            );
 
             let mut text = vec![0u8; text_size];
             let mut data = vec![0u8; thing_size];

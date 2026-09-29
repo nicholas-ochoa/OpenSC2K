@@ -63,16 +63,14 @@ pub fn water_altitude(altitude: &[u8], index: i64) -> i64 {
 /// TerrainEditHeights.set_land_altitude: only the low byte changes.
 pub fn set_land_altitude(altitude: &mut [u8], index: i64, value: i64) {
     let offset = (index * 2 + 1) as usize;
-    altitude[offset] =
-        ((altitude[offset] as i64 & (!altitude_layout::LAND_MASK & 0xff)) | (value & altitude_layout::LEVEL_MASK)) as u8;
+    altitude[offset] = ((altitude[offset] as i64 & (!altitude_layout::LAND_MASK & 0xff)) | (value & altitude_layout::LEVEL_MASK)) as u8;
 }
 
 /// TerrainEditHeights._set_water_altitude.
 pub fn set_water_altitude(altitude: &mut [u8], index: i64, value: i64) {
     let offset = (index * 2) as usize;
     let mut word = ((altitude[offset] as i64) << 8) | altitude[offset + 1] as i64;
-    word = (word & (!altitude_layout::WATER_MASK & 0xffff))
-        | ((value & altitude_layout::LEVEL_MASK) << altitude_layout::WATER_SHIFT);
+    word = (word & (!altitude_layout::WATER_MASK & 0xffff)) | ((value & altitude_layout::LEVEL_MASK) << altitude_layout::WATER_SHIFT);
     altitude[offset] = (word >> 8) as u8;
     altitude[offset + 1] = word as u8;
 }
@@ -157,7 +155,12 @@ pub fn retile_region(
         terrain[i] = if raised_basin {
             terrain_ids::DEEP_WATER_FLAT
         } else {
-            shape + if sea_level - land == 1 { terrain_ids::SHORE_FIRST } else { terrain_ids::DEEP_WATER_FIRST }
+            shape
+                + if sea_level - land == 1 {
+                    terrain_ids::SHORE_FIRST
+                } else {
+                    terrain_ids::DEEP_WATER_FIRST
+                }
         } as u8;
     }
 }

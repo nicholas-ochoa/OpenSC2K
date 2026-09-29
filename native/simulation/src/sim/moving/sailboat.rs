@@ -89,15 +89,7 @@ pub fn update(
     }
 }
 
-fn route_state(
-    buildings: &[u8],
-    flags: &[u8],
-    text: &mut [u8],
-    data: &mut [u8],
-    record: i64,
-    direction: i64,
-    map_edge: i64,
-) -> i64 {
+fn route_state(buildings: &[u8], flags: &[u8], text: &mut [u8], data: &mut [u8], record: i64, direction: i64, map_edge: i64) -> i64 {
     let offset = record * RECORD_SIZE;
     let next = Vec2i::new(things::read(data, offset + 3), things::read(data, offset + 4)) + DIRECTIONS[direction as usize];
     let next_index = index(next, map_edge);
@@ -118,7 +110,11 @@ fn route_state(
         return 0;
     }
 
-    if flags[next_index as usize] as i64 & flag_bits::WATER != 0 { 1 } else { 0 }
+    if flags[next_index as usize] as i64 & flag_bits::WATER != 0 {
+        1
+    } else {
+        0
+    }
 }
 
 fn advance(text: &mut [u8], data: &mut [u8], record: i64, direction: i64, counters: &mut MovingThingResult, map_edge: i64) {
@@ -191,10 +187,23 @@ mod tests {
                     things::write(&mut city.xthg.data, offset + field, value);
                 }
 
-                let mut counters = MovingThingResult { active_sailboats: active, ..Default::default() };
+                let mut counters = MovingThingResult {
+                    active_sailboats: active,
+                    ..Default::default()
+                };
                 let (buildings, flags) = (&city.xbld.data, &city.xbit.data);
                 let (text, data) = (&mut city.xtxt.data, &mut city.xthg.data);
-                update(buildings, flags, text, data, 1, &mut sequence_random(&[0]), &mut sequence_lfsr(&[1]), &mut counters, edge);
+                update(
+                    buildings,
+                    flags,
+                    text,
+                    data,
+                    1,
+                    &mut sequence_random(&[0]),
+                    &mut sequence_lfsr(&[1]),
+                    &mut counters,
+                    edge,
+                );
                 let survives = active <= cap;
                 assert_eq!(things::read(data, offset) != 0, survives, "the sailboat cap matches the spawner");
 

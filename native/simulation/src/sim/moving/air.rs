@@ -34,11 +34,10 @@ const AIR_DIRECTION_OFFSETS: [i64; 7] = [1, 7, 2, 6, 3, 5, 4];
 /// Final supplied smallmed.dat metadata heights for sprite IDs 0x71 through 0xfa.
 const BUILDING_SPRITE_HEIGHTS_FIRST: i64 = 0x71;
 const BUILDING_SPRITE_HEIGHTS: [i64; 138] = [
-    5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 8, 7, 6, 6, 8, 12, 7, 9, 5, 8, 6, 7, 5, 5, 5, 5, 10, 11, 11, 11, 16, 14, 20, 20, 9,
-    11, 11, 12, 12, 14, 19, 17, 19, 22, 11, 11, 11, 10, 10, 14, 15, 16, 10, 12, 12, 17, 14, 15, 18, 19, 18, 23, 15, 24,
-    16, 22, 17, 24, 16, 30, 35, 20, 28, 38, 13, 24, 15, 15, 15, 13, 21, 17, 18, 24, 9, 9, 11, 23, 29, 21, 20, 24, 18,
-    28, 18, 21, 19, 17, 15, 14, 15, 22, 19, 23, 17, 13, 5, 5, 5, 6, 11, 16, 18, 5, 6, 6, 5, 5, 6, 6, 5, 17, 10, 11,
-    10, 10, 10, 14, 9, 10, 10, 14, 10, 13, 14, 13, 16,
+    5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 8, 7, 6, 6, 8, 12, 7, 9, 5, 8, 6, 7, 5, 5, 5, 5, 10, 11, 11, 11, 16, 14, 20, 20, 9, 11, 11, 12, 12,
+    14, 19, 17, 19, 22, 11, 11, 11, 10, 10, 14, 15, 16, 10, 12, 12, 17, 14, 15, 18, 19, 18, 23, 15, 24, 16, 22, 17, 24, 16, 30, 35, 20, 28,
+    38, 13, 24, 15, 15, 15, 13, 21, 17, 18, 24, 9, 9, 11, 23, 29, 21, 20, 24, 18, 28, 18, 21, 19, 17, 15, 14, 15, 22, 19, 23, 17, 13, 5, 5,
+    5, 6, 11, 16, 18, 5, 6, 6, 5, 5, 6, 6, 5, 17, 10, 11, 10, 10, 10, 14, 9, 10, 10, 14, 10, 13, 14, 13, 16,
 ];
 
 #[inline]
@@ -104,7 +103,11 @@ pub fn random_direction_step(direction: i64, divisor: i64, random: &mut SimRando
 fn steer_direction(direction: i64, start: Vec2i, target: Vec2i) -> i64 {
     let desired = direction_between(start, target);
 
-    if desired == direction { direction } else { turn_one_step(direction, desired) }
+    if desired == direction {
+        direction
+    } else {
+        turn_one_step(direction, desired)
+    }
 }
 
 fn thing_distance(start: Vec2i, target: Vec2i) -> i64 {
@@ -143,11 +146,7 @@ pub fn update_airplane(
 
     // no_accidents blocks spontaneous collisions and landings. A plane already
     // falling from a disaster (state 7) still follows no_disasters.
-    if !no_disasters
-        && !no_accidents
-        && building > tiles::DEVELOPED_FIRST
-        && zones[current_index as usize] as i64 & zone::TYPE_MASK != 8
-    {
+    if !no_disasters && !no_accidents && building > tiles::DEVELOPED_FIRST && zones[current_index as usize] as i64 & zone::TYPE_MASK != 8 {
         if building > tiles::DESALINIZATION {
             let goal = if lfsr.next_mod(16) == 0 { 1 } else { 0 };
             convert_to_explosion(data, record, 5, goal);

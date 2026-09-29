@@ -130,7 +130,9 @@ impl Scenario {
         minimum("land_value", land_value, required_land_value, false);
         minimum("life_expectancy", life_expectancy, required_life_expectancy, false);
         minimum("education", education, required_education, false);
-        let limit_of = |limit: i64| if original_format { signed_32(limit) } else { limit };
+        let limit_of = |limit: i64| {
+            if original_format { signed_32(limit) } else { limit }
+        };
 
         for (name, actual, limit) in [
             ("pollution", pollution, limit_of(self.pollution_limit)),
@@ -151,7 +153,11 @@ impl Scenario {
             }
 
             let count = city.misc_u32(misc_layout::TILE_COUNTS + building * 4);
-            let short = if original_format { signed_16(count) < signed_16(required) } else { count < required };
+            let short = if original_format {
+                signed_16(count) < signed_16(required)
+            } else {
+                count < required
+            };
 
             if short {
                 unmet.push(name.to_string());

@@ -14,7 +14,10 @@ gd_object! {
 
 impl NewsEvent {
     pub fn new(news_type: i64, argument: i64) -> Self {
-        Self { type_: news_type, argument }
+        Self {
+            type_: news_type,
+            argument,
+        }
     }
 }
 
@@ -31,11 +34,20 @@ gd_object! {
 
 impl SoundEvent {
     pub fn new(id: i64) -> Self {
-        Self { sound_id: id, ..Default::default() }
+        Self {
+            sound_id: id,
+            ..Default::default()
+        }
     }
 
     pub fn for_thing(id: i64, thing_type: i64, record: i64, point: Vec2i) -> Self {
-        Self { sound_id: id, from_thing: true, thing_type, record, point }
+        Self {
+            sound_id: id,
+            from_thing: true,
+            thing_type,
+            record,
+            point,
+        }
     }
 }
 
@@ -57,11 +69,22 @@ gd_object! {
 
 impl EffectEvent {
     pub fn new(point: Vec2i, sprite_id: i64, screen_offset: Vec2i, flip: bool, frame: i64, altitude: i64) -> Self {
-        Self { point, sprite_id, screen_offset, flip, frame, altitude, ..Default::default() }
+        Self {
+            point,
+            sprite_id,
+            screen_offset,
+            flip,
+            frame,
+            altitude,
+            ..Default::default()
+        }
     }
 
     pub fn earthquake() -> Self {
-        Self { type_: "earthquake".to_string(), ..Default::default() }
+        Self {
+            type_: "earthquake".to_string(),
+            ..Default::default()
+        }
     }
 }
 
@@ -77,7 +100,11 @@ impl GameOverEvent {
     pub fn new(event_type: &str, funds: i64) -> Self {
         let sound_id = if event_type == "scenario_victory" { 513 } else { 512 };
 
-        Self { type_: event_type.to_string(), funds, sound_id }
+        Self {
+            type_: event_type.to_string(),
+            funds,
+            sound_id,
+        }
     }
 
     pub fn is_terminal(&self) -> bool {
@@ -95,7 +122,11 @@ pub struct Timing {
 
 impl Timing {
     pub fn new(total_usec: i64, steps: OrderedMap<i64>) -> Self {
-        Self { has_total: total_usec >= 0, work_usec: total_usec.max(0), steps }
+        Self {
+            has_total: total_usec >= 0,
+            work_usec: total_usec.max(0),
+            steps,
+        }
     }
 }
 

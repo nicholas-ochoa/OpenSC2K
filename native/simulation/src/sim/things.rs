@@ -50,8 +50,7 @@ fn wide(data: &[u8], index: i64) -> bool {
         || field == FIELD_DX
         || field == FIELD_DY
         || field == FIELD_LABEL
-        || ((TYPE_TRAIN_ENGINE..=TYPE_SUBWAY_CAR).contains(&kind)
-            && (field == FIELD_STATE || field == FIELD_PX || field == FIELD_PY))
+        || ((TYPE_TRAIN_ENGINE..=TYPE_SUBWAY_CAR).contains(&kind) && (field == FIELD_STATE || field == FIELD_PX || field == FIELD_PY))
         || (kind == TYPE_MAXIS_MAN && field == FIELD_GOAL)
 }
 
@@ -94,7 +93,12 @@ pub fn set_field(data: &mut [u8], record: i64, field: i64, value: i64) {
 }
 
 pub fn count(data: &[u8]) -> i64 {
-    data.len() as i64 / if data.len() as i64 > BASE_SIZE { layout::EXTENDED_RECORD_SIZE } else { RECORD_SIZE }
+    data.len() as i64
+        / if data.len() as i64 > BASE_SIZE {
+            layout::EXTENDED_RECORD_SIZE
+        } else {
+            RECORD_SIZE
+        }
 }
 
 pub fn target_id(record: i64) -> i64 {
@@ -102,7 +106,11 @@ pub fn target_id(record: i64) -> i64 {
 }
 
 pub fn target_record(goal: i64) -> i64 {
-    if goal >= overlay::EXTRA_THING { overlay::thing_record(goal) } else { goal }
+    if goal >= overlay::EXTRA_THING {
+        overlay::thing_record(goal)
+    } else {
+        goal
+    }
 }
 
 pub fn is_record_target(goal: i64) -> bool {

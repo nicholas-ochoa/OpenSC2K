@@ -28,7 +28,11 @@ pub fn read(data: &[u8], index: i64) -> i64 {
     let cells = count(data);
     let low = data[index as usize] as i64;
 
-    if cells != data.len() as i64 { low | ((data[(cells + index) as usize] as i64) << 8) } else { low }
+    if cells != data.len() as i64 {
+        low | ((data[(cells + index) as usize] as i64) << 8)
+    } else {
+        low
+    }
 }
 
 #[inline]
@@ -46,8 +50,7 @@ pub fn is_sign(id: i64) -> bool {
 }
 
 pub fn is_facility(id: i64) -> bool {
-    (layout::ORIGINAL_FACILITY_FIRST..=layout::ORIGINAL_FACILITY_LAST).contains(&id)
-        || (EXTRA_FACILITY..EXTRA_SIGN).contains(&id)
+    (layout::ORIGINAL_FACILITY_FIRST..=layout::ORIGINAL_FACILITY_LAST).contains(&id) || (EXTRA_FACILITY..EXTRA_SIGN).contains(&id)
 }
 
 pub fn is_thing(id: i64) -> bool {

@@ -37,23 +37,35 @@ const NEWS_GOOD_EMPLOYMENT: i64 = 0x42;
 const GRAPH_TRAFFIC: i64 = 4;
 const GRAPH_POLLUTION: i64 = 5;
 const GRAPH_CRIME: i64 = 7;
-pub const WEATHER_NAMES: [&str; 12] =
-    ["Cold", "Clear", "Hot", "Foggy", "Chilly", "Overcast", "Snow", "Rain", "Windy", "Blizzard", "Hurricane", "Tornado"];
+pub const WEATHER_NAMES: [&str; 12] = [
+    "Cold",
+    "Clear",
+    "Hot",
+    "Foggy",
+    "Chilly",
+    "Overcast",
+    "Snow",
+    "Rain",
+    "Windy",
+    "Blizzard",
+    "Hurricane",
+    "Tornado",
+];
 /// Four 12-by-8 season blocks. Each row is the current weather trend and each
 /// column is the low three bits of the process-random value.
 const WEATHER_TRANSITIONS: [i64; 384] = [
-    0, 0, 0, 3, 4, 5, 1, 8, 1, 1, 1, 0, 0, 3, 4, 8, 2, 1, 1, 1, 8, 8, 5, 3, 3, 3, 0, 1, 4, 5, 8, 7, 4, 4, 0, 1, 4, 5, 7,
-    6, 5, 5, 1, 4, 3, 7, 7, 8, 6, 6, 7, 7, 5, 4, 0, 9, 7, 7, 7, 6, 8, 8, 4, 3, 8, 8, 8, 7, 7, 5, 4, 4, 9, 6, 6, 6, 6, 7,
-    7, 3, 7, 7, 6, 6, 7, 7, 7, 8, 8, 8, 8, 8, 8, 7, 6, 4, // season 0
-    0, 0, 0, 1, 1, 1, 3, 4, 1, 1, 1, 1, 2, 2, 0, 4, 2, 2, 2, 1, 1, 5, 4, 3, 3, 3, 0, 8, 1, 1, 4, 7, 4, 4, 4, 1, 8, 0, 5,
-    3, 5, 5, 5, 7, 2, 4, 1, 8, 6, 7, 7, 7, 3, 8, 5, 5, 7, 7, 7, 6, 3, 5, 8, 10, 8, 8, 8, 7, 5, 4, 1, 1, 7, 6, 6, 7, 7, 8,
-    8, 4, 10, 7, 7, 7, 8, 8, 4, 4, 8, 8, 8, 8, 8, 4, 1, 2, // season 1
-    0, 0, 0, 1, 1, 1, 3, 4, 1, 1, 1, 1, 2, 2, 0, 4, 2, 2, 2, 1, 1, 5, 4, 3, 3, 3, 0, 8, 1, 1, 4, 7, 4, 4, 4, 1, 8, 0, 5,
-    3, 5, 5, 5, 7, 2, 4, 1, 8, 6, 7, 7, 7, 3, 8, 5, 4, 7, 7, 7, 6, 3, 5, 8, 8, 8, 8, 8, 7, 5, 4, 1, 11, 7, 6, 6, 7, 7, 8,
-    8, 4, 6, 7, 7, 7, 8, 8, 4, 4, 11, 8, 8, 8, 8, 4, 1, 2, // season 2
-    0, 0, 0, 3, 4, 5, 1, 8, 1, 1, 1, 0, 0, 3, 4, 8, 2, 1, 1, 1, 8, 8, 5, 3, 3, 3, 0, 1, 4, 5, 8, 7, 4, 4, 0, 1, 4, 5, 7,
-    6, 5, 5, 1, 4, 3, 7, 7, 8, 6, 6, 7, 7, 5, 4, 0, 0, 7, 7, 7, 6, 8, 4, 3, 10, 8, 8, 8, 7, 7, 5, 4, 5, 6, 6, 6, 6, 7, 7,
-    7, 3, 10, 7, 6, 6, 7, 7, 7, 8, 8, 8, 8, 8, 8, 7, 6, 4, // season 3
+    0, 0, 0, 3, 4, 5, 1, 8, 1, 1, 1, 0, 0, 3, 4, 8, 2, 1, 1, 1, 8, 8, 5, 3, 3, 3, 0, 1, 4, 5, 8, 7, 4, 4, 0, 1, 4, 5, 7, 6, 5, 5, 1, 4, 3,
+    7, 7, 8, 6, 6, 7, 7, 5, 4, 0, 9, 7, 7, 7, 6, 8, 8, 4, 3, 8, 8, 8, 7, 7, 5, 4, 4, 9, 6, 6, 6, 6, 7, 7, 3, 7, 7, 6, 6, 7, 7, 7, 8, 8, 8,
+    8, 8, 8, 7, 6, 4, // season 0
+    0, 0, 0, 1, 1, 1, 3, 4, 1, 1, 1, 1, 2, 2, 0, 4, 2, 2, 2, 1, 1, 5, 4, 3, 3, 3, 0, 8, 1, 1, 4, 7, 4, 4, 4, 1, 8, 0, 5, 3, 5, 5, 5, 7, 2,
+    4, 1, 8, 6, 7, 7, 7, 3, 8, 5, 5, 7, 7, 7, 6, 3, 5, 8, 10, 8, 8, 8, 7, 5, 4, 1, 1, 7, 6, 6, 7, 7, 8, 8, 4, 10, 7, 7, 7, 8, 8, 4, 4, 8,
+    8, 8, 8, 8, 4, 1, 2, // season 1
+    0, 0, 0, 1, 1, 1, 3, 4, 1, 1, 1, 1, 2, 2, 0, 4, 2, 2, 2, 1, 1, 5, 4, 3, 3, 3, 0, 8, 1, 1, 4, 7, 4, 4, 4, 1, 8, 0, 5, 3, 5, 5, 5, 7, 2,
+    4, 1, 8, 6, 7, 7, 7, 3, 8, 5, 4, 7, 7, 7, 6, 3, 5, 8, 8, 8, 8, 8, 7, 5, 4, 1, 11, 7, 6, 6, 7, 7, 8, 8, 4, 6, 7, 7, 7, 8, 8, 4, 4, 11,
+    8, 8, 8, 8, 4, 1, 2, // season 2
+    0, 0, 0, 3, 4, 5, 1, 8, 1, 1, 1, 0, 0, 3, 4, 8, 2, 1, 1, 1, 8, 8, 5, 3, 3, 3, 0, 1, 4, 5, 8, 7, 4, 4, 0, 1, 4, 5, 7, 6, 5, 5, 1, 4, 3,
+    7, 7, 8, 6, 6, 7, 7, 5, 4, 0, 0, 7, 7, 7, 6, 8, 4, 3, 10, 8, 8, 8, 7, 7, 5, 4, 5, 6, 6, 6, 6, 7, 7, 7, 3, 10, 7, 6, 6, 7, 7, 7, 8, 8,
+    8, 8, 8, 8, 7, 6, 4, // season 3
 ];
 const WEATHER_HEAT_TARGETS: [i64; 12] = [80, 165, 210, 100, 145, 175, 80, 150, 175, 60, 140, 175];
 const WEATHER_WIND_TARGETS: [i64; 12] = [15, 30, 0, 0, 15, 5, 10, 30, 60, 100, 100, 100];
@@ -125,7 +137,15 @@ pub fn run(city: &mut City, random: &mut SimRandom, season: i64) -> AftermathRes
     let mut buildings = city.xbld.data.clone();
     let mut map_changes = Vec::new();
     span.mark("random tree");
-    update_random_tree(city.map_size, random, &mut buildings, &city.xzon.data, &city.xbit.data, &mut misc, &mut map_changes);
+    update_random_tree(
+        city.map_size,
+        random,
+        &mut buildings,
+        &city.xzon.data,
+        &city.xbit.data,
+        &mut misc,
+        &mut map_changes,
+    );
     span.mark("news decay and selection");
 
     if let Err(message) = news::decay_and_sort(&mut misc) {
@@ -211,7 +231,11 @@ fn update_random_tree(
 
     if old_tile == tiles::RADIOACTIVE_WASTE && random.next_u15() & 0x0f == 0 {
         replace_building(buildings, zones, misc, index, tiles::EMPTY);
-        map_changes.push(MapChange { point, old_tile, new_tile: tiles::EMPTY });
+        map_changes.push(MapChange {
+            point,
+            old_tile,
+            new_tile: tiles::EMPTY,
+        });
     }
 
     if flags[index as usize] as i64 & flag_bits::WATER != 0 {
@@ -226,7 +250,11 @@ fn update_random_tree(
 
     if (tiles::TREE_FIRST..=tiles::TREES_6).contains(&old_tile) {
         replace_building(buildings, zones, misc, index, old_tile + 1);
-        map_changes.push(MapChange { point, old_tile, new_tile: old_tile + 1 });
+        map_changes.push(MapChange {
+            point,
+            old_tile,
+            new_tile: old_tile + 1,
+        });
     }
 
     match random.next_u15() & 3 {
@@ -243,7 +271,11 @@ fn update_random_tree(
         return;
     }
 
-    let new_tile = if old_tile < tiles::TREE_FIRST { tiles::TREE_FIRST } else { old_tile + 1 };
+    let new_tile = if old_tile < tiles::TREE_FIRST {
+        tiles::TREE_FIRST
+    } else {
+        old_tile + 1
+    };
     replace_building(buildings, zones, misc, index, new_tile);
     map_changes.push(MapChange { point, old_tile, new_tile });
 }
@@ -337,7 +369,11 @@ fn release_invention(age_in_days: i64, random: &mut SimRandom, misc: &mut [u8], 
             continue;
         }
 
-        let (news_type, argument) = if index < 7 { (NEWS_INVENTION, index) } else { (NEWS_INNOVATION, index - 7) };
+        let (news_type, argument) = if index < 7 {
+            (NEWS_INVENTION, index)
+        } else {
+            (NEWS_INNOVATION, index - 7)
+        };
         news_items.push(NewsEvent::new(news_type, argument));
         write_u32_be(misc, offset, 0);
 

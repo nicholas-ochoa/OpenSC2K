@@ -12,10 +12,7 @@ pub fn read_u16_be(data: &[u8], offset: i64) -> i64 {
 pub fn read_u32_be(data: &[u8], offset: i64) -> i64 {
     let offset = offset as usize;
 
-    ((data[offset] as i64) << 24)
-        | ((data[offset + 1] as i64) << 16)
-        | ((data[offset + 2] as i64) << 8)
-        | data[offset + 3] as i64
+    ((data[offset] as i64) << 24) | ((data[offset + 1] as i64) << 16) | ((data[offset + 2] as i64) << 8) | data[offset + 3] as i64
 }
 
 #[inline]

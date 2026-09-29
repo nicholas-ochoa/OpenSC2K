@@ -20,8 +20,9 @@ const RATIO_SCALE: f64 = 600.0;
 const COMMERCIAL_SCALE: f64 = f64::from_bits(0x3edb_f647_612f_17d7);
 const INDUSTRIAL_MIX_SCALE: f64 = 0.01;
 const MINIMUM_INDUSTRIAL_TARGET: f64 = 15.0;
-const TAX_EFFECT: [i64; 23] =
-    [200, 160, 120, 100, 75, 50, 25, 0, -25, -50, -100, -150, -200, -250, -300, -350, -400, -450, -500, -550, -600, -650, -700];
+const TAX_EFFECT: [i64; 23] = [
+    200, 160, 120, 100, 75, 50, 25, 0, -25, -50, -100, -150, -200, -250, -300, -350, -400, -450, -500, -550, -600, -650, -700,
+];
 const INDUSTRIAL_DIFFICULTY: [f64; 4] = [0.0, 1.2, 1.1, 0.95];
 const COMMERCE_CONNECTION_RANGES: [(i64, i64); 4] = [
     (tiles::ROAD_STRAIGHT_1, tiles::ROAD_CROSSROADS),
@@ -109,7 +110,11 @@ fn ordinance_adjusted_tax_rate(category: i64, mut rate: i64, flags: i64) -> i64 
                 rate += 1;
             }
 
-            for mask in [ordinances::TOURIST_ADVERTISING_MASK, ordinances::ANNUAL_CARNIVAL_MASK, ordinances::HOMELESS_SHELTER_MASK] {
+            for mask in [
+                ordinances::TOURIST_ADVERTISING_MASK,
+                ordinances::ANNUAL_CARNIVAL_MASK,
+                ordinances::HOMELESS_SHELTER_MASK,
+            ] {
                 if flags & mask != 0 {
                     rate -= 1;
                 }
@@ -164,8 +169,7 @@ pub fn rci_demand(city: &mut City) -> RciDemandResult {
     residential_target = residential_target.min((amenities * 150) as f64);
     residential_target = residential_target.min((tax_population[1] * 4 + 500) as f64);
     let industrial_population = tax_population[2] as f64;
-    let mut commercial_target =
-        (normal_population + 50000) as f64 * COMMERCIAL_SCALE * resident_job_ratio * industrial_population;
+    let mut commercial_target = (normal_population + 50000) as f64 * COMMERCIAL_SCALE * resident_job_ratio * industrial_population;
     let difficulty = city.difficulty().clamp(0, INDUSTRIAL_DIFFICULTY.len() as i64 - 1) as usize;
     let mut industrial_target = (city.misc_i32(misc_layout::INDUSTRIAL_MIX_BONUS) as f64 * INDUSTRIAL_MIX_SCALE
         + INDUSTRIAL_DIFFICULTY[difficulty])
@@ -202,7 +206,11 @@ pub fn rci_demand(city: &mut City) -> RciDemandResult {
 
     for index in 0..3 {
         let budget_population = tax_population[index] * 10 + arcology_population / if index == 0 { 6 } else { 12 };
-        write_u32_be(misc, misc_layout::BUDGETS + index as i64 * sc2budget_layout::RECORD_SIZE, budget_population);
+        write_u32_be(
+            misc,
+            misc_layout::BUDGETS + index as i64 * sc2budget_layout::RECORD_SIZE,
+            budget_population,
+        );
         write_u32_be(misc, misc_layout::DEMAND + index as i64 * 4, demands[index]);
     }
 
@@ -278,9 +286,7 @@ pub fn world_demands(start_year: i64, elapsed_years: i64) -> Vec<i64> {
     let period = period as usize;
 
     (0..industry_layout::COUNT as usize)
-        .map(|industry| {
-            (WORLD_DEMAND[period + 1][industry] * remainder + (50 - remainder) * WORLD_DEMAND[period][industry]) / 50
-        })
+        .map(|industry| (WORLD_DEMAND[period + 1][industry] * remainder + (50 - remainder) * WORLD_DEMAND[period][industry]) / 50)
         .collect()
 }
 
@@ -364,8 +370,8 @@ pub fn industry(city: &mut City, random: &mut SimRandom, lfsr: &mut SimLfsrRando
         }
     }
 
-    let industrial_population = read_u32_be(&data, misc_layout::ZONE_POPULATIONS + 5 * 4)
-        + read_u32_be(&data, misc_layout::ZONE_POPULATIONS + 6 * 4);
+    let industrial_population =
+        read_u32_be(&data, misc_layout::ZONE_POPULATIONS + 5 * 4) + read_u32_be(&data, misc_layout::ZONE_POPULATIONS + 6 * 4);
 
     if ratio_total > industrial_population {
         let excess = ratio_total - industrial_population;
@@ -396,8 +402,15 @@ pub fn industry(city: &mut City, random: &mut SimRandom, lfsr: &mut SimLfsrRando
     }
 
     let pollution_share = ((ratios[0] + ratios[1] + ratios[2] + ratios[5]) * 100) / (industrial_population + 1);
-    let pollution_bonus = if pollution_share < 20 { 0xffff } else { (pollution_share - 20) / 30 };
-    let maximum_share = ratios.iter().map(|ratio| (ratio * 100) / (industrial_population + 1)).fold(0, i64::max);
+    let pollution_bonus = if pollution_share < 20 {
+        0xffff
+    } else {
+        (pollution_share - 20) / 30
+    };
+    let maximum_share = ratios
+        .iter()
+        .map(|ratio| (ratio * 100) / (industrial_population + 1))
+        .fold(0, i64::max);
     let mix_bonus = if maximum_share < 20 { 0 } else { (maximum_share - 20) / 5 };
 
     for industry in 0..count {
@@ -445,7 +458,11 @@ mod tests {
             for rate in [0i64, 7, 20] {
                 for flags in &flag_cases {
                     let expected: i64 = rate
-                        + category_deltas.iter().filter(|(bit, _)| flags & (1 << bit) != 0).map(|(_, delta)| delta).sum::<i64>();
+                        + category_deltas
+                            .iter()
+                            .filter(|(bit, _)| flags & (1 << bit) != 0)
+                            .map(|(_, delta)| delta)
+                            .sum::<i64>();
                     assert_eq!(ordinance_adjusted_tax_rate(category as i64, rate, *flags), expected.max(0));
                 }
             }

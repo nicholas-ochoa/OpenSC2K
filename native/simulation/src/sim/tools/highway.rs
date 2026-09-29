@@ -39,8 +39,7 @@ pub fn is_highway_tile(tile: i64) -> bool {
 /// HighwayGeometry._land_altitude reads the whole word, then masks it.
 #[inline]
 fn land_altitude(altitude: &[u8], index: i64) -> i64 {
-    (((altitude[(index * 2) as usize] as i64) << 8) | altitude[(index * 2 + 1) as usize] as i64)
-        & altitude_layout::LEVEL_MASK
+    (((altitude[(index * 2) as usize] as i64) << 8) | altitude[(index * 2 + 1) as usize] as i64) & altitude_layout::LEVEL_MASK
 }
 
 /// HighwayGeometry._section_kind.
@@ -62,7 +61,11 @@ pub fn section_kind(buildings: &[u8], zones: &[u8], flags: &[u8], anchor: Vec2i,
         if shaped_kind > 12 {
             let south_index = (anchor.x * map_edge + anchor.y + 1) as usize;
 
-            return if flags[south_index] as i64 & flag_bits::FLIPPED != 0 { 16 } else { 15 };
+            return if flags[south_index] as i64 & flag_bits::FLIPPED != 0 {
+                16
+            } else {
+                15
+            };
         }
 
         return shaped_kind;
@@ -331,23 +334,18 @@ fn neighbor_kind_connects(
             return true;
         }
 
-        return neighbor_kind == 2
-            && terrain_section_shape(buildings, terrain, altitude, neighbor, map_edge) != FILLED_FLAT_TERRAIN_SHAPE;
+        return neighbor_kind == 2 && terrain_section_shape(buildings, terrain, altitude, neighbor, map_edge) != FILLED_FLAT_TERRAIN_SHAPE;
     }
 
     if neighbor_kind == 0 || neighbor_kind == 2 {
         return true;
     }
 
-    if neighbor_kind > 3
-        && neighbor_kind < EAST_WEST_KIND_CONNECTIONS.len() as i64
-        && EAST_WEST_KIND_CONNECTIONS[neighbor_kind as usize]
-    {
+    if neighbor_kind > 3 && neighbor_kind < EAST_WEST_KIND_CONNECTIONS.len() as i64 && EAST_WEST_KIND_CONNECTIONS[neighbor_kind as usize] {
         return true;
     }
 
-    neighbor_kind == 3
-        && terrain_section_shape(buildings, terrain, altitude, neighbor, map_edge) != FILLED_FLAT_TERRAIN_SHAPE
+    neighbor_kind == 3 && terrain_section_shape(buildings, terrain, altitude, neighbor, map_edge) != FILLED_FLAT_TERRAIN_SHAPE
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -578,8 +576,9 @@ fn set_section_land_altitude(altitude: &mut [u8], index: i64, value: i64) {
 fn place_graded_section(maps: &mut Maps, anchor: Vec2i, kind: i64, rotation: i64) {
     let edge = maps.map_edge;
     let target = section_altitude(maps.terrain, maps.altitude, anchor, edge);
-    let all_at_target =
-        SECTION_OFFSETS.iter().all(|offset| land_altitude(maps.altitude, maps.index(anchor + *offset)) == target);
+    let all_at_target = SECTION_OFFSETS
+        .iter()
+        .all(|offset| land_altitude(maps.altitude, maps.index(anchor + *offset)) == target);
 
     if !all_at_target {
         for offset in SECTION_OFFSETS {
@@ -637,15 +636,9 @@ fn write_section_kind(maps: &mut Maps, anchor: Vec2i, kind: i64, rotation: i64) 
         for offset in SECTION_OFFSETS {
             let old_tile = maps.buildings[maps.index(anchor + offset) as usize] as i64;
 
-            if old_tile == tiles::POWER_LINE_STRAIGHT_1
-                || old_tile == tiles::ROAD_STRAIGHT_1
-                || old_tile == tiles::RAIL_STRAIGHT_1
-            {
+            if old_tile == tiles::POWER_LINE_STRAIGHT_1 || old_tile == tiles::ROAD_STRAIGHT_1 || old_tile == tiles::RAIL_STRAIGHT_1 {
                 orientation = 1;
-            } else if old_tile == tiles::POWER_LINE_STRAIGHT_2
-                || old_tile == tiles::ROAD_STRAIGHT_2
-                || old_tile == tiles::RAIL_STRAIGHT_2
-            {
+            } else if old_tile == tiles::POWER_LINE_STRAIGHT_2 || old_tile == tiles::ROAD_STRAIGHT_2 || old_tile == tiles::RAIL_STRAIGHT_2 {
                 orientation = 0;
             }
         }
@@ -690,8 +683,7 @@ pub fn retile_affected_sections(maps: &mut Maps, placed: &[Vec2i], rotation: i64
     }
 
     for anchor in affected {
-        let kind =
-            select_section_kind(maps.buildings, maps.terrain, maps.zones, maps.flags, maps.altitude, anchor, 0, edge);
+        let kind = select_section_kind(maps.buildings, maps.terrain, maps.zones, maps.flags, maps.altitude, anchor, 0, edge);
 
         if kind >= 0 {
             write_section_kind(maps, anchor, kind, rotation);

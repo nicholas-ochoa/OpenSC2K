@@ -288,15 +288,27 @@ fn convert_to_explosion(data: &mut [u8], record: i64) {
 fn steer_direction(direction: i64, start: Vec2i, target: Vec2i) -> i64 {
     let desired = direction_between(start, target);
 
-    if desired == direction { direction } else { turn_one_step(direction, desired) }
+    if desired == direction {
+        direction
+    } else {
+        turn_one_step(direction, desired)
+    }
 }
 
 pub fn turn_one_step(direction: i64, target: i64) -> i64 {
     if direction <= target {
-        return if target - direction > 4 { (direction - 1) & 7 } else { (direction + 1) & 7 };
+        return if target - direction > 4 {
+            (direction - 1) & 7
+        } else {
+            (direction + 1) & 7
+        };
     }
 
-    if direction - target > 4 { (direction + 1) & 7 } else { (direction - 1) & 7 }
+    if direction - target > 4 {
+        (direction + 1) & 7
+    } else {
+        (direction - 1) & 7
+    }
 }
 
 #[cfg(test)]
@@ -309,7 +321,15 @@ mod tests {
     fn ships_leave_at_each_edge_and_corner() {
         for (direction, delta) in DIRECTIONS.iter().enumerate() {
             let direction = direction as i64;
-            let axis = |value: i64| if value < 0 { 0 } else if value > 0 { 127 } else { 64 };
+            let axis = |value: i64| {
+                if value < 0 {
+                    0
+                } else if value > 0 {
+                    127
+                } else {
+                    64
+                }
+            };
             let point = Vec2i::new(axis(delta.x), axis(delta.y));
             let tile = (point.x * 128 + point.y) as usize;
             let mut text = vec![0u8; 16384];
@@ -334,7 +354,12 @@ mod tests {
                 text[tile] = 201;
                 let blank = vec![0u8; 16384];
                 let water = vec![4u8; 16384];
-                let maps = ShipMaps { buildings: &blank, underground: &blank, flags: &water, map_edge: 128 };
+                let maps = ShipMaps {
+                    buildings: &blank,
+                    underground: &blank,
+                    flags: &water,
+                    map_edge: 128,
+                };
                 let mut counters = MovingThingResult::default();
                 let mut random = sequence_random(&[1]);
                 let mut lfsr = sequence_lfsr(&[1]);

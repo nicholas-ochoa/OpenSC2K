@@ -141,9 +141,8 @@ pub fn run(city: &mut City, random: &mut SimRandom) -> SimNationResult {
 
             write_u32_be(&mut data, base + NEIGHBOR_POPULATION, population);
             let neighbor_score = (value as f64 / population as f64 * 100.0) as i64;
-            let value_factor = ECONOMY_FACTORS[economy_trend as usize] + random.next_u15() % 5
-                - federal_rate
-                - economy_level(neighbor_score);
+            let value_factor =
+                ECONOMY_FACTORS[economy_trend as usize] + random.next_u15() % 5 - federal_rate - economy_level(neighbor_score);
             let change = scaled_change(value, value_factor);
             value = move_about_center(value, change, NATIONAL_VALUE_CENTER);
             write_u32_be(&mut data, base + NEIGHBOR_VALUE, value);

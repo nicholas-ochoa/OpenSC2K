@@ -13,15 +13,15 @@ use godot::prelude::*;
 
 use super::convert;
 use crate::sim::city::City;
-use crate::sim::random::Randoms;
+use crate::sim::civic::{annual, education, milestones, nation, scenario};
 use crate::sim::data_maps;
 use crate::sim::disasters::{end as disaster_end, map as disaster_map, start as disaster_start, weather};
-use crate::sim::growth;
-use crate::sim::civic::{annual, education, milestones, nation, scenario};
 use crate::sim::economy::{self, budget, city_value};
 use crate::sim::engine::month;
+use crate::sim::growth;
 use crate::sim::growth::{aftermath, demand};
 use crate::sim::infrastructure::{power, traffic, water};
+use crate::sim::random::Randoms;
 use crate::sim::reports::graphs;
 use crate::sim::value::{ToValue, Value};
 
@@ -91,11 +91,17 @@ pub struct Outcome {
 
 impl Outcome {
     pub fn value(result: Value) -> Self {
-        Self { error: String::new(), result }
+        Self {
+            error: String::new(),
+            result,
+        }
     }
 
     pub fn failure(message: impl Into<String>) -> Self {
-        Self { error: message.into(), result: Value::Nil }
+        Self {
+            error: message.into(),
+            result: Value::Nil,
+        }
     }
 }
 
@@ -150,9 +156,9 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
             settlement.base.timing = convert::timing(args, "settlement_timing");
             Outcome::value(budget::run_month(city, &mut randoms.random, &settlement).to_value())
         }
-        "budget.run" => Outcome::value(
-            budget::run(city, &mut randoms.random, convert::boolean(args, "annual_budget_approved", false)).to_value(),
-        ),
+        "budget.run" => {
+            Outcome::value(budget::run(city, &mut randoms.random, convert::boolean(args, "annual_budget_approved", false)).to_value())
+        }
         "budget.set_funding" => Outcome::value(
             budget::set_funding(city, &convert::ints32(args, "values"), convert::boolean(args, "auto_budget", false)).to_value(),
         ),
@@ -161,12 +167,15 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
         "city_value.run" => Outcome::value(city_value::run(city).to_value()),
         "month_start" => Outcome::value(month::month_start(city).to_value()),
         "rci_demand" => Outcome::value(demand::rci_demand(city).to_value()),
-        "rci_aftermath" => {
-            Outcome::value(aftermath::run(city, &mut randoms.random, convert::int(args, "season", -1)).to_value())
-        }
+        "rci_aftermath" => Outcome::value(aftermath::run(city, &mut randoms.random, convert::int(args, "season", -1)).to_value()),
         "industry" => Outcome::value(
-            demand::industry(city, &mut randoms.random, &mut randoms.lfsr, convert::int(args, "population_growth", 0))
-                .to_value(),
+            demand::industry(
+                city,
+                &mut randoms.random,
+                &mut randoms.lfsr,
+                convert::int(args, "population_growth", 0),
+            )
+            .to_value(),
         ),
         "simnation" => Outcome::value(nation::run(city, &mut randoms.random).to_value()),
         "education_health" => Outcome::value(education::run(city, &mut randoms.random).to_value()),
@@ -268,9 +277,9 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
             let Randoms { random, lfsr, game } = randoms;
             Outcome::value(crate::sim::moving::phase::run(city, random, lfsr, game, &options).to_value())
         }
-        "mayor_approval" => Outcome::value(
-            crate::sim::civic::mayor::run(city, &mut randoms.random, convert::int(args, "previous_approval", 0)).to_value(),
-        ),
+        "mayor_approval" => {
+            Outcome::value(crate::sim::civic::mayor::run(city, &mut randoms.random, convert::int(args, "previous_approval", 0)).to_value())
+        }
         "tile_recount" => Outcome::value(Value::Int(crate::sim::civic::mayor::recount_tiles(city))),
         "military.resolve" => {
             let game = convert::boolean(args, "has_game", true).then_some(&mut randoms.game);
@@ -299,7 +308,10 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
                 return Outcome::value(Value::Dict(vec![
                     (Value::Str("ok".to_string()), Value::Bool(true)),
                     (Value::Str("annual_budget".to_string()), Value::Bool(true)),
-                    (Value::Str("funding_values".to_string()), Value::Ints32(budget::funding_values(city))),
+                    (
+                        Value::Str("funding_values".to_string()),
+                        Value::Ints32(budget::funding_values(city)),
+                    ),
                 ]));
             }
 
@@ -315,7 +327,9 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
                 convert::boolean(args, "annual_budget_approved", false),
                 convert::boolean(args, "detailed", false),
             );
-            let Value::Dict(mut fields) = outcome.to_value() else { unreachable!() };
+            let Value::Dict(mut fields) = outcome.to_value() else {
+                unreachable!()
+            };
             fields.push((Value::Str("engine".to_string()), state.to_value()));
             let time_limit = scenario.map(|scenario| scenario.time_limit_months).unwrap_or(-1);
             fields.push((Value::Str("scenario_time_limit".to_string()), Value::Int(time_limit)));
@@ -379,9 +393,9 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
             )
             .to_value(),
         ),
-        "trip_reach" => Outcome::value(
-            crate::sim::reach::inspect(city, convert::point(args, "clicked", crate::sim::geom::Vec2i::ZERO)).to_value(),
-        ),
+        "trip_reach" => {
+            Outcome::value(crate::sim::reach::inspect(city, convert::point(args, "clicked", crate::sim::geom::Vec2i::ZERO)).to_value())
+        }
         // Trip rule queries for tests and diagnostics. They do not change the city.
         "trip.highway_step" => Outcome::value(Value::Bool(crate::sim::trip::highway_step(
             &city.xbld.data,
@@ -404,11 +418,23 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
                 let from = convert::point(args, "from", crate::sim::geom::Vec2i::ZERO);
                 let to = convert::point(args, "to", crate::sim::geom::Vec2i::ZERO);
                 let index = |point: crate::sim::geom::Vec2i| {
-                    if point.x >= 0 && point.y >= 0 && point.x < edge && point.y < edge { point.x * edge + point.y } else { -1 }
+                    if point.x >= 0 && point.y >= 0 && point.x < edge && point.y < edge {
+                        point.x * edge + point.y
+                    } else {
+                        -1
+                    }
                 };
                 let mode = convert::int(args, "mode", 0);
                 let zone = convert::int(args, "zone", 0);
-                Outcome::value(Value::Int(crate::sim::trip::advance(&maps, from, to, index(from), index(to), mode, zone)))
+                Outcome::value(Value::Int(crate::sim::trip::advance(
+                    &maps,
+                    from,
+                    to,
+                    index(from),
+                    index(to),
+                    mode,
+                    zone,
+                )))
             } else {
                 let mut traffic = city.xtrf.data.clone();
                 let mut scratch = crate::sim::trip::TripScratch::default();
@@ -433,7 +459,11 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
 
             match graphs::advance(city, &values) {
                 Ok((month, elapsed_years)) => {
-                    let mut result = graphs::GraphResult { month, elapsed_years, ..Default::default() };
+                    let mut result = graphs::GraphResult {
+                        month,
+                        elapsed_years,
+                        ..Default::default()
+                    };
                     result.base.ok = true;
                     Outcome::value(result.to_value())
                 }

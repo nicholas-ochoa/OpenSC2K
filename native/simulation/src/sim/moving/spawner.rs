@@ -84,17 +84,15 @@ pub fn spawn_helicopter(data: &mut [u8], text: &mut [u8], point: Vec2i, random: 
     things::write(data, offset + FIELD_LABEL, overlay::read(text, index));
     overlay::write(text, index, overlay::thing_id(record));
 
-    Spawned { spawned: true, record, point, ..Default::default() }
+    Spawned {
+        spawned: true,
+        record,
+        point,
+        ..Default::default()
+    }
 }
 
-pub fn spawn_airplane(
-    data: &mut [u8],
-    text: &mut [u8],
-    point: Vec2i,
-    runway_axis: i64,
-    random: &mut SimRandom,
-    map_edge: i64,
-) -> Spawned {
+pub fn spawn_airplane(data: &mut [u8], text: &mut [u8], point: Vec2i, runway_axis: i64, random: &mut SimRandom, map_edge: i64) -> Spawned {
     let source_index = motion::index(point, map_edge);
 
     if source_index < 0
@@ -166,17 +164,15 @@ pub fn spawn_airplane(
     things::write(data, offset + FIELD_LABEL, overlay::read(text, attached_index));
     overlay::write(text, attached_index, overlay::thing_id(record));
 
-    Spawned { spawned: true, record, point: attached, ..Default::default() }
+    Spawned {
+        spawned: true,
+        record,
+        point: attached,
+        ..Default::default()
+    }
 }
 
-pub fn spawn_ship(
-    terrain: &[u8],
-    data: &mut [u8],
-    text: &mut [u8],
-    target: Vec2i,
-    random: &mut SimRandom,
-    map_edge: i64,
-) -> Spawned {
+pub fn spawn_ship(terrain: &[u8], data: &mut [u8], text: &mut [u8], target: Vec2i, random: &mut SimRandom, map_edge: i64) -> Spawned {
     if count_type(data, TYPE_SHIP) >= scale(map_edge) {
         return Spawned::default();
     }
@@ -244,7 +240,13 @@ pub fn spawn_ship(
     overlay::write(text, start_index, overlay::thing_id(record));
     things::set_ship_home(data, record, start);
 
-    Spawned { spawned: true, record, point: start, target, goal: 0 }
+    Spawned {
+        spawned: true,
+        record,
+        point: start,
+        target,
+        goal: 0,
+    }
 }
 
 pub fn spawn_sailboats(
@@ -294,15 +296,7 @@ pub fn spawn_sailboats(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn spawn_maxis_man(
-    data: &mut [u8],
-    text: &mut [u8],
-    point: Vec2i,
-    target: Vec2i,
-    goal: i64,
-    height: i64,
-    map_edge: i64,
-) -> Spawned {
+pub fn spawn_maxis_man(data: &mut [u8], text: &mut [u8], point: Vec2i, target: Vec2i, goal: i64, height: i64, map_edge: i64) -> Spawned {
     let index = motion::index(point, map_edge);
     let target_index = motion::index(target, map_edge);
 
@@ -310,8 +304,7 @@ pub fn spawn_maxis_man(
         || target_index < 0
         || overlay::blocks_thing(overlay::read(text, index))
         || count_type(data, TYPE_MAXIS_MAN) >= 1
-        || (things::is_record_target(goal)
-            && (goal < FIRST_RECORD || things::target_record(goal) >= things::count(data)))
+        || (things::is_record_target(goal) && (goal < FIRST_RECORD || things::target_record(goal) >= things::count(data)))
     {
         return Spawned::default();
     }
@@ -337,7 +330,13 @@ pub fn spawn_maxis_man(
     things::write(data, offset + FIELD_GOAL, goal);
     overlay::write(text, index, overlay::thing_id(record));
 
-    Spawned { spawned: true, record, point, target, goal }
+    Spawned {
+        spawned: true,
+        record,
+        point,
+        target,
+        goal,
+    }
 }
 
 pub fn spawn_train(
@@ -434,10 +433,7 @@ fn train_direction(buildings: &[u8], text: &[u8], point: Vec2i, initial_directio
         let neighbor = point + CARDINAL_DIRECTIONS[direction as usize];
         let index = motion::index(neighbor, map_edge);
 
-        if index >= 0
-            && !overlay::blocks_thing(overlay::read(text, index))
-            && train_route_tile(buildings[index as usize] as i64)
-        {
+        if index >= 0 && !overlay::blocks_thing(overlay::read(text, index)) && train_route_tile(buildings[index as usize] as i64) {
             return direction;
         }
     }
@@ -515,9 +511,10 @@ pub fn spawn_near(
             }
         }
         4 => {
-            if let Some(found) = points.iter().find(|near| {
-                spawn_train_record(&city.xbld.data, &mut data, &mut text, **near, game_random, lfsr_random, map_edge)
-            }) {
+            if let Some(found) = points
+                .iter()
+                .find(|near| spawn_train_record(&city.xbld.data, &mut data, &mut text, **near, game_random, lfsr_random, map_edge))
+            {
                 point = *found;
             }
         }
@@ -548,8 +545,7 @@ mod tests {
                 for roll in [0, 32767] {
                     let mut city = empty_city(edge);
                     let mut random = sequence_random(&[0, direction, roll, 999]);
-                    let spawned =
-                        spawn_airplane(&mut city.xthg.data, &mut city.xtxt.data, Vec2i::new(5, 5), 0, &mut random, edge);
+                    let spawned = spawn_airplane(&mut city.xthg.data, &mut city.xtxt.data, Vec2i::new(5, 5), 0, &mut random, edge);
                     assert!(spawned.spawned, "a small map admits an incoming airplane");
                     let entry = spawned.point;
                     assert!(entry.x >= 0 && entry.y >= 0 && entry.x < edge && entry.y < edge);
@@ -568,14 +564,24 @@ mod tests {
 
             let mut city = empty_city(edge);
             city.xter.data.fill(0x10);
-            let spawned = spawn_ship(&city.xter.data, &mut city.xthg.data, &mut city.xtxt.data, point, &mut sequence_random(&[0]), edge);
+            let spawned = spawn_ship(
+                &city.xter.data,
+                &mut city.xthg.data,
+                &mut city.xtxt.data,
+                point,
+                &mut sequence_random(&[0]),
+                edge,
+            );
             assert!(spawned.spawned, "a small map keeps cargo ship capacity");
 
             let mut city = empty_city(edge);
             city.xbit.data.fill(4);
             let mut lfsr = sequence_lfsr(&[0]);
             let (buildings, flags) = (&city.xbld.data, &city.xbit.data);
-            assert_eq!(spawn_sailboats(buildings, flags, &mut city.xthg.data, &mut city.xtxt.data, point, &mut lfsr, edge), 4);
+            assert_eq!(
+                spawn_sailboats(buildings, flags, &mut city.xthg.data, &mut city.xtxt.data, point, &mut lfsr, edge),
+                4
+            );
             let far = Vec2i::new(8, 8);
             assert_eq!(
                 spawn_sailboats(buildings, flags, &mut city.xthg.data, &mut city.xtxt.data, far, &mut lfsr, edge),
@@ -591,7 +597,10 @@ mod tests {
             };
             let mut randoms = crate::sim::random::Randoms::new(1, 1, 1);
             let crate::sim::random::Randoms { random, lfsr, game } = &mut randoms;
-            assert!(crate::sim::moving::phase::run(&mut city, random, lfsr, game, &options).base.ok, "small-map sailboats tick");
+            assert!(
+                crate::sim::moving::phase::run(&mut city, random, lfsr, game, &options).base.ok,
+                "small-map sailboats tick"
+            );
         }
     }
 
@@ -601,7 +610,13 @@ mod tests {
             for start in [Vec2i::new(edge - 4, edge - 4), Vec2i::new(edge - 3, edge - 3)] {
                 let mut city = empty_city(edge);
 
-                for delta in [Vec2i::ZERO, Vec2i::new(-1, 0), Vec2i::new(1, 0), Vec2i::new(0, -1), Vec2i::new(0, 1)] {
+                for delta in [
+                    Vec2i::ZERO,
+                    Vec2i::new(-1, 0),
+                    Vec2i::new(1, 0),
+                    Vec2i::new(0, -1),
+                    Vec2i::new(0, 1),
+                ] {
                     let track = start + delta;
                     city.xbld.data[(track.x * edge + track.y) as usize] = tiles::RAIL_STRAIGHT_1 as u8;
                 }
@@ -618,7 +633,11 @@ mod tests {
                 assert_eq!(spawned, start.x == edge - 4, "trains use the actual edge margin at {edge}");
 
                 if spawned {
-                    assert_eq!(things::read(&city.xthg.data, RECORD_SIZE + FIELD_X), start.x, "trains keep wide coordinates");
+                    assert_eq!(
+                        things::read(&city.xthg.data, RECORD_SIZE + FIELD_X),
+                        start.x,
+                        "trains keep wide coordinates"
+                    );
                 }
             }
         }
@@ -630,8 +649,16 @@ mod tests {
         let mut text = vec![0u8; 128 * 128];
         let spawned = spawn_airplane(&mut data, &mut text, Vec2i::new(20, 20), 2, &mut sequence_random(&[0, 2, 7]), 128);
         assert!(spawned.spawned, "the airplane creator accepts an empty moving-thing pool");
-        assert_eq!(&data[13..18], &[7, 0x23, 127, 17, 16], "a map-edge airplane stores its edge, direction, height, and runway state");
-        assert_eq!((data[20], data[21], text[127 * 128 + 17]), (4, 20, 202), "a map-edge airplane stores its runway target and link");
+        assert_eq!(
+            &data[13..18],
+            &[7, 0x23, 127, 17, 16],
+            "a map-edge airplane stores its edge, direction, height, and runway state"
+        );
+        assert_eq!(
+            (data[20], data[21], text[127 * 128 + 17]),
+            (4, 20, 202),
+            "a map-edge airplane stores its runway target and link"
+        );
 
         let mut data = vec![0u8; 480];
         let mut text = vec![0u8; 128 * 128];
@@ -639,7 +666,10 @@ mod tests {
         let spawned = spawn_maxis_man(&mut data, &mut text, Vec2i::new(18, 20), Vec2i::new(30, 20), 241, 7, 128);
         assert!(spawned.spawned && spawned.record == 1);
         assert_eq!(data[12] as i64, TYPE_MAXIS_MAN);
-        assert_eq!((data[13], data[15], data[16], data[17], data[20], data[21], data[23]), (2, 18, 20, 7, 30, 20, 241));
+        assert_eq!(
+            (data[13], data[15], data[16], data[17], data[20], data[21], data[23]),
+            (2, 18, 20, 7, 30, 20, 241)
+        );
         assert_eq!(text[18 * 128 + 20], 202, "Maxis Man links its record and target");
         let again = spawn_maxis_man(&mut data, &mut text, Vec2i::new(17, 20), Vec2i::new(30, 20), 241, 7, 128);
         assert!(!again.spawned, "Maxis Man dispatch keeps one active hero");
@@ -654,9 +684,19 @@ mod tests {
             data[record * 12] = 7;
         }
 
-        let spawned =
-            spawn_train(&buildings, &mut data, &mut text, Vec2i::new(20, 20), &mut sequence_game(&[0]), &mut sequence_lfsr(&[0]), 128);
+        let spawned = spawn_train(
+            &buildings,
+            &mut data,
+            &mut text,
+            Vec2i::new(20, 20),
+            &mut sequence_game(&[0]),
+            &mut sequence_lfsr(&[0]),
+            128,
+        );
         assert!(spawned, "a full-pool train keeps the unchecked allocation result");
-        assert!(data[0] == 11 && text[20 * 128 + 18] == 201, "a full-pool train writes reserved record zero like the original");
+        assert!(
+            data[0] == 11 && text[20 * 128 + 18] == 201,
+            "a full-pool train writes reserved record zero like the original"
+        );
     }
 }

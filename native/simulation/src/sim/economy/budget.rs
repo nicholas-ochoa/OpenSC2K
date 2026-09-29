@@ -74,7 +74,11 @@ pub fn settle_year(city: &mut City, annual_budget_approved: bool) -> BudgetResul
     let year_end = read_u32_be(&misc, misc_layout::YEAR_END) != 0;
 
     if year_end && month == 0 && read_u32_be(&misc, misc_layout::AUTO_BUDGET) == 0 && !annual_budget_approved {
-        let mut interactive = BudgetResult { month, requires_annual_budget: true, ..Default::default() };
+        let mut interactive = BudgetResult {
+            month,
+            requires_annual_budget: true,
+            ..Default::default()
+        };
         interactive.base.ok = true;
         interactive.base.complete = false;
         interactive.base.timing = span.finish();
@@ -135,10 +139,7 @@ pub fn run_month(city: &mut City, random: &mut SimRandom, settlement: &BudgetRes
     let mut auto_budget_disabled = false;
 
     // The annual facility update can change funds before this check.
-    if settlement.settled_year
-        && read_i32_be(&misc, misc_layout::FUNDS) < 0
-        && read_u32_be(&misc, misc_layout::AUTO_BUDGET) != 0
-    {
+    if settlement.settled_year && read_i32_be(&misc, misc_layout::FUNDS) < 0 && read_u32_be(&misc, misc_layout::AUTO_BUDGET) != 0 {
         write_u32_be(&mut misc, misc_layout::AUTO_BUDGET, 0);
         auto_budget_disabled = true;
     }
@@ -236,7 +237,9 @@ pub fn run_month(city: &mut City, random: &mut SimRandom, settlement: &BudgetRes
     }
 
     span.mark("store budget");
-    let current_costs = (0..budget::COUNT).map(|budget_id| read_i32_be(&misc, budget_offset(budget_id)) as i32).collect();
+    let current_costs = (0..budget::COUNT)
+        .map(|budget_id| read_i32_be(&misc, budget_offset(budget_id)) as i32)
+        .collect();
     let funds_after = read_i32_be(&misc, misc_layout::FUNDS);
     city.misc.replace(misc);
 
@@ -282,13 +285,13 @@ pub fn run(city: &mut City, random: &mut SimRandom, annual_budget_approved: bool
 }
 
 pub fn requires_annual_budget(city: &City) -> bool {
-    city.age_in_days() % DAYS_PER_YEAR == 0
-        && city.misc_u32(misc_layout::YEAR_END) != 0
-        && city.misc_u32(misc_layout::AUTO_BUDGET) == 0
+    city.age_in_days() % DAYS_PER_YEAR == 0 && city.misc_u32(misc_layout::YEAR_END) != 0 && city.misc_u32(misc_layout::AUTO_BUDGET) == 0
 }
 
 pub fn funding_values(city: &City) -> Vec<i32> {
-    (0..budget::COUNT).map(|budget_id| city.misc_i32(budget_offset(budget_id) + budget::FUNDING) as i32).collect()
+    (0..budget::COUNT)
+        .map(|budget_id| city.misc_i32(budget_offset(budget_id) + budget::FUNDING) as i32)
+        .collect()
 }
 
 /// BudgetPhase.set_funding.

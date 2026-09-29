@@ -28,10 +28,7 @@ pub const SOUND_EXPLODE: i64 = 504;
 /// GrowthMaintenance._maintenance_fails. The random draw happens only when
 /// the funding is not full.
 pub fn maintenance_fails(misc: &[u8], budget_index: i64, random: &mut SimRandom, random_range: i64, additional: i64) -> bool {
-    let funding = read_i32_be(
-        misc,
-        misc_layout::BUDGETS + budget_index * sc2budget_layout::RECORD_SIZE + 4,
-    );
+    let funding = read_i32_be(misc, misc_layout::BUDGETS + budget_index * sc2budget_layout::RECORD_SIZE + 4);
 
     funding != 100 && additional + random.next_u15() % random_range >= funding
 }
@@ -193,9 +190,7 @@ pub fn process_microsim(
         return;
     }
 
-    if !(tiles::PLYMOUTH_ARCOLOGY..=tiles::LAUNCH_ARCOLOGY).contains(&tile)
-        || maps.zones[i] as i64 & zone::CORNERS_MASK != 0x80
-    {
+    if !(tiles::PLYMOUTH_ARCOLOGY..=tiles::LAUNCH_ARCOLOGY).contains(&tile) || maps.zones[i] as i64 & zone::CORNERS_MASK != 0x80 {
         return;
     }
 
@@ -213,7 +208,8 @@ pub fn process_microsim(
     }
 
     let coarse = grid::index(land_value, edge, point.x, point.y);
-    let mut value = (crate::sim::bytes::at(land_value, coarse) >> 5) - (crate::sim::bytes::at(crime, coarse) >> 5)
+    let mut value = (crate::sim::bytes::at(land_value, coarse) >> 5)
+        - (crate::sim::bytes::at(crime, coarse) >> 5)
         - (crate::sim::bytes::at(pollution, coarse) >> 5)
         + 12;
 

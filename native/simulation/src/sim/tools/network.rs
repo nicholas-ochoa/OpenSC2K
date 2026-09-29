@@ -18,32 +18,82 @@ pub const MODE_POWER: i64 = 2;
 pub const MODE_SUBWAY: i64 = 3;
 pub const MODE_PIPE: i64 = 4;
 pub const DIRECTIONS: [Vec2i; 4] = [Vec2i::new(0, -1), Vec2i::new(1, 0), Vec2i::new(0, 1), Vec2i::new(-1, 0)];
-pub const TERRAIN_REQUIRES_GRADING: [bool; 16] =
-    [false, false, false, false, false, true, true, true, true, true, true, true, true, false, false, false];
-pub const TERRAIN_IS_NETWORK_SLOPE: [bool; 16] =
-    [false, true, true, true, true, false, false, false, false, true, true, true, true, false, false, false];
+pub const TERRAIN_REQUIRES_GRADING: [bool; 16] = [
+    false, false, false, false, false, true, true, true, true, true, true, true, true, false, false, false,
+];
+pub const TERRAIN_IS_NETWORK_SLOPE: [bool; 16] = [
+    false, true, true, true, true, false, false, false, false, true, true, true, true, false, false, false,
+];
 pub const NETWORK_SLOPE_SHAPES: [i64; 5] = [0, 2, 3, 4, 5];
 
 /// One row per terrain shape, one column per direction (N, E, S, W).
 const GRADED_TERRAIN: [i64; 64] = {
     use terrain_ids::*;
     [
-        FLAT, FLAT, SLOPE_TOP_LEFT, FLAT, // FLAT
-        FLAT, FLAT, FLAT, FLAT, // SLOPE_TOP_LEFT
-        FLAT, FLAT, SLOPE_TOP_LEFT, SLOPE_TOP_LEFT, // SLOPE_TOP_RIGHT
-        FLAT, FLAT, SLOPE_TOP_LEFT, SLOPE_TOP_LEFT, // SLOPE_BOTTOM_RIGHT
-        FLAT, FLAT, FLAT, FLAT, // SLOPE_BOTTOM_LEFT
-        FLAT, FLAT, FLAT, FLAT, // RAISED_EXCEPT_BOTTOM
-        FLAT, FLAT, FLAT, FLAT, // RAISED_EXCEPT_LEFT
-        FLAT, FLAT, FLAT, FLAT, // RAISED_EXCEPT_TOP
-        FLAT, FLAT, FLAT, FLAT, // RAISED_EXCEPT_RIGHT
-        SLOPE_TOP_RIGHT, SLOPE_TOP_LEFT, SLOPE_TOP_RIGHT, SLOPE_TOP_LEFT, // CORNER_TOP
-        SLOPE_TOP_RIGHT, SLOPE_BOTTOM_RIGHT, SLOPE_TOP_RIGHT, SLOPE_BOTTOM_RIGHT, // CORNER_RIGHT
-        SLOPE_BOTTOM_LEFT, SLOPE_BOTTOM_RIGHT, SLOPE_BOTTOM_LEFT, SLOPE_BOTTOM_RIGHT, // CORNER_BOTTOM
-        SLOPE_BOTTOM_LEFT, SLOPE_TOP_LEFT, SLOPE_BOTTOM_LEFT, SLOPE_TOP_LEFT, // CORNER_LEFT
-        FLAT, FLAT, SLOPE_TOP_LEFT, RAISED_EXCEPT_LEFT, // RAISED
-        FLAT, FLAT, RAISED_EXCEPT_TOP, CORNER_BOTTOM, // UNUSED_0E
-        SLOPE_TOP_LEFT, CORNER_TOP, SLOPE_TOP_LEFT, CORNER_RIGHT, // UNUSED_0F
+        FLAT,
+        FLAT,
+        SLOPE_TOP_LEFT,
+        FLAT, // FLAT
+        FLAT,
+        FLAT,
+        FLAT,
+        FLAT, // SLOPE_TOP_LEFT
+        FLAT,
+        FLAT,
+        SLOPE_TOP_LEFT,
+        SLOPE_TOP_LEFT, // SLOPE_TOP_RIGHT
+        FLAT,
+        FLAT,
+        SLOPE_TOP_LEFT,
+        SLOPE_TOP_LEFT, // SLOPE_BOTTOM_RIGHT
+        FLAT,
+        FLAT,
+        FLAT,
+        FLAT, // SLOPE_BOTTOM_LEFT
+        FLAT,
+        FLAT,
+        FLAT,
+        FLAT, // RAISED_EXCEPT_BOTTOM
+        FLAT,
+        FLAT,
+        FLAT,
+        FLAT, // RAISED_EXCEPT_LEFT
+        FLAT,
+        FLAT,
+        FLAT,
+        FLAT, // RAISED_EXCEPT_TOP
+        FLAT,
+        FLAT,
+        FLAT,
+        FLAT, // RAISED_EXCEPT_RIGHT
+        SLOPE_TOP_RIGHT,
+        SLOPE_TOP_LEFT,
+        SLOPE_TOP_RIGHT,
+        SLOPE_TOP_LEFT, // CORNER_TOP
+        SLOPE_TOP_RIGHT,
+        SLOPE_BOTTOM_RIGHT,
+        SLOPE_TOP_RIGHT,
+        SLOPE_BOTTOM_RIGHT, // CORNER_RIGHT
+        SLOPE_BOTTOM_LEFT,
+        SLOPE_BOTTOM_RIGHT,
+        SLOPE_BOTTOM_LEFT,
+        SLOPE_BOTTOM_RIGHT, // CORNER_BOTTOM
+        SLOPE_BOTTOM_LEFT,
+        SLOPE_TOP_LEFT,
+        SLOPE_BOTTOM_LEFT,
+        SLOPE_TOP_LEFT, // CORNER_LEFT
+        FLAT,
+        FLAT,
+        SLOPE_TOP_LEFT,
+        RAISED_EXCEPT_LEFT, // RAISED
+        FLAT,
+        FLAT,
+        RAISED_EXCEPT_TOP,
+        CORNER_BOTTOM, // UNUSED_0E
+        SLOPE_TOP_LEFT,
+        CORNER_TOP,
+        SLOPE_TOP_LEFT,
+        CORNER_RIGHT, // UNUSED_0F
     ]
 };
 
@@ -261,8 +311,8 @@ pub fn retile_surface(
     }
 
     let mut connections = 0;
-    let has_connection_label = overlay::count(text_overlays) == map_edge * map_edge
-        && overlay::read(text_overlays, index) == sc2overlay_layout::CONNECTION_MARKER;
+    let has_connection_label =
+        overlay::count(text_overlays) == map_edge * map_edge && overlay::read(text_overlays, index) == sc2overlay_layout::CONNECTION_MARKER;
 
     for direction in 0..4 {
         let near = point + DIRECTIONS[direction as usize];

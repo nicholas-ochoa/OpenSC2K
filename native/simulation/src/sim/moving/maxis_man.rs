@@ -154,7 +154,10 @@ fn maxis_man_target(text: &[u8], data: &mut [u8], offset: i64, current: Vec2i, g
 
         let target_offset = things::target_record(goal) * RECORD_SIZE;
 
-        return Target::Point(Vec2i::new(things::read(data, target_offset + 3), things::read(data, target_offset + 4)));
+        return Target::Point(Vec2i::new(
+            things::read(data, target_offset + 3),
+            things::read(data, target_offset + 4),
+        ));
     }
 
     let is_disaster_marker = |text: &[u8], tile_index: i64| {
@@ -187,14 +190,7 @@ fn maxis_man_target(text: &[u8], data: &mut [u8], offset: i64, current: Vec2i, g
     Target::Missing
 }
 
-fn move_maxis_man(
-    text: &mut [u8],
-    data: &mut [u8],
-    record: i64,
-    direction: i64,
-    counters: &mut MovingThingResult,
-    map_edge: i64,
-) -> bool {
+fn move_maxis_man(text: &mut [u8], data: &mut [u8], record: i64, direction: i64, counters: &mut MovingThingResult, map_edge: i64) -> bool {
     if motion::advance(SPEED, text, data, record, direction, map_edge) < 0 {
         counters.removed_maxis_men += 1;
 

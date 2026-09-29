@@ -19,8 +19,7 @@ pub fn costs_for_misc(misc: &[u8]) -> Vec<i64> {
     let residential = read_i32_be(misc, budget_offset(budget::RESIDENTIAL));
     let commercial = read_i32_be(misc, budget_offset(budget::COMMERCIAL));
     let industrial = read_i32_be(misc, budget_offset(budget::INDUSTRIAL));
-    let population =
-        to_i32(read_u32_be(misc, misc_layout::ARCOLOGY_POPULATION) + read_u32_be(misc, misc_layout::NORMAL_POPULATION));
+    let population = to_i32(read_u32_be(misc, misc_layout::ARCOLOGY_POPULATION) + read_u32_be(misc, misc_layout::NORMAL_POPULATION));
 
     vec![
         commercial,

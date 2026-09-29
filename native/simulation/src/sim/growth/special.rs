@@ -30,8 +30,14 @@ const SPECIAL_SIMPLE_TILES: [i64; 9] = [
     tiles::HANGAR_1,
     tiles::RADAR,
 ];
-const SPECIAL_TWO_BY_TWO_TILES: [i64; 6] =
-    [tiles::PARKING_LOT_1, tiles::PARKING_LOT_2, tiles::LOADING_BAY, tiles::TOP_SECRET, tiles::CARGO_YARD, tiles::HANGAR_2];
+const SPECIAL_TWO_BY_TWO_TILES: [i64; 6] = [
+    tiles::PARKING_LOT_1,
+    tiles::PARKING_LOT_2,
+    tiles::LOADING_BAY,
+    tiles::TOP_SECRET,
+    tiles::CARGO_YARD,
+    tiles::HANGAR_2,
+];
 const CARDINAL_DIRECTIONS: [Vec2i; 4] = [Vec2i::new(0, 1), Vec2i::new(1, 0), Vec2i::new(0, -1), Vec2i::new(-1, 0)];
 
 /// The maps that special zone growth reads and writes.
@@ -295,7 +301,9 @@ fn seaport_selection(
                 counters.spawned_ships += 1;
                 counters.ship_home_found = true;
                 counters.ship_home = ship.point;
-                counters.sound_events.push(SoundEvent::for_thing(SOUND_SHIP, 3, ship.record, ship.point));
+                counters
+                    .sound_events
+                    .push(SoundEvent::for_thing(SOUND_SHIP, 3, ship.record, ship.point));
             }
         }
 
@@ -505,21 +513,15 @@ fn place_crane_and_pier(maps: &mut SpecialMaps, point: Vec2i, zone_type: i64) ->
         checked = checked + direction;
         let index = index_of(checked, edge);
 
-        if index < 0
-            || maps.flags[index as usize] as i64 & flag_bits::WATER == 0
-            || maps.buildings[index as usize] as i64 != tiles::EMPTY
-        {
+        if index < 0 || maps.flags[index as usize] as i64 & flag_bits::WATER == 0 || maps.buildings[index as usize] as i64 != tiles::EMPTY {
             return Placement::failed();
         }
     }
 
     let last = index_of(checked, edge);
-    let last_word =
-        ((maps.altitude[(last * 2) as usize] as i64) << 8) | maps.altitude[(last * 2 + 1) as usize] as i64;
+    let last_word = ((maps.altitude[(last * 2) as usize] as i64) << 8) | maps.altitude[(last * 2 + 1) as usize] as i64;
 
-    if ((last_word & altitude_layout::WATER_MASK) >> altitude_layout::WATER_SHIFT)
-        < (last_word & altitude_layout::LEVEL_MASK) + 2
-    {
+    if ((last_word & altitude_layout::WATER_MASK) >> altitude_layout::WATER_SHIFT) < (last_word & altitude_layout::LEVEL_MASK) + 2 {
         return Placement::failed();
     }
 
@@ -563,7 +565,12 @@ fn place_special_two_by_two(maps: &mut SpecialMaps, point: Vec2i, tile: i64, zon
         return Placement::failed();
     }
 
-    let points = [anchor, anchor + Vec2i::new(1, 0), anchor + Vec2i::new(0, 1), anchor + Vec2i::new(1, 1)];
+    let points = [
+        anchor,
+        anchor + Vec2i::new(1, 0),
+        anchor + Vec2i::new(0, 1),
+        anchor + Vec2i::new(1, 1),
+    ];
 
     for (point_index, checked) in points.iter().enumerate() {
         let index = index_of(*checked, edge) as usize;
@@ -589,7 +596,10 @@ fn place_special_two_by_two(maps: &mut SpecialMaps, point: Vec2i, tile: i64, zon
         clear_special_building(maps, checked);
     }
 
-    let before: Vec<i64> = points.iter().map(|checked| maps.buildings[index_of(*checked, edge) as usize] as i64).collect();
+    let before: Vec<i64> = points
+        .iter()
+        .map(|checked| maps.buildings[index_of(*checked, edge) as usize] as i64)
+        .collect();
     let allow_edge = maps.allow_edge_buildings;
     place_special_item(maps, anchor, tile, 2, zone_type, allow_edge);
 
@@ -726,7 +736,12 @@ fn clear_special_building(maps: &mut SpecialMaps, point: Vec2i) {
     let tile = maps.buildings[selected as usize] as i64;
     let points: Vec<Vec2i> = if !(tiles::STATUE..=tiles::RADAR).contains(&tile) {
         let anchor = Vec2i::new(point.x & !1, point.y & !1);
-        vec![anchor, anchor + Vec2i::new(1, 0), anchor + Vec2i::new(0, 1), anchor + Vec2i::new(1, 1)]
+        vec![
+            anchor,
+            anchor + Vec2i::new(1, 0),
+            anchor + Vec2i::new(0, 1),
+            anchor + Vec2i::new(1, 1),
+        ]
     } else {
         vec![point]
     };
@@ -763,7 +778,18 @@ mod tests {
 
     fn maps(city: &mut City, rotation: i64) -> SpecialMaps<'_> {
         let map_edge = city.map_size;
-        let City { xbld, xzon, xund, xbit, xter, altm, xtxt, xthg, misc, .. } = city;
+        let City {
+            xbld,
+            xzon,
+            xund,
+            xbit,
+            xter,
+            altm,
+            xtxt,
+            xthg,
+            misc,
+            ..
+        } = city;
 
         SpecialMaps {
             buildings: &mut xbld.data,
@@ -782,7 +808,10 @@ mod tests {
     }
 
     fn state(city: &City) -> Vec<Vec<u8>> {
-        [&city.xbld, &city.xzon, &city.xund, &city.xbit, &city.xter, &city.misc].iter().map(|chunk| chunk.data.clone()).collect()
+        [&city.xbld, &city.xzon, &city.xund, &city.xbit, &city.xter, &city.misc]
+            .iter()
+            .map(|chunk| chunk.data.clone())
+            .collect()
     }
 
     #[test]
@@ -791,19 +820,31 @@ mod tests {
             let base = fixture(edge);
 
             for rotation in 0..4 {
-                for tile in
-                    [tiles::CONTROL_TOWER_2, tiles::SEAPORT_WAREHOUSE, tiles::HANGAR_1, tiles::PARKING_LOT_2, tiles::TOP_SECRET, tiles::CARGO_YARD]
-                {
+                for tile in [
+                    tiles::CONTROL_TOWER_2,
+                    tiles::SEAPORT_WAREHOUSE,
+                    tiles::HANGAR_1,
+                    tiles::PARKING_LOT_2,
+                    tiles::TOP_SECRET,
+                    tiles::CARGO_YARD,
+                ] {
                     let mut city = base.clone();
                     let point = Vec2i::new(edge - 12, edge - 12);
                     let result = grow_special_zone(&mut maps(&mut city, rotation), point, tile, 7);
                     let expected = if [0xef, 0xf1, 0xf2].contains(&tile) { 4 } else { 1 };
-                    assert!(result.ok && result.changed_tiles == expected, "military tile {tile} grows at edge {edge}");
+                    assert!(
+                        result.ok && result.changed_tiles == expected,
+                        "military tile {tile} grows at edge {edge}"
+                    );
                     let index = (point.x * edge + point.y) as usize;
                     assert_eq!(city.xbld.data[index] as i64, tile);
                     assert_eq!(city.xzon.data[index] & 15, 7, "the military zone survives growth");
                     assert_eq!(tile_count(&city.misc.data, tile, true, edge), result.changed_tiles);
-                    assert_eq!(tile_count(&city.misc.data, tile, false, edge), 0, "the civilian count stays separate");
+                    assert_eq!(
+                        tile_count(&city.misc.data, tile, false, edge),
+                        0,
+                        "the civilian count stays separate"
+                    );
                 }
 
                 let mut city = base.clone();
@@ -811,7 +852,11 @@ mod tests {
                 write_u32_be(&mut city.misc.data, misc_layout::TILE_COUNTS + tiles::RUNWAY * 4, 1);
                 let runway = grow_special_zone(&mut maps(&mut city, rotation), point, tiles::RUNWAY, 7);
                 assert!(runway.ok && runway.changed_tiles == 5, "a military runway grows");
-                assert_eq!(city.xbld.data[(point.x * edge + point.y + 4) as usize] as i64, tiles::RUNWAY, "military parity ignores the civilian runway count");
+                assert_eq!(
+                    city.xbld.data[(point.x * edge + point.y + 4) as usize] as i64,
+                    tiles::RUNWAY,
+                    "military parity ignores the civilian runway count"
+                );
             }
         }
     }
@@ -839,18 +884,38 @@ mod tests {
             let mut city = base.clone();
             city.xzon.data[anchor + offset] = 8;
             let before = state(&city);
-            assert!(!grow_special_zone(&mut maps(&mut city, 0), point, tiles::PARKING_LOT_2, 7).ok, "every cell has the same zone");
+            assert!(
+                !grow_special_zone(&mut maps(&mut city, 0), point, tiles::PARKING_LOT_2, 7).ok,
+                "every cell has the same zone"
+            );
             assert_eq!(state(&city), before);
         }
 
         let mut blocked = base.clone();
         blocked.xbld.data[anchor] = tiles::MISSILE_SILO as u8;
-        assert!(!grow_special_zone(&mut maps(&mut blocked, 0), point, tiles::PARKING_LOT_2, 7).ok, "a high building ID blocks the anchor");
+        assert!(
+            !grow_special_zone(&mut maps(&mut blocked, 0), point, tiles::PARKING_LOT_2, 7).ok,
+            "a high building ID blocks the anchor"
+        );
 
         // Extra military guards do not suppress clearing or change the fallback.
-        for obstruction in [tiles::FIRST_ROAD, tiles::RADIOACTIVE_WASTE, tiles::SMALL_PARK, tiles::MISSILE_SILO, -1, -2, -3] {
+        for obstruction in [
+            tiles::FIRST_ROAD,
+            tiles::RADIOACTIVE_WASTE,
+            tiles::SMALL_PARK,
+            tiles::MISSILE_SILO,
+            -1,
+            -2,
+            -3,
+        ] {
             let mut city = base.clone();
-            replace_special_building(&mut city.xbld.data, &city.xzon.data, &mut city.misc.data, aircraft as i64, tiles::FIGHTER_JET);
+            replace_special_building(
+                &mut city.xbld.data,
+                &city.xzon.data,
+                &mut city.misc.data,
+                aircraft as i64,
+                tiles::FIGHTER_JET,
+            );
             city.xbit.data[aircraft] = 0xf3;
             city.xzon.data[aircraft] = 0xf7;
 
@@ -868,16 +933,28 @@ mod tests {
             process(&mut maps(&mut city, 0), point, &mut SimRandom::new(3), &mut counters);
             let placed = obstruction == -1 || obstruction == tiles::MISSILE_SILO;
             let expected = if placed { tiles::PARKING_LOT_2 } else { tiles::EMPTY };
-            assert_eq!(city.xbld.data[anchor] as i64, expected, "army growth keeps its outcome without a hangar fallback");
+            assert_eq!(
+                city.xbld.data[anchor] as i64, expected,
+                "army growth keeps its outcome without a hangar fallback"
+            );
             assert_eq!(city.xbld.data[aircraft] as i64, expected, "clearing removes the existing aircraft");
             assert_eq!(tile_count(&city.misc.data, tiles::FIGHTER_JET, true, 128), 0);
-            assert_eq!(tile_count(&city.misc.data, tiles::PARKING_LOT_2, true, 128), if placed { 4 } else { 0 });
+            assert_eq!(
+                tile_count(&city.misc.data, tiles::PARKING_LOT_2, true, 128),
+                if placed { 4 } else { 0 }
+            );
             assert_eq!(city.xbit.data[aircraft], 3, "processing clears utility flags and keeps low flags");
             assert_eq!(city.xzon.data[aircraft] & 15, 7);
-            assert!(city.xund.data == underground && city.xter.data == terrain, "growth keeps underground and terrain");
+            assert!(
+                city.xund.data == underground && city.xter.data == terrain,
+                "growth keeps underground and terrain"
+            );
 
             if [tiles::FIRST_ROAD, tiles::RADIOACTIVE_WASTE, tiles::SMALL_PARK].contains(&obstruction) {
-                assert_eq!(city.xbld.data[other] as i64, obstruction, "common placement rejects road, radiation, or park");
+                assert_eq!(
+                    city.xbld.data[other] as i64, obstruction,
+                    "common placement rejects road, radiation, or park"
+                );
             }
         }
     }
@@ -888,7 +965,13 @@ mod tests {
         let point = Vec2i::new(2, 2);
         let index = 2 * 128 + 2;
 
-        for tile in [tiles::SMALL_PARK, tiles::FIRST_ROAD, tiles::RUNWAY, tiles::CONTROL_TOWER_2, tiles::MISSILE_SILO] {
+        for tile in [
+            tiles::SMALL_PARK,
+            tiles::FIRST_ROAD,
+            tiles::RUNWAY,
+            tiles::CONTROL_TOWER_2,
+            tiles::MISSILE_SILO,
+        ] {
             let mut city = base.clone();
             city.xbld.data[index] = tile as u8;
             city.xbit.data[index] = 0xf3;
@@ -920,7 +1003,18 @@ mod edge_tests {
 
     fn maps(city: &mut City, rotation: i64) -> SpecialMaps<'_> {
         let map_edge = city.map_size;
-        let City { xbld, xzon, xund, xbit, xter, altm, xtxt, xthg, misc, .. } = city;
+        let City {
+            xbld,
+            xzon,
+            xund,
+            xbit,
+            xter,
+            altm,
+            xtxt,
+            xthg,
+            misc,
+            ..
+        } = city;
 
         SpecialMaps {
             buildings: &mut xbld.data,
@@ -946,18 +1040,32 @@ mod edge_tests {
             let last = edge * edge - 1;
             replace_special_underground(&mut city.xund.data, &city.xzon.data, &mut city.misc.data, last, 1);
             let wide = if edge == 128 { 0 } else { 65536 };
-            assert_eq!(read_u32_be(&city.misc.data, misc_layout::SUBWAY_COUNT), wide, "special growth keeps a wide subway count");
+            assert_eq!(
+                read_u32_be(&city.misc.data, misc_layout::SUBWAY_COUNT),
+                wide,
+                "special growth keeps a wide subway count"
+            );
             replace_special_underground(&mut city.xund.data, &city.xzon.data, &mut city.misc.data, last, 0);
-            assert_eq!(read_u32_be(&city.misc.data, misc_layout::SUBWAY_COUNT), 65535, "special growth subway decrement");
+            assert_eq!(
+                read_u32_be(&city.misc.data, misc_layout::SUBWAY_COUNT),
+                65535,
+                "special growth subway decrement"
+            );
 
             for area in [2, 3] {
                 for rotation in 0..4 {
                     let mut city = empty_city(edge);
                     let anchor = Vec2i::new(edge - 3, edge - 3);
-                    assert!(place_special_item(&mut maps(&mut city, rotation), anchor, 0xdc, area, 8, false), "a far special footprint");
+                    assert!(
+                        place_special_item(&mut maps(&mut city, rotation), anchor, 0xdc, area, 8, false),
+                        "a far special footprint"
+                    );
                     let mut city = empty_city(edge);
                     let outside = Vec2i::new(edge - 2, edge - 2);
-                    assert!(!place_special_item(&mut maps(&mut city, rotation), outside, 0xdc, area, 8, false), "the special-zone edge margin");
+                    assert!(
+                        !place_special_item(&mut maps(&mut city, rotation), outside, 0xdc, area, 8, false),
+                        "the special-zone edge margin"
+                    );
                 }
             }
 

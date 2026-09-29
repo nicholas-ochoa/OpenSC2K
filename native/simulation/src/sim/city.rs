@@ -18,7 +18,11 @@ pub struct Chunk {
 
 impl Chunk {
     pub fn new(data: Vec<u8>) -> Self {
-        Self { present: true, data, written: false }
+        Self {
+            present: true,
+            data,
+            written: false,
+        }
     }
 
     /// Mutable access marks the chunk as written, as each GDScript write does.
@@ -47,8 +51,8 @@ impl Chunk {
 
 /// Chunk identifiers that the simulation uses. Other chunks stay in GDScript.
 pub const CHUNK_IDS: [&str; 25] = [
-    "CNAM", "MISC", "ALTM", "XTER", "XBLD", "XZON", "XUND", "XTXT", "XLAB", "XMIC", "XTHG", "XBIT", "XTRF", "XPLT",
-    "XVAL", "XCRM", "XPLC", "XFIR", "XPOP", "XROG", "XGRP", "SCEN", "TEXT", "PICT", "TMPL",
+    "CNAM", "MISC", "ALTM", "XTER", "XBLD", "XZON", "XUND", "XTXT", "XLAB", "XMIC", "XTHG", "XBIT", "XTRF", "XPLT", "XVAL", "XCRM", "XPLC",
+    "XFIR", "XPOP", "XROG", "XGRP", "SCEN", "TEXT", "PICT", "TMPL",
 ];
 
 #[derive(Clone, Debug, Default)]
@@ -86,7 +90,12 @@ pub struct City {
 
 impl City {
     pub fn new(map_size: i64, large_version: i64) -> Self {
-        Self { map_size, large_version, disaster_damage_class: -1, ..Default::default() }
+        Self {
+            map_size,
+            large_version,
+            disaster_damage_class: -1,
+            ..Default::default()
+        }
     }
 
     pub fn chunk(&self, id: &str) -> Option<&Chunk> {
@@ -204,7 +213,9 @@ impl City {
                         - sc2overlay_layout::ORIGINAL_SIGN_COUNT)
                         * sc2label_layout::RECORD_SIZE;
                 }
-                "XTHG" => return sc2thing_layout::ORIGINAL_COUNT * factor * sc2thing_layout::EXTENDED_RECORD_SIZE,
+                "XTHG" => {
+                    return sc2thing_layout::ORIGINAL_COUNT * factor * sc2thing_layout::EXTENDED_RECORD_SIZE;
+                }
                 _ => {}
             }
         }
@@ -255,13 +266,21 @@ impl City {
     pub fn land_altitude(&self, x: i64, y: i64) -> i64 {
         let index = self.index_of(x, y);
 
-        if index < 0 { 0 } else { self.altitude_word(index) & altitude::LAND_MASK }
+        if index < 0 {
+            0
+        } else {
+            self.altitude_word(index) & altitude::LAND_MASK
+        }
     }
 
     pub fn water_altitude(&self, x: i64, y: i64) -> i64 {
         let index = self.index_of(x, y);
 
-        if index < 0 { 0 } else { (self.altitude_word(index) >> altitude::WATER_SHIFT) & altitude::LEVEL_MASK }
+        if index < 0 {
+            0
+        } else {
+            (self.altitude_word(index) >> altitude::WATER_SHIFT) & altitude::LEVEL_MASK
+        }
     }
 
     pub fn tunnel_levels(&self, x: i64, y: i64) -> i64 {
@@ -302,7 +321,11 @@ impl City {
     pub fn text_overlay_id(&self, x: i64, y: i64) -> i64 {
         let index = self.index_of(x, y);
 
-        if index < 0 { 0 } else { super::overlay::read(&self.xtxt.data, index) }
+        if index < 0 {
+            0
+        } else {
+            super::overlay::read(&self.xtxt.data, index)
+        }
     }
 
     fn flag(&self, x: i64, y: i64, mask: i64) -> bool {
@@ -643,7 +666,11 @@ impl City {
 
     /// Chunk identifiers written by the simulation, in CHUNK_IDS order.
     pub fn written_ids(&self) -> Vec<&'static str> {
-        CHUNK_IDS.iter().copied().filter(|id| self.chunk(id).is_some_and(|chunk| chunk.written)).collect()
+        CHUNK_IDS
+            .iter()
+            .copied()
+            .filter(|id| self.chunk(id).is_some_and(|chunk| chunk.written))
+            .collect()
     }
 }
 

@@ -89,7 +89,10 @@ pub fn run(city: &mut City, random: &mut SimRandom) -> EducationHealthResult {
             life_expectancy: [0; POPULATION_COHORTS],
         };
         write_tables(city.misc.mutate(), &cleared);
-        let mut result = EducationHealthResult { empty_city: true, ..Default::default() };
+        let mut result = EducationHealthResult {
+            empty_city: true,
+            ..Default::default()
+        };
         result.base_mut().ok = true;
         result.base_mut().timing = span.finish();
 
@@ -98,14 +101,16 @@ pub fn run(city: &mut City, random: &mut SimRandom) -> EducationHealthResult {
 
     span.mark("service capacities");
     let ordinance_flags = city.misc_u32(misc_layout::ORDINANCES);
-    let mut health_capacity =
-        ((tile_count(city, tiles::HOSPITAL) / 9) * budget_funding(city, sc2budget_layout::HEALTH) * 25) / 100;
+    let mut health_capacity = ((tile_count(city, tiles::HOSPITAL) / 9) * budget_funding(city, sc2budget_layout::HEALTH) * 25) / 100;
     let school_capacity = ((tile_count(city, tiles::SCHOOL) / 9) * budget_funding(city, sc2budget_layout::SCHOOL) * 15) / 100;
-    let college_capacity =
-        ((tile_count(city, tiles::COLLEGE) / 16) * budget_funding(city, sc2budget_layout::COLLEGE) * 50) / 100;
+    let college_capacity = ((tile_count(city, tiles::COLLEGE) / 16) * budget_funding(city, sc2budget_layout::COLLEGE) * 50) / 100;
     let mut newborn_life_expectancy = 85;
 
-    for mask in [ordinances::ANTI_DRUG_MASK, ordinances::CPR_TRAINING_MASK, ordinances::PUBLIC_SMOKING_BAN_MASK] {
+    for mask in [
+        ordinances::ANTI_DRUG_MASK,
+        ordinances::CPR_TRAINING_MASK,
+        ordinances::PUBLIC_SMOKING_BAN_MASK,
+    ] {
         if ordinance_flags & mask != 0 {
             newborn_life_expectancy += 5;
         }
@@ -118,9 +123,15 @@ pub fn run(city: &mut City, random: &mut SimRandom) -> EducationHealthResult {
     span.mark("mortality, aging and schooling");
     let deaths = apply_mortality(&mut tables, random);
     let abandoned_population = city.misc_u32(misc_layout::ZONE_POPULATIONS + 7 * 4);
-    let pollution_penalty =
-        (city.misc_u32(misc_layout::CITY_POLLUTION) / (city_population + abandoned_population * 10 + 1)).min(3);
-    apply_aging(&mut tables, school_capacity, college_capacity, pollution_penalty, ordinance_flags, random);
+    let pollution_penalty = (city.misc_u32(misc_layout::CITY_POLLUTION) / (city_population + abandoned_population * 10 + 1)).min(3);
+    apply_aging(
+        &mut tables,
+        school_capacity,
+        college_capacity,
+        pollution_penalty,
+        ordinance_flags,
+        random,
+    );
     span.mark("births");
     let fertile_population: i64 = tables.population[4..9].iter().sum();
     let mut births = fertile_population / 300;
@@ -282,8 +293,7 @@ fn apply_aging(
         tables.education[target] = (tables.education[target] + moved_education) & 0xffff_ffff;
         let moved_life_expectancy = (tables.life_expectancy[source] * moved_population) / source_population;
         tables.life_expectancy[source] -= moved_life_expectancy;
-        tables.life_expectancy[target] =
-            (tables.life_expectancy[target] + moved_life_expectancy - pollution_penalty) & 0xffff_ffff;
+        tables.life_expectancy[target] = (tables.life_expectancy[target] + moved_life_expectancy - pollution_penalty) & 0xffff_ffff;
         tables.population[source] -= moved_population;
         tables.population[target] += moved_population;
     }
@@ -387,7 +397,11 @@ mod tests {
                 let transferred = points / 60;
                 let expected = 7 + if pro_reading { transferred } else { (transferred - 1).max(0) };
                 assert_eq!(tables.education[5], expected);
-                assert_eq!(tables.education[4], points - transferred, "the source loses only the transferred points");
+                assert_eq!(
+                    tables.education[4],
+                    points - transferred,
+                    "the source loses only the transferred points"
+                );
             }
         }
     }

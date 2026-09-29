@@ -111,7 +111,10 @@ pub fn calculate(city: &City) -> CityValueResult {
         value = to_i32(value + to_i32((count(tile) / divisor) * cost));
     }
 
-    let mut result = CityValueResult { city_value: value, ..Default::default() };
+    let mut result = CityValueResult {
+        city_value: value,
+        ..Default::default()
+    };
     result.base_mut().ok = true;
     result
 }

@@ -18,7 +18,11 @@ impl TraceQueue {
     const SIZE: usize = 512;
 
     pub fn new(start: i64) -> Self {
-        let mut queue = Self { entries: [0; Self::SIZE], head: 0, tail: 0 };
+        let mut queue = Self {
+            entries: [0; Self::SIZE],
+            head: 0,
+            tail: 0,
+        };
         queue.push(start);
         queue
     }
@@ -82,5 +86,10 @@ pub fn building_indices(buildings: &[u8], ids: &[i64]) -> Vec<i64> {
         }
     }
 
-    buildings.iter().enumerate().filter(|(_, building)| wanted[**building as usize]).map(|(index, _)| index as i64).collect()
+    buildings
+        .iter()
+        .enumerate()
+        .filter(|(_, building)| wanted[**building as usize])
+        .map(|(index, _)| index as i64)
+        .collect()
 }

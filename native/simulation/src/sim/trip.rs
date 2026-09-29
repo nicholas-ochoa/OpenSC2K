@@ -117,7 +117,10 @@ pub struct TripResult {
 
 impl TripResult {
     pub fn failure(message: &str) -> Self {
-        Self { error: message.to_string(), ..Default::default() }
+        Self {
+            error: message.to_string(),
+            ..Default::default()
+        }
     }
 }
 
@@ -224,21 +227,18 @@ fn has_walking_destination(zones: &[u8], point: Vec2i, mode: i64, origin_zone: i
 }
 
 /// The walking destinations of a reach query. `any_rci` accepts every RCI zone.
-pub fn walking_destinations(
-    zones: &[u8],
-    point: Vec2i,
-    mode: i64,
-    origin_zone: i64,
-    map_edge: i64,
-    any_rci: bool,
-) -> Vec<Vec2i> {
+pub fn walking_destinations(zones: &[u8], point: Vec2i, mode: i64, origin_zone: i64, map_edge: i64, any_rci: bool) -> Vec<Vec2i> {
     let mut result = Vec::new();
 
     if (WALK_ACCESS_MODES >> mode) & 1 == 0 {
         return result;
     }
 
-    let zone_mask = if any_rci { ANY_RCI_ZONE_MASK } else { DESTINATION_ZONE_MASKS[origin_zone as usize] };
+    let zone_mask = if any_rci {
+        ANY_RCI_ZONE_MASK
+    } else {
+        DESTINATION_ZONE_MASKS[origin_zone as usize]
+    };
 
     for offset in TRANSPORT_OFFSETS {
         let target = point + offset;
@@ -324,7 +324,11 @@ pub fn trace(
         return result;
     }
 
-    let start = if start_override >= 0 { start_override } else { find_transport(maps.buildings, origin, map_edge) };
+    let start = if start_override >= 0 {
+        start_override
+    } else {
+        find_transport(maps.buildings, origin, map_edge)
+    };
 
     if start < 0 {
         result.ok = true;
@@ -339,8 +343,23 @@ pub fn trace(
 
     let mut walking_access = walking_access;
     let turn_direction = if random.next_u15() & 1 != 0 { 1 } else { 3 };
-    let start_index = start & if map_edge == 128 { POINT_INDEX_MASK } else { LARGE_POINT_INDEX_MASK };
-    let TripScratch { points, indices, modes, costs, headings, parents, pending, best, path } = scratch;
+    let start_index = start
+        & if map_edge == 128 {
+            POINT_INDEX_MASK
+        } else {
+            LARGE_POINT_INDEX_MASK
+        };
+    let TripScratch {
+        points,
+        indices,
+        modes,
+        costs,
+        headings,
+        parents,
+        pending,
+        best,
+        path,
+    } = scratch;
     points.clear();
     indices.clear();
     modes.clear();
@@ -548,15 +567,7 @@ fn is_tunnel(tile: i64) -> bool {
 }
 
 /// One step of a trip. A next index of -1 is a map exit.
-pub fn advance(
-    maps: &TripMaps,
-    current: Vec2i,
-    next_point: Vec2i,
-    current_index: i64,
-    index: i64,
-    mode: i64,
-    origin_zone: i64,
-) -> i64 {
+pub fn advance(maps: &TripMaps, current: Vec2i, next_point: Vec2i, current_index: i64, index: i64, mode: i64, origin_zone: i64) -> i64 {
     let map_edge = maps.map_edge;
 
     if index < 0 {
@@ -568,9 +579,8 @@ pub fn advance(
     }
 
     let tile = maps.buildings[index as usize] as i64;
-    let destination = DESTINATION_ZONE_MASKS[origin_zone as usize]
-        & (1 << (maps.zones[index as usize] as i64 & zone_layout::TYPE_MASK))
-        != 0;
+    let destination =
+        DESTINATION_ZONE_MASKS[origin_zone as usize] & (1 << (maps.zones[index as usize] as i64 & zone_layout::TYPE_MASK)) != 0;
     let road = network::surface_road(tile);
 
     match mode {
@@ -771,11 +781,17 @@ pub fn advance(
 }
 
 fn find_direction(delta: Vec2i) -> i64 {
-    DIRECTIONS.iter().position(|&direction| direction == delta).map_or(-1, |position| position as i64)
+    DIRECTIONS
+        .iter()
+        .position(|&direction| direction == delta)
+        .map_or(-1, |position| position as i64)
 }
 
 fn find_corner(corner: Vec2i) -> i64 {
-    LANE_CORNERS.iter().position(|&lane| lane == corner).map_or(-1, |position| position as i64)
+    LANE_CORNERS
+        .iter()
+        .position(|&lane| lane == corner)
+        .map_or(-1, |position| position as i64)
 }
 
 /// Lane corners come from coordinate parity. This is not a plain flood fill.
@@ -813,8 +829,11 @@ pub fn highway_step(buildings: &[u8], current: Vec2i, next_point: Vec2i, map_edg
 
         let forward = current + DIRECTIONS[exit_direction as usize];
         let forward_index = index_of(forward, map_edge);
-        let forward_ports =
-            if forward_index >= 0 { highway_ports(buildings[forward_index as usize] as i64) } else { 0 };
+        let forward_ports = if forward_index >= 0 {
+            highway_ports(buildings[forward_index as usize] as i64)
+        } else {
+            0
+        };
 
         if forward_ports & (1 << ((exit_direction + 2) & 3)) == 0 {
             return true;
@@ -861,7 +880,11 @@ fn ramp_side(highway: Vec2i, ramp: Vec2i, ports: i64) -> bool {
 }
 
 fn highway_exit(buildings: &[u8], current: Vec2i, next_point: Vec2i, map_edge: i64) -> bool {
-    ramp_side(current, next_point, highway_ports(super::bytes::at(buildings, index_of(current, map_edge))))
+    ramp_side(
+        current,
+        next_point,
+        highway_ports(super::bytes::at(buildings, index_of(current, map_edge))),
+    )
 }
 
 #[cfg(test)]
@@ -898,7 +921,11 @@ mod tests {
                 let point = Vec2i::new(20, 20) + LANE_CORNERS[EGRESS_CORNERS[direction] as usize];
                 let next_point = point + DIRECTIONS[direction];
                 let expected = ports & (1 << direction) != 0 && ports & (1 << ((direction + 2) & 3)) != 0;
-                assert_eq!(highway_step(&city.xbld.data, point, next_point, 128), expected, "tile {tile} direction {direction}");
+                assert_eq!(
+                    highway_step(&city.xbld.data, point, next_point, 128),
+                    expected,
+                    "tile {tile} direction {direction}"
+                );
             }
         }
     }
@@ -912,12 +939,51 @@ mod tests {
         let mut scratch = TripScratch::default();
         let maps = trip_maps(&city);
         let mut random = SimRandom::new(123);
-        let reached = trace(&maps, &mut traffic, Vec2i::new(19, 20), 1, 2, &mut random, 100, -1, None, &mut scratch);
+        let reached = trace(
+            &maps,
+            &mut traffic,
+            Vec2i::new(19, 20),
+            1,
+            2,
+            &mut random,
+            100,
+            -1,
+            None,
+            &mut scratch,
+        );
         assert!(reached.ok && reached.reached_destination);
-        let rejected = trace(&maps, &mut traffic, Vec2i::new(19, 20), -1, 2, &mut random, 100, -1, None, &mut scratch);
+        let rejected = trace(
+            &maps,
+            &mut traffic,
+            Vec2i::new(19, 20),
+            -1,
+            2,
+            &mut random,
+            100,
+            -1,
+            None,
+            &mut scratch,
+        );
         assert_eq!(rejected, TripResult::failure("zone is outside the supported range"));
-        let empty = trace(&maps, &mut traffic, Vec2i::new(80, 80), 1, 2, &mut random, 100, -1, None, &mut scratch);
-        assert_eq!(empty, TripResult { ok: true, ..Default::default() });
+        let empty = trace(
+            &maps,
+            &mut traffic,
+            Vec2i::new(80, 80),
+            1,
+            2,
+            &mut random,
+            100,
+            -1,
+            None,
+            &mut scratch,
+        );
+        assert_eq!(
+            empty,
+            TripResult {
+                ok: true,
+                ..Default::default()
+            }
+        );
     }
 
     /// A cached walking access search keeps every result field, the random
@@ -953,8 +1019,18 @@ mod tests {
                 let mut direct_random = SimRandom::new(123);
                 let mut cached_random = SimRandom::new(123);
                 let mut scratch = TripScratch::default();
-                let direct =
-                    trace(&maps, &mut direct_traffic, point, zone, 2, &mut direct_random, 10, start, None, &mut scratch);
+                let direct = trace(
+                    &maps,
+                    &mut direct_traffic,
+                    point,
+                    zone,
+                    2,
+                    &mut direct_random,
+                    10,
+                    start,
+                    None,
+                    &mut scratch,
+                );
                 let cache = &mut caches[((zone + 1) >> 1) as usize];
                 let cached = trace(
                     &maps,

@@ -43,10 +43,12 @@ pub fn month_start(city: &mut City) -> MonthStartResult {
     }
 
     let month = (city.age_in_days() / DAYS_PER_MONTH) % MONTHS_PER_YEAR;
-    let mut result = MonthStartResult { cleared_population_fields: ZONE_POPULATION_COUNT, ..Default::default() };
+    let mut result = MonthStartResult {
+        cleared_population_fields: ZONE_POPULATION_COUNT,
+        ..Default::default()
+    };
     result.base_mut().ok = true;
-    result.base_mut().newspaper_requested =
-        city.misc_u32(misc_layout::NEWSPAPER_SUBSCRIPTION) != 0 && SUBSCRIPTION_MONTHS.contains(&month);
+    result.base_mut().newspaper_requested = city.misc_u32(misc_layout::NEWSPAPER_SUBSCRIPTION) != 0 && SUBSCRIPTION_MONTHS.contains(&month);
     result
 }
 
@@ -67,7 +69,11 @@ pub fn monthly_track(speed: i64, playback_active: bool, random: &mut SimRandom) 
 }
 
 pub fn music_result(was_active: bool, requests: Vec<i32>) -> MonthlyMusicResult {
-    let mut result = MonthlyMusicResult { playback_was_active: was_active, selection_attempted: !was_active, ..Default::default() };
+    let mut result = MonthlyMusicResult {
+        playback_was_active: was_active,
+        selection_attempted: !was_active,
+        ..Default::default()
+    };
     result.base.ok = true;
     result.base.music_track_requests = Ints32(requests);
     result

@@ -72,7 +72,10 @@ pub struct Draws {
 
 impl Draws {
     pub fn new(values: &[i64]) -> Self {
-        Self { values: values.to_vec(), position: 0 }
+        Self {
+            values: values.to_vec(),
+            position: 0,
+        }
     }
 
     fn next(&mut self) -> i64 {

@@ -231,9 +231,11 @@ pub fn variant(value: &Value) -> Variant {
         Value::Bytes(value) => PackedByteArray::from(value.as_slice()).to_variant(),
         Value::Ints32(value) => PackedInt32Array::from(value.as_slice()).to_variant(),
         Value::Ints64(value) => PackedInt64Array::from(value.as_slice()).to_variant(),
-        Value::Strings(value) => {
-            value.iter().map(|text| GString::from(text.as_str())).collect::<PackedStringArray>().to_variant()
-        }
+        Value::Strings(value) => value
+            .iter()
+            .map(|text| GString::from(text.as_str()))
+            .collect::<PackedStringArray>()
+            .to_variant(),
         Value::Array(items) => {
             let mut array = VarArray::new();
 
@@ -274,7 +276,11 @@ pub fn timing(dictionary: &VarDictionary, key: &str) -> crate::sim::events::Timi
         steps.set(&name.to_string(), value.try_to::<i64>().unwrap_or(0));
     }
 
-    let total = if boolean(&source, "has_total", false) { int(&source, "work_usec", 0) } else { -1 };
+    let total = if boolean(&source, "has_total", false) {
+        int(&source, "work_usec", 0)
+    } else {
+        -1
+    };
 
     crate::sim::events::Timing::new(total, steps)
 }
@@ -353,7 +359,10 @@ pub fn points(dictionary: &VarDictionary, key: &str) -> Vec<Vec2i> {
     let value = dictionary.get(key);
 
     if let Some(typed) = value.as_ref().and_then(|value| value.try_to::<Array<Vector2i>>().ok()) {
-        return typed.iter_shared().map(|point| Vec2i::new(point.x as i64, point.y as i64)).collect();
+        return typed
+            .iter_shared()
+            .map(|point| Vec2i::new(point.x as i64, point.y as i64))
+            .collect();
     }
 
     match value.and_then(|value| value.try_to::<VarArray>().ok()) {

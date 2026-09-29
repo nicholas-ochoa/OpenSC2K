@@ -47,7 +47,10 @@ pub fn run(city: &mut City) -> TrafficResult {
     }
 
     city.set_misc_u32(misc_layout::CITY_TRAFFIC, total);
-    let mut result = TrafficResult { traffic_count: total, ..Default::default() };
+    let mut result = TrafficResult {
+        traffic_count: total,
+        ..Default::default()
+    };
     result.base_mut().ok = true;
     result.base_mut().timing = span.finish();
     result

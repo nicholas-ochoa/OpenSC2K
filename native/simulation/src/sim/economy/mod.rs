@@ -34,7 +34,11 @@ pub const BANKRUPTCY_LIMIT: i64 = -100000;
 pub fn bankruptcy(city: &City) -> BankruptcyResult {
     let funds = city.funds();
     let bankrupt = funds < BANKRUPTCY_LIMIT;
-    let mut result = BankruptcyResult { bankrupt, funds, ..Default::default() };
+    let mut result = BankruptcyResult {
+        bankrupt,
+        funds,
+        ..Default::default()
+    };
     result.base_mut().ok = true;
 
     if bankrupt {

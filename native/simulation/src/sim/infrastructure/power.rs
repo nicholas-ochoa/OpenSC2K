@@ -125,7 +125,11 @@ pub fn run(city: &mut City, random: &mut SimRandom) -> PowerResult {
     span.mark("store powered tiles");
     city.xbit.replace(flags);
     span.mark("utilization");
-    let usage_percent = if total_generation != 0 { ((supplied_consumers * 100) / total_generation).min(100) } else { 100 };
+    let usage_percent = if total_generation != 0 {
+        ((supplied_consumers * 100) / total_generation).min(100)
+    } else {
+        100
+    };
     let mut result = PowerResult {
         generation: total_generation,
         consumers: total_consumers,

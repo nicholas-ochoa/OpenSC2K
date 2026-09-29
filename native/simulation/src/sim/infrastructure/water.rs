@@ -54,8 +54,7 @@ pub fn run(city: &mut City) -> WaterResult {
     let mut total_supply = 0;
     let mut total_consumers = 0;
     let mut watered_consumers = 0;
-    let pump_base_supply =
-        (city.misc_u32(misc_layout::WEATHER_RAIN) & 0xff) / 2 + city.misc_u32(misc_layout::WATER_LEVEL) * 5;
+    let pump_base_supply = (city.misc_u32(misc_layout::WEATHER_RAIN) & 0xff) / 2 + city.misc_u32(misc_layout::WATER_LEVEL) * 5;
     // SC2X cities trace without the original queue limit.
     let bounded_queue = !city.is_extended();
     let mut queue = if bounded_queue { Vec::new() } else { vec![0i64; flags.len()] };
@@ -79,7 +78,10 @@ pub fn run(city: &mut City) -> WaterResult {
         span.mark("capacity and tower allocation");
         let served = component.supply.min(component.consumers);
         let stored_units = (component.supply - served).min(component.tower_capacity);
-        let mut distribution = Distribution { served, towers_to_fill: (stored_units + 50) / 100 };
+        let mut distribution = Distribution {
+            served,
+            towers_to_fill: (stored_units + 50) / 100,
+        };
         total_supply += component.supply;
         total_consumers += component.consumers;
         watered_consumers += served;
@@ -102,7 +104,11 @@ pub fn run(city: &mut City) -> WaterResult {
     span.mark("store watered tiles");
     city.xbit.replace(flags);
     span.mark("utilization and treatment capacity");
-    let usage_percent = if total_supply != 0 { (watered_consumers * 100) / total_supply } else { 100 };
+    let usage_percent = if total_supply != 0 {
+        (watered_consumers * 100) / total_supply
+    } else {
+        100
+    };
     let mut treatment_tiles = city.misc_u32(misc_layout::TILE_COUNTS + tiles::WATER_TREATMENT * 4);
 
     if !city.is_extended() {
@@ -131,14 +137,7 @@ pub fn run(city: &mut City) -> WaterResult {
     result
 }
 
-fn trace_component(
-    buildings: &[u8],
-    flags: &mut [u8],
-    queue: &mut [i64],
-    start: i64,
-    pump_base_supply: i64,
-    map_edge: i64,
-) -> Component {
+fn trace_component(buildings: &[u8], flags: &mut [u8], queue: &mut [i64], start: i64, pump_base_supply: i64, map_edge: i64) -> Component {
     let mut result = Component::default();
 
     if flags[start as usize] as i64 & FLAG_PIPED == 0 {
@@ -161,7 +160,16 @@ fn trace_component(
         let index = queue[head];
         head += 1;
         let y = index % map_edge;
-        count_tile(buildings, flags, index, index / map_edge, y, pump_base_supply, map_edge, &mut result);
+        count_tile(
+            buildings,
+            flags,
+            index,
+            index / map_edge,
+            y,
+            pump_base_supply,
+            map_edge,
+            &mut result,
+        );
 
         // Neighbors in the original order: y - 1, x - 1, y + 1, x + 1.
         for (valid, neighbor) in [
@@ -363,7 +371,15 @@ mod tests {
             let mut city = if full { empty_full_resolution_city(edge) } else { empty_city(edge) };
             let last = edge - 1;
 
-            for point in [Vec2i::new(0, 0), Vec2i::new(3, last), Vec2i::new(last, 2), Vec2i::new(7, 7), Vec2i::new(7, 9), Vec2i::new(9, 7), Vec2i::new(last, last)] {
+            for point in [
+                Vec2i::new(0, 0),
+                Vec2i::new(3, last),
+                Vec2i::new(last, 2),
+                Vec2i::new(7, 7),
+                Vec2i::new(7, 9),
+                Vec2i::new(9, 7),
+                Vec2i::new(last, last),
+            ] {
                 let tile = if point.x == 7 { tiles::DESALINIZATION } else { tiles::WATER_PUMP };
                 city.xbld.data[(point.x * edge + point.y) as usize] = tile as u8;
             }

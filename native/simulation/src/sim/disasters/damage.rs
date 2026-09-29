@@ -18,8 +18,8 @@ pub const SOUND_DAMAGE: i64 = 0x1f8;
 /// Story weight of each damaged building class, from executable table
 /// 0x004e8848. Classes 0 to 9 are zone types. Class 10 and up are tiles from 0xc6.
 const DAMAGE_CLASS_WEIGHTS: [i64; 67] = [
-    0, 1, 1, 1, 1, 1, 1, 1, 4, 8, 5, 5, 5, 5, 5, 5, 5, 5, 5, 3, 4, 4, 4, 2, 2, 3, 2, 4, 3, 2, 3, 2, 8, 8, 2, 4, 8, 1,
-    4, 1, 1, 8, 1, 1, 3, 8, 2, 2, 2, 1, 1, 4, 1, 1, 2, 2, 2, 1, 3, 2, 5, 3, 6, 6, 6, 6, 6,
+    0, 1, 1, 1, 1, 1, 1, 1, 4, 8, 5, 5, 5, 5, 5, 5, 5, 5, 5, 3, 4, 4, 4, 2, 2, 3, 2, 4, 3, 2, 3, 2, 8, 8, 2, 4, 8, 1, 4, 1, 1, 8, 1, 1, 3,
+    8, 2, 2, 2, 1, 1, 4, 1, 1, 2, 2, 2, 1, 3, 2, 5, 3, 6, 6, 6, 6, 6,
 ];
 
 /// DisasterDamage.append_damage_events.
@@ -32,8 +32,7 @@ pub fn append_damage_events(events: Option<&mut RuntimeEvents>, damage: &PointRe
         return;
     }
 
-    events.next_effect_frame =
-        demolish::append_effect_sequence(&mut events.effect_events, &damage.effect_events, events.next_effect_frame);
+    events.next_effect_frame = demolish::append_effect_sequence(&mut events.effect_events, &damage.effect_events, events.next_effect_frame);
     events.sound_events.push(SOUND_DAMAGE);
 }
 
@@ -252,7 +251,13 @@ mod class_tests {
     /// skips tunnel entrances.
     #[test]
     fn damage_keeps_the_most_important_building_class() {
-        let buildings = [tiles::LOWER_CLASS_HOMES_1X1_1 as u8, 0xd2, tiles::TUNNEL_ENTRANCE_1 as u8, 0xc6, 0xe4];
+        let buildings = [
+            tiles::LOWER_CLASS_HOMES_1X1_1 as u8,
+            0xd2,
+            tiles::TUNNEL_ENTRANCE_1 as u8,
+            0xc6,
+            0xe4,
+        ];
         let zones = [1u8, 9, 8, 0, 0];
         let mut class = -1;
         let mut classes = Vec::new();

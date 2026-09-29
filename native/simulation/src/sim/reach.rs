@@ -69,7 +69,12 @@ impl<T: Copy> PointMap<T> {
 
 impl<T: ToValue> ToValue for PointMap<T> {
     fn to_value(&self) -> Value {
-        Value::Dict(self.order.iter().map(|(point, value)| (Value::Vec2i(*point), value.to_value())).collect())
+        Value::Dict(
+            self.order
+                .iter()
+                .map(|(point, value)| (Value::Vec2i(*point), value.to_value()))
+                .collect(),
+        )
     }
 }
 
@@ -95,7 +100,13 @@ pub struct ReachResult {
 
 impl ReachResult {
     pub fn rejected(message: &str) -> Self {
-        Self { trip: trip::TripResult::failure(message), start: Vec2i::NONE, origin: Vec2i::NONE, clicked: Vec2i::NONE, ..Default::default() }
+        Self {
+            trip: trip::TripResult::failure(message),
+            start: Vec2i::NONE,
+            origin: Vec2i::NONE,
+            clicked: Vec2i::NONE,
+            ..Default::default()
+        }
     }
 }
 
@@ -163,7 +174,12 @@ pub fn trace_reach(
     use trip::*;
 
     let map_edge = maps.map_edge;
-    let mut result = ReachResult { start: Vec2i::NONE, origin: Vec2i::NONE, clicked: Vec2i::NONE, ..Default::default() };
+    let mut result = ReachResult {
+        start: Vec2i::NONE,
+        origin: Vec2i::NONE,
+        clicked: Vec2i::NONE,
+        ..Default::default()
+    };
 
     if zone < 0 || zone >= DESTINATION_ZONE_MASKS.len() as i64 {
         result.trip.error = "zone is outside the supported range".to_string();
@@ -175,7 +191,11 @@ pub fn trace_reach(
         return result;
     }
 
-    let start = if start_override >= 0 { start_override } else { find_transport(maps.buildings, origin, map_edge) };
+    let start = if start_override >= 0 {
+        start_override
+    } else {
+        find_transport(maps.buildings, origin, map_edge)
+    };
 
     if start < 0 {
         result.trip.ok = true;
@@ -189,7 +209,12 @@ pub fn trace_reach(
     }
 
     let turn_direction = if random.next_u15() & 1 != 0 { 1 } else { 3 };
-    let start_index = start & if map_edge == 128 { POINT_INDEX_MASK } else { LARGE_POINT_INDEX_MASK };
+    let start_index = start
+        & if map_edge == 128 {
+            POINT_INDEX_MASK
+        } else {
+            LARGE_POINT_INDEX_MASK
+        };
     let mut points = vec![Vec2i::new(start_index / map_edge, start_index % map_edge)];
     let mut indices = vec![start_index];
     let mut modes = vec![start >> point_shift(map_edge)];
@@ -315,7 +340,13 @@ pub fn trace_reach(
                 let link_key = (point_index * 14 + mode, next_index * 14 + next_mode);
 
                 if link_keys.insert(link_key, ()).is_none() {
-                    result.links.push(Link { from: point, to: next_point, from_mode: mode, mode: next_mode, cost: next_cost });
+                    result.links.push(Link {
+                        from: point,
+                        to: next_point,
+                        from_mode: mode,
+                        mode: next_mode,
+                        cost: next_cost,
+                    });
                 }
 
                 if next_cost >= best.get(&next_key).copied().unwrap_or(limit) {
@@ -386,7 +417,15 @@ fn growth_anchor(city: &City, point: Vec2i) -> Vec2i {
     }
 
     let rotation = city.compass_rotation();
-    let site = find_building_site(&city.xbld.data, &city.xzon.data, point, tile, building_area(tile), rotation, city.map_size);
+    let site = find_building_site(
+        &city.xbld.data,
+        &city.xzon.data,
+        point,
+        tile,
+        building_area(tile),
+        rotation,
+        city.map_size,
+    );
     let mask = ANCHOR_MASKS[rotation as usize];
 
     for x in site.position.x..site.end().x {
@@ -419,7 +458,11 @@ fn building_site(city: &City, point: Vec2i) -> Rect2i {
         city.map_size,
     );
 
-    if site.has_area() { site } else { Rect2i::from(point, Vec2i::new(1, 1)) }
+    if site.has_area() {
+        site
+    } else {
+        Rect2i::from(point, Vec2i::new(1, 1))
+    }
 }
 
 fn cover_site(city: &City, point: Vec2i, cost: i64, tiles: &mut PointMap<i64>) {
@@ -447,7 +490,14 @@ fn add_building_coverage(city: &City, result: &mut ReachResult, origin: Vec2i) {
     }
 
     let mut access_tiles = PointMap::default();
-    let access_modes = [ROAD_MODE, BUS_ROAD_MODE, BUS_STOP_MODE, BUS_RAIL_MODE, RAIL_STATION_MODE, SUBWAY_STATION_MODE];
+    let access_modes = [
+        ROAD_MODE,
+        BUS_ROAD_MODE,
+        BUS_STOP_MODE,
+        BUS_RAIL_MODE,
+        RAIL_STATION_MODE,
+        SUBWAY_STATION_MODE,
+    ];
 
     for node in &result.reachable {
         if !access_modes.contains(&node.mode) {
@@ -568,7 +618,9 @@ pub fn inspect(city: &City, clicked: Vec2i) -> ReachResult {
     if result.reachable.is_empty() {
         result.summary.push("No transport access within three tiles.".to_string());
     } else if !rci {
-        result.summary.push("Network exploration. Select an RCI zone to check growth.".to_string());
+        result
+            .summary
+            .push("Network exploration. Select an RCI zone to check growth.".to_string());
     }
 
     result.origin = origin;
@@ -576,7 +628,11 @@ pub fn inspect(city: &City, clicked: Vec2i) -> ReachResult {
     result.limit = limit;
     result.rci = rci;
     result.powered = has_power(&city.xbit.data, origin.x, origin.y, edge);
-    result.demand = if rci { city.misc_i32(misc_layout::DEMAND + ((zone - 1) / 2) * 4) } else { 0 };
+    result.demand = if rci {
+        city.misc_i32(misc_layout::DEMAND + ((zone - 1) / 2) * 4)
+    } else {
+        0
+    };
     result
 }
 
@@ -635,7 +691,18 @@ pub fn run_trip(
     }
 
     let mut scratch = trip::TripScratch::default();
-    let result = trip::trace(&maps, &mut traffic, origin, zone, traffic_weight, random, maximum_cost, -1, None, &mut scratch);
+    let result = trip::trace(
+        &maps,
+        &mut traffic,
+        origin,
+        zone,
+        traffic_weight,
+        random,
+        maximum_cost,
+        -1,
+        None,
+        &mut scratch,
+    );
 
     if result.ok && result.reached_destination {
         city.xtrf.replace(traffic);

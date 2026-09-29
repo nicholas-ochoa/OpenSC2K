@@ -194,5 +194,10 @@ pub fn maxis_man_response(
     city.xthg.replace(thing_data);
     city.xtxt.replace(text);
 
-    Some(MaxisManArrival { record, point: arrival, target, goal })
+    Some(MaxisManArrival {
+        record,
+        point: arrival,
+        target,
+        goal,
+    })
 }

@@ -43,7 +43,9 @@ fn inputs_are_valid(city: &City) -> bool {
         ("MISC", 4800),
     ];
 
-    expected.iter().all(|(id, size)| city.chunk(id).is_some_and(|chunk| chunk.data.len() as i64 == *size))
+    expected
+        .iter()
+        .all(|(id, size)| city.chunk(id).is_some_and(|chunk| chunk.data.len() as i64 == *size))
 }
 
 /// MovingThingPhase.run. Each record updates with its type's tick rule, in record
@@ -63,7 +65,10 @@ pub fn run(
     let map_edge = city.map_size;
     let city_center = Vec2i::new(city.misc_u32(misc_layout::CITY_CENTER_X), city.misc_u32(misc_layout::CITY_CENTER_Y));
     let no_disasters = city.no_disasters_enabled();
-    let tick_city = TickCity { city_mode: city.city_mode(), exact_counts: city.is_extended() };
+    let tick_city = TickCity {
+        city_mode: city.city_mode(),
+        exact_counts: city.is_extended(),
+    };
     let original_things = city.xthg.data.clone();
     let original_text = city.xtxt.data.clone();
     let mut map_snapshot: Option<Snapshot> = None;
@@ -132,7 +137,16 @@ pub fn run(
                     flags: maps.maps.flags,
                     map_edge,
                 };
-                ship::update(&ship_maps, maps.maps.text_overlays, maps.things, record, home, random, lfsr, &mut counters);
+                ship::update(
+                    &ship_maps,
+                    maps.maps.text_overlays,
+                    maps.things,
+                    record,
+                    home,
+                    random,
+                    lfsr,
+                    &mut counters,
+                );
             }
             TYPE_MONSTER => {
                 counters.active_monsters += 1;
@@ -166,9 +180,21 @@ pub fn run(
             }
             TYPE_TRAIN_ENGINE | TYPE_SUBWAY_ENGINE => {
                 counters.active_trains += 1;
-                let train_maps =
-                    TrainMaps { buildings: maps.maps.buildings, underground: maps.maps.underground, map_edge };
-                train::update(&train_maps, maps.maps.text_overlays, maps.things, record, random, lfsr, game, &mut counters);
+                let train_maps = TrainMaps {
+                    buildings: maps.maps.buildings,
+                    underground: maps.maps.underground,
+                    map_edge,
+                };
+                train::update(
+                    &train_maps,
+                    maps.maps.text_overlays,
+                    maps.things,
+                    record,
+                    random,
+                    lfsr,
+                    game,
+                    &mut counters,
+                );
             }
             TYPE_TORNADO => {
                 counters.active_tornadoes += 1;
@@ -254,7 +280,10 @@ mod tests {
                     assert_eq!(city.xbld.data[(10 * edge + 10) as usize], 0, "the explosion clears its tile");
                     assert!(city.xbld.written);
                 } else {
-                    assert!(!city.xbld.written && !city.misc.written && !city.altm.written, "a vehicle leaves the map chunks");
+                    assert!(
+                        !city.xbld.written && !city.misc.written && !city.altm.written,
+                        "a vehicle leaves the map chunks"
+                    );
                 }
             }
         }

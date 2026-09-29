@@ -55,7 +55,10 @@ pub fn complaint_weights(city: &City) -> Vec<i64> {
 
     let misc = &city.misc.data;
     let graphs = &city.xgrp.data;
-    let funding = read_i32_be(misc, misc_layout::BUDGETS + budget::RESIDENTIAL * budget::RECORD_SIZE + budget::FUNDING);
+    let funding = read_i32_be(
+        misc,
+        misc_layout::BUDGETS + budget::RESIDENTIAL * budget::RECORD_SIZE + budget::FUNDING,
+    );
 
     vec![
         to_i16(graph_current(graphs, GRAPH_TRAFFIC)),

@@ -42,8 +42,9 @@ pub fn calculate_current_values(
         return Err("water usage percentage is out of range".to_string());
     }
 
-    let zone_populations: Vec<i64> =
-        (0..8).map(|index| city.misc_u32(misc_layout::ZONE_POPULATIONS + index * 4)).collect();
+    let zone_populations: Vec<i64> = (0..8)
+        .map(|index| city.misc_u32(misc_layout::ZONE_POPULATIONS + index * 4))
+        .collect();
     let total_zone_population: i64 = zone_populations[1..7].iter().sum();
     let tax_populations = [
         zone_populations[1] + zone_populations[2],
@@ -54,7 +55,11 @@ pub fn calculate_current_values(
         .map(|tile| city.misc_i32(misc_layout::TILE_COUNTS + tile * 4))
         .sum();
     let arcology_count = arcology_tiles / 16;
-    let arcology_adjustment = if arcology_count > 140 { (arcology_count * 5 - 700) * 4000 } else { 0 };
+    let arcology_adjustment = if arcology_count > 140 {
+        (arcology_count * 5 - 700) * 4000
+    } else {
+        0
+    };
     let arcology_population = city.misc_u32(misc_layout::ARCOLOGY_POPULATION);
     let adjusted_arcology_population = arcology_population + arcology_adjustment;
     let mut transport_cost = 1;
@@ -144,11 +149,10 @@ pub fn advance(city: &mut City, current_values: &[i64]) -> Result<(i64, i64), St
 pub fn run(city: &mut City, developed_tiles: i64, power_usage_percent: i64, water_usage_percent: i64) -> GraphResult {
     let mut span = TimingSpan::new();
     span.mark("calculate graph values");
-    let (values, unemployment) =
-        match calculate_current_values(city, developed_tiles, power_usage_percent, water_usage_percent) {
-            Ok(calculated) => calculated,
-            Err(message) => return GraphResult::failed(message),
-        };
+    let (values, unemployment) = match calculate_current_values(city, developed_tiles, power_usage_percent, water_usage_percent) {
+        Ok(calculated) => calculated,
+        Err(message) => return GraphResult::failed(message),
+    };
 
     if !city.xgrp.present || city.xgrp.data.len() as i64 != layout::SIZE {
         return GraphResult::failed("XGRP is missing or has the wrong size");
@@ -161,7 +165,13 @@ pub fn run(city: &mut City, developed_tiles: i64, power_usage_percent: i64, wate
         Ok(shifted) => shifted,
         Err(message) => return GraphResult::failed(message),
     };
-    let mut result = GraphResult { month, elapsed_years, values: Ints64(values), unemployment, ..Default::default() };
+    let mut result = GraphResult {
+        month,
+        elapsed_years,
+        values: Ints64(values),
+        unemployment,
+        ..Default::default()
+    };
     result.base_mut().ok = true;
     result.base_mut().timing = span.finish();
     result

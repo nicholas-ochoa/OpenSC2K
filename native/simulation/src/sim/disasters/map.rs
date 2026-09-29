@@ -279,7 +279,11 @@ pub fn run_all(
     values.push(("remaining_floods", overlay::occurrences(text, FLOOD_OVERLAY)));
     values.push(("remaining_toxic", overlay::occurrences(text, TOXIC_OVERLAY)));
     values.push(("remaining_riots", remaining_riots(text)));
-    let mut dispatch_map = DisasterMapResult { map_changed, counters: dispatch.map(), ..Default::default() };
+    let mut dispatch_map = DisasterMapResult {
+        map_changed,
+        counters: dispatch.map(),
+        ..Default::default()
+    };
     dispatch_map.base.ok = true;
     let mut result = DisasterMapResult {
         active: fire_active || flood_active || toxic_active || riot_active,
@@ -330,7 +334,11 @@ pub fn run_dispatch(city: &mut City, random: Option<&mut SimRandom>, lfsr: Optio
 
     let map_changed = snapshot.changed(city);
     snapshot.commit(city);
-    let mut result = DisasterMapResult { map_changed, counters: dispatch.map(), ..Default::default() };
+    let mut result = DisasterMapResult {
+        map_changed,
+        counters: dispatch.map(),
+        ..Default::default()
+    };
     result.base.ok = true;
     result
 }
@@ -406,7 +414,11 @@ fn run_kind(
     let map_changed = snapshot.changed(city);
     snapshot.commit(city);
     let text = &city.xtxt.data;
-    let mut result = DisasterMapResult { active, map_changed, ..Default::default() };
+    let mut result = DisasterMapResult {
+        active,
+        map_changed,
+        ..Default::default()
+    };
     let values = match kind {
         Kind::Fire => {
             if active {
@@ -454,12 +466,7 @@ pub fn run_fire(city: &mut City, random: Option<&mut SimRandom>, lfsr: Option<&m
     run_kind(city, random, lfsr, Kind::Fire, 0)
 }
 
-pub fn run_flood(
-    city: &mut City,
-    random: Option<&mut SimRandom>,
-    lfsr: Option<&mut SimLfsrRandom>,
-    map_counter: i64,
-) -> DisasterMapResult {
+pub fn run_flood(city: &mut City, random: Option<&mut SimRandom>, lfsr: Option<&mut SimLfsrRandom>, map_counter: i64) -> DisasterMapResult {
     run_kind(city, random, lfsr, Kind::Flood, map_counter)
 }
 
@@ -757,7 +764,11 @@ fn process_dispatch_cell(
     let edge = maps.maps.map_edge;
     let record = overlay::thing_record(marker);
     let offset = record * things::RECORD_SIZE;
-    let thing_type = if offset >= 0 { maps.things.get(offset as usize).copied().unwrap_or(0) as i64 } else { 0 };
+    let thing_type = if offset >= 0 {
+        maps.things.get(offset as usize).copied().unwrap_or(0) as i64
+    } else {
+        0
+    };
     counters.dispatch_markers_scanned += 1;
     let mut suppresses_fire = thing_type == TYPE_FIRE_DISPATCH || thing_type == things::TYPE_MILITARY;
 
@@ -861,7 +872,11 @@ fn place_marker(text: &mut [u8], point: Vec2i, marker: i64, map_edge: i64) -> bo
 
 /// DisasterMapState._seed_special_toxic.
 fn seed_special_toxic(text: &mut [u8], site: Rect2i, point: Vec2i, map_edge: i64) -> i64 {
-    let site = if site.size == Vec2i::ZERO { Rect2i::from(point, Vec2i::new(1, 1)) } else { site };
+    let site = if site.size == Vec2i::ZERO {
+        Rect2i::from(point, Vec2i::new(1, 1))
+    } else {
+        site
+    };
     let mut changed = 0;
 
     for x in site.position.x..site.end().x {
@@ -880,23 +895,14 @@ fn seed_special_toxic(text: &mut [u8], site: Rect2i, point: Vec2i, map_edge: i64
 
 /// DisasterMapState._spawn_explosion.
 #[allow(clippy::too_many_arguments)]
-pub fn spawn_explosion(
-    text: &mut [u8],
-    thing_data: &mut [u8],
-    point: Vec2i,
-    height: i64,
-    state: i64,
-    goal: i64,
-    map_edge: i64,
-) -> bool {
+pub fn spawn_explosion(text: &mut [u8], thing_data: &mut [u8], point: Vec2i, height: i64, state: i64, goal: i64, map_edge: i64) -> bool {
     let tile_index = index(point, map_edge);
 
     if tile_index < 0 || overlay::blocks_thing(overlay::read(text, tile_index)) {
         return false;
     }
 
-    let Some(record) = (1..things::count(thing_data)).find(|record| things::read(thing_data, record * things::RECORD_SIZE) == 0)
-    else {
+    let Some(record) = (1..things::count(thing_data)).find(|record| things::read(thing_data, record * things::RECORD_SIZE) == 0) else {
         return false;
     };
 
