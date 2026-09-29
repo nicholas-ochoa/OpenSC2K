@@ -37,6 +37,18 @@ Godot object for each draw:
   Scrolling then seldom adds a sprite, so the main thread seldom uploads an atlas.
   Flipped and traffic-masked sprites are added when a region first needs them.
 
+## Other native view work
+
+- **Data map overlays.** `data_view.rs` builds the overlay mesh of each data map from the
+  ALTM words, XTER, and XBIT. `CityDataView.create_mesh` calls it through `NativeCityDataMesh`.
+  Vertex colors mark tops, walls, and water; the grid shader reads each tile's value through
+  the UVs.
+- **Region changes.** `changes.rs` compares two revisions of the region source chunks and
+  returns the screen areas that changed. `ApplicationStaticRender.changed_source_rects` calls
+  it through `NativeCityChanges` after each simulation refresh. A tile change reports the
+  tile's potential sprite bounds; a traffic change reports only the road sprites whose traffic
+  level changed. Above a quarter of the map, it asks for a full redraw.
+
 ## Build and checks
 
 `python3 tools/build_native.py` builds and installs both native extensions.

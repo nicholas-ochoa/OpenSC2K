@@ -229,81 +229,28 @@ static func surface_polygon(city: CityState, x: int, y: int, height_view := fals
 	return CityIsometricRenderer.terrain_surface_polygon(city, x, y, height_view)
 
 
-static func visible(city: CityState, x: int, y: int, height_view: bool) -> bool:
-	return city.land_altitude(x, y) < city.visible_altitude_levels if height_view else city.tile_is_visible(x, y)
-
-
-static func create_mesh(city: CityState, mode: CityViewMode.Mode, encoded := false) -> ArrayMesh:
-	var vertices := PackedVector2Array()
-	var colors := PackedColorArray()
-	var uvs := PackedVector2Array()
-	var indices := PackedInt32Array()
-	# compute each surface once. adjacent walls reuse the same corner heights
-	var surfaces: Array[PackedVector2Array] = []
-	surfaces.resize(city.map_size * city.map_size)
-
-	for x in city.map_size:
-		for y in city.map_size:
-			surfaces[x * city.map_size + y] = surface_polygon(city, x, y, mode == CityViewMode.Mode.HEIGHT)
-
-	# match terrain painter order so raised foreground tiles cover distant tiles
-	for diagonal in range(city.map_size * 2 - 1):
-		for y in range(maxi(0, diagonal - city.map_size + 1), mini(city.map_size - 1, diagonal) + 1):
-			var x := diagonal - y
-
-			if not visible(city, x, y, mode == CityViewMode.Mode.HEIGHT):
-				continue
-
-			var polygon := surfaces[x * city.map_size + y]
-			var tint := Color.WHITE if encoded else color(value(city, mode, x, y), mode)
-			var ground_left := Vector2(CityIsometricRenderer.SIDE_MARGIN + city.map_size * 16 + (x - y) * 16,
-				CityIsometricRenderer.TOP_MARGIN + (x + y) * 8)
-			var ground := PackedVector2Array([ground_left + Vector2(16, 0), ground_left + Vector2(32, 8),
-				ground_left + Vector2(16, 16), ground_left + Vector2(0, 8)])
-			var left_bottom := ground[2]
-
-			# only exposed walls need fragments. neighbor tops cover everything below them
-			if x + 1 < city.map_size and visible(city, x + 1, y, mode == CityViewMode.Mode.HEIGHT):
-				var neighbor := surfaces[(x + 1) * city.map_size + y]
-				ground[1] = Vector2(polygon[1].x, maxf(polygon[1].y, neighbor[0].y))
-				ground[2] = Vector2(polygon[2].x, maxf(polygon[2].y, neighbor[3].y))
-
-			if y + 1 < city.map_size and visible(city, x, y + 1, mode == CityViewMode.Mode.HEIGHT):
-				var neighbor := surfaces[x * city.map_size + y + 1]
-				left_bottom = Vector2(polygon[2].x, maxf(polygon[2].y, neighbor[1].y))
-				ground[3] = Vector2(polygon[3].x, maxf(polygon[3].y, neighbor[0].y))
-
-			for side in [1, 2]:
-				if side == 2:
-					ground[2] = left_bottom
-
-				if polygon[side].y < ground[side].y or polygon[side + 1].y < ground[side + 1].y:
-					_append_quad(vertices, colors, uvs, indices, PackedVector2Array([polygon[side], polygon[side + 1],
-						ground[side + 1], ground[side]]),
-						Color(tint.r, tint.g, 0.78 if side == 1 else 0.65) if encoded else tint.darkened(0.22 if side == 1 else 0.35),
-						Vector2(y, x) * 2 if encoded else Vector2.ZERO)
-
-			_append_quad(vertices, colors, uvs, indices, polygon, tint, Vector2(y, x) * 2 if encoded else Vector2.ZERO)
-
-			if mode == CityViewMode.Mode.HEIGHT and city.is_water(x, y) and city.water_altitude(x, y) < city.visible_altitude_levels:
-				var water := CityIsometricRenderer.tile_polygon(city, x, y)
-
-				# the water flag can also occur on a flat terrain code
-				if city.terrain_id(x, y) < TerrainTileIds.DEEP_WATER_FIRST:
-					for corner in 4:
-						water[corner].y -= (city.water_altitude(x, y) - city.land_altitude(x, y)) * CityIsometricRenderer.ALTITUDE_STEP
-
-				_append_quad(vertices, colors, uvs, indices, water, Color(1, 1, 1, 0.28), Vector2(y, x) * 2 if encoded else Vector2.ZERO)
-
+# the rendering library builds the geometry. see native/rendering/src/data_view.rs
+# vertex colors only mark tops, walls and water. the grid shader reads each
+# tile's value through the uvs
+static func create_mesh(city: CityState, mode: CityViewMode.Mode) -> ArrayMesh:
+	var built: Dictionary = NativeCityDataMesh.build(city.map_size, city.visible_altitude_levels, mode == CityViewMode.Mode.HEIGHT,
+		city.altitude_words, city.terrain, city.tile_flags)
 	var mesh := ArrayMesh.new()
+
+	if built.has("error"):
+		push_error(built.error)
+
+		return mesh
+
+	var vertices: PackedVector2Array = built.vertices
 
 	if not vertices.is_empty():
 		var arrays := []
 		arrays.resize(Mesh.ARRAY_MAX)
 		arrays[Mesh.ARRAY_VERTEX] = vertices
-		arrays[Mesh.ARRAY_COLOR] = colors
-		arrays[Mesh.ARRAY_TEX_UV] = uvs
-		arrays[Mesh.ARRAY_INDEX] = indices
+		arrays[Mesh.ARRAY_COLOR] = built.colors
+		arrays[Mesh.ARRAY_TEX_UV] = built.uvs
+		arrays[Mesh.ARRAY_INDEX] = built.indices
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 
 	return mesh
@@ -316,17 +263,3 @@ static func mesh_array_bytes(mesh: ArrayMesh) -> int:
 		bytes += mesh.surface_get_array_len(surface) * (8 + 16 + 8)
 		bytes += mesh.surface_get_array_index_len(surface) * 4
 	return bytes
-
-
-static func _append_quad(vertices: PackedVector2Array, colors: PackedColorArray, uvs: PackedVector2Array,
-	indices: PackedInt32Array, polygon: PackedVector2Array, tint: Color, uv_origin := Vector2.ZERO) -> void:
-	var first := vertices.size()
-
-	for point in polygon:
-		vertices.append(point)
-		colors.append(tint)
-
-	uvs.append_array(PackedVector2Array([uv_origin, uv_origin + Vector2.RIGHT, uv_origin + Vector2.ONE, uv_origin + Vector2.DOWN]))
-
-	for index in [0, 1, 2, 0, 2, 3]:
-		indices.append(first + index)

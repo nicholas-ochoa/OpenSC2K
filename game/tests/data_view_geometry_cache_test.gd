@@ -105,7 +105,7 @@ func _run() -> void:
 	city.resync_mirrors(PackedStringArray(["XBIT"]))
 	map.set_data_view(city, CityViewMode.Mode.LAND_VALUE)
 	assert(map.data_view_mesh != mesh, "Water edits invalidate active clipped geometry")
-	var fresh := CityDataView.create_mesh(city, CityViewMode.Mode.LAND_VALUE, true)
+	var fresh := CityDataView.create_mesh(city, CityViewMode.Mode.LAND_VALUE)
 	assert(map.data_view_mesh.surface_get_arrays(0) == fresh.surface_get_arrays(0))
 	mesh = map.data_view_mesh
 	map.clear_data_view()
@@ -114,7 +114,7 @@ func _run() -> void:
 	city.resync_mirrors(PackedStringArray(["XBIT"]))
 	map.set_data_view(city, CityViewMode.Mode.LAND_VALUE)
 	assert(map.data_view_mesh != mesh, "Water edits invalidate inactive clipped geometry")
-	fresh = CityDataView.create_mesh(city, CityViewMode.Mode.LAND_VALUE, true)
+	fresh = CityDataView.create_mesh(city, CityViewMode.Mode.LAND_VALUE)
 	assert(map.data_view_mesh.surface_get_arrays(0) == fresh.surface_get_arrays(0))
 	map.free()
 

@@ -235,155 +235,67 @@ static func _collect_payload_changes(old_payloads: Dictionary, new_payloads: Dic
 			dirty, indices, cells if chunk_id == "XTXT" else 0, 0xc6 if surface_only and chunk_id == "XBIT" else 0xff)
 
 
-# Traffic is masked to its road sprite. Only that sprite's bounds can change;
-# terrain, neighboring tiles and the full possible altitude range do not change.
-static func _collect_traffic_rects(city: CityState, before: PackedByteArray, after: PackedByteArray,
-		sprites: Sc2SpriteArchive, view_size: int, rects: Array[Rect2i]) -> void:
-	var map_edge := city.map_size
-	var grid_edge := CityDataGrid.edge(after, map_edge)
-
-	if grid_edge == 0 or before == after:
-		return
-
-	var cells := PackedByteArray()
-	cells.resize(grid_edge * grid_edge)
-	var changed := PackedInt32Array()
-	_collect_changed_tiles(before, after, 1, cells, changed)
-	var scale := map_edge / grid_edge
-	var configuration := IsometricRenderer.view_configuration(view_size)
-	var output := Rect2i(Vector2i.ZERO, IsometricRenderer.output_size_for_view(view_size, map_edge))
-
-	for cell in changed:
-		if _traffic_levels(before[cell]) == _traffic_levels(after[cell]):
-			continue
-
-		var first := Vector2i(cell / grid_edge, cell % grid_edge) * scale
-
-		for x in range(first.x, first.x + scale):
-			for y in range(first.y, first.y + scale):
-				var building := city.building_id(x, y)
-
-				if (IsometricStaticVisuals.traffic_level(building, before[cell]) == IsometricStaticVisuals.traffic_level(building,
-						after[cell])
-						or not city.tile_is_visible(x, y) or not IsometricStaticVisuals._should_draw_building(city, x, y, building)):
-					continue
-
-				var entry := sprites.find_sprite(configuration.sprite_base + building)
-				var bounds: Rect2i
-
-				if entry == null:
-					bounds = IsometricRenderer.potential_tile_bounds(
-						configuration,
-						IsometricRenderer.maximum_sprite_size(sprites),
-						x,
-						y,
-						map_edge,
-					)
-				else:
-					var base_y := configuration.top_margin + (x + y) * configuration.half_height + configuration.tile_height
-					base_y -= city.object_altitude(x, y) * configuration.altitude_step
-					base_y += IsometricRenderer.building_baseline_offset(
-						building,
-						IsometricRenderer.surface_terrain_id(city, x, y),
-						entry.width,
-						view_size,
-					)
-					bounds = Rect2i(configuration.side_margin + (map_edge + x - y) * configuration.half_width,
-						base_y - entry.height, entry.width, entry.height)
-
-				bounds = bounds.intersection(output)
-
-				if bounds.has_area():
-					rects.append(bounds)
-
-
-static func _traffic_levels(density: int) -> Vector2i:
-	var road := IsometricStaticVisuals.TRAFFIC_THRESHOLDS
-	var highway := IsometricStaticVisuals.HIGHWAY_TRAFFIC_THRESHOLDS
-
-	return Vector2i(int(density > road.x) + int(density > road.y), int(density > highway.x) + int(density > highway.y))
-
-
 # add the screen bounds of each tile whose region source data differs from `old_payloads`
 # returns false when the payloads cannot be compared or so much differs that a full redraw is better
+# the rendering library compares the chunks. see native/rendering/src/changes.rs
 static func changed_source_rects(city: CityState, old_payloads: Dictionary, sprites: Sc2SpriteArchive, view_size: int,
 		rects: Array[Rect2i]) -> bool:
 	if city == null or city.document == null or old_payloads.is_empty():
 		return false
 
-	var new_payloads: Dictionary[String, PackedByteArray] = {}
+	# the native call reads untyped dictionaries
+	var before := {}
+	var after := {}
 
 	for chunk_id in CityRegionCache.SOURCE_CHUNKS:
 		var chunk := city.document.find_chunk(chunk_id)
 
 		if chunk != null:
-			new_payloads[chunk_id] = chunk.decoded_payload
+			after[chunk_id] = chunk.decoded_payload
 
 		# a skipped chunk would hide its changes
-		if (old_payloads.has(chunk_id) != new_payloads.has(chunk_id)
+		if (old_payloads.has(chunk_id) != after.has(chunk_id)
 				or (chunk != null and old_payloads[chunk_id].size() != chunk.decoded_payload.size())):
 			return false
 
-	var map_edge := city.map_size
-	var cells := map_edge * map_edge
-	var dirty := PackedByteArray()
-	dirty.resize(cells)
-	var indices := PackedInt32Array()
-	var surface_only := city.visible_altitude_levels >= 32
-	var chunks := ["ALTM", "XBLD", "XTER", "XZON", "XBIT"]
-
-	if not surface_only:
-		chunks.append("XUND")
-
-	_collect_payload_changes(old_payloads, new_payloads, chunks, map_edge, dirty, indices, surface_only)
-
-	if new_payloads.has("XTXT"):
-		_collect_static_overlay_changes(old_payloads["XTXT"], new_payloads["XTXT"], map_edge, dirty, indices)
-
-	if indices.size() > cells * STATIC_EDIT_PATCH_MAX_AREA_RATIO:
-		return false
+		if chunk != null:
+			before[chunk_id] = old_payloads[chunk_id]
 
 	var configuration := IsometricRenderer.view_configuration(view_size)
-	var sprite_limit := IsometricRenderer.maximum_sprite_size(sprites) if not indices.is_empty() else Vector2i.ZERO
-	var output := Rect2i(Vector2i.ZERO, IsometricRenderer.output_size_for_view(view_size, map_edge))
+	var building_sprites := PackedInt32Array()
+	building_sprites.resize(BuildingTileIds.COUNT * 2)
+	building_sprites.fill(-1)
 
-	for index in indices:
-		var bounds := IsometricRenderer.potential_tile_bounds(configuration, sprite_limit, index / map_edge, index % map_edge, map_edge)
-		# some tile artwork depends on its neighbors. a neighbor is one half tile away on the screen
-		bounds = bounds.grow_individual(configuration.half_width, configuration.half_height,
-			configuration.half_width, configuration.half_height).intersection(output)
+	for building in (BuildingTileIds.COUNT if sprites != null else 0):
+		var entry := sprites.find_sprite(configuration.sprite_base + building)
 
-		if bounds.has_area():
-			rects.append(bounds)
+		if entry != null:
+			building_sprites[building * 2] = entry.width
+			building_sprites[building * 2 + 1] = entry.height
 
-	if new_payloads.has("XTRF"):
-		_collect_traffic_rects(city, old_payloads["XTRF"], new_payloads["XTRF"], sprites, view_size, rects)
+	var changes: Dictionary = NativeCityChanges.changed_rects({
+		"edge": city.map_size,
+		"visible": city.visible_altitude_levels,
+		"rotation": city.compass_rotation(),
+		"view": PackedInt32Array([configuration.tile_width, configuration.tile_height, configuration.half_width,
+			configuration.half_height, configuration.altitude_step, configuration.side_margin, configuration.top_margin]),
+		"output": IsometricRenderer.output_size_for_view(view_size, city.map_size),
+		"sprite_limit": IsometricRenderer.maximum_sprite_size(sprites),
+		"building_sprites": building_sprites,
+		"object_overrides": city.object_altitude_overrides,
+		"before": before,
+		"after": after,
+	})
+
+	if not changes.ok:
+		return false
+
+	var flat: PackedInt32Array = changes.rects
+
+	for offset in range(0, flat.size(), 4):
+		rects.append(Rect2i(flat[offset], flat[offset + 1], flat[offset + 2], flat[offset + 3]))
 
 	return true
-
-
-# mark text overlay changes that the static regions draw. the regions do not draw
-# special overlays such as floods and fires, or moving objects. the caller checks
-# the text overlay signature for signs and dispatch objects
-static func _collect_static_overlay_changes(before: PackedByteArray, after: PackedByteArray, map_edge: int,
-		dirty: PackedByteArray, indices: PackedInt32Array) -> void:
-	var cells := map_edge * map_edge
-
-	if before == after or OverlayData.count(after) != cells:
-		return
-
-	var changed_flags := PackedByteArray()
-	changed_flags.resize(cells)
-	var changed := PackedInt32Array()
-	_collect_changed_tiles(before, after, 1, changed_flags, changed, cells)
-
-	for index in changed:
-		if not _dynamic_overlay(OverlayData.read(before, index)) or not _dynamic_overlay(OverlayData.read(after, index)):
-			_mark_dirty_tile(index, dirty, indices)
-
-
-static func _dynamic_overlay(overlay: int) -> bool:
-	return overlay == 0 or OverlayData.is_thing(overlay) or IsometricConstants.SPECIAL_OVERLAY_SPRITE_OFFSETS.has(overlay)
 
 
 static func _edit_dirty_indices(command: EditCommandResult, map_edge: int = 128) -> PackedInt32Array:

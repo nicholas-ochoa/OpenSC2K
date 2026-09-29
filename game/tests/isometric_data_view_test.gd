@@ -203,7 +203,7 @@ func check_height_and_walls() -> void:
 	check(CityIsometricRenderer.screen_to_tile(city, land_center, true) == Vector2i.ZERO, "Height hover selects seabed through water")
 	var water_center := (water[0] + water[2]) * 0.5
 	check(CityIsometricRenderer.screen_to_tile(city, water_center, true) != Vector2i.ZERO, "Height hover ignores the water plane")
-	var wet_mesh := CityDataView.create_mesh(city, CityViewMode.Mode.HEIGHT, true)
+	var wet_mesh := CityDataView.create_mesh(city, CityViewMode.Mode.HEIGHT)
 	var wet_colors: PackedColorArray = wet_mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR]
 	var transparent_vertices := 0
 
@@ -215,7 +215,7 @@ func check_height_and_walls() -> void:
 	city.set_tile_flag(0, 0, 0x04, false)
 	city.set_terrain_id(0, 0, 0)
 	city.altitude_words.fill(16)
-	var mesh := CityDataView.create_mesh(city, CityViewMode.Mode.HEIGHT, true)
+	var mesh := CityDataView.create_mesh(city, CityViewMode.Mode.HEIGHT)
 	check(mesh.surface_get_array_len(0) == (128 * 128 + 128 * 2) * 4, "Raised flat terrain draws only outside walls")
 	var uvs: PackedVector2Array = mesh.surface_get_arrays(0)[Mesh.ARRAY_TEX_UV]
 	check(uvs[0] == Vector2.ZERO and uvs[4] == Vector2(0, 2), "Shader coordinates keep exact tile identity")

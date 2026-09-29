@@ -2,6 +2,8 @@
 //! The bridge copies a display snapshot once per revision. Inner loops use Rust
 //! arrays; Godot receives only completed geometry and immutable sprite images.
 mod bridge;
+mod changes;
+mod data_view;
 mod index;
 mod painter;
 mod region;

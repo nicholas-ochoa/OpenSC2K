@@ -34,7 +34,7 @@ func set_data_view(value: CityState, mode: CityViewMode.Mode) -> void:
 	if map.data_geometry_signature != geometry_signature:
 		var cached_mesh: ArrayMesh = _retained_data_mesh if _retained_data_signature == geometry_signature else null
 		_clear_retained_geometry()
-		map.data_view_mesh = cached_mesh if cached_mesh != null else CityDataView.create_mesh(value, mode, true)
+		map.data_view_mesh = cached_mesh if cached_mesh != null else CityDataView.create_mesh(value, mode)
 		map.data_geometry_signature = geometry_signature
 
 	if map.data_view_layer == null:
