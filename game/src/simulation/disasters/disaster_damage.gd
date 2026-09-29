@@ -13,10 +13,6 @@ const DAMAGE_CLASS_WEIGHTS := [
 ]
 
 
-static func new_runtime_events() -> RuntimeEvents:
-	return RuntimeEvents.new()
-
-
 static func append_damage_events(runtime_events: RuntimeEvents, damage: DemolishPointResult) -> void:
 	if runtime_events == null or damage.effect_events.is_empty():
 		return
@@ -87,64 +83,6 @@ static func apply(
 	traffic[CityDataGrid.index(traffic, map_edge, point.x, point.y)] = 0
 
 	return result_code
-
-
-# gdstyle:ignore=quality/max-parameters
-static func apply_flood(
-	city: CityState,
-	altitude: PackedByteArray,
-	buildings: PackedByteArray,
-	terrain: PackedByteArray,
-	zones: PackedByteArray,
-	underground: PackedByteArray,
-	flags: PackedByteArray,
-	traffic: PackedByteArray,
-	text: PackedByteArray,
-	labels: PackedByteArray,
-	microsims: PackedByteArray,
-	misc: PackedByteArray,
-	point: Vector2i,
-	maximum_altitude: int,
-	random: SimRandom,
-	lfsr_random: SimLfsrRandom,
-	runtime_events: DisasterDamage.RuntimeEvents = null,
-) -> int:
-	var map_edge: int = city.map_size if city != null else 128
-	var index := _index(point, map_edge)
-
-	if index < 0 or _altitude_word(altitude, index) & 0x1f > maximum_altitude:
-		return 0
-
-	if terrain[index] >= TerrainTileIds.DEEP_WATER_FIRST and terrain[index] <= TerrainTileIds.DEEP_WATER_LAST:
-		return 0
-
-	var overlay := int(OverlayData.read(text, index))
-
-	if overlay > 0:
-		if overlay == 0 or OverlayData.is_sign(overlay):
-			labels[overlay * CityState.LABEL_RECORD_SIZE] = 0
-		elif OverlayData.is_facility(overlay):
-			var damage := burn_structure(
-				city, altitude, buildings, terrain, zones, underground,
-				flags, text, labels, microsims, misc, point, random, lfsr_random,
-				false, false, true
-			)
-			append_damage_events(runtime_events, damage)
-		elif OverlayData.is_thing(overlay):
-			return 0
-		elif overlay < 250:
-			NetworkState.replace_building(
-				buildings, zones, misc, index, lfsr_random.next_mod(4) + Tiles.RUBBLE_FIRST
-			)
-
-			return 2
-		else:
-			return 0
-
-	OverlayData.write(text, index, 0xfc)
-	traffic[CityDataGrid.index(traffic, map_edge, point.x, point.y)] = 0
-
-	return 1
 
 
 # gdstyle:ignore=quality/max-parameters

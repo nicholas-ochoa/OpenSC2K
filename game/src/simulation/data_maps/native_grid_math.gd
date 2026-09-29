@@ -59,59 +59,6 @@ static func neighborhood(values: PackedInt32Array, edge: int, radius: int, scale
 	return result
 
 
-static func neighborhood_bytes(values: PackedInt32Array, edge: int, radius: int, scale: int,
-	budget: SimulationSliceBudget = null) -> PackedByteArray:
-	var stride := edge + 1
-	var integral := PackedInt64Array()
-	integral.resize(stride * stride)
-
-	for x in edge:
-		if budget != null:
-			budget.checkpoint()
-
-		var row_sum := 0
-		var row := x * edge
-		var above := x * stride
-		var below := above + stride
-
-		for y in edge:
-			row_sum += values[row + y]
-			integral[below + y + 1] = integral[above + y + 1] + row_sum
-
-	# column bounds repeat in every row. compute them once per filter
-	var tops := PackedInt32Array()
-	var bottoms := PackedInt32Array()
-	var widths := PackedInt32Array()
-
-	for y in edge:
-		tops.append(maxi(y - radius, 0))
-		bottoms.append(mini(y + radius + 1, edge))
-		widths.append(bottoms[y] - tops[y])
-
-	var result := PackedByteArray()
-	result.resize(values.size())
-
-	for x in edge:
-		if budget != null:
-			budget.checkpoint()
-
-		var left := maxi(x - radius, 0)
-		var right := mini(x + radius + 1, edge)
-		var row := x * edge
-		var left_row := left * stride
-		var right_row := right * stride
-		var height := right - left
-
-		for y in edge:
-			var top := tops[y]
-			var bottom := bottoms[y]
-			var total := integral[right_row + bottom] - integral[left_row + bottom]
-			total -= integral[right_row + top] - integral[left_row + top]
-			result[row + y] = clampi(total * scale / (height * widths[y]), 0, 255)
-
-	return result
-
-
 static func smooth(values: PackedInt32Array, edge: int, center_weight: int, base_divisor: int,
 	step: int = 1, rings: int = 2, budget: SimulationSliceBudget = null) -> PackedInt32Array:
 	var result := PackedInt32Array()

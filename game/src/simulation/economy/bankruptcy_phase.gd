@@ -4,26 +4,6 @@ extends RefCounted
 const BANKRUPTCY_LIMIT := -100000
 
 
-static func _gdscript_run(city: CityState) -> Result:
-	if city == null or not city.is_valid():
-		return _failed("city is invalid")
-
-	var funds := city.funds()
-	var bankrupt := funds < BANKRUPTCY_LIMIT
-	var events: Array[GameOverEvent] = []
-
-	if bankrupt:
-		events.append(GameOverEvent.new("bankruptcy", funds))
-
-	var result := Result.new()
-	result.ok = true
-	result.bankrupt = bankrupt
-	result.funds = funds
-	result.game_over_events = events
-
-	return result
-
-
 static func _failed(message: String) -> Result:
 	var result := Result.new()
 	result.error = message

@@ -20,44 +20,6 @@ const FIRST_ARCOLOGY := BuildingTileIds.PLYMOUTH_ARCOLOGY
 const LAST_ARCOLOGY := BuildingTileIds.LAUNCH_ARCOLOGY
 
 
-static func _gdscript_run(
-	city: CityState, developed_tiles: int, power_usage_percent: int, water_usage_percent: int
-) -> Result:
-	var span := SimulationTimingSpan.new(city.simulation_slice if city != null else null)
-	span.mark("calculate graph values")
-	var calculation := calculate_current_values(
-		city, developed_tiles, power_usage_percent, water_usage_percent
-	)
-
-	if not calculation.ok:
-		return _failed(calculation.error)
-
-	var chunk := city.document.find_chunk("XGRP")
-
-	if chunk == null or chunk.decoded_payload.size() != Sc2GraphLayout.SIZE:
-		return _failed("XGRP is missing or has the wrong size")
-
-	span.mark("store unemployment")
-	if not city.document.set_misc_u32(Sc2MiscLayout.UNEMPLOYMENT, calculation.unemployment):
-		return _failed("cannot store the unemployment percentage")
-
-	span.mark("shift graph histories")
-	var history := advance(city, calculation.values)
-
-	if not history.ok:
-		return _failed(history.error)
-
-	var result := Result.new()
-	result.ok = true
-	result.month = history.month
-	result.elapsed_years = history.elapsed_years
-	result.values = calculation.values
-	result.unemployment = calculation.unemployment
-	result.timing = span.finish()
-
-	return result
-
-
 static func _failed(message: String) -> Result:
 	var result := Result.new()
 	result.error = message

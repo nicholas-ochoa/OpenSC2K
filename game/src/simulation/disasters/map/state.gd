@@ -2,32 +2,6 @@ class_name DisasterMapState
 extends DisasterMapConstants
 
 
-static func _collapse_structure(
-	city: CityState,
-	payloads: Dictionary,
-	point: Vector2i,
-	_tile: int,
-	random: SimRandom,
-	lfsr_random: SimLfsrRandom
-) -> void:
-	DisasterMapDamage.burn_structure(
-		city,
-		payloads.ALTM,
-		payloads.XBLD,
-		payloads.XTER,
-		payloads.XZON,
-		payloads.XUND,
-		payloads.XBIT,
-		payloads.XTXT,
-		payloads.XLAB,
-		payloads.XMIC,
-		payloads.MISC,
-		point,
-		random,
-		lfsr_random
-	)
-
-
 static func _building_site(
 	city: CityState, payloads: Dictionary, point: Vector2i, tile: int
 ) -> Rect2i:
@@ -37,53 +11,6 @@ static func _building_site(
 	return DemolishEffectsSites._find_building_site(
 		payloads.XBLD, payloads.XZON, point, tile, area, city.compass_rotation(), map_edge
 	)
-
-
-static func _place_toxic_marker(text: PackedByteArray, point: Vector2i, map_edge: int = 128) -> bool:
-	var index := _index(point, map_edge)
-
-	if index < 0 or (OverlayData.read(text, index) != 0 and not OverlayData.is_sign(OverlayData.read(text, index))):
-		return false
-
-	OverlayData.write(text, index, TOXIC_OVERLAY)
-
-	return true
-
-
-static func _clear_riot_marker(text: PackedByteArray, point: Vector2i, map_edge: int = 128) -> bool:
-	var index := _index(point, map_edge)
-
-	if index < 0:
-		return false
-
-	var marker := int(OverlayData.read(text, index))
-
-	if marker != RIOT_OVERLAY_FORWARD and marker != RIOT_OVERLAY_REVERSE:
-		return false
-
-	OverlayData.write(text, index, 0)
-
-	return true
-
-
-static func _seed_special_toxic(
-	payloads: Dictionary, site: Rect2i, point: Vector2i,
-	map_edge: int = 128,
-) -> int:
-	if site.size == Vector2i.ZERO:
-		site = Rect2i(point, Vector2i.ONE)
-
-	var changed := 0
-
-	for x in range(site.position.x, site.end.x):
-		for y in range(site.position.y, site.end.y):
-			var index := x * map_edge + y
-
-			if OverlayData.read(payloads.XTXT, index) < 51:
-				OverlayData.write(payloads.XTXT, index, TOXIC_OVERLAY)
-				changed += 1
-
-	return changed
 
 
 static func _spawn_explosion(

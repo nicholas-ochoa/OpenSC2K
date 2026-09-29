@@ -21,10 +21,6 @@ func advance_day() -> SimulationSchedule:
 	return state_for_day(city_days)
 
 
-func write_to_city(city: CityState) -> bool:
-	return city.set_age_in_days(city_days)
-
-
 static func state_for_day(days: int) -> SimulationSchedule:
 	var safe_days := maxi(days, 0)
 	var month_day := safe_days % DAYS_PER_MONTH

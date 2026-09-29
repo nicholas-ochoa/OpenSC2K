@@ -17,10 +17,6 @@ static func _budget_funding(misc: PackedByteArray, budget_id: int) -> int:
 	)
 
 
-static func _raw_population(misc: PackedByteArray, cohort: int) -> int:
-	return BinaryData.read_u32_be(misc, MISC_RAW_POPULATION + cohort * MISC_DEMOGRAPHIC_RECORD_SIZE)
-
-
 static func _find_microsim_location(
 	text_overlays: PackedByteArray,
 	record_id: int,
@@ -44,53 +40,6 @@ static func _find_microsim_location(
 				return Vector2i(x, y)
 
 	return Vector2i(-1, -1)
-
-
-static func _arcology_count(misc: PackedByteArray, map_edge: int = 128) -> int:
-	var count := 0
-
-	for tile_id in range(TILE_ARCOLOGY_FIRST, TILE_ARCOLOGY_LAST + 1):
-		count += _tile_count(misc, tile_id, map_edge)
-
-	return _divide_toward_zero(count, 16)
-
-
-static func _service_score(
-	numerator: int, denominator: int, slope: int, best_limit := 50, zero_limit := 111
-) -> int:
-	var safe_denominator := denominator & 0xffff
-
-	if safe_denominator == 0:
-		safe_denominator = 1
-
-	var ratio := _divide_toward_zero(numerator, safe_denominator)
-
-	if ratio < best_limit:
-		return 12
-
-	if ratio < zero_limit:
-		return _divide_toward_zero(zero_limit - 1 - ratio, slope)
-
-	return 0
-
-
-static func _adjusted_population(misc: PackedByteArray, map_edge: int = 128) -> int:
-	var arcology_count := 0
-
-	for tile_id in range(Tiles.PLYMOUTH_ARCOLOGY, Tiles.LLAMA_DOME):
-		arcology_count += _tile_count(misc, tile_id, map_edge)
-
-	arcology_count = _divide_toward_zero(arcology_count, 16)
-	var adjustment := 0
-
-	if arcology_count > 140:
-		adjustment = (arcology_count * 5 - 700) * 4000
-
-	return (
-		BinaryData.read_u32_be(misc, MISC_ARCOLOGY_POPULATION)
-		+ adjustment
-		+ BinaryData.read_u32_be(misc, MISC_NORMAL_POPULATION)
-	)
 
 
 static func _population_cap(misc: PackedByteArray, maximum: int, divisor: int, map_edge: int = 128) -> int:

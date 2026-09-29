@@ -35,67 +35,6 @@ static func run(
 	return response.result
 
 
-static func _run_gdscript(
-	city: CityState,
-	random: SimRandom,
-	step: int,
-	substep: int,
-	lfsr_random: SimLfsrRandom = null,
-	game_random: GameLcgRandom = null
-) -> GrowthResult:
-	if city == null or not city.is_valid():
-		return _failed("city is invalid")
-
-	if random == null:
-		return _failed("a compatible random generator is required")
-
-	if lfsr_random == null:
-		lfsr_random = SimLfsrRandom.new(1)
-
-	if game_random == null:
-		game_random = GameLcgRandom.new(1)
-
-	if step < 0 or step > 3 or substep < 0 or substep > 3:
-		return _failed("growth partition is outside the supported range")
-
-	var span := SimulationTimingSpan.new(city.simulation_slice, TIMING_LABELS)
-	span.mark_index(TimingStep.PREPARE)
-	var payloads := GrowthState.payloads(city)
-
-	if payloads.is_empty():
-		return _failed("growth input chunks are missing or have the wrong size")
-
-	var original := GrowthState.duplicate_payloads(payloads)
-	var scan := TileScan.new(city, payloads, random, lfsr_random, game_random, span)
-
-	# the trip search reads these maps for every powered rci tile. their sizes
-	# are invariant across the scan, so check them once here
-	if not TransportTripSearch.valid_inputs(scan.buildings, scan.zones, scan.underground,
-		scan.text_overlays, scan.altitudes, scan.traffic, scan.map_edge):
-		return _failed("transport input maps have the wrong size")
-
-	span.mark_index(TimingStep.SCAN if scan.detailed else TimingStep.TILES)
-
-	if not scan.scan_tiles(city.simulation_slice, step, substep):
-		return _failed(scan.error)
-
-	span.mark_index(TimingStep.CHANGES)
-	var changed_ids := PackedStringArray()
-
-	for chunk_id in [
-		"ALTM", "XTER", "XBLD", "XZON", "XUND", "XTXT", "XLAB", "XMIC", "XTHG",
-		"XBIT", "XTRF", "MISC",
-	]:
-		if payloads[chunk_id] != original[chunk_id]:
-			changed_ids.append(chunk_id)
-
-	span.mark_index(TimingStep.STORE)
-	if not GrowthState._apply_payloads(city, changed_ids, payloads, original):
-		return _failed("cannot store growth phase data")
-
-	return scan.result()
-
-
 static func _failed(message: String) -> GrowthResult:
 	var result := GrowthResult.new()
 	result.error = message

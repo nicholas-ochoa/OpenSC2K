@@ -70,63 +70,6 @@ static func _failed(message: String) -> Result:
 	return result
 
 
-static func _gdscript_calculate(city: CityState) -> Result:
-	var validated := _misc_data(city)
-
-	if not validated.ok:
-		return _failed(validated.error)
-
-	var misc: PackedByteArray = validated.misc
-	var value := _to_i32(-_read_count(misc, MISC_SUBWAY_COUNT, city.map_size))
-
-	for tile_id in range(Tiles.POWER_LINE_FIRST, Tiles.DEVELOPED_FIRST):
-		var cost := 0
-
-		if tile_id < Tiles.ROAD_STRAIGHT_1:
-			cost = 2
-		elif tile_id < Tiles.RAIL_STRAIGHT_1:
-			cost = 10
-		elif tile_id < Tiles.TUNNEL_ENTRANCE_1:
-			cost = 25
-		elif tile_id < Tiles.SUSPENSION_BRIDGE_1:
-			cost = 15
-		elif tile_id < Tiles.HIGHWAY_SLOPE_1:
-			cost = 100
-		elif tile_id < Tiles.RAIL_SUBWAY_ENTRANCE_1:
-			cost = 100
-		else:
-			cost = 250
-
-		value = _add_value(value, _tile_count(misc, tile_id, city.map_size), cost)
-
-	for tile_id in BUILDING_RULES:
-		var rule: Array = BUILDING_RULES[tile_id]
-		var count := _divide_toward_zero(_tile_count(misc, tile_id, city.map_size), int(rule[0]))
-		value = _add_value(value, count, int(rule[1]))
-
-	var result := Result.new()
-	result.ok = true
-	result.city_value = value
-
-	return result
-
-
-static func _gdscript_run(city: CityState) -> Result:
-	var calculated := _gdscript_calculate(city)
-
-	if not calculated.ok:
-		return calculated
-
-	var misc_chunk := city.document.find_chunk("MISC")
-	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
-	BinaryData.write_u32_be(misc, MISC_CITY_VALUE, int(calculated.city_value))
-
-	if not misc_chunk.set_decoded_payload(misc):
-		return _failed("cannot store the city value")
-
-	return calculated
-
-
 static func _misc_data(city: CityState) -> MiscInput:
 	var result := MiscInput.new()
 
@@ -157,10 +100,6 @@ static func _read_count(misc: PackedByteArray, offset: int, map_edge: int) -> in
 		misc,
 		offset,
 	) if map_edge == 128 else ((misc[offset] << 24) | (misc[offset + 1] << 16) | (misc[offset + 2] << 8) | misc[offset + 3])
-
-
-static func _add_value(current: int, count: int, cost: int) -> int:
-	return _to_i32(current + _to_i32(count * cost))
 
 
 static func _divide_toward_zero(value: int, divisor: int) -> int:
