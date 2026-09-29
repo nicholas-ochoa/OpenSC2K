@@ -3,7 +3,10 @@
 pub mod budget;
 pub mod bytes;
 pub mod city;
+pub mod civic;
 pub mod data_maps;
+pub mod economy;
+pub mod engine;
 pub mod events;
 pub mod geom;
 pub mod grid;
@@ -15,6 +18,7 @@ pub mod network;
 pub mod overlay;
 pub mod phase;
 pub mod random;
+pub mod reports;
 pub mod things;
 pub mod tools;
 pub mod trip;

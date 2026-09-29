@@ -1,6 +1,8 @@
 //! The growth partition of one day, as GrowthScan and its helpers. The scan
 //! keeps the original tile order and random-call order.
 
+pub mod aftermath;
+pub mod demand;
 pub mod development;
 pub mod maintenance;
 pub mod special;

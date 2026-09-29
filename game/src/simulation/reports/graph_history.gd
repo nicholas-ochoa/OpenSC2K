@@ -20,7 +20,7 @@ const FIRST_ARCOLOGY := BuildingTileIds.PLYMOUTH_ARCOLOGY
 const LAST_ARCOLOGY := BuildingTileIds.LAUNCH_ARCOLOGY
 
 
-static func run(
+static func _gdscript_run(
 	city: CityState, developed_tiles: int, power_usage_percent: int, water_usage_percent: int
 ) -> Result:
 	var span := SimulationTimingSpan.new(city.simulation_slice if city != null else null)
@@ -229,6 +229,16 @@ static func _write_value(data: PackedByteArray, series: int, index: int, value: 
 
 static func _divide_toward_zero(value: int, divisor: int) -> int:
 	return int(value / divisor)
+
+
+static func run(
+	city: CityState, developed_tiles: int, power_usage_percent: int, water_usage_percent: int
+) -> Result:
+	if city == null or not city.is_valid():
+		return _failed("city is invalid")
+
+	return NativeSimulationBridge.run("graphs", city, null, null, null, {"developed_tiles": developed_tiles,
+		"power_usage_percent": power_usage_percent, "water_usage_percent": water_usage_percent}).result
 
 
 class Result extends PhaseResult:

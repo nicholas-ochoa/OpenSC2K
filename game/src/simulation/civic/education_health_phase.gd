@@ -26,7 +26,7 @@ const ORDINANCE_ANTI_DRUG := OrdinanceIds.ANTI_DRUG_MASK
 const ORDINANCE_CPR_TRAINING := OrdinanceIds.CPR_TRAINING_MASK
 
 
-static func run(city: CityState, random: SimRandom) -> Result:
+static func _gdscript_run(city: CityState, random: SimRandom) -> Result:
 	if city == null or not city.is_valid():
 		return _failed("city is invalid")
 
@@ -426,6 +426,16 @@ static func _write_tables(
 
 static func _u32(value: int) -> int:
 	return value & 0xffffffff
+
+
+static func run(city: CityState, random: SimRandom) -> Result:
+	if city == null or not city.is_valid():
+		return _failed("city is invalid")
+
+	if random == null:
+		return _failed("a compatible random generator is required")
+
+	return NativeSimulationBridge.run("education_health", city, random, null, null).result
 
 
 class Result extends PhaseResult:

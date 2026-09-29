@@ -95,6 +95,16 @@ impl ToValue for Ints32 {
     }
 }
 
+/// PackedInt64Array fields.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Ints64(pub Vec<i64>);
+
+impl ToValue for Ints64 {
+    fn to_value(&self) -> Value {
+        Value::Ints64(self.0.clone())
+    }
+}
+
 /// PackedStringArray fields.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Strings(pub Vec<String>);

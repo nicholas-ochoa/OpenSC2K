@@ -37,7 +37,7 @@ const INDUSTRY_CONNECTION_RANGES := [
 ]
 
 
-static func run(city: CityState) -> Result:
+static func _gdscript_run(city: CityState) -> Result:
 	if city == null or not city.is_valid():
 		return _failed("city is invalid")
 
@@ -257,6 +257,13 @@ static func _ordinance_adjusted_tax_rate(category: int, rate: int, flags: int) -
 				rate += 1
 
 	return maxi(rate, 0)
+
+
+static func run(city: CityState) -> Result:
+	if city == null or not city.is_valid():
+		return _failed("city is invalid")
+
+	return NativeSimulationBridge.run("rci_demand", city, null, null, null).result
 
 
 class Result extends PhaseResult:

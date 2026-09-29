@@ -36,7 +36,7 @@ const MID_EQ_INDUSTRIES := [2, 5, 7, 8, 6, 9]
 const HIGH_EQ_INDUSTRIES := [6, 9]
 
 
-static func run(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom, population_growth: int) -> Result:
+static func _gdscript_run(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom, population_growth: int) -> Result:
 	if city == null or not city.is_valid():
 		return _failed("city is invalid")
 
@@ -235,6 +235,19 @@ static func _to_i16(value: int) -> int:
 	var word := value & 0xffff
 
 	return word - 0x10000 if word & 0x8000 else word
+
+
+static func run(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom, population_growth: int) -> Result:
+	if city == null or not city.is_valid():
+		return _failed("city is invalid")
+
+	if random == null:
+		return _failed("a compatible process random generator is required")
+
+	if lfsr_random == null:
+		return _failed("a compatible game LFSR generator is required")
+
+	return NativeSimulationBridge.run("industry", city, random, lfsr_random, null, {"population_growth": population_growth}).result
 
 
 class Result extends PhaseResult:

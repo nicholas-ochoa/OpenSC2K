@@ -6,7 +6,7 @@ extends MicrosimAnnualValues
 @warning_ignore_start("integer_division")
 
 
-static func run(
+static func _gdscript_run(
 	city: CityState,
 	bus_passengers: int,
 	rail_passengers: int,
@@ -311,7 +311,7 @@ static func _result(annual: MicrosimAnnualContext) -> Result:
 static func run_transit(
 	city: CityState, bus_passengers: int, rail_passengers: int, subway_passengers: int
 ) -> Result:
-	return run(city, bus_passengers, rail_passengers, subway_passengers, null)
+	return _gdscript_run(city, bus_passengers, rail_passengers, subway_passengers, null)
 
 
 static func _failed(message: String) -> Result:
@@ -319,6 +319,30 @@ static func _failed(message: String) -> Result:
 	result.error = message
 
 	return result
+
+
+static func run(
+	city: CityState,
+	bus_passengers: int,
+	rail_passengers: int,
+	subway_passengers: int,
+	random: SimRandom = null,
+	lfsr_random: SimLfsrRandom = null,
+	game_random: GameLcgRandom = null,
+	power_usage_percent := -1,
+	water_usage_percent := -1,
+	australian_locale := false,
+	mayor_approval := 0
+) -> Result:
+	if city == null or not city.is_valid():
+		return _failed("city is invalid")
+
+	return NativeSimulationBridge.run("microsim_annual", city, random, lfsr_random, game_random, {
+		"bus_passengers": bus_passengers, "rail_passengers": rail_passengers,
+		"subway_passengers": subway_passengers, "has_random": random != null,
+		"has_lfsr": lfsr_random != null, "has_game": game_random != null,
+		"power_usage_percent": power_usage_percent, "water_usage_percent": water_usage_percent,
+		"australian_locale": australian_locale, "mayor_approval": mayor_approval}).result
 
 
 class Result extends PhaseResult:

@@ -45,18 +45,18 @@ const NOTICE_FISCAL_CRISIS := 292
 
 
 # settle the year and do the monthly work, without the annual facility update
-static func run(city: CityState, random: SimRandom, annual_budget_approved := false) -> Result:
-	var settlement := settle_year(city, annual_budget_approved)
+static func _gdscript_run(city: CityState, random: SimRandom, annual_budget_approved := false) -> Result:
+	var settlement := _gdscript_settle_year(city, annual_budget_approved)
 
 	if not settlement.ok or settlement.requires_annual_budget:
 		return settlement
 
-	return run_month(city, random, settlement)
+	return _gdscript_run_month(city, random, settlement)
 
 
 # first part of the January budget. the original runs the annual facility
 # update after this part and before run_month
-static func settle_year(city: CityState, annual_budget_approved := false) -> Result:
+static func _gdscript_settle_year(city: CityState, annual_budget_approved := false) -> Result:
 	if city == null or not city.is_valid():
 		return _failed("city is invalid")
 
@@ -125,7 +125,7 @@ static func settle_year(city: CityState, annual_budget_approved := false) -> Res
 
 # second part of the budget: the Auto Budget check after a settlement, the
 # monthly history, the next costs, and the random ordinance
-static func run_month(city: CityState, random: SimRandom, settlement: Result) -> Result:
+static func _gdscript_run_month(city: CityState, random: SimRandom, settlement: Result) -> Result:
 	if city == null or not city.is_valid():
 		return _failed("city is invalid")
 
@@ -318,7 +318,7 @@ static func funding_values(city: CityState) -> PackedInt32Array:
 	return values
 
 
-static func set_funding(
+static func _gdscript_set_funding(
 	city: CityState, values: PackedInt32Array, auto_budget: bool
 ) -> Result:
 	if city == null or not city.is_valid():
@@ -379,6 +379,44 @@ static func _to_i32(value: int) -> int:
 	var unsigned := value & 0xffffffff
 
 	return unsigned - 0x100000000 if unsigned & 0x80000000 else unsigned
+
+
+static func run(city: CityState, random: SimRandom, annual_budget_approved := false) -> Result:
+	if city == null or not city.is_valid():
+		return _failed("city is invalid")
+
+	return NativeSimulationBridge.run("budget.run", city, random, null, null, {"annual_budget_approved": annual_budget_approved}).result
+
+
+static func settle_year(city: CityState, annual_budget_approved := false) -> Result:
+	if city == null or not city.is_valid():
+		return _failed("city is invalid")
+
+	return NativeSimulationBridge.run("budget.settle_year", city, null, null, null, {"annual_budget_approved": annual_budget_approved}).result
+
+
+static func run_month(city: CityState, random: SimRandom, settlement: Result) -> Result:
+	if city == null or not city.is_valid():
+		return _failed("city is invalid")
+
+	if random == null:
+		return _failed("a compatible random generator is required")
+
+	if settlement == null or not settlement.ok:
+		return _failed("the annual settlement is missing")
+
+	var timing := {"has_total": settlement.timing.has_total, "work_usec": settlement.timing.work_usec,
+		"steps": settlement.timing.steps}
+
+	return NativeSimulationBridge.run("budget.run_month", city, random, null, null, {"settled_year": settlement.settled_year,
+		"funds_before": settlement.funds_before, "settlement_ok": settlement.ok, "settlement_timing": timing}).result
+
+
+static func set_funding(city: CityState, values: PackedInt32Array, auto_budget: bool) -> Result:
+	if city == null or not city.is_valid():
+		return _failed("city is invalid")
+
+	return NativeSimulationBridge.run("budget.set_funding", city, null, null, null, {"values": values, "auto_budget": auto_budget}).result
 
 
 class Result extends PhaseResult:

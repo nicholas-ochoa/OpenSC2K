@@ -70,7 +70,7 @@ static func _failed(message: String) -> Result:
 	return result
 
 
-static func calculate(city: CityState) -> Result:
+static func _gdscript_calculate(city: CityState) -> Result:
 	var validated := _misc_data(city)
 
 	if not validated.ok:
@@ -111,8 +111,8 @@ static func calculate(city: CityState) -> Result:
 	return result
 
 
-static func run(city: CityState) -> Result:
-	var calculated := calculate(city)
+static func _gdscript_run(city: CityState) -> Result:
+	var calculated := _gdscript_calculate(city)
 
 	if not calculated.ok:
 		return calculated
@@ -179,6 +179,20 @@ static func _to_i32(value: int) -> int:
 	var unsigned := value & 0xffffffff
 
 	return unsigned - 0x100000000 if unsigned & 0x80000000 else unsigned
+
+
+static func calculate(city: CityState) -> Result:
+	if city == null or not city.is_valid():
+		return _failed("city is invalid")
+
+	return NativeSimulationBridge.run("city_value.calculate", city, null, null, null).result
+
+
+static func run(city: CityState) -> Result:
+	if city == null or not city.is_valid():
+		return _failed("city is invalid")
+
+	return NativeSimulationBridge.run("city_value.run", city, null, null, null).result
 
 
 class Result extends PhaseResult:

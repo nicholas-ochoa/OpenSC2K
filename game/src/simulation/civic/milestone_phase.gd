@@ -20,7 +20,7 @@ const PROGRESSION_REQUIREMENTS := [
 ]
 
 
-static func run(city: CityState) -> Result:
+static func _gdscript_run(city: CityState) -> Result:
 	if city == null or not city.is_valid():
 		return _failed("city is invalid")
 
@@ -101,6 +101,13 @@ static func _failed(message: String) -> Result:
 	result.error = message
 
 	return result
+
+
+static func run(city: CityState) -> Result:
+	if city == null or not city.is_valid():
+		return _failed("city is invalid")
+
+	return NativeSimulationBridge.run("milestones", city, null, null, null).result
 
 
 class Result extends PhaseResult:

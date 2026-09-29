@@ -264,3 +264,51 @@ pub fn variant(value: &Value) -> Variant {
         }
     }
 }
+
+/// A SimulationTiming sent as `{work_usec, steps}`.
+pub fn timing(dictionary: &VarDictionary, key: &str) -> crate::sim::events::Timing {
+    let source = self::dictionary(dictionary, key);
+    let mut steps = crate::sim::value::OrderedMap::new();
+
+    for (name, value) in self::dictionary(&source, "steps").iter_shared() {
+        steps.set(&name.to_string(), value.try_to::<i64>().unwrap_or(0));
+    }
+
+    let total = if boolean(&source, "has_total", false) { int(&source, "work_usec", 0) } else { -1 };
+
+    crate::sim::events::Timing::new(total, steps)
+}
+
+/// ScenarioState fields, or None when the dictionary is missing or empty.
+pub fn scenario(dictionary: &VarDictionary, key: &str) -> Option<crate::sim::civic::scenario::Scenario> {
+    let source = self::dictionary(dictionary, key);
+
+    if source.is_empty() {
+        return None;
+    }
+
+    let field = |name: &str| int(&source, name, 0);
+
+    Some(crate::sim::civic::scenario::Scenario {
+        format_size: field("format_size") as usize,
+        disaster_type: field("disaster_type"),
+        disaster_x: field("disaster_x"),
+        disaster_y: field("disaster_y"),
+        time_limit_months: field("time_limit_months"),
+        city_size_goal: field("city_size_goal"),
+        residential_goal: field("residential_goal"),
+        commercial_goal: field("commercial_goal"),
+        industrial_goal: field("industrial_goal"),
+        cash_goal: field("cash_goal"),
+        land_value_goal: field("land_value_goal"),
+        life_expectancy_goal: field("life_expectancy_goal"),
+        education_goal: field("education_goal"),
+        pollution_limit: field("pollution_limit"),
+        crime_limit: field("crime_limit"),
+        traffic_limit: field("traffic_limit"),
+        first_building_id: field("first_building_id"),
+        second_building_id: field("second_building_id"),
+        first_building_tile_count: field("first_building_tile_count"),
+        second_building_tile_count: field("second_building_tile_count"),
+    })
+}

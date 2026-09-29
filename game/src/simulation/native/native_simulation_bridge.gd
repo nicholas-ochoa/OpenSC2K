@@ -17,6 +17,20 @@ static var classes := {
 	"PowerPhase.Result": PowerPhase.Result,
 	"WaterPhase.Result": WaterPhase.Result,
 	"TrafficPhase.Result": TrafficPhase.Result,
+	"BudgetPhase.Result": BudgetPhase.Result,
+	"BankruptcyPhase.Result": BankruptcyPhase.Result,
+	"CityValuePhase.Result": CityValuePhase.Result,
+	"MonthStartPhase.Result": MonthStartPhase.Result,
+	"MonthlyMusicResult": MonthlyMusicResult,
+	"RciDemandPhase.Result": RciDemandPhase.Result,
+	"RciAftermathPhase.Result": RciAftermathPhase.Result,
+	"IndustryPhase.Result": IndustryPhase.Result,
+	"SimNationPhase.Result": SimNationPhase.Result,
+	"EducationHealthPhase.Result": EducationHealthPhase.Result,
+	"GraphHistory.Result": GraphHistory.Result,
+	"MilestonePhase.Result": MilestonePhase.Result,
+	"ScenarioPhase.Result": ScenarioPhase.Result,
+	"MicrosimAnnualPhase.Result": MicrosimAnnualPhase.Result,
 	"EffectEvent": EffectEvent,
 	"SimulationTiming": SimulationTiming,
 }
@@ -163,6 +177,8 @@ static func _create(class_label: String, fields: Dictionary) -> Object:
 			return SimulationInteractionRequest.new(fields.type)
 		"PowerPlantExpiry":
 			return PowerPlantExpiry.new(fields.record, fields.tile, Vector2i(fields.x, fields.y))
+		"RciAftermathPhase.MapChange":
+			return RciAftermathPhase.MapChange.new(fields.point, fields.old_tile, fields.new_tile)
 
 	assert(classes.has(class_label), "Unknown native result class: %s" % class_label)
 

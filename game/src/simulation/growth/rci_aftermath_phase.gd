@@ -110,7 +110,7 @@ const MILITARY_TILE_COUNT_INDEX := {
 }
 
 
-static func run(city: CityState, random: SimRandom, season: int) -> Result:
+static func _gdscript_run(city: CityState, random: SimRandom, season: int) -> Result:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
@@ -437,6 +437,16 @@ static func _failed(message: String) -> Result:
 	result.error = message
 
 	return result
+
+
+static func run(city: CityState, random: SimRandom, season: int) -> Result:
+	if city == null or not city.is_valid():
+		return _failed("city is invalid")
+
+	if random == null:
+		return _failed("a compatible process random generator is required")
+
+	return NativeSimulationBridge.run("rci_aftermath", city, random, null, null, {"season": season}).result
 
 
 class MapChange extends RefCounted:

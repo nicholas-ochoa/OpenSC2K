@@ -18,7 +18,7 @@ const NEWS_FEDERAL_RATE_UP := 0x09
 const NEWS_FEDERAL_RATE_DOWN := 0x0a
 
 
-static func run(city: CityState, random: SimRandom) -> Result:
+static func _gdscript_run(city: CityState, random: SimRandom) -> Result:
 	if city == null or not city.is_valid():
 		return _failed("city is invalid")
 
@@ -182,6 +182,16 @@ static func _to_i16(value: int) -> int:
 	var word := value & 0xffff
 
 	return word - 0x10000 if word & 0x8000 else word
+
+
+static func run(city: CityState, random: SimRandom) -> Result:
+	if city == null or not city.is_valid():
+		return _failed("city is invalid")
+
+	if random == null:
+		return _failed("a compatible process random generator is required")
+
+	return NativeSimulationBridge.run("simnation", city, random, null, null).result
 
 
 class Result extends PhaseResult:
