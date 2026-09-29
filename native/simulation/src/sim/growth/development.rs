@@ -114,16 +114,14 @@ pub fn status(tile: i64) -> i64 {
 /// GrowthDevelopment.place_zone.
 pub fn place_zone(maps: &mut ZoneMaps, anchor: Vec2i, zone_density: i64, building_class: i64, random: &mut SimRandom) -> bool {
     let edge = maps.map_edge;
-    let tile;
-
-    if zone_density == 1 && building_class == CLASS_RESIDENTIAL {
+    let tile = if zone_density == 1 && building_class == CLASS_RESIDENTIAL {
         let value_index = grid::index(maps.land_value, edge, anchor.x, anchor.y);
         let value_group = (crate::sim::bytes::at(maps.land_value, value_index) >> 6).min(2);
-        tile = BUILDING_BASE[1] + value_group * 4 + (random.next_u15() & 3);
+        BUILDING_BASE[1] + value_group * 4 + (random.next_u15() & 3)
     } else {
         let table_index = (zone_density + building_class * 4) as usize;
-        tile = BUILDING_BASE[table_index] + random.next_u15() % BUILDING_RANGE[table_index];
-    }
+        BUILDING_BASE[table_index] + random.next_u15() % BUILDING_RANGE[table_index]
+    };
 
     if zone_density == 1 {
         let index = index_of(anchor, edge);

@@ -219,7 +219,7 @@ pub fn terrain_section_shape(buildings: &[u8], terrain: &[u8], altitude: &[u8], 
             result |= 1;
         }
 
-        if matches!(odd_slope_mask, 1 | 2 | 3) {
+        if matches!(odd_slope_mask, 1..=3) {
             result |= 2;
         }
 
@@ -236,7 +236,7 @@ pub fn terrain_section_shape(buildings: &[u8], terrain: &[u8], altitude: &[u8], 
         result |= 1;
     }
 
-    if matches!(raised_mask, 1 | 2 | 3) && odd_slope_mask & 12 == 12 {
+    if matches!(raised_mask, 1..=3) && odd_slope_mask & 12 == 12 {
         result |= 2;
     }
 

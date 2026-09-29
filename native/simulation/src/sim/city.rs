@@ -415,8 +415,7 @@ impl City {
     pub fn set_building_corners(&mut self, x: i64, y: i64, value: i64) -> bool {
         let index = self.index_of(x, y);
 
-        if value < 0
-            || value > zone::CORNERS_MASK
+        if !(0..=zone::CORNERS_MASK).contains(&value)
             || value & zone::TYPE_MASK != 0
             || index < 0
             || self.xzon.data.len() as i64 != self.tile_count()

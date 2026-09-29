@@ -153,7 +153,7 @@ impl Hasher for KeyHasher {
 
     fn write(&mut self, bytes: &[u8]) {
         for byte in bytes {
-            self.0 = (self.0.rotate_left(5) ^ *byte as u64).wrapping_mul(0x51_7cc1_b727_220a_95);
+            self.0 = (self.0.rotate_left(5) ^ *byte as u64).wrapping_mul(0x517c_c1b7_2722_0a95);
         }
     }
 
@@ -840,19 +840,19 @@ pub fn highway_step(buildings: &[u8], current: Vec2i, next_point: Vec2i, map_edg
         }
     }
 
-    for entry in 0..4 {
+    for (entry, &ingress_corner) in INGRESS_CORNERS.iter().enumerate() {
         if ports & (1 << entry) == 0 {
             continue;
         }
 
-        for leave in 0..4 {
+        for (leave, &egress_corner) in EGRESS_CORNERS.iter().enumerate() {
             if leave == entry || ports & (1 << leave) == 0 {
                 continue;
             }
 
-            let mut step = INGRESS_CORNERS[entry];
+            let mut step = ingress_corner;
 
-            while step != EGRESS_CORNERS[leave] {
+            while step != egress_corner {
                 if step == corner {
                     return true;
                 }
@@ -1011,7 +1011,7 @@ mod tests {
             }
 
             let mut caches = vec![vec![0u8; (edge * edge) as usize]; 4];
-            let mut compare = |city: &crate::sim::city::City, point: Vec2i, zone: i64, mode: i64, caches: &mut Vec<Vec<u8>>| {
+            let compare = |city: &crate::sim::city::City, point: Vec2i, zone: i64, mode: i64, caches: &mut Vec<Vec<u8>>| {
                 let maps = trip_maps(city);
                 let start = (mode << point_shift(edge)) | (point.x * edge + point.y);
                 let mut direct_traffic = city.xtrf.data.clone();

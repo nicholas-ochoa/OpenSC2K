@@ -114,7 +114,7 @@ pub fn target_record(goal: i64) -> i64 {
 }
 
 pub fn is_record_target(goal: i64) -> bool {
-    goal < 241 || goal >= overlay::EXTRA_THING
+    !(241..overlay::EXTRA_THING).contains(&goal)
 }
 
 /// Ship home lives in spare high-plane bytes. They store a coordinate plus one

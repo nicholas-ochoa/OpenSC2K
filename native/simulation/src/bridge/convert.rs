@@ -22,13 +22,6 @@ pub fn boolean(dictionary: &VarDictionary, key: &str, fallback: bool) -> bool {
     }
 }
 
-pub fn float(dictionary: &VarDictionary, key: &str, fallback: f64) -> f64 {
-    match dictionary.get(key) {
-        Some(value) => value.try_to::<f64>().unwrap_or(fallback),
-        None => fallback,
-    }
-}
-
 pub fn string(dictionary: &VarDictionary, key: &str) -> String {
     match dictionary.get(key) {
         Some(value) => value.try_to::<GString>().map(|text| text.to_string()).unwrap_or_default(),

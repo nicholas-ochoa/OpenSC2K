@@ -163,17 +163,17 @@ fn prepare(
     city: &City,
     random: &Option<&mut SimRandom>,
     lfsr: &Option<&mut SimLfsrRandom>,
-    missing: &str,
-) -> Result<Snapshot, DisasterMapResult> {
+    missing: &'static str,
+) -> Result<Snapshot, &'static str> {
     if random.is_none() {
-        return Err(DisasterMapResult::failed(RANDOM_REQUIRED));
+        return Err(RANDOM_REQUIRED);
     }
 
     if lfsr.is_none() {
-        return Err(DisasterMapResult::failed(LFSR_REQUIRED));
+        return Err(LFSR_REQUIRED);
     }
 
-    Snapshot::take(city, &MAP_CHUNKS).ok_or_else(|| DisasterMapResult::failed(missing))
+    Snapshot::take(city, &MAP_CHUNKS).ok_or(missing)
 }
 
 /// DisasterMapScanDispatch.run_all: one scan that updates each marker kind and
@@ -187,7 +187,7 @@ pub fn run_all(
 ) -> DisasterMapResult {
     let snapshot = match prepare(city, &random, &lfsr, "disaster-map input chunks are missing or invalid") {
         Ok(snapshot) => snapshot,
-        Err(result) => return result,
+        Err(error) => return DisasterMapResult::failed(error),
     };
     let (Some(random), Some(lfsr)) = (random, lfsr) else {
         unreachable!();
@@ -311,7 +311,7 @@ pub fn run_all(
 pub fn run_dispatch(city: &mut City, random: Option<&mut SimRandom>, lfsr: Option<&mut SimLfsrRandom>) -> DisasterMapResult {
     let snapshot = match prepare(city, &random, &lfsr, "dispatch-map input chunks are missing or invalid") {
         Ok(snapshot) => snapshot,
-        Err(result) => return result,
+        Err(error) => return DisasterMapResult::failed(error),
     };
     let (Some(random), Some(lfsr)) = (random, lfsr) else {
         unreachable!();
@@ -369,7 +369,7 @@ fn run_kind(
     };
     let snapshot = match prepare(city, &random, &lfsr, missing) {
         Ok(snapshot) => snapshot,
-        Err(result) => return result,
+        Err(error) => return DisasterMapResult::failed(error),
     };
     let (Some(random), Some(lfsr)) = (random, lfsr) else {
         unreachable!();

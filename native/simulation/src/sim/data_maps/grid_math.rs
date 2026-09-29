@@ -1,5 +1,7 @@
 //! Integer spatial filters for the SC2X per-tile simulation, as NativeGridMath.
 
+use crate::sim::geom::Vec2i;
+
 /// Box-filter average over a (2 * radius + 1) square, clipped at the map edge.
 /// Values are stored as i32, as in a PackedInt32Array.
 fn neighborhood_values(values: &[i32], edge: usize, radius: i64, scale: i64) -> Vec<i64> {
@@ -59,7 +61,8 @@ pub fn neighborhood_bytes(values: &[i32], edge: usize, radius: i64, scale: i64) 
         .collect()
 }
 
-fn smooth_edge_value(values: &[i32], edge: i64, x: i64, y: i64, center_weight: i64, base_divisor: i64, step: i64, rings: i64) -> i64 {
+fn smooth_edge_value(values: &[i32], edge: i64, point: Vec2i, center_weight: i64, base_divisor: i64, step: i64, rings: i64) -> i64 {
+    let Vec2i { x, y } = point;
     let index = x * edge + y;
     let mut total = values[index as usize] as i64 * center_weight;
     let mut divisor = base_divisor;
@@ -115,7 +118,7 @@ fn smooth_into(values: &[i32], edge: i64, center_weight: i64, base_divisor: i64,
             } else {
                 edge - 2 * rim_width + rim_index
             };
-            let value = smooth_edge_value(values, edge, x, y, center_weight, base_divisor, step, rings);
+            let value = smooth_edge_value(values, edge, Vec2i::new(x, y), center_weight, base_divisor, step, rings);
             store((row + y) as usize, value);
         }
 

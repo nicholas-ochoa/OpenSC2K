@@ -33,7 +33,7 @@ fn pollution_weight(building: i64) -> i64 {
 }
 
 fn density_weight(building: i64) -> i64 {
-    if building >= tiles::DEVELOPED_FIRST && building < tiles::HYDRO_POWER_1 {
+    if (tiles::DEVELOPED_FIRST..tiles::HYDRO_POWER_1).contains(&building) {
         population_weight(building)
     } else if building >= tiles::HYDRO_POWER_1 {
         if (tiles::PLYMOUTH_ARCOLOGY..=tiles::LAUNCH_ARCOLOGY).contains(&building) {
@@ -270,7 +270,7 @@ pub fn run_land_value_and_crime(city: &mut City) -> PollutionResult {
         }
 
         residential[index] = residential_value as i32;
-        industrial[index] = industrial_value as i32;
+        industrial[index] = industrial_value;
         weights[index] = density_weight(building) as i32;
     }
 

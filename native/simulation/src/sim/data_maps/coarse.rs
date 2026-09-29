@@ -390,7 +390,7 @@ pub fn run(city: &mut City) -> PollutionResult {
             let service_y = y >> 2;
             let service_index = service_x * quarter + service_y;
 
-            if building >= tiles::DEVELOPED_FIRST && building < tiles::HYDRO_POWER_1 {
+            if (tiles::DEVELOPED_FIRST..tiles::HYDRO_POWER_1).contains(&building) {
                 temporary[temporary_row + service_y] += population_weight(building) as i32;
 
                 if ordinances & POLICE_COVERAGE_ORDINANCE != 0 && police[service_index] < 0xfe {

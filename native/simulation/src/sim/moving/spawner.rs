@@ -116,8 +116,8 @@ pub fn spawn_airplane(data: &mut [u8], text: &mut [u8], point: Vec2i, runway_axi
     let mut attached = point;
     // Keep the original entry margins at 128 and above. Small maps use the same
     // proportions so each edge coordinate stays inside the map.
-    let entry_low = ((10 * map_edge) / 128).max(1).min(10);
-    let entry_high = ((18 * map_edge) / 128).max(1).min(18);
+    let entry_low = ((10 * map_edge) / 128).clamp(1, 10);
+    let entry_high = ((18 * map_edge) / 128).clamp(1, 18);
     let entry_span = map_edge - entry_low - entry_high;
 
     if random.next_u15() % 10 < 5 {
