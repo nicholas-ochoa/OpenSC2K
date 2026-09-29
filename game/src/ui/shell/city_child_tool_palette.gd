@@ -46,6 +46,7 @@ func show_tool_group(
 	group_index: int,
 	city: CityState,
 	icon_provider: Callable = Callable(),
+	preferred_subtool := -1,
 ) -> int:
 	if group_index < 0 or group_index >= Tools.GROUPS.size():
 		return 0
@@ -96,6 +97,10 @@ func show_tool_group(
 
 		if available and first_available_subtool < 0:
 			first_available_subtool = subtool_index
+
+	# keep the last subtool chosen in this group while it is still offered
+	if buttons.has(preferred_subtool) and not (buttons[preferred_subtool] as Button).disabled:
+		return preferred_subtool
 
 	return maxi(0, first_available_subtool)
 

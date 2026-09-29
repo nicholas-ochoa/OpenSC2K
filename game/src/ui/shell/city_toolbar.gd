@@ -214,6 +214,7 @@ func show_tool_group(
 	group_index: int,
 	city: CityState,
 	icon_provider: Callable = Callable(),
+	preferred_subtool := -1,
 ) -> int:
 	if group_index < 0 or group_index >= Tools.GROUPS.size():
 		return 0
@@ -224,7 +225,7 @@ func show_tool_group(
 	for button_index in toolbar_buttons.size():
 		toolbar_buttons[button_index].button_pressed = button_index == group_index
 
-	var selected := child_palette.show_tool_group(group_index, city, icon_provider)
+	var selected := child_palette.show_tool_group(group_index, city, icon_provider, preferred_subtool)
 	if landscape_editor:
 		child_palette.hide()
 		_build_landscape_tools()

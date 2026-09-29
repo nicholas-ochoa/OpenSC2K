@@ -7,6 +7,8 @@ const Random = preload("res://src/simulation/random/sim_random.gd")
 var selected_group: int = CityToolIds.Group.RESIDENTIAL
 var selected_subtool: int = CityToolIds.Residential.LIGHT
 var selected_tool_available := false
+# last subtool chosen in each group
+var group_subtools: Dictionary = {}
 # edit state
 var last_edit_command: EditCommandResult
 var tool_random := Random.new(1)

@@ -166,6 +166,8 @@ func _test_main_menu() -> void:
 	menu_bar.free()
 	var toolbar := preload("res://src/ui/shell/city_toolbar.tscn").instantiate() as CityToolbar
 	toolbar._ready()
+	var remembered_residential := toolbar.show_tool_group(9, null, Callable(), 1)
+	var unknown_residential := toolbar.show_tool_group(9, null, Callable(), 7)
 	var first_residential := toolbar.show_tool_group(9, null)
 	_check(
 		toolbar.toolbar_buttons.size() == 18
@@ -173,6 +175,8 @@ func _test_main_menu() -> void:
 		and toolbar.rotate_clockwise_button.disabled
 		and toolbar.child_tool_buttons.size() == 2
 		and first_residential == 0
+		and remembered_residential == 1
+		and unknown_residential == 0
 		and toolbar.view_mode_buttons.size() == 3
 		and not toolbar.view_mode_buttons[CityViewMode.Mode.HEIGHT].visible
 		and toolbar.view_mode_buttons[CityViewMode.Mode.CITY].button_pressed

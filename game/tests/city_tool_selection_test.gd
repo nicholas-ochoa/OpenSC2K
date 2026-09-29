@@ -165,6 +165,8 @@ func _selection(city: CityState) -> void:
 	app.current_tool.select_tool_group(CityToolIds.Group.LANDSCAPE)
 	app.current_tool.select_subtool(CityToolIds.Landscape.FOREST)
 	assert(app.tool_state.selected_subtool == CityToolIds.Landscape.FOREST)
+	assert(app.tool_state.group_subtools[CityToolIds.Group.LANDSCAPE] == CityToolIds.Landscape.FOREST)
+	assert(app.tool_state.group_subtools[CityToolIds.Group.BULLDOZER] == CityToolIds.Bulldozer.RAISE)
 	app.current_tool.select_tool_group(-1)
 	app.current_tool.select_tool_group(18)
 	assert(app.tool_state.selected_group == CityToolIds.Group.LANDSCAPE)
@@ -258,7 +260,7 @@ func _scurk_zone_selection(tool: ScurkEditTool) -> void:
 
 
 class TestToolbar extends CityToolbar:
-	func show_tool_group(_group_index: int, _city: CityState, _icons: Callable = Callable()) -> int:
+	func show_tool_group(_group_index: int, _city: CityState, _icons: Callable = Callable(), _preferred := -1) -> int:
 		return 0
 
 

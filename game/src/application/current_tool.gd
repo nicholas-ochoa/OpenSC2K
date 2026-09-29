@@ -78,7 +78,8 @@ func select_tool_group(index: int) -> void:
 		app.tool_state.dispatch_initialized = false
 
 	app.tool_state.selected_subtool = app.city_toolbar.show_tool_group(
-		app.tool_state.selected_group, app.document_state.city, app.camera_input.tool_button_icon
+		app.tool_state.selected_group, app.document_state.city, app.camera_input.tool_button_icon,
+		int(app.tool_state.group_subtools.get(index, -1))
 	)
 	_auto_select_underground()
 	_sync_child_tool_selection()
@@ -136,6 +137,7 @@ func select_subtool(index: int) -> void:
 		return
 
 	app.tool_state.selected_subtool = index
+	app.tool_state.group_subtools[app.tool_state.selected_group] = index
 	_auto_select_underground()
 	_sync_child_tool_selection()
 	update_edit_state()
