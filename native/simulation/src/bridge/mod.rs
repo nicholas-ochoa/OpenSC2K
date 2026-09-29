@@ -3,6 +3,7 @@
 //! the result as Godot values. GDScript builds the result objects.
 
 mod budgets;
+mod codec;
 mod convert;
 mod ops;
 

@@ -29,6 +29,8 @@ Godot checks. Rebuild the library after each change to `native/simulation`.
     and `moving` hold the rules of each part of the simulation.
   - `tools` holds the edit rules that the simulation shares with the player tools, such as demolition.
   - `testing.rs` has test cities and scripted random generators.
+- `src/formats` holds the city file codecs. `rle.rs` decodes and encodes the Maxis run-length
+  code of compressed chunks. `MaxisRle` calls it through `NativeMaxisRle`.
 - `src/bridge` converts Godot values. `NativeSimulation.run` takes one request and runs one operation.
 
 ## Calls from GDScript
