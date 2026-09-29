@@ -333,7 +333,7 @@ mod tests {
             let point = Vec2i::new(axis(delta.x), axis(delta.y));
             let tile = (point.x * 128 + point.y) as usize;
             let mut text = vec![0u8; 16384];
-            let mut data = vec![0u8; 12];
+            let mut data = vec![0u8; things::BASE_SIZE as usize];
             data[0] = 3;
             data[3] = point.x as u8;
             data[4] = point.y as u8;

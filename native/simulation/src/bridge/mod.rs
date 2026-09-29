@@ -6,6 +6,7 @@ mod budgets;
 mod codec;
 mod convert;
 mod ops;
+mod sc2x;
 
 use godot::prelude::*;
 

@@ -1,5 +1,6 @@
 //! XTXT links, as OverlayData. Original IDs are unchanged. SC2X v2 adds
-//! disjoint 16-bit ID ranges in a second byte plane.
+//! disjoint 16-bit ID ranges in a second byte plane. An SC2X version 4 working
+//! document uses the two planes at every map size.
 
 use super::ids::sc2microsim_layout;
 use super::ids::sc2overlay_layout as layout;
@@ -10,10 +11,11 @@ pub const EXTRA_SIGN: i64 = layout::EXTRA_SIGN;
 pub const EXTRA_THING: i64 = layout::EXTRA_THING;
 
 /// A wide map stores a low and a high plane, so its cell count is half its bytes.
+/// No square narrow plane of a supported map size has one of these sizes.
 #[inline]
 pub fn cells_for(byte_count: i64) -> i64 {
     match byte_count {
-        131072 | 294912 | 524288 | 819200 | 2097152 => byte_count / 2,
+        512 | 2048 | 8192 | 32768 | 131072 | 294912 | 524288 | 819200 | 2097152 => byte_count / 2,
         _ => byte_count,
     }
 }

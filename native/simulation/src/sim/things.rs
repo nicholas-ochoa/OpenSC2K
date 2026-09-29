@@ -1,5 +1,6 @@
 //! XTHG records, as ThingData. SCLG stores equal low and high record planes.
-//! SCDH remains byte-exact.
+//! SCDH remains byte-exact. Only the original 480-byte table has one plane; an
+//! SC2X version 4 working table can be smaller and still has two planes.
 
 use super::geom::Vec2i;
 use super::ids::sc2thing_layout as layout;
@@ -39,6 +40,12 @@ pub const TYPE_MILITARY: i64 = layout::TYPE_MILITARY;
 pub const TYPE_TORNADO: i64 = layout::TYPE_TORNADO;
 pub const TYPE_MAXIS_MAN: i64 = layout::TYPE_MAXIS_MAN;
 
+/// True for every table except the original single-plane table.
+#[inline]
+pub fn split_planes(data: &[u8]) -> bool {
+    data.len() as i64 != BASE_SIZE
+}
+
 /// Only some fields widen, and which ones depends on the object type.
 #[inline]
 fn wide(data: &[u8], index: i64) -> bool {
@@ -58,7 +65,7 @@ fn wide(data: &[u8], index: i64) -> bool {
 pub fn read(data: &[u8], index: i64) -> i64 {
     let mut value = data[index as usize] as i64;
 
-    if data.len() as i64 > BASE_SIZE && wide(data, index) {
+    if split_planes(data) && wide(data, index) {
         value |= (data[(data.len() as i64 / 2 + index) as usize] as i64) << 8;
     }
 
@@ -69,7 +76,7 @@ pub fn read(data: &[u8], index: i64) -> i64 {
 pub fn write(data: &mut [u8], index: i64, value: i64) {
     data[index as usize] = value as u8;
 
-    if data.len() as i64 > BASE_SIZE {
+    if split_planes(data) {
         let field = index % RECORD_SIZE;
         let ship = data[(index - field) as usize] as i64 == TYPE_SHIP;
 
@@ -94,7 +101,7 @@ pub fn set_field(data: &mut [u8], record: i64, field: i64, value: i64) {
 
 pub fn count(data: &[u8]) -> i64 {
     data.len() as i64
-        / if data.len() as i64 > BASE_SIZE {
+        / if split_planes(data) {
             layout::EXTENDED_RECORD_SIZE
         } else {
             RECORD_SIZE
@@ -120,7 +127,7 @@ pub fn is_record_target(goal: i64) -> bool {
 /// Ship home lives in spare high-plane bytes. They store a coordinate plus one
 /// because zero means missing.
 pub fn set_ship_home(data: &mut [u8], record: i64, point: Vec2i) {
-    if data.len() as i64 <= BASE_SIZE {
+    if !split_planes(data) {
         return;
     }
 
@@ -132,7 +139,7 @@ pub fn set_ship_home(data: &mut [u8], record: i64, point: Vec2i) {
 }
 
 pub fn ship_home(data: &[u8], record: i64, fallback: Vec2i) -> Vec2i {
-    if data.len() as i64 <= BASE_SIZE {
+    if !split_planes(data) {
         return fallback;
     }
 
