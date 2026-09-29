@@ -16,6 +16,7 @@ const SignDialogView = preload("res://src/ui/tools/city_sign_dialog.tscn")
 const BridgeDialogView = preload("res://src/ui/tools/bridge_selection_dialog.tscn")
 const ToolChoiceDialogView = preload("res://src/ui/tools/tool_choice_dialog.tscn")
 const StadiumDialogView = preload("res://src/ui/tools/stadium_team_dialog.tscn")
+const RenameDialogView = preload("res://src/ui/shell/city_rename_dialog.tscn")
 const PngExportDialogView = preload("res://src/ui/shell/city_png_export_dialog.tscn")
 const ProgressOverlayView = preload("res://src/ui/shared/progress_overlay.tscn")
 const RouteDialogView = preload("res://src/ui/tools/route_confirmation_dialog.gd")
@@ -39,6 +40,7 @@ var modeless_windows: Array[Node] = []
 var original_assets: OriginalGameAssets
 var city_open_dialog: FileDialog
 var city_save_dialog: FileDialog
+var city_rename_dialog: CityRenameDialog
 var tile_set_dialog: FileDialog
 var png_export_dialog: CityPngExportDialog
 var png_export_progress: ProgressOverlay
@@ -86,6 +88,8 @@ func _create_file_dialogs() -> void:
 	_register(city_open_dialog, "Files", Modality.MODELESS)
 	city_save_dialog = FileDialogs.city_save()
 	_register(city_save_dialog, "Files", Modality.BLOCKING)
+	city_rename_dialog = RenameDialogView.instantiate()
+	_register(city_rename_dialog, "Files", Modality.BLOCKING)
 	tile_set_dialog = FileDialogs.tile_set_open()
 	_register(tile_set_dialog, "Files", Modality.MODELESS)
 	png_export_dialog = PngExportDialogView.instantiate()

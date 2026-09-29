@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/shell/city_rename_dialog.gd" id="1_rename"]
+
+[node name="CityRenameDialog" type="ConfirmationDialog"]
+visible = true
+title = "Rename City"
+dialog_text = "Enter a new name for the city."
+min_size = Vector2i(440, 170)
+script = ExtResource("1_rename")
+
+[node name="NameInput" type="LineEdit" parent="."]
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 14.0
+offset_top = 58.0
+offset_right = -14.0
+offset_bottom = 92.0
+max_length = 30

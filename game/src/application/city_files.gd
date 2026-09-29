@@ -56,6 +56,38 @@ func save_city() -> void:
 		_save_copy(document_state.current_save_path)
 
 
+func open_rename_dialog() -> void:
+	if document_state.current_document == null or app.document_state.city == null:
+		return
+
+	app.city_dialogs.city_rename_dialog.show_name(app.document_state.city.city_name())
+
+
+# the saved name holds 30 ASCII characters. a file without CNAM gets one
+func rename_city() -> void:
+	var document := document_state.current_document
+
+	if document == null or app.document_state.city == null:
+		return
+
+	var city_name := app.city_dialogs.city_rename_dialog.entered_name()
+
+	if city_name.is_empty():
+		return
+
+	document.add_city_name_chunk()
+
+	if not document.set_city_name(city_name):
+		app.interface.show_error("Cannot store the city name.")
+
+		return
+
+	app.city_menu_bar.set_city_name(app.document_state.city.display_name())
+	app.reports.refresh_newspaper_menu()
+	app.status_label.theme_type_variation = ""
+	app.status_label.text = "City renamed to %s." % app.document_state.city.city_name()
+
+
 func _can_upgrade_city_to_sc2x() -> bool:
 	if (app.tool_state.landscape_editor or app.document_state.city == null
 			or document_state.current_document == null or app.simulation_state.simulation_engine == null):

@@ -83,6 +83,25 @@ func test_reference_corpus(reference_root: String) -> void:
 			default_city.misc_u32(0x10) != 123,
 			"A render document copy does not change the live city",
 		)
+		var unnamed := default_city.duplicate_document()
+		unnamed.chunks.remove_at(0)
+		unnamed.rebuild_chunk_cache()
+		var added_name := unnamed.add_city_name_chunk()
+		_check(
+			unnamed.set_city_name("Renamed City")
+			and added_name == unnamed.chunks[-1]
+			and added_name.decoded_payload[0] == 0x1f
+			and unnamed.add_city_name_chunk() == added_name
+			and unnamed.chunks.size() == default_city.chunks.size(),
+			"Rename adds a missing CNAM chunk at the end of the file",
+		)
+		var renamed := Sc2Document.new()
+		_check(
+			renamed.parse(unnamed.serialize().data)
+			and renamed.city_name() == "Renamed City"
+			and renamed.chunks[-1].chunk_id == "CNAM",
+			"A renamed city without CNAM reloads with the new name",
+		)
 		var default_model := CityModel.from_document(default_city)
 		_check(default_model.land_altitude(0, 0) == 4, "Default origin land altitude is 4")
 		_check(default_model.water_altitude(0, 0) == 4, "Default origin water level is 4")

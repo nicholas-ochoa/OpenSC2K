@@ -54,6 +54,8 @@ func on_file_menu(id: int) -> void:
 			app.city_files.open_save_dialog()
 		CityMenuBar.MENU_SAVE_CITY:
 			app.city_files.save_city()
+		CityMenuBar.MENU_RENAME_CITY:
+			app.city_files.open_rename_dialog()
 		CityMenuBar.MENU_EXPORT_CITY_PNG:
 			app.city_png_export.open_export_dialog()
 		3:

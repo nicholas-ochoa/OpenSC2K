@@ -222,6 +222,47 @@ func _test_save_city(main: Node) -> bool:
 	return passed
 
 
+func _test_rename_city(main: Node) -> bool:
+	var popup := (main.city_menu_bar as CityMenuBar).file_menu.get_popup()
+	var rename_index := popup.get_item_index(CityMenuBar.MENU_RENAME_CITY)
+
+	if (
+		rename_index != popup.get_item_index(2) + 2
+		or not popup.is_item_separator(rename_index - 1)
+		or not popup.is_item_separator(rename_index + 1)
+	):
+		push_error("Rename City must follow Save City As after a separator")
+
+		return false
+
+	var dialog := main.city_dialogs.city_rename_dialog as CityRenameDialog
+	var document := main.document_state.current_document as Sc2File
+	var name_chunk := document.find_chunk("CNAM")
+	var original_payload := name_chunk.decoded_payload.duplicate()
+	main.menus.call("on_file_menu", CityMenuBar.MENU_RENAME_CITY)
+	var opened: bool = dialog.visible and dialog.name_input.text == main.document_state.city.city_name()
+	dialog.name_input.text = "   "
+	dialog.name_input.text_changed.emit(dialog.name_input.text)
+	var blank_blocked := dialog.get_ok_button().disabled
+	dialog.name_input.text = "  Renamed Smoke City  "
+	dialog.name_input.text_changed.emit(dialog.name_input.text)
+	dialog.get_ok_button().pressed.emit()
+	var passed: bool = (
+		opened and blank_blocked and not dialog.visible
+		and document.city_name() == "Renamed Smoke City"
+		and (main.city_menu_bar as CityMenuBar).city_label.text == "Renamed Smoke City"
+		and main.city_files.call("_city_has_unsaved_changes")
+	)
+	dialog.hide()
+	name_chunk.set_decoded_payload(original_payload)
+	(main.city_menu_bar as CityMenuBar).set_city_name(main.document_state.city.display_name())
+
+	if not passed:
+		push_error("Rename City did not store the trimmed name and update the menu bar")
+
+	return passed and not main.city_files.call("_city_has_unsaved_changes")
+
+
 func _create_main() -> Node:
 	var packed_scene := load("res://main.tscn") as PackedScene
 	if packed_scene == null:
@@ -337,6 +378,11 @@ func _test_save_gate_and_reports(main: CityApplication, loaded_city: CityState, 
 
 		return false
 	if not _test_save_city(main):
+		main.queue_free()
+		quit(2)
+
+		return false
+	if not _test_rename_city(main):
 		main.queue_free()
 		quit(2)
 

@@ -139,15 +139,7 @@ func activate_document(
 	app.tool_state.dispatch_initialized = false
 	app.camera_input.update_zoom_controls(app.map_view.zoom_percent())
 
-	var display_name := app.document_state.city.city_name()
-
-	if display_name.is_empty():
-		display_name = document.source_path.get_file().get_basename()
-
-	if display_name.is_empty():
-		display_name = "New City"
-
-	app.city_menu_bar.set_city_name(display_name)
+	app.city_menu_bar.set_city_name(app.document_state.city.display_name())
 	app.city_menu_bar.set_scenario_available(app.simulation_state.simulation_engine.scenario != null)
 	app.reports.refresh_newspaper_menu()
 	app.interface.refresh_details()

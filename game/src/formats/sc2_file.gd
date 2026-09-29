@@ -319,6 +319,28 @@ func set_city_name(value: String) -> bool:
 	return chunk.set_decoded_payload(changed, true)
 
 
+# Some supplied cities have no CNAM chunk. The Windows game stores 0x1f in the first byte.
+# Other files put CNAM last, so the new chunk goes at the end. Returns the existing chunk if there is one
+func add_city_name_chunk() -> Sc2Chunk:
+	var existing := find_chunk("CNAM")
+
+	if existing != null:
+		return existing
+
+	var chunk := Sc2Chunk.new()
+	chunk.chunk_id = "CNAM"
+	chunk.expected_decoded_size = DECODED_SIZES.CNAM
+	var payload := PackedByteArray()
+	payload.resize(DECODED_SIZES.CNAM)
+	payload.fill(0)
+	payload[0] = 0x1f
+	chunk.set_decoded_payload(payload, true)
+	chunks.append(chunk)
+	rebuild_chunk_cache()
+
+	return chunk
+
+
 func misc_u32(offset: int) -> int:
 	var chunk := find_chunk("MISC")
 
