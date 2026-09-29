@@ -36,7 +36,7 @@ func _benchmark_initialize() -> void:
 				return
 			quads += result.gpu_arrays[Mesh.ARRAY_VERTEX].size() / 4
 
-	print("BUILD total_us=%d intersection_us=%d calls=%d tile_us=%d calls=%d slot_us=%d quads=%d cached_tiles=%d" % [
+	print("BUILD total_us=%d bounds_us=%d calls=%d tile_us=%d calls=%d slot_us=%d quads=%d cached_tiles=%d" % [
 		Time.get_ticks_usec() - began, context.intersection_usec, context.intersection_calls, context.tile_usec, context.tile_calls,
 		context.slot_usec, quads, context.tiles.size()])
 	quit()
@@ -60,17 +60,16 @@ class ProfiledContext extends CityGpuBuildContext:
 	var slot_usec := 0
 
 
-	func intersects(
+	func tile_bounds(
 		city: CityState,
 		sprites: Sc2SpriteArchive,
 		config: CityViewConfiguration,
 		x: int,
 		y: int,
-		region: Rect2i,
 		mode: CityViewMode.Mode,
-	) -> bool:
+	) -> Rect2i:
 		var began := Time.get_ticks_usec()
-		var value := super.intersects(city, sprites, config, x, y, region, mode)
+		var value := super.tile_bounds(city, sprites, config, x, y, mode)
 		intersection_usec += Time.get_ticks_usec() - began
 		intersection_calls += 1
 

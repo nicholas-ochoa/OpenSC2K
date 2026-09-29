@@ -16,7 +16,14 @@ var _image_key_count := 0
 var tiles: Dictionary[int, Tile] = {}
 var _tile_order := PackedInt32Array()
 var _tile_order_head := 0
-var bounds_cache: Dictionary = {}
+# Screen bounds of each tile's static sprites, for region culling. A tile keeps
+# its bounds while its packed inputs stay the same, so simulation revisions do
+# not discard them. The region renderer reads these arrays inline. A width of
+# -1 marks a tile that every region must visit.
+var bound_rects := PackedInt32Array()
+var bound_inputs := PackedInt64Array()
+var bound_extras := PackedInt64Array()
+var _maximum_altitude := -1
 var revision := -1
 var _layout: Array = []
 var _sprite_limit := Vector2i.ZERO
@@ -30,6 +37,28 @@ var atlas_x := 0
 var atlas_y := 0
 var row_height := 0
 var error := ""
+var _quad_indices := PackedInt32Array()
+# City arrays of the current build. The tile shortcut reads these members in
+# place of a property read and an accessor call for each field of each tile.
+var _city: CityState
+var _edge := 0
+var _altitudes := PackedInt32Array()
+var _terrains := PackedByteArray()
+var _buildings := PackedByteArray()
+var _zones := PackedByteArray()
+var _flags := PackedByteArray()
+var _overlays := PackedByteArray()
+var _overlay_high := false
+var _grounds := PackedInt32Array()
+var _objects := PackedInt32Array()
+var _visible_levels := 32
+# The painter's sprite images and terrain sprites by integer key, so that the
+# shortcut does not format a string key for each sprite. Image keys are
+# sprite id * 2 + flip. The images are the same objects as in `images`.
+var _sprite_images: Dictionary[int, Image] = {}
+var _terrain_sprites := PackedInt32Array()
+# image keys of the draws that the last shortcut recorded, in draw order
+var _fast_keys := PackedInt32Array()
 
 
 func _init() -> void:
@@ -44,8 +73,11 @@ func set_revision(value: int, layout: Array = []) -> void:
 			tiles.clear()
 			_tile_order_head = 0
 			_sprite_limit = Vector2i.ZERO
+			bound_inputs = PackedInt64Array()
+			_sprite_images.clear()
+			_terrain_sprites = PackedInt32Array()
 
-		bounds_cache.clear()
+		_maximum_altitude = -1
 		revision = value
 		_layout = layout
 
@@ -62,17 +94,55 @@ func sprite_limit(sprites: Sc2SpriteArchive, config: CityViewConfiguration) -> V
 	return _sprite_limit
 
 
+# Read the city arrays for later tile builds. Call again after the city changes:
+# a write to a shared packed array gives the city a new copy.
+func bind_city(city: CityState) -> void:
+	var cells := city.map_size * city.map_size
+	_city = city
+	_edge = city.map_size
+	_altitudes = city.altitude_words
+	_terrains = city.terrain
+	_buildings = city.buildings
+	_zones = city.zones
+	_flags = city.tile_flags
+	_overlays = city.text_overlays
+	_overlay_high = OverlayData.count(_overlays) != _overlays.size()
+	_grounds = city.ground_overrides if city.ground_overrides.size() == cells else PackedInt32Array()
+	_objects = city.object_altitude_overrides if city.object_altitude_overrides.size() == cells else PackedInt32Array()
+	_visible_levels = city.visible_altitude_levels
+
+
 func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 		configuration: CityViewConfiguration, x: int, y: int, mode: CityViewMode.Mode, pipes: bool, subways: bool,
 		water_mains := true) -> Tile:
+	bind_city(city)
 	var key := city.index_of(x, y)
+	var city_mode := mode == CityViewMode.Mode.CITY
+
+	return build_tile(city, palette, sprites, configuration, x, y, mode, pipes, subways, water_mains,
+		bound_input_key(city, key) if city_mode else 0, bound_extra_key(city, key) if city_mode else 0)
+
+
+# Build or reuse one tile of the bound city. `input` and `extra` are the packed
+# culling inputs of the tile, or 0 when the tile must not be reused.
+# gdstyle:ignore=quality/max-parameters
+func build_tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
+		configuration: CityViewConfiguration, x: int, y: int, mode: CityViewMode.Mode, pipes: bool, subways: bool,
+		water_mains: bool, input: int, extra: int) -> Tile:
+	var key := x * _edge + y
 	var cached: Tile = tiles.get(key)
+	var raw_terrain := _terrains[key]
+	# Neighboring land heights can turn a shoreline into a waterfall.
+	var surface := (CityIsometricRenderer.surface_terrain_id(city, x, y)
+		if raw_terrain >= TerrainTileIds.SURFACE_WATER_FIRST and raw_terrain <= TerrainTileIds.CHANNEL_LAST else raw_terrain)
 
 	if cached != null:
 		if cached.revision == revision:
 			return cached
 
-		if cached.reusable and cached.inputs == _tile_inputs(city, x, y, key) and cached.object_altitude == city.object_altitude(x, y):
+		# The packed inputs are exact, not a hash. Layout inputs are checked
+		# separately; complex network and underground tiles are never reused.
+		if cached.reusable and input != 0 and cached.inputs == input and cached.extras == extra and cached.surface == surface:
 			cached.revision = revision
 			tile_reuses += 1
 
@@ -80,39 +150,52 @@ func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 
 	tile_builds += 1
 	var recorder := CityGpuDrawList.new()
-	var origin := configuration.side_margin + city.map_size * configuration.half_width
-	var order := (x + y) * city.map_size + y
+	var origin := configuration.side_margin + _edge * configuration.half_width
+	var order := (x + y) * _edge + y
 	var foreground: Array[CityStaticCommand] = []
 	var reusable := false
 
 	if mode == CityViewMode.Mode.UNDERGROUND:
 		CityUndergroundView.draw_tile(recorder, city, palette, sprites, images, configuration, origin, x, y, pipes, subways, water_mains)
 	else:
-		reusable = _fast_tile(recorder, city, palette, sprites, configuration, origin, x, y)
+		reusable = _record_fast_tile(recorder, city, palette, sprites, configuration, origin, x, y)
 
 		if not reusable:
 			CityIsometricRenderer.draw_tile(recorder, city, palette, sprites, images, configuration, origin, x, y, 0, false, false)
+			_register_image_roles()
 
-		_register_image_roles()
+		if reusable or city.tile_is_visible(x, y):
+			var building := _buildings[key]
 
-		if city.tile_is_visible(x, y):
-			var building := city.building_id(x, y)
+			for index in recorder.draws.size():
+				var draw := recorder.draws[index]
+				var sprite_id := -1
+				var flip := false
 
-			for draw in recorder.draws:
-				var role: ImageRole = image_roles.get(draw.image.get_instance_id())
+				if reusable:
+					sprite_id = _fast_keys[index] >> 1
+					flip = (_fast_keys[index] & 1) != 0
+				else:
+					var role: ImageRole = image_roles.get(draw.image.get_instance_id())
 
-				if role == null:
-					continue # masked traffic changes color, not foreground geometry
+					if role == null:
+						continue # masked traffic changes color, not foreground geometry
+
+					sprite_id = role.sprite_id
+					flip = role.flip
+
+				if not draw.source.has_area():
+					continue
 
 				var command := CityStaticCommand.new()
-				command.sprite_id = role.sprite_id
-				command.flip = role.flip
+				command.sprite_id = sprite_id
+				command.flip = flip
 				command.position = draw.position
 				command.size = draw.source.size
 				command.depth_order = order
 				command.region_order = (order << 16) | foreground.size()
 
-				if building > Tiles.EMPTY and int(role.sprite_id) == configuration.sprite_base + building:
+				if building > Tiles.EMPTY and sprite_id == configuration.sprite_base + building:
 					CityIsometricRenderer.configure_train_foreground(command, building, configuration)
 
 				foreground.append(command)
@@ -121,11 +204,11 @@ func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	result.draws = recorder.draws
 	result.foreground = foreground
 	result.revision = revision
-	result.reusable = reusable
-
-	if reusable:
-		result.inputs = _tile_inputs(city, x, y, key)
-		result.object_altitude = city.object_altitude(x, y)
+	result.reusable = reusable and input != 0
+	result.inputs = input
+	result.extras = extra
+	result.surface = surface
+	_pack_quads(result)
 
 	if cached != null:
 		# Replacing an expired tile must not add a duplicate FIFO key.
@@ -146,13 +229,49 @@ func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	return result
 
 
-# Exact packed inputs, not a hash. The resolved terrain includes neighboring
-# land heights that can turn a shoreline into a waterfall. Layout inputs are
-# checked separately; complex network and underground tiles are never reused.
-func _tile_inputs(city: CityState, x: int, y: int, key: int) -> int:
-	return (int(city.altitude_words[key]) | (CityIsometricRenderer.surface_terrain_id(city, x, y) << 16)
-			| (int(city.buildings[key]) << 24) | (int(city.zones[key]) << 32) | (int(city.tile_flags[key]) << 40)
-			| (int(OverlayData.is_thing(city.text_overlay_id(x, y))) << 48) | ((city.ground_override(x, y) + 1) << 49))
+# Record the visible draws of a tile as quads in world pixels and atlas pixels.
+# A region that contains the whole tile appends these arrays without a loop.
+func _pack_quads(tile: Tile) -> void:
+	for draw in tile.draws:
+		var size := draw.source.size
+
+		if size.x <= 0 or size.y <= 0:
+			continue
+
+		var atlas_slot := slot(draw.image)
+
+		if not error.is_empty():
+			return
+
+		var rectangle := Rect2i(draw.position, size)
+		tile.bounds = rectangle if tile.drawn.is_empty() else tile.bounds.merge(rectangle)
+		tile.drawn.append(draw)
+		var start := Vector2(draw.position)
+		var end := start + Vector2(size)
+		tile.vertices.append(start)
+		tile.vertices.append(Vector2(end.x, start.y))
+		tile.vertices.append(end)
+		tile.vertices.append(Vector2(start.x, end.y))
+		start = Vector2(atlas_slot.position + draw.source.position)
+		end = start + Vector2(size)
+		tile.uvs.append(start)
+		tile.uvs.append(Vector2(end.x, start.y))
+		tile.uvs.append(end)
+		tile.uvs.append(Vector2(start.x, end.y))
+
+
+# Return the triangle indices of `count` quads that use four vertices each
+func quad_indices(count: int) -> PackedInt32Array:
+	var pattern := _quad_indices
+	_quad_indices = PackedInt32Array()
+
+	for quad in range(pattern.size() / 6, count):
+		var first := quad * 4
+		pattern.append_array([first, first + 1, first + 2, first, first + 2, first + 3])
+
+	_quad_indices = pattern
+
+	return pattern.slice(0, count * 6)
 
 
 func slot(image: Image) -> Rect2i:
@@ -212,36 +331,79 @@ func _grow_atlas() -> void:
 	atlas_revision += 1
 
 
-func intersects(city: CityState, sprites: Sc2SpriteArchive, config: CityViewConfiguration,
-		x: int, y: int, region: Rect2i, mode: CityViewMode.Mode) -> bool:
-	var key := x * city.map_size + y
+# Size the bound arrays for the city. New entries match no packed input.
+func prepare_bounds(city: CityState) -> void:
+	var cells := city.map_size * city.map_size
 
-	if bounds_cache.has(key):
-		return true if bounds_cache[key] == null else (bounds_cache[key] as Rect2i).intersects(region)
+	if bound_inputs.size() == cells:
+		return
 
-	if bounds_cache.size() >= TILE_CACHE_LIMIT:
-		var keys := bounds_cache.keys()
+	bound_inputs.resize(cells)
+	bound_inputs.fill(0)
+	bound_extras.resize(cells)
+	bound_extras.fill(0)
+	bound_rects.resize(cells * 4)
 
-		for index in 1024:
-			bounds_cache.erase(keys[index])
 
-	# cache conservative special cases too; adjacent regions revisit them often
-	bounds_cache[key] = null
+# The highest land, water, or object altitude in the city. Region spans use it
+# in place of the full altitude range.
+func maximum_altitude(city: CityState) -> int:
+	if _maximum_altitude >= 0:
+		return _maximum_altitude
+
+	var words := city.altitude_words
+	var highest := 0
+
+	for word in words:
+		highest = maxi(highest, maxi(word & Sc2AltitudeLayout.LAND_MASK,
+			(word >> Sc2AltitudeLayout.WATER_SHIFT) & Sc2AltitudeLayout.LEVEL_MASK))
+
+	for override in city.object_altitude_overrides:
+		highest = maxi(highest, override)
+
+	_maximum_altitude = mini(highest, 31)
+
+	return _maximum_altitude
+
+
+# Packed culling inputs of one tile. The region renderer computes the same
+# values inline. Bit 62 keeps a valid key different from an empty entry.
+static func bound_input_key(city: CityState, index: int) -> int:
+	return ((int(city.altitude_words[index]) & 0xffff) | (int(city.terrain[index]) << 16) | (int(city.buildings[index]) << 24)
+		| (int(city.zones[index]) << 32) | (int(city.tile_flags[index]) << 40) | (1 << 62))
+
+
+static func bound_extra_key(city: CityState, index: int) -> int:
+	var cells := city.map_size * city.map_size
+	var overlays := city.text_overlays
+	var overlay := (int(overlays[index]) | (int(overlays[cells + index]) << 8 if overlays.size() > cells else 0)
+		if overlays.size() >= cells else 0)
+	var ground := city.ground_overrides[index] + 1 if city.ground_overrides.size() == cells else 0
+	var object := city.object_altitude_overrides[index] + 1 if city.object_altitude_overrides.size() == cells else 0
+
+	return overlay | (ground << 16) | (object << 40) | (1 << 62)
+
+
+# Return the screen bounds that the static sprites of one tile can touch, or a
+# width of -1 when the tile needs the full painter to know its bounds
+func tile_bounds(city: CityState, sprites: Sc2SpriteArchive, config: CityViewConfiguration,
+		x: int, y: int, mode: CityViewMode.Mode) -> Rect2i:
+	var everywhere := Rect2i(0, 0, -1, -1)
 
 	if mode != CityViewMode.Mode.CITY or x == city.map_size - 1 or y == city.map_size - 1 or not city.tile_is_visible(x, y):
-		return true
+		return everywhere
 
+	var key := x * city.map_size + y
 	var building := int(city.buildings[key])
 
 	if ((building >= Tiles.HIGHWAY_SLOPE_FIRST and building <= Tiles.REINFORCED_HIGHWAY_BRIDGE)
 			or OverlayData.is_thing(city.text_overlay_id(x, y))):
-		return true
+		return everywhere
 
 	if building >= Tiles.DEVELOPED_FIRST and (int(city.zones[key]) & Sc2ZoneLayout.CORNER_TOP_RIGHT[rotation]) == 0:
-		bounds_cache[key] = Rect2i()
+		return Rect2i()
 
-		return false
-
+	var raw_terrain := city.terrain_id(x, y)
 	var terrain := CityIsometricRenderer.surface_terrain_id(city, x, y)
 	var origin := config.side_margin + city.map_size * config.half_width
 	var screen_x := origin + (x - y) * config.half_width
@@ -251,15 +413,26 @@ func intersects(city: CityState, sprites: Sc2SpriteArchive, config: CityViewConf
 	var terrain_entry := sprites.find_sprite(IsometricStaticVisuals.ground_sprite_id(city, x, y, terrain, building, config.sprite_base))
 
 	if terrain_entry == null:
-		return true
+		return everywhere
 
 	var bounds := Rect2i(screen_x, base_y - terrain_entry.height, terrain_entry.width, terrain_entry.height)
+
+	# a neighbor's altitude can turn surface water into a waterfall without a
+	# change to this tile's inputs. keep bounds that fit both sprites
+	if raw_terrain >= TerrainTileIds.SURFACE_WATER_FIRST and raw_terrain <= TerrainTileIds.CHANNEL_LAST:
+		for variant in [raw_terrain, TerrainTileIds.WATERFALL]:
+			var entry := sprites.find_sprite(IsometricStaticVisuals.ground_sprite_id(city, x, y, variant, building, config.sprite_base))
+
+			if entry == null:
+				return everywhere
+
+			bounds = bounds.merge(Rect2i(screen_x, base_y - entry.height, entry.width, entry.height))
 
 	if building > Tiles.EMPTY:
 		var entry := sprites.find_sprite(config.sprite_base + building)
 
 		if entry == null:
-			return true
+			return everywhere
 
 		var object_y := flat_y - city.object_altitude(x, y) * config.altitude_step + config.tile_height
 		object_y += CityIsometricRenderer.building_baseline_offset(building, terrain, entry.width, config.view_size)
@@ -272,9 +445,7 @@ func intersects(city: CityState, sprites: Sc2SpriteArchive, config: CityViewConf
 				bounds = bounds.merge(Rect2i(screen_x + int(entry.width / 2) - int(marker.width / 2), object_y - marker.height,
 					marker.width, marker.height))
 
-	bounds_cache[key] = bounds
-
-	return bounds.intersects(region)
+	return bounds
 
 
 func _register_image_roles() -> void:
@@ -303,36 +474,65 @@ func _register_image_roles() -> void:
 # records the same draws as cityisometricrenderer.draw_tile
 func _fast_tile(recorder: CityGpuDrawList, city: CityState, palette: Sc2Palette,
 		sprites: Sc2SpriteArchive, config: CityViewConfiguration, origin: int, x: int, y: int) -> bool:
-	var key := x * city.map_size + y
-	var building := int(city.buildings[key])
+	bind_city(city)
 
-	if ((building >= Tiles.POWER_LINE_STRAIGHT_1 and building < Tiles.DEVELOPED_FIRST) or x == city.map_size - 1 or y == city.map_size - 1
-			or not city.tile_is_visible(x, y)
-			or OverlayData.is_thing(city.text_overlay_id(x, y))):
+	return _record_fast_tile(recorder, city, palette, sprites, config, origin, x, y)
+
+
+# the shortcut for the bound city. it reads the bound arrays in place of the
+# city accessors, and it records the image key of each draw in `_fast_keys`
+func _record_fast_tile(recorder: CityGpuDrawList, city: CityState, palette: Sc2Palette,
+		sprites: Sc2SpriteArchive, config: CityViewConfiguration, origin: int, x: int, y: int) -> bool:
+	var key := x * _edge + y
+	var building := _buildings[key]
+	_fast_keys.clear()
+
+	if (building >= Tiles.POWER_LINE_STRAIGHT_1 and building < Tiles.DEVELOPED_FIRST) or x == _edge - 1 or y == _edge - 1:
 		return false
 
-	var flags := int(city.tile_flags[key])
-	var terrain := int(city.terrain[key])
+	var flags := _flags[key]
+	var word := _altitudes[key]
+	var water := (flags & Sc2TileFlags.WATER) != 0
+	var water_level := (word >> Sc2AltitudeLayout.WATER_SHIFT) & Sc2AltitudeLayout.LEVEL_MASK
+	var land_level := word & Sc2AltitudeLayout.LAND_MASK
+
+	if _visible_levels < 32 and (water_level if water else land_level) >= _visible_levels:
+		return false
+
+	var overlay := int(_overlays[key]) | ((int(_overlays[_edge * _edge + key]) << 8) if _overlay_high else 0)
+
+	if overlay != 0 and OverlayData.is_thing(overlay):
+		return false
+
+	var terrain := _terrains[key]
 
 	if terrain >= TerrainTileIds.SURFACE_WATER_FIRST and terrain <= TerrainTileIds.CHANNEL_LAST:
 		terrain = CityIsometricRenderer.surface_terrain_id(city, x, y)
 
-	var word := int(city.altitude_words[key])
-	var altitude := (((word >> Sc2AltitudeLayout.WATER_SHIFT) & Sc2AltitudeLayout.LEVEL_MASK) if terrain >= TerrainTileIds.DEEP_WATER_FIRST
-		else (word & Sc2AltitudeLayout.LAND_MASK))
+	var altitude := water_level if terrain >= TerrainTileIds.DEEP_WATER_FIRST else land_level
 	var screen_x := origin + (x - y) * config.half_width
 	var flat_y := config.top_margin + (x + y) * config.half_height + config.tile_height
 	var base_y := flat_y - altitude * config.altitude_step
 
 	if building < Tiles.DEVELOPED_FIRST:
-		_append_sprite(recorder, sprites, palette,
-			IsometricStaticVisuals.ground_sprite_id(city, x, y, terrain, building, config.sprite_base),
-				false, Vector2i(screen_x, base_y))
+		var ground := _grounds[key] if not _grounds.is_empty() else -1
+		var zone := _zones[key] & Sc2ZoneLayout.TYPE_MASK
+		var ground_id := config.sprite_base + ground
+
+		if ground < 0 and zone > 0 and IsometricStaticVisuals.shows_zone_under(terrain, building):
+			ground_id = config.sprite_base + 290 + zone
+		elif ground < 0:
+			ground_id = _terrain_sprite(terrain, water, config.sprite_base)
+
+		var ground_image := _sprite(sprites, palette, ground_id, false)
+		recorder.draws.append(CityGpuDrawList.Draw.new(ground_image, Rect2i(Vector2i.ZERO, ground_image.get_size()),
+			Vector2i(screen_x, base_y - ground_image.get_height())))
+		_fast_keys.append(ground_id * 2)
 
 	if building == Tiles.EMPTY:
 		return true
 
-	if building >= Tiles.DEVELOPED_FIRST and (int(city.zones[key]) & Sc2ZoneLayout.CORNER_TOP_RIGHT[rotation]) == 0:
+	if building >= Tiles.DEVELOPED_FIRST and (_zones[key] & Sc2ZoneLayout.CORNER_TOP_RIGHT[rotation]) == 0:
 		return true
 
 	var flip := (flags & Sc2TileFlags.FLIPPED) != 0
@@ -341,45 +541,67 @@ func _fast_tile(recorder: CityGpuDrawList, city: CityState, palette: Sc2Palette,
 		flip = not flip
 
 	var sprite_id := config.sprite_base + building
-	var image := CityIsometricRenderer.sprite_image(sprites, palette, images, sprite_id, flip)
-	var object_altitude := (((word >> Sc2AltitudeLayout.WATER_SHIFT) & Sc2AltitudeLayout.LEVEL_MASK) if (flags & Sc2TileFlags.WATER) != 0
-		else (word & Sc2AltitudeLayout.LAND_MASK))
+	var image := _sprite(sprites, palette, sprite_id, flip)
+	var object_altitude := water_level if water else land_level
 
-	if city.object_altitude_overrides.size() == city.map_size * city.map_size and city.object_altitude_overrides[key] >= 0:
-		object_altitude = city.object_altitude_overrides[key]
+	if not _objects.is_empty() and _objects[key] >= 0:
+		object_altitude = _objects[key]
 
 	var offset := (int(image.get_width() / 4) - config.half_height if building >= Tiles.DEVELOPED_FIRST
 		else (-config.altitude_step if terrain == TerrainTileIds.RAISED else 0))
 	var object_y := flat_y - object_altitude * config.altitude_step + offset
-	recorder.blend_rect(image, Rect2i(Vector2i.ZERO, image.get_size()), Vector2i(screen_x, object_y - image.get_height()))
+	recorder.draws.append(CityGpuDrawList.Draw.new(image, Rect2i(Vector2i.ZERO, image.get_size()),
+		Vector2i(screen_x, object_y - image.get_height())))
+	_fast_keys.append(sprite_id * 2 + int(flip))
 
 	if building >= Tiles.DEVELOPED_FIRST and (flags & Sc2TileFlags.POWER_MASK) == Sc2TileFlags.POWERABLE:
-		var marker := CityIsometricRenderer.sprite_image(
-			sprites,
-			palette,
-			images,
-			config.sprite_base + CityIsometricRenderer.POWER_MARKER_SPRITE_OFFSET,
-			false,
-		)
-		recorder.blend_rect(marker, Rect2i(Vector2i.ZERO, marker.get_size()),
-				Vector2i(screen_x + int(image.get_width() / 2) - int(marker.get_width() / 2), object_y - marker.get_height()))
+		var marker_id := config.sprite_base + CityIsometricRenderer.POWER_MARKER_SPRITE_OFFSET
+		var marker := _sprite(sprites, palette, marker_id, false)
+		recorder.draws.append(CityGpuDrawList.Draw.new(marker, Rect2i(Vector2i.ZERO, marker.get_size()),
+			Vector2i(screen_x + int(image.get_width() / 2) - int(marker.get_width() / 2), object_y - marker.get_height())))
+		_fast_keys.append(marker_id * 2)
 
 	return true
 
 
-func _append_sprite(recorder: CityGpuDrawList, sprites: Sc2SpriteArchive,
-		palette: Sc2Palette, sprite_id: int, flip: bool, base: Vector2i) -> void:
-	var image := CityIsometricRenderer.sprite_image(sprites, palette, images, sprite_id, flip)
-	recorder.blend_rect(image, Rect2i(Vector2i.ZERO, image.get_size()), base - Vector2i(0, image.get_height()))
+# Return the painter's image of a sprite. A miss fills both image caches.
+func _sprite(sprites: Sc2SpriteArchive, palette: Sc2Palette, sprite_id: int, flip: bool) -> Image:
+	var image_key := sprite_id * 2 + int(flip)
+	var image: Image = _sprite_images.get(image_key)
+
+	if image == null:
+		image = CityIsometricRenderer.sprite_image(sprites, palette, images, sprite_id, flip)
+		_sprite_images[image_key] = image
+
+	return image
+
+
+func _terrain_sprite(terrain: int, water: bool, sprite_base: int) -> int:
+	var index := terrain * 2 + int(water)
+
+	if _terrain_sprites.is_empty():
+		_terrain_sprites.resize(512)
+		_terrain_sprites.fill(-1)
+
+	if _terrain_sprites[index] < 0:
+		_terrain_sprites[index] = IsometricGeometry.terrain_sprite_id(terrain, water, sprite_base)
+
+	return _terrain_sprites[index]
 
 
 class Tile extends RefCounted:
 	var draws: Array[CityGpuDrawList.Draw] = []
+	# the draws with an area, in quad order, and their union
+	var drawn: Array[CityGpuDrawList.Draw] = []
+	var bounds := Rect2i()
+	var vertices := PackedVector2Array()
+	var uvs := PackedVector2Array()
 	var foreground: Array[CityStaticCommand] = []
 	var revision := -1
 	var reusable := false
 	var inputs := 0
-	var object_altitude := 0
+	var extras := 0
+	var surface := -1
 
 
 class ImageRole extends RefCounted:

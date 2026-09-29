@@ -29,7 +29,7 @@ static func build(region: CityGpuRegionResult, requests: Array[CitySignRequest],
 
 			if mask_image != null:
 				masks.append(CitySignForeground.Mask.new(mask_image, Vector2i(command.position)))
-		var sampled := CityGpuDrawList.paint(region.gpu_draws, bounds, region.background, region.gpu_draw_grid)
+		var sampled := CityGpuDrawList.paint(region.gpu_draws, bounds, region.background, region.draw_grid())
 		var image := CitySignForeground.static_pixels(sampled, masks, bounds)
 		var patch := CitySignForegroundPatch.new()
 		patch.image = image

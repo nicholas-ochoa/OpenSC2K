@@ -72,7 +72,8 @@ func _run() -> void:
 		main.moving_sprites.refresh_moving_things(main.static_render.city_view_size())
 		print("WARM dynamic_ms=%.2f zoom=%.2f" % [(Time.get_ticks_usec() - dynamic_start) / 1000.0, main.map_view.zoom_factor])
 		var metrics := cache.metrics()
-		print("BACKEND %s atlas_MiB=%.2f" % ["GPU" if metrics.gpu else "CPU", metrics.atlas_bytes / 1048576.0])
+		print("BACKEND %s atlas_MiB=%.2f view=%d region_edge=%d" % ["GPU" if metrics.gpu else "CPU", metrics.atlas_bytes / 1048576.0,
+			cache.view_size, cache.region_edge])
 		var full_size := CityIsometricRenderer.output_size_for_view(2, edge)
 		print(("SIZE %d viewport=%s activation_ms=%.2f first_region_ms=%.2f visible_ready_ms=%.2f "
 			+ "main_poll_max_ms=%.2f resident=%d visible=%d cpu_images_MiB=%.2f "

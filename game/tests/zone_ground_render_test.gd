@@ -120,10 +120,11 @@ func _check_hidden_buildings(city: CityState, palette: Sc2Palette, sprites: Sc2S
 	# a lot and a zone on the same tile must not share a reused GPU tile
 	assert(city.set_terrain_id(point.x, point.y, TerrainTileIds.FLAT) and city.set_building_id(point.x, point.y, developed))
 	assert(city.set_zone_id(point.x, point.y, 3))
-	var context := CityGpuBuildContext.new()
 	var key := city.index_of(point.x, point.y)
-	assert(context._tile_inputs(CityViewFilter.surface_copy(city, buildings_off), point.x, point.y, key)
-		!= context._tile_inputs(CityViewFilter.surface_copy(city, zones_off), point.x, point.y, key))
+	var lot := CityViewFilter.surface_copy(city, buildings_off)
+	var zoned := CityViewFilter.surface_copy(city, zones_off)
+	assert([CityGpuBuildContext.bound_input_key(lot, key), CityGpuBuildContext.bound_extra_key(lot, key)]
+		!= [CityGpuBuildContext.bound_input_key(zoned, key), CityGpuBuildContext.bound_extra_key(zoned, key)])
 
 
 func _draws_image(list: CityGpuDrawList, image: Image) -> bool:

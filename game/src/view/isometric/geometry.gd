@@ -109,9 +109,11 @@ static func potential_tile_bounds(
 # full altitude range, as `potential_tile_bounds` does. the underground view
 # also draws down to 31 altitude steps below the surface
 # walk the diagonals in order and use `diagonal_rows` for the rows of each
+# `maximum_altitude` is the highest altitude of any tile. It limits how far below
+# the region a raised tile can start
 static func region_tile_span(
 	configuration: CityViewConfiguration, sprite_limit: Vector2i, bounds: Rect2i,
-	map_edge: int, underground: bool
+	map_edge: int, underground: bool, maximum_altitude := 31
 ) -> CityRegionTileSpan:
 	var half_width := configuration.half_width
 	var half_height := configuration.half_height
@@ -121,7 +123,7 @@ static func region_tile_span(
 	if underground:
 		bottom += 31 * configuration.altitude_step
 
-	var top := 32 * configuration.altitude_step + sprite_limit.y
+	var top := (maximum_altitude + 1) * configuration.altitude_step + sprite_limit.y
 
 	var result := CityRegionTileSpan.new()
 	result.first_diagonal = maxi(0, floori(float(bounds.position.y - configuration.top_margin - bottom) / half_height))

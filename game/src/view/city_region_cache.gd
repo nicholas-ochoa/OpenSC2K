@@ -528,7 +528,7 @@ func image_region(bounds: Rect2i, texture_factor := 1) -> Image:
 		var native := Rect2i(first, last - first)
 		var sample_factor := texture_factor if divisor == 1 else 1
 		var gpu := entry as CityGpuRegionResult
-		var image: Image = (CityGpuDrawList.paint(gpu.gpu_draws, native, gpu.background, gpu.gpu_draw_grid, sample_factor)
+		var image: Image = (CityGpuDrawList.paint(gpu.gpu_draws, native, gpu.background, gpu.draw_grid(), sample_factor)
 				if gpu != null else entry.image.get_region(Rect2i(native.position - entry.bounds.position, native.size)))
 		image.convert(Image.FORMAT_LA8)
 		var target_size := native.size * divisor * texture_factor
@@ -558,7 +558,7 @@ func pixel(point: Vector2i) -> Color:
 	var gpu := entry as CityGpuRegionResult
 
 	if gpu != null:
-		return CityGpuDrawList.paint(gpu.gpu_draws, Rect2i(native, Vector2i.ONE), gpu.background, gpu.gpu_draw_grid).get_pixel(0, 0)
+		return CityGpuDrawList.paint(gpu.gpu_draws, Rect2i(native, Vector2i.ONE), gpu.background, gpu.draw_grid()).get_pixel(0, 0)
 
 	return entry.image.get_pixelv(local) if Rect2i(Vector2i.ZERO, entry.image.get_size()).has_point(local) else Color.TRANSPARENT
 

@@ -68,9 +68,9 @@ static func potential_tile_bounds(
 # a region painter walks `first_diagonal` to `last_diagonal` in order
 static func region_tile_span(
 	configuration: CityViewConfiguration, sprite_limit: Vector2i, bounds: Rect2i,
-	map_edge: int, underground: bool
+	map_edge: int, underground: bool, maximum_altitude := 31
 ) -> CityRegionTileSpan:
-	return IsometricGeometry.region_tile_span(configuration, sprite_limit, bounds, map_edge, underground)
+	return IsometricGeometry.region_tile_span(configuration, sprite_limit, bounds, map_edge, underground, maximum_altitude)
 
 
 # return the first and last y of the tiles on `diagonal` inside `span`

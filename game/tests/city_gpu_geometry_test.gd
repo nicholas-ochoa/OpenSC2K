@@ -71,7 +71,7 @@ func _run() -> void:
 				expected.image.convert(Image.FORMAT_LA8)
 				assert(_static_command_values(region.occlusion_commands) == _static_command_values(expected.occlusion_commands))
 				assert(CityGpuDrawList.paint(region.gpu_draws, region.bounds, region.background,
-					region.gpu_draw_grid).get_data() == expected.image.get_data())
+					region.draw_grid()).get_data() == expected.image.get_data())
 
 				if DisplayServer.get_name() != "headless":
 					region.atlas_image = batch.atlas_image
@@ -120,7 +120,7 @@ func _run() -> void:
 					expected.image.convert(Image.FORMAT_LA8)
 					assert(_static_command_values(region.occlusion_commands) == _static_command_values(expected.occlusion_commands))
 					assert(CityGpuDrawList.paint(region.gpu_draws, region.bounds, region.background,
-						region.gpu_draw_grid).get_data() == expected.image.get_data())
+						region.draw_grid()).get_data() == expected.image.get_data())
 
 					if DisplayServer.get_name() != "headless":
 						region.atlas_image = changed.atlas_image
@@ -146,7 +146,7 @@ func _compare(
 		_static_command_values(cpu.occlusion_commands) == _static_command_values(gpu.occlusion_commands),
 		"GPU foreground must match CPU command order",
 	)
-	var rasterized := CityGpuDrawList.paint(gpu.gpu_draws, bounds, gpu.background, gpu.gpu_draw_grid)
+	var rasterized := CityGpuDrawList.paint(gpu.gpu_draws, bounds, gpu.background, gpu.draw_grid())
 	cpu.image.convert(Image.FORMAT_LA8)
 	assert(cpu.image.get_data() == rasterized.get_data(), "GPU draw list differs from CPU pixels")
 

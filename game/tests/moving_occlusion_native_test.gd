@@ -86,7 +86,7 @@ func _run() -> void:
 		source.meshes.append(CityMapSource.MeshEntry.new(Vector2(region.bounds.position), mesh, atlas, 1))
 		cache.entries[region.key] = region
 		_index_regions.append({"bounds": region.bounds,
-			"image": CityGpuDrawList.paint(region.gpu_draws, region.bounds, region.background, region.gpu_draw_grid)})
+			"image": CityGpuDrawList.paint(region.gpu_draws, region.bounds, region.background, region.draw_grid())})
 
 		# The union of region commands, as CityRegionCache.occlusion_candidates returns it.
 		for command: CityStaticCommand in region.occlusion_commands:
