@@ -68,6 +68,7 @@ pub const OPERATIONS: &[&str] = &[
     "military.resolve",
     "military.reserve",
     "day.schedule",
+    "engine.initialize",
 ];
 
 pub struct Outcome {
@@ -298,6 +299,14 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
             fields.push((Value::Str("scenario_time_limit".to_string()), Value::Int(time_limit)));
             Outcome::value(Value::Dict(fields))
         }
+        "engine.initialize" => match crate::sim::engine::load::initialize_loaded_city(city, &mut randoms.random) {
+            Some(scan) => Outcome::value(Value::Dict(vec![
+                (Value::Str("power_usage_percent".to_string()), Value::Int(scan.power_usage_percent)),
+                (Value::Str("water_usage_percent".to_string()), Value::Int(scan.water_usage_percent)),
+                (Value::Str("developed_tiles".to_string()), Value::Int(scan.developed_tiles)),
+            ])),
+            None => Outcome::failure("the load scan failed"),
+        },
         "echo" => Outcome::value(Value::Int(convert::int(args, "value", 0) + city.map_size)),
         _ => Outcome::failure(format!("unknown native simulation operation: {op}")),
     }

@@ -78,7 +78,7 @@ func _init(
 
 # the original loads a city file, then scans power and water and counts the
 # developed tiles. the power scan uses the process random state
-func initialize_loaded_city() -> bool:
+func _gdscript_initialize_loaded_city() -> bool:
 	if city == null or not city.is_valid():
 		return false
 
@@ -554,3 +554,21 @@ func _append_pending_disaster(result: SimulationDayResult) -> SimulationDayResul
 func _start_disaster_phase(disaster_type: int, point: Vector2i) -> DisasterStartResult:
 	var started := DisasterStartPhase.start(city, disaster_type, point, random, lfsr_random)
 	return MaxisManResponse.apply(city, started, random, lfsr_random)
+
+
+# the original loads a city file, then scans power and water and counts the
+# developed tiles. the power scan uses the process random state
+func initialize_loaded_city() -> bool:
+	if city == null or not city.is_valid():
+		return false
+
+	var response := NativeSimulationBridge.run("engine.initialize", city, random, null, null)
+
+	if not response.ok:
+		return false
+
+	power_usage_percent = response.result.power_usage_percent
+	water_usage_percent = response.result.water_usage_percent
+	developed_tiles = response.result.developed_tiles
+
+	return true
