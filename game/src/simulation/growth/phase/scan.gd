@@ -26,6 +26,35 @@ static func run(
 	if game_random == null:
 		game_random = GameLcgRandom.new(1)
 
+	if city.simulation_slice != null:
+		city.simulation_slice.checkpoint()
+
+	var response := NativeSimulationBridge.run("growth", city, random, lfsr_random, game_random,
+		{"step": step, "substep": substep, "detailed": SimulationTimingSpan.detailed})
+
+	return response.result
+
+
+static func _run_gdscript(
+	city: CityState,
+	random: SimRandom,
+	step: int,
+	substep: int,
+	lfsr_random: SimLfsrRandom = null,
+	game_random: GameLcgRandom = null
+) -> GrowthResult:
+	if city == null or not city.is_valid():
+		return _failed("city is invalid")
+
+	if random == null:
+		return _failed("a compatible random generator is required")
+
+	if lfsr_random == null:
+		lfsr_random = SimLfsrRandom.new(1)
+
+	if game_random == null:
+		game_random = GameLcgRandom.new(1)
+
 	if step < 0 or step > 3 or substep < 0 or substep > 3:
 		return _failed("growth partition is outside the supported range")
 

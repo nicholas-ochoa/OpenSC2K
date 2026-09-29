@@ -17,6 +17,9 @@ import threading
 import time
 import uuid
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import build_native  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[1]
 DOMAINS = ('formats', 'simulation', 'tools', 'rendering', 'scurk', 'ui', 'audio')
 SUITES = ('headless', 'renderer', 'release', *DOMAINS)
@@ -354,6 +357,14 @@ def main():
                 record(name, status, duration)
                 return status != 'FAIL'
 
+            report('RUN  native-build')
+            native_started = time.monotonic()
+            try:
+                build_native.build(quiet=True)
+                record('native-build', 'PASS', round(time.monotonic() - native_started, 3))
+            except (OSError, subprocess.CalledProcessError) as error:
+                record('native-build', 'FAIL', round(time.monotonic() - native_started, 3), str(error))
+                return 1
             project.configure('startup')
             if not run('parse', godot_command(extra=['--editor', '--import'])):
                 return 1

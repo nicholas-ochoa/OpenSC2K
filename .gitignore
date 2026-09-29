@@ -27,3 +27,7 @@ ghidra/
 /ext/data/
 
 .gdls/
+
+# Native simulation build output
+/native/simulation/target/
+/game/bin/
