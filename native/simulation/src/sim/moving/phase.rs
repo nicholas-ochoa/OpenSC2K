@@ -212,3 +212,51 @@ pub fn run(
     counters.base.complete = counters.explosion_map_damage_complete;
     counters
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sim::ids::building_tile_ids as tiles;
+    use crate::sim::random::Randoms;
+    use crate::sim::testing::empty_city;
+
+    fn tick(city: &mut City) -> MovingThingResult {
+        let options = TickOptions {
+            ship_home: Vec2i::NONE,
+            allow_disaster_damage: true,
+            traffic_news_time_msec: 0,
+            traffic_news_deadline_msec: 0,
+            suppress_vehicle_crashes: false,
+        };
+        let mut randoms = Randoms::new(123, 456, 789);
+        let Randoms { random, lfsr, game } = &mut randoms;
+        run(city, random, lfsr, game, &options)
+    }
+
+    /// Ordinary vehicles write only XTHG and XTXT. A disaster record writes the map.
+    #[test]
+    fn only_disaster_records_write_the_map() {
+        for edge in [128i64, 256] {
+            for kind in [TYPE_SAILBOAT, TYPE_EXPLOSION] {
+                let mut city = empty_city(edge);
+                city.xbld.data[(10 * edge + 10) as usize] = tiles::RUBBLE_1 as u8;
+                city.xbit.data[(10 * edge + 10) as usize] = 4;
+                let direction = if kind == TYPE_EXPLOSION { 2 } else { 0 };
+
+                for (field, value) in [(0, kind), (1, direction), (3, 10), (4, 10), (6, 8), (7, 8)] {
+                    things::write(&mut city.xthg.data, RECORD_SIZE + field, value);
+                }
+
+                assert!(tick(&mut city).base.ok);
+                assert!(city.xthg.written);
+
+                if kind == TYPE_EXPLOSION {
+                    assert_eq!(city.xbld.data[(10 * edge + 10) as usize], 0, "the explosion clears its tile");
+                    assert!(city.xbld.written);
+                } else {
+                    assert!(!city.xbld.written && !city.misc.written && !city.altm.written, "a vehicle leaves the map chunks");
+                }
+            }
+        }
+    }
+}

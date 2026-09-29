@@ -5,6 +5,14 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 const DisasterStart = preload("res://src/simulation/disasters/disaster_start_phase.gd")
+# the reason for a failed spawn of each moving thing kind
+const SPAWN_ERRORS := [
+	"No clear tile was found near the view center, a monster is active, or the helicopter limit is reached.",
+	"No clear tile was found near the view center, a monster is active, or the airplane limit is reached.",
+	"A cargo ship needs deep water near a map edge. Only one cargo ship can be active.",
+	"No open water was found near the view center, or the sailboat limit is reached.",
+	"No clear rail tile was found near the view center, or the train limit is reached.",
+]
 const MAX_FUNDS := 0x7fffffff
 const MIN_FUNDS := -0x80000000
 const MISC_SIZE := Sc2MiscLayout.SIZE
@@ -292,42 +300,19 @@ static func dispatch_maxis_man(
 
 		return result
 
-	var old_things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
-	var things: PackedByteArray = old_things.duplicate()
-	var text: PackedByteArray = city.text_overlays.duplicate()
-	var spawned := MovingThingSpawner.spawn_maxis_man(
-		things,
-		text,
-		start,
-		target.point,
-		int(target.goal),
-		city.object_altitude(start.x, start.y) + 4, map_edge,
-	)
+	var spawned: bool = NativeSimulationBridge.run("spawn_maxis_man", city, null, null, null, {
+		"point": start,
+		"target": target.point,
+		"goal": int(target.goal),
+		"height": city.object_altitude(start.x, start.y) + 4,
+	}).result
 
-	if not spawned.spawned:
+	if not spawned:
 		var result := DispatchResult.new()
 		result.ok = false
 		result.error = "Maxis Man is already active or no record is free."
 
 		return result
-
-	if not thing_chunk.set_decoded_payload(things):
-		var result := DispatchResult.new()
-		result.ok = false
-		result.error = "The Maxis Man record could not be stored."
-
-		return result
-
-	if not text_chunk.set_decoded_payload(text):
-		thing_chunk.set_decoded_payload(old_things)
-
-		var result := DispatchResult.new()
-		result.ok = false
-		result.error = "The Maxis Man map link could not be stored."
-
-		return result
-
-	city.resync_mirrors(["XTXT"])
 
 	var success := DispatchResult.new()
 	success.ok = true
@@ -363,80 +348,21 @@ static func spawn_moving_thing(
 		return result
 
 	var map_edge := city.map_size
-	var old_things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
-	var things := old_things.duplicate()
-	var text: PackedByteArray = city.text_overlays.duplicate()
-	var buildings: PackedByteArray = document.find_chunk("XBLD").decoded_payload
 	var random := SimRandom.new(random_seed)
 	var lfsr_random := SimLfsrRandom.new(maxi(1, random_seed & 0xffff))
 	var game_random := GameLcgRandom.new(random_seed)
-
-	var nearby := _nearest_tiles(view_center, map_edge)
-	result.point = Vector2i(-1, -1)
-
-	match kind:
-		0:
-			for point in nearby:
-				if MovingThingSpawner.spawn_helicopter(things, text, point, random, map_edge).spawned:
-					result.point = point
-					break
-
-			result.error = "No clear tile was found near the view center, a monster is active, or the helicopter limit is reached."
-		1:
-			for point in nearby:
-				var spawned := MovingThingSpawner.spawn_airplane(things, text, point, 0, random, map_edge)
-
-				if spawned.spawned:
-					result.point = spawned.point
-					break
-
-			result.error = "No clear tile was found near the view center, a monster is active, or the airplane limit is reached."
-		2:
-			var terrain: PackedByteArray = document.find_chunk("XTER").decoded_payload
-			var spawned := MovingThingSpawner.spawn_ship(terrain, things, text, view_center, random, map_edge)
-			result.point = spawned.point if spawned.spawned else result.point
-			result.error = "A cargo ship needs deep water near a map edge. Only one cargo ship can be active."
-		3:
-			var flags: PackedByteArray = document.find_chunk("XBIT").decoded_payload
-
-			for point in nearby:
-				result.count = MovingThingSpawner.spawn_sailboats(buildings, flags, things, text, point, lfsr_random, map_edge)
-
-				if result.count > 0:
-					result.point = point
-					break
-
-			result.error = "No open water was found near the view center, or the sailboat limit is reached."
-		4:
-			for point in nearby:
-				if MovingThingSpawner._spawn_train_record(buildings, things, text, point, game_random, lfsr_random, map_edge):
-					result.point = point
-					break
-
-			result.error = "No clear rail tile was found near the view center, or the train limit is reached."
-		_:
-			result.error = "The moving thing selection is not valid."
-
-	if kind != 3 and result.point.x >= 0:
-		result.count = 1
+	var spawned: Dictionary = NativeSimulationBridge.run("spawn_thing", city, random, lfsr_random, game_random, {
+		"kind": kind,
+		"points": _nearest_tiles(view_center, map_edge),
+		"view_center": view_center,
+	}).result
+	result.point = spawned.point
+	result.count = spawned.count
 
 	if result.count == 0:
-		return result
-
-	result.error = ""
-
-	if not thing_chunk.set_decoded_payload(things):
-		result.error = "The moving-object records could not be stored."
+		result.error = SPAWN_ERRORS[kind] if kind >= 0 and kind < SPAWN_ERRORS.size() else "The moving thing selection is not valid."
 
 		return result
-
-	if not text_chunk.set_decoded_payload(text):
-		thing_chunk.set_decoded_payload(old_things)
-		result.error = "The moving-object map links could not be stored."
-
-		return result
-
-	city.resync_mirrors(["XTXT"])
 
 	if kind == 2:
 		engine.ship_home = result.point

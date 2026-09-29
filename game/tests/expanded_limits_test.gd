@@ -94,13 +94,6 @@ func _init() -> void:
 		check(dispatch.ok and dispatch.thing_index == last, "dispatch uses last extended slot")
 		check(DispatchCommand.undo(city, dispatch).ok, "extended dispatch undo")
 		check(document.serialize().data == dispatch_before, "exact dispatch undo")
-		ThingData.write(things, last * 12, 10)
-		ThingData.write(things, last * 12 + 2, last - 1)
-		ThingData.write(things, last * 12 + 6, edge - 7)
-		ThingData.write(things, last * 12 + 7, edge - 8)
-		TrainThingTick._copy_record(things, last, last - 1)
-		check(ThingData.read(things, (last - 1) * 12 + 6) == edge - 7, "train copy retains wide previous coordinate")
-		check(ThingData.read(things, last * 12 + 2) == last - 1, "train record link retains width")
 
 		if edge > 128:
 			ThingData.write(things, last * 12, 3)

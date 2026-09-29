@@ -66,12 +66,9 @@ func check_size(edge: int) -> void:
 	var polygon := CityIsometricRenderer.tile_polygon(city, corner.x, corner.y)
 	var center := (polygon[0] + polygon[1] + polygon[2] + polygon[3]) * 0.25
 	check(CityIsometricRenderer.screen_to_tile(city, center) == corner, "Far pointer hit test")
-	var things := document.find_chunk("XTHG").decoded_payload.duplicate()
-	var text := city.text_overlays.duplicate()
-	var spawned := MovingThingSpawner.spawn_helicopter(things, text, corner, SimRandom.new(5), edge)
-	check(spawned.spawned, "Far helicopter spawn")
-	document.find_chunk("XTHG").set_decoded_payload(things)
-	city.replace_text_overlays(text)
+	var spawned: Dictionary = NativeSimulationBridge.run("spawn_thing", city, SimRandom.new(5), SimLfsrRandom.new(5),
+		GameLcgRandom.new(5), {"kind": 0, "points": [corner], "view_center": corner}).result
+	check(spawned.count == 1, "Far helicopter spawn")
 	var record: int = spawned.record
 	check(city.thing(record).x == corner.x and city.thing(record).y == corner.y, "Wide object coordinates")
 	var moving := MovingThingPhase.run(city, SimRandom.new(1), SimLfsrRandom.new(1), GameLcgRandom.new(1))

@@ -69,6 +69,8 @@ pub const OPERATIONS: &[&str] = &[
     "military.reserve",
     "day.schedule",
     "engine.initialize",
+    "spawn_thing",
+    "spawn_maxis_man",
 ];
 
 pub struct Outcome {
@@ -307,6 +309,45 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
             ])),
             None => Outcome::failure("the load scan failed"),
         },
+        "spawn_thing" => {
+            let points = convert::points(args, "points");
+            let Randoms { random, lfsr, game } = randoms;
+            let (point, count, record) = crate::sim::moving::spawner::spawn_near(
+                city,
+                convert::int(args, "kind", -1),
+                &points,
+                convert::point(args, "view_center", crate::sim::geom::Vec2i::ZERO),
+                random,
+                lfsr,
+                game,
+            );
+            Outcome::value(Value::Dict(vec![
+                (Value::Str("point".to_string()), Value::Vec2i(point)),
+                (Value::Str("count".to_string()), Value::Int(count)),
+                (Value::Str("record".to_string()), Value::Int(record)),
+            ]))
+        }
+        "spawn_maxis_man" => {
+            let map_edge = city.map_size;
+            let mut data = city.xthg.data.clone();
+            let mut text = city.xtxt.data.clone();
+            let spawned = crate::sim::moving::spawner::spawn_maxis_man(
+                &mut data,
+                &mut text,
+                convert::point(args, "point", crate::sim::geom::Vec2i::ZERO),
+                convert::point(args, "target", crate::sim::geom::Vec2i::ZERO),
+                convert::int(args, "goal", 0),
+                convert::int(args, "height", 0),
+                map_edge,
+            );
+
+            if spawned.spawned {
+                city.xthg.replace(data);
+                city.xtxt.replace(text);
+            }
+
+            Outcome::value(Value::Bool(spawned.spawned))
+        }
         "echo" => Outcome::value(Value::Int(convert::int(args, "value", 0) + city.map_size)),
         _ => Outcome::failure(format!("unknown native simulation operation: {op}")),
     }

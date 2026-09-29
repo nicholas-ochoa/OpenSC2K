@@ -54,6 +54,14 @@ def build(profile='release', quiet=False):
     return target
 
 
+def test(quiet=False):
+    """Run the native simulation unit tests."""
+    command = ['cargo', 'test', '--release', '--manifest-path', str(CRATE / 'Cargo.toml')]
+    if quiet:
+        command.append('--quiet')
+    subprocess.run(command, cwd=CRATE, check=True, capture_output=quiet)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--debug', action='store_true', help='Build without optimizations')

@@ -2,8 +2,6 @@ extends SceneTree
 
 @warning_ignore_start("integer_division")
 
-const AirConstants = preload("res://src/simulation/moving_things/air/constants.gd")
-
 ## The Vehicles layer hides vehicles, drops their sounds and stops their
 ## spontaneous crashes. Disaster objects and started disasters are unchanged.
 
@@ -121,11 +119,9 @@ func _tall_building(city: CityState) -> Vector2i:
 	for index in city.buildings.size():
 		var building := int(city.buildings[index])
 
-		# A tall building away from an airport. Z 0 hits when a third of its height is positive.
-		if (
-			building >= 0x71 and building <= 0xfa and (int(city.zones[index]) & 0x0f) != 8
-			and int(AirConstants.BUILDING_SPRITE_HEIGHTS[building - AirConstants.BUILDING_SPRITE_HEIGHTS_FIRST] / 3) > 0
-		):
+		# A building away from an airport. Each one from 0x71 to 0xfa is at least five
+		# units tall, so an aircraft at height 0 hits it.
+		if building >= 0x71 and building <= 0xfa and (int(city.zones[index]) & 0x0f) != 8:
 			return Vector2i(index / city.map_size, index % city.map_size)
 
 	assert(false, "The test city needs a tall building")

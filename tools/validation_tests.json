@@ -122,12 +122,6 @@
     "lane": "product"
   },
   {
-    "id": "moving_thing_motion_test",
-    "script": "tests/moving_thing_motion_test.gd",
-    "domain": "simulation",
-    "lane": "product"
-  },
-  {
     "id": "binary_data_test",
     "script": "tests/binary_data_test.gd",
     "domain": "formats",
@@ -189,12 +183,6 @@
     "id": "edit_payload_copy_test",
     "script": "tests/edit_payload_copy_test.gd",
     "domain": "tools",
-    "lane": "product"
-  },
-  {
-    "id": "moving_payload_isolation_test",
-    "script": "tests/moving_payload_isolation_test.gd",
-    "domain": "simulation",
     "lane": "product"
   },
   {
@@ -928,12 +916,6 @@
     "id": "placement_error_tooltip_test",
     "script": "tests/placement_error_tooltip_test.gd",
     "domain": "ui",
-    "lane": "product"
-  },
-  {
-    "id": "ship_map_exit_test",
-    "script": "tests/ship_map_exit_test.gd",
-    "domain": "simulation",
     "lane": "product"
   },
   {

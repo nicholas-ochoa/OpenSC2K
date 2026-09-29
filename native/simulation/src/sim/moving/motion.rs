@@ -149,3 +149,81 @@ pub fn advance(speed: i64, text: &mut [u8], data: &mut [u8], record: i64, direct
 
     1
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sim::overlay;
+    use crate::sim::things;
+
+    fn prepare(text: &mut [u8], data: &mut [u8], record: i64, point: Vec2i, edge: i64) {
+        for (field, value) in [(0, 1), (3, point.x), (4, point.y), (6, 8), (7, 8), (10, 51)] {
+            things::write(data, record * RECORD_SIZE + field, value);
+        }
+
+        overlay::write(text, point.x * edge + point.y, overlay::thing_id(record));
+    }
+
+    #[test]
+    fn directions_point_at_targets() {
+        for (direction, step) in DIRECTIONS.iter().enumerate() {
+            let target = Vec2i::new(step.x * 9, step.y * 9);
+            assert_eq!(direction_between(Vec2i::ZERO, target), direction as i64);
+            assert_eq!(direction_quadrant(Vec2i::ZERO, target), direction as i64);
+        }
+
+        assert_eq!(direction_between(Vec2i::ZERO, Vec2i::ZERO), 3);
+        assert_eq!(direction_quadrant(Vec2i::ZERO, Vec2i::ZERO), 4);
+        assert_eq!(direction_between(Vec2i::ZERO, Vec2i::new(1, 3)), 4);
+        assert_eq!(direction_quadrant(Vec2i::ZERO, Vec2i::new(1, 3)), 3);
+    }
+
+    #[test]
+    fn records_move_between_tiles_in_both_formats() {
+        for edge in [128i64, 256] {
+            let record = if edge == 128 { 1 } else { 241 };
+            let text_size = (edge * edge * if edge == 128 { 1 } else { 2 }) as usize;
+            let thing_size = if edge == 128 { 480 } else { 512 * 24 };
+            let origin = if edge == 128 { Vec2i::new(10, 10) } else { Vec2i::new(200, 200) };
+            let offset = record * RECORD_SIZE;
+
+            for (direction, step) in DIRECTIONS.iter().enumerate() {
+                let mut text = vec![0u8; text_size];
+                let mut data = vec![0u8; thing_size];
+                prepare(&mut text, &mut data, record, origin, edge);
+                let next = origin + *step;
+                overlay::write(&mut text, next.x * edge + next.y, 77);
+                assert_eq!(advance(16, &mut text, &mut data, record, direction as i64, edge), 1);
+                assert_eq!((things::read(&data, offset + 3), things::read(&data, offset + 4)), (next.x, next.y));
+                assert_eq!(overlay::read(&text, origin.x * edge + origin.y), 51, "old overlay restored");
+                assert_eq!(overlay::read(&text, next.x * edge + next.y), overlay::thing_id(record));
+                assert_eq!(things::read(&data, offset + 10), 77, "new underlay saved");
+            }
+
+            let mut text = vec![0u8; text_size];
+            let mut data = vec![0u8; thing_size];
+            prepare(&mut text, &mut data, record, origin, edge);
+
+            for step in [1, 2] {
+                overlay::write(&mut text, (origin.x + step) * edge + origin.y, 251);
+            }
+
+            assert_eq!(advance(16, &mut text, &mut data, record, 2, edge), 1, "blocked tiles skipped");
+            assert_eq!(things::read(&data, offset + 3), origin.x + 3);
+            assert_eq!(overlay::read(&text, (origin.x + 1) * edge + origin.y), 251, "blocked overlay retained");
+
+            let mut text = vec![0u8; text_size];
+            let mut data = vec![0u8; thing_size];
+            prepare(&mut text, &mut data, record, Vec2i::ZERO, edge);
+            assert_eq!(advance(16, &mut text, &mut data, record, 7, edge), -1, "map exit");
+            assert!(things::read(&data, offset) == 0 && overlay::read(&text, 0) == 0, "exit removes record");
+
+            let mut text = vec![0u8; text_size];
+            let mut data = vec![0u8; thing_size];
+            prepare(&mut text, &mut data, record, origin, edge);
+            things::write(&mut data, offset + 6, 0);
+            assert_eq!(advance(16, &mut text, &mut data, record, 2, edge), 0, "subtile limit stays on tile");
+            assert_eq!(things::read(&data, offset + 6), 16);
+        }
+    }
+}

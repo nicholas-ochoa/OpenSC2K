@@ -170,3 +170,40 @@ fn advance(text: &mut [u8], data: &mut [u8], record: i64, direction: i64, counte
 
     counters.moved_sailboats += 1;
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sim::testing::{empty_city, sequence_lfsr, sequence_random};
+    use crate::sim::things::TYPE_SAILBOAT;
+
+    #[test]
+    fn sailboats_keep_the_population_cap_and_the_last_edge() {
+        for edge in [128i64, 256, 384, 512, 640, 1024] {
+            let cap = (4 * edge * edge) / 16384;
+
+            for active in [4, 5, cap + 1] {
+                let mut city = empty_city(edge);
+                city.xbit.data.fill(4);
+                let offset = RECORD_SIZE;
+
+                for (field, value) in [(0, TYPE_SAILBOAT), (1, 1), (3, edge - 3), (4, edge - 3), (6, 8)] {
+                    things::write(&mut city.xthg.data, offset + field, value);
+                }
+
+                let mut counters = MovingThingResult { active_sailboats: active, ..Default::default() };
+                let (buildings, flags) = (&city.xbld.data, &city.xbit.data);
+                let (text, data) = (&mut city.xtxt.data, &mut city.xthg.data);
+                update(buildings, flags, text, data, 1, &mut sequence_random(&[0]), &mut sequence_lfsr(&[1]), &mut counters, edge);
+                let survives = active <= cap;
+                assert_eq!(things::read(data, offset) != 0, survives, "the sailboat cap matches the spawner");
+
+                if survives {
+                    assert_eq!(things::read(data, offset + 3), edge - 2, "the sailboat reaches the far interior");
+                    advance(text, data, 1, 1, &mut counters, edge);
+                    assert_eq!(things::read(data, offset), 0, "the sailboat leaves at the last edge");
+                }
+            }
+        }
+    }
+}

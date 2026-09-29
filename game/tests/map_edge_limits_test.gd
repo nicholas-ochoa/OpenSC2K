@@ -15,7 +15,6 @@ func _init() -> void:
 		check_growth(edge)
 		check_growth_dispatch(edge)
 		check_special(edge)
-		check_transport(edge)
 		check_random_sites(edge)
 		check_tools(edge)
 		print("PASS: map edge limits at %d" % edge)
@@ -88,44 +87,6 @@ func check_special(edge: int) -> void:
 			p.MISC, origin, 7, 0, edge)
 		check(result.ok == (origin.x == edge - 3), "Silo fits exactly at map edge")
 		check(result.changed_tiles == (9 if result.ok else 0), "Silo footprint count")
-
-
-func check_transport(edge: int) -> void:
-	for start in [Vector2i(edge - 4, edge - 4), Vector2i(edge - 3, edge - 3)]:
-		var p := payloads(edge)
-
-		for delta in [Vector2i.ZERO, Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-			var point: Vector2i = start + delta
-			p.XBLD[point.x * edge + point.y] = Tiles.RAIL_STRAIGHT_1
-
-		var spawned := MovingThingSpawner._spawn_train_record(p.XBLD, p.XTHG, p.XTXT,
-			start, SequenceGameLcg.new(), SequenceLfsr.new(), edge)
-		check(spawned == (start.x == edge - 4), "Train uses actual edge margin")
-
-		if spawned:
-			check(ThingData.read(p.XTHG, CityState.THING_RECORD_SIZE + 3) == start.x,
-				"Train keeps wide coordinates")
-
-	for active in [4, 5, ((4 * edge * edge) / 16384) + 1]:
-		var p := payloads(edge)
-		p.XBIT.fill(4)
-		var offset := CityState.THING_RECORD_SIZE
-		ThingData.write(p.XTHG, offset, MovingThingSpawner.TYPE_SAILBOAT)
-		ThingData.write(p.XTHG, offset + 1, 1)
-		ThingData.write(p.XTHG, offset + 3, edge - 3)
-		ThingData.write(p.XTHG, offset + 4, edge - 3)
-		ThingData.write(p.XTHG, offset + 6, 8)
-		var counters := MovingThingResult.new()
-		counters.active_sailboats = active
-		SailboatThingTick.update(p.XBLD, p.XBIT, p.XTXT, p.XTHG, 1,
-			SequenceRandom.new(), SequenceLfsr.new([1]), counters, edge)
-		var survives: bool = active <= (4 * edge * edge) / 16384
-		check((ThingData.read(p.XTHG, offset) != 0) == survives, "Sailboat population cap matches spawner")
-
-		if survives:
-			check(ThingData.read(p.XTHG, offset + 3) == edge - 2, "Sailboat reaches far interior")
-			SailboatThingTick._move(p.XTXT, p.XTHG, 1, 1, counters, edge)
-			check(ThingData.read(p.XTHG, offset) == 0, "Sailboat retains last-edge removal")
 
 
 func check_random_sites(edge: int) -> void:

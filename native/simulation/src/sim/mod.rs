@@ -20,6 +20,8 @@ pub mod overlay;
 pub mod phase;
 pub mod random;
 pub mod reports;
+#[cfg(test)]
+pub mod testing;
 pub mod things;
 pub mod tools;
 pub mod trip;

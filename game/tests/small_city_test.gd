@@ -134,58 +134,18 @@ func check_terrain(edge: int) -> void:
 			check(result.tree_tiles > 0, "Small terrain retains forest generation")
 
 
+# the native spawner and tick rules have their own unit tests. check that the
+# small-map record pool ticks and that the debug actions accept it
 func check_vehicles(edge: int) -> void:
-	for direction in 4:
-		for coordinate_roll in [0, 32767]:
-			var airplane_doc := fixture(edge)
-			var airplane_things := airplane_doc.find_chunk("XTHG").decoded_payload.duplicate()
-			var airplane_text := airplane_doc.find_chunk("XTXT").decoded_payload.duplicate()
-			var random := SequenceRandom.new([0, direction, coordinate_roll])
-			var result := MovingThingSpawner.spawn_airplane(airplane_things, airplane_text, Vector2i(5, 5), 0, random, edge)
-			check(result.spawned, "Small map admits an incoming airplane")
-			var entry_point: Vector2i = result.point
-			check(entry_point.x >= 0 and entry_point.y >= 0 and entry_point.x < edge and entry_point.y < edge,
-				"Aircraft entry from every edge stays inside small map")
-			check(random.position == 3, "Aircraft entry preserves random-call count")
 	var doc := fixture(edge)
 	var city := CityState.from_document(doc)
-	var things := doc.find_chunk("XTHG").decoded_payload.duplicate()
-	var text := city.text_overlays.duplicate()
-	var point := Vector2i(5, 5)
-	check(MovingThingSpawner.spawn_helicopter(things, text, point, SimRandom.new(1), edge).spawned,
-		"Small map retains helicopter capacity")
-	check(not MovingThingSpawner.spawn_helicopter(things, text, point + Vector2i.ONE, SimRandom.new(1), edge).spawned,
-		"Small map retains the one-helicopter limit")
-	things.fill(0)
-	text.fill(0)
-	var terrain := city.terrain.duplicate()
-	terrain.fill(0x10)
-	check(MovingThingSpawner.spawn_ship(terrain, things, text, point, SequenceRandom.new(), edge).spawned,
-		"Small map retains cargo ship capacity")
-	things.fill(0)
-	text.fill(0)
-	var flags := city.tile_flags.duplicate()
-	flags.fill(4)
-	check(MovingThingSpawner.spawn_sailboats(city.buildings, flags, things, text, point, SequenceLfsr.new(), edge) == 4,
-		"Small map retains four sailboats")
-	check(MovingThingSpawner.spawn_sailboats(city.buildings, flags, things, text, point + Vector2i(3, 3), SequenceLfsr.new(), edge) == 0,
-		"Small map enforces its sailboat limit")
-	doc.find_chunk("XTHG").set_decoded_payload(things)
-	city.replace_text_overlays(text)
-	city.replace_tile_flags(flags)
+	var spawned: Dictionary = NativeSimulationBridge.run("spawn_thing", city, SimRandom.new(1), SimLfsrRandom.new(1),
+		GameLcgRandom.new(1), {"kind": 0, "points": [Vector2i(5, 5)], "view_center": Vector2i(5, 5)}).result
+	check(spawned.count == 1, "Small map retains helicopter capacity")
 	check(MovingThingPhase.run(city, SimRandom.new(1), SimLfsrRandom.new(1), GameLcgRandom.new(1)).ok,
-		"Small-map sailboats tick safely")
+		"Small-map vehicles tick safely")
 	check(CityDebugActions._valid_disaster_chunks(doc.find_chunk("XTHG"), doc.find_chunk("XTXT"), doc.find_chunk("MISC"), edge),
 		"Debug disaster actions accept the small-map record pool")
-
-	for start in [Vector2i(edge - 4, edge - 4), Vector2i(edge - 3, edge - 3)]:
-		var p := GrowthState.payloads(CityState.from_document(fixture(edge)))
-		for delta in [Vector2i.ZERO, Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-			var track: Vector2i = start + delta
-			p.XBLD[track.x * edge + track.y] = BuildingTileIds.RAIL_STRAIGHT_1
-		var spawned := MovingThingSpawner._spawn_train_record(p.XBLD, p.XTHG, p.XTXT,
-			start, SequenceGameLcg.new(), SequenceLfsr.new(), edge)
-		check(spawned == (start.x == edge - 4), "Small-map trains retain capacity and edge margins")
 
 
 func _terrain_result_values(result: NewCityTerrain.Result) -> Array:

@@ -365,6 +365,17 @@ def main():
             except (OSError, subprocess.CalledProcessError) as error:
                 record('native-build', 'FAIL', round(time.monotonic() - native_started, 3), str(error))
                 return 1
+            report('RUN  native-tests')
+            native_started = time.monotonic()
+            try:
+                build_native.test(quiet=True)
+                record('native-tests', 'PASS', round(time.monotonic() - native_started, 3))
+            except (OSError, subprocess.CalledProcessError) as error:
+                detail = getattr(error, 'stdout', b'') or b''
+                record('native-tests', 'FAIL', round(time.monotonic() - native_started, 3),
+                       str(error) + '\n' + detail.decode(errors='replace')[-4000:])
+                if not args.keep_going:
+                    return 1
             project.configure('startup')
             if not run('parse', godot_command(extra=['--editor', '--import'])):
                 return 1

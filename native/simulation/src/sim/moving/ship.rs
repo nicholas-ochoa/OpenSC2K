@@ -298,3 +298,50 @@ pub fn turn_one_step(direction: i64, target: i64) -> i64 {
 
     if direction - target > 4 { (direction + 1) & 7 } else { (direction - 1) & 7 }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sim::moving::motion::DIRECTIONS;
+    use crate::sim::testing::{sequence_lfsr, sequence_random};
+
+    #[test]
+    fn ships_leave_at_each_edge_and_corner() {
+        for (direction, delta) in DIRECTIONS.iter().enumerate() {
+            let direction = direction as i64;
+            let axis = |value: i64| if value < 0 { 0 } else if value > 0 { 127 } else { 64 };
+            let point = Vec2i::new(axis(delta.x), axis(delta.y));
+            let tile = (point.x * 128 + point.y) as usize;
+            let mut text = vec![0u8; 16384];
+            let mut data = vec![0u8; 12];
+            data[0] = 3;
+            data[3] = point.x as u8;
+            data[4] = point.y as u8;
+            data[6] = if delta.x > 0 { 12 } else { 0 };
+            data[7] = if delta.y > 0 { 12 } else { 0 };
+            data[10] = 42;
+            text[tile] = 201;
+            assert!(!advance(&mut text, &mut data, 0, direction, 128));
+            assert_eq!(data[0], 0, "the ship leaves at a map edge or corner");
+            assert_eq!(text[tile], 42, "the saved text marker returns");
+
+            for state in [0u8, 4] {
+                data[0] = 3;
+                data[1] = direction as u8;
+                data[2] = state;
+                data[6] = if delta.x > 0 { 12 } else { 0 };
+                data[7] = if delta.y > 0 { 12 } else { 0 };
+                text[tile] = 201;
+                let blank = vec![0u8; 16384];
+                let water = vec![4u8; 16384];
+                let maps = ShipMaps { buildings: &blank, underground: &blank, flags: &water, map_edge: 128 };
+                let mut counters = MovingThingResult::default();
+                let mut random = sequence_random(&[1]);
+                let mut lfsr = sequence_lfsr(&[1]);
+                update(&maps, &mut text, &mut data, 0, point, &mut random, &mut lfsr, &mut counters);
+                assert!(data[0] == 0 && counters.removed_ships == 1 && counters.moved_ships == 0);
+                assert_eq!(text[tile], 42);
+            }
+        }
+    }
+}

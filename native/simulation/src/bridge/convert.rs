@@ -348,3 +348,20 @@ pub fn engine_state(dictionary: &VarDictionary, key: &str) -> crate::sim::engine
         traffic_news_deadline_msec: int(&fields, "traffic_news_deadline_msec", 0),
     }
 }
+
+pub fn points(dictionary: &VarDictionary, key: &str) -> Vec<Vec2i> {
+    let value = dictionary.get(key);
+
+    if let Some(typed) = value.as_ref().and_then(|value| value.try_to::<Array<Vector2i>>().ok()) {
+        return typed.iter_shared().map(|point| Vec2i::new(point.x as i64, point.y as i64)).collect();
+    }
+
+    match value.and_then(|value| value.try_to::<VarArray>().ok()) {
+        Some(values) => values
+            .iter_shared()
+            .filter_map(|value| value.try_to::<Vector2i>().ok())
+            .map(|value| Vec2i::new(value.x as i64, value.y as i64))
+            .collect(),
+        None => Vec::new(),
+    }
+}

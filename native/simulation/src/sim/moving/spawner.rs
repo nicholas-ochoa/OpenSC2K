@@ -454,3 +454,173 @@ pub fn train_route_tile(tile: i64) -> bool {
         || tile == tiles::RAIL_BRIDGE
         || tile == tiles::RAIL_BRIDGE_PYLON
 }
+
+/// A moving thing that the debug menu adds near `points`, as
+/// CityDebugActions.spawn_moving_thing. Returns the spawn point, count, and record.
+/// The records change only when something was added. The record is the
+/// helicopter, airplane, or ship record, or 0.
+#[allow(clippy::too_many_arguments)]
+pub fn spawn_near(
+    city: &mut crate::sim::city::City,
+    kind: i64,
+    points: &[Vec2i],
+    view_center: Vec2i,
+    random: &mut SimRandom,
+    lfsr_random: &mut SimLfsrRandom,
+    game_random: &mut GameLcgRandom,
+) -> (Vec2i, i64, i64) {
+    let map_edge = city.map_size;
+    let mut data = city.xthg.data.clone();
+    let mut text = city.xtxt.data.clone();
+    let mut point = Vec2i::NONE;
+    let mut count = 0;
+    let mut record = 0;
+
+    match kind {
+        0 => {
+            for near in points {
+                let spawned = spawn_helicopter(&mut data, &mut text, *near, random, map_edge);
+
+                if spawned.spawned {
+                    (point, record) = (*near, spawned.record);
+                    break;
+                }
+            }
+        }
+        1 => {
+            for near in points {
+                let spawned = spawn_airplane(&mut data, &mut text, *near, 0, random, map_edge);
+
+                if spawned.spawned {
+                    (point, record) = (spawned.point, spawned.record);
+                    break;
+                }
+            }
+        }
+        2 => {
+            let spawned = spawn_ship(&city.xter.data, &mut data, &mut text, view_center, random, map_edge);
+
+            if spawned.spawned {
+                (point, record) = (spawned.point, spawned.record);
+            }
+        }
+        3 => {
+            for near in points {
+                count = spawn_sailboats(&city.xbld.data, &city.xbit.data, &mut data, &mut text, *near, lfsr_random, map_edge);
+
+                if count > 0 {
+                    point = *near;
+                    break;
+                }
+            }
+        }
+        4 => {
+            if let Some(found) = points.iter().find(|near| {
+                spawn_train_record(&city.xbld.data, &mut data, &mut text, **near, game_random, lfsr_random, map_edge)
+            }) {
+                point = *found;
+            }
+        }
+        _ => {}
+    }
+
+    if kind != 3 && point.x >= 0 {
+        count = 1;
+    }
+
+    if count > 0 {
+        city.xthg.replace(data);
+        city.xtxt.replace(text);
+    }
+
+    (point, count, record)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sim::testing::{empty_city, sequence_game, sequence_lfsr, sequence_random};
+
+    #[test]
+    fn small_maps_keep_vehicle_capacity() {
+        for edge in [16i64, 32, 64] {
+            for direction in 0..4 {
+                for roll in [0, 32767] {
+                    let mut city = empty_city(edge);
+                    let mut random = sequence_random(&[0, direction, roll, 999]);
+                    let spawned =
+                        spawn_airplane(&mut city.xthg.data, &mut city.xtxt.data, Vec2i::new(5, 5), 0, &mut random, edge);
+                    assert!(spawned.spawned, "a small map admits an incoming airplane");
+                    let entry = spawned.point;
+                    assert!(entry.x >= 0 && entry.y >= 0 && entry.x < edge && entry.y < edge);
+                    assert_eq!(random.next_u15(), 999, "the aircraft entry uses three draws");
+                }
+            }
+
+            let mut city = empty_city(edge);
+            let point = Vec2i::new(5, 5);
+            let (data, text) = (&mut city.xthg.data, &mut city.xtxt.data);
+            assert!(spawn_helicopter(data, text, point, &mut SimRandom::new(1), edge).spawned);
+            assert!(
+                !spawn_helicopter(data, text, Vec2i::new(6, 6), &mut SimRandom::new(1), edge).spawned,
+                "a small map keeps the one-helicopter limit"
+            );
+
+            let mut city = empty_city(edge);
+            city.xter.data.fill(0x10);
+            let spawned = spawn_ship(&city.xter.data, &mut city.xthg.data, &mut city.xtxt.data, point, &mut sequence_random(&[0]), edge);
+            assert!(spawned.spawned, "a small map keeps cargo ship capacity");
+
+            let mut city = empty_city(edge);
+            city.xbit.data.fill(4);
+            let mut lfsr = sequence_lfsr(&[0]);
+            let (buildings, flags) = (&city.xbld.data, &city.xbit.data);
+            assert_eq!(spawn_sailboats(buildings, flags, &mut city.xthg.data, &mut city.xtxt.data, point, &mut lfsr, edge), 4);
+            let far = Vec2i::new(8, 8);
+            assert_eq!(
+                spawn_sailboats(buildings, flags, &mut city.xthg.data, &mut city.xtxt.data, far, &mut lfsr, edge),
+                0,
+                "a small map enforces its sailboat limit"
+            );
+            let options = crate::sim::moving::phase::TickOptions {
+                ship_home: Vec2i::NONE,
+                allow_disaster_damage: true,
+                traffic_news_time_msec: 0,
+                traffic_news_deadline_msec: 0,
+                suppress_vehicle_crashes: false,
+            };
+            let mut randoms = crate::sim::random::Randoms::new(1, 1, 1);
+            let crate::sim::random::Randoms { random, lfsr, game } = &mut randoms;
+            assert!(crate::sim::moving::phase::run(&mut city, random, lfsr, game, &options).base.ok, "small-map sailboats tick");
+        }
+    }
+
+    #[test]
+    fn trains_keep_the_edge_margin_and_wide_coordinates() {
+        for edge in [16i64, 32, 64, 128, 256, 384, 512, 640, 1024] {
+            for start in [Vec2i::new(edge - 4, edge - 4), Vec2i::new(edge - 3, edge - 3)] {
+                let mut city = empty_city(edge);
+
+                for delta in [Vec2i::ZERO, Vec2i::new(-1, 0), Vec2i::new(1, 0), Vec2i::new(0, -1), Vec2i::new(0, 1)] {
+                    let track = start + delta;
+                    city.xbld.data[(track.x * edge + track.y) as usize] = tiles::RAIL_STRAIGHT_1 as u8;
+                }
+
+                let spawned = spawn_train_record(
+                    &city.xbld.data,
+                    &mut city.xthg.data,
+                    &mut city.xtxt.data,
+                    start,
+                    &mut sequence_game(&[0]),
+                    &mut sequence_lfsr(&[0]),
+                    edge,
+                );
+                assert_eq!(spawned, start.x == edge - 4, "trains use the actual edge margin at {edge}");
+
+                if spawned {
+                    assert_eq!(things::read(&city.xthg.data, RECORD_SIZE + FIELD_X), start.x, "trains keep wide coordinates");
+                }
+            }
+        }
+    }
+}

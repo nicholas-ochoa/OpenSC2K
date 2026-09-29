@@ -311,3 +311,25 @@ fn remove_train(text: &mut [u8], data: &mut [u8], engine: i64, first_car: i64, s
     motion::remove(text, data, first_car, map_edge);
     motion::remove(text, data, second_car, map_edge);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn copied_records_keep_wide_fields() {
+        for edge in [256i64, 512, 1024] {
+            let count = 40 * (edge * edge) / 16384;
+            let mut data = vec![0u8; (count * 24) as usize];
+            let last = count - 1;
+            things::write(&mut data, last * RECORD_SIZE, TYPE_TRAIN_ENGINE);
+            things::write(&mut data, last * RECORD_SIZE + 2, last - 1);
+            things::write(&mut data, last * RECORD_SIZE + 6, edge - 7);
+            things::write(&mut data, last * RECORD_SIZE + 7, edge - 8);
+            copy_record(&mut data, last, last - 1);
+            assert_eq!(things::read(&data, (last - 1) * RECORD_SIZE + 6), edge - 7, "the copy keeps a wide coordinate");
+            assert_eq!(things::read(&data, last * RECORD_SIZE + 2), last - 1, "the car link keeps its width");
+            assert_eq!(things::read(&data, (last - 1) * RECORD_SIZE), TYPE_TRAIN_CAR);
+        }
+    }
+}
