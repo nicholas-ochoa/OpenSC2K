@@ -362,3 +362,33 @@ fn remove_population(tables: &mut Tables, amount: i64, city_population: i64, ran
 
     true
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sim::testing::sequence_random;
+
+    /// Decay floors the transferred education and keeps the destination's points.
+    #[test]
+    fn education_decay_moves_only_whole_transfers() {
+        for points in [0i64, 30, 60, 120] {
+            for pro_reading in [false, true] {
+                let mut tables = Tables {
+                    population: [0; POPULATION_COHORTS],
+                    education: [0; POPULATION_COHORTS],
+                    life_expectancy: [0; POPULATION_COHORTS],
+                };
+                tables.population[4] = 60;
+                tables.education[4] = points;
+                tables.life_expectancy[4] = 4800;
+                tables.education[5] = 7;
+                let flags = if pro_reading { ordinances::PRO_READING_MASK } else { 0 };
+                apply_aging(&mut tables, 0, 0, 0, flags, &mut sequence_random(&[32767]));
+                let transferred = points / 60;
+                let expected = 7 + if pro_reading { transferred } else { (transferred - 1).max(0) };
+                assert_eq!(tables.education[5], expected);
+                assert_eq!(tables.education[4], points - transferred, "the source loses only the transferred points");
+            }
+        }
+    }
+}

@@ -348,3 +348,43 @@ fn sources_in_scan_order(city: &City, rotation: i64) -> Vec<i64> {
 
     ranked.into_iter().map(|value| value % tile_count).collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sim::geom::Vec2i;
+    use crate::sim::ids::building_tile_ids as tiles;
+    use crate::sim::testing::{empty_city, empty_full_resolution_city};
+
+    /// Water sources follow the scan order of each view rotation.
+    #[test]
+    fn sources_follow_the_rotated_scan_order() {
+        for (edge, full) in [(128i64, false), (128, true), (256, false), (384, false), (512, true)] {
+            let mut city = if full { empty_full_resolution_city(edge) } else { empty_city(edge) };
+            let last = edge - 1;
+
+            for point in [Vec2i::new(0, 0), Vec2i::new(3, last), Vec2i::new(last, 2), Vec2i::new(7, 7), Vec2i::new(7, 9), Vec2i::new(9, 7), Vec2i::new(last, last)] {
+                let tile = if point.x == 7 { tiles::DESALINIZATION } else { tiles::WATER_PUMP };
+                city.xbld.data[(point.x * edge + point.y) as usize] = tile as u8;
+            }
+
+            for rotation in 0..4 {
+                let mut expected = Vec::new();
+
+                for major in 0..edge {
+                    for minor in 0..edge {
+                        let x = [minor, major, last - minor, last - major][rotation as usize];
+                        let y = [major, last - minor, last - major, minor][rotation as usize];
+                        let building = city.xbld.data[(x * edge + y) as usize] as i64;
+
+                        if building == tiles::WATER_PUMP || building == tiles::DESALINIZATION {
+                            expected.push(x * edge + y);
+                        }
+                    }
+                }
+
+                assert_eq!(sources_in_scan_order(&city, rotation), expected, "rotation {rotation}");
+            }
+        }
+    }
+}

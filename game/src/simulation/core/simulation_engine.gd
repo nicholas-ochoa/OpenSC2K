@@ -2,11 +2,6 @@
 class_name SimulationEngine
 extends RefCounted
 
-const RciAftermath = preload("res://src/simulation/growth/rci_aftermath_phase.gd")
-const SimNation = preload("res://src/simulation/civic/simnation_phase.gd")
-const Industries = preload("res://src/simulation/growth/industry_phase.gd")
-const WeatherDisaster = preload("res://src/simulation/disasters/weather_disaster_phase.gd")
-const Music = preload("res://src/audio/music_director.gd")
 
 var city: CityState
 var clock: SimulationClock
@@ -165,24 +160,8 @@ func _timed_advance_day() -> SimulationDayResult:
 	if not city.set_age_in_days(clock.city_days):
 		return SimulationDayResult.failure("cannot store the new simulation day")
 
-	if BudgetPhase.requires_annual_budget(city):
-		pending_interaction = "annual_budget"
-		pending_day_schedule = schedule
-
-		var outcome := SimulationDayResult.new()
-		outcome.ok = true
-		outcome.day = clock.city_days
-		outcome.schedule = schedule
-		outcome.applied = PackedStringArray()
-		outcome.pending = schedule.actions.duplicate()
-		outcome.phase_results = {}
-		outcome.interaction_requests = [SimulationInteractionRequest.annual_budget(BudgetPhase.funding_values(city))]
-		outcome.complete = false
-		outcome.error = ""
-
-		return outcome
-
-	return _append_pending_disaster(_run_day_schedule(schedule, false))
+	# the day asks for the annual budget first when the year needs one
+	return _append_pending_disaster(_run_day_schedule(schedule, false, true))
 
 
 func resolve_annual_budget(funding_values: PackedInt32Array, auto_budget: bool) -> SimulationDayResult:
@@ -439,16 +418,20 @@ static func _rotate_runtime_point(point: Vector2i, counter_clockwise: bool, map_
 	return Vector2i(map_edge - 1 - point.y, point.x)
 
 
-func _run_day_schedule(schedule: SimulationSchedule, annual_budget_approved: bool) -> SimulationDayResult:
+func _run_day_schedule(
+	schedule: SimulationSchedule, annual_budget_approved: bool, check_annual_budget := false
+) -> SimulationDayResult:
 	var span := SimulationTimingSpan.new(city.simulation_slice)
-	var result := _execute_day_schedule(schedule, annual_budget_approved, span)
+	var result := _execute_day_schedule(schedule, annual_budget_approved, span, check_annual_budget)
 	result.timing = span.finish()
 
 	return result
 
 
-func _execute_day_schedule(schedule: SimulationSchedule, annual_budget_approved: bool, span: SimulationTimingSpan) -> SimulationDayResult:
-	return SimulationDaySchedule._execute_day_schedule(self, schedule, annual_budget_approved, span)
+func _execute_day_schedule(
+	schedule: SimulationSchedule, annual_budget_approved: bool, span: SimulationTimingSpan, check_annual_budget := false
+) -> SimulationDayResult:
+	return SimulationDaySchedule._execute_day_schedule(self, schedule, annual_budget_approved, span, check_annual_budget)
 
 
 func _schedule_after(schedule: SimulationSchedule, completed_action: String) -> SimulationSchedule:

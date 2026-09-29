@@ -1,8 +1,6 @@
 class_name BankruptcyPhase
 extends RefCounted
 
-const BANKRUPTCY_LIMIT := -100000
-
 
 static func _failed(message: String) -> Result:
 	var result := Result.new()

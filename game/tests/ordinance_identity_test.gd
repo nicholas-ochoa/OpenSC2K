@@ -24,22 +24,6 @@ func _initialize() -> void:
 	assert(not OrdinanceCommand.set_enabled(city, -1, true).ok)
 	assert(not OrdinanceCommand.set_enabled(city, 20, true).ok)
 	assert(city.document.find_chunk("MISC").decoded_payload == before)
-	var deltas := [{ 1: 1, 14: -1 }, { 0: 1, 12: -1, 15: -1, 18: -1 }, { 13: -1, 19: 1 }]
-	var flag_cases: Array[int] = [0, 0xfffff, 0x80000000, 0x854003]
-
-	for bit in 20:
-		flag_cases.append(1 << bit)
-
-	for category in 3:
-		for rate: int in [0, 7, 20]:
-			for flags in flag_cases:
-				var expected := rate
-
-				for bit: int in deltas[category]:
-					if flags & (1 << bit):
-						expected += int(deltas[category][bit])
-
-				assert(RciDemandPhase._ordinance_adjusted_tax_rate(category, rate, flags) == maxi(expected, 0))
-
-	print("PASS: ordinance flags, unknown bits and demand effects")
+	# the native demand rule has its own tax-rate unit test
+	print("PASS: ordinance flags and unknown bits")
 	quit()

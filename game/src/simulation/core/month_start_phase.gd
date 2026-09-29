@@ -5,9 +5,6 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 const MISC_SIZE := Sc2MiscLayout.SIZE
-const ZONE_POPULATION_COUNT := 8
-# the original opens the subscribed newspaper after the April and August budget
-const SUBSCRIPTION_MONTHS := [3, 7]
 
 
 static func _failed(message: String) -> Result:

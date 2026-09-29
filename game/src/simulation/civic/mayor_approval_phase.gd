@@ -13,11 +13,8 @@ const BUDGET_FUNDING := Sc2BudgetLayout.FUNDING
 const BUDGET_RESIDENTIAL := Sc2BudgetLayout.RESIDENTIAL
 const GRAPH_TRAFFIC := 4
 const GRAPH_POLLUTION := 5
-const GRAPH_LAND_VALUE := 6
 const GRAPH_CRIME := 7
 const GRAPH_VALUE_COUNT := Sc2GraphLayout.VALUES_PER_SERIES
-const TILE_MAYOR_HOUSE := BuildingTileIds.MAYOR_HOUSE
-const NEWS_HIGH_APPROVAL := 0x201
 
 
 static func failed(message: String) -> Result:

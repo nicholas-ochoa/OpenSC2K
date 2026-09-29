@@ -2,7 +2,6 @@ class_name TrafficPhase
 extends RefCounted
 
 const MAP_SIZE := 64
-const VALUE_COUNT := MAP_SIZE * MAP_SIZE
 
 
 static func run(city: CityState) -> Result:

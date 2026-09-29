@@ -929,4 +929,16 @@ mod tests {
             assert_eq!(population_cap(&city.misc.data, 200, 900, edge), if edge == 128 { 0 } else { 200 }, "availability does not wrap");
         }
     }
+
+    /// The annual facility lookup finds the last extended record at the far map edge.
+    #[test]
+    fn facility_lookup_finds_far_extended_records() {
+        for edge in [16i64, 128, 512, 1024] {
+            let mut city = empty_city(edge);
+            let record = city.xmic.data.len() as i64 / sc2microsim_layout::RECORD_SIZE - 1;
+            let origin = Vec2i::new(edge - 3, edge - 3);
+            overlay::write(&mut city.xtxt.data, origin.x * edge + origin.y, overlay::facility_id(record));
+            assert_eq!(find_microsim_location(&city.xtxt.data, record, edge), origin);
+        }
+    }
 }

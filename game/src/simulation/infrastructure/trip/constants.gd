@@ -1,60 +1,15 @@
 class_name TransportTripConstants
 extends RefCounted
 
-const TRAFFIC_MAP_SIZE := 64
-const TRAFFIC_VALUE_COUNT := TRAFFIC_MAP_SIZE * TRAFFIC_MAP_SIZE
 const CONNECTION_LABEL := Sc2OverlayLayout.CONNECTION_MARKER
 const ROAD_MODE := 0
 const HIGHWAY_MODE := 1
 const ROAD_TUNNEL_MODE := 2
-const ROAD_BRIDGE_MODE := 3
 const BUS_ROAD_MODE := 4
 const BUS_HIGHWAY_MODE := 5
-const BUS_TUNNEL_MODE := 6
-const BUS_BRIDGE_MODE := 7
-const BUS_STOP_MODE := 8
-const BUS_RAIL_MODE := 9
-const RAIL_STATION_MODE := 10
-const SUBWAY_STATION_MODE := 11
 const RAIL_MODE := 12
 const SUBWAY_MODE := 13
-const ADVANCE_BLOCKED := -1
-const ADVANCE_SUCCESS := -2
-const POINT_INDEX_MASK := 0x3fff
-# sc2x start points keep 20 index bits for 1024 tile maps
-const LARGE_POINT_INDEX_MASK := 0xfffff
-const TRANSPORT_OFFSETS := [
-	Vector2i(0, 1), Vector2i(1, 0), Vector2i(0, -1), Vector2i(-1, 0),
-	Vector2i(0, 2), Vector2i(2, 0), Vector2i(0, -2), Vector2i(-2, 0),
-	Vector2i(0, 3), Vector2i(3, 0), Vector2i(0, -3), Vector2i(-3, 0),
-	Vector2i(1, 1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1),
-	Vector2i(2, 1), Vector2i(-2, 1), Vector2i(2, -1), Vector2i(-2, -1),
-	Vector2i(1, 2), Vector2i(-1, 2), Vector2i(1, -2), Vector2i(-1, -2),
-]
 const DIRECTIONS := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
-const FORWARD_DIRECTION_MASKS := [0x0b, 0x07, 0x0e, 0x0d]
-const DESTINATION_ZONE_MASKS := [0xffff, 0xfff8, 0xfff8, 0xffe6, 0xffe6, 0xff9e, 0xff9e, 0]
-# modes that reach a zone on foot, as a bit per mode, and the any-rci
-# catchment as a bit per zone. both replace per-call array literals
-const WALK_ACCESS_MODES := (1 << ROAD_MODE) | (1 << BUS_ROAD_MODE) | (1 << BUS_STOP_MODE) | (1 << BUS_RAIL_MODE)
-# bridges continue straight; tunnels can turn but cannot immediately reverse
-const TUNNEL_HEADING_MODES := (1 << ROAD_TUNNEL_MODE) | (1 << BUS_TUNNEL_MODE)
-const HEADING_MODES := (1 << ROAD_BRIDGE_MODE) | (1 << BUS_BRIDGE_MODE) | TUNNEL_HEADING_MODES
-const ANY_RCI_ZONE_MASK := 0x7e
-# independent corrected lane model. port bits: north, east, south, west
-# straight sections have one direction per lane. curves connect the ingress
-# and egress corners of their two-by-two footprint with right-hand traffic
-const HIGHWAY_PORTS: Dictionary[int, int] = {BuildingTileIds.HIGHWAY_STRAIGHT_1: 5, BuildingTileIds.HIGHWAY_STRAIGHT_2: 10,
-	BuildingTileIds.HIGHWAY_ROAD_CROSSING_1: 5, BuildingTileIds.HIGHWAY_ROAD_CROSSING_2: 10,
-	BuildingTileIds.HIGHWAY_RAIL_CROSSING_1: 5, BuildingTileIds.HIGHWAY_RAIL_CROSSING_2: 10,
-	BuildingTileIds.HIGHWAY_POWER_CROSSING_1: 5, BuildingTileIds.HIGHWAY_POWER_CROSSING_2: 10,
-	BuildingTileIds.HIGHWAY_SLOPE_1: 10, BuildingTileIds.HIGHWAY_SLOPE_2: 5,
-	BuildingTileIds.HIGHWAY_SLOPE_3: 10, BuildingTileIds.HIGHWAY_SLOPE_4: 5,
-	BuildingTileIds.HIGHWAY_CURVE_1: 3, BuildingTileIds.HIGHWAY_CURVE_2: 6,
-	BuildingTileIds.HIGHWAY_CURVE_3: 12, BuildingTileIds.HIGHWAY_CURVE_4: 9, BuildingTileIds.HIGHWAY_INTERSECTION: 15}
-const LANE_CORNERS := [Vector2i(0, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(1, 0)]
-const INGRESS_CORNERS := [0, 3, 2, 1]
-const EGRESS_CORNERS := [3, 2, 1, 0]
 
 
 # the mode sits above the start index. 128 tile maps keep the original 14 bits

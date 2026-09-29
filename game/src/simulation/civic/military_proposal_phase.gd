@@ -1,7 +1,6 @@
 class_name MilitaryProposalPhase
 extends RefCounted
 
-const UnderTiles = preload("res://src/tools/shared/underground_tile_ids.gd")
 const MISC_SIZE := Sc2MiscLayout.SIZE
 const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
 const MISC_BASE_TYPE := Sc2MiscLayout.MILITARY_BASE_TYPE
@@ -11,31 +10,10 @@ const FLAG_WATER := Sc2TileFlags.WATER
 const BASE_DECLINED := 1
 const BASE_ARMY := 2
 const BASE_AIR_FORCE := 3
-const BASE_NAVY := 4
 const BASE_MISSILE_SILOS := 5
 const NOTICE_ARMY := 0xf1
 const NOTICE_AIR_FORCE := 0xf2
-const NOTICE_NAVY := 0xf3
 const NOTICE_MISSILE_SILOS := 0xf4
-const NOTICE_NO_SITE := 0x19b
-
-
-static func _store(
-	city: CityState, chunks: Dictionary, zones: PackedByteArray, misc: PackedByteArray,
-	map_changes: Dictionary = {},
-) -> bool:
-	var payloads := { "XZON": zones, "MISC": misc }
-
-	payloads.merge(map_changes)
-
-	var old_payloads := {}
-	var ids := PackedStringArray()
-
-	for id in payloads:
-		old_payloads[id] = chunks[id].decoded_payload.duplicate()
-		ids.append(id)
-
-	return BuildingState._apply_payloads(city, ids, payloads, old_payloads)
 
 
 static func _chunks(city: CityState) -> Dictionary[String, Sc2Chunk]:

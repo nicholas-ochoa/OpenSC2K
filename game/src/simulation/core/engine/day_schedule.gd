@@ -40,6 +40,7 @@ static func _execute_day_schedule(
 	schedule: SimulationSchedule,
 	annual_budget_approved: bool,
 	span: SimulationTimingSpan,
+	check_annual_budget := false,
 ) -> SimulationDayResult:
 	var state := {}
 
@@ -57,11 +58,25 @@ static func _execute_day_schedule(
 				"growth_substep": schedule.growth_substep,
 			},
 			"annual_budget_approved": annual_budget_approved,
+			"check_annual_budget": check_annual_budget,
 			"engine": state,
 			"scenario": ScenarioPhase.fields(engine.scenario) if engine.scenario != null else {},
 			"detailed": SimulationTimingSpan.detailed,
 		})
 	var day: Dictionary = response.result
+
+	if day.get("annual_budget", false):
+		engine.pending_interaction = "annual_budget"
+		engine.pending_day_schedule = schedule
+		var interaction := SimulationDayResult.new()
+		interaction.ok = true
+		interaction.day = engine.clock.city_days
+		interaction.schedule = schedule
+		interaction.pending = schedule.actions.duplicate()
+		interaction.interaction_requests = [SimulationInteractionRequest.annual_budget(day.funding_values)]
+		interaction.complete = false
+
+		return interaction
 
 	for field in SimulationPhaseContext.ENGINE_STATE:
 		engine.set(field, day.engine[field])

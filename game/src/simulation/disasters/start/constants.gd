@@ -24,7 +24,6 @@ const TYPE_AIRPLANE := Sc2ThingLayout.Type.AIRPLANE
 const TYPE_MONSTER := Sc2ThingLayout.Type.MONSTER
 const TYPE_EXPLOSION := Sc2ThingLayout.Type.EXPLOSION
 const TYPE_TORNADO := Sc2ThingLayout.Type.TORNADO
-const TEXT_THING_BASE := 201
 const SOUND_SIREN := 520
 const SOUND_FLOOD := 511
 const SOUND_RIOT := 512
@@ -36,33 +35,8 @@ const VOLCANO_BUDGET := 25000
 const MISC_CITY_CENTER_X := Sc2MiscLayout.CITY_CENTER_X
 const MISC_CITY_CENTER_Y := Sc2MiscLayout.CITY_CENTER_Y
 const MISC_NORMAL_POPULATION := Sc2MiscLayout.NORMAL_POPULATION
-const FIRE_SPIRAL_X := [0, 1, 0, -1]
-const FIRE_SPIRAL_Y := [-1, 0, 1, 0]
 const RIOT_OVERLAY_FORWARD := 0xfd
 const RIOT_OVERLAY_REVERSE := 0xfe
 const NUCLEAR_POWER_PLANT := BuildingTileIds.NUCLEAR_POWER
 const RADIOACTIVITY_TILE := BuildingTileIds.RADIOACTIVE_WASTE
 const MICROWAVE_POWER_PLANT := BuildingTileIds.MICROWAVE_POWER
-const EIGHT_DIRECTIONS := [
-	Vector2i(0, -1),
-	Vector2i(1, -1),
-	Vector2i(1, 0),
-	Vector2i(1, 1),
-	Vector2i(0, 1),
-	Vector2i(-1, 1),
-	Vector2i(-1, 0),
-	Vector2i(-1, -1),
-]
-const MAP_CHUNK_SIZES := {
-	"ALTM": CityState.TILE_COUNT * 2,
-	"XBLD": CityState.TILE_COUNT,
-	"XTER": CityState.TILE_COUNT,
-	"XZON": CityState.TILE_COUNT,
-	"XUND": CityState.TILE_COUNT,
-	"XBIT": CityState.TILE_COUNT,
-	"XTRF": 64 * 64,
-	"XTXT": CityState.TILE_COUNT,
-	"XLAB": CityState.LABEL_COUNT * CityState.LABEL_RECORD_SIZE,
-	"XMIC": CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE,
-	"MISC": Sc2MiscLayout.SIZE,
-}

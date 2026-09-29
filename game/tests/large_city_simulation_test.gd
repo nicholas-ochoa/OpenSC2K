@@ -141,8 +141,6 @@ func check_far_services_and_year(edge: int) -> void:
 	microsims[record * CityState.MICROSIM_RECORD_SIZE + 2] = 255
 	document.find_chunk("XMIC").set_decoded_payload(microsims)
 	city.set_text_overlay_id(origin.x, origin.y, OverlayData.facility_id(record))
-	check(MicrosimAnnualPhase._find_microsim_location(city.text_overlays, record, edge)
-		== origin, "annual facility lookup finds far extended record")
 	city.set_auto_budget_enabled(true)
 	city.set_no_disasters_enabled(true)
 	city.set_age_in_days(274)

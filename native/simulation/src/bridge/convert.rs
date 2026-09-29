@@ -365,3 +365,10 @@ pub fn points(dictionary: &VarDictionary, key: &str) -> Vec<Vec2i> {
         None => Vec::new(),
     }
 }
+
+pub fn ints64(dictionary: &VarDictionary, key: &str) -> Vec<i64> {
+    match dictionary.get(key).and_then(|value| value.try_to::<PackedInt64Array>().ok()) {
+        Some(values) => values.to_vec(),
+        None => Vec::new(),
+    }
+}

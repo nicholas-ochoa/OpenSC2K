@@ -3,9 +3,6 @@ extends RefCounted
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const MAP_SIZE := 64
-const SERVICE_MAP_SIZE := 32
-const FULL_MAP_SIZE := CityState.MAP_SIZE
-const VALUE_COUNT := MAP_SIZE * MAP_SIZE
 const MISC_CITY_POLLUTION := Sc2MiscLayout.CITY_POLLUTION
 const MISC_CITY_LAND_VALUE := Sc2MiscLayout.CITY_LAND_VALUE
 const MISC_CITY_CRIME := Sc2MiscLayout.CITY_CRIME
@@ -29,11 +26,7 @@ const FIRST_POLLUTING_BUILDING := Tiles.DEVELOPED_FIRST
 const BIG_PARK := Tiles.BIG_PARK
 const POLICE_STATION := Tiles.POLICE_STATION
 const FIRE_STATION := Tiles.FIRE_STATION
-const FIRST_POWER_PLANT := Tiles.HYDRO_POWER_1
-const FIRST_ARCOLOGY := Tiles.PLYMOUTH_ARCOLOGY
-const LAST_ARCOLOGY := Tiles.LAUNCH_ARCOLOGY
 const FLAG_WATER := Sc2TileFlags.WATER
-const FLAG_MARK := Sc2TileFlags.MARK
 const FLAG_WATERED := Sc2TileFlags.WATERED
 const FLAG_POWERED := Sc2TileFlags.POWERED
 const ZONE_BUILDING_ORIGIN := 0x80

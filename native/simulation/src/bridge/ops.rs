@@ -77,6 +77,11 @@ pub const OPERATIONS: &[&str] = &[
     "trip.advance",
     "trip.trace",
     "military.naval_site",
+    "graphs.advance",
+    "graphs.current_values",
+    "rci.connection_counts",
+    "budget.requires_annual_budget",
+    "budget.funding_values",
 ];
 
 pub struct Outcome {
@@ -289,6 +294,15 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
             .to_value(),
         ),
         "day.schedule" => {
+            // The original asks for the annual budget before it runs the day.
+            if convert::boolean(args, "check_annual_budget", false) && budget::requires_annual_budget(city) {
+                return Outcome::value(Value::Dict(vec![
+                    (Value::Str("ok".to_string()), Value::Bool(true)),
+                    (Value::Str("annual_budget".to_string()), Value::Bool(true)),
+                    (Value::Str("funding_values".to_string()), Value::Ints32(budget::funding_values(city))),
+                ]));
+            }
+
             let schedule = convert::schedule(args, "schedule");
             let state = convert::engine_state(args, "engine");
             let scenario = convert::scenario(args, "scenario");
@@ -414,6 +428,47 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
             }
         }
         "military.naval_site" => Outcome::value(Value::Rect2i(crate::sim::civic::military::find_naval_site(city))),
+        "graphs.advance" => {
+            let values: Vec<i64> = convert::ints64(args, "values");
+
+            match graphs::advance(city, &values) {
+                Ok((month, elapsed_years)) => {
+                    let mut result = graphs::GraphResult { month, elapsed_years, ..Default::default() };
+                    result.base.ok = true;
+                    Outcome::value(result.to_value())
+                }
+                Err(message) => Outcome::value(graphs::GraphResult::failed(message).to_value()),
+            }
+        }
+        "graphs.current_values" => {
+            let result = match graphs::calculate_current_values(
+                city,
+                convert::int(args, "developed_tiles", -1),
+                convert::int(args, "power_usage_percent", -1),
+                convert::int(args, "water_usage_percent", -1),
+            ) {
+                Ok((values, unemployment)) => {
+                    let mut result = graphs::GraphResult {
+                        values: crate::sim::value::Ints64(values),
+                        unemployment,
+                        ..Default::default()
+                    };
+                    result.base.ok = true;
+                    result
+                }
+                Err(message) => graphs::GraphResult::failed(message),
+            };
+            Outcome::value(result.to_value())
+        }
+        "rci.connection_counts" => {
+            let counts = demand::connection_counts(city);
+            Outcome::value(Value::Dict(vec![
+                (Value::Str("commerce".to_string()), Value::Int(counts.commerce)),
+                (Value::Str("industry".to_string()), Value::Int(counts.industry)),
+            ]))
+        }
+        "budget.requires_annual_budget" => Outcome::value(Value::Bool(budget::requires_annual_budget(city))),
+        "budget.funding_values" => Outcome::value(Value::Ints32(budget::funding_values(city))),
         "echo" => Outcome::value(Value::Int(convert::int(args, "value", 0) + city.map_size)),
         _ => Outcome::failure(format!("unknown native simulation operation: {op}")),
     }

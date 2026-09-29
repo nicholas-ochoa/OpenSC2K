@@ -429,3 +429,26 @@ pub fn industry(city: &mut City, random: &mut SimRandom, lfsr: &mut SimLfsrRando
     result.base_mut().ok = true;
     result
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Each ordinance moves one category's tax rate. Unknown bits change nothing.
+    #[test]
+    fn ordinances_adjust_the_tax_rate() {
+        let deltas: [&[(i64, i64)]; 3] = [&[(1, 1), (14, -1)], &[(0, 1), (12, -1), (15, -1), (18, -1)], &[(13, -1), (19, 1)]];
+        let mut flag_cases = vec![0i64, 0xfffff, 0x8000_0000, 0x85_4003];
+        flag_cases.extend((0..20).map(|bit| 1i64 << bit));
+
+        for (category, category_deltas) in deltas.iter().enumerate() {
+            for rate in [0i64, 7, 20] {
+                for flags in &flag_cases {
+                    let expected: i64 = rate
+                        + category_deltas.iter().filter(|(bit, _)| flags & (1 << bit) != 0).map(|(_, delta)| delta).sum::<i64>();
+                    assert_eq!(ordinance_adjusted_tax_rate(category as i64, rate, *flags), expected.max(0));
+                }
+            }
+        }
+    }
+}

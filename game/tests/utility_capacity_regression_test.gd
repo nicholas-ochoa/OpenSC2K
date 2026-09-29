@@ -47,7 +47,6 @@ func _run() -> void:
 		for version in versions:
 			check_power(edge, version)
 			check_power_trace_order(edge, version)
-			check_water_source_order(edge, version)
 
 			if edge == 128:
 				check_power_queue_limit(version)
@@ -137,29 +136,6 @@ func check_power_trace_order(edge: int, version: int) -> void:
 
 
 # Pumps start their networks in a scan order that depends on the compass rotation
-func check_water_source_order(edge: int, version: int) -> void:
-	var city := CityState.from_document(fixture(edge, version))
-	var last := edge - 1
-
-	for point in [Vector2i(0, 0), Vector2i(3, last), Vector2i(last, 2), Vector2i(7, 7), Vector2i(7, 9), Vector2i(9, 7),
-		Vector2i(last, last)]:
-		city.set_building_id(point.x, point.y, Tiles.DESALINIZATION if point.x == 7 else Tiles.WATER_PUMP)
-
-	for rotation in 4:
-		var expected := PackedInt32Array()
-
-		for major in edge:
-			for minor in edge:
-				var x: int = [minor, major, last - minor, last - major][rotation]
-				var y: int = [major, last - minor, last - major, minor][rotation]
-				var building := city.buildings[x * edge + y]
-
-				if building == Tiles.WATER_PUMP or building == Tiles.DESALINIZATION:
-					expected.append(x * edge + y)
-
-		check(WaterPhase._sources_in_scan_order(city, rotation) == expected, "Water sources follow the rotation %d scan order" % rotation)
-
-
 # A very wide network overflows the original 512-entry trace queue.
 func check_power_queue_limit(version: int) -> void:
 	var doc := fixture(128, version)

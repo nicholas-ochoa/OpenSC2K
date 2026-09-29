@@ -12,25 +12,7 @@ func check(ok: bool, message: String) -> void:
 
 
 func _initialize() -> void:
-	for points in [0, 30, 60, 120]:
-		for pro_reading in [false, true]:
-			var population := PackedInt64Array()
-			var education := PackedInt64Array()
-			var life := PackedInt64Array()
-			population.resize(20)
-			education.resize(20)
-			life.resize(20)
-			population[4] = 60
-			education[4] = points
-			life[4] = 4800
-			education[5] = 7
-			EducationHealthPhase._apply_aging(population, education, life, 0, 0, 0,
-				EducationHealthPhase.ORDINANCE_PRO_READING if pro_reading else 0, FixedRandom.new())
-			var transferred: int = points / 60
-			check(education[5] == 7 + (transferred if pro_reading else maxi(transferred - 1, 0)),
-				"Decay floors transferred education without consuming the destination's points")
-			check(education[4] == points - transferred, "Source loses only transferred points")
-
+	# the native aging rule has its own unit test
 	for edge in Sc2File.MAP_SIZES:
 		for native in [false, true]:
 			var doc := EmptyCityTemplate.create(edge)
@@ -49,11 +31,3 @@ func _initialize() -> void:
 						"Saved cohort education remains bounded during repeated decay")
 	print("EQ decay regression: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
-
-
-@warning_ignore_start("integer_division")
-
-
-class FixedRandom extends SimRandom:
-	func next_u15() -> int:
-		return 32767

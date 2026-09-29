@@ -1,8 +1,6 @@
 class_name DisasterMapScanDispatch
 extends DisasterMapConstants
 
-const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
-
 
 static func run_all(
 	city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom, map_counter: int, hurricane_counter := 0
