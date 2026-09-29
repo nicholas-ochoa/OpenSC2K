@@ -9,7 +9,6 @@ const SimNation = preload("res://src/simulation/civic/simnation_phase.gd")
 const Budget = preload("res://src/simulation/economy/budget_phase.gd")
 const MilitaryProposal = preload("res://src/simulation/civic/military_proposal_phase.gd")
 const DisasterStart = preload("res://src/simulation/disasters/disaster_start_phase.gd")
-const Growth = preload("res://src/simulation/growth/phase/constants.gd")
 const Simulation = preload("res://src/simulation/core/simulation_engine.gd")
 const GameSpeed = preload("res://src/simulation/core/game_speed_controller.gd")
 

@@ -1,94 +1,18 @@
 class_name TripReachAnalysis
 extends RefCounted
-
-@warning_ignore_start("integer_division")
+## The trip reach overlay query. The native library explores the routes.
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
 
 static func inspect(city: CityState, clicked: Vector2i) -> TransportTripReachResult:
-	if city == null or not city.is_valid() or city.index_of(clicked.x, clicked.y) < 0:
+	if city == null or not city.is_valid():
 		return TransportTripReachResult.rejected("Select a tile inside the city.")
 
-	var origin := _growth_anchor(city, clicked)
-	var index := city.index_of(origin.x, origin.y)
-	var zone := int(city.zones[index]) & 15
-	var rci := zone >= 1 and zone <= 6
-	var tile := int(city.buildings[index])
-	var density := GrowthDevelopment.density(tile) if tile >= Tiles.DEVELOPED_FIRST and tile <= Tiles.DEVELOPED_3X3_LAST else 0
-	var limit := 75 if density == 1 else 100
-	var start := -1
-
-	if not rci:
-		var mode := _network_mode(tile)
-
-		if mode < 0 and NetworkTileMembership.subway(int(city.underground[index])):
-			mode = TransportTrip.SUBWAY_MODE
-
-		if mode >= 0:
-			start = (mode << TransportTripConstants.point_shift(city.map_size)) | index
-
-	var traffic := city.document.find_chunk("XTRF").decoded_payload
-
-	if not TransportTripSearch.valid_inputs(city.buildings, city.zones, city.underground,
-		city.text_overlays, city.altitude_words, traffic, city.map_size):
-		return TransportTripReachResult.rejected("Transport maps for this city have the wrong size.")
-
-	var result := TransportTripSearch.trace(city.buildings, city.zones, city.underground,
-		city.text_overlays, city.altitude_words, traffic, origin, zone if rci else 7,
-		density, SimRandom.new(1), 100, city.map_size, true, start) as TransportTripReachResult
-	_add_building_coverage(city, result, origin)
-	var powered := GrowthSiteRules.has_power(city.tile_flags, origin.x, origin.y, city.map_size)
-	var demand := city.document.misc_i32(Sc2MiscLayout.DEMAND + ((zone - 1) / 2) * 4) if rci else 0
-	var lines := PackedStringArray()
-	if result.reachable.is_empty():
-		lines.append("No transport access within three tiles.")
-	elif not rci:
-		lines.append("Network exploration. Select an RCI zone to check growth.")
-
-	result.origin = origin
-	result.clicked = clicked
-	result.limit = limit
-	result.summary = lines
-	result.rci = rci
-	result.powered = powered
-	result.demand = demand
-	return result
+	return NativeSimulationBridge.run("trip_reach", city, null, null, null, {"clicked": clicked}).result
 
 
-static func _network_mode(tile: int) -> int:
-	if TransportTripSteps._is_highway_span(tile) or (tile >= Tiles.HIGHWAY_ONRAMP_1 and tile <= Tiles.HIGHWAY_ONRAMP_4):
-		return TransportTrip.HIGHWAY_MODE
-	if tile == Tiles.RAIL_STATION:
-		return TransportTrip.RAIL_STATION_MODE
-	if tile == Tiles.SUBWAY_STATION:
-		return TransportTrip.SUBWAY_STATION_MODE
-	if tile == Tiles.BUS_DEPOT:
-		return TransportTrip.BUS_STOP_MODE
-	if NetworkTileMembership.surface_road(tile):
-		return TransportTrip.ROAD_MODE
-	if TransportTripSteps._is_road_bridge(tile):
-		return TransportTrip.ROAD_BRIDGE_MODE
-	if NetworkTileMembership.rail(tile):
-		return TransportTrip.RAIL_MODE
-	return -1
-
-
-static func _growth_anchor(city: CityState, point: Vector2i) -> Vector2i:
-	var tile := city.building_id(point.x, point.y)
-	if tile < Tiles.DEVELOPED_FIRST:
-		return point
-	var area := DemolishEffectsSites._building_area(tile)
-	var site := DemolishEffectsSites._find_building_site(city.buildings, city.zones, point,
-		tile, area, city.compass_rotation(), city.map_size)
-	var mask: int = GrowthConstants.ANCHOR_MASKS[city.compass_rotation()]
-	for x in range(site.position.x, site.end.x):
-		for y in range(site.position.y, site.end.y):
-			if city.zones[city.index_of(x, y)] & mask:
-				return Vector2i(x, y)
-	return point
-
-
+# the whole footprint of the building at `point`, or the tile itself
 static func _building_site(city: CityState, point: Vector2i) -> Rect2i:
 	var tile := city.building_id(point.x, point.y)
 	if tile < Tiles.DEVELOPED_FIRST:
@@ -98,34 +22,3 @@ static func _building_site(city: CityState, point: Vector2i) -> Rect2i:
 	# partial buildings or missing corner flags have no complete footprint
 	# keep their query coverage and marker on the actual tile, never a zero-area site
 	return site if site.has_area() else Rect2i(point, Vector2i.ONE)
-
-
-static func _cover_site(city: CityState, point: Vector2i, cost: int, tiles: Dictionary) -> void:
-	var site := _building_site(city, point)
-	for x in range(site.position.x, site.end.x):
-		for y in range(site.position.y, site.end.y):
-			var part := Vector2i(x, y)
-			tiles[part] = mini(cost, int(tiles.get(part, cost)))
-
-
-static func _add_building_coverage(city: CityState, result: TransportTripReachResult, origin: Vector2i) -> void:
-	var destinations := result.destinations.duplicate()
-	for point: Vector2i in result.destinations:
-		if city.index_of(point.x, point.y) >= 0:
-			_cover_site(city, point, int(destinations[point]), destinations)
-	var access_tiles: Dictionary[Vector2i, int] = {}
-	for node in result.reachable:
-		if int(node.mode) not in [TransportTrip.ROAD_MODE, TransportTrip.BUS_ROAD_MODE,
-			TransportTrip.BUS_STOP_MODE, TransportTrip.BUS_RAIL_MODE,
-			TransportTrip.RAIL_STATION_MODE, TransportTrip.SUBWAY_STATION_MODE]:
-			continue
-		for offset: Vector2i in TransportTrip.TRANSPORT_OFFSETS:
-			var point: Vector2i = node.point + offset
-			var index := city.index_of(point.x, point.y)
-			if index >= 0 and ((city.zones[index] & 15) != 0 or city.buildings[index] >= Tiles.DEVELOPED_FIRST):
-				_cover_site(city, point, int(node.cost), access_tiles)
-	var origin_tiles: Dictionary[Vector2i, int] = {}
-	_cover_site(city, origin, 0, origin_tiles)
-	result.destinations = destinations
-	result.access_tiles = access_tiles
-	result.origin_tiles = origin_tiles

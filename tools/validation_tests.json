@@ -56,12 +56,6 @@
     "lane": "product"
   },
   {
-    "id": "growth_site_rules_test",
-    "script": "tests/growth_site_rules_test.gd",
-    "domain": "simulation",
-    "lane": "product"
-  },
-  {
     "id": "city_tool_selection_test",
     "script": "tests/city_tool_selection_test.gd",
     "domain": "tools",
@@ -545,12 +539,6 @@
   {
     "id": "army_base_regression_test",
     "script": "tests/army_base_regression_test.gd",
-    "domain": "simulation",
-    "lane": "product"
-  },
-  {
-    "id": "military_growth_regression_test",
-    "script": "tests/military_growth_regression_test.gd",
     "domain": "simulation",
     "lane": "product"
   },

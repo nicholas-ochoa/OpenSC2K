@@ -20,18 +20,6 @@ static func run(city: CityState) -> PollutionPhase.Result:
 	return NativeSimulationBridge.run("data_maps.native", city, null, null, null).result
 
 
-# pollution, city center, and police and fire coverage. these read only the
-# map, the previous pollution and traffic, and the budget
-static func run_pollution_and_coverage(city: CityState) -> PollutionCoverageResult:
-	return NativeSimulationBridge.run("data_maps.coverage", city, null, null, null).result
-
-
-# land value, population density, growth, and crime. these read the pollution,
-# police coverage, and city center that run_pollution_and_coverage stores
-static func run_land_value_and_crime(city: CityState) -> PollutionPhase.Result:
-	return NativeSimulationBridge.run("data_maps.land_value", city, null, null, null).result
-
-
 # derive once from the shared rules; workers only read these tables
 static func _make_pollution_weights() -> PackedInt32Array:
 	var values := PackedInt32Array()

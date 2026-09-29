@@ -21,8 +21,6 @@ func _initialize() -> void:
 		_check_moving_thing_tick(edge)
 
 	_check_moving_thing_rollback()
-	_check_growth_apply_payloads()
-	_check_growth_apply_rollback()
 	_check_growth_phase()
 	_check_city_rotation()
 	_check_building_commands()
@@ -117,37 +115,6 @@ func _check_moving_thing_rollback() -> void:
 	check(thing_chunk.mutation_revision - revision_before == 2, "XTHG was written and then rolled back")
 	check(thing_chunk.decoded_payload == things_before, "Rollback restores the committed chunk")
 	check_mirrors(city, "moving-thing rollback")
-
-
-func _check_growth_apply_payloads() -> void:
-	var city := CityState.from_document(EmptyCityTemplate.create(128))
-	var payloads := GrowthState.payloads(city)
-	check(not payloads.is_empty(), "Growth payloads decode")
-	var rollback := GrowthState.duplicate_payloads(payloads)
-	var index := 40 * 128 + 40
-	payloads.XBLD[index] = Tiles.TREES_2
-	payloads.ALTM[index * 2] = 0x01
-	payloads.ALTM[index * 2 + 1] = 0x23
-	var applied := GrowthState._apply_payloads(city, PackedStringArray(["XBLD", "ALTM"]), payloads, rollback)
-	check(applied, "Growth commit succeeds")
-	check(city.buildings[index] == 0x07, "The XBLD mirror carries the committed tile")
-	check(city.altitude_words[index] == 0x0123, "The ALTM mirror carries the committed word")
-	check_mirrors(city, "growth commit")
-
-
-## The rollback path restores what it applied, not what it was asked to write.
-func _check_growth_apply_rollback() -> void:
-	var city := CityState.from_document(EmptyCityTemplate.create(128))
-	var payloads := GrowthState.payloads(city)
-	var rollback := GrowthState.duplicate_payloads(payloads)
-	var index := 40 * 128 + 40
-	payloads.XBLD[index] = Tiles.TREES_2
-	payloads.ALTM = PackedByteArray()
-	var applied := GrowthState._apply_payloads(city, PackedStringArray(["XBLD", "ALTM"]), payloads, rollback)
-	check(not applied, "A wrong-size payload fails the growth commit")
-	check(city.document.find_chunk("XBLD").decoded_payload == rollback.XBLD, "Rollback restores XBLD")
-	check(city.buildings[index] != 0x07, "The mirror follows the rollback, not the request")
-	check_mirrors(city, "growth rollback")
 
 
 func _check_growth_phase() -> void:

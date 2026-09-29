@@ -418,3 +418,80 @@ fn clear_growth_building(maps: &mut ZoneMaps, point: Vec2i, random: &mut SimRand
         place_zone(maps, anchor + offset, 1, CLASS_ABANDONED, random);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sim::city::City;
+    use crate::sim::testing::{empty_city, empty_full_resolution_city, sequence_random};
+
+    fn maps(city: &mut City, rotation: i64) -> ZoneMaps<'_> {
+        let map_edge = city.map_size;
+        let City { xbld, xzon, xbit, misc, xval, altm, .. } = city;
+
+        ZoneMaps {
+            buildings: &mut xbld.data,
+            zones: &mut xzon.data,
+            flags: &mut xbit.data,
+            misc: &mut misc.data,
+            land_value: &xval.data,
+            altitude: &altm.data,
+            rotation,
+            map_edge,
+            allow_edge_buildings: false,
+        }
+    }
+
+    fn cities(edge: i64) -> Vec<City> {
+        if edge < 128 { vec![empty_city(edge), empty_full_resolution_city(edge)] } else { vec![empty_city(edge)] }
+    }
+
+    /// Classic growth keeps one free tile at each map edge on every map size.
+    #[test]
+    fn growth_keeps_the_true_edge_margin() {
+        for edge in [16i64, 32, 64, 128, 256, 384, 512, 640, 1024] {
+            for base in cities(edge) {
+                for density in 2..5 {
+                    for rotation in 0..4 {
+                        let radius = density / 2;
+                        let far = Vec2i::new(edge - 2 - radius, edge - 2 - radius);
+                        let anchors = if edge >= 128 { vec![Vec2i::new(20, 20), far] } else { vec![far] };
+
+                        for anchor in anchors {
+                            let mut city = base.clone();
+                            let placed = place_zone(&mut maps(&mut city, rotation), anchor, density, CLASS_CONSTRUCTION, &mut sequence_random(&[0]));
+                            assert!(placed, "edge {edge} density {density} rotation {rotation} at {anchor:?}");
+                            let count = city.xbld.data.iter().filter(|tile| **tile != 0).count() as i64;
+                            assert_eq!(count, (radius + 1) * (radius + 1), "the growth footprint size");
+                        }
+
+                        let outside = if edge >= 128 {
+                            vec![Vec2i::new(edge - 1 - radius, 20), Vec2i::new(20, edge - 1 - radius), Vec2i::new(1, 20)]
+                        } else {
+                            vec![far + Vec2i::new(1, 1)]
+                        };
+
+                        for anchor in outside {
+                            let mut city = base.clone();
+                            let before = city.xbld.data.clone();
+                            let placed = place_zone(&mut maps(&mut city, rotation), anchor, density, CLASS_CONSTRUCTION, &mut sequence_random(&[0]));
+                            assert!(!placed, "growth keeps the true edge margin");
+                            assert_eq!(city.xbld.data, before, "rejected growth does not write buildings");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Per-tile land value belongs to its own tile.
+    #[test]
+    fn density_advance_reads_the_selected_tile_land_value() {
+        let edge = 128;
+        let mut land = vec![0u8; (edge * edge) as usize];
+        let point = Vec2i::new(40, 41);
+        land[(point.x * edge + point.y) as usize] = 255;
+        assert!(can_advance_density(2, 2, 3, &land, point.x, point.y, edge));
+        assert!(!can_advance_density(2, 2, 3, &land, point.x, point.y + 1, edge));
+    }
+}

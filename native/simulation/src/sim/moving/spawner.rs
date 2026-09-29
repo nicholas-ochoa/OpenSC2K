@@ -623,4 +623,40 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn creators_store_the_original_record_fields() {
+        let mut data = vec![0u8; 480];
+        let mut text = vec![0u8; 128 * 128];
+        let spawned = spawn_airplane(&mut data, &mut text, Vec2i::new(20, 20), 2, &mut sequence_random(&[0, 2, 7]), 128);
+        assert!(spawned.spawned, "the airplane creator accepts an empty moving-thing pool");
+        assert_eq!(&data[13..18], &[7, 0x23, 127, 17, 16], "a map-edge airplane stores its edge, direction, height, and runway state");
+        assert_eq!((data[20], data[21], text[127 * 128 + 17]), (4, 20, 202), "a map-edge airplane stores its runway target and link");
+
+        let mut data = vec![0u8; 480];
+        let mut text = vec![0u8; 128 * 128];
+        text[30 * 128 + 20] = 0xff;
+        let spawned = spawn_maxis_man(&mut data, &mut text, Vec2i::new(18, 20), Vec2i::new(30, 20), 241, 7, 128);
+        assert!(spawned.spawned && spawned.record == 1);
+        assert_eq!(data[12] as i64, TYPE_MAXIS_MAN);
+        assert_eq!((data[13], data[15], data[16], data[17], data[20], data[21], data[23]), (2, 18, 20, 7, 30, 20, 241));
+        assert_eq!(text[18 * 128 + 20], 202, "Maxis Man links its record and target");
+        let again = spawn_maxis_man(&mut data, &mut text, Vec2i::new(17, 20), Vec2i::new(30, 20), 241, 7, 128);
+        assert!(!again.spawned, "Maxis Man dispatch keeps one active hero");
+
+        let mut buildings = vec![0u8; 128 * 128];
+        let mut data = vec![0u8; 480];
+        let mut text = vec![0u8; 128 * 128];
+        buildings[20 * 128 + 18] = tiles::RAIL_STRAIGHT_1 as u8;
+        buildings[20 * 128 + 17] = tiles::RAIL_STRAIGHT_1 as u8;
+
+        for record in 1..40 {
+            data[record * 12] = 7;
+        }
+
+        let spawned =
+            spawn_train(&buildings, &mut data, &mut text, Vec2i::new(20, 20), &mut sequence_game(&[0]), &mut sequence_lfsr(&[0]), 128);
+        assert!(spawned, "a full-pool train keeps the unchecked allocation result");
+        assert!(data[0] == 11 && text[20 * 128 + 18] == 201, "a full-pool train writes reserved record zero like the original");
+    }
 }

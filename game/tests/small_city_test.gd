@@ -76,24 +76,6 @@ func check_storage(edge: int, native: bool) -> void:
 
 
 func check_growth_and_facilities(edge: int, native: bool) -> void:
-	for rotation in 4:
-		for density in range(2, 5):
-			var growth_city := CityState.from_document(fixture(edge, native))
-			var p := GrowthState.payloads(growth_city)
-			var radius := density / 2
-			var anchor := Vector2i(edge - 2 - radius, edge - 2 - radius)
-			check(GrowthDevelopment.place_zone(p.XBLD, p.XZON, p.XBIT, p.MISC, p.XVAL,
-				anchor, density, GrowthConstants.CLASS_CONSTRUCTION, SequenceRandom.new(), rotation, edge),
-				"Small map grows each density at its interior edge")
-			var count := 0
-			for tile in p.XBLD:
-				count += int(tile != 0)
-			check(count == (radius + 1) * (radius + 1), "Small-map growth has the full footprint")
-			var before: PackedByteArray = p.XBLD.duplicate()
-			check(not GrowthDevelopment.place_zone(p.XBLD, p.XZON, p.XBIT, p.MISC, p.XVAL,
-				anchor + Vector2i.ONE, density, GrowthConstants.CLASS_CONSTRUCTION, SequenceRandom.new(), rotation, edge),
-				"Small-map growth rejects the outside margin")
-			check(p.XBLD == before, "Rejected growth preserves map bytes")
 	var doc := fixture(edge, native)
 	var city := CityState.from_document(doc)
 	var original: PackedByteArray = doc.serialize().data

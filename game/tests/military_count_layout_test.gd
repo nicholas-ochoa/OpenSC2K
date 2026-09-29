@@ -14,8 +14,6 @@ func _initialize() -> void:
 
 	for tile in 256:
 		var slot := counted_tiles.find(tile) + 1
-		assert(SpecialZoneState._special_count_offset(tile, true) == 0xfa8 + slot * 4)
-		assert(SpecialZoneState._special_count_offset(tile, false) == 0x1f0 + tile * 4)
 		var expected := base.duplicate()
 
 		if slot != 0:
@@ -23,7 +21,7 @@ func _initialize() -> void:
 			expected[0xfab + slot * 4] = 1
 
 		for edge: int in [128, 16]:
-			for replace in [NetworkState.replace_building, SpecialZoneState.replace_building]:
+			for replace in [NetworkState.replace_building]:
 				var buildings := PackedByteArray()
 				buildings.resize(edge * edge)
 				var zones := buildings.duplicate()
@@ -33,5 +31,5 @@ func _initialize() -> void:
 				assert(buildings[0] == tile)
 				assert(misc == expected, "Only the original military count slots change")
 
-	print("PASS: all military tile slots, absent IDs and both replacement paths")
+	print("PASS: all military tile slots and absent IDs in the network replacement path")
 	quit()

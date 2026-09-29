@@ -535,3 +535,73 @@ fn salt_water(city: &City, point: Vec2i) -> bool {
 
     index >= 0 && city.xbit.data[index as usize] as i64 & salt == salt
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sim::growth::special::{SpecialMaps, grow_special_zone};
+    use crate::sim::testing::{empty_city, sequence_game};
+
+    fn naval_fixture(edge: i64, rotation: i64) -> City {
+        let mut city = empty_city(edge);
+        city.set_misc_u32(misc_layout::HAS_OCEAN, 1);
+        city.set_misc_u32(misc_layout::COMPASS, rotation);
+        city.xbld.data.fill(tiles::SMALL_PARK as u8);
+        let inland = INLAND_STEPS[rotation as usize];
+        let along = Vec2i::new(-inland.y, inland.x);
+        let shore = if rotation == 1 || rotation == 2 { Vec2i::new(edge - 12, edge - 12) } else { Vec2i::new(edge - 18, edge - 20) };
+
+        for column in -1..11 {
+            for row in -6..4 {
+                let point = shore + scaled(along, column) + scaled(inland, row);
+                let index = (point.x * edge + point.y) as usize;
+                city.xbld.data[index] = tiles::EMPTY as u8;
+                city.xbit.data[index] = if row < 0 { 5 } else { 0 };
+                city.altm.data[index * 2 + 1] = if row < 0 { 160 } else { 165 };
+            }
+        }
+
+        city.set_misc_u32(misc_layout::TILE_COUNTS, 120);
+        city
+    }
+
+    /// A Navy plot on a rotated far-map coast supports a crane and four pier tiles.
+    #[test]
+    fn naval_bases_reserve_a_shore_that_grows_a_pier() {
+        for edge in [128i64, 256, 384, 512] {
+            let rotations: Vec<i64> = if edge == 128 { vec![0, 1, 2, 3] } else { vec![[128, 256, 384, 512].iter().position(|value| *value == edge).unwrap() as i64] };
+
+            for rotation in rotations {
+                let mut city = naval_fixture(edge, rotation);
+                let site = find_naval_site(&city);
+                assert_eq!(site.size.x * site.size.y, 40, "a naval site exists at edge {edge} rotation {rotation}");
+                let proposal = resolve(&mut city, true, Some(&mut sequence_game(&[1])), false);
+                assert!(proposal.base.ok && proposal.base_type == BASE_NAVY && proposal.notice_id == NOTICE_NAVY);
+                assert_eq!(proposal.changed_indices.0.len(), 40);
+                assert_eq!(city.misc_u32(misc_layout::MILITARY_TILE_COUNTS), 40, "the Navy moves the counts without cost");
+                let map_edge = city.map_size;
+                let City { xbld, xzon, xund, xbit, xter, altm, xtxt, xthg, misc, .. } = &mut city;
+                let mut maps = SpecialMaps {
+                    buildings: &mut xbld.data,
+                    zones: &mut xzon.data,
+                    underground: &mut xund.data,
+                    flags: &mut xbit.data,
+                    terrain: &xter.data,
+                    altitude: &altm.data,
+                    text_overlays: &mut xtxt.data,
+                    things: &mut xthg.data,
+                    misc: &mut misc.data,
+                    rotation,
+                    map_edge,
+                    allow_edge_buildings: false,
+                };
+                let grown = proposal.changed_indices.0.iter().any(|index| {
+                    let point = Vec2i::new(*index as i64 / edge, *index as i64 % edge);
+                    let placed = grow_special_zone(&mut maps, point, tiles::CRANE, 7);
+                    placed.ok && placed.changed_tiles == 5
+                });
+                assert!(grown, "the naval shore supports a crane and four pier tiles");
+            }
+        }
+    }
+}

@@ -34,15 +34,12 @@ func _initialize() -> void:
 			_test_highway(edge, native)
 			_test_branches(edge, native)
 			_test_station_and_tunnel(edge, native)
-	_test_reused_result()
 	_test_tunnel_turns()
 	_test_map_exits()
-	_test_walking_cache()
 	_test_multimodal()
 	_test_dead_end_turns()
 	_test_overpasses()
 	_test_curve()
-	_test_lane_geometry()
 	_test_ui()
 	print("Trip reach: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
@@ -130,7 +127,7 @@ func _test_station_and_tunnel(edge: int, native: bool) -> void:
 	city.set_building_id(20, 20, Tiles.ROAD_STRAIGHT_1)
 	city.set_building_id(20, 21, Tiles.TUNNEL_ENTRANCE_1)
 	for y in range(22, 25):
-		city.altitude_words[20 * edge + y] = 0x400
+		city.set_tunnel_levels(20, y, 1)
 	city.set_building_id(20, 25, Tiles.TUNNEL_ENTRANCE_2)
 	city.set_building_id(20, 26, Tiles.ROAD_STRAIGHT_1)
 	city.set_zone_id(20, 29, 3)
@@ -173,22 +170,6 @@ func _test_tunnel_turns() -> void:
 			if link.from == Vector2i(20, 22) and link.to == Vector2i(20, 21):
 				reversed = true
 		check(not reversed, "A tunnel dead end does not permit an immediate reverse move")
-
-
-func _test_lane_geometry() -> void:
-	var city := fixture(128, false)
-	for tile: int in TransportTrip.HIGHWAY_PORTS:
-		for x in range(18, 24):
-			for y in range(18, 24):
-				city.set_building_id(x, y, tile)
-		var ports: int = TransportTrip.HIGHWAY_PORTS[tile]
-		for direction in 4:
-			var corner: Vector2i = TransportTrip.LANE_CORNERS[TransportTrip.EGRESS_CORNERS[direction]]
-			var point := Vector2i(20, 20) + corner
-			var next_point: Vector2i = point + TransportTrip.DIRECTIONS[direction]
-			var allowed := TransportTripSteps.highway_step(city.buildings, point, next_point, 128)
-			check(allowed == ((ports & (1 << direction)) != 0 and (ports & (1 << ((direction + 2) & 3))) != 0),
-				"External highway movement respects both section ports")
 
 
 func _test_ui() -> void:
@@ -314,17 +295,15 @@ func _test_dead_end_turns() -> void:
 		var middle_across := a + Vector2i(11, 0)
 		for rotation in (4 if edge == 128 else 1):
 			check(
-				TransportTripSteps.highway_step(city.buildings, end_lane, return_lane, edge),
+				_highway_step(city, end_lane, return_lane),
 				"Open highway end permits a median turnaround",
 			)
 			check(
-				not TransportTripSteps.highway_step(city.buildings, middle, middle_across, edge),
+				not _highway_step(city, middle, middle_across),
 				"Connected highway does not permit a median shortcut",
 			)
 			for mode in [TransportTrip.HIGHWAY_MODE, TransportTrip.BUS_HIGHWAY_MODE]:
-				check(TransportTripSteps.advance(city.buildings, city.zones, city.underground,
-					city.text_overlays, city.altitude_words, end_lane, return_lane,
-					end_lane.x * edge + end_lane.y, return_lane.x * edge + return_lane.y, mode, 1, edge) == ((mode << 8) | 1),
+				check(_advance(city, end_lane, return_lane, mode, 1) == ((mode << 8) | 1),
 					"Car and bus turnaround costs one highway step")
 			var result := TripReachAnalysis.inspect(city, middle)
 			check(result.expanded_states <= 88, "End turnarounds terminate without repeatedly circling")
@@ -339,76 +318,14 @@ func _test_dead_end_turns() -> void:
 		for x in range(edge - 4, edge):
 			boundary.set_building_id(x, 20, Tiles.HIGHWAY_STRAIGHT_2)
 			boundary.set_building_id(x, 21, Tiles.HIGHWAY_STRAIGHT_2)
-		check(TransportTripSteps.highway_step(boundary.buildings, Vector2i(edge - 1, 21), Vector2i(edge - 1, 20), edge),
+		check(_highway_step(boundary, Vector2i(edge - 1, 21), Vector2i(edge - 1, 20)),
 			"True map edge permits a safe turnaround")
-
-
-## Compare cached and uncached searches, including their traffic and RNG writes.
-func _compare_walking_cache(scan: GrowthScan.TileScan, point: Vector2i, zone: int, mode: int) -> void:
-	var cached_random := SimRandom.new(123)
-	var direct_random := SimRandom.new(123)
-	var cached_traffic := scan.traffic.duplicate()
-	var direct_traffic := scan.traffic.duplicate()
-	var start := (mode << TransportTripConstants.point_shift(scan.map_edge)) | (point.x * scan.map_edge + point.y)
-	var direct := TransportTripSearch.trace(scan.buildings, scan.zones, scan.underground,
-		scan.text_overlays, scan.altitudes, direct_traffic, point, zone, 2,
-		direct_random, 10, scan.map_edge, false, start)
-	var cached := TransportTripSearch.trace(scan.buildings, scan.zones, scan.underground,
-		scan.text_overlays, scan.altitudes, cached_traffic, point, zone, 2,
-		cached_random, 10, scan.map_edge, false, start, scan.walking_access[(zone + 1) >> 1], scan.trip_result)
-	check(cached == scan.trip_result and cached.same_values(direct), "Reused cached trip keeps every result field")
-	check(cached_random.state == direct_random.state, "Cached trip keeps random state")
-	check(cached_traffic == direct_traffic, "Cached trip keeps traffic bytes")
-
-
-func _test_walking_cache() -> void:
-	for edge in [128, 512]:
-		var city := fixture(edge, false)
-		var payloads := GrowthState.payloads(city)
-		var scan := GrowthScan.TileScan.new(city, payloads, SimRandom.new(1),
-			SimLfsrRandom.new(1), GameLcgRandom.new(1), SimulationTimingSpan.new())
-		# All four boundaries, the inner seam, all 24 offsets, and all zone bits.
-		var points := [Vector2i.ZERO, Vector2i(edge - 1, 0), Vector2i(0, edge - 1),
-			Vector2i(edge - 1, edge - 1), Vector2i(edge / 2, edge / 2)]
-		for point: Vector2i in points:
-			for offset_index in TransportTrip.TRANSPORT_OFFSETS.size():
-				var target: Vector2i = point + TransportTrip.TRANSPORT_OFFSETS[offset_index]
-				var index := TransportTripSteps._index(target, edge)
-				if index >= 0:
-					scan.zones[index] = (offset_index % 16) | 0xa0
-			for zone in 7:
-				_compare_walking_cache(scan, point, zone, TransportTrip.ROAD_MODE)
-				_compare_walking_cache(scan, point, zone, TransportTrip.ROAD_MODE)
-		# Every mode reads the same populated cache without gaining foot access.
-		for mode in 14:
-			_compare_walking_cache(scan, points[-1], 1, mode)
-
-		var church := Vector2i(20, 20)
-		for x in range(20, 22):
-			for y in range(19, 21):
-				scan.zones[x * edge + y] = 1
-		var access := Vector2i(18, 20)
-		for x in range(17, 25):
-			for y in range(16, 24):
-				_compare_walking_cache(scan, Vector2i(x, y), 3, TransportTrip.ROAD_MODE)
-		check(scan.walking_access[2][access.x * edge + access.y] == 2, "Residential zone gives commercial walking access")
-		BinaryData.write_u32_be(scan.misc, GrowthConstants.MISC_NORMAL_POPULATION, 10000)
-		BinaryData.write_u32_be(scan.misc, GrowthConstants.MISC_TILE_COUNTS + GrowthConstants.CHURCH_TILE * 4, 0)
-		for unused in 100:
-			if scan._try_complete_construction(church, 1, 2):
-				break
-		check(scan.churches_built == 1, "Construction places the church through the scan")
-		for x in range(17, 25):
-			for y in range(16, 24):
-				_compare_walking_cache(scan, Vector2i(x, y), 3, TransportTrip.ROAD_MODE)
-		check(scan.walking_access[2][access.x * edge + access.y] == 1, "Church removes cached commercial walking access")
 
 
 ## Flat indices must not wrap a row, and every mode keeps map connections.
 func _test_map_exits() -> void:
 	for edge: int in [128, 512]:
 		var city := fixture(edge, false)
-		var traffic := city.document.find_chunk("XTRF").decoded_payload.duplicate()
 		var points := [Vector2i(30, 0), Vector2i(edge - 1, 30),
 			Vector2i(30, edge - 1), Vector2i(0, 30)]
 		for direction in 4:
@@ -417,43 +334,29 @@ func _test_map_exits() -> void:
 			var outside: Vector2i = point + TransportTrip.DIRECTIONS[direction]
 			var wrapped := outside.x * edge + outside.y
 			if wrapped >= 0 and wrapped < city.zones.size():
-				city.zones[wrapped] = 3
+				city.set_zone_id(wrapped / edge, wrapped % edge, 3)
 			for mode: int in (range(14) if direction == 0 and edge == 128 else [TransportTrip.ROAD_MODE]):
 				var start := (mode << TransportTripConstants.point_shift(edge)) | index
-				OverlayData.write(city.text_overlays, index, 0)
-				var blocked := TransportTripSearch.trace(city.buildings, city.zones, city.underground,
-					city.text_overlays, city.altitude_words, traffic, point, 1, 0,
-					SimRandom.new(1), 1, edge, false, start)
+				city.set_text_overlay_id(point.x, point.y, 0)
+				var blocked := _trace(city, point, 1, 0, 1, start)
 				check(not blocked.reached_destination, "Unlabelled edge blocks without wrapping into a zone")
-				OverlayData.write(city.text_overlays, index, TransportTrip.CONNECTION_LABEL)
-				var connected := TransportTripSearch.trace(city.buildings, city.zones, city.underground,
-					city.text_overlays, city.altitude_words, traffic, point, 1, 0,
-					SimRandom.new(1), 1, edge, false, start)
+				city.set_text_overlay_id(point.x, point.y, TransportTrip.CONNECTION_LABEL)
+				var connected := _trace(city, point, 1, 0, 1, start)
 				check(connected.reached_destination and connected.cost == 0,
 					"Labelled map connection reaches an outside destination")
 			if wrapped >= 0 and wrapped < city.zones.size():
-				city.zones[wrapped] = 0
+				city.set_zone_id(wrapped / edge, wrapped % edge, 0)
 
 
-func _test_reused_result() -> void:
-	var city := fixture(128, false)
-	city.set_building_id(20, 20, Tiles.ROAD_STRAIGHT_1)
-	city.set_zone_id(20, 21, 3)
-	var scratch := TransportTripResult.new()
-	var random := SimRandom.new(123)
-	var traffic := city.document.find_chunk("XTRF").decoded_payload.duplicate()
-	var reached := TransportTripSearch.trace(city.buildings, city.zones, city.underground,
-		city.text_overlays, city.altitude_words, traffic, Vector2i(19, 20), 1, 2,
-		random, 100, 128, false, -1, PackedByteArray(), scratch)
-	check(reached == scratch and reached.reached_destination, "Reusable trip reaches a walking destination")
-	var rejected := TransportTripSearch.trace(city.buildings, city.zones, city.underground,
-		city.text_overlays, city.altitude_words, traffic, Vector2i(19, 20), -1, 2,
-		random, 100, 128, false, -1, PackedByteArray(), scratch)
-	check(rejected == scratch and rejected.same_values(TransportTripResult.failure("zone is outside the supported range")),
-		"Rejected reused trip clears the previous success fields")
-	var empty := TransportTripSearch.trace(city.buildings, city.zones, city.underground,
-		city.text_overlays, city.altitude_words, traffic, Vector2i(80, 80), 1, 2,
-		random, 100, 128, false, -1, PackedByteArray(), scratch)
-	var expected := TransportTripResult.new()
-	expected.ok = true
-	check(empty == scratch and empty.same_values(expected), "No-access reused trip clears the previous error")
+func _highway_step(city: CityState, from: Vector2i, to: Vector2i) -> bool:
+	return NativeSimulationBridge.run("trip.highway_step", city, null, null, null, {"from": from, "to": to}).result
+
+
+func _advance(city: CityState, from: Vector2i, to: Vector2i, mode: int, zone: int) -> int:
+	return NativeSimulationBridge.run("trip.advance", city, null, null, null,
+		{"from": from, "to": to, "mode": mode, "zone": zone}).result
+
+
+func _trace(city: CityState, origin: Vector2i, zone: int, weight: int, maximum_cost: int, start: int) -> TransportTripResult:
+	return NativeSimulationBridge.run("trip.trace", city, SimRandom.new(1), null, null, {"origin": origin, "zone": zone,
+		"traffic_weight": weight, "maximum_cost": maximum_cost, "start": start}).result

@@ -10,20 +10,17 @@ static func edge_city() -> CityState:
 	for x in city.map_size:
 		for y in city.map_size:
 			city.set_land_altitude(x, y, 4)
-	var payloads := GrowthState.payloads(city)
 	var origins := [Vector2i.ZERO, Vector2i(29, 0), Vector2i(0, 29),
 		Vector2i(29, 29), Vector2i(0, 12), Vector2i(29, 12)]
+	# a grown 3x3 building at each edge, with the corner flags of view 0
+	var corners := {Vector2i(0, 0): 0x10, Vector2i(2, 0): 0x20, Vector2i(2, 2): 0x40, Vector2i(0, 2): 0x80}
 	for i in origins.size():
 		var origin: Vector2i = origins[i]
-		assert(GrowthDevelopment.place_zone(payloads.XBLD, payloads.XZON,
-			payloads.XBIT, payloads.MISC, payloads.XVAL, origin + Vector2i(0, 2),
-			4, 2, SimRandom.new(1), 0, 32, city.document.is_extended()))
 		for x in range(origin.x, origin.x + 3):
 			for y in range(origin.y, origin.y + 3):
-				payloads.XBLD[x * 32 + y] = BuildingTileIds.INDUSTRIAL_3X3_FIRST + i
-	for id: String in payloads:
-		assert(city.document.find_chunk(id).set_decoded_payload(payloads[id]))
-	city.resync_mirrors(CityState.MIRRORED_CHUNKS)
+				assert(city.set_building_id(x, y, BuildingTileIds.INDUSTRIAL_3X3_FIRST + i))
+				assert(city.set_tile_flag(x, y, Sc2TileFlags.STRUCTURE_MASK, true))
+				assert(city.set_building_corners(x, y, int(corners.get(Vector2i(x, y) - origin, 0))))
 	for item in [[13, 0, Vector2i(13, 1)], [3, 2, Vector2i(13, 29)],
 		[14, 1, Vector2i(1, 23)], [14, 0, Vector2i(31, 22)], [4, 2, Vector2i(22, 0)]]:
 		var result := BuildingEdit.apply(city, item[0], item[1], item[2], SimLfsrRandom.new(1), SimRandom.new(1))

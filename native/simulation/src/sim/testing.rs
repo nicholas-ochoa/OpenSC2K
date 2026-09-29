@@ -7,7 +7,16 @@ use super::random::{GameLcgRandom, GameRandomScript, LfsrRandomScript, SimLfsrRa
 /// An empty city with each chunk at its decoded size, as EmptyCityTemplate.create.
 /// A 128-tile map is an SC2 city. A larger map is an SC2X version 2 city.
 pub fn empty_city(edge: i64) -> City {
-    let mut city = City::new(edge, if edge == 128 { 0 } else { 2 });
+    empty_city_version(edge, if edge == 128 { 0 } else { 2 })
+}
+
+/// An empty city with per-tile data maps, as Sc2File.enable_full_resolution_maps.
+pub fn empty_full_resolution_city(edge: i64) -> City {
+    empty_city_version(edge, 3)
+}
+
+fn empty_city_version(edge: i64, large_version: i64) -> City {
+    let mut city = City::new(edge, large_version);
 
     for id in CHUNK_IDS {
         let size = city.decoded_size(id);

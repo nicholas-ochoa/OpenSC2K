@@ -14,21 +14,14 @@ func _benchmark_initialize() -> void:
 				y,
 			) in [1, 2, 3, 4, 5, 6] and tile >= BuildingTileIds.DEVELOPED_FIRST and tile <= BuildingTileIds.DEVELOPED_3X3_LAST:
 				samples.append(Vector2i(x, y))
-	var traffic := city.document.find_chunk("XTRF").decoded_payload.duplicate()
-
-	if not TransportTripSearch.valid_inputs(city.buildings, city.zones, city.underground,
-		city.text_overlays, city.altitude_words, traffic, city.map_size):
-		printerr("Capeques transport maps have the wrong size")
-		quit(1)
-		return
-
 	var started := Time.get_ticks_usec()
 	var expanded := 0
 	for i in 256:
 		var point: Vector2i = samples[(i * samples.size()) / 256]
-		var result := TransportTripSearch.trace(city.buildings, city.zones, city.underground,
-			city.text_overlays, city.altitude_words, traffic, point, city.zone_id(point.x, point.y),
-			GrowthDevelopment.density(city.building_id(point.x, point.y)), SimRandom.new(i + 1))
+		var tile := city.building_id(point.x, point.y)
+		var density := 1 if tile <= BuildingTileIds.DEVELOPED_1X1_LAST else (2 if tile <= BuildingTileIds.DEVELOPED_2X2_LAST else 4)
+		var result: TransportTripResult = NativeSimulationBridge.run("trip.trace", city, SimRandom.new(i + 1), null, null, {
+			"origin": point, "zone": city.zone_id(point.x, point.y), "traffic_weight": density}).result
 		expanded += int(result.expanded_states)
 	print("Capeques 256 trips: %d usec, %d expanded states" % [Time.get_ticks_usec() - started, expanded])
 	for edge in [128, 512]:

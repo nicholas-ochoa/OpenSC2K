@@ -719,3 +719,286 @@ impl TileScan {
         growth
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sim::geom::Rect2i;
+    use crate::sim::random::SimRandom;
+    use crate::sim::testing::{empty_city, empty_full_resolution_city, sequence_random};
+    use crate::sim::tools::demolish::find_building_site;
+
+    fn scan_for(city: &City) -> TileScan {
+        let map_edge = city.map_size;
+        let rotation = city.compass_rotation() & 3;
+
+        TileScan {
+            map_edge,
+            rotation,
+            anchor_mask: ANCHOR_MASKS[rotation as usize],
+            allow_edge_buildings: city.is_extended(),
+            detailed: false,
+            counters: Counters { ship_home: Vec2i::NONE, ..Default::default() },
+            walking_access: vec![vec![0u8; (map_edge * map_edge) as usize]; 4],
+            scratch: TripScratch::default(),
+            totals: Totals::default(),
+            error: String::new(),
+        }
+    }
+
+    fn zero_randoms() -> Randoms {
+        Randoms { random: sequence_random(&[0]), ..Randoms::new(1, 1, 1) }
+    }
+
+    fn extended_city(edge: i64) -> City {
+        if edge == 128 { empty_full_resolution_city(edge) } else { empty_city(edge) }
+    }
+
+    fn sites(edge: i64, area: i64) -> [Vec2i; 8] {
+        let far = edge - area;
+        [
+            Vec2i::new(0, 5),
+            Vec2i::new(5, 0),
+            Vec2i::new(far, 5),
+            Vec2i::new(5, far),
+            Vec2i::ZERO,
+            Vec2i::new(far, 0),
+            Vec2i::new(0, far),
+            Vec2i::new(far, far),
+        ]
+    }
+
+    /// Every tile of the footprint has the building, and each finds the same site.
+    fn check_footprint(city: &City, site: Rect2i) {
+        let edge = city.map_size;
+        let tile = city.building_id(site.position.x, site.position.y);
+
+        for x in site.position.x..site.end().x {
+            for y in site.position.y..site.end().y {
+                assert_eq!(city.building_id(x, y), tile);
+                let found = find_building_site(
+                    &city.xbld.data,
+                    &city.xzon.data,
+                    Vec2i::new(x, y),
+                    tile,
+                    site.size.x,
+                    city.compass_rotation(),
+                    edge,
+                );
+                assert_eq!(found, site, "tile ({x}, {y}) finds its footprint");
+            }
+        }
+    }
+
+    /// SC2X building footprints can touch every edge. Each growth stage keeps
+    /// the footprint, and one tile beyond the edge is rejected without writes.
+    #[test]
+    fn extended_growth_reaches_each_map_edge() {
+        for edge in [16i64, 128, 256] {
+            let mut city = extended_city(edge);
+
+            for density in [2i64, 4] {
+                let area = density / 2 + 1;
+
+                for origin in sites(edge, area) {
+                    let anchor = origin + Vec2i::new(0, area - 1);
+                    let mut randoms = zero_randoms();
+                    let mut scan = scan_for(&city);
+                    city.xbld.data.fill(0);
+                    city.xzon.data.fill(6);
+                    assert!(scan.allow_edge_buildings);
+                    let start = if density == 2 { origin } else { anchor };
+                    scan.try_advance_density(&mut city, &mut randoms, start, 6, 6, if density == 2 { 1 } else { 3 }, 1000);
+                    assert_eq!(scan.totals.advanced_construction, if density == 2 { 1 } else { 0 });
+
+                    if density == 4 {
+                        // 3x3 promotion still requires a real road at an in-map corner.
+                        for delta in [Vec2i::new(-1, 1), Vec2i::new(-1, -3), Vec2i::new(3, -3), Vec2i::new(3, 1)] {
+                            let road = anchor + delta;
+
+                            let road_index = city.index_of(road.x, road.y);
+
+                            if road_index >= 0 {
+                                city.xbld.data[road_index as usize] = tiles::ROAD_CROSSROADS as u8;
+                                break;
+                            }
+                        }
+
+                        scan.try_advance_density(&mut city, &mut randoms, anchor, 6, 6, 3, 1000);
+                        assert_eq!(scan.totals.advanced_construction, 1);
+                    }
+
+                    assert!(scan.try_complete_construction(&mut city, &mut randoms, anchor, 6, density));
+                    let developed = city.xbld.data.clone();
+                    assert!(scan.count_population_or_abandon(&mut city, &mut randoms, anchor, 6, density, 1000));
+                    assert_ne!(city.xbld.data, developed);
+                    let mut span = TimingSpan::new();
+                    scan.try_recover_abandoned(&mut city, &mut randoms, &mut span, anchor, 6, density, 1000);
+                    assert_eq!(city.xbld.data, developed);
+                    check_footprint(&city, Rect2i::from(origin, Vec2i::new(area, area)));
+                }
+
+                for origin in [
+                    Vec2i::new(-1, 5),
+                    Vec2i::new(5, -1),
+                    Vec2i::new(edge - area + 1, 5),
+                    Vec2i::new(5, edge - area + 1),
+                ] {
+                    let scan = scan_for(&city);
+                    let before = city.xbld.data.clone();
+                    let mut random = sequence_random(&[0]);
+                    let mut maps = scan.zone_maps(&mut city);
+                    assert!(!development::place_zone(&mut maps, origin + Vec2i::new(0, area - 1), density, 2, &mut random));
+                    assert_eq!(city.xbld.data, before);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn classic_growth_keeps_the_edge_margin() {
+        let mut city = empty_city(128);
+        let scan = scan_for(&city);
+        assert!(!scan.allow_edge_buildings);
+
+        for anchor in [Vec2i::new(0, 8), Vec2i::new(125, 8), Vec2i::new(8, 127)] {
+            let mut random = sequence_random(&[0]);
+            let mut maps = scan.zone_maps(&mut city);
+            assert!(!development::place_zone(&mut maps, anchor, 4, 2, &mut random));
+        }
+    }
+
+    #[test]
+    fn churches_and_special_zones_reach_each_map_edge() {
+        for origin in sites(16, 2) {
+            let mut city = empty_city(16);
+            let scan = scan_for(&city);
+            let mut maps = scan.zone_maps(&mut city);
+            assert!(development::place_church(&mut maps, origin + Vec2i::new(0, 1)));
+            check_footprint(&city, Rect2i::from(origin, Vec2i::new(2, 2)));
+        }
+
+        for origin in [Vec2i::ZERO, Vec2i::new(14, 0), Vec2i::new(0, 14), Vec2i::new(14, 14)] {
+            for zone_type in [7i64, 8, 9] {
+                let mut city = empty_city(16);
+                city.xzon.data.fill(zone_type as u8);
+                city.xbit.data.fill(flag_bits::POWERED as u8);
+                let tile = if zone_type == 8 { tiles::HANGAR_2 } else { tiles::CARGO_YARD };
+                let City { xbld, xzon, xund, xbit, xter, altm, xtxt, xthg, misc, .. } = &mut city;
+                let mut maps = special::SpecialMaps {
+                    buildings: &mut xbld.data,
+                    zones: &mut xzon.data,
+                    underground: &mut xund.data,
+                    flags: &mut xbit.data,
+                    terrain: &xter.data,
+                    altitude: &altm.data,
+                    text_overlays: &mut xtxt.data,
+                    things: &mut xthg.data,
+                    misc: &mut misc.data,
+                    rotation: 0,
+                    map_edge: 16,
+                    allow_edge_buildings: true,
+                };
+                let placed = special::grow_special_zone(&mut maps, origin, tile, zone_type);
+                assert!(placed.ok && placed.changed_tiles == 4);
+                check_footprint(&city, Rect2i::from(origin, Vec2i::new(2, 2)));
+            }
+        }
+    }
+
+    /// A new church clears the cached walking access that its old zone gave.
+    #[test]
+    fn churches_clear_cached_walking_access() {
+        for edge in [128i64, 512] {
+            let mut city = empty_city(edge);
+            let mut scan = scan_for(&city);
+            let mut randoms = zero_randoms();
+
+            for x in 20..22 {
+                for y in 19..21 {
+                    city.xzon.data[(x * edge + y) as usize] = 1;
+                }
+            }
+
+            let access = Vec2i::new(18, 20);
+            let access_index = (access.x * edge + access.y) as usize;
+            let trace_from = |city: &mut City, scan: &mut TileScan| {
+                for x in 17..25 {
+                    for y in 16..24 {
+                        let point = Vec2i::new(x, y);
+                        let start = (trip::ROAD_MODE << trip::point_shift(edge)) | (x * edge + y);
+                        let maps = TripMaps {
+                            buildings: &city.xbld.data,
+                            zones: &city.xzon.data,
+                            underground: &city.xund.data,
+                            text_overlays: &city.xtxt.data,
+                            altitude: &city.altm.data,
+                            map_edge: edge,
+                        };
+                        let mut traffic = city.xtrf.data.clone();
+                        let access = scan.walking_access[2].as_mut_slice();
+                        trip::trace(&maps, &mut traffic, point, 3, 2, &mut SimRandom::new(123), 10, start, Some(access), &mut scan.scratch);
+                    }
+                }
+            };
+
+            trace_from(&mut city, &mut scan);
+            assert_eq!(scan.walking_access[2][access_index], 2, "a residential zone gives commercial walking access");
+            write_u32_be(&mut city.misc.data, misc_layout::NORMAL_POPULATION, 10000);
+            write_u32_be(&mut city.misc.data, misc_layout::TILE_COUNTS + tiles::CHURCH * 4, 0);
+
+            for _ in 0..100 {
+                if scan.try_complete_construction(&mut city, &mut randoms, Vec2i::new(20, 20), 1, 2) {
+                    break;
+                }
+            }
+
+            assert_eq!(scan.totals.churches_built, 1, "construction places the church");
+            trace_from(&mut city, &mut scan);
+            assert_eq!(scan.walking_access[2][access_index], 1, "the church removes cached commercial walking access");
+        }
+    }
+}
+
+#[cfg(test)]
+mod power_tests {
+    use super::*;
+
+    /// Growth power reads the tile and its cardinal neighbors, except the low
+    /// neighbors at index one. Only the powered bit counts.
+    #[test]
+    fn power_uses_the_center_and_permitted_neighbors() {
+        for edge in [16i64, 128, 256] {
+            let mut flags = vec![0u8; (edge * edge) as usize];
+
+            for x in [0, 1, 2, edge - 2, edge - 1] {
+                for y in [0, 1, 2, edge - 2, edge - 1] {
+                    for offset in [Vec2i::ZERO, Vec2i::new(-1, 0), Vec2i::new(1, 0), Vec2i::new(0, -1), Vec2i::new(0, 1), Vec2i::new(1, 1)] {
+                        flags.fill(0);
+                        let source = Vec2i::new(x, y) + offset;
+                        let inside = source.x >= 0 && source.y >= 0 && source.x < edge && source.y < edge;
+
+                        if inside {
+                            flags[(source.x * edge + source.y) as usize] = 64;
+                        }
+
+                        let mut expected = inside && offset != Vec2i::new(1, 1);
+
+                        if (offset == Vec2i::new(-1, 0) && x == 1) || (offset == Vec2i::new(0, -1) && y == 1) {
+                            expected = false;
+                        }
+
+                        assert_eq!(has_power(&flags, x, y, edge), expected, "({x}, {y}) offset {offset:?}");
+                    }
+                }
+            }
+
+            flags.fill(0);
+
+            for value in 0..256 {
+                flags[(3 * edge + 3) as usize] = value as u8;
+                assert_eq!(has_power(&flags, 3, 3, edge), (value / 64) % 2 == 1);
+            }
+        }
+    }
+}

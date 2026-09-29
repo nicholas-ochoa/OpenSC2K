@@ -2,13 +2,10 @@ extends SceneTree
 
 
 func _initialize() -> void:
-	for edge in [16, 128, 256]:
-		_check_growth(edge)
 	_check_legacy()
 	_check_tools()
-	_check_special()
 	_check_scurk()
-	print("PASS: SC2X edge growth, tools, lifecycle, rotation, demolition and save reload")
+	print("PASS: SC2X edge tools, rotation, demolition and save reload")
 	quit()
 
 
@@ -26,71 +23,9 @@ func _sites(edge: int, area: int) -> Array[Vector2i]:
 		Vector2i.ZERO, Vector2i(far, 0), Vector2i(0, far), Vector2i(far, far)]
 
 
-func _scan(city: CityState) -> GrowthScan.TileScan:
-	return GrowthScan.TileScan.new(city, GrowthState.payloads(city), ZeroRandom.new(),
-		SimLfsrRandom.new(1), GameLcgRandom.new(1), null)
-
-
-func _commit_scan(city: CityState, scan: GrowthScan.TileScan) -> void:
-	for id: String in scan.city_payloads:
-		assert(city.document.find_chunk(id).set_decoded_payload(scan.city_payloads[id]))
-	city.resync_mirrors(CityState.MIRRORED_CHUNKS)
-
-
-func _check_growth(edge: int) -> void:
-	var city := _city(edge)
-	for density in [2, 4]:
-		var area: int = density / 2 + 1
-		for origin in _sites(edge, area):
-			var anchor := origin + Vector2i(0, area - 1)
-			var scan := _scan(city)
-			scan.buildings.fill(0)
-			scan.zones.fill(6)
-			assert(scan.allow_edge_buildings)
-			scan._try_advance_density(origin if density == 2 else anchor, 6, 6,
-				1 if density == 2 else 3, 1000)
-			assert(scan.advanced_construction == (1 if density == 2 else 0))
-			# 3x3 promotion still requires a real road at an in-map corner.
-			if density == 4:
-				for delta in [Vector2i(-1, 1), Vector2i(-1, -3), Vector2i(3, -3), Vector2i(3, 1)]:
-					var road: Vector2i = anchor + delta
-					if city.index_of(road.x, road.y) >= 0:
-						scan.buildings[city.index_of(road.x, road.y)] = BuildingTileIds.ROAD_CROSSROADS
-						break
-				scan._try_advance_density(anchor, 6, 6, 3, 1000)
-				assert(scan.advanced_construction == 1)
-			assert(scan._try_complete_construction(anchor, 6, density))
-			var developed := scan.buildings.duplicate()
-			assert(scan._count_population_or_abandon(anchor, 6, density, 1000))
-			assert(scan.buildings != developed)
-			scan._try_recover_abandoned(anchor, 6, density, 1000)
-			assert(scan.buildings == developed)
-			_commit_scan(city, scan)
-			_check_footprint(city, Rect2i(origin, Vector2i.ONE * area))
-		# Explicitly reject footprints one tile beyond each edge without writes.
-		for origin in [Vector2i(-1, 5), Vector2i(5, -1), Vector2i(edge - area + 1, 5), Vector2i(5, edge - area + 1)]:
-			var scan := _scan(city)
-			var before := scan.buildings.duplicate()
-			assert(not GrowthDevelopment.place_zone(scan.buildings, scan.zones, scan.flags,
-				scan.misc, scan.land_value, origin + Vector2i(0, area - 1), density,
-				2, scan.random, 0, edge, true))
-			assert(scan.buildings == before)
-
-	# Use a small map for full rotations and demolition; size-dependent bounds
-	# are checked above without repeating the same rotation rules on huge grids.
-	if edge == 16:
-		_check_rotations(city)
-		_check_reload(city)
-
-
+# the native growth rules have their own edge tests. the tools keep the classic margin
 func _check_legacy() -> void:
 	var city := _city(128, false)
-	var scan := _scan(city)
-	assert(not scan.allow_edge_buildings)
-	for anchor in [Vector2i(0, 8), Vector2i(125, 8), Vector2i(8, 127)]:
-		assert(not GrowthDevelopment.place_zone(scan.buildings, scan.zones, scan.flags,
-			scan.misc, scan.land_value, anchor, 4, 2,
-			scan.random, 0, 128, scan.allow_edge_buildings))
 	assert(not BuildingSites.preview_valid(city, 13, 0, Vector2i(1, 1)))
 	assert(not BuildingEdit.apply(city, 13, 0, Vector2i(1, 1), SimLfsrRandom.new(1), ZeroRandom.new()).ok)
 
@@ -107,37 +42,13 @@ func _check_tools() -> void:
 			assert(result.ok, result.error)
 			_check_footprint(city, Rect2i(origin, Vector2i.ONE * area))
 			_check_rotations(city)
+			if origin == Vector2i.ZERO:
+				_check_reload(city)
 			var demolition := DemolishCommand.apply_path(city, 0, 0, [origin], ZeroRandom.new())
 			assert(demolition.ok, demolition.error)
 			assert(city.buildings.count(BuildingSites.tile_for_tool(tool.x, tool.y)) == 0)
 		for origin in [Vector2i(-1, 5), Vector2i(5, -1), Vector2i(17 - area, 5), Vector2i(5, 17 - area)]:
 			assert(not BuildingSites._footprint_is_in_bounds(Rect2i(origin, Vector2i.ONE * area), area, 16, true))
-
-
-func _check_special() -> void:
-	for origin in _sites(16, 2):
-		var city := _city(16)
-		var scan := _scan(city)
-		var anchor := origin + Vector2i(0, 1)
-		assert(GrowthDevelopment._place_church(scan.buildings, scan.zones, scan.flags,
-			scan.misc, anchor, 0, 16, scan.allow_edge_buildings))
-		_commit_scan(city, scan)
-		_check_footprint(city, Rect2i(origin, Vector2i(2, 2)))
-		_check_rotations(city)
-	for origin in [Vector2i.ZERO, Vector2i(14, 0), Vector2i(0, 14), Vector2i(14, 14)]:
-		for zone in [7, 8, 9]:
-			var city := _city(16)
-			var scan := _scan(city)
-			scan.zones.fill(zone)
-			scan.flags.fill(Sc2TileFlags.POWERED)
-			var result := SpecialZoneSelection.grow_special_zone(scan.buildings, scan.zones,
-				scan.underground, scan.flags, scan.terrain, scan.altitudes, scan.misc,
-				origin, BuildingTileIds.HANGAR_2 if zone == 8 else BuildingTileIds.CARGO_YARD,
-				zone, 0, 16, scan.allow_edge_buildings)
-			assert(result.ok and result.changed_tiles == 4)
-			_commit_scan(city, scan)
-			_check_footprint(city, Rect2i(origin, Vector2i(2, 2)))
-			_check_rotations(city)
 
 
 func _check_scurk() -> void:

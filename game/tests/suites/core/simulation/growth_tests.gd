@@ -3,8 +3,6 @@ extends "res://tests/support/core_test_suite.gd"
 
 @warning_ignore_start("integer_division")
 
-const Growth = preload("res://src/simulation/growth/phase/constants.gd")
-const MovingThings = preload("res://src/simulation/moving_things/moving_thing_spawner.gd")
 const TestRandoms = preload("res://tests/support/test_randoms.gd")
 const ZeroRandom = TestRandoms.ZeroRandom
 const ZeroLfsrRandom = TestRandoms.ZeroLfsrRandom
@@ -299,62 +297,6 @@ func _test_special_zone_vehicles(reference_root: String) -> void:
 		"Local airplane stores its recovered sub-tile and destination fields",
 	)
 	_check(airplane.city.text_overlay_id(20, 20) == 202, "Airplane attaches its XTHG record")
-	var edge_things := _filled_bytes(40 * 12, 0)
-	var edge_text := _filled_bytes(128 * 128, 0)
-	var edge_result := MovingThings.spawn_airplane(
-		edge_things, edge_text, Vector2i(20, 20), 2, SequenceRandom.new([0, 2, 7])
-	)
-	_check(edge_result.spawned, "Airplane creator accepts an empty moving-thing pool")
-	_check(
-		edge_things[12 + 1] == 7
-		and edge_things[12 + 2] == 0x23
-		and edge_things[12 + 3] == 127
-		and edge_things[12 + 4] == 17
-		and edge_things[12 + 5] == 16,
-		"Map-edge airplane stores its selected edge, direction, height, and runway state",
-	)
-	_check(
-		edge_things[12 + 8] == 4
-		and edge_things[12 + 9] == 20
-		and edge_text[127 * 128 + 17] == 202,
-		"Map-edge airplane stores its runway target and attached XTXT record",
-	)
-	var maxis_things := _filled_bytes(CityState.THING_COUNT * CityState.THING_RECORD_SIZE, 0)
-	var maxis_text := _filled_bytes(CityState.TILE_COUNT, 0)
-	maxis_text[30 * CityState.MAP_SIZE + 20] = 0xff
-	var spawned_maxis := MovingThings.spawn_maxis_man(
-		maxis_things,
-		maxis_text,
-		Vector2i(18, 20),
-		Vector2i(30, 20),
-		241,
-		7,
-	)
-	_check(
-		spawned_maxis.spawned
-		and spawned_maxis.record == 1
-		and maxis_things[12] == MovingThings.TYPE_MAXIS_MAN
-		and maxis_things[12 + 1] == 2
-		and maxis_things[12 + 3] == 18
-		and maxis_things[12 + 4] == 20
-		and maxis_things[12 + 5] == 7
-		and maxis_things[12 + 8] == 30
-		and maxis_things[12 + 9] == 20
-		and maxis_things[12 + 11] == 241
-		and maxis_text[18 * CityState.MAP_SIZE + 20] == 202,
-		"Debug Maxis Man dispatch stores a linked moving-object record and target",
-	)
-	_check(
-		not MovingThings.spawn_maxis_man(
-			maxis_things,
-			maxis_text,
-			Vector2i(17, 20),
-			Vector2i(30, 20),
-			241,
-			7,
-		).spawned,
-		"Maxis Man dispatch keeps one active hero",
-	)
 
 	var ship_fixture := _special_growth_fixture(reference_root)
 	_check(ship_fixture.city.set_zone_id(20, 20, 9), "Ship fixture sets a seaport zone")
@@ -435,27 +377,6 @@ func test_growth_microsimulations(reference_root: String) -> void:
 		and first_car.py == 18,
 		"Train stores two linked car records at its initial tile",
 	)
-	var full_buildings := _filled_bytes(128 * 128, Tiles.EMPTY)
-	var full_things := _filled_bytes(40 * 12, 0)
-	var full_text := _filled_bytes(128 * 128, 0)
-	full_buildings[20 * 128 + 18] = Tiles.RAIL_STRAIGHT_1
-	full_buildings[20 * 128 + 17] = Tiles.RAIL_STRAIGHT_1
-
-	for record in range(1, 40):
-		full_things[record * 12] = 7
-
-	_check(
-		MovingThings.spawn_train(
-			full_buildings, full_things, full_text, Vector2i(20, 20),
-			ZeroGameRandom.new(), ZeroLfsrRandom.new()
-		),
-		"Full-pool train creator keeps the supplied unchecked-allocation result",
-	)
-	_check(
-		full_things[0] == 11 and full_text[20 * 128 + 18] == 201,
-		"Full-pool train creator writes reserved record zero like the supplied executable",
-	)
-
 	var marina := _special_growth_fixture(reference_root)
 	_check(marina.city.set_building_id(20, 20, Tiles.MARINA), "Sailboat fixture places a marina")
 	_check(marina.city.set_tile_flag(20, 20, 0x40, true), "Sailboat fixture powers its marina")

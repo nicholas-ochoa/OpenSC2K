@@ -6,7 +6,6 @@ extends "res://tests/support/core_test_suite.gd"
 const Random = preload("res://src/simulation/random/sim_random.gd")
 const LfsrRandom = preload("res://src/simulation/random/sim_lfsr_random.gd")
 const DisasterStart = preload("res://src/simulation/disasters/disaster_start_phase.gd")
-const Growth = preload("res://src/simulation/growth/phase/constants.gd")
 const Buildings = preload("res://src/tools/city/building_command.gd")
 const TestRandoms = preload("res://tests/support/test_randoms.gd")
 const SequenceLfsrRandom = TestRandoms.SequenceLfsrRandom
@@ -78,13 +77,13 @@ func _test_meltdown(reference_root: String) -> void:
 	for military_index in 16:
 		_write_u32_be(
 			meltdown_misc,
-			Growth.MISC_MILITARY_TILE_COUNTS + military_index * 4,
+			Sc2MiscLayout.MILITARY_TILE_COUNTS + military_index * 4,
 			0,
 		)
 
 	_write_u32_be(meltdown_misc, Buildings.MISC_TILE_COUNTS, CityState.TILE_COUNT - 2)
 	_write_u32_be(meltdown_misc, Buildings.MISC_TILE_COUNTS + 0x0d * 4, 1)
-	_write_u32_be(meltdown_misc, Growth.MISC_MILITARY_TILE_COUNTS + 4, 1)
+	_write_u32_be(meltdown_misc, Sc2MiscLayout.MILITARY_TILE_COUNTS + 4, 1)
 	_write_u32_be(meltdown_misc, Buildings.MISC_FUNDS, 50000)
 	_write_u32_be(
 		meltdown_misc,
@@ -186,10 +185,10 @@ func _test_meltdown(reference_root: String) -> void:
 			stored_meltdown_misc, Buildings.MISC_TILE_COUNTS + 0x05 * 4
 		) == 16
 		and BinaryData.read_u32_be(
-			stored_meltdown_misc, Growth.MISC_MILITARY_TILE_COUNTS
+			stored_meltdown_misc, Sc2MiscLayout.MILITARY_TILE_COUNTS
 		) == 1
 		and BinaryData.read_u32_be(
-			stored_meltdown_misc, Growth.MISC_MILITARY_TILE_COUNTS + 4
+			stored_meltdown_misc, Sc2MiscLayout.MILITARY_TILE_COUNTS + 4
 		) == 0,
 		"Meltdown moves normal and military tile counts to their radiation buckets: nuclear=%d normal=%d military0=%d military1=%d"
 		% [
@@ -200,10 +199,10 @@ func _test_meltdown(reference_root: String) -> void:
 				stored_meltdown_misc, Buildings.MISC_TILE_COUNTS + 0x05 * 4
 			),
 			BinaryData.read_u32_be(
-				stored_meltdown_misc, Growth.MISC_MILITARY_TILE_COUNTS
+				stored_meltdown_misc, Sc2MiscLayout.MILITARY_TILE_COUNTS
 			),
 			BinaryData.read_u32_be(
-				stored_meltdown_misc, Growth.MISC_MILITARY_TILE_COUNTS + 4
+				stored_meltdown_misc, Sc2MiscLayout.MILITARY_TILE_COUNTS + 4
 			),
 		],
 	)

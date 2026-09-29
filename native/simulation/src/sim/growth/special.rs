@@ -51,9 +51,9 @@ pub struct SpecialMaps<'a> {
 }
 
 #[derive(Clone, Copy, Default)]
-struct Placement {
-    ok: bool,
-    changed_tiles: i64,
+pub struct Placement {
+    pub ok: bool,
+    pub changed_tiles: i64,
 }
 
 impl Placement {
@@ -323,7 +323,7 @@ fn seaport_selection(
     tiles::CARGO_YARD
 }
 
-fn grow_special_zone(maps: &mut SpecialMaps, point: Vec2i, tile: i64, zone_type: i64) -> Placement {
+pub fn grow_special_zone(maps: &mut SpecialMaps, point: Vec2i, tile: i64, zone_type: i64) -> Placement {
     let edge = maps.map_edge;
 
     if zone_type != 7 && !has_power(maps.flags, point.x, point.y, edge) {
@@ -742,5 +742,231 @@ fn clear_special_building(maps: &mut SpecialMaps, point: Vec2i) {
         replace_special_building(maps.buildings, maps.zones, maps.misc, index, tiles::EMPTY);
         maps.flags[i] = (maps.flags[i] as i64 & !flag_bits::POWER_MASK & 0xff) as u8;
         maps.zones[i] = (maps.zones[i] as i64 & zone::TYPE_MASK) as u8;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sim::city::City;
+    use crate::sim::testing::empty_city;
+
+    const MAP_SIZES: [i64; 9] = [16, 32, 64, 128, 256, 384, 512, 640, 1024];
+
+    fn fixture(edge: i64) -> City {
+        let mut city = empty_city(edge);
+        city.xzon.data.fill(7);
+        write_u32_be(&mut city.misc.data, misc_layout::TILE_COUNTS, 0);
+        write_u32_be(&mut city.misc.data, misc_layout::MILITARY_TILE_COUNTS, edge * edge);
+        city
+    }
+
+    fn maps(city: &mut City, rotation: i64) -> SpecialMaps<'_> {
+        let map_edge = city.map_size;
+        let City { xbld, xzon, xund, xbit, xter, altm, xtxt, xthg, misc, .. } = city;
+
+        SpecialMaps {
+            buildings: &mut xbld.data,
+            zones: &mut xzon.data,
+            underground: &mut xund.data,
+            flags: &mut xbit.data,
+            terrain: &xter.data,
+            altitude: &altm.data,
+            text_overlays: &mut xtxt.data,
+            things: &mut xthg.data,
+            misc: &mut misc.data,
+            rotation,
+            map_edge,
+            allow_edge_buildings: false,
+        }
+    }
+
+    fn state(city: &City) -> Vec<Vec<u8>> {
+        [&city.xbld, &city.xzon, &city.xund, &city.xbit, &city.xter, &city.misc].iter().map(|chunk| chunk.data.clone()).collect()
+    }
+
+    #[test]
+    fn military_buildings_grow_at_the_far_map_edge() {
+        for edge in MAP_SIZES {
+            let base = fixture(edge);
+
+            for rotation in 0..4 {
+                for tile in
+                    [tiles::CONTROL_TOWER_2, tiles::SEAPORT_WAREHOUSE, tiles::HANGAR_1, tiles::PARKING_LOT_2, tiles::TOP_SECRET, tiles::CARGO_YARD]
+                {
+                    let mut city = base.clone();
+                    let point = Vec2i::new(edge - 12, edge - 12);
+                    let result = grow_special_zone(&mut maps(&mut city, rotation), point, tile, 7);
+                    let expected = if [0xef, 0xf1, 0xf2].contains(&tile) { 4 } else { 1 };
+                    assert!(result.ok && result.changed_tiles == expected, "military tile {tile} grows at edge {edge}");
+                    let index = (point.x * edge + point.y) as usize;
+                    assert_eq!(city.xbld.data[index] as i64, tile);
+                    assert_eq!(city.xzon.data[index] & 15, 7, "the military zone survives growth");
+                    assert_eq!(tile_count(&city.misc.data, tile, true, edge), result.changed_tiles);
+                    assert_eq!(tile_count(&city.misc.data, tile, false, edge), 0, "the civilian count stays separate");
+                }
+
+                let mut city = base.clone();
+                let point = Vec2i::new(edge - 11, edge - 11);
+                write_u32_be(&mut city.misc.data, misc_layout::TILE_COUNTS + tiles::RUNWAY * 4, 1);
+                let runway = grow_special_zone(&mut maps(&mut city, rotation), point, tiles::RUNWAY, 7);
+                assert!(runway.ok && runway.changed_tiles == 5, "a military runway grows");
+                assert_eq!(city.xbld.data[(point.x * edge + point.y + 4) as usize] as i64, tiles::RUNWAY, "military parity ignores the civilian runway count");
+            }
+        }
+    }
+
+    #[test]
+    fn two_by_two_military_rules() {
+        let base = fixture(128);
+        let point = Vec2i::new(2, 2);
+        let anchor = 2 * 128 + 2;
+        let other = 3 * 128 + 2;
+        let aircraft = 3 * 128 + 3;
+
+        // Each original footprint restriction rejects before it clears anything.
+        for tile in [tiles::RUNWAY, tiles::RUNWAY_CROSSING, tiles::CRANE] {
+            for offset in [0, 1, 128, 129] {
+                let mut city = base.clone();
+                city.xbld.data[anchor + offset] = tile as u8;
+                let before = state(&city);
+                assert!(!grow_special_zone(&mut maps(&mut city, 0), point, tiles::PARKING_LOT_2, 7).ok);
+                assert_eq!(state(&city), before, "the original obstruction prevents all writes");
+            }
+        }
+
+        for offset in [0, 1, 128, 129] {
+            let mut city = base.clone();
+            city.xzon.data[anchor + offset] = 8;
+            let before = state(&city);
+            assert!(!grow_special_zone(&mut maps(&mut city, 0), point, tiles::PARKING_LOT_2, 7).ok, "every cell has the same zone");
+            assert_eq!(state(&city), before);
+        }
+
+        let mut blocked = base.clone();
+        blocked.xbld.data[anchor] = tiles::MISSILE_SILO as u8;
+        assert!(!grow_special_zone(&mut maps(&mut blocked, 0), point, tiles::PARKING_LOT_2, 7).ok, "a high building ID blocks the anchor");
+
+        // Extra military guards do not suppress clearing or change the fallback.
+        for obstruction in [tiles::FIRST_ROAD, tiles::RADIOACTIVE_WASTE, tiles::SMALL_PARK, tiles::MISSILE_SILO, -1, -2, -3] {
+            let mut city = base.clone();
+            replace_special_building(&mut city.xbld.data, &city.xzon.data, &mut city.misc.data, aircraft as i64, tiles::FIGHTER_JET);
+            city.xbit.data[aircraft] = 0xf3;
+            city.xzon.data[aircraft] = 0xf7;
+
+            match obstruction {
+                -1 => city.xund.data[other] = under::PIPE_LR as u8,
+                -2 => city.xter.data[other] = 1,
+                -3 => city.xbit.data[other] = flag_bits::WATER as u8,
+                _ => replace_special_building(&mut city.xbld.data, &city.xzon.data, &mut city.misc.data, other as i64, obstruction),
+            }
+
+            let underground = city.xund.data.clone();
+            let terrain = city.xter.data.clone();
+            write_u32_be(&mut city.misc.data, misc_layout::MILITARY_BASE_TYPE, 2);
+            let mut counters = Counters::default();
+            process(&mut maps(&mut city, 0), point, &mut SimRandom::new(3), &mut counters);
+            let placed = obstruction == -1 || obstruction == tiles::MISSILE_SILO;
+            let expected = if placed { tiles::PARKING_LOT_2 } else { tiles::EMPTY };
+            assert_eq!(city.xbld.data[anchor] as i64, expected, "army growth keeps its outcome without a hangar fallback");
+            assert_eq!(city.xbld.data[aircraft] as i64, expected, "clearing removes the existing aircraft");
+            assert_eq!(tile_count(&city.misc.data, tiles::FIGHTER_JET, true, 128), 0);
+            assert_eq!(tile_count(&city.misc.data, tiles::PARKING_LOT_2, true, 128), if placed { 4 } else { 0 });
+            assert_eq!(city.xbit.data[aircraft], 3, "processing clears utility flags and keeps low flags");
+            assert_eq!(city.xzon.data[aircraft] & 15, 7);
+            assert!(city.xund.data == underground && city.xter.data == terrain, "growth keeps underground and terrain");
+
+            if [tiles::FIRST_ROAD, tiles::RADIOACTIVE_WASTE, tiles::SMALL_PARK].contains(&obstruction) {
+                assert_eq!(city.xbld.data[other] as i64, obstruction, "common placement rejects road, radiation, or park");
+            }
+        }
+    }
+
+    #[test]
+    fn simple_military_tiles_keep_their_utility_flag_rules() {
+        let base = fixture(128);
+        let point = Vec2i::new(2, 2);
+        let index = 2 * 128 + 2;
+
+        for tile in [tiles::SMALL_PARK, tiles::FIRST_ROAD, tiles::RUNWAY, tiles::CONTROL_TOWER_2, tiles::MISSILE_SILO] {
+            let mut city = base.clone();
+            city.xbld.data[index] = tile as u8;
+            city.xbit.data[index] = 0xf3;
+            city.xzon.data[index] = 0xf7;
+            let before = state(&city);
+            let result = grow_special_zone(&mut maps(&mut city, 0), point, tiles::CONTROL_TOWER_2, 7);
+            assert!(result.ok && result.changed_tiles == 0, "a blocked one-cell attempt reports success");
+            assert_eq!(state(&city), before, "a blocked one-cell attempt keeps all state");
+        }
+
+        for tile in [tiles::EMPTY, tiles::RADIOACTIVE_WASTE, tiles::TREE_LAST] {
+            let mut city = base.clone();
+            city.xbld.data[index] = tile as u8;
+            city.xbit.data[index] = 0xf3;
+            let result = grow_special_zone(&mut maps(&mut city, 0), point, tiles::CONTROL_TOWER_2, 7);
+            let placed = tile != tiles::RADIOACTIVE_WASTE;
+            assert!(result.ok && result.changed_tiles == placed as i64);
+            assert_eq!(city.xbld.data[index] as i64, if placed { tiles::CONTROL_TOWER_2 } else { tile });
+            assert_eq!(city.xbit.data[index], 3, "an eligible one-cell attempt clears utility flags");
+        }
+    }
+}
+
+#[cfg(test)]
+mod edge_tests {
+    use super::*;
+    use crate::sim::city::City;
+    use crate::sim::testing::empty_city;
+
+    fn maps(city: &mut City, rotation: i64) -> SpecialMaps<'_> {
+        let map_edge = city.map_size;
+        let City { xbld, xzon, xund, xbit, xter, altm, xtxt, xthg, misc, .. } = city;
+
+        SpecialMaps {
+            buildings: &mut xbld.data,
+            zones: &mut xzon.data,
+            underground: &mut xund.data,
+            flags: &mut xbit.data,
+            terrain: &xter.data,
+            altitude: &altm.data,
+            text_overlays: &mut xtxt.data,
+            things: &mut xthg.data,
+            misc: &mut misc.data,
+            rotation,
+            map_edge,
+            allow_edge_buildings: false,
+        }
+    }
+
+    #[test]
+    fn special_zones_reach_the_far_interior() {
+        for edge in [128i64, 256, 384, 512, 640, 1024] {
+            let mut city = empty_city(edge);
+            write_u32_be(&mut city.misc.data, misc_layout::SUBWAY_COUNT, 65535);
+            let last = edge * edge - 1;
+            replace_special_underground(&mut city.xund.data, &city.xzon.data, &mut city.misc.data, last, 1);
+            let wide = if edge == 128 { 0 } else { 65536 };
+            assert_eq!(read_u32_be(&city.misc.data, misc_layout::SUBWAY_COUNT), wide, "special growth keeps a wide subway count");
+            replace_special_underground(&mut city.xund.data, &city.xzon.data, &mut city.misc.data, last, 0);
+            assert_eq!(read_u32_be(&city.misc.data, misc_layout::SUBWAY_COUNT), 65535, "special growth subway decrement");
+
+            for area in [2, 3] {
+                for rotation in 0..4 {
+                    let mut city = empty_city(edge);
+                    let anchor = Vec2i::new(edge - 3, edge - 3);
+                    assert!(place_special_item(&mut maps(&mut city, rotation), anchor, 0xdc, area, 8, false), "a far special footprint");
+                    let mut city = empty_city(edge);
+                    let outside = Vec2i::new(edge - 2, edge - 2);
+                    assert!(!place_special_item(&mut maps(&mut city, rotation), outside, 0xdc, area, 8, false), "the special-zone edge margin");
+                }
+            }
+
+            for origin in [Vec2i::new(edge - 3, edge - 3), Vec2i::new(edge - 2, edge - 2)] {
+                let mut city = empty_city(edge);
+                let result = place_missile_silo(&mut maps(&mut city, 0), origin, 7);
+                assert_eq!(result.ok, origin.x == edge - 3, "a silo fits exactly at the map edge");
+                assert_eq!(result.changed_tiles, if result.ok { 9 } else { 0 });
+            }
+        }
     }
 }

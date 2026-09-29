@@ -218,3 +218,28 @@ pub fn record_damage_class(damage_class: &mut i64, buildings: &[u8], zones: &[u8
         *damage_class = class;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sim::testing::{empty_full_resolution_city, sequence_lfsr, sequence_random};
+
+    /// A fire clears only the traffic of its own tile on per-tile maps.
+    #[test]
+    fn fire_clears_only_the_selected_traffic_tile() {
+        for edge in [128i64, 512] {
+            let mut city = empty_full_resolution_city(edge);
+            let point = Vec2i::new(edge - 32, edge - 32);
+            let tile = (point.x * edge + point.y) as usize;
+            city.xbld.data[tile] = tiles::LOWER_CLASS_HOMES_1X1_1 as u8;
+            city.xbld.data[tile + 1] = tiles::LOWER_CLASS_HOMES_1X1_1 as u8;
+            city.xtrf.data[tile] = 200;
+            city.xtrf.data[tile + 1] = 40;
+            let mut maps = city.disaster_maps();
+            let result = apply(&mut maps, point, &mut sequence_random(&[0]), &mut sequence_lfsr(&[0]), false, None);
+            assert_ne!(result, 0);
+            assert_eq!(city.xtrf.data[tile], 0);
+            assert_eq!(city.xtrf.data[tile + 1], 40);
+        }
+    }
+}

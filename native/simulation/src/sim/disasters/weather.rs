@@ -425,3 +425,65 @@ pub fn select_disaster(
     result.disaster_type = candidate;
     Ok(result)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sim::bytes::write_u32_be;
+    use crate::sim::testing::{empty_city, sequence_lfsr, sequence_random};
+
+    /// Random disaster points span the full interior of every map size. The y
+    /// draw comes first.
+    #[test]
+    fn disaster_points_reach_the_far_interior() {
+        for edge in [128i64, 256, 384, 512, 640, 1024] {
+            let mut random = sequence_random(&[0, edge - 3, 777]);
+            assert_eq!(random_map_point(&mut random, edge), Vec2i::new(edge - 2, 1));
+            assert_eq!(random.next_u15(), 777, "a disaster point uses two random draws");
+            let mut city = empty_city(edge);
+            let misc = &mut city.misc.data;
+            write_u32_be(misc, misc_layout::DIFFICULTY, 1);
+            write_u32_be(misc, misc_layout::CITY_DAYS, 100000);
+            write_u32_be(misc, misc_layout::NO_DISASTERS, 0);
+            write_u32_be(misc, misc_layout::WEATHER_TREND, 11);
+            let result = select_disaster(
+                &city.misc.data,
+                &city.xplt.data,
+                &mut sequence_random(&[0, edge - 3, edge - 3]),
+                &mut sequence_lfsr(&[0]),
+                Vec2i::ZERO,
+                edge,
+            )
+            .unwrap();
+            assert!(result.disaster_type == DISASTER_TORNADO && result.disaster_point == Vec2i::new(edge - 2, edge - 2));
+            let misc = &mut city.misc.data;
+            write_u32_be(misc, misc_layout::WEATHER_TREND, 9);
+            write_u32_be(misc, misc_layout::WEATHER_HEAT, 255);
+            write_u32_be(misc, misc_layout::HAS_RIVER, 1);
+            write_u32_be(misc, misc_layout::TILE_COUNTS + tiles::RUNWAY * 4, 1);
+
+            for candidate in
+                [DISASTER_FIRE, DISASTER_EARTHQUAKE, DISASTER_TORNADO, DISASTER_FLOOD, DISASTER_MASS_FLOODS, DISASTER_PLANE_CRASH]
+            {
+                let mut sequence = vec![0, candidate];
+
+                if candidate == DISASTER_FIRE {
+                    sequence.push(0);
+                }
+
+                sequence.extend([edge - 3, edge - 3]);
+                let result = select_disaster(
+                    &city.misc.data,
+                    &city.xplt.data,
+                    &mut sequence_random(&sequence),
+                    &mut sequence_lfsr(&[0]),
+                    Vec2i::ZERO,
+                    edge,
+                )
+                .unwrap();
+                assert_eq!(result.disaster_type, candidate);
+                assert_eq!(result.disaster_point, Vec2i::new(edge - 2, edge - 2), "disaster {candidate} passes the map edge");
+            }
+        }
+    }
+}

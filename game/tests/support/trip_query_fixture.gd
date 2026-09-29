@@ -9,6 +9,8 @@ const SOURCE_TILES := [
 	Tiles.LARGE_APARTMENT_BUILDING_3X3_1,
 	Tiles.PLYMOUTH_ARCOLOGY,
 ]
+# growth density of each source tile, the traffic weight of its trips
+const SOURCE_DENSITIES := [0, 1, 2, 4, 0]
 const DESTINATION_TILES := [Tiles.EMPTY, Tiles.GAS_STATION_1X1_1, Tiles.SHOPPING_CENTER_2X2, Tiles.OFFICE_PARK_3X3, Tiles.PLYMOUTH_ARCOLOGY]
 
 

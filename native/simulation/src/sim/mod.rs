@@ -19,6 +19,7 @@ pub mod network;
 pub mod overlay;
 pub mod phase;
 pub mod random;
+pub mod reach;
 pub mod reports;
 #[cfg(test)]
 pub mod testing;

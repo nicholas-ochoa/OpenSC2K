@@ -71,6 +71,12 @@ pub const OPERATIONS: &[&str] = &[
     "engine.initialize",
     "spawn_thing",
     "spawn_maxis_man",
+    "trip",
+    "trip_reach",
+    "trip.highway_step",
+    "trip.advance",
+    "trip.trace",
+    "military.naval_site",
 ];
 
 pub struct Outcome {
@@ -348,6 +354,66 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
 
             Outcome::value(Value::Bool(spawned.spawned))
         }
+        "trip" => Outcome::value(
+            crate::sim::reach::run_trip(
+                city,
+                convert::point(args, "origin", crate::sim::geom::Vec2i::ZERO),
+                convert::int(args, "zone", 0),
+                convert::int(args, "traffic_weight", 0),
+                &mut randoms.random,
+                convert::int(args, "maximum_cost", 100),
+            )
+            .to_value(),
+        ),
+        "trip_reach" => Outcome::value(
+            crate::sim::reach::inspect(city, convert::point(args, "clicked", crate::sim::geom::Vec2i::ZERO)).to_value(),
+        ),
+        // Trip rule queries for tests and diagnostics. They do not change the city.
+        "trip.highway_step" => Outcome::value(Value::Bool(crate::sim::trip::highway_step(
+            &city.xbld.data,
+            convert::point(args, "from", crate::sim::geom::Vec2i::ZERO),
+            convert::point(args, "to", crate::sim::geom::Vec2i::ZERO),
+            city.map_size,
+        ))),
+        "trip.advance" | "trip.trace" => {
+            let edge = city.map_size;
+            let maps = crate::sim::trip::TripMaps {
+                buildings: &city.xbld.data,
+                zones: &city.xzon.data,
+                underground: &city.xund.data,
+                text_overlays: &city.xtxt.data,
+                altitude: &city.altm.data,
+                map_edge: edge,
+            };
+
+            if op == "trip.advance" {
+                let from = convert::point(args, "from", crate::sim::geom::Vec2i::ZERO);
+                let to = convert::point(args, "to", crate::sim::geom::Vec2i::ZERO);
+                let index = |point: crate::sim::geom::Vec2i| {
+                    if point.x >= 0 && point.y >= 0 && point.x < edge && point.y < edge { point.x * edge + point.y } else { -1 }
+                };
+                let mode = convert::int(args, "mode", 0);
+                let zone = convert::int(args, "zone", 0);
+                Outcome::value(Value::Int(crate::sim::trip::advance(&maps, from, to, index(from), index(to), mode, zone)))
+            } else {
+                let mut traffic = city.xtrf.data.clone();
+                let mut scratch = crate::sim::trip::TripScratch::default();
+                let result = crate::sim::trip::trace(
+                    &maps,
+                    &mut traffic,
+                    convert::point(args, "origin", crate::sim::geom::Vec2i::ZERO),
+                    convert::int(args, "zone", 0),
+                    convert::int(args, "traffic_weight", 0),
+                    &mut randoms.random,
+                    convert::int(args, "maximum_cost", 100),
+                    convert::int(args, "start", -1),
+                    None,
+                    &mut scratch,
+                );
+                Outcome::value(result.to_value())
+            }
+        }
+        "military.naval_site" => Outcome::value(Value::Rect2i(crate::sim::civic::military::find_naval_site(city))),
         "echo" => Outcome::value(Value::Int(convert::int(args, "value", 0) + city.map_size)),
         _ => Outcome::failure(format!("unknown native simulation operation: {op}")),
     }

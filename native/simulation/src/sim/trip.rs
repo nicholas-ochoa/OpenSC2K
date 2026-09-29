@@ -863,3 +863,127 @@ fn ramp_side(highway: Vec2i, ramp: Vec2i, ports: i64) -> bool {
 fn highway_exit(buildings: &[u8], current: Vec2i, next_point: Vec2i, map_edge: i64) -> bool {
     ramp_side(current, next_point, highway_ports(super::bytes::at(buildings, index_of(current, map_edge))))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sim::testing::empty_city;
+
+    fn trip_maps(city: &crate::sim::city::City) -> TripMaps<'_> {
+        TripMaps {
+            buildings: &city.xbld.data,
+            zones: &city.xzon.data,
+            underground: &city.xund.data,
+            text_overlays: &city.xtxt.data,
+            altitude: &city.altm.data,
+            map_edge: city.map_size,
+        }
+    }
+
+    /// External highway movement needs the port of both sections.
+    #[test]
+    fn highway_lanes_respect_both_section_ports() {
+        let mut city = empty_city(128);
+
+        for tile in (0..256).filter(|tile| highway_ports(*tile) != 0) {
+            for x in 18..24 {
+                for y in 18..24 {
+                    city.xbld.data[x * 128 + y] = tile as u8;
+                }
+            }
+
+            let ports = highway_ports(tile);
+
+            for direction in 0..4 {
+                let point = Vec2i::new(20, 20) + LANE_CORNERS[EGRESS_CORNERS[direction] as usize];
+                let next_point = point + DIRECTIONS[direction];
+                let expected = ports & (1 << direction) != 0 && ports & (1 << ((direction + 2) & 3)) != 0;
+                assert_eq!(highway_step(&city.xbld.data, point, next_point, 128), expected, "tile {tile} direction {direction}");
+            }
+        }
+    }
+
+    #[test]
+    fn rejected_and_unconnected_trips_have_plain_results() {
+        let mut city = empty_city(128);
+        city.xbld.data[20 * 128 + 20] = tiles::ROAD_STRAIGHT_1 as u8;
+        city.xzon.data[20 * 128 + 21] = 3;
+        let mut traffic = city.xtrf.data.clone();
+        let mut scratch = TripScratch::default();
+        let maps = trip_maps(&city);
+        let mut random = SimRandom::new(123);
+        let reached = trace(&maps, &mut traffic, Vec2i::new(19, 20), 1, 2, &mut random, 100, -1, None, &mut scratch);
+        assert!(reached.ok && reached.reached_destination);
+        let rejected = trace(&maps, &mut traffic, Vec2i::new(19, 20), -1, 2, &mut random, 100, -1, None, &mut scratch);
+        assert_eq!(rejected, TripResult::failure("zone is outside the supported range"));
+        let empty = trace(&maps, &mut traffic, Vec2i::new(80, 80), 1, 2, &mut random, 100, -1, None, &mut scratch);
+        assert_eq!(empty, TripResult { ok: true, ..Default::default() });
+    }
+
+    /// A cached walking access search keeps every result field, the random
+    /// state, and the traffic bytes of an uncached search.
+    #[test]
+    fn walking_cache_matches_the_direct_search() {
+        for edge in [128i64, 512] {
+            let mut city = empty_city(edge);
+            let points = [
+                Vec2i::ZERO,
+                Vec2i::new(edge - 1, 0),
+                Vec2i::new(0, edge - 1),
+                Vec2i::new(edge - 1, edge - 1),
+                Vec2i::new(edge / 2, edge / 2),
+            ];
+
+            for point in points {
+                for (offset_index, offset) in TRANSPORT_OFFSETS.iter().enumerate() {
+                    let index = index_of(point + *offset, edge);
+
+                    if index >= 0 {
+                        city.xzon.data[index as usize] = ((offset_index % 16) | 0xa0) as u8;
+                    }
+                }
+            }
+
+            let mut caches = vec![vec![0u8; (edge * edge) as usize]; 4];
+            let mut compare = |city: &crate::sim::city::City, point: Vec2i, zone: i64, mode: i64, caches: &mut Vec<Vec<u8>>| {
+                let maps = trip_maps(city);
+                let start = (mode << point_shift(edge)) | (point.x * edge + point.y);
+                let mut direct_traffic = city.xtrf.data.clone();
+                let mut cached_traffic = city.xtrf.data.clone();
+                let mut direct_random = SimRandom::new(123);
+                let mut cached_random = SimRandom::new(123);
+                let mut scratch = TripScratch::default();
+                let direct =
+                    trace(&maps, &mut direct_traffic, point, zone, 2, &mut direct_random, 10, start, None, &mut scratch);
+                let cache = &mut caches[((zone + 1) >> 1) as usize];
+                let cached = trace(
+                    &maps,
+                    &mut cached_traffic,
+                    point,
+                    zone,
+                    2,
+                    &mut cached_random,
+                    10,
+                    start,
+                    Some(cache),
+                    &mut scratch,
+                );
+                assert_eq!(cached, direct);
+                assert_eq!(cached_random.state, direct_random.state);
+                assert_eq!(cached_traffic, direct_traffic);
+            };
+
+            for point in points {
+                for zone in 0..7 {
+                    compare(&city, point, zone, ROAD_MODE, &mut caches);
+                    compare(&city, point, zone, ROAD_MODE, &mut caches);
+                }
+            }
+
+            // Every mode reads the same populated cache without gaining foot access.
+            for mode in 0..14 {
+                compare(&city, points[4], 1, mode, &mut caches);
+            }
+        }
+    }
+}

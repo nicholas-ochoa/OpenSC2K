@@ -132,8 +132,6 @@ func check_values(edge: int) -> void:
 	doc.find_chunk("XVAL").set_decoded_payload(land)
 	city.set_building_id(point.x, point.y, Tiles.LOWER_CLASS_HOMES_1X1_1)
 	city.set_building_id(point.x, point.y + 1, Tiles.LOWER_CLASS_HOMES_1X1_1)
-	check(GrowthConstruction.can_advance_density(2, 2, 3, land, point.x, point.y, edge), "Growth reads selected tile land value")
-	check(not GrowthConstruction.can_advance_density(2, 2, 3, land, point.x, point.y + 1, edge), "Neighbor has separate growth eligibility")
 	var query := QueryInfo.inspect(city, point)
 	check(query.ok and query.land_value == 256, "Query reads full-resolution value")
 	query = QueryInfo.inspect(city, point + Vector2i.DOWN)
@@ -154,12 +152,6 @@ func check_values(edge: int) -> void:
 	check(doc.find_chunk("XTRF").decoded_payload[index] == 150
 		and doc.find_chunk("XTRF").decoded_payload[index + 1] == 30
 		and doc.find_chunk("XTRF").decoded_payload[-1] == 60, "Traffic decay preserves per-tile extent")
-	# A fire clears only the affected tile, including inside one old coarse cell.
-	var p := GrowthState.payloads(city)
-	var labels := doc.find_chunk("XLAB").decoded_payload.duplicate()
-	var damage := DisasterDamage.apply(city, p.ALTM, p.XBLD, p.XTER, p.XZON, p.XUND,
-		p.XBIT, p.XTRF, p.XTXT, labels, p.XMIC, p.MISC, point, ZeroRandom.new(), ZeroLfsrRandom.new())
-	check(damage != 0 and p.XTRF[index] == 0 and p.XTRF[index + 1] == 30, "Disaster clears only selected native traffic tile")
 	# All adjacent consumer rules above retain far coordinates. Full-map native
 	# phase parity at 512 is owned by check_sliced and native_data_map_optimization.
 	if edge > 128:

@@ -49,14 +49,6 @@ static func _result(
 	return result
 
 
-static func _first_free_record(things: PackedByteArray) -> int:
-	for record in range(1, ThingData.count(things)):
-		if ThingData.read(things, record * CityState.THING_RECORD_SIZE) == 0:
-			return record
-
-	return 0
-
-
 static func _map_payloads(city: CityState) -> Dictionary[String, PackedByteArray]:
 	var result: Dictionary[String, PackedByteArray] = {}
 

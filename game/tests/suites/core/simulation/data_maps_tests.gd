@@ -6,7 +6,6 @@ extends "res://tests/support/core_test_suite.gd"
 const GraphView = preload("res://src/view/city_graph_control.gd")
 const Pollution = preload("res://src/simulation/data_maps/pollution_phase.gd")
 const Graphs = preload("res://src/simulation/reports/graph_history.gd")
-const Growth = preload("res://src/simulation/growth/phase/constants.gd")
 
 
 func test_pollution(reference_root: String) -> void:

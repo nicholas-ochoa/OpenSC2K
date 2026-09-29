@@ -39,6 +39,8 @@ static var classes := {
 	"MovingThingResult": MovingThingResult,
 	"MayorApprovalPhase.Result": MayorApprovalPhase.Result,
 	"MilitaryProposalPhase.Result": MilitaryProposalPhase.Result,
+	"TransportTripResult": TransportTripResult,
+	"TransportTripReachResult": TransportTripReachResult,
 	"EffectEvent": EffectEvent,
 	"SimulationTiming": SimulationTiming,
 }
@@ -218,6 +220,10 @@ static func _create(class_label: String, fields: Dictionary) -> Object:
 			return MovingThingResult.ConnectionChange.new(fields.kind, fields.delta, fields.point)
 		"MovingThingResult.DisasterRequest":
 			return MovingThingResult.DisasterRequest.new(fields.type, fields.point)
+		"TransportTripReachResult.ReachNode":
+			return TransportTripReachResult.ReachNode.new(fields.point, fields.mode, fields.cost)
+		"TransportTripReachResult.Link":
+			return TransportTripReachResult.Link.new(fields.from, fields.to, fields.from_mode, fields.mode, fields.cost)
 		"RciAftermathPhase.MapChange":
 			return RciAftermathPhase.MapChange.new(fields.point, fields.old_tile, fields.new_tile)
 

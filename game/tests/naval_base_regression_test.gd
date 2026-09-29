@@ -37,17 +37,6 @@ func _initialize() -> void:
 			check(city.funds() == funds and doc.misc_u32(0x0fa8) == 40, "Navy transfers counters without cost")
 			for index in proposal.changed_indices:
 				check((city.zones[index] & 15) == 7 and city.buildings[index] == 0, "Navy reserves clear land")
-			# Try growing a crane and pier from the new shoreline plot.
-			var p := GrowthState.duplicate_payloads(GrowthState.payloads(city))
-			var grown := false
-			for index in proposal.changed_indices:
-				var point := Vector2i(index / edge, index % edge)
-				var result := SpecialZoneSelection.grow_special_zone(p.XBLD, p.XZON, p.XUND, p.XBIT, p.XTER,
-					city.altitude_words, p.MISC, point, 0xe0, 7, direction, edge)
-				if result.ok and result.changed_tiles == 5:
-					grown = true
-					break
-			check(grown, "Selected naval shore supports crane and four pier tiles")
 			var bytes: PackedByteArray = doc.serialize().data
 			var loaded := Sc2File.new()
 			check(loaded.parse(bytes) and loaded.serialize().data == bytes and loaded.misc_u32(0x0e4c) == 4, "Naval base saves and reloads")

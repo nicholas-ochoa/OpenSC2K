@@ -25,7 +25,10 @@ func _initialize() -> void:
 func fixture() -> Dictionary:
 	var city := CityState.from_document(EmptyCityTemplate.create(128))
 	var p: Dictionary = {}
-	p.merge(GrowthState.payloads(city))
+
+	for chunk in city.document.chunks:
+		p[chunk.chunk_id] = chunk.decoded_payload.duplicate()
+
 	p.ALTM.fill(0)
 	p.XTER.fill(0)
 	p.XBIT.fill(0)
