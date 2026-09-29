@@ -365,13 +365,17 @@ func publish_changes(before: CityRegionResult, after: CityRegionResult) -> void:
 
 # return the native bounds of the foreground commands that differ between two results of one region
 static func changed_foreground(before: CityRegionResult, after: CityRegionResult) -> Array[Rect2i]:
+	if (before is CityGpuRegionResult and after is CityGpuRegionResult and (before as CityGpuRegionResult).draws != null
+			and (after as CityGpuRegionResult).draws != null):
+		return (after as CityGpuRegionResult).changed_foreground_from(before as CityGpuRegionResult)
+
 	var previous: Dictionary[int, CityStaticCommand] = {}
 	var result: Array[Rect2i] = []
 
-	for command in before.occlusion_commands:
+	for command in _foreground(before):
 		previous[command.region_order] = command
 
-	for command in after.occlusion_commands:
+	for command in _foreground(after):
 		var old: CityStaticCommand = previous.get(command.region_order)
 
 		if old != null:
@@ -388,6 +392,10 @@ static func changed_foreground(before: CityRegionResult, after: CityRegionResult
 		result.append(Rect2i(command.position, command.size))
 
 	return result
+
+
+static func _foreground(result: CityRegionResult) -> Array[CityStaticCommand]:
+	return (result as CityGpuRegionResult).foreground_commands() if result is CityGpuRegionResult else result.occlusion_commands
 
 
 static func _same_command(left: CityStaticCommand, right: CityStaticCommand) -> bool:
@@ -474,8 +482,8 @@ func occlusion_candidates(bounds: Rect2i) -> Array[CityStaticCommand]:
 		if not Rect2(entry.bounds).intersects(native):
 			continue
 
-		for index in CityIsometricRenderer.occlusion_candidate_indices(entry.candidate_grid(), bounds):
-			var command: CityStaticCommand = entry.occlusion_commands[index]
+		for index in entry.occlusion_indices(bounds):
+			var command := entry.occlusion_command(index)
 			var order: int = command.region_order
 
 			if int(versions.get(order, -1)) > int(entry.generation):
@@ -532,7 +540,7 @@ func image_region(bounds: Rect2i, texture_factor := 1) -> Image:
 		var native := Rect2i(first, last - first)
 		var sample_factor := texture_factor if divisor == 1 else 1
 		var gpu := entry as CityGpuRegionResult
-		var image: Image = (CityGpuDrawList.paint(gpu.gpu_draws, native, gpu.background, gpu.draw_grid(), sample_factor)
+		var image: Image = (gpu.paint(native, sample_factor)
 				if gpu != null else entry.image.get_region(Rect2i(native.position - entry.bounds.position, native.size)))
 		image.convert(Image.FORMAT_LA8)
 		var target_size := native.size * divisor * texture_factor
@@ -562,7 +570,7 @@ func pixel(point: Vector2i) -> Color:
 	var gpu := entry as CityGpuRegionResult
 
 	if gpu != null:
-		return CityGpuDrawList.paint(gpu.gpu_draws, Rect2i(native, Vector2i.ONE), gpu.background, gpu.draw_grid()).get_pixel(0, 0)
+		return gpu.paint(Rect2i(native, Vector2i.ONE)).get_pixel(0, 0)
 
 	return entry.image.get_pixelv(local) if Rect2i(Vector2i.ZERO, entry.image.get_size()).has_point(local) else Color.TRANSPARENT
 

@@ -137,11 +137,15 @@ func _initialize() -> void:
 					assert(surface.get_pixel(21, 19).a > 0.0 and deck.get_pixel(21, 19).a == 0.0, "Original crossing pillar is omitted")
 
 			assert(found, "Each native view includes crossing foreground")
-			var context := CityGpuBuildContext.new()
-			var gpu := context.tile(city, Sc2Palette.index_encoding(), archive, config, 64, 64, CityViewMode.Mode.CITY, true, true)
+			var anchor := Vector2i(config.side_margin + city.map_size * config.half_width,
+				config.top_margin + 128 * config.half_height)
+			var area := Rect2i(anchor - Vector2i(4 * config.half_width, 16 * config.half_height),
+				Vector2i(10 * config.half_width, 20 * config.half_height))
+			var gpu := CityGpuRegionRenderer.render(city, Sc2Palette.index_encoding(), archive, area, view,
+				CityViewMode.Mode.CITY, true, true, CityGpuBuildContext.new(), 1, -1)
 			var gpu_found := false
 
-			for command in gpu.foreground:
+			for command in gpu.foreground_commands():
 				if int(command.sprite_id) == config.sprite_base + tile:
 					gpu_found = true
 					assert(command.train_foreground_requires_depth and command.train_deck_thickness == view + 1)

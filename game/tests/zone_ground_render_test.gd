@@ -46,19 +46,14 @@ func _initialize() -> void:
 		assert(city.set_terrain_id(point.x, point.y, terrain) and city.set_building_id(point.x, point.y, building))
 		var terrain_sprite := IsometricGeometry.terrain_sprite_id(terrain, city.is_water(point.x, point.y), configuration.sprite_base)
 
-		var context := CityGpuBuildContext.new()
-		var zone_image := CityIsometricRenderer.sprite_image(sprites, palette, context.images, zone_sprite, false)
-		var terrain_image := CityIsometricRenderer.sprite_image(sprites, palette, context.images, terrain_sprite, false)
+		var images := {}
+		var zone_image := CityIsometricRenderer.sprite_image(sprites, palette, images, zone_sprite, false)
+		var terrain_image := CityIsometricRenderer.sprite_image(sprites, palette, images, terrain_sprite, false)
 		var painter := CityGpuDrawList.new()
-		CityIsometricRenderer.draw_tile(painter, city, palette, sprites, context.images, configuration, origin,
+		CityIsometricRenderer.draw_tile(painter, city, palette, sprites, images, configuration, origin,
 			point.x, point.y, 0, false, false)
 		assert(_draws_image(painter, zone_image) == expected, "Tile painter zone for %s" % label)
 		assert(_draws_image(painter, terrain_image) != expected, "Tile painter terrain for %s" % label)
-
-		var shortcut := CityGpuDrawList.new()
-
-		if context._fast_tile(shortcut, city, palette, sprites, configuration, origin, point.x, point.y):
-			assert(_draws_image(shortcut, zone_image) == expected, "GPU shortcut zone for %s" % label)
 
 		var occluders := 0
 
@@ -104,27 +99,29 @@ func _check_hidden_buildings(city: CityState, palette: Sc2Palette, sprites: Sc2S
 		assert(city.set_terrain_id(point.x, point.y, terrain) and city.set_building_id(point.x, point.y, building))
 		assert(city.set_zone_id(point.x, point.y, zone) and city.set_building_corners(point.x, point.y, Sc2ZoneLayout.CORNERS_MASK))
 		var shown := CityViewFilter.surface_copy(city, visibility)
-		var context := CityGpuBuildContext.new()
+		var images := {}
 		var painter := CityGpuDrawList.new()
-		CityIsometricRenderer.draw_tile(painter, shown, palette, sprites, context.images, configuration, origin,
+		CityIsometricRenderer.draw_tile(painter, shown, palette, sprites, images, configuration, origin,
 			point.x, point.y, 0, false, false)
 		var sprite := configuration.sprite_base + (expected if expected >= 0 else building)
-		var image := CityIsometricRenderer.sprite_image(sprites, palette, context.images, sprite, false)
+		var image := CityIsometricRenderer.sprite_image(sprites, palette, images, sprite, false)
 		assert(_draws_image(painter, image), "Tile painter for %s" % label)
 
-		var shortcut := CityGpuDrawList.new()
-
-		if context._fast_tile(shortcut, shown, palette, sprites, configuration, origin, point.x, point.y):
-			assert(_draws_image(shortcut, image), "GPU shortcut for %s" % label)
 
 	# a lot and a zone on the same tile must not share a reused GPU tile
 	assert(city.set_terrain_id(point.x, point.y, TerrainTileIds.FLAT) and city.set_building_id(point.x, point.y, developed))
 	assert(city.set_zone_id(point.x, point.y, 3))
-	var key := city.index_of(point.x, point.y)
-	var lot := CityViewFilter.surface_copy(city, buildings_off)
-	var zoned := CityViewFilter.surface_copy(city, zones_off)
-	assert([CityGpuBuildContext.bound_input_key(lot, key), CityGpuBuildContext.bound_extra_key(lot, key)]
-		!= [CityGpuBuildContext.bound_input_key(zoned, key), CityGpuBuildContext.bound_extra_key(zoned, key)])
+	var bounds := Rect2i(configuration.side_margin + city.map_size * configuration.half_width - 96,
+		configuration.top_margin + 40 * configuration.half_height - 160, 192, 224)
+	var context := CityGpuBuildContext.new()
+
+	for revision in 4:
+		var shown := CityViewFilter.surface_copy(city, [buildings_off, zones_off][revision % 2])
+		var expected := CityRegionRenderer.render(shown, palette, sprites, bounds).image
+		expected.convert(Image.FORMAT_LA8)
+		var region := CityGpuRegionRenderer.render(shown, palette, sprites, bounds, CityIsometricRenderer.VIEW_LARGE,
+			CityViewMode.Mode.CITY, true, true, context, revision + 1, -1)
+		assert(region.ok and region.paint(bounds).get_data() == expected.get_data(), "Warm GPU lot and zone differ")
 
 
 func _draws_image(list: CityGpuDrawList, image: Image) -> bool:

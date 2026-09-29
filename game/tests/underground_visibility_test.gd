@@ -53,13 +53,11 @@ func _run() -> void:
 			var region := CityRegionRenderer.render(city, palette, sprites, bounds, view, CityViewMode.Mode.UNDERGROUND, pipes, true, mains)
 			assert(full.ok and region.ok)
 			assert(region.image.get_data() == full.image.get_region(bounds).get_data())
-			var context := CityGpuBuildContext.new()
-			var tile := context.tile(city, palette, sprites, configuration, 20, 20, CityViewMode.Mode.UNDERGROUND, pipes, true, mains)
-			var recorded := CityGpuDrawList.new()
-			CityUndergroundView.draw_tile(recorded, city, palette, sprites, {}, configuration, origin, 20, 20, pipes, true, mains)
-			assert(tile.draws.size() == recorded.draws.size())
-			for i in recorded.draws.size():
-				assert(tile.draws[i].image.get_data() == recorded.draws[i].image.get_data())
+			var gpu := CityGpuRegionRenderer.render(city, palette, sprites, bounds, view, CityViewMode.Mode.UNDERGROUND, pipes, true,
+				CityGpuBuildContext.new(), 1, -1, true, mains)
+			var expected := region.image.duplicate()
+			expected.convert(Image.FORMAT_LA8)
+			assert(gpu.ok and gpu.paint(bounds).get_data() == expected.get_data())
 			var generation := cache.generation
 			cache.configure(city, palette, sprites, [1], view, CityViewMode.Mode.UNDERGROUND, {}, pipes, true, Rect2i(), mains)
 			assert(cache.generation > generation)

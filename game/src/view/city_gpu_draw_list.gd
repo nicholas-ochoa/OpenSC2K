@@ -42,19 +42,8 @@ static func paint(
 	return image
 
 
-static func build_grid(draws_value: Array[Draw]) -> Dictionary[Vector2i, Array]:
-	var grid: Dictionary[Vector2i, Array] = {}
-
-	for index in draws_value.size():
-		var draw := draws_value[index]
-		IsometricPixelOperations.append_occlusion_bounds(grid, Rect2i(draw.position, draw.source.size), index)
-
-	return grid
-
-
-# A draw is also the foreground command of its sprite. The GPU build context
-# fills the command fields of each draw that has a sprite role, so that one
-# object serves both lists.
+# A recorded sprite blend. Tile painters and previews record draws before they
+# paint them; the command fields remain for callers that need a foreground.
 class Draw extends CityStaticCommand:
 	var image: Image
 	var source: Rect2i

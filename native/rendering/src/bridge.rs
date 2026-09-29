@@ -1,5 +1,6 @@
-//! Bulk Godot boundary. Each instance belongs to one existing region worker.
-use super::{Builder, City, Config, Rect, sprites::Sprite};
+//! Bulk Godot boundary. Each builder belongs to one region worker thread. A
+//! region's draw index is immutable, so the main thread may read it later.
+use super::{Builder, City, Config, Rect, index::RegionDraws, region::TILE_LIMIT, sprites::Sprite};
 use godot::{
     classes::{Image, image::Format},
     prelude::*,
@@ -81,20 +82,16 @@ impl NativeCityRegionBuilder {
             let mut sprites = HashMap::new();
             for (key, value) in images.iter_shared() {
                 let id = key.try_to::<i64>().map_err(|_| "invalid sprite ID")?;
-                let image = value
-                    .try_to::<Gd<Image>>()
-                    .map_err(|_| "invalid sprite image")?;
+                let image = value.try_to::<Gd<Image>>().map_err(|_| "invalid sprite image")?;
                 let (w, h) = (image.get_width(), image.get_height());
                 if w <= 0 || h <= 0 || w > 8190 || h > 8190 {
                     return Err("invalid sprite dimensions".into());
                 }
                 let mut rgba =
-                    Image::create_from_data(w, h, false, image.get_format(), &image.get_data())
-                        .ok_or("invalid sprite pixels")?;
+                    Image::create_from_data(w, h, false, image.get_format(), &image.get_data()).ok_or("invalid sprite pixels")?;
                 rgba.convert(Format::RGBA8);
                 let data = rgba.get_data().to_vec();
-                let mut la = Image::create_from_data(w, h, false, Format::RGBA8, &rgba.get_data())
-                    .ok_or("invalid sprite pixels")?;
+                let mut la = Image::create_from_data(w, h, false, Format::RGBA8, &rgba.get_data()).ok_or("invalid sprite pixels")?;
                 la.convert(Format::LA8);
                 sprites.insert(
                     id as u64 * 2,
@@ -107,37 +104,31 @@ impl NativeCityRegionBuilder {
                 );
                 self.images.insert(id as u64 * 2, rgba);
             }
-            self.core = Some(Builder::new(
-                city,
-                config,
-                sprites,
-                (target as u32).to_be_bytes(),
-            ));
             let atlas_edge = int(&request, "atlas_edge", 2048) as i32;
             if !(32..=8192).contains(&atlas_edge) || !(atlas_edge as u32).is_power_of_two() {
-                self.core = None;
                 return Err("invalid native atlas dimensions".into());
             }
-            let core = self.core.as_mut().unwrap();
-            core.atlas.edge = atlas_edge;
-            core.atlas.data = vec![0; atlas_edge as usize * atlas_edge as usize * 2];
-            core.atlas.revision = previous_revision;
+            let mut core = Builder::new(city, config, sprites, (target as u32).to_be_bytes(), atlas_edge)?;
+            core.atlas.revision += previous_revision;
+            self.core = Some(core);
             Ok(())
         })();
         GString::from(&result.err().unwrap_or_default())
     }
     #[func]
+    fn tile_cache_limit() -> i64 {
+        TILE_LIMIT as i64
+    }
+    #[func]
+    fn cached_tile_count(&self) -> i64 {
+        self.core.as_ref().map_or(0, |core| core.cached_tiles() as i64)
+    }
+    #[func]
     fn update_city(&mut self, request: VarDictionary) -> GString {
         let result: Result<(), String> = (|| {
             let city = city(&request)?;
-            let core = self
-                .core
-                .as_mut()
-                .ok_or("native region builder is not configured")?;
-            if city.edge != core.city.edge
-                || city.rotation != core.city.rotation
-                || city.visible != core.city.visible
-            {
+            let core = self.core.as_mut().ok_or("native region builder is not configured")?;
+            if city.edge != core.city.edge || city.rotation != core.city.rotation || city.visible != core.city.visible {
                 return Err("native region layout changed without configure".into());
             }
             core.update(city);
@@ -152,13 +143,7 @@ impl NativeCityRegionBuilder {
             result.set("error", "native region builder is not configured");
             return result;
         };
-        let clipped = Rect::new(
-            bounds.position.x,
-            bounds.position.y,
-            bounds.size.x,
-            bounds.size.y,
-        )
-        .clip(Rect::new(
+        let clipped = Rect::new(bounds.position.x, bounds.position.y, bounds.size.x, bounds.size.y).clip(Rect::new(
             0,
             0,
             (64 + core.city.edge * 32) / core.config.divisor(),
@@ -176,32 +161,30 @@ impl NativeCityRegionBuilder {
                 return result;
             }
         };
-        let vertices: PackedVector2Array = region
-            .vertices
-            .iter()
-            .map(|v| Vector2::new(v[0], v[1]))
-            .collect();
-        let uvs: PackedVector2Array = region
-            .uvs
-            .iter()
-            .map(|v| Vector2::new(v[0], v[1]))
-            .collect();
+        let vertices: PackedVector2Array = region.vertices.iter().map(|v| Vector2::new(v[0], v[1])).collect();
+        let uvs: PackedVector2Array = region.uvs.iter().map(|v| Vector2::new(v[0], v[1])).collect();
         result.set("vertices", &vertices);
         result.set("uvs", &uvs);
-        result.set(
-            "indices",
-            &PackedInt32Array::from(region.indices.as_slice()),
-        );
-        let mut records = Vec::with_capacity(region.draws.len() * 16);
-        let mut images = VarDictionary::new();
+        result.set("indices", &PackedInt32Array::from(region.indices.as_slice()));
+        let mut records = Vec::with_capacity(region.draws.len() * RECORD_SIZE);
+        let mut images = VarArray::new();
+        let mut slots: HashMap<u64, i64> = HashMap::new();
         for d in &region.draws {
+            let slot = *slots.entry(d.image).or_insert_with(|| {
+                let image = self.images.entry(d.image).or_insert_with(|| {
+                    let s = &core.sprites.images[&d.image];
+                    Image::create_from_data(s.w, s.h, false, Format::RGBA8, &PackedByteArray::from(s.rgba.as_slice()))
+                        .expect("validated sprite dimensions")
+                });
+                images.push(&image.to_variant());
+                images.len() as i64 - 1
+            });
             records.extend([
-                d.id,
-                d.image as i64,
                 d.rect.x as i64,
                 d.rect.y as i64,
                 d.rect.w as i64,
                 d.rect.h as i64,
+                slot,
                 d.sprite as i64,
                 i64::from(d.flip),
                 d.depth,
@@ -211,31 +194,19 @@ impl NativeCityRegionBuilder {
                 d.thickness as i64,
                 d.deck as i64,
                 i64::from(d.requires_depth),
-                0,
             ]);
-            let image = self.images.entry(d.image).or_insert_with(|| {
-                let s = &core.sprites.images[&d.image];
-                Image::create_from_data(
-                    s.w,
-                    s.h,
-                    false,
-                    Format::RGBA8,
-                    &PackedByteArray::from(s.rgba.as_slice()),
-                )
-                .expect("validated sprite dimensions")
-            });
-            // Dictionary insertion is per unique sprite, not a GDScript callback.
-            if !images.contains_key(d.image as i64) {
-                images.set(d.image as i64, &image.clone());
-            }
         }
         result.set("records", &PackedInt64Array::from(records.as_slice()));
         result.set("images", &images);
-        result.set("evicted", &PackedInt64Array::from(core.evicted.as_slice()));
-        core.evicted.clear();
+        result.set(
+            "draws",
+            &Gd::from_object(NativeCityRegionDraws {
+                draws: RegionDraws::new(region.draws),
+            }),
+        );
         result.set("builds", core.builds - before);
         result.set("total_builds", core.builds);
-        result.set("cached_tiles", core.tiles.len() as i64);
+        result.set("cached_tiles", core.cached_tiles() as i64);
         result.set("total_reuses", core.reuses);
         result.set("atlas_revision", core.atlas.revision);
         result.set("atlas_edge", core.atlas.edge);
@@ -250,10 +221,34 @@ impl NativeCityRegionBuilder {
             .expect("validated atlas dimensions");
             result.set("atlas", &image);
         }
-        result.set(
-            "bounds",
-            Rect2i::from_components(clipped.x, clipped.y, clipped.w, clipped.h),
-        );
+        result.set("bounds", Rect2i::from_components(clipped.x, clipped.y, clipped.w, clipped.h));
         result
+    }
+}
+
+/// The fields of each draw record in `build` results.
+const RECORD_SIZE: usize = 14;
+
+/// The published draws of one region. Queries return indices of `records`.
+#[derive(GodotClass)]
+#[class(base=RefCounted, no_init)]
+pub struct NativeCityRegionDraws {
+    draws: RegionDraws,
+}
+#[godot_api]
+impl NativeCityRegionDraws {
+    /// Draw indices in painter order that intersect `bounds`, with draw
+    /// rectangles multiplied by `scale`. `occluders` omits masked traffic.
+    #[func]
+    fn candidates(&self, bounds: Rect2i, scale: i64, occluders: bool) -> PackedInt32Array {
+        let bounds = Rect::new(bounds.position.x, bounds.position.y, bounds.size.x, bounds.size.y);
+        let found = self.draws.candidates(bounds, scale as i32, occluders);
+        found.iter().map(|&at| at as i32).collect()
+    }
+    /// Unscaled rectangles of the foreground commands that differ from `before`.
+    #[func]
+    fn changed_foreground(&self, before: Gd<NativeCityRegionDraws>) -> Array<Rect2i> {
+        let changed = self.draws.changed(&before.bind().draws);
+        changed.iter().map(|r| Rect2i::from_components(r.x, r.y, r.w, r.h)).collect()
     }
 }

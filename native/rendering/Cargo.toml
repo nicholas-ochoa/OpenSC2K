@@ -10,6 +10,8 @@ description = "Native city region preparation for OpenSC2K"
 crate-type = ["cdylib"]
 
 [dependencies]
+# Region workers call the builder on their own threads. Each builder stays with one
+# worker. A region draw index is immutable, so other threads may read it.
 godot = { version = "0.5.5", features = ["api-4-7", "experimental-threads"] }
 
 [profile.release]

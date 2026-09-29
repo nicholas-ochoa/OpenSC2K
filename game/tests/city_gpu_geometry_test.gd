@@ -22,7 +22,6 @@ func _run() -> void:
 
 			for mode: CityViewMode.Mode in [CityViewMode.Mode.CITY, CityViewMode.Mode.UNDERGROUND]:
 				var context := CityGpuBuildContext.new()
-				context.use_native = false # Retained GDScript implementation checks.
 				var size := CityIsometricRenderer.output_size_for_view(view, fixture_city.map_size)
 
 				for center in [size / 2, Vector2i(size.x / 2, size.y - 160)]:
@@ -50,7 +49,6 @@ func _run() -> void:
 		for mode: CityViewMode.Mode in [CityViewMode.Mode.CITY, CityViewMode.Mode.UNDERGROUND]:
 			var sprites := large if view == 2 else small
 			var context := CityGpuBuildContext.new()
-			context.use_native = false # Retained GDScript implementation checks.
 			var center := (CityIsometricRenderer.output_size_for_view(view, city.map_size) / 2) / 256
 			var request := CityGpuRegionBatch.Request.new()
 			request.city = city
@@ -71,9 +69,8 @@ func _run() -> void:
 			for region: CityGpuRegionResult in batch.regions:
 				var expected := CityRegionRenderer.render(city, palette, sprites, region.bounds, view, mode)
 				expected.image.convert(Image.FORMAT_LA8)
-				assert(_static_command_values(region.occlusion_commands) == _static_command_values(expected.occlusion_commands))
-				assert(CityGpuDrawList.paint(region.gpu_draws, region.bounds, region.background,
-					region.draw_grid()).get_data() == expected.image.get_data())
+				assert(_static_command_values(region.foreground_commands()) == _static_command_values(expected.occlusion_commands))
+				assert(region.paint(region.bounds).get_data() == expected.image.get_data())
 
 				if DisplayServer.get_name() != "headless":
 					region.atlas_image = batch.atlas_image
@@ -102,27 +99,20 @@ func _run() -> void:
 				request.generation = 4
 				var reused := CityGpuRegionBatch.build(request, context, batch.atlas_revision)
 				assert(reused.ok and context.tile_reuses > 0, "A new revision must reuse unchanged common tiles")
-				var edited := -1
-
-				for key: int in context.tiles:
-					if context.tiles[key].reusable:
-						edited = key
-						break
-
-				assert(edited >= 0)
-				var prior := context.tiles[edited]
-				assert(city.set_tile_flag(edited / city.map_size, edited % city.map_size, Sc2TileFlags.FLIPPED,
-					not city.is_flipped(edited / city.map_size, edited % city.map_size)))
+				# Flip one drawn tile. Its depth order is (x + y) * edge + y.
+				var depth := batch.regions[0].foreground_commands()[0].depth_order
+				var edited := Vector2i(depth / city.map_size - depth % city.map_size, depth % city.map_size)
+				assert(city.set_tile_flag(edited.x, edited.y, Sc2TileFlags.FLIPPED, not city.is_flipped(edited.x, edited.y)))
+				var builds := context.tile_builds
 				request.generation = 9
 				var changed := CityGpuRegionBatch.build(request, context, -1)
-				assert(changed.ok and context.tiles[edited] != prior)
+				assert(changed.ok and context.tile_builds > builds, "An edited tile must be painted again")
 
 				for region: CityGpuRegionResult in changed.regions:
 					var expected := CityRegionRenderer.render(city, palette, sprites, region.bounds, view, mode)
 					expected.image.convert(Image.FORMAT_LA8)
-					assert(_static_command_values(region.occlusion_commands) == _static_command_values(expected.occlusion_commands))
-					assert(CityGpuDrawList.paint(region.gpu_draws, region.bounds, region.background,
-						region.draw_grid()).get_data() == expected.image.get_data())
+					assert(_static_command_values(region.foreground_commands()) == _static_command_values(expected.occlusion_commands))
+					assert(region.paint(region.bounds).get_data() == expected.image.get_data())
 
 					if DisplayServer.get_name() != "headless":
 						region.atlas_image = changed.atlas_image
@@ -145,10 +135,10 @@ func _compare(
 	var gpu := CityGpuRegionRenderer.render(city, palette, sprites, bounds, view, mode, true, true, context, 1, -1)
 	assert(cpu.ok and gpu.ok)
 	assert(
-		_static_command_values(cpu.occlusion_commands) == _static_command_values(gpu.occlusion_commands),
+		_static_command_values(cpu.occlusion_commands) == _static_command_values(gpu.foreground_commands()),
 		"GPU foreground must match CPU command order",
 	)
-	var rasterized := CityGpuDrawList.paint(gpu.gpu_draws, bounds, gpu.background, gpu.draw_grid())
+	var rasterized := gpu.paint(bounds)
 	cpu.image.convert(Image.FORMAT_LA8)
 	assert(cpu.image.get_data() == rasterized.get_data(), "GPU draw list differs from CPU pixels")
 

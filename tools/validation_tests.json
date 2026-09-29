@@ -156,24 +156,6 @@
     "lane": "product"
   },
   {
-    "id": "city_gpu_tile_reuse_test",
-    "script": "tests/city_gpu_tile_reuse_test.gd",
-    "domain": "rendering",
-    "lane": "product",
-    "requires": [
-      "ext/graphics/pack.json"
-    ]
-  },
-  {
-    "id": "city_gpu_tile_eviction_test",
-    "script": "tests/city_gpu_tile_eviction_test.gd",
-    "domain": "rendering",
-    "lane": "product",
-    "requires": [
-      "ext/graphics/pack.json"
-    ]
-  },
-  {
     "id": "edit_payload_copy_test",
     "script": "tests/edit_payload_copy_test.gd",
     "domain": "tools",
@@ -973,15 +955,6 @@
       "ext/graphics/pack.json"
     ],
     "driver": "scene-batch"
-  },
-  {
-    "id": "city_gpu_fast_tile_test",
-    "script": "tests/city_gpu_fast_tile_test.gd",
-    "domain": "rendering",
-    "lane": "product",
-    "requires": [
-      "ext/graphics/pack.json"
-    ]
   },
   {
     "id": "region_zoom_coverage_test",

@@ -25,6 +25,15 @@ func candidate_grid() -> Dictionary[Vector2i, Array]:
 	return occlusion_grid
 
 
+# Indices of the foreground commands that may meet `screen_bounds`.
+func occlusion_indices(screen_bounds: Rect2i) -> PackedInt32Array:
+	return PackedInt32Array(CityIsometricRenderer.occlusion_candidate_indices(candidate_grid(), screen_bounds))
+
+
+func occlusion_command(index: int) -> CityStaticCommand:
+	return occlusion_commands[index]
+
+
 static func rejected(message: String) -> CityRegionResult:
 	var result := CityRegionResult.new()
 	result.error = message

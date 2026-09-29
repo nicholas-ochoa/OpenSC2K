@@ -2,6 +2,7 @@
 //! The bridge copies a display snapshot once per revision. Inner loops use Rust
 //! arrays; Godot receives only completed geometry and immutable sprite images.
 mod bridge;
+mod index;
 mod painter;
 mod region;
 mod sprites;
@@ -71,26 +72,14 @@ impl City {
             .get(i)
             .copied()
             .filter(|v| *v >= 0)
-            .unwrap_or_else(|| {
-                if self.wet(i) {
-                    self.water(i)
-                } else {
-                    self.land(i)
-                }
-            })
+            .unwrap_or_else(|| if self.wet(i) { self.water(i) } else { self.land(i) })
     }
     fn visible(&self, i: usize) -> bool {
-        self.visible >= 32
-            || (if self.wet(i) {
-                self.water(i)
-            } else {
-                self.land(i)
-            }) < self.visible
+        self.visible >= 32 || (if self.wet(i) { self.water(i) } else { self.land(i) }) < self.visible
     }
     fn overlay(&self, i: usize) -> i32 {
         let cells = (self.edge * self.edge) as usize;
-        i32::from(*self.overlays.get(i).unwrap_or(&0))
-            | (i32::from(*self.overlays.get(cells + i).unwrap_or(&0)) << 8)
+        i32::from(*self.overlays.get(i).unwrap_or(&0)) | (i32::from(*self.overlays.get(cells + i).unwrap_or(&0)) << 8)
     }
     fn set_dispatch(&mut self, things: &[u8]) {
         // XTHG keeps 12-byte records. Extended payloads have equal low and
@@ -108,14 +97,8 @@ impl City {
                 14 => 384,
                 _ => continue,
             };
-            let coordinate = |field| {
-                i32::from(things[offset + field])
-                    | if wide {
-                        i32::from(things[high + offset + field]) << 8
-                    } else {
-                        0
-                    }
-            };
+            let coordinate =
+                |field| i32::from(things[offset + field]) | if wide { i32::from(things[high + offset + field]) << 8 } else { 0 };
             let (x, y) = (coordinate(3), coordinate(4));
             if x >= self.edge || y >= self.edge {
                 continue;
@@ -131,13 +114,18 @@ impl City {
             }
         }
     }
-    fn density(&self, x: i32, y: i32) -> i32 {
-        let side = self.traffic.len().isqrt() as i32;
-        if side == 0 || side * side != self.traffic.len() as i32 || self.edge % side != 0 {
-            return 0;
+    fn traffic_scale(&self) -> Option<(usize, i32)> {
+        let side = self.traffic.len().isqrt();
+        if side == 0 || side * side != self.traffic.len() || self.edge % side as i32 != 0 {
+            return None;
         }
-        let scale = self.edge / side;
-        self.traffic[(x / scale * side + y / scale) as usize] as i32
+        Some((side, self.edge / side as i32))
+    }
+    fn density(&self, x: i32, y: i32) -> i32 {
+        let Some((side, scale)) = self.traffic_scale() else {
+            return 0;
+        };
+        self.traffic[(x / scale) as usize * side + (y / scale) as usize] as i32
     }
     fn surface(&self, x: i32, y: i32) -> i32 {
         let i = self.index(x, y);
@@ -147,12 +135,7 @@ impl City {
         }
         for (dx, dy) in [(0, -1), (1, 0), (0, 1), (-1, 0)] {
             let (nx, ny) = (x + dx, y + dy);
-            if nx >= 0
-                && ny >= 0
-                && nx < self.edge
-                && ny < self.edge
-                && self.land(self.index(nx, ny)) > self.land(i)
-            {
+            if nx >= 0 && ny >= 0 && nx < self.edge && ny < self.edge && self.land(self.index(nx, ny)) > self.land(i) {
                 return 0x3e;
             }
         }
@@ -219,7 +202,6 @@ impl Config {
 
 #[derive(Clone, Debug)]
 pub struct Draw {
-    pub id: i64,
     pub image: u64,
     pub rect: Rect,
     pub sprite: i32,
@@ -235,7 +217,6 @@ pub struct Draw {
 impl Draw {
     fn new(image: u64, rect: Rect) -> Self {
         Self {
-            id: 0,
             image,
             rect,
             sprite: -1,
@@ -257,89 +238,155 @@ pub struct Builder {
     pub sprites: sprites::Sprites,
     pub atlas: sprites::Atlas,
     tiles: HashMap<usize, region::Tile>,
-    queue: std::collections::VecDeque<usize>,
-    serial: i64,
+    // Sprite bounds of each painted map cell, relative to its anchor. Bounds
+    // outlive evicted draws, so a region skips known cells outside it.
+    bounds: Vec<region::Bounds>,
+    // The painter revision. A cached tile counts one reuse per revision.
+    revision: u64,
+    // The region serial. The tile cache evicts the least recently used tiles.
+    stamp: u64,
     pub builds: i64,
     pub reuses: i64,
-    pub evicted: Vec<i64>,
     maximum_altitude: i32,
+    // The largest sprite of this artwork. It limits the region candidate span.
+    sprite_limit: (i32, i32),
 }
 impl Builder {
-    pub fn new(city: City, config: Config, images: HashMap<u64, Sprite>, target: [u8; 4]) -> Self {
-        let maximum_altitude = city
-            .altitude
-            .iter()
-            .map(|v| (v & 31).max((v >> 5) & 31))
-            .chain(city.objects.iter().copied())
-            .max()
-            .unwrap_or(0)
-            .clamp(0, 31);
-        Self {
+    pub fn new(city: City, config: Config, images: HashMap<u64, Sprite>, target: [u8; 4], atlas_edge: i32) -> Result<Self, String> {
+        let mut sprite_limit = (0, 0);
+        let mut artwork: Vec<u64> = Vec::new();
+        for (key, sprite) in &images {
+            let id = (*key / 2) as i32;
+            if *key & 1 == 0 && id >= config.base() && id < config.base() + 500 {
+                sprite_limit = (sprite_limit.0.max(sprite.w), sprite_limit.1.max(sprite.h));
+                artwork.push(*key);
+            }
+        }
+        let cells = city.altitude.len();
+        let mut builder = Self {
+            maximum_altitude: maximum_altitude(&city),
             city,
             config,
             sprites: sprites::Sprites::new(images, target),
-            atlas: sprites::Atlas::new(),
+            atlas: sprites::Atlas::new(atlas_edge),
             tiles: HashMap::new(),
-            queue: Default::default(),
-            serial: 0,
+            bounds: vec![region::Bounds::UNKNOWN; cells],
+            revision: 0,
+            stamp: 0,
             builds: 0,
             reuses: 0,
-            evicted: Vec::new(),
-            maximum_altitude,
+            sprite_limit,
+        };
+        // Pack all unflipped artwork once. Scrolling then seldom adds a sprite,
+        // so the main thread seldom uploads a changed atlas. Tall sprites
+        // first make shelf rows with less unused space.
+        artwork.sort_by_key(|key| {
+            let sprite = &builder.sprites.images[key];
+            (std::cmp::Reverse(sprite.h), std::cmp::Reverse(sprite.w), *key)
+        });
+        for key in artwork {
+            builder.atlas.slot(key, &builder.sprites.images[&key])?;
         }
+        Ok(builder)
     }
     pub fn update(&mut self, city: City) {
-        // Exact snapshot comparisons include neighbors and dispatch records. They
-        // avoid hash collisions and preserve cached geometry after unrelated edits.
+        let cells = self.bounds.len();
         let old = &self.city;
-        let mut invalid = Vec::new();
-        for (&i, tile) in &mut self.tiles {
-            let (x, y) = (i as i32 / city.edge, i as i32 % city.edge);
-            let same = old.altitude[i] == city.altitude[i]
-                && old.terrain[i] == city.terrain[i]
-                && old.buildings[i] == city.buildings[i]
-                && old.zones[i] == city.zones[i]
-                && old.flags[i] == city.flags[i]
-                && old.underground[i] == city.underground[i]
-                && old.overlay(i) == city.overlay(i)
-                && old.ground.get(i) == city.ground.get(i)
-                && old.objects.get(i) == city.objects.get(i)
-                && old.density(x, y) == city.density(x, y)
-                && old.dispatch.get(&i) == city.dispatch.get(&i)
-                && old.surface(x, y) == city.surface(x, y);
-            let neighbors = [(0, -1), (1, -1), (1, 0)].iter().all(|(dx, dy)| {
-                let (nx, ny) = (x + dx, y + dy);
-                if nx < 0 || ny < 0 || nx >= city.edge || ny >= city.edge {
-                    return true;
-                }
-                let n = city.index(nx, ny);
-                old.terrain[n] == city.terrain[n] && old.wet(n) == city.wet(n)
-            });
-            if !same || !neighbors {
-                invalid.push(i);
-            } else {
-                tile.pending_reuse = true;
+        let mut changed = vec![false; cells];
+        mark(&old.altitude, &city.altitude, &mut changed);
+        mark(&old.terrain, &city.terrain, &mut changed);
+        mark(&old.buildings, &city.buildings, &mut changed);
+        mark(&old.zones, &city.zones, &mut changed);
+        mark(&old.flags, &city.flags, &mut changed);
+        mark(&old.underground, &city.underground, &mut changed);
+        if old.overlays != city.overlays {
+            for (i, cell) in changed.iter_mut().enumerate() {
+                *cell |= old.overlay(i) != city.overlay(i);
             }
         }
-        for i in invalid {
-            self.remove_tile(i);
+        // Negative and absent overrides both mean no override.
+        for (before, after) in [(&old.ground, &city.ground), (&old.objects, &city.objects)] {
+            if before != after {
+                let value = |values: &Vec<i32>, i: usize| values.get(i).copied().filter(|v| *v >= 0).unwrap_or(-1);
+                for (i, cell) in changed.iter_mut().enumerate() {
+                    *cell |= value(before, i) != value(after, i);
+                }
+            }
         }
-        self.queue.retain(|i| self.tiles.contains_key(i));
-        self.maximum_altitude = city
-            .altitude
-            .iter()
-            .map(|v| (v & 31).max((v >> 5) & 31))
-            .chain(city.objects.iter().copied())
-            .max()
-            .unwrap_or(0)
-            .clamp(0, 31);
+        if old.dispatch != city.dispatch {
+            for (i, sprite) in old.dispatch.iter().chain(city.dispatch.iter()) {
+                if old.dispatch.get(i) != Some(sprite) || city.dispatch.get(i) != Some(sprite) {
+                    changed[*i] = true;
+                }
+            }
+        }
+        if old.traffic != city.traffic {
+            match (old.traffic_scale(), city.traffic_scale()) {
+                (Some((side, scale)), Some(_)) if old.traffic.len() == city.traffic.len() => {
+                    // Only the traffic band of a block changes its drawings.
+                    for (t, (a, b)) in old.traffic.iter().zip(&city.traffic).enumerate() {
+                        if traffic_band(*a) != traffic_band(*b) {
+                            let (bx, by) = ((t / side) as i32 * scale, (t % side) as i32 * scale);
+                            for x in bx..bx + scale {
+                                for y in by..by + scale {
+                                    changed[city.index(x, y)] = true;
+                                }
+                            }
+                        }
+                    }
+                }
+                (None, None) => {}
+                _ => changed.fill(true),
+            }
+        }
+        if old.altitude != city.altitude || old.objects != city.objects {
+            self.maximum_altitude = maximum_altitude(&city);
+        }
+        let edited: Vec<usize> = changed.iter().enumerate().filter(|(_, c)| **c).map(|(i, _)| i).collect();
         self.city = city;
+        if edited.len() > cells / 8 {
+            self.tiles.clear();
+            self.bounds.fill(region::Bounds::UNKNOWN);
+        } else {
+            // A tile reads its own cell and its eight neighbors: shoreline
+            // waterfalls, composite ground, and nothing farther.
+            let edge = self.city.edge;
+            for i in edited {
+                let (x, y) = (i as i32 / edge, i as i32 % edge);
+                for nx in (x - 1).max(0)..=(x + 1).min(edge - 1) {
+                    for ny in (y - 1).max(0)..=(y + 1).min(edge - 1) {
+                        let n = self.city.index(nx, ny);
+                        self.bounds[n] = region::Bounds::UNKNOWN;
+                        self.tiles.remove(&n);
+                    }
+                }
+            }
+        }
+        self.revision += 1;
     }
-    fn remove_tile(&mut self, i: usize) {
-        if let Some(tile) = self.tiles.remove(&i) {
-            self.evicted.extend(tile.draws.iter().map(|d| d.id));
+    pub fn cached_tiles(&self) -> usize {
+        self.tiles.len()
+    }
+}
+fn mark<T: PartialEq>(old: &[T], new: &[T], changed: &mut [bool]) {
+    if old != new {
+        for ((cell, a), b) in changed.iter_mut().zip(old).zip(new) {
+            *cell |= a != b;
         }
     }
+}
+// Traffic sprites change only at these density limits.
+fn traffic_band(density: u8) -> usize {
+    [28, 56, 85, 170].iter().filter(|limit| density > **limit).count()
+}
+fn maximum_altitude(city: &City) -> i32 {
+    city.altitude
+        .iter()
+        .map(|v| (v & 31).max((v >> 5) & 31))
+        .chain(city.objects.iter().copied())
+        .max()
+        .unwrap_or(0)
+        .clamp(0, 31)
 }
 
 use godot::prelude::*;

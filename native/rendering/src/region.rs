@@ -1,11 +1,28 @@
 use super::sprites::Sprite;
 use super::{Builder, Draw, Rect};
 
-const TILE_LIMIT: usize = 16_384;
+// The least recently used tiles leave the cache above this count. Regions keep
+// their own draw lists, so eviction never changes a published region.
+pub const TILE_LIMIT: usize = 65_536;
 // A cached tile owns immutable, uncut draws. Region clipping never modifies it.
 pub(super) struct Tile {
     pub draws: Vec<Draw>,
-    pub pending_reuse: bool,
+    pub revision: u64,
+    pub used: u64,
+}
+// Tile sprite bounds relative to the tile anchor. A width of -1 is unknown.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct Bounds {
+    x: i16,
+    y: i16,
+    w: i16,
+    h: i16,
+}
+impl Bounds {
+    pub const UNKNOWN: Self = Self { x: 0, y: 0, w: -1, h: 0 };
+    fn known(self) -> bool {
+        self.w >= 0
+    }
 }
 #[derive(Default)]
 pub struct Region {
@@ -21,7 +38,58 @@ fn ceil(a: i32, b: i32) -> i32 {
     -(-a).div_euclid(b)
 }
 impl Builder {
+    fn anchor(&self, x: i32, y: i32) -> (i32, i32) {
+        let c = self.config;
+        (
+            c.side() + (self.city.edge + x - y) * c.hw(),
+            c.top() + (x + y) * c.hh() + c.height(),
+        )
+    }
+    fn tile_bounds(&self, x: i32, y: i32) -> Option<Rect> {
+        let b = self.bounds[self.city.index(x, y)];
+        let (ax, ay) = self.anchor(x, y);
+        b.known()
+            .then(|| Rect::new(ax + i32::from(b.x), ay + i32::from(b.y), i32::from(b.w), i32::from(b.h)))
+    }
+    fn store_bounds(&mut self, x: i32, y: i32, draws: &[Draw]) -> Rect {
+        let (ax, ay) = self.anchor(x, y);
+        let mut union: Option<Rect> = None;
+        for draw in draws {
+            let r = draw.rect;
+            union = Some(match union {
+                None => r,
+                Some(u) => {
+                    let (x0, y0) = (u.x.min(r.x), u.y.min(r.y));
+                    Rect::new(x0, y0, (u.x + u.w).max(r.x + r.w) - x0, (u.y + u.h).max(r.y + r.h) - y0)
+                }
+            });
+        }
+        let rect = union.unwrap_or(Rect::new(ax, ay, 0, 0));
+        // Bounds outside the packed range stay unknown; every region then visits the tile.
+        if let [Ok(bx), Ok(by), Ok(bw), Ok(bh)] = [rect.x - ax, rect.y - ay, rect.w, rect.h].map(i16::try_from) {
+            let i = self.city.index(x, y);
+            self.bounds[i] = Bounds {
+                x: bx,
+                y: by,
+                w: bw,
+                h: bh,
+            };
+        }
+        rect
+    }
+    fn evict(&mut self) {
+        if self.tiles.len() < TILE_LIMIT {
+            return;
+        }
+        // Remove about one eighth of the cache at once. Tiles of the current
+        // region stay, even when one region holds more tiles than the limit.
+        let mut stamps: Vec<u64> = self.tiles.values().map(|t| t.used).collect();
+        let (_, cutoff, _) = stamps.select_nth_unstable(TILE_LIMIT / 8);
+        let cutoff = (*cutoff).min(self.stamp - 1);
+        self.tiles.retain(|_, tile| tile.used > cutoff);
+    }
     pub fn region(&mut self, bounds: Rect) -> Result<Region, String> {
+        self.stamp += 1;
         let mut out = Region::default();
         let c = self.config;
         if c.underground {
@@ -35,78 +103,56 @@ impl Builder {
             let slot = self.atlas.slot(key, &self.sprites.images[&key])?;
             quad(&mut out, bounds, slot, bounds);
         }
-        let mut width = 0;
-        let mut height = 0;
-        for (key, sprite) in &self.sprites.images {
-            if *key < (1 << 32)
-                && (*key / 2) as i32 >= c.base()
-                && ((*key / 2) as i32) < c.base() + 500
-            {
-                width = width.max(sprite.w);
-                height = height.max(sprite.h);
-            }
-        }
+        let (width, height) = self.sprite_limit;
         let origin = c.side() + self.city.edge * c.hw();
         let bottom = c.height() + width / 4 + 1 + if c.underground { 31 * c.step() } else { 0 };
-        let top = (if c.underground {
-            32
-        } else {
-            self.maximum_altitude + 1
-        }) * c.step()
-            + height;
+        let top = (if c.underground { 32 } else { self.maximum_altitude + 1 }) * c.step() + height;
         let first = floor(bounds.y - c.top() - bottom, c.hh()).max(0);
         let last = ceil(bounds.y + bounds.h - c.top() + top, c.hh()).min(2 * (self.city.edge - 1));
         let diff_first = floor(bounds.x - origin - width - c.hw() * 2 - 1, c.hw());
         let diff_last = ceil(bounds.x + bounds.w - origin + width, c.hw());
         for diagonal in first..=last {
-            let first_y = 0
-                .max(diagonal - self.city.edge + 1)
-                .max(ceil(diagonal - diff_last, 2));
-            let last_y = (self.city.edge - 1)
-                .min(diagonal)
-                .min(floor(diagonal - diff_first, 2));
+            let first_y = 0.max(diagonal - self.city.edge + 1).max(ceil(diagonal - diff_last, 2));
+            let last_y = (self.city.edge - 1).min(diagonal).min(floor(diagonal - diff_first, 2));
             for y in first_y..=last_y {
                 let x = diagonal - y;
+                // The candidate span uses the largest sprite. Known bounds
+                // skip most candidates without a cache lookup or a painter call.
+                if self.tile_bounds(x, y).is_some_and(|b| !b.clip(bounds).area()) {
+                    continue;
+                }
                 let i = self.city.index(x, y);
                 if !self.tiles.contains_key(&i) {
-                    let mut draws = self.paint(x, y)?;
-                    for draw in &mut draws {
-                        self.serial += 1;
-                        draw.id = self.serial;
+                    let draws = self.paint(x, y)?;
+                    self.builds += 1;
+                    // Cache only the tiles that a region uses.
+                    if !self.store_bounds(x, y, &draws).clip(bounds).area() {
+                        continue;
                     }
-                    if self.tiles.len() >= TILE_LIMIT {
-                        for _ in 0..1024 {
-                            if let Some(key) = self.queue.pop_front() {
-                                self.remove_tile(key);
-                            }
-                        }
-                    }
+                    self.evict();
                     self.tiles.insert(
                         i,
                         Tile {
                             draws,
-                            pending_reuse: false,
+                            revision: self.revision,
+                            used: self.stamp,
                         },
                     );
-                    self.queue.push_back(i);
-                    self.builds += 1;
                 }
                 // Count a tile once when a region first uses it after an update.
-                // Snapshot validation alone does not constitute reuse.
                 let tile = self.tiles.get_mut(&i).unwrap();
-                if tile.pending_reuse {
-                    tile.pending_reuse = false;
+                if tile.revision != self.revision {
+                    tile.revision = self.revision;
                     self.reuses += 1;
                 }
+                tile.used = self.stamp;
                 // Split the borrows so sprite uploads need no tile or image clones.
                 for draw in &tile.draws {
                     let clipped = draw.rect.clip(bounds);
                     if !clipped.area() {
                         continue;
                     }
-                    let slot = self
-                        .atlas
-                        .slot(draw.image, &self.sprites.images[&draw.image])?;
+                    let slot = self.atlas.slot(draw.image, &self.sprites.images[&draw.image])?;
                     let uv = Rect::new(
                         slot.x + clipped.x - draw.rect.x,
                         slot.y + clipped.y - draw.rect.y,

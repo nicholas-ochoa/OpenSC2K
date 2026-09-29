@@ -17,11 +17,10 @@ static func build(region: CityGpuRegionResult, requests: Array[CitySignRequest],
 			continue
 
 		var masks: Array[CitySignForeground.Mask] = []
-		for command: CityStaticCommand in region.occlusion_commands:
-			if int(command.depth_order) <= int(request.draw_order):
-				continue
+		for index in region.draws.candidates(bounds, 1, true):
+			var command := region.occlusion_command(index)
 
-			if not bounds.intersects(Rect2i(command.position, command.size)):
+			if int(command.depth_order) <= int(request.draw_order):
 				continue
 
 			var mask_image := CityIsometricRenderer.sprite_image(
@@ -29,7 +28,7 @@ static func build(region: CityGpuRegionResult, requests: Array[CitySignRequest],
 
 			if mask_image != null:
 				masks.append(CitySignForeground.Mask.new(mask_image, Vector2i(command.position)))
-		var sampled := CityGpuDrawList.paint(region.gpu_draws, bounds, region.background, region.draw_grid())
+		var sampled := region.paint(bounds)
 		var image := CitySignForeground.static_pixels(sampled, masks, bounds)
 		var patch := CitySignForegroundPatch.new()
 		patch.image = image

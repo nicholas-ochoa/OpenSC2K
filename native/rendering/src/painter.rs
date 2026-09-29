@@ -3,13 +3,12 @@
 use super::{Builder, Draw, Rect};
 
 const TRAFFIC: &[i32] = &[
-    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 2, 1, 2, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 2, 1, 0, 0, 1, 2, 1, 2, 0, 0, 11, 12, 11, 12, 11, 12, 11, 12, 13, 13, 13, 13, 13, 13,
-    13, 13, 0, 0, 0, 0, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 0, 0, 0, 0, 28, 29,
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 2, 1, 2, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 0, 0, 1, 2, 1, 2, 0, 0,
+    11, 12, 11, 12, 11, 12, 11, 12, 13, 13, 13, 13, 13, 13, 13, 13, 0, 0, 0, 0, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 0, 0,
+    0, 0, 28, 29,
 ];
 const HEAVY: &[i32] = &[
-    0, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 15, 16, 17, 18, 42, 43, 44, 45, 46,
-    47, 48, 49, 50,
+    0, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 15, 16, 17, 18, 42, 43, 44, 45, 46, 47, 48, 49, 50,
 ];
 fn terrain_sprite(t: i32, water: bool) -> i32 {
     match t {
@@ -30,20 +29,10 @@ fn wireframe(t: i32) -> i32 {
     }
 }
 impl Builder {
-    fn add(
-        &mut self,
-        draws: &mut Vec<Draw>,
-        id: i32,
-        flip: bool,
-        x: i32,
-        baseline: i32,
-    ) -> Result<u64, String> {
+    fn add(&mut self, draws: &mut Vec<Draw>, id: i32, flip: bool, x: i32, baseline: i32) -> Result<u64, String> {
         let key = self.sprites.get(id, flip)?;
         let sprite = &self.sprites.images[&key];
-        draws.push(Draw::new(
-            key,
-            Rect::new(x, baseline - sprite.h, sprite.w, sprite.h),
-        ));
+        draws.push(Draw::new(key, Rect::new(x, baseline - sprite.h, sprite.w, sprite.h)));
         Ok(key)
     }
     fn ground(&self, i: usize, t: i32) -> i32 {
@@ -75,31 +64,14 @@ impl Builder {
         let b = self.city.buildings[i] as i32;
         let sx = c.side() + (self.city.edge + x - y) * c.hw();
         let flat = c.top() + (x + y) * c.hh() + c.height();
-        let base = flat
-            - (if t >= 16 {
-                self.city.water(i)
-            } else {
-                self.city.land(i)
-            }) * c.step();
+        let base = flat - (if t >= 16 { self.city.water(i) } else { self.city.land(i) }) * c.step();
         if x == self.city.edge - 1 || y == self.city.edge - 1 {
             for level in 0..self.city.land(i) {
-                self.add(
-                    &mut draws,
-                    c.base() + 269,
-                    false,
-                    sx,
-                    flat - level * c.step(),
-                )?;
+                self.add(&mut draws, c.base() + 269, false, sx, flat - level * c.step())?;
             }
             if self.city.wet(i) {
                 for level in self.city.land(i)..self.city.water(i) {
-                    self.add(
-                        &mut draws,
-                        c.base() + 284,
-                        false,
-                        sx,
-                        flat - level * c.step(),
-                    )?;
+                    self.add(&mut draws, c.base() + 284, false, sx, flat - level * c.step())?;
                 }
             }
         }
@@ -107,9 +79,7 @@ impl Builder {
         if b < 0x70 && !composite {
             self.add(&mut draws, c.base() + self.ground(i, t), false, sx, base)?;
         }
-        let anchor = b <= 0x60
-            || (0x6c..=0x6f).contains(&b)
-            || self.city.zones[i] & [0x80, 0x10, 0x20, 0x40][self.city.rotation] != 0;
+        let anchor = b <= 0x60 || (0x6c..=0x6f).contains(&b) || self.city.zones[i] & [0x80, 0x10, 0x20, 0x40][self.city.rotation] != 0;
         if b > 0 && anchor {
             if composite && (c.view != 0 || c.redraw_ground) {
                 for (dx, dy, px, py) in [
@@ -121,8 +91,7 @@ impl Builder {
                     let (nx, ny) = (x + dx, y + dy);
                     if nx >= 0 && ny >= 0 && nx < self.city.edge && ny < self.city.edge {
                         let n = self.city.index(nx, ny);
-                        let id = c.base()
-                            + terrain_sprite(self.city.terrain[n] as i32, self.city.wet(n));
+                        let id = c.base() + terrain_sprite(self.city.terrain[n] as i32, self.city.wet(n));
                         self.add(&mut draws, id, false, sx + px, base + py)?;
                     }
                 }
@@ -145,21 +114,12 @@ impl Builder {
                 let traffic = self.sprites.get(id, traffic_flip)?;
                 let masked = self.sprites.traffic(traffic, image);
                 let sprite = &self.sprites.images[&masked];
-                draws.push(Draw::new(
-                    masked,
-                    Rect::new(sx, baseline - sprite.h, sprite.w, sprite.h),
-                ));
+                draws.push(Draw::new(masked, Rect::new(sx, baseline - sprite.h, sprite.w, sprite.h)));
             }
             if b >= 0x70 && self.city.flags[i] & 0xc0 == 0x80 {
                 let key = self.sprites.get(c.base() + 386, false)?;
                 let marker_width = self.sprites.images[&key].w;
-                self.add(
-                    &mut draws,
-                    c.base() + 386,
-                    false,
-                    sx + width / 2 - marker_width / 2,
-                    baseline,
-                )?;
+                self.add(&mut draws, c.base() + 386, false, sx + width / 2 - marker_width / 2, baseline)?;
             }
         }
         if let Some(&offset) = self.city.dispatch.get(&i) {
@@ -222,15 +182,7 @@ impl Builder {
         }
         Some((self.config.base() + 399 + variant, flip))
     }
-    fn paint_underground(
-        &mut self,
-        draws: &mut Vec<Draw>,
-        x: i32,
-        y: i32,
-        pipes: bool,
-        subways: bool,
-        mains: bool,
-    ) -> Result<(), String> {
+    fn paint_underground(&mut self, draws: &mut Vec<Draw>, x: i32, y: i32, pipes: bool, subways: bool, mains: bool) -> Result<(), String> {
         let c = self.config;
         let i = self.city.index(x, y);
         let visible = self.city.visible(i);
@@ -240,27 +192,14 @@ impl Builder {
         let key = self.sprites.get(wire, false)?;
         let top = baseline - self.sprites.images[&key].h;
         let levels = (self.city.altitude[i] >> 10) & 31;
-        if levels > 0
-            && (self.city.visible >= 32
-                || self.city.land(i) - (levels - 1).max(0) < self.city.visible)
-        {
-            let sprite = c.base()
-                + if levels == 1 {
-                    62 + self.city.terrain[i] as i32
-                } else {
-                    352
-                };
+        if levels > 0 && (self.city.visible >= 32 || self.city.land(i) - (levels - 1).max(0) < self.city.visible) {
+            let sprite = c.base() + if levels == 1 { 62 + self.city.terrain[i] as i32 } else { 352 };
             self.add(
                 draws,
                 sprite,
                 false,
                 sx,
-                baseline
-                    + if levels > 1 {
-                        (levels - 1) * c.step()
-                    } else {
-                        0
-                    },
+                baseline + if levels > 1 { (levels - 1) * c.step() } else { 0 },
             )?;
         }
         let mut under = self.city.underground[i] as i32;

@@ -22,9 +22,7 @@ fn fixture(edge: i32, view: i32) -> Builder {
             Sprite {
                 w: 2,
                 h: 2,
-                rgba: vec![
-                    161, 161, 161, 255, 20, 20, 20, 255, 30, 30, 30, 255, 40, 40, 40, 255,
-                ],
+                rgba: vec![161, 161, 161, 255, 20, 20, 20, 255, 30, 30, 30, 255, 40, 40, 40, 255],
                 la: vec![161, 255, 20, 255, 30, 255, 40, 255],
             },
         );
@@ -41,7 +39,9 @@ fn fixture(edge: i32, view: i32) -> Builder {
         },
         images,
         [161, 161, 161, 255],
+        2048,
     )
+    .unwrap()
 }
 #[test]
 fn clipping_keeps_edge_contact_empty() {
@@ -54,20 +54,14 @@ fn sprite_flip_and_traffic_mask_preserve_hidden_colors() {
     let mut b = fixture(4, 2);
     let original = b.sprites.get(1256, false).unwrap();
     let flipped = b.sprites.get(1256, true).unwrap();
-    assert_eq!(
-        b.sprites.images[&flipped].la,
-        [20, 255, 161, 255, 40, 255, 30, 255]
-    );
+    assert_eq!(b.sprites.images[&flipped].la, [20, 255, 161, 255, 40, 255, 30, 255]);
     let masked = b.sprites.traffic(flipped, original);
-    assert_eq!(
-        b.sprites.images[&masked].la,
-        [20, 255, 161, 0, 40, 0, 30, 0]
-    );
+    assert_eq!(b.sprites.images[&masked].la, [20, 255, 161, 0, 40, 0, 30, 0]);
     assert_eq!(b.sprites.images[&flipped].la[3], 255);
 }
 #[test]
 fn atlas_growth_keeps_existing_slots_and_pixels() {
-    let mut atlas = sprites::Atlas::new();
+    let mut atlas = sprites::Atlas::new(2048);
     let sprite = Sprite {
         w: 2046,
         h: 2046,
@@ -78,10 +72,7 @@ fn atlas_growth_keeps_existing_slots_and_pixels() {
     atlas.slot(2, &sprite).unwrap();
     assert_eq!(atlas.edge, 4096);
     assert_eq!(atlas.slots[&1], first);
-    assert_eq!(
-        atlas.data[((first.y * atlas.edge + first.x) * 2) as usize],
-        77
-    );
+    assert_eq!(atlas.data[((first.y * atlas.edge + first.x) * 2) as usize], 77);
     let revision = atlas.revision;
     assert_eq!(atlas.slot(1, &sprite).unwrap(), first);
     assert_eq!(revision, atlas.revision);
@@ -156,24 +147,14 @@ fn object_overrides_expand_the_region_candidate_span() {
     let draws = b.paint(64, 64).unwrap();
     let tree = draws.iter().find(|d| d.sprite == 1006).unwrap();
     let region = b.region(tree.rect).unwrap();
-    assert!(
-        region
-            .draws
-            .iter()
-            .any(|d| d.sprite == 1006 && d.rect == tree.rect)
-    );
+    assert!(region.draws.iter().any(|d| d.sprite == 1006 && d.rect == tree.rect));
 }
 
 #[test]
 fn original_dispatch_requires_matching_overlay_and_skips_record_zero() {
     let mut city = fixture(128, 2).city;
     let mut things = vec![0; 480];
-    for (record, kind, x, y, sprite) in [
-        (0, 7, 1, 1, 382),
-        (1, 7, 2, 3, 382),
-        (2, 8, 4, 5, 383),
-        (39, 14, 6, 7, 384),
-    ] {
+    for (record, kind, x, y, sprite) in [(0, 7, 1, 1, 382), (1, 7, 2, 3, 382), (2, 8, 4, 5, 383), (39, 14, 6, 7, 384)] {
         things[record * 12] = kind;
         things[record * 12 + 3] = x;
         things[record * 12 + 4] = y;
@@ -229,4 +210,102 @@ fn extended_dispatch_reads_coordinate_planes_and_extended_overlay_ids() {
     assert_eq!(city.dispatch.len(), 1);
     city.set_dispatch(&[]);
     assert!(city.dispatch.is_empty());
+}
+
+#[test]
+fn artwork_is_packed_before_the_first_region() {
+    let mut b = fixture(8, 2);
+    let revision = b.atlas.revision;
+    assert_eq!(b.atlas.slots.len(), 500);
+    b.region(Rect::new(0, 0, 600, 700)).unwrap();
+    assert_eq!(b.atlas.revision, revision, "unflipped artwork must not change the atlas");
+}
+
+#[test]
+fn known_bounds_skip_outside_tiles_and_eviction_keeps_recent_tiles() {
+    let mut b = fixture(128, 2);
+    let bounds = Rect::new(1900, 1000, 256, 256);
+    b.region(bounds).unwrap();
+    let painted = b.builds;
+    let cached = b.cached_tiles();
+    assert!(
+        cached > 0 && (cached as i64) < painted,
+        "tiles outside the region must not be cached"
+    );
+    // Evict every cached tile. Known bounds still skip the outside candidates.
+    b.tiles.clear();
+    b.region(bounds).unwrap();
+    assert_eq!(b.builds - painted, cached as i64);
+    // The least recently used tiles leave first.
+    b.tiles.clear();
+    for i in 0..region::TILE_LIMIT {
+        b.tiles.insert(
+            1_000_000 + i,
+            region::Tile {
+                draws: Vec::new(),
+                revision: 0,
+                used: i as u64,
+            },
+        );
+    }
+    b.stamp = region::TILE_LIMIT as u64;
+    b.region(bounds).unwrap();
+    assert!(b.cached_tiles() <= region::TILE_LIMIT);
+    assert!(!b.tiles.contains_key(&1_000_000));
+    assert!(b.tiles.contains_key(&(1_000_000 + region::TILE_LIMIT - 1)));
+}
+
+#[test]
+fn edits_invalidate_neighbors_and_traffic_bands_only() {
+    let mut b = fixture(128, 2);
+    b.city.traffic = vec![0; 32 * 32];
+    let bounds = Rect::new(1900, 1000, 256, 256);
+    b.region(bounds).unwrap();
+    let cached: Vec<usize> = b.tiles.keys().copied().collect();
+    let center = cached[cached.len() / 2];
+    let (x, y) = (center as i32 / 128, center as i32 % 128);
+    let mut city = b.city.clone();
+    city.terrain[center] = 1;
+    // A density change inside one traffic band draws the same sprites.
+    city.traffic[((x / 4) * 32 + (y / 4)) as usize] = 20;
+    b.update(city);
+    for &i in &cached {
+        let (ix, iy) = (i as i32 / 128, i as i32 % 128);
+        let near = (ix - x).abs() <= 1 && (iy - y).abs() <= 1;
+        assert_eq!(b.tiles.contains_key(&i), !near, "cell {ix},{iy}");
+    }
+    let mut city = b.city.clone();
+    city.traffic[((x / 4) * 32 + (y / 4)) as usize] = 100;
+    b.update(city);
+    let block = |i: &usize| (*i as i32 / 128) / 4 == x / 4 && (*i as i32 % 128) / 4 == y / 4;
+    assert!(b.tiles.keys().all(|i| !block(i)));
+    assert!(cached.iter().any(|i| !block(i) && b.tiles.contains_key(i)));
+}
+
+#[test]
+fn draw_index_returns_painter_order_and_changed_commands() {
+    let mut draws = Vec::new();
+    for (at, rect) in [Rect::new(0, 0, 10, 10), Rect::new(60, 0, 10, 10), Rect::new(5, 5, 100, 100)]
+        .into_iter()
+        .enumerate()
+    {
+        let mut d = Draw::new(2, rect);
+        d.depth = at as i64;
+        d.order = (at as i64) << 16;
+        draws.push(d);
+    }
+    draws[1].depth = -1;
+    let index = index::RegionDraws::new(draws.clone());
+    assert_eq!(index.candidates(Rect::new(0, 0, 200, 200), 1, false), [0, 1, 2]);
+    assert_eq!(index.candidates(Rect::new(0, 0, 200, 200), 1, true), [0, 2]);
+    assert_eq!(index.candidates(Rect::new(130, 130, 10, 10), 2, false), [2]);
+    assert!(index.candidates(Rect::new(220, 220, 10, 10), 2, false).is_empty());
+    let mut after = draws.clone();
+    after[2].rect.x += 1;
+    after.remove(0);
+    let changed = index::RegionDraws::new(after).changed(&index);
+    assert_eq!(
+        changed,
+        [Rect::new(5, 5, 100, 100), Rect::new(6, 5, 100, 100), Rect::new(0, 0, 10, 10)]
+    );
 }

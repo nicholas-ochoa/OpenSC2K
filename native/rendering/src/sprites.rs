@@ -47,9 +47,7 @@ impl Sprites {
                     let keep = x < base.w
                         && sy >= 0
                         && sy < base.h
-                        && base.rgba[((sy * base.w + x) * 4) as usize
-                            ..((sy * base.w + x) * 4 + 4) as usize]
-                            == self.target;
+                        && base.rgba[((sy * base.w + x) * 4) as usize..((sy * base.w + x) * 4 + 4) as usize] == self.target;
                     if !keep {
                         let p = (y * copy.w + x) as usize;
                         copy.rgba[p * 4 + 3] = 0;
@@ -72,11 +70,11 @@ pub struct Atlas {
     row: i32,
 }
 impl Atlas {
-    pub fn new() -> Self {
+    pub fn new(edge: i32) -> Self {
         Self {
-            edge: 2048,
+            edge,
             revision: 0,
-            data: vec![0; 2048 * 2048 * 2],
+            data: vec![0; edge as usize * edge as usize * 2],
             slots: HashMap::new(),
             x: 0,
             y: 0,
@@ -90,8 +88,7 @@ impl Atlas {
         let old = self.edge as usize;
         let mut data = vec![0; old * old * 8];
         for y in 0..old {
-            data[y * old * 4..y * old * 4 + old * 2]
-                .copy_from_slice(&self.data[y * old * 2..(y + 1) * old * 2]);
+            data[y * old * 4..y * old * 4 + old * 2].copy_from_slice(&self.data[y * old * 2..(y + 1) * old * 2]);
         }
         self.data = data;
         self.edge *= 2;
@@ -120,8 +117,7 @@ impl Atlas {
         for y in 0..sprite.h {
             let src = (y * sprite.w * 2) as usize;
             let dst = ((rect.y + y) * self.edge * 2 + rect.x * 2) as usize;
-            self.data[dst..dst + sprite.w as usize * 2]
-                .copy_from_slice(&sprite.la[src..src + sprite.w as usize * 2]);
+            self.data[dst..dst + sprite.w as usize * 2].copy_from_slice(&sprite.la[src..src + sprite.w as usize * 2]);
         }
         self.x += sprite.w + 2;
         self.row = self.row.max(sprite.h + 2);
