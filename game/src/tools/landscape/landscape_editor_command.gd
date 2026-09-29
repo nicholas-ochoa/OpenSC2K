@@ -45,42 +45,38 @@ static func apply(city: CityState, group: int, subtool: int, point: Vector2i, ra
 
 		for pass_index in 3:
 			LandscapeCommand.apply_path(staged, CityToolIds.Group.LANDSCAPE, CityToolIds.Landscape.TREES, points, staged_random, true)
+	elif group == CityToolIds.Group.LANDSCAPE:
+		# the generator stream and its waterfall repair run in the native simulation
+		# library. see native/simulation/src/sim/tools/new_terrain.rs
+		NativeSimulationBridge.run("terrain.stream", staged, staged_random, null, null, {"point": point, "length": 128})
 	else:
 		var payloads := {}
 
 		for id in ["ALTM", "XBLD", "XTER", "XZON", "XBIT", "XTXT", "MISC"]:
 			payloads[id] = staged.document.find_chunk(id).decoded_payload.duplicate()
 
-		if group == CityToolIds.Group.LANDSCAPE:
-			var previous_terrain: PackedByteArray = payloads.XTER.duplicate()
-			var previous_flags: PackedByteArray = payloads.XBIT.duplicate()
-			NewTerrainSurface._make_stream(payloads.ALTM, payloads.XBLD, payloads.XTER, payloads.XZON, payloads.XBIT, payloads.XTXT,
-				payloads.MISC,
-					point, 128, staged_random, map_edge)
-			_finish_stream_slopes(payloads, previous_terrain, previous_flags, map_edge)
-		else:
-			var sea := clampi(
-				staged.document.misc_u32(Sc2MiscLayout.WATER_LEVEL) + (1 if subtool == CityToolIds.Bulldozer.RAISE_SEA else -1),
-				0,
-				31,
-			)
-			BinaryData.write_u32_be(payloads.MISC, Sc2MiscLayout.WATER_LEVEL, sea)
-			var water_indices := PackedInt32Array()
+		var sea := clampi(
+			staged.document.misc_u32(Sc2MiscLayout.WATER_LEVEL) + (1 if subtool == CityToolIds.Bulldozer.RAISE_SEA else -1),
+			0,
+			31,
+		)
+		BinaryData.write_u32_be(payloads.MISC, Sc2MiscLayout.WATER_LEVEL, sea)
+		var water_indices := PackedInt32Array()
 
-			for index in (map_edge * map_edge):
-				water_indices.append(index)
+		for index in (map_edge * map_edge):
+			water_indices.append(index)
 
-			TerrainRetile.retile_region(
-				payloads.ALTM,
-				payloads.XBLD,
-				payloads.XTER,
-				payloads.XZON,
-				payloads.XBIT,
-				payloads.MISC,
-				water_indices,
-				sea,
-				map_edge,
-			)
+		TerrainRetile.retile_region(
+			payloads.ALTM,
+			payloads.XBLD,
+			payloads.XTER,
+			payloads.XZON,
+			payloads.XBIT,
+			payloads.MISC,
+			water_indices,
+			sea,
+			map_edge,
+		)
 
 		for id in payloads:
 			staged.document.find_chunk(id).set_decoded_payload(payloads[id])
@@ -126,35 +122,3 @@ static func apply(city: CityState, group: int, subtool: int, point: Vector2i, ra
 	command.random_state_after = random.state
 
 	return command
-
-
-static func _finish_stream_slopes(
-	payloads: Dictionary,
-	previous_terrain: PackedByteArray,
-	previous_flags: PackedByteArray,
-	map_edge: int = 128,
-) -> void:
-	# editor repair only: preserve the recovered generator's path and rng order
-	var terrain: PackedByteArray = payloads.XTER
-	var flags: PackedByteArray = payloads.XBIT
-	var altitude: PackedByteArray = payloads.ALTM
-
-	for index in (map_edge * map_edge):
-		if terrain[index] == previous_terrain[index] and flags[index] == previous_flags[index]:
-			continue
-
-		if terrain[index] < TerrainTileIds.SURFACE_WATER_FIRST or terrain[index] > TerrainTileIds.CHANNEL_LAST or not flags[index] & 4:
-			continue
-
-		var point := Vector2i(index / map_edge, index % map_edge)
-		var height := TerrainEditHeights.land_altitude(altitude, index)
-
-		for delta in [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]:
-			var near: Vector2i = point + delta
-
-			if TerrainEditHeights._point_is_in_bounds(
-				near,
-				map_edge,
-			) and TerrainEditHeights.land_altitude(altitude, near.x * map_edge + near.y) > height:
-				terrain[index] = TerrainTileIds.WATERFALL
-				break

@@ -62,6 +62,13 @@ pub fn ints32(dictionary: &VarDictionary, key: &str) -> Vec<i32> {
     }
 }
 
+pub fn bytes(dictionary: &VarDictionary, key: &str) -> Vec<u8> {
+    match dictionary.get(key).and_then(|value| value.try_to::<PackedByteArray>().ok()) {
+        Some(values) => values.to_vec(),
+        None => Vec::new(),
+    }
+}
+
 pub fn strings(dictionary: &VarDictionary, key: &str) -> Vec<String> {
     match dictionary.get(key).and_then(|value| value.try_to::<PackedStringArray>().ok()) {
         Some(values) => values.as_slice().iter().map(|text| text.to_string()).collect(),

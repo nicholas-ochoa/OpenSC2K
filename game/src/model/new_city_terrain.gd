@@ -74,25 +74,12 @@ static func generate(
 		if chunk == null or chunk.decoded_payload.size() != document.decoded_size(chunk_id):
 			return Result.failure("required %s data is missing or invalid" % chunk_id)
 
-		payloads[chunk_id] = chunk.decoded_payload.duplicate()
+		payloads[chunk_id] = chunk.decoded_payload
 
 	var staged_process := ProcessRandom.new(process_random.state)
 	var staged_game := GameRandom.new(game_random.state)
-	var altitude: PackedByteArray = payloads.ALTM
-	var terrain: PackedByteArray = payloads.XTER
-	var buildings: PackedByteArray = payloads.XBLD
-	var zones: PackedByteArray = payloads.XZON
-	var flags: PackedByteArray = payloads.XBIT
-	var text_overlays: PackedByteArray = payloads.XTXT
-	var misc: PackedByteArray = payloads.MISC
 
-	altitude.fill(0)
-	terrain.fill(0)
-	buildings.fill(0)
-	zones.fill(0)
-	flags.fill(0)
-
-	# Generate one original-size landform, then scale it to the map.
+	# Generate one original-size landform. The native stage scales it to the map.
 	# Larger maps should not gain extra basins.
 	var heights := PackedInt32Array()
 	heights.resize(128 * 128)
@@ -123,70 +110,43 @@ static func generate(
 
 	if extended:
 		TerrainFeatures.carve(heights, coast_flags, water_level, selected, ocean_requested, has_river, staged_game, water, hills)
-		NewTerrainHeights._grade_layout(heights)
 
-	if map_edge != 128:
-		heights = NewTerrainHeights._enlarge_landform(heights, coast_flags, flags, map_edge)
-	else:
-		flags = coast_flags
-		payloads.XBIT = flags
+	# the native simulation library grades, retiles, plants trees, and runs the
+	# streams. see native/simulation/src/sim/tools/new_terrain.rs
+	var response: Dictionary = NativeSimulation.run({
+		"op": "new_terrain",
+		"city": {
+			"map_size": map_edge,
+			"large_version": document.large_version,
+			"disaster_damage_class": -1,
+			"chunks": payloads,
+		},
+		"randoms": PackedInt64Array([staged_process.state, 1, staged_game.state]),
+		"scripts": [null, null, null],
+		"args": {
+			"heights": heights,
+			"coast_flags": coast_flags,
+			"extended": extended,
+			"smooth_slopes": smooth_slopes,
+			"has_ocean": has_ocean,
+			"has_river": has_river,
+			"water_level": water_level,
+			"water": water,
+			"trees": trees,
+		},
+		"budget": 0,
+	})
 
-	NewTerrainHeights._grade_heights(heights, map_edge)
-	if smooth_slopes or extended or map_edge != 128:
-		NewTerrainHeights._grade_layout(heights, map_edge)
-		NewTerrainHeights._fill_unsupported_slopes(heights, map_edge)
-
-	for index in (map_edge * map_edge):
-		altitude[index * 2 + 1] = heights[index] & Sc2AltitudeLayout.LEVEL_MASK
-
-	BinaryData.write_u32_be(misc, MISC_WATER_LEVEL, water_level)
-	BinaryData.write_u32_be(misc, MISC_HAS_OCEAN, 1 if has_ocean else 0)
-	BinaryData.write_u32_be(misc, MISC_HAS_RIVER, 1 if has_river else 0)
-
-	var all_indices := PackedInt32Array()
-	all_indices.resize((map_edge * map_edge))
-
-	for index in (map_edge * map_edge):
-		all_indices[index] = index
-
-	TerrainRetile.retile_region(
-		altitude, buildings, terrain, zones, flags, misc, all_indices, water_level, map_edge
-	)
-
-	NewTerrainSurface._grow_trees(
-		buildings, flags, (((trees * trees) >> 1) * map_edge * map_edge) / 16384, staged_process, map_edge
-	)
-
-	if has_ocean:
-		NewTerrainSurface._finish_ocean(flags, map_edge)
-
-	for _stream_index in ((water >> 2) if not extended else 0):
-		var start := Vector2i(
-			staged_process.next_u15() % map_edge,
-			staged_process.next_u15() % map_edge,
-		)
-		var length := (((staged_process.next_u15() & 0x7f) + 50) * map_edge) / 128
-		NewTerrainSurface._make_stream(
-			altitude,
-			buildings,
-			terrain,
-			zones,
-			flags,
-			text_overlays,
-			misc,
-			start,
-			length,
-			staged_process, map_edge,
-		)
-
-	NewTerrainValues._recount_buildings(buildings, misc)
+	if not response.ok:
+		return Result.failure(response.error)
 
 	for chunk_id in ["ALTM", "XTER", "XBLD", "XZON", "XBIT", "MISC"]:
-		if not document.find_chunk(chunk_id).set_decoded_payload(payloads[chunk_id]):
+		if not document.find_chunk(chunk_id).set_decoded_payload(response.written[chunk_id], true):
 			return Result.failure("cannot store generated %s data" % chunk_id)
 
-	process_random.state = staged_process.state
+	process_random.state = response.randoms[0]
 	game_random.state = staged_game.state
+	var summary: Dictionary = response.result
 
 	var result := Result.new()
 	result.ok = true
@@ -196,11 +156,11 @@ static func generate(
 	result.water = water
 	result.trees = trees
 	result.water_level = water_level
-	result.water_tiles = NewTerrainValues._count_flag(flags, FLAG_WATER)
-	result.salt_water_tiles = NewTerrainValues._count_flag(flags, FLAG_SALT_WATER)
-	result.tree_tiles = NewTerrainValues._count_range(buildings, FIRST_TREE, LAST_TREE)
-	result.minimum_altitude = NewTerrainValues._minimum(altitude, map_edge)
-	result.maximum_altitude = NewTerrainValues._maximum(altitude, map_edge)
+	result.water_tiles = summary.water_tiles
+	result.salt_water_tiles = summary.salt_water_tiles
+	result.tree_tiles = summary.tree_tiles
+	result.minimum_altitude = summary.minimum_altitude
+	result.maximum_altitude = summary.maximum_altitude
 	result.error = ""
 
 	return result

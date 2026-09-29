@@ -17,7 +17,6 @@ use crate::sim::random::{SimLfsrRandom, SimRandom};
 use crate::sim::things::{self, RECORD_SIZE, TYPE_AIRPLANE, TYPE_HELICOPTER};
 use crate::sim::tools::demolish;
 use crate::sim::tools::network::replace_building;
-use crate::sim::tools::terrain::{water_shape, water_transition};
 
 const SOUND_EXPLOSION: i64 = 0x1f8;
 const SOUND_MONSTER_DAMAGE: i64 = 0x202;
@@ -356,7 +355,7 @@ fn monster_damage(
             replace_building(maps.maps.buildings, maps.maps.zones, maps.maps.misc, tile_index, rubble);
         }
         2 => {
-            place_water(maps, point);
+            crate::sim::tools::terrain::place_water(&mut maps.maps, point);
         }
         3 => {
             let overlay_id = provision_wind_power(maps.maps.microsims, maps.maps.labels);
@@ -401,91 +400,6 @@ fn provision_wind_power(microsims: &mut [u8], labels: &mut [u8]) -> i64 {
     }
 
     label_id
-}
-
-/// LandscapeCommand._place_water.
-fn place_water(maps: &mut DisasterMaps, point: Vec2i) -> bool {
-    let edge = maps.maps.map_edge;
-    let tile_index = point.x * edge + point.y;
-    let i = tile_index as usize;
-    let marker = overlay::read(maps.maps.text_overlays, tile_index);
-
-    if maps.maps.flags[i] as i64 & flag_bits::WATER != 0 || (marker > 0xf9 && marker <= 255) {
-        return false;
-    }
-
-    let old_building = maps.maps.buildings[i] as i64;
-
-    if old_building >= tiles::POWER_LINE_FIRST || old_building == tiles::RADIOACTIVE_WASTE {
-        return false;
-    }
-
-    let terrain = maps.maps.terrain[i] as i64;
-
-    if terrain == crate::sim::ids::terrain_tile_ids::FORBIDDEN_COAST || terrain == crate::sim::ids::terrain_tile_ids::WATERFALL {
-        return false;
-    }
-
-    let shape = water_shape(maps.maps.flags, point.x, point.y, edge);
-    let (value, early_return) = water_transition(terrain, shape);
-
-    if !early_return {
-        maps.maps.terrain[i] = value as u8;
-        update_building_count(
-            maps.maps.misc,
-            maps.maps.zones[i] as i64 & zone::TYPE_MASK,
-            old_building,
-            tiles::EMPTY,
-            edge,
-        );
-        maps.maps.buildings[i] = tiles::EMPTY as u8;
-        crate::sim::tools::terrain::set_water_altitude(
-            maps.maps.altitude,
-            tile_index,
-            crate::sim::tools::terrain::land_altitude(maps.maps.altitude, tile_index),
-        );
-        maps.maps.flags[i] = (maps.maps.flags[i] as i64 | flag_bits::WATER) as u8;
-
-        for near_x in (point.x - 1).max(0)..(point.x + 2).min(edge) {
-            for near_y in (point.y - 1).max(0)..(point.y + 2).min(edge) {
-                if near_x == point.x && near_y == point.y {
-                    continue;
-                }
-
-                let near_index = (near_x * edge + near_y) as usize;
-
-                if maps.maps.flags[near_index] as i64 & flag_bits::WATER == 0 {
-                    continue;
-                }
-
-                let near_shape = water_shape(maps.maps.flags, near_x, near_y, edge);
-                let (near_value, near_early_return) = water_transition(maps.maps.terrain[near_index] as i64, near_shape);
-
-                if !near_early_return {
-                    maps.maps.terrain[near_index] = near_value as u8;
-                }
-            }
-        }
-    }
-
-    maps.maps.zones[i] = (maps.maps.zones[i] as i64 & zone::CORNERS_MASK) as u8;
-
-    true
-}
-
-/// LandscapeCommand._update_building_count.
-fn update_building_count(misc: &mut [u8], zone_type: i64, old_building: i64, new_building: i64, map_edge: i64) {
-    if zone_type == zone::MILITARY {
-        return;
-    }
-
-    let mask = if map_edge == 128 { 0xffff } else { 0xffff_ffff };
-    let old_offset = misc_layout::TILE_COUNTS + old_building * 4;
-    let new_offset = misc_layout::TILE_COUNTS + new_building * 4;
-    let old_count = bytes::read_u32_be(misc, old_offset);
-    write_u32_be(misc, old_offset, (old_count - 1) & mask);
-    let new_count = bytes::read_u32_be(misc, new_offset);
-    write_u32_be(misc, new_offset, (new_count + 1) & mask);
 }
 
 /// DisasterThingTick.update_tornado.

@@ -1,10 +1,12 @@
 //! City edit rules that the simulation shares with the player tools: demolition,
-//! network retiling, underground retiling, terrain retiling, highway sections, and view rotation.
+//! network retiling, underground retiling, terrain retiling, highway sections, view rotation,
+//! and the map stages of new-city terrain.
 //! These are ports of the GDScript tool helpers that the simulation calls.
 
 pub mod demolish;
 pub mod highway;
 pub mod network;
+pub mod new_terrain;
 pub mod rotation;
 pub mod terrain;
 pub mod underground;

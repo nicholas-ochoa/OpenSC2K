@@ -18,6 +18,7 @@ use crate::sim::data_maps;
 use crate::sim::disasters::{end as disaster_end, map as disaster_map, start as disaster_start, weather};
 use crate::sim::economy::{self, budget, city_value};
 use crate::sim::engine::month;
+use crate::sim::geom::Vec2i;
 use crate::sim::growth;
 use crate::sim::growth::{aftermath, demand};
 use crate::sim::infrastructure::{power, traffic, water};
@@ -83,6 +84,8 @@ pub const OPERATIONS: &[&str] = &[
     "budget.requires_annual_budget",
     "budget.funding_values",
     "rotation",
+    "new_terrain",
+    "terrain.stream",
 ];
 
 pub struct Outcome {
@@ -280,6 +283,28 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
         }
         "mayor_approval" => {
             Outcome::value(crate::sim::civic::mayor::run(city, &mut randoms.random, convert::int(args, "previous_approval", 0)).to_value())
+        }
+        "new_terrain" => new_terrain(args, city, randoms),
+        "terrain.stream" => {
+            let cells = (city.map_size * city.map_size) as usize;
+            let point = convert::point(args, "point", Vec2i::NONE);
+
+            if point.x < 0
+                || point.y < 0
+                || point.x >= city.map_size
+                || point.y >= city.map_size
+                || city.altm.data.len() != cells * 2
+                || [&city.xter, &city.xbld, &city.xzon, &city.xbit]
+                    .iter()
+                    .any(|chunk| chunk.data.len() != cells)
+                || city.xtxt.data.len() < cells
+            {
+                return Outcome::failure("stream data is missing or invalid");
+            }
+
+            let length = convert::int(args, "length", 0);
+            crate::sim::tools::new_terrain::editor_stream(city, point, length, &mut randoms.random);
+            Outcome::value(Value::Nil)
         }
         "rotation" => {
             Outcome::value(crate::sim::tools::rotation::rotate(city, convert::boolean(args, "counter_clockwise", false)).to_value())
@@ -506,4 +531,37 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
         "echo" => Outcome::value(Value::Int(convert::int(args, "value", 0) + city.map_size)),
         _ => Outcome::failure(format!("unknown native simulation operation: {op}")),
     }
+}
+
+/// `args`: the 128 by 128 `heights` and `coast_flags`, and the generator options.
+fn new_terrain(args: &VarDictionary, city: &mut City, randoms: &mut Randoms) -> Outcome {
+    use crate::sim::tools::new_terrain::{self, LANDFORM_EDGE, Landform};
+
+    let landform = Landform {
+        heights: convert::ints32(args, "heights"),
+        coast_flags: convert::bytes(args, "coast_flags"),
+        extended: convert::boolean(args, "extended", false),
+        smooth_slopes: convert::boolean(args, "smooth_slopes", false),
+        has_ocean: convert::boolean(args, "has_ocean", false),
+        has_river: convert::boolean(args, "has_river", false),
+        water_level: convert::int(args, "water_level", 0),
+        water: convert::int(args, "water", 0),
+        trees: convert::int(args, "trees", 0),
+    };
+    let cells = (city.map_size * city.map_size) as usize;
+
+    if landform.heights.len() != LANDFORM_EDGE * LANDFORM_EDGE
+        || landform.coast_flags.len() != LANDFORM_EDGE * LANDFORM_EDGE
+        || city.map_size < 2
+        || city.altm.data.len() != cells * 2
+        || [&city.xter, &city.xbld, &city.xzon, &city.xbit]
+            .iter()
+            .any(|chunk| chunk.data.len() != cells)
+        || city.xtxt.data.len() < cells
+        || city.misc.data.len() != crate::sim::ids::sc2misc_layout::SIZE as usize
+    {
+        return Outcome::failure("terrain data is missing or invalid");
+    }
+
+    Outcome::value(new_terrain::generate(city, &landform, &mut randoms.random).to_value())
 }

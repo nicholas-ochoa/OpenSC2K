@@ -1,14 +1,17 @@
 //! Terrain and surface water retiling, as TerrainRetile, the LandscapeCommand
 //! water shapes, and the DemolishTerrain helpers.
 
+use super::Maps;
 use super::network::{self, replace_building};
-use crate::sim::bytes::read_u32_be;
+use crate::sim::bytes::{read_u32_be, write_u32_be};
 use crate::sim::geom::Vec2i;
 use crate::sim::ids::building_tile_ids as tiles;
 use crate::sim::ids::sc2altitude_layout as altitude_layout;
+use crate::sim::ids::sc2misc_layout as misc_layout;
 use crate::sim::ids::sc2tile_flags as flag_bits;
 use crate::sim::ids::sc2zone_layout as zone;
 use crate::sim::ids::terrain_tile_ids as terrain_ids;
+use crate::sim::overlay;
 
 pub const NEIGHBOR_OFFSETS: [Vec2i; 8] = [
     Vec2i::new(0, -1),
@@ -334,4 +337,79 @@ pub fn retile_after_demolition(
         super::underground::retile_neighborhood(underground, terrain, point, false, map_edge);
         super::underground::retile_neighborhood(underground, terrain, point, true, map_edge);
     }
+}
+
+/// LandscapeCommand._place_water.
+pub fn place_water(maps: &mut Maps, point: Vec2i) -> bool {
+    let edge = maps.map_edge;
+    let tile_index = point.x * edge + point.y;
+    let i = tile_index as usize;
+    let marker = overlay::read(maps.text_overlays, tile_index);
+
+    if maps.flags[i] as i64 & flag_bits::WATER != 0 || (marker > 0xf9 && marker <= 255) {
+        return false;
+    }
+
+    let old_building = maps.buildings[i] as i64;
+
+    if old_building >= tiles::POWER_LINE_FIRST || old_building == tiles::RADIOACTIVE_WASTE {
+        return false;
+    }
+
+    let terrain = maps.terrain[i] as i64;
+
+    if terrain == terrain_ids::FORBIDDEN_COAST || terrain == terrain_ids::WATERFALL {
+        return false;
+    }
+
+    let shape = water_shape(maps.flags, point.x, point.y, edge);
+    let (value, early_return) = water_transition(terrain, shape);
+
+    if !early_return {
+        maps.terrain[i] = value as u8;
+        update_building_count(maps.misc, maps.zones[i] as i64 & zone::TYPE_MASK, old_building, tiles::EMPTY, edge);
+        maps.buildings[i] = tiles::EMPTY as u8;
+        set_water_altitude(maps.altitude, tile_index, land_altitude(maps.altitude, tile_index));
+        maps.flags[i] = (maps.flags[i] as i64 | flag_bits::WATER) as u8;
+
+        for near_x in (point.x - 1).max(0)..(point.x + 2).min(edge) {
+            for near_y in (point.y - 1).max(0)..(point.y + 2).min(edge) {
+                if near_x == point.x && near_y == point.y {
+                    continue;
+                }
+
+                let near_index = (near_x * edge + near_y) as usize;
+
+                if maps.flags[near_index] as i64 & flag_bits::WATER == 0 {
+                    continue;
+                }
+
+                let near_shape = water_shape(maps.flags, near_x, near_y, edge);
+                let (near_value, near_early_return) = water_transition(maps.terrain[near_index] as i64, near_shape);
+
+                if !near_early_return {
+                    maps.terrain[near_index] = near_value as u8;
+                }
+            }
+        }
+    }
+
+    maps.zones[i] = (maps.zones[i] as i64 & zone::CORNERS_MASK) as u8;
+
+    true
+}
+
+/// LandscapeCommand._update_building_count.
+pub fn update_building_count(misc: &mut [u8], zone_type: i64, old_building: i64, new_building: i64, map_edge: i64) {
+    if zone_type == zone::MILITARY {
+        return;
+    }
+
+    let mask = if map_edge == 128 { 0xffff } else { 0xffff_ffff };
+    let old_offset = misc_layout::TILE_COUNTS + old_building * 4;
+    let new_offset = misc_layout::TILE_COUNTS + new_building * 4;
+    let old_count = read_u32_be(misc, old_offset);
+    write_u32_be(misc, old_offset, (old_count - 1) & mask);
+    let new_count = read_u32_be(misc, new_offset);
+    write_u32_be(misc, new_offset, (new_count + 1) & mask);
 }

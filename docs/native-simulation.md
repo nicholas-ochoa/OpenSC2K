@@ -29,6 +29,9 @@ Godot checks. Rebuild the library after each change to `native/simulation`.
     and `moving` hold the rules of each part of the simulation.
   - `tools` holds the edit rules that the simulation shares with the player tools, such as demolition.
     `tools/rotation.rs` turns the city for `CityRotationCommand`.
+    `tools/new_terrain.rs` runs the map-size stages of `NewCityTerrain` and the landscape
+    editor stream. GDScript still makes the 128 by 128 landform, because its layout features
+    use Godot noise and float vectors.
   - `testing.rs` has test cities and scripted random generators.
 - `src/formats` holds the city file codecs. `rle.rs` decodes and encodes the Maxis run-length
   code of compressed chunks. `MaxisRle` calls it through `NativeMaxisRle`.
