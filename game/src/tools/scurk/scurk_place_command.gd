@@ -131,6 +131,11 @@ static func apply(
 	if not site_error.is_empty():
 		return EditCommandResult.failure(site_error)
 
+	var record_budget := BuildingFacilities.individual_record_budget(city.document)
+
+	if not BuildingFacilities.record_available(microsims, tile_id, record_budget):
+		return EditCommandResult.failure(BuildingFacilities.record_pool_message(record_budget))
+
 	var process_random_state_before := process_random.state
 	var overlay_id := BuildingFacilities.provision_microsim(
 		microsims,
@@ -141,7 +146,8 @@ static func apply(
 		process_random,
 		misc,
 		australian_locale,
-		true
+		true,
+		record_budget,
 	)
 	var zone_id := _zone_for_tile(tile_id, zones, site, selected_zone, map_edge)
 	var placed_flags := (

@@ -22,6 +22,21 @@ const TOP_LEVEL_KEYS: PackedStringArray = [
 	"required_features", "legacy", "extensions",
 ]
 const RNG_KEYS: PackedStringArray = ["process_random", "lfsr_random", "game_random"]
+# simulation.phase_state keys; see Sc2xCheckpoint
+const PHASE_KEYS: PackedStringArray = [
+	"ship_home", "commerce_connections", "industry_connections",
+	"bus_passengers", "rail_passengers", "subway_passengers", "mayor_approval",
+	"pending_disaster_type", "pending_disaster_point", "active_disaster_type", "unsupported_disaster_type",
+	"disaster_map_counter", "disaster_hurricane_counter", "terminal_state",
+	"subtick_counter", "simulation_ready",
+	"developed_tiles", "power_usage_percent", "water_usage_percent", "city_status_resource_id",
+]
+const PHASE_INTEGER_KEYS: PackedStringArray = [
+	"commerce_connections", "industry_connections", "bus_passengers", "rail_passengers", "subway_passengers",
+	"mayor_approval", "pending_disaster_type", "active_disaster_type", "unsupported_disaster_type",
+	"disaster_map_counter", "disaster_hurricane_counter", "subtick_counter",
+	"developed_tiles", "power_usage_percent", "water_usage_percent", "city_status_resource_id",
+]
 # additional capabilities that this version supports. File version 4 itself needs none.
 const SUPPORTED_FEATURES: PackedStringArray = []
 
@@ -276,6 +291,37 @@ static func limit_name(text: String) -> String:
 		result = result.left(result.length() - 1)
 
 	return result
+
+
+# Empty phase state is valid: a converted city starts with the load defaults.
+# Otherwise every key must be present with its type.
+static func phase_state_error(state: Dictionary) -> String:
+	if state.is_empty():
+		return ""
+
+	for key in PHASE_KEYS:
+		if not state.has(key):
+			return "metadata.json phase_state has no %s" % key
+
+	for key in PHASE_INTEGER_KEYS:
+		if not _is_integral(state[key]):
+			return "metadata.json phase_state.%s is not an integer" % key
+
+	for key in ["terminal_state", "simulation_ready"]:
+		if not state[key] is bool:
+			return "metadata.json phase_state.%s is not true or false" % key
+
+	for key in ["ship_home", "pending_disaster_point"]:
+		var value: Variant = state[key]
+
+		if not value is Array or value.size() != 2 or not _is_integral(value[0]) or not _is_integral(value[1]):
+			return "metadata.json phase_state.%s is not a pair of integers" % key
+
+	return ""
+
+
+static func _is_integral(value: Variant) -> bool:
+	return value is int or (value is float and value == floorf(value))
 
 
 static func schema_bytes() -> PackedByteArray:

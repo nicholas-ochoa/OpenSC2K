@@ -220,7 +220,10 @@ fn start_plane_crash(city: &mut City, lfsr: Option<&mut SimLfsrRandom>) -> Disas
         }
     }
 
-    let record = first_free_record(&city.xthg.data);
+    // an sc2x city counts disaster aircraft against its airplane cap
+    let caps = crate::sim::moving::spawner::VehicleCaps::for_city(city);
+    let at_cap = caps.sc2x && count_type(&city.xthg.data, things::TYPE_AIRPLANE) >= caps.airplanes;
+    let record = if at_cap { 0 } else { caps.free_record(&city.xthg.data) };
 
     if record == 0 {
         return result(DISASTER_PLANE_CRASH, point, false, true, 0);

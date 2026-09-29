@@ -404,6 +404,7 @@ impl TileScan {
             span.mark_index(SPECIAL_ZONES);
         }
 
+        let vehicle_caps = crate::sim::moving::spawner::VehicleCaps::for_city(city);
         let City {
             altm,
             xbld,
@@ -429,6 +430,7 @@ impl TileScan {
             rotation: self.rotation,
             map_edge: self.map_edge,
             allow_edge_buildings: self.allow_edge_buildings,
+            vehicle_caps,
         };
         special::process(&mut maps, tile, &mut randoms.random, &mut self.counters);
     }
@@ -958,6 +960,7 @@ mod tests {
                     rotation: 0,
                     map_edge: 16,
                     allow_edge_buildings: true,
+                    vehicle_caps: crate::sim::moving::spawner::VehicleCaps::legacy(16),
                 };
                 let placed = special::grow_special_zone(&mut maps, origin, tile, zone_type);
                 assert!(placed.ok && placed.changed_tiles == 4);

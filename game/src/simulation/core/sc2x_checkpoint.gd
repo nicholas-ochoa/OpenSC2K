@@ -5,28 +5,12 @@ extends RefCounted
 ## the speed controller. A save happens at a completed simulation day: a day
 ## that waits for the player, such as the annual budget, cannot be saved.
 ##
-## Saved: the three random states and the `phase_state` keys below, including
-## the results of the load scan. A city with saved phase state resumes without
+## Saved: the three random states and the `phase_state` keys of
+## Sc2xMetadata.PHASE_KEYS, including the results of the load scan. A city with saved phase state resumes without
 ## a new load scan, so the scan does not draw from the random states again.
 ## Not saved: frame timing accumulators, the fire timer, the traffic news
 ## deadline (a process clock), music playback, the vehicle layer switch, and
 ## pause targets.
-
-const KEYS: PackedStringArray = [
-	"ship_home", "commerce_connections", "industry_connections",
-	"bus_passengers", "rail_passengers", "subway_passengers", "mayor_approval",
-	"pending_disaster_type", "pending_disaster_point", "active_disaster_type", "unsupported_disaster_type",
-	"disaster_map_counter", "disaster_hurricane_counter", "terminal_state",
-	"subtick_counter", "simulation_ready",
-	"developed_tiles", "power_usage_percent", "water_usage_percent", "city_status_resource_id",
-]
-const INTEGER_KEYS: PackedStringArray = [
-	"commerce_connections", "industry_connections", "bus_passengers", "rail_passengers", "subway_passengers",
-	"mayor_approval", "pending_disaster_type", "active_disaster_type", "unsupported_disaster_type",
-	"disaster_map_counter", "disaster_hurricane_counter", "subtick_counter",
-	"developed_tiles", "power_usage_percent", "water_usage_percent", "city_status_resource_id",
-]
-
 
 # Empty when the engine is at a completed day and can be saved
 static func save_error(controller: GameSpeedController) -> String:
@@ -125,35 +109,8 @@ static func restore(controller: GameSpeedController, metadata: Sc2xMetadata) -> 
 	return ""
 
 
-# Empty phase state is valid: a converted city starts with the load defaults.
-# Otherwise every key must be present with its type.
 static func validate(state: Dictionary) -> String:
-	if state.is_empty():
-		return ""
-
-	for key in KEYS:
-		if not state.has(key):
-			return "metadata.json phase_state has no %s" % key
-
-	for key in INTEGER_KEYS:
-		if not _is_integer(state[key]):
-			return "metadata.json phase_state.%s is not an integer" % key
-
-	for key in ["terminal_state", "simulation_ready"]:
-		if not state[key] is bool:
-			return "metadata.json phase_state.%s is not true or false" % key
-
-	for key in ["ship_home", "pending_disaster_point"]:
-		var value: Variant = state[key]
-
-		if not value is Array or value.size() != 2 or not _is_integer(value[0]) or not _is_integer(value[1]):
-			return "metadata.json phase_state.%s is not a pair of integers" % key
-
-	return ""
-
-
-static func _is_integer(value: Variant) -> bool:
-	return value is int or (value is float and value == floorf(value))
+	return Sc2xMetadata.phase_state_error(state)
 
 
 static func _point(value: Array) -> Vector2i:

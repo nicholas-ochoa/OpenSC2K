@@ -638,6 +638,7 @@ mod tests {
                     rotation,
                     map_edge,
                     allow_edge_buildings: false,
+                    vehicle_caps: crate::sim::moving::spawner::VehicleCaps::legacy(map_edge),
                 };
                 let grown = proposal.changed_indices.0.iter().any(|index| {
                     let point = Vec2i::new(*index as i64 / edge, *index as i64 % edge);

@@ -132,9 +132,10 @@ static func rotated(city: CityState, counter_clockwise: bool) -> Dictionary:
 		if int(table.ids[slot]) == 0:
 			continue
 
-		var turned := CityRotationCommand.rotate_point(Vector2i(xs[slot], ys[slot]), city.map_size, counter_clockwise)
-		xs[slot] = turned.x
-		ys[slot] = turned.y
+		var point := Vector2i(xs[slot], ys[slot])
+		var last := city.map_size - 1
+		xs[slot] = point.y if counter_clockwise else last - point.y
+		ys[slot] = last - point.x if counter_clockwise else point.x
 
 	return NativeSc2x.encode_signs({
 		"ids": table.ids, "xs": xs, "ys": ys, "texts": table.texts, "extension": table.extension,

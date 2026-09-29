@@ -13,6 +13,7 @@ use crate::sim::ids::sc2zone_layout as zone;
 use crate::sim::ids::terrain_tile_ids as terrain_ids;
 use crate::sim::ids::underground_tile_ids as under;
 use crate::sim::moving::spawner;
+use crate::sim::moving::spawner::VehicleCaps;
 use crate::sim::random::SimRandom;
 use crate::sim::tools::network::{count_mask, military_count_index};
 use crate::sim::tools::set_growth_corners;
@@ -54,6 +55,7 @@ pub struct SpecialMaps<'a> {
     pub rotation: i64,
     pub map_edge: i64,
     pub allow_edge_buildings: bool,
+    pub vehicle_caps: VehicleCaps,
 }
 
 #[derive(Clone, Copy, Default)]
@@ -225,7 +227,7 @@ fn airport_selection(
         }
 
         if random.next_u15() % 10 < 4 {
-            let helicopter = spawner::spawn_helicopter(maps.things, maps.text_overlays, point, random, edge);
+            let helicopter = spawner::spawn_helicopter(maps.things, maps.text_overlays, point, random, &maps.vehicle_caps, edge);
 
             if helicopter.spawned {
                 counters.spawned_helicopters += 1;
@@ -233,7 +235,15 @@ fn airport_selection(
         } else {
             let flipped = crate::sim::bytes::at(maps.flags, index) & flag_bits::FLIPPED != 0;
             let runway_axis = if flipped != (maps.rotation & 1 != 0) { 2 } else { 0 };
-            let airplane = spawner::spawn_airplane(maps.things, maps.text_overlays, point, runway_axis, random, edge);
+            let airplane = spawner::spawn_airplane(
+                maps.things,
+                maps.text_overlays,
+                point,
+                runway_axis,
+                random,
+                &maps.vehicle_caps,
+                edge,
+            );
 
             if airplane.spawned {
                 counters.spawned_airplanes += 1;
@@ -295,7 +305,15 @@ fn seaport_selection(
 
     if random.next_u15() & 3 != 0 {
         if !military && current_tile == tiles::CRANE && random.next_u15() & 3 == 0 {
-            let ship = spawner::spawn_ship(maps.terrain, maps.things, maps.text_overlays, point, random, edge);
+            let ship = spawner::spawn_ship(
+                maps.terrain,
+                maps.things,
+                maps.text_overlays,
+                point,
+                random,
+                &maps.vehicle_caps,
+                edge,
+            );
 
             if ship.spawned {
                 counters.spawned_ships += 1;
@@ -804,6 +822,7 @@ mod tests {
             rotation,
             map_edge,
             allow_edge_buildings: false,
+            vehicle_caps: VehicleCaps::legacy(map_edge),
         }
     }
 
@@ -1029,6 +1048,7 @@ mod edge_tests {
             rotation,
             map_edge,
             allow_edge_buildings: false,
+            vehicle_caps: VehicleCaps::legacy(map_edge),
         }
     }
 

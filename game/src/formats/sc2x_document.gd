@@ -111,7 +111,7 @@ static func load_bytes(document: Sc2File, bytes: PackedByteArray) -> bool:
 	document.sc2x_metadata = metadata
 	document.sc2x_unsupported_features = metadata.unsupported_features()
 
-	var phase_error := Sc2xCheckpoint.validate(metadata.phase_state)
+	var phase_error := Sc2xMetadata.phase_state_error(metadata.phase_state)
 
 	if not phase_error.is_empty():
 		return _fail(document, phase_error)
@@ -376,8 +376,9 @@ static func content_digest(document: Sc2File) -> PackedByteArray:
 
 
 # A working document from a valid SC2, SCN, or SCLG document. The source stays
-# unchanged. `issues` lists links that the new structures cannot hold.
-static func from_legacy(source: Sc2File, fallback_name := "") -> ConversionResult:
+# unchanged. `issues` lists links that the new structures cannot hold. An import
+# keeps record capacities above its map profile; a `fresh` city uses the profile.
+static func from_legacy(source: Sc2File, fallback_name := "", fresh := false) -> ConversionResult:
 	if source == null or not source.is_valid():
 		return ConversionResult.failure("The source city is not valid")
 
@@ -411,6 +412,7 @@ static func from_legacy(source: Sc2File, fallback_name := "") -> ConversionResul
 		"facility_capacity": limits.facilities,
 		"thing_capacity": limits.things,
 		"sign_capacity": limits.signs,
+		"trim_free_tail": fresh,
 	})
 
 	if not split.ok:
@@ -583,7 +585,7 @@ static func create_empty(edge: int, city_name := "New City") -> ConversionResult
 # layout. A new city has no import data, so it keeps no legacy record and
 # starts with an empty compatibility label table.
 static func from_new_city(source: Sc2File, city_name: String, mayor_name: String) -> ConversionResult:
-	var converted := from_legacy(source)
+	var converted := from_legacy(source, "", true)
 
 	if not converted.ok:
 		return converted

@@ -133,6 +133,50 @@ static func assign_stadium_team(
 	return updated_command
 
 
+# The individual facility records that new facilities of an SC2X version 4
+# city may use: the map profile without the reserved and shared slots. An
+# imported table can be larger; creation then stops until use falls below the
+# budget. -1 for other cities, which keep the original allocation.
+static func individual_record_budget(document: Sc2File) -> int:
+	if document == null or not document.is_sc2x():
+		return -1
+
+	return int(Sc2xDocument.profile(document.map_size).get("facilities", MICROSIM_DYNAMIC_FIRST)) - MICROSIM_DYNAMIC_FIRST
+
+
+static func active_individual_records(microsims: PackedByteArray) -> int:
+	var total := 0
+
+	for record in range(MICROSIM_DYNAMIC_FIRST, microsims.size() / CityState.MICROSIM_RECORD_SIZE):
+		total += int(microsims[record * CityState.MICROSIM_RECORD_SIZE] != 0)
+
+	return total
+
+
+# True when a facility of `tile_id` can get its record. Shared categories use
+# their fixed slots. A negative budget keeps the original rules.
+static func record_available(microsims: PackedByteArray, tile_id: int, record_budget: int) -> bool:
+	var microsim_type := int(MICROSIM_TYPE_BY_TILE.get(tile_id, 0))
+
+	if record_budget < 0 or microsim_type == 0 or microsim_type > 16:
+		return true
+
+	if active_individual_records(microsims) >= record_budget:
+		return false
+
+	for record in range(MICROSIM_DYNAMIC_FIRST, microsims.size() / CityState.MICROSIM_RECORD_SIZE):
+		if microsims[record * CityState.MICROSIM_RECORD_SIZE] == 0:
+			return true
+
+	return false
+
+
+static func record_pool_message(record_budget: int) -> String:
+	return "All %d facility records are in use. Demolish a facility before you build another one." % record_budget
+
+
+# With a record budget (an SC2X version 4 city), a full pool gets no record and
+# an arcology never takes the record of another facility.
 static func provision_microsim(
 	microsims: PackedByteArray,
 	labels: PackedByteArray,
@@ -142,11 +186,15 @@ static func provision_microsim(
 	process_random: SimRandom,
 	misc := PackedByteArray(),
 	australian_locale := false,
-	scurk_place_mode := false
+	scurk_place_mode := false,
+	record_budget := -1,
 ) -> int:
 	var microsim_type := int(MICROSIM_TYPE_BY_TILE.get(tile_id, 0))
 
 	if microsim_type == 0:
+		return 0
+
+	if not record_available(microsims, tile_id, record_budget):
 		return 0
 
 	var record_id := -1
@@ -159,7 +207,7 @@ static func provision_microsim(
 	else:
 		record_id = microsim_type - 16
 
-	if record_id < 0 and tile_id >= PLYMOUTH_ARCOLOGY:
+	if record_id < 0 and tile_id >= PLYMOUTH_ARCOLOGY and record_budget < 0:
 		for checked_id in range(MICROSIM_DYNAMIC_FIRST, microsims.size() / CityState.MICROSIM_RECORD_SIZE):
 			if microsims[checked_id * CityState.MICROSIM_RECORD_SIZE] < PLYMOUTH_ARCOLOGY:
 				record_id = checked_id

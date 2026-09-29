@@ -85,6 +85,15 @@ static func apply(
 
 		return blocked
 
+	# an sc2x version 4 city never builds a facility without its record
+	var record_budget := BuildingFacilities.individual_record_budget(city.document)
+
+	if not BuildingFacilities.record_available(microsims, tile_id, record_budget):
+		var full := BuildingEditResult.rejected(BuildingFacilities.record_pool_message(record_budget), cost)
+		full.lfsr_advanced = lfsr_random.state != lfsr_state_before
+
+		return full
+
 	var overlay_id := BuildingFacilities.provision_microsim(
 		microsims,
 		labels,
@@ -93,7 +102,9 @@ static func apply(
 		city.current_year(),
 		process_random,
 		misc,
-		australian_locale
+		australian_locale,
+		false,
+		record_budget,
 	)
 
 	var tile_indices := _write_footprint(buildings, zones, flags, misc, text_overlays, site, tile_id, overlay_id, map_edge)

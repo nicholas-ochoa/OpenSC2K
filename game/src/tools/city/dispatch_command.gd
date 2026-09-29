@@ -120,7 +120,7 @@ static func apply(
 	if slot_index <= active_records.size():
 		_delete_thing(things, text, active_records[slot_index - 1], map_edge)
 
-	var thing_index := _first_free_thing(things)
+	var thing_index := _first_free_thing(things, _thing_budget(city))
 
 	if thing_index < 0 and city.document.misc_u32(Sc2MiscLayout.CITY_MODE) == 2:
 		thing_index = ThingData.count(things) - 1
@@ -227,12 +227,30 @@ static func _records_of_type(things: PackedByteArray, thing_type: int) -> Packed
 	return result
 
 
-static func _first_free_thing(things: PackedByteArray) -> int:
-	for thing_index in range(FIRST_THING, ThingData.count(things)):
-		if ThingData.read(things, thing_index * THING_RECORD_SIZE) == 0:
-			return thing_index
+# With a budget (an SC2X version 4 city), no record is free while the active
+# objects fill the budget, even when an imported table has more slots.
+static func _first_free_thing(things: PackedByteArray, budget := -1) -> int:
+	var active := 0
+	var free := -1
 
-	return -1
+	for thing_index in range(FIRST_THING, ThingData.count(things)):
+		if ThingData.read(things, thing_index * THING_RECORD_SIZE) != 0:
+			active += 1
+		elif free < 0:
+			free = thing_index
+
+			if budget < 0:
+				return free
+
+	return free if budget < 0 or active < budget else -1
+
+
+# the usable moving-object records of an SC2X version 4 city; -1 for others
+static func _thing_budget(city: CityState) -> int:
+	if city == null or not city.document.is_sc2x():
+		return -1
+
+	return int(Sc2xDocument.profile(city.map_size).get("things", 1)) - 1
 
 
 static func _delete_thing(

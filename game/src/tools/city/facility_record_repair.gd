@@ -34,6 +34,9 @@ static func apply(city: CityState) -> Result:
 	var rebuilt_shared: Dictionary[int, bool] = {}
 	var edge := city.map_size
 	var next_free := BuildingCommand.MICROSIM_DYNAMIC_FIRST
+	# an sc2x version 4 city keeps its record budget during repair too
+	var record_budget := BuildingFacilities.individual_record_budget(document)
+	var active_records := BuildingFacilities.active_individual_records(microsims)
 
 	for x in edge:
 		for y in edge:
@@ -89,11 +92,12 @@ static func apply(city: CityState) -> Result:
 				while next_free < city.microsim_count() and microsims[next_free * 8] != 0:
 					next_free += 1
 
-				if next_free == city.microsim_count():
+				if next_free == city.microsim_count() or (record_budget >= 0 and active_records >= record_budget):
 					result.unfilled += 1
 					continue
 
 				record = next_free
+				active_records += 1
 			else:
 				if microsims[record * 8] == 0:
 					rebuilt_shared[record] = true

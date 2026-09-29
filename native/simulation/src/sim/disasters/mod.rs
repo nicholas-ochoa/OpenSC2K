@@ -98,6 +98,7 @@ impl City {
     pub fn disaster_maps(&mut self) -> DisasterMaps<'_> {
         let rotation = self.compass_rotation();
         let wide_labels = self.large_version >= 4;
+        let vehicle_caps = crate::sim::moving::spawner::VehicleCaps::for_city(self);
         let City {
             map_size,
             altm,
@@ -130,6 +131,7 @@ impl City {
                 text_overlays: &mut xtxt.data,
                 labels: &mut xlab.data,
                 wide_labels,
+                vehicle_caps,
                 microsims: &mut xmic.data,
                 misc: &mut misc.data,
             },

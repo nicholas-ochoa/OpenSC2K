@@ -58,6 +58,9 @@ pub struct SplitOptions {
     pub facility_capacity: usize,
     pub thing_capacity: usize,
     pub sign_capacity: usize,
+    /// Drop empty slots past the least capacities, as for a new city. An import
+    /// keeps its larger capacity.
+    pub trim_free_tail: bool,
 }
 
 #[derive(Debug, Default)]
@@ -250,8 +253,22 @@ pub fn split(working: &Working, options: SplitOptions) -> Result<Split, String> 
         return Err("XMIC is not a whole number of 8-byte records".into());
     }
 
-    let facility_count = working.xmic.len() / 8;
-    let thing_count = things::count(working.xthg) as usize;
+    let mut facility_count = working.xmic.len() / 8;
+    let mut thing_count = things::count(working.xthg) as usize;
+
+    if options.trim_free_tail {
+        let used = |record: usize| working.xmic[record * 8..record * 8 + 8].iter().any(|byte| *byte != 0);
+        let last = (0..facility_count)
+            .rev()
+            .find(|record| used(*record))
+            .map_or(0, |record| record + 1);
+        facility_count = facility_count.min(last.max(options.facility_capacity));
+        let last = (0..thing_count)
+            .rev()
+            .find(|slot| working_record(working.xthg, *slot) != [0; 24])
+            .map_or(0, |slot| slot + 1);
+        thing_count = thing_count.min(last.max(options.thing_capacity));
+    }
     let gather_signs = options.signs.is_none();
     let mut issues = Vec::new();
     let mut markers = vec![0u8; cells];
@@ -1019,6 +1036,46 @@ mod tests {
         assert_eq!(things::field(&joined.xthg, 1, FIELD_LABEL as i64), 0);
         assert_eq!(overlay::read(&joined.xtxt, 4 * 128 + 4), 0);
         assert_eq!(overlay::read(&joined.xtxt, 10 * 128 + 10), overlay::facility_id(20));
+    }
+
+    #[test]
+    fn a_new_city_trims_empty_slots_but_an_import_keeps_them() {
+        let parts = (vec![0u8; 128 * 128], vec![0u8; 150 * 8], vec![0u8; LEGACY_SIZE], vec![0u8; 6400]);
+        let view = Working {
+            edge: 128,
+            xtxt: &parts.0,
+            xmic: &parts.1,
+            xthg: &parts.2,
+            labels: &parts.3,
+            wide_labels: false,
+        };
+        let options = |trim| SplitOptions {
+            facility_capacity: 64,
+            thing_capacity: 16,
+            sign_capacity: 16,
+            trim_free_tail: trim,
+            ..Default::default()
+        };
+        let fresh = split(&view, options(true)).unwrap();
+        assert_eq!((fresh.xmic.facilities.len(), fresh.xthg.things.len()), (64, 16));
+        let import = split(&view, options(false)).unwrap();
+        assert_eq!((import.xmic.facilities.len(), import.xthg.things.len()), (150, 40));
+
+        let mut used = parts.clone();
+        used.1[100 * 8] = 0xd2;
+        let view = Working {
+            edge: 128,
+            xtxt: &used.0,
+            xmic: &used.1,
+            xthg: &used.2,
+            labels: &used.3,
+            wide_labels: false,
+        };
+        assert_eq!(
+            split(&view, options(true)).unwrap().xmic.facilities.len(),
+            101,
+            "a used slot is never dropped"
+        );
     }
 
     #[test]

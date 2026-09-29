@@ -150,6 +150,7 @@ pub fn generate(city: &mut City, landform: &Landform, random: &mut SimRandom) ->
             text_overlays: &mut text_overlays,
             labels: &mut labels,
             wide_labels: false,
+            vehicle_caps: crate::sim::moving::spawner::VehicleCaps::legacy(edge as i64),
             microsims: &mut microsims,
             misc: &mut misc,
         };

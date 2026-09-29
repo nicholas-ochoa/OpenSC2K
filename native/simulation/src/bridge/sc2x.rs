@@ -319,8 +319,8 @@ impl NativeSc2x {
     /// Save working or legacy chunks as version 4 entries. The request has `edge`,
     /// `xtxt`, `xmic`, `xthg`, `labels`, `wide_labels`, optional `signs` (XSGN.bin
     /// of a working document), `object_ids`, `object_names`, `next_sign_id`,
-    /// `next_object_id`, and the least `facility_capacity`, `thing_capacity`, and
-    /// `sign_capacity`. The result has `entries` (`XTXT`, `XMIC`, `XTHG`, `XSGN`),
+    /// `next_object_id`, the least `facility_capacity`, `thing_capacity`, and
+    /// `sign_capacity`, and `trim_free_tail` for a new city. The result has `entries` (`XTXT`, `XMIC`, `XTHG`, `XSGN`),
     /// `mayor_name`, `team_names`, `residual_labels`, the next IDs, and `issues`.
     #[func]
     fn split(request: VarDictionary) -> VarDictionary {
@@ -350,6 +350,7 @@ impl NativeSc2x {
             facility_capacity: usize_of(&request, "facility_capacity"),
             thing_capacity: usize_of(&request, "thing_capacity"),
             sign_capacity: usize_of(&request, "sign_capacity"),
+            trim_free_tail: convert::boolean(&request, "trim_free_tail", false),
         };
         let working = Working {
             edge,

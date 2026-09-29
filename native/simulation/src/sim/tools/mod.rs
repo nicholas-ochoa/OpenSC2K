@@ -14,6 +14,7 @@ pub mod underground;
 use super::city::City;
 use super::geom::Vec2i;
 use super::ids::sc2zone_layout as zone;
+use super::moving::spawner::VehicleCaps;
 
 /// The tile maps that an edit reads and writes, borrowed from one city.
 pub struct Maps<'a> {
@@ -28,6 +29,8 @@ pub struct Maps<'a> {
     pub labels: &'a mut [u8],
     /// True for the wide label records of an SC2X version 4 working document.
     pub wide_labels: bool,
+    /// The vehicle caps and record pool budget of the city.
+    pub vehicle_caps: VehicleCaps,
     pub microsims: &'a mut [u8],
     pub misc: &'a mut [u8],
 }
@@ -35,6 +38,8 @@ pub struct Maps<'a> {
 impl City {
     /// Borrow the edit maps. This does not mark the chunks written.
     pub fn maps(&mut self) -> Maps<'_> {
+        let vehicle_caps = VehicleCaps::for_city(self);
+
         Maps {
             map_edge: self.map_size,
             altitude: &mut self.altm.data,
@@ -44,8 +49,9 @@ impl City {
             underground: &mut self.xund.data,
             flags: &mut self.xbit.data,
             text_overlays: &mut self.xtxt.data,
-            labels: &mut self.xlab.data,
             wide_labels: self.large_version >= 4,
+            vehicle_caps,
+            labels: &mut self.xlab.data,
             microsims: &mut self.xmic.data,
             misc: &mut self.misc.data,
         }
@@ -66,6 +72,7 @@ impl City {
     /// Borrow the edit maps with XTHG, XTRF, XPLT, XVAL, and XCRM.
     pub fn parts(&mut self) -> CityParts<'_> {
         let wide_labels = self.large_version >= 4;
+        let vehicle_caps = VehicleCaps::for_city(self);
         let City {
             map_size,
             altm,
@@ -98,6 +105,7 @@ impl City {
                 text_overlays: &mut xtxt.data,
                 labels: &mut xlab.data,
                 wide_labels,
+                vehicle_caps,
                 microsims: &mut xmic.data,
                 misc: &mut misc.data,
             },

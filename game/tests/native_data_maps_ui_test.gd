@@ -62,20 +62,22 @@ func _run() -> void:
 	main.menus.on_options_menu(CityMenuBar.MENU_UPGRADE_SC2X)
 	main.sc2x_conversion_dialog.hide()
 	main.sc2x_conversion_dialog.confirmed.emit()
-	check(document.full_resolution_maps(), "Options upgrades city after confirmation")
+	var upgraded: Sc2File = main.document_state.current_document
+	check(upgraded != document and upgraded.is_sc2x() and document.serialize().data == old_bytes,
+		"Options upgrades a separate SC2X version 4 city after confirmation")
 	check(not main.simulation_state.speed_controller.original_compatibility, "An SC2X city uses the extended fire timing")
 	check(main.options_menu.get_popup().get_item_index(CityMenuBar.MENU_UPGRADE_SC2X) < 0, "SC2X hides upgrade")
 	check(main.document_state.current_save_path.is_empty(), "Conversion requires a separate save path")
 	check(main.tool_state.last_edit_command == null, "Old-format undo is cleared")
-	check(main.simulation_state.simulation_engine.get_instance_id() == engine_id
+	check(main.simulation_state.simulation_engine.get_instance_id() != engine_id
 		and main.simulation_state.simulation_engine.random.state == random_state,
-		"Conversion keeps simulation and RNG state")
+		"Conversion keeps the simulation RNG state")
 	check(main.simulation_state.frame_simulation != null, "Native 128 city uses sliced worker")
 	check(
 		main.city_dialogs.city_save_dialog.visible and main.city_dialogs.city_save_dialog.current_file.ends_with(".sc2x"),
 		"Conversion opens SC2X Save As",
 	)
-	check(document.serialize().data != old_bytes and main.city_files._city_has_unsaved_changes(), "Conversion is an unsaved change")
+	check(main.city_files._city_has_unsaved_changes(), "Conversion is an unsaved change")
 	main.city_dialogs.city_save_dialog.hide()
 	var saved_path: String = main.document_state.current_save_path
 	main.city_files.upgrade_city_to_sc2x()
@@ -89,7 +91,8 @@ func _run() -> void:
 	main.city_files.upgrade_city_to_sc2x()
 	check(not second.is_extended() and main.sc2x_conversion_dialog.visible, "Conversion always asks first")
 	main.sc2x_conversion_dialog.get_ok_button().pressed.emit()
-	check(second.is_extended() and not main.sc2x_conversion_dialog.visible, "Confirmed warning converts the city")
+	check(main.document_state.current_document.is_sc2x() and not second.is_extended()
+		and not main.sc2x_conversion_dialog.visible, "Confirmed warning converts the city")
 	main.city_dialogs.city_save_dialog.hide()
 	main.queue_free()
 	await process_frame

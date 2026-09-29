@@ -167,7 +167,16 @@ pub fn process_microsim(
         let train_limit = super::special::tile_count(maps.misc, tiles::RAIL_STATION, false, edge) / 4;
 
         if spawner::count_type(things_data, things::TYPE_TRAIN_ENGINE) < train_limit
-            && spawner::spawn_train(maps.buildings, things_data, maps.text_overlays, point, game_random, lfsr, edge)
+            && spawner::spawn_train(
+                maps.buildings,
+                things_data,
+                maps.text_overlays,
+                point,
+                game_random,
+                lfsr,
+                &maps.vehicle_caps,
+                edge,
+            )
         {
             counters.spawned_trains += 1;
         }
@@ -183,8 +192,16 @@ pub fn process_microsim(
         let sailboat_limit = super::special::tile_count(maps.misc, tiles::MARINA, false, edge) / 9;
 
         if spawner::count_type(things_data, things::TYPE_SAILBOAT) < sailboat_limit {
-            counters.spawned_sailboats +=
-                spawner::spawn_sailboats(maps.buildings, maps.flags, things_data, maps.text_overlays, point, lfsr, edge);
+            counters.spawned_sailboats += spawner::spawn_sailboats(
+                maps.buildings,
+                maps.flags,
+                things_data,
+                maps.text_overlays,
+                point,
+                lfsr,
+                &maps.vehicle_caps,
+                edge,
+            );
         }
 
         return;

@@ -25,6 +25,89 @@ pub struct Spawned {
     pub goal: i64,
 }
 
+/// Ordinary vehicle caps. Original and SCLG cities keep the formulas of the
+/// original spawner. SC2X version 4 cities use their map profile: the train
+/// cap counts surface and subway engines, each sailboat of a batch checks the
+/// cap, a train takes its three records at once, and new vehicles stop when the
+/// record pool reaches its budget.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct VehicleCaps {
+    pub airplanes: i64,
+    pub helicopters: i64,
+    pub ships: i64,
+    pub sailboats: i64,
+    pub trains: i64,
+    /// Active records that allow a new object. The original has no pool budget.
+    pub pool: i64,
+    pub sc2x: bool,
+}
+
+impl VehicleCaps {
+    pub fn legacy(map_edge: i64) -> Self {
+        let scale = scale(map_edge);
+
+        Self {
+            airplanes: 2 * scale,
+            helicopters: scale,
+            ships: scale,
+            sailboats: 4 * scale,
+            trains: 5 * scale,
+            pool: i64::MAX,
+            sc2x: false,
+        }
+    }
+
+    pub fn sc2x(map_edge: i64) -> Self {
+        let Some(profile) = crate::formats::sc2x::limits::profile_for(map_edge.max(0) as usize) else {
+            return Self::legacy(map_edge);
+        };
+
+        Self {
+            airplanes: profile.airplanes as i64,
+            helicopters: profile.helicopters as i64,
+            ships: profile.ships as i64,
+            sailboats: profile.sailboats as i64,
+            trains: profile.trains as i64,
+            pool: profile.usable_things() as i64,
+            sc2x: true,
+        }
+    }
+
+    pub fn for_city(city: &crate::sim::city::City) -> Self {
+        if city.is_sc2x_working() {
+            Self::sc2x(city.map_size)
+        } else {
+            Self::legacy(city.map_size)
+        }
+    }
+
+    /// The engines that count against the train cap.
+    pub fn engines(&self, data: &[u8]) -> i64 {
+        let surface = count_type(data, TYPE_TRAIN_ENGINE);
+
+        if self.sc2x {
+            surface + count_type(data, TYPE_SUBWAY_ENGINE)
+        } else {
+            surface
+        }
+    }
+
+    /// The first free record for a new object, or 0 when the pool is at its budget.
+    pub fn free_record(&self, data: &[u8]) -> i64 {
+        if self.sc2x && active_records(data) >= self.pool {
+            return 0;
+        }
+
+        first_free_record(data)
+    }
+}
+
+pub fn active_records(data: &[u8]) -> i64 {
+    (FIRST_RECORD..things::count(data))
+        .filter(|record| things::read(data, record * RECORD_SIZE + FIELD_TYPE) != 0)
+        .count() as i64
+}
+
 pub fn count_type(data: &[u8], thing_type: i64) -> i64 {
     let mut count = 0;
 
@@ -51,18 +134,25 @@ fn scale(map_edge: i64) -> i64 {
     ((map_edge * map_edge) / 16384).max(1)
 }
 
-pub fn spawn_helicopter(data: &mut [u8], text: &mut [u8], point: Vec2i, random: &mut SimRandom, map_edge: i64) -> Spawned {
+pub fn spawn_helicopter(
+    data: &mut [u8],
+    text: &mut [u8],
+    point: Vec2i,
+    random: &mut SimRandom,
+    caps: &VehicleCaps,
+    map_edge: i64,
+) -> Spawned {
     let index = motion::index(point, map_edge);
 
     if index < 0
         || overlay::blocks_thing(overlay::read(text, index))
         || count_type(data, TYPE_MONSTER) != 0
-        || count_type(data, TYPE_HELICOPTER) >= scale(map_edge)
+        || count_type(data, TYPE_HELICOPTER) >= caps.helicopters
     {
         return Spawned::default();
     }
 
-    let record = first_free_record(data);
+    let record = caps.free_record(data);
 
     if record == 0 {
         return Spawned::default();
@@ -92,18 +182,26 @@ pub fn spawn_helicopter(data: &mut [u8], text: &mut [u8], point: Vec2i, random: 
     }
 }
 
-pub fn spawn_airplane(data: &mut [u8], text: &mut [u8], point: Vec2i, runway_axis: i64, random: &mut SimRandom, map_edge: i64) -> Spawned {
+pub fn spawn_airplane(
+    data: &mut [u8],
+    text: &mut [u8],
+    point: Vec2i,
+    runway_axis: i64,
+    random: &mut SimRandom,
+    caps: &VehicleCaps,
+    map_edge: i64,
+) -> Spawned {
     let source_index = motion::index(point, map_edge);
 
     if source_index < 0
         || overlay::blocks_thing(overlay::read(text, source_index))
         || count_type(data, TYPE_MONSTER) != 0
-        || count_type(data, TYPE_AIRPLANE) >= 2 * scale(map_edge)
+        || count_type(data, TYPE_AIRPLANE) >= caps.airplanes
     {
         return Spawned::default();
     }
 
-    let record = first_free_record(data);
+    let record = caps.free_record(data);
 
     if record == 0 {
         return Spawned::default();
@@ -172,8 +270,16 @@ pub fn spawn_airplane(data: &mut [u8], text: &mut [u8], point: Vec2i, runway_axi
     }
 }
 
-pub fn spawn_ship(terrain: &[u8], data: &mut [u8], text: &mut [u8], target: Vec2i, random: &mut SimRandom, map_edge: i64) -> Spawned {
-    if count_type(data, TYPE_SHIP) >= scale(map_edge) {
+pub fn spawn_ship(
+    terrain: &[u8],
+    data: &mut [u8],
+    text: &mut [u8],
+    target: Vec2i,
+    random: &mut SimRandom,
+    caps: &VehicleCaps,
+    map_edge: i64,
+) -> Spawned {
+    if count_type(data, TYPE_SHIP) >= caps.ships {
         return Spawned::default();
     }
 
@@ -221,7 +327,7 @@ pub fn spawn_ship(terrain: &[u8], data: &mut [u8], text: &mut [u8], target: Vec2
         return Spawned::default();
     }
 
-    let record = first_free_record(data);
+    let record = caps.free_record(data);
 
     if record == 0 {
         return Spawned::default();
@@ -249,6 +355,7 @@ pub fn spawn_ship(terrain: &[u8], data: &mut [u8], text: &mut [u8], target: Vec2
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn spawn_sailboats(
     buildings: &[u8],
     tile_flags: &[u8],
@@ -256,18 +363,26 @@ pub fn spawn_sailboats(
     text: &mut [u8],
     point: Vec2i,
     lfsr_random: &mut SimLfsrRandom,
+    caps: &VehicleCaps,
     map_edge: i64,
 ) -> i64 {
-    if count_type(data, TYPE_SAILBOAT) >= 4 * scale(map_edge) {
+    let existing = count_type(data, TYPE_SAILBOAT);
+
+    if existing >= caps.sailboats {
         return 0;
     }
 
     let mut spawned = 0;
 
     for direction in CARDINAL_DIRECTIONS {
+        // an sc2x city checks the cap for each boat of the batch
+        if caps.sc2x && existing + spawned >= caps.sailboats {
+            break;
+        }
+
         let start = point + direction;
         let index = motion::index(start, map_edge);
-        let record = first_free_record(data);
+        let record = caps.free_record(data);
 
         if record == 0
             || index < 0
@@ -339,6 +454,7 @@ pub fn spawn_maxis_man(data: &mut [u8], text: &mut [u8], point: Vec2i, target: V
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn spawn_train(
     buildings: &[u8],
     data: &mut [u8],
@@ -346,10 +462,20 @@ pub fn spawn_train(
     station: Vec2i,
     game_random: &mut GameLcgRandom,
     lfsr_random: &mut SimLfsrRandom,
+    caps: &VehicleCaps,
     map_edge: i64,
 ) -> bool {
     for search_offset in TRAIN_SEARCH_OFFSETS {
-        if spawn_train_record(buildings, data, text, station + search_offset, game_random, lfsr_random, map_edge) {
+        if spawn_train_record(
+            buildings,
+            data,
+            text,
+            station + search_offset,
+            game_random,
+            lfsr_random,
+            caps,
+            map_edge,
+        ) {
             return true;
         }
     }
@@ -357,6 +483,7 @@ pub fn spawn_train(
     false
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn spawn_train_record(
     buildings: &[u8],
     data: &mut [u8],
@@ -364,9 +491,10 @@ pub fn spawn_train_record(
     start: Vec2i,
     game_random: &mut GameLcgRandom,
     lfsr_random: &mut SimLfsrRandom,
+    caps: &VehicleCaps,
     map_edge: i64,
 ) -> bool {
-    if count_type(data, TYPE_TRAIN_ENGINE) >= 5 * scale(map_edge) {
+    if caps.engines(data) >= caps.trains {
         return false;
     }
 
@@ -389,14 +517,27 @@ pub fn spawn_train_record(
         return false;
     }
 
-    // The original skips all three allocation checks. If no slot is free, it
-    // writes the train into reserved record 0.
-    let engine_record = first_free_record(data);
-    things::write(data, engine_record * RECORD_SIZE + FIELD_TYPE, TYPE_TRAIN_ENGINE);
-    let first_car_record = first_free_record(data);
-    things::write(data, first_car_record * RECORD_SIZE + FIELD_TYPE, TYPE_TRAIN_CAR);
-    let second_car_record = first_free_record(data);
-    things::write(data, second_car_record * RECORD_SIZE + FIELD_TYPE, TYPE_TRAIN_CAR);
+    let (engine_record, first_car_record, second_car_record) = if caps.sc2x {
+        // an sc2x city takes all three records first and never uses record 0
+        let Some((engine, first_car, second_car)) = train_records(data, caps) else {
+            return false;
+        };
+
+        things::write(data, engine * RECORD_SIZE + FIELD_TYPE, TYPE_TRAIN_ENGINE);
+        things::write(data, first_car * RECORD_SIZE + FIELD_TYPE, TYPE_TRAIN_CAR);
+        things::write(data, second_car * RECORD_SIZE + FIELD_TYPE, TYPE_TRAIN_CAR);
+        (engine, first_car, second_car)
+    } else {
+        // The original skips all three allocation checks. If no slot is free, it
+        // writes the train into reserved record 0.
+        let engine = first_free_record(data);
+        things::write(data, engine * RECORD_SIZE + FIELD_TYPE, TYPE_TRAIN_ENGINE);
+        let first_car = first_free_record(data);
+        things::write(data, first_car * RECORD_SIZE + FIELD_TYPE, TYPE_TRAIN_CAR);
+        let second_car = first_free_record(data);
+        things::write(data, second_car * RECORD_SIZE + FIELD_TYPE, TYPE_TRAIN_CAR);
+        (engine, first_car, second_car)
+    };
 
     for record in [engine_record, first_car_record, second_car_record] {
         let offset = record * RECORD_SIZE;
@@ -425,6 +566,17 @@ pub fn spawn_train_record(
     overlay::write(text, index, overlay::thing_id(engine_record));
 
     true
+}
+
+/// Three free records for an engine and its two cars, within the pool budget.
+fn train_records(data: &[u8], caps: &VehicleCaps) -> Option<(i64, i64, i64)> {
+    if active_records(data) + 3 > caps.pool {
+        return None;
+    }
+
+    let mut free = (FIRST_RECORD..things::count(data)).filter(|record| things::read(data, record * RECORD_SIZE + FIELD_TYPE) == 0);
+
+    Some((free.next()?, free.next()?, free.next()?))
 }
 
 fn train_direction(buildings: &[u8], text: &[u8], point: Vec2i, initial_direction: i64, order: i64, map_edge: i64) -> i64 {
@@ -466,6 +618,7 @@ pub fn spawn_near(
     game_random: &mut GameLcgRandom,
 ) -> (Vec2i, i64, i64) {
     let map_edge = city.map_size;
+    let caps = VehicleCaps::for_city(city);
     let mut data = city.xthg.data.clone();
     let mut text = city.xtxt.data.clone();
     let mut point = Vec2i::NONE;
@@ -475,7 +628,7 @@ pub fn spawn_near(
     match kind {
         0 => {
             for near in points {
-                let spawned = spawn_helicopter(&mut data, &mut text, *near, random, map_edge);
+                let spawned = spawn_helicopter(&mut data, &mut text, *near, random, &caps, map_edge);
 
                 if spawned.spawned {
                     (point, record) = (*near, spawned.record);
@@ -485,7 +638,7 @@ pub fn spawn_near(
         }
         1 => {
             for near in points {
-                let spawned = spawn_airplane(&mut data, &mut text, *near, 0, random, map_edge);
+                let spawned = spawn_airplane(&mut data, &mut text, *near, 0, random, &caps, map_edge);
 
                 if spawned.spawned {
                     (point, record) = (spawned.point, spawned.record);
@@ -494,7 +647,7 @@ pub fn spawn_near(
             }
         }
         2 => {
-            let spawned = spawn_ship(&city.xter.data, &mut data, &mut text, view_center, random, map_edge);
+            let spawned = spawn_ship(&city.xter.data, &mut data, &mut text, view_center, random, &caps, map_edge);
 
             if spawned.spawned {
                 (point, record) = (spawned.point, spawned.record);
@@ -502,7 +655,16 @@ pub fn spawn_near(
         }
         3 => {
             for near in points {
-                count = spawn_sailboats(&city.xbld.data, &city.xbit.data, &mut data, &mut text, *near, lfsr_random, map_edge);
+                count = spawn_sailboats(
+                    &city.xbld.data,
+                    &city.xbit.data,
+                    &mut data,
+                    &mut text,
+                    *near,
+                    lfsr_random,
+                    &caps,
+                    map_edge,
+                );
 
                 if count > 0 {
                     point = *near;
@@ -511,10 +673,18 @@ pub fn spawn_near(
             }
         }
         4 => {
-            if let Some(found) = points
-                .iter()
-                .find(|near| spawn_train_record(&city.xbld.data, &mut data, &mut text, **near, game_random, lfsr_random, map_edge))
-            {
+            if let Some(found) = points.iter().find(|near| {
+                spawn_train_record(
+                    &city.xbld.data,
+                    &mut data,
+                    &mut text,
+                    **near,
+                    game_random,
+                    lfsr_random,
+                    &caps,
+                    map_edge,
+                )
+            }) {
                 point = *found;
             }
         }
@@ -545,7 +715,15 @@ mod tests {
                 for roll in [0, 32767] {
                     let mut city = empty_city(edge);
                     let mut random = sequence_random(&[0, direction, roll, 999]);
-                    let spawned = spawn_airplane(&mut city.xthg.data, &mut city.xtxt.data, Vec2i::new(5, 5), 0, &mut random, edge);
+                    let spawned = spawn_airplane(
+                        &mut city.xthg.data,
+                        &mut city.xtxt.data,
+                        Vec2i::new(5, 5),
+                        0,
+                        &mut random,
+                        &VehicleCaps::legacy(edge),
+                        edge,
+                    );
                     assert!(spawned.spawned, "a small map admits an incoming airplane");
                     let entry = spawned.point;
                     assert!(entry.x >= 0 && entry.y >= 0 && entry.x < edge && entry.y < edge);
@@ -556,9 +734,17 @@ mod tests {
             let mut city = empty_city(edge);
             let point = Vec2i::new(5, 5);
             let (data, text) = (&mut city.xthg.data, &mut city.xtxt.data);
-            assert!(spawn_helicopter(data, text, point, &mut SimRandom::new(1), edge).spawned);
+            assert!(spawn_helicopter(data, text, point, &mut SimRandom::new(1), &VehicleCaps::legacy(edge), edge).spawned);
             assert!(
-                !spawn_helicopter(data, text, Vec2i::new(6, 6), &mut SimRandom::new(1), edge).spawned,
+                !spawn_helicopter(
+                    data,
+                    text,
+                    Vec2i::new(6, 6),
+                    &mut SimRandom::new(1),
+                    &VehicleCaps::legacy(edge),
+                    edge
+                )
+                .spawned,
                 "a small map keeps the one-helicopter limit"
             );
 
@@ -570,6 +756,7 @@ mod tests {
                 &mut city.xtxt.data,
                 point,
                 &mut sequence_random(&[0]),
+                &VehicleCaps::legacy(edge),
                 edge,
             );
             assert!(spawned.spawned, "a small map keeps cargo ship capacity");
@@ -579,12 +766,30 @@ mod tests {
             let mut lfsr = sequence_lfsr(&[0]);
             let (buildings, flags) = (&city.xbld.data, &city.xbit.data);
             assert_eq!(
-                spawn_sailboats(buildings, flags, &mut city.xthg.data, &mut city.xtxt.data, point, &mut lfsr, edge),
+                spawn_sailboats(
+                    buildings,
+                    flags,
+                    &mut city.xthg.data,
+                    &mut city.xtxt.data,
+                    point,
+                    &mut lfsr,
+                    &VehicleCaps::legacy(edge),
+                    edge
+                ),
                 4
             );
             let far = Vec2i::new(8, 8);
             assert_eq!(
-                spawn_sailboats(buildings, flags, &mut city.xthg.data, &mut city.xtxt.data, far, &mut lfsr, edge),
+                spawn_sailboats(
+                    buildings,
+                    flags,
+                    &mut city.xthg.data,
+                    &mut city.xtxt.data,
+                    far,
+                    &mut lfsr,
+                    &VehicleCaps::legacy(edge),
+                    edge
+                ),
                 0,
                 "a small map enforces its sailboat limit"
             );
@@ -628,6 +833,7 @@ mod tests {
                     start,
                     &mut sequence_game(&[0]),
                     &mut sequence_lfsr(&[0]),
+                    &VehicleCaps::legacy(edge),
                     edge,
                 );
                 assert_eq!(spawned, start.x == edge - 4, "trains use the actual edge margin at {edge}");
@@ -647,7 +853,15 @@ mod tests {
     fn creators_store_the_original_record_fields() {
         let mut data = vec![0u8; 480];
         let mut text = vec![0u8; 128 * 128];
-        let spawned = spawn_airplane(&mut data, &mut text, Vec2i::new(20, 20), 2, &mut sequence_random(&[0, 2, 7]), 128);
+        let spawned = spawn_airplane(
+            &mut data,
+            &mut text,
+            Vec2i::new(20, 20),
+            2,
+            &mut sequence_random(&[0, 2, 7]),
+            &VehicleCaps::legacy(128),
+            128,
+        );
         assert!(spawned.spawned, "the airplane creator accepts an empty moving-thing pool");
         assert_eq!(
             &data[13..18],
@@ -691,12 +905,133 @@ mod tests {
             Vec2i::new(20, 20),
             &mut sequence_game(&[0]),
             &mut sequence_lfsr(&[0]),
+            &VehicleCaps::legacy(128),
             128,
         );
         assert!(spawned, "a full-pool train keeps the unchecked allocation result");
         assert!(
             data[0] == 11 && text[20 * 128 + 18] == 201,
             "a full-pool train writes reserved record zero like the original"
+        );
+    }
+
+    fn sc2x_rail_city(edge: i64, start: Vec2i) -> crate::sim::city::City {
+        let mut city = crate::sim::testing::empty_sc2x_city(edge);
+
+        for delta in [Vec2i::ZERO, Vec2i::new(0, 1), Vec2i::new(0, -1)] {
+            let track = start + delta;
+            city.xbld.data[(track.x * edge + track.y) as usize] = tiles::RAIL_STRAIGHT_1 as u8;
+        }
+
+        city
+    }
+
+    #[test]
+    fn sc2x_trains_count_subway_engines_and_take_three_records_at_once() {
+        let edge = 64;
+        let start = Vec2i::new(20, 20);
+        let caps = VehicleCaps::sc2x(edge);
+        assert_eq!(caps.trains, 8);
+
+        // seven surface and one subway engine reach the combined cap
+        let mut city = sc2x_rail_city(edge, start);
+
+        for record in 1..=8 {
+            let kind = if record == 8 { TYPE_SUBWAY_ENGINE } else { TYPE_TRAIN_ENGINE };
+            things::write(&mut city.xthg.data, record * RECORD_SIZE, kind);
+        }
+
+        let spawn = |city: &mut crate::sim::city::City| {
+            spawn_train_record(
+                &city.xbld.data.clone(),
+                &mut city.xthg.data,
+                &mut city.xtxt.data,
+                start,
+                &mut sequence_game(&[0]),
+                &mut sequence_lfsr(&[0]),
+                &caps,
+                edge,
+            )
+        };
+        assert!(!spawn(&mut city), "surface and subway engines share the train cap");
+
+        // two free records cannot hold a train, and record 0 stays reserved
+        let mut city = sc2x_rail_city(edge, start);
+
+        for record in 1..things::count(&city.xthg.data) - 2 {
+            things::write(&mut city.xthg.data, record * RECORD_SIZE, TYPE_POLICE);
+        }
+
+        let before = city.xthg.data.clone();
+        assert!(!spawn(&mut city));
+        assert_eq!(city.xthg.data, before, "no partial train");
+
+        // with three free records the train takes all three
+        let mut city = sc2x_rail_city(edge, start);
+        assert!(spawn(&mut city));
+        assert_eq!(count_type(&city.xthg.data, TYPE_TRAIN_ENGINE), 1);
+        assert_eq!(count_type(&city.xthg.data, TYPE_TRAIN_CAR), 2);
+        assert_eq!(things::read(&city.xthg.data, FIELD_TYPE), 0, "record 0 stays free");
+    }
+
+    #[test]
+    fn sc2x_caps_stop_batches_aircraft_and_an_over_budget_pool() {
+        let edge = 16;
+        let caps = VehicleCaps::sc2x(edge);
+        let point = Vec2i::new(5, 5);
+
+        // a sailboat batch stops at the one-boat cap of a 16-tile map
+        let mut city = crate::sim::testing::empty_sc2x_city(edge);
+        city.xbit.data.fill(4);
+        let mut lfsr = sequence_lfsr(&[0]);
+        let (buildings, flags) = (&city.xbld.data, &city.xbit.data);
+        assert_eq!(
+            spawn_sailboats(
+                buildings,
+                flags,
+                &mut city.xthg.data,
+                &mut city.xtxt.data,
+                point,
+                &mut lfsr,
+                &caps,
+                edge
+            ),
+            1
+        );
+
+        // one airplane fills the airplane cap of a 16-tile map
+        let mut city = crate::sim::testing::empty_sc2x_city(edge);
+        let mut random = sequence_random(&[9, 0, 0, 0]);
+        assert!(spawn_airplane(&mut city.xthg.data, &mut city.xtxt.data, point, 0, &mut random, &caps, edge).spawned);
+        let mut random = sequence_random(&[9, 0, 0, 0]);
+        assert!(
+            !spawn_airplane(
+                &mut city.xthg.data,
+                &mut city.xtxt.data,
+                Vec2i::new(8, 8),
+                0,
+                &mut random,
+                &caps,
+                edge
+            )
+            .spawned
+        );
+
+        // an imported pool above its budget allows no new object, even with free slots
+        let mut city = crate::sim::testing::empty_sc2x_city(edge);
+        city.xthg = crate::sim::city::Chunk::new(vec![0; 64 * 24]);
+
+        for record in 1..=caps.pool {
+            things::write(&mut city.xthg.data, record * RECORD_SIZE, TYPE_POLICE);
+        }
+
+        assert_eq!(caps.free_record(&city.xthg.data), 0);
+        assert!(!spawn_helicopter(&mut city.xthg.data, &mut city.xtxt.data, point, &mut SimRandom::new(1), &caps, edge).spawned);
+        things::write(&mut city.xthg.data, RECORD_SIZE, 0);
+        assert_eq!(
+            caps.free_record(&city.xthg.data),
+            1,
+            "deleting below the budget allows creation again"
         );
     }
 }

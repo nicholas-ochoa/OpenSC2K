@@ -461,6 +461,28 @@
     "lane": "product"
   },
   {
+    "id": "sc2x_format_test",
+    "script": "tests/sc2x_format_test.gd",
+    "domain": "formats",
+    "lane": "product"
+  },
+  {
+    "id": "sc2x_reference_conversion_test",
+    "script": "tests/sc2x_reference_conversion_test.gd",
+    "domain": "formats",
+    "lane": "product",
+    "args": [
+      "{references}"
+    ],
+    "requires": ["references/SIMCITY2000"]
+  },
+  {
+    "id": "sc2x_limits_test",
+    "script": "tests/sc2x_limits_test.gd",
+    "domain": "tools",
+    "lane": "product"
+  },
+  {
     "id": "facility_record_repair_test",
     "script": "tests/facility_record_repair_test.gd",
     "domain": "simulation",
