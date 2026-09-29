@@ -312,3 +312,39 @@ pub fn scenario(dictionary: &VarDictionary, key: &str) -> Option<crate::sim::civ
         second_building_tile_count: field("second_building_tile_count"),
     })
 }
+
+pub fn schedule(dictionary: &VarDictionary, key: &str) -> crate::sim::engine::day::Schedule {
+    let fields = self::dictionary(dictionary, key);
+
+    crate::sim::engine::day::Schedule {
+        city_days: int(&fields, "city_days", 0),
+        month_day: int(&fields, "month_day", 0),
+        season: int(&fields, "season", 0),
+        actions: strings(&fields, "actions"),
+        growth_step: int(&fields, "growth_step", -1),
+        growth_substep: int(&fields, "growth_substep", -1),
+    }
+}
+
+pub fn engine_state(dictionary: &VarDictionary, key: &str) -> crate::sim::engine::day::EngineState {
+    let fields = self::dictionary(dictionary, key);
+
+    crate::sim::engine::day::EngineState {
+        developed_tiles: int(&fields, "developed_tiles", -1),
+        power_usage_percent: int(&fields, "power_usage_percent", -1),
+        water_usage_percent: int(&fields, "water_usage_percent", -1),
+        bus_passengers: int(&fields, "bus_passengers", 0),
+        rail_passengers: int(&fields, "rail_passengers", 0),
+        subway_passengers: int(&fields, "subway_passengers", 0),
+        ship_home: point(&fields, "ship_home", Vec2i::NONE),
+        city_status_resource_id: int(&fields, "city_status_resource_id", -1),
+        commerce_connections: int(&fields, "commerce_connections", 0),
+        industry_connections: int(&fields, "industry_connections", 0),
+        mayor_approval: int(&fields, "mayor_approval", 0),
+        midi_playback_active: boolean(&fields, "midi_playback_active", false),
+        pending_disaster_type: int(&fields, "pending_disaster_type", 0),
+        pending_disaster_point: point(&fields, "pending_disaster_point", Vec2i::ZERO),
+        terminal_state: boolean(&fields, "terminal_state", false),
+        traffic_news_deadline_msec: int(&fields, "traffic_news_deadline_msec", 0),
+    }
+}

@@ -67,6 +67,7 @@ pub const OPERATIONS: &[&str] = &[
     "tile_recount",
     "military.resolve",
     "military.reserve",
+    "day.schedule",
 ];
 
 pub struct Outcome {
@@ -278,6 +279,25 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
             )
             .to_value(),
         ),
+        "day.schedule" => {
+            let schedule = convert::schedule(args, "schedule");
+            let state = convert::engine_state(args, "engine");
+            let scenario = convert::scenario(args, "scenario");
+            let (outcome, state, scenario) = crate::sim::engine::day::run_schedule(
+                city,
+                randoms,
+                scenario,
+                state,
+                &schedule,
+                convert::boolean(args, "annual_budget_approved", false),
+                convert::boolean(args, "detailed", false),
+            );
+            let Value::Dict(mut fields) = outcome.to_value() else { unreachable!() };
+            fields.push((Value::Str("engine".to_string()), state.to_value()));
+            let time_limit = scenario.map(|scenario| scenario.time_limit_months).unwrap_or(-1);
+            fields.push((Value::Str("scenario_time_limit".to_string()), Value::Int(time_limit)));
+            Outcome::value(Value::Dict(fields))
+        }
         "echo" => Outcome::value(Value::Int(convert::int(args, "value", 0) + city.map_size)),
         _ => Outcome::failure(format!("unknown native simulation operation: {op}")),
     }

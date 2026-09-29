@@ -326,7 +326,7 @@ fn resolve_steps(
         return result(false, BASE_DECLINED, Rect2i::default(), Vec::new(), NOTICE_NO_SITE);
     }
 
-    let mut maps = plot_maps(city);
+    let maps = plot_maps(city);
     let mut changed = Vec::new();
 
     for site in &sites {
