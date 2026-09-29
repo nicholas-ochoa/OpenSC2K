@@ -410,7 +410,7 @@ static func static_visual_signature(city: CityState, view_size := VIEW_LARGE) ->
 static func _static_text_overlay_signature(city: CityState) -> int:
 	assert(OS.get_thread_caller_id() == OS.get_main_thread_id(),
 		"Static overlay signature cache is main-thread only")
-	var key: Array[int] = [city.chunk_revision("XTXT"), city.chunk_revision("XTHG")]
+	var key: Array[int] = [city.chunk_revision("XTXT"), city.chunk_revision("XTHG"), city.chunk_revision("XSGN")]
 	var cache := city.static_text_overlay_cache
 
 	if cache != null and cache.key == key:

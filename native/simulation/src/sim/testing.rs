@@ -15,6 +15,18 @@ pub fn empty_full_resolution_city(edge: i64) -> City {
     empty_city_version(edge, 3)
 }
 
+/// An empty SC2X version 4 working city with the record capacities of its map profile.
+pub fn empty_sc2x_city(edge: i64) -> City {
+    let profile = crate::formats::sc2x::limits::profile_for(edge as usize).expect("an SC2X profile");
+    let mut city = empty_city_version(edge, 4);
+    city.xtxt = Chunk::new(vec![0; (edge * edge * 2) as usize]);
+    city.xmic = Chunk::new(vec![0; profile.facilities * 8]);
+    city.xthg = Chunk::new(vec![0; profile.things * 24]);
+    let last_label = crate::formats::sc2x::project::facility_label(profile.facilities - 1);
+    city.xlab = Chunk::new(crate::formats::sc2x::labels::wide_table(last_label));
+    city
+}
+
 fn empty_city_version(edge: i64, large_version: i64) -> City {
     let mut city = City::new(edge, large_version);
 

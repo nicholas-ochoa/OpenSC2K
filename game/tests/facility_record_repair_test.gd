@@ -222,9 +222,13 @@ func check_load() -> void:
 	check(main.city_files._city_has_unsaved_changes(), "Load repair is marked unsaved")
 	check(main.tool_state.tool_random.state == random_seed, "Load repair does not consume process RNG")
 	check(FileAccess.get_file_as_bytes(save_path) == bytes, "Loading never writes source file")
-	check(main.city_files._save_copy(ProjectSettings.globalize_path(save_path)), "User save persists repair")
-	var saved := FileAccess.get_file_as_bytes(save_path)
-	main.city_files._load_city_unchecked(ProjectSettings.globalize_path(save_path))
+	# the SCLG file converts to SC2X version 4 in memory; a save needs a new file
+	check(not main.city_files._save_copy(ProjectSettings.globalize_path(save_path)), "A converted city never replaces its source")
+	check(FileAccess.get_file_as_bytes(save_path) == bytes, "The source file stays unchanged")
+	var copy_path := "user://facility-repair-%d-copy.sc2x" % OS.get_process_id()
+	check(main.city_files._save_copy(ProjectSettings.globalize_path(copy_path)), "User save persists repair")
+	var saved := FileAccess.get_file_as_bytes(copy_path)
+	main.city_files._load_city_unchecked(ProjectSettings.globalize_path(copy_path))
 	check(not main.city_files._city_has_unsaved_changes(), "Repaired city loads without new changes")
 	check(main.document_state.current_document.serialize().data == saved, "Actual reload is byte exact")
 	var engine: SimulationEngine = main.simulation_state.simulation_engine
@@ -236,6 +240,7 @@ func check_load() -> void:
 	await process_frame
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(settings_path))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://facility-repair-%d-copy.sc2x" % OS.get_process_id()))
 
 
 func saved_payloads(document: Sc2File) -> Array:

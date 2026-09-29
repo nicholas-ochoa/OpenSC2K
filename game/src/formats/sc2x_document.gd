@@ -111,6 +111,11 @@ static func load_bytes(document: Sc2File, bytes: PackedByteArray) -> bool:
 	document.sc2x_metadata = metadata
 	document.sc2x_unsupported_features = metadata.unsupported_features()
 
+	var phase_error := Sc2xCheckpoint.validate(metadata.phase_state)
+
+	if not phase_error.is_empty():
+		return _fail(document, phase_error)
+
 	if edge not in Sc2File.MAP_SIZES:
 		return _fail(document, "This version cannot open a %d by %d city. SC2X files can describe it, but the game supports %s." % [
 			edge, edge, ", ".join(Sc2File.MAP_SIZES.map(func(size: int) -> String: return str(size)))])
@@ -570,16 +575,35 @@ static func create_empty(edge: int, city_name := "New City") -> ConversionResult
 		return ConversionResult.failure("Unsupported map size %d" % edge)
 
 	template.enable_full_resolution_maps()
-	template.set_city_name(city_name.left(30))
-	var converted := from_legacy(template)
 
-	if converted.ok:
-		converted.document.sc2x_metadata.city_name = Sc2xMetadata.limit_name(city_name) if not city_name.is_empty() else "New City"
-		converted.document.sc2x_metadata.legacy = {}
-		converted.document.sc2x_compat_labels.resize(FRESH_LABEL_TABLE_SIZE)
-		converted.document.sc2x_compat_labels.fill(0)
-		converted.document.sc2x_preserved.clear()
-		converted.document.sc2x_text_orders.clear()
+	return from_new_city(template, city_name, "")
+
+
+# A working document from a city that the new-city tools made in the legacy
+# layout. A new city has no import data, so it keeps no legacy record and
+# starts with an empty compatibility label table.
+static func from_new_city(source: Sc2File, city_name: String, mayor_name: String) -> ConversionResult:
+	var converted := from_legacy(source)
+
+	if not converted.ok:
+		return converted
+
+	var document := converted.document
+	var metadata := document.sc2x_metadata
+	metadata.city_name = Sc2xMetadata.limit_name(city_name.strip_edges()) if not city_name.strip_edges().is_empty() else "New City"
+
+	if not mayor_name.strip_edges().is_empty():
+		metadata.mayor_name = Sc2xMetadata.limit_name(mayor_name.strip_edges())
+		var labels := document.find_chunk("XLAB").decoded_payload.duplicate()
+		Sc2LabelLayout.write(labels, 0, metadata.mayor_name)
+		document.find_chunk("XLAB").set_decoded_payload(labels)
+		document.find_chunk("XLAB").is_dirty = false
+
+	metadata.legacy = {}
+	document.sc2x_compat_labels.resize(FRESH_LABEL_TABLE_SIZE)
+	document.sc2x_compat_labels.fill(0)
+	document.sc2x_preserved.clear()
+	document.sc2x_text_orders.clear()
 
 	return converted
 

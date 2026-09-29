@@ -57,16 +57,19 @@ static func read(labels: PackedByteArray, label_id: int) -> String:
 
 
 # Store `value`: 23 ASCII bytes in a legacy table, or 64 characters of UTF-8
-# text in a wide table. Returns false outside the table.
-static func write(labels: PackedByteArray, label_id: int, value: String) -> bool:
+# text in a wide table. Returns false outside the table. With `clear_record`
+# false, a legacy write keeps the record bytes after its terminator, as the
+# label editor of the original does.
+static func write(labels: PackedByteArray, label_id: int, value: String, clear_record := true) -> bool:
 	var size := record_size_of(labels)
 	var offset := label_id * size
 
 	if label_id < 0 or offset + size > labels.size():
 		return false
 
-	for index in size:
-		labels[offset + index] = 0
+	if clear_record or size == WIDE_RECORD_SIZE:
+		for index in size:
+			labels[offset + index] = 0
 
 	if size == WIDE_RECORD_SIZE:
 		var encoded := Sc2xMetadata.limit_name(value).to_utf8_buffer()
@@ -86,6 +89,8 @@ static func write(labels: PackedByteArray, label_id: int, value: String) -> bool
 
 	for index in ascii.size():
 		labels[offset + TEXT_OFFSET + index] = ascii[index]
+
+	labels[offset + TEXT_OFFSET + ascii.size()] = 0
 
 	return true
 

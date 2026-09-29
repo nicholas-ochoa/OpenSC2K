@@ -3,6 +3,9 @@ extends RefCounted
 
 const LEGACY_SIZE := 52
 const EXTENDED_SIZE := 56
+# SC2X version 4 widens the disaster coordinates and the building tile counts
+const SCHEMA2_SIZE := 64
+const SCHEMA2_TIME_LIMIT := 0x0a
 const TEMPLATE_HEADER := 0x80000000
 const TEMPLATE_TYPE_SIZES := {
 	"DBYT": 1,
@@ -52,8 +55,8 @@ static func from_document(source: Sc2File) -> ScenarioState:
 
 	var data := chunk.decoded_payload
 
-	if data.size() != LEGACY_SIZE and data.size() != EXTENDED_SIZE:
-		scenario.load_error = "SCEN has %d bytes; expected 52 or 56" % data.size()
+	if data.size() != LEGACY_SIZE and data.size() != EXTENDED_SIZE and data.size() != SCHEMA2_SIZE:
+		scenario.load_error = "SCEN has %d bytes; expected 52, 56, or 64" % data.size()
 
 		return scenario
 
@@ -63,6 +66,12 @@ static func from_document(source: Sc2File) -> ScenarioState:
 		return scenario
 
 	scenario.format_size = data.size()
+
+	if data.size() == SCHEMA2_SIZE:
+		scenario._read_schema2(data)
+
+		return scenario
+
 	scenario.disaster_type = BinaryData.read_u16_be(data, 0x04)
 	scenario.disaster_x = data[0x06]
 	scenario.disaster_y = data[0x07]
@@ -94,6 +103,28 @@ static func from_document(source: Sc2File) -> ScenarioState:
 
 func is_valid() -> bool:
 	return load_error.is_empty()
+
+
+func _read_schema2(data: PackedByteArray) -> void:
+	disaster_type = BinaryData.read_u16_be(data, 0x04)
+	disaster_x = BinaryData.read_u16_be(data, 0x06)
+	disaster_y = BinaryData.read_u16_be(data, 0x08)
+	time_limit_months = BinaryData.read_u16_be(data, SCHEMA2_TIME_LIMIT)
+	city_size_goal = BinaryData.read_u32_be(data, 0x0c)
+	residential_goal = BinaryData.read_i32_be(data, 0x10)
+	commercial_goal = BinaryData.read_i32_be(data, 0x14)
+	industrial_goal = BinaryData.read_i32_be(data, 0x18)
+	cash_goal = BinaryData.read_i32_be(data, 0x1c)
+	land_value_goal = BinaryData.read_i32_be(data, 0x20)
+	life_expectancy_goal = BinaryData.read_u16_be(data, 0x24)
+	education_goal = BinaryData.read_u16_be(data, 0x26)
+	pollution_limit = BinaryData.read_u32_be(data, 0x28)
+	crime_limit = BinaryData.read_u32_be(data, 0x2c)
+	traffic_limit = BinaryData.read_u32_be(data, 0x30)
+	first_building_id = data[0x34]
+	second_building_id = data[0x35]
+	first_building_tile_count = BinaryData.read_u32_be(data, 0x36)
+	second_building_tile_count = BinaryData.read_u32_be(data, 0x3a)
 
 
 func selection_description() -> String:
@@ -329,7 +360,7 @@ func set_time_limit_months(value: int) -> bool:
 		return false
 
 	var data: PackedByteArray = chunk.decoded_payload.duplicate()
-	BinaryData.write_u16_be(data, 0x08, value)
+	BinaryData.write_u16_be(data, SCHEMA2_TIME_LIMIT if format_size == SCHEMA2_SIZE else 0x08, value)
 
 	if not chunk.set_decoded_payload(data):
 		return false

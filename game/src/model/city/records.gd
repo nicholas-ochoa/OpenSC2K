@@ -32,6 +32,21 @@ static func label(city: CityState, label_id: int) -> String:
 	return Sc2LabelLayout.read(chunk.decoded_payload, label_id)
 
 
+static func sign_texts(city: CityState) -> Dictionary[int, String]:
+	if CitySignTable.uses_table(city):
+		return CitySignTable.texts_by_tile(city)
+
+	var result: Dictionary[int, String] = {}
+
+	for index in OverlayData.sign_indices(city.text_overlays):
+		var text := label(city, OverlayData.read(city.text_overlays, index))
+
+		if not text.is_empty():
+			result[index] = text
+
+	return result
+
+
 static func set_label(city: CityState, label_id: int, value: String) -> bool:
 	var chunk := city.document.find_chunk("XLAB")
 
@@ -40,7 +55,7 @@ static func set_label(city: CityState, label_id: int, value: String) -> bool:
 
 	var changed := chunk.decoded_payload.duplicate()
 
-	if not Sc2LabelLayout.write(changed, label_id, value):
+	if not Sc2LabelLayout.write(changed, label_id, value, false):
 		return false
 
 	return chunk.set_decoded_payload(changed)

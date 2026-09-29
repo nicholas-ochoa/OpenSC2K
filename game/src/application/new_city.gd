@@ -172,6 +172,17 @@ func create_new_city_unchecked() -> void:
 	app.tool_state.tool_random.state = int(result.process_state)
 	app.simulation_state.nuisance_random.state = int(result.game_state)
 	var document: Sc2File = result.document
+
+	# a new city outside the original format uses SC2X version 4
+	if document.is_extended() and not document.is_sc2x():
+		var converted := Sc2xDocument.from_new_city(document, setup.city_name, setup.mayor_name)
+
+		if not converted.ok:
+			app.interface.show_error("Cannot create a new city: %s" % converted.error)
+
+			return
+
+		document = converted.document
 	app.city_session.activate_document(
 		document,
 		null,

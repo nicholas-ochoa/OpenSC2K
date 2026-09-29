@@ -84,6 +84,8 @@ var sc2x_preserved: Array[Dictionary] = []
 var sc2x_extra_entries: Dictionary[String, PackedByteArray] = {}
 # required features that this version does not support; the city is read-only
 var sc2x_unsupported_features := PackedStringArray()
+# the legacy file that a conversion read. a save never replaces it
+var sc2x_converted_from := ""
 
 
 static func load_path(path: String) -> Sc2File:
@@ -244,6 +246,7 @@ func _clear_sc2x_state() -> void:
 	sc2x_preserved = []
 	sc2x_extra_entries = {}
 	sc2x_unsupported_features = PackedStringArray()
+	sc2x_converted_from = ""
 
 
 # simulation may share immutable file bytes; decoded payloads always remain private
@@ -263,6 +266,7 @@ func duplicate_document(share_source_bytes := false) -> Sc2File:
 	result.sc2x_preserved = sc2x_preserved.duplicate(true)
 	result.sc2x_extra_entries = sc2x_extra_entries.duplicate(true)
 	result.sc2x_unsupported_features = sc2x_unsupported_features.duplicate()
+	result.sc2x_converted_from = sc2x_converted_from
 
 	for chunk in chunks:
 		var copied := Sc2Chunk.new()
@@ -662,22 +666,16 @@ func label_record_size() -> int:
 	return Sc2LabelLayout.WIDE_RECORD_SIZE if is_sc2x() else Sc2LabelLayout.RECORD_SIZE
 
 
-# A digest of the content that a save writes. It changes when a save would
-# write a different city.
-func content_digest() -> PackedByteArray:
+# A snapshot of the content that a save writes: the file bytes of an SC2 or
+# SCN city, or a digest of the raw entries of an SC2X version 4 city. Equal
+# snapshots mean that a save would write the same city.
+func content_snapshot() -> PackedByteArray:
 	if is_sc2x():
 		return Sc2xDocument.content_digest(self)
 
 	var serialized := serialize()
 
-	if not serialized.ok:
-		return PackedByteArray()
-
-	var context := HashingContext.new()
-	context.start(HashingContext.HASH_SHA256)
-	context.update(serialized.data)
-
-	return context.finish()
+	return serialized.data if serialized.ok else PackedByteArray()
 
 
 func enable_full_resolution_maps() -> bool:

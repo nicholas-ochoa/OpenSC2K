@@ -19,12 +19,24 @@ static func apply(city: CityState, counter_clockwise: bool) -> RotationEditResul
 		if chunk == null or chunk.decoded_payload.size() != city.document.decoded_size(chunk_id):
 			return RotationEditResult.rejected("rotation data is missing or invalid")
 
+	# sc2x version 4 signs keep their own coordinates outside the tile index
+	var turned_signs := {}
+
+	if CitySignTable.uses_table(city):
+		turned_signs = CitySignTable.rotated(city, counter_clockwise)
+
+		if not turned_signs.ok:
+			return RotationEditResult.rejected("sign data is invalid: %s" % turned_signs.error)
+
 	var response := NativeSimulationBridge.run("rotation", city, null, null, null, {
 		"counter_clockwise": counter_clockwise,
 	}, REQUIRED_CHUNKS)
 
 	if not response.ok or not response.failed_chunk.is_empty():
 		return RotationEditResult.rejected("cannot store rotated city data")
+
+	if not turned_signs.is_empty():
+		city.document.find_chunk(CitySignTable.CHUNK_ID).set_decoded_payload(turned_signs.data)
 
 	var result := RotationEditResult.new()
 	result.ok = true
@@ -36,6 +48,9 @@ static func apply(city: CityState, counter_clockwise: bool) -> RotationEditResul
 	for chunk_id in REQUIRED_CHUNKS:
 		if response.written.has(chunk_id):
 			result.changed_ids.append(chunk_id)
+
+	if not turned_signs.is_empty():
+		result.changed_ids.append(CitySignTable.CHUNK_ID)
 
 	return result
 

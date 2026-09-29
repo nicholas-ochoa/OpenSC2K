@@ -81,22 +81,21 @@ func _ensure_sign_entries() -> void:
 
 		return
 
-	var sign_indices := OverlayData.sign_indices(map.city.text_overlays)
+	var sign_texts := map.city.sign_texts()
+	var sign_indices := PackedInt32Array(sign_texts.keys())
 	sign_indices.sort()
-	var sign_values := PackedInt32Array()
+	var sign_values := []
 
 	for index in sign_indices:
 		sign_values.append(index)
-		sign_values.append(OverlayData.read(map.city.text_overlays, index))
+		sign_values.append(sign_texts[index])
 
-	var labels := map.city.document.find_chunk("XLAB")
 	var signature := [
 		map_edge,
 		map.city.visible_altitude_levels,
 		map.city.compass_rotation(),
 		hash(map.city.altitude_words),
 		hash(sign_values),
-		hash(labels.decoded_payload) if labels != null else 0,
 	]
 
 	if _sign_layout_signature == signature and is_equal_approx(sign_entries_zoom, map.zoom_factor):
@@ -130,12 +129,7 @@ func _ensure_sign_entries() -> void:
 		if not map.city.tile_is_visible(x, y):
 			continue
 
-		var label_id := map.city.text_overlay_id(x, y)
-
-		if not OverlayData.is_sign(label_id):
-			continue
-
-		var label_text := map.city.label(label_id)
+		var label_text: String = sign_texts.get(entry.y, "")
 
 		if label_text.is_empty():
 			continue

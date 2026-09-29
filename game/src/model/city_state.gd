@@ -86,7 +86,8 @@ static func from_document(source: Sc2File) -> CityState:
 	var altitude_data := source.find_chunk("ALTM").decoded_payload
 	var overlay_data := source.find_chunk("XTXT").decoded_payload
 
-	if city.map_size > 128:
+	# an sc2x version 4 load rebuilds the tile index from checked records
+	if city.map_size > 128 and not source.is_sc2x():
 		# Every ID with a zero high byte is an original ID. Check only the other tiles.
 		var high_bytes := overlay_data.slice(OverlayData.count(overlay_data))
 
@@ -386,6 +387,12 @@ func mayor_name() -> String:
 
 func label(label_id: int) -> String:
 	return CityRecords.label(self, label_id)
+
+
+# tile index -> text of every sign with text. SC2X version 4 signs come from
+# XSGN; other cities keep signs in XTXT and XLAB
+func sign_texts() -> Dictionary[int, String]:
+	return CityRecords.sign_texts(self)
 
 
 func set_label(label_id: int, value: String) -> bool:

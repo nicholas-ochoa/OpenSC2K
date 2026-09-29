@@ -12,6 +12,8 @@ use crate::sim::value::Strings;
 
 const LEGACY_SIZE: usize = 52;
 const EXTENDED_SIZE: usize = 56;
+const SCHEMA2_SIZE: usize = crate::formats::sc2x::scenario::SCHEMA2_SIZE;
+const SCHEMA2_TIME_LIMIT: i64 = 0x0a;
 
 /// The SCEN fields, as ScenarioState.from_document reads them.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -46,8 +48,12 @@ impl Scenario {
         };
         let data = &chunk.data;
 
+        if data.len() == SCHEMA2_SIZE {
+            return Self::from_schema2(data);
+        }
+
         if data.len() != LEGACY_SIZE && data.len() != EXTENDED_SIZE {
-            return Err(format!("SCEN has {} bytes; expected 52 or 56", data.len()));
+            return Err(format!("SCEN has {} bytes; expected 52, 56, or 64", data.len()));
         }
 
         if read_u32_be(data, 0) != 0x8000_0000 {
@@ -85,6 +91,34 @@ impl Scenario {
         scenario.second_building_tile_count = read_u16_be(data, limit_offset + 16);
 
         Ok(scenario)
+    }
+
+    /// SCEN schema 2 of an SC2X version 4 city. See formats::sc2x::scenario.
+    fn from_schema2(data: &[u8]) -> Result<Scenario, String> {
+        let parsed = crate::formats::sc2x::scenario::Scenario::from_schema2(data, usize::MAX)?;
+
+        Ok(Scenario {
+            format_size: data.len(),
+            disaster_type: parsed.disaster_type as i64,
+            disaster_x: parsed.disaster_x as i64,
+            disaster_y: parsed.disaster_y as i64,
+            time_limit_months: parsed.time_limit_months as i64,
+            city_size_goal: parsed.city_size_goal as i64,
+            residential_goal: parsed.residential_goal as i64,
+            commercial_goal: parsed.commercial_goal as i64,
+            industrial_goal: parsed.industrial_goal as i64,
+            cash_goal: parsed.cash_goal as i64,
+            land_value_goal: parsed.land_value_goal as i64,
+            life_expectancy_goal: parsed.life_expectancy_goal as i64,
+            education_goal: parsed.education_goal as i64,
+            pollution_limit: parsed.pollution_limit as i64,
+            crime_limit: parsed.crime_limit as i64,
+            traffic_limit: parsed.traffic_limit as i64,
+            first_building_id: parsed.first_building_id as i64,
+            second_building_id: parsed.second_building_id as i64,
+            first_building_tile_count: parsed.first_building_tile_count as i64,
+            second_building_tile_count: parsed.second_building_tile_count as i64,
+        })
     }
 
     /// ScenarioState.evaluate_goals: the unmet goal names.
@@ -181,7 +215,12 @@ impl Scenario {
             return false;
         }
 
-        write_u16_be(chunk.mutate(), 0x08, value);
+        let offset = if self.format_size == SCHEMA2_SIZE {
+            SCHEMA2_TIME_LIMIT
+        } else {
+            0x08
+        };
+        write_u16_be(chunk.mutate(), offset, value);
         self.time_limit_months = value;
         true
     }
@@ -246,4 +285,32 @@ pub fn run(city: &mut City, scenario: Option<&mut Scenario>) -> ScenarioResult {
     }
 
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::formats::sc2x::scenario::Scenario as Schema2;
+    use crate::sim::city::Chunk;
+    use crate::sim::testing::empty_sc2x_city;
+
+    #[test]
+    fn schema_2_scenarios_read_wide_fields_and_count_down_their_time_limit() {
+        let mut city = empty_sc2x_city(256);
+        let saved = Schema2 {
+            disaster_type: 4,
+            disaster_x: 200,
+            disaster_y: 255,
+            time_limit_months: 12,
+            first_building_id: 0xd2,
+            first_building_tile_count: 70000,
+            ..Default::default()
+        };
+        city.scen = Chunk::new(saved.to_schema2());
+        let mut scenario = Scenario::from_city(&city).unwrap();
+        assert_eq!((scenario.disaster_x, scenario.disaster_y), (200, 255));
+        assert_eq!(scenario.first_building_tile_count, 70000);
+        assert!(scenario.set_time_limit_months(&mut city, 11));
+        assert_eq!(Schema2::from_schema2(&city.scen.data, 256).unwrap().time_limit_months, 11);
+    }
 }

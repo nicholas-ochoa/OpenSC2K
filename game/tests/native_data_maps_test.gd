@@ -115,7 +115,15 @@ func check_format(edge: int) -> void:
 		check(saved.ok and saved.path.ends_with(".sc2x"), "Native save extension")
 
 		if saved.ok:
-			check(Sc2File.load_path(saved.path).serialize().data == bytes, "Disk round trip")
+			# new files use SC2X version 4, even when the city came from an SCLG file
+			var reloaded := Sc2File.load_path(saved.path)
+			var expected := Sc2xDocument.from_legacy(loaded, path.get_file())
+			check(reloaded.is_sc2x() and expected.ok, "An SCLG save writes SC2X version 4")
+			check(expected.ok and Sc2xDocument.entries(reloaded).members == Sc2xDocument.entries(expected.document).members,
+				"Disk round trip keeps the converted city")
+			check(reloaded.sc2x_preserved.any(func(record: Dictionary) -> bool:
+				return record.chunk_id == "TEST" and record.payload == PackedByteArray([19, 27, 33, 84])),
+				"Unknown chunk survives the version 4 save")
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(saved.path))
 
 	check(legacy.resize_empty_map(256 if edge == 128 else 128) and legacy.full_resolution_maps(), "Empty resize keeps native grid mode")

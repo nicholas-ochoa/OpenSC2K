@@ -226,7 +226,7 @@ static func _collect_payload_changes(old_payloads: Dictionary, new_payloads: Dic
 		if new_bytes.size() != old_bytes.size():
 			continue
 
-		var stride := 2 if chunk_id == "ALTM" or (chunk_id == "XTXT" and map_edge > 128) else 1
+		var stride := 2 if chunk_id == "ALTM" or (chunk_id == "XTXT" and OverlayData.count(old_bytes) != old_bytes.size()) else 1
 
 		if old_bytes.size() != cells * stride:
 			continue

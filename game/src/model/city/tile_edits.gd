@@ -121,7 +121,7 @@ static func set_underground_id(city: CityState, x: int, y: int, value: int) -> b
 
 
 static func set_text_overlay_id(city: CityState, x: int, y: int, value: int) -> bool:
-	if value < 0 or value > (0xff if city.map_size <= 128 else 0xffff):
+	if value < 0 or value > (0xff if OverlayData.count(city.text_overlays) == city.text_overlays.size() else 0xffff):
 		return false
 
 	var index := city.index_of(x, y)

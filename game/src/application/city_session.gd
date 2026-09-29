@@ -54,7 +54,7 @@ func activate_document(
 	app.document_state.city = loaded_city
 	app.map_view.pending_loaded_center = Vector2i(-1, -1)
 
-	if not document.source_path.is_empty():
+	if not document.source_path.is_empty() or not document.sc2x_converted_from.is_empty():
 		app.map_view.pending_loaded_center = Vector2i(clampi(document.misc_u32(Sc2MiscLayout.CITY_CENTER_X), 0,
 			app.document_state.city.map_size - 1),
 				clampi(document.misc_u32(Sc2MiscLayout.CITY_CENTER_Y), 0, app.document_state.city.map_size - 1))
@@ -62,10 +62,7 @@ func activate_document(
 	app.current_tool.select_tool_group(CityToolIds.Group.CENTERING)
 	app.view_state.overlay_mode = CityViewMode.Mode.CITY
 	document_state.current_document = document
-	var initial_serialized := document_state.current_document.serialize()
-	document_state.saved_city_snapshot = (
-		initial_serialized.data.duplicate() if initial_serialized.ok else PackedByteArray()
-	)
+	document_state.saved_city_snapshot = document.content_snapshot()
 	var facility_repair := FacilityRecordRepair.apply(app.document_state.city)
 
 	if not facility_repair.ok:
@@ -107,24 +104,30 @@ func activate_document(
 	app.timing_state.simulation_timings.clear()
 	app.simulation_state.simulation_engine = Simulation.new(app.document_state.city, process_seed, lfsr_seed, game_seed)
 
+	# an sc2x version 4 save holds the engine state and the load-scan results
+	var saved_state := loaded_from_file and document.is_sc2x() and Sc2xCheckpoint.has_saved_state(document.sc2x_metadata)
+
 	# the load-time utility scan is not a player change. keep a repaired city unsaved
-	if loaded_from_file:
-		var before_scan := document_state.current_document.serialize()
-		var unchanged := before_scan.ok and before_scan.data == document_state.saved_city_snapshot
+	if loaded_from_file and not saved_state:
+		var before_scan := document_state.current_document.content_snapshot()
+		var unchanged := not before_scan.is_empty() and before_scan == document_state.saved_city_snapshot
 
 		if not app.simulation_state.simulation_engine.initialize_loaded_city():
 			status_text += " The power and water scan failed."
 		elif unchanged:
-			var after_scan := document_state.current_document.serialize()
-
-			if after_scan.ok:
-				document_state.saved_city_snapshot = after_scan.data.duplicate()
+			document_state.saved_city_snapshot = document_state.current_document.content_snapshot()
 
 	app.simulation_state.simulation_engine.vehicle_crashes_enabled = app.view_state.show_vehicles
 	app.simulation_state.speed_controller = GameSpeed.new(app.simulation_state.simulation_engine)
 	# SC2 and SCN cities keep the original fire timing
 	app.simulation_state.speed_controller.original_compatibility = OriginalCompatibility.uses_original_format(
 		document_state.current_document)
+
+	if saved_state:
+		var restore_error := Sc2xCheckpoint.restore(app.simulation_state.speed_controller, document.sc2x_metadata)
+
+		if not restore_error.is_empty():
+			status_text += " " + restore_error
 
 	if document_state.current_document.is_extended():
 		app.simulation_state.frame_simulation = FrameSimulationRunner.new(app.simulation_state.speed_controller)

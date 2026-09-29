@@ -98,6 +98,9 @@ func _can_upgrade_city_to_sc2x() -> bool:
 	if document_state.current_document.is_extended() or document_state.current_document.full_resolution_maps():
 		return false
 
+	if not Sc2xCheckpoint.save_error(app.simulation_state.speed_controller).is_empty():
+		return false
+
 	var path := (document_state.current_save_path if not document_state.current_save_path.is_empty()
 		else document_state.current_document.source_path)
 
@@ -143,34 +146,29 @@ func upgrade_city_to_sc2x(confirmed := false) -> void:
 
 		return
 
-	if app.simulation_state.frame_simulation != null:
-		app.simulation_state.frame_simulation.close()
-		app.simulation_state.frame_simulation = null
+	var source := document_state.current_document
+	var converted := Sc2xDocument.from_legacy(source, source.source_path.get_file().get_basename())
 
-	var enabled := document_state.current_document.enable_full_resolution_maps()
-
-	# an SC2X city uses the extended fire timing
-	if app.simulation_state.speed_controller != null:
-		app.simulation_state.speed_controller.original_compatibility = OriginalCompatibility.uses_original_format(
-			document_state.current_document)
-		app.simulation_state.speed_controller.fire_elapsed_msec = 0.0
-
-	if app.simulation_state.speed_controller != null and document_state.current_document.is_extended():
-		app.simulation_state.frame_simulation = FrameSimulationRunner.new(app.simulation_state.speed_controller)
-
-	if not enabled:
-		app.interface.show_error("Cannot enable per-tile data maps: city data is incomplete.")
+	if not converted.ok:
+		app.interface.show_error("Cannot convert the city to SC2X: %s" % converted.error)
 
 		return
 
-	app.timing_state.simulation_timings.clear()
-	app.tool_state.last_edit_command = null
-	app.scurk_state.edit_history.clear()
+	var document := converted.document
+	document.sc2x_converted_from = source.source_path
+	# the conversion carries the running engine state into the new city
+	Sc2xCheckpoint.capture(app.simulation_state.speed_controller, document.sc2x_metadata)
+	var status := "City upgraded to SC2X. Save a separate copy; the original game cannot open it."
+
+	if not converted.issues.is_empty():
+		status += " %d broken links in the original city were not kept." % converted.issues.size()
+
+	if not app.city_session.activate_document(document, _loaded_scenario(document), status, true):
+		return
+
 	document_state.current_save_path = ""
-	app.static_render.invalidate_view_render()
-	app.map_render.refresh_map(false)
+	document_state.current_city_saved_once = false
 	sync_upgrade_city_option()
-	app.status_label.text = "City upgraded to SC2X. Save a separate copy; the original game cannot open it."
 	open_save_dialog()
 
 
@@ -211,9 +209,9 @@ func _city_has_unsaved_changes() -> bool:
 	if not document_state.current_city_saved_once:
 		return true
 
-	var serialized := document_state.current_document.serialize()
+	var snapshot := document_state.current_document.content_snapshot()
 
-	return not serialized.ok or serialized.data != document_state.saved_city_snapshot
+	return snapshot.is_empty() or snapshot != document_state.saved_city_snapshot
 
 
 func request_city_exit(action: String, path := "") -> void:
@@ -293,23 +291,49 @@ func _load_city_unchecked(path: String) -> void:
 
 		return
 
-	var loaded_scenario: ScenarioState
+	if not document.compatibility_error().is_empty():
+		app.interface.show_error(document.compatibility_error())
 
-	if document.find_chunk("SCEN") != null:
-		loaded_scenario = ScenarioModel.from_document(document)
+		return
 
-		if not loaded_scenario.is_valid():
-			app.interface.show_error(loaded_scenario.load_error)
+	var status := "Loaded %s. Map view: %s." % [path.get_file(), CityViewMode.key(app.view_state.overlay_mode).capitalize()]
+
+	# an SCLG city becomes an SC2X version 4 city in memory. its file stays unchanged
+	if document.is_extended() and not document.is_sc2x():
+		var converted := Sc2xDocument.from_legacy(document, path.get_file().get_basename())
+
+		if not converted.ok:
+			app.interface.show_error("Cannot convert %s to SC2X version 4: %s" % [path.get_file(), converted.error])
 
 			return
 
-	app.city_session.activate_document(
-		document,
-		loaded_scenario,
-		"Loaded %s. Map view: %s."
-		% [path.get_file(), CityViewMode.key(app.view_state.overlay_mode).capitalize()],
-		true,
-	)
+		converted.document.sc2x_converted_from = path
+		document = converted.document
+		status = "Converted %s to SC2X version 4. Save a new copy; the original file stays unchanged." % path.get_file()
+
+		if not converted.issues.is_empty():
+			status += " %d broken links in the original city were not kept." % converted.issues.size()
+
+	var loaded_scenario := _loaded_scenario(document)
+
+	if loaded_scenario != null and not loaded_scenario.is_valid():
+		app.interface.show_error(loaded_scenario.load_error)
+
+		return
+
+	app.city_session.activate_document(document, loaded_scenario, status, true)
+
+	# a converted city has no file of its own yet
+	if not document.sc2x_converted_from.is_empty():
+		document_state.current_save_path = ""
+		document_state.current_city_saved_once = false
+
+
+func _loaded_scenario(document: Sc2File) -> ScenarioState:
+	if document.find_chunk("SCEN") == null:
+		return null
+
+	return ScenarioModel.from_document(document)
 
 
 func on_save_path_selected(path: String) -> void:
@@ -325,7 +349,8 @@ func on_save_dialog_canceled() -> void:
 
 
 func _save_copy(path: String) -> bool:
-	var result := CityFiles.save_copy(document_state.current_document, path, app.asset_state.reference_root)
+	var result := CityFiles.save_copy(
+		document_state.current_document, path, app.asset_state.reference_root, app.simulation_state.speed_controller)
 
 	if not result.ok:
 		app.interface.show_error(result.error)
@@ -336,7 +361,7 @@ func _save_copy(path: String) -> bool:
 	document_state.current_document.source_path = output_path
 	document_state.current_save_path = output_path
 	document_state.current_city_saved_once = true
-	document_state.saved_city_snapshot = result.data.duplicate()
+	document_state.saved_city_snapshot = document_state.current_document.content_snapshot()
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "Saved city: %s" % output_path
 	sync_upgrade_city_option()

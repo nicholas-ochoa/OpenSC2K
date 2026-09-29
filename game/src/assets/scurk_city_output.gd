@@ -412,6 +412,7 @@ static func _draw_signs(
 
 	var divisor := float(configuration.divisor)
 	var glyph_scale := 2
+	var sign_texts := city.sign_texts()
 
 	for diagonal in map_edge * 2 - 1:
 		for y in diagonal + 1:
@@ -420,12 +421,7 @@ static func _draw_signs(
 			if x >= map_edge or y >= map_edge:
 				continue
 
-			var label_id := city.text_overlay_id(x, y)
-
-			if not OverlayData.is_sign(label_id):
-				continue
-
-			var text := city.label(label_id).strip_edges().to_upper()
+			var text := str(sign_texts.get(x * map_edge + y, "")).strip_edges().to_upper()
 
 			if text.is_empty():
 				continue

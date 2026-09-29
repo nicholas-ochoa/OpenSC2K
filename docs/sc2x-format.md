@@ -1,0 +1,240 @@
+# SC2X file version 4
+
+OpenSC2K saves every city that the original game cannot open as an SC2X version 4
+file. The file is a ZIP archive with flat entries. SC2 and SCN cities keep the original
+format. SCLG files (the experimental SC2X versions 1 to 3) stay readable; a load converts
+them in memory, and a save writes a new version 4 file.
+
+## Archive
+
+The reader selects the format from the file signature, not the extension: `PK\x03\x04`
+selects version 4, and `FORM` selects the original or SCLG reader.
+
+Every entry is at the archive root. ZIP compresses every entry with DEFLATE level 9
+(`compression/formats/gzip/compression_level=9` in `project.godot`). No entry uses Maxis RLE
+or another inner compression. The writer uses fixed timestamps and this entry order:
+
+```text
+metadata.json
+metadata.schema.json
+MISC.bin ALTM.bin XTER.bin XBLD.bin XZON.bin XUND.bin XTXT.bin XLAB.bin XMIC.bin
+XTHG.bin XBIT.bin XTRF.bin XPLT.bin XVAL.bin XCRM.bin XPLC.bin XFIR.bin XPOP.bin
+XROG.bin XGRP.bin XSGN.bin
+SCEN.bin TEXT.bin PICT.bin TMPL.bin     (scenarios)
+CUNK.bin                                 (preserved chunks, when needed)
+<ID>.bin                                 (a preserved unknown chunk with a safe name)
+other entries                            (unknown entries of a loaded file)
+```
+
+A file must not contain `FORM.bin`, `SCDH.bin`, `SCLG.bin`, `SIZE.bin`, or `CNAM.bin`.
+The reader rejects entries in folders, repeated names, a CRC or size mismatch, missing
+required entries, and entries with the wrong size.
+
+## Metadata
+
+`metadata.json` is UTF-8 JSON. `game/assets/data/sc2x-metadata.schema.json` is the copy of
+the schema that each save includes as `metadata.schema.json`. `Sc2xMetadata` checks the same
+rules; the included schema cannot relax them.
+
+| Field | Meaning |
+| --- | --- |
+| `format`, `file_version` | `"OpenSC2K.SC2X"` and `4`. |
+| `map.size` | The map edge. The game opens 16, 32, 64, 128, 256, 384, 512, 640, and 1024. |
+| `city.name` | The city name: 1 to 64 characters. There is no CNAM entry. |
+| `city.mayor_name`, `city.stadium_teams` | The mayor name and the five shared team names. |
+| `identity_counters` | The next sign ID and the next moving-object ID. |
+| `simulation.rng_states` | The three 32-bit random states. `lfsr_random` must be 1 to 65535. |
+| `simulation.phase_state` | Engine state that no structure holds. See [Saved simulation state](#saved-simulation-state). |
+| `required_features` | Extra capabilities that a reader needs. This version supports none; a file that lists one can be inspected but not played. |
+| `legacy` | Import data: the source container, version, and chunk order, and the CNAM bytes that are not the name. |
+| `extensions` | Optional data. A save keeps it. |
+
+Names have at most 64 code points and 256 UTF-8 bytes and no NUL. JSON numbers are doubles:
+integers stay exact up to 2^53.
+
+## Binary structures
+
+All multi-byte fields are big-endian, except the PICT dimensions. Tile planes are
+column-major (`x * N + y`).
+
+| Entry | Size | Content |
+| --- | --- | --- |
+| MISC | 4,800 | The original global block. MISC stays authoritative for the values it holds. |
+| ALTM | 2N² | Altitude words. |
+| XTER, XBLD, XZON, XUND, XBIT | N² | Tile planes. |
+| XTXT | N² | Markers only: 0, or 241 through 255 (0xFA connection, 0xFB toxic, 0xFC flood, 0xFD and 0xFE riot, 0xFF fire). Values 1 through 240 are rejected. |
+| XTRF, XPLT, XVAL, XCRM, XPLC, XFIR, XPOP, XROG | N² | Per-tile data maps. A conversion expands coarse maps. |
+| XGRP | 3,328 | Graph history. |
+| XLAB | 25L, L ≥ 256 | The compatibility label table only. Names never come from it. A new city writes 6,400 zero bytes; a conversion keeps the labels that it could not assign. |
+| XMIC, XTHG, XSGN | see below | Named record collections. |
+| SCEN | 64 | SCEN schema 2, only for scenarios. |
+| TEXT | 16 + 16K + P | Every scenario TEXT payload, unchanged, with its source order and occurrence. |
+| PICT | 8 + WH or 8 + H(W+1) | The scenario picture, unchanged. |
+| TMPL | 4 + Σ(5 + name) | Descriptors of SCEN schema 2. |
+| CUNK | 16 + 24K + P | Preserved chunks. |
+
+### Named collections
+
+XMIC, XTHG, and XSGN start with six u32 fields: `schema_version` (1), `capacity`,
+`active_records`, `record_stride`, `text_bytes`, and `extension_bytes`. The fixed records
+follow, then one 8-byte text index per slot (`offset:u32`, `byte_length:u16`,
+`code_point_count:u16`), the UTF-8 text packed by slot with no gaps, and the extension
+section. An empty name has offset, length, and count zero.
+
+The extension section is a list of blocks: a 4-byte printable ASCII tag, a u32 length,
+and the data. A reader keeps blocks with unknown tags.
+
+**XMIC** adds `position_bytes:u32` at offset 24. Each 24-byte core holds the tile ID, the
+seven original statistic bytes, the footprint bounds (`x`, `y`, `width`, `height`: u16), and a
+position offset and count (u32). A complete rectangle has no tile list. A shared, irregular,
+or fragmented footprint lists every owned tile as `x:u16, y:u16` in ascending column-major
+order; the lists are packed by slot. A tile belongs to at most one record. Slot 0 is
+reserved and a free slot (tile ID 0) has no geometry or name. Slots 1 through 9 are the
+shared categories; individual records start at 10. Size: `28 + 32C + 4P + T + E`.
+
+**XTHG** uses a 32-byte core: type (u8), direction (u8), then state, X, Y, Z, PX, PY, DX, DY,
+reserved (zero), goal, ship home X + 1, ship home Y + 1, flags (u16), and the object ID (u32).
+An active object has a unique nonzero ID; a free slot has no ID, name, or flags. Size:
+`24 + 40C + T + E`.
+
+| Flag bits | Meaning |
+| --- | --- |
+| 0 | The object occupies its tile in the runtime tile index. |
+| 8 to 15 | Stacking depth of an occupant; 0 is the bottom object of its tile. |
+
+| Extension tag | Entry | Meaning |
+| --- | --- | --- |
+| `LOCC` | slot u32, x u16, y u16 | An occupant whose occupied tile differs from its position. Original trains and sailboats can leave such links. |
+| `LREC` | slot u32, 12 low + 12 high bytes | The working record, when the core cannot express its bytes, such as a stale label field of an object that occupies no tile. |
+
+**XSGN** uses a 12-byte core: sign ID (u32; zero marks an empty slot), X, Y, flags, and
+reserved (u16). An active sign has 1 to 64 characters of text. One sign per tile; IDs are
+unique. Size: `24 + 20C + T + E`.
+
+### TEXT, CUNK, SCEN, and TMPL
+
+TEXT and CUNK start with `schema_version`, the entry count, the index stride, and the
+payload size. A TEXT index entry holds the source order, the source occurrence, and the
+payload offset and length. A CUNK index entry holds the original chunk ID, the occurrence,
+the source order, the payload flags, and the payload offset and length.
+
+| CUNK flag | Meaning |
+| --- | --- |
+| 0x1 | The stored bytes of a chunk of unknown encoding. |
+| 0x2 | A legacy structure that a version 4 structure replaced, such as a TMPL that does not describe SCEN schema 2. |
+
+An unknown chunk with one occurrence and a name of four capital letters or digits keeps
+its own `<ID>.bin` entry. Repeated unknown chunks and extra occurrences of known structures
+go to CUNK.
+
+SCEN schema 2 widens the disaster X and Y to u16 and the two building tile counts to u32.
+A 52-byte scenario gets zero life-expectancy and education goals. A conversion changes the
+original template to the schema 2 descriptors; a template with other descriptors goes to CUNK
+with flag 0x2.
+
+## Working documents
+
+A loaded version 4 file becomes a working document: an `Sc2File` with `large_version` 4.
+The simulation, the tools, and the renderer use its chunks in the extended layout:
+
+- XTXT is the combined runtime tile index in two byte planes at every map size: markers,
+  facility links, and the top moving object of each tile. Each occupying object keeps the
+  value below it in its label field. `Sc2xDocument` rebuilds the index from the markers, the
+  XMIC footprints, and the XTHG occupancy flags, and saves it the same way. The index is
+  never saved.
+- XLAB is a runtime label table with wide records: a u16 length and 256 UTF-8 bytes. It
+  holds the mayor name, the team names, and the facility names at their original label IDs.
+  Its size is never a multiple of 25 bytes, so byte-level helpers can tell it from a legacy
+  table.
+- XMIC holds the 8-byte records, and XTHG holds split low and high record planes. Their
+  capacities come from the file.
+- XSGN holds the saved sign collection. Signs are not in XTXT, so a sign can share a tile
+  with a facility, a moving object, and a marker. Demolition and disasters leave signs in
+  place; the sign tool changes them.
+- The document keeps the metadata, the compatibility XLAB table, the object identities,
+  the TEXT source orders, and the preserved chunks and entries.
+
+`Sc2xDocument.split` and `join` (native code in `native/simulation/src/formats/sc2x`) convert
+between the working chunks and the saved structures. A load followed by a save writes the same
+entries. A moving object gets a new identity when its slot holds a different type of object at
+the next save.
+
+Supported sizes and record capacities limit what a working document can link: at most
+3,990 facility records and no XTHG capacity of 20 (its table would look like an original
+single-plane table). A file that exceeds them can be inspected but not opened.
+
+## Conversion
+
+`Sc2xDocument.from_legacy` makes a working document from an SC2, SCN, or SCLG document
+without changing the source:
+
+1. Expand coarse data maps to one value per tile.
+2. Follow each tile link through covering objects. Save markers, facility footprints, and
+   object occupancy. Signs become XSGN records with new IDs; covered signs are kept.
+3. Move the city name to metadata, and keep the unparsed CNAM bytes in `legacy.cnam`.
+4. Move the mayor and team names to metadata, and facility, sign, and object names to their
+   records. The other labels stay in the compatibility XLAB table.
+5. Upgrade SCEN and TMPL; keep TEXT and PICT unchanged; preserve other chunks.
+6. Report links that the new structures cannot hold, such as an object linked from two
+   tiles. The report is shown after the load.
+
+Record capacities become the larger of the source capacity and the map profile.
+
+The application converts an SCLG file when it loads it, and an SC2 city when the player
+chooses **Upgrade City to SC2X**. A converted city has no file of its own until the player
+saves it; a save never replaces the source file. New cities that are not original cities
+are version 4 cities.
+
+## Saving
+
+A save writes a temporary file beside the target, closes it, reads it back, loads it, and
+checks that it holds the same entries before it replaces the target. A failure keeps the
+previous file.
+
+A city can be saved only at a completed simulation day. While the annual budget or a
+military decision waits for the player, the save reports what to finish first.
+
+### Saved simulation state
+
+`simulation.phase_state` holds these engine and speed-controller values:
+`ship_home`, `commerce_connections`, `industry_connections`, `bus_passengers`,
+`rail_passengers`, `subway_passengers`, `mayor_approval`, `pending_disaster_type`,
+`pending_disaster_point`, `active_disaster_type`, `unsupported_disaster_type`,
+`disaster_map_counter`, `disaster_hurricane_counter`, `terminal_state`, `subtick_counter`,
+`simulation_ready`, and the load-scan results `developed_tiles`, `power_usage_percent`,
+`water_usage_percent`, and `city_status_resource_id`.
+
+A file with this state loads without a new power and water scan, so the next days run as
+they would have without the save. The frame timing accumulators, the fire timer, the
+traffic news deadline (a process clock), music playback, the vehicle layer switch, and pause
+targets are runtime state and are not saved. An empty `phase_state` means the load defaults,
+as after a conversion.
+
+## Record and vehicle limits
+
+`native/simulation/src/formats/sc2x/limits.rs` holds the default capacities and the ordinary
+vehicle caps of each map size.
+
+| Map size | XMIC | XSGN | XTHG | Airplanes | Helicopters | Ships | Sailboats | Trains |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 16 | 64 | 16 | 16 | 1 | 1 | 1 | 1 | 1 |
+| 32 | 64 | 16 | 32 | 2 | 1 | 1 | 2 | 1 |
+| 64 | 128 | 32 | 64 | 2 | 1 | 1 | 4 | 8 |
+| 128 | 256 | 128 | 128 | 2 | 1 | 1 | 4 | 8 |
+| 256 | 512 | 256 | 256 | 4 | 2 | 2 | 8 | 16 |
+| 384 | 1,024 | 256 | 384 | 4 | 2 | 2 | 8 | 16 |
+| 512, 640 | 1,024 | 512 | 512 | 8 | 4 | 4 | 16 | 32 |
+| 1024 | 2,048 | 512 | 512 | 16 | 8 | 8 | 32 | 64 |
+| 2048 | 8,192 | 512 | 1,024 | 32 | 16 | 16 | 32 | 128 |
+
+The 2048 profile is a storage target only. The game does not create or open 2048 maps.
+New signs stop at the sign budget. An imported collection can keep a larger capacity.
+
+## Code
+
+- `game/src/formats/sc2x_document.gd`: archive read and write, conversion, and working documents.
+- `game/src/formats/sc2x_metadata.gd`: metadata rules.
+- `game/src/formats/zip_archive.gd`: the in-memory ZIP codec, which checks each CRC-32.
+- `game/src/model/city/sign_table.gd`: sign lookup and edits.
+- `game/src/simulation/core/sc2x_checkpoint.gd`: saved simulation state.
+- `native/simulation/src/formats/sc2x`: the binary structures, the projection, and the limits.

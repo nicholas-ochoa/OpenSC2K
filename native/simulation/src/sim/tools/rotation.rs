@@ -540,7 +540,7 @@ fn rotate_things(data: &mut [u8], counter_clockwise: bool, map_edge: i64) {
             continue;
         }
 
-        if kind == things::TYPE_SHIP && map_edge > 128 {
+        if kind == things::TYPE_SHIP && things::split_planes(data) {
             let home = things::ship_home(data, record, Vec2i::NONE);
             let rotated = if counter_clockwise {
                 Vec2i::new(home.y, edge - home.x)
