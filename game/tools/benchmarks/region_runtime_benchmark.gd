@@ -20,6 +20,8 @@ func _run() -> void:
 	main.main_menu.city_background.set_process(false)
 	main.preferences.zoom_graphics = AppSettingsStore.normalize_zoom_graphics([0, 1, 2, 2, 2, 2])
 	main.map_view.zoom_factor = float(OS.get_environment("CITY_BENCH_ZOOM")) if OS.has_environment("CITY_BENCH_ZOOM") else 1.0
+	# a live window polls the region cache once per displayed frame
+	Engine.max_fps = int(OS.get_environment("CITY_BENCH_FPS")) if OS.has_environment("CITY_BENCH_FPS") else 0
 
 	for edge in [256, 384, 512]:
 		if OS.has_environment("CITY_BENCH_SIZE") and edge != int(OS.get_environment("CITY_BENCH_SIZE")):

@@ -24,6 +24,10 @@ var gpu_workers: Array[RegionWorker] = []
 var entries: Dictionary[Vector2i, CityRegionResult] = {}
 var wanted: Array[Vector2i] = []
 var visible: Array[Vector2i] = []
+# Sets of the keys in `wanted` and `visible` for the scheduler. A zoomed-out view
+# shows more than a thousand regions, so list membership checks grow quadratically.
+var wanted_keys: Dictionary[Vector2i, bool] = {}
+var visible_keys: Dictionary[Vector2i, bool] = {}
 var signature: Array = []
 var view_size := 2
 var mode := CityViewMode.Mode.CITY
@@ -657,4 +661,66 @@ class RegionWorker extends RefCounted:
 	var atlas_revision := -1
 	var layout := -1
 	var generation := -1
+	# claimed keys that have not returned a region yet
 	var keys: Array[Vector2i] = []
+	# The running stream and the main thread share the fields below. Lock
+	# `mutex` for each access while a task runs. The stream takes keys from
+	# `inbox` and adds complete regions to `outbox`. It clears `streaming` when
+	# it stops, and then it takes no more keys.
+	var mutex := Mutex.new()
+	var inbox: Array[Vector2i] = []
+	var outbox: Array[CityGpuRegionResult] = []
+	var streaming := false
+	var cancelled := false
+	var display_city: CityState
+
+	# Add keys that the stream will still build. Return false after it stops.
+	func offer(new_keys: Array[Vector2i], urgent: bool) -> bool:
+		mutex.lock()
+		var accepted := streaming and not cancelled
+
+		if accepted:
+			inbox = new_keys + inbox if urgent else inbox + new_keys
+
+		mutex.unlock()
+
+		return accepted
+
+	# Remove queued keys that `keep` rejects. Return the removed keys.
+	func prune(keep: Callable) -> Array[Vector2i]:
+		var removed: Array[Vector2i] = []
+		var kept: Array[Vector2i] = []
+		mutex.lock()
+
+		for key in inbox:
+			if keep.call(key):
+				kept.append(key)
+			else:
+				removed.append(key)
+
+		inbox = kept
+		mutex.unlock()
+
+		return removed
+
+	func queued() -> int:
+		mutex.lock()
+		var count := inbox.size()
+		mutex.unlock()
+
+		return count
+
+	func take_regions() -> Array[CityGpuRegionResult]:
+		mutex.lock()
+		var regions := outbox
+		outbox = []
+		mutex.unlock()
+
+		return regions
+
+	# Stop the stream after its current region.
+	func cancel() -> void:
+		mutex.lock()
+		cancelled = true
+		inbox.clear()
+		mutex.unlock()

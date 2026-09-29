@@ -54,6 +54,7 @@ func _check_worker_sharing() -> void:
 	for x in 32:
 		var key := Vector2i(x, 1)
 		cache.visible.append(key)
+		cache.visible_keys[key] = true
 		if x not in [8, 9]:
 			var entry := CityGpuRegionResult.new()
 			entry.generation = cache.generation
