@@ -27,7 +27,7 @@ both extensions and runs both sets of Rust unit tests.
 `city_native_region_test` compares native regions against GDScript. It checks
 indexed pixels, foreground order and train fields, all artwork sizes, surface and
 underground views, building and terrain catalogs, traffic, cutaways, display
-filters, revision changes, and a 512-tile city. Its native counterpart also checks
+filters, revision changes, and a 512-by-512 city. Its native counterpart also checks
 GPU pixels. Dispatch checks include extended record IDs and coordinates above 255.
 The existing cache, sign, moving-object and renderer tests exercise the normal
 region interface.
@@ -46,14 +46,15 @@ The benchmark prepares 64 regions, moves to 64 new regions, then returns. It use
 order across three repeats. It records input hashes, engine version, source
 revision, and whether the worktree has changes.
 
-On the development Mac with Godot 4.7.2, the initial implementation produced these
-median CPU times for the new-region pan stage on the generated 512-tile city:
+On the development Mac (Apple M3 Max) with Godot 4.7.2, commit `075ccc61` produced
+these median CPU times for the new-region pan stage on the generated 512-by-512 city.
+The worktree was clean. No other project tests or builds ran during the measurement.
 
 | Artwork | GDScript | Rust | Ratio |
 | --- | ---: | ---: | ---: |
-| Small | 744.2 ms | 190.5 ms | 3.91x |
-| Medium | 745.3 ms | 192.0 ms | 3.88x |
-| Large | 232.6 ms | 54.1 ms | 4.30x |
+| Small | 728.5 ms | 176.9 ms | 4.12x |
+| Medium | 718.7 ms | 175.9 ms | 4.09x |
+| Large | 222.7 ms | 51.9 ms | 4.29x |
 
 These measurements include bridge costs. They exclude GPU uploads and display
 latency. They are not frame-rate measurements or promises for other machines.
