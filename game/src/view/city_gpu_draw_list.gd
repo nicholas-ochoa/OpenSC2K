@@ -52,10 +52,12 @@ static func build_grid(draws_value: Array[Draw]) -> Dictionary[Vector2i, Array]:
 	return grid
 
 
-class Draw extends RefCounted:
+# A draw is also the foreground command of its sprite. The GPU build context
+# fills the command fields of each draw that has a sprite role, so that one
+# object serves both lists.
+class Draw extends CityStaticCommand:
 	var image: Image
 	var source: Rect2i
-	var position: Vector2i
 
 	func _init(sprite: Image, area: Rect2i, destination: Vector2i) -> void:
 		image = sprite

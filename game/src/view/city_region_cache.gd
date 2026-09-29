@@ -474,7 +474,7 @@ func occlusion_candidates(bounds: Rect2i) -> Array[CityStaticCommand]:
 		if not Rect2(entry.bounds).intersects(native):
 			continue
 
-		for index in CityIsometricRenderer.occlusion_candidate_indices(entry.occlusion_grid, bounds):
+		for index in CityIsometricRenderer.occlusion_candidate_indices(entry.candidate_grid(), bounds):
 			var command: CityStaticCommand = entry.occlusion_commands[index]
 			var order: int = command.region_order
 

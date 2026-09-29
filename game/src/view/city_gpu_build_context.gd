@@ -152,26 +152,30 @@ func build_tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 			return cached
 
 	tile_builds += 1
-	var recorder := CityGpuDrawList.new()
+	var draws: Array[CityGpuDrawList.Draw] = []
 	var origin := configuration.side_margin + _edge * configuration.half_width
 	var order := (x + y) * _edge + y
 	var foreground: Array[CityStaticCommand] = []
 	var reusable := false
 
 	if mode == CityViewMode.Mode.UNDERGROUND:
+		var recorder := CityGpuDrawList.new()
 		CityUndergroundView.draw_tile(recorder, city, palette, sprites, images, configuration, origin, x, y, pipes, subways, water_mains)
+		draws = recorder.draws
 	else:
-		reusable = _record_fast_tile(recorder, city, palette, sprites, configuration, origin, x, y)
+		reusable = _record_fast_tile(draws, city, palette, sprites, configuration, origin, x, y)
 
 		if not reusable:
+			var recorder := CityGpuDrawList.new()
 			CityIsometricRenderer.draw_tile(recorder, city, palette, sprites, images, configuration, origin, x, y, 0, false, false)
+			draws = recorder.draws
 			_register_image_roles()
 
 		if reusable or city.tile_is_visible(x, y):
 			var building := _buildings[key]
 
-			for index in recorder.draws.size():
-				var draw := recorder.draws[index]
+			for index in draws.size():
+				var draw := draws[index]
 				var sprite_id := -1
 				var flip := false
 
@@ -190,22 +194,20 @@ func build_tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 				if not draw.source.has_area():
 					continue
 
-				var command := CityStaticCommand.new()
-				command.sprite_id = sprite_id
-				command.flip = flip
-				command.position = draw.position
-				command.size = draw.source.size
-				command.depth_order = order
-				command.region_order = (order << 16) | foreground.size()
+				draw.sprite_id = sprite_id
+				draw.flip = flip
+				draw.size = draw.source.size
+				draw.depth_order = order
+				draw.region_order = (order << 16) | foreground.size()
 
 				# train masks do not apply to the shortcut's buildings
 				if not reusable and building > Tiles.EMPTY and sprite_id == configuration.sprite_base + building:
-					CityIsometricRenderer.configure_train_foreground(command, building, configuration)
+					CityIsometricRenderer.configure_train_foreground(draw, building, configuration)
 
-				foreground.append(command)
+				foreground.append(draw)
 
 	var result := Tile.new()
-	result.draws = recorder.draws
+	result.draws = draws
 	result.foreground = foreground
 	result.revision = revision
 	result.reusable = reusable and input != 0
@@ -236,32 +238,40 @@ func build_tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 # Record the visible draws of a tile as quads in world pixels and atlas pixels.
 # A region that contains the whole tile appends these arrays without a loop.
 func _pack_quads(tile: Tile) -> void:
+	var drawn: Array[CityGpuDrawList.Draw] = []
+	var vertices := PackedVector2Array()
+	var uvs := PackedVector2Array()
+	var bounds := Rect2i()
+
 	for draw in tile.draws:
 		var size := draw.source.size
 
 		if size.x <= 0 or size.y <= 0:
 			continue
 
-		var atlas_slot := slot(draw.image)
+		var atlas_slot: Rect2i = atlas_slots.get(draw.image.get_instance_id(), Rect2i())
 
-		if not error.is_empty():
-			return
+		if not atlas_slot.has_area():
+			atlas_slot = slot(draw.image)
+
+			if not error.is_empty():
+				return
 
 		var rectangle := Rect2i(draw.position, size)
-		tile.bounds = rectangle if tile.drawn.is_empty() else tile.bounds.merge(rectangle)
-		tile.drawn.append(draw)
+		bounds = rectangle if drawn.is_empty() else bounds.merge(rectangle)
+		drawn.append(draw)
 		var start := Vector2(draw.position)
 		var end := start + Vector2(size)
-		tile.vertices.append(start)
-		tile.vertices.append(Vector2(end.x, start.y))
-		tile.vertices.append(end)
-		tile.vertices.append(Vector2(start.x, end.y))
+		vertices.append_array([start, Vector2(end.x, start.y), end, Vector2(start.x, end.y)])
 		start = Vector2(atlas_slot.position + draw.source.position)
 		end = start + Vector2(size)
-		tile.uvs.append(start)
-		tile.uvs.append(Vector2(end.x, start.y))
-		tile.uvs.append(end)
-		tile.uvs.append(Vector2(start.x, end.y))
+		uvs.append_array([start, Vector2(end.x, start.y), end, Vector2(start.x, end.y)])
+
+	# most tiles draw no empty sprite, so they can share the draw list
+	tile.drawn = tile.draws if drawn.size() == tile.draws.size() else drawn
+	tile.vertices = vertices
+	tile.uvs = uvs
+	tile.bounds = bounds
 
 
 # Return the triangle indices of `count` quads that use four vertices each
@@ -536,12 +546,12 @@ func _fast_tile(recorder: CityGpuDrawList, city: CityState, palette: Sc2Palette,
 		sprites: Sc2SpriteArchive, config: CityViewConfiguration, origin: int, x: int, y: int) -> bool:
 	bind_city(city)
 
-	return _record_fast_tile(recorder, city, palette, sprites, config, origin, x, y)
+	return _record_fast_tile(recorder.draws, city, palette, sprites, config, origin, x, y)
 
 
 # the shortcut for the bound city. it reads the bound arrays in place of the
 # city accessors, and it records the image key of each draw in `_fast_keys`
-func _record_fast_tile(recorder: CityGpuDrawList, city: CityState, palette: Sc2Palette,
+func _record_fast_tile(draws: Array[CityGpuDrawList.Draw], city: CityState, palette: Sc2Palette,
 		sprites: Sc2SpriteArchive, config: CityViewConfiguration, origin: int, x: int, y: int) -> bool:
 	var key := x * _edge + y
 	var building := _buildings[key]
@@ -577,7 +587,7 @@ func _record_fast_tile(recorder: CityGpuDrawList, city: CityState, palette: Sc2P
 	if building < Tiles.DEVELOPED_FIRST:
 		var ground_id := _ground_sprite(key, terrain, building, water, config.sprite_base)
 		var ground_image := _sprite(sprites, palette, ground_id, false)
-		recorder.draws.append(CityGpuDrawList.Draw.new(ground_image, Rect2i(Vector2i.ZERO, ground_image.get_size()),
+		draws.append(CityGpuDrawList.Draw.new(ground_image, Rect2i(Vector2i.ZERO, ground_image.get_size()),
 			Vector2i(screen_x, base_y - ground_image.get_height())))
 		_fast_keys.append(ground_id * 2)
 
@@ -602,14 +612,14 @@ func _record_fast_tile(recorder: CityGpuDrawList, city: CityState, palette: Sc2P
 	var offset := (int(image.get_width() / 4) - config.half_height if building >= Tiles.DEVELOPED_FIRST
 		else (-config.altitude_step if terrain == TerrainTileIds.RAISED else 0))
 	var object_y := flat_y - object_altitude * config.altitude_step + offset
-	recorder.draws.append(CityGpuDrawList.Draw.new(image, Rect2i(Vector2i.ZERO, image.get_size()),
+	draws.append(CityGpuDrawList.Draw.new(image, Rect2i(Vector2i.ZERO, image.get_size()),
 		Vector2i(screen_x, object_y - image.get_height())))
 	_fast_keys.append(sprite_id * 2 + int(flip))
 
 	if building >= Tiles.DEVELOPED_FIRST and (flags & Sc2TileFlags.POWER_MASK) == Sc2TileFlags.POWERABLE:
 		var marker_id := config.sprite_base + CityIsometricRenderer.POWER_MARKER_SPRITE_OFFSET
 		var marker := _sprite(sprites, palette, marker_id, false)
-		recorder.draws.append(CityGpuDrawList.Draw.new(marker, Rect2i(Vector2i.ZERO, marker.get_size()),
+		draws.append(CityGpuDrawList.Draw.new(marker, Rect2i(Vector2i.ZERO, marker.get_size()),
 			Vector2i(screen_x + int(image.get_width() / 2) - int(marker.get_width() / 2), object_y - marker.get_height())))
 		_fast_keys.append(marker_id * 2)
 
@@ -642,13 +652,13 @@ func _terrain_sprite(terrain: int, water: bool, sprite_base: int) -> int:
 
 
 class Tile extends RefCounted:
-	var draws: Array[CityGpuDrawList.Draw] = []
+	var draws: Array[CityGpuDrawList.Draw]
 	# the draws with an area, in quad order, and their union
-	var drawn: Array[CityGpuDrawList.Draw] = []
-	var bounds := Rect2i()
-	var vertices := PackedVector2Array()
-	var uvs := PackedVector2Array()
-	var foreground: Array[CityStaticCommand] = []
+	var drawn: Array[CityGpuDrawList.Draw]
+	var bounds: Rect2i
+	var vertices: PackedVector2Array
+	var uvs: PackedVector2Array
+	var foreground: Array[CityStaticCommand]
 	var revision := -1
 	var reusable := false
 	var inputs := 0
