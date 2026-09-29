@@ -76,7 +76,7 @@ class ProfiledContext extends CityGpuBuildContext:
 		return value
 
 
-	func tile(
+	func build_tile(
 		city: CityState,
 		palette: Sc2Palette,
 		sprites: Sc2SpriteArchive,
@@ -86,10 +86,12 @@ class ProfiledContext extends CityGpuBuildContext:
 		mode: CityViewMode.Mode,
 		pipes: bool,
 		subways: bool,
-		water_mains := true,
+		water_mains: bool,
+		input: int,
+		extra: int,
 	) -> CityGpuBuildContext.Tile:
 		var began := Time.get_ticks_usec()
-		var value := super.tile(city, palette, sprites, configuration, x, y, mode, pipes, subways, water_mains)
+		var value := super.build_tile(city, palette, sprites, configuration, x, y, mode, pipes, subways, water_mains, input, extra)
 		tile_usec += Time.get_ticks_usec() - began
 		tile_calls += 1
 

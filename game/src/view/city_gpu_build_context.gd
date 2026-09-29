@@ -57,6 +57,8 @@ var _visible_levels := 32
 # sprite id * 2 + flip. The images are the same objects as in `images`.
 var _sprite_images: Dictionary[int, Image] = {}
 var _terrain_sprites := PackedInt32Array()
+# archive width and height by sprite offset from the view's sprite base
+var _sprite_sizes := PackedInt32Array()
 # image keys of the draws that the last shortcut recorded, in draw order
 var _fast_keys := PackedInt32Array()
 
@@ -76,6 +78,7 @@ func set_revision(value: int, layout: Array = []) -> void:
 			bound_inputs = PackedInt64Array()
 			_sprite_images.clear()
 			_terrain_sprites = PackedInt32Array()
+			_sprite_sizes = PackedInt32Array()
 
 		_maximum_altitude = -1
 		revision = value
@@ -195,7 +198,8 @@ func build_tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 				command.depth_order = order
 				command.region_order = (order << 16) | foreground.size()
 
-				if building > Tiles.EMPTY and sprite_id == configuration.sprite_base + building:
+				# train masks do not apply to the shortcut's buildings
+				if not reusable and building > Tiles.EMPTY and sprite_id == configuration.sprite_base + building:
 					CityIsometricRenderer.configure_train_foreground(command, building, configuration)
 
 				foreground.append(command)
@@ -385,67 +389,123 @@ static func bound_extra_key(city: CityState, index: int) -> int:
 
 
 # Return the screen bounds that the static sprites of one tile can touch, or a
-# width of -1 when the tile needs the full painter to know its bounds
+# width of -1 when the tile needs the full painter to know its bounds. It reads
+# the bound city arrays; the region renderer calls it once per changed tile.
 func tile_bounds(city: CityState, sprites: Sc2SpriteArchive, config: CityViewConfiguration,
 		x: int, y: int, mode: CityViewMode.Mode) -> Rect2i:
 	var everywhere := Rect2i(0, 0, -1, -1)
 
-	if mode != CityViewMode.Mode.CITY or x == city.map_size - 1 or y == city.map_size - 1 or not city.tile_is_visible(x, y):
+	if city != _city:
+		bind_city(city)
+
+	if mode != CityViewMode.Mode.CITY or x == _edge - 1 or y == _edge - 1:
 		return everywhere
 
-	var key := x * city.map_size + y
-	var building := int(city.buildings[key])
+	var key := x * _edge + y
+	var building := _buildings[key]
+	var flags := _flags[key]
+	var word := _altitudes[key]
+	var water := (flags & Sc2TileFlags.WATER) != 0
+	var water_level := (word >> Sc2AltitudeLayout.WATER_SHIFT) & Sc2AltitudeLayout.LEVEL_MASK
+	var land_level := word & Sc2AltitudeLayout.LAND_MASK
+	var overlay := int(_overlays[key]) | ((int(_overlays[_edge * _edge + key]) << 8) if _overlay_high else 0)
 
-	if ((building >= Tiles.HIGHWAY_SLOPE_FIRST and building <= Tiles.REINFORCED_HIGHWAY_BRIDGE)
-			or OverlayData.is_thing(city.text_overlay_id(x, y))):
+	if ((_visible_levels < 32 and (water_level if water else land_level) >= _visible_levels)
+			or (building >= Tiles.HIGHWAY_SLOPE_FIRST and building <= Tiles.REINFORCED_HIGHWAY_BRIDGE)
+			or (overlay != 0 and OverlayData.is_thing(overlay))):
 		return everywhere
 
-	if building >= Tiles.DEVELOPED_FIRST and (int(city.zones[key]) & Sc2ZoneLayout.CORNER_TOP_RIGHT[rotation]) == 0:
+	if building >= Tiles.DEVELOPED_FIRST and (_zones[key] & Sc2ZoneLayout.CORNER_TOP_RIGHT[rotation]) == 0:
 		return Rect2i()
 
-	var raw_terrain := city.terrain_id(x, y)
-	var terrain := CityIsometricRenderer.surface_terrain_id(city, x, y)
-	var origin := config.side_margin + city.map_size * config.half_width
-	var screen_x := origin + (x - y) * config.half_width
-	var flat_y := config.top_margin + (x + y) * config.half_height
-	var altitude := city.water_altitude(x, y) if terrain >= TerrainTileIds.DEEP_WATER_FIRST else city.land_altitude(x, y)
-	var base_y := flat_y - altitude * config.altitude_step + config.tile_height
-	var terrain_entry := sprites.find_sprite(IsometricStaticVisuals.ground_sprite_id(city, x, y, terrain, building, config.sprite_base))
-
-	if terrain_entry == null:
-		return everywhere
-
-	var bounds := Rect2i(screen_x, base_y - terrain_entry.height, terrain_entry.width, terrain_entry.height)
-
+	var raw_terrain := _terrains[key]
+	var terrain := raw_terrain
 	# a neighbor's altitude can turn surface water into a waterfall without a
 	# change to this tile's inputs. keep bounds that fit both sprites
-	if raw_terrain >= TerrainTileIds.SURFACE_WATER_FIRST and raw_terrain <= TerrainTileIds.CHANNEL_LAST:
-		for variant in [raw_terrain, TerrainTileIds.WATERFALL]:
-			var entry := sprites.find_sprite(IsometricStaticVisuals.ground_sprite_id(city, x, y, variant, building, config.sprite_base))
+	var surface_water := raw_terrain >= TerrainTileIds.SURFACE_WATER_FIRST and raw_terrain <= TerrainTileIds.CHANNEL_LAST
 
-			if entry == null:
+	if surface_water:
+		terrain = CityIsometricRenderer.surface_terrain_id(city, x, y)
+
+	var screen_x := config.side_margin + _edge * config.half_width + (x - y) * config.half_width
+	var flat_y := config.top_margin + (x + y) * config.half_height + config.tile_height
+	var base_y := flat_y - (water_level if terrain >= TerrainTileIds.DEEP_WATER_FIRST else land_level) * config.altitude_step
+	var size := _sprite_size(sprites, _ground_sprite(key, terrain, building, water, config.sprite_base) - config.sprite_base,
+		config.sprite_base)
+
+	if size.x < 0:
+		return everywhere
+
+	if surface_water:
+		for variant in [raw_terrain, TerrainTileIds.WATERFALL]:
+			var other := _sprite_size(sprites, _ground_sprite(key, variant, building, water, config.sprite_base) - config.sprite_base,
+				config.sprite_base)
+
+			if other.x < 0:
 				return everywhere
 
-			bounds = bounds.merge(Rect2i(screen_x, base_y - entry.height, entry.width, entry.height))
+			size = size.max(other)
+
+	var bounds := Rect2i(screen_x, base_y - size.y, size.x, size.y)
 
 	if building > Tiles.EMPTY:
-		var entry := sprites.find_sprite(config.sprite_base + building)
+		var entry := _sprite_size(sprites, building, config.sprite_base)
 
-		if entry == null:
+		if entry.x < 0:
 			return everywhere
 
-		var object_y := flat_y - city.object_altitude(x, y) * config.altitude_step + config.tile_height
-		object_y += CityIsometricRenderer.building_baseline_offset(building, terrain, entry.width, config.view_size)
-		bounds = bounds.merge(Rect2i(screen_x, object_y - entry.height, entry.width, entry.height))
+		var object_altitude := water_level if water else land_level
+
+		if not _objects.is_empty() and _objects[key] >= 0:
+			object_altitude = _objects[key]
+
+		var object_y := flat_y - object_altitude * config.altitude_step
+		object_y += CityIsometricRenderer.building_baseline_offset(building, terrain, entry.x, config.view_size)
+		bounds = bounds.merge(Rect2i(screen_x, object_y - entry.y, entry.x, entry.y))
 
 		if building >= Tiles.DEVELOPED_FIRST:
-			var marker := sprites.find_sprite(config.sprite_base + CityIsometricRenderer.POWER_MARKER_SPRITE_OFFSET)
+			var marker := _sprite_size(sprites, CityIsometricRenderer.POWER_MARKER_SPRITE_OFFSET, config.sprite_base)
 
-			if marker != null:
-				bounds = bounds.merge(Rect2i(screen_x + int(entry.width / 2) - int(marker.width / 2), object_y - marker.height,
-					marker.width, marker.height))
+			if marker.x >= 0:
+				bounds = bounds.merge(Rect2i(screen_x + int(entry.x / 2) - int(marker.x / 2), object_y - marker.y, marker.x, marker.y))
 
 	return bounds
+
+
+# The ground sprite id of a bound tile, as IsometricStaticVisuals.ground_sprite_id
+# finds it for `terrain`
+func _ground_sprite(key: int, terrain: int, building: int, water: bool, sprite_base: int) -> int:
+	var ground := _grounds[key] if not _grounds.is_empty() else -1
+
+	if ground >= 0:
+		return sprite_base + ground
+
+	var zone := _zones[key] & Sc2ZoneLayout.TYPE_MASK
+
+	if zone > 0 and IsometricStaticVisuals.shows_zone_under(terrain, building):
+		return sprite_base + 290 + zone
+
+	return _terrain_sprite(terrain, water, sprite_base)
+
+
+# The archive width and height of sprite `sprite_base + offset`, or -1 when the
+# archive lacks it. The tile painters use offsets below 500.
+func _sprite_size(sprites: Sc2SpriteArchive, offset: int, sprite_base: int) -> Vector2i:
+	if offset < 0 or offset >= 500:
+		var found := sprites.find_sprite(sprite_base + offset)
+
+		return Vector2i(found.width, found.height) if found != null else -Vector2i.ONE
+
+	if _sprite_sizes.is_empty():
+		_sprite_sizes.resize(1000)
+		_sprite_sizes.fill(-2)
+
+	if _sprite_sizes[offset * 2] == -2:
+		var entry := sprites.find_sprite(sprite_base + offset)
+		_sprite_sizes[offset * 2] = entry.width if entry != null else -1
+		_sprite_sizes[offset * 2 + 1] = entry.height if entry != null else -1
+
+	return Vector2i(_sprite_sizes[offset * 2], _sprite_sizes[offset * 2 + 1])
 
 
 func _register_image_roles() -> void:
@@ -515,15 +575,7 @@ func _record_fast_tile(recorder: CityGpuDrawList, city: CityState, palette: Sc2P
 	var base_y := flat_y - altitude * config.altitude_step
 
 	if building < Tiles.DEVELOPED_FIRST:
-		var ground := _grounds[key] if not _grounds.is_empty() else -1
-		var zone := _zones[key] & Sc2ZoneLayout.TYPE_MASK
-		var ground_id := config.sprite_base + ground
-
-		if ground < 0 and zone > 0 and IsometricStaticVisuals.shows_zone_under(terrain, building):
-			ground_id = config.sprite_base + 290 + zone
-		elif ground < 0:
-			ground_id = _terrain_sprite(terrain, water, config.sprite_base)
-
+		var ground_id := _ground_sprite(key, terrain, building, water, config.sprite_base)
 		var ground_image := _sprite(sprites, palette, ground_id, false)
 		recorder.draws.append(CityGpuDrawList.Draw.new(ground_image, Rect2i(Vector2i.ZERO, ground_image.get_size()),
 			Vector2i(screen_x, base_y - ground_image.get_height())))
