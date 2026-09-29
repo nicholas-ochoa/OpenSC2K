@@ -156,8 +156,9 @@ The simulation, the tools, and the renderer use its chunks in the extended layou
 
 `Sc2xDocument.split` and `join` (native code in `native/simulation/src/formats/sc2x`) convert
 between the working chunks and the saved structures. A load followed by a save writes the same
-entries. A moving object gets a new identity when its slot holds a different type of object at
-the next save.
+entries. After each simulation step that changes XTHG, a slot whose object was freed or changed
+type loses its identity and name; the next save gives the new object a new ID. IDs are never
+reused.
 
 Supported sizes and record capacities limit what a working document can link: at most
 3,990 facility records and no XTHG capacity of 20 (its table would look like an original

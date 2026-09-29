@@ -236,6 +236,31 @@ func compatibility_error() -> String:
 		", ".join(sc2x_unsupported_features))
 
 
+# A working document gives a new identity to a moving-object slot whose object
+# was freed or changed type. The next save assigns the new object ID. Call this
+# after each change of XTHG.
+func reconcile_object_identities() -> void:
+	var chunk := find_chunk("XTHG") if is_sc2x() else null
+
+	if chunk == null:
+		return
+
+	var things := chunk.decoded_payload
+	var count := ThingData.count(things)
+	sc2x_object_ids.resize(count)
+	sc2x_object_names.resize(count)
+	var previous := sc2x_object_kinds.size()
+	sc2x_object_kinds.resize(count)
+
+	for record in count:
+		var kind := things[record * Sc2ThingLayout.RECORD_SIZE]
+
+		if record >= previous or sc2x_object_kinds[record] != kind:
+			sc2x_object_ids[record] = 0
+			sc2x_object_names[record] = ""
+			sc2x_object_kinds[record] = kind
+
+
 func _clear_sc2x_state() -> void:
 	sc2x_metadata = null
 	sc2x_compat_labels = PackedByteArray()

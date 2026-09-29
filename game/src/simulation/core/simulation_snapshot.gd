@@ -55,6 +55,12 @@ static func publish(completed: GameSpeedController, target: GameSpeedController)
 	updated.copy_mirrors_to(city, true)
 	city.disaster_damage_class = updated.disaster_damage_class
 
+	# moving objects keep the identities that the worker reconciled
+	if document.is_sc2x():
+		document.sc2x_object_ids = updated.document.sc2x_object_ids
+		document.sc2x_object_kinds = updated.document.sc2x_object_kinds
+		document.sc2x_object_names = updated.document.sc2x_object_names
+
 	copy_engine(completed.engine, target.engine)
 	_copy_fields(completed, target, CONTROLLER_FIELDS)
 

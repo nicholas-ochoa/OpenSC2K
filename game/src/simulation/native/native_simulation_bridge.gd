@@ -156,6 +156,9 @@ static func apply_written(city: CityState, written: Dictionary, order := PackedS
 
 	city.resync_mirrors(applied)
 
+	if applied.has("XTHG"):
+		city.document.reconcile_object_identities()
+
 	return ""
 
 

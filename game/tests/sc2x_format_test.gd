@@ -20,6 +20,7 @@ func _initialize() -> void:
 	_check_signs()
 	_check_scenario()
 	_check_resume()
+	_check_identities()
 	_check_saves()
 	print("SC2X format: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
@@ -454,6 +455,41 @@ func _check_resume() -> void:
 	var state := reloaded.sc2x_metadata.phase_state.duplicate()
 	state.erase("mayor_approval")
 	_check(not Sc2xCheckpoint.validate(state).is_empty(), "Incomplete saved state is rejected")
+
+
+# the object ID that a save gives the slot
+func _object_id(document: Sc2File, slot: int) -> int:
+	var prepared := Sc2xDocument.entries(document)
+
+	return int(document.sc2x_object_ids[slot]) if prepared.ok else -1
+
+
+func _check_identities() -> void:
+	var document := Sc2xDocument.from_legacy(Sc2File.load_path(FIXTURES.path_join("generated-128.SC2"))).document
+	var chunk := document.find_chunk("XTHG")
+	var slot := -1
+
+	for record in range(1, ThingData.count(chunk.decoded_payload)):
+		if chunk.decoded_payload[record * Sc2ThingLayout.RECORD_SIZE] != 0:
+			slot = record
+			break
+
+	_check(slot > 0, "The fixture has a moving object")
+	var first := _object_id(document, slot)
+	document.reconcile_object_identities()
+	_check(first > 0 and _object_id(document, slot) == first, "An object keeps its ID while its slot keeps it")
+	var kind := chunk.decoded_payload[slot * Sc2ThingLayout.RECORD_SIZE]
+	chunk.write_decoded_byte(slot * Sc2ThingLayout.RECORD_SIZE, 0)
+	document.reconcile_object_identities()
+	chunk.write_decoded_byte(slot * Sc2ThingLayout.RECORD_SIZE, kind)
+	document.reconcile_object_identities()
+	var second := _object_id(document, slot)
+	_check(second > 0 and second != first, "A freed and reused slot gets a new object ID")
+	var ids := {}
+
+	for id in document.sc2x_object_ids:
+		_check(id == 0 or not ids.has(id), "Object IDs stay unique")
+		ids[id] = true
 
 
 func _check_saves() -> void:
