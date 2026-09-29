@@ -29,8 +29,16 @@ The packages include the engine. You do not need to install Godot.
 To run from source:
 
 Use Godot 4.7 and provide your own copy of SimCity 2000 Special Edition for Windows 95 (1996).
+The simulation is a native library written in Rust. Install Rust with [rustup](https://rustup.rs).
+`rust-toolchain.toml` selects the Rust version.
 
-Before the first run of a fresh checkout, run this command from the repository root:
+Before the first run of a fresh checkout, build the native simulation from the repository root:
+
+```sh
+python3 tools/build_native.py
+```
+
+Then run this command:
 
 ```sh
 godot --headless --audio-driver Dummy --path game --editor --import
@@ -73,7 +81,9 @@ is retained for adapted work.
 
 ## Development
 
-Open `game/project.godot` in Godot. Run the checks with:
+Open `game/project.godot` in Godot. Run `python3 tools/build_native.py` after each change
+to `native/simulation`. The validation command also builds the library and runs its unit tests.
+See [the native simulation](docs/native-simulation.md) for the layout. Run the checks with:
 
 ```sh
 tools/validate_project.sh

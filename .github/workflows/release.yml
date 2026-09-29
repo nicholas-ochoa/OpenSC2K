@@ -75,9 +75,42 @@ jobs:
       ref: ${{ needs.prepare.outputs.sha }}
     secrets: inherit
 
+  native:
+    needs: [inspect, prepare]
+    name: Build native simulation (${{ matrix.platform }})
+    strategy:
+      matrix:
+        include:
+          - platform: macos
+            runner: macos-15
+          - platform: linux-x86_64
+            runner: ubuntu-24.04
+          - platform: windows-x86_64
+            runner: windows-2025
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      # rust-toolchain.toml selects the Rust version. rustup is on each runner image
+      - name: Build the package library
+        run: python tools/build_native.py --package
+      - name: Save the library
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: native-${{ matrix.platform }}
+          path: game/bin/opensc2k_simulation/${{ matrix.platform }}/*
+          if-no-files-found: error
+          retention-days: 1
+
   build:
     name: Build release packages
-    needs: [inspect, prepare]
+    needs: [inspect, prepare, native]
     runs-on: macos-15
     timeout-minutes: 30
     steps:
@@ -90,10 +123,17 @@ jobs:
           python-version: '3.13'
       - name: Install Godot and export templates
         run: bash tools/setup_godot_ci.sh
+      - name: Collect native simulation libraries
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: native-*
+          path: local/native
+      - name: Arrange native simulation libraries
+        run: for folder in local/native/native-*; do mv "$folder" "local/native/${folder#local/native/native-}"; done
       - name: Build versioned packages
         env:
           RELEASE_VERSION: ${{ needs.inspect.outputs.version }}
-        run: python tools/build_desktop_release.py --output local/release-packages --label "$RELEASE_VERSION"
+        run: python tools/build_desktop_release.py --output local/release-packages --label "$RELEASE_VERSION" --native local/native
       - name: Save packages
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:

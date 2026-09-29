@@ -36,7 +36,27 @@ def write_zip(package, folder, name, *directories):
         assert stream.testzip() is None
 
 
-def build(output, label, godot):
+# the native simulation library of each package, relative to its package folder
+NATIVE_LIBRARIES = {
+    'windows-x64': ('windows-x86_64', 'opensc2k_simulation.dll', 'opensc2k_simulation.dll'),
+    'linux-x64': ('linux-x86_64', 'libopensc2k_simulation.so', 'libopensc2k_simulation.so'),
+    'macos-universal': ('macos', 'libopensc2k_simulation.dylib',
+                        'OpenSC2K.app/Contents/Frameworks/libopensc2k_simulation.dylib'),
+}
+
+
+def install_native(native, project):
+    """Copy the prebuilt native simulation libraries into the exported project."""
+    for folder, library, _ in NATIVE_LIBRARIES.values():
+        source = native / folder / library
+        if not source.is_file():
+            raise ValueError(f'Missing native simulation library: {source}')
+        target = project / 'bin/opensc2k_simulation' / folder / library
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, target)
+
+
+def build(output, label, godot, native):
     if sys.platform != 'darwin':
         raise ValueError('Desktop packaging requires macOS to create and sign the app and DMG')
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.+-]{0,79}', label):
@@ -55,6 +75,7 @@ def build(output, label, godot):
         with tarfile.open(archive) as stream:
             stream.extractall(source, filter='data')
         project = source / 'game'
+        install_native(native, project)
         version = re.search(r'^config/version="([^"]+)"',
                             (project / 'project.godot').read_text(), re.M).group(1)
         checked_godot(godot, project, '--editor', '--import')
@@ -68,6 +89,7 @@ def build(output, label, godot):
             checked_godot(godot, project, '--export-release', preset, str(folder / binary))
             shutil.copy2(source / 'LICENSE', folder / 'LICENSE.txt')
             shutil.copy2(source / 'docs/install.md', folder / 'INSTALL.md')
+            assert (folder / NATIVE_LIBRARIES[platform][2]).is_file(), f'{platform} lacks the native simulation'
             (folder / 'VERSION.txt').write_text(f'OpenSC2K {version}\nBuild: {label}\nCommit: {commit}\nGodot: {engine}\n')
             if platform == 'windows-x64':
                 assert (folder / 'godot_wry.dll').is_file()
@@ -104,8 +126,10 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--label', required=True)
     parser.add_argument('--godot', default=os.environ.get('GODOT', 'godot'))
+    parser.add_argument('--native', type=Path, default=ROOT / 'game/bin/opensc2k_simulation',
+                        help='Folder with the native library of each platform, as tools/build_native.py --package writes it')
     args = parser.parse_args()
-    build(args.output.resolve(), args.label, args.godot)
+    build(args.output.resolve(), args.label, args.godot, args.native.resolve())
 
 
 if __name__ == '__main__':

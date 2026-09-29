@@ -7,6 +7,10 @@ It has two jobs:
   This is the same `headless` suite that you run locally before merge.
 - **Build** makes Windows x64, Linux x64, and universal macOS packages on a separate runner
   without the assets. Packages are available as the `desktop-packages` workflow artifact for one day.
+  Before it starts, a **native** job on a Windows, a Linux, and a macOS runner builds the native
+  simulation library for each package with `python tools/build_native.py --package`. The macOS
+  library is universal. The Build job copies the three libraries into the exported project with
+  `tools/build_desktop_release.py --native`, and it checks that each package contains its library.
 
 `.github/workflows/test.yml` defines the Test job. The CI and Release workflows both use it.
 
