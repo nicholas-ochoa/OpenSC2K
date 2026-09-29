@@ -29,7 +29,7 @@ const COMMIT_ORDER := [
 ]
 
 
-static func run(
+static func _gdscript_run(
 	city: CityState,
 	random: SimRandom,
 	lfsr_random: SimLfsrRandom,
@@ -105,6 +105,48 @@ static func _mark_complete(counters: MovingThingResult) -> void:
 # the record updates share. the steps are methods because member reads on
 # self are indexed; static steps that read these fields from outside cost
 # several percent more per 5 hz tick
+
+
+static func run(
+	city: CityState,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
+	game_random: GameLcgRandom = null,
+	ship_home := Vector2i(-1, -1),
+	allow_disaster_damage := true,
+	traffic_news_time_msec := -1,
+	traffic_news_deadline_msec := 0,
+	suppress_vehicle_crashes := false
+) -> MovingThingResult:
+	if city == null or not city.is_valid():
+		return MovingThingResult.failure("city is invalid")
+
+	if random == null:
+		return MovingThingResult.failure("a compatible random generator is required")
+
+	if lfsr_random == null:
+		return MovingThingResult.failure("a compatible LFSR generator is required")
+
+	if game_random == null:
+		game_random = GameLcgRandom.new(1)
+
+	if traffic_news_time_msec < 0:
+		traffic_news_time_msec = Time.get_ticks_msec()
+
+	var response := NativeSimulationBridge.run("moving", city, random, lfsr_random, game_random, {
+		"ship_home": ship_home,
+		"allow_disaster_damage": allow_disaster_damage,
+		"traffic_news_time_msec": traffic_news_time_msec,
+		"traffic_news_deadline_msec": traffic_news_deadline_msec,
+		"suppress_vehicle_crashes": suppress_vehicle_crashes,
+	}, PackedStringArray(COMMIT_ORDER))
+
+	if not response.failed_chunk.is_empty():
+		return MovingThingResult.failure("cannot store %s after the moving-thing tick" % response.failed_chunk)
+
+	return response.result
+
+
 class TickContext:
 	var city: CityState
 	var map_edge: int

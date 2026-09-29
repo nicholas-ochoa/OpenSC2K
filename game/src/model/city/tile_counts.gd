@@ -29,7 +29,7 @@ static func count(city: CityState) -> PackedInt32Array:
 
 # write the map counts to MISC. only changed values are written.
 # returns the number of changed counts, or -1 when MISC is missing
-static func recount(city: CityState) -> int:
+static func _gdscript_recount(city: CityState) -> int:
 	var chunk := city.document.find_chunk("MISC")
 
 	if chunk == null or chunk.decoded_payload.size() < Sc2MiscLayout.TILE_COUNTS + BuildingTileIds.COUNT * 4:
@@ -46,3 +46,7 @@ static func recount(city: CityState) -> int:
 			changed += 1
 
 	return changed
+
+
+static func recount(city: CityState) -> int:
+	return NativeSimulationBridge.run("tile_recount", city, null, null, null).result

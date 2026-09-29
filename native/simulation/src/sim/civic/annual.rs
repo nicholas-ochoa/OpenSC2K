@@ -13,7 +13,7 @@ use crate::sim::ids::sc2budget_layout as budget;
 use crate::sim::ids::sc2microsim_layout;
 use crate::sim::ids::sc2misc_layout as misc_layout;
 use crate::sim::overlay;
-use crate::sim::phase::{PhaseResultLike, TimingSpan};
+use crate::sim::phase::TimingSpan;
 use crate::sim::random::{GameLcgRandom, SimLfsrRandom, SimRandom};
 use crate::sim::tools::demolish;
 use crate::sim::value::Ints32;

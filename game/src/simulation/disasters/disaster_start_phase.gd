@@ -2,7 +2,7 @@ class_name DisasterStartPhase
 extends DisasterStartConstants
 
 
-static func start(
+static func _gdscript_start(
 	city: CityState, disaster_type: int, point: Vector2i, random: SimRandom, lfsr_random: SimLfsrRandom = null
 ) -> DisasterStartResult:
 	var map_edge: int = city.map_size if city != null else 128
@@ -126,3 +126,17 @@ static func start(
 	city.resync_mirrors(["XTXT"])
 
 	return DisasterStartObjectsState._result(disaster_type, clamped, true, true, record)
+
+
+static func start(
+	city: CityState, disaster_type: int, point: Vector2i, random: SimRandom, lfsr_random: SimLfsrRandom = null
+) -> DisasterStartResult:
+	if city == null or not city.is_valid():
+		return DisasterStartResult.failed("city is invalid")
+
+	return NativeSimulationBridge.run("disaster_start", city, random, lfsr_random, null, {
+		"disaster_type": disaster_type,
+		"point": point,
+		"has_random": random != null,
+		"has_lfsr": lfsr_random != null,
+	}).result

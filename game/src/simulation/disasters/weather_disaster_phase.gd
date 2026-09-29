@@ -76,7 +76,7 @@ const DISASTER_PLANE_CRASH := 18
 const DISASTER_WAIT_MONTHS := [0, 100, 60, 30]
 
 
-static func run(
+static func _gdscript_run(
 	city: CityState,
 	random: SimRandom,
 	lfsr_random: SimLfsrRandom,
@@ -446,6 +446,34 @@ static func _failed(message: String) -> Result:
 	result.error = message
 
 	return result
+
+
+static func run(
+	city: CityState,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
+	power_usage_percent: int,
+	water_usage_percent: int,
+	commerce_connections: int,
+	industry_connections: int,
+	current_disaster_point := Vector2i.ZERO
+) -> Result:
+	if city == null or not city.is_valid():
+		return _failed("city is invalid")
+
+	if random == null:
+		return _failed("a compatible process random generator is required")
+
+	if lfsr_random == null:
+		return _failed("a compatible LFSR generator is required")
+
+	return NativeSimulationBridge.run("weather", city, random, lfsr_random, null, {
+		"power_usage_percent": power_usage_percent,
+		"water_usage_percent": water_usage_percent,
+		"commerce_connections": commerce_connections,
+		"industry_connections": industry_connections,
+		"current_disaster_point": current_disaster_point,
+	}).result
 
 
 class Result extends PhaseResult:

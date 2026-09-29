@@ -31,6 +31,14 @@ static var classes := {
 	"MilestonePhase.Result": MilestonePhase.Result,
 	"ScenarioPhase.Result": ScenarioPhase.Result,
 	"MicrosimAnnualPhase.Result": MicrosimAnnualPhase.Result,
+	"WeatherDisasterPhase.Result": WeatherDisasterPhase.Result,
+	"DisasterStartResult": DisasterStartResult,
+	"DisasterStartResult.MaxisManArrival": DisasterStartResult.MaxisManArrival,
+	"DisasterMapResult": DisasterMapResult,
+	"DisasterEnd.Result": DisasterEnd.Result,
+	"MovingThingResult": MovingThingResult,
+	"MayorApprovalPhase.Result": MayorApprovalPhase.Result,
+	"MilitaryProposalPhase.Result": MilitaryProposalPhase.Result,
 	"EffectEvent": EffectEvent,
 	"SimulationTiming": SimulationTiming,
 }
@@ -45,6 +53,7 @@ static func run(
 	lfsr_random: SimLfsrRandom,
 	game_random: GameLcgRandom,
 	args := {},
+	commit_order := PackedStringArray(),
 ) -> Dictionary:
 	var request := {
 		"op": operation,
@@ -76,9 +85,13 @@ static func run(
 	if game_random != null and game_random.get_script() == GameLcgRandom:
 		game_random.state = response.randoms[2]
 
-	apply_written(city, response.written)
+	response.failed_chunk = apply_written(city, response.written, commit_order)
 	city.disaster_damage_class = response.disaster_damage_class
 	response.result = decode(response.result)
+
+	if not response.failed_chunk.is_empty() and response.result is Object and "ok" in response.result:
+		response.result.ok = false
+		response.result.error = "cannot store %s" % response.failed_chunk
 
 	return response
 
@@ -104,20 +117,44 @@ static func city_fields(city: CityState) -> Dictionary:
 	}
 
 
-# store each written chunk and refresh its city mirror
-static func apply_written(city: CityState, written: Dictionary) -> void:
+# store each written chunk in `order`, then the others, and refresh their city
+# mirrors. a rejected store restores the chunks already stored and returns the
+# rejected chunk id
+static func apply_written(city: CityState, written: Dictionary, order := PackedStringArray()) -> String:
 	if written.is_empty():
-		return
+		return ""
 
 	var ids := PackedStringArray()
+	var originals := {}
 
-	for chunk_id: String in written:
-		var chunk := city.document.find_chunk(chunk_id)
-
-		if chunk != null and chunk.set_decoded_payload(written[chunk_id], true):
+	for chunk_id in order:
+		if written.has(chunk_id):
 			ids.append(chunk_id)
 
-	city.resync_mirrors(ids)
+	for chunk_id: String in written:
+		if not ids.has(chunk_id):
+			ids.append(chunk_id)
+
+	var applied := PackedStringArray()
+
+	for chunk_id in ids:
+		var chunk := city.document.find_chunk(chunk_id)
+		var original := chunk.decoded_payload if chunk != null else PackedByteArray()
+
+		if chunk == null or not chunk.set_decoded_payload(written[chunk_id], true):
+			for rollback_id in applied:
+				city.document.find_chunk(rollback_id).set_decoded_payload(originals[rollback_id])
+
+			city.resync_mirrors(applied)
+
+			return chunk_id
+
+		originals[chunk_id] = original
+		applied.append(chunk_id)
+
+	city.resync_mirrors(applied)
+
+	return ""
 
 
 # build result objects from native values. dictionaries with a __class key are objects
@@ -177,6 +214,10 @@ static func _create(class_label: String, fields: Dictionary) -> Object:
 			return SimulationInteractionRequest.new(fields.type)
 		"PowerPlantExpiry":
 			return PowerPlantExpiry.new(fields.record, fields.tile, Vector2i(fields.x, fields.y))
+		"MovingThingResult.ConnectionChange":
+			return MovingThingResult.ConnectionChange.new(fields.kind, fields.delta, fields.point)
+		"MovingThingResult.DisasterRequest":
+			return MovingThingResult.DisasterRequest.new(fields.type, fields.point)
 		"RciAftermathPhase.MapChange":
 			return RciAftermathPhase.MapChange.new(fields.point, fields.old_tile, fields.new_tile)
 

@@ -76,6 +76,12 @@ impl<T: ToValue> ToValue for Vec<T> {
     }
 }
 
+impl<T: ToValue> ToValue for Box<T> {
+    fn to_value(&self) -> Value {
+        (**self).to_value()
+    }
+}
+
 impl<T: ToValue> ToValue for Option<T> {
     fn to_value(&self) -> Value {
         match self {

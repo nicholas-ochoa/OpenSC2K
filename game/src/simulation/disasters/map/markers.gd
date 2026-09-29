@@ -4,7 +4,7 @@ extends DisasterMapConstants
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 
 
-static func run_toxic(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> DisasterMapResult:
+static func _gdscript_run_toxic(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> DisasterMapResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
@@ -103,7 +103,7 @@ static func run_toxic(city: CityState, random: SimRandom, lfsr_random: SimLfsrRa
 	return result
 
 
-static func run_riot(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> DisasterMapResult:
+static func _gdscript_run_riot(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> DisasterMapResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
@@ -471,3 +471,11 @@ static func _place_riot_marker(
 	OverlayData.write(text, index, marker)
 
 	return true
+
+
+static func run_toxic(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> DisasterMapResult:
+	return DisasterMapScanDispatch._native("disaster_map.toxic", city, random, lfsr_random)
+
+
+static func run_riot(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> DisasterMapResult:
+	return DisasterMapScanDispatch._native("disaster_map.riot", city, random, lfsr_random)

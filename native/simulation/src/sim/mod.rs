@@ -5,6 +5,7 @@ pub mod bytes;
 pub mod city;
 pub mod civic;
 pub mod data_maps;
+pub mod disasters;
 pub mod economy;
 pub mod engine;
 pub mod events;

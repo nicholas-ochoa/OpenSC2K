@@ -29,7 +29,7 @@ const DISPATCH_TYPES := [
 const NEWSPAPER_PAPER := 0
 
 
-static func finish(city: CityState, disaster_type: int) -> Result:
+static func _gdscript_finish(city: CityState, disaster_type: int) -> Result:
 	var result := Result.new()
 
 	if city == null or not city.is_valid():
@@ -101,6 +101,16 @@ static func _remove_dispatched_units(city: CityState) -> int:
 		return -1
 
 	return removed
+
+
+static func finish(city: CityState, disaster_type: int) -> Result:
+	if city == null or not city.is_valid():
+		var result := Result.new()
+		result.error = "city is invalid"
+
+		return result
+
+	return NativeSimulationBridge.run("disaster_end", city, null, null, null, {"disaster_type": disaster_type}).result
 
 
 class Result extends RefCounted:

@@ -15,6 +15,7 @@ use super::convert;
 use crate::sim::city::City;
 use crate::sim::random::Randoms;
 use crate::sim::data_maps;
+use crate::sim::disasters::{end as disaster_end, map as disaster_map, start as disaster_start, weather};
 use crate::sim::growth;
 use crate::sim::civic::{annual, education, milestones, nation, scenario};
 use crate::sim::economy::{self, budget, city_value};
@@ -51,6 +52,21 @@ pub const OPERATIONS: &[&str] = &[
     "milestones",
     "scenario",
     "microsim_annual",
+    "weather",
+    "disaster_start",
+    "disaster_map.run_all",
+    "disaster_map.dispatch",
+    "disaster_map.fire",
+    "disaster_map.flood",
+    "disaster_map.toxic",
+    "disaster_map.riot",
+    "disaster_end",
+    "maxis_man",
+    "moving",
+    "mayor_approval",
+    "tile_recount",
+    "military.resolve",
+    "military.reserve",
 ];
 
 pub struct Outcome {
@@ -173,6 +189,95 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
             };
             Outcome::value(annual::run(city, &mut inputs).to_value())
         }
+        "weather" => Outcome::value(
+            weather::run(
+                city,
+                &mut randoms.random,
+                &mut randoms.lfsr,
+                convert::int(args, "power_usage_percent", 0),
+                convert::int(args, "water_usage_percent", 0),
+                convert::int(args, "commerce_connections", 0),
+                convert::int(args, "industry_connections", 0),
+                convert::point(args, "current_disaster_point", crate::sim::geom::Vec2i::ZERO),
+            )
+            .to_value(),
+        ),
+        "disaster_start" => {
+            let random = convert::boolean(args, "has_random", true).then_some(&mut randoms.random);
+            let lfsr = convert::boolean(args, "has_lfsr", true).then_some(&mut randoms.lfsr);
+            let disaster_type = convert::int(args, "disaster_type", 0);
+            let point = convert::point(args, "point", crate::sim::geom::Vec2i::ZERO);
+            Outcome::value(disaster_start::start(city, disaster_type, point, random, lfsr).to_value())
+        }
+        "disaster_map.run_all"
+        | "disaster_map.dispatch"
+        | "disaster_map.fire"
+        | "disaster_map.flood"
+        | "disaster_map.toxic"
+        | "disaster_map.riot" => {
+            let random = convert::boolean(args, "has_random", true).then_some(&mut randoms.random);
+            let lfsr = convert::boolean(args, "has_lfsr", true).then_some(&mut randoms.lfsr);
+            let map_counter = convert::int(args, "map_counter", 0);
+            let result = match op {
+                "disaster_map.run_all" => {
+                    disaster_map::run_all(city, random, lfsr, map_counter, convert::int(args, "hurricane_counter", 0))
+                }
+                "disaster_map.dispatch" => disaster_map::run_dispatch(city, random, lfsr),
+                "disaster_map.fire" => disaster_map::run_fire(city, random, lfsr),
+                "disaster_map.flood" => disaster_map::run_flood(city, random, lfsr, map_counter),
+                "disaster_map.toxic" => disaster_map::run_toxic(city, random, lfsr),
+                _ => disaster_map::run_riot(city, random, lfsr),
+            };
+            Outcome::value(result.to_value())
+        }
+        "disaster_end" => Outcome::value(disaster_end::finish(city, convert::int(args, "disaster_type", 0)).to_value()),
+        "maxis_man" => Outcome::value(
+            disaster_end::maxis_man_response(
+                city,
+                convert::point(args, "point", crate::sim::geom::Vec2i::ZERO),
+                convert::int(args, "disaster_type", 0),
+                convert::int(args, "record", 0),
+                &mut randoms.random,
+                &mut randoms.lfsr,
+            )
+            .to_value(),
+        ),
+        "moving" => {
+            let options = crate::sim::moving::phase::TickOptions {
+                ship_home: convert::point(args, "ship_home", crate::sim::geom::Vec2i::NONE),
+                allow_disaster_damage: convert::boolean(args, "allow_disaster_damage", true),
+                traffic_news_time_msec: convert::int(args, "traffic_news_time_msec", 0),
+                traffic_news_deadline_msec: convert::int(args, "traffic_news_deadline_msec", 0),
+                suppress_vehicle_crashes: convert::boolean(args, "suppress_vehicle_crashes", false),
+            };
+            let Randoms { random, lfsr, game } = randoms;
+            Outcome::value(crate::sim::moving::phase::run(city, random, lfsr, game, &options).to_value())
+        }
+        "mayor_approval" => Outcome::value(
+            crate::sim::civic::mayor::run(city, &mut randoms.random, convert::int(args, "previous_approval", 0)).to_value(),
+        ),
+        "tile_recount" => Outcome::value(Value::Int(crate::sim::civic::mayor::recount_tiles(city))),
+        "military.resolve" => {
+            let game = convert::boolean(args, "has_game", true).then_some(&mut randoms.game);
+            Outcome::value(
+                crate::sim::civic::military::resolve(
+                    city,
+                    convert::boolean(args, "accepted", false),
+                    game,
+                    convert::boolean(args, "defer_land_plot", false),
+                )
+                .to_value(),
+            )
+        }
+        "military.reserve" => Outcome::value(
+            crate::sim::civic::military::reserve_land_site(
+                city,
+                convert::int(args, "base_type", 0),
+                convert::rect(args, "site"),
+                convert::int(args, "notice_id", -1),
+            )
+            .to_value(),
+        ),
         "echo" => Outcome::value(Value::Int(convert::int(args, "value", 0) + city.map_size)),
         _ => Outcome::failure(format!("unknown native simulation operation: {op}")),
     }

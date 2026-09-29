@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build the native simulation library and copy it into the Godot project."""
 import argparse
+import os
 import platform
 import shutil
 import subprocess
@@ -45,7 +46,11 @@ def build(profile='release', quiet=False):
     target = OUTPUT / host_folder() / library_name()
     target.parent.mkdir(parents=True, exist_ok=True)
     if not target.exists() or target.read_bytes() != built.read_bytes():
-        shutil.copy2(built, target)
+        # Replace the file instead of writing over it. macOS stops new processes
+        # that load a signed library whose file changed while it was mapped.
+        staged = target.with_name(target.name + '.new')
+        shutil.copy2(built, staged)
+        os.replace(staged, target)
     return target
 
 

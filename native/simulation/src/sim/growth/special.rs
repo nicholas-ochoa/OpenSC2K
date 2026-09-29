@@ -89,7 +89,7 @@ pub fn tile_count(misc: &[u8], tile: i64, military: bool, map_edge: i64) -> i64 
 }
 
 /// SpecialZoneState._replace_special_building. Military zones use their own counts.
-fn replace_special_building(buildings: &mut [u8], zones: &[u8], misc: &mut [u8], index: i64, new_tile: i64) {
+pub fn replace_special_building(buildings: &mut [u8], zones: &[u8], misc: &mut [u8], index: i64, new_tile: i64) {
     let old_tile = buildings[index as usize] as i64;
 
     if old_tile == new_tile {

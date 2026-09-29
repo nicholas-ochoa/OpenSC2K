@@ -20,7 +20,7 @@ const NOTICE_MISSILE_SILOS := 0xf4
 const NOTICE_NO_SITE := 0x19b
 
 
-static func resolve(city: CityState, accepted: bool, game_random: GameLcgRandom, defer_land_plot := false) -> Result:
+static func _gdscript_resolve(city: CityState, accepted: bool, game_random: GameLcgRandom, defer_land_plot := false) -> Result:
 	var span := SimulationTimingSpan.new(city.simulation_slice if city != null else null)
 	span.mark("prepare data")
 	var result := _resolve(city, accepted, game_random, span, defer_land_plot)
@@ -130,7 +130,7 @@ static func _resolve(
 			result.view_center_requests.clear()
 			return result
 
-		return reserve_land_site(city, base_type, site, notice)
+		return _gdscript_reserve_land_site(city, base_type, site, notice)
 
 	span.mark("missile site search")
 	var sites: Array[Rect2i] = []
@@ -191,7 +191,7 @@ static func _resolve(
 
 
 # The original shows the Army or Air Force notice before it changes the plot.
-static func reserve_land_site(city: CityState, base_type: int, site: Rect2i, notice_id := -1) -> Result:
+static func _gdscript_reserve_land_site(city: CityState, base_type: int, site: Rect2i, notice_id := -1) -> Result:
 	var chunks := _chunks(city)
 
 	if chunks.is_empty() or base_type not in [BASE_ARMY, BASE_AIR_FORCE]:
@@ -335,6 +335,23 @@ static func _increment_military_other(misc: PackedByteArray, map_edge: int = 128
 		MISC_MILITARY_TILE_COUNTS,
 		(BinaryData.read_u32_be(misc, MISC_MILITARY_TILE_COUNTS) + 1) & (0xffff if map_edge == 128 else 0xffffffff)
 	)
+
+
+static func resolve(city: CityState, accepted: bool, game_random: GameLcgRandom, defer_land_plot := false) -> Result:
+	if city == null or not city.is_valid():
+		return _failed("city is invalid")
+
+	return NativeSimulationBridge.run("military.resolve", city, null, null, game_random, {
+		"accepted": accepted,
+		"has_game": game_random != null,
+		"defer_land_plot": defer_land_plot,
+	}).result
+
+
+static func reserve_land_site(city: CityState, base_type: int, site: Rect2i, notice_id := -1) -> Result:
+	return NativeSimulationBridge.run("military.reserve", city, null, null, null, {
+		"base_type": base_type, "site": site, "notice_id": notice_id,
+	}).result
 
 
 class Result extends PhaseResult:

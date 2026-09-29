@@ -27,7 +27,7 @@ static func failed(message: String) -> Result:
 	return result
 
 
-static func run(city: CityState, random: SimRandom, previous_approval: int) -> Result:
+static func _gdscript_run(city: CityState, random: SimRandom, previous_approval: int) -> Result:
 	if city == null or not city.is_valid():
 		return failed("city is invalid")
 
@@ -171,6 +171,18 @@ static func _to_i16(value: int) -> int:
 	var wrapped := value & 0xffff
 
 	return wrapped - 0x10000 if wrapped >= 0x8000 else wrapped
+
+
+static func run(city: CityState, random: SimRandom, previous_approval: int) -> Result:
+	if city == null or not city.is_valid():
+		return failed("city is invalid")
+
+	if random == null:
+		return failed("a compatible random generator is required")
+
+	return NativeSimulationBridge.run("mayor_approval", city, random, null, null, {
+		"previous_approval": previous_approval,
+	}).result
 
 
 class Result extends PhaseResult:
