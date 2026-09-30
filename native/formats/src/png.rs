@@ -5,6 +5,9 @@ use super::crc32;
 
 pub const SIGNATURE: [u8; 8] = [137, 80, 78, 71, 13, 10, 26, 10];
 pub const MAX_DIMENSION: u32 = 4096;
+/// The IHDR color type of indexed images.
+const INDEXED: u8 = 3;
+const BIT_DEPTHS: [u8; 4] = [1, 2, 4, 8];
 
 fn u32_be(bytes: &[u8], at: usize) -> u32 {
     u32::from_be_bytes([bytes[at], bytes[at + 1], bytes[at + 2], bytes[at + 3]])
@@ -68,7 +71,8 @@ pub fn assemble(width: u32, height: u32, palette: &[u8], transparent: Option<u8>
     let mut header = Vec::with_capacity(13);
     header.extend_from_slice(&width.to_be_bytes());
     header.extend_from_slice(&height.to_be_bytes());
-    header.extend_from_slice(&[8, 3, 0, 0, 0]);
+    // 8-bit indexed; deflate, adaptive filters and no interlacing
+    header.extend_from_slice(&[8, INDEXED, 0, 0, 0]);
     let mut out = SIGNATURE.to_vec();
     out.extend(chunk(b"IHDR", &header));
     out.extend(chunk(b"PLTE", palette));
@@ -151,7 +155,7 @@ pub fn rewrite(bytes: &[u8], strict_palette: bool) -> Result<Rewritten, String> 
                     return Err("PNG dimensions must be 1 through 4096".into());
                 }
                 bit_depth = payload[8];
-                if payload[9] != 3 || ![1, 2, 4, 8].contains(&bit_depth) || (strict_palette && bit_depth != 8) {
+                if payload[9] != INDEXED || !BIT_DEPTHS.contains(&bit_depth) || (strict_palette && bit_depth != 8) {
                     return Err(if strict_palette {
                         "PNG must use 8-bit indexed color"
                     } else {

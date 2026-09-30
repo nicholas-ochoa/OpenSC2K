@@ -1,7 +1,20 @@
 //! Resources of 32-bit Windows executables: bitmaps, RLE8 bitmap data, icons
 //! and cursors. The reader never runs the program.
 
+/// "MZ" at the start of the DOS header.
+const MZ_SIGNATURE: u32 = 0x5a4d;
+const DOS_HEADER_SIZE: usize = 0x40;
+/// The DOS header field that holds the PE header offset.
+const PE_OFFSET_FIELD: i64 = 0x3c;
 const PE_SIGNATURE: u32 = 0x0000_4550;
+/// The data directories of a PE32 optional header start at this offset.
+const DATA_DIRECTORIES: i64 = 96;
+/// Resource directory entries: a name or target with this bit is a string or a subdirectory.
+const HIGH_BIT: u32 = 0x8000_0000;
+const OFFSET_MASK: u32 = 0x7fff_ffff;
+const ID_MASK: u32 = 0xffff;
+/// The BI_RLE8 compression of a DIB.
+pub const RLE8: u32 = 1;
 const PE32_MAGIC: u32 = 0x010b;
 const RESOURCE_DIRECTORY_INDEX: usize = 2;
 
@@ -49,10 +62,10 @@ impl std::fmt::Display for Name<'_> {
 
 impl<'a> Directory<'a> {
     pub fn open(bytes: &'a [u8]) -> Result<Self, String> {
-        if bytes.len() < 0x40 || u16_at(bytes, 0) != 0x5a4d {
+        if bytes.len() < DOS_HEADER_SIZE || u16_at(bytes, 0) != MZ_SIGNATURE {
             return Err("file does not have an MZ header".into());
         }
-        let pe = i64::from(u32_at(bytes, 0x3c));
+        let pe = i64::from(u32_at(bytes, PE_OFFSET_FIELD));
         if !has(bytes, pe, 24) || u32_at(bytes, pe) != PE_SIGNATURE {
             return Err("file does not have a valid PE header".into());
         }
@@ -65,7 +78,7 @@ impl<'a> Directory<'a> {
         if u16_at(bytes, optional) != PE32_MAGIC {
             return Err("only PE32 resources are supported".into());
         }
-        let entry = optional + 96 + RESOURCE_DIRECTORY_INDEX as i64 * 8;
+        let entry = optional + DATA_DIRECTORIES + RESOURCE_DIRECTORY_INDEX as i64 * 8;
         if !has(bytes, entry, 8) {
             return Err("PE resource directory entry is missing".into());
         }
@@ -114,14 +127,14 @@ impl<'a> Directory<'a> {
         let (first, count) = self.entries(directory)?;
         for index in 0..count {
             let name = u32_at(self.bytes, first + index * 8);
-            if name & 0x8000_0000 != 0 || name & 0xffff != wanted {
+            if name & HIGH_BIT != 0 || name & ID_MASK != wanted {
                 continue;
             }
             let target = u32_at(self.bytes, first + index * 8 + 4);
-            if target & 0x8000_0000 == 0 {
+            if target & HIGH_BIT == 0 {
                 return None;
             }
-            return Some(self.root + i64::from(target & 0x7fff_ffff));
+            return Some(self.root + i64::from(target & OFFSET_MASK));
         }
         None
     }
@@ -130,10 +143,10 @@ impl<'a> Directory<'a> {
         let wanted: Vec<u8> = wanted.encode_utf16().flat_map(u16::to_le_bytes).collect();
         for index in 0..count {
             let name = u32_at(self.bytes, first + index * 8);
-            if name & 0x8000_0000 == 0 {
+            if name & HIGH_BIT == 0 {
                 continue;
             }
-            let at = self.root + i64::from(name & 0x7fff_ffff);
+            let at = self.root + i64::from(name & OFFSET_MASK);
             if !has(self.bytes, at, 2) {
                 return None;
             }
@@ -145,10 +158,10 @@ impl<'a> Directory<'a> {
                 continue;
             }
             let target = u32_at(self.bytes, first + index * 8 + 4);
-            if target & 0x8000_0000 == 0 {
+            if target & HIGH_BIT == 0 {
                 return None;
             }
-            let result = self.root + i64::from(target & 0x7fff_ffff);
+            let result = self.root + i64::from(target & OFFSET_MASK);
             return has(self.bytes, result, 16).then_some(result);
         }
         None
@@ -161,7 +174,7 @@ impl<'a> Directory<'a> {
             return None;
         }
         let target = u32_at(self.bytes, directory + 20);
-        (target & 0x8000_0000 == 0).then_some(self.root + i64::from(target))
+        (target & HIGH_BIT == 0).then_some(self.root + i64::from(target))
     }
     fn data(&self, entry: i64) -> Option<&'a [u8]> {
         if !has(self.bytes, entry, 16) {
@@ -185,7 +198,7 @@ impl<'a> Directory<'a> {
             .filter_map(|index| {
                 let name = u32_at(self.bytes, first + index * 8);
                 let target = u32_at(self.bytes, first + index * 8 + 4);
-                (name & 0x8000_0000 == 0 && target & 0x8000_0000 != 0).then_some((name & 0xffff) as i32)
+                (name & HIGH_BIT == 0 && target & HIGH_BIT != 0).then_some((name & ID_MASK) as i32)
             })
             .collect();
         ids.sort_unstable();
@@ -260,11 +273,12 @@ pub struct Indexed {
 /// An uncompressed or RLE8 8-bit indexed DIB.
 pub fn decode_indexed8(dib: &[u8], name: &Name) -> Result<Indexed, String> {
     let header = dib_header(dib);
-    if header.bits_per_pixel != 8 || header.compression > 1 {
+    if header.bits_per_pixel != 8 || header.compression > RLE8 {
         return Err(format!("PE bitmap resource {name} is not an uncompressed or RLE8 indexed image"));
     }
     let header_size = i64::from(u32_at(dib, 0));
-    let top_down = header.height & 0x8000_0000 != 0;
+    // a negative height marks a top-down DIB
+    let top_down = header.height & HIGH_BIT != 0;
     let height = if top_down {
         i64::from(header.height.wrapping_neg())
     } else {
@@ -284,7 +298,7 @@ pub fn decode_indexed8(dib: &[u8], name: &Name) -> Result<Indexed, String> {
         return Err(format!("PE bitmap resource {name} has an invalid header or palette"));
     }
     let (w, h) = (width as usize, height as usize);
-    if header.compression == 1 {
+    if header.compression == RLE8 {
         if top_down {
             return Err("RLE8 bitmap height must be positive".into());
         }
@@ -419,7 +433,7 @@ pub fn wrap_dib(dib: &[u8]) -> Result<Vec<u8>, String> {
         return Err("PE bitmap palette is truncated".into());
     }
     let mut out = vec![0; 14];
-    out[0..2].copy_from_slice(&0x4d42_u16.to_le_bytes());
+    out[0..2].copy_from_slice(b"BM");
     out[2..6].copy_from_slice(&((dib.len() + 14) as u32).to_le_bytes());
     out[10..14].copy_from_slice(&(pixel_offset as u32).to_le_bytes());
     out.extend_from_slice(dib);

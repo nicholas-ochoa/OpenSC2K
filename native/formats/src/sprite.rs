@@ -1,5 +1,14 @@
 //! SimCity 2000 sprite records: row blocks of skip and pixel runs.
 
+// Outer block modes and row commands of SimCity 2000 sprites.
+const BLOCK_SKIP: u8 = 0;
+const BLOCK_ROW: u8 = 1;
+const BLOCK_END: u8 = 2;
+const ROW_NOTHING: u8 = 0;
+const ROW_END: u8 = 2;
+const ROW_SKIP: u8 = 3;
+const ROW_PIXELS: u8 = 4;
+
 /// Decoded palette indices, -1 where a pixel is transparent, and the row count.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Decoded {
@@ -23,18 +32,18 @@ pub fn decode(data: &[u8], width: i32, height: i32, allow_unpadded_odd_runs: boo
         // two layers of commands: outer blocks and then row runs
         let block_mode = data[position + 1];
         position += 2;
-        if block_mode == 2 {
+        if block_mode == BLOCK_END {
             found_end = true;
             break;
         }
         if position + block_length > data.len() {
             return Err("block extends past sprite data".into());
         }
-        if block_mode == 0 {
+        if block_mode == BLOCK_SKIP {
             position += block_length;
             continue;
         }
-        if block_mode != 1 {
+        if block_mode != BLOCK_ROW {
             return Err(format!("unsupported outer block mode {block_mode}"));
         }
         if row >= h {
@@ -50,14 +59,14 @@ pub fn decode(data: &[u8], width: i32, height: i32, allow_unpadded_odd_runs: boo
             let mode = data[position + 1];
             position += 2;
             match mode {
-                0 | 2 => {}
-                3 => {
+                ROW_NOTHING | ROW_END => {}
+                ROW_SKIP => {
                     x += count;
                     if x > w {
                         return Err("row skip extends past sprite width".into());
                     }
                 }
-                4 => {
+                ROW_PIXELS => {
                     if position + count > row_end {
                         return Err("pixel run extends past row block".into());
                     }
@@ -91,6 +100,11 @@ pub fn decode(data: &[u8], width: i32, height: i32, allow_unpadded_odd_runs: boo
     Ok(Decoded { pixels, rows: row as i32 })
 }
 
+// DOS sprite row markers and commands.
+const DOS_ROW: u8 = 0x10;
+const DOS_SKIP: u8 = 0x04;
+const DOS_PIXELS: u8 = 0x0c;
+
 /// A DOS sprite record between `start` and `end`: rows that start with 0x10
 /// and a length, then skip (0x04) and pixel (0x0c) commands, and a 0 end marker.
 pub fn decode_dos(data: &[u8], start: usize, end: usize, width: usize, height: usize) -> Result<Decoded, String> {
@@ -105,7 +119,7 @@ pub fn decode_dos(data: &[u8], start: usize, end: usize, width: usize, height: u
             terminated = true;
             break;
         }
-        if marker != 0x10 || cursor >= end || row >= height {
+        if marker != DOS_ROW || cursor >= end || row >= height {
             return Err("Invalid row marker or row count.".into());
         }
         let length = usize::from(data[cursor]);
@@ -124,7 +138,7 @@ pub fn decode_dos(data: &[u8], start: usize, end: usize, width: usize, height: u
             if column + count > width {
                 return Err("Row command exceeds the sprite width.".into());
             }
-            if operation == 0x0c {
+            if operation == DOS_PIXELS {
                 if count > row_end - cursor {
                     return Err("Pixel run exceeds the row data.".into());
                 }
@@ -133,7 +147,7 @@ pub fn decode_dos(data: &[u8], start: usize, end: usize, width: usize, height: u
                     *target = i32::from(*source);
                 }
                 cursor += count;
-            } else if operation != 0x04 {
+            } else if operation != DOS_SKIP {
                 return Err(format!("Unsupported row command 0x{operation:02x}."));
             }
             column += count;
@@ -209,7 +223,7 @@ mod tests {
     #[test]
     fn dos_rows() {
         // one row (its length counts the length byte): skip 1, two pixels; end marker
-        let data = [0x10, 7, 0x04, 1, 0x0c, 2, 7, 8, 0];
+        let data = [DOS_ROW, 7, DOS_SKIP, 1, DOS_PIXELS, 2, 7, 8, 0];
         let decoded = decode_dos(&data, 0, data.len(), 3, 1).unwrap();
         assert_eq!(decoded.pixels, vec![-1, 7, 8]);
         assert_eq!(decode_dos(&data[..8], 0, 8, 3, 1).err().unwrap(), "Sprite has no end marker.");

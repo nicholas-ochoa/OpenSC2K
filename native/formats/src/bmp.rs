@@ -1,11 +1,15 @@
 //! 8-bit indexed Windows bitmaps with 256-color palettes, and their DIB form.
 
+/// The file header starts with "BM".
+const SIGNATURE: [u8; 2] = *b"BM";
 const FILE_HEADER_SIZE: usize = 14;
 const INFO_HEADER_SIZE: usize = 40;
 const COLORS: usize = 256;
 const PALETTE_SIZE: usize = COLORS * 4;
 const PIXEL_OFFSET: usize = FILE_HEADER_SIZE + INFO_HEADER_SIZE + PALETTE_SIZE;
 const MAX_DIMENSION: i64 = 0x7fff;
+/// The BI_RLE8 compression of a DIB.
+const RLE8: u32 = 1;
 
 fn u16_at(b: &[u8], at: usize) -> u32 {
     u32::from(u16::from_le_bytes([b[at], b[at + 1]]))
@@ -33,7 +37,7 @@ pub fn decode(bytes: &[u8]) -> Result<Decoded, String> {
     if bytes.len() < PIXEL_OFFSET {
         return Err("BMP file is shorter than an 8-bit indexed header.".into());
     }
-    if bytes[0] != 0x42 || bytes[1] != 0x4d {
+    if bytes[..2] != SIGNATURE {
         return Err("File does not have a Windows BMP signature.".into());
     }
     let declared_size = u32_at(bytes, 2) as usize;
@@ -108,7 +112,7 @@ pub fn decode_indexed(data: &[u8], file_header: bool) -> Result<Decoded, String>
     if start + INFO_HEADER_SIZE > data.len() {
         return Err("Truncated bitmap header.".into());
     }
-    if file_header && &data[..2] != b"BM" {
+    if file_header && data[..2] != SIGNATURE {
         return Err("Missing BMP signature.".into());
     }
     let header_size = u32_at(data, start) as usize;
@@ -126,7 +130,7 @@ pub fn decode_indexed(data: &[u8], file_header: bool) -> Result<Decoded, String>
     {
         return Err("Invalid bitmap dimensions or header.".into());
     }
-    if ![1, 4, 8].contains(&bits) || compression > 1 || (compression == 1 && (bits != 8 || signed_height < 0)) {
+    if ![1, 4, 8].contains(&bits) || compression > RLE8 || (compression == RLE8 && (bits != 8 || signed_height < 0)) {
         return Err("Unsupported indexed bitmap encoding.".into());
     }
     if count == 0 {
@@ -144,7 +148,7 @@ pub fn decode_indexed(data: &[u8], file_header: bool) -> Result<Decoded, String>
     if pixels_start < palette_start + count * 4 || pixels_start > data.len() {
         return Err("Invalid bitmap pixel offset.".into());
     }
-    let pixels = if compression == 1 {
+    let pixels = if compression == RLE8 {
         let size = u32_at(data, start + 20) as usize;
         if size == 0 || pixels_start + size > data.len() {
             return Err("Truncated RLE8 bitmap data.".into());
@@ -203,8 +207,7 @@ pub fn encode(width: i64, height: i64, pixels: &[i32], palette: &[u8], transpare
     let stride = row_stride(w);
     let data_size = stride * h;
     let mut bytes = vec![0; PIXEL_OFFSET + data_size];
-    bytes[0] = 0x42;
-    bytes[1] = 0x4d;
+    bytes[..2].copy_from_slice(&SIGNATURE);
     let put = |bytes: &mut Vec<u8>, at: usize, value: u32| bytes[at..at + 4].copy_from_slice(&value.to_le_bytes());
     put(&mut bytes, 2, (PIXEL_OFFSET + data_size) as u32);
     put(&mut bytes, 10, PIXEL_OFFSET as u32);
@@ -333,8 +336,7 @@ pub fn from_dib(bytes: &[u8]) -> Result<Vec<u8>, String> {
         return Err("DIB palette extends past the clipboard data.".into());
     }
     let mut wrapped = vec![0; FILE_HEADER_SIZE];
-    wrapped[0] = 0x42;
-    wrapped[1] = 0x4d;
+    wrapped[..2].copy_from_slice(&SIGNATURE);
     wrapped[2..6].copy_from_slice(&((FILE_HEADER_SIZE + bytes.len()) as u32).to_le_bytes());
     wrapped[10..14].copy_from_slice(&((FILE_HEADER_SIZE + pixel_offset) as u32).to_le_bytes());
     wrapped.extend_from_slice(bytes);

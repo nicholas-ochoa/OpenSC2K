@@ -4,6 +4,7 @@
 mod bridge;
 mod changes;
 mod data_view;
+mod ids;
 mod index;
 mod minimap;
 mod painter;

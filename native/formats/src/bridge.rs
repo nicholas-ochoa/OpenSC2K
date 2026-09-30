@@ -455,7 +455,7 @@ impl NativePeResources {
     fn bitmap_image(data: PackedByteArray, name: Variant) -> VarDictionary {
         Self::with_bitmap(&data, &name, |dib, name| {
             let mut owned = dib.to_vec();
-            if pe::dib_header(dib).compression == 1 {
+            if pe::dib_header(dib).compression == pe::RLE8 {
                 match pe::decode_indexed8(dib, name) {
                     Ok(image) => owned = pe::expand_rle8_dib(dib, &image),
                     Err(error) => return failure(&error),

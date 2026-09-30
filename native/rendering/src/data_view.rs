@@ -212,7 +212,10 @@ pub fn build(city: &DataCity, height_view: bool) -> DataMesh {
 
 /// Height map values: the land altitude of each tile.
 pub fn height_values(altitude: &[i32]) -> Vec<u8> {
-    altitude.iter().map(|word| (word & 0x1f) as u8).collect()
+    altitude
+        .iter()
+        .map(|word| (word & super::ids::sc2altitude_layout::LAND_MASK) as u8)
+        .collect()
 }
 
 /// Utility map values from XBIT: 2 where `supplied` is set, 1 where only

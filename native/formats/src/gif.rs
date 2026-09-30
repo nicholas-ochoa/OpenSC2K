@@ -6,6 +6,28 @@ const MAX_CODES: usize = 4096;
 /// Ticks of one SCURK cycle: the least common multiple of the 40-tick fast and
 /// 60-tick slow cycles.
 pub const CYCLE_TICKS: usize = 120;
+// Block introducers and extension labels.
+const EXTENSION: u8 = 0x21;
+const IMAGE: u8 = 0x2c;
+const TRAILER: u8 = 0x3b;
+const GRAPHIC_CONTROL: u8 = 0xf9;
+const APPLICATION: u8 = 0xff;
+/// Screen and image flags: a 256-color table follows.
+const COLOR_TABLE: u8 = 0x80;
+/// The size field of a 256-color table.
+const TABLE_SIZE_256: u8 = 7;
+/// Screen flags: a global 256-color table of 8-bit colors.
+const GLOBAL_TABLE_256: u8 = COLOR_TABLE | 0x70 | TABLE_SIZE_256;
+/// Image flags: a local 256-color table.
+const LOCAL_TABLE_256: u8 = COLOR_TABLE | TABLE_SIZE_256;
+const INTERLACED: u8 = 0x40;
+/// Graphic control flags: keep the frame, and use the transparent index.
+const DISPOSE_KEEP: u8 = 8;
+const HAS_TRANSPARENT: u8 = 1;
+/// The initial LZW code size of 8-bit pixels.
+const CODE_SIZE: u8 = 8;
+const CLEAR: u32 = 256;
+const END: u32 = 257;
 // First rows and row steps of the four interlace passes.
 const INTERLACE_PASSES: [(usize, usize); 4] = [(0, 8), (4, 8), (2, 4), (1, 2)];
 
@@ -65,12 +87,12 @@ fn literal_lzw(pixels: &[u8]) -> Vec<u8> {
         }
     };
     for run in pixels.chunks(254) {
-        emit(256, &mut output);
+        emit(CLEAR, &mut output);
         for pixel in run {
             emit(u32::from(*pixel), &mut output);
         }
     }
-    emit(257, &mut output);
+    emit(END, &mut output);
     if bits > 0 {
         output.push((buffer & 255) as u8);
     }
@@ -103,20 +125,20 @@ pub fn encode(width: i64, height: i64, pixels: &[i32], palette: &[u8]) -> Result
     let mut out = b"GIF89a".to_vec();
     u16_le(&mut out, width as usize);
     u16_le(&mut out, height as usize);
-    out.extend_from_slice(&[0xf7, raster.clear_index, 0]);
+    out.extend_from_slice(&[GLOBAL_TABLE_256, raster.clear_index, 0]);
     write_palette(&mut out, palette, &identity);
     if raster.transparent {
-        out.extend_from_slice(&[0x21, 0xf9, 4, 1, 0, 0, raster.clear_index, 0]);
+        out.extend_from_slice(&[EXTENSION, GRAPHIC_CONTROL, 4, HAS_TRANSPARENT, 0, 0, raster.clear_index, 0]);
     }
-    out.push(0x2c);
+    out.push(IMAGE);
     u16_le(&mut out, 0);
     u16_le(&mut out, 0);
     u16_le(&mut out, width as usize);
     u16_le(&mut out, height as usize);
     out.push(0);
-    out.push(8); // initial LZW code size
+    out.push(CODE_SIZE);
     write_blocks(&mut out, &literal_lzw(&raster.bytes));
-    out.push(0x3b);
+    out.push(TRAILER);
     Ok(out)
 }
 
@@ -145,27 +167,32 @@ pub fn encode_cycle(width: i64, height: i64, pixels: &[i32], palette: &[u8], map
     let mut out = b"GIF89a".to_vec();
     u16_le(&mut out, width as usize);
     u16_le(&mut out, height as usize);
-    out.extend_from_slice(&[0xf7, raster.clear_index, 0]);
+    out.extend_from_slice(&[GLOBAL_TABLE_256, raster.clear_index, 0]);
     write_palette(&mut out, palette, &mappings[0]);
-    out.extend_from_slice(&[0x21, 0xff, 11]);
+    out.extend_from_slice(&[EXTENSION, APPLICATION, 11]);
     out.extend_from_slice(b"NETSCAPE2.0");
     out.extend_from_slice(&[3, 1, 0, 0, 0]); // repeat forever
     for (index, (start, mapping)) in frames.iter().enumerate() {
         let end = frames.get(index + 1).map_or(CYCLE_TICKS, |f| f.0);
         let delay = (end as f64 * 5.5).round() as i64 - (*start as f64 * 5.5).round() as i64;
-        out.extend_from_slice(&[0x21, 0xf9, 4, if raster.transparent { 9 } else { 8 }]);
+        let control = if raster.transparent {
+            DISPOSE_KEEP | HAS_TRANSPARENT
+        } else {
+            DISPOSE_KEEP
+        };
+        out.extend_from_slice(&[EXTENSION, GRAPHIC_CONTROL, 4, control]);
         u16_le(&mut out, delay as usize);
-        out.extend_from_slice(&[raster.clear_index, 0, 0x2c]);
+        out.extend_from_slice(&[raster.clear_index, 0, IMAGE]);
         u16_le(&mut out, 0);
         u16_le(&mut out, 0);
         u16_le(&mut out, width as usize);
         u16_le(&mut out, height as usize);
-        out.push(0x87);
+        out.push(LOCAL_TABLE_256);
         write_palette(&mut out, palette, mapping);
-        out.push(8);
+        out.push(CODE_SIZE);
         write_blocks(&mut out, &compressed);
     }
-    out.push(0x3b);
+    out.push(TRAILER);
     Ok((out, frames.len()))
 }
 
@@ -208,7 +235,7 @@ pub fn decode(bytes: &[u8]) -> Result<Decoded, String> {
     }
     let mut position = 13;
     let mut global: &[u8] = &[];
-    if bytes[10] & 0x80 != 0 {
+    if bytes[10] & COLOR_TABLE != 0 {
         global = colors(bytes, position, 2 << (bytes[10] & 7)).ok_or("GIF color table extends past the file.")?;
         position += global.len();
     }
@@ -216,17 +243,17 @@ pub fn decode(bytes: &[u8]) -> Result<Decoded, String> {
     while position < bytes.len() {
         let kind = bytes[position];
         position += 1;
-        if kind == 0x3b {
+        if kind == TRAILER {
             break;
         }
-        if kind == 0x21 {
+        if kind == EXTENSION {
             if position >= bytes.len() {
                 break;
             }
             let label = bytes[position];
             position += 1;
-            if label == 0xf9 && position + 5 < bytes.len() && bytes[position] == 4 {
-                transparent = if bytes[position + 1] & 1 != 0 {
+            if label == GRAPHIC_CONTROL && position + 5 < bytes.len() && bytes[position] == 4 {
+                transparent = if bytes[position + 1] & HAS_TRANSPARENT != 0 {
                     i32::from(bytes[position + 4])
                 } else {
                     -1
@@ -235,7 +262,7 @@ pub fn decode(bytes: &[u8]) -> Result<Decoded, String> {
             position = skip_blocks(bytes, position).ok_or("GIF extension extends past the file.")?;
             continue;
         }
-        if kind != 0x2c {
+        if kind != IMAGE {
             return Err("GIF contains an unknown block.".into());
         }
         return decode_image(bytes, position, screen_width, screen_height, global, transparent);
@@ -262,7 +289,7 @@ fn decode_image(
         return Err("GIF image is outside its logical screen.".into());
     }
     let mut table = global;
-    if flags & 0x80 != 0 {
+    if flags & COLOR_TABLE != 0 {
         table = colors(bytes, position, 2 << (flags & 7)).ok_or("GIF color table extends past the file.")?;
         position += table.len();
     }
@@ -293,7 +320,7 @@ fn decode_image(
     if indices.len() < width * height {
         return Err("GIF image data is invalid or incomplete.".into());
     }
-    let rows: Vec<usize> = if flags & 0x40 != 0 {
+    let rows: Vec<usize> = if flags & INTERLACED != 0 {
         INTERLACE_PASSES
             .iter()
             .flat_map(|(first, step)| (*first..height).step_by(*step))
