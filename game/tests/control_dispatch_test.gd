@@ -28,6 +28,7 @@ func _run() -> void:
 	_test_menu_hints_and_rebinding()
 	_test_focus_and_extras()
 	_test_mouse_buttons()
+	_test_tool_modifiers()
 
 	main.queue_free()
 	await process_frame
@@ -198,6 +199,50 @@ func _test_mouse_buttons() -> void:
 	assert(main.view_state.camera_motion.held_direction() == Vector2.LEFT)
 	main.camera_input.input(_mouse(MOUSE_BUTTON_XBUTTON2, map.size * 0.5, false))
 	assert(main.view_state.camera_motion.held_direction() == Vector2.ZERO)
+	main.preferences.control_bindings = ControlBindings.defaults()
+	main.settings.apply_control_bindings()
+
+
+# the line or rectangle and query modifiers follow their bindings
+func _test_tool_modifiers() -> void:
+	var interaction := main.map_view.interaction
+	var bindings := ControlBindings.defaults()
+	bindings.remove_binding("tool_shape_modifier", ControlBinding.key(KEY_SHIFT))
+	bindings.add("tool_shape_modifier", ControlBinding.key(KEY_L))
+	bindings.remove_binding("tool_query_modifier", ControlBinding.key(KEY_SHIFT))
+	bindings.add("tool_query_modifier", ControlBinding.key(KEY_ALT))
+	main.preferences.control_bindings = bindings
+	main.settings.apply_control_bindings()
+	interaction._input(_key(KEY_L))
+	assert(interaction.shape_held and not interaction.query_held)
+	interaction._input(_key(KEY_L, false))
+	assert(not interaction.shape_held)
+	var shift := _key(KEY_SHIFT)
+	shift.shift_pressed = true
+	interaction._input(shift)
+	assert(interaction.shift_pressed and not interaction.shape_held and not interaction.query_held, "Shift is not bound")
+	interaction._input(_key(KEY_SHIFT, false))
+	var queries: Array[Vector2i] = []
+	main.map_view.query_requested.connect(func(point: Vector2i) -> void: queries.append(point))
+	main.map_view.edit_enabled = true
+	main.map_view.shift_query_enabled = true
+	main.map_view.shift_line_enabled = false
+	main.map_view.shift_rectangle_enabled = false
+	var click := _mouse(MOUSE_BUTTON_LEFT, main.map_view.size * 0.5, true)
+	click.alt_pressed = true
+	interaction._handle_mouse_button(click)
+	assert(queries.size() == 1, "The bound query modifier queries the tile")
+	main.query_choices.close_query()
+	# the SCURK editor menus show its own bindings
+	main.scurk_workspace._ensure_scurk_editor()
+	var file_popup := (main.scurk_editor.get_node("Panel/Content/Toolbar/Row/File") as MenuButton).get_popup() as ScurkContextMenu
+	var save_index := file_popup.get_item_index(2)
+	assert(file_popup.hints.get(save_index) == ControlBinding.from_text("key:Command+S").display_text())
+	bindings.remove_binding("scurk_save", ControlBinding.from_text("key:Command+S"))
+	bindings.add("scurk_save", ControlBinding.key(KEY_F2))
+	main.settings.apply_control_bindings()
+	assert(file_popup.hints.get(save_index) == ControlBinding.key(KEY_F2).display_text())
+	assert(main.scurk_editor.pixel_canvas.control_bindings == bindings)
 	main.preferences.control_bindings = ControlBindings.defaults()
 	main.settings.apply_control_bindings()
 

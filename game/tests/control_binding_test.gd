@@ -120,11 +120,47 @@ func _test_binding_set() -> void:
 	copy.remove("tool_residential", 0)
 	assert(bindings.for_action("tool_residential").size() == 1 and copy.for_action("tool_residential").is_empty())
 	assert(not copy.equals(bindings))
+	_test_modifiers_and_scopes()
 
 
-func _key(keycode: Key) -> InputEventKey:
+func _test_modifiers_and_scopes() -> void:
+	var bindings := ControlBindings.defaults()
+	# modifier actions share Shift, but a modifier cannot use a key that starts another action
+	assert(bindings.conflicts(ControlBinding.key(KEY_SHIFT), "tool_shape_modifier").is_empty())
+	assert(bindings.conflicts(ControlBinding.key(KEY_Q), "tool_shape_modifier") == ["zoom_out"])
+	assert(bindings.conflicts(ControlBinding.key(KEY_Q), "zoom_in") == ["zoom_out"])
+	# SCURK keys use their own scope
+	var save := ControlBinding.from_text("key:Command+S")
+	assert(bindings.conflicts(save, "scurk_save").is_empty())
+	assert(bindings.conflicts(save, "file_open") == ["file_save"])
+	var save_event := _key(KEY_S)
+	_set_command(save_event)
+	assert(bindings.action_for(save_event) == "file_save")
+	assert(bindings.action_for(save_event, [ControlActions.KIND_PRESS], [ControlActions.SCOPE_SCURK]) == "scurk_save")
+	# the SCURK editor takes Ctrl and Cmd as Command on every system
+	var ctrl_save := _key(KEY_S)
+	ctrl_save.ctrl_pressed = true
+	var meta_save := _key(KEY_S)
+	meta_save.meta_pressed = true
+
+	for event in [ctrl_save, meta_save]:
+		assert(bindings.action_for(event, [ControlActions.KIND_PRESS], [ControlActions.SCOPE_SCURK]) == "scurk_save")
+
+	# a modifier key reads the flags of any event, and another key reads its own key event
+	var click := InputEventMouseButton.new()
+	click.shift_pressed = true
+	assert(bindings.modifier_held("tool_query_modifier", click))
+	bindings.remove_binding("tool_query_modifier", ControlBinding.key(KEY_SHIFT))
+	bindings.add("tool_query_modifier", ControlBinding.key(KEY_L))
+	assert(not bindings.modifier_held("tool_query_modifier", click))
+	assert(bindings.modifier_held("tool_query_modifier", _key(KEY_L)))
+	assert(not bindings.modifier_held("tool_query_modifier", _key(KEY_L, false)))
+	assert(bindings.uses_key("tool_query_modifier", _key(KEY_L, false)))
+
+
+func _key(keycode: Key, pressed := true) -> InputEventKey:
 	var event := InputEventKey.new()
-	event.pressed = true
+	event.pressed = pressed
 	event.keycode = keycode
 	event.physical_keycode = keycode
 

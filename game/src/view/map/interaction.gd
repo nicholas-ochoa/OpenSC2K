@@ -3,7 +3,11 @@ extends CityMapConstants
 
 var map: CityMapControl
 var _stretch_press_y := 0.0
+# Shift stays fixed for exact data values and deferred terrain stretch. The
+# line or rectangle and query modifiers follow their bindings
 var shift_pressed := false
+var shape_held := false
+var query_held := false
 var _brush_elapsed := 0.0
 var panning := false
 var _click_button := MOUSE_BUTTON_NONE
@@ -30,17 +34,43 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.keycode == KEY_SHIFT:
+	if not event is InputEventKey:
+		return
+
+	var shift_key: bool = event.keycode == KEY_SHIFT
+	var modifier_key := (map.control_bindings.uses_key("tool_shape_modifier", event)
+		or map.control_bindings.uses_key("tool_query_modifier", event))
+
+	if not shift_key and not modifier_key:
+		return
+
+	var shape_before := shape_held
+	update_modifiers(event)
+
+	if shift_key:
 		shift_pressed = event.pressed
 
 		if map.stretch_terrain and map.selection_start.x >= 0:
 			map.stretch_changed.emit(map.stretch_height_delta, event.pressed)
 
-		if (map.shift_rectangle_enabled or map.shift_line_enabled) and map.selection_start.x >= 0:
-			map.selection._rebuild_selection_path()
-			map.selection_changed.emit(map.selection_start, map.selection_end, map.selection_path.duplicate(), map.selection_moved)
+	if (shape_held != shape_before and (map.shift_rectangle_enabled or map.shift_line_enabled)
+			and map.selection_start.x >= 0):
+		map.selection._rebuild_selection_path()
+		map.selection_changed.emit(map.selection_start, map.selection_end, map.selection_path.duplicate(), map.selection_moved)
 
-		map.queue_redraw()
+	map.queue_redraw()
+
+
+# read the line or rectangle and query modifier keys from an event. returns
+# true when either one changed
+func update_modifiers(event: InputEvent) -> bool:
+	var shape := map.control_bindings.modifier_held("tool_shape_modifier", event)
+	var query := map.control_bindings.modifier_held("tool_query_modifier", event)
+	var changed := shape != shape_held or query != query_held
+	shape_held = shape
+	query_held = query
+
+	return changed
 
 
 func _process(delta: float) -> void:
@@ -78,11 +108,10 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 
 	var tile := map.camera._tile_at(event.position)
 	shift_pressed = event.shift_pressed
+	update_modifiers(event)
 
 	if event.pressed:
-		shift_pressed = event.shift_pressed
-
-		if map.shift_query_enabled and not map.shift_rectangle_enabled and not map.shift_line_enabled and event.shift_pressed:
+		if map.shift_query_enabled and not map.shift_rectangle_enabled and not map.shift_line_enabled and query_held:
 			if tile.x >= 0:
 				map.hover_tile = tile
 				map.query_requested.emit(tile)
@@ -97,7 +126,7 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 			map.hover_tile = tile
 			_stretch_press_y = event.position.y
 			map.stretch_height_delta = 0
-			map.brush_box_selection = map.selection.uses_paint_brush() and map.shift_rectangle_enabled and event.shift_pressed
+			map.brush_box_selection = map.selection.uses_paint_brush() and map.shift_rectangle_enabled and shape_held
 			map.selection_start = tile
 			map.selection_end = tile
 			map.selection_moved = false
@@ -239,7 +268,9 @@ func _run_button_action(action: String, position: Vector2, wheel: bool) -> void:
 func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 	map.selection._hide_placement_error()
 
-	if shift_pressed != event.shift_pressed:
+	var modifiers_changed := update_modifiers(event)
+
+	if shift_pressed != event.shift_pressed or modifiers_changed:
 		shift_pressed = event.shift_pressed
 		map.selection._rebuild_selection_path()
 		map.queue_redraw()

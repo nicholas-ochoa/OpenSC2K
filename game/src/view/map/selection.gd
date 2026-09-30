@@ -137,7 +137,7 @@ func _selection_source_polygons() -> Array[PackedVector2Array]:
 	if map.network_preview_active:
 		if map.hover_tile.x >= 0:
 			tiles.append(map.hover_tile)
-	elif map.query_footprint_preview and map.interaction.shift_pressed:
+	elif map.query_footprint_preview and map.interaction.query_held:
 		tiles = _query_footprint_tiles(map.hover_tile)
 	elif map.brush_box_selection:
 		tiles = map.selection_path.duplicate()
@@ -226,8 +226,8 @@ func _rebuild_selection_path() -> void:
 
 		return
 
-	if ((map.selection_mode == "rectangle" and not (map.shift_line_enabled and map.interaction.shift_pressed)) or map.brush_box_selection
-			or (map.shift_rectangle_enabled and map.interaction.shift_pressed and not uses_paint_brush())):
+	if ((map.selection_mode == "rectangle" and not (map.shift_line_enabled and map.interaction.shape_held)) or map.brush_box_selection
+			or (map.shift_rectangle_enabled and map.interaction.shape_held and not uses_paint_brush())):
 		var minimum := Vector2i(
 			mini(map.selection_start.x, map.selection_end.x),
 			mini(map.selection_start.y, map.selection_end.y),

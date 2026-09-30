@@ -79,6 +79,8 @@ var revert_button: Button
 var clear_object_button: Button
 var save_button: Button
 var pixel_canvas: ScurkPixelCanvas
+# the editor keys. set_control_bindings gives the player's bindings
+var control_bindings := ControlBindings.defaults()
 var view_previews: Array[ScurkViewPreview] = []
 var view_preview_panels: Array[Control] = []
 var palette_panel: ScurkEditorPalettePanel
@@ -751,6 +753,16 @@ func _generate_selected_sizes() -> void:
 		else ("Medium" if views[0] == VIEW_MEDIUM else "Small")))
 
 
+func set_control_bindings(value: ControlBindings) -> void:
+	control_bindings = value
+
+	if pixel_canvas != null:
+		pixel_canvas.control_bindings = value
+
+	if has_node("Panel/Content/Toolbar"):
+		(get_node("Panel/Content/Toolbar") as ToolbarView).refresh_shortcut_hints(value)
+
+
 func handle_shortcut(event: InputEventKey) -> bool:
 	if not visible or not event.pressed or event.echo:
 		return false
@@ -758,40 +770,33 @@ func handle_shortcut(event: InputEventKey) -> bool:
 	if pixel_canvas.has_focus() and pixel_canvas._handle_editor_key(event):
 		return true
 
-	var command := event.meta_pressed or event.ctrl_pressed
-
-	if command and event.keycode in [KEY_X, KEY_C, KEY_V]:
-		if is_inside_tree():
-			var focused := get_viewport().gui_get_focus_owner()
-			if focused is LineEdit or focused is TextEdit:
-				return false
-		return pixel_canvas._handle_editor_key(event)
-
-	if command and event.keycode == KEY_S:
-		if event.shift_pressed:
-			_request_save_as()
-		else:
+	match control_bindings.action_for(event, [ControlActions.KIND_PRESS], [ControlActions.SCOPE_SCURK]):
+		"scurk_cut", "scurk_copy", "scurk_paste":
+			if is_inside_tree():
+				var focused := get_viewport().gui_get_focus_owner()
+				if focused is LineEdit or focused is TextEdit:
+					return false
+			return pixel_canvas._handle_editor_key(event)
+		"scurk_save":
 			studio.request_save()
 
-		return true
+			return true
+		"scurk_save_as":
+			_request_save_as()
 
-	if command and event.keycode == KEY_O:
-		_request_open()
+			return true
+		"scurk_open":
+			_request_open()
 
-		return true
-
-	if command and event.keycode == KEY_Z:
-		if event.shift_pressed:
-			redo()
-		else:
+			return true
+		"scurk_undo":
 			undo()
 
-		return true
+			return true
+		"scurk_redo":
+			redo()
 
-	if command and event.keycode == KEY_Y:
-		redo()
-
-		return true
+			return true
 
 	if event.keycode == KEY_ESCAPE:
 		if pick_copy_control != null and pick_copy_control.visible:
@@ -1878,24 +1883,23 @@ func _refresh_canvas_menu() -> void:
 	var selected := pixel_canvas.selection.active()
 	var floating := pixel_canvas.paste_active
 	var editable := has_pixels and not pixel_canvas.editing_disabled and not floating
-	var command := KEY_MASK_META if OS.has_feature("macos") else KEY_MASK_CTRL
-	_add_canvas_action("Cut", "CutSelection", editable, command | KEY_X)
-	_add_canvas_action("Copy", "CopySelection", has_pixels and not floating, command | KEY_C)
-	_add_canvas_action("Paste", "PasteSelection", editable and pixel_canvas.has_clipboard(), command | KEY_V)
+	_add_canvas_action("Cut", "CutSelection", editable, _hint_key("scurk_cut"))
+	_add_canvas_action("Copy", "CopySelection", has_pixels and not floating, _hint_key("scurk_copy"))
+	_add_canvas_action("Paste", "PasteSelection", editable and pixel_canvas.has_clipboard(), _hint_key("scurk_paste"))
 	_add_canvas_action(
 		"Paste on new layer",
 		"PasteNewLayer",
 		has_pixels and not floating and pixel_canvas.has_clipboard(),
-		command | KEY_MASK_SHIFT | KEY_V,
+		_hint_key("scurk_paste_new_layer"),
 	)
 	if selected and not floating:
 		menu.add_separator()
 		_add_canvas_action("Save selection as stamp", "SaveStamp", true)
 		_add_canvas_action("Move selection to new layer", "MoveSelectionToLayer", editable)
-		_add_canvas_action("Cut from all layers", "CutAllLayers", has_pixels, command | KEY_MASK_SHIFT | KEY_X)
-		_add_canvas_action("Copy from all layers", "CopyAllLayers", has_pixels, command | KEY_MASK_SHIFT | KEY_C)
-		_add_canvas_action("Duplicate", "DuplicateSelection", editable, command | KEY_D)
-		_add_canvas_action("Delete", "DeleteSelection", editable, KEY_DELETE)
+		_add_canvas_action("Cut from all layers", "CutAllLayers", has_pixels, _hint_key("scurk_cut_all_layers"))
+		_add_canvas_action("Copy from all layers", "CopyAllLayers", has_pixels, _hint_key("scurk_copy_all_layers"))
+		_add_canvas_action("Duplicate", "DuplicateSelection", editable, _hint_key("scurk_duplicate"))
+		_add_canvas_action("Delete", "DeleteSelection", editable, _hint_key("scurk_delete"))
 	if selected or floating:
 		menu.add_separator()
 		for pair in [["Flip horizontally", "FlipHorizontal"], ["Flip vertically", "FlipVertical"], ["Rotate clockwise", "RotateClockwise"],
@@ -1903,12 +1907,19 @@ func _refresh_canvas_menu() -> void:
 			_add_canvas_action(pair[0], pair[1], editable or floating)
 	if floating:
 		menu.add_separator()
-		_add_canvas_action("Apply paste", "ApplyPaste", true, KEY_ENTER)
+		_add_canvas_action("Apply paste", "ApplyPaste", true, _hint_key("scurk_apply_paste"))
 		_add_canvas_action("Cancel paste", "CancelPaste", true, KEY_ESCAPE)
 	else:
 		menu.add_separator()
-		_add_canvas_action("Select all", "SelectAll", has_pixels, command | KEY_A)
+		_add_canvas_action("Select all", "SelectAll", has_pixels, _hint_key("scurk_select_all"))
 		_add_canvas_action("Cancel selection", "Deselect", selected, KEY_ESCAPE)
+
+
+# the first key of a SCURK action for a menu hint, or 0 when it has no key
+func _hint_key(action: String) -> int:
+	var binding := control_bindings.first_key(action)
+
+	return binding.key_with_masks() if binding != null else 0
 
 
 func _add_canvas_action(label: String, action: String, enabled: bool, key := 0) -> void:

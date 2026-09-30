@@ -4,18 +4,23 @@ extends RefCounted
 ## default bindings. The action ids are stored in the settings file.
 
 # map actions need the city view with no dialog or text field in use. global
-# actions work while a text field has focus. fixed rows are read-only help
+# actions work while a text field has focus. scurk actions work in the SCURK
+# editor only. fixed rows are read-only help
 const SCOPE_MAP := "map"
 const SCOPE_GLOBAL := "global"
+const SCOPE_SCURK := "scurk"
 const SCOPE_FIXED := "fixed"
+const CITY_SCOPES: Array[String] = [SCOPE_MAP, SCOPE_GLOBAL]
 # press actions start once. hold actions are active while the binding is down.
 # click actions use the map tile under the pointer. drag actions follow the
-# pointer while the button is down
+# pointer while the button is down. modifier actions change another action
+# while their key is down, so several of them can share one key
 const KIND_PRESS := "press"
 const KIND_HOLD := "hold"
 const KIND_CLICK := "click"
 const KIND_DRAG := "drag"
-const CATEGORIES: Array[String] = ["Camera", "Speed", "Tools", "View", "Windows", "Options", "File", "Mouse", "Fixed"]
+const KIND_MODIFIER := "modifier"
+const CATEGORIES: Array[String] = ["Camera", "Speed", "Tools", "View", "Windows", "Options", "File", "Mouse", "SCURK", "Fixed"]
 const TOOL_IDS: Array[String] = [
 	"tool_bulldozer", "tool_landscape", "tool_dispatch", "tool_power", "tool_water", "tool_rewards",
 	"tool_roads", "tool_rail", "tool_ports", "tool_residential", "tool_commercial", "tool_industrial",
@@ -91,7 +96,7 @@ static func _build() -> void:
 	_add("camera_left", "Move left", "Camera", SCOPE_MAP, KIND_HOLD, ["key:A", "key:Left"])
 	_add("camera_down", "Move down", "Camera", SCOPE_MAP, KIND_HOLD, ["key:S", "key:Down"])
 	_add("camera_right", "Move right", "Camera", SCOPE_MAP, KIND_HOLD, ["key:D", "key:Right"])
-	_add("camera_fast", "Fast move (hold)", "Camera", SCOPE_MAP, KIND_HOLD, ["key:Shift"])
+	_add("camera_fast", "Fast move (hold)", "Camera", SCOPE_MAP, KIND_MODIFIER, ["key:Shift"])
 	_add("zoom_in", "Zoom in", "Camera", SCOPE_MAP, KIND_PRESS, ["key:E", "key:Equal", "key:Plus", "key:Kp Add", "mouse:WheelUp"])
 	_add("zoom_out", "Zoom out", "Camera", SCOPE_MAP, KIND_PRESS,
 		["key:Q", "key:Minus", "key:Kp Subtract", "mouse:WheelDown"])
@@ -117,6 +122,8 @@ static func _build() -> void:
 	_add("brush_smaller", "Smaller brush", "Tools", SCOPE_MAP, KIND_PRESS, ["key:BracketLeft"])
 	_add("tool_previous", "Previous tool", "Tools", SCOPE_MAP, KIND_PRESS, [])
 	_add("cancel_selection", "Cancel selection", "Tools", SCOPE_MAP, KIND_PRESS, [])
+	_add("tool_shape_modifier", "Line or rectangle (hold)", "Tools", SCOPE_MAP, KIND_MODIFIER, ["key:Shift"])
+	_add("tool_query_modifier", "Query with any tool (hold)", "Tools", SCOPE_MAP, KIND_MODIFIER, ["key:Shift"])
 
 	_add("view_city", "City view", "View", SCOPE_MAP, KIND_PRESS, ["key:V"])
 	_add("view_toggle_underground", "Underground view", "View", SCOPE_MAP, KIND_PRESS, ["key:U"])
@@ -155,10 +162,32 @@ static func _build() -> void:
 	_add("map_center_on_tile", "Center on tile", "Mouse", SCOPE_MAP, KIND_CLICK, ["mouse:Middle"])
 	_add("map_pan", "Move map (drag)", "Mouse", SCOPE_MAP, KIND_DRAG, ["mouse:Right", "mouse:Middle"])
 
+	_add("scurk_open", "Open tile set", "SCURK", SCOPE_SCURK, KIND_PRESS, ["key:Command+O"])
+	_add("scurk_save", "Save tile set", "SCURK", SCOPE_SCURK, KIND_PRESS, ["key:Command+S"])
+	_add("scurk_save_as", "Save tile set as", "SCURK", SCOPE_SCURK, KIND_PRESS, ["key:Command+Shift+S"])
+	_add("scurk_undo", "Undo", "SCURK", SCOPE_SCURK, KIND_PRESS, ["key:Command+Z"])
+	_add("scurk_redo", "Redo", "SCURK", SCOPE_SCURK, KIND_PRESS,
+		["key:Command+Shift+Z", "key:Command+Y"] if mac else ["key:Command+Y", "key:Command+Shift+Z"])
+	_add("scurk_select_all", "Select all", "SCURK", SCOPE_SCURK, KIND_PRESS, ["key:Command+A"])
+	_add("scurk_deselect", "Cancel selection", "SCURK", SCOPE_SCURK, KIND_PRESS, ["key:Command+Shift+A"])
+	_add("scurk_cut", "Cut", "SCURK", SCOPE_SCURK, KIND_PRESS, ["key:Command+X"])
+	_add("scurk_copy", "Copy", "SCURK", SCOPE_SCURK, KIND_PRESS, ["key:Command+C"])
+	_add("scurk_paste", "Paste", "SCURK", SCOPE_SCURK, KIND_PRESS, ["key:Command+V"])
+	_add("scurk_cut_all_layers", "Cut from all layers", "SCURK", SCOPE_SCURK, KIND_PRESS, ["key:Command+Shift+X"])
+	_add("scurk_copy_all_layers", "Copy from all layers", "SCURK", SCOPE_SCURK, KIND_PRESS, ["key:Command+Shift+C"])
+	_add("scurk_paste_new_layer", "Paste as new layer", "SCURK", SCOPE_SCURK, KIND_PRESS, ["key:Command+Shift+V"])
+	_add("scurk_duplicate", "Duplicate selection", "SCURK", SCOPE_SCURK, KIND_PRESS, ["key:Command+D"])
+	_add("scurk_delete", "Delete selection", "SCURK", SCOPE_SCURK, KIND_PRESS, ["key:Delete", "key:Backspace"])
+	_add("scurk_apply_paste", "Apply paste", "SCURK", SCOPE_SCURK, KIND_PRESS, ["key:Enter", "key:Kp Enter"])
+	_add("scurk_brush_smaller", "Smaller brush", "SCURK", SCOPE_SCURK, KIND_PRESS, ["key:BracketLeft"])
+	_add("scurk_brush_larger", "Larger brush", "SCURK", SCOPE_SCURK, KIND_PRESS, ["key:BracketRight"])
+	_add("scurk_pan", "Move canvas with the left button (hold)", "SCURK", SCOPE_SCURK, KIND_MODIFIER, ["key:Space"])
+	_add("scurk_compare", "Compare with the original (hold)", "SCURK", SCOPE_SCURK, KIND_MODIFIER, ["key:BackSlash"])
+
 	_add_fixed("fixed_escape", "Cancel or close", "Esc")
-	_add_fixed("fixed_shift_tool", "Line, rectangle, or query with the current tool", "Hold Shift")
+	_add_fixed("fixed_shift_detail", "Exact data view values, deferred terrain stretch", "Hold Shift")
 	_add_fixed("fixed_media", "Music playback", "Media keys")
-	_add_fixed("fixed_scurk", "SCURK editor", "Editor shortcuts")
+	_add_fixed("fixed_scurk", "SCURK nudge and selection modes", "Arrow keys, Shift, Ctrl")
 
 
 static func _add(id: String, label: String, category: String, scope: String, kind: String, defaults: Array) -> void:

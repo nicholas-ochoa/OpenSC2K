@@ -193,6 +193,8 @@ func _input(event: InputEvent) -> void:
 # Returns true when the event belongs to the capture, so no dialog button or
 # field receives it.
 func capture_input(event: InputEvent) -> bool:
+	var kind := ControlActions.find(capture_action).kind
+
 	if event is InputEventKey:
 		var key_event := event as InputEventKey
 		var binding := ControlBinding.from_event(key_event)
@@ -210,16 +212,20 @@ func capture_input(event: InputEvent) -> bool:
 		if binding.is_modifier_key():
 			if key_event.pressed:
 				_capture_modifier = key_event
-			elif _capture_modifier != null and ControlActions.find(capture_action).kind == ControlActions.KIND_HOLD:
+			elif _capture_modifier != null and kind in [ControlActions.KIND_HOLD, ControlActions.KIND_MODIFIER]:
 				finish_capture(ControlBinding.from_event(_capture_modifier))
 
 			return true
 
 		if key_event.pressed:
-			if ControlActions.find(capture_action).kind == ControlActions.KIND_DRAG:
+			if kind == ControlActions.KIND_DRAG:
 				_show_capture_text("Move map (drag) needs a mouse button.\nPress Esc to cancel.")
 
 				return true
+
+			# a modifier action is one key. other modifier keys held with it do not count
+			if kind == ControlActions.KIND_MODIFIER:
+				binding.modifiers = 0
 
 			finish_capture(binding)
 
@@ -231,6 +237,11 @@ func capture_input(event: InputEvent) -> bool:
 
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			_show_capture_text("The left button always uses the current tool.\nPress another button, or Esc to cancel.")
+
+			return true
+
+		if kind == ControlActions.KIND_MODIFIER:
+			_show_capture_text("%s needs a key.\nPress Esc to cancel." % ControlActions.find(capture_action).label)
 
 			return true
 

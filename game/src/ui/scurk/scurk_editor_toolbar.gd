@@ -17,6 +17,18 @@ signal generate_requested
 signal pick_copy_requested
 signal about_requested
 
+# the SCURK action of each menu entry, for its shortcut hint
+const ACTION_ENTRIES: Dictionary[String, String] = {
+	"Open": "scurk_open", "Save": "scurk_save", "SaveAs": "scurk_save_as", "Undo": "scurk_undo", "Redo": "scurk_redo",
+	"SelectAll": "scurk_select_all", "CopySelection": "scurk_copy", "CutSelection": "scurk_cut",
+	"PasteSelection": "scurk_paste", "CopyAllLayers": "scurk_copy_all_layers", "CutAllLayers": "scurk_cut_all_layers",
+	"PasteNewLayer": "scurk_paste_new_layer", "DuplicateSelection": "scurk_duplicate", "DeleteSelection": "scurk_delete",
+}
+# Esc stays fixed
+const FIXED_HINTS: Dictionary[String, int] = { "Deselect": KEY_ESCAPE, "Close": KEY_ESCAPE }
+
+var bindings := ControlBindings.defaults()
+var _menus: Array[Array] = []
 var save_button: Button
 var undo_button: Button
 var redo_button: Button
@@ -92,23 +104,14 @@ func build() -> void:
 func _bind_menu(menu: MenuButton, entries: Array[String]) -> void:
 	menu.get_popup().set_script(preload("res://src/ui/scurk/scurk_context_menu.gd"))
 	var popup := menu.get_popup() as ScurkContextMenu
-	var command := KEY_MASK_META if OS.has_feature("macos") else KEY_MASK_CTRL
-	var shortcuts := {
-		"Open": command | KEY_O, "Save": command | KEY_S, "SaveAs": command | KEY_MASK_SHIFT | KEY_S,
-		"Undo": command | KEY_Z, "Redo": command | KEY_MASK_SHIFT | KEY_Z if OS.has_feature("macos") else command | KEY_Y,
-		"SelectAll": command | KEY_A, "Deselect": KEY_ESCAPE, "Close": KEY_ESCAPE,
-		"CopySelection": command | KEY_C, "CutSelection": command | KEY_X, "PasteSelection": command | KEY_V,
-		"CopyAllLayers": command | KEY_MASK_SHIFT | KEY_C, "CutAllLayers": command | KEY_MASK_SHIFT | KEY_X,
-		"PasteNewLayer": command | KEY_MASK_SHIFT | KEY_V, "DuplicateSelection": command | KEY_D, "DeleteSelection": KEY_DELETE,
-	}
 	for index in entries.size():
 		if entries[index].is_empty():
 			popup.add_separator()
 		else:
 			popup.add_item((get_node("Actions/" + entries[index]) as Button).text, index)
-			if shortcuts.has(entries[index]):
-				popup.set_shortcut_hint(index, shortcuts[entries[index]])
 
+	_menus.append([popup, entries])
+	_set_menu_hints(popup, entries)
 	popup.about_to_popup.connect(func() -> void:
 		for index in entries.size():
 			if not entries[index].is_empty():
@@ -118,3 +121,25 @@ func _bind_menu(menu: MenuButton, entries: Array[String]) -> void:
 		if not action.disabled:
 			action.pressed.emit())
 	popup.bind()
+
+
+# show the player's keys beside the menu items
+func refresh_shortcut_hints(value: ControlBindings) -> void:
+	bindings = value
+
+	for entry in _menus:
+		_set_menu_hints(entry[0], entry[1])
+
+
+func _set_menu_hints(popup: ScurkContextMenu, entries: Array[String]) -> void:
+	popup.hints.clear()
+	popup.shortcuts.clear()
+
+	for index in entries.size():
+		if FIXED_HINTS.has(entries[index]):
+			popup.set_shortcut_hint(index, FIXED_HINTS[entries[index]])
+		elif ACTION_ENTRIES.has(entries[index]):
+			var binding := bindings.first_key(ACTION_ENTRIES[entries[index]])
+
+			if binding != null:
+				popup.set_shortcut_hint(index, binding.key_with_masks())

@@ -77,6 +77,14 @@ func _test_capture_and_conflicts() -> void:
 	list.capture_input(alt)
 	list.capture_input(_key(KEY_ALT, false))
 	assert("key:Alt" in list.pending.to_texts("camera_fast"))
+	# a modifier action takes one key without its modifiers, and no mouse button
+	list.start_capture("tool_shape_modifier")
+	list.capture_input(_mouse(MOUSE_BUTTON_MIDDLE))
+	assert(list.is_capturing(), "A modifier action needs a key")
+	var alt_l := _key(KEY_L)
+	alt_l.alt_pressed = true
+	list.capture_input(alt_l)
+	assert("key:L" in list.pending.to_texts("tool_shape_modifier"))
 	# a mouse button capture
 	list.start_capture("rotate_clockwise")
 	list.capture_input(_mouse(MOUSE_BUTTON_MIDDLE))

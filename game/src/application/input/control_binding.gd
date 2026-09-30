@@ -118,8 +118,17 @@ static func from_event(event: InputEvent) -> ControlBinding:
 	return null
 
 
-static func event_modifiers(event: InputEventWithModifiers) -> int:
+# any_command reads both Ctrl and Cmd as Command on every system, as the
+# SCURK editor keys always have
+static func event_modifiers(event: InputEventWithModifiers, any_command := false) -> int:
 	var result := 0
+
+	if any_command:
+		result |= COMMAND if event.ctrl_pressed or event.meta_pressed else 0
+		result |= SHIFT if event.shift_pressed else 0
+		result |= ALT if event.alt_pressed else 0
+
+		return result
 
 	if event.shift_pressed:
 		result |= SHIFT
@@ -219,22 +228,17 @@ static func _is_symbol(keycode: int) -> bool:
 # Modifiers must match exactly, so Z does not start when Command+Z is pressed.
 # ignore_shift lets held camera keys work while Shift is down. A mouse binding
 # without modifiers matches the button with any modifiers.
-func matches(event: InputEvent, ignore_shift := false) -> bool:
+func matches(event: InputEvent, ignore_shift := false, any_command := false) -> bool:
 	var event_mods := 0
 
 	if device == Device.KEY:
 		if not event is InputEventKey:
 			return false
 
-		var physical: int = event.physical_keycode
-
-		if physical == KEY_NONE:
-			physical = event.keycode
-
-		if physical != code and not (_is_symbol(code) and event.keycode == code):
+		if not matches_key(event):
 			return false
 
-		event_mods = event_modifiers(event) & ~int(MODIFIER_KEYS.get(code, 0))
+		event_mods = event_modifiers(event, any_command) & ~int(MODIFIER_KEYS.get(code, 0))
 
 		# on macOS the Ctrl key reports the Control bit, not Command
 		if code == KEY_CTRL:
@@ -246,12 +250,48 @@ func matches(event: InputEvent, ignore_shift := false) -> bool:
 		if modifiers == 0:
 			return true
 
-		event_mods = event_modifiers(event)
+		event_mods = event_modifiers(event, any_command)
 
 	if ignore_shift and modifiers & SHIFT == 0:
 		event_mods &= ~SHIFT
 
 	return event_mods == modifiers
+
+
+# true when a key event is for this key, without a check of modifiers
+func matches_key(event: InputEventKey) -> bool:
+	if device != Device.KEY:
+		return false
+
+	var physical: int = event.physical_keycode
+
+	if physical == KEY_NONE:
+		physical = event.keycode
+
+	return physical == code or (_is_symbol(code) and event.keycode == code)
+
+
+# True while this key is down, for a modifier action. A modifier key reads
+# the modifier flags of the event, so a mouse event reports it too.
+func is_held_in(event: InputEvent) -> bool:
+	if device != Device.KEY:
+		return false
+
+	if event is InputEventKey and matches_key(event):
+		return event.pressed
+
+	if event is InputEventWithModifiers and is_modifier_key():
+		match code:
+			KEY_SHIFT:
+				return event.shift_pressed
+			KEY_ALT:
+				return event.alt_pressed
+			KEY_CTRL:
+				return event.ctrl_pressed
+			KEY_META:
+				return event.meta_pressed
+
+	return is_pressed()
 
 
 # true while the key or button is down

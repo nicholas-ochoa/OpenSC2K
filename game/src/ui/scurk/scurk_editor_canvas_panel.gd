@@ -52,7 +52,7 @@ func _input(event: InputEvent) -> void:
 		navigation = (navigation
 			or event.button_index in [MOUSE_BUTTON_MIDDLE, MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_LEFT,
 			MOUSE_BUTTON_WHEEL_RIGHT])
-		navigation = navigation or (event.button_index == MOUSE_BUTTON_LEFT and Input.is_key_pressed(KEY_SPACE))
+		navigation = navigation or (event.button_index == MOUSE_BUTTON_LEFT and pixel_canvas.control_bindings.is_held("scurk_pan"))
 	if not navigation:
 		if event is InputEventMouseButton and event.pressed:
 			if event.button_index == MOUSE_BUTTON_LEFT:

@@ -251,6 +251,9 @@ func apply_control_bindings() -> void:
 	if app.city_menu_bar != null:
 		app.city_menu_bar.refresh_shortcut_hints(preferences.control_bindings)
 
+	if app.scurk_editor != null:
+		app.scurk_editor.set_control_bindings(preferences.control_bindings)
+
 
 # Use Defaults in the Controls tab saves the controls at once, without the
 # other pending settings

@@ -79,9 +79,18 @@ func remove_binding(id: String, binding: ControlBinding) -> void:
 
 
 # Drag actions share buttons with click and press actions: a drag moves the map
-# and a click without movement starts the other action.
+# and a click without movement starts the other action. Modifier actions can
+# share one key, because each one changes a different action.
 static func _kinds_overlap(first: String, second: String) -> bool:
+	if first == ControlActions.KIND_MODIFIER and second == ControlActions.KIND_MODIFIER:
+		return false
+
 	return (first == ControlActions.KIND_DRAG) == (second == ControlActions.KIND_DRAG)
+
+
+# SCURK editor keys work only in the editor, so they can use city keys again
+static func _scopes_overlap(first: String, second: String) -> bool:
+	return (first == ControlActions.SCOPE_SCURK) == (second == ControlActions.SCOPE_SCURK)
 
 
 # actions, other than except_id, that already use this binding
@@ -89,9 +98,11 @@ func conflicts(binding: ControlBinding, except_id := "") -> Array[String]:
 	var result: Array[String] = []
 	var target := ControlActions.find(except_id)
 	var kind := target.kind if target != null else ControlActions.KIND_PRESS
+	var scope := target.scope if target != null else ControlActions.SCOPE_MAP
 
 	for action in ControlActions.all():
-		if action.id == except_id or action.scope == ControlActions.SCOPE_FIXED or not _kinds_overlap(kind, action.kind):
+		if (action.id == except_id or action.scope == ControlActions.SCOPE_FIXED or not _kinds_overlap(kind, action.kind)
+				or not _scopes_overlap(scope, action.scope)):
 			continue
 
 		for existing in for_action(action.id):
@@ -106,19 +117,21 @@ func conflicts(binding: ControlBinding, except_id := "") -> Array[String]:
 # The press, hold, or click action for an input event, or "" when there is none.
 # A binding with the exact modifiers wins over a mouse binding without
 # modifiers and over a held camera key with Shift down.
-func action_for(event: InputEvent, kinds: Array = [ControlActions.KIND_PRESS, ControlActions.KIND_HOLD]) -> String:
+func action_for(event: InputEvent, kinds: Array = [ControlActions.KIND_PRESS, ControlActions.KIND_HOLD],
+		scopes: Array = ControlActions.CITY_SCOPES) -> String:
 	var loose_match := ""
+	var any_command := ControlActions.SCOPE_SCURK in scopes
 
 	for action in ControlActions.all():
-		if action.scope == ControlActions.SCOPE_FIXED or action.kind not in kinds:
+		if action.scope not in scopes or action.kind not in kinds:
 			continue
 
 		for binding in for_action(action.id):
-			if not binding.matches(event, action.kind == ControlActions.KIND_HOLD):
+			if not binding.matches(event, action.kind == ControlActions.KIND_HOLD, any_command):
 				continue
 
-			if binding.matches(event) and (binding.device == ControlBinding.Device.KEY
-					or binding.modifiers == ControlBinding.event_modifiers(event as InputEventWithModifiers)):
+			if binding.matches(event, false, any_command) and (binding.device == ControlBinding.Device.KEY
+					or binding.modifiers == ControlBinding.event_modifiers(event as InputEventWithModifiers, any_command)):
 				return action.id
 
 			if loose_match.is_empty():
@@ -139,6 +152,24 @@ func has_mouse_button(id: String, button: int) -> bool:
 func is_held(id: String) -> bool:
 	for binding in for_action(id):
 		if binding.is_pressed():
+			return true
+
+	return false
+
+
+# true while a key of the modifier action is down, as the event reports it
+func modifier_held(id: String, event: InputEvent) -> bool:
+	for binding in for_action(id):
+		if binding.is_held_in(event):
+			return true
+
+	return false
+
+
+# true when the key event is for a key of the action, pressed or released
+func uses_key(id: String, event: InputEventKey) -> bool:
+	for binding in for_action(id):
+		if binding.matches_key(event):
 			return true
 
 	return false

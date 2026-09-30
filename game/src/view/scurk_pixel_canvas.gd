@@ -133,6 +133,8 @@ var panning := false
 var scroll_zoom_delta := 0.0
 var pan_button_mask := 0
 var space_pressed := false
+# the editor keys. the application sets the player's bindings
+var control_bindings := ControlBindings.defaults()
 var pencil_path: Array[Vector2i] = []
 var stamp_distance := 0.0
 var shade_visited: Dictionary[Vector2i, bool] = {}
@@ -171,9 +173,9 @@ func _process(delta: float) -> void:
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and not event.pressed:
-		if event.keycode == KEY_SPACE:
+		if control_bindings.uses_key("scurk_pan", event):
 			space_pressed = false
-		elif event.keycode == KEY_BACKSLASH and comparison_hold:
+		elif control_bindings.uses_key("scurk_compare", event) and comparison_hold:
 			comparison_hold = false
 			queue_redraw()
 
@@ -1028,7 +1030,7 @@ func _handle_editor_input(event: InputEvent) -> bool:
 			_scroll_canvas(direction * event.factor, event.position, event.ctrl_pressed or event.meta_pressed)
 		return true
 	if (event.button_index == MOUSE_BUTTON_MIDDLE
-			or (event.button_index == MOUSE_BUTTON_LEFT and (space_pressed or Input.is_key_pressed(KEY_SPACE) or panning))):
+			or (event.button_index == MOUSE_BUTTON_LEFT and (space_pressed or control_bindings.is_held("scurk_pan") or panning))):
 		panning = event.pressed
 		if panning:
 			_finish_stroke()
@@ -1125,17 +1127,16 @@ func _handle_editor_input(event: InputEvent) -> bool:
 
 
 func _handle_editor_key(event: InputEventKey) -> bool:
-	if event.keycode == KEY_SPACE:
+	if control_bindings.uses_key("scurk_pan", event):
 		space_pressed = event.pressed
 		return true
-	if event.keycode == KEY_BACKSLASH:
+	if control_bindings.uses_key("scurk_compare", event):
 		comparison_hold = event.pressed
 		queue_redraw()
 		return true
 	if not event.pressed:
 		return false
 
-	var command := event.ctrl_pressed or event.meta_pressed
 	if event.keycode == KEY_ESCAPE:
 		if paste_active:
 			cancel_paste()
@@ -1145,45 +1146,38 @@ func _handle_editor_key(event: InputEventKey) -> bool:
 		else:
 			return false
 		return true
-	if event.keycode in [KEY_ENTER, KEY_KP_ENTER] and paste_active:
+	var action := control_bindings.action_for(event, [ControlActions.KIND_PRESS], [ControlActions.SCOPE_SCURK])
+	if action == "scurk_apply_paste" and paste_active:
 		commit_paste()
 		return true
 	if event.keycode in [KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN] and (selection.active() or paste_active):
 		var directions := { KEY_LEFT: Vector2i.LEFT, KEY_RIGHT: Vector2i.RIGHT, KEY_UP: Vector2i.UP, KEY_DOWN: Vector2i.DOWN }
 		nudge_selection(directions[event.keycode] * (10 if event.shift_pressed else 1))
 		return true
-	if event.keycode in [KEY_DELETE, KEY_BACKSPACE] and selection.active():
+	if action == "scurk_delete" and selection.active():
 		delete_selection()
 		return true
-	if command and event.echo and event.keycode in [KEY_X, KEY_C, KEY_V]:
+	if event.echo and action in ["scurk_cut", "scurk_copy", "scurk_paste"]:
 		return true
-	if command:
-		match event.keycode:
-			KEY_A:
-				if event.shift_pressed:
-					clear_selection()
-				else:
-					select_all()
-			KEY_C:
-				if event.shift_pressed:
-					copy_all_layers_requested.emit(false)
-				else:
-					copy_selection()
-			KEY_X:
-				if event.shift_pressed:
-					copy_all_layers_requested.emit(true)
-				else:
-					cut_selection()
-			KEY_D:
-				duplicate_selection()
-			KEY_V:
-				begin_paste(Vector2i(-1, -1), event.shift_pressed)
-			_:
-				return false
-		return true
-	match event.keycode:
-		KEY_BRACKETLEFT, KEY_BRACKETRIGHT:
-			set_brush(brush_size + (-1 if event.keycode == KEY_BRACKETLEFT else 1), round_brush)
+	match action:
+		"scurk_select_all":
+			select_all()
+		"scurk_deselect":
+			clear_selection()
+		"scurk_copy":
+			copy_selection()
+		"scurk_copy_all_layers":
+			copy_all_layers_requested.emit(false)
+		"scurk_cut":
+			cut_selection()
+		"scurk_cut_all_layers":
+			copy_all_layers_requested.emit(true)
+		"scurk_duplicate":
+			duplicate_selection()
+		"scurk_paste", "scurk_paste_new_layer":
+			begin_paste(Vector2i(-1, -1), action == "scurk_paste_new_layer")
+		"scurk_brush_smaller", "scurk_brush_larger":
+			set_brush(brush_size + (-1 if action == "scurk_brush_smaller" else 1), round_brush)
 			brush_size_requested.emit(brush_size)
 		_:
 			return false
