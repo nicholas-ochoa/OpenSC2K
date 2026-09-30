@@ -171,8 +171,8 @@ pub fn burn_structure(
         }
     }
 
-    if mark_fire && clear_current && point_index >= 0 && overlay::read(maps.maps.text_overlays, point_index) == 0xff {
-        overlay::write(maps.maps.text_overlays, point_index, 0);
+    if mark_fire && clear_current && point_index >= 0 && overlay::marker_at(maps.maps.text_overlays, point_index) == 0xff {
+        overlay::set_marker_at(maps.maps.text_overlays, point_index, 0);
         let tile = maps.maps.buildings[point_index as usize] as i64;
 
         if !(tiles::TUNNEL_ENTRANCE_1..=tiles::TUNNEL_ENTRANCE_4).contains(&tile) && tile < tiles::HIGHWAY_SLOPE_1 {

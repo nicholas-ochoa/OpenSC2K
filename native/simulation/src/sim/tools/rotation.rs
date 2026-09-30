@@ -55,12 +55,12 @@ pub fn rotate(city: &mut City, counter_clockwise: bool) -> RotationResult {
     let original = std::mem::replace(&mut city.xund.data, underground);
     city.xund.commit_if_changed(&original);
 
-    let cells = (map_edge * map_edge) as usize;
-    let text = &city.xtxt.data;
-    let mut rotated_text = rotate_grid(&text[..cells.min(text.len())], map_edge, 1, counter_clockwise);
+    // each plane of a wide or layered tile index turns on its own
+    let cells = ((map_edge * map_edge) as usize).max(1);
+    let mut rotated_text = Vec::with_capacity(city.xtxt.data.len());
 
-    if text.len() > cells {
-        rotated_text.extend(rotate_grid(&text[cells..], map_edge, 1, counter_clockwise));
+    for plane in city.xtxt.data.chunks(cells) {
+        rotated_text.extend(rotate_grid(plane, map_edge, 1, counter_clockwise));
     }
 
     let original = std::mem::replace(&mut city.xtxt.data, rotated_text);
@@ -592,6 +592,7 @@ fn rotate_pair(data: &mut [u8], index: i64, counter_clockwise: bool, edge: i64) 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::sim::overlay;
 
     fn is_permutation(table: &[u8]) -> bool {
         let mut seen = vec![false; table.len()];
@@ -599,6 +600,32 @@ mod tests {
         table
             .iter()
             .all(|&value| (value as usize) < table.len() && !std::mem::replace(&mut seen[value as usize], true))
+    }
+
+    #[test]
+    fn every_layer_of_a_layered_index_turns() {
+        let edge = 16i64;
+        let mut city = crate::sim::testing::empty_sc2x_city(edge);
+        city.xtxt = crate::sim::city::Chunk::new(overlay::layered(edge * edge));
+        let point = Vec2i::new(2, 5);
+        let index = point.x * edge + point.y;
+        let facility = overlay::facility_id(12);
+        overlay::write(&mut city.xtxt.data, index, facility);
+        overlay::write(&mut city.xtxt.data, index, 0xfc);
+        overlay::set_object(&mut city.xtxt.data, index, overlay::thing_id(3));
+        rotate(&mut city, false);
+        let turned = rotate_point(point, edge, false);
+        let turned_index = turned.x * edge + turned.y;
+        let text = &city.xtxt.data;
+        assert_eq!(text.len() as i64, edge * edge * overlay::LAYERED_PLANES);
+        assert_eq!(
+            (
+                overlay::facility(text, turned_index),
+                overlay::marker(text, turned_index),
+                overlay::object(text, turned_index)
+            ),
+            (facility, 0xfc, overlay::thing_id(3))
+        );
     }
 
     #[test]

@@ -344,7 +344,7 @@ pub fn place_water(maps: &mut Maps, point: Vec2i) -> bool {
     let edge = maps.map_edge;
     let tile_index = point.x * edge + point.y;
     let i = tile_index as usize;
-    let marker = overlay::read(maps.text_overlays, tile_index);
+    let marker = overlay::marker_at(maps.text_overlays, tile_index);
 
     if maps.flags[i] as i64 & flag_bits::WATER != 0 || (marker > 0xf9 && marker <= 255) {
         return false;

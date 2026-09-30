@@ -211,7 +211,7 @@ pub fn process_microsim(
         return;
     }
 
-    let label = overlay::read(maps.text_overlays, index);
+    let label = overlay::facility_at(maps.text_overlays, index);
 
     if !overlay::is_facility(label) {
         return;
@@ -316,7 +316,8 @@ pub fn process_subway(
         demolish::release_overlay(maps.text_overlays, maps.labels, maps.wide_labels, maps.microsims, index);
 
         // Original demolition detaches the thing but keeps its record and XTXT.
-        if overlay::is_thing(linked) {
+        // A layered index keeps objects apart from the facility layer.
+        if overlay::is_thing(linked) && !overlay::is_layered(maps.text_overlays) {
             let record = overlay::thing_record(linked);
             things::write(things_data, record * things::RECORD_SIZE + things::FIELD_LABEL, 0);
         }

@@ -97,6 +97,98 @@ pub fn set_object(data: &mut [u8], index: i64, id: i64) {
     set_wide_at(data, OBJECT_PLANE, index, id);
 }
 
+/// The marker of a tile: the marker layer of a layered index, else the value
+/// of a combined index.
+#[inline]
+pub fn marker_at(data: &[u8], index: i64) -> i64 {
+    if is_layered(data) { marker(data, index) } else { read(data, index) }
+}
+
+/// Set or clear the marker of a tile. A combined index writes the value.
+#[inline]
+pub fn set_marker_at(data: &mut [u8], index: i64, value: i64) {
+    if is_layered(data) {
+        set_marker(data, index, value);
+    } else {
+        write(data, index, value);
+    }
+}
+
+/// The facility layer of a layered index, else the value of a combined index.
+/// The caller checks `is_facility`.
+#[inline]
+pub fn facility_at(data: &[u8], index: i64) -> i64 {
+    if is_layered(data) {
+        facility(data, index)
+    } else {
+        read(data, index)
+    }
+}
+
+/// What a moving object covers when it arrives on tile `index`: the value of
+/// a combined index, or the top object of a layered index. The object keeps it
+/// in its label field.
+#[inline]
+pub fn covered(data: &[u8], index: i64) -> i64 {
+    if is_layered(data) { object(data, index) } else { read(data, index) }
+}
+
+/// Put moving object `record` on top of tile `index`.
+pub fn push_object(text: &mut [u8], things_data: &mut [u8], record: i64, index: i64) {
+    let below = covered(text, index);
+    super::things::write(
+        things_data,
+        record * sc2thing_layout::RECORD_SIZE + sc2thing_layout::FIELD_LABEL,
+        below,
+    );
+    write(text, index, thing_id(record));
+}
+
+/// Take moving object `record` off tile `index`. A combined index gets
+/// `legacy`: the label field that the object kept, or zero. A layered index
+/// shows the object below it again, and its other layers stay unchanged.
+pub fn lift_object(text: &mut [u8], things_data: &mut [u8], record: i64, index: i64, legacy: i64) {
+    if !is_layered(text) {
+        write(text, index, legacy);
+
+        return;
+    }
+
+    let id = thing_id(record);
+    let records = super::things::count(things_data);
+    let label = |data: &[u8], record: i64| super::things::field(data, record, sc2thing_layout::FIELD_LABEL);
+    let own = label(things_data, record);
+    let below = if is_thing(own) && own != id { own } else { 0 };
+    let mut above = object(text, index);
+
+    if above == id {
+        set_object(text, index, below);
+
+        return;
+    }
+
+    // an object that another object covers leaves the chain of its tile
+    for _ in 0..records {
+        let above_record = thing_record(above);
+
+        if !is_thing(above) || above_record < 0 || above_record >= records {
+            return;
+        }
+
+        if label(things_data, above_record) == id {
+            super::things::write(
+                things_data,
+                above_record * sc2thing_layout::RECORD_SIZE + sc2thing_layout::FIELD_LABEL,
+                below,
+            );
+
+            return;
+        }
+
+        above = label(things_data, above_record);
+    }
+}
+
 /// The facility of a tile: the facility layer of a layered index, else the
 /// base of the tile's object chain in a combined index.
 pub fn base_facility(data: &[u8], things_data: &[u8], index: i64) -> i64 {

@@ -460,12 +460,7 @@ impl City {
             return false;
         }
 
-        let data = self.xtxt.mutate();
-        data[index as usize] = value as u8;
-
-        if cells < size {
-            data[(cells + index) as usize] = (value >> 8) as u8;
-        }
+        super::overlay::write(self.xtxt.mutate(), index, value);
 
         true
     }

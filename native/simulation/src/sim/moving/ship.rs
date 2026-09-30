@@ -257,7 +257,7 @@ fn advance(text: &mut [u8], data: &mut [u8], record: i64, direction: i64, map_ed
 
     if current_index >= 0 {
         let label = things::read(data, offset + 10);
-        overlay::write(text, current_index, label);
+        overlay::lift_object(text, data, record, current_index, label);
     }
 
     let next = current + tile_delta;
@@ -271,8 +271,7 @@ fn advance(text: &mut [u8], data: &mut [u8], record: i64, direction: i64, map_ed
 
     things::write(data, offset + 3, next.x);
     things::write(data, offset + 4, next.y);
-    things::write(data, offset + 10, overlay::read(text, next_index));
-    overlay::write(text, next_index, overlay::thing_id(record));
+    overlay::push_object(text, data, record, next_index);
 
     true
 }

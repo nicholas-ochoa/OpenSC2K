@@ -181,7 +181,7 @@ fn start_moving_disaster(city: &mut City, disaster_type: i64, point: Vec2i, rand
     things::write(&mut thing_data, offset + 8, dx);
     let dy = random.next_u15() & 0x7f;
     things::write(&mut thing_data, offset + 9, dy);
-    things::write(&mut thing_data, offset + 10, overlay::read(&text, tile_index));
+    things::write(&mut thing_data, offset + 10, overlay::covered(&text, tile_index));
 
     if disaster_type == DISASTER_MONSTER {
         things::write(&mut thing_data, offset + 11, 0);
@@ -263,7 +263,8 @@ fn remove_thing(thing_data: &mut [u8], text: &mut [u8], record: i64, map_edge: i
         let tile_index = point.x * map_edge + point.y;
 
         if overlay::read(text, tile_index) == overlay::thing_id(record) {
-            overlay::write(text, tile_index, things::read(thing_data, offset + 10));
+            let label = things::read(thing_data, offset + 10);
+            overlay::lift_object(text, thing_data, record, tile_index, label);
         }
     }
 

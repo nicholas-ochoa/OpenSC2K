@@ -311,8 +311,8 @@ pub fn retile_surface(
     }
 
     let mut connections = 0;
-    let has_connection_label =
-        overlay::count(text_overlays) == map_edge * map_edge && overlay::read(text_overlays, index) == sc2overlay_layout::CONNECTION_MARKER;
+    let has_connection_label = overlay::count(text_overlays) == map_edge * map_edge
+        && overlay::marker_at(text_overlays, index) == sc2overlay_layout::CONNECTION_MARKER;
 
     for direction in 0..4 {
         let near = point + DIRECTIONS[direction as usize];

@@ -74,7 +74,7 @@ pub fn remove(text: &mut [u8], data: &mut [u8], record: i64, map_edge: i64) {
     let position = index(point, map_edge);
 
     if position >= 0 {
-        overlay::write(text, position, 0);
+        overlay::lift_object(text, data, record, position, 0);
     }
 }
 
@@ -125,7 +125,8 @@ pub fn advance(speed: i64, text: &mut [u8], data: &mut [u8], record: i64, direct
         return -1;
     }
 
-    overlay::write(text, current_index, things::read(data, offset + FIELD_LABEL));
+    let label = things::read(data, offset + FIELD_LABEL);
+    overlay::lift_object(text, data, record, current_index, label);
     let mut next = current + tile_delta;
     let mut next_index = index(next, map_edge);
 
@@ -144,8 +145,7 @@ pub fn advance(speed: i64, text: &mut [u8], data: &mut [u8], record: i64, direct
 
     things::write(data, offset + FIELD_X, next.x);
     things::write(data, offset + FIELD_Y, next.y);
-    things::write(data, offset + FIELD_LABEL, overlay::read(text, next_index));
-    overlay::write(text, next_index, overlay::thing_id(record));
+    overlay::push_object(text, data, record, next_index);
 
     1
 }
@@ -162,6 +162,63 @@ mod tests {
         }
 
         overlay::write(text, point.x * edge + point.y, overlay::thing_id(record));
+    }
+
+    /// A layered index: the object leaves the facility and the marker of its
+    /// tiles in place, and a covered object leaves without breaking the stack.
+    #[test]
+    fn a_layered_object_moves_without_changing_other_layers() {
+        let edge = 128i64;
+        let record = 30;
+        let offset = record * RECORD_SIZE;
+        let origin = Vec2i::new(10, 10);
+        let next = origin + DIRECTIONS[2];
+        let (from, to) = (origin.x * edge + origin.y, next.x * edge + next.y);
+        let mut text = overlay::layered(edge * edge);
+        let mut data = vec![0u8; 512 * 24];
+        let facility = overlay::facility_id(700);
+        overlay::write(&mut text, from, facility);
+        overlay::write(&mut text, to, facility);
+
+        for (field, value) in [(0, 1), (3, origin.x), (4, origin.y), (6, 8), (7, 8)] {
+            things::write(&mut data, offset + field, value);
+        }
+
+        overlay::push_object(&mut text, &mut data, record, from);
+        assert_eq!(things::read(&data, offset + 10), 0, "an object covers no other object");
+        // a fire starts under the object
+        overlay::set_marker_at(&mut text, from, 0xff);
+        assert_eq!(advance(16, &mut text, &mut data, record, 2, edge), 1);
+        assert_eq!(
+            (
+                overlay::object(&text, from),
+                overlay::marker(&text, from),
+                overlay::facility(&text, from)
+            ),
+            (0, 0xff, facility)
+        );
+        assert_eq!(
+            (overlay::object(&text, to), overlay::facility(&text, to)),
+            (overlay::thing_id(record), facility)
+        );
+
+        // a second object covers the first; the first leaves from under it
+        let top = 31;
+        for (field, value) in [(0, 1), (3, next.x), (4, next.y)] {
+            things::write(&mut data, top * RECORD_SIZE + field, value);
+        }
+
+        overlay::push_object(&mut text, &mut data, top, to);
+        assert_eq!(things::read(&data, top * RECORD_SIZE + 10), overlay::thing_id(record));
+        remove(&mut text, &mut data, record, edge);
+        assert_eq!(overlay::object(&text, to), overlay::thing_id(top));
+        assert_eq!(
+            things::read(&data, top * RECORD_SIZE + 10),
+            0,
+            "the stack closes over the removed object"
+        );
+        remove(&mut text, &mut data, top, edge);
+        assert_eq!(overlay::read(&text, to), facility, "only the facility stays");
     }
 
     #[test]

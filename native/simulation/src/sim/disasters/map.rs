@@ -204,13 +204,20 @@ pub fn run_all(
     let mut riot_active = false;
     let mut view_center_requests = Vec::new();
     let mut maps = city.disaster_maps();
+    let layered = overlay::is_layered(maps.maps.text_overlays);
 
     for x in 0..edge {
         crate::sim::budget::checkpoint();
 
         for y in 0..edge {
             let tile_index = x * edge + y;
-            let marker = overlay::read(maps.maps.text_overlays, tile_index);
+            let marker = overlay::marker_at(maps.maps.text_overlays, tile_index);
+            // a layered index keeps objects apart from markers; both act
+            let object = if layered {
+                overlay::object(maps.maps.text_overlays, tile_index)
+            } else {
+                marker
+            };
             let point = Vec2i::new(x, y);
 
             if marker == FIRE_OVERLAY {
@@ -225,8 +232,12 @@ pub fn run_all(
             } else if marker == FLOOD_OVERLAY {
                 flood_active = true;
                 process_flood_cell(&mut maps, point, tile_index, counter, random, lfsr, &mut counters, &mut events);
-            } else if overlay::is_thing(marker) {
-                process_dispatch_cell(&mut maps, point, marker, random, lfsr, &mut dispatch);
+            } else if !layered && overlay::is_thing(object) {
+                process_dispatch_cell(&mut maps, point, object, random, lfsr, &mut dispatch);
+            }
+
+            if layered && overlay::is_thing(object) {
+                process_dispatch_cell(&mut maps, point, object, random, lfsr, &mut dispatch);
             }
         }
     }
@@ -387,7 +398,7 @@ fn run_kind(
 
         for y in 0..edge {
             let tile_index = x * edge + y;
-            let marker = overlay::read(maps.maps.text_overlays, tile_index);
+            let marker = overlay::marker_at(maps.maps.text_overlays, tile_index);
             let point = Vec2i::new(x, y);
 
             match kind {
@@ -512,7 +523,7 @@ fn process_fire_cell(
     counters.fire_updates += 1;
 
     if maps.maps.flags[tile_index as usize] & 0x04 != 0 {
-        overlay::write(maps.maps.text_overlays, tile_index, 0);
+        overlay::set_marker_at(maps.maps.text_overlays, tile_index, 0);
         counters.water_extinctions += 1;
 
         return;
@@ -585,7 +596,7 @@ fn process_flood_cell(
     counters.flood_markers_scanned += 1;
 
     if counter == 0 && lfsr.next_mask(1) != 0 {
-        overlay::write(maps.maps.text_overlays, tile_index, 0);
+        overlay::set_marker_at(maps.maps.text_overlays, tile_index, 0);
         counters.expired_floods += 1;
 
         return;
@@ -605,7 +616,7 @@ fn process_flood_cell(
             counters.damaged_structures += 1;
         }
 
-        overlay::write(maps.maps.text_overlays, tile_index, 0);
+        overlay::set_marker_at(maps.maps.text_overlays, tile_index, 0);
         counters.random_extinctions += 1;
     }
 
@@ -639,14 +650,14 @@ fn process_toxic_cell(
     counters.toxic_updates += 1;
 
     if lfsr.next_mask(0x3f) == 0 {
-        overlay::write(maps.maps.text_overlays, tile_index, 0);
+        overlay::set_marker_at(maps.maps.text_overlays, tile_index, 0);
         counters.lfsr_expirations += 1;
 
         return;
     }
 
     if maps.maps.flags[tile_index as usize] & 0x04 != 0 && random.next_u15() & 0x0f == 0 {
-        overlay::write(maps.maps.text_overlays, tile_index, 0);
+        overlay::set_marker_at(maps.maps.text_overlays, tile_index, 0);
         counters.water_expirations += 1;
 
         return;
@@ -662,7 +673,7 @@ fn process_toxic_cell(
         direction = random.next_u15() & 3;
     }
 
-    overlay::write(maps.maps.text_overlays, tile_index, 0);
+    overlay::set_marker_at(maps.maps.text_overlays, tile_index, 0);
     let target = point + CARDINAL_DIRECTIONS[direction as usize];
 
     if place_toxic_marker(maps.maps.text_overlays, target, edge) {
@@ -694,7 +705,7 @@ fn process_riot_cell(
     counters.riot_updates += 1;
 
     if random.next_u15() & 0xff == 0 || maps.maps.flags[tile_index as usize] & 0x04 != 0 {
-        overlay::write(maps.maps.text_overlays, tile_index, 0);
+        overlay::set_marker_at(maps.maps.text_overlays, tile_index, 0);
         counters.expired_riots += 1;
 
         return;
@@ -802,11 +813,11 @@ fn process_dispatch_cell(
 fn extinguish_dispatch_fire(maps: &mut DisasterMaps, point: Vec2i, random: &mut SimRandom, lfsr: &mut SimLfsrRandom) -> bool {
     let tile_index = index(point, maps.maps.map_edge);
 
-    if tile_index < 0 || overlay::read(maps.maps.text_overlays, tile_index) != FIRE_OVERLAY {
+    if tile_index < 0 || overlay::marker_at(maps.maps.text_overlays, tile_index) != FIRE_OVERLAY {
         return false;
     }
 
-    overlay::write(maps.maps.text_overlays, tile_index, 0);
+    overlay::set_marker_at(maps.maps.text_overlays, tile_index, 0);
     let tile = maps.maps.buildings[tile_index as usize] as i64;
 
     if (tiles::TUNNEL_ENTRANCE_1..=tiles::TUNNEL_ENTRANCE_4).contains(&tile) {
@@ -834,13 +845,13 @@ fn clear_riot_marker(text: &mut [u8], point: Vec2i, map_edge: i64) -> bool {
         return false;
     }
 
-    let marker = overlay::read(text, tile_index);
+    let marker = overlay::marker_at(text, tile_index);
 
     if marker != RIOT_OVERLAY_FORWARD && marker != RIOT_OVERLAY_REVERSE {
         return false;
     }
 
-    overlay::write(text, tile_index, 0);
+    overlay::set_marker_at(text, tile_index, 0);
 
     true
 }
@@ -929,7 +940,7 @@ pub fn spawn_explosion(
     things::write(thing_data, offset + 5, height);
     things::write(thing_data, offset + 6, 8);
     things::write(thing_data, offset + 7, 8);
-    things::write(thing_data, offset + 10, overlay::read(text, tile_index));
+    things::write(thing_data, offset + 10, overlay::covered(text, tile_index));
     things::write(thing_data, offset + 11, goal);
     overlay::write(text, tile_index, overlay::thing_id(record));
 

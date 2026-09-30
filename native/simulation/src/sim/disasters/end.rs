@@ -105,7 +105,7 @@ fn remove_dispatched_units(city: &mut City) -> i64 {
             continue;
         }
 
-        overlay::write(&mut text, tile_index, 0);
+        overlay::lift_object(&mut text, &mut thing_data, record, tile_index, 0);
         things::write(&mut thing_data, offset, things::TYPE_NONE);
         removed += 1;
     }
@@ -181,7 +181,7 @@ pub fn maxis_man_response(
         8,
         target.x,
         target.y,
-        overlay::read(&text, tile_index),
+        overlay::covered(&text, tile_index),
         goal,
     ];
 

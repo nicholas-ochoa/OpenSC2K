@@ -71,7 +71,7 @@ pub fn connection_counts(city: &City) -> ConnectionCounts {
     // The high bytes of an SC2X label plane follow the low bytes.
     while index >= 0 && index < cells {
         let tile = buildings[index as usize] as i64;
-        let labelled = overlay::read(overlays, index) == sc2overlay_layout::CONNECTION_MARKER;
+        let labelled = overlay::marker_at(overlays, index) == sc2overlay_layout::CONNECTION_MARKER;
         index = overlay::find_byte(overlays, low_byte, index + 1);
 
         if !labelled {

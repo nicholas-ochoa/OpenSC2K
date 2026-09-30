@@ -576,7 +576,7 @@ pub fn advance(maps: &TripMaps, current: Vec2i, next_point: Vec2i, current_index
     let map_edge = maps.map_edge;
 
     if index < 0 {
-        if current_index >= 0 && overlay::read(maps.text_overlays, current_index) == CONNECTION_LABEL {
+        if current_index >= 0 && overlay::marker_at(maps.text_overlays, current_index) == CONNECTION_LABEL {
             return ADVANCE_SUCCESS;
         }
 

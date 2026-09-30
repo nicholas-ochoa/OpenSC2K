@@ -229,6 +229,17 @@ fn find_microsim_location(text_overlays: &[u8], record: i64, map_edge: i64) -> V
 
     let text_id = overlay::facility_id(record);
 
+    // a layered index finds the facility under any moving object
+    if overlay::is_layered(text_overlays) {
+        let found = overlay::find(text_overlays, text_id, 0);
+
+        return if found <= 0 {
+            Vec2i::NONE
+        } else {
+            Vec2i::new(found / map_edge, found % map_edge)
+        };
+    }
+
     for x in 0..map_edge {
         crate::sim::budget::checkpoint();
 
@@ -480,7 +491,7 @@ impl Annual<'_, '_> {
 
         for x in 0..edge {
             for y in 0..edge {
-                if overlay::read(&city.xtxt.data, x * edge + y) != 0xfe {
+                if overlay::marker_at(&city.xtxt.data, x * edge + y) != 0xfe {
                     continue;
                 }
 

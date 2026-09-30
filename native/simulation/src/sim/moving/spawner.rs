@@ -171,8 +171,7 @@ pub fn spawn_helicopter(
     things::write(data, offset + FIELD_DX, dx);
     let dy = random.next_u15() % map_edge;
     things::write(data, offset + FIELD_DY, dy);
-    things::write(data, offset + FIELD_LABEL, overlay::read(text, index));
-    overlay::write(text, index, overlay::thing_id(record));
+    overlay::push_object(text, data, record, index);
 
     Spawned {
         spawned: true,
@@ -259,8 +258,7 @@ pub fn spawn_airplane(
     things::write(data, offset + FIELD_X, attached.x);
     things::write(data, offset + FIELD_Y, attached.y);
     let attached_index = motion::index(attached, map_edge);
-    things::write(data, offset + FIELD_LABEL, overlay::read(text, attached_index));
-    overlay::write(text, attached_index, overlay::thing_id(record));
+    overlay::push_object(text, data, record, attached_index);
 
     Spawned {
         spawned: true,
@@ -342,8 +340,7 @@ pub fn spawn_ship(
     things::write(data, offset + FIELD_Z, 1);
     things::write(data, offset + FIELD_PX, 8);
     things::write(data, offset + FIELD_PY, 8);
-    things::write(data, offset + FIELD_LABEL, overlay::read(text, start_index));
-    overlay::write(text, start_index, overlay::thing_id(record));
+    overlay::push_object(text, data, record, start_index);
     things::set_ship_home(data, record, start);
 
     Spawned {
@@ -450,7 +447,7 @@ pub fn spawn_maxis_man(
     things::write(data, offset + FIELD_PY, 8);
     things::write(data, offset + FIELD_DX, target.x);
     things::write(data, offset + FIELD_DY, target.y);
-    things::write(data, offset + FIELD_LABEL, overlay::read(text, index));
+    things::write(data, offset + FIELD_LABEL, overlay::covered(text, index));
     things::write(data, offset + FIELD_GOAL, goal);
     overlay::write(text, index, overlay::thing_id(record));
 
@@ -567,7 +564,7 @@ pub fn spawn_train_record(
     things::write(data, first_car_offset + FIELD_PY, start.y);
     things::write(data, second_car_offset + FIELD_PX, start.x);
     things::write(data, second_car_offset + FIELD_PY, start.y);
-    things::write(data, engine_offset + FIELD_LABEL, overlay::read(text, index));
+    things::write(data, engine_offset + FIELD_LABEL, overlay::covered(text, index));
     things::write(data, first_car_offset + FIELD_LABEL, 0);
     things::write(data, second_car_offset + FIELD_LABEL, 0);
     things::write(data, engine_offset + FIELD_STATE, first_car_record);

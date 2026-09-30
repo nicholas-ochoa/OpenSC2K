@@ -208,6 +208,25 @@ fn site_matches(buildings: &[u8], zones: &[u8], site: Rect2i, tile: i64, rotatio
 
 /// DemolishEffectsSites._release_overlay.
 pub fn release_overlay(text_overlays: &mut [u8], labels: &mut [u8], wide_labels: bool, microsims: &mut [u8], index: i64) {
+    // a layered index releases the facility and a connection marker under any
+    // moving object. Signs are XSGN records and stay
+    if overlay::is_layered(text_overlays) {
+        if overlay::marker(text_overlays, index) == sc2overlay_layout::CONNECTION_MARKER {
+            overlay::set_marker(text_overlays, index, 0);
+        }
+
+        let facility = overlay::facility(text_overlays, index);
+        overlay::set_facility(text_overlays, index, 0);
+
+        if facility != 0 && overlay::facility_record(facility) >= MICROSIM_DYNAMIC_FIRST {
+            let record = overlay::facility_record(facility);
+            crate::sim::bytes::put(microsims, record * sc2microsim_layout::RECORD_SIZE, 0);
+            label_records::clear(labels, facility as usize, wide_labels);
+        }
+
+        return;
+    }
+
     let label_id = overlay::read(text_overlays, index);
 
     if label_id == 0 {
@@ -260,7 +279,7 @@ pub fn demolish_point(
         return PointResult::unchanged();
     }
 
-    if !force_damage && overlay::read(maps.text_overlays, index) == PROTECTED_CONNECTION_LABEL {
+    if !force_damage && overlay::marker_at(maps.text_overlays, index) == PROTECTED_CONNECTION_LABEL {
         return PointResult::unchanged();
     }
 
@@ -972,3 +991,30 @@ fn demolish_highway_section(
 
 /// Keep the network mode constants reachable for callers of this module.
 pub use network::{MODE_POWER, MODE_RAIL, MODE_ROAD};
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A layered index releases the facility and a connection marker under a
+    /// moving object, and keeps the object.
+    #[test]
+    fn a_layered_release_keeps_the_object_on_the_tile() {
+        let edge = 16i64;
+        let mut text = overlay::layered(edge * edge);
+        let mut microsims = vec![0u8; 64 * 8];
+        let mut labels = label_records::wide_table(overlay::facility_id(63) as usize);
+        let record = MICROSIM_DYNAMIC_FIRST + 2;
+        let facility = overlay::facility_id(record);
+        microsims[(record * 8) as usize] = 0xd2;
+        label_records::write_wide(&mut labels, facility as usize, "Depot");
+        overlay::write(&mut text, 20, facility);
+        overlay::write(&mut text, 20, sc2overlay_layout::CONNECTION_MARKER);
+        overlay::write(&mut text, 20, overlay::thing_id(7));
+        release_overlay(&mut text, &mut labels, true, &mut microsims, 20);
+        assert_eq!((overlay::facility(&text, 20), overlay::marker(&text, 20)), (0, 0));
+        assert_eq!(overlay::object(&text, 20), overlay::thing_id(7));
+        assert_eq!(microsims[(record * 8) as usize], 0, "the individual record is free");
+        assert!(label_records::read(&labels, facility as usize, true).unwrap_or_default().is_empty());
+    }
+}

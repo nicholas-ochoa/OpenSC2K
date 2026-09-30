@@ -134,11 +134,10 @@ pub fn update(
         overlay::write(text, record_index(data, record, edge), overlay::thing_id(first_car));
         overlay::write(text, record_index(data, first_car, edge), overlay::thing_id(second_car));
         let tail_label = things::read(data, second_car_offset + 10);
-        overlay::write(text, record_index(data, second_car, edge), tail_label);
+        overlay::lift_object(text, data, second_car, record_index(data, second_car, edge), tail_label);
         copy_record(data, first_car, second_car);
         copy_record(data, record, first_car);
-        things::write(data, offset + 10, overlay::read(text, destination_index));
-        overlay::write(text, destination_index, overlay::thing_id(record));
+        overlay::push_object(text, data, record, destination_index);
         counters.moved_trains += 1;
     }
 

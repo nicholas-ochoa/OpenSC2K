@@ -147,7 +147,7 @@ fn advance(text: &mut [u8], data: &mut [u8], record: i64, direction: i64, counte
         let old_index = index(old_point, map_edge);
 
         if old_index >= 0 {
-            overlay::write(text, old_index, 0);
+            overlay::lift_object(text, data, record, old_index, 0);
         }
 
         let next = old_point + tile_delta;

@@ -51,7 +51,8 @@ fn remove_without_crash(text: &mut [u8], data: &mut [u8], record: i64, map_edge:
     let tile_index = index(point, map_edge);
 
     if tile_index >= 0 && overlay::read(text, tile_index) == overlay::thing_id(record) {
-        overlay::write(text, tile_index, field(data, offset, 10));
+        let label = field(data, offset, 10);
+        overlay::lift_object(text, data, record, tile_index, label);
     }
 
     things::write(data, offset, 0);
@@ -213,7 +214,8 @@ pub fn update_airplane(
                 let landing_index = index(current, map_edge);
 
                 if landing_index >= 0 {
-                    overlay::write(text, landing_index, field(data, offset, 10));
+                    let label = field(data, offset, 10);
+                    overlay::lift_object(text, data, record, landing_index, label);
                 }
 
                 if landing_index < 0 || buildings[landing_index as usize] as i64 != tiles::RUNWAY {
