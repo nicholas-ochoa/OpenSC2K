@@ -64,9 +64,11 @@ func check_storage(edge: int, native: bool) -> void:
 	var saved := CityFileStore.save_copy(doc, path, "res://../references")
 	check(saved.ok and saved.path.ends_with(".sc2x"), "Small map defaults to SC2X extension")
 	if saved.ok:
-		# an SCLG city keeps its format
+		# a save writes SC2X version 4 with the same city
 		var reloaded := Sc2File.load_path(saved.path)
-		check(not reloaded.is_sc2x() and reloaded.map_size == edge and FileAccess.get_file_as_bytes(saved.path) == bytes,
+		var expected := Sc2xDocument.from_legacy(doc, path.get_file())
+		check(reloaded.is_sc2x() and reloaded.map_size == edge and expected.ok
+			and Sc2xDocument.entries(reloaded).members == Sc2xDocument.entries(expected.document).members,
 			"Small map survives disk save and reload")
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(saved.path))
 	check(not CityFileStore.save_copy(doc, path + ".SC2", "res://../references").ok, "Small map rejects original format")

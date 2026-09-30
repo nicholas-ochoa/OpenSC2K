@@ -222,9 +222,9 @@ func check_load() -> void:
 	check(main.city_files._city_has_unsaved_changes(), "Load repair is marked unsaved")
 	check(main.tool_state.tool_random.state == random_seed, "Load repair does not consume process RNG")
 	check(FileAccess.get_file_as_bytes(save_path) == bytes, "Loading never writes source file")
-	# an SCLG city keeps its format until the player upgrades it
-	check(not main.document_state.current_document.is_sc2x() and main.city_files._can_upgrade_city_to_sc2x(),
-		"An SCLG city stays SCLG and offers the SC2X upgrade")
+	# the SCLG file converts to SC2X version 4 in memory; a save needs a new file
+	check(not main.city_files._save_copy(ProjectSettings.globalize_path(save_path)), "A converted city never replaces its source")
+	check(FileAccess.get_file_as_bytes(save_path) == bytes, "The source file stays unchanged")
 	var copy_path := "user://facility-repair-%d-copy.sc2x" % OS.get_process_id()
 	check(main.city_files._save_copy(ProjectSettings.globalize_path(copy_path)), "User save persists repair")
 	var saved := FileAccess.get_file_as_bytes(copy_path)
@@ -236,11 +236,6 @@ func check_load() -> void:
 		engine.power_usage_percent >= 0 and engine.water_usage_percent >= 0 and engine.developed_tiles > 0,
 		"File load runs the original utility scans",
 	)
-	main.city_files.upgrade_city_to_sc2x(true)
-	main.city_dialogs.city_save_dialog.hide()
-	check(main.document_state.current_document.is_sc2x(), "Upgrade City to SC2X converts an SCLG city")
-	check(not main.city_files._save_copy(ProjectSettings.globalize_path(copy_path)), "A converted city never replaces its source")
-	check(FileAccess.get_file_as_bytes(copy_path) == saved, "The source file stays unchanged")
 	main.queue_free()
 	await process_frame
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(settings_path))
