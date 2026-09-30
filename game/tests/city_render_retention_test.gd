@@ -91,7 +91,7 @@ func _run() -> void:
 	main.render_caches.dynamic_visual_cache["current"] = unused
 	assert(main.map_render._invalidate_region_foregrounds(near, [] as Array[Rect2i]), "A static change can reveal a hidden current shadow")
 	var mapping := PackedInt32Array(range(256))
-	var used_indices: Dictionary[int, bool] = { 17: true }
+	var used_indices := PackedInt32Array([17])
 	var colors: int = main.map_render.sign_palette_signature(used_indices, mapping)
 	mapping[161] = 162
 	assert(main.map_render.sign_palette_signature(used_indices, mapping) == colors)

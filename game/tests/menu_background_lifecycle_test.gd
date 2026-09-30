@@ -37,7 +37,7 @@ func _run() -> void:
 	assert(background.demo_city == null and background.controller == null and background.source_path.is_empty())
 	assert(background.demo_palette == null and background.demo_sprites == null and background.elapsed == 0.0)
 	assert(background.static_layer.texture == null and background.occlusion_commands.is_empty()
-		and background.occlusion_grid.is_empty() and background.sprite_cache.is_empty() and background.dynamic_visuals.is_empty())
+		and background.occlusion_grid == null and background.sprite_cache.is_empty() and background.dynamic_visuals.is_empty())
 	background.replace_graphics(palette, sprites)
 	assert(background.render_thread == null and background.demo_sprites == null,
 		"Replacing hidden menu artwork must not restart rendering or keep graphics")

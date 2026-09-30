@@ -1,5 +1,7 @@
 //! Bulk Godot boundary. Each builder belongs to one region worker thread. A
 //! region's draw index is immutable, so the main thread may read it later.
+mod view_queries;
+
 use super::{
     Builder, City, Config, Draw, Rect, changes, compositing, data_view, index::RegionDraws, minimap, region::TILE_LIMIT, sprites,
     sprites::Sprite,

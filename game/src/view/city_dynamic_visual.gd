@@ -70,11 +70,10 @@ func value_signature() -> Array:
 		image, special_overlay, batch_cache_key, depth_order, shadow, special_batch, hidden]
 
 
-static func build_grid(visuals: Array[CityDynamicVisual]) -> Dictionary[Vector2i, Array]:
-	var grid: Dictionary[Vector2i, Array] = {}
+static func build_grid(visuals: Array[CityDynamicVisual]) -> NativeRectIndex:
+	var rects := PackedInt32Array()
 
-	for index in visuals.size():
-		var visual := visuals[index]
-		IsometricPixelOperations.append_occlusion_bounds(grid, Rect2i(Vector2i(visual.position), Vector2i(visual.size)), index)
+	for visual in visuals:
+		rects.append_array([int(visual.position.x), int(visual.position.y), int(visual.size.x), int(visual.size.y)])
 
-	return grid
+	return IsometricPixelOperations.build_rect_grid(rects, 1)

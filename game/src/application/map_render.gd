@@ -178,7 +178,7 @@ func _show_overview_map() -> void:
 	image.resize(1024, 1024, Image.INTERPOLATE_NEAREST)
 	caches.static_city_image = null
 	caches.static_occlusion_commands.clear()
-	caches.static_occlusion_grid.clear()
+	caches.static_occlusion_grid = null
 	caches.static_visual_signature = []
 	_clear_dynamic_sprites()
 	var source := CityMapTexture.create(image)
@@ -201,7 +201,7 @@ func _refresh_dynamic_layer(view_size: int, clear_moving := true) -> void:
 
 func _clear_dynamic_sprites() -> void:
 	caches.dynamic_sign_occluders.clear()
-	caches.dynamic_sign_occlusion_grid.clear()
+	caches.dynamic_sign_occlusion_grid = null
 	app.map_view.set_dynamic_sprites([])
 
 
@@ -223,7 +223,7 @@ func refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 	caches.static_city_image = null
 	caches.static_view_cache.clear()
 	caches.static_occlusion_commands.clear()
-	caches.static_occlusion_grid.clear()
+	caches.static_occlusion_grid = null
 	app.static_render_state.pending = false
 	var view_size := app.static_render.city_view_size()
 	var sprites := app.static_render.sprite_archive_for_view(view_size)
@@ -366,7 +366,7 @@ func refresh_sign_occlusion(view_size: int) -> void:
 	ApplicationMapSigns.refresh_sign_occlusion(self, view_size)
 
 
-func sign_palette_signature(used: Dictionary[int, bool], mapping: PackedInt32Array) -> int:
+func sign_palette_signature(used: PackedInt32Array, mapping: PackedInt32Array) -> int:
 	return ApplicationMapSigns.sign_palette_signature(used, mapping)
 
 

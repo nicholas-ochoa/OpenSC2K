@@ -58,7 +58,7 @@ func _initialize() -> void:
 	crossing_command.train_foreground_reference_sprite_id = 5
 	crossing_command.train_foreground_requires_depth = true
 	host.render_caches.static_occlusion_commands.append(crossing_command)
-	host.render_caches.static_occlusion_grid.clear()
+	host.render_caches.static_occlusion_grid = null
 	host.render_caches.dynamic_occluder_cache.clear()
 	var crossing_mask := host.moving_sprites._dynamic_occluder_image(null, 1, Vector2i.ZERO, Vector2i(8, 4), 10, true)
 	assert(crossing_mask.get_pixel(4, 1).a > 0.0, "Same-tile raised deck hides train")

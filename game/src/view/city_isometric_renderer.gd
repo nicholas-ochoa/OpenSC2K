@@ -207,13 +207,13 @@ static func foreground_difference_mask(sprite: Image, background: Image) -> Imag
 
 static func build_occlusion_grid(
 	commands: Array[CityStaticCommand], divisor: int
-) -> Dictionary[Vector2i, Array]:
+) -> NativeRectIndex:
 	return IsometricPixelOperations.build_occlusion_grid(commands, divisor)
 
 
 static func occlusion_candidate_indices(
-	grid: Dictionary[Vector2i, Array], bounds: Rect2i
-) -> Array[int]:
+	grid: NativeRectIndex, bounds: Rect2i
+) -> PackedInt32Array:
 	return IsometricPixelOperations.occlusion_candidate_indices(grid, bounds)
 
 

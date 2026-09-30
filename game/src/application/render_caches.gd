@@ -5,7 +5,7 @@ extends RefCounted
 var region_cache: CityRegionCache
 var static_city_image: Image
 var static_occlusion_commands: Array[CityStaticCommand] = []
-var static_occlusion_grid: Dictionary[Vector2i, Array] = {}
+var static_occlusion_grid: NativeRectIndex
 var static_visual_signature: Array = []
 var static_render_mode := CityViewMode.Mode.NONE
 var static_display_city: CityState
@@ -22,7 +22,7 @@ var foreground_complete := false
 var sign_foreground_cache: Dictionary[int, SignForeground] = {}
 var dynamic_special_batch_cache: Dictionary[String, CityDynamicVisual] = {}
 var dynamic_sign_occluders: Array[CityDynamicVisual] = []
-var dynamic_sign_occlusion_grid: Dictionary[Vector2i, Array] = {}
+var dynamic_sign_occlusion_grid: NativeRectIndex
 
 
 class StaticView extends RefCounted:
@@ -45,7 +45,7 @@ class SignForeground extends RefCounted:
 	var signature: Array
 	var indices: Image
 	var palette_signature := 0
-	var used_indices: Dictionary[int, bool] = {}
+	var used_indices := PackedInt32Array()
 	var visual: CitySignVisual
 
 	func _init(stamp: Array) -> void:

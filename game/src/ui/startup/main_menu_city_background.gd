@@ -20,7 +20,7 @@ var static_layer: Sprite2D
 var cycle_texture: ImageTexture
 var static_image: Image
 var occlusion_commands: Array[CityStaticCommand] = []
-var occlusion_grid: Dictionary[Vector2i, Array] = {}
+var occlusion_grid: NativeRectIndex
 var sprite_cache := {}
 var dynamic_visuals: Array[CityDynamicVisual] = []
 var animation_elapsed := 0.0
@@ -355,7 +355,7 @@ func _clear_render_data() -> void:
 	cycle_texture = null
 	static_layer.material.set_shader_parameter("animated_palette", null)
 	occlusion_commands.clear()
-	occlusion_grid.clear()
+	occlusion_grid = null
 	sprite_cache.clear()
 	dynamic_visuals.clear()
 	RenderingServer.canvas_item_clear(get_canvas_item())

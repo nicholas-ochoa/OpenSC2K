@@ -464,7 +464,7 @@ func poll_static_render() -> void:
 		app.moving_sprites.refresh_moving_things(int(rendered.view_size))
 	else:
 		caches.dynamic_sign_occluders.clear()
-		caches.dynamic_sign_occlusion_grid.clear()
+		caches.dynamic_sign_occlusion_grid = null
 		app.map_view.set_dynamic_sprites([])
 		app.map_render.refresh_sign_occlusion(int(rendered.view_size))
 
@@ -567,7 +567,7 @@ func invalidate_rendered_city() -> void:
 	state.epoch += 1
 	caches.static_city_image = null
 	caches.static_occlusion_commands.clear()
-	caches.static_occlusion_grid.clear()
+	caches.static_occlusion_grid = null
 	caches.static_visual_signature = []
 	caches.static_render_mode = CityViewMode.Mode.NONE
 	caches.static_display_city = null
@@ -575,7 +575,7 @@ func invalidate_rendered_city() -> void:
 	state.pending = false
 	clear_dynamic_composition_cache()
 	caches.dynamic_sign_occluders.clear()
-	caches.dynamic_sign_occlusion_grid.clear()
+	caches.dynamic_sign_occlusion_grid = null
 
 
 # discards static views after a layer visibility change. sprite caches remain valid
@@ -585,10 +585,10 @@ func invalidate_view_render() -> void:
 	caches.static_render_mode = CityViewMode.Mode.NONE
 	caches.static_view_cache.clear()
 	caches.static_occlusion_commands.clear()
-	caches.static_occlusion_grid.clear()
+	caches.static_occlusion_grid = null
 	caches.dynamic_occluder_cache.clear()
 	caches.dynamic_sign_occluders.clear()
-	caches.dynamic_sign_occlusion_grid.clear()
+	caches.dynamic_sign_occlusion_grid = null
 
 
 func clear_dynamic_composition_cache() -> void:

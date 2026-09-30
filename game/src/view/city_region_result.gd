@@ -4,7 +4,7 @@ extends AssetImageResult
 
 var bounds := Rect2i()
 var occlusion_commands: Array[CityStaticCommand] = []
-var occlusion_grid: Dictionary[Vector2i, Array] = {}
+var occlusion_grid: NativeRectIndex
 # A positive screen scale leaves `occlusion_grid` to the first query. Most
 # regions of a wide view never answer an occlusion query.
 var occlusion_divisor := 0
@@ -16,7 +16,7 @@ var last_visible := 0
 var texture: ImageTexture
 
 
-func candidate_grid() -> Dictionary[Vector2i, Array]:
+func candidate_grid() -> NativeRectIndex:
 	if occlusion_divisor > 0:
 		occlusion_grid = CityIsometricRenderer.build_occlusion_grid(occlusion_commands, occlusion_divisor)
 		occlusion_divisor = 0
@@ -26,7 +26,7 @@ func candidate_grid() -> Dictionary[Vector2i, Array]:
 
 # Indices of the foreground commands that may meet `screen_bounds`.
 func occlusion_indices(screen_bounds: Rect2i) -> PackedInt32Array:
-	return PackedInt32Array(CityIsometricRenderer.occlusion_candidate_indices(candidate_grid(), screen_bounds))
+	return CityIsometricRenderer.occlusion_candidate_indices(candidate_grid(), screen_bounds)
 
 
 func occlusion_command(index: int) -> CityStaticCommand:

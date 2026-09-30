@@ -29,17 +29,13 @@ static func paint(
 	draws_value: Array[Draw],
 	bounds: Rect2i,
 	background: Color,
-	grid: Dictionary[Vector2i, Array] = {},
 	factor := 1,
 ) -> Image:
 	assert(factor in [1, 2, 4])
 	var image := Image.create(bounds.size.x * factor, bounds.size.y * factor, false, Image.FORMAT_RGBA8)
 	image.fill(background)
-	var candidates: Array[int] = []
-	candidates.assign(CityIsometricRenderer.occlusion_candidate_indices(grid, bounds) if not grid.is_empty() else range(draws_value.size()))
 
-	for index in candidates:
-		var draw := draws_value[index]
+	for draw in draws_value:
 		var rectangle := Rect2i(draw.position, draw.source.size)
 
 		if rectangle.intersects(bounds):

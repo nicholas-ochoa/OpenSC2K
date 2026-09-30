@@ -12,78 +12,32 @@ static func foreground_difference_mask(sprite: Image, background: Image) -> Imag
 	return NativeSpriteCompositor.foreground_difference_mask(sprite, background)
 
 
-static func build_occlusion_grid(
-	commands: Array[CityStaticCommand], divisor: int
-) -> Dictionary[Vector2i, Array]:
-	var grid: Dictionary[Vector2i, Array] = {}
+# the foreground commands in a grid of cells, scaled by `divisor`
+static func build_occlusion_grid(commands: Array[CityStaticCommand], divisor: int) -> NativeRectIndex:
+	var rects := PackedInt32Array()
+	rects.resize(commands.size() * 4)
 
-	for command_index in commands.size():
-		var command := commands[command_index]
-		var bounds := Rect2i(
-			Vector2i(command.position) * divisor,
-			Vector2i(command.size) * divisor,
-		)
+	for index in commands.size():
+		var command := commands[index]
+		rects[index * 4] = int(command.position.x)
+		rects[index * 4 + 1] = int(command.position.y)
+		rects[index * 4 + 2] = int(command.size.x)
+		rects[index * 4 + 3] = int(command.size.y)
 
-		append_occlusion_bounds(grid, bounds, command_index)
-
-	return grid
+	return build_rect_grid(rects, divisor)
 
 
-static func append_occlusion_bounds(grid: Dictionary[Vector2i, Array], bounds: Rect2i, command_index: int) -> void:
-	if bounds.get_area() <= 0:
-		return
-
-	var last_pixel := bounds.position + bounds.size - Vector2i.ONE
-	var first_cell := Vector2i(
-		floori(float(bounds.position.x) / float(OCCLUSION_CELL_SIZE)),
-		floori(float(bounds.position.y) / float(OCCLUSION_CELL_SIZE)),
-	)
-	var last_cell := Vector2i(
-		floori(float(last_pixel.x) / float(OCCLUSION_CELL_SIZE)),
-		floori(float(last_pixel.y) / float(OCCLUSION_CELL_SIZE)),
-	)
-
-	for cell_y in range(first_cell.y, last_cell.y + 1):
-		for cell_x in range(first_cell.x, last_cell.x + 1):
-			var cell := Vector2i(cell_x, cell_y)
-			var cell_indices: Array = grid.get(cell, [])
-			cell_indices.append(command_index)
-			grid[cell] = cell_indices
+# x, y, width and height of each rectangle, scaled by `divisor`, in a grid of cells
+static func build_rect_grid(rects: PackedInt32Array, divisor: int) -> NativeRectIndex:
+	return NativeRectIndex.build(rects, divisor, OCCLUSION_CELL_SIZE)
 
 
-static func occlusion_candidate_indices(
-	grid: Dictionary[Vector2i, Array], bounds: Rect2i
-) -> Array[int]:
-	var result: Array[int] = []
+# indices, in ascending order, of the rectangles in the cells that `bounds` touches
+static func occlusion_candidate_indices(grid: NativeRectIndex, bounds: Rect2i) -> PackedInt32Array:
+	if grid == null:
+		return PackedInt32Array()
 
-	if bounds.get_area() <= 0 or grid.is_empty():
-		return result
-
-	var last_pixel := bounds.position + bounds.size - Vector2i.ONE
-	var first_cell := Vector2i(
-		floori(float(bounds.position.x) / float(OCCLUSION_CELL_SIZE)),
-		floori(float(bounds.position.y) / float(OCCLUSION_CELL_SIZE)),
-	)
-	var last_cell := Vector2i(
-		floori(float(last_pixel.x) / float(OCCLUSION_CELL_SIZE)),
-		floori(float(last_pixel.y) / float(OCCLUSION_CELL_SIZE)),
-	)
-	var seen := {}
-
-	for cell_y in range(first_cell.y, last_cell.y + 1):
-		for cell_x in range(first_cell.x, last_cell.x + 1):
-			for value in grid.get(Vector2i(cell_x, cell_y), []):
-				var command_index := int(value)
-
-				if seen.has(command_index):
-					continue
-
-				seen[command_index] = true
-				result.append(command_index)
-
-	result.sort()
-
-	return result
+	return grid.candidates(bounds)
 
 
 # hide the sprite pixels under `occluder_mask`, and the pixels over same-tile

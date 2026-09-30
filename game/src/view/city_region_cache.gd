@@ -179,16 +179,8 @@ func _keep_source_payloads(city: CityState) -> void:
 func _region_keys(rects: Array[Rect2i]) -> Dictionary[Vector2i, bool]:
 	var result: Dictionary[Vector2i, bool] = {}
 
-	for rect in rects:
-		if not rect.has_area():
-			continue
-
-		var first := rect.position.maxi(0) / region_edge
-		var last := (rect.end - Vector2i.ONE).maxi(0) / region_edge
-
-		for y in range(first.y, last.y + 1):
-			for x in range(first.x, last.x + 1):
-				result[Vector2i(x, y)] = true
+	for key in NativeRegionPlan.keys_for(rects, region_edge):
+		result[key] = true
 
 	return result
 

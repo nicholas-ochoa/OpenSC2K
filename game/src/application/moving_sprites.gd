@@ -24,7 +24,7 @@ func refresh_moving_things(view_size := -1) -> void:
 			or app.map_view == null
 			or app.view_state.overlay_mode != CityViewMode.Mode.CITY):
 		caches.dynamic_sign_occluders.clear()
-		caches.dynamic_sign_occlusion_grid.clear()
+		caches.dynamic_sign_occlusion_grid = null
 
 		if app.map_view != null:
 			app.map_view.set_dynamic_sprites([])
@@ -208,7 +208,7 @@ func _dynamic_occluder_image(
 
 	var bounds := Rect2i(position, size)
 
-	if caches.static_occlusion_grid.is_empty() and caches.region_cache == null:
+	if caches.static_occlusion_grid == null and caches.region_cache == null:
 		caches.static_occlusion_grid = IsometricRenderer.build_occlusion_grid(
 			caches.static_occlusion_commands, divisor
 		)

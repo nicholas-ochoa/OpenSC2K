@@ -68,6 +68,21 @@ network placement preview.
 - **Train masks.** Crossings keep only the pixels that differ from their ground
   network, and raised highway decks keep only the rows near their road surface.
 
+## View queries
+
+`bridge/view_queries.rs` exposes the queries that the view asks each frame:
+
+- **Rectangle index.** `rect_index.rs` puts rectangles in a grid of 128-pixel cells.
+  `NativeRectIndex.candidates` returns, in ascending order, the rectangles in the cells
+  that an area touches. Static occlusion commands, sign occluders and the menu
+  background use it.
+- **Region plan.** `region_plan.rs` selects the visible regions from the viewport
+  center outward, and the nearby regions to paint ahead. A GPU view paints up to
+  four rings ahead, most of them in the direction of travel.
+  `CityRegionScheduling.update_viewport` calls it through `NativeRegionPlan`.
+- **Sign pixels.** `sign_pixels.rs` lists the palette indices of a sign foreground and,
+  without the GPU palette shader, colors it through the palette cycle.
+
 ## Other native view work
 
 - **Data map overlays.** `data_view.rs` builds the overlay mesh of each data map from the

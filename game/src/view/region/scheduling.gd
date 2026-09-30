@@ -34,39 +34,10 @@ static func update_viewport(cache: CityRegionCache, source_rect: Rect2) -> void:
 
 		return
 
-	var first := Vector2i(rect.position / cache.region_edge)
-	var last := Vector2i((rect.end - Vector2i.ONE) / cache.region_edge)
-	var margin := clampi(ceili(minf(rect.size.x, rect.size.y) / (3.0 * cache.region_edge)), 1, 4) if cache.gpu_enabled else 1
-	var side_margin := margin
-	var top_margin := maxi(1, ceili(margin / 2.0)) if cache.gpu_enabled else 1
-	var bottom_margin := top_margin
-
-	if cache.gpu_enabled and absf(movement.y) > absf(movement.x):
-		side_margin = top_margin
-
-		if movement.y < 0:
-			top_margin = margin
-		else:
-			bottom_margin = margin
-
+	var plan := NativeRegionPlan.plan(rect, cache.native_size, cache.region_edge, cache.gpu_enabled, movement)
+	cache.visible.assign(plan.visible)
 	var nearby: Array[Vector2i] = []
-
-	for y in range(maxi(0, first.y - top_margin), mini(ceili(float(cache.native_size.y) / cache.region_edge), last.y + bottom_margin + 1)):
-		for x in range(
-			maxi(0, first.x - side_margin),
-			mini(ceili(float(cache.native_size.x) / cache.region_edge), last.x + side_margin + 1),
-		):
-			var key := Vector2i(x, y)
-
-			if x >= first.x and x <= last.x and y >= first.y and y <= last.y:
-				cache.visible.append(key)
-			else:
-				nearby.append(key)
-
-	var center := Vector2(rect.get_center()) / cache.region_edge - Vector2(0.5, 0.5)
-	_sort_regions(cache.visible, center, first, last, false)
-	var ahead := center + movement.limit_length(cache.region_edge * margin) / cache.region_edge if cache.gpu_enabled else center
-	_sort_regions(nearby, ahead, first, last, cache.gpu_enabled)
+	nearby.assign(plan.nearby)
 
 	if old_visible != cache.visible:
 		cache._changed = true
@@ -105,21 +76,6 @@ static func _index_wanted(cache: CityRegionCache) -> void:
 
 	for key in cache.wanted:
 		cache.wanted_keys[key] = true
-
-
-static func _sort_regions(keys: Array[Vector2i], center: Vector2, first: Vector2i, last: Vector2i, rings: bool) -> void:
-	# sort native integer tuples instead of calling gdscript for every comparison
-	var ranked: Array[Vector3i] = []
-
-	for key in keys:
-		var ring := maxi(maxi(first.x - key.x, key.x - last.x), maxi(first.y - key.y, key.y - last.y)) if rings else 0
-		ranked.append(Vector3i(ring, roundi(Vector2(key).distance_squared_to(center) * 1024), (key.x << 16) | key.y))
-
-	ranked.sort()
-	keys.clear()
-
-	for rank in ranked:
-		keys.append(Vector2i(rank.z >> 16, rank.z & 0xffff))
 
 
 static func _trim_retained_regions(cache: CityRegionCache) -> void:

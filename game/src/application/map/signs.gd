@@ -29,7 +29,7 @@ static func refresh_sign_occlusion(render: ApplicationMapRender, view_size: int)
 	var divisor := configuration.divisor
 	var factor := 1
 
-	if render.caches.static_occlusion_grid.is_empty() and render.caches.region_cache == null:
+	if render.caches.static_occlusion_grid == null and render.caches.region_cache == null:
 		render.caches.static_occlusion_grid = ApplicationMapRender.IsometricRenderer.build_occlusion_grid(
 			render.caches.static_occlusion_commands, divisor
 		)
@@ -124,7 +124,7 @@ static func refresh_sign_occlusion(render: ApplicationMapRender, view_size: int)
 					Rect2i(bounds.position * factor, bounds.size * factor),
 				)
 
-		var used_indices: Dictionary[int, bool] = {}
+		var used_indices := PackedInt32Array()
 
 		if not gpu_palette:
 			used_indices = CitySignForeground.used_indices(foreground)
@@ -162,7 +162,7 @@ static func refresh_sign_occlusion(render: ApplicationMapRender, view_size: int)
 	render.app.map_view.set_sign_occlusion_visuals(visuals)
 
 
-static func sign_palette_signature(used: Dictionary[int, bool], mapping: PackedInt32Array) -> int:
+static func sign_palette_signature(used: PackedInt32Array, mapping: PackedInt32Array) -> int:
 	var colors := PackedInt32Array()
 
 	for index in used:
@@ -172,15 +172,4 @@ static func sign_palette_signature(used: Dictionary[int, bool], mapping: PackedI
 
 
 static func sign_palette_image(render: ApplicationMapRender, indexed: Image, mapping: PackedInt32Array) -> Image:
-	var bytes := indexed.get_data()
-
-	for offset in range(0, bytes.size(), 4):
-		if bytes[offset + 3] == 0:
-			continue
-
-		var color := render.app.asset_state.palette.color(mapping[bytes[offset]])
-		bytes[offset] = color.r8
-		bytes[offset + 1] = color.g8
-		bytes[offset + 2] = color.b8
-
-	return Image.create_from_data(indexed.get_width(), indexed.get_height(), false, Image.FORMAT_RGBA8, bytes)
+	return NativeSignPixels.colorize(indexed, mapping, render.app.asset_state.palette.to_rgba_bytes())
