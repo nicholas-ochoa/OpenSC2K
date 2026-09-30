@@ -23,6 +23,7 @@ func _initialize() -> void:
 	_check_identities()
 	_check_largest_map()
 	_check_saves()
+	_check_extensions()
 	print("SC2X format: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
 
@@ -547,3 +548,17 @@ func _check_saves() -> void:
 	document.sc2x_converted_from = ProjectSettings.globalize_path(path)
 	_check(not CityFileStore.save_copy(document, path, "").ok, "A converted city never replaces its source file")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+
+
+# XMIC and XTHG extension blocks that this version does not own survive a load and a save.
+func _check_extensions() -> void:
+	var document := Sc2xDocument.create_empty(128, "Extensions").document
+	var block := "ZZZZ".to_ascii_buffer()
+	block.append_array(PackedByteArray([0, 0, 0, 3, 1, 2, 3]))
+	document.sc2x_extensions = {"XMIC": block, "XTHG": block}
+	var encoded := document.serialize()
+	var reloaded := Sc2File.new()
+	_check(encoded.ok and reloaded.parse(encoded.data), "A city with unknown extension blocks loads")
+	_check(reloaded.sc2x_extensions.get("XMIC") == block and reloaded.sc2x_extensions.get("XTHG") == block,
+		"Unknown XMIC and XTHG extension blocks are kept")
+	_check(reloaded.serialize().data == encoded.data, "Unknown extension blocks save the same bytes again")

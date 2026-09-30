@@ -15,7 +15,7 @@ use std::collections::{BTreeMap, HashSet};
 
 use super::collection::{ExtensionBlock, MAX_NAME_BYTES, MAX_NAME_CODE_POINTS, check_name};
 use super::labels;
-use super::xmic::{Facility, Footprint, Xmic};
+use super::xmic::{self, Facility, Footprint, Xmic};
 use super::xsgn::{Sign, Xsgn};
 use super::xthg::{self, Thing, Xthg};
 use crate::sim::ids::sc2overlay_layout as layout;
@@ -61,6 +61,10 @@ pub struct SplitOptions {
     /// Drop empty slots past the least capacities, as for a new city. An import
     /// keeps its larger capacity.
     pub trim_free_tail: bool,
+    /// Extension blocks of the loaded file that the application does not own.
+    /// A save keeps them after the blocks that it writes.
+    pub xmic_extension: Vec<ExtensionBlock>,
+    pub xthg_extension: Vec<ExtensionBlock>,
 }
 
 #[derive(Debug, Default)]
@@ -75,7 +79,8 @@ pub struct Split {
     pub residual_labels: Vec<u8>,
     pub next_sign_id: u32,
     pub next_object_id: u32,
-    /// Links that the version 4 structures cannot hold. Each one is reported.
+    /// Data that no version 4 structure describes. Each item is kept in an
+    /// XTHG LLNK or XMIC ORPH entry and reported here.
     pub issues: Vec<String>,
 }
 
@@ -87,7 +92,15 @@ pub struct Joined {
     pub labels: Vec<u8>,
     pub object_ids: Vec<u32>,
     pub object_names: Vec<String>,
+    /// Extension blocks that the application does not own, for the next save.
+    pub xmic_extension: Vec<ExtensionBlock>,
+    pub xthg_extension: Vec<ExtensionBlock>,
 }
+
+/// XTHG extension blocks that `split` writes and `join` reads.
+pub const OWNED_THING_BLOCKS: [[u8; 4]; 3] = [xthg::WORKING_RECORD_TAG, xthg::OCCUPIED_TILE_TAG, xthg::LINK_TAG];
+/// XMIC extension blocks that `split` writes and `join` reads.
+pub const OWNED_FACILITY_BLOCKS: [[u8; 4]; 1] = [xmic::ORPHAN_RECORD_TAG];
 
 pub fn facility_label(record: usize) -> usize {
     overlay::facility_id(record as i64) as usize
@@ -232,6 +245,53 @@ fn limit_name(name: String, issues: &mut Vec<String>, owner: &str) -> String {
     text
 }
 
+fn put_name(data: &mut Vec<u8>, name: &str) {
+    data.extend_from_slice(&(name.len() as u16).to_be_bytes());
+    data.extend_from_slice(name.as_bytes());
+}
+
+/// Decode an XMIC ORPH block into (slot, record, name) entries.
+fn decode_orphans(block: Option<&ExtensionBlock>) -> Result<Vec<(usize, [u8; 8], String)>, String> {
+    let Some(block) = block else {
+        return Ok(Vec::new());
+    };
+    let data = &block.data;
+    let mut result: Vec<(usize, [u8; 8], String)> = Vec::new();
+    let mut offset = 0;
+
+    while offset < data.len() {
+        if offset + 14 > data.len() {
+            return Err("XMIC ORPH block ends inside an entry".into());
+        }
+
+        let slot = u32::from_be_bytes([data[offset], data[offset + 1], data[offset + 2], data[offset + 3]]) as usize;
+        let mut record = [0u8; 8];
+        record.copy_from_slice(&data[offset + 4..offset + 12]);
+        let length = u16::from_be_bytes([data[offset + 12], data[offset + 13]]) as usize;
+        offset += 14;
+
+        if offset + length > data.len() {
+            return Err("XMIC ORPH block ends inside a name".into());
+        }
+
+        let name = String::from_utf8(data[offset..offset + length].to_vec()).map_err(|_| "XMIC ORPH name is not UTF-8".to_string())?;
+        offset += length;
+
+        if result.last().is_some_and(|(last, _, _)| *last >= slot) {
+            return Err("XMIC ORPH entries are not in ascending slot order".into());
+        }
+
+        if slot < xmic::INDIVIDUAL_FIRST || record[0] == 0 {
+            return Err(format!("XMIC ORPH entry {} is not an active individual record", slot));
+        }
+
+        check_name(&name).map_err(|error| format!("XMIC ORPH entry {}: {}", slot, error))?;
+        result.push((slot, record, name));
+    }
+
+    Ok(result)
+}
+
 fn point(index: usize, edge: usize) -> (usize, usize) {
     (index / edge, index % edge)
 }
@@ -276,9 +336,13 @@ pub fn split(working: &Working, options: SplitOptions) -> Result<Split, String> 
     let mut sign_tiles: Vec<(usize, usize)> = Vec::new();
     let mut occupancy: Vec<Option<(usize, u16)>> = vec![None; thing_count];
     let mut below = vec![0u16; thing_count];
+    // tile links that no structure describes: kept byte for byte as LLNK entries
+    let mut unresolved: Vec<(usize, u16)> = Vec::new();
+    let label = |id: usize| labels::read(working.labels, id, working.wide_labels).unwrap_or_default();
 
     for (index, marker) in markers.iter_mut().enumerate() {
-        let mut value = overlay::read(working.xtxt, index as i64);
+        let top = overlay::read(working.xtxt, index as i64);
+        let mut value = top;
 
         if value == 0 {
             continue;
@@ -286,7 +350,7 @@ pub fn split(working: &Working, options: SplitOptions) -> Result<Split, String> 
 
         let (x, y) = point(index, edge);
         let mut stack: Vec<usize> = Vec::new();
-        let mut broken = false;
+        let mut problem = None;
 
         while overlay::is_thing(value) {
             let record = overlay::thing_record(value);
@@ -297,11 +361,10 @@ pub fn split(working: &Working, options: SplitOptions) -> Result<Split, String> 
                 || stack.contains(&(record as usize))
                 || working.xthg[record as usize * RECORD] == 0
             {
-                issues.push(format!(
-                    "Tile ({}, {}) links to object record {}, which is free, missing, or linked twice",
-                    x, y, record
+                problem = Some(format!(
+                    "links to object record {}, which is free, missing, or linked twice",
+                    record
                 ));
-                broken = true;
                 break;
             }
 
@@ -309,40 +372,41 @@ pub fn split(working: &Working, options: SplitOptions) -> Result<Split, String> 
             value = things::field(working.xthg, record, FIELD_LABEL as i64);
         }
 
-        let base = if broken {
-            0
-        } else if overlay::is_sign(value) {
-            if gather_signs {
-                sign_tiles.push((index, value as usize));
-            } else {
-                issues.push(format!("Tile ({}, {}) links to sign {} in the working tile index", x, y, value));
-            }
+        if problem.is_none() {
+            if overlay::is_sign(value) {
+                if !gather_signs {
+                    problem = Some(format!("links to sign {} without a sign record", value));
+                } else if label(value as usize).is_empty() {
+                    problem = Some(format!("links to sign {}, which has no text", value));
+                }
+            } else if overlay::is_facility(value) {
+                let record = overlay::facility_record(value);
 
+                if record <= 0 || (record as usize) >= facility_count || working.xmic[record as usize * 8] == 0 {
+                    problem = Some(format!("links to facility record {}, which is free or reserved", record));
+                }
+            } else if value != 0 && !(MARKER_FIRST..=0xff).contains(&value) {
+                problem = Some(format!("holds tile index value {}, which is not a link or a marker", value));
+            }
+        }
+
+        // the whole tile stays as it is; the objects of the tile keep their
+        // label fields through LREC entries
+        if let Some(problem) = problem {
+            issues.push(format!("Tile ({}, {}) {}; the link was kept unchanged", x, y, problem));
+            unresolved.push((index, top as u16));
+            continue;
+        }
+
+        let base = if overlay::is_sign(value) {
+            sign_tiles.push((index, value as usize));
             0
         } else if overlay::is_facility(value) {
-            let record = overlay::facility_record(value);
-
-            if record > 0 && (record as usize) < facility_count && working.xmic[record as usize * 8] != 0 {
-                owners[record as usize].push(index);
-                value
-            } else {
-                issues.push(format!(
-                    "Tile ({}, {}) links to facility record {}, which is free or reserved",
-                    x, y, record
-                ));
-                0
-            }
-        } else if (MARKER_FIRST..=0xff).contains(&value) {
+            owners[overlay::facility_record(value) as usize].push(index);
+            value
+        } else {
             *marker = value as u8;
             value
-        } else if value != 0 {
-            issues.push(format!(
-                "Tile ({}, {}) holds tile index value {}, which is not a link or a marker",
-                x, y, value
-            ));
-            0
-        } else {
-            0
         };
 
         for (position, record) in stack.iter().enumerate() {
@@ -356,11 +420,13 @@ pub fn split(working: &Working, options: SplitOptions) -> Result<Split, String> 
     }
 
     let mut migrated: HashSet<usize> = HashSet::new();
-    let label = |id: usize| labels::read(working.labels, id, working.wide_labels).unwrap_or_default();
 
     // Facilities keep their slots. Slot 0 is reserved and keeps no name.
     let facility_capacity = facility_count.max(options.facility_capacity);
     let mut facilities = Vec::with_capacity(facility_capacity);
+
+    // an individual record that owns no tile keeps its bytes and name in ORPH
+    let mut orphans = Vec::new();
 
     for record in 0..facility_capacity {
         let mut facility = Facility::default();
@@ -374,10 +440,35 @@ pub fn split(working: &Working, options: SplitOptions) -> Result<Split, String> 
             facility.footprint = Footprint::from_indices(owners.get(record).map_or(&[], Vec::as_slice), edge);
             facility.name = limit_name(label(facility_label(record)), &mut issues, &format!("Facility {}", record));
             migrated.insert(facility_label(record));
+
+            if record >= xmic::INDIVIDUAL_FIRST && facility.footprint.is_empty() {
+                issues.push(format!("Facility record {} owns no tile; it was kept unchanged", record));
+                orphans.extend_from_slice(&(record as u32).to_be_bytes());
+                orphans.extend_from_slice(&facility.legacy_record());
+                put_name(&mut orphans, &facility.name);
+                facility = Facility::default();
+            }
         }
 
         facilities.push(facility);
     }
+
+    let mut facility_extension = Vec::new();
+
+    if !orphans.is_empty() {
+        facility_extension.push(ExtensionBlock {
+            tag: xmic::ORPHAN_RECORD_TAG,
+            data: orphans,
+        });
+    }
+
+    facility_extension.extend(
+        options
+            .xmic_extension
+            .iter()
+            .filter(|block| !OWNED_FACILITY_BLOCKS.contains(&block.tag))
+            .cloned(),
+    );
 
     // Moving objects keep their slots, fields, and occupancy.
     let thing_capacity = thing_count.max(options.thing_capacity);
@@ -480,6 +571,26 @@ pub fn split(working: &Working, options: SplitOptions) -> Result<Split, String> 
         });
     }
 
+    if !unresolved.is_empty() {
+        let mut data = Vec::with_capacity(unresolved.len() * xthg::LINK_ENTRY);
+
+        for (index, value) in &unresolved {
+            data.extend_from_slice(&(*index as u32).to_be_bytes());
+            data.extend_from_slice(&value.to_be_bytes());
+            data.extend_from_slice(&[0, 0]);
+        }
+
+        thing_extension.push(ExtensionBlock { tag: xthg::LINK_TAG, data });
+    }
+
+    thing_extension.extend(
+        options
+            .xthg_extension
+            .iter()
+            .filter(|block| !OWNED_THING_BLOCKS.contains(&block.tag))
+            .cloned(),
+    );
+
     // Signs: one record per tile. A legacy sign keeps its text but gets a new ID.
     let mut next_sign_id = options.next_sign_id.max(1);
     let xsgn = match options.signs {
@@ -494,11 +605,6 @@ pub fn split(working: &Working, options: SplitOptions) -> Result<Split, String> 
                 let (x, y) = point(index, edge);
                 let text = limit_name(label(id), &mut issues, &format!("Sign at ({}, {})", x, y));
                 migrated.insert(id);
-
-                if text.is_empty() {
-                    issues.push(format!("Sign {} at ({}, {}) has no text; it was not kept", id, x, y));
-                    continue;
-                }
 
                 signs.push(Sign {
                     id: next_sign_id,
@@ -548,7 +654,7 @@ pub fn split(working: &Working, options: SplitOptions) -> Result<Split, String> 
 
     let xmic = Xmic {
         facilities,
-        extension: Vec::new(),
+        extension: facility_extension,
     };
     xmic.validate(edge)?;
     let xthg = Xthg {
@@ -667,6 +773,19 @@ pub fn join(edge: usize, markers: &[u8], xmic: &Xmic, xthg: &Xthg, mayor_name: &
         }
     }
 
+    // records that own no tile return to their free slots
+    for (slot, record, name) in decode_orphans(xmic.block(xmic::ORPHAN_RECORD_TAG))? {
+        if xmic.facilities.get(slot).is_none_or(|facility| facility.tile_id != 0) {
+            return Err(format!("XMIC ORPH entry {} names a used slot or a slot outside the table", slot));
+        }
+
+        facility_bytes[slot * 8..slot * 8 + 8].copy_from_slice(&record);
+
+        if !name.is_empty() {
+            labels::write_wide(&mut label_table, facility_label(slot), &name);
+        }
+    }
+
     let occupied: Vec<(usize, [u8; 4])> = decode_entries(xthg.block(xthg::OCCUPIED_TILE_TAG), "LOCC")?;
     let overrides: Vec<(usize, [u8; 24])> = decode_entries(xthg.block(xthg::WORKING_RECORD_TAG), "LREC")?;
     let occupied: BTreeMap<usize, (usize, usize)> = occupied
@@ -724,6 +843,18 @@ pub fn join(edge: usize, markers: &[u8], xmic: &Xmic, xthg: &Xthg, mayor_name: &
         }
     }
 
+    // links that no structure describes return after every structure
+    for (index, value) in decode_entries::<4>(xthg.block(xthg::LINK_TAG), "LLNK")? {
+        if index >= cells || overlay::read(&xtxt, index as i64) != 0 {
+            return Err(format!(
+                "XTHG LLNK entry names tile {}, which is outside the map or already linked",
+                index
+            ));
+        }
+
+        overlay::write(&mut xtxt, index as i64, u16::from_be_bytes([value[0], value[1]]) as i64);
+    }
+
     let half = thing_capacity * RECORD;
     let mut thing_bytes = vec![0u8; half * 2];
     let mut write_record = |slot: usize, record: &[u8; 24]| {
@@ -750,6 +881,18 @@ pub fn join(edge: usize, markers: &[u8], xmic: &Xmic, xthg: &Xthg, mayor_name: &
         labels: label_table,
         object_ids: xthg.things.iter().map(|thing| thing.object_id).collect(),
         object_names: xthg.things.iter().map(|thing| thing.name.clone()).collect(),
+        xmic_extension: xmic
+            .extension
+            .iter()
+            .filter(|block| !OWNED_FACILITY_BLOCKS.contains(&block.tag))
+            .cloned()
+            .collect(),
+        xthg_extension: xthg
+            .extension
+            .iter()
+            .filter(|block| !OWNED_THING_BLOCKS.contains(&block.tag))
+            .cloned()
+            .collect(),
     })
 }
 
@@ -1136,20 +1279,49 @@ mod tests {
     }
 
     #[test]
-    fn broken_links_are_reported_instead_of_saved() {
+    fn broken_links_and_orphan_records_survive_a_round_trip() {
         let mut parts = working();
         overlay::write(&mut parts.0, 7, overlay::facility_id(30));
         overlay::write(&mut parts.0, 8, overlay::thing_id(9));
         overlay::write(&mut parts.0, 9, 3);
+        // record 20 is active but owns no tile
+        parts.1[20 * 8] = 0xe1;
+        parts.1[20 * 8 + 3] = 7;
+        labels::write_wide(&mut parts.3, facility_label(20), "Lost Library");
+        let unknown = ExtensionBlock {
+            tag: *b"ZZZZ",
+            data: vec![1, 2, 3],
+        };
         let split = split(
             &working_view(&parts, true),
             SplitOptions {
                 signs: Some(signs()),
+                xmic_extension: vec![unknown.clone()],
+                xthg_extension: vec![
+                    unknown.clone(),
+                    ExtensionBlock {
+                        tag: xthg::LINK_TAG,
+                        data: vec![0; 8],
+                    },
+                ],
                 ..Default::default()
             },
         )
         .unwrap();
-        assert_eq!(split.issues.len(), 3, "{:?}", split.issues);
+        assert_eq!(split.issues.len(), 4, "{:?}", split.issues);
+        assert_eq!(split.xmic.facilities[20], Facility::default());
+        let mut placeless = split.xmic.clone();
+        placeless.facilities[20].tile_id = 0xe1;
+        assert!(placeless.validate(EDGE).is_err(), "an individual facility owns a tile");
+
+        let xmic = Xmic::decode(&split.xmic.encode(EDGE).unwrap(), EDGE).unwrap();
+        let xthg = Xthg::decode(&split.xthg.encode().unwrap()).unwrap();
+        let joined = join(EDGE, &split.markers, &xmic, &xthg, &split.mayor_name, &split.team_names).unwrap();
+        assert_eq!(joined.xtxt, parts.0);
+        assert_eq!(joined.xmic, parts.1);
+        assert_eq!(labels::read(&joined.labels, facility_label(20), true).unwrap(), "Lost Library");
+        assert_eq!(joined.xmic_extension, vec![unknown.clone()]);
+        assert_eq!(joined.xthg_extension, vec![unknown]);
     }
 
     #[test]

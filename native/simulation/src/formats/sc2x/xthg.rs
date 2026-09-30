@@ -28,6 +28,11 @@ pub const WORKING_RECORD_ENTRY: usize = 4 + 24;
 /// position: slot u32, tile X u16, tile Y u16.
 pub const OCCUPIED_TILE_TAG: [u8; 4] = *b"LOCC";
 pub const OCCUPIED_TILE_ENTRY: usize = 8;
+/// Extension block of working tile links that no structure describes, such as
+/// a link to a free record or to a sign without text: tile index u32, link
+/// u16, reserved u16. A load writes each link back to its tile.
+pub const LINK_TAG: [u8; 4] = *b"LLNK";
+pub const LINK_ENTRY: usize = 8;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Thing {

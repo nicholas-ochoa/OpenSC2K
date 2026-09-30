@@ -203,6 +203,7 @@ static func load_bytes(document: Sc2File, bytes: PackedByteArray) -> bool:
 			document.chunks.append(_chunk(id, entries[id], -1))
 
 	document.sc2x_compat_labels = entries.XLAB
+	document.sc2x_extensions = {"XMIC": joined.xmic_extension, "XTHG": joined.xthg_extension}
 	document.sc2x_object_ids = joined.object_ids
 	document.sc2x_object_names = joined.object_names
 	document.sc2x_object_kinds = _kinds(joined.xthg)
@@ -241,6 +242,8 @@ static func entries(document: Sc2File) -> EntriesResult:
 		"object_names": identity.names,
 		"next_sign_id": metadata.next_sign_id,
 		"next_object_id": metadata.next_object_id,
+		"xmic_extension": document.sc2x_extensions.get("XMIC", PackedByteArray()),
+		"xthg_extension": document.sc2x_extensions.get("XTHG", PackedByteArray()),
 	})
 
 	if not split.ok:

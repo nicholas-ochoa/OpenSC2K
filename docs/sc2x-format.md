@@ -90,7 +90,12 @@ position offset and count (u32). A complete rectangle has no tile list. A shared
 or fragmented footprint lists every owned tile as `x:u16, y:u16` in ascending column-major
 order; the lists are packed by slot. A tile belongs to at most one record. Slot 0 is
 reserved and a free slot (tile ID 0) has no geometry or name. Slots 1 through 9 are the
-shared categories; individual records start at 10. Size: `28 + 32C + 4P + T + E`.
+shared categories; individual records start at 10, and an active individual record owns at
+least one tile. Size: `28 + 32C + 4P + T + E`.
+
+| Extension tag | Entry | Meaning |
+| --- | --- | --- |
+| `ORPH` | slot u32, 8-byte working record, name length u16, UTF-8 name | An active individual record that owns no tile. Its slot is free in the core table; a load puts the record and name back. |
 
 **XTHG** uses a 32-byte core: type (u8), direction (u8), then state, X, Y, Z, PX, PY, DX, DY,
 reserved (zero), goal, ship home X + 1, ship home Y + 1, flags (u16), and the object ID (u32).
@@ -106,6 +111,10 @@ An active object has a unique nonzero ID; a free slot has no ID, name, or flags.
 | --- | --- | --- |
 | `LOCC` | slot u32, x u16, y u16 | An occupant whose occupied tile differs from its position. Original trains and sailboats can leave such links. |
 | `LREC` | slot u32, 12 low + 12 high bytes | The working record, when the core cannot express its bytes, such as a stale label field of an object that occupies no tile. |
+| `LLNK` | tile index u32, link u16, zero u16 | A working tile link that no structure describes, such as a link to a free record or an object linked from two tiles. A load writes it back after the other links. |
+
+The application keeps XMIC and XTHG extension blocks with other tags and writes them again
+on the next save.
 
 **XSGN** uses a 12-byte core: sign ID (u32; zero marks an empty slot), X, Y, flags, and
 reserved (u16). An active sign has 1 to 64 characters of text. One sign per tile; IDs are
@@ -192,7 +201,8 @@ without changing the source:
    records. The other labels stay in the compatibility XLAB table.
 5. Upgrade SCEN and TMPL; keep TEXT and PICT unchanged; preserve other chunks.
 6. Report links that the new structures cannot hold, such as an object linked from two
-   tiles. The report is shown after the load.
+   tiles, and keep them unchanged in `LLNK` and `ORPH` blocks. The report is shown after
+   the load.
 
 Record capacities become the larger of the source capacity and the map profile.
 

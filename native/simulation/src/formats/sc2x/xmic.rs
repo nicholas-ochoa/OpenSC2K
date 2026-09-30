@@ -12,6 +12,9 @@ pub const POSITION_SIZE: usize = 4;
 pub const SHARED_FIRST: usize = 1;
 pub const SHARED_LAST: usize = 9;
 pub const INDIVIDUAL_FIRST: usize = 10;
+/// Extension block of active individual records that own no tile: slot u32,
+/// the 8-byte working record, a u16 name length, and the UTF-8 name.
+pub const ORPHAN_RECORD_TAG: [u8; 4] = *b"ORPH";
 
 /// The tiles that one record owns.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -113,6 +116,10 @@ pub struct Xmic {
 }
 
 impl Xmic {
+    pub fn block(&self, tag: [u8; 4]) -> Option<&ExtensionBlock> {
+        self.extension.iter().find(|block| block.tag == tag)
+    }
+
     pub fn active_records(&self) -> usize {
         self.facilities.iter().filter(|facility| facility.tile_id != 0).count()
     }
@@ -268,6 +275,10 @@ impl Xmic {
         for (slot, facility) in self.facilities.iter().enumerate() {
             if (slot == 0 || facility.tile_id == 0) && (!facility.footprint.is_empty() || !facility.name.is_empty()) {
                 return Err(format!("XMIC slot {} is free or reserved but has geometry or a name", slot));
+            }
+
+            if slot >= INDIVIDUAL_FIRST && facility.tile_id != 0 && facility.footprint.is_empty() {
+                return Err(format!("XMIC individual facility {} owns no tile", slot));
             }
 
             match &facility.footprint {

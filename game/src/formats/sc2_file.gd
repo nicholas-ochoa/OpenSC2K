@@ -80,6 +80,9 @@ var sc2x_compat_labels := PackedByteArray()
 var sc2x_object_ids := PackedInt64Array()
 var sc2x_object_kinds := PackedByteArray()
 var sc2x_object_names := PackedStringArray()
+# encoded XMIC and XTHG extension blocks that this version does not own, kept
+# for the next save
+var sc2x_extensions: Dictionary[String, PackedByteArray] = {}
 # source order of each TEXT occurrence
 var sc2x_text_orders := PackedInt64Array()
 # preserved chunks: {chunk_id, occurrence, source_order, flags, payload, entry}
@@ -272,6 +275,7 @@ func _clear_sc2x_state() -> void:
 	sc2x_object_ids = PackedInt64Array()
 	sc2x_object_kinds = PackedByteArray()
 	sc2x_object_names = PackedStringArray()
+	sc2x_extensions = {}
 	sc2x_text_orders = PackedInt64Array()
 	sc2x_preserved = []
 	sc2x_extra_entries = {}
@@ -292,6 +296,7 @@ func duplicate_document(share_source_bytes := false) -> Sc2File:
 	result.sc2x_object_ids = sc2x_object_ids.duplicate()
 	result.sc2x_object_kinds = sc2x_object_kinds.duplicate()
 	result.sc2x_object_names = sc2x_object_names.duplicate()
+	result.sc2x_extensions = sc2x_extensions.duplicate(true)
 	result.sc2x_text_orders = sc2x_text_orders.duplicate()
 	result.sc2x_preserved = sc2x_preserved.duplicate(true)
 	result.sc2x_extra_entries = sc2x_extra_entries.duplicate(true)

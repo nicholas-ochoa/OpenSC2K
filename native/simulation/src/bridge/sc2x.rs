@@ -320,7 +320,8 @@ impl NativeSc2x {
     /// `xtxt`, `xmic`, `xthg`, `labels`, `wide_labels`, optional `signs` (XSGN.bin
     /// of a working document), `object_ids`, `object_names`, `next_sign_id`,
     /// `next_object_id`, the least `facility_capacity`, `thing_capacity`, and
-    /// `sign_capacity`, and `trim_free_tail` for a new city. The result has `entries` (`XTXT`, `XMIC`, `XTHG`, `XSGN`),
+    /// `sign_capacity`, `trim_free_tail` for a new city, and the encoded unowned
+    /// `xmic_extension` and `xthg_extension` blocks from `join`. The result has `entries` (`XTXT`, `XMIC`, `XTHG`, `XSGN`),
     /// `mayor_name`, `team_names`, `residual_labels`, the next IDs, and `issues`.
     #[func]
     fn split(request: VarDictionary) -> VarDictionary {
@@ -351,6 +352,14 @@ impl NativeSc2x {
             thing_capacity: usize_of(&request, "thing_capacity"),
             sign_capacity: usize_of(&request, "sign_capacity"),
             trim_free_tail: convert::boolean(&request, "trim_free_tail", false),
+            xmic_extension: match collection::decode_extension(&convert::bytes(&request, "xmic_extension"), "XMIC") {
+                Ok(blocks) => blocks,
+                Err(error) => return failure(&error),
+            },
+            xthg_extension: match collection::decode_extension(&convert::bytes(&request, "xthg_extension"), "XTHG") {
+                Ok(blocks) => blocks,
+                Err(error) => return failure(&error),
+            },
         };
         let working = Working {
             edge,
@@ -402,7 +411,9 @@ impl NativeSc2x {
     }
 
     /// Rebuild working chunks from `{edge, XTXT, XMIC, XTHG, mayor_name, team_names}`.
-    /// The result has `xtxt`, `xmic`, `xthg`, `labels`, `object_ids`, and `object_names`.
+    /// The result has `xtxt`, `xmic`, `xthg`, `labels`, `object_ids`, `object_names`,
+    /// and the encoded extension blocks that the application does not own,
+    /// `xmic_extension` and `xthg_extension`, for the next `split`.
     #[func]
     fn join(request: VarDictionary) -> VarDictionary {
         let edge = usize_of(&request, "edge");
@@ -430,6 +441,8 @@ impl NativeSc2x {
                     &PackedInt64Array::from(joined.object_ids.iter().map(|id| *id as i64).collect::<Vec<_>>().as_slice()),
                 );
                 result.set("object_names", &strings(&joined.object_names));
+                result.set("xmic_extension", &packed(&collection::encode_extension(&joined.xmic_extension)));
+                result.set("xthg_extension", &packed(&collection::encode_extension(&joined.xthg_extension)));
                 result
             }
             Err(error) => failure(&error),
