@@ -8,6 +8,7 @@ const Layout = preload("res://src/formats/sc2_overlay_layout.gd")
 const EXTRA_FACILITY := Layout.EXTRA_FACILITY
 const EXTRA_SIGN := Layout.EXTRA_SIGN
 const EXTRA_THING := Layout.EXTRA_THING
+const EXTRA_FACILITY_HIGH := Layout.EXTRA_FACILITY_HIGH
 
 
 # the overlay layout keys off the payload size alone. a wide sc2x map stores a
@@ -18,7 +19,7 @@ static func cells_for(byte_count: int) -> int:
 	return (byte_count / 2) if (
 		byte_count == 512 or byte_count == 2048 or byte_count == 8192 or byte_count == 32768
 		or byte_count == 131072 or byte_count == 294912 or byte_count == 524288
-		or byte_count == 819200 or byte_count == 2097152
+		or byte_count == 819200 or byte_count == 2097152 or byte_count == 8388608 or byte_count == 33554432
 	) else byte_count
 
 
@@ -45,11 +46,12 @@ static func is_sign(id: int) -> bool:
 
 
 static func is_facility(id: int) -> bool:
-	return (id >= Layout.ORIGINAL_FACILITY_FIRST and id <= Layout.ORIGINAL_FACILITY_LAST) or (id >= EXTRA_FACILITY and id < EXTRA_SIGN)
+	return ((id >= Layout.ORIGINAL_FACILITY_FIRST and id <= Layout.ORIGINAL_FACILITY_LAST) or (id >= EXTRA_FACILITY and id < EXTRA_SIGN)
+		or (id >= EXTRA_FACILITY_HIGH and id <= 0xffff))
 
 
 static func is_thing(id: int) -> bool:
-	return (id >= Layout.ORIGINAL_THING_FIRST and id <= Layout.ORIGINAL_THING_LAST) or id >= EXTRA_THING
+	return (id >= Layout.ORIGINAL_THING_FIRST and id <= Layout.ORIGINAL_THING_LAST) or (id >= EXTRA_THING and id < EXTRA_FACILITY_HIGH)
 
 
 static func blocks_thing(id: int) -> bool:
@@ -57,11 +59,17 @@ static func blocks_thing(id: int) -> bool:
 
 
 static func facility_id(record: int) -> int:
+	if record >= Layout.HIGH_FACILITY_FIRST_RECORD:
+		return EXTRA_FACILITY_HIGH + record - Layout.HIGH_FACILITY_FIRST_RECORD
+
 	return (record + Layout.ORIGINAL_FACILITY_FIRST if record < Sc2MicrosimLayout.ORIGINAL_COUNT
 		else EXTRA_FACILITY + record - Sc2MicrosimLayout.ORIGINAL_COUNT)
 
 
 static func facility_record(id: int) -> int:
+	if id >= EXTRA_FACILITY_HIGH:
+		return id - EXTRA_FACILITY_HIGH + Layout.HIGH_FACILITY_FIRST_RECORD
+
 	return (id - Layout.ORIGINAL_FACILITY_FIRST if id <= Layout.ORIGINAL_FACILITY_LAST
 		else id - EXTRA_FACILITY + Sc2MicrosimLayout.ORIGINAL_COUNT)
 

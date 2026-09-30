@@ -15,6 +15,10 @@ const CONNECTION_MARKER := 0xfa
 const EXTRA_FACILITY := ORIGINAL_MAX_ID + 1
 const EXTRA_SIGN := 4096
 const EXTRA_THING := 8192
+# facility records past the 3,990 of the extra range: only the 2048 and 4096
+# tile maps of SC2X version 4 reach them. Moving objects end below this ID
+const EXTRA_FACILITY_HIGH := 16384
+const HIGH_FACILITY_FIRST_RECORD := Sc2MicrosimLayout.ORIGINAL_COUNT + EXTRA_SIGN - EXTRA_FACILITY
 
 
 # extra facility ids end below EXTRA_SIGN. only 1024 tile cities reach this cap

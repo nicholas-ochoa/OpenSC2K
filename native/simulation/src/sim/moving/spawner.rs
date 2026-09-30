@@ -1034,4 +1034,14 @@ mod tests {
             "deleting below the budget allows creation again"
         );
     }
+
+    #[test]
+    fn the_largest_maps_use_their_profile_caps() {
+        let caps = VehicleCaps::sc2x(4096);
+        assert_eq!(
+            (caps.airplanes, caps.helicopters, caps.ships, caps.sailboats, caps.trains, caps.pool),
+            (64, 32, 32, 64, 256, 2047)
+        );
+        assert_eq!(VehicleCaps::sc2x(2048).trains, 128);
+    }
 }

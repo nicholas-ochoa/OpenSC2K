@@ -12,6 +12,7 @@ const SUBWAY_MODE := 13
 const DIRECTIONS := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
 
 
-# the mode sits above the start index. 128 tile maps keep the original 14 bits
+# the mode sits above the start index. 128 tile maps keep the original 14 bits;
+# maps up to 1024 tiles use 20 bits, and larger maps use 24
 static func point_shift(map_edge: int) -> int:
-	return 14 if map_edge == 128 else 20
+	return 14 if map_edge == 128 else (20 if map_edge <= 1024 else 24)

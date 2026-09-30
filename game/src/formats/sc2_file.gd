@@ -48,7 +48,11 @@ const RAW_CHUNKS: Dictionary[String, bool] = {
 	"PICT": true,
 	"TMPL": true,
 }
-const MAP_SIZES := [16, 32, 64, 128, 256, 384, 512, 640, 1024]
+const MAP_SIZES := [16, 32, 64, 128, 256, 384, 512, 640, 1024, 2048, 4096]
+# SCLG files end at 1024 tiles. Larger maps use SC2X version 4 only
+const SCLG_MAX_EDGE := 1024
+# legacy record tables of larger in-memory maps keep the 1024-tile capacities
+const LEGACY_MAX_FACTOR := 64
 const FULL_MAP_CHUNKS := ["ALTM", "XTER", "XBLD", "XZON", "XUND", "XTXT", "XBIT"]
 # these maps aren't all the same size; traffic uses half, services use a quarter
 const HALF_MAP_CHUNKS := ["XTRF", "XPLT", "XVAL", "XCRM"]
@@ -154,6 +158,7 @@ func parse(bytes: PackedByteArray) -> bool:
 			large_version not in [1, 2, 3] or map_size not in MAP_SIZES
 			or (map_size == 128 and large_version != 3)
 			or (map_size < 128 and large_version == 1)
+			or map_size > SCLG_MAX_EDGE
 		):
 			return _fail("Unsupported experimental city version or size")
 
@@ -582,7 +587,7 @@ func decoded_size(chunk_id: String) -> int:
 				return -1
 
 	if map_size > 128 and large_version >= 2:
-		var factor := (map_size * map_size) / 16384
+		var factor := mini((map_size * map_size) / 16384, LEGACY_MAX_FACTOR)
 
 		match chunk_id:
 			"XTXT":

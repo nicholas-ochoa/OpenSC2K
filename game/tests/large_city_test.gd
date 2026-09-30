@@ -5,6 +5,10 @@ var failures := 0
 
 func _init() -> void:
 	for edge in Sc2File.MAP_SIZES:
+		# 4096 checks the same rules at the widest coordinates; map_edge_limits_test covers 2048
+		if edge == 2048:
+			continue
+
 		check_highways(edge)
 		check_size(edge)
 		check_large_counts(edge)
@@ -41,7 +45,8 @@ func check_size(edge: int) -> void:
 			preview.document.find_chunk("ALTM").decoded_payload == created.document.find_chunk("ALTM").decoded_payload,
 			"Preview matches created terrain",
 		)
-	var document := EmptyCityTemplate.create(edge)
+	# SCLG files end at 1024 tiles; larger maps are SC2X version 4 cities
+	var document := EmptyCityTemplate.create(edge) if edge <= Sc2File.SCLG_MAX_EDGE else Sc2xDocument.create_empty(edge).document
 	var city := CityState.from_document(document)
 	check(city.map_size == edge, "City size")
 	check(city.index_of(edge - 1, edge - 1) == edge * edge - 1, "Far corner index")

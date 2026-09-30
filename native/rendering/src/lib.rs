@@ -147,7 +147,7 @@ impl City {
         let cells = (self.edge as usize)
             .checked_mul(self.edge as usize)
             .ok_or("invalid map dimensions")?;
-        if !(1..=1024).contains(&self.edge)
+        if !(1..=4096).contains(&self.edge)
             || self.rotation > 3
             || self.altitude.len() != cells
             || [

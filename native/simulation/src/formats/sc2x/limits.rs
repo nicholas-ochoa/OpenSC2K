@@ -49,9 +49,10 @@ const fn profile(edge: usize, facilities: usize, signs: usize, things: usize, ca
     }
 }
 
-/// Section 3 of the format plan. The 2048 profile is a storage target only;
-/// the game does not create or run 2048 maps.
-pub const PROFILES: [Profile; 10] = [
+/// Section 3 of the format plan. The 4096 profile doubles the moving objects,
+/// signs, and vehicle caps of 2048 and gives four times its facilities for
+/// four times the area.
+pub const PROFILES: [Profile; 11] = [
     profile(16, 64, 16, 16, [1, 1, 1, 1, 1]),
     profile(32, 64, 16, 32, [2, 1, 1, 2, 1]),
     profile(64, 128, 32, 64, [2, 1, 1, 4, 8]),
@@ -62,6 +63,7 @@ pub const PROFILES: [Profile; 10] = [
     profile(640, 1024, 512, 512, [8, 4, 4, 16, 32]),
     profile(1024, 2048, 512, 512, [16, 8, 8, 32, 64]),
     profile(2048, 8192, 512, 1024, [32, 16, 16, 32, 128]),
+    profile(4096, 32768, 1024, 2048, [64, 32, 32, 64, 256]),
 ];
 
 pub fn profile_for(edge: usize) -> Option<Profile> {
@@ -91,6 +93,7 @@ mod tests {
                 (1014, 511, 128),
                 (2038, 511, 256),
                 (8182, 1023, 480),
+                (32758, 2047, 960),
             ]
         );
 

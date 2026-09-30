@@ -33,8 +33,6 @@ pub const RAIL_MODE: i64 = 12;
 pub const SUBWAY_MODE: i64 = 13;
 pub const ADVANCE_BLOCKED: i64 = -1;
 pub const ADVANCE_SUCCESS: i64 = -2;
-pub const POINT_INDEX_MASK: i64 = 0x3fff;
-pub const LARGE_POINT_INDEX_MASK: i64 = 0xfffff;
 
 pub const TRANSPORT_OFFSETS: [Vec2i; 24] = [
     Vec2i::new(0, 1),
@@ -98,8 +96,20 @@ pub fn highway_ports(tile: i64) -> i64 {
 }
 
 /// The mode sits above the start index. 128 tile maps keep the original 14 bits.
+/// The bits of the start index below the packed trip mode. 128-tile maps keep
+/// the original 14 bits; maps up to 1024 tiles use 20, and larger maps use 24.
 pub fn point_shift(map_edge: i64) -> i64 {
-    if map_edge == 128 { 14 } else { 20 }
+    if map_edge == 128 {
+        14
+    } else if map_edge <= 1024 {
+        20
+    } else {
+        24
+    }
+}
+
+pub fn point_index_mask(map_edge: i64) -> i64 {
+    (1 << point_shift(map_edge)) - 1
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -343,12 +353,7 @@ pub fn trace(
 
     let mut walking_access = walking_access;
     let turn_direction = if random.next_u15() & 1 != 0 { 1 } else { 3 };
-    let start_index = start
-        & if map_edge == 128 {
-            POINT_INDEX_MASK
-        } else {
-            LARGE_POINT_INDEX_MASK
-        };
+    let start_index = start & point_index_mask(map_edge);
     let TripScratch {
         points,
         indices,
@@ -890,6 +895,20 @@ fn highway_exit(buildings: &[u8], current: Vec2i, next_point: Vec2i, map_edge: i
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn start_points_keep_every_tile_index_of_the_largest_maps() {
+        assert_eq!(
+            (point_shift(128), point_shift(1024), point_shift(2048), point_shift(4096)),
+            (14, 20, 24, 24)
+        );
+
+        for edge in [128i64, 1024, 2048, 4096] {
+            let last = edge * edge - 1;
+            let start = (SUBWAY_MODE << point_shift(edge)) | last;
+            assert_eq!((start & point_index_mask(edge), start >> point_shift(edge)), (last, SUBWAY_MODE));
+        }
+    }
     use crate::sim::testing::empty_city;
 
     fn trip_maps(city: &crate::sim::city::City) -> TripMaps<'_> {

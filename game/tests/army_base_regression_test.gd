@@ -41,7 +41,9 @@ func _initialize() -> void:
 				check(doc.misc_u32(0x0fa8) == 56 and doc.misc_u32(0x0fb0) == 8, "Army preparation updates military counters")
 				check(doc.misc_u32(0x01f0) == edge * edge - 64, "Army transfers only its plot out of normal counts")
 				check(city.funds() == funds, "Army preparation does not charge the player")
-				var bytes: PackedByteArray = doc.serialize().data
+				# SCLG files end at 1024 tiles; larger maps save as SC2X version 4
+				var saved := doc if edge <= Sc2File.SCLG_MAX_EDGE else Sc2xDocument.from_legacy(doc).document
+				var bytes: PackedByteArray = saved.serialize().data
 				var loaded := Sc2File.new()
 				check(loaded.parse(bytes) and loaded.serialize().data == bytes, "Prepared Army base round trips exactly")
 			# Per-cell underground protection: no partial ownership transfer at obstacles.

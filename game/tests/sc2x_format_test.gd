@@ -21,6 +21,7 @@ func _initialize() -> void:
 	_check_scenario()
 	_check_resume()
 	_check_identities()
+	_check_largest_map()
 	_check_saves()
 	print("SC2X format: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
@@ -156,8 +157,8 @@ func _check_fresh_archives() -> void:
 		_check(members["XTHG.bin"].size() == 24 + 40 * int(profile.things), "XTHG minimum size at %d" % edge)
 		_check(members["XSGN.bin"].size() == 24 + 20 * int(profile.signs), "XSGN minimum size at %d" % edge)
 		_check(document.decoded_size("XTXT") == cells * 2, "The working tile index has two planes at %d" % edge)
-		var city := CityState.from_document(document)
-		_check(city.is_valid() and city.microsim_count() == int(profile.facilities) and city.thing_count() == int(profile.things),
+		_check(document.decoded_size("XMIC") == int(profile.facilities) * CityState.MICROSIM_RECORD_SIZE
+			and ThingData.count(document.find_chunk("XTHG").decoded_payload) == int(profile.things),
 			"The working city uses the %d profile capacities" % edge)
 
 
@@ -455,6 +456,32 @@ func _check_resume() -> void:
 	var state := reloaded.sc2x_metadata.phase_state.duplicate()
 	state.erase("mayor_approval")
 	_check(not Sc2xCheckpoint.validate(state).is_empty(), "Incomplete saved state is rejected")
+
+
+# a 4096-tile city links its last facility record in the high ID range, and a
+# far-corner sign and facility survive a save, a load, and a rotation
+func _check_largest_map() -> void:
+	var edge := 4096
+	var document := Sc2xDocument.create_empty(edge).document
+	var city := CityState.from_document(document)
+	var record := city.microsim_count() - 1
+	var records := document.find_chunk("XMIC").decoded_payload.duplicate()
+	records[record * CityState.MICROSIM_RECORD_SIZE] = BuildingTileIds.POLICE_STATION
+	document.find_chunk("XMIC").set_decoded_payload(records)
+	var corner := Vector2i(edge - 1, edge - 1)
+	_check(city.set_text_overlay_id(corner.x, corner.y, OverlayData.facility_id(record)), "The far corner links the last record")
+	_check(city.set_label(OverlayData.facility_id(record), "Far Precinct"), "The last record has a name")
+	_check(SignCommand.set_sign(city, corner, "Far corner").ok, "A sign shares the far corner")
+	var reloaded := _loads(document.serialize().data)
+	var loaded := CityState.from_document(reloaded)
+	var id := loaded.text_overlay_id(corner.x, corner.y)
+	_check(reloaded.is_valid() and OverlayData.is_facility(id) and OverlayData.facility_record(id) == record and record == 32767
+		and loaded.label(id) == "Far Precinct", "The high facility range survives a save")
+	_check(loaded.sign_texts().get(corner.x * edge + corner.y) == "Far corner", "The far sign survives a save")
+	_check(CityRotationCommand.apply(loaded, true).ok, "A 4096-tile city rotates")
+	var turned := CityRotationCommand.rotate_point(corner, edge, true)
+	_check(OverlayData.facility_record(loaded.text_overlay_id(turned.x, turned.y)) == record
+		and loaded.sign_texts().get(turned.x * edge + turned.y) == "Far corner", "Rotation moves far links and signs")
 
 
 # the object ID that a save gives the slot

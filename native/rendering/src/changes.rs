@@ -12,6 +12,8 @@ const TRAFFIC_TILE_FIRST: i32 = 0x1d;
 const THING_FIRST: i32 = 201;
 const THING_LAST: i32 = 240;
 const EXTRA_THING: i32 = 8192;
+/// Facility records past 3,990 of the largest maps use IDs from here up.
+const EXTRA_FACILITY_HIGH: i32 = 16384;
 const DEVELOPED_FIRST: i32 = 0x70;
 
 /// One revision of the chunks that the static regions draw.
@@ -163,9 +165,10 @@ fn mark(index: usize, dirty: &mut [bool], indices: &mut Vec<usize>) {
     }
 }
 
-/// OverlayData.cells_for: a wide SC2X map stores a low and a high plane.
+/// OverlayData.cells_for: a wide SC2X map stores a low and a high plane. An
+/// SC2X version 4 working document uses both planes at every map size.
 fn overlay_cells(bytes: usize) -> usize {
-    if [131072, 294912, 524288, 819200, 2097152].contains(&bytes) {
+    if [512, 2048, 8192, 32768, 131072, 294912, 524288, 819200, 2097152, 8388608, 33554432].contains(&bytes) {
         bytes / 2
     } else {
         bytes
@@ -184,7 +187,7 @@ fn overlay(data: &[u8], index: usize) -> i32 {
 
 /// Moving objects and special overlays are not static region art.
 fn dynamic_overlay(id: i32) -> bool {
-    id == 0 || (THING_FIRST..=THING_LAST).contains(&id) || id >= EXTRA_THING || (0xfb..=0xff).contains(&id)
+    id == 0 || (THING_FIRST..=THING_LAST).contains(&id) || (EXTRA_THING..EXTRA_FACILITY_HIGH).contains(&id) || (0xfb..=0xff).contains(&id)
 }
 
 fn static_overlay_changes(before: &[u8], after: &[u8], cells: usize, dirty: &mut [bool], indices: &mut Vec<usize>) {

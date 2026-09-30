@@ -90,12 +90,13 @@ func _check_thing_capacity_and_upgrade() -> void:
 
 func _check_overlay_boundaries() -> void:
 	var boundaries := [-1, 0, 1, 49, 50, 51, 199, 200, 201, 239, 240, 241, 249, 250,
-		251, 254, 255, 256, 4095, 4096, 8191, 8192, 65535]
+		251, 254, 255, 256, 4095, 4096, 8191, 8192, 16383, 16384, 65535]
 
 	for id in boundaries:
 		var is_sign_id: bool = (id >= 1 and id <= 50) or (id >= 4096 and id < 8192)
-		var facility: bool = (id >= 51 and id <= 200) or (id >= 256 and id < 4096)
-		var thing: bool = (id >= 201 and id <= 240) or id >= 8192
+		# the largest SC2X maps link facility records from 3990 at 16384 and up
+		var facility: bool = (id >= 51 and id <= 200) or (id >= 256 and id < 4096) or id >= 16384
+		var thing: bool = (id >= 201 and id <= 240) or (id >= 8192 and id < 16384)
 		_check(OverlayData.is_sign(id) == is_sign_id, "Sign boundary %d" % id)
 		_check(OverlayData.is_facility(id) == facility, "Facility boundary %d" % id)
 		_check(OverlayData.is_thing(id) == thing, "Thing boundary %d" % id)
@@ -104,7 +105,7 @@ func _check_overlay_boundaries() -> void:
 		_check(OverlayData.valid_id(id, 128) == (id >= 0 and id <= 255), "Original overlay boundary %d" % id)
 
 	# Facility record, overlay ID. Include the original/extended transition.
-	for pair in [[0, 51], [149, 200], [150, 256], [599, 705], [2399, 2505]]:
+	for pair in [[0, 51], [149, 200], [150, 256], [599, 705], [2399, 2505], [3989, 4095], [3990, 16384], [32767, 45161]]:
 		_check(OverlayData.facility_id(pair[0]) == pair[1], "Encode facility record")
 		_check(OverlayData.facility_record(pair[1]) == pair[0], "Decode facility record")
 

@@ -146,7 +146,7 @@ layout_mode = 2
 tooltip_text = "The number of tiles on each side of the map.
 SimCity 2000 compatibility uses only 128 × 128."
 selected = 3
-item_count = 9
+item_count = 11
 popup/item_0/text = "16 × 16"
 popup/item_0/id = 16
 popup/item_1/text = "32 × 32"
@@ -165,6 +165,10 @@ popup/item_7/text = "640 × 640"
 popup/item_7/id = 640
 popup/item_8/text = "1024 × 1024"
 popup/item_8/id = 1024
+popup/item_9/text = "2048 × 2048"
+popup/item_9/id = 2048
+popup/item_10/text = "4096 × 4096"
+popup/item_10/id = 4096
 
 [node name="TerrainDivider" type="HSeparator" parent="Center/NewCityDialog/Content/Body/Fields"]
 layout_mode = 2

@@ -209,12 +209,7 @@ pub fn trace_reach(
     }
 
     let turn_direction = if random.next_u15() & 1 != 0 { 1 } else { 3 };
-    let start_index = start
-        & if map_edge == 128 {
-            POINT_INDEX_MASK
-        } else {
-            LARGE_POINT_INDEX_MASK
-        };
+    let start_index = start & point_index_mask(map_edge);
     let mut points = vec![Vec2i::new(start_index / map_edge, start_index % map_edge)];
     let mut indices = vec![start_index];
     let mut modes = vec![start >> point_shift(map_edge)];

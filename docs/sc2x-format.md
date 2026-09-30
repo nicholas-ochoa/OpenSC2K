@@ -39,7 +39,7 @@ rules; the included schema cannot relax them.
 | Field | Meaning |
 | --- | --- |
 | `format`, `file_version` | `"OpenSC2K.SC2X"` and `4`. |
-| `map.size` | The map edge. The game opens 16, 32, 64, 128, 256, 384, 512, 640, and 1024. |
+| `map.size` | The map edge. The game opens 16, 32, 64, 128, 256, 384, 512, 640, 1024, 2048, and 4096. SCLG files end at 1024; larger maps exist only as version 4 files. |
 | `city.name` | The city name: 1 to 64 characters. There is no CNAM entry. |
 | `city.mayor_name`, `city.stadium_teams` | The mayor name and the five shared team names. |
 | `identity_counters` | The next sign ID and the next moving-object ID. |
@@ -160,11 +160,24 @@ entries. After each simulation step that changes XTHG, a slot whose object was f
 type loses its identity and name; the next save gives the new object a new ID. IDs are never
 reused.
 
-Supported sizes and record capacities limit what a working document can link: at most
-3,990 facility records and no XTHG capacity of 20 (its table would look like an original
+The runtime tile index holds 16-bit links:
+
+| IDs | Meaning |
+| --- | --- |
+| 1–50, 4096–8191 | Signs of SC2, SCN, and SCLG cities. A working document keeps signs in XSGN. |
+| 51–200, 256–4095 | Facility records 0–3989. |
+| 201–240, 8192–16383 | Moving-object records 0–8231. |
+| 241–255 | Markers. |
+| 16384–65535 | Facility records from 3990, for the 2048 and 4096 profiles. |
+
+A working document can therefore link at most 53,142 facility records and 8,232 moving
+objects, and its XTHG capacity cannot be 20 (its table would look like an original
 single-plane table). The loader reports a file that exceeds them. Facility links and moving
-objects therefore still share the runtime tile index; a later version can give them separate
-runtime indexes without a file change.
+objects still share the runtime tile index; a later version can give them separate runtime
+indexes without a file change.
+
+Trip searches pack the start tile below the transport mode: 14 bits on a 128-tile map, 20
+bits up to 1024 tiles, and 24 bits on larger maps.
 
 ## Conversion
 
@@ -205,6 +218,21 @@ Measured on this computer (Spiralopolis test cities, converted from SCLG version
 
 The supplied 128-tile cities save as 6 to 58 KB, against 54 to 125 KB in the original format.
 
+`game/tools/tile_sc2x_city.gd` repeats a city across a larger map (for example, the 1024
+Spiralopolis test city as 2048 and 4096 cities). Measured with those tiled cities: a 2048 city
+loads in the game in 2.0 s and a 4096 city in 8.0 s, most of it the load-time repair of the
+more than 100,000 facility buildings that the test city has without records. A 4096 city
+takes about 100 ms per simulation day and about 5 s to compress and write on the worker
+thread; a terrain brush step takes about 16 ms. A 4096 working document with its city state
+uses about 700 MB. The map window samples every fourth tile of a 4096 map, so its image stays
+at 1024 pixels.
+
+Slower retained tests, each with its reason: `large_city_test` (about 5 s) runs the far-corner
+tools, a spawn, a rotation, and a reload on a 4096 city; `sc2x_reference_conversion_test`
+(about 5 s) converts all 92 supplied cities and scenarios; `map_edge_limits_test` (about 4 s)
+adds the far-edge rules at 2048; and `sc2x_format_test` (about 3 s) saves, loads, and rotates a
+4096 city with a high-range facility.
+
 A city can be saved only at a completed simulation day. While the annual budget or a
 military decision waits for the player, the save reports what to finish first.
 
@@ -240,8 +268,10 @@ vehicle caps of each map size.
 | 512, 640 | 1,024 | 512 | 512 | 8 | 4 | 4 | 16 | 32 |
 | 1024 | 2,048 | 512 | 512 | 16 | 8 | 8 | 32 | 64 |
 | 2048 | 8,192 | 512 | 1,024 | 32 | 16 | 16 | 32 | 128 |
+| 4096 | 32,768 | 1,024 | 2,048 | 64 | 32 | 32 | 64 | 256 |
 
-The 2048 profile is a storage target only. The game does not create or open 2048 maps.
+The plan defines sizes through 2048. The 4096 profile doubles the moving objects, signs, and
+vehicle caps of 2048 and gives four times its facility records for four times the area.
 
 - A new city uses these capacities exactly. An imported collection keeps a larger capacity;
   creation then stops while the active records fill the budget, and nothing is deleted.

@@ -18,7 +18,6 @@ use super::labels;
 use super::xmic::{Facility, Footprint, Xmic};
 use super::xsgn::{Sign, Xsgn};
 use super::xthg::{self, Thing, Xthg};
-use crate::sim::ids::sc2microsim_layout as microsim;
 use crate::sim::ids::sc2overlay_layout as layout;
 use crate::sim::ids::sc2thing_layout as thing_layout;
 use crate::sim::overlay;
@@ -26,10 +25,11 @@ use crate::sim::things;
 
 /// Tile index values from here through 255 are markers, such as fire and flood.
 pub const MARKER_FIRST: i64 = layout::ORIGINAL_RESERVED_FIRST;
-/// The most facility records that the tile index can link.
-pub const MAX_WORKING_FACILITIES: usize = (microsim::ORIGINAL_COUNT + layout::EXTRA_SIGN - layout::EXTRA_FACILITY) as usize;
+/// The most facility records that the tile index can link: the original and
+/// extra ranges, then the high range from 16384.
+pub const MAX_WORKING_FACILITIES: usize = (overlay::HIGH_FACILITY_FIRST_RECORD + 0x1_0000 - overlay::EXTRA_FACILITY_HIGH) as usize;
 /// The most moving-object records that the tile index can link.
-pub const MAX_WORKING_THINGS: usize = (thing_layout::ORIGINAL_COUNT + 0x1_0000 - layout::EXTRA_THING) as usize;
+pub const MAX_WORKING_THINGS: usize = (thing_layout::ORIGINAL_COUNT + overlay::EXTRA_FACILITY_HIGH - layout::EXTRA_THING) as usize;
 const RECORD: usize = thing_layout::RECORD_SIZE as usize;
 const LEGACY_SIZE: usize = thing_layout::ORIGINAL_SIZE as usize;
 const FIELD_LABEL: usize = thing_layout::FIELD_LABEL as usize;
@@ -1039,6 +1039,63 @@ mod tests {
     }
 
     #[test]
+    fn the_largest_maps_link_facilities_in_the_high_range() {
+        let edge = 64;
+        let mut xmic = Xmic {
+            facilities: vec![Facility::default(); 32768],
+            extension: Vec::new(),
+        };
+        xmic.facilities[32767] = Facility {
+            tile_id: 0xd5,
+            footprint: Footprint::Rect {
+                x: 3,
+                y: 4,
+                width: 1,
+                height: 1,
+            },
+            name: "Last".into(),
+            ..Default::default()
+        };
+        let things = Xthg {
+            things: vec![Thing::default(); 2048],
+            extension: Vec::new(),
+        };
+        let joined = join(edge, &vec![0; edge * edge], &xmic, &things, "", &[]).unwrap();
+        let id = overlay::read(&joined.xtxt, (3 * edge + 4) as i64);
+        assert_eq!(id, overlay::EXTRA_FACILITY_HIGH + 32767 - overlay::HIGH_FACILITY_FIRST_RECORD);
+        assert!(overlay::is_facility(id) && !overlay::is_thing(id) && overlay::facility_record(id) == 32767);
+        assert!(overlay::is_thing(overlay::thing_id(2047)));
+        assert_eq!(labels::read(&joined.labels, facility_label(32767), true).unwrap(), "Last");
+        let parts = (joined.xtxt.clone(), joined.xmic.clone(), joined.xthg.clone(), joined.labels.clone());
+        let view = Working {
+            edge,
+            xtxt: &parts.0,
+            xmic: &parts.1,
+            xthg: &parts.2,
+            labels: &parts.3,
+            wide_labels: true,
+        };
+        let split = split(
+            &view,
+            SplitOptions {
+                signs: Some(Xsgn::default()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            split.xmic.facilities[32767].footprint,
+            Footprint::Rect {
+                x: 3,
+                y: 4,
+                width: 1,
+                height: 1
+            }
+        );
+        assert!(split.issues.is_empty());
+    }
+
+    #[test]
     fn a_new_city_trims_empty_slots_but_an_import_keeps_them() {
         let parts = (vec![0u8; 128 * 128], vec![0u8; 150 * 8], vec![0u8; LEGACY_SIZE], vec![0u8; 6400]);
         let view = Working {
@@ -1134,6 +1191,9 @@ mod tests {
             extension: Vec::new(),
         };
         assert!(join(EDGE, &split.markers, &split.xmic, &twenty, "", &[]).is_err());
-        assert!(join(2048, &vec![0; 2048 * 2048], &Xmic::default(), &Xthg::default(), "", &[]).is_err());
+        assert!(
+            join(100, &[0; 100 * 100], &Xmic::default(), &Xthg::default(), "", &[]).is_err(),
+            "no working index for 100 tiles"
+        );
     }
 }

@@ -11,7 +11,7 @@ var empty_payloads := {}
 
 
 func _init() -> void:
-	for edge in [128, 256, 384, 512, 640, 1024]:
+	for edge in [128, 256, 384, 512, 640, 1024, 2048]:
 		check_growth_dispatch(edge)
 		check_random_sites(edge)
 		check_tools(edge)

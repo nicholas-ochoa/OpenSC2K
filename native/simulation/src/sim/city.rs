@@ -217,7 +217,8 @@ impl City {
         }
 
         if edge > 128 && self.large_version >= 2 {
-            let factor = (edge * edge) / 16384;
+            // legacy record tables of larger maps keep the 1024-tile capacities
+            let factor = ((edge * edge) / 16384).min(64);
 
             match id {
                 "XTXT" => return edge * edge * 2,
