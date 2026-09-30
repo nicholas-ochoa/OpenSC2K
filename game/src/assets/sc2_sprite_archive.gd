@@ -24,12 +24,8 @@ static func load_path(path: String) -> Sc2SpriteArchive:
 static func entry_from_indices(
 	sprite_id: int, width: int, height: int, pixels: PackedInt32Array
 ) -> SpriteEntry:
-	if width < 1 or height < 1 or pixels.size() != width * height:
+	if width < 1 or height < 1 or pixels.size() != width * height or not NativeSpriteCodec.valid_indices(pixels):
 		return null
-
-	for pixel in pixels:
-		if pixel < -1 or pixel > 255:
-			return null
 
 	var entry := SpriteEntry.new()
 	entry.sprite_id = sprite_id
@@ -149,90 +145,16 @@ class SpriteEntry extends RefCounted:
 
 			return direct_result
 
-		var pixels := PackedInt32Array()
-		pixels.resize(width * height)
 		# -1 is transparent, zero is a perfectly good pixel
-		pixels.fill(-1)
+		var decoded := NativeSpriteCodec.decode(encoded_pixels, width, height, allow_unpadded_odd_runs)
 
-		var position := 0
-		var row := 0
-		var found_end := false
-
-		while position < encoded_pixels.size():
-			if position + 2 > encoded_pixels.size():
-				return IndexedImageResult.failure(_sprite_error("truncated block header"))
-
-			var block_length := int(encoded_pixels[position])
-			# two layers of commands here: outer blocks and then row runs
-			var block_mode := int(encoded_pixels[position + 1])
-			position += 2
-
-			if block_mode == 2:
-				found_end = true
-				break
-
-			if position + block_length > encoded_pixels.size():
-				return IndexedImageResult.failure(_sprite_error("block extends past sprite data"))
-
-			if block_mode == 0:
-				position += block_length
-				continue
-
-			if block_mode != 1:
-				return IndexedImageResult.failure(_sprite_error("unsupported outer block mode %d" % block_mode))
-
-			if row >= height:
-				return IndexedImageResult.failure(_sprite_error("sprite has more rows than its header"))
-
-			var row_end := position + block_length
-			var x := 0
-
-			while position < row_end:
-				if position + 2 > row_end:
-					return IndexedImageResult.failure(_sprite_error("truncated row command"))
-
-				var count := int(encoded_pixels[position])
-				var mode := int(encoded_pixels[position + 1])
-				position += 2
-
-				match mode:
-					0, 2:
-						pass
-					3:
-						x += count
-
-						if x > width:
-							return IndexedImageResult.failure(_sprite_error("row skip extends past sprite width"))
-					4:
-						if position + count > row_end:
-							return IndexedImageResult.failure(_sprite_error("pixel run extends past row block"))
-
-						if x + count > width:
-							return IndexedImageResult.failure(_sprite_error("pixel run extends past sprite width"))
-
-						for pixel_offset in count:
-							pixels[row * width + x] = encoded_pixels[position + pixel_offset]
-							x += 1
-
-						position += count
-
-						if count % 2 == 1:
-							if position < row_end:
-								position += 1
-							elif not allow_unpadded_odd_runs:
-								return IndexedImageResult.failure(_sprite_error("odd pixel run has no padding byte"))
-					_:
-						return IndexedImageResult.failure(_sprite_error("unsupported row mode %d" % mode))
-
-			row += 1
-
-		if not found_end:
-			return IndexedImageResult.failure(_sprite_error("sprite has no end block"))
+		if not decoded.ok:
+			return IndexedImageResult.failure(_sprite_error(decoded.error))
 
 		var outcome := IndexedImageResult.new()
 		outcome.ok = true
-		outcome.pixels = pixels
-		outcome.rows = row
+		outcome.pixels = decoded.pixels
+		outcome.rows = decoded.rows
 		outcome.error = ""
 
 		return outcome
@@ -254,18 +176,7 @@ class SpriteEntry extends RefCounted:
 		if not decoded.ok:
 			return AssetImageResult.failure(decoded.error)
 
-		var image := Image.create(width, height, false, Image.FORMAT_RGBA8)
-		var pixels: PackedInt32Array = decoded.pixels
-
-		for y in height:
-			for x in width:
-				var palette_index := pixels[y * width + x]
-
-				if palette_index >= 0:
-					image.set_pixel(x, y, palette.color(palette_index))
-				else:
-					image.set_pixel(x, y, Color.TRANSPARENT)
-
+		var image := NativeSpriteCodec.color_image(decoded.pixels, width, height, palette.to_rgba_bytes())
 		var outcome := AssetImageResult.new()
 		outcome.ok = true
 		outcome.image = image
@@ -292,20 +203,7 @@ class SpriteEntry extends RefCounted:
 
 			return AssetImageResult.failure(decoded.error)
 
-		var image := Image.create(width, height, false, Image.FORMAT_RGBA8)
-		var pixels: PackedInt32Array = decoded.pixels
-
-		for y in height:
-			for x in width:
-				var palette_index := pixels[y * width + x]
-
-				if palette_index >= 0:
-					image.set_pixel(
-						x, y, Color8(palette_index, palette_index, palette_index, 255)
-					)
-				else:
-					image.set_pixel(x, y, Color.TRANSPARENT)
-
+		var image := NativeSpriteCodec.index_image(decoded.pixels, width, height)
 		_index_image = image
 		_index_image_mutex.unlock()
 

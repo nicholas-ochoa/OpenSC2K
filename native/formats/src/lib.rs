@@ -1,7 +1,12 @@
 //! File and image codecs. The codec modules have no Godot types, so `cargo test`
 //! runs them. `bridge.rs` converts Godot values.
+mod bmp;
 mod bridge;
 mod crc32;
+mod gif;
+mod pe;
+mod png;
+mod sprite;
 
 use godot::prelude::*;
 

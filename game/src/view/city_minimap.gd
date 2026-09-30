@@ -31,7 +31,7 @@ static func create_image(city: CityState, palette: Sc2Palette, mode := "structur
 	var image_edge := NativeCityMinimap.image_edge(map_edge)
 
 	if city != null and city.is_valid() and palette != null and palette.is_valid():
-		var image := NativeCityMinimap.create_image(_request(city, mode), _palette_rgba(palette))
+		var image := NativeCityMinimap.create_image(_request(city, mode), palette.to_rgba_bytes())
 
 		if image != null:
 			return image
@@ -60,14 +60,3 @@ static func _request(city: CityState, mode: String) -> Dictionary:
 
 	return {"edge": city.map_size, "buildings": city.buildings, "zones": city.zones, "flags": city.tile_flags,
 		"underground": city.underground, "altitude": city.altitude_words, "mode": mode, "data": data}
-
-
-static func _palette_rgba(palette: Sc2Palette) -> PackedByteArray:
-	var bytes := PackedByteArray()
-	bytes.resize(1024)
-
-	for index in 256:
-		var color := palette.color(index)
-		bytes.encode_u32(index * 4, color.to_abgr32())
-
-	return bytes

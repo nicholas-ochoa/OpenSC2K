@@ -100,6 +100,20 @@ func to_rgb_bytes() -> PackedByteArray:
 	return bytes
 
 
+# 256 RGBA colors for the native image builders. An invalid palette is empty
+func to_rgba_bytes() -> PackedByteArray:
+	if not is_valid():
+		return PackedByteArray()
+
+	var bytes := PackedByteArray()
+	bytes.resize(COLOR_COUNT * 4)
+
+	for index in COLOR_COUNT:
+		bytes.encode_u32(index * 4, colors[index].to_abgr32())
+
+	return bytes
+
+
 static func from_rgb_bytes(bytes: PackedByteArray) -> Sc2Palette:
 	var palette := Sc2Palette.new()
 	if bytes.size() != RGB_BYTES:

@@ -75,20 +75,7 @@ func export_packs(source: String, target: String) -> AssetImportResult:
 			if dib.bits_per_pixel != 4 or dib.compression != 0:
 				return AssetImportResult.failure("Unsupported original bitmap")
 
-			var pixels := PackedInt32Array()
-			var stride := ((int(dib.width) * 4 + 31) / 32) * 4
-			var start := int(bytes.decode_u32(0)) + count * 4
-
-			for y in int(dib.height):
-				for x in int(dib.width):
-					var value := bytes[start + (int(dib.height) - 1 - y) * stride + (x / 2)]
-					pixels.append((value >> 4) if x % 2 == 0 else (value & 15))
-
-			decoded = IndexedImageResult.new()
-			decoded.ok = true
-			decoded.width = dib.width
-			decoded.height = dib.height
-			decoded.pixels = pixels
+			decoded = PeBitmapResource.decode_indexed4_dib(bytes)
 
 		if not decoded.ok:
 			return AssetImportResult.failure("Cannot decode original bitmap")

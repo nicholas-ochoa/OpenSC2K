@@ -1,76 +1,19 @@
 class_name WindowsBitmapRle8
 extends RefCounted
-# bi_rle8 decoding to top-down palette indices. no rgb index matching
+# bi_rle8 decoding to top-down palette indices. no rgb index matching. the
+# native formats library decodes the runs
 
 
 static func decode(bytes: PackedByteArray, width: int, height: int) -> IndexedImageResult:
-	if width <= 0 or height <= 0 or width > 4096 or height > 4096:
-		return IndexedImageResult.failure("RLE8 dimensions must be 1 through 4096")
+	var decoded := NativePeResources.decode_rle8(bytes, width, height)
 
-	var pixels := PackedInt32Array()
-	pixels.resize(width * height)
-	pixels.fill(0)
-	var x := 0
-	var y := 0 # row from the bottom of the dib
-	var offset := 0
+	if not decoded.ok:
+		return IndexedImageResult.failure(decoded.error)
 
-	while offset + 2 <= bytes.size():
-		var count := int(bytes[offset])
-		var value := int(bytes[offset + 1])
-		offset += 2
+	var outcome := IndexedImageResult.new()
+	outcome.ok = true
+	outcome.pixels = decoded.pixels
+	outcome.consumed = decoded.consumed
+	outcome.error = ""
 
-		if count == 0:
-			if value == 1:
-				var outcome := IndexedImageResult.new()
-				outcome.ok = true
-				outcome.pixels = pixels
-				outcome.consumed = offset
-				outcome.error = ""
-
-				return outcome
-
-			if value == 0:
-				x = 0
-				y += 1
-
-				if y > height:
-					return IndexedImageResult.failure("RLE8 line escape exceeds the image")
-
-				continue
-
-			if value == 2:
-				if offset + 2 > bytes.size():
-					return IndexedImageResult.failure("RLE8 delta is truncated")
-
-				x += int(bytes[offset])
-				y += int(bytes[offset + 1])
-				offset += 2
-
-				if x > width or y >= height:
-					return IndexedImageResult.failure("RLE8 delta exceeds the image")
-
-				continue
-
-			count = value
-			var padded_size := (count + 1) & ~1
-
-			if offset + padded_size > bytes.size():
-				return IndexedImageResult.failure("RLE8 absolute run or padding is truncated")
-
-			if x + count > width or y >= height:
-				return IndexedImageResult.failure("RLE8 absolute run exceeds its row")
-
-			for i in count:
-				pixels[(height - 1 - y) * width + x + i] = bytes[offset + i]
-
-			offset += padded_size
-		else:
-			if x + count > width or y >= height:
-				return IndexedImageResult.failure("RLE8 encoded run exceeds its row")
-
-			for i in count:
-				pixels[(height - 1 - y) * width + x + i] = value
-
-		x += count
-
-	return IndexedImageResult.failure("RLE8 end-of-bitmap escape is missing")
+	return outcome

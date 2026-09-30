@@ -5,7 +5,6 @@ var failures := 0
 
 func _initialize() -> void:
 	_test_words()
-	_test_pe_bounds()
 	_test_bitmap_readers()
 	_test_indexed_resources()
 	_test_scenario_picture()
@@ -67,17 +66,6 @@ func _test_word32(value: int) -> void:
 	check(BinaryData.read_u32_be(big, 1) == unsigned and little.decode_u32(1) == unsigned, "32-bit unsigned read")
 	check(BinaryData.read_i32_be(big, 1) == signed and little.decode_s32(1) == signed, "32-bit signed read")
 	check(big[0] == 0xa5 and big[5] == 0x5a and little[0] == 0xa5 and little[5] == 0x5a, "32-bit sentinels")
-
-
-func _test_pe_bounds() -> void:
-	var bytes := PackedByteArray([0xa5, 0x12, 0x34, 0x56, 0x78, 0x5a])
-	for size in range(bytes.size() + 1):
-		var prefix := bytes.slice(0, size)
-		for offset in range(-1, size + 2):
-			var short_value := prefix.decode_u16(offset) if offset >= 0 and offset + 2 <= size else 0
-			var word_value := prefix.decode_u32(offset) if offset >= 0 and offset + 4 <= size else 0
-			check(PeBitmapResource._read_u16(prefix, offset) == short_value, "bounded PE 16-bit read")
-			check(PeBitmapResource._read_u32(prefix, offset) == word_value, "bounded PE 32-bit read")
 
 
 func _test_bitmap_readers() -> void:

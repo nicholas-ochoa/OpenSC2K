@@ -1,51 +1,8 @@
 extends SceneTree
-
-@warning_ignore_start("integer_division")
+## The native unit tests check the directory records and malformed names.
 
 
 func _initialize() -> void:
-	var bytes := PackedByteArray()
-	bytes.resize(384)
-	bytes.encode_u16(108, 1)
-	bytes.encode_u16(110, 1)
-	bytes.encode_u32(112, 0x80000080)
-	bytes.encode_u32(116, 0x800000c0)
-	bytes.encode_u32(120, 7)
-	bytes.encode_u32(124, 0x800000d0)
-
-	for name in ["ADVICEU", "城🏙"]:
-		var encoded: PackedByteArray = name.to_utf16_buffer()
-		bytes.encode_u16(192, encoded.size() / 2)
-
-		for i in encoded.size():
-			bytes[194 + i] = encoded[i]
-
-		bytes[194 + encoded.size()] = 0xff # Names are length-prefixed, not terminated.
-		assert(PeBitmapResource._named_child_directory(bytes, 64, 96, name) == 256)
-		assert(PeBitmapResource._named_child_directory(bytes, 64, 96, "missing") == -1)
-		assert(PeBitmapResource._named_child_directory(bytes, 64, 96, "7") == -1)
-		assert(PeBitmapResource._numeric_child_directory(bytes, 64, 96, 7) == 272)
-
-		for length in 272:
-			assert(PeBitmapResource._named_child_directory(bytes.slice(0, length), 64, 96, name) == -1)
-
-	for change in ["entry_count", "name_offset", "name_length", "leaf_target", "target_offset"]:
-		var bad := bytes.duplicate()
-
-		match change:
-			"entry_count":
-				bad.encode_u16(108, 0xffff)
-			"name_offset":
-				bad.encode_u32(112, 0xffffffff)
-			"name_length":
-				bad.encode_u16(192, 0xffff)
-			"leaf_target":
-				bad.encode_u32(116, 192)
-			"target_offset":
-				bad.encode_u32(116, 0xffffffff)
-
-		assert(PeBitmapResource._named_child_directory(bad, 64, 96, "城🏙") == -1, change)
-
 	# Independent ImageMagick decoding of read-only in-memory DIBs produced these hashes.
 	var expected := {
 		"ADVICED": "ac6c2f888d87a64906e1089abd66a601c993a94d0b3511af2ba0b031fb777a08",
@@ -78,7 +35,5 @@ func _initialize() -> void:
 		assert(not PeBitmapResource.load_named(path, name).ok)
 
 	assert(PeBitmapResource.load_numeric(path, 2).ok)
-	print(("PASS: exact UTF-16 resource names, root-relative offsets, numeric separation, all "
-		+ "truncated prefixes, malformed directories and all 14 supplied named bitmaps against "
-		+ "independent RGBA hashes"))
+	print("PASS: all 14 supplied named bitmaps against independent RGBA hashes, missing names and numeric separation")
 	quit()

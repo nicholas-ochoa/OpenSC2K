@@ -53,21 +53,21 @@ func _initialize() -> void:
 		assert(hasher.finish().hex_encode() == expected[id], "independent decoder agreement for %d" % id)
 
 	for change in ["top_down", "palette", "truncated", "size", "planes"]:
-		var bad := PeBitmapResource.load_numeric_dib(path, 1202)
+		var bad := PeBitmapResource.load_numeric_dib(path, 1202).bytes
 
 		match change:
 			"top_down":
-				bad.height = 0xffffffff - 24
+				bad.encode_u32(8, 0xffffffff - 24)
 			"palette":
-				bad.color_count = 257
+				bad.encode_u32(32, 257)
 			"truncated":
-				bad.bytes.resize(1040)
+				bad.resize(1040)
 			"size":
-				bad.bytes.encode_u32(20, 0xffffffff)
+				bad.encode_u32(20, 0xffffffff)
 			"planes":
-				bad.bytes.encode_u16(12, 2)
+				bad.encode_u16(12, 2)
 
-		assert(not PeBitmapResource._decode_indexed8_dib(bad, 1202).ok, change)
+		assert(not PeBitmapResource.decode_indexed8_dib(bad, 1202).ok, change)
 
 	print(("PASS: Windows RLE8 runs, absolute padding, deltas, bottom-up order, exact indices, "
 		+ "malformed inputs and all four supplied compressed resources against independent RGBA "

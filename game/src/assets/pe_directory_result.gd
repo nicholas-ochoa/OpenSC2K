@@ -1,12 +1,10 @@
 class_name PeDirectoryResult
 extends RefCounted
+## The bytes of an executable whose resource directory the native reader accepts.
 
 var ok := false
 var error := ""
 var bytes := PackedByteArray()
-var root_offset := 0
-var section_offset := 0
-var section_count := 0
 
 
 static func failure(message: String) -> PeDirectoryResult:

@@ -221,67 +221,16 @@ static func dos(header: PackedByteArray, data: PackedByteArray) -> Sc2ImportSpri
 
 
 static func _dos_pixels(data: PackedByteArray, start: int, end: int, width: int, height: int) -> IndexedImageResult:
-	var pixels := PackedInt32Array()
-	pixels.resize(width * height)
-	pixels.fill(-1)
-	var cursor := start
-	var row := 0
-	var terminated := false
+	var decoded := NativeSpriteCodec.decode_dos(data, start, end, width, height)
 
-	while cursor < end:
-		var marker := int(data[cursor])
-		cursor += 1
-
-		if marker == 0:
-			terminated = true
-			break
-
-		if marker != 0x10 or cursor >= end or row >= height:
-			return IndexedImageResult.failure("Invalid row marker or row count.")
-
-		var length := int(data[cursor])
-		var row_end := cursor + length
-		cursor += 1
-
-		if length == 0 or row_end > end:
-			return IndexedImageResult.failure("Row exceeds the sprite data.")
-
-		var column := 0
-
-		while cursor < row_end:
-			if row_end - cursor < 2:
-				return IndexedImageResult.failure("Truncated row command.")
-
-			var operation := int(data[cursor])
-			var count := int(data[cursor + 1])
-			cursor += 2
-
-			if column + count > width:
-				return IndexedImageResult.failure("Row command exceeds the sprite width.")
-
-			if operation == 0x0c:
-				if count > row_end - cursor:
-					return IndexedImageResult.failure("Pixel run exceeds the row data.")
-
-				for index in count:
-					pixels[row * width + column + index] = int(data[cursor + index])
-
-				cursor += count
-			elif operation != 0x04:
-				return IndexedImageResult.failure("Unsupported row command 0x%02x." % operation)
-
-			column += count
-
-		row += 1
-
-	if not terminated:
-		return IndexedImageResult.failure("Sprite has no end marker.")
+	if not decoded.ok:
+		return IndexedImageResult.failure(decoded.error)
 
 	var result := IndexedImageResult.new()
 	result.ok = true
 	result.width = width
 	result.height = height
-	result.rows = row
-	result.pixels = pixels
+	result.rows = decoded.rows
+	result.pixels = decoded.pixels
 
 	return result

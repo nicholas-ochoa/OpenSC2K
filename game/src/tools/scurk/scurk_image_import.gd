@@ -23,25 +23,9 @@ static func load_path(path: String, palette: Sc2Palette) -> IndexedImageResult:
 	if not decoded.ok:
 		return decoded
 
-	var mapping := {}
-	var remapped := 0
-	var pixels: PackedInt32Array = decoded.pixels.duplicate()
-
-	for index in pixels.size():
-		var color_index := pixels[index]
-
-		if color_index < 0:
-			continue
-
-		if not mapping.has(color_index):
-			var color: Color = decoded.palette.color(color_index)
-			mapping[color_index] = (color_index if IndexedBmp._same_rgb(color, palette.color(color_index))
-				else IndexedBmp._nearest_palette_index(color, palette))
-
-			if mapping[color_index] != color_index:
-				remapped += 1
-
-		pixels[index] = mapping[color_index]
+	var mapped := NativeIndexedBmp.map_used_colors(decoded.pixels, decoded.palette.to_rgb_bytes(), palette.to_rgb_bytes())
+	var pixels: PackedInt32Array = mapped.pixels
+	var remapped: int = mapped.remapped_color_count
 
 	return _result(decoded.width, decoded.height, pixels, remapped)
 

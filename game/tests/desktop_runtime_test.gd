@@ -10,7 +10,7 @@ func _initialize() -> void:
 func _run() -> void:
 	var directory := PeBitmapResource._load_resource_directory("res://../references/SIMCITY2000/SIMCITY.EXE")
 	assert(directory.ok)
-	var table := PeBitmapResource._rva_to_offset(directory.bytes, 0x000ea7f8, directory.section_offset, directory.section_count)
+	var table := PeBitmapResource.rva_to_offset(directory, 0x000ea7f8)
 
 	for i in 18:
 		assert(directory.bytes.decode_u16(table + i * 2) == DesktopCursorRules.CITY_TOOLS[i])
@@ -163,7 +163,7 @@ func _run() -> void:
 
 
 func _u32_at(directory: PeDirectoryResult, address: int) -> int:
-	var at := PeBitmapResource._rva_to_offset(directory.bytes, address - 0x400000, directory.section_offset, directory.section_count)
+	var at := PeBitmapResource.rva_to_offset(directory, address - 0x400000)
 	assert(at >= 0)
 
 	return directory.bytes.decode_u32(at)
