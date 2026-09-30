@@ -140,14 +140,21 @@ class NightlyTest(unittest.TestCase):
         (self.folder / 'SHA256SUMS.txt').write_text(''.join(f'{value}  {name}\n' for name, value in sorted(hashes.items())))
         self.assets = [dict(name=p.name, size=p.stat().st_size, state='uploaded',
                             digest='sha256:' + hashlib.sha256(p.read_bytes()).hexdigest()) for p in self.folder.iterdir()]
-        self.old = dict(tag_name='nightly-20260101-10-1', prerelease=True, draft=False, body=nightly.MARKER)
+        self.old = dict(tag_name='nightly', prerelease=True, draft=False,
+                        body='<!-- opensc2k-nightly run=10 attempt=1 -->\nOld nightly')
+        self.legacy = dict(tag_name='nightly-20260101-5-1', prerelease=True, draft=False, body=nightly.MARKER)
         self.stable = dict(tag_name='v0.1.0', prerelease=False, draft=False, body='Stable release')
+        self.refs = [dict(ref='refs/tags/nightly-draft-1-1'), dict(ref='refs/tags/nightly')]
         self.calls = []
 
     def respond(self, *args):
         self.calls.append(args)
         if args[0] == 'api':
-            return json.dumps([[self.stable, self.old]])
+            if 'matching-refs' in args[1]:
+                return json.dumps(self.refs)
+            if args[-1].endswith('/releases?per_page=100'):
+                return json.dumps([[self.stable, self.old, self.legacy]])
+            return ''
         if args[:2] == ('release', 'view'):
             if args[-1] == 'assets':
                 return json.dumps(dict(assets=self.assets))
@@ -157,43 +164,56 @@ class NightlyTest(unittest.TestCase):
     def publish(self):
         nightly.publish(self.folder, 'owner/repo', self.commit, 20, 1)
 
-    def test_publish_verifies_upload_before_deleting_only_older_nightly(self):
+    def index(self, *prefix):
+        return next(i for i, c in enumerate(self.calls) if c[:len(prefix)] == prefix)
+
+    def test_publish_verifies_upload_then_replaces_the_single_nightly_tag(self):
         with patch.object(nightly, 'gh', side_effect=self.respond):
             self.publish()
+        create = self.calls[self.index('release', 'create')]
+        self.assertEqual(create[2], 'nightly-draft-20-1')
+        self.assertIn('--draft', create)
+        self.assertEqual(create[create.index('--target') + 1], self.commit)
         deletes = [c for c in self.calls if c[:2] == ('release', 'delete')]
-        self.assertEqual(len(deletes), 1)
-        self.assertEqual(deletes[0][2], self.old['tag_name'])
-        self.assertIn('--cleanup-tag', deletes[0])
-        publish_index = next(i for i, c in enumerate(self.calls) if c[:2] == ('release', 'edit'))
-        self.assertGreater(self.calls.index(deletes[0]), publish_index)
+        self.assertEqual({c[2] for c in deletes}, {'nightly', self.legacy['tag_name']})
+        self.assertTrue(all('--cleanup-tag' in c for c in deletes))
+        self.assertIn(('api', '--method', 'DELETE', 'repos/owner/repo/git/refs/tags/nightly'), self.calls)
+        edit = self.calls[self.index('release', 'edit')]
+        self.assertEqual(edit[2], 'nightly-draft-20-1')
+        self.assertEqual(edit[edit.index('--tag') + 1], 'nightly')
+        self.assertLess(self.index('release', 'view'), min(self.calls.index(c) for c in deletes))
+        self.assertLess(self.index('api', '--method', 'DELETE'), self.calls.index(edit))
+        self.assertLess(max(self.calls.index(c) for c in deletes), self.calls.index(edit))
 
-    def test_upload_or_publish_failure_preserves_previous_release(self):
-        for operation in ('create', 'edit'):
-            with self.subTest(operation=operation):
-                self.calls.clear()
+    def test_missing_nightly_tag_is_not_deleted(self):
+        self.refs = [dict(ref='refs/tags/nightly-draft-1-1')]
+        with patch.object(nightly, 'gh', side_effect=self.respond):
+            self.publish()
+        self.assertFalse(any(c[:3] == ('api', '--method', 'DELETE') for c in self.calls))
 
-                def fail(*args):
-                    if args[:2] == ('release', operation):
-                        raise RuntimeError('GitHub failure')
-                    return self.respond(*args)
+    def test_upload_failure_preserves_previous_release(self):
+        def fail(*args):
+            if args[:2] == ('release', 'create'):
+                raise RuntimeError('GitHub failure')
+            return self.respond(*args)
 
-                with patch.object(nightly, 'gh', side_effect=fail), self.assertRaises(RuntimeError):
-                    self.publish()
-                self.assertFalse(any(c[:2] == ('release', 'delete') for c in self.calls))
+        with patch.object(nightly, 'gh', side_effect=fail), self.assertRaises(RuntimeError):
+            self.publish()
+        self.assertFalse(any(c[:2] == ('release', 'delete') for c in self.calls))
 
     def test_failed_draft_is_removed_without_deleting_a_missing_tag(self):
-        self.old['draft'] = True
+        self.old.update(tag_name='nightly-draft-10-1', draft=True)
         with patch.object(nightly, 'gh', side_effect=self.respond):
             self.publish()
-        deletes = [c for c in self.calls if c[:2] == ('release', 'delete')]
-        self.assertEqual(len(deletes), 1)
-        self.assertNotIn('--cleanup-tag', deletes[0])
+        delete = next(c for c in self.calls if c[:3] == ('release', 'delete', 'nightly-draft-10-1'))
+        self.assertNotIn('--cleanup-tag', delete)
 
     def test_remote_hash_mismatch_prevents_publish_and_cleanup(self):
         self.assets[0]['digest'] = 'sha256:bad'
         with patch.object(nightly, 'gh', side_effect=self.respond), self.assertRaises(ValueError):
             self.publish()
         self.assertFalse(any(c[:2] in [('release', 'edit'), ('release', 'delete')] for c in self.calls))
+        self.assertFalse(any(c[:3] == ('api', '--method', 'DELETE') for c in self.calls))
 
     def test_invalid_package_or_commit_never_contacts_github(self):
         with patch.object(nightly, 'gh') as gh:
@@ -204,13 +224,15 @@ class NightlyTest(unittest.TestCase):
                 self.publish()
             gh.assert_not_called()
 
-    def test_cleanup_requires_reserved_tag_prerelease_and_workflow_marker(self):
-        for changes in [dict(tag_name='v0.1.0'), dict(tag_name='nightly'), dict(prerelease=False), dict(body='')]:
+    def test_cleanup_requires_nightly_tag_prerelease_and_workflow_marker(self):
+        for changes in [dict(tag_name='v0.1.0'), dict(tag_name='nightly-x'), dict(prerelease=False), dict(body='')]:
             self.assertIsNone(nightly.nightly_order(dict(self.old, **changes)))
         self.assertEqual(nightly.nightly_order(self.old), (10, 1))
+        self.assertEqual(nightly.nightly_order(self.legacy), (5, 1))
+        self.assertIsNone(nightly.nightly_order(dict(self.legacy, body='')))
 
     def test_out_of_order_run_does_not_replace_newer_nightly(self):
-        self.old['tag_name'] = 'nightly-20260101-30-1'
+        self.old['body'] = '<!-- opensc2k-nightly run=30 attempt=1 -->\n'
         with patch.object(nightly, 'gh', side_effect=self.respond):
             self.publish()
         self.assertEqual(len(self.calls), 1)

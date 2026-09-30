@@ -5,11 +5,11 @@ on:
     branches: [main]
   pull_request:
   schedule:
-    - cron: '23 8 * * *'
+    - cron: '0 8 * * *'
   workflow_dispatch:
     inputs:
       publish_nightly:
-        description: Publish a nightly and remove previous nightly releases
+        description: Replace the nightly release with this build
         type: boolean
         default: false
 
@@ -96,7 +96,7 @@ jobs:
           compression-level: 0
 
   nightly:
-    name: Publish latest nightly
+    name: Replace the nightly release
     needs: [test, build]
     if: >-
       github.repository == 'nicholas-ochoa/OpenSC2K' && github.ref == 'refs/heads/main' &&
@@ -116,7 +116,7 @@ jobs:
         with:
           name: desktop-packages
           path: local/packages
-      - name: Publish and remove older nightlies
+      - name: Publish and replace the nightly tag
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 tools/publish_nightly.py --packages local/packages

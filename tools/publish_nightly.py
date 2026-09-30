@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Publish verified packages, then remove older nightlies from this workflow."""
+"""Replace the single nightly release and tag with verified packages from this workflow."""
 import argparse
 from datetime import datetime, timezone
 import hashlib
@@ -9,8 +9,12 @@ from pathlib import Path
 import re
 import subprocess
 
+TAG = 'nightly'
 MARKER = '<!-- opensc2k-nightly -->'
-TAG = re.compile(r'nightly-\d{8}-(\d+)-(\d+)')
+RUN = re.compile(r'<!-- opensc2k-nightly run=(\d+) attempt=(\d+) -->')
+# Earlier workflows used one dated tag per run. Remove those as well.
+LEGACY_TAG = re.compile(r'nightly-\d{8}-(\d+)-(\d+)')
+DRAFT_TAG = re.compile(r'nightly-draft-\d+-\d+')
 
 
 def gh(*arguments):
@@ -18,8 +22,15 @@ def gh(*arguments):
 
 
 def nightly_order(release):
-    match = TAG.fullmatch(release['tag_name'])
-    if match and release.get('prerelease') and MARKER in (release.get('body') or ''):
+    if not release.get('prerelease'):
+        return None
+    body = release.get('body') or ''
+    tag = release['tag_name']
+    match = RUN.match(body)
+    if match and (tag == TAG or DRAFT_TAG.fullmatch(tag)):
+        return tuple(map(int, match.groups()))
+    match = LEGACY_TAG.fullmatch(tag)
+    if match and body.startswith(MARKER):
         return tuple(map(int, match.groups()))
     return None
 
@@ -50,15 +61,15 @@ def package_files(folder, commit):
 
 def publish(folder, repository, commit, run_id, attempt):
     files = package_files(folder, commit)
-    today = datetime.now(timezone.utc).strftime('%Y%m%d')
-    tag = f'nightly-{today}-{run_id}-{attempt}'
+    today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
     pages = json.loads(gh('api', '--paginate', '--slurp', f'repos/{repository}/releases?per_page=100'))
     releases = [release for page in pages for release in page]
     order = (run_id, attempt)
     if any(not r['draft'] and nightly_order(r) is not None and nightly_order(r) >= order for r in releases):
         print('A newer or identical nightly is already published; keep it.')
         return
-    notes = (f'{MARKER}\nAutomated nightly from `{commit}`. This is a development build.\n\n'
+    notes = (f'<!-- opensc2k-nightly run={run_id} attempt={attempt} -->\n'
+             f'Automated nightly from `{commit}`, built {today}. This is a development build.\n\n'
              'Includes Windows x64 (standard and portable), Linux x64, and universal macOS packages. '
              'Your own SimCity 2000 Special Edition for Windows 95 (1996) files are required.\n\n'
              'CI passed the generated-data suite, editor parsing, and startup checks with Dummy audio. '
@@ -67,10 +78,12 @@ def publish(folder, repository, commit, run_id, attempt):
              'Linux needs GTK 3 and WebKitGTK 4.1.\n\n'
              f'[Install instructions](https://github.com/{repository}/blob/{commit}/docs/install.md) · '
              f'[Build run](https://github.com/{repository}/actions/runs/{run_id})\n\n'
-             'Only the newest successful nightly is retained. Stable releases are kept.\n')
-    gh('release', 'create', tag, *map(str, files.values()), '--repo', repository, '--target', commit,
+             'Each nightly replaces the previous one. Stable releases are kept.\n')
+    # A draft does not create its tag, so the upload can finish before the old nightly is removed.
+    draft = f'nightly-draft-{run_id}-{attempt}'
+    gh('release', 'create', draft, *map(str, files.values()), '--repo', repository, '--target', commit,
        '--draft', '--prerelease', '--latest=false', '--title', f'Nightly {today} ({commit[:8]})', '--notes', notes)
-    remote = json.loads(gh('release', 'view', tag, '--repo', repository, '--json', 'assets'))['assets']
+    remote = json.loads(gh('release', 'view', draft, '--repo', repository, '--json', 'assets'))['assets']
     if {asset['name'] for asset in remote} != set(files):
         raise ValueError('Uploaded asset list does not match the packages')
     for asset in remote:
@@ -78,18 +91,21 @@ def publish(folder, repository, commit, run_id, attempt):
         if (asset['state'] != 'uploaded' or asset['size'] != local.stat().st_size
                 or asset['digest'] != 'sha256:' + hashlib.sha256(local.read_bytes()).hexdigest()):
             raise ValueError(f'Uploaded asset verification failed: {asset["name"]}')
-    gh('release', 'edit', tag, '--repo', repository, '--draft=false', '--latest=false')
-    # Do not delete the previous successful nightly until the new one is public.
-    published = json.loads(gh('release', 'view', tag, '--repo', repository, '--json', 'isDraft,url'))
-    if published['isDraft']:
-        raise ValueError('Nightly is still a draft; retain previous nightlies')
-    print(published['url'])
     for release in releases:
         previous = nightly_order(release)
         if previous is not None and previous < order:
             # GitHub creates the tag on publication, not when the draft is created.
             cleanup = [] if release['draft'] else ['--cleanup-tag']
             gh('release', 'delete', release['tag_name'], '--repo', repository, '--yes', *cleanup)
+    # Publication must create the tag at this commit, so remove a tag that has no release.
+    refs = json.loads(gh('api', f'repos/{repository}/git/matching-refs/tags/{TAG}'))
+    if any(ref['ref'] == f'refs/tags/{TAG}' for ref in refs):
+        gh('api', '--method', 'DELETE', f'repos/{repository}/git/refs/tags/{TAG}')
+    gh('release', 'edit', draft, '--repo', repository, '--tag', TAG, '--draft=false', '--latest=false')
+    published = json.loads(gh('release', 'view', TAG, '--repo', repository, '--json', 'isDraft,url'))
+    if published['isDraft']:
+        raise ValueError('Nightly is still a draft')
+    print(published['url'])
 
 
 def main():

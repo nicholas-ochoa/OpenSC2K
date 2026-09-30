@@ -56,17 +56,19 @@ which permits only the `main` branch. Both environments hold the read-only deplo
 
 ## Nightly releases
 
-The workflow runs daily at **08:23 UTC** (03:23 CDT or 02:23 CST).
+The workflow runs daily at **08:00 UTC** (02:00 CST or 03:00 CDT).
 GitHub can delay scheduled runs. Inactive public repositories can have schedules disabled after 60 days.
 
-After both jobs pass, the workflow publishes a nightly prerelease.
-It verifies the uploaded hashes before publication. It then deletes older nightlies from this workflow,
-including their tags and release assets. It keeps the previous successful nightly if a build or upload fails.
+After both jobs pass, the workflow replaces the nightly prerelease. There is only one nightly,
+with the fixed `nightly` tag. The workflow uploads the packages to a draft and verifies the uploaded hashes.
+It then deletes the previous nightly release, its tag, and any stale drafts from this workflow.
+It publishes the draft with the `nightly` tag on the tested commit.
+It keeps the previous nightly if a build or upload fails.
 Stable releases, including `v0.1.0`, are not changed. A nightly does not replace the latest stable release.
 
 To run it manually, select **Actions > CI and nightly > Run workflow** on `main`,
 or run `gh workflow run ci.yml --ref main`.
-Select **Publish a nightly and remove previous nightly releases** to publish the result.
+Select **Replace the nightly release with this build** to publish the result.
 Leave it clear to run tests and build packages only.
 Only the publication job has permission to write releases.
 
