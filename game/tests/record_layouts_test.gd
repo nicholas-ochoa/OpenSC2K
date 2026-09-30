@@ -11,6 +11,7 @@ func _initialize() -> void:
 	_check_sizes()
 	_check_thing_capacity_and_upgrade()
 	_check_overlay_boundaries()
+	_check_layered_overlays()
 	_check_loaded_links_and_altitude()
 	_check_labels_and_round_trip(128)
 	_check_labels_and_round_trip(256)
@@ -86,6 +87,32 @@ func _check_thing_capacity_and_upgrade() -> void:
 	_check(loaded.parse(saved), "Parse the upgraded generated city")
 	_check(loaded.find_chunk("XTHG").decoded_payload == expected and loaded.serialize(true).data == saved,
 		"Upgraded planes survive a byte-exact save round trip")
+
+
+# a facility, a marker, and a moving object share one tile of a layered index
+func _check_layered_overlays() -> void:
+	for edge: int in [16, 128, 4096]:
+		var cells := edge * edge
+		var data := OverlayData.layered(cells)
+		var index := cells - 1
+		var facility := OverlayData.facility_id(4000)
+		var thing := OverlayData.thing_id(900)
+		_check(OverlayData.count(data) == cells and OverlayData.is_layered(data), "A layered %d index has five planes" % edge)
+		OverlayData.write(data, index, facility)
+		OverlayData.write(data, index, 0xff)
+		OverlayData.write(data, index, thing)
+		_check(OverlayData.facility(data, index) == facility and OverlayData.marker(data, index) == 0xff
+			and OverlayData.object(data, index) == thing and OverlayData.read(data, index) == thing,
+			"Each value keeps its own layer; the object is on top")
+		_check(OverlayData.find(data, facility) == index and OverlayData.find(data, thing) == index
+			and OverlayData.find(data, 0xff) == index and OverlayData.occurrences(data, 0xff) == 1,
+			"A layered search looks in the layer of the value")
+		_check(OverlayData.base_facility(data, PackedByteArray(), index) == facility, "The facility layer answers facility lookups")
+		OverlayData.write(data, index, 0)
+		_check(OverlayData.read(data, index) == 0xff, "Clearing the top shows the marker")
+		OverlayData.write(data, index, 0)
+		OverlayData.write(data, index, 0)
+		_check(data == OverlayData.layered(cells), "Clearing each top empties the tile")
 
 
 func _check_overlay_boundaries() -> void:

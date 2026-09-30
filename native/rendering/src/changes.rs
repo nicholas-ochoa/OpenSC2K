@@ -165,24 +165,39 @@ fn mark(index: usize, dirty: &mut [bool], indices: &mut Vec<usize>) {
     }
 }
 
-/// OverlayData.cells_for: a wide SC2X map stores a low and a high plane. An
-/// SC2X version 4 working document uses both planes at every map size.
+/// OverlayData.cells_for: a wide SC2X map stores a low and a high plane, and
+/// a layered index of an SC2X version 4 working document stores five planes.
 fn overlay_cells(bytes: usize) -> usize {
     if [512, 2048, 8192, 32768, 131072, 294912, 524288, 819200, 2097152, 8388608, 33554432].contains(&bytes) {
         bytes / 2
+    } else if [
+        1280, 5120, 20480, 81920, 327680, 737280, 1310720, 2048000, 5242880, 20971520, 83886080,
+    ]
+    .contains(&bytes)
+    {
+        bytes / 5
     } else {
         bytes
     }
 }
 
+/// OverlayData.read: the top value of a tile. A layered index shows its object,
+/// else its marker, else its facility.
 fn overlay(data: &[u8], index: usize) -> i32 {
     let cells = overlay_cells(data.len());
-    i32::from(data[index])
-        | if cells != data.len() {
-            i32::from(data[cells + index]) << 8
-        } else {
-            0
-        }
+    let wide = |plane: usize| i32::from(data[plane * cells + index]) | i32::from(data[(plane + 1) * cells + index]) << 8;
+
+    if cells == data.len() {
+        i32::from(data[index])
+    } else if cells * 2 == data.len() {
+        wide(0)
+    } else if wide(3) != 0 {
+        wide(3)
+    } else if data[index] != 0 {
+        i32::from(data[index])
+    } else {
+        wide(1)
+    }
 }
 
 /// Moving objects and special overlays are not static region art.
@@ -449,6 +464,34 @@ mod tests {
         assert_eq!(rects(edge, &before, &after, &[]).unwrap(), []);
         after.overlays[7] = 5;
         assert_eq!(rects(edge, &before, &after, &[]).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn a_layered_index_redraws_only_for_static_layers() {
+        let edge = 16;
+        let cells = edge * edge;
+        let mut before = Maps::new(edge);
+        before.overlays = vec![0; cells * 5];
+        let mut after = Maps::new(edge);
+        after.overlays = vec![0; cells * 5];
+        // an object moves between two tiles over a marker
+        before.overlays[3 * cells + 8] = 210;
+        after.overlays[3 * cells + 9] = 210;
+        before.overlays[9] = 0xfc;
+        after.overlays[9] = 0xfc;
+        assert_eq!(overlay(&after.overlays, 9), 210, "the object is on top");
+        assert_eq!(rects(edge, &before, &after, &[]).unwrap(), []);
+        before = Maps::new(edge);
+        before.overlays = vec![0; cells * 5];
+        before.overlays[cells + 9] = 60;
+        after = Maps::new(edge);
+        after.overlays = vec![0; cells * 5];
+        after.overlays[cells + 9] = 61;
+        assert_eq!(
+            rects(edge, &before, &after, &[]).unwrap().len(),
+            1,
+            "a facility change redraws its tile"
+        );
     }
 
     #[test]

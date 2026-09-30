@@ -1,6 +1,13 @@
 //! XTXT links, as OverlayData. Original IDs are unchanged. SC2X v2 adds
-//! disjoint 16-bit ID ranges in a second byte plane. An SC2X version 4 working
-//! document uses the two planes at every map size.
+//! disjoint 16-bit ID ranges in a second byte plane.
+//!
+//! A layered tile index keeps each kind of tile content in its own planes:
+//! the marker byte, the facility ID (low and high plane), and the ID of the top
+//! moving object (low and high plane). A facility, a marker, and a moving
+//! object can share one tile. `read` gives the value that a combined index
+//! would show on top: the object, else the marker, else the facility. `write`
+//! changes the layer of the value; zero clears the top layer. Code that must
+//! keep the other layers uses the layer functions.
 
 use super::ids::sc2microsim_layout;
 use super::ids::sc2overlay_layout as layout;
@@ -14,14 +21,98 @@ pub const EXTRA_THING: i64 = layout::EXTRA_THING;
 pub const EXTRA_FACILITY_HIGH: i64 = 16384;
 pub const HIGH_FACILITY_FIRST_RECORD: i64 = sc2microsim_layout::ORIGINAL_COUNT + EXTRA_SIGN - EXTRA_FACILITY;
 
+/// Planes of a layered tile index.
+pub const LAYERED_PLANES: i64 = 5;
+const FACILITY_PLANE: i64 = 1;
+const OBJECT_PLANE: i64 = 3;
+
 /// A wide map stores a low and a high plane, so its cell count is half its bytes.
-/// No square narrow plane of a supported map size has one of these sizes.
+/// A layered index has five planes. No square narrow plane of a supported map
+/// size has one of these sizes.
 #[inline]
 pub fn cells_for(byte_count: i64) -> i64 {
     match byte_count {
         512 | 2048 | 8192 | 32768 | 131072 | 294912 | 524288 | 819200 | 2097152 | 8388608 | 33554432 => byte_count / 2,
+        1280 | 5120 | 20480 | 81920 | 327680 | 737280 | 1310720 | 2048000 | 5242880 | 20971520 | 83886080 => byte_count / LAYERED_PLANES,
         _ => byte_count,
     }
+}
+
+#[inline]
+pub fn is_layered(data: &[u8]) -> bool {
+    let cells = count(data);
+
+    cells != data.len() as i64 && cells * LAYERED_PLANES == data.len() as i64
+}
+
+/// An empty layered index of `cells` tiles.
+pub fn layered(cells: i64) -> Vec<u8> {
+    vec![0; (cells * LAYERED_PLANES) as usize]
+}
+
+#[inline]
+fn wide_at(data: &[u8], plane: i64, index: i64) -> i64 {
+    let cells = data.len() as i64 / LAYERED_PLANES;
+
+    data[(plane * cells + index) as usize] as i64 | ((data[((plane + 1) * cells + index) as usize] as i64) << 8)
+}
+
+#[inline]
+fn set_wide_at(data: &mut [u8], plane: i64, index: i64, value: i64) {
+    let cells = data.len() as i64 / LAYERED_PLANES;
+    data[(plane * cells + index) as usize] = value as u8;
+    data[((plane + 1) * cells + index) as usize] = (value >> 8) as u8;
+}
+
+/// The marker byte of a layered index.
+#[inline]
+pub fn marker(data: &[u8], index: i64) -> i64 {
+    data[index as usize] as i64
+}
+
+#[inline]
+pub fn set_marker(data: &mut [u8], index: i64, value: i64) {
+    data[index as usize] = value as u8;
+}
+
+/// The facility ID of a layered index, or 0.
+#[inline]
+pub fn facility(data: &[u8], index: i64) -> i64 {
+    wide_at(data, FACILITY_PLANE, index)
+}
+
+#[inline]
+pub fn set_facility(data: &mut [u8], index: i64, id: i64) {
+    set_wide_at(data, FACILITY_PLANE, index, id);
+}
+
+/// The ID of the top moving object of a layered index, or 0.
+#[inline]
+pub fn object(data: &[u8], index: i64) -> i64 {
+    wide_at(data, OBJECT_PLANE, index)
+}
+
+#[inline]
+pub fn set_object(data: &mut [u8], index: i64, id: i64) {
+    set_wide_at(data, OBJECT_PLANE, index, id);
+}
+
+/// The facility of a tile: the facility layer of a layered index, else the
+/// base of the tile's object chain in a combined index.
+pub fn base_facility(data: &[u8], things_data: &[u8], index: i64) -> i64 {
+    if is_layered(data) {
+        return facility(data, index);
+    }
+
+    let mut id = read(data, index);
+    let mut hops = 0;
+
+    while is_thing(id) && hops < super::things::count(things_data) {
+        id = super::things::field(things_data, thing_record(id), sc2thing_layout::FIELD_LABEL);
+        hops += 1;
+    }
+
+    if is_facility(id) { id } else { 0 }
 }
 
 #[inline]
@@ -34,20 +125,57 @@ pub fn read(data: &[u8], index: i64) -> i64 {
     let cells = count(data);
     let low = data[index as usize] as i64;
 
-    if cells != data.len() as i64 {
+    if cells == data.len() as i64 {
+        low
+    } else if cells * 2 == data.len() as i64 {
         low | ((data[(cells + index) as usize] as i64) << 8)
     } else {
-        low
+        let object = object(data, index);
+
+        if object != 0 {
+            object
+        } else if low != 0 {
+            low
+        } else {
+            facility(data, index)
+        }
     }
 }
 
 #[inline]
 pub fn write(data: &mut [u8], index: i64, value: i64) {
-    data[index as usize] = value as u8;
     let cells = count(data);
+
+    if cells * 2 < data.len() as i64 {
+        write_layer(data, index, value);
+
+        return;
+    }
+
+    data[index as usize] = value as u8;
 
     if cells != data.len() as i64 {
         data[(cells + index) as usize] = (value >> 8) as u8;
+    }
+}
+
+/// `write` of a layered index: the value goes to its own layer. A sign ID has
+/// no layer; signs of a layered city are XSGN records.
+fn write_layer(data: &mut [u8], index: i64, value: i64) {
+    if value == 0 {
+        if object(data, index) != 0 {
+            set_object(data, index, 0);
+        } else if marker(data, index) != 0 {
+            set_marker(data, index, 0);
+        } else {
+            set_facility(data, index, 0);
+        }
+    } else if is_thing(value) {
+        set_object(data, index, value);
+    } else if is_facility(value) {
+        set_facility(data, index, value);
+    } else if (layout::ORIGINAL_RESERVED_FIRST..=layout::ORIGINAL_MAX_ID).contains(&value) {
+        set_marker(data, index, value);
     }
 }
 
@@ -121,8 +249,33 @@ pub fn find_byte(data: &[u8], value: u8, start: i64) -> i64 {
 }
 
 /// OverlayData.find: the first cell at or after `start` that holds `value`.
+/// A layered index searches the layer of the value.
 pub fn find(data: &[u8], value: i64, start: i64) -> i64 {
     let cells = count(data);
+
+    if is_layered(data) {
+        let (plane, wide) = if is_thing(value) {
+            (OBJECT_PLANE, true)
+        } else if is_facility(value) {
+            (FACILITY_PLANE, true)
+        } else if (1..=layout::ORIGINAL_MAX_ID).contains(&value) && !is_sign(value) {
+            (0, false)
+        } else {
+            return -1;
+        };
+        let plane_data = &data[(plane * cells) as usize..((plane + 1) * cells) as usize];
+        let mut found = find_byte(plane_data, (value & 255) as u8, start);
+
+        while found >= 0 {
+            if !wide || wide_at(data, plane, found) == value {
+                return found;
+            }
+
+            found = find_byte(plane_data, (value & 255) as u8, found + 1);
+        }
+
+        return -1;
+    }
     let mut found = find_byte(data, (value & 255) as u8, start);
 
     while found >= 0 && found < cells {
@@ -137,6 +290,12 @@ pub fn find(data: &[u8], value: i64, start: i64) -> i64 {
 }
 
 pub fn occurrences(data: &[u8], value: i64) -> i64 {
+    if is_layered(data) && (1..=layout::ORIGINAL_MAX_ID).contains(&value) && !is_facility(value) && !is_thing(value) {
+        let cells = count(data) as usize;
+
+        return data[..cells].iter().filter(|&&byte| byte as i64 == value).count() as i64;
+    }
+
     if count(data) == data.len() as i64 {
         if !(0..=255).contains(&value) {
             return 0;
@@ -182,6 +341,42 @@ mod tests {
             let narrow = edge * edge;
             assert_eq!(cells_for(narrow), narrow, "a narrow {edge} plane");
             assert_eq!(cells_for(narrow * 2), narrow, "a wide {edge} plane");
+            assert_eq!(cells_for(narrow * LAYERED_PLANES), narrow, "a layered {edge} index");
+        }
+    }
+
+    #[test]
+    fn a_layered_index_keeps_a_facility_a_marker_and_an_object_on_one_tile() {
+        for edge in [16i64, 128, 4096] {
+            let cells = edge * edge;
+            let mut data = layered(cells);
+            assert_eq!(cells_for(data.len() as i64), cells);
+            assert!(is_layered(&data));
+            assert!(!is_layered(&vec![0; cells as usize]) && !is_layered(&vec![0; cells as usize * 2]));
+            let index = cells - 1;
+            let facility_value = facility_id(HIGH_FACILITY_FIRST_RECORD + 5);
+            let object_value = thing_id(900);
+            write(&mut data, index, facility_value);
+            write(&mut data, index, 0xff);
+            write(&mut data, index, object_value);
+            assert_eq!(
+                (facility(&data, index), marker(&data, index), object(&data, index)),
+                (facility_value, 0xff, object_value)
+            );
+            assert_eq!(read(&data, index), object_value, "the object is on top");
+            assert!(blocks_thing(read(&data, index)));
+            assert_eq!(find(&data, facility_value, 0), index);
+            assert_eq!(find(&data, object_value, 0), index);
+            assert_eq!(find(&data, 0xff, 0), index);
+            assert_eq!(occurrences(&data, 0xff), 1);
+            assert_eq!(base_facility(&data, &[], index), facility_value);
+
+            write(&mut data, index, 0);
+            assert_eq!(read(&data, index), 0xff, "clearing the top shows the marker");
+            write(&mut data, index, 0);
+            assert_eq!(read(&data, index), facility_value);
+            write(&mut data, index, 0);
+            assert_eq!(data, layered(cells));
         }
     }
 
