@@ -43,6 +43,17 @@ static var GRADIENTS: Dictionary[CityViewMode.Mode, PackedColorArray] = {
 }
 # default gradient for the remaining nuisance maps
 static var DEFAULT_GRADIENT := PackedColorArray([Color("2b5260"), Color("ff694c")])
+# one color for each land level, from the heightmap of the original JavaScript OpenSC2K
+static var HEIGHT_COLORS := PackedColorArray([
+	Color8(0, 0, 0), Color8(0, 68, 0), Color8(0, 136, 0), Color8(0, 204, 0),
+	Color8(0, 255, 0), Color8(68, 204, 0), Color8(150, 150, 0), Color8(204, 68, 0),
+	Color8(255, 0, 17), Color8(255, 0, 85), Color8(255, 0, 153), Color8(255, 0, 221),
+	Color8(221, 0, 255), Color8(153, 0, 255), Color8(85, 0, 255), Color8(17, 0, 255),
+	Color8(0, 0, 204), Color8(0, 0, 204), Color8(0, 0, 204), Color8(0, 0, 204),
+	Color8(0, 0, 204), Color8(0, 0, 204), Color8(0, 0, 204), Color8(0, 0, 204),
+	Color8(0, 0, 204), Color8(0, 0, 204), Color8(0, 0, 204), Color8(0, 0, 204),
+	Color8(0, 0, 204), Color8(0, 0, 204), Color8(0, 0, 204), Color8(0, 0, 204),
+])
 # decline, steady, and growth. the original map reads as a sign, not a scale
 static var GROWTH_COLORS := PackedColorArray([Color("e2453c"), Color("b9c2cd"), Color("35d16a")])
 
@@ -75,7 +86,7 @@ static func color(data_value: int, mode: CityViewMode.Mode) -> Color:
 		return Color("535b67")
 
 	if mode == CityViewMode.Mode.HEIGHT:
-		return Color.from_hsv((31 - clampi(data_value, 0, 31)) / 31.0 * 0.75, 0.85, 0.95)
+		return HEIGHT_COLORS[clampi(data_value, 0, HEIGHT_COLORS.size() - 1)]
 
 	if mode in [CityViewMode.Mode.WATER, CityViewMode.Mode.POWER]:
 		return [Color("687381"), Color("e25c46"), Color("42bde8") if mode == CityViewMode.Mode.WATER else Color("f4d35e")][data_value]
