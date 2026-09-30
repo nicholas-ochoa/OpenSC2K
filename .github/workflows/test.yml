@@ -24,6 +24,12 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
+      - name: Restore the Rust build cache
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: |
+            native/simulation
+            native/rendering
       - name: Install test dependencies
         run: |
           python -m pip install Pillow
@@ -42,10 +48,32 @@ jobs:
         run: |
           ln -s "$GITHUB_WORKSPACE/private-assets/references" references
           ln -s "$GITHUB_WORKSPACE/private-assets/ext" ext
-          tools/validate_project.sh --strict --keep-going
+          tools/validate_project.sh --strict --keep-going --skip-native-tests
       - name: Test release automation
         run: python -m unittest discover -s tools -p test_release_automation.py
       - name: Remove private inputs and generated files
         if: always()
         run: rm -rf private-assets references ext local game/.godot
-      # No artifact uploads or caches in this job.
+      # No artifact uploads. The Rust cache holds only native/*/target and ~/.cargo.
+
+  native-tests:
+    name: Run native unit tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - name: Restore the Rust build cache
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: |
+            native/simulation
+            native/rendering
+      # rust-toolchain.toml selects the Rust version. rustup is on each runner image
+      - name: Run cargo tests
+        run: |
+          for crate in native/simulation native/rendering; do
+            cargo test --release --manifest-path "$crate/Cargo.toml"
+          done

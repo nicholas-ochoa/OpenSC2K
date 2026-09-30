@@ -41,6 +41,12 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
+      - name: Restore the Rust build cache
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: |
+            native/simulation
+            native/rendering
       # rust-toolchain.toml selects the Rust version. rustup is on each runner image
       - name: Build the package libraries
         run: python tools/build_native.py --package

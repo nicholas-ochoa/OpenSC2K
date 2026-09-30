@@ -3,8 +3,10 @@
 The **CI and nightly** GitHub Actions workflow runs on pull requests and pushes to `main`.
 It has two jobs:
 
-- **Test** runs `tools/validate_project.sh --strict --keep-going` with the original-game assets.
-  This is the same `headless` suite that you run locally before merge.
+- **Test** runs `tools/validate_project.sh --strict --keep-going --skip-native-tests` with the
+  original-game assets. This is the same `headless` suite that you run locally before merge.
+  A separate **native unit tests** job runs `cargo test --release` for each native crate on a
+  Linux runner at the same time. It does not use the assets.
 - **Build** makes Windows x64, Linux x64, and universal macOS packages on a separate runner
   without the assets. Packages are available as the `desktop-packages` workflow artifact for one day.
   Before it starts, a **native** job on a Windows, a Linux, and a macOS runner builds the native
@@ -23,7 +25,10 @@ The Test job checks out a pinned commit from the private `nicholas-ochoa/OpenSC2
 repository and links its `references/` and `ext/` folders into the checkout. `--strict` makes
 missing inputs and skipped checks fail the job. It uses Dummy audio.
 
-The job uploads no artifacts and saves no caches. Full test output appears in the Actions log.
+The job uploads no artifacts. Full test output appears in the Actions log.
+The Test, native unit test, and native library jobs restore and save a Rust build cache with
+`Swatinem/rust-cache`. The cache holds only `native/*/target` and `~/.cargo`, never the assets.
+A change to `Cargo.lock`, `Cargo.toml`, or `rust-toolchain.toml` starts a new cache.
 Inputs and generated files are removed at the end. Do not upload screenshots, saves, extracted
 packs, or other files produced from the original assets.
 

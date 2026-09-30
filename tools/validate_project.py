@@ -309,6 +309,8 @@ def main():
     parser.add_argument('--jobs', type=int, default=min(8, max(1, (os.cpu_count() or 1) // 2)),
                         help='Concurrent isolated groups (default: half the CPUs, up to 8; use 1 for timings)')
     parser.add_argument('--strict', action='store_true', help='Treat missing prerequisites and skips as failures')
+    parser.add_argument('--skip-native-tests', action='store_true',
+                        help='Do not run cargo tests. CI runs them in a separate job')
     parser.add_argument('--godot', default=os.environ.get('GODOT', 'godot'))
     parser.add_argument('--output', type=Path, help='Also save logs and summary.json in this directory')
     args = parser.parse_args()
@@ -316,6 +318,8 @@ def main():
         parser.error('--jobs must be at least 1')
     started = time.monotonic()
     suites = args.suite or ([] if args.test else ['headless'])
+    if args.skip_native_tests and 'release' in suites:
+        parser.error('the release suite requires native tests')
     entries = select(registry(), suites, args.test)
     if args.list:
         for e in entries:
@@ -367,17 +371,18 @@ def main():
             except (OSError, subprocess.CalledProcessError) as error:
                 record('native-build', 'FAIL', round(time.monotonic() - native_started, 3), str(error))
                 return 1
-            report('RUN  native-tests')
-            native_started = time.monotonic()
-            try:
-                build_native.test(quiet=True)
-                record('native-tests', 'PASS', round(time.monotonic() - native_started, 3))
-            except (OSError, subprocess.CalledProcessError) as error:
-                detail = getattr(error, 'stdout', b'') or b''
-                record('native-tests', 'FAIL', round(time.monotonic() - native_started, 3),
-                       str(error) + '\n' + detail.decode(errors='replace')[-4000:])
-                if not args.keep_going:
-                    return 1
+            if not args.skip_native_tests:
+                report('RUN  native-tests')
+                native_started = time.monotonic()
+                try:
+                    build_native.test(quiet=True)
+                    record('native-tests', 'PASS', round(time.monotonic() - native_started, 3))
+                except (OSError, subprocess.CalledProcessError) as error:
+                    detail = getattr(error, 'stdout', b'') or b''
+                    record('native-tests', 'FAIL', round(time.monotonic() - native_started, 3),
+                           str(error) + '\n' + detail.decode(errors='replace')[-4000:])
+                    if not args.keep_going:
+                        return 1
             project.configure('startup')
             if not run('parse', godot_command(extra=['--editor', '--import'])):
                 return 1
