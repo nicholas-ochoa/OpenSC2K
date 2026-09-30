@@ -136,6 +136,8 @@ class Project:
                 (self.base / path.name).symlink_to(path, target_is_directory=path.is_dir())
         # A fresh checkout must share the editor import cache with all test projects.
         (ROOT / 'game/.godot').mkdir(exist_ok=True)
+        # The native build writes here after this link is made.
+        (ROOT / 'game/bin').mkdir(exist_ok=True)
         for path in (ROOT / 'game').iterdir():
             if path.name not in ('project.godot', 'override.cfg'):
                 (self.path / path.name).symlink_to(path, target_is_directory=path.is_dir())
