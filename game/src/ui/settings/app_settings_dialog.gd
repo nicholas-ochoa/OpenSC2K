@@ -232,6 +232,12 @@ func show_values(
 	fullscreen_check.button_pressed = fullscreen
 	folder_edit.text = pack_file_path(folder) if source == "folder" else ""
 	tabs.current_tab = 0
+
+	# every tab opens at the top, not where the player left it
+	for tab in tabs.get_children():
+		if tab is ScrollContainer:
+			(tab as ScrollContainer).scroll_vertical = 0
+
 	_update_use_defaults(tabs.current_tab)
 	popup_centered()
 

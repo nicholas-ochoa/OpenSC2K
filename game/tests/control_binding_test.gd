@@ -8,6 +8,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	_test_text_round_trip()
+	_test_full_text()
 	_test_matching()
 	_test_catalog_defaults()
 	_test_binding_set()
@@ -31,6 +32,23 @@ func _test_text_round_trip() -> void:
 	assert(ctrl.modifiers == (ControlBinding.CONTROL if OS.has_feature("macos") else ControlBinding.COMMAND))
 	var command := ControlBinding.from_text("key:Command+Z")
 	assert(command.key_with_masks() == ((KEY_MASK_META if OS.has_feature("macos") else KEY_MASK_CTRL) | KEY_Z))
+
+
+# tooltips name every key and modifier in words
+func _test_full_text() -> void:
+	var mac := OS.has_feature("macos")
+	assert(ControlBinding.key(KEY_KP_SUBTRACT).full_text() == "Keypad Subtract")
+	assert(ControlBinding.key(KEY_TAB).full_text() == "Tab")
+	assert(ControlBinding.key(KEY_PAGEUP).full_text() == "Page Up")
+	assert(ControlBinding.key(KEY_ALT).full_text() == ("Option" if mac else "Alt"))
+	assert(ControlBinding.key(KEY_META).full_text() == ("Cmd" if mac else "Super"))
+	assert(ControlBinding.key(KEY_CTRL).full_text() == "Ctrl")
+	var all_mods := ControlBinding.COMMAND | ControlBinding.ALT | ControlBinding.SHIFT
+	assert(ControlBinding.key(KEY_S, all_mods).full_text() == ("Option+Shift+Cmd+S" if mac else "Alt+Shift+Ctrl+S"))
+	assert(ControlBinding.mouse(MOUSE_BUTTON_RIGHT, ControlBinding.SHIFT).full_text() == "Shift+Right button")
+
+	if mac:
+		assert(ControlBinding.key(KEY_Z, ControlBinding.CONTROL).full_text() == "Ctrl+Z")
 
 
 func _test_matching() -> void:

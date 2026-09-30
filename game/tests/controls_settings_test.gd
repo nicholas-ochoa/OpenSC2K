@@ -23,6 +23,7 @@ func _run() -> void:
 	dialog = main.main_overlays.settings_dialog
 
 	await _test_tab_visibility()
+	await _test_row_layout()
 	_test_capture_and_conflicts()
 	_test_use_defaults()
 	_test_save_changes()
@@ -47,6 +48,35 @@ func _test_tab_visibility() -> void:
 	dialog.tabs.current_tab = 0
 	assert(not dialog.use_defaults_button.is_visible_in_tree())
 	dialog.tabs.current_tab = AppSettingsDialog.CONTROLS_TAB
+
+
+func _test_row_layout() -> void:
+	var list := dialog.controls_list
+	var starts := {}
+	var previous: Node
+
+	for row in list.get_children():
+		if row is HBoxContainer:
+			assert(previous is HSeparator, "A separator is above %s" % row.name)
+			var label := row.get_node("Label") as Label
+			starts[roundi(label.get_global_rect().end.x)] = true
+			assert(label.get_global_rect().size.x == ControlsBindingList.LABEL_WIDTH, "%s label wraps" % row.name)
+
+		previous = row
+
+	assert(starts.size() == 1, "Bindings start at the same place on every row")
+	# chips name the binding in words
+	var chip := list.get_node("zoom_out").get_child(1).get_child(0) as Control
+	assert(chip.tooltip_text == ControlBindings.defaults().for_action("zoom_out")[0].full_text())
+	# a later open starts the Controls tab at the top
+	var scroll := dialog.tabs.get_child(AppSettingsDialog.CONTROLS_TAB) as ScrollContainer
+	scroll.scroll_vertical = 400
+	await process_frame
+	assert(scroll.scroll_vertical > 0)
+	dialog.hide()
+	main.settings.open_settings_dialog()
+	dialog.tabs.current_tab = AppSettingsDialog.CONTROLS_TAB
+	assert(scroll.scroll_vertical == 0, "The Controls tab opens at the top")
 
 
 func _test_capture_and_conflicts() -> void:

@@ -33,6 +33,19 @@ const STORED_KEY_NAMES: Dictionary[int, String] = {
 const MODIFIER_KEYS: Dictionary[int, int] = {
 	KEY_SHIFT: SHIFT, KEY_ALT: ALT, KEY_META: COMMAND, KEY_CTRL: COMMAND,
 }
+# full key names for tooltips, where the chip shows a symbol or a short name
+const FULL_KEY_NAMES: Dictionary[int, String] = {
+	KEY_ESCAPE: "Escape", KEY_TAB: "Tab", KEY_BACKTAB: "Back Tab", KEY_BACKSPACE: "Backspace",
+	KEY_DELETE: "Delete", KEY_INSERT: "Insert", KEY_ENTER: "Enter", KEY_KP_ENTER: "Keypad Enter",
+	KEY_PAGEUP: "Page Up", KEY_PAGEDOWN: "Page Down", KEY_HOME: "Home", KEY_END: "End",
+	KEY_LEFT: "Left Arrow", KEY_UP: "Up Arrow", KEY_RIGHT: "Right Arrow", KEY_DOWN: "Down Arrow",
+	KEY_SHIFT: "Shift", KEY_CTRL: "Ctrl", KEY_CAPSLOCK: "Caps Lock", KEY_NUMLOCK: "Num Lock",
+	KEY_SCROLLLOCK: "Scroll Lock", KEY_PRINT: "Print Screen", KEY_PAUSE: "Pause", KEY_CLEAR: "Clear",
+	KEY_SPACE: "Space", KEY_MINUS: "Minus (-)", KEY_EQUAL: "Equals (=)", KEY_BRACKETLEFT: "Left Bracket ([)",
+	KEY_BRACKETRIGHT: "Right Bracket (])", KEY_BACKSLASH: "Backslash (\\)", KEY_SEMICOLON: "Semicolon (;)",
+	KEY_APOSTROPHE: "Apostrophe (')", KEY_QUOTELEFT: "Grave Accent (`)", KEY_COMMA: "Comma (,)",
+	KEY_PERIOD: "Period (.)", KEY_SLASH: "Slash (/)",
+}
 
 var device := Device.KEY
 var code := 0
@@ -202,6 +215,48 @@ func display_text() -> String:
 			label = layout_key
 
 	return ScurkContextMenu.key_hint((key_with_masks() & KEY_MODIFIER_MASK) | label)
+
+
+# The tooltip text, with every modifier and key named in words, such as
+# "Cmd+Shift+Keypad Subtract".
+func full_text() -> String:
+	var mac := is_macos()
+	var names := PackedStringArray()
+
+	for entry in [[CONTROL, "Ctrl", ""], [ALT, "Option", "Alt"], [SHIFT, "Shift", "Shift"], [COMMAND, "Cmd", "Ctrl"]]:
+		if modifiers & entry[0]:
+			names.append(entry[1] if mac else entry[2])
+
+	if device == Device.MOUSE:
+		names.append(MOUSE_LABELS.get(code, "Mouse %d" % code))
+	else:
+		names.append(full_key_name(code))
+
+	return "+".join(names)
+
+
+static func full_key_name(keycode: int) -> String:
+	if keycode == KEY_ALT:
+		return "Option" if is_macos() else "Alt"
+
+	if keycode == KEY_META:
+		return "Cmd" if is_macos() else "Super"
+
+	if FULL_KEY_NAMES.has(keycode):
+		return FULL_KEY_NAMES[keycode]
+
+	if _is_letter_or_digit(keycode) and DisplayServer.get_name() != "headless":
+		var layout_key := DisplayServer.keyboard_get_label_from_physical(keycode as Key)
+
+		if layout_key != KEY_NONE:
+			keycode = layout_key
+
+	var name := OS.get_keycode_string(keycode)
+
+	if name.begins_with("Kp "):
+		return "Keypad " + name.substr(3)
+
+	return name
 
 
 # macOS menus show modifier symbols. Other systems show names joined with "+"

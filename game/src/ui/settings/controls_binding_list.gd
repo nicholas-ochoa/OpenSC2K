@@ -7,6 +7,8 @@ extends VBoxContainer
 
 signal button_clicked
 
+const LABEL_WIDTH := 190
+
 var pending := ControlBindings.defaults()
 var capture_action := ""
 var capture_overlay: PanelContainer
@@ -72,6 +74,7 @@ func rebuild() -> void:
 
 		for action in ControlActions.all():
 			if action.category == category:
+				add_child(HSeparator.new())
 				add_child(_action_row(action))
 
 
@@ -79,9 +82,12 @@ func _action_row(action: ControlActions.Action) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.name = action.id
 	row.add_theme_constant_override("separation", 8)
+	# long labels wrap, so the bindings start at the same place on every row
 	var label := Label.new()
+	label.name = "Label"
 	label.text = action.label
-	label.custom_minimum_size = Vector2(190, 28)
+	label.custom_minimum_size = Vector2(LABEL_WIDTH, 28)
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(label)
 	var chips := HFlowContainer.new()
@@ -107,6 +113,7 @@ func _action_row(action: ControlActions.Action) -> HBoxContainer:
 		chips.add_child(_chip(action.id, index, list[index]))
 
 	var add := Button.new()
+	add.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	add.name = "Add"
 	add.text = "+"
 	add.tooltip_text = "Add a key or mouse button for %s" % action.label
@@ -122,6 +129,7 @@ func _action_row(action: ControlActions.Action) -> HBoxContainer:
 func _chip(id: String, index: int, binding: ControlBinding) -> PanelContainer:
 	var chip := PanelContainer.new()
 	chip.theme_type_variation = &"PanelPadding5_2_5_2"
+	chip.tooltip_text = binding.full_text()
 	var content := HBoxContainer.new()
 	content.add_theme_constant_override("separation", 2)
 	chip.add_child(content)
