@@ -5,15 +5,19 @@
 [node name="CityRenameDialog" type="ConfirmationDialog"]
 visible = true
 title = "Rename City"
-dialog_text = "Enter a new name for the city."
-min_size = Vector2i(440, 170)
+min_size = Vector2i(360, 110)
 script = ExtResource("1_rename")
 
 [node name="Fields" type="VBoxContainer" parent="."]
-offset_left = 14.0
-offset_top = 58.0
-offset_right = 426.0
-offset_bottom = 92.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 352.0
+offset_bottom = 70.0
+theme_override_constants/separation = 8
+
+[node name="Prompt" type="Label" parent="Fields"]
+layout_mode = 2
+text = "Enter a new name for the city."
 
 [node name="NameInput" type="LineEdit" parent="Fields"]
 layout_mode = 2
