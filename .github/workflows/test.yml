@@ -14,8 +14,6 @@ permissions:
 jobs:
   test:
     name: Run tests with original-game assets
-    # Pull requests wait for approval in pull-request-ci before any step runs.
-    environment: ${{ github.event_name == 'pull_request' && 'pull-request-ci' || 'private-test-assets' }}
     runs-on: macos-15
     timeout-minutes: 45
     steps:

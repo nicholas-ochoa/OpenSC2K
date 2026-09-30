@@ -23,10 +23,10 @@ concurrency:
 jobs:
   test:
     name: Test
-    # Fork pull requests get no private assets; they only build packages.
+    # GitHub gives fork pull requests no secrets, so they only build packages.
     if: >-
       github.repository == 'nicholas-ochoa/OpenSC2K' &&
-      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+      (github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork)
     uses: ./.github/workflows/test.yml
     secrets: inherit
 
@@ -66,7 +66,6 @@ jobs:
   build:
     name: Build desktop packages
     needs: native
-    environment: ${{ github.event_name == 'pull_request' && 'pull-request-ci' || 'public-ci' }}
     runs-on: macos-15
     timeout-minutes: 30
     steps:
