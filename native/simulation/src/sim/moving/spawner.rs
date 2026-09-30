@@ -411,7 +411,16 @@ pub fn spawn_sailboats(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn spawn_maxis_man(data: &mut [u8], text: &mut [u8], point: Vec2i, target: Vec2i, goal: i64, height: i64, map_edge: i64) -> Spawned {
+pub fn spawn_maxis_man(
+    data: &mut [u8],
+    text: &mut [u8],
+    point: Vec2i,
+    target: Vec2i,
+    goal: i64,
+    height: i64,
+    map_edge: i64,
+    caps: &VehicleCaps,
+) -> Spawned {
     let index = motion::index(point, map_edge);
     let target_index = motion::index(target, map_edge);
 
@@ -424,7 +433,7 @@ pub fn spawn_maxis_man(data: &mut [u8], text: &mut [u8], point: Vec2i, target: V
         return Spawned::default();
     }
 
-    let record = first_free_record(data);
+    let record = caps.free_record(data);
 
     if record == 0 {
         return Spawned::default();
@@ -877,7 +886,16 @@ mod tests {
         let mut data = vec![0u8; 480];
         let mut text = vec![0u8; 128 * 128];
         text[30 * 128 + 20] = 0xff;
-        let spawned = spawn_maxis_man(&mut data, &mut text, Vec2i::new(18, 20), Vec2i::new(30, 20), 241, 7, 128);
+        let spawned = spawn_maxis_man(
+            &mut data,
+            &mut text,
+            Vec2i::new(18, 20),
+            Vec2i::new(30, 20),
+            241,
+            7,
+            128,
+            &VehicleCaps::legacy(128),
+        );
         assert!(spawned.spawned && spawned.record == 1);
         assert_eq!(data[12] as i64, TYPE_MAXIS_MAN);
         assert_eq!(
@@ -885,7 +903,16 @@ mod tests {
             (2, 18, 20, 7, 30, 20, 241)
         );
         assert_eq!(text[18 * 128 + 20], 202, "Maxis Man links its record and target");
-        let again = spawn_maxis_man(&mut data, &mut text, Vec2i::new(17, 20), Vec2i::new(30, 20), 241, 7, 128);
+        let again = spawn_maxis_man(
+            &mut data,
+            &mut text,
+            Vec2i::new(17, 20),
+            Vec2i::new(30, 20),
+            241,
+            7,
+            128,
+            &VehicleCaps::legacy(128),
+        );
         assert!(!again.spawned, "Maxis Man dispatch keeps one active hero");
 
         let mut buildings = vec![0u8; 128 * 128];
@@ -1027,6 +1054,29 @@ mod tests {
 
         assert_eq!(caps.free_record(&city.xthg.data), 0);
         assert!(!spawn_helicopter(&mut city.xthg.data, &mut city.xtxt.data, point, &mut SimRandom::new(1), &caps, edge).spawned);
+        let full = city.xthg.data.clone();
+        let target = Vec2i::new(point.x + 4, point.y);
+        assert!(!spawn_maxis_man(&mut city.xthg.data, &mut city.xtxt.data, point, target, 241, 7, edge, &caps).spawned);
+        assert!(!crate::sim::moving::result::spawn_explosion(
+            &mut city.xtxt.data,
+            &mut city.xthg.data,
+            point,
+            0,
+            0,
+            1,
+            edge,
+            &caps
+        ));
+
+        for disaster in [
+            crate::sim::disasters::start::DISASTER_MONSTER,
+            crate::sim::disasters::start::DISASTER_TORNADO,
+        ] {
+            let started = crate::sim::disasters::start::start(&mut city, disaster, point, Some(&mut SimRandom::new(1)), None);
+            assert!(!started.started, "a full pool starts no moving disaster");
+        }
+
+        assert_eq!(city.xthg.data, full, "a special object neither takes a record nor removes one");
         things::write(&mut city.xthg.data, RECORD_SIZE, 0);
         assert_eq!(
             caps.free_record(&city.xthg.data),

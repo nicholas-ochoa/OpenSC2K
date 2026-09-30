@@ -184,6 +184,7 @@ pub fn run(
                     buildings: maps.maps.buildings,
                     underground: maps.maps.underground,
                     map_edge,
+                    vehicle_caps: maps.maps.vehicle_caps,
                 };
                 train::update(
                     &train_maps,
@@ -211,6 +212,7 @@ pub fn run(
                     random,
                     &mut counters,
                     map_edge,
+                    &maps.maps.vehicle_caps,
                 );
             }
             _ => {}

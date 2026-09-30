@@ -127,6 +127,15 @@ pub fn record_type(data: &[u8], record: i64) -> i64 {
 /// A spawned explosion record, as the MaxisManThingTick, TrainThingTick, and
 /// DisasterMapState _spawn_explosion helpers.
 #[allow(clippy::too_many_arguments)]
-pub fn spawn_explosion(text: &mut [u8], data: &mut [u8], point: Vec2i, height: i64, state: i64, goal: i64, map_edge: i64) -> bool {
-    crate::sim::disasters::map::spawn_explosion(text, data, point, height, state, goal, map_edge)
+pub fn spawn_explosion(
+    text: &mut [u8],
+    data: &mut [u8],
+    point: Vec2i,
+    height: i64,
+    state: i64,
+    goal: i64,
+    map_edge: i64,
+    caps: &super::spawner::VehicleCaps,
+) -> bool {
+    crate::sim::disasters::map::spawn_explosion(text, data, point, height, state, goal, map_edge, caps)
 }

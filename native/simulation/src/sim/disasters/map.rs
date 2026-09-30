@@ -12,6 +12,7 @@ use crate::sim::geom::{Rect2i, Vec2i};
 use crate::sim::grid;
 use crate::sim::growth::development::{self, ZoneMaps};
 use crate::sim::ids::building_tile_ids as tiles;
+use crate::sim::moving::spawner::VehicleCaps;
 use crate::sim::overlay;
 use crate::sim::random::{SimLfsrRandom, SimRandom};
 use crate::sim::things;
@@ -548,7 +549,9 @@ fn process_fire_cell(
             collapse_structure(maps, point, random, lfsr);
             counters.structure_collapses += 1;
 
-            if lfsr.next_mask(0x0f) == 0 && spawn_explosion(maps.maps.text_overlays, maps.things, point, 0, 0, 1, edge) {
+            if lfsr.next_mask(0x0f) == 0
+                && spawn_explosion(maps.maps.text_overlays, maps.things, point, 0, 0, 1, edge, &maps.maps.vehicle_caps)
+            {
                 counters.created_explosions += 1;
             }
 
@@ -895,16 +898,27 @@ fn seed_special_toxic(text: &mut [u8], site: Rect2i, point: Vec2i, map_edge: i64
 
 /// DisasterMapState._spawn_explosion.
 #[allow(clippy::too_many_arguments)]
-pub fn spawn_explosion(text: &mut [u8], thing_data: &mut [u8], point: Vec2i, height: i64, state: i64, goal: i64, map_edge: i64) -> bool {
+pub fn spawn_explosion(
+    text: &mut [u8],
+    thing_data: &mut [u8],
+    point: Vec2i,
+    height: i64,
+    state: i64,
+    goal: i64,
+    map_edge: i64,
+    caps: &VehicleCaps,
+) -> bool {
     let tile_index = index(point, map_edge);
 
     if tile_index < 0 || overlay::blocks_thing(overlay::read(text, tile_index)) {
         return false;
     }
 
-    let Some(record) = (1..things::count(thing_data)).find(|record| things::read(thing_data, record * things::RECORD_SIZE) == 0) else {
+    let record = caps.free_record(thing_data);
+
+    if record == 0 {
         return false;
-    };
+    }
 
     let offset = record * things::RECORD_SIZE;
     things::write(thing_data, offset, things::TYPE_EXPLOSION);

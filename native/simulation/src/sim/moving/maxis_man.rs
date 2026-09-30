@@ -2,6 +2,7 @@
 
 use super::motion::{self, DIRECTIONS, direction_quadrant, index};
 use super::result::{MovingThingResult, queue_thing_sound, spawn_explosion};
+use super::spawner::VehicleCaps;
 use crate::sim::geom::Vec2i;
 use crate::sim::ids::sc2altitude_layout as altitude_layout;
 use crate::sim::ids::sc2tile_flags as flag_bits;
@@ -30,6 +31,7 @@ pub fn update(
     random: &mut SimRandom,
     counters: &mut MovingThingResult,
     map_edge: i64,
+    caps: &VehicleCaps,
 ) {
     let offset = record * RECORD_SIZE;
     let mut current = Vec2i::new(things::read(data, offset + 3), things::read(data, offset + 4));
@@ -80,7 +82,7 @@ pub fn update(
                     queue_thing_sound(counters, SOUND_EXPLOSION, data, record);
                     let height = things::read(data, offset + 5);
 
-                    if spawn_explosion(text, data, next, height, 0, 1, map_edge) {
+                    if spawn_explosion(text, data, next, height, 0, 1, map_edge, caps) {
                         counters.maxis_man_explosions += 1;
                     }
 

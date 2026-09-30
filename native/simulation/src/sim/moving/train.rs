@@ -2,6 +2,7 @@
 
 use super::motion::{self, index};
 use super::result::{MovingThingResult, queue_thing_sound, spawn_explosion};
+use super::spawner::VehicleCaps;
 use crate::sim::geom::Vec2i;
 use crate::sim::ids::building_tile_ids as tiles;
 use crate::sim::ids::underground_tile_ids as under;
@@ -19,6 +20,7 @@ pub struct TrainMaps<'a> {
     pub buildings: &'a [u8],
     pub underground: &'a [u8],
     pub map_edge: i64,
+    pub vehicle_caps: VehicleCaps,
 }
 
 /// TrainThingTick.update.
@@ -93,7 +95,7 @@ pub fn update(
         counters.active_trains -= 1;
         counters.removed_trains += 1;
 
-        if spawn_explosion(text, data, current, 0, 0, 0, edge) {
+        if spawn_explosion(text, data, current, 0, 0, 0, edge, &maps.vehicle_caps) {
             counters.created_train_crash_explosions += 1;
         }
 

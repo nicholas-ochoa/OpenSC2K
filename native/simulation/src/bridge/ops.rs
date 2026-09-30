@@ -402,6 +402,7 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
                 convert::int(args, "goal", 0),
                 convert::int(args, "height", 0),
                 map_edge,
+                &crate::sim::moving::spawner::VehicleCaps::for_city(city),
             );
 
             if spawned.spawned {

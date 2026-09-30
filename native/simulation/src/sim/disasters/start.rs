@@ -142,6 +142,7 @@ fn start_moving_disaster(city: &mut City, disaster_type: i64, point: Vec2i, rand
     }
 
     let edge = city.map_size;
+    let caps = crate::sim::moving::spawner::VehicleCaps::for_city(city);
     let tornado = disaster_type == DISASTER_TORNADO;
     let thing_type = if tornado { things::TYPE_TORNADO } else { things::TYPE_MONSTER };
     let mut thing_data = city.xthg.data.clone();
@@ -159,7 +160,7 @@ fn start_moving_disaster(city: &mut City, disaster_type: i64, point: Vec2i, rand
         remove_thing(&mut thing_data, &mut text, overlay::thing_record(overlay_id), edge);
     }
 
-    let record = first_free_record(&thing_data);
+    let record = caps.free_record(&thing_data);
 
     if record == 0 {
         return result(disaster_type, clamped, false, false, 0);
@@ -248,12 +249,6 @@ fn count_type(thing_data: &[u8], thing_type: i64) -> i64 {
     (1..things::count(thing_data))
         .filter(|record| things::read(thing_data, record * things::RECORD_SIZE) == thing_type)
         .count() as i64
-}
-
-fn first_free_record(thing_data: &[u8]) -> i64 {
-    (1..things::count(thing_data))
-        .find(|record| things::read(thing_data, record * things::RECORD_SIZE) == 0)
-        .unwrap_or(0)
 }
 
 fn remove_thing(thing_data: &mut [u8], text: &mut [u8], record: i64, map_edge: i64) {
