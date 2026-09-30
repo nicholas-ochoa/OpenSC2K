@@ -188,7 +188,7 @@ static func end_disaster(
 	var text_chunk := document.find_chunk("XTXT")
 	var misc_chunk := document.find_chunk("MISC")
 
-	if not _valid_disaster_chunks(thing_chunk, text_chunk, misc_chunk, map_edge):
+	if not _valid_disaster_chunks(thing_chunk, text_chunk, misc_chunk, map_edge, document.decoded_size("XTHG")):
 		var result := EndDisasterResult.new()
 		result.ok = false
 		result.error = "The city disaster data is not valid."
@@ -444,11 +444,15 @@ static func _valid_disaster_chunks(
 	text_chunk: Sc2Chunk,
 	misc_chunk: Sc2Chunk,
 	map_edge: int = 128,
+	thing_bytes: int = -1,
 ) -> bool:
+	# an sc2x version 4 city keeps the xthg capacity of its file
+	if thing_bytes < 0:
+		thing_bytes = ThingData.BASE_SIZE * (1 if map_edge <= 128 else ((2 * map_edge * map_edge) / 16384))
+
 	return (
 		thing_chunk != null
-		and thing_chunk.decoded_payload.size()
-		== ThingData.BASE_SIZE * (1 if map_edge <= 128 else ((2 * map_edge * map_edge) / 16384))
+		and thing_chunk.decoded_payload.size() == thing_bytes
 		and text_chunk != null
 		and OverlayData.count(text_chunk.decoded_payload) == (map_edge * map_edge)
 		and misc_chunk != null

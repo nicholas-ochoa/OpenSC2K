@@ -9,11 +9,12 @@ dialog_text = "Enter a new name for the city."
 min_size = Vector2i(440, 170)
 script = ExtResource("1_rename")
 
-[node name="NameInput" type="LineEdit" parent="."]
-anchors_preset = 10
-anchor_right = 1.0
+[node name="Fields" type="VBoxContainer" parent="."]
 offset_left = 14.0
 offset_top = 58.0
-offset_right = -14.0
+offset_right = 426.0
 offset_bottom = 92.0
+
+[node name="NameInput" type="LineEdit" parent="Fields"]
+layout_mode = 2
 max_length = 30

@@ -7,7 +7,7 @@ var name_input: LineEdit
 func _ready() -> void:
 	hide()
 	theme = AppUiTheme.current()
-	name_input = $NameInput
+	name_input = $Fields/NameInput
 	name_input.text_changed.connect(_sync_ok_button)
 	name_input.text_submitted.connect(_submit)
 

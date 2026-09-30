@@ -45,7 +45,7 @@ rules; the included schema cannot relax them.
 | `identity_counters` | The next sign ID and the next moving-object ID. |
 | `simulation.rng_states` | The three 32-bit random states. `lfsr_random` must be 1 to 65535. |
 | `simulation.phase_state` | Engine state that no structure holds. See [Saved simulation state](#saved-simulation-state). |
-| `required_features` | Extra capabilities that a reader needs. This version supports none; a file that lists one can be inspected but not played. |
+| `required_features` | Extra capabilities that a reader needs. This version supports none. `Sc2File` still loads such a file for inspection, and `compatibility_error` names the missing features; the game shows that message and does not open the city for play. |
 | `legacy` | Import data: the source container, version, and chunk order, and the CNAM bytes that are not the name. |
 | `extensions` | Optional data. A save keeps it. |
 
