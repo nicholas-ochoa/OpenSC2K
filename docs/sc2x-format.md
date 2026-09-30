@@ -16,7 +16,6 @@ or another inner compression. The writer uses fixed timestamps and this entry or
 
 ```text
 metadata.json
-metadata.schema.json
 MISC.bin ALTM.bin XTER.bin XBLD.bin XZON.bin XUND.bin XTXT.bin XLAB.bin XMIC.bin
 XTHG.bin XBIT.bin XTRF.bin XPLT.bin XVAL.bin XCRM.bin XPLC.bin XFIR.bin XPOP.bin
 XROG.bin XGRP.bin XSGN.bin
@@ -27,14 +26,18 @@ other entries                            (unknown entries of a loaded file)
 ```
 
 A file must not contain `FORM.bin`, `SCDH.bin`, `SCLG.bin`, `SIZE.bin`, or `CNAM.bin`.
+Earlier version 4 files also hold `metadata.schema.json`; the reader ignores it, and the next
+save omits it.
 The reader rejects entries in folders, repeated names, a CRC or size mismatch, missing
 required entries, and entries with the wrong size.
 
 ## Metadata
 
-`metadata.json` is UTF-8 JSON. `game/assets/data/sc2x-metadata.schema.json` is the copy of
-the schema that each save includes as `metadata.schema.json`. `Sc2xMetadata` checks the same
-rules; the included schema cannot relax them.
+`metadata.json` is UTF-8 JSON. `game/assets/data/sc2x-metadata.schema.json` is the published
+JSON schema of file version 4, for external tools. Saves do not include it. `Sc2xMetadata`
+selects its rules from `format` and `file_version`. A file can name the schema with
+`"$schema": "metadata.schema.json"`, as earlier saves do, but the schema cannot relax the
+rules.
 
 | Field | Meaning |
 | --- | --- |

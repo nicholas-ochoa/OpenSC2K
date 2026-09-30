@@ -3,8 +3,9 @@ extends RefCounted
 ## metadata.json of an SC2X version 4 archive: the file contract, the map edge,
 ## the shared names, the identity counters, and the simulation state that no
 ## binary structure saves. MISC stays authoritative for the values it holds.
-## The application checks these rules itself. The included schema is a
-## reference for tools and cannot relax them.
+## The application checks these rules itself, selected by `format` and
+## `file_version`. The published schema is a reference for tools. A file can
+## still name it with `$schema`, but it cannot relax the rules.
 
 const FORMAT := "OpenSC2K.SC2X"
 const FILE_VERSION := 4
@@ -92,7 +93,6 @@ func unsupported_features() -> PackedStringArray:
 
 func to_dictionary() -> Dictionary:
 	var result := {
-		"$schema": SCHEMA_REFERENCE,
 		"format": FORMAT,
 		"file_version": FILE_VERSION,
 		"map": {"size": map_size},

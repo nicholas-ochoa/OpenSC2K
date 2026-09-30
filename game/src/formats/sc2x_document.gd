@@ -4,7 +4,8 @@ extends RefCounted
 ## SC2X file version 4: a ZIP archive with flat entries. Each binary structure is
 ## `<ID>.bin` with its raw bytes; ZIP compresses every entry with DEFLATE level 9.
 ## `metadata.json` holds the city name, the file version, and the saved state
-## that no structure holds, and `metadata.schema.json` describes it.
+## that no structure holds. The repository publishes its JSON schema; earlier
+## archives also hold a copy as `metadata.schema.json`, which a load ignores.
 ##
 ## A loaded file becomes a working document (`Sc2File.large_version` 4). The
 ## simulation and the tools read its chunks in the extended layout. Its tile
@@ -18,8 +19,7 @@ const MAX_ARCHIVE_BYTES := 512 * 1024 * 1024
 const MAX_DATA_BYTES := 768 * 1024 * 1024
 const ZIP_SIGNATURE := 0x04034b50
 const EMPTY_ZIP_SIGNATURE := 0x06054b50
-const SCHEMA_ID := "urn:opensc2k:sc2x:metadata:4"
-# the entry order after metadata and the schema. Missing optional entries are skipped
+# the entry order after metadata. Missing optional entries are skipped
 const ENTRY_ORDER: PackedStringArray = [
 	"MISC", "ALTM", "XTER", "XBLD", "XZON", "XUND", "XTXT", "XLAB", "XMIC", "XTHG", "XBIT",
 	"XTRF", "XPLT", "XVAL", "XCRM", "XPLC", "XFIR", "XPOP", "XROG", "XGRP", "XSGN",
@@ -91,14 +91,7 @@ static func load_bytes(document: Sc2File, bytes: PackedByteArray) -> bool:
 	if not members.has(METADATA_ENTRY):
 		return _fail(document, "SC2X archive has no metadata.json")
 
-	if not members.has(SCHEMA_ENTRY):
-		return _fail(document, "SC2X archive has no metadata.schema.json")
-
-	var schema: Variant = JSON.parse_string(members[SCHEMA_ENTRY].get_string_from_utf8())
-
-	if not schema is Dictionary:
-		return _fail(document, "metadata.schema.json is not a JSON object")
-
+	# the application rules decide validity; an included schema changes nothing
 	var parsed := Sc2xMetadata.parse_bytes(members[METADATA_ENTRY])
 
 	if not parsed.ok:
@@ -266,7 +259,6 @@ static func entries(document: Sc2File) -> EntriesResult:
 	result.ok = true
 	result.issues = split.issues
 	result.add(METADATA_ENTRY, metadata.to_bytes())
-	result.add(SCHEMA_ENTRY, Sc2xMetadata.schema_bytes())
 	var structures: Dictionary = split.entries
 
 	for id in REQUIRED_ENTRIES:

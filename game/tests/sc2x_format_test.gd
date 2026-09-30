@@ -141,7 +141,9 @@ func _check_fresh_archives() -> void:
 		_check(prepared.ok, "A fresh %d city has entries" % edge)
 		var members := prepared.members
 		var cells := edge * edge
-		_check(prepared.order[0] == "metadata.json" and prepared.order[1] == "metadata.schema.json", "Metadata and schema come first")
+		_check(prepared.order[0] == "metadata.json" and not members.has("metadata.schema.json")
+			and not Sc2xMetadata.parse_bytes(members["metadata.json"]).metadata.to_dictionary().has("$schema"),
+			"Metadata comes first, and a new file holds no schema")
 
 		for id in REQUIRED:
 			_check(members.has(id + ".bin"), "Fresh %d city has %s.bin" % [edge, id])
@@ -197,7 +199,7 @@ func _check_archive_rules() -> void:
 	var encoded := document.serialize()
 	_check(encoded.ok and Sc2xDocument.is_archive(encoded.data), "A version 4 city is a ZIP archive")
 	var methods := _central_methods(encoded.data)
-	_check(methods.size() == 23 and methods.values().all(func(method: int) -> bool: return method == 8),
+	_check(methods.size() == 22 and methods.values().all(func(method: int) -> bool: return method == 8),
 		"Every entry uses DEFLATE")
 	_check(methods.keys().all(func(name: String) -> bool: return not name.contains("/")), "Every entry is at the root")
 	var reloaded := _loads(encoded.data)
@@ -222,7 +224,22 @@ func _check_archive_rules() -> void:
 		order.append(prohibited)
 		_check(not _loads(_archive(bad, order)).is_valid(), "%s is rejected" % prohibited)
 
-	for required in ["metadata.json", "metadata.schema.json", "XSGN.bin", "MISC.bin"]:
+	# an earlier file with an included schema loads under the same rules
+	var described := prepared.members.duplicate()
+	var described_order := prepared.order.duplicate()
+	var described_metadata: Dictionary = JSON.parse_string(described["metadata.json"].get_string_from_utf8())
+	described_metadata["$schema"] = "metadata.schema.json"
+	described["metadata.json"] = JSON.stringify(described_metadata).to_utf8_buffer()
+	described["metadata.schema.json"] = Sc2xMetadata.schema_bytes()
+	described_order.insert(1, "metadata.schema.json")
+	var with_schema := _loads(_archive(described, described_order))
+	_check(with_schema.is_valid() and Sc2xDocument.entries(with_schema).members == prepared.members,
+		"A file with an included schema loads, and its next save omits the schema")
+	described_metadata["map"] = {"size": 100}
+	described["metadata.json"] = JSON.stringify(described_metadata).to_utf8_buffer()
+	_check(not _loads(_archive(described, described_order)).is_valid(), "An included schema does not relax the rules")
+
+	for required in ["metadata.json", "XSGN.bin", "MISC.bin"]:
 		var missing := prepared.members.duplicate()
 		var order := prepared.order.duplicate()
 		missing.erase(required)
