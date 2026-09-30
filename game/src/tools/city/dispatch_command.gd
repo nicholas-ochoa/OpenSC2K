@@ -200,19 +200,19 @@ static func undo(city: CityState, command: DispatchEditResult) -> EditCommandRes
 	return EditCommandResult.undone(0)
 
 
+# Free each dispatched unit that links a tile, and clear its first linked tile
+# in map order. A native search finds the tile; a 4096-tile map has 16.7
+# million tiles. The map size only bounds the search.
 static func _clear_existing_dispatch(things: PackedByteArray, text: PackedByteArray, map_edge: int = 128) -> void:
-	for index in (map_edge * map_edge):
-		var overlay := int(OverlayData.read(text, index))
+	assert(OverlayData.count(text) == map_edge * map_edge)
 
-		if (not OverlayData.is_thing(overlay)
-				or OverlayData.thing_record(overlay) < FIRST_THING
-				or OverlayData.thing_record(overlay) >= ThingData.count(things)):
+	for thing_index in range(FIRST_THING, ThingData.count(things)):
+		if not TYPE_BY_SUBTOOL.has(int(ThingData.read(things, thing_index * THING_RECORD_SIZE))):
 			continue
 
-		var thing_index := OverlayData.thing_record(overlay)
-		var thing_type := int(ThingData.read(things, thing_index * THING_RECORD_SIZE))
+		var index := OverlayData.find(text, OverlayData.thing_id(thing_index))
 
-		if TYPE_BY_SUBTOOL.has(thing_type):
+		if index >= 0:
 			OverlayData.write(text, index, 0)
 			ThingData.write(things, thing_index * THING_RECORD_SIZE, 0)
 

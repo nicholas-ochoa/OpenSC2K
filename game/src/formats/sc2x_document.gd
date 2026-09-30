@@ -575,12 +575,12 @@ static func from_legacy(source: Sc2File, fallback_name := "", fresh := false) ->
 
 # A fresh working document of `edge` tiles with the starting values of a new city
 static func create_empty(edge: int, city_name := "New City") -> ConversionResult:
+	# per-tile data maps first, so that a resize makes empty full-size maps
 	var template := EmptyCityTemplate.create(128)
+	template.enable_full_resolution_maps()
 
 	if edge != 128 and not template.resize_empty_map(edge):
 		return ConversionResult.failure("Unsupported map size %d" % edge)
-
-	template.enable_full_resolution_maps()
 
 	return from_new_city(template, city_name, "")
 

@@ -215,14 +215,11 @@ static func _plan_lower(
 	return result
 
 
+# every land height. the native library decodes a 4096-tile map in milliseconds
 static func _decode_heights(altitude: PackedByteArray, map_edge: int = 128) -> PackedInt32Array:
-	var result := PackedInt32Array()
-	result.resize((map_edge * map_edge))
+	assert(altitude.size() == map_edge * map_edge * 2)
 
-	for index in (map_edge * map_edge):
-		result[index] = land_altitude(altitude, index)
-
-	return result
+	return NativeCityArrays.land_heights(altitude)
 
 
 static func _write_heights(

@@ -27,24 +27,29 @@ const MODES := [
 const ZONE_COLORS := [0, 59, 59, 92, 92, 50, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 const POWER_LINE_FIRST := Tiles.POWER_LINE_STRAIGHT_1
 const POWER_LINE_LAST := Tiles.POWER_LINE_CROSSROADS
+const MAX_IMAGE_EDGE := 1024
 const POLICE_STATION := Tiles.POLICE_STATION
 const FIRE_STATION := Tiles.FIRE_STATION
 const SCHOOL := Tiles.SCHOOL
 const COLLEGE := Tiles.COLLEGE
 
 
+# one pixel per tile up to 1024 tiles. a larger map samples every second or
+# fourth tile, since the map window never shows more than 1024 pixels
 static func create_image(city: CityState, palette: Sc2Palette, mode := "structures") -> Image:
 	var map_edge: int = city.map_size if city != null else 128
+	var step := maxi(1, map_edge / MAX_IMAGE_EDGE)
+	var image_edge := map_edge / step
 	var image := Image.create(
-		map_edge, map_edge, false, Image.FORMAT_RGBA8
+		image_edge, image_edge, false, Image.FORMAT_RGBA8
 	)
 
 	if city == null or not city.is_valid() or palette == null or not palette.is_valid():
 		return image
 
-	for x in map_edge:
-		for y in map_edge:
-			image.set_pixel(x, y, palette.color(color_index(city, x, y, mode)))
+	for x in image_edge:
+		for y in image_edge:
+			image.set_pixel(x, y, palette.color(color_index(city, x * step, y * step, mode)))
 
 	return image
 

@@ -98,13 +98,7 @@ static func from_document(source: Sc2File) -> CityState:
 
 					return city
 
-	var words := PackedInt32Array()
-	words.resize(tile_count)
-
-	for index in tile_count:
-		words[index] = (altitude_data[index * 2] << 8) | altitude_data[index * 2 + 1]
-
-	city.altitude_words = words
+	city.altitude_words = NativeCityArrays.altitude_words(altitude_data)
 
 	city.terrain = source.find_chunk("XTER").decoded_payload.duplicate()
 	city.buildings = source.find_chunk("XBLD").decoded_payload.duplicate()
@@ -162,11 +156,10 @@ func resync_mirrors(chunk_ids: PackedStringArray) -> void:
 # altm is the one mirror that is decoded rather than copied: each tile is a
 # big-endian word of land, water, and tunnel fields
 func _resync_altitude_words(altitude: PackedByteArray) -> void:
-	for index in (map_size * map_size):
-		if simulation_slice != null and (index & 127) == 0:
-			simulation_slice.checkpoint()
+	if simulation_slice != null:
+		simulation_slice.checkpoint()
 
-		altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
+	altitude_words = NativeCityArrays.altitude_words(altitude)
 
 
 func index_of(x: int, y: int) -> int:

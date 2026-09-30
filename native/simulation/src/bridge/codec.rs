@@ -38,3 +38,58 @@ impl NativeMaxisRle {
         PackedByteArray::from(rle::encode(decoded.as_slice()).as_slice())
     }
 }
+
+/// Static city-array entry points for CityState.
+#[derive(GodotClass)]
+#[class(no_init, base = Object)]
+pub struct NativeCityArrays {}
+
+#[godot_api]
+impl NativeCityArrays {
+    /// The big-endian 16-bit ALTM words of every tile. A 4096-tile map has
+    /// 16.7 million, too many for a GDScript loop.
+    #[func]
+    fn altitude_words(altitude: PackedByteArray) -> PackedInt32Array {
+        let words: Vec<i32> = altitude
+            .as_slice()
+            .chunks_exact(2)
+            .map(|word| i32::from(u16::from_be_bytes([word[0], word[1]])))
+            .collect();
+
+        PackedInt32Array::from(words.as_slice())
+    }
+
+    /// The land height of every tile: the low five bits of each ALTM word.
+    #[func]
+    fn land_heights(altitude: PackedByteArray) -> PackedInt32Array {
+        let heights: Vec<i32> = altitude.as_slice().chunks_exact(2).map(|word| i32::from(word[1] & 0x1f)).collect();
+
+        PackedInt32Array::from(heights.as_slice())
+    }
+
+    /// CityDataGrid.expand: one value per tile from a half or quarter grid, or an
+    /// empty array for a grid of another size.
+    #[func]
+    fn expand_grid(data: PackedByteArray, map_edge: i64) -> PackedByteArray {
+        let edge = map_edge.max(0) as usize;
+        let bytes = data.as_slice();
+        let Some(grid) = [edge, edge / 2, edge / 4]
+            .into_iter()
+            .find(|grid| *grid > 0 && grid * grid == bytes.len())
+        else {
+            return PackedByteArray::new();
+        };
+        let scale = edge / grid;
+        let mut result = vec![0u8; edge * edge];
+
+        for x in 0..edge {
+            let source = &bytes[(x / scale) * grid..(x / scale + 1) * grid];
+
+            for (y, value) in result[x * edge..(x + 1) * edge].iter_mut().enumerate() {
+                *value = source[y / scale];
+            }
+        }
+
+        PackedByteArray::from(result.as_slice())
+    }
+}

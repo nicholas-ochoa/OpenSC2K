@@ -176,7 +176,8 @@ static func record_pool_message(record_budget: int) -> String:
 
 
 # With a record budget (an SC2X version 4 city), a full pool gets no record and
-# an arcology never takes the record of another facility.
+# an arcology never takes the record of another facility. `first_free` lets a
+# caller that knows every earlier slot is used start the search there.
 static func provision_microsim(
 	microsims: PackedByteArray,
 	labels: PackedByteArray,
@@ -188,6 +189,7 @@ static func provision_microsim(
 	australian_locale := false,
 	scurk_place_mode := false,
 	record_budget := -1,
+	first_free := MICROSIM_DYNAMIC_FIRST,
 ) -> int:
 	var microsim_type := int(MICROSIM_TYPE_BY_TILE.get(tile_id, 0))
 
@@ -200,7 +202,7 @@ static func provision_microsim(
 	var record_id := -1
 
 	if microsim_type <= 16:
-		for checked_id in range(MICROSIM_DYNAMIC_FIRST, microsims.size() / CityState.MICROSIM_RECORD_SIZE):
+		for checked_id in range(maxi(first_free, MICROSIM_DYNAMIC_FIRST), microsims.size() / CityState.MICROSIM_RECORD_SIZE):
 			if microsims[checked_id * CityState.MICROSIM_RECORD_SIZE] == 0:
 				record_id = checked_id
 				break

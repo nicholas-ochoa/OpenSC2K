@@ -34,18 +34,10 @@ static func index(data: PackedByteArray, map_edge: int, x: int, y: int) -> int:
 	return (x / scale) * grid_edge + y / scale
 
 
+# one value per tile. the native library copies each cell; a 4096-tile map has
+# 16.7 million tiles
 static func expand(data: PackedByteArray, map_edge: int) -> PackedByteArray:
-	var result := PackedByteArray()
-	var grid_edge := edge(data, map_edge)
+	if edge(data, map_edge) == 0:
+		return PackedByteArray()
 
-	if grid_edge == 0:
-		return result
-
-	var scale := map_edge / grid_edge
-	result.resize(map_edge * map_edge)
-
-	for x in map_edge:
-		for y in map_edge:
-			result[x * map_edge + y] = data[(x / scale) * grid_edge + y / scale]
-
-	return result
+	return NativeCityArrays.expand_grid(data, map_edge)
