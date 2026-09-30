@@ -1,12 +1,51 @@
 //! Static surface and underground painting in map diagonal order. Draws retain
 //! the original uncut sprite rectangle for pixel queries and moving occlusion.
+use super::ids::{
+    building_tile_ids as tiles, sc2altitude_layout as altitude, sc2tile_flags as flags, sc2zone_layout as zone,
+    terrain_tile_ids as terrain, underground_tile_ids as under,
+};
 use super::{Builder, Draw, Rect};
 
+// Sprite offsets in each view's artwork.
+const TERRAIN_SPRITES: i32 = 256;
+/// The flat water surface. Deep and unknown water terrain draw it.
+const WATER_SPRITE: i32 = 270;
+const CHANNEL_SPRITES: i32 = 285;
+const LAND_SIDE_SPRITE: i32 = 269;
+const WATER_SIDE_SPRITE: i32 = 284;
+/// One ground sprite for each zone type follows this offset.
+const ZONE_GROUND_SPRITES: i32 = 290;
+const TERRAIN_WIREFRAME_FIRST: i32 = 0x131;
+const SUBWAY_AND_PIPE_FIRST: i32 = 0x13e;
+const PIPED_TERRAIN: i32 = 0x15f;
+const DEEP_TUNNEL: i32 = 0x160;
+/// Watered pipes use the pipe sprites this far on.
+const WATERED_PIPE_OFFSET: i32 = 0x74;
+const WATERED_TERRAIN: i32 = 0x1d3;
+/// A one-level tunnel draws the tunnel sprite of its terrain shape.
+const TUNNEL_SPRITES: i32 = 62;
+const POWER_MARKER_SPRITE: i32 = 386;
+const TRAFFIC_SPRITES: i32 = 399;
+/// The small artwork has no traffic variants above this one.
+const SMALL_TRAFFIC_LAST: i32 = 27;
+// Traffic density thresholds of roads and rails, and of highways.
+const TRAFFIC_THRESHOLDS: (i32, i32) = (85, 170);
+const HIGHWAY_TRAFFIC_THRESHOLDS: (i32, i32) = (28, 56);
+// Traffic variants that alternate by tile parity.
+const LANE_EVEN: i32 = 11;
+const LANE_ODD: i32 = 12;
+/// The zone corner bit that anchors a building at each compass rotation.
+const ANCHOR_CORNERS: [u8; 4] = [0x80, 0x10, 0x20, 0x40];
+/// XBIT power bits of a powerable building without power.
+const UNPOWERED: u8 = flags::POWERABLE;
+
+/// The traffic variant of each building from ROAD_STRAIGHT_1; 0 draws no traffic.
 pub(super) const TRAFFIC: &[i32] = &[
     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 2, 1, 2, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 0, 0, 1, 2, 1, 2, 0, 0,
     11, 12, 11, 12, 11, 12, 11, 12, 13, 13, 13, 13, 13, 13, 13, 13, 0, 0, 0, 0, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 0, 0,
     0, 0, 28, 29,
 ];
+/// The heavy traffic variant of each light variant.
 const HEAVY: &[i32] = &[
     0, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 15, 16, 17, 18, 42, 43, 44, 45, 46, 47, 48, 49, 50,
 ];
@@ -28,23 +67,27 @@ fn special_sprites(overlay: i32) -> &'static [i32] {
 }
 // Fire mixes the tile coordinates with this hash to break up diagonal patterns.
 const FIRE_PHASE_HASH: u32 = 0x045d_9f3b;
-fn terrain_sprite(t: i32, water: bool) -> i32 {
+fn terrain_sprite(t: u8, water: bool) -> i32 {
+    // Shore and surface water shapes share the water shape sprites.
     match t {
-        0..=14 => 256 + t,
-        32..=46 => 256 + t - 18,
-        48..=62 => 256 + t - 34,
-        64..=69 => 256 + t - 35,
-        _ if water || (16..=30).contains(&t) => 270,
-        _ => 256,
+        terrain::LAND_FIRST..=terrain::LAND_DRAW_LAST => TERRAIN_SPRITES + i32::from(t),
+        terrain::SHORE_FIRST..=terrain::FORBIDDEN_COAST => WATER_SPRITE + i32::from(t - terrain::SHORE_FIRST),
+        terrain::SURFACE_WATER_FIRST..=terrain::WATERFALL => WATER_SPRITE + i32::from(t - terrain::SURFACE_WATER_FIRST),
+        terrain::CHANNEL_FIRST..=terrain::CHANNEL_LAST => CHANNEL_SPRITES + i32::from(t - terrain::CHANNEL_FIRST),
+        _ if water || (terrain::DEEP_WATER_FIRST..=terrain::DEEP_WATER_DRAW_LAST).contains(&t) => WATER_SPRITE,
+        _ => TERRAIN_SPRITES,
     }
 }
-fn wireframe(t: i32) -> i32 {
-    305 + match t {
-        0..=14 => t.min(13),
-        16..=30 => (t - 16).min(13),
-        32..=46 => (t - 32).min(13),
-        _ => 0,
-    }
+// The underground wireframe of a land, deep water or shore shape.
+fn wireframe(t: u8) -> i32 {
+    let shape = |first: u8| i32::from(t - first).min(13);
+    TERRAIN_WIREFRAME_FIRST
+        + match t {
+            terrain::LAND_FIRST..=terrain::LAND_DRAW_LAST => shape(terrain::LAND_FIRST),
+            terrain::DEEP_WATER_FIRST..=terrain::DEEP_WATER_DRAW_LAST => shape(terrain::DEEP_WATER_FIRST),
+            terrain::SHORE_FIRST..=terrain::FORBIDDEN_COAST => shape(terrain::SHORE_FIRST),
+            _ => 0,
+        }
 }
 impl Builder {
     fn add(&mut self, draws: &mut Vec<Draw>, id: i32, flip: bool, x: i32, baseline: i32) -> Result<u64, String> {
@@ -56,13 +99,14 @@ impl Builder {
         draws.push(draw);
         Ok(key)
     }
-    fn ground(&self, i: usize, t: i32) -> i32 {
+    fn ground(&self, i: usize, t: u8) -> i32 {
         if let Some(&value) = self.city.ground.get(i).filter(|v| **v >= 0) {
             return value;
         }
-        let zone = self.city.zones[i] & 15;
-        if zone > 0 && t == 0 && self.city.buildings[i] <= 0x1c {
-            return 290 + zone as i32;
+        // Zones show on flat open ground, trees, rubble and power lines.
+        let zone_type = self.city.zones[i] & zone::TYPE_MASK;
+        if zone_type > 0 && t == terrain::FLAT && self.city.buildings[i] <= tiles::POWER_LINE_CROSSROADS {
+            return ZONE_GROUND_SPRITES + i32::from(zone_type);
         }
         terrain_sprite(t, self.city.wet(i))
     }
@@ -82,26 +126,36 @@ impl Builder {
             return Ok(draws);
         }
         let t = self.city.surface(x, y);
-        let b = self.city.buildings[i] as i32;
+        let b = self.city.buildings[i];
+        let sprite = c.base() + i32::from(b);
         let sx = c.side() + (self.city.edge + x - y) * c.hw();
         let flat = c.top() + (x + y) * c.hh() + c.height();
-        let base = flat - (if t >= 16 { self.city.water(i) } else { self.city.land(i) }) * c.step();
+        let base = flat
+            - (if t >= terrain::DEEP_WATER_FIRST {
+                self.city.water(i)
+            } else {
+                self.city.land(i)
+            }) * c.step();
         if x == self.city.edge - 1 || y == self.city.edge - 1 {
             for level in 0..self.city.land(i) {
-                self.add(&mut draws, c.base() + 269, false, sx, flat - level * c.step())?;
+                self.add(&mut draws, c.base() + LAND_SIDE_SPRITE, false, sx, flat - level * c.step())?;
             }
             if self.city.wet(i) {
                 for level in self.city.land(i)..self.city.water(i) {
-                    self.add(&mut draws, c.base() + 284, false, sx, flat - level * c.step())?;
+                    self.add(&mut draws, c.base() + WATER_SIDE_SPRITE, false, sx, flat - level * c.step())?;
                 }
             }
         }
-        let composite = (0x61..=0x6b).contains(&b);
-        if b < 0x70 && !composite {
+        let composite = (tiles::HIGHWAY_SLOPE_1..=tiles::REINFORCED_HIGHWAY_BRIDGE).contains(&b);
+        let developed = b >= tiles::DEVELOPED_FIRST;
+        if !developed && !composite {
             self.add(&mut draws, c.base() + self.ground(i, t), false, sx, base)?;
         }
-        let anchor = b <= 0x60 || (0x6c..=0x6f).contains(&b) || self.city.zones[i] & [0x80, 0x10, 0x20, 0x40][self.city.rotation] != 0;
-        if b > 0 && anchor {
+        // Composite highways and buildings draw from one compass-selected corner.
+        let anchor = b <= tiles::HIGHWAY_ONRAMP_4
+            || (tiles::RAIL_SUBWAY_ENTRANCE_1..=tiles::RAIL_SUBWAY_ENTRANCE_4).contains(&b)
+            || self.city.zones[i] & ANCHOR_CORNERS[self.city.rotation] != 0;
+        if b != tiles::EMPTY && anchor {
             if composite && (c.view != 0 || c.redraw_ground) {
                 for (dx, dy, px, py) in [
                     (0, 0, 0, 0),
@@ -112,25 +166,26 @@ impl Builder {
                     let (nx, ny) = (x + dx, y + dy);
                     if nx >= 0 && ny >= 0 && nx < self.city.edge && ny < self.city.edge {
                         let n = self.city.index(nx, ny);
-                        let id = c.base() + terrain_sprite(self.city.terrain[n] as i32, self.city.wet(n));
+                        let id = c.base() + terrain_sprite(self.city.terrain[n], self.city.wet(n));
                         self.add(&mut draws, id, false, sx + px, base + py)?;
                     }
                 }
             }
-            let flip = (self.city.flags[i] & 2 != 0) ^ (b >= 0x70 && self.city.rotation & 1 != 0);
-            let image = self.sprites.get(c.base() + b, flip)?;
+            // An odd compass rotation mirrors buildings, not networks.
+            let flip = (self.city.flags[i] & flags::FLIPPED != 0) ^ (developed && self.city.rotation & 1 != 0);
+            let image = self.sprites.get(sprite, flip)?;
             let width = self.sprites.images[&image].w;
             let offset = if composite {
                 c.hh()
-            } else if b >= 0x70 {
+            } else if developed {
                 width / 4 - c.hh()
-            } else if t == 13 {
+            } else if t == terrain::RAISED {
                 -c.step()
             } else {
                 0
             };
             let baseline = flat - self.city.object(i) * c.step() + offset;
-            self.add(&mut draws, c.base() + b, flip, sx, baseline)?;
+            self.add(&mut draws, sprite, flip, sx, baseline)?;
             if let Some((id, traffic_flip)) = self.traffic_sprite(x, y, b) {
                 let traffic = self.sprites.get(id, traffic_flip)?;
                 let masked = self.sprites.traffic(traffic, image);
@@ -141,10 +196,16 @@ impl Builder {
                 draw.flip = traffic_flip;
                 draws.push(draw);
             }
-            if b >= 0x70 && self.city.flags[i] & 0xc0 == 0x80 {
-                let key = self.sprites.get(c.base() + 386, false)?;
+            if developed && self.city.flags[i] & flags::POWER_MASK == UNPOWERED {
+                let key = self.sprites.get(c.base() + POWER_MARKER_SPRITE, false)?;
                 let marker_width = self.sprites.images[&key].w;
-                self.add(&mut draws, c.base() + 386, false, sx + width / 2 - marker_width / 2, baseline)?;
+                self.add(
+                    &mut draws,
+                    c.base() + POWER_MARKER_SPRITE,
+                    false,
+                    sx + width / 2 - marker_width / 2,
+                    baseline,
+                )?;
             }
         }
         if let Some(&offset) = self.city.dispatch.get(&i) {
@@ -174,7 +235,7 @@ impl Builder {
             draw.depth = depth;
             draw.order = (depth << 16) | foreground;
             foreground += 1;
-            if draw.sprite == c.base() + b && b > 0 {
+            if draw.sprite == sprite && b != tiles::EMPTY {
                 configure_train(draw, b, c.base(), c.view);
             }
         }
@@ -204,36 +265,36 @@ impl Builder {
         self.add(draws, id, flip, sx + c.hw() - width / 2, baseline)?;
         Ok(())
     }
-    fn traffic_sprite(&self, x: i32, y: i32, b: i32) -> Option<(i32, bool)> {
-        let mut variant = *TRAFFIC.get((b - 0x1d) as usize)?;
+    fn traffic_sprite(&self, x: i32, y: i32, b: u8) -> Option<(i32, bool)> {
+        let mut variant = *TRAFFIC.get(usize::from(b.checked_sub(tiles::ROAD_STRAIGHT_1)?))?;
         if variant == 0 {
             return None;
         }
         let density = self.city.density(x, y);
-        let (low, high) = if (0x49..=0x50).contains(&b) || (0x61..=0x6b).contains(&b) {
-            (28, 56)
+        let (low, high) = if is_highway(b) {
+            HIGHWAY_TRAFFIC_THRESHOLDS
         } else {
-            (85, 170)
+            TRAFFIC_THRESHOLDS
         };
         if density <= low {
             return None;
         }
-        let mut flip = self.city.flags[self.city.index(x, y)] & 2 != 0;
-        if variant == 11 && x & 1 != 0 {
-            variant = 12;
-        } else if variant == 12 {
+        let mut flip = self.city.flags[self.city.index(x, y)] & flags::FLIPPED != 0;
+        if variant == LANE_EVEN && x & 1 != 0 {
+            variant = LANE_ODD;
+        } else if variant == LANE_ODD {
             flip = true;
             if y & 1 != 0 {
-                variant = 11;
+                variant = LANE_EVEN;
             }
         }
         if density > high {
             variant = *HEAVY.get(variant as usize)?;
         }
-        if variant == 0 || (self.config.view == 0 && variant > 27) {
+        if variant == 0 || (self.config.view == 0 && variant > SMALL_TRAFFIC_LAST) {
             return None;
         }
-        Some((self.config.base() + 399 + variant, flip))
+        Some((self.config.base() + TRAFFIC_SPRITES + variant, flip))
     }
     fn paint_underground(&mut self, draws: &mut Vec<Draw>, x: i32, y: i32, pipes: bool, subways: bool, mains: bool) -> Result<(), String> {
         let c = self.config;
@@ -241,12 +302,17 @@ impl Builder {
         let visible = self.city.visible(i);
         let sx = c.side() + (self.city.edge + x - y) * c.hw();
         let baseline = c.top() + (x + y) * c.hh() - self.city.land(i) * c.step() + c.height();
-        let wire = c.base() + wireframe(self.city.terrain[i] as i32);
+        let wire = c.base() + wireframe(self.city.terrain[i]);
         let key = self.sprites.get(wire, false)?;
         let top = baseline - self.sprites.images[&key].h;
-        let levels = (self.city.altitude[i] >> 10) & 31;
+        let levels = (self.city.altitude[i] >> altitude::TUNNEL_SHIFT) & altitude::LEVEL_MASK;
         if levels > 0 && (self.city.visible >= 32 || self.city.land(i) - (levels - 1).max(0) < self.city.visible) {
-            let sprite = c.base() + if levels == 1 { 62 + self.city.terrain[i] as i32 } else { 352 };
+            let sprite = c.base()
+                + if levels == 1 {
+                    TUNNEL_SPRITES + i32::from(self.city.terrain[i])
+                } else {
+                    DEEP_TUNNEL
+                };
             self.add(
                 draws,
                 sprite,
@@ -255,47 +321,48 @@ impl Builder {
                 baseline + if levels > 1 { (levels - 1) * c.step() } else { 0 },
             )?;
         }
-        let mut under = self.city.underground[i] as i32;
+        let mut tile = self.city.underground[i];
+        // Below a cutaway, only subways show, one level under the terrain.
         if !visible
             && (!subways
                 || !(self.city.visible >= 32 || self.city.land(i) - 1 < self.city.visible)
-                || !((1..16).contains(&under) || [31, 32, 35].contains(&under)))
+                || !(under::SUBWAY_FIRST..=under::SUBWAY_LAST).contains(&tile)
+                    && ![under::PIPE_TB_SUBWAY_LR, under::PIPE_LR_SUBWAY_TB, under::SUBWAY_ENTRANCE].contains(&tile))
         {
             return Ok(());
         }
         if !subways {
-            under = match under {
-                31 => 17,
-                32 => 16,
-                1..=15 | 35 => 0,
-                _ => under,
+            tile = match tile {
+                under::PIPE_TB_SUBWAY_LR => under::PIPE_TB,
+                under::PIPE_LR_SUBWAY_TB => under::PIPE_LR,
+                under::SUBWAY_FIRST..=under::SUBWAY_LAST | under::SUBWAY_ENTRANCE => under::EMPTY,
+                _ => tile,
             };
         }
-        let piped = self.city.flags[i] & 32 != 0;
-        let watered = self.city.flags[i] & 16 != 0;
+        let under_sprite = c.base() + SUBWAY_AND_PIPE_FIRST + i32::from(tile);
+        let piped = self.city.flags[i] & flags::PIPED != 0;
+        let watered = self.city.flags[i] & flags::WATERED != 0;
         let pipes = pipes && visible;
         let mains = mains && visible;
         let mut ids = Vec::new();
-        if (16..=32).contains(&under) {
+        let service = c.base() + if watered { WATERED_TERRAIN } else { PIPED_TERRAIN };
+        if (under::PIPE_FIRST..=under::PIPE_LR_SUBWAY_TB).contains(&tile) {
+            // Hidden water mains leave the subway of a crossing, or the wireframe.
             if !mains {
-                ids.push(match under {
-                    31 => c.base() + 318 + 1,
-                    32 => c.base() + 318 + 2,
+                ids.push(match tile {
+                    under::PIPE_TB_SUBWAY_LR => c.base() + SUBWAY_AND_PIPE_FIRST + i32::from(under::SUBWAY_LR),
+                    under::PIPE_LR_SUBWAY_TB => c.base() + SUBWAY_AND_PIPE_FIRST + i32::from(under::SUBWAY_TB),
                     _ => wire,
                 });
             } else {
-                ids.push(c.base() + 318 + under + if piped && watered { 116 } else { 0 });
+                ids.push(under_sprite + if piped && watered { WATERED_PIPE_OFFSET } else { 0 });
             }
-        } else if under == 0 {
-            ids.push(if !pipes || !piped {
-                wire
-            } else {
-                c.base() + if watered { 467 } else { 351 }
-            });
+        } else if tile == under::EMPTY {
+            ids.push(if !pipes || !piped { wire } else { service });
         } else {
-            ids.push(c.base() + 318 + under);
+            ids.push(under_sprite);
             if pipes && piped {
-                ids.push(c.base() + if watered { 467 } else { 351 });
+                ids.push(service);
             }
         }
         for id in ids {
@@ -306,24 +373,41 @@ impl Builder {
         Ok(())
     }
 }
-fn configure_train(d: &mut Draw, b: i32, base: i32, view: i32) {
-    d.reference = match b {
-        14..=28 => -1,
-        0x4d => base + 0x2d,
-        0x4e => base + 0x2c,
-        0x43 => base + 0x1d,
-        0x44 => base + 0x1e,
-        0x47 => base + 0x2c,
-        0x48 => base + 0x2d,
-        0x4f => base + 0x49,
-        0x50 => base + 0x4a,
-        _ => 0,
+fn is_highway(b: u8) -> bool {
+    (tiles::HIGHWAY_STRAIGHT_1..=tiles::HIGHWAY_POWER_CROSSING_2).contains(&b)
+        || (tiles::HIGHWAY_SLOPE_1..=tiles::REINFORCED_HIGHWAY_BRIDGE).contains(&b)
+}
+// Train masks: power lines never cover a train, a crossing subtracts its ground
+// network, and a raised highway deck keeps only the bands around its road surface.
+fn configure_train(d: &mut Draw, b: u8, base: i32, view: i32) {
+    use tiles::*;
+    let power_line = (POWER_LINE_STRAIGHT_1..=POWER_LINE_CROSSROADS).contains(&b);
+    let ground = match b {
+        HIGHWAY_RAIL_CROSSING_1 | RAIL_POWER_CROSSING_2 => Some(RAIL_STRAIGHT_2),
+        HIGHWAY_RAIL_CROSSING_2 | RAIL_POWER_CROSSING_1 => Some(RAIL_STRAIGHT_1),
+        ROAD_POWER_CROSSING_1 => Some(ROAD_STRAIGHT_1),
+        ROAD_POWER_CROSSING_2 => Some(ROAD_STRAIGHT_2),
+        HIGHWAY_POWER_CROSSING_1 => Some(HIGHWAY_STRAIGHT_1),
+        HIGHWAY_POWER_CROSSING_2 => Some(HIGHWAY_STRAIGHT_2),
+        _ => None,
     };
-    d.ignore = (14..=28).contains(&b) || [0x43, 0x44, 0x47, 0x48].contains(&b);
-    if (0x49..=0x50).contains(&b) || (0x61..=0x6b).contains(&b) {
+    d.reference = if power_line {
+        -1
+    } else {
+        ground.map_or(0, |tile| base + i32::from(tile))
+    };
+    d.ignore = power_line
+        || [
+            ROAD_POWER_CROSSING_1,
+            ROAD_POWER_CROSSING_2,
+            RAIL_POWER_CROSSING_1,
+            RAIL_POWER_CROSSING_2,
+        ]
+        .contains(&b);
+    if is_highway(b) {
         d.thickness = view + 1;
         d.requires_depth = true;
-        if [0x4f, 0x50].contains(&b) {
+        if [HIGHWAY_POWER_CROSSING_1, HIGHWAY_POWER_CROSSING_2].contains(&b) {
             d.deck = d.reference;
         }
     }

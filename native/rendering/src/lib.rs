@@ -142,16 +142,19 @@ impl City {
         };
         self.traffic[(x / scale) as usize * side + (y / scale) as usize] as i32
     }
-    fn surface(&self, x: i32, y: i32) -> i32 {
+    /// The terrain shape to draw. Surface water and channels at the land level
+    /// beside higher land show the waterfall.
+    fn surface(&self, x: i32, y: i32) -> u8 {
+        use ids::terrain_tile_ids::{CHANNEL_LAST, SURFACE_WATER_FIRST, WATERFALL};
         let i = self.index(x, y);
-        let t = self.terrain[i] as i32;
-        if !(0x30..=0x45).contains(&t) || t == 0x3e || self.water(i) != self.land(i) {
+        let t = self.terrain[i];
+        if !(SURFACE_WATER_FIRST..=CHANNEL_LAST).contains(&t) || t == WATERFALL || self.water(i) != self.land(i) {
             return t;
         }
         for (dx, dy) in [(0, -1), (1, 0), (0, 1), (-1, 0)] {
             let (nx, ny) = (x + dx, y + dy);
             if nx >= 0 && ny >= 0 && nx < self.edge && ny < self.edge && self.land(self.index(nx, ny)) > self.land(i) {
-                return 0x3e;
+                return ids::terrain_tile_ids::WATERFALL;
             }
         }
         t
