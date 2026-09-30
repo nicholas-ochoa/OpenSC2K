@@ -45,33 +45,31 @@ func test_sprite_archives(reference_root: String) -> void:
 	var small_medium := SpriteArchive.combine([small_medium_base, special])
 	_check(small_medium.is_valid(), "Small, medium, and special sprite archives combine")
 	_check(small_medium.find_sprite(698) != null, "Special archive supplies medium hydro sprite 698")
-	_check(
-		IsometricPixelOperations.shadow_color(palette, palette.color(0x5f)).to_rgba32()
-		== palette.color(0x64).to_rgba32(),
-		"Aircraft shadow remaps palette index 0x5f to 0x64",
-	)
-	_check(
-		IsometricPixelOperations.shadow_color(palette, palette.color(0x74)).to_rgba32()
-		== palette.color(0x7e).to_rgba32(),
-		"Aircraft shadow remaps the ground-color range to 0x7e",
-	)
-	_check(
-		IsometricPixelOperations.shadow_color(palette, palette.color(0x73)).to_rgba32()
-		== palette.color(0x73).to_rgba32(),
-		"Aircraft shadow keeps colors outside its recovered ranges",
-	)
-	_check(
-		IsometricRenderer.shadow_palette_index(0x5f) == 0x64
-		and IsometricRenderer.shadow_palette_index(0x74) == 0x7e
-		and IsometricRenderer.shadow_palette_index(0x73) == 0x73,
-		"Indexed aircraft shadows use the recovered palette remap",
-	)
-	var sign_palette_indices := PackedInt32Array([0x9b, 0x9e, 0xa0, 0xa2, 0xa5, 0x6a])
-	var sign_colors_ignore_shadow := true
+	# a shadow over three pixels of the recovered colors and one other color
+	var shadowed := Image.create(3, 1, false, Image.FORMAT_RGBA8)
 
-	for palette_index in sign_palette_indices:
-		if IsometricRenderer.shadow_palette_index(palette_index) != palette_index:
-			sign_colors_ignore_shadow = false
+	for x in 3:
+		shadowed.set_pixel(x, 0, palette.color([0x5f, 0x74, 0x73][x]))
+
+	var shadow_mask := Image.create(3, 1, false, Image.FORMAT_RGBA8)
+	shadow_mask.fill(Color.WHITE)
+	IsometricPixelOperations._blend_shadow(shadowed, shadow_mask, palette, Vector2i.ZERO)
+	_check(shadowed.get_pixel(0, 0).to_rgba32() == palette.color(0x64).to_rgba32(), "Aircraft shadow remaps palette index 0x5f to 0x64")
+	_check(shadowed.get_pixel(1, 0).to_rgba32() == palette.color(0x7e).to_rgba32(), "Aircraft shadow remaps the ground-color range to 0x7e")
+	_check(shadowed.get_pixel(2, 0).to_rgba32() == palette.color(0x73).to_rgba32(),
+		"Aircraft shadow keeps colors outside its recovered ranges")
+	# the sign colors stay unchanged under a shadow
+	var sign_palette_indices := PackedInt32Array([0x9b, 0x9e, 0xa0, 0xa2, 0xa5, 0x6a])
+	var sign_colors := Image.create(sign_palette_indices.size(), 1, false, Image.FORMAT_RGBA8)
+
+	for x in sign_palette_indices.size():
+		sign_colors.set_pixel(x, 0, palette.color(sign_palette_indices[x]))
+
+	var sign_shadowed := sign_colors.duplicate()
+	var sign_mask := Image.create(sign_palette_indices.size(), 1, false, Image.FORMAT_RGBA8)
+	sign_mask.fill(Color.WHITE)
+	IsometricPixelOperations._blend_shadow(sign_shadowed, sign_mask, palette, Vector2i.ZERO)
+	var sign_colors_ignore_shadow: bool = sign_shadowed.get_data() == sign_colors.get_data()
 
 	_check(
 		sign_colors_ignore_shadow,

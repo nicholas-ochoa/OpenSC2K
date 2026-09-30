@@ -56,6 +56,18 @@ network placement preview.
 - **Missing artwork.** `missing_sprites` paints every tile with placeholders and lists
   each sprite ID that the city needs and the artwork lacks.
 
+## Moving sprite pixels
+
+`compositing.rs` makes the pixels of moving sprites through `NativeSpriteCompositor`:
+
+- **Occlusion.** A sprite loses the pixels under the combined silhouettes of later
+  foreground draws, and the pixels over same-tile foreground artwork, which it reads
+  as palette indices from the region pixels under the sprite.
+- **Shadows.** A shadow darkens the city pixels under it through the recovered shadow
+  indices: 0x5f becomes 0x64, and 0x74 to 0x7e become 0x7e.
+- **Train masks.** Crossings keep only the pixels that differ from their ground
+  network, and raised highway decks keep only the rows near their road surface.
+
 ## Other native view work
 
 - **Data map overlays.** `data_view.rs` builds the overlay mesh of each data map from the

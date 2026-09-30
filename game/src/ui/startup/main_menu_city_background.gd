@@ -279,18 +279,7 @@ func _refresh_animation() -> void:
 		var sprite_position := Vector2i(command.position)
 
 		if command.shadow:
-			for y in image.get_height():
-				for x in image.get_width():
-					var point := sprite_position + Vector2i(x, y)
-
-					if image.get_pixel(
-						x,
-						y,
-					).a == 0.0 or point.x < 0 or point.y < 0 or point.x >= static_image.get_width() or point.y >= static_image.get_height():
-						continue
-
-					var index := roundi(static_image.get_pixelv(point).r * 255.0)
-					image.set_pixel(x, y, colors.colors[Renderer.shadow_palette_index(index)])
+			image = NativeSpriteCompositor.palette_shadow(image, static_image, sprite_position, colors.to_rgba_bytes())
 
 		if command.static_occlusion:
 			image = _occlude(image, sprite_position, int(command.depth_order))
@@ -300,6 +289,9 @@ func _refresh_animation() -> void:
 
 func _occlude(image: Image, sprite_position: Vector2i, order: int) -> Image:
 	var bounds := Rect2i(sprite_position, image.get_size())
+	# later foreground silhouettes, combined in the sprite's frame
+	var occluder := Image.create(image.get_width(), image.get_height(), false, Image.FORMAT_RGBA8)
+	occluder.fill(Color.TRANSPARENT)
 
 	for index in Renderer.occlusion_candidate_indices(occlusion_grid, bounds):
 		var command := occlusion_commands[index]
@@ -334,13 +326,9 @@ func _occlude(image: Image, sprite_position: Vector2i, order: int) -> Image:
 			sprite_cache[key] = rendered_mask
 
 		var mask: Image = sprite_cache[key]
+		occluder.blend_rect(mask, Rect2i(overlap.position - origin, overlap.size), overlap.position - sprite_position)
 
-		for y in range(overlap.position.y, overlap.end.y):
-			for x in range(overlap.position.x, overlap.end.x):
-				if mask.get_pixel(x - origin.x, y - origin.y).a > 0.0:
-					image.set_pixel(x - sprite_position.x, y - sprite_position.y, Color.TRANSPARENT)
-
-	return image
+	return NativeSpriteCompositor.occlude(image, occluder, null, Vector2i.ZERO, PackedInt32Array()).image
 
 
 # Release the private city, its simulation, and its render buffers while

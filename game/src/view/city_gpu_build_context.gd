@@ -108,7 +108,7 @@ func prepare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, vi
 			"pipes": int(pipes), "subways": int(subways), "mains": int(water_mains),
 			"redraw_ground": int(sprites.redraw_small_highway_ground), "atlas_edge": atlas_edge,
 			"atlas": int(pack_atlas), "special_overlays": int(special_overlays), "animation_phase": animation_phase,
-			"shadow_colors": _shadow_colors(palette)})
+			"shadow_colors": shadow_colors(palette)})
 		var failure := builder.configure(request, artwork, palette.color(0xa1).to_rgba32())
 		atlas = null
 		atlas_revision = -1
@@ -224,7 +224,7 @@ static func foreground_commands(records: PackedInt64Array, region_orders := fals
 
 # Shadows darken 0x5f to 0x64 and the 0x74 to 0x7e band to 0x7e. When colors
 # repeat, the first rule wins, so it is inserted last
-static func _shadow_colors(palette: Sc2Palette) -> PackedInt32Array:
+static func shadow_colors(palette: Sc2Palette) -> PackedInt32Array:
 	var pairs := PackedInt32Array()
 
 	for index in range(0x7e, 0x73, -1):

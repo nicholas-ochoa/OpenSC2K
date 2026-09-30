@@ -223,19 +223,15 @@ static func occlude_dynamic_with_mask(
 	position: Vector2i,
 	index_image: Image = null,
 	same_tile_foreground_indices := PackedInt32Array(),
-	index_reader := Callable()
+	index_covers_sprite := false
 ) -> IsometricPixelOperations.OcclusionResult:
 	return IsometricPixelOperations.occlude_dynamic_with_mask(
-		sprite, occluder_mask, position, index_image, same_tile_foreground_indices, index_reader
+		sprite, occluder_mask, position, index_image, same_tile_foreground_indices, index_covers_sprite
 	)
 
 
 static func static_visual_signature(city: CityState, view_size := VIEW_LARGE) -> Array:
 	return IsometricStaticVisuals.static_visual_signature(city, view_size)
-
-
-static func shadow_palette_index(index: int) -> int:
-	return IsometricPixelOperations.shadow_palette_index(index)
 
 
 # return the decoded sprite image, flipped on request

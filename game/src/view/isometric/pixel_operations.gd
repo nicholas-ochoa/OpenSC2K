@@ -9,36 +9,7 @@ static func foreground_difference_mask(sprite: Image, background: Image) -> Imag
 	if background == null:
 		return sprite
 
-	var mask := Image.create(
-		sprite.get_width(), sprite.get_height(), false, Image.FORMAT_RGBA8
-	)
-	mask.fill(Color.TRANSPARENT)
-	var background_y_offset := sprite.get_height() - background.get_height()
-
-	for y in sprite.get_height():
-		for x in sprite.get_width():
-			var source := sprite.get_pixel(x, y)
-
-			if source.a == 0.0:
-				continue
-
-			var background_y := y - background_y_offset
-			var changed := (
-				x >= background.get_width()
-				or background_y < 0
-				or background_y >= background.get_height()
-			)
-
-			if not changed:
-				changed = (
-					source.to_rgba32()
-					!= background.get_pixel(x, background_y).to_rgba32()
-				)
-
-			if changed:
-				mask.set_pixel(x, y, source)
-
-	return mask
+	return NativeSpriteCompositor.foreground_difference_mask(sprite, background)
 
 
 static func build_occlusion_grid(
@@ -115,129 +86,32 @@ static func occlusion_candidate_indices(
 	return result
 
 
+# hide the sprite pixels under `occluder_mask`, and the pixels over same-tile
+# foreground artwork: those whose index in `index_image` is in
+# `same_tile_foreground_indices`. `index_image` holds the whole map at the sprite
+# `position`, or, with `index_covers_sprite`, only the area under the sprite
 static func occlude_dynamic_with_mask(
 	sprite: Image,
 	occluder_mask: Image,
 	position: Vector2i,
 	index_image: Image = null,
 	same_tile_foreground_indices := PackedInt32Array(),
-	index_reader := Callable()
+	index_covers_sprite := false
 ) -> OcclusionResult:
 	if sprite == null:
 		return OcclusionResult.new(sprite)
 
-	var reads_indices := not same_tile_foreground_indices.is_empty() and (index_image != null or index_reader.is_valid())
-	if occluder_mask == null and not reads_indices:
-		return OcclusionResult.new(sprite)
+	var result := NativeSpriteCompositor.occlude(sprite, occluder_mask, index_image,
+		Vector2i.ZERO if index_covers_sprite else position, same_tile_foreground_indices)
 
-	# Ordinary moving sprites need only an alpha mask. Work on packed bytes;
-	# preserve the RGB bytes even for hidden pixels, as the general path does.
-	if (not reads_indices and sprite.get_format() == Image.FORMAT_RGBA8 and occluder_mask.get_format() == Image.FORMAT_RGBA8
-			and sprite.get_size() == occluder_mask.get_size()):
-		var pixels := sprite.get_data()
-		var mask := occluder_mask.get_data()
-		var count := 0
-		for alpha in range(3, sprite.get_width() * sprite.get_height() * 4, 4):
-			if pixels[alpha] != 0 and mask[alpha] != 0:
-				pixels[alpha] = 0
-				count += 1
-
-		return OcclusionResult.new(sprite if count == 0 else Image.create_from_data(
-			sprite.get_width(), sprite.get_height(), sprite.has_mipmaps(), Image.FORMAT_RGBA8, pixels), count)
-
-	var visible: Image = null
-	var occluded_pixels := 0
-
-	for source_y in sprite.get_height():
-		for source_x in sprite.get_width():
-			var source_color: Color = sprite.get_pixel(source_x, source_y)
-
-			if source_color.a == 0.0:
-				continue
-
-			var hidden := (
-				occluder_mask != null
-				and occluder_mask.get_pixel(source_x, source_y).a > 0.0
-			)
-			var map_point := position + Vector2i(source_x, source_y)
-
-			if (
-				not hidden
-				and (index_image != null or index_reader.is_valid())
-				and not same_tile_foreground_indices.is_empty()
-				and map_point.x >= 0
-				and map_point.y >= 0
-				and (index_reader.is_valid() or (map_point.x < index_image.get_width() and map_point.y < index_image.get_height()))
-			):
-				var encoded: Color = index_reader.call(
-					map_point.x,
-					map_point.y,
-				) if index_reader.is_valid() else index_image.get_pixelv(map_point)
-				var palette_index := roundi(encoded.r * 255.0)
-				hidden = same_tile_foreground_indices.has(palette_index)
-
-			if not hidden:
-				continue
-
-			if visible == null:
-				visible = sprite.duplicate()
-
-			source_color.a = 0.0
-			visible.set_pixel(source_x, source_y, source_color)
-			occluded_pixels += 1
-
-	return OcclusionResult.new(sprite if visible == null else visible, occluded_pixels)
+	return OcclusionResult.new(result.image, result.occluded_pixels)
 
 
-static func shadow_color(palette: Sc2Palette, destination: Color) -> Color:
-	if palette == null or not palette.is_valid():
-		return destination
-
-	var packed := destination.to_rgba32()
-
-	if packed == palette.color(0x5f).to_rgba32():
-		return palette.color(0x64)
-
-	for palette_index in range(0x74, 0x7f):
-		if packed == palette.color(palette_index).to_rgba32():
-			return palette.color(0x7e)
-
-	return destination
-
-
-static func shadow_palette_index(index: int) -> int:
-	if index == 0x5f:
-		return 0x64
-
-	if index >= 0x74 and index < 0x7f:
-		return 0x7e
-
-	return index
-
-
+# darken the pixels of `output` under the opaque pixels of `mask`
 static func _blend_shadow(
 	output: Image, mask: Image, palette: Sc2Palette, destination: Vector2i
 ) -> void:
-	for source_y in mask.get_height():
-		var output_y := destination.y + source_y
-
-		if output_y < 0 or output_y >= output.get_height():
-			continue
-
-		for source_x in mask.get_width():
-			if mask.get_pixel(source_x, source_y).a == 0.0:
-				continue
-
-			var output_x := destination.x + source_x
-
-			if output_x < 0 or output_x >= output.get_width():
-				continue
-
-			var current := output.get_pixel(output_x, output_y)
-			var changed := shadow_color(palette, current)
-
-			if changed != current:
-				output.set_pixel(output_x, output_y, changed)
+	NativeSpriteCompositor.blend_shadow(output, mask, destination, CityGpuBuildContext.shadow_colors(palette))
 
 
 # return the decoded sprite image, flipped on request
@@ -272,24 +146,7 @@ static func sprite_image(
 static func highway_train_deck_mask(surface: Image, thickness: int) -> Image:
 	# keep separate bands around each indexed road surface (0xa1). a single
 	# cutoff would retain pillars in the gap between a composite's two decks
-	var mask := surface.duplicate()
-
-	for x in surface.get_width():
-		var near_deck := PackedByteArray()
-		near_deck.resize(surface.get_height())
-
-		for y in surface.get_height():
-			var pixel := surface.get_pixel(x, y)
-
-			if pixel.a > 0.0 and roundi(pixel.r * 255.0) == 0xa1:
-				for row in range(maxi(0, y - thickness), mini(surface.get_height(), y + thickness + 1)):
-					near_deck[row] = 1
-
-		for y in surface.get_height():
-			if near_deck[y] == 0:
-				mask.set_pixel(x, y, Color.TRANSPARENT)
-
-	return mask
+	return NativeSpriteCompositor.highway_train_deck_mask(surface, thickness)
 
 
 class OcclusionResult extends RefCounted:

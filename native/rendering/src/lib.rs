@@ -3,6 +3,7 @@
 //! arrays; Godot receives only completed geometry and immutable sprite images.
 mod bridge;
 mod changes;
+mod compositing;
 mod data_view;
 mod ids;
 mod index;

@@ -109,17 +109,17 @@ func refresh_moving_things(view_size := -1) -> void:
 			index_texture = null
 		else:
 			var foreground_indices: PackedInt32Array = command.same_tile_foreground_indices
-			var index_reader := Callable()
+			var index_image: Image = caches.static_city_image
+			var index_covers_sprite := false
 
+			# regions paint the city area under the sprite on demand
 			if caches.region_cache != null and not foreground_indices.is_empty():
-				var sampled := caches.region_cache.image_region(Rect2i(position, resource.native_size), factor)
+				index_image = caches.region_cache.image_region(Rect2i(position, resource.native_size), factor)
+				index_covers_sprite = true
 				samples_static = true
-				index_reader = func(x: int, y: int) -> Color:
-					return sampled.get_pixel(x - position.x * factor, y - position.y * factor)
 
 			var occluded := IsometricRenderer.occlude_dynamic_with_mask(
-				resource.image, occluder_mask, position * factor, caches.static_city_image,
-				foreground_indices, index_reader
+				resource.image, occluder_mask, position * factor, index_image, foreground_indices, index_covers_sprite
 			)
 
 			if int(occluded.occluded_pixels) > 0:
@@ -430,48 +430,10 @@ func _dynamic_shadow_image(
 	if caches.static_city_image == null and caches.region_cache == null:
 		return null
 
-	var shadow := Image.create(
-		mask.get_width(), mask.get_height(), false, Image.FORMAT_RGBA8
-	)
-	shadow.fill(Color.TRANSPARENT)
-	var changed_pixels := 0
+	# regions paint the city area under the sprite; the static view has the whole map
 	@warning_ignore("integer_division")
 	var sampled: Image = (caches.region_cache.image_region(Rect2i(position, mask.get_size() / texture_factor), texture_factor)
 			if caches.region_cache != null else null)
 
-	for source_y in mask.get_height():
-		var output_y := position.y + int(source_y / texture_factor)
-
-		if output_y < 0 or output_y >= app.map_render.static_image_size().y:
-			continue
-
-		for source_x in mask.get_width():
-			if mask.get_pixel(source_x, source_y).a == 0.0:
-				continue
-
-			if (
-				occluder_mask != null
-				and occluder_mask.get_pixel(source_x, source_y).a > 0.0
-			):
-				continue
-
-			var output_x := position.x + int(source_x / texture_factor)
-
-			if output_x < 0 or output_x >= app.map_render.static_image_size().x:
-				continue
-
-			var current: Color = sampled.get_pixel(
-				source_x,
-				source_y,
-			) if sampled != null else caches.static_city_image.get_pixel(output_x, output_y)
-			var palette_index := roundi(current.r * 255.0)
-			var changed_index := IsometricRenderer.shadow_palette_index(palette_index)
-
-			if changed_index != palette_index:
-				shadow.set_pixel(
-					source_x, source_y,
-					Color8(changed_index, changed_index, changed_index, 255)
-				)
-				changed_pixels += 1
-
-	return shadow if changed_pixels > 0 else null
+	return NativeSpriteCompositor.moving_shadow(mask, occluder_mask, sampled if sampled != null else caches.static_city_image,
+		sampled == null, position, app.map_render.static_image_size(), texture_factor)

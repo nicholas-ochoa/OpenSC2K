@@ -211,7 +211,7 @@ func _expected(image: Image, position: Vector2i, order: int, mode: int) -> Packe
 
 			if mode == Mode.SHADOW:
 				var under := _static_index(position + Vector2i(x, y))
-				var shadow := CityIsometricRenderer.shadow_palette_index(under)
+				var shadow := _shadow_index(under)
 
 				if shadow == under:
 					continue
@@ -407,3 +407,11 @@ func _identity_palette() -> ImageTexture:
 class TestVisual extends CityDynamicVisual:
 	var sprite_id: int
 	var mode: int
+
+
+# the recovered shadow remap: 0x5f darkens to 0x64, and 0x74 to 0x7e to 0x7e
+static func _shadow_index(index: int) -> int:
+	if index == 0x5f:
+		return 0x64
+
+	return 0x7e if index >= 0x74 and index < 0x7f else index
