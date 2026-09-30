@@ -263,7 +263,7 @@ func reconcile_object_identities() -> void:
 	for record in count:
 		var kind := things[record * Sc2ThingLayout.RECORD_SIZE]
 
-		if record >= previous or sc2x_object_kinds[record] != kind:
+		if record >= previous or Sc2ThingLayout.identity_kind(sc2x_object_kinds[record]) != Sc2ThingLayout.identity_kind(kind):
 			sc2x_object_ids[record] = 0
 			sc2x_object_names[record] = ""
 			sc2x_object_kinds[record] = kind

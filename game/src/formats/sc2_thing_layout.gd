@@ -34,3 +34,12 @@ const RECORD_SIZE := 12
 const EXTENDED_RECORD_SIZE := RECORD_SIZE * 2
 const ORIGINAL_COUNT := 40
 const ORIGINAL_SIZE := RECORD_SIZE * ORIGINAL_COUNT
+
+
+# A train changes between the rail and subway types as it moves. It stays the
+# same object, so both types have one identity kind.
+static func identity_kind(kind: int) -> int:
+	if kind == Type.SUBWAY_ENGINE or kind == Type.SUBWAY_CAR:
+		return kind - 2
+
+	return kind

@@ -513,6 +513,20 @@ func _check_identities() -> void:
 	document.reconcile_object_identities()
 	var second := _object_id(document, slot)
 	_check(second > 0 and second != first, "A freed and reused slot gets a new object ID")
+
+	# a named train keeps its ID and name when it enters a subway
+	chunk.write_decoded_byte(slot * Sc2ThingLayout.RECORD_SIZE, Sc2ThingLayout.Type.TRAIN_ENGINE)
+	document.reconcile_object_identities()
+	document.sc2x_object_names[slot] = "Night Express"
+	var train := document.serialize()
+	var train_id := int(document.sc2x_object_ids[slot])
+	chunk.write_decoded_byte(slot * Sc2ThingLayout.RECORD_SIZE, Sc2ThingLayout.Type.SUBWAY_ENGINE)
+	document.reconcile_object_identities()
+	var subway := Sc2File.new()
+	_check(train.ok and subway.parse(document.serialize().data), "A city with a subway train saves")
+	subway.reconcile_object_identities()
+	_check(train_id > 0 and _object_id(subway, slot) == train_id and subway.sc2x_object_names[slot] == "Night Express",
+		"A train keeps its ID and name in a subway")
 	var ids := {}
 
 	for id in document.sc2x_object_ids:

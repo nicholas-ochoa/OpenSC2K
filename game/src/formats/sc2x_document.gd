@@ -720,7 +720,7 @@ static func _reconciled_identities(document: Sc2File, things: PackedByteArray) -
 		var kind := int(things[record * Sc2ThingLayout.RECORD_SIZE])
 		var same := (
 			kind != 0 and record < document.sc2x_object_ids.size() and record < document.sc2x_object_kinds.size()
-			and int(document.sc2x_object_kinds[record]) == kind
+			and Sc2ThingLayout.identity_kind(document.sc2x_object_kinds[record]) == Sc2ThingLayout.identity_kind(kind)
 		)
 
 		if same:
