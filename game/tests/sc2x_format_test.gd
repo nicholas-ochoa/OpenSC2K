@@ -458,6 +458,28 @@ func _check_resume() -> void:
 	state.erase("mayor_approval")
 	_check(not Sc2xCheckpoint.validate(state).is_empty(), "Incomplete saved state is rejected")
 
+	# a fire timer between disaster ticks survives a save
+	engine.pending_interaction = ""
+	controller.fire_elapsed_msec = 600.0
+	Sc2xCheckpoint.capture(controller, document.sc2x_metadata)
+	var burning := GameSpeedController.new(SimulationEngine.new(CityState.from_document(_loads(document.serialize().data)), 1, 1, 1))
+	_check(Sc2xCheckpoint.restore(burning, document.sc2x_metadata).is_empty() and burning.fire_elapsed_msec == 600.0,
+		"The fire timer survives a save")
+	state = document.sc2x_metadata.phase_state.duplicate()
+	state[Sc2xMetadata.FIRE_TIMER_KEY] = 1200
+	_check(not Sc2xCheckpoint.validate(state).is_empty(), "A fire timer past one disaster tick is rejected")
+
+	# a file without phase state still restores its random states
+	var seeded := Sc2xDocument.create_empty(128).document
+	seeded.sc2x_metadata.process_random = 1111
+	seeded.sc2x_metadata.lfsr_random = 2222
+	seeded.sc2x_metadata.game_random = 3333
+	var plain := _loads(seeded.serialize().data)
+	var fresh := SimulationEngine.new(CityState.from_document(plain), 1, 1, 1)
+	Sc2xCheckpoint.restore_random(fresh, plain.sc2x_metadata)
+	_check(not Sc2xCheckpoint.has_saved_state(plain.sc2x_metadata) and fresh.random.state == 1111
+		and fresh.lfsr_random.state == 2222 and fresh.game_random.state == 3333, "A file without phase state keeps its random states")
+
 
 # a 4096-tile city links its last facility record in the high ID range, and a
 # far-corner sign and facility survive a save, a load, and a rotation

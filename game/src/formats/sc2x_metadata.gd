@@ -31,6 +31,10 @@ const PHASE_KEYS: PackedStringArray = [
 	"subtick_counter", "simulation_ready",
 	"developed_tiles", "power_usage_percent", "water_usage_percent", "city_status_resource_id",
 ]
+# optional phase_state key: milliseconds of the fire timer, 0 through 1000.
+# Files without it resume with a new timer.
+const FIRE_TIMER_KEY := "fire_elapsed_msec"
+const FIRE_TIMER_MAX := 1000
 const PHASE_INTEGER_KEYS: PackedStringArray = [
 	"commerce_connections", "industry_connections", "bus_passengers", "rail_passengers", "subway_passengers",
 	"mayor_approval", "pending_disaster_type", "active_disaster_type", "unsupported_disaster_type",
@@ -316,6 +320,12 @@ static func phase_state_error(state: Dictionary) -> String:
 
 		if not value is Array or value.size() != 2 or not _is_integral(value[0]) or not _is_integral(value[1]):
 			return "metadata.json phase_state.%s is not a pair of integers" % key
+
+	if state.has(FIRE_TIMER_KEY):
+		var timer: Variant = state[FIRE_TIMER_KEY]
+
+		if not _is_integral(timer) or int(timer) < 0 or int(timer) > FIRE_TIMER_MAX:
+			return "metadata.json phase_state.%s is not 0 through %d" % [FIRE_TIMER_KEY, FIRE_TIMER_MAX]
 
 	return ""
 

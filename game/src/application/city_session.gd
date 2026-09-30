@@ -104,8 +104,13 @@ func activate_document(
 	app.timing_state.simulation_timings.clear()
 	app.simulation_state.simulation_engine = Simulation.new(app.document_state.city, process_seed, lfsr_seed, game_seed)
 
-	# an sc2x version 4 save holds the engine state and the load-scan results
-	var saved_state := loaded_from_file and document.is_sc2x() and Sc2xCheckpoint.has_saved_state(document.sc2x_metadata)
+	# an sc2x version 4 save holds the random states, even without phase state,
+	# and the engine state with the load-scan results
+	var saved_file := loaded_from_file and document.is_sc2x() and document.sc2x_converted_from.is_empty()
+	var saved_state := saved_file and Sc2xCheckpoint.has_saved_state(document.sc2x_metadata)
+
+	if saved_file:
+		Sc2xCheckpoint.restore_random(app.simulation_state.simulation_engine, document.sc2x_metadata)
 
 	# the load-time utility scan is not a player change. keep a repaired city unsaved
 	if loaded_from_file and not saved_state:

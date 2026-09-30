@@ -254,13 +254,15 @@ military decision waits for the player, the save reports what to finish first.
 `pending_disaster_point`, `active_disaster_type`, `unsupported_disaster_type`,
 `disaster_map_counter`, `disaster_hurricane_counter`, `terminal_state`, `subtick_counter`,
 `simulation_ready`, and the load-scan results `developed_tiles`, `power_usage_percent`,
-`water_usage_percent`, and `city_status_resource_id`.
+`water_usage_percent`, and `city_status_resource_id`. The optional `fire_elapsed_msec`
+(0 to 1000) is the fire timer between two fire or firestorm disaster ticks; without it the
+timer starts at 0.
 
 A file with this state loads without a new power and water scan, so the next days run as
-they would have without the save. The frame timing accumulators, the fire timer, the
-traffic news deadline (a process clock), music playback, the vehicle layer switch, and pause
-targets are runtime state and are not saved. An empty `phase_state` means the load defaults,
-as after a conversion.
+they would have without the save. The frame timing accumulators, the traffic news deadline
+(a process clock), music playback, the vehicle layer switch, and pause targets are runtime
+state and are not saved. An empty `phase_state` means the load defaults, as after a
+conversion. The load still restores `rng_states` before its scan.
 
 ## Record and vehicle limits
 

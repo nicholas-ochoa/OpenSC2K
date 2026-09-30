@@ -5,12 +5,13 @@ extends RefCounted
 ## the speed controller. A save happens at a completed simulation day: a day
 ## that waits for the player, such as the annual budget, cannot be saved.
 ##
-## Saved: the three random states and the `phase_state` keys of
-## Sc2xMetadata.PHASE_KEYS, including the results of the load scan. A city with saved phase state resumes without
-## a new load scan, so the scan does not draw from the random states again.
-## Not saved: frame timing accumulators, the fire timer, the traffic news
-## deadline (a process clock), music playback, the vehicle layer switch, and
-## pause targets.
+## Saved: the three random states, the `phase_state` keys of
+## Sc2xMetadata.PHASE_KEYS, including the results of the load scan, and the
+## fire timer. A city with saved phase state resumes without a new load scan,
+## so the scan does not draw from the random states again. A file without phase
+## state still restores its random states before the load scan.
+## Not saved: frame timing accumulators, the traffic news deadline (a process
+## clock), music playback, the vehicle layer switch, and pause targets.
 
 # Empty when the engine is at a completed day and can be saved
 static func save_error(controller: GameSpeedController) -> String:
@@ -56,6 +57,8 @@ static func capture(controller: GameSpeedController, metadata: Sc2xMetadata) -> 
 	state["power_usage_percent"] = engine.power_usage_percent
 	state["water_usage_percent"] = engine.water_usage_percent
 	state["city_status_resource_id"] = engine.city_status_resource_id
+	# the fire timer advances in whole base ticks while a fire burns
+	state[Sc2xMetadata.FIRE_TIMER_KEY] = roundi(controller.fire_elapsed_msec)
 	metadata.phase_state = state
 
 
@@ -77,9 +80,7 @@ static func restore(controller: GameSpeedController, metadata: Sc2xMetadata) -> 
 	if not error.is_empty():
 		return error
 
-	engine.random.state = metadata.process_random
-	engine.lfsr_random.state = metadata.lfsr_random
-	engine.game_random.state = metadata.game_random
+	restore_random(controller.engine, metadata)
 
 	if state.is_empty():
 		return ""
@@ -105,8 +106,19 @@ static func restore(controller: GameSpeedController, metadata: Sc2xMetadata) -> 
 	engine.power_usage_percent = int(state.power_usage_percent)
 	engine.water_usage_percent = int(state.water_usage_percent)
 	engine.city_status_resource_id = int(state.city_status_resource_id)
+	controller.fire_elapsed_msec = float(state.get(Sc2xMetadata.FIRE_TIMER_KEY, 0))
 
 	return ""
+
+
+# The random states of a loaded file. A load restores them before the load scan.
+static func restore_random(engine: SimulationEngine, metadata: Sc2xMetadata) -> void:
+	if engine == null or metadata == null:
+		return
+
+	engine.random.state = metadata.process_random
+	engine.lfsr_random.state = metadata.lfsr_random
+	engine.game_random.state = metadata.game_random
 
 
 static func validate(state: Dictionary) -> String:
