@@ -269,7 +269,7 @@ class NativePackageTest(unittest.TestCase):
                     source.write_bytes(payload)
                     expected[relative] = payload
             packages.install_native(native, project)
-            self.assertEqual(len(expected), 6)
+            self.assertEqual(len(expected), len(packages.NATIVE_MODULES) * len(packages.NATIVE_PLATFORMS))
             for relative, payload in expected.items():
                 self.assertEqual((project / 'bin' / relative).read_bytes(), payload)
             missing = native / 'opensc2k_rendering/macos/libopensc2k_rendering.dylib'

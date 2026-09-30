@@ -4,7 +4,6 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
-const Checksum = preload("res://src/formats/crc32.gd")
 const SIGNATURE := [137, 80, 78, 71, 13, 10, 26, 10]
 const MAX_DIMENSION := 4096
 
@@ -279,7 +278,7 @@ static func _chunk(kind: String, payload: PackedByteArray) -> PackedByteArray:
 
 
 static func _crc(bytes: PackedByteArray) -> int:
-	return Checksum.calculate(bytes)
+	return NativeCrc32.calculate(bytes)
 
 
 static func _u32(bytes: PackedByteArray, offset: int) -> int:

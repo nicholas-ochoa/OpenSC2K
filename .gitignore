@@ -31,4 +31,5 @@ ghidra/
 # Native library build output
 /native/simulation/target/
 /native/rendering/target/
+/native/formats/target/
 /game/bin/

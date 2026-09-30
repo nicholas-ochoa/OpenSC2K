@@ -47,6 +47,7 @@ jobs:
           workspaces: |
             native/simulation
             native/rendering
+            native/formats
       # rust-toolchain.toml selects the Rust version. rustup is on each runner image
       - name: Build the package libraries
         run: python tools/build_native.py --package
@@ -57,6 +58,7 @@ jobs:
           path: |
             game/bin/opensc2k_simulation/${{ matrix.platform }}/*
             game/bin/opensc2k_rendering/${{ matrix.platform }}/*
+            game/bin/opensc2k_formats/${{ matrix.platform }}/*
           if-no-files-found: error
           retention-days: 1
 

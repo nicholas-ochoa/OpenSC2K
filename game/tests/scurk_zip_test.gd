@@ -2,7 +2,6 @@ extends SceneTree
 ## Generated ZIP fixtures from Python zipfile, independent of the SCURK writer.
 
 const Zip = preload("res://src/tools/scurk/scurk_zip.gd")
-const Checksum = preload("res://src/formats/crc32.gd")
 const PYTHON_STORED := (
 	"504b03041400000000000000210023dd8a58080000000800000005000000612e62696e41424300ff414243504b03041400000000000000210049b8aa0e400000" +
 	"00400000000c0000006e65737465642f622e62696e5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a" +
@@ -46,9 +45,9 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	_check(Checksum.calculate(PackedByteArray()) == 0)
-	_check(Checksum.calculate("123456789".to_utf8_buffer()) == 0xcbf43926)
-	_check(Checksum.calculate(PackedByteArray(range(256))) == 0x29058c73)
+	_check(NativeCrc32.calculate(PackedByteArray()) == 0)
+	_check(NativeCrc32.calculate("123456789".to_utf8_buffer()) == 0xcbf43926)
+	_check(NativeCrc32.calculate(PackedByteArray(range(256))) == 0x29058c73)
 	_test_external_archives()
 	_test_writer()
 	_test_preflight()

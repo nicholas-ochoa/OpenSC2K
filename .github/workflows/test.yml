@@ -30,6 +30,7 @@ jobs:
           workspaces: |
             native/simulation
             native/rendering
+            native/formats
       - name: Install test dependencies
         run: |
           python -m pip install Pillow
@@ -71,9 +72,10 @@ jobs:
           workspaces: |
             native/simulation
             native/rendering
+            native/formats
       # rust-toolchain.toml selects the Rust version. rustup is on each runner image
       - name: Run cargo tests
         run: |
-          for crate in native/simulation native/rendering; do
+          for crate in native/simulation native/rendering native/formats; do
             cargo test --release --manifest-path "$crate/Cargo.toml"
           done

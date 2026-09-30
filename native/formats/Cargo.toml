@@ -1,0 +1,23 @@
+[package]
+name = "opensc2k_formats"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "Native file and image codecs for OpenSC2K"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# Asset import and export run codecs on worker threads.
+godot = { version = "0.5.5", features = ["api-4-7", "experimental-threads"] }
+
+[profile.release]
+opt-level = 3
+codegen-units = 1
+lto = "thin"
+debug = false
+
+[profile.dev]
+opt-level = 1

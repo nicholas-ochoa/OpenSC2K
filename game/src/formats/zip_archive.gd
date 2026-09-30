@@ -5,7 +5,6 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
-const Checksum = preload("res://src/formats/crc32.gd")
 # ZIP64 fields can name larger sizes; these bound what one archive may use
 const ABSOLUTE_MAX_BYTES := 1024 * 1024 * 1024
 const LOCAL_SIGNATURE := 0x04034b50
@@ -188,7 +187,7 @@ static func decode(bytes: PackedByteArray, max_file_bytes: int, max_data_bytes: 
 	for entry in entries:
 		var payload := bytes.slice(entry.data_offset, entry.data_offset + entry.compressed_size)
 		if entry.method == STORED:
-			if Checksum.calculate(payload) != entry.crc:
+			if NativeCrc32.calculate(payload) != entry.crc:
 				return _failure("The ZIP member checksum is invalid.")
 		else:
 			var inflated := _inflate(payload, entry.crc, entry.size)
