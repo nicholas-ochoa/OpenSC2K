@@ -32,4 +32,5 @@ ghidra/
 /native/simulation/target/
 /native/rendering/target/
 /native/formats/target/
+/native/audio/target/
 /game/bin/

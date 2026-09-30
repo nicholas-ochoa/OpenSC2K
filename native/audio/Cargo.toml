@@ -1,0 +1,23 @@
+[package]
+name = "opensc2k_audio"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "Native MIDI synthesizer for OpenSC2K"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# The music thread calls the synthesizer. Each synthesizer belongs to one player.
+godot = { version = "0.5.5", features = ["api-4-7", "experimental-threads"] }
+
+[profile.release]
+opt-level = 3
+codegen-units = 1
+lto = "thin"
+debug = false
+
+[profile.dev]
+opt-level = 1

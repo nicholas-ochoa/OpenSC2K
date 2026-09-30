@@ -1,0 +1,16 @@
+[configuration]
+
+entry_symbol = "opensc2k_audio_init"
+compatibility_minimum = 4.7
+reloadable = false
+
+[libraries]
+
+macos.debug = "res://bin/opensc2k_audio/macos/libopensc2k_audio.dylib"
+macos.release = "res://bin/opensc2k_audio/macos/libopensc2k_audio.dylib"
+linux.debug.x86_64 = "res://bin/opensc2k_audio/linux-x86_64/libopensc2k_audio.so"
+linux.release.x86_64 = "res://bin/opensc2k_audio/linux-x86_64/libopensc2k_audio.so"
+linux.debug.arm64 = "res://bin/opensc2k_audio/linux-arm64/libopensc2k_audio.so"
+linux.release.arm64 = "res://bin/opensc2k_audio/linux-arm64/libopensc2k_audio.so"
+windows.debug.x86_64 = "res://bin/opensc2k_audio/windows-x86_64/opensc2k_audio.dll"
+windows.release.x86_64 = "res://bin/opensc2k_audio/windows-x86_64/opensc2k_audio.dll"

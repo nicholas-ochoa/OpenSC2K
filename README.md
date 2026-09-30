@@ -87,8 +87,9 @@ is retained for adapted work.
 Open `game/project.godot` in Godot. Run `python3 tools/build_native.py` after each change
 to a crate in `native`. The validation command also builds the native libraries and runs
 their unit tests. See [the native simulation](docs/native-simulation.md),
-[the native region builder](docs/native-rendering.md) and
-[the native formats](docs/native-formats.md) for their layouts. Run the checks with:
+[the native region builder](docs/native-rendering.md),
+[the native formats](docs/native-formats.md) and [the native audio](docs/native-audio.md) for
+their layouts. Run the checks with:
 
 ```sh
 tools/validate_project.sh

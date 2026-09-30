@@ -37,7 +37,7 @@ def write_zip(package, folder, name, *directories):
 
 
 # Native libraries are independent extensions with the same platform layout.
-NATIVE_MODULES = ('simulation', 'rendering', 'formats')
+NATIVE_MODULES = ('simulation', 'rendering', 'formats', 'audio')
 NATIVE_PLATFORMS = {
     'windows-x64': ('windows-x86_64', 'opensc2k_{}.dll', 'opensc2k_{}.dll'),
     'linux-x64': ('linux-x86_64', 'libopensc2k_{}.so', 'libopensc2k_{}.so'),

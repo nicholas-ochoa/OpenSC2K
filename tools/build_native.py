@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-MODULES = ('simulation', 'rendering', 'formats')
+MODULES = ('simulation', 'rendering', 'formats', 'audio')
 MACOS_TARGETS = ('aarch64-apple-darwin', 'x86_64-apple-darwin')
 
 

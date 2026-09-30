@@ -140,19 +140,19 @@ func _test_midi_files(reference_root: String) -> void:
 
 func _test_midi_synth_helpers() -> void:
 	_check(
-		is_equal_approx(MidiSynth.note_frequency(69), 440.0)
-		and is_equal_approx(MidiSynth.note_frequency(81), 880.0),
+		is_equal_approx(NativeMidiSynth.note_frequency(69, 8192), 440.0)
+		and is_equal_approx(NativeMidiSynth.note_frequency(81, 8192), 880.0),
 		"MIDI synthesizer maps A4 and A5 to their standard frequencies",
 	)
 	_check(
-		absf(MidiSynth.note_frequency(69, 16383) - 493.88) < 0.02
-		and absf(MidiSynth.note_frequency(69, 0) - 391.99) < 0.02,
+		absf(NativeMidiSynth.note_frequency(69, 16383) - 493.88) < 0.02
+		and absf(NativeMidiSynth.note_frequency(69, 0) - 391.99) < 0.02,
 		"MIDI synthesizer applies the default two-semitone pitch-bend range",
 	)
 	var families := PackedInt32Array()
 
 	for program in [0, 8, 16, 24, 32, 40, 56, 72, 80, 104, 127]:
-		families.append(MidiSynth.waveform_family(program))
+		families.append(NativeMidiSynth.waveform_family(program))
 
 	_check(
 		families == PackedInt32Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9]),
@@ -164,10 +164,10 @@ func _test_midi_synth_helpers() -> void:
 		and MidiSynth.PREFILL_SECONDS < MidiSynth.BUFFER_LENGTH_SECONDS,
 		"MIDI playback keeps a primed safety buffer",
 	)
-	var saw_start := MidiSynth.band_limited_saw(0.0, 0.01)
-	var saw_end := MidiSynth.band_limited_saw(0.999999, 0.01)
-	var square_start := MidiSynth.band_limited_square(0.0, 0.01)
-	var square_end := MidiSynth.band_limited_square(0.999999, 0.01)
+	var saw_start := NativeMidiSynth.band_limited_saw(0.0, 0.01)
+	var saw_end := NativeMidiSynth.band_limited_saw(0.999999, 0.01)
+	var square_start := NativeMidiSynth.band_limited_square(0.0, 0.01)
+	var square_end := NativeMidiSynth.band_limited_square(0.999999, 0.01)
 	_check(
 		absf(saw_start - saw_end) < 0.01
 		and absf(square_start - square_end) < 0.01,
