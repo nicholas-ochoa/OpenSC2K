@@ -245,6 +245,14 @@ func _test_tool_modifiers() -> void:
 	assert(main.scurk_editor.pixel_canvas.control_bindings == bindings)
 	main.preferences.control_bindings = ControlBindings.defaults()
 	main.settings.apply_control_bindings()
+	# the music keys are bindable and still work on every screen
+	assert(main.controls.handle_music_key(_key(KEY_MEDIANEXT)))
+	main.preferences.control_bindings.remove_binding("music_next", ControlBinding.key(KEY_MEDIANEXT))
+	main.preferences.control_bindings.add("music_next", ControlBinding.key(KEY_F8))
+	assert(not main.controls.handle_music_key(_key(KEY_MEDIANEXT)))
+	assert(main.controls.handle_music_key(_key(KEY_F8)))
+	main.preferences.control_bindings = ControlBindings.defaults()
+	main.settings.apply_control_bindings()
 
 
 func _press(keycode: Key, shift := false) -> void:

@@ -9,6 +9,8 @@ extends RefCounted
 const SCOPE_MAP := "map"
 const SCOPE_GLOBAL := "global"
 const SCOPE_SCURK := "scurk"
+# anywhere actions work on every screen, as the media keys do
+const SCOPE_ANYWHERE := "anywhere"
 const SCOPE_FIXED := "fixed"
 const CITY_SCOPES: Array[String] = [SCOPE_MAP, SCOPE_GLOBAL]
 # press actions start once. hold actions are active while the binding is down.
@@ -20,7 +22,7 @@ const KIND_HOLD := "hold"
 const KIND_CLICK := "click"
 const KIND_DRAG := "drag"
 const KIND_MODIFIER := "modifier"
-const CATEGORIES: Array[String] = ["Camera", "Speed", "Tools", "View", "Windows", "Options", "File", "Mouse", "SCURK", "Fixed"]
+const CATEGORIES: Array[String] = ["Camera", "Speed", "Tools", "View", "Windows", "Music", "Options", "File", "Mouse", "SCURK", "Fixed"]
 const TOOL_IDS: Array[String] = [
 	"tool_bulldozer", "tool_landscape", "tool_dispatch", "tool_power", "tool_water", "tool_rewards",
 	"tool_roads", "tool_rail", "tool_ports", "tool_residential", "tool_commercial", "tool_industrial",
@@ -36,6 +38,11 @@ const TOOL_DEFAULTS: Dictionary[String, Array] = {
 }
 const CAMERA_DIRECTIONS: Dictionary[String, Vector2] = {
 	"camera_up": Vector2.UP, "camera_left": Vector2.LEFT, "camera_down": Vector2.DOWN, "camera_right": Vector2.RIGHT,
+}
+# the media key that each music action stands for
+const MUSIC_KEYS: Dictionary[String, Key] = {
+	"music_play_pause": KEY_MEDIAPLAY, "music_next": KEY_MEDIANEXT,
+	"music_previous": KEY_MEDIAPREVIOUS, "music_stop": KEY_MEDIASTOP,
 }
 const SPEED_IDS: Array[String] = ["speed_pause", "speed_turtle", "speed_llama", "speed_cheetah", "speed_african_swallow"]
 const SURFACE_LAYERS: Array[Array] = [
@@ -141,6 +148,11 @@ static func _build() -> void:
 
 	_add("window_newspaper", "Latest newspaper", "Windows", SCOPE_MAP, KIND_PRESS, ["key:N"])
 
+	_add("music_play_pause", "Play or pause music", "Music", SCOPE_ANYWHERE, KIND_PRESS, ["key:MediaPlay"])
+	_add("music_next", "Next track", "Music", SCOPE_ANYWHERE, KIND_PRESS, ["key:MediaNext"])
+	_add("music_previous", "Previous track", "Music", SCOPE_ANYWHERE, KIND_PRESS, ["key:MediaPrevious"])
+	_add("music_stop", "Stop music", "Music", SCOPE_ANYWHERE, KIND_PRESS, ["key:MediaStop"])
+
 	_add("option_auto_budget", "Auto-Budget", "Options", SCOPE_MAP, KIND_PRESS, [])
 	_add("option_auto_goto", "Auto-Goto", "Options", SCOPE_MAP, KIND_PRESS, [])
 	_add("option_sound_effects", "Sound effects", "Options", SCOPE_MAP, KIND_PRESS, [])
@@ -155,7 +167,6 @@ static func _build() -> void:
 	_add("file_rename", "Rename city", "File", SCOPE_GLOBAL, KIND_PRESS, [])
 	_add("file_export_png", "Export city as PNG", "File", SCOPE_GLOBAL, KIND_PRESS, [])
 	_add("file_main_menu", "Main menu", "File", SCOPE_GLOBAL, KIND_PRESS, [])
-	_add("file_quit", "Quit", "File", SCOPE_GLOBAL, KIND_PRESS, ["key:Command+Q"] if mac else [])
 
 	_add("map_use_tool", "Use tool", "Mouse", SCOPE_FIXED, KIND_CLICK, ["mouse:Left"])
 	_add("map_context_menu", "Context menu", "Mouse", SCOPE_MAP, KIND_CLICK, ["mouse:Right"])
@@ -186,7 +197,6 @@ static func _build() -> void:
 
 	_add_fixed("fixed_escape", "Cancel or close", "Esc")
 	_add_fixed("fixed_shift_detail", "Exact data view values, deferred terrain stretch", "Hold Shift")
-	_add_fixed("fixed_media", "Music playback", "Media keys")
 	_add_fixed("fixed_scurk", "SCURK nudge and selection modes", "Arrow keys, Shift, Ctrl")
 
 

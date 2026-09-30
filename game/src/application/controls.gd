@@ -50,6 +50,25 @@ func camera_speed_scale() -> float:
 	return FAST_CAMERA_SCALE if bindings().is_held("camera_fast") else 1.0
 
 
+# Music keys work on every screen. A key that types text does not start music
+# while a text field has focus.
+func handle_music_key(event: InputEventKey) -> bool:
+	if app.audio_controller == null:
+		return false
+
+	var action := bindings().action_for(event, [ControlActions.KIND_PRESS], [ControlActions.SCOPE_ANYWHERE])
+
+	if not ControlActions.MUSIC_KEYS.has(action):
+		return false
+
+	var focus := app.get_viewport().gui_get_focus_owner() if app.is_inside_tree() else null
+
+	if (focus is LineEdit or focus is TextEdit) and event.unicode != 0:
+		return false
+
+	return app.audio_controller.handle_media_key(ControlActions.MUSIC_KEYS[action])
+
+
 # Run the press or click action of a key. Returns true when an action ran.
 func handle_key(event: InputEventKey) -> bool:
 	var action := bindings().action_for(event, [ControlActions.KIND_PRESS, ControlActions.KIND_CLICK])

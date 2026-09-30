@@ -462,7 +462,12 @@ layout_mode = 2
 horizontal_scroll_mode = 0
 metadata/_tab_index = 3
 
-[node name="ControlsList" type="VBoxContainer" parent="Tabs/Controls"]
+[node name="ControlsMargin" type="MarginContainer" parent="Tabs/Controls"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_right = 12
+
+[node name="ControlsList" type="VBoxContainer" parent="Tabs/Controls/ControlsMargin"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3

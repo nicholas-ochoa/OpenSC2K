@@ -88,8 +88,12 @@ static func _kinds_overlap(first: String, second: String) -> bool:
 	return (first == ControlActions.KIND_DRAG) == (second == ControlActions.KIND_DRAG)
 
 
-# SCURK editor keys work only in the editor, so they can use city keys again
+# SCURK editor keys work only in the editor, so they can use city keys again.
+# anywhere keys work on every screen
 static func _scopes_overlap(first: String, second: String) -> bool:
+	if first == ControlActions.SCOPE_ANYWHERE or second == ControlActions.SCOPE_ANYWHERE:
+		return true
+
 	return (first == ControlActions.SCOPE_SCURK) == (second == ControlActions.SCOPE_SCURK)
 
 

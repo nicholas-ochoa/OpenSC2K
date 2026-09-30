@@ -92,6 +92,9 @@ func _test_catalog_defaults() -> void:
 		assert(pair[1] in defaults.to_texts(pair[0]), "%s is not a default of %s" % [pair[1], pair[0]])
 
 	assert(defaults.for_action("speed_pause").is_empty())
+	assert(not ControlActions.has("file_quit"), "The system handles Quit")
+	# music keys work on every screen, so they conflict with city and SCURK keys
+	assert(defaults.conflicts(ControlBinding.from_text("key:Command+S"), "music_stop") == ["file_save", "scurk_save"])
 	# the default bindings have no conflicts
 	for id in ControlActions.bindable_ids():
 		for binding in defaults.for_action(id):

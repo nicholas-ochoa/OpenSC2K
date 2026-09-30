@@ -68,11 +68,10 @@ func update_keyboard_camera(delta: float) -> void:
 
 
 func input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo and app.audio_controller != null:
-		if app.audio_controller.handle_media_key(event.keycode):
-			app.get_viewport().set_input_as_handled()
+	if event is InputEventKey and event.pressed and not event.echo and app.controls.handle_music_key(event):
+		app.get_viewport().set_input_as_handled()
 
-			return
+		return
 
 	# A focused control can consume the release event. Stop camera movement anyway.
 	if event is InputEventKey and not event.pressed:

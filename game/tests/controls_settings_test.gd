@@ -22,7 +22,7 @@ func _run() -> void:
 	main.interface.hide_main_menu()
 	dialog = main.main_overlays.settings_dialog
 
-	_test_tab_visibility()
+	await _test_tab_visibility()
 	_test_capture_and_conflicts()
 	_test_use_defaults()
 	_test_save_changes()
@@ -35,13 +35,17 @@ func _run() -> void:
 
 func _test_tab_visibility() -> void:
 	main.settings.open_settings_dialog()
-	assert(dialog.visible and not dialog.use_defaults_button.visible, "Use Defaults is hidden on other tabs")
+	assert(dialog.visible and not dialog.use_defaults_button.is_visible_in_tree(), "Use Defaults is hidden on other tabs")
 	dialog.tabs.current_tab = AppSettingsDialog.CONTROLS_TAB
-	assert(dialog.use_defaults_button.visible)
-	var row := dialog.use_defaults_button.get_parent()
-	assert(dialog.use_defaults_button.get_index() == row.get_child_count() - 1, "Use Defaults is the last button in the row")
+	await process_frame
+	assert(dialog.use_defaults_button.is_visible_in_tree())
+	assert(dialog.use_defaults_button.get_parent() != dialog.get_ok_button().get_parent(), "Use Defaults has its own row")
+	assert(dialog.use_defaults_button.get_global_rect().position.y > dialog.tabs.get_global_rect().end.y - 1.0,
+		"Use Defaults is below the tab panel")
+	assert(dialog.use_defaults_button.get_global_rect().end.y <= dialog.get_ok_button().get_global_rect().position.y,
+		"Use Defaults is above the dialog buttons")
 	dialog.tabs.current_tab = 0
-	assert(not dialog.use_defaults_button.visible)
+	assert(not dialog.use_defaults_button.is_visible_in_tree())
 	dialog.tabs.current_tab = AppSettingsDialog.CONTROLS_TAB
 
 
@@ -124,14 +128,14 @@ func _test_use_defaults() -> void:
 	dialog.default_mayor_edit.text = "Pending Mayor"
 	var saved_before := FileAccess.get_file_as_string(settings_path)
 	# Cancel on the warning changes nothing
-	dialog.custom_action.emit(&"use_defaults")
+	dialog.use_defaults_button.pressed.emit()
 	assert(dialog.reset_controls_dialog.visible)
 	dialog.reset_controls_dialog.canceled.emit()
 	dialog.reset_controls_dialog.hide()
 	assert(list.pending.for_action("tool_query").is_empty(), "Cancel on the warning keeps pending edits")
 	assert(FileAccess.get_file_as_string(settings_path) == saved_before, "Cancel on the warning saves nothing")
 	# Reset Controls saves the defaults at once and no pending edit of another tab
-	dialog.custom_action.emit(&"use_defaults")
+	dialog.use_defaults_button.pressed.emit()
 	dialog.reset_controls_dialog.confirmed.emit()
 	dialog.reset_controls_dialog.hide()
 	var config := ConfigFile.new()

@@ -83,13 +83,15 @@ func _ready() -> void:
 	controls_list = %ControlsList
 	zoom_graphics_selectors = [%Zoom25, %Zoom50, %Zoom100, %Zoom200, %Zoom300, %Zoom400]
 
-	# acceptdialog owns the standard buttons and content placement
+	# acceptdialog owns the standard buttons and content placement. the tabs
+	# and the Controls tab footer share one content column
 	var settings_parent := get_label().get_parent()
-
-	if tabs.get_parent() != settings_parent:
-		tabs.reparent(settings_parent)
-
-	settings_parent.move_child(tabs, 0)
+	var content := VBoxContainer.new()
+	content.name = "SettingsContent"
+	settings_parent.add_child(content)
+	settings_parent.move_child(content, 0)
+	tabs.reparent(content)
+	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
 
 	for selector in zoom_graphics_selectors + [overview_graphics_selector]:
 		selector.item_selected.connect(func(_size: int) -> void:
@@ -101,7 +103,7 @@ func _ready() -> void:
 	_bind_pack_controls("data", data_pack_edit, %DataPackName, %DataBrowse)
 	_watch_clicks(tabs)
 	tabs.get_tab_bar().tab_clicked.connect(button_clicked.emit.unbind(1))
-	_build_controls_reset()
+	_build_controls_reset(content)
 	canceled.connect(button_clicked.emit)
 	%ImportButton.pressed.connect(_request_original_import)
 	check_updates_now_button.pressed.connect(update_check_requested.emit)
@@ -112,15 +114,22 @@ func _ready() -> void:
 	_fit_to_viewport()
 
 
-func _build_controls_reset() -> void:
+# Use Defaults sits in its own row below the tab panel, and only the Controls
+# tab shows it
+func _build_controls_reset(content: VBoxContainer) -> void:
 	controls_list.button_clicked.connect(button_clicked.emit)
 	controls_list.attach_capture_overlay(self)
-	use_defaults_button = add_button("Use Defaults", true, "use_defaults")
-	# keep Use Defaults at the right end of the button row on every system
-	var button_row := use_defaults_button.get_parent()
-	button_row.move_child(use_defaults_button, button_row.get_child_count() - 1)
+	var row := HBoxContainer.new()
+	row.name = "ControlsFooter"
+	row.alignment = BoxContainer.ALIGNMENT_END
+	content.add_child(row)
+	use_defaults_button = Button.new()
+	use_defaults_button.name = "UseDefaults"
+	use_defaults_button.text = "Use Defaults"
+	use_defaults_button.tooltip_text = "Return every keyboard and mouse binding to its default"
+	row.add_child(use_defaults_button)
 	use_defaults_button.pressed.connect(button_clicked.emit)
-	custom_action.connect(_on_custom_action)
+	use_defaults_button.pressed.connect(_confirm_use_defaults)
 	visibility_changed.connect(func() -> void:
 		if not visible:
 			controls_list.cancel_capture())
@@ -141,13 +150,12 @@ func _build_controls_reset() -> void:
 
 
 func _update_use_defaults(tab: int) -> void:
-	use_defaults_button.visible = tab == CONTROLS_TAB
+	use_defaults_button.get_parent().visible = tab == CONTROLS_TAB
 
 
-func _on_custom_action(action: StringName) -> void:
-	if action == &"use_defaults":
-		controls_list.cancel_capture()
-		reset_controls_dialog.popup_centered()
+func _confirm_use_defaults() -> void:
+	controls_list.cancel_capture()
+	reset_controls_dialog.popup_centered()
 
 
 func _watch_clicks(node: Node) -> void:

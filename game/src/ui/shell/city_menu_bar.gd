@@ -50,7 +50,7 @@ const DISASTER_ITEMS := [
 const ACTION_ITEMS: Dictionary[String, Array] = {
 	"file_new": ["file", 0], "file_open": ["file", 1], "file_save": ["file", MENU_SAVE_CITY],
 	"file_save_as": ["file", 2], "file_rename": ["file", MENU_RENAME_CITY],
-	"file_export_png": ["file", MENU_EXPORT_CITY_PNG], "file_main_menu": ["file", 5], "file_quit": ["file", 6],
+	"file_export_png": ["file", MENU_EXPORT_CITY_PNG], "file_main_menu": ["file", 5],
 	"speed_pause": ["speed", 0], "speed_turtle": ["speed", 1], "speed_llama": ["speed", 2],
 	"speed_cheetah": ["speed", 3], "speed_african_swallow": ["speed", 4],
 	"option_auto_budget": ["options", MENU_AUTO_BUDGET], "option_auto_goto": ["options", MENU_AUTO_GOTO],
