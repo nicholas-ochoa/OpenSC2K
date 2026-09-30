@@ -429,7 +429,8 @@ static func _static_text_overlay_signature(city: CityState) -> int:
 	var cells := OverlayData.count(city.text_overlays)
 	var wide := cells < city.text_overlays.size()
 
-	for start in range(0, cells, SIGN_PAGE_CELLS):
+	# a layered index holds no sign links; its signs are XSGN records
+	for start in range(0, cells if not OverlayData.is_layered(city.text_overlays) else 0, SIGN_PAGE_CELLS):
 		var end := mini(start + SIGN_PAGE_CELLS, cells)
 		var page := start / SIGN_PAGE_CELLS
 
