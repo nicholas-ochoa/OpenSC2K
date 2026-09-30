@@ -293,6 +293,21 @@ impl NativeCityDataMesh {
     }
 }
 
+/// Tile values of the data maps that have no data chunk. See `data_view.rs`.
+#[godot_api(secondary)]
+impl NativeCityDataMesh {
+    /// The land altitude of each tile. `altitude` holds the ALTM words.
+    #[func]
+    fn height_values(altitude: PackedInt32Array) -> PackedByteArray {
+        PackedByteArray::from(data_view::height_values(altitude.as_slice()).as_slice())
+    }
+    /// 2 where the `supplied` flag is set, 1 where only `connected` is set.
+    #[func]
+    fn utility_values(flags: PackedByteArray, supplied: i64, connected: i64) -> PackedByteArray {
+        PackedByteArray::from(data_view::utility_values(flags.as_slice(), supplied as u8, connected as u8).as_slice())
+    }
+}
+
 /// Changed screen areas between two revisions of the region source chunks.
 /// See `changes.rs`.
 #[derive(GodotClass)]

@@ -210,6 +210,20 @@ pub fn build(city: &DataCity, height_view: bool) -> DataMesh {
     mesh
 }
 
+/// Height map values: the land altitude of each tile.
+pub fn height_values(altitude: &[i32]) -> Vec<u8> {
+    altitude.iter().map(|word| (word & 0x1f) as u8).collect()
+}
+
+/// Utility map values from XBIT: 2 where `supplied` is set, 1 where only
+/// `connected` is set, and 0 elsewhere.
+pub fn utility_values(flags: &[u8], supplied: u8, connected: u8) -> Vec<u8> {
+    flags
+        .iter()
+        .map(|f| if f & supplied != 0 { 2 } else { u8::from(f & connected != 0) })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -262,5 +276,11 @@ mod tests {
     fn clipped_tiles_are_hidden() {
         let mesh = city_mesh(2, &[5, 0, 0, 0], &[0; 4], &[0; 4], 4, false);
         assert!(mesh.uvs.iter().all(|uv| *uv != [0.0, 0.0]));
+    }
+
+    #[test]
+    fn value_maps() {
+        assert_eq!(super::height_values(&[0x3e5, 7, 31]), vec![5, 7, 31]);
+        assert_eq!(super::utility_values(&[0xc0, 0x80, 0x40, 0], 0x40, 0x80), vec![2, 1, 2, 0]);
     }
 }

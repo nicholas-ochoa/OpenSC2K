@@ -189,19 +189,10 @@ static func value_image(city: CityState, mode: CityViewMode.Mode) -> Image:
 
 		return Image.create(city.map_size, city.map_size, false, Image.FORMAT_R8)
 
-	var data := PackedByteArray()
-	data.resize(city.map_size * city.map_size)
-
-	if mode == CityViewMode.Mode.HEIGHT:
-		for index in data.size():
-			data[index] = city.altitude_words[index] & 0x1f
-	else:
-		var flags := city.document.find_chunk("XBIT").decoded_payload
-		var supplied := 0x40 if mode == CityViewMode.Mode.POWER else 0x10
-		var connected := 0x80 if mode == CityViewMode.Mode.POWER else 0x20
-
-		for index in data.size():
-			data[index] = 2 if flags[index] & supplied else (1 if flags[index] & connected else 0)
+	var power := mode == CityViewMode.Mode.POWER
+	var data := (NativeCityDataMesh.height_values(city.altitude_words) if mode == CityViewMode.Mode.HEIGHT
+		else NativeCityDataMesh.utility_values(city.document.find_chunk("XBIT").decoded_payload,
+			0x40 if power else 0x10, 0x80 if power else 0x20))
 
 	return Image.create_from_data(city.map_size, city.map_size, false, Image.FORMAT_R8, data)
 
