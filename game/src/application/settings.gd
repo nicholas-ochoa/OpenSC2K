@@ -45,7 +45,7 @@ func open_settings_dialog() -> void:
 	app.main_overlays.settings_dialog.sound_pack_edit.text = AppSettingsDialog.pack_file_path(preferences.sound_pack_folder)
 	app.main_overlays.settings_dialog.music_pack_edit.text = AppSettingsDialog.pack_file_path(preferences.music_pack_folder)
 	app.main_overlays.settings_dialog.data_pack_edit.text = AppSettingsDialog.pack_file_path(preferences.data_pack_folder)
-	app.main_overlays.settings_dialog.show_button_actions(preferences.right_button_action, preferences.middle_button_action)
+	app.main_overlays.settings_dialog.show_control_bindings(preferences.control_bindings)
 	app.main_overlays.settings_dialog.show_values(
 		preferences.music_volume, preferences.effects_volume, preferences.fullscreen,
 		preferences.graphics_source, preferences.graphics_folder, preferences.city_renderer, preferences.background_audio,
@@ -111,9 +111,8 @@ func apply_settings() -> void:
 		app.assets.apply_graphics_source(selected)
 
 	preferences.check_for_updates = bool(values.check_for_updates)
-	preferences.right_button_action = SettingsStore.normalize_button_action(values.right_button_action)
-	preferences.middle_button_action = SettingsStore.normalize_button_action(values.middle_button_action)
-	apply_mouse_buttons()
+	preferences.control_bindings = values.control_bindings
+	apply_control_bindings()
 	preferences.graphics_source = values.graphics_source
 	preferences.graphics_folder = values.graphics_folder
 	_set_city_renderer(str(values.city_renderer))
@@ -212,9 +211,8 @@ func load_app_settings() -> void:
 	preferences.update_skipped_version = values.update_skipped_version
 	preferences.update_checked_at = values.update_checked_at
 	preferences.update_error = values.update_error
-	preferences.right_button_action = values.right_button_action
-	preferences.middle_button_action = values.middle_button_action
-	apply_mouse_buttons()
+	preferences.control_bindings = values.control_bindings
+	apply_control_bindings()
 
 	if preferences.fullscreen:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
@@ -245,13 +243,36 @@ func apply_ui_scale() -> void:
 		app.map_view.set_pixel_scales(screen_pixels, AppUiScale.map_pixels(AppUiScale.fit_scale(window.size, window.content_scale_size)))
 
 
-# give the map the middle and right click actions. call this again when the map is created
-func apply_mouse_buttons() -> void:
-	if app.map_view == null:
-		return
+# give the map and the menus the current bindings. call this again when the map is created
+func apply_control_bindings() -> void:
+	if app.map_view != null:
+		app.map_view.control_bindings = preferences.control_bindings
 
-	app.map_view.right_button_action = preferences.right_button_action
-	app.map_view.middle_button_action = preferences.middle_button_action
+	if app.city_menu_bar != null:
+		app.city_menu_bar.refresh_shortcut_hints(preferences.control_bindings)
+
+
+# Use Defaults in the Controls tab saves the controls at once, without the
+# other pending settings
+func reset_controls() -> void:
+	preferences.control_bindings = ControlBindings.defaults()
+	apply_control_bindings()
+	var error := SettingsStore.save_controls(preferences.control_bindings, preferences.settings_path)
+
+	if app.main_overlays.settings_dialog != null:
+		app.main_overlays.settings_dialog.show_control_bindings(preferences.control_bindings)
+
+	app.status_label.theme_type_variation = ""
+	app.status_label.text = (
+		"Controls reset to their defaults." if error == OK
+		else "Controls reset, but the settings file could not be saved."
+	)
+
+
+func set_fullscreen(enabled: bool) -> void:
+	preferences.fullscreen = enabled
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if enabled else DisplayServer.WINDOW_MODE_WINDOWED)
+	SettingsStore.save_values(preferences.music_volume, preferences.effects_volume, preferences.fullscreen, preferences.settings_path)
 
 
 func _set_graphics_preferences(zoom_graphics: Array) -> void:

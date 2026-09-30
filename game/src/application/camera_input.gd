@@ -13,7 +13,9 @@ func _init(application: CityApplication) -> void:
 	app = application
 
 
-func camera_keys_allowed() -> bool:
+# Map keys need the city view with no dialog open. Global keys also work while
+# a text field has focus.
+func camera_keys_allowed(allow_text_focus := false) -> bool:
 	if (app.document_state.city == null
 			or app.map_view == null
 			or not app.map_view.is_visible_in_tree()
@@ -22,7 +24,7 @@ func camera_keys_allowed() -> bool:
 
 	var focus := app.get_viewport().gui_get_focus_owner()
 
-	if focus is LineEdit or focus is TextEdit:
+	if (focus is LineEdit or focus is TextEdit) and not allow_text_focus:
 		return false
 
 	for overlay in [app.main_menu, app.city_dialogs.new_city_dialog, app.city_dialogs.query_dialog, app.scurk_editor, app.scurk_place_print,
@@ -62,7 +64,7 @@ func update_keyboard_camera(delta: float) -> void:
 		# the camera speed is in map pixels at 100% zoom, so the UI scale does
 		# not change how fast the city moves
 		app.map_view.pan_screen(app.view_state.camera_motion.step(direction, delta, enabled and not app.map_view.is_panning()
-				and not app.map_view.is_left_drag_active()) * app.map_view.map_pixel_ratio)
+				and not app.map_view.is_left_drag_active(), app.controls.camera_speed_scale()) * app.map_view.map_pixel_ratio)
 
 
 func input(event: InputEvent) -> void:
@@ -74,22 +76,33 @@ func input(event: InputEvent) -> void:
 
 	# A focused control can consume the release event. Stop camera movement anyway.
 	if event is InputEventKey and not event.pressed:
-		app.view_state.camera_motion.release(event.physical_keycode)
+		app.view_state.camera_motion.release(ApplicationControls.key_id(event))
+	elif event is InputEventMouseButton and not event.pressed:
+		app.view_state.camera_motion.release(-event.button_index)
+
+	# A focused toolbar button would take Space and the arrow keys. Map keys
+	# go to the map first while the city view has no dialog open.
+	var focus := app.get_viewport().gui_get_focus_owner()
+
+	if focus != null and event is InputEventKey and _handle_map_key(event):
+		app.get_viewport().set_input_as_handled()
+
+
+func _handle_map_key(event: InputEventKey) -> bool:
+	if not event.pressed or event.echo or app.map_view == null or not camera_keys_allowed():
+		return false
+
+	return app.controls.press_hold_key(event) or app.controls.handle_key(event)
 
 
 func unhandled_key_input(event: InputEvent) -> void:
 	if not event is InputEventKey or not event.pressed or event.echo or app.map_view == null:
 		return
 
-	if camera_keys_allowed() and not event.is_command_or_control_pressed() and not event.alt_pressed:
-		var directions := { KEY_W: Vector2.UP, KEY_A: Vector2.LEFT, KEY_S: Vector2.DOWN, KEY_D: Vector2.RIGHT }
+	if camera_keys_allowed() and app.controls.press_hold_key(event):
+		app.get_viewport().set_input_as_handled()
 
-		if directions.has(event.physical_keycode):
-			app.view_state.camera_motion.press(event.physical_keycode)
-			app.view_state.camera_tap += directions[event.physical_keycode]
-			app.get_viewport().set_input_as_handled()
-
-			return
+		return
 
 	if app.scurk_editor != null and app.scurk_editor.visible:
 		if app.scurk_editor.handle_shortcut(event):
@@ -112,8 +125,9 @@ func unhandled_key_input(event: InputEvent) -> void:
 
 		return
 
-	if camera_keys_allowed() and app.city_menu_bar.handle_shortcut(event):
+	if app.controls.handle_key(event):
 		app.get_viewport().set_input_as_handled()
+
 		return
 
 	if event.keycode == KEY_ESCAPE and app.city_dialogs.library_windows != null and app.city_dialogs.library_windows.visible:
@@ -125,20 +139,9 @@ func unhandled_key_input(event: InputEvent) -> void:
 	elif event.keycode == KEY_ESCAPE and app.city_dialogs.new_city_dialog != null and app.city_dialogs.new_city_dialog.visible:
 		app.new_city.cancel_new_city()
 		app.get_viewport().set_input_as_handled()
-	elif event.keycode == KEY_Z and event.is_command_or_control_pressed():
-		app.city_edits.undo_last_edit()
-		app.get_viewport().set_input_as_handled()
 	elif event.keycode == KEY_ESCAPE and app.map_view != null and app.map_view.trip_reach != null:
 		app.map_view.clear_trip_reach()
 		app.get_viewport().set_input_as_handled()
-	elif (camera_keys_allowed() and not event.is_command_or_control_pressed() and not event.alt_pressed
-			and (event.keycode == KEY_PLUS or event.keycode == KEY_EQUAL or event.physical_keycode == KEY_E)):
-		if app.map_view.zoom_in():
-			app.get_viewport().set_input_as_handled()
-	elif (camera_keys_allowed() and not event.is_command_or_control_pressed() and not event.alt_pressed
-			and (event.keycode == KEY_MINUS or event.physical_keycode == KEY_Q)):
-		if app.map_view.zoom_out():
-			app.get_viewport().set_input_as_handled()
 
 
 func choose_tool_group(group_index: int) -> void:

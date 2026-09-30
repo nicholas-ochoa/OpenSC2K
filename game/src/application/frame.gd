@@ -197,6 +197,9 @@ func select_speed(speed_value: int) -> void:
 
 		return
 
+	if speed_value != GameSpeed.Speed.PAUSED:
+		app.simulation_state.resume_speed = speed_value as GameSpeed.Speed
+
 	sync_speed_ui()
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "%s speed selected." % app.simulation_state.speed_controller.speed_name()

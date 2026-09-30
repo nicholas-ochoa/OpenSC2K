@@ -6,8 +6,10 @@ var _stretch_press_y := 0.0
 var shift_pressed := false
 var _brush_elapsed := 0.0
 var panning := false
-var _center_click_button := MOUSE_BUTTON_NONE
-var _center_press_position := Vector2.ZERO
+var _click_button := MOUSE_BUTTON_NONE
+var _click_action := ""
+var _press_position := Vector2.ZERO
+var _pan_button := MOUSE_BUTTON_NONE
 
 
 func _init(control: CityMapControl) -> void:
@@ -59,43 +61,19 @@ func _process(delta: float) -> void:
 
 
 func _handle_mouse_button(event: InputEventMouseButton) -> void:
-	if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
-		map.camera.wheel_zoom(1, event.position)
-		map.accept_event()
-
-		return
-
-	if event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
-		map.camera.wheel_zoom(-1, event.position)
-		map.accept_event()
-
-		return
-
 	if event.button_index == MOUSE_BUTTON_RIGHT and event.pressed and map.selection.cancel_active_selection():
 		panning = false
+		_click_button = MOUSE_BUTTON_NONE
 		map.accept_event()
 
 		return
 
-	# middle and right clicks center the map or open the map menu for any selected tool. a drag pans the map
-	if event.button_index == MOUSE_BUTTON_MIDDLE or event.button_index == MOUSE_BUTTON_RIGHT:
-		if event.pressed:
-			_center_click_button = event.button_index
-			_center_press_position = event.position
-		elif _center_click_button == event.button_index:
-			var click_tile := map.camera._tile_at(event.position)
-
-			if click_tile.x >= 0 and event.position.distance_to(_center_press_position) <= 4.0:
-				_button_click(event.button_index, click_tile, event.position)
-
-			_center_click_button = MOUSE_BUTTON_NONE
-
-		panning = event.pressed
-		map.accept_event()
+	if event.button_index != MOUSE_BUTTON_LEFT:
+		_handle_bound_button(event)
 
 		return
 
-	if event.button_index != MOUSE_BUTTON_LEFT or not map.edit_enabled:
+	if not map.edit_enabled:
 		return
 
 	var tile := map.camera._tile_at(event.position)
@@ -173,13 +151,89 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 	map.accept_event()
 
 
-func _button_click(button: MouseButton, tile: Vector2i, position: Vector2) -> void:
-	var action := map.right_button_action if button == MOUSE_BUTTON_RIGHT else map.middle_button_action
+# Buttons other than the left button run the actions that the player binds to
+# them. A button bound to map_pan moves the map on a drag, and runs its other
+# action on a click that moves 4 pixels or less.
+func _handle_bound_button(event: InputEventMouseButton) -> void:
+	var bindings := map.control_bindings
+	var action := bindings.action_for(event, [ControlActions.KIND_PRESS, ControlActions.KIND_HOLD, ControlActions.KIND_CLICK])
+	var pans := bindings.for_action("map_pan").any(func(binding: ControlBinding) -> bool: return binding.matches(event))
+	var wheel := event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_LEFT,
+		MOUSE_BUTTON_WHEEL_RIGHT]
 
-	if action == BUTTON_ACTION_CONTEXT_MENU:
-		map.context_menu.open_at(tile, position)
-	else:
-		map.center_requested.emit(tile)
+	if wheel:
+		if event.pressed and not action.is_empty():
+			_run_button_action(action, event.position, true)
+			map.accept_event()
+
+		return
+
+	var hold := not action.is_empty() and ControlActions.find(action).kind == ControlActions.KIND_HOLD
+
+	if hold:
+		map.control_hold_changed.emit(action, event.button_index, event.pressed)
+		map.accept_event()
+
+		return
+
+	if not event.pressed:
+		if _click_button == event.button_index:
+			if not _click_action.is_empty() and event.position.distance_to(_press_position) <= 4.0:
+				_run_button_action(_click_action, event.position, false)
+
+			_click_button = MOUSE_BUTTON_NONE
+
+		if _pan_button == event.button_index:
+			panning = false
+			_pan_button = MOUSE_BUTTON_NONE
+
+		map.accept_event()
+
+		return
+
+	if action.is_empty() and not pans:
+		return
+
+	var clicks := not action.is_empty() and (pans or ControlActions.find(action).kind == ControlActions.KIND_CLICK)
+
+	if not action.is_empty() and not clicks:
+		_run_button_action(action, event.position, false)
+
+	_click_button = event.button_index if clicks else MOUSE_BUTTON_NONE
+	_click_action = action
+	_press_position = event.position
+
+	if pans:
+		panning = true
+		_pan_button = event.button_index
+
+	map.accept_event()
+
+
+func _run_button_action(action: String, position: Vector2, wheel: bool) -> void:
+	match action:
+		"zoom_in":
+			if wheel:
+				map.camera.wheel_zoom(1, position)
+			else:
+				map.camera.zoom_in(position)
+		"zoom_out":
+			if wheel:
+				map.camera.wheel_zoom(-1, position)
+			else:
+				map.camera.zoom_out(position)
+		"map_context_menu", "map_center_on_tile":
+			var tile := map.camera._tile_at(position)
+
+			if tile.x < 0:
+				return
+
+			if action == "map_context_menu":
+				map.context_menu.open_at(tile, position)
+			else:
+				map.center_requested.emit(tile)
+		_:
+			map.control_action_requested.emit(action)
 
 
 func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
@@ -190,19 +244,15 @@ func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 		map.selection._rebuild_selection_path()
 		map.queue_redraw()
 
-	if (
-		panning
-		and (
-			event.button_mask
-			& (MOUSE_BUTTON_MASK_MIDDLE | MOUSE_BUTTON_MASK_RIGHT)
-		) == 0
-	):
+	# a dialog that opens during a drag can take the release
+	if panning and (event.button_mask & (1 << (_pan_button - 1))) == 0:
 		panning = false
-		_center_click_button = MOUSE_BUTTON_NONE
+		_pan_button = MOUSE_BUTTON_NONE
+		_click_button = MOUSE_BUTTON_NONE
 
 	if panning:
-		if event.position.distance_to(_center_press_position) > 4.0:
-			_center_click_button = MOUSE_BUTTON_NONE
+		if event.position.distance_to(_press_position) > 4.0:
+			_click_button = MOUSE_BUTTON_NONE
 
 		map.source_center -= event.relative / map.camera._view_scale()
 		map.camera._clamp_source_center()

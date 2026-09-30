@@ -296,6 +296,38 @@
     "lane": "product"
   },
   {
+    "id": "control_binding_test",
+    "script": "tests/control_binding_test.gd",
+    "domain": "ui",
+    "lane": "product"
+  },
+  {
+    "id": "control_bindings_store_test",
+    "script": "tests/control_bindings_store_test.gd",
+    "domain": "ui",
+    "lane": "product"
+  },
+  {
+    "id": "control_dispatch_test",
+    "script": "tests/control_dispatch_test.gd",
+    "domain": "ui",
+    "lane": "product",
+    "requires": [
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
+    ]
+  },
+  {
+    "id": "controls_settings_test",
+    "script": "tests/controls_settings_test.gd",
+    "domain": "ui",
+    "lane": "product",
+    "requires": [
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
+    ]
+  },
+  {
     "id": "ui_theme_test",
     "script": "tests/ui_theme_test.gd",
     "domain": "ui",

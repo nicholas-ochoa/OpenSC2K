@@ -46,6 +46,27 @@ const DISASTER_ITEMS := [
 	["Hurricane", 16], ["Helicopter Crash", 17], ["Plane Crash", 18],
 ]
 
+# the menu item that each bindable action selects: [menu, item id]
+const ACTION_ITEMS: Dictionary[String, Array] = {
+	"file_new": ["file", 0], "file_open": ["file", 1], "file_save": ["file", MENU_SAVE_CITY],
+	"file_save_as": ["file", 2], "file_rename": ["file", MENU_RENAME_CITY],
+	"file_export_png": ["file", MENU_EXPORT_CITY_PNG], "file_main_menu": ["file", 5], "file_quit": ["file", 6],
+	"speed_pause": ["speed", 0], "speed_turtle": ["speed", 1], "speed_llama": ["speed", 2],
+	"speed_cheetah": ["speed", 3], "speed_african_swallow": ["speed", 4],
+	"option_auto_budget": ["options", MENU_AUTO_BUDGET], "option_auto_goto": ["options", MENU_AUTO_GOTO],
+	"option_sound_effects": ["options", MENU_SOUND_EFFECTS], "option_music": ["options", MENU_MUSIC],
+	"settings": ["options", MENU_SETTINGS],
+	"view_show_buildings": ["view", MENU_VIEW_BUILDINGS], "view_show_networks": ["view", MENU_VIEW_NETWORKS],
+	"view_show_water": ["view", MENU_VIEW_WATER], "view_show_trees": ["view", MENU_VIEW_TREES],
+	"view_show_zones": ["view", MENU_VIEW_ZONES], "view_show_signs": ["view", MENU_VIEW_SIGNS],
+	"view_show_pipes": ["view", MENU_VIEW_PIPES], "view_show_water_mains": ["view", MENU_VIEW_WATER_MAINS],
+	"view_show_vehicles": ["view", MENU_VIEW_VEHICLES],
+	"window_budget": ["windows", 0], "window_ordinances": ["windows", 1], "window_population": ["windows", 2],
+	"window_industry": ["windows", 3], "window_graphs": ["windows", 4], "window_neighbors": ["windows", 5],
+	"window_map": ["windows", 6], "window_debug": ["windows", 7], "window_scenario_goals": ["windows", MENU_SCENARIO_GOALS],
+}
+
+var bindings := ControlBindings.defaults()
 var file_menu: MenuButton
 var speed_menu: MenuButton
 var options_menu: MenuButton
@@ -98,12 +119,6 @@ func _ready() -> void:
 	options_menu.get_popup().add_separator()
 	options_menu.get_popup().add_item("Settings", MENU_SETTINGS)
 	options_menu.disabled = true
-	var command := KEY_MASK_META if OS.has_feature("macos") else KEY_MASK_CTRL
-	_set_shortcut(file_menu, 0, command | KEY_N)
-	_set_shortcut(file_menu, 1, command | KEY_O)
-	_set_shortcut(file_menu, MENU_SAVE_CITY, command | KEY_S)
-	_set_shortcut(file_menu, 2, command | KEY_MASK_SHIFT | KEY_S)
-	_set_shortcut(options_menu, MENU_SETTINGS, command | KEY_COMMA)
 
 	var view_items: Array = []
 	var data_view_items: Array = []
@@ -175,6 +190,7 @@ func _ready() -> void:
 	)
 	newspaper_menu.disabled = true
 	_add_menu(menu_row, "Help", [["Check for updates", MENU_CHECK_FOR_UPDATES], ["", -1], ["About", MENU_ABOUT]], _on_help_menu)
+	refresh_shortcut_hints(bindings)
 
 	var menu_spacer := Control.new()
 	menu_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -260,23 +276,82 @@ func _add_menu(
 	return menu
 
 
-func _set_shortcut(menu: MenuButton, id: int, key: int) -> void:
-	var popup := menu.get_popup() as ScurkContextMenu
-	popup.set_shortcut_hint(popup.get_item_index(id), key)
+func _menu(menu_name: String) -> MenuButton:
+	match menu_name:
+		"file":
+			return file_menu
+		"speed":
+			return speed_menu
+		"options":
+			return options_menu
+		"view":
+			return view_menu
+		"windows":
+			return windows_menu
+
+	return null
+
+
+# show the first key of each action beside its menu item
+func refresh_shortcut_hints(value: ControlBindings) -> void:
+	bindings = value
+
+	for menu: MenuButton in [file_menu, speed_menu, options_menu, view_menu, windows_menu]:
+		if menu == null:
+			continue
+
+		var popup := menu.get_popup() as ScurkContextMenu
+		popup.hints.clear()
+		popup.shortcuts.clear()
+		popup.shortcut_handler = handle_shortcut
+
+	for action in ACTION_ITEMS:
+		var menu := _menu(ACTION_ITEMS[action][0])
+		var binding := bindings.first_key(action)
+
+		if menu == null or binding == null:
+			continue
+
+		var popup := menu.get_popup() as ScurkContextMenu
+		var index := popup.get_item_index(ACTION_ITEMS[action][1])
+
+		if index >= 0:
+			popup.hints[index] = binding.display_text()
+
+
+func has_action(action: String) -> bool:
+	return ACTION_ITEMS.has(action)
+
+
+# Select the menu item of an action, the same as a click. Returns false when
+# the menu or the item is not available.
+func trigger(action: String) -> bool:
+	if not ACTION_ITEMS.has(action):
+		return false
+
+	var menu := _menu(ACTION_ITEMS[action][0])
+
+	if menu == null or menu.disabled or not is_visible_in_tree():
+		return false
+
+	var popup := menu.get_popup()
+	var index := popup.get_item_index(ACTION_ITEMS[action][1])
+
+	if index < 0 or popup.is_item_disabled(index):
+		return false
+
+	popup.id_pressed.emit(ACTION_ITEMS[action][1])
+
+	return true
 
 
 func handle_shortcut(event: InputEventKey) -> bool:
-	if not event.pressed or event.echo or not is_visible_in_tree():
+	if not event.pressed or event.echo:
 		return false
-	for menu: MenuButton in [file_menu, options_menu, windows_menu]:
-		if menu.disabled:
-			continue
-		var popup := menu.get_popup() as ScurkContextMenu
-		for index in popup.shortcuts:
-			if event.get_keycode_with_modifiers() == popup.shortcuts[index] and not popup.is_item_disabled(index):
-				popup.id_pressed.emit(popup.get_item_id(index))
-				return true
-	return false
+
+	var action := bindings.action_for(event, [ControlActions.KIND_PRESS])
+
+	return has_action(action) and trigger(action)
 
 
 func set_scenario_available(available: bool) -> void:
@@ -295,7 +370,7 @@ func set_scenario_available(available: bool) -> void:
 
 	popup.add_separator()
 	popup.add_item("Debug", 7)
-	_set_shortcut(windows_menu, 7, KEY_F12)
+	refresh_shortcut_hints(bindings)
 
 
 func _metric_label(text_value: String, minimum_width: int) -> Label:

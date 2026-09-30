@@ -73,6 +73,10 @@ func build_interface(original_assets: OriginalGameAssets) -> void:
 	app.map_view.selection_canceled.connect(app.camera_input.on_map_selection_canceled)
 	app.map_view.query_requested.connect(app.query_choices.open_query)
 	app.map_view.center_requested.connect(app.camera_input.center_map_on_tile)
+	app.map_view.control_action_requested.connect(func(action: String) -> void:
+		if app.controls.action_allowed(action):
+			app.controls.run(action))
+	app.map_view.control_hold_changed.connect(app.controls.on_map_hold_changed)
 	app.map_view.bulldoze_requested.connect(app.city_edits.bulldoze_tile)
 	app.map_view.zoom_changed.connect(app.camera_input.on_city_zoom_changed)
 	app.map_view.viewport_changed.connect(app.reports.city_map.refresh_viewport)
@@ -146,7 +150,7 @@ func build_interface(original_assets: OriginalGameAssets) -> void:
 	app.effects_audio.bind_view(app.map_view, app.main_menu)
 	app.main_overlays.about_dialog.set_assets(original_assets)
 	app.settings.apply_ui_scale()
-	app.settings.apply_mouse_buttons()
+	app.settings.apply_control_bindings()
 
 
 func _build_main_menu() -> void:
@@ -171,6 +175,7 @@ func _build_main_menu() -> void:
 	app.main_overlays.settings_dialog.confirmed.connect(play_toolbar_click)
 	app.main_overlays.settings_dialog.import_original_requested.connect(app.assets.show_reference_import_dialog)
 	app.main_overlays.settings_dialog.update_check_requested.connect(app.updates.check_now)
+	app.main_overlays.settings_dialog.controls_reset_requested.connect(app.settings.reset_controls)
 	app.updates.bind_ui(app, app.main_overlays.update_dialog)
 	app.updates.running_changed.connect(app.main_overlays.settings_dialog.set_update_check_running)
 	app.updates.status_changed.connect(app.main_overlays.settings_dialog.set_update_status)

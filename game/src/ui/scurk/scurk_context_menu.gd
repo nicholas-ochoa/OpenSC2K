@@ -14,6 +14,9 @@ const MAC_KEY_SYMBOLS := {
 var hints: Dictionary[int, String] = {}
 var shortcuts: Dictionary[int, int] = {}
 var hint_labels: Array[Label] = []
+# when valid, decides key shortcuts instead of the shortcuts table. it takes
+# the key event and returns true when it ran a shortcut
+var shortcut_handler := Callable()
 var base_end_padding := 0
 
 
@@ -141,6 +144,11 @@ func _outside_click(event: InputEvent) -> void:
 
 func _shortcut_input(event: InputEvent) -> void:
 	if not event is InputEventKey or not event.pressed or event.echo:
+		return
+	if shortcut_handler.is_valid():
+		if shortcut_handler.call(event):
+			set_input_as_handled()
+			hide()
 		return
 	for index in shortcuts:
 		if event.get_keycode_with_modifiers() == shortcuts[index] and not is_item_disabled(index):

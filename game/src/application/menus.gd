@@ -289,6 +289,7 @@ func _rebuild_view_layer_menu(underground_active: bool) -> void:
 			popup.add_check_item(view_item[0], view_item[1])
 
 	app.view_menu_underground_items = underground_active
+	app.city_menu_bar.refresh_shortcut_hints(app.preferences.control_bindings)
 
 
 func sync_map_style() -> void:

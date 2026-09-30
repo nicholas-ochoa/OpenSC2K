@@ -4,9 +4,8 @@ extends RefCounted
 const GRAPHICS_ZOOMS := [25, 50, 100, 200, 300, 400]
 const GRAPHICS_SIZES := ["Small", "Medium", "Large"]
 const DEFAULT_ZOOM_GRAPHICS := [0, 1, 2, 2, 2, 2]
-# the order of the mouse button choices in the settings dialog
-const BUTTON_ACTIONS := [CityMapConstants.BUTTON_ACTION_CENTER, CityMapConstants.BUTTON_ACTION_CONTEXT_MENU]
-const DEFAULT_BUTTON_ACTION := CityMapConstants.BUTTON_ACTION_CENTER
+const BINDINGS_VERSION := 1
+const BINDING_PREFIX := "binding/"
 
 
 static func default_path() -> String:
@@ -71,8 +70,7 @@ static func load_values(
 	result.update_skipped_version = str(config.get_value("updates", "skipped_version", ""))
 	result.update_checked_at = int(config.get_value("updates", "checked_at", 0))
 	result.update_error = str(config.get_value("updates", "error", ""))
-	result.right_button_action = normalize_button_action(config.get_value("controls", "right_button", DEFAULT_BUTTON_ACTION))
-	result.middle_button_action = normalize_button_action(config.get_value("controls", "middle_button", DEFAULT_BUTTON_ACTION))
+	result.control_bindings = load_bindings(config)
 
 	return result
 
@@ -85,8 +83,67 @@ static func normalize_renderer(value: Variant) -> String:
 	return "cpu" if str(value) == "cpu" else "gpu"
 
 
-static func normalize_button_action(value: Variant) -> String:
-	return str(value) if str(value) in BUTTON_ACTIONS else DEFAULT_BUTTON_ACTION
+# A missing key uses the default bindings. An empty list keeps the action
+# unbound. Text that does not name a key or mouse button is skipped.
+static func load_bindings(config: ConfigFile) -> ControlBindings:
+	var result := ControlBindings.defaults()
+
+	for id in ControlActions.bindable_ids():
+		var key := BINDING_PREFIX + id
+
+		if not config.has_section_key("controls", key):
+			continue
+
+		var list: Array[ControlBinding] = []
+		var saved: Variant = config.get_value("controls", key, PackedStringArray())
+
+		if saved is PackedStringArray or saved is Array:
+			for text in saved:
+				var binding := ControlBinding.from_text(str(text))
+
+				if binding != null and not list.any(func(other: ControlBinding) -> bool: return other.equals(binding)):
+					list.append(binding)
+
+		result.bindings[id] = list
+
+	if not config.has_section_key("controls", "bindings_version"):
+		_migrate_mouse_buttons(config, result)
+
+	return result
+
+
+# Earlier versions had one choice each for the right and middle buttons, and
+# both centered the map by default. The right button now opens the context
+# menu by default, so only the changed middle button choice moves across.
+static func _migrate_mouse_buttons(config: ConfigFile, result: ControlBindings) -> void:
+	if str(config.get_value("controls", "middle_button", "center")) != "context_menu":
+		return
+
+	result.remove_binding("map_center_on_tile", ControlBinding.mouse(MOUSE_BUTTON_MIDDLE))
+	result.add("map_context_menu", ControlBinding.mouse(MOUSE_BUTTON_MIDDLE))
+
+
+static func _write_bindings(config: ConfigFile, bindings: ControlBindings) -> void:
+	for id in ControlActions.bindable_ids():
+		config.set_value("controls", BINDING_PREFIX + id, bindings.to_texts(id))
+
+	config.set_value("controls", "bindings_version", BINDINGS_VERSION)
+
+	for old_key in ["right_button", "middle_button"]:
+		if config.has_section_key("controls", old_key):
+			config.erase_section_key("controls", old_key)
+
+
+# save only the controls section, and keep every other saved value
+static func save_controls(bindings: ControlBindings, path := default_path()) -> Error:
+	var config := ConfigFile.new()
+
+	if FileAccess.file_exists(path):
+		config.load(path)
+
+	_write_bindings(config, bindings)
+
+	return config.save(path)
 
 
 # each zoom level uses the size of the level below it or a larger size. the
@@ -179,11 +236,8 @@ static func save_values(
 	if options.data_pack_folder != null:
 		config.set_value("data", "pack_folder", AppPaths.stored_path(str(options.data_pack_folder).strip_edges()))
 
-	if options.right_button_action != null:
-		config.set_value("controls", "right_button", normalize_button_action(options.right_button_action))
-
-	if options.middle_button_action != null:
-		config.set_value("controls", "middle_button", normalize_button_action(options.middle_button_action))
+	if options.control_bindings != null:
+		_write_bindings(config, options.control_bindings)
 
 	for pair in [["toolbar_sounds", options.toolbar_sounds], ["sound_pack_folder", options.sound_pack_folder],
 		["music_pack_folder", options.music_pack_folder]]:
@@ -230,8 +284,7 @@ class Values extends RefCounted:
 	var music_pack_folder := ""
 	var data_pack_folder := ""
 	var check_for_updates := false
-	var right_button_action := DEFAULT_BUTTON_ACTION
-	var middle_button_action := DEFAULT_BUTTON_ACTION
+	var control_bindings := ControlBindings.defaults()
 
 
 class LoadedValues extends Values:
@@ -264,5 +317,4 @@ class SaveOptions extends RefCounted:
 	var check_for_updates: Variant = null
 	var data_pack_folder: Variant = null
 	var ui_scale: Variant = null
-	var right_button_action: Variant = null
-	var middle_button_action: Variant = null
+	var control_bindings: ControlBindings = null

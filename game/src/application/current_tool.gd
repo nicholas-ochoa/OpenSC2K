@@ -71,6 +71,9 @@ func select_tool_group(index: int) -> void:
 	if index < 0 or index >= Tools.GROUPS.size():
 		return
 
+	if index != app.tool_state.selected_group:
+		app.tool_state.previous_group = app.tool_state.selected_group
+
 	app.tool_state.selected_group = index
 
 	if app.tool_state.selected_group == CityToolIds.Group.DISPATCH:

@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://src/ui/settings/app_settings_dialog.gd" id="1_wx7kb"]
+[ext_resource type="Script" path="res://src/ui/settings/controls_binding_list.gd" id="controls_binding_list"]
 
 [node name="AppSettingsDialog" type="ConfirmationDialog"]
 visible = true
@@ -461,50 +462,11 @@ layout_mode = 2
 horizontal_scroll_mode = 0
 metadata/_tab_index = 3
 
-[node name="Fields" type="GridContainer" parent="Tabs/Controls"]
+[node name="ControlsList" type="VBoxContainer" parent="Tabs/Controls"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/h_separation = 14
-theme_override_constants/v_separation = 8
-columns = 2
-
-[node name="RightButtonLabel" type="Label" parent="Tabs/Controls/Fields"]
-custom_minimum_size = Vector2(150, 32)
-layout_mode = 2
-vertical_alignment = 1
-text = "Right Mouse Button"
-
-[node name="RightButtonSelector" type="OptionButton" parent="Tabs/Controls/Fields"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 32)
-layout_mode = 2
-tooltip_text = "The action of a right click on the city. Center Map moves the view to the tile.
-Context Menu shows Center Map, Query Tile, and Bulldoze Tile. A right drag always moves the view."
-selected = 0
-item_count = 2
-popup/item_0/text = "Center Map"
-popup/item_0/id = 0
-popup/item_1/text = "Context Menu"
-popup/item_1/id = 1
-
-[node name="MiddleButtonLabel" type="Label" parent="Tabs/Controls/Fields"]
-custom_minimum_size = Vector2(150, 32)
-layout_mode = 2
-vertical_alignment = 1
-text = "Middle Mouse Button"
-
-[node name="MiddleButtonSelector" type="OptionButton" parent="Tabs/Controls/Fields"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 32)
-layout_mode = 2
-tooltip_text = "The action of a middle click on the city. Center Map moves the view to the tile.
-Context Menu shows Center Map, Query Tile, and Bulldoze Tile. A middle drag always moves the view."
-selected = 0
-item_count = 2
-popup/item_0/text = "Center Map"
-popup/item_0/id = 0
-popup/item_1/text = "Context Menu"
-popup/item_1/id = 1
+script = ExtResource("controls_binding_list")
 
 [node name="Data" type="ScrollContainer" parent="Tabs"]
 horizontal_scroll_mode = 0

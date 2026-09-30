@@ -7,6 +7,8 @@ const Random = preload("res://src/simulation/random/sim_random.gd")
 var selected_group: int = CityToolIds.Group.RESIDENTIAL
 var selected_subtool: int = CityToolIds.Residential.LIGHT
 var selected_tool_available := false
+# the group before the current group, or -1
+var previous_group := -1
 # last subtool chosen in each group
 var group_subtools: Dictionary = {}
 # edit state

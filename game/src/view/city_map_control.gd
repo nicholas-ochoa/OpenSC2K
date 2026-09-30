@@ -33,6 +33,11 @@ signal bulldoze_requested(point: Vector2i)
 signal zoom_changed(percent: int)
 @warning_ignore("unused_signal")
 signal viewport_changed()
+# a mouse button bound to a player action that the application runs
+@warning_ignore("unused_signal")
+signal control_action_requested(action: String)
+@warning_ignore("unused_signal")
+signal control_hold_changed(action: String, button: MouseButton, pressed: bool)
 
 const Renderer = CityMapConstants.Renderer
 const DynamicSpriteCanvas = CityMapConstants.DynamicSpriteCanvas
@@ -74,8 +79,8 @@ var shift_rectangle_enabled := false
 var selection_mode := "rectangle"
 var point_footprint_area := 1
 var shift_query_enabled := false
-var right_button_action := CityMapConstants.BUTTON_ACTION_CENTER
-var middle_button_action := CityMapConstants.BUTTON_ACTION_CENTER
+# the mouse buttons for map actions. the left button always uses the tool
+var control_bindings := ControlBindings.defaults()
 var context_menu: ContextMenu
 var desktop_cursor_app := "city"
 var desktop_cursor_role := 0
@@ -249,6 +254,10 @@ func set_pixel_scales(screen_pixels: float, map_pixels: int) -> void:
 
 func zoom_in(local_point := Vector2.INF) -> bool:
 	return camera.zoom_in(local_point)
+
+
+func reset_zoom() -> bool:
+	return camera.reset_zoom()
 
 
 func zoom_out(local_point := Vector2.INF) -> bool:

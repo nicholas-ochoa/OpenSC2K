@@ -317,8 +317,8 @@ func _run_quick(reference_root: String) -> void:
 	assert(main.tool_state.selected_group == 1 and main.tool_state.selected_subtool == 0)
 	main.city_edits.undo_last_edit()
 	assert(city.document.serialize().data == planted, "Undo restores the bulldozed tile")
-	main.preferences.right_button_action = CityMapConstants.BUTTON_ACTION_CONTEXT_MENU
-	main.settings.apply_mouse_buttons()
+	main.preferences.control_bindings = ControlBindings.defaults()
+	main.settings.apply_control_bindings()
 	var right_click := InputEventMouseButton.new()
 	right_click.button_index = MOUSE_BUTTON_RIGHT
 	right_click.position = main.map_view.size * 0.5
@@ -327,10 +327,8 @@ func _run_quick(reference_root: String) -> void:
 	right_click.pressed = false
 	main.map_view.interaction._handle_mouse_button(right_click)
 	assert(main.map_view.context_menu.visible and main.map_view.context_menu.point.x >= 0,
-		"Right click opens the map menu when the setting is Context Menu")
+		"Right click opens the map menu with the default bindings")
 	main.map_view.context_menu.hide()
-	main.preferences.right_button_action = CityMapConstants.BUTTON_ACTION_CENTER
-	main.settings.apply_mouse_buttons()
 	main.settings.open_settings_dialog()
 	assert(main.main_overlays.settings_dialog.visible)
 	main.main_overlays.settings_dialog.hide()

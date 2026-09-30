@@ -124,6 +124,7 @@ func activate_document(
 
 	app.simulation_state.simulation_engine.vehicle_crashes_enabled = app.view_state.show_vehicles
 	app.simulation_state.speed_controller = GameSpeed.new(app.simulation_state.simulation_engine)
+	app.simulation_state.resume_speed = app.simulation_state.speed_controller.speed
 	# SC2 and SCN cities keep the original fire timing
 	app.simulation_state.speed_controller.original_compatibility = OriginalCompatibility.uses_original_format(
 		document_state.current_document)

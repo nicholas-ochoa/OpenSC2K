@@ -115,12 +115,13 @@ func run(
 	_check(center_requests == [center_tile] and selection_complete_signals[0] == 1,
 		"Middle click requests Center without applying the selected build tool")
 	center_click.button_index = MOUSE_BUTTON_RIGHT
+	map_control.control_bindings = _rebound(MOUSE_BUTTON_RIGHT, "map_context_menu", "map_center_on_tile")
 	center_click.pressed = true
 	map_control.interaction._handle_mouse_button(center_click)
 	center_click.pressed = false
 	map_control.interaction._handle_mouse_button(center_click)
 	_check(center_requests == [center_tile, center_tile] and selection_complete_signals[0] == 1,
-		"Right click requests Center without applying the selected build tool")
+		"A right button bound to Center requests Center without applying the selected build tool")
 	_test_context_menu(map_control, center_tile, center_requests, selection_complete_signals)
 	center_click.pressed = true
 	map_control.interaction._handle_mouse_button(center_click)
@@ -529,7 +530,7 @@ func _test_context_menu(
 	var menu := RecordingContextMenu.new()
 	menu.map = map_control
 	map_control.context_menu = menu
-	map_control.right_button_action = CityMapConstants.BUTTON_ACTION_CONTEXT_MENU
+	map_control.control_bindings = ControlBindings.defaults()
 	var query_requests: Array[Vector2i] = []
 	var bulldoze_requests: Array[Vector2i] = []
 	map_control.query_requested.connect(func(point: Vector2i) -> void:
@@ -559,18 +560,26 @@ func _test_context_menu(
 	click.pressed = false
 	map_control.interaction._handle_mouse_button(click)
 	_check(menu.opened == 1 and center_requests.size() == 4, "Middle click keeps its own Center Map action")
-	map_control.middle_button_action = CityMapConstants.BUTTON_ACTION_CONTEXT_MENU
-	map_control.right_button_action = CityMapConstants.BUTTON_ACTION_CENTER
+	map_control.control_bindings = _rebound(MOUSE_BUTTON_MIDDLE, "map_center_on_tile", "map_context_menu")
 	click.pressed = true
 	map_control.interaction._handle_mouse_button(click)
 	click.pressed = false
 	map_control.interaction._handle_mouse_button(click)
-	_check(menu.opened == 2 and center_requests.size() == 4, "Middle click opens the map menu when set to Context Menu")
-	map_control.middle_button_action = CityMapConstants.BUTTON_ACTION_CENTER
+	_check(menu.opened == 2 and center_requests.size() == 4, "Middle click opens the map menu when bound to Context Menu")
+	map_control.control_bindings = ControlBindings.defaults()
 	map_control.context_menu = null
 	menu.free()
 	# keep the later counts of this suite
 	center_requests.resize(2)
+
+
+# the default bindings with one mouse button moved from one click action to another
+func _rebound(button: MouseButton, from_action: String, to_action: String) -> ControlBindings:
+	var bindings := ControlBindings.defaults()
+	bindings.remove_binding(from_action, ControlBinding.mouse(button))
+	bindings.add(to_action, ControlBinding.mouse(button))
+
+	return bindings
 
 
 # records the menu opening. this suite has no scene tree for a popup

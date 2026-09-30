@@ -22,6 +22,10 @@ func zoom_out(local_point := Vector2.INF) -> bool:
 	return _change_zoom(-1, local_point)
 
 
+func reset_zoom() -> bool:
+	return _change_zoom(DEFAULT_ZOOM_INDEX - _zoom_index(), Vector2.INF)
+
+
 func wheel_zoom(
 	direction: int, local_point := Vector2.INF, current_time_msec := -1
 ) -> bool:

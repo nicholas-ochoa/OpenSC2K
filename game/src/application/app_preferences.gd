@@ -27,8 +27,7 @@ var fullscreen := false
 var graphics_source := "auto"
 var graphics_folder := ""
 var check_for_updates := false
-var right_button_action := SettingsStore.DEFAULT_BUTTON_ACTION
-var middle_button_action := SettingsStore.DEFAULT_BUTTON_ACTION
+var control_bindings := ControlBindings.defaults()
 var update_last_check := 0
 var update_skipped_version := ""
 var update_checked_at := 0
@@ -54,8 +53,7 @@ func save_options(include_ui_scale := true) -> SettingsStore.SaveOptions:
 	options.translucent_menus = translucent_menus
 	options.check_for_updates = check_for_updates
 	options.data_pack_folder = data_pack_folder
-	options.right_button_action = right_button_action
-	options.middle_button_action = middle_button_action
+	options.control_bindings = control_bindings
 
 	if include_ui_scale:
 		options.ui_scale = ui_scale

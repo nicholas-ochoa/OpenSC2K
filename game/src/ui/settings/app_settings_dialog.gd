@@ -6,7 +6,10 @@ extends ConfirmationDialog
 signal import_original_requested
 signal update_check_requested
 signal button_clicked
+# the player accepted the Use Defaults warning. the controls reset and save at once
+signal controls_reset_requested
 
+const CONTROLS_TAB := 3
 const DATA_TAB := 4
 
 var pack_error_label: Label
@@ -38,8 +41,9 @@ var background_audio_check: CheckBox
 var check_for_updates_check: CheckBox
 var check_updates_now_button: Button
 var update_status_label: Label
-var right_button_selector: OptionButton
-var middle_button_selector: OptionButton
+var controls_list: ControlsBindingList
+var use_defaults_button: Button
+var reset_controls_dialog: ConfirmationDialog
 
 
 func _ready() -> void:
@@ -76,8 +80,7 @@ func _ready() -> void:
 	tabs = %Tabs
 	toolbar_sounds_check = %ToolbarSoundsCheck
 	folder_row = folder_edit.get_parent() as HBoxContainer
-	right_button_selector = %RightButtonSelector
-	middle_button_selector = %MiddleButtonSelector
+	controls_list = %ControlsList
 	zoom_graphics_selectors = [%Zoom25, %Zoom50, %Zoom100, %Zoom200, %Zoom300, %Zoom400]
 
 	# acceptdialog owns the standard buttons and content placement
@@ -98,6 +101,7 @@ func _ready() -> void:
 	_bind_pack_controls("data", data_pack_edit, %DataPackName, %DataBrowse)
 	_watch_clicks(tabs)
 	tabs.get_tab_bar().tab_clicked.connect(button_clicked.emit.unbind(1))
+	_build_controls_reset()
 	canceled.connect(button_clicked.emit)
 	%ImportButton.pressed.connect(_request_original_import)
 	check_updates_now_button.pressed.connect(update_check_requested.emit)
@@ -106,6 +110,44 @@ func _ready() -> void:
 		get_parent().get_viewport().size_changed.connect(_fit_to_viewport)
 	theme_changed.connect(func() -> void: call_deferred("_fit_to_viewport"))
 	_fit_to_viewport()
+
+
+func _build_controls_reset() -> void:
+	controls_list.button_clicked.connect(button_clicked.emit)
+	controls_list.attach_capture_overlay(self)
+	use_defaults_button = add_button("Use Defaults", true, "use_defaults")
+	# keep Use Defaults at the right end of the button row on every system
+	var button_row := use_defaults_button.get_parent()
+	button_row.move_child(use_defaults_button, button_row.get_child_count() - 1)
+	use_defaults_button.pressed.connect(button_clicked.emit)
+	custom_action.connect(_on_custom_action)
+	visibility_changed.connect(func() -> void:
+		if not visible:
+			controls_list.cancel_capture())
+	tabs.tab_changed.connect(_update_use_defaults)
+	reset_controls_dialog = ConfirmationDialog.new()
+	reset_controls_dialog.title = "Reset all controls?"
+	reset_controls_dialog.dialog_text = ("All keyboard and mouse bindings will return to their default values. "
+		+ "Your custom bindings will be lost.")
+	reset_controls_dialog.dialog_autowrap = true
+	reset_controls_dialog.ok_button_text = "Reset Controls"
+	reset_controls_dialog.exclusive = true
+	reset_controls_dialog.min_size = Vector2i(420, 0)
+	reset_controls_dialog.confirmed.connect(controls_reset_requested.emit)
+	reset_controls_dialog.confirmed.connect(button_clicked.emit)
+	reset_controls_dialog.canceled.connect(button_clicked.emit)
+	add_child(reset_controls_dialog)
+	_update_use_defaults(tabs.current_tab)
+
+
+func _update_use_defaults(tab: int) -> void:
+	use_defaults_button.visible = tab == CONTROLS_TAB
+
+
+func _on_custom_action(action: StringName) -> void:
+	if action == &"use_defaults":
+		controls_list.cancel_capture()
+		reset_controls_dialog.popup_centered()
 
 
 func _watch_clicks(node: Node) -> void:
@@ -182,12 +224,13 @@ func show_values(
 	fullscreen_check.button_pressed = fullscreen
 	folder_edit.text = pack_file_path(folder) if source == "folder" else ""
 	tabs.current_tab = 0
+	_update_use_defaults(tabs.current_tab)
 	popup_centered()
 
 
-func show_button_actions(right_action: String, middle_action: String) -> void:
-	right_button_selector.select(maxi(0, AppSettingsStore.BUTTON_ACTIONS.find(right_action)))
-	middle_button_selector.select(maxi(0, AppSettingsStore.BUTTON_ACTIONS.find(middle_action)))
+# show the saved bindings as pending changes
+func show_control_bindings(bindings: ControlBindings) -> void:
+	controls_list.show_bindings(bindings)
 
 
 func selected_values() -> AppSettingsStore.Values:
@@ -210,8 +253,7 @@ func selected_values() -> AppSettingsStore.Values:
 	result.dark_underground = dark_underground_check.button_pressed
 	result.fullscreen = fullscreen_check.button_pressed
 	result.check_for_updates = check_for_updates_check.button_pressed
-	result.right_button_action = AppSettingsStore.BUTTON_ACTIONS[maxi(0, right_button_selector.selected)]
-	result.middle_button_action = AppSettingsStore.BUTTON_ACTIONS[maxi(0, middle_button_selector.selected)]
+	result.control_bindings = controls_list.pending.duplicate_set()
 	result.graphics_source = "auto" if folder_edit.text.strip_edges().is_empty() else "folder"
 	result.graphics_folder = folder_edit.text.strip_edges()
 

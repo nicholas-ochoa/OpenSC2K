@@ -26,14 +26,14 @@ func _run() -> void:
 	assert(motion.step(Vector2.RIGHT, 0.016, false) == Vector2.ZERO)
 	assert(motion.velocity == Vector2.ZERO)
 	# Hold a key for several seconds without sending repeat events.
-	motion.press(KEY_W)
+	motion.press(KEY_W, "camera_up")
 	var first_speed := motion.step(motion.held_direction(), 1.0 / 60.0).length()
 
 	for frame in 180:
 		assert(motion.step(motion.held_direction(), 1.0 / 60.0).y < 0)
 
 	assert(motion.velocity.length() > first_speed * 60.0)
-	motion.press(KEY_D)
+	motion.press(KEY_D, "camera_right")
 	assert(is_equal_approx(motion.held_direction().length(), 1.0))
 	motion.release(KEY_W)
 	assert(motion.held_direction() == Vector2.RIGHT)
@@ -48,7 +48,7 @@ func _run() -> void:
 		motion.step(motion.held_direction(), 1.0 / 60.0)
 
 	assert(motion.velocity == Vector2.ZERO)
-	motion.press(KEY_A)
+	motion.press(KEY_A, "camera_left")
 	motion.step(motion.held_direction(), 0.016, false)
 	assert(motion.held_keys.is_empty(), "Blocked input left held keys active")
 	var path := "user://background_audio_test_%d.cfg" % OS.get_process_id()
