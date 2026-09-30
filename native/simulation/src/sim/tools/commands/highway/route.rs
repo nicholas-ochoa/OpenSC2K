@@ -2,11 +2,11 @@
 
 use std::collections::HashSet;
 
-use super::network_route::{alternate_direction, primary_direction};
-use super::{DIRECTIONS, scaled};
 use crate::sim::geom::Vec2i;
 use crate::sim::ids::building_tile_ids as tiles;
 use crate::sim::ids::sc2tile_flags as flag_bits;
+use crate::sim::tools::commands::network::route::{alternate_direction, primary_direction};
+use crate::sim::tools::commands::{DIRECTIONS, scaled};
 use crate::sim::tools::highway::{
     FLAT_TERRAIN_SHAPE, INVALID_TERRAIN_SHAPE, SECTION_OFFSETS, anchor_is_in_bounds, building_is_allowed, is_highway_tile,
     section_altitude, terrain_section_shape,

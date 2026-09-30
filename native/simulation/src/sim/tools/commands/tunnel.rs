@@ -121,6 +121,7 @@ pub fn apply(city: &mut City, args: &ToolArgs, start: Vec2i, confirmation: i64) 
         } else {
             "tunnel construction canceled"
         };
+
         let mut proposal = TunnelResult::rejected(message, cost);
         proposal.confirmation_required = unselected;
         proposal.cancelled = !unselected;
@@ -194,6 +195,7 @@ pub fn apply(city: &mut City, args: &ToolArgs, start: Vec2i, confirmation: i64) 
         finish_tile,
         ..Default::default()
     };
+
     result.base.points = points;
     result.base.cost = cost;
     result.base.listed_cost = listed_cost;

@@ -3,18 +3,23 @@
 const fn table() -> [u32; 256] {
     let mut table = [0_u32; 256];
     let mut byte = 0;
+
     while byte < 256 {
         let mut value = byte as u32;
         let mut bit = 0;
+
         while bit < 8 {
             value = (value >> 1) ^ if value & 1 != 0 { 0xedb8_8320 } else { 0 };
             bit += 1;
         }
+
         table[byte] = value;
         byte += 1;
     }
+
     table
 }
+
 static TABLE: [u32; 256] = table();
 
 pub fn calculate(bytes: &[u8]) -> u32 {

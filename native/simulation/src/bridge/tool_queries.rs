@@ -5,7 +5,7 @@ use godot::prelude::*;
 
 use crate::sim::geom::Rect2i as SimRect2i;
 use crate::sim::geom::Vec2i;
-use crate::sim::tools::commands::{network_bridge, scurk_place};
+use crate::sim::tools::commands::{network, scurk_place};
 use crate::sim::tools::{demolish, set_corners};
 
 /// Static tool queries for GDScript.
@@ -65,7 +65,7 @@ impl NativeCityTools {
     /// The deck tile of a road, rail, or power bridge at `span_index`.
     #[func]
     fn bridge_tile(bridge_type: i64, span_length: i64, span_index: i64, direction: i64) -> i64 {
-        network_bridge::bridge_tile(bridge_type, span_length, span_index, direction)
+        network::bridge::bridge_tile(bridge_type, span_length, span_index, direction)
     }
 
     /// The zone of a SCURK object placed on unzoned ground.

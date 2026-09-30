@@ -1,15 +1,18 @@
 //! One segment of a highway drag, as HighwayEdit.
 
-use super::highway_bridge::{self as bridges, BridgeMaps, Plan};
-use super::highway_route::{self as routes, HighwayMaps, section_direction, section_has_water, section_is_existing_highway};
-use super::network_bridge::{BRIDGE_CANCELLED, BRIDGE_UNSELECTED};
-use super::network_edit::{CONNECTION_CANCELLED, CONNECTION_CONFIRMED, CONNECTION_UNSELECTED};
-use super::route::RouteResult;
-use super::{DIRECTIONS, EditBase, ToolArgs, scaled};
 use crate::sim::city::City;
 use crate::sim::geom::Vec2i;
 use crate::sim::ids::sc2overlay_layout::CONNECTION_MARKER;
 use crate::sim::overlay;
+use crate::sim::tools::commands::highway::bridge::{self as bridges, BridgeMaps, Plan};
+use crate::sim::tools::commands::highway::route::{
+    self as routes, HighwayMaps, section_direction, section_has_water, section_is_existing_highway,
+};
+
+use crate::sim::tools::commands::network::bridge::{BRIDGE_CANCELLED, BRIDGE_UNSELECTED};
+use crate::sim::tools::commands::network::segment::{CONNECTION_CANCELLED, CONNECTION_CONFIRMED, CONNECTION_UNSELECTED};
+use crate::sim::tools::commands::route::RouteResult;
+use crate::sim::tools::commands::{DIRECTIONS, EditBase, ToolArgs, scaled};
 use crate::sim::tools::highway::{SECTION_OFFSETS, anchor_is_in_bounds, place_section, retile_route_sections, snap_anchor};
 use crate::sim::value::Ints32;
 

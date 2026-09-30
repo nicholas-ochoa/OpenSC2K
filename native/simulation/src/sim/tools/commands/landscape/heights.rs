@@ -5,10 +5,10 @@
 
 use std::collections::HashSet;
 
-use super::in_bounds;
 use crate::sim::geom::Vec2i;
 use crate::sim::ids::building_tile_ids as tiles;
 use crate::sim::ids::sc2zone_layout as zone;
+use crate::sim::tools::commands::in_bounds;
 use crate::sim::tools::terrain::{NEIGHBOR_MASKS, NEIGHBOR_OFFSETS, land_altitude, set_land_altitude};
 
 /// Each level that a tile moves costs this much.

@@ -2,8 +2,8 @@
 //! for tiles above 255 stay in GDScript; they change no chunk.
 
 use super::EditBase;
+use super::building::facilities::{self, Provision};
 use super::building::{PAYLOAD_IDS, footprint, footprint_is_in_bounds};
-use super::facilities::{self, Provision};
 use crate::gd_edit_result;
 use crate::sim::bytes::{read_u32_be, write_u32_be};
 use crate::sim::city::City;
@@ -78,6 +78,7 @@ pub fn apply(
         record_budget,
         first_free: facilities::DYNAMIC_FIRST,
     };
+
     let overlay_id = facilities::provision_microsim(maps.microsims, maps.labels, maps.text_overlays, &request, random);
     let zone_id = zone_for_tile(tile, maps.zones, site, selected_zone, edge);
 
@@ -132,6 +133,7 @@ pub fn apply(
         overlay_id,
         scurk_place_history: true,
     };
+
     result.base.site = site;
     result.base.tile_indices = Ints32(tile_indices);
     result.base.tracks_random = true;

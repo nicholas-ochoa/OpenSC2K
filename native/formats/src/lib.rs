@@ -11,5 +11,6 @@ mod sprite;
 use godot::prelude::*;
 
 struct OpenSc2kFormats;
+
 #[gdextension(entry_symbol = opensc2k_formats_init)]
 unsafe impl ExtensionLibrary for OpenSc2kFormats {}

@@ -2,8 +2,6 @@
 
 use std::collections::HashSet;
 
-use super::terrain_heights::{self as heights, LEVEL_COST, Plan};
-use super::{EditBase, ToolArgs};
 use crate::gd_edit_result;
 use crate::sim::city::City;
 use crate::sim::events::EffectEvent;
@@ -13,6 +11,8 @@ use crate::sim::ids::sc2misc_layout as misc_layout;
 use crate::sim::ids::sc2zone_layout as zone;
 use crate::sim::ids::underground_tile_ids as under;
 use crate::sim::random::SimRandom;
+use crate::sim::tools::commands::landscape::heights::{self as heights, LEVEL_COST, Plan};
+use crate::sim::tools::commands::{EditBase, ToolArgs};
 use crate::sim::tools::demolish::{append_effect_sequence, demolish_point};
 use crate::sim::tools::network::replace_building;
 use crate::sim::tools::terrain::{land_altitude, retile_region};
@@ -73,6 +73,7 @@ pub fn apply(city: &mut City, args: &ToolArgs, path: &TerrainPath, mut random: O
     } else {
         land_altitude(&city.altm.data, start_index)
     };
+
     let sea_level = city.misc_u32(misc_layout::WATER_LEVEL);
     let rotation = city.compass_rotation();
     let random_before = random.as_ref().map_or(0, |random| random.state);
@@ -192,6 +193,7 @@ pub fn apply(city: &mut City, args: &ToolArgs, path: &TerrainPath, mut random: O
         skipped_insufficient,
         random_used,
     };
+
     result.base.tile_indices = Ints32(changed.list);
     result.base.cost = total_cost;
     result.base.listed_cost = listed_cost;

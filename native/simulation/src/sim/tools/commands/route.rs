@@ -5,8 +5,8 @@
 
 use std::collections::HashSet;
 
-use super::network_bridge::BridgeChoice;
-use super::{ToolArgs, highway_edit, network_edit};
+use super::network::bridge::BridgeChoice;
+use super::{ToolArgs, highway, network};
 use crate::gd_edit_result;
 use crate::sim::city::City;
 use crate::sim::geom::{Rect2i, Vec2i};
@@ -143,9 +143,9 @@ pub fn drag(city: &mut City, args: &ToolArgs, start: Vec2i, finish: Vec2i, choic
         // A segment can ask for a bridge type and then for a connection.
         for _ in 0..3 {
             segment = if choices.highway {
-                highway_edit::apply_segment(city, args, cursor, endpoint, connection, bridge)
+                highway::segment::apply_segment(city, args, cursor, endpoint, connection, bridge)
             } else {
-                network_edit::apply_segment(city, args, cursor, endpoint, bridge, connection)
+                network::segment::apply_segment(city, args, cursor, endpoint, bridge, connection)
             };
 
             if segment.bridge_selection_required && choices.bridge != -1 {

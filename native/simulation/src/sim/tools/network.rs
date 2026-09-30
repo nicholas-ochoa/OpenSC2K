@@ -9,6 +9,7 @@ use crate::sim::ids::sc2overlay_layout;
 use crate::sim::ids::sc2tile_flags as flag_bits;
 use crate::sim::ids::sc2zone_layout as zone;
 use crate::sim::ids::terrain_tile_ids as terrain_ids;
+
 #[cfg(test)]
 use crate::sim::ids::underground_tile_ids as under;
 use crate::sim::network::SHAPE_OFFSET_BY_CONNECTION_MASK as NETWORK_SHAPES;
@@ -409,6 +410,7 @@ mod tests {
         } else {
             0
         };
+
         write_u32_be(&mut misc, misc_layout::TILE_COUNTS + base * 4, 1);
 
         for near in neighbors(point, mask) {

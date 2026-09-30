@@ -6,23 +6,14 @@
 
 pub mod building;
 pub mod demolish;
-pub mod facilities;
-pub mod facility_repair;
-pub mod highway_bridge;
-pub mod highway_edit;
-pub mod highway_route;
+pub mod highway;
 pub mod hydro;
 pub mod landscape;
-pub mod landscape_editor;
-pub mod network_bridge;
-pub mod network_edit;
-pub mod network_route;
+pub mod network;
 pub mod onramp;
 pub mod route;
 pub mod scurk_place;
 pub mod subway_to_rail;
-pub mod terrain_edit;
-pub mod terrain_heights;
 pub mod tunnel;
 pub mod zone;
 

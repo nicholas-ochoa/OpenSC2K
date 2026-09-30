@@ -184,6 +184,7 @@ pub fn apply(
         news_queue_updated: easter_events > 0,
         news_items,
     };
+
     result.base.tile_indices = Ints32(changed);
     result.base.cost = total_cost;
     result.base.listed_cost = action_count * args.cost;

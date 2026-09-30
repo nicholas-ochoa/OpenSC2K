@@ -12,12 +12,13 @@ use crate::sim::city::{CHUNK_IDS, City};
 use crate::sim::geom::Vec2i;
 use crate::sim::random::Randoms;
 use crate::sim::tools::commands::building::{self, Placement};
+use crate::sim::tools::commands::landscape::terrain::TerrainPath;
 use crate::sim::tools::commands::route::{self, RouteChoices};
-use crate::sim::tools::commands::terrain_edit::{self, TerrainPath};
 use crate::sim::tools::commands::zone::{self, ZoneRequest};
 use crate::sim::tools::commands::{
-    ToolArgs, demolish, facility_repair, highway_edit, hydro, landscape, landscape_editor, onramp, scurk_place, subway_to_rail, tunnel,
+    ToolArgs, building::facility_repair, demolish, highway, hydro, landscape, onramp, scurk_place, subway_to_rail, tunnel,
 };
+
 use crate::sim::value::{ToValue, Value};
 
 pub const OPERATIONS: &[&str] = &[
@@ -69,7 +70,7 @@ pub fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut R
 
             route::drag(city, &tool, point(args, "start"), point(args, "finish"), &choices).to_value()
         }
-        "tool.highway_preview" => Value::Str(highway_edit::preview_error(city, point(args, "point"))),
+        "tool.highway_preview" => Value::Str(highway::segment::preview_error(city, point(args, "point"))),
         "tool.tunnel" => tunnel::apply(city, &tool, point(args, "point"), convert::int(args, "confirmation", -1)).to_value(),
         "tool.onramp" => onramp::apply(city, &tool, point(args, "point"), convert::boolean(args, "preview_only", false)).to_value(),
         "tool.hydro" => hydro::apply(city, &tool, point(args, "point"), &mut randoms.random).to_value(),
@@ -126,9 +127,10 @@ pub fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut R
                 points: &points,
                 target_override: convert::int(args, "target_override", -1),
             };
+
             let random = convert::boolean(args, "has_random", true).then_some(&mut randoms.random);
 
-            terrain_edit::apply(city, &tool, &path, random).to_value()
+            landscape::terrain::apply(city, &tool, &path, random).to_value()
         }
         "tool.landscape" => landscape::apply(
             city,
@@ -138,7 +140,7 @@ pub fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut R
             convert::boolean(args, "use_brush_points", false),
         )
         .to_value(),
-        "tool.landscape_editor" => landscape_editor::apply(
+        "tool.landscape_editor" => landscape::editor::apply(
             city,
             tool.group,
             tool.subtool,

@@ -37,6 +37,7 @@ pub fn plan(view: &Viewport) -> Plan {
     } else {
         1
     };
+
     let mut side = margin;
     let mut top = if view.gpu { ((margin as f32) / 2.0).ceil() as i32 } else { 1 };
     let mut bottom = top;
@@ -107,6 +108,7 @@ fn sort(keys: &mut [(i32, i32)], center: (f32, f32), first: (i32, i32), last: (i
         } else {
             0
         };
+
         let (dx, dy) = (x as f32 - center.0, y as f32 - center.1);
         let distance = ((dx * dx + dy * dy) * 1024.0).round() as i64;
 

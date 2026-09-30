@@ -1,6 +1,9 @@
-//! Trees, forests, and water, as LandscapeCommand.
+//! Trees, forests, and water, as LandscapeCommand, and the terrain tools.
 
-use super::{EditBase, ToolArgs, in_bounds};
+pub mod editor;
+pub mod heights;
+pub mod terrain;
+
 use crate::gd_edit_result;
 use crate::sim::city::City;
 use crate::sim::geom::Vec2i;
@@ -11,6 +14,7 @@ use crate::sim::ids::sc2zone_layout as zone;
 use crate::sim::ids::terrain_tile_ids as terrain_ids;
 use crate::sim::overlay;
 use crate::sim::random::SimRandom;
+use crate::sim::tools::commands::{EditBase, ToolArgs, in_bounds};
 use crate::sim::tools::terrain::{update_building_count, water_shape, water_transition};
 use crate::sim::value::Ints32;
 
@@ -103,6 +107,7 @@ pub fn apply(city: &mut City, args: &ToolArgs, points: &[Vec2i], random: &mut Si
         base: EditBase::accepted("landscape", args.group, args.subtool),
         skipped_insufficient,
     };
+
     result.base.listed_cost = applied.len() as i64 * listed_per_tile;
     result.base.tile_indices = Ints32(applied);
     result.base.cost = total_cost;

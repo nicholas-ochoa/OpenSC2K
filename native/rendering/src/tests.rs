@@ -15,7 +15,9 @@ fn fixture(edge: i32, view: i32) -> Builder {
         underground: vec![0; cells],
         ..Default::default()
     };
+
     let mut images = HashMap::new();
+
     for id in view * 500..view * 500 + 500 {
         images.insert(
             id as u64 * 2,
@@ -27,6 +29,7 @@ fn fixture(edge: i32, view: i32) -> Builder {
             },
         );
     }
+
     Builder::new(
         city,
         Config {
@@ -46,12 +49,14 @@ fn fixture(edge: i32, view: i32) -> Builder {
     )
     .unwrap()
 }
+
 #[test]
 fn clipping_keeps_edge_contact_empty() {
     let a = Rect::new(-5, -2, 10, 4);
     assert_eq!(a.clip(Rect::new(0, 0, 10, 10)), Rect::new(0, 0, 5, 2));
     assert!(!a.clip(Rect::new(5, 0, 1, 1)).area());
 }
+
 #[test]
 fn sprite_flip_and_traffic_mask_preserve_hidden_colors() {
     let mut b = fixture(4, 2);
@@ -62,6 +67,7 @@ fn sprite_flip_and_traffic_mask_preserve_hidden_colors() {
     assert_eq!(b.sprites.images[&masked].la, [20, 255, 161, 0, 40, 0, 30, 0]);
     assert_eq!(b.sprites.images[&flipped].la[3], 255);
 }
+
 #[test]
 fn atlas_growth_keeps_existing_slots_and_pixels() {
     let mut atlas = sprites::Atlas::new(2048);
@@ -71,6 +77,7 @@ fn atlas_growth_keeps_existing_slots_and_pixels() {
         rgba: vec![],
         la: vec![77; 2046 * 2046 * 2],
     };
+
     let first = atlas.slot(1, &sprite).unwrap();
     atlas.slot(2, &sprite).unwrap();
     assert_eq!(atlas.edge, 4096);
@@ -80,6 +87,7 @@ fn atlas_growth_keeps_existing_slots_and_pixels() {
     assert_eq!(atlas.slot(1, &sprite).unwrap(), first);
     assert_eq!(revision, atlas.revision);
 }
+
 #[test]
 fn region_reuse_and_neighbor_edits_do_not_retain_stale_draws() {
     let mut b = fixture(8, 2);
@@ -106,6 +114,7 @@ fn region_reuse_and_neighbor_edits_do_not_retain_stale_draws() {
     assert!(b.builds > builds);
     assert!(b.tiles[&i].draws.iter().any(|d| d.sprite == 1284));
 }
+
 #[test]
 fn power_crossing_keeps_train_fields_and_painter_order() {
     let mut b = fixture(4, 2);
@@ -120,6 +129,7 @@ fn power_crossing_keeps_train_fields_and_painter_order() {
     assert_eq!(crossing.depth, 9);
     assert_eq!(crossing.order, (9 << 16) | 1);
 }
+
 #[test]
 fn underground_tunnel_and_hidden_subway_are_separate_depths() {
     let mut b = fixture(4, 2);
@@ -157,6 +167,7 @@ fn object_overrides_expand_the_region_candidate_span() {
 fn original_dispatch_requires_matching_overlay_and_skips_record_zero() {
     let mut city = fixture(128, 2).city;
     let mut things = vec![0; 480];
+
     for (record, kind, x, y, sprite) in [(0, 7, 1, 1, 382), (1, 7, 2, 3, 382), (2, 8, 4, 5, 383), (39, 14, 6, 7, 384)] {
         things[record * 12] = kind;
         things[record * 12 + 3] = x;
@@ -166,11 +177,13 @@ fn original_dispatch_requires_matching_overlay_and_skips_record_zero() {
         city.set_dispatch(&things);
         assert_eq!(city.dispatch.get(&index), (record != 0).then_some(&sprite));
     }
+
     assert_eq!(city.dispatch.len(), 3);
     let index = city.index(2, 3);
     city.overlays[index] = 203;
     city.set_dispatch(&things);
     assert!(!city.dispatch.contains_key(&index));
+
     // Coordinates outside this map must not alias a valid map cell.
     things[2 * 12 + 3] = 128;
     city.set_dispatch(&things);
@@ -187,6 +200,7 @@ fn extended_dispatch_reads_coordinate_planes_and_extended_overlay_ids() {
     city.overlays.resize(cells * 2, 0);
     let mut things = vec![0; 640 * 24];
     let high = things.len() / 2;
+
     for (record, kind, x, y, overlay, sprite) in [
         (39, 7, 300, 400, 240, 382),
         (40, 8, 301, 401, 8192, 383),
@@ -203,6 +217,7 @@ fn extended_dispatch_reads_coordinate_planes_and_extended_overlay_ids() {
         city.set_dispatch(&things);
         assert_eq!(city.dispatch.get(&index), Some(&sprite));
     }
+
     assert_eq!(city.dispatch.len(), 3);
     let index = city.index(301, 401);
     city.overlays[cells + index] = 0;
@@ -235,12 +250,15 @@ fn known_bounds_skip_outside_tiles_and_eviction_keeps_recent_tiles() {
         cached > 0 && (cached as i64) < painted,
         "tiles outside the region must not be cached"
     );
+
     // Evict every cached tile. Known bounds still skip the outside candidates.
     b.tiles.clear();
     b.region(bounds).unwrap();
     assert_eq!(b.builds - painted, cached as i64);
+
     // The least recently used tiles leave first.
     b.tiles.clear();
+
     for i in 0..region::TILE_LIMIT {
         b.tiles.insert(
             1_000_000 + i,
@@ -251,6 +269,7 @@ fn known_bounds_skip_outside_tiles_and_eviction_keeps_recent_tiles() {
             },
         );
     }
+
     b.stamp = region::TILE_LIMIT as u64;
     b.region(bounds).unwrap();
     assert!(b.cached_tiles() <= region::TILE_LIMIT);
@@ -269,14 +288,17 @@ fn edits_invalidate_neighbors_and_traffic_bands_only() {
     let (x, y) = (center as i32 / 128, center as i32 % 128);
     let mut city = b.city.clone();
     city.terrain[center] = 1;
+
     // A density change inside one traffic band draws the same sprites.
     city.traffic[((x / 4) * 32 + (y / 4)) as usize] = 20;
     b.update(city);
+
     for &i in &cached {
         let (ix, iy) = (i as i32 / 128, i as i32 % 128);
         let near = (ix - x).abs() <= 1 && (iy - y).abs() <= 1;
         assert_eq!(b.tiles.contains_key(&i), !near, "cell {ix},{iy}");
     }
+
     let mut city = b.city.clone();
     city.traffic[((x / 4) * 32 + (y / 4)) as usize] = 100;
     b.update(city);
@@ -288,6 +310,7 @@ fn edits_invalidate_neighbors_and_traffic_bands_only() {
 #[test]
 fn draw_index_returns_painter_order_and_changed_commands() {
     let mut draws = Vec::new();
+
     for (at, rect) in [Rect::new(0, 0, 10, 10), Rect::new(60, 0, 10, 10), Rect::new(5, 5, 100, 100)]
         .into_iter()
         .enumerate()
@@ -297,6 +320,7 @@ fn draw_index_returns_painter_order_and_changed_commands() {
         d.order = (at as i64) << 16;
         draws.push(d);
     }
+
     draws[1].depth = -1;
     let index = index::RegionDraws::new(draws.clone());
     assert_eq!(index.candidates(Rect::new(0, 0, 200, 200), 1, false), [0, 1, 2]);
@@ -312,6 +336,7 @@ fn draw_index_returns_painter_order_and_changed_commands() {
         [Rect::new(5, 5, 100, 100), Rect::new(6, 5, 100, 100), Rect::new(0, 0, 10, 10)]
     );
 }
+
 #[test]
 fn raster_composites_opaque_pixels_over_the_background() {
     let mut sprites = sprites::Sprites::new(HashMap::new(), [0; 4]);
@@ -327,8 +352,10 @@ fn raster_composites_opaque_pixels_over_the_background() {
     let mut draw = Draw::new(2, Rect::new(1, 0, 2, 1));
     draw.sprite = 1;
     let pixels = raster::composite(&[draw.clone()], &sprites, &HashMap::new(), Rect::new(0, 0, 3, 1), [1, 2, 3, 4]);
+
     // the hidden sprite pixel keeps the background
     assert_eq!(pixels, vec![1, 2, 3, 4, 9, 9, 9, 255, 1, 2, 3, 4]);
+
     // a shadow darkens a known color and leaves others
     draw.shadow = true;
     draw.rect = Rect::new(0, 0, 2, 1);
@@ -336,11 +363,13 @@ fn raster_composites_opaque_pixels_over_the_background() {
     let pixels = raster::composite(&[draw], &sprites, &shadows, Rect::new(0, 0, 3, 1), [1, 2, 3, 4]);
     assert_eq!(pixels, vec![5, 5, 5, 255, 1, 2, 3, 4, 1, 2, 3, 4]);
 }
+
 #[test]
 fn raster_and_tile_draws_match_regions() {
     let mut b = fixture(8, 2);
     let i = b.city.index(3, 3);
     b.city.buildings[i] = ids::building_tile_ids::LOWER_CLASS_HOMES_1X1_1;
+
     // the bottom corner of a building anchors its sprite at rotation 0
     b.city.zones[i] = 0x80;
     let bounds = Rect::new(0, 0, 400, 800);
@@ -351,6 +380,7 @@ fn raster_and_tile_draws_match_regions() {
     assert_eq!(tile.len(), 1);
     assert!(b.tile_draws(8, 0).unwrap().is_empty());
 }
+
 #[test]
 fn special_overlays_only_when_configured() {
     let mut b = fixture(8, 2);
@@ -362,19 +392,23 @@ fn special_overlays_only_when_configured() {
     assert_eq!(marked.len(), plain + 1);
     assert_eq!(marked.last().unwrap().sprite, 1000 + 492);
 }
+
 // The sprites, mirrors and rectangles of one tile, in painter order.
 fn tile(b: &mut Builder, x: i32, y: i32) -> Vec<(i32, bool, Rect)> {
     b.tile_draws(x, y).unwrap().iter().map(|d| (d.sprite, d.flip, d.rect)).collect()
 }
+
 fn place(b: &mut Builder, x: i32, y: i32, building: u8, corners: u8) {
     let i = b.city.index(x, y);
     b.city.buildings[i] = building;
     b.city.zones[i] = corners;
 }
+
 #[test]
 fn traffic_follows_the_density_thresholds_of_each_network() {
     use ids::building_tile_ids::*;
     let mut b = fixture(8, 2);
+
     // a 4 by 4 traffic grid: each cell covers two by two tiles
     b.city.traffic = vec![0; 16];
     place(&mut b, 2, 2, ROAD_STRAIGHT_1, 0);
@@ -387,6 +421,7 @@ fn traffic_follows_the_density_thresholds_of_each_network() {
     assert!(has(&mut b, 1427));
     place(&mut b, 2, 2, POWER_LINE_STRAIGHT_1, 0);
     assert!(!tile(&mut b, 2, 2).iter().any(|d| (1399..1500).contains(&d.0)));
+
     // highways cross their thresholds lower, with lane sprites
     place(&mut b, 2, 2, HIGHWAY_STRAIGHT_1, 0x80);
     b.city.traffic[5] = 29;
@@ -398,17 +433,20 @@ fn traffic_follows_the_density_thresholds_of_each_network() {
     medium.city.traffic[5] = 86;
     place(&mut medium, 2, 2, ROAD_STRAIGHT_1, 0);
     assert!(tile(&mut medium, 2, 2).iter().any(|d| d.0 == 900));
+
     // the small view has no high-density sprites
     let mut small = fixture(8, 0);
     small.city.traffic = vec![0; 16];
     small.city.traffic[5] = 171;
     place(&mut small, 2, 2, ROAD_STRAIGHT_1, 0);
     assert!(!tile(&mut small, 2, 2).iter().any(|d| (399..500).contains(&d.0)));
+
     // masked traffic draws are no foreground
     small.city.traffic[5] = 86;
     let draws = small.tile_draws(2, 2).unwrap();
     assert!(draws.iter().any(|d| d.sprite == 400 && d.depth < 0));
 }
+
 #[test]
 fn anchors_mirrors_and_baselines() {
     use ids::building_tile_ids::*;
@@ -418,17 +456,20 @@ fn anchors_mirrors_and_baselines() {
     place(&mut b, 3, 3, HIGHWAY_SLOPE_1, 0x80);
     let drawn = tile(&mut b, 3, 3);
     assert!(drawn.iter().any(|d| d.0 == 1000 + i32::from(HIGHWAY_SLOPE_1)));
+
     // an elevated highway redraws the four-cell ground diamond first
     assert_eq!(drawn.len(), 5);
     assert_eq!((drawn[3].2.x - drawn[0].2.x, drawn[3].2.y - drawn[0].2.y), (16, 8));
     let mut small = fixture(8, 0);
     place(&mut small, 3, 3, HIGHWAY_SLOPE_1, 0x80);
     assert_eq!(tile(&mut small, 3, 3).len(), 1);
+
     // the map edge clips the diamond to valid cells
     place(&mut b, 7, 0, HIGHWAY_SLOPE_1, 0x80);
     assert_eq!(tile(&mut b, 7, 0).len(), 2);
     place(&mut b, 3, 3, RAIL_SUBWAY_ENTRANCE_1, 0);
     assert!(tile(&mut b, 3, 3).iter().any(|d| d.0 == 1000 + i32::from(RAIL_SUBWAY_ENTRANCE_1)));
+
     // an odd compass rotation mirrors buildings but not networks
     b.city.rotation = 3;
     place(&mut b, 4, 4, ROAD_STRAIGHT_1, 0);
@@ -440,6 +481,7 @@ fn anchors_mirrors_and_baselines() {
     assert!(!tile(&mut b, 4, 4).iter().find(|d| d.0 == 1112).unwrap().1);
     place(&mut b, 4, 4, RAIL_STRAIGHT_1, 0x40);
     assert!(tile(&mut b, 4, 4).iter().find(|d| d.0 == 1044).unwrap().1);
+
     // a network on terrain shape 0x0d sits one altitude step higher
     b.city.rotation = 0;
     b.city.flags[i] = 0;
@@ -449,6 +491,7 @@ fn anchors_mirrors_and_baselines() {
     let raised = tile(&mut b, 4, 4).iter().find(|d| d.0 == 1029).unwrap().2.y;
     assert_eq!(flat - raised, 12);
 }
+
 #[test]
 fn power_markers_and_map_edges() {
     use ids::building_tile_ids::*;
@@ -459,6 +502,7 @@ fn power_markers_and_map_edges() {
     assert!(tile(&mut b, 3, 3).iter().any(|d| d.0 == 1386));
     b.city.flags[i] |= ids::sc2tile_flags::POWERED;
     assert!(!tile(&mut b, 3, 3).iter().any(|d| d.0 == 1386));
+
     // map edges repeat the land side sprite, then the water side sprite
     let edge = b.city.index(7, 4);
     b.city.altitude[edge] = 3 | 5 << 5;
@@ -474,6 +518,7 @@ fn power_markers_and_map_edges() {
     let small_sides: Vec<Rect> = tile(&mut small, 7, 4).into_iter().filter(|d| d.0 == 269).map(|d| d.2).collect();
     assert_eq!(small_sides[0].y - small_sides[1].y, 3);
 }
+
 #[test]
 fn missing_sprites_are_listed_once() {
     let mut b = fixture(4, 2);
@@ -481,8 +526,10 @@ fn missing_sprites_are_listed_once() {
     b.sprites.images.remove(&(1269_u64 * 2));
     let i = b.city.index(3, 1);
     b.city.altitude[i] = 1;
+
     // flat ground and the land side of the map edge
     assert_eq!(b.missing_sprites(), vec![1256, 1269]);
+
     // painting afterwards reports the first missing sprite again
     assert!(b.tile_draws(0, 0).is_err());
 }

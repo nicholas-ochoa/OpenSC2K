@@ -1,13 +1,13 @@
 //! Terrain editor actions, as LandscapeEditorCommand: stretch, sea level,
 //! forest, and stream. Each action is one undo unit.
 
-use super::landscape::{self, SUBTOOL_TREES};
-use super::terrain_edit::{self, SUBTOOL_LOWER, SUBTOOL_RAISE, TerrainPath, TerrainResult};
-use super::{EditBase, ToolArgs};
 use crate::sim::city::{CHUNK_IDS, City};
 use crate::sim::geom::Vec2i;
 use crate::sim::ids::sc2misc_layout as misc_layout;
 use crate::sim::random::SimRandom;
+use crate::sim::tools::commands::landscape::terrain::{self, SUBTOOL_LOWER, SUBTOOL_RAISE, TerrainPath, TerrainResult};
+use crate::sim::tools::commands::landscape::{self, SUBTOOL_TREES};
+use crate::sim::tools::commands::{EditBase, ToolArgs};
 use crate::sim::tools::new_terrain::editor_stream;
 use crate::sim::tools::terrain::retile_region;
 use crate::sim::value::Ints32;
@@ -51,6 +51,7 @@ pub fn apply(city: &mut City, group: i64, subtool: i64, point: Vec2i, random: &m
             cost: 0,
             free_mode: true,
         };
+
         let points = [point];
         let path = TerrainPath {
             start: point,
@@ -59,10 +60,7 @@ pub fn apply(city: &mut City, group: i64, subtool: i64, point: Vec2i, random: &m
         };
 
         for _ in 0..MAX_STRETCH.min(stretch_levels.abs()) {
-            if !terrain_edit::apply(&mut staged, &step_tool, &path, Some(&mut staged_random))
-                .base
-                .ok
-            {
+            if !terrain::apply(&mut staged, &step_tool, &path, Some(&mut staged_random)).base.ok {
                 break;
             }
         }
@@ -73,6 +71,7 @@ pub fn apply(city: &mut City, group: i64, subtool: i64, point: Vec2i, random: &m
             cost: 0,
             free_mode: true,
         };
+
         let mut points = Vec::new();
 
         for x in -3..4 {
@@ -140,6 +139,7 @@ pub fn apply(city: &mut City, group: i64, subtool: i64, point: Vec2i, random: &m
         random_used: before != random.state,
         ..Default::default()
     };
+
     result.base.tile_indices = Ints32((0..(edge * edge) as i32).collect());
     result.base.free_mode = true;
     result.base.tracks_random = true;

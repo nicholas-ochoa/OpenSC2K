@@ -123,6 +123,7 @@ pub fn apply(city: &mut City) -> RepairResult {
                     } else {
                         0
                     };
+
                     has_record |=
                         saved == tile || (kind > LAST_INDIVIDUAL_TYPE && saved != tiles::EMPTY && record == kind - LAST_INDIVIDUAL_TYPE);
                 }
@@ -181,6 +182,7 @@ pub fn apply(city: &mut City) -> RepairResult {
                 record_budget: -1,
                 first_free: next_free,
             };
+
             facilities::provision_microsim(&mut city.xmic.data, &mut city.xlab.data, &mut city.xtxt.data, &request, &mut random);
         }
 

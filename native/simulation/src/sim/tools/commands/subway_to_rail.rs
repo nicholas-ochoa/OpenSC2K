@@ -101,6 +101,7 @@ pub fn apply(city: &mut City, args: &ToolArgs, point: Vec2i, preview_only: bool)
         orientation,
         neighbor,
     };
+
     result.base.tile_indices = Ints32(vec![index as i32]);
     result.base.listed_cost = args.cost;
 

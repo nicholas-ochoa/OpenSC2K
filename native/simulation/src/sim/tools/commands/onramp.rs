@@ -108,6 +108,7 @@ pub fn apply(city: &mut City, args: &ToolArgs, point: Vec2i, preview_only: bool)
         road_direction,
         road_point,
     };
+
     result.base.cost = cost;
     result.base.listed_cost = args.cost;
     result.base.free_mode = args.free_mode;

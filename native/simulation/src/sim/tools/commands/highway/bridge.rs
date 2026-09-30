@@ -1,16 +1,17 @@
 //! Highway bridges of 2 by 2 sections, as HighwayBridges.
 
-use super::network_bridge::BridgeChoice;
-use super::{DIRECTIONS, scaled};
 use crate::sim::geom::Vec2i;
 use crate::sim::ids::building_tile_ids as tiles;
 use crate::sim::ids::sc2tile_flags as flag_bits;
 use crate::sim::ids::sc2zone_layout as zone;
 use crate::sim::ids::terrain_tile_ids as terrain_ids;
+use crate::sim::tools::commands::network::bridge::BridgeChoice;
+use crate::sim::tools::commands::{DIRECTIONS, scaled};
 use crate::sim::tools::highway::{
     INVALID_TERRAIN_SHAPE, SECTION_OFFSETS, STRAIGHT_FIRST, anchor_is_in_bounds, section_altitude, terrain_section_shape,
     write_section_kind,
 };
+
 use crate::sim::tools::network::replace_building;
 use crate::sim::tools::{Maps, set_corners};
 
@@ -274,6 +275,7 @@ pub fn place_bridge(maps: &mut Maps, plan: &Plan, bridge_type: i64, rotation: i6
         } else {
             ((direction + 1) & 3) + 4
         };
+
         write_bridge_endpoint(maps, behind, behind_kind, rotation);
         endpoint_sections.push(behind);
 
@@ -283,6 +285,7 @@ pub fn place_bridge(maps: &mut Maps, plan: &Plan, bridge_type: i64, rotation: i6
         } else {
             ((direction - 1) & 3) + 4
         };
+
         write_bridge_endpoint(maps, far_bank, far_kind, rotation);
         endpoint_sections.push(far_bank);
     }
@@ -298,6 +301,7 @@ pub fn place_bridge(maps: &mut Maps, plan: &Plan, bridge_type: i64, rotation: i6
             } else {
                 REINFORCED_ODD_KIND
             };
+
             write_reinforced_section(maps, anchor, kind, direction, rotation);
         } else {
             write_normal_section(maps, anchor, direction);
@@ -384,6 +388,7 @@ mod tests {
         } else {
             Vec2i::new(0, 1)
         };
+
         let water_start = start + [Vec2i::ZERO, Vec2i::new(1, 0), Vec2i::new(0, 1), Vec2i::ZERO][direction];
 
         for distance in 0..5 {

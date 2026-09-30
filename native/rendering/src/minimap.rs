@@ -16,9 +16,11 @@ const DEVELOPED_COLOR: u8 = 0;
 const HIGHLIGHT: u8 = 0xff;
 const SUPPLIED: u8 = 0x32;
 const CONNECTED: u8 = 0x1d;
+
 /// The first of 15 gradient colors. A data value shows value >> 4 steps past it.
 const GRADIENT_BASE: u8 = 0x9b;
 const GRADIENT_SHIFT: u32 = 4;
+
 /// Empty ground darkens by three quarters of a color step per altitude level, to this level.
 const GROUND_ALTITUDE_LIMIT: i32 = 0x10;
 // Growth values below LOW shrink, and values from HIGH grow.
@@ -26,6 +28,7 @@ const GROWTH_LOW: u8 = 0x7d;
 const GROWTH_HIGH: u8 = 0x83;
 const SHRINKING: u8 = 0x1d;
 const GROWING: u8 = 0x43;
+
 /// Colors of the zone types. Zone types above 6 use color 0.
 const ZONE_COLORS: [u8; 16] = [0, 59, 59, 92, 92, 50, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
@@ -51,6 +54,7 @@ pub enum Mode {
     Schools,
     Colleges,
 }
+
 impl Mode {
     /// Unknown names draw the structures map.
     pub fn from_name(name: &str) -> Self {
@@ -75,6 +79,7 @@ impl Mode {
             _ => Self::Structures,
         }
     }
+
     /// The data chunk that the mode reads, if any.
     pub fn chunk(self) -> Option<&'static str> {
         Some(match self {
@@ -101,9 +106,11 @@ pub struct MinimapCity<'a> {
     /// The mode's data map at full, half or quarter resolution, or empty.
     pub data: &'a [u8],
 }
+
 impl MinimapCity<'_> {
     pub fn validate(&self) -> Result<(), String> {
         let cells = self.edge * self.edge;
+
         if self.edge == 0
             || [
                 self.buildings.len(),
@@ -117,8 +124,10 @@ impl MinimapCity<'_> {
         {
             return Err("invalid city map arrays".into());
         }
+
         Ok(())
     }
+
     // A legacy coarse grid covers two or four tiles per cell.
     fn data_value(&self, x: usize, y: usize) -> u8 {
         let edge = self.edge;
@@ -129,49 +138,63 @@ impl MinimapCity<'_> {
         if grid == 0 {
             return 0;
         }
+
         let scale = edge / grid;
         self.data[(x / scale) * grid + y / scale]
     }
+
     fn base(&self, i: usize, building: u8) -> u8 {
         if building == tiles::EMPTY {
             if self.flags[i] & flags::WATER != 0 {
                 return WATER_COLOR;
             }
+
             let level = (self.altitude[i] & altitude::LAND_MASK).min(GROUND_ALTITUDE_LIMIT);
+
             return EMPTY_GROUND - (level * 3 / 4) as u8;
         }
+
         if building < tiles::TREES_1 {
             return RUBBLE_COLOR;
         }
+
         if building < tiles::SMALL_PARK {
             return TREE_COLOR;
         }
+
         DEVELOPED_COLOR
     }
+
     fn gradient_or(&self, x: usize, y: usize, base: u8) -> u8 {
         let gradient = self.data_value(x, y) >> GRADIENT_SHIFT;
+
         if gradient != 0 { gradient + GRADIENT_BASE } else { base }
     }
+
     /// The palette index of one tile. Tiles outside the map are 0.
     pub fn color_index(&self, x: usize, y: usize, mode: Mode) -> u8 {
         if x >= self.edge || y >= self.edge {
             return 0;
         }
+
         let i = x * self.edge + y;
         let b = self.buildings[i];
         let base = self.base(i, b);
         let tile_flags = self.flags[i];
         let marked = |hit: bool| if hit { HIGHLIGHT } else { base };
+
         match mode {
             Mode::Structures => base,
             Mode::Zones => {
                 let zone = self.zones[i] & zone::TYPE_MASK;
+
                 if zone != 0 { ZONE_COLORS[usize::from(zone)] } else { base }
             }
             Mode::Roads => marked(is_road(b)),
             Mode::Rail => marked(is_rail(b)),
             Mode::Traffic => {
                 let traffic = self.data_value(x, y) >> GRADIENT_SHIFT;
+
                 if traffic != 0 {
                     traffic + GRADIENT_BASE
                 } else {
@@ -227,21 +250,25 @@ pub fn indices(city: &MinimapCity, mode: Mode) -> Vec<u8> {
     let size = image_edge(city.edge);
     let step = (city.edge / MAX_IMAGE_EDGE).max(1);
     let mut out = vec![0; size * size];
+
     for y in 0..size {
         for x in 0..size {
             out[y * size + x] = city.color_index(x * step, y * step, mode);
         }
     }
+
     out
 }
 
 /// RGBA8 pixels of the indices through a 256-entry RGBA palette.
 pub fn colorize(indices: &[u8], palette: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(indices.len() * 4);
+
     for &index in indices {
         let at = usize::from(index) * 4;
         out.extend_from_slice(palette.get(at..at + 4).unwrap_or(&[0, 0, 0, 0]));
     }
+
     out
 }
 
@@ -252,6 +279,7 @@ fn is_road(b: u8) -> bool {
         | HIGHWAY_STRAIGHT_1..=RAISING_BRIDGE_OPEN
         | HIGHWAY_ONRAMP_1..=REINFORCED_HIGHWAY_BRIDGE)
 }
+
 fn is_rail(b: u8) -> bool {
     use tiles::*;
     matches!(b, RAIL_STRAIGHT_1..=RAIL_SLOPE_8
@@ -262,6 +290,7 @@ fn is_rail(b: u8) -> bool {
         | RAIL_BRIDGE
         | RAIL_BRIDGE_PYLON)
 }
+
 fn is_traffic_network(b: u8) -> bool {
     use tiles::*;
     matches!(b, ROAD_STRAIGHT_1..=RAIL_SLOPE_8
@@ -269,6 +298,7 @@ fn is_traffic_network(b: u8) -> bool {
         | HIGHWAY_STRAIGHT_1..=HIGHWAY_POWER_CROSSING_2
         | HIGHWAY_ONRAMP_1..=RAIL_SUBWAY_ENTRANCE_4)
 }
+
 fn is_power_line(b: u8) -> bool {
     use tiles::*;
     matches!(
@@ -297,6 +327,7 @@ mod tests {
         altitude: Vec<i32>,
         data: Vec<u8>,
     }
+
     impl Arrays {
         fn new(edge: usize) -> Self {
             let cells = edge * edge;
@@ -310,6 +341,7 @@ mod tests {
                 data: Vec::new(),
             }
         }
+
         fn city(&self) -> MinimapCity<'_> {
             MinimapCity {
                 edge: self.edge,
@@ -351,6 +383,7 @@ mod tests {
         a.flags[5] = flags::POWERABLE;
         a.underground[6] = underground::PIPE_LR;
         a.flags[7] = flags::WATERED;
+
         // a corner bit and zone type 3
         a.zones[8] = 0x10 | 3;
         let c = a.city();
@@ -371,6 +404,7 @@ mod tests {
         a.data = vec![0; 16];
         a.data[4 + 2] = 0xff;
         let c = a.city();
+
         // cell (1, 2) of a half-resolution grid covers tiles 2..4, 4..6
         assert_eq!(c.color_index(3, 5, Mode::Pollution), GRADIENT_BASE + 15);
         assert_eq!(c.color_index(3, 6, Mode::Pollution), c.color_index(3, 6, Mode::Structures));
@@ -389,6 +423,7 @@ mod tests {
         a.buildings[2 * 2048 + 4] = POLICE_STATION;
         let pixels = indices(&a.city(), Mode::PoliceStations);
         assert_eq!(pixels.len(), 1024 * 1024);
+
         // tile (2, 4) is image column 1, row 2
         assert_eq!(pixels[2 * 1024 + 1], HIGHLIGHT);
         let rgba = colorize(&pixels[..2], &[[1, 2, 3, 4]; 256].concat());

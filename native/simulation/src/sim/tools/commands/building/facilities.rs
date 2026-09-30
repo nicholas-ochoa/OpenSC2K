@@ -273,6 +273,7 @@ fn initialize_microsim(microsims: &mut [u8], record: i64, request: &Provision, m
                 let funding = budget_funding(misc, budget_layout::POLICE);
                 population_cap(misc, to_i16(funding * 2), 90, map_edge)
             };
+
             write_u16_be(microsims, offset + 2, cap);
         }
         FIRE_STATION => {
@@ -282,6 +283,7 @@ fn initialize_microsim(microsims: &mut [u8], record: i64, request: &Provision, m
                 let funding = budget_funding(misc, budget_layout::FIRE);
                 population_cap(misc, to_i16(funding / 2), 70, map_edge)
             };
+
             write_u16_be(microsims, offset + 2, cap);
             write_u16_be(microsims, offset + 4, 4);
         }
@@ -301,6 +303,7 @@ fn initialize_microsim(microsims: &mut [u8], record: i64, request: &Provision, m
                 DARCO_ARCOLOGY => 45,
                 _ => 65,
             };
+
             microsims[(offset + 1) as usize] = 5;
             write_u16_be(microsims, offset + 2, capacity);
             write_u16_be(microsims, offset + 6, year);
@@ -311,6 +314,7 @@ fn initialize_microsim(microsims: &mut [u8], record: i64, request: &Provision, m
             } else {
                 random.next_u15() & 0x3f
             };
+
             write_u16_be(microsims, offset + 6, value);
         }
         _ => {}

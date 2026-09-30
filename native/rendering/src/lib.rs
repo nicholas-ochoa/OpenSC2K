@@ -26,10 +26,12 @@ pub struct Rect {
     pub w: i32,
     pub h: i32,
 }
+
 impl Rect {
     pub fn new(x: i32, y: i32, w: i32, h: i32) -> Self {
         Self { x, y, w, h }
     }
+
     pub fn clip(self, other: Self) -> Self {
         let x = self.x.max(other.x);
         let y = self.y.max(other.y);
@@ -40,6 +42,7 @@ impl Rect {
             (self.y + self.h).min(other.y + other.h) - y,
         )
     }
+
     pub fn area(self) -> bool {
         self.w > 0 && self.h > 0
     }
@@ -63,19 +66,24 @@ pub struct City {
     // Sprite offsets of stationary dispatch objects, indexed by map cell.
     pub dispatch: HashMap<usize, i32>,
 }
+
 impl City {
     fn index(&self, x: i32, y: i32) -> usize {
         (x * self.edge + y) as usize
     }
+
     fn land(&self, i: usize) -> i32 {
         self.altitude[i] & 31
     }
+
     fn water(&self, i: usize) -> i32 {
         (self.altitude[i] >> 5) & 31
     }
+
     fn wet(&self, i: usize) -> bool {
         self.flags[i] & 4 != 0
     }
+
     fn object(&self, i: usize) -> i32 {
         self.objects
             .get(i)
@@ -83,9 +91,11 @@ impl City {
             .filter(|v| *v >= 0)
             .unwrap_or_else(|| if self.wet(i) { self.water(i) } else { self.land(i) })
     }
+
     fn visible(&self, i: usize) -> bool {
         self.visible >= 32 || (if self.wet(i) { self.water(i) } else { self.land(i) }) < self.visible
     }
+
     /// The top value of a tile, as OverlayData.read.
     fn overlay(&self, i: usize) -> i32 {
         let cells = (self.edge * self.edge) as usize;
@@ -96,10 +106,12 @@ impl City {
 
         changes::overlay(&self.overlays, i)
     }
+
     /// The marker byte of a tile: the first plane of every layout.
     fn marker(&self, i: usize) -> i32 {
         i32::from(*self.overlays.get(i).unwrap_or(&0))
     }
+
     fn set_dispatch(&mut self, things: &[u8]) {
         // XTHG keeps 12-byte records. Extended payloads have equal low and
         // high planes; X and Y widen, while the dispatch type stays a byte.
@@ -107,6 +119,7 @@ impl City {
         let count = things.len() / if wide { 24 } else { 12 };
         let high = things.len() / 2;
         self.dispatch.clear();
+
         // Record zero has no dispatch sprite in the reference painter.
         for record in 1..count {
             let offset = record * 12;
@@ -116,53 +129,69 @@ impl City {
                 14 => 384,
                 _ => continue,
             };
+
             let coordinate =
                 |field| i32::from(things[offset + field]) | if wide { i32::from(things[high + offset + field]) << 8 } else { 0 };
             let (x, y) = (coordinate(3), coordinate(4));
+
             if x >= self.edge || y >= self.edge {
                 continue;
             }
+
             let overlay = if record < 40 {
                 201 + record as i32
             } else {
                 8192 + record as i32 - 40
             };
+
             let index = self.index(x, y);
+
             if self.overlay(index) == overlay {
                 self.dispatch.insert(index, sprite);
             }
         }
     }
+
     fn traffic_scale(&self) -> Option<(usize, i32)> {
         let side = self.traffic.len().isqrt();
+
         if side == 0 || side * side != self.traffic.len() || self.edge % side as i32 != 0 {
             return None;
         }
+
         Some((side, self.edge / side as i32))
     }
+
     fn density(&self, x: i32, y: i32) -> i32 {
         let Some((side, scale)) = self.traffic_scale() else {
             return 0;
         };
+
         self.traffic[(x / scale) as usize * side + (y / scale) as usize] as i32
     }
+
     /// The terrain shape to draw. Surface water and channels at the land level
     /// beside higher land show the waterfall.
     fn surface(&self, x: i32, y: i32) -> u8 {
         use ids::terrain_tile_ids::{CHANNEL_LAST, SURFACE_WATER_FIRST, WATERFALL};
         let i = self.index(x, y);
         let t = self.terrain[i];
+
         if !(SURFACE_WATER_FIRST..=CHANNEL_LAST).contains(&t) || t == WATERFALL || self.water(i) != self.land(i) {
             return t;
         }
+
         for (dx, dy) in [(0, -1), (1, 0), (0, 1), (-1, 0)] {
             let (nx, ny) = (x + dx, y + dy);
+
             if nx >= 0 && ny >= 0 && nx < self.edge && ny < self.edge && self.land(self.index(nx, ny)) > self.land(i) {
                 return ids::terrain_tile_ids::WATERFALL;
             }
         }
+
         t
     }
+
     pub fn validate(&self) -> Result<(), String> {
         let cells = (self.edge as usize)
             .checked_mul(self.edge as usize)
@@ -182,6 +211,7 @@ impl City {
         {
             return Err("invalid native region city arrays".into());
         }
+
         Ok(())
     }
 }
@@ -200,28 +230,36 @@ pub struct Config {
     /// The animation phase of special overlays.
     pub phase: i32,
 }
+
 impl Config {
     fn divisor(self) -> i32 {
         4 >> self.view
     }
+
     fn hw(self) -> i32 {
         16 / self.divisor()
     }
+
     fn hh(self) -> i32 {
         8 / self.divisor()
     }
+
     fn step(self) -> i32 {
         12 / self.divisor()
     }
+
     fn top(self) -> i32 {
         512 / self.divisor()
     }
+
     fn side(self) -> i32 {
         32 / self.divisor()
     }
+
     fn height(self) -> i32 {
         16 / self.divisor() + 1
     }
+
     fn base(self) -> i32 {
         500 * self.view
     }
@@ -246,6 +284,7 @@ pub struct Draw {
     /// A shadow: its opaque pixels darken the pixels below through the palette.
     pub shadow: bool,
 }
+
 impl Draw {
     fn new(image: u64, rect: Rect) -> Self {
         Self {
@@ -290,6 +329,7 @@ pub struct Builder {
     /// Shadow colors: each RGBA color and the darker color that a shadow makes.
     pub shadows: HashMap<[u8; 4], [u8; 4]>,
 }
+
 impl Builder {
     /// `pack_atlas` packs all unflipped artwork of the view for GPU regions. Raster
     /// builders leave the atlas empty.
@@ -303,13 +343,16 @@ impl Builder {
     ) -> Result<Self, String> {
         let mut sprite_limit = (0, 0);
         let mut artwork: Vec<u64> = Vec::new();
+
         for (key, sprite) in &images {
             let id = (*key / 2) as i32;
+
             if *key & 1 == 0 && id >= config.base() && id < config.base() + 500 {
                 sprite_limit = (sprite_limit.0.max(sprite.w), sprite_limit.1.max(sprite.h));
                 artwork.push(*key);
             }
         }
+
         let cells = city.altitude.len();
         let mut builder = Self {
             maximum_altitude: maximum_altitude(&city),
@@ -334,13 +377,16 @@ impl Builder {
             let sprite = &builder.sprites.images[key];
             (std::cmp::Reverse(sprite.h), std::cmp::Reverse(sprite.w), *key)
         });
+
         if pack_atlas {
             for key in artwork {
                 builder.atlas.slot(key, &builder.sprites.images[&key])?;
             }
         }
+
         Ok(builder)
     }
+
     pub fn update(&mut self, city: City) {
         let cells = self.bounds.len();
         let old = &self.city;
@@ -351,20 +397,24 @@ impl Builder {
         mark(&old.zones, &city.zones, &mut changed);
         mark(&old.flags, &city.flags, &mut changed);
         mark(&old.underground, &city.underground, &mut changed);
+
         if old.overlays != city.overlays {
             for (i, cell) in changed.iter_mut().enumerate() {
                 *cell |= old.overlay(i) != city.overlay(i) || old.marker(i) != city.marker(i);
             }
         }
+
         // Negative and absent overrides both mean no override.
         for (before, after) in [(&old.ground, &city.ground), (&old.objects, &city.objects)] {
             if before != after {
                 let value = |values: &Vec<i32>, i: usize| values.get(i).copied().filter(|v| *v >= 0).unwrap_or(-1);
+
                 for (i, cell) in changed.iter_mut().enumerate() {
                     *cell |= value(before, i) != value(after, i);
                 }
             }
         }
+
         if old.dispatch != city.dispatch {
             for (i, sprite) in old.dispatch.iter().chain(city.dispatch.iter()) {
                 if old.dispatch.get(i) != Some(sprite) || city.dispatch.get(i) != Some(sprite) {
@@ -372,6 +422,7 @@ impl Builder {
                 }
             }
         }
+
         if old.traffic != city.traffic {
             match (old.traffic_scale(), city.traffic_scale()) {
                 (Some((side, scale)), Some(_)) if old.traffic.len() == city.traffic.len() => {
@@ -379,6 +430,7 @@ impl Builder {
                     for (t, (a, b)) in old.traffic.iter().zip(&city.traffic).enumerate() {
                         if traffic_band(*a) != traffic_band(*b) {
                             let (bx, by) = ((t / side) as i32 * scale, (t % side) as i32 * scale);
+
                             for x in bx..bx + scale {
                                 for y in by..by + scale {
                                     changed[city.index(x, y)] = true;
@@ -391,11 +443,14 @@ impl Builder {
                 _ => changed.fill(true),
             }
         }
+
         if old.altitude != city.altitude || old.objects != city.objects {
             self.maximum_altitude = maximum_altitude(&city);
         }
+
         let edited: Vec<usize> = changed.iter().enumerate().filter(|(_, c)| **c).map(|(i, _)| i).collect();
         self.city = city;
+
         if edited.len() > cells / 8 {
             self.tiles.clear();
             self.bounds.fill(region::Bounds::UNKNOWN);
@@ -403,8 +458,10 @@ impl Builder {
             // A tile reads its own cell and its eight neighbors: shoreline
             // waterfalls, composite ground, and nothing farther.
             let edge = self.city.edge;
+
             for i in edited {
                 let (x, y) = (i as i32 / edge, i as i32 % edge);
+
                 for nx in (x - 1).max(0)..=(x + 1).min(edge - 1) {
                     for ny in (y - 1).max(0)..=(y + 1).min(edge - 1) {
                         let n = self.city.index(nx, ny);
@@ -414,8 +471,10 @@ impl Builder {
                 }
             }
         }
+
         self.revision += 1;
     }
+
     /// Replaces the moving object draws. Painted tiles are painted again.
     pub fn set_moving(&mut self, moving: HashMap<usize, Vec<Draw>>) {
         self.moving = moving;
@@ -423,10 +482,12 @@ impl Builder {
         self.bounds.fill(region::Bounds::UNKNOWN);
         self.revision += 1;
     }
+
     pub fn cached_tiles(&self) -> usize {
         self.tiles.len()
     }
 }
+
 fn mark<T: PartialEq>(old: &[T], new: &[T], changed: &mut [bool]) {
     if old != new {
         for ((cell, a), b) in changed.iter_mut().zip(old).zip(new) {
@@ -434,10 +495,12 @@ fn mark<T: PartialEq>(old: &[T], new: &[T], changed: &mut [bool]) {
         }
     }
 }
+
 // Traffic sprites change only at these density limits.
 fn traffic_band(density: u8) -> usize {
     [28, 56, 85, 170].iter().filter(|limit| density > **limit).count()
 }
+
 fn maximum_altitude(city: &City) -> i32 {
     city.altitude
         .iter()
@@ -449,7 +512,9 @@ fn maximum_altitude(city: &City) -> i32 {
 }
 
 use godot::prelude::*;
+
 struct OpenSc2kRendering;
+
 #[gdextension(entry_symbol = opensc2k_rendering_init)]
 unsafe impl ExtensionLibrary for OpenSc2kRendering {}
 

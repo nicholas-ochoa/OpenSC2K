@@ -94,6 +94,7 @@ pub fn retile_underground(underground: &mut [u8], terrain: &[u8], point: Vec2i, 
     } else {
         0
     };
+
     let base = if pipes { under::PIPE_FIRST } else { under::SUBWAY_FIRST };
 
     if forced_terrain(terrain_shape) {

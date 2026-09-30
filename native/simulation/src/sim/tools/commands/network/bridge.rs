@@ -1,12 +1,12 @@
 //! Road, rail, and power line bridges over water, as NetworkBridges.
 
-use super::{DIRECTIONS, in_bounds, scaled};
 use crate::gd_object;
 use crate::sim::geom::Vec2i;
 use crate::sim::ids::building_tile_ids as tiles;
 use crate::sim::ids::sc2tile_flags as flag_bits;
 use crate::sim::ids::terrain_tile_ids as terrain_ids;
 use crate::sim::tools::Maps;
+use crate::sim::tools::commands::{DIRECTIONS, in_bounds, scaled};
 use crate::sim::tools::network::{MODE_POWER, MODE_RAIL, MODE_ROAD, replace_building};
 use crate::sim::tools::terrain::{land_altitude, set_land_altitude};
 
@@ -263,7 +263,7 @@ fn place_bridge_bank(maps: &mut Maps, point: Vec2i, direction: i64, bridge_type:
         MODE_POWER
     };
 
-    super::network_edit::place_surface(maps, point, mode, direction, false);
+    super::tiles::place_surface(maps, point, mode, direction, false);
 }
 
 /// NetworkBridges._bridge_tile: the deck tile at `span_index`.

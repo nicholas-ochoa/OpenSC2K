@@ -595,6 +595,7 @@ fn place_graded_section(maps: &mut Maps, anchor: Vec2i, kind: i64, rotation: i64
         7 => [SLOPE_BOTTOM_LEFT, SLOPE_BOTTOM_LEFT, RAISED, RAISED],
         _ => return,
     };
+
     let tile = tiles::HIGHWAY_ONRAMP_1 + kind;
 
     for (offset_index, offset) in SECTION_OFFSETS.iter().enumerate() {

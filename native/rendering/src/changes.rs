@@ -7,11 +7,13 @@ use super::Rect;
 const MAX_CHANGED_SHARE: f64 = 0.25;
 const ROAD_THRESHOLDS: (u8, u8) = (85, 170);
 const HIGHWAY_THRESHOLDS: (u8, u8) = (28, 56);
+
 /// Traffic sprite variant of each XBLD tile from ROAD_STRAIGHT_1. Zero draws no traffic.
 const TRAFFIC_TILE_FIRST: i32 = 0x1d;
 const THING_FIRST: i32 = 201;
 const THING_LAST: i32 = 240;
 const EXTRA_THING: i32 = 8192;
+
 /// Facility records past 3,990 of the largest maps use IDs from here up.
 const EXTRA_FACILITY_HIGH: i32 = 16384;
 const DEVELOPED_FIRST: i32 = 0x70;
@@ -88,20 +90,26 @@ pub fn changed_rects(request: &Request) -> Option<Vec<Rect>> {
         (before.zones, after.zones, 1, 0xff),
         (before.flags, after.flags, 1, if surface_only { 0xc6 } else { 0xff }),
     ];
+
     if !surface_only {
         planes.push((before.underground, after.underground, 1, 0xff));
     }
+
     for (old, new, stride, mask) in planes {
         if old.len() == new.len() && old.len() == cells * stride {
             changed_tiles(old, new, stride, 0, mask, &mut dirty, &mut indices);
         }
     }
+
     static_overlay_changes(before.overlays, after.overlays, cells, &mut dirty, &mut indices);
+
     if indices.len() as f64 > cells as f64 * MAX_CHANGED_SHARE {
         return None;
     }
+
     let view = request.view;
     let mut rects = Vec::with_capacity(indices.len());
+
     for index in indices {
         // some tile artwork depends on its neighbors. a neighbor is one half tile away
         let bounds = potential_tile_bounds(
@@ -119,6 +127,7 @@ pub fn changed_rects(request: &Request) -> Option<Vec<Rect>> {
         );
         push_clipped(&mut rects, grown, request.output);
     }
+
     traffic_rects(request, &mut rects);
     Some(rects)
 }
@@ -129,31 +138,40 @@ fn changed_tiles(before: &[u8], after: &[u8], stride: usize, plane_cells: usize,
     if before == after {
         return;
     }
+
     let shift = if stride == 2 { 1 } else { 0 };
     let size = before.len().min(after.len());
     let word_mask = u64::from_ne_bytes([mask; 8]);
     let mut offset = 0;
+
     while offset < size {
         // skip unchanged words; most bytes stay the same from day to day
         if offset + 8 <= size {
             let old = u64::from_ne_bytes(before[offset..offset + 8].try_into().expect("eight bytes"));
             let new = u64::from_ne_bytes(after[offset..offset + 8].try_into().expect("eight bytes"));
+
             if (old ^ new) & word_mask == 0 {
                 offset += 8;
                 continue;
             }
         }
+
         let end = (offset + 8).min(size);
+
         for byte in offset..end {
             if (before[byte] ^ after[byte]) & mask == 0 {
                 continue;
             }
+
             let mut index = byte >> shift;
+
             if plane_cells > 0 {
                 index %= plane_cells;
             }
+
             mark(index, dirty, indices);
         }
+
         offset = end;
     }
 }
@@ -209,9 +227,11 @@ fn static_overlay_changes(before: &[u8], after: &[u8], cells: usize, dirty: &mut
     if before == after || overlay_cells(after.len()) != cells || before.len() != after.len() {
         return;
     }
+
     let mut changed_flags = vec![false; cells];
     let mut changed = Vec::new();
     changed_tiles(before, after, 1, cells, 0xff, &mut changed_flags, &mut changed);
+
     for index in changed {
         if !dynamic_overlay(overlay(before, index)) || !dynamic_overlay(overlay(after, index)) {
             mark(index, dirty, indices);
@@ -230,6 +250,7 @@ fn potential_tile_bounds(view: &View, limit: (i32, i32), x: i32, y: i32, edge: i
 
 fn push_clipped(rects: &mut Vec<Rect>, rect: Rect, output: Rect) {
     let clipped = rect.clip(output);
+
     if clipped.area() {
         rects.push(clipped);
     }
@@ -248,9 +269,11 @@ fn traffic_levels(density: u8) -> (u8, u8) {
 /// IsometricStaticVisuals.traffic_level.
 fn traffic_level(tile: i32, density: u8) -> u8 {
     let index = tile - TRAFFIC_TILE_FIRST;
+
     if index < 0 || index as usize >= super::painter::TRAFFIC.len() || super::painter::TRAFFIC[index as usize] == 0 {
         return 0;
     }
+
     let (low, high) = if is_highway(tile) { HIGHWAY_THRESHOLDS } else { ROAD_THRESHOLDS };
     u8::from(density > low) + u8::from(density > high)
 }
@@ -267,24 +290,30 @@ fn traffic_rects(request: &Request, rects: &mut Vec<Rect>) {
     if grid_edge == 0 || side != grid_edge || before == after || before.len() != after.len() {
         return;
     }
+
     let scale = edge / grid_edge;
     let view = request.view;
     let city = &request.after;
+
     for cell in 0..after.len() {
         if before[cell] == after[cell] || traffic_levels(before[cell]) == traffic_levels(after[cell]) {
             continue;
         }
+
         let (first_x, first_y) = ((cell / grid_edge) * scale, (cell % grid_edge) * scale);
+
         for x in first_x..first_x + scale {
             for y in first_y..first_y + scale {
                 let i = x * edge + y;
                 let building = i32::from(city.buildings[i]);
+
                 if traffic_level(building, before[cell]) == traffic_level(building, after[cell])
                     || !visible(request, i)
                     || !should_draw_building(request, i, building)
                 {
                     continue;
                 }
+
                 let (x, y) = (x as i32, y as i32);
                 let width = request.building_sprites.get(building as usize * 2).copied().unwrap_or(-1);
                 let height = request.building_sprites.get(building as usize * 2 + 1).copied().unwrap_or(-1);
@@ -301,6 +330,7 @@ fn traffic_rects(request: &Request, rects: &mut Vec<Rect>) {
                         height,
                     )
                 };
+
                 push_clipped(rects, bounds, request.output);
             }
         }
@@ -333,6 +363,7 @@ fn should_draw_building(request: &Request, i: usize, building: i32) -> bool {
     if building <= 0x60 || (0x6c..=0x6f).contains(&building) {
         return true;
     }
+
     let anchor = [0x80, 0x10, 0x20, 0x40][request.rotation & 3];
     request.after.zones[i] & 0xf0 & anchor != 0
 }
@@ -340,9 +371,11 @@ fn should_draw_building(request: &Request, i: usize, building: i32) -> bool {
 /// CityState.object_altitude.
 fn object_altitude(request: &Request, i: usize) -> i32 {
     let cells = request.edge * request.edge;
+
     if request.object_overrides.len() == cells && request.object_overrides[i] >= 0 {
         return request.object_overrides[i];
     }
+
     if wet(request, i) { water(request, i) } else { land(request, i) }
 }
 
@@ -351,11 +384,14 @@ fn surface_terrain(request: &Request, x: i32, y: i32) -> i32 {
     let edge = request.edge as i32;
     let i = (x * edge + y) as usize;
     let terrain = i32::from(request.after.terrain[i]);
+
     if !(0x30..=0x45).contains(&terrain) || terrain == 0x3e || water(request, i) != land(request, i) {
         return terrain;
     }
+
     for (dx, dy) in [(0, -1), (1, 0), (0, 1), (-1, 0)] {
         let (near_x, near_y) = (x + dx, y + dy);
+
         if near_x >= 0
             && near_y >= 0
             && near_x < edge
@@ -365,6 +401,7 @@ fn surface_terrain(request: &Request, x: i32, y: i32) -> i32 {
             return 0x3e;
         }
     }
+
     terrain
 }
 
@@ -401,6 +438,7 @@ mod tests {
         overlays: Vec<u8>,
         traffic: Vec<u8>,
     }
+
     impl Maps {
         fn new(edge: usize) -> Self {
             Self {
@@ -410,6 +448,7 @@ mod tests {
                 traffic: vec![0; edge * edge / 4],
             }
         }
+
         fn chunks(&self) -> Chunks<'_> {
             Chunks {
                 altitude: &self.altitude,
@@ -474,6 +513,7 @@ mod tests {
         before.overlays = vec![0; cells * 5];
         let mut after = Maps::new(edge);
         after.overlays = vec![0; cells * 5];
+
         // an object moves between two tiles over a marker
         before.overlays[3 * cells + 8] = 210;
         after.overlays[3 * cells + 9] = 210;

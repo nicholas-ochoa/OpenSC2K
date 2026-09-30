@@ -1,7 +1,8 @@
 //! Shared buildings from the tool palette, as BuildingEdit and BuildingSites.
 
-use super::facilities::{self, Provision};
-use super::{EditBase, ToolArgs};
+pub mod facilities;
+pub mod facility_repair;
+
 use crate::gd_edit_result;
 use crate::sim::bytes::{read_u32_be, write_u32_be};
 use crate::sim::city::City;
@@ -16,9 +17,11 @@ use crate::sim::ids::terrain_tile_ids as terrain_ids;
 use crate::sim::infrastructure::{power, water};
 use crate::sim::overlay;
 use crate::sim::random::{SimLfsrRandom, SimRandom};
+use crate::sim::tools::commands::{EditBase, ToolArgs};
 use crate::sim::tools::terrain::update_building_count;
 use crate::sim::tools::{set_corners, underground};
 use crate::sim::value::Ints32;
+use facilities::Provision;
 
 /// The chunks that BuildingState._city_payloads checks.
 pub const PAYLOAD_IDS: [&str; 9] = ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT", "XLAB", "XMIC", "MISC"];
@@ -259,12 +262,14 @@ pub fn apply(
         record_budget,
         first_free: facilities::DYNAMIC_FIRST,
     };
+
     let overlay_id = facilities::provision_microsim(maps.microsims, maps.labels, maps.text_overlays, &request, random);
     let placed_flags = if tile == tiles::SMALL_PARK || tile == tiles::BIG_PARK {
         flag_bits::PIPED
     } else {
         STRUCTURE_FLAGS
     };
+
     let mut tile_indices = Vec::new();
 
     for x in site.position.x..site.end().x {
@@ -350,6 +355,7 @@ pub fn apply(
         stadium_team_selection_required: tile == tiles::STADIUM && overlay_id != 0,
         ..Default::default()
     };
+
     result.base.site = site;
     result.base.tile_indices = Ints32(tile_indices);
     result.base.cost = cost;

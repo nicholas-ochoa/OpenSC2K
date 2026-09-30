@@ -1,6 +1,6 @@
 //! Hydroelectric dams on waterfalls, as HydroCommand.
 
-use super::facilities::{self, Provision};
+use super::building::facilities::{self, Provision};
 use super::{EditBase, ToolArgs};
 use crate::gd_edit_result;
 use crate::sim::city::City;
@@ -88,6 +88,7 @@ pub fn apply(city: &mut City, args: &ToolArgs, point: Vec2i, random: &mut SimRan
         record_budget: -1,
         first_free: facilities::DYNAMIC_FIRST,
     };
+
     let overlay_id = facilities::provision_microsim(maps.microsims, maps.labels, maps.text_overlays, &request, random);
 
     if overlay_id != 0 {
@@ -118,6 +119,7 @@ pub fn apply(city: &mut City, args: &ToolArgs, point: Vec2i, random: &mut SimRan
         overlay_id,
         immediate_power_refresh: refreshed,
     };
+
     result.base.tile_indices = Ints32(vec![index as i32]);
     result.base.cost = cost;
     result.base.tracks_random = true;

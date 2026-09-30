@@ -24,44 +24,57 @@ pub fn decode(data: &[u8], width: i32, height: i32, allow_unpadded_odd_runs: boo
     let mut position = 0;
     let mut row = 0;
     let mut found_end = false;
+
     while position < data.len() {
         if position + 2 > data.len() {
             return Err("truncated block header".into());
         }
+
         let block_length = usize::from(data[position]);
+
         // two layers of commands: outer blocks and then row runs
         let block_mode = data[position + 1];
         position += 2;
+
         if block_mode == BLOCK_END {
             found_end = true;
             break;
         }
+
         if position + block_length > data.len() {
             return Err("block extends past sprite data".into());
         }
+
         if block_mode == BLOCK_SKIP {
             position += block_length;
             continue;
         }
+
         if block_mode != BLOCK_ROW {
             return Err(format!("unsupported outer block mode {block_mode}"));
         }
+
         if row >= h {
             return Err("sprite has more rows than its header".into());
         }
+
         let row_end = position + block_length;
         let mut x = 0;
+
         while position < row_end {
             if position + 2 > row_end {
                 return Err("truncated row command".into());
             }
+
             let count = usize::from(data[position]);
             let mode = data[position + 1];
             position += 2;
+
             match mode {
                 ROW_NOTHING | ROW_END => {}
                 ROW_SKIP => {
                     x += count;
+
                     if x > w {
                         return Err("row skip extends past sprite width".into());
                     }
@@ -70,17 +83,21 @@ pub fn decode(data: &[u8], width: i32, height: i32, allow_unpadded_odd_runs: boo
                     if position + count > row_end {
                         return Err("pixel run extends past row block".into());
                     }
+
                     if x + count > w {
                         return Err("pixel run extends past sprite width".into());
                     }
+
                     for (target, source) in pixels[row * w + x..row * w + x + count]
                         .iter_mut()
                         .zip(&data[position..position + count])
                     {
                         *target = i32::from(*source);
                     }
+
                     x += count;
                     position += count;
+
                     if count % 2 == 1 {
                         if position < row_end {
                             position += 1;
@@ -92,11 +109,14 @@ pub fn decode(data: &[u8], width: i32, height: i32, allow_unpadded_odd_runs: boo
                 _ => return Err(format!("unsupported row mode {mode}")),
             }
         }
+
         row += 1;
     }
+
     if !found_end {
         return Err("sprite has no end block".into());
     }
+
     Ok(Decoded { pixels, rows: row as i32 })
 }
 
@@ -112,51 +132,68 @@ pub fn decode_dos(data: &[u8], start: usize, end: usize, width: usize, height: u
     let (mut cursor, mut row) = (start, 0);
     let mut terminated = false;
     let end = end.min(data.len());
+
     while cursor < end {
         let marker = data[cursor];
         cursor += 1;
+
         if marker == 0 {
             terminated = true;
             break;
         }
+
         if marker != DOS_ROW || cursor >= end || row >= height {
             return Err("Invalid row marker or row count.".into());
         }
+
         let length = usize::from(data[cursor]);
         let row_end = cursor + length;
         cursor += 1;
+
         if length == 0 || row_end > end {
             return Err("Row exceeds the sprite data.".into());
         }
+
         let mut column = 0;
+
         while cursor < row_end {
             if row_end - cursor < 2 {
                 return Err("Truncated row command.".into());
             }
+
             let (operation, count) = (data[cursor], usize::from(data[cursor + 1]));
             cursor += 2;
+
             if column + count > width {
                 return Err("Row command exceeds the sprite width.".into());
             }
+
             if operation == DOS_PIXELS {
                 if count > row_end - cursor {
                     return Err("Pixel run exceeds the row data.".into());
                 }
+
                 let at = row * width + column;
+
                 for (target, source) in pixels[at..at + count].iter_mut().zip(&data[cursor..cursor + count]) {
                     *target = i32::from(*source);
                 }
+
                 cursor += count;
             } else if operation != DOS_SKIP {
                 return Err(format!("Unsupported row command 0x{operation:02x}."));
             }
+
             column += count;
         }
+
         row += 1;
     }
+
     if !terminated {
         return Err("Sprite has no end marker.".into());
     }
+
     Ok(Decoded { pixels, rows: row as i32 })
 }
 
@@ -167,13 +204,16 @@ const TRANSPARENT: [u8; 4] = [255, 255, 255, 0];
 /// indices without a color are transparent.
 pub fn colorize(pixels: &[i32], palette: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(pixels.len() * 4);
+
     for &index in pixels {
         let at = usize::try_from(index).map(|i| i * 4).ok();
+
         match at.and_then(|at| palette.get(at..at + 4)) {
             Some(color) => out.extend_from_slice(color),
             None => out.extend_from_slice(&TRANSPARENT),
         }
     }
+
     out
 }
 
@@ -181,6 +221,7 @@ pub fn colorize(pixels: &[i32], palette: &[u8]) -> Vec<u8> {
 /// blue bytes. The renderers read indices back from these images.
 pub fn index_image(pixels: &[i32]) -> Vec<u8> {
     let mut out = Vec::with_capacity(pixels.len() * 4);
+
     for &index in pixels {
         if (0..=255).contains(&index) {
             let value = index as u8;
@@ -189,6 +230,7 @@ pub fn index_image(pixels: &[i32]) -> Vec<u8> {
             out.extend_from_slice(&TRANSPARENT);
         }
     }
+
     out
 }
 

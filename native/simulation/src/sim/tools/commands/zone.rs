@@ -221,6 +221,7 @@ pub fn apply(city: &mut City, args: &ToolArgs, request: &ZoneRequest) -> ZoneRes
         new_buildings: Bytes(tile_indices.iter().map(|&index| city.xbld.data[index]).collect()),
         previous_funds,
     };
+
     result.base.tile_indices = Ints32(tile_indices.iter().map(|&index| index as i32).collect());
     result.base.cost = preview.cost;
     result.base.listed_cost = preview.listed_cost;
