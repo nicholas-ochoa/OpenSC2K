@@ -88,21 +88,11 @@ impl Builder {
         let cutoff = (*cutoff).min(self.stamp - 1);
         self.tiles.retain(|_, tile| tile.used > cutoff);
     }
-    pub fn region(&mut self, bounds: Rect) -> Result<Region, String> {
+    /// The uncut draws that meet `bounds`, in painter order. Tiles are cached.
+    pub fn collect(&mut self, bounds: Rect) -> Result<Vec<Draw>, String> {
         self.stamp += 1;
-        let mut out = Region::default();
+        let mut out = Vec::new();
         let c = self.config;
-        if c.underground {
-            let key = u64::MAX;
-            self.sprites.images.entry(key).or_insert_with(|| Sprite {
-                w: 1,
-                h: 1,
-                rgba: vec![255; 4],
-                la: vec![255; 2],
-            });
-            let slot = self.atlas.slot(key, &self.sprites.images[&key])?;
-            quad(&mut out, bounds, slot, bounds);
-        }
         let (width, height) = self.sprite_limit;
         let origin = c.side() + self.city.edge * c.hw();
         let bottom = c.height() + width / 4 + 1 + if c.underground { 31 * c.step() } else { 0 };
@@ -146,23 +136,36 @@ impl Builder {
                     self.reuses += 1;
                 }
                 tile.used = self.stamp;
-                // Split the borrows so sprite uploads need no tile or image clones.
-                for draw in &tile.draws {
-                    let clipped = draw.rect.clip(bounds);
-                    if !clipped.area() {
-                        continue;
-                    }
-                    let slot = self.atlas.slot(draw.image, &self.sprites.images[&draw.image])?;
-                    let uv = Rect::new(
-                        slot.x + clipped.x - draw.rect.x,
-                        slot.y + clipped.y - draw.rect.y,
-                        clipped.w,
-                        clipped.h,
-                    );
-                    quad(&mut out, clipped, uv, bounds);
-                    out.draws.push(draw.clone());
-                }
+                out.extend(tile.draws.iter().filter(|d| d.rect.clip(bounds).area()).cloned());
             }
+        }
+        Ok(out)
+    }
+    pub fn region(&mut self, bounds: Rect) -> Result<Region, String> {
+        let mut out = Region::default();
+        if self.config.underground {
+            let key = u64::MAX;
+            self.sprites.images.entry(key).or_insert_with(|| Sprite {
+                w: 1,
+                h: 1,
+                rgba: vec![255; 4],
+                la: vec![255; 2],
+            });
+            let slot = self.atlas.slot(key, &self.sprites.images[&key])?;
+            quad(&mut out, bounds, slot, bounds);
+        }
+        // Split the borrows so sprite uploads need no tile or image clones.
+        for draw in self.collect(bounds)? {
+            let clipped = draw.rect.clip(bounds);
+            let slot = self.atlas.slot(draw.image, &self.sprites.images[&draw.image])?;
+            let uv = Rect::new(
+                slot.x + clipped.x - draw.rect.x,
+                slot.y + clipped.y - draw.rect.y,
+                clipped.w,
+                clipped.h,
+            );
+            quad(&mut out, clipped, uv, bounds);
+            out.draws.push(draw);
         }
         let scale = 1.0 / self.atlas.edge as f32;
         for uv in &mut out.uvs {

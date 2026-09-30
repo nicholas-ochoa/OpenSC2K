@@ -55,7 +55,8 @@ func _run() -> void:
 		var point := Vector2i(8, 7)
 		var sprite_id := 1000 + preview.snapshot_city.building_id(point.x, point.y)
 		if preview.scene.kind == ContextScene.Kind.UNDERGROUND:
-			sprite_id = CityUndergroundView.tile_sprite_ids(preview.snapshot_city, point.x, point.y)[0]
+			sprite_id = NativeTileDraws.sprite_ids(preview.snapshot_city, sprites, CityIsometricRenderer.VIEW_LARGE, point.x, point.y,
+				CityViewMode.Mode.UNDERGROUND)[0]
 		_check_sprite_pixels(preview, sprites, palette, sprite_id, point)
 	_test_underground_alignment(preview, sprites, palette)
 	preview.free()
@@ -165,24 +166,17 @@ func _test_underground_alignment(preview: ScurkContextPreview, sprites: Sc2Sprit
 			var source := Sc2SpriteArchive.combine([sprites, override])
 			var expected := Image.create(Preview.FRAME_SIZE.x, Preview.FRAME_SIZE.y, false, Image.FORMAT_RGBA8)
 			expected.fill(Color.WHITE)
-			var cache: Dictionary = {}
+			var painter := CityGpuBuildContext.new()
+			assert(painter.prepare(city, palette, source, view, CityViewMode.Mode.UNDERGROUND, true, true, true, 0, false).is_empty())
+			var layout := CityIsometricRenderer.view_configuration(view)
+			var offset := Vector2i(preview.origin_x - (layout.side_margin + city.map_size * layout.half_width),
+				preview.configuration.top_margin - layout.top_margin)
 			for diagonal in ContextScene.MAP_SIZE * 2 - 1:
 				for y in diagonal + 1:
 					var x := diagonal - y
 					if x < ContextScene.MAP_SIZE and y < ContextScene.MAP_SIZE:
-						CityUndergroundView.draw_tile(
-							expected,
-							city,
-							palette,
-							source,
-							cache,
-							preview.configuration,
-							preview.origin_x,
-							x,
-							y,
-							true,
-							true,
-						)
+						for draw in painter.tile_draw_list([Vector2i(x, y)], offset).draws:
+							expected.blend_rect(draw.image, draw.source, draw.position)
 			assert(
 				preview.snapshot.get_image().get_data() == expected.get_data(),
 				"Underground context differs from the city renderer: %d, view %d" % [tile_id, view],

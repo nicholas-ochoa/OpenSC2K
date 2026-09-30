@@ -241,9 +241,8 @@ static func _blend_shadow(
 
 
 # return the decoded sprite image, flipped on request
-# `cache` belongs to the caller and holds the result. a caller that shares
-# one cache with `IsometricImageRender.draw_tile` gets the same image
-# instances, so image identity stays usable as a sprite key
+# `cache` belongs to the caller and holds the result, so image identity stays
+# usable as a sprite key
 # the returned image belongs to the cache. do not change it
 static func sprite_image(
 	sprites: Sc2SpriteArchive,
@@ -268,55 +267,6 @@ static func sprite_image(
 	cache[key] = image
 
 	return image
-
-
-static func _blend_on_base(
-	output: Variant,
-	sprite: Image,
-	x: int,
-	base_y: int,
-	tile_height := TILE_HEIGHT
-) -> void:
-	var destination := Vector2i(x, base_y + tile_height - sprite.get_height())
-	output.blend_rect(sprite, Rect2i(Vector2i.ZERO, sprite.get_size()), destination)
-
-
-static func _traffic_masked_image(
-	sprite: Image,
-	surface: Image,
-	palette: Sc2Palette,
-	cache: Dictionary = {},
-	cache_key := ""
-) -> Image:
-	if not cache_key.is_empty() and cache.has(cache_key):
-		return cache[cache_key]
-
-	var masked: Image = sprite.duplicate()
-	var target := palette.color(0xa1).to_rgba32()
-	var vertical_offset := surface.get_height() - sprite.get_height()
-
-	for source_y in sprite.get_height():
-		var surface_y := source_y + vertical_offset
-
-		for source_x in sprite.get_width():
-			var keep := (
-				source_x < surface.get_width()
-				and surface_y >= 0
-				and surface_y < surface.get_height()
-				and surface.get_pixel(source_x, surface_y).to_rgba32() == target
-			)
-
-			if keep:
-				continue
-
-			var source_color: Color = masked.get_pixel(source_x, source_y)
-			source_color.a = 0.0
-			masked.set_pixel(source_x, source_y, source_color)
-
-	if not cache_key.is_empty():
-		cache[cache_key] = masked
-
-	return masked
 
 
 static func highway_train_deck_mask(surface: Image, thickness: int) -> Image:

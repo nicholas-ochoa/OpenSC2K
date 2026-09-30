@@ -1,6 +1,6 @@
 extends "res://tests/city_gpu_geometry_test.gd"
-## Native regions must match the CPU region painter in pixels and foreground
-## order. Warm builders must also match it after every kind of city edit.
+## GPU regions must match the native CPU pixels of the same regions in pixels and
+## foreground order. Warm builders must also match them after every kind of city edit.
 
 @warning_ignore_start("integer_division")
 

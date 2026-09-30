@@ -1,7 +1,10 @@
 class_name CityGpuBuildContext
 extends RefCounted
-## Owned by one geometry worker. The native builder paints and packs regions;
-## Godot uploads textures and meshes. Main-thread uploads use immutable atlas images.
+## Owned by one geometry worker or one CPU painting job. The native builder paints
+## and packs regions, and rasterizes CPU pixels; Godot uploads textures and meshes.
+## Main-thread uploads use immutable atlas images.
+
+@warning_ignore_start("integer_division")
 
 const ATLAS_EDGE := 2048
 const RECORD_SIZE := 14
@@ -32,46 +35,12 @@ func cached_tile_count() -> int:
 func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 		bounds: Rect2i, view: int, mode: CityViewMode.Mode, pipes: bool, subways: bool,
 		revision: int, uploaded_revision: int, copy_atlas: bool, water_mains: bool) -> CityGpuRegionResult:
-	if not error.is_empty():
-		return CityGpuRegionResult.failed(error)
+	var failure := prepare(city, palette, sprites, view, mode, pipes, subways, water_mains, revision)
 
-	var layout := [city.map_size, city.visible_altitude_levels, city.compass_rotation(),
-		view, mode, pipes, subways, water_mains, palette, sprites]
+	if not failure.is_empty():
+		return CityGpuRegionResult.failed(failure)
+
 	var configuration := CityIsometricRenderer.view_configuration(view)
-
-	if layout != _layout:
-		var artwork: Dictionary[int, Image] = {}
-
-		for id: int in sprites.entries_by_id:
-			if id >= configuration.sprite_base and id < configuration.sprite_base + 500:
-				artwork[id] = CityIsometricRenderer.sprite_image(sprites, palette, images, id, false)
-
-		var request := _snapshot(city)
-		request.merge({"view": view, "underground_mode": int(mode == CityViewMode.Mode.UNDERGROUND),
-			"pipes": int(pipes), "subways": int(subways), "mains": int(water_mains),
-			"redraw_ground": int(sprites.redraw_small_highway_ground), "atlas_edge": atlas_edge})
-		var failure := builder.configure(request, artwork, palette.color(0xa1).to_rgba32())
-		atlas = null
-		atlas_revision = -1
-		tile_builds = 0
-		tile_reuses = 0
-
-		# A failed layout configures again on the next request.
-		if not failure.is_empty():
-			_layout = []
-
-			return CityGpuRegionResult.failed(failure)
-
-		_layout = layout
-		_revision = revision
-	elif revision != _revision:
-		var failure := builder.update_city(_snapshot(city))
-
-		if not failure.is_empty():
-			return CityGpuRegionResult.failed(failure)
-
-		_revision = revision
-
 	var data := builder.build(bounds, atlas_revision)
 
 	if data.has("error"):
@@ -105,6 +74,165 @@ func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	result.draws = data.draws
 
 	return result
+
+
+# Configure the builder for a layout, or pass a new city revision to it. GPU
+# regions pack the sprite atlas; raster, record and tile queries do not need it.
+# Special overlays draw the animated disaster markers as tile sprites.
+# gdstyle:ignore=quality/max-parameters
+func prepare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, view: int,
+		mode := CityViewMode.Mode.CITY, pipes := true, subways := true, water_mains := true, revision := 0,
+		pack_atlas := true, special_overlays := false, animation_phase := 0) -> String:
+	if not error.is_empty():
+		return error
+
+	if city == null or not city.is_valid() or palette == null or not palette.is_valid() or sprites == null or not sprites.is_valid():
+		return "invalid native region assets"
+
+	var layout := [city.map_size, city.visible_altitude_levels, city.compass_rotation(),
+		view, mode, pipes, subways, water_mains, palette, sprites, pack_atlas, special_overlays, animation_phase]
+	var configuration := CityIsometricRenderer.view_configuration(view)
+
+	if configuration == null:
+		return "invalid native region view"
+
+	if layout != _layout:
+		var artwork: Dictionary[int, Image] = {}
+
+		for id: int in sprites.entries_by_id:
+			if id >= configuration.sprite_base and id < configuration.sprite_base + 500:
+				artwork[id] = CityIsometricRenderer.sprite_image(sprites, palette, images, id, false)
+
+		var request := _snapshot(city)
+		request.merge({"view": view, "underground_mode": int(mode == CityViewMode.Mode.UNDERGROUND),
+			"pipes": int(pipes), "subways": int(subways), "mains": int(water_mains),
+			"redraw_ground": int(sprites.redraw_small_highway_ground), "atlas_edge": atlas_edge,
+			"atlas": int(pack_atlas), "special_overlays": int(special_overlays), "animation_phase": animation_phase,
+			"shadow_colors": _shadow_colors(palette)})
+		var failure := builder.configure(request, artwork, palette.color(0xa1).to_rgba32())
+		atlas = null
+		atlas_revision = -1
+		tile_builds = 0
+		tile_reuses = 0
+
+		# A failed layout configures again on the next request.
+		if not failure.is_empty():
+			_layout = []
+
+			return failure
+
+		_layout = layout
+		_revision = revision
+	elif revision != _revision:
+		var failure := builder.update_city(_snapshot(city))
+
+		if not failure.is_empty():
+			return failure
+
+		_revision = revision
+
+	return ""
+
+
+# Moving object draws of raster jobs, painted with their tiles. Commands come
+# from `IsometricDynamicCommands`
+func set_moving(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, commands: Array[CityDynamicCommand]) -> String:
+	var cells := PackedInt32Array()
+	var positions := PackedVector2Array()
+	var ids := PackedInt32Array()
+	var flips := PackedByteArray()
+	var shadows := PackedByteArray()
+	var moving_images := {}
+
+	for command in commands:
+		var order := int(command.depth_order)
+		var y := order % city.map_size
+		var x := int(order / city.map_size) - y
+		cells.append(x * city.map_size + y)
+		positions.append(Vector2(command.position))
+		ids.append(command.sprite_id)
+		flips.append(int(command.flip))
+		shadows.append(int(command.shadow))
+
+		if not moving_images.has(command.sprite_id):
+			moving_images[command.sprite_id] = CityIsometricRenderer.sprite_image(sprites, palette, images, command.sprite_id, false)
+
+	return builder.set_moving(cells, positions, ids, flips, shadows, moving_images)
+
+
+# one error for each sprite that the configured city needs and the artwork lacks
+func missing_sprite_errors() -> PackedStringArray:
+	var errors := PackedStringArray()
+
+	for sprite_id in builder.missing_sprites():
+		errors.append("required large sprite %d is missing" % sprite_id)
+
+	return errors
+
+
+# CPU pixels of `bounds` over `background`: `{image, bounds, records, images, draws}`,
+# or `{error}`. Call `prepare` first
+func raster(bounds: Rect2i, background: Color) -> Dictionary:
+	return builder.raster(bounds, background.to_rgba32())
+
+
+# `{records, images}` of the draws that meet `bounds`, or `{error}`
+func draw_records(bounds: Rect2i) -> Dictionary:
+	return builder.draw_records(bounds)
+
+
+# `{records, images}` of the draws of each tile, or `{error}`
+func tile_draws(tiles: Array[Vector2i]) -> Dictionary:
+	var packed := PackedInt32Array()
+
+	for tile in tiles:
+		packed.append_array([tile.x, tile.y])
+
+	return builder.tile_draws(packed)
+
+
+# the draws of each tile in painter order, moved by `offset`. an error gives no draws
+func tile_draw_list(tiles: Array[Vector2i], offset := Vector2i.ZERO) -> CityGpuDrawList:
+	var drawn := tile_draws(tiles)
+
+	return CityGpuDrawList.new() if drawn.has("error") else CityGpuDrawList.from_records(drawn.records, drawn.images, offset)
+
+
+# The foreground commands of draw records, in painter order. Whole-city lists
+# leave the region order unset
+static func foreground_commands(records: PackedInt64Array, region_orders := false) -> Array[CityStaticCommand]:
+	var commands: Array[CityStaticCommand] = []
+
+	for at in range(0, records.size(), RECORD_SIZE):
+		if records[at + 7] < 0:
+			continue
+
+		var command := CityStaticCommand.new(records[at + 5], records[at + 6] != 0)
+		command.position = Vector2i(records[at], records[at + 1])
+		command.size = Vector2i(records[at + 2], records[at + 3])
+		command.depth_order = records[at + 7]
+		command.region_order = records[at + 8] if region_orders else -1
+		command.train_ignore = records[at + 9] != 0
+		command.train_foreground_reference_sprite_id = records[at + 10]
+		command.train_deck_thickness = records[at + 11]
+		command.train_deck_reference_sprite_id = records[at + 12]
+		command.train_foreground_requires_depth = records[at + 13] != 0
+		commands.append(command)
+
+	return commands
+
+
+# Shadows darken 0x5f to 0x64 and the 0x74 to 0x7e band to 0x7e. When colors
+# repeat, the first rule wins, so it is inserted last
+static func _shadow_colors(palette: Sc2Palette) -> PackedInt32Array:
+	var pairs := PackedInt32Array()
+
+	for index in range(0x7e, 0x73, -1):
+		pairs.append_array([palette.color(index).to_rgba32(), palette.color(0x7e).to_rgba32()])
+
+	pairs.append_array([palette.color(0x5f).to_rgba32(), palette.color(0x64).to_rgba32()])
+
+	return pairs
 
 
 static func _snapshot(city: CityState) -> Dictionary:

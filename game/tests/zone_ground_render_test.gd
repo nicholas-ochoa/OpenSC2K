@@ -46,14 +46,9 @@ func _initialize() -> void:
 		assert(city.set_terrain_id(point.x, point.y, terrain) and city.set_building_id(point.x, point.y, building))
 		var terrain_sprite := IsometricGeometry.terrain_sprite_id(terrain, city.is_water(point.x, point.y), configuration.sprite_base)
 
-		var images := {}
-		var zone_image := CityIsometricRenderer.sprite_image(sprites, palette, images, zone_sprite, false)
-		var terrain_image := CityIsometricRenderer.sprite_image(sprites, palette, images, terrain_sprite, false)
-		var painter := CityGpuDrawList.new()
-		CityIsometricRenderer.draw_tile(painter, city, palette, sprites, images, configuration, origin,
-			point.x, point.y, 0, false, false)
-		assert(_draws_image(painter, zone_image) == expected, "Tile painter zone for %s" % label)
-		assert(_draws_image(painter, terrain_image) != expected, "Tile painter terrain for %s" % label)
+		var drawn := NativeTileDraws.sprite_ids(city, sprites, CityIsometricRenderer.VIEW_LARGE, point.x, point.y)
+		assert(drawn.has(zone_sprite) == expected, "Tile painter zone for %s" % label)
+		assert(drawn.has(terrain_sprite) != expected, "Tile painter terrain for %s" % label)
 
 		var occluders := 0
 
@@ -99,13 +94,9 @@ func _check_hidden_buildings(city: CityState, palette: Sc2Palette, sprites: Sc2S
 		assert(city.set_terrain_id(point.x, point.y, terrain) and city.set_building_id(point.x, point.y, building))
 		assert(city.set_zone_id(point.x, point.y, zone) and city.set_building_corners(point.x, point.y, Sc2ZoneLayout.CORNERS_MASK))
 		var shown := CityViewFilter.surface_copy(city, visibility)
-		var images := {}
-		var painter := CityGpuDrawList.new()
-		CityIsometricRenderer.draw_tile(painter, shown, palette, sprites, images, configuration, origin,
-			point.x, point.y, 0, false, false)
 		var sprite := configuration.sprite_base + (expected if expected >= 0 else building)
-		var image := CityIsometricRenderer.sprite_image(sprites, palette, images, sprite, false)
-		assert(_draws_image(painter, image), "Tile painter for %s" % label)
+		assert(NativeTileDraws.sprite_ids(shown, sprites, CityIsometricRenderer.VIEW_LARGE, point.x, point.y).has(sprite),
+			"Tile painter for %s" % label)
 
 
 	# a lot and a zone on the same tile must not share a reused GPU tile
@@ -122,11 +113,3 @@ func _check_hidden_buildings(city: CityState, palette: Sc2Palette, sprites: Sc2S
 		var region := CityGpuRegionRenderer.render(shown, palette, sprites, bounds, CityIsometricRenderer.VIEW_LARGE,
 			CityViewMode.Mode.CITY, true, true, context, revision + 1, -1)
 		assert(region.ok and region.paint(bounds).get_data() == expected.get_data(), "Warm GPU lot and zone differ")
-
-
-func _draws_image(list: CityGpuDrawList, image: Image) -> bool:
-	for draw in list.draws:
-		if draw.image == image:
-			return true
-
-	return false

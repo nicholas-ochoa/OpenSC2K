@@ -3,6 +3,8 @@ extends SceneTree
 
 const VIEW := CityIsometricRenderer.VIEW_LARGE
 const SPRITE_LIMIT := Vector2i(64, 96)
+# highway traffic above x draws light traffic, and above y heavy traffic
+const HIGHWAY_TRAFFIC_THRESHOLDS := Vector2i(28, 56)
 
 
 func _payloads(city: CityState) -> Dictionary[String, PackedByteArray]:
@@ -86,14 +88,14 @@ func _initialize() -> void:
 
 	# traffic uses one cell for four tiles, and only a threshold crossing changes the traffic sprite
 	var cell := 20 * 64 + 25
-	_write(city, "XTRF", cell, IsometricStaticVisuals.HIGHWAY_TRAFFIC_THRESHOLDS.x)
+	_write(city, "XTRF", cell, HIGHWAY_TRAFFIC_THRESHOLDS.x)
 	assert(_changed(city, old, sprites).is_empty(), "Traffic at a threshold draws no traffic")
-	_write(city, "XTRF", cell, IsometricStaticVisuals.HIGHWAY_TRAFFIC_THRESHOLDS.x + 1)
+	_write(city, "XTRF", cell, HIGHWAY_TRAFFIC_THRESHOLDS.x + 1)
 	var traffic_rects := _changed(city, old, sprites)
 	assert(traffic_rects.size() == 1 and traffic_rects[0].size == SPRITE_LIMIT and _tile_rect(40, 50).encloses(traffic_rects[0]),
 		"Traffic redraws its road sprite, not all four tiles or the full altitude range")
 	var busy := _payloads(city)
-	_write(city, "XTRF", cell, IsometricStaticVisuals.HIGHWAY_TRAFFIC_THRESHOLDS.y - 1)
+	_write(city, "XTRF", cell, HIGHWAY_TRAFFIC_THRESHOLDS.y - 1)
 	assert(_changed(city, busy, sprites).is_empty(), "Traffic that stays at one level on every road type skips the redraw")
 	_write(city, "XTRF", cell, 0)
 

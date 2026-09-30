@@ -47,7 +47,6 @@ func _benchmark_initialize() -> void:
 					sprites,
 					PackedInt32Array([city.index_of(point.x, point.y)]),
 					CityIsometricRenderer.VIEW_LARGE,
-					0,
 					mode == 0,
 				)
 				if not (patch.ok):

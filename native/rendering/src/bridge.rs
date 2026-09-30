@@ -1,6 +1,8 @@
 //! Bulk Godot boundary. Each builder belongs to one region worker thread. A
 //! region's draw index is immutable, so the main thread may read it later.
-use super::{Builder, City, Config, Rect, changes, data_view, index::RegionDraws, minimap, region::TILE_LIMIT, sprites::Sprite};
+use super::{
+    Builder, City, Config, Draw, Rect, changes, data_view, index::RegionDraws, minimap, region::TILE_LIMIT, sprites, sprites::Sprite,
+};
 use godot::{
     classes::{Image, image::Format},
     prelude::*,
@@ -36,6 +38,24 @@ fn ints(d: &VarDictionary, k: &str) -> Vec<i32> {
     d.get(k)
         .and_then(|v| v.try_to::<PackedInt32Array>().ok())
         .map_or_else(Vec::new, |v| v.to_vec())
+}
+// RGBA and LA pixels of a Godot image of any format.
+fn sprite_from_image(image: &Gd<Image>) -> Result<Sprite, String> {
+    let (w, h) = (image.get_width(), image.get_height());
+    if w <= 0 || h <= 0 || w > 8190 || h > 8190 {
+        return Err("invalid sprite dimensions".into());
+    }
+    let mut rgba = Image::create_from_data(w, h, false, image.get_format(), &image.get_data()).ok_or("invalid sprite pixels")?;
+    rgba.convert(Format::RGBA8);
+    let data = rgba.get_data().to_vec();
+    let mut la = Image::create_from_data(w, h, false, Format::RGBA8, &rgba.get_data()).ok_or("invalid sprite pixels")?;
+    la.convert(Format::LA8);
+    Ok(Sprite {
+        w,
+        h,
+        rgba: data,
+        la: la.get_data().to_vec(),
+    })
 }
 fn city(d: &VarDictionary) -> Result<City, String> {
     let mut c = City {
@@ -78,38 +98,36 @@ impl NativeCityRegionBuilder {
                 subways: int(&request, "subways", 1) != 0,
                 mains: int(&request, "mains", 1) != 0,
                 redraw_ground: int(&request, "redraw_ground", 0) != 0,
+                specials: int(&request, "special_overlays", 0) != 0,
+                phase: int(&request, "animation_phase", 0) as i32,
             };
             let mut sprites = HashMap::new();
             for (key, value) in images.iter_shared() {
                 let id = key.try_to::<i64>().map_err(|_| "invalid sprite ID")?;
                 let image = value.try_to::<Gd<Image>>().map_err(|_| "invalid sprite image")?;
-                let (w, h) = (image.get_width(), image.get_height());
-                if w <= 0 || h <= 0 || w > 8190 || h > 8190 {
-                    return Err("invalid sprite dimensions".into());
-                }
-                let mut rgba =
-                    Image::create_from_data(w, h, false, image.get_format(), &image.get_data()).ok_or("invalid sprite pixels")?;
-                rgba.convert(Format::RGBA8);
-                let data = rgba.get_data().to_vec();
-                let mut la = Image::create_from_data(w, h, false, Format::RGBA8, &rgba.get_data()).ok_or("invalid sprite pixels")?;
-                la.convert(Format::LA8);
-                sprites.insert(
-                    id as u64 * 2,
-                    Sprite {
-                        w,
-                        h,
-                        rgba: data,
-                        la: la.get_data().to_vec(),
-                    },
-                );
+                let sprite = sprite_from_image(&image)?;
+                let rgba = Image::create_from_data(
+                    sprite.w,
+                    sprite.h,
+                    false,
+                    Format::RGBA8,
+                    &PackedByteArray::from(sprite.rgba.as_slice()),
+                )
+                .ok_or("invalid sprite pixels")?;
+                sprites.insert(id as u64 * 2, sprite);
                 self.images.insert(id as u64 * 2, rgba);
             }
             let atlas_edge = int(&request, "atlas_edge", 2048) as i32;
             if !(32..=8192).contains(&atlas_edge) || !(atlas_edge as u32).is_power_of_two() {
                 return Err("invalid native atlas dimensions".into());
             }
-            let mut core = Builder::new(city, config, sprites, (target as u32).to_be_bytes(), atlas_edge)?;
+            let pack_atlas = int(&request, "atlas", 1) != 0;
+            let mut core = Builder::new(city, config, sprites, (target as u32).to_be_bytes(), atlas_edge, pack_atlas)?;
             core.atlas.revision += previous_revision;
+            // Shadow pairs: each packed RGBA color and the color that a shadow makes of it.
+            for pair in ints(&request, "shadow_colors").chunks_exact(2) {
+                core.shadows.insert((pair[0] as u32).to_be_bytes(), (pair[1] as u32).to_be_bytes());
+            }
             self.core = Some(core);
             Ok(())
         })();
@@ -166,37 +184,8 @@ impl NativeCityRegionBuilder {
         result.set("vertices", &vertices);
         result.set("uvs", &uvs);
         result.set("indices", &PackedInt32Array::from(region.indices.as_slice()));
-        let mut records = Vec::with_capacity(region.draws.len() * RECORD_SIZE);
-        let mut images = VarArray::new();
-        let mut slots: HashMap<u64, i64> = HashMap::new();
-        for d in &region.draws {
-            let slot = *slots.entry(d.image).or_insert_with(|| {
-                let image = self.images.entry(d.image).or_insert_with(|| {
-                    let s = &core.sprites.images[&d.image];
-                    Image::create_from_data(s.w, s.h, false, Format::RGBA8, &PackedByteArray::from(s.rgba.as_slice()))
-                        .expect("validated sprite dimensions")
-                });
-                images.push(&image.to_variant());
-                images.len() as i64 - 1
-            });
-            records.extend([
-                d.rect.x as i64,
-                d.rect.y as i64,
-                d.rect.w as i64,
-                d.rect.h as i64,
-                slot,
-                d.sprite as i64,
-                i64::from(d.flip),
-                d.depth,
-                d.order,
-                i64::from(d.ignore),
-                d.reference as i64,
-                d.thickness as i64,
-                d.deck as i64,
-                i64::from(d.requires_depth),
-            ]);
-        }
-        result.set("records", &PackedInt64Array::from(records.as_slice()));
+        let (records, images) = Self::records(&mut self.images, &core.sprites, &region.draws);
+        result.set("records", &records);
         result.set("images", &images);
         result.set(
             "draws",
@@ -223,6 +212,196 @@ impl NativeCityRegionBuilder {
         }
         result.set("bounds", Rect2i::from_components(clipped.x, clipped.y, clipped.w, clipped.h));
         result
+    }
+}
+
+#[godot_api(secondary)]
+impl NativeCityRegionBuilder {
+    /// CPU pixels of `bounds`: `{image, bounds, records, images, draws}`, or `{error}`.
+    /// `background` is a packed RGBA color. Records and images are as in `build`.
+    #[func]
+    fn raster(&mut self, bounds: Rect2i, background: i64) -> VarDictionary {
+        let mut result = VarDictionary::new();
+        let Some(core) = self.core.as_mut() else {
+            result.set("error", "native region builder is not configured");
+            return result;
+        };
+        let clipped = Rect::new(bounds.position.x, bounds.position.y, bounds.size.x, bounds.size.y).clip(Rect::new(
+            0,
+            0,
+            (64 + core.city.edge * 32) / core.config.divisor(),
+            (896 + core.city.edge * 16) / core.config.divisor(),
+        ));
+        if !clipped.area() {
+            result.set("error", "empty region");
+            return result;
+        }
+        let (pixels, draws) = match core.raster(clipped, (background as u32).to_be_bytes()) {
+            Ok(value) => value,
+            Err(error) => {
+                result.set("error", &GString::from(&error));
+                return result;
+            }
+        };
+        let image = Image::create_from_data(
+            clipped.w,
+            clipped.h,
+            false,
+            Format::RGBA8,
+            &PackedByteArray::from(pixels.as_slice()),
+        )
+        .expect("clipped region dimensions");
+        let (records, images) = Self::records(&mut self.images, &core.sprites, &draws);
+        result.set("image", &image);
+        result.set("bounds", Rect2i::from_components(clipped.x, clipped.y, clipped.w, clipped.h));
+        result.set("records", &records);
+        result.set("images", &images);
+        result.set(
+            "draws",
+            &Gd::from_object(NativeCityRegionDraws {
+                draws: RegionDraws::new(draws),
+            }),
+        );
+        result
+    }
+    /// Moving object draws for raster jobs. Each draw has a map `cell`, a native
+    /// `position`, a sprite `id`, `flip` and `shadow`. `images` holds the sprite
+    /// images by ID. Returns an error string, or an empty string.
+    #[func]
+    fn set_moving(
+        &mut self,
+        cells: PackedInt32Array,
+        positions: PackedVector2Array,
+        ids: PackedInt32Array,
+        flips: PackedByteArray,
+        shadows: PackedByteArray,
+        images: VarDictionary,
+    ) -> GString {
+        let Some(core) = self.core.as_mut() else {
+            return GString::from("native region builder is not configured");
+        };
+        let count = cells.len();
+        if [positions.len(), ids.len(), flips.len(), shadows.len()].iter().any(|n| *n != count) {
+            return GString::from("moving draw fields differ in length");
+        }
+        let mut moving: HashMap<usize, Vec<Draw>> = HashMap::new();
+        for at in 0..count {
+            let id = ids.as_slice()[at];
+            let key = id as u64 * 2;
+            if let std::collections::hash_map::Entry::Vacant(slot) = core.sprites.images.entry(key) {
+                let Some(image) = images.get(id).and_then(|v| v.try_to::<Gd<Image>>().ok()) else {
+                    return GString::from(&format!("missing moving sprite {id}"));
+                };
+                match sprite_from_image(&image) {
+                    Ok(sprite) => {
+                        slot.insert(sprite);
+                    }
+                    Err(error) => return GString::from(&error),
+                }
+            }
+            let image = match core.sprites.get(id, flips.as_slice()[at] != 0) {
+                Ok(image) => image,
+                Err(error) => return GString::from(&error),
+            };
+            let sprite = &core.sprites.images[&image];
+            let position = positions.as_slice()[at];
+            let mut draw = Draw::new(image, Rect::new(position.x as i32, position.y as i32, sprite.w, sprite.h));
+            draw.sprite = id;
+            draw.flip = flips.as_slice()[at] != 0;
+            draw.moving = true;
+            draw.shadow = shadows.as_slice()[at] != 0;
+            moving.entry(cells.as_slice()[at].max(0) as usize).or_default().push(draw);
+        }
+        core.set_moving(moving);
+        GString::new()
+    }
+    /// Every sprite ID that the configured city needs and the artwork lacks, in
+    /// ascending order.
+    #[func]
+    fn missing_sprites(&mut self) -> PackedInt32Array {
+        self.core.as_mut().map_or_else(PackedInt32Array::new, |core| {
+            PackedInt32Array::from(core.missing_sprites().as_slice())
+        })
+    }
+    /// The uncut draws that meet `bounds` in painter order, without pixels:
+    /// `{records, images}`, or `{error}`.
+    #[func]
+    fn draw_records(&mut self, bounds: Rect2i) -> VarDictionary {
+        let mut result = VarDictionary::new();
+        let Some(core) = self.core.as_mut() else {
+            result.set("error", "native region builder is not configured");
+            return result;
+        };
+        let rect = Rect::new(bounds.position.x, bounds.position.y, bounds.size.x, bounds.size.y);
+        match core.collect(rect) {
+            Ok(draws) => {
+                let (records, images) = Self::records(&mut self.images, &core.sprites, &draws);
+                result.set("records", &records);
+                result.set("images", &images);
+            }
+            Err(error) => result.set("error", &GString::from(&error)),
+        }
+        result
+    }
+    /// The uncut draws of the tiles in painter order: `{records, images}`, or
+    /// `{error}`. `tiles` holds x and y of each tile.
+    #[func]
+    fn tile_draws(&mut self, tiles: PackedInt32Array) -> VarDictionary {
+        let mut result = VarDictionary::new();
+        let Some(core) = self.core.as_mut() else {
+            result.set("error", "native region builder is not configured");
+            return result;
+        };
+        let mut draws = Vec::new();
+        for tile in tiles.as_slice().chunks_exact(2) {
+            match core.tile_draws(tile[0], tile[1]) {
+                Ok(found) => draws.extend(found),
+                Err(error) => {
+                    result.set("error", &GString::from(&error));
+                    return result;
+                }
+            }
+        }
+        let (records, images) = Self::records(&mut self.images, &core.sprites, &draws);
+        result.set("records", &records);
+        result.set("images", &images);
+        result
+    }
+}
+impl NativeCityRegionBuilder {
+    // Draw records and the images that they index. Each image is made once.
+    fn records(cache: &mut HashMap<u64, Gd<Image>>, sprites: &sprites::Sprites, draws: &[Draw]) -> (PackedInt64Array, VarArray) {
+        let mut records = Vec::with_capacity(draws.len() * RECORD_SIZE);
+        let mut images = VarArray::new();
+        let mut slots: HashMap<u64, i64> = HashMap::new();
+        for d in draws {
+            let slot = *slots.entry(d.image).or_insert_with(|| {
+                let image = cache.entry(d.image).or_insert_with(|| {
+                    let s = &sprites.images[&d.image];
+                    Image::create_from_data(s.w, s.h, false, Format::RGBA8, &PackedByteArray::from(s.rgba.as_slice()))
+                        .expect("validated sprite dimensions")
+                });
+                images.push(&image.to_variant());
+                images.len() as i64 - 1
+            });
+            records.extend([
+                d.rect.x as i64,
+                d.rect.y as i64,
+                d.rect.w as i64,
+                d.rect.h as i64,
+                slot,
+                d.sprite as i64,
+                i64::from(d.flip),
+                d.depth,
+                d.order,
+                i64::from(d.ignore),
+                d.reference as i64,
+                d.thickness as i64,
+                d.deck as i64,
+                i64::from(d.requires_depth),
+            ]);
+        }
+        (PackedInt64Array::from(records.as_slice()), images)
     }
 }
 

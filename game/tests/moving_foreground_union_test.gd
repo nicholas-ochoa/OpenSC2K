@@ -41,11 +41,6 @@ func _initialize() -> void:
 		assert(clipped.occluded_pixels == 2)
 		assert(clipped.image.get_pixel(4, 1).a > 0.0, "Uncovered train pixels remain visible")
 
-	# The raised deck covers a train on the crossing tile too.
-	for base in [0, 500, 1000]:
-		assert(IsometricStaticOcclusion.train_power_foreground_reference_sprite_id(0x4d, base) == base + 0x2d)
-		assert(IsometricStaticOcclusion.train_power_foreground_reference_sprite_id(0x4e, base) == base + 0x2c)
-
 	var crossing := Image.create(8, 4, false, Image.FORMAT_RGBA8)
 	crossing.fill(Color.TRANSPARENT)
 	crossing.set_pixel(4, 1, Color.WHITE)
@@ -95,24 +90,22 @@ func _initialize() -> void:
 	assert(bands.get_pixel(0, 6).a == 0.0, "Pillars between composite highway decks cannot cover train")
 	assert(bands.get_pixel(0, 12).a > 0.0, "Second highway deck remains in foreground")
 
+	# Verify that real crossing artwork emits the same-tile mask at each native view.
+	var city := CityState.from_document(EmptyCityTemplate.create(128))
+	var small := FixtureGraphics.pack().small_medium_sprites
+	var large := FixtureGraphics.pack().large_sprites
+
 	for tile in [Tiles.POWER_LINE_STRAIGHT_1, Tiles.POWER_LINE_CROSSROADS, Tiles.ROAD_POWER_CROSSING_1, Tiles.ROAD_POWER_CROSSING_2,
 		Tiles.RAIL_POWER_CROSSING_1, Tiles.RAIL_POWER_CROSSING_2, Tiles.HIGHWAY_POWER_CROSSING_1, Tiles.HIGHWAY_POWER_CROSSING_2]:
-		var command := CityStaticCommand.new()
-		CityIsometricRenderer.configure_train_foreground(
-			command,
-			tile,
-			CityIsometricRenderer.view_configuration(CityIsometricRenderer.VIEW_LARGE),
-		)
+		assert(city.set_building_id(64, 64, tile))
+		var tile_commands := CityIsometricRenderer.tile_occlusion_commands(city, large, CityIsometricRenderer.VIEW_LARGE, 64, 64)
+		var command: CityStaticCommand = tile_commands.filter(func(value: CityStaticCommand) -> bool:
+			return value.sprite_id == 1000 + tile)[0]
 
 		if tile in [0x4f, 0x50]:
 			assert(command.train_deck_reference_sprite_id == 1000 + (0x49 if tile == 0x4f else 0x4a))
 		else:
 			assert(command.train_ignore, "Power-line artwork is excluded from train masks")
-
-	# Verify that real crossing artwork emits the same-tile mask at each native view.
-	var city := CityState.from_document(EmptyCityTemplate.create(128))
-	var small := FixtureGraphics.pack().small_medium_sprites
-	var large := FixtureGraphics.pack().large_sprites
 
 	for view in [CityIsometricRenderer.VIEW_SMALL, CityIsometricRenderer.VIEW_MEDIUM, CityIsometricRenderer.VIEW_LARGE]:
 		var config := CityIsometricRenderer.view_configuration(view)
@@ -120,7 +113,7 @@ func _initialize() -> void:
 
 		for tile in [Tiles.HIGHWAY_RAIL_CROSSING_1, Tiles.HIGHWAY_RAIL_CROSSING_2]:
 			assert(city.set_building_id(64, 64, tile))
-			var commands := CityIsometricRenderer.tile_occlusion_commands(city, archive, config, 0, 64, 64, 10)
+			var commands := CityIsometricRenderer.tile_occlusion_commands(city, archive, view, 64, 64)
 			var found := false
 
 			for command in commands:
@@ -129,6 +122,8 @@ func _initialize() -> void:
 
 				found = true
 				assert(command.train_foreground_requires_depth)
+				# the raised deck covers a train on the crossing tile too
+				assert(command.train_foreground_reference_sprite_id == config.sprite_base + (0x2d if tile == 0x4d else 0x2c))
 				var surface: Image = archive.find_sprite(command.sprite_id).create_image(Sc2Palette.index_encoding()).image
 				var deck := CityIsometricRenderer.highway_train_deck_mask(surface, int(command.train_deck_thickness))
 				assert(not deck.is_invisible(), "Crossing retains raised foreground artwork")

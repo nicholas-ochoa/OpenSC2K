@@ -1,13 +1,17 @@
 class_name CityRegionRenderer
 extends RefCounted
+## CPU pixels and foreground commands of one screen region, from the native
+## painter. A caller that paints many regions passes one context and a city
+## revision, so the painter reuses its tiles.
 
 const Renderer = preload("res://src/view/city_isometric_renderer.gd")
-const Underground = preload("res://src/view/city_underground_view.gd")
 
 
+# gdstyle:ignore=quality/max-parameters
 static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 		bounds: Rect2i, view_size := Renderer.VIEW_LARGE, mode := CityViewMode.Mode.CITY,
-		show_pipes := true, show_subways := true, show_water_mains := true) -> CityRegionResult:
+		show_pipes := true, show_subways := true, show_water_mains := true,
+		context: CityGpuBuildContext = null, revision := 0) -> CityRegionResult:
 	if city == null or not city.is_valid() or palette == null or not palette.is_valid() or sprites == null or not sprites.is_valid():
 		return CityRegionResult.rejected("invalid region assets")
 
@@ -21,70 +25,36 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 	if not bounds.has_area():
 		return CityRegionResult.rejected("empty region")
 
-	var image := Image.create(bounds.size.x, bounds.size.y, false, Image.FORMAT_RGBA8)
-	image.fill(Color.WHITE if mode == CityViewMode.Mode.UNDERGROUND else Color.TRANSPARENT)
-	var local := configuration.with_top_margin(configuration.top_margin - bounds.position.y)
-	var origin := configuration.side_margin + city.map_size * configuration.half_width
-	var sprite_limit := Renderer.maximum_sprite_size(sprites)
-	var cache := {}
-	var foreground: Array[CityStaticCommand] = []
-	var count := 0
-	var span := Renderer.region_tile_span(configuration, sprite_limit, bounds, city.map_size, mode == CityViewMode.Mode.UNDERGROUND)
+	if context == null:
+		context = CityGpuBuildContext.new()
 
-	for diagonal in range(span.first_diagonal, int(span.last_diagonal) + 1):
-		var rows := Renderer.diagonal_rows(span, diagonal, city.map_size)
+	var failure := context.prepare(city, palette, sprites, view_size, mode, show_pipes, show_subways, show_water_mains, revision,
+		false)
 
-		for y in range(rows.x, rows.y + 1):
-			var x := diagonal - y
-			var potential := Renderer.potential_tile_bounds(configuration, sprite_limit, x, y, city.map_size)
+	if not failure.is_empty():
+		return CityRegionResult.rejected(failure)
 
-			if mode == CityViewMode.Mode.UNDERGROUND:
-				potential.size.y += 31 * configuration.altitude_step
+	var painted := context.raster(bounds, Color.WHITE if mode == CityViewMode.Mode.UNDERGROUND else Color.TRANSPARENT)
 
-			if not potential.intersects(bounds):
-				continue
+	if painted.has("error"):
+		return CityRegionResult.rejected(painted.error)
 
-			if mode == CityViewMode.Mode.UNDERGROUND:
-				Underground.draw_tile(
-					image,
-					city,
-					palette,
-					sprites,
-					cache,
-					local,
-					origin - bounds.position.x,
-					x,
-					y,
-					show_pipes,
-					show_subways,
-					show_water_mains,
-				)
-			else:
-				Renderer.draw_tile(image, city, palette, sprites, cache, local, origin - bounds.position.x, x, y, 0, false, false)
-				var order := diagonal * city.map_size + y
-				var commands := Renderer.tile_occlusion_commands(city, sprites, configuration, origin, x, y, order)
-
-				for index in commands.size():
-					var command: CityStaticCommand = commands[index]
-
-					if Rect2i(command.position, command.size).intersects(bounds):
-						command.region_order = (order << 16) | index
-						foreground.append(command)
-
-			count += 1
+	var image: Image = painted.image
 
 	if palette.is_index_encoding:
 		image.convert(Image.FORMAT_L8 if mode == CityViewMode.Mode.UNDERGROUND else Image.FORMAT_LA8)
 
-	var grid := Renderer.build_occlusion_grid(foreground, configuration.divisor)
+	var foreground: Array[CityStaticCommand] = []
+
+	if mode != CityViewMode.Mode.UNDERGROUND:
+		foreground = CityGpuBuildContext.foreground_commands(painted.records, true)
 
 	var result := CityRegionResult.new()
 	result.ok = true
 	result.error = ""
 	result.occlusion_commands = foreground
-	result.occlusion_grid = grid
+	result.occlusion_grid = Renderer.build_occlusion_grid(foreground, configuration.divisor)
 	result.image = image
 	result.bounds = bounds
-	result.tiles_drawn = count
 
 	return result

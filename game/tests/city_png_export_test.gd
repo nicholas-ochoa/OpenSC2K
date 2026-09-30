@@ -147,7 +147,9 @@ func _check_render_progress() -> void:
 		Renderer.VIEW_SMALL,
 		options,
 	)
-	assert(result.ok and values.size() == main.document_state.city.map_size * 2 - 1)
+	# one update for each painted band
+	var bands := ceili(float(result.image.get_height()) / IsometricImageRender.RASTER_BAND_HEIGHT)
+	assert(result.ok and values.size() == bands and bands > 1)
 
 	for index in range(1, values.size()):
 		assert(values[index] > values[index - 1])

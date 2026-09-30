@@ -5,6 +5,15 @@ extends IsometricConstants
 @warning_ignore_start("integer_division")
 
 
+const RASTER_BAND_HEIGHT := 128
+
+static var _patch_context: CityGpuBuildContext
+static var _patch_revision := 0
+
+
+# the whole city in the native painter. an index palette gives an LA8 image with
+# a transparent background, or an L8 image. moving objects and special overlays
+# are painted with their tiles. `progress` receives the painted fraction
 static func create_image(
 	city: CityState,
 	palette: Sc2Palette,
@@ -28,41 +37,98 @@ static func create_image(
 	if sprites == null or not sprites.is_valid():
 		return AssetImageResult.failure("large sprite archive is invalid")
 
-	var configuration := IsometricGeometry.view_configuration(view_size)
-
-	if configuration == null:
+	if IsometricGeometry.view_configuration(view_size) == null:
 		return AssetImageResult.failure("city view size is invalid")
 
+	var context := CityGpuBuildContext.new()
+	var failure := context.prepare(city, palette, sprites, view_size, CityViewMode.Mode.CITY, true, true, true, 0, false,
+		include_special_overlays, animation_phase)
+
+	if failure.is_empty() and include_moving_things:
+		failure = context.set_moving(city, palette, sprites, _moving_commands(city, sprites, view_size, animation_phase))
+
+	if not failure.is_empty():
+		return AssetImageResult.failure(failure)
+
 	if validate_required_assets:
-		var asset_errors := IsometricStaticVisuals.validate_assets(city, sprites, view_size)
+		var asset_errors := context.missing_sprite_errors()
 
 		if not asset_errors.is_empty():
 			return AssetImageResult.failure(asset_errors[0])
 
-	var output_size := IsometricGeometry.output_size_for_view(view_size, map_edge)
-	var output := Image.create(output_size.x, output_size.y, false, Image.FORMAT_RGBA8)
-	output.fill(Color.TRANSPARENT if transparent_background else Color("18242c"))
-	var origin_x: int = configuration.side_margin + map_edge * configuration.half_width
-	var cache: Dictionary = {}
+	return paint_whole_city(context, IsometricGeometry.output_size_for_view(view_size, map_edge),
+		Color.TRANSPARENT if transparent_background else Color("18242c"), palette.is_index_encoding and transparent_background,
+		palette.is_index_encoding and not transparent_background, progress)
 
-	for diagonal in map_edge * 2 - 1:
-		for y in diagonal + 1:
-			var x := diagonal - y
 
-			if x >= map_edge or y >= map_edge:
-				continue
+# the draw commands of the moving objects, without the special overlays
+static func _moving_commands(city: CityState, sprites: Sc2SpriteArchive, view_size: int, animation_phase: int
+) -> Array[CityDynamicCommand]:
+	var moving: Array[CityDynamicCommand] = []
 
-			draw_tile(
-				output, city, palette, sprites, cache, configuration,
-				origin_x, x, y, animation_phase, include_moving_things,
-				include_special_overlays
-			)
+	for command in IsometricDynamicCommands.dynamic_draw_commands(city, sprites, view_size, animation_phase):
+		if command.overlay < 0:
+			moving.append(command)
+
+	return moving
+
+
+# every sprite that the painted city needs and the archive lacks, with moving
+# objects and special overlays
+static func missing_sprite_errors(city: CityState, sprites: Sc2SpriteArchive, view_size: int) -> PackedStringArray:
+	var errors := PackedStringArray()
+	var context := CityGpuBuildContext.new()
+	var failure := context.prepare(city, Sc2Palette.index_encoding(), sprites, view_size, CityViewMode.Mode.CITY, true, true, true,
+		0, false, true)
+	var moving := _moving_commands(city, sprites, view_size, 0)
+	var missing: Dictionary[int, bool] = {}
+
+	for command in moving:
+		if sprites.find_sprite(command.sprite_id) == null:
+			missing[command.sprite_id] = true
+
+	if failure.is_empty() and missing.is_empty():
+		failure = context.set_moving(city, Sc2Palette.index_encoding(), sprites, moving)
+
+	if not failure.is_empty():
+		errors.append(failure)
+
+		return errors
+
+	for sprite_id in context.builder.missing_sprites():
+		missing[sprite_id] = true
+
+	var ids := missing.keys()
+	ids.sort()
+
+	for sprite_id: int in ids:
+		errors.append("required large sprite %d is missing" % sprite_id)
+
+	return errors
+
+
+# paint a prepared native painter over the whole output in bands, so a long
+# export reports its progress. index images convert to LA8 or L8
+static func paint_whole_city(context: CityGpuBuildContext, size: Vector2i, background: Color, index_alpha: bool,
+		index_opaque: bool, progress := Callable()) -> AssetImageResult:
+	var output := Image.create(size.x, size.y, false, Image.FORMAT_RGBA8)
+
+	for top in range(0, size.y, RASTER_BAND_HEIGHT):
+		var band := Rect2i(0, top, size.x, mini(RASTER_BAND_HEIGHT, size.y - top))
+		var painted := context.raster(band, background)
+
+		if painted.has("error"):
+			return AssetImageResult.failure(painted.error)
+
+		output.blit_rect(painted.image, Rect2i(Vector2i.ZERO, band.size), band.position)
 
 		if progress.is_valid():
-			progress.call(float(diagonal + 1) / float(map_edge * 2 - 1))
+			progress.call(float(band.end.y) / size.y)
 
-	if palette.is_index_encoding:
-		output.convert(Image.FORMAT_LA8 if transparent_background else Image.FORMAT_L8)
+	if index_alpha:
+		output.convert(Image.FORMAT_LA8)
+	elif index_opaque:
+		output.convert(Image.FORMAT_L8)
 
 	var result := AssetImageResult.new()
 	result.ok = true
@@ -72,6 +138,8 @@ static func create_image(
 	return result
 
 
+# paint the tiles that can reach the dirty tiles again into a copy of
+# `base_image`. the main thread keeps one native painter for these patches
 static func patch_static_image(
 	base_image: Image,
 	city: CityState,
@@ -79,7 +147,6 @@ static func patch_static_image(
 	sprites: Sc2SpriteArchive,
 	dirty_indices: PackedInt32Array,
 	view_size := VIEW_LARGE,
-	animation_phase := 0,
 	copy_image := true
 ) -> PatchResult:
 	var map_edge: int = city.map_size if city != null else 128
@@ -109,60 +176,29 @@ static func patch_static_image(
 	elif base_image.get_size() != native_size:
 		return PatchResult.rejected("base city image has the wrong size")
 
-	var sprite_limit := IsometricGeometry.maximum_sprite_size(sprites)
 	var native_rect := IsometricGeometry.dirty_screen_rect(
-		dirty_indices, sprites, view_size, sprite_limit, map_edge
+		dirty_indices, sprites, view_size, IsometricGeometry.maximum_sprite_size(sprites), map_edge
 	)
 
 	if native_rect.get_area() <= 0:
 		return PatchResult.rejected("dirty city region is empty")
 
-	var local_configuration := configuration.with_top_margin(
-		configuration.top_margin - native_rect.position.y
-	)
-	var origin_x := (
-		configuration.side_margin
-		+ map_edge * configuration.half_width
-		- native_rect.position.x
-	)
-	var region := Image.create(
-		native_rect.size.x, native_rect.size.y, false, Image.FORMAT_RGBA8
-	)
-	region.fill(Color.TRANSPARENT)
-	var cache: Dictionary = {}
-	var tiles_drawn := 0
-	# bound both x+y and x-y before walking the painter order. keep the exact
-	# rectangle test below, including the full altitude and sprite allowance
-	var half_width := configuration.half_width
-	var half_height := configuration.half_height
-	var full_origin_x := configuration.side_margin + map_edge * half_width
-	var top_margin := configuration.top_margin
-	var bottom_extra := configuration.tile_height + int(sprite_limit.x / 4) + 1
-	var top_extra := 32 * configuration.altitude_step + sprite_limit.y
-	var first_diagonal := maxi(0, floori(float(native_rect.position.y - top_margin - bottom_extra) / half_height))
-	var last_diagonal := mini(2 * (map_edge - 1), ceili(float(native_rect.end.y - top_margin + top_extra) / half_height))
-	var first_difference := floori(
-		float(native_rect.position.x - full_origin_x - sprite_limit.x - configuration.tile_width - 1) / half_width)
-	var last_difference := ceili(float(native_rect.end.x - full_origin_x + sprite_limit.x) / half_width)
+	if _patch_context == null:
+		_patch_context = CityGpuBuildContext.new()
 
-	for diagonal in range(first_diagonal, last_diagonal + 1):
-		var first_y := maxi(maxi(0, diagonal - (map_edge - 1)), ceili(float(diagonal - last_difference) / 2.0))
-		var last_y := mini(mini(map_edge - 1, diagonal), floori(float(diagonal - first_difference) / 2.0))
+	_patch_revision += 1
+	var failure := _patch_context.prepare(city, palette, sprites, view_size, CityViewMode.Mode.CITY, true, true, true,
+		_patch_revision, false)
 
-		for y in range(first_y, last_y + 1):
-			var x := diagonal - y
+	if not failure.is_empty():
+		return PatchResult.rejected(failure)
 
-			if not IsometricGeometry.potential_tile_bounds(
-				configuration, sprite_limit, x, y, map_edge
-			).intersects(native_rect):
-				continue
+	var painted := _patch_context.raster(native_rect, Color.TRANSPARENT)
 
-			draw_tile(
-				region, city, palette, sprites, cache, local_configuration,
-				origin_x, x, y, animation_phase, false, false
-			)
-			tiles_drawn += 1
+	if painted.has("error"):
+		return PatchResult.rejected(painted.error)
 
+	var region: Image = painted.image
 	region.convert(Image.FORMAT_LA8)
 	var output_rect := native_rect
 
@@ -191,222 +227,9 @@ static func patch_static_image(
 	result.image = patched
 	result.native_rect = native_rect
 	result.output_rect = output_rect
-	result.tiles_drawn = tiles_drawn
 	result.error = ""
 
 	return result
-
-
-# paint one map tile into `output`, in back-to-front order
-# `output` is an `Image` or any recorder with the same `blend_rect` call
-# `origin_x` is the screen column of tile (0, 0). shift it, or shift
-# `configuration.top_margin`, to paint into a sub-rectangle of the map
-# `cache` holds decoded sprites and belongs to the caller
-# the tile order and the painted pixels are the same for every caller
-static func draw_tile(
-	output: Variant,
-	city: CityState,
-	palette: Sc2Palette,
-	sprites: Sc2SpriteArchive,
-	cache: Dictionary,
-	configuration: CityViewConfiguration,
-	origin_x: int,
-	x: int,
-	y: int,
-	animation_phase: int,
-	include_moving_things: bool,
-	include_special_overlays: bool
-) -> void:
-	if not city.tile_is_visible(x, y):
-		CityUndergroundView.draw_tile(
-			output, city, palette, sprites, cache, configuration, origin_x,
-			x, y, false, true
-		)
-
-		return
-
-	var terrain_id := IsometricGeometry.surface_terrain_id(city, x, y)
-	var building_id := city.building_id(x, y)
-	var terrain_altitude := city.land_altitude(x, y)
-
-	if terrain_id >= TerrainTileIds.DEEP_WATER_FIRST:
-		terrain_altitude = city.water_altitude(x, y)
-
-	var screen_x: int = origin_x + (x - y) * configuration.half_width
-	var flat_base_y: int = (
-		configuration.top_margin + (x + y) * configuration.half_height
-	)
-	_draw_edge_stacks(
-		output, city, palette, sprites, cache, configuration,
-		screen_x, flat_base_y, x, y
-	)
-	var base_y: int = (
-		flat_base_y
-		- terrain_altitude * configuration.altitude_step
-	)
-
-	var is_highway_composite := building_id >= Tiles.HIGHWAY_SLOPE_1 and building_id <= Tiles.REINFORCED_HIGHWAY_BRIDGE
-
-	if building_id < Tiles.DEVELOPED_FIRST and not is_highway_composite:
-		var ground := IsometricPixelOperations.sprite_image(
-			sprites, palette, cache,
-			IsometricStaticVisuals.ground_sprite_id(city, x, y, terrain_id, building_id, configuration.sprite_base),
-			false
-		)
-		IsometricPixelOperations._blend_on_base(output, ground, screen_x, base_y, configuration.tile_height)
-
-	var building_image: Image
-
-	if building_id > BuildingTileIds.EMPTY and IsometricStaticVisuals._should_draw_building(city, x, y, building_id):
-		var building_base_y := (
-			flat_base_y
-			- city.object_altitude(x, y) * configuration.altitude_step
-		)
-
-		if is_highway_composite:
-			_draw_highway_ground(
-				output, city, palette, sprites, cache, configuration,
-				screen_x, base_y, x, y
-			)
-
-		var flip := IsometricStaticVisuals.building_sprite_flip(city, x, y, building_id)
-		building_image = IsometricPixelOperations.sprite_image(
-			sprites, palette, cache, configuration.sprite_base + building_id, flip
-		)
-		building_base_y += IsometricStaticVisuals.building_baseline_offset(
-			building_id, terrain_id, building_image.get_width(), configuration.view_size
-		)
-		IsometricPixelOperations._blend_on_base(
-			output, building_image, screen_x, building_base_y, configuration.tile_height
-		)
-		var traffic_visual := IsometricStaticVisuals.traffic_overlay_visual(city, x, y, configuration.view_size)
-
-		if traffic_visual != null:
-			var traffic_image := IsometricPixelOperations.sprite_image(
-				sprites, palette, cache, traffic_visual.sprite_id, traffic_visual.flip
-			)
-			var masked_traffic := IsometricPixelOperations._traffic_masked_image(
-				traffic_image, building_image, palette, cache,
-				"traffic:%d:%d:%d:%d" % [
-					traffic_visual.sprite_id, int(traffic_visual.flip),
-					building_id, int(flip),
-				]
-			)
-			IsometricPixelOperations._blend_on_base(
-				output, masked_traffic, screen_x, building_base_y,
-				configuration.tile_height
-			)
-
-		var power_marker := IsometricStaticVisuals.power_marker_visual(city, x, y, configuration.view_size)
-
-		if power_marker != null:
-			var marker_image := IsometricPixelOperations.sprite_image(
-				sprites, palette, cache, power_marker.sprite_id, false
-			)
-			var marker_x := (
-				screen_x + int(building_image.get_width() / 2)
-				- int(marker_image.get_width() / 2)
-			)
-			IsometricPixelOperations._blend_on_base(
-				output, marker_image, marker_x, building_base_y, configuration.tile_height
-			)
-
-	var dispatch_sprite := IsometricStaticVisuals.dispatch_sprite_id(city, x, y, configuration.view_size)
-
-	if dispatch_sprite > 0:
-		var dispatch_image := IsometricPixelOperations.sprite_image(
-			sprites, palette, cache, dispatch_sprite, false
-		)
-		var dispatch_x := (
-			screen_x + configuration.half_width
-			- int(dispatch_image.get_width() / 2)
-		)
-		var dispatch_base_y := (
-			flat_base_y - city.land_altitude(x, y) * configuration.altitude_step
-		)
-		IsometricPixelOperations._blend_on_base(
-			output, dispatch_image, dispatch_x, dispatch_base_y,
-			configuration.tile_height
-		)
-
-	if include_moving_things:
-		var moving_visual := IsometricMovingVisuals.moving_thing_visual(
-			city, x, y, configuration.view_size, animation_phase
-		)
-
-		if moving_visual != null:
-			draw_moving_thing(
-				output, city, palette, sprites, cache, moving_visual, configuration
-			)
-
-	if include_special_overlays:
-		var special_visual := IsometricStaticVisuals.special_overlay_visual(
-			city, x, y, configuration.view_size, animation_phase
-		)
-
-		if special_visual != null:
-			var special_image := IsometricPixelOperations.sprite_image(
-				sprites, palette, cache, special_visual.sprite_id, special_visual.flip
-			)
-			var special_x := (
-				screen_x + configuration.half_width
-				- int(special_image.get_width() / 2)
-			)
-			var special_altitude := city.object_altitude(x, y)
-			var special_base_y := (
-				configuration.top_margin
-				+ (x + y) * configuration.half_height
-				- special_altitude * configuration.altitude_step
-			)
-			IsometricPixelOperations._blend_on_base(
-				output, special_image, special_x, special_base_y,
-				configuration.tile_height
-			)
-
-
-static func _draw_edge_stacks(
-	output: Variant,
-	city: CityState,
-	palette: Sc2Palette,
-	sprites: Sc2SpriteArchive,
-	cache: Dictionary,
-	configuration: CityViewConfiguration,
-	screen_x: int,
-	flat_base_y: int,
-	x: int,
-	y: int
-) -> void:
-	for visual in IsometricStaticVisuals.edge_stack_visuals(city, x, y, configuration.view_size):
-		var edge_image := IsometricPixelOperations.sprite_image(
-			sprites, palette, cache, visual.sprite_id, false
-		)
-		IsometricPixelOperations._blend_on_base(
-			output, edge_image, screen_x, flat_base_y - visual.elevation,
-			configuration.tile_height
-		)
-
-
-static func _draw_highway_ground(
-	output: Variant,
-	city: CityState,
-	palette: Sc2Palette,
-	sprites: Sc2SpriteArchive,
-	cache: Dictionary,
-	configuration: CityViewConfiguration,
-	screen_x: int,
-	base_y: int,
-	x: int,
-	y: int
-) -> void:
-	for visual in IsometricStaticVisuals.highway_ground_visuals(city, x, y, configuration.view_size, sprites.redraw_small_highway_ground):
-		var terrain := IsometricPixelOperations.sprite_image(
-			sprites, palette, cache, visual.sprite_id, false
-		)
-		var position: Vector2i = visual.offset
-		IsometricPixelOperations._blend_on_base(
-			output, terrain, screen_x + position.x, base_y + position.y,
-			configuration.tile_height
-		)
 
 
 # paint the moving object of one visual into `output`
@@ -441,7 +264,6 @@ static func draw_moving_thing(
 class PatchResult extends AssetImageResult:
 	var native_rect := Rect2i()
 	var output_rect := Rect2i()
-	var tiles_drawn := 0
 
 	static func rejected(message: String) -> PatchResult:
 		var result := PatchResult.new()

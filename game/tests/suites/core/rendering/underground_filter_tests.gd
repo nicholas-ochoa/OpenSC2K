@@ -11,14 +11,6 @@ const ViewFilter = preload("res://src/view/city_view_filter.gd")
 
 func run(starter: CityState, large: Sc2SpriteArchive, small_medium: Sc2SpriteArchive) -> void:
 	var underground_city := CityModel.from_document(starter.document.duplicate_document())
-	_check(
-		UndergroundView.terrain_wireframe_offset(0x00) == 0x131
-		and UndergroundView.terrain_wireframe_offset(0x0e) == 0x13e
-		and UndergroundView.terrain_wireframe_offset(0x10) == 0x131
-		and UndergroundView.terrain_wireframe_offset(0x2e) == 0x13e
-		and UndergroundView.terrain_wireframe_offset(0x45) == 0x131,
-		"Underground terrain uses the recovered wireframe lookup table",
-	)
 
 	for fixture in [
 		[Vector2i(20, 20), 0x01, 1319],
@@ -36,7 +28,7 @@ func run(starter: CityState, large: Sc2SpriteArchive, small_medium: Sc2SpriteArc
 			"Underground view fixture stores tile 0x%02X" % fixture[1],
 		)
 		_check(
-			UndergroundView.tile_sprite_ids(underground_city, point.x, point.y)[0]
+			NativeTileDraws.sprite_ids(underground_city, large, IsometricRenderer.VIEW_LARGE, point.x, point.y, CityViewMode.Mode.UNDERGROUND, true, true, true)[0]
 			== fixture[2],
 			"Underground tile 0x%02X selects native sprite %d" % [fixture[1], fixture[2]],
 		)
@@ -48,7 +40,7 @@ func run(starter: CityState, large: Sc2SpriteArchive, small_medium: Sc2SpriteArc
 		"Underground fixture marks a pipe as active and watered",
 	)
 	_check(
-		UndergroundView.tile_sprite_ids(underground_city, wet_pipe.x, wet_pipe.y)[0]
+		NativeTileDraws.sprite_ids(underground_city, large, IsometricRenderer.VIEW_LARGE, wet_pipe.x, wet_pipe.y, CityViewMode.Mode.UNDERGROUND, true, true, true)[0]
 		== 1450,
 		"Watered pipe selects the recovered blue native sprite",
 	)
@@ -58,35 +50,23 @@ func run(starter: CityState, large: Sc2SpriteArchive, small_medium: Sc2SpriteArc
 		"Underground fixture marks the subway tile as piped",
 	)
 	_check(
-		UndergroundView.tile_sprite_ids(
-			underground_city, piped_subway.x, piped_subway.y
-		) == PackedInt32Array([1319, 1351]),
+		NativeTileDraws.sprite_ids(underground_city, large, IsometricRenderer.VIEW_LARGE, piped_subway.x, piped_subway.y, CityViewMode.Mode.UNDERGROUND, true, true, true) == PackedInt32Array([1319, 1351]),
 		"A piped subway adds the recovered underground service overlay",
 	)
 	_check(
-		UndergroundView.tile_sprite_ids(
-			underground_city, wet_pipe.x, wet_pipe.y,
-			IsometricRenderer.VIEW_LARGE, true, true, false
-		) == PackedInt32Array([1305]),
+		NativeTileDraws.sprite_ids(underground_city, large, IsometricRenderer.VIEW_LARGE, wet_pipe.x, wet_pipe.y, CityViewMode.Mode.UNDERGROUND, true, true, false) == PackedInt32Array([1305]),
 		"Hidden water mains leave the terrain wireframe visible",
 	)
 	_check(
-		UndergroundView.tile_sprite_ids(
-			underground_city, 24, 20, IsometricRenderer.VIEW_LARGE, true, true, false
-		) == PackedInt32Array([1319]),
+		NativeTileDraws.sprite_ids(underground_city, large, IsometricRenderer.VIEW_LARGE, 24, 20, CityViewMode.Mode.UNDERGROUND, true, true, false) == PackedInt32Array([1319]),
 		"Hidden water mains replace the first pipe-subway crossover with subway LR",
 	)
 	_check(
-		UndergroundView.tile_sprite_ids(
-			underground_city, 25, 20, IsometricRenderer.VIEW_LARGE, true, true, false
-		) == PackedInt32Array([1320]),
+		NativeTileDraws.sprite_ids(underground_city, large, IsometricRenderer.VIEW_LARGE, 25, 20, CityViewMode.Mode.UNDERGROUND, true, true, false) == PackedInt32Array([1320]),
 		"Hidden water mains replace the second pipe-subway crossover with subway TB",
 	)
 	_check(
-		UndergroundView.tile_sprite_ids(
-			underground_city, piped_subway.x, piped_subway.y,
-			IsometricRenderer.VIEW_LARGE, false
-		) == PackedInt32Array([1319]),
+		NativeTileDraws.sprite_ids(underground_city, large, IsometricRenderer.VIEW_LARGE, piped_subway.x, piped_subway.y, CityViewMode.Mode.UNDERGROUND, false, true, true) == PackedInt32Array([1319]),
 		"Hidden pipes keep a subway and remove its pipe overlay",
 	)
 	_check(
@@ -94,7 +74,7 @@ func run(starter: CityState, large: Sc2SpriteArchive, small_medium: Sc2SpriteArc
 		"Underground fixture adds a surface building",
 	)
 	_check(
-		UndergroundView.tile_sprite_ids(underground_city, 20, 20)
+		NativeTileDraws.sprite_ids(underground_city, large, IsometricRenderer.VIEW_LARGE, 20, 20, CityViewMode.Mode.UNDERGROUND, true, true, true)
 		== PackedInt32Array([1319, 1351]),
 		"Surface buildings do not change underground drawing",
 	)

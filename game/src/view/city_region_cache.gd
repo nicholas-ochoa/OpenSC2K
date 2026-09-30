@@ -54,6 +54,8 @@ var _published_viewport := -1
 var _published_indices: Dictionary[Vector2i, int] = {}
 var _source_updates: Dictionary[Vector2i, bool] = {}
 var _task: CityRenderTask
+# the native painter of CPU regions. only the running region task uses it
+var _cpu_context := CityGpuBuildContext.new()
 var _job_key := Vector2i.ZERO
 var _job_generation := 0
 var _layout_generation := 0
@@ -328,8 +330,7 @@ func tick() -> bool:
 			_task = CityRenderTask.new()
 			var bounds := Rect2i(key * region_edge, Vector2i(region_edge, region_edge))
 			var error := _task.start(_render.bind(_snapshot, _palette, _sprites, bounds, view_size, mode, _visibility, _prepared,
-				_show_pipes,
-					_show_subways, _show_water_mains))
+				_show_pipes, _show_subways, _show_water_mains, _cpu_context, _job_generation))
 
 			if error != OK:
 				_task = null
@@ -636,10 +637,11 @@ func close() -> void:
 
 static func _render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, bounds: Rect2i, view: int,
 		render_mode: CityViewMode.Mode, visibility: Dictionary, prepared: bool, pipes: bool, subways: bool,
-		water_mains: bool) -> CityRegionResult:
+		water_mains: bool, context: CityGpuBuildContext, revision: int) -> CityRegionResult:
 	var started := Time.get_ticks_usec()
 	var display := city if prepared else CityViewFilter.surface_copy(city, visibility)
-	var result := CityRegionRenderer.render(display, palette, sprites, bounds, view, render_mode, pipes, subways, water_mains)
+	var result := CityRegionRenderer.render(display, palette, sprites, bounds, view, render_mode, pipes, subways, water_mains,
+		context, revision)
 	result.display_city = display
 	result.usec = Time.get_ticks_usec() - started
 

@@ -71,12 +71,17 @@ func run(starter: CityState, large: Sc2SpriteArchive, small_medium: Sc2SpriteArc
 		and crossing_commands[0].same_tile_foreground_indices.is_empty(),
 		"Train commands request the dedicated power-line foreground mask",
 	)
-	_check(
-		IsometricStaticOcclusion.train_power_foreground_reference_sprite_id(0x0e) == -1
-		and IsometricStaticOcclusion.train_power_foreground_reference_sprite_id(0x48) == 1045
-		and IsometricStaticOcclusion.train_power_foreground_reference_sprite_id(0x2d) == 0,
-		"Power lines and crossovers select their train foreground source",
-	)
+	var references := CityState.copy_for_edit(starter)
+	var reference_ids := []
+
+	for tile in [Tiles.POWER_LINE_STRAIGHT_1, Tiles.RAIL_POWER_CROSSING_2, Tiles.RAIL_STRAIGHT_2]:
+		references.set_building_id(30, 30, tile)
+
+		for command in IsometricRenderer.tile_occlusion_commands(references, large, IsometricRenderer.VIEW_LARGE, 30, 30):
+			if command.sprite_id == 1000 + tile:
+				reference_ids.append(command.train_foreground_reference_sprite_id)
+
+	_check(reference_ids == [-1, 1045, 0], "Power lines and crossovers select their train foreground source")
 	var crossing_foreground_command: CityStaticCommand
 	var crossing_depth := (64 + 64) * CityState.MAP_SIZE + 64
 

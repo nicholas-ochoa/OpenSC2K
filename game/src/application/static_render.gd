@@ -109,7 +109,6 @@ func _apply_static_edit_patch(command: EditCommandResult) -> bool:
 		sprite_archive,
 		dirty_indices,
 		view_size,
-		int(Time.get_ticks_msec() / 100),
 		false
 	)
 

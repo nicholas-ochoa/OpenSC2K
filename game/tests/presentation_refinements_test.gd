@@ -91,8 +91,15 @@ func _run() -> void:
 func _cutaway(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive) -> Image:
 	var image := Image.create(256, 256, false, Image.FORMAT_RGBA8)
 	image.fill(Color.TRANSPARENT)
-	var configuration := CityIsometricRenderer.view_configuration(CityIsometricRenderer.VIEW_LARGE).with_top_margin(128)
-	CityUndergroundView.draw_tile(image, city, palette, sprites, {}, configuration, 128, 5, 5, false, true)
+	var configuration := CityIsometricRenderer.view_configuration(CityIsometricRenderer.VIEW_LARGE)
+	# the tile's column and baseline move to 128 pixels in this image
+	var offset := Vector2i(128 - (configuration.side_margin + city.map_size * configuration.half_width), 128 - configuration.top_margin)
+	var context := CityGpuBuildContext.new()
+	assert(context.prepare(city, palette, sprites, CityIsometricRenderer.VIEW_LARGE, CityViewMode.Mode.UNDERGROUND, false, true, true,
+		0, false).is_empty())
+
+	for draw in context.tile_draw_list([Vector2i(5, 5)], offset).draws:
+		image.blend_rect(draw.image, draw.source, draw.position)
 
 	return image
 

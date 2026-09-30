@@ -8,6 +8,7 @@ mod ids;
 mod index;
 mod minimap;
 mod painter;
+mod raster;
 mod region;
 mod sprites;
 
@@ -186,6 +187,11 @@ pub struct Config {
     pub subways: bool,
     pub mains: bool,
     pub redraw_ground: bool,
+    /// Draw the animated fire, flood and radiation markers as tile sprites.
+    /// Previews use this; the city view draws them as moving sprites.
+    pub specials: bool,
+    /// The animation phase of special overlays.
+    pub phase: i32,
 }
 impl Config {
     fn divisor(self) -> i32 {
@@ -227,6 +233,11 @@ pub struct Draw {
     pub thickness: i32,
     pub deck: i32,
     pub requires_depth: bool,
+    /// A moving object sprite that a raster job adds to its tile. It is no
+    /// static foreground.
+    pub moving: bool,
+    /// A shadow: its opaque pixels darken the pixels below through the palette.
+    pub shadow: bool,
 }
 impl Draw {
     fn new(image: u64, rect: Rect) -> Self {
@@ -242,6 +253,8 @@ impl Draw {
             thickness: 0,
             deck: 0,
             requires_depth: false,
+            moving: false,
+            shadow: false,
         }
     }
 }
@@ -264,9 +277,23 @@ pub struct Builder {
     maximum_altitude: i32,
     // The largest sprite of this artwork. It limits the region candidate span.
     sprite_limit: (i32, i32),
+    /// Moving object draws of raster jobs, by map cell. A tile paints them
+    /// after its static sprites, as the original painter does.
+    pub moving: HashMap<usize, Vec<Draw>>,
+    /// Shadow colors: each RGBA color and the darker color that a shadow makes.
+    pub shadows: HashMap<[u8; 4], [u8; 4]>,
 }
 impl Builder {
-    pub fn new(city: City, config: Config, images: HashMap<u64, Sprite>, target: [u8; 4], atlas_edge: i32) -> Result<Self, String> {
+    /// `pack_atlas` packs all unflipped artwork of the view for GPU regions. Raster
+    /// builders leave the atlas empty.
+    pub fn new(
+        city: City,
+        config: Config,
+        images: HashMap<u64, Sprite>,
+        target: [u8; 4],
+        atlas_edge: i32,
+        pack_atlas: bool,
+    ) -> Result<Self, String> {
         let mut sprite_limit = (0, 0);
         let mut artwork: Vec<u64> = Vec::new();
         for (key, sprite) in &images {
@@ -290,6 +317,8 @@ impl Builder {
             builds: 0,
             reuses: 0,
             sprite_limit,
+            moving: HashMap::new(),
+            shadows: HashMap::new(),
         };
         // Pack all unflipped artwork once. Scrolling then seldom adds a sprite,
         // so the main thread seldom uploads a changed atlas. Tall sprites
@@ -298,8 +327,10 @@ impl Builder {
             let sprite = &builder.sprites.images[key];
             (std::cmp::Reverse(sprite.h), std::cmp::Reverse(sprite.w), *key)
         });
-        for key in artwork {
-            builder.atlas.slot(key, &builder.sprites.images[&key])?;
+        if pack_atlas {
+            for key in artwork {
+                builder.atlas.slot(key, &builder.sprites.images[&key])?;
+            }
         }
         Ok(builder)
     }
@@ -376,6 +407,13 @@ impl Builder {
                 }
             }
         }
+        self.revision += 1;
+    }
+    /// Replaces the moving object draws. Painted tiles are painted again.
+    pub fn set_moving(&mut self, moving: HashMap<usize, Vec<Draw>>) {
+        self.moving = moving;
+        self.tiles.clear();
+        self.bounds.fill(region::Bounds::UNKNOWN);
         self.revision += 1;
     }
     pub fn cached_tiles(&self) -> usize {

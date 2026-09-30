@@ -10,6 +10,24 @@ pub(super) const TRAFFIC: &[i32] = &[
 const HEAVY: &[i32] = &[
     0, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 15, 16, 17, 18, 42, 43, 44, 45, 46, 47, 48, 49, 50,
 ];
+// Disaster marker overlays and their sprite offsets. Fire cycles four frames;
+// riots cycle two.
+const TOXIC_OVERLAY: i32 = 0xfb;
+const FLOOD_OVERLAY: i32 = 0xfc;
+const RIOT_OVERLAY_FORWARD: i32 = 0xfd;
+const RIOT_OVERLAY_REVERSE: i32 = 0xfe;
+const FIRE_OVERLAY: i32 = 0xff;
+fn special_sprites(overlay: i32) -> &'static [i32] {
+    match overlay {
+        TOXIC_OVERLAY => &[496],
+        FLOOD_OVERLAY => &[492],
+        RIOT_OVERLAY_FORWARD | RIOT_OVERLAY_REVERSE => &[493, 494],
+        FIRE_OVERLAY => &[396, 397, 398, 399],
+        _ => &[],
+    }
+}
+// Fire mixes the tile coordinates with this hash to break up diagonal patterns.
+const FIRE_PHASE_HASH: u32 = 0x045d_9f3b;
 fn terrain_sprite(t: i32, water: bool) -> i32 {
     match t {
         0..=14 => 256 + t,
@@ -32,7 +50,10 @@ impl Builder {
     fn add(&mut self, draws: &mut Vec<Draw>, id: i32, flip: bool, x: i32, baseline: i32) -> Result<u64, String> {
         let key = self.sprites.get(id, flip)?;
         let sprite = &self.sprites.images[&key];
-        draws.push(Draw::new(key, Rect::new(x, baseline - sprite.h, sprite.w, sprite.h)));
+        let mut draw = Draw::new(key, Rect::new(x, baseline - sprite.h, sprite.w, sprite.h));
+        draw.sprite = id;
+        draw.flip = flip;
+        draws.push(draw);
         Ok(key)
     }
     fn ground(&self, i: usize, t: i32) -> i32 {
@@ -114,7 +135,11 @@ impl Builder {
                 let traffic = self.sprites.get(id, traffic_flip)?;
                 let masked = self.sprites.traffic(traffic, image);
                 let sprite = &self.sprites.images[&masked];
-                draws.push(Draw::new(masked, Rect::new(sx, baseline - sprite.h, sprite.w, sprite.h)));
+                let mut draw = Draw::new(masked, Rect::new(sx, baseline - sprite.h, sprite.w, sprite.h));
+                // The masked traffic draw names its sprite but is no foreground.
+                draw.sprite = id;
+                draw.flip = traffic_flip;
+                draws.push(draw);
             }
             if b >= 0x70 && self.city.flags[i] & 0xc0 == 0x80 {
                 let key = self.sprites.get(c.base() + 386, false)?;
@@ -133,15 +158,19 @@ impl Builder {
                 flat - self.city.land(i) * c.step(),
             )?;
         }
+        if let Some(moving) = self.moving.get(&i) {
+            draws.extend(moving.iter().cloned());
+        }
+        if c.specials {
+            self.paint_special(&mut draws, x, y)?;
+        }
         let depth = ((x + y) * self.city.edge + y) as i64;
         let mut foreground = 0;
         for draw in &mut draws {
             // Masked traffic changes color, not the foreground silhouette.
-            if draw.image >= 1_u64 << 32 {
+            if draw.image >= 1_u64 << 32 || draw.moving {
                 continue;
             }
-            draw.sprite = (draw.image / 2) as i32;
-            draw.flip = draw.image & 1 != 0;
             draw.depth = depth;
             draw.order = (depth << 16) | foreground;
             foreground += 1;
@@ -150,6 +179,30 @@ impl Builder {
             }
         }
         Ok(draws)
+    }
+    /// The animated marker of a disaster tile, as `special_overlay_visual`.
+    fn paint_special(&mut self, draws: &mut Vec<Draw>, x: i32, y: i32) -> Result<(), String> {
+        let c = self.config;
+        let i = self.city.index(x, y);
+        let overlay = self.city.marker(i);
+        let offsets = special_sprites(overlay);
+        if offsets.is_empty() || (self.city.wet(i) && overlay != TOXIC_OVERLAY && overlay != FLOOD_OVERLAY) {
+            return Ok(());
+        }
+        let mut phase = c.phase + x * 3 + y * 5;
+        if overlay == FIRE_OVERLAY {
+            let mut seed = ((x + y * self.city.edge + 1) as u32).wrapping_mul(FIRE_PHASE_HASH);
+            seed = ((seed >> 16) ^ seed).wrapping_mul(FIRE_PHASE_HASH);
+            phase = c.phase + (((seed >> 16) ^ seed) & 0xffff) as i32;
+        }
+        let id = c.base() + offsets[phase.rem_euclid(offsets.len() as i32) as usize];
+        let flip = (phase >> 2) & 1 != 0;
+        let key = self.sprites.get(id, flip)?;
+        let width = self.sprites.images[&key].w;
+        let sx = c.side() + (self.city.edge + x - y) * c.hw();
+        let baseline = c.top() + (x + y) * c.hh() + c.height() - self.city.object(i) * c.step();
+        self.add(draws, id, flip, sx + c.hw() - width / 2, baseline)?;
+        Ok(())
     }
     fn traffic_sprite(&self, x: i32, y: i32, b: i32) -> Option<(i32, bool)> {
         let mut variant = *TRAFFIC.get((b - 0x1d) as usize)?;

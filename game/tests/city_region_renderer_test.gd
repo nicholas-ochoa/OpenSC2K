@@ -45,7 +45,6 @@ func _run() -> void:
 						region.image.get_data() == full.image.get_region(bounds).get_data(),
 						"Region pixels differ: %d %d %s %s" % [edge, view, CityViewMode.key(mode), bounds],
 					)
-					assert(region.tiles_drawn < edge * edge, "Region render scanned the whole map")
 
 				print("PASS: %d view %d %s regional pixels match whole-map painter" % [edge, view, CityViewMode.key(mode)])
 

@@ -30,11 +30,10 @@ static func patch_static_image(
 	sprites: Sc2SpriteArchive,
 	dirty_indices: PackedInt32Array,
 	view_size := VIEW_LARGE,
-	animation_phase := 0,
 	copy_image := true
 ) -> IsometricImageRender.PatchResult:
 	return IsometricImageRender.patch_static_image(
-		base_image, city, palette, sprites, dirty_indices, view_size, animation_phase, copy_image
+		base_image, city, palette, sprites, dirty_indices, view_size, copy_image
 	)
 
 
@@ -62,20 +61,6 @@ static func potential_tile_bounds(
 	map_edge: int = 128,
 ) -> Rect2i:
 	return IsometricGeometry.potential_tile_bounds(configuration, sprite_limit, x, y, map_edge)
-
-
-# return the diagonals and screen columns whose tiles can touch `bounds`
-# a region painter walks `first_diagonal` to `last_diagonal` in order
-static func region_tile_span(
-	configuration: CityViewConfiguration, sprite_limit: Vector2i, bounds: Rect2i,
-	map_edge: int, underground: bool, maximum_altitude := 31
-) -> CityRegionTileSpan:
-	return IsometricGeometry.region_tile_span(configuration, sprite_limit, bounds, map_edge, underground, maximum_altitude)
-
-
-# return the first and last y of the tiles on `diagonal` inside `span`
-static func diagonal_rows(span: CityRegionTileSpan, diagonal: int, map_edge: int) -> Vector2i:
-	return IsometricGeometry.diagonal_rows(span, diagonal, map_edge)
 
 
 static func surface_terrain_id(city: CityState, x: int, y: int) -> int:
@@ -119,33 +104,6 @@ static func transient_effect_position(
 
 static func effect_sprite_id(large_sprite_id: int, view_size := VIEW_LARGE) -> int:
 	return IsometricGeometry.effect_sprite_id(large_sprite_id, view_size)
-
-
-# paint one map tile into `output`, in back-to-front order
-# `output` is an `Image` or any recorder with the same `blend_rect` call
-# `origin_x` is the screen column of tile (0, 0). shift it, or shift
-# `configuration.top_margin`, to paint into a sub-rectangle of the map
-# `cache` holds decoded sprites and belongs to the caller
-# this is the one tile painter. the city image, the region renderers, the
-# gpu geometry builder, and the previews all paint the same pixels
-static func draw_tile(
-	output: Variant,
-	city: CityState,
-	palette: Sc2Palette,
-	sprites: Sc2SpriteArchive,
-	cache: Dictionary,
-	configuration: CityViewConfiguration,
-	origin_x: int,
-	x: int,
-	y: int,
-	animation_phase: int,
-	include_moving_things: bool,
-	include_special_overlays: bool
-) -> void:
-	IsometricImageRender.draw_tile(
-		output, city, palette, sprites, cache, configuration, origin_x, x, y, animation_phase,
-		include_moving_things, include_special_overlays
-	)
 
 
 static func moving_thing_visual(
@@ -236,24 +194,11 @@ static func patch_static_occlusion_commands(
 	return IsometricStaticOcclusion.patch_static_occlusion_commands(base_commands, city, sprites, dirty_indices, view_size)
 
 
-# return the foreground occluder commands of one tile
-# this is the per-tile form of `static_occlusion_commands`. a caller that
-# paints tiles with `draw_tile` uses this for the foreground of the same
-# tile, with the same `draw_order` rule
+# the foreground commands of one tile
 static func tile_occlusion_commands(
-	city: CityState,
-	sprites: Sc2SpriteArchive,
-	configuration: CityViewConfiguration,
-	origin_x: int,
-	x: int,
-	y: int,
-	draw_order: int
+	city: CityState, sprites: Sc2SpriteArchive, view_size: int, x: int, y: int
 ) -> Array[CityStaticCommand]:
-	return IsometricStaticOcclusion.tile_occlusion_commands(city, sprites, configuration, origin_x, x, y, draw_order)
-
-
-static func configure_train_foreground(command: CityStaticCommand, building_id: int, configuration: CityViewConfiguration) -> void:
-	IsometricStaticOcclusion.configure_train_foreground(command, building_id, configuration)
+	return IsometricStaticOcclusion.tile_occlusion_commands(city, sprites, view_size, x, y)
 
 
 static func foreground_difference_mask(sprite: Image, background: Image) -> Image:
@@ -293,17 +238,9 @@ static func shadow_palette_index(index: int) -> int:
 	return IsometricPixelOperations.shadow_palette_index(index)
 
 
-# These sprites use their width to set the vertical offset.
-static func building_baseline_offset(
-	building_id: int, terrain_id: int, sprite_width: int, view_size := VIEW_LARGE
-) -> int:
-	return IsometricStaticVisuals.building_baseline_offset(building_id, terrain_id, sprite_width, view_size)
-
-
 # return the decoded sprite image, flipped on request
-# `cache` belongs to the caller and holds the result. a caller that shares
-# one cache with `draw_tile` gets the same image instances, so image
-# identity stays usable as a sprite key
+# `cache` belongs to the caller and holds the result, so image identity stays
+# usable as a sprite key
 # the returned image belongs to the cache. do not change it
 static func sprite_image(
 	sprites: Sc2SpriteArchive,

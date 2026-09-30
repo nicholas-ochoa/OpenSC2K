@@ -89,14 +89,13 @@ func _custom_sprite(sprites: Sc2SpriteArchive, id: int, size: Vector2i, color: i
 
 func _paint_tiles(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 		view: int, points: Array[Vector2i], images: Dictionary) -> Array[CityGpuDrawList]:
-	var config := CityIsometricRenderer.view_configuration(view)
+	var context := CityGpuBuildContext.new()
+	context.images = images
+	assert(context.prepare(city, palette, sprites, view, CityViewMode.Mode.CITY, true, true, true, 0, false).is_empty())
 	var result: Array[CityGpuDrawList] = []
 
 	for point in points:
-		var draws := CityGpuDrawList.new()
-		CityIsometricRenderer.draw_tile(draws, city, palette, sprites, images, config,
-			config.side_margin + city.map_size * config.half_width, point.x, point.y, 0, false, false)
-		result.append(draws)
+		result.append(context.tile_draw_list([point]))
 
 	return result
 

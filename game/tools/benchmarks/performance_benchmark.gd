@@ -120,8 +120,7 @@ func _benchmark_initialize() -> void:
 		index_palette,
 		sprites,
 		PackedInt32Array([edit_city.index_of(edit_point.x, edit_point.y)]),
-		Renderer.VIEW_LARGE,
-		0
+		Renderer.VIEW_LARGE
 	)
 	var patch_usec := Time.get_ticks_usec() - started
 	started = Time.get_ticks_usec()
@@ -131,12 +130,11 @@ func _benchmark_initialize() -> void:
 	)
 	var edit_full_usec := Time.get_ticks_usec() - started
 	print(
-		"regional_edit_render: %d us; full=%d us; area=%d; tiles=%d; exact=%s"
+		"regional_edit_render: %d us; full=%d us; area=%d; exact=%s"
 		% [
 			patch_usec,
 			edit_full_usec,
 			patched.output_rect.get_area() if patched.ok else 0,
-			patched.tiles_drawn if patched.ok else 0,
 			patched.ok and edit_full.ok
 				and patched.image.get_data() == edit_full.image.get_data(),
 		]

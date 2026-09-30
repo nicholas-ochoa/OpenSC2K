@@ -242,19 +242,23 @@ static func build(job: Request) -> Result:
 	var order := tiles.keys()
 	order.sort()
 	var config := CityIsometricRenderer.view_configuration(job.view)
-	var origin := config.side_margin + city.map_size * config.half_width
-	var draws := CityGpuDrawList.new()
-	var cache := job.cache
+	# the preview keeps one native painter across drags. each snapshot is a new revision
+	var context: CityGpuBuildContext = job.cache.get("native_painter")
+
+	if context == null:
+		context = CityGpuBuildContext.new()
+		job.cache["native_painter"] = context
+
+	job.cache["native_revision"] = int(job.cache.get("native_revision", 0)) + 1
+	var mode := CityViewMode.Mode.UNDERGROUND if job.underground else CityViewMode.Mode.CITY
+	var failure := context.prepare(city, job.palette, job.sprites, job.view, mode, true, true, true, job.cache.native_revision,
+		false, not job.underground)
+	var points: Array[Vector2i] = []
 
 	for key in order:
-		var point: Vector2i = tiles[key]
+		points.append(tiles[key])
 
-		if job.underground:
-			CityUndergroundView.draw_tile(draws, city, job.palette, job.sprites, cache, config, origin, point.x, point.y, true, true)
-		else:
-			CityIsometricRenderer.draw_tile(draws, city, job.palette, job.sprites, cache, config, origin, point.x, point.y, 0, false, true)
-
-	artwork.draws = draws.draws
+	artwork.draws = [] if not failure.is_empty() else context.tile_draw_list(points).draws
 	artwork.divisor = config.divisor
 	artwork.candidate_count = candidates.size()
 	artwork.tile_count = tiles.size()

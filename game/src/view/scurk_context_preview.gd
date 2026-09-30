@@ -112,20 +112,23 @@ func _rebuild() -> void:
 						configuration.top_margin + (x + y) * config.half_height + config.tile_height - ground.image.get_height())
 					output.blend_rect(ground.image, Rect2i(Vector2i.ZERO, ground.image.get_size()), point)
 	var artwork_image := artwork.get_image()
-	var cache: Dictionary = {}
+	var underground := scene.kind == ContextScene.Kind.UNDERGROUND
+	var painter := CityGpuBuildContext.new()
+	var failure := painter.prepare(snapshot_city, _palette, sprites, view_size,
+		CityViewMode.Mode.UNDERGROUND if underground else CityViewMode.Mode.CITY, true, true, true, 0, false)
+	# native draws use the full-map layout; this frame moves the target site to its center
+	var offset := Vector2i(origin_x - (config.side_margin + snapshot_city.map_size * config.half_width),
+		configuration.top_margin - config.top_margin)
 	for diagonal in MAP_SIZE * 2 - 1:
 		for y in diagonal + 1:
 			var x := diagonal - y
 			if x >= MAP_SIZE or y >= MAP_SIZE:
 				continue
 			var support_target := tile_id > Tiles.MAX_ID and scene.target_sites.has(Rect2i(x, y, 1, 1))
-			if scene.kind == ContextScene.Kind.UNDERGROUND:
-				if not support_target:
-					CityUndergroundView.draw_tile(output, snapshot_city, _palette, sprites, cache,
-						configuration, origin_x, x, y, true, true)
-			elif not support_target or scene.kind != ContextScene.Kind.TERRAIN:
-				CityIsometricRenderer.draw_tile(output, snapshot_city, _palette, sprites, cache,
-					configuration, origin_x, x, y, 0, false, false)
+			var painted := not support_target or (not underground and scene.kind != ContextScene.Kind.TERRAIN)
+			if failure.is_empty() and painted:
+				for draw in painter.tile_draw_list([Vector2i(x, y)], offset).draws:
+					output.blend_rect(draw.image, draw.source, draw.position)
 			if support_target:
 				var anchor_height := (underground_ground.height if scene.kind == ContextScene.Kind.UNDERGROUND
 					and underground_ground != null else artwork_image.get_height())

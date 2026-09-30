@@ -52,8 +52,7 @@ func run(small_medium: Sc2SpriteArchive) -> void:
 		Palette.index_encoding(),
 		small_medium,
 		PackedInt32Array([patch_index]),
-		IsometricRenderer.VIEW_SMALL,
-		0
+		IsometricRenderer.VIEW_SMALL
 	)
 	var patch_full := IsometricRenderer.create_image(
 		patch_city, Palette.index_encoding(), small_medium,
@@ -77,8 +76,7 @@ func run(small_medium: Sc2SpriteArchive) -> void:
 		Palette.index_encoding(),
 		small_medium,
 		PackedInt32Array([patch_index]),
-		IsometricRenderer.VIEW_SMALL,
-		0
+		IsometricRenderer.VIEW_SMALL
 	)
 	var scaled_full: Image = patch_full.image.duplicate()
 	scaled_full.resize(

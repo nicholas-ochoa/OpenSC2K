@@ -40,7 +40,7 @@ func _check_tools() -> void:
 			assert(BuildingSites.preview_valid(city, tool.x, tool.y, selected))
 			var result := BuildingEdit.apply(city, tool.x, tool.y, selected, SimLfsrRandom.new(1), ZeroRandom.new())
 			assert(result.ok, result.error)
-			_check_footprint(city, Rect2i(origin, Vector2i.ONE * area))
+			_check_footprint(city, Rect2i(origin, Vector2i.ONE * area), _anchors(city))
 			_check_rotations(city)
 			if origin == Vector2i.ZERO:
 				_check_reload(city)
@@ -66,14 +66,38 @@ func _check_scurk() -> void:
 			city.set_tile_flag(origin.x, origin.y, Sc2TileFlags.WATER, true)
 		var result := ScurkPlaceCommand.apply(city, tile, selected, ZeroRandom.new())
 		assert(result.ok, "SCURK edge tile %d: %s" % [tile, result.error])
-		_check_footprint(city, Rect2i(origin, Vector2i.ONE * area))
+		_check_footprint(city, Rect2i(origin, Vector2i.ONE * area), _anchors(city))
 		_check_rotations(city)
 	var legacy := _city(128, false)
 	assert(not ScurkPlaceCommand.apply(legacy, BuildingTileIds.LARGE_FACTORY_3X3,
 		Vector2i(126, 126), ZeroRandom.new()).ok)
 
 
-func _check_footprint(city: CityState, site: Rect2i) -> void:
+# the map cells whose building sprite the native painter draws
+func _anchors(city: CityState) -> Dictionary[int, bool]:
+	var tiles: Array[Vector2i] = []
+
+	for x in city.map_size:
+		for y in city.map_size:
+			if city.building_id(x, y) > BuildingTileIds.EMPTY:
+				tiles.append(Vector2i(x, y))
+
+	var context := CityGpuBuildContext.new()
+	assert(context.prepare(city, Sc2Palette.index_encoding(), FixtureGraphics.pack().large_sprites,
+		CityIsometricRenderer.VIEW_LARGE, CityViewMode.Mode.CITY, true, true, true, 0, false).is_empty())
+	var anchors: Dictionary[int, bool] = {}
+
+	for draw in context.tile_draw_list(tiles).draws:
+		var y := int(draw.depth_order) % city.map_size
+		var x := int(draw.depth_order) / city.map_size - y
+
+		if draw.sprite_id == 1000 + city.building_id(x, y):
+			anchors[city.index_of(x, y)] = true
+
+	return anchors
+
+
+func _check_footprint(city: CityState, site: Rect2i, anchors: Dictionary[int, bool]) -> void:
 	var tile := city.building_id(site.position.x, site.position.y)
 	var drawn := 0
 	for x in range(site.position.x, site.end.x):
@@ -81,7 +105,7 @@ func _check_footprint(city: CityState, site: Rect2i) -> void:
 			assert(city.building_id(x, y) == tile)
 			assert(DemolishEffectsSites._find_building_site(city.buildings, city.zones,
 				Vector2i(x, y), tile, site.size.x, city.compass_rotation(), city.map_size) == site)
-			if IsometricStaticVisuals._should_draw_building(city, x, y, tile):
+			if anchors.has(city.index_of(x, y)):
 				drawn += 1
 				assert(Vector2i(x, y) == Vector2i(site.position.x, site.end.y - 1))
 	assert(drawn == 1)
@@ -93,13 +117,14 @@ func _check_rotations(city: CityState) -> void:
 	for ccw in [false, true]:
 		for turn in 4:
 			assert(CityRotationCommand.apply(city, ccw).ok)
+			var anchors := _anchors(city)
 			for x in city.map_size:
 				for y in city.map_size:
 					var tile := city.building_id(x, y)
-					if tile < BuildingTileIds.DEVELOPED_FIRST or not IsometricStaticVisuals._should_draw_building(city, x, y, tile):
+					if tile < BuildingTileIds.DEVELOPED_FIRST or not anchors.has(city.index_of(x, y)):
 						continue
 					var area := DemolishStructures.structure_area(tile)
-					_check_footprint(city, Rect2i(x, y - area + 1, area, area))
+					_check_footprint(city, Rect2i(x, y - area + 1, area, area), anchors)
 		assert(city.buildings == before_buildings and city.zones == before_zones)
 
 

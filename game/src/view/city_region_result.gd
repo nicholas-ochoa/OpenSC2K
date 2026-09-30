@@ -8,7 +8,6 @@ var occlusion_grid: Dictionary[Vector2i, Array] = {}
 # A positive screen scale leaves `occlusion_grid` to the first query. Most
 # regions of a wide view never answer an occlusion query.
 var occlusion_divisor := 0
-var tiles_drawn := 0
 var display_city: CityState
 var usec := 0
 var key := Vector2i.ZERO

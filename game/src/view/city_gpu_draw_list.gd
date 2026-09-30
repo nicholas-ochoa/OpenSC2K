@@ -8,6 +8,23 @@ func blend_rect(image: Image, source: Rect2i, destination: Vector2i) -> void:
 	draws.append(Draw.new(image, source, destination))
 
 
+# whole-sprite draws from native draw records, moved by `offset`
+static func from_records(records: PackedInt64Array, images: Array, offset := Vector2i.ZERO) -> CityGpuDrawList:
+	var list := CityGpuDrawList.new()
+
+	for at in range(0, records.size(), CityGpuBuildContext.RECORD_SIZE):
+		var size := Vector2i(records[at + 2], records[at + 3])
+		var draw := Draw.new(images[records[at + 4]], Rect2i(Vector2i.ZERO, size),
+			Vector2i(records[at], records[at + 1]) + offset)
+		draw.sprite_id = records[at + 5]
+		draw.flip = records[at + 6] != 0
+		draw.size = size
+		draw.depth_order = records[at + 7]
+		list.draws.append(draw)
+
+	return list
+
+
 static func paint(
 	draws_value: Array[Draw],
 	bounds: Rect2i,

@@ -1,5 +1,8 @@
 use super::Rect;
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
+
+/// The image key of the placeholder of a missing sprite.
+pub const PLACEHOLDER: u64 = u64::MAX - 1;
 
 #[derive(Clone)]
 pub struct Sprite {
@@ -11,13 +14,26 @@ pub struct Sprite {
 pub struct Sprites {
     pub images: HashMap<u64, Sprite>,
     target: [u8; 4],
+    /// While set, a missing sprite paints as a transparent pixel and is recorded
+    /// in `missing`, so one pass finds every missing sprite.
+    pub placeholders: bool,
+    pub missing: BTreeSet<i32>,
 }
 impl Sprites {
     pub fn new(images: HashMap<u64, Sprite>, target: [u8; 4]) -> Self {
-        Self { images, target }
+        Self {
+            images,
+            target,
+            placeholders: false,
+            missing: BTreeSet::new(),
+        }
     }
     pub fn get(&mut self, id: i32, flip: bool) -> Result<u64, String> {
         let key = (id as u64) * 2 + u64::from(flip);
+        if !self.images.contains_key(&key) && !self.images.contains_key(&((id as u64) * 2)) && self.placeholders {
+            self.missing.insert(id);
+            return Ok(PLACEHOLDER);
+        }
         if !self.images.contains_key(&key) {
             let Some(original) = self.images.get(&((id as u64) * 2)) else {
                 return Err(format!("missing region sprite {id}"));

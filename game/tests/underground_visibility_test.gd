@@ -24,7 +24,7 @@ func _run() -> void:
 			var saved: Array = DocumentState.capture(city.document)
 			for pipes in [false, true]:
 				for mains in [false, true]:
-					var ids := CityUndergroundView.tile_sprite_ids(city, 20, 20, view, pipes, true, mains)
+					var ids := NativeTileDraws.sprite_ids(city, sprites, view, 20, 20, CityViewMode.Mode.UNDERGROUND, pipes, true, mains)
 					var overlay := base + (0x1d3 if wet else 0x15f)
 					if underground >= 0x10:
 						if mains:

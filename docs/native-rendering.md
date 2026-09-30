@@ -1,9 +1,10 @@
 # Native region builder
 
-The GPU region builder is a Rust GDExtension in `native/rendering`. It is the only
-GPU region painter. The CPU region renderer remains the fallback and the reference
-for tests. The builder uses an immutable display snapshot. It does not read or
-change native simulation state. Each geometry worker owns one builder and its caches.
+The region builder is a Rust GDExtension in `native/rendering`. It is the only city
+painter: it builds GPU region meshes, and it rasterizes CPU pixels for the CPU region
+view, whole-city images, PNG and print exports, previews and edit patches. The builder
+uses an immutable display snapshot. It does not read or change native simulation
+state. Each geometry worker or painting job owns one builder and its caches.
 
 Rust selects terrain and building sprites, calculates bounds and positions, applies
 traffic masks, packs the sprite atlas, clips draws, and builds mesh arrays. Godot
@@ -37,6 +38,24 @@ Godot object for each draw:
   Scrolling then seldom adds a sprite, so the main thread seldom uploads an atlas.
   Flipped and traffic-masked sprites are added when a region first needs them.
 
+## CPU pixels
+
+`raster.rs` composites the draws of a screen area in painter order: an opaque sprite
+pixel replaces the pixel below it, as Godot's `Image.blend_rect` does with the indexed
+artwork. `CityGpuBuildContext.raster` returns the pixels and the draw records;
+`tile_draws` returns the uncut draws of single tiles for callers that place them in
+their own layout, such as the SCURK context preview, the query neighborhood and the
+network placement preview.
+
+- **Special overlays.** Previews and exports can ask the painter for the animated
+  fire, flood, riot and toxic markers as tile sprites. The city view draws them as
+  moving sprites instead.
+- **Moving objects.** Exports pass the moving object draws of each tile. The painter
+  adds them after the tile's static sprites. A shadow draw darkens the pixels below
+  it through the palette's shadow pairs.
+- **Missing artwork.** `missing_sprites` paints every tile with placeholders and lists
+  each sprite ID that the city needs and the artwork lacks.
+
 ## Other native view work
 
 - **Data map overlays.** `data_view.rs` builds the overlay mesh of each data map from the
@@ -63,8 +82,8 @@ Run `cargo fmt`, `cargo fmt --check`, `cargo clippy --all-targets --all-features
 and `cargo test --release` from `native/rendering`. The project validator also builds
 both extensions and runs both sets of Rust unit tests.
 
-`city_native_region_test` compares native regions with the CPU region renderer. It
-checks pixels and foreground order for the building and terrain catalog, random
+`city_native_region_test` compares GPU regions with the native CPU pixels of the same
+regions. It checks pixels and foreground order for the building and terrain catalog, random
 tiles at each view, rotation and cutaway, surface and underground switches,
 traffic, dispatch records, a 512-by-512 city, and draw queries. A warm builder must
 also match the CPU after each kind of tile, neighbor, cliff and layout edit. Its

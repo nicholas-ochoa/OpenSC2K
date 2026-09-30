@@ -13,18 +13,21 @@ static func render(city: CityState, point: Vector2i, palette: Sc2Palette, sprite
 	if city == null or city.index_of(point.x, point.y) < 0 or palette == null or sprites == null or not sprites.is_valid():
 		return null
 
-	var config := Renderer.view_configuration(Renderer.VIEW_LARGE)
 	var center := Vector2.ZERO
 
 	for corner in Renderer.tile_polygon(city, point.x, point.y):
 		center += corner / 4.0
 
-	var origin := config.side_margin + city.map_size * config.half_width
 	var bounds := Rect2i(Vector2i(center) - (SIZE / 2) - Vector2i(0, 24), SIZE)
-	config = config.with_top_margin(config.top_margin - bounds.position.y)
 	var image := Image.create(SIZE.x, SIZE.y, false, Image.FORMAT_RGBA8)
 	var selected_image := Image.create(SIZE.x, SIZE.y, false, Image.FORMAT_RGBA8)
 	var cache := {}
+	var context := CityGpuBuildContext.new()
+
+	if not context.prepare(city, palette, sprites, Renderer.VIEW_LARGE, CityViewMode.Mode.CITY, true, true, true, 0, false,
+			true).is_empty():
+		return null
+
 	var site := Rect2i(point, Vector2i.ONE)
 	var tile := city.building_id(point.x, point.y)
 	var area := DemolishEffectsSites._building_area(tile)
@@ -49,8 +52,7 @@ static func render(city: CityState, point: Vector2i, palette: Sc2Palette, sprite
 	for diagonal in range(first.x + first.y, last.x + last.y + 1):
 		for y in range(maxi(first.y, diagonal - last.x), mini(last.y, diagonal - first.x) + 1):
 			var x := diagonal - y
-			var draws := CityGpuDrawList.new()
-			Renderer.draw_tile(draws, city, palette, sprites, cache, config, origin - bounds.position.x, x, y, 0, false, true)
+			var draws := context.tile_draw_list([Vector2i(x, y)], -bounds.position)
 			var selected := site.has_point(Vector2i(x, y))
 			for draw: CityGpuDrawList.Draw in draws.draws:
 				var source: Image = draw.image
