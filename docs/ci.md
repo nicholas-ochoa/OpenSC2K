@@ -13,7 +13,9 @@ It has two jobs:
   project with `tools/build_desktop_release.py --native`. It checks that each package contains
   both libraries.
 
-`.github/workflows/test.yml` defines the Test job. The CI and Release workflows both use it.
+`.github/workflows/test.yml` defines the Test job, and `.github/workflows/package.yml` defines the
+native and Build jobs. The CI and Release workflows both use them. A release passes its version as
+the package label and keeps the `desktop-packages` artifact for seven days.
 
 ## Tests
 
