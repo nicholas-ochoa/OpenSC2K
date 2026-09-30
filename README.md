@@ -70,8 +70,11 @@ sound, and music.
 - Detailed simulation data available including simulation timings, inspection tools
 - Support for external graphics, sound, and music packs
 
-Larger cities and per-tile data maps use `.sc2x` saves. The original game cannot
-open these files. Original `.sc2` cities keep their separate compatibility mode.
+Larger cities and per-tile data maps use `.sc2x` saves: ZIP archives with one raw entry per
+city structure, city names of up to 64 characters, and signs that can share a tile with any
+building. See [the SC2X format](docs/sc2x-format.md). The original game cannot open these
+files. Original `.sc2` cities keep their separate compatibility mode, and older `.sc2x` files
+still load and save as a new copy.
 
 ## sc2kfix
 
