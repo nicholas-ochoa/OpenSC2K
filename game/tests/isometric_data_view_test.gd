@@ -211,7 +211,7 @@ func check_height_and_walls() -> void:
 		if tint.a < 0.9:
 			transparent_vertices += 1
 
-	check(transparent_vertices == 4, "Water has one transparent tile at its surface")
+	check(transparent_vertices == 0, "The height view shows the seabed without a water surface")
 	city.set_tile_flag(0, 0, 0x04, false)
 	city.set_terrain_id(0, 0, 0)
 	city.altitude_words.fill(16)

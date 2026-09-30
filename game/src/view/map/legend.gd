@@ -31,7 +31,7 @@ func refresh() -> void:
 	if not visible:
 		return
 	var area := map.trip_reach.key_rect(map) if has_trip else Rect2(
-		map.layers.data_key_origin(), Vector2(320, 116 if map.data_view_mode == CityViewMode.Mode.HEIGHT else 96))
+		map.layers.data_key_origin(), Vector2(320, 148 if map.data_view_mode == CityViewMode.Mode.HEIGHT else 96))
 	position = area.position
 	size = area.size
 	_content.size = size

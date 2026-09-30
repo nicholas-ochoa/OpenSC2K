@@ -5,6 +5,9 @@ extends CityMapConstants
 # Driver and resource overhead are separate from this estimate.
 const RETAINED_GEOMETRY_BYTES := 64 * 1024 * 1024
 
+# the top of the underwater scale of the height legend
+const WATER_SCALE_TOP := 96
+
 var map: CityMapControl
 # the price label draws above the network preview layer, not under it
 var price_layer: Node2D
@@ -162,37 +165,24 @@ func draw_data_key(canvas: Control) -> void:
 			)
 
 		if map.data_view_mode == CityViewMode.Mode.HEIGHT:
-			# underwater tiles go from shallow to deep blue under a transparent water surface
-			for step in 6:
-				var depth := roundi(step * CityDataView.MAX_SHOWN_DEPTH / 5.0)
-				canvas.draw_rect(Rect2(origin + Vector2(12 + step * 6, 96), Vector2(6, 10)),
+			# underwater tiles have their own scale, the same size as the land scale
+			for index in 32:
+				var depth := roundi(index * CityDataView.MAX_SHOWN_DEPTH / 31.0)
+				canvas.draw_rect(Rect2(origin + Vector2(12 + index * 9.25, WATER_SCALE_TOP), Vector2(9.25, 20)),
 					CityDataView.color(CityDataView.UNDERWATER_BASE + depth, map.data_view_mode))
 
-			canvas.draw_string(font, origin + Vector2(56, 106), "Under water: shallow to deep", HORIZONTAL_ALIGNMENT_LEFT, -1, 13,
-					map.get_theme_color("font_color", "MapLegend"))
+			_draw_scale_labels(canvas, font, origin + Vector2(0, WATER_SCALE_TOP + 42), "Shallow water", "Deep water")
 
 		var labels := CityDataView.range_labels(map.data_view_mode)
-		var low := labels[0]
-		var high := labels[1]
-		canvas.draw_string(
-			font,
-			origin + Vector2(12, 80),
-			low,
-			HORIZONTAL_ALIGNMENT_LEFT,
-			-1,
-			14,
-			map.get_theme_color("font_color", "MapLegend"),
-		)
-		var high_width := font.get_string_size(high, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
-		canvas.draw_string(
-			font,
-			origin + Vector2(308 - high_width, 80),
-			high,
-			HORIZONTAL_ALIGNMENT_LEFT,
-			-1,
-			14,
-			map.get_theme_color("font_color", "MapLegend"),
-		)
+		_draw_scale_labels(canvas, font, origin + Vector2(0, 80), labels[0], labels[1])
+
+
+# the low label under the left end of a scale and the high label under its right end
+func _draw_scale_labels(canvas: Control, font: Font, baseline: Vector2, low: String, high: String) -> void:
+	var color := map.get_theme_color("font_color", "MapLegend")
+	canvas.draw_string(font, baseline + Vector2(12, 0), low, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, color)
+	var high_width := font.get_string_size(high, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+	canvas.draw_string(font, baseline + Vector2(308 - high_width, 0), high, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, color)
 
 
 func data_key_origin() -> Vector2:

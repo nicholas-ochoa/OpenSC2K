@@ -41,7 +41,7 @@ Godot object for each draw:
 
 - **Data map overlays.** `data_view.rs` builds the overlay mesh of each data map from the
   ALTM words, XTER, and XBIT. `CityDataView.create_mesh` calls it through `NativeCityDataMesh`.
-  Vertex colors mark tops, walls, and water; the grid shader reads each tile's value through
+  Vertex colors mark tops and walls; the grid shader reads each tile's value through
   the UVs. The same file makes the tile values of the height, power and water maps, which have no
   data chunk.
 - **City Map window.** `minimap.rs` selects the palette index of each Map window pixel for

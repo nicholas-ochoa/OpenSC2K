@@ -21,7 +21,7 @@ const CHUNKS: Dictionary[CityViewMode.Mode, String] = {
 }
 # labels under the gradient bar in the isometric legend
 const RANGE_LABELS := {
-	CityViewMode.Mode.HEIGHT: ["Level 1", "Level 32"],
+	CityViewMode.Mode.HEIGHT: ["Land level 1", "Land level 32"],
 }
 # rate of growth stores a steady band around the middle of the byte range
 const GROWTH_DECLINE := 0x7d
@@ -244,7 +244,7 @@ static func surface_polygon(city: CityState, x: int, y: int, height_view := fals
 
 
 # the rendering library builds the geometry. see native/rendering/src/data_view.rs
-# vertex colors only mark tops, walls and water. the grid shader reads each
+# vertex colors only mark tops and walls. the grid shader reads each
 # tile's value through the uvs
 static func create_mesh(city: CityState, mode: CityViewMode.Mode) -> ArrayMesh:
 	var built: Dictionary = NativeCityDataMesh.build(city.map_size, city.visible_altitude_levels, mode == CityViewMode.Mode.HEIGHT,

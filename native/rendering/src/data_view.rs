@@ -1,6 +1,6 @@
 //! Data map overlay geometry, as CityDataView.create_mesh with encoded tints.
 //! The grid shader reads each tile's value through the UVs. Vertex colors only
-//! mark tops, walls and water.
+//! mark tops and walls. The height view shows the seabed without a water surface.
 
 const HALF_WIDTH: f32 = 16.0;
 const HALF_HEIGHT: f32 = 8.0;
@@ -30,7 +30,6 @@ const TERRAIN_SHAPES: [u8; 16] = [0x0, 0x9, 0xa, 0x2, 0xb, 0xd, 0x3, 0x6, 0xc, 0
 const TOP: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const RIGHT_WALL: [f32; 4] = [1.0, 1.0, 0.78, 1.0];
 const LEFT_WALL: [f32; 4] = [1.0, 1.0, 0.65, 1.0];
-const WATER: [f32; 4] = [1.0, 1.0, 1.0, 0.28];
 
 type Point = [f32; 2];
 type Quad = [Point; 4];
@@ -194,17 +193,6 @@ pub fn build(city: &DataCity, height_view: bool) -> DataMesh {
                 }
             }
             mesh.quad(polygon, TOP, x, y);
-            if height_view && city.wet(i) && city.water(i) < city.visible {
-                let mut water = city.tile_polygon(x, y, false);
-                // the water flag can also occur on a flat terrain code
-                if city.terrain[i] < DEEP_WATER_FIRST {
-                    let rise = (city.water(i) - city.land(i)) as f32 * ALTITUDE_STEP;
-                    for point in &mut water {
-                        point[1] -= rise;
-                    }
-                }
-                mesh.quad(water, WATER, x, y);
-            }
         }
     }
     mesh
@@ -276,7 +264,7 @@ mod tests {
     }
 
     #[test]
-    fn height_view_adds_a_water_surface() {
+    fn height_view_shows_the_seabed_without_a_water_surface() {
         let mut altitude = vec![0; 4];
         let mut terrain = vec![0; 4];
         let mut flags = vec![0; 4];
@@ -284,10 +272,8 @@ mod tests {
         terrain[0] = DEEP_WATER_FIRST;
         flags[0] = WATER_FLAG;
         let mesh = city_mesh(2, &altitude, &terrain, &flags, 32, true);
-        assert_eq!(mesh.colors.iter().filter(|tint| tint[3] < 0.9).count(), 4);
-        let seabed = mesh.vertices[0];
-        let water = mesh.vertices[mesh.colors.iter().position(|tint| tint[3] < 0.9).unwrap()];
-        assert_eq!(seabed[1] - water[1], 10.0 * ALTITUDE_STEP);
+        assert!(mesh.colors.iter().all(|tint| tint[3] == 1.0));
+        assert_eq!(mesh.vertices.len(), 4 * 4);
     }
 
     #[test]
