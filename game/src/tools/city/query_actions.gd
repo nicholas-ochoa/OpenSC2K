@@ -86,7 +86,7 @@ static func rename_facility(
 	if not OverlayData.is_facility(overlay_id):
 		return RenameResult.failure("facility label is invalid")
 
-	if city.text_overlay_id(point.x, point.y) != overlay_id:
+	if city.facility_overlay_id(point.x, point.y) != overlay_id:
 		return RenameResult.failure("queried facility has changed")
 
 	var old_value := city.label(overlay_id)

@@ -78,7 +78,7 @@ static func validate_assets(
 				if power_marker != null and sprites.find_sprite(power_marker.sprite_id) == null:
 					missing[power_marker.sprite_id] = true
 
-			var special_overlay := city.text_overlay_id(x, y)
+			var special_overlay := city.marker_overlay_id(x, y)
 
 			if SPECIAL_OVERLAY_SPRITE_OFFSETS.has(special_overlay):
 				var can_draw_on_water := special_overlay == 0xfb or special_overlay == 0xfc
@@ -299,7 +299,7 @@ static func power_marker_visual(
 static func fire_overlay_visual(
 	city: CityState, x: int, y: int, view_size := VIEW_LARGE, animation_phase := 0
 ) -> SpecialOverlay:
-	if city == null or city.text_overlay_id(x, y) != 0xff:
+	if city == null or city.marker_overlay_id(x, y) != 0xff:
 		return null
 
 	return special_overlay_visual(city, x, y, view_size, animation_phase)
@@ -311,7 +311,7 @@ static func special_overlay_visual(
 	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
 		return null
 
-	var overlay := city.text_overlay_id(x, y)
+	var overlay := city.marker_overlay_id(x, y)
 
 	if not SPECIAL_OVERLAY_SPRITE_OFFSETS.has(overlay):
 		return null

@@ -167,7 +167,7 @@ fn mark(index: usize, dirty: &mut [bool], indices: &mut Vec<usize>) {
 
 /// OverlayData.cells_for: a wide SC2X map stores a low and a high plane, and
 /// a layered index of an SC2X version 4 working document stores five planes.
-fn overlay_cells(bytes: usize) -> usize {
+pub(crate) fn overlay_cells(bytes: usize) -> usize {
     if [512, 2048, 8192, 32768, 131072, 294912, 524288, 819200, 2097152, 8388608, 33554432].contains(&bytes) {
         bytes / 2
     } else if [
@@ -183,7 +183,7 @@ fn overlay_cells(bytes: usize) -> usize {
 
 /// OverlayData.read: the top value of a tile. A layered index shows its object,
 /// else its marker, else its facility.
-fn overlay(data: &[u8], index: usize) -> i32 {
+pub(crate) fn overlay(data: &[u8], index: usize) -> i32 {
     let cells = overlay_cells(data.len());
     let wide = |plane: usize| i32::from(data[plane * cells + index]) | i32::from(data[(plane + 1) * cells + index]) << 8;
 

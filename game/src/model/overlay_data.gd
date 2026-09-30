@@ -113,6 +113,63 @@ static func set_object(data: PackedByteArray, index: int, id: int) -> void:
 	_set_wide_at(data, OBJECT_PLANE, index, id)
 
 
+# the marker of a tile: the marker layer of a layered index, else the value of
+# a combined index
+static func marker_at(data: PackedByteArray, index: int) -> int:
+	return data[index] if is_layered(data) else read(data, index)
+
+
+# set or clear the marker of a tile. A combined index writes the value
+static func set_marker_at(data: PackedByteArray, index: int, value: int) -> void:
+	if is_layered(data):
+		data[index] = value & 0xff
+	else:
+		write(data, index, value)
+
+
+# the facility layer of a layered index, else the value of a combined index.
+# The caller checks is_facility
+static func facility_at(data: PackedByteArray, index: int) -> int:
+	return facility(data, index) if is_layered(data) else read(data, index)
+
+
+# Take moving object `record` off tile `index`. A combined index gets
+# `legacy`. A layered index shows the object below it again, and its other
+# layers stay unchanged.
+static func lift_object(data: PackedByteArray, things: PackedByteArray, record: int, index: int, legacy: int) -> void:
+	if not is_layered(data):
+		write(data, index, legacy)
+
+		return
+
+	var id := thing_id(record)
+	var records := ThingData.count(things)
+	var own := ThingData.read(things, record * Sc2ThingLayout.RECORD_SIZE + Sc2ThingLayout.Field.LABEL)
+	var below := own if is_thing(own) and own != id else 0
+	var above := object(data, index)
+
+	if above == id:
+		set_object(data, index, below)
+
+		return
+
+	# an object that another object covers leaves the chain of its tile
+	for step in records:
+		var above_record := thing_record(above)
+
+		if not is_thing(above) or above_record < 0 or above_record >= records:
+			return
+
+		var label_offset := above_record * Sc2ThingLayout.RECORD_SIZE + Sc2ThingLayout.Field.LABEL
+
+		if ThingData.read(things, label_offset) == id:
+			ThingData.write(things, label_offset, below)
+
+			return
+
+		above = ThingData.read(things, label_offset)
+
+
 # The facility of a tile: the facility layer of a layered index, else the base
 # of the tile's object chain in a combined index. Returns 0 without a facility.
 static func base_facility(data: PackedByteArray, things: PackedByteArray, index: int) -> int:

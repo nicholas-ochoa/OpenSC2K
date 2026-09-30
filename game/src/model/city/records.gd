@@ -145,6 +145,7 @@ static func microsim_sites(city: CityState) -> Dictionary[int, Site]:
 
 	var overlays := text.decoded_payload
 	var tile_count := city.map_size * city.map_size
+	var layered := OverlayData.is_layered(overlays)
 	var wide := overlays.size() != tile_count
 	var thing_data := things.decoded_payload if things != null else PackedByteArray()
 	var thing_records := ThingData.count(thing_data)
@@ -156,7 +157,10 @@ static func microsim_sites(city: CityState) -> Dictionary[int, Site]:
 	for index in tile_count:
 		var id := int(overlays[index])
 
-		if wide:
+		# a layered index keeps the facility in its own layer
+		if layered:
+			id = OverlayData.facility(overlays, index)
+		elif wide:
 			id |= int(overlays[tile_count + index]) << 8
 
 		if id < 51:

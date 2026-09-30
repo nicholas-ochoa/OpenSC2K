@@ -238,7 +238,7 @@ static func _place_water(
 ) -> bool:
 	var index := point.x * map_edge + point.y
 
-	if flags[index] & FLAG_WATER or (OverlayData.read(text_overlays, index) > 0xf9 and OverlayData.read(text_overlays, index) <= 255):
+	if flags[index] & FLAG_WATER or (OverlayData.marker_at(text_overlays, index) > 0xf9 and OverlayData.marker_at(text_overlays, index) <= 255):
 		return false
 
 	var old_building := int(buildings[index])

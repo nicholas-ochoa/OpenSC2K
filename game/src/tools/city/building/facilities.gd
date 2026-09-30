@@ -216,8 +216,11 @@ static func provision_microsim(
 				var old_overlay_id := OverlayData.facility_id(checked_id)
 
 				for index in OverlayData.count(text_overlays):
-					if OverlayData.read(text_overlays, index) == old_overlay_id:
-						OverlayData.write(text_overlays, index, 0)
+					if OverlayData.facility_at(text_overlays, index) == old_overlay_id:
+						if OverlayData.is_layered(text_overlays):
+							OverlayData.set_facility(text_overlays, index, 0)
+						else:
+							OverlayData.write(text_overlays, index, 0)
 
 				break
 

@@ -208,7 +208,7 @@ static func _validate_connection_choice(plan: SegmentPlan) -> RouteEditResult:
 		and not planned.is_empty()
 		and plan.listed_connection_cost > 0
 		and NetworkRoutes._is_connection_exit(planned, plan.start, plan.finish, map_edge)
-		and OverlayData.read(plan.changed_payloads.XTXT,
+		and OverlayData.marker_at(plan.changed_payloads.XTXT,
 			plan.connection_anchor.x * map_edge + plan.connection_anchor.y
 		) != CONNECTION_LABEL
 	)

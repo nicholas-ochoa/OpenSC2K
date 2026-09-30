@@ -137,6 +137,15 @@ static func set_text_overlay_id(city: CityState, x: int, y: int, value: int) -> 
 	if index >= cells or (cells < size and cells + index >= size):
 		return false
 
+	# a layered index changes the layer of the value
+	if OverlayData.is_layered(city.text_overlays):
+		OverlayData.write(city.text_overlays, index, value)
+
+		for plane in OverlayData.LAYERED_PLANES:
+			chunk.write_decoded_byte(plane * cells + index, city.text_overlays[plane * cells + index])
+
+		return true
+
 	chunk.write_decoded_byte(index, value & 0xff)
 	city.text_overlays[index] = value & 0xff
 

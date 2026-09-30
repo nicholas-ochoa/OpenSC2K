@@ -54,7 +54,7 @@ static func _marker_point(city: CityState) -> Vector2i:
 
 	for x in map_edge:
 		for y in map_edge:
-			if MARKER_OVERLAYS.has(city.text_overlay_id(x, y)):
+			if MARKER_OVERLAYS.has(city.marker_overlay_id(x, y)):
 				total += Vector2i(x, y)
 				count += 1
 
@@ -68,7 +68,7 @@ static func _marker_point(city: CityState) -> Vector2i:
 
 	for x in map_edge:
 		for y in map_edge:
-			if not MARKER_OVERLAYS.has(city.text_overlay_id(x, y)):
+			if not MARKER_OVERLAYS.has(city.marker_overlay_id(x, y)):
 				continue
 
 			var distance := absi(x - average.x) + absi(y - average.y)

@@ -25,7 +25,7 @@ static func inspect(city: CityState, point: Vector2i) -> QueryResult:
 		if chunk == null or chunk.decoded_payload.size() != city.document.decoded_size(str(checked[0])):
 			return QueryResult.failure("%s data is missing or invalid" % checked[0])
 
-	var overlay := city.text_overlay_id(point.x, point.y)
+	var overlay := city.facility_overlay_id(point.x, point.y)
 
 	if OverlayData.is_facility(overlay):
 		var microsim := city.microsim(OverlayData.facility_record(overlay))

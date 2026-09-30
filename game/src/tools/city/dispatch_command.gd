@@ -213,7 +213,7 @@ static func _clear_existing_dispatch(things: PackedByteArray, text: PackedByteAr
 		var index := OverlayData.find(text, OverlayData.thing_id(thing_index))
 
 		if index >= 0:
-			OverlayData.write(text, index, 0)
+			OverlayData.lift_object(text, things, thing_index, index, 0)
 			ThingData.write(things, thing_index * THING_RECORD_SIZE, 0)
 
 
@@ -268,7 +268,7 @@ static func _delete_thing(
 		var map_index := x * map_edge + y
 
 		if OverlayData.read(text, map_index) == OverlayData.thing_id(thing_index):
-			OverlayData.write(text, map_index, 0)
+			OverlayData.lift_object(text, things, thing_index, map_index, 0)
 
 	for byte_index in THING_RECORD_SIZE:
 		ThingData.write(things, offset + byte_index, 0)

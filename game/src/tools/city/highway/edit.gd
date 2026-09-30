@@ -202,7 +202,7 @@ static func _validate_connection_choice(plan: SegmentPlan) -> RouteEditResult:
 		not plan.bridge_attempted
 		and not sections.is_empty()
 		and HighwayGeometry._is_connection_exit(sections, plan.finish, map_edge)
-		and OverlayData.read(plan.old_payloads.XTXT, start.x * map_edge + start.y) != CONNECTION_LABEL
+		and OverlayData.marker_at(plan.old_payloads.XTXT, start.x * map_edge + start.y) != CONNECTION_LABEL
 	)
 	plan.connection_affordable = (
 		free_mode or plan.city.funds() - plan.route_cost >= CONNECTION_COST

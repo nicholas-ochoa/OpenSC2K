@@ -192,7 +192,7 @@ static func retile_surface(
 	var connections := 0
 	var has_connection_label := (
 		OverlayData.count(text_overlays) == (map_edge * map_edge)
-		and OverlayData.read(text_overlays, index) == CONNECTION_LABEL
+		and OverlayData.marker_at(text_overlays, index) == CONNECTION_LABEL
 	)
 
 	for direction in 4:

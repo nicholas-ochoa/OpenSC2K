@@ -283,6 +283,20 @@ func text_overlay_id(x: int, y: int) -> int:
 	return 0 if index < 0 else OverlayData.read(text_overlays, index)
 
 
+# the facility layer of a layered index, else the tile's value
+func facility_overlay_id(x: int, y: int) -> int:
+	var index := index_of(x, y)
+
+	return 0 if index < 0 else OverlayData.facility_at(text_overlays, index)
+
+
+# the marker layer of a layered index, else the tile's value
+func marker_overlay_id(x: int, y: int) -> int:
+	var index := index_of(x, y)
+
+	return 0 if index < 0 else OverlayData.marker_at(text_overlays, index)
+
+
 func set_text_overlay_id(x: int, y: int, value: int) -> bool:
 	return CityTileEdits.set_text_overlay_id(self, x, y, value)
 

@@ -176,6 +176,21 @@ static func _release_overlay(
 	microsims: PackedByteArray,
 	index: int
 ) -> void:
+	# a layered index releases the facility and a connection marker under any
+	# moving object. Signs are XSGN records and stay
+	if OverlayData.is_layered(text_overlays):
+		if OverlayData.marker(text_overlays, index) == Sc2OverlayLayout.CONNECTION_MARKER:
+			OverlayData.set_marker(text_overlays, index, 0)
+
+		var facility := OverlayData.facility(text_overlays, index)
+		OverlayData.set_facility(text_overlays, index, 0)
+
+		if facility != 0 and OverlayData.facility_record(facility) >= BuildingCommand.MICROSIM_DYNAMIC_FIRST:
+			microsims[OverlayData.facility_record(facility) * CityState.MICROSIM_RECORD_SIZE] = 0
+			Sc2LabelLayout.clear(labels, facility)
+
+		return
+
 	var label_id := int(OverlayData.read(text_overlays, index))
 
 	if label_id == 0:

@@ -79,9 +79,19 @@ impl City {
     fn visible(&self, i: usize) -> bool {
         self.visible >= 32 || (if self.wet(i) { self.water(i) } else { self.land(i) }) < self.visible
     }
+    /// The top value of a tile, as OverlayData.read.
     fn overlay(&self, i: usize) -> i32 {
         let cells = (self.edge * self.edge) as usize;
-        i32::from(*self.overlays.get(i).unwrap_or(&0)) | (i32::from(*self.overlays.get(cells + i).unwrap_or(&0)) << 8)
+
+        if i >= cells || self.overlays.len() < cells || changes::overlay_cells(self.overlays.len()) != cells {
+            return i32::from(*self.overlays.get(i).unwrap_or(&0));
+        }
+
+        changes::overlay(&self.overlays, i)
+    }
+    /// The marker byte of a tile: the first plane of every layout.
+    fn marker(&self, i: usize) -> i32 {
+        i32::from(*self.overlays.get(i).unwrap_or(&0))
     }
     fn set_dispatch(&mut self, things: &[u8]) {
         // XTHG keeps 12-byte records. Extended payloads have equal low and
@@ -303,7 +313,7 @@ impl Builder {
         mark(&old.underground, &city.underground, &mut changed);
         if old.overlays != city.overlays {
             for (i, cell) in changed.iter_mut().enumerate() {
-                *cell |= old.overlay(i) != city.overlay(i);
+                *cell |= old.overlay(i) != city.overlay(i) || old.marker(i) != city.marker(i);
             }
         }
         // Negative and absent overrides both mean no override.

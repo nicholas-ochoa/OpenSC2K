@@ -75,7 +75,7 @@ static func _demolish_point(
 
 		return result
 
-	if not force_damage and OverlayData.read(text_overlays, index) == PROTECTED_CONNECTION_LABEL:
+	if not force_damage and OverlayData.marker_at(text_overlays, index) == PROTECTED_CONNECTION_LABEL:
 		var result := DemolishPointResult.new()
 		result.changed = false
 
@@ -283,7 +283,7 @@ static func _demolish_underground_point(
 
 		return result
 
-	if not scurk_mode and OverlayData.read(text_overlays, index) == PROTECTED_CONNECTION_LABEL:
+	if not scurk_mode and OverlayData.marker_at(text_overlays, index) == PROTECTED_CONNECTION_LABEL:
 		var result := DemolishPointResult.new()
 		result.changed = false
 

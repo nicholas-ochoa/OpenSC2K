@@ -91,6 +91,11 @@ static func apply(city: CityState) -> Result:
 					ThingData.read(things, -target - 1) if target != -1 else -1
 				)
 
+				# a layered index: the facility layer, else a marker, blocks
+				if OverlayData.is_layered(text):
+					existing_id = OverlayData.facility(text, index)
+					existing_id = existing_id if existing_id != 0 else OverlayData.marker(text, index)
+
 				if OverlayData.is_facility(existing_id):
 					var existing_record := OverlayData.facility_record(existing_id)
 					var saved_tile := int(microsims[existing_record * 8]) if existing_record < city.microsim_count() else 0
@@ -165,7 +170,7 @@ static func _overlay_target(
 ) -> int:
 	var id := OverlayData.read(text, index)
 
-	if not OverlayData.is_thing(id):
+	if not OverlayData.is_thing(id) or OverlayData.is_layered(text):
 		return index
 
 	var target := index

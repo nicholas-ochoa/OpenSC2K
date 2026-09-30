@@ -490,10 +490,10 @@ static func _clear_disaster_markers(
 	var cleared_markers := 0
 
 	for index in (map_edge * map_edge):
-		var overlay := int(OverlayData.read(text, index))
+		var overlay := OverlayData.marker_at(text, index)
 
 		if overlay >= DISASTER_OVERLAY_FIRST and overlay <= 255:
-			OverlayData.write(text, index, 0)
+			OverlayData.set_marker_at(text, index, 0)
 			cleared_markers += 1
 
 	_unlink_things(text, things, disaster_records, map_edge)
@@ -524,6 +524,13 @@ static func _unlink_things(
 			int(ThingData.read(things, offset + 3)) * map_edge + int(ThingData.read(things, offset + 4))
 		)
 		var prior_overlay := int(ThingData.read(things, offset + 10))
+
+		# a layered index keeps the layers under the object
+		if OverlayData.is_layered(text):
+			OverlayData.lift_object(text, things, record, index, 0)
+
+			continue
+
 		OverlayData.write(text, index, (
 			prior_overlay
 			if index == point_index and not OverlayData.blocks_thing(prior_overlay)

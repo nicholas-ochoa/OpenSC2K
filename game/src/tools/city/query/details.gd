@@ -11,7 +11,7 @@ static func _advanced_details(
 	var map_edge: int = city.map_size if city != null else 128
 	var index := city.index_of(point.x, point.y)
 	var detail_index := CityDataGrid.index(city.document.find_chunk("XVAL").decoded_payload, map_edge, point.x, point.y)
-	var overlay_id := city.text_overlay_id(point.x, point.y)
+	var overlay_id := city.facility_overlay_id(point.x, point.y)
 
 	if (
 		microsim_id < 0
