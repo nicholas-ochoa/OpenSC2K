@@ -24,6 +24,7 @@ func _initialize() -> void:
 	_check_largest_map()
 	_check_saves()
 	_check_extensions()
+	_check_layers()
 	print("SC2X format: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
 
@@ -159,7 +160,8 @@ func _check_fresh_archives() -> void:
 		_check(members["XMIC.bin"].size() == 28 + 32 * int(profile.facilities), "XMIC minimum size at %d" % edge)
 		_check(members["XTHG.bin"].size() == 24 + 40 * int(profile.things), "XTHG minimum size at %d" % edge)
 		_check(members["XSGN.bin"].size() == 24 + 20 * int(profile.signs), "XSGN minimum size at %d" % edge)
-		_check(document.decoded_size("XTXT") == cells * 2, "The working tile index has two planes at %d" % edge)
+		_check(document.decoded_size("XTXT") == cells * OverlayData.LAYERED_PLANES
+			and OverlayData.is_layered(document.find_chunk("XTXT").decoded_payload), "The working tile index is layered at %d" % edge)
 		_check(document.decoded_size("XMIC") == int(profile.facilities) * CityState.MICROSIM_RECORD_SIZE
 			and ThingData.count(document.find_chunk("XTHG").decoded_payload) == int(profile.things),
 			"The working city uses the %d profile capacities" % edge)
@@ -628,3 +630,47 @@ func _check_extensions() -> void:
 	_check(reloaded.sc2x_extensions.get("XMIC") == block and reloaded.sc2x_extensions.get("XTHG") == block,
 		"Unknown XMIC and XTHG extension blocks are kept")
 	_check(reloaded.serialize().data == encoded.data, "Unknown extension blocks save the same bytes again")
+
+
+# A facility, a marker, a moving object, and a sign share one tile. The object
+# moves to the next tile; the other layers stay through a save and a load.
+func _check_layers() -> void:
+	var document := Sc2xDocument.create_empty(128).document
+	var city := CityState.from_document(document)
+	var record := BuildingCommand.MICROSIM_DYNAMIC_FIRST
+	var facility := OverlayData.facility_id(record)
+	var records := document.find_chunk("XMIC").decoded_payload.duplicate()
+	records[record * CityState.MICROSIM_RECORD_SIZE] = BuildingTileIds.POLICE_STATION
+	document.find_chunk("XMIC").set_decoded_payload(records)
+	var start := Vector2i(20, 30)
+	var next := Vector2i(21, 30)
+	var slot := 1
+
+	for point: Vector2i in [start, next]:
+		_check(city.set_text_overlay_id(point.x, point.y, facility), "A facility owns (%d, %d)" % [point.x, point.y])
+
+	_check(city.set_text_overlay_id(start.x, start.y, 0xfc), "A flood marker shares the facility tile")
+	_check(SignCommand.set_sign(city, start, "Crossing").ok, "A sign shares the tile")
+	var things := document.find_chunk("XTHG").decoded_payload.duplicate()
+	ThingData.write(things, slot * Sc2ThingLayout.RECORD_SIZE, Sc2ThingLayout.Type.HELICOPTER)
+	ThingData.write(things, slot * Sc2ThingLayout.RECORD_SIZE + Sc2ThingLayout.Field.X, start.x)
+	ThingData.write(things, slot * Sc2ThingLayout.RECORD_SIZE + Sc2ThingLayout.Field.Y, start.y)
+	document.find_chunk("XTHG").set_decoded_payload(things)
+	_check(city.set_text_overlay_id(start.x, start.y, OverlayData.thing_id(slot)), "A moving object covers the tile")
+	_check(city.text_overlay_id(start.x, start.y) == OverlayData.thing_id(slot) and city.facility_overlay_id(start.x, start.y) == facility
+		and city.marker_overlay_id(start.x, start.y) == 0xfc, "Each layer answers for itself")
+
+	# the object moves to the next tile, which the facility also owns
+	var text := city.text_overlays.duplicate()
+	things = document.find_chunk("XTHG").decoded_payload.duplicate()
+	OverlayData.lift_object(text, things, slot, city.index_of(start.x, start.y), 0)
+	ThingData.write(things, slot * Sc2ThingLayout.RECORD_SIZE + Sc2ThingLayout.Field.X, next.x)
+	OverlayData.set_object(text, city.index_of(next.x, next.y), OverlayData.thing_id(slot))
+	document.find_chunk("XTHG").set_decoded_payload(things)
+	_check(city.replace_text_overlays(text), "The moved object is stored")
+	var loaded := CityState.from_document(_loads(document.serialize().data))
+	_check(loaded.is_valid() and loaded.text_overlay_id(start.x, start.y) == 0xfc and loaded.facility_overlay_id(start.x, start.y) == facility
+		and loaded.sign_texts().get(city.index_of(start.x, start.y)) == "Crossing",
+		"The facility, marker, and sign stay on the tile that the object left")
+	_check(loaded.text_overlay_id(next.x, next.y) == OverlayData.thing_id(slot) and loaded.facility_overlay_id(next.x, next.y) == facility,
+		"The object covers the next tile and the facility stays under it")

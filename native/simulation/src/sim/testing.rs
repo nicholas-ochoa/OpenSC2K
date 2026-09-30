@@ -19,7 +19,7 @@ pub fn empty_full_resolution_city(edge: i64) -> City {
 pub fn empty_sc2x_city(edge: i64) -> City {
     let profile = crate::formats::sc2x::limits::profile_for(edge as usize).expect("an SC2X profile");
     let mut city = empty_city_version(edge, 4);
-    city.xtxt = Chunk::new(vec![0; (edge * edge * 2) as usize]);
+    city.xtxt = Chunk::new(crate::sim::overlay::layered(edge * edge));
     city.xmic = Chunk::new(vec![0; profile.facilities * 8]);
     city.xthg = Chunk::new(vec![0; profile.things * 24]);
     let last_label = crate::formats::sc2x::project::facility_label(profile.facilities - 1);

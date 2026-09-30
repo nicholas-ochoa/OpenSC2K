@@ -116,7 +116,7 @@ one engine. Size: `24 + 40C + T + E`.
 | --- | --- | --- |
 | `LOCC` | slot u32, x u16, y u16 | An occupant whose occupied tile differs from its position. Original trains and sailboats can leave such links. |
 | `LREC` | slot u32, 12 low + 12 high bytes | The working record, when the core cannot express its bytes, such as a stale label field of an object that occupies no tile. A member of an incomplete train has a free core slot and keeps its record here. |
-| `LLNK` | tile index u32, link u16, zero u16 | A working tile link that no structure describes, such as a link to a free record or an object linked from two tiles. A load writes it back after the other links. |
+| `LLNK` | tile index u32, link u16, zero u16 | A tile link that no structure describes, such as a link to a free record or an object linked from two tiles. The runtime index does not use it; the document keeps the entries and writes them again on the next save. |
 
 The application keeps XMIC and XTHG extension blocks with other tags and writes them again
 on the next save.
@@ -151,11 +151,13 @@ with flag 0x2.
 A loaded version 4 file becomes a working document: an `Sc2File` with `large_version` 4.
 The simulation, the tools, and the renderer use its chunks in the extended layout:
 
-- XTXT is the combined runtime tile index in two byte planes at every map size: markers,
-  facility links, and the top moving object of each tile. Each occupying object keeps the
-  value below it in its label field. `Sc2xDocument` rebuilds the index from the markers, the
-  XMIC footprints, and the XTHG occupancy flags, and saves it the same way. The index is
-  never saved.
+- XTXT is the layered runtime tile index: five planes of N² bytes. Plane 0 holds the
+  marker byte, planes 1 and 2 the facility ID (low and high byte), and planes 3 and 4 the ID
+  of the top moving object. A facility, a marker, and a moving object can share a tile. An
+  occupying object keeps the object below it in its label field, or 0; it never keeps a
+  facility or a marker. `Sc2xDocument` builds the index from the markers, the XMIC
+  footprints, and the XTHG occupancy flags, and saves it the same way. The index is never
+  saved.
 - XLAB is a runtime label table with wide records: a u16 length and 256 UTF-8 bytes. It
   holds the mayor name, the team names, and the facility names at their original label IDs.
   Its size is never a multiple of 25 bytes, so byte-level helpers can tell it from a legacy
@@ -174,7 +176,14 @@ entries. After each simulation step that changes XTHG, a slot whose object was f
 type loses its identity and name; the next save gives the new object a new ID. IDs are never
 reused.
 
-The runtime tile index holds 16-bit links:
+`OverlayData.read` (and `overlay::read` in native code) gives the value that the combined
+index of an original city shows on top of a tile: the object, else the marker, else the
+facility. Code that must keep the other layers uses the layer functions: `marker_at`,
+`facility_at`, `push_object`, and `lift_object`. Moving objects enter and leave only the
+object layer; disasters change only the marker layer; demolition releases only the facility
+layer and a connection marker. SC2 and SCN cities keep the combined index.
+
+The tile index uses these 16-bit IDs:
 
 | IDs | Meaning |
 | --- | --- |
@@ -186,9 +195,7 @@ The runtime tile index holds 16-bit links:
 
 A working document can therefore link at most 53,142 facility records and 8,232 moving
 objects, and its XTHG capacity cannot be 20 (its table would look like an original
-single-plane table). The loader reports a file that exceeds them. Facility links and moving
-objects still share the runtime tile index; a later version can give them separate runtime
-indexes without a file change.
+single-plane table). The loader reports a file that exceeds them.
 
 Trip searches pack the start tile below the transport mode: 14 bits on a 128-tile map, 20
 bits up to 1024 tiles, and 24 bits on larger maps.

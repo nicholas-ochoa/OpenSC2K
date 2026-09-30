@@ -85,14 +85,15 @@ static func tile(source: Sc2File, edge: int) -> Sc2xDocument.ConversionResult:
 	document.sc2x_metadata.legacy = {}
 
 	for id in Sc2xDocument.DENSE_ENTRIES:
-		var width := 2 if id == "XTXT" else Sc2xDocument.DENSE_ENTRIES[id]
+		var width := 1 if id == "XTXT" else Sc2xDocument.DENSE_ENTRIES[id]
+		var planes := OverlayData.LAYERED_PLANES if id == "XTXT" else 1
 		var data := source.find_chunk(id).decoded_payload
 		var tiled := PackedByteArray()
 
-		# the working tile index has a low and a high plane; repeat each plane
-		for plane in (2 if id == "XTXT" else 1):
-			var plane_data := data.slice(plane * small * small, (plane + 1) * small * small) if id == "XTXT" else data
-			tiled.append_array(_tile_plane(plane_data, small, copies, 1 if id == "XTXT" else width))
+		# the layered tile index repeats each of its planes
+		for plane in planes:
+			var plane_data := data.slice(plane * small * small, (plane + 1) * small * small) if planes > 1 else data
+			tiled.append_array(_tile_plane(plane_data, small, copies, width))
 
 		_replace(document, id, tiled, edge)
 
@@ -233,37 +234,31 @@ static func _wide_labels(last_id: int) -> PackedByteArray:
 	return labels
 
 
-# Repeated tiles of the working index: individual facilities link their own
+# Repeated tiles of the layered index: individual facilities link their own
 # record in each copy, and a moving object stays in the first copy only.
 static func _copy_links(source: Sc2File, document: Sc2File, copies: int, records: Dictionary) -> void:
 	var small := source.map_size
 	var edge := document.map_size
 	var old_text := source.find_chunk("XTXT").decoded_payload
-	var things := source.find_chunk("XTHG").decoded_payload
 	var text := document.find_chunk("XTXT").decoded_payload.duplicate()
-	var cells := small * small
 
-	for index in cells:
-		var value := OverlayData.read(old_text, index)
+	for index in small * small:
+		var object := OverlayData.object(old_text, index)
+		var facility := OverlayData.facility(old_text, index)
+		var individual := (OverlayData.is_facility(facility)
+			and OverlayData.facility_record(facility) >= BuildingCommand.MICROSIM_DYNAMIC_FIRST)
 
-		if value == 0 or not (OverlayData.is_thing(value) or (OverlayData.is_facility(value)
-				and OverlayData.facility_record(value) >= BuildingCommand.MICROSIM_DYNAMIC_FIRST)):
+		if object == 0 and not individual:
 			continue
 
-		var base := value
-
-		while OverlayData.is_thing(base):
-			base = ThingData.read(things, OverlayData.thing_record(base) * Sc2ThingLayout.RECORD_SIZE + Sc2ThingLayout.Field.LABEL)
-
 		for copy in range(1, copies * copies):
-			var linked := base
+			var target := (index / small + (copy / copies) * small) * edge + index % small + (copy % copies) * small
 
-			if OverlayData.is_facility(base) and OverlayData.facility_record(base) >= BuildingCommand.MICROSIM_DYNAMIC_FIRST:
-				linked = OverlayData.facility_id(int(records[copy][OverlayData.facility_record(base)]))
+			if object != 0:
+				OverlayData.set_object(text, target, 0)
 
-			var x := index / small + (copy / copies) * small
-			var y := index % small + (copy % copies) * small
-			OverlayData.write(text, x * edge + y, linked)
+			if individual:
+				OverlayData.set_facility(text, target, OverlayData.facility_id(int(records[copy][OverlayData.facility_record(facility)])))
 
 	document.find_chunk("XTXT").set_decoded_payload(text)
 

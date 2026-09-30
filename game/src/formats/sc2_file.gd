@@ -583,7 +583,7 @@ func decoded_size(chunk_id: String) -> int:
 	if is_sc2x():
 		match chunk_id:
 			"XTXT":
-				return map_size * map_size * 2
+				return map_size * map_size * OverlayData.LAYERED_PLANES
 			"XMIC", "XTHG", "XLAB", "XSGN":
 				var chunk := find_chunk(chunk_id)
 

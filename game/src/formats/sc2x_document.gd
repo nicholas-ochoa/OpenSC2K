@@ -622,8 +622,9 @@ static func _chunk(id: String, data: PackedByteArray, fixed_size: int) -> Sc2Chu
 
 # the payload size that a chunk keeps for its document; -1 lets it vary
 static func _fixed_size(id: String, edge: int, data: PackedByteArray) -> int:
+	# the layered tile index
 	if id == "XTXT":
-		return edge * edge * 2
+		return edge * edge * OverlayData.LAYERED_PLANES
 
 	if DENSE_ENTRIES.has(id):
 		return edge * edge * DENSE_ENTRIES[id]

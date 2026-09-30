@@ -210,7 +210,8 @@ impl City {
 
         if self.is_sc2x_working() {
             match id {
-                "XTXT" => return edge * edge * 2,
+                // the layered tile index
+                "XTXT" => return edge * edge * super::overlay::LAYERED_PLANES,
                 "XMIC" | "XTHG" | "XLAB" => return self.chunk(id).map_or(-1, |chunk| chunk.data.len() as i64),
                 _ => {}
             }

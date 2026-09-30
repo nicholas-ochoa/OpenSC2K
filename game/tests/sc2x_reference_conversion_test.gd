@@ -44,7 +44,7 @@ func _initialize() -> void:
 			same = same and reloaded.chunks[index].decoded_payload == document.chunks[index].decoded_payload
 
 		_check(same, "%s loads the same working chunks" % path.get_file())
-		_check(_keeps_links(legacy, reloaded), "%s keeps every tile link and record" % path.get_file())
+		_check(_keeps_links(legacy, reloaded, converted.issues.size()), "%s keeps every tile link and record" % path.get_file())
 		_check(reloaded.serialize().data == encoded.data, "%s saves the same bytes again" % path.get_file())
 		var legacy_city := CityState.from_document(legacy)
 		var city := CityState.from_document(reloaded)
@@ -78,31 +78,49 @@ func _initialize() -> void:
 	quit(1 if failures else 0)
 
 
-# The low plane of each working chunk holds the legacy bytes, and the high
-# plane and the added capacity are empty. A sign link can become empty because
-# the sign moves to XSGN.
-func _keeps_links(legacy: Sc2File, document: Sc2File) -> bool:
-	for id in ["XTXT", "XMIC", "XTHG"]:
-		var before := legacy.find_chunk(id).decoded_payload
-		var after := document.find_chunk(id).decoded_payload
+# Each tile shows the same top value as the legacy tile. A sign moves to XSGN,
+# and a link that no structure describes stays in the file; both leave the
+# tile empty. XMIC keeps its records, and XTHG keeps each record except the
+# label field, which now names only the object below. Added capacity is empty.
+func _keeps_links(legacy: Sc2File, document: Sc2File, reported: int) -> bool:
+	var before := legacy.find_chunk("XTXT").decoded_payload
+	var after := document.find_chunk("XTXT").decoded_payload
+	var unresolved := 0
+
+	if not OverlayData.is_layered(after) or OverlayData.count(after) != OverlayData.count(before):
+		return false
+
+	for index in OverlayData.count(before):
+		var old := OverlayData.read(before, index)
+		var new := OverlayData.read(after, index)
+
+		if old == new or (new == 0 and OverlayData.is_sign(old)):
+			continue
+
+		if new != 0:
+			return false
+
+		unresolved += 1
+
+	if unresolved > reported:
+		return false
+
+	for id in ["XMIC", "XTHG"]:
+		var old := legacy.find_chunk(id).decoded_payload
+		var new := document.find_chunk(id).decoded_payload
 		var planes := 1 if id == "XMIC" else 2
+		var half := new.size() / planes
 
-		if after.size() % planes != 0 or after.size() / planes < before.size():
+		if new.size() % planes != 0 or half < old.size():
 			return false
 
-		var low := after.slice(0, after.size() / planes)
-		var rest := low.slice(before.size())
+		for index in new.size():
+			if id == "XTHG" and (index % half) % Sc2ThingLayout.RECORD_SIZE == Sc2ThingLayout.Field.LABEL:
+				continue
 
-		if planes == 2:
-			rest.append_array(after.slice(after.size() / 2))
+			var expected := int(old[index]) if index < old.size() else 0
 
-		if rest.count(0) != rest.size():
-			return false
-
-		for index in before.size():
-			var link: bool = id == "XTXT" or (id == "XTHG" and index % Sc2ThingLayout.RECORD_SIZE == Sc2ThingLayout.Field.LABEL)
-
-			if low[index] != before[index] and not (link and low[index] == 0 and OverlayData.is_sign(before[index])):
+			if new[index] != expected:
 				return false
 
 	return true

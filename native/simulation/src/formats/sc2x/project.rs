@@ -97,7 +97,8 @@ pub struct Joined {
     pub xthg_extension: Vec<ExtensionBlock>,
 }
 
-/// XTHG extension blocks that `split` writes and `join` reads.
+/// XTHG extension blocks that `split` writes and `join` reads. `join` returns
+/// LLNK with the unowned blocks: its links stay out of the runtime index.
 pub const OWNED_THING_BLOCKS: [[u8; 4]; 3] = [xthg::WORKING_RECORD_TAG, xthg::OCCUPIED_TILE_TAG, xthg::LINK_TAG];
 /// XMIC extension blocks that `split` writes and `join` reads.
 pub const OWNED_FACILITY_BLOCKS: [[u8; 4]; 1] = [xmic::ORPHAN_RECORD_TAG];
@@ -345,7 +346,13 @@ pub fn split(working: &Working, options: SplitOptions) -> Result<Split, String> 
         (working.xthg[slot * RECORD], state.max(0) as usize)
     });
 
+    let layered = overlay::is_layered(working.xtxt);
+
     for (index, marker) in markers.iter_mut().enumerate() {
+        if layered {
+            continue;
+        }
+
         let top = overlay::read(working.xtxt, index as i64);
         let mut value = top;
 
@@ -428,6 +435,92 @@ pub fn split(working: &Working, options: SplitOptions) -> Result<Split, String> 
             };
         }
     }
+
+    // a layered index: each layer on its own
+    if layered {
+        for (index, marker) in markers.iter_mut().enumerate() {
+            let (x, y) = point(index, edge);
+            let mut problem = |value: i64, text: String, issues: &mut Vec<String>| {
+                issues.push(format!("Tile ({}, {}) {}; the link was kept unchanged", x, y, text));
+
+                if unresolved.last().is_none_or(|(last, _)| *last != index) {
+                    unresolved.push((index, value as u16));
+                }
+            };
+            let value = overlay::marker(working.xtxt, index as i64);
+
+            if value >= MARKER_FIRST {
+                *marker = value as u8;
+            } else if value != 0 {
+                problem(value, format!("holds marker value {}, which is reserved", value), &mut issues);
+            }
+
+            let value = overlay::facility(working.xtxt, index as i64);
+            let record = overlay::facility_record(value);
+
+            if value == 0 {
+            } else if !overlay::is_facility(value)
+                || record <= 0
+                || (record as usize) >= facility_count
+                || working.xmic[record as usize * 8] == 0
+            {
+                problem(
+                    value,
+                    format!("links to facility record {}, which is free or reserved", record),
+                    &mut issues,
+                );
+            } else {
+                owners[record as usize].push(index);
+            }
+
+            let top = overlay::object(working.xtxt, index as i64);
+            let mut value = top;
+            let mut stack: Vec<usize> = Vec::new();
+            let mut failure = None;
+
+            while value != 0 {
+                let record = overlay::thing_record(value);
+
+                if !overlay::is_thing(value)
+                    || record < 0
+                    || (record as usize) >= thing_count
+                    || occupancy[record as usize].is_some()
+                    || stack.contains(&(record as usize))
+                    || working.xthg[record as usize * RECORD] == 0
+                {
+                    failure = Some(format!("links to object {}, which is free, missing, or linked twice", value));
+                    break;
+                }
+
+                if broken[record as usize] {
+                    failure = Some(format!("links to object record {}, which is part of an incomplete train", record));
+                    break;
+                }
+
+                stack.push(record as usize);
+                value = things::field(working.xthg, record, FIELD_LABEL as i64);
+            }
+
+            if let Some(text) = failure {
+                problem(top, text, &mut issues);
+                continue;
+            }
+
+            for (position, record) in stack.iter().enumerate() {
+                occupancy[*record] = Some((index, (stack.len() - 1 - position) as u16));
+                below[*record] = stack.get(position + 1).map_or(0, |next| overlay::thing_id(*next as i64) as u16);
+            }
+        }
+    }
+
+    // earlier links that no structure describes stay with the file
+    let kept: Vec<(usize, [u8; 4])> = options
+        .xthg_extension
+        .iter()
+        .find(|block| block.tag == xthg::LINK_TAG)
+        .map(|block| decode_entries::<4>(Some(block), "LLNK"))
+        .transpose()?
+        .unwrap_or_default();
 
     let mut migrated: HashSet<usize> = HashSet::new();
 
@@ -588,13 +681,19 @@ pub fn split(working: &Working, options: SplitOptions) -> Result<Split, String> 
         });
     }
 
-    if !unresolved.is_empty() {
-        let mut data = Vec::with_capacity(unresolved.len() * xthg::LINK_ENTRY);
+    let mut links: BTreeMap<usize, [u8; 4]> = kept.into_iter().collect();
 
-        for (index, value) in &unresolved {
+    for (index, value) in &unresolved {
+        let bytes = value.to_be_bytes();
+        links.entry(*index).or_insert([bytes[0], bytes[1], 0, 0]);
+    }
+
+    if !links.is_empty() {
+        let mut data = Vec::with_capacity(links.len() * xthg::LINK_ENTRY);
+
+        for (index, value) in &links {
             data.extend_from_slice(&(*index as u32).to_be_bytes());
-            data.extend_from_slice(&value.to_be_bytes());
-            data.extend_from_slice(&[0, 0]);
+            data.extend_from_slice(value);
         }
 
         thing_extension.push(ExtensionBlock { tag: xthg::LINK_TAG, data });
@@ -725,7 +824,7 @@ fn decode_entries<const N: usize>(block: Option<&ExtensionBlock>, name: &str) ->
 /// Rebuild a version 4 working document from its saved structures.
 pub fn join(edge: usize, markers: &[u8], xmic: &Xmic, xthg: &Xthg, mayor_name: &str, team_names: &[String]) -> Result<Joined, String> {
     let cells = edge * edge;
-    let mut xtxt = vec![0u8; cells * 2];
+    let mut xtxt = overlay::layered(cells as i64);
 
     if overlay::count(&xtxt) as usize != cells {
         return Err(format!("The {} tile map size has no working tile index", edge));
@@ -758,7 +857,7 @@ pub fn join(edge: usize, markers: &[u8], xmic: &Xmic, xthg: &Xthg, mayor_name: &
             return Err(format!("XTXT tile ({}, {}) holds reserved value {}", x, y, marker));
         }
 
-        overlay::write(&mut xtxt, index as i64, *marker as i64);
+        overlay::set_marker(&mut xtxt, index as i64, *marker as i64);
     }
 
     let mut facility_bytes = vec![0u8; xmic.facilities.len() * 8];
@@ -778,15 +877,7 @@ pub fn join(edge: usize, markers: &[u8], xmic: &Xmic, xthg: &Xthg, mayor_name: &
         }
 
         for index in facility.footprint.indices(edge) {
-            if overlay::read(&xtxt, index as i64) != 0 {
-                let (x, y) = point(index, edge);
-                return Err(format!(
-                    "XTXT tile ({}, {}) has a marker and facility {}; this version cannot link both",
-                    x, y, record
-                ));
-            }
-
-            overlay::write(&mut xtxt, index as i64, overlay::facility_id(record as i64));
+            overlay::set_facility(&mut xtxt, index as i64, overlay::facility_id(record as i64));
         }
     }
 
@@ -854,22 +945,19 @@ pub fn join(edge: usize, markers: &[u8], xmic: &Xmic, xthg: &Xthg, mayor_name: &
             }
         }
 
+        // each occupant keeps the object below it; the bottom one keeps 0
         for (_, slot) in stack {
-            thing_labels[slot] = overlay::read(&xtxt, index as i64) as u16;
-            overlay::write(&mut xtxt, index as i64, overlay::thing_id(slot as i64));
+            thing_labels[slot] = overlay::object(&xtxt, index as i64) as u16;
+            overlay::set_object(&mut xtxt, index as i64, overlay::thing_id(slot as i64));
         }
     }
 
-    // links that no structure describes return after every structure
-    for (index, value) in decode_entries::<4>(xthg.block(xthg::LINK_TAG), "LLNK")? {
-        if index >= cells || overlay::read(&xtxt, index as i64) != 0 {
-            return Err(format!(
-                "XTHG LLNK entry names tile {}, which is outside the map or already linked",
-                index
-            ));
+    // links that no structure describes stay out of the runtime index; the
+    // document keeps them for the next save
+    for (index, _) in decode_entries::<4>(xthg.block(xthg::LINK_TAG), "LLNK")? {
+        if index >= cells {
+            return Err(format!("XTHG LLNK entry names tile {}, which is outside the map", index));
         }
-
-        overlay::write(&mut xtxt, index as i64, u16::from_be_bytes([value[0], value[1]]) as i64);
     }
 
     let half = thing_capacity * RECORD;
@@ -886,6 +974,14 @@ pub fn join(edge: usize, markers: &[u8], xmic: &Xmic, xthg: &Xthg, mayor_name: &
     for (slot, record) in overrides {
         if slot >= thing_capacity {
             return Err(format!("XTHG LREC entry names slot {} outside the table", slot));
+        }
+
+        let mut record = record;
+
+        // an occupant's label field is the object below it
+        if xthg.things[slot].is_occupant() {
+            record[FIELD_LABEL] = thing_labels[slot] as u8;
+            record[RECORD + FIELD_LABEL] = (thing_labels[slot] >> 8) as u8;
         }
 
         write_record(slot, &record);
@@ -907,7 +1003,7 @@ pub fn join(edge: usize, markers: &[u8], xmic: &Xmic, xthg: &Xthg, mayor_name: &
         xthg_extension: xthg
             .extension
             .iter()
-            .filter(|block| !OWNED_THING_BLOCKS.contains(&block.tag))
+            .filter(|block| block.tag == xthg::LINK_TAG || !OWNED_THING_BLOCKS.contains(&block.tag))
             .cloned()
             .collect(),
     })
@@ -1075,9 +1171,25 @@ mod tests {
         )
         .unwrap();
         let joined = join(EDGE, &split.markers, &split.xmic, &split.xthg, &split.mayor_name, &split.team_names).unwrap();
-        assert_eq!(joined.xtxt, parts.0);
+        assert!(overlay::is_layered(&joined.xtxt));
+        assert_eq!(tops(&joined.xtxt), tops(&parts.0), "each tile shows the same top value");
+        assert_eq!(
+            overlay::facility(&joined.xtxt, (3 * EDGE + 4) as i64),
+            overlay::facility_id(10),
+            "the facility stays under the cars"
+        );
         assert_eq!(joined.xmic, parts.1);
-        assert_eq!(joined.xthg, parts.2);
+        assert_eq!(without_labels(&joined.xthg), without_labels(&parts.2));
+        assert_eq!(
+            things::field(&joined.xthg, 3, FIELD_LABEL as i64),
+            overlay::thing_id(2),
+            "an occupant keeps the object below it"
+        );
+        assert_eq!(
+            things::field(&joined.xthg, 2, FIELD_LABEL as i64),
+            0,
+            "the bottom occupant covers no object"
+        );
 
         for id in 0..parts.3.len() / labels::WIDE_RECORD_SIZE {
             assert_eq!(
@@ -1093,6 +1205,22 @@ mod tests {
         assert_eq!(again.xmic, split.xmic);
         assert_eq!(again.xthg, split.xthg);
         assert_eq!(again.markers, split.markers);
+    }
+
+    /// The top value of every tile.
+    fn tops(xtxt: &[u8]) -> Vec<i64> {
+        (0..overlay::count(xtxt)).map(|index| overlay::read(xtxt, index)).collect()
+    }
+
+    /// Split-plane moving-object records without their label fields.
+    fn without_labels(xthg: &[u8]) -> Vec<u8> {
+        let half = xthg.len() / 2;
+
+        xthg.iter()
+            .enumerate()
+            .filter(|(offset, _)| (offset % half) % RECORD != FIELD_LABEL)
+            .map(|(_, byte)| *byte)
+            .collect()
     }
 
     fn split_with_ids(joined: &Joined, first: &Split) -> Split {
@@ -1351,16 +1479,43 @@ mod tests {
         let xmic = Xmic::decode(&split.xmic.encode(EDGE).unwrap(), EDGE).unwrap();
         let xthg = Xthg::decode(&split.xthg.encode().unwrap()).unwrap();
         let joined = join(EDGE, &split.markers, &xmic, &xthg, &split.mayor_name, &split.team_names).unwrap();
-        assert_eq!(joined.xtxt, parts.0);
+        let mut expected = tops(&parts.0);
+
+        // unresolved links stay out of the runtime index
+        for index in [7, 8, 9] {
+            expected[index] = 0;
+        }
+
+        assert_eq!(tops(&joined.xtxt), expected);
         assert_eq!(joined.xmic, parts.1);
-        assert_eq!(joined.xthg, parts.2);
+        assert_eq!(without_labels(&joined.xthg), without_labels(&parts.2));
         assert_eq!(labels::read(&joined.labels, facility_label(20), true).unwrap(), "Lost Library");
         assert_eq!(joined.xmic_extension, vec![unknown.clone()]);
-        assert_eq!(joined.xthg_extension, vec![unknown]);
+        let links = xthg.block(xthg::LINK_TAG).cloned().unwrap();
+        assert_eq!(links.data.len(), 4 * xthg::LINK_ENTRY, "the earlier entry and three new ones");
+        assert_eq!(joined.xthg_extension, vec![links.clone(), unknown.clone()]);
+
+        // the next save of the layered city keeps the same structures
+        let parts = (joined.xtxt.clone(), joined.xmic.clone(), joined.xthg.clone(), joined.labels.clone());
+        let again = super::split(
+            &working_view(&parts, true),
+            SplitOptions {
+                signs: Some(split.xsgn.clone()),
+                object_ids: joined.object_ids.clone(),
+                xmic_extension: joined.xmic_extension.clone(),
+                xthg_extension: joined.xthg_extension.clone(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(again.markers, split.markers);
+        assert_eq!(again.xmic, xmic);
+        assert_eq!(again.xthg.block(xthg::LINK_TAG), Some(&links));
+        assert_eq!(again.xthg.things, xthg.things);
     }
 
     #[test]
-    fn join_rejects_conflicts_that_the_index_cannot_hold() {
+    fn join_checks_markers_depths_and_fields() {
         let parts = working();
         let split = split(
             &working_view(&parts, true),
@@ -1371,11 +1526,14 @@ mod tests {
         )
         .unwrap();
 
+        // a marker and a facility share a tile in their own layers
         let mut markers = split.markers.clone();
         markers[2 * EDGE + 3] = 0xfd;
-        assert!(
-            join(EDGE, &markers, &split.xmic, &split.xthg, "", &[]).is_err(),
-            "marker on a facility tile"
+        let joined = join(EDGE, &markers, &split.xmic, &split.xthg, "", &[]).unwrap();
+        let index = (2 * EDGE + 3) as i64;
+        assert_eq!(
+            (overlay::marker(&joined.xtxt, index), overlay::facility(&joined.xtxt, index)),
+            (0xfd, overlay::facility_id(10))
         );
 
         let mut reserved = split.markers.clone();
