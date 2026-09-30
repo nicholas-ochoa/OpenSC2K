@@ -43,17 +43,17 @@ static var GRADIENTS: Dictionary[CityViewMode.Mode, PackedColorArray] = {
 }
 # default gradient for the remaining nuisance maps
 static var DEFAULT_GRADIENT := PackedColorArray([Color("2b5260"), Color("ff694c")])
-# one color for each land level, from the heightmap of the original JavaScript OpenSC2K
-static var HEIGHT_COLORS := PackedColorArray([
-	Color8(0, 0, 0), Color8(0, 68, 0), Color8(0, 136, 0), Color8(0, 204, 0),
-	Color8(0, 255, 0), Color8(68, 204, 0), Color8(150, 150, 0), Color8(204, 68, 0),
-	Color8(255, 0, 17), Color8(255, 0, 85), Color8(255, 0, 153), Color8(255, 0, 221),
-	Color8(221, 0, 255), Color8(153, 0, 255), Color8(85, 0, 255), Color8(17, 0, 255),
-	Color8(0, 0, 204), Color8(0, 0, 204), Color8(0, 0, 204), Color8(0, 0, 204),
-	Color8(0, 0, 204), Color8(0, 0, 204), Color8(0, 0, 204), Color8(0, 0, 204),
-	Color8(0, 0, 204), Color8(0, 0, 204), Color8(0, 0, 204), Color8(0, 0, 204),
-	Color8(0, 0, 204), Color8(0, 0, 204), Color8(0, 0, 204), Color8(0, 0, 204),
+# heightmap stops from the original JavaScript OpenSC2K. dry land runs from green
+# at level 0 to red at level 31; underwater tiles run from shallow to deep blue
+static var LAND_HEIGHT_COLORS := PackedColorArray([
+	Color8(0, 68, 0), Color8(0, 136, 0), Color8(0, 204, 0), Color8(0, 255, 0),
+	Color8(68, 204, 0), Color8(150, 150, 0), Color8(204, 68, 0), Color8(255, 0, 17),
 ])
+static var UNDERWATER_COLORS := PackedColorArray([Color8(17, 0, 255), Color8(0, 0, 204), Color8(0, 0, 120)])
+# heightmap values from this one are underwater tiles: this value plus the depth
+const UNDERWATER_BASE := 32
+const MAX_LEVEL := 31
+const MAX_SHOWN_DEPTH := 15
 # decline, steady, and growth. the original map reads as a sign, not a scale
 static var GROWTH_COLORS := PackedColorArray([Color("e2453c"), Color("b9c2cd"), Color("35d16a")])
 
@@ -86,7 +86,10 @@ static func color(data_value: int, mode: CityViewMode.Mode) -> Color:
 		return Color("535b67")
 
 	if mode == CityViewMode.Mode.HEIGHT:
-		return HEIGHT_COLORS[clampi(data_value, 0, HEIGHT_COLORS.size() - 1)]
+		if data_value >= UNDERWATER_BASE:
+			return _ramp(UNDERWATER_COLORS, float(data_value - UNDERWATER_BASE) / MAX_SHOWN_DEPTH)
+
+		return _ramp(LAND_HEIGHT_COLORS, float(data_value) / MAX_LEVEL)
 
 	if mode in [CityViewMode.Mode.WATER, CityViewMode.Mode.POWER]:
 		return [Color("687381"), Color("e25c46"), Color("42bde8") if mode == CityViewMode.Mode.WATER else Color("f4d35e")][data_value]
@@ -100,6 +103,14 @@ static func color(data_value: int, mode: CityViewMode.Mode) -> Color:
 	var gradient: PackedColorArray = GRADIENTS.get(mode, DEFAULT_GRADIENT)
 
 	return gradient[0].lerp(gradient[1], amount)
+
+
+# a color between evenly spaced stops. `amount` runs from 0 to 1
+static func _ramp(stops: PackedColorArray, amount: float) -> Color:
+	var position := clampf(amount, 0.0, 1.0) * (stops.size() - 1)
+	var first := mini(floori(position), stops.size() - 2)
+
+	return stops[first].lerp(stops[first + 1], position - first)
 
 
 static func tile_text(city: CityState, mode: CityViewMode.Mode, point: Vector2i, exact := false) -> String:
@@ -201,7 +212,8 @@ static func value_image(city: CityState, mode: CityViewMode.Mode) -> Image:
 		return Image.create(city.map_size, city.map_size, false, Image.FORMAT_R8)
 
 	var power := mode == CityViewMode.Mode.POWER
-	var data := (NativeCityDataMesh.height_values(city.altitude_words) if mode == CityViewMode.Mode.HEIGHT
+	var data := (NativeCityDataMesh.height_values(city.altitude_words, city.document.find_chunk("XBIT").decoded_payload)
+		if mode == CityViewMode.Mode.HEIGHT
 		else NativeCityDataMesh.utility_values(city.document.find_chunk("XBIT").decoded_payload,
 			0x40 if power else 0x10, 0x80 if power else 0x20))
 

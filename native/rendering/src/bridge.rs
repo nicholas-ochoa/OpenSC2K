@@ -296,11 +296,14 @@ impl NativeCityDataMesh {
 /// Tile values of the data maps that have no data chunk. See `data_view.rs`.
 #[godot_api(secondary)]
 impl NativeCityDataMesh {
-    /// The land altitude of each tile. `altitude` holds the ALTM words.
+    /// The land level of each dry tile, and the underwater base plus the water
+    /// depth of each underwater tile. `altitude` holds the ALTM words.
     #[func]
-    fn height_values(altitude: PackedInt32Array) -> PackedByteArray {
-        PackedByteArray::from(data_view::height_values(altitude.as_slice()).as_slice())
+    fn height_values(altitude: PackedInt32Array, flags: PackedByteArray) -> PackedByteArray {
+        PackedByteArray::from(data_view::height_values(altitude.as_slice(), flags.as_slice()).as_slice())
     }
+    #[constant]
+    const UNDERWATER_BASE: i32 = data_view::UNDERWATER_BASE as i32;
     /// 2 where the `supplied` flag is set, 1 where only `connected` is set.
     #[func]
     fn utility_values(flags: PackedByteArray, supplied: i64, connected: i64) -> PackedByteArray {

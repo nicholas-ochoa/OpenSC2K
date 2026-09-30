@@ -210,11 +210,26 @@ pub fn build(city: &DataCity, height_view: bool) -> DataMesh {
     mesh
 }
 
-/// Height map values: the land altitude of each tile.
-pub fn height_values(altitude: &[i32]) -> Vec<u8> {
+/// The first height map value of underwater tiles. Dry tiles hold their land
+/// level below it; an underwater tile holds this value plus its water depth.
+pub const UNDERWATER_BASE: u8 = 32;
+const MAX_DEPTH: i32 = 31;
+
+/// Height map values: the land level of each dry tile, and the underwater base
+/// plus the depth of each tile under water.
+pub fn height_values(altitude: &[i32], flags: &[u8]) -> Vec<u8> {
+    use super::ids::{sc2altitude_layout as layout, sc2tile_flags};
     altitude
         .iter()
-        .map(|word| (word & super::ids::sc2altitude_layout::LAND_MASK) as u8)
+        .zip(flags)
+        .map(|(word, tile_flags)| {
+            let land = word & layout::LAND_MASK;
+            if tile_flags & sc2tile_flags::WATER == 0 {
+                return land as u8;
+            }
+            let water = (word >> layout::WATER_SHIFT) & layout::LEVEL_MASK;
+            UNDERWATER_BASE + (water - land).clamp(0, MAX_DEPTH) as u8
+        })
         .collect()
 }
 
@@ -283,7 +298,12 @@ mod tests {
 
     #[test]
     fn value_maps() {
-        assert_eq!(super::height_values(&[0x3e5, 7, 31]), vec![5, 7, 31]);
+        // land 5 under water 7, dry land 7, dry land 31
+        let words = [5 | 7 << 5, 7, 31];
+        assert_eq!(
+            super::height_values(&words, &[WATER_FLAG, 0, 0]),
+            vec![super::UNDERWATER_BASE + 2, 7, 31]
+        );
         assert_eq!(super::utility_values(&[0xc0, 0x80, 0x40, 0], 0x40, 0x80), vec![2, 1, 2, 0]);
     }
 }

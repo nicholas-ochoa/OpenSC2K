@@ -162,8 +162,13 @@ func draw_data_key(canvas: Control) -> void:
 			)
 
 		if map.data_view_mode == CityViewMode.Mode.HEIGHT:
-			canvas.draw_rect(Rect2(origin + Vector2(12, 96), Vector2(18, 10)), Color(0.35, 0.75, 1.0, 0.65))
-			canvas.draw_string(font, origin + Vector2(38, 106), "Water surface (transparent)", HORIZONTAL_ALIGNMENT_LEFT, -1, 13,
+			# underwater tiles go from shallow to deep blue under a transparent water surface
+			for step in 6:
+				var depth := roundi(step * CityDataView.MAX_SHOWN_DEPTH / 5.0)
+				canvas.draw_rect(Rect2(origin + Vector2(12 + step * 6, 96), Vector2(6, 10)),
+					CityDataView.color(CityDataView.UNDERWATER_BASE + depth, map.data_view_mode))
+
+			canvas.draw_string(font, origin + Vector2(56, 106), "Under water: shallow to deep", HORIZONTAL_ALIGNMENT_LEFT, -1, 13,
 					map.get_theme_color("font_color", "MapLegend"))
 
 		var labels := CityDataView.range_labels(map.data_view_mode)
