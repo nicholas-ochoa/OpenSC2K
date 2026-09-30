@@ -99,14 +99,19 @@ func _can_upgrade_city_to_sc2x() -> bool:
 			or document_state.current_document == null or app.simulation_state.simulation_engine == null):
 		return false
 
-	if document_state.current_document.is_extended() or document_state.current_document.full_resolution_maps():
+	var document := document_state.current_document
+
+	if document.is_sc2x() or (not document.is_extended() and document.full_resolution_maps()):
 		return false
 
 	if not Sc2xCheckpoint.save_error(app.simulation_state.speed_controller).is_empty():
 		return false
 
-	var path := (document_state.current_save_path if not document_state.current_save_path.is_empty()
-		else document_state.current_document.source_path)
+	# an SCLG city upgrades only when the player chooses it
+	if document.is_extended():
+		return true
+
+	var path := document_state.current_save_path if not document_state.current_save_path.is_empty() else document.source_path
 
 	return path.get_extension().to_lower() == "sc2"
 
@@ -129,14 +134,10 @@ func upgrade_city_to_sc2x(confirmed := false) -> void:
 	if not _can_upgrade_city_to_sc2x():
 		return
 
-	if not document_state.current_document.is_extended() and not confirmed:
+	if not confirmed:
 		if app.sc2x_conversion_dialog == null:
 			app.sc2x_conversion_dialog = ConfirmationDialog.new()
 			app.sc2x_conversion_dialog.title = "Upgrade city to SC2X?"
-			app.sc2x_conversion_dialog.dialog_text = (
-				"This permanently converts this city to SC2X.\nIt cannot return to SC2 or use original compatibility.\nThe " +
-				"original SimCity 2000 cannot open SC2X files.\n\nSave a separate SC2X copy. Your existing SC2 file stays " +
-				"unchanged.")
 			app.sc2x_conversion_dialog.get_ok_button().text = "Upgrade to SC2X"
 			app.sc2x_conversion_dialog.exclusive = true
 			app.sc2x_conversion_dialog.theme = AppUiTheme.current()
@@ -145,6 +146,13 @@ func upgrade_city_to_sc2x(confirmed := false) -> void:
 			app.sc2x_conversion_dialog.canceled.connect(func() -> void:
 				pending_sc2x_document = null)
 
+		app.sc2x_conversion_dialog.dialog_text = (
+			"This permanently converts this city to SC2X version 4.\nIt cannot return to the older SC2X format.\n\n" +
+			"Save a separate SC2X copy. Your existing file stays unchanged."
+			if document_state.current_document.is_extended()
+			else "This permanently converts this city to SC2X.\nIt cannot return to SC2 or use original compatibility.\nThe " +
+			"original SimCity 2000 cannot open SC2X files.\n\nSave a separate SC2X copy. Your existing SC2 file stays " +
+			"unchanged.")
 		pending_sc2x_document = document_state.current_document
 		app.sc2x_conversion_dialog.popup_centered()
 
@@ -165,7 +173,7 @@ func upgrade_city_to_sc2x(confirmed := false) -> void:
 	var status := "City upgraded to SC2X. Save a separate copy; the original game cannot open it."
 
 	if not converted.issues.is_empty():
-		status += " %d broken links in the original city were not kept." % converted.issues.size()
+		status += " %d links or records that SC2X cannot describe were kept unchanged." % converted.issues.size()
 
 	if not app.city_session.activate_document(document, _loaded_scenario(document), status, true):
 		return
@@ -299,24 +307,8 @@ func _load_city_unchecked(path: String) -> void:
 
 		return
 
+	# every city keeps its file format. Upgrade City to SC2X converts an SC2 or SCLG city
 	var status := "Loaded %s. Map view: %s." % [path.get_file(), CityViewMode.key(app.view_state.overlay_mode).capitalize()]
-
-	# an SCLG city becomes an SC2X version 4 city in memory. its file stays unchanged
-	if document.is_extended() and not document.is_sc2x():
-		var converted := Sc2xDocument.from_legacy(document, path.get_file().get_basename())
-
-		if not converted.ok:
-			app.interface.show_error("Cannot convert %s to SC2X version 4: %s" % [path.get_file(), converted.error])
-
-			return
-
-		converted.document.sc2x_converted_from = path
-		document = converted.document
-		status = "Converted %s to SC2X version 4. Save a new copy; the original file stays unchanged." % path.get_file()
-
-		if not converted.issues.is_empty():
-			status += " %d broken links in the original city were not kept." % converted.issues.size()
-
 	var loaded_scenario := _loaded_scenario(document)
 
 	if loaded_scenario != null and not loaded_scenario.is_valid():
@@ -325,11 +317,6 @@ func _load_city_unchecked(path: String) -> void:
 		return
 
 	app.city_session.activate_document(document, loaded_scenario, status, true)
-
-	# a converted city has no file of its own yet
-	if not document.sc2x_converted_from.is_empty():
-		document_state.current_save_path = ""
-		document_state.current_city_saved_once = false
 
 
 func _loaded_scenario(document: Sc2File) -> ScenarioState:

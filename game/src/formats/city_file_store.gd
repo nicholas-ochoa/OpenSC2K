@@ -17,8 +17,8 @@ static func save_copy(
 	return write(prepared)
 
 
-# Check the target and copy the content that the save writes. An SCLG city
-# converts to SC2X version 4 first; the document itself stays unchanged.
+# Check the target and copy the content that the save writes. Each city keeps
+# its file format; Sc2xDocument.from_legacy upgrades a city on request.
 static func prepare(
 	document: Sc2File, requested_path: String, reference_root: String, controller: GameSpeedController = null
 ) -> PreparedSave:
@@ -29,16 +29,6 @@ static func prepare(
 
 	if not compatibility_error.is_empty():
 		return PreparedSave.failure(compatibility_error)
-
-	# new files use SC2X version 4. an SCLG city converts to it first
-	if document.is_extended() and not document.is_sc2x():
-		var converted := Sc2xDocument.from_legacy(document, requested_path.get_file().get_basename())
-
-		if not converted.ok:
-			return PreparedSave.failure("Cannot convert the city to SC2X version 4: %s" % converted.error)
-
-		converted.document.sc2x_converted_from = document.source_path
-		document = converted.document
 
 	var output_path := requested_path
 

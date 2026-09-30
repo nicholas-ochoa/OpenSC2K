@@ -2,8 +2,8 @@
 
 OpenSC2K saves every city that the original game cannot open as an SC2X version 4
 file. The file is a ZIP archive with flat entries. SC2 and SCN cities keep the original
-format. SCLG files (the experimental SC2X versions 1 to 3) stay readable; a load converts
-them in memory, and a save writes a new version 4 file.
+format. SCLG files (the experimental SC2X versions 1 to 3) load and save in their own format
+until the player upgrades them.
 
 ## Archive
 
@@ -208,9 +208,9 @@ without changing the source:
 
 Record capacities become the larger of the source capacity and the map profile.
 
-The application converts an SCLG file when it loads it, and an SC2 city when the player
-chooses **Upgrade City to SC2X**. A converted city has no file of its own until the player
-saves it; a save never replaces the source file. New cities that are not original cities
+The application converts an SC2 or SCLG city only when the player chooses **Upgrade City to
+SC2X**. A converted city has no file of its own until the player saves it; a save never
+replaces the source file. New cities that are not original cities
 are version 4 cities.
 
 ## Saving

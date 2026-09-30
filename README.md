@@ -74,7 +74,7 @@ Larger cities and per-tile data maps use `.sc2x` saves: ZIP archives with one ra
 city structure, city names of up to 64 characters, and signs that can share a tile with any
 building. See [the SC2X format](docs/sc2x-format.md). The original game cannot open these
 files. Original `.sc2` cities keep their separate compatibility mode, and older `.sc2x` files
-still load and save as a new copy.
+keep their format until you choose **Upgrade City to SC2X**.
 
 ## sc2kfix
 
