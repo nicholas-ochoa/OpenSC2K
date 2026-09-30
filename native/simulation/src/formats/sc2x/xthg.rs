@@ -9,6 +9,10 @@ use super::wire::{Reader, put_u16, put_u32};
 pub const CORE_SIZE: usize = 32;
 pub const TYPE_NONE: u8 = 0;
 pub const TYPE_SHIP: u8 = 3;
+pub const TYPE_TRAIN_ENGINE: u8 = 10;
+pub const TYPE_TRAIN_CAR: u8 = 11;
+pub const TYPE_SUBWAY_ENGINE: u8 = 12;
+pub const TYPE_SUBWAY_CAR: u8 = 13;
 pub const TYPE_LAST: u8 = 16;
 
 /// Flag bit 0: the object occupies its tile in the runtime tile index.
@@ -176,8 +180,17 @@ impl Xthg {
         Ok(result)
     }
 
-    /// Check types, identities, names, flags, and the reserved field.
+    /// Check types, identities, names, flags, the reserved field, and train chains.
     pub fn validate(&self) -> Result<(), String> {
+        let broken = broken_trains(self.things.len(), |slot| {
+            let thing = &self.things[slot];
+            (thing.kind, thing.state as usize)
+        });
+
+        if let Some(slot) = broken.iter().position(|broken| *broken) {
+            return Err(format!("XTHG slot {} is part of an incomplete train", slot));
+        }
+
         let mut identities = std::collections::HashSet::new();
 
         for (slot, thing) in self.things.iter().enumerate() {
@@ -227,6 +240,43 @@ impl Xthg {
     }
 }
 
+/// The members of broken trains. A train is an engine whose state field names
+/// its first car, and a first car whose state field names the second car. The
+/// cars are two different active cars, rail or subway, of no other engine.
+/// Slot 0 is never a car. `record(slot)` gives the type and the state field.
+pub fn broken_trains(count: usize, record: impl Fn(usize) -> (u8, usize)) -> Vec<bool> {
+    let is_engine = |kind: u8| kind == TYPE_TRAIN_ENGINE || kind == TYPE_SUBWAY_ENGINE;
+    let is_car = |kind: u8| kind == TYPE_TRAIN_CAR || kind == TYPE_SUBWAY_CAR;
+    let mut broken = vec![false; count];
+    let mut owned = vec![false; count];
+
+    for (slot, flag) in broken.iter_mut().enumerate().skip(1) {
+        let (kind, first) = record(slot);
+
+        if !is_engine(kind) {
+            continue;
+        }
+
+        let free_car = |car: usize, owned: &[bool]| car > 0 && car < count && !owned[car] && is_car(record(car).0);
+        let second = if free_car(first, &owned) { record(first).1 } else { 0 };
+
+        if free_car(first, &owned) && free_car(second, &owned) && second != first {
+            owned[first] = true;
+            owned[second] = true;
+        } else {
+            *flag = true;
+        }
+    }
+
+    for (slot, flag) in broken.iter_mut().enumerate().skip(1) {
+        if is_car(record(slot).0) && !owned[slot] {
+            *flag = true;
+        }
+    }
+
+    broken
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -258,7 +308,7 @@ mod tests {
             ..Default::default()
         };
         things[3] = Thing {
-            kind: 10,
+            kind: 7,
             flags: FLAG_OCCUPANT | (1 << FLAG_DEPTH_SHIFT),
             object_id: 8,
             ..Default::default()

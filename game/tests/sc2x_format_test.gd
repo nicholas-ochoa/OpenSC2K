@@ -537,7 +537,20 @@ func _check_identities() -> void:
 	_check(second > 0 and second != first, "A freed and reused slot gets a new object ID")
 
 	# a named train keeps its ID and name when it enters a subway
-	chunk.write_decoded_byte(slot * Sc2ThingLayout.RECORD_SIZE, Sc2ThingLayout.Type.TRAIN_ENGINE)
+	var cars := PackedInt32Array()
+
+	for record in range(1, ThingData.count(chunk.decoded_payload)):
+		if cars.size() < 2 and record != slot and chunk.decoded_payload[record * Sc2ThingLayout.RECORD_SIZE] == 0:
+			cars.append(record)
+
+	var train_things := chunk.decoded_payload.duplicate()
+
+	for link: Array in [[slot, Sc2ThingLayout.Type.TRAIN_ENGINE, cars[0]], [cars[0], Sc2ThingLayout.Type.TRAIN_CAR, cars[1]],
+			[cars[1], Sc2ThingLayout.Type.TRAIN_CAR, 0]]:
+		train_things[int(link[0]) * Sc2ThingLayout.RECORD_SIZE] = int(link[1])
+		ThingData.write(train_things, int(link[0]) * Sc2ThingLayout.RECORD_SIZE + Sc2ThingLayout.Field.STATE, int(link[2]))
+
+	chunk.set_decoded_payload(train_things)
 	document.reconcile_object_identities()
 	document.sc2x_object_names[slot] = "Night Express"
 	var train := document.serialize()

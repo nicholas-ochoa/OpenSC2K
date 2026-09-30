@@ -339,6 +339,11 @@ pub fn split(working: &Working, options: SplitOptions) -> Result<Split, String> 
     // tile links that no structure describes: kept byte for byte as LLNK entries
     let mut unresolved: Vec<(usize, u16)> = Vec::new();
     let label = |id: usize| labels::read(working.labels, id, working.wide_labels).unwrap_or_default();
+    // members of broken trains stay as working records; the core slot is free
+    let broken = xthg::broken_trains(thing_count, |slot| {
+        let state = things::field(working.xthg, slot as i64, thing_layout::FIELD_STATE);
+        (working.xthg[slot * RECORD], state.max(0) as usize)
+    });
 
     for (index, marker) in markers.iter_mut().enumerate() {
         let top = overlay::read(working.xtxt, index as i64);
@@ -365,6 +370,11 @@ pub fn split(working: &Working, options: SplitOptions) -> Result<Split, String> 
                     "links to object record {}, which is free, missing, or linked twice",
                     record
                 ));
+                break;
+            }
+
+            if broken[record as usize] {
+                problem = Some(format!("links to object record {}, which is part of an incomplete train", record));
                 break;
             }
 
@@ -492,6 +502,13 @@ pub fn split(working: &Working, options: SplitOptions) -> Result<Split, String> 
         }
 
         let mut label_value = 0u16;
+
+        if broken[slot] {
+            issues.push(format!("Object {} is part of an incomplete train; it was kept unchanged", slot));
+            overrides.push((slot, target));
+            thing_records.push(Thing::default());
+            continue;
+        }
 
         if thing.is_active() {
             let supplied = options.object_ids.get(slot).copied().unwrap_or(0);
@@ -935,15 +952,21 @@ mod tests {
         xthg[0] = 4;
         xthg[FIELD_LABEL] = 205;
 
-        // slots 2 and 3 stack on the city hall tile (3, 4); slot 3 is on top
+        // train cars 3 and 2 of engine 4 stack on the city hall tile (3, 4);
+        // slot 3 is on top, and the last car keeps a wide state field
         for slot in [2usize, 3] {
             let offset = slot * RECORD;
-            xthg[offset] = 10;
+            xthg[offset] = 11;
             xthg[offset + 3] = 3;
             xthg[offset + 4] = 4;
             xthg[offset + 2] = 0x34;
             xthg[half + offset + 2] = 0x01;
         }
+
+        xthg[3 * RECORD + 2] = 2;
+        xthg[half + 3 * RECORD + 2] = 0;
+        xthg[4 * RECORD] = 10;
+        xthg[4 * RECORD + 2] = 3;
 
         xthg[2 * RECORD + FIELD_LABEL] = overlay::facility_id(10) as u8;
         xthg[half + 2 * RECORD + FIELD_LABEL] = (overlay::facility_id(10) >> 8) as u8;
@@ -1031,7 +1054,7 @@ mod tests {
             .filter(|thing| thing.is_active())
             .map(|thing| thing.object_id)
             .collect();
-        assert_eq!(ids.len(), 4);
+        assert_eq!(ids.len(), 5);
         assert!(split.xthg.block(xthg::WORKING_RECORD_TAG).is_some(), "slot 0 keeps its stale label");
         assert!(
             split.xthg.block(xthg::OCCUPIED_TILE_TAG).is_some(),
@@ -1111,8 +1134,12 @@ mod tests {
         xtxt[4 * 128 + 4] = 7;
         xtxt[40 * 128 + 40] = 0xfc;
 
-        // a train engine at (6, 6) covers sign 3
+        // a train engine at (6, 6) with cars 2 and 3 covers sign 3
         xthg[RECORD] = 10;
+        xthg[RECORD + 2] = 2;
+        xthg[2 * RECORD] = 11;
+        xthg[2 * RECORD + 2] = 3;
+        xthg[3 * RECORD] = 11;
         xthg[RECORD + 3] = 6;
         xthg[RECORD + 4] = 6;
         xthg[RECORD + FIELD_LABEL] = 3;
@@ -1284,7 +1311,9 @@ mod tests {
         overlay::write(&mut parts.0, 7, overlay::facility_id(30));
         overlay::write(&mut parts.0, 8, overlay::thing_id(9));
         overlay::write(&mut parts.0, 9, 3);
-        // record 20 is active but owns no tile
+        // engine 6 has no cars, and record 20 is active but owns no tile
+        parts.2[6 * RECORD] = 10;
+        parts.2[6 * RECORD + 2] = 9;
         parts.1[20 * 8] = 0xe1;
         parts.1[20 * 8 + 3] = 7;
         labels::write_wide(&mut parts.3, facility_label(20), "Lost Library");
@@ -1308,8 +1337,13 @@ mod tests {
             },
         )
         .unwrap();
-        assert_eq!(split.issues.len(), 4, "{:?}", split.issues);
+        assert_eq!(split.issues.len(), 5, "{:?}", split.issues);
         assert_eq!(split.xmic.facilities[20], Facility::default());
+        assert!(!split.xthg.things[6].is_active(), "a broken train has no core record");
+        let mut chained = split.xthg.clone();
+        chained.things[6].kind = 10;
+        chained.things[6].object_id = 99;
+        assert!(chained.validate().is_err(), "an engine needs two cars");
         let mut placeless = split.xmic.clone();
         placeless.facilities[20].tile_id = 0xe1;
         assert!(placeless.validate(EDGE).is_err(), "an individual facility owns a tile");
@@ -1319,6 +1353,7 @@ mod tests {
         let joined = join(EDGE, &split.markers, &xmic, &xthg, &split.mayor_name, &split.team_names).unwrap();
         assert_eq!(joined.xtxt, parts.0);
         assert_eq!(joined.xmic, parts.1);
+        assert_eq!(joined.xthg, parts.2);
         assert_eq!(labels::read(&joined.labels, facility_label(20), true).unwrap(), "Lost Library");
         assert_eq!(joined.xmic_extension, vec![unknown.clone()]);
         assert_eq!(joined.xthg_extension, vec![unknown]);

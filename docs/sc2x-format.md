@@ -99,8 +99,10 @@ least one tile. Size: `28 + 32C + 4P + T + E`.
 
 **XTHG** uses a 32-byte core: type (u8), direction (u8), then state, X, Y, Z, PX, PY, DX, DY,
 reserved (zero), goal, ship home X + 1, ship home Y + 1, flags (u16), and the object ID (u32).
-An active object has a unique nonzero ID; a free slot has no ID, name, or flags. Size:
-`24 + 40C + T + E`.
+An active object has a unique nonzero ID; a free slot has no ID, name, or flags. A train
+engine's state names its first car, and the first car's state names the second car. The two
+cars are different active train or subway cars of no other engine, and each car belongs to
+one engine. Size: `24 + 40C + T + E`.
 
 | Flag bits | Meaning |
 | --- | --- |
@@ -110,7 +112,7 @@ An active object has a unique nonzero ID; a free slot has no ID, name, or flags.
 | Extension tag | Entry | Meaning |
 | --- | --- | --- |
 | `LOCC` | slot u32, x u16, y u16 | An occupant whose occupied tile differs from its position. Original trains and sailboats can leave such links. |
-| `LREC` | slot u32, 12 low + 12 high bytes | The working record, when the core cannot express its bytes, such as a stale label field of an object that occupies no tile. |
+| `LREC` | slot u32, 12 low + 12 high bytes | The working record, when the core cannot express its bytes, such as a stale label field of an object that occupies no tile. A member of an incomplete train has a free core slot and keeps its record here. |
 | `LLNK` | tile index u32, link u16, zero u16 | A working tile link that no structure describes, such as a link to a free record or an object linked from two tiles. A load writes it back after the other links. |
 
 The application keeps XMIC and XTHG extension blocks with other tags and writes them again
