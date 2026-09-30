@@ -4,7 +4,7 @@ extends RefCounted
 ## Dry slopes name raised screen corners, as in IsometricConstants.
 ## Surface-water suffixes name connected map edges (N: -y, E: +x).
 ## BANK names identify a missing diagonal water neighbor.
-## Water connections follow LandscapeCommand._water_shape, not dry corner masks.
+## Water connections follow the water shapes of the landscape tool, not dry corner masks.
 
 const FLAT := 0x00
 const SLOPE_TOP_LEFT := 0x01

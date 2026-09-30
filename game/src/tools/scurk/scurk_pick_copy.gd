@@ -199,7 +199,7 @@ static func copy_objects(
 
 static func footprint_size(large_id: int) -> int:
 	var tile_id := ScurkEditorRules.object_tile_id(large_id)
-	return DemolishStructures.structure_area(tile_id) if tile_id >= 0 and tile_id <= Tiles.MAX_ID else 0
+	return NativeCityTools.building_area(tile_id) if tile_id >= 0 and tile_id <= Tiles.MAX_ID else 0
 
 
 static func can_copy_to(source_id: int, destination_id: int) -> bool:

@@ -72,26 +72,7 @@ func check_random_sites(edge: int) -> void:
 
 
 func check_tools(edge: int) -> void:
-	var p := payloads(edge)
-	var corner := Vector2i(edge - 2, edge - 2)
-
-	for dx in 2:
-		for dy in 2:
-			p.XBLD[(corner.x + dx) * edge + corner.y + dy] = Tiles.HIGHWAY_BRIDGE
-
-	check(DemolishBridges.reinforced_section_is_valid(p.XBLD, corner, edge), "Far reinforced bridge section")
-	check(not DemolishBridges.reinforced_section_is_valid(p.XBLD, corner + Vector2i.ONE, edge), "Bridge bounds reject overflow")
-
-	for anchor in [Vector2i(20, 20), Vector2i(edge - 10, edge - 10), Vector2i(edge - 2, 20), Vector2i(20, edge - 2)]:
-		p = payloads(edge)
-		OverlayData.write(p.XTXT, anchor.x * edge + anchor.y, HighwayCommand.CONNECTION_LABEL)
-
-		for direction in 2:
-			var kind := HighwayRoutes.select_section_kind(p.XBLD, p.XTER, p.XZON, p.XBIT,
-				p.ALTM, p.XTXT, anchor, direction, edge)
-			var expected: int = direction + 2
-			check(kind == expected, "Highway edge connection at %s: %d expected %d" % [anchor, kind, expected])
-
+	# the native tool tests cover reinforced sections and edge sections at each map width
 	var doc := EmptyCityTemplate.create(edge)
 	doc.set_misc_i32(0x14, 1000)
 	var city := CityState.from_document(doc)

@@ -28,6 +28,9 @@ Godot checks. Rebuild the library after each change to `native/simulation`.
   - `growth`, `infrastructure`, `data_maps`, `economy`, `civic`, `reports`, `disasters`,
     and `moving` hold the rules of each part of the simulation.
   - `tools` holds the edit rules that the simulation shares with the player tools, such as demolition.
+    `tools/commands` holds the player tool commands: network and highway drags, bridges, tunnels,
+    on-ramps, subway-to-rail connections, buildings and their facility records, zones, the bulldozer,
+    the terrain and landscape tools, the terrain editor, and SCURK Place & Print.
     `tools/rotation.rs` turns the city for `CityRotationCommand`.
     `tools/new_terrain.rs` runs the map-size stages of `NewCityTerrain` and the landscape
     editor stream. GDScript still makes the 128 by 128 landform, because its layout features
@@ -48,7 +51,18 @@ The GDScript phase classes, such as `GrowthScan`, `WaterPhase`, and `MovingThing
 their public functions. Each function calls the bridge. `SimulationEngine` keeps the engine state
 and the player interactions. Each day, disaster tick, and moving-thing tick is one native call.
 
-The player tools, the news queue, and the interface stay in GDScript.
+## Player tools
+
+Each tool command class in `game/src/tools`, such as `NetworkCommand`, `BuildingCommand`, and
+`TerrainCommand`, keeps its public functions and calls a `tool.*` operation through
+`NativeToolEdit.run`. The library edits the chunks and returns the GDScript result class. The
+bridge stores only the chunks that changed, and only for a successful edit. `NativeToolEdit` keeps
+the payloads before and after the edit; undo exchanges them in GDScript.
+
+`NativeCityTools` answers the tool questions of the view and the dialogs: building areas and
+sites, building corners, bridge deck tiles, and SCURK sites.
+
+The dispatch tool, the sign tool, the query tool, the news queue, and the interface stay in GDScript.
 
 ## Rules
 

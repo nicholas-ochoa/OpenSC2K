@@ -187,7 +187,7 @@ pub fn find_building_site(buildings: &[u8], zones: &[u8], selected: Vec2i, tile:
     Rect2i::default()
 }
 
-fn site_matches(buildings: &[u8], zones: &[u8], site: Rect2i, tile: i64, rotation: i64, map_edge: i64) -> bool {
+pub fn site_matches(buildings: &[u8], zones: &[u8], site: Rect2i, tile: i64, rotation: i64, map_edge: i64) -> bool {
     for x in site.position.x..site.end().x {
         for y in site.position.y..site.end().y {
             if buildings[(x * map_edge + y) as usize] as i64 != tile {
@@ -998,6 +998,24 @@ mod tests {
 
     /// A layered index releases the facility and a connection marker under a
     /// moving object, and keeps the object.
+    /// A reinforced section in the far corner is whole; one tile further
+    /// leaves the map.
+    #[test]
+    fn reinforced_sections_stay_inside_the_map() {
+        for edge in [128i64, 256, 1024] {
+            let mut buildings = vec![0u8; (edge * edge) as usize];
+            let corner = Vec2i::new(edge - 2, edge - 2);
+
+            for offset in SECTION_OFFSETS {
+                let point = corner + offset;
+                buildings[(point.x * edge + point.y) as usize] = tiles::HIGHWAY_BRIDGE as u8;
+            }
+
+            assert!(reinforced_section_is_valid(&buildings, corner, edge));
+            assert!(!reinforced_section_is_valid(&buildings, corner + Vec2i::new(1, 1), edge));
+        }
+    }
+
     #[test]
     fn a_layered_release_keeps_the_object_on_the_tile() {
         let edge = 16i64;

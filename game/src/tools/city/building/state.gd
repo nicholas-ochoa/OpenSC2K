@@ -1,19 +1,8 @@
 class_name BuildingState
 extends BuildingConstants
+## The building chunk payloads of a city, for the stadium team and SCURK history.
 
 const ChunkCommit = preload("res://src/model/city/ordered_chunk_commit.gd")
-
-
-static func update_building_count(
-	misc: PackedByteArray, zone: int, old_building: int, new_building: int, map_edge: int = 128
-) -> void:
-	if zone == MILITARY_ZONE:
-		return
-
-	var old_offset := MISC_TILE_COUNTS + old_building * 4
-	var new_offset := MISC_TILE_COUNTS + new_building * 4
-	BinaryData.write_u32_be(misc, old_offset, (BinaryData.read_u32_be(misc, old_offset) - 1) & (0xffff if map_edge == 128 else 0xffffffff))
-	BinaryData.write_u32_be(misc, new_offset, (BinaryData.read_u32_be(misc, new_offset) + 1) & (0xffff if map_edge == 128 else 0xffffffff))
 
 
 static func _city_payloads(city: CityState) -> Dictionary[String, PackedByteArray]:
@@ -69,11 +58,3 @@ static func _apply_payloads(
 	city: CityState, chunk_ids: PackedStringArray, payloads: Dictionary, rollback: Dictionary
 ) -> bool:
 	return ChunkCommit.apply(city, chunk_ids, payloads, rollback)
-
-
-static func _write_u32_be(data: PackedByteArray, offset: int, value: int) -> void:
-	BinaryData.write_u32_be(data, offset, value)
-
-
-static func read_u32_be(data: PackedByteArray, offset: int) -> int:
-	return BinaryData.read_u32_be(data, offset)

@@ -20,7 +20,6 @@ func _initialize() -> void:
 func _run() -> void:
 	for edge in Sc2File.MAP_SIZES:
 		check_format(edge)
-		check_wide_counts(edge)
 		if edge in [128, 512]:
 			check_values(edge)
 		if edge in [16, 32, 64, 128, 512]:
@@ -271,18 +270,6 @@ func check_legacy_upgrade() -> void:
 	check(doc.find_chunk("XTHG").decoded_payload.size() == 160 * 24, "Direct conversion widens records")
 	var loaded := Sc2File.new()
 	check(loaded.parse(doc.serialize().data) and CityState.from_document(loaded).is_valid(), "Direct conversion reloads")
-
-
-func check_wide_counts(edge: int) -> void:
-	var doc := EmptyCityTemplate.create(edge)
-	# the native annual, weather, and aftermath counts have their own width tests
-	doc.set_misc_u32(Sc2MiscLayout.NORMAL_POPULATION, 65536 * 900)
-	var misc := doc.find_chunk("MISC").decoded_payload
-	var expected := 0 if edge == 128 else 200
-	check(BuildingFacilities.population_cap(misc, 200, 900, edge) == expected, "Placement population availability does not wrap")
-	var micro := doc.find_chunk("XMIC").decoded_payload.duplicate()
-	BuildingFacilities.initialize_microsim(micro, misc, 10, 0xd0, 1900, SimRandom.new(1), false, false, edge)
-	check((micro[10 * 8 + 2] * 256 + micro[10 * 8 + 3]) == expected, "Placement passes map size to population cap")
 
 
 func check_sliced(edge: int) -> void:

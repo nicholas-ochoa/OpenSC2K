@@ -18,6 +18,15 @@ func check(ok: bool, label: String) -> void:
 		push_error(label)
 
 
+# the ramp tile of a highway direction and a road direction, from CASES
+func _expected_ramp(highway_direction: int, road_direction: int) -> int:
+	for entry: Array in CASES:
+		if entry[0] == highway_direction and entry[1] == road_direction:
+			return entry[2]
+
+	return -1
+
+
 func _initialize() -> void:
 	for edge in [128, 256, 384, 512]:
 		var city := CityState.from_document(EmptyCityTemplate.create(edge))
@@ -27,8 +36,8 @@ func _initialize() -> void:
 			var entry: Array = CASES[index]
 			var point := Vector2i(edge - 12 - (index % 4) * 12, edge - 12 - (index / 4) * 12)
 			points.append(point)
-			var highway: Vector2i = point + OnrampCommand.DIRECTIONS[entry[0]]
-			var road: Vector2i = point + OnrampCommand.DIRECTIONS[entry[1]]
+			var highway: Vector2i = point + NetworkConstants.DIRECTIONS[entry[0]]
+			var road: Vector2i = point + NetworkConstants.DIRECTIONS[entry[1]]
 			city.set_building_id(highway.x, highway.y, BuildingTileIds.HIGHWAY_STRAIGHT_1)
 			city.set_building_id(road.x, road.y, BuildingTileIds.ROAD_STRAIGHT_1)
 
@@ -37,7 +46,7 @@ func _initialize() -> void:
 		for index in CASES.size():
 			var entry: Array = CASES[index]
 			var point := points[index]
-			var road: Vector2i = point + OnrampCommand.DIRECTIONS[entry[1]]
+			var road: Vector2i = point + NetworkConstants.DIRECTIONS[entry[1]]
 			var funds := city.funds()
 			var command := OnrampCommand.apply(city, 6, 3, point)
 			commands.append(command)
@@ -54,17 +63,17 @@ func _initialize() -> void:
 				for index in CASES.size():
 					var entry: Array = CASES[index]
 					var rotated_point := points[index]
-					var rotated_highway: Vector2i = rotated_point + OnrampCommand.DIRECTIONS[entry[0]]
-					var rotated_road: Vector2i = rotated_point + OnrampCommand.DIRECTIONS[entry[1]]
+					var rotated_highway: Vector2i = rotated_point + NetworkConstants.DIRECTIONS[entry[0]]
+					var rotated_road: Vector2i = rotated_point + NetworkConstants.DIRECTIONS[entry[1]]
 
 					for step in turn + 1:
 						rotated_point = CityRotationCommand.rotate_point(rotated_point, edge, ccw)
 						rotated_highway = CityRotationCommand.rotate_point(rotated_highway, edge, ccw)
 						rotated_road = CityRotationCommand.rotate_point(rotated_road, edge, ccw)
-					var hd := OnrampCommand.DIRECTIONS.find(rotated_highway - rotated_point)
-					var rd := OnrampCommand.DIRECTIONS.find(rotated_road - rotated_point)
+					var hd := NetworkConstants.DIRECTIONS.find(rotated_highway - rotated_point)
+					var rd := NetworkConstants.DIRECTIONS.find(rotated_road - rotated_point)
 					check(
-						rotated.building_id(rotated_point.x, rotated_point.y) == OnrampCommand._ramp_tile(1 << hd, rd),
+						rotated.building_id(rotated_point.x, rotated_point.y) == _expected_ramp(hd, rd),
 						"Rotation agrees with placement",
 					)
 					check(rotated.is_flipped(rotated_point.x, rotated_point.y) == (rd % 2 == 0), "Rotated mirror agrees with placement")

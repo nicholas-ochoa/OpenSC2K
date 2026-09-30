@@ -7,6 +7,8 @@ mod codec;
 mod convert;
 mod ops;
 mod sc2x;
+mod tool_ops;
+mod tool_queries;
 
 use godot::prelude::*;
 
@@ -84,6 +86,10 @@ impl NativeSimulation {
     /// The operations that this library implements.
     #[func]
     fn operations() -> PackedStringArray {
-        ops::OPERATIONS.iter().map(|name| GString::from(*name)).collect()
+        ops::OPERATIONS
+            .iter()
+            .chain(tool_ops::OPERATIONS)
+            .map(|name| GString::from(*name))
+            .collect()
     }
 }

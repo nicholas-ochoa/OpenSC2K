@@ -123,8 +123,8 @@ func test_building_command(reference_root: String) -> void:
 	_check(document.set_misc_u32(0x01f0, 16384), "Building fixture counts clear tiles")
 	_check(document.set_misc_u32(0x0fe8, 0), "Building fixture clears subway count")
 	_check(document.set_misc_u32(Buildings.MISC_STADIUM_TEAMS, 0), "Building fixture clears stadium teams")
-	_check(document.set_misc_u32(Buildings.MISC_ARCOLOGY_POPULATION, 0), "Building fixture clears arcology population")
-	_check(document.set_misc_u32(Buildings.MISC_NORMAL_POPULATION, 180000), "Building fixture sets normal population")
+	_check(document.set_misc_u32(Sc2MiscLayout.ARCOLOGY_POPULATION, 0), "Building fixture clears arcology population")
+	_check(document.set_misc_u32(Sc2MiscLayout.NORMAL_POPULATION, 180000), "Building fixture sets normal population")
 	_check(document.set_misc_u32(0x01f0 + 0xcf * 4, 0), "Building fixture clears coal count")
 	_check(document.set_misc_u32(0x077c + 5 * 0x6c, 2), "Building fixture sets police count")
 	_check(document.set_misc_u32(0x077c + 5 * 0x6c + 4, 80), "Building fixture funds police")
@@ -314,7 +314,7 @@ func _test_immediate_utilities(reference_root: String) -> void:
 	)
 	_check(utility_document.set_misc_i32(0x14, 5000), "Immediate utility fixture sets funds")
 	_check(
-		utility_document.set_misc_u32(Buildings.MISC_NORMAL_POPULATION, 49999),
+		utility_document.set_misc_u32(Sc2MiscLayout.NORMAL_POPULATION, 49999),
 		"Immediate utility fixture sets population below the threshold",
 	)
 	_check(
@@ -379,7 +379,7 @@ func _test_immediate_utilities(reference_root: String) -> void:
 		var expect_refresh: bool = population < 50_000_000
 
 		_check(
-			utility_document.set_misc_u32(Buildings.MISC_NORMAL_POPULATION, population),
+			utility_document.set_misc_u32(Sc2MiscLayout.NORMAL_POPULATION, population),
 			"Immediate utility fixture selects the strict threshold",
 		)
 		var threshold_station := Buildings.apply(
@@ -532,7 +532,7 @@ func _test_resident_objections(reference_root: String) -> void:
 	)
 	_check(nuisance_document.set_misc_i32(0x14, 5000), "Nuisance fixture sets funds")
 	_check(
-		nuisance_document.set_misc_u32(Buildings.MISC_NORMAL_POPULATION, 50_000_000),
+		nuisance_document.set_misc_u32(Sc2MiscLayout.NORMAL_POPULATION, 50_000_000),
 		"Nuisance fixture prevents an immediate utility refresh",
 	)
 	var nuisance_city := CityModel.from_document(nuisance_document)

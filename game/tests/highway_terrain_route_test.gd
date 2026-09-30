@@ -35,16 +35,7 @@ func _test_direct_bridge(direction: int) -> void:
 			var point := water_start + step * distance + side * width
 			city.set_terrain_id(point.x, point.y, 0x10)
 			city.set_tile_flag(point.x, point.y, 0x04, true)
-	var data := NetworkState.city_payloads(city)
-	var plan := HighwayBridges.plan_bridge_from_start(data.XBLD, data.XTER, data.ALTM, start, 0)
-	check(
-		HighwayBridges.bridge_terrain_code(data.XTER, start) == [0xc030, 0x9060, 0x30c0, 0x6090][direction],
-		"Highway shoreline cells use the original order direction %d" % direction,
-	)
-	check(
-		plan.ok and plan.direction == direction and plan.span_length == 3,
-		"Highway bridge faces the opposite bank direction %d" % direction,
-	)
+	# the native highway bridge tests cover the shoreline codes and the plan
 	var before: Array = DocumentState.capture(city.document)
 	var preview_city := NetworkPlacementPreview.snapshot_city(city)
 	var preview := HighwayCommand.apply(

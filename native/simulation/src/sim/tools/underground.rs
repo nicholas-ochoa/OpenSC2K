@@ -4,6 +4,7 @@ use super::network::allows_connection;
 use crate::sim::bytes::{read_u32_be, write_u32_be};
 use crate::sim::geom::Vec2i;
 use crate::sim::ids::sc2misc_layout as misc_layout;
+use crate::sim::ids::sc2tile_flags as flag_bits;
 use crate::sim::ids::sc2zone_layout as zone;
 use crate::sim::ids::terrain_tile_ids as terrain_ids;
 use crate::sim::ids::underground_tile_ids as under;
@@ -140,4 +141,56 @@ pub fn retile_underground(underground: &mut [u8], terrain: &[u8], point: Vec2i, 
     }
 
     underground[index] = (base + NETWORK_SHAPES[connections as usize]) as u8;
+}
+
+/// BuildingUnderground._place_pipe: a pipe under a new water pump.
+pub fn place_pipe(underground: &mut [u8], terrain: &[u8], zones: &[u8], flags: &mut [u8], misc: &mut [u8], point: Vec2i, map_edge: i64) {
+    let index = point.x * map_edge + point.y;
+    let old_tile = underground[index as usize] as i64;
+
+    if (under::PIPE_FIRST..=under::PIPE_LAST).contains(&old_tile)
+        || old_tile == under::PIPE_TB_SUBWAY_LR
+        || old_tile == under::PIPE_LR_SUBWAY_TB
+    {
+        return;
+    }
+
+    let new_tile = match old_tile {
+        under::EMPTY => under::PIPE_FIRST,
+        under::SUBWAY_FIRST => under::PIPE_TB_SUBWAY_LR,
+        under::SUBWAY_TB => under::PIPE_LR_SUBWAY_TB,
+        _ => return,
+    };
+
+    replace_underground(underground, zones, misc, index, new_tile);
+    flags[index as usize] |= flag_bits::PIPED as u8;
+    retile_neighborhood(underground, terrain, point, true, map_edge);
+}
+
+/// BuildingUnderground._place_subway_station: connect and retile the subway,
+/// then replace the center with the station entrance.
+pub fn place_subway_station(
+    underground: &mut [u8],
+    terrain: &[u8],
+    zones: &[u8],
+    flags: &mut [u8],
+    misc: &mut [u8],
+    point: Vec2i,
+    map_edge: i64,
+) {
+    let index = point.x * map_edge + point.y;
+    let inserted = match underground[index as usize] as i64 {
+        under::EMPTY => Some(under::SUBWAY_FIRST),
+        under::PIPE_FIRST => Some(under::PIPE_LR_SUBWAY_TB),
+        under::PIPE_TB => Some(under::PIPE_TB_SUBWAY_LR),
+        _ => None,
+    };
+
+    if let Some(tile) = inserted {
+        replace_underground(underground, zones, misc, index, tile);
+        retile_neighborhood(underground, terrain, point, false, map_edge);
+    }
+
+    replace_underground(underground, zones, misc, index, under::SUBWAY_ENTRANCE);
+    flags[index as usize] &= !(flag_bits::PIPED as u8);
 }

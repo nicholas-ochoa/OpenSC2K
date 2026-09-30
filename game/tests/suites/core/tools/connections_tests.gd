@@ -28,7 +28,7 @@ func test_hydro_command(reference_root: String) -> void:
 	_check(document.set_misc_u32(0x01f0, 16384), "Hydroelectric fixture counts clear tiles")
 	_check(document.set_misc_u32(0x01f0 + 0xc7 * 4, 0), "Hydroelectric fixture clears hydro count")
 	_check(
-		document.set_misc_u32(Buildings.MISC_NORMAL_POPULATION, 49999),
+		document.set_misc_u32(Sc2MiscLayout.NORMAL_POPULATION, 49999),
 		"Hydroelectric fixture sets population below the utility threshold",
 	)
 	var city := CityModel.from_document(document)
@@ -56,7 +56,7 @@ func test_hydro_command(reference_root: String) -> void:
 		var expect_refresh: bool = population < 50_000_000
 
 		_check(
-			document.set_misc_u32(Buildings.MISC_NORMAL_POPULATION, population),
+			document.set_misc_u32(Sc2MiscLayout.NORMAL_POPULATION, population),
 			"Hydroelectric fixture sets the strict utility threshold",
 		)
 		var threshold_command := Hydro.apply(

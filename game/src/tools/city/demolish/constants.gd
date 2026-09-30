@@ -1,48 +1,9 @@
 class_name DemolishConstants
 extends RefCounted
+## The bulldozer tool. The demolition rules run in the native simulation
+## library; see native/simulation/src/sim/tools/commands/demolish.rs.
 
-const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const GROUP_BULLDOZER := CityToolIds.Group.BULLDOZER
 const SUBTOOL_DEMOLISH := CityToolIds.Bulldozer.DEMOLISH
-const RADIOACTIVITY := Tiles.RADIOACTIVE_WASTE
-const MILITARY_ZONE := Sc2ZoneLayout.MILITARY
-const DYNAMIC_LABEL_FIRST := 61
-const DYNAMIC_LABEL_LAST := 200
-const MICROSIM_LABEL_BASE := 51
-const PROTECTED_CONNECTION_LABEL := 0xff
-const FLAG_CLEAR_AFTER_STRUCTURE := ~(Sc2TileFlags.FLIPPED | Sc2TileFlags.POWER_MASK) & 0xff
-const FLAG_FLIPPED := Sc2TileFlags.FLIPPED
-const FLAG_WATER := Sc2TileFlags.WATER
-const HIGHWAY_STRAIGHT_FIRST := Tiles.HIGHWAY_STRAIGHT_1
-const HIGHWAY_STRAIGHT_LAST := Tiles.HIGHWAY_POWER_CROSSING_2
-const BRIDGE_FIRST := Tiles.SUSPENSION_BRIDGE_1
-const BRIDGE_LAST := Tiles.POWER_BRIDGE
-const HIGHWAY_SHAPED_FIRST := Tiles.HIGHWAY_SLOPE_FIRST
-const HIGHWAY_SHAPED_LAST := Tiles.HIGHWAY_INTERSECTION
-const REINFORCED_BRIDGE_FIRST := Tiles.HIGHWAY_BRIDGE
-const REINFORCED_BRIDGE_LAST := Tiles.REINFORCED_HIGHWAY_BRIDGE
-const TUNNEL_FIRST := Tiles.TUNNEL_FIRST
-const TUNNEL_LAST := Tiles.TUNNEL_LAST
-const RUNWAY_FIRST := Tiles.RUNWAY
-const RUNWAY_LAST := Tiles.RUNWAY_CROSSING
-const PIER_FIRST := Tiles.PIER
-const PIER_LAST := Tiles.CRANE
-const SUBWAY_STATION := Tiles.SUBWAY_STATION
-const TUNNEL_MASK := Sc2AltitudeLayout.TUNNEL_MASK
-const BRIDGE_DEBRIS_SPRITE := 1392
-const SOUND_EXPLODE := 504
-const SOUND_FOREST_PROTEST := 512
-const NEWS_FOREST_PROTEST := 0x28
-const MAX_PARALLEL_EFFECT_OFFSET_FRAMES := 2
-const MISC_GRANTED_REWARDS := Sc2MiscLayout.GRANTED_REWARDS
-const REWARD_BIT_BY_TILE := {
-	Tiles.MAYOR_HOUSE: 0,
-	Tiles.CITY_HALL: 1,
-	Tiles.STATUE: 2,
-	Tiles.LLAMA_DOME: 3,
-}
-const CORNER_BOTTOM_LEFT := Sc2ZoneLayout.CORNER_BOTTOM_LEFT
-const CORNER_BOTTOM_RIGHT := Sc2ZoneLayout.CORNER_BOTTOM_RIGHT
-const CORNER_TOP_LEFT := Sc2ZoneLayout.CORNER_TOP_LEFT
-const CORNER_TOP_RIGHT := Sc2ZoneLayout.CORNER_TOP_RIGHT
-const DIRECTIONS := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
+# the chunks that a demolition checks, in commit order
+const PAYLOAD_IDS: PackedStringArray = ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT", "XLAB", "XMIC", "MISC"]

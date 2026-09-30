@@ -27,7 +27,7 @@ func _sites(edge: int, area: int) -> Array[Vector2i]:
 func _check_legacy() -> void:
 	var city := _city(128, false)
 	assert(not BuildingSites.preview_valid(city, 13, 0, Vector2i(1, 1)))
-	assert(not BuildingEdit.apply(city, 13, 0, Vector2i(1, 1), SimLfsrRandom.new(1), ZeroRandom.new()).ok)
+	assert(not BuildingCommand.apply(city, 13, 0, Vector2i(1, 1), SimLfsrRandom.new(1), ZeroRandom.new()).ok)
 
 
 func _check_tools() -> void:
@@ -38,7 +38,7 @@ func _check_tools() -> void:
 			var city := _city(16)
 			var selected := origin + (Vector2i.ONE if area > 2 else Vector2i.ZERO)
 			assert(BuildingSites.preview_valid(city, tool.x, tool.y, selected))
-			var result := BuildingEdit.apply(city, tool.x, tool.y, selected, SimLfsrRandom.new(1), ZeroRandom.new())
+			var result := BuildingCommand.apply(city, tool.x, tool.y, selected, SimLfsrRandom.new(1), ZeroRandom.new())
 			assert(result.ok, result.error)
 			_check_footprint(city, Rect2i(origin, Vector2i.ONE * area), _anchors(city))
 			_check_rotations(city)
@@ -48,7 +48,8 @@ func _check_tools() -> void:
 			assert(demolition.ok, demolition.error)
 			assert(city.buildings.count(BuildingSites.tile_for_tool(tool.x, tool.y)) == 0)
 		for origin in [Vector2i(-1, 5), Vector2i(5, -1), Vector2i(17 - area, 5), Vector2i(5, 17 - area)]:
-			assert(not BuildingSites._footprint_is_in_bounds(Rect2i(origin, Vector2i.ONE * area), area, 16, true))
+			var outside: Vector2i = origin + (Vector2i.ONE if area > 2 else Vector2i.ZERO)
+			assert(not BuildingSites.preview_valid(_city(16), tool.x, tool.y, outside))
 
 
 func _check_scurk() -> void:
@@ -56,7 +57,7 @@ func _check_scurk() -> void:
 		if not ScurkPlaceCommand.is_placeable_tile(tile):
 			continue
 		var city := _city(16)
-		var area := DemolishStructures.structure_area(tile)
+		var area := NativeCityTools.building_area(tile)
 		var origin := Vector2i.ONE * (16 - area)
 		var selected := origin + (Vector2i.ONE if area > 2 else Vector2i.ZERO)
 		if tile in [BuildingTileIds.HYDRO_POWER_1, BuildingTileIds.HYDRO_POWER_2]:
@@ -103,7 +104,7 @@ func _check_footprint(city: CityState, site: Rect2i, anchors: Dictionary[int, bo
 	for x in range(site.position.x, site.end.x):
 		for y in range(site.position.y, site.end.y):
 			assert(city.building_id(x, y) == tile)
-			assert(DemolishEffectsSites._find_building_site(city.buildings, city.zones,
+			assert(NativeCityTools.find_building_site(city.buildings, city.zones,
 				Vector2i(x, y), tile, site.size.x, city.compass_rotation(), city.map_size) == site)
 			if anchors.has(city.index_of(x, y)):
 				drawn += 1
@@ -123,7 +124,7 @@ func _check_rotations(city: CityState) -> void:
 					var tile := city.building_id(x, y)
 					if tile < BuildingTileIds.DEVELOPED_FIRST or not anchors.has(city.index_of(x, y)):
 						continue
-					var area := DemolishStructures.structure_area(tile)
+					var area := NativeCityTools.building_area(tile)
 					_check_footprint(city, Rect2i(x, y - area + 1, area, area), anchors)
 		assert(city.buildings == before_buildings and city.zones == before_zones)
 

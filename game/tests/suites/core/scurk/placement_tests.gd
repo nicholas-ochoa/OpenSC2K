@@ -40,10 +40,10 @@ func test_scurk_place_command(reference_root: String) -> void:
 		"SCURK Place & Print fixture clears labels and microsimulations",
 	)
 	_check(
-		document.set_misc_i32(Buildings.MISC_FUNDS, 0)
-		and document.set_misc_u32(Buildings.MISC_TILE_COUNTS, CityState.TILE_COUNT)
+		document.set_misc_i32(Sc2MiscLayout.FUNDS, 0)
+		and document.set_misc_u32(Sc2MiscLayout.TILE_COUNTS, CityState.TILE_COUNT)
 		and document.set_misc_u32(ToolAvailability.MISC_GRANTED_REWARDS, 0)
-		and document.set_misc_u32(Buildings.MISC_SUBWAY_COUNT, 0),
+		and document.set_misc_u32(Sc2MiscLayout.SUBWAY_COUNT, 0),
 		"SCURK Place & Print fixture removes game placement privileges",
 	)
 	var city := CityModel.from_document(document)
@@ -67,8 +67,8 @@ func test_scurk_place_command(reference_root: String) -> void:
 		and city.microsim(10).tile_id == 0xcf
 		and city.microsim(10).stat_1 == 200
 		and not city.label(61).is_empty()
-		and document.misc_u32(Buildings.MISC_TILE_COUNTS) == 16368
-		and document.misc_u32(Buildings.MISC_TILE_COUNTS + 0xcf * 4) == 16,
+		and document.misc_u32(Sc2MiscLayout.TILE_COUNTS) == 16368
+		and document.misc_u32(Sc2MiscLayout.TILE_COUNTS + 0xcf * 4) == 16,
 		"SCURK object placement writes compatible counts, labels, and XMIC data",
 	)
 	var edit_history := ScurkHistory.new()

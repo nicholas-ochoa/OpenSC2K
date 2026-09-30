@@ -413,3 +413,44 @@ pub fn update_building_count(misc: &mut [u8], zone_type: i64, old_building: i64,
     let new_count = read_u32_be(misc, new_offset);
     write_u32_be(misc, new_offset, (new_count + 1) & mask);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The sentinel 0x32 raises a surrounded basin by one level. Below the sea
+    /// it becomes deep water, and the zone nibble is cleared.
+    #[test]
+    fn a_surrounded_basin_rises_one_level() {
+        let edge = 128i64;
+        let cells = (edge * edge) as usize;
+        let mut altitude = vec![0u8; cells * 2];
+        let (mut buildings, mut terrain, mut zones, mut flags) = (vec![0u8; cells], vec![0u8; cells], vec![0u8; cells], vec![0u8; cells]);
+        let mut misc = vec![0u8; 4800];
+        let point = Vec2i::new(70, 70);
+        let index = point.x * edge + point.y;
+        zones[index as usize] = 6;
+
+        for offset in [Vec2i::new(0, -1), Vec2i::new(1, 0), Vec2i::new(0, 1), Vec2i::new(-1, 0)] {
+            let neighbor = point + offset;
+            set_land_altitude(&mut altitude, neighbor.x * edge + neighbor.y, 1);
+        }
+
+        retile_region(
+            &mut altitude,
+            &mut buildings,
+            &mut terrain,
+            &mut zones,
+            &mut flags,
+            &mut misc,
+            &[index],
+            2,
+            edge,
+        );
+
+        assert_eq!(land_altitude(&altitude, index), 1);
+        assert_eq!(terrain[index as usize] as i64, terrain_ids::DEEP_WATER_FLAT);
+        assert_ne!(flags[index as usize] as i64 & flag_bits::WATER, 0);
+        assert_eq!(zones[index as usize], 0);
+    }
+}

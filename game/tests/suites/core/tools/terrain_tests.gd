@@ -28,24 +28,7 @@ func test_terrain_command(reference_root: String) -> void:
 		shape_table_matches,
 		"Terrain shape table matches the reachable supplied executable bytes",
 	)
-	var ordered_heights := PackedInt32Array()
-	ordered_heights.resize(CityState.TILE_COUNT)
-	var ordered_zones := _filled_bytes(CityState.TILE_COUNT, 0)
-	var ordered_buildings := _filled_bytes(CityState.TILE_COUNT, Tiles.EMPTY)
-	var ordered_start := Vector2i(20, 20)
-	var ordered_west := Vector2i(19, 20)
-	var ordered_north := Vector2i(20, 19)
-	ordered_heights[ordered_start.x * CityState.MAP_SIZE + ordered_start.y] = 1
-	var ordered_raise := TerrainEditHeights.plan_raise(
-		ordered_heights, ordered_zones, ordered_buildings, ordered_start, 25
-	)
-	_check(
-		ordered_raise.valid
-		and ordered_raise.heights[ordered_west.x * CityState.MAP_SIZE + ordered_west.y] == 1
-		and ordered_raise.heights[ordered_north.x * CityState.MAP_SIZE + ordered_north.y] == 0
-		and ordered_raise.heights[ordered_start.x * CityState.MAP_SIZE + ordered_start.y] == 1,
-		"Partial Raise Terrain funds apply in executable west-north-east-south order",
-	)
+	# the native terrain tests cover the raise order and the basin sentinel
 	var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 
 	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT"]:
@@ -180,50 +163,4 @@ func test_terrain_command(reference_root: String) -> void:
 		city.building_id(60, 60) == 0x8c and city.building_id(61, 61) == 0x8c
 		and city.text_overlay_id(60, 60) == 61,
 		"Terrain undo restores the complete structure and overlay",
-	)
-
-	_test_basin_retile(document)
-
-
-func _test_basin_retile(document: Sc2File) -> void:
-	var basin_altitude := _filled_bytes(CityState.TILE_COUNT * 2, 0)
-	var basin_buildings := _filled_bytes(CityState.TILE_COUNT, Tiles.EMPTY)
-	var basin_terrain := _filled_bytes(CityState.TILE_COUNT, 0)
-	var basin_zones := _filled_bytes(CityState.TILE_COUNT, 0)
-	var basin_flags := _filled_bytes(CityState.TILE_COUNT, 0)
-	var basin_misc := document.find_chunk("MISC").decoded_payload.duplicate()
-	var basin_point := Vector2i(70, 70)
-	var basin_index := basin_point.x * CityState.MAP_SIZE + basin_point.y
-	basin_zones[basin_index] = 6
-
-	for offset in TerrainTools.CARDINAL_OFFSETS:
-		var neighbor: Vector2i = basin_point + offset
-		TerrainEditHeights.set_land_altitude(
-			basin_altitude,
-			neighbor.x * CityState.MAP_SIZE + neighbor.y,
-			1,
-		)
-
-	TerrainRetile.retile_region(
-		basin_altitude,
-		basin_buildings,
-		basin_terrain,
-		basin_zones,
-		basin_flags,
-		basin_misc,
-		PackedInt32Array([basin_index]),
-		2,
-	)
-	_check(
-		TerrainEditHeights.land_altitude(basin_altitude, basin_index) == 1,
-		"Terrain sentinel 0x32 raises a surrounded basin by one level",
-	)
-	_check(
-		basin_terrain[basin_index] == 0x10
-		and (basin_flags[basin_index] & TerrainTools.FLAG_WATER) != 0,
-		"A raised basin below sea level uses the executable's deep-water terrain",
-	)
-	_check(
-		basin_zones[basin_index] == 0,
-		"The raised-basin terrain shape clears the zone nibble",
 	)

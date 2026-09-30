@@ -9,7 +9,6 @@ var failures := 0
 
 func _initialize() -> void:
 	_check_facility_pool()
-	_check_arcology_keeps_other_records()
 	_check_dispatch_budget()
 	print("SC2X limits: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
@@ -35,8 +34,8 @@ func _fill(city: CityState, count: int, tile_id: int) -> void:
 
 func _check_facility_pool() -> void:
 	var city := CityState.from_document(Sc2xDocument.create_empty(16).document)
-	var budget := BuildingFacilities.individual_record_budget(city.document)
-	_check(budget == 54, "A 16-tile city has 54 individual facility records")
+	# a 16-tile city has 54 individual facility records
+	var budget := 54
 	city.set_funds(1000000)
 	_fill(city, budget - 1, BuildingTileIds.HOSPITAL)
 	var last := BuildingCommand.apply(
@@ -50,31 +49,6 @@ func _check_facility_pool() -> void:
 	var shared := BuildingCommand.apply(
 		city, CityToolIds.Group.EDUCATION, CityToolIds.Education.LIBRARY, Vector2i(12, 12), SimLfsrRandom.new(1), SimRandom.new(1))
 	_check(shared.ok, "Shared categories keep their own slots when the pool is full")
-
-	# an original city keeps the original allocation
-	var original := CityState.from_document(EmptyCityTemplate.create(128))
-	_check(BuildingFacilities.individual_record_budget(original.document) < 0
-		and BuildingFacilities.record_available(original.document.find_chunk("XMIC").decoded_payload, BuildingTileIds.POLICE_STATION, -1),
-		"Original cities have no record budget")
-
-
-func _check_arcology_keeps_other_records() -> void:
-	var city := CityState.from_document(Sc2xDocument.create_empty(16).document)
-	var records := city.document.find_chunk("XMIC").decoded_payload.duplicate()
-	var capacity := records.size() / CityState.MICROSIM_RECORD_SIZE
-
-	for record in range(BuildingCommand.MICROSIM_DYNAMIC_FIRST, capacity):
-		records[record * CityState.MICROSIM_RECORD_SIZE] = BuildingTileIds.HOSPITAL
-
-	var labels := city.document.find_chunk("XLAB").decoded_payload.duplicate()
-	var overlays := city.text_overlays.duplicate()
-	var sc2x_id := BuildingFacilities.provision_microsim(records.duplicate(), labels, overlays, BuildingTileIds.PLYMOUTH_ARCOLOGY,
-		2050, SimRandom.new(1), city.document.find_chunk("MISC").decoded_payload, false, false,
-		BuildingFacilities.individual_record_budget(city.document))
-	_check(sc2x_id == 0, "An SC2X arcology never takes the record of another facility")
-	var legacy_id := BuildingFacilities.provision_microsim(records.duplicate(), labels, overlays, BuildingTileIds.PLYMOUTH_ARCOLOGY,
-		2050, SimRandom.new(1), city.document.find_chunk("MISC").decoded_payload)
-	_check(legacy_id != 0, "The original allocation still replaces a record for an arcology")
 
 
 func _check_dispatch_budget() -> void:

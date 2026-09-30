@@ -1,8 +1,8 @@
 # gdstyle:ignore-file=quality/max-class-variables
 class_name RouteEditResult
 extends EditCommandResult
-# road, rail, power line, subway, pipe, or highway route. networkdragcommand
-# joins bridge-separated segments into one result and one undo. network
+# road, rail, power line, subway, pipe, or highway route. a drag joins its
+# bridge-separated segments into one result and one undo. network
 # routes use the tile fields; highways use the 2 by 2 section fields
 
 # network tool mode, or -1 for a highway
@@ -62,31 +62,3 @@ static func rejected(message: String, charged := 0) -> RouteEditResult:
 # connection adds commerce. rail and highway connections add industry
 func connection_kind() -> String:
 	return "commerce" if command_type == "network" and mode == NetworkConstants.MODE_ROAD else "industry"
-
-
-# add the next bridge-separated segment. the first segment starts the route
-func merge_segment(segment: RouteEditResult) -> void:
-	for field in ["cost", "listed_cost", "dry_cost", "listed_dry_cost", "route_cost", "listed_route_cost", "bridge_cost",
-		"listed_bridge_cost", "bridge_span_length", "graded_tiles", "graded_sections", "connection_cost", "listed_connection_cost"]:
-		set(field, int(get(field)) + int(segment.get(field)))
-
-	for field in ["points", "dry_points", "bridge_points", "sections", "tile_indices", "bridge_sections", "bridge_endpoint_sections"]:
-		var merged: Variant = get(field)
-
-		for point: Variant in segment.get(field):
-			if not merged.has(point):
-				merged.append(point)
-
-	bridge_built = bridge_built or segment.bridge_built
-	bridge_cancelled = bridge_cancelled or segment.bridge_cancelled
-	connection_built = connection_built or segment.connection_built
-	connection_cancelled = connection_cancelled or segment.connection_cancelled
-	connection_anchor = segment.connection_anchor
-	connection_error = segment.connection_error
-	stopped_early = segment.stopped_early
-
-	if not segment.bridge_error.is_empty():
-		continuation_error = segment.bridge_error
-
-	bridge_count += int(segment.bridge_built)
-	new_payloads = segment.new_payloads

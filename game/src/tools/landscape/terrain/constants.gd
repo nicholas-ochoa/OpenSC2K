@@ -1,22 +1,17 @@
 class_name TerrainEditConstants
 extends RefCounted
+## The terrain tools, and the slope table that the view shares. The terrain
+## rules run in the native simulation library; see native/simulation/src/sim/tools/commands.
 
 const GROUP_BULLDOZER := CityToolIds.Group.BULLDOZER
 const SUBTOOL_LEVEL := CityToolIds.Bulldozer.LEVEL
 const SUBTOOL_RAISE := CityToolIds.Bulldozer.RAISE
 const SUBTOOL_LOWER := CityToolIds.Bulldozer.LOWER
-const MILITARY_ZONE := Sc2ZoneLayout.MILITARY
-const FLAG_WATER := Sc2TileFlags.WATER
-const MAX_RAISE_SOURCE := 29
 const NEIGHBOR_OFFSETS := [
 	Vector2i(0, -1), Vector2i(1, -1), Vector2i(1, 0), Vector2i(1, 1),
 	Vector2i(0, 1), Vector2i(-1, 1), Vector2i(-1, 0), Vector2i(-1, -1),
 ]
 const NEIGHBOR_MASKS := [3, 2, 6, 4, 12, 8, 9, 1]
-const CARDINAL_OFFSETS := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
-const RAISE_DEPENDENCY_OFFSETS := [
-	Vector2i(-1, 0), Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1),
-]
 # Raise an enclosed basin by one level before assigning its XTER tile.
 const RAISE_BASIN := 50
 # Index by the corners that a higher neighbor raises: 1 top, 2 right, 4 bottom, 8 left.

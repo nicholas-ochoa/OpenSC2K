@@ -68,7 +68,7 @@ func _test_scenes() -> void:
 	var scene := ContextScene.new()
 	for tile in [Tiles.MIDDLE_CLASS_HOMES_1X1_1, Tiles.APARTMENTS_2X2_1, Tiles.LARGE_APARTMENT_BUILDING_3X3_1, Tiles.OFFICE_BUILDING_2X2_1,
 		Tiles.FACTORY_3X3, Tiles.COAL_POWER, Tiles.HOSPITAL]:
-		var area := DemolishStructures.structure_area(tile)
+		var area := NativeCityTools.building_area(tile)
 		scene.build(tile, area, true, true)
 		assert(scene.kind == ContextScene.Kind.BUILDING and scene.target_sites.size() == 2)
 		assert(scene.target_sites[0].size == Vector2i.ONE * area)
@@ -80,7 +80,7 @@ func _test_scenes() -> void:
 				if other >= Tiles.DEVELOPED_FIRST and other != tile:
 					neighbors += 1
 					assert(ContextScene.family_for_tile(other) == ContextScene.family_for_tile(tile))
-					assert(DemolishStructures.structure_area(other) == area)
+					assert(NativeCityTools.building_area(other) == area)
 		assert(neighbors > 0)
 		_check_sites(city)
 		scene.build(tile, area, false, false)
@@ -128,8 +128,8 @@ func _check_sites(city: CityState) -> void:
 			var tile := city.building_id(x, y)
 			if tile < Tiles.DEVELOPED_FIRST or (city.building_corners(x, y) & 0x80) == 0:
 				continue
-			var site := DemolishEffectsSites._find_building_site(city.buildings, city.zones, Vector2i(x, y),
-				tile, DemolishEffectsSites._building_area(tile), 0, city.map_size)
+			var site := NativeCityTools.find_building_site(city.buildings, city.zones, Vector2i(x, y),
+				tile, NativeCityTools.building_area(tile), 0, city.map_size)
 			assert(site != Rect2i())
 			for sx in range(site.position.x, site.end.x):
 				for sy in range(site.position.y, site.end.y):

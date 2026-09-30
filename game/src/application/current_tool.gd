@@ -300,8 +300,8 @@ func _placement_preview_error(point: Vector2i) -> String:
 			return "The object footprint extends outside the map."
 
 		return ("" if tile_id > BuildingTileIds.MAX_ID
-			else ScurkPlace._site_error(app.document_state.city.buildings, app.document_state.city.terrain,
-				app.document_state.city.tile_flags, site, tile_id, map_edge))
+			else String(NativeCityTools.scurk_site_error(app.document_state.city.buildings, app.document_state.city.terrain,
+				app.document_state.city.tile_flags, site, tile_id, map_edge)))
 
 	if Buildings.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
 		return Buildings.preview_error(app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool, point)

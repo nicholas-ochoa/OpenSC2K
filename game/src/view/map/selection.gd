@@ -154,7 +154,7 @@ func _selection_source_polygons() -> Array[PackedVector2Array]:
 		var seen := {}
 
 		for tile in tiles:
-			var anchor := HighwayGeometry.snap_anchor(tile)
+			var anchor := HighwayCommand.snap_anchor(tile)
 
 			for x in range(anchor.x, anchor.x + 2):
 				for y in range(anchor.y, anchor.y + 2):
@@ -297,11 +297,11 @@ func _query_footprint_tiles(point: Vector2i) -> Array[Vector2i]:
 		return result
 
 	var tile_id := source.building_id(point.x, point.y)
-	var area := DemolishEffectsSites._building_area(tile_id)
+	var area := NativeCityTools.building_area(tile_id)
 	var site := Rect2i(point, Vector2i.ONE)
 
 	if area > 1:
-		var found := DemolishEffectsSites._find_building_site(
+		var found := NativeCityTools.find_building_site(
 			source.buildings, source.zones, point, tile_id, area, source.compass_rotation(), map_edge
 		)
 

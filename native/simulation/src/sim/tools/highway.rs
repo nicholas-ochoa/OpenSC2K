@@ -133,7 +133,7 @@ fn terrain_class(terrain_id: i64) -> usize {
     if terrain_id == RAISED { 4 } else { 0 }
 }
 
-fn building_is_allowed(tile: i64) -> bool {
+pub fn building_is_allowed(tile: i64) -> bool {
     if (SHAPED_FIRST..=SHAPED_LAST).contains(&tile) || (STRAIGHT_FIRST..=STRAIGHT_LAST).contains(&tile) {
         return true;
     }
@@ -291,7 +291,7 @@ pub fn terrain_section_shape(buildings: &[u8], terrain: &[u8], altitude: &[u8], 
     result
 }
 
-fn grade_kind_for_shape(terrain_shape: i64) -> i64 {
+pub fn grade_kind_for_shape(terrain_shape: i64) -> i64 {
     if terrain_shape & 2 != 0 {
         return 5;
     }
@@ -626,7 +626,7 @@ fn write_shape(maps: &mut Maps, anchor: Vec2i, kind: i64, rotation: i64) {
     set_corners(maps.zones, anchor, 2, rotation, maps.map_edge);
 }
 
-fn write_section_kind(maps: &mut Maps, anchor: Vec2i, kind: i64, rotation: i64) {
+pub fn write_section_kind(maps: &mut Maps, anchor: Vec2i, kind: i64, rotation: i64) {
     let edge = maps.map_edge;
 
     if kind < 4 {
@@ -660,8 +660,106 @@ fn write_section_kind(maps: &mut Maps, anchor: Vec2i, kind: i64, rotation: i64) 
     }
 }
 
+/// HighwayGeometry.snap_anchor: sections start on even coordinates.
+pub fn snap_anchor(point: Vec2i) -> Vec2i {
+    Vec2i::new(point.x & !1, point.y & !1)
+}
+
+/// The neighboring section anchor in `direction`.
+pub fn neighbor_anchor(anchor: Vec2i, direction: usize) -> Vec2i {
+    anchor + Vec2i::new(DIRECTIONS[direction].x * 2, DIRECTIONS[direction].y * 2)
+}
+
+/// A placed section: the kind it holds, and whether it is a new grade.
+pub struct Placement {
+    pub ok: bool,
+    pub error: &'static str,
+    pub kind: i64,
+    pub graded: bool,
+}
+
+/// HighwayPlacement._place_section: write the section, then retile the
+/// highway sections around it and the section itself.
+pub fn place_section(maps: &mut Maps, anchor: Vec2i, direction: i64, rotation: i64) -> Placement {
+    let edge = maps.map_edge;
+
+    if terrain_section_shape(maps.buildings, maps.terrain, maps.altitude, anchor, edge) == INVALID_TERRAIN_SHAPE {
+        return Placement {
+            ok: false,
+            error: "highway terrain grade is invalid",
+            kind: 0,
+            graded: false,
+        };
+    }
+
+    for offset in SECTION_OFFSETS {
+        let index = maps.index(anchor + offset) as usize;
+        maps.zones[index] = (maps.zones[index] as i64 & zone::CORNERS_MASK) as u8;
+    }
+
+    let old_kind = section_kind(maps.buildings, maps.zones, maps.flags, anchor, edge);
+    let kind = select_section_kind(
+        maps.buildings,
+        maps.terrain,
+        maps.zones,
+        maps.flags,
+        maps.altitude,
+        anchor,
+        direction,
+        edge,
+    );
+
+    if kind >= 0 {
+        write_section_kind(maps, anchor, kind, rotation);
+    }
+
+    for step in 0..DIRECTIONS.len() {
+        let neighbor = neighbor_anchor(anchor, step);
+
+        if anchor_is_in_bounds(neighbor, edge) && section_kind(maps.buildings, maps.zones, maps.flags, neighbor, edge) > 1 {
+            retile_section(maps, neighbor, direction, rotation);
+        }
+    }
+
+    retile_section(maps, anchor, direction, rotation);
+
+    Placement {
+        ok: true,
+        error: "",
+        kind: if kind >= 0 { kind } else { old_kind },
+        graded: (4..=7).contains(&kind),
+    }
+}
+
+/// HighwayPlacement._retile_section. Returns the new kind, or -1 when it stays.
+pub fn retile_section(maps: &mut Maps, anchor: Vec2i, direction: i64, rotation: i64) -> i64 {
+    let edge = maps.map_edge;
+    let kind = select_section_kind(
+        maps.buildings,
+        maps.terrain,
+        maps.zones,
+        maps.flags,
+        maps.altitude,
+        anchor,
+        direction,
+        edge,
+    );
+
+    if kind >= 0 {
+        write_section_kind(maps, anchor, kind, rotation);
+    }
+
+    kind
+}
+
 /// HighwayPlacement._retile_affected_sections with no route directions.
 pub fn retile_affected_sections(maps: &mut Maps, placed: &[Vec2i], rotation: i64) {
+    retile_route_sections(maps, placed, rotation, &[]);
+}
+
+/// HighwayPlacement._retile_affected_sections: the placed sections and their
+/// highway neighbors, each with its route direction or 0.
+pub fn retile_route_sections(maps: &mut Maps, placed: &[Vec2i], rotation: i64, route_directions: &[(Vec2i, i64)]) {
     let edge = maps.map_edge;
     let mut affected: Vec<Vec2i> = Vec::new();
 
@@ -670,8 +768,8 @@ pub fn retile_affected_sections(maps: &mut Maps, placed: &[Vec2i], rotation: i64
             affected.push(anchor);
         }
 
-        for step in DIRECTIONS {
-            let neighbor = anchor + Vec2i::new(step.x * 2, step.y * 2);
+        for step in 0..DIRECTIONS.len() {
+            let neighbor = neighbor_anchor(anchor, step);
 
             if anchor_is_in_bounds(neighbor, edge)
                 && section_kind(maps.buildings, maps.zones, maps.flags, neighbor, edge) > 1
@@ -683,10 +781,46 @@ pub fn retile_affected_sections(maps: &mut Maps, placed: &[Vec2i], rotation: i64
     }
 
     for anchor in affected {
-        let kind = select_section_kind(maps.buildings, maps.terrain, maps.zones, maps.flags, maps.altitude, anchor, 0, edge);
+        let direction = route_directions
+            .iter()
+            .find(|(section, _)| *section == anchor)
+            .map_or(0, |(_, direction)| *direction);
 
-        if kind >= 0 {
-            write_section_kind(maps, anchor, kind, rotation);
+        retile_section(maps, anchor, direction, rotation);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A lone section beside a connection label keeps the straight kind of
+    /// its direction, at the map edge too.
+    #[test]
+    fn edge_sections_keep_their_direction() {
+        for edge in [128i64, 256, 1024] {
+            let cells = (edge * edge) as usize;
+            let (buildings, terrain, zones, flags, altitude) = (
+                vec![0u8; cells],
+                vec![0u8; cells],
+                vec![0u8; cells],
+                vec![0u8; cells],
+                vec![0u8; cells * 2],
+            );
+
+            for anchor in [
+                Vec2i::new(20, 20),
+                Vec2i::new(edge - 10, edge - 10),
+                Vec2i::new(edge - 2, 20),
+                Vec2i::new(20, edge - 2),
+            ] {
+                for direction in 0..2 {
+                    assert_eq!(
+                        select_section_kind(&buildings, &terrain, &zones, &flags, &altitude, anchor, direction, edge),
+                        direction + 2
+                    );
+                }
+            }
         }
     }
 }

@@ -23,7 +23,7 @@ static func edge_city() -> CityState:
 				assert(city.set_building_corners(x, y, int(corners.get(Vector2i(x, y) - origin, 0))))
 	for item in [[13, 0, Vector2i(13, 1)], [3, 2, Vector2i(13, 29)],
 		[14, 1, Vector2i(1, 23)], [14, 0, Vector2i(31, 22)], [4, 2, Vector2i(22, 0)]]:
-		var result := BuildingEdit.apply(city, item[0], item[1], item[2], SimLfsrRandom.new(1), SimRandom.new(1))
+		var result := BuildingCommand.apply(city, item[0], item[1], item[2], SimLfsrRandom.new(1), SimRandom.new(1))
 		assert(result.ok, result.error)
 	assert(ScurkPlaceCommand.apply(city, BuildingTileIds.LAUNCH_ARCOLOGY, Vector2i(23, 29), SimRandom.new(1)).ok)
 	return city

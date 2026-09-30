@@ -6,24 +6,15 @@ extends SceneTree
 func _initialize() -> void:
 	var doc := EmptyCityTemplate.create()
 	assert(NewCityTerrain.generate(doc, false, false, 0, 0, 0, SimRandom.new(1), GameLcgRandom.new(1)).ok)
-	doc.set_misc_u32(0x0e40, 0)
-	var payloads := {}
-
-	for id in ["ALTM", "XBLD", "XTER", "XZON", "XBIT", "XTXT", "MISC"]:
-		payloads[id] = doc.find_chunk(id).decoded_payload.duplicate()
-
-	var indices := PackedInt32Array()
+	var city := CityState.from_document(doc)
 
 	for index in CityState.TILE_COUNT:
-		indices.append(index)
-		TerrainEditHeights.set_land_altitude(payloads.ALTM, index, maxi(0, 16 - ((index / 128) / 4)))
+		city.set_land_altitude(index / 128, index % 128, maxi(0, 16 - ((index / 128) / 4)))
 
-	TerrainRetile.retile_region(payloads.ALTM, payloads.XBLD, payloads.XTER, payloads.XZON, payloads.XBIT, payloads.MISC, indices, 0)
-
-	for id in payloads:
-		doc.find_chunk(id).set_decoded_payload(payloads[id])
-
-	var city := CityState.from_document(doc)
+	# lowering the sea from level 1 to 0 retiles the whole slope
+	doc.set_misc_u32(0x0e40, 1)
+	assert(LandscapeEditorCommand.apply(city, CityToolIds.Group.BULLDOZER, CityToolIds.Bulldozer.LOWER_SEA, Vector2i.ZERO,
+		SimRandom.new(1)).ok)
 	var before: PackedByteArray = doc.serialize().data
 	var rng := SimRandom.new(22)
 	var result := LandscapeEditorCommand.apply(city, 1, 2, Vector2i(40, 64), rng)

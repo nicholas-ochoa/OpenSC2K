@@ -43,6 +43,19 @@ static var classes := {
 	"TransportTripReachResult": TransportTripReachResult,
 	"EffectEvent": EffectEvent,
 	"SimulationTiming": SimulationTiming,
+	"RouteEditResult": RouteEditResult,
+	"TunnelEditResult": TunnelEditResult,
+	"OnrampEditResult": OnrampEditResult,
+	"HydroEditResult": HydroEditResult,
+	"SubwayToRailEditResult": SubwayToRailEditResult,
+	"BuildingEditResult": BuildingEditResult,
+	"ZoneEditResult": ZoneEditResult,
+	"ZoneCommand.Preview": ZoneCommand.Preview,
+	"DemolishEditResult": DemolishEditResult,
+	"TerrainEditResult": TerrainEditResult,
+	"LandscapeEditResult": LandscapeEditResult,
+	"ScurkPlaceResult": ScurkPlaceResult,
+	"FacilityRecordRepair.Result": FacilityRecordRepair.Result,
 }
 
 
@@ -227,6 +240,8 @@ static func _create(class_label: String, fields: Dictionary) -> Object:
 			return TransportTripReachResult.ReachNode.new(fields.point, fields.mode, fields.cost)
 		"TransportTripReachResult.Link":
 			return TransportTripReachResult.Link.new(fields.from, fields.to, fields.from_mode, fields.mode, fields.cost)
+		"BridgeChoice":
+			return BridgeChoice.new(fields.type, fields.name, fields.cost_per_tile, fields.cost)
 		"RciAftermathPhase.MapChange":
 			return RciAftermathPhase.MapChange.new(fields.point, fields.old_tile, fields.new_tile)
 

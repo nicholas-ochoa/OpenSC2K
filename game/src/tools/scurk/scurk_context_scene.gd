@@ -76,7 +76,7 @@ static func kind_for_tile(tile: int) -> Kind:
 
 
 static func zone_for_tile(tile: int) -> int:
-	return ScurkPlaceCommand._zone_for_tile(tile, PackedByteArray(), Rect2i(), 0)
+	return NativeCityTools.object_zone(tile)
 
 
 static func family_for_tile(tile: int) -> int:
@@ -101,7 +101,7 @@ func _build_neighborhood(footprint: int, networks: bool, neighbors: bool) -> voi
 		for candidate in range(Tiles.DEVELOPED_FIRST, Tiles.MAX_ID + 1):
 			if (candidate != tile_id
 					and family_for_tile(candidate) == family_for_tile(tile_id)
-					and DemolishStructures.structure_area(candidate) == footprint):
+					and NativeCityTools.building_area(candidate) == footprint):
 				candidates.append(candidate)
 		if candidates.is_empty():
 			candidates.append(tile_id)
@@ -198,5 +198,5 @@ func _stamp(site: Rect2i, tile: int) -> void:
 		for y in range(site.position.y, site.end.y):
 			city.set_building_id(x, y, tile)
 			city.set_zone_id(x, y, zone_for_tile(tile))
-	BuildingSites.set_corners(city.zones, site, site.size.x, 0, MAP_SIZE)
-	city.document.find_chunk("XZON").set_decoded_payload(city.zones)
+	city.document.find_chunk("XZON").set_decoded_payload(NativeCityTools.set_corners(city.zones, site.position, site.size.x, 0, MAP_SIZE))
+	city.resync_mirrors(["XZON"])

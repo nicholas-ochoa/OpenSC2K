@@ -117,28 +117,12 @@ func check_large_counts(edge: int) -> void:
 	var document := EmptyCityTemplate.create(edge)
 	var city := CityState.from_document(document)
 	var road_offset := 0x01f0 + 0x1d * 4
-	document.set_misc_u32(road_offset, 65535)
-	document.set_misc_u32(0x01f0, 1)
-	var misc := document.find_chunk("MISC").decoded_payload.duplicate()
-	BuildingState.update_building_count(misc, 0, 0, 0x1d, edge)
-	document.find_chunk("MISC").set_decoded_payload(misc)
-	check(document.misc_u32(road_offset) == (0 if edge == 128 else 65536), "building count width %d" % edge)
+	# the native tool tests cover the count width of each tile change
 	document.set_misc_u32(road_offset, 40000)
 	var value := CityValuePhase.calculate(city)
 	check(value.ok and value.city_value == (-255360 if edge == 128 else 400000), "city value count width %d" % edge)
 	var graphs := GraphHistory.calculate_current_values(city, edge * edge, 25, 50)
 	check(graphs.ok and graphs.values.size() == 16, "graph values cover full map %d" % edge)
-
-	# the native growth, aftermath, rotation, and special-zone counters have their own width tests
-	for change in [NetworkState.replace_building]:
-		var buildings := PackedByteArray()
-		buildings.resize(edge * edge)
-		var zones := buildings.duplicate()
-		document.set_misc_u32(road_offset, 65535)
-		misc = document.find_chunk("MISC").decoded_payload.duplicate()
-		change.call(buildings, zones, misc, buildings.size() - 1, 0x1d)
-		document.find_chunk("MISC").set_decoded_payload(misc)
-		check(document.misc_u32(road_offset) == (0 if edge == 128 else 65536), "tile count mutation width %d: %s" % [edge, change])
 
 
 func check_highways(edge: int) -> void:
@@ -152,7 +136,7 @@ func check_highways(edge: int) -> void:
 		if edge <= 128 and (start.x == 124 or start.y == 124):
 			continue
 
-		check(HighwayEdit.preview_valid(city, start), "Highway preview at %s on %d map" % [start, edge])
+		check(HighwayCommand.preview_error(city, start).is_empty(), "Highway preview at %s on %d map" % [start, edge])
 		var finish: Vector2i = start + (Vector2i(0, 4) if start.y == 124 else Vector2i(4, 0))
 		var built := HighwayCommand.apply(city, 6, 1, start, finish)
 		check(built.ok and built.sections.size() == 3, "Highway route across extended coordinates")
@@ -177,7 +161,7 @@ func check_highways(edge: int) -> void:
 		check(saved_payloads(document) == before, "Connection prompt does not change city")
 
 	for outside in [Vector2i(edge, near), Vector2i(near, edge), Vector2i(-1, near)]:
-		check(not HighwayEdit.preview_valid(city, outside), "Outside highway preview rejected")
+		check(not HighwayCommand.preview_error(city, outside).is_empty(), "Outside highway preview rejected")
 		check(not HighwayCommand.apply(city, 6, 1, outside, outside).ok, "Outside highway placement rejected")
 
 

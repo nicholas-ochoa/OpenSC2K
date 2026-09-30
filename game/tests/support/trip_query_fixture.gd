@@ -54,7 +54,7 @@ static func stamp(city: CityState, site: Rect2i, tile: int, zone: int) -> void:
 			city.set_building_id(x, y, tile)
 			city.set_zone_id(x, y, zone)
 			city.set_tile_flag(x, y, 0x40, true)
-	BuildingSites.set_corners(city.zones, site, site.size.x, city.compass_rotation(), city.map_size)
+	city.zones = NativeCityTools.set_corners(city.zones, site.position, site.size.x, city.compass_rotation(), city.map_size)
 	city.document.find_chunk("XZON").set_decoded_payload(city.zones)
 
 

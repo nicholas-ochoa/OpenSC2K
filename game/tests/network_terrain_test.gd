@@ -16,42 +16,16 @@ func check(ok: bool, message: String) -> void:
 
 func _initialize() -> void:
 	_test_subway_pipe_crossings()
+	# the native route tests cover the slope, crossing, and connection rules
 	for edge in [128, 256, 384, 512]:
-		_test_routes(edge)
-		_test_surface_connections(edge)
-		_test_reused_crossings(edge)
 		_test_transactions(edge)
 		_test_underground_grading(edge)
 	print("Network terrain: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
 
 
-func _fixture(edge: int) -> Dictionary:
-	var city := CityState.from_document(EmptyCityTemplate.create(edge))
-	return NetworkState.city_payloads(city)
-
-
-func _route(data: Dictionary, start: Vector2i, finish: Vector2i, mode: int, edge: int) -> Array[Vector2i]:
-	return NetworkRoutes.plan_route(data.XBLD, data.XTER, data.XZON, data.XUND, data.XBIT, data.ALTM, start, finish, mode, edge)
-
-
 func _test_subway_pipe_crossings() -> void:
-	var data := _fixture(128)
 	var start := Vector2i(20, 20)
-	for pipe_tile in range(0x10, 0x1f):
-		for direction in 4:
-			var step: Vector2i = NetworkCommand.DIRECTIONS[direction]
-			var crossing := start + step
-			var index := crossing.x * 128 + crossing.y
-			data.XUND[index] = pipe_tile
-			var allowed := (pipe_tile == 0x10 and direction in [1, 3]) or (pipe_tile == 0x11 and direction in [0, 2])
-			var route := _route(data, start, start + step * 2, NetworkCommand.MODE_SUBWAY, 128)
-			check(route.size() == (3 if allowed else 1), "Subway crossing route for pipe %x direction %d" % [pipe_tile, direction])
-			if pipe_tile >= 0x12:
-				NetworkTiles._place_underground(data.XUND, data.XTER, data.XZON, data.XBIT, data.MISC, crossing, false, direction)
-				check(data.XUND[index] == pipe_tile, "Subway writer preserves pipe bend or junction %x" % pipe_tile)
-			data.XUND[index] = 0
-
 	var city := CityState.from_document(EmptyCityTemplate.create(128))
 	city.set_funds(100000)
 	for fixture in [[0x10, 1, 0x20], [0x11, 0, 0x1f], [0x10, 0, 0x10], [0x11, 1, 0x11], [0x1e, 1, 0x1e]]:
@@ -74,83 +48,6 @@ func _test_subway_pipe_crossings() -> void:
 		)
 		check(NetworkCommand.undo(city, result).ok and DocumentState.capture(city.document) == before, "Subway crossing has exact Undo")
 		city.set_underground_id(crossing.x, crossing.y, 0)
-
-
-func _test_routes(edge: int) -> void:
-	var data := _fixture(edge)
-	var start := Vector2i(edge - 12, edge - 12)
-	for mode in 5:
-		for direction in 4:
-			var step: Vector2i = NetworkCommand.DIRECTIONS[direction]
-			var next := start + step
-			var index := next.x * edge + next.y
-			data.XTER[index] = 1 if direction % 2 == 0 else 2
-			check(
-				_route(data, start, start + step * 2, mode, edge) == [start],
-				"Reject sideways slope mode %d direction %d edge %d" % [mode, direction, edge],
-			)
-			data.XTER[index] = 2 if direction % 2 == 0 else 1
-			check(
-				_route(data, start, start + step * 2, mode, edge).size() == 3,
-				"Allow aligned slope mode %d direction %d" % [mode, direction],
-			)
-			data.XTER[index] = 0
-			data.XTER[start.x * edge + start.y] = 13
-			check(
-				_route(data, start, next, mode, edge) == [start],
-				"Reject raised flat to lower flat mode %d direction %d" % [mode, direction],
-			)
-			data.XTER[start.x * edge + start.y] = 0
-
-	# Rail cannot turn directly onto a non-flat tile. Roads may do so.
-	data.XTER[(start.x + 1) * edge + start.y + 1] = 2
-	check(
-		_route(data, start, start + Vector2i(2, 1), NetworkCommand.MODE_RAIL, edge) == [start, start + Vector2i(1, 0)],
-		"Rail stops before turn onto grade",
-	)
-	check(_route(data, start, start + Vector2i(2, 1), NetworkCommand.MODE_ROAD, edge).size() == 3, "Road retains permitted turn onto grade")
-	data.XTER[(start.x + 1) * edge + start.y + 1] = 0
-
-	# The original checks the raw land height for a rail continuing on slopes.
-	data.XTER[start.x * edge + start.y] = 1
-	data.XTER[(start.x + 1) * edge + start.y] = 1
-	var next_index := (start.x + 1) * edge + start.y
-	NetworkRules.set_land_altitude(data.ALTM, next_index, NetworkRules.land_altitude(data.ALTM, next_index) + 1)
-	check(_route(data, start, start + Vector2i(2, 0), NetworkCommand.MODE_RAIL, edge) == [start], "Rail rejects unequal slope bases")
-	check(
-		_route(data, start, start + Vector2i(2, 0), NetworkCommand.MODE_ROAD, edge).size() == 3,
-		"Road retains original non-rail slope rule",
-	)
-
-
-func _test_surface_connections(edge: int) -> void:
-	var data := _fixture(edge)
-	var point := Vector2i(edge - 12, edge - 12)
-	var center := point.x * edge + point.y
-	for mode in 3:
-		var base: int = [0x1d, 0x2c, 0x0e][mode]
-		for direction in 4:
-			var step: Vector2i = NetworkCommand.DIRECTIONS[direction]
-			var near := point + step
-			var near_index := near.x * edge + near.y
-			# Build a straight line perpendicular to the neighbor's approach.
-			var cross: Vector2i = NetworkCommand.DIRECTIONS[(direction + 1) % 4]
-			var left := point + cross
-			var right := point - cross
-			for cell in [point, near, left, right]:
-				data.XBLD[cell.x * edge + cell.y] = base
-				data.XBIT[cell.x * edge + cell.y] |= 0x80
-			data.XTER[near_index] = 1 if direction % 2 == 0 else 2
-			data.XBLD[near_index] = base + 2 if direction % 2 == 0 else base + 3
-			NetworkTiles.retile_surface(data.XBLD, data.XTER, data.XZON, data.XBIT, data.MISC, point, mode, data.XTXT, edge)
-			check(
-				data.XBLD[center] == base + (1 if direction % 2 == 0 else 0),
-				"No false side junction mode %d direction %d edge %d" % [mode, direction, edge],
-			)
-			for cell in [point, near, left, right]:
-				data.XBLD[cell.x * edge + cell.y] = BuildingTileIds.EMPTY
-				data.XBIT[cell.x * edge + cell.y] = 0
-			data.XTER[near_index] = 0
 
 
 func _test_transactions(edge: int) -> void:
@@ -176,31 +73,6 @@ func _test_transactions(edge: int) -> void:
 			NetworkCommand.undo(city, result).ok and DocumentState.capture(city.document) == before,
 			"Exact terrain, flags, costs and network Undo",
 		)
-
-
-func _test_reused_crossings(edge: int) -> void:
-	var data := _fixture(edge)
-	var start := Vector2i(edge - 12, edge - 12)
-	# Reusing a crossing is free, but each network still follows its fixed axis.
-	for fixture in [[0, 0x43, 0], [0, 0x44, 1], [1, 0x45, 1], [1, 0x46, 0], [2, 0x47, 1], [2, 0x48, 0], [3, 0x1f, 0], [3, 0x20, 1],
-		[4, 0x1f, 1], [4, 0x20, 0]]:
-		var mode: int = fixture[0]
-		var axis: int = fixture[2]
-		var layer: PackedByteArray = data.XBLD if mode < 3 else data.XUND
-		var valid_step: Vector2i = Vector2i(1, 0) if axis == 1 else Vector2i(0, 1)
-		var cross_step := Vector2i(valid_step.y, valid_step.x)
-		var near := start + cross_step
-		layer[near.x * edge + near.y] = fixture[1]
-		check(
-			_route(data, start, start + cross_step * 2, mode, edge) == [start],
-			"Reuse rejects wrong crossing axis mode %d tile %x" % [mode, fixture[1]],
-		)
-		layer[near.x * edge + near.y] = 0
-		near = start + valid_step
-		layer[near.x * edge + near.y] = fixture[1]
-		var route := _route(data, start, start + valid_step * 2 + cross_step, mode, edge)
-		check(route.has(start + valid_step * 2), "Reuse keeps straight through crossing mode %d tile %x" % [mode, fixture[1]])
-		layer[near.x * edge + near.y] = 0
 
 
 func _test_underground_grading(edge: int) -> void:

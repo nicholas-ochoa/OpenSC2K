@@ -9,6 +9,8 @@ use crate::sim::ids::sc2overlay_layout;
 use crate::sim::ids::sc2tile_flags as flag_bits;
 use crate::sim::ids::sc2zone_layout as zone;
 use crate::sim::ids::terrain_tile_ids as terrain_ids;
+#[cfg(test)]
+use crate::sim::ids::underground_tile_ids as under;
 use crate::sim::network::SHAPE_OFFSET_BY_CONNECTION_MASK as NETWORK_SHAPES;
 use crate::sim::overlay;
 
@@ -363,5 +365,132 @@ pub fn retile_surface_neighborhood(
         if near.x >= 0 && near.x < map_edge && near.y >= 0 && near.y < map_edge {
             retile_surface(buildings, terrain, zones, flags, misc, near, mode, text_overlays, map_edge);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sim::tools::underground::retile_underground;
+
+    const EDGE: i64 = 16;
+    const POINT: Vec2i = Vec2i::new(8, 8);
+
+    /// The road tile of each north, east, south, and west connection mask.
+    const ROAD_TILES: [i64; 16] = [
+        0x1d, 0x1d, 0x1e, 0x23, 0x1d, 0x1d, 0x24, 0x28, 0x1e, 0x26, 0x1e, 0x27, 0x25, 0x2a, 0x29, 0x2b,
+    ];
+
+    fn empty() -> Vec<u8> {
+        vec![0; (EDGE * EDGE) as usize]
+    }
+
+    fn index(point: Vec2i) -> usize {
+        (point.x * EDGE + point.y) as usize
+    }
+
+    fn neighbors(point: Vec2i, mask: i64) -> impl Iterator<Item = Vec2i> {
+        (0..4)
+            .filter(move |direction| mask & (1 << direction) != 0)
+            .map(move |direction| point + DIRECTIONS[direction as usize])
+            .filter(|near| near.x >= 0 && near.y >= 0 && near.x < EDGE && near.y < EDGE)
+    }
+
+    /// The surface tile at `point` with the neighbors of `mask`, on `slope`.
+    fn surface(mask: i64, point: Vec2i, mode: i64, slope: u8, connection: bool) -> i64 {
+        let base = [tiles::ROAD_STRAIGHT_1, tiles::RAIL_STRAIGHT_1, tiles::POWER_LINE_STRAIGHT_1][mode as usize];
+        let (mut buildings, mut terrain, zones, mut flags, mut overlays) = (empty(), empty(), empty(), empty(), empty());
+        let mut misc = vec![0u8; 4800];
+        let center = index(point);
+        buildings[center] = base as u8;
+        terrain[center] = slope;
+        overlays[center] = if connection {
+            sc2overlay_layout::CONNECTION_MARKER as u8
+        } else {
+            0
+        };
+        write_u32_be(&mut misc, misc_layout::TILE_COUNTS + base * 4, 1);
+
+        for near in neighbors(point, mask) {
+            buildings[index(near)] = base as u8;
+            flags[index(near)] = flag_bits::POWERABLE as u8;
+        }
+
+        retile_surface(&mut buildings, &terrain, &zones, &flags, &mut misc, point, mode, &overlays, EDGE);
+        buildings[center] as i64
+    }
+
+    fn underground(mask: i64, point: Vec2i, pipes: bool, slope: u8) -> i64 {
+        let base = if pipes { under::PIPE_FIRST } else { under::SUBWAY_FIRST };
+        let (mut layer, mut terrain) = (empty(), empty());
+        layer[index(point)] = base as u8;
+        terrain[index(point)] = slope;
+
+        for near in neighbors(point, mask) {
+            layer[index(near)] = base as u8;
+        }
+
+        retile_underground(&mut layer, &terrain, point, pipes, EDGE);
+        layer[index(point)] as i64
+    }
+
+    /// Every connection mask selects the shared shape of each network.
+    #[test]
+    fn shapes_follow_the_connection_mask() {
+        for mask in 0..16 {
+            let road = ROAD_TILES[mask as usize];
+            assert_eq!(surface(mask, POINT, MODE_ROAD, 0, false), road);
+            assert_eq!(surface(mask, POINT, MODE_RAIL, 0, false), road + 15);
+            assert_eq!(surface(mask, POINT, MODE_POWER, 0, false), road - 15);
+            assert_eq!(underground(mask, POINT, false, 0), road - 28);
+            assert_eq!(underground(mask, POINT, true, 0), if mask == 0 { 30 } else { road - 13 });
+        }
+
+        // A slope has its own shape even where the mask asks for a junction.
+        for slope in 1..5u8 {
+            assert_eq!(surface(15, POINT, MODE_ROAD, slope, false), 30 + slope as i64);
+            assert_eq!(underground(15, POINT, false, slope), 2 + slope as i64);
+            assert_eq!(underground(0, POINT, true, slope), 17 + slope as i64);
+        }
+    }
+
+    /// Neighbors outside the map do not connect, except through a connection label.
+    #[test]
+    fn map_edges_connect_only_through_labels() {
+        let edges = [
+            Vec2i::new(0, 8),
+            Vec2i::new(8, 0),
+            Vec2i::new(15, 8),
+            Vec2i::new(8, 15),
+            Vec2i::new(0, 0),
+        ];
+        let roads = [40, 41, 42, 39, 36];
+
+        for (point, road) in edges.into_iter().zip(roads) {
+            assert_eq!(surface(15, point, MODE_ROAD, 0, false), road);
+            assert_eq!(underground(15, point, false, 0), road - 28);
+            assert_eq!(surface(15, point, MODE_ROAD, 0, true), tiles::ROAD_CROSSROADS);
+        }
+    }
+
+    /// A subway connects to an entrance, not to a pipe, and terrain can block it.
+    #[test]
+    fn subway_neighbors_follow_their_rules() {
+        let (mut layer, mut terrain) = (empty(), empty());
+        let (center, east, south) = (index(POINT), index(POINT + Vec2i::new(1, 0)), index(POINT + Vec2i::new(0, 1)));
+        layer[center] = under::SUBWAY_FIRST as u8;
+        layer[east] = under::SUBWAY_ENTRANCE as u8;
+        layer[south] = under::PIPE_FIRST as u8;
+        retile_underground(&mut layer, &terrain, POINT, false, EDGE);
+        assert_eq!(layer[center], 2);
+
+        layer[center] = under::SUBWAY_FIRST as u8;
+        terrain[east] = 2;
+        retile_underground(&mut layer, &terrain, POINT, false, EDGE);
+        assert_eq!(layer[center], 1);
+
+        layer[center] = under::SUBWAY_ENTRANCE as u8;
+        retile_underground(&mut layer, &terrain, POINT, false, EDGE);
+        assert_eq!(layer[center] as i64, under::SUBWAY_ENTRANCE);
     }
 }

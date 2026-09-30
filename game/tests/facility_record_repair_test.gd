@@ -36,7 +36,7 @@ func _run() -> void:
 
 
 func stamp(city: CityState, tile: int, origin: Vector2i) -> Rect2i:
-	var area := DemolishStructures.structure_area(tile)
+	var area := NativeCityTools.building_area(tile)
 	var site := Rect2i(origin, Vector2i(area, area))
 	var buildings := city.buildings.duplicate()
 	var zones := city.zones.duplicate()
@@ -45,7 +45,7 @@ func stamp(city: CityState, tile: int, origin: Vector2i) -> Rect2i:
 		for y in range(site.position.y, site.end.y):
 			buildings[x * city.map_size + y] = tile
 
-	BuildingSites.set_corners(zones, site, area, city.compass_rotation(), city.map_size)
+	zones = NativeCityTools.set_corners(zones, site.position, area, city.compass_rotation(), city.map_size)
 	city.replace_buildings(buildings)
 	city.replace_zones(zones)
 	return site
@@ -59,7 +59,7 @@ func check_repair(edge: int, rotation: int) -> void:
 	var city := CityState.from_document(doc)
 
 	var sites: Array[Rect2i] = []
-	var tiles: Array = BuildingCommand.MICROSIM_TYPE_BY_TILE.keys()
+	var tiles: Array = FacilityMetadata.MICROSIM_TYPE_BY_TILE.keys()
 
 	for n in tiles.size():
 		var origin := Vector2i(edge - 5 - (n % 8) * 5, edge - 5 - (n / 8) * 5)
@@ -80,7 +80,7 @@ func check_repair(edge: int, rotation: int) -> void:
 		var id := city.text_overlay_id(site.position.x, site.position.y)
 		check(OverlayData.is_facility(id), "Facility receives link")
 		var record := OverlayData.facility_record(id)
-		var kind := int(BuildingCommand.MICROSIM_TYPE_BY_TILE[tiles[n]])
+		var kind := int(FacilityMetadata.MICROSIM_TYPE_BY_TILE[tiles[n]])
 		check(city.microsim(record).tile_id == tiles[n] or kind == 21, "Facility type initialized; hydro shares one record")
 
 		for x in range(site.position.x, site.end.x):

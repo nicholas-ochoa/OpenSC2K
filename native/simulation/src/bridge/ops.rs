@@ -18,7 +18,6 @@ use crate::sim::data_maps;
 use crate::sim::disasters::{end as disaster_end, map as disaster_map, start as disaster_start, weather};
 use crate::sim::economy::{self, budget, city_value};
 use crate::sim::engine::month;
-use crate::sim::geom::Vec2i;
 use crate::sim::growth;
 use crate::sim::growth::{aftermath, demand};
 use crate::sim::infrastructure::{power, traffic, water};
@@ -85,7 +84,6 @@ pub const OPERATIONS: &[&str] = &[
     "budget.funding_values",
     "rotation",
     "new_terrain",
-    "terrain.stream",
 ];
 
 pub struct Outcome {
@@ -115,7 +113,19 @@ pub fn run(request: &VarDictionary) -> VarDictionary {
     let mut city = convert::city(request);
     let mut randoms = convert::randoms(request);
     let budget = super::budgets::get(convert::int(request, "budget", 0));
-    let outcome = crate::sim::budget::with_budget(budget, || dispatch(&op, &args, &mut city, &mut randoms));
+    let tool = super::tool_ops::is_tool(&op);
+    let outcome = crate::sim::budget::with_budget(budget, || {
+        if tool {
+            super::tool_ops::dispatch(&op, &args, &mut city, &mut randoms)
+        } else {
+            dispatch(&op, &args, &mut city, &mut randoms)
+        }
+    });
+
+    if tool {
+        super::tool_ops::mark_written(request, &mut city, &outcome.result);
+    }
+
     let mut response = VarDictionary::new();
     response.set("ok", outcome.error.is_empty());
     response.set("error", outcome.error.as_str());
@@ -285,27 +295,6 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
             Outcome::value(crate::sim::civic::mayor::run(city, &mut randoms.random, convert::int(args, "previous_approval", 0)).to_value())
         }
         "new_terrain" => new_terrain(args, city, randoms),
-        "terrain.stream" => {
-            let cells = (city.map_size * city.map_size) as usize;
-            let point = convert::point(args, "point", Vec2i::NONE);
-
-            if point.x < 0
-                || point.y < 0
-                || point.x >= city.map_size
-                || point.y >= city.map_size
-                || city.altm.data.len() != cells * 2
-                || [&city.xter, &city.xbld, &city.xzon, &city.xbit]
-                    .iter()
-                    .any(|chunk| chunk.data.len() != cells)
-                || city.xtxt.data.len() < cells
-            {
-                return Outcome::failure("stream data is missing or invalid");
-            }
-
-            let length = convert::int(args, "length", 0);
-            crate::sim::tools::new_terrain::editor_stream(city, point, length, &mut randoms.random);
-            Outcome::value(Value::Nil)
-        }
         "rotation" => {
             Outcome::value(crate::sim::tools::rotation::rotate(city, convert::boolean(args, "counter_clockwise", false)).to_value())
         }

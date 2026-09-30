@@ -5,7 +5,7 @@ const IDS: PackedStringArray = ["XBLD", "ALTM", "XUND", "XTXT", "XBIT", "MISC"]
 
 
 func _initialize() -> void:
-	for operation in [BuildingState._apply_payloads, LandscapeCommand._apply_payloads, Commit.apply]:
+	for operation in [BuildingState._apply_payloads, Commit.apply]:
 		_test_success(operation, 16)
 		for failure in ["invalid_size", "missing_payload", "missing_chunk"]:
 			_test_failure(operation, failure)

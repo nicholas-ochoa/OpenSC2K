@@ -30,10 +30,10 @@ static func render(city: CityState, point: Vector2i, palette: Sc2Palette, sprite
 
 	var site := Rect2i(point, Vector2i.ONE)
 	var tile := city.building_id(point.x, point.y)
-	var area := DemolishEffectsSites._building_area(tile)
+	var area := NativeCityTools.building_area(tile)
 
 	if area > 1:
-		var found := DemolishEffectsSites._find_building_site(
+		var found := NativeCityTools.find_building_site(
 			city.buildings,
 			city.zones,
 			point,
@@ -104,7 +104,7 @@ static func zoom_for_tile(tile_id: int) -> float:
 	if tile_id >= BuildingTileIds.PLYMOUTH_ARCOLOGY and tile_id <= BuildingTileIds.LAUNCH_ARCOLOGY:
 		return 2.0
 
-	match DemolishEffectsSites._building_area(tile_id):
+	match NativeCityTools.building_area(tile_id):
 		4:
 			return 2.5
 		2, 3:

@@ -106,7 +106,7 @@ static func validate(document: Sc2File, edge: int) -> Dictionary:
 		Tiles.LIBRARY, Tiles.MUSEUM, Tiles.PRISON, Tiles.STADIUM, Tiles.ZOO, Tiles.MARINA,
 		Tiles.PLYMOUTH_ARCOLOGY, Tiles.FOREST_ARCOLOGY, Tiles.DARCO_ARCOLOGY, Tiles.LAUNCH_ARCOLOGY,
 		Tiles.SUBWAY_STATION, Tiles.RAIL_STATION, Tiles.BUS_DEPOT, Tiles.RUNWAY, Tiles.SEAPORT_WAREHOUSE]:
-		assert(int(coverage.building_types.get(str(tile), 0)) >= DemolishStructures.structure_area(tile) ** 2,
+		assert(int(coverage.building_types.get(str(tile), 0)) >= NativeCityTools.building_area(tile) ** 2,
 			"Missing facility or developed port: %d" % tile)
 
 	assert(city.buildings.has(Tiles.HYDRO_POWER_1) or city.buildings.has(Tiles.HYDRO_POWER_2))

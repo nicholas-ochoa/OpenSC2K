@@ -9,6 +9,10 @@ const Water = preload("res://src/simulation/infrastructure/water_phase.gd")
 const Buildings = preload("res://src/tools/city/building_command.gd")
 const Highways = preload("res://src/tools/city/highway_command.gd")
 const Demolish = preload("res://src/tools/city/demolish_command.gd")
+# the demolition sounds and the most frames between parallel dust clouds
+const SOUND_EXPLODE := 504
+const SOUND_FOREST_PROTEST := 512
+const MAX_PARALLEL_EFFECT_OFFSET_FRAMES := 2
 
 
 func test_demolish_command(reference_root: String) -> void:
@@ -140,14 +144,14 @@ func _test_surface_demolition(reference_root: String, demolition_random: SimRand
 		parallel_effects = (
 			parallel_effects
 			and frame >= 0
-			and frame <= Demolish.MAX_PARALLEL_EFFECT_OFFSET_FRAMES
+			and frame <= MAX_PARALLEL_EFFECT_OFFSET_FRAMES
 		)
 		first_effect_frames.append(frame)
 
 	_check(
 		parallel_demolition.ok
 		and parallel_demolition.action_count == 2
-		and parallel_demolition.sound_events == [Demolish.SOUND_EXPLODE]
+		and parallel_demolition.sound_events == [SOUND_EXPLODE]
 		and parallel_effects
 		and first_effect_frames.has(0)
 		and (first_effect_frames.has(1) or first_effect_frames.has(2)),
@@ -189,7 +193,7 @@ func _test_surface_demolition(reference_root: String, demolition_random: SimRand
 	_check(
 		forest_protest.ok
 		and forest_protest.easter_events == 1
-		and forest_protest.sound_events == [Demolish.SOUND_FOREST_PROTEST]
+		and forest_protest.sound_events == [SOUND_FOREST_PROTEST]
 		and forest_protest.news_queue_updated
 		and NewsEvent.same_arrays(forest_protest.news_items, [NewsEvent.new(0x28, 0)]),
 		"The hidden tree branch reports its protest sound and newspaper story",

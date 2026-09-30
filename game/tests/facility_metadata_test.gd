@@ -43,7 +43,7 @@ func _check(ok: bool, message: String) -> void:
 
 
 func _stamp(city: CityState, tile: int) -> void:
-	var area := DemolishStructures.structure_area(tile)
+	var area := NativeCityTools.building_area(tile)
 	var site := Rect2i(POINT, Vector2i(area, area))
 	var buildings := city.buildings.duplicate()
 	var zones := city.zones.duplicate()
@@ -52,7 +52,7 @@ func _stamp(city: CityState, tile: int) -> void:
 		for y in range(site.position.y, site.end.y):
 			buildings[x * city.map_size + y] = tile
 
-	BuildingSites.set_corners(zones, site, area, city.compass_rotation(), city.map_size)
+	zones = NativeCityTools.set_corners(zones, site.position, area, city.compass_rotation(), city.map_size)
 	_check(city.replace_buildings(buildings), "Store generated facility footprint")
 	_check(city.replace_zones(zones), "Store generated facility corners")
 
@@ -60,18 +60,13 @@ func _stamp(city: CityState, tile: int) -> void:
 func _check_facility(tile: int, kind: int) -> void:
 	var city := CityState.from_document(EmptyCityTemplate.create(16))
 	_stamp(city, tile)
-	var microsims := city.document.find_chunk("XMIC").decoded_payload.duplicate()
-	var labels := city.document.find_chunk("XLAB").decoded_payload.duplicate()
-	var overlays := city.text_overlays.duplicate()
 	var record := 10 if kind <= 16 else kind - 16
 	var expected_label := record + 51
-	var label := BuildingFacilities.provision_microsim(microsims, labels, overlays,
-		tile, 1900, SimRandom.new(1), city.document.find_chunk("MISC").decoded_payload)
+	# the repair provisions the record of the stamped building and links it
+	_check(FacilityRecordRepair.apply(city).linked == 1, "Provision tile %02x" % tile)
+	var label := city.text_overlay_id(POINT.x, POINT.y)
 	_check(label == expected_label, "Tile %02x uses its dynamic or shared record" % tile)
-	_check(microsims[record * 8] == tile, "Provision stores tile %02x in XMIC" % tile)
-	_check(city.document.find_chunk("XMIC").set_decoded_payload(microsims), "Store provisioned XMIC")
-	_check(city.document.find_chunk("XLAB").set_decoded_payload(labels), "Store provisioned XLAB")
-	_check(city.set_text_overlay_id(POINT.x, POINT.y, label), "Link provisioned facility")
+	_check(city.document.find_chunk("XMIC").decoded_payload[record * 8] == tile, "Provision stores tile %02x in XMIC" % tile)
 	var query := QueryInfo.inspect(city, POINT)
 	_check(query.ok and query.kind == "specific" and query.microsim_type == kind,
 		"Query resolves provisioned tile %02x to kind %d" % [tile, kind])
@@ -91,15 +86,8 @@ func _check_unknown_tile() -> void:
 	var city := CityState.from_document(EmptyCityTemplate.create(16))
 	_stamp(city, 0x06)
 	var microsims := city.document.find_chunk("XMIC").decoded_payload.duplicate()
-	var labels := city.document.find_chunk("XLAB").decoded_payload.duplicate()
-	var overlays := city.text_overlays.duplicate()
-	var before := [microsims.duplicate(), labels.duplicate(), overlays.duplicate()]
-	var random := SimRandom.new(19)
-	var label := BuildingFacilities.provision_microsim(microsims, labels, overlays,
-		0x06, 1900, random, city.document.find_chunk("MISC").decoded_payload)
-	_check(label == 0 and random.state == 19, "Unknown facility does not allocate or consume RNG")
-	_check([microsims, labels, overlays] == before, "Unknown facility preserves all record buffers")
 	_check(FacilityRecordRepair.apply(city).linked == 0, "Repair ignores a tree")
+	_check(city.document.find_chunk("XMIC").decoded_payload == microsims, "A tree gets no record")
 	_check(QueryInfo.inspect(city, POINT).kind == "general", "Tree retains a general query")
 	# A saved link with a non-facility tile keeps the established kind-zero fallback.
 	microsims[10 * 8] = 0x06

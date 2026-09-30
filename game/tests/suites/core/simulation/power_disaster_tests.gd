@@ -72,7 +72,7 @@ func _test_meltdown(reference_root: String) -> void:
 	)
 
 	for tile_id in 256:
-		_write_u32_be(meltdown_misc, Buildings.MISC_TILE_COUNTS + tile_id * 4, 0)
+		_write_u32_be(meltdown_misc, Sc2MiscLayout.TILE_COUNTS + tile_id * 4, 0)
 
 	for military_index in 16:
 		_write_u32_be(
@@ -81,10 +81,10 @@ func _test_meltdown(reference_root: String) -> void:
 			0,
 		)
 
-	_write_u32_be(meltdown_misc, Buildings.MISC_TILE_COUNTS, CityState.TILE_COUNT - 2)
-	_write_u32_be(meltdown_misc, Buildings.MISC_TILE_COUNTS + 0x0d * 4, 1)
+	_write_u32_be(meltdown_misc, Sc2MiscLayout.TILE_COUNTS, CityState.TILE_COUNT - 2)
+	_write_u32_be(meltdown_misc, Sc2MiscLayout.TILE_COUNTS + 0x0d * 4, 1)
 	_write_u32_be(meltdown_misc, Sc2MiscLayout.MILITARY_TILE_COUNTS + 4, 1)
-	_write_u32_be(meltdown_misc, Buildings.MISC_FUNDS, 50000)
+	_write_u32_be(meltdown_misc, Sc2MiscLayout.FUNDS, 50000)
 	_write_u32_be(
 		meltdown_misc,
 		ToolAvailability.MISC_INVENTION_YEARS + 4,
@@ -179,10 +179,10 @@ func _test_meltdown(reference_root: String) -> void:
 	)
 	_check(
 		BinaryData.read_u32_be(
-			stored_meltdown_misc, Buildings.MISC_TILE_COUNTS + 0xcb * 4
+			stored_meltdown_misc, Sc2MiscLayout.TILE_COUNTS + 0xcb * 4
 		) == 0
 		and BinaryData.read_u32_be(
-			stored_meltdown_misc, Buildings.MISC_TILE_COUNTS + 0x05 * 4
+			stored_meltdown_misc, Sc2MiscLayout.TILE_COUNTS + 0x05 * 4
 		) == 16
 		and BinaryData.read_u32_be(
 			stored_meltdown_misc, Sc2MiscLayout.MILITARY_TILE_COUNTS
@@ -193,10 +193,10 @@ func _test_meltdown(reference_root: String) -> void:
 		"Meltdown moves normal and military tile counts to their radiation buckets: nuclear=%d normal=%d military0=%d military1=%d"
 		% [
 			BinaryData.read_u32_be(
-				stored_meltdown_misc, Buildings.MISC_TILE_COUNTS + 0xcb * 4
+				stored_meltdown_misc, Sc2MiscLayout.TILE_COUNTS + 0xcb * 4
 			),
 			BinaryData.read_u32_be(
-				stored_meltdown_misc, Buildings.MISC_TILE_COUNTS + 0x05 * 4
+				stored_meltdown_misc, Sc2MiscLayout.TILE_COUNTS + 0x05 * 4
 			),
 			BinaryData.read_u32_be(
 				stored_meltdown_misc, Sc2MiscLayout.MILITARY_TILE_COUNTS

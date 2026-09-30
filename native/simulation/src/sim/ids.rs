@@ -554,7 +554,16 @@ pub mod sc2tile_flags {
 pub mod sc2zone_layout {
     pub const TYPE_MASK: i64 = 0x0f;
     pub const CORNERS_MASK: i64 = 0xf0;
+    pub const NONE: i64 = 0;
+    pub const LIGHT_RESIDENTIAL: i64 = 1;
+    pub const DENSE_RESIDENTIAL: i64 = 2;
+    pub const LIGHT_COMMERCIAL: i64 = 3;
+    pub const DENSE_COMMERCIAL: i64 = 4;
+    pub const LIGHT_INDUSTRIAL: i64 = 5;
+    pub const DENSE_INDUSTRIAL: i64 = 6;
     pub const MILITARY: i64 = 7;
+    pub const AIRPORT: i64 = 8;
+    pub const SEAPORT: i64 = 9;
 }
 
 pub mod sc2altitude_layout {

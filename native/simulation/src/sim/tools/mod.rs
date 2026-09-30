@@ -3,6 +3,7 @@
 //! and the map stages of new-city terrain.
 //! These are ports of the GDScript tool helpers that the simulation calls.
 
+pub mod commands;
 pub mod demolish;
 pub mod highway;
 pub mod network;
@@ -237,13 +238,21 @@ mod tests {
             }
 
             for edge in [128i64, 16] {
-                let mut buildings = vec![0u8; (edge * edge) as usize];
+                let buildings = vec![0u8; (edge * edge) as usize];
                 let mut zones = buildings.clone();
                 zones[0] = 0xf7;
-                let mut misc = base.clone();
-                replace_special_building(&mut buildings, &zones, &mut misc, 0, tile);
-                assert_eq!(buildings[0] as i64, tile);
-                assert_eq!(misc, expected, "only the original military count slots change");
+                let misc = base.clone();
+
+                for replace in [
+                    replace_special_building as fn(&mut [u8], &[u8], &mut [u8], i64, i64),
+                    network::replace_building,
+                ] {
+                    let mut buildings = buildings.clone();
+                    let mut misc = misc.clone();
+                    replace(&mut buildings, &zones, &mut misc, 0, tile);
+                    assert_eq!(buildings[0] as i64, tile);
+                    assert_eq!(misc, expected, "only the original military count slots change");
+                }
             }
         }
     }

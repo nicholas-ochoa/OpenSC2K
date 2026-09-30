@@ -1,5 +1,7 @@
 class_name BuildingSites
 extends BuildingConstants
+## The building of each tool and its footprint. The site rules run in the
+## native simulation library; see native/simulation/src/sim/tools/commands/building.rs.
 
 
 static func supports_tool(group_index: int, subtool_index: int) -> bool:
@@ -26,115 +28,26 @@ static func footprint(selected: Vector2i, area: int) -> Rect2i:
 
 
 # checks the site without changing the city or consuming random state
-
-
 static func preview_valid(city: CityState, group: int, subtool: int, point: Vector2i) -> bool:
 	return preview_error(city, group, subtool, point).is_empty()
 
 
 static func preview_error(city: CityState, group: int, subtool: int, point: Vector2i) -> String:
-	var map_edge: int = city.map_size if city != null else 128
-
 	if city == null or not supports_tool(group, subtool):
 		return "No building tool is selected."
 
-	if not Availability.is_available(city, group, subtool):
-		return "This building is not available in this city."
+	var args := placement_args(city, group, subtool)
+	args.point = point
 
+	return NativeSimulationBridge.run("tool.building_preview", city, null, null, null, args).result
+
+
+# the tool, its building, and its availability in `city`
+static func placement_args(city: CityState, group: int, subtool: int) -> Dictionary:
+	var args := NativeToolEdit.tool_args(group, subtool)
 	var tool := ToolCatalog.tool(group, subtool)
+	args.tile = tile_for_tool(group, subtool)
+	args.area = int(tool.area) if tool != null else 1
+	args.available = ToolAvailability.is_available(city, group, subtool)
 
-	if city.funds() < int(tool.cost):
-		return "Insufficient funds."
-
-	var site := footprint(point, int(tool.area))
-
-	if not _footprint_is_in_bounds(site, int(tool.area), map_edge, city.document.is_extended()):
-		return "The building footprint extends outside the map."
-
-	var error := _site_error(city.buildings, city.terrain, city.zones, city.tile_flags, site, tile_for_tool(group, subtool), map_edge)
-
-	return error
-
-
-static func _footprint_is_in_bounds(site: Rect2i, area: int, map_edge: int = 128, allow_edge_buildings := false) -> bool:
-	if site.size != Vector2i(area, area):
-		return false
-
-	if area == 1 or allow_edge_buildings:
-		return site.position.x >= 0 and site.position.y >= 0 and site.end.x <= map_edge and site.end.y <= map_edge
-
-	return site.position.x >= 1 and site.position.y >= 1 and site.end.x <= (map_edge - 1) and site.end.y <= (map_edge - 1)
-
-
-static func _site_error(
-	buildings: PackedByteArray,
-	terrain: PackedByteArray,
-	zones: PackedByteArray,
-	flags: PackedByteArray,
-	site: Rect2i,
-	tile_id: int,
-	map_edge: int = 128,
-) -> String:
-	var marina_water_tiles := 0
-
-	for x in range(site.position.x, site.end.x):
-		for y in range(site.position.y, site.end.y):
-			var index := x * map_edge + y
-			var old_building := int(buildings[index])
-
-			if old_building >= ROAD_FIRST or old_building == RADIOACTIVITY or old_building == SMALL_PARK:
-				return "site contains a protected tile"
-
-			if tile_id == SMALL_PARK and old_building > BuildingTileIds.TREES_7:
-				return "site contains a protected tile"
-
-			if (zones[index] & Sc2ZoneLayout.TYPE_MASK) == MILITARY_ZONE:
-				return "site is in a military zone"
-
-			var is_water := (flags[index] & FLAG_WATER) != 0
-
-			if tile_id == MARINA and is_water:
-				marina_water_tiles += 1
-			elif terrain[index] != TerrainTileIds.FLAT or is_water:
-				return "site is not clear"
-
-	if tile_id == MARINA and (marina_water_tiles == 0 or marina_water_tiles == site.size.x * site.size.y):
-		return "marina must span land and water"
-
-	return ""
-
-
-static func _count_nearby_residential(
-	zones: PackedByteArray, selected: Vector2i, area: int,
-	map_edge: int = 128,
-) -> int:
-	var count := 0
-
-	for x in range(maxi(selected.x - 8, 0), mini(selected.x + area + 8, map_edge)):
-		for y in range(maxi(selected.y - 8, 0), mini(selected.y + area + 8, map_edge)):
-			var zone := zones[x * map_edge + y] & Sc2ZoneLayout.TYPE_MASK
-
-			if zone == 1 or zone == 2:
-				count += 1
-
-	return count
-
-
-# The zone and building corner flags share one byte.
-static func set_corners(zones: PackedByteArray, site: Rect2i, area: int, rotation: int, map_edge: int = 128) -> void:
-	if area == 1:
-		var index := site.position.x * map_edge + site.position.y
-		zones[index] = (zones[index] & Sc2ZoneLayout.TYPE_MASK) | Sc2ZoneLayout.CORNERS_MASK
-
-		return
-
-	var far := site.end - Vector2i.ONE
-	var view := rotation & 3
-	var bottom_left := site.position.x * map_edge + site.position.y
-	var bottom_right := far.x * map_edge + site.position.y
-	var top_left := far.x * map_edge + far.y
-	var top_right := site.position.x * map_edge + far.y
-	zones[bottom_left] = (zones[bottom_left] & Sc2ZoneLayout.TYPE_MASK) | CORNER_BOTTOM_LEFT[view]
-	zones[bottom_right] = (zones[bottom_right] & Sc2ZoneLayout.TYPE_MASK) | CORNER_BOTTOM_RIGHT[view]
-	zones[top_left] = (zones[top_left] & Sc2ZoneLayout.TYPE_MASK) | CORNER_TOP_LEFT[view]
-	zones[top_right] = (zones[top_right] & Sc2ZoneLayout.TYPE_MASK) | CORNER_TOP_RIGHT[view]
+	return args

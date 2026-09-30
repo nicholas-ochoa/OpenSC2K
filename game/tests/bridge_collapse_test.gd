@@ -61,11 +61,11 @@ func section(p: Dictionary, anchor: Vector2i, tile: int, horizontal: bool) -> vo
 	for offset in OFFSETS:
 		var point: Vector2i = anchor + offset
 		var index := point.x * 128 + point.y
-		NetworkState.replace_building(p.XBLD, p.XZON, p.MISC, index, tile)
+		TileCountsFixture.replace_building(p.XBLD, p.XZON, p.MISC, index, tile)
 		p.XBIT[index] = 6 if horizontal else 4
 		p.XTER[index] = TerrainTileIds.DEEP_WATER_FLAT
 
-	BuildingSites.set_corners(p.XZON, Rect2i(anchor, Vector2i(2, 2)), 2, 0)
+	p.XZON = NativeCityTools.set_corners(p.XZON, anchor, 2, 0, 128)
 
 
 func check_span(anchor: Vector2i, horizontal: bool, first_tile: int) -> void:
@@ -122,11 +122,11 @@ func check_banks() -> void:
 			var point: Vector2i = bank + OFFSETS[i]
 			var index := point.x * 128 + point.y
 			p.ALTM[index * 2 + 1] = 5
-			BuildingUnderground._replace_underground(p.XUND, p.XZON, p.MISC, index, [1, 0x10, 0x1f, 0x23][i])
+			TileCountsFixture.replace_underground(p.XUND, p.XZON, p.MISC, index, [1, 0x10, 0x1f, 0x23][i])
 
 	# A station at the rear bank also exercises labels during the growth commit.
 	var rear_index := 20
-	NetworkState.replace_building(p.XBLD, p.XZON, p.MISC, rear_index, BuildingTileIds.SUBWAY_STATION)
+	TileCountsFixture.replace_building(p.XBLD, p.XZON, p.MISC, rear_index, BuildingTileIds.SUBWAY_STATION)
 	p.XZON[rear_index] = 0xf0
 	OverlayData.write(p.XTXT, rear_index, 1)
 	p.XLAB[CityState.LABEL_RECORD_SIZE] = 65
@@ -136,7 +136,7 @@ func check_banks() -> void:
 	for offset in OFFSETS:
 		var point: Vector2i = banks[1] + offset
 		var index := point.x * 128 + point.y
-		NetworkState.replace_building(p.XBLD, p.XZON, p.MISC, index, 0x49)
+		TileCountsFixture.replace_building(p.XBLD, p.XZON, p.MISC, index, 0x49)
 		p.XZON[index] = 0xf0
 
 	var city := store(p)
@@ -159,13 +159,13 @@ func check_banks() -> void:
 func check_single_width_banks() -> void:
 	var p := fixture()
 	var index := 3 * 128 + 20
-	NetworkState.replace_building(p.XBLD, p.XZON, p.MISC, index, 0x51)
+	TileCountsFixture.replace_building(p.XBLD, p.XZON, p.MISC, index, 0x51)
 	p.XBIT[index] = 6
 
 	for point in [Vector2i(2, 20), Vector2i(4, 20)]:
 		index = point.x * 128 + point.y
 		p.ALTM[index * 2 + 1] = 5
-		BuildingUnderground._replace_underground(p.XUND, p.XZON, p.MISC, index, 1)
+		TileCountsFixture.replace_underground(p.XUND, p.XZON, p.MISC, index, 1)
 
 	var city := store(p)
 	var result := GrowthScan.run(city, TestRandoms.ZeroRandom.new(), 3, 0, TestRandoms.ZeroLfsrRandom.new())
@@ -192,12 +192,12 @@ func check_tool_undo() -> void:
 	var p := fixture()
 	section(p, Vector2i(2, 20), 0x6a, true)
 	section(p, Vector2i(4, 20), 0x6b, true)
-	BuildingUnderground._replace_underground(p.XUND, p.XZON, p.MISC, 20, 1)
+	TileCountsFixture.replace_underground(p.XUND, p.XZON, p.MISC, 20, 1)
 	var city := store(p)
 	assert(city.set_funds(100))
 	var before: Array = DocumentState.capture(city.document)
 	var random := SimRandom.new(17)
-	var command := DemolishEdit.apply_path(
+	var command := DemolishCommand.apply_path(
 		city,
 		DemolishConstants.GROUP_BULLDOZER,
 		DemolishConstants.SUBTOOL_DEMOLISH,
@@ -206,5 +206,5 @@ func check_tool_undo() -> void:
 	)
 	assert(command.ok, command.error)
 	assert(city.building_id(5, 20) == 0 and city.underground_id(0, 20) == 0)
-	assert(DemolishEdit.undo(city, command, random).ok)
+	assert(DemolishCommand.undo(city, command, random).ok)
 	assert(DocumentState.capture(city.document) == before and random.state == 17, "Undo restores the span, both banks and random state")

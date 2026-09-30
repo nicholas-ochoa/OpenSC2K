@@ -1,23 +1,16 @@
 class_name ZoneCommand
 extends RefCounted
+# Zoning and dezoning rectangles. The native simulation library prices and
+# paints the rectangle; see native/simulation/src/sim/tools/commands/zone.rs.
 
-const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const GROUP_PORTS := CityToolIds.Group.PORTS
 const GROUP_BULLDOZER := CityToolIds.Group.BULLDOZER
 const SUBTOOL_DEZONE := CityToolIds.Bulldozer.DEZONE
 const GROUP_RESIDENTIAL := CityToolIds.Group.RESIDENTIAL
 const GROUP_COMMERCIAL := CityToolIds.Group.COMMERCIAL
 const GROUP_INDUSTRIAL := CityToolIds.Group.INDUSTRIAL
-const FLAG_WATER := Sc2TileFlags.WATER
-const FIRST_ROAD := Tiles.FIRST_ROAD
-const FIRST_DEVELOPED_BUILDING := Tiles.DEVELOPED_FIRST
-const RADIOACTIVITY := Tiles.RADIOACTIVE_WASTE
-const SMALL_PARK := Tiles.SMALL_PARK
-const MILITARY_ZONE := Sc2ZoneLayout.MILITARY
-const TERRAIN_REQUIRES_SURCHARGE := [
-	false, false, false, false, false, true, true, true,
-	true, true, true, true, true, false, false, false,
-]
+# the chunks that a zone edit changes, in commit order
+const PAYLOAD_IDS: PackedStringArray = ["XZON", "XBLD", "MISC"]
 const ZONE_TYPES := {
 	GROUP_PORTS: [9, 8],
 	GROUP_RESIDENTIAL: [1, 2],
@@ -36,119 +29,12 @@ static func apply_rectangle(
 	free_mode := false,
 	zone_type_override := -1
 ) -> ZoneEditResult:
-	var preview := preview_rectangle(
-		city,
-		group_index,
-		subtool_index,
-		start,
-		finish,
-		dragged,
-		free_mode,
-		zone_type_override
-	)
+	if city == null or not city.is_valid():
+		return ZoneEditResult.rejected("city is invalid")
 
-	if not preview.ok:
-		return ZoneEditResult.rejected(preview.error)
+	var args := _args(group_index, subtool_index, start, finish, dragged, free_mode, zone_type_override)
 
-	var zone_type := int(preview.zone_type)
-	var minimum := Vector2i(mini(start.x, finish.x), mini(start.y, finish.y))
-	var maximum := Vector2i(maxi(start.x, finish.x), maxi(start.y, finish.y))
-	var changed := city.zones.duplicate()
-	var changed_buildings := city.buildings.duplicate()
-	var tile_indices := PackedInt32Array()
-	var previous_values := PackedByteArray()
-	var previous_buildings := PackedByteArray()
-
-	for x in range(minimum.x, maximum.x + 1):
-		for y in range(minimum.y, maximum.y + 1):
-			var index := city.index_of(x, y)
-
-			if not _tile_is_eligible(city, index):
-				continue
-
-			if (changed[index] & Sc2ZoneLayout.TYPE_MASK) == zone_type:
-				continue
-
-			tile_indices.append(index)
-			previous_values.append(changed[index])
-			previous_buildings.append(changed_buildings[index])
-			changed[index] = (changed[index] & Sc2ZoneLayout.CORNERS_MASK) | zone_type
-
-			if zone_type == 0 and changed_buildings[index] > Tiles.EMPTY and changed_buildings[index] < Tiles.RADIOACTIVE_WASTE:
-				changed_buildings[index] = Tiles.EMPTY
-
-	var cost := int(preview.cost)
-
-	if int(preview.changed_tiles) == 0 and cost == 0:
-		return ZoneEditResult.rejected("no eligible tiles would change")
-
-	var previous_funds := city.funds()
-
-	if previous_funds < cost:
-		return ZoneEditResult.rejected("insufficient funds", cost)
-
-	var previous_misc := city.document.find_chunk("MISC").decoded_payload.duplicate()
-
-	if not city.replace_zones(changed):
-		return ZoneEditResult.rejected("cannot store updated XZON data")
-
-	if not city.replace_buildings(changed_buildings):
-		city.replace_zones(_restore_values(changed, tile_indices, previous_values))
-
-		return ZoneEditResult.rejected("cannot store updated XBLD data")
-
-	if cost > 0 and not city.set_funds(previous_funds - cost):
-		city.replace_zones(_restore_values(changed, tile_indices, previous_values))
-		city.replace_buildings(
-			_restore_values(changed_buildings, tile_indices, previous_buildings)
-		)
-
-		return ZoneEditResult.rejected("cannot store the updated city funds")
-
-	# the original clears dezoned buildings without a count change. extended cities keep exact counts
-	if CityTileCounts.exact(city):
-		CityTileCounts.recount(city)
-
-	var old_payloads: Dictionary[String, PackedByteArray] = {
-		"XZON": _restore_values(changed, tile_indices, previous_values),
-		"XBLD": _restore_values(changed_buildings, tile_indices, previous_buildings),
-		"MISC": previous_misc,
-	}
-
-	var new_payloads: Dictionary[String, PackedByteArray] = {
-		"XZON": city.document.find_chunk("XZON").decoded_payload.duplicate(),
-		"XBLD": city.document.find_chunk("XBLD").decoded_payload.duplicate(),
-		"MISC": city.document.find_chunk("MISC").decoded_payload.duplicate(),
-	}
-	var changed_ids := PackedStringArray()
-
-	for chunk_id in ["XZON", "XBLD", "MISC"]:
-		if old_payloads[chunk_id] != new_payloads[chunk_id]:
-			changed_ids.append(chunk_id)
-
-	var result := ZoneEditResult.new()
-	result.ok = true
-	result.command_type = "zone"
-	result.group_index = group_index
-	result.subtool_index = subtool_index
-	result.zone_type = zone_type
-	result.dragged = dragged
-	result.charged_tiles = int(preview.charged_tiles)
-	result.terrain_surcharges = int(preview.terrain_surcharges)
-	result.tile_indices = tile_indices
-	result.previous_values = previous_values
-	result.new_values = _values_at(changed, tile_indices)
-	result.previous_buildings = previous_buildings
-	result.new_buildings = _values_at(changed_buildings, tile_indices)
-	result.previous_funds = previous_funds
-	result.cost = cost
-	result.listed_cost = int(preview.listed_cost)
-	result.free_mode = free_mode
-	result.changed_ids = changed_ids
-	result.old_payloads = old_payloads
-	result.new_payloads = new_payloads
-
-	return result
+	return NativeToolEdit.run("tool.zone", city, args, PAYLOAD_IDS)
 
 
 static func preview_rectangle(
@@ -161,92 +47,26 @@ static func preview_rectangle(
 	free_mode := false,
 	zone_type_override := -1
 ) -> Preview:
-	var map_edge: int = city.map_size if city != null else 128
-
 	if city == null or not city.is_valid():
 		return Preview.failure("city is invalid")
 
-	if not _point_is_valid(start, map_edge) or not _point_is_valid(finish, map_edge):
-		return Preview.failure("zone rectangle is outside the city")
+	var args := _args(group_index, subtool_index, start, finish, dragged, free_mode, zone_type_override)
 
-	var tool := ToolCatalog.tool(group_index, subtool_index)
-	var has_override := (
-		free_mode and zone_type_override >= 1 and zone_type_override <= 9
-	)
-	var zone_type := (
-		zone_type_override
-		if has_override
-		else _zone_type_for_tool(group_index, subtool_index)
-	)
+	return NativeSimulationBridge.run("tool.zone_preview", city, null, null, null, args).result
 
-	if (tool == null and not has_override) or zone_type < 0:
-		return Preview.failure("tool is not a zoning tool")
 
-	var start_index := city.index_of(start.x, start.y)
+static func _args(
+	group_index: int, subtool_index: int, start: Vector2i, finish: Vector2i, dragged: bool, free_mode: bool, zone_type_override: int
+) -> Dictionary:
+	var args := NativeToolEdit.tool_args(group_index, subtool_index, free_mode)
+	args.start = start
+	args.finish = finish
+	args.dragged = dragged
+	args.tool_zone = _zone_type_for_tool(group_index, subtool_index)
+	args.has_tool = ToolCatalog.tool(group_index, subtool_index) != null
+	args.zone_type_override = zone_type_override
 
-	if city.tile_flags[start_index] & FLAG_WATER:
-		return Preview.failure("a zone selection cannot start on water")
-
-	if (
-		city.buildings[start_index] == RADIOACTIVITY
-		or (city.zones[start_index] & Sc2ZoneLayout.TYPE_MASK) == MILITARY_ZONE
-	):
-		return Preview.failure("a zone selection cannot start on this tile")
-
-	var charged_tiles := 0
-	var terrain_surcharges := 0
-	var changed_tiles := 0
-
-	if not dragged:
-		charged_tiles = 1
-		var terrain_id := int(city.terrain[start_index])
-
-		if (
-			terrain_id < TerrainTileIds.SURFACE_WATER_FIRST
-			and TERRAIN_REQUIRES_SURCHARGE[terrain_id & TerrainTileIds.SHAPE_MASK]
-		):
-			terrain_surcharges = 1
-
-		if (
-			_tile_is_eligible(city, start_index)
-			and (city.zones[start_index] & Sc2ZoneLayout.TYPE_MASK) != zone_type
-		):
-			changed_tiles = 1
-	else:
-		var minimum := Vector2i(mini(start.x, finish.x), mini(start.y, finish.y))
-		var maximum := Vector2i(maxi(start.x, finish.x), maxi(start.y, finish.y))
-
-		for x in range(minimum.x, maximum.x + 1):
-			for y in range(minimum.y, maximum.y + 1):
-				var index := city.index_of(x, y)
-
-				if not _tile_is_drag_price_eligible(city, index, zone_type):
-					continue
-
-				charged_tiles += 1
-
-				if _tile_is_eligible(city, index):
-					changed_tiles += 1
-
-	var listed_cost := (
-		charged_tiles * (tool.cost if tool != null else 0) + terrain_surcharges * 25
-	)
-	var cost := 0 if free_mode else listed_cost
-
-	var result := Preview.new()
-	result.ok = true
-	result.zone_type = zone_type
-	result.dragged = dragged
-	result.charged_tiles = charged_tiles
-	result.changed_tiles = changed_tiles
-	result.terrain_surcharges = terrain_surcharges
-	result.cost = cost
-	result.listed_cost = listed_cost
-	result.affordable = free_mode or city.funds() >= cost
-	result.free_mode = free_mode
-	result.error = ""
-
-	return result
+	return args
 
 
 # undo also rejects a command of another family
@@ -324,39 +144,6 @@ static func _zone_type_for_tool(group_index: int, subtool_index: int) -> int:
 	return zone_types[subtool_index]
 
 
-static func _tile_is_eligible(city: CityState, index: int) -> bool:
-	var building := city.buildings[index]
-
-	return (
-		not city.tile_flags[index] & FLAG_WATER
-		and city.terrain[index] == TerrainTileIds.FLAT
-		and building < FIRST_ROAD
-		and building < FIRST_DEVELOPED_BUILDING
-		and building != RADIOACTIVITY
-		and building != SMALL_PARK
-		and (city.zones[index] & Sc2ZoneLayout.TYPE_MASK) != MILITARY_ZONE
-	)
-
-
-static func _tile_is_drag_price_eligible(
-	city: CityState, index: int, zone_type: int
-) -> bool:
-	var building := city.buildings[index]
-
-	return (
-		city.terrain[index] == TerrainTileIds.FLAT
-		and building < FIRST_ROAD
-		and building != RADIOACTIVITY
-		and building != SMALL_PARK
-		and (city.zones[index] & Sc2ZoneLayout.TYPE_MASK) != MILITARY_ZONE
-		and (city.zones[index] & Sc2ZoneLayout.TYPE_MASK) != zone_type
-	)
-
-
-static func _point_is_valid(point: Vector2i, map_edge: int = 128) -> bool:
-	return point.x >= 0 and point.x < map_edge and point.y >= 0 and point.y < map_edge
-
-
 static func _restore_values(
 	data: PackedByteArray, indices: PackedInt32Array, values: PackedByteArray
 ) -> PackedByteArray:
@@ -364,15 +151,6 @@ static func _restore_values(
 
 	for position in indices.size():
 		result[indices[position]] = values[position]
-
-	return result
-
-
-static func _values_at(data: PackedByteArray, indices: PackedInt32Array) -> PackedByteArray:
-	var result := PackedByteArray()
-
-	for index in indices:
-		result.append(data[index])
 
 	return result
 
