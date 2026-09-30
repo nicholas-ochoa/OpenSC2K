@@ -43,6 +43,9 @@ Godot object for each draw:
   ALTM words, XTER, and XBIT. `CityDataView.create_mesh` calls it through `NativeCityDataMesh`.
   Vertex colors mark tops, walls, and water; the grid shader reads each tile's value through
   the UVs.
+- **City Map window.** `minimap.rs` selects the palette index of each Map window pixel for
+  each of the 18 map modes and colors the image. `CityMinimap` calls it through
+  `NativeCityMinimap`. Maps larger than 1024 tiles sample every second or fourth tile.
 - **Region changes.** `changes.rs` compares two revisions of the region source chunks and
   returns the screen areas that changed. `ApplicationStaticRender.changed_source_rects` calls
   it through `NativeCityChanges` after each simulation refresh. A tile change reports the

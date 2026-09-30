@@ -1,9 +1,7 @@
 class_name CityMinimap
 extends RefCounted
+## City Map window images. The native library selects each tile color.
 
-@warning_ignore_start("integer_division")
-
-const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const MODES := [
 	"structures",
 	"zones",
@@ -24,197 +22,52 @@ const MODES := [
 	"schools",
 	"colleges",
 ]
-const ZONE_COLORS := [0, 59, 59, 92, 92, 50, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-const POWER_LINE_FIRST := Tiles.POWER_LINE_STRAIGHT_1
-const POWER_LINE_LAST := Tiles.POWER_LINE_CROSSROADS
-const MAX_IMAGE_EDGE := 1024
-const POLICE_STATION := Tiles.POLICE_STATION
-const FIRE_STATION := Tiles.FIRE_STATION
-const SCHOOL := Tiles.SCHOOL
-const COLLEGE := Tiles.COLLEGE
 
 
 # one pixel per tile up to 1024 tiles. a larger map samples every second or
 # fourth tile, since the map window never shows more than 1024 pixels
 static func create_image(city: CityState, palette: Sc2Palette, mode := "structures") -> Image:
 	var map_edge: int = city.map_size if city != null else 128
-	var step := maxi(1, map_edge / MAX_IMAGE_EDGE)
-	var image_edge := map_edge / step
-	var image := Image.create(
-		image_edge, image_edge, false, Image.FORMAT_RGBA8
-	)
+	var image_edge := NativeCityMinimap.image_edge(map_edge)
 
-	if city == null or not city.is_valid() or palette == null or not palette.is_valid():
-		return image
+	if city != null and city.is_valid() and palette != null and palette.is_valid():
+		var image := NativeCityMinimap.create_image(_request(city, mode), _palette_rgba(palette))
 
-	for x in image_edge:
-		for y in image_edge:
-			image.set_pixel(x, y, palette.color(color_index(city, x * step, y * step, mode)))
+		if image != null:
+			return image
 
-	return image
+	return Image.create(image_edge, image_edge, false, Image.FORMAT_RGBA8)
 
 
+# the palette index of one tile. tiles outside the map are 0
 static func color_index(city: CityState, x: int, y: int, mode := "structures") -> int:
-	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
+	if city == null or not city.is_valid():
 		return 0
 
-	var building := city.building_id(x, y)
-	var base := _base_index(city, x, y, building)
-
-	match mode:
-		"structures":
-			return base
-		"zones":
-			var zone := city.zone_id(x, y)
-
-			return ZONE_COLORS[zone] if zone != 0 else base
-		"roads":
-			return 0xff if _is_road_map_tile(building) else base
-		"rail":
-			return 0xff if _is_rail_map_tile(building) else base
-		"traffic":
-			var traffic := _coarse_value(city, "XTRF", city.map_size / 2, 2, x, y) >> 4
-
-			if traffic != 0:
-				return traffic + 0x9b
-
-			return 0xff if _is_traffic_network(building) else base
-		"power":
-			if _is_power_line(building):
-				return 0xff
-
-			if city.is_powered(x, y):
-				return 0x32
-
-			return 0x1d if city.is_powerable(x, y) else base
-		"water":
-			var underground := city.underground_id(x, y)
-
-			if underground >= UndergroundTileIds.PIPE_LR and underground <= UndergroundTileIds.SUBWAY_ENTRANCE:
-				return 0xff
-
-			if city.is_watered(x, y):
-				return 0x32
-
-			return 0x1d if city.is_piped(x, y) else base
-		"density":
-			return _gradient_or_base(city, "XPOP", city.map_size / 4, 4, x, y, base)
-		"growth":
-			var growth := _coarse_value(city, "XROG", city.map_size / 4, 4, x, y)
-
-			if growth < 0x7d:
-				return 0x1d
-
-			if growth >= 0x83:
-				return 0x43
-
-			return base
-		"crime":
-			return _gradient_or_base(city, "XCRM", city.map_size / 2, 2, x, y, base)
-		"police_power":
-			return _gradient_or_base(city, "XPLC", city.map_size / 4, 4, x, y, base)
-		"police_stations":
-			return 0xff if building == POLICE_STATION else base
-		"pollution":
-			return _gradient_or_base(city, "XPLT", city.map_size / 2, 2, x, y, base)
-		"land_value":
-			return _gradient_or_base(city, "XVAL", city.map_size / 2, 2, x, y, base)
-		"fire_power":
-			return _gradient_or_base(city, "XFIR", city.map_size / 4, 4, x, y, base)
-		"fire_stations":
-			return 0xff if building == FIRE_STATION else base
-		"schools":
-			return 0xff if building == SCHOOL else base
-		"colleges":
-			return 0xff if building == COLLEGE else base
-
-	return base
+	return maxi(0, NativeCityMinimap.color_index(_request(city, mode), x, y))
 
 
-static func _base_index(city: CityState, x: int, y: int, building: int) -> int:
-	if building == Tiles.EMPTY:
-		if city.is_water(x, y):
-			return 0x62
+static func _request(city: CityState, mode: String) -> Dictionary:
+	var chunk_id := NativeCityMinimap.data_chunk(mode)
+	var data := PackedByteArray()
 
-		var altitude := mini(city.land_altitude(x, y), 0x10)
+	# a data map of an unexpected size reads as zero
+	if not chunk_id.is_empty():
+		var chunk := city.document.find_chunk(chunk_id)
 
-		return 0x80 - int((altitude * 3) / 4)
+		if chunk != null and chunk.decoded_payload.size() == city.document.decoded_size(chunk_id):
+			data = chunk.decoded_payload
 
-	if building < Tiles.TREES_1:
-		return 0x35
-
-	if building < Tiles.SMALL_PARK:
-		return 0x43
-
-	return 0
+	return {"edge": city.map_size, "buildings": city.buildings, "zones": city.zones, "flags": city.tile_flags,
+		"underground": city.underground, "altitude": city.altitude_words, "mode": mode, "data": data}
 
 
-static func _gradient_or_base(
-	city: CityState,
-	chunk_id: String,
-	map_size: int,
-	scale: int,
-	x: int,
-	y: int,
-	base: int
-) -> int:
-	var gradient := _coarse_value(city, chunk_id, map_size, scale, x, y) >> 4
+static func _palette_rgba(palette: Sc2Palette) -> PackedByteArray:
+	var bytes := PackedByteArray()
+	bytes.resize(1024)
 
-	return gradient + 0x9b if gradient != 0 else base
+	for index in 256:
+		var color := palette.color(index)
+		bytes.encode_u32(index * 4, color.to_abgr32())
 
-
-static func _coarse_value(
-	city: CityState, chunk_id: String, _map_size: int, _scale: int, x: int, y: int
-) -> int:
-	var chunk := city.document.find_chunk(chunk_id)
-
-	if chunk == null or chunk.decoded_payload.size() != city.document.decoded_size(chunk_id):
-		return 0
-
-	var index := CityDataGrid.index(chunk.decoded_payload, city.map_size, x, y)
-
-	return chunk.decoded_payload[index] if index >= 0 else 0
-
-
-static func _is_road_map_tile(building: int) -> bool:
-	return (
-		(building >= Tiles.ROAD_STRAIGHT_1 and building <= Tiles.ROAD_CROSSROADS)
-		or (building >= Tiles.TUNNEL_ENTRANCE_1 and building <= Tiles.ROAD_RAIL_CROSSING_2)
-		or (building >= Tiles.HIGHWAY_STRAIGHT_1 and building <= Tiles.RAISING_BRIDGE_OPEN)
-		or (building >= Tiles.HIGHWAY_ONRAMP_1 and building <= Tiles.REINFORCED_HIGHWAY_BRIDGE)
-		or building == Tiles.HIGHWAY_ROAD_CROSSING_1
-		or building == Tiles.HIGHWAY_ROAD_CROSSING_2
-	)
-
-
-static func _is_rail_map_tile(building: int) -> bool:
-	return (
-		(building >= Tiles.RAIL_STRAIGHT_1 and building <= Tiles.RAIL_SLOPE_8)
-		or (building >= Tiles.ROAD_RAIL_CROSSING_1 and building <= Tiles.RAIL_POWER_CROSSING_2)
-		or (building >= Tiles.RAIL_SUBWAY_ENTRANCE_1 and building <= Tiles.RAIL_SUBWAY_ENTRANCE_4)
-		or building == Tiles.HIGHWAY_RAIL_CROSSING_1
-		or building == Tiles.HIGHWAY_RAIL_CROSSING_2
-		or building == Tiles.RAIL_BRIDGE
-		or building == Tiles.RAIL_BRIDGE_PYLON
-	)
-
-
-static func _is_traffic_network(building: int) -> bool:
-	return (
-		(building >= Tiles.ROAD_STRAIGHT_1 and building <= Tiles.RAIL_SLOPE_8)
-		or (building >= Tiles.TUNNEL_ENTRANCE_1 and building <= Tiles.RAIL_POWER_CROSSING_2)
-		or (building >= Tiles.HIGHWAY_STRAIGHT_1 and building <= Tiles.HIGHWAY_POWER_CROSSING_2)
-		or (building >= Tiles.HIGHWAY_ROAD_CROSSING_1 and building <= Tiles.HIGHWAY_RAIL_CROSSING_2)
-		or (building >= Tiles.HIGHWAY_ONRAMP_1 and building <= Tiles.RAIL_SUBWAY_ENTRANCE_4)
-	)
-
-
-static func _is_power_line(building: int) -> bool:
-	return (
-		(building >= POWER_LINE_FIRST and building <= POWER_LINE_LAST)
-		or building == Tiles.ROAD_POWER_CROSSING_1
-		or building == Tiles.ROAD_POWER_CROSSING_2
-		or building == Tiles.RAIL_POWER_CROSSING_1
-		or building == Tiles.RAIL_POWER_CROSSING_2
-		or building == Tiles.POWER_BRIDGE
-	)
+	return bytes

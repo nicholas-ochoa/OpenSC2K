@@ -144,9 +144,10 @@ func check_values(edge: int) -> void:
 	check(query.ok and query.land_value == 256, "Query reads full-resolution value")
 	query = QueryInfo.inspect(city, point + Vector2i.DOWN)
 	check(query.ok and query.land_value == 1, "Query separates adjacent tiles")
-	check(CityMinimap._coarse_value(city, "XVAL", edge / 2, 2, point.x, point.y) == 255,
+	check(CityMinimap.color_index(city, point.x, point.y, "land_value") == 0x9b + (255 >> 4),
 		"Map view reads native value")
-	check(CityMinimap._coarse_value(city, "XVAL", edge / 2, 2, point.x, point.y + 1) == 0,
+	check(CityMinimap.color_index(city, point.x, point.y + 1, "land_value")
+		== CityMinimap.color_index(city, point.x, point.y + 1, "structures"),
 		"Map view keeps adjacent values distinct")
 	var traffic := doc.find_chunk("XTRF").decoded_payload.duplicate()
 	traffic[index] = 200

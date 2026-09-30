@@ -5,6 +5,7 @@ mod bridge;
 mod changes;
 mod data_view;
 mod index;
+mod minimap;
 mod painter;
 mod region;
 mod sprites;
