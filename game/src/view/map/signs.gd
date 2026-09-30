@@ -86,15 +86,20 @@ func _ensure_sign_entries() -> void:
 	sign_indices.sort()
 	var sign_values := []
 
+	# a layout reads only the sign tiles, so their values replace a map hash
 	for index in sign_indices:
 		sign_values.append(index)
 		sign_values.append(sign_texts[index])
+
+		if index < map.city.altitude_words.size():
+			sign_values.append(map.city.altitude_words[index])
+			sign_values.append(map.city.terrain[index])
+			sign_values.append(map.city.tile_flags[index])
 
 	var signature := [
 		map_edge,
 		map.city.visible_altitude_levels,
 		map.city.compass_rotation(),
-		hash(map.city.altitude_words),
 		hash(sign_values),
 	]
 

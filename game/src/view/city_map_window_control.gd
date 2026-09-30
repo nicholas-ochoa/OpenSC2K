@@ -273,17 +273,12 @@ func sync_view_mode(mode: CityViewMode.Mode) -> void:
 
 func _image_signature() -> Array:
 	var mode := current_mode()
-	var result := [
-		mode,
-		hash(city.altitude_words),
-		hash(city.buildings),
-		hash(city.tile_flags),
-	]
+	var chunk_ids := PackedStringArray(["ALTM", "XBLD", "XBIT"])
 
 	if mode == "zones":
-		result.append(hash(city.zones))
+		chunk_ids.append("XZON")
 	elif mode == "water":
-		result.append(hash(city.underground))
+		chunk_ids.append("XUND")
 
 	var chunk_id: String = {
 		"traffic": "XTRF",
@@ -297,7 +292,6 @@ func _image_signature() -> Array:
 	}.get(mode, "")
 
 	if not chunk_id.is_empty():
-		var chunk := city.document.find_chunk(chunk_id)
-		result.append(hash(chunk.decoded_payload) if chunk != null else 0)
+		chunk_ids.append(chunk_id)
 
-	return result
+	return [mode, city.mirror_signature(chunk_ids)]

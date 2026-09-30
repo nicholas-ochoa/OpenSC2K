@@ -1,6 +1,8 @@
 class_name CityDynamicCommandCache
 extends RefCounted
 
+const SIGNATURE_CHUNKS: PackedStringArray = ["ALTM", "XTER", "XBLD", "XZON", "XTXT", "XBIT", "XTHG"]
+
 # cache painter commands independently of static-region publication
 var signature: Array = []
 var commands: Array[CityDynamicCommand] = []
@@ -14,10 +16,8 @@ func get_commands(city: CityState, sprites: Sc2SpriteArchive, view: int, phase: 
 		return []
 
 	var things := city.document.find_chunk("XTHG")
-	var next := [city.get_instance_id(), sprites.get_instance_id(), view,
-		city.visible_altitude_levels, city.compass_rotation(), hash(city.altitude_words),
-		hash(city.terrain), hash(city.buildings), hash(city.zones), hash(city.text_overlays),
-		hash(city.tile_flags), hash(things.decoded_payload) if things != null else 0]
+	var next := [sprites.get_instance_id(), view, city.visible_altitude_levels, city.compass_rotation(),
+		city.mirror_signature(SIGNATURE_CHUNKS)]
 
 	if next != signature or (_phase_animated and phase != _phase):
 		var changed := next != signature

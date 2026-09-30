@@ -13,17 +13,29 @@ func _initialize() -> void:
 	cache.get_commands(city, sprites, 2, 0)
 	assert(cache.rebuilds == count)
 
-	for field in ["altitude_words", "terrain", "buildings", "zones", "text_overlays", "tile_flags"]:
-		var original: int = city.get(field)[100]
-		city.get(field)[100] = original ^ 1
+	# each edit goes through the city setters, which bump the chunk revision
+	var edits: Array[Callable] = [
+		func() -> bool: return city.set_land_altitude(0, 100, city.land_altitude(0, 100) ^ 1),
+		func() -> bool: return city.set_terrain_id(0, 100, city.terrain_id(0, 100) ^ 1),
+		func() -> bool: return city.set_building_id(0, 100, city.building_id(0, 100) ^ 1),
+		func() -> bool: return city.set_zone_id(0, 100, city.zone_id(0, 100) ^ 1),
+		func() -> bool: return city.set_text_overlay_id(0, 100, city.text_overlay_id(0, 100) ^ 1),
+		func() -> bool: return city.set_tile_flag(0, 100, Sc2TileFlags.FLIPPED, not city.is_flipped(0, 100)),
+	]
+
+	for edit in edits:
+		assert(edit.call())
 		assert(_dynamic_command_values(cache.get_commands(city, sprites, 2, 0))
 			== _dynamic_command_values(CityIsometricRenderer.dynamic_draw_commands(city, sprites, 2, 0)))
 		assert(cache.rebuilds > count)
 		count = cache.rebuilds
-		city.get(field)[100] = original
+		assert(edit.call())
+		cache.get_commands(city, sprites, 2, 0)
+		count = cache.rebuilds
 
 	var things := city.document.find_chunk("XTHG")
 	things.decoded_payload[1] ^= 1
+	things.mark_mutated()
 	assert(_dynamic_command_values(cache.get_commands(city, sprites, 2, 1))
 		== _dynamic_command_values(CityIsometricRenderer.dynamic_draw_commands(city, sprites, 2, 1)))
 	assert(cache.rebuilds > count)
@@ -57,6 +69,7 @@ func _check_display_clock(city: CityState, sprites: Sc2SpriteArchive) -> void:
 	things.decoded_payload[offset] = 6
 	ThingData.write(things.decoded_payload, offset + 3, 20)
 	ThingData.write(things.decoded_payload, offset + 4, 20)
+	things.mark_mutated()
 
 	for phase in [0, 1]:
 		var expected := CityIsometricRenderer.dynamic_draw_commands(city, sprites, 2, phase)

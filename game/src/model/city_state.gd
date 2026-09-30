@@ -368,6 +368,44 @@ func chunk_revision(chunk_id: String) -> int:
 	return chunk.mutation_revision if chunk != null else -1
 
 
+# a cheap value that changes when one of the chunks changes. each stored chunk
+# adds its identity and revision; a missing chunk adds a hash of its mirror.
+# the city identity keeps snapshots and filtered copies apart
+func mirror_signature(chunk_ids: PackedStringArray) -> Array:
+	var result := [get_instance_id()]
+
+	for chunk_id in chunk_ids:
+		var chunk := document.find_chunk(chunk_id) if document != null else null
+
+		if chunk != null:
+			result.append(chunk.get_instance_id())
+			result.append(chunk.mutation_revision)
+		else:
+			result.append(hash(_mirror(chunk_id)))
+
+	return result
+
+
+func _mirror(chunk_id: String) -> Variant:
+	match chunk_id:
+		"ALTM":
+			return altitude_words
+		"XTER":
+			return terrain
+		"XBLD":
+			return buildings
+		"XZON":
+			return zones
+		"XUND":
+			return underground
+		"XTXT":
+			return text_overlays
+		"XBIT":
+			return tile_flags
+
+	return null
+
+
 func set_land_altitude(x: int, y: int, value: int) -> bool:
 	return CityTileEdits.set_land_altitude(self, x, y, value)
 
