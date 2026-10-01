@@ -20,6 +20,8 @@ func _run() -> void:
 	assert(rows[1][3] == "0x04BB")
 	assert(rows[2] == PackedStringArray(["ALTM", "4660", "", "0x1234"]))
 	assert(rows[7][1] == "400" and rows[8][1] == "300")
+	# ALTM 0x1234 holds land 20, water 17 and a tunnel 4 levels down
+	assert(rows[9][1] == "20" and rows[10][1] == "17" and rows[11][1] == "4" and rows[11][2] == "4 levels below")
 	var image := Image.create(3, 1, false, Image.FORMAT_RGBA8)
 	image.fill(Color(1, 0.5, 0, 1))
 	image.set_pixel(2, 0, Color.TRANSPARENT)

@@ -101,7 +101,12 @@ static func advanced_rows(info: QueryResult) -> Array[PackedStringArray]:
 
 	rows.append(_number_row("X", point.x))
 	rows.append(_number_row("Y", point.y))
-	rows.append(_number_row("Z", int(info.altitude_raw) & 0x1f))
+	var altitude := int(info.altitude_raw)
+	var tunnel_levels := (altitude >> Sc2AltitudeLayout.TUNNEL_SHIFT) & Sc2AltitudeLayout.LEVEL_MASK
+	rows.append(_number_row("Z", altitude & Sc2AltitudeLayout.LAND_MASK))
+	rows.append(_number_row("Water Z", (altitude >> Sc2AltitudeLayout.WATER_SHIFT) & Sc2AltitudeLayout.LEVEL_MASK))
+	rows.append(_number_row("Tunnel", tunnel_levels,
+		"None" if tunnel_levels == 0 else "%d %s below" % [tunnel_levels, "level" if tunnel_levels == 1 else "levels"]))
 	rows.append(_number_row("XZON", int(info.zone_raw), str(info.corner_name)))
 	rows.append(_number_row("Zone", int(info.zone_id), str(info.zone_name)))
 	rows.append(_number_row("XBIT", int(info.flags_raw), " ".join(info.flag_names)))
