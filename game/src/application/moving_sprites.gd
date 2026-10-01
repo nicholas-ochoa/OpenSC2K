@@ -89,7 +89,8 @@ func refresh_moving_things(view_size := -1) -> void:
 		if bool(command.static_occlusion):
 			occluder_mask = _dynamic_occluder_image(
 				sprite_archive, divisor, position, resource.native_size,
-				int(command.depth_order), bool(command.train), factor
+				int(command.depth_order), bool(command.train), factor,
+				resource if command.floating_altitude >= 0 else null, int(command.floating_altitude)
 			)
 
 		var samples_static := bool(command.shadow)
@@ -194,14 +195,16 @@ func _dynamic_occluder_image(
 	position: Vector2i,
 	size: Vector2i,
 	draw_order: int,
-	is_train := false, texture_factor := 1
+	is_train := false, texture_factor := 1,
+	floating: CitySpriteResource = null, floating_altitude := -1
 ) -> Image:
 	if draw_order < 0 or (caches.static_occlusion_commands.is_empty() and caches.region_cache == null):
 		return null
 
-	var cache_key := "%d:%d:%d:%d:%d:%d:%d:%d" % [
+	var cache_key := "%d:%d:%d:%d:%d:%d:%d:%d:%d:%d" % [
 		position.x, position.y, size.x, size.y, draw_order, int(is_train),
 		app.static_render_state.epoch, texture_factor,
+		floating.get_instance_id() if floating != null else 0, floating_altitude,
 	]
 	if caches.dynamic_occluder_cache.has(cache_key):
 		return caches.dynamic_occluder_cache[cache_key].image
@@ -214,6 +217,12 @@ func _dynamic_occluder_image(
 		)
 
 	var mask: Image = null
+
+	if floating != null:
+		mask = _floating_occluder_image(sprite_archive, divisor, bounds, texture_factor, floating, floating_altitude)
+		caches.dynamic_occluder_cache[cache_key] = RenderCaches.OccluderMask.new(bounds, mask)
+
+		return mask
 
 	# Bounding boxes include transparent pixels. Combine all later silhouettes
 	# to find the foreground that actually covers the sprite.
@@ -268,6 +277,61 @@ func _dynamic_occluder_image(
 		)
 
 	caches.dynamic_occluder_cache[cache_key] = RenderCaches.OccluderMask.new(bounds, mask)
+
+	return mask
+
+
+# The static silhouettes over a ship or sailboat, by IsometricFloatingOcclusion.
+# Positions scaled by `divisor` use the large view geometry
+func _floating_occluder_image(
+	sprite_archive: Sc2SpriteArchive,
+	divisor: int,
+	bounds: Rect2i,
+	texture_factor: int,
+	floating: CitySpriteResource,
+	floating_altitude: int
+) -> Image:
+	var map_edge: int = app.document_state.city.map_size
+	var large := IsometricRenderer.view_configuration(IsometricRenderer.VIEW_LARGE)
+	var waterline := floating.waterline()
+	var columns_by_tile: Dictionary[Vector2i, PackedByteArray] = {}
+	var mask: Image = null
+
+	for command in static_occlusion_candidates(bounds):
+		if IsometricFloatingOcclusion.is_water_surface(int(command.sprite_id)):
+			continue
+
+		var occluder_position := Vector2i(command.position) * divisor
+		var overlap := bounds.intersection(Rect2i(occluder_position, Vector2i(command.size) * divisor))
+
+		if overlap.get_area() <= 0:
+			continue
+
+		var tile := IsometricFloatingOcclusion.depth_tile(int(command.depth_order), map_edge)
+
+		if not columns_by_tile.has(tile):
+			columns_by_tile[tile] = IsometricFloatingOcclusion.hidden_columns(
+				waterline, Vector2(bounds.position), 1.0 / texture_factor, large, floating_altitude, map_edge, tile
+			)
+
+		var resource := dynamic_sprite_resource(
+			sprite_archive, int(command.sprite_id), bool(command.flip), divisor, texture_factor
+		)
+
+		if resource == null:
+			continue
+
+		if mask == null:
+			mask = Image.create(bounds.size.x * texture_factor, bounds.size.y * texture_factor, false, Image.FORMAT_RGBA8)
+			mask.fill(Color.TRANSPARENT)
+
+		IsometricFloatingOcclusion.blend_hidden_columns(
+			mask,
+			resource.image,
+			Rect2i((overlap.position - occluder_position) * texture_factor, overlap.size * texture_factor),
+			(overlap.position - bounds.position) * texture_factor,
+			columns_by_tile[tile]
+		)
 
 	return mask
 

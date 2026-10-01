@@ -298,6 +298,10 @@ static func moving_thing_draw_commands_for_visual(
 
 	commands.append(main_command)
 
+	if IsometricFloatingOcclusion.is_floating_type(visual.type):
+		for command in commands:
+			command.floating_altitude = city.object_altitude(visual.x, visual.y)
+
 	return commands
 
 

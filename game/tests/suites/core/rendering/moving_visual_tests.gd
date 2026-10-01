@@ -133,6 +133,8 @@ func run(
 	)
 	_test_occlusion(starter, large)
 
+	_test_floating_occlusion(large)
+
 	_test_visual_signatures(starter, large)
 
 	for expected in [Vector2i.ZERO, Vector2i(24, 93), Vector2i(64, 64), Vector2i(127, 127)]:
@@ -143,6 +145,83 @@ func run(
 			"Isometric screen lookup finds tile %s" % expected,
 		)
 	return starter
+
+
+# Ships and sailboats float under bridge decks and over the water of later tiles.
+# The city view masks and the export painter agree.
+func _test_floating_occlusion(large: Sc2SpriteArchive) -> void:
+	var city := CityState.from_document(EmptyCityTemplate.create(128))
+
+	for x in range(76, 92):
+		for y in range(34, 48):
+			city.set_tile_flag(x, y, 0x04, true)
+			city.set_terrain_id(x, y, 0x10)
+
+	for x in range(81, 86):
+		city.set_building_id(x, 40, [0x55, 0x54, 0x53, 0x52, 0x51][x - 81])
+
+	var palette := FixtureGraphics.pack().palette
+	var statics := IsometricRenderer.static_occlusion_commands(city, large)
+	var app := CityApplication.new()
+	app.asset_state.palette_index_encoding = Sc2Palette.index_encoding()
+	app.document_state.city = city
+	app.moving_sprites.set_static_occlusion_commands(statics, IsometricRenderer.VIEW_LARGE)
+	var context := CityGpuBuildContext.new()
+	_check(context.prepare(city, palette, large, IsometricRenderer.VIEW_LARGE, CityViewMode.Mode.CITY, true, true, true, 0,
+		false).is_empty(), "Floating fixture prepares the native painter")
+	var configuration := IsometricRenderer.view_configuration(IsometricRenderer.VIEW_LARGE)
+	var images := {}
+
+	# a ship on the bridge tile, a ship with its stern under the deck, and a sailboat on open water
+	for case in [[3, 4, Vector2i(83, 40), Vector2i(8, 0), 1, true], [3, 4, Vector2i(83, 41), Vector2i(8, 0), 1, true],
+			[9, 0, Vector2i(80, 44), Vector2i(4, 4), 0, false]]:
+		var sprite := IsometricRenderer.moving_thing_sprite(ThingRecord.from_fields({"type": case[0], "direction": case[1]}))
+		var visual := IsometricMovingVisuals.Visual.new()
+		visual.sprite_id = sprite.sprite_id
+		visual.flip = sprite.flip
+		visual.type = case[0]
+		visual.x = case[2].x
+		visual.y = case[2].y
+		visual.px = case[3].x
+		visual.py = case[3].y
+		visual.z = case[4]
+		var command: CityDynamicCommand = IsometricRenderer.moving_thing_draw_commands_for_visual(
+			city, large, visual, configuration).back()
+		command.depth_order = (visual.x + visual.y) * city.map_size + visual.y
+		_check(command.floating_altitude == 0, "Ships and sailboats carry their water altitude")
+		var image := IsometricRenderer.sprite_image(large, palette, images, command.sprite_id, command.flip)
+		var bounds := Rect2i(command.position, image.get_size())
+		var resource := app.moving_sprites.dynamic_sprite_resource(large, command.sprite_id, command.flip, 1)
+		var mask: Image = app.moving_sprites._dynamic_occluder_image(large, 1, bounds.position, bounds.size,
+			command.depth_order, false, 1, resource, command.floating_altitude)
+
+		var painted: Dictionary = context.raster(bounds, Color.BLACK)
+		var expected: Image = painted.image
+		expected.convert(Image.FORMAT_RGBA8)
+		_check(context.set_moving(city, palette, large, [command] as Array[CityDynamicCommand]).is_empty(),
+			"Floating fixture adds the moving draw")
+		var exported: Image = context.raster(bounds, Color.BLACK).image
+		exported.convert(Image.FORMAT_RGBA8)
+		_check(context.set_moving(city, palette, large, [] as Array[CityDynamicCommand]).is_empty(),
+			"Floating fixture clears the moving draw")
+		var hidden := 0
+
+		for y in bounds.size.y:
+			for x in bounds.size.x:
+				if image.get_pixel(x, y).a == 0.0:
+					continue
+
+				if mask != null and mask.get_pixel(x, y).a > 0.0:
+					hidden += 1
+				else:
+					expected.set_pixel(x, y, image.get_pixel(x, y))
+
+		_check(hidden > 0 if case[5] else hidden == 0,
+			"A floating sprite hides only under the bridge at %s" % case[2])
+		_check(exported.get_data() == expected.get_data(),
+			"The export painter matches the city view mask at %s" % case[2])
+
+	app.free()
 
 
 func _test_occlusion(starter: CityState, large: Sc2SpriteArchive) -> void:

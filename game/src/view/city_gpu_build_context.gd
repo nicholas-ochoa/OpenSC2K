@@ -142,6 +142,7 @@ func set_moving(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	var ids := PackedInt32Array()
 	var flips := PackedByteArray()
 	var shadows := PackedByteArray()
+	var floating := PackedInt32Array()
 	var moving_images := {}
 
 	for command in commands:
@@ -153,11 +154,12 @@ func set_moving(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 		ids.append(command.sprite_id)
 		flips.append(int(command.flip))
 		shadows.append(int(command.shadow))
+		floating.append(int(command.floating_altitude))
 
 		if not moving_images.has(command.sprite_id):
 			moving_images[command.sprite_id] = CityIsometricRenderer.sprite_image(sprites, palette, images, command.sprite_id, false)
 
-	return builder.set_moving(cells, positions, ids, flips, shadows, moving_images)
+	return builder.set_moving(cells, positions, ids, flips, shadows, floating, moving_images)
 
 
 # one error for each sprite that the configured city needs and the artwork lacks

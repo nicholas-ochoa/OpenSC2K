@@ -282,21 +282,27 @@ func _refresh_animation() -> void:
 			image = NativeSpriteCompositor.palette_shadow(image, static_image, sprite_position, colors.to_rgba_bytes())
 
 		if command.static_occlusion:
-			image = _occlude(image, sprite_position, int(command.depth_order))
+			image = _occlude(image, sprite_position, int(command.depth_order), int(command.floating_altitude))
 
 		dynamic_visuals.append(CityDynamicVisual.new(ImageTexture.create_from_image(image), Vector2(sprite_position)))
 
 
-func _occlude(image: Image, sprite_position: Vector2i, order: int) -> Image:
+# ships and sailboats pass `floating_altitude`; see IsometricFloatingOcclusion
+func _occlude(image: Image, sprite_position: Vector2i, order: int, floating_altitude := -1) -> Image:
 	var bounds := Rect2i(sprite_position, image.get_size())
 	# later foreground silhouettes, combined in the sprite's frame
 	var occluder := Image.create(image.get_width(), image.get_height(), false, Image.FORMAT_RGBA8)
 	occluder.fill(Color.TRANSPARENT)
+	var floating := floating_altitude >= 0
+	var waterline := IsometricFloatingOcclusion.waterline(image) if floating else PackedInt32Array()
 
 	for index in Renderer.occlusion_candidate_indices(occlusion_grid, bounds):
 		var command := occlusion_commands[index]
 
-		if int(command.depth_order) <= order:
+		if floating:
+			if IsometricFloatingOcclusion.is_water_surface(int(command.sprite_id)):
+				continue
+		elif int(command.depth_order) <= order:
 			continue
 
 		var origin := Vector2i(command.position)
@@ -326,7 +332,15 @@ func _occlude(image: Image, sprite_position: Vector2i, order: int) -> Image:
 			sprite_cache[key] = rendered_mask
 
 		var mask: Image = sprite_cache[key]
-		occluder.blend_rect(mask, Rect2i(overlap.position - origin, overlap.size), overlap.position - sprite_position)
+
+		if floating:
+			var hidden := IsometricFloatingOcclusion.hidden_columns(waterline, Vector2(sprite_position), 1.0,
+				Renderer.view_configuration(Renderer.VIEW_LARGE), floating_altitude, demo_city.map_size,
+				IsometricFloatingOcclusion.depth_tile(int(command.depth_order), demo_city.map_size))
+			IsometricFloatingOcclusion.blend_hidden_columns(occluder, mask, Rect2i(overlap.position - origin, overlap.size),
+				overlap.position - sprite_position, hidden)
+		else:
+			occluder.blend_rect(mask, Rect2i(overlap.position - origin, overlap.size), overlap.position - sprite_position)
 
 	return NativeSpriteCompositor.occlude(image, occluder, null, Vector2i.ZERO, PackedInt32Array()).image
 

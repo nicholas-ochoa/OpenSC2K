@@ -6,6 +6,7 @@ mod changes;
 mod compositing;
 mod data_view;
 mod debug_view;
+mod floating;
 mod ids;
 mod index;
 mod minimap;
@@ -284,6 +285,8 @@ pub struct Draw {
     pub moving: bool,
     /// A shadow: its opaque pixels darken the pixels below through the palette.
     pub shadow: bool,
+    /// The water altitude under a ship or sailboat, or -1. See `floating.rs`.
+    pub floating: i32,
 }
 
 impl Draw {
@@ -302,6 +305,7 @@ impl Draw {
             requires_depth: false,
             moving: false,
             shadow: false,
+            floating: -1,
         }
     }
 }

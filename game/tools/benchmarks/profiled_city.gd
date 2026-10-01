@@ -61,9 +61,11 @@ class ProfileMovingSprites extends ApplicationMovingSprites:
 		return result
 
 	func _dynamic_occluder_image(sprites: Sc2SpriteArchive, divisor: int, position: Vector2i,
-			size: Vector2i, order: int, train := false, factor := 1) -> Image:
+			size: Vector2i, order: int, train := false, factor := 1, floating: CitySpriteResource = null,
+			floating_altitude := -1) -> Image:
 		var started := Time.get_ticks_usec()
-		var result := super._dynamic_occluder_image(sprites, divisor, position, size, order, train, factor)
+		var result := super._dynamic_occluder_image(sprites, divisor, position, size, order, train, factor, floating,
+			floating_altitude)
 		app._record("moving_masks", started)
 		return result
 

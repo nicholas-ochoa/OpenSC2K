@@ -351,7 +351,18 @@ fn raster_composites_opaque_pixels_over_the_background() {
     );
     let mut draw = Draw::new(2, Rect::new(1, 0, 2, 1));
     draw.sprite = 1;
-    let pixels = raster::composite(&[draw.clone()], &sprites, &HashMap::new(), Rect::new(0, 0, 3, 1), [1, 2, 3, 4]);
+    let ground = floating::Ground {
+        edge: 8,
+        config: fixture(1, 2).config,
+    };
+    let pixels = raster::composite(
+        &[draw.clone()],
+        &sprites,
+        &HashMap::new(),
+        Rect::new(0, 0, 3, 1),
+        [1, 2, 3, 4],
+        ground,
+    );
 
     // the hidden sprite pixel keeps the background
     assert_eq!(pixels, vec![1, 2, 3, 4, 9, 9, 9, 255, 1, 2, 3, 4]);
@@ -360,8 +371,75 @@ fn raster_composites_opaque_pixels_over_the_background() {
     draw.shadow = true;
     draw.rect = Rect::new(0, 0, 2, 1);
     let shadows = HashMap::from([([1, 2, 3, 4], [5, 5, 5, 255])]);
-    let pixels = raster::composite(&[draw], &sprites, &shadows, Rect::new(0, 0, 3, 1), [1, 2, 3, 4]);
+    let pixels = raster::composite(&[draw], &sprites, &shadows, Rect::new(0, 0, 3, 1), [1, 2, 3, 4], ground);
     assert_eq!(pixels, vec![5, 5, 5, 255, 1, 2, 3, 4, 1, 2, 3, 4]);
+}
+
+#[test]
+fn floating_draws_hide_under_bridges_and_stay_over_water() {
+    // In the large view of an 8-tile map, tile (3, 3) at altitude 0 has its top
+    // corner at (176, 560). The floating column meets the water at (176, 572),
+    // inside that tile.
+    let edge = 8;
+    let ground = floating::Ground {
+        edge,
+        config: fixture(1, 2).config,
+    };
+    let depth = |x: i64, y: i64| (x + y) * i64::from(edge) + y;
+    let pixel = |key: u64, value: u8| {
+        (
+            key,
+            Sprite {
+                w: 1,
+                h: 1,
+                rgba: vec![value, value, value, 255],
+                la: vec![value, 255],
+            },
+        )
+    };
+    let mut sprites = sprites::Sprites::new(HashMap::new(), [0; 4]);
+    sprites.images.extend([pixel(2, 10), pixel(4, 20), pixel(6, 30)]);
+    sprites.images.insert(
+        8,
+        Sprite {
+            w: 1,
+            h: 2,
+            rgba: vec![90, 90, 90, 255, 90, 90, 90, 255],
+            la: vec![90, 255, 90, 255],
+        },
+    );
+
+    let static_draw = |key: u64, sprite: i32, tile: (i64, i64)| {
+        let mut draw = Draw::new(key, Rect::new(176, 570, 1, 1));
+        draw.sprite = sprite;
+        draw.depth = depth(tile.0, tile.1);
+        draw
+    };
+    let mut boat = Draw::new(8, Rect::new(176, 570, 1, 2));
+    boat.moving = true;
+    boat.floating = 0;
+    let bounds = Rect::new(176, 570, 1, 1);
+    let paint = |draws: &[Draw]| raster::composite(draws, &sprites, &HashMap::new(), bounds, [0; 4], ground)[0];
+
+    // the bridge of the boat's tile and of a tile in front hide it
+    assert_eq!(paint(&[static_draw(2, 1000 + 0x57, (3, 3)), boat.clone()]), 10);
+    assert_eq!(paint(&[boat.clone(), static_draw(2, 1000 + 0x57, (4, 3))]), 10);
+
+    // a tile behind the boat's column stays under it
+    assert_eq!(paint(&[static_draw(4, 1000 + 0x57, (2, 3)), boat.clone()]), 90);
+    assert_eq!(paint(&[boat.clone(), static_draw(4, 1000 + 0x57, (2, 4))]), 90);
+
+    // the water of a later tile does not cover it, but other moving draws do
+    assert_eq!(paint(&[boat.clone(), static_draw(6, 1000 + 270, (4, 4))]), 90);
+
+    let mut plane = static_draw(6, 1000 + 0x57, (0, 0));
+    plane.moving = true;
+    assert_eq!(paint(&[boat.clone(), plane]), 30);
+
+    // without the floating altitude, painter order decides
+    boat.floating = -1;
+    assert_eq!(paint(&[static_draw(2, 1000 + 0x57, (3, 3)), boat.clone()]), 90);
+    assert_eq!(paint(&[boat, static_draw(6, 1000 + 270, (4, 4))]), 30);
 }
 
 #[test]

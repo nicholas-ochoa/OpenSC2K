@@ -293,9 +293,11 @@ impl NativeCityRegionBuilder {
     }
 
     /// Moving object draws for raster jobs. Each draw has a map `cell`, a native
-    /// `position`, a sprite `id`, `flip` and `shadow`. `images` holds the sprite
-    /// images by ID. Returns an error string, or an empty string.
+    /// `position`, a sprite `id`, `flip`, `shadow` and the `floating` water altitude
+    /// of a ship or sailboat, or -1. `images` holds the sprite images by ID.
+    /// Returns an error string, or an empty string.
     #[func]
+    #[allow(clippy::too_many_arguments)]
     fn set_moving(
         &mut self,
         cells: PackedInt32Array,
@@ -303,6 +305,7 @@ impl NativeCityRegionBuilder {
         ids: PackedInt32Array,
         flips: PackedByteArray,
         shadows: PackedByteArray,
+        floating: PackedInt32Array,
         images: VarDictionary,
     ) -> GString {
         let Some(core) = self.core.as_mut() else {
@@ -311,7 +314,10 @@ impl NativeCityRegionBuilder {
 
         let count = cells.len();
 
-        if [positions.len(), ids.len(), flips.len(), shadows.len()].iter().any(|n| *n != count) {
+        if [positions.len(), ids.len(), flips.len(), shadows.len(), floating.len()]
+            .iter()
+            .any(|n| *n != count)
+        {
             return GString::from("moving draw fields differ in length");
         }
 
@@ -346,6 +352,7 @@ impl NativeCityRegionBuilder {
             draw.flip = flips.as_slice()[at] != 0;
             draw.moving = true;
             draw.shadow = shadows.as_slice()[at] != 0;
+            draw.floating = floating.as_slice()[at];
             moving.entry(cells.as_slice()[at].max(0) as usize).or_default().push(draw);
         }
 

@@ -1,8 +1,10 @@
 //! CPU pixels of the painter draws. A sprite pixel with any alpha replaces the
 //! pixel below it, as Godot's `Image.blend_rect` does with the opaque indexed
-//! artwork. Previews, exports and the CPU city view use this.
+//! artwork. Previews, exports and the CPU city view use this. Ships and sailboats
+//! follow the floating rule of `floating.rs`.
 use super::{
     Builder, Draw, Rect,
+    floating::{self, Ground},
     sprites::{PLACEHOLDER, Sprite, Sprites},
 };
 
@@ -16,13 +18,36 @@ pub struct MissingTiles {
     pub all: Vec<i32>,
 }
 
+/// The pixel owner of a draw that floating draws do not meet: the background,
+/// the water surface, or another moving draw.
+const OPEN: i64 = -1;
+
 /// RGBA8 pixels of `bounds` with the draws composited in order over `background`.
 /// A shadow draw changes the pixels below its opaque pixels through `shadows`.
-pub fn composite(draws: &[Draw], sprites: &Sprites, shadows: &HashMap<[u8; 4], [u8; 4]>, bounds: Rect, background: [u8; 4]) -> Vec<u8> {
+/// Floating draws follow the rule of `floating.rs` on the `ground` map.
+pub fn composite(
+    draws: &[Draw],
+    sprites: &Sprites,
+    shadows: &HashMap<[u8; 4], [u8; 4]>,
+    bounds: Rect,
+    background: [u8; 4],
+    ground: Ground,
+) -> Vec<u8> {
     let (w, h) = (bounds.w.max(0) as usize, bounds.h.max(0) as usize);
     let mut pixels = background.repeat(w * h);
 
+    // The last painter of each pixel: a static tile depth, OPEN, or a floating
+    // draw `f` stored as `-2 - f`.
+    let mut owners = vec![OPEN; w * h];
+    let mut floating: Vec<(&Draw, Vec<i32>)> = Vec::new();
+    let mut tile_depth = OPEN;
+
     for draw in draws {
+        // Traffic draws have no depth. They belong to the tile before them.
+        if !draw.moving && draw.depth >= 0 {
+            tile_depth = draw.depth;
+        }
+
         let clipped = draw.rect.clip(bounds);
 
         if !clipped.area() {
@@ -30,6 +55,15 @@ pub fn composite(draws: &[Draw], sprites: &Sprites, shadows: &HashMap<[u8; 4], [
         }
 
         let sprite = &sprites.images[&draw.image];
+        let water = !draw.moving && ground.water_surface(draw.sprite);
+        let owner = if draw.moving && draw.floating >= 0 {
+            floating.push((draw, floating::waterline(sprite)));
+            -1 - floating.len() as i64
+        } else if draw.moving || water {
+            OPEN
+        } else {
+            tile_depth
+        };
 
         for y in clipped.y..clipped.y + clipped.h {
             let source_row = ((y - draw.rect.y) * sprite.w) as usize;
@@ -42,7 +76,14 @@ pub fn composite(draws: &[Draw], sprites: &Sprites, shadows: &HashMap<[u8; 4], [
                     continue;
                 }
 
-                let target = (target_row + (x - bounds.x) as usize) * 4;
+                let at = target_row + (x - bounds.x) as usize;
+
+                if !paints_over(owners[at], owner, water, x, &floating, ground) {
+                    continue;
+                }
+
+                let target = at * 4;
+                owners[at] = owner;
 
                 if draw.shadow {
                     let below: [u8; 4] = pixels[target..target + 4].try_into().unwrap();
@@ -60,11 +101,39 @@ pub fn composite(draws: &[Draw], sprites: &Sprites, shadows: &HashMap<[u8; 4], [
     pixels
 }
 
+/// Whether a pixel of `owner` paints over the pixel of `below` at screen `x`.
+/// `water` marks a water surface draw, which owns its pixels as OPEN.
+fn paints_over(below: i64, owner: i64, water: bool, x: i32, floating: &[(&Draw, Vec<i32>)], ground: Ground) -> bool {
+    // A static draw hides a floating column only when the column stands under or
+    // behind the draw's tile.
+    if below < OPEN && (water || owner >= 0) {
+        let (draw, line) = &floating[(-2 - below) as usize];
+        let row = line[(x - draw.rect.x) as usize];
+
+        return !water && ground.hides(owner, x, draw.rect.y + row, draw.floating);
+    }
+
+    // A floating draw paints over the static draws that do not hide its column.
+    if owner < OPEN && below >= 0 {
+        let (draw, line) = &floating[(-2 - owner) as usize];
+        let row = line[(x - draw.rect.x) as usize];
+
+        return !ground.hides(below, x, draw.rect.y + row, draw.floating);
+    }
+
+    true
+}
+
 impl Builder {
     /// RGBA8 pixels of `bounds` and the uncut draws that meet it.
     pub fn raster(&mut self, bounds: Rect, background: [u8; 4]) -> Result<(Vec<u8>, Vec<Draw>), String> {
         let draws = self.collect(bounds)?;
-        Ok((composite(&draws, &self.sprites, &self.shadows, bounds, background), draws))
+        let ground = Ground {
+            edge: self.city.edge,
+            config: self.config,
+        };
+
+        Ok((composite(&draws, &self.sprites, &self.shadows, bounds, background, ground), draws))
     }
 
     /// Every sprite ID that the city needs and the artwork lacks, in order. The
