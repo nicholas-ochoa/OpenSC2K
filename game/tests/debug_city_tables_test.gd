@@ -158,9 +158,15 @@ func _check_tile_counts(edge: int) -> void:
 
 	assert(total == edge * edge, "Tile counts cover every map tile")
 	assert(police.cells[0] == "210 (0xD2)" and police.cells[1] == "POLICE_STATION" and police.cells[3] == "3")
-	assert(police.cells[4] == str(city.document.misc_i32(Sc2MiscLayout.TILE_COUNTS + BuildingTileIds.POLICE_STATION * 4)))
+	# police stations are 3×3, so three loose tiles make no whole building
+	assert(police.cells[4] == "0" and police.sort[4] == 0)
+	assert(police.cells[5] == str(city.document.misc_i32(Sc2MiscLayout.TILE_COUNTS + BuildingTileIds.POLICE_STATION * 4)))
 	assert([police.site.x, police.site.y] == [2, 3], "Locate goes to the first tile in scan order")
 	assert(DebugCityTables.collect("Tiles", city, null, true).size() == BuildingTileIds.COUNT)
+	assert([DebugCityTables.tile_instances(BuildingTileIds.LOWER_CLASS_HOMES_1X1_1, 5),
+		DebugCityTables.tile_instances(BuildingTileIds.CHEAP_APARTMENTS_2X2, 9),
+		DebugCityTables.tile_instances(BuildingTileIds.POLICE_STATION, 18),
+		DebugCityTables.tile_instances(BuildingTileIds.LLAMA_DOME, 32)] == [5, 2, 2, 2], "Instances divide by the footprint")
 	assert(city.document.serialize().data == before)
 
 	# an edit changes the building plane, so the next collection counts again

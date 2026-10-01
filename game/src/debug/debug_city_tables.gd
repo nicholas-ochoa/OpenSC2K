@@ -109,10 +109,11 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 				var first := firsts[id] if count > 0 else -1
 				var site := null if first < 0 else CityRecords.Site.new(first / city.map_size, first % city.map_size, 1, 1)
 				var name := QueryStrings.tile_name(id)
+				var instances := tile_instances(id, count)
 				var row := DebugTableRecord.new()
 				row.id = str(id)
-				row.cells = ["%d (0x%02X)" % [id, id], _tile_constants[id], name, str(count), str(saved)]
-				row.sort = [id, _tile_constants[id], name, count, saved]
+				row.cells = ["%d (0x%02X)" % [id, id], _tile_constants[id], name, str(count), str(instances), str(saved)]
+				row.sort = [id, _tile_constants[id], name, count, instances, saved]
 				row.site = site
 				row.empty = count == 0 and saved == 0
 
@@ -292,6 +293,14 @@ static func tile_counts(city: CityState) -> PackedInt32Array:
 	_tile_counts = counts
 
 	return counts
+
+
+# the number of whole buildings that `count` tiles of `tile_id` make. a 2×2, 3×3
+# or 4×4 building has the same id on each of its tiles
+static func tile_instances(tile_id: int, count: int) -> int:
+	var edge := NativeCityTools.building_area(tile_id)
+
+	return count / (edge * edge)
 
 
 static func _count_difference(city: CityState, count: int, saved: int) -> String:
