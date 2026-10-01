@@ -360,7 +360,9 @@ func stale_pack_kinds() -> PackedStringArray:
 	if not app.asset_state.assets_ready:
 		return kinds
 
-	if ImportedPackRevision.is_outdated("graphics", app.asset_state.asset_source.import_revision):
+	var graphics := app.asset_state.asset_source
+
+	if ImportedPackRevision.is_outdated("graphics", graphics.import_revision, graphics.source_platform):
 		kinds.append("graphics")
 
 	if app.audio_controller != null:

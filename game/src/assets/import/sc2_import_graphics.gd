@@ -2,6 +2,17 @@ class_name Sc2ImportGraphics
 extends RefCounted
 ## Build indexed graphics packs from available source records, without playback.
 
+@warning_ignore_start("integer_division")
+
+# DOS and Macintosh tiles use the Windows palette without its 16 reserved system colors.
+# Their games load the cycling colors at run time, so the stored palette has filler there.
+const SHIFTED_INDEX_OFFSET := 16
+const SHIFTED_FAST_CYCLE_END := 203
+const SHIFTED_FAST_CYCLE_COLORS := "CULT1.RAW"
+const SHIFTED_SLOW_CYCLE_COLORS := "CULT2.RAW"
+const MAC_FAST_CYCLE_TABLE := "clut/500"
+const MAC_SLOW_CYCLE_TABLE := "clut/501"
+
 var error := ""
 var warnings := PackedStringArray()
 var count := 0
@@ -13,6 +24,7 @@ var _typed: Dictionary[String, Sc2ImportResource] = {}
 var _ui: Dictionary[String, IndexedImageResult] = {}
 var _large := Sc2SpriteArchive.new()
 var _small := Sc2SpriteArchive.new()
+var _sprite_index_map := PackedInt32Array()
 
 
 static func export_pack(source: Sc2ImportSource, folder: String, label: String) -> Sc2ImportGraphics:
@@ -53,17 +65,22 @@ func _read(source: Sc2ImportSource) -> void:
 
 		if bytes.size() == 768:
 			_palette = Sc2Palette.new()
-
-			for index in 256:
-				_palette.colors.append(Color8(bytes[index * 3], bytes[index * 3 + 1], bytes[index * 3 + 2]))
+			_palette.colors.assign(rgb_colors(bytes))
+			_use_windows_layout(_rgb_file_colors(SHIFTED_FAST_CYCLE_COLORS), _rgb_file_colors(SHIFTED_SLOW_CYCLE_COLORS))
 
 	if _palette == null and _typed.has("pltt/0"):
 		_palette = mac_palette(_typed["pltt/0"].bytes)
 
+		if _palette != null:
+			_use_windows_layout(_mac_table_colors(MAC_FAST_CYCLE_TABLE), _mac_table_colors(MAC_SLOW_CYCLE_TABLE))
+
 	if _palette == null and _files.has("SC2K.PAL"):
 		var bytes := _files["SC2K.PAL"].bytes
 
-		if bytes.size() in [1024, 1025]:
+		if bytes.size() != 1024:
+			bytes = text_mode_bytes(bytes)
+
+		if bytes.size() == 1024:
 			_palette = Sc2Palette.new()
 
 			for index in 256:
@@ -152,6 +169,103 @@ static func mac_palette(bytes: PackedByteArray) -> Sc2Palette:
 	return palette
 
 
+# The Network Edition ships SC2K.PAL with CR LF line ends and reads it in text mode.
+static func text_mode_bytes(bytes: PackedByteArray) -> PackedByteArray:
+	var result := PackedByteArray()
+
+	for index in bytes.size():
+		if bytes[index] != 0x0d or index + 1 >= bytes.size() or bytes[index + 1] != 0x0a:
+			result.append(bytes[index])
+
+	return result
+
+
+# a Macintosh color table: an 8-byte header, then a value and 16-bit RGB channels per color
+static func mac_color_table(bytes: PackedByteArray) -> Array[Color]:
+	var colors: Array[Color] = []
+
+	if bytes.size() < 8:
+		return colors
+
+	var count := BinaryData.read_u16_be(bytes, 6) + 1
+
+	if bytes.size() < 8 + count * 8:
+		return colors
+
+	for index in count:
+		var offset := 8 + index * 8 + 2
+		colors.append(Color8(bytes[offset], bytes[offset + 2], bytes[offset + 4]))
+
+	return colors
+
+
+static func rgb_colors(bytes: PackedByteArray) -> Array[Color]:
+	var colors: Array[Color] = []
+
+	for index in bytes.size() / Sc2Palette.RGB_CHANNELS:
+		var offset := index * Sc2Palette.RGB_CHANNELS
+		colors.append(Color8(bytes[offset], bytes[offset + 1], bytes[offset + 2]))
+
+	return colors
+
+
+# Move a DOS or Macintosh palette to the Windows indices that the renderer cycles.
+# Each missing cycle keeps the filler colors of the source palette.
+static func windows_layout_palette(source: Sc2Palette, fast: Array[Color], slow: Array[Color]) -> Sc2Palette:
+	var palette := Sc2Palette.new()
+	palette.colors.resize(Sc2Palette.COLOR_COUNT)
+	palette.colors.fill(Color.BLACK)
+
+	for index in Sc2Palette.COLOR_COUNT:
+		var target := windows_layout_index(index)
+
+		if target > 0:
+			palette.colors[target] = source.colors[index]
+
+	if fast.size() == Sc2Palette.FAST_CYCLE_TABLE.size():
+		for index in fast.size():
+			palette.colors[Sc2Palette.FAST_CYCLE_START + index] = fast[index]
+
+	if slow.size() == Sc2Palette.SLOW_CYCLE_TABLE.size():
+		for index in slow.size():
+			palette.colors[Sc2Palette.SLOW_CYCLE_START + index] = slow[index]
+
+	return palette
+
+
+# The slow cycle keeps its index. The Windows tiles draw other filler indices black.
+static func windows_layout_index(index: int) -> int:
+	if index < 0:
+		return index
+
+	if index <= SHIFTED_FAST_CYCLE_END:
+		return index + SHIFTED_INDEX_OFFSET
+
+	if index >= Sc2Palette.SLOW_CYCLE_START and index < Sc2Palette.SLOW_CYCLE_START + Sc2Palette.SLOW_CYCLE_TABLE.size():
+		return index
+
+	return 0
+
+
+func _use_windows_layout(fast: Array[Color], slow: Array[Color]) -> void:
+	if fast.size() != Sc2Palette.FAST_CYCLE_TABLE.size() or slow.size() != Sc2Palette.SLOW_CYCLE_TABLE.size():
+		warnings.append("The source has no complete palette cycle colors. Animated colors can look wrong.")
+
+	_palette = windows_layout_palette(_palette, fast, slow)
+	_sprite_index_map.resize(Sc2Palette.COLOR_COUNT)
+
+	for index in Sc2Palette.COLOR_COUNT:
+		_sprite_index_map[index] = windows_layout_index(index)
+
+
+func _rgb_file_colors(name: String) -> Array[Color]:
+	return rgb_colors(_files[name].bytes) if _files.has(name) else [] as Array[Color]
+
+
+func _mac_table_colors(key: String) -> Array[Color]:
+	return mac_color_table(_typed[key].bytes) if _typed.has(key) else [] as Array[Color]
+
+
 func _bmp_palette(name: String) -> Sc2Palette:
 	if not _files.has(name):
 		return null
@@ -227,8 +341,15 @@ func _export(platform: String, label: String) -> void:
 
 			var entry := archive.entries[index]
 			var decoded := entry.decode_indices()
+			var pixels := decoded.pixels
+
+			if not _sprite_index_map.is_empty():
+				for pixel in pixels.size():
+					if pixels[pixel] >= 0:
+						pixels[pixel] = _sprite_index_map[pixels[pixel]]
+
 			var relative := "%s/%04d-%d.png" % [pair[0], index, entry.sprite_id]
-			_png(relative, entry.width, entry.height, decoded.pixels, _palette)
+			_png(relative, entry.width, entry.height, pixels, _palette)
 			records.append({ "id": entry.sprite_id, "png": relative })
 			count += 1
 

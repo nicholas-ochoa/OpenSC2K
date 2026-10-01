@@ -8,6 +8,7 @@ var error := ""
 var pack_name := ""
 var partial := false
 var import_revision := ImportedPackRevision.NOT_IMPORTED
+var source_platform := ""
 var palette: Sc2Palette
 var scenario_palette: Sc2Palette
 var large_sprites := Sc2SpriteArchive.new()
@@ -100,6 +101,7 @@ func _load() -> void:
 
 	pack_name = manifest.name
 	import_revision = ImportedPackRevision.read(manifest)
+	source_platform = str(manifest.get("source_platform", ""))
 
 	if import_revision == ImportedPackRevision.INVALID:
 		_fail("import_revision must be a whole number that is not negative")

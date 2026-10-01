@@ -5,6 +5,8 @@ extends RefCounted
 ## Packs with an older revision are out of date and need a new import.
 
 const CURRENT: Dictionary[String, int] = { "graphics": 1, "sound": 1, "music": 1, "data": 1 }
+# a source platform whose content changed alone. DOS and Macintosh graphics use the Windows palette layout from 2
+const CURRENT_BY_PLATFORM: Dictionary[String, Dictionary] = { "graphics": { "DOS": 2, "Macintosh": 2 } }
 # packs that importers wrote before they recorded a revision
 const UNRECORDED := 1
 # a pack that a person made, not an importer
@@ -31,9 +33,13 @@ static func read(manifest: Dictionary) -> int:
 	return NOT_IMPORTED
 
 
-static func is_outdated(kind: String, revision: int) -> bool:
-	return revision >= 0 and revision < int(CURRENT[kind])
+static func current(kind: String, platform := "") -> int:
+	return int(CURRENT_BY_PLATFORM.get(kind, {}).get(platform, CURRENT[kind]))
+
+
+static func is_outdated(kind: String, revision: int, platform := "") -> bool:
+	return revision >= 0 and revision < current(kind, platform)
 
 
 static func stamp(kind: String, manifest: Dictionary) -> void:
-	manifest.import_revision = CURRENT[kind]
+	manifest.import_revision = current(kind, str(manifest.get("source_platform", "")))

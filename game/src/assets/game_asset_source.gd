@@ -7,6 +7,7 @@ const MODES := ["auto", "original", "folder"]
 
 var assets: OriginalGameAssets
 var import_revision := ImportedPackRevision.NOT_IMPORTED
+var source_platform := ""
 var uses_graphics_pack := false
 var graphics_name := ""
 var error := ""
@@ -40,6 +41,7 @@ static func load_source(_base_root: String, mode: String, folder := "", override
 	result.assets = OriginalGameAssets.new()
 	result.pack_root = root
 	result.import_revision = pack.import_revision
+	result.source_platform = pack.source_platform
 
 	if pack.large_sprites.entries.is_empty() or pack.small_medium_sprites.entries.is_empty():
 		result.error = "This graphics pack needs both city sprite size groups."

@@ -87,6 +87,11 @@ has a current revision in `ImportedPackRevision.CURRENT` in
 `game/src/assets/imported_pack_revision.gd`. The current revision is `1` for
 all four kinds.
 
+If the content changes for one source platform only, put the new revision for
+that platform in `ImportedPackRevision.CURRENT_BY_PLATFORM`. The game compares
+a pack with the revision for its `source_platform`. Graphics packs from `DOS` and
+`Macintosh` sources have revision `2`, because the importer changed their palette.
+
 When an importer adds content to a pack kind or changes it, increase the current
 revision of that kind. Packs of that kind with a lower revision are then out of
 date.
@@ -447,6 +452,17 @@ immediately and saves its path in Settings. A kind that fails or that you did
 not select keeps its current pack. Each import makes a new folder. The dialog
 lists the saved paths, the partial results, the missing assets, and the
 activation errors.
+
+The DOS and Macintosh tiles use the Windows palette without its first 16
+system colors. Their stored palettes (`MINE.PAL` in `SC2000.DAT`, Macintosh
+`pltt` 0) contain filler colors where the games load the cycling colors at run
+time. The importer puts the static colors at Windows indices 16 to 170. It puts
+the fast cycle colors (`CULT1.RAW`, Macintosh `clut` 500) at indices 171 to 219,
+and the slow cycle colors (`CULT2.RAW`, Macintosh `clut` 501) at indices 224 to
+239. It moves tile indices 0 to 203 up by 16 and keeps indices 224 to 239. Other
+tile indices become index 0 (black), as in the Windows tiles. The Network
+Edition `SC2K.PAL` file has CR LF line ends. The importer removes each CR before
+an LF, as the game does when it reads the file in text mode.
 
 Some assets need a complete Windows installation. A complete installation
 contains `SIMCITY.EXE` and these files:

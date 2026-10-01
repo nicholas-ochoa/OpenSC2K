@@ -6,7 +6,7 @@ static func check(source: String, pack: String, assets: OriginalGameAssets) -> v
 	var manifest: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(pack.path_join("pack.json")))
 	# the data pack holds the game data files, not the graphics pack
 	assert(not manifest.has("original_data") and not manifest.has("runtime_data"))
-	assert(manifest.import_revision == ImportedPackRevision.CURRENT.graphics)
+	assert(manifest.import_revision == ImportedPackRevision.current("graphics", str(manifest.get("source_platform", ""))))
 	assert(not DirAccess.dir_exists_absolute(pack.path_join("original")) and not DirAccess.dir_exists_absolute(pack.path_join("runtime")))
 	var files := PackedStringArray()
 	OriginalCityImporter._collect(pack, "", "exe", files)
