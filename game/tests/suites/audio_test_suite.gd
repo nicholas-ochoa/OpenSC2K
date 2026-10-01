@@ -430,18 +430,20 @@ func _test_simulation_sound_gate() -> void:
 func _test_city_sounds_gate() -> void:
 	var gate := WaveSounds.new()
 	gate.city_sounds = WaveSounds.CitySounds.REDUCED
-	_check(gate.request(510, true) and not gate.request(517, true) and not gate.request(520, false, true),
-		"Reduced city sounds allow one ambient or simulation sound at a time")
-	_check(gate.request(500), "Player feedback bypasses the reduced city sound delay")
+	_check(gate.request(510, true) and not gate.request(524, true) and not gate.request(527, true),
+		"Reduced city sounds allow one vehicle sound at a time")
+	_check(gate.request(515, true) and gate.request(514, true) and gate.request(520, false, true) and gate.request(500),
+		"Disaster, simulation and player sounds bypass the reduced vehicle delay")
 	gate.advance(WaveSounds.REDUCED_REPLAY_MSEC - 1.0)
-	_check(not gate.request(520, false, true), "Reduced city sounds wait the full 30 seconds")
+	_check(not gate.request(524, true), "Reduced vehicle sounds wait the full 30 seconds")
 	gate.advance(1.0)
-	_check(gate.request(520, false, true) and not gate.request(517, true),
-		"A reduced city sound can play after 30 seconds and starts a new delay")
+	_check(gate.request(524, true) and not gate.request(517, true),
+		"A reduced vehicle sound can play after 30 seconds and starts a new delay")
 	gate.stop()
 	gate.city_sounds = WaveSounds.CitySounds.OFF
-	_check(not gate.request(510, true) and not gate.request(520, false, true) and gate.request(500),
-		"Off suppresses city sounds but keeps player feedback")
+	_check(not gate.request(518, true) and not gate.request(527, true)
+		and gate.request(WaveSounds.SOUND_EXPLODE, true) and gate.request(527),
+		"Off suppresses vehicle sounds but keeps disaster sounds and player feedback")
 	_check(
 		AppSettingsStore.normalize_city_sounds(7) == WaveSounds.CitySounds.OFF
 		and AppSettingsStore.normalize_city_sounds("off") == WaveSounds.CitySounds.DEFAULT,

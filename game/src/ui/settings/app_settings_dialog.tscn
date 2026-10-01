@@ -227,8 +227,9 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(120, 32)
 layout_mode = 2
 size_flags_horizontal = 0
-tooltip_text = "How often the city plays sounds such as trains, aircraft, monsters, and disasters.
-Reduced plays no more than one city sound every 30 seconds. Off plays none."
+tooltip_text = "How often the city plays vehicle sounds such as trains, aircraft, ships, and boats.
+Reduced plays no more than one vehicle sound every 30 seconds. Off plays none.
+Disaster sounds always play."
 selected = 0
 item_count = 3
 popup/item_0/text = "Default"

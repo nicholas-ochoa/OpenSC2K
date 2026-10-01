@@ -3,7 +3,7 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
-# player preference for ambient and simulation event sounds. player feedback always plays
+# player preference for vehicle sounds. disaster sounds and player feedback always play
 enum CitySounds { DEFAULT, REDUCED, OFF }
 
 const SOUND_FIRST := 500
@@ -18,8 +18,11 @@ const AMBIENT_REPLAY_MSEC := 15000.0
 const EVENT_REPLAY_MSEC := 10000.0
 # presentation preference: shorter delays for the flood and for buildings that a disaster destroys
 const EVENT_REPLAY_OVERRIDE_MSEC := { SOUND_FLOOD: 3000.0, SOUND_EXPLODE: 1000.0 }
-# presentation preference: the shared delay after any city sound when city sounds are reduced
+# presentation preference: the shared delay after any vehicle sound when city sounds are reduced
 const REDUCED_REPLAY_MSEC := 30000.0
+# moving-object sounds that the City Sounds preference controls: helicopter, ship, airplane
+# takeoff and landing, train, and the sailboat, which uses the zoo roar
+const VEHICLE_SOUNDS := [510, 517, 518, 519, 524, 527]
 # supplied executable table 0x004ea858 before its initialization pass
 const RAW_DURATION_MSEC := [
 	492, 153, 1485, 129, 1156, 221, 1064, 1657, 1510, 1511,
@@ -58,7 +61,7 @@ func request(sound_id: int, ambient := false, simulation := false) -> bool:
 	if total_ticks == 0:
 		return false
 
-	var city_sound := ambient or simulation
+	var city_sound := ambient and sound_id in VEHICLE_SOUNDS
 
 	if city_sound and (
 		city_sounds == CitySounds.OFF
