@@ -559,21 +559,24 @@ func test_staged_arcology_launch(reference_root: String) -> void:
 	_check(result.notice_ids == PackedInt32Array([529]), "A staged launch shows only the first notice: %s" % result.notice_ids)
 	_check(city.funds() == funds + 10000000, "A staged launch pays the bonus at once")
 
-	# the speed controller demolishes one batch each second. the days wait
+	# the speed controller runs one launch step each 50 ms. the days wait
 	var engine := SimulationEngine.new(city, 1, 1, 1)
 	engine.arcology_launch_active = true
 	var controller := GameSpeedController.new(engine)
 	controller.speed = GameSpeedController.Speed.CHEETAH
 	var day := engine.clock.city_days
-	var tick := controller.advance_time(GameSpeedController.LAUNCH_BATCH_MSEC - GameSpeedController.BASE_TICK_MSEC)
-	_check(tick.ok and tick.launch_results.is_empty() and engine.clock.city_days == day,
-		"A launch batch waits one second: %s" % tick.error)
-	tick = controller.advance_time(GameSpeedController.BASE_TICK_MSEC)
-	var first: MicrosimAnnualPhase.LaunchBatch = tick.launch_results[0] if tick.launch_results.size() == 1 else null
-	_check(first != null and first.launched_structures == 10 and first.remaining_structures == 2 and first.map_changed
-		and not first.complete and _launch_arcologies(city) == 2, "The first batch demolishes ten arcologies")
-	_check(tick.notice_ids.is_empty() and not tick.effect_events.is_empty() and engine.clock.city_days == day,
-		"The first batch has explosions and no notice")
+	var tick := controller.advance_time(GameSpeedController.LAUNCH_STEP_MSEC - 10.0)
+	_check(tick.ok and tick.launch_results.is_empty(), "A launch step waits 50 ms: %s" % tick.error)
+	tick = controller.advance_time(10.0)
+	var first: MicrosimAnnualPhase.LaunchStep = tick.launch_results[0] if tick.launch_results.size() == 1 else null
+	_check(first != null and first.launched_structures == 0 and first.remaining_structures == 12
+		and engine.arcology_launch_queue.size() == 1 and engine.arcology_launch_sites.size() == 11,
+		"The first step ignites one arcology and launches none")
+	var site: Vector2i = engine.arcology_launch_queue[0]
+	var fires := tick.effect_events.filter(func(event: EffectEvent) -> bool: return event.type == CityEffectTiming.LAUNCH_FIRE)
+	_check(fires.size() == 7 and fires.all(func(event: EffectEvent) -> bool: return event.depth_point == site + Vector2i(3, 3)),
+		"An ignition burns along the two front edges, behind the structures in front of the arcology")
+	_check(tick.notice_ids.is_empty() and engine.clock.city_days == day, "A launch step adds no notice and no day")
 
 	# a launch in progress survives a save
 	var metadata := Sc2xMetadata.new()
@@ -582,11 +585,51 @@ func test_staged_arcology_launch(reference_root: String) -> void:
 	_check(Sc2xCheckpoint.restore(resumed, metadata).is_empty() and resumed.engine.arcology_launch_active,
 		"A launch in progress survives a save")
 
-	tick = controller.advance_time(GameSpeedController.LAUNCH_BATCH_MSEC)
-	var last: MicrosimAnnualPhase.LaunchBatch = tick.launch_results[0] if tick.launch_results.size() == 1 else null
-	_check(last != null and last.launched_structures == 2 and last.remaining_structures == 0 and last.complete
-		and _launch_arcologies(city) == 0 and not engine.arcology_launch_active, "The last batch demolishes the rest")
-	_check(tick.notice_ids == PackedInt32Array([530]), "The last batch shows the second notice: %s" % tick.notice_ids)
+	# with nothing left to ignite, each step launches the oldest ignited arcology
+	var launched := 0
+
+	for _step in 10:
+		tick = controller.advance_time(GameSpeedController.LAUNCH_STEP_MSEC)
+		launched += tick.launch_results[0].launched_structures
+
+	_check(launched == 0 and _launch_arcologies(city) == 12, "Arcologies burn until the last one ignites")
+	tick = controller.advance_time(GameSpeedController.LAUNCH_STEP_MSEC)
+	_check(tick.launch_results[0].launched_structures == 1 and city.building_id(site.x, site.y) <= BuildingTileIds.RUBBLE_LAST,
+		"The last ignition launches the first ignited arcology")
+	var front := site + Vector2i(3, 3)
+	var dust := tick.effect_events.filter(func(event: EffectEvent) -> bool: return event.type.is_empty() and event.depth_point == front)
+	_check(not dust.is_empty(), "The launch dust stays behind the structures in front of the arcology")
+
+	for _step in 10:
+		tick = controller.advance_time(GameSpeedController.LAUNCH_STEP_MSEC)
+
+	_check(_launch_arcologies(city) == 1 and engine.arcology_launch_active and tick.notice_ids.is_empty(),
+		"One launch follows each step")
+	tick = controller.advance_time(GameSpeedController.LAUNCH_STEP_MSEC)
+	_check(_launch_arcologies(city) == 0 and not engine.arcology_launch_active and tick.notice_ids == PackedInt32Array([530]),
+		"The last launch shows the second notice: %s" % tick.notice_ids)
+
+	# an arcology launches 30 ignitions after its own
+	var waiting: Array[Vector2i] = []
+
+	for index in 40:
+		waiting.append(Vector2i(index, 0))
+
+	var lead := MicrosimAnnualPhase.launch_step(city, Random.new(1), waiting, [], 31)
+	_check(lead.ok and lead.queue.size() == 30 and lead.sites.size() == 9 and lead.remaining_structures == 39,
+		"A launch waits for thirty more ignitions")
+
+	# the renderer draws each launch fire as animated fire and smoke frames
+	var fire := EffectEvent.new(Vector2i(5, 6))
+	fire.type = CityEffectTiming.LAUNCH_FIRE
+	fire.frames = 30
+	fire.depth_point = Vector2i(7, 8)
+	var frames := CityEffectTiming.expand_launch_fires([fire])
+	var flames := frames.filter(func(event: EffectEvent) -> bool: return event.sprite_id >= CityEffectTiming.FIRE_SPRITE)
+	var drawn := frames.filter(func(event: EffectEvent) -> bool: return event.type.is_empty() and event.frame < 30)
+	var behind := frames.filter(func(event: EffectEvent) -> bool: return event.depth_point == fire.depth_point)
+	_check(flames.size() == 30 and frames.size() > 30 and drawn.size() == frames.size() and behind.size() == frames.size(),
+		"A launch fire burns for its frames, with smoke, and keeps its depth tile")
 
 
 func _launch_arcologies(city: CityState) -> int:

@@ -52,7 +52,7 @@ pub const OPERATIONS: &[&str] = &[
     "milestones",
     "scenario",
     "microsim_annual",
-    "arcology_launch.batch",
+    "arcology_launch.step",
     "weather",
     "disaster_start",
     "disaster_map.run_all",
@@ -230,7 +230,16 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
             };
             Outcome::value(annual::run(city, &mut inputs).to_value())
         }
-        "arcology_launch.batch" => Outcome::value(annual::launch_batch(city, &mut randoms.random).to_value()),
+        "arcology_launch.step" => Outcome::value(
+            annual::launch_step(
+                city,
+                &mut randoms.random,
+                convert::points(args, "sites"),
+                convert::points(args, "queue"),
+                convert::int(args, "steps", 1),
+            )
+            .to_value(),
+        ),
         "weather" => Outcome::value(
             weather::run(
                 city,

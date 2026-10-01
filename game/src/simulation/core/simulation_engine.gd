@@ -42,8 +42,12 @@ var vehicle_crashes_enabled := true
 # format. false keeps the original launch, which demolishes them all in the
 # annual update
 var stage_arcology_launch := true
-# true from a staged launch until its last batch. the days wait
+# true from a staged launch until its last launch. the days wait
 var arcology_launch_active := false
+# runtime only; never saved. the waiting and the ignited launch arcologies.
+# a load or a rotation scans the map again
+var arcology_launch_sites: Array[Vector2i] = []
+var arcology_launch_queue: Array[Vector2i] = []
 
 
 func _init(
@@ -417,6 +421,10 @@ func rotate_runtime_coordinates(counter_clockwise: bool) -> void:
 	if ship_home.x >= 0 and ship_home.y >= 0:
 		ship_home = _rotate_runtime_point(ship_home, counter_clockwise, map_edge)
 
+	# the next launch step scans the rotated map
+	arcology_launch_sites.clear()
+	arcology_launch_queue.clear()
+
 	if pending_disaster_type != 0:
 		pending_disaster_point = _rotate_runtime_point(
 			pending_disaster_point, counter_clockwise, map_edge
@@ -444,13 +452,19 @@ func _run_day_schedule(
 	return result
 
 
-# demolish the next batch of a staged arcology launch
-func advance_arcology_launch() -> MicrosimAnnualPhase.LaunchBatch:
+# run `steps` steps of a staged arcology launch
+func advance_arcology_launch(steps: int) -> MicrosimAnnualPhase.LaunchStep:
 	var span := SimulationTimingSpan.new(city.simulation_slice)
-	var result := MicrosimAnnualPhase.launch_batch(city, random)
+	var result := MicrosimAnnualPhase.launch_step(city, random, arcology_launch_sites, arcology_launch_queue, steps)
 	result.timing = span.finish()
 
-	if result.ok and result.complete:
+	if not result.ok:
+		return result
+
+	arcology_launch_sites = result.sites
+	arcology_launch_queue = result.queue
+
+	if result.complete:
 		arcology_launch_active = false
 
 	return result

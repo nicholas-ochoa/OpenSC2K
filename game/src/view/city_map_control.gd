@@ -140,7 +140,6 @@ var data_view_signature: Array = []
 var data_geometry_signature: Array = []
 var data_value_texture: ImageTexture
 var hover_tile := Vector2i(-1, -1)
-var transient_effects: Array[CityTransientEffectVisual] = []
 var dynamic_sprites: Array[CityDynamicVisual] = []
 var layers: CityMapLayers = CityMapLayers.new(self)
 var signs: CityMapSigns = CityMapSigns.new(self)
@@ -345,19 +344,18 @@ func clear_trip_reach() -> void:
 
 
 # bind timers to this node so they stop with it
-func _expire_transient_effects(generation: int) -> void:
-	presentation._expire_transient_effects(generation)
+func _expire_transient_effects(sequence: CityMapPresentation.TransientEffectSequence, generation: int) -> void:
+	presentation._expire_transient_effects(sequence, generation)
 
 
 # bind timers to this node so they stop with it
 func _show_transient_effect_frame(
-	effects: Array[CityTransientEffectVisual],
+	sequence: CityMapPresentation.TransientEffectSequence,
 	frame: int,
-	last_frame: int,
 	duration: float,
 	generation: int
 ) -> void:
-	presentation._show_transient_effect_frame(effects, frame, last_frame, duration, generation)
+	presentation._show_transient_effect_frame(sequence, frame, duration, generation)
 
 
 # bind timers to this node so they stop with it

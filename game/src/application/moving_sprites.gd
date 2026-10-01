@@ -169,6 +169,21 @@ func audible_sound_events(sound_events: Array[SoundEvent]) -> Array[SoundEvent]:
 		return not (event.from_thing and event.thing_type in CityViewFilter.VEHICLE_THING_TYPES))
 
 
+# the static silhouettes over an effect sprite at `position` that the painter
+# draws after `depth_tile`. null when none cover it. `position` and `size` use
+# the scaled view pixels
+func effect_occluder_mask(position: Vector2i, size: Vector2i, depth_tile: Vector2i, view_size: int) -> Image:
+	var city := app.document_state.city
+
+	if city == null or city.index_of(depth_tile.x, depth_tile.y) < 0:
+		return null
+
+	var divisor := IsometricRenderer.view_configuration(view_size).divisor
+	var order := (depth_tile.x + depth_tile.y) * city.map_size + depth_tile.y
+
+	return _dynamic_occluder_image(app.static_render.sprite_archive_for_view(view_size), divisor, position, size, order)
+
+
 func static_occlusion_candidates(bounds: Rect2i) -> Array[CityStaticCommand]:
 	if caches.region_cache != null:
 		return caches.region_cache.occlusion_candidates(bounds)

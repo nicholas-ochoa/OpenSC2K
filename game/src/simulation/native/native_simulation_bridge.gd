@@ -31,7 +31,7 @@ static var classes := {
 	"MilestonePhase.Result": MilestonePhase.Result,
 	"ScenarioPhase.Result": ScenarioPhase.Result,
 	"MicrosimAnnualPhase.Result": MicrosimAnnualPhase.Result,
-	"MicrosimAnnualPhase.LaunchBatch": MicrosimAnnualPhase.LaunchBatch,
+	"MicrosimAnnualPhase.LaunchStep": MicrosimAnnualPhase.LaunchStep,
 	"WeatherDisasterPhase.Result": WeatherDisasterPhase.Result,
 	"DisasterStartResult": DisasterStartResult,
 	"DisasterStartResult.MaxisManArrival": DisasterStartResult.MaxisManArrival,

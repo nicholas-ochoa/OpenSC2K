@@ -18,8 +18,10 @@ const SPEED_NAMES: Dictionary[int, String] = {
 	Speed.AFRICAN_SWALLOW: "African Swallow",
 }
 const FIRE_TICK_MSEC := 1000.0
-# a staged arcology launch demolishes one batch each second
-const LAUNCH_BATCH_MSEC := 1000.0
+# a staged arcology launch ignites one arcology and launches one in each step
+const LAUNCH_STEP_MSEC := 50.0
+# the most launch steps that one call runs after a slow frame
+const LAUNCH_MAX_STEPS := 4
 
 var engine: SimulationEngine
 var speed := Speed.PAUSED
@@ -86,6 +88,13 @@ func advance_time(
 	if current_time_msec < 0:
 		current_time_msec = Time.get_ticks_msec()
 
+	var launch_error := _run_launch_steps(result, delta_msec, simulation_suspended)
+
+	if not launch_error.is_empty():
+		result.error = launch_error
+
+		return result
+
 	accumulator_msec += delta_msec
 	var ran_swallow_day := false
 
@@ -115,12 +124,6 @@ func advance_time(
 
 			result.moving_results.append(moving)
 			_append_moving_events(result, moving)
-			var launch_error := _run_launch_batch(result)
-
-			if not launch_error.is_empty():
-				result.error = launch_error
-
-				return result
 
 		if (
 			speed > Speed.PAUSED
@@ -267,27 +270,32 @@ func _is_day_due(counter := subtick_counter) -> bool:
 	return false
 
 
-# the days wait while a staged arcology launch demolishes its batches
-func _run_launch_batch(result: SimulationTickResult) -> String:
+# a staged arcology launch runs on frame time, not on base ticks, so the
+# launches follow each other. the days wait until it ends
+func _run_launch_steps(result: SimulationTickResult, delta_msec: float, simulation_suspended: bool) -> String:
 	if not engine.arcology_launch_active:
 		launch_elapsed_msec = 0.0
 
 		return ""
 
-	launch_elapsed_msec += BASE_TICK_MSEC
-
-	if launch_elapsed_msec < LAUNCH_BATCH_MSEC:
+	if speed == Speed.PAUSED or simulation_suspended or interaction_blocked or terminal_blocked:
 		return ""
 
-	launch_elapsed_msec = 0.0
-	var batch := engine.advance_arcology_launch()
+	launch_elapsed_msec += delta_msec
+	var steps := mini(int(launch_elapsed_msec / LAUNCH_STEP_MSEC), LAUNCH_MAX_STEPS)
 
-	if not batch.ok:
-		return batch.error
+	if steps <= 0:
+		return ""
 
-	result.launch_results.append(batch)
-	_append_runtime_events(result, batch)
-	result.notice_ids.append_array(batch.notice_ids)
+	launch_elapsed_msec = fmod(launch_elapsed_msec, LAUNCH_STEP_MSEC)
+	var step := engine.advance_arcology_launch(steps)
+
+	if not step.ok:
+		return step.error
+
+	result.launch_results.append(step)
+	_append_runtime_events(result, step)
+	result.notice_ids.append_array(step.notice_ids)
 
 	return ""
 

@@ -2,6 +2,7 @@ class_name EffectEvent
 extends RefCounted
 # a demolition sprite or earthquake request passed to the main thread
 # a missing point is (-1, -1). altitude -1 uses the tile's water altitude
+# structures in front of depth_point hide the sprite. (-1, -1) uses point
 
 var type := ""
 var point := Vector2i(-1, -1)
@@ -13,6 +14,7 @@ var altitude := -1
 var frames := 24
 var frame_msec := 5
 var distance := 4
+var depth_point := Vector2i(-1, -1)
 
 
 func _init(location := Vector2i(-1, -1), sprite := 0, offset := Vector2i.ZERO,
@@ -44,6 +46,7 @@ func copy() -> EffectEvent:
 	result.frames = frames
 	result.frame_msec = frame_msec
 	result.distance = distance
+	result.depth_point = depth_point
 
 	return result
 
@@ -59,7 +62,8 @@ func same_values(other: EffectEvent) -> bool:
 		and altitude == other.altitude
 		and frames == other.frames
 		and frame_msec == other.frame_msec
-		and distance == other.distance)
+		and distance == other.distance
+		and depth_point == other.depth_point)
 
 
 static func copy_all(events: Array[EffectEvent]) -> Array[EffectEvent]:

@@ -90,19 +90,27 @@ static func run(
 		"stage_launch": stage_launch}).result
 
 
-# demolish one batch of a staged arcology launch. the last batch requests
-# the second launch notice
-static func launch_batch(city: CityState, random: SimRandom) -> LaunchBatch:
+# run `steps` steps of a staged arcology launch. each step ignites one waiting
+# arcology and launches the one ignited 30 steps before. empty `sites` and
+# `queue` scan the map again. the last launch requests the second notice
+static func launch_step(
+	city: CityState, random: SimRandom, sites: Array[Vector2i], queue: Array[Vector2i], steps: int
+) -> LaunchStep:
 	if city == null or not city.is_valid():
-		var failed := LaunchBatch.new()
+		var failed := LaunchStep.new()
 		failed.error = "city is invalid"
 
 		return failed
 
-	return NativeSimulationBridge.run("arcology_launch.batch", city, random, null, null).result
+	return NativeSimulationBridge.run("arcology_launch.step", city, random, null, null, {
+		"sites": sites, "queue": queue, "steps": steps}).result
 
 
-class LaunchBatch extends PhaseResult:
+class LaunchStep extends PhaseResult:
+	# origins of the arcologies that wait to ignite
+	var sites: Array[Vector2i] = []
+	# origins of the ignited arcologies, first ignited first
+	var queue: Array[Vector2i] = []
 	var launched_structures := 0
 	var remaining_structures := 0
 	var map_changed := false
@@ -140,6 +148,6 @@ class Result extends PhaseResult:
 	var arcology_launched := false
 	var launch_arcology_records := 0
 	var launched_structures := 0
-	# true when the launch arcologies wait for launch_batch
+	# true when the launch arcologies wait for launch_step
 	var arcology_launch_staged := false
 	var passenger_counters_reset := true

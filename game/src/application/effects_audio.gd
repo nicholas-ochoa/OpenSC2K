@@ -3,6 +3,7 @@ extends RefCounted
 
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const ToolSounds = preload("res://src/audio/tool_sound_rules.gd")
+const EFFECT_CACHE_LIMIT := 2048
 
 var document_state: ActiveDocumentState
 var view_state: ViewState
@@ -14,6 +15,12 @@ var sprites_for_view: Callable
 var audio_controller: CityAudioController
 var map_view: CityMapControl
 var main_menu: MainMenuControl
+# (position, size, depth tile, view size) -> the static silhouettes over an
+# effect sprite, or null. see ApplicationMovingSprites.effect_occluder_mask
+var occluder_mask: Callable
+# scaled effect sprite images, and their textures with and without occlusion
+var _effect_images: Dictionary[String, Image] = {}
+var _effect_textures: Dictionary[String, Texture2D] = {}
 
 
 func _init(document: ActiveDocumentState, view: ViewState, assets: LoadedAssetState,
@@ -83,7 +90,7 @@ func show_effect_events(effect_events: Array[EffectEvent], sound_events: Array[S
 	if document_state.city == null:
 		return
 
-	effect_events = CityEffectTiming.parallel_dust_events(effect_events)
+	effect_events = CityEffectTiming.expand_launch_fires(CityEffectTiming.parallel_dust_events(effect_events))
 	var visuals: Array[CityTransientEffectVisual] = []
 
 	for effect in effect_events:
@@ -97,52 +104,86 @@ func show_effect_events(effect_events: Array[EffectEvent], sound_events: Array[S
 	if view_state.overlay_mode == CityViewMode.Mode.CITY:
 		var view_size: int = current_view_size.call()
 		var sprite_archive: Sc2SpriteArchive = sprites_for_view.call(view_size)
-		var divisor := IsometricRenderer.view_configuration(view_size).divisor
+
+		if _effect_textures.size() > EFFECT_CACHE_LIMIT:
+			_effect_textures.clear()
 
 		for effect in effect_events:
 			if effect.type == "earthquake":
 				continue
 
-			var sprite_id := IsometricRenderer.effect_sprite_id(
-				int(effect.sprite_id), view_size
-			)
-			var sprite := sprite_archive.find_sprite(sprite_id)
+			var visual := _effect_visual(effect, view_size, sprite_archive)
 
-			if sprite == null:
-				continue
+			if visual != null:
+				visuals.append(visual)
 
-			var rendered := sprite.create_image(asset_state.palette)
-
-			if not rendered.ok:
-				continue
-
-			var effect_image: Image = rendered.image
-
-			if effect.flip:
-				effect_image.flip_x()
-
-			var position := IsometricRenderer.transient_effect_position(
-				document_state.city, effect, effect_image.get_height(), view_size
-			)
-
-			if position.x < 0 or position.y < 0:
-				continue
-
-			if divisor > 1:
-				effect_image.resize(
-					effect_image.get_width() * divisor,
-					effect_image.get_height() * divisor,
-					Image.INTERPOLATE_NEAREST
-				)
-
-			visuals.append(CityTransientEffectVisual.new(
-				ImageTexture.create_from_image(effect_image),
-				Vector2(position * divisor), int(effect.frame)
-			))
-
-		map_view.show_transient_effects(visuals, 0.1)
+		# an empty list would stop the effects that still play
+		if not visuals.is_empty():
+			map_view.show_transient_effects(visuals, 0.1)
 
 	play_sound_events(sound_events, simulation)
+
+
+# the effect sprite at its view position, without the pixels of the
+# structures in front of its depth tile
+func _effect_visual(effect: EffectEvent, view_size: int, sprite_archive: Sc2SpriteArchive) -> CityTransientEffectVisual:
+	var divisor := IsometricRenderer.view_configuration(view_size).divisor
+	var sprite_id := IsometricRenderer.effect_sprite_id(int(effect.sprite_id), view_size)
+	var image := _effect_image(sprite_archive, sprite_id, effect.flip, divisor)
+
+	if image == null:
+		return null
+
+	var position := IsometricRenderer.transient_effect_position(
+		document_state.city, effect, image.get_height() / divisor, view_size
+	)
+
+	if position.x < 0 or position.y < 0:
+		return null
+
+	var origin := position * divisor
+	var depth_tile: Vector2i = effect.depth_point if effect.depth_point.x >= 0 else effect.point
+	var mask: Image = occluder_mask.call(origin, image.get_size(), depth_tile, view_size) if occluder_mask.is_valid() else null
+	var key := "%d:%d:%d:%d" % [sprite_id, int(effect.flip), divisor, mask.get_instance_id() if mask != null else 0]
+
+	if not _effect_textures.has(key):
+		var visible := image
+
+		if mask != null:
+			visible = IsometricRenderer.occlude_dynamic_with_mask(image, mask, origin).image
+
+		_effect_textures[key] = ImageTexture.create_from_image(visible)
+
+	return CityTransientEffectVisual.new(_effect_textures[key], Vector2(origin), int(effect.frame))
+
+
+func _effect_image(sprite_archive: Sc2SpriteArchive, sprite_id: int, flip: bool, divisor: int) -> Image:
+	var key := "%d:%d:%d:%d" % [sprite_id, int(flip), divisor, sprite_archive.get_instance_id()]
+
+	if _effect_images.has(key):
+		return _effect_images[key]
+
+	var sprite := sprite_archive.find_sprite(sprite_id)
+
+	if sprite == null:
+		return null
+
+	var rendered := sprite.create_image(asset_state.palette)
+
+	if not rendered.ok:
+		return null
+
+	var image: Image = rendered.image
+
+	if flip:
+		image.flip_x()
+
+	if divisor > 1:
+		image.resize(image.get_width() * divisor, image.get_height() * divisor, Image.INTERPOLATE_NEAREST)
+
+	_effect_images[key] = image
+
+	return image
 
 
 func play_sound_ids(sound_ids: Array[int]) -> void:

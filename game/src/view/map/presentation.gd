@@ -3,6 +3,8 @@ extends CityMapConstants
 
 var map: CityMapControl
 var _effect_generation := 0
+# effect sequences that play now. each one advances on its own timer
+var _effect_sequences: Array[TransientEffectSequence] = []
 var _shake_generation := 0
 var shake_offset := Vector2.ZERO
 
@@ -126,24 +128,30 @@ func set_city_view(
 	map.viewport_changed.emit()
 
 
+# play `effects` with the sequences that already play. an empty list stops them all
 func show_transient_effects(effects: Array[CityTransientEffectVisual], duration := 0.1) -> void:
-	_effect_generation += 1
-	map.transient_effects.clear()
-	map.queue_redraw()
+	if effects.is_empty():
+		_effect_generation += 1
+		_effect_sequences.clear()
+		map.queue_redraw()
 
-	if effects.is_empty() or not map.is_inside_tree():
 		return
 
-	var sequence: Array[CityTransientEffectVisual] = []
-	sequence.append_array(effects)
-	var last_frame := 0
+	if not map.is_inside_tree():
+		return
 
-	for effect in sequence:
-		last_frame = maxi(last_frame, effect.frame)
+	var sequence := TransientEffectSequence.new(effects)
+	_effect_sequences.append(sequence)
+	_show_transient_effect_frame(sequence, 0, maxf(0.0, float(duration)), _effect_generation)
 
-	_show_transient_effect_frame(
-		sequence, 0, last_frame, maxf(0.0, float(duration)), _effect_generation
-	)
+
+func transient_effect_count() -> int:
+	var count := 0
+
+	for sequence in _effect_sequences:
+		count += sequence.current().size()
+
+	return count
 
 
 func shake_view(frames := 24, frame_duration := 0.005, distance := 4.0) -> void:
@@ -210,44 +218,36 @@ func debug_metrics() -> Dictionary:
 		"dynamic_revisions": (
 			map.layers.dynamic_canvas.visual_revision if map.layers.dynamic_canvas != null else 0
 		),
-		"transient_effects": map.transient_effects.size(),
+		"transient_effects": transient_effect_count(),
 	}
 
 
-func _expire_transient_effects(generation: int) -> void:
+func _expire_transient_effects(sequence: TransientEffectSequence, generation: int) -> void:
 	if generation != _effect_generation:
 		return
 
-	map.transient_effects.clear()
+	_effect_sequences.erase(sequence)
 	map.queue_redraw()
 
 
 func _show_transient_effect_frame(
-	effects: Array[CityTransientEffectVisual],
+	sequence: TransientEffectSequence,
 	frame: int,
-	last_frame: int,
 	duration: float,
 	generation: int
 ) -> void:
 	if generation != _effect_generation:
 		return
 
-	map.transient_effects.clear()
-
-	for effect in effects:
-		if effect.frame == frame:
-			map.transient_effects.append(effect)
-
+	sequence.frame = frame
 	map.queue_redraw()
 	# keep timer callbacks bound to the control and its lifetime
 	var timer := map.get_tree().create_timer(duration)
 
-	if frame >= last_frame:
-		timer.timeout.connect(map._expire_transient_effects.bind(generation))
+	if frame >= sequence.frames.size() - 1:
+		timer.timeout.connect(map._expire_transient_effects.bind(sequence, generation))
 	else:
-		timer.timeout.connect(map._show_transient_effect_frame.bind(
-			effects, frame + 1, last_frame, duration, generation
-		))
+		timer.timeout.connect(map._show_transient_effect_frame.bind(sequence, frame + 1, duration, generation))
 
 
 func _show_shake_frame(
@@ -272,18 +272,19 @@ func _show_shake_frame(
 
 
 func _draw_transient_effects(scale: float, offset: Vector2) -> void:
-	for effect in map.transient_effects:
-		var texture: Texture2D = effect.texture
+	for sequence in _effect_sequences:
+		for effect in sequence.current():
+			var texture: Texture2D = effect.texture
 
-		if texture == null:
-			continue
+			if texture == null:
+				continue
 
-		var source_position: Vector2 = effect.position
-		map.draw_texture_rect(
-			texture,
-			Rect2(offset + source_position * scale, Vector2(texture.get_size()) * scale),
-			false
-		)
+			var source_position: Vector2 = effect.position
+			map.draw_texture_rect(
+				texture,
+				Rect2(offset + source_position * scale, Vector2(texture.get_size()) * scale),
+				false
+			)
 
 
 func _draw_dynamic_sprites(scale: float, offset: Vector2) -> void:
@@ -315,3 +316,19 @@ func clear_trip_reach() -> void:
 	if map.trip_reach != null:
 		map.trip_reach = null
 		map.queue_redraw()
+
+
+# the visuals of one effect request, grouped by frame
+class TransientEffectSequence extends RefCounted:
+	var frames: Array[Array] = []
+	var frame := 0
+
+	func _init(effects: Array[CityTransientEffectVisual]) -> void:
+		for effect in effects:
+			while frames.size() <= effect.frame:
+				frames.append([])
+
+			frames[effect.frame].append(effect)
+
+	func current() -> Array:
+		return frames[frame] if frame < frames.size() else []

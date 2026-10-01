@@ -152,6 +152,7 @@ func build_interface(original_assets: OriginalGameAssets) -> void:
 	app.camera_input.update_zoom_controls(app.map_view.zoom_percent())
 	_build_main_menu()
 	app.effects_audio.bind_view(app.map_view, app.main_menu)
+	app.effects_audio.occluder_mask = app.moving_sprites.effect_occluder_mask
 	app.main_overlays.about_dialog.set_assets(original_assets)
 	app.settings.apply_ui_scale()
 	app.settings.apply_control_bindings()

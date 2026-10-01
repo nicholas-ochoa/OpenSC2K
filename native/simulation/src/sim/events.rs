@@ -53,6 +53,8 @@ impl SoundEvent {
 
 gd_object! {
     /// A demolition sprite or earthquake request. Altitude -1 uses the water altitude.
+    /// The renderer hides the sprite behind the structures in front of
+    /// `depth_point`, or in front of `point` when `depth_point` is NONE.
     pub struct EffectEvent as "EffectEvent" {
         pub type_: String = String::new(),
         pub point: Vec2i = Vec2i::NONE,
@@ -64,6 +66,7 @@ gd_object! {
         pub frames: i64 = 24,
         pub frame_msec: i64 = 5,
         pub distance: i64 = 4,
+        pub depth_point: Vec2i = Vec2i::NONE,
     }
 }
 

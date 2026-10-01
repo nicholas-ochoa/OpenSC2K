@@ -91,7 +91,9 @@ func advance_time(delta_msec: float, now_msec: int, suspended := false) -> Simul
 
 			return empty
 
+	# a staged arcology launch steps on the main thread with each frame
 	if (suspended or controller.speed == GameSpeedController.Speed.PAUSED or controller.interaction_blocked or controller.terminal_blocked
+			or controller.engine.arcology_launch_active
 			or (controller.accumulator_msec + pending_msec < GameSpeedController.BASE_TICK_MSEC and not controller.simulation_ready)):
 		var immediate := controller.advance_time(pending_msec, now_msec, suspended)
 		pending_msec = 0.0
