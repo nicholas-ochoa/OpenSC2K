@@ -57,6 +57,17 @@ fn add_current(misc: &mut [u8], budget_id: i64, value: i64) {
     write_u32_be(misc, offset, to_i32(current + value));
 }
 
+/// SC2X retains the monthly operands, so the full total survives even when
+/// the original-format year-to-date accumulator wraps.
+fn recorded_year_total(misc: &[u8], offset: i64) -> i64 {
+    (0..MONTHS_PER_YEAR)
+        .map(|month| {
+            let month_offset = offset + budget::MONTHS + month * budget::MONTH_RECORD_SIZE;
+            read_i32_be(misc, month_offset) * read_i32_be(misc, month_offset + budget::MONTH_FUNDING)
+        })
+        .sum()
+}
+
 /// BudgetPhase.settle_year: the first part of the January budget. The
 /// original runs the annual facility update after this part.
 pub fn settle_year(city: &mut City, annual_budget_approved: bool) -> BudgetResult {
@@ -95,7 +106,11 @@ pub fn settle_year(city: &mut City, annual_budget_approved: bool) -> BudgetResul
             let factor = ANNUAL_DIVISOR_FACTORS[budget_id as usize];
 
             if factor != 0 {
-                let year_to_date = read_i32_be(&misc, offset + budget::YEAR_TO_DATE);
+                let year_to_date = if city.is_extended() {
+                    recorded_year_total(&misc, offset)
+                } else {
+                    read_i32_be(&misc, offset + budget::YEAR_TO_DATE)
+                };
                 funds = to_i32(funds + divide_toward_zero(year_to_date, factor * MONTHS_PER_YEAR));
             }
 
@@ -315,4 +330,60 @@ pub fn set_funding(city: &mut City, values: &[i32], auto_budget: bool) -> Budget
     let mut result = BudgetResult::default();
     result.base_mut().ok = true;
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sim::testing::{empty_city, empty_sc2x_city};
+
+    #[test]
+    fn sc2x_settlement_recovers_large_tax_totals_from_monthly_history() {
+        let mut city = empty_sc2x_city(16);
+        city.set_misc_u32(misc_layout::NO_DISASTERS, 1);
+        city.set_misc_u32(misc_layout::AUTO_BUDGET, 1);
+        let mut random = SimRandom::new(1);
+
+        for month in 0..MONTHS_PER_YEAR {
+            city.set_age_in_days(month * DAYS_PER_MONTH);
+
+            for (id, cost) in [90_000_000, 75_000_000, 60_000_000].into_iter().enumerate() {
+                let offset = budget_offset(id as i64);
+                city.set_misc_i32(offset, cost);
+                city.set_misc_i32(offset + budget::FUNDING, 10 + month);
+            }
+
+            assert!(run(&mut city, &mut random, false).base.ok);
+        }
+
+        assert!(city.misc_i32(budget_offset(0) + budget::YEAR_TO_DATE) < 0);
+        city.set_age_in_days(DAYS_PER_YEAR);
+        let result = settle_year(&mut city, false);
+        assert!(result.base.ok && result.settled_year);
+        assert_eq!(result.funds_after, 46_500_000);
+
+        for id in 0..3 {
+            assert_eq!(city.misc_i32(budget_offset(id) + budget::YEAR_TO_DATE), 0);
+        }
+    }
+
+    #[test]
+    fn sc2_settlement_keeps_the_original_wrapped_accumulator() {
+        let mut city = empty_city(128);
+        city.set_age_in_days(DAYS_PER_YEAR);
+        city.set_misc_u32(misc_layout::YEAR_END, 1);
+        city.set_misc_u32(misc_layout::AUTO_BUDGET, 1);
+        let offset = budget_offset(0);
+        city.set_misc_i32(offset + budget::YEAR_TO_DATE, -900_000);
+
+        for month in 0..MONTHS_PER_YEAR {
+            let month_offset = offset + budget::MONTHS + month * budget::MONTH_RECORD_SIZE;
+            city.set_misc_i32(month_offset, 90_000_000);
+            city.set_misc_i32(month_offset + budget::MONTH_FUNDING, 22);
+        }
+
+        let result = settle_year(&mut city, false);
+        assert!(result.base.ok && result.settled_year);
+        assert_eq!(result.funds_after, -1_000);
+    }
 }

@@ -86,8 +86,8 @@ static func select(city: CityState, report: BudgetReport, advisor: int, random: 
 				choice = 4
 			elif credit + _signed_word(doc.misc_u32(Sc2MiscLayout.NATIONAL_FEDERAL_RATE)) + 1 < 4:
 				choice = 2
-			elif report.estimated_raw[4] > BudgetReport.wrap_i32(report.estimated_raw[0] + report.estimated_raw[1]
-					+ report.estimated_raw[2]):
+			elif report.estimated_raw[4] > BudgetReport.budget_integer(report.estimated_raw[0] + report.estimated_raw[1]
+					+ report.estimated_raw[2], doc.is_extended()):
 				choice = 3
 		3:
 			choice = 5

@@ -29,10 +29,10 @@ const MONTHS := ["January", "February", "March", "April", "May", "June", "July",
 
 var current := PackedInt32Array()
 var funding := PackedInt32Array()
-var year_to_date := PackedInt32Array()
-var estimated := PackedInt32Array()
-var estimated_raw := PackedInt32Array()
-var history: Array[PackedInt32Array] = []
+var year_to_date := PackedInt64Array()
+var estimated := PackedInt64Array()
+var estimated_raw := PackedInt64Array()
+var history: Array[PackedInt64Array] = []
 var history_costs: Array[PackedInt32Array] = []
 var history_rates: Array[PackedInt32Array] = []
 var actual_months := 0
@@ -52,6 +52,7 @@ static func capture(city: CityState, proposed: PackedInt32Array) -> BudgetReport
 	report.funds = city.funds()
 	report.year_end = city.document.misc_u32(Budget.MISC_YEAR_END) != 0
 	report.actual_months = CityCalendar.MONTHS_PER_YEAR if report.year_end else city.current_month()
+	var extended := city.document.is_extended()
 	var ytd_scaled := 0
 	var estimate_scaled := 0
 
@@ -60,17 +61,23 @@ static func capture(city: CityState, proposed: PackedInt32Array) -> BudgetReport
 		var cost := city.document.misc_i32(offset)
 
 		var raw_ytd := city.document.misc_i32(offset + Budget.BUDGET_YEAR_TO_DATE)
-		var funded := wrap_i32(cost * proposed[id])
-		var raw_estimate := (wrap_i32(funded * CityCalendar.MONTHS_PER_YEAR) if report.year_end
-			else wrap_i32(raw_ytd + funded * (CityCalendar.MONTHS_PER_YEAR - report.actual_months)))
+		# SC2X history retains each cost and rate before the legacy accumulator wraps.
+		if extended:
+			raw_ytd = 0
+			for month in report.actual_months:
+				var month_offset := offset + Budget.BUDGET_MONTHS + month * Sc2BudgetLayout.MONTH_RECORD_SIZE
+				raw_ytd += city.document.misc_i32(month_offset) * city.document.misc_i32(month_offset + Sc2BudgetLayout.MONTH_FUNDING)
+		var funded := budget_integer(cost * proposed[id], extended)
+		var raw_estimate := (budget_integer(funded * CityCalendar.MONTHS_PER_YEAR, extended) if report.year_end
+			else budget_integer(raw_ytd + funded * (CityCalendar.MONTHS_PER_YEAR - report.actual_months), extended))
 		var factor: int = Budget.ANNUAL_DIVISOR_FACTORS[id]
 		report.current.append(cost)
 		report.year_to_date.append(raw_ytd / (factor * CityCalendar.MONTHS_PER_YEAR))
 		report.estimated.append(raw_estimate / (factor * CityCalendar.MONTHS_PER_YEAR))
 		report.estimated_raw.append(raw_estimate)
-		ytd_scaled = wrap_i32(ytd_scaled + raw_ytd / factor)
-		estimate_scaled = wrap_i32(estimate_scaled + raw_estimate / factor)
-		var amounts := PackedInt32Array()
+		ytd_scaled = budget_integer(ytd_scaled + raw_ytd / factor, extended)
+		estimate_scaled = budget_integer(estimate_scaled + raw_estimate / factor, extended)
+		var amounts := PackedInt64Array()
 		var costs := PackedInt32Array()
 		var rates := PackedInt32Array()
 		var running_raw := 0
@@ -84,7 +91,7 @@ static func capture(city: CityState, proposed: PackedInt32Array) -> BudgetReport
 				+ Sc2BudgetLayout.MONTH_FUNDING) if actual else proposed[id])
 			costs.append(month_cost)
 			rates.append(rate)
-			running_raw = wrap_i32(running_raw + wrap_i32(month_cost * rate))
+			running_raw = budget_integer(running_raw + budget_integer(month_cost * rate, extended), extended)
 			var cumulative_amount := running_raw / (factor * CityCalendar.MONTHS_PER_YEAR)
 			amounts.append(cumulative_amount - previous_amount)
 			previous_amount = cumulative_amount
@@ -98,7 +105,7 @@ static func capture(city: CityState, proposed: PackedInt32Array) -> BudgetReport
 	return report
 
 
-static func group_amount(amounts: PackedInt32Array, group: int) -> int:
+static func group_amount(amounts: PackedInt64Array, group: int) -> int:
 	var total := 0
 
 	for id: int in GROUPS[group]:
@@ -114,3 +121,7 @@ static func currency(value: int) -> String:
 static func wrap_i32(value: int) -> int:
 	var low := value & 0xffffffff
 	return low - 0x100000000 if low & 0x80000000 else low
+
+
+static func budget_integer(value: int, extended: bool) -> int:
+	return value if extended else wrap_i32(value)

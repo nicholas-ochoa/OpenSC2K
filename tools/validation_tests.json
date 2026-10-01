@@ -119,6 +119,12 @@
     ]
   },
   {
+    "id": "budget_overflow_test",
+    "script": "tests/budget_overflow_test.gd",
+    "domain": "simulation",
+    "lane": "product"
+  },
+  {
     "id": "benchmark_inputs",
     "python": "tools/test_benchmark_inputs.py",
     "domain": "tools",
