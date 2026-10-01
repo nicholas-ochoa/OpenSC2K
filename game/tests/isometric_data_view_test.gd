@@ -75,6 +75,8 @@ func _run() -> void:
 				print("PASS: data mesh %d native=%s" % [edge, native])
 
 	check_land_value_amounts()
+	check_traffic_none()
+	check_growth_scales()
 	check_height_and_walls()
 	await check_ui()
 	await check_shader()
@@ -290,3 +292,42 @@ func check_land_value_amounts() -> void:
 			CityDataView.tile_text(city, CityViewMode.Mode.LAND_VALUE, Vector2i.ZERO).contains("$%d,000" % (raw + 1)),
 			"Land Value uses the saved dollar scale",
 		)
+
+
+func check_traffic_none() -> void:
+	var city := CityState.from_document(EmptyCityTemplate.create())
+	var chunk := city.document.find_chunk("XTRF")
+	var data := chunk.decoded_payload.duplicate()
+	data.fill(0)
+	chunk.set_decoded_payload(data)
+	check(CityDataView.tile_text(city, CityViewMode.Mode.TRAFFIC, Vector2i.ZERO).ends_with(": None"), "Traffic-free tile reads None")
+	check(CityDataView.color(0, CityViewMode.Mode.TRAFFIC) == CityDataView.ZERO_COLORS[CityViewMode.Mode.TRAFFIC], "Traffic-free tile uses the base color")
+	data.fill(1)
+	chunk.set_decoded_payload(data)
+	check(CityDataView.tile_text(city, CityViewMode.Mode.TRAFFIC, Vector2i.ZERO).ends_with(": Very low"), "Light traffic keeps its scale text")
+
+
+func check_growth_scales() -> void:
+	var growth := CityViewMode.Mode.GROWTH
+	var base := CityDataView.GROWTH_COLORS[1]
+	check(CityDataView.color(CityDataView.GROWTH_DECLINE, growth) == base, "Steady growth uses the base color")
+	check(CityDataView.color(CityDataView.GROWTH_INCREASE - 1, growth) == base, "Top of the steady band uses the base color")
+	check(CityDataView.color(0, growth) == CityDataView.GROWTH_COLORS[0], "Fastest decline uses the full decline color")
+	check(CityDataView.color(255, growth) == CityDataView.GROWTH_COLORS[2], "Fastest growth uses the full growth color")
+	var slight_decline := CityDataView.color(CityDataView.GROWTH_DECLINE - 1, growth)
+	var slight_growth := CityDataView.color(CityDataView.GROWTH_INCREASE, growth)
+	check(slight_decline != base and slight_decline.r < CityDataView.color(0, growth).r, "Slight decline is between base and decline")
+	check(slight_growth != base and slight_growth.g < CityDataView.color(255, growth).g, "Slight growth is between base and growth")
+	var full := CityDataView.GROWTH_FULL_DISTANCE
+	check(CityDataView.color(CityDataView.GROWTH_DECLINE - full, growth) == CityDataView.GROWTH_COLORS[0], "Moderate decline reaches the full color")
+	check(CityDataView.color(CityDataView.GROWTH_INCREASE - 1 + full, growth) == CityDataView.GROWTH_COLORS[2], "Moderate growth reaches the full color")
+	var early := CityDataView.color(CityDataView.GROWTH_INCREASE - 1 + full / 4, growth)
+	check(early.g - base.g > (CityDataView.GROWTH_COLORS[2].g - base.g) / 3.0, "Growth color rises quickly near steady")
+	var cells := PackedInt32Array()
+
+	for cell in CityDataView.SCALE_CELLS:
+		cells.append(CityDataView.scale_value(growth, cell))
+
+	check(cells[0] == 0 and cells[-1] == 255, "Growth key spans the fastest decline and growth")
+	check(cells.count(CityDataView.GROWTH_DECLINE) == 2 and cells[CityDataView.SCALE_CELLS / 2] == CityDataView.GROWTH_DECLINE, "Growth key centers the steady base")
+	check(CityDataView.state_labels(growth).is_empty(), "Growth key draws a scale")

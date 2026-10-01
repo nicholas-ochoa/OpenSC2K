@@ -22,24 +22,49 @@ const CHUNKS: Dictionary[CityViewMode.Mode, String] = {
 # labels under the gradient bar in the isometric legend
 const RANGE_LABELS := {
 	CityViewMode.Mode.HEIGHT: ["Land level 1", "Land level 32"],
+	CityViewMode.Mode.GROWTH: ["Decline", "Growth"],
 }
+# labels under the middle of the gradient bar
+const MIDDLE_LABELS := {
+	CityViewMode.Mode.GROWTH: "Steady",
+}
+# cells in the gradient bar of the isometric legend
+const SCALE_CELLS := 32
+# growth bar cells on each side of the two steady cells
+const GROWTH_SIDE_CELLS := (SCALE_CELLS - 2) / 2
 # rate of growth stores a steady band around the middle of the byte range
 const GROWTH_DECLINE := 0x7d
 const GROWTH_INCREASE := 0x83
+# rate of growth steps away from the steady band that reach the full decline or
+# growth color. faster rates all use the full color
+const GROWTH_FULL_DISTANCE := 32
 # modes that read as a few named states instead of a gradient
 const STATE_LABELS := {
 	CityViewMode.Mode.WATER: ["No link", "No supply", "Supplied"],
 	CityViewMode.Mode.POWER: ["No link", "No supply", "Supplied"],
-	CityViewMode.Mode.GROWTH: ["Decline", "Steady", "Growth"],
 }
 
-# low and high ends of each gradient
+# evenly spaced stops of each gradient, from low to high
 static var GRADIENTS: Dictionary[CityViewMode.Mode, PackedColorArray] = {
 	CityViewMode.Mode.DENSITY: PackedColorArray([Color("1f2d3f"), Color("ffd166")]),
-	CityViewMode.Mode.TRAFFIC: PackedColorArray([Color("1e3a2f"), Color("ff694c")]),
-	CityViewMode.Mode.POLICE_POWER: PackedColorArray([Color("1c2440"), Color("6fa8ff")]),
-	CityViewMode.Mode.FIRE_POWER: PackedColorArray([Color("3a1f1c"), Color("ffa552")]),
-	CityViewMode.Mode.LAND_VALUE: PackedColorArray([Color("273c65"), Color("58d7a1")]),
+	CityViewMode.Mode.TRAFFIC: PackedColorArray([Color("38c8ff"), Color("c8102e")]),
+	CityViewMode.Mode.POLLUTION: PackedColorArray([Color("2a2a2e"), Color("b84dff")]),
+	CityViewMode.Mode.CRIME: PackedColorArray([Color("0a5468"), Color("ff2d55")]),
+	CityViewMode.Mode.POLICE_POWER: PackedColorArray([Color("101c4c"), Color("2f6bff")]),
+	CityViewMode.Mode.FIRE_POWER: PackedColorArray([Color("4a1010"), Color("ff3326")]),
+	CityViewMode.Mode.LAND_VALUE: PackedColorArray([Color("2a2a2e"), Color("2fbf4f")]),
+}
+# exponents that shape a gradient. above 1 spreads the color change toward the
+# upper end, where most land value tiles fall. below 1 makes low values show
+# more color, so light pollution is easy to see
+const GRADIENT_CURVES := {
+	CityViewMode.Mode.LAND_VALUE: 2.0,
+	CityViewMode.Mode.POLLUTION: 0.5,
+}
+# colors for a zero value in modes whose scale starts above the base map.
+# hover text names a zero value "None" in these modes
+static var ZERO_COLORS: Dictionary[CityViewMode.Mode, Color] = {
+	CityViewMode.Mode.TRAFFIC: Color("2a2a2e"),
 }
 # default gradient for the remaining nuisance maps
 static var DEFAULT_GRADIENT := PackedColorArray([Color("2b5260"), Color("ff694c")])
@@ -54,8 +79,9 @@ static var UNDERWATER_COLORS := PackedColorArray([Color8(17, 0, 255), Color8(0, 
 const UNDERWATER_BASE := 32
 const MAX_LEVEL := 31
 const MAX_SHOWN_DEPTH := 15
-# decline, steady, and growth. the original map reads as a sign, not a scale
-static var GROWTH_COLORS := PackedColorArray([Color("e2453c"), Color("b9c2cd"), Color("35d16a")])
+# decline, steady, and growth. steady tiles use the base color, and decline and
+# growth each shade from it toward their own color as the rate moves from steady
+static var GROWTH_COLORS := PackedColorArray([Color("e2453c"), Color("2a2a2e"), Color("35d16a")])
 
 
 static func value(city: CityState, mode: CityViewMode.Mode, x: int, y: int) -> int:
@@ -97,12 +123,14 @@ static func color(data_value: int, mode: CityViewMode.Mode) -> Color:
 	var amount := clampf(data_value / 255.0, 0.0, 1.0)
 
 	if mode == CityViewMode.Mode.GROWTH:
-		# the original map reads as a sign. exact amounts stay in the hover text
-		return GROWTH_COLORS[growth_state(data_value)]
+		return growth_color(data_value)
+
+	if data_value == 0 and ZERO_COLORS.has(mode):
+		return ZERO_COLORS[mode]
 
 	var gradient: PackedColorArray = GRADIENTS.get(mode, DEFAULT_GRADIENT)
 
-	return gradient[0].lerp(gradient[1], amount)
+	return _ramp(gradient, pow(amount, GRADIENT_CURVES.get(mode, 1.0)))
 
 
 # a color between evenly spaced stops. `amount` runs from 0 to 1
@@ -132,6 +160,8 @@ static func tile_text(city: CityState, mode: CityViewMode.Mode, point: Vector2i,
 		description = "Level %d of 32" % (number + 1)
 	elif mode == CityViewMode.Mode.GROWTH:
 		description = ["Declining", "Steady", "Growing"][growth_state(number)]
+	elif number == 0 and ZERO_COLORS.has(mode):
+		description = "None"
 	else:
 		description = ["Very low", "Low", "Moderate", "High", "Very high"][mini((number * 5) / 256, 4)]
 
@@ -159,6 +189,44 @@ static func growth_state(number: int) -> int:
 	return 1 if number < GROWTH_INCREASE else 2
 
 
+static func growth_color(number: int) -> Color:
+	var state := growth_state(number)
+
+	if state == 1:
+		return GROWTH_COLORS[1]
+
+	var distance := GROWTH_DECLINE - number if state == 0 else number - GROWTH_INCREASE + 1
+	# the square root makes the first steps away from steady easy to see
+	var amount := sqrt(clampf(float(distance) / GROWTH_FULL_DISTANCE, 0.0, 1.0))
+
+	return GROWTH_COLORS[1].lerp(GROWTH_COLORS[state], amount)
+
+
+# tile value that paints one cell of the gradient bar in the isometric legend.
+# the growth bar runs from the fastest decline through steady to the fastest growth
+static func scale_value(mode: CityViewMode.Mode, cell: int) -> int:
+	if mode == CityViewMode.Mode.HEIGHT:
+		return cell
+
+	if mode != CityViewMode.Mode.GROWTH:
+		return roundi(cell * 255.0 / (SCALE_CELLS - 1))
+
+	if cell < GROWTH_SIDE_CELLS:
+		return roundi(cell * (GROWTH_DECLINE - 1.0) / (GROWTH_SIDE_CELLS - 1))
+
+	if cell >= SCALE_CELLS - GROWTH_SIDE_CELLS:
+		var step := cell - (SCALE_CELLS - GROWTH_SIDE_CELLS)
+
+		return GROWTH_INCREASE + roundi(step * (255.0 - GROWTH_INCREASE) / (GROWTH_SIDE_CELLS - 1))
+
+	return GROWTH_DECLINE
+
+
+# label under the middle of the gradient bar, or an empty string
+static func middle_label(mode: CityViewMode.Mode) -> String:
+	return MIDDLE_LABELS.get(mode, "")
+
+
 # low and high labels for the gradient bar in the isometric legend
 static func range_labels(mode: CityViewMode.Mode) -> PackedStringArray:
 	return PackedStringArray(RANGE_LABELS.get(mode, ["Very low", "Very high"]))
@@ -167,14 +235,6 @@ static func range_labels(mode: CityViewMode.Mode) -> PackedStringArray:
 # named states for the legend, or an empty list for a gradient mode
 static func state_labels(mode: CityViewMode.Mode) -> PackedStringArray:
 	return PackedStringArray(STATE_LABELS.get(mode, []))
-
-
-# tile value that paints each named state in the legend
-static func state_value(mode: CityViewMode.Mode, state: int) -> int:
-	if mode == CityViewMode.Mode.GROWTH:
-		return [0, GROWTH_DECLINE, GROWTH_INCREASE][state]
-
-	return state
 
 
 static func _level_text(level: int, exact: bool) -> String:

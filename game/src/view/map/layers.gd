@@ -152,16 +152,15 @@ func draw_data_key(canvas: Control) -> void:
 			var position := origin + Vector2(12 + index * 100, 38)
 			canvas.draw_rect(
 				Rect2(position, Vector2(88, 18)),
-				CityDataView.color(CityDataView.state_value(map.data_view_mode, index), map.data_view_mode),
+				CityDataView.color(index, map.data_view_mode),
 			)
 			canvas.draw_string(font, position + Vector2(0, 38), states[index], HORIZONTAL_ALIGNMENT_LEFT, -1, 14,
 					map.get_theme_color("font_color", "MapLegend"))
 	else:
-		for index in 32:
-			var number := index if map.data_view_mode == CityViewMode.Mode.HEIGHT else roundi(index * 255.0 / 31)
+		for index in CityDataView.SCALE_CELLS:
 			canvas.draw_rect(
 				Rect2(origin + Vector2(12 + index * 9.25, 38), Vector2(9.25, 20)),
-				CityDataView.color(number, map.data_view_mode),
+				CityDataView.color(CityDataView.scale_value(map.data_view_mode, index), map.data_view_mode),
 			)
 
 		if map.data_view_mode == CityViewMode.Mode.HEIGHT:
@@ -175,6 +174,12 @@ func draw_data_key(canvas: Control) -> void:
 
 		var labels := CityDataView.range_labels(map.data_view_mode)
 		_draw_scale_labels(canvas, font, origin + Vector2(0, 80), labels[0], labels[1])
+		var middle := CityDataView.middle_label(map.data_view_mode)
+
+		if not middle.is_empty():
+			var middle_width := font.get_string_size(middle, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+			canvas.draw_string(font, origin + Vector2(160 - middle_width / 2, 80), middle, HORIZONTAL_ALIGNMENT_LEFT, -1, 14,
+					map.get_theme_color("font_color", "MapLegend"))
 
 
 # the low label under the left end of a scale and the high label under its right end
