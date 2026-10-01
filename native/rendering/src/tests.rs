@@ -37,6 +37,7 @@ fn fixture(edge: i32, view: i32) -> Builder {
             underground: false,
             pipes: true,
             subways: true,
+            tunnels: true,
             mains: true,
             redraw_ground: false,
             specials: false,
@@ -145,6 +146,21 @@ fn underground_tunnel_and_hidden_subway_are_separate_depths() {
     let draws = b.paint(1, 1).unwrap();
     assert_eq!(draws.len(), 2);
     assert!(draws.iter().all(|d| d.depth == -1));
+}
+
+#[test]
+fn hidden_tunnels_leave_the_underground_tile() {
+    let mut b = fixture(4, 2);
+    b.config.underground = true;
+    b.city.visible = 5;
+    let i = b.city.index(1, 1);
+    b.city.altitude[i] = 5 | (3 << 10);
+    b.city.underground[i] = 1;
+    let shown = b.paint(1, 1).unwrap();
+    b.config.tunnels = false;
+    let hidden = b.paint(1, 1).unwrap();
+    assert_eq!(hidden.len(), shown.len() - 1);
+    assert!(hidden.iter().all(|d| d.sprite != b.config.base() + 0x160));
 }
 
 #[test]

@@ -287,3 +287,10 @@ layout_mode = 2
 tooltip_text = "Show or hide subways in the underground view."
 button_pressed = true
 text = "Subways"
+
+[node name="TunnelsVisible" type="CheckBox" parent="Margin/Column/Layers"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Show or hide road tunnels in the underground view."
+button_pressed = true
+text = "Tunnels"

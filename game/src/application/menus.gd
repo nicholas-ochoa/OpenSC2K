@@ -25,6 +25,7 @@ const MENU_VIEW_VEHICLES := CityMenuBarView.MENU_VIEW_VEHICLES
 const MENU_VIEW_WATER_MAINS := CityMenuBarView.MENU_VIEW_WATER_MAINS
 const MENU_VIEW_PIPES := CityMenuBarView.MENU_VIEW_PIPES
 const MENU_VIEW_SUBWAYS := CityMenuBarView.MENU_VIEW_SUBWAYS
+const MENU_VIEW_TUNNELS := CityMenuBarView.MENU_VIEW_TUNNELS
 const MENU_SCURK_PLACE_PRINT := CityMenuBarView.MENU_SCURK_PLACE_PRINT
 
 var app: CityApplication
@@ -170,6 +171,8 @@ func on_view_menu(id: int) -> void:
 			set_underground_pipes_visible(not app.view_state.show_underground_pipes)
 		MENU_VIEW_SUBWAYS:
 			set_underground_subways_visible(not app.view_state.show_underground_subways)
+		MENU_VIEW_TUNNELS:
+			set_underground_tunnels_visible(not app.view_state.show_underground_tunnels)
 
 
 func sync_city_option_menus() -> void:
@@ -235,6 +238,7 @@ func _sync_view_controls() -> void:
 		MENU_VIEW_PIPES: app.view_state.show_underground_pipes,
 		MENU_VIEW_WATER_MAINS: app.view_state.show_underground_water_mains,
 		MENU_VIEW_SUBWAYS: app.view_state.show_underground_subways,
+		MENU_VIEW_TUNNELS: app.view_state.show_underground_tunnels,
 	}
 
 	if app.view_menu != null:
@@ -253,7 +257,7 @@ func _sync_view_controls() -> void:
 
 	for key in app.view_visibility_checks:
 		var check: CheckBox = app.view_visibility_checks[key]
-		check.visible = ((underground_active if key in ["water_mains", "pipes", "subways"] else not underground_active)
+		check.visible = ((underground_active if key in ["water_mains", "pipes", "subways", "tunnels"] else not underground_active)
 				and not CityViewMode.is_data(app.view_state.overlay_mode))
 
 		if app.tool_state.landscape_editor:
@@ -269,6 +273,8 @@ func _sync_view_controls() -> void:
 				enabled = app.view_state.show_underground_pipes
 			"subways":
 				enabled = app.view_state.show_underground_subways
+			"tunnels":
+				enabled = app.view_state.show_underground_tunnels
 			"vehicles":
 				enabled = app.view_state.show_vehicles
 
@@ -286,6 +292,7 @@ func _rebuild_view_layer_menu(underground_active: bool) -> void:
 		popup.add_check_item("Show Water Mains", MENU_VIEW_WATER_MAINS)
 		popup.add_check_item("Show Underground Pipes", MENU_VIEW_PIPES)
 		popup.add_check_item("Show Subways", MENU_VIEW_SUBWAYS)
+		popup.add_check_item("Show Tunnels", MENU_VIEW_TUNNELS)
 	else:
 		for view_item in [
 			["Show Buildings", MENU_VIEW_BUILDINGS],
@@ -431,3 +438,17 @@ func set_underground_subways_visible(enabled: bool) -> void:
 		app.map_render.refresh_map(false)
 
 	app.status_label.text = "Underground subways %s." % ("shown" if enabled else "hidden")
+
+
+func set_underground_tunnels_visible(enabled: bool) -> void:
+	if app.view_state.show_underground_tunnels == enabled:
+		return
+
+	app.view_state.show_underground_tunnels = enabled
+	app.static_render.invalidate_view_render()
+	_sync_view_controls()
+
+	if app.document_state.city != null and app.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND:
+		app.map_render.refresh_map(false)
+
+	app.status_label.text = "Tunnels %s." % ("shown" if enabled else "hidden")

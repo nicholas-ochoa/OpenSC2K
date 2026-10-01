@@ -151,6 +151,9 @@ func _run() -> void:
 	assert(toolbar.view_visibility_checks.has("subways"))
 	main.menus.call("set_underground_subways_visible", false)
 	assert(not toolbar.view_visibility_checks.subways.button_pressed)
+	main.menus.call("on_view_menu", CityMenuBar.MENU_VIEW_TUNNELS)
+	assert(not main.view_state.show_underground_tunnels and not toolbar.view_visibility_checks.tunnels.button_pressed)
+	main.menus.call("set_underground_tunnels_visible", true)
 	# Recall removes only emergency records and supports exact Undo.
 	var dispatched := DispatchCommand.apply(city, 2, 2, Vector2i(85, 85))
 	assert(dispatched.ok)

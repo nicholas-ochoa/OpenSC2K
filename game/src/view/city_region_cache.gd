@@ -49,6 +49,7 @@ var _visibility: Dictionary
 var _show_water_mains := true
 var _show_pipes := true
 var _show_subways := true
+var _show_tunnels := true
 var _prepared := false
 var _published_source: CityMapSource
 var _published_viewport := -1
@@ -98,13 +99,13 @@ static func gpu_supported(preference := "gpu") -> bool:
 func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 		new_signature: Array, new_view: int, new_mode: CityViewMode.Mode, visibility: Dictionary,
 		show_pipes: bool, show_subways: bool, dirty := Rect2i(), show_water_mains := true,
-		changed: Array[Rect2i] = [], changes_listed := false) -> void:
+		changed: Array[Rect2i] = [], changes_listed := false, show_tunnels := true) -> void:
 	if (signature == new_signature and view_size == new_view and mode == new_mode and _snapshot != null and _show_pipes == show_pipes
-			and _show_subways == show_subways and _show_water_mains == show_water_mains):
+			and _show_subways == show_subways and _show_water_mains == show_water_mains and _show_tunnels == show_tunnels):
 		return
 
 	var reset := _needs_reset(
-		city, new_view, new_mode, visibility, sprites, show_pipes, show_subways, show_water_mains
+		city, new_view, new_mode, visibility, sprites, show_pipes, show_subways, show_water_mains, show_tunnels
 	)
 
 	# no region shows the change, so the drawn snapshot still matches the city
@@ -168,6 +169,7 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	_show_water_mains = show_water_mains
 	_show_pipes = show_pipes
 	_show_subways = show_subways
+	_show_tunnels = show_tunnels
 	_prepared = mode == CityViewMode.Mode.UNDERGROUND
 
 
@@ -195,7 +197,7 @@ func _region_keys(rects: Array[Rect2i]) -> Dictionary[Vector2i, bool]:
 # visibility. other changes keep the regions and mark only the dirty ones
 func _needs_reset(
 	city: CityState, new_view: int, new_mode: CityViewMode.Mode, visibility: Dictionary,
-	sprites: Sc2SpriteArchive, show_pipes: bool, show_subways: bool, show_water_mains: bool
+	sprites: Sc2SpriteArchive, show_pipes: bool, show_subways: bool, show_water_mains: bool, show_tunnels: bool
 ) -> bool:
 	if _snapshot == null:
 		return true
@@ -212,6 +214,7 @@ func _needs_reset(
 		or _show_pipes != show_pipes
 		or _show_subways != show_subways
 		or _show_water_mains != show_water_mains
+		or _show_tunnels != show_tunnels
 	)
 
 
@@ -327,7 +330,7 @@ func tick() -> bool:
 			_task = CityRenderTask.new()
 			var bounds := Rect2i(key * region_edge, Vector2i(region_edge, region_edge))
 			var error := _task.start(_render.bind(_snapshot, _palette, _sprites, bounds, view_size, mode, _visibility, _prepared,
-				_show_pipes, _show_subways, _show_water_mains, _cpu_context, _job_generation))
+				_show_pipes, _show_subways, _show_water_mains, _cpu_context, _job_generation, _show_tunnels))
 
 			if error != OK:
 				_task = null
@@ -638,11 +641,11 @@ func close() -> void:
 
 static func _render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, bounds: Rect2i, view: int,
 		render_mode: CityViewMode.Mode, visibility: Dictionary, prepared: bool, pipes: bool, subways: bool,
-		water_mains: bool, context: CityGpuBuildContext, revision: int) -> CityRegionResult:
+		water_mains: bool, context: CityGpuBuildContext, revision: int, tunnels := true) -> CityRegionResult:
 	var started := Time.get_ticks_usec()
 	var display := city if prepared else CityViewFilter.surface_copy(city, visibility)
 	var result := CityRegionRenderer.render(display, palette, sprites, bounds, view, render_mode, pipes, subways, water_mains,
-		context, revision)
+		context, revision, tunnels)
 	result.display_city = display
 	result.usec = Time.get_ticks_usec() - started
 

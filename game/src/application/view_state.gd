@@ -15,6 +15,7 @@ var show_vehicles := true
 var show_underground_water_mains := true
 var show_underground_pipes := true
 var show_underground_subways := true
+var show_underground_tunnels := true
 # keyboard camera motion
 var camera_tap := Vector2.ZERO
 var camera_motion := preload("res://src/view/city_camera_motion.gd").new()

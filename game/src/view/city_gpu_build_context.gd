@@ -34,8 +34,8 @@ func cached_tile_count() -> int:
 # gdstyle:ignore=quality/max-parameters
 func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 		bounds: Rect2i, view: int, mode: CityViewMode.Mode, pipes: bool, subways: bool,
-		revision: int, uploaded_revision: int, copy_atlas: bool, water_mains: bool) -> CityGpuRegionResult:
-	var failure := prepare(city, palette, sprites, view, mode, pipes, subways, water_mains, revision)
+		revision: int, uploaded_revision: int, copy_atlas: bool, water_mains: bool, tunnels := true) -> CityGpuRegionResult:
+	var failure := prepare(city, palette, sprites, view, mode, pipes, subways, water_mains, revision, true, false, 0, tunnels)
 
 	if not failure.is_empty():
 		return CityGpuRegionResult.failed(failure)
@@ -82,7 +82,7 @@ func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 # gdstyle:ignore=quality/max-parameters
 func prepare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, view: int,
 		mode := CityViewMode.Mode.CITY, pipes := true, subways := true, water_mains := true, revision := 0,
-		pack_atlas := true, special_overlays := false, animation_phase := 0) -> String:
+		pack_atlas := true, special_overlays := false, animation_phase := 0, tunnels := true) -> String:
 	if not error.is_empty():
 		return error
 
@@ -90,7 +90,7 @@ func prepare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, vi
 		return "invalid native region assets"
 
 	var layout := [city.map_size, city.visible_altitude_levels, city.compass_rotation(),
-		view, mode, pipes, subways, water_mains, palette, sprites, pack_atlas, special_overlays, animation_phase]
+		view, mode, pipes, subways, water_mains, palette, sprites, pack_atlas, special_overlays, animation_phase, tunnels]
 	var configuration := CityIsometricRenderer.view_configuration(view)
 
 	if configuration == null:
@@ -105,7 +105,7 @@ func prepare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, vi
 
 		var request := _snapshot(city)
 		request.merge({"view": view, "underground_mode": int(mode == CityViewMode.Mode.UNDERGROUND),
-			"pipes": int(pipes), "subways": int(subways), "mains": int(water_mains),
+			"pipes": int(pipes), "subways": int(subways), "mains": int(water_mains), "tunnels": int(tunnels),
 			"redraw_ground": int(sprites.redraw_small_highway_ground), "atlas_edge": atlas_edge,
 			"atlas": int(pack_atlas), "special_overlays": int(special_overlays), "animation_phase": animation_phase,
 			"shadow_colors": shadow_colors(palette)})

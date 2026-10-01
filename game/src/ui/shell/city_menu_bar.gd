@@ -39,6 +39,7 @@ const MENU_VIEW_WATER_MAINS := 0x8108
 const MENU_VIEW_VEHICLES := 0x8109
 const MENU_VIEW_DATA_SEPARATOR := 0x810a
 const MENU_VIEW_SUBWAYS := 0x810b
+const MENU_VIEW_TUNNELS := 0x810c
 const MENU_SCURK_PLACE_PRINT := 0x8200
 const DISASTER_ITEMS := [
 	["Fire", 1], ["Flood", 2], ["Riot", 3], ["Toxic Spill", 4],
@@ -63,6 +64,7 @@ const ACTION_ITEMS: Dictionary[String, Array] = {
 	"view_show_zones": ["view", MENU_VIEW_ZONES], "view_show_signs": ["view", MENU_VIEW_SIGNS],
 	"view_show_pipes": ["view", MENU_VIEW_PIPES], "view_show_water_mains": ["view", MENU_VIEW_WATER_MAINS],
 	"view_show_vehicles": ["view", MENU_VIEW_VEHICLES], "view_show_subways": ["view", MENU_VIEW_SUBWAYS],
+	"view_show_tunnels": ["view", MENU_VIEW_TUNNELS],
 	"window_budget": ["windows", 0], "window_ordinances": ["windows", 1], "window_population": ["windows", 2],
 	"window_industry": ["windows", 3], "window_graphs": ["windows", 4], "window_neighbors": ["windows", 5],
 	"window_map": ["windows", 6], "window_debug": ["windows", 7], "window_scenario_goals": ["windows", MENU_SCENARIO_GOALS],

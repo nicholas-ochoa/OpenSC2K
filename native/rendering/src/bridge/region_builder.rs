@@ -94,6 +94,7 @@ impl NativeCityRegionBuilder {
                 underground: int(&request, "underground_mode", 0) != 0,
                 pipes: int(&request, "pipes", 1) != 0,
                 subways: int(&request, "subways", 1) != 0,
+                tunnels: int(&request, "tunnels", 1) != 0,
                 mains: int(&request, "mains", 1) != 0,
                 redraw_ground: int(&request, "redraw_ground", 0) != 0,
                 specials: int(&request, "special_overlays", 0) != 0,

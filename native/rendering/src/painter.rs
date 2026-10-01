@@ -30,6 +30,16 @@ const WATERED_TERRAIN: i32 = 0x1d3;
 /// A one-level tunnel draws the tunnel sprite of its terrain shape.
 const TUNNEL_SPRITES: i32 = 62;
 const POWER_MARKER_SPRITE: i32 = 386;
+
+/// The underground layers that a tile paints.
+#[derive(Clone, Copy)]
+struct UndergroundLayers {
+    pipes: bool,
+    subways: bool,
+    mains: bool,
+    tunnels: bool,
+}
+
 const TRAFFIC_SPRITES: i32 = 399;
 
 /// The small artwork has no traffic variants above this one.
@@ -136,14 +146,22 @@ impl Builder {
         let mut draws = Vec::new();
 
         if c.underground || !self.city.visible(i) {
-            self.paint_underground(
-                &mut draws,
-                x,
-                y,
-                if c.underground { c.pipes } else { false },
-                if c.underground { c.subways } else { true },
-                if c.underground { c.mains } else { true },
-            )?;
+            let layers = if c.underground {
+                UndergroundLayers {
+                    pipes: c.pipes,
+                    subways: c.subways,
+                    mains: c.mains,
+                    tunnels: c.tunnels,
+                }
+            } else {
+                UndergroundLayers {
+                    pipes: false,
+                    subways: true,
+                    mains: true,
+                    tunnels: true,
+                }
+            };
+            self.paint_underground(&mut draws, x, y, layers)?;
 
             return Ok(draws);
         }
@@ -353,7 +371,13 @@ impl Builder {
         Some((self.config.base() + TRAFFIC_SPRITES + variant, flip))
     }
 
-    fn paint_underground(&mut self, draws: &mut Vec<Draw>, x: i32, y: i32, pipes: bool, subways: bool, mains: bool) -> Result<(), String> {
+    fn paint_underground(&mut self, draws: &mut Vec<Draw>, x: i32, y: i32, layers: UndergroundLayers) -> Result<(), String> {
+        let UndergroundLayers {
+            pipes,
+            subways,
+            mains,
+            tunnels,
+        } = layers;
         let c = self.config;
         let i = self.city.index(x, y);
         let visible = self.city.visible(i);
@@ -364,7 +388,7 @@ impl Builder {
         let top = baseline - self.sprites.images[&key].h;
         let levels = (self.city.altitude[i] >> altitude::TUNNEL_SHIFT) & altitude::LEVEL_MASK;
 
-        if levels > 0 && (self.city.visible >= 32 || self.city.land(i) - (levels - 1).max(0) < self.city.visible) {
+        if tunnels && levels > 0 && (self.city.visible >= 32 || self.city.land(i) - (levels - 1).max(0) < self.city.visible) {
             let sprite = c.base()
                 + if levels == 1 {
                     TUNNEL_SPRITES + i32::from(self.city.terrain[i])

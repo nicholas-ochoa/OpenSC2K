@@ -21,7 +21,8 @@ static func create_image(
 	show_pipes := true,
 	show_subways := true, show_water_mains := true,
 	transparent_background := false,
-	progress := Callable()
+	progress := Callable(),
+	show_tunnels := true
 ) -> AssetImageResult:
 	var map_edge: int = city.map_size if city != null else 128
 
@@ -39,7 +40,7 @@ static func create_image(
 
 	var context := CityGpuBuildContext.new()
 	var failure := context.prepare(city, palette, sprites, view_size, CityViewMode.Mode.UNDERGROUND, show_pipes, show_subways,
-		show_water_mains, 0, false)
+		show_water_mains, 0, false, false, 0, show_tunnels)
 
 	if not failure.is_empty():
 		return AssetImageResult.failure(failure)
@@ -96,7 +97,8 @@ static func validate_assets(
 	return errors
 
 
-static func visual_signature(city: CityState, view_size: int, show_pipes := true, show_subways := true, show_water_mains := true) -> Array:
+static func visual_signature(city: CityState, view_size: int, show_pipes := true, show_subways := true, show_water_mains := true,
+		show_tunnels := true) -> Array:
 	if city == null or not city.is_valid():
 		return []
 
@@ -110,6 +112,7 @@ static func visual_signature(city: CityState, view_size: int, show_pipes := true
 		show_pipes,
 		show_subways,
 		show_water_mains,
+		show_tunnels,
 		city.compass_rotation(),
 		city.chunk_revision("ALTM"),
 		city.chunk_revision("XTER"),

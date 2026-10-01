@@ -53,6 +53,7 @@ func build_interface(original_assets: OriginalGameAssets) -> void:
 		app.menus.set_underground_pipes_visible
 	)
 	app.city_toolbar.underground_subways_visibility_requested.connect(app.menus.set_underground_subways_visible)
+	app.city_toolbar.underground_tunnels_visibility_requested.connect(app.menus.set_underground_tunnels_visible)
 	app.rotate_counter_clockwise_button = app.city_toolbar.rotate_counter_clockwise_button
 	app.rotate_clockwise_button = app.city_toolbar.rotate_clockwise_button
 	app.zoom_out_button = app.city_toolbar.zoom_out_button

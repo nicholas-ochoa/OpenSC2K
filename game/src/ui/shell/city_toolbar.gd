@@ -19,6 +19,7 @@ signal surface_visibility_requested(visible: bool, layer: String)
 signal underground_water_mains_visibility_requested(visible: bool)
 signal underground_pipes_visibility_requested(visible: bool)
 signal underground_subways_visibility_requested(visible: bool)
+signal underground_tunnels_visibility_requested(visible: bool)
 
 const LANDSCAPE_TOOL_ORDER := [
 	Vector2i(
@@ -132,6 +133,7 @@ func _ready() -> void:
 		"water": %WaterVisible, "trees": %TreesVisible,
 		"signs": %SignsVisible, "vehicles": %VehiclesVisible,
 		"water_mains": %WaterMainsVisible, "pipes": %PipesVisible, "subways": %SubwaysVisible,
+		"tunnels": %TunnelsVisible,
 	}
 
 	hold_menu = HoldMenu.new()
@@ -186,6 +188,7 @@ func _ready() -> void:
 	view_visibility_checks.water_mains.toggled.connect(underground_water_mains_visibility_requested.emit)
 	view_visibility_checks.pipes.toggled.connect(underground_pipes_visibility_requested.emit)
 	view_visibility_checks.subways.toggled.connect(underground_subways_visibility_requested.emit)
+	view_visibility_checks.tunnels.toggled.connect(underground_tunnels_visibility_requested.emit)
 	_watch_buttons(self)
 
 
@@ -405,7 +408,7 @@ func set_landscape_editor(enabled: bool) -> void:
 	data_view_input.visible = not enabled
 	%LandscapeSpacer.visible = enabled
 	for key in view_visibility_checks:
-		view_visibility_checks[key].visible = key in ["water", "trees"] if enabled else key not in ["water_mains", "pipes", "subways"]
+		view_visibility_checks[key].visible = key in ["water", "trees"] if enabled else key not in ["water_mains", "pipes", "subways", "tunnels"]
 
 
 func _watch_buttons(node: Node) -> void:

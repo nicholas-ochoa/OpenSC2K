@@ -127,7 +127,8 @@ func _render_static_view(current_signature: Array, view_size: int, sprite_archiv
 	if app.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND:
 		indexed = UndergroundView.create_image(
 			display_city, app.asset_state.palette_index_encoding, sprite_archive, view_size, true,
-			app.view_state.show_underground_pipes, app.view_state.show_underground_subways, app.view_state.show_underground_water_mains
+			app.view_state.show_underground_pipes, app.view_state.show_underground_subways, app.view_state.show_underground_water_mains,
+			false, Callable(), app.view_state.show_underground_tunnels
 		)
 	else:
 		indexed = IsometricRenderer.create_image(
@@ -246,7 +247,8 @@ func refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 
 	caches.region_cache.configure(app.document_state.city, app.asset_state.palette_index_encoding, sprites, signature, view_size,
 		app.view_state.overlay_mode, app.view_state.surface_visibility, app.view_state.show_underground_pipes,
-		app.view_state.show_underground_subways, dirty, app.view_state.show_underground_water_mains, changed, changes_listed)
+		app.view_state.show_underground_subways, dirty, app.view_state.show_underground_water_mains, changed, changes_listed,
+		app.view_state.show_underground_tunnels)
 
 	if app.view_state.overlay_mode == CityViewMode.Mode.CITY:
 		var labels := app.document_state.city.document.find_chunk("XLAB")

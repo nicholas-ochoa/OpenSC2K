@@ -104,7 +104,7 @@ static func _region(request: Request, display: CityState, key: Vector2i, context
 	var bounds := Rect2i(key * int(request.edge), Vector2i.ONE * int(request.edge))
 	var result := CityGpuRegionRenderer.render(display, request.palette, request.sprites,
 		bounds, request.view, request.mode, request.pipes, request.subways,
-		context, request.generation, uploaded_revision, false, request.water_mains)
+		context, request.generation, uploaded_revision, false, request.water_mains, request.tunnels)
 
 	if not result.ok:
 		return result
@@ -132,6 +132,7 @@ class Request extends RefCounted:
 	var pipes := true
 	var subways := true
 	var water_mains := true
+	var tunnels := true
 	var generation := 0
 	var budget_usec := 0
 	var signs: Array[CitySignRequest] = []

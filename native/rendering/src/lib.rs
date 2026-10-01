@@ -224,6 +224,7 @@ pub struct Config {
     pub underground: bool,
     pub pipes: bool,
     pub subways: bool,
+    pub tunnels: bool,
     pub mains: bool,
     pub redraw_ground: bool,
     /// Draw the animated fire, flood and radiation markers as tile sprites.

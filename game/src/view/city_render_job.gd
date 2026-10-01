@@ -17,6 +17,7 @@ var surface_visibility: Dictionary = ViewFilter.DEFAULT_VISIBILITY.duplicate()
 var show_underground_water_mains := true
 var show_underground_pipes := true
 var show_underground_subways := true
+var show_underground_tunnels := true
 
 
 func run() -> Result:
@@ -25,7 +26,8 @@ func run() -> Result:
 	if render_mode == CityViewMode.Mode.UNDERGROUND:
 		indexed = UndergroundView.create_image(
 			city_snapshot, index_palette, sprites, view_size, false,
-			show_underground_pipes, show_underground_subways, show_underground_water_mains
+			show_underground_pipes, show_underground_subways, show_underground_water_mains, false, Callable(),
+			show_underground_tunnels
 		)
 	else:
 		city_snapshot = ViewFilter.surface_copy(city_snapshot, surface_visibility)

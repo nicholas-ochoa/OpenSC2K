@@ -328,6 +328,7 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 		request.water_mains = cache._show_water_mains
 		request.pipes = cache._show_pipes
 		request.subways = cache._show_subways
+		request.tunnels = cache._show_tunnels
 		request.generation = cache.generation
 		request.signs = cache.sign_requests
 		var error: Error = worker.task.start(CityGpuRegionBatch.stream.bind(request, worker, worker.atlas_revision))

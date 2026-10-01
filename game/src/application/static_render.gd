@@ -384,6 +384,7 @@ func request_static_render(
 	state.job.render_mode = render_mode
 	state.job.surface_visibility = app.view_state.surface_visibility.duplicate()
 	state.job.show_underground_subways = app.view_state.show_underground_subways
+	state.job.show_underground_tunnels = app.view_state.show_underground_tunnels
 	state.job.show_underground_water_mains = app.view_state.show_underground_water_mains
 	state.job.show_underground_pipes = app.view_state.show_underground_pipes
 	state.task = CityRenderTask.new()
@@ -485,7 +486,7 @@ func static_signature_for_mode(mode: CityViewMode.Mode, view_size: int) -> Array
 	if mode == CityViewMode.Mode.UNDERGROUND:
 		return UndergroundView.visual_signature(
 			app.document_state.city, view_size, app.view_state.show_underground_pipes, app.view_state.show_underground_subways,
-					app.view_state.show_underground_water_mains
+					app.view_state.show_underground_water_mains, app.view_state.show_underground_tunnels
 		)
 
 	var result := IsometricRenderer.static_visual_signature(app.document_state.city, view_size)

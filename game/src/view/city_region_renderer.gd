@@ -11,7 +11,7 @@ const Renderer = preload("res://src/view/city_isometric_renderer.gd")
 static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 		bounds: Rect2i, view_size := Renderer.VIEW_LARGE, mode := CityViewMode.Mode.CITY,
 		show_pipes := true, show_subways := true, show_water_mains := true,
-		context: CityGpuBuildContext = null, revision := 0) -> CityRegionResult:
+		context: CityGpuBuildContext = null, revision := 0, show_tunnels := true) -> CityRegionResult:
 	if city == null or not city.is_valid() or palette == null or not palette.is_valid() or sprites == null or not sprites.is_valid():
 		return CityRegionResult.rejected("invalid region assets")
 
@@ -29,7 +29,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 		context = CityGpuBuildContext.new()
 
 	var failure := context.prepare(city, palette, sprites, view_size, mode, show_pipes, show_subways, show_water_mains, revision,
-		false)
+		false, false, 0, show_tunnels)
 
 	if not failure.is_empty():
 		return CityRegionResult.rejected(failure)
