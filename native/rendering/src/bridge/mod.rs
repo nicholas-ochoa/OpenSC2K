@@ -4,6 +4,7 @@
 mod changes;
 mod compositor;
 mod data_mesh;
+mod debug_tiles;
 mod minimap;
 mod region_builder;
 mod region_draws;

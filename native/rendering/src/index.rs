@@ -112,6 +112,21 @@ impl RegionDraws {
         found
     }
 
+    /// Rectangles, multiplied by `scale`, of the draws that intersect `bounds`,
+    /// in painter order. At most `limit` rectangles return.
+    pub fn outlines(&self, bounds: Rect, scale: i32, occluders: bool, limit: usize) -> Vec<Rect> {
+        let scale = scale.max(1);
+
+        self.candidates(bounds, scale, occluders)
+            .into_iter()
+            .take(limit)
+            .map(|at| {
+                let r = self.draws[at as usize].rect;
+                Rect::new(r.x * scale, r.y * scale, r.w * scale, r.h * scale)
+            })
+            .collect()
+    }
+
     /// Native rectangles of the foreground commands that differ from `before`.
     pub fn changed(&self, before: &Self) -> Vec<Rect> {
         let mut previous: HashMap<i64, &Draw> = before.draws.iter().filter(|d| d.depth >= 0).map(|d| (d.order, d)).collect();

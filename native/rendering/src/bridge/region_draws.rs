@@ -22,6 +22,34 @@ impl NativeCityRegionDraws {
         found.iter().map(|&at| at as i32).collect()
     }
 
+    /// Line segments of the draw rectangles that intersect `bounds`, scaled by
+    /// `scale`, as point pairs for `draw_multiline`. `occluders` keeps only
+    /// foreground commands. At most `limit` rectangles return.
+    #[func]
+    fn outline_segments(&self, bounds: Rect2i, scale: i64, occluders: bool, limit: i64) -> PackedVector2Array {
+        let bounds = Rect::new(bounds.position.x, bounds.position.y, bounds.size.x, bounds.size.y);
+        let rects = self.draws.outlines(bounds, scale as i32, occluders, limit.max(0) as usize);
+        let mut segments = PackedVector2Array::new();
+
+        for rect in rects {
+            let (left, top) = (rect.x as f32, rect.y as f32);
+            let (right, bottom) = ((rect.x + rect.w) as f32, (rect.y + rect.h) as f32);
+            let corners = [
+                Vector2::new(left, top),
+                Vector2::new(right, top),
+                Vector2::new(right, bottom),
+                Vector2::new(left, bottom),
+            ];
+
+            for side in 0..4 {
+                segments.push(corners[side]);
+                segments.push(corners[(side + 1) % 4]);
+            }
+        }
+
+        segments
+    }
+
     /// Unscaled rectangles of the foreground commands that differ from `before`.
     #[func]
     fn changed_foreground(&self, before: Gd<NativeCityRegionDraws>) -> Array<Rect2i> {

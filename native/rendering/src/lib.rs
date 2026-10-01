@@ -5,6 +5,7 @@ mod bridge;
 mod changes;
 mod compositing;
 mod data_view;
+mod debug_view;
 mod ids;
 mod index;
 mod minimap;

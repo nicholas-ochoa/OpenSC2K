@@ -34,8 +34,8 @@ const TOP: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const RIGHT_WALL: [f32; 4] = [1.0, 1.0, 0.78, 1.0];
 const LEFT_WALL: [f32; 4] = [1.0, 1.0, 0.65, 1.0];
 
-type Point = [f32; 2];
-type Quad = [Point; 4];
+pub(crate) type Point = [f32; 2];
+pub(crate) type Quad = [Point; 4];
 
 /// The display fields of one city. `altitude` holds the ALTM words.
 pub struct DataCity<'a> {
@@ -69,7 +69,7 @@ impl DataCity<'_> {
         self.flags[i] & WATER_FLAG != 0
     }
 
-    fn visible(&self, i: usize, height_view: bool) -> bool {
+    pub(crate) fn visible(&self, i: usize, height_view: bool) -> bool {
         if height_view {
             return self.land(i) < self.visible;
         }
@@ -97,7 +97,7 @@ impl DataCity<'_> {
     }
 
     /// IsometricGeometry.terrain_surface_polygon.
-    fn surface_polygon(&self, x: usize, y: usize, land_surface: bool) -> Quad {
+    pub(crate) fn surface_polygon(&self, x: usize, y: usize, land_surface: bool) -> Quad {
         let mut polygon = self.tile_polygon(x, y, land_surface);
         let i = x * self.edge + y;
         let terrain = self.terrain[i];
