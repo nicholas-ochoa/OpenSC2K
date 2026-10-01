@@ -8,6 +8,18 @@ const SAILBOAT_TYPE := 9
 const LARGE_SPRITE_BASE := 1000
 const LARGE_SAILBOAT_NORTHEAST := 1380
 const LARGE_VIEW := Renderer.VIEW_LARGE
+# ALTM bit 15 sits above the five tunnel level bits. Its use is not known
+const ALTITUDE_HIGH_BIT := 0x8000
+const MARKER_NAMES := {
+	Sc2OverlayLayout.CONNECTION_MARKER: "Connection marker", DisasterMapConstants.TOXIC_OVERLAY: "Toxic spill marker",
+	DisasterMapConstants.FLOOD_OVERLAY: "Flood marker", DisasterMapConstants.RIOT_OVERLAY_FORWARD: "Riot marker",
+	DisasterMapConstants.RIOT_OVERLAY_REVERSE: "Riot marker", DisasterMapConstants.FIRE_OVERLAY: "Fire marker",
+}
+const TERRAIN_GROUPS := ["Land", "Deep water", "Shore", "Surface water", "Channel"]
+# catalog bounds and masks share values with the tile names
+const TERRAIN_NAME_SUFFIXES := ["_FIRST", "_LAST", "_MASK", "_SIZE"]
+
+static var _terrain_names: Dictionary[int, String] = {}
 
 
 static func sprite_id(city: CityState, info: QueryResult) -> int:
@@ -96,9 +108,11 @@ static func advanced_rows(info: QueryResult) -> Array[PackedStringArray]:
 
 	for entry in [["Tile ID", "tile_id", 2], ["Sprite ID", "sprite_id", 4],
 		["ALTM", "altitude_raw", 4], ["XVAL", "land_value_raw", 2],
-		["XCRM", "crime_raw", 2], ["XPLT", "pollution_raw", 2], ["XTXT", "overlay_id", 2]]:
+		["XCRM", "crime_raw", 2], ["XPLT", "pollution_raw", 2]]:
 		rows.append(_number_row(entry[0], int(info.get(entry[1])), "", entry[2]))
 
+	rows.append(_number_row("XTXT", int(info.overlay_id), overlay_name(int(info.overlay_id))))
+	rows.append(_number_row("XTER", int(info.terrain_id), terrain_name(int(info.terrain_id))))
 	rows.append(_number_row("X", point.x))
 	rows.append(_number_row("Y", point.y))
 	var altitude := int(info.altitude_raw)
@@ -107,6 +121,8 @@ static func advanced_rows(info: QueryResult) -> Array[PackedStringArray]:
 	rows.append(_number_row("Water Z", (altitude >> Sc2AltitudeLayout.WATER_SHIFT) & Sc2AltitudeLayout.LEVEL_MASK))
 	rows.append(_number_row("Tunnel", tunnel_levels,
 		"None" if tunnel_levels == 0 else "%d %s below" % [tunnel_levels, "level" if tunnel_levels == 1 else "levels"]))
+	rows.append(PackedStringArray(["ALTM bit 15", str(int((altitude & ALTITUDE_HIGH_BIT) != 0)),
+		"Set" if altitude & ALTITUDE_HIGH_BIT else "Clear", ""]))
 	rows.append(_number_row("XZON", int(info.zone_raw), str(info.corner_name)))
 	rows.append(_number_row("Zone", int(info.zone_id), str(info.zone_name)))
 	rows.append(_number_row("XBIT", int(info.flags_raw), " ".join(info.flag_names)))
@@ -127,6 +143,43 @@ static func advanced_rows(info: QueryResult) -> Array[PackedStringArray]:
 				rows.append(_number_row("XMIC data %d" % index, microsim.statistic(index), "", 2 if index == 0 else 4))
 
 	return rows
+
+
+# the kind of the XTXT value on top: a moving object, a marker, a facility or a sign
+static func overlay_name(id: int) -> String:
+	if id == 0:
+		return "None"
+
+	if MARKER_NAMES.has(id):
+		return MARKER_NAMES[id]
+
+	if OverlayData.is_thing(id):
+		return "Moving object %d" % OverlayData.thing_record(id)
+
+	if OverlayData.is_facility(id):
+		return "Facility %d" % OverlayData.facility_record(id)
+
+	if OverlayData.is_sign(id):
+		return "Sign"
+
+	return "Unknown"
+
+
+# the group and shape of an XTER ID, from the TerrainTileIds constant names
+static func terrain_name(id: int) -> String:
+	if _terrain_names.is_empty():
+		var constants := (TerrainTileIds as Script).get_script_constant_map()
+
+		for constant: String in constants:
+			var value := int(constants[constant])
+
+			if not _terrain_names.has(value) and not TERRAIN_NAME_SUFFIXES.any(func(suffix: String) -> bool: return constant.ends_with(suffix)):
+				_terrain_names[value] = constant
+
+	var group := (id & TerrainTileIds.GROUP_MASK) >> 4
+	var group_name: String = TERRAIN_GROUPS[group] if group < TERRAIN_GROUPS.size() else "Unknown group"
+
+	return "%s, shape %d (%s)" % [group_name, id & TerrainTileIds.SHAPE_MASK, _terrain_names.get(id, "unknown")]
 
 
 static func thing_rows(info: QueryResult) -> Array[PackedStringArray]:
