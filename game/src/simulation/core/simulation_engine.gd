@@ -38,8 +38,9 @@ var midi_playback_active := false
 # runtime only; never saved. false while the player hides the vehicle layer:
 # airplanes and helicopters then leave instead of crashing, as with no disasters
 var vehicle_crashes_enabled := true
-# false keeps the original arcology launch, which demolishes every launch
-# arcology in the annual update. true demolishes them in timed batches
+# true demolishes the launch arcologies in timed batches for every city
+# format. false keeps the original launch, which demolishes them all in the
+# annual update
 var stage_arcology_launch := true
 # true from a staged launch until its last batch. the days wait
 var arcology_launch_active := false

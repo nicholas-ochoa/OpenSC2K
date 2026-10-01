@@ -128,9 +128,6 @@ func activate_document(
 	# SC2 and SCN cities keep the original fire timing
 	app.simulation_state.speed_controller.original_compatibility = OriginalCompatibility.uses_original_format(
 		document_state.current_document)
-	# SC2 and SCN cities also keep the original instant arcology launch
-	app.simulation_state.simulation_engine.stage_arcology_launch = (
-		not app.simulation_state.speed_controller.original_compatibility)
 
 	if saved_state:
 		var restore_error := Sc2xCheckpoint.restore(app.simulation_state.speed_controller, document.sc2x_metadata)
