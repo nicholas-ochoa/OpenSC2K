@@ -352,12 +352,13 @@ func _run_quick(reference_root: String) -> void:
 	assert(not saved.is_empty() and saved == main.document_state.current_document.serialize().data)
 	var saved_document := Sc2File.load_path(output)
 	assert(saved_document.is_valid() and saved_document.serialize().data == saved, "File reload preserves all saved bytes")
-	# Activation scans utilities. An empty city has enough treatment capacity for zero consumers.
-	assert(saved_document.set_misc_u32(Sc2MiscLayout.TREATMENT_SUFFICIENT, 1))
+	# An SC2X save keeps the engine state with its load-scan results, so the load
+	# restores it and does not scan the utilities again
+	assert(Sc2xCheckpoint.has_saved_state(saved_document.sc2x_metadata))
 	main.city_files._load_city_unchecked(output)
 	main.frame.select_speed(GameSpeed.Speed.PAUSED)
 	assert(main.document_state.current_document.serialize().data == saved_document.serialize().data,
-		"Activation only refreshes treatment sufficiency in the empty city")
+		"Activation keeps the saved content of a city with saved engine state")
 	assert(not main.city_files._city_has_unsaved_changes(), "Load-time utility scans do not mark the city as edited")
 	assert(FileAccess.get_file_as_bytes(output) == saved, "Activation does not write to the saved file")
 	assert(FileAccess.get_sha256(source) == source_hash)
