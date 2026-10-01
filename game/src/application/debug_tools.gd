@@ -124,7 +124,7 @@ func _apply_view_change() -> void:
 	render_views.mark_dirty()
 
 	if not state.region_repaints:
-		view.overlay.flashes.clear()
+		view.overlay.clear_flashes()
 
 	process(0.0)
 	app.map_view.queue_redraw()
@@ -209,7 +209,10 @@ func _inspector_text(point: Vector2i) -> String:
 	if state.tile_layer != Layer.NONE:
 		extra.append(["Debug layer", "%s: %s" % [DebugTileLayers.title(state.tile_layer), tile_views.describe(point)]])
 
-	return TileInspection.text(city, point, extra)
+	# a pinned tile also shows each field of its moving object
+	var pinned := app.map_view.debug_view.pinned_tile == point
+
+	return TileInspection.text(city, point, extra, pinned)
 
 
 func process(delta: float) -> void:

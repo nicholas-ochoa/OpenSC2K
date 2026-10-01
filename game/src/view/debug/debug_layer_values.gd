@@ -14,7 +14,7 @@ const Layer = DebugTileLayers.Layer
 # the arrays that a layer reads. packed arrays share their data until the city
 # writes them, so a worker thread can build from this copy while the game runs
 static func source(city: CityState, layer: Layer) -> Dictionary:
-	var result := {"edge": city.map_size, "flags": city.tile_flags}
+	var result := { "edge": city.map_size, "flags": city.tile_flags }
 
 	match layer:
 		Layer.ZONE_TYPE, Layer.UNUSUAL_VALUES:

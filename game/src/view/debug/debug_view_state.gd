@@ -3,7 +3,11 @@ extends RefCounted
 ## The debug views that the Debug menu selects. Display state only: the city
 ## and its save file do not keep it.
 
-enum ChangeBaseline { LOAD, SNAPSHOT, PREVIOUS_DAY }
+enum ChangeBaseline {
+	LOAD,
+	SNAPSHOT,
+	PREVIOUS_DAY,
+}
 
 var tile_layer := DebugTileLayers.Layer.NONE
 var tile_values := false

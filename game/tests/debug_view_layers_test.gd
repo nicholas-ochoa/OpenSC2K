@@ -88,13 +88,13 @@ func _values(city: CityState) -> void:
 
 	var words := city.altitude_words
 	words[0] = 5 | (7 << Sc2AltitudeLayout.WATER_SHIFT) | (3 << Sc2AltitudeLayout.TUNNEL_SHIFT)
-	var source := {"edge": 16, "flags": city.tile_flags, "altitude": words}
+	var source := { "edge": 16, "flags": city.tile_flags, "altitude": words }
 	assert(DebugLayerValues.build(source, Layer.LAND_ALTITUDE).values[0] == 5)
 	assert(DebugLayerValues.build(source, Layer.WATER_ALTITUDE).values[0] == 7)
 	assert(DebugLayerValues.build(source, Layer.TUNNEL_LEVELS).values[0] == 3)
 
 	# a missing input gives a clear layer of map size, not an error
-	var missing := DebugLayerValues.build({"edge": 16, "flags": PackedByteArray()}, Layer.POWERED)
+	var missing := DebugLayerValues.build({ "edge": 16, "flags": PackedByteArray() }, Layer.POWERED)
 	assert(missing.edge == 16 and missing.values.count(0) == 256)
 	city.set_building_id(5, 6, 0)
 
@@ -114,7 +114,7 @@ func _networks() -> void:
 
 	flags[10] = Sc2TileFlags.POWERABLE | Sc2TileFlags.POWERED
 	flags[14] = Sc2TileFlags.POWERABLE
-	var result := DebugLayerValues.build({"edge": 4, "flags": flags}, Layer.POWER_GRIDS)
+	var result := DebugLayerValues.build({ "edge": 4, "flags": flags }, Layer.POWER_GRIDS)
 	assert(result.summary == "2 networks, 1 supplied, largest 3 tiles", result.summary)
 	assert(result.values[0] == result.values[2] and result.values[0] < NativeDebugTiles.SUPPLIED_BASE)
 	assert(result.values[10] == result.values[14] and result.values[10] > NativeDebugTiles.SUPPLIED_BASE)
@@ -180,6 +180,21 @@ func _inspection(city: CityState) -> void:
 	assert(by_caption.Building == "0x2B (43)")
 	assert(by_caption.XBIT.ends_with("POWERED"))
 	assert(TileInspection.rows(city, Vector2i(-1, 0)).is_empty())
+
+	# a pinned tile with a moving object lists its decoded fields
+	var things := city.document.find_chunk("XTHG")
+	var payload := things.decoded_payload.duplicate()
+	payload[CityState.THING_RECORD_SIZE + Sc2ThingLayout.Field.TYPE] = Sc2ThingLayout.Type.HELICOPTER
+	ThingData.write(payload, CityState.THING_RECORD_SIZE + Sc2ThingLayout.Field.X, 7)
+	ThingData.write(payload, CityState.THING_RECORD_SIZE + Sc2ThingLayout.Field.Y, 8)
+	things.set_decoded_payload(payload)
+	city.set_text_overlay_id(7, 8, OverlayData.thing_id(1))
+	assert(TileInspection.thing_text(city, Vector2i(7, 8)).begins_with("#1 "), TileInspection.thing_text(city, Vector2i(7, 8)))
+	var fields := TileInspection.thing_field_rows(city, Vector2i(7, 8))
+	assert(fields.size() == ThingRecord.FIELDS.size() and fields[0][0] == "  type")
+	assert(TileInspection.rows(city, Vector2i(7, 8), true).size() == TileInspection.rows(city, Vector2i(7, 8)).size() + fields.size())
+	assert(TileInspection.thing_field_rows(city, Vector2i(1, 1)).is_empty())
+	city.set_text_overlay_id(7, 8, 0)
 	assert(TileInspection.flag_names(0) == "none")
 	assert(TileInspection.text(city, Vector2i(7, 8), [["Debug layer", "value"]]).ends_with("Debug layer  value"))
 	city.set_building_id(7, 8, 0)

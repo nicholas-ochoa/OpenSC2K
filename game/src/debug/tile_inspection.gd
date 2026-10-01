@@ -8,8 +8,9 @@ const FLAG_NAMES := ["SALT", "FLIP", "WATER", "MARK", "WATERED", "PIPED", "POWER
 const DATA_CHUNKS := ["XTRF", "XPLT", "XVAL", "XCRM", "XPLC", "XFIR", "XPOP", "XROG"]
 
 
-# rows of [caption, text]. an empty list means the point is outside the map
-static func rows(city: CityState, point: Vector2i) -> Array:
+# rows of [caption, text]. an empty list means the point is outside the map.
+# `thing_fields` adds each decoded field of the moving object on the tile
+static func rows(city: CityState, point: Vector2i, thing_fields := false) -> Array:
 	var index := city.index_of(point.x, point.y) if city != null else -1
 
 	if index < 0:
@@ -37,13 +38,37 @@ static func rows(city: CityState, point: Vector2i) -> Array:
 	if not things.is_empty():
 		result.append(["Things", things])
 
+	if thing_fields:
+		result.append_array(thing_field_rows(city, point))
+
 	return result
 
 
-static func text(city: CityState, point: Vector2i, extra: Array = []) -> String:
+# the decoded fields of the moving object on the tile, as in the Moving Things tab
+static func thing_field_rows(city: CityState, point: Vector2i) -> Array:
+	var record_index := _thing_record(city, point)
+	var record := city.thing(record_index) if record_index >= 0 else null
+
+	if record == null:
+		return []
+
+	var result := []
+
+	for field in DebugObjectFields.fields(record, city):
+		var text := "%s (%s)" % [field.value, field.raw]
+
+		if not field.translation.is_empty():
+			text += "  " + field.translation
+
+		result.append(["  " + field.name, text])
+
+	return result
+
+
+static func text(city: CityState, point: Vector2i, extra: Array = [], thing_fields := false) -> String:
 	var lines := PackedStringArray()
 
-	for row in rows(city, point) + extra:
+	for row in rows(city, point, thing_fields) + extra:
 		lines.append("%-12s %s" % [row[0], row[1]])
 
 	return "\n".join(lines)
@@ -110,21 +135,27 @@ static func data_map_text(city: CityState, point: Vector2i) -> String:
 
 # the top moving object of the tile, which the overlay index names
 static func thing_text(city: CityState, point: Vector2i) -> String:
+	var record_index := _thing_record(city, point)
+
+	if record_index < 0:
+		return ""
+
+	var record := city.thing(record_index)
+
+	if record == null:
+		return "record %d (missing)" % record_index
+
+	return "#%d %s, state %d, target %d, %d" % [record_index, DebugObjectFields.type_name(record.type), record.state,
+		record.dx, record.dy]
+
+
+# the record of the top moving object of the tile, or -1
+static func _thing_record(city: CityState, point: Vector2i) -> int:
 	var index := city.index_of(point.x, point.y)
 	var overlays := city.text_overlays
 	var id := OverlayData.object(overlays, index) if OverlayData.is_layered(overlays) else OverlayData.read(overlays, index)
 
-	if not OverlayData.is_thing(id):
-		return ""
-
-	var record_index := OverlayData.thing_record(id)
-	var record := city.thing(record_index)
-
-	if record == null:
-		return "object %d (no record)" % id
-
-	return "#%d %s, state %d, target %d, %d" % [record_index, DebugObjectFields.type_name(record.type), record.state,
-		record.dx, record.dy]
+	return OverlayData.thing_record(id) if OverlayData.is_thing(id) else -1
 
 
 static func _byte(value: int) -> String:

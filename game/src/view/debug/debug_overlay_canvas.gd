@@ -39,6 +39,11 @@ func set_view_transform(scale_value: float, offset: Vector2) -> void:
 		queue_redraw()
 
 
+func clear_flashes() -> void:
+	flashes.clear()
+	flash_layer.queue_redraw()
+
+
 func add_flash(rect: Rect2) -> void:
 	flashes.append([rect, Time.get_ticks_msec()])
 
