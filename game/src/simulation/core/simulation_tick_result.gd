@@ -6,6 +6,7 @@ var error := ""
 var base_ticks := 0
 var moving_results: Array[MovingThingResult] = []
 var disaster_results: Array[DisasterMapResult] = []
+var launch_results: Array[MicrosimAnnualPhase.LaunchBatch] = []
 var day_results: Array[SimulationDayResult] = []
 var news_items: Array[NewsEvent] = []
 var effect_events: Array[EffectEvent] = []

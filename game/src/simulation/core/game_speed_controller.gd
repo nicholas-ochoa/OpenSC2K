@@ -18,11 +18,14 @@ const SPEED_NAMES: Dictionary[int, String] = {
 	Speed.AFRICAN_SWALLOW: "African Swallow",
 }
 const FIRE_TICK_MSEC := 1000.0
+# a staged arcology launch demolishes one batch each second
+const LAUNCH_BATCH_MSEC := 1000.0
 
 var engine: SimulationEngine
 var speed := Speed.PAUSED
 var accumulator_msec := 0.0
 var fire_elapsed_msec := 0.0
+var launch_elapsed_msec := 0.0
 var original_compatibility := false
 var subtick_counter := 0
 var simulation_ready := false
@@ -112,6 +115,12 @@ func advance_time(
 
 			result.moving_results.append(moving)
 			_append_moving_events(result, moving)
+			var launch_error := _run_launch_batch(result)
+
+			if not launch_error.is_empty():
+				result.error = launch_error
+
+				return result
 
 		if (
 			speed > Speed.PAUSED
@@ -258,7 +267,35 @@ func _is_day_due(counter := subtick_counter) -> bool:
 	return false
 
 
+# the days wait while a staged arcology launch demolishes its batches
+func _run_launch_batch(result: SimulationTickResult) -> String:
+	if not engine.arcology_launch_active:
+		launch_elapsed_msec = 0.0
+
+		return ""
+
+	launch_elapsed_msec += BASE_TICK_MSEC
+
+	if launch_elapsed_msec < LAUNCH_BATCH_MSEC:
+		return ""
+
+	launch_elapsed_msec = 0.0
+	var batch := engine.advance_arcology_launch()
+
+	if not batch.ok:
+		return batch.error
+
+	result.launch_results.append(batch)
+	_append_runtime_events(result, batch)
+	result.notice_ids.append_array(batch.notice_ids)
+
+	return ""
+
+
 func _run_day(result: SimulationTickResult) -> String:
+	if engine.arcology_launch_active:
+		return ""
+
 	if engine.active_disaster_type != 0:
 		if engine.active_disaster_type in [1, 12] and not original_compatibility:
 			if fire_elapsed_msec < FIRE_TICK_MSEC:

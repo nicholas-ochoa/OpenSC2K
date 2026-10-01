@@ -36,6 +36,9 @@ pub struct EngineState {
     pub pending_disaster_point: Vec2i,
     pub terminal_state: bool,
     pub traffic_news_deadline_msec: i64,
+    /// True when an arcology launch demolishes the arcologies in timed
+    /// batches after the annual update. False keeps the original launch.
+    pub stage_arcology_launch: bool,
 }
 
 impl ToValue for EngineState {
@@ -57,6 +60,7 @@ impl ToValue for EngineState {
             ("pending_disaster_point", Value::Vec2i(self.pending_disaster_point)),
             ("terminal_state", Value::Bool(self.terminal_state)),
             ("traffic_news_deadline_msec", Value::Int(self.traffic_news_deadline_msec)),
+            ("stage_arcology_launch", Value::Bool(self.stage_arcology_launch)),
         ];
 
         Value::Dict(
@@ -408,6 +412,7 @@ fn run_budget(context: &mut Context) -> PhaseOutcome {
             water_usage_percent: state.water_usage_percent,
             australian_locale: false,
             mayor_approval: state.mayor_approval,
+            stage_launch: state.stage_arcology_launch,
         };
         let mut annual_result = annual::run(context.city, &mut inputs);
 

@@ -36,6 +36,9 @@ const PHASE_KEYS: PackedStringArray = [
 # Files without it resume with a new timer.
 const FIRE_TIMER_KEY := "fire_elapsed_msec"
 const FIRE_TIMER_MAX := 1000
+# optional phase_state key: true while a staged arcology launch has batches
+# left. Files without it have no launch in progress.
+const LAUNCH_ACTIVE_KEY := "arcology_launch_active"
 const PHASE_INTEGER_KEYS: PackedStringArray = [
 	"commerce_connections", "industry_connections", "bus_passengers", "rail_passengers", "subway_passengers",
 	"mayor_approval", "pending_disaster_type", "active_disaster_type", "unsupported_disaster_type",
@@ -326,6 +329,9 @@ static func phase_state_error(state: Dictionary) -> String:
 
 		if not _is_integral(timer) or int(timer) < 0 or int(timer) > FIRE_TIMER_MAX:
 			return "metadata.json phase_state.%s is not 0 through %d" % [FIRE_TIMER_KEY, FIRE_TIMER_MAX]
+
+	if state.has(LAUNCH_ACTIVE_KEY) and not state[LAUNCH_ACTIVE_KEY] is bool:
+		return "metadata.json phase_state.%s is not true or false" % LAUNCH_ACTIVE_KEY
 
 	return ""
 

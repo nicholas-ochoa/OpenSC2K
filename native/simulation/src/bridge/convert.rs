@@ -352,6 +352,7 @@ pub fn engine_state(dictionary: &VarDictionary, key: &str) -> crate::sim::engine
         pending_disaster_point: point(&fields, "pending_disaster_point", Vec2i::ZERO),
         terminal_state: boolean(&fields, "terminal_state", false),
         traffic_news_deadline_msec: int(&fields, "traffic_news_deadline_msec", 0),
+        stage_arcology_launch: boolean(&fields, "stage_arcology_launch", false),
     }
 }
 

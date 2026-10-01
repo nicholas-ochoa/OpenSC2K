@@ -423,7 +423,9 @@ func test_annual_special_microsim_phase(reference_root: String) -> void:
 	_check(aus_random.position == 3, "The Australian Llama Dome path consumes three process random values")
 
 
-func test_arcology_launch_phase(reference_root: String) -> void:
+# a city with one hundred XMIC launch records and launch arcologies at `sites`.
+# the annual update launches them
+func _arcology_launch_fixture(reference_root: String, sites: Array[Vector2i]) -> CityModel:
 	var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 
 	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
@@ -449,17 +451,12 @@ func test_arcology_launch_phase(reference_root: String) -> void:
 		)
 
 	var city := CityModel.from_document(document)
-	var launch := Buildings.apply(
-		city, 5, 8, Vector2i(20, 20), LfsrRandom.new(1), Random.new(1)
-	)
-	_check(launch.ok and launch.site == Rect2i(19, 19, 4, 4), "Arcology launch fixture builds a launch arcology")
-	# XTXT 0xfe is a riot marker. The launch must not demolish a structure under it.
-	_check(city.set_building_id(40, 40, BuildingTileIds.TREES_1), "Arcology launch fixture plants a tree")
-	var text_overlays: PackedByteArray = document.find_chunk("XTXT").decoded_payload.duplicate()
-	text_overlays[40 * CityState.MAP_SIZE + 40] = 0xfe
 
-	# Install the marker through the city so its XTXT mirror matches the chunk.
-	_check(city.replace_text_overlays(text_overlays), "Arcology launch fixture installs a riot marker")
+	for site in sites:
+		var launch := Buildings.apply(city, 5, 8, site, LfsrRandom.new(1), Random.new(1))
+		_check(launch.ok and launch.site == Rect2i(site - Vector2i.ONE, Vector2i(4, 4)),
+			"Arcology launch fixture builds a launch arcology at %s" % site)
+
 	var microsims := _filled_bytes(CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE, 0)
 
 	for record_id in range(1, 101):
@@ -479,6 +476,19 @@ func test_arcology_launch_phase(reference_root: String) -> void:
 	for budget_id in 3:
 		_check(document.set_misc_u32(0x077c + budget_id * 0x006c + 4, 0), "Arcology launch fixture clears tax %d" % budget_id)
 
+	return city
+
+
+func test_arcology_launch_phase(reference_root: String) -> void:
+	var city := _arcology_launch_fixture(reference_root, [Vector2i(20, 20)])
+	var document := city.document
+	# XTXT 0xfe is a riot marker. The launch must not demolish a structure under it.
+	_check(city.set_building_id(40, 40, BuildingTileIds.TREES_1), "Arcology launch fixture plants a tree")
+	var text_overlays: PackedByteArray = document.find_chunk("XTXT").decoded_payload.duplicate()
+	text_overlays[40 * CityState.MAP_SIZE + 40] = 0xfe
+
+	# Install the marker through the city so its XTXT mirror matches the chunk.
+	_check(city.replace_text_overlays(text_overlays), "Arcology launch fixture installs a riot marker")
 	var lfsr_values: Array[int] = []
 
 	for _index in 100:
@@ -527,3 +537,64 @@ func test_arcology_launch_phase(reference_root: String) -> void:
 		"Arcology launch reports one explosion sound: %s" % [result.sound_events],
 	)
 	_check(result.complete, "Arcology launch completes the annual microsimulation action")
+
+
+func test_staged_arcology_launch(reference_root: String) -> void:
+	var sites: Array[Vector2i] = []
+
+	for index in 12:
+		sites.append(Vector2i(10 + index % 6 * 6, 10 + index / 6 * 6))
+
+	var city := _arcology_launch_fixture(reference_root, sites)
+	var funds := city.funds()
+	var lfsr_values: Array[int] = []
+
+	for _index in 100:
+		lfsr_values.append(0)
+
+	var result := AnnualMicrosims.run(city, 0, 0, 0, Random.new(1), SequenceLfsrRandom.new(lfsr_values), null, -1, -1, false, 0, true)
+	_check(result.ok and result.complete and result.arcology_launched and result.arcology_launch_staged,
+		"A staged launch completes the annual update: %s" % result.error)
+	_check(result.launched_structures == 0 and _launch_arcologies(city) == 12, "A staged launch leaves the arcologies")
+	_check(result.notice_ids == PackedInt32Array([529]), "A staged launch shows only the first notice: %s" % result.notice_ids)
+	_check(city.funds() == funds + 10000000, "A staged launch pays the bonus at once")
+
+	# the speed controller demolishes one batch each second. the days wait
+	var engine := SimulationEngine.new(city, 1, 1, 1)
+	engine.arcology_launch_active = true
+	var controller := GameSpeedController.new(engine)
+	controller.speed = GameSpeedController.Speed.CHEETAH
+	var day := engine.clock.city_days
+	var tick := controller.advance_time(GameSpeedController.LAUNCH_BATCH_MSEC - GameSpeedController.BASE_TICK_MSEC)
+	_check(tick.ok and tick.launch_results.is_empty() and engine.clock.city_days == day,
+		"A launch batch waits one second: %s" % tick.error)
+	tick = controller.advance_time(GameSpeedController.BASE_TICK_MSEC)
+	var first: MicrosimAnnualPhase.LaunchBatch = tick.launch_results[0] if tick.launch_results.size() == 1 else null
+	_check(first != null and first.launched_structures == 10 and first.remaining_structures == 2 and first.map_changed
+		and not first.complete and _launch_arcologies(city) == 2, "The first batch demolishes ten arcologies")
+	_check(tick.notice_ids.is_empty() and not tick.effect_events.is_empty() and engine.clock.city_days == day,
+		"The first batch has explosions and no notice")
+
+	# a launch in progress survives a save
+	var metadata := Sc2xMetadata.new()
+	Sc2xCheckpoint.capture(controller, metadata)
+	var resumed := GameSpeedController.new(SimulationEngine.new(city, 1, 1, 1))
+	_check(Sc2xCheckpoint.restore(resumed, metadata).is_empty() and resumed.engine.arcology_launch_active,
+		"A launch in progress survives a save")
+
+	tick = controller.advance_time(GameSpeedController.LAUNCH_BATCH_MSEC)
+	var last: MicrosimAnnualPhase.LaunchBatch = tick.launch_results[0] if tick.launch_results.size() == 1 else null
+	_check(last != null and last.launched_structures == 2 and last.remaining_structures == 0 and last.complete
+		and _launch_arcologies(city) == 0 and not engine.arcology_launch_active, "The last batch demolishes the rest")
+	_check(tick.notice_ids == PackedInt32Array([530]), "The last batch shows the second notice: %s" % tick.notice_ids)
+
+
+func _launch_arcologies(city: CityState) -> int:
+	var tiles := 0
+
+	for x in city.map_size:
+		for y in city.map_size:
+			if city.building_id(x, y) == BuildingTileIds.LAUNCH_ARCOLOGY:
+				tiles += 1
+
+	return tiles / 16

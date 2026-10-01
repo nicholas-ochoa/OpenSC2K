@@ -25,6 +25,10 @@ const NEWS_EDUCATION: i64 = 0x26;
 const NOTICE_ARCOLOGY_LAUNCH_START: i32 = 529;
 const NOTICE_ARCOLOGY_LAUNCH_END: i32 = 530;
 const SOUND_EXPLOSION: i64 = 504;
+/// The number of launch arcologies that one staged launch batch demolishes.
+const LAUNCH_BATCH_SIZE: i64 = 10;
+/// The map tiles of one 4×4 launch arcology.
+const LAUNCH_ARCOLOGY_TILES: usize = 16;
 const DEMOGRAPHIC_RECORD_SIZE: i64 = 0x0c;
 const CHANGED_CHUNKS: [&str; 10] = ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT", "XLAB", "XMIC", "MISC"];
 const INPUT_CHUNKS: [&str; 10] = ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT", "XLAB", "XMIC", "MISC", "ALTM"];
@@ -71,7 +75,16 @@ gd_phase_result! {
         pub arcology_launched: bool = false,
         pub launch_arcology_records: i64 = 0,
         pub launched_structures: i64 = 0,
+        pub arcology_launch_staged: bool = false,
         pub passenger_counters_reset: bool = true,
+    }
+}
+
+gd_phase_result! {
+    pub struct LaunchBatchResult as "MicrosimAnnualPhase.LaunchBatch" {
+        pub launched_structures: i64 = 0,
+        pub remaining_structures: i64 = 0,
+        pub map_changed: bool = false,
     }
 }
 
@@ -88,6 +101,9 @@ pub struct AnnualInputs<'a> {
     pub water_usage_percent: i64,
     pub australian_locale: bool,
     pub mayor_approval: i64,
+    /// True to leave the launch arcologies for launch_batch. The update still
+    /// shows the first notice and pays the launch bonus.
+    pub stage_launch: bool,
 }
 
 #[derive(Default)]
@@ -139,6 +155,7 @@ struct Annual<'a, 'b> {
     launch_arcology_records: i64,
     launched_structures: i64,
     arcology_launched: bool,
+    arcology_launch_staged: bool,
     sound_events: Vec<i64>,
     view_center_requests: Vec<Vec2i>,
     effect_events: Vec<EffectEvent>,
@@ -307,6 +324,7 @@ pub fn run(city: &mut City, inputs: &mut AnnualInputs) -> AnnualResult {
         launch_arcology_records: 0,
         launched_structures: 0,
         arcology_launched: false,
+        arcology_launch_staged: false,
         sound_events: Vec::new(),
         view_center_requests: Vec::new(),
         effect_events: Vec::new(),
@@ -378,6 +396,7 @@ pub fn run(city: &mut City, inputs: &mut AnnualInputs) -> AnnualResult {
         arcology_launched: annual.arcology_launched,
         launch_arcology_records: annual.launch_arcology_records,
         launched_structures: annual.launched_structures,
+        arcology_launch_staged: annual.arcology_launch_staged,
         ..Default::default()
     };
     result.base.ok = true;
@@ -487,8 +506,34 @@ impl Annual<'_, '_> {
     /// notices that the original shows before and after the launch. The
     /// original scans XBLD for the launch arcology tile. XTXT 0xfe is a riot
     /// marker and does not mark a launch arcology.
+    ///
+    /// A staged launch leaves the arcologies and the second notice to
+    /// launch_batch, so the player can see each batch go.
     fn launch_arcologies(&mut self, city: &mut City) {
         self.notice_ids.push(NOTICE_ARCOLOGY_LAUNCH_START);
+
+        if !self.inputs.stage_launch {
+            self.demolish_launch_arcologies(city);
+        }
+
+        let funds = read_i32_be(&city.misc.data, misc_layout::FUNDS);
+        write_u32_be(
+            &mut city.misc.data,
+            misc_layout::FUNDS,
+            to_i32(funds + self.launch_arcology_records * 100000),
+        );
+
+        if self.inputs.stage_launch {
+            self.arcology_launch_staged = true;
+        } else {
+            self.notice_ids.push(NOTICE_ARCOLOGY_LAUNCH_END);
+        }
+
+        self.arcology_launched = true;
+        self.arcology_launch_pending = false;
+    }
+
+    fn demolish_launch_arcologies(&mut self, city: &mut City) {
         let edge = self.map_edge;
 
         for x in 0..edge {
@@ -509,16 +554,6 @@ impl Annual<'_, '_> {
                 }
             }
         }
-
-        let funds = read_i32_be(&city.misc.data, misc_layout::FUNDS);
-        write_u32_be(
-            &mut city.misc.data,
-            misc_layout::FUNDS,
-            to_i32(funds + self.launch_arcology_records * 100000),
-        );
-        self.notice_ids.push(NOTICE_ARCOLOGY_LAUNCH_END);
-        self.arcology_launched = true;
-        self.arcology_launch_pending = false;
     }
 
     fn update_power(&mut self, city: &mut City, span: &mut TimingSpan, record: i64, offset: i64, tile: i64) {
@@ -964,6 +999,70 @@ impl Annual<'_, '_> {
         microsims[offset as usize + 1] = service_score(capacity * 4, staff, 5, 50, 111) as u8;
         self.counts.college += 1;
     }
+}
+
+/// One batch of a staged arcology launch. Demolish up to LAUNCH_BATCH_SIZE
+/// launch arcologies at random. The last batch requests the second launch
+/// notice. The explosions of one batch start together.
+pub fn launch_batch(city: &mut City, random: &mut SimRandom) -> LaunchBatchResult {
+    if city.missing_or_resized(&INPUT_CHUNKS).is_some() {
+        return LaunchBatchResult::failed("launch map payloads are missing or invalid");
+    }
+
+    let originals: Vec<Vec<u8>> = CHANGED_CHUNKS
+        .iter()
+        .map(|id| city.chunk(id).map(|chunk| chunk.data.clone()).unwrap_or_default())
+        .collect();
+    let edge = city.map_size;
+    let rotation = city.compass_rotation();
+    let mut sites: Vec<usize> = (0..city.xbld.data.len())
+        .filter(|&index| city.xbld.data[index] as i64 == tiles::LAUNCH_ARCOLOGY)
+        .collect();
+    let mut result = LaunchBatchResult::default();
+
+    while result.launched_structures < LAUNCH_BATCH_SIZE && !sites.is_empty() {
+        let draw = (random.next_u15() << 15) | random.next_u15();
+        let index = sites.swap_remove(draw as usize % sites.len());
+
+        // a tile of an arcology that this batch already demolished
+        if city.xbld.data[index] as i64 != tiles::LAUNCH_ARCOLOGY {
+            continue;
+        }
+
+        let point = Vec2i::new(index as i64 / edge, index as i64 % edge);
+        let mut maps = city.maps();
+        let demolition = demolish::damage_structure(&mut maps, point, random, rotation, true);
+
+        if demolition.changed {
+            demolish::append_effect_sequence(&mut result.base.effect_events, &demolition.effect_events, 0);
+            result.launched_structures += 1;
+        }
+    }
+
+    let remaining_tiles = sites
+        .iter()
+        .filter(|&&index| city.xbld.data[index] as i64 == tiles::LAUNCH_ARCOLOGY)
+        .count();
+    result.remaining_structures = remaining_tiles.div_ceil(LAUNCH_ARCOLOGY_TILES) as i64;
+    result.map_changed = result.launched_structures > 0;
+
+    if result.map_changed {
+        result.base.sound_events.push(SoundEvent::new(SOUND_EXPLOSION));
+    }
+
+    if result.remaining_structures == 0 {
+        result.base.notice_ids.0.push(NOTICE_ARCOLOGY_LAUNCH_END);
+    }
+
+    for (position, id) in CHANGED_CHUNKS.iter().enumerate() {
+        if let Some(chunk) = city.chunk_mut(id) {
+            chunk.commit_if_changed(&originals[position]);
+        }
+    }
+
+    result.base.ok = true;
+    result.base.complete = result.remaining_structures == 0;
+    result
 }
 
 #[cfg(test)]

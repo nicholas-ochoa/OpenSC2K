@@ -13,6 +13,7 @@ const ENGINE_STATE := [
 	"city_status_resource_id", "commerce_connections", "industry_connections",
 	"mayor_approval", "midi_playback_active", "pending_disaster_type",
 	"pending_disaster_point", "terminal_state", "traffic_news_deadline_msec",
+	"stage_arcology_launch",
 ]
 
 # simulation inputs. the day schedule owns these objects

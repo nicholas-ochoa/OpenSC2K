@@ -6,10 +6,11 @@ extends RefCounted
 ## that waits for the player, such as the annual budget, cannot be saved.
 ##
 ## Saved: the three random states, the `phase_state` keys of
-## Sc2xMetadata.PHASE_KEYS, including the results of the load scan, and the
-## fire timer. A city with saved phase state resumes without a new load scan,
-## so the scan does not draw from the random states again. A file without phase
-## state still restores its random states before the load scan.
+## Sc2xMetadata.PHASE_KEYS, including the results of the load scan, the fire
+## timer, and whether a staged arcology launch is in progress. A city with
+## saved phase state resumes without a new load scan, so the scan does not
+## draw from the random states again. A file without phase state still
+## restores its random states before the load scan.
 ## Not saved: frame timing accumulators, the traffic news deadline (a process
 ## clock), music playback, the vehicle layer switch, and pause targets.
 
@@ -59,6 +60,7 @@ static func capture(controller: GameSpeedController, metadata: Sc2xMetadata) -> 
 	state["city_status_resource_id"] = engine.city_status_resource_id
 	# the fire timer advances in whole base ticks while a fire burns
 	state[Sc2xMetadata.FIRE_TIMER_KEY] = roundi(controller.fire_elapsed_msec)
+	state[Sc2xMetadata.LAUNCH_ACTIVE_KEY] = engine.arcology_launch_active
 	metadata.phase_state = state
 
 
@@ -107,6 +109,7 @@ static func restore(controller: GameSpeedController, metadata: Sc2xMetadata) -> 
 	engine.water_usage_percent = int(state.water_usage_percent)
 	engine.city_status_resource_id = int(state.city_status_resource_id)
 	controller.fire_elapsed_msec = float(state.get(Sc2xMetadata.FIRE_TIMER_KEY, 0))
+	engine.arcology_launch_active = bool(state.get(Sc2xMetadata.LAUNCH_ACTIVE_KEY, false))
 
 	return ""
 

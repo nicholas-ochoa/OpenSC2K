@@ -38,6 +38,11 @@ var midi_playback_active := false
 # runtime only; never saved. false while the player hides the vehicle layer:
 # airplanes and helicopters then leave instead of crashing, as with no disasters
 var vehicle_crashes_enabled := true
+# false keeps the original arcology launch, which demolishes every launch
+# arcology in the annual update. true demolishes them in timed batches
+var stage_arcology_launch := true
+# true from a staged launch until its last batch. the days wait
+var arcology_launch_active := false
 
 
 func _init(
@@ -156,6 +161,9 @@ func _timed_advance_day() -> SimulationDayResult:
 
 	if active_disaster_type != 0:
 		return SimulationDayResult.failure("a disaster is active")
+
+	if arcology_launch_active:
+		return SimulationDayResult.failure("an arcology launch is active")
 
 	var schedule := clock.advance_day()
 
@@ -427,6 +435,22 @@ func _run_day_schedule(
 	var span := SimulationTimingSpan.new(city.simulation_slice)
 	var result := _execute_day_schedule(schedule, annual_budget_approved, span, check_annual_budget)
 	result.timing = span.finish()
+	var annual: PhaseResult = result.phase_results.get("annual_microsim")
+
+	if annual is MicrosimAnnualPhase.Result and annual.arcology_launch_staged:
+		arcology_launch_active = true
+
+	return result
+
+
+# demolish the next batch of a staged arcology launch
+func advance_arcology_launch() -> MicrosimAnnualPhase.LaunchBatch:
+	var span := SimulationTimingSpan.new(city.simulation_slice)
+	var result := MicrosimAnnualPhase.launch_batch(city, random)
+	result.timing = span.finish()
+
+	if result.ok and result.complete:
+		arcology_launch_active = false
 
 	return result
 

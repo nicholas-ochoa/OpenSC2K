@@ -111,6 +111,11 @@ func consume_simulation_result(result: SimulationTickResult) -> void:
 			changed_disaster_map = true
 			break
 
+	for batch in result.launch_results:
+		if batch.map_changed:
+			changed_disaster_map = true
+			break
+
 	var moved_things := app.reports.moving_things_are_active(result.moving_results)
 
 	if ran_days or moved_things or changed_disaster_map:

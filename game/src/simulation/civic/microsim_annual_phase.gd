@@ -75,7 +75,8 @@ static func run(
 	power_usage_percent := -1,
 	water_usage_percent := -1,
 	australian_locale := false,
-	mayor_approval := 0
+	mayor_approval := 0,
+	stage_launch := false
 ) -> Result:
 	if city == null or not city.is_valid():
 		return _failed("city is invalid")
@@ -85,7 +86,26 @@ static func run(
 		"subway_passengers": subway_passengers, "has_random": random != null,
 		"has_lfsr": lfsr_random != null, "has_game": game_random != null,
 		"power_usage_percent": power_usage_percent, "water_usage_percent": water_usage_percent,
-		"australian_locale": australian_locale, "mayor_approval": mayor_approval}).result
+		"australian_locale": australian_locale, "mayor_approval": mayor_approval,
+		"stage_launch": stage_launch}).result
+
+
+# demolish one batch of a staged arcology launch. the last batch requests
+# the second launch notice
+static func launch_batch(city: CityState, random: SimRandom) -> LaunchBatch:
+	if city == null or not city.is_valid():
+		var failed := LaunchBatch.new()
+		failed.error = "city is invalid"
+
+		return failed
+
+	return NativeSimulationBridge.run("arcology_launch.batch", city, random, null, null).result
+
+
+class LaunchBatch extends PhaseResult:
+	var launched_structures := 0
+	var remaining_structures := 0
+	var map_changed := false
 
 
 class Result extends PhaseResult:
@@ -120,4 +140,6 @@ class Result extends PhaseResult:
 	var arcology_launched := false
 	var launch_arcology_records := 0
 	var launched_structures := 0
+	# true when the launch arcologies wait for launch_batch
+	var arcology_launch_staged := false
 	var passenger_counters_reset := true
