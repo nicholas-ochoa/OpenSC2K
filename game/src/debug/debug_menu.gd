@@ -44,6 +44,37 @@ const CHECKS := {
 }
 # check items that the debug tools switch themselves
 const HANDLED_CHECKS := [MENU_TILE_GRID]
+# hover text of each item
+const TOOLTIPS := {
+	MENU_TILE_INSPECTOR: "Select the Tile Inspector. Point at a tile to read its stored bytes, flags and data map values.",
+	MENU_TRIP_QUERY: "Select the Trip Query. Click a zone or network tile to show its routes and trip costs.",
+	MENU_TILE_LAYERS: "Color each tile by one stored value or data map.",
+	MENU_TILE_VALUES: "Write the tile layer value on each visible tile at a close zoom.",
+	MENU_TILE_GRID: "Draw tile edges and X, Y coordinates on the map.",
+	MENU_BASELINES: "Select the moment that the Changed Tiles layer compares with.",
+	MENU_TAKE_SNAPSHOT: "Record the city now. Changed Tiles then shows changes since this moment.",
+	MENU_REGION_BOUNDS: "Outline each render region. The color shows if it is ready, stale, building or missing.",
+	MENU_REGION_REPAINTS: "Flash each render region when it draws again.",
+	MENU_OCCLUDERS: "Outline the rectangles that hide moving things behind buildings.",
+	MENU_SPRITE_BOUNDS: "Outline the bounds of each static and moving sprite.",
+	MENU_DRAW_ORDER: "Write the painter order number on each sprite in view.",
+	MENU_THING_PATHS: "Show the position and path of each moving thing.",
+	MENU_FREEZE_PALETTE: "Stop the palette animation of water, lights and fire.",
+	MENU_MISSING_ARTWORK: "Look for tiles around the view that have no sprite in the tile set.",
+	MENU_STEP_PHASE: "Run the next simulation step of the day. The city must be paused.",
+	MENU_STEP_DAY: "Run the rest of the current day, or one full day. The city must be paused.",
+	MENU_DISASTER_PREVIEWS: "Show where a disaster would spread from the center of the view. The city does not change.",
+	MENU_VERIFY_SAVE: "Save a copy to a temporary file, load it again and compare each chunk. The city file does not change.",
+	MENU_UNDO_EDIT: "Undo the last record edit from the Debug window.",
+	MENU_PERFORMANCE_HUD: "Show frame time, render counters and a frame-time graph.",
+	MENU_CAPTURE: "Save a screenshot and a JSON file of the debug state in the debug_captures folder.",
+	MENU_DEBUG_WINDOW: "Open the Debug window with city records, metrics and edit tools.",
+}
+const BASELINE_TOOLTIPS := [
+	"Compare with the city as it was loaded.",
+	"Compare with the last change snapshot.",
+	"Show the changes of the last simulated day.",
+]
 
 
 static func populate(popup: PopupMenu, handler: Callable) -> void:
@@ -76,6 +107,9 @@ static func populate(popup: PopupMenu, handler: Callable) -> void:
 	popup.add_check_item("Performance HUD", MENU_PERFORMANCE_HUD)
 	popup.add_item("Capture Screenshot and State", MENU_CAPTURE)
 	popup.add_item("Debug Window", MENU_DEBUG_WINDOW)
+
+	for id: int in TOOLTIPS:
+		popup.set_item_tooltip(popup.get_item_index(id), TOOLTIPS[id])
 
 
 static func _preview_menu(handler: Callable) -> PopupMenu:
@@ -112,6 +146,7 @@ static func _baseline_menu(handler: Callable) -> PopupMenu:
 
 	for baseline in BASELINE_TITLES.size():
 		menu.add_radio_check_item(BASELINE_TITLES[baseline], BASELINE_BASE + baseline)
+		menu.set_item_tooltip(baseline, BASELINE_TOOLTIPS[baseline])
 
 	menu.id_pressed.connect(handler)
 
