@@ -17,6 +17,8 @@ const SPEED_NAMES: Dictionary[int, String] = {
 	Speed.CHEETAH: "Cheetah",
 	Speed.AFRICAN_SWALLOW: "African Swallow",
 }
+# a disaster scan waits this long while a fire burns, for every city format.
+# the original redraws the whole map after each scan, so its pace depends on the PC
 const FIRE_TICK_MSEC := 1000.0
 # a staged arcology launch ignites one arcology and launches one in each step
 const LAUNCH_STEP_MSEC := 50.0
@@ -28,7 +30,6 @@ var speed := Speed.PAUSED
 var accumulator_msec := 0.0
 var fire_elapsed_msec := 0.0
 var launch_elapsed_msec := 0.0
-var original_compatibility := false
 var subtick_counter := 0
 var simulation_ready := false
 var interaction_blocked := false
@@ -105,7 +106,7 @@ func advance_time(
 		simulation_ready = simulation_ready or _is_day_due()
 
 		if speed > Speed.PAUSED and not simulation_suspended and not interaction_blocked and not terminal_blocked:
-			fire_elapsed_msec = minf(FIRE_TICK_MSEC, fire_elapsed_msec + BASE_TICK_MSEC) if engine.active_disaster_type in [1, 12] else 0.0
+			fire_elapsed_msec = minf(FIRE_TICK_MSEC, fire_elapsed_msec + BASE_TICK_MSEC) if _fire_paced() else 0.0
 
 		var pulse_time := current_time_msec - int(accumulator_msec)
 
@@ -142,7 +143,8 @@ func advance_time(
 			if _pause_on_target_day(result):
 				break
 
-			if speed == Speed.AFRICAN_SWALLOW:
+			# African Swallow runs a day in each frame. a disaster scan waits for a base tick
+			if speed == Speed.AFRICAN_SWALLOW and engine.active_disaster_type == 0:
 				ran_swallow_day = true
 			else:
 				simulation_ready = false
@@ -164,7 +166,7 @@ func advance_time(
 
 		_pause_on_target_day(result)
 
-		if speed != Speed.AFRICAN_SWALLOW:
+		if speed != Speed.AFRICAN_SWALLOW or engine.active_disaster_type != 0:
 			simulation_ready = false
 
 	result.ok = true
@@ -305,7 +307,7 @@ func _run_day(result: SimulationTickResult) -> String:
 		return ""
 
 	if engine.active_disaster_type != 0:
-		if engine.active_disaster_type in [1, 12] and not original_compatibility:
+		if _fire_paced():
 			if fire_elapsed_msec < FIRE_TICK_MSEC:
 				return ""
 
@@ -329,6 +331,12 @@ func _run_day(result: SimulationTickResult) -> String:
 	_consume_day_result(result, day)
 
 	return ""
+
+
+# fire and firestorm scans keep the fire pace from the start. other disasters
+# use it after a scan finds fire
+func _fire_paced() -> bool:
+	return engine.active_disaster_type in [1, 12] or engine.disaster_fire_active
 
 
 func _consume_day_result(result: SimulationTickResult, day: SimulationDayResult) -> void:

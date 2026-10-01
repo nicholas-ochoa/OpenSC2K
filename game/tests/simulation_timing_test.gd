@@ -50,7 +50,8 @@ func _initialize() -> void:
 	_check_growth_detail_flag()
 	_check_typical_day()
 	_check_day_pacing()
-	print("PASS: simulation timing aggregation, phase detail, displayed days, wait exclusion and day pacing")
+	_check_disaster_pacing()
+	print("PASS: simulation timing aggregation, phase detail, displayed days, wait exclusion, day and disaster pacing")
 	quit()
 
 
@@ -250,6 +251,49 @@ func _check_day_pacing() -> void:
 	assert(controller.tick_runs_day(200) and not controller.tick_runs_day(100))
 
 
+## A disaster scan waits one second while fire burns, in SC2 and SC2X cities.
+## Other disaster scans run on day ticks, and never more than once per base tick.
+func _check_disaster_pacing() -> void:
+	for map_size in [128, 256]:
+		for disaster in [1, 12]:
+			var fire := _disaster_controller(map_size, disaster, GameSpeedController.Speed.CHEETAH)
+			assert(_disaster_scans(fire, 1000, 1) == 1, "A fire or firestorm scans once per second")
+
+	var flood := _disaster_controller(128, 2, GameSpeedController.Speed.CHEETAH)
+	assert(_disaster_scans(flood, 1000, 1) == 5, "A disaster without fire scans on each Cheetah day tick")
+
+	# the first riot scan finds fire. the next scan waits for the fire timer
+	var riot := _disaster_controller(128, 3, GameSpeedController.Speed.CHEETAH)
+	(riot.engine as RecordingEngine).finds_fire = true
+	assert(_disaster_scans(riot, 1000, 1) == 1 and riot.engine.disaster_fire_active)
+	assert(_disaster_scans(riot, 1000, 1) == 1, "Fire from any disaster scans once per second")
+
+	var swallow := _disaster_controller(128, 2, GameSpeedController.Speed.AFRICAN_SWALLOW)
+	assert(_disaster_scans(swallow, 20, 50) == 5, "African Swallow scans a disaster once per base tick, not per frame")
+	var swallow_fire := _disaster_controller(128, 1, GameSpeedController.Speed.AFRICAN_SWALLOW)
+	assert(_disaster_scans(swallow_fire, 20, 50) == 1)
+
+
+func _disaster_controller(map_size: int, disaster: int, speed: GameSpeedController.Speed) -> GameSpeedController:
+	var engine := RecordingEngine.new(CityState.from_document(EmptyCityTemplate.create(map_size)))
+	engine.active_disaster_type = disaster
+	var controller := GameSpeedController.new(engine)
+	controller.set_speed(speed)
+
+	return controller
+
+
+func _disaster_scans(controller: GameSpeedController, frame_msec: float, frames: int) -> int:
+	var scans := 0
+
+	for frame in frames:
+		var result := controller.advance_time(frame_msec, 1000)
+		assert(result.ok and result.day_results.is_empty())
+		scans += result.disaster_results.size()
+
+	return scans
+
+
 func _finish_tick(runner: FrameSimulationRunner, delta_msec: float) -> SimulationTickResult:
 	var result := runner.advance_time(delta_msec, 0)
 	var deadline := Time.get_ticks_msec() + 5000
@@ -261,3 +305,22 @@ func _finish_tick(runner: FrameSimulationRunner, delta_msec: float) -> Simulatio
 	assert(result.ok and result.base_ticks > 0, "The worker tick completes")
 
 	return result
+
+
+class RecordingEngine extends SimulationEngine:
+	var finds_fire := false
+
+
+	func advance_disaster_tick() -> DisasterMapResult:
+		disaster_fire_active = finds_fire
+		var result := DisasterMapResult.new()
+		result.ok = true
+
+		return result
+
+
+	func advance_moving_things(_current_time_msec := -1) -> MovingThingResult:
+		var result := MovingThingResult.new()
+		result.ok = true
+
+		return result

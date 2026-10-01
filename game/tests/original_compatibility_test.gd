@@ -20,7 +20,6 @@ func check(ok: bool, message: String) -> void:
 func _run() -> void:
 	check_formats()
 	check_reference_files(ProjectSettings.globalize_path("res://../references/SIMCITY2000").simplify_path())
-	check_fire_clock()
 	await check_ui()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
 	print("Original compatibility: %d checks, %d failures" % [checks, failures])
@@ -94,23 +93,6 @@ func check_formats() -> void:
 	)
 
 
-func check_fire_clock() -> void:
-	for disaster in [1, 12]:
-		for original in [false, true]:
-			var engine := RecordingEngine.new(CityState.from_document(EmptyCityTemplate.create(128)))
-			engine.active_disaster_type = disaster
-			var controller := GameSpeedController.new(engine)
-			controller.set_speed(GameSpeedController.Speed.CHEETAH)
-			controller.original_compatibility = original
-			var result := controller.advance_time(1000, 1000)
-			check(
-				result.ok and result.disaster_results.size() == (5 if original else 1),
-				"SC2 cities use original fire and firestorm cadence",
-			)
-			var captured := SimulationSnapshot.capture(controller, null)
-			check(captured.original_compatibility == original, "Simulation snapshot retains the fire cadence")
-
-
 func check_ui() -> void:
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
@@ -166,7 +148,6 @@ func check_ui() -> void:
 
 	var doc := EmptyCityTemplate.create(128)
 	check(main.city_session.activate_document(doc), "SC2 city activates")
-	check(main.simulation_state.speed_controller.original_compatibility, "SC2 city uses original fire timing")
 	var extended := EmptyCityTemplate.create(256)
 	var extended_file := FileAccess.open(save_path, FileAccess.WRITE)
 	extended_file.store_buffer(extended.serialize().data)
@@ -176,9 +157,7 @@ func check_ui() -> void:
 		main.document_state.current_document.is_extended() and main.document_state.current_document.map_size == 256,
 		"SC2X loads normally even with an SC2 filename",
 	)
-	check(not main.simulation_state.speed_controller.original_compatibility, "SC2X city uses extended fire timing")
 	check(main.city_session.activate_document(doc), "Return to SC2 city")
-	check(main.simulation_state.speed_controller.original_compatibility, "SC2 timing returns with the SC2 city")
 	main.queue_free()
 	await process_frame
 
@@ -204,20 +183,3 @@ func saved_payloads(document: Sc2File) -> Array:
 	for chunk in document.chunks:
 		values.append(chunk.decoded_payload.duplicate())
 	return values
-
-
-class RecordingEngine extends SimulationEngine:
-
-
-	func advance_disaster_tick() -> DisasterMapResult:
-		var result := DisasterMapResult.new()
-		result.ok = true
-
-		return result
-
-
-	func advance_moving_things(_current_time_msec := -1) -> MovingThingResult:
-		var result := MovingThingResult.new()
-		result.ok = true
-
-		return result

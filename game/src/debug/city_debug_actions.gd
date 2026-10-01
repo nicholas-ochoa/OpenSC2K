@@ -570,6 +570,7 @@ static func _reset_disaster_engine(engine: SimulationEngine) -> void:
 	engine.unsupported_disaster_type = 0
 	engine.disaster_map_counter = 0
 	engine.disaster_hurricane_counter = 0
+	engine.disaster_fire_active = false
 
 
 static func _disaster_target(

@@ -34,6 +34,9 @@ var active_disaster_type := 0
 var unsupported_disaster_type := 0
 var disaster_map_counter := 0
 var disaster_hurricane_counter := 0
+# true when the last disaster scan found a fire marker. riots, crashes, and
+# earthquakes also start fires, so the fire pace does not use the disaster type
+var disaster_fire_active := false
 var midi_playback_active := false
 # runtime only; never saved. false while the player hides the vehicle layer:
 # airplanes and helicopters then leave instead of crashing, as with no disasters
@@ -316,6 +319,7 @@ func _timed_advance_disaster_tick() -> DisasterMapResult:
 
 	disaster_map_counter = phase_result.map_counter
 	disaster_hurricane_counter = phase_result.hurricane_counter
+	disaster_fire_active = phase_result.active_markers.get("fire", false)
 	var still_active: bool = bool(phase_result.active) or DisasterStartObjectsState.has_active_object(
 		city, active_disaster_type
 	)
@@ -326,6 +330,7 @@ func _timed_advance_disaster_tick() -> DisasterMapResult:
 		active_disaster_type = 0
 		disaster_map_counter = 0
 		disaster_hurricane_counter = 0
+		disaster_fire_active = false
 
 		var finished := DisasterEnd.finish(city, ended_type)
 
@@ -386,6 +391,7 @@ func start_disaster(disaster_type: int, point: Vector2i) -> DisasterStartResult:
 		active_disaster_type = 0
 		disaster_map_counter = 0
 		disaster_hurricane_counter = 0
+		disaster_fire_active = false
 
 		return DisasterStartResult.failed("cannot store active disaster mode")
 
