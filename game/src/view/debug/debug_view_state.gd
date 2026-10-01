@@ -17,13 +17,16 @@ var region_repaints := false
 var occluders := false
 var sprite_bounds := false
 var thing_paths := false
+var tile_grid := false
+var draw_order := false
+var palette_frozen := false
 var performance_hud := false
 
 
 # true when a view needs per-frame or per-change work
 func any_active() -> bool:
 	return (tile_layer != DebugTileLayers.Layer.NONE or tile_values or region_bounds or region_repaints or occluders
-		or sprite_bounds or thing_paths or performance_hud)
+		or sprite_bounds or thing_paths or performance_hud or tile_grid or draw_order or palette_frozen)
 
 
 func reset() -> void:
@@ -35,4 +38,7 @@ func reset() -> void:
 	occluders = false
 	sprite_bounds = false
 	thing_paths = false
+	tile_grid = false
+	draw_order = false
+	palette_frozen = false
 	performance_hud = false

@@ -9,7 +9,7 @@ enum Layer {
 	NONE, ZONE_TYPE, BUILDING_ID, TERRAIN_ID, UNDERGROUND_ID, OVERLAY_KIND, LAND_ALTITUDE, WATER_ALTITUDE,
 	TUNNEL_LEVELS, SALT_WATER, FLIPPED, WATER, MARK, WATERED, PIPED, POWERED, POWERABLE, TRAFFIC, POLLUTION,
 	LAND_VALUE, CRIME, POLICE, FIRE, POPULATION, GROWTH, POWER_GRIDS, WATER_NETWORKS, UNUSUAL_VALUES,
-	CHANGED_TILES,
+	CHANGED_TILES, DISASTER_PREVIEW, MISSING_ARTWORK,
 }
 enum Kind {
 	IDS,
@@ -18,6 +18,7 @@ enum Kind {
 	GRADIENT,
 	NETWORKS,
 	BITS,
+	MARK,
 }
 
 # menu groups, in menu order
@@ -29,6 +30,7 @@ const GROUPS: Array = [
 	["Data maps (raw bytes)", [Layer.TRAFFIC, Layer.POLLUTION, Layer.LAND_VALUE, Layer.CRIME, Layer.POLICE, Layer.FIRE,
 		Layer.POPULATION, Layer.GROWTH]],
 	["Analysis", [Layer.POWER_GRIDS, Layer.WATER_NETWORKS, Layer.UNUSUAL_VALUES, Layer.CHANGED_TILES]],
+	["Check results", [Layer.DISASTER_PREVIEW, Layer.MISSING_ARTWORK]],
 ]
 const TITLES: Dictionary[Layer, String] = {
 	Layer.NONE: "None",
@@ -60,7 +62,11 @@ const TITLES: Dictionary[Layer, String] = {
 	Layer.WATER_NETWORKS: "Water Networks",
 	Layer.UNUSUAL_VALUES: "Unusual Values",
 	Layer.CHANGED_TILES: "Changed Tiles",
+	Layer.DISASTER_PREVIEW: "Disaster Preview",
+	Layer.MISSING_ARTWORK: "Missing Artwork",
 }
+# layers whose values come from a check, not from the city arrays
+const EXTERNAL: Array[Layer] = [Layer.DISASTER_PREVIEW, Layer.MISSING_ARTWORK]
 const FLAG_BITS: Dictionary[Layer, int] = {
 	Layer.SALT_WATER: Sc2TileFlags.SALT_WATER, Layer.FLIPPED: Sc2TileFlags.FLIPPED, Layer.WATER: Sc2TileFlags.WATER,
 	Layer.MARK: Sc2TileFlags.MARK, Layer.WATERED: Sc2TileFlags.WATERED, Layer.PIPED: Sc2TileFlags.PIPED,
@@ -97,8 +103,10 @@ static func kind(layer: Layer) -> Kind:
 			return Kind.CATEGORIES
 		Layer.POWER_GRIDS, Layer.WATER_NETWORKS:
 			return Kind.NETWORKS
-		Layer.UNUSUAL_VALUES, Layer.CHANGED_TILES:
+		Layer.UNUSUAL_VALUES, Layer.CHANGED_TILES, Layer.DISASTER_PREVIEW:
 			return Kind.BITS
+		Layer.MISSING_ARTWORK:
+			return Kind.MARK
 
 	return Kind.FLAG if FLAG_BITS.has(layer) else Kind.GRADIENT
 
@@ -133,7 +141,7 @@ static func category_names(layer: Layer) -> Array:
 			return OVERLAY_NAMES
 		Layer.UNUSUAL_VALUES:
 			return UNUSUAL_NAMES
-		Layer.CHANGED_TILES:
+		Layer.CHANGED_TILES, Layer.DISASTER_PREVIEW:
 			return CHANGE_NAMES
 
 	return []
@@ -157,6 +165,8 @@ static func describe(layer: Layer, value: int) -> String:
 			return "Network color %d, %s" % [value, "supplied" if supplied else "not supplied"]
 		Kind.BITS:
 			return _bit_names(layer, value)
+		Kind.MARK:
+			return "Needs missing artwork" if value != 0 else "Artwork found"
 
 	if layer == Layer.ZONE_TYPE:
 		var zone := value & Sc2ZoneLayout.TYPE_MASK

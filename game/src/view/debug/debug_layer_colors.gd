@@ -15,6 +15,7 @@ const UNUSUAL_COLORS := [Color("ff00ff"), Color("ff7b00"), Color("00e5ff"), Colo
 const CHANGE_COLORS := [Color("ff3b30"), Color("ffcc00"), Color("a2845e"), Color("ff9500"), Color("5ac8fa"),
 	Color("af52de"), Color("007aff")]
 const FLAG_COLOR := Color("ffd60a")
+const MARK_COLOR := Color("ff2bd6")
 const LOW_COLOR := Color("1d4ed8")
 const HIGH_COLOR := Color("f43f5e")
 
@@ -29,6 +30,9 @@ static func table(layer: Layer) -> Image:
 
 
 static func color(layer: Layer, value: int) -> Color:
+	if layer == Layer.NONE:
+		return CLEAR
+
 	match DebugTileLayers.kind(layer):
 		Kind.IDS:
 			return CLEAR if value == 0 else id_color(value)
@@ -40,6 +44,8 @@ static func color(layer: Layer, value: int) -> Color:
 			return _bit_color(layer, value)
 		Kind.CATEGORIES:
 			return _category_color(layer, value)
+		Kind.MARK:
+			return MARK_COLOR if value != 0 else CLEAR
 
 	return gradient_color(layer, value)
 
@@ -106,6 +112,8 @@ static func legend(layer: Layer) -> Array:
 
 			for bit in names.size():
 				rows.append([colors[bit], names[bit]])
+		Kind.MARK:
+			rows.append([MARK_COLOR, "Needs a sprite that the artwork lacks"])
 		Kind.CATEGORIES:
 			var names := DebugTileLayers.category_names(layer)
 

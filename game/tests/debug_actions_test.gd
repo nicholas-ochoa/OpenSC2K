@@ -75,6 +75,16 @@ func _check_military_offer() -> void:
 	var refused := CityDebugActions.offer_military_base(controller)
 	assert(not refused.ok and not controller.interaction_blocked)
 
+	# a debug proposal builds the base type it names. the answer clears the request
+	var forced := _controller()
+	assert(CityDebugActions.offer_military_base(forced, MilitaryProposalPhase.BASE_AIR_FORCE).ok)
+	assert(forced.engine.forced_military_base_type == MilitaryProposalPhase.BASE_AIR_FORCE)
+	var air_force := forced.resolve_military_proposal(true)
+	assert(air_force.ok, air_force.error)
+	var proposal: MilitaryProposalPhase.Result = air_force.day_results[0].phase_results["military_proposal"]
+	assert(proposal.base_type == MilitaryProposalPhase.BASE_AIR_FORCE, "Base type %d" % proposal.base_type)
+	assert(forced.engine.forced_military_base_type == 0)
+
 
 func _check_moving_things() -> void:
 	var city := CityState.from_document(Sc2File.load_path("res://tests/fixtures/cities/generated-128.SC2"))
@@ -119,8 +129,14 @@ func _check_moving_things() -> void:
 	assert(engine.random.state == 123 and engine.lfsr_random.state == 456 and engine.game_random.state == 789)
 	assert(not CityDebugActions.spawn_moving_thing(city, document, engine, 0, _find(city, clear_land), 99).ok,
 		"The helicopter limit applies")
+	# a kind filter removes only the things of its types
+	var trains: Array = CityDebugActions.DELETE_KINDS[5][1]
+	var only_trains := CityDebugActions.remove_moving_things(city, document, trains)
+	assert(only_trains.ok and only_trains.count == 3, "A train has three records")
+	assert(not CityDebugActions.remove_moving_things(city, document, trains).ok, "No train is left")
+	assert(_thing_count(city) == added - 1)
 	removed = CityDebugActions.remove_moving_things(city, document)
-	assert(removed.ok and removed.count == added + 2 and _linked_tiles(city) == 0)
+	assert(removed.ok and removed.count == added - 1 and _linked_tiles(city) == 0)
 
 
 func _thing_count(city: CityState) -> int:

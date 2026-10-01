@@ -19,6 +19,9 @@ var window_tiles := 0
 var clipped := false
 var builds := 0
 var last_build_usec := 0
+# tile outlines over every tile, with or without a layer
+var grid := false
+var _empty_edge := 0
 var _material := ShaderMaterial.new()
 var _values_texture: ImageTexture
 
@@ -33,7 +36,7 @@ func _init() -> void:
 
 
 func set_layer(value: DebugTileLayers.Layer) -> void:
-	if layer == value:
+	if layer == value and _material.get_shader_parameter("value_colors") != null:
 		return
 
 	layer = value
@@ -41,6 +44,8 @@ func set_layer(value: DebugTileLayers.Layer) -> void:
 
 
 func set_values(image: Image, map_edge: int) -> void:
+	_empty_edge = 0
+
 	if (_values_texture != null and Vector2i(_values_texture.get_size()) == image.get_size()
 			and _values_texture.get_format() == image.get_format()):
 		_values_texture.update(image)
@@ -49,6 +54,21 @@ func set_values(image: Image, map_edge: int) -> void:
 		_material.set_shader_parameter("tile_values", _values_texture)
 
 	_material.set_shader_parameter("map_edge", float(map_edge))
+
+
+func set_grid(enabled: bool) -> void:
+	grid = enabled
+	_material.set_shader_parameter("grid_strength", 1.0 if enabled else 0.0)
+
+
+# clear values for the grid without a layer
+func set_empty_values(map_edge: int) -> void:
+	if _empty_edge == map_edge and layer == DebugTileLayers.Layer.NONE:
+		return
+
+	set_layer(DebugTileLayers.Layer.NONE)
+	set_values(Image.create(map_edge, map_edge, false, Image.FORMAT_R8), map_edge)
+	_empty_edge = map_edge
 
 
 func set_opacity(value: float) -> void:
@@ -70,9 +90,9 @@ func needs_window(target: Rect2i, signature: Array) -> bool:
 func build_window(city: CityState, target: Rect2i, signature: Array) -> void:
 	var started := Time.get_ticks_usec()
 	var grown := target.grow(maxi(target.size.x, target.size.y) / 4).intersection(Rect2i(0, 0, city.map_size, city.map_size))
-	var limited := _limited(grown, target)
+	var bounded := limited(grown, target)
 	var built := NativeDebugTiles.window_mesh(city.map_size, city.visible_altitude_levels, city.altitude_words, city.terrain,
-		city.tile_flags, limited)
+		city.tile_flags, bounded)
 	var result := ArrayMesh.new()
 
 	if not built.has("error") and not (built.vertices as PackedVector2Array).is_empty():
@@ -84,7 +104,7 @@ func build_window(city: CityState, target: Rect2i, signature: Array) -> void:
 		result.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, Mesh.ARRAY_FLAG_USE_2D_VERTICES)
 
 	mesh = result
-	window = limited
+	window = bounded
 	clipped = not window.encloses(target)
 	window_tiles = int(built.get("tiles", 0))
 	geometry_signature = signature
@@ -120,7 +140,7 @@ static func visible_window(outline: PackedVector2Array, map_edge: int, margin :=
 
 
 # keep the window inside the size limit, centered on the target
-static func _limited(window_rect: Rect2i, target: Rect2i) -> Rect2i:
+static func limited(window_rect: Rect2i, target: Rect2i) -> Rect2i:
 	var size := window_rect.size.min(Vector2i(MAX_WINDOW_EDGE, MAX_WINDOW_EDGE))
 
 	if size == window_rect.size:

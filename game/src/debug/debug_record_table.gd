@@ -2,6 +2,9 @@ class_name DebugRecordTable
 extends VBoxContainer
 
 signal locate_requested(site: Rect2i)
+# a field cell of an editable table changed: the record, the field name and the text
+signal field_edited(kind: String, record: int, field: String, text: String)
+signal undo_requested()
 
 # yellow row background for a record with a warning. it stays readable in light and dark themes
 const WARNING_COLOR := Color(1.0, 0.85, 0.2, 0.3)
@@ -95,6 +98,16 @@ func _ready() -> void:
 
 	show_empty.visible = kind != "State"
 	total.visible = kind != "State"
+	if is_editable():
+		table.item_edited.connect(_on_item_edited)
+		var undo := Button.new()
+		undo.name = "Undo"
+		undo.text = "Undo edit"
+		undo.tooltip_text = "Put back the record bytes from before the last debug edit."
+		undo.pressed.connect(undo_requested.emit)
+		$Controls.add_child(undo)
+		$Controls.move_child(undo, $Controls/Refresh.get_index())
+
 	search.text_changed.connect(func(_text: String) -> void: _filter())
 	show_empty.toggled.connect(func(_enabled: bool) -> void: refresh_from_host(_host, true))
 	$Controls/Refresh.pressed.connect(func() -> void: refresh_from_host(_host, true))
@@ -112,6 +125,10 @@ func refresh_from_host(host: Control, force := false) -> void:
 	var changed_city := city_id != _city_id
 
 	if not force and not changed_city and (not live.button_pressed or Time.get_ticks_msec() - _last_refresh < 1000):
+		return
+
+	# a refresh would end an open cell edit
+	if not force and table.get_edited() != null:
 		return
 
 	if changed_city:
@@ -142,6 +159,7 @@ func update_records(records: Array[DebugTableRecord]) -> void:
 		if row == null:
 			row = table.create_item(table.get_root())
 			row.collapsed = true
+			row.set_meta("record", id)
 			rows[id] = row
 
 		_set_cells(row, record)
@@ -155,6 +173,9 @@ func update_records(records: Array[DebugTableRecord]) -> void:
 			var child := row.get_child(index) if index < row.get_child_count() else table.create_item(row)
 			_set_cells(child, fields[index])
 
+			if is_editable():
+				_mark_editable(child, fields[index])
+
 	for id in rows.keys():
 		if not retained.has(id):
 			rows[id].free()
@@ -163,6 +184,53 @@ func update_records(records: Array[DebugTableRecord]) -> void:
 	_apply_sort()
 	_filter()
 	_fit_columns()
+
+
+# the MicroSims and Moving Things tables accept debug edits of their records
+func is_editable() -> bool:
+	return kind in ["XMIC", "Objects"]
+
+
+# MicroSim field rows edit their value; the stored values row of a moving
+# thing edits each field column
+func _mark_editable(item: TreeItem, record: DebugTableRecord) -> void:
+	if kind == "XMIC":
+		item.set_editable(1, true)
+		item.set_meta("field", record.name)
+		item.set_tooltip_text(1, "Double-click to change the stored value. The change is a debug edit.")
+
+		return
+
+	for column in table.columns:
+		var key := object_field(column)
+
+		if not key.is_empty():
+			item.set_editable(column, true)
+			item.set_tooltip_text(column, "Double-click to change the stored %s. The change is a debug edit." % key)
+
+
+# the XTHG field of a Moving Things column, or an empty string
+func object_field(column: int) -> String:
+	var index := column - 1 - (1 if locate_column >= 0 and column > locate_column else 0)
+
+	if kind != "Objects" or column == locate_column or index < 0 or index >= DebugObjectFields.COLUMNS.size():
+		return ""
+
+	return DebugObjectFields.COLUMNS[index]
+
+
+func _on_item_edited() -> void:
+	var item := table.get_edited()
+	var column := table.get_edited_column()
+
+	if item == null or item.get_parent() == null or not item.get_parent().has_meta("record"):
+		return
+
+	var record := int(str(item.get_parent().get_meta("record")))
+	var field := str(item.get_meta("field", "")) if kind == "XMIC" else object_field(column)
+
+	if not field.is_empty():
+		field_edited.emit(kind, record, field, item.get_text(column))
 
 
 func sort_by(column: int, descending := false) -> void:

@@ -81,7 +81,7 @@ func _simulation_suspended() -> bool:
 
 func _advance_palette_animation(delta: float, suspended: bool) -> void:
 	# Keep palette animation running while the simulation worker is busy.
-	if suspended or app.simulation_state.speed_controller.speed == GameSpeed.Speed.PAUSED:
+	if suspended or app.simulation_state.speed_controller.speed == GameSpeed.Speed.PAUSED or app.debug_tools.state.palette_frozen:
 		return
 
 	palette_clock.elapsed_msec += maxf(delta, 0.0) * 1000.0
@@ -193,6 +193,10 @@ func _update_fps(delta: float) -> void:
 func select_speed(speed_value: int) -> void:
 	if app.simulation_state.speed_controller == null:
 		return
+
+	# a debug phase step can leave a day open. finish it before the game runs
+	if speed_value != GameSpeed.Speed.PAUSED:
+		app.debug_tools.steps.finish_open_day()
 
 	if not app.simulation_state.speed_controller.set_speed(speed_value):
 		app.interface.show_error("Cannot change the simulation speed.")

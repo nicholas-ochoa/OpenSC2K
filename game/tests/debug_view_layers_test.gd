@@ -36,8 +36,8 @@ func _catalog() -> void:
 
 		assert(listed.count(layer) == 1, "Layer %d is in one menu group" % layer)
 		assert(not DebugTileLayers.title(layer).is_empty())
-		assert(not DebugTileLayers.source_chunks(layer).is_empty() or DebugTileLayers.kind(layer) == DebugTileLayers.Kind.FLAG,
-			"Layer %d names its source chunks" % layer)
+		assert(not DebugTileLayers.source_chunks(layer).is_empty() or DebugTileLayers.kind(layer) == DebugTileLayers.Kind.FLAG
+			or layer in DebugTileLayers.EXTERNAL, "Layer %d names its source chunks" % layer)
 		assert(not DebugLayerColors.legend(layer).is_empty(), "Layer %d has a key" % layer)
 		var table := DebugLayerColors.table(layer)
 		assert(table.get_width() == 256 and table.get_format() == Image.FORMAT_RGBA8)

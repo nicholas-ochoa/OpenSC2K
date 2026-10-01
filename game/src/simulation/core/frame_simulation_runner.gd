@@ -136,6 +136,11 @@ func advance_time(delta_msec: float, now_msec: int, suspended := false) -> Simul
 	return empty
 
 
+# true while a worker thread runs a tick
+func is_busy() -> bool:
+	return _thread != null
+
+
 static func budget_for_frame(delta_seconds: float) -> int:
 	# healthy frames permit overlap with the next frame. a slow frame reduces
 	# the next lease so rendering has room to recover. this is worker time only

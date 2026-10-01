@@ -9,7 +9,7 @@ const ENGINE_FIELDS := [
 	"pending_disaster_point", "active_disaster_type", "unsupported_disaster_type",
 	"disaster_map_counter", "disaster_hurricane_counter", "midi_playback_active",
 	"vehicle_crashes_enabled",
-	"pending_military_site", "pending_military_base_type",
+	"pending_military_site", "pending_military_base_type", "forced_military_base_type",
 ]
 const CONTROLLER_FIELDS := [
 	"speed", "accumulator_msec", "fire_elapsed_msec", "subtick_counter", "original_compatibility",

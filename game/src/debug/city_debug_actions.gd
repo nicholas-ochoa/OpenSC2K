@@ -21,6 +21,15 @@ const DISASTER_OVERLAY_FIRST := 0xfb
 const MAXIS_TARGET_OVERLAY_FIRST := 241
 # order of the debug spawn list
 const SPAWN_TYPES := ["Helicopter", "Airplane", "Cargo ship", "Sailboats", "Train"]
+# the kinds of moving things that the debug delete action removes, as the
+# original Debug menu lists them: [name, XTHG types]. an empty list means all
+const DELETE_KINDS := [
+	["All moving things", []], ["Airplanes", [1]], ["Helicopters", [2]], ["Cargo ships", [3]], ["Sailboats", [9]],
+	["Trains and subways", [10, 11, 12, 13]], ["Maxis Man", [16]], ["Monsters", [5]], ["Tornadoes", [15]],
+	["Police deployments", [7]], ["Fire deployments", [8]], ["Military deployments", [14]],
+]
+# the military base types of the debug proposals: [name, MILITARY_BASE_TYPE]
+const MILITARY_PROPOSALS := [["Air Force Base", 3], ["Army Base", 2], ["Naval Yard", 4], ["Missile Silos", 5]]
 const SPAWN_SEARCH_RADIUS := 16
 
 
@@ -122,8 +131,9 @@ static func unlock_everything(city: CityState, document: Sc2File) -> Result:
 	return success
 
 
-# open the military prompt now. no day phases run after the answer
-static func offer_military_base(controller: GameSpeedController) -> Result:
+# open the military prompt now. no day phases run after the answer. a base type
+# makes an accepted proposal search only for a site of that type
+static func offer_military_base(controller: GameSpeedController, base_type := 0) -> Result:
 	var engine := controller.engine if controller != null else null
 	var result := Result.new()
 
@@ -143,6 +153,7 @@ static func offer_military_base(controller: GameSpeedController) -> Result:
 	schedule.actions = PackedStringArray()
 	engine.pending_interaction = "military_proposal"
 	engine.pending_day_schedule = schedule
+	engine.forced_military_base_type = base_type
 	controller.interaction_blocked = true
 	result.ok = true
 
@@ -372,8 +383,9 @@ static func spawn_moving_thing(
 	return result
 
 
-# remove every moving thing and put back the map labels under them
-static func remove_moving_things(city: CityState, document: Sc2File) -> RemoveResult:
+# remove the moving things of `types`, or every moving thing for an empty list,
+# and put back the map labels under them
+static func remove_moving_things(city: CityState, document: Sc2File, types: Array = []) -> RemoveResult:
 	var result := RemoveResult.new()
 
 	if city == null or document == null:
@@ -395,11 +407,13 @@ static func remove_moving_things(city: CityState, document: Sc2File) -> RemoveRe
 	var records: Dictionary[int, bool] = {}
 
 	for record in range(1, ThingData.count(things)):
-		if ThingData.read(things, record * CityState.THING_RECORD_SIZE) != 0:
+		var type := ThingData.read(things, record * CityState.THING_RECORD_SIZE)
+
+		if type != 0 and (types.is_empty() or type in types):
 			records[record] = true
 
 	if records.is_empty():
-		result.error = "There are no moving things to remove."
+		result.error = "There are no moving things of this kind to remove."
 
 		return result
 

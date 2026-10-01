@@ -74,6 +74,8 @@ static func build(tiles: Dictionary, layer: Layer, changes: PackedByteArray = Pa
 			data = NativeDebugTiles.unusual_values(tiles.zones, tiles.terrain, tiles.underground, tiles.flags)
 		Layer.CHANGED_TILES:
 			data = changes
+		Layer.DISASTER_PREVIEW, Layer.MISSING_ARTWORK:
+			data = tiles.get("external", PackedByteArray())
 		_:
 			if DebugTileLayers.FLAG_BITS.has(layer):
 				data = tiles.flags

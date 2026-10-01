@@ -60,7 +60,7 @@ func sync() -> void:
 	var map_view := map.data_view_mode == CityViewMode.Mode.NONE and map.city_source != null
 	tile_layer.position = offset
 	tile_layer.scale = Vector2.ONE * scale
-	tile_layer.visible = map_view and tile_layer.layer != DebugTileLayers.Layer.NONE and tile_layer.mesh != null
+	tile_layer.visible = map_view and (tile_layer.layer != DebugTileLayers.Layer.NONE or tile_layer.grid) and tile_layer.mesh != null
 	overlay.set_view_transform(scale, offset)
 	overlay.visible = map.city_source != null
 	labels.size = map.size

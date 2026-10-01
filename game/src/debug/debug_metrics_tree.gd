@@ -28,6 +28,7 @@ const GROUPS := {
 }
 const LABELS := {
 	"simulation_slices": "Tick processing", "render_regions": "Map regions",
+	"file": "City file", "engine": "Engine counters", "debug_views": "Debug views",
 	"work": "Worker scheduling", "pending_msec": "Pending simulation time",
 	"snapshot_usec": "Snapshot copy", "publish_usec": "Publish result", "day_period_usec": "Day pacing period",
 	"max_slice_usec": "Longest work slice", "elapsed_usec": "Worker elapsed time",

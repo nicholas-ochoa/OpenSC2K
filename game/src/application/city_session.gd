@@ -148,7 +148,8 @@ func activate_document(
 	app.tool_state.dispatch_initialized = false
 	app.camera_input.update_zoom_controls(app.map_view.zoom_percent())
 
-	app.city_menu_bar.set_city_name(app.document_state.city.display_name())
+	app.city_menu_bar.set_city_name(app.document_state.city.display_name(),
+		DebugFileInfo.city_tooltip(app.document_state.city.display_name(), app.document_state.current_document))
 	app.city_menu_bar.set_scenario_available(app.simulation_state.simulation_engine.scenario != null)
 	app.reports.refresh_newspaper_menu()
 	app.interface.refresh_details()

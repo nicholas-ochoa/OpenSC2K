@@ -16,6 +16,15 @@ var app: CityApplication
 var state := DebugViewState.new()
 var tile_views: ApplicationDebugTileViews
 var render_views: ApplicationDebugRenderViews
+var edits: DebugEdits
+var steps: ApplicationDebugSteps
+var checks: ApplicationDebugChecks
+var save_report_dialog: AcceptDialog
+var _draw_order_note := ""
+# chunk bytes at the last mark, by chunk key. packed arrays share their data,
+# so a mark copies only the chunks that change later
+var chunk_marks: Dictionary[String, PackedByteArray] = {}
+var chunk_mark_serial := 0
 var _inspector_due := 0
 var _inspector_signature: Array = []
 var _viewport_connected := false
@@ -25,6 +34,9 @@ func _init(application: CityApplication) -> void:
 	app = application
 	tile_views = ApplicationDebugTileViews.new(application, state)
 	render_views = ApplicationDebugRenderViews.new(application, state)
+	edits = DebugEdits.new(application)
+	steps = ApplicationDebugSteps.new(application)
+	checks = ApplicationDebugChecks.new(application)
 
 
 func set_debug_mode(enabled: bool, save := true) -> void:
@@ -46,6 +58,7 @@ func set_debug_mode(enabled: bool, save := true) -> void:
 
 	elif app.document_state.city != null:
 		tile_views.on_city_activated()
+		mark_chunks()
 
 	# show or hide the debug query tools in the open tool palette
 	if app.city_toolbar != null and app.tool_state.selected_group == CityToolIds.Group.QUERY:
@@ -56,6 +69,14 @@ func set_debug_mode(enabled: bool, save := true) -> void:
 
 
 func on_city_activated() -> void:
+	edits.clear()
+	steps.on_city_activated()
+	chunk_marks.clear()
+	chunk_mark_serial += 1
+
+	if DebugMode.enabled:
+		mark_chunks()
+
 	tile_views.on_city_activated()
 	render_views.clear()
 
@@ -68,9 +89,43 @@ func on_city_activated() -> void:
 			tile_views.set_layer(state.tile_layer)
 
 
+# keep the bytes of every chunk, for the changed bytes of the chunk browser
+func mark_chunks() -> String:
+	var document := app.document_state.current_document
+	chunk_marks.clear()
+	chunk_mark_serial += 1
+
+	if document == null:
+		return "Load a city before you mark the chunks."
+
+	var seen: Dictionary[String, int] = {}
+
+	for chunk in document.chunks:
+		chunk_marks[chunk_key(chunk.chunk_id, seen)] = chunk.decoded_payload
+
+	return "Marked the bytes of %d chunks." % chunk_marks.size()
+
+
+# the chunk ID, with "#2", "#3" and so on for a repeated chunk. `seen`
+# counts the chunks before it
+static func chunk_key(chunk_id: String, seen: Dictionary[String, int]) -> String:
+	var occurrence := int(seen.get(chunk_id, 0))
+	seen[chunk_id] = occurrence + 1
+
+	return chunk_id if occurrence == 0 else "%s#%d" % [chunk_id, occurrence + 1]
+
+
+static func find_keyed_chunk(document: Sc2File, key: String) -> Sc2Chunk:
+	var parts := key.split("#")
+	var occurrence := int(parts[1]) - 1 if parts.size() > 1 else 0
+
+	return document.find_chunk(parts[0], occurrence)
+
+
 # wait for background work before the application exits
 func close() -> void:
 	tile_views.close()
+	checks.close()
 
 
 func on_days_completed() -> void:
@@ -91,8 +146,25 @@ func on_debug_menu(id: int) -> void:
 		CityDebugMenu.MENU_DEBUG_WINDOW:
 			if app.debug_overlay != null and not app.debug_overlay.is_open:
 				app.debug_overlay.toggle()
+		CityDebugMenu.MENU_VERIFY_SAVE:
+			_status(checks.verify_save())
+		CityDebugMenu.MENU_STEP_PHASE:
+			_status(steps.step_phase())
+		CityDebugMenu.MENU_STEP_DAY:
+			_status(steps.step_day())
+		CityDebugMenu.MENU_MISSING_ARTWORK:
+			_status(checks.check_missing_artwork())
+		CityDebugMenu.MENU_UNDO_EDIT:
+			_status(edits.undo())
+		CityDebugMenu.MENU_TILE_GRID:
+			if app.map_view != null:
+				app.map_view.debug_view.attach()
+				tile_views.set_grid(not state.tile_grid)
+				_apply_view_change()
 		_:
-			if CityDebugMenu.CHECKS.has(id):
+			if id >= CityDebugMenu.PREVIEW_BASE:
+				_status(checks.preview_disaster(id - CityDebugMenu.PREVIEW_BASE, CityDebugMenu.PREVIEW_TICKS))
+			elif CityDebugMenu.CHECKS.has(id) and id not in CityDebugMenu.HANDLED_CHECKS:
 				var field: String = CityDebugMenu.CHECKS[id]
 				state.set(field, not bool(state.get(field)))
 				_apply_view_change()
@@ -209,13 +281,21 @@ func _inspector_text(point: Vector2i) -> String:
 	if state.tile_layer != Layer.NONE:
 		extra.append(["Debug layer", "%s: %s" % [DebugTileLayers.title(state.tile_layer), tile_views.describe(point)]])
 
-	# a pinned tile also shows each field of its moving object
+	# a pinned tile also shows each field of its moving object and the growth inputs
 	var pinned := app.map_view.debug_view.pinned_tile == point
+
+	if pinned:
+		extra.append_array(GrowthInspection.rows(city, point))
+	elif (city.zone_id(point.x, point.y) & Sc2ZoneLayout.TYPE_MASK) in range(1, 7):
+		extra.append(["Growth", "Click to pin the tile and show its growth inputs"])
 
 	return TileInspection.text(city, point, extra, pinned)
 
 
 func process(delta: float) -> void:
+	if checks.is_busy():
+		_status(checks.process())
+
 	if not DebugMode.enabled or app.map_view == null or not app.map_view.debug_view.is_attached():
 		return
 
@@ -235,8 +315,12 @@ func process(delta: float) -> void:
 		_publish_lines()
 
 	if labels_changed or lines_changed:
-		view.labels.labels = tile_views.value_labels + render_views.thing_labels
+		view.labels.labels = tile_views.value_labels + render_views.thing_labels + render_views.draw_labels
 		view.labels.queue_redraw()
+
+	if render_views.draw_order_note != _draw_order_note:
+		_draw_order_note = render_views.draw_order_note
+		_status(_draw_order_note)
 
 	view.overlay.expire_flashes()
 
@@ -284,6 +368,43 @@ func _clear_views() -> void:
 	view.inspector_active = false
 	view.pinned_tile = Vector2i(-1, -1)
 	view.inspector.close()
+
+
+# show a check result as its tile layer, and outline the tile that it started from
+func show_check_result(layer: Layer, values: PackedByteArray, summary: String, point := Vector2i(-1, -1)) -> void:
+	if app.map_view == null:
+		return
+
+	app.map_view.debug_view.attach()
+	tile_views.set_external(layer, values, summary)
+
+	if point.x >= 0 and app.document_state.city != null:
+		render_views.line_sets["check"] = [[CityMapDebugView.tile_outline(app.document_state.city, point), PINNED_COLOR]]
+	else:
+		render_views.line_sets.erase("check")
+
+	_publish_lines()
+	_apply_view_change()
+
+
+func show_save_report(report: DebugSaveCheck.Report) -> void:
+	if save_report_dialog == null:
+		save_report_dialog = AcceptDialog.new()
+		save_report_dialog.title = "Save Check"
+		var text := TextEdit.new()
+		text.name = "Report"
+		text.editable = false
+		text.custom_minimum_size = Vector2(720, 420)
+		var font := SystemFont.new()
+		font.font_names = PackedStringArray(["Menlo", "Consolas", "DejaVu Sans Mono", "monospace"])
+		text.add_theme_font_override("font", font)
+		save_report_dialog.add_child(text)
+		app.add_child(save_report_dialog)
+
+	(save_report_dialog.get_node("Report") as TextEdit).text = report.text()
+
+	if app.is_inside_tree() and DisplayServer.get_name() != "headless":
+		save_report_dialog.popup_centered()
 
 
 func _status(message: String) -> void:

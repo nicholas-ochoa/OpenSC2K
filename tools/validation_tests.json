@@ -497,6 +497,16 @@
     ]
   },
   {
+    "id": "debug_tools_workflow_test",
+    "script": "tests/debug_tools_workflow_test.gd",
+    "domain": "ui",
+    "lane": "product",
+    "requires": [
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
+    ]
+  },
+  {
     "id": "expanded_limits_test",
     "script": "tests/expanded_limits_test.gd",
     "domain": "formats",

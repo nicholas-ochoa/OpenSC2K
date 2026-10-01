@@ -18,7 +18,13 @@ const WINDOW_INTERVAL_MSEC := 100
 # tile value text appears when at most this many tiles are in view
 const MAX_VALUE_LABEL_TILES := 1200
 const LABEL_COLOR := Color(1, 1, 1)
+const COORDINATE_COLOR := Color(0.55, 0.95, 1.0)
+# coordinate text sits below the value text of the same tile
+const COORDINATE_OFFSET := Vector2(0, 6)
+const MAX_COORDINATE_LABELS := 300
+const MAX_COORDINATE_STEP := 64
 const NO_BASELINE := "No baseline yet. It is taken after the next simulated day."
+const NO_CHECK := "No result yet. Run the check from the Debug menu or the Scenario tab."
 
 var app: CityApplication
 var state: DebugViewState
@@ -48,6 +54,9 @@ var _job: ValueJob
 var _task_id := -1
 # a new city makes the running build obsolete
 var _generation := 0
+# check results by layer: [values, summary]
+var _external: Dictionary[Layer, Array] = {}
+var _external_serial := 0
 
 
 func _init(application: CityApplication, view_state: DebugViewState) -> void:
@@ -57,6 +66,7 @@ func _init(application: CityApplication, view_state: DebugViewState) -> void:
 
 func on_city_activated() -> void:
 	_generation += 1
+	_external.clear()
 	_value_signature.clear()
 	values = null
 	_captures.clear()
@@ -111,17 +121,50 @@ func set_baseline(baseline: Baseline) -> void:
 
 func set_layer(layer: Layer) -> void:
 	state.tile_layer = layer
+	_window_due = 0
 	_value_signature.clear()
 	_label_signature.clear()
 	var view := app.map_view.debug_view
 
 	if layer == Layer.NONE:
-		view.tile_layer.clear()
 		values = null
 		value_labels.clear()
 		view.legend_summary = ""
+		view.tile_layer.set_layer(Layer.NONE)
+
+		# the grid keeps the window mesh
+		if not state.tile_grid:
+			view.tile_layer.clear()
 	elif layer == Layer.CHANGED_TILES:
 		set_baseline(state.change_baseline)
+
+	app.map_view.queue_redraw()
+
+
+# the values of a check layer, such as the disaster preview. the layer shows them
+func set_external(layer: Layer, data: PackedByteArray, summary: String) -> void:
+	_external[layer] = [data, summary]
+	_external_serial += 1
+
+	if state.tile_layer != layer:
+		set_layer(layer)
+	else:
+		_value_signature.clear()
+
+
+func has_external(layer: Layer) -> bool:
+	return _external.has(layer)
+
+
+func set_grid(enabled: bool) -> void:
+	state.tile_grid = enabled
+	_window_due = 0
+	_label_signature.clear()
+	var view := app.map_view.debug_view
+	view.tile_layer.set_grid(enabled)
+
+	if not enabled and state.tile_layer == Layer.NONE:
+		view.tile_layer.clear()
 
 	app.map_view.queue_redraw()
 
@@ -131,7 +174,7 @@ func process(now: int) -> bool:
 	_collect_job()
 	var city := app.document_state.city
 
-	if state.tile_layer == Layer.NONE or city == null or app.map_view == null:
+	if (state.tile_layer == Layer.NONE and not state.tile_grid) or city == null or app.map_view == null:
 		return false
 
 	var view := app.map_view.debug_view
@@ -144,6 +187,11 @@ func process(now: int) -> bool:
 		if view.tile_layer.needs_window(target, geometry):
 			view.tile_layer.build_window(city, target, geometry)
 			app.map_view.queue_redraw()
+
+	if state.tile_layer == Layer.NONE:
+		view.tile_layer.set_empty_values(city.map_size)
+
+		return _refresh_labels(city)
 
 	if now >= _value_due and _job == null:
 		var signature := _signature(city)
@@ -166,6 +214,10 @@ func _start_job(city: CityState, signature: Array) -> void:
 	if state.tile_layer == Layer.CHANGED_TILES:
 		_job.baseline = _baseline()
 		_job.current = tiles(city)
+	elif state.tile_layer in DebugTileLayers.EXTERNAL:
+		var external: Array = _external.get(state.tile_layer, [PackedByteArray(), NO_CHECK])
+		_job.source["external"] = external[0]
+		_job.external_summary = external[1]
 
 	_task_id = WorkerThreadPool.add_task(_job.run, false, "Debug tile layer")
 
@@ -195,6 +247,8 @@ func _collect_job() -> void:
 		change_counts = job.counts
 		changed_tiles = job.changed
 		summary = _change_summary() if job.has_baseline else NO_BASELINE
+	elif job.layer in DebugTileLayers.EXTERNAL:
+		summary = job.external_summary
 
 	if view.tile_layer.clipped:
 		summary += ("\n" if not summary.is_empty() else "") + (
@@ -234,6 +288,8 @@ func _signature(city: CityState) -> Array:
 
 	if state.tile_layer == Layer.CHANGED_TILES:
 		result.append_array([state.change_baseline, _baseline().get_instance_id(), _day_serial])
+	elif state.tile_layer in DebugTileLayers.EXTERNAL:
+		result.append(_external_serial)
 
 	return result
 
@@ -266,9 +322,12 @@ func _capture_load_baseline() -> void:
 	_load_document_id = city.document.get_instance_id()
 
 
-# value text on each visible tile at a close zoom. true when the labels changed
+# value text on each visible tile at a close zoom, and tile coordinates with
+# the grid. true when the labels changed
 func _refresh_labels(city: CityState) -> bool:
-	if not state.tile_values or values == null:
+	var values_shown := state.tile_values and values != null
+
+	if not values_shown and not state.tile_grid:
 		if value_labels.is_empty():
 			return false
 
@@ -279,7 +338,7 @@ func _refresh_labels(city: CityState) -> bool:
 
 	var outline := app.map_view.visible_tile_outline()
 	var bounds := CityDebugTileLayer.visible_window(outline, city.map_size, 2)
-	var signature: Array = [bounds, _value_signature, app.map_view.zoom_factor]
+	var signature: Array = [bounds, _value_signature, app.map_view.zoom_factor, values_shown, state.tile_grid]
 
 	if signature == _label_signature:
 		return false
@@ -287,8 +346,11 @@ func _refresh_labels(city: CityState) -> bool:
 	_label_signature = signature
 	value_labels.clear()
 
+	if state.tile_grid:
+		_add_coordinate_labels(city, bounds)
+
 	# a diamond view covers about half of its tile rectangle
-	if bounds.get_area() / 2 > MAX_VALUE_LABEL_TILES:
+	if not values_shown or bounds.get_area() / 2 > MAX_VALUE_LABEL_TILES:
 		return true
 
 	for x in range(bounds.position.x, bounds.end.x):
@@ -299,6 +361,22 @@ func _refresh_labels(city: CityState) -> bool:
 				value_labels.append([CityMapDebugView.tile_center(city, Vector2i(x, y)), str(value), LABEL_COLOR])
 
 	return true
+
+
+# "x,y" on every nth tile, with n a power of two that keeps the text readable
+func _add_coordinate_labels(city: CityState, bounds: Rect2i) -> void:
+	var step := 1
+
+	while step < MAX_COORDINATE_STEP and bounds.get_area() / (2 * step * step) > MAX_COORDINATE_LABELS:
+		step *= 2
+
+	var first := Vector2i(ceili(bounds.position.x / float(step)) * step, ceili(bounds.position.y / float(step)) * step)
+
+	for x in range(first.x, bounds.end.x, step):
+		for y in range(first.y, bounds.end.y, step):
+			if city.tile_is_visible(x, y):
+				var at := CityMapDebugView.tile_center(city, Vector2i(x, y)) + COORDINATE_OFFSET
+				value_labels.append([at, "%d,%d" % [x, y], COORDINATE_COLOR])
 
 
 # the layer value text of a tile for the Tile Inspector, or an empty string
@@ -344,6 +422,7 @@ class ValueJob extends RefCounted:
 	var captures: Array = []
 	var baseline: NativeTileSnapshot
 	var current := {}
+	var external_summary := ""
 	var result: DebugLayerValues.Result
 	var counts := PackedInt32Array()
 	var changed := 0

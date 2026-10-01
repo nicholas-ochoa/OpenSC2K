@@ -5,6 +5,9 @@ extends Node
 @warning_ignore_start("integer_division")
 
 const SAMPLE_INTERVAL_SECONDS := 0.25
+# action buttons and choices keep these widths instead of filling the window
+const BUTTON_WIDTH := 160
+const OPTION_WIDTH := 200
 const DISASTER_NAMES := ["Fire", "Flood", "Riot", "Toxic Spill", "Air Crash",
 	"Earthquake", "Tornado", "Monster", "Meltdown", "Microwave", "Volcano",
 	"Firestorm", "Mass Riots", "Mass Floods", "Pollution", "Hurricane",
@@ -25,6 +28,8 @@ var _tabs: TabContainer
 var _metrics_tree: Tree
 # the status bar message at the bottom of the window
 var _status_label: Label
+# the file format of the open city, at the right of the status bar
+var file_format_label: Label
 var _resume_speed := 2
 var _terrain_slider: HSlider
 var _terrain_value: Label
@@ -46,6 +51,7 @@ func _ready() -> void:
 	var tabs: TabContainer = $DebugWindow/Panel/Layout/Margin/Content/Tabs
 	_tabs = tabs
 	_status_label = $DebugWindow/Panel/Layout/StatusBar/Message
+	_build_status_row()
 	tabs.tab_changed.connect(func(_index: int) -> void: _refresh_record_tab())
 	_days = tabs.get_node("Simulation/Days")
 	_configure_table(_days, ["Day", "What happens", "Average ms", "Last ms", "Max ms", "Samples", "Last w/ Delay"])
@@ -56,7 +62,16 @@ func _ready() -> void:
 	tabs.set_tab_title(tabs.get_tab_idx_from_control(tabs.get_node("Tiles")), "Tile Counts")
 	for tab_name in ["MicroSims", "Objects", "Tiles"]:
 		(tabs.get_node(tab_name) as DebugRecordTable).locate_requested.connect(_locate_on_map)
+
+	for tab_name in ["MicroSims", "Objects"]:
+		var table := tabs.get_node(tab_name) as DebugRecordTable
+		table.field_edited.connect(_edit_record_field)
+		table.undo_requested.connect(_undo_edit)
 	_build_actions(tabs)
+
+	for tab: DebugWindowTab in [CityDebugStepsTab.new(), CityDebugChunksTab.new(), CityDebugMiscTab.new(), CityDebugScenarioTab.new()]:
+		tab.setup(main_control, set_status)
+		tabs.add_child(tab)
 
 
 func _input(event: InputEvent) -> void:
@@ -184,7 +199,7 @@ func _build_actions(tabs: TabContainer) -> void:
 
 	# the amount and its button share one column, like the buttons above them
 	var set_funds := HBoxContainer.new()
-	set_funds.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	set_funds.size_flags_horizontal = Control.SIZE_FILL
 	set_funds.add_theme_constant_override("separation", 4)
 	cheats.add_child(set_funds)
 	var funds := SpinBox.new()
@@ -208,12 +223,21 @@ func _build_actions(tabs: TabContainer) -> void:
 	_button(cheats, "Call Maxis Man", ("Send Maxis Man to the active disaster. If there is no disaster monster or tornado, " +
 		"he goes to the disaster marker nearest the view center."), func() -> void:
 		_invoke("debug_dispatch_maxis_man"))
-	_button(cheats, "Offer military base", ("Show the military base offer now. The simulation waits for your answer. " +
-		"This is not available if the city already has a base."), func() -> void:
+	var military := _action_section(box, "Military base", 3)
+	_button(military, "Offer military base", ("Show the military base offer now. The game rules choose the base type " +
+		"if you accept. This is not available if the city already has a base."), func() -> void:
 		_invoke("debug_offer_military_base"))
+
+	for proposal: Array in CityDebugActions.MILITARY_PROPOSALS:
+		var base_type := int(proposal[1])
+		_button(military, "Propose %s" % proposal[0], ("Show the military base offer for a %s. If you accept, the game " +
+			"searches only for a %s site. Without a site, the offer ends as declined.") % [proposal[0], proposal[0]],
+			func() -> void:
+				_record_action(main_control.debug.call("debug_offer_military_base", base_type)))
+
 	var moving := _action_section(box, "Moving things", 3)
 	var spawn_type := OptionButton.new()
-	spawn_type.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spawn_type.custom_minimum_size.x = OPTION_WIDTH
 	spawn_type.tooltip_text = "The moving thing to add."
 
 	for caption in CityDebugActions.SPAWN_TYPES:
@@ -223,12 +247,21 @@ func _build_actions(tabs: TabContainer) -> void:
 	_button(moving, "Add near view center", ("Add the selected moving thing on the nearest suitable tile to the view center. " +
 		"A cargo ship starts at a map edge and sails toward the view center. The normal limits apply."), func() -> void:
 		_record_action(main_control.debug.call("debug_spawn_moving_thing", spawn_type.selected)))
-	_button(moving, "Remove all", ("Remove every moving thing, including disaster objects and Maxis Man. " +
-		"The map labels under them come back."), func() -> void:
-		_invoke("debug_remove_moving_things"))
+	moving.add_child(Control.new())
+	var delete_kind := OptionButton.new()
+	delete_kind.custom_minimum_size.x = OPTION_WIDTH
+	delete_kind.tooltip_text = "The kind of moving thing to delete."
+
+	for entry: Array in CityDebugActions.DELETE_KINDS:
+		delete_kind.add_item(entry[0])
+
+	moving.add_child(delete_kind)
+	_button(moving, "Delete selected things", ("Delete every moving thing of the selected kind from the map. The map labels " +
+		"under them come back. Deleting a monster or a tornado does not end its disaster."), func() -> void:
+		_record_action(main_control.debug.call("debug_remove_moving_things", delete_kind.selected)))
 	var disasters := _action_section(box, "Disasters", 3)
 	var disaster := OptionButton.new()
-	disaster.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	disaster.custom_minimum_size.x = OPTION_WIDTH
 	disaster.tooltip_text = "The disaster to start."
 
 	for caption in DISASTER_NAMES:
@@ -257,7 +290,7 @@ func _build_actions(tabs: TabContainer) -> void:
 	_terrain_slider.step = 1
 	_terrain_slider.value = 32
 	_terrain_slider.custom_minimum_size.x = 200
-	_terrain_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_terrain_slider.size_flags_horizontal = Control.SIZE_FILL
 	_terrain_slider.tooltip_text = "32 shows all terrain levels. Lower values hide higher terrain."
 	terrain.add_child(_terrain_slider)
 	_terrain_value = Label.new()
@@ -301,7 +334,8 @@ func _button(parent: Control, caption: String, tooltip: String, action: Callable
 	var button := Button.new()
 	button.text = caption
 	button.tooltip_text = tooltip
-	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.size_flags_horizontal = Control.SIZE_FILL
+	button.custom_minimum_size.x = BUTTON_WIDTH
 	button.pressed.connect(action)
 	parent.add_child(button)
 
@@ -318,6 +352,21 @@ func _invoke(method: String) -> void:
 func _record_action(result: ApplicationDebug.ActionResult) -> void:
 	set_status(result.message)
 	_refresh_metrics()
+
+
+# the message on the left of the status bar and the file format on the right
+func _build_status_row() -> void:
+	var bar := _status_label.get_parent()
+	var row := HBoxContainer.new()
+	row.name = "Row"
+	bar.add_child(row)
+	_status_label.reparent(row)
+	_status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	file_format_label = Label.new()
+	file_format_label.name = "FileFormat"
+	file_format_label.mouse_filter = Control.MOUSE_FILTER_PASS
+	file_format_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(file_format_label)
 
 
 func set_status(message: String) -> void:
@@ -363,6 +412,31 @@ static func _day_number(parts: Array) -> int:
 	return int(parts[2]) * CityCalendar.DAYS_PER_YEAR + (int(parts[0]) - 1) * CityCalendar.DAYS_PER_MONTH + int(parts[1]) - 1
 
 
+func _edits() -> DebugEdits:
+	var tools: Variant = main_control.get("debug_tools") if is_instance_valid(main_control) else null
+
+	return tools.edits if tools is ApplicationDebugTools else null
+
+
+func _edit_record_field(kind: String, record: int, field: String, text: String) -> void:
+	var edits := _edits()
+
+	if edits == null:
+		return
+
+	_edit_result(edits.set_microsim_field(record, field, text) if kind == "XMIC" else edits.set_thing_field(record, field, text))
+
+
+func _undo_edit() -> void:
+	if _edits() != null:
+		_edit_result(_edits().undo())
+
+
+func _edit_result(message: String) -> void:
+	set_status(message)
+	_refresh_record_tab(true)
+
+
 func _locate_on_map(site: Rect2i) -> void:
 	var map_view := main_control.get("map_view") as CityMapControl if is_instance_valid(main_control) else null
 
@@ -403,6 +477,9 @@ func _refresh_metrics() -> void:
 	_mark_current_day()
 
 	_metrics_tree.refresh(_metrics)
+	var file: Dictionary = _metrics.get("file", {})
+	file_format_label.text = "File: %s" % str(file.get("format", "No city"))
+	file_format_label.tooltip_text = "%s\n%s" % [file.get("format_detail", ""), file.get("source_path", "")]
 	_refresh_record_tab()
 
 
@@ -561,3 +638,5 @@ func _refresh_record_tab(force := false) -> void:
 
 	if tab is DebugRecordTable:
 		tab.refresh_from_host(main_control, force)
+	elif tab is DebugWindowTab:
+		tab.refresh(force)

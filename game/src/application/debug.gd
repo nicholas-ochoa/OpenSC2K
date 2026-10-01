@@ -50,6 +50,7 @@ func debug_metrics() -> Dictionary:
 		"pause_at_date": "None",
 	}
 
+	result.file = DebugFileInfo.fields(app.document_state.current_document, app.document_state.current_save_path)
 	result.engine = DebugPerformanceText.monitors()
 	result.debug_views = app.debug_tools.metrics()
 
@@ -281,8 +282,13 @@ func debug_spawn_moving_thing(kind: int) -> ActionResult:
 	return ActionResult.new(true, "Added a helicopter at %s." % str(result.point))
 
 
-func debug_remove_moving_things() -> ActionResult:
-	var result := DebugActions.remove_moving_things(app.document_state.city, app.document_state.current_document)
+# `kind` indexes CityDebugActions.DELETE_KINDS. 0 removes every moving thing
+func debug_remove_moving_things(kind := 0) -> ActionResult:
+	if kind < 0 or kind >= DebugActions.DELETE_KINDS.size():
+		return ActionResult.new(false, "The moving thing selection is not valid.")
+
+	var entry: Array = DebugActions.DELETE_KINDS[kind]
+	var result := DebugActions.remove_moving_things(app.document_state.city, app.document_state.current_document, entry[1])
 
 	if not result.ok:
 		return ActionResult.new(false, result.error)
@@ -290,21 +296,27 @@ func debug_remove_moving_things() -> ActionResult:
 	app.map_render.refresh_map(false)
 	app.moving_sprites.refresh_moving_things()
 
-	return ActionResult.new(true, "Removed %d moving thing(s)." % result.count)
+	return ActionResult.new(true, "Removed %d moving thing(s): %s." % [result.count, str(entry[0]).to_lower()])
 
 
-func debug_offer_military_base() -> ActionResult:
+# `base_type` 0 follows the game rules; another value proposes that base type
+func debug_offer_military_base(base_type := 0) -> ActionResult:
 	if app.simulation_state.military_proposal_pending:
 		return ActionResult.new(false, "The military base offer is already open.")
 
-	var result := DebugActions.offer_military_base(app.simulation_state.speed_controller)
+	var result := DebugActions.offer_military_base(app.simulation_state.speed_controller, base_type)
 
 	if not result.ok:
 		return ActionResult.new(false, result.error)
 
 	app.budget.open_military_proposal()
+	var kind := "military base"
 
-	return ActionResult.new(true, "The military base offer is open.")
+	for proposal in DebugActions.MILITARY_PROPOSALS:
+		if int(proposal[1]) == base_type:
+			kind = str(proposal[0])
+
+	return ActionResult.new(true, "The %s offer is open. Yes builds it if the map has a site." % kind)
 
 
 func debug_set_visible_altitude_levels(levels: int) -> void:

@@ -25,12 +25,19 @@ const PATH_COLOR := Color(1.0, 0.6, 0.1, 0.9)
 const THING_COLOR := Color(1.0, 0.95, 0.3, 0.95)
 const THING_RADIUS := 3.0
 const RENDER_SETS := ["regions", "occluders", "sprites", "moving"]
+# draw order text appears when at most this many draws are in view
+const MAX_DRAW_LABELS := 600
+const DRAW_LABEL_COLOR := Color(1.0, 0.75, 0.95)
 
 var app: CityApplication
 var state: DebugViewState
 # named lists of [point pairs, color]
 var line_sets: Dictionary[String, Array] = {}
 var thing_dots: Array = []
+# painter order text of the draws in view: [source position, text, color]
+var draw_labels: Array = []
+# why the draw order shows no text, or an empty string
+var draw_order_note := ""
 var thing_labels: Array = []
 var outline_count := 0
 var region_count := 0
@@ -70,17 +77,20 @@ func process(now: int) -> bool:
 	if cache != null and not cache.published_log.is_empty():
 		cache.published_log.clear()
 
-	if (state.region_bounds or state.occluders or state.sprite_bounds) and _render_dirty and now >= _render_due:
+	var render_views := state.region_bounds or state.occluders or state.sprite_bounds or state.draw_order
+
+	if render_views and _render_dirty and now >= _render_due:
 		_render_due = now + RENDER_INTERVAL_MSEC
 		_render_dirty = false
 		var started := Time.get_ticks_usec()
 		_build_render_lines()
 		last_render_usec = Time.get_ticks_usec() - started
 		changed = true
-	elif not (state.region_bounds or state.occluders or state.sprite_bounds) and _has_any(RENDER_SETS):
+	elif not render_views and (_has_any(RENDER_SETS) or not draw_labels.is_empty()):
 		for key in RENDER_SETS:
 			line_sets.erase(key)
 
+		draw_labels.clear()
 		changed = true
 
 	if state.thing_paths and now >= _thing_due:
@@ -145,6 +155,41 @@ func _build_render_lines() -> void:
 
 	if state.occluders or state.sprite_bounds:
 		_add_draw_outlines(cache)
+
+	draw_labels.clear()
+
+	if state.draw_order:
+		_add_draw_labels(cache)
+
+
+# the painter index of each draw in view, inside its region. depth -1 is ground
+func _add_draw_labels(cache: CityRegionCache) -> void:
+	var visible := app.map_view.visible_source_rect()
+	var bounds := Rect2i(Vector2i(visible.position.floor()), Vector2i(visible.size.ceil()))
+	var row_size := NativeCityRegionDraws.LABEL_ROW
+	var count := 0
+
+	for key: Vector2i in cache.visible_keys:
+		var gpu := cache.entries.get(key) as CityGpuRegionResult
+
+		if gpu == null or gpu.draws == null:
+			continue
+
+		var rows := gpu.draws.draw_labels(bounds, gpu.command_scale, MAX_DRAW_LABELS + 1 - count)
+		count += rows.size() / row_size
+
+		if count > MAX_DRAW_LABELS:
+			draw_labels.clear()
+			draw_order_note = "Draw order: zoom in. More than %d draws are in view." % MAX_DRAW_LABELS
+
+			return
+
+		for at in range(0, rows.size(), row_size):
+			var depth := rows[at + 3]
+			var text := "%d" % rows[at] if depth < 0 else "%d d%d" % [rows[at], depth]
+			draw_labels.append([Vector2(rows[at + 1], rows[at + 2]), text, DRAW_LABEL_COLOR])
+
+	draw_order_note = "" if count > 0 or cache.gpu_enabled else "Draw order needs the GPU region renderer."
 
 
 # one line list for each region state

@@ -69,7 +69,8 @@ static func _failed(message: String) -> Result:
 	return result
 
 
-static func resolve(city: CityState, accepted: bool, game_random: GameLcgRandom, defer_land_plot := false) -> Result:
+# `forced` is 0 for the game rules, or a base type that a debug proposal asks for
+static func resolve(city: CityState, accepted: bool, game_random: GameLcgRandom, defer_land_plot := false, forced := 0) -> Result:
 	if city == null or not city.is_valid():
 		return _failed("city is invalid")
 
@@ -77,6 +78,7 @@ static func resolve(city: CityState, accepted: bool, game_random: GameLcgRandom,
 		"accepted": accepted,
 		"has_game": game_random != null,
 		"defer_land_plot": defer_land_plot,
+		"forced": forced,
 	}).result
 
 

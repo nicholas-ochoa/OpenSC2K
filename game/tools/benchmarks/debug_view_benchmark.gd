@@ -22,6 +22,8 @@ const CASES: Array = [
 	["occluders_sprites", { "occluders": true, "sprite_bounds": true }],
 	["thing_paths", { "thing_paths": true }],
 	["performance_hud", { "performance_hud": true }],
+	["tile_grid", { "tile_grid": true, "zoom": 2.0 }],
+	["draw_order", { "draw_order": true, "zoom": 4.0 }],
 	["inspector", { "inspector": true }],
 	["everything", {"tile_layer": Layer.POWER_GRIDS, "region_bounds": true, "region_repaints": true, "occluders": true,
 		"sprite_bounds": true, "thing_paths": true, "performance_hud": true, "inspector": true}],
@@ -71,6 +73,9 @@ func _run() -> void:
 	for case: Array in CASES:
 		await _measure(main, case[0], case[1], seconds, base_zoom, image_folder)
 
+	if not image_folder.is_empty():
+		await _capture_tabs(main, image_folder)
+
 	main.debug_tools.set_debug_mode(false, false)
 	main.queue_free()
 	await process_frame
@@ -86,8 +91,10 @@ func _measure(main: CityApplication, title: String, options: Dictionary, seconds
 		tools.tile_views.set_baseline(options.baseline)
 
 	for field in ["tile_values", "region_bounds", "region_repaints", "occluders", "sprite_bounds", "thing_paths",
-			"performance_hud"]:
+			"performance_hud", "draw_order"]:
 		tools.state.set(field, bool(options.get(field, false)))
+
+	tools.tile_views.set_grid(bool(options.get("tile_grid", false)))
 
 	tools._apply_view_change()
 	main.map_view.zoom_factor = float(options.get("zoom", base_zoom))
@@ -134,6 +141,56 @@ func _measure(main: CityApplication, title: String, options: Dictionary, seconds
 
 	if options.get("inspector", false):
 		tools.unpin_inspector()
+
+
+# window images of the Debug window tabs
+func _capture_tabs(main: CityApplication, folder: String) -> void:
+	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
+	main.debug_tools.steps.step_phase()
+	main.debug_tools.mark_chunks()
+	main.debug_tools.edits.set_misc_word(Sc2MiscLayout.BONDS, "1234")
+	main.debug_overlay.toggle()
+	var tabs: TabContainer = main.debug_overlay._tabs
+
+	for tab_name in ["Steps", "Chunks", "MISC", "Scenario", "Actions"]:
+		tabs.current_tab = tabs.get_tab_idx_from_control(tabs.get_node(tab_name))
+
+		if tab_name == "Chunks":
+			var chunks := tabs.get_node(tab_name) as CityDebugChunksTab
+			chunks.refresh(true)
+			chunks._selected = "MISC"
+			chunks._show_page()
+
+		var tab_started := Time.get_ticks_usec()
+		var tab := tabs.get_node(tab_name)
+
+		if tab is DebugWindowTab:
+			(tab as DebugWindowTab).refresh(true)
+
+		var refresh_usec := Time.get_ticks_usec() - tab_started
+		var metrics_started := Time.get_ticks_usec()
+		main.debug_overlay._refresh_metrics()
+		print("DEBUGTAB %s refresh_ms=%.1f metrics_ms=%.1f" % [tab_name, refresh_usec / 1000.0,
+			(Time.get_ticks_usec() - metrics_started) / 1000.0])
+
+		for _frame in 20:
+			await process_frame
+
+		var slowest := 0.0
+		var frames_started := Time.get_ticks_usec()
+		var previous := frames_started
+
+		for _frame in 100:
+			await process_frame
+			var now := Time.get_ticks_usec()
+			slowest = maxf(slowest, (now - previous) / 1000.0)
+			previous = now
+
+		print("DEBUGTAB %s open avg_ms=%.2f max_ms=%.2f" % [tab_name, (previous - frames_started) / 100000.0, slowest])
+		root.get_texture().get_image().save_png(folder.path_join("tab_%s.png" % tab_name.to_lower()))
+
+	main.debug_overlay.toggle()
+	main.debug_tools.edits.undo()
 
 
 func _wait_ready(main: CityApplication) -> void:

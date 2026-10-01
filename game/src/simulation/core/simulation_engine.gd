@@ -20,6 +20,8 @@ var pending_interaction := ""
 var pending_day_schedule: SimulationSchedule
 var pending_military_site := Rect2i()
 var pending_military_base_type := 0
+# the base type of a debug proposal, or 0 for the game rules. the answer clears it
+var forced_military_base_type := 0
 var scenario: ScenarioState
 var terminal_state := false
 var bus_passengers := 0
@@ -214,7 +216,8 @@ func _timed_resolve_military_proposal(accepted: bool) -> SimulationDayResult:
 	if pending_interaction != "military_proposal" or pending_day_schedule == null:
 		return SimulationDayResult.failure("no military proposal interaction is pending")
 
-	var proposal := MilitaryProposalPhase.resolve(city, accepted, game_random, true)
+	var proposal := MilitaryProposalPhase.resolve(city, accepted, game_random, true, forced_military_base_type)
+	forced_military_base_type = 0
 
 	if not proposal.ok:
 		return SimulationDayResult.failure(proposal.error)

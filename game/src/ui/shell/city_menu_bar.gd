@@ -389,9 +389,10 @@ func _metric_label(text_value: String, minimum_width: int) -> Label:
 	return label
 
 
-func set_city_name(display_name: String) -> void:
+# `tooltip` can add facts such as the file format. empty shows the name
+func set_city_name(display_name: String, tooltip := "") -> void:
 	city_label.text = display_name
-	city_label.tooltip_text = display_name
+	city_label.tooltip_text = tooltip if not tooltip.is_empty() else display_name
 
 
 # the original menu shows the two newspaper options above the available papers,
