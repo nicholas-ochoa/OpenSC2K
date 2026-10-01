@@ -73,6 +73,7 @@ pub const OPERATIONS: &[&str] = &[
     "spawn_maxis_man",
     "trip",
     "trip_reach",
+    "growth_inputs",
     "trip.highway_step",
     "trip.advance",
     "trip.trace",
@@ -411,6 +412,10 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
                 convert::int(args, "maximum_cost", 100),
             )
             .to_value(),
+        ),
+        // The growth inputs of one tile for the Tile Inspector. It does not change the city.
+        "growth_inputs" => Outcome::value(
+            crate::sim::growth::inputs::inspect(city, convert::point(args, "point", crate::sim::geom::Vec2i::ZERO)).to_value(),
         ),
         "trip_reach" => {
             Outcome::value(crate::sim::reach::inspect(city, convert::point(args, "clicked", crate::sim::geom::Vec2i::ZERO)).to_value())

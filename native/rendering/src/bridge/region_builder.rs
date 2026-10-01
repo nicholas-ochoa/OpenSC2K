@@ -362,6 +362,21 @@ impl NativeCityRegionBuilder {
         })
     }
 
+    /// The tiles of the tile window `window` that need missing artwork:
+    /// `{cells, sprites, all}`. `cells` holds map cell indices, `sprites` the
+    /// lowest missing sprite of each cell, and `all` every missing sprite ID.
+    #[func]
+    fn missing_tiles(&mut self, window: Rect2i) -> VarDictionary {
+        let mut result = VarDictionary::new();
+        let window = Rect::new(window.position.x, window.position.y, window.size.x, window.size.y);
+        let found = self.core.as_mut().map(|core| core.missing_tiles(window)).unwrap_or_default();
+
+        result.set("cells", &PackedInt32Array::from(found.cells.as_slice()));
+        result.set("sprites", &PackedInt32Array::from(found.sprites.as_slice()));
+        result.set("all", &PackedInt32Array::from(found.all.as_slice()));
+        result
+    }
+
     /// The uncut draws that meet `bounds` in painter order, without pixels:
     /// `{records, images}`, or `{error}`.
     #[func]

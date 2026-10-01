@@ -4,6 +4,7 @@
 pub mod aftermath;
 pub mod demand;
 pub mod development;
+pub mod inputs;
 pub mod maintenance;
 pub mod special;
 

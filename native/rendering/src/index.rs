@@ -127,6 +127,21 @@ impl RegionDraws {
             .collect()
     }
 
+    /// Painter indices and scaled rectangles of the draws that intersect
+    /// `bounds`. At most `limit` draws return.
+    pub fn labels(&self, bounds: Rect, scale: i32, limit: usize) -> Vec<(u32, Rect)> {
+        let scale = scale.max(1);
+
+        self.candidates(bounds, scale, false)
+            .into_iter()
+            .take(limit)
+            .map(|at| {
+                let r = self.draws[at as usize].rect;
+                (at, Rect::new(r.x * scale, r.y * scale, r.w * scale, r.h * scale))
+            })
+            .collect()
+    }
+
     /// Native rectangles of the foreground commands that differ from `before`.
     pub fn changed(&self, before: &Self) -> Vec<Rect> {
         let mut previous: HashMap<i64, &Draw> = before.draws.iter().filter(|d| d.depth >= 0).map(|d| (d.order, d)).collect();

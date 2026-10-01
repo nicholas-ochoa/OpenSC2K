@@ -533,3 +533,23 @@ fn missing_sprites_are_listed_once() {
     // painting afterwards reports the first missing sprite again
     assert!(b.tile_draws(0, 0).is_err());
 }
+
+#[test]
+fn missing_tiles_name_each_tile_and_its_sprite() {
+    let mut b = fixture(4, 2);
+    b.sprites.images.remove(&(1256_u64 * 2));
+    let i = b.city.index(3, 1);
+    b.city.altitude[i] = 1;
+    let everything = b.missing_sprites();
+    let found = b.missing_tiles(Rect::new(0, 0, 4, 4));
+
+    assert_eq!(found.all, everything);
+    assert_eq!(found.cells.len(), found.sprites.len());
+    assert!(!found.cells.is_empty() && found.sprites.iter().all(|id| *id == 1256));
+
+    // a window that leaves out every tile finds nothing
+    assert!(b.missing_tiles(Rect::new(4, 4, 2, 2)).cells.is_empty());
+
+    // painting afterwards reports the missing sprite again
+    assert!(b.tile_draws(0, 0).is_err());
+}

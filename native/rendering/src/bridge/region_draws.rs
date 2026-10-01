@@ -50,6 +50,29 @@ impl NativeCityRegionDraws {
         segments
     }
 
+    /// Rows of painter index, center x, center y and depth of the draws that
+    /// intersect `bounds`, scaled by `scale`. At most `limit` draws return.
+    #[func]
+    fn draw_labels(&self, bounds: Rect2i, scale: i64, limit: i64) -> PackedInt32Array {
+        let bounds = Rect::new(bounds.position.x, bounds.position.y, bounds.size.x, bounds.size.y);
+        let mut rows = PackedInt32Array::new();
+
+        for (index, rect) in self.draws.labels(bounds, scale as i32, limit.max(0) as usize) {
+            let depth = self.draws.draws[index as usize].depth;
+            rows.extend([
+                index as i32,
+                rect.x + rect.w / 2,
+                rect.y + rect.h / 2,
+                depth.clamp(-1, i32::MAX as i64) as i32,
+            ]);
+        }
+
+        rows
+    }
+
+    #[constant]
+    const LABEL_ROW: i32 = 4;
+
     /// Unscaled rectangles of the foreground commands that differ from `before`.
     #[func]
     fn changed_foreground(&self, before: Gd<NativeCityRegionDraws>) -> Array<Rect2i> {

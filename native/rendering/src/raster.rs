@@ -6,7 +6,15 @@ use super::{
     sprites::{PLACEHOLDER, Sprite, Sprites},
 };
 
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
+
+/// The tiles that need missing artwork. `cells` and `sprites` pair up.
+#[derive(Default)]
+pub struct MissingTiles {
+    pub cells: Vec<i32>,
+    pub sprites: Vec<i32>,
+    pub all: Vec<i32>,
+}
 
 /// RGBA8 pixels of `bounds` with the draws composited in order over `background`.
 /// A shadow draw changes the pixels below its opaque pixels through `shadows`.
@@ -84,6 +92,46 @@ impl Builder {
         self.sprites.placeholders = false;
         self.sprites.images.remove(&PLACEHOLDER);
         std::mem::take(&mut self.sprites.missing).into_iter().collect()
+    }
+
+    /// The tiles of `window` that need artwork the sprites lack: the cell index
+    /// and the lowest missing sprite ID of each tile, and every missing ID.
+    pub fn missing_tiles(&mut self, window: Rect) -> MissingTiles {
+        self.sprites.images.insert(
+            PLACEHOLDER,
+            Sprite {
+                w: 1,
+                h: 1,
+                rgba: vec![0; 4],
+                la: vec![0; 2],
+            },
+        );
+        self.sprites.placeholders = true;
+        let mut result = MissingTiles::default();
+        let mut all = BTreeSet::new();
+        let (x0, y0) = (window.x.max(0), window.y.max(0));
+        let (x1, y1) = ((window.x + window.w).min(self.city.edge), (window.y + window.h).min(self.city.edge));
+
+        for x in x0..x1 {
+            for y in y0..y1 {
+                self.sprites.missing.clear();
+
+                // Missing sprites become placeholders, so painting cannot fail here.
+                let _ = self.paint(x, y);
+
+                if let Some(&first) = self.sprites.missing.first() {
+                    result.cells.push(self.city.index(x, y) as i32);
+                    result.sprites.push(first);
+                    all.extend(self.sprites.missing.iter().copied());
+                }
+            }
+        }
+
+        self.sprites.missing.clear();
+        self.sprites.placeholders = false;
+        self.sprites.images.remove(&PLACEHOLDER);
+        result.all = all.into_iter().collect();
+        result
     }
 
     /// The uncut draws of one tile, in painter order. The tile cache is not used.

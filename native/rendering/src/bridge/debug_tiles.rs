@@ -2,6 +2,7 @@
 
 use super::super::data_view::DataCity;
 use super::super::debug_view::{
+    bytes,
     geometry::{self, TileWindow},
     networks,
     snapshot::{self, Snapshot, Tiles},
@@ -114,6 +115,18 @@ impl NativeDebugTiles {
         );
 
         PackedInt32Array::from(things::rows(things.as_slice(), tiles).as_slice())
+    }
+
+    /// The differing bytes of two chunk copies: `{offsets, count}`. `offsets`
+    /// holds the first `limit` differing offsets.
+    #[func]
+    fn byte_differences(before: PackedByteArray, after: PackedByteArray, limit: i64) -> VarDictionary {
+        let (offsets, count) = bytes::differences(before.as_slice(), after.as_slice(), limit.max(0) as usize);
+        let mut result = VarDictionary::new();
+
+        result.set("offsets", &PackedInt32Array::from(offsets.as_slice()));
+        result.set("count", count as i64);
+        result
     }
 
     #[constant]
