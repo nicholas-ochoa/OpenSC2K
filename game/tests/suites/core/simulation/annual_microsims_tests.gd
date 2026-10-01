@@ -453,14 +453,13 @@ func test_arcology_launch_phase(reference_root: String) -> void:
 		city, 5, 8, Vector2i(20, 20), LfsrRandom.new(1), Random.new(1)
 	)
 	_check(launch.ok and launch.site == Rect2i(19, 19, 4, 4), "Arcology launch fixture builds a launch arcology")
+	# XTXT 0xfe is a riot marker. The launch must not demolish a structure under it.
+	_check(city.set_building_id(40, 40, BuildingTileIds.TREES_1), "Arcology launch fixture plants a tree")
 	var text_overlays: PackedByteArray = document.find_chunk("XTXT").decoded_payload.duplicate()
+	text_overlays[40 * CityState.MAP_SIZE + 40] = 0xfe
 
-	for index in launch.tile_indices:
-		text_overlays[index] = 0xfe
-
-	# Install the markers through the city so its XTXT mirror matches the chunk.
-	# Writing the chunk alone leaves the mirror stale before the phase even runs.
-	_check(city.replace_text_overlays(text_overlays), "Arcology launch fixture installs launch markers")
+	# Install the marker through the city so its XTXT mirror matches the chunk.
+	_check(city.replace_text_overlays(text_overlays), "Arcology launch fixture installs a riot marker")
 	var microsims := _filled_bytes(CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE, 0)
 
 	for record_id in range(1, 101):
@@ -505,7 +504,10 @@ func test_arcology_launch_phase(reference_root: String) -> void:
 		"Arcology launch changes the marked structure to rubble: %d, %d"
 		% [city.building_id(19, 19), city.building_id(22, 22)],
 	)
-	_check(city.text_overlay_id(19, 19) == 0xfe, "Arcology launch preserves its special XTXT marker")
+	_check(
+		city.building_id(40, 40) == BuildingTileIds.TREES_1 and city.text_overlay_id(40, 40) == 0xfe,
+		"Arcology launch ignores a structure under a riot marker",
+	)
 	_check(document.misc_u32(0x01f0 + 0xfe * 4) == 4800, "Arcology launch decrements demolished tile counts")
 	_check(process_random.position == 144, "Arcology launch consumes visual and rubble random values")
 	_check(

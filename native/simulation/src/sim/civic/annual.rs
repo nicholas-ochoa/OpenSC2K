@@ -483,15 +483,17 @@ impl Annual<'_, '_> {
             tile_count(&city.misc.data, tiles::LAUNCH_ARCOLOGY, self.map_edge) / 16 > 300 && self.arcology_population > 6000000;
     }
 
-    /// Demolish every launch-marked structure, pay the launch bonus, and
-    /// request the notices that the original shows before and after the launch.
+    /// Demolish every launch arcology, pay the launch bonus, and request the
+    /// notices that the original shows before and after the launch. The
+    /// original scans XBLD for the launch arcology tile. XTXT 0xfe is a riot
+    /// marker and does not mark a launch arcology.
     fn launch_arcologies(&mut self, city: &mut City) {
         self.notice_ids.push(NOTICE_ARCOLOGY_LAUNCH_START);
         let edge = self.map_edge;
 
         for x in 0..edge {
             for y in 0..edge {
-                if overlay::marker_at(&city.xtxt.data, x * edge + y) != 0xfe {
+                if city.xbld.data[(x * edge + y) as usize] as i64 != tiles::LAUNCH_ARCOLOGY {
                     continue;
                 }
 
