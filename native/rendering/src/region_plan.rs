@@ -121,6 +121,7 @@ fn sort(keys: &mut [(i32, i32)], center: (f32, f32), first: (i32, i32), last: (i
 pub fn keys_for(rects: &[Rect], edge: i32) -> Vec<(i32, i32)> {
     let edge = edge.max(1);
     let mut keys = Vec::new();
+    let mut seen = std::collections::HashSet::new();
 
     for rect in rects.iter().filter(|r| r.area()) {
         let first = (rect.x.max(0) / edge, rect.y.max(0) / edge);
@@ -128,7 +129,7 @@ pub fn keys_for(rects: &[Rect], edge: i32) -> Vec<(i32, i32)> {
 
         for y in first.1..=last.1 {
             for x in first.0..=last.0 {
-                if !keys.contains(&(x, y)) {
+                if seen.insert((x, y)) {
                     keys.push((x, y));
                 }
             }
