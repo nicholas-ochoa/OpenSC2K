@@ -4,7 +4,7 @@ use super::super::data_view::DataCity;
 use super::super::debug_view::{
     bytes,
     geometry::{self, TileWindow},
-    networks,
+    networks, order,
     snapshot::{self, Snapshot, Tiles},
     things, values,
 };
@@ -127,6 +127,19 @@ impl NativeDebugTiles {
         result.set("offsets", &PackedInt32Array::from(offsets.as_slice()));
         result.set("count", count as i64);
         result
+    }
+
+    /// Row indices in the order of `keys`. Equal keys keep their record order,
+    /// also when `descending` reverses the keys.
+    #[func]
+    fn stable_order(keys: PackedInt64Array, descending: bool) -> PackedInt32Array {
+        PackedInt32Array::from(order::stable_order(keys.as_slice(), descending).as_slice())
+    }
+
+    /// The first index of each of the 256 byte values in `data`, or -1.
+    #[func]
+    fn first_indices(data: PackedByteArray) -> PackedInt32Array {
+        PackedInt32Array::from(bytes::first_indices(data.as_slice()).as_slice())
     }
 
     #[constant]

@@ -9,6 +9,7 @@ pub mod disasters;
 pub mod economy;
 pub mod engine;
 pub mod events;
+pub mod facility_sites;
 pub mod geom;
 pub mod grid;
 pub mod growth;

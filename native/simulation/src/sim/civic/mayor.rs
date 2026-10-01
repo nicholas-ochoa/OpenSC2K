@@ -164,6 +164,20 @@ pub fn run(city: &mut City, random: &mut SimRandom, previous_approval: i64) -> M
 /// CityTileCounts.recount: store the tiles of each building ID outside military
 /// zones. Only changed values are written. Returns the changed count, or -1
 /// when MISC is too short.
+/// The tiles of each building ID outside military zones. Military bases keep
+/// separate counts.
+pub fn building_counts(buildings: &[u8], zones: &[u8]) -> [i64; tiles::COUNT as usize] {
+    let mut counts = [0i64; tiles::COUNT as usize];
+
+    for (building, zone_byte) in buildings.iter().zip(zones) {
+        if *zone_byte as i64 & zone::TYPE_MASK != zone::MILITARY {
+            counts[*building as usize] += 1;
+        }
+    }
+
+    counts
+}
+
 pub fn recount_tiles(city: &mut City) -> i64 {
     let count_end = misc_layout::TILE_COUNTS + tiles::COUNT * 4;
 
@@ -171,14 +185,7 @@ pub fn recount_tiles(city: &mut City) -> i64 {
         return -1;
     }
 
-    let mut counts = [0i64; tiles::COUNT as usize];
-
-    for (building, zone_byte) in city.xbld.data.iter().zip(&city.xzon.data) {
-        if *zone_byte as i64 & zone::TYPE_MASK != zone::MILITARY {
-            counts[*building as usize] += 1;
-        }
-    }
-
+    let counts = building_counts(&city.xbld.data, &city.xzon.data);
     let mut changed = 0;
 
     for (tile, count) in counts.iter().enumerate() {

@@ -19,6 +19,23 @@ fn point(value: Vector2i) -> Vec2i {
 
 #[godot_api]
 impl NativeCityTools {
+    /// The tiles of each building ID outside military zones, as CityTileCounts.count.
+    #[func]
+    fn building_counts(buildings: PackedByteArray, zones: PackedByteArray) -> PackedInt32Array {
+        let counts = crate::sim::civic::mayor::building_counts(buildings.as_slice(), zones.as_slice());
+
+        counts.iter().map(|&count| count.min(i32::MAX as i64) as i32).collect()
+    }
+
+    /// The map bounds of each of `records` MicroSim records: min x, min y,
+    /// max x, max y and the tile count. A record with no tile counts 0 tiles.
+    #[func]
+    fn facility_bounds(overlays: PackedByteArray, things: PackedByteArray, edge: i64, records: i64) -> PackedInt32Array {
+        let bounds = crate::sim::facility_sites::bounds(overlays.as_slice(), things.as_slice(), edge, records.max(0) as usize);
+
+        PackedInt32Array::from(bounds.as_slice())
+    }
+
     /// The footprint edge of a building tile: 1 to 4.
     #[func]
     fn building_area(tile: i64) -> i64 {

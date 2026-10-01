@@ -30,9 +30,38 @@ pub fn differences(before: &[u8], after: &[u8], limit: usize) -> (Vec<i32>, usiz
     (offsets, count)
 }
 
+/// The first index of each byte value in `data`, or -1 for a value that does
+/// not occur. The Tile Counts table locates each building ID with it.
+pub fn first_indices(data: &[u8]) -> Vec<i32> {
+    let mut result = vec![-1_i32; 256];
+    let mut missing = 256;
+
+    for (index, value) in data.iter().enumerate() {
+        let slot = &mut result[*value as usize];
+
+        if *slot < 0 {
+            *slot = index as i32;
+            missing -= 1;
+
+            if missing == 0 {
+                break;
+            }
+        }
+    }
+
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn first_indices_name_the_first_tile_of_each_value() {
+        let found = first_indices(&[7, 3, 7, 0, 3]);
+
+        assert_eq!((found[7], found[3], found[0], found[1]), (0, 1, 3, -1));
+    }
 
     #[test]
     fn differences_list_offsets_and_count_all() {
