@@ -20,6 +20,8 @@ const FILTER_DELAY_MSEC := 300
 const PACKED_KEY_BITS := 20
 const PACKED_KEY_LIMIT := 1 << PACKED_KEY_BITS
 const LAZY_KINDS := ["XMIC", "Objects"]
+# the width of each count column of the tile counts table
+const COUNT_WIDTH := 96
 # chunks whose change rebuilds the rows. facility sites follow the buildings
 # (XBLD), not XTXT, which changes whenever a moving thing moves
 const LAZY_CHUNKS := { "XMIC": ["XMIC", "XLAB", "XBLD"], "Objects": ["XTHG", "XTXT"] }
@@ -60,15 +62,17 @@ func _ready() -> void:
 		widths.insert(3, 150)
 		locate_column = 4
 	elif kind == "Tiles":
-		titles = ["Tile", "Constant", "Name", "On map", "Instances", "Saved count"]
-		widths = [0, 0, 0, 0, 0, 0]
+		# the counts share one width, and the name takes the free width
+		titles = ["Tile", "Constant", "Name", "Instances", "On map", "Saved count"]
+		widths = [0, 0, 0, COUNT_WIDTH, COUNT_WIDTH, COUNT_WIDTH]
 		locate_column = 1
+		table.expand_column = 3
 		tooltips = {
 			"Tile": "Building ID in the XBLD tile plane, in decimal and hexadecimal.",
 			"Constant": "BuildingTileIds constant for the ID.",
 			"Name": "Name that the query tool shows for the tile.",
-			"On map": "Number of map tiles with this building ID outside military zones. Military bases have separate counts.",
 			"Instances": "Number of whole buildings on the map: the map tiles divided by the tiles in one 1×1, 2×2, 3×3 or 4×4 building.",
+			"On map": "Number of map tiles with this building ID outside military zones. Military bases have separate counts.",
 			"Saved count": "Tile count that the city stores in MISC. The edit tools keep it up to date.",
 		}
 	elif kind == "Objects":

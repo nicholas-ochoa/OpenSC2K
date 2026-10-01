@@ -151,15 +151,15 @@ func _check_tile_counts(edge: int) -> void:
 	var police: DebugTableRecord
 
 	for record in records:
-		total += int(record.sort[3])
+		total += int(record.sort[4])
 
 		if record.id == str(BuildingTileIds.POLICE_STATION):
 			police = record
 
 	assert(total == edge * edge, "Tile counts cover every map tile")
-	assert(police.cells[0] == "210 (0xD2)" and police.cells[1] == "POLICE_STATION" and police.cells[3] == "3")
+	assert(police.cells[0] == "210 (0xD2)" and police.cells[1] == "POLICE_STATION" and police.cells[4] == "3")
 	# police stations are 3×3, so three loose tiles make no whole building
-	assert(police.cells[4] == "0" and police.sort[4] == 0)
+	assert(police.cells[3] == "0" and police.sort[3] == 0)
 	assert(police.cells[5] == str(city.document.misc_i32(Sc2MiscLayout.TILE_COUNTS + BuildingTileIds.POLICE_STATION * 4)))
 	assert([police.site.x, police.site.y] == [2, 3], "Locate goes to the first tile in scan order")
 	assert(DebugCityTables.collect("Tiles", city, null, true).size() == BuildingTileIds.COUNT)
@@ -174,12 +174,12 @@ func _check_tile_counts(edge: int) -> void:
 
 	for record in DebugCityTables.collect("Tiles", city):
 		if record.id == str(BuildingTileIds.POLICE_STATION):
-			assert(record.cells[3] == "2" and [record.site.x, record.site.y] == [2, 9])
+			assert(record.cells[4] == "2" and [record.site.x, record.site.y] == [2, 9])
 
 	# military bases have separate counts. the map count skips them too
 	assert(city.set_zone_id(2, 9, Sc2ZoneLayout.MILITARY))
 	police = _tile_record(city, BuildingTileIds.POLICE_STATION)
-	assert(police.cells[3] == "1")
+	assert(police.cells[4] == "1")
 
 	# set_building_id does not change the saved counts, so the rows differ
 	assert(not police.warning.is_empty() and ("SC2X" in police.warning) == CityTileCounts.exact(city),
@@ -205,8 +205,15 @@ func _check_tile_counts(edge: int) -> void:
 	var exact_records := DebugCityTables.collect("Tiles", city)
 	assert(exact_records.all(func(record: DebugTableRecord) -> bool: return record.warning.is_empty()))
 	panel.update_records(exact_records)
-	assert(panel.source.row(police.id).warning.is_empty() and panel.table.tooltip_of(police.id, -1, 4) == "1",
+	assert(panel.source.row(police.id).warning.is_empty() and panel.table.tooltip_of(police.id, -1, 5) == "1",
 		"An exact count clears the highlight")
+
+	# the name column takes the free width, so the count columns keep their size
+	panel.size = Vector2(1400, 600)
+	panel.table.size = Vector2(1400, 500)
+	panel.table._fit_visible(0, panel.table.display_count())
+	var drawn := panel.table._draw_widths()
+	assert(drawn[-1] == panel.table.column_width(drawn.size() - 1) and drawn[3] > panel.table.column_width(3))
 	panel.free()
 
 

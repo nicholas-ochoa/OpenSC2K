@@ -112,8 +112,8 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 				var instances := tile_instances(id, count)
 				var row := DebugTableRecord.new()
 				row.id = str(id)
-				row.cells = ["%d (0x%02X)" % [id, id], _tile_constants[id], name, str(count), str(instances), str(saved)]
-				row.sort = [id, _tile_constants[id], name, count, instances, saved]
+				row.cells = ["%d (0x%02X)" % [id, id], _tile_constants[id], name, str(instances), str(count), str(saved)]
+				row.sort = [id, _tile_constants[id], name, instances, count, saved]
 				row.site = site
 				row.empty = count == 0 and saved == 0
 

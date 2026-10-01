@@ -29,6 +29,8 @@ var locate_column := -1
 var locate_icon: Texture2D
 # the last column takes the free width
 var expand_last := true
+# the column that takes the free width when it is not the last. -1 is the last column
+var expand_column := -1
 var source: DebugTableSource
 # indices of source.ids in display order. a filter leaves rows out
 var order := PackedInt32Array()
@@ -417,13 +419,14 @@ func _column_offset() -> float:
 	return -_h_scroll.value if _h_scroll.visible else 0.0
 
 
-# the column widths to draw. the last column takes the free width
+# the column widths to draw. the expand column takes the free width
 func _draw_widths() -> Array:
 	var widths := _widths.duplicate()
 	var available := size.x - (_v_scroll.size.x if _v_scroll.visible else 0.0)
 
 	if expand_last and not widths.is_empty() and _total_width() < available:
-		widths[-1] += available - _total_width()
+		var column := expand_column if expand_column >= 0 and expand_column < widths.size() else widths.size() - 1
+		widths[column] += available - _total_width()
 
 	return widths
 
@@ -580,14 +583,15 @@ func _on_arrow(at: Vector2) -> bool:
 
 func _begin_edit(row: int, id: String, field: int, column: int) -> void:
 	var x := -_h_scroll.value if _h_scroll.visible else 0.0
+	var widths := _draw_widths()
 
 	for index in column:
-		x += _widths[index]
+		x += float(widths[index])
 
 	_edit_target = [id, field, column]
 	var scroll := _v_scroll.value if _v_scroll.visible else 0.0
 	_editor.position = Vector2(x, _header_height() + row * _row_height() - scroll)
-	_editor.size = Vector2(_widths[column], _row_height())
+	_editor.size = Vector2(float(widths[column]), _row_height())
 	_editor.text = cells_of(id, field)[column]
 	_editor.show()
 	_editor.grab_focus()
