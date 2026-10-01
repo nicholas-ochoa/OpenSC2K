@@ -24,6 +24,7 @@ const MENU_VIEW_SIGNS := CityMenuBarView.MENU_VIEW_SIGNS
 const MENU_VIEW_VEHICLES := CityMenuBarView.MENU_VIEW_VEHICLES
 const MENU_VIEW_WATER_MAINS := CityMenuBarView.MENU_VIEW_WATER_MAINS
 const MENU_VIEW_PIPES := CityMenuBarView.MENU_VIEW_PIPES
+const MENU_VIEW_SUBWAYS := CityMenuBarView.MENU_VIEW_SUBWAYS
 const MENU_SCURK_PLACE_PRINT := CityMenuBarView.MENU_SCURK_PLACE_PRINT
 
 var app: CityApplication
@@ -167,6 +168,8 @@ func on_view_menu(id: int) -> void:
 			set_underground_water_mains_visible(not app.view_state.show_underground_water_mains)
 		MENU_VIEW_PIPES:
 			set_underground_pipes_visible(not app.view_state.show_underground_pipes)
+		MENU_VIEW_SUBWAYS:
+			set_underground_subways_visible(not app.view_state.show_underground_subways)
 
 
 func sync_city_option_menus() -> void:
@@ -231,6 +234,7 @@ func _sync_view_controls() -> void:
 		MENU_VIEW_VEHICLES: app.view_state.show_vehicles,
 		MENU_VIEW_PIPES: app.view_state.show_underground_pipes,
 		MENU_VIEW_WATER_MAINS: app.view_state.show_underground_water_mains,
+		MENU_VIEW_SUBWAYS: app.view_state.show_underground_subways,
 	}
 
 	if app.view_menu != null:
@@ -281,6 +285,7 @@ func _rebuild_view_layer_menu(underground_active: bool) -> void:
 	if underground_active:
 		popup.add_check_item("Show Water Mains", MENU_VIEW_WATER_MAINS)
 		popup.add_check_item("Show Underground Pipes", MENU_VIEW_PIPES)
+		popup.add_check_item("Show Subways", MENU_VIEW_SUBWAYS)
 	else:
 		for view_item in [
 			["Show Buildings", MENU_VIEW_BUILDINGS],

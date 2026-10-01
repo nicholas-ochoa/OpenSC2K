@@ -50,7 +50,7 @@ const SURFACE_LAYERS: Array[Array] = [
 	["view_show_water", "Show water", "water"], ["view_show_trees", "Show trees", "trees"],
 	["view_show_zones", "Zones view", "zones"], ["view_show_signs", "Show signs", "signs"],
 	["view_show_pipes", "Show pipes", "pipes"], ["view_show_water_mains", "Show water mains", "water_mains"],
-	["view_show_vehicles", "Show vehicles", "vehicles"],
+	["view_show_vehicles", "Show vehicles", "vehicles"], ["view_show_subways", "Show subways", "subways"],
 ]
 const DATA_VIEW_IDS: Array[String] = [
 	"view_density", "view_growth", "view_traffic", "view_pollution", "view_crime",
