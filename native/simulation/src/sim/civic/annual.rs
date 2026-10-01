@@ -42,6 +42,9 @@ const LAUNCH_ARCOLOGY_EFFECT: &str = "launch_arcology";
 const LAUNCH_LIFTOFF_FRAMES: i64 = 15;
 /// Large view sprites start at this ID.
 const LARGE_SPRITE_BASE: i64 = 1000;
+/// An effect sprite stands on the top corner of its tile. This large view
+/// offset stands the launch fire and dust on the front corner instead.
+const LAUNCH_GROUND_OFFSET: Vec2i = Vec2i::new(0, 16);
 const DEMOGRAPHIC_RECORD_SIZE: i64 = 0x0c;
 const CHANGED_CHUNKS: [&str; 10] = ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT", "XLAB", "XMIC", "MISC"];
 const INPUT_CHUNKS: [&str; 10] = ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT", "XLAB", "XMIC", "MISC", "ALTM"];
@@ -1123,6 +1126,7 @@ fn ignite_launch_arcology(city: &mut City, site: Vec2i, random: &mut SimRandom, 
         effects.push(EffectEvent {
             type_: LAUNCH_FIRE_EFFECT.to_string(),
             point,
+            screen_offset: LAUNCH_GROUND_OFFSET,
             depth_point: anchor,
             altitude: height,
             frames: LAUNCH_FIRE_FRAMES,
@@ -1134,7 +1138,15 @@ fn ignite_launch_arcology(city: &mut City, site: Vec2i, random: &mut SimRandom, 
     let demolition = demolish::damage_structure(&mut maps, site, random, rotation, true);
 
     if demolition.changed {
-        demolish::append_effect_sequence(effects, &demolition.effect_events, LAUNCH_LIFTOFF_FRAMES);
+        let dust: Vec<EffectEvent> = demolition
+            .effect_events
+            .iter()
+            .map(|event| EffectEvent {
+                screen_offset: event.screen_offset + LAUNCH_GROUND_OFFSET,
+                ..event.clone()
+            })
+            .collect();
+        demolish::append_effect_sequence(effects, &dust, LAUNCH_LIFTOFF_FRAMES);
         result.launched_structures += 1;
     }
 }

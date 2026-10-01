@@ -583,8 +583,12 @@ func test_staged_arcology_launch(reference_root: String) -> void:
 	var fires := tick.effect_events.filter(func(event: EffectEvent) -> bool: return event.type == CityEffectTiming.LAUNCH_FIRE)
 	var at_depth := fires.filter(func(event: EffectEvent) -> bool: return event.depth_point == anchor)
 	_check(fires.size() == 7 and at_depth.size() == 7, "An ignition burns along the two front edges at the arcology's depth")
+	# an effect sprite stands on the top corner of its tile. the fire stands on the front corner
+	var grounded := fires.filter(func(event: EffectEvent) -> bool: return event.screen_offset == Vector2i(0, 16))
+	_check(grounded.size() == 7, "The launch fire stands on the front corner of each edge tile")
 	var dust := tick.effect_events.filter(func(event: EffectEvent) -> bool: return event.type.is_empty())
-	var early := dust.filter(func(event: EffectEvent) -> bool: return event.frame < 15 or event.depth_point != anchor)
+	var early := dust.filter(func(event: EffectEvent) -> bool:
+		return event.frame < 15 or event.depth_point != anchor or event.screen_offset.y > 16)
 	_check(not dust.is_empty() and early.is_empty(), "The launch dust starts at liftoff, at the arcology's depth")
 	_check(tick.notice_ids.is_empty() and engine.clock.city_days == day, "A launch step adds no notice and no day")
 
