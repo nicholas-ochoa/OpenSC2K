@@ -145,6 +145,10 @@ func _apply_view_tool(finish: Vector2i) -> bool:
 	var tool := app.tool_state
 
 	if tool.selected_group == CityToolIds.Group.CENTERING:
+		if HelicopterShotCommand.apply(app.document_state.city, finish) >= 0:
+			var sound_ids: Array[int] = [HelicopterShotCommand.SOUND_HIT]
+			app.effects_audio.play_sound_ids(sound_ids)
+
 		app.camera_input.center_map_on_tile(finish)
 
 		return true

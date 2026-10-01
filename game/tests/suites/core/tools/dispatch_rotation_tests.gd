@@ -8,6 +8,9 @@ const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const Simulation = preload("res://src/simulation/core/simulation_engine.gd")
 const Dispatch = preload("res://src/tools/city/dispatch_command.gd")
 const CityRotation = preload("res://src/tools/city/city_rotation_command.gd")
+const HelicopterShot = preload("res://src/tools/city/helicopter_shot_command.gd")
+const MovingThingTick = preload("res://src/simulation/moving_things/moving_thing_phase.gd")
+const TestRandoms = preload("res://tests/support/test_randoms.gd")
 
 
 func test_dispatch_command(reference_root: String) -> void:
@@ -202,4 +205,39 @@ func test_city_rotation(reference_root: String) -> void:
 		engine.ship_home == Vector2i(20, 117)
 		and engine.pending_disaster_point == Vector2i(40, 97),
 		"Rotation transforms process-local simulation coordinates",
+	)
+
+
+func test_helicopter_shot(reference_root: String) -> void:
+	var fixture := _special_growth_fixture(reference_root)
+	var city: CityState = fixture.city
+	var things: PackedByteArray = fixture.document.find_chunk("XTHG").decoded_payload.duplicate()
+
+	for entry in [[1, 2, Vector2i(24, 24)], [2, 7, Vector2i(34, 34)]]:
+		var offset: int = entry[0] * 12
+		things[offset] = entry[1]
+		things[offset + 1] = 2
+		things[offset + 2] = 2
+		things[offset + 3] = entry[2].x
+		things[offset + 4] = entry[2].y
+		things[offset + 5] = 4
+		_check(city.set_text_overlay_id(entry[2].x, entry[2].y, entry[0] + 201), "Shot fixture links record %d" % entry[0])
+
+	_check(fixture.document.find_chunk("XTHG").set_decoded_payload(things), "Shot fixture stores a helicopter and a police unit")
+
+	_check(HelicopterShot.apply(city, Vector2i(24, 24)) == -1, "A Center click on the helicopter tile itself misses")
+	_check(HelicopterShot.apply(city, Vector2i(30, 30)) == -1, "A Center click below another moving object misses")
+	_check(HelicopterShot.apply(city, Vector2i(125, 125)) == -1, "A Center click near the map edge reads no tile")
+	_check(city.thing(1).state == 2 and city.thing(2).state == 2, "Missed Center clicks keep the object states")
+
+	_check(HelicopterShot.apply(city, Vector2i(20, 20)) == 1, "A Center click four rows above a helicopter hits it")
+	_check(city.thing(1).state == 5, "A hit helicopter starts its emergency descent")
+
+	var tick := MovingThingTick.run(city, TestRandoms.ZeroRandom.new(), TestRandoms.NonzeroLfsrRandom.new())
+	_check(
+		tick.ok
+		and tick.sound_events.size() == 1
+		and tick.sound_events[0].sound_id == 0x203
+		and city.thing(1).z == 3,
+		"The descending helicopter plays the air disaster sound at height 4",
 	)

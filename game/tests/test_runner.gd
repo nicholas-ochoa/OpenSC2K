@@ -213,6 +213,8 @@ func _init() -> void:
 	if _selected("tools"):
 		DispatchRotationTests.new(context).test_dispatch_command(reference_root)
 	if _selected("tools"):
+		DispatchRotationTests.new(context).test_helicopter_shot(reference_root)
+	if _selected("tools"):
 		DispatchRotationTests.new(context).test_city_rotation(reference_root)
 
 	if context.failures == 0:
