@@ -50,6 +50,9 @@ func debug_metrics() -> Dictionary:
 		"pause_at_date": "None",
 	}
 
+	result.engine = DebugPerformanceText.monitors()
+	result.debug_views = app.debug_tools.metrics()
+
 	if app.audio_controller != null:
 		result.merge(app.audio_controller.debug_metrics(), true)
 

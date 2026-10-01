@@ -72,6 +72,7 @@ static func load_values(
 	result.update_checked_at = int(config.get_value("updates", "checked_at", 0))
 	result.update_error = str(config.get_value("updates", "error", ""))
 	result.control_bindings = load_bindings(config)
+	result.debug_mode = bool(config.get_value("debug", "enabled", false))
 
 	return result
 
@@ -258,6 +259,18 @@ static func save_values(
 	return config.save(path)
 
 
+# the Debug window saves this choice when it changes
+static func save_debug_mode(enabled: bool, path := default_path()) -> Error:
+	var config := ConfigFile.new()
+
+	if FileAccess.file_exists(path):
+		config.load(path)
+
+	config.set_value("debug", "enabled", enabled)
+
+	return config.save(path)
+
+
 static func save_update_state(
 	last_check: int, skipped_version: String, checked_at: int, error: String, path := default_path()
 ) -> Error:
@@ -307,6 +320,8 @@ class LoadedValues extends Values:
 	var update_skipped_version := ""
 	var update_checked_at := 0
 	var update_error := ""
+	# debug mode shows the Debug menu and the debug query tools
+	var debug_mode := false
 
 
 # Null leaves a saved value unchanged. An empty graphics source keeps both graphics fields.

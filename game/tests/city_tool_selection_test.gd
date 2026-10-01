@@ -37,7 +37,7 @@ func _catalog_indices() -> void:
 		[CityToolIds.Group.SERVICES, CityToolIds.Services, 156, 4],
 		[CityToolIds.Group.RECREATION, CityToolIds.Recreation, 168, 5],
 		[CityToolIds.Group.SIGNS, CityToolIds.Signs, 180, 1],
-		[CityToolIds.Group.QUERY, CityToolIds.Query, 192, 2],
+		[CityToolIds.Group.QUERY, CityToolIds.Query, 192, 3],
 		[CityToolIds.Group.CENTERING, CityToolIds.Centering, 204, 1],
 	]
 	for row: Array in groups:
@@ -83,6 +83,7 @@ func _command_selection() -> void:
 
 
 func _edit_state(city: CityState) -> void:
+	DebugMode.enabled = true
 	var cases := [
 		[CityToolIds.Group.BULLDOZER, CityToolIds.Bulldozer.DEMOLISH, "rectangle", 1, false, true, false],
 		[CityToolIds.Group.BULLDOZER, CityToolIds.Bulldozer.RAISE, "path", 1, false, false, false],
@@ -94,6 +95,7 @@ func _edit_state(city: CityState) -> void:
 		[CityToolIds.Group.SIGNS, CityToolIds.Signs.SIGN, "point", 1, false, false, false],
 		[CityToolIds.Group.QUERY, CityToolIds.Query.QUERY, "point", 1, false, true, true],
 		[CityToolIds.Group.QUERY, CityToolIds.Query.TRIP_REACH, "point", 1, false, true, true],
+		[CityToolIds.Group.QUERY, CityToolIds.Query.TILE_INSPECTOR, "point", 1, false, true, true],
 		[CityToolIds.Group.CENTERING, CityToolIds.Centering.CENTER, "point", 1, false, true, true],
 	]
 	for row: Array in cases:
@@ -107,6 +109,20 @@ func _edit_state(city: CityState) -> void:
 		var missing := ToolEditState.normal(null, CityViewMode.Mode.CITY, row[0], row[1])
 		assert(not missing.available and not missing.enabled and not missing.show_status)
 
+	# outside debug mode, the debug query tools are not available and the palette hides them
+	DebugMode.enabled = false
+
+	for subtool in [CityToolIds.Query.TRIP_REACH, CityToolIds.Query.TILE_INSPECTOR]:
+		assert(not ToolEditState.normal(city, CityViewMode.Mode.CITY, CityToolIds.Group.QUERY, subtool).available)
+
+	var palette := CityChildToolPalette.new()
+	palette.build()
+	palette.show_tool_group(CityToolIds.Group.QUERY, city)
+	assert(palette.buttons.keys() == [CityToolIds.Query.QUERY], "Debug query tools stay hidden outside debug mode")
+	DebugMode.enabled = true
+	palette.show_tool_group(CityToolIds.Group.QUERY, city)
+	assert(palette.buttons.size() == 3, "Debug mode shows the Trip Query and Tile Inspector buttons")
+	palette.free()
 	var recall := ToolEditState.normal(city, CityViewMode.Mode.CITY, CityToolIds.Group.DISPATCH, CityToolIds.Dispatch.RECALL)
 	assert(recall.available and not recall.enabled)
 

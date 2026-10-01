@@ -30,6 +30,8 @@ var _terrain_slider: HSlider
 var _terrain_value: Label
 var _no_disasters_check: CheckBox
 var _detailed_timing_check: CheckBox
+# shows the Debug menu and the debug query tools
+var debug_mode_check: CheckBox
 # month, day and year fields for the run-to-date action
 var _date_fields: Array[SpinBox] = []
 var _target_date: Label
@@ -119,6 +121,14 @@ func _build_actions(tabs: TabContainer) -> void:
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	box.add_theme_constant_override("separation", 16)
 	scroll.add_child(box)
+	var mode := _action_section(box, "Debug mode", 1)
+	debug_mode_check = CheckBox.new()
+	debug_mode_check.text = "Enable debug mode"
+	debug_mode_check.tooltip_text = ("Show the Debug menu on the menu bar, and the Tile Inspector and Trip Query in the " +
+		"Query tools. The setting is kept for the next session.")
+	debug_mode_check.button_pressed = DebugMode.enabled
+	debug_mode_check.toggled.connect(_set_debug_mode)
+	mode.add_child(debug_mode_check)
 	var simulation := _action_section(box, "Simulation and view", 3)
 	_button(simulation, "Pause / Resume", "Pause the simulation, or resume it at the speed it had before the pause.", func() -> void:
 		if str(_metrics.get("speed", "Paused")) == "Paused":
@@ -259,6 +269,17 @@ func _build_actions(tabs: TabContainer) -> void:
 		main_control.debug.call("debug_set_visible_altitude_levels", int(value)))
 
 
+func _set_debug_mode(enabled: bool) -> void:
+	var tools: Variant = main_control.get("debug_tools") if main_control != null else null
+
+	if tools is ApplicationDebugTools:
+		tools.set_debug_mode(enabled)
+	else:
+		DebugMode.enabled = enabled
+
+	set_status("Debug mode %s." % ("enabled. Open the Debug menu on the menu bar" if enabled else "disabled"))
+
+
 func _action_section(parent: VBoxContainer, caption: String, columns: int) -> GridContainer:
 	var section := VBoxContainer.new()
 	section.add_theme_constant_override("separation", 6)
@@ -316,6 +337,7 @@ func toggle() -> void:
 			_window.hide()
 
 	if is_open:
+		debug_mode_check.set_pressed_no_signal(DebugMode.enabled)
 		_refresh_metrics()
 		_suggest_run_date()
 

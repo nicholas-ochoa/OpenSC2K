@@ -236,6 +236,9 @@ static func _normal_status_detail(
 	if group_index == CityToolIds.Group.QUERY and subtool_index == CityToolIds.Query.TRIP_REACH:
 		return "Trip Query selected. Click a zone or network tile to show potential routes, trip cost, and growth access."
 
+	if group_index == CityToolIds.Group.QUERY and subtool_index == CityToolIds.Query.TILE_INSPECTOR:
+		return "Tile Inspector selected. Point at a tile to read its stored values. Click to keep the panel on that tile."
+
 	if group_index == CityToolIds.Group.QUERY:
 		return "Query selected. Click a city tile to inspect it."
 

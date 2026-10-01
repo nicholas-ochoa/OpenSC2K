@@ -155,6 +155,7 @@ func activate_document(
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = status_text if not status_text.is_empty() else "City ready."
 	app.map_render.refresh_map()
+	app.debug_tools.on_city_activated()
 	app.current_tool.update_edit_state()
 
 	if not app.document_state.city.music_enabled():

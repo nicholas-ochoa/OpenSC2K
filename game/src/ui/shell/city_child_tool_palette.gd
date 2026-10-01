@@ -78,6 +78,10 @@ func show_tool_group(
 				or (group_index == CityToolIds.Group.QUERY and subtool_index != CityToolIds.Query.QUERY))):
 			continue
 
+		# debug query tools appear only in debug mode
+		if not DebugMode.allows_tool(group_index, subtool_index):
+			continue
+
 		if ((group_index == CityToolIds.Group.POWER and subtool_index == CityToolIds.Power.PLANTS)
 				or (group_index == CityToolIds.Group.REWARDS and subtool_index == CityToolIds.Rewards.ARCOLOGIES)):
 			continue
@@ -166,6 +170,10 @@ func tool_button_tooltip(
 	if group_index == CityToolIds.Group.QUERY and subtool_index == CityToolIds.Query.TRIP_REACH:
 		return ("Trip Query\nClick a zone or transport tile. Colors show trip cost. A blue pin marks the origin. Green " +
 			"checkmarks mark possible destinations. Inspection does not change the city.")
+
+	if group_index == CityToolIds.Group.QUERY and subtool_index == CityToolIds.Query.TILE_INSPECTOR:
+		return ("Tile Inspector\nPoint at a tile to show its stored bytes, flags, data map values and debug layer value. " +
+			"Click to keep the panel on a tile. Inspection does not change the city.")
 
 	var price := _tool_price(tool)
 	var lines := PackedStringArray([str(tool.name)])

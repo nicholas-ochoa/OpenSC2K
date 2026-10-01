@@ -113,7 +113,7 @@ static func inspect_misc(misc: PackedByteArray) -> Result:
 static func is_available(city: CityState, group_index: int, subtool_index: int) -> bool:
 	var tool := ToolCatalog.tool(group_index, subtool_index)
 
-	if tool == null:
+	if tool == null or not DebugMode.allows_tool(group_index, subtool_index):
 		return false
 
 	if (group_index >= CityToolIds.Group.SIGNS

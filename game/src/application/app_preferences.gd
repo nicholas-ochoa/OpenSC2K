@@ -33,6 +33,7 @@ var update_last_check := 0
 var update_skipped_version := ""
 var update_checked_at := 0
 var update_error := ""
+var debug_mode := false
 
 
 func save_options(include_ui_scale := true) -> SettingsStore.SaveOptions:

@@ -26,6 +26,7 @@ func process(delta: float) -> void:
 		app.audio_controller.advance(delta * 1000.0)
 
 	_update_fps(delta)
+	app.debug_tools.process(delta)
 
 	if app.city_status_bar != null:
 		app.city_status_bar.update_report_rotation(delta)
@@ -126,6 +127,7 @@ func consume_simulation_result(result: SimulationTickResult) -> void:
 
 	if ran_days:
 		app.interface.refresh_details()
+		app.debug_tools.on_days_completed()
 
 	var force_refresh: bool = (
 		not result.effect_events.is_empty()

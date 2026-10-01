@@ -123,6 +123,9 @@ func select_subtool(index: int) -> void:
 			or (app.tool_state.selected_group == CityToolIds.Group.QUERY and index != CityToolIds.Query.QUERY))):
 		return
 
+	if not DebugMode.allows_tool(app.tool_state.selected_group, index):
+		return
+
 	if app.tool_state.selected_group == CityToolIds.Group.DISPATCH and index == CityToolIds.Dispatch.RECALL:
 		var recalled := Dispatch.recall_all(app.document_state.city)
 
@@ -262,6 +265,8 @@ func update_edit_state() -> void:
 
 	if app.tool_state.selected_group != CityToolIds.Group.QUERY or app.tool_state.selected_subtool != CityToolIds.Query.TRIP_REACH:
 		app.map_view.clear_trip_reach()
+
+	app.debug_tools.sync_tool(app.tool_state.selected_group, app.tool_state.selected_subtool)
 
 	app.map_view.query_city = app.document_state.city
 	app.map_view.set_edit_enabled(

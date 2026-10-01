@@ -216,6 +216,8 @@ func load_app_settings() -> void:
 	preferences.update_checked_at = values.update_checked_at
 	preferences.update_error = values.update_error
 	preferences.control_bindings = values.control_bindings
+	preferences.debug_mode = values.debug_mode
+	DebugMode.enabled = values.debug_mode
 	apply_control_bindings()
 
 	if preferences.fullscreen:

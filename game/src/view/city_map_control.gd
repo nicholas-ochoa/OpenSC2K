@@ -150,6 +150,7 @@ var camera: CityMapCamera = CityMapCamera.new(self)
 var presentation: CityMapPresentation = CityMapPresentation.new(self)
 var selection: CityMapSelection = CityMapSelection.new(self)
 var interaction: CityMapInteraction = CityMapInteraction.new(self)
+var debug_view: CityMapDebugView = CityMapDebugView.new(self)
 
 
 func _ready() -> void:
@@ -177,6 +178,7 @@ func _draw() -> void:
 		_legend.refresh()
 	if _data_tooltip != null:
 		_data_tooltip.refresh()
+	debug_view.sync()
 
 
 func _gui_input(event: InputEvent) -> void:

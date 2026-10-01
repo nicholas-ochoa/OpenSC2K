@@ -141,6 +141,8 @@ func unhandled_key_input(event: InputEvent) -> void:
 	elif event.keycode == KEY_ESCAPE and app.map_view != null and app.map_view.trip_reach != null:
 		app.map_view.clear_trip_reach()
 		app.get_viewport().set_input_as_handled()
+	elif event.keycode == KEY_ESCAPE and app.debug_tools.unpin_inspector():
+		app.get_viewport().set_input_as_handled()
 
 
 func choose_tool_group(group_index: int) -> void:

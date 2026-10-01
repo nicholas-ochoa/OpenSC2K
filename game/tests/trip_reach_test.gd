@@ -184,12 +184,16 @@ func _test_ui() -> void:
 	check(not view.trip_reach.segments.is_empty(), "Reach overlay contains vector segments")
 	check(result.summary.is_empty(), "Reach summary omits coordinates, power, and demand")
 	check(ToolCatalog.tool(16, 1).id == "trip_reach", "Query has a Trip Reach child")
+	DebugMode.enabled = true
 	check(ToolEditState.normal(city, CityViewMode.Mode.CITY, 16, 1).enabled, "Trip Reach is enabled")
 	check(ToolEditState.normal(city, CityViewMode.Mode.UNDERGROUND, 16, 1).enabled, "Trip Reach works underground")
 	var palette := CityChildToolPalette.new()
 	palette.build()
 	palette.show_tool_group(16, city)
 	check(palette.scroll.visible and palette.buttons.has(1), "Query palette exposes the Trip Reach button")
+	DebugMode.enabled = false
+	palette.show_tool_group(16, city)
+	check(not palette.buttons.has(1), "Trip Reach is a debug mode tool")
 	palette.free()
 	view.clear_trip_reach()
 	check(view.trip_reach == null, "Reach overlay clears")

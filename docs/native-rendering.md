@@ -90,6 +90,11 @@ network placement preview.
   Vertex colors mark tops and walls; the grid shader reads each tile's value through
   the UVs. The same file makes the tile values of the height, power and water maps, which have no
   data chunk.
+- **Debug layers.** `debug_view/` builds the tile tops of the debug tile layer window and
+  the derived layer values: ALTM fields, unusual values, overlay kinds, network labels,
+  tile differences and moving thing rows. `NativeDebugTiles` and `NativeTileSnapshot`
+  expose them. `NativeCityRegionDraws.outline_segments` gives the draw rectangles of the
+  sprite bounds and occlusion views. See [the debug tools](debug-tools.md).
 - **City Map window.** `minimap.rs` selects the palette index of each Map window pixel for
   each of the 18 map modes and colors the image. `CityMinimap` calls it through
   `NativeCityMinimap`. Maps larger than 1024 tiles sample every second or fourth tile.

@@ -9,6 +9,7 @@ signal disaster_menu_requested(id: int)
 signal windows_menu_requested(id: int)
 signal newspaper_menu_requested(id: int)
 signal help_menu_requested(id: int)
+signal debug_menu_requested(id: int)
 
 const ShortcutMenu = preload("res://src/ui/scurk/scurk_context_menu.gd")
 const MENU_SETTINGS := 0x8302
@@ -74,6 +75,8 @@ var view_menu: MenuButton
 var disasters_menu: MenuButton
 var newspaper_menu: MenuButton
 var windows_menu: MenuButton
+# shown only in debug mode
+var debug_menu: MenuButton
 var city_label: Label
 var population_label: Label
 var date_label: Label
@@ -189,6 +192,9 @@ func _ready() -> void:
 		_on_newspaper_menu,
 	)
 	newspaper_menu.disabled = true
+	debug_menu = _add_menu(menu_row, "Debug", [], _on_debug_menu)
+	CityDebugMenu.populate(debug_menu.get_popup(), _on_debug_menu)
+	debug_menu.visible = DebugMode.enabled
 	_add_menu(menu_row, "Help", [["Check for updates", MENU_CHECK_FOR_UPDATES], ["", -1], ["About", MENU_ABOUT]], _on_help_menu)
 	refresh_shortcut_hints(bindings)
 
@@ -491,3 +497,7 @@ func _on_newspaper_menu(id: int) -> void:
 
 func _on_help_menu(id: int) -> void:
 	help_menu_requested.emit(id)
+
+
+func _on_debug_menu(id: int) -> void:
+	debug_menu_requested.emit(id)

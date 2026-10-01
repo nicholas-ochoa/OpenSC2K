@@ -91,6 +91,7 @@ var network_edits: ApplicationNetworkEdits = ApplicationNetworkEdits.new(self)
 var query_choices: ApplicationQueryChoices = ApplicationQueryChoices.new(self)
 var route_edits: ApplicationRouteEdits = ApplicationRouteEdits.new(self)
 var debug: ApplicationDebug = ApplicationDebug.new(self)
+var debug_tools: ApplicationDebugTools = ApplicationDebugTools.new(self)
 var updates := ApplicationUpdates.new(preferences)
 
 
@@ -141,6 +142,7 @@ func _exit_tree() -> void:
 		new_city_state.preview_job.thread.wait_to_finish()
 	new_city_state.preview_job = null
 	map_render.close_region_cache()
+	debug_tools.close()
 
 	if simulation_state.frame_simulation != null:
 		simulation_state.frame_simulation.close()

@@ -16,6 +16,7 @@ const GPU_WORKERS := 2
 const SOURCE_CHUNKS: Array[String] = ["ALTM", "XBLD", "XTER", "XZON", "XBIT", "XTXT", "XUND", "XTRF"]
 # above this count, report the whole region as changed foreground geometry
 const MAX_OCCLUDER_CHANGES := 32
+const MAX_PUBLISH_LOG := 512
 
 var region_edge := REGION_EDGE
 var gpu_enabled := gpu_supported()
@@ -79,6 +80,10 @@ var _edit_priority: Dictionary[Vector2i, int] = {}
 # decoded payloads of the configured city. a later configure compares them to
 # find the changed tiles. packed arrays share data until the city writes again
 var source_payloads: Dictionary[String, PackedByteArray] = {}
+# Debug: the source rectangles of published regions, while the region repaint
+# overlay is on. The overlay takes them each frame
+var log_publishes := false
+var published_log: Array[Rect2i] = []
 
 
 static func gpu_supported(preference := "gpu") -> bool:
@@ -342,6 +347,10 @@ func publish_changes(before: CityRegionResult, after: CityRegionResult) -> void:
 	_source_updates[after.bounds.position / region_edge] = true
 	var region := Rect2i(after.bounds.position * divisor, after.bounds.size * divisor)
 	foreground_changes.append(region)
+
+	if log_publishes and published_log.size() < MAX_PUBLISH_LOG:
+		published_log.append(region)
+
 	var changed: Array[Rect2i] = []
 
 	if before != null:

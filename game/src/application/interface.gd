@@ -31,6 +31,8 @@ func build_interface(original_assets: OriginalGameAssets) -> void:
 	app.city_menu_bar.newspaper_menu_requested.connect(app.reports.on_newspaper_menu)
 	app.city_menu_bar.newspaper_menu.about_to_popup.connect(app.reports.refresh_newspaper_menu)
 	app.city_menu_bar.help_menu_requested.connect(app.reports.on_help_menu)
+	app.city_menu_bar.debug_menu_requested.connect(app.debug_tools.on_debug_menu)
+	app.city_menu_bar.debug_menu.about_to_popup.connect(app.debug_tools.sync_menu)
 	app.speed_menu = app.city_menu_bar.speed_menu
 	app.options_menu = app.city_menu_bar.options_menu
 	app.view_menu = app.city_menu_bar.view_menu

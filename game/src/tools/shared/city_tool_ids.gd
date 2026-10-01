@@ -93,5 +93,6 @@ enum Signs { SIGN = 0 }
 enum Query {
 	QUERY = 0,
 	TRIP_REACH = 1,
+	TILE_INSPECTOR = 2,
 }
 enum Centering { CENTER = 0 }

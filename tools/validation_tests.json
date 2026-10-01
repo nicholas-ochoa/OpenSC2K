@@ -475,6 +475,22 @@
     ]
   },
   {
+    "id": "debug_view_layers_test",
+    "script": "tests/debug_view_layers_test.gd",
+    "domain": "rendering",
+    "lane": "product"
+  },
+  {
+    "id": "debug_mode_workflow_test",
+    "script": "tests/debug_mode_workflow_test.gd",
+    "domain": "ui",
+    "lane": "product",
+    "requires": [
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
+    ]
+  },
+  {
     "id": "expanded_limits_test",
     "script": "tests/expanded_limits_test.gd",
     "domain": "formats",
