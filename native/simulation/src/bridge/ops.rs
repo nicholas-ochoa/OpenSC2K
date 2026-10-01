@@ -308,6 +308,7 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
                     convert::boolean(args, "accepted", false),
                     game,
                     convert::boolean(args, "defer_land_plot", false),
+                    convert::int(args, "forced", 0),
                 )
                 .to_value(),
             )

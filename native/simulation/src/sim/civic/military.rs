@@ -182,10 +182,25 @@ fn store(city: &mut City, ids: &[&str]) {
 }
 
 /// MilitaryProposalPhase.resolve. A stored proposal has step timing.
-pub fn resolve(city: &mut City, accepted: bool, game: Option<&mut GameLcgRandom>, defer_land_plot: bool) -> MilitaryProposalResult {
+/// `forced` is 0 for the game rules, or a base type from the debug proposals:
+/// the proposal then searches only for a site of that type.
+/// No site of the proposed base: the proposal ends as declined.
+fn no_site(city: &mut City) -> MilitaryProposalResult {
+    city.set_misc_u32(misc_layout::MILITARY_BASE_TYPE, BASE_DECLINED);
+
+    result(false, BASE_DECLINED, Rect2i::default(), Vec::new(), NOTICE_NO_SITE)
+}
+
+pub fn resolve(
+    city: &mut City,
+    accepted: bool,
+    game: Option<&mut GameLcgRandom>,
+    defer_land_plot: bool,
+    forced: i64,
+) -> MilitaryProposalResult {
     let mut span = TimingSpan::new();
     span.mark("prepare data");
-    let mut result = resolve_steps(city, accepted, game, defer_land_plot, &mut span);
+    let mut result = resolve_steps(city, accepted, game, defer_land_plot, forced, &mut span);
 
     if result.base.ok {
         result.base.timing = span.finish();
@@ -199,6 +214,7 @@ fn resolve_steps(
     accepted: bool,
     game: Option<&mut GameLcgRandom>,
     defer_land_plot: bool,
+    forced: i64,
     span: &mut TimingSpan,
 ) -> MilitaryProposalResult {
     let edge = city.map_size;
@@ -220,9 +236,22 @@ fn resolve_steps(
 
     let game = game.expect("checked above");
     span.mark("naval site search");
-    let navy_site = find_naval_site(city);
+    let navy_site = if forced == 0 || forced == BASE_NAVY {
+        find_naval_site(city)
+    } else {
+        Rect2i::default()
+    };
+    let navy_chosen = match forced {
+        0 => navy_site.has_area() && game.next_mod(2) == 1,
+        BASE_NAVY => navy_site.has_area(),
+        _ => false,
+    };
 
-    if navy_site.has_area() && game.next_mod(2) == 1 {
+    if forced == BASE_NAVY && !navy_chosen {
+        return no_site(city);
+    }
+
+    if navy_chosen {
         span.mark("build and store naval base");
         let mut maps = plot_maps(city);
         let changed = zone_plot(&mut maps, navy_site);
@@ -268,12 +297,17 @@ fn resolve_steps(
             }
         }
 
-        if valid < 40 {
+        // a forced silo proposal draws the land sites only for their altitude
+        if valid < 40 || forced == BASE_MISSILE_SILOS {
             continue;
         }
 
         span.mark("build and store land base");
-        let base_type = if valid == level { BASE_AIR_FORCE } else { BASE_ARMY };
+        let base_type = match forced {
+            BASE_ARMY | BASE_AIR_FORCE => forced,
+            _ if valid == level => BASE_AIR_FORCE,
+            _ => BASE_ARMY,
+        };
         let notice = if base_type == BASE_AIR_FORCE {
             NOTICE_AIR_FORCE
         } else {
@@ -291,6 +325,10 @@ fn resolve_steps(
         }
 
         return reserve_land_site(city, base_type, site, notice);
+    }
+
+    if forced == BASE_ARMY || forced == BASE_AIR_FORCE {
+        return no_site(city);
     }
 
     span.mark("missile site search");
@@ -328,9 +366,7 @@ fn resolve_steps(
     span.mark("store missile sites or failed proposal");
 
     if sites.len() != 6 {
-        city.set_misc_u32(misc_layout::MILITARY_BASE_TYPE, BASE_DECLINED);
-
-        return result(false, BASE_DECLINED, Rect2i::default(), Vec::new(), NOTICE_NO_SITE);
+        return no_site(city);
     }
 
     let maps = plot_maps(city);
@@ -604,7 +640,7 @@ mod tests {
                     40,
                     "a naval site exists at edge {edge} rotation {rotation}"
                 );
-                let proposal = resolve(&mut city, true, Some(&mut sequence_game(&[1])), false);
+                let proposal = resolve(&mut city, true, Some(&mut sequence_game(&[1])), false, 0);
                 assert!(proposal.base.ok && proposal.base_type == BASE_NAVY && proposal.notice_id == NOTICE_NAVY);
                 assert_eq!(proposal.changed_indices.0.len(), 40);
                 assert_eq!(
@@ -648,5 +684,29 @@ mod tests {
                 assert!(grown, "the naval shore supports a crane and four pier tiles");
             }
         }
+    }
+
+    /// The debug proposals search only for a site of the forced base type.
+    #[test]
+    fn forced_proposals_build_the_requested_base() {
+        for forced in [BASE_ARMY, BASE_AIR_FORCE] {
+            let mut city = empty_city(128);
+            let proposal = resolve(&mut city, true, Some(&mut sequence_game(&[5])), true, forced);
+            assert!(proposal.base.ok && proposal.base_type == forced);
+            assert_eq!(city.misc_u32(misc_layout::MILITARY_BASE_TYPE), forced);
+        }
+
+        let mut city = empty_city(128);
+        let silos = resolve(&mut city, true, Some(&mut sequence_game(&[5])), true, BASE_MISSILE_SILOS);
+        assert!(silos.base.ok && silos.base_type == BASE_MISSILE_SILOS);
+    }
+
+    /// A forced Navy proposal without a coast ends as declined, without a land base.
+    #[test]
+    fn a_forced_navy_needs_a_naval_site() {
+        let mut city = empty_city(128);
+        let proposal = resolve(&mut city, true, Some(&mut sequence_game(&[5])), true, BASE_NAVY);
+        assert!(!proposal.accepted && proposal.base_type == BASE_DECLINED && proposal.notice_id == NOTICE_NO_SITE);
+        assert_eq!(city.misc_u32(misc_layout::MILITARY_BASE_TYPE), BASE_DECLINED);
     }
 }
