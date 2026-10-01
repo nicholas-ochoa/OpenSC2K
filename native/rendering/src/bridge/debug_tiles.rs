@@ -4,10 +4,10 @@ use super::super::data_view::DataCity;
 use super::super::debug_view::{
     geometry::{self, TileWindow},
     networks,
-    snapshot::{self, Snapshot},
-    values,
+    snapshot::{self, Snapshot, Tiles},
+    things, values,
 };
-use super::{bytes, int, ints};
+use super::int;
 use godot::prelude::*;
 
 /// Geometry and tile values of the debug tile layer.
@@ -101,6 +101,24 @@ impl NativeDebugTiles {
         result
     }
 
+    /// Rows of record, type, x, y, dx and dy of the XTHG records whose tile
+    /// is inside `window`.
+    #[func]
+    fn thing_rows(things: PackedByteArray, edge: i64, window: Rect2i) -> PackedInt32Array {
+        let tiles = TileWindow::clipped(
+            i64::from(window.position.x),
+            i64::from(window.position.y),
+            i64::from(window.position.x + window.size.x),
+            i64::from(window.position.y + window.size.y),
+            edge.max(0) as usize,
+        );
+
+        PackedInt32Array::from(things::rows(things.as_slice(), tiles).as_slice())
+    }
+
+    #[constant]
+    const THING_ROW: i32 = things::ROW as i32;
+
     #[constant]
     const SUPPLIED_BASE: i32 = networks::SUPPLIED_BASE as i32;
     #[constant]
@@ -127,12 +145,12 @@ impl NativeTileSnapshot {
     /// first byte plane.
     #[func]
     fn capture(&mut self, tiles: VarDictionary) {
-        self.snapshot = snapshot_from(&tiles);
+        self.snapshot = Snapshot::copy(&GodotTiles::from(&tiles).tiles());
     }
 
     #[func]
     fn is_empty(&self) -> bool {
-        !self.snapshot.is_complete()
+        !self.snapshot.tiles().is_complete()
     }
 
     #[func]
@@ -144,8 +162,8 @@ impl NativeTileSnapshot {
     /// `counts` holds the changed tiles of each plane, in bit order.
     #[func]
     fn difference(&self, tiles: VarDictionary, ignored_flags: i64) -> VarDictionary {
-        let after = snapshot_from(&tiles);
-        let found = self.snapshot.difference(&after, ignored_flags as u8);
+        let after = GodotTiles::from(&tiles);
+        let found = self.snapshot.tiles().difference(&after.tiles(), ignored_flags as u8);
         let counts: PackedInt32Array = found.counts.iter().map(|&count| count as i32).collect();
         let mut result = VarDictionary::new();
 
@@ -177,19 +195,48 @@ impl NativeTileSnapshot {
     const CHANGED_FLAGS: i32 = snapshot::CHANGED_FLAGS as i32;
 }
 
-fn snapshot_from(tiles: &VarDictionary) -> Snapshot {
-    let edge = int(tiles, "edge", 0).max(0) as usize;
-    let mut overlays = bytes(tiles, "overlays");
-    overlays.truncate(edge * edge);
+/// The tile arrays of a Godot dictionary. The packed arrays share their data
+/// with Godot, so the tiles are read without a copy.
+struct GodotTiles {
+    edge: usize,
+    buildings: PackedByteArray,
+    zones: PackedByteArray,
+    terrain: PackedByteArray,
+    altitude: PackedInt32Array,
+    underground: PackedByteArray,
+    overlays: PackedByteArray,
+    flags: PackedByteArray,
+}
 
-    Snapshot {
-        edge,
-        buildings: bytes(tiles, "buildings"),
-        zones: bytes(tiles, "zones"),
-        terrain: bytes(tiles, "terrain"),
-        altitude: ints(tiles, "altitude"),
-        underground: bytes(tiles, "underground"),
-        overlays,
-        flags: bytes(tiles, "flags"),
+impl GodotTiles {
+    fn from(tiles: &VarDictionary) -> Self {
+        let plane = |key: &str| tiles.get(key).and_then(|v| v.try_to::<PackedByteArray>().ok()).unwrap_or_default();
+
+        Self {
+            edge: int(tiles, "edge", 0).max(0) as usize,
+            buildings: plane("buildings"),
+            zones: plane("zones"),
+            terrain: plane("terrain"),
+            altitude: tiles
+                .get("altitude")
+                .and_then(|v| v.try_to::<PackedInt32Array>().ok())
+                .unwrap_or_default(),
+            underground: plane("underground"),
+            overlays: plane("overlays"),
+            flags: plane("flags"),
+        }
+    }
+
+    fn tiles(&self) -> Tiles<'_> {
+        Tiles {
+            edge: self.edge,
+            buildings: self.buildings.as_slice(),
+            zones: self.zones.as_slice(),
+            terrain: self.terrain.as_slice(),
+            altitude: self.altitude.as_slice(),
+            underground: self.underground.as_slice(),
+            overlays: self.overlays.as_slice(),
+            flags: self.flags.as_slice(),
+        }
     }
 }

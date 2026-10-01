@@ -1,7 +1,8 @@
 //! A copy of the tile arrays, and the tiles that changed since the copy. The
-//! layer value of a tile holds one bit for each array that changed.
+//! layer value of a tile holds one bit for each array that changed. The
+//! current arrays are compared where they are, without a copy.
 
-/// One bit for each compared array, in `Snapshot::planes` order.
+/// One bit for each compared array.
 pub const CHANGED_BUILDING: u8 = 0x01;
 pub const CHANGED_ZONE: u8 = 0x02;
 pub const CHANGED_TERRAIN: u8 = 0x04;
@@ -11,8 +12,22 @@ pub const CHANGED_OVERLAY: u8 = 0x20;
 pub const CHANGED_FLAGS: u8 = 0x40;
 pub const PLANES: usize = 7;
 
-/// The tile arrays of one moment. Overlays keep their first byte plane, the
-/// marker and narrow ID of each tile.
+/// The tile arrays of one moment, borrowed from Godot or from a snapshot.
+/// Overlays may hold more planes; the comparison reads the first byte plane,
+/// the marker and narrow ID of each tile.
+#[derive(Clone, Copy, Default)]
+pub struct Tiles<'a> {
+    pub edge: usize,
+    pub buildings: &'a [u8],
+    pub zones: &'a [u8],
+    pub terrain: &'a [u8],
+    pub altitude: &'a [i32],
+    pub underground: &'a [u8],
+    pub overlays: &'a [u8],
+    pub flags: &'a [u8],
+}
+
+/// An owned copy of the tile arrays.
 #[derive(Clone, Default)]
 pub struct Snapshot {
     pub edge: usize,
@@ -34,6 +49,37 @@ pub struct Difference {
 }
 
 impl Snapshot {
+    /// A copy of `tiles`. Overlays keep their first plane.
+    pub fn copy(tiles: &Tiles) -> Self {
+        let cells = tiles.cells();
+
+        Self {
+            edge: tiles.edge,
+            buildings: tiles.buildings.to_vec(),
+            zones: tiles.zones.to_vec(),
+            terrain: tiles.terrain.to_vec(),
+            altitude: tiles.altitude.to_vec(),
+            underground: tiles.underground.to_vec(),
+            overlays: tiles.overlays[..cells.min(tiles.overlays.len())].to_vec(),
+            flags: tiles.flags.to_vec(),
+        }
+    }
+
+    pub fn tiles(&self) -> Tiles<'_> {
+        Tiles {
+            edge: self.edge,
+            buildings: &self.buildings,
+            zones: &self.zones,
+            terrain: &self.terrain,
+            altitude: &self.altitude,
+            underground: &self.underground,
+            overlays: &self.overlays,
+            flags: &self.flags,
+        }
+    }
+}
+
+impl Tiles<'_> {
     pub fn cells(&self) -> usize {
         self.edge * self.edge
     }
@@ -54,7 +100,7 @@ impl Snapshot {
 
     /// The changed tiles from `self` to `after`. Maps of other sizes have no
     /// comparable tiles. `ignored_flags` leaves out flag bits such as MARK.
-    pub fn difference(&self, after: &Snapshot, ignored_flags: u8) -> Difference {
+    pub fn difference(&self, after: &Tiles, ignored_flags: u8) -> Difference {
         let cells = self.cells();
         let mut result = Difference {
             values: vec![0; after.cells()],
@@ -125,7 +171,7 @@ mod tests {
         after.altitude[1] = 3;
         after.flags[3] = 0x40;
 
-        let difference = before.difference(&after, 0);
+        let difference = before.tiles().difference(&after.tiles(), 0);
 
         assert_eq!(
             difference.values,
@@ -142,13 +188,13 @@ mod tests {
         let mut after = before.clone();
         after.flags[0] = 0x08;
 
-        assert_eq!(before.difference(&after, 0x08).tiles, 0);
-        assert_eq!(before.difference(&after, 0).tiles, 1);
+        assert_eq!(before.tiles().difference(&after.tiles(), 0x08).tiles, 0);
+        assert_eq!(before.tiles().difference(&after.tiles(), 0).tiles, 1);
     }
 
     #[test]
     fn other_map_sizes_do_not_compare() {
-        let difference = snapshot(2).difference(&snapshot(4), 0);
+        let difference = snapshot(2).tiles().difference(&snapshot(4).tiles(), 0);
 
         assert_eq!(difference.tiles, 0);
         assert_eq!(difference.values.len(), 16);
