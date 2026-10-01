@@ -3,6 +3,9 @@ extends CityMapConstants
 
 @warning_ignore_start("integer_division")
 
+# the width of the light and dark edges, in native pixels
+const BEVEL_WIDTH := 2.0
+
 var map: CityMapControl
 var _sign_font: SystemFont
 var sign_entries: Array[CityMapSigns.Entry] = []
@@ -35,38 +38,13 @@ func set_signs_visible(value: bool) -> void:
 	map.queue_redraw()
 
 
-func set_sign_occlusion_visuals(value: Dictionary[int, CitySignVisual]) -> void:
-	var unchanged := map.sign_occlusion_visuals.size() == value.size()
-
-	if unchanged:
-		for key in value:
-			if not value[key].matches(map.sign_occlusion_visuals.get(key)):
-				unchanged = false
-				break
-
-	if unchanged:
-		return
-
-	var retained: Dictionary[int, CitySignVisual] = {}
-
-	for key in value:
-		retained[key] = value[key].copy()
-
-	map.sign_occlusion_visuals = retained
-	map.queue_redraw()
-
-
-func sign_source_entries() -> Array[CitySignRequest]:
+func sign_source_entries() -> Array[CityMapSigns.Entry]:
 	if not map.signs_visible or map.city == null:
 		return []
 
 	_ensure_sign_entries()
-	var entries: Array[CitySignRequest] = []
 
-	for entry in sign_entries:
-		entries.append(CitySignRequest.new(entry.key, entry.bounds, entry.draw_order))
-
-	return entries
+	return sign_entries.duplicate()
 
 
 func _ensure_sign_entries() -> void:
@@ -123,7 +101,7 @@ func _ensure_sign_entries() -> void:
 	# painter FUN_0044d9a0 moves up half a tile: the center of the tile
 	var anchor_drop := Vector2(0, (configuration.tile_height - configuration.half_height) * divisor)
 	var font := _get_sign_font()
-	var font_size: int = SIGN_FONT_HEIGHTS[view_index]
+	var font_size := _em_size(font, SIGN_FONT_HEIGHTS[view_index])
 	var positions: Array[Vector2i] = []
 
 	for index in sign_indices:
@@ -152,7 +130,7 @@ func _ensure_sign_entries() -> void:
 			continue
 
 		var native_width := roundf(font.get_string_size(
-			label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
+			label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, roundi(font_size)
 		).x)
 		var anchor := polygon[0] + anchor_drop
 		var layout := sign_layout(
@@ -192,51 +170,34 @@ func _draw_signs(scale: float, offset: Vector2) -> void:
 	var view_index := sign_view_index(map.zoom_factor)
 	var display_multiplier := sign_display_multiplier(map.zoom_factor) * map.map_pixel_ratio
 	var font := _get_sign_font()
-	var font_size: int = SIGN_FONT_HEIGHTS[view_index]
+	var font_size := _em_size(font, SIGN_FONT_HEIGHTS[view_index])
 
 	for entry in sign_entries:
 		if not Rect2(entry.bounds).intersects(map.camera.visible_source_rect()):
 			continue
 
-		# the sign is drawn in whole native pixels from a whole screen pixel
+		# the panel and post are drawn in whole native pixels from a whole
+		# screen pixel. The text is drawn at its screen size, so it stays sharp
 		var origin := (offset + Vector2(entry.anchor) * scale).round()
-		var layout := sign_layout(Vector2.ZERO, float(entry.text_width), view_index)
+		var screen_font_size := maxi(1, roundi(font_size * display_multiplier))
+
+		if entry.screen_font_size != screen_font_size:
+			entry.screen_font_size = screen_font_size
+			entry.screen_text_width = font.get_string_size(
+				entry.label, HORIZONTAL_ALIGNMENT_LEFT, -1, screen_font_size
+			).x
+
+		var layout := sign_layout(
+			Vector2.ZERO, ceilf(entry.screen_text_width / display_multiplier), view_index
+		)
 		_draw_raised_sign_part(layout.panel, SIGN_PANEL_FILL, origin, display_multiplier)
-		var text_position := Vector2(
-			layout.panel.position.x + 4.0,
-			layout.panel.position.y + 2.0 + font.get_ascent(font_size),
-		)
-		map.draw_set_transform(origin, 0.0, Vector2(display_multiplier, display_multiplier))
-		# the glyphs keep their native size; the nearest filter enlarges them
+		var text_position := (origin + (layout.panel.position + Vector2(4.0, 2.0)) * display_multiplier).round()
+		text_position.y += font.get_ascent(screen_font_size)
 		map.draw_string(
-			font, text_position, String(entry.label), HORIZONTAL_ALIGNMENT_LEFT, -1,
-			font_size, SIGN_TEXT_COLOR, TextServer.JUSTIFICATION_NONE,
-			TextServer.DIRECTION_AUTO, TextServer.ORIENTATION_HORIZONTAL, 1.0,
+			font, text_position, entry.label, HORIZONTAL_ALIGNMENT_LEFT, -1,
+			screen_font_size, SIGN_TEXT_COLOR,
 		)
-		map.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		_draw_raised_sign_part(layout.post, SIGN_POST_FILL, origin, display_multiplier)
-		_draw_sign_occlusion(int(entry.key), scale, offset)
-
-
-func _draw_sign_occlusion(key: int, scale: float, offset: Vector2) -> void:
-	var visual: CitySignVisual = map.sign_occlusion_visuals.get(key)
-
-	if visual == null:
-		return
-
-	var texture := visual.texture
-
-	if texture == null:
-		return
-
-	var source_position := visual.position
-	var source_size := visual.size
-	map.draw_texture_rect(
-		texture,
-		Rect2(offset + source_position * scale, source_size * scale),
-		false,
-		CityForegroundPalette.INDEXED_DRAW_COLOR if visual.indexed else Color.WHITE,
-	)
 
 
 static func sign_view_index(zoom: float) -> int:
@@ -251,26 +212,6 @@ static func sign_view_index(zoom: float) -> int:
 
 static func sign_display_multiplier(zoom: float) -> float:
 	return maxf(1.0, zoom)
-
-
-static func later_sign_occluder_visuals(
-	visuals: Array[CityDynamicVisual], bounds: Rect2i, draw_order: int
-) -> Array[CityDynamicVisual]:
-	var result: Array[CityDynamicVisual] = []
-
-	for visual in visuals:
-		if visual.shadow or visual.depth_order <= draw_order:
-			continue
-
-		var visual_bounds := Rect2i(
-			Vector2i(visual.position),
-			Vector2i(visual.size),
-		)
-
-		if bounds.intersects(visual_bounds):
-			result.append(visual)
-
-	return result
 
 
 static func sign_layout(
@@ -302,49 +243,43 @@ static func sign_layout(
 	return layout
 
 
+# the executable asks for a character cell of `cell_height` pixels, ascent
+# and descent together. A Godot font size is the em size, which is smaller
+static func _em_size(font: Font, cell_height: float) -> float:
+	const REFERENCE_SIZE := 100
+
+	return cell_height * REFERENCE_SIZE / font.get_height(REFERENCE_SIZE)
+
+
 func _get_sign_font() -> Font:
 	if _sign_font == null:
 		_sign_font = SystemFont.new()
 		# the executable asks for "ariel", windows substitutes arial
 		_sign_font.font_names = PackedStringArray(["Arial"])
 		_sign_font.font_weight = 600
-		# windows 95 draws sign text without smoothing
-		_sign_font.antialiasing = TextServer.FONT_ANTIALIASING_NONE
-		_sign_font.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_DISABLED
 
 	return _sign_font
 
 
-# FUN_004728a0 fills the rectangle, then draws two-pixel pens: light along the
-# top and left, dark along the bottom and right, and a middle pixel at the
-# lower-left corner. A two-pixel GDI pen at coordinate c covers c - 1 and c,
-# so the light edge starts outside the fill and one fill row and column stay
-# outside the dark edge. `part` is in native pixels from `origin`
+# FUN_004728a0 fills the rectangle and draws a two-pixel light edge along the
+# top and left and a dark edge along the bottom and right. The light pen
+# starts one pixel outside the fill. `part` is in native pixels from `origin`;
+# the edges are drawn at screen resolution with mitered corners
 func _draw_raised_sign_part(part: Rect2, fill: Color, origin: Vector2, multiplier: float) -> void:
-	var left := part.position.x
-	var top := part.position.y
-	var right := part.end.x
-	var bottom := part.end.y
-	_draw_native_rect(left, top, right, bottom, fill, origin, multiplier)
-
-	_draw_native_rect(left, top - 1.0, right - 2.0, top, SIGN_EDGE_LIGHT, origin, multiplier)
-	_draw_native_rect(left - 1.0, top, right - 1.0, top + 1.0, SIGN_EDGE_LIGHT, origin, multiplier)
-	_draw_native_rect(left - 1.0, top, left + 1.0, bottom - 1.0, SIGN_EDGE_LIGHT, origin, multiplier)
-
-	_draw_native_rect(right - 3.0, top + 1.0, right - 1.0, bottom - 1.0, SIGN_EDGE_DARK, origin, multiplier)
-	_draw_native_rect(left + 2.0, bottom - 3.0, right - 1.0, bottom - 2.0, SIGN_EDGE_DARK, origin, multiplier)
-	_draw_native_rect(left + 1.0, bottom - 2.0, right - 1.0, bottom - 1.0, SIGN_EDGE_DARK, origin, multiplier)
-
-	_draw_native_rect(left, bottom - 1.0, left + 1.0, bottom, SIGN_EDGE_MIDDLE, origin, multiplier)
-
-
-# each native edge lands on a whole screen pixel, so no edge blurs
-func _draw_native_rect(
-	left: float, top: float, right: float, bottom: float, color: Color, origin: Vector2, multiplier: float
-) -> void:
-	var start := (origin + Vector2(left, top) * multiplier).round()
-	var end := (origin + Vector2(right, bottom) * multiplier).round()
-	map.draw_rect(Rect2(start, end - start), color)
+	var start := (origin + (part.position - Vector2.ONE) * multiplier).round()
+	var end := (origin + part.end * multiplier).round()
+	var edge := maxf(1.0, roundf(BEVEL_WIDTH * multiplier))
+	var inner_start := start + Vector2(edge, edge)
+	var inner_end := end - Vector2(edge, edge)
+	map.draw_rect(Rect2(start, end - start), fill)
+	map.draw_colored_polygon(PackedVector2Array([
+		start, Vector2(end.x, start.y), Vector2(inner_end.x, inner_start.y),
+		inner_start, Vector2(inner_start.x, inner_end.y), Vector2(start.x, end.y),
+	]), SIGN_EDGE_LIGHT)
+	map.draw_colored_polygon(PackedVector2Array([
+		end, Vector2(start.x, end.y), Vector2(inner_start.x, inner_end.y),
+		inner_end, Vector2(inner_end.x, inner_start.y), Vector2(end.x, start.y),
+	]), SIGN_EDGE_DARK)
 
 
 class Entry extends RefCounted:
@@ -354,6 +289,9 @@ class Entry extends RefCounted:
 	var text_width: float
 	var bounds: Rect2i
 	var draw_order: int
+	# the text width at the font size of the last draw
+	var screen_font_size := 0
+	var screen_text_width := 0.0
 
 
 class Layout extends RefCounted:

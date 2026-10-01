@@ -12,9 +12,8 @@ static func build(request: Request, context: CityGpuBuildContext, uploaded_revis
 	var batch_started := Time.get_ticks_usec()
 	var display: CityState = request.city if request.prepared else CityViewFilter.surface_copy(request.city, request.visibility)
 	var regions: Array[CityGpuRegionResult] = []
-	var divisor := CityIsometricRenderer.view_configuration(request.view).divisor
 	for key: Vector2i in request.keys:
-		var result := _region(request, display, key, context, divisor, uploaded_revision)
+		var result := _region(request, display, key, context, uploaded_revision)
 
 		if not result.ok:
 			return Result.failure(result.error)
@@ -54,7 +53,6 @@ static func build(request: Request, context: CityGpuBuildContext, uploaded_revis
 static func stream(request: Request, worker: CityRegionCache.RegionWorker, uploaded_revision: int) -> Result:
 	var context := worker.context
 	var display: CityState = request.city if request.prepared else CityViewFilter.surface_copy(request.city, request.visibility)
-	var divisor := CityIsometricRenderer.view_configuration(request.view).divisor
 	var published := uploaded_revision
 	worker.mutex.lock()
 	worker.display_city = display
@@ -71,7 +69,7 @@ static func stream(request: Request, worker: CityRegionCache.RegionWorker, uploa
 
 		var key: Vector2i = worker.inbox.pop_front()
 		worker.mutex.unlock()
-		var result := _region(request, display, key, context, divisor, published)
+		var result := _region(request, display, key, context, published)
 
 		if not result.ok:
 			worker.mutex.lock()
@@ -98,7 +96,7 @@ static func stream(request: Request, worker: CityRegionCache.RegionWorker, uploa
 	return batch
 
 
-static func _region(request: Request, display: CityState, key: Vector2i, context: CityGpuBuildContext, divisor: int,
+static func _region(request: Request, display: CityState, key: Vector2i, context: CityGpuBuildContext,
 		uploaded_revision: int) -> CityGpuRegionResult:
 	var started := Time.get_ticks_usec()
 	var bounds := Rect2i(key * int(request.edge), Vector2i.ONE * int(request.edge))
@@ -108,10 +106,6 @@ static func _region(request: Request, display: CityState, key: Vector2i, context
 
 	if not result.ok:
 		return result
-
-	if request.mode == CityViewMode.Mode.CITY:
-		result.sign_foregrounds = CityGpuSignForegrounds.build(result, request.signs,
-			request.palette, request.sprites, context, divisor)
 
 	result.key = key
 	result.usec = Time.get_ticks_usec() - started
@@ -135,7 +129,6 @@ class Request extends RefCounted:
 	var tunnels := true
 	var generation := 0
 	var budget_usec := 0
-	var signs: Array[CitySignRequest] = []
 
 
 class Result extends RefCounted:

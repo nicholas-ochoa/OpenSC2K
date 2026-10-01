@@ -110,18 +110,6 @@ class ProfileMapRender extends ApplicationMapRender:
 		app._record("foreground_invalidation", started)
 		return result
 
-	func refresh_sign_occlusion(view_size: int) -> void:
-		var started := Time.get_ticks_usec()
-		super.refresh_sign_occlusion(view_size)
-		app._record("signs", started)
-
-	func sign_palette_image(indexed: Image, mapping: PackedInt32Array) -> Image:
-		var started := Time.get_ticks_usec()
-		var result := super.sign_palette_image(indexed, mapping)
-		app._record("sign_palette_pixels", started)
-
-		return result
-
 
 class ProfileStaticRender extends ApplicationStaticRender:
 

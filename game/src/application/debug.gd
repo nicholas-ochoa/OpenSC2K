@@ -101,7 +101,6 @@ func debug_clear_render_caches() -> void:
 	app.render_caches.dynamic_foreground_cache.clear()
 	app.render_caches.dynamic_occluder_cache.clear()
 	app.render_caches.dynamic_visual_cache.clear()
-	app.render_caches.sign_foreground_cache.clear()
 	app.render_caches.dynamic_special_batch_cache.clear()
 	debug_full_redraw()
 

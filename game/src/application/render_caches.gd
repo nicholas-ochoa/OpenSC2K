@@ -10,7 +10,7 @@ var static_visual_signature: Array = []
 var static_render_mode := CityViewMode.Mode.NONE
 var static_display_city: CityState
 var static_view_cache: Dictionary[CityViewMode.Mode, StaticView] = {}
-# moving sprite and sign composition
+# moving sprite composition
 var dynamic_sprite_cache: Dictionary[String, CitySpriteResource] = {}
 var dynamic_foreground_cache: Dictionary[String, Image] = {}
 var dynamic_occluder_cache: Dictionary[String, OccluderMask] = {}
@@ -19,10 +19,7 @@ var dynamic_active_keys: Dictionary[String, bool] = {}
 var dynamic_command_cache := CityDynamicCommandCache.new()
 var foreground_view_rect := Rect2()
 var foreground_complete := false
-var sign_foreground_cache: Dictionary[int, SignForeground] = {}
 var dynamic_special_batch_cache: Dictionary[String, CityDynamicVisual] = {}
-var dynamic_sign_occluders: Array[CityDynamicVisual] = []
-var dynamic_sign_occlusion_grid: NativeRectIndex
 
 
 class StaticView extends RefCounted:
@@ -39,17 +36,6 @@ class StaticView extends RefCounted:
 		signature = stamp
 		display_city = source
 		view_size = graphics_size
-
-
-class SignForeground extends RefCounted:
-	var signature: Array
-	var indices: Image
-	var palette_signature := 0
-	var used_indices := PackedInt32Array()
-	var visual: CitySignVisual
-
-	func _init(stamp: Array) -> void:
-		signature = stamp
 
 
 class OccluderMask extends RefCounted:

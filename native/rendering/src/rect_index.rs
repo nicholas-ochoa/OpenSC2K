@@ -1,4 +1,4 @@
-//! A bucket grid of rectangles. Occlusion and sign queries ask which
+//! A bucket grid of rectangles. Occlusion queries ask which
 //! rectangles meet an area; the answer lists their indices in ascending order.
 
 use super::Rect;

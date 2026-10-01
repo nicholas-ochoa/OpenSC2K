@@ -277,32 +277,6 @@ func _test_signs(map_control: CityMapControl, starter: CityState, center_tile: V
 		map_control.signs.sign_cache_build_count == sign_cache_builds,
 		"Repeated sign drawing reuses the zoom-specific city-sign scan",
 	)
-	map_control.set_sign_occlusion_visuals({ sign_city.index_of(64, 64): CitySignVisual.new() })
-	_check(
-		map_control.sign_occlusion_visuals.size() == 1,
-		"Map control accepts one localized sign-occlusion layer",
-	)
-	map_control.set_sign_occlusion_visuals({})
-	var sign_candidates: Array[CityDynamicVisual] = []
-
-	for fixture in [
-		[Vector2(100, 100), 9, false], [Vector2(100, 100), 10, false],
-		[Vector2(150, 150), 12, false], [Vector2(100, 100), 13, true],
-		[Vector2(105, 105), 14, false],
-	]:
-		var visual := CityDynamicVisual.new(null, fixture[0], Vector2(20, 20))
-		visual.depth_order = fixture[1]
-		visual.shadow = fixture[2]
-		sign_candidates.append(visual)
-
-	var later_sign_visuals := CityMapSigns.later_sign_occluder_visuals(
-		sign_candidates, Rect2i(100, 100, 20, 20), 10
-	)
-	_check(
-		later_sign_visuals.size() == 1
-		and later_sign_visuals[0].depth_order == 14,
-		"Only a later overlapping moving sprite occludes a city sign",
-	)
 
 
 func _test_selection_geometry(

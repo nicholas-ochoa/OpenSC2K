@@ -1,12 +1,9 @@
-//! Godot classes of the view queries: rectangle indices, region plans and sign pixels.
+//! Godot classes of the view queries: rectangle indices and region plans.
 
-use super::super::{Rect, rect_index::RectIndex, region_plan, sign_pixels};
-use godot::{
-    classes::{Image, image::Format},
-    prelude::*,
-};
+use super::super::{Rect, rect_index::RectIndex, region_plan};
+use godot::prelude::*;
 
-/// Rectangles in a bucket grid, for occlusion and sign queries.
+/// Rectangles in a bucket grid, for occlusion queries.
 #[derive(GodotClass)]
 #[class(base=RefCounted)]
 pub struct NativeRectIndex {
@@ -96,43 +93,5 @@ impl NativeRegionPlan {
             .iter()
             .map(|&(x, y)| Vector2i::new(x, y))
             .collect()
-    }
-}
-
-/// Sign foreground pixels. See `sign_pixels.rs`.
-#[derive(GodotClass)]
-#[class(base=Object, no_init)]
-pub struct NativeSignPixels {}
-
-#[godot_api]
-impl NativeSignPixels {
-    /// The palette indices of the opaque pixels of an indexed RGBA8 image, in
-    /// order of first use.
-    #[func]
-    fn used_indices(indexed: Gd<Image>) -> PackedInt32Array {
-        sign_pixels::used_indices(indexed.get_data().as_slice())
-            .iter()
-            .map(|&i| i32::from(i))
-            .collect()
-    }
-
-    /// The indexed RGBA8 image colored through the cycle `mapping` and the 256
-    /// RGBA `palette` colors.
-    #[func]
-    fn colorize(indexed: Gd<Image>, mapping: PackedInt32Array, palette: PackedByteArray) -> Gd<Image> {
-        if palette.len() != 1024 || indexed.get_format() != Format::RGBA8 {
-            return indexed;
-        }
-
-        let data = sign_pixels::colorize(indexed.get_data().as_slice(), mapping.as_slice(), palette.as_slice());
-
-        Image::create_from_data(
-            indexed.get_width(),
-            indexed.get_height(),
-            false,
-            Format::RGBA8,
-            &PackedByteArray::from(data.as_slice()),
-        )
-        .expect("pixels of the image's size")
     }
 }

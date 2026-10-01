@@ -16,7 +16,6 @@ const SIGN_FONT_HEIGHTS := [12, 14, 16]
 const SIGN_PANEL_FILL := Color("bbbbbb")
 const SIGN_POST_FILL := Color("9f9f9f")
 const SIGN_EDGE_LIGHT := Color("e3e3e3")
-const SIGN_EDGE_MIDDLE := Color("838383")
 const SIGN_EDGE_DARK := Color("575757")
 const SIGN_TEXT_COLOR := Color.BLACK
 const PALETTE_CYCLE_SHADER := preload("res://src/view/map/palette_cycle.gdshader")

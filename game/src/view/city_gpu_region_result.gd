@@ -12,7 +12,6 @@ var background := Color.TRANSPARENT
 var atlas_revision := -1
 var atlas_edge := 0
 var atlas_image: Image
-var sign_foregrounds: Dictionary[int, CitySignForegroundPatch] = {}
 var mesh: ArrayMesh
 var atlas_texture: ImageTexture
 # Meshes and bounds stay fixed after publication. Views share this descriptor.

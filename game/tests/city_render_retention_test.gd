@@ -31,13 +31,6 @@ func _run() -> void:
 		"Cached geometry used the old divisor",
 	)
 	_check_region_updates(view, texture)
-	var foreground: Dictionary[int, CitySignVisual] = { 1: CitySignVisual.new(texture) }
-	view.set_sign_occlusion_visuals(foreground)
-	var replacement := ImageTexture.create_from_image(Image.create(3, 3, false, Image.FORMAT_LA8))
-	foreground[1].texture = replacement
-	assert(view.sign_occlusion_visuals[1].texture == texture, "Changing cached input altered a retained visual")
-	view.set_sign_occlusion_visuals(foreground)
-	assert(view.sign_occlusion_visuals[1].texture == replacement)
 	var dynamic := CityDynamicVisual.new(texture, Vector2(5, 7))
 	view.set_dynamic_sprites([dynamic])
 	var revision := view.layers.dynamic_canvas.visual_revision
@@ -48,10 +41,6 @@ func _run() -> void:
 	view.set_dynamic_sprites([dynamic])
 	assert(view.dynamic_sprites[0].position == dynamic.position)
 	var main = load("res://src/main.gd").new()
-	main.render_caches.sign_foreground_cache.assign({
-		1: RenderCaches.SignForeground.new([2, Rect2i(0, 0, 40, 40)]),
-		2: RenderCaches.SignForeground.new([2, Rect2i(400, 400, 40, 40)]),
-	})
 	var shadow := CityDynamicVisual.new(null, Vector2(150, 150), Vector2(20, 20))
 	shadow.samples_static = true
 	main.render_caches.dynamic_visual_cache.assign({
@@ -71,10 +60,8 @@ func _run() -> void:
 	main.map_render._invalidate_region_foregrounds(near, near_silhouettes)
 	assert(main.render_caches.dynamic_visual_cache.keys() == ["far", "unoccluded"])
 	assert(main.render_caches.dynamic_occluder_cache.keys() == ["far"])
-	assert(not main.render_caches.sign_foreground_cache.has(1) and main.render_caches.sign_foreground_cache.has(2))
 	var whole: Array[Rect2i] = [Rect2i(0, 0, 1024, 1024)]
 	main.map_render._invalidate_region_foregrounds(whole, whole)
-	assert(main.render_caches.sign_foreground_cache.is_empty())
 	assert(main.render_caches.dynamic_visual_cache.is_empty() and main.render_caches.dynamic_occluder_cache.is_empty())
 	var unused := CityDynamicVisual.new(null, Vector2.ZERO, Vector2(20, 20))
 	main.render_caches.dynamic_visual_cache["unused"] = unused
@@ -90,13 +77,6 @@ func _run() -> void:
 	unused.samples_static = true
 	main.render_caches.dynamic_visual_cache["current"] = unused
 	assert(main.map_render._invalidate_region_foregrounds(near, [] as Array[Rect2i]), "A static change can reveal a hidden current shadow")
-	var mapping := PackedInt32Array(range(256))
-	var used_indices := PackedInt32Array([17])
-	var colors: int = main.map_render.sign_palette_signature(used_indices, mapping)
-	mapping[161] = 162
-	assert(main.map_render.sign_palette_signature(used_indices, mapping) == colors)
-	mapping[17] = 18
-	assert(main.map_render.sign_palette_signature(used_indices, mapping) != colors)
 	_check_sign_layout_tokens(view)
 	main.free()
 	view.queue_free()

@@ -63,7 +63,6 @@ func _run() -> void:
 	request.pipes = true
 	request.subways = true
 	request.generation = 1
-	request.signs = [] as Array[CitySignRequest]
 	var batch := CityGpuRegionBatch.build(request, CityGpuBuildContext.new(), -1)
 	assert(batch.ok, "GPU region build failed")
 	var atlas := ImageTexture.create_from_image(batch.atlas_image)

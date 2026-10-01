@@ -71,7 +71,6 @@ var occluder_changes: Array[Rect2i] = []
 # regions that became visible since the last tick. occlusion reads only visible
 # regions, so a moving sprite cached beside the view lacks their silhouettes
 var _visibility_changes: Array[Rect2i] = []
-var sign_requests: Array[CitySignRequest] = []
 var sign_layout_token: Array = []
 var _foreground_reset := true
 var _gpu_has_work := true
@@ -216,51 +215,6 @@ func _needs_reset(
 		or _show_water_mains != show_water_mains
 		or _show_tunnels != show_tunnels
 	)
-
-
-func set_sign_requests(requests: Array[CitySignRequest]) -> void:
-	var next: Array[CitySignRequest] = []
-
-	for request in requests:
-		var bounds: Rect2i = request.bounds.intersection(Rect2i(Vector2i.ZERO, native_size * divisor))
-
-		if bounds.has_area():
-			next.append(CitySignRequest.new(request.key, bounds, request.draw_order))
-
-	sign_requests = next
-
-
-func sign_foreground(key: int, bounds: Rect2i, order: int, texture_factor := 1) -> Image:
-	var result := Image.create(bounds.size.x * texture_factor, bounds.size.y * texture_factor, false, Image.FORMAT_RGBA8)
-	result.fill(Color.TRANSPARENT)
-
-	for region_key in _keys_for_bounds(bounds):
-		if not entries.has(region_key):
-			return null
-
-		var entry: CityRegionResult = entries[region_key]
-		var gpu := entry as CityGpuRegionResult
-		var patch: CitySignForegroundPatch = gpu.sign_foregrounds.get(key) if gpu != null else null
-
-		if patch == null or patch.source_bounds != bounds or int(patch.draw_order) != order:
-			return null
-
-		var image: Image = patch.image
-
-		if patch.texture_factor != divisor * texture_factor:
-			image = image.duplicate()
-			image.resize(
-				patch.bounds.size.x * divisor * texture_factor,
-				patch.bounds.size.y * divisor * texture_factor,
-				Image.INTERPOLATE_NEAREST,
-			)
-
-		var world := Rect2i(patch.bounds.position * divisor, patch.bounds.size * divisor)
-		var overlap := bounds.intersection(world)
-		result.blit_rect(image, Rect2i((overlap.position - world.position) * texture_factor, overlap.size * texture_factor),
-				(overlap.position - bounds.position) * texture_factor)
-
-	return result
 
 
 func update_viewport(source_rect: Rect2) -> void:

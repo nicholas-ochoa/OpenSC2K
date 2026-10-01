@@ -23,9 +23,6 @@ func refresh_moving_things(view_size := -1) -> void:
 			or app.asset_state.palette == null
 			or app.map_view == null
 			or app.view_state.overlay_mode != CityViewMode.Mode.CITY):
-		caches.dynamic_sign_occluders.clear()
-		caches.dynamic_sign_occlusion_grid = null
-
 		if app.map_view != null:
 			app.map_view.set_dynamic_sprites([])
 
@@ -34,7 +31,6 @@ func refresh_moving_things(view_size := -1) -> void:
 	if caches.region_cache != null and caches.region_cache.gpu_enabled and not caches.region_cache.covered():
 		caches.foreground_complete = false
 		app.map_view.set_dynamic_sprites([])
-		app.map_view.set_sign_occlusion_visuals({})
 
 		return
 
@@ -146,9 +142,6 @@ func refresh_moving_things(view_size := -1) -> void:
 		if not visual_cache_key.is_empty():
 			caches.dynamic_visual_cache[visual_cache_key] = visual
 
-	caches.dynamic_sign_occluders = visuals.duplicate()
-	caches.dynamic_sign_occlusion_grid = CityDynamicVisual.build_grid(caches.dynamic_sign_occluders)
-
 	if caches.dynamic_special_batch_cache.size() > 128:
 		caches.dynamic_special_batch_cache.clear()
 
@@ -157,7 +150,6 @@ func refresh_moving_things(view_size := -1) -> void:
 	)
 
 	app.map_view.set_dynamic_sprites(batched_visuals)
-	app.map_render.refresh_sign_occlusion(view_size)
 	caches.foreground_view_rect = app.map_view.visible_source_rect()
 	caches.foreground_complete = true
 
@@ -340,7 +332,6 @@ func set_static_occlusion_commands(commands: Array[CityStaticCommand], view_size
 	caches.static_occlusion_commands.assign(commands)
 	caches.dynamic_occluder_cache.clear()
 	caches.dynamic_visual_cache.clear()
-	caches.sign_foreground_cache.clear()
 	caches.dynamic_special_batch_cache.clear()
 	var divisor := IsometricRenderer.view_configuration(view_size).divisor
 	caches.static_occlusion_grid = IsometricRenderer.build_occlusion_grid(

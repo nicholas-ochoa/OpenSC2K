@@ -15,7 +15,6 @@ mod raster;
 mod rect_index;
 mod region;
 mod region_plan;
-mod sign_pixels;
 mod sprites;
 
 use sprites::Sprite;

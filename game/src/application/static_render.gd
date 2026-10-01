@@ -464,10 +464,7 @@ func poll_static_render() -> void:
 	if app.view_state.overlay_mode == CityViewMode.Mode.CITY:
 		app.moving_sprites.refresh_moving_things(int(rendered.view_size))
 	else:
-		caches.dynamic_sign_occluders.clear()
-		caches.dynamic_sign_occlusion_grid = null
 		app.map_view.set_dynamic_sprites([])
-		app.map_render.refresh_sign_occlusion(int(rendered.view_size))
 
 	var latest_signature := static_signature_for_mode(
 		app.view_state.overlay_mode, int(rendered.view_size)
@@ -575,8 +572,6 @@ func invalidate_rendered_city() -> void:
 	caches.static_view_cache.clear()
 	state.pending = false
 	clear_dynamic_composition_cache()
-	caches.dynamic_sign_occluders.clear()
-	caches.dynamic_sign_occlusion_grid = null
 
 
 # discards static views after a layer visibility change. sprite caches remain valid
@@ -588,8 +583,6 @@ func invalidate_view_render() -> void:
 	caches.static_occlusion_commands.clear()
 	caches.static_occlusion_grid = null
 	caches.dynamic_occluder_cache.clear()
-	caches.dynamic_sign_occluders.clear()
-	caches.dynamic_sign_occlusion_grid = null
 
 
 func clear_dynamic_composition_cache() -> void:
@@ -598,4 +591,3 @@ func clear_dynamic_composition_cache() -> void:
 	caches.dynamic_occluder_cache.clear()
 	caches.dynamic_visual_cache.clear()
 	caches.dynamic_special_batch_cache.clear()
-	caches.sign_foreground_cache.clear()

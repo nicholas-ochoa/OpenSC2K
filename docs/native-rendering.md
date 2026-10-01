@@ -20,7 +20,7 @@ Godot object for each draw:
 - `occlusion_indices()` and `occlusion_command()` answer moving-sprite occlusion
   queries. A command object is made only for a draw that a query returns.
 - `paint()` rasterizes the draws that meet an area, in painter order, for pixel
-  reads and sign masks.
+  reads.
 - `changed_foreground_from()` compares two results of one region in Rust.
 
 ## Caches
@@ -74,14 +74,12 @@ network placement preview.
 
 - **Rectangle index.** `rect_index.rs` puts rectangles in a grid of 128-pixel cells.
   `NativeRectIndex.candidates` returns, in ascending order, the rectangles in the cells
-  that an area touches. Static occlusion commands, sign occluders and the menu
-  background use it.
+  that an area touches. Static occlusion commands and the menu background
+  use it.
 - **Region plan.** `region_plan.rs` selects the visible regions from the viewport
   center outward, and the nearby regions to paint ahead. A GPU view paints up to
   four rings ahead, most of them in the direction of travel.
   `CityRegionScheduling.update_viewport` calls it through `NativeRegionPlan`.
-- **Sign pixels.** `sign_pixels.rs` lists the palette indices of a sign foreground and,
-  without the GPU palette shader, colors it through the palette cycle.
 
 ## Other native view work
 

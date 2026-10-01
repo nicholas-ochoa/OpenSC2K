@@ -188,21 +188,16 @@ func _show_overview_map() -> void:
 	_refresh_dynamic_layer(app.static_render.city_view_size(), false)
 
 
-# refreshes moving sprites in the city view, or sign occlusion in other views
-# outside the city view, clear_moving first removes moving sprites and their sign occluders
+# refreshes moving sprites in the city view
+# outside the city view, clear_moving first removes moving sprites
 func _refresh_dynamic_layer(view_size: int, clear_moving := true) -> void:
 	if app.view_state.overlay_mode == CityViewMode.Mode.CITY:
 		app.moving_sprites.refresh_moving_things(view_size)
-	else:
-		if clear_moving:
-			_clear_dynamic_sprites()
-
-		refresh_sign_occlusion(view_size)
+	elif clear_moving:
+		_clear_dynamic_sprites()
 
 
 func _clear_dynamic_sprites() -> void:
-	caches.dynamic_sign_occluders.clear()
-	caches.dynamic_sign_occlusion_grid = null
 	app.map_view.set_dynamic_sprites([])
 
 
@@ -271,14 +266,12 @@ func refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 	var source := caches.region_cache.texture()
 	app.map_view.set_city_view(caches.static_display_city, source, null, true, true, caches.region_cache.sign_layout_token)
 	app.menus.sync_map_style()
-	caches.region_cache.set_sign_requests(app.map_view.sign_source_entries())
 	caches.region_cache.update_viewport(app.map_view.visible_source_rect())
 
 	if app.view_state.overlay_mode == CityViewMode.Mode.CITY:
 		app.moving_sprites.refresh_moving_things(view_size)
 	else:
 		app.map_view.set_dynamic_sprites([])
-		app.map_view.set_sign_occlusion_visuals({})
 
 
 func poll_region_cache() -> void:
@@ -343,15 +336,6 @@ func _invalidate_region_foregrounds(changes: Array[Rect2i], occluder_changes: Ar
 				invalidated = invalidated or caches.dynamic_active_keys.has(key)
 				break
 
-	for key in caches.sign_foreground_cache.keys():
-		var bounds: Rect2i = caches.sign_foreground_cache[key].signature[1]
-
-		for changed in changes:
-			if bounds.intersects(changed):
-				caches.sign_foreground_cache.erase(key)
-				invalidated = true
-				break
-
 	return invalidated
 
 
@@ -362,15 +346,3 @@ func static_image_size() -> Vector2i:
 
 func _static_pixel(x: int, y: int) -> Color:
 	return caches.region_cache.pixel(Vector2i(x, y)) if caches.region_cache != null else caches.static_city_image.get_pixel(x, y)
-
-
-func refresh_sign_occlusion(view_size: int) -> void:
-	ApplicationMapSigns.refresh_sign_occlusion(self, view_size)
-
-
-func sign_palette_signature(used: PackedInt32Array, mapping: PackedInt32Array) -> int:
-	return ApplicationMapSigns.sign_palette_signature(used, mapping)
-
-
-func sign_palette_image(indexed: Image, mapping: PackedInt32Array) -> Image:
-	return ApplicationMapSigns.sign_palette_image(self, indexed, mapping)

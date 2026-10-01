@@ -51,7 +51,6 @@ const SIGN_FONT_HEIGHTS = CityMapConstants.SIGN_FONT_HEIGHTS
 const SIGN_PANEL_FILL = CityMapConstants.SIGN_PANEL_FILL
 const SIGN_POST_FILL = CityMapConstants.SIGN_POST_FILL
 const SIGN_EDGE_LIGHT = CityMapConstants.SIGN_EDGE_LIGHT
-const SIGN_EDGE_MIDDLE = CityMapConstants.SIGN_EDGE_MIDDLE
 const SIGN_EDGE_DARK = CityMapConstants.SIGN_EDGE_DARK
 const SIGN_TEXT_COLOR = CityMapConstants.SIGN_TEXT_COLOR
 const PALETTE_CYCLE_SHADER = CityMapConstants.PALETTE_CYCLE_SHADER
@@ -143,7 +142,6 @@ var data_value_texture: ImageTexture
 var hover_tile := Vector2i(-1, -1)
 var transient_effects: Array[CityTransientEffectVisual] = []
 var dynamic_sprites: Array[CityDynamicVisual] = []
-var sign_occlusion_visuals: Dictionary[int, CitySignVisual] = {}
 var layers: CityMapLayers = CityMapLayers.new(self)
 var signs: CityMapSigns = CityMapSigns.new(self)
 var camera: CityMapCamera = CityMapCamera.new(self)
@@ -229,11 +227,7 @@ func set_signs_visible(value: bool) -> void:
 	signs.set_signs_visible(value)
 
 
-func set_sign_occlusion_visuals(value: Dictionary[int, CitySignVisual]) -> void:
-	signs.set_sign_occlusion_visuals(value)
-
-
-func sign_source_entries() -> Array[CitySignRequest]:
+func sign_source_entries() -> Array[CityMapSigns.Entry]:
 	return signs.sign_source_entries()
 
 
