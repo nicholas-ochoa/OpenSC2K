@@ -25,3 +25,5 @@ var job_timings: Dictionary[String, int] = {}
 # city age of a paced day -> usec the next day waited after it
 var pacing_delays: Dictionary[int, int] = {}
 var paused_on_target_day := false
+# true when a disaster start dropped African Swallow to Cheetah
+var disaster_slowed := false

@@ -328,9 +328,21 @@ func _run_day(result: SimulationTickResult) -> String:
 	if not day.ok:
 		return day.error
 
+	if engine.active_disaster_type != 0 and slow_for_disaster():
+		result.disaster_slowed = true
+
 	_consume_day_result(result, day)
 
 	return ""
+
+
+# the original drops African Swallow to Cheetah when a disaster starts
+# (0x00406a50). true when the speed changed
+func slow_for_disaster() -> bool:
+	if speed != Speed.AFRICAN_SWALLOW:
+		return false
+
+	return set_speed(Speed.CHEETAH)
 
 
 # fire and firestorm scans keep the fire pace from the start. other disasters

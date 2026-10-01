@@ -89,6 +89,10 @@ func start_disaster_at_view_center(id: int) -> DisasterReportResult:
 
 		return report
 
+	if app.simulation_state.speed_controller != null and app.simulation_state.speed_controller.slow_for_disaster():
+		app.simulation_state.resume_speed = GameSpeedController.Speed.CHEETAH
+		app.frame.sync_speed_ui()
+
 	if app.document_state.city.music_enabled():
 		app.effects_audio.play_music_track(Music.DISASTER_TRACK)
 

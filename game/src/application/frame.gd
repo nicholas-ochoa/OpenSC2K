@@ -97,6 +97,9 @@ func consume_simulation_result(result: SimulationTickResult) -> void:
 	if result.base_ticks > 0:
 		sync_speed_ui()
 
+	if result.disaster_slowed:
+		app.simulation_state.resume_speed = GameSpeed.Speed.CHEETAH
+
 	if result.paused_on_target_day:
 		app.status_label.theme_type_variation = ""
 		app.status_label.text = "The simulation paused on the target date."
