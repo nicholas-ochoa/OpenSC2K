@@ -177,7 +177,7 @@ func _set_view(mode: CityViewMode.Mode) -> bool:
 	if app.tool_state.landscape_editor and mode not in [CityViewMode.Mode.CITY, CityViewMode.Mode.HEIGHT]:
 		return false
 
-	app.menus.set_overlay(mode)
+	app.menus.select_view(mode)
 
 	return true
 

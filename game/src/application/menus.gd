@@ -142,7 +142,7 @@ func on_options_menu(id: int) -> void:
 
 func on_view_menu(id: int) -> void:
 	if id >= 0 and id < CityViewMode.DISPLAY_MODES.size():
-		set_overlay(CityViewMode.DISPLAY_MODES[id])
+		select_view(CityViewMode.DISPLAY_MODES[id])
 
 		return
 
@@ -158,7 +158,7 @@ func on_view_menu(id: int) -> void:
 		MENU_VIEW_TREES:
 			set_surface_visibility(not bool(app.view_state.surface_visibility.trees), "trees")
 		MENU_VIEW_ZONES:
-			set_surface_visibility(not bool(app.view_state.surface_visibility.zones), "zones")
+			select_zones_view()
 		MENU_VIEW_SIGNS:
 			set_surface_visibility(not bool(app.view_state.surface_visibility.signs), "signs")
 		MENU_VIEW_VEHICLES:
@@ -207,10 +207,15 @@ func sync_city_option_menus() -> void:
 
 
 func _sync_view_controls() -> void:
+	var zones_view := zones_view_active()
+
 	if app.view_menu != null:
 		for index in CityViewMode.DISPLAY_MODES.size():
 			var item_index := app.view_menu.get_popup().get_item_index(index)
-			app.view_menu.get_popup().set_item_checked(item_index, CityViewMode.DISPLAY_MODES[index] == app.view_state.overlay_mode)
+			app.view_menu.get_popup().set_item_checked(item_index,
+					CityViewMode.DISPLAY_MODES[index] == app.view_state.overlay_mode and not zones_view)
+
+		app.view_menu.get_popup().set_item_checked(app.view_menu.get_popup().get_item_index(MENU_VIEW_ZONES), zones_view)
 
 	var underground_active := app.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND
 
@@ -222,7 +227,6 @@ func _sync_view_controls() -> void:
 		MENU_VIEW_NETWORKS: bool(app.view_state.surface_visibility.networks),
 		MENU_VIEW_WATER: bool(app.view_state.surface_visibility.water),
 		MENU_VIEW_TREES: bool(app.view_state.surface_visibility.trees),
-		MENU_VIEW_ZONES: bool(app.view_state.surface_visibility.zones),
 		MENU_VIEW_SIGNS: bool(app.view_state.surface_visibility.signs),
 		MENU_VIEW_VEHICLES: app.view_state.show_vehicles,
 		MENU_VIEW_PIPES: app.view_state.show_underground_pipes,
@@ -238,7 +242,7 @@ func _sync_view_controls() -> void:
 				app.view_menu.get_popup().set_item_disabled(item_index, CityViewMode.is_data(app.view_state.overlay_mode))
 
 	if app.city_toolbar != null:
-		app.city_toolbar.sync_view_mode(app.view_state.overlay_mode)
+		app.city_toolbar.sync_view_mode(app.view_state.overlay_mode, zones_view)
 
 	if app.city_dialogs.city_map_window != null:
 		app.city_dialogs.city_map_window.sync_view_mode(app.view_state.overlay_mode)
@@ -270,7 +274,8 @@ func _sync_view_controls() -> void:
 func _rebuild_view_layer_menu(underground_active: bool) -> void:
 	var popup := app.view_menu.get_popup()
 
-	while popup.item_count > CityViewMode.DISPLAY_MODES.size() + 2:
+	# keep the view items, the zones view and the separator after them
+	while popup.item_count > CityViewMode.DISPLAY_MODES.size() + 3:
 		popup.remove_item(popup.item_count - 1)
 
 	if underground_active:
@@ -282,7 +287,6 @@ func _rebuild_view_layer_menu(underground_active: bool) -> void:
 			["Show Networks", MENU_VIEW_NETWORKS],
 			["Show Water", MENU_VIEW_WATER],
 			["Show Trees", MENU_VIEW_TREES],
-			["Show Zones", MENU_VIEW_ZONES],
 			["Show Signs", MENU_VIEW_SIGNS],
 			["Show Vehicles", MENU_VIEW_VEHICLES],
 		]:
@@ -310,6 +314,35 @@ func set_overlay(mode: CityViewMode.Mode) -> void:
 	if app.document_state.city != null:
 		app.status_label.text = "Map view: %s" % CityViewMode.key(app.view_state.overlay_mode).capitalize()
 		app.map_render.refresh_map(false)
+
+
+# Select a view from the view menu or the sidebar. This leaves the zones view.
+func select_view(mode: CityViewMode.Mode) -> void:
+	_store_zones_visible(true)
+	set_overlay(mode)
+
+
+# The zones view is the city view with the zones layer hidden. The original
+# then draws each zoned building as its zone.
+func select_zones_view() -> void:
+	_store_zones_visible(false)
+	set_overlay(CityViewMode.Mode.CITY)
+
+	if app.document_state.city != null:
+		app.status_label.text = "Map view: Zones"
+
+
+func zones_view_active() -> bool:
+	return app.view_state.overlay_mode == CityViewMode.Mode.CITY and not bool(app.view_state.surface_visibility.zones)
+
+
+# set_overlay refreshes the map after this
+func _store_zones_visible(enabled: bool) -> void:
+	if bool(app.view_state.surface_visibility.zones) == enabled:
+		return
+
+	app.view_state.surface_visibility.zones = enabled
+	app.static_render.invalidate_view_render()
 
 
 func set_surface_visibility(enabled: bool, layer: String) -> void:

@@ -45,7 +45,8 @@ func build_interface(original_assets: OriginalGameAssets) -> void:
 	app.city_toolbar.rotate_requested.connect(app.camera_input.rotate_city)
 	app.city_toolbar.zoom_out_requested.connect(app.camera_input.zoom_out)
 	app.city_toolbar.zoom_in_requested.connect(app.camera_input.zoom_in)
-	app.city_toolbar.overlay_requested.connect(app.menus.set_overlay)
+	app.city_toolbar.overlay_requested.connect(app.menus.select_view)
+	app.city_toolbar.zones_view_requested.connect(app.menus.select_zones_view)
 	app.city_toolbar.surface_visibility_requested.connect(app.menus.set_surface_visibility)
 	app.city_toolbar.underground_water_mains_visibility_requested.connect(app.menus.set_underground_water_mains_visible)
 	app.city_toolbar.underground_pipes_visibility_requested.connect(

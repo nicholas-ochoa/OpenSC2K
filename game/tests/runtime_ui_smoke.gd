@@ -137,6 +137,9 @@ func _run() -> void:
 		main.menus.call("set_surface_visibility", false, layer)
 		main.menus.call("set_surface_visibility", true, layer)
 
+	if not _test_zones_view(main):
+		return
+
 	main.menus.call("set_overlay", CityViewMode.Mode.UNDERGROUND)
 	main.menus.call("set_underground_pipes_visible", false)
 	main.menus.call("set_underground_pipes_visible", true)
@@ -1012,6 +1015,31 @@ func _test_tooltips_and_scurk_catalog(main: CityApplication) -> bool:
 
 		for view in range(3):
 			scurk_editor.call("_select_view", view)
+
+	return true
+
+
+# The Zones view is a data view item that hides the zones layer in the city view.
+func _test_zones_view(main: CityApplication) -> bool:
+	var popup := main.view_menu.get_popup()
+	var zones_item := popup.get_item_index(CityMenuBar.MENU_VIEW_ZONES)
+	var city_item := popup.get_item_index(CityViewMode.DISPLAY_MODES.find(CityViewMode.Mode.CITY))
+	main.menus.call("on_view_menu", CityMenuBar.MENU_VIEW_ZONES)
+	var entered := (main.view_state.overlay_mode == CityViewMode.Mode.CITY
+			and not bool(main.view_state.surface_visibility.zones)
+			and popup.is_item_checked(zones_item) and not popup.is_item_checked(city_item)
+			and main.city_toolbar.data_view_input.get_selected_id() == CityToolbar.ZONES_VIEW_ID)
+	main.menus.call("on_view_menu", CityViewMode.DISPLAY_MODES.find(CityViewMode.Mode.DENSITY))
+	var left := (main.view_state.overlay_mode == CityViewMode.Mode.DENSITY
+			and bool(main.view_state.surface_visibility.zones) and not popup.is_item_checked(zones_item))
+	main.menus.call("select_view", CityViewMode.Mode.CITY)
+
+	if not entered or not left:
+		push_error("The Zones view does not enter and leave from the View menu")
+		main.queue_free()
+		quit(2)
+
+		return false
 
 	return true
 

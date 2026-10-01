@@ -48,7 +48,7 @@ const SPEED_IDS: Array[String] = ["speed_pause", "speed_turtle", "speed_llama", 
 const SURFACE_LAYERS: Array[Array] = [
 	["view_show_buildings", "Show buildings", "buildings"], ["view_show_networks", "Show networks", "networks"],
 	["view_show_water", "Show water", "water"], ["view_show_trees", "Show trees", "trees"],
-	["view_show_zones", "Show zones", "zones"], ["view_show_signs", "Show signs", "signs"],
+	["view_show_zones", "Zones view", "zones"], ["view_show_signs", "Show signs", "signs"],
 	["view_show_pipes", "Show pipes", "pipes"], ["view_show_water_mains", "Show water mains", "water_mains"],
 	["view_show_vehicles", "Show vehicles", "vehicles"],
 ]

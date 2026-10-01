@@ -137,14 +137,17 @@ func _ready() -> void:
 		else:
 			view_items.append([label, index])
 
+	# the zones view is the city view with zoned buildings drawn as zones
+	data_view_items.append(["Zones", MENU_VIEW_ZONES])
+
 	view_menu = _add_menu(menu_row, "View", view_items, _on_view_menu)
 	view_menu.get_popup().add_separator("", MENU_VIEW_DATA_SEPARATOR)
 	data_view_items.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
 	for item in data_view_items:
 		view_menu.get_popup().add_item(item[0], item[1])
 
-	for index in CityViewMode.DISPLAY_MODES.size():
-		var item_index := view_menu.get_popup().get_item_index(index)
+	for view_id in range(CityViewMode.DISPLAY_MODES.size()) + [MENU_VIEW_ZONES]:
+		var item_index := view_menu.get_popup().get_item_index(view_id)
 		view_menu.get_popup().set_item_as_radio_checkable(item_index, true)
 
 	view_menu.get_popup().add_separator()
@@ -154,7 +157,6 @@ func _ready() -> void:
 		["Show Networks", MENU_VIEW_NETWORKS],
 		["Show Water", MENU_VIEW_WATER],
 		["Show Trees", MENU_VIEW_TREES],
-		["Show Zones", MENU_VIEW_ZONES],
 		["Show Signs", MENU_VIEW_SIGNS],
 		["Show Vehicles", MENU_VIEW_VEHICLES],
 	]:

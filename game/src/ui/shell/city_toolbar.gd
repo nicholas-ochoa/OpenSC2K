@@ -14,6 +14,7 @@ signal rotate_requested(counter_clockwise: bool)
 signal zoom_out_requested
 signal zoom_in_requested
 signal overlay_requested(mode: CityViewMode.Mode)
+signal zones_view_requested
 signal surface_visibility_requested(visible: bool, layer: String)
 signal underground_water_mains_visibility_requested(visible: bool)
 signal underground_pipes_visibility_requested(visible: bool)
@@ -51,6 +52,8 @@ const LANDSCAPE_TOOL_ORDER := [
 const Tools = preload("res://src/tools/shared/tool_catalog.gd")
 const HoldMenu = preload("res://src/ui/shell/city_tool_hold_menu.gd")
 const HOLD_SECONDS := 0.45
+# data view list id of the zones view, after the data mode ids
+const ZONES_VIEW_ID := 1000
 const GROUP_ICON_REGIONS := [
 	Rect2i(0, 0, 23, 23), Rect2i(24, 0, 26, 23), Rect2i(50, 0, 20, 23),
 	Rect2i(70, 0, 25, 23), Rect2i(95, 0, 21, 23), Rect2i(116, 0, 24, 23),
@@ -111,6 +114,8 @@ func _ready() -> void:
 	for index in CityViewMode.DATA_MODES.size():
 		data_view_titles.append([str(CityDataView.TITLES[index]), index + 1])
 
+	data_view_titles.append(["Zones", ZONES_VIEW_ID])
+
 	data_view_titles.sort_custom(func(a: Array, b: Array) -> bool: return a[0].naturalnocasecmp_to(b[0]) < 0)
 
 	for entry in data_view_titles:
@@ -125,7 +130,7 @@ func _ready() -> void:
 	view_visibility_checks = {
 		"buildings": %BuildingsVisible, "networks": %NetworksVisible,
 		"water": %WaterVisible, "trees": %TreesVisible,
-		"zones": %ZonesVisible, "signs": %SignsVisible, "vehicles": %VehiclesVisible,
+		"signs": %SignsVisible, "vehicles": %VehiclesVisible,
 		"water_mains": %WaterMainsVisible, "pipes": %PipesVisible, "subways": %SubwaysVisible,
 	}
 
@@ -169,9 +174,13 @@ func _ready() -> void:
 
 	data_view_input.item_selected.connect(func(index: int) -> void:
 		var id := data_view_input.get_item_id(index)
-		overlay_requested.emit(CityViewMode.Mode.CITY if id == 0 else CityViewMode.DATA_MODES[id - 1]))
 
-	for layer in ["buildings", "networks", "water", "trees", "zones", "signs", "vehicles"]:
+		if id == ZONES_VIEW_ID:
+			zones_view_requested.emit()
+		else:
+			overlay_requested.emit(CityViewMode.Mode.CITY if id == 0 else CityViewMode.DATA_MODES[id - 1]))
+
+	for layer in ["buildings", "networks", "water", "trees", "signs", "vehicles"]:
 		view_visibility_checks[layer].toggled.connect(_on_surface_visibility_toggled.bind(layer))
 
 	view_visibility_checks.water_mains.toggled.connect(underground_water_mains_visibility_requested.emit)
@@ -323,9 +332,10 @@ func _on_surface_visibility_toggled(layer_visible: bool, layer: String) -> void:
 	surface_visibility_requested.emit(layer_visible, layer)
 
 
-func sync_view_mode(mode: CityViewMode.Mode) -> void:
+func sync_view_mode(mode: CityViewMode.Mode, zones_view := false) -> void:
 	if data_view_input != null:
-		data_view_input.select(data_view_input.get_item_index(CityViewMode.DATA_MODES.find(mode) + 1))
+		var id := ZONES_VIEW_ID if zones_view else CityViewMode.DATA_MODES.find(mode) + 1
+		data_view_input.select(data_view_input.get_item_index(id))
 
 	for key in view_mode_buttons:
 		view_mode_buttons[key].set_pressed_no_signal(key == mode)
