@@ -235,7 +235,7 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
                 city,
                 &mut randoms.random,
                 convert::points(args, "sites"),
-                convert::points(args, "queue"),
+                convert::int(args, "wait", 0),
                 convert::int(args, "steps", 1),
             )
             .to_value(),

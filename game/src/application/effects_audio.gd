@@ -1,9 +1,19 @@
 class_name ApplicationEffectsAudio
 extends RefCounted
 
+
+@warning_ignore_start("integer_division")
+
+
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const ToolSounds = preload("res://src/audio/tool_sound_rules.gd")
 const EFFECT_CACHE_LIMIT := 2048
+# large view pixels above a launching arcology that a structure in front can reach
+const LAUNCH_MASK_REACH := 320
+# draw layers at one depth: a launching arcology, then fire, then dust and smoke
+const LAYER_BUILDING := 0
+const LAYER_FIRE := 1
+const LAYER_SMOKE := 2
 
 var document_state: ActiveDocumentState
 var view_state: ViewState
@@ -108,8 +118,14 @@ func show_effect_events(effect_events: Array[EffectEvent], sound_events: Array[S
 		if _effect_textures.size() > EFFECT_CACHE_LIMIT:
 			_effect_textures.clear()
 
+		var launches: Array[CityTransientEffectVisual] = []
+
 		for effect in effect_events:
 			if effect.type == "earthquake":
+				continue
+
+			if effect.type == CityEffectTiming.LAUNCH_ARCOLOGY:
+				launches.append_array(_launch_visuals(effect, view_size, sprite_archive))
 				continue
 
 			var visual := _effect_visual(effect, view_size, sprite_archive)
@@ -120,6 +136,9 @@ func show_effect_events(effect_events: Array[EffectEvent], sound_events: Array[S
 		# an empty list would stop the effects that still play
 		if not visuals.is_empty():
 			map_view.show_transient_effects(visuals, 0.1)
+
+		if not launches.is_empty():
+			map_view.show_transient_effects(launches, 1.0 / CityEffectTiming.LAUNCH_FPS)
 
 	play_sound_events(sound_events, simulation)
 
@@ -154,7 +173,80 @@ func _effect_visual(effect: EffectEvent, view_size: int, sprite_archive: Sc2Spri
 
 		_effect_textures[key] = ImageTexture.create_from_image(visible)
 
-	return CityTransientEffectVisual.new(_effect_textures[key], Vector2(origin), int(effect.frame))
+	var fire_first := IsometricRenderer.effect_sprite_id(CityEffectTiming.FIRE_SPRITE, view_size)
+	var layer := LAYER_FIRE if sprite_id >= fire_first and sprite_id < fire_first + 4 else LAYER_SMOKE
+
+	return CityTransientEffectVisual.new(_effect_textures[key], Vector2(origin), int(effect.frame), _depth_order(depth_tile), layer)
+
+
+# the frames of a launching arcology: the building sprite where the painter
+# drew it, still, then shaking, then flying off the top of the map. one mask
+# of the structures in front covers the whole shake and the low flight
+func _launch_visuals(effect: EffectEvent, view_size: int, sprite_archive: Sc2SpriteArchive) -> Array[CityTransientEffectVisual]:
+	var visuals: Array[CityTransientEffectVisual] = []
+	var divisor := IsometricRenderer.view_configuration(view_size).divisor
+	var sprite_id := IsometricRenderer.effect_sprite_id(int(effect.sprite_id), view_size)
+	var image := _effect_image(sprite_archive, sprite_id, effect.flip, divisor)
+
+	if image == null:
+		return visuals
+
+	var position := IsometricGeometry.building_sprite_position(
+		document_state.city, effect.point, int(effect.altitude), image.get_size() / divisor, view_size
+	)
+	var origin := position * divisor
+	var bounds := Rect2i(origin - Vector2i(divisor, LAUNCH_MASK_REACH),
+		image.get_size() + Vector2i(divisor * 2, LAUNCH_MASK_REACH))
+	var mask: Image = occluder_mask.call(bounds.position, bounds.size, effect.depth_point, view_size) if occluder_mask.is_valid() else null
+	var plain := _plain_effect_texture(sprite_id, effect.flip, divisor, image)
+	var masked: Dictionary[Vector2i, Texture2D] = {}
+	var offsets := CityEffectTiming.launch_offsets(int(effect.frames), divisor, origin.y, image.get_height())
+	var depth := _depth_order(effect.depth_point)
+
+	for frame in offsets.size():
+		var offset := offsets[frame]
+		var texture := plain
+
+		if mask != null:
+			if not masked.has(offset):
+				masked[offset] = _masked_launch_texture(image, mask, origin + offset - bounds.position, plain)
+
+			texture = masked[offset]
+
+		visuals.append(CityTransientEffectVisual.new(texture, Vector2(origin + offset), frame, depth, LAYER_BUILDING))
+
+	return visuals
+
+
+# `image` without the pixels under `mask` when the sprite sits at `at` in the mask
+func _masked_launch_texture(image: Image, mask: Image, at: Vector2i, plain: Texture2D) -> Texture2D:
+	var covered := Rect2i(at, image.get_size()).intersection(Rect2i(Vector2i.ZERO, mask.get_size()))
+
+	if covered.get_area() <= 0:
+		return plain
+
+	var crop := Image.create(image.get_width(), image.get_height(), false, mask.get_format())
+	crop.blit_rect(mask, covered, covered.position - at)
+
+	if crop.is_invisible():
+		return plain
+
+	return ImageTexture.create_from_image(IsometricRenderer.occlude_dynamic_with_mask(image, crop, Vector2i.ZERO).image)
+
+
+func _plain_effect_texture(sprite_id: int, flip: bool, divisor: int, image: Image) -> Texture2D:
+	var key := "%d:%d:%d:0" % [sprite_id, int(flip), divisor]
+
+	if not _effect_textures.has(key):
+		_effect_textures[key] = ImageTexture.create_from_image(image)
+
+	return _effect_textures[key]
+
+
+func _depth_order(tile: Vector2i) -> int:
+	var city := document_state.city
+
+	return (tile.x + tile.y) * city.map_size + tile.y
 
 
 func _effect_image(sprite_archive: Sc2SpriteArchive, sprite_id: int, flip: bool, divisor: int) -> Image:

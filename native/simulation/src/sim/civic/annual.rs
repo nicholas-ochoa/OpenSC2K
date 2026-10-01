@@ -12,6 +12,7 @@ use crate::sim::ids::building_tile_ids as tiles;
 use crate::sim::ids::sc2budget_layout as budget;
 use crate::sim::ids::sc2microsim_layout;
 use crate::sim::ids::sc2misc_layout as misc_layout;
+use crate::sim::ids::sc2tile_flags as flag_bits;
 use crate::sim::overlay;
 use crate::sim::phase::TimingSpan;
 use crate::sim::random::{GameLcgRandom, SimLfsrRandom, SimRandom};
@@ -25,13 +26,22 @@ const NEWS_EDUCATION: i64 = 0x26;
 const NOTICE_ARCOLOGY_LAUNCH_START: i32 = 529;
 const NOTICE_ARCOLOGY_LAUNCH_END: i32 = 530;
 const SOUND_EXPLOSION: i64 = 504;
-/// The ignitions between the ignition and the launch of one arcology.
-const LAUNCH_LEAD_STEPS: i64 = 30;
+/// The launch steps from the ignition of one arcology until its flight
+/// ends: 4.5 seconds at 50 ms a step. The launch ends when the last flight
+/// ends.
+const LAUNCH_LEAD_STEPS: i64 = 90;
 const LAUNCH_ARCOLOGY_EDGE: i64 = 4;
 /// The renderer draws this effect type as fire and smoke at the effect point.
 const LAUNCH_FIRE_EFFECT: &str = "launch_fire";
 /// The effect frames of one launch fire, from ignition until it goes out.
 const LAUNCH_FIRE_FRAMES: i64 = 30;
+/// The renderer draws this effect type as the arcology sprite. It shakes,
+/// then lifts off after `frames` effect frames and flies off the screen.
+const LAUNCH_ARCOLOGY_EFFECT: &str = "launch_arcology";
+/// The effect frames from ignition until liftoff. The dust starts at liftoff.
+const LAUNCH_LIFTOFF_FRAMES: i64 = 15;
+/// Large view sprites start at this ID.
+const LARGE_SPRITE_BASE: i64 = 1000;
 const DEMOGRAPHIC_RECORD_SIZE: i64 = 0x0c;
 const CHANGED_CHUNKS: [&str; 10] = ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT", "XLAB", "XMIC", "MISC"];
 const INPUT_CHUNKS: [&str; 10] = ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT", "XLAB", "XMIC", "MISC", "ALTM"];
@@ -86,7 +96,7 @@ gd_phase_result! {
 gd_phase_result! {
     pub struct LaunchStepResult as "MicrosimAnnualPhase.LaunchStep" {
         pub sites: Vec<Vec2i> = Vec::new(),
-        pub queue: Vec<Vec2i> = Vec::new(),
+        pub wait: i64 = 0,
         pub launched_structures: i64 = 0,
         pub remaining_structures: i64 = 0,
         pub map_changed: bool = false,
@@ -1007,14 +1017,14 @@ impl Annual<'_, '_> {
 }
 
 /// One step of a staged arcology launch. `sites` holds the origins of the
-/// launch arcologies that wait to ignite, and `queue` the ignited ones in
-/// ignition order. Each step ignites one random waiting arcology. An ignited
-/// arcology launches after LAUNCH_LEAD_STEPS more ignitions, or at once when
-/// none wait. An empty `sites` and `queue` scans the map again. The last
-/// launch requests the second launch notice.
+/// launch arcologies that wait to ignite, and `wait` the steps until the last
+/// flight ends. Each step ignites one random waiting arcology. The ignition
+/// turns the arcology to rubble at once: the renderer then draws it as it
+/// burns, shakes, and flies away. An empty `sites` with no `wait` scans the
+/// map again. The end of the last flight requests the second launch notice.
 ///
-/// The fire is a visual effect only. It changes no tile and cannot spread.
-pub fn launch_step(city: &mut City, random: &mut SimRandom, sites: Vec<Vec2i>, queue: Vec<Vec2i>, steps: i64) -> LaunchStepResult {
+/// The fire is a visual effect only. It cannot spread.
+pub fn launch_step(city: &mut City, random: &mut SimRandom, sites: Vec<Vec2i>, wait: i64, steps: i64) -> LaunchStepResult {
     if city.missing_or_resized(&INPUT_CHUNKS).is_some() {
         return LaunchStepResult::failed("launch map payloads are missing or invalid");
     }
@@ -1023,54 +1033,42 @@ pub fn launch_step(city: &mut City, random: &mut SimRandom, sites: Vec<Vec2i>, q
         .iter()
         .map(|id| city.chunk(id).map(|chunk| chunk.data.clone()).unwrap_or_default())
         .collect();
-    let rotation = city.compass_rotation();
     let mut result = LaunchStepResult {
         sites,
-        queue,
+        wait: wait.max(0),
         ..Default::default()
     };
 
-    if result.sites.is_empty() && result.queue.is_empty() {
+    if result.sites.is_empty() && result.wait == 0 {
         result.sites = launch_sites(city);
     }
 
     for _ in 0..steps.max(0) {
-        if result.sites.is_empty() && result.queue.is_empty() {
+        if result.sites.is_empty() && result.wait == 0 {
             break;
         }
 
-        if !result.sites.is_empty() {
-            let draw = (random.next_u15() << 15) | random.next_u15();
-            let site = result.sites.swap_remove(draw as usize % result.sites.len());
-            result.queue.push(site);
-            append_launch_fire(city, site, &mut result.base.effect_events);
+        if result.sites.is_empty() {
+            result.wait -= 1;
+            continue;
         }
 
-        if result.queue.len() as i64 > LAUNCH_LEAD_STEPS || (result.sites.is_empty() && !result.queue.is_empty()) {
-            let site = result.queue.remove(0);
-
-            if city.xbld.data[(site.x * city.map_size + site.y) as usize] as i64 != tiles::LAUNCH_ARCOLOGY {
-                continue;
-            }
-
-            let mut maps = city.maps();
-            let demolition = demolish::damage_structure(&mut maps, site, random, rotation, true);
-
-            if demolition.changed {
-                demolish::append_effect_sequence(&mut result.base.effect_events, &demolition.effect_events, 0);
-                result.launched_structures += 1;
-            }
-        }
+        let draw = (random.next_u15() << 15) | random.next_u15();
+        let site = result.sites.swap_remove(draw as usize % result.sites.len());
+        result.wait = LAUNCH_LEAD_STEPS;
+        ignite_launch_arcology(city, site, random, &mut result);
     }
 
-    result.remaining_structures = (result.sites.len() + result.queue.len()) as i64;
+    result.remaining_structures = result.sites.len() as i64;
     result.map_changed = result.launched_structures > 0;
 
     if result.map_changed {
         result.base.sound_events.push(SoundEvent::new(SOUND_EXPLOSION));
     }
 
-    if result.remaining_structures == 0 {
+    let finished = result.sites.is_empty() && result.wait == 0;
+
+    if finished {
         result.base.notice_ids.0.push(NOTICE_ARCOLOGY_LAUNCH_END);
     }
 
@@ -1081,8 +1079,64 @@ pub fn launch_step(city: &mut City, random: &mut SimRandom, sites: Vec<Vec2i>, q
     }
 
     result.base.ok = true;
-    result.base.complete = result.remaining_structures == 0;
+    result.base.complete = finished;
     result
+}
+
+/// Request the fire and the flight of the arcology at `site`, then change it
+/// to rubble. Its dust starts at liftoff, when the rubble comes into view.
+fn ignite_launch_arcology(city: &mut City, site: Vec2i, random: &mut SimRandom, result: &mut LaunchStepResult) {
+    let edge = city.map_size;
+    let last = LAUNCH_ARCOLOGY_EDGE - 1;
+
+    if site.x + last >= edge || site.y + last >= edge {
+        return;
+    }
+
+    // the painter draws a building from its screen-left corner, at that depth
+    let anchor = Vec2i::new(site.x, site.y + last);
+    let index = anchor.x * edge + anchor.y;
+
+    if city.xbld.data[index as usize] as i64 != tiles::LAUNCH_ARCOLOGY {
+        return;
+    }
+
+    let rotation = city.compass_rotation();
+    let height = demolish::effect_altitude(&city.altm.data, &city.xbit.data, index);
+    // an odd compass rotation mirrors buildings
+    let flip = (city.xbit.data[index as usize] as i64 & flag_bits::FLIPPED != 0) ^ (rotation & 1 != 0);
+    let right_edge = (0..LAUNCH_ARCOLOGY_EDGE).map(|offset| Vec2i::new(site.x + last, site.y + offset));
+    let left_edge = (0..last).map(|offset| Vec2i::new(site.x + offset, site.y + last));
+    let effects = &mut result.base.effect_events;
+    effects.push(EffectEvent {
+        type_: LAUNCH_ARCOLOGY_EFFECT.to_string(),
+        point: anchor,
+        depth_point: anchor,
+        sprite_id: LARGE_SPRITE_BASE + tiles::LAUNCH_ARCOLOGY,
+        flip,
+        altitude: height,
+        frames: LAUNCH_LIFTOFF_FRAMES,
+        ..Default::default()
+    });
+
+    for point in right_edge.chain(left_edge) {
+        effects.push(EffectEvent {
+            type_: LAUNCH_FIRE_EFFECT.to_string(),
+            point,
+            depth_point: anchor,
+            altitude: height,
+            frames: LAUNCH_FIRE_FRAMES,
+            ..Default::default()
+        });
+    }
+
+    let mut maps = city.maps();
+    let demolition = demolish::damage_structure(&mut maps, site, random, rotation, true);
+
+    if demolition.changed {
+        demolish::append_effect_sequence(effects, &demolition.effect_events, LAUNCH_LIFTOFF_FRAMES);
+        result.launched_structures += 1;
+    }
 }
 
 /// The origin of each launch arcology. A scan in map order meets the origin
@@ -1111,34 +1165,6 @@ fn launch_sites(city: &City) -> Vec<Vec2i> {
     }
 
     sites
-}
-
-/// One fire effect for each tile on the two front edges of the arcology.
-/// The renderer animates each one for `frames` frames, with smoke.
-fn append_launch_fire(city: &City, site: Vec2i, effects: &mut Vec<EffectEvent>) {
-    let last = LAUNCH_ARCOLOGY_EDGE - 1;
-    let front = site + Vec2i::new(last, last);
-    let edge = city.map_size;
-
-    if front.x >= edge || front.y >= edge {
-        return;
-    }
-
-    let height = demolish::effect_altitude(&city.altm.data, &city.xbit.data, front.x * edge + front.y);
-
-    let right_edge = (0..LAUNCH_ARCOLOGY_EDGE).map(|offset| Vec2i::new(site.x + last, site.y + offset));
-    let left_edge = (0..last).map(|offset| Vec2i::new(site.x + offset, site.y + last));
-
-    for point in right_edge.chain(left_edge) {
-        effects.push(EffectEvent {
-            type_: LAUNCH_FIRE_EFFECT.to_string(),
-            point,
-            depth_point: front,
-            altitude: height,
-            frames: LAUNCH_FIRE_FRAMES,
-            ..Default::default()
-        });
-    }
 }
 
 #[cfg(test)]

@@ -310,6 +310,24 @@ static func transient_effect_position(
 	)
 
 
+# the view position of a building sprite of `sprite_size` view pixels that the
+# static painter draws from `anchor`, the screen-left corner of the building
+static func building_sprite_position(
+	city: CityState, anchor: Vector2i, altitude: int, sprite_size: Vector2i, view_size := VIEW_LARGE
+) -> Vector2i:
+	var configuration := view_configuration(view_size)
+
+	if city == null or configuration == null:
+		return Vector2i(-1, -1)
+
+	var baseline := (configuration.top_margin + (anchor.x + anchor.y) * configuration.half_height
+		+ configuration.tile_height - altitude * configuration.altitude_step
+		+ sprite_size.x / 4 - configuration.half_height)
+
+	return Vector2i(configuration.side_margin + (city.map_size + anchor.x - anchor.y) * configuration.half_width,
+		baseline - sprite_size.y)
+
+
 static func bridge_effect_position(
 	city: CityState,
 	effect: EffectEvent,

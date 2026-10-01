@@ -217,6 +217,15 @@
     "lane": "product"
   },
   {
+    "id": "launch_effect_render_test",
+    "script": "tests/launch_effect_render_test.gd",
+    "domain": "rendering",
+    "lane": "product",
+    "requires": [
+      "ext/graphics/pack.json"
+    ]
+  },
+  {
     "id": "moving_foreground_union_test",
     "script": "tests/moving_foreground_union_test.gd",
     "domain": "rendering",

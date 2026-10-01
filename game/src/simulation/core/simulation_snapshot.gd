@@ -10,7 +10,7 @@ const ENGINE_FIELDS := [
 	"disaster_map_counter", "disaster_hurricane_counter", "midi_playback_active",
 	"vehicle_crashes_enabled",
 	"pending_military_site", "pending_military_base_type", "forced_military_base_type",
-	"stage_arcology_launch", "arcology_launch_active", "arcology_launch_sites", "arcology_launch_queue",
+	"stage_arcology_launch", "arcology_launch_active", "arcology_launch_sites", "arcology_launch_wait",
 ]
 const CONTROLLER_FIELDS := [
 	"speed", "accumulator_msec", "fire_elapsed_msec", "launch_elapsed_msec", "subtick_counter", "original_compatibility",

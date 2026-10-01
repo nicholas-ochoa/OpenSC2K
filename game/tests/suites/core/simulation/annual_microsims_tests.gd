@@ -569,13 +569,23 @@ func test_staged_arcology_launch(reference_root: String) -> void:
 	_check(tick.ok and tick.launch_results.is_empty(), "A launch step waits 50 ms: %s" % tick.error)
 	tick = controller.advance_time(10.0)
 	var first: MicrosimAnnualPhase.LaunchStep = tick.launch_results[0] if tick.launch_results.size() == 1 else null
-	_check(first != null and first.launched_structures == 0 and first.remaining_structures == 12
-		and engine.arcology_launch_queue.size() == 1 and engine.arcology_launch_sites.size() == 11,
-		"The first step ignites one arcology and launches none")
-	var site: Vector2i = engine.arcology_launch_queue[0]
+	_check(first != null and first.launched_structures == 1 and first.remaining_structures == 11 and first.map_changed
+		and engine.arcology_launch_sites.size() == 11 and engine.arcology_launch_wait == 90 and _launch_arcologies(city) == 11,
+		"An ignition changes one arcology to rubble at once")
+	var flights := tick.effect_events.filter(func(event: EffectEvent) -> bool: return event.type == CityEffectTiming.LAUNCH_ARCOLOGY)
+	var flight: EffectEvent = flights[0] if flights.size() == 1 else null
+	_check(flight != null and flight.sprite_id == 1000 + BuildingTileIds.LAUNCH_ARCOLOGY and flight.frames == 15
+		and flight.depth_point == flight.point, "An ignition asks the renderer to draw the arcology as it flies away")
+	# the painter draws a building from its screen-left corner, at that depth
+	var anchor: Vector2i = flight.point if flight != null else Vector2i.ZERO
+	_check(city.building_id(anchor.x, anchor.y) <= BuildingTileIds.RUBBLE_LAST
+		and city.building_id(anchor.x + 3, anchor.y - 3) <= BuildingTileIds.RUBBLE_LAST, "The anchor is the arcology's left corner")
 	var fires := tick.effect_events.filter(func(event: EffectEvent) -> bool: return event.type == CityEffectTiming.LAUNCH_FIRE)
-	_check(fires.size() == 7 and fires.all(func(event: EffectEvent) -> bool: return event.depth_point == site + Vector2i(3, 3)),
-		"An ignition burns along the two front edges, behind the structures in front of the arcology")
+	var at_depth := fires.filter(func(event: EffectEvent) -> bool: return event.depth_point == anchor)
+	_check(fires.size() == 7 and at_depth.size() == 7, "An ignition burns along the two front edges at the arcology's depth")
+	var dust := tick.effect_events.filter(func(event: EffectEvent) -> bool: return event.type.is_empty())
+	var early := dust.filter(func(event: EffectEvent) -> bool: return event.frame < 15 or event.depth_point != anchor)
+	_check(not dust.is_empty() and early.is_empty(), "The launch dust starts at liftoff, at the arcology's depth")
 	_check(tick.notice_ids.is_empty() and engine.clock.city_days == day, "A launch step adds no notice and no day")
 
 	# a launch in progress survives a save
@@ -585,39 +595,26 @@ func test_staged_arcology_launch(reference_root: String) -> void:
 	_check(Sc2xCheckpoint.restore(resumed, metadata).is_empty() and resumed.engine.arcology_launch_active,
 		"A launch in progress survives a save")
 
-	# with nothing left to ignite, each step launches the oldest ignited arcology
-	var launched := 0
-
-	for _step in 10:
-		tick = controller.advance_time(GameSpeedController.LAUNCH_STEP_MSEC)
-		launched += tick.launch_results[0].launched_structures
-
-	_check(launched == 0 and _launch_arcologies(city) == 12, "Arcologies burn until the last one ignites")
-	tick = controller.advance_time(GameSpeedController.LAUNCH_STEP_MSEC)
-	_check(tick.launch_results[0].launched_structures == 1 and city.building_id(site.x, site.y) <= BuildingTileIds.RUBBLE_LAST,
-		"The last ignition launches the first ignited arcology")
-	var front := site + Vector2i(3, 3)
-	var dust := tick.effect_events.filter(func(event: EffectEvent) -> bool: return event.type.is_empty() and event.depth_point == front)
-	_check(not dust.is_empty(), "The launch dust stays behind the structures in front of the arcology")
-
-	for _step in 10:
+	for _step in 11:
 		tick = controller.advance_time(GameSpeedController.LAUNCH_STEP_MSEC)
 
-	_check(_launch_arcologies(city) == 1 and engine.arcology_launch_active and tick.notice_ids.is_empty(),
-		"One launch follows each step")
+	_check(_launch_arcologies(city) == 0 and engine.arcology_launch_sites.is_empty() and engine.arcology_launch_active,
+		"One arcology ignites each step")
+
+	# the launch ends when the last flight ends
+	for _step in 89:
+		tick = controller.advance_time(GameSpeedController.LAUNCH_STEP_MSEC)
+
+	_check(engine.arcology_launch_active and tick.notice_ids.is_empty(), "The launch waits for the last flight")
 	tick = controller.advance_time(GameSpeedController.LAUNCH_STEP_MSEC)
-	_check(_launch_arcologies(city) == 0 and not engine.arcology_launch_active and tick.notice_ids == PackedInt32Array([530]),
-		"The last launch shows the second notice: %s" % tick.notice_ids)
+	_check(not engine.arcology_launch_active and tick.notice_ids == PackedInt32Array([530]),
+		"The end of the last flight shows the second notice: %s" % tick.notice_ids)
 
-	# an arcology launches 30 ignitions after its own
-	var waiting: Array[Vector2i] = []
-
-	for index in 40:
-		waiting.append(Vector2i(index, 0))
-
-	var lead := MicrosimAnnualPhase.launch_step(city, Random.new(1), waiting, [], 31)
-	_check(lead.ok and lead.queue.size() == 30 and lead.sites.size() == 9 and lead.remaining_structures == 39,
-		"A launch waits for thirty more ignitions")
+	# a step waits for the flights, then scans the map again
+	var waiting := MicrosimAnnualPhase.launch_step(city, Random.new(1), [], 5, 3)
+	_check(waiting.ok and waiting.wait == 2 and not waiting.complete, "A step without arcologies counts down the flights")
+	waiting = MicrosimAnnualPhase.launch_step(city, Random.new(1), [], 0, 1)
+	_check(waiting.ok and waiting.complete and waiting.notice_ids == PackedInt32Array([530]), "A launch without arcologies ends")
 
 	# the renderer draws each launch fire as animated fire and smoke frames
 	var fire := EffectEvent.new(Vector2i(5, 6))

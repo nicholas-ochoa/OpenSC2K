@@ -106,15 +106,15 @@ pub fn structure_effects(
     let anchor = Vec2i::new(site.position.x, site.end().y - 1);
     let anchor_index = anchor.x * map_edge + anchor.y;
     let height = effect_altitude(altitude, flags, anchor_index);
-    // the dust of the whole site stays behind the structures in front of it
-    let front = site.end() - Vec2i::new(1, 1);
+    // the painter draws the structure from the anchor, at its depth. its dust
+    // stays behind the structures that the painter draws later
 
     for frame in 0..area {
         for x_offset in 0..area {
             for y_offset in 0..area {
                 let point = Vec2i::new(site.position.x + x_offset, site.end().y - 1 - y_offset);
                 let mut effect = dust_effect(point, height, random, frame, Vec2i::new(0, -frame * 8));
-                effect.depth_point = front;
+                effect.depth_point = anchor;
                 effects.push(effect);
             }
         }

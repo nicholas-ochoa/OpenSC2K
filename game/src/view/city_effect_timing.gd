@@ -9,6 +9,20 @@ const SMOKE_SPRITE := 1392
 const SMOKE_PERIOD := 6
 const SMOKE_FRAMES := 4
 const SMOKE_RISE := 8
+# the effect type of a launching arcology. it stands for LAUNCH_STILL_FRAMES,
+# shakes until liftoff, and then flies up with LAUNCH_ACCELERATION. its frames
+# play at LAUNCH_FPS. the liftoff frame of the event uses 10 frames a second
+const LAUNCH_ARCOLOGY := "launch_arcology"
+const LAUNCH_FPS := 30
+const LAUNCH_STILL_FRAMES := 15
+const LAUNCH_FLIGHT_FRAMES := 90
+# large view pixels a second squared
+const LAUNCH_ACCELERATION := 600.0
+# view pixel offsets of the shake, one a frame
+const LAUNCH_SHAKE: Array[Vector2i] = [
+	Vector2i(1, 0), Vector2i(0, 0), Vector2i(-1, 0), Vector2i(0, -1), Vector2i(1, -1), Vector2i(-1, 0),
+	Vector2i(0, 0), Vector2i(1, 0), Vector2i(-1, -1), Vector2i(0, 0),
+]
 
 
 static func parallel_dust_events(events: Array[EffectEvent]) -> Array[EffectEvent]:
@@ -29,6 +43,8 @@ static func parallel_dust_events(events: Array[EffectEvent]) -> Array[EffectEven
 	var order := groups.keys()
 	order.shuffle() # presentation randomness does not consume simulation random state
 	var starts: Dictionary[Vector2i, DustTiming] = {}
+	# a delayed request, such as launch dust, keeps its delay
+	var delay := 2147483647
 
 	for index in order.size():
 		var first := 2147483647
@@ -36,7 +52,11 @@ static func parallel_dust_events(events: Array[EffectEvent]) -> Array[EffectEven
 		for event in groups[order[index]]:
 			first = mini(first, int(event.frame))
 
+		delay = mini(delay, first)
 		starts[order[index]] = DustTiming.new(first, index % 5)
+
+	for point in starts:
+		starts[point].start += delay
 
 	var result: Array[EffectEvent] = []
 
@@ -50,6 +70,28 @@ static func parallel_dust_events(events: Array[EffectEvent]) -> Array[EffectEven
 		result.append(event)
 
 	return result
+
+
+# the offset of a launching arcology in each frame, in large view pixels.
+# `liftoff` is the liftoff frame at 10 frames a second. the flight ends once
+# the sprite bottom, `bottom` pixels below its origin, passes `top`
+static func launch_offsets(liftoff: int, divisor: int, origin_y: int, bottom: int, top := 0) -> Array[Vector2i]:
+	var offsets: Array[Vector2i] = []
+	var liftoff_frame := liftoff * LAUNCH_FPS / 10
+
+	for frame in liftoff_frame:
+		var shake := LAUNCH_SHAKE[frame % LAUNCH_SHAKE.size()] if frame >= LAUNCH_STILL_FRAMES else Vector2i.ZERO
+		offsets.append(shake * divisor)
+
+	for frame in LAUNCH_FLIGHT_FRAMES:
+		var seconds := float(frame) / LAUNCH_FPS
+		var rise := Vector2i(0, -roundi(LAUNCH_ACCELERATION * seconds * seconds / 2.0))
+		offsets.append(rise)
+
+		if origin_y + rise.y + bottom < top:
+			break
+
+	return offsets
 
 
 # replace each launch fire with its frames of fire and rising smoke. the fire

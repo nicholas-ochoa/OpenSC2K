@@ -91,11 +91,10 @@ static func run(
 
 
 # run `steps` steps of a staged arcology launch. each step ignites one waiting
-# arcology and launches the one ignited 30 steps before. empty `sites` and
-# `queue` scan the map again. the last launch requests the second notice
-static func launch_step(
-	city: CityState, random: SimRandom, sites: Array[Vector2i], queue: Array[Vector2i], steps: int
-) -> LaunchStep:
+# arcology and changes it to rubble. the renderer shows it burn and fly away.
+# `wait` counts the steps until the last flight ends. empty `sites` with no
+# `wait` scan the map again. the end of the last flight requests the second notice
+static func launch_step(city: CityState, random: SimRandom, sites: Array[Vector2i], wait: int, steps: int) -> LaunchStep:
 	if city == null or not city.is_valid():
 		var failed := LaunchStep.new()
 		failed.error = "city is invalid"
@@ -103,14 +102,14 @@ static func launch_step(
 		return failed
 
 	return NativeSimulationBridge.run("arcology_launch.step", city, random, null, null, {
-		"sites": sites, "queue": queue, "steps": steps}).result
+		"sites": sites, "wait": wait, "steps": steps}).result
 
 
 class LaunchStep extends PhaseResult:
 	# origins of the arcologies that wait to ignite
 	var sites: Array[Vector2i] = []
-	# origins of the ignited arcologies, first ignited first
-	var queue: Array[Vector2i] = []
+	# steps until the last flight ends
+	var wait := 0
 	var launched_structures := 0
 	var remaining_structures := 0
 	var map_changed := false

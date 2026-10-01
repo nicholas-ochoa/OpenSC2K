@@ -44,10 +44,11 @@ var vehicle_crashes_enabled := true
 var stage_arcology_launch := true
 # true from a staged launch until its last launch. the days wait
 var arcology_launch_active := false
-# runtime only; never saved. the waiting and the ignited launch arcologies.
-# a load or a rotation scans the map again
+# runtime only; never saved. the launch arcologies that wait to ignite, and
+# the launch steps until the last flight ends. a load or a rotation scans the
+# map again
 var arcology_launch_sites: Array[Vector2i] = []
-var arcology_launch_queue: Array[Vector2i] = []
+var arcology_launch_wait := 0
 
 
 func _init(
@@ -423,7 +424,7 @@ func rotate_runtime_coordinates(counter_clockwise: bool) -> void:
 
 	# the next launch step scans the rotated map
 	arcology_launch_sites.clear()
-	arcology_launch_queue.clear()
+	arcology_launch_wait = 0
 
 	if pending_disaster_type != 0:
 		pending_disaster_point = _rotate_runtime_point(
@@ -455,14 +456,14 @@ func _run_day_schedule(
 # run `steps` steps of a staged arcology launch
 func advance_arcology_launch(steps: int) -> MicrosimAnnualPhase.LaunchStep:
 	var span := SimulationTimingSpan.new(city.simulation_slice)
-	var result := MicrosimAnnualPhase.launch_step(city, random, arcology_launch_sites, arcology_launch_queue, steps)
+	var result := MicrosimAnnualPhase.launch_step(city, random, arcology_launch_sites, arcology_launch_wait, steps)
 	result.timing = span.finish()
 
 	if not result.ok:
 		return result
 
 	arcology_launch_sites = result.sites
-	arcology_launch_queue = result.queue
+	arcology_launch_wait = result.wait
 
 	if result.complete:
 		arcology_launch_active = false

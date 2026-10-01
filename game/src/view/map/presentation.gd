@@ -272,19 +272,29 @@ func _show_shake_frame(
 
 
 func _draw_transient_effects(scale: float, offset: Vector2) -> void:
+	var effects: Array[CityTransientEffectVisual] = []
+
 	for sequence in _effect_sequences:
-		for effect in sequence.current():
-			var texture: Texture2D = effect.texture
+		for effect: CityTransientEffectVisual in sequence.current():
+			effect.order = effects.size()
+			effects.append(effect)
 
-			if texture == null:
-				continue
+	# effects of separate requests overlap. draw them in painter order
+	if _effect_sequences.size() > 1:
+		effects.sort_custom(CityTransientEffectVisual.draws_before)
 
-			var source_position: Vector2 = effect.position
-			map.draw_texture_rect(
-				texture,
-				Rect2(offset + source_position * scale, Vector2(texture.get_size()) * scale),
-				false
-			)
+	for effect in effects:
+		var texture: Texture2D = effect.texture
+
+		if texture == null:
+			continue
+
+		var source_position: Vector2 = effect.position
+		map.draw_texture_rect(
+			texture,
+			Rect2(offset + source_position * scale, Vector2(texture.get_size()) * scale),
+			false
+		)
 
 
 func _draw_dynamic_sprites(scale: float, offset: Vector2) -> void:
