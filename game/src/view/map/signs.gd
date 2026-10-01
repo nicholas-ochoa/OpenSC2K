@@ -117,7 +117,11 @@ func _ensure_sign_entries() -> void:
 	sign_entries_zoom = map.zoom_factor
 	sign_cache_build_count += 1
 	var view_index := sign_view_index(map.zoom_factor)
-	var divisor := Renderer.view_configuration(view_index).divisor
+	var configuration := Renderer.view_configuration(view_index)
+	var divisor := configuration.divisor
+	# each tile routine passes the bottom of the ground sprite, and the sign
+	# painter FUN_0044d9a0 moves up half a tile: the center of the tile
+	var anchor_drop := Vector2(0, (configuration.tile_height - configuration.half_height) * divisor)
 	var font := _get_sign_font()
 	var font_size: int = SIGN_FONT_HEIGHTS[view_index]
 	var positions: Array[Vector2i] = []
@@ -150,14 +154,16 @@ func _ensure_sign_entries() -> void:
 		var native_width := roundf(font.get_string_size(
 			label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
 		).x)
+		var anchor := polygon[0] + anchor_drop
 		var layout := sign_layout(
-			polygon[0] + Vector2(0, -8), native_width * divisor,
+			anchor, native_width * divisor,
 			view_index, divisor,
 		)
-		var bounds: Rect2 = layout.panel.merge(layout.post)
+		# the light pen reaches one native pixel above and left of the panel
+		var bounds: Rect2 = layout.panel.merge(layout.post).grow_individual(divisor, divisor, 0, 0)
 		var sign_entry := Entry.new()
 		sign_entry.key = map.city.index_of(x, y)
-		sign_entry.anchor = polygon[0] + Vector2(0, -8)
+		sign_entry.anchor = anchor
 		sign_entry.label = label_text
 		sign_entry.text_width = native_width
 		sign_entry.bounds = Rect2i(
@@ -192,34 +198,23 @@ func _draw_signs(scale: float, offset: Vector2) -> void:
 		if not Rect2(entry.bounds).intersects(map.camera.visible_source_rect()):
 			continue
 
-		# every native painter moves from the tile's top point by the
-		# equivalent of 16 pixels right and 8 pixels up in large space
-		var anchor := offset + Vector2(entry.anchor) * scale
-		var drawing_anchor := anchor
-
-		if not is_equal_approx(display_multiplier, 1.0):
-			drawing_anchor = Vector2.ZERO
-			map.draw_set_transform(
-				anchor, 0.0, Vector2(display_multiplier, display_multiplier)
-			)
-
-		var layout := sign_layout(
-			drawing_anchor, float(entry.text_width), view_index
-		)
-		_draw_raised_sign_part(layout.panel, SIGN_PANEL_FILL, 1.0)
+		# the sign is drawn in whole native pixels from a whole screen pixel
+		var origin := (offset + Vector2(entry.anchor) * scale).round()
+		var layout := sign_layout(Vector2.ZERO, float(entry.text_width), view_index)
+		_draw_raised_sign_part(layout.panel, SIGN_PANEL_FILL, origin, display_multiplier)
 		var text_position := Vector2(
 			layout.panel.position.x + 4.0,
 			layout.panel.position.y + 2.0 + font.get_ascent(font_size),
 		)
+		map.draw_set_transform(origin, 0.0, Vector2(display_multiplier, display_multiplier))
+		# the glyphs keep their native size; the nearest filter enlarges them
 		map.draw_string(
 			font, text_position, String(entry.label), HORIZONTAL_ALIGNMENT_LEFT, -1,
-			font_size, SIGN_TEXT_COLOR,
+			font_size, SIGN_TEXT_COLOR, TextServer.JUSTIFICATION_NONE,
+			TextServer.DIRECTION_AUTO, TextServer.ORIENTATION_HORIZONTAL, 1.0,
 		)
-		_draw_raised_sign_part(layout.post, SIGN_POST_FILL, 1.0)
-
-		if not is_equal_approx(display_multiplier, 1.0):
-			map.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-
+		map.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		_draw_raised_sign_part(layout.post, SIGN_POST_FILL, origin, display_multiplier)
 		_draw_sign_occlusion(int(entry.key), scale, offset)
 
 
@@ -313,38 +308,43 @@ func _get_sign_font() -> Font:
 		# the executable asks for "ariel", windows substitutes arial
 		_sign_font.font_names = PackedStringArray(["Arial"])
 		_sign_font.font_weight = 600
+		# windows 95 draws sign text without smoothing
+		_sign_font.antialiasing = TextServer.FONT_ANTIALIASING_NONE
+		_sign_font.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_DISABLED
 
 	return _sign_font
 
 
-func _draw_raised_sign_part(rect: Rect2, fill: Color, multiplier: float) -> void:
-	var edge := maxf(1.0, multiplier)
-	var left := rect.position.x
-	var top := rect.position.y
-	var right := rect.end.x
-	var bottom := rect.end.y
-	map.draw_rect(rect, fill)
-	map.draw_polyline(
-		PackedVector2Array([
-			Vector2(right - 2.0 * edge, top + edge),
-			Vector2(left + edge, top + edge),
-			Vector2(left + edge, bottom - 2.0 * edge),
-		]),
-		SIGN_EDGE_LIGHT, 2.0 * edge, false,
-	)
-	map.draw_polyline(
-		PackedVector2Array([
-			Vector2(left + edge, bottom - 2.0 * edge),
-			Vector2(right - 2.0 * edge, bottom - 2.0 * edge),
-			Vector2(right - 2.0 * edge, top + edge),
-		]),
-		SIGN_EDGE_DARK, 2.0 * edge, false,
-	)
-	map.draw_line(
-		Vector2(left, bottom - edge),
-		Vector2(left + edge, bottom - 2.0 * edge),
-		SIGN_EDGE_MIDDLE, edge, false,
-	)
+# FUN_004728a0 fills the rectangle, then draws two-pixel pens: light along the
+# top and left, dark along the bottom and right, and a middle pixel at the
+# lower-left corner. A two-pixel GDI pen at coordinate c covers c - 1 and c,
+# so the light edge starts outside the fill and one fill row and column stay
+# outside the dark edge. `part` is in native pixels from `origin`
+func _draw_raised_sign_part(part: Rect2, fill: Color, origin: Vector2, multiplier: float) -> void:
+	var left := part.position.x
+	var top := part.position.y
+	var right := part.end.x
+	var bottom := part.end.y
+	_draw_native_rect(left, top, right, bottom, fill, origin, multiplier)
+
+	_draw_native_rect(left, top - 1.0, right - 2.0, top, SIGN_EDGE_LIGHT, origin, multiplier)
+	_draw_native_rect(left - 1.0, top, right - 1.0, top + 1.0, SIGN_EDGE_LIGHT, origin, multiplier)
+	_draw_native_rect(left - 1.0, top, left + 1.0, bottom - 1.0, SIGN_EDGE_LIGHT, origin, multiplier)
+
+	_draw_native_rect(right - 3.0, top + 1.0, right - 1.0, bottom - 1.0, SIGN_EDGE_DARK, origin, multiplier)
+	_draw_native_rect(left + 2.0, bottom - 3.0, right - 1.0, bottom - 2.0, SIGN_EDGE_DARK, origin, multiplier)
+	_draw_native_rect(left + 1.0, bottom - 2.0, right - 1.0, bottom - 1.0, SIGN_EDGE_DARK, origin, multiplier)
+
+	_draw_native_rect(left, bottom - 1.0, left + 1.0, bottom, SIGN_EDGE_MIDDLE, origin, multiplier)
+
+
+# each native edge lands on a whole screen pixel, so no edge blurs
+func _draw_native_rect(
+	left: float, top: float, right: float, bottom: float, color: Color, origin: Vector2, multiplier: float
+) -> void:
+	var start := (origin + Vector2(left, top) * multiplier).round()
+	var end := (origin + Vector2(right, bottom) * multiplier).round()
+	map.draw_rect(Rect2(start, end - start), color)
 
 
 class Entry extends RefCounted:

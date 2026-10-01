@@ -255,14 +255,18 @@ func _test_signs(map_control: CityMapControl, starter: CityState, center_tile: V
 	_check(sign_result.ok, "Sign bounds fixture creates a user sign")
 	map_control.city = sign_city
 
+	var sign_tile_top := IsometricRenderer.tile_polygon(sign_city, center_tile.x, center_tile.y)[0]
+
+	# the post ends at the center of the tile in each native size
 	for zoom_fixture in [
-		[0.25, 148], [0.5, 108], [1.0, 71], [2.0, 71], [3.0, 71], [4.0, 71],
+		[0.25, 152, 12], [0.5, 110, 10], [1.0, 72, 9], [2.0, 72, 9], [3.0, 72, 9], [4.0, 72, 9],
 	]:
 		map_control.zoom_factor = zoom_fixture[0]
 		var sign_entries := map_control.sign_source_entries()
 		_check(
 			sign_entries.size() == 1
 			and sign_entries[0].bounds.size.y == zoom_fixture[1]
+			and sign_entries[0].bounds.end.y == int(sign_tile_top.y) + zoom_fixture[2]
 			and sign_entries[0].draw_order == 16448,
 			"Sign source bounds match zoom %.2f" % zoom_fixture[0],
 		)
