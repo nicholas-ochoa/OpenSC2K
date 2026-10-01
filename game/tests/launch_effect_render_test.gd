@@ -11,6 +11,7 @@ const Random = preload("res://src/simulation/random/sim_random.gd")
 func _initialize() -> void:
 	_check_painter_position()
 	_check_flight()
+	_check_exhaust()
 	quit()
 
 
@@ -60,3 +61,25 @@ func _check_flight() -> void:
 		assert(step >= previous and step >= 0, "The arcology rises faster and faster")
 
 	assert(400 + offsets[-1].y + 100 < 0, "The flight ends above the top of the map")
+
+
+func _check_exhaust() -> void:
+	var pack := FixtureGraphics.pack()
+	var assets := LoadedAssetState.new()
+	assets.palette = pack.palette
+
+	for view in [CityIsometricRenderer.VIEW_SMALL, CityIsometricRenderer.VIEW_LARGE]:
+		var audio := ApplicationEffectsAudio.new(ActiveDocumentState.new(), null, assets, null, null, Callable(), Callable())
+		var archive := pack.large_sprites if view == CityIsometricRenderer.VIEW_LARGE else pack.small_medium_sprites
+		var divisor := CityIsometricRenderer.view_configuration(view).divisor
+		var sprite_id := CityIsometricRenderer.effect_sprite_id(1000 + Tiles.LAUNCH_ARCOLOGY, view)
+		var building := audio._effect_image(archive, sprite_id, false, divisor)
+		var exhaust := audio._exhaust(archive, view, building.get_size())
+		assert(exhaust.size() == 4, "The exhaust has four animation phases")
+
+		for phase: ApplicationEffectsAudio.ExhaustImage in exhaust:
+			var area := Rect2i(phase.offset, phase.image.get_size())
+			assert(area.position.y < building.get_height() and area.end.y > building.get_height(),
+				"The exhaust covers the bottom of the base and hangs below it in view %d" % view)
+			assert(area.position.x <= 0 and area.end.x >= building.get_width() - divisor * 2,
+				"The exhaust spans both front edges in view %d" % view)

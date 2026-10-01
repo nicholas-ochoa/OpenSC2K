@@ -1,6 +1,9 @@
 class_name CityEffectTiming
 extends RefCounted
 
+
+@warning_ignore_start("integer_division")
+
 # the effect type of a launch fire, and its large view sprites
 const LAUNCH_FIRE := "launch_fire"
 const FIRE_SPRITE := 1396
@@ -18,6 +21,13 @@ const LAUNCH_STILL_FRAMES := 15
 const LAUNCH_FLIGHT_FRAMES := 90
 # large view pixels a second squared
 const LAUNCH_ACCELERATION := 600.0
+# the front edge tiles of a 4×4 launch arcology from its anchor, the
+# screen-left corner. its exhaust flames hang from these tiles
+const EXHAUST_TILES: Array[Vector2i] = [
+	Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0), Vector2i(3, -1), Vector2i(3, -2), Vector2i(3, -3),
+]
+# the exhaust flames change sprite every EXHAUST_FRAME_STEP launch frames
+const EXHAUST_FRAME_STEP := 2
 # view pixel offsets of the shake, one a frame
 const LAUNCH_SHAKE: Array[Vector2i] = [
 	Vector2i(1, 0), Vector2i(0, 0), Vector2i(-1, 0), Vector2i(0, -1), Vector2i(1, -1), Vector2i(-1, 0),
@@ -72,14 +82,17 @@ static func parallel_dust_events(events: Array[EffectEvent]) -> Array[EffectEven
 	return result
 
 
+# the first frame of the flight, at LAUNCH_FPS
+static func liftoff_frame(liftoff: int) -> int:
+	return liftoff * LAUNCH_FPS / 10
+
+
 # the offset of a launching arcology in each frame, in large view pixels.
 # `liftoff` is the liftoff frame at 10 frames a second. the flight ends once
 # the sprite bottom, `bottom` pixels below its origin, passes `top`
 static func launch_offsets(liftoff: int, divisor: int, origin_y: int, bottom: int, top := 0) -> Array[Vector2i]:
 	var offsets: Array[Vector2i] = []
-	var liftoff_frame := liftoff * LAUNCH_FPS / 10
-
-	for frame in liftoff_frame:
+	for frame in liftoff_frame(liftoff):
 		var shake := LAUNCH_SHAKE[frame % LAUNCH_SHAKE.size()] if frame >= LAUNCH_STILL_FRAMES else Vector2i.ZERO
 		offsets.append(shake * divisor)
 
