@@ -41,6 +41,7 @@ func initialize_runtime() -> void:
 	app.effects_audio.bind_audio(app.audio_controller)
 	app.audio_controller.startup_theme_pending = true
 	app.audio_controller.background_audio = app.preferences.background_audio
+	app.audio_controller.wave_sound_gate.city_sounds = app.preferences.city_sounds
 	app.audio_controller.set_shuffle_music(app.preferences.shuffle_music)
 	app.audio_controller.music_activity_changed.connect(app.effects_audio.on_music_activity_changed)
 	app.audio_controller.music_notice.connect(func(message: String) -> void:

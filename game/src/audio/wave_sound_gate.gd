@@ -3,6 +3,9 @@ extends RefCounted
 
 @warning_ignore_start("integer_division")
 
+# player preference for ambient and simulation event sounds. player feedback always plays
+enum CitySounds { DEFAULT, REDUCED, OFF }
+
 const SOUND_FIRST := 500
 const SOUND_LAST := 529
 const SOUND_EXPLODE := 504
@@ -15,6 +18,8 @@ const AMBIENT_REPLAY_MSEC := 15000.0
 const EVENT_REPLAY_MSEC := 10000.0
 # presentation preference: shorter delays for the flood and for buildings that a disaster destroys
 const EVENT_REPLAY_OVERRIDE_MSEC := { SOUND_FLOOD: 3000.0, SOUND_EXPLODE: 1000.0 }
+# presentation preference: the shared delay after any city sound when city sounds are reduced
+const REDUCED_REPLAY_MSEC := 30000.0
 # supplied executable table 0x004ea858 before its initialization pass
 const RAW_DURATION_MSEC := [
 	492, 153, 1485, 129, 1156, 221, 1064, 1657, 1510, 1511,
@@ -29,6 +34,8 @@ var current_sound_id := -1
 var remaining_ticks := 0
 var accepted_count := 0
 var suppressed_count := 0
+var city_sounds := CitySounds.DEFAULT
+var _reduced_remaining_msec := 0.0
 var _tick_accumulator_msec := 0.0
 
 
@@ -49,6 +56,16 @@ func request(sound_id: int, ambient := false, simulation := false) -> bool:
 	var total_ticks := duration_ticks(sound_id)
 
 	if total_ticks == 0:
+		return false
+
+	var city_sound := ambient or simulation
+
+	if city_sound and (
+		city_sounds == CitySounds.OFF
+		or (city_sounds == CitySounds.REDUCED and _reduced_remaining_msec > 0.0)
+	):
+		suppressed_count += 1
+
 		return false
 
 	if (
@@ -76,6 +93,9 @@ func request(sound_id: int, ambient := false, simulation := false) -> bool:
 	elif simulation:
 		_event_remaining[sound_id] = event_replay_msec(sound_id)
 
+	if city_sound and city_sounds == CitySounds.REDUCED:
+		_reduced_remaining_msec = REDUCED_REPLAY_MSEC
+
 	accepted_count += 1
 
 	return true
@@ -84,6 +104,8 @@ func request(sound_id: int, ambient := false, simulation := false) -> bool:
 func advance(delta_msec: float) -> void:
 	if delta_msec <= 0.0:
 		return
+
+	_reduced_remaining_msec = maxf(0.0, _reduced_remaining_msec - delta_msec)
 
 	for delays in [_ambient_remaining, _event_remaining]:
 		for sound_id in delays.keys():
@@ -111,6 +133,7 @@ func advance(delta_msec: float) -> void:
 func stop() -> void:
 	_ambient_remaining.clear()
 	_event_remaining.clear()
+	_reduced_remaining_msec = 0.0
 	current_sound_id = -1
 	remaining_ticks = 0
 	_tick_accumulator_msec = 0.0

@@ -15,6 +15,7 @@ const DATA_TAB := 4
 var pack_error_label: Label
 var shuffle_music_check: CheckBox
 var toolbar_sounds_check: CheckBox
+var city_sounds_selector: OptionButton
 var sound_pack_edit: LineEdit
 var music_pack_edit: LineEdit
 var data_pack_edit: LineEdit
@@ -79,6 +80,7 @@ func _ready() -> void:
 	sound_pack_edit = %SoundPackEdit
 	tabs = %Tabs
 	toolbar_sounds_check = %ToolbarSoundsCheck
+	city_sounds_selector = %CitySoundsSelector
 	folder_row = folder_edit.get_parent() as HBoxContainer
 	controls_list = %ControlsList
 	zoom_graphics_selectors = [%Zoom25, %Zoom50, %Zoom100, %Zoom200, %Zoom300, %Zoom400]
@@ -255,6 +257,7 @@ func selected_values() -> AppSettingsStore.Values:
 	result.ui_scale = AppUiScale.OPTIONS[maxi(0, ui_scale_selector.selected)]
 	result.overview_graphics = overview_graphics_selector.selected
 	result.toolbar_sounds = toolbar_sounds_check.button_pressed
+	result.city_sounds = maxi(0, city_sounds_selector.selected)
 	result.shuffle_music = shuffle_music_check.button_pressed
 	result.sound_pack_folder = sound_pack_edit.text.strip_edges()
 	result.music_pack_folder = music_pack_edit.text.strip_edges()

@@ -45,6 +45,7 @@ static func load_values(
 	)
 
 	result.toolbar_sounds = bool(config.get_value("audio", "toolbar_sounds", result.toolbar_sounds))
+	result.city_sounds = normalize_city_sounds(config.get_value("audio", "city_sounds", result.city_sounds))
 	result.sound_pack_folder = AppPaths.loaded_path(str(config.get_value("audio", "sound_pack_folder", result.sound_pack_folder)))
 	result.music_pack_folder = AppPaths.loaded_path(str(config.get_value("audio", "music_pack_folder", result.music_pack_folder)))
 	result.data_pack_folder = AppPaths.loaded_path(str(config.get_value("data", "pack_folder", result.data_pack_folder)))
@@ -81,6 +82,13 @@ static func normalize_theme(value: Variant) -> String:
 
 static func normalize_renderer(value: Variant) -> String:
 	return "cpu" if str(value) == "cpu" else "gpu"
+
+
+static func normalize_city_sounds(value: Variant) -> int:
+	if not (value is int or value is float):
+		return WaveSoundGate.CitySounds.DEFAULT
+
+	return clampi(int(value), WaveSoundGate.CitySounds.DEFAULT, WaveSoundGate.CitySounds.OFF)
 
 
 # A missing key uses the default bindings. An empty list keeps the action
@@ -226,6 +234,9 @@ static func save_values(
 	if options.background_audio != null:
 		config.set_value("audio", "background_audio", bool(options.background_audio))
 
+	if options.city_sounds != null:
+		config.set_value("audio", "city_sounds", normalize_city_sounds(options.city_sounds))
+
 	if options.zoom_graphics != null:
 		config.set_value("graphics", "zoom_graphics",
 			normalize_zoom_graphics(options.zoom_graphics, int(config.get_value("graphics", "overview_graphics", 0))))
@@ -280,6 +291,7 @@ class Values extends RefCounted:
 	var background_audio := false
 	var shuffle_music := false
 	var toolbar_sounds := true
+	var city_sounds: int = WaveSoundGate.CitySounds.DEFAULT
 	var sound_pack_folder := ""
 	var music_pack_folder := ""
 	var data_pack_folder := ""
@@ -306,6 +318,7 @@ class SaveOptions extends RefCounted:
 	var background_audio: Variant = null
 	var zoom_graphics: Variant = null
 	var toolbar_sounds: Variant = null
+	var city_sounds: Variant = null
 	var sound_pack_folder: Variant = null
 	var music_pack_folder: Variant = null
 	var shuffle_music: Variant = null

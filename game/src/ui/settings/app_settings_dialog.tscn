@@ -216,6 +216,28 @@ custom_minimum_size = Vector2(250, 32)
 layout_mode = 2
 tooltip_text = "The volume of the sound effects."
 
+[node name="CitySoundsLabel" type="Label" parent="Tabs/Audio/Content/PackFields"]
+custom_minimum_size = Vector2(150, 32)
+layout_mode = 2
+text = "City Sounds"
+vertical_alignment = 1
+
+[node name="CitySoundsSelector" type="OptionButton" parent="Tabs/Audio/Content/PackFields"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 32)
+layout_mode = 2
+size_flags_horizontal = 0
+tooltip_text = "How often the city plays sounds such as trains, aircraft, monsters, and disasters.
+Reduced plays no more than one city sound every 30 seconds. Off plays none."
+selected = 0
+item_count = 3
+popup/item_0/text = "Default"
+popup/item_0/id = 0
+popup/item_1/text = "Reduced"
+popup/item_1/id = 1
+popup/item_2/text = "Off"
+popup/item_2/id = 2
+
 [node name="ShuffleSpacer" type="Label" parent="Tabs/Audio/Content/PackFields"]
 custom_minimum_size = Vector2(150, 32)
 layout_mode = 2

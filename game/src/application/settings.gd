@@ -42,6 +42,7 @@ func open_settings_dialog() -> void:
 	app.main_overlays.settings_dialog.set_update_status(preferences.update_checked_at, preferences.update_error)
 	app.main_overlays.settings_dialog.shuffle_music_check.button_pressed = preferences.shuffle_music
 	app.main_overlays.settings_dialog.toolbar_sounds_check.button_pressed = preferences.toolbar_sounds
+	app.main_overlays.settings_dialog.city_sounds_selector.select(preferences.city_sounds)
 	app.main_overlays.settings_dialog.sound_pack_edit.text = AppSettingsDialog.pack_file_path(preferences.sound_pack_folder)
 	app.main_overlays.settings_dialog.music_pack_edit.text = AppSettingsDialog.pack_file_path(preferences.music_pack_folder)
 	app.main_overlays.settings_dialog.data_pack_edit.text = AppSettingsDialog.pack_file_path(preferences.data_pack_folder)
@@ -137,6 +138,7 @@ func apply_settings() -> void:
 		app.map_render.refresh_map()
 
 	preferences.toolbar_sounds = bool(values.toolbar_sounds)
+	preferences.city_sounds = SettingsStore.normalize_city_sounds(values.city_sounds)
 	preferences.sound_pack_folder = str(values.sound_pack_folder)
 	preferences.music_pack_folder = str(values.music_pack_folder)
 
@@ -154,6 +156,7 @@ func apply_settings() -> void:
 
 	if app.audio_controller != null:
 		app.audio_controller.set_background_audio(preferences.background_audio)
+		app.audio_controller.wave_sound_gate.city_sounds = preferences.city_sounds
 		app.audio_controller.set_volumes(preferences.music_volume, preferences.effects_volume)
 		app.audio_controller.set_soundtrack_folder(preferences.soundtrack_folder, (app.main_menu != null and app.main_menu.visible)
 				or (app.document_state.city != null and app.document_state.city.music_enabled()))
@@ -184,6 +187,7 @@ func load_app_settings() -> void:
 		preferences.fullscreen,
 	)
 	preferences.toolbar_sounds = bool(values.toolbar_sounds)
+	preferences.city_sounds = values.city_sounds
 	preferences.sound_pack_folder = str(values.sound_pack_folder)
 	preferences.music_pack_folder = str(values.music_pack_folder)
 	preferences.data_pack_folder = str(values.data_pack_folder)

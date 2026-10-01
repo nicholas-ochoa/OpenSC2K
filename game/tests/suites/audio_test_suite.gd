@@ -28,6 +28,7 @@ func test_sound_rules() -> void:
 	_test_wave_sound_gate()
 	_test_ambient_sound_gate()
 	_test_simulation_sound_gate()
+	_test_city_sounds_gate()
 
 
 func _test_music_director() -> void:
@@ -424,6 +425,28 @@ func _test_simulation_sound_gate() -> void:
 	_check(gate.request(WaveSounds.SOUND_FLOOD, false, true), "The flood sound starts again")
 	gate.advance(3000.0)
 	_check(gate.request(WaveSounds.SOUND_FLOOD, false, true), "The flood sound can repeat at exactly three seconds")
+
+
+func _test_city_sounds_gate() -> void:
+	var gate := WaveSounds.new()
+	gate.city_sounds = WaveSounds.CitySounds.REDUCED
+	_check(gate.request(510, true) and not gate.request(517, true) and not gate.request(520, false, true),
+		"Reduced city sounds allow one ambient or simulation sound at a time")
+	_check(gate.request(500), "Player feedback bypasses the reduced city sound delay")
+	gate.advance(WaveSounds.REDUCED_REPLAY_MSEC - 1.0)
+	_check(not gate.request(520, false, true), "Reduced city sounds wait the full 30 seconds")
+	gate.advance(1.0)
+	_check(gate.request(520, false, true) and not gate.request(517, true),
+		"A reduced city sound can play after 30 seconds and starts a new delay")
+	gate.stop()
+	gate.city_sounds = WaveSounds.CitySounds.OFF
+	_check(not gate.request(510, true) and not gate.request(520, false, true) and gate.request(500),
+		"Off suppresses city sounds but keeps player feedback")
+	_check(
+		AppSettingsStore.normalize_city_sounds(7) == WaveSounds.CitySounds.OFF
+		and AppSettingsStore.normalize_city_sounds("off") == WaveSounds.CitySounds.DEFAULT,
+		"Saved city sound choices are clamped to the known options",
+	)
 
 
 func _check(condition: bool, message: String) -> void:

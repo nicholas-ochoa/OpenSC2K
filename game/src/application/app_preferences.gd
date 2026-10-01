@@ -7,6 +7,7 @@ const SettingsStore = preload("res://src/ui/settings/app_settings_store.gd")
 
 var soundtrack_folder := ""
 var toolbar_sounds := true
+var city_sounds: int = WaveSoundGate.CitySounds.DEFAULT
 var sound_pack_folder := ""
 var music_pack_folder := ""
 var data_pack_folder := ""
@@ -43,6 +44,7 @@ func save_options(include_ui_scale := true) -> SettingsStore.SaveOptions:
 	options.background_audio = background_audio
 	options.zoom_graphics = zoom_graphics
 	options.toolbar_sounds = toolbar_sounds
+	options.city_sounds = city_sounds
 	options.sound_pack_folder = sound_pack_folder
 	options.music_pack_folder = music_pack_folder
 	options.shuffle_music = shuffle_music

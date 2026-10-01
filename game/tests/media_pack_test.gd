@@ -86,13 +86,16 @@ func _run() -> void:
 	assert(get_nodes_in_group(CityAudioController.SOUND_EFFECT_GROUP).size() == count + 2)
 	var config := temporary.path_join("settings.cfg")
 	assert(AppSettingsStore.load_values(config).toolbar_sounds)
+	assert(AppSettingsStore.load_values(config).city_sounds == WaveSoundGate.CitySounds.DEFAULT)
 	var pack_options := AppSettingsStore.SaveOptions.new()
 	pack_options.graphics_source = "auto"
 	pack_options.toolbar_sounds = false
+	pack_options.city_sounds = WaveSoundGate.CitySounds.REDUCED
 	pack_options.sound_pack_folder = base.path_join("sound")
 	pack_options.music_pack_folder = base.path_join("music")
 	assert(AppSettingsStore.save_values(0.5, 0.5, false, config, pack_options) == OK)
 	var values := AppSettingsStore.load_values(config)
+	assert(values.city_sounds == WaveSoundGate.CitySounds.REDUCED)
 	assert(not values.toolbar_sounds and values.sound_pack_folder == base.path_join("sound")
 		and values.music_pack_folder == base.path_join("music"))
 	var toolbar := preload("res://src/ui/shell/city_toolbar.tscn").instantiate() as CityToolbar
