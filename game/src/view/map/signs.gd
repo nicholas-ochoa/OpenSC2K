@@ -82,6 +82,9 @@ func _ensure_sign_entries() -> void:
 		return
 
 	var sign_texts := map.city.sign_texts()
+
+	# the original paints a sign at each connection marker; no record holds it
+	sign_texts.merge(CityNeighbors.connection_sign_texts(map.city))
 	var sign_indices := PackedInt32Array(sign_texts.keys())
 	sign_indices.sort()
 	var sign_values := []

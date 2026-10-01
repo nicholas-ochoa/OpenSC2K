@@ -6,9 +6,9 @@ extends Control
 const LOGICAL_SIZE := Vector2(204.0, 160.0)
 const SPRITE_SIZE := Vector2(128.0, 64.0)
 const SPRITE_ROW_COUNT := 6
-const NEIGHBOR_COUNT := 4
+const NEIGHBOR_COUNT := CityNeighbors.COUNT
 const MISC_NATIONAL_POPULATION := Sc2MiscLayout.NATIONAL_POPULATION
-const NEIGHBOR_STRIDE := 0x10
+const NEIGHBOR_STRIDE := CityNeighbors.STRIDE
 const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
 const MISC_ARCOLOGY_POPULATION := Sc2MiscLayout.ARCOLOGY_POPULATION
 const MISC_NORMAL_POPULATION := Sc2MiscLayout.NORMAL_POPULATION
@@ -30,14 +30,6 @@ const LABEL_POSITIONS := [
 	Vector2(40.0, 100.0),
 ]
 const NATIONAL_LABEL_POSITION := Vector2(100.0, 143.0)
-const NEIGHBOR_NAMES: Array[String] = [
-	"Oak Creek", "Denmont", "Fort Verdegris", "Schwinton", "Mill Valley", "Petaluma",
-	"PortVille", "Ashland", "Eubancs", "Aurac", "Tent Pegs", "Cherryton",
-	"Blake", "Pioneers", "Fortune", "Phippsville", "Jeromi", "Harpersville",
-	"Washers Grove", "Stars County", "Villa", "Serviland", "Newton", "Avon",
-	"Dexter", "Sinistrel", "Jenna", "Yestonia", "New Boots", "Hoek Creek",
-	"Stimpleton", "Little Rouge", "Krighton", "Cats Corner", "Rimmer", "Lister",
-]
 
 var city: CityState
 var sprite_sheet: Texture2D
@@ -129,7 +121,7 @@ static func snapshot(value_city: CityState) -> Snapshot:
 
 	for index in NEIGHBOR_COUNT:
 		var offset := Sc2MiscLayout.NEIGHBORS + index * NEIGHBOR_STRIDE
-		var name_index := _to_i16(value_city.document.misc_u32(offset))
+		var name_index := CityNeighbors.name_index(value_city, index)
 		var neighbor := Neighbor.new()
 		neighbor.index = index
 		neighbor.name_index = name_index
@@ -199,13 +191,7 @@ static func sprite_index(population: int, ocean: bool) -> int:
 
 
 static func neighbor_name(name_index: int) -> String:
-	if name_index == 0:
-		return "Ocean"
-
-	if name_index > 0 and name_index <= NEIGHBOR_NAMES.size():
-		return NEIGHBOR_NAMES[name_index - 1]
-
-	return "City %d" % name_index
+	return CityNeighbors.name_of(name_index)
 
 
 static func prepare_sprite_sheet(source: Image) -> Image:
@@ -287,12 +273,6 @@ func _draw_centered_message(message: String) -> void:
 		font, Vector2((size.x - width) * 0.5, size.y * 0.5), message,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color.WHITE
 	)
-
-
-static func _to_i16(value: int) -> int:
-	var low := value & 0xffff
-
-	return low - 0x10000 if low & 0x8000 else low
 
 
 class Neighbor extends RefCounted:

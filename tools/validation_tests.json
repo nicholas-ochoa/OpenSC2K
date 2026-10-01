@@ -974,6 +974,12 @@
     ]
   },
   {
+    "id": "connection_sign_test",
+    "script": "tests/connection_sign_test.gd",
+    "domain": "rendering",
+    "lane": "product"
+  },
+  {
     "id": "stream_waterfall_render_test",
     "script": "tests/stream_waterfall_render_test.gd",
     "domain": "rendering",
