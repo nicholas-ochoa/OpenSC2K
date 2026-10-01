@@ -143,67 +143,10 @@ static func microsim_sites(city: CityState) -> Dictionary[int, Site]:
 	if key == city.microsim_site_cache_key:
 		return city.microsim_site_cache
 
-	var overlays := text.decoded_payload
-	var tile_count := city.map_size * city.map_size
-	var layered := OverlayData.is_layered(overlays)
-	var wide := overlays.size() != tile_count
-	var thing_data := things.decoded_payload if things != null else PackedByteArray()
-	var thing_records := ThingData.count(thing_data)
 	var records := city.microsim_count()
-	# per record: min x, min y, max x, max y, tile count
-	var bounds := PackedInt32Array()
-	bounds.resize(records * 5)
-
-	for index in tile_count:
-		var id := int(overlays[index])
-
-		# a layered index keeps the facility in its own layer
-		if layered:
-			id = OverlayData.facility(overlays, index)
-		elif wide:
-			id |= int(overlays[tile_count + index]) << 8
-
-		if id < 51:
-			continue
-
-		var x := index / city.map_size
-		var y := index % city.map_size
-		var hops := 0
-
-		while OverlayData.is_thing(id) and hops < thing_records:
-			var offset := OverlayData.thing_record(id) * CityState.THING_RECORD_SIZE
-
-			if offset <= 0 or offset >= thing_records * CityState.THING_RECORD_SIZE or (
-				ThingData.read(thing_data, offset) == 0
-				or ThingData.read(thing_data, offset + 3) != x or ThingData.read(thing_data, offset + 4) != y
-			):
-				break
-
-			id = ThingData.read(thing_data, offset + 10)
-			hops += 1
-
-		if not OverlayData.is_facility(id):
-			continue
-
-		var record := OverlayData.facility_record(id)
-
-		if record >= records:
-			continue
-
-		var at := record * 5
-
-		if bounds[at + 4] == 0:
-			bounds[at] = x
-			bounds[at + 1] = y
-			bounds[at + 2] = x
-			bounds[at + 3] = y
-		else:
-			bounds[at] = mini(bounds[at], x)
-			bounds[at + 1] = mini(bounds[at + 1], y)
-			bounds[at + 2] = maxi(bounds[at + 2], x)
-			bounds[at + 3] = maxi(bounds[at + 3], y)
-
-		bounds[at + 4] += 1
+	# per record: min x, min y, max x, max y, tile count. the native scan reads every tile
+	var bounds := NativeCityTools.facility_bounds(text.decoded_payload,
+		things.decoded_payload if things != null else PackedByteArray(), city.map_size, records)
 
 	city.microsim_site_cache = {}
 

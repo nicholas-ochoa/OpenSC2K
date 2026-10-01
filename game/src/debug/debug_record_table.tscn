@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://src/debug/debug_record_table.gd" id="1"]
+[ext_resource type="Script" path="res://src/debug/debug_virtual_table.gd" id="2"]
 
 [node name="Records" type="VBoxContainer"]
 script = ExtResource("1")
@@ -26,12 +27,10 @@ text = "Live refresh"
 layout_mode = 2
 text = "Refresh now"
 
-[node name="Table" type="Tree" parent="."]
+[node name="Table" type="Control" parent="."]
 layout_mode = 2
 size_flags_vertical = 3
-columns = 4
-column_titles_visible = true
-hide_root = true
+script = ExtResource("2")
 
 [node name="Total" type="Label" parent="."]
 layout_mode = 2

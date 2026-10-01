@@ -1,5 +1,10 @@
 class_name DebugRecordTable
 extends VBoxContainer
+## A debug record table: MicroSim records, moving things, tile counts or engine
+## state. A virtual table draws only the rows in view. MicroSims and Moving
+## Things build a row only when it is drawn, sorted or searched, and they skip a
+## refresh while their chunks keep their revisions, so the 32,768 MicroSim
+## records of a 4096 city stay responsive.
 
 signal locate_requested(site: Rect2i)
 # a field cell of an editable table changed: the record, the field name and the text
@@ -7,27 +12,36 @@ signal field_edited(kind: String, record: int, field: String, text: String)
 signal undo_requested()
 
 # yellow row background for a record with a warning. it stays readable in light and dark themes
-const WARNING_COLOR := Color(1.0, 0.85, 0.2, 0.3)
+const WARNING_COLOR := DebugVirtualTable.WARNING_COLOR
+# a search of a larger table waits for a pause in typing
+const IMMEDIATE_FILTER_ROWS := 2000
+const FILTER_DELAY_MSEC := 300
+# a packed sort key holds three values of 0 to 2^20 - 1
+const PACKED_KEY_BITS := 20
+const PACKED_KEY_LIMIT := 1 << PACKED_KEY_BITS
+const LAZY_KINDS := ["XMIC", "Objects"]
+# chunks whose change rebuilds the rows. facility sites follow the buildings
+# (XBLD), not XTXT, which changes whenever a moving thing moves
+const LAZY_CHUNKS := { "XMIC": ["XMIC", "XLAB", "XBLD"], "Objects": ["XTHG", "XTXT"] }
 
 @export var kind := "XMIC"
 
-var rows: Dictionary = {}
 var _last_refresh := -1000
 var _host: Control
 var _city_id := 0
 # column holding the locate icon; -1 when this table has none
 var locate_column := -1
-var _locate_icon: Texture2D
 var _titles: Array = []
-# columns sized to their widest cell after each refresh
-var _fitted_columns: Array[int] = []
 # records the city can hold. -1 when the table has no limit
 var record_limit := -1
 # sorted column and direction; -1 keeps record order
 var sort_column := -1
 var sort_descending := false
+var source := DebugTableSource.new()
+var _order_signature: Array = []
+var _filter_due := -1
 
-@onready var table: Tree = $Table
+@onready var table: DebugVirtualTable = $Table
 @onready var search: LineEdit = $Controls/Search
 @onready var show_empty: CheckBox = $Controls/ShowEmpty
 @onready var live: CheckBox = $Controls/Live
@@ -69,37 +83,25 @@ func _ready() -> void:
 			tooltips[title] = DebugObjectFields.COLUMN_TOOLTIPS[key]
 
 	if locate_column >= 0:
-		# a plain icon column: tree omits row guide lines under item buttons
 		titles.insert(locate_column, "")
 		widths.insert(locate_column, 28)
 		tooltips[""] = "Click the crosshair in a row to center the map on it."
-		_locate_icon = locate_icon(12)
-		table.gui_input.connect(_on_table_input)
+		table.locate_icon = locate_icon(12)
 
-	table.columns = titles.size()
 	_titles = titles
-
-	table.column_title_clicked.connect(_on_column_title_clicked)
-
-	for column in titles.size():
-		table.set_column_title(column, titles[column])
-		table.set_column_title_tooltip_text(column, tooltips.get(titles[column], ""))
-		table.set_column_custom_minimum_width(column, widths[column])
-		table.set_column_expand(column, column == titles.size() - 1)
-
-		if widths[column] == 0:
-			_fitted_columns.append(column)
-
-	if not _fitted_columns.is_empty():
-		table.item_collapsed.connect(func(_item: TreeItem) -> void: _fit_columns())
+	table.set_columns(titles, titles.map(func(title: String) -> String: return tooltips.get(title, "")), widths, locate_column)
+	table.title_clicked.connect(_on_column_title_clicked)
+	table.locate_clicked.connect(locate_on_map)
+	table.cell_edited.connect(_on_cell_edited)
+	table.editable = _is_cell_editable
 
 	if kind == "State":
 		sort_by(0)
 
 	show_empty.visible = kind != "State"
 	total.visible = kind != "State"
+
 	if is_editable():
-		table.item_edited.connect(_on_item_edited)
 		var undo := Button.new()
 		undo.name = "Undo"
 		undo.text = "Undo edit"
@@ -108,9 +110,17 @@ func _ready() -> void:
 		$Controls.add_child(undo)
 		$Controls.move_child(undo, $Controls/Refresh.get_index())
 
-	search.text_changed.connect(func(_text: String) -> void: _filter())
+	search.text_changed.connect(func(_text: String) -> void: _search_changed())
 	show_empty.toggled.connect(func(_enabled: bool) -> void: refresh_from_host(_host, true))
 	$Controls/Refresh.pressed.connect(func() -> void: refresh_from_host(_host, true))
+	set_process(false)
+
+
+func _process(_delta: float) -> void:
+	if _filter_due >= 0 and Time.get_ticks_msec() >= _filter_due:
+		_filter_due = -1
+		set_process(false)
+		_apply()
 
 
 func refresh_from_host(host: Control, force := false) -> void:
@@ -128,12 +138,13 @@ func refresh_from_host(host: Control, force := false) -> void:
 		return
 
 	# a refresh would end an open cell edit
-	if not force and table.get_edited() != null:
+	if not force and table.is_editing():
 		return
 
 	if changed_city:
-		table.clear()
-		rows.clear()
+		table.expanded.clear()
+		table.selected = ""
+		table.reset_widths()
 		_city_id = city_id
 
 	_last_refresh = Time.get_ticks_msec()
@@ -141,96 +152,204 @@ func refresh_from_host(host: Control, force := false) -> void:
 	var engine: SimulationEngine = simulation.simulation_engine if simulation != null else null
 	var controller: GameSpeedController = simulation.speed_controller if simulation != null else null
 	record_limit = DebugCityTables.record_limit(kind, city)
-	update_records(DebugCityTables.collect(kind, city, engine, show_empty.button_pressed, controller))
+
+	if kind in LAZY_KINDS and city != null and city.is_valid():
+		_show_source(_lazy_source(city))
+	else:
+		update_records(DebugCityTables.collect(kind, city, engine, show_empty.button_pressed, controller))
+
+
+# the lazy rows of a city. the same source returns while its chunks keep their revisions
+func _lazy_source(city: CityState) -> DebugTableSource:
+	var signature: Array = [kind, show_empty.button_pressed, city.mirror_signature(PackedStringArray(LAZY_CHUNKS[kind]))]
+
+	if source.signature == signature:
+		return source
+
+	var ids := PackedStringArray()
+
+	for id in DebugCityTables.record_ids(kind, city, show_empty.button_pressed):
+		ids.append(str(id))
+
+	# one site scan for the source, not one for each row
+	var sites: Dictionary[int, CityRecords.Site] = {}
+
+	if kind == "XMIC":
+		sites = city.microsim_sites()
+
+	var builder := func(id: String) -> DebugTableRecord:
+		return (DebugCityTables.microsim_row(city, int(id), sites) if kind == "XMIC"
+			else DebugCityTables.object_row(city, int(id)))
+
+	var result := DebugTableSource.lazy(ids, builder, signature)
+
+	if kind == "XMIC":
+		var data := city.document.find_chunk("XMIC").decoded_payload
+		result.key_builder = func(id: String, column: int) -> Variant:
+			return DebugCityTables.microsim_sort_key(city, int(id), column, data, sites)
+		result.search_builder = func(id: String) -> String:
+			return DebugCityTables.microsim_search_text(city, int(id), data, sites)
+
+	return result
 
 
 func update_records(records: Array[DebugTableRecord]) -> void:
-	if table.get_root() == null:
-		table.create_item()
-
-	var retained := {}
-
-	for order in records.size():
-		var record := records[order]
-		var id: String = record.id
-		retained[id] = true
-		var row: TreeItem = rows.get(id)
-
-		if row == null:
-			row = table.create_item(table.get_root())
-			row.collapsed = true
-			row.set_meta("record", id)
-			rows[id] = row
-
-		_set_cells(row, record)
-		row.set_meta("order", order)
-		var fields := record.fields
-
-		while row.get_child_count() > fields.size():
-			row.get_child(row.get_child_count() - 1).free()
-
-		for index in fields.size():
-			var child := row.get_child(index) if index < row.get_child_count() else table.create_item(row)
-			_set_cells(child, fields[index])
-
-			if is_editable():
-				_mark_editable(child, fields[index])
-
-	for id in rows.keys():
-		if not retained.has(id):
-			rows[id].free()
-			rows.erase(id)
-
-	_apply_sort()
-	_filter()
-	_fit_columns()
+	_show_source(DebugTableSource.of(records))
 
 
-# the MicroSims and Moving Things tables accept debug edits of their records
-func is_editable() -> bool:
-	return kind in ["XMIC", "Objects"]
+func _show_source(value: DebugTableSource) -> void:
+	value.with_position = kind == "XMIC"
+	var changed := value != source
+	source = value
+	_apply(changed)
 
 
-# MicroSim field rows edit their value; the stored values row of a moving
-# thing edits each field column
-func _mark_editable(item: TreeItem, record: DebugTableRecord) -> void:
-	if kind == "XMIC":
-		item.set_editable(1, true)
-		item.set_meta("field", record.name)
-		item.set_tooltip_text(1, "Double-click to change the stored value. The change is a debug edit.")
+# sort and search the rows, then show them. an unchanged source keeps its order
+func _apply(force := false) -> void:
+	var needle := search.text.strip_edges().to_lower()
+	var signature: Array = [source.signature, source.size(), sort_column, sort_descending, needle]
+
+	if force or signature != _order_signature:
+		_order_signature = signature
+		var rows := _sorted_rows()
+
+		if not needle.is_empty():
+			var found := PackedInt32Array()
+
+			for index in rows:
+				if needle in source.search_text(source.ids[index]):
+					found.append(index)
+
+			rows = found
+
+		table.show_rows(source, rows)
+	else:
+		table.queue_redraw()
+
+	_update_total(table.order.size())
+
+
+func _search_changed() -> void:
+	if source.size() <= IMMEDIATE_FILTER_ROWS:
+		_apply()
 
 		return
 
-	for column in table.columns:
-		var key := object_field(column)
-
-		if not key.is_empty():
-			item.set_editable(column, true)
-			item.set_tooltip_text(column, "Double-click to change the stored %s. The change is a debug edit." % key)
+	_filter_due = Time.get_ticks_msec() + FILTER_DELAY_MSEC
+	set_process(true)
 
 
-# the XTHG field of a Moving Things column, or an empty string
-func object_field(column: int) -> String:
-	var index := column - 1 - (1 if locate_column >= 0 and column > locate_column else 0)
+func _update_total(shown: int) -> void:
+	var count := source.size()
+	var noun := "record" if count == 1 else "records"
+	total.text = "%d %s" % [count, noun] if shown == count else "%d of %d %s shown" % [shown, count, noun]
 
-	if kind != "Objects" or column == locate_column or index < 0 or index >= DebugObjectFields.COLUMNS.size():
-		return ""
+	if record_limit >= 0:
+		total.text += ". Limit: %d" % record_limit
+		total.tooltip_text = "The city can hold %d records. Record 0 is not used." % record_limit
 
-	return DebugObjectFields.COLUMNS[index]
+
+func _sorted_rows() -> PackedInt32Array:
+	var count := source.size()
+	var rows := PackedInt32Array()
+
+	if sort_column < 0:
+		rows.resize(count)
+
+		for index in count:
+			rows[index] = index
+
+		return rows
+
+	var keys := []
+	keys.resize(count)
+
+	for index in count:
+		keys[index] = _sort_key(source.ids[index], sort_column)
+
+	return ordered(keys, sort_descending)
 
 
-func _on_item_edited() -> void:
-	var item := table.get_edited()
-	var column := table.get_edited_column()
+# the sort value of a table column. the locate column sorts by position
+func _sort_key(id: String, column: int) -> Variant:
+	if column == locate_column:
+		var site := source.row(id).site
 
-	if item == null or item.get_parent() == null or not item.get_parent().has_meta("record"):
-		return
+		return null if site == null else [site.x, site.y]
 
-	var record := int(str(item.get_parent().get_meta("record")))
-	var field := str(item.get_meta("field", "")) if kind == "XMIC" else object_field(column)
+	return source.sort_key(id, column - (1 if locate_column >= 0 and column > locate_column else 0))
 
-	if not field.is_empty():
-		field_edited.emit(kind, record, field, item.get_text(column))
+
+# row indices in key order. equal keys keep their order, and rows without a
+# key stay last in both directions. the native library sorts integer keys;
+# other keys sort by rank
+static func ordered(keys: Array, descending: bool) -> PackedInt32Array:
+	var present := PackedInt32Array()
+	var missing := PackedInt32Array()
+
+	for index in keys.size():
+		if keys[index] == null:
+			missing.append(index)
+		else:
+			present.append(index)
+
+	var packed := PackedInt64Array()
+	packed.resize(present.size())
+	var values := []
+
+	for index in present:
+		values.append(keys[index])
+
+	var ranks := _integer_keys(values)
+
+	for index in present.size():
+		packed[index] = ranks[index]
+
+	var result := PackedInt32Array()
+
+	for index in NativeDebugTiles.stable_order(packed, descending):
+		result.append(present[index])
+
+	result.append_array(missing)
+
+	return result
+
+
+# integers stay; short lists of small integers pack into one integer; other
+# values become their rank
+static func _integer_keys(values: Array) -> Array:
+	if values.all(func(value: Variant) -> bool: return value is int):
+		return values
+
+	if values.all(_packable):
+		return values.map(func(value: Array) -> int:
+			var packed := 0
+
+			for part in 3:
+				packed = (packed << PACKED_KEY_BITS) | (int(value[part]) if part < value.size() else 0)
+
+			return packed)
+
+	var unique := {}
+
+	for value in values:
+		unique[value] = true
+
+	var sorted_values := unique.keys()
+	sorted_values.sort_custom(func(a: Variant, b: Variant) -> bool: return compare_keys(a, b) < 0)
+	var rank := {}
+
+	for index in sorted_values.size():
+		rank[sorted_values[index]] = index
+
+	return values.map(func(value: Variant) -> int: return rank[value])
+
+
+static func _packable(value: Variant) -> bool:
+	if not value is Array or value.size() > 3:
+		return false
+
+	return value.all(func(part: Variant) -> bool: return part is int and part >= 0 and part < PACKED_KEY_LIMIT)
 
 
 func sort_by(column: int, descending := false) -> void:
@@ -239,67 +358,19 @@ func sort_by(column: int, descending := false) -> void:
 
 	for index in _titles.size():
 		var marker := "" if index != column else (" ▼" if descending else " ▲")
-		table.set_column_title(index, str(_titles[index]) + marker)
+		table.set_title(index, str(_titles[index]) + marker)
 
-	_apply_sort()
+	_apply()
 
 
 # title clicks cycle ascending, descending, then record order
-func _on_column_title_clicked(column: int, mouse_button: int) -> void:
-	if mouse_button != MOUSE_BUTTON_LEFT:
-		return
-
+func _on_column_title_clicked(column: int) -> void:
 	if column != sort_column:
 		sort_by(column)
 	elif not sort_descending:
 		sort_by(column, true)
 	else:
 		sort_by(-1)
-
-
-func _apply_sort() -> void:
-	var root := table.get_root()
-
-	if root == null:
-		return
-
-	var ordered: Array[TreeItem] = []
-	var item := root.get_first_child()
-
-	while item != null:
-		ordered.append(item)
-		item = item.get_next()
-
-	var sorted := ordered.duplicate()
-	sorted.sort_custom(_row_before)
-
-	if sorted == ordered:
-		return
-
-	# move rows in place so expansion, selection and scrolling survive
-	sorted[0].move_before(root.get_first_child())
-
-	for index in range(1, sorted.size()):
-		sorted[index].move_after(sorted[index - 1])
-
-
-func _row_before(a: TreeItem, b: TreeItem) -> bool:
-	if sort_column >= 0:
-		var a_keys: Array = a.get_meta("sort", [])
-		var b_keys: Array = b.get_meta("sort", [])
-		var a_key: Variant = a_keys[sort_column] if sort_column < a_keys.size() else a.get_text(sort_column)
-		var b_key: Variant = b_keys[sort_column] if sort_column < b_keys.size() else b.get_text(sort_column)
-
-		# missing values stay last in both directions
-		if (a_key == null) != (b_key == null):
-			return b_key == null
-
-		var order := compare_keys(a_key, b_key)
-
-		if order != 0:
-			return order > 0 if sort_descending else order < 0
-
-	return int(a.get_meta("order", 0)) < int(b.get_meta("order", 0))
 
 
 static func compare_keys(a: Variant, b: Variant) -> int:
@@ -321,105 +392,68 @@ static func compare_keys(a: Variant, b: Variant) -> int:
 	return str(a).naturalnocasecmp_to(str(b))
 
 
-func _set_cells(row: TreeItem, record: DebugTableRecord) -> void:
-	var cells := record.cells.duplicate()
-	var tooltips := record.tooltips.duplicate()
-
-	if not cells.is_empty() and locate_column >= 0:
-		cells.insert(locate_column, "")
-
-		if tooltips.size() >= locate_column:
-			tooltips.insert(locate_column, "")
-
-	if cells.is_empty():
-		for key in ["name", "value", "raw", "position", "detail"] if kind == "XMIC" else ["name", "value", "raw", "detail"]:
-			cells.append(str(record.get(key)))
-
-		if kind == "XMIC":
-			cells.insert(locate_column, "")
-
-	for column in table.columns:
-		var text := str(cells[column])
-		row.set_text(column, text)
-		row.set_tooltip_text(column, str(tooltips[column]) if column < tooltips.size() else text)
-
-		if record.warning.is_empty():
-			row.clear_custom_bg_color(column)
-		else:
-			row.set_custom_bg_color(column, WARNING_COLOR)
-			row.set_tooltip_text(column, record.warning)
-
-	var sort: Array = record.sort.duplicate()
-
-	if not sort.is_empty() and locate_column >= 0:
-		var site: CityRecords.Site = record.site
-
-		if site == null:
-			sort.insert(locate_column, null)
-		else:
-			sort.insert(locate_column, [site.x, site.y])
-
-	row.set_meta("sort", sort)
-
-	if locate_column >= 0:
-		_set_locate_icon(row, record.site)
+# the MicroSims and Moving Things tables accept debug edits of their records
+func is_editable() -> bool:
+	return kind in ["XMIC", "Objects"]
 
 
-# the tree fits a column to its title only. measure filtered rows too, so that
-# the widths stay the same while the filter changes
-func _fit_columns() -> void:
-	if _fitted_columns.is_empty():
-		return
+# MicroSim field rows edit their value; the stored values row of a moving
+# thing edits each field column
+func _is_cell_editable(_record: DebugTableRecord, field: int, column: int) -> bool:
+	if field < 0 or not is_editable():
+		return false
 
-	var font := table.get_theme_font("font")
-	var font_size := table.get_theme_font_size("font_size")
-	# keep a gap of about one character between adjacent cells
-	var padding := (table.get_theme_constant("inner_item_margin_left") + table.get_theme_constant("inner_item_margin_right")
-		+ table.get_theme_constant("h_separation") + font_size)
-	var widths := {}
-
-	for row: TreeItem in rows.values():
-		for item: TreeItem in [row] + ([] if row.collapsed else row.get_children()):
-			for column in _fitted_columns:
-				var width := font.get_string_size(item.get_text(column), HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
-				widths[column] = maxf(widths.get(column, 0.0), width)
-
-	# the first column also holds the fold arrow and the child indent
-	if widths.has(0):
-		widths[0] += table.get_theme_icon("arrow").get_width() + table.get_theme_constant("item_margin")
-
-	for column in _fitted_columns:
-		table.set_column_custom_minimum_width(column, ceili(widths.get(column, 0.0)) + padding)
+	return column == 1 if kind == "XMIC" else not object_field(column).is_empty()
 
 
-func _set_locate_icon(row: TreeItem, site: CityRecords.Site) -> void:
-	var column := locate_column
+# the XTHG field of a Moving Things column, or an empty string
+func object_field(column: int) -> String:
+	var index := column - 1 - (1 if locate_column >= 0 and column > locate_column else 0)
 
-	if site == null:
-		row.set_icon(column, null)
-		row.set_metadata(column, null)
-		row.set_tooltip_text(column, "")
+	if kind != "Objects" or column == locate_column or index < 0 or index >= DebugObjectFields.COLUMNS.size():
+		return ""
 
-		return
-
-	row.set_metadata(column, Rect2i(site.x, site.y, site.width, site.height))
-	row.set_icon(column, _locate_icon)
-	row.set_icon_modulate(column, table.get_theme_color("font_color"))
-	row.set_text_alignment(column, HORIZONTAL_ALIGNMENT_CENTER)
-	row.set_tooltip_text(column, "Center the map here")
+	return DebugObjectFields.COLUMNS[index]
 
 
-func _on_table_input(event: InputEvent) -> void:
-	var click := event as InputEventMouseButton
+func _on_cell_edited(id: String, field: int, column: int, text: String) -> void:
+	var name_of_field := source.row(id).fields[field].name if kind == "XMIC" else object_field(column)
 
-	if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT \
-			and table.get_column_at_position(click.position) == locate_column:
-		locate_on_map(table.get_item_at_position(click.position))
+	if not name_of_field.is_empty():
+		field_edited.emit(kind, int(id), name_of_field, text)
 
 
-func locate_on_map(item: TreeItem) -> void:
-	if item != null and locate_column >= 0 and item.get_metadata(locate_column) is Rect2i:
-		locate_requested.emit(item.get_metadata(locate_column))
+func locate_on_map(id: String) -> void:
+	var site := source.row(id).site if source.has(id) else null
+
+	if site != null:
+		locate_requested.emit(Rect2i(site.x, site.y, site.width, site.height))
+
+
+# the record rows in display order
+func shown_ids() -> PackedStringArray:
+	var result := PackedStringArray()
+
+	for index in table.order:
+		result.append(source.ids[index])
+
+	return result
+
+
+func has_row(id: String) -> bool:
+	return source.has(id)
+
+
+func row_count() -> int:
+	return source.size()
+
+
+func row_cells(id: String, field := -1) -> Array[String]:
+	return table.cells_of(id, field)
+
+
+func column_title(column: int) -> String:
+	return str(table.titles[column])
 
 
 # crosshair drawn at runtime: a ring, a centre dot and four ticks, antialiased
@@ -448,27 +482,3 @@ static func locate_icon(icon_size: int) -> ImageTexture:
 			image.set_pixel(px, py, Color(1, 1, 1, float(covered) / (samples * samples)))
 
 	return ImageTexture.create_from_image(image)
-
-
-func _filter() -> void:
-	var needle := search.text.strip_edges().to_lower()
-	var shown := 0
-
-	for row: TreeItem in rows.values():
-		var content := ""
-
-		for item: TreeItem in [row] + row.get_children():
-			for column in table.columns:
-				content += " " + item.get_text(column).to_lower()
-
-		row.visible = needle.is_empty() or needle in content
-
-		if row.visible:
-			shown += 1
-
-	var noun := "record" if rows.size() == 1 else "records"
-	total.text = "%d %s" % [rows.size(), noun] if shown == rows.size() else "%d of %d %s shown" % [shown, rows.size(), noun]
-
-	if record_limit >= 0:
-		total.text += ". Limit: %d" % record_limit
-		total.tooltip_text = "The city can hold %d records. Record 0 is not used." % record_limit

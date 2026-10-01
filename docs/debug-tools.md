@@ -74,8 +74,12 @@ tile with a moving object lists each decoded field of the object.
   or Missile Silos: if you accept, the game searches only for a site of that type.
   *Moving things* adds a moving thing, or deletes every moving thing of the selected
   kind, as the original Debug menu does.
-- **MicroSims and Moving Things.** Double-click a field to change the stored value. The
-  edit checks the range of the field. *Undo edit* reverses it.
+- **MicroSims, Moving Things, Tile Counts and State.** A virtual table draws only the
+  rows in view. MicroSims and Moving Things build a row only when it is drawn, sorted or
+  searched, and keep their rows until their chunks change, so the 32,768 MicroSim records
+  of a 4096 city open in about 0.1 s. A search of more than 2,000 records waits for a
+  pause in typing. In MicroSims and Moving Things, double-click a field to change the
+  stored value. The edit checks the range of the field. *Undo edit* reverses it.
 - **Steps.** <a id="steps"></a>Advance one phase runs the next action of the day
   schedule; the day stays open until its last action runs, and a speed change runs the
   rest of the day first. Advance one day runs a whole day, or one tick of an active
@@ -120,5 +124,9 @@ godot --audio-driver Dummy --path game --script res://tools/benchmarks/debug_vie
   <city> [image folder]
 ```
 
-The benchmark pans at Cheetah speed and prints the frame times of each view and of all
+`res://tools/benchmarks/debug_table_benchmark.gd` takes the same arguments and reports
+the open, sort and search times of each record table and the frame times while it is
+open.
+
+The view benchmark pans at Cheetah speed and prints the frame times of each view and of all
 views together. It can also save a window image of each view.

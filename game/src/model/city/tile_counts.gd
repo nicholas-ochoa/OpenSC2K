@@ -14,17 +14,9 @@ static func exact(city: CityState) -> bool:
 
 
 # tiles of each building ID outside military zones
+# the native library reads every tile; a 4096 map has 16.7 million
 static func count(city: CityState) -> PackedInt32Array:
-	var counts := PackedInt32Array()
-	counts.resize(BuildingTileIds.COUNT)
-	var buildings := city.buildings
-	var zones := city.zones
-
-	for index in buildings.size():
-		if (zones[index] & Sc2ZoneLayout.TYPE_MASK) != Sc2ZoneLayout.MILITARY:
-			counts[buildings[index]] += 1
-
-	return counts
+	return NativeCityTools.building_counts(city.buildings, city.zones)
 
 
 static func recount(city: CityState) -> int:

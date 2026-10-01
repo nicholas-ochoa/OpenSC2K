@@ -37,29 +37,29 @@ func _run() -> void:
 	things.decoded_payload[13] = 3
 	things.decoded_payload[14] = 0x53
 	panel.update_records(DebugCityTables.collect("Objects", city))
-	var row: TreeItem = panel.rows["1"]
-	var raw := row.get_child(0)
-	assert(row.get_child_count() == 1 and panel.table.columns == DebugObjectFields.COLUMNS.size() + 2)
-	# Column 1 is the locate icon; data columns follow it.
-	assert(row.get_icon(panel.locate_column) != null and raw.get_icon(panel.locate_column) == null)
+	assert(panel.has_row("1"))
+	var row := panel.row_cells("1")
+	var raw := panel.row_cells("1", 0)
+	assert(panel.source.row("1").fields.size() == 1 and panel.table.column_count() == DebugObjectFields.COLUMNS.size() + 2)
+	# Column 1 is the locate icon; data columns follow it. Only record rows locate
+	assert(panel.locate_column == 1 and row[1] == "" and raw[1] == "" and panel.source.row("1").site != null)
 	var located: Array[Rect2i] = []
 	panel.locate_requested.connect(func(site: Rect2i) -> void: located.append(site))
-	panel.locate_on_map(row)
-	panel.locate_on_map(raw)
+	panel.locate_on_map("1")
 	assert(located == [Rect2i(0, 0, 1, 1)])
-	assert(row.get_text(2) == QueryInfo.THING_NAMES[1] and raw.get_text(2) == "1 / 0x01")
-	assert(row.get_text(4) == "SE" and raw.get_text(4) == "3 / 0x03")
-	assert(row.get_text(3) == DebugObjectFields.state(_record(1, 3, 0x53), city) and raw.get_text(3) == "83 / 0x53")
-	assert(row.get_text(5) == "Unused" and "Unused" in row.get_tooltip_text(5))
-	for item: TreeItem in [row, raw]:
-		for column in panel.table.columns:
-			assert(not "\n" in item.get_text(column))
-	row.collapsed = false
+	assert(row[2] == QueryInfo.THING_NAMES[1] and raw[2] == "1 / 0x01")
+	assert(row[4] == "SE" and raw[4] == "3 / 0x03")
+	assert(row[3] == DebugObjectFields.state(_record(1, 3, 0x53), city) and raw[3] == "83 / 0x53")
+	assert(row[5] == "Unused" and "Unused" in panel.table.tooltip_of("1", -1, 5))
+	for cells: Array[String] in [row, raw]:
+		for column in panel.table.column_count():
+			assert(not "\n" in cells[column])
+	panel.table.set_expanded("1", true)
 	panel.update_records(DebugCityTables.collect("Objects", city))
-	assert(not row.collapsed)
+	assert(panel.table.is_expanded("1"))
 	panel.search.text = DebugObjectFields.state(_record(1, 3, 0x53), city)
 	panel.search.text_changed.emit(panel.search.text)
-	assert(row.visible)
+	assert("1" in panel.shown_ids())
 	panel.free()
 	print("PASS: type-specific XTHG directions, packed states, targets, field meanings and one-line translated and raw table columns")
 	quit()

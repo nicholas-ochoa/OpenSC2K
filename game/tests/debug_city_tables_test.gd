@@ -81,28 +81,27 @@ func _run() -> void:
 			and DebugCityTables.record_limit("Tiles", city) == -1)
 		assert(edge != 128 or [DebugCityTables.record_limit("XMIC", city), DebugCityTables.record_limit("Objects", city)] == [149, 39])
 		_check_state_sorting(host, engine)
-		var row: TreeItem = panel.rows["1"]
-		row.collapsed = false
+		panel.table.set_expanded("1", true)
 		panel.refresh_from_host(host, true)
-		assert(panel.rows["1"] == row and not row.collapsed)
+		assert(panel.table.is_expanded("1"), "A refresh keeps an open record open")
 		var located: Array[Rect2i] = []
 		panel.locate_requested.connect(func(site: Rect2i) -> void: located.append(site))
-		assert(row.get_text(3) == "(3, 4) 2×2" and row.get_icon(panel.locate_column) != null)
-		panel.locate_on_map(row)
+		assert(panel.row_cells("1")[3] == "(3, 4) 2×2" and panel.source.row("1").site != null)
+		panel.locate_on_map("1")
 		assert(located == [Rect2i(3, 4, 2, 2)])
 		panel.search.text = "not a facility"
 		panel.search.text_changed.emit(panel.search.text)
-		assert(not row.visible)
+		assert(not "1" in panel.shown_ids())
 		panel.search.text = "65534"
 		panel.search.text_changed.emit(panel.search.text)
-		assert(row.visible)
+		assert("1" in panel.shown_ids(), "A search also reads the field rows")
 		panel.live.button_pressed = false
 		var refreshed := panel._last_refresh
 		panel.refresh_from_host(host)
 		assert(panel._last_refresh == refreshed)
 		host.document_state.city = null
 		panel.refresh_from_host(host)
-		assert(panel.rows.is_empty())
+		assert(panel.row_count() == 0)
 		var debug := preload("res://src/debug/debug_overlay.tscn").instantiate() as CityDebugOverlay
 		debug.setup(host)
 		host.add_child(debug)
@@ -183,14 +182,14 @@ func _check_tile_counts(edge: int) -> void:
 	panel.kind = "Tiles"
 	root.add_child(panel)
 	panel.update_records(DebugCityTables.collect("Tiles", city))
-	var row: TreeItem = panel.rows[police.id]
-	assert(panel.total.text == "%d records" % panel.rows.size(), "The total counts the records below the table")
+	assert(panel.has_row(police.id))
+	assert(panel.total.text == "%d records" % panel.row_count(), "The total counts the records below the table")
 	panel.search.text = "POLICE_STATION"
 	panel.search.text_changed.emit(panel.search.text)
-	assert(panel.total.text == "1 of %d records shown" % panel.rows.size(), "A filter shows the visible part of the total")
+	assert(panel.total.text == "1 of %d records shown" % panel.row_count(), "A filter shows the visible part of the total")
 	panel.search.text = ""
 	panel.search.text_changed.emit("")
-	assert(row.get_custom_bg_color(4) == DebugRecordTable.WARNING_COLOR and row.get_tooltip_text(4) == police.warning)
+	assert(panel.source.row(police.id).warning == police.warning and panel.table.tooltip_of(police.id, -1, 4) == police.warning)
 
 	# a saved count that wrapped below zero shows even when the map has no such tile
 	assert(city.document.set_misc_u32(Sc2MiscLayout.TILE_COUNTS + BuildingTileIds.LLAMA_DOME * 4, 0xfffe if edge == 128 else 0xfffffffe))
@@ -200,7 +199,8 @@ func _check_tile_counts(edge: int) -> void:
 	var exact_records := DebugCityTables.collect("Tiles", city)
 	assert(exact_records.all(func(record: DebugTableRecord) -> bool: return record.warning.is_empty()))
 	panel.update_records(exact_records)
-	assert(row.get_custom_bg_color(4) == Color() and row.get_tooltip_text(4) == "1", "An exact count clears the highlight")
+	assert(panel.source.row(police.id).warning.is_empty() and panel.table.tooltip_of(police.id, -1, 4) == "1",
+		"An exact count clears the highlight")
 	panel.free()
 
 
@@ -217,22 +217,26 @@ func _check_object_columns(host: Control) -> void:
 	var panel := RECORD_TABLE_SCENE.instantiate() as DebugRecordTable
 	panel.kind = "Objects"
 	host.add_child(panel)
+	panel.size = Vector2(1200, 600)
 	panel.refresh_from_host(host, true)
 	var table := panel.table
-	var font := table.get_theme_font("font")
-	var font_size := table.get_theme_font_size("font_size")
-	var item := panel.rows["1"] as TreeItem
+	table.size = Vector2(1200, 500)
+	var font := table._font()
+	var font_size := table._font_size()
+	var cells := panel.row_cells("1")
 	assert(panel.total.text.ends_with("Limit: %d" % (host.document_state.city.thing_count() - 1)), "The total shows the record limit")
+	table._fit_visible(0, table.display_count())
 
-	for column in table.columns:
-		assert(not table.get_column_title_tooltip_text(column).is_empty())
-		var text_width := font.get_string_size(item.get_text(column), HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
-		assert(table.get_column_width(column) >= text_width, "Column %d is narrower than its text" % column)
+	for column in table.column_count():
+		assert(not str(table.title_tooltips[column]).is_empty())
+		var text_width := font.get_string_size(cells[column], HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		assert(table.column_width(column) >= text_width, "Column %d is narrower than its text" % column)
 
 	# an expanded row widens the columns to fit its stored values
-	var x_width := table.get_column_width(6)
-	item.collapsed = false
-	assert(table.get_column_width(6) > x_width)
+	var x_width := table.column_width(6)
+	table.set_expanded("1", true)
+	table._fit_visible(0, table.display_count())
+	assert(table.column_width(6) > x_width)
 	panel.free()
 
 
@@ -243,13 +247,13 @@ func _check_state_sorting(host: Control, engine: SimulationEngine) -> void:
 	panel.kind = "State"
 	host.add_child(panel)
 	panel.refresh_from_host(host, true)
-	var names := panel.table.get_root().get_children().map(func(item: TreeItem) -> String: return item.get_text(0))
+	var names := Array(panel.shown_ids()).map(func(id: String) -> String: return panel.row_cells(id)[0])
 	var sorted_names := names.duplicate()
 	sorted_names.sort_custom(func(a: String, b: String) -> bool: return a.naturalnocasecmp_to(b) < 0)
 	assert(names == sorted_names and names[0] == "active_disaster_type")
-	panel.table.column_title_clicked.emit(1, MOUSE_BUTTON_LEFT)
-	var numbers := panel.table.get_root().get_children().filter(func(item: TreeItem) -> bool: return item.get_text(1).is_valid_int()) \
-		.map(func(item: TreeItem) -> int: return item.get_text(1).to_int())
+	panel.table.title_clicked.emit(1)
+	var numbers := Array(panel.shown_ids()).map(func(id: String) -> String: return panel.row_cells(id)[1]) \
+		.filter(func(text: String) -> bool: return text.is_valid_int()).map(func(text: String) -> int: return text.to_int())
 	var sorted_numbers := numbers.duplicate()
 	sorted_numbers.sort()
 	assert(numbers == sorted_numbers and numbers[-1] == 789, "Expected numeric value order")
@@ -322,12 +326,12 @@ func _check_sorting() -> void:
 
 	panel.update_records(records)
 	var order := func() -> Array:
-		return panel.table.get_root().get_children().map(func(item: TreeItem) -> String: return item.get_text(0))
-	panel.rows["10"].collapsed = false
-	panel.table.column_title_clicked.emit(2, MOUSE_BUTTON_LEFT)
+		return Array(panel.shown_ids()).map(func(id: String) -> String: return panel.row_cells(id)[0])
+	panel.table.set_expanded("10", true)
+	panel.table.title_clicked.emit(2)
 	assert(order.call() == ["Record 2", "Record 0", "Record 10"])
-	panel.table.column_title_clicked.emit(2, MOUSE_BUTTON_LEFT)
-	assert(order.call() == ["Record 10", "Record 0", "Record 2"] and panel.table.get_column_title(2).ends_with("▼"))
+	panel.table.title_clicked.emit(2)
+	assert(order.call() == ["Record 10", "Record 0", "Record 2"] and panel.column_title(2).ends_with("▼"))
 	# Rows without a position stay last in both directions; locate column sorts the same way.
 	for column in [3, panel.locate_column]:
 		panel.sort_by(column)
@@ -345,11 +349,12 @@ func _check_sorting() -> void:
 	assert(order.call() == ["Record 0", "Record 5", "Record 10", "Record 2"])
 	panel.sort_by(0)
 	assert(order.call() == ["Record 0", "Record 2", "Record 5", "Record 10"])
-	panel.table.column_title_clicked.emit(0, MOUSE_BUTTON_LEFT)
-	panel.table.column_title_clicked.emit(0, MOUSE_BUTTON_LEFT)
-	assert(panel.sort_column == -1 and panel.table.get_column_title(0) == "Record / field")
+	panel.table.title_clicked.emit(0)
+	panel.table.title_clicked.emit(0)
+	assert(panel.sort_column == -1 and panel.column_title(0) == "Record / field")
 	assert(order.call() == ["Record 0", "Record 2", "Record 10", "Record 5"])
-	assert(not panel.rows["10"].collapsed)
+	assert(panel.table.is_expanded("10"))
+	assert(panel.table.display_count() == 4 + panel.source.row("10").fields.size(), "An open record shows its fields")
 	panel.free()
 
 

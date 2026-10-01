@@ -88,74 +88,15 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 		"XMIC":
 			var sites := city.microsim_sites()
 
-			for id in city.microsim_count():
-				var record := city.microsim(id)
-				var tile := record.tile_id if record != null else 0
-				if tile == BuildingTileIds.EMPTY and not include_empty:
-					continue
-
-				var fields: Array[DebugTableRecord] = []
-				fields.append(_field("tile_id", tile, "Type"))
-				var labels: Array = STAT_LABELS.get(
-					tile,
-					["Type-specific byte", "Type-specific statistic", "Type-specific statistic", "Type-specific statistic"],
-				)
-
-				for index in 4:
-					fields.append(_field("stat_%d" % index, record.statistic(index) if record != null else 0,
-						labels[index]))
-
-				var value: String = "Empty" if tile == BuildingTileIds.EMPTY else FACILITIES.get(tile, "Facility 0x%02X" % tile)
-				var label := city.label(OverlayData.facility_id(id))
-				var site: CityRecords.Site = sites.get(id)
-				var detail := "-" if label.is_empty() or label == value else label
-				var row := DebugTableRecord.new()
-				row.id = str(id)
-				row.name = "Record %d" % id
-				row.value = value
-				row.raw = "0x%02X" % tile
-				row.position = "Not on map" if site == null else "(%d, %d) %d×%d" % [site.x, site.y, site.width, site.height]
-				row.site = site
-				row.detail = detail
-				# sort values per visible column, excluding the locate icon column
-				row.sort = [id, value, tile, _site_sort(site), detail]
-				row.empty = tile == BuildingTileIds.EMPTY
-				row.fields = fields
-				result.append(row)
+			for id in record_ids("XMIC", city, include_empty):
+				result.append(microsim_row(city, id, sites))
 		"Objects":
-			for id in city.thing_count():
-				var record := city.thing(id)
-
-				if record.type == 0 and not include_empty:
-					continue
-
-				var table := DebugObjectFields.table_cells(id, record, city)
-				var site := null if record.type == 0 or city.index_of(record.x, record.y) < 0 \
-					else CityRecords.Site.new(record.x, record.y, 1, 1)
-				var sort: Array = [id]
-
-				for key: String in DebugObjectFields.COLUMNS:
-					# translated columns sort by their visible text; the rest by stored value
-					sort.append(table.cells[sort.size()] if key in DebugObjectFields.TRANSLATED else record.get(key))
-
-				var row := DebugTableRecord.new()
-				row.id = str(id)
-				row.name = "Object %d" % id
-				row.value = DebugObjectFields.type_name(record.type)
-				row.raw = "(%d, %d, %d)" % [record.x, record.y, record.z]
-				row.cells = table.cells
-				row.tooltips = table.tooltips
-				row.empty = record.type == 0
-				row.site = site
-				row.sort = sort
-				var stored := DebugTableRecord.new()
-				stored.cells = table.raw
-				stored.tooltips = table.tooltips
-				row.fields = [stored]
-				result.append(row)
+			for id in record_ids("Objects", city, include_empty):
+				result.append(object_row(city, id))
 
 		"Tiles":
 			var counts := tile_counts(city)
+			var firsts := NativeDebugTiles.first_indices(city.buildings)
 
 			for id in counts.size():
 				var count := counts[id]
@@ -165,7 +106,7 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 				if count == 0 and saved == 0 and not include_empty:
 					continue
 
-				var first := city.buildings.find(id) if count > 0 else -1
+				var first := firsts[id] if count > 0 else -1
 				var site := null if first < 0 else CityRecords.Site.new(first / city.map_size, first % city.map_size, 1, 1)
 				var name := QueryStrings.tile_name(id)
 				var row := DebugTableRecord.new()
@@ -201,6 +142,127 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 						result.append(_state_field(key + ".state", random.get("state"), RANDOM_FIELDS[key]))
 
 	return result
+
+
+# the record numbers of the MicroSims or Moving Things table. empty records
+# appear only with `include_empty`. reads the tile or type byte of each record
+static func record_ids(kind: String, city: CityState, include_empty := false) -> PackedInt32Array:
+	var result := PackedInt32Array()
+	var chunk := city.document.find_chunk("XMIC" if kind == "XMIC" else "XTHG") if city != null else null
+
+	if chunk == null:
+		return result
+
+	var data := chunk.decoded_payload
+	var count := city.microsim_count() if kind == "XMIC" else city.thing_count()
+	var size := CityState.MICROSIM_RECORD_SIZE if kind == "XMIC" else CityState.THING_RECORD_SIZE
+
+	for id in count:
+		if include_empty or data[id * size] != 0:
+			result.append(id)
+
+	return result
+
+
+# the sort value of a MicroSims column, the same as microsim_row without the row.
+# columns: record, facility, tile, position, details
+static func microsim_sort_key(city: CityState, id: int, column: int, data: PackedByteArray,
+		sites: Dictionary[int, CityRecords.Site]) -> Variant:
+	var tile := int(data[id * CityState.MICROSIM_RECORD_SIZE])
+	var value: String = "Empty" if tile == BuildingTileIds.EMPTY else FACILITIES.get(tile, "Facility 0x%02X" % tile)
+
+	match column:
+		0:
+			return id
+		1:
+			return value
+		2:
+			return tile
+		3:
+			return _site_sort(sites.get(id))
+
+	var label := city.label(OverlayData.facility_id(id))
+
+	return "-" if label.is_empty() or label == value else label
+
+
+# the search text of a MicroSim record: its row cells and its stored values,
+# read from the record bytes without a row
+static func microsim_search_text(city: CityState, id: int, data: PackedByteArray,
+		sites: Dictionary[int, CityRecords.Site]) -> String:
+	var at := id * CityState.MICROSIM_RECORD_SIZE
+	var tile := int(data[at])
+	var site: CityRecords.Site = sites.get(id)
+	var position := "not on map" if site == null else "(%d, %d) %d×%d" % [site.x, site.y, site.width, site.height]
+	var stats := [data[at + Sc2MicrosimLayout.STAT_0], BinaryData.read_u16_be(data, at + Sc2MicrosimLayout.STAT_1),
+		BinaryData.read_u16_be(data, at + Sc2MicrosimLayout.STAT_2), BinaryData.read_u16_be(data, at + Sc2MicrosimLayout.STAT_3)]
+
+	var values: Array = [id, microsim_sort_key(city, id, 1, data, sites), tile, tile, position,
+		microsim_sort_key(city, id, 4, data, sites)]
+
+	return ("record %d %s 0x%02x %d %s %s %d %d %d %d" % (values + stats)).to_lower()
+
+
+static func microsim_row(city: CityState, id: int, sites: Dictionary[int, CityRecords.Site]) -> DebugTableRecord:
+	var record := city.microsim(id)
+	var tile := record.tile_id if record != null else 0
+	var fields: Array[DebugTableRecord] = []
+	fields.append(_field("tile_id", tile, "Type"))
+	var labels: Array = STAT_LABELS.get(
+		tile,
+		["Type-specific byte", "Type-specific statistic", "Type-specific statistic", "Type-specific statistic"],
+	)
+
+	for index in 4:
+		fields.append(_field("stat_%d" % index, record.statistic(index) if record != null else 0, labels[index]))
+
+	var value: String = "Empty" if tile == BuildingTileIds.EMPTY else FACILITIES.get(tile, "Facility 0x%02X" % tile)
+	var label := city.label(OverlayData.facility_id(id))
+	var site: CityRecords.Site = sites.get(id)
+	var detail := "-" if label.is_empty() or label == value else label
+	var row := DebugTableRecord.new()
+	row.id = str(id)
+	row.name = "Record %d" % id
+	row.value = value
+	row.raw = "0x%02X" % tile
+	row.position = "Not on map" if site == null else "(%d, %d) %d×%d" % [site.x, site.y, site.width, site.height]
+	row.site = site
+	row.detail = detail
+	# sort values per visible column, excluding the locate icon column
+	row.sort = [id, value, tile, _site_sort(site), detail]
+	row.empty = tile == BuildingTileIds.EMPTY
+	row.fields = fields
+
+	return row
+
+
+static func object_row(city: CityState, id: int) -> DebugTableRecord:
+	var record := city.thing(id)
+	var table := DebugObjectFields.table_cells(id, record, city)
+	var site := null if record.type == 0 or city.index_of(record.x, record.y) < 0 \
+		else CityRecords.Site.new(record.x, record.y, 1, 1)
+	var sort: Array = [id]
+
+	for key: String in DebugObjectFields.COLUMNS:
+		# translated columns sort by their visible text; the rest by stored value
+		sort.append(table.cells[sort.size()] if key in DebugObjectFields.TRANSLATED else record.get(key))
+
+	var row := DebugTableRecord.new()
+	row.id = str(id)
+	row.name = "Object %d" % id
+	row.value = DebugObjectFields.type_name(record.type)
+	row.raw = "(%d, %d, %d)" % [record.x, record.y, record.z]
+	row.cells = table.cells
+	row.tooltips = table.tooltips
+	row.empty = record.type == 0
+	row.site = site
+	row.sort = sort
+	var stored := DebugTableRecord.new()
+	stored.cells = table.raw
+	stored.tooltips = table.tooltips
+	row.fields = [stored]
+
+	return row
 
 
 # records the game can use in a record table, or -1 for a table without a limit.
