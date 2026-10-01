@@ -63,8 +63,11 @@ func _run() -> void:
 			tab_name, table.row_count(), refresh_ms, sort_ms, search_ms, frame_ms.x, frame_ms.y])
 
 		if not image_folder.is_empty():
-			table.table._v_scroll.value = 0
+			# half a row scrolls under the header
+			table.table._v_scroll.value = table.table._row_height() * 0.5
 			table.table.set_expanded(table.shown_ids()[0], true) if table.row_count() > 0 else null
+			# show the hover highlight on the third row
+			table.table._set_hovered(2)
 			await _frames()
 			DirAccess.make_dir_recursive_absolute(image_folder)
 			root.get_texture().get_image().save_png(image_folder.path_join("table_%s.png" % tab_name.to_lower()))

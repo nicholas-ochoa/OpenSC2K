@@ -355,6 +355,45 @@ func _check_sorting() -> void:
 	assert(order.call() == ["Record 0", "Record 2", "Record 10", "Record 5"])
 	assert(panel.table.is_expanded("10"))
 	assert(panel.table.display_count() == 4 + panel.source.row("10").fields.size(), "An open record shows its fields")
+	# the row under the mouse is highlighted until the mouse leaves
+	panel.table.size = Vector2(800, 400)
+	var motion := InputEventMouseMotion.new()
+	motion.position = Vector2(20, panel.table._header_height() + panel.table._row_height() * 1.5)
+	panel.table._gui_input(motion)
+	assert(panel.table._hovered == 1)
+	panel.table.mouse_exited.emit()
+	assert(panel.table._hovered == -1)
+
+	# a wheel step scrolls an eighth of a page in pixels, as a Tree does; a
+	# trackpad step scrolls less
+	var many: Array[DebugTableRecord] = []
+
+	for index in 300:
+		var record := DebugTableRecord.new()
+		record.id = str(index)
+		record.name = "Record %d" % index
+		many.append(record)
+
+	panel.update_records(many)
+	var scroll := panel.table._v_scroll
+	assert(scroll.visible and is_equal_approx(scroll.page, panel.table._body_height()))
+	var wheel := InputEventMouseButton.new()
+	wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
+	wheel.pressed = true
+	wheel.factor = 1.0
+	panel.table._gui_input(wheel)
+	assert(is_equal_approx(scroll.value, scroll.page / 8.0), "A wheel step is an eighth of a page")
+	wheel.factor = 0.25
+	panel.table._gui_input(wheel)
+	assert(is_equal_approx(scroll.value, scroll.page / 8.0 * 1.25), "A trackpad step follows its factor")
+	var pan := InputEventPanGesture.new()
+	pan.delta = Vector2(0, -1.25)
+	panel.table._gui_input(pan)
+	assert(is_equal_approx(scroll.value, 0.0))
+	# a row shows from the pixel where the scroll stops
+	scroll.value = panel.table._row_height() * 10.5
+	var under := panel.table.hit(Vector2(20, panel.table._header_height() + 1))
+	assert(under[0] == 10, "Row 10 shows in part under the header")
 	panel.free()
 
 

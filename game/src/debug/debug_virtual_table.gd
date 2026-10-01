@@ -13,8 +13,9 @@ signal cell_edited(id: String, field: int, column: int, text: String)
 const CELL_PADDING := 8
 const ROW_PADDING := 6
 const FIELD_INDENT := 18
-const WHEEL_ROWS := 3
-const WHEEL_PIXELS := 48.0
+# a wheel step scrolls this part of a page, as a Tree does. a trackpad sends
+# steps of a smaller factor
+const WHEEL_PAGE_PART := 1.0 / 8.0
 const WARNING_COLOR := Color(1.0, 0.85, 0.2, 0.3)
 const ELLIPSIS := "…"
 # the field part of a display row: 0 is the record row, n is field n - 1
@@ -41,6 +42,10 @@ var _v_scroll := VScrollBar.new()
 var _h_scroll := HScrollBar.new()
 var _editor := LineEdit.new()
 var _edit_target: Array = []
+# the display row under the mouse, or -1
+var _hovered := -1
+# the rows draw here, clipped below the header
+var _body := Control.new()
 
 
 func _init() -> void:
@@ -49,8 +54,13 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_v_scroll.value_changed.connect(func(_value: float) -> void: queue_redraw())
-	_h_scroll.value_changed.connect(func(_value: float) -> void: queue_redraw())
+	_body.name = "Rows"
+	_body.clip_contents = true
+	_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_body.draw.connect(_draw_rows)
+	add_child(_body)
+	_v_scroll.value_changed.connect(func(_value: float) -> void: _hover_mouse())
+	_h_scroll.value_changed.connect(func(_value: float) -> void: _redraw())
 	add_child(_v_scroll)
 	add_child(_h_scroll)
 	_editor.hide()
@@ -58,92 +68,59 @@ func _init() -> void:
 	_editor.focus_exited.connect(_cancel_edit)
 	add_child(_editor)
 	resized.connect(_layout_scrollbars)
+	mouse_exited.connect(_set_hovered.bind(-1))
 
 
 func _draw() -> void:
-	var font := _font()
-	var font_size := _font_size()
-	var color := get_theme_color("font_color", "Tree")
-	var panel := get_theme_stylebox("panel", "Tree")
-	draw_style_box(panel, Rect2(Vector2.ZERO, size))
-	var first := int(_v_scroll.value)
-	var last := mini(_display.size(), first + _visible_rows() + 1)
+	draw_style_box(get_theme_stylebox("panel", "Tree"), Rect2(Vector2.ZERO, size))
+	var scroll := _scroll_pixels()
+	var first := int(scroll / _row_height())
+	var last := mini(_display.size(), int((scroll + _body_height()) / _row_height()) + 1)
 
 	if _fit_visible(first, last):
 		_layout_scrollbars()
 
-	var offset := -_h_scroll.value if _h_scroll.visible else 0.0
-	var row_height := _row_height()
-	var baseline := (row_height + font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5
-	var bar := _v_scroll.size.x if _v_scroll.visible else 0.0
-	var available := size.x - bar
-	var widths := _widths.duplicate()
-
-	# the last column takes the free width
-	if expand_last and not widths.is_empty() and _total_width() < available:
-		widths[-1] += available - _total_width()
-
-	_draw_header(font, font_size, offset, widths)
-	var selected_box := get_theme_stylebox("selected", "Tree")
-
-	for index in range(first, last):
-		var y := _header_height() + (index - first) * row_height
-		var row := display_row(index)
-		var id: String = row[0]
-		var field: int = row[1]
-		var record := source.row(id)
-		var rect := Rect2(0, y, available, row_height)
-
-		if id == selected and field < 0:
-			draw_style_box(selected_box, rect)
-		elif field < 0 and not record.warning.is_empty():
-			draw_rect(rect, WARNING_COLOR)
-
-		var cells := cells_of(id, field)
-		var x := offset
-
-		for column in widths.size():
-			var width: float = widths[column]
-
-			if column == locate_column:
-				if field < 0 and record.site != null and locate_icon != null:
-					var icon_at := Vector2(x + (width - locate_icon.get_width()) * 0.5, y + (row_height - locate_icon.get_height()) * 0.5)
-					draw_texture(locate_icon, icon_at, color)
-			elif column < cells.size():
-				var indent := 0.0
-
-				if column == 0:
-					indent = FIELD_INDENT if field >= 0 else 0.0
-
-					if field < 0 and not record.fields.is_empty():
-						var arrow := get_theme_icon("arrow" if expanded.has(id) else "arrow_collapsed", "Tree")
-						draw_texture(arrow, Vector2(x + 2, y + (row_height - arrow.get_height()) * 0.5), color)
-
-					indent += FIELD_INDENT
-
-				var room := width - CELL_PADDING * 2 - indent
-				var text := _fit_text(cells[column], room, font, font_size)
-				draw_string(font, Vector2(x + CELL_PADDING + indent, y + baseline), text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size,
-					color)
-
-			x += width
+	_draw_header(_font(), _font_size(), _column_offset(), _draw_widths())
+	_body.queue_redraw()
 
 
 func _gui_input(event: InputEvent) -> void:
+	var pan := event as InputEventPanGesture
+
+	# a trackpad pan, as a Tree scrolls it
+	if pan != null:
+		_v_scroll.value += _v_scroll.page * pan.delta.y * WHEEL_PAGE_PART
+		_h_scroll.value += _h_scroll.page * pan.delta.x * WHEEL_PAGE_PART
+		accept_event()
+
+		return
+
+	if event is InputEventMouseMotion:
+		var target := hit((event as InputEventMouseMotion).position)
+		_set_hovered(target[0] if target[0] >= 0 else -1)
+
+		return
+
 	var button := event as InputEventMouseButton
 
 	if button == null or not button.pressed:
 		return
 
+	var factor := button.factor if button.factor > 0.0 else 1.0
+
 	match button.button_index:
 		MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN:
-			var step := -1.0 if button.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0
+			var step := (-1.0 if button.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0) * factor * WHEEL_PAGE_PART
 
 			if button.shift_pressed:
-				_h_scroll.value += step * WHEEL_PIXELS
+				_h_scroll.value += step * _h_scroll.page
 			else:
-				_v_scroll.value += step * WHEEL_ROWS
+				_v_scroll.value += step * _v_scroll.page
 
+			accept_event()
+		MOUSE_BUTTON_WHEEL_LEFT, MOUSE_BUTTON_WHEEL_RIGHT:
+			var step := (-1.0 if button.button_index == MOUSE_BUTTON_WHEEL_LEFT else 1.0) * factor * WHEEL_PAGE_PART
+			_h_scroll.value += step * _h_scroll.page
 			accept_event()
 		MOUSE_BUTTON_LEFT:
 			_click(button)
@@ -167,6 +144,90 @@ func _get_tooltip(at: Vector2) -> String:
 	return tooltip_of(entry[0], entry[1], target[1])
 
 
+# the rows, on a clipped area under the header. the scroll value is in pixels,
+# so a row can show in part
+func _draw_rows() -> void:
+	var font := _font()
+	var font_size := _font_size()
+	var color := get_theme_color("font_color", "Tree")
+	var scroll := _scroll_pixels()
+	var row_height := _row_height()
+	var first := int(scroll / row_height)
+	var last := mini(_display.size(), int((scroll + _body_height()) / row_height) + 1)
+	var offset := _column_offset()
+	var baseline := (row_height + font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5
+	var available := _body.size.x
+	var widths := _draw_widths()
+	var selected_box := get_theme_stylebox("selected", "Tree")
+	var hovered_box := get_theme_stylebox("hovered", "Tree")
+	var hovered_selected_box := get_theme_stylebox("hovered_selected", "Tree")
+	var guides := get_theme_constant("draw_guides", "Tree") != 0
+	var guide_color := get_theme_color("guide_color", "Tree")
+
+	for index in range(first, last):
+		var y := index * row_height - scroll
+		var row := display_row(index)
+		var id: String = row[0]
+		var field: int = row[1]
+		var record := source.row(id)
+		var rect := Rect2(0, y, available, row_height)
+
+		if field < 0 and not record.warning.is_empty():
+			_body.draw_rect(rect, WARNING_COLOR)
+
+		if id == selected and field < 0:
+			_body.draw_style_box(hovered_selected_box if index == _hovered else selected_box, rect)
+		elif index == _hovered:
+			_body.draw_style_box(hovered_box, rect)
+
+		if guides:
+			_body.draw_line(Vector2(0, y + row_height - 0.5), Vector2(available, y + row_height - 0.5), guide_color)
+
+		var cells := cells_of(id, field)
+		var x := offset
+
+		for column in widths.size():
+			var width: float = widths[column]
+
+			if column == locate_column:
+				if field < 0 and record.site != null and locate_icon != null:
+					var icon_at := Vector2(x + (width - locate_icon.get_width()) * 0.5, y + (row_height - locate_icon.get_height()) * 0.5)
+					_body.draw_texture(locate_icon, icon_at, color)
+			elif column < cells.size():
+				var indent := 0.0
+
+				if column == 0:
+					indent = FIELD_INDENT if field >= 0 else 0.0
+
+					if field < 0 and not record.fields.is_empty():
+						var arrow := get_theme_icon("arrow" if expanded.has(id) else "arrow_collapsed", "Tree")
+						_body.draw_texture(arrow, Vector2(x + 2, y + (row_height - arrow.get_height()) * 0.5), color)
+
+					indent += FIELD_INDENT
+
+				var room := width - CELL_PADDING * 2 - indent
+				var text := _fit_text(cells[column], room, font, font_size)
+				_body.draw_string(font, Vector2(x + CELL_PADDING + indent, y + baseline), text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+					font_size, color)
+
+			x += width
+
+
+# a scroll moves other rows under a still mouse
+func _hover_mouse() -> void:
+	var at := get_local_mouse_position()
+	var inside := Rect2(Vector2.ZERO, size).has_point(at)
+	var target := hit(at) if inside else [-1, -1]
+	_hovered = target[0] if target[0] >= 0 else -1
+	_redraw()
+
+
+func _set_hovered(row: int) -> void:
+	if row != _hovered:
+		_hovered = row
+		_redraw()
+
+
 func set_columns(column_titles: Array, tooltips: Array, widths: Array, locate := -1) -> void:
 	titles = column_titles.duplicate()
 	title_tooltips = tooltips.duplicate()
@@ -177,7 +238,7 @@ func set_columns(column_titles: Array, tooltips: Array, widths: Array, locate :=
 
 func set_title(column: int, text: String) -> void:
 	titles[column] = text
-	queue_redraw()
+	_redraw()
 
 
 func column_count() -> int:
@@ -259,13 +320,13 @@ func reset_widths() -> void:
 	for column in titles.size():
 		_widths.append(float(minimum_widths[column]) if column < minimum_widths.size() else 0.0)
 
-	queue_redraw()
+	_redraw()
 
 
 func scroll_to(id: String) -> void:
 	for index in _display.size():
 		if source.ids[_display[index] >> FIELD_BITS] == id:
-			_v_scroll.value = clampf(index - _visible_rows() / 2.0, 0.0, _v_scroll.max_value)
+			_v_scroll.value = (index + 0.5) * _row_height() - _body_height() * 0.5
 
 			return
 
@@ -323,7 +384,7 @@ func _rebuild_display() -> void:
 			at += 1
 
 	_layout_scrollbars()
-	queue_redraw()
+	_redraw()
 
 
 func _font() -> Font:
@@ -342,8 +403,34 @@ func _header_height() -> float:
 	return _row_height() + 4.0
 
 
-func _visible_rows() -> int:
-	return maxi(1, int((size.y - _header_height() - _h_scroll.size.y) / _row_height()))
+# the header and the rows draw again
+func _redraw() -> void:
+	queue_redraw()
+	_body.queue_redraw()
+
+
+func _scroll_pixels() -> float:
+	return _v_scroll.value if _v_scroll.visible else 0.0
+
+
+func _column_offset() -> float:
+	return -_h_scroll.value if _h_scroll.visible else 0.0
+
+
+# the column widths to draw. the last column takes the free width
+func _draw_widths() -> Array:
+	var widths := _widths.duplicate()
+	var available := size.x - (_v_scroll.size.x if _v_scroll.visible else 0.0)
+
+	if expand_last and not widths.is_empty() and _total_width() < available:
+		widths[-1] += available - _total_width()
+
+	return widths
+
+
+# the height of the rows area, between the header and the horizontal scroll bar
+func _body_height() -> float:
+	return maxf(0.0, size.y - _header_height() - (_h_scroll.size.y if _h_scroll.visible else 0.0))
 
 
 func _layout_scrollbars() -> void:
@@ -353,13 +440,15 @@ func _layout_scrollbars() -> void:
 	_v_scroll.size = Vector2(bar, maxf(0.0, size.y - _header_height() - bar_height))
 	_h_scroll.position = Vector2(0, size.y - bar_height)
 	_h_scroll.size = Vector2(maxf(0.0, size.x - bar), bar_height)
-	_v_scroll.max_value = _display.size()
-	_v_scroll.page = _visible_rows()
-	_v_scroll.visible = _display.size() > _visible_rows()
 	var total := _total_width()
 	_h_scroll.max_value = total
 	_h_scroll.page = size.x - bar
 	_h_scroll.visible = total > size.x - bar
+	_v_scroll.max_value = _display.size() * _row_height()
+	_v_scroll.page = _body_height()
+	_v_scroll.visible = _v_scroll.max_value > _v_scroll.page
+	_body.position = Vector2(0, _header_height())
+	_body.size = Vector2(size.x - (_v_scroll.size.x if _v_scroll.visible else 0.0), _body_height())
 
 
 func _total_width() -> float:
@@ -432,12 +521,8 @@ static func _fit_text(text: String, room: float, font: Font, font_size: int) -> 
 # [display row or -1, column or -1] at a point. row -2 is the header
 func hit(at: Vector2) -> Array:
 	var column := -1
-	var x := -_h_scroll.value if _h_scroll.visible else 0.0
-	var widths := _widths.duplicate()
-	var available := size.x - (_v_scroll.size.x if _v_scroll.visible else 0.0)
-
-	if expand_last and not widths.is_empty() and _total_width() < available:
-		widths[-1] += available - _total_width()
+	var x := _column_offset()
+	var widths := _draw_widths()
 
 	for index in widths.size():
 		if at.x >= x and at.x < x + float(widths[index]):
@@ -449,7 +534,8 @@ func hit(at: Vector2) -> Array:
 	if at.y < _header_height():
 		return [-2, column]
 
-	var row := int(_v_scroll.value) + int((at.y - _header_height()) / _row_height())
+	var scroll := _v_scroll.value if _v_scroll.visible else 0.0
+	var row := int((at.y - _header_height() + scroll) / _row_height())
 
 	return [row if row < _display.size() else -1, column]
 
@@ -483,7 +569,7 @@ func _click(button: InputEventMouseButton) -> void:
 	elif button.double_click and editable.is_valid() and editable.call(record, field, column):
 		_begin_edit(row, id, field, column)
 
-	queue_redraw()
+	_redraw()
 
 
 func _on_arrow(at: Vector2) -> bool:
@@ -499,7 +585,8 @@ func _begin_edit(row: int, id: String, field: int, column: int) -> void:
 		x += _widths[index]
 
 	_edit_target = [id, field, column]
-	_editor.position = Vector2(x, _header_height() + (row - int(_v_scroll.value)) * _row_height())
+	var scroll := _v_scroll.value if _v_scroll.visible else 0.0
+	_editor.position = Vector2(x, _header_height() + row * _row_height() - scroll)
 	_editor.size = Vector2(_widths[column], _row_height())
 	_editor.text = cells_of(id, field)[column]
 	_editor.show()
