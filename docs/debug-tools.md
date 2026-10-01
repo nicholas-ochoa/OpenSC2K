@@ -88,7 +88,12 @@ tile with a moving object lists each decoded field of the object.
   `debug_captures/chunks`. The mark keeps the chunks as they were, so it holds a copy of
   each chunk that changes later.
 - **MISC.** The city values and every MISC word, with the Sc2MiscLayout names. Double-click
-  a value to change a word.
+  a value to change a word. A change writes only that word: tiles, data maps and other
+  chunks stay the same, and code that reads the word uses the new value the next time it
+  runs. For example, WATER_LEVEL records the sea level, but the water on the map comes
+  from each tile's ALTM, XTER and XBIT values; the word sets pump supply at the next
+  water scan and the start of Raise and Lower Sea Level. The Notes column names the
+  readers of some words.
 - **Scenario.** The scenario goals with their current values and requirements, the
   scenario disaster tile, and the disaster preview with a tick count.
 

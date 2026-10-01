@@ -11,6 +11,20 @@ const COLUMNS := ["Field", "Offset", "Value", "Hex", "Notes"]
 const VALUE_COLUMN := 2
 const REFRESH_MSEC := 1000
 const SKIPPED := ["SIZE", "WORD_SIZE"]
+const HELP := ("A change writes only this MISC word. The map tiles, data maps and other chunks stay the same. Code " +
+	"that reads the word uses the new value the next time it runs; the Notes column names the readers of some words.")
+# what reads a word, and when. other words have no note yet
+const NOTES := {
+	"FUNDS": "Status bar and budget at once; spending and taxes change it.",
+	"WATER_LEVEL": ("Sea level record. Water on the map comes from each tile's ALTM water height, XTER and XBIT, so " +
+		"this moves no water. The monthly water scan gives each pump rain / 2 + sea level x 5 supply. Raise and Lower " +
+		"Sea Level start from it."),
+	"CITY_DAYS": "The engine clock keeps its own day count, and the next day writes it here again. A load reads it.",
+	"NO_DISASTERS": "The Disasters > No Disasters option. The weather and disaster day of each month reads it.",
+	"MILITARY_BASE_TYPE": "The military proposal reads it: 0 none, 1 declined, 2 Army, 3 Air Force, 4 Navy, 5 Missile Silos.",
+	"DEMAND": ("Residential, commercial and industrial demand. Growth reads it; the monthly demand phase moves it from " +
+		"its current value, within -2000 to 2000."),
+}
 
 var table: Tree
 var search: LineEdit
@@ -30,6 +44,11 @@ func _init() -> void:
 	search.text_changed.connect(func(_text: String) -> void: _filter())
 	controls.add_child(search)
 	make_button(controls, "Undo edit", "Put back the MISC bytes from before the last debug edit.", _undo)
+	var help := Label.new()
+	help.text = HELP
+	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	help.add_theme_font_size_override("font_size", 12)
+	add_child(help)
 	table = make_table(COLUMNS, 4)
 	table.set_column_custom_minimum_width(0, 260)
 	table.item_edited.connect(_on_item_edited)
@@ -139,6 +158,9 @@ func _word_row(parent: TreeItem, title: String, offset: int) -> void:
 	row.set_tooltip_text(VALUE_COLUMN, "Double-click to change this word. The change is a debug edit.")
 	row.set_meta("offset", offset)
 	row.set_meta("name", title)
+	var note: String = NOTES.get(title.get_slice("[", 0), "")
+	row.set_text(4, note)
+	row.set_tooltip_text(4, note)
 	_rows[offset] = row
 
 

@@ -133,6 +133,7 @@ func _check_misc_tab(main: CityApplication) -> void:
 	assert(tab._rows.size() == Sc2MiscLayout.SIZE / Sc2MiscLayout.WORD_SIZE)
 	assert(tab._rows[Sc2MiscLayout.FUNDS].get_text(CityDebugMiscTab.VALUE_COLUMN) == str(main.document_state.city.funds()))
 	assert(tab._city_rows["File format"].get_text(CityDebugMiscTab.VALUE_COLUMN) == "SC2")
+	assert(tab._rows[Sc2MiscLayout.WATER_LEVEL].get_text(4).begins_with("Sea level record"))
 	tab.free()
 
 
@@ -213,6 +214,7 @@ func _check_growth_and_grid(main: CityApplication, city: CityState) -> void:
 	assert(main.map_view.debug_view.tile_layer.mesh != null)
 	main.debug_tools.on_debug_menu(CityDebugMenu.MENU_TILE_GRID)
 	assert(not main.debug_tools.state.tile_grid)
+	await _wait_until(func() -> bool: return main.map_view.debug_view.labels.labels.is_empty())
 	main.map_view.zoom_factor = 1.0
 
 

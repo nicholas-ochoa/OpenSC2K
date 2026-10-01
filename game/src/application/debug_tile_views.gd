@@ -175,7 +175,14 @@ func process(now: int) -> bool:
 	var city := app.document_state.city
 
 	if (state.tile_layer == Layer.NONE and not state.tile_grid) or city == null or app.map_view == null:
-		return false
+		# the grid or the layer turned off: take its text off the map
+		if value_labels.is_empty():
+			return false
+
+		value_labels.clear()
+		_label_signature.clear()
+
+		return true
 
 	var view := app.map_view.debug_view
 
