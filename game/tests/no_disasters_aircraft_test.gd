@@ -30,7 +30,9 @@ func check_aircraft(edge: int, enabled: bool, fixture: String) -> void:
 	var falling := "falling" in fixture
 	var type := 2 if helicopter else 1
 	var state := (5 if helicopter else 7) if falling else (1 if fixture == "landing" else 0)
-	var building := 0xfb if "arcology" in fixture else (0xd2 if fixture == "plane_building" else 0)
+	var building := 0xfb if "arcology" in fixture else (0xd2 if fixture in ["plane_building", "falling_helicopter"] else 0)
+	# a shot-down helicopter still crashes, but the explosion does no damage
+	var harmless_crash := enabled and fixture == "falling_helicopter"
 	city.set_building_id(point.x, point.y, building)
 	var things := city.document.find_chunk("XTHG").decoded_payload.duplicate()
 	var record := city.thing_count() - 1
@@ -57,15 +59,20 @@ func check_aircraft(edge: int, enabled: bool, fixture: String) -> void:
 	var result := MovingThingPhase.run(city, random, lfsr)
 	check(result.ok, "Aircraft tick succeeds")
 	var crashes: int = result.crashed_airplanes + result.crashed_helicopters
-	check(crashes == (0 if enabled else 1), "%s edge %d respects No disasters=%s" % [fixture, edge, enabled])
-	check(city.thing(record).type != 6 if enabled else city.thing(record).type == 6, "No crash explosion when disabled")
+	check(crashes == (0 if enabled and not harmless_crash else 1), "%s edge %d respects No disasters=%s" % [fixture, edge, enabled])
+	check(
+		city.thing(record).type != 6 if enabled and not harmless_crash else city.thing(record).type == 6,
+		"No crash explosion when disabled, except a harmless helicopter crash",
+	)
 
 	if enabled:
 		check(result.disaster_start_requests.is_empty() and city.document.misc_u32(0x0070) == 0, "No crash disaster request")
 		check(city.buildings == buildings_before, "Aircraft leaves buildings unchanged")
 		check(lfsr.state == 7, "Blocked crashes do not draw damage RNG")
 
-		if falling:
+		if harmless_crash:
+			check(city.thing(record).goal == 0, "A helicopter crash spreads no fire")
+		elif falling:
 			check(city.thing(record).type == 0, "Falling aircraft removed safely")
 			check(city.text_overlay_id(point.x, point.y) == 61, "Safe removal restores underlying facility")
 			check(result.sound_events.is_empty(), "Falling aircraft emits no disaster sound")
@@ -77,3 +84,9 @@ func check_aircraft(edge: int, enabled: bool, fixture: String) -> void:
 			result = MovingThingPhase.run(city, random, lfsr)
 			check(result.ok and result.crashed_airplanes == 0 and result.crashed_helicopters == 0, "Later tick stays crash-free")
 			check(city.buildings == buildings_before, "Later tick preserves buildings")
+			check(lfsr.state == 7, "Later tick draws no damage RNG")
+			check(result.disaster_start_requests.is_empty(), "Later tick requests no disaster")
+
+		if harmless_crash:
+			check(city.thing(record).type == 0, "The harmless helicopter explosion ends")
+			check(city.text_overlay_id(point.x, point.y) == 61, "The harmless explosion restores the underlying facility")

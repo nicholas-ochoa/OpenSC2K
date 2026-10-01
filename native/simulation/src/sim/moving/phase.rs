@@ -161,6 +161,7 @@ pub fn run(
                     random,
                     lfsr,
                     options.allow_disaster_damage,
+                    no_disasters,
                     &mut counters,
                 );
             }

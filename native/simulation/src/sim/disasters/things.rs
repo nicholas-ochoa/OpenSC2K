@@ -11,6 +11,7 @@ use crate::sim::ids::sc2microsim_layout;
 use crate::sim::ids::sc2misc_layout as misc_layout;
 use crate::sim::ids::sc2tile_flags as flag_bits;
 use crate::sim::ids::sc2zone_layout as zone;
+use crate::sim::moving::air::{EXPLOSION_HELICOPTER_CRASH, remove_without_crash};
 use crate::sim::moving::motion::{self, DIRECTIONS, direction_quadrant, index};
 use crate::sim::moving::result::{ConnectionChange, DisasterRequest, MovingThingResult, queue_thing_sound, record_type};
 use crate::sim::overlay;
@@ -62,6 +63,7 @@ pub fn update_explosion(
     random: &mut SimRandom,
     lfsr: &mut SimLfsrRandom,
     allow_disaster_damage: bool,
+    no_disasters: bool,
     counters: &mut MovingThingResult,
 ) {
     let edge = maps.maps.map_edge;
@@ -75,6 +77,15 @@ pub fn update_explosion(
 
     if frame < 2 {
         things::write(maps.things, offset + 1, (frame + 1) & 0xff);
+
+        return;
+    }
+
+    // No Disasters lets a helicopter crash play out without damage. The tile
+    // keeps its building and the overlay below the helicopter.
+    if no_disasters && disaster_type == EXPLOSION_HELICOPTER_CRASH {
+        remove_without_crash(maps.maps.text_overlays, maps.things, record, edge);
+        counters.removed_explosions += 1;
 
         return;
     }

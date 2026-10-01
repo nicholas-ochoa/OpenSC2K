@@ -20,6 +20,8 @@ const SOUND_AIRPLANE_LANDING: i64 = 0x207;
 const HELICOPTER_SOUND_DELAY_MSEC: i64 = 5000;
 const AIRPLANE_SPEED: i64 = 16;
 const HELICOPTER_SPEED: i64 = 8;
+/// The explosion state after an emergency descent, as the helicopter crash disaster.
+pub const EXPLOSION_HELICOPTER_CRASH: i64 = 0x11;
 const AIR_ROUTE_DELTAS: [Vec2i; 8] = [
     Vec2i::new(0, -3),
     Vec2i::new(3, -3),
@@ -45,7 +47,8 @@ fn field(data: &[u8], offset: i64, field: i64) -> i64 {
     things::read(data, offset + field)
 }
 
-fn remove_without_crash(text: &mut [u8], data: &mut [u8], record: i64, map_edge: i64) {
+/// Take an aircraft off the map and restore the overlay that it covered.
+pub fn remove_without_crash(text: &mut [u8], data: &mut [u8], record: i64, map_edge: i64) {
     let offset = record * RECORD_SIZE;
     let point = Vec2i::new(field(data, offset, 3), field(data, offset, 4));
     let tile_index = index(point, map_edge);
@@ -389,13 +392,6 @@ pub fn update_helicopter(
         return;
     }
 
-    if no_disasters && field(data, offset, 2) == 5 {
-        remove_without_crash(text, data, record, edge);
-        counters.removed_helicopters += 1;
-
-        return;
-    }
-
     if !no_disasters && !no_accidents && maps.buildings[current_index as usize] as i64 > tiles::DESALINIZATION {
         convert_to_explosion(data, record, 5, 0);
         counters.crashed_helicopters += 1;
@@ -490,7 +486,9 @@ pub fn update_helicopter(
                 let height = field(data, offset, 5) - 1;
                 things::write(data, offset + 5, height);
             } else {
-                convert_to_explosion(data, record, 0x11, 1);
+                // No Disasters keeps the crash but spreads no fire.
+                let goal = if no_disasters { 0 } else { 1 };
+                convert_to_explosion(data, record, EXPLOSION_HELICOPTER_CRASH, goal);
                 counters.crashed_helicopters += 1;
             }
         }
