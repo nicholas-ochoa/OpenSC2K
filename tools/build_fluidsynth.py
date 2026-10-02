@@ -75,7 +75,7 @@ LIBRARY_NAMES = {
 }
 
 # the static codec libraries inside libsndfile, in link order
-LINUX_CODEC_LIBRARIES = ('libFLAC.a', 'libopus.a', 'libvorbisenc.a', 'libvorbis.a', 'libogg.a')
+CODEC_LIBRARIES = ('FLAC', 'opus', 'vorbisenc', 'vorbis', 'ogg')
 
 COMMON_OPTIONS = ['-DCMAKE_BUILD_TYPE=Release', '-DBUILD_SHARED_LIBS=OFF',
                   '-DCMAKE_POSITION_INDEPENDENT_CODE=ON', '-DCMAKE_INSTALL_LIBDIR=lib',
@@ -201,12 +201,18 @@ def build_from_source(architecture, quiet):
     for name in ('signalsmith-linear', 'signalsmith-dsp', 'signalsmith-hilbert'):
         fetched = extract(download(*SOURCES[name]), work / 'source' / name)
         options.append(f'-DFETCHCONTENT_SOURCE_DIR_{name.upper()}={fetched}')
+    # FluidSynth can find libsndfile without its codec dependencies, so the
+    # link names the static codec libraries explicitly
+    pattern = '{}.lib' if sys.platform == 'win32' else 'lib{}.a'
+    codecs = ' '.join((prefix / 'lib' / pattern.format(name)).as_posix() for name in CODEC_LIBRARIES)
     if sys.platform.startswith('linux'):
         # the package must not need the C++ runtime of the build machine
         options.append('-DCMAKE_SHARED_LINKER_FLAGS=-static-libstdc++ -static-libgcc')
         # GNU ld resolves static libraries in order, so the codecs of libsndfile go last
-        codecs = ' '.join(str(prefix / 'lib' / name) for name in LINUX_CODEC_LIBRARIES) + ' -lm'
-        options += [f'-DCMAKE_C_STANDARD_LIBRARIES={codecs}', f'-DCMAKE_CXX_STANDARD_LIBRARIES={codecs}']
+        options += [f'-DCMAKE_C_STANDARD_LIBRARIES={codecs} -lm', f'-DCMAKE_CXX_STANDARD_LIBRARIES={codecs} -lm']
+    else:
+        # the Apple and Microsoft linkers search static libraries in any order
+        options.append(f'-DCMAKE_SHARED_LINKER_FLAGS={codecs}')
     cmake(source, work / 'build' / 'fluidsynth', prefix, options, architecture, quiet)
     library = LIBRARY_NAMES[host_folder()][0]
     folder = 'bin' if sys.platform == 'win32' else 'lib'
