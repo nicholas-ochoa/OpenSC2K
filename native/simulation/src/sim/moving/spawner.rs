@@ -551,6 +551,7 @@ pub fn spawn_train_record(
         things::write(data, offset + FIELD_X, start.x);
         things::write(data, offset + FIELD_Y, start.y);
         things::write(data, offset + FIELD_Z, 0);
+        things::write(data, offset + FIELD_GOAL, 0);
     }
 
     let engine_offset = engine_record * RECORD_SIZE;

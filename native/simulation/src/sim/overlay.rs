@@ -189,6 +189,44 @@ pub fn lift_object(text: &mut [u8], things_data: &mut [u8], record: i64, index: 
     }
 }
 
+/// Put object `new_id` in the place of object `old_id` in the object chain of
+/// tile `index`. Only a layered index keeps object IDs in a chain, so a
+/// combined index stays unchanged.
+pub fn replace_object(text: &mut [u8], things_data: &mut [u8], index: i64, old_id: i64, new_id: i64) {
+    if !is_layered(text) {
+        return;
+    }
+
+    let mut above = object(text, index);
+
+    if above == old_id {
+        set_object(text, index, new_id);
+
+        return;
+    }
+
+    let records = super::things::count(things_data);
+
+    for _ in 0..records {
+        let above_record = thing_record(above);
+
+        if !is_thing(above) || above_record < 0 || above_record >= records {
+            return;
+        }
+
+        let label_offset = above_record * sc2thing_layout::RECORD_SIZE + sc2thing_layout::FIELD_LABEL;
+        let below = super::things::read(things_data, label_offset);
+
+        if below == old_id {
+            super::things::write(things_data, label_offset, new_id);
+
+            return;
+        }
+
+        above = below;
+    }
+}
+
 /// The facility of a tile: the facility layer of a layered index, else the
 /// base of the tile's object chain in a combined index.
 pub fn base_facility(data: &[u8], things_data: &[u8], index: i64) -> i64 {
