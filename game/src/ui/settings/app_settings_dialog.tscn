@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://src/ui/settings/app_settings_dialog.gd" id="1_wx7kb"]
 [ext_resource type="Script" path="res://src/ui/settings/controls_binding_list.gd" id="controls_binding_list"]
 
-[node name="AppSettingsDialog" type="ConfirmationDialog"]
+[node name="AppSettingsDialog" type="AcceptDialog"]
 visible = true
 title = "OpenSC2K Settings"
 size = Vector2i(700, 500)

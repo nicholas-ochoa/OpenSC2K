@@ -1,11 +1,15 @@
 class_name AppSettingsDialog
-extends ConfirmationDialog
+extends AcceptDialog
+## Settings apply as soon as the player changes them. Text fields apply when
+## the player presses Enter, leaves the field, or closes the dialog.
 
 @warning_ignore_start("integer_division")
 
 signal import_original_requested
 signal update_check_requested
 signal button_clicked
+# the player changed a setting. read the new values with selected_values()
+signal settings_changed
 # the player accepted the Use Defaults warning. the controls reset and save at once
 signal controls_reset_requested
 
@@ -48,17 +52,15 @@ var update_status_label: Label
 var controls_list: ControlsBindingList
 var use_defaults_button: Button
 var reset_controls_dialog: ConfirmationDialog
+# true while the application fills the controls with the saved values
+var loading_values := false
 
 
 func _ready() -> void:
 	hide()
 	theme = AppUiTheme.current()
 
-	get_ok_button().text = "Save Changes"
-	var button_row := get_ok_button().get_parent()
-	var cancel_index := get_cancel_button().get_index()
-	button_row.move_child(get_cancel_button(), get_ok_button().get_index())
-	button_row.move_child(get_ok_button(), cancel_index)
+	get_ok_button().text = "Close"
 	get_label().visible = false
 	background_audio_check = %BackgroundAudioCheck
 	check_for_updates_check = %CheckForUpdatesCheck
@@ -113,6 +115,12 @@ func _ready() -> void:
 	_watch_clicks(tabs)
 	tabs.get_tab_bar().tab_clicked.connect(button_clicked.emit.unbind(1))
 	_build_controls_reset(content)
+	_watch_changes(tabs)
+	controls_list.bindings_changed.connect(_notify_change)
+	# closing the dialog applies a text field that still has focus
+	visibility_changed.connect(func() -> void:
+		if not visible:
+			_notify_change())
 	canceled.connect(button_clicked.emit)
 	%ImportButton.pressed.connect(_request_original_import)
 	check_updates_now_button.pressed.connect(update_check_requested.emit)
@@ -181,6 +189,26 @@ func _watch_clicks(node: Node) -> void:
 		_watch_clicks(child)
 
 
+func _watch_changes(node: Node) -> void:
+	if node is CheckBox:
+		node.toggled.connect(_notify_change.unbind(1))
+	elif node is OptionButton:
+		node.item_selected.connect(_notify_change.unbind(1))
+	elif node is Slider:
+		node.value_changed.connect(_notify_change.unbind(1))
+	elif node is LineEdit:
+		node.text_submitted.connect(_notify_change.unbind(1))
+		node.focus_exited.connect(_notify_change)
+
+	for child in node.get_children():
+		_watch_changes(child)
+
+
+func _notify_change() -> void:
+	if not loading_values:
+		settings_changed.emit()
+
+
 func _on_slider_key_input(event: InputEvent) -> void:
 	if not event is InputEventKey:
 		return
@@ -227,6 +255,8 @@ func show_values(
 	source := "auto", folder := "", city_renderer := "gpu", background_audio := false,
 	zoom_graphics: Array = AppSettingsStore.DEFAULT_ZOOM_GRAPHICS,
 ) -> void:
+	var was_loading := loading_values
+	loading_values = true
 	pack_error_label.hide()
 	var normalized := AppSettingsStore.normalize_zoom_graphics(zoom_graphics, overview_graphics_selector.selected)
 
@@ -248,10 +278,11 @@ func show_values(
 			(tab as ScrollContainer).scroll_vertical = 0
 
 	_update_use_defaults(tabs.current_tab)
+	loading_values = was_loading
 	popup_centered()
 
 
-# show the saved bindings as pending changes
+# show the saved bindings
 func show_control_bindings(bindings: ControlBindings) -> void:
 	controls_list.show_bindings(bindings)
 
@@ -322,7 +353,8 @@ func _build_soundfont_controls() -> void:
 	picker.exclusive = true
 	add_child(picker)
 	picker.file_selected.connect(func(path: String) -> void:
-		soundfont_edit.text = path)
+		soundfont_edit.text = path
+		_notify_change())
 	%SoundFontBrowse.pressed.connect(func() -> void:
 		picker.popup_centered_ratio(0.8))
 
@@ -330,6 +362,8 @@ func _build_soundfont_controls() -> void:
 ## Shows the saved SoundFont choice and the synthesizer that plays now.
 func show_soundfont(choice: String, custom_path: String, status: String) -> void:
 	var normalized := SoundFontCatalog.normalize(choice)
+	# a saved choice that this computer does not offer shows the default
+	soundfont_selector.select(0)
 
 	for index in soundfont_selector.item_count:
 		if str(soundfont_selector.get_item_metadata(index)) == normalized:
@@ -403,6 +437,7 @@ func _pack_picker(kind: String, edit: LineEdit) -> FileDialog:
 	picker.exclusive = true
 	add_child(picker)
 	picker.file_selected.connect(func(path: String) -> void:
-		edit.text = path)
+		edit.text = path
+		_notify_change())
 
 	return picker

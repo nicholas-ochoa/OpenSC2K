@@ -135,6 +135,22 @@ func _test_fallback_order() -> void:
 	assert(SoundFonts.candidates(SoundFonts.BUILTIN, "").is_empty())
 	assert(SoundFonts.candidates("removed_soundfont", "") == PackedStringArray([SoundFonts.bundled_path(SoundFonts.DEFAULT_ID)]))
 
+	# the operating system sound set is offered only where it exists, and a saved
+	# system choice plays the default SoundFont on a computer without it
+	var system := SoundFonts.system_path()
+	assert((SoundFonts.SYSTEM in SoundFonts.choices()) == not system.is_empty())
+	assert(SoundFonts.normalize(SoundFonts.SYSTEM) == SoundFonts.SYSTEM)
+	var system_candidates := SoundFonts.candidates(SoundFonts.SYSTEM, "")
+	assert(system_candidates[system_candidates.size() - 1] == SoundFonts.bundled_path(SoundFonts.DEFAULT_ID))
+
+	if not system.is_empty():
+		assert(system_candidates[0] == system)
+		var engine := FluidMidiSynth.new()
+		assert(engine.load_soundfont(system).is_empty(), "FluidSynth reads the system sound set")
+		var player := MidiSynthPlayer.new()
+		assert(_energy(player.render_offline(_note_sequence(0, 69, 0), 4410, 1024, engine)) > 1e-4)
+		player.free()
+
 	var missing := temporary_folder.path_join("deleted.sf2")
 	var loaded := MidiSynthPlayer.load_engine(PackedStringArray([missing, _fixture()]))
 	assert(loaded.engine != null and loaded.path == _fixture() and loaded.errors.size() == 1)

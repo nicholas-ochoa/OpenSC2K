@@ -134,6 +134,8 @@ func _test_main() -> void:
 		assert(main.main_overlays.settings_dialog.selected_values().graphics_source == ("folder" if mode == "folder" else "auto"))
 		assert(main.main_overlays.settings_dialog.folder_row.visible)
 
+	# Close applies the values shown, so show the saved values again first
+	main.settings.open_settings_dialog()
 	main.main_overlays.settings_dialog.hide()
 	main.map_view.zoom_factor = 0.25
 	main.new_city.open_new_city_dialog()

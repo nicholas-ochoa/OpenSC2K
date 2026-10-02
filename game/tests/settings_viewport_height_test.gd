@@ -41,6 +41,4 @@ func _check_height(dialog: AppSettingsDialog, height: int) -> void:
 	assert(dialog.size.y + dialog.get_theme_constant("title_height") <= height,
 		"Dialog including title bar must fit within the viewport")
 	assert(dialog.get_ok_button().get_global_rect().end.y <= dialog.size.y,
-		"Save Changes must remain inside the dialog")
-	assert(dialog.get_cancel_button().get_global_rect().end.y <= dialog.size.y,
-		"Cancel must remain inside the dialog")
+		"Close must remain inside the dialog")

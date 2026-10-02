@@ -1,6 +1,6 @@
 extends SceneTree
-## The Controls tab edits bindings as pending changes. Use Defaults resets and
-## saves only the controls after a warning.
+## The Controls tab applies and saves each binding change at once. Use Defaults
+## resets the controls after a warning. Other settings also apply at once.
 
 var main: CityApplication
 var dialog: AppSettingsDialog
@@ -26,11 +26,11 @@ func _run() -> void:
 	await _test_row_layout()
 	_test_capture_and_conflicts()
 	_test_use_defaults()
-	_test_save_changes()
+	_test_immediate_apply()
 
 	main.queue_free()
 	await process_frame
-	print("PASS: Controls tab capture, conflicts, Cancel, and Use Defaults")
+	print("PASS: Controls tab capture, conflicts, Use Defaults, and immediate settings changes")
 	quit()
 
 
@@ -138,12 +138,14 @@ func _test_capture_and_conflicts() -> void:
 	var remove := chips.get_child(0).find_child("Remove", true, false) as Button
 	remove.pressed.emit()
 	assert(list.pending.for_action("tool_query").is_empty())
-	# Cancel discards every pending change
+	# each change applies at once, and Escape keeps it
+	assert(main.preferences.control_bindings.equals(list.pending))
+	assert(main.map_view.control_bindings.equals(list.pending), "The running game uses the changed bindings")
 	dialog.canceled.emit()
 	dialog.hide()
-	assert(main.preferences.control_bindings.equals(ControlBindings.defaults()))
 	main.settings.open_settings_dialog()
-	assert(dialog.controls_list.pending.equals(ControlBindings.defaults()), "Reopened settings show the saved bindings")
+	assert(dialog.controls_list.pending.equals(main.preferences.control_bindings), "Reopened settings show the saved bindings")
+	assert(dialog.controls_list.pending.for_action("tool_query").is_empty())
 
 
 func _test_use_defaults() -> void:
@@ -155,16 +157,16 @@ func _test_use_defaults() -> void:
 	main.settings.open_settings_dialog()
 	dialog.tabs.current_tab = AppSettingsDialog.CONTROLS_TAB
 	list.remove_binding("tool_query", 0)
-	dialog.default_mayor_edit.text = "Pending Mayor"
+	assert(main.preferences.control_bindings.for_action("tool_query").is_empty())
 	var saved_before := FileAccess.get_file_as_string(settings_path)
 	# Cancel on the warning changes nothing
 	dialog.use_defaults_button.pressed.emit()
 	assert(dialog.reset_controls_dialog.visible)
 	dialog.reset_controls_dialog.canceled.emit()
 	dialog.reset_controls_dialog.hide()
-	assert(list.pending.for_action("tool_query").is_empty(), "Cancel on the warning keeps pending edits")
+	assert(list.pending.for_action("tool_query").is_empty(), "Cancel on the warning keeps earlier edits")
 	assert(FileAccess.get_file_as_string(settings_path) == saved_before, "Cancel on the warning saves nothing")
-	# Reset Controls saves the defaults at once and no pending edit of another tab
+	# Reset Controls saves the defaults at once
 	dialog.use_defaults_button.pressed.emit()
 	dialog.reset_controls_dialog.confirmed.emit()
 	dialog.reset_controls_dialog.hide()
@@ -173,29 +175,40 @@ func _test_use_defaults() -> void:
 	for id in ControlActions.bindable_ids():
 		if AppSettingsStore.load_bindings(config).to_texts(id) != ControlBindings.defaults().to_texts(id):
 			assert(AppSettingsStore.load_bindings(config).equals(ControlBindings.defaults()))
-	assert(str(config.get_value("general", "default_mayor_name", "Mayor")) != "Pending Mayor")
 	assert(main.preferences.control_bindings.equals(ControlBindings.defaults()))
 	assert(main.map_view.control_bindings.equals(ControlBindings.defaults()), "The running game uses the defaults")
 	assert(list.pending.equals(ControlBindings.defaults()), "The Controls list shows the defaults")
 	assert(dialog.visible and dialog.tabs.current_tab == AppSettingsDialog.CONTROLS_TAB)
-	# a later Cancel keeps the reset and discards later control edits
-	list.remove_binding("tool_query", 0)
-	dialog.canceled.emit()
 	dialog.hide()
-	assert(main.preferences.control_bindings.equals(ControlBindings.defaults()))
-	assert(main.preferences.default_mayor_name != "Pending Mayor")
 
 
-func _test_save_changes() -> void:
+func _test_immediate_apply() -> void:
 	main.settings.open_settings_dialog()
 	var list := dialog.controls_list
 	list.start_capture("window_population")
 	list.capture_input(_key(KEY_P))
-	dialog.confirmed.emit()
 	assert(main.preferences.control_bindings.to_texts("window_population") == PackedStringArray(["key:P"]))
 	var config := ConfigFile.new()
 	assert(config.load(settings_path) == OK)
 	assert(config.get_value("controls", "binding/window_population") == PackedStringArray(["key:P"]))
+	# a check box applies and saves at once
+	var dark := not main.preferences.dark_underground
+	dialog.dark_underground_check.button_pressed = dark
+	assert(main.preferences.dark_underground == dark)
+	assert(AppSettingsStore.load_values(settings_path).dark_underground == dark)
+	# a text field applies on Enter, and the Close button applies a field that has focus
+	dialog.default_mayor_edit.text = "Entered Mayor"
+	assert(main.preferences.default_mayor_name != "Entered Mayor", "Typing alone does not apply")
+	dialog.default_mayor_edit.text_submitted.emit(dialog.default_mayor_edit.text)
+	assert(main.preferences.default_mayor_name == "Entered Mayor")
+	dialog.default_mayor_edit.text = "Closed Mayor"
+	dialog.get_ok_button().pressed.emit()
+	assert(not dialog.visible and main.preferences.default_mayor_name == "Closed Mayor")
+	assert(AppSettingsStore.load_values(settings_path).default_mayor_name == "Closed Mayor")
+	# opening Settings applies and saves nothing
+	var saved := FileAccess.get_file_as_string(settings_path)
+	main.settings.open_settings_dialog()
+	assert(FileAccess.get_file_as_string(settings_path) == saved)
 	dialog.hide()
 
 

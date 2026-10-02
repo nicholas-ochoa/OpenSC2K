@@ -130,7 +130,7 @@ func _run() -> void:
 	assert(AppSettingsStore.load_values(main.preferences.settings_path).data_pack_folder == data_path)
 	assert(main.asset_state.reference_root == data_path.get_base_dir() and main.original_text_resources.library_texts.size() == 4)
 	dialog.data_pack_edit.text = folder.path_join("missing-data/pack.json")
-	# OK hides Settings before it applies the values
+	# Close hides Settings and applies the values
 	dialog.hide()
 	main.settings.apply_settings()
 	await process_frame

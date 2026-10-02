@@ -66,6 +66,10 @@ The package includes two SoundFonts. Select one in **Settings > Audio > Music So
 
 - **OpenSC2K Default** or **FluidR3Mono GM**: the default.
 - **MuseScore General**: a fuller sound. It needs about 240 MB of memory.
+- **macOS GS Sound Set** or **Microsoft GS Wavetable Sound Set**: the Roland GS sounds that macOS
+  and Windows include. It is close to the General MIDI hardware of the original game. On Linux,
+  **System SoundFont** uses a SoundFont package of your distribution, such as `fluid-soundfont-gm`.
+  The choice appears only when the files exist.
 - **Custom SoundFont**: an SF2, SF3 or DLS General MIDI SoundFont of your own.
   Select the file with **Browse...**. OpenSC2K reads the file in place and does not copy or change it.
 - **Built-in synthesizer**: the simple synthesizer of earlier versions.

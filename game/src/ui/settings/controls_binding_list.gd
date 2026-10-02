@@ -3,9 +3,10 @@ extends VBoxContainer
 ## The Controls tab rows. Each row shows the bindings of one action, with a
 ## remove button for each binding and an add button that waits for the next
 ## key or mouse button. The chips wrap onto more lines when a row has many
-## bindings. Changes stay pending until the dialog saves them.
+## bindings. Each change applies at once through bindings_changed.
 
 signal button_clicked
+signal bindings_changed
 
 const LABEL_WIDTH := 190
 
@@ -152,6 +153,7 @@ func _chip(id: String, index: int, binding: ControlBinding) -> PanelContainer:
 func remove_binding(id: String, index: int) -> void:
 	pending.remove(id, index)
 	rebuild()
+	bindings_changed.emit()
 
 
 func start_capture(id: String) -> void:
@@ -275,6 +277,7 @@ func finish_capture(binding: ControlBinding) -> void:
 	if conflicts.is_empty():
 		pending.add(id, binding)
 		rebuild()
+		bindings_changed.emit()
 
 		return
 
@@ -301,6 +304,7 @@ func _reassign() -> void:
 	_conflict_binding = null
 	_conflicts.clear()
 	rebuild()
+	bindings_changed.emit()
 
 
 func chip_count(id: String) -> int:

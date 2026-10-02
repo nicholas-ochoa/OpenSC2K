@@ -32,6 +32,7 @@ func open_import_settings() -> void:
 
 
 func open_settings_dialog() -> void:
+	app.main_overlays.settings_dialog.loading_values = true
 	app.main_overlays.settings_dialog.dark_underground_check.button_pressed = preferences.dark_underground
 	app.main_overlays.settings_dialog.theme_selector.select(1 if preferences.ui_theme == "dark" else 0)
 	app.main_overlays.settings_dialog.translucent_menus_check.button_pressed = preferences.translucent_menus
@@ -54,6 +55,7 @@ func open_settings_dialog() -> void:
 		preferences.graphics_source, preferences.graphics_folder, preferences.city_renderer, preferences.background_audio,
 		preferences.zoom_graphics,
 	)
+	app.main_overlays.settings_dialog.loading_values = false
 	_refresh_settings_pack_names()
 
 
@@ -72,60 +74,78 @@ func _refresh_settings_pack_names() -> void:
 	app.main_overlays.settings_dialog.set_loaded_pack("data", app.asset_state.data_pack.pack_name, preferences.data_pack_folder)
 
 
+# apply the values in the Settings dialog. the dialog calls this for each
+# change, so apply and save only what changed. a pack that does not load keeps
+# the earlier pack and does not stop the other settings
 func apply_settings() -> void:
-	var values: AppSettingsStore.Values = app.main_overlays.settings_dialog.selected_values()
+	var dialog := app.main_overlays.settings_dialog
+	var values: AppSettingsStore.Values = dialog.selected_values()
+	var saved_before := _saved_settings_text()
+	var media_packs_changed := (not _same_pack(values.sound_pack_folder, preferences.sound_pack_folder)
+			or not _same_pack(values.music_pack_folder, preferences.music_pack_folder))
 
-	var pack_error: String = CityAudioController.validate_media_packs(values.sound_pack_folder, values.music_pack_folder)
+	if not media_packs_changed:
+		values.sound_pack_folder = preferences.sound_pack_folder
+		values.music_pack_folder = preferences.music_pack_folder
+	else:
+		var pack_error: String = CityAudioController.validate_media_packs(values.sound_pack_folder, values.music_pack_folder)
 
-	if not pack_error.is_empty():
-		app.main_overlays.settings_dialog.show_pack_error(pack_error)
+		if pack_error.is_empty():
+			dialog.pack_error_label.hide()
+		else:
+			dialog.show_pack_error(pack_error)
+			_show_saved_pack(dialog.sound_pack_edit, preferences.sound_pack_folder)
+			_show_saved_pack(dialog.music_pack_edit, preferences.music_pack_folder)
+			values.sound_pack_folder = preferences.sound_pack_folder
+			values.music_pack_folder = preferences.music_pack_folder
+			media_packs_changed = false
 
-		return
+	if not _same_pack(values.data_pack_folder, preferences.data_pack_folder):
+		var data_pack := DataPack.load_folder(values.data_pack_folder)
 
-	var changed_source: bool = (values.graphics_source != preferences.graphics_source
-		or values.graphics_folder != preferences.graphics_folder)
-	var media_packs_changed: bool = (values.sound_pack_folder != preferences.sound_pack_folder
-			or values.music_pack_folder != preferences.music_pack_folder or (not app.asset_state.assets_ready and changed_source))
-	var selected: GameAssetSource
-
-	if changed_source:
-		selected = GameAssetSource.load_source(app.asset_state.reference_root, values.graphics_source, values.graphics_folder)
-
-		if not selected.error.is_empty():
-			app.assets.show_graphics_source_error(selected.error)
-
-			return
-
-	var data_pack: DataPack
-
-	if values.data_pack_folder != preferences.data_pack_folder:
-		data_pack = DataPack.load_folder(values.data_pack_folder)
-
-		if not data_pack.error.is_empty():
+		if data_pack.error.is_empty():
+			preferences.data_pack_folder = values.data_pack_folder
+			app.assets.apply_data_pack(data_pack)
+		else:
 			app.assets.show_graphics_source_error(data_pack.error, "Data pack")
+			_show_saved_pack(dialog.data_pack_edit, preferences.data_pack_folder)
 
-			return
+	if (values.graphics_source != preferences.graphics_source
+			or (values.graphics_source == "folder" and not _same_pack(values.graphics_folder, preferences.graphics_folder))):
+		var selected := GameAssetSource.load_source(app.asset_state.reference_root, values.graphics_source, values.graphics_folder)
 
-	if data_pack != null:
-		preferences.data_pack_folder = values.data_pack_folder
-		app.assets.apply_data_pack(data_pack)
-
-	if changed_source:
-		app.assets.apply_graphics_source(selected)
+		if selected.error.is_empty():
+			media_packs_changed = media_packs_changed or not app.asset_state.assets_ready
+			app.assets.apply_graphics_source(selected)
+			preferences.graphics_source = values.graphics_source
+			preferences.graphics_folder = values.graphics_folder
+		else:
+			app.assets.show_graphics_source_error(selected.error)
+			_show_saved_pack(dialog.folder_edit, preferences.graphics_folder if preferences.graphics_source == "folder" else "")
 
 	preferences.check_for_updates = bool(values.check_for_updates)
-	preferences.control_bindings = values.control_bindings
-	apply_control_bindings()
-	preferences.graphics_source = values.graphics_source
-	preferences.graphics_folder = values.graphics_folder
+
+	if not preferences.control_bindings.equals(values.control_bindings):
+		preferences.control_bindings = values.control_bindings
+		apply_control_bindings()
+
 	_set_city_renderer(str(values.city_renderer))
-	preferences.dark_underground = bool(values.dark_underground)
-	app.menus.sync_map_style()
-	preferences.ui_theme = str(values.ui_theme)
-	preferences.translucent_menus = bool(values.translucent_menus)
-	AppUiTheme.select(preferences.ui_theme, preferences.translucent_menus)
-	preferences.ui_scale = AppUiScale.normalize(values.ui_scale)
-	apply_ui_scale()
+
+	if preferences.dark_underground != bool(values.dark_underground):
+		preferences.dark_underground = bool(values.dark_underground)
+		app.menus.sync_map_style()
+
+	if preferences.ui_theme != str(values.ui_theme) or preferences.translucent_menus != bool(values.translucent_menus):
+		preferences.ui_theme = str(values.ui_theme)
+		preferences.translucent_menus = bool(values.translucent_menus)
+		AppUiTheme.select(preferences.ui_theme, preferences.translucent_menus)
+
+	var ui_scale := AppUiScale.normalize(values.ui_scale)
+
+	if preferences.ui_scale != ui_scale:
+		preferences.ui_scale = ui_scale
+		apply_ui_scale()
+
 	preferences.default_mayor_name = str(values.default_mayor_name)
 
 	if preferences.default_mayor_name.is_empty():
@@ -148,30 +168,38 @@ func apply_settings() -> void:
 		app.audio_controller.set_media_packs(preferences.sound_pack_folder, preferences.music_pack_folder)
 
 	preferences.shuffle_music = bool(values.shuffle_music)
-	app.audio_controller.set_shuffle_music(preferences.shuffle_music)
 	preferences.music_soundfont = SoundFontCatalog.normalize(str(values.music_soundfont))
 	preferences.music_soundfont_path = str(values.music_soundfont_path)
-	app.audio_controller.set_music_soundfont(preferences.music_soundfont, preferences.music_soundfont_path)
 	preferences.background_audio = bool(values.background_audio)
 	preferences.soundtrack_folder = ""
 	preferences.music_volume = float(values.music_volume)
 	preferences.effects_volume = float(values.effects_volume)
-	var fullscreen_changed := preferences.fullscreen != bool(values.fullscreen)
-	preferences.fullscreen = bool(values.fullscreen)
 
 	if app.audio_controller != null:
-		app.audio_controller.set_background_audio(preferences.background_audio)
+		app.audio_controller.set_shuffle_music(preferences.shuffle_music)
+		app.audio_controller.set_music_soundfont(preferences.music_soundfont, preferences.music_soundfont_path)
+
+		# this stops sound effects, so call it only for a change
+		if app.audio_controller.background_audio != preferences.background_audio:
+			app.audio_controller.set_background_audio(preferences.background_audio)
+
 		app.audio_controller.wave_sound_gate.city_sounds = preferences.city_sounds
 		app.audio_controller.set_volumes(preferences.music_volume, preferences.effects_volume)
 		app.audio_controller.set_soundtrack_folder(preferences.soundtrack_folder, (app.main_menu != null and app.main_menu.visible)
 				or (app.document_state.city != null and app.document_state.city.music_enabled()))
 
-	if fullscreen_changed:
+	if preferences.fullscreen != bool(values.fullscreen):
+		preferences.fullscreen = bool(values.fullscreen)
 		DisplayServer.window_set_mode(
 			DisplayServer.WINDOW_MODE_FULLSCREEN
 			if preferences.fullscreen
 			else DisplayServer.WINDOW_MODE_WINDOWED
 		)
+
+	_refresh_settings_pack_names()
+
+	if _saved_settings_text() == saved_before:
+		return
 
 	var error := SettingsStore.save_values(preferences.music_volume, preferences.effects_volume, preferences.fullscreen,
 		preferences.settings_path, preferences.save_options(),
@@ -181,7 +209,32 @@ func apply_settings() -> void:
 		if error == OK
 		else "Settings applied, but the settings file could not be saved."
 	)
-	_refresh_settings_pack_names()
+
+
+# the fields show pack.json paths. the saved value can be the folder only
+func _same_pack(selected: String, saved: String) -> bool:
+	return AppSettingsDialog.pack_file_path(selected.strip_edges()) == AppSettingsDialog.pack_file_path(saved.strip_edges())
+
+
+# a pack that did not load leaves the field at the pack in use
+func _show_saved_pack(edit: LineEdit, folder: String) -> void:
+	edit.text = AppSettingsDialog.pack_file_path(folder)
+	edit.text_changed.emit(edit.text)
+
+
+# compare this text before and after a change to find if the file needs a save
+func _saved_settings_text() -> String:
+	var options := preferences.save_options()
+	var parts: Array = [preferences.music_volume, preferences.effects_volume, preferences.fullscreen]
+
+	for property in options.get_property_list():
+		if property.usage & PROPERTY_USAGE_SCRIPT_VARIABLE and property.name != "control_bindings":
+			parts.append(options.get(property.name))
+
+	for id in ControlActions.bindable_ids():
+		parts.append(preferences.control_bindings.to_texts(id))
+
+	return var_to_str(parts)
 
 
 func load_app_settings() -> void:
@@ -268,8 +321,7 @@ func apply_control_bindings() -> void:
 		app.scurk_editor.set_control_bindings(preferences.control_bindings)
 
 
-# Use Defaults in the Controls tab saves the controls at once, without the
-# other pending settings
+# Use Defaults in the Controls tab saves the default controls at once
 func reset_controls() -> void:
 	preferences.control_bindings = ControlBindings.defaults()
 	apply_control_bindings()

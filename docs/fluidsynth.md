@@ -187,8 +187,23 @@ The **Settings > Audio > Music SoundFont** list sets the preference
 | OpenSC2K Default (FluidR3Mono GM) | `default` | the default bundled SoundFont |
 | FluidR3Mono GM | `fluidr3mono` | `FluidR3Mono_GM.sf3` |
 | MuseScore General | `musescore_general` | `MuseScore_General.sf3` |
+| macOS GS Sound Set, Microsoft GS Wavetable Sound Set, or System SoundFont | `system` | the operating system sound set, listed only where it exists |
 | Custom SoundFont | `custom` | the file in `audio/music_soundfont_path` |
 | Built-in synthesizer | `builtin` | none |
+
+The system sound set is read in place and never copied or shipped:
+
+- macOS: `/System/Library/Components/CoreAudio.component/Contents/Resources/gs_instruments.dls`,
+  the Roland GS set of the macOS MIDI synthesizer.
+- Windows: `%SystemRoot%\System32\drivers\gm.dls`, the Roland GS set of the
+  Microsoft GS Wavetable Synth.
+- Linux and BSD: the first of `/usr/share/sounds/sf2/default-GM.sf2`,
+  `/usr/share/sounds/sf3/default-GM.sf3`, `/usr/share/soundfonts/default.sf2` and
+  the FluidR3 GM file of the distribution package.
+
+These sets are close to the General MIDI hardware that the original music was
+written for. FluidSynth reads the DLS files with its native DLS loader. A saved
+`system` choice on a computer without a system set plays the default SoundFont.
 
 `SoundFontCatalog.candidates` gives the files to try. When a SoundFont fails
 (missing, unsupported or damaged), the bundled default loads instead. When that

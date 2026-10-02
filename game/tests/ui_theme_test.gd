@@ -27,13 +27,13 @@ func _run() -> void:
 	for selected in [1, 0, 1]:
 		main.settings.open_settings_dialog()
 		var dialog: AppSettingsDialog = main.main_overlays.settings_dialog
-		dialog.theme_selector.select(selected)
-		dialog.dark_underground_check.button_pressed = not main.preferences.dark_underground
-		# Cancel discards the selection when Settings next opens.
+		# a check box change applies at once and shows when Settings next opens
+		var dark_underground := not main.preferences.dark_underground
+		dialog.dark_underground_check.button_pressed = dark_underground
+		assert(main.preferences.dark_underground == dark_underground)
 		dialog.hide()
 		main.settings.open_settings_dialog()
-		assert(dialog.theme_selector.selected == (1 if main.preferences.ui_theme == "dark" else 0))
-		assert(dialog.dark_underground_check.button_pressed == main.preferences.dark_underground)
+		assert(dialog.dark_underground_check.button_pressed == dark_underground)
 		var previous_mode: String = main.preferences.ui_theme
 		var previous_color: Color = main.theme.get_stylebox("normal", "Button").bg_color
 		dialog.theme_selector.select(selected)
