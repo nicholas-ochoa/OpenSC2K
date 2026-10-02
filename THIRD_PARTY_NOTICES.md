@@ -38,5 +38,13 @@ license. The license texts are in `game/assets/licenses/fluidsynth` (in packages
 | Signalsmith Audio DSP | 1.7.1 | MIT | `signalsmith-dsp-LICENSE.txt` |
 | Signalsmith Audio Hilbert IIR | 1.0.0 | 0BSD | `signalsmith-hilbert-iir-LICENSE.txt` |
 
-OpenSC2K includes no SoundFont. The music uses the General MIDI sound set of
-the operating system, or a SoundFont that the player selects, in place.
+## FluidR3Mono GM SoundFont (Linux packages only)
+
+- File: `FluidR3Mono_GM.sf3`, beside the executable. The Windows and macOS
+  packages include no SoundFont; they use the sound set of the operating system.
+- Version 2.312, as MuseScore 2.3.2 includes it (`share/sound`), unchanged.
+- License: MIT. Copyright (c) 2000-2002, 2008 Frank Wen; mono version
+  Copyright (c) 2014-16 Michael Cowgill; Temple Blocks by Ethan Winer;
+  Drumline Percussion by Michael Schorsch.
+- License text: `game/assets/licenses/fluidr3mono/FluidR3Mono-License.txt`
+  (in Linux packages: `licenses/fluidr3mono`).

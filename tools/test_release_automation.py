@@ -252,6 +252,26 @@ class PackageTest(unittest.TestCase):
                 self.assertEqual(stream.namelist(), ['OpenSC2K-x-portable/OpenSC2K.exe', 'OpenSC2K-x-portable/data/'])
                 self.assertTrue(stream.getinfo('OpenSC2K-x-portable/data/').is_dir())
 
+    def test_only_linux_packages_include_the_soundfont_and_its_license(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / 'source'
+            for folder in ('fluidsynth', 'fluidr3mono'):
+                (source / 'game/assets/licenses' / folder).mkdir(parents=True)
+                (source / 'game/assets/licenses' / folder / 'NOTICE.txt').write_text(folder)
+            (source / 'THIRD_PARTY_NOTICES.md').write_text('notices')
+            soundfont = root / 'download.sf3'
+            soundfont.write_bytes(b'sfbk')
+            for platform, _, _ in packages.PACKAGES:
+                folder = root / platform
+                folder.mkdir()
+                packages.install_notices(source, folder, platform)
+                packages.install_soundfont(soundfont, folder, platform)
+                linux = platform.startswith('linux')
+                self.assertTrue((folder / 'licenses/fluidsynth/NOTICE.txt').is_file())
+                self.assertEqual((folder / 'licenses/fluidr3mono/NOTICE.txt').is_file(), linux, platform)
+                self.assertEqual((folder / packages.SOUNDFONT[2]).is_file(), linux, platform)
+
 
 class NativePackageTest(unittest.TestCase):
     def test_install_copies_both_extensions_for_every_platform(self):

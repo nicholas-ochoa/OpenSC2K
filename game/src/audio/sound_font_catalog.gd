@@ -1,8 +1,9 @@
 class_name SoundFontCatalog
 extends RefCounted
 ## The music SoundFont choices: the General MIDI sound set of the operating
-## system, or a SoundFont file that the player selects. OpenSC2K ships no
-## SoundFont. FluidSynth reads each file in place; see docs/fluidsynth.md.
+## system, or a SoundFont file that the player selects. Only the Linux package
+## includes a SoundFont, as the last system choice. FluidSynth reads each file
+## in place; see docs/fluidsynth.md.
 
 ## The preference values.
 const SYSTEM := "system"
@@ -21,12 +22,25 @@ const LINUX_SOUND_SETS := [
 	"/usr/share/soundfonts/FluidR3_GM.sf2",
 ]
 
+## The MIT SoundFont beside the executable of the Linux package. An installed
+## distribution SoundFont comes first.
+const BUNDLED_SOUND_SET := "FluidR3Mono_GM.sf3"
+
 
 ## The sound set of this operating system, or an empty string when it has none.
 static func system_path() -> String:
+	for path in sound_set_paths(OS.get_name(), OS.get_executable_path().get_base_dir()):
+		if FileAccess.file_exists(path):
+			return path
+
+	return ""
+
+
+## The sound sets to try on an operating system, in order.
+static func sound_set_paths(os_name: String, executable_folder: String) -> PackedStringArray:
 	var paths := PackedStringArray()
 
-	match OS.get_name():
+	match os_name:
 		"macOS":
 			paths.append(MACOS_SOUND_SET)
 		"Windows":
@@ -34,12 +48,13 @@ static func system_path() -> String:
 			paths.append((windows_folder if not windows_folder.is_empty() else "C:/Windows").path_join(WINDOWS_SOUND_SET))
 		"Linux", "FreeBSD", "NetBSD", "OpenBSD", "BSD":
 			paths.append_array(LINUX_SOUND_SETS)
+			paths.append(executable_folder.path_join(BUNDLED_SOUND_SET))
 
-	for path in paths:
-		if FileAccess.file_exists(path):
-			return path
+	return paths
 
-	return ""
+
+static func is_bundled(path: String) -> bool:
+	return path.get_file() == BUNDLED_SOUND_SET
 
 
 static func label(choice: String) -> String:
@@ -53,6 +68,9 @@ static func label(choice: String) -> String:
 			return "Microsoft GS Wavetable Sound Set"
 
 	var path := system_path()
+
+	if is_bundled(path):
+		return "Bundled SoundFont (FluidR3 Mono)"
 
 	return "System SoundFont (%s)" % path.get_file() if not path.is_empty() else "System SoundFont (not installed)"
 

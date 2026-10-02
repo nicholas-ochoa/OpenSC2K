@@ -55,13 +55,14 @@ See the [Godot macOS launch instructions](https://docs.godotengine.org/en/4.7/tu
 
 ## Music SoundFonts
 
-OpenSC2K plays the MIDI music with FluidSynth and a General MIDI sound set. The package
-includes no sound set. Select one in **Settings > Audio > Music SoundFont**:
+OpenSC2K plays the MIDI music with FluidSynth and a General MIDI sound set. Only the Linux
+packages include a sound set. Select one in **Settings > Audio > Music SoundFont**:
 
 - **macOS GS Sound Set** or **Microsoft GS Wavetable Sound Set** (the default): the Roland GS
   sounds that macOS and Windows include. It is close to the General MIDI hardware of the
   original game. On Linux, **System SoundFont** uses a SoundFont package of your distribution,
-  such as `fluid-soundfont-gm`.
+  such as `fluid-soundfont-gm`. Without one, it uses **Bundled SoundFont (FluidR3 Mono)**,
+  the `FluidR3Mono_GM.sf3` file beside the executable.
 - **Custom SoundFont**: an SF2, SF3 or DLS General MIDI SoundFont of your own.
   Select the file with **Browse...**. OpenSC2K reads the file in place and does not copy or change it.
 

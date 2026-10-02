@@ -61,6 +61,13 @@ FLUIDSYNTH = {
 }
 
 
+# The MIT General MIDI SoundFont that only the Linux packages include, beside the
+# executable, as MuseScore 2.3.2 shipped it. Keep the file name in sync with
+# BUNDLED_SOUND_SET in game/src/audio/sound_font_catalog.gd: (url, sha256, file name)
+SOUNDFONT = ('https://raw.githubusercontent.com/musescore/MuseScore/v2.3.2/share/sound/FluidR3Mono_GM.sf3',
+             'cfcd66d89e8386823400eca64934b14fbea7bf48ba1f00d21189af1262794ec2', 'FluidR3Mono_GM.sf3')
+
+
 # (platform, export preset, exported binary)
 PACKAGES = (
     ('windows-x64', 'Windows Desktop', 'OpenSC2K.exe'),
@@ -90,10 +97,18 @@ def install_native(native, project):
         shutil.copy2(source, project / 'bin' / 'opensc2k_audio' / folder / library)
 
 
-def install_notices(source, folder):
+def install_notices(source, folder, platform):
     """The notices and license texts of the third-party works in a package."""
     shutil.copy2(source / 'THIRD_PARTY_NOTICES.md', folder / 'THIRD_PARTY_NOTICES.md')
     shutil.copytree(source / 'game/assets/licenses/fluidsynth', folder / 'licenses' / 'fluidsynth')
+    if platform.startswith('linux'):
+        shutil.copytree(source / 'game/assets/licenses/fluidr3mono', folder / 'licenses' / 'fluidr3mono')
+
+
+def install_soundfont(soundfont, folder, platform):
+    """The Linux packages include a SoundFont beside the executable; the others use the system sound set."""
+    if platform.startswith('linux'):
+        shutil.copy2(soundfont, folder / SOUNDFONT[2])
 
 
 def write_fluidsynth_source(package, work):
@@ -109,6 +124,7 @@ def build(output, label, godot, native):
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.+-]{0,79}', label):
         raise ValueError('Invalid package label')
     output.mkdir(parents=True, exist_ok=False)
+    soundfont = build_fluidsynth.download(*SOUNDFONT)
     commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
     engine = subprocess.check_output([godot, '--version'], text=True).strip()
     with tempfile.TemporaryDirectory(prefix='opensc2k-export-') as temporary:
@@ -139,7 +155,8 @@ def build(output, label, godot, native):
             checked_godot(godot, project, '--export-release', preset, str(folder / binary))
             shutil.copy2(source / 'LICENSE', folder / 'LICENSE.txt')
             shutil.copy2(source / 'docs/install.md', folder / 'INSTALL.md')
-            install_notices(source, folder)
+            install_notices(source, folder, platform)
+            install_soundfont(soundfont, folder, platform)
             for module in NATIVE_MODULES:
                 expected_library = NATIVE_PLATFORMS[platform][2].format(module)
                 assert (folder / expected_library).is_file(), f'{platform} lacks native {module}'

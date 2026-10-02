@@ -80,6 +80,10 @@ func _build_licenses() -> void:
 		"signalsmith-linear-LICENSE.txt", "signalsmith-dsp-LICENSE.txt", "signalsmith-hilbert-iir-LICENSE.txt",
 		"gcem-NOTICE.txt", "Apache-2.0.txt",
 	]))
+
+	if OS.get_name() == "Linux":
+		_add_license("FluidR3 Mono SoundFont — MIT", _license_files("fluidr3mono", ["FluidR3Mono-License.txt"]))
+
 	_add_license("Research and original game", """RESEARCH
 
 sc2json — MIT

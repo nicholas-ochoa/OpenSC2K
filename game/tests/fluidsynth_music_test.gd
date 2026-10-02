@@ -138,6 +138,13 @@ func _test_fallback_order() -> void:
 	assert(SoundFonts.candidates(SoundFonts.CUSTOM, "") == with_system)
 	assert(SoundFonts.choices() == PackedStringArray([SoundFonts.SYSTEM, SoundFonts.CUSTOM]))
 
+	# the Linux package SoundFont comes after the distribution SoundFonts, and only on Linux
+	var linux := SoundFonts.sound_set_paths("Linux", "/opt/opensc2k")
+	assert(linux == PackedStringArray(SoundFonts.LINUX_SOUND_SETS) + PackedStringArray(["/opt/opensc2k/FluidR3Mono_GM.sf3"]))
+	assert(SoundFonts.is_bundled(linux[-1]) and not SoundFonts.is_bundled(linux[0]))
+	assert(SoundFonts.sound_set_paths("macOS", "/opt/opensc2k") == PackedStringArray([SoundFonts.MACOS_SOUND_SET]))
+	assert(SoundFonts.sound_set_paths("Windows", "C:/OpenSC2K").size() == 1)
+
 	# choices that earlier versions saved
 	for removed in ["default", "fluidr3mono", "builtin"]:
 		assert(SoundFonts.normalize(removed) == SoundFonts.SYSTEM)

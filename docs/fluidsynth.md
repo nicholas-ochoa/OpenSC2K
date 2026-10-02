@@ -2,7 +2,8 @@
 
 OpenSC2K plays the MIDI music with [FluidSynth](https://www.fluidsynth.org/) and a
 General MIDI sound set: the one of the operating system, or a SoundFont that the
-player selects. OpenSC2K ships no SoundFont. The custom additive synthesizer of
+player selects. Only the Linux packages include a SoundFont, FluidR3Mono GM, as the
+last system choice. The custom additive synthesizer of
 earlier versions was removed.
 
 ## Architecture
@@ -189,7 +190,7 @@ The **Settings > Audio > Music SoundFont** list sets the preference
 | macOS GS Sound Set, Microsoft GS Wavetable Sound Set, or System SoundFont | `system` (default) | the operating system sound set |
 | Custom SoundFont | `custom` | the file in `audio/music_soundfont_path` |
 
-The system sound set is read in place and never copied or shipped:
+The system sound set is read in place and never copied:
 
 - macOS: `/System/Library/Components/CoreAudio.component/Contents/Resources/gs_instruments.dls`,
   the Roland GS set of the macOS MIDI synthesizer.
@@ -197,7 +198,9 @@ The system sound set is read in place and never copied or shipped:
   Microsoft GS Wavetable Synth.
 - Linux and BSD: the first of `/usr/share/sounds/sf2/default-GM.sf2`,
   `/usr/share/sounds/sf3/default-GM.sf3`, `/usr/share/soundfonts/default.sf2` and
-  the FluidR3 GM file of the distribution package.
+  the FluidR3 GM file of the distribution package. Then `FluidR3Mono_GM.sf3` beside
+  the executable, which only the Linux packages include. Its menu label is
+  **Bundled SoundFont (FluidR3 Mono)**.
 
 These sets are close to the General MIDI hardware that the original music was
 written for. FluidSynth reads the DLS files with its native DLS loader. Earlier
@@ -217,7 +220,13 @@ track waits for the load.
 
 ## Shipping a SoundFont
 
-OpenSC2K ships none. Before a SoundFont is ever added to a package, review its
+The Linux packages include FluidR3Mono GM, because Linux has no operating system
+sound set. `tools/build_desktop_release.py` downloads the MuseScore 2.3.2 file,
+checks its SHA-256 hash, and puts it beside the executable. Its license is in
+`game/assets/licenses/fluidr3mono`, and the game shows it under **About >
+Licenses** on Linux only. The Windows and macOS packages include no SoundFont.
+
+Before another SoundFont is added to a package, review its
 license and sample provenance from the canonical upstream source, as in the
 table below, and add its license to `game/assets/licenses`, `about_dialog.gd`
 and `THIRD_PARTY_NOTICES.md`.
@@ -228,7 +237,7 @@ Reviewed on 2026-10-01 from the upstream sources.
 
 | SoundFont | License | Size | Bundled? | Source | Notes |
 |---|---|---:|---|---|---|
-| FluidR3Mono GM 2.312 | MIT | 14.5 MB (SF3) | No (bundled before 2026-10-01) | MuseScore 2.3.2 `share/sound` (github.com/musescore/MuseScore, commit 45924076) | Complete GM set with GS drum kits. Mono samples of FluidR3 by Michael Cowgill. Loads in 1.5 s, about 144 MB in memory. |
+| FluidR3Mono GM 2.312 | MIT | 14.5 MB (SF3) | Linux packages only (all packages before 2026-10-01) | MuseScore 2.3.2 `share/sound` (github.com/musescore/MuseScore, commit 45924076) | Complete GM set with GS drum kits. Mono samples of FluidR3 by Michael Cowgill. Loads in 1.5 s, about 144 MB in memory. |
 | MuseScore General 0.2 | MIT | 38 MB (SF3), 206 MB (SF2) | No (bundled before 2026-10-01) | ftp.osuosl.org/pub/musescore/soundfont/MuseScore_General (MuseScore's download server) | FluidR3Mono with new piano and other instruments by S. Christian Collins. Sample sources are listed per preset; new samples are public domain or by the author. Loads in 3.2 s, about 240 MB in memory. |
 | MuseScore General HQ | MIT | about 480 MB (SF2) | No | Same project; not offered on the MuseScore download server | Too large for a game download. Players can select it as a custom SoundFont. |
 | MS Basic (MuseScore 4) | MIT | 51 MB (SF3) | No | github.com/musescore/MuseScore `share/sound` | MIT, current, complete GM. Its license file still describes MuseScore General 0.2 (MuseScore issue 19446), and it is a renamed descendant of MuseScore General, so it adds little. |
@@ -240,7 +249,8 @@ Reviewed on 2026-10-01 from the upstream sources.
 No complete General MIDI SoundFont under the MIT license that is not derived from
 FluidR3 was found. In listening tests, the free sets sounded worse for this music
 than the Roland GS sets of macOS and Windows, so OpenSC2K uses the operating
-system set and lets players select their own SoundFont.
+system set and lets players select their own SoundFont. Linux has no operating
+system set, so the Linux packages include FluidR3Mono GM as the last choice.
 
 ## Third-party licensing
 
