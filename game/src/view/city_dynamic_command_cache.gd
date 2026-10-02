@@ -30,12 +30,18 @@ func get_commands(city: CityState, sprites: Sc2SpriteArchive, view: int, phase: 
 				return command.overlay >= 0)
 
 			if not _phase_animated and things != null:
-				# type 6 uses the display clock to mirror its sprite. other moving
-				# sprites derive their frames from the saved moving-object state
+				# type 6 and Nessie, a type 9 with a state, use the display clock to
+				# mirror their sprites. other moving sprites derive their frames from
+				# the saved moving-object state
 				for record in city.thing_count():
 					var offset := record * CityState.THING_RECORD_SIZE
 
-					if offset < things.decoded_payload.size() and things.decoded_payload[offset] == 6:
+					if offset + 2 >= things.decoded_payload.size():
+						break
+
+					var type := things.decoded_payload[offset]
+
+					if type == 6 or (type == 9 and things.decoded_payload[offset + 2] != 0):
 						_phase_animated = true
 						break
 

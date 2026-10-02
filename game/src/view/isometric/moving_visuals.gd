@@ -57,6 +57,10 @@ static func moving_thing_visual(
 		if type == 6 and sprite != null:
 			sprite.flip = ((animation_phase + record + x + y) & 1) != 0
 
+		# Nessie mirrors on each display frame, as the frame counter bit in SIMCITY.EXE
+		if type == 9 and thing.state != 0 and sprite != null:
+			sprite.flip = (animation_phase & 1) != 0
+
 	if sprite == null:
 		return null
 

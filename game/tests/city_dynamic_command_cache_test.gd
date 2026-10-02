@@ -77,6 +77,21 @@ func _check_display_clock(city: CityState, sprites: Sc2SpriteArchive) -> void:
 		assert(_dynamic_command_values(cache.get_commands(city, sprites, 2, phase)) == _dynamic_command_values(expected))
 
 	assert(cache.rebuilds == 6, "Type 6 sprite stopped mirroring")
+
+	# Nessie is a sailboat with a state. It mirrors on each display frame
+	things.decoded_payload[offset] = 9
+	things.decoded_payload[offset + 2] = 1
+	things.mark_mutated()
+	var flips: Array[bool] = []
+
+	for phase in [0, 1]:
+		var expected := CityIsometricRenderer.dynamic_draw_commands(city, sprites, 2, phase)
+		var commands := cache.get_commands(city, sprites, 2, phase)
+		assert(_dynamic_command_values(commands) == _dynamic_command_values(expected))
+		flips.append(commands.filter(func(command: CityDynamicCommand) -> bool: return command.record == 1)[0].flip)
+
+	assert(cache.rebuilds == 8, "Nessie stopped mirroring")
+	assert(flips == [false, true], "Nessie mirrors on odd display frames")
 	assert(cache.get_commands(CityState.new(), sprites, 2, 0).is_empty())
 
 
