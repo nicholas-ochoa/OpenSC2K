@@ -41,6 +41,7 @@ func _run() -> void:
 			for mode in CityDataView.CHUNKS:
 				var chunk := doc.find_chunk(CityDataView.CHUNKS[mode])
 				var data := chunk.decoded_payload.duplicate()
+				var next_value := CityDataView.value(city, mode, point.x, point.y + 1)
 				data[CityDataGrid.index(data, edge, point.x, point.y)] = 173
 				chunk.set_decoded_payload(data)
 				check(CityDataView.value(city, mode, point.x, point.y) == 173, "Far-tile value")
@@ -52,7 +53,7 @@ func _run() -> void:
 						roundi(image.get_pixel(point.y / scale, point.x / scale).r * 255) == 173,
 						"Texture retains far value and column-major coordinates",
 					)
-				check(CityDataView.value(city, mode, point.x, point.y + 1) == (0 if native else 173), "Native/legacy resolution")
+				check(CityDataView.value(city, mode, point.x, point.y + 1) == (next_value if native else 173), "Native/legacy resolution")
 
 			city.set_tile_flag(point.x, point.y, 0x80, true)
 			check(CityDataView.value(city, CityViewMode.Mode.POWER, point.x, point.y) == 1, "Powerable but not powered")

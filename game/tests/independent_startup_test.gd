@@ -34,6 +34,16 @@ func _test_generated_cities() -> void:
 	for chunk in template.chunks:
 		assert(chunk.decoded_payload.size() == Sc2File.DECODED_SIZES[chunk.chunk_id])
 
+	# the rate of growth map starts neutral, and each budget has its rate as month 0
+	assert(template.find_chunk("XROG").decoded_payload.count(0x7f) == Sc2File.DECODED_SIZES["XROG"])
+	var default_rates := [7, 7, 7, 1, 0, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
+
+	for budget in Sc2BudgetLayout.COUNT:
+		var record := Sc2MiscLayout.BUDGETS + budget * Sc2BudgetLayout.RECORD_SIZE
+		assert(template.misc_u32(record + Sc2BudgetLayout.FUNDING) == default_rates[budget])
+		assert(template.misc_u32(record + Sc2BudgetLayout.MONTHS + Sc2BudgetLayout.MONTH_FUNDING) == default_rates[budget])
+		assert(template.misc_u32(record + Sc2BudgetLayout.MONTHS + Sc2BudgetLayout.MONTH_RECORD_SIZE + Sc2BudgetLayout.MONTH_FUNDING) == 0)
+
 	var unchanged: PackedByteArray = template.serialize().data
 
 	for difficulty in range(1, 4):
@@ -63,6 +73,8 @@ func _test_generated_cities() -> void:
 	assert(preview.ok, str(preview))
 	var coastal_setup := session.create_city(MISSING_ROOT.path_join("DEFAULT.SC2"), "Coast", "Mayor", 1, 1900, options, PackedByteArray())
 	assert(coastal_setup.ok, str(coastal_setup))
+	assert(coastal_setup.document.find_chunk("XROG").decoded_payload.count(0x7f) == Sc2File.DECODED_SIZES["XROG"])
+	assert(coastal_setup.document.misc_u32(Sc2MiscLayout.BUDGETS + Sc2BudgetLayout.MONTHS + Sc2BudgetLayout.MONTH_FUNDING) == 7)
 
 	for chunk_id in ["ALTM", "XTER", "XBLD", "XUND", "XZON"]:
 		assert(coastal_setup.document.find_chunk(chunk_id).decoded_payload == preview.document.find_chunk(chunk_id).decoded_payload)

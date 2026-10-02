@@ -35,7 +35,11 @@ static func create(map_edge: int = 128) -> Sc2File:
 
 	for budget in Sc2BudgetLayout.COUNT:
 		var funding := 7 if budget < 3 else (1 if budget == 3 else (0 if budget == 4 else 100))
-		document.set_misc_u32(Sc2MiscLayout.BUDGETS + budget * Sc2BudgetLayout.RECORD_SIZE + Sc2BudgetLayout.FUNDING, funding)
+		var record := Sc2MiscLayout.BUDGETS + budget * Sc2BudgetLayout.RECORD_SIZE
+		document.set_misc_u32(record + Sc2BudgetLayout.FUNDING, funding)
+
+		# the original also stores the rate as the first month of history
+		document.set_misc_u32(record + Sc2BudgetLayout.MONTHS + Sc2BudgetLayout.MONTH_FUNDING, funding)
 
 	for neighbor in 4:
 		document.set_misc_u32(Sc2MiscLayout.NEIGHBORS + neighbor * 16, neighbor)
@@ -44,5 +48,12 @@ static func create(map_edge: int = 128) -> Sc2File:
 
 	document.set_city_name("New City")
 	document.resize_empty_map(map_edge)
+
+	# FUN_0040e250 fills the rate of growth map with the neutral value
+	var growth := document.find_chunk("XROG")
+	var neutral_growth := PackedByteArray()
+	neutral_growth.resize(growth.expected_decoded_size)
+	neutral_growth.fill(0x7f)
+	growth.set_decoded_payload(neutral_growth, true)
 
 	return document
