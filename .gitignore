@@ -29,8 +29,7 @@ ghidra/
 .gdls/
 
 # Native library build output
-/native/simulation/target/
-/native/rendering/target/
-/native/formats/target/
-/native/audio/target/
+/native/target/
+# the FluidSynth build, and the output of the crates before the workspace
+/native/*/target/
 /game/bin/

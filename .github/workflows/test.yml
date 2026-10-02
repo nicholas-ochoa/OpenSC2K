@@ -27,11 +27,7 @@ jobs:
       - name: Restore the Rust build cache
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
-          workspaces: |
-            native/simulation
-            native/rendering
-            native/formats
-            native/audio
+          workspaces: native
       - name: Install test dependencies
         run: |
           python -m pip install Pillow
@@ -56,7 +52,7 @@ jobs:
       - name: Remove private inputs and generated files
         if: always()
         run: rm -rf private-assets references ext local game/.godot
-      # No artifact uploads. The Rust cache holds only native/*/target and ~/.cargo.
+      # No artifact uploads. The Rust cache holds only native/target and ~/.cargo.
 
   native-tests:
     name: Run native unit tests
@@ -70,11 +66,7 @@ jobs:
       - name: Restore the Rust build cache
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
-          workspaces: |
-            native/simulation
-            native/rendering
-            native/formats
-            native/audio
+          workspaces: native
       # rust-toolchain.toml selects the Rust version. rustup is on each runner image
       - name: Build FluidSynth for the audio tests
         run: python3 tools/build_fluidsynth.py
@@ -82,7 +74,5 @@ jobs:
         env:
           OPENSC2K_FLUIDSYNTH: ${{ github.workspace }}/game/bin/opensc2k_audio/linux-x86_64/libfluidsynth.so.3
           OPENSC2K_REQUIRE_FLUIDSYNTH: '1'
-        run: |
-          for crate in native/simulation native/rendering native/formats native/audio; do
-            cargo test --release --manifest-path "$crate/Cargo.toml"
-          done
+        working-directory: native
+        run: cargo test --release --workspace

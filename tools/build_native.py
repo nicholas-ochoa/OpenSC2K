@@ -21,6 +21,9 @@ from pathlib import Path
 import build_fluidsynth
 
 ROOT = Path(__file__).resolve().parents[1]
+# one Cargo workspace holds every crate, so they share dependencies and build in parallel
+WORKSPACE = ROOT / 'native'
+TARGET = WORKSPACE / 'target'
 MODULES = ('simulation', 'rendering', 'formats', 'audio')
 MACOS_TARGETS = ('aarch64-apple-darwin', 'x86_64-apple-darwin')
 # the Windows and Linux folders that desktop packages include, and their Rust targets.
@@ -52,14 +55,17 @@ def library_name(module):
     return f'lib{name}.so'
 
 
-def _cargo(module, arguments, quiet):
-    crate = ROOT / 'native' / module
+def _cargo(arguments, quiet):
     if shutil.which('cargo') is None:
         raise OSError('cargo is required to build the native libraries (https://rustup.rs)')
-    command = ['cargo', *arguments, '--manifest-path', str(crate / 'Cargo.toml')]
+    command = ['cargo', *arguments, '--workspace']
     if quiet:
         command.append('--quiet')
-    subprocess.run(command, cwd=crate, check=True)
+    subprocess.run(command, cwd=WORKSPACE, check=True)
+
+
+def _add_targets(triples):
+    subprocess.run(['rustup', 'target', 'add', *triples], cwd=WORKSPACE, check=True)
 
 
 def _install(built, target):
@@ -75,10 +81,10 @@ def _install(built, target):
 
 def build(profile='release', quiet=False):
     """Build the host libraries. Cargo skips unchanged sources."""
+    _cargo(['build', *(['--release'] if profile == 'release' else [])], quiet)
     targets = []
     for module in MODULES:
-        _cargo(module, ['build', *(['--release'] if profile == 'release' else [])], quiet)
-        built = ROOT / 'native' / module / 'target' / profile / library_name(module)
+        built = TARGET / profile / library_name(module)
         target = ROOT / 'game/bin' / f'opensc2k_{module}' / host_folder() / library_name(module)
         targets.append(_install(built, target))
     return targets + build_fluidsynth.build(quiet=quiet)
@@ -87,15 +93,13 @@ def build(profile='release', quiet=False):
 def build_package(quiet=False):
     """Build the release libraries of a desktop package for this platform."""
     if sys.platform == 'darwin':
+        # one Cargo call builds both architectures, so they also build in parallel
+        _add_targets(MACOS_TARGETS)
+        _cargo(['build', '--release', *(f'--target={triple}' for triple in MACOS_TARGETS)], quiet)
         targets = []
         for module in MODULES:
-            crate = ROOT / 'native' / module
-            slices = []
-            for triple in MACOS_TARGETS:
-                subprocess.run(['rustup', 'target', 'add', triple], cwd=crate, check=True)
-                _cargo(module, ['build', '--release', '--target', triple], quiet)
-                slices.append(str(crate / 'target' / triple / 'release' / library_name(module)))
-            universal = crate / 'target' / 'universal' / library_name(module)
+            slices = [str(TARGET / triple / 'release' / library_name(module)) for triple in MACOS_TARGETS]
+            universal = TARGET / 'universal' / library_name(module)
             universal.parent.mkdir(parents=True, exist_ok=True)
             subprocess.run(['lipo', '-create', *slices, '-output', str(universal)], check=True)
             targets.append(_install(universal, ROOT / 'game/bin' / f'opensc2k_{module}' / 'macos' / library_name(module)))
@@ -103,12 +107,11 @@ def build_package(quiet=False):
     if host_folder() not in PACKAGE_TARGETS:
         raise OSError(f'desktop packages do not include {host_folder()}')
     triple = PACKAGE_TARGETS[host_folder()]
+    _add_targets([triple])
+    _cargo(['build', '--release', '--target', triple], quiet)
     targets = []
     for module in MODULES:
-        crate = ROOT / 'native' / module
-        subprocess.run(['rustup', 'target', 'add', triple], cwd=crate, check=True)
-        _cargo(module, ['build', '--release', '--target', triple], quiet)
-        built = crate / 'target' / triple / 'release' / library_name(module)
+        built = TARGET / triple / 'release' / library_name(module)
         targets.append(_install(built, ROOT / 'game/bin' / f'opensc2k_{module}' / host_folder() / library_name(module)))
     return targets + build_fluidsynth.build(quiet=quiet)
 
@@ -120,12 +123,10 @@ def test(quiet=False):
     if fluidsynth.is_file():
         environment.setdefault('OPENSC2K_FLUIDSYNTH', str(fluidsynth))
         environment.setdefault('OPENSC2K_REQUIRE_FLUIDSYNTH', '1')
-    for module in MODULES:
-        crate = ROOT / 'native' / module
-        command = ['cargo', 'test', '--release', '--manifest-path', str(crate / 'Cargo.toml')]
-        if quiet:
-            command.append('--quiet')
-        subprocess.run(command, cwd=crate, check=True, capture_output=quiet, env=environment)
+    command = ['cargo', 'test', '--release', '--workspace']
+    if quiet:
+        command.append('--quiet')
+    subprocess.run(command, cwd=WORKSPACE, check=True, capture_output=quiet, env=environment)
 
 
 def main():

@@ -12,12 +12,3 @@ crate-type = ["cdylib"]
 [dependencies]
 # The music thread calls the synthesizer. Each synthesizer belongs to one player.
 godot = { version = "0.5.5", features = ["api-4-7", "experimental-threads"] }
-
-[profile.release]
-opt-level = 3
-codegen-units = 1
-lto = "thin"
-debug = false
-
-[profile.dev]
-opt-level = 1

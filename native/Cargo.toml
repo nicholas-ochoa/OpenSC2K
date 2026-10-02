@@ -1,0 +1,14 @@
+# One workspace, so the crates share one build of their dependencies and
+# Cargo builds them in parallel
+[workspace]
+members = ["simulation", "rendering", "formats", "audio"]
+resolver = "3"
+
+[profile.release]
+opt-level = 3
+codegen-units = 1
+lto = "thin"
+debug = false
+
+[profile.dev]
+opt-level = 1

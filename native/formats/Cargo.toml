@@ -12,12 +12,3 @@ crate-type = ["cdylib"]
 [dependencies]
 # Asset import and export run codecs on worker threads.
 godot = { version = "0.5.5", features = ["api-4-7", "experimental-threads"] }
-
-[profile.release]
-opt-level = 3
-codegen-units = 1
-lto = "thin"
-debug = false
-
-[profile.dev]
-opt-level = 1

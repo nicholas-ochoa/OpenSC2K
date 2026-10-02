@@ -13,12 +13,3 @@ crate-type = ["cdylib"]
 # Region workers call the builder on their own threads. Each builder stays with one
 # worker. A region draw index is immutable, so other threads may read it.
 godot = { version = "0.5.5", features = ["api-4-7", "experimental-threads"] }
-
-[profile.release]
-opt-level = 3
-codegen-units = 1
-lto = "thin"
-debug = false
-
-[profile.dev]
-opt-level = 1
