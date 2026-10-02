@@ -1,6 +1,6 @@
 # CI and nightly builds
 
-The **CI and nightly** GitHub Actions workflow runs on pull requests and pushes to `main`.
+The **CI** GitHub Actions workflow runs on pull requests and pushes to `main`.
 It has two jobs:
 
 - **Test** runs `tools/validate_project.sh --strict --keep-going --skip-native-tests` with the
@@ -77,7 +77,7 @@ It publishes the draft with the `nightly` tag on the tested commit.
 It keeps the previous nightly if a build or upload fails.
 Stable releases, including `v0.1.0`, are not changed. A nightly does not replace the latest stable release.
 
-To run it manually, select **Actions > CI and nightly > Run workflow** on `main`,
+To run it manually, select **Actions > CI > Run workflow** on `main`,
 or run `gh workflow run ci.yml --ref main`.
 Select **Replace the nightly release with this build** to publish the result.
 Leave it clear to run tests and build packages only.
