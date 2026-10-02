@@ -15,6 +15,7 @@ var text_scroll: ScrollContainer
 var text_label: Label
 var ok_button: Button
 var pages := PackedStringArray()
+var page_ids := PackedInt32Array()
 var page_index := -1
 var viewport_size := Vector2i.ZERO
 
@@ -39,9 +40,12 @@ func _ready() -> void:
 # the original runs one modal text window for each resource, in order
 func show_texts(texts: Dictionary, size_limit: Vector2i) -> void:
 	pages = PackedStringArray()
+	page_ids = PackedInt32Array()
 
-	for resource_id in TEXT_RESOURCE_IDS:
-		pages.append(str(texts[resource_id]).replace("\r\n", "\n").replace("\r", "\n"))
+	for resource_id: int in TEXT_RESOURCE_IDS:
+		if texts.has(resource_id):
+			pages.append(str(texts[resource_id]).replace("\r\n", "\n").replace("\r", "\n"))
+			page_ids.append(resource_id)
 
 	viewport_size = size_limit
 	page_index = 0
@@ -53,7 +57,7 @@ func current_resource_id() -> int:
 	if not visible or page_index < 0:
 		return -1
 
-	return TEXT_RESOURCE_IDS[page_index]
+	return page_ids[page_index]
 
 
 # OK or Escape ends the current text window and opens the next one
@@ -66,6 +70,7 @@ func close_page() -> void:
 	if page_index >= pages.size():
 		page_index = -1
 		pages = PackedStringArray()
+		page_ids = PackedInt32Array()
 		hide()
 
 		return

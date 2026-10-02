@@ -64,14 +64,18 @@ func load_text_data(reference_root: String) -> void:
 		reference_root.path_join("DATA/DATA_USA.IDX"),
 	)
 
-	var library_resources := TextLoader.load_ids(
-		reference_root.path_join("DATA/TEXT_USA.DAT"),
-		reference_root.path_join("DATA/TEXT_USA.IDX"),
-		PackedInt32Array(LibraryWindows.TEXT_RESOURCE_IDS),
-	)
+	library_texts = {}
 
-	if library_resources.ok:
-		library_texts = library_resources.strings
+	# the Macintosh has three Library pages and DOS has none
+	for resource_id: int in LibraryWindows.TEXT_RESOURCE_IDS:
+		var library_resource := TextLoader.load_ids(
+			reference_root.path_join("DATA/TEXT_USA.DAT"),
+			reference_root.path_join("DATA/TEXT_USA.IDX"),
+			PackedInt32Array([resource_id]),
+		)
+
+		if library_resource.ok:
+			library_texts[resource_id] = library_resource.strings[resource_id]
 
 
 func load_original_credits(reference_root: String) -> void:

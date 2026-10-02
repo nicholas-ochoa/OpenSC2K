@@ -31,20 +31,43 @@ static func attach_runtime_data(source: Sc2ImportSource, folder: String, result:
 	return ""
 
 
-# only a complete Windows installation supplies the game data files
+# a Windows folder supplies the data files. DOS and Macintosh records are converted
 static func export_data_pack(source: Sc2ImportSource, folder: String, label: String, result: Sc2MediaImportResult) -> String:
-	var candidate := install_root(source)
-
-	if candidate.is_empty():
-		return "Game data needs a complete Windows SimCity 2000 installation."
-
+	var root := data_root(source)
 	var exporter := Sc2DataExport.new()
-	exporter.export_pack(candidate, folder, label + " Data", source.platform)
+
+	if not root.is_empty():
+		exporter.export_pack(root, folder, label + " Data", source.platform)
+	else:
+		exporter.export_records(source, folder, label + " Data")
+
+	result.warnings.append_array(exporter.warnings)
 
 	if exporter.error.is_empty():
 		result.counts.data = exporter.count
 
 	return exporter.error
+
+
+# the folder with the Windows data files, for Windows 95 and Windows 3.x
+static func data_root(source: Sc2ImportSource) -> String:
+	var candidates := PackedStringArray([source.root])
+
+	for resource in source.resources:
+		for root in [resource.source.get_base_dir(), resource.source.get_base_dir().get_base_dir()]:
+			if root not in candidates:
+				candidates.append(root)
+
+	for candidate in candidates:
+		var complete := true
+
+		for relative in DataPack.REQUIRED_FILES:
+			complete = complete and FileAccess.file_exists(candidate.path_join(relative))
+
+		if complete:
+			return candidate
+
+	return ""
 
 
 static func install_root(source: Sc2ImportSource) -> String:

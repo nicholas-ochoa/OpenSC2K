@@ -3,12 +3,22 @@ extends RefCounted
 ## Copy the original game data files into a data pack. Keep complete text files
 ## so that new game features can use them without a new import. Never copy an executable.
 
+const CITY_HEADER := "FORM"
+const CITY_TYPE := "SCDH"
+const MAX_FOLDER_DEPTH := 4
+
 var error := ""
 var count := 0
+var warnings := PackedStringArray()
 
 
+# a Windows folder already has the data files
 func export_pack(source: String, folder: String, pack_name: String, platform := "") -> void:
 	var files := PackedStringArray(DataPack.REQUIRED_FILES)
+
+	for relative: String in DataPack.NEWSPAPER_FILES + [DataPack.TEMPLATE_FILE]:
+		if FileAccess.file_exists(source.path_join(relative)):
+			files.append(relative)
 
 	for pair in DataPack.FOLDERS:
 		OriginalCityImporter._collect(source, pair[0], pair[1], files)
@@ -21,13 +31,114 @@ func export_pack(source: String, folder: String, pack_name: String, platform := 
 
 			return
 
-		error = Sc2MediaImporter._write(folder.path_join(relative), bytes)
+		_write(folder.path_join(relative), bytes)
 
 		if not error.is_empty():
 			return
 
-		count += 1
+	_finish(folder, pack_name, platform)
 
+
+# DOS and Macintosh games keep the text and newspaper records inside a container.
+# Windows demos keep them in renamed or loose files.
+func export_records(source: Sc2ImportSource, folder: String, pack_name: String) -> void:
+	var records := Sc2DataConvert.find_records(source)
+
+	if not records.text.has(OriginalGameAssets.CREDITS_TEXT_RESOURCE_ID):
+		error = "No text records were found."
+		return
+
+	var text_files := Sc2DataConvert.resource_files(records.text)
+	_write(folder.path_join(DataPack.REQUIRED_FILES[0]), text_files[0])
+	_write(folder.path_join(DataPack.REQUIRED_FILES[1]), text_files[1])
+	var newspaper := Sc2DataConvert.windows_newspaper(records.newspaper)
+
+	if records.newspaper.is_empty():
+		warnings.append("This version has no newspaper data.")
+	elif newspaper.is_empty():
+		warnings.append("This version has newspaper data in an earlier format that the game cannot use.")
+	else:
+		var newspaper_files := Sc2DataConvert.resource_files(newspaper)
+		_write(folder.path_join(DataPack.NEWSPAPER_FILES[0]), newspaper_files[0])
+		_write(folder.path_join(DataPack.NEWSPAPER_FILES[1]), newspaper_files[1])
+
+	for library_id: int in LibraryRuminateWindows.TEXT_RESOURCE_IDS:
+		if not records.text.has(library_id):
+			warnings.append("This version has no Library text %d." % library_id)
+
+	_copy_city_folders(source.root, folder, 0)
+
+	if error.is_empty():
+		_finish(folder, pack_name, source.platform)
+
+
+# Copy city, scenario, and SCURK files from the folders of those names, and the demo city
+# beside a demo. A Macintosh city has no file extension, so the city header identifies it.
+# A Macintosh scenario has a resource fork beside it and goes in no folder.
+func _copy_city_folders(path: String, folder: String, depth: int) -> void:
+	var directory := DirAccess.open(path)
+
+	if directory == null or depth > MAX_FOLDER_DEPTH:
+		return
+
+	var targets := {}
+
+	for pair in DataPack.FOLDERS:
+		targets[pair[0]] = pair[1]
+
+	var target := str(path.get_file().to_upper())
+
+	if depth == 0:
+		for name in directory.get_files():
+			var bytes := FileAccess.get_file_as_bytes(path.path_join(name)) if _is_city_name(path, name) else PackedByteArray()
+
+			if _is_city(bytes):
+				_write_city(folder, "CITIES", name if not name.get_extension().is_empty() else name + ".SC2", bytes)
+	elif targets.has(target):
+		var names := directory.get_files()
+		names.sort()
+
+		for name in names:
+			var extension := name.get_extension().to_lower()
+
+			if extension == "rsrc" or directory.is_link(name):
+				continue
+
+			var bytes := FileAccess.get_file_as_bytes(path.path_join(name))
+
+			if extension == targets[target] or (target == "CITIES" and extension.is_empty() and _is_city(bytes)):
+				_write_city(folder, target, name if not extension.is_empty() else name + "." + str(targets[target]).to_upper(), bytes)
+
+				if not error.is_empty():
+					return
+
+	for name in directory.get_directories():
+		if not name.begins_with(".") and not directory.is_link(name):
+			_copy_city_folders(path.path_join(name), folder, depth + 1)
+
+
+func _is_city_name(path: String, name: String) -> bool:
+	var extension := name.get_extension().to_lower()
+
+	if name.to_upper() == DataPack.TEMPLATE_FILE:
+		return false
+
+	return extension == "sc2" or (extension.is_empty() and not FileAccess.file_exists(path.path_join(name + ".rsrc")))
+
+
+func _is_city(bytes: PackedByteArray) -> bool:
+	return (bytes.size() >= 12 and bytes.slice(0, 4).get_string_from_ascii() == CITY_HEADER
+		and bytes.slice(8, 12).get_string_from_ascii() == CITY_TYPE)
+
+
+func _write_city(folder: String, target: String, file_name: String, bytes: PackedByteArray) -> void:
+	var destination := folder.path_join(target).path_join(file_name.validate_filename())
+
+	if not FileAccess.file_exists(destination):
+		_write(destination, bytes)
+
+
+func _finish(folder: String, pack_name: String, platform: String) -> void:
 	var manifest := { "format": DataPack.FORMAT, "version": 1, "name": pack_name }
 
 	if not platform.is_empty():
@@ -38,3 +149,13 @@ func export_pack(source: String, folder: String, pack_name: String, platform := 
 
 	if error.is_empty():
 		error = DataPack.load_folder(folder).error
+
+
+func _write(path: String, bytes: PackedByteArray) -> void:
+	if not error.is_empty():
+		return
+
+	error = Sc2MediaImporter._write(path, bytes)
+
+	if error.is_empty():
+		count += 1

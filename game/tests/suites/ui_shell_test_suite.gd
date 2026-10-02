@@ -278,6 +278,15 @@ func _test_information_dialogs() -> void:
 		shown_ids == [3000, 3001, 3002, 3003] and library_windows.current_resource_id() == -1,
 		"Library Ruminate shows each text window in turn and closes after the last",
 	)
+	# the Macintosh has three Library texts
+	library_windows.show_texts({ 3000: "First", 3001: "Second", 3002: "Third" }, Vector2i(1280, 800))
+	shown_ids.clear()
+
+	while library_windows.visible:
+		shown_ids.append(library_windows.current_resource_id())
+		library_windows.close_page()
+
+	_check(shown_ids == [3000, 3001, 3002], "Library Ruminate shows only the texts that the game version has")
 	library_windows.show_texts({
 		3000: "Long text ".repeat(400),
 		3001: "Second",

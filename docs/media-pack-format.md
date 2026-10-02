@@ -401,8 +401,8 @@ original relative paths in the pack folder. The manifest has no file list.
 | Path | Required | Use |
 | --- | --- | --- |
 | `DATA/TEXT_USA.DAT`, `DATA/TEXT_USA.IDX` | Yes | Game text, for example the Library text and the original credits |
-| `DATA/DATA_USA.DAT`, `DATA/DATA_USA.IDX` | Yes | Newspaper data |
-| `DEFAULT.SC2` | Yes | Template for New City, and the main menu background city when there are no cities |
+| `DATA/DATA_USA.DAT`, `DATA/DATA_USA.IDX` | No | Newspaper data. The DOS and 1993 Macintosh demos have none that the game can use. |
+| `DEFAULT.SC2` | No | Template for New City, and the main menu background city when there are no cities. Without it, New City uses the built-in template. DOS and Macintosh games have no template file. |
 | `CITIES/` | No | Sample cities for Open City and the main menu background |
 | `SCENARIO/` | No | Scenarios for Play Scenario |
 | `SCURKART/` | No | SCURK tile sets. SCURK opens `SCURKART/ORIGINAL.MIF` when no other tile set is active. |
@@ -411,8 +411,10 @@ The importer copies the complete text and newspaper files. A new game feature
 can use more of these files without a new import. A data pack never contains an
 executable file.
 
-The game loads the data pack only if all the required files are present and the
-text and newspaper files are valid.
+The game loads the data pack only if the text files are present, the text has
+the original credits (text 128), and the newspaper files, if present, are valid.
+The Library Ruminate action shows the Library texts 3000 to 3003 that the pack
+has, in order. The Macintosh game has three of them, and DOS has none.
 
 Open City and Play Scenario start in `user://cities` and `user://scenarios`
 when these folders exist. Otherwise, they start in the `CITIES` and `SCENARIO`
@@ -476,9 +478,37 @@ contains `SIMCITY.EXE` and these files:
 
 With a complete Windows installation, the importer also adds these groups to the
 graphics pack: the `city_ui` portraits, terrain strip 207, and notices; the
-`desktop` icons and cursors; and the `scurk` textures and backgrounds. The Game
-data kind needs a complete Windows installation. With another source, the
-Game data import fails and the other kinds continue.
+`desktop` icons and cursors; and the `scurk` textures and backgrounds.
+
+### Game data from other versions
+
+A folder with `DATA/TEXT_USA.DAT` and `DATA/TEXT_USA.IDX`, as in Windows 95 and
+Windows 3.x, is copied as it is. For other sources, the importer finds the
+records and writes the Windows files:
+
+| Source | Text records | Newspaper records |
+| --- | --- | --- |
+| DOS `SC2000.DAT` | `TXT128`, `TXT500`, … | `PPDT1000.RAW` to `PPDT1005.RAW` |
+| Macintosh application | `TEXT` resources | `DATA` resources 1000 to 1005 |
+| Windows demos | `TEXT_USA` or `TEXT` `.DAT` and `.IDX` pair | `DATA_USA` or `DATA` `.DAT` and `.IDX` pair |
+
+The importer takes Macintosh resources only from the file that has `DATA` 1003,
+because each Macintosh scenario file has its own `TEXT` 128. It keeps the text
+records as they are: the Windows text also has Macintosh line ends and
+characters.
+
+The DOS and Macintosh newspaper grammar, and the grammar of the Windows 3.x demo,
+uses tokens 0x80 to 0xb6 for phrases 32 to 86 and Macintosh curly quotes. Windows
+uses other token bytes (`NewspaperText.EXTENDED_TOKEN_BYTES`) and ASCII quotes.
+The importer finds the token set from the grammar, changes those bytes in place,
+and sets the base of each empty table from 0xffff to 0. The phrase offsets do not
+change. The 1993 Macintosh demo grammar has no headline ends and numbers its
+stories in another order. The importer does not import it.
+
+The importer copies the `.SC2`, `.SCN`, and `.MIF` files from folders named
+`CITIES`, `SCENARIO`, and `SCURKART`, and a city file beside a demo. A Macintosh
+city has no file extension, so the importer adds `.SC2`. A Macintosh scenario
+keeps its goals in a resource fork, so the importer does not copy it.
 
 ### Make example packs for development
 

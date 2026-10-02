@@ -330,7 +330,7 @@ func data_pack_folder() -> String:
 func apply_data_pack(pack: DataPack) -> void:
 	app.asset_state.data_pack = pack
 	app.asset_state.reference_root = pack.root if pack.is_loaded() else DataPack.default_folder()
-	app.new_city_state.session.independent_template = not pack.is_loaded()
+	app.new_city_state.session.independent_template = not pack.has_template()
 
 	if app.asset_state.asset_source != null and app.asset_state.asset_source.assets != null:
 		pack.apply_to(app.asset_state.asset_source.assets)

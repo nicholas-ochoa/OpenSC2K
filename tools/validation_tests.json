@@ -1590,6 +1590,12 @@
     "lane": "product"
   },
   {
+    "id": "sc2_import_data_test",
+    "script": "tests/sc2_import_data_test.gd",
+    "domain": "formats",
+    "lane": "product"
+  },
+  {
     "id": "sc2_import_dialog_test",
     "script": "tests/sc2_import_dialog_test.gd",
     "domain": "ui",

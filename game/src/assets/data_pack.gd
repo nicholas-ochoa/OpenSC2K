@@ -5,9 +5,11 @@ extends RefCounted
 ## A data pack never contains an executable.
 
 const FORMAT := "opensc2k-data"
-const REQUIRED_FILES := [
-	"DATA/TEXT_USA.DAT", "DATA/TEXT_USA.IDX", "DATA/DATA_USA.DAT", "DATA/DATA_USA.IDX", "DEFAULT.SC2",
-]
+const REQUIRED_FILES := ["DATA/TEXT_USA.DAT", "DATA/TEXT_USA.IDX"]
+# the DOS demo has no newspaper
+const NEWSPAPER_FILES := ["DATA/DATA_USA.DAT", "DATA/DATA_USA.IDX"]
+# DOS and Macintosh games make a new city without a template file
+const TEMPLATE_FILE := "DEFAULT.SC2"
 const FOLDERS := [["CITIES", "sc2"], ["SCENARIO", "scn"], ["SCURKART", "mif"]]
 
 var error := ""
@@ -65,10 +67,14 @@ static func load_folder(folder: String) -> DataPack:
 			return pack
 
 	pack.text.load_text_data(pack_root)
+	var has_newspaper := FileAccess.file_exists(pack_root.path_join(NEWSPAPER_FILES[0]))
+
+	if not has_newspaper:
+		pack.text.newspaper_data = null
 
 	if (
-		pack.text.newspaper_data == null or not pack.text.newspaper_data.is_valid()
-		or pack.text.library_texts.is_empty() or pack.text.original_credits.is_empty()
+		(has_newspaper and (pack.text.newspaper_data == null or not pack.text.newspaper_data.is_valid()))
+		or pack.text.original_credits.is_empty()
 	):
 		pack.error = "The data pack is incomplete. Import it again."
 
@@ -82,6 +88,10 @@ static func load_folder(folder: String) -> DataPack:
 
 func is_loaded() -> bool:
 	return error.is_empty() and not root.is_empty()
+
+
+func has_template() -> bool:
+	return is_loaded() and FileAccess.file_exists(root.path_join(TEMPLATE_FILE))
 
 
 func is_outdated() -> bool:

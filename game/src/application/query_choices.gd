@@ -5,7 +5,6 @@ const Tools = preload("res://src/tools/shared/tool_catalog.gd")
 const Signs = preload("res://src/tools/city/sign_command.gd")
 const Queries = preload("res://src/tools/city/query_info.gd")
 const QueryFacilityActions = preload("res://src/tools/city/query_actions.gd")
-const LibraryRuminateWindowsView = preload("res://src/ui/city_windows/library_ruminate_windows.gd")
 const Music = preload("res://src/audio/music_director.gd")
 
 var app: CityApplication
@@ -292,10 +291,7 @@ func run_query_action() -> void:
 
 			app.city_dialogs.analysis_dialog.show_categories(analysis.categories)
 		"library_ruminate":
-			if (
-				text_resources.library_texts.size()
-				!= LibraryRuminateWindowsView.TEXT_RESOURCE_IDS.size()
-			):
+			if text_resources.library_texts.is_empty():
 				app.interface.show_error("The Library text resources are missing or invalid.")
 
 				return
