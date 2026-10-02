@@ -123,8 +123,13 @@ def build(output, label, godot, native):
             stream.extractall(source, filter='data')
         project = source / 'game'
         install_native(native, project)
-        version = re.search(r'^config/version="([^"]+)"',
-                            (project / 'project.godot').read_text(), re.M).group(1)
+        settings = (project / 'project.godot').read_text()
+        version = re.search(r'^config/version="([^"]+)"', settings, re.M).group(1)
+        # the headless renderer stores textures without a lock, so parallel
+        # importers can lose a texture and fail the import with an engine error
+        if '[editor]' in settings:
+            raise ValueError('project.godot has an [editor] section; merge the import thread setting into it')
+        (project / 'project.godot').write_text(settings + '\n[editor]\n\nimport/use_multiple_threads=false\n')
         checked_godot(godot, project, '--editor', '--import')
         packages = []
         for platform, preset, binary in PACKAGES:
