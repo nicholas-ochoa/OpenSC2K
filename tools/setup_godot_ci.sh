@@ -20,6 +20,7 @@ templates="$HOME/Library/Application Support/Godot/export_templates/${version}.s
 mkdir -p "$templates"
 unzip -j -o "$staging/templates.tpz" 'templates/macos.zip' \
   'templates/linux_release.x86_64' 'templates/windows_release_x86_64.exe' \
+  'templates/linux_release.arm64' 'templates/windows_release_arm64.exe' \
   'templates/version.txt' -d "$templates"
 echo "$staging/bin" >> "${GITHUB_PATH:?}"
 "$staging/bin/godot" --version

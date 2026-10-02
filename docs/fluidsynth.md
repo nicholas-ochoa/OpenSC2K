@@ -116,8 +116,10 @@ validation runner calls the same build.
 Requirements: Rust (see `rust-toolchain.toml`), CMake 3.24 or later, Python 3,
 and a C and C++ compiler:
 
-- Windows: Visual Studio 2022 with the C++ workload. CMake uses the Visual Studio
-  generator and the static C runtime, so the DLL needs no redistributable.
+- Windows: Visual Studio 2022 with the C++ workload, and the ARM64 build tools
+  for an arm64 build. CMake uses the Visual Studio generator, the platform of the
+  Python architecture (x64 or ARM64), and the static C runtime, so the DLL needs
+  no redistributable.
 - macOS: Xcode command line tools. The library is universal (arm64 and x86_64)
   for macOS 11 and later, with an ad-hoc signature.
 - Linux: GCC or Clang. The library links the C++ runtime statically and needs
@@ -155,9 +157,9 @@ library.
 
 | Platform | Development | Package |
 | --- | --- | --- |
-| Windows | `game/bin/opensc2k_audio/windows-x86_64/libfluidsynth-3.dll` | `libfluidsynth-3.dll` beside `OpenSC2K.exe` |
+| Windows | `game/bin/opensc2k_audio/windows-x86_64/libfluidsynth-3.dll` (or `windows-arm64`) | `libfluidsynth-3.dll` beside `OpenSC2K.exe` |
 | macOS | `game/bin/opensc2k_audio/macos/libfluidsynth.3.dylib` | `OpenSC2K.app/Contents/Frameworks/libfluidsynth.3.dylib` |
-| Linux | `game/bin/opensc2k_audio/linux-x86_64/libfluidsynth.so.3` | `libfluidsynth.so.3` beside `OpenSC2K.x86_64` |
+| Linux | `game/bin/opensc2k_audio/linux-x86_64/libfluidsynth.so.3` (or `linux-arm64`) | `libfluidsynth.so.3` beside `OpenSC2K.x86_64` or `OpenSC2K.arm64` |
 
 The `[dependencies]` section of `game/opensc2k_audio.gdextension` makes the Godot
 export copy the library and the SoundFonts. The audio extension finds its own

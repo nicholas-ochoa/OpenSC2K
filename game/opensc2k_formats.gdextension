@@ -14,3 +14,5 @@ linux.debug.arm64 = "res://bin/opensc2k_formats/linux-arm64/libopensc2k_formats.
 linux.release.arm64 = "res://bin/opensc2k_formats/linux-arm64/libopensc2k_formats.so"
 windows.debug.x86_64 = "res://bin/opensc2k_formats/windows-x86_64/opensc2k_formats.dll"
 windows.release.x86_64 = "res://bin/opensc2k_formats/windows-x86_64/opensc2k_formats.dll"
+windows.debug.arm64 = "res://bin/opensc2k_formats/windows-arm64/opensc2k_formats.dll"
+windows.release.arm64 = "res://bin/opensc2k_formats/windows-arm64/opensc2k_formats.dll"

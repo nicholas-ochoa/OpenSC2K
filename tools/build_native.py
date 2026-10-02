@@ -3,7 +3,8 @@
 
 With no options, build the library for this computer. Use --package to build
 the library that a desktop package needs on this platform: a universal library
-on macOS, and the x86_64 library on Windows and Linux.
+on macOS, and the library of this architecture (x86_64 or arm64) on Windows
+and Linux.
 
 The audio library loads FluidSynth at run time. This also builds the FluidSynth
 shared library (tools/build_fluidsynth.py, which needs CMake). Without it, no
@@ -22,6 +23,14 @@ import build_fluidsynth
 ROOT = Path(__file__).resolve().parents[1]
 MODULES = ('simulation', 'rendering', 'formats', 'audio')
 MACOS_TARGETS = ('aarch64-apple-darwin', 'x86_64-apple-darwin')
+# the Windows and Linux folders that desktop packages include, and their Rust targets.
+# An explicit target stops an emulated x86_64 toolchain from building the wrong library
+PACKAGE_TARGETS = {
+    'linux-x86_64': 'x86_64-unknown-linux-gnu',
+    'linux-arm64': 'aarch64-unknown-linux-gnu',
+    'windows-x86_64': 'x86_64-pc-windows-msvc',
+    'windows-arm64': 'aarch64-pc-windows-msvc',
+}
 
 
 def host_folder():
@@ -91,12 +100,15 @@ def build_package(quiet=False):
             subprocess.run(['lipo', '-create', *slices, '-output', str(universal)], check=True)
             targets.append(_install(universal, ROOT / 'game/bin' / f'opensc2k_{module}' / 'macos' / library_name(module)))
         return targets + build_fluidsynth.build(quiet=quiet)
-    if host_folder() not in ('linux-x86_64', 'windows-x86_64'):
+    if host_folder() not in PACKAGE_TARGETS:
         raise OSError(f'desktop packages do not include {host_folder()}')
+    triple = PACKAGE_TARGETS[host_folder()]
     targets = []
     for module in MODULES:
-        _cargo(module, ['build', '--release'], quiet)
-        built = ROOT / 'native' / module / 'target' / 'release' / library_name(module)
+        crate = ROOT / 'native' / module
+        subprocess.run(['rustup', 'target', 'add', triple], cwd=crate, check=True)
+        _cargo(module, ['build', '--release', '--target', triple], quiet)
+        built = crate / 'target' / triple / 'release' / library_name(module)
         targets.append(_install(built, ROOT / 'game/bin' / f'opensc2k_{module}' / host_folder() / library_name(module)))
     return targets + build_fluidsynth.build(quiet=quiet)
 

@@ -14,3 +14,5 @@ linux.debug.arm64 = "res://bin/opensc2k_simulation/linux-arm64/libopensc2k_simul
 linux.release.arm64 = "res://bin/opensc2k_simulation/linux-arm64/libopensc2k_simulation.so"
 windows.debug.x86_64 = "res://bin/opensc2k_simulation/windows-x86_64/opensc2k_simulation.dll"
 windows.release.x86_64 = "res://bin/opensc2k_simulation/windows-x86_64/opensc2k_simulation.dll"
+windows.debug.arm64 = "res://bin/opensc2k_simulation/windows-arm64/opensc2k_simulation.dll"
+windows.release.arm64 = "res://bin/opensc2k_simulation/windows-arm64/opensc2k_simulation.dll"

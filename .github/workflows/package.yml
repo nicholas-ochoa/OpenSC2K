@@ -29,8 +29,14 @@ jobs:
             runner: macos-15
           - platform: linux-x86_64
             runner: ubuntu-24.04
+          - platform: linux-arm64
+            runner: ubuntu-24.04-arm
           - platform: windows-x86_64
             runner: windows-2025
+          - platform: windows-arm64
+            runner: windows-11-arm
+            # tools/build_native.py selects the target from the Python architecture
+            python-architecture: arm64
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     steps:
@@ -41,6 +47,7 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
+          architecture: ${{ matrix.python-architecture }}
       - name: Restore the Rust build cache
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:

@@ -14,6 +14,8 @@ linux.debug.arm64 = "res://bin/opensc2k_audio/linux-arm64/libopensc2k_audio.so"
 linux.release.arm64 = "res://bin/opensc2k_audio/linux-arm64/libopensc2k_audio.so"
 windows.debug.x86_64 = "res://bin/opensc2k_audio/windows-x86_64/opensc2k_audio.dll"
 windows.release.x86_64 = "res://bin/opensc2k_audio/windows-x86_64/opensc2k_audio.dll"
+windows.debug.arm64 = "res://bin/opensc2k_audio/windows-arm64/opensc2k_audio.dll"
+windows.release.arm64 = "res://bin/opensc2k_audio/windows-arm64/opensc2k_audio.dll"
 
 ; FluidSynth (LGPL-2.1-or-later) loads at run time from its own replaceable
 ; library beside this extension. Exports copy it; tools/build_native.py builds
@@ -28,3 +30,5 @@ linux.debug.arm64 = { "res://bin/opensc2k_audio/linux-arm64/libfluidsynth.so.3":
 linux.release.arm64 = { "res://bin/opensc2k_audio/linux-arm64/libfluidsynth.so.3": "" }
 windows.debug.x86_64 = { "res://bin/opensc2k_audio/windows-x86_64/libfluidsynth-3.dll": "" }
 windows.release.x86_64 = { "res://bin/opensc2k_audio/windows-x86_64/libfluidsynth-3.dll": "" }
+windows.debug.arm64 = { "res://bin/opensc2k_audio/windows-arm64/libfluidsynth-3.dll": "" }
+windows.release.arm64 = { "res://bin/opensc2k_audio/windows-arm64/libfluidsynth-3.dll": "" }

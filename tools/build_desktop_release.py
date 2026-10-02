@@ -42,7 +42,9 @@ def write_zip(package, folder, name, *directories):
 NATIVE_MODULES = ('simulation', 'rendering', 'formats', 'audio')
 NATIVE_PLATFORMS = {
     'windows-x64': ('windows-x86_64', 'opensc2k_{}.dll', 'opensc2k_{}.dll'),
+    'windows-arm64': ('windows-arm64', 'opensc2k_{}.dll', 'opensc2k_{}.dll'),
     'linux-x64': ('linux-x86_64', 'libopensc2k_{}.so', 'libopensc2k_{}.so'),
+    'linux-arm64': ('linux-arm64', 'libopensc2k_{}.so', 'libopensc2k_{}.so'),
     'macos-universal': ('macos', 'libopensc2k_{}.dylib',
                         'OpenSC2K.app/Contents/Frameworks/libopensc2k_{}.dylib'),
 }
@@ -52,8 +54,28 @@ NATIVE_PLATFORMS = {
 # section of opensc2k_audio.gdextension: (built file, file in the package)
 FLUIDSYNTH = {
     'windows-x64': ('libfluidsynth-3.dll', 'libfluidsynth-3.dll'),
+    'windows-arm64': ('libfluidsynth-3.dll', 'libfluidsynth-3.dll'),
     'linux-x64': ('libfluidsynth.so.3', 'libfluidsynth.so.3'),
+    'linux-arm64': ('libfluidsynth.so.3', 'libfluidsynth.so.3'),
     'macos-universal': ('libfluidsynth.3.dylib', 'OpenSC2K.app/Contents/Frameworks/libfluidsynth.3.dylib'),
+}
+
+
+# (platform, export preset, exported binary)
+PACKAGES = (
+    ('windows-x64', 'Windows Desktop', 'OpenSC2K.exe'),
+    ('windows-arm64', 'Windows Desktop arm64', 'OpenSC2K.exe'),
+    ('linux-x64', 'Linux', 'OpenSC2K.x86_64'),
+    ('linux-arm64', 'Linux arm64', 'OpenSC2K.arm64'),
+    ('macos-universal', 'macOS', 'OpenSC2K.app'),
+)
+
+
+# Godot WRY (the newspaper WebView) publishes no arm64 libraries. The arm64
+# packages do not include it, so they cannot show the newspaper.
+WRY_LIBRARIES = {
+    'windows-x64': 'godot_wry.dll',
+    'linux-x64': 'libgodot_wry.so',
 }
 
 
@@ -113,9 +135,7 @@ def build(output, label, godot, native):
                             (project / 'project.godot').read_text(), re.M).group(1)
         checked_godot(godot, project, '--editor', '--import')
         packages = []
-        for platform, preset, binary in [('windows-x64', 'Windows Desktop', 'OpenSC2K.exe'),
-                                        ('linux-x64', 'Linux', 'OpenSC2K.x86_64'),
-                                        ('macos-universal', 'macOS', 'OpenSC2K.app')]:
+        for platform, preset, binary in PACKAGES:
             name = f'OpenSC2K-{label}-{platform}'
             folder = work / name
             folder.mkdir()
@@ -128,16 +148,16 @@ def build(output, label, godot, native):
                 assert (folder / expected_library).is_file(), f'{platform} lacks native {module}'
             assert (folder / FLUIDSYNTH[platform][1]).is_file(), f'{platform} lacks FluidSynth'
             (folder / 'VERSION.txt').write_text(f'OpenSC2K {version}\nBuild: {label}\nCommit: {commit}\nGodot: {engine}\n')
-            if platform == 'windows-x64':
-                assert (folder / 'godot_wry.dll').is_file()
+            if platform in WRY_LIBRARIES:
+                assert (folder / WRY_LIBRARIES[platform]).is_file(), f'{platform} lacks Godot WRY'
+            if platform.startswith('windows'):
                 package = output / (name + '.zip')
                 write_zip(package, folder, name)
                 # the data folder beside the executable selects portable mode
                 portable = output / (name + '-portable.zip')
                 write_zip(portable, folder, name + '-portable', 'data/')
                 packages.append(portable)
-            elif platform == 'linux-x64':
-                assert (folder / 'libgodot_wry.so').is_file()
+            elif platform.startswith('linux'):
                 (folder / binary).chmod(0o755)
                 package = output / (name + '.tar.gz')
                 with tarfile.open(package, 'w:gz') as stream:

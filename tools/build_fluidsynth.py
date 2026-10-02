@@ -71,6 +71,7 @@ LIBRARY_NAMES = {
     'linux-x86_64': ('libfluidsynth.so.3',),
     'linux-arm64': ('libfluidsynth.so.3',),
     'windows-x86_64': ('libfluidsynth-3.dll',),
+    'windows-arm64': ('libfluidsynth-3.dll',),
 }
 
 # the static codec libraries inside libsndfile, in link order
@@ -155,6 +156,9 @@ def cmake(source, build, prefix, options, architecture, quiet):
     # Visual Studio finds its compiler without a developer prompt; Ninja does not
     generator = ['-G', 'Ninja'] if shutil.which('ninja') and sys.platform != 'win32' else []
     platform_options = []
+    if sys.platform == 'win32':
+        # the Visual Studio platform of this folder, not of the build tools
+        platform_options = ['-A', WINDOWS_PLATFORMS[host_folder()]]
     if sys.platform == 'darwin':
         platform_options = [f'-DCMAKE_OSX_ARCHITECTURES={architecture}',
                             f'-DCMAKE_OSX_DEPLOYMENT_TARGET={MACOS_DEPLOYMENT_TARGET}']
@@ -212,6 +216,8 @@ def build_from_source(architecture, quiet):
 def check_dependencies(library):
     """Reject a library that needs a shared library outside the operating system."""
     if sys.platform == 'win32':
+        if pe_machine(library) != WINDOWS_MACHINES[host_folder()]:
+            raise ValueError(f'{library.name} is not a {host_folder()} library')
         names = pe_imports(library)
         allowed = WINDOWS_SYSTEM_LIBRARIES
         for name in names:
@@ -232,13 +238,25 @@ def check_dependencies(library):
             raise ValueError(f'{library.name} needs {name}, which a package does not include')
 
 
+# Visual Studio platform and PE machine type of each Windows folder
+WINDOWS_PLATFORMS = {'windows-x86_64': 'x64', 'windows-arm64': 'ARM64'}
+WINDOWS_MACHINES = {'windows-x86_64': 0x8664, 'windows-arm64': 0xaa64}
+
+
 # Windows system DLLs that FluidSynth may import with every driver off
 WINDOWS_SYSTEM_LIBRARIES = {'kernel32.dll', 'user32.dll', 'advapi32.dll', 'ole32.dll', 'oleaut32.dll',
                             'ws2_32.dll', 'winmm.dll', 'dsound.dll', 'shell32.dll', 'shlwapi.dll', 'bcrypt.dll'}
 
 
+def pe_machine(path):
+    """The machine type in the COFF header of a Windows library."""
+    data = path.read_bytes()
+    header = int.from_bytes(data[0x3c:0x40], 'little')
+    return int.from_bytes(data[header + 4:header + 6], 'little')
+
+
 def pe_imports(path):
-    """The DLL names in the import table of a 64-bit Windows library."""
+    """The DLL names in the import table of a 64-bit (x64 or ARM64) Windows library."""
     data = path.read_bytes()
     header = int.from_bytes(data[0x3c:0x40], 'little')
     sections = int.from_bytes(data[header + 6:header + 8], 'little')

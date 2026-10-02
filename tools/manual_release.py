@@ -129,14 +129,14 @@ def publish(version, folder, repository, commit, draft):
     stable = stable_releases(published)
     tag = 'v' + version
     notes = (f'OpenSC2K {version}\n\n'
-             'Includes Windows x64 (standard and portable), Linux x64, and universal macOS packages, with SHA-256 checksums.\n\n'
+             'Includes Windows x64 and arm64 (standard and portable), Linux x64 and arm64, and universal macOS packages, with SHA-256 checksums.\n\n'
              'Your own SimCity 2000 Special Edition for Windows 95 (1996) files are required. '
              'Original game assets are not included.\n\n'
              f'[Installation instructions](https://github.com/{repository}/blob/{commit}/docs/install.md)\n\n'
              'CI passed the generated-data suite, editor parsing, and startup checks with Dummy audio. '
              'The full local release suite and cross-platform gameplay checks are not run by this workflow.\n\n'
              'Windows packages are unsigned. The macOS app is ad-hoc signed and is not notarized. '
-             'Linux requires GTK 3 and WebKitGTK 4.1.\n')
+             'Linux x64 requires GTK 3 and WebKitGTK 4.1. The arm64 packages cannot show the newspaper.\n')
     notes += commit_notes(repository, commit, stable[0]['tag_name'] if stable else None)
     with tempfile.TemporaryDirectory(prefix='opensc2k-release-notes-') as temporary:
         notes_path = Path(temporary) / 'notes.md'

@@ -9,17 +9,19 @@ Original game files are not included in the download.
 
 ## Windows
 
-Use the Windows x64 ZIP on a 64-bit Windows system.
+Use the Windows x64 ZIP on a 64-bit Intel or AMD Windows system.
+Use the Windows arm64 ZIP on a Windows on Arm system.
 Extract the entire ZIP to a writable folder. Run `OpenSC2K.exe`.
 Keep the PCK and DLL files beside the executable.
 The package is not code signed.
 
 The newspaper uses Microsoft Edge WebView2. If the runtime is missing, install the
 [Evergreen WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/).
+The arm64 package cannot show the newspaper, because the WebView extension has no arm64 build.
 
 ### Portable version
 
-The Windows x64 portable ZIP keeps all user files in the `data` folder beside `OpenSC2K.exe`.
+Each Windows portable ZIP keeps all user files in the `data` folder beside `OpenSC2K.exe`.
 Use it on a removable drive or in a folder that you can write to.
 Do not extract it to `Program Files`.
 
@@ -39,14 +41,17 @@ The Godot engine writes its log files to the `logs` folder in that location in b
 
 ## Linux
 
-Use the Linux x64 archive on an x86-64 system with glibc 2.34 or later.
+Use the Linux x64 archive on an x86-64 system, or the Linux arm64 archive on an arm64 (AArch64) system.
+Both need glibc 2.34 or later.
 The newspaper needs GTK 3 and WebKitGTK 4.1. On Ubuntu 22.04 or later, install these with:
 
 ```sh
 sudo apt install libgtk-3-0 libwebkit2gtk-4.1-0
 ```
 
-Extract the entire archive. Run `./OpenSC2K.x86_64` from its folder.
+The arm64 archive cannot show the newspaper, because the WebView extension has no arm64 build.
+
+Extract the entire archive. Run `./OpenSC2K.x86_64` (x64) or `./OpenSC2K.arm64` (arm64) from its folder.
 Keep the PCK and shared library files beside the executable.
 
 ## macOS

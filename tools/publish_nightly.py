@@ -36,8 +36,8 @@ def nightly_order(release):
 
 
 # the desktop packages, and the corresponding source of their LGPL FluidSynth library
-PACKAGE_SUFFIXES = ('windows-x64.zip', 'windows-x64-portable.zip', 'linux-x64.tar.gz', 'macos-universal.dmg',
-                    'fluidsynth-source.zip')
+PACKAGE_SUFFIXES = ('windows-x64.zip', 'windows-x64-portable.zip', 'windows-arm64.zip', 'windows-arm64-portable.zip',
+                    'linux-x64.tar.gz', 'linux-arm64.tar.gz', 'macos-universal.dmg', 'fluidsynth-source.zip')
 
 
 def package_files(folder, commit):
@@ -50,7 +50,7 @@ def package_files(folder, commit):
         raise ValueError('Invalid package label')
     expected = {f'OpenSC2K-{label}-{suffix}' for suffix in PACKAGE_SUFFIXES}
     if set(hashes) != expected:
-        raise ValueError('Expected the four desktop packages and the FluidSynth source')
+        raise ValueError('Expected the seven desktop packages and the FluidSynth source')
     files = {path.name: path for path in folder.iterdir() if path.is_file()}
     if set(files) != expected | {'SHA256SUMS.txt', 'build-info.json'}:
         raise ValueError('Unexpected or missing release files')
@@ -74,13 +74,13 @@ def publish(folder, repository, commit, run_id, attempt):
         return
     notes = (f'<!-- opensc2k-nightly run={run_id} attempt={attempt} -->\n'
              f'Automated nightly from `{commit}`, built {today}. This is a development build.\n\n'
-             'Includes Windows x64 (standard and portable), Linux x64, and universal macOS packages, '
+             'Includes Windows x64 and arm64 (standard and portable), Linux x64 and arm64, and universal macOS packages, '
              'and the source of the LGPL FluidSynth library that they include. '
              'Your own SimCity 2000 Special Edition for Windows 95 (1996) files are required.\n\n'
              'CI passed the generated-data suite, editor parsing, and startup checks with Dummy audio. '
              'The full local release suite and cross-platform gameplay checks are not run here.\n\n'
              'Windows packages are unsigned. The macOS app is ad-hoc signed and is not notarized. '
-             'Linux needs GTK 3 and WebKitGTK 4.1.\n\n'
+             'Linux x64 needs GTK 3 and WebKitGTK 4.1. The arm64 packages cannot show the newspaper.\n\n'
              f'[Install instructions](https://github.com/{repository}/blob/{commit}/docs/install.md) · '
              f'[Build run](https://github.com/{repository}/actions/runs/{run_id})\n\n'
              'Each nightly replaces the previous one. Stable releases are kept.\n')
