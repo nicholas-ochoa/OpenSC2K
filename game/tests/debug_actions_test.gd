@@ -138,6 +138,21 @@ func _check_moving_things() -> void:
 	removed = CityDebugActions.remove_moving_things(city, document)
 	assert(removed.ok and removed.count == added - 1 and _linked_tiles(city) == 0)
 
+	# Nessie needs a sailboat. Without one, the action adds sailboats first
+	var dry := EmptyCityTemplate.create(128)
+	var dry_city := CityState.from_document(dry)
+	assert(not CityDebugActions.summon_nessie(dry_city, dry, SimulationEngine.new(dry_city, 1, 1, 1), Vector2i(64, 64), 99).ok,
+		"Nessie needs open water")
+	var nessie := CityDebugActions.summon_nessie(city, document, engine, water, 99)
+	assert(nessie.ok, nessie.error)
+	var nessie_records := range(1, city.thing_count()).filter(func(record: int) -> bool:
+		return city.thing(record).type == ThingData.Type.SAILBOAT and city.thing(record).state != 0)
+	assert(nessie_records.size() == 1, "One sailboat becomes Nessie")
+	var nessie_thing := city.thing(nessie_records[0])
+	assert(Vector2i(nessie_thing.x, nessie_thing.y) == nessie.point)
+	assert(CityIsometricRenderer.moving_thing_sprite(nessie_thing).sprite_id == 1379, "The changed sailboat shows Nessie")
+	assert(engine.random.state == 123 and engine.lfsr_random.state == 456 and engine.game_random.state == 789)
+
 
 func _thing_count(city: CityState) -> int:
 	var count := 0

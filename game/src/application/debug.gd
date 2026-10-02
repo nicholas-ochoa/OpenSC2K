@@ -8,6 +8,8 @@ const Tools = preload("res://src/tools/shared/tool_catalog.gd")
 const Random = preload("res://src/simulation/random/sim_random.gd")
 const DisasterStart = preload("res://src/simulation/disasters/disaster_start_phase.gd")
 const DebugActions = preload("res://src/debug/city_debug_actions.gd")
+# the sound of a sailboat that becomes Nessie, SOUNDS/527.WAV
+const NESSIE_SOUND := 0x20f
 
 var app: CityApplication
 
@@ -279,6 +281,20 @@ func debug_spawn_moving_thing(kind: int) -> ActionResult:
 			return ActionResult.new(true, "Added a train at %s." % str(result.point))
 
 	return ActionResult.new(true, "Added a helicopter at %s." % str(result.point))
+
+
+func debug_summon_nessie() -> ActionResult:
+	var center := app.map_view.center_tile() if app.map_view != null else Vector2i(64, 64)
+	var result := DebugActions.summon_nessie(app.document_state.city, app.document_state.current_document,
+		app.simulation_state.simulation_engine, center, Time.get_ticks_usec() & 0x7fffffff)
+
+	if not result.ok:
+		return ActionResult.new(false, result.error)
+
+	app.moving_sprites.refresh_moving_things()
+	app.effects_audio.play_sound_ids([NESSIE_SOUND])
+
+	return ActionResult.new(true, "Nessie appeared at %s." % str(result.point))
 
 
 # `kind` indexes CityDebugActions.DELETE_KINDS. 0 removes every moving thing

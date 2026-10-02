@@ -383,6 +383,58 @@ static func spawn_moving_thing(
 	return result
 
 
+# turn the sailboat nearest to the view center into Nessie, as the original
+# sailboat tick does on its 1-in-4000 draw. without a sailboat, the action first
+# adds sailboats near the view center. the simulation random state does not change
+static func summon_nessie(
+	city: CityState,
+	document: Sc2File,
+	engine: SimulationEngine,
+	view_center: Vector2i,
+	random_seed: int,
+) -> SpawnResult:
+	var result := SpawnResult.new()
+
+	if city == null or document == null or engine == null:
+		result.error = "No city is loaded."
+
+		return result
+
+	var thing_chunk := document.find_chunk("XTHG")
+
+	if thing_chunk == null:
+		result.error = "The moving-object data is missing."
+
+		return result
+
+	var record := _nearest_sailboat(thing_chunk.decoded_payload, view_center)
+
+	if record == 0:
+		var spawned := spawn_moving_thing(city, document, engine, 3, view_center, random_seed)
+
+		if not spawned.ok:
+			result.error = spawned.error
+
+			return result
+
+		record = _nearest_sailboat(thing_chunk.decoded_payload, view_center)
+
+	var things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
+	var offset := record * CityState.THING_RECORD_SIZE
+	ThingData.write(things, offset + ThingData.Field.STATE, 1)
+
+	if record == 0 or not thing_chunk.set_decoded_payload(things):
+		result.error = "The sailboat could not be changed."
+
+		return result
+
+	result.ok = true
+	result.count = 1
+	result.point = Vector2i(ThingData.read(things, offset + ThingData.Field.X), ThingData.read(things, offset + ThingData.Field.Y))
+
+	return result
+
+
 # remove the moving things of `types`, or every moving thing for an empty list,
 # and put back the map labels under them
 static func remove_moving_things(city: CityState, document: Sc2File, types: Array = []) -> RemoveResult:
@@ -434,6 +486,27 @@ static func remove_moving_things(city: CityState, document: Sc2File, types: Arra
 	city.resync_mirrors(["XTXT"])
 	result.ok = true
 	result.count = records.size()
+
+	return result
+
+
+# the sailboat record nearest to `center`, or 0
+static func _nearest_sailboat(things: PackedByteArray, center: Vector2i) -> int:
+	var result := 0
+	var best := -1
+
+	for record in range(1, ThingData.count(things)):
+		var offset := record * CityState.THING_RECORD_SIZE
+
+		if ThingData.read(things, offset) != ThingData.Type.SAILBOAT:
+			continue
+
+		var point := Vector2i(ThingData.read(things, offset + ThingData.Field.X), ThingData.read(things, offset + ThingData.Field.Y))
+		var distance := absi(point.x - center.x) + absi(point.y - center.y)
+
+		if best < 0 or distance < best:
+			result = record
+			best = distance
 
 	return result
 

@@ -259,6 +259,11 @@ func _build_actions(tabs: TabContainer) -> void:
 	_button(moving, "Delete selected things", ("Delete every moving thing of the selected kind from the map. The map labels " +
 		"under them come back. Deleting a monster or a tornado does not end its disaster."), func() -> void:
 		_record_action(main_control.debug.call("debug_remove_moving_things", delete_kind.selected)))
+	moving.add_child(Control.new())
+	moving.add_child(Control.new())
+	_button(moving, "Summon Nessie", ("Change the sailboat nearest to the view center into Nessie. Without a sailboat, " +
+		"sailboats are added first. Nessie leaves after a few moving-object ticks."), func() -> void:
+		_invoke("debug_summon_nessie"))
 	var disasters := _action_section(box, "Disasters", 3)
 	var disaster := OptionButton.new()
 	disaster.custom_minimum_size.x = OPTION_WIDTH
