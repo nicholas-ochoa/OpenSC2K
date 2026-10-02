@@ -577,6 +577,8 @@ static func create_empty(edge: int, city_name := "New City") -> ConversionResult
 	if edge != 128 and not template.resize_empty_map(edge):
 		return ConversionResult.failure("Unsupported map size %d" % edge)
 
+	EmptyCityTemplate.fill_neutral_growth(template)
+
 	return from_new_city(template, city_name, "")
 
 

@@ -35,7 +35,7 @@ static func generate(
 			selected.erase(river_feature)
 
 	var extended := not selected.is_empty() or (smooth_slopes and has_ocean and has_river)
-	var island := "island" in selected or "islands" in selected
+	var island := is_island(layout, selected)
 	var ocean_requested := has_ocean or "delta" in selected or "peninsula" in selected or "cliffs" in selected
 
 	has_ocean = ocean_requested or island or "bay" in selected
@@ -164,6 +164,11 @@ static func generate(
 	result.error = ""
 
 	return result
+
+
+# an island map has ocean on all four sides
+static func is_island(layout: String, features: Array) -> bool:
+	return layout in ["island", "islands"] or "island" in features or "islands" in features
 
 
 class Options extends RefCounted:

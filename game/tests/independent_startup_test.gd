@@ -58,7 +58,7 @@ func _test_generated_cities() -> void:
 			assert(city.document.misc_u32(0x18) == (1 if difficulty == 3 else 0))
 
 	assert(template.serialize().data == unchanged)
-	assert(template.misc_u32(0x1008) == 0 and template.misc_u32(0x1010) == 0)
+	assert(template.misc_u32(Sc2MiscLayout.NEWSPAPER_EXTRAS) == 1 and template.misc_u32(0x1010) == 0)
 	assert(template.misc_u32(0x1040) == 0)
 	var options := NewCityTerrain.Options.new()
 	options.ocean = true
@@ -67,11 +67,10 @@ func _test_generated_cities() -> void:
 	options.water = 5
 	options.trees = 0
 	var session := NewCityTerrainSession.new()
-	session.independent_template = true
 	session.begin(1, 1)
-	var preview := session.generate_preview(MISSING_ROOT.path_join("DEFAULT.SC2"), options, false)
+	var preview := session.generate_preview(options, false)
 	assert(preview.ok, str(preview))
-	var coastal_setup := session.create_city(MISSING_ROOT.path_join("DEFAULT.SC2"), "Coast", "Mayor", 1, 1900, options, PackedByteArray())
+	var coastal_setup := session.create_city("Coast", "Mayor", 1, 1900, options, PackedByteArray())
 	assert(coastal_setup.ok, str(coastal_setup))
 	assert(coastal_setup.document.find_chunk("XROG").decoded_payload.count(0x7f) == Sc2File.DECODED_SIZES["XROG"])
 	assert(coastal_setup.document.misc_u32(Sc2MiscLayout.BUDGETS + Sc2BudgetLayout.MONTHS + Sc2BudgetLayout.MONTH_FUNDING) == 7)
@@ -100,7 +99,7 @@ func _test_generated_cities() -> void:
 	var reloaded := Sc2File.load_path(path)
 	assert(reloaded.is_valid() and reloaded.serialize().data == saved.data)
 	assert(DirAccess.remove_absolute(path) == OK)
-	assert(session.generate_preview(MISSING_ROOT, options, false).document.serialize().data == preview.document.serialize().data)
+	assert(session.generate_preview(options, false).document.serialize().data == preview.document.serialize().data)
 
 
 func _round_trip_city(document: Sc2File) -> void:
@@ -197,7 +196,6 @@ func _test_missing_data_startup() -> void:
 	await process_frame
 	await process_frame
 	assert(main.asset_state.assets_ready and not main.asset_state.data_pack.is_loaded())
-	assert(main.new_city_state.session.independent_template)
 	var prompt: ConfirmationDialog = main.pack_update_dialog
 	assert(prompt.visible and prompt.dialog_text.contains("Game data") and not prompt.dialog_text.contains("Graphics"))
 	prompt.get_cancel_button().pressed.emit()

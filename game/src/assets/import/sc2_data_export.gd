@@ -6,6 +6,8 @@ extends RefCounted
 const CITY_HEADER := "FORM"
 const CITY_TYPE := "SCDH"
 const MAX_FOLDER_DEPTH := 4
+# WINSCURK.EXE opens this file. It is not a sample city, and New City does not use it.
+const SCURK_TEMPLATE_FILE := "DEFAULT.SC2"
 
 var error := ""
 var count := 0
@@ -20,7 +22,7 @@ func export_pack(source: String, folder: String, pack_name: String, platform := 
 	for relative: String in DataPack.REQUIRED_FILES:
 		files[relative] = Sc2ImportPath.resolve(source, relative)
 
-	for relative: String in DataPack.NEWSPAPER_FILES + [DataPack.TEMPLATE_FILE]:
+	for relative: String in DataPack.NEWSPAPER_FILES:
 		var path := Sc2ImportPath.find_file(source, relative)
 
 		if not path.is_empty():
@@ -135,7 +137,7 @@ func _copy_city_folders(path: String, folder: String, depth: int) -> void:
 func _is_city_name(path: String, name: String) -> bool:
 	var extension := Sc2ImportPath.key(name).get_extension().to_lower()
 
-	if Sc2ImportPath.key(name) == DataPack.TEMPLATE_FILE:
+	if Sc2ImportPath.key(name) == SCURK_TEMPLATE_FILE:
 		return false
 
 	return extension == "sc2" or (extension.is_empty() and not FileAccess.file_exists(path.path_join(name + ".rsrc")))

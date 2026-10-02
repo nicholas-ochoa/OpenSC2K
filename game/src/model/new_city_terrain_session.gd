@@ -1,7 +1,6 @@
 class_name NewCityTerrainSession
 extends RefCounted
 
-const Sc2Document = preload("res://src/formats/sc2_file.gd")
 const CityModel = preload("res://src/model/city_state.gd")
 const NewCity = preload("res://src/model/new_city_setup.gd")
 const NewTerrain = preload("res://src/model/new_city_terrain.gd")
@@ -9,7 +8,6 @@ const Random = preload("res://src/simulation/random/sim_random.gd")
 const GameRandom = preload("res://src/simulation/random/game_lcg_random.gd")
 
 var preview_document: Sc2File
-var independent_template := false
 var preview_options: NewCityTerrain.Options
 var preview_process_start := 1
 var preview_game_start := 1
@@ -34,15 +32,11 @@ func matches(options: NewCityTerrain.Options) -> bool:
 	return preview_document != null and preview_options.same_values(options)
 
 
-func generate_preview(
-	template_path: String, options: NewCityTerrain.Options, advance_seed: bool) -> PreviewResult:
-	var document := _load_template(template_path)
-
-	if not document.is_valid():
-		return PreviewResult.failure(document.parse_error, "template")
-
-	if not document.resize_empty_map(int(options.size)):
+func generate_preview(options: NewCityTerrain.Options, advance_seed: bool) -> PreviewResult:
+	if int(options.size) not in Sc2File.MAP_SIZES:
 		return PreviewResult.failure("Unsupported city size", "size")
+
+	var document := EmptyCityTemplate.create(int(options.size))
 
 	if options.native_maps and not document.enable_full_resolution_maps():
 		return PreviewResult.failure("Cannot enable per-tile data maps", "data_maps")
@@ -53,6 +47,9 @@ func generate_preview(
 
 	var preview_process := Random.new(preview_process_start)
 	var preview_game := GameRandom.new(preview_game_start)
+
+	# the original draws the neighbors before it makes the terrain
+	NewCity.draw_neighbors(document, preview_process)
 	var generated := NewTerrain.generate(
 		document,
 		bool(options.ocean),
@@ -89,7 +86,6 @@ func generate_preview(
 
 
 func create_city(
-	_template_path: String,
 	city_name: String,
 	mayor_name: String,
 	difficulty: int,
@@ -113,6 +109,7 @@ func create_city(
 		game_random,
 		null,
 		newspaper_session_state,
+		NewTerrain.is_island(str(preview_options.layout), preview_options.features),
 	)
 
 	if not created.ok:
@@ -122,10 +119,6 @@ func create_city(
 	created.game_state = game_random.state
 
 	return created
-
-
-func _load_template(path: String) -> Sc2File:
-	return EmptyCityTemplate.create() if independent_template else Sc2Document.load_path(path)
 
 
 class PreviewResult extends RefCounted:

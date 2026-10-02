@@ -1,15 +1,13 @@
 class_name DataPack
 extends RefCounted
-## Original game data files: text, newspaper data, the city template, cities,
-## scenarios, and SCURK tile sets. The files keep their original relative paths.
+## Original game data files: text, newspaper data, cities, scenarios, and SCURK
+## tile sets. The files keep their original relative paths.
 ## A data pack never contains an executable.
 
 const FORMAT := "opensc2k-data"
 const REQUIRED_FILES := ["DATA/TEXT_USA.DAT", "DATA/TEXT_USA.IDX"]
 # the DOS demo has no newspaper
 const NEWSPAPER_FILES := ["DATA/DATA_USA.DAT", "DATA/DATA_USA.IDX"]
-# DOS and Macintosh games make a new city without a template file
-const TEMPLATE_FILE := "DEFAULT.SC2"
 const FOLDERS := [["CITIES", "sc2"], ["SCENARIO", "scn"], ["SCURKART", "mif"]]
 
 var error := ""
@@ -88,10 +86,6 @@ static func load_folder(folder: String) -> DataPack:
 
 func is_loaded() -> bool:
 	return error.is_empty() and not root.is_empty()
-
-
-func has_template() -> bool:
-	return is_loaded() and FileAccess.file_exists(root.path_join(TEMPLATE_FILE))
 
 
 func is_outdated() -> bool:

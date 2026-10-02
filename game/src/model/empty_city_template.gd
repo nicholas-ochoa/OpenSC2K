@@ -1,6 +1,8 @@
 class_name EmptyCityTemplate
 extends RefCounted
 
+const NEUTRAL_GROWTH := 0x7f
+
 
 static func create(map_edge: int = 128) -> Sc2File:
 	var document := Sc2File.new()
@@ -25,6 +27,7 @@ static func create(map_edge: int = 128) -> Sc2File:
 		Sc2MiscLayout.WEATHER_HEAT: 150, Sc2MiscLayout.WEATHER_WIND: 10, Sc2MiscLayout.WEATHER_RAIN: 15, Sc2MiscLayout.WEATHER_TREND: 4,
 		Sc2MiscLayout.TILE_COUNTS: (map_edge * map_edge),
 		Sc2MiscLayout.SIMULATION_SPEED: 2, Sc2MiscLayout.AUTO_GOTO: 1, Sc2MiscLayout.SOUND: 1, Sc2MiscLayout.MUSIC: 1,
+		Sc2MiscLayout.NEWSPAPER_EXTRAS: 1,
 	}
 
 	for offset in values:
@@ -41,19 +44,20 @@ static func create(map_edge: int = 128) -> Sc2File:
 		# the original also stores the rate as the first month of history
 		document.set_misc_u32(record + Sc2BudgetLayout.MONTHS + Sc2BudgetLayout.MONTH_FUNDING, funding)
 
-	for neighbor in 4:
-		document.set_misc_u32(Sc2MiscLayout.NEIGHBORS + neighbor * 16, neighbor)
-		document.set_misc_u32(0x06dc + neighbor * 16, 1000)
-		document.set_misc_u32(0x06e0 + neighbor * 16, 1000)
+	# a new city draws its own neighbors. These fixed ones are never the ocean.
+	NewCitySetup.draw_neighbors(document, SimRandom.new(1))
 
 	document.set_city_name("New City")
 	document.resize_empty_map(map_edge)
+	fill_neutral_growth(document)
 
-	# FUN_0040e250 fills the rate of growth map with the neutral value
+	return document
+
+
+# FUN_0040e250 fills the rate of growth map with the neutral value
+static func fill_neutral_growth(document: Sc2File) -> void:
 	var growth := document.find_chunk("XROG")
 	var neutral_growth := PackedByteArray()
 	neutral_growth.resize(growth.expected_decoded_size)
-	neutral_growth.fill(0x7f)
+	neutral_growth.fill(NEUTRAL_GROWTH)
 	growth.set_decoded_payload(neutral_growth, true)
-
-	return document

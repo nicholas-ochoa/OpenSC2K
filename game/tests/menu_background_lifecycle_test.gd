@@ -10,15 +10,15 @@ func _run() -> void:
 	var sprites := FixtureGraphics.pack().large_sprites
 	var palette := Sc2Palette.index_encoding()
 	var folder := "user://menu-background-%d" % OS.get_process_id()
-	DirAccess.make_dir_recursive_absolute(folder)
-	var file := FileAccess.open(folder.path_join("DEFAULT.SC2"), FileAccess.WRITE)
+	DirAccess.make_dir_recursive_absolute(folder.path_join("CITIES"))
+	var file := FileAccess.open(folder.path_join("CITIES/MENU.SC2"), FileAccess.WRITE)
 	file.store_buffer(EmptyCityTemplate.create(128).serialize().data)
 	file.close()
 
 	var background := MainMenuCityBackground.new()
 	root.add_child(background)
 	background.configure(folder, palette, sprites)
-	assert(background.demo_city != null and background.source_path.ends_with("DEFAULT.SC2"))
+	assert(background.demo_city != null and background.source_path.ends_with("MENU.SC2"))
 	await _drain(background)
 	assert(background.static_image != null and background.demo_texture != null)
 	var expected := background.static_image.get_data()
@@ -71,7 +71,8 @@ func _run() -> void:
 
 	background.queue_free()
 	await process_frame
-	DirAccess.remove_absolute(folder.path_join("DEFAULT.SC2"))
+	DirAccess.remove_absolute(folder.path_join("CITIES/MENU.SC2"))
+	DirAccess.remove_absolute(folder.path_join("CITIES"))
 	DirAccess.remove_absolute(folder)
 	print("PASS: hidden menu city and buffer release, late worker disposal and new city on return")
 	quit()

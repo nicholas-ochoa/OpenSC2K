@@ -111,7 +111,6 @@ func check_ui() -> void:
 		dialog.terrain_options().size == 128 and not dialog.terrain_options().native_maps,
 		"Creation guard survives programmatic UI selection",
 	)
-	main.new_city_state.session.independent_template = true
 	main.new_city_state.session.begin(123, 456)
 	var options: NewCityTerrain.Options = dialog.terrain_options()
 	# Format policy is independent of expensive terrain feature combinations.
@@ -120,10 +119,9 @@ func check_ui() -> void:
 	options.trees = 0
 	options.ocean = false
 	options.river = false
-	var generated: NewCityTerrainSession.PreviewResult = main.new_city_state.session.generate_preview("", options, false)
+	var generated: NewCityTerrainSession.PreviewResult = main.new_city_state.session.generate_preview(options, false)
 	check(generated.ok and not generated.document.is_extended(), "Compatibility generates original-format preview")
 	var created: NewCitySetup.Result = main.new_city_state.session.create_city(
-		"",
 		"Compatible",
 		"Mayor",
 		1,
@@ -141,9 +139,9 @@ func check_ui() -> void:
 	small.trees = 0
 	small.ocean = false
 	small.river = false
-	generated = main.new_city_state.session.generate_preview("", small, false)
+	generated = main.new_city_state.session.generate_preview(small, false)
 	check(generated.ok and generated.document.is_extended(), "A 128 preview without compatibility is SC2X")
-	created = main.new_city_state.session.create_city("", "Extended", "Mayor", 1, 1900, small, PackedByteArray())
+	created = main.new_city_state.session.create_city("Extended", "Mayor", 1, 1900, small, PackedByteArray())
 	check(created.ok and created.document.is_extended(), "A 128 city without compatibility is SC2X")
 
 	var doc := EmptyCityTemplate.create(128)

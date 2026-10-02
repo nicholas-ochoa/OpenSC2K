@@ -1,6 +1,8 @@
 class_name NewCitySetup
 extends RefCounted
 
+@warning_ignore_start("integer_division")
+
 const CityModel = preload("res://src/model/city_state.gd")
 const Random = preload("res://src/simulation/random/sim_random.gd")
 const GameRandom = preload("res://src/simulation/random/game_lcg_random.gd")
@@ -25,6 +27,13 @@ const BUDGET_YEAR_TO_DATE := Sc2BudgetLayout.YEAR_TO_DATE
 const BUDGET_COUNT_MONTH_0 := Sc2BudgetLayout.MONTHS
 const BUDGET_FUND_MONTH_0 := Sc2BudgetLayout.MONTHS + Sc2BudgetLayout.MONTH_FUNDING
 const MAX_BONDS := 50
+const NEIGHBOR_STRIDE := CityNeighbors.STRIDE
+const NEIGHBOR_POPULATION := 4
+const NEIGHBOR_VALUE := 8
+const NEIGHBOR_FAME := 12
+const NEIGHBOR_MIN_POPULATION := 100
+const NEIGHBOR_POPULATION_RANGE := 7400
+const NEIGHBOR_VALUE_DIVISORS := 3
 const HARD_BOND_RATE := 3
 const FOUNDING_STORY_TYPE := 2
 const GRAPH_GNP := 13
@@ -55,6 +64,7 @@ static func create(
 	game_random: GameLcgRandom = null,
 	terrain_options: NewCityTerrain.Options = null,
 	newspaper_session_state: PackedByteArray = PackedByteArray(),
+	island := false,
 ) -> Result:
 	if template == null or not template.is_valid():
 		return Result.failure("default city template is invalid")
@@ -116,6 +126,9 @@ static func create(
 	var terrain_result: NewCityTerrain.Result
 
 	if terrain_options != null:
+		# the original draws the neighbors before it makes the terrain
+		draw_neighbors(document, staged_random)
+		island = island or NewCityTerrain.is_island(str(terrain_options.layout), terrain_options.features)
 		terrain_result = Terrain.generate(
 			document,
 			bool(terrain_options.ocean),
@@ -161,6 +174,8 @@ static func create(
 		BinaryData.write_u32_be(misc, bond_budget + BUDGET_YEAR_TO_DATE, 30000)
 		BinaryData.write_u32_be(misc, bond_budget + BUDGET_COUNT_MONTH_0, 1)
 		BinaryData.write_u32_be(misc, bond_budget + BUDGET_FUND_MONTH_0, 30000)
+
+	_set_ocean_neighbors(misc, island)
 
 	if not newspaper_session_state.is_empty():
 		_copy_range(
@@ -229,6 +244,44 @@ static func create(
 	result.error = ""
 
 	return result
+
+
+# FUN_0040e250: four different random neighbor names, each with a population
+# that is the smallest of three draws and a value of 1/1, 1/2, or 1/3 of it
+static func draw_neighbors(document: Sc2File, random: SimRandom) -> void:
+	var names := PackedInt32Array()
+
+	for slot in CityNeighbors.COUNT:
+		var name_index := random.next_u15() % CityNeighbors.NAMES.size() + 1
+
+		while name_index in names:
+			name_index = random.next_u15() % CityNeighbors.NAMES.size() + 1
+
+		names.append(name_index)
+		var population := random.next_u15() % NEIGHBOR_POPULATION_RANGE + NEIGHBOR_MIN_POPULATION
+
+		for _draw in 2:
+			population = mini(population, random.next_u15() % NEIGHBOR_POPULATION_RANGE + NEIGHBOR_MIN_POPULATION)
+
+		var value := population / (random.next_u15() % NEIGHBOR_VALUE_DIVISORS + 1)
+		var offset := Sc2MiscLayout.NEIGHBORS + slot * NEIGHBOR_STRIDE
+		document.set_misc_u32(offset, name_index)
+		document.set_misc_u32(offset + NEIGHBOR_POPULATION, population)
+		document.set_misc_u32(offset + NEIGHBOR_VALUE, value)
+		document.set_misc_u32(offset + NEIGHBOR_FAME, 0)
+
+
+# FUN_0042e460 makes the first neighbor the ocean on an ocean map.
+# An island map has the ocean on all sides.
+static func _set_ocean_neighbors(misc: PackedByteArray, island: bool) -> void:
+	if BinaryData.read_u32_be(misc, Sc2MiscLayout.HAS_OCEAN) == 0:
+		return
+
+	for slot in (CityNeighbors.COUNT if island else 1):
+		var offset := Sc2MiscLayout.NEIGHBORS + slot * NEIGHBOR_STRIDE
+
+		for field in [0, NEIGHBOR_POPULATION, NEIGHBOR_VALUE, NEIGHBOR_FAME]:
+			BinaryData.write_u32_be(misc, offset + field, 0)
 
 
 static func _write_graph_value(

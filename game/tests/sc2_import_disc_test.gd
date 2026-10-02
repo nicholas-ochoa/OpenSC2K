@@ -40,7 +40,7 @@ func run() -> void:
 
 	# The data pack uses the documented names. City names keep their case without the version suffix.
 	var pack := DataPack.load_folder(imported.data)
-	assert(pack.is_loaded() and pack.has_template(), pack.error)
+	assert(pack.is_loaded() and not FileAccess.file_exists(pack.root.path_join("DEFAULT.SC2")), pack.error)
 	var expected := OriginalGameAssets.new()
 	expected.load_text_data(reference)
 	assert(pack.text.original_credits == expected.original_credits)

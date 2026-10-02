@@ -84,7 +84,7 @@ func _test_dos_import() -> void:
 	var imported := Sc2MediaImporter.import_assets(source, temporary.path_join("packs"), PackedStringArray(["data"]))
 	assert(imported.ok and imported.platform == "DOS", imported.summary())
 	var pack := DataPack.load_folder(imported.data)
-	assert(pack.is_loaded() and not pack.has_template(), pack.error)
+	assert(pack.is_loaded(), pack.error)
 	assert(pack.text.original_credits == "Credits" and pack.text.library_texts == { 3000: "Page" })
 	assert(FileAccess.file_exists(pack.root.path_join("CITIES/TEST.SC2")))
 	assert(FileAccess.file_exists(pack.root.path_join("CITIES/Demo City.SC2")))

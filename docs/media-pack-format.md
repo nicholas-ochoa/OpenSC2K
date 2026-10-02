@@ -11,7 +11,7 @@ There are four pack kinds:
 | Graphics | `opensc2k-graphics` | Palettes, city sprites, and interface images as indexed PNG files | `user://packs/graphics/pack.json` |
 | Sound | `opensc2k-sound` | Sound effects as WAV files | `user://packs/sound/pack.json` |
 | Music | `opensc2k-music` | Music as MIDI files or recordings | `user://packs/music/pack.json` |
-| Data | `opensc2k-data` | Original game data files: text, newspaper data, the city template, cities, scenarios, and SCURK tile sets | `user://packs/data/pack.json` |
+| Data | `opensc2k-data` | Original game data files: text, newspaper data, cities, scenarios, and SCURK tile sets | `user://packs/data/pack.json` |
 
 The game needs a graphics pack. Sound, music, and data packs are optional. The
 game can run without them, but some features are then not available. Packs do
@@ -40,8 +40,8 @@ to a long name to read all of it.
 
 Apply loads the new packs immediately. A new graphics pack changes the city,
 the toolbar, and the interface. A new sound or music pack reloads the sound
-effects and restarts the music. A new data pack changes the text, the city
-template, and the city and scenario folders. If a selected pack is not valid,
+effects and restarts the music. A new data pack changes the text and the city
+and scenario folders. If a selected pack is not valid,
 the game shows an error and keeps the packs that it uses now.
 
 The import dialog selects the packs that it makes. Refer to
@@ -402,7 +402,6 @@ original relative paths in the pack folder. The manifest has no file list.
 | --- | --- | --- |
 | `DATA/TEXT_USA.DAT`, `DATA/TEXT_USA.IDX` | Yes | Game text, for example the Library text and the original credits |
 | `DATA/DATA_USA.DAT`, `DATA/DATA_USA.IDX` | No | Newspaper data. The DOS and 1993 Macintosh demos have none that the game can use. |
-| `DEFAULT.SC2` | No | Template for New City, and the main menu background city when there are no cities. Without it, New City uses the built-in template. DOS and Macintosh games have no template file. |
 | `CITIES/` | No | Sample cities for Open City and the main menu background |
 | `SCENARIO/` | No | Scenarios for Play Scenario |
 | `SCURKART/` | No | SCURK tile sets. SCURK opens `SCURKART/ORIGINAL.MIF` when no other tile set is active. |
@@ -410,6 +409,11 @@ original relative paths in the pack folder. The manifest has no file list.
 The importer copies the complete text and newspaper files. A new game feature
 can use more of these files without a new import. A data pack never contains an
 executable file.
+
+The importer does not copy `DEFAULT.SC2`. Only `WINSCURK.EXE` opens that file.
+`SIMCITY.EXE` makes a new city from cleared memory, and New City and SCURK use a
+built-in template in the same way. An older data pack that contains the file
+still loads, and the game ignores the file.
 
 The game loads the data pack only if the text files are present, the text has
 the original credits (text 128), and the newspaper files, if present, are valid.
@@ -423,7 +427,6 @@ folder.
 
 Without a data pack, the game still runs, but these features change:
 
-- New City uses a built-in city template.
 - The newspaper has no article text.
 - The Library Ruminate action shows an error.
 - The About window has no original credits.
@@ -485,7 +488,6 @@ an LF, as the game does when it reads the file in text mode.
 Some assets need a complete Windows installation. A complete installation
 contains `SIMCITY.EXE` and these files, in uppercase, lowercase, or mixed case:
 
-- `DEFAULT.SC2`
 - `DATA/DATA_USA.DAT`, `DATA/DATA_USA.IDX`, `DATA/TEXT_USA.DAT`, `DATA/TEXT_USA.IDX`
 - `DATA/LARGE.DAT`, `DATA/SMALLMED.DAT`, `DATA/SPECIAL.DAT`
 - `BITMAPS/403.BMP`, `BITMAPS/NEIGHBOR.BMP`, `BITMAPS/PAL_MSTR.BMP`, `BITMAPS/PAL_MAC.BMP`

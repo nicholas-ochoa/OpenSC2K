@@ -140,9 +140,6 @@ func configure(reference_root: String, palette: Sc2Palette, sprites: Sc2SpriteAr
 	var paths := PackedStringArray()
 	_collect_cities(reference_root.path_join("CITIES"), paths)
 
-	if paths.is_empty() and FileAccess.file_exists(reference_root.path_join("DEFAULT.SC2")):
-		paths.append(reference_root.path_join("DEFAULT.SC2"))
-
 	if paths.is_empty():
 		return
 

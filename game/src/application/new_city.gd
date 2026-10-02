@@ -77,8 +77,7 @@ func _generate_new_city_preview(advance_seed: bool) -> bool:
 			else app.asset_state.small_medium_sprites)
 
 	var error := app.new_city_state.preview_job.start(app.new_city_state.session,
-		app.asset_state.reference_root.path_join("DEFAULT.SC2"), app.city_dialogs.new_city_dialog.terrain_options(),
-		app.asset_state.palette, preview_sprites, advance_seed)
+		app.city_dialogs.new_city_dialog.terrain_options(), app.asset_state.palette, preview_sprites, advance_seed)
 
 	if error != OK:
 		app.new_city_state.preview_job = null
@@ -149,10 +148,8 @@ func create_new_city_unchecked() -> void:
 	if not app.city_dialogs.new_city_dialog.candidate_valid or not app.new_city_state.session.matches(terrain_options):
 		return
 
-	var template_path := app.asset_state.reference_root.path_join("DEFAULT.SC2")
 	var setup := app.city_dialogs.new_city_dialog.setup_options()
 	var result := app.new_city_state.session.create_city(
-		template_path,
 		setup.city_name,
 		setup.mayor_name,
 		setup.difficulty,
@@ -162,10 +159,7 @@ func create_new_city_unchecked() -> void:
 	)
 
 	if not result.ok:
-		if result.stage == "template":
-			app.interface.show_error("Cannot load the default city: %s" % result.error)
-		else:
-			app.interface.show_error("Cannot create a new city: %s" % result.error)
+		app.interface.show_error("Cannot create a new city: %s" % result.error)
 
 		return
 

@@ -217,6 +217,9 @@ func _check_military_result() -> void:
 	var engine: SimulationEngine = main.simulation_state.simulation_engine
 	engine.city.set_age_in_days(21)
 	engine.clock.city_days = 21
+
+	# an extra edition would open first and take the exclusive window
+	engine.city.set_newspaper_extras_enabled(false)
 	engine.city.document.set_misc_u32(Sc2MiscLayout.PROGRESSION, 3)
 	engine.city.document.set_misc_u32(Sc2MiscLayout.NORMAL_POPULATION, 60001)
 	var controller: GameSpeedController = main.simulation_state.speed_controller

@@ -10,7 +10,6 @@ func run_check() -> void:
 	preload("res://tests/support/app_fixture.gd").configure(main, true)
 	root.add_child(main)
 	await process_frame
-	main.new_city_state.session.independent_template = true
 	main.new_city.open_new_city_dialog()
 	# This suite tests size selection and preview jobs; terrain rules have their own tests.
 	main.city_dialogs.new_city_dialog.ocean_input.button_pressed = false

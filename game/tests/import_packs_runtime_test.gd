@@ -81,7 +81,7 @@ func run() -> void:
 	assert(main.assets.stale_pack_kinds().is_empty())
 	_check_stale_prompt(main, relocated)
 	main.new_city.open_new_city_dialog()
-	assert(main.city_dialogs.new_city_dialog.visible and not main.new_city_state.session.independent_template)
+	assert(main.city_dialogs.new_city_dialog.visible)
 	main.city_dialogs.new_city_dialog.hide()
 	main.scurk_workspace._ensure_scurk_editor()
 	assert(main.scurk_editor.pixel_canvas.texture_patterns.size() == ScurkGraphics.TEXTURE_IDS.size())

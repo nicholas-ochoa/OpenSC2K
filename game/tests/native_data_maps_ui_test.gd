@@ -22,7 +22,6 @@ func _run() -> void:
 	check(main.city_dialogs.new_city_dialog.terrain_options().native_maps, "New City without compatibility uses per-tile maps")
 	main.city_dialogs.new_city_dialog.compatibility_input.button_pressed = true
 	check(not main.city_dialogs.new_city_dialog.terrain_options().native_maps, "Compatibility uses original data maps")
-	main.new_city_state.session.independent_template = true
 	var options := NewCityTerrain.Options.new()
 	options.size = 128
 	options.native_maps = true
@@ -32,9 +31,9 @@ func _run() -> void:
 	options.water = 0
 	options.trees = 0
 	main.new_city_state.session.begin(123, 456)
-	var preview: NewCityTerrainSession.PreviewResult = main.new_city_state.session.generate_preview("", options, false)
+	var preview: NewCityTerrainSession.PreviewResult = main.new_city_state.session.generate_preview(options, false)
 	check(preview.ok and preview.document.full_resolution_maps(), "Native preview mode")
-	var created: NewCitySetup.Result = main.new_city_state.session.create_city("", "Native", "Mayor", 1, 1900, options, PackedByteArray())
+	var created: NewCitySetup.Result = main.new_city_state.session.create_city("Native", "Mayor", 1, 1900, options, PackedByteArray())
 	check(created.ok and created.document.full_resolution_maps(), "Native new city mode")
 	check(created.document.find_chunk("ALTM").decoded_payload == preview.document.find_chunk("ALTM").decoded_payload,
 		"Native preview and created terrain match")

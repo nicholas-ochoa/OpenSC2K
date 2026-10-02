@@ -11,9 +11,8 @@ const GameRandom = preload("res://src/simulation/random/game_lcg_random.gd")
 const NewCity = preload("res://src/model/new_city_setup.gd")
 
 
-func test_new_city_terrain(reference_root: String) -> void:
-	var source_path := reference_root.path_join("DEFAULT.SC2")
-	var template := _load_fixture(source_path)
+func test_new_city_terrain(_reference_root: String) -> void:
+	var template := EmptyCityTemplate.create()
 	var original_altitude := template.find_chunk("ALTM").decoded_payload.duplicate()
 	var options := NewCityTerrain.Options.new()
 	options.ocean = NewCityTerrain.DEFAULT_OCEAN
@@ -42,7 +41,6 @@ func test_new_city_terrain(reference_root: String) -> void:
 		)
 		var water_tiles := 0
 		var tree_tiles := 0
-		var cardinal_grade_is_valid := true
 
 		for x in CityState.MAP_SIZE:
 			for y in CityState.MAP_SIZE:
@@ -53,16 +51,6 @@ func test_new_city_terrain(reference_root: String) -> void:
 
 				if building >= 0x06 and building <= 0x0c:
 					tree_tiles += 1
-
-				if x < CityState.MAP_SIZE - 1:
-					cardinal_grade_is_valid = cardinal_grade_is_valid and (
-						absi(city.land_altitude(x, y) - city.land_altitude(x + 1, y)) <= 1
-					)
-
-				if y < CityState.MAP_SIZE - 1:
-					cardinal_grade_is_valid = cardinal_grade_is_valid and (
-						absi(city.land_altitude(x, y) - city.land_altitude(x, y + 1)) <= 1
-					)
 
 		var saved_count_total := 0
 
@@ -80,21 +68,60 @@ func test_new_city_terrain(reference_root: String) -> void:
 			"Default terrain grows trees only on its dry tiles",
 		)
 		_check(
-			cardinal_grade_is_valid,
-			"Generated terrain keeps each cardinal height change to one level",
-		)
-		_check(
 			saved_count_total == CityState.TILE_COUNT,
 			"Generated terrain rebuilds all saved XBLD tile counts",
 		)
+		var direct_process := Random.new(1)
+		var direct_game := GameRandom.new(1)
+		var direct_document := template.duplicate_document()
+		var direct := NewCityTerrain.generate(
+			direct_document, options.ocean, options.river, options.hills, options.water, options.trees,
+			direct_process, direct_game
+		)
 		_check(
-			terrain_result.water_tiles == 1456
-			and terrain_result.tree_tiles == 2009
-			and terrain_result.minimum_altitude == 2
-			and terrain_result.maximum_altitude == 11
-			and process_random.state == 3611152639
-			and game_random.state == 1692766423,
+			direct.ok
+			and direct.water_tiles == 1456
+			and direct.tree_tiles == 2009
+			and direct.minimum_altitude == 2
+			and direct.maximum_altitude == 11
+			and direct_process.state == 981240924
+			and direct_game.state == 1692766423,
 			"Seed one preserves the recovered terrain pass and random-call order",
+		)
+		var direct_city := CityModel.from_document(direct_document)
+		var cardinal_grade_is_valid := true
+
+		for x in CityState.MAP_SIZE:
+			for y in CityState.MAP_SIZE:
+				if x < CityState.MAP_SIZE - 1:
+					cardinal_grade_is_valid = cardinal_grade_is_valid and (
+						absi(direct_city.land_altitude(x, y) - direct_city.land_altitude(x + 1, y)) <= 1
+					)
+
+				if y < CityState.MAP_SIZE - 1:
+					cardinal_grade_is_valid = cardinal_grade_is_valid and (
+						absi(direct_city.land_altitude(x, y) - direct_city.land_altitude(x, y + 1)) <= 1
+					)
+
+		_check(
+			cardinal_grade_is_valid,
+			"Seed one terrain keeps each cardinal height change to one level",
+		)
+
+		# the neighbors take their random values before the terrain
+		var ordered_process := Random.new(1)
+		var ordered_game := GameRandom.new(1)
+		var ordered_document := template.duplicate_document()
+		NewCity.draw_neighbors(ordered_document, ordered_process)
+		var ordered := NewCityTerrain.generate(
+			ordered_document, options.ocean, options.river, options.hills, options.water, options.trees,
+			ordered_process, ordered_game
+		)
+		_check(
+			ordered.ok
+			and ordered_document.find_chunk("ALTM").decoded_payload == document.find_chunk("ALTM").decoded_payload
+			and ordered_game.state == game_random.state,
+			"New City draws the neighbors before it generates the terrain",
 		)
 		var serialized := document.serialize()
 		var reparsed := Sc2Document.new()
@@ -127,7 +154,8 @@ func test_new_city_terrain(reference_root: String) -> void:
 			"Terrain generation is deterministic for both recovered random states",
 		)
 
-	_test_preview_random_cursors(source_path, options)
+	_test_preview_random_cursors(options)
+	_test_new_city_neighbors(template)
 
 	var ocean_options := NewCityTerrain.Options.new()
 	ocean_options.ocean = true
@@ -171,9 +199,8 @@ func test_new_city_terrain(reference_root: String) -> void:
 	)
 
 
-func test_new_city_setup(reference_root: String) -> void:
-	var source_path := reference_root.path_join("DEFAULT.SC2")
-	var template := _load_fixture(source_path)
+func test_new_city_setup(_reference_root: String) -> void:
+	var template := EmptyCityTemplate.create()
 	var original_name := template.city_name()
 	var original_misc := template.find_chunk("MISC").decoded_payload.duplicate()
 	var newspaper_session := _filled_bytes(NewsQueue.MISC_SIZE, 0)
@@ -402,18 +429,85 @@ func test_map_edits(reference_root: String) -> void:
 	_check(not result.set_land_altitude(0, 0, 32), "Out-of-range altitude fails")
 
 
-func _test_preview_random_cursors(source_path: String, options: NewCityTerrain.Options) -> void:
+func _test_new_city_neighbors(template: Sc2File) -> void:
+	var drawn := template.duplicate_document()
+	NewCity.draw_neighbors(drawn, Random.new(1))
+	var expected := [[6, 3767, 1255], [29, 4178, 1392], [18, 1181, 590], [24, 3095, 3095]]
+	_check(
+		_neighbor_records(drawn) == expected,
+		"Seed one draws the original neighbor names, populations, and values: %s" % [_neighbor_records(drawn)],
+	)
+
+	var inland_options := NewCityTerrain.Options.new()
+	inland_options.ocean = false
+	var inland := NewCity.create(template, "Inland", "Mayor", 1, 1900, Random.new(7), GameRandom.new(7), inland_options)
+	var inland_names := PackedInt32Array()
+
+	if inland.ok:
+		for record in _neighbor_records(inland.document):
+			if record[0] >= 1 and record[0] <= CityNeighbors.NAMES.size() and record[0] not in inland_names:
+				inland_names.append(record[0])
+
+	_check(inland.ok and inland_names.size() == CityNeighbors.COUNT, "A map without an ocean has four different named neighbors")
+
+	var ocean_options := NewCityTerrain.Options.new()
+	ocean_options.ocean = true
+	var ocean := NewCity.create(template, "Coast", "Mayor", 1, 1900, Random.new(7), GameRandom.new(7), ocean_options)
+	var ocean_records := _neighbor_records(ocean.document) if ocean.ok else []
+	_check(
+		ocean.ok
+		and ocean_records[0] == [0, 0, 0]
+		and ocean.document.misc_u32(Sc2MiscLayout.NEIGHBORS + NewCity.NEIGHBOR_FAME) == 0
+		and ocean_records.slice(1).all(func(record: Array) -> bool: return record[0] > 0),
+		"An ocean map makes only the first neighbor the ocean",
+	)
+
+	for layout in ["island", "islands"]:
+		var island_options := NewCityTerrain.Options.new()
+		island_options.ocean = false
+		island_options.layout = layout
+		var island := NewCity.create(template, "Isle", "Mayor", 1, 1900, Random.new(7), GameRandom.new(7), island_options)
+		_check(
+			island.ok and _neighbor_records(island.document) == [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
+			"An %s map has the ocean on all four sides" % layout,
+		)
+
+	# the New City dialog founds its preview with the same neighbors
+	var session := NewCityTerrainSession.new()
+	session.begin(7, 7)
+	var preview := session.generate_preview(ocean_options, false)
+	var founded := session.create_city("Coast", "Mayor", 1, 1900, ocean_options, PackedByteArray())
+	_check(
+		preview.ok and founded.ok and ocean.ok
+		and _neighbor_records(founded.document) == ocean_records
+		and founded.invention_years == ocean.invention_years,
+		"The New City dialog keeps the original random order for neighbors, terrain, and inventions",
+	)
+
+
+func _neighbor_records(document: Sc2File) -> Array:
+	var records := []
+
+	for slot in CityNeighbors.COUNT:
+		var offset := Sc2MiscLayout.NEIGHBORS + slot * NewCity.NEIGHBOR_STRIDE
+		records.append([
+			document.misc_u32(offset), document.misc_u32(offset + NewCity.NEIGHBOR_POPULATION),
+			document.misc_u32(offset + NewCity.NEIGHBOR_VALUE),
+		])
+
+	return records
+
+
+func _test_preview_random_cursors(options: NewCityTerrain.Options) -> void:
 	var terrain_session := NewCityTerrainSession.new()
 	terrain_session.begin(1, 1)
-	var session_preview := terrain_session.generate_preview(
-		source_path, options, false
-	)
+	var session_preview := terrain_session.generate_preview(options, false)
 	_check(
 		session_preview.ok
 		and terrain_session.matches(options)
 		and terrain_session.preview_process_start == 1
 		and terrain_session.preview_game_start == 1
-		and terrain_session.preview_process_cursor == 981240924
+		and terrain_session.preview_process_cursor == 353119329
 		and terrain_session.preview_game_cursor == 1692766423,
 		"New City terrain session owns the preview seeds and current options (%d, %d)"
 		% [
@@ -421,9 +515,7 @@ func _test_preview_random_cursors(source_path: String, options: NewCityTerrain.O
 			terrain_session.preview_game_cursor,
 		],
 	)
-	var repeated_preview := terrain_session.generate_preview(
-		source_path, options, false
-	)
+	var repeated_preview := terrain_session.generate_preview(options, false)
 	var repeated_preview_matches: bool = (
 		bool(session_preview.ok) and bool(repeated_preview.ok)
 	)
@@ -443,9 +535,7 @@ func _test_preview_random_cursors(source_path: String, options: NewCityTerrain.O
 	)
 	var previous_process_cursor := terrain_session.preview_process_cursor
 	var previous_game_cursor := terrain_session.preview_game_cursor
-	var advanced_preview := terrain_session.generate_preview(
-		source_path, options, true
-	)
+	var advanced_preview := terrain_session.generate_preview(options, true)
 	_check(
 		advanced_preview.ok
 		and terrain_session.preview_process_start == previous_process_cursor

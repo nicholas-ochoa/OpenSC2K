@@ -5,7 +5,9 @@ extends SceneTree
 
 func _initialize() -> void:
 	var city := CityState.from_document(EmptyCityTemplate.create(128))
-	city.document.set_misc_u32(Sc2MiscLayout.NEIGHBORS, 36)
+
+	for slot_name in [[0, 36], [1, 1], [2, 2], [3, 3]]:
+		city.document.set_misc_u32(Sc2MiscLayout.NEIGHBORS + slot_name[0] * CityNeighbors.STRIDE, slot_name[1])
 
 	for point in [Vector2i(127, 40), Vector2i(40, 127), Vector2i(1, 43), Vector2i(11, 1), Vector2i(0, 0)]:
 		assert(city.set_text_overlay_id(point.x, point.y, Sc2OverlayLayout.CONNECTION_MARKER))
