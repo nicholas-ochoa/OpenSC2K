@@ -83,7 +83,7 @@ func _run() -> void:
 	main.queue_free()
 	await process_frame
 	print(("PASS: pixel-aligned wide and close shots, enabled landscape tools, founding sound and "
-		+ "paper, paused reading and opening music, HTML-only content, and separate tunnel/subway "
+		+ "paper, paused reading and opening music, newspaper content, and separate tunnel/subway "
 		+ "cutoff depths"))
 	quit()
 

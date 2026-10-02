@@ -10,44 +10,149 @@ func _initialize() -> void:
 func _run() -> void:
 	var newspaper := NewspaperDialog.new()
 	root.add_child(newspaper)
-	var literal := "<script>alert('city')</script> & \"Mayor\""
-	newspaper.page.set_page(0, literal, "Date", "Price", "Opinion", "Weather", [literal, "Two", "Three", "Four", "Five"])
-	newspaper.published_articles = [literal, "B", "C", "D", "E"]
-	newspaper.paper_titles.append(literal)
-	var payload := newspaper._web_payload()
-	assert(JSON.parse_string(JSON.stringify(payload)).articles[0] == literal)
-	assert(payload.title == literal)
-	assert(payload.headlines.size() == 5)
-	assert(payload.pages.all(func(number: int) -> bool:
-		return number >= 2 and number <= 30))
-	assert(payload.picture == "")
-	var html := NewspaperWebView.html_document()
-	assert(not html.contains("__NEWSPAPER_HEADLINE_FONT__"))
-	assert(not html.contains("__NEWSPAPER_CHOMSKY_FONT__"))
-	assert(not html.contains("__NEWSPAPER_GRENZE_FONT__"))
-	assert(not html.contains("__NEWSPAPER_MAGUNTIA_FONT__"))
-	var font := load("res://assets/fonts/anton/Anton-Regular.ttf") as FontFile
-	assert(not font.data.is_empty())
-	assert(html.contains(Marshalls.raw_to_base64(font.data)))
-	for path in [
-		"res://assets/fonts/chomsky/Chomsky.otf",
-		"res://assets/fonts/grenzegotisch/GrenzeGotisch[wght].ttf",
-		"res://assets/fonts/unifrakturmaguntia/UnifrakturMaguntia-Book.ttf",
-	]:
-		var masthead := load(path) as FontFile
-		assert(not masthead.data.is_empty())
-		assert(html.contains(Marshalls.raw_to_base64(masthead.data)))
-	newspaper.web_paper.open(payload)
-	assert(newspaper.web_paper.view == null, "Headless run created a native WebView")
-	newspaper.web_paper._on_message("not JSON")
-	newspaper.web_paper._on_message('{"action":"metrics","articles":5}')
-	assert(newspaper.web_paper.diagnostics.articles == 5)
-	newspaper.web_paper.close()
+	_check_page_layout(newspaper)
+	_check_reader_and_close(newspaper)
 	_check_menu_and_forecast(newspaper)
 	_check_city_name_fallback(newspaper)
 	newspaper.free()
-	print("PASS: newspaper payload, licensed font, progression menu, forecast, opinion and headless guard")
+	print("PASS: newspaper layout, reader, progression menu, forecast, opinion and city name")
 	quit()
+
+
+func _sample_content(article_words: int, extra_count: int) -> NewspaperContent:
+	var content := NewspaperContent.new()
+	var literal := "<script>alert('city')</script> & \"Mayor\""
+	content.set_page(0, literal, "Sunday May 1, 1950", "Five Cents", "Opinion", "Weather",
+		PackedStringArray(["Lead story", "Second story", "Third story", "Fourth story", "Fifth story"]))
+	var words := PackedStringArray()
+
+	for index in article_words:
+		words.append("word%d" % (index % 17))
+
+	var article := " ".join(words)
+	content.set_articles(PackedStringArray([literal + " " + article, article, "Short.", article, "Two words"]))
+	content.set_weather("Weather Corner", "Sunny skies", "Clear and dry weather continues across the city.")
+	content.set_opinion("Fred's Opinion", "Fix the roads", "Residents want better roads near the industrial zone.")
+
+	for index in extra_count:
+		var extra := NewspaperContent.ExtraStory.new()
+		extra.headline = "Extra %d" % index
+		extra.article = "Brief extra story text about the city. " .repeat(3)
+		extra.page = index + 2
+		content.extra_stories.append(extra)
+
+	return content
+
+
+func _check_page_layout(newspaper: NewspaperDialog) -> void:
+	var view := newspaper.paper_view
+	assert(NewspaperPage.shell_size(Vector2(1280, 800)).is_equal_approx(Vector2(1088, 680)))
+	assert(NewspaperPage.shell_size(Vector2(2000, 800)).x == NewspaperPage.MAX_WIDTH)
+
+	# each paper keeps its own masthead, and every third paper is a Chronicle
+	for index in 6:
+		view.size = Vector2(1088, 680)
+		view.show_content(_sample_content(400, 8), index)
+		var info := view.diagnostics
+		assert(info.edition == ("chronicle" if index % 3 == 1 else "herald"))
+		assert(info.masthead_font == NewspaperFonts.MASTHEAD_NAMES[index % 3])
+		assert(info.articles == 5)
+		assert(info.fits, "A story panel overflows at paper %d" % index)
+		assert(info.continuations > 0, "A long story has no continuation notice")
+		_check_no_overlap(view)
+
+	# a long lead story stops at the panel and names its continuation page
+	var lead := view.articles[0]
+	assert(lead.truncated and lead.notice_text.begins_with("... (continued on pg "))
+	assert(lead.read_text.contains("<script>"), "The reader shows story text literally")
+	# a short story shrinks to its text, and extra stories fill the space below it
+	view.show_content(_sample_content(400, 8), 0)
+	assert(not view.articles[2].truncated)
+	assert(view.articles[2].size.y < 200.0)
+	assert(view.extra_stories.size() > 0 and view.diagnostics.extra_stories == view.extra_stories.size())
+	assert(not view.rules.is_empty(), "Side-by-side panels have no column rule")
+
+	for story in view.extra_stories:
+		assert(story.shows_copy())
+
+	# a narrow panel uses one column, and a wide one uses two
+	assert(NewspaperStory.columns_for_width(120.0) == 1)
+	assert(NewspaperStory.columns_for_width(400.0) == 2)
+	# the interface is never smaller than 1280 x 800, and a large window still fits every panel
+	view.size = NewspaperPage.shell_size(Vector2(2560, 1600))
+	assert(view.diagnostics.fits)
+	_check_no_overlap(view)
+	# the entrance spin starts small and turned, and ends flat at full size
+	var start := NewspaperPage.spin_state(0.0)
+	assert(is_equal_approx(start.x, 0.03) and is_equal_approx(start.y, -1080.0) and is_zero_approx(start.z))
+	assert(NewspaperPage.spin_state(1.0).is_equal_approx(Vector3(1.0, 0.0, 1.0)))
+	assert(NewspaperPage.spin_state(0.76).is_equal_approx(Vector3(1.08, 12.0, 1.0)))
+	view.play_opening()
+	assert(view.is_opening())
+	view.finish_opening()
+	assert(view.scale.is_equal_approx(Vector2.ONE) and is_zero_approx(view.rotation))
+	# the picture prints in gray
+	var image := Image.create(4, 2, false, Image.FORMAT_RGBA8)
+	image.fill(Color(1.0, 0.0, 0.0))
+	var gray := NewspaperPage.grayscale(ImageTexture.create_from_image(image)).get_image()
+	var pixel := gray.get_pixel(1, 1)
+	assert(is_equal_approx(pixel.r, pixel.g) and is_equal_approx(pixel.g, pixel.b) and absf(pixel.r - 0.2126) < 0.01)
+	var pictured := _sample_content(80, 4)
+	pictured.set_picture(400, Image.create(160, 120, false, Image.FORMAT_RGBA8))
+	view.size = Vector2(1088, 680)
+	view.show_content(pictured, 0)
+	assert(view.photo != null and view.diagnostics.fits)
+	assert(Rect2(view.stories_rect).grow(0.5).encloses(view.photo.get_rect()))
+	_check_no_overlap(view)
+
+
+func _check_no_overlap(view: NewspaperPage) -> void:
+	var boxes: Array[Rect2] = []
+
+	for story in view.all_stories():
+		boxes.append(story.get_rect())
+
+	if view.photo != null:
+		boxes.append(view.photo.get_rect())
+
+	for first in boxes.size():
+		assert(view.stories_rect.grow(0.5).encloses(boxes[first]), "A panel is outside the story area")
+
+		for second in range(first + 1, boxes.size()):
+			var shared := boxes[first].intersection(boxes[second])
+			assert(shared.get_area() < 1.0, "Two newspaper panels overlap")
+
+
+func _check_reader_and_close(newspaper: NewspaperDialog) -> void:
+	var reference_root := ProjectSettings.globalize_path("res://../references/SIMCITY2000")
+	var document := Sc2File.load_path(reference_root.path_join("CITIES/CAPEQUES.SC2"))
+	var city := CityState.from_document(document)
+	newspaper.open_reports(city, document, null, {}, 123, 0)
+	assert(newspaper.visible)
+	var view := newspaper.paper_view
+	assert(view.diagnostics.fits)
+	var story := view.articles[1]
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	story._gui_input(click)
+	assert(newspaper.reader.visible)
+	assert(newspaper.reader.title_label.text == story.read_title)
+	assert(newspaper.reader.text_label.text == NewspaperReader.pre_line(story.read_text))
+	assert(NewspaperReader.pre_line("  One   two\n\tThree ") == "One two\nThree")
+	assert(newspaper.reader.panel.size.x <= NewspaperReader.MAX_WIDTH)
+	# Escape closes the story first, then the newspaper
+	newspaper._on_cancel()
+	assert(not newspaper.reader.visible and newspaper.visible)
+	view.read_requested.emit("Title", "Text")
+	click.position = Vector2.ONE
+	newspaper.reader._gui_input(click)
+	assert(not newspaper.reader.visible, "A click outside the story did not close it")
+	newspaper._on_cancel()
+	assert(not newspaper.visible)
+	newspaper.open_reports(city, document, null, {}, 123, 0)
+	view.close_button.pressed.emit()
+	assert(not newspaper.visible)
 
 
 func _check_city_name_fallback(newspaper: NewspaperDialog) -> void:
@@ -76,15 +181,14 @@ func _check_city_name_fallback(newspaper: NewspaperDialog) -> void:
 	assert(data.is_valid())
 	var story_seed := -28 - (city.age_in_days() / 25)
 	newspaper.open_reports(city, document, data, {}, story_seed, 0)
-	var payload := newspaper._web_payload()
-	assert(payload.headline == "BABAR Awakens!!")
-	assert(str(payload.articles[0]).contains("BABAR"))
+	assert(newspaper.page.headline_for_slot(0) == "BABAR Awakens!!")
+	assert(newspaper.page.articles[0].contains("BABAR"))
 	assert(document.find_chunk("CNAM") == null, "Opening the newspaper added a saved city name")
 	assert(city.city_name().is_empty())
 	newspaper.hide()
 
 	newspaper.open_reports(city, document, null, {}, story_seed, 0)
-	assert(str(newspaper._web_payload().headlines[0]).begins_with("BABAR counts "))
+	assert(newspaper.page.headline_for_slot(0).begins_with("BABAR counts "))
 	newspaper.hide()
 	var before := document.serialize().data as PackedByteArray
 	document.source_path = ""
@@ -184,27 +288,27 @@ func _check_menu_and_forecast(newspaper: NewspaperDialog) -> void:
 	var saved_weather := NewsQueue.story_record(document.find_chunk("MISC").decoded_payload, 7)
 	assert(saved_weather.type == 0 and saved_weather.argument == city.weather_type())
 	assert(newspaper.selected_newspaper == 1, "Unavailable newspaper selection was not clamped")
-	var payload := newspaper._web_payload()
-	assert(payload.papers.size() == 2)
-	assert(not str(payload.weather_heading).is_empty())
-	assert(not str(payload.weather_headline).is_empty())
-	assert(str(payload.weather_article).length() > str(payload.weather_headline).length())
-	assert(not str(payload.opinion_heading).is_empty())
-	assert(str(payload.opinion_article).length() > str(payload.opinion_headline).length())
-	assert(payload.articles.size() == 5, "Forecast replaced a published story")
-	assert(payload.weather_page >= 2 and payload.weather_page <= 30)
-	assert(payload.opinion_page >= 2 and payload.opinion_page <= 30)
-	assert(not payload.extra_stories.is_empty())
+	var content := newspaper.page
+	assert(newspaper.paper_titles.size() == 2)
+	assert(not content.weather_heading.is_empty())
+	assert(not content.weather_headline.is_empty())
+	assert(content.weather_article.length() > content.weather_headline.length())
+	assert(not content.opinion_heading.is_empty())
+	assert(content.opinion_article.length() > content.opinion_headline.length())
+	assert(content.articles.size() == 5, "Forecast replaced a published story")
+	assert(content.weather_page >= 2 and content.weather_page <= 30)
+	assert(content.opinion_page >= 2 and content.opinion_page <= 30)
+	assert(not content.extra_stories.is_empty())
 	var extra_before := document.serialize().data as PackedByteArray
 	var extra_stories := newspaper._extra_stories(document.find_chunk("MISC").decoded_payload, newspaper._team_names())
-	assert(extra_stories.size() == payload.extra_stories.size(), "Extra story count changed")
+	assert(extra_stories.size() == content.extra_stories.size(), "Extra story count changed")
 	for index in extra_stories.size():
-		var expected: Dictionary = payload.extra_stories[index]
+		var expected := content.extra_stories[index]
 		var actual := extra_stories[index]
 		assert(actual.headline == expected.headline and actual.article == expected.article and actual.page == expected.page,
 			"Extra stories must use stable private seeds")
 	assert(document.serialize().data == extra_before, "Extra stories changed saved news")
-	var headlines: PackedStringArray = payload.headlines.duplicate()
+	var headlines: PackedStringArray = content.headlines.duplicate()
 
 	for extra in extra_stories:
 		assert(not headlines.has(str(extra.headline)))
@@ -212,9 +316,9 @@ func _check_menu_and_forecast(newspaper: NewspaperDialog) -> void:
 		assert(extra.page >= 2 and extra.page <= 30)
 		headlines.append(str(extra.headline))
 
-	var forecast := str(payload.weather_article)
+	var forecast := content.weather_article
 	newspaper._populate_page()
-	assert(newspaper._web_payload().weather_article == forecast)
+	assert(newspaper.page.weather_article == forecast)
 	# Opening uses current concern weights instead of the stale saved traffic subject.
 	var graph_chunk := document.find_chunk("XGRP")
 	var graph_before := graph_chunk.decoded_payload.duplicate()
@@ -225,7 +329,7 @@ func _check_menu_and_forecast(newspaper: NewspaperDialog) -> void:
 	graphs[7 * 52 * 4 + 3] = 0xff
 	graph_chunk.set_decoded_payload(graphs)
 	newspaper._populate_page()
-	var crime_opinion := newspaper._web_payload().opinion_headline as String
+	var crime_opinion := newspaper.page.opinion_headline
 	assert(NewsQueue.story_record(document.find_chunk("MISC").decoded_payload, 8).argument == 2)
 	assert(document.find_chunk("XMIC").decoded_payload == microsims_before)
 	graphs[7 * 52 * 4 + 2] = 0
@@ -235,10 +339,10 @@ func _check_menu_and_forecast(newspaper: NewspaperDialog) -> void:
 	graph_chunk.set_decoded_payload(graphs)
 	newspaper._populate_page()
 	assert(NewsQueue.story_record(document.find_chunk("MISC").decoded_payload, 8).argument == 1)
-	assert(newspaper._web_payload().opinion_headline != crime_opinion)
+	assert(newspaper.page.opinion_headline != crime_opinion)
 	assert(document.find_chunk("XMIC").decoded_payload == microsims_before)
 	graph_chunk.set_decoded_payload(graph_before)
 	newspaper.hide()
 	newspaper.open_reports(city, document, null, {}, 123, 0)
-	assert(str(newspaper._web_payload().weather_article).contains(RciAftermathPhase.WEATHER_NAMES[city.weather_type()]))
+	assert(newspaper.page.weather_article.contains(RciAftermathPhase.WEATHER_NAMES[city.weather_type()]))
 	newspaper.hide()

@@ -15,10 +15,6 @@ Extract the entire ZIP to a writable folder. Run `OpenSC2K.exe`.
 Keep the PCK and DLL files beside the executable.
 The package is not code signed.
 
-The newspaper uses Microsoft Edge WebView2. If the runtime is missing, install the
-[Evergreen WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/).
-The arm64 package cannot show the newspaper, because the WebView extension has no arm64 build.
-
 ### Portable version
 
 Each Windows portable ZIP keeps all user files in the `data` folder beside `OpenSC2K.exe`.
@@ -31,7 +27,6 @@ The `data` folder contains:
 - `packs` for imported graphics, sound, music, and data packs
 - `cities` and `scenarios` for saved games
 - `scurk` and other SCURK output folders
-- `godot_wry` for newspaper browser data
 
 To change a standard installation to a portable installation, make an empty `data` folder beside `OpenSC2K.exe`.
 To use the Windows user profile again, move or remove the `data` folder.
@@ -43,14 +38,6 @@ The Godot engine writes its log files to the `logs` folder in that location in b
 
 Use the Linux x64 archive on an x86-64 system, or the Linux arm64 archive on an arm64 (AArch64) system.
 Both need glibc 2.34 or later.
-The newspaper needs GTK 3 and WebKitGTK 4.1. On Ubuntu 22.04 or later, install these with:
-
-```sh
-sudo apt install libgtk-3-0 libwebkit2gtk-4.1-0
-```
-
-The arm64 archive cannot show the newspaper, because the WebView extension has no arm64 build.
-
 Extract the entire archive. Run `./OpenSC2K.x86_64` (x64) or `./OpenSC2K.arm64` (arm64) from its folder.
 Keep the PCK and shared library files beside the executable.
 

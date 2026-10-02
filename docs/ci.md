@@ -13,8 +13,7 @@ It has two jobs:
   artifact for one day. Before it starts, a **native** job on Windows x64, Windows arm64, Linux x64,
   Linux arm64, and macOS runners builds the native libraries and the FluidSynth library for each
   package with `python tools/build_native.py --package`. Each Windows and Linux runner builds for its
-  own architecture. The macOS libraries are universal. Godot WRY has no arm64 build, so the arm64
-  packages do not include the newspaper WebView. The Build job copies the libraries into the exported
+  own architecture. The macOS libraries are universal. The Build job copies the libraries into the exported
   project with `tools/build_desktop_release.py --native`, and checks that each package contains
   every library and the license notices. It also
   writes `OpenSC2K-<label>-fluidsynth-source.zip`, the corresponding source of the LGPL FluidSynth

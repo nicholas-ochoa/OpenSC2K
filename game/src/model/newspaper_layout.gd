@@ -1,6 +1,6 @@
 class_name NewspaperLayout
 extends RefCounted
-# Newspaper layout tables from the executable. The reader displays HTML.
+# Newspaper layout tables from the executable. NewspaperPage draws the paper.
 
 const PAGE_SIZE := Vector2i(640, 400)
 const SECTION_COUNT := 11

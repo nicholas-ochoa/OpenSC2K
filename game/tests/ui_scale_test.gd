@@ -271,9 +271,6 @@ func _check_settings() -> void:
 	)
 	assert(main.texture_filter == CanvasItem.TEXTURE_FILTER_LINEAR, "Application contents keep linear sampling")
 
-	var newspaper := NewspaperWebView.new()
-	root.add_child(newspaper)
-
 	for index in [0, 1, 2]:
 		main.settings.open_settings_dialog()
 		var dialog: AppSettingsDialog = main.main_overlays.settings_dialog
@@ -289,8 +286,6 @@ func _check_settings() -> void:
 		assert(AppSettingsStore.load_values(path).ui_scale == selected)
 		assert(absf(root.get_final_transform().get_scale().x - selected) < 0.01)
 		assert(root.get_visible_rect().size.distance_to(Vector2(2560, 1600) / selected) < 1.0)
-		assert(is_equal_approx(newspaper.page_zoom(), DisplayServer.screen_get_scale() * selected / AppUiScale.DEFAULT),
-			"The newspaper page keeps its earlier zoom at 2.0 and follows smaller choices")
 
 	# a smaller window fits the base layout size
 	main.settings.open_settings_dialog()
@@ -301,7 +296,6 @@ func _check_settings() -> void:
 	await process_frame
 	assert(absf(root.get_final_transform().get_scale().x - 1.35) < 0.01, "Godot rounds the layout to whole interface pixels")
 	main.free()
-	newspaper.free()
 	root.size = window_size
 	root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
 	root.content_scale_factor = 1.0

@@ -110,8 +110,7 @@ See [AI-POLICY.md](AI-POLICY.md) for the project's AI usage and contribution pol
 
 Project code is under the [MIT license](LICENSE).
 
-Bundled [Rajdhani fonts](game/assets/fonts/rajdhani/OFL.txt) and
-[Godot WRY](game/addons/godot_wry/LICENSE) retain their own licenses.
+Bundled [Rajdhani fonts](game/assets/fonts/rajdhani/OFL.txt) retain their own licenses.
 
 The MIT license does not grant rights to the original game or its assets.
 

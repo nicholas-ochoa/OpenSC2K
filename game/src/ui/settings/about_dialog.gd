@@ -80,8 +80,6 @@ func _build_licenses() -> void:
 		"signalsmith-linear-LICENSE.txt", "signalsmith-dsp-LICENSE.txt", "signalsmith-hilbert-iir-LICENSE.txt",
 		"gcem-NOTICE.txt", "Apache-2.0.txt",
 	]))
-	_add_license("Godot WRY — MIT", FileAccess.get_file_as_string("res://addons/godot_wry/LICENSE"))
-	_add_license("Godot WRY — dependency notices", FileAccess.get_file_as_string("res://assets/licenses/wry-dependencies.txt"))
 	_add_license("Research and original game", """RESEARCH
 
 sc2json — MIT

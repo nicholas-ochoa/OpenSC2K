@@ -996,8 +996,8 @@
     "requires": []
   },
   {
-    "id": "newspaper_web_view_test",
-    "script": "tests/newspaper_web_view_test.gd",
+    "id": "newspaper_page_test",
+    "script": "tests/newspaper_page_test.gd",
     "domain": "ui",
     "lane": "product",
     "requires": [

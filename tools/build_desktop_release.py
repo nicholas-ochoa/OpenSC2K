@@ -71,14 +71,6 @@ PACKAGES = (
 )
 
 
-# Godot WRY (the newspaper WebView) publishes no arm64 libraries. The arm64
-# packages do not include it, so they cannot show the newspaper.
-WRY_LIBRARIES = {
-    'windows-x64': 'godot_wry.dll',
-    'linux-x64': 'libgodot_wry.so',
-}
-
-
 def install_native(native, project):
     """Copy each prebuilt extension, and FluidSynth beside the audio extension, into the exported project."""
     for module in NATIVE_MODULES:
@@ -148,8 +140,6 @@ def build(output, label, godot, native):
                 assert (folder / expected_library).is_file(), f'{platform} lacks native {module}'
             assert (folder / FLUIDSYNTH[platform][1]).is_file(), f'{platform} lacks FluidSynth'
             (folder / 'VERSION.txt').write_text(f'OpenSC2K {version}\nBuild: {label}\nCommit: {commit}\nGodot: {engine}\n')
-            if platform in WRY_LIBRARIES:
-                assert (folder / WRY_LIBRARIES[platform]).is_file(), f'{platform} lacks Godot WRY'
             if platform.startswith('windows'):
                 package = output / (name + '.zip')
                 write_zip(package, folder, name)

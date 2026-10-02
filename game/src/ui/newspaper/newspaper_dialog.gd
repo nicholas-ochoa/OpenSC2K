@@ -1,5 +1,5 @@
 class_name NewspaperDialog
-extends AcceptDialog
+extends Window
 
 @warning_ignore_start("integer_division")
 
@@ -35,33 +35,37 @@ var published_articles := PackedStringArray()
 var page := NewspaperContent.new()
 var paper_titles := PackedStringArray()
 var control_graphics: CityUiGraphics
-var web_paper: NewspaperWebView
+var paper_view: NewspaperPage
+var reader: NewspaperReader
+
+
+func _init() -> void:
+	title = "Newspaper"
+	visible = false
+	transient = true
+	exclusive = true
+	borderless = true
+	unresizable = true
+	transparent = true
+	transparent_bg = true
+	wrap_controls = false
+	paper_view = NewspaperPage.new()
+	add_child(paper_view)
+	reader = NewspaperReader.new()
+	add_child(reader)
+	paper_view.close_pressed.connect(hide)
+	paper_view.cancel_pressed.connect(_on_cancel)
+	paper_view.read_requested.connect(reader.open)
+	close_requested.connect(hide)
+	visibility_changed.connect(func() -> void:
+		if not visible:
+			reader.hide()
+			paper_view.finish_opening()
+	)
 
 
 func _ready() -> void:
-	title = "Newspaper"
-	exclusive = true
-	borderless = true
-	min_size = Vector2i.ONE
-	size = Vector2i.ONE
-
-	if NewspaperWebView.supported():
-		transparent_bg = true
-		add_theme_stylebox_override("panel", StyleBoxEmpty.new())
-		get_ok_button().hide()
-		get_label().hide()
-	else:
-		dialog_text = "The HTML newspaper requires the WebView extension."
-		get_ok_button().text = "Close"
-		min_size = Vector2i(400, 120)
-
-	web_paper = NewspaperWebView.new()
-	add_child(web_paper)
-	web_paper.action_requested.connect(_on_web_action)
-	visibility_changed.connect(func() -> void:
-		if not visible:
-			web_paper.close()
-	)
+	get_parent().get_viewport().size_changed.connect(_fit_to_window)
 
 
 func set_control_graphics(graphics: CityUiGraphics) -> void:
@@ -89,8 +93,14 @@ func open_reports(
 
 	selected_newspaper = clampi(paper_index, 0, count - 1)
 	_populate_page()
-	popup_centered()
-	call_deferred("_open_web_newspaper")
+	reader.hide()
+	popup(_window_area())
+	_fit_to_window()
+	paper_view.show_content(page, selected_newspaper)
+
+	# headless runs show the finished page at once
+	if DisplayServer.get_name() != "headless":
+		paper_view.play_opening()
 
 
 func _populate_page() -> void:
@@ -444,18 +454,30 @@ func _local_report(slot: int) -> NewspaperText.Result:
 	return result
 
 
-func _web_payload() -> Dictionary:
-	page.set_articles(published_articles)
+# the newspaper covers the game window, and the paper sits in its center
+func _window_area() -> Rect2i:
+	var parent := get_parent()
 
-	return page.payload(paper_titles, selected_newspaper)
+	if parent == null:
+		return Rect2i(position, size)
+
+	return Rect2i(parent.get_viewport().get_visible_rect())
 
 
-func _open_web_newspaper() -> void:
-	if visible and web_paper != null:
-		web_paper.open(_web_payload())
+func _fit_to_window() -> void:
+	if not visible:
+		return
+
+	var area := _window_area()
+	position = area.position
+	size = area.size
+	var shell := NewspaperPage.shell_size(Vector2(area.size))
+	paper_view.size = shell
+	paper_view.position = ((Vector2(area.size) - shell) / 2.0).round()
 
 
-func _on_web_action(action: Dictionary) -> void:
-	match str(action.get("action", "")):
-		"close":
-			hide()
+func _on_cancel() -> void:
+	if reader.visible:
+		reader.hide()
+	else:
+		hide()
