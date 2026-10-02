@@ -161,6 +161,11 @@ class Project:
         text = text.replace('[application]', '[application]\nconfig/use_custom_user_dir=true\n'
                             f'config/custom_user_dir_name="{self.name}/{entry_id}"\n'
                             'run/low_processor_mode_sleep_usec=1000')
+        # the headless renderer stores textures without a lock, so parallel
+        # importers can lose a texture and fail the import with an engine error
+        if '[editor]' in text:
+            raise ValueError('project.godot has an [editor] section; merge the import thread setting into it')
+        text += '\n[editor]\n\nimport/use_multiple_threads=false\n'
         (self.path / 'project.godot').write_text(text)
         if native:
             # Apply before window creation. Dialogs stay inside this one window.
