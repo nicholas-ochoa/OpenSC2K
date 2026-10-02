@@ -17,6 +17,13 @@ import validate_project as runner
 
 
 class ValidationRunnerTest(unittest.TestCase):
+    def setUp(self):
+        # main() builds and tests the native crates. These checks cover only the runner
+        for name in ('build', 'test'):
+            patcher = patch.object(runner.build_native, name, return_value=[])
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
     def test_fresh_projects_share_the_import_cache(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder) / 'checkout'
