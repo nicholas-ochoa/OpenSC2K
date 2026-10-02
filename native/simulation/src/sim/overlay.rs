@@ -407,6 +407,41 @@ pub fn occurrences(data: &[u8], value: i64) -> i64 {
     total
 }
 
+/// OverlayData.sign_indices: the cells in `start..end` that hold a sign ID,
+/// in cell order. A negative `end` scans to the last cell. A layered index
+/// holds no sign links; its signs are XSGN records.
+pub fn sign_indices(data: &[u8], start: i64, end: i64) -> Vec<i32> {
+    if is_layered(data) {
+        return Vec::new();
+    }
+
+    let cells = count(data) as usize;
+    let end = if end < 0 { cells } else { (end as usize).min(cells) };
+    let start = (start.max(0) as usize).min(end);
+    let low = &data[start..end];
+    let mut result = Vec::new();
+
+    if cells == data.len() {
+        for (offset, &byte) in low.iter().enumerate() {
+            if is_sign(i64::from(byte)) {
+                result.push((start + offset) as i32);
+            }
+        }
+
+        return result;
+    }
+
+    let high = &data[cells + start..cells + end];
+
+    for (offset, (&byte, &high_byte)) in low.iter().zip(high).enumerate() {
+        if is_sign(i64::from(byte) | (i64::from(high_byte) << 8)) {
+            result.push((start + offset) as i32);
+        }
+    }
+
+    result
+}
+
 pub fn valid_id(id: i64, edge: i64) -> bool {
     if (0..=layout::ORIGINAL_MAX_ID).contains(&id) {
         return true;
@@ -470,6 +505,39 @@ mod tests {
             write(&mut data, index, 0);
             assert_eq!(data, layered(cells));
         }
+    }
+
+    #[test]
+    fn sign_indices_find_original_and_extended_signs() {
+        let cells = 16 * 16;
+        let mut narrow = vec![0u8; cells];
+        narrow[0] = 1;
+        narrow[7] = 50;
+        narrow[8] = 51;
+        narrow[cells - 1] = 25;
+        assert_eq!(sign_indices(&narrow, 0, -1), vec![0, 7, cells as i32 - 1]);
+        assert_eq!(sign_indices(&narrow, 1, 8), vec![7]);
+        assert_eq!(sign_indices(&narrow, 0, cells as i64 + 100), vec![0, 7, cells as i32 - 1]);
+
+        let mut wide = vec![0u8; cells * 2];
+
+        for (index, id) in [
+            (3, 1),
+            (4, EXTRA_SIGN),
+            (5, EXTRA_THING - 1),
+            (6, EXTRA_THING),
+            (9, EXTRA_SIGN - 1),
+            (10, 0x0101),
+        ] {
+            write(&mut wide, index, id);
+        }
+
+        assert_eq!(sign_indices(&wide, 0, -1), vec![3, 4, 5]);
+        assert_eq!(sign_indices(&wide, 4, 6), vec![4, 5]);
+
+        let mut layered_index = layered(cells as i64);
+        layered_index[0] = 1;
+        assert!(sign_indices(&layered_index, 0, -1).is_empty());
     }
 
     #[test]

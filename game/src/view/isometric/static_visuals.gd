@@ -4,8 +4,6 @@ extends IsometricConstants
 
 @warning_ignore_start("integer_division")
 
-const SIGN_PAGE_CELLS := 1024
-
 
 static func validate_assets(
 	city: CityState, sprites: Sc2SpriteArchive, view_size := VIEW_LARGE
@@ -88,9 +86,8 @@ static func static_visual_signature(city: CityState, view_size := VIEW_LARGE) ->
 	]
 
 
-# a tick usually changes only a few xtxt pages. compare their bytes natively,
-# then scan changed pages once. unchanged pages retain their sign indices
-# dispatch content is still read after every xthg revision change
+# scan xtxt for signs only when it changes. dispatch content is still read
+# after every xthg revision change
 static func _static_text_overlay_signature(city: CityState) -> int:
 	assert(OS.get_thread_caller_id() == OS.get_main_thread_id(),
 		"Static overlay signature cache is main-thread only")
@@ -103,39 +100,11 @@ static func _static_text_overlay_signature(city: CityState) -> int:
 	if cache == null:
 		cache = CitySignatureCache.TextOverlays.new()
 
-	var page_bytes := cache.pages
-	var page_indices := cache.indices
-	var high_pages := cache.high_pages
-	var previous_key := cache.key
-	var text_changed: bool = previous_key.is_empty() or previous_key[0] != key[0]
+	if cache.key.is_empty() or cache.key[0] != key[0]:
+		cache.signs = OverlayData.sign_indices(city.text_overlays)
 
-	var indices := PackedInt32Array()
-	var cells := OverlayData.count(city.text_overlays)
-	var wide := cells < city.text_overlays.size()
-
-	# a layered index holds no sign links; its signs are XSGN records
-	for start in range(0, cells if not OverlayData.is_layered(city.text_overlays) else 0, SIGN_PAGE_CELLS):
-		var end := mini(start + SIGN_PAGE_CELLS, cells)
-		var page := start / SIGN_PAGE_CELLS
-
-		if not text_changed:
-			indices.append_array(page_indices[page])
-			continue
-
-		var bytes := city.text_overlays.slice(start, end)
-		var high := city.text_overlays.slice(cells + start, cells + end) if wide else PackedByteArray()
-
-		if page == page_bytes.size():
-			page_bytes.append(bytes)
-			high_pages.append(high)
-			page_indices.append(OverlayData.sign_indices(city.text_overlays, start, end))
-		elif bytes != page_bytes[page] or high != high_pages[page]:
-			page_bytes[page] = bytes
-			high_pages[page] = high
-			page_indices[page] = OverlayData.sign_indices(city.text_overlays, start, end)
-
-		indices.append_array(page_indices[page])
-
+	# the signature adds dispatch cells to its own copy
+	var indices := cache.signs.duplicate()
 	var value := _compute_static_text_overlay_signature(city, indices)
 	cache.key = key
 	cache.value = value

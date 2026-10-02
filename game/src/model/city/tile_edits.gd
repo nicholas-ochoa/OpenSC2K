@@ -215,57 +215,8 @@ static func masked_tile_flag_signature(city: CityState, mask: int) -> int:
 	if cached == null:
 		cached = CitySignatureCache.MaskedFlags.new()
 
-	# standalone mirror arrays have no chunk revision. keep the content fallback
-	var source_signature := hash(city.tile_flags)
-
-	if (
-		cached.source == source_signature
-		and cached.size == city.tile_flags.size()
-	):
-		cached.revision = revision
-
-		return cached.value
-
-	var source_pages := cached.pages
-	var masked_pages := cached.masked_pages
-	var visible_flags := PackedByteArray()
-	var word_mask := 0
-
-	for lane in 8:
-		word_mask |= byte_mask << (lane * 8)
-
-	# a simulation day often changes only part of xbit. keep the masked
-	# bytes of unchanged pages, then hash the same complete byte stream
-	for start in range(0, city.tile_flags.size(), FLAG_SIGNATURE_PAGE_BYTES):
-		var page := start / FLAG_SIGNATURE_PAGE_BYTES
-		var bytes := city.tile_flags.slice(start, mini(start + FLAG_SIGNATURE_PAGE_BYTES, city.tile_flags.size()))
-
-		if page >= source_pages.size():
-			source_pages.append(PackedByteArray())
-			masked_pages.append(PackedByteArray())
-
-		if source_pages[page] != bytes:
-			source_pages[page] = bytes
-			var full_bytes := bytes.size() - bytes.size() % 8
-			var word_bytes := bytes if full_bytes == bytes.size() else bytes.slice(0, full_bytes)
-			var visible_words := word_bytes.to_int64_array()
-
-			for index in visible_words.size():
-				visible_words[index] &= word_mask
-
-			var masked := visible_words.to_byte_array()
-			masked.resize(bytes.size())
-
-			for index in range(full_bytes, bytes.size()):
-				masked[index] = bytes[index] & byte_mask
-
-			masked_pages[page] = masked
-
-		visible_flags.append_array(masked_pages[page])
-
-	var value := hash(visible_flags)
+	var value := NativeCityArrays.masked_signature(city.tile_flags, byte_mask)
 	cached.revision = revision
-	cached.source = source_signature
 	cached.size = city.tile_flags.size()
 	cached.value = value
 	city.masked_tile_flag_signatures[byte_mask] = cached

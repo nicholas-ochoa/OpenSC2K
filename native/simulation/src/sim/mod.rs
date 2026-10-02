@@ -22,6 +22,7 @@ pub mod phase;
 pub mod random;
 pub mod reach;
 pub mod reports;
+pub mod signature;
 #[cfg(test)]
 pub mod testing;
 pub mod things;

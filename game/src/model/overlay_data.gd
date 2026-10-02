@@ -337,51 +337,7 @@ static func valid_id(id: int, edge: int) -> bool:
 	)
 
 
+# the cells of start..end that hold a sign ID, in cell order. a negative end
+# scans to the last cell. a layered index holds no sign links
 static func sign_indices(data: PackedByteArray, start := 0, end := -1) -> PackedInt32Array:
-	assert(start >= 0 and start % 8 == 0, "Sign scan pages start on an eight-cell boundary")
-	var result := PackedInt32Array()
-
-	# a layered index holds no sign links
-	if is_layered(data):
-		return result
-	var cells := count(data)
-	var wide := cells < data.size()
-	end = cells if end < 0 else mini(end, cells)
-	var full_cells := end - end % 8
-
-	for offset in range(start, full_cells, 8):
-		var low_word := data.decode_u64(offset)
-		var high_word := data.decode_u64(cells + offset) if wide else 0
-
-		if low_word == 0 and high_word == 0:
-			continue
-
-		# With bit 7 clear, adding (127 - limit) sets it when a byte exceeds limit.
-		# No carry can cross into the next byte. This checks eight bytes at once
-		# for original IDs 1..50 and extended high bytes 16..31.
-		var low_seven := low_word & 0x7f7f7f7f7f7f7f7f
-		var candidates := (low_seven + 0x7f7f7f7f7f7f7f7f) & ~(low_seven + 0x4d4d4d4d4d4d4d4d) & ~low_word
-
-		if high_word != 0:
-			var high_seven := high_word & 0x7f7f7f7f7f7f7f7f
-			candidates |= (high_seven + 0x7070707070707070) & ~(high_seven + 0x6060606060606060) & ~high_word
-
-		if (candidates & ~0x7f7f7f7f7f7f7f7f) == 0:
-			continue
-
-		for lane in 8:
-			var byte := (low_word >> (lane * 8)) & 255
-			var high := (high_word >> (lane * 8)) & 255
-
-			if (high == 0 and byte >= 1 and byte <= 50) or (high >= EXTRA_SIGN >> 8 and high < EXTRA_THING >> 8):
-				result.append(offset + lane)
-
-	# finish partial scan ranges and small standalone buffers
-	for index in range(maxi(start, full_cells), end):
-		var byte := int(data[index])
-		var high := int(data[cells + index]) if wide else 0
-
-		if (high == 0 and byte >= 1 and byte <= 50) or (high >= EXTRA_SIGN >> 8 and high < EXTRA_THING >> 8):
-			result.append(index)
-
-	return result
+	return NativeCityArrays.sign_indices(data, start, end)
