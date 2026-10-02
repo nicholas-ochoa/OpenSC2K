@@ -23,6 +23,9 @@ func _draw() -> void:
 	if map.layers.price_layer != null:
 		map.layers.price_layer.queue_redraw()
 
+	if map.layers.overlay_layer != null:
+		map.layers.overlay_layer.queue_redraw()
+
 	if map.data_view_mesh != null:
 		map.layers._draw_data_view(scale, offset)
 
@@ -47,32 +50,31 @@ func _draw() -> void:
 	for stamp in map.scurk_stamp_visuals:
 		map.draw_texture_rect(stamp.texture, Rect2(offset + stamp.position * scale, stamp.texture.get_size() * scale), false)
 
-	if map.city == null:
+
+# the selection preview, the bulldozer and trip routes draw on a child layer
+# above the city and signs. other map redraws reuse the cached preview meshes
+func _draw_overlay() -> void:
+	if map.city_source == null or map.city == null or map.data_view_mesh != null:
 		return
 
+	var canvas := map.layers.overlay_layer
+	var scale := map.camera._view_scale()
+	var offset := map.camera._draw_offset(scale)
 	var valid := (not map.placement_validator.is_valid()
 		or bool(map.placement_validator.call(map.selection_end if map.selection_end.x >= 0 else map.hover_tile)))
 
-	for source_polygon in map.selection._selection_source_polygons():
-		var local_polygon := PackedVector2Array()
-
-		for point in source_polygon:
-			local_polygon.append(offset + point * scale)
-
-		map.draw_colored_polygon(local_polygon, Color(0.3, 0.95, 0.45, 0.28) if valid else Color(1.0, 0.15, 0.12, 0.35))
-		local_polygon.append(local_polygon[0])
-		map.draw_polyline(local_polygon, Color(0.55, 1.0, 0.65, 0.9) if valid else Color(1.0, 0.25, 0.2, 0.95), 1.0)
+	map.selection._draw_selection_preview(canvas, scale, offset, valid)
 
 	if map.selection.bulldozer_visible() and map.bulldozer_visual_provider.is_valid():
 		var visual: CityDynamicVisual = map.bulldozer_visual_provider.call(map.hover_tile, map.bulldozer_direction)
 		if visual != null:
-			map.draw_texture_rect(
+			canvas.draw_texture_rect(
 				visual.texture, Rect2(offset + visual.position * scale, visual.size * scale),
 				false, CityForegroundPalette.INDEXED_DRAW_COLOR
 			)
 
 	if map.trip_reach != null:
-		map.trip_reach.draw_on(map, scale, offset, map.trip_query_underground)
+		map.trip_reach.draw_on(canvas, scale, offset, map.trip_query_underground)
 
 
 func set_city_view(

@@ -94,6 +94,19 @@ func _run() -> void:
 		_motion(map, start + Vector2i(3, 2), true)
 		map._process(0.5)
 		assert(map.selection_path.size() == 12 and not map.selection.bulldozer_visible())
+		# The box preview is one fill mesh and one outline mesh, kept until its tiles or terrain change.
+		assert(map.selection._sync_preview_meshes())
+		var fill: ArrayMesh = map.selection._preview_fill
+		assert(fill.surface_get_array_len(0) == 12 * 6 and map.selection._preview_outline.surface_get_array_len(0) == 12 * 8)
+		assert(map.selection._sync_preview_meshes() and map.selection._preview_fill == fill, "Rebuilt an unchanged preview")
+		var altitude := map.city.land_altitude(start.x, start.y)
+		assert(map.city.set_land_altitude(start.x, start.y, altitude + 1))
+		assert(map.selection._sync_preview_meshes() and map.selection._preview_fill != fill, "Kept a preview over changed terrain")
+		assert(map.city.set_land_altitude(start.x, start.y, altitude))
+		fill = map.selection._preview_fill
+		_motion(map, start + Vector2i(3, 3), true)
+		assert(map.selection._sync_preview_meshes() and map.selection._preview_fill.surface_get_array_len(0) == 16 * 6)
+		_motion(map, start + Vector2i(3, 2), true)
 		assert(DocumentState.capture(main.document_state.current_document) == before)
 		_button(map, start + Vector2i(3, 2), false)
 		assert(main.tool_state.last_edit_command.cost == 12 and main.tool_state.last_edit_command.action_count == 12)

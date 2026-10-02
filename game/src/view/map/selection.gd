@@ -4,8 +4,17 @@ extends CityMapConstants
 
 @warning_ignore_start("integer_division")
 
+# the preview polygons follow land and water heights and terrain slopes
+const PREVIEW_CHUNKS: PackedStringArray = ["ALTM", "XTER"]
+
 var map: CityMapControl
 var last_brush_tile := Vector2i(-1, -1)
+# the preview meshes stay in source space. they rebuild only when the tiles or
+# the terrain under them change, not on each map redraw
+var _preview_tiles: Array[Vector2i] = []
+var _preview_signature: Array = []
+var _preview_fill: ArrayMesh
+var _preview_outline: ArrayMesh
 
 
 func _init(control: CityMapControl) -> void:
@@ -128,7 +137,7 @@ func cancel_active_selection() -> bool:
 	return true
 
 
-func _selection_source_polygons() -> Array[PackedVector2Array]:
+func _selection_preview_tiles() -> Array[Vector2i]:
 	var tiles: Array[Vector2i]
 
 	if not map.show_selection_preview or not map.edit_enabled:
@@ -166,19 +175,97 @@ func _selection_source_polygons() -> Array[PackedVector2Array]:
 
 		tiles = expanded
 
+	return tiles
+
+
+func _selection_source_polygons() -> Array[PackedVector2Array]:
 	var polygons: Array[PackedVector2Array] = []
 
-	for tile in tiles:
-		var polygon := Renderer.tile_polygon(
-			map.city,
-			tile.x,
-			tile.y,
-		) if map.terrain_diamond_preview else Renderer.terrain_surface_polygon(map.city, tile.x, tile.y)
+	for tile in _selection_preview_tiles():
+		var polygon := _preview_polygon(tile)
 
 		if polygon.size() == 4:
 			polygons.append(polygon)
 
 	return polygons
+
+
+func _preview_polygon(tile: Vector2i) -> PackedVector2Array:
+	if map.terrain_diamond_preview:
+		return Renderer.tile_polygon(map.city, tile.x, tile.y)
+
+	return Renderer.terrain_surface_polygon(map.city, tile.x, tile.y)
+
+
+# draw all preview tiles as one fill mesh and one outline mesh. one canvas
+# command per tile makes a large rectangle slow to draw
+func _draw_selection_preview(canvas: CanvasItem, scale: float, offset: Vector2, valid: bool) -> void:
+	if not _sync_preview_meshes():
+		return
+
+	canvas.draw_set_transform(offset, 0.0, Vector2.ONE * scale)
+	canvas.draw_mesh(_preview_fill, null, Transform2D.IDENTITY,
+		Color(0.3, 0.95, 0.45, 0.28) if valid else Color(1.0, 0.15, 0.12, 0.35))
+	canvas.draw_mesh(_preview_outline, null, Transform2D.IDENTITY,
+		Color(0.55, 1.0, 0.65, 0.9) if valid else Color(1.0, 0.25, 0.2, 0.95))
+	canvas.draw_set_transform(Vector2.ZERO)
+
+
+# returns false when there is no preview to draw
+func _sync_preview_meshes() -> bool:
+	var tiles := _selection_preview_tiles()
+
+	if tiles.is_empty():
+		return false
+
+	var signature := [map.terrain_diamond_preview, map.city.mirror_signature(PREVIEW_CHUNKS)]
+
+	if tiles != _preview_tiles or signature != _preview_signature:
+		_rebuild_preview_meshes(tiles)
+		_preview_tiles = tiles.duplicate()
+		_preview_signature = signature
+
+	return _preview_fill != null
+
+
+func _rebuild_preview_meshes(tiles: Array[Vector2i]) -> void:
+	var fill := PackedVector2Array()
+	var outline := PackedVector2Array()
+
+	for tile in tiles:
+		var polygon := _preview_polygon(tile)
+
+		if polygon.size() != 4:
+			continue
+
+		# split a raised-corner quad on the diagonal that stays inside it
+		var diagonal := polygon[2] - polygon[0]
+		var side_1 := diagonal.cross(polygon[1] - polygon[0])
+		var side_3 := diagonal.cross(polygon[3] - polygon[0])
+
+		if side_1 * side_3 < 0.0:
+			fill.append_array([polygon[0], polygon[1], polygon[2], polygon[0], polygon[2], polygon[3]])
+		else:
+			fill.append_array([polygon[1], polygon[2], polygon[3], polygon[1], polygon[3], polygon[0]])
+
+		for corner in 4:
+			outline.append_array([polygon[corner], polygon[(corner + 1) % 4]])
+
+	_preview_fill = _preview_mesh(fill, Mesh.PRIMITIVE_TRIANGLES)
+	_preview_outline = _preview_mesh(outline, Mesh.PRIMITIVE_LINES)
+
+
+static func _preview_mesh(vertices: PackedVector2Array, primitive: Mesh.PrimitiveType) -> ArrayMesh:
+	if vertices.is_empty():
+		return null
+
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vertices
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(primitive, arrays)
+
+	return mesh
 
 
 func _draw_selection_price() -> void:

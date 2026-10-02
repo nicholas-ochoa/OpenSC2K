@@ -11,6 +11,8 @@ const WATER_SCALE_TOP := 96
 var map: CityMapControl
 # the price label draws above the network preview layer, not under it
 var price_layer: Node2D
+# the selection preview, bulldozer and trip routes draw above the map's own commands
+var overlay_layer: Control
 var _tile_layers: Array[TextureRect] = []
 var _mesh_layers: Array[MeshInstance2D] = []
 var _mesh_view_scale := -1.0
@@ -229,6 +231,12 @@ func _ensure_base_layer() -> void:
 	_dynamic_material = _new_palette_material()
 	dynamic_canvas.material = _dynamic_material
 	map.add_child(dynamic_canvas)
+	overlay_layer = Control.new()
+	overlay_layer.name = "SelectionOverlayLayer"
+	overlay_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay_layer.use_parent_material = true
+	overlay_layer.draw.connect(map.presentation._draw_overlay)
+	map.add_child(overlay_layer)
 	dynamic_canvas.set_visuals(
 		map.dynamic_sprites, map.camera._view_scale(), map.camera._draw_offset(map.camera._view_scale())
 	)
