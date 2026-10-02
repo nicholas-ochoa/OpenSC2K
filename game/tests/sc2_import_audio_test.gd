@@ -61,9 +61,23 @@ func run() -> void:
 	assert(not Sc2ImportXmi.convert(_xmi(PackedByteArray([0xb0, 116, 0, 0xff, 0x2f, 0]))).ok)
 	_test_import(voice, sequence)
 	_test_resource_types(music.bytes)
+	_test_riff_wave()
 	print(("PASS: VOC samples, repeats, loops, XMIDI timing and notes, selective packs, partial "
 		+ "failure, coexistence and source preservation"))
 	quit()
+
+
+# An odd-sized sample chunk without its pad byte, then a sampler chunk, as on the Special Edition CD-ROM.
+func _test_riff_wave() -> void:
+	var expected := Sc2ImportAudio.pcm_wave(PackedByteArray([1, 2, 3]), 11025, 1, 8).bytes
+	var damaged := expected.slice(0, expected.size() - 1)
+	damaged.append_array("smpl".to_ascii_buffer())
+	damaged.append_array(PackedByteArray([60, 0, 0, 0]))
+	damaged.resize(damaged.size() + 60)
+	damaged.encode_u32(4, damaged.size() - 8)
+	assert(Sc2ImportAudio.riff_wave(damaged).bytes == expected)
+	assert(Sc2ImportAudio.riff_wave(expected).bytes == expected)
+	assert(not Sc2ImportAudio.riff_wave(expected.slice(0, 36)).ok)
 
 
 func _test_resource_types(midi: PackedByteArray) -> void:

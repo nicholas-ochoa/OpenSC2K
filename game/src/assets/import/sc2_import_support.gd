@@ -62,7 +62,7 @@ static func data_root(source: Sc2ImportSource) -> String:
 		var complete := true
 
 		for relative in DataPack.REQUIRED_FILES:
-			complete = complete and FileAccess.file_exists(candidate.path_join(relative))
+			complete = complete and Sc2ImportPath.has_file(candidate, relative)
 
 		if complete:
 			return candidate
@@ -74,7 +74,7 @@ static func install_root(source: Sc2ImportSource) -> String:
 	var candidates := PackedStringArray([source.root])
 
 	for resource in source.resources:
-		if resource.source.get_file().to_upper() == "SIMCITY.EXE":
+		if Sc2ImportPath.key(resource.source.get_file()) == "SIMCITY.EXE":
 			var root := resource.source.get_base_dir()
 
 			if root not in candidates:

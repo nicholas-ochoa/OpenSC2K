@@ -5,6 +5,8 @@ Version 0.1.0 is the first public release. Keep backup copies of your cities.
 
 All packages require your own copy of SimCity 2000 Special Edition for Windows 95 (1996).
 Keep its companion files beside `SIMCITY.EXE`. On first launch, select that executable at the import prompt.
+You can also import from the game CD-ROM. To use a disc image file, such as an `.iso` file, mount it first.
+Then select the mounted disc. Refer to [Import original game files](media-pack-format.md#import-original-game-files).
 Original game files are not included in the download.
 
 ## Windows

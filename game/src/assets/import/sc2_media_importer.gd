@@ -24,6 +24,7 @@ static func import_assets(
 	var source := Sc2ImportSource.scan(path)
 	result.platform = source.platform
 	result.warnings = source.warnings.duplicate()
+	result.notes = source.notes.duplicate()
 
 	if not source.error.is_empty():
 		result.error = source.error
@@ -150,6 +151,12 @@ static func _import_audio(source: Sc2ImportSource, category: String, folder: Str
 				continue
 
 			bytes = converted.bytes
+
+		if category == "sound" and bytes.slice(0, 4).get_string_from_ascii() == "RIFF":
+			var wave := Sc2ImportAudio.riff_wave(bytes)
+
+			if wave.ok:
+				bytes = wave.bytes
 
 		if category == "sound":
 			if (bytes.size() < 12

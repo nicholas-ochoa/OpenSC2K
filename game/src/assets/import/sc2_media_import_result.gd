@@ -12,12 +12,13 @@ var music := ""
 var data := ""
 var error := ""
 var warnings := PackedStringArray()
+var notes := PackedStringArray()
 var counts: Dictionary[String, int] = {}
 var failures: Dictionary[String, String] = {}
 
 
 func summary() -> String:
-	var lines := PackedStringArray()
+	var lines := notes.duplicate()
 
 	for kind in Sc2MediaImporter.CATEGORIES:
 		if counts.has(kind):

@@ -8,7 +8,7 @@ static func import_saved_games(source_root: String, saved_root: String) -> Asset
 	var counts: Dictionary[String, int] = { "cities": 0, "scenarios": 0 }
 
 	for entry in [["CITIES", "cities", "sc2"], ["SCENARIO", "scenarios", "scn"]]:
-		var source := source_root.path_join(entry[0])
+		var source := Sc2ImportPath.find(source_root, entry[0])
 		var files := PackedStringArray()
 		_collect(source, "", entry[2], files)
 		files.sort()
@@ -77,7 +77,7 @@ static func _collect(root: String, relative: String, extension: String, files: P
 		if not directory.is_link(name):
 			if directory.current_is_dir():
 				_collect(root, path, extension, files)
-			elif name.get_extension().to_lower() == extension:
+			elif Sc2ImportPath.key(name).get_extension().to_lower() == extension:
 				files.append(path)
 
 		name = directory.get_next()

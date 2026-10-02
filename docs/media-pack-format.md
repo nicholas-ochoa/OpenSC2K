@@ -434,17 +434,33 @@ Without a data pack, the game still runs, but these features change:
 Settings > Import Data > Import SimCity 2000 opens the import dialog. Import
 Assets on the main menu opens the same Settings tab.
 
-1. Select a source: an installed game folder, a macOS `.app` bundle, or
-   extracted game files. Install a GOG download before you import it. Do not
-   select an installer file.
+1. Select a source: an installed game folder, a macOS `.app` bundle,
+   extracted game files, or a mounted game CD-ROM. Install a GOG download
+   before you import it. Do not select an installer file. To use a disc image
+   file, such as an `.iso` file, mount it first. Then select the mounted disc.
 2. Select the pack kinds to import: Graphics, Sounds, Music, and Game data.
    All four are selected by default.
 3. Select Import.
 
 The importer reads the source files. It does not run the original game or
 change the source files. It identifies the platform of the source: `Windows`,
-`Windows 3.x`, `Windows Network Edition`, `DOS`, or `Macintosh`. A folder with
-assets from more than one platform is not valid.
+`Windows 3.x`, `Windows Network Edition`, `DOS`, or `Macintosh`.
+
+Some discs contain more than one version in separate folders. For example, the
+Special Edition CD-ROM has `DOS`, `WIN31`, and `WIN95/SC2K`. When the selected
+folder has more than one version, the importer uses the folder of one version
+in this order: `Windows`, `Windows 3.x`, `Macintosh`, `DOS`. The result tells
+which version it imported. To import a different version, select its folder.
+When the versions are not in separate folders, the source is not valid.
+
+The importer finds files without case. `DATA/TEXT_USA.DAT` also matches
+`data/text_usa.dat` and `Data/Text_USA.dat`, as in Wine installs and on
+case-sensitive file systems. It also ignores an ISO 9660 version suffix
+(`TEXT_USA.DAT;1`) and a final dot. The packs use the names in this document.
+
+The importer keeps only the format and sample chunks of a WAV sound. Some
+Special Edition CD-ROM sounds have a sampler chunk after an odd-sized sample
+chunk without the pad byte. Other readers cannot read those files correctly.
 
 The importer makes a new folder in `user://packs` for each import. The folder
 name starts with the platform name. The folder contains `graphics`, `sound`,
@@ -467,7 +483,7 @@ Edition `SC2K.PAL` file has CR LF line ends. The importer removes each CR before
 an LF, as the game does when it reads the file in text mode.
 
 Some assets need a complete Windows installation. A complete installation
-contains `SIMCITY.EXE` and these files:
+contains `SIMCITY.EXE` and these files, in uppercase, lowercase, or mixed case:
 
 - `DEFAULT.SC2`
 - `DATA/DATA_USA.DAT`, `DATA/DATA_USA.IDX`, `DATA/TEXT_USA.DAT`, `DATA/TEXT_USA.IDX`

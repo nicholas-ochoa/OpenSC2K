@@ -53,6 +53,55 @@ static func mac_sound(data: PackedByteArray) -> AssetBytesResult:
 	return AssetBytesResult.failure("No embedded sample buffer was found in the Macintosh sound.")
 
 
+# Keep only the format and sample chunks of a RIFF WAVE file. Some Special Edition CD-ROM sounds
+# have a sampler chunk after an odd-sized sample chunk without the RIFF pad byte.
+static func riff_wave(data: PackedByteArray) -> AssetBytesResult:
+	if data.size() < 12 or data.slice(0, 4).get_string_from_ascii() != "RIFF" or data.slice(8, 12).get_string_from_ascii() != "WAVE":
+		return AssetBytesResult.failure("The sound is not a RIFF WAVE file.")
+
+	var format := PackedByteArray()
+	var samples := PackedByteArray()
+	var cursor := 12
+
+	while cursor + 8 <= data.size() and (format.is_empty() or samples.is_empty()):
+		var id := data.slice(cursor, cursor + 4).get_string_from_ascii()
+		var size := int(data.decode_u32(cursor + 4))
+		var available := mini(size, data.size() - cursor - 8)
+
+		if id == "fmt " and format.is_empty():
+			format = data.slice(cursor + 8, cursor + 8 + available)
+		elif id == "data" and samples.is_empty():
+			samples = data.slice(cursor + 8, cursor + 8 + available)
+
+		cursor += 8 + size + size % 2
+
+	if format.size() < 16 or samples.is_empty():
+		return AssetBytesResult.failure("The WAVE file has no format or sample data.")
+
+	var bytes := "RIFF".to_ascii_buffer()
+	bytes.resize(8)
+	bytes.encode_u32(4, 4 + 8 + format.size() + format.size() % 2 + 8 + samples.size() + samples.size() % 2)
+	bytes.append_array("WAVE".to_ascii_buffer())
+	_append_chunk(bytes, "fmt ", format)
+	_append_chunk(bytes, "data", samples)
+
+	var result := AssetBytesResult.new()
+	result.ok = true
+	result.bytes = bytes
+
+	return result
+
+
+static func _append_chunk(bytes: PackedByteArray, id: String, payload: PackedByteArray) -> void:
+	bytes.append_array(id.to_ascii_buffer())
+	bytes.resize(bytes.size() + 4)
+	bytes.encode_u32(bytes.size() - 4, payload.size())
+	bytes.append_array(payload)
+
+	if payload.size() % 2 != 0:
+		bytes.append(0)
+
+
 static func pcm_wave(samples: PackedByteArray, rate: int, channels: int, bits: int) -> AssetBytesResult:
 	if rate < 1000 or rate > 192000 or channels not in [1, 2] or bits not in [8, 16] or samples.is_empty():
 		return AssetBytesResult.failure("Invalid PCM sample format.")

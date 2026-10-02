@@ -1602,6 +1602,15 @@
     "lane": "product"
   },
   {
+    "id": "sc2_import_disc_test",
+    "script": "tests/sc2_import_disc_test.gd",
+    "domain": "formats",
+    "lane": "product",
+    "requires": [
+      "references/SIMCITY2000"
+    ]
+  },
+  {
     "id": "sc2_import_dialog_test",
     "script": "tests/sc2_import_dialog_test.gd",
     "domain": "ui",

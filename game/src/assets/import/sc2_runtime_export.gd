@@ -10,9 +10,9 @@ var _palette: Sc2Palette
 
 func export_data(source: String, folder: String, manifest: Dictionary) -> void:
 	_root = folder
-	_palette = Sc2Palette.load_bmp(source.path_join("BITMAPS/PAL_MSTR.BMP"))
-	var city_exe := source.path_join("SIMCITY.EXE")
-	var scurk_exe := source.path_join("WINSCURK.EXE")
+	_palette = Sc2Palette.load_bmp(Sc2ImportPath.resolve(source, "BITMAPS/PAL_MSTR.BMP"))
+	var city_exe := Sc2ImportPath.resolve(source, "SIMCITY.EXE")
+	var scurk_exe := Sc2ImportPath.resolve(source, "WINSCURK.EXE")
 	var city_ui := { "portraits": [], "terrain": [], "notices": [] }
 
 	for id in CityUiGraphics.PORTRAIT_IDS:
@@ -21,7 +21,7 @@ func export_data(source: String, folder: String, manifest: Dictionary) -> void:
 	city_ui.terrain.append(_bitmap(city_exe, 207, "city_ui"))
 
 	for id in CityUiGraphics.NOTICE_IDS:
-		city_ui.notices.append(_loose_bitmap(source.path_join("BITMAPS/%d.BMP" % id), id, "city_ui"))
+		city_ui.notices.append(_loose_bitmap(Sc2ImportPath.resolve(source, "BITMAPS/%d.BMP" % id), id, "city_ui"))
 
 	manifest.city_ui = city_ui
 	var scurk := { "textures": [], "backgrounds": [] }

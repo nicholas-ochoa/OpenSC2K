@@ -25,7 +25,7 @@ static func validate_executable(
 ) -> AssetImportResult:
 	var path := executable_path.simplify_path()
 
-	if path.get_file().to_upper() != "SIMCITY.EXE":
+	if Sc2ImportPath.key(path.get_file()) != "SIMCITY.EXE":
 		return AssetImportResult.failure("Select SIMCITY.EXE from the original SimCity 2000 installation.")
 
 	if not FileAccess.file_exists(path):
@@ -68,7 +68,7 @@ static func validate_install_root(
 		return AssetImportResult.failure("The original game data directory does not exist.")
 
 	var executable_result := validate_executable(
-		root.path_join("SIMCITY.EXE"), expected_hash
+		Sc2ImportPath.resolve(root, "SIMCITY.EXE"), expected_hash
 	)
 
 	if not executable_result.ok:
@@ -234,7 +234,7 @@ static func _validate_required_files(
 	install_root: String, required_paths: Array
 ) -> AssetImportResult:
 	for relative_path in required_paths:
-		if not FileAccess.file_exists(install_root.path_join(relative_path)):
+		if not Sc2ImportPath.has_file(install_root, relative_path):
 			return AssetImportResult.failure("The selected installation is missing %s." % relative_path)
 
 	var outcome := AssetImportResult.new()

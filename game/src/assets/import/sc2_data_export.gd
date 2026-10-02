@@ -14,17 +14,30 @@ var warnings := PackedStringArray()
 
 # a Windows folder already has the data files
 func export_pack(source: String, folder: String, pack_name: String, platform := "") -> void:
-	var files := PackedStringArray(DataPack.REQUIRED_FILES)
+	# The pack keeps the documented names. The source names can use a different case.
+	var files: Dictionary[String, String] = {}
+
+	for relative: String in DataPack.REQUIRED_FILES:
+		files[relative] = Sc2ImportPath.resolve(source, relative)
 
 	for relative: String in DataPack.NEWSPAPER_FILES + [DataPack.TEMPLATE_FILE]:
-		if FileAccess.file_exists(source.path_join(relative)):
-			files.append(relative)
+		var path := Sc2ImportPath.find_file(source, relative)
+
+		if not path.is_empty():
+			files[relative] = path
 
 	for pair in DataPack.FOLDERS:
-		OriginalCityImporter._collect(source, pair[0], pair[1], files)
+		var found := Sc2ImportPath.find(source, pair[0])
+		var names := PackedStringArray()
+
+		if not found.is_empty():
+			OriginalCityImporter._collect(found, "", pair[1], names)
+
+		for name in names:
+			files[str(pair[0]).path_join(Sc2ImportPath.original_name(name))] = found.path_join(name)
 
 	for relative in files:
-		var bytes := FileAccess.get_file_as_bytes(source.path_join(relative))
+		var bytes := FileAccess.get_file_as_bytes(files[relative])
 
 		if bytes.is_empty():
 			error = "Cannot import " + relative
@@ -86,20 +99,21 @@ func _copy_city_folders(path: String, folder: String, depth: int) -> void:
 	for pair in DataPack.FOLDERS:
 		targets[pair[0]] = pair[1]
 
-	var target := str(path.get_file().to_upper())
+	var target := Sc2ImportPath.key(path.get_file())
 
 	if depth == 0:
 		for name in directory.get_files():
 			var bytes := FileAccess.get_file_as_bytes(path.path_join(name)) if _is_city_name(path, name) else PackedByteArray()
 
 			if _is_city(bytes):
-				_write_city(folder, "CITIES", name if not name.get_extension().is_empty() else name + ".SC2", bytes)
+				var file_name := Sc2ImportPath.original_name(name)
+				_write_city(folder, "CITIES", file_name if not file_name.get_extension().is_empty() else file_name + ".SC2", bytes)
 	elif targets.has(target):
 		var names := directory.get_files()
 		names.sort()
 
 		for name in names:
-			var extension := name.get_extension().to_lower()
+			var extension := Sc2ImportPath.key(name).get_extension().to_lower()
 
 			if extension == "rsrc" or directory.is_link(name):
 				continue
@@ -107,7 +121,8 @@ func _copy_city_folders(path: String, folder: String, depth: int) -> void:
 			var bytes := FileAccess.get_file_as_bytes(path.path_join(name))
 
 			if extension == targets[target] or (target == "CITIES" and extension.is_empty() and _is_city(bytes)):
-				_write_city(folder, target, name if not extension.is_empty() else name + "." + str(targets[target]).to_upper(), bytes)
+				var file_name := Sc2ImportPath.original_name(name)
+				_write_city(folder, target, file_name if not extension.is_empty() else file_name + "." + str(targets[target]).to_upper(), bytes)
 
 				if not error.is_empty():
 					return
@@ -118,9 +133,9 @@ func _copy_city_folders(path: String, folder: String, depth: int) -> void:
 
 
 func _is_city_name(path: String, name: String) -> bool:
-	var extension := name.get_extension().to_lower()
+	var extension := Sc2ImportPath.key(name).get_extension().to_lower()
 
-	if name.to_upper() == DataPack.TEMPLATE_FILE:
+	if Sc2ImportPath.key(name) == DataPack.TEMPLATE_FILE:
 		return false
 
 	return extension == "sc2" or (extension.is_empty() and not FileAccess.file_exists(path.path_join(name + ".rsrc")))
