@@ -38,7 +38,8 @@ jobs:
             # tools/build_native.py selects the target from the Python architecture
             python-architecture: arm64
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 30
+    # macOS builds every crate twice for the universal library. A cold Rust cache needs about 35 minutes
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
