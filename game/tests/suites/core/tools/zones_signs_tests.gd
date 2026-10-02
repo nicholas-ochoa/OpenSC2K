@@ -56,17 +56,21 @@ func test_zone_command(reference_root: String) -> void:
 	)
 	_check(city.set_terrain_id(10, 10, 0), "Zone click preview restores flat terrain")
 	_check(
-		not Zones.preview_rectangle(
-			city, 9, 0, Vector2i(12, 12), Vector2i(10, 10), true
-		).ok,
-		"Zone selection cannot start on water",
+		not Zones.preview_rectangle(city, 9, 0, Vector2i(12, 12), Vector2i(12, 12), false).ok
+		and not Zones.preview_rectangle(city, 9, 0, Vector2i(12, 11), Vector2i(12, 11), false).ok,
+		"Zone click rejects water and a military zone",
 	)
-	_check(
-		not Zones.preview_rectangle(
-			city, 9, 0, Vector2i(12, 11), Vector2i(10, 10), true
-		).ok,
-		"Zone selection cannot start in a military zone",
-	)
+
+	for blocked_start in [Vector2i(12, 12), Vector2i(12, 11)]:
+		var forward_preview := Zones.preview_rectangle(city, 9, 0, Vector2i(10, 10), blocked_start, true)
+		var reversed_preview := Zones.preview_rectangle(city, 9, 0, blocked_start, Vector2i(10, 10), true)
+		_check(
+			reversed_preview.ok
+			and reversed_preview.changed_tiles > 0
+			and reversed_preview.charged_tiles == forward_preview.charged_tiles
+			and reversed_preview.changed_tiles == forward_preview.changed_tiles,
+			"Zone drag from blocked tile %s zones the eligible tiles" % blocked_start,
+		)
 	var command := Zones.apply_rectangle(city, 9, 0, Vector2i(10, 10), Vector2i(12, 12))
 	_check(command.ok, "Residential zone rectangle applies: %s" % command.error)
 

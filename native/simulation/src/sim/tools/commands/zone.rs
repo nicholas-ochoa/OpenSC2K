@@ -92,12 +92,17 @@ pub fn preview(city: &City, args: &ToolArgs, request: &ZoneRequest) -> Preview {
 
     let start_index = city.index_of(request.start.x, request.start.y) as usize;
 
-    if city.xbit.data[start_index] as i64 & flag_bits::WATER != 0 {
-        return Preview::failure("a zone selection cannot start on water");
-    }
+    // The original refuses a drag that starts on one of these tiles. A drag
+    // here zones the eligible tiles in the rectangle and skips the others, so
+    // only a click is refused
+    if !request.dragged {
+        if city.xbit.data[start_index] as i64 & flag_bits::WATER != 0 {
+            return Preview::failure("cannot zone water");
+        }
 
-    if city.xbld.data[start_index] as i64 == tiles::RADIOACTIVE_WASTE || zone_of(city, start_index) == zone::MILITARY {
-        return Preview::failure("a zone selection cannot start on this tile");
+        if city.xbld.data[start_index] as i64 == tiles::RADIOACTIVE_WASTE || zone_of(city, start_index) == zone::MILITARY {
+            return Preview::failure("cannot zone this tile");
+        }
     }
 
     let mut charged = 0;
