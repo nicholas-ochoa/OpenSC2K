@@ -87,8 +87,11 @@ DEPENDENCY_OPTIONS = {
     'vorbis': [],
     'flac': ['-DBUILD_CXXLIBS=OFF', '-DBUILD_PROGRAMS=OFF', '-DBUILD_EXAMPLES=OFF', '-DBUILD_DOCS=OFF',
              '-DINSTALL_MANPAGES=OFF', '-DWITH_OGG=ON'],
-    'opus': ['-DOPUS_BUILD_PROGRAMS=OFF', '-DOPUS_BUILD_TESTING=OFF'],
+    # Opus selects its own MSVC runtime, so it needs its own static runtime option
+    'opus': ['-DOPUS_BUILD_PROGRAMS=OFF', '-DOPUS_BUILD_TESTING=OFF', '-DOPUS_STATIC_RUNTIME=ON'],
+    # the FLAC module of libsndfile drops the static FLAC define, so MSVC would import FLAC from a DLL
     'sndfile': ['-DBUILD_PROGRAMS=OFF', '-DBUILD_EXAMPLES=OFF', '-DBUILD_REGTEST=OFF', '-DENABLE_CPACK=OFF',
+                '-DCMAKE_C_FLAGS_INIT=-DFLAC__NO_DLL',
                 '-DINSTALL_MANPAGES=OFF', '-DENABLE_EXTERNAL_LIBS=ON', '-DENABLE_MPEG=OFF',
                 '-DCMAKE_DISABLE_FIND_PACKAGE_ALSA=ON', '-DCMAKE_DISABLE_FIND_PACKAGE_Sndio=ON',
                 '-DCMAKE_DISABLE_FIND_PACKAGE_Speex=ON', '-DCMAKE_DISABLE_FIND_PACKAGE_SQLite3=ON'],
