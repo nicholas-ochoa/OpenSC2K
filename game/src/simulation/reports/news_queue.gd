@@ -1,5 +1,7 @@
 class_name NewsQueue
 extends RefCounted
+## The saved newspaper papers and story queue in MISC. The native simulation
+## library holds the rules; see native/simulation/src/sim/reports/news.rs.
 
 const MISC_SIZE := Sc2MiscLayout.SIZE
 const PAPER_OFFSET := Sc2MiscLayout.PAPERS
@@ -20,32 +22,13 @@ const PAPER_LAYOUT_FIELD := 1
 const PAPER_PRICE_FIELD := 2
 const PAPER_OPINION_FIELD := 3
 const PAPER_WEATHER_FIELD := 4
-# data_usa resources 1004 and 1005 are big-endian unsigned 16-bit tables
-# the supplied executable byte-swaps them after loading
-const STORY_PRIORITIES := [
-	0, 0, 1000, 1000, 1000, 1000, 360, 200, 200, 200,
-	200, 200, 200, 200, 200, 200, 200, 200, 200, 200,
-	200, 200, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000,
-	1000, 1000, 1000, 1000, 1000, 1000, 1000, 200, 200, 300,
-	200, 200, 0, 0, 0, 0, 500, 500, 500, 500,
-	500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
-	500, 200, 200, 200, 200, 200, 200, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-]
-const STORY_DECAYS := [
-	0, 0, 500, 500, 250, 250, 10, 50, 50, 50,
-	50, 50, 50, 50, 50, 50, 50, 50, 50, 50,
-	50, 50, 250, 250, 250, 250, 250, 250, 250, 250,
-	250, 250, 250, 250, 250, 250, 100, 50, 50, 50,
-	50, 50, 0, 0, 0, 0, 500, 500, 500, 500,
-	500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
-	500, 50, 50, 50, 50, 50, 50, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-]
+# data_usa resources 1004 and 1005: the priority and decay of each story type
+static var STORY_PRIORITIES := NativeNewsQueue.story_priorities()
+static var STORY_DECAYS := NativeNewsQueue.story_decays()
 
 
 static func is_story_type(story_type: int) -> bool:
-	return story_type >= 0 and story_type < STORY_PRIORITIES.size()
+	return NativeNewsQueue.is_story_type(story_type)
 
 
 static func initialize_session(misc: PackedByteArray, random: SimRandom) -> Result:
@@ -57,155 +40,53 @@ static func initialize_session(misc: PackedByteArray, random: SimRandom) -> Resu
 	if random == null:
 		return _failure("newspaper process-random state is missing")
 
-	for paper in PAPER_COUNT:
-		_write_paper_field(misc, paper, PAPER_NAME_FIELD, paper)
-		_write_paper_field(misc, paper, PAPER_LAYOUT_FIELD, paper % 3)
-		_write_paper_field(misc, paper, PAPER_PRICE_FIELD, paper % 3)
-		_write_paper_field(misc, paper, PAPER_OPINION_FIELD, paper)
-		_write_paper_field(misc, paper, PAPER_WEATHER_FIELD, paper)
+	var draws := PackedInt64Array()
 
-	_swap_paper_field(
-		misc,
-		0,
-		3 + (int(random.next_u15()) & 1),
-		PAPER_OPINION_FIELD,
-	)
+	for _call in NativeNewsQueue.session_random_calls():
+		draws.append(random.next_u15())
 
-	if int(random.next_u15()) & 1:
-		_swap_paper_field(misc, 0, 1, PAPER_LAYOUT_FIELD)
-
-	for _pass in 12:
-		_swap_random_paper_field(misc, random, PAPER_NAME_FIELD, 0, 6)
-		_swap_random_paper_field(misc, random, PAPER_LAYOUT_FIELD, 1, 5)
-		_swap_random_paper_field(misc, random, PAPER_PRICE_FIELD, 0, 6)
-		_swap_random_paper_field(misc, random, PAPER_OPINION_FIELD, 1, 5)
-		_swap_random_paper_field(misc, random, PAPER_WEATHER_FIELD, 0, 6)
-
-	for slot in STORY_RECORD_COUNT:
-		var offset := _story_offset(slot)
-		BinaryData.write_u32_be(misc, offset, 11 + slot)
-		BinaryData.write_u32_be(misc, offset + 4, 0)
-		BinaryData.write_u32_be(misc, offset + 8, 0)
-
-		for field in range(FIRST_AUXILIARY_FIELD, STORY_FIELD_COUNT):
-			BinaryData.write_u32_be(misc, offset + field * 4, 0xff)
-
-	var result := Result.new()
-	result.ok = true
-	result.error = ""
-	result.random_calls = 122
+	var result := _store(misc, NativeNewsQueue.initialize_session(misc, draws))
+	result.random_calls = draws.size()
 
 	return result
 
 
 static func decay_and_sort(misc: PackedByteArray) -> Result:
-	var validation := _validate_misc(misc)
-
-	if not validation.ok:
-		return validation
-
-	for slot in QUEUE_COUNT:
-		var offset := _story_offset(slot)
-		var story_type := _to_i16(BinaryData.read_u32_be(misc, offset))
-
-		if not is_story_type(story_type):
-			return _failure("newspaper queue story type is out of range")
-
-		var priority := _to_i16(BinaryData.read_u32_be(misc, offset + 4))
-		var decay: int = STORY_DECAYS[story_type]
-		BinaryData.write_u32_be(misc, offset + 4, priority - decay if decay < priority else 0)
-
-	for first_slot in QUEUE_COUNT - 1:
-		for candidate_slot in range(first_slot + 1, QUEUE_COUNT):
-			var first_priority := _story_priority(misc, first_slot)
-			var candidate_priority := _story_priority(misc, candidate_slot)
-
-			if first_priority < candidate_priority:
-				_swap_story_records(misc, first_slot, candidate_slot)
-
-	var result := Result.new()
-	result.ok = true
-	result.error = ""
-
-	return result
+	return _store(misc, NativeNewsQueue.decay_and_sort(misc))
 
 
 static func insert(misc: PackedByteArray, story_type: int, argument: int) -> Result:
-	var validation := _validate_misc(misc)
-
-	if not validation.ok:
-		return validation
-
-	if not is_story_type(story_type):
-		return _failure("newspaper story type is out of range")
-
-	var priority: int = STORY_PRIORITIES[story_type]
-	var slot := QUEUE_COUNT - 2
-
-	while slot >= 0:
-		if priority < _story_priority(misc, slot):
-			break
-
-		_copy_story_record(misc, slot, slot + 1)
-		slot -= 1
-
-	var inserted_slot := slot + 1
-	var offset := _story_offset(inserted_slot)
-	BinaryData.write_u32_be(misc, offset + STORY_TYPE_FIELD * 4, story_type)
-	BinaryData.write_u32_be(misc, offset + PRIORITY_FIELD * 4, priority)
-	BinaryData.write_u32_be(misc, offset + ARGUMENT_FIELD * 4, argument & 0xff)
-
-	for field in range(FIRST_AUXILIARY_FIELD, STORY_FIELD_COUNT):
-		BinaryData.write_u32_be(misc, offset + field * 4, 0xff)
-
-	var result := Result.new()
-	result.ok = true
-	result.error = ""
-	result.slot = inserted_slot
-	result.priority = priority
+	var response := NativeNewsQueue.insert(misc, story_type, argument)
+	var result := _store(misc, response)
+	result.slot = response.slot
+	result.priority = response.priority
 
 	return result
 
 
 static func insert_items(misc: PackedByteArray, news_items: Array[NewsEvent]) -> Result:
-	var inserted := 0
+	var types := PackedInt64Array()
+	var arguments := PackedInt64Array()
 
 	for item in news_items:
-		var story_type := int(item.type)
+		types.append(int(item.type))
+		arguments.append(int(item.argument))
 
-		if not is_story_type(story_type):
-			continue
-
-		var item_result := insert(misc, story_type, int(item.argument))
-
-		if not item_result.ok:
-			return item_result
-
-		inserted += 1
-
-	var result := Result.new()
-	result.ok = true
-	result.error = ""
-	result.inserted = inserted
+	var response := NativeNewsQueue.insert_items(misc, types, arguments)
+	var result := _store(misc, response)
+	result.inserted = response.inserted
 
 	return result
 
 
 static func story_record(misc: PackedByteArray, slot: int) -> StoryRecord:
-	if not _validate_misc(misc).ok or slot < 0 or slot >= STORY_RECORD_COUNT:
+	var fields := NativeNewsQueue.story_record(misc, slot)
+
+	if fields.is_empty():
 		return null
 
-	var offset := _story_offset(slot)
-
-	var result := StoryRecord.new()
-	result.type = _to_i16(BinaryData.read_u32_be(misc, offset))
-	result.priority = _to_i16(BinaryData.read_u32_be(misc, offset + 4))
-	result.argument = BinaryData.read_u32_be(misc, offset + 8) & 0xff
-	result.auxiliary = PackedByteArray([
-		BinaryData.read_u32_be(misc, offset + 12) & 0xff,
-		BinaryData.read_u32_be(misc, offset + 16) & 0xff,
-		BinaryData.read_u32_be(misc, offset + 20) & 0xff,
-	])
+	var result := StoryRecord.new(fields.type, fields.argument, fields.auxiliary)
+	result.priority = fields.priority
 
 	return result
 
@@ -213,68 +94,33 @@ static func story_record(misc: PackedByteArray, slot: int) -> StoryRecord:
 # the supplied news routine at 0x0047b5c0 opens an extra edition for these
 # stories when the extra-edition option is on
 static func opens_extra_edition(story_type: int) -> bool:
-	return (story_type >= 3 and story_type <= 5) or story_type == 0x24
+	return NativeNewsQueue.opens_extra_edition(story_type)
 
 
 static func available_paper_count(progression: int) -> int:
-	# the supplied menu builder at 0x00406d70 reads a signed progression word
-	var level := progression & 0xffff
-
-	if level & 0x8000:
-		level -= 0x10000
-
-	return clampi(level + 1, 0, PAPER_COUNT)
+	return NativeNewsQueue.available_paper_count(progression)
 
 
 static func prepare_weather_report(misc: PackedByteArray, weather: int) -> Result:
-	var validation := _validate_misc(misc)
-
-	if not validation.ok:
-		return validation
-
-	# newspaper opening sets display slot 7 to weather type 0 and the current trend
-	var offset := STORY_OFFSET + 7 * STORY_RECORD_SIZE
-	BinaryData.write_u32_be(misc, offset, 0)
-	BinaryData.write_u32_be(misc, offset + 8, weather & 0xff)
-
-	var result := Result.new()
-	result.ok = true
-	result.error = ""
-
-	return result
+	return _store(misc, NativeNewsQueue.prepare_weather_report(misc, weather))
 
 
 static func prepare_opinion_report(misc: PackedByteArray, style: int, subject: int) -> Result:
-	var validation := _validate_misc(misc)
-
-	if not validation.ok:
-		return validation
-
-	# the supplied newspaper opener selects these types from the paper's opinion style
-	var types := [42, 43, 43, 44, 44, 45]
-	var offset := STORY_OFFSET + 8 * STORY_RECORD_SIZE
-	BinaryData.write_u32_be(misc, offset, types[clampi(style, 0, 5)])
-	BinaryData.write_u32_be(misc, offset + 8, subject & 0xff)
-
-	var result := Result.new()
-	result.ok = true
-	result.error = ""
-
-	return result
+	return _store(misc, NativeNewsQueue.prepare_opinion_report(misc, style, subject))
 
 
 static func paper_record(misc: PackedByteArray, paper: int) -> PaperRecord:
-	if not _validate_misc(misc).ok or paper < 0 or paper >= PAPER_COUNT:
+	var fields := NativeNewsQueue.paper_record(misc, paper)
+
+	if fields.is_empty():
 		return null
 
-	var offset := PAPER_OFFSET + paper * PAPER_RECORD_SIZE
-
 	var result := PaperRecord.new()
-	result.name = BinaryData.read_u32_be(misc, offset + PAPER_NAME_FIELD * 4) & 0xff
-	result.layout = BinaryData.read_u32_be(misc, offset + PAPER_LAYOUT_FIELD * 4) & 0xff
-	result.price = BinaryData.read_u32_be(misc, offset + PAPER_PRICE_FIELD * 4) & 0xff
-	result.opinion = BinaryData.read_u32_be(misc, offset + PAPER_OPINION_FIELD * 4) & 0xff
-	result.weather = BinaryData.read_u32_be(misc, offset + PAPER_WEATHER_FIELD * 4) & 0xff
+	result.name = fields[PAPER_NAME_FIELD]
+	result.layout = fields[PAPER_LAYOUT_FIELD]
+	result.price = fields[PAPER_PRICE_FIELD]
+	result.opinion = fields[PAPER_OPINION_FIELD]
+	result.weather = fields[PAPER_WEATHER_FIELD]
 
 	return result
 
@@ -282,26 +128,16 @@ static func paper_record(misc: PackedByteArray, paper: int) -> PaperRecord:
 static func update_story_substitutions(
 	misc: PackedByteArray, slot: int, argument: int, auxiliary: PackedByteArray
 ) -> Result:
-	var validation := _validate_misc(misc)
+	return _store(misc, NativeNewsQueue.update_story_substitutions(misc, slot, argument, auxiliary))
 
-	if not validation.ok:
-		return validation
 
-	if slot < 0 or slot >= STORY_RECORD_COUNT:
-		return _failure("newspaper story slot is out of range")
+# copy a successful native edit into the caller's MISC array
+static func _store(misc: PackedByteArray, response: Dictionary) -> Result:
+	if not response.ok:
+		return _failure(response.error)
 
-	if auxiliary.size() != 3:
-		return _failure("newspaper story auxiliary data has the wrong size")
-
-	var offset := _story_offset(slot)
-	BinaryData.write_u32_be(misc, offset + ARGUMENT_FIELD * 4, argument & 0xff)
-
-	for index in 3:
-		BinaryData.write_u32_be(
-			misc,
-			offset + (FIRST_AUXILIARY_FIELD + index) * 4,
-			auxiliary[index],
-		)
+	misc.clear()
+	misc.append_array(response.misc)
 
 	var result := Result.new()
 	result.ok = true
@@ -319,70 +155,6 @@ static func _validate_misc(misc: PackedByteArray) -> Result:
 	result.error = ""
 
 	return result
-
-
-static func _story_offset(slot: int) -> int:
-	return STORY_OFFSET + slot * STORY_RECORD_SIZE
-
-
-static func _paper_field_offset(paper: int, field: int) -> int:
-	return PAPER_OFFSET + paper * PAPER_RECORD_SIZE + field * 4
-
-
-static func _write_paper_field(
-	misc: PackedByteArray, paper: int, field: int, value: int
-) -> void:
-	BinaryData.write_u32_be(misc, _paper_field_offset(paper, field), value)
-
-
-static func _swap_paper_field(
-	misc: PackedByteArray, first_paper: int, second_paper: int, field: int
-) -> void:
-	var first_offset := _paper_field_offset(first_paper, field)
-	var second_offset := _paper_field_offset(second_paper, field)
-	var first_value := BinaryData.read_u32_be(misc, first_offset)
-	BinaryData.write_u32_be(misc, first_offset, BinaryData.read_u32_be(misc, second_offset))
-	BinaryData.write_u32_be(misc, second_offset, first_value)
-
-
-static func _swap_random_paper_field(
-	misc: PackedByteArray,
-	random: SimRandom,
-	field: int,
-	first_paper: int,
-	paper_count: int
-) -> void:
-	var source := first_paper + int(random.next_u15()) % paper_count
-	var target := first_paper + int(random.next_u15()) % paper_count
-	_swap_paper_field(misc, source, target, field)
-
-
-static func _story_priority(misc: PackedByteArray, slot: int) -> int:
-	return _to_i16(BinaryData.read_u32_be(misc, _story_offset(slot) + 4))
-
-
-static func _copy_story_record(misc: PackedByteArray, source_slot: int, target_slot: int) -> void:
-	var source := _story_offset(source_slot)
-	var target := _story_offset(target_slot)
-
-	for index in STORY_RECORD_SIZE:
-		misc[target + index] = misc[source + index]
-
-
-static func _swap_story_records(misc: PackedByteArray, first_slot: int, second_slot: int) -> void:
-	var first := _story_offset(first_slot)
-	var second := _story_offset(second_slot)
-
-	for index in STORY_RECORD_SIZE:
-		var temporary := misc[first + index]
-		misc[first + index] = misc[second + index]
-		misc[second + index] = temporary
-
-
-static func _to_i16(value: int) -> int:
-	var word := value & 0xffff
-
-	return word - 0x10000 if word & 0x8000 else word
 
 
 static func _failure(message: String) -> Result:

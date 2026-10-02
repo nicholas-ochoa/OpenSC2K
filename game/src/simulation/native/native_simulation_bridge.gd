@@ -57,6 +57,8 @@ static var classes := {
 	"LandscapeEditResult": LandscapeEditResult,
 	"ScurkPlaceResult": ScurkPlaceResult,
 	"FacilityRecordRepair.Result": FacilityRecordRepair.Result,
+	"BondCommand.Result": BondCommand.Result,
+	"OrdinanceCommand.Result": OrdinanceCommand.Result,
 }
 
 

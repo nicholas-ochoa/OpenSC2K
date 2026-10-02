@@ -6,6 +6,7 @@ mod budgets;
 mod codec;
 mod convert;
 mod ops;
+mod reports;
 mod sc2x;
 mod tool_ops;
 mod tool_queries;

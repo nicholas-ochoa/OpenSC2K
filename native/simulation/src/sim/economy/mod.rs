@@ -1,5 +1,6 @@
-//! Budget, bankruptcy, ordinance costs, and city value.
+//! Budget, bankruptcy, bonds, ordinances, and city value.
 
+pub mod bonds;
 pub mod budget;
 pub mod city_value;
 pub mod ordinances;
