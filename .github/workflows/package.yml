@@ -49,7 +49,8 @@ jobs:
             native/rendering
             native/formats
             native/audio
-      # rust-toolchain.toml selects the Rust version. rustup is on each runner image
+      # rust-toolchain.toml selects the Rust version. rustup is on each runner image.
+      # The audio library folder also receives FluidSynth, which needs CMake
       - name: Build the package libraries
         run: python tools/build_native.py --package
       - name: Save the libraries

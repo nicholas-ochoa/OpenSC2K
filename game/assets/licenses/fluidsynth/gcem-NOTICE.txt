@@ -1,0 +1,4 @@
+GCE-Math: A C++ generalized constant expression-based math library
+Copyright 2016-2024 Keith O'Hara
+
+This product includes software developed by Keith O'Hara (http://www.kthohr.com)

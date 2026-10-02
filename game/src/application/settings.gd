@@ -41,6 +41,8 @@ func open_settings_dialog() -> void:
 	app.main_overlays.settings_dialog.check_for_updates_check.button_pressed = preferences.check_for_updates
 	app.main_overlays.settings_dialog.set_update_status(preferences.update_checked_at, preferences.update_error)
 	app.main_overlays.settings_dialog.shuffle_music_check.button_pressed = preferences.shuffle_music
+	app.main_overlays.settings_dialog.show_soundfont(preferences.music_soundfont, preferences.music_soundfont_path,
+		app.audio_controller.music_player.synth_status if app.audio_controller != null and app.audio_controller.music_player != null else "")
 	app.main_overlays.settings_dialog.toolbar_sounds_check.button_pressed = preferences.toolbar_sounds
 	app.main_overlays.settings_dialog.city_sounds_selector.select(preferences.city_sounds)
 	app.main_overlays.settings_dialog.sound_pack_edit.text = AppSettingsDialog.pack_file_path(preferences.sound_pack_folder)
@@ -147,6 +149,9 @@ func apply_settings() -> void:
 
 	preferences.shuffle_music = bool(values.shuffle_music)
 	app.audio_controller.set_shuffle_music(preferences.shuffle_music)
+	preferences.music_soundfont = SoundFontCatalog.normalize(str(values.music_soundfont))
+	preferences.music_soundfont_path = str(values.music_soundfont_path)
+	app.audio_controller.set_music_soundfont(preferences.music_soundfont, preferences.music_soundfont_path)
 	preferences.background_audio = bool(values.background_audio)
 	preferences.soundtrack_folder = ""
 	preferences.music_volume = float(values.music_volume)
@@ -203,6 +208,8 @@ func load_app_settings() -> void:
 	preferences.zoom_graphics = values.zoom_graphics
 	preferences.background_audio = values.background_audio
 	preferences.shuffle_music = values.shuffle_music
+	preferences.music_soundfont = values.music_soundfont
+	preferences.music_soundfont_path = values.music_soundfont_path
 	preferences.city_renderer = values.city_renderer
 	preferences.soundtrack_folder = values.soundtrack_folder
 	preferences.music_volume = values.music_volume

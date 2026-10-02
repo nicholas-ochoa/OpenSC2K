@@ -88,13 +88,19 @@ func _run() -> void:
 
 	assert(not ("soundtrack_folder" in dialog.selected_values()))
 	var pickers := 0
+	var soundfont_pickers := 0
 
 	for child in dialog.get_children():
 		if child is FileDialog:
-			pickers += 1
-			assert(child.file_mode == FileDialog.FILE_MODE_OPEN_FILE and child.filters[0].begins_with("pack.json"))
+			assert(child.file_mode == FileDialog.FILE_MODE_OPEN_FILE)
 
-	assert(pickers == 4)
+			if child.filters[0].begins_with("pack.json"):
+				pickers += 1
+			else:
+				assert(child.filters[0].begins_with("*.sf2, *.sf3, *.dls"))
+				soundfont_pickers += 1
+
+	assert(pickers == 4 and soundfont_pickers == 1)
 	assert(dialog.pack_name_labels.data.text == main.asset_state.data_pack.pack_name and main.asset_state.data_pack.is_loaded())
 	assert(dialog.folder_dialog.file_mode == FileDialog.FILE_MODE_OPEN_FILE)
 	assert(dialog.folder_dialog.filters[0].begins_with("pack.json"))

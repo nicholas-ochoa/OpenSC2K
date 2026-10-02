@@ -1419,6 +1419,12 @@
     ]
   },
   {
+    "id": "fluidsynth_music_test",
+    "script": "tests/fluidsynth_music_test.gd",
+    "domain": "audio",
+    "lane": "product"
+  },
+  {
     "id": "scurk_gif_export_test",
     "script": "tests/scurk_gif_export_test.gd",
     "domain": "scurk",

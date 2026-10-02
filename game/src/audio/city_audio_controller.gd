@@ -79,6 +79,7 @@ func setup(
 	_load_wave_sound_cache()
 	music_player = MidiSynth.new()
 	music_player.track_finished.connect(_on_music_track_finished)
+	music_player.synth_status_changed.connect(_on_synth_status_changed)
 	add_child(music_player)
 	music_player.set_volume_linear(music_volume)
 
@@ -117,6 +118,19 @@ func set_volumes(new_music_volume: float, new_effects_volume: float) -> void:
 
 	if recording_player != null:
 		recording_player.volume_linear = music_volume
+
+
+## Selects the music SoundFont. See SoundFontCatalog. The SoundFont loads when
+## MIDI music next plays; a playing MIDI track continues with the new sound.
+func set_music_soundfont(choice: String, custom_path := "") -> void:
+	if music_player != null:
+		music_player.set_soundfont(choice, custom_path)
+
+
+func _on_synth_status_changed(message: String, failed: bool) -> void:
+	# a failed SoundFont is worth a notice; a normal load is not
+	if failed:
+		music_notice.emit("Music: " + message)
 
 
 func play_music_track(track_id: int, choose_shuffle := true, immediate := false) -> bool:

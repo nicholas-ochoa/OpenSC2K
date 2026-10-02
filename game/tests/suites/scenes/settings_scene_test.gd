@@ -27,6 +27,13 @@ func run() -> void:
 	first.zoom_graphics_selectors[0].item_selected.emit(2)
 	assert(first.selected_values().zoom_graphics == [2, 2, 2, 2, 2, 2])
 	assert(second.zoom_graphics_selectors[0].selected == 0)
+	first.show_soundfont(SoundFontCatalog.CUSTOM, "/music/custom.sf2", "FluidSynth 2.6.1: custom.sf2")
+	assert(first.get_node("%SoundFontRow").visible and first.soundfont_status_label.visible)
+	assert(first.selected_values().music_soundfont == SoundFontCatalog.CUSTOM
+		and first.selected_values().music_soundfont_path == "/music/custom.sf2")
+	first.show_soundfont(SoundFontCatalog.BUILTIN, "", "")
+	assert(not first.get_node("%SoundFontRow").visible and first.selected_soundfont() == SoundFontCatalog.BUILTIN)
+	assert(second.selected_soundfont() == SoundFontCatalog.DEFAULT)
 	first.import_original_requested.connect(func() -> void:
 		import_requests += 1)
 	first.show_values(0.25, 0.75, false)

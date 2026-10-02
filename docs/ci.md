@@ -5,15 +5,18 @@ It has two jobs:
 
 - **Test** runs `tools/validate_project.sh --strict --keep-going --skip-native-tests` with the
   original-game assets. This is the same `headless` suite that you run locally before merge.
-  A separate **native unit tests** job runs `cargo test --release` for each native crate on a
-  Linux runner at the same time. It does not use the assets.
+  A separate **native unit tests** job builds FluidSynth with `tools/build_fluidsynth.py` and runs
+  `cargo test --release` for each native crate on a Linux runner at the same time. The audio tests
+  must load that FluidSynth library. It does not use the assets.
 - **Build** makes Windows x64, Linux x64, and universal macOS packages on a separate runner
   without the assets. Packages are available as the `desktop-packages` workflow artifact for one day.
   Before it starts, a **native** job on a Windows, a Linux, and a macOS runner builds the native
-  simulation and rendering libraries for each package with `python tools/build_native.py --package`.
-  The macOS libraries are universal. The Build job copies all six libraries into the exported
-  project with `tools/build_desktop_release.py --native`. It checks that each package contains
-  both libraries.
+  libraries and the FluidSynth library for each package with `python tools/build_native.py --package`.
+  The macOS libraries are universal. The Build job copies the libraries into the exported
+  project with `tools/build_desktop_release.py --native`, downloads the bundled SoundFonts, and
+  checks that each package contains every library, the SoundFonts and the license notices. It also
+  writes `OpenSC2K-<label>-fluidsynth-source.zip`, the corresponding source of the LGPL FluidSynth
+  library, which each release publishes beside the packages.
 
 `.github/workflows/test.yml` defines the Test job, and `.github/workflows/package.yml` defines the
 native and Build jobs. The CI and Release workflows both use them. A release passes its version as

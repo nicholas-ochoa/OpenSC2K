@@ -14,6 +14,9 @@ const DATA_TAB := 4
 
 var pack_error_label: Label
 var shuffle_music_check: CheckBox
+var soundfont_selector: OptionButton
+var soundfont_edit: LineEdit
+var soundfont_status_label: Label
 var toolbar_sounds_check: CheckBox
 var city_sounds_selector: OptionButton
 var sound_pack_edit: LineEdit
@@ -77,6 +80,10 @@ func _ready() -> void:
 	pack_error_label = %PackErrorLabel
 	renderer_selector = %RendererSelector
 	shuffle_music_check = %ShuffleMusicCheck
+	soundfont_selector = %SoundFontSelector
+	soundfont_edit = %SoundFontEdit
+	soundfont_status_label = %SoundFontStatus
+	_build_soundfont_controls()
 	sound_pack_edit = %SoundPackEdit
 	tabs = %Tabs
 	toolbar_sounds_check = %ToolbarSoundsCheck
@@ -259,6 +266,8 @@ func selected_values() -> AppSettingsStore.Values:
 	result.toolbar_sounds = toolbar_sounds_check.button_pressed
 	result.city_sounds = maxi(0, city_sounds_selector.selected)
 	result.shuffle_music = shuffle_music_check.button_pressed
+	result.music_soundfont = selected_soundfont()
+	result.music_soundfont_path = soundfont_edit.text.strip_edges()
 	result.sound_pack_folder = sound_pack_edit.text.strip_edges()
 	result.music_pack_folder = music_pack_edit.text.strip_edges()
 	result.data_pack_folder = data_pack_edit.text.strip_edges()
@@ -295,6 +304,49 @@ func _update_zoom_graphics_choices() -> void:
 
 		for size_index in AppSettingsStore.GRAPHICS_SIZES.size():
 			selector.set_item_disabled(size_index, size_index < (sizes[index - 1] if index > 0 else overview_graphics_selector.selected))
+
+
+func _build_soundfont_controls() -> void:
+	for choice in SoundFontCatalog.choices():
+		soundfont_selector.add_item(SoundFontCatalog.label(choice))
+		soundfont_selector.set_item_metadata(soundfont_selector.item_count - 1, choice)
+
+	soundfont_selector.item_selected.connect(func(_index: int) -> void:
+		_update_soundfont_row())
+	var picker := FileDialog.new()
+	picker.theme = AppUiTheme.file_dialog()
+	picker.title = "Select a SoundFont"
+	picker.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	picker.filters = PackedStringArray(["*.sf2, *.sf3, *.dls ; General MIDI SoundFont"])
+	picker.access = FileDialog.ACCESS_FILESYSTEM
+	picker.exclusive = true
+	add_child(picker)
+	picker.file_selected.connect(func(path: String) -> void:
+		soundfont_edit.text = path)
+	%SoundFontBrowse.pressed.connect(func() -> void:
+		picker.popup_centered_ratio(0.8))
+
+
+## Shows the saved SoundFont choice and the synthesizer that plays now.
+func show_soundfont(choice: String, custom_path: String, status: String) -> void:
+	var normalized := SoundFontCatalog.normalize(choice)
+
+	for index in soundfont_selector.item_count:
+		if str(soundfont_selector.get_item_metadata(index)) == normalized:
+			soundfont_selector.select(index)
+
+	soundfont_edit.text = custom_path
+	soundfont_status_label.text = status
+	soundfont_status_label.visible = not status.is_empty()
+	_update_soundfont_row()
+
+
+func selected_soundfont() -> String:
+	return str(soundfont_selector.get_item_metadata(maxi(0, soundfont_selector.selected)))
+
+
+func _update_soundfont_row() -> void:
+	%SoundFontRow.visible = selected_soundfont() == SoundFontCatalog.CUSTOM
 
 
 func _bind_pack_controls(kind: String, edit: LineEdit, label: Label, browse: Button) -> void:

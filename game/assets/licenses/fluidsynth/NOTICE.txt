@@ -1,0 +1,26 @@
+FluidSynth 2.6.1
+
+OpenSC2K plays MIDI music with FluidSynth, a separate library under the GNU
+Lesser General Public License, version 2.1 or later (LGPL-2.1.txt).
+Copyright (C) 2003 Peter Hanappe and others. See fluidsynth-AUTHORS.txt.
+https://www.fluidsynth.org/
+https://github.com/FluidSynth/fluidsynth (tag v2.6.1, unchanged)
+
+OpenSC2K does not link FluidSynth. It opens the FluidSynth shared library at run
+time and uses only its public C API. OpenSC2K itself stays under the MIT license.
+
+The library file is libfluidsynth-3.dll (Windows), libfluidsynth.3.dylib
+(macOS, in OpenSC2K.app/Contents/Frameworks) or libfluidsynth.so.3 (Linux),
+beside the OpenSC2K audio library. You may replace it with your own build of a
+compatible FluidSynth 2 library of the same name. To use a library at another
+path, set the OPENSC2K_FLUIDSYNTH environment variable to its path.
+
+The library contains these unchanged libraries, so that it can read SF3
+SoundFonts: libsndfile 1.2.2 (LGPL-2.1-or-later), libogg 1.3.6, libvorbis
+1.3.7, libFLAC 1.5.0 and Opus 1.5.2 (BSD-3-Clause), and the Signalsmith Audio
+basics, linear, DSP and Hilbert IIR headers (MIT and 0BSD). The build also uses
+the GCE-Math headers (Apache-2.0). The notice of each one is in this folder.
+
+Each OpenSC2K release publishes the complete corresponding source of this
+library as OpenSC2K-<version>-fluidsynth-source.zip: every upstream source
+archive, unchanged, and the build script tools/build_fluidsynth.py.

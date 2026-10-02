@@ -73,6 +73,15 @@ func _build_licenses() -> void:
 	_add_license("UnifrakturMaguntia — SIL OFL 1.1", FileAccess.get_file_as_string("res://assets/fonts/unifrakturmaguntia/OFL.txt"))
 	_add_license("Grenze Gotisch — SIL OFL 1.1", FileAccess.get_file_as_string("res://assets/fonts/grenzegotisch/OFL.txt"))
 	_add_license("Chomsky — SIL OFL 1.1", FileAccess.get_file_as_string("res://assets/fonts/chomsky/OFL.txt"))
+	_add_license("FluidSynth — LGPL 2.1 or later", _license_files("fluidsynth", ["NOTICE.txt", "LGPL-2.1.txt", "fluidsynth-AUTHORS.txt"]))
+	_add_license("FluidSynth — bundled library notices", _license_files("fluidsynth", [
+		"libsndfile-COPYING.txt", "libsndfile-AUTHORS.txt", "libsndfile-GSM610-COPYRIGHT.txt", "libogg-COPYING.txt",
+		"libvorbis-COPYING.txt", "flac-COPYING.Xiph.txt", "opus-COPYING.txt", "signalsmith-basics-LICENSE.txt",
+		"signalsmith-linear-LICENSE.txt", "signalsmith-dsp-LICENSE.txt", "signalsmith-hilbert-iir-LICENSE.txt",
+		"gcem-NOTICE.txt", "Apache-2.0.txt",
+	]))
+	_add_license("FluidR3Mono GM SoundFont — MIT", _license_files("soundfonts", ["FluidR3Mono_License.txt"]))
+	_add_license("MuseScore General SoundFont — MIT", _license_files("soundfonts", ["MuseScore_General_License.txt"]))
 	_add_license("Godot WRY — MIT", FileAccess.get_file_as_string("res://addons/godot_wry/LICENSE"))
 	_add_license("Godot WRY — dependency notices", FileAccess.get_file_as_string("res://assets/licenses/wry-dependencies.txt"))
 	_add_license("Research and original game", """RESEARCH
@@ -105,6 +114,17 @@ ORIGINAL GAME
 	original_credits_index = license_documents.size()
 	_add_license("Original SimCity 2000 credits", _original_credits_document(""))
 	_select_license(0)
+
+
+## The license files of one folder in res://assets/licenses, each under its name.
+func _license_files(folder: String, names: Array) -> String:
+	var parts := PackedStringArray()
+
+	for file_name in names:
+		var text := FileAccess.get_file_as_string("res://assets/licenses".path_join(folder).path_join(file_name))
+		parts.append("%s\n\n%s" % [file_name, text.strip_edges()])
+
+	return "\n\n\n".join(parts)
 
 
 func _original_credits_document(credits: String) -> String:

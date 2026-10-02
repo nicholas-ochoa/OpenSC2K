@@ -59,10 +59,27 @@ The app has an ad-hoc signature and is not notarized.
 If macOS blocks it, use **Open Anyway** in **System Settings > Privacy & Security** after the first launch attempt.
 See the [Godot macOS launch instructions](https://docs.godotengine.org/en/4.7/tutorials/export/running_on_macos.html).
 
+## Music SoundFonts
+
+OpenSC2K plays the MIDI music with FluidSynth and a General MIDI SoundFont.
+The package includes two SoundFonts. Select one in **Settings > Audio > Music SoundFont**:
+
+- **OpenSC2K Default** or **FluidR3Mono GM**: the default.
+- **MuseScore General**: a fuller sound. It needs about 240 MB of memory.
+- **Custom SoundFont**: an SF2, SF3 or DLS General MIDI SoundFont of your own.
+  Select the file with **Browse...**. OpenSC2K reads the file in place and does not copy or change it.
+- **Built-in synthesizer**: the simple synthesizer of earlier versions.
+
+If a SoundFont cannot load, for example because the file moved, OpenSC2K plays the default
+SoundFont and shows the reason below the list. The SoundFont loads when MIDI music first plays.
+
 ## Saves and licenses
 
 Original `.sc2` cities use the original compatibility mode.
 Extended `.sc2x` cities cannot be opened by the original game.
 
-Project code uses the MIT license. Dependency notices are available in **About > Licenses**.
+Project code uses the MIT license. Dependency notices are available in **About > Licenses**,
+and in `THIRD_PARTY_NOTICES.md` and the `licenses` folder of each package.
+FluidSynth is a separate library under the LGPL 2.1 or later. You can replace it with a compatible
+FluidSynth 2 library of the same name. Its source is published with each release.
 The project license does not grant rights to SimCity 2000 or its assets.

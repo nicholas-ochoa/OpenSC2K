@@ -132,7 +132,7 @@ class NightlyTest(unittest.TestCase):
         self.folder = Path(self.temporary.name)
         self.commit = 'a' * 40
         hashes = {}
-        for platform in ('windows-x64.zip', 'windows-x64-portable.zip', 'linux-x64.tar.gz', 'macos-universal.dmg'):
+        for platform in nightly.PACKAGE_SUFFIXES:
             name = f'OpenSC2K-nightly-aaaaaaaa-{platform}'
             (self.folder / name).write_bytes(platform.encode())
             hashes[name] = hashlib.sha256(platform.encode()).hexdigest()
@@ -268,13 +268,21 @@ class NativePackageTest(unittest.TestCase):
                     source.parent.mkdir(parents=True, exist_ok=True)
                     source.write_bytes(payload)
                     expected[relative] = payload
+            for platform, (library, _) in packages.FLUIDSYNTH.items():
+                relative = Path('opensc2k_audio') / packages.NATIVE_PLATFORMS[platform][0] / library
+                (native / relative).write_bytes(library.encode())
+                expected[relative] = library.encode()
             packages.install_native(native, project)
-            self.assertEqual(len(expected), len(packages.NATIVE_MODULES) * len(packages.NATIVE_PLATFORMS))
+            self.assertEqual(len(expected), (len(packages.NATIVE_MODULES) + 1) * len(packages.NATIVE_PLATFORMS))
             for relative, payload in expected.items():
                 self.assertEqual((project / 'bin' / relative).read_bytes(), payload)
             missing = native / 'opensc2k_rendering/macos/libopensc2k_rendering.dylib'
             missing.unlink()
             with self.assertRaisesRegex(ValueError, 'Missing native rendering library'):
+                packages.install_native(native, project)
+            missing.write_bytes(b'restored')
+            (native / 'opensc2k_audio/linux-x86_64/libfluidsynth.so.3').unlink()
+            with self.assertRaisesRegex(ValueError, 'Missing FluidSynth library'):
                 packages.install_native(native, project)
 
 

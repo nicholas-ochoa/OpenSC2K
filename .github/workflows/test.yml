@@ -76,7 +76,12 @@ jobs:
             native/formats
             native/audio
       # rust-toolchain.toml selects the Rust version. rustup is on each runner image
+      - name: Build FluidSynth for the audio tests
+        run: python3 tools/build_fluidsynth.py
       - name: Run cargo tests
+        env:
+          OPENSC2K_FLUIDSYNTH: ${{ github.workspace }}/game/bin/opensc2k_audio/linux-x86_64/libfluidsynth.so.3
+          OPENSC2K_REQUIRE_FLUIDSYNTH: '1'
         run: |
           for crate in native/simulation native/rendering native/formats native/audio; do
             cargo test --release --manifest-path "$crate/Cargo.toml"

@@ -229,6 +229,10 @@ func _parse_track(
 				event.type = "note_off" if data_2 == 0 else "note_on"
 				event.note = data_1
 				event.velocity = data_2
+			0xa0:
+				event.type = "key_pressure"
+				event.note = data_1
+				event.velocity = data_2
 			0xb0:
 				event.type = "control_change"
 				event.controller = data_1
@@ -236,6 +240,9 @@ func _parse_track(
 			0xc0:
 				event.type = "program_change"
 				event.program = data_1
+			0xd0:
+				event.type = "channel_pressure"
+				event.value = data_1
 			0xe0:
 				event.type = "pitch_bend"
 				event.value = data_1 | (data_2 << 7)

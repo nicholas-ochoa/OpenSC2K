@@ -52,6 +52,7 @@ func initialize_runtime() -> void:
 	app.audio_controller.setup(
 		app.asset_state.reference_root, app.preferences.music_volume, app.preferences.effects_volume, false
 	)
+	app.audio_controller.set_music_soundfont(app.preferences.music_soundfont, app.preferences.music_soundfont_path)
 
 	if app.asset_state.assets_ready:
 		app.audio_controller.set_media_packs(app.preferences.sound_pack_folder, app.preferences.music_pack_folder)

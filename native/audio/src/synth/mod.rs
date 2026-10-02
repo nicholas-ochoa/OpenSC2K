@@ -11,6 +11,8 @@ mod waveforms;
 
 use waveforms::*;
 
+pub use crate::midi::{Event, Kind};
+
 pub use waveforms::{band_limited_saw, band_limited_square, note_frequency, waveform_family};
 
 pub const SAMPLE_RATE: f64 = 22050.0;
@@ -50,41 +52,6 @@ const PERCUSSION_HOLD_SECONDS: f64 = 0.45;
 const NOISE_MULTIPLIER: i64 = 1103515245;
 const NOISE_INCREMENT: i64 = 12345;
 const NOISE_MASK: i64 = 0x7fff_ffff;
-
-/// Event kinds of a sequence. Other MIDI events do not reach the synthesizer.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Kind {
-    Other,
-    NoteOn,
-    NoteOff,
-    ProgramChange,
-    ControlChange,
-    PitchBend,
-}
-
-impl Kind {
-    pub fn from_code(code: i32) -> Self {
-        match code {
-            1 => Self::NoteOn,
-            2 => Self::NoteOff,
-            3 => Self::ProgramChange,
-            4 => Self::ControlChange,
-            5 => Self::PitchBend,
-            _ => Self::Other,
-        }
-    }
-}
-
-/// One timed event. `a` and `b` are the note and velocity, the program, the
-/// controller and value, or the pitch-bend value.
-#[derive(Clone, Copy, Debug)]
-pub struct Event {
-    pub time: f64,
-    pub kind: Kind,
-    pub channel: i32,
-    pub a: i32,
-    pub b: i32,
-}
 
 #[derive(Clone, Debug)]
 struct Voice {

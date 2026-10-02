@@ -28,7 +28,7 @@ impl Synth {
                 self.pitch_bends[channel] = event.a.clamp(0, PITCH_BEND_MAX);
                 self.update_pitch(channel);
             }
-            Kind::Other => {}
+            Kind::ChannelPressure | Kind::KeyPressure | Kind::Other => {}
         }
     }
 

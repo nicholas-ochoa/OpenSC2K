@@ -85,11 +85,12 @@ is retained for adapted work.
 ## Development
 
 Open `game/project.godot` in Godot. Run `python3 tools/build_native.py` after each change
-to a crate in `native`. The validation command also builds the native libraries and runs
+to a crate in `native`. It also builds the FluidSynth library, which needs CMake, and downloads
+the bundled SoundFonts. The validation command also builds the native libraries and runs
 their unit tests. See [the native simulation](docs/native-simulation.md),
 [the native region builder](docs/native-rendering.md),
-[the native formats](docs/native-formats.md) and [the native audio](docs/native-audio.md) for
-their layouts. Run the checks with:
+[the native formats](docs/native-formats.md), [the native audio](docs/native-audio.md) and
+[FluidSynth music](docs/fluidsynth.md) for their layouts. Run the checks with:
 
 ```sh
 tools/validate_project.sh

@@ -15,11 +15,19 @@ func _run() -> void:
 	var player := MidiSynthPlayer.new()
 	root.add_child(player)
 	player.track_finished.connect(_on_track_finished)
+	# FluidSynth renders with the small generated test SoundFont
+	player.set_soundfont(SoundFontCatalog.CUSTOM,
+		ProjectSettings.globalize_path("res://tests/fixtures/soundfonts/opensc2k_test_gm.sf2"))
 	var theme := ProjectSettings.globalize_path(
 		"res://../references/SIMCITY2000/SOUNDS/10001.MID"
 	)
 	assert(player.play_path(theme, 10001).ok)
 	assert(player.is_track_active())
+
+	while player.is_loading_soundfont():
+		await process_frame
+
+	assert(player.backend == "fluidsynth", player.synth_status)
 	await create_timer(0.4).timeout
 	var filled: Dictionary = player.debug_metrics()
 	assert(filled.thread_running and filled.track_id == 10001)

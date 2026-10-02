@@ -1,0 +1,235 @@
+Original author:
+
+The main author of libsndfile is Erik de Castro Lopo <erikd@mega-nerd.com>
+apart from code in the following directories:
+
+ - src/GSM610 : Written by Jutta Degener <jutta@cs.tu-berlin.de> and Carsten
+   Bormann <cabo@cs.tu-berlin.de>. They should not be contacted in relation to
+   libsndfile or the GSM 6.10 code that is part of libsndfile. Their original
+   code can be found at:
+
+       http://kbs.cs.tu-berlin.de/~jutta/toast.html
+
+ - src/G72x : Released by Sun Microsystems, Inc. to the public domain. Minor
+   modifications were required to integrate these files into libsndfile. The
+   changes are listed in src/G72x/ChangeLog.
+
+Current maintainers:
+
+After the release of version 1.0.30, @erikd transferred the project to
+[the libsndfile team](https://github.com/libsndfile) consisting of:
+
+* Erik de Castro Lopo aka @erikd
+* David Seifert aka @SoapGentoo
+* Arthur Taylor aka @arthurt
+* @evpobr
+
+Current releaser is David Seifert:
+
+-----BEGIN PGP PUBLIC KEY BLOCK-----
+Version: GnuPG v2
+
+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
+=K3x+
+-----END PGP PUBLIC KEY BLOCK-----
+
+Previous releasers:
+
+Version 1.0.29-1.0.30 - @evpobr.
+
+The public GPG key:
+
+-----BEGIN PGP MESSAGE-----
+
+yMMwAnicrVJ7UFRVHF50SdiJ2AknHmYM19IhFrmPva91hnBKHMkcSyAyY7nn3nN3
+L7AP9qVoO5Lja1YUycgJ4iUFWYluTlE4Oi6PxdhpCkesIWiAQIbXqlSs1Ex1l7H/
+6r/OP2fOd77vm+/3za8nZqVCFVEfk/xkgPyrMiLgO+FUFIze8R5AgEUoR3QHkBK4
+fMFSAdod+hJJQHQIiqEYBzECYByBs4AnGBYDGIYDjqEYHMc4nKB5ntICkQSAxCke
+RTEaJ3AthWJaWccItIhyiAYRJbMB2qw2yeyQbVmA8aKAQxbHCZbXApxhIIqTIiug
+AiZiPA8IUhQZXhYaLfawQg4HODvcKFlkTH7ol+P9C/9/zu1cthMJlJG5NM+RFEUC
+nsIomiJIBhMIUmAwNky0Q5uZM0GZDV1WC7Ahbg0iYy6Jh+FaH/4ZJIfRCf6L7yi3
+hoG9EOgfSvVAMgtyd7LCBW12yWJGdJjM5B1SWItpWQwjtBjOahC4zyrZoF4KM0ia
+YlD5aBCrDbpkSxrwIkpwUO6YIHCUAjwOKEIUBFaAIsWKAJfrF7XyoJAGkIaUPD9g
+aSBwIkUIOIqEhykzWxAdKcfkDLKlXTKYOYfTBhF3l2+PUhGhUjwSuSK8UwpVtPqf
+TTv+gVoRyKt70PuZxj6oi7ZkZP481vcc2vJ6cV774dld3s3n3+3w+cXdW9YaVvc9
+ni8Nv6aOUqx5b/+Lexria1wn7c1DOxVnikYSV50eY0o7Lwatz3qqg6RHWVOVF3zm
+lai7u7ud7r7vh5Lrm+95j06OeWN+29SbkNVeW9X1Vs651NsF9K1jV7xzkRdz6N4f
+Vy+5B37qTr18Lclk9lx7o3cmP/+6Jbbl3qvj7w/PvTnVDyYiuxtSZlvtCZ2JT6yv
+21rw8tLXnDHhwv0/7kfnpgSNXxKLA/tyPRsunLxp8tw4e6zx6PGbwsxKsTopg9u1
+dkdzBxWf+VVb/tbUzZNtUzUpj0l1fiSUtu1UaHxwdOnj2JlI4fdfdyAh/5GqvbY5
+7YKy0hgabi89Ffen+qUNtZ+f90258OevKhf6S+p+qelSRh/64ZOihg87D857slVZ
+5wqttfExWb7LymH/oVjTpcWFt4u/uP3pC8YrwfY+ad2NpDuW5oqPZrKOFCoGzqgb
+t1jSF1Vph1c0qtZUds+PaAqpp/Mqhjo0yavKiid91emBiPaeb3s2uW8d9J6YXZiu
+T8p7tK+8yHp3ov4dcCk3lNY28s13ZePrW8ceVGc3zOT01/ibotLjdFZn9tmd67a3
+iCrDaJM7Y/9TY8XzHdPbTZ2wPG7bxFBg2LSx6WootqI1dF2fGutPzE0bzJzW/w3x
+usYz
+=XFTp
+-----END PGP MESSAGE-----
+
+Versions before 1.0.29 - Erik de Castro Lopo.
+
+The public GPG key:
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAABCAAdFiEEapGlzyLCTJmjXgE/z9z5H7JCrO0FAljgv0wACgkQz9z5H7JC
+rO2RhxAAnIuHquhkhaY8CVsIOGImMxEF8RKDyFoioV9RnckNzBb592EYxU9hS0MM
+cT6xPZU0bJa8CvmCxEABMlkk60JP4VmmOtWxD8EEyktbHGyao80mDR82yVKYv78L
+zTRzz/JoTncgwWz/QataMbkAfy3KpxkwDW87az0kzkqGuSm3Jg3medt+t/iBe0Wm
+jcxIexxEZCmIhty6VyaVEkGWax0zdJHe7aD9FK2C/R3DU5Byp4e9pcp/a8v74G1n
+dgD4S3YlqvJGuU9S6QD4PzsoWD1X8f6pHzxpRP/OkqHAe11sSRo6sSYYCjsYi9Ca
+IJSlVC1nMx9OUxxAA8ZqtnztOo7GZcJ5NAL5X3GNV6YfQ7Bqxvtr6QG26F06MB6i
+p08UC7NC0bxFsD3f07wY22QnbnM052rniTn5sqQZv+GVls6t1b3u1iHzEjAjlgvi
+eOjVVt/A8iaOzMbKC/3+SZ9/GYqbSAQOCIoWAXmhV9IaMQyQeLCIC1YD5NMGBXal
+HPfSHV0hSUDbKjAYXFigJRzFU125bXTgg+v13Kd0KklIEjoaZYZLAYs0BupXdjBf
+jSPv8pwUaXJkv9/bGH0Ot1fvwDqPDOlGFINQbGAWdxwsdhiYBeXMFeFNTEfiqEMz
+BhhMxKa+Mfd9fkrX4NNigGW5QgRBS+FHNLf6ZfiXSnBGjjxMcbI=
+=UUA0
+-----END PGP SIGNATURE-----
+
+Others:
+
+    2013-03-07 Michael Pruett
+    2013-02-11 Chris Roberts c.roberts@csrfm.com
+    2012-03-17 IOhannes m zmoelnig
+    2013-02-21 Jan Starry
+    2012-01-20 Bodo
+    2011-06-23 Tim van der Molen
+    2010-12-01 Tim Blechmann
+    2010-10-04 Matti Nykyri
+    2010-09-17 Brian Lewis
+    2010-02-22 Robin Gareus
+    2010-01-07 Christian Weisgerber and Jacob Meuserto
+    2009-10-18 Olivier Tristan
+    2009-10-14, 2009-08-30 Uli Franke
+    2009-06-24, 2008-11-19, 2004-09-22, 2004-06-17, 2003-05-03, 2003-05-02 Conrad Parker
+    2009-05-22 Lennart Poettering
+    2008-07-03, 2006-10-22, 2006-10-18 Fons Adriaensen
+    2008-04-19 David Yeo
+    2008-01-20 Yair K.
+    2007-12-03 Robs
+    2007-07-12 Ed Schouten
+    2007-06-07 Trent Apted
+    2007-04-14, 2003-12-12 André Pang
+    2007-04-14 Reuben Thomas
+    2006-11-09 Jonathan Woithe
+    2006-03-26 Diego 'Flameeyes' Pettenò
+    2006-03-17 Paul Davis
+    2006-03-09 Jesse Chappell
+    2006-01-09, 2005-12-28 John ffitch
+    2005-09-21 David A. van Leeuwen
+    2005-08-15 Mo DeJong
+    2005-04-30 David Viens
+    2004-12-29 Steve Baker
+    2004-09-05 Denis Cote
+    2004-06-28 Stanko Juzbasic
+    2004-02-14 Frank Neumann
+    2003-08-15 Axel Röbel
+    2003-08-06 Peter Miller
+    2003-07-21 Tero Pelander
+    2003-02-10 Antoine Mathys
+    2002-12-30 Marek Peteraj

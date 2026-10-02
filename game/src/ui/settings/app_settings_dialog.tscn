@@ -276,6 +276,51 @@ layout_mode = 2
 tooltip_text = "Play all 19 tracks, including menu and special music, once per shuffle cycle."
 text = "Shuffle all music"
 
+[node name="SoundFontLabel" type="Label" parent="Tabs/Audio/Content/PackFields"]
+custom_minimum_size = Vector2(150, 32)
+layout_mode = 2
+size_flags_vertical = 0
+text = "Music SoundFont"
+vertical_alignment = 1
+
+[node name="SoundFontControls" type="VBoxContainer" parent="Tabs/Audio/Content/PackFields"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SoundFontSelector" type="OptionButton" parent="Tabs/Audio/Content/PackFields/SoundFontControls"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(250, 32)
+layout_mode = 2
+size_flags_horizontal = 0
+tooltip_text = "The General MIDI SoundFont that plays the MIDI music.
+A SoundFont that fails to load falls back to the OpenSC2K default.
+The built-in synthesizer needs no SoundFont."
+
+[node name="SoundFontRow" type="HBoxContainer" parent="Tabs/Audio/Content/PackFields/SoundFontControls"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="SoundFontEdit" type="LineEdit" parent="Tabs/Audio/Content/PackFields/SoundFontControls/SoundFontRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "An SF2, SF3 or DLS General MIDI SoundFont file. OpenSC2K reads it in place and does not copy or change it."
+placeholder_text = "SF2, SF3 or DLS file"
+
+[node name="SoundFontBrowse" type="Button" parent="Tabs/Audio/Content/PackFields/SoundFontControls/SoundFontRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+text = "Browse..."
+
+[node name="SoundFontStatus" type="Label" parent="Tabs/Audio/Content/PackFields/SoundFontControls"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(250, 0)
+layout_mode = 2
+autowrap_mode = 3
+theme_type_variation = &"HelpLabel"
+
 [node name="Graphics" type="ScrollContainer" parent="Tabs"]
 visible = false
 layout_mode = 2

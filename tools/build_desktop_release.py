@@ -13,6 +13,9 @@ import tarfile
 import tempfile
 import zipfile
 
+import build_fluidsynth
+import fetch_soundfonts
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -46,8 +49,22 @@ NATIVE_PLATFORMS = {
 }
 
 
+# FluidSynth, beside the audio extension. Godot exports it from the [dependencies]
+# section of opensc2k_audio.gdextension: (built file, file in the package)
+FLUIDSYNTH = {
+    'windows-x64': ('libfluidsynth-3.dll', 'libfluidsynth-3.dll'),
+    'linux-x64': ('libfluidsynth.so.3', 'libfluidsynth.so.3'),
+    'macos-universal': ('libfluidsynth.3.dylib', 'OpenSC2K.app/Contents/Frameworks/libfluidsynth.3.dylib'),
+}
+SOUNDFONT_FOLDERS = {
+    'windows-x64': 'soundfonts',
+    'linux-x64': 'soundfonts',
+    'macos-universal': 'OpenSC2K.app/Contents/Resources/soundfonts',
+}
+
+
 def install_native(native, project):
-    """Copy each prebuilt extension into the exported project."""
+    """Copy each prebuilt extension, and FluidSynth beside the audio extension, into the exported project."""
     for module in NATIVE_MODULES:
         for folder, template, _ in NATIVE_PLATFORMS.values():
             library = template.format(module)
@@ -57,6 +74,34 @@ def install_native(native, project):
             target = project / 'bin' / f'opensc2k_{module}' / folder / library
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
+    for platform, (library, _) in FLUIDSYNTH.items():
+        folder = NATIVE_PLATFORMS[platform][0]
+        source = native / 'opensc2k_audio' / folder / library
+        if not source.is_file():
+            raise ValueError(f'Missing FluidSynth library: {source}')
+        shutil.copy2(source, project / 'bin' / 'opensc2k_audio' / folder / library)
+
+
+def install_soundfonts(project):
+    """Download the bundled SoundFonts once, and copy them into the exported project."""
+    fetch_soundfonts.fetch(quiet=True)
+    target = project / 'bin' / 'soundfonts'
+    shutil.copytree(fetch_soundfonts.DESTINATION, target, dirs_exist_ok=True)
+    return sorted(path.name for path in target.iterdir() if path.is_file() and path.name != '.gdignore')
+
+
+def install_notices(source, folder):
+    """The notices and license texts of the third-party works in a package."""
+    shutil.copy2(source / 'THIRD_PARTY_NOTICES.md', folder / 'THIRD_PARTY_NOTICES.md')
+    for kind in ('fluidsynth', 'soundfonts'):
+        shutil.copytree(source / 'game/assets/licenses' / kind, folder / 'licenses' / kind)
+
+
+def write_fluidsynth_source(package, work):
+    """The corresponding source of the LGPL FluidSynth library in each package."""
+    folder = build_fluidsynth.write_source_bundle(work / 'fluidsynth-source')
+    write_zip(package, folder, package.stem)
+    return package
 
 
 def build(output, label, godot, native):
@@ -73,12 +118,13 @@ def build(output, label, godot, native):
         source.mkdir()
         archive = work / 'source.tar'
         with archive.open('wb') as stream:
-            subprocess.run(['git', 'archive', commit, 'game', 'LICENSE', 'docs/install.md'],
+            subprocess.run(['git', 'archive', commit, 'game', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'docs/install.md'],
                            cwd=ROOT, stdout=stream, check=True)
         with tarfile.open(archive) as stream:
             stream.extractall(source, filter='data')
         project = source / 'game'
         install_native(native, project)
+        soundfonts = install_soundfonts(project)
         version = re.search(r'^config/version="([^"]+)"',
                             (project / 'project.godot').read_text(), re.M).group(1)
         checked_godot(godot, project, '--editor', '--import')
@@ -92,9 +138,13 @@ def build(output, label, godot, native):
             checked_godot(godot, project, '--export-release', preset, str(folder / binary))
             shutil.copy2(source / 'LICENSE', folder / 'LICENSE.txt')
             shutil.copy2(source / 'docs/install.md', folder / 'INSTALL.md')
+            install_notices(source, folder)
             for module in NATIVE_MODULES:
                 expected_library = NATIVE_PLATFORMS[platform][2].format(module)
                 assert (folder / expected_library).is_file(), f'{platform} lacks native {module}'
+            assert (folder / FLUIDSYNTH[platform][1]).is_file(), f'{platform} lacks FluidSynth'
+            for name in soundfonts:
+                assert (folder / SOUNDFONT_FOLDERS[platform] / name).is_file(), f'{platform} lacks {name}'
             (folder / 'VERSION.txt').write_text(f'OpenSC2K {version}\nBuild: {label}\nCommit: {commit}\nGodot: {engine}\n')
             if platform == 'windows-x64':
                 assert (folder / 'godot_wry.dll').is_file()
@@ -120,6 +170,7 @@ def build(output, label, godot, native):
                                 '-srcfolder', str(folder), '-format', 'UDZO', str(package)], check=True)
                 subprocess.run(['hdiutil', 'verify', str(package)], check=True)
             packages.append(package)
+        packages.append(write_fluidsynth_source(output / f'OpenSC2K-{label}-fluidsynth-source.zip', work))
     hashes = {path.name: sha256(path) for path in packages}
     (output / 'SHA256SUMS.txt').write_text(''.join(f'{value}  {name}\n' for name, value in sorted(hashes.items())))
     (output / 'build-info.json').write_text(json.dumps(dict(version=version, label=label, commit=commit,

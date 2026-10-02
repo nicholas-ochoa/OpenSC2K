@@ -51,6 +51,8 @@ static func load_values(
 	result.data_pack_folder = AppPaths.loaded_path(str(config.get_value("data", "pack_folder", result.data_pack_folder)))
 
 	result.shuffle_music = bool(config.get_value("audio", "shuffle_music", false))
+	result.music_soundfont = SoundFontCatalog.normalize(str(config.get_value("audio", "music_soundfont", SoundFontCatalog.DEFAULT)))
+	result.music_soundfont_path = AppPaths.loaded_path(str(config.get_value("audio", "music_soundfont_path", "")))
 	result.background_audio = bool(config.get_value("audio", "background_audio", false))
 	result.soundtrack_folder = AppPaths.loaded_path(str(config.get_value("audio", "soundtrack_folder", "")))
 	result.fullscreen = bool(
@@ -232,6 +234,12 @@ static func save_values(
 	if options.shuffle_music != null:
 		config.set_value("audio", "shuffle_music", bool(options.shuffle_music))
 
+	if options.music_soundfont != null:
+		config.set_value("audio", "music_soundfont", SoundFontCatalog.normalize(str(options.music_soundfont)))
+
+	if options.music_soundfont_path != null:
+		config.set_value("audio", "music_soundfont_path", AppPaths.stored_path(str(options.music_soundfont_path).strip_edges()))
+
 	if options.background_audio != null:
 		config.set_value("audio", "background_audio", bool(options.background_audio))
 
@@ -303,6 +311,8 @@ class Values extends RefCounted:
 	var zoom_graphics: Array[int] = AppSettingsStore.normalize_zoom_graphics(DEFAULT_ZOOM_GRAPHICS)
 	var background_audio := false
 	var shuffle_music := false
+	var music_soundfont := SoundFontCatalog.DEFAULT
+	var music_soundfont_path := ""
 	var toolbar_sounds := true
 	var city_sounds: int = WaveSoundGate.CitySounds.DEFAULT
 	var sound_pack_folder := ""
@@ -337,6 +347,8 @@ class SaveOptions extends RefCounted:
 	var sound_pack_folder: Variant = null
 	var music_pack_folder: Variant = null
 	var shuffle_music: Variant = null
+	var music_soundfont: Variant = null
+	var music_soundfont_path: Variant = null
 	var default_mayor_name: Variant = null
 	var overview_graphics: Variant = null
 	var ui_theme: Variant = null
