@@ -13,7 +13,11 @@ signal read_requested(title: String, text: String)
 
 const PAPER := Color("#d0cfc9")
 const BORDER := Color("#666666")
-const SHADOW := Color(0.0, 0.0, 0.0, 0.6)
+# a soft shadow like CSS box-shadow: 0 8px 40px. a StyleBoxFlat shadow is
+# denser than a CSS blur of the same size, so it uses a lighter color
+const SHADOW := Color(0.0, 0.0, 0.0, 0.3)
+const SHADOW_SIZE := 40
+const SHADOW_OFFSET := Vector2(0.0, 8.0)
 const HEADER_RULE := Color("#34342e")
 const CHRONICLE_RULE := Color("#555555")
 const CLOSE_HOVER := Color(0.0, 0.0, 0.0, 0.13)
@@ -64,9 +68,11 @@ const SPIN_SECONDS := 0.75
 # CSS cubic-bezier(0.16, 0.75, 0.28, 1) on each step of the entrance spin
 const SPIN_EASE := [Vector2(0.16, 0.75), Vector2(0.28, 1.0)]
 const SPIN_FADE_END := 0.12
+# full turns before the paper settles
+const SPIN_TURNS := 6
 # progress, scale, rotation in degrees
 const SPIN_KEYS := [
-	Vector3(0.0, 0.03, -1080.0), Vector3(0.76, 1.08, 12.0), Vector3(0.9, 0.98, -4.0), Vector3(1.0, 1.0, 0.0),
+	Vector3(0.0, 0.03, -360.0 * SPIN_TURNS), Vector3(0.76, 1.08, 12.0), Vector3(0.9, 0.98, -4.0), Vector3(1.0, 1.0, 0.0),
 ]
 
 const ARTICLE_COUNT := 5
@@ -540,8 +546,8 @@ func _draw() -> void:
 	shell.border_color = BORDER
 	shell.set_border_width_all(1)
 	shell.shadow_color = SHADOW
-	shell.shadow_size = 20
-	shell.shadow_offset = Vector2(0.0, 8.0)
+	shell.shadow_size = SHADOW_SIZE
+	shell.shadow_offset = SHADOW_OFFSET
 	draw_style_box(shell, Rect2(Vector2.ZERO, size))
 
 	if content == null or _masthead == null:

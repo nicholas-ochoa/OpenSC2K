@@ -84,7 +84,7 @@ func _check_page_layout(newspaper: NewspaperDialog) -> void:
 	_check_no_overlap(view)
 	# the entrance spin starts small and turned, and ends flat at full size
 	var start := NewspaperPage.spin_state(0.0)
-	assert(is_equal_approx(start.x, 0.03) and is_equal_approx(start.y, -1080.0) and is_zero_approx(start.z))
+	assert(is_equal_approx(start.x, 0.03) and is_equal_approx(start.y, -360.0 * NewspaperPage.SPIN_TURNS) and is_zero_approx(start.z))
 	assert(NewspaperPage.spin_state(1.0).is_equal_approx(Vector3(1.0, 0.0, 1.0)))
 	assert(NewspaperPage.spin_state(0.76).is_equal_approx(Vector3(1.08, 12.0, 1.0)))
 	view.play_opening()
