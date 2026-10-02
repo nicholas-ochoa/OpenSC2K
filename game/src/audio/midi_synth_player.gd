@@ -472,7 +472,10 @@ func _synth_loop() -> void:
 			continue
 
 		_mutex.lock()
-		_idle_polls += 1
+
+		if _render_generation == _generation:
+			_idle_polls += 1
+
 		_mutex.unlock()
 		OS.delay_msec(IDLE_POLL_MSEC)
 
@@ -540,18 +543,22 @@ func _fill_audio(frame_count: int) -> void:
 	_track_complete = _synth.is_complete()
 	var frames := _output.size()
 
-	if frames > 0:
+	# a stop or a new track during the render discards the frames. the lock
+	# holds until the push, so stop() cannot come between the check and the push
+	_mutex.lock()
+	var current := _render_generation == _generation
+
+	if current and frames > 0:
 		_playback.push_buffer(_output)
 		# a growing skip count means the thread fell behind the device
-		var skips := _playback.get_skips()
-		_mutex.lock()
+		_skips = _playback.get_skips()
 		_frames_pushed += frames
 		_fill_count += 1
 		_published_position = _synth.position_seconds()
-		_skips = skips
-		_mutex.unlock()
 
-	if _track_complete:
+	_mutex.unlock()
+
+	if current and _track_complete:
 		_finish_track()
 
 
