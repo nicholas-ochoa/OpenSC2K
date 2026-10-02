@@ -4,9 +4,8 @@ OpenSC2K is MIT licensed (see `LICENSE`). The OpenSC2K source code, including
 the Rust code in `native/audio` that loads FluidSynth, is MIT licensed.
 
 OpenSC2K packages also contain the separate works below. Each keeps its own
-license. The license texts are in `game/assets/licenses/fluidsynth` and
-`game/assets/licenses/soundfonts` (in packages: `licenses/`, and in the game
-under **About > Licenses**). Developer details are in `docs/fluidsynth.md`.
+license. The license texts are in `game/assets/licenses/fluidsynth` (in packages:
+`licenses/fluidsynth`, and in the game under **About > Licenses**). Developer details are in `docs/fluidsynth.md`.
 
 ## FluidSynth 2.6.1 shared library
 
@@ -39,21 +38,5 @@ under **About > Licenses**). Developer details are in `docs/fluidsynth.md`.
 | Signalsmith Audio DSP | 1.7.1 | MIT | `signalsmith-dsp-LICENSE.txt` |
 | Signalsmith Audio Hilbert IIR | 1.0.0 | 0BSD | `signalsmith-hilbert-iir-LICENSE.txt` |
 
-## SoundFonts
-
-Both bundled SoundFonts are unchanged files from MuseScore, the canonical
-distributor. Their license files are beside them in the `soundfonts` folder and
-in `game/assets/licenses/soundfonts`.
-
-- **FluidR3Mono GM 2.312** (`FluidR3Mono_GM.sf3`), the default. MIT license.
-  Original stereo version by Frank Wen, Copyright (c) 2000-2002, 2008. Mono
-  version by Michael Cowgill, Copyright (c) 2014-16. Temple Blocks by Ethan
-  Winer, Copyright (c) 2002. Drumline Percussion by Michael Schorsch,
-  Copyright (c) 2016. Source: MuseScore 2.3.2, `share/sound`.
-- **MuseScore General 0.2** (`MuseScore_General.sf3`). MIT license. FluidR3 by
-  Frank Wen, Copyright (c) 2000-02. FluidR3Mono by Michael Cowgill, Copyright
-  (c) 2014-17. Adaptation by S. Christian Collins, Copyright (c) 2018-19. Temple
-  Blocks by Ethan Winer, Copyright (c) 2002. Drumline Cymbals by Michael
-  Schorsch, Copyright (c) 2016. Source:
-  <https://ftp.osuosl.org/pub/musescore/soundfont/MuseScore_General/>.
-  `MuseScore_General_Sample_Sources.csv` lists the sample sources.
+OpenSC2K includes no SoundFont. The music uses the General MIDI sound set of
+the operating system, or a SoundFont that the player selects, in place.

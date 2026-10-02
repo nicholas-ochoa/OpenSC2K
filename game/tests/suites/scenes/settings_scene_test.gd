@@ -31,8 +31,8 @@ func run() -> void:
 	assert(first.get_node("%SoundFontRow").visible and first.soundfont_status_label.visible)
 	assert(first.selected_values().music_soundfont == SoundFontCatalog.CUSTOM
 		and first.selected_values().music_soundfont_path == "/music/custom.sf2")
-	first.show_soundfont(SoundFontCatalog.BUILTIN, "", "")
-	assert(not first.get_node("%SoundFontRow").visible and first.selected_soundfont() == SoundFontCatalog.BUILTIN)
+	first.show_soundfont(SoundFontCatalog.SYSTEM, "", "")
+	assert(not first.get_node("%SoundFontRow").visible and first.selected_soundfont() == SoundFontCatalog.SYSTEM)
 	assert(second.selected_soundfont() == SoundFontCatalog.DEFAULT)
 	first.import_original_requested.connect(func() -> void:
 		import_requests += 1)

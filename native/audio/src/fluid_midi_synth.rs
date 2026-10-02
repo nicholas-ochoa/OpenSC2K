@@ -36,11 +36,36 @@ impl IRefCounted for FluidMidiSynth {
 
 #[godot_api]
 impl FluidMidiSynth {
+    /// Event kind codes of `start`.
+    #[constant]
+    const OTHER: i32 = midi::OTHER;
+
+    #[constant]
+    const NOTE_ON: i32 = midi::NOTE_ON;
+
+    #[constant]
+    const NOTE_OFF: i32 = midi::NOTE_OFF;
+
+    #[constant]
+    const PROGRAM_CHANGE: i32 = midi::PROGRAM_CHANGE;
+
+    #[constant]
+    const CONTROL_CHANGE: i32 = midi::CONTROL_CHANGE;
+
+    #[constant]
+    const PITCH_BEND: i32 = midi::PITCH_BEND;
+
+    #[constant]
+    const CHANNEL_PRESSURE: i32 = midi::CHANNEL_PRESSURE;
+
+    #[constant]
+    const KEY_PRESSURE: i32 = midi::KEY_PRESSURE;
+
     #[constant]
     const SAMPLE_RATE: i32 = SAMPLE_RATE as i32;
 
-    /// About the loudness of the built-in synthesizer on the original tracks. The
-    /// FluidSynth limiter holds the dense tracks below full scale.
+    /// Dense General MIDI tracks reach full scale at this level; the FluidSynth
+    /// limiter holds them below it.
     const DEFAULT_GAIN: f32 = 0.35;
 
     /// An empty string when the FluidSynth library loads, or the reason it does not.
@@ -111,8 +136,9 @@ impl FluidMidiSynth {
         self.soundfont_path.clone()
     }
 
-    /// Starts a sequence with General MIDI defaults. The arguments are the same
-    /// as `NativeMidiSynth.start`. Fails without a SoundFont.
+    /// Starts a sequence with General MIDI defaults. `fields` holds kind, channel,
+    /// a and b of each event, and `times` holds the event times in seconds, in
+    /// play order. Fails without a SoundFont.
     #[func]
     fn start(&mut self, times: PackedFloat64Array, fields: PackedInt32Array, duration_seconds: f64) -> bool {
         let Some(events) = midi::events_from_fields(times.as_slice(), fields.as_slice()) else {

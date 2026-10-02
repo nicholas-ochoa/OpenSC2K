@@ -83,12 +83,17 @@ func _run() -> void:
 	assert(not audio.recording_player.stream_paused and audio.recording_player.stream == wav)
 	audio.stop_music()
 	# MIDI keeps its synthesized position and sequence during focus pause.
-	audio.set_music_soundfont(SoundFontCatalog.BUILTIN)
+	audio.set_music_soundfont(SoundFontCatalog.CUSTOM,
+		ProjectSettings.globalize_path("res://tests/fixtures/soundfonts/opensc2k_test_gm.sf2"))
 	var midi_track_id := 10001
 	assert(audio.music_player.play_path(
 		ProjectSettings.globalize_path("res://../references/SIMCITY2000/SOUNDS/%d.MID" % midi_track_id),
 		midi_track_id
 	).ok)
+
+	while audio.music_player.is_loading_soundfont():
+		await process_frame
+
 	audio.dummy_music_active = true
 	audio.current_track_id = midi_track_id
 	audio.handle_application_focus_out()
@@ -98,7 +103,7 @@ func _run() -> void:
 	await create_timer(0.2).timeout
 	var paused_after_wait: Dictionary = audio.music_player.debug_metrics()
 	var max_pause_advance := (
-		float(audio.music_player.MAX_FRAMES_PER_FILL) / audio.music_player.sample_rate
+		float(audio.music_player.MAX_FRAMES_PER_FILL) / audio.music_player.SAMPLE_RATE
 	)
 	assert(paused_after_wait.paused and paused_after_wait.track_id == midi_track_id)
 	assert(paused_after_wait.position_seconds - midi_position <= max_pause_advance + 0.001)

@@ -19,7 +19,6 @@ func _init(callback: Callable) -> void:
 func test_music(reference_root: String) -> void:
 	_test_music_director()
 	_test_midi_files(reference_root)
-	_test_midi_synth_helpers()
 	_test_midi_block_mixing(reference_root)
 
 
@@ -139,43 +138,6 @@ func _test_midi_files(reference_root: String) -> void:
 	)
 
 
-func _test_midi_synth_helpers() -> void:
-	_check(
-		is_equal_approx(NativeMidiSynth.note_frequency(69, 8192), 440.0)
-		and is_equal_approx(NativeMidiSynth.note_frequency(81, 8192), 880.0),
-		"MIDI synthesizer maps A4 and A5 to their standard frequencies",
-	)
-	_check(
-		absf(NativeMidiSynth.note_frequency(69, 16383) - 493.88) < 0.02
-		and absf(NativeMidiSynth.note_frequency(69, 0) - 391.99) < 0.02,
-		"MIDI synthesizer applies the default two-semitone pitch-bend range",
-	)
-	var families := PackedInt32Array()
-
-	for program in [0, 8, 16, 24, 32, 40, 56, 72, 80, 104, 127]:
-		families.append(NativeMidiSynth.waveform_family(program))
-
-	_check(
-		families == PackedInt32Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9]),
-		"MIDI synthesizer assigns every General MIDI program range",
-	)
-	_check(
-		MidiSynth.BUFFER_LENGTH_SECONDS >= 0.75
-		and MidiSynth.PREFILL_SECONDS >= 0.15
-		and MidiSynth.PREFILL_SECONDS < MidiSynth.BUFFER_LENGTH_SECONDS,
-		"MIDI playback keeps a primed safety buffer",
-	)
-	var saw_start := NativeMidiSynth.band_limited_saw(0.0, 0.01)
-	var saw_end := NativeMidiSynth.band_limited_saw(0.999999, 0.01)
-	var square_start := NativeMidiSynth.band_limited_square(0.0, 0.01)
-	var square_end := NativeMidiSynth.band_limited_square(0.999999, 0.01)
-	_check(
-		absf(saw_start - saw_end) < 0.01
-		and absf(square_start - square_end) < 0.01,
-		"Band-limited MIDI oscillators smooth their wrap edges",
-	)
-
-
 ## Changing fill boundaries should leave the mixed samples unchanged.
 func _test_midi_block_mixing(reference_root: String) -> void:
 	# Track 10000 starts on its first note, so a short render already carries sound.
@@ -187,6 +149,12 @@ func _test_midi_block_mixing(reference_root: String) -> void:
 	if not sequence.is_valid():
 		return
 
+	_check(
+		MidiSynth.BUFFER_LENGTH_SECONDS >= 0.75
+		and MidiSynth.PREFILL_SECONDS >= 0.15
+		and MidiSynth.PREFILL_SECONDS < MidiSynth.BUFFER_LENGTH_SECONDS,
+		"MIDI playback keeps a primed safety buffer",
+	)
 	var block_render := _render_offline(sequence, 11025, 1024)
 	var split_render := _render_offline(sequence, 11025, 97)
 	var wide_render := _render_offline(sequence, 11025, 4410)
@@ -267,11 +235,15 @@ func _test_midi_block_mixing(reference_root: String) -> void:
 	)
 
 
+# FluidSynth with the generated test SoundFont; each render uses a new
+# synthesizer, so no reverb tail carries over
 func _render_offline(
 	sequence: StandardMidiFile, max_frames: int, chunk_frames: int
 ) -> PackedVector2Array:
+	var engine := FluidMidiSynth.new()
+	engine.load_soundfont(ProjectSettings.globalize_path("res://tests/fixtures/soundfonts/opensc2k_test_gm.sf2"))
 	var player := MidiSynth.new()
-	var rendered := player.render_offline(sequence, max_frames, chunk_frames)
+	var rendered := player.render_offline(engine, sequence, max_frames, chunk_frames)
 	player.free()
 
 	return rendered

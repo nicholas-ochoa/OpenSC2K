@@ -13,8 +13,8 @@ It has two jobs:
   Before it starts, a **native** job on a Windows, a Linux, and a macOS runner builds the native
   libraries and the FluidSynth library for each package with `python tools/build_native.py --package`.
   The macOS libraries are universal. The Build job copies the libraries into the exported
-  project with `tools/build_desktop_release.py --native`, downloads the bundled SoundFonts, and
-  checks that each package contains every library, the SoundFonts and the license notices. It also
+  project with `tools/build_desktop_release.py --native`, and checks that each package contains
+  every library and the license notices. It also
   writes `OpenSC2K-<label>-fluidsynth-source.zip`, the corresponding source of the LGPL FluidSynth
   library, which each release publishes beside the packages.
 

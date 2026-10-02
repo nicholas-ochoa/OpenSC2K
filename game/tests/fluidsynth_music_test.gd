@@ -100,20 +100,20 @@ func _test_rendering() -> void:
 	var sequence := MidiFile.new()
 	sequence.parse(_midi_bytes())
 	var player := MidiSynthPlayer.new()
-	var rendered := player.render_offline(sequence, 88200, 1024, _engine())
+	var rendered := player.render_offline(_engine(), sequence, 88200, 1024)
 	assert(rendered.size() > 4410 and rendered.size() < 88200, "The track ends after a short release tail")
 	assert(_energy(rendered.slice(0, 4410)) > 1e-4, "FluidSynth renders audible PCM")
 
 	# FluidSynth starts events on 64-frame blocks, so every request size gives the same track length
-	assert(player.render_offline(sequence, 88200, 97, _engine()).size() == rendered.size())
+	assert(player.render_offline(_engine(), sequence, 88200, 97).size() == rendered.size())
 
 	var square := _note_sequence(0, 69, SQUARE_PROGRAM)
 	var sine := _note_sequence(0, 69, 0)
-	assert(player.render_offline(square, 4410, 1024, _engine()) != player.render_offline(sine, 4410, 1024, _engine()),
+	assert(player.render_offline(_engine(), square, 4410, 1024) != player.render_offline(_engine(), sine, 4410, 1024),
 		"A program change selects another preset")
 
-	var drum := player.render_offline(_note_sequence(DRUM_CHANNEL, BASS_DRUM, 0), 4410, 1024, _engine())
-	var outside_kit := player.render_offline(_note_sequence(DRUM_CHANNEL, 100, 0), 4410, 1024, _engine())
+	var drum := player.render_offline(_engine(), _note_sequence(DRUM_CHANNEL, BASS_DRUM, 0), 4410, 1024)
+	var outside_kit := player.render_offline(_engine(), _note_sequence(DRUM_CHANNEL, 100, 0), 4410, 1024)
 	assert(_energy(drum) > 1e-4 and _energy(outside_kit) < 1e-9, "Channel 10 plays the drum kit")
 
 	var looping := _engine()
@@ -129,26 +129,24 @@ func _test_rendering() -> void:
 
 
 func _test_fallback_order() -> void:
-	var custom := SoundFonts.candidates(SoundFonts.CUSTOM, "/music/custom.sf2")
-	assert(custom.size() == 2 and custom[0] == "/music/custom.sf2"
-		and custom[1] == SoundFonts.bundled_path(SoundFonts.DEFAULT_ID), "A custom SoundFont falls back to the default")
-	assert(SoundFonts.candidates(SoundFonts.BUILTIN, "").is_empty())
-	assert(SoundFonts.candidates("removed_soundfont", "") == PackedStringArray([SoundFonts.bundled_path(SoundFonts.DEFAULT_ID)]))
-
-	# the operating system sound set is offered only where it exists, and a saved
-	# system choice plays the default SoundFont on a computer without it
+	# a custom SoundFont falls back to the operating system sound set, where one exists
 	var system := SoundFonts.system_path()
-	assert((SoundFonts.SYSTEM in SoundFonts.choices()) == not system.is_empty())
-	assert(SoundFonts.normalize(SoundFonts.SYSTEM) == SoundFonts.SYSTEM)
-	var system_candidates := SoundFonts.candidates(SoundFonts.SYSTEM, "")
-	assert(system_candidates[system_candidates.size() - 1] == SoundFonts.bundled_path(SoundFonts.DEFAULT_ID))
+	var with_system := PackedStringArray() if system.is_empty() else PackedStringArray([system])
+	var custom := SoundFonts.candidates(SoundFonts.CUSTOM, "/music/custom.sf2")
+	assert(custom == PackedStringArray(["/music/custom.sf2"]) + with_system)
+	assert(SoundFonts.candidates(SoundFonts.SYSTEM, "/music/custom.sf2") == with_system)
+	assert(SoundFonts.candidates(SoundFonts.CUSTOM, "") == with_system)
+	assert(SoundFonts.choices() == PackedStringArray([SoundFonts.SYSTEM, SoundFonts.CUSTOM]))
+
+	# choices that earlier versions saved
+	for removed in ["default", "fluidr3mono", "builtin"]:
+		assert(SoundFonts.normalize(removed) == SoundFonts.SYSTEM)
 
 	if not system.is_empty():
-		assert(system_candidates[0] == system)
 		var engine := FluidMidiSynth.new()
 		assert(engine.load_soundfont(system).is_empty(), "FluidSynth reads the system sound set")
 		var player := MidiSynthPlayer.new()
-		assert(_energy(player.render_offline(_note_sequence(0, 69, 0), 4410, 1024, engine)) > 1e-4)
+		assert(_energy(player.render_offline(engine, _note_sequence(0, 69, 0), 4410)) > 1e-4)
 		player.free()
 
 	var missing := temporary_folder.path_join("deleted.sf2")
@@ -157,7 +155,9 @@ func _test_fallback_order() -> void:
 	assert(str(loaded.errors[0]).contains("does not exist"), "The status names the missing custom SoundFont")
 
 	var none := MidiSynthPlayer.load_engine(PackedStringArray([missing]))
-	assert(none.engine == null and none.errors.size() == 1, "Without a SoundFont the built-in synthesizer plays")
+	assert(none.engine == null and none.errors.size() == 1, "Without a SoundFont no MIDI music plays")
+	var empty := MidiSynthPlayer.load_engine(PackedStringArray())
+	assert(empty.engine == null and empty.errors == PackedStringArray([MidiSynthPlayer.NO_SOUNDFONT]))
 
 
 func _test_preferences() -> void:
@@ -186,7 +186,7 @@ func _test_player() -> void:
 	assert(player.is_track_active() and player.is_loading_soundfont(), "The track waits while the SoundFont loads")
 	await _wait_until(func() -> bool: return player.debug_metrics().frames_pushed > 4410)
 	var metrics := player.debug_metrics()
-	assert(metrics.backend == "fluidsynth" and metrics.soundfont == _fixture(), str(metrics))
+	assert(metrics.soundfont == _fixture(), str(metrics))
 	assert(player.synth_status.begins_with("FluidSynth 2."), player.synth_status)
 
 	# switching continues the same track with the new SoundFont
@@ -200,17 +200,26 @@ func _test_player() -> void:
 	player.stop()
 	assert(not player.is_track_active())
 
-	# the built-in synthesizer needs no SoundFont
-	player.set_soundfont(SoundFonts.BUILTIN)
+	# a missing custom SoundFont plays the system sound set, or, without one, the
+	# waiting track ends and later tracks fail at once
+	var system := SoundFonts.system_path()
+	player.set_soundfont(SoundFonts.CUSTOM, temporary_folder.path_join("moved.sf2"))
 	assert(player.play_sequence(_note_sequence(0, 60, 0, 0.1), 10002).ok)
-	await _wait_until(func() -> bool: return not finished_tracks.is_empty())
-	assert(player.backend == "builtin" and finished_tracks == PackedInt32Array([10002]))
+	await _wait_until(func() -> bool: return not player.is_loading_soundfont())
+	assert(player.synth_status.contains("does not exist"), player.synth_status)
 
-	# a short FluidSynth track reports its end on the main thread
+	if system.is_empty():
+		assert(finished_tracks == PackedInt32Array([10002]) and not player.is_track_active())
+		assert(not player.play_sequence(_note_sequence(0, 60, 0, 0.1), 10002).ok)
+	else:
+		assert(player.soundfont_path == system)
+		await _wait_until(func() -> bool: return finished_tracks.size() == 1)
+
+	# a short track reports its end on the main thread
 	player.set_soundfont(SoundFonts.CUSTOM, _fixture())
 	assert(player.play_sequence(_note_sequence(0, 60, 0, 0.1), 10003).ok)
 	await _wait_until(func() -> bool: return finished_tracks.size() == 2)
-	assert(player.backend == "fluidsynth" and finished_tracks[1] == 10003)
+	assert(player.soundfont_path == _fixture() and finished_tracks[1] == 10003)
 
 	player.queue_free()
 	await process_frame

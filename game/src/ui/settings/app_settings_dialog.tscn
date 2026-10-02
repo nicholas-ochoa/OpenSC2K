@@ -293,8 +293,7 @@ custom_minimum_size = Vector2(250, 32)
 layout_mode = 2
 size_flags_horizontal = 0
 tooltip_text = "The General MIDI SoundFont that plays the MIDI music.
-A SoundFont that fails to load falls back to the OpenSC2K default.
-The built-in synthesizer needs no SoundFont."
+A custom SoundFont that fails to load falls back to the system sound set."
 
 [node name="SoundFontRow" type="HBoxContainer" parent="Tabs/Audio/Content/PackFields/SoundFontControls"]
 unique_name_in_owner = true

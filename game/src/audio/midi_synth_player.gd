@@ -3,8 +3,8 @@
 class_name MidiSynthPlayer
 extends Node
 ## Plays standard MIDI sequences into an AudioStreamGenerator, so music passes
-## through the Godot audio buses. FluidSynth renders with the selected SoundFont;
-## the built-in synthesizer plays when FluidSynth or every SoundFont fails.
+## through the Godot audio buses. FluidSynth renders with the selected SoundFont.
+## Without FluidSynth or a SoundFont that loads, no MIDI music plays.
 ##
 ## Threads: a WorkerThreadPool task loads the SoundFont. The main thread then
 ## gives the loaded FluidMidiSynth to the synth thread with each track and never
@@ -12,8 +12,8 @@ extends Node
 ## thread only reads the generator ring buffer.
 
 signal track_finished(track_id: int)
-## The synthesizer or SoundFont changed. `failed` is true when a SoundFont or
-## FluidSynth failed and another SoundFont or the built-in synthesizer plays.
+## The SoundFont changed. `failed` is true when a SoundFont or FluidSynth failed:
+## then the system sound set plays instead, or no MIDI music plays.
 signal synth_status_changed(message: String, failed: bool)
 
 const MidiFile = preload("res://src/audio/standard_midi_file.gd")
@@ -26,25 +26,25 @@ const MAX_FRAMES_PER_FILL := 1024
 # a full buffer costs one paced check every idle_poll_msec, never a spin
 const IDLE_POLL_MSEC := 10
 
-# event kinds of both native synthesizers, by standard MIDI file event type
+const SAMPLE_RATE := float(FluidMidiSynth.SAMPLE_RATE)
+const PREFILL_FRAMES := int(PREFILL_SECONDS * SAMPLE_RATE)
+const NO_SOUNDFONT := "No General MIDI sound set was found. Select a custom SoundFont in the Audio settings"
+
+# event kinds of the synthesizer, by standard MIDI file event type
 const EVENT_KINDS := {
-	"note_on": NativeMidiSynth.NOTE_ON,
-	"note_off": NativeMidiSynth.NOTE_OFF,
-	"program_change": NativeMidiSynth.PROGRAM_CHANGE,
-	"control_change": NativeMidiSynth.CONTROL_CHANGE,
-	"pitch_bend": NativeMidiSynth.PITCH_BEND,
-	"channel_pressure": NativeMidiSynth.CHANNEL_PRESSURE,
-	"key_pressure": NativeMidiSynth.KEY_PRESSURE,
+	"note_on": FluidMidiSynth.NOTE_ON,
+	"note_off": FluidMidiSynth.NOTE_OFF,
+	"program_change": FluidMidiSynth.PROGRAM_CHANGE,
+	"control_change": FluidMidiSynth.CONTROL_CHANGE,
+	"pitch_bend": FluidMidiSynth.PITCH_BEND,
+	"channel_pressure": FluidMidiSynth.CHANNEL_PRESSURE,
+	"key_pressure": FluidMidiSynth.KEY_PRESSURE,
 }
 
-## The active synthesizer: "fluidsynth", "builtin", or empty before the first track.
-var backend := ""
 ## The SoundFont that FluidSynth plays, or empty.
 var soundfont_path := ""
 ## A short description of the synthesizer and the last SoundFont error.
 var synth_status := ""
-## The frame rate of the active synthesizer.
-var sample_rate := float(NativeMidiSynth.SAMPLE_RATE)
 
 # guarded by _mutex. the main thread publishes commands and reads status; the
 # synth thread owns every render field below the _playback handover
@@ -61,7 +61,6 @@ var _pending_sequence: StandardMidiFile
 var _pending_playback: AudioStreamGeneratorPlayback
 var _pending_engine: FluidMidiSynth
 var _pending_start_seconds := 0.0
-var _prefill_frames := 0
 var _generation := 0
 var _render_generation := -1
 var _frames_pushed := 0
@@ -75,8 +74,7 @@ var _playback: AudioStreamGeneratorPlayback
 var _sequence: StandardMidiFile
 var _active := false
 # the synthesizer of the playing track; only the synth thread renders it.
-# NativeMidiSynth and FluidMidiSynth share the render methods
-var _synth: RefCounted
+var _synth: FluidMidiSynth
 var _output := PackedVector2Array()
 var _track_complete := false
 
@@ -145,8 +143,7 @@ func play_path(path: String, track_id: int) -> PlaybackResult:
 	return play_sequence(sequence, track_id)
 
 
-## Plays from `start_seconds`. FluidSynth starts there with the programs and
-## controllers of that time; the built-in synthesizer always starts at zero.
+## Plays from `start_seconds`, with the programs and controllers of that time.
 func play_sequence(sequence: StandardMidiFile, track_id: int, start_seconds := 0.0) -> PlaybackResult:
 	if sequence == null or not sequence.is_valid():
 		return PlaybackResult.failure("MIDI sequence is not valid")
@@ -158,12 +155,6 @@ func play_sequence(sequence: StandardMidiFile, track_id: int, start_seconds := 0
 	_current_sequence = sequence
 	var key := _selection_key()
 
-	# the built-in synthesizer needs no SoundFont, so it starts at once
-	if key != _engine_key and _soundfont_choice == SoundFonts.BUILTIN:
-		_finish_load_task()
-		_load_key = key
-		_apply_load_result({ "engine": null, "path": "", "errors": PackedStringArray() })
-
 	# the SoundFont loads on a worker; the track starts when it is ready
 	if key != _engine_key:
 		_start_load(key)
@@ -174,6 +165,9 @@ func play_sequence(sequence: StandardMidiFile, track_id: int, start_seconds := 0
 		_mutex.unlock()
 
 		return _started(sequence, track_id)
+
+	if _engine == null:
+		return PlaybackResult.failure(synth_status)
 
 	var error := _start_playback(sequence, track_id, start_seconds)
 
@@ -194,10 +188,7 @@ func _started(sequence: StandardMidiFile, track_id: int) -> PlaybackResult:
 
 
 func _start_playback(sequence: StandardMidiFile, track_id: int, start_seconds: float) -> String:
-	var engine := _engine
-	backend = "fluidsynth" if engine != null else "builtin"
-	sample_rate = float(FluidMidiSynth.SAMPLE_RATE if engine != null else NativeMidiSynth.SAMPLE_RATE)
-	_generator.mix_rate = sample_rate
+	_generator.mix_rate = SAMPLE_RATE
 	_audio_player.play()
 	# a pause during the SoundFont load holds the stream that starts after it
 	_audio_player.stream_paused = _paused
@@ -217,9 +208,8 @@ func _start_playback(sequence: StandardMidiFile, track_id: int, start_seconds: f
 	_mutex.lock()
 	_pending_sequence = sequence
 	_pending_playback = playback
-	_pending_engine = engine
+	_pending_engine = _engine
 	_pending_start_seconds = start_seconds
-	_prefill_frames = int(PREFILL_SECONDS * sample_rate)
 	_pending_start = true
 	_stop_requested = false
 	_thread_playing = true
@@ -276,7 +266,7 @@ func debug_metrics() -> Dictionary:
 		"idle_polls": _idle_polls, "position_seconds": _published_position,
 		"skips": _skips,
 		"thread_running": _thread != null,
-		"backend": backend, "soundfont": soundfont_path,
+		"soundfont": soundfont_path,
 		"loading": _load_task >= 0,
 	}
 	_mutex.unlock()
@@ -314,11 +304,13 @@ func _load_engine(candidates: PackedStringArray) -> void:
 
 
 ## A FluidMidiSynth with the first SoundFont that loads, and the errors of the
-## others. Without one, "engine" is null and the built-in synthesizer plays.
+## others. Without one, "engine" is null and no MIDI music plays.
 static func load_engine(candidates: PackedStringArray) -> Dictionary:
 	var errors := PackedStringArray()
 
 	if candidates.is_empty():
+		errors.append(NO_SOUNDFONT)
+
 		return { "engine": null, "path": "", "errors": errors }
 
 	var library_error := FluidMidiSynth.library_error()
@@ -366,10 +358,21 @@ func _finish_load_task() -> void:
 
 	var waiting := _waiting_track
 	_waiting_track = []
-	var error := _start_playback(waiting[0], waiting[1], waiting[2])
+	var error := synth_status if _engine == null else _start_playback(waiting[0], waiting[1], waiting[2])
 
 	if not error.is_empty():
 		push_warning(error)
+		_end_waiting_track(int(waiting[1]))
+
+
+# a track that cannot start ends at once, so the music rules move on
+func _end_waiting_track(track_id: int) -> void:
+	_mutex.lock()
+	_active = false
+	current_track_id = -1
+	_generation += 1
+	_mutex.unlock()
+	track_finished.emit(track_id)
 
 
 func _apply_load_result(result: Dictionary) -> void:
@@ -380,7 +383,7 @@ func _apply_load_result(result: Dictionary) -> void:
 
 
 func _publish_status(errors: PackedStringArray) -> void:
-	synth_status = "Built-in synthesizer"
+	synth_status = "No MIDI music"
 
 	if _engine != null:
 		synth_status = "FluidSynth %s: %s" % [FluidMidiSynth.library_version(), soundfont_path.get_file()]
@@ -435,7 +438,6 @@ func _synth_loop() -> void:
 		var playback := _pending_playback
 		var engine := _pending_engine
 		var start_seconds := _pending_start_seconds
-		var prefill_frames := _prefill_frames
 		var generation := _generation
 		_pending_start = false
 		_stop_requested = false
@@ -464,7 +466,7 @@ func _synth_loop() -> void:
 
 		var available := _playback.get_frames_available()
 
-		if available >= prefill_frames:
+		if available >= PREFILL_FRAMES:
 			_fill_audio(mini(available, MAX_FRAMES_PER_FILL))
 
 			continue
@@ -482,7 +484,7 @@ func _begin_render(
 	_render_generation = generation
 	_playback = playback
 	_sequence = sequence
-	_synth = fluid_synth(engine, sequence, start_seconds) if engine != null else native_synth(sequence)
+	_synth = fluid_synth(engine, sequence, start_seconds)
 	_track_complete = false
 
 
@@ -495,37 +497,28 @@ func _release_render_state() -> void:
 
 
 ## The event times and the kind, channel, a and b fields of each event, as
-## both native synthesizers take them.
+## FluidMidiSynth.start takes them.
 static func event_arrays(sequence: StandardMidiFile) -> Array:
 	var times := PackedFloat64Array()
 	var fields := PackedInt32Array()
 
 	for event in sequence.events:
-		var kind: int = EVENT_KINDS.get(event.type, NativeMidiSynth.OTHER)
+		var kind: int = EVENT_KINDS.get(event.type, FluidMidiSynth.OTHER)
 		times.append(float(event.time_seconds))
 
 		match kind:
-			NativeMidiSynth.NOTE_ON, NativeMidiSynth.NOTE_OFF, NativeMidiSynth.KEY_PRESSURE:
+			FluidMidiSynth.NOTE_ON, FluidMidiSynth.NOTE_OFF, FluidMidiSynth.KEY_PRESSURE:
 				fields.append_array([kind, event.channel, event.note, event.velocity])
-			NativeMidiSynth.PROGRAM_CHANGE:
+			FluidMidiSynth.PROGRAM_CHANGE:
 				fields.append_array([kind, event.channel, event.program, 0])
-			NativeMidiSynth.CONTROL_CHANGE:
+			FluidMidiSynth.CONTROL_CHANGE:
 				fields.append_array([kind, event.channel, event.controller, event.value])
-			NativeMidiSynth.PITCH_BEND, NativeMidiSynth.CHANNEL_PRESSURE:
+			FluidMidiSynth.PITCH_BEND, FluidMidiSynth.CHANNEL_PRESSURE:
 				fields.append_array([kind, event.channel, event.value, 0])
 			_:
 				fields.append_array([kind, event.channel, 0, 0])
 
 	return [times, fields]
-
-
-# a native synthesizer at the start of the sequence
-static func native_synth(sequence: StandardMidiFile) -> NativeMidiSynth:
-	var arrays := event_arrays(sequence)
-	var synth := NativeMidiSynth.new()
-	synth.start(arrays[0], arrays[1], sequence.duration_seconds)
-
-	return synth
 
 
 ## Starts `sequence` on a FluidMidiSynth that has a SoundFont, at `start_seconds`.
@@ -562,22 +555,21 @@ func _fill_audio(frame_count: int) -> void:
 		_finish_track()
 
 
-# renders a sequence without an audio device. automated checks use this. a
-# FluidMidiSynth with a SoundFont renders with FluidSynth; null uses the built-in one
+# renders a sequence on a FluidMidiSynth with a SoundFont, without an audio
+# device. automated checks use this
 func render_offline(
-	sequence: StandardMidiFile, max_frames: int, chunk_frames := MAX_FRAMES_PER_FILL,
-	engine: FluidMidiSynth = null,
+	engine: FluidMidiSynth, sequence: StandardMidiFile, max_frames: int, chunk_frames := MAX_FRAMES_PER_FILL,
 ) -> PackedVector2Array:
 	var result := PackedVector2Array()
 
-	if sequence == null or not sequence.is_valid() or max_frames <= 0:
+	if engine == null or sequence == null or not sequence.is_valid() or max_frames <= 0:
 		return result
 
 	if _thread != null:
 		return result
 
 	var chunk := maxi(chunk_frames, 1)
-	var synth: RefCounted = fluid_synth(engine, sequence) if engine != null else native_synth(sequence)
+	var synth := fluid_synth(engine, sequence)
 
 	while not synth.is_complete() and result.size() < max_frames:
 		var frames: PackedVector2Array = synth.render(mini(chunk, max_frames - result.size()))

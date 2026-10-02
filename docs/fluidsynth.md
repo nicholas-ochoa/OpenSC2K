@@ -1,8 +1,9 @@
 # FluidSynth music
 
 OpenSC2K plays the MIDI music with [FluidSynth](https://www.fluidsynth.org/) and a
-General MIDI SoundFont. The custom additive synthesizer stays as a fallback and as
-a player choice.
+General MIDI sound set: the one of the operating system, or a SoundFont that the
+player selects. OpenSC2K ships no SoundFont. The custom additive synthesizer of
+earlier versions was removed.
 
 ## Architecture
 
@@ -38,7 +39,6 @@ AudioStreamPlayer -> Master bus -> output device
   `platform.rs` opens the library, `api.rs` holds the function table, `synth.rs`
   is the safe `FluidSynth` owner, and `log.rs` keeps the last FluidSynth error.
 - `native/audio/src/fluid_midi_synth.rs` is the Godot class `FluidMidiSynth`.
-- `native/audio/src/synth` is the built-in synthesizer (`NativeMidiSynth`).
 
 FluidSynth's own MIDI file player was not used. The game already parses MIDI
 files, and its track-end, gap and shuffle rules use that parser. With only the
@@ -77,7 +77,8 @@ type. The library is checked at load: its `fluid_version` major version must be 
 ### Threading
 
 - A `WorkerThreadPool` task creates the `FluidMidiSynth` and loads the SoundFont.
-  This reads and decodes the whole file (about 1.5 s and 144 MB for the default).
+  This reads the whole file, and decodes it when it is SF3. The macOS set loads in
+  about 10 ms; a 15 MB SF3 file takes about 1.5 s and 144 MB.
 - The main thread then gives the synthesizer to the music thread with each track,
   and does not call it again. The music thread is the only caller of `render`.
 - The music thread fills the 1-second `AudioStreamGenerator` buffer in blocks of
@@ -97,21 +98,19 @@ FluidSynth starts events at the next 64-frame block (1.5 ms at 44.1 kHz).
 
 ## How audio reaches Godot
 
-`FluidMidiSynth` renders 44,100 Hz stereo float frames. `MidiSynthPlayer` sets
-the `AudioStreamGenerator` mix rate to the rate of the active synthesizer
-(22,050 Hz for the built-in one), and Godot resamples to the device rate. Music
+`FluidMidiSynth` renders 44,100 Hz stereo float frames into an
+`AudioStreamGenerator` at that mix rate, and Godot resamples to the device rate. Music
 therefore uses the normal Godot path: the music volume setting, pause, focus
 muting and the Master bus all apply. FluidSynth opens no audio driver; the
 library is built without any.
 
-The FluidSynth gain is 0.35. That is about as loud as the built-in synthesizer
-on the original tracks. The FluidSynth limiter keeps peaks below -1 dBFS.
+The FluidSynth gain is 0.35. Dense original tracks reach full scale at this
+level; the FluidSynth limiter keeps peaks below -1 dBFS.
 
 ## Building
 
 `python3 tools/build_native.py` builds the native libraries, then
-`tools/build_fluidsynth.py` builds FluidSynth, and `tools/fetch_soundfonts.py`
-downloads the bundled SoundFonts. Each step skips output that is current. The
+`tools/build_fluidsynth.py` builds FluidSynth. Each step skips output that is current. The
 validation runner calls the same build.
 
 Requirements: Rust (see `rust-toolchain.toml`), CMake 3.24 or later, Python 3,
@@ -175,7 +174,8 @@ FluidSynth from the same folder by full path. So:
 
 If that file is missing, the loader tries the system search path, then the
 development folders. When no library loads, the game shows the reason in the
-settings and the music notice, and plays the built-in synthesizer.
+settings and the music notice, and plays no MIDI music. Recorded soundtracks
+still play.
 
 ## SoundFont selection
 
@@ -184,12 +184,8 @@ The **Settings > Audio > Music SoundFont** list sets the preference
 
 | Choice | Value | SoundFont |
 | --- | --- | --- |
-| OpenSC2K Default (FluidR3Mono GM) | `default` | the default bundled SoundFont |
-| FluidR3Mono GM | `fluidr3mono` | `FluidR3Mono_GM.sf3` |
-| MuseScore General | `musescore_general` | `MuseScore_General.sf3` |
-| macOS GS Sound Set, Microsoft GS Wavetable Sound Set, or System SoundFont | `system` | the operating system sound set, listed only where it exists |
+| macOS GS Sound Set, Microsoft GS Wavetable Sound Set, or System SoundFont | `system` (default) | the operating system sound set |
 | Custom SoundFont | `custom` | the file in `audio/music_soundfont_path` |
-| Built-in synthesizer | `builtin` | none |
 
 The system sound set is read in place and never copied or shipped:
 
@@ -202,35 +198,27 @@ The system sound set is read in place and never copied or shipped:
   the FluidR3 GM file of the distribution package.
 
 These sets are close to the General MIDI hardware that the original music was
-written for. FluidSynth reads the DLS files with its native DLS loader. A saved
-`system` choice on a computer without a system set plays the default SoundFont.
+written for. FluidSynth reads the DLS files with its native DLS loader. Earlier
+saved values (`default`, `fluidr3mono`, `musescore_general`, `builtin`) become
+`system`.
 
-`SoundFontCatalog.candidates` gives the files to try. When a SoundFont fails
-(missing, unsupported or damaged), the bundled default loads instead. When that
-fails too, or FluidSynth is missing, the built-in synthesizer plays. The status
-names each failure. A custom SoundFont is read in place and never copied or
-changed. A change while music plays continues the same track from its position
-with the new SoundFont; the built-in synthesizer restarts the track.
+`SoundFontCatalog.candidates` gives the files to try. When a custom SoundFont
+fails (missing, unsupported or damaged), the system sound set loads instead. When
+no SoundFont loads, or FluidSynth is missing, no MIDI music plays: a waiting
+track ends at once with `track_finished`, and later tracks fail until the
+selection changes. The status names each failure. A custom SoundFont is read in
+place and never copied or changed. A change while music plays continues the same
+track from its position with the new SoundFont.
 
 A SoundFont loads the first time that MIDI music plays, not at startup. The first
 track waits for the load.
 
-The bundled SoundFonts are in `game/bin/soundfonts` in a source checkout (a
-`.gdignore` file keeps Godot from importing them), beside the executable in
-Windows and Linux packages, and in `OpenSC2K.app/Contents/Resources/soundfonts`.
+## Shipping a SoundFont
 
-## Adding a SoundFont
-
-1. Review its license and sample provenance from the canonical upstream source,
-   as in the table below. Do not use a mirror as the license authority.
-2. Add its file and license file, with URLs and SHA-256 hashes, to `FILES` in
-   `tools/fetch_soundfonts.py`.
-3. Add its id, label and file name to `BUNDLED` in
-   `game/src/audio/sound_font_catalog.gd`.
-4. Add the files to each platform in the `[dependencies]` section of
-   `game/opensc2k_audio.gdextension`.
-5. Copy its license to `game/assets/licenses/soundfonts`, add it to
-   `about_dialog.gd`, and add it to `THIRD_PARTY_NOTICES.md` and this page.
+OpenSC2K ships none. Before a SoundFont is ever added to a package, review its
+license and sample provenance from the canonical upstream source, as in the
+table below, and add its license to `game/assets/licenses`, `about_dialog.gd`
+and `THIRD_PARTY_NOTICES.md`.
 
 ## SoundFont review
 
@@ -238,8 +226,8 @@ Reviewed on 2026-10-01 from the upstream sources.
 
 | SoundFont | License | Size | Bundled? | Source | Notes |
 |---|---|---:|---|---|---|
-| FluidR3Mono GM 2.312 | MIT | 14.5 MB (SF3) | Yes, default | MuseScore 2.3.2 `share/sound` (github.com/musescore/MuseScore, commit 45924076) | Complete GM set with GS drum kits. Mono samples of FluidR3 by Michael Cowgill. Loads in 1.5 s, about 144 MB in memory. |
-| MuseScore General 0.2 | MIT | 38 MB (SF3), 206 MB (SF2) | Yes | ftp.osuosl.org/pub/musescore/soundfont/MuseScore_General (MuseScore's download server) | FluidR3Mono with new piano and other instruments by S. Christian Collins. Sample sources are listed per preset; new samples are public domain or by the author. Loads in 3.2 s, about 240 MB in memory. |
+| FluidR3Mono GM 2.312 | MIT | 14.5 MB (SF3) | No (bundled before 2026-10-01) | MuseScore 2.3.2 `share/sound` (github.com/musescore/MuseScore, commit 45924076) | Complete GM set with GS drum kits. Mono samples of FluidR3 by Michael Cowgill. Loads in 1.5 s, about 144 MB in memory. |
+| MuseScore General 0.2 | MIT | 38 MB (SF3), 206 MB (SF2) | No (bundled before 2026-10-01) | ftp.osuosl.org/pub/musescore/soundfont/MuseScore_General (MuseScore's download server) | FluidR3Mono with new piano and other instruments by S. Christian Collins. Sample sources are listed per preset; new samples are public domain or by the author. Loads in 3.2 s, about 240 MB in memory. |
 | MuseScore General HQ | MIT | about 480 MB (SF2) | No | Same project; not offered on the MuseScore download server | Too large for a game download. Players can select it as a custom SoundFont. |
 | MS Basic (MuseScore 4) | MIT | 51 MB (SF3) | No | github.com/musescore/MuseScore `share/sound` | MIT, current, complete GM. Its license file still describes MuseScore General 0.2 (MuseScore issue 19446), and it is a renamed descendant of MuseScore General, so it adds little. |
 | FluidR3 GM (stereo) | MIT (Debian `fluid-soundfont`, from Frank Wen's 2008 release) | 141 MB (SF2) | No | ftp.osuosl.org/pub/musescore/soundfont/fluid-soundfont.tar.gz | Complete GM. The MuseScore archive holds a community-edited "GM2-2" file and a readme that says "public domain", but no license file, so its provenance is not clear enough to bundle. FluidR3Mono covers the same samples. |
@@ -248,8 +236,9 @@ Reviewed on 2026-10-01 from the upstream sources.
 | TimGM6mb | GPL-2.0 | 6 MB | No | Debian `timgm6mb-soundfont` | GPL, not suitable to bundle with the MIT project. |
 
 No complete General MIDI SoundFont under the MIT license that is not derived from
-FluidR3 was found. FluidR3Mono and MuseScore General are separate, maintained
-derivatives with different sample sets and quality, and both have clear licenses.
+FluidR3 was found. In listening tests, the free sets sounded worse for this music
+than the Roland GS sets of macOS and Windows, so OpenSC2K uses the operating
+system set and lets players select their own SoundFont.
 
 ## Third-party licensing
 
@@ -257,8 +246,9 @@ derivatives with different sample sets and quality, and both have clear licenses
   separate LGPL-2.1-or-later library. See `THIRD_PARTY_NOTICES.md`.
 - Packages contain `THIRD_PARTY_NOTICES.md` and a `licenses` folder. The game shows
   the same texts under **About > Licenses**. The texts are in
-  `game/assets/licenses/fluidsynth` and `game/assets/licenses/soundfonts`.
-- Each SoundFont has its license file beside it in the `soundfonts` folder.
+  `game/assets/licenses/fluidsynth`.
+- The operating system sound sets belong to the system and are only read in
+  place, as the system MIDI synthesizer reads them. OpenSC2K never copies them.
 
 ## LGPL considerations
 
@@ -296,8 +286,11 @@ changed files as required by LGPL section 2.
 - The Windows build runs only in CI on `windows-2025`; it is not tested locally.
 - macOS packages are ad-hoc signed. Notarization would also need the FluidSynth
   library signed with the same identity.
-- Memory: an SF3 SoundFont is decoded at load. The default uses about 144 MB.
+- Memory: an SF3 SoundFont is decoded at load; a large custom SoundFont can use
+  hundreds of megabytes.
   FluidSynth's `synth.dynamic-sample-loading` would lower this, but it reads the
   file during program changes on the music thread, so it is off.
-- The SoundFont loads on the first MIDI track, so that track starts about 1.5 s
-  later. Recorded soundtracks are not affected.
+- The SoundFont loads on the first MIDI track. A large SF3 file delays that track
+  by seconds. Recorded soundtracks are not affected.
+- A Linux system without a SoundFont package plays no MIDI music until the player
+  selects a custom SoundFont.

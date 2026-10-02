@@ -150,13 +150,13 @@ impl Sequencer {
         }
     }
 
-    /// The tail checks for silence only between whole tail blocks, so it ends on
-    /// the same frame for every request size.
+    /// The tail checks its limit and silence only between whole tail blocks, so
+    /// it ends on the same frame for every request size.
     fn tail_is_over(&self, output: &mut impl MidiOutput) -> bool {
         let limit = seconds_to_frame(MAX_TAIL_SECONDS, self.sample_rate);
         let block_done = self.tail_frames > 0 && self.tail_frames.is_multiple_of(TAIL_BLOCK_FRAMES as u64);
 
-        self.tail_frames >= limit || (block_done && output.active_voices() == 0)
+        block_done && (self.tail_frames >= limit || output.active_voices() == 0)
     }
 
     /// Frames until the next event or the end of the track, at most `remaining`.

@@ -16,15 +16,15 @@ windows.debug.x86_64 = "res://bin/opensc2k_audio/windows-x86_64/opensc2k_audio.d
 windows.release.x86_64 = "res://bin/opensc2k_audio/windows-x86_64/opensc2k_audio.dll"
 
 ; FluidSynth (LGPL-2.1-or-later) loads at run time from its own replaceable
-; library beside this extension. Exports copy it and the bundled SoundFonts,
-; which tools/build_native.py builds and downloads. See docs/fluidsynth.md.
+; library beside this extension. Exports copy it; tools/build_native.py builds
+; it. See docs/fluidsynth.md.
 [dependencies]
 
-macos.debug = { "res://bin/opensc2k_audio/macos/libfluidsynth.3.dylib": "", "res://bin/soundfonts/FluidR3Mono_GM.sf3": "Contents/Resources/soundfonts", "res://bin/soundfonts/FluidR3Mono_License.md": "Contents/Resources/soundfonts", "res://bin/soundfonts/MuseScore_General.sf3": "Contents/Resources/soundfonts", "res://bin/soundfonts/MuseScore_General_License.md": "Contents/Resources/soundfonts", "res://bin/soundfonts/MuseScore_General_Sample_Sources.csv": "Contents/Resources/soundfonts" }
-macos.release = { "res://bin/opensc2k_audio/macos/libfluidsynth.3.dylib": "", "res://bin/soundfonts/FluidR3Mono_GM.sf3": "Contents/Resources/soundfonts", "res://bin/soundfonts/FluidR3Mono_License.md": "Contents/Resources/soundfonts", "res://bin/soundfonts/MuseScore_General.sf3": "Contents/Resources/soundfonts", "res://bin/soundfonts/MuseScore_General_License.md": "Contents/Resources/soundfonts", "res://bin/soundfonts/MuseScore_General_Sample_Sources.csv": "Contents/Resources/soundfonts" }
-linux.debug.x86_64 = { "res://bin/opensc2k_audio/linux-x86_64/libfluidsynth.so.3": "", "res://bin/soundfonts/FluidR3Mono_GM.sf3": "soundfonts", "res://bin/soundfonts/FluidR3Mono_License.md": "soundfonts", "res://bin/soundfonts/MuseScore_General.sf3": "soundfonts", "res://bin/soundfonts/MuseScore_General_License.md": "soundfonts", "res://bin/soundfonts/MuseScore_General_Sample_Sources.csv": "soundfonts" }
-linux.release.x86_64 = { "res://bin/opensc2k_audio/linux-x86_64/libfluidsynth.so.3": "", "res://bin/soundfonts/FluidR3Mono_GM.sf3": "soundfonts", "res://bin/soundfonts/FluidR3Mono_License.md": "soundfonts", "res://bin/soundfonts/MuseScore_General.sf3": "soundfonts", "res://bin/soundfonts/MuseScore_General_License.md": "soundfonts", "res://bin/soundfonts/MuseScore_General_Sample_Sources.csv": "soundfonts" }
-linux.debug.arm64 = { "res://bin/opensc2k_audio/linux-arm64/libfluidsynth.so.3": "", "res://bin/soundfonts/FluidR3Mono_GM.sf3": "soundfonts", "res://bin/soundfonts/FluidR3Mono_License.md": "soundfonts", "res://bin/soundfonts/MuseScore_General.sf3": "soundfonts", "res://bin/soundfonts/MuseScore_General_License.md": "soundfonts", "res://bin/soundfonts/MuseScore_General_Sample_Sources.csv": "soundfonts" }
-linux.release.arm64 = { "res://bin/opensc2k_audio/linux-arm64/libfluidsynth.so.3": "", "res://bin/soundfonts/FluidR3Mono_GM.sf3": "soundfonts", "res://bin/soundfonts/FluidR3Mono_License.md": "soundfonts", "res://bin/soundfonts/MuseScore_General.sf3": "soundfonts", "res://bin/soundfonts/MuseScore_General_License.md": "soundfonts", "res://bin/soundfonts/MuseScore_General_Sample_Sources.csv": "soundfonts" }
-windows.debug.x86_64 = { "res://bin/opensc2k_audio/windows-x86_64/libfluidsynth-3.dll": "", "res://bin/soundfonts/FluidR3Mono_GM.sf3": "soundfonts", "res://bin/soundfonts/FluidR3Mono_License.md": "soundfonts", "res://bin/soundfonts/MuseScore_General.sf3": "soundfonts", "res://bin/soundfonts/MuseScore_General_License.md": "soundfonts", "res://bin/soundfonts/MuseScore_General_Sample_Sources.csv": "soundfonts" }
-windows.release.x86_64 = { "res://bin/opensc2k_audio/windows-x86_64/libfluidsynth-3.dll": "", "res://bin/soundfonts/FluidR3Mono_GM.sf3": "soundfonts", "res://bin/soundfonts/FluidR3Mono_License.md": "soundfonts", "res://bin/soundfonts/MuseScore_General.sf3": "soundfonts", "res://bin/soundfonts/MuseScore_General_License.md": "soundfonts", "res://bin/soundfonts/MuseScore_General_Sample_Sources.csv": "soundfonts" }
+macos.debug = { "res://bin/opensc2k_audio/macos/libfluidsynth.3.dylib": "" }
+macos.release = { "res://bin/opensc2k_audio/macos/libfluidsynth.3.dylib": "" }
+linux.debug.x86_64 = { "res://bin/opensc2k_audio/linux-x86_64/libfluidsynth.so.3": "" }
+linux.release.x86_64 = { "res://bin/opensc2k_audio/linux-x86_64/libfluidsynth.so.3": "" }
+linux.debug.arm64 = { "res://bin/opensc2k_audio/linux-arm64/libfluidsynth.so.3": "" }
+linux.release.arm64 = { "res://bin/opensc2k_audio/linux-arm64/libfluidsynth.so.3": "" }
+windows.debug.x86_64 = { "res://bin/opensc2k_audio/windows-x86_64/libfluidsynth-3.dll": "" }
+windows.release.x86_64 = { "res://bin/opensc2k_audio/windows-x86_64/libfluidsynth-3.dll": "" }

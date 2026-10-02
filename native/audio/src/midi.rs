@@ -1,8 +1,7 @@
 //! Timed MIDI channel events. The GDScript player parses the standard MIDI file
-//! and sends these events to either synthesizer.
+//! and sends these events to the synthesizer.
 
-/// Event kinds, by the code that GDScript sends. The built-in synthesizer ignores
-/// the pressure events.
+/// Event kinds, by the code that GDScript sends.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Kind {
     Other,

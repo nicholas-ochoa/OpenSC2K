@@ -74,14 +74,12 @@ func _build_licenses() -> void:
 	_add_license("Grenze Gotisch — SIL OFL 1.1", FileAccess.get_file_as_string("res://assets/fonts/grenzegotisch/OFL.txt"))
 	_add_license("Chomsky — SIL OFL 1.1", FileAccess.get_file_as_string("res://assets/fonts/chomsky/OFL.txt"))
 	_add_license("FluidSynth — LGPL 2.1 or later", _license_files("fluidsynth", ["NOTICE.txt", "LGPL-2.1.txt", "fluidsynth-AUTHORS.txt"]))
-	_add_license("FluidSynth — bundled library notices", _license_files("fluidsynth", [
+	_add_license("FluidSynth — included library notices", _license_files("fluidsynth", [
 		"libsndfile-COPYING.txt", "libsndfile-AUTHORS.txt", "libsndfile-GSM610-COPYRIGHT.txt", "libogg-COPYING.txt",
 		"libvorbis-COPYING.txt", "flac-COPYING.Xiph.txt", "opus-COPYING.txt", "signalsmith-basics-LICENSE.txt",
 		"signalsmith-linear-LICENSE.txt", "signalsmith-dsp-LICENSE.txt", "signalsmith-hilbert-iir-LICENSE.txt",
 		"gcem-NOTICE.txt", "Apache-2.0.txt",
 	]))
-	_add_license("FluidR3Mono GM SoundFont — MIT", _license_files("soundfonts", ["FluidR3Mono_License.txt"]))
-	_add_license("MuseScore General SoundFont — MIT", _license_files("soundfonts", ["MuseScore_General_License.txt"]))
 	_add_license("Godot WRY — MIT", FileAccess.get_file_as_string("res://addons/godot_wry/LICENSE"))
 	_add_license("Godot WRY — dependency notices", FileAccess.get_file_as_string("res://assets/licenses/wry-dependencies.txt"))
 	_add_license("Research and original game", """RESEARCH

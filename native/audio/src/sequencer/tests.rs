@@ -131,7 +131,11 @@ fn tail_stops_at_its_limit() {
     sequencer.start(&mut output);
     let frames = render_all(&mut sequencer, &mut output, 500);
 
-    assert_eq!(frames.len() as f64, (1.0 + MAX_TAIL_SECONDS) * RATE);
+    // the limit rounds up to whole tail blocks
+    let limit = (MAX_TAIL_SECONDS * RATE) as usize;
+    let tail = limit.div_ceil(TAIL_BLOCK_FRAMES) * TAIL_BLOCK_FRAMES;
+
+    assert_eq!(frames.len(), RATE as usize + tail);
 }
 
 #[test]

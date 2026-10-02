@@ -27,7 +27,7 @@ func _run() -> void:
 	while player.is_loading_soundfont():
 		await process_frame
 
-	assert(player.backend == "fluidsynth", player.synth_status)
+	assert(player.synth_status.begins_with("FluidSynth"), player.synth_status)
 	await create_timer(0.4).timeout
 	var filled: Dictionary = player.debug_metrics()
 	assert(filled.thread_running and filled.track_id == 10001)

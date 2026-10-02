@@ -6,9 +6,8 @@ the library that a desktop package needs on this platform: a universal library
 on macOS, and the x86_64 library on Windows and Linux.
 
 The audio library loads FluidSynth at run time. This also builds the FluidSynth
-shared library (tools/build_fluidsynth.py, which needs CMake) and downloads the
-bundled SoundFonts (tools/fetch_soundfonts.py). Without them, music plays with
-the built-in synthesizer.
+shared library (tools/build_fluidsynth.py, which needs CMake). Without it, no
+MIDI music plays.
 """
 import argparse
 import os
@@ -19,7 +18,6 @@ import sys
 from pathlib import Path
 
 import build_fluidsynth
-import fetch_soundfonts
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULES = ('simulation', 'rendering', 'formats', 'audio')
@@ -74,12 +72,7 @@ def build(profile='release', quiet=False):
         built = ROOT / 'native' / module / 'target' / profile / library_name(module)
         target = ROOT / 'game/bin' / f'opensc2k_{module}' / host_folder() / library_name(module)
         targets.append(_install(built, target))
-    return targets + build_music_dependencies(quiet)
-
-
-def build_music_dependencies(quiet=False):
-    """Build FluidSynth and fetch the SoundFonts. Each step skips current output."""
-    return build_fluidsynth.build(quiet=quiet) + fetch_soundfonts.fetch(quiet=quiet)
+    return targets + build_fluidsynth.build(quiet=quiet)
 
 
 def build_package(quiet=False):
@@ -97,7 +90,6 @@ def build_package(quiet=False):
             universal.parent.mkdir(parents=True, exist_ok=True)
             subprocess.run(['lipo', '-create', *slices, '-output', str(universal)], check=True)
             targets.append(_install(universal, ROOT / 'game/bin' / f'opensc2k_{module}' / 'macos' / library_name(module)))
-        # the packaging job downloads the SoundFonts once for every platform
         return targets + build_fluidsynth.build(quiet=quiet)
     if host_folder() not in ('linux-x86_64', 'windows-x86_64'):
         raise OSError(f'desktop packages do not include {host_folder()}')

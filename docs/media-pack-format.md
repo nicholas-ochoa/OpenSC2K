@@ -357,7 +357,7 @@ through `10018`. The file extension must be `.mid`, `.midi`, `.wav`, `.ogg`,
 `.mp3`, or `.flac`. The extension is not case-sensitive.
 
 The game reads each MIDI file when it loads the pack. A MIDI file that does not
-decode makes the pack not valid. The built-in synthesizer plays MIDI files. The
+decode makes the pack not valid. FluidSynth plays MIDI files with the selected SoundFont. The
 game decodes a recording when it plays it. Godot decodes WAV, Ogg Vorbis, and
 MP3 files. FFmpeg decodes FLAC files. The game looks for FFmpeg in the usual
 install locations. Set `OPENSC2K_FFMPEG` to the path of a different FFmpeg
