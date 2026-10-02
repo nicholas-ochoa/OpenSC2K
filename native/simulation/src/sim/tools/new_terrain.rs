@@ -96,7 +96,7 @@ pub fn generate(city: &mut City, landform: &Landform, random: &mut SimRandom) ->
         (landform_heights, landform.coast_flags.clone())
     };
 
-    grade_heights(&mut heights, edge);
+    grade_until_stable(&mut heights, edge);
 
     if landform.smooth_slopes || landform.extended || edge != LANDFORM_EDGE {
         grade_layout(&mut heights, edge);
@@ -226,16 +226,29 @@ fn enlarge_landform(source: &[i32], coast: &[u8], flags: &mut [u8], edge: usize)
     result
 }
 
-/// Lower each tile until no cardinal neighbor is more than one level lower.
+/// Repeat the grade until no cardinal neighbor is more than one level lower.
+/// One pass lowers a tile by only one level, so a tile that the scan reaches
+/// after a much lower neighbor can keep a two-level step. A later pass changes
+/// only these tiles, and a map without them keeps the first-pass heights.
+fn grade_until_stable(heights: &mut [i32], edge: usize) {
+    while grade_heights(heights, edge) {}
+}
+
+/// Lower each tile by one level when a cardinal neighbor is more than one level
+/// lower, and then grade the neighbors that are now too high.
 /// This visits the tiles in the order of the recursive GDScript grade.
-fn grade_heights(heights: &mut [i32], edge: usize) {
+/// Returns true when the pass lowered a tile.
+fn grade_heights(heights: &mut [i32], edge: usize) -> bool {
     let mut stack = Vec::new();
+    let mut lowered = false;
 
     for x in 0..edge {
         for y in 0..edge {
-            grade_cell(heights, x, y, edge, &mut stack);
+            lowered |= grade_cell(heights, x, y, edge, &mut stack);
         }
     }
+
+    lowered
 }
 
 /// One frame of the grade: a lowered tile and the next neighbor to visit.
@@ -246,10 +259,12 @@ struct GradeFrame {
     next: u8,
 }
 
-fn grade_cell(heights: &mut [i32], x: usize, y: usize, edge: usize, stack: &mut Vec<GradeFrame>) {
-    if let Some(frame) = lower_cell(heights, x, y, edge) {
-        stack.push(frame);
-    }
+fn grade_cell(heights: &mut [i32], x: usize, y: usize, edge: usize, stack: &mut Vec<GradeFrame>) -> bool {
+    let Some(frame) = lower_cell(heights, x, y, edge) else {
+        return false;
+    };
+
+    stack.push(frame);
 
     // Visit neighbors north, east, south, then west, as CARDINAL_OFFSETS does.
     while let Some(frame) = stack.last_mut() {
@@ -276,6 +291,8 @@ fn grade_cell(heights: &mut [i32], x: usize, y: usize, edge: usize, stack: &mut 
             stack.push(frame);
         }
     }
+
+    true
 }
 
 /// Lower one tile by one level when a cardinal neighbor is more than one level lower.
@@ -688,6 +705,47 @@ mod tests {
 
             assert_eq!(actual, expected);
         }
+    }
+
+    fn has_steep_step(heights: &[i32], edge: usize) -> bool {
+        (0..edge).any(|x| {
+            (0..edge).any(|y| {
+                let height = heights[x * edge + y];
+
+                (x + 1 < edge && (height - heights[(x + 1) * edge + y]).abs() > 1)
+                    || (y + 1 < edge && (height - heights[x * edge + y + 1]).abs() > 1)
+            })
+        })
+    }
+
+    #[test]
+    fn one_grade_pass_can_leave_a_steep_step() {
+        // The scan reaches the 6 after the 3 beside it. One pass lowers it to 5.
+        let edge = 3;
+        let mut heights = vec![9, 9, 9, 3, 6, 9, 9, 9, 9];
+
+        grade_heights(&mut heights, edge);
+
+        assert!(has_steep_step(&heights, edge));
+    }
+
+    #[test]
+    fn stable_grade_has_no_steep_step() {
+        for seed in 1..20 {
+            let edge = 40;
+            let mut heights = test_heights(edge, seed);
+
+            grade_until_stable(&mut heights, edge);
+
+            assert!(!has_steep_step(&heights, edge), "seed {seed}");
+        }
+
+        let edge = 3;
+        let mut heights = vec![9, 9, 9, 3, 6, 9, 9, 9, 9];
+
+        grade_until_stable(&mut heights, edge);
+
+        assert!(!has_steep_step(&heights, edge));
     }
 
     #[test]

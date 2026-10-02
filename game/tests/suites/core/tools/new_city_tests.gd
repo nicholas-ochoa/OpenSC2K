@@ -88,24 +88,25 @@ func test_new_city_terrain(_reference_root: String) -> void:
 			and direct_game.state == 1692766423,
 			"Seed one preserves the recovered terrain pass and random-call order",
 		)
-		var direct_city := CityModel.from_document(direct_document)
 		var cardinal_grade_is_valid := true
 
-		for x in CityState.MAP_SIZE:
-			for y in CityState.MAP_SIZE:
-				if x < CityState.MAP_SIZE - 1:
-					cardinal_grade_is_valid = cardinal_grade_is_valid and (
-						absi(direct_city.land_altitude(x, y) - direct_city.land_altitude(x + 1, y)) <= 1
-					)
+		# the founded city used to keep a two-level step after one grade pass
+		for graded_city in [CityModel.from_document(direct_document), city]:
+			for x in CityState.MAP_SIZE:
+				for y in CityState.MAP_SIZE:
+					if x < CityState.MAP_SIZE - 1:
+						cardinal_grade_is_valid = cardinal_grade_is_valid and (
+							absi(graded_city.land_altitude(x, y) - graded_city.land_altitude(x + 1, y)) <= 1
+						)
 
-				if y < CityState.MAP_SIZE - 1:
-					cardinal_grade_is_valid = cardinal_grade_is_valid and (
-						absi(direct_city.land_altitude(x, y) - direct_city.land_altitude(x, y + 1)) <= 1
-					)
+					if y < CityState.MAP_SIZE - 1:
+						cardinal_grade_is_valid = cardinal_grade_is_valid and (
+							absi(graded_city.land_altitude(x, y) - graded_city.land_altitude(x, y + 1)) <= 1
+						)
 
 		_check(
 			cardinal_grade_is_valid,
-			"Seed one terrain keeps each cardinal height change to one level",
+			"Generated terrain keeps each cardinal height change to one level",
 		)
 
 		# the neighbors take their random values before the terrain
