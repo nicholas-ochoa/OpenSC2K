@@ -34,12 +34,21 @@ func run() -> void:
 	first.show_soundfont(SoundFontCatalog.SYSTEM, "", "")
 	assert(not first.get_node("%SoundFontRow").visible and first.selected_soundfont() == SoundFontCatalog.SYSTEM)
 	assert(second.selected_soundfont() == SoundFontCatalog.DEFAULT)
-	first.import_original_requested.connect(func() -> void:
+	var requested: Array[PackedStringArray] = []
+	first.import_original_requested.connect(func(categories: PackedStringArray) -> void:
+		requested.append(categories)
 		import_requests += 1)
 	first.show_values(0.25, 0.75, false)
 	assert(first.visible)
 	first.get_node("%ImportButton").pressed.emit()
-	assert(import_requests == 1 and not first.visible)
+	assert(import_requests == 1 and not first.visible and requested.back() == PackedStringArray(Sc2MediaImporter.CATEGORIES))
+
+	# each pack field can import only its own pack kind
+	for kind in ["graphics", "sound", "music", "data"]:
+		first.show_values(0.25, 0.75, false)
+		first.pack_import_buttons[kind].pressed.emit()
+		assert(requested.back() == PackedStringArray([kind]) and not first.visible)
+
 	first.get_node("%GraphicsBrowse").pressed.emit()
 	assert(first.folder_dialog.visible)
 	first.folder_dialog.hide()

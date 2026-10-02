@@ -136,11 +136,11 @@ func show_graphics_source_error(message: String, title := "Graphics source") -> 
 	app.graphics_source_error_dialog.call_deferred("popup_centered", Vector2i(620, 220))
 
 
-func show_reference_import_dialog() -> void:
+func show_reference_import_dialog(categories := PackedStringArray()) -> void:
 	if app.reference_import_dialog == null:
 		return
 
-	app.reference_import_dialog.open()
+	app.reference_import_dialog.open(categories)
 
 
 func _on_reference_import_canceled() -> void:

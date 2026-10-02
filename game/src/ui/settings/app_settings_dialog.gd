@@ -5,7 +5,7 @@ extends AcceptDialog
 
 @warning_ignore_start("integer_division")
 
-signal import_original_requested
+signal import_original_requested(categories: PackedStringArray)
 signal update_check_requested
 signal button_clicked
 # the player changed a setting. read the new values with selected_values()
@@ -28,6 +28,7 @@ var music_pack_edit: LineEdit
 var data_pack_edit: LineEdit
 var pack_name_labels: Dictionary = {}
 var pack_edits: Dictionary = {}
+var pack_import_buttons: Dictionary = {}
 var loaded_pack_names: Dictionary = {}
 var loaded_pack_paths: Dictionary = {}
 var tabs: TabContainer
@@ -122,7 +123,7 @@ func _ready() -> void:
 		if not visible:
 			_notify_change())
 	canceled.connect(button_clicked.emit)
-	%ImportButton.pressed.connect(_request_original_import)
+	%ImportButton.pressed.connect(_request_original_import.bind(PackedStringArray(Sc2MediaImporter.CATEGORIES)))
 	check_updates_now_button.pressed.connect(update_check_requested.emit)
 	about_to_popup.connect(_fit_to_viewport)
 	if get_parent() != null:
@@ -233,9 +234,10 @@ func _fit_to_viewport() -> void:
 		position = (viewport_size - size) / 2
 
 
-func _request_original_import() -> void:
+# the import dialog selects only these pack kinds
+func _request_original_import(categories: PackedStringArray) -> void:
 	hide()
-	import_original_requested.emit()
+	import_original_requested.emit(categories)
 
 
 func set_update_check_running(running: bool) -> void:
@@ -391,6 +393,16 @@ func _bind_pack_controls(kind: String, edit: LineEdit, label: Label, browse: But
 
 	browse.pressed.connect(func() -> void:
 		picker.popup_centered_ratio(0.8))
+
+	# Import only this pack kind from a copy of the game.
+	var import_button := Button.new()
+	import_button.name = kind.capitalize() + "Import"
+	import_button.text = "Import..."
+	import_button.custom_minimum_size = browse.custom_minimum_size
+	import_button.tooltip_text = "Import only a %s pack from your copy of SimCity 2000." % kind
+	import_button.pressed.connect(_request_original_import.bind(PackedStringArray([kind])))
+	browse.get_parent().add_child(import_button)
+	pack_import_buttons[kind] = import_button
 	pack_name_labels[kind] = label
 	pack_edits[kind] = edit
 	edit.placeholder_text = "Automatic (%s)" % MediaPack.default_folder(kind).path_join("pack.json")

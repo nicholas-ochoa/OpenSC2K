@@ -30,7 +30,7 @@ theme_override_constants/separation = 12
 
 [node name="Hint" type="Label" parent="Background/Margin/Content"]
 layout_mode = 2
-text = "Choose an installed game folder, a macOS .app, or extracted game files. Install GOG downloads first. Select all asset types or only those you want. Each import creates separate packs."
+text = "Choose an installed game folder, a macOS .app, extracted game files, or a mounted game disc. Install GOG downloads first. Select all asset types or only those you want. Each import creates separate packs. Other packs stay active."
 autowrap_mode = 3
 
 [node name="SourceEdit" type="LineEdit" parent="Background/Margin/Content"]
@@ -76,7 +76,7 @@ text = "Music"
 [node name="DataCheck" type="CheckBox" parent="Background/Margin/Content/Categories"]
 unique_name_in_owner = true
 layout_mode = 2
-tooltip_text = "Text, newspapers, the city template, cities, and scenarios. Needs a complete Windows installation."
+tooltip_text = "Text, newspapers, the city template, cities, and scenarios."
 button_pressed = true
 text = "Game data"
 
