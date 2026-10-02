@@ -2,7 +2,7 @@
 
 use godot::prelude::*;
 
-use crate::formats::rle;
+use crate::formats::{rle, sc2};
 
 /// Static Maxis RLE entry points for `MaxisRle`.
 #[derive(GodotClass)]
@@ -105,5 +105,68 @@ impl NativeCityArrays {
         }
 
         PackedByteArray::from(result.as_slice())
+    }
+}
+
+/// Static SC2, SCN, and SCLG file entry points for Sc2File.
+#[derive(GodotClass)]
+#[class(no_init, base = Object)]
+pub struct NativeSc2Form {}
+
+#[godot_api]
+impl NativeSc2Form {
+    /// `{ok, error, map_size, large_version, chunks}`. Each chunk is
+    /// `{chunk_id, source_offset, stored, decoded, expected_size, compressed}`.
+    #[func]
+    fn parse(bytes: PackedByteArray) -> VarDictionary {
+        let mut result = VarDictionary::new();
+
+        match sc2::parse(bytes.as_slice()) {
+            Ok(form) => {
+                let mut chunks = VarArray::new();
+
+                for chunk in &form.chunks {
+                    let mut fields = VarDictionary::new();
+                    fields.set("chunk_id", chunk.id.as_str());
+                    fields.set("source_offset", chunk.source_offset as i64);
+                    fields.set("stored", &PackedByteArray::from(chunk.stored.as_slice()));
+                    fields.set("decoded", &PackedByteArray::from(chunk.decoded.as_slice()));
+                    fields.set("expected_size", chunk.expected_size);
+                    fields.set("compressed", chunk.compressed);
+                    chunks.push(&fields.to_variant());
+                }
+
+                result.set("ok", true);
+                result.set("error", "");
+                result.set("map_size", form.map_size);
+                result.set("large_version", form.large_version);
+                result.set("chunks", &chunks);
+            }
+            Err(error) => {
+                result.set("ok", false);
+                result.set("error", error.as_str());
+            }
+        }
+
+        result
+    }
+
+    /// A FORM file of the chunk IDs and their stored payloads.
+    #[func]
+    fn encode(map_size: i64, large_version: i64, chunk_ids: PackedStringArray, payloads: VarArray) -> PackedByteArray {
+        let ids: Vec<String> = chunk_ids.as_slice().iter().map(|id| id.to_string()).collect();
+        let stored: Vec<PackedByteArray> = payloads
+            .iter_shared()
+            .map(|payload| payload.try_to::<PackedByteArray>().unwrap_or_default())
+            .collect();
+        let chunks = ids.iter().zip(&stored).map(|(id, payload)| (id.as_str(), payload.as_slice()));
+
+        PackedByteArray::from(sc2::encode(map_size, large_version, chunks).as_slice())
+    }
+
+    /// The decoded size of a chunk of an SC2, SCN, or SCLG file, or -1.
+    #[func]
+    fn decoded_size(chunk_id: GString, map_size: i64, large_version: i64) -> i64 {
+        sc2::decoded_size(&chunk_id.to_string(), map_size, large_version)
     }
 }

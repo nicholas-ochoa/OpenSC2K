@@ -6,8 +6,8 @@
 //! does. The bridge then stores it in the GDScript document.
 
 use super::bytes::{read_u32_be, write_u32_be};
-use super::ids::{sc2altitude_layout as altitude, sc2label_layout, sc2microsim_layout, sc2misc_layout as misc};
-use super::ids::{sc2overlay_layout, sc2thing_layout, sc2tile_flags as flags, sc2zone_layout as zone};
+use super::ids::{sc2altitude_layout as altitude, sc2microsim_layout, sc2misc_layout as misc};
+use super::ids::{sc2overlay_layout, sc2tile_flags as flags, sc2zone_layout as zone};
 
 #[derive(Clone, Debug, Default)]
 pub struct Chunk {
@@ -199,15 +199,9 @@ impl City {
 
     /// Sc2File.decoded_size.
     pub fn decoded_size(&self, id: &str) -> i64 {
-        const HALF: [&str; 4] = ["XTRF", "XPLT", "XVAL", "XCRM"];
-        const QUARTER: [&str; 4] = ["XPLC", "XFIR", "XPOP", "XROG"];
-        const FULL: [&str; 7] = ["ALTM", "XTER", "XBLD", "XZON", "XUND", "XTXT", "XBIT"];
         let edge = self.map_size;
 
-        if self.full_resolution_maps() && (HALF.contains(&id) || QUARTER.contains(&id)) {
-            return edge * edge;
-        }
-
+        // a working document keeps the record capacities of its file
         if self.is_sc2x_working() {
             match id {
                 // the layered tile index
@@ -217,50 +211,7 @@ impl City {
             }
         }
 
-        if edge > 128 && self.large_version >= 2 {
-            // legacy record tables of larger maps keep the 1024-tile capacities
-            let factor = ((edge * edge) / 16384).min(64);
-
-            match id {
-                "XTXT" => return edge * edge * 2,
-                "XMIC" => return facility_capacity(factor) * sc2microsim_layout::RECORD_SIZE,
-                "XLAB" => {
-                    return (sc2overlay_layout::EXTRA_SIGN + sc2overlay_layout::ORIGINAL_SIGN_COUNT * factor
-                        - sc2overlay_layout::ORIGINAL_SIGN_COUNT)
-                        * sc2label_layout::RECORD_SIZE;
-                }
-                "XTHG" => {
-                    return sc2thing_layout::ORIGINAL_COUNT * factor * sc2thing_layout::EXTENDED_RECORD_SIZE;
-                }
-                _ => {}
-            }
-        }
-
-        if id == "XTHG" && edge > 128 {
-            return sc2thing_layout::ORIGINAL_COUNT * sc2thing_layout::EXTENDED_RECORD_SIZE;
-        }
-
-        if FULL.contains(&id) {
-            return edge * edge * if id == "ALTM" { 2 } else { 1 };
-        }
-
-        if HALF.contains(&id) {
-            return (edge / 2) * (edge / 2);
-        }
-
-        if QUARTER.contains(&id) {
-            return (edge / 4) * (edge / 4);
-        }
-
-        match id {
-            "CNAM" => 32,
-            "MISC" => misc::SIZE,
-            "XLAB" => sc2label_layout::ORIGINAL_SIZE,
-            "XMIC" => sc2microsim_layout::ORIGINAL_SIZE,
-            "XTHG" => sc2thing_layout::ORIGINAL_SIZE,
-            "XGRP" => super::ids::sc2graph_layout::SIZE,
-            _ => -1,
-        }
+        crate::formats::sc2::decoded_size(id, edge, self.large_version)
     }
 
     #[inline]

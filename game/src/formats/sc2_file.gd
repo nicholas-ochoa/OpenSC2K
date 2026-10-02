@@ -16,7 +16,6 @@ enum TilePlane {
 @warning_ignore_start("integer_division")
 
 const ChunkType = preload("res://src/formats/sc2_chunk.gd")
-const RleCodec = preload("res://src/formats/maxis_rle.gd")
 const DECODED_SIZES: Dictionary[String, int] = {
 	"CNAM": 32,
 	"MISC": Sc2MiscLayout.SIZE,
@@ -134,90 +133,23 @@ func parse(bytes: PackedByteArray) -> bool:
 
 		return true
 
-	if bytes.size() < 12:
-		return _fail("File is shorter than the 12-byte FORM header")
+	var form: Dictionary = NativeSc2Form.parse(bytes)
 
-	if _ascii(bytes, 0, 4) != "FORM":
-		return _fail("File does not start with FORM")
+	if not form.ok:
+		return _fail(form.error)
 
-	if BinaryData.read_u32_be(bytes, 4) != bytes.size() - 8:
-		return _fail("FORM length does not match the file size")
+	map_size = form.map_size
+	large_version = form.large_version
 
-	var form_type := _ascii(bytes, 8, 4)
-
-	if form_type not in ["SCDH", "SCLG"]:
-		return _fail("FORM type is not SCDH or experimental SCLG")
-
-	var offset := 12
-
-	if form_type == "SCLG":
-		if bytes.size() < 28 or _ascii(bytes, 12, 4) != "SIZE" or BinaryData.read_u32_be(bytes, 16) != 8:
-			return _fail("Experimental SIZE header is missing")
-
-		map_size = BinaryData.read_u32_be(bytes, 24)
-		large_version = BinaryData.read_u32_be(bytes, 20)
-
-		if (
-			large_version not in [1, 2, 3] or map_size not in MAP_SIZES
-			or (map_size == 128 and large_version != 3)
-			or (map_size < 128 and large_version == 1)
-			or map_size > SCLG_MAX_EDGE
-		):
-			return _fail("Unsupported experimental city version or size")
-
-		offset = 28
-
-	while offset < bytes.size():
-		if offset + 8 > bytes.size():
-			return _fail("Chunk header at 0x%x is truncated" % offset)
-
-		var chunk_id := _ascii(bytes, offset, 4)
-
-		if not _is_chunk_id(chunk_id):
-			return _fail("Chunk ID at 0x%x is not printable ASCII" % offset)
-
-		var stored_size := BinaryData.read_u32_be(bytes, offset + 4)
-		var payload_start := offset + 8
-		var payload_end := payload_start + stored_size
-
-		if payload_end > bytes.size():
-			return _fail("Chunk %s at 0x%x extends past the file" % [chunk_id, offset])
-
+	for fields: Dictionary in form.chunks:
 		var chunk := ChunkType.new()
-		chunk.chunk_id = chunk_id
-		chunk.source_offset = offset
-		chunk.stored_payload = bytes.slice(payload_start, payload_end)
-		chunk.expected_decoded_size = decoded_size(chunk_id)
-		chunk.is_compressed = (
-			chunk.expected_decoded_size >= 0 and not RAW_CHUNKS.has(chunk_id)
-		)
-
-		if chunk.is_compressed:
-			var decode_result := RleCodec.decode(
-				chunk.stored_payload, chunk.expected_decoded_size
-			)
-
-			if not decode_result.ok:
-				return _fail("Chunk %s: %s" % [chunk_id, decode_result.error])
-
-			chunk.decoded_payload = decode_result.data
-		else:
-			chunk.decoded_payload = chunk.stored_payload.duplicate()
-
-			if (
-				chunk.expected_decoded_size >= 0
-				and chunk.decoded_payload.size() != chunk.expected_decoded_size
-			):
-				return _fail(
-					"Chunk %s has %d bytes; expected %d"
-					% [chunk_id, chunk.decoded_payload.size(), chunk.expected_decoded_size]
-				)
-
+		chunk.chunk_id = fields.chunk_id
+		chunk.source_offset = fields.source_offset
+		chunk.stored_payload = fields.stored
+		chunk.decoded_payload = fields.decoded
+		chunk.expected_decoded_size = fields.expected_size
+		chunk.is_compressed = fields.compressed
 		chunks.append(chunk)
-		offset = payload_end
-
-	if offset != bytes.size():
-		return _fail("Chunk data does not end at the file boundary")
 
 	source_bytes = bytes.duplicate()
 	rebuild_chunk_cache()
@@ -511,25 +443,14 @@ func serialize(force_rebuild: bool = false) -> BinaryResult:
 
 		return unchanged_result
 
-	var body := PackedByteArray()
-	body.append_array(("SCLG" if is_extended() else "SCDH").to_ascii_buffer())
-
-	if is_extended():
-		body.append_array("SIZE".to_ascii_buffer())
-		body.append_array(_u32_be(8))
-		body.append_array(_u32_be(large_version))
-		body.append_array(_u32_be(map_size))
+	var ids := PackedStringArray()
+	var payloads := []
 
 	for chunk in chunks:
-		var payload := chunk.payload_for_write()
-		body.append_array(chunk.chunk_id.to_ascii_buffer())
-		body.append_array(_u32_be(payload.size()))
-		body.append_array(payload)
+		ids.append(chunk.chunk_id)
+		payloads.append(chunk.payload_for_write())
 
-	var output := PackedByteArray()
-	output.append_array("FORM".to_ascii_buffer())
-	output.append_array(_u32_be(body.size()))
-	output.append_array(body)
+	var output := NativeSc2Form.encode(map_size, large_version, ids, payloads)
 
 	var outcome := BinaryResult.new()
 	outcome.ok = true
@@ -558,10 +479,6 @@ static func _u32_be(value: int) -> PackedByteArray:
 	)
 
 
-static func _ascii(bytes: PackedByteArray, offset: int, length: int) -> String:
-	return bytes.slice(offset, offset + length).get_string_from_ascii()
-
-
 static func _is_chunk_id(value: String) -> bool:
 	if value.length() != 4:
 		return false
@@ -576,9 +493,6 @@ static func _is_chunk_id(value: String) -> bool:
 
 
 func decoded_size(chunk_id: String) -> int:
-	if full_resolution_maps() and chunk_id in HALF_MAP_CHUNKS + QUARTER_MAP_CHUNKS:
-		return map_size * map_size
-
 	# a working document keeps the record capacities of its file
 	if is_sc2x():
 		match chunk_id:
@@ -591,35 +505,7 @@ func decoded_size(chunk_id: String) -> int:
 			"CNAM":
 				return -1
 
-	if map_size > 128 and large_version >= 2:
-		var factor := mini((map_size * map_size) / 16384, LEGACY_MAX_FACTOR)
-
-		match chunk_id:
-			"XTXT":
-				return map_size * map_size * 2
-			"XMIC":
-				return Sc2OverlayLayout.facility_capacity(factor) * Sc2MicrosimLayout.RECORD_SIZE
-			"XLAB":
-				return (
-					Sc2OverlayLayout.EXTRA_SIGN
-					+ Sc2OverlayLayout.ORIGINAL_SIGN_COUNT * factor - Sc2OverlayLayout.ORIGINAL_SIGN_COUNT
-				) * Sc2LabelLayout.RECORD_SIZE
-			"XTHG":
-				return Sc2ThingLayout.ORIGINAL_COUNT * factor * Sc2ThingLayout.EXTENDED_RECORD_SIZE
-
-	if chunk_id == "XTHG" and map_size > 128:
-		return Sc2ThingLayout.ORIGINAL_COUNT * Sc2ThingLayout.EXTENDED_RECORD_SIZE
-
-	if chunk_id in FULL_MAP_CHUNKS:
-		return map_size * map_size * (2 if chunk_id == "ALTM" else 1)
-
-	if chunk_id in HALF_MAP_CHUNKS:
-		return (map_size / 2) * (map_size / 2)
-
-	if chunk_id in QUARTER_MAP_CHUNKS:
-		return (map_size / 4) * (map_size / 4)
-
-	return DECODED_SIZES.get(chunk_id, -1)
+	return NativeSc2Form.decoded_size(chunk_id, map_size, large_version)
 
 
 func resize_empty_map(edge: int) -> bool:
