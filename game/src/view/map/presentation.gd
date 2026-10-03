@@ -122,6 +122,15 @@ func set_city_view(
 	if reset_center and map.city_source != null:
 		map.source_center = Vector2(map.city_source.size) * 0.5
 
+		# a smaller map can lack the fit level of the previous map. the zoom
+		# signal waits, because its map refresh can supply a new source
+		var furthest: float = map.camera.zoom_levels()[0]
+
+		if map.zoom_factor < furthest * 0.75:
+			map.zoom_factor = furthest
+			map.signs._invalidate_sign_entries()
+			map.zoom_changed.emit.call_deferred(map.camera.zoom_percent())
+
 	if map.pending_loaded_center.x >= 0:
 		map.camera.center_on_tile(map.pending_loaded_center)
 		map.pending_loaded_center = Vector2i(-1, -1)

@@ -281,7 +281,7 @@ func rotate_city(counter_clockwise: bool) -> void:
 
 func update_zoom_controls(percent: int) -> void:
 	if app.city_workspace != null and app.city_workspace.status_bar != null:
-		app.city_workspace.status_bar.set_zoom(percent)
+		app.city_workspace.status_bar.set_zoom(app.map_view.zoom_factor)
 
 	if app.zoom_in_button != null:
 		app.zoom_in_button.disabled = not app.map_view.can_zoom_in()

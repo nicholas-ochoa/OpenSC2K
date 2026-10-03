@@ -240,6 +240,7 @@ func refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 		changes_listed = ApplicationStaticRender.changed_source_rects(app.document_state.city, caches.region_cache.source_payloads,
 			sprites, view_size, changed)
 
+	caches.region_cache.fit_zoom = app.map_view.zoom_factor < CityMapConstants.ZOOM_LEVELS[0] * 0.75
 	caches.region_cache.configure(app.document_state.city, app.asset_state.palette_index_encoding, sprites, signature, view_size,
 		app.view_state.overlay_mode, app.view_state.surface_visibility, app.view_state.show_underground_pipes,
 		app.view_state.show_underground_subways, dirty, app.view_state.show_underground_water_mains, changed, changes_listed,

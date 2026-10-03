@@ -175,6 +175,10 @@ static func normalize_zoom_graphics(value: Variant, overview_size := 0) -> Array
 
 
 static func graphics_size_at_zoom(sizes: Array[int], zoom_percent: int, overview_size := 0) -> int:
+	# the fit levels of a large map draw tiles smaller than a screen pixel
+	if zoom_percent < 10:
+		return 0
+
 	# retain the six existing saved preferences and store overview separately
 	if zoom_percent <= 10:
 		return clampi(overview_size, 0, 2)

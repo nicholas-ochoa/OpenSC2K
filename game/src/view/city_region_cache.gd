@@ -11,6 +11,9 @@ const GPU_OFFSCREEN_LIMIT := 384
 const GPU_PREFETCH_LIMIT := 256
 const GPU_REGION_EDGE := 256
 const GPU_SMALL_REGION_EDGE := 128
+# the fit zoom levels of a large map show thousands of small regions. larger
+# regions build the whole map with less overhead and fewer repeated edge tiles
+const GPU_FIT_REGION_EDGE := 512
 const GPU_WORKERS := 2
 # chunks whose tile data the region renderers read
 const SOURCE_CHUNKS: Array[String] = ["ALTM", "XBLD", "XTER", "XZON", "XBIT", "XTXT", "XUND", "XTRF"]
@@ -19,6 +22,8 @@ const MAX_OCCLUDER_CHANGES := 32
 const MAX_PUBLISH_LOG := 512
 
 var region_edge := REGION_EDGE
+# set before `configure`: the view is below the first base zoom level
+var fit_zoom := false
 var gpu_enabled := gpu_supported()
 # Shared with CityRegionScheduling; each cache owns its worker lifetime.
 var gpu_workers: Array[RegionWorker] = []
@@ -100,7 +105,8 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 		show_pipes: bool, show_subways: bool, dirty := Rect2i(), show_water_mains := true,
 		changed: Array[Rect2i] = [], changes_listed := false, show_tunnels := true) -> void:
 	if (signature == new_signature and view_size == new_view and mode == new_mode and _snapshot != null and _show_pipes == show_pipes
-			and _show_subways == show_subways and _show_water_mains == show_water_mains and _show_tunnels == show_tunnels):
+			and _show_subways == show_subways and _show_water_mains == show_water_mains and _show_tunnels == show_tunnels
+			and region_edge == _wanted_region_edge(new_view)):
 		return
 
 	var reset := _needs_reset(
@@ -140,7 +146,7 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 				entry.generation = generation
 
 	if reset:
-		region_edge = (GPU_SMALL_REGION_EDGE if new_view == 0 else GPU_REGION_EDGE) if gpu_enabled else REGION_EDGE
+		region_edge = _wanted_region_edge(new_view)
 		_published_source = null
 		_edit_priority.clear()
 		_foreground_reset = true
@@ -214,7 +220,18 @@ func _needs_reset(
 		or _show_subways != show_subways
 		or _show_water_mains != show_water_mains
 		or _show_tunnels != show_tunnels
+		or region_edge != _wanted_region_edge(new_view)
 	)
+
+
+func _wanted_region_edge(view: int) -> int:
+	if not gpu_enabled:
+		return REGION_EDGE
+
+	if view != CityIsometricRenderer.VIEW_SMALL:
+		return GPU_REGION_EDGE
+
+	return GPU_FIT_REGION_EDGE if fit_zoom else GPU_SMALL_REGION_EDGE
 
 
 func update_viewport(source_rect: Rect2) -> void:

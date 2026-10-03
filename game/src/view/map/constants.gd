@@ -6,6 +6,9 @@ const Renderer = preload("res://src/view/city_isometric_renderer.gd")
 const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
 const ZOOM_LEVELS := [0.1, 0.25, 0.5, 1.0, 2.0, 3.0, 4.0]
 const DEFAULT_ZOOM_INDEX := 3
+# a large map adds levels below the first, each half the one above, until the
+# whole map fits the view
+const MAXIMUM_FIT_ZOOM_LEVELS := 4
 const WHEEL_ZOOM_DEBOUNCE_MSEC := 250
 # a continuing wheel gesture can delay the next wheel zoom by at most this much
 const WHEEL_ZOOM_MAX_DEBOUNCE_MSEC := 500

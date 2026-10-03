@@ -148,8 +148,10 @@ func clear_environment() -> void:
 	refresh_tooltips()
 
 
-func set_zoom(percent: int) -> void:
-	zoom_label.text = "Zoom: %d%%" % percent
+# the fit levels of a large map are below 10% and need a fraction
+func set_zoom(factor: float) -> void:
+	var percent := factor * 100.0
+	zoom_label.text = ("Zoom: %d%%" % roundi(percent)) if percent >= 10.0 else ("Zoom: %s%%" % String.num(percent, 3))
 	_sync_overflow_tooltip(zoom_label)
 
 
