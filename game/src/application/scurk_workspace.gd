@@ -1,6 +1,8 @@
 class_name ApplicationScurkWorkspace
 extends RefCounted
 
+@warning_ignore_start("integer_division")
+
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const ScurkTileSet = preload("res://src/assets/scurk_mif.gd")
 const ScurkPlace = preload("res://src/tools/scurk/scurk_place_command.gd")
@@ -37,6 +39,7 @@ func ensure_scurk_place_print() -> void:
 	app.scurk_place_print.undo_requested.connect(undo_scurk_place)
 	app.scurk_place_print.redo_requested.connect(_redo_scurk_place)
 	app.scurk_place_print.close_requested.connect(close_scurk_place_print)
+	app.scurk_place_print.flip_toggled.connect(func(_flipped: bool) -> void: app.map_view.queue_redraw())
 	app.desktop_presentation.place_print = app.scurk_place_print
 	app.scurk_city_export_dialog = preload("res://src/ui/shared/file_dialog_factory.gd").city_bitmap_save()
 	app.scurk_place_print.add_child(app.scurk_city_export_dialog)
@@ -139,6 +142,7 @@ func open_scurk_place_print() -> void:
 		names = app.asset_state.active_scurk_tile_set.names
 
 	app.scurk_place_print.configure(app.asset_state.palette, app.asset_state.large_sprites, names, app.asset_state.scurk_graphics)
+	app.scurk_state.ghost_textures.clear()
 
 	if app.tool_state.last_edit_command == null or not app.tool_state.last_edit_command.scurk_place_history:
 		app.scurk_state.edit_history.clear()
@@ -261,6 +265,83 @@ func apply_scurk_place_selection(point: Vector2i) -> void:
 	app.scurk_place_print.set_status(message)
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = message
+
+
+# the selected object at `tile` as the map draws it, for the translucent
+# placement preview. positions use the large view, as the static painter does
+func place_ghost(tile: Vector2i) -> CityDynamicVisual:
+	var city := app.document_state.city
+
+	if (city == null or app.scurk_place_print == null or not app.scurk_place_print.visible
+			or not app.scurk_place_print.is_object_mode() or city.index_of(tile.x, tile.y) < 0):
+		return null
+
+	var tile_id := app.scurk_place_print.selected_tile_id
+	var site := ScurkPlace.footprint(tile_id, tile)
+
+	if site.size.x == 0:
+		return null
+
+	var developed := tile_id >= BuildingTileIds.DEVELOPED_FIRST and tile_id <= BuildingTileIds.MAX_ID
+	# an odd compass rotation mirrors buildings, as the painter does
+	var flip: bool = app.scurk_place_print.flipped != (developed and city.compass_rotation() % 2 == 1)
+	var texture := _ghost_texture(tile_id, flip)
+
+	if texture == null:
+		return null
+
+	var size := texture.get_size()
+	var position := Vector2.ZERO
+
+	if tile_id > BuildingTileIds.MAX_ID:
+		# an artwork stamp hangs from the bottom corner of its tile
+		var anchor: Vector2 = CityIsometricRenderer.tile_polygon(city, tile.x, tile.y)[2]
+		position = anchor - Vector2(size.x / 2.0, size.y - 1)
+	else:
+		# the painter draws from the left tile of the footprint
+		var left := Vector2i(site.position.x, site.end.y - 1)
+		var offset := 0
+
+		if developed:
+			offset = int(size.x) / 4 - IsometricConstants.HALF_HEIGHT
+		elif city.terrain_id(left.x, left.y) == TerrainTileIds.RAISED:
+			offset = -IsometricConstants.ALTITUDE_STEP
+
+		var baseline := (IsometricConstants.TOP_MARGIN + (left.x + left.y) * IsometricConstants.HALF_HEIGHT
+			+ IsometricConstants.TILE_HEIGHT - city.object_altitude(left.x, left.y) * IsometricConstants.ALTITUDE_STEP + offset)
+		position = Vector2(
+			IsometricConstants.SIDE_MARGIN + (city.map_size + left.x - left.y) * IsometricConstants.HALF_WIDTH,
+			baseline - size.y
+		)
+
+	return CityDynamicVisual.new(texture, position)
+
+
+func _ghost_texture(tile_id: int, flip: bool) -> Texture2D:
+	var key := Vector2i(tile_id, int(flip))
+
+	if app.scurk_state.ghost_textures.has(key):
+		return app.scurk_state.ghost_textures[key]
+
+	var entry = app.asset_state.large_sprites.find_sprite(ScurkSpriteIds.LARGE_FIRST + tile_id)
+
+	if entry == null:
+		return null
+
+	var rendered := entry.create_image(app.asset_state.palette)
+
+	if not rendered.ok:
+		return null
+
+	var image: Image = rendered.image
+
+	if flip:
+		image.flip_x()
+
+	var texture := ImageTexture.create_from_image(image)
+	app.scurk_state.ghost_textures[key] = texture
+
+	return texture
 
 
 func undo_scurk_place() -> void:

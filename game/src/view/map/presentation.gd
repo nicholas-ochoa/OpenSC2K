@@ -1,6 +1,9 @@
 class_name CityMapPresentation
 extends CityMapConstants
 
+# the placement preview shows the object at half opacity
+const GHOST_COLOR := Color(1.0, 1.0, 1.0, 0.5)
+
 var map: CityMapControl
 var _effect_generation := 0
 # effect sequences that play now. each one advances on its own timer
@@ -64,6 +67,12 @@ func _draw_overlay() -> void:
 		or bool(map.placement_validator.call(map.selection_end if map.selection_end.x >= 0 else map.hover_tile)))
 
 	map.selection._draw_selection_preview(canvas, scale, offset, valid)
+
+	if map.placement_ghost_provider.is_valid() and map.edit_enabled and map.hover_tile.x >= 0:
+		var ghost: CityDynamicVisual = map.placement_ghost_provider.call(map.hover_tile)
+
+		if ghost != null:
+			canvas.draw_texture_rect(ghost.texture, Rect2(offset + ghost.position * scale, ghost.size * scale), false, GHOST_COLOR)
 
 	if map.selection.bulldozer_visible() and map.bulldozer_visual_provider.is_valid():
 		var visual: CityDynamicVisual = map.bulldozer_visual_provider.call(map.hover_tile, map.bulldozer_direction)

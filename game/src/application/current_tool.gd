@@ -238,6 +238,9 @@ func update_edit_state() -> void:
 			and not app.tool_state.landscape_editor and not (app.scurk_place_print != null and app.scurk_place_print.visible))
 	app.map_view.bulldozer_visual_provider = (app.moving_sprites.demolish_brush_visual
 		if app.view_state.overlay_mode == CityViewMode.Mode.CITY else Callable())
+	app.map_view.placement_ghost_provider = (app.scurk_workspace.place_ghost
+		if app.scurk_place_print != null and app.scurk_place_print.visible and app.scurk_place_print.is_object_mode()
+		else Callable())
 	app.city_toolbar.brush_controls.visible = app.tool_state.landscape_editor and app.map_view.landscape_brush and not level_brush
 
 	if level_brush:

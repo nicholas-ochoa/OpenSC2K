@@ -9,6 +9,7 @@ signal export_bmp_requested
 signal print_city_requested
 signal undo_requested
 signal redo_requested
+signal flip_toggled(flipped: bool)
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const Place = preload("res://src/tools/scurk/scurk_place_command.gd")
@@ -105,6 +106,7 @@ func _ready() -> void:
 	get_node("Panel/Margin/Content/WorkspaceRow/ModeSelector").item_selected.connect(_on_mode_selected)
 	get_node("Panel/Margin/Content/GroupRow/GroupSelector").item_selected.connect(_on_group_selected)
 	object_list.tile_chosen.connect(_on_object_selected)
+	flip_button.toggled.connect(_on_flip_toggled)
 	get_node("Panel/Margin/Content/PlaceEditToolList").item_selected.connect(_on_edit_tool_selected)
 	get_node("Panel/Margin/Content/PlaceEditToolList").item_activated.connect(_on_edit_tool_selected)
 	export_bmp_button.pressed.connect(export_bmp_requested.emit)
@@ -434,9 +436,17 @@ func _object_name(tile_id: int) -> String:
 	return ScurkEditorRules.tile_name(tile_id, custom_names)
 
 
+# the list shows the objects as Flip places them
+func _on_flip_toggled(value: bool) -> void:
+	_refresh_objects()
+	flip_toggled.emit(value)
+
+
 func _object_icon(tile_id: int) -> Texture2D:
-	if icon_cache.has(tile_id):
-		return icon_cache[tile_id]
+	var key := Vector2i(tile_id, int(flipped))
+
+	if icon_cache.has(key):
+		return icon_cache[key]
 
 	var entry = sprites.find_sprite(ScurkSpriteIds.LARGE_FIRST + tile_id)
 
@@ -449,6 +459,10 @@ func _object_icon(tile_id: int) -> Texture2D:
 		return null
 
 	var image: Image = rendered.image.duplicate()
+
+	if flipped:
+		image.flip_x()
+
 	var scale := minf(
 		1.0,
 		minf(
@@ -465,7 +479,7 @@ func _object_icon(tile_id: int) -> Texture2D:
 		)
 
 	var texture := PixelArtTexture.wrap(ImageTexture.create_from_image(image))
-	icon_cache[tile_id] = texture
+	icon_cache[key] = texture
 
 	return texture
 

@@ -129,6 +129,8 @@ var repeat_placement := false
 var landscape_brush := false
 var demolish_brush := false
 var bulldozer_visual_provider := Callable()
+# a translucent preview of the object that a click at a tile places
+var placement_ghost_provider := Callable()
 var bulldozer_direction := 0
 var brush_box_selection := false
 var brush_size := 1
