@@ -9,6 +9,7 @@ use godot::prelude::*;
 use super::convert;
 use super::ops::Outcome;
 use crate::sim::city::{CHUNK_IDS, City};
+use crate::sim::effect_sampling;
 use crate::sim::geom::Vec2i;
 use crate::sim::random::Randoms;
 use crate::sim::tools::commands::building::{self, Placement};
@@ -111,15 +112,22 @@ pub fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut R
                 zone::preview(city, &tool, &request).to_value()
             }
         }
-        "tool.demolish" => demolish::apply(
-            city,
-            &tool,
-            &convert::points(args, "points"),
-            &mut randoms.random,
-            convert::boolean(args, "underground_view", false),
-            convert::boolean(args, "scurk_mode", false),
-        )
-        .to_value(),
+        "tool.demolish" => {
+            let mut result = demolish::apply(
+                city,
+                &tool,
+                &convert::points(args, "points"),
+                &mut randoms.random,
+                convert::boolean(args, "underground_view", false),
+                convert::boolean(args, "scurk_mode", false),
+            );
+
+            // the view shows the dust of only a spread of tiles near it
+            let effects = std::mem::take(&mut result.base.effect_events);
+            let tile_limit = convert::int(args, "effect_tile_limit", 0).max(0) as usize;
+            result.base.effect_events = effect_sampling::sample(effects, convert::rect(args, "effect_window"), tile_limit);
+            result.to_value()
+        }
         "tool.terrain" => {
             let points = convert::points(args, "points");
             let path = TerrainPath {

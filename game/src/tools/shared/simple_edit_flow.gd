@@ -21,7 +21,9 @@ static func apply_supported(
 	path: Array[Vector2i],
 	random: SimRandom,
 	underground: bool,
-	free_mode: bool
+	free_mode: bool,
+	effect_window := Rect2i(),
+	effect_tile_limit := 0
 ) -> Result:
 	var command: EditCommandResult
 
@@ -40,7 +42,9 @@ static func apply_supported(
 			path,
 			random,
 			underground,
-			free_mode
+			free_mode,
+			effect_window,
+			effect_tile_limit
 		)
 
 		return _result("demolish", command, group_index, subtool_index, free_mode)

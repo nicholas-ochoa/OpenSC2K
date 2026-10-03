@@ -8,6 +8,7 @@ pub mod data_maps;
 pub mod disasters;
 pub mod economy;
 pub mod effect_packing;
+pub mod effect_sampling;
 pub mod engine;
 pub mod events;
 pub mod facility_sites;

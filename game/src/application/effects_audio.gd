@@ -161,6 +161,15 @@ func show_effect_events(effect_events: Array[EffectEvent], sound_events: Array[S
 	play_sound_events(sound_events, simulation)
 
 
+# the tiles near the view whose effects can show. a demolition passes it to
+# the native library, which then returns the effects of only these tiles
+func effect_tile_window() -> Rect2i:
+	if document_state.city == null:
+		return Rect2i()
+
+	return CityDebugTileLayer.visible_window(map_view.visible_tile_outline(), document_state.city.map_size, EFFECT_TILE_MARGIN)
+
+
 # the tile effects near the view, from an even spread of at most
 # EFFECT_TILE_LIMIT tiles. effects without a tile, such as an earthquake or a
 # launch, stay
@@ -168,7 +177,7 @@ func _sampled_effect_events(events: Array[EffectEvent]) -> Array[EffectEvent]:
 	if events.size() <= EFFECT_TILE_LIMIT:
 		return events
 
-	var window := CityDebugTileLayer.visible_window(map_view.visible_tile_outline(), document_state.city.map_size, EFFECT_TILE_MARGIN)
+	var window := effect_tile_window()
 	var tiles: Dictionary[Vector2i, bool] = {}
 
 	for event in events:

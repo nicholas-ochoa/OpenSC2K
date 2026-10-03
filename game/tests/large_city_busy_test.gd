@@ -46,6 +46,33 @@ func _run() -> void:
 	assert(FileAccess.file_exists(output) and main.document_state.current_save_path == output)
 	DirAccess.remove_absolute(output)
 
+	# the native demolition returns the dust of a spread of tiles, and its
+	# random draws and changes stay the same
+	var commands: Array[DemolishEditResult] = []
+	var randoms: Array[int] = []
+
+	for limit in [0, 64]:
+		var copy := CityState.from_document(main.document_state.current_document.duplicate_document(true))
+		var random := SimRandom.new(777)
+		var area: Array[Vector2i] = []
+
+		for x in range(100, 300):
+			for y in range(100, 300):
+				area.append(Vector2i(x, y))
+
+		commands.append(DemolishCommand.apply_path(copy, 0, 0, area, random, false, false, Rect2i(0, 0, 512, 512), limit))
+		randoms.append(random.state)
+
+	var dust_tiles := {}
+
+	for event in commands[1].effect_events:
+		dust_tiles[event.point] = true
+
+	assert(commands[0].ok and commands[1].ok and randoms[0] == randoms[1])
+	assert(commands[0].tile_indices == commands[1].tile_indices and commands[0].cost == commands[1].cost)
+	assert(commands[0].effect_events.size() > commands[1].effect_events.size())
+	assert(dust_tiles.size() > 0 and dust_tiles.size() <= 64)
+
 	# one tile effect for each tile of a large area
 	var effects: Array[EffectEvent] = []
 

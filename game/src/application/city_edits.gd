@@ -343,7 +343,9 @@ func _apply_simple_edit(
 		path,
 		app.tool_state.tool_random,
 		app.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND,
-		scurk_tool_mode or app.tool_state.landscape_editor
+		scurk_tool_mode or app.tool_state.landscape_editor,
+		app.effects_audio.effect_tile_window(),
+		ApplicationEffectsAudio.EFFECT_TILE_LIMIT
 	)
 
 	if not simple_edit.handled:
