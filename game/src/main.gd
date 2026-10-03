@@ -58,6 +58,8 @@ var zoom_out_button: Button
 var rotate_counter_clockwise_button: Button
 var rotate_clockwise_button: Button
 var main_menu: MainMenuControl
+# hover and the mouse wheel go to the window under the cursor
+var hover_focus: HoverFocusRouter
 var scurk_editor: ScurkEditorControl
 var desktop_presentation: CityDesktopPresentation
 var scurk_place_print: ScurkPlacePrintControl
@@ -102,6 +104,9 @@ func _ready() -> void:
 	add_child(preload("res://src/ui/shared/file_dialog_history.gd").new())
 	add_child(WindowPixelFit.new())
 	add_child(AppTooltips.new())
+	hover_focus = HoverFocusRouter.new()
+	add_child(hover_focus)
+	hover_focus.attach(get_window())
 	get_tree().auto_accept_quit = false
 
 	if asset_state.reference_root.is_empty():
