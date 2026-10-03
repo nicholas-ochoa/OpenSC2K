@@ -91,9 +91,10 @@ impl Builder {
         rect
     }
 
-    fn evict(&mut self) {
+    /// Whether the cache has room for one more tile after the eviction.
+    fn evict(&mut self) -> bool {
         if self.tiles.len() < TILE_LIMIT {
-            return;
+            return true;
         }
 
         // Remove about one eighth of the cache at once. Tiles of the current
@@ -102,6 +103,7 @@ impl Builder {
         let (_, cutoff, _) = stamps.select_nth_unstable(TILE_LIMIT / 8);
         let cutoff = (*cutoff).min(self.stamp - 1);
         self.tiles.retain(|_, tile| tile.used > cutoff);
+        self.tiles.len() < TILE_LIMIT
     }
 
     /// The uncut draws that meet `bounds`, in painter order. Tiles are cached.
@@ -117,6 +119,10 @@ impl Builder {
         let last = ceil(bounds.y + bounds.h - c.top() + top, c.hh()).min(2 * (self.city.edge - 1));
         let diff_first = floor(bounds.x - origin - width - c.hw() * 2 - 1, c.hw());
         let diff_last = ceil(bounds.x + bounds.w - origin + width, c.hw());
+
+        // A region with more tiles than the limit fills the cache. Its other
+        // tiles are not cached, so each tile does not scan the full cache again.
+        let mut cache_full = false;
 
         for diagonal in first..=last {
             let first_y = 0.max(diagonal - self.city.edge + 1).max(ceil(diagonal - diff_last, 2));
@@ -142,7 +148,13 @@ impl Builder {
                         continue;
                     }
 
-                    self.evict();
+                    cache_full = cache_full || !self.evict();
+
+                    if cache_full {
+                        out.extend(draws.into_iter().filter(|d| d.rect.clip(bounds).area()));
+                        continue;
+                    }
+
                     self.tiles.insert(
                         i,
                         Tile {

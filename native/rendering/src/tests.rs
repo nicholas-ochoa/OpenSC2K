@@ -294,6 +294,18 @@ fn known_bounds_skip_outside_tiles_and_eviction_keeps_recent_tiles() {
 }
 
 #[test]
+fn a_region_larger_than_the_cache_paints_its_uncached_tiles() {
+    let mut b = fixture(300, 0);
+    let bounds = Rect::new(0, 0, (64 + 300 * 32) / 4, (896 + 300 * 16) / 4);
+    let first = b.collect(bounds).unwrap();
+    assert!(b.builds as usize > region::TILE_LIMIT);
+    assert_eq!(b.cached_tiles(), region::TILE_LIMIT);
+    let second = b.collect(bounds).unwrap();
+    assert_eq!(first.len(), second.len());
+    assert!(first.iter().zip(&second).all(|(a, b)| a.rect == b.rect && a.sprite == b.sprite));
+}
+
+#[test]
 fn edits_invalidate_neighbors_and_traffic_bands_only() {
     let mut b = fixture(128, 2);
     b.city.traffic = vec![0; 32 * 32];

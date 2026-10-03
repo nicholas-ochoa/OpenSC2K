@@ -72,6 +72,7 @@ func _generate_new_city_preview(advance_seed: bool) -> bool:
 	app.new_city_state.preview_job.revision = app.city_dialogs.new_city_dialog.generation_revision
 	app.new_city_state.preview_job.view_size = NewCityPreviewJob.preview_view_size(
 		app.city_dialogs.new_city_dialog.size_input.get_selected_id(), app.city_dialogs.new_city_dialog.size)
+	app.new_city_state.preview_job.maximum_size = NewCityPreviewJob.preview_maximum_size(app.city_dialogs.new_city_dialog.size)
 
 	var preview_sprites := (app.asset_state.large_sprites if app.new_city_state.preview_job.view_size == IsometricRenderer.VIEW_LARGE
 			else app.asset_state.small_medium_sprites)
