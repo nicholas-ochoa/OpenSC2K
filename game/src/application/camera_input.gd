@@ -232,7 +232,7 @@ func _tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
 
 func refresh_child_tool_icons() -> void:
 	if app.city_toolbar != null:
-		app.city_toolbar.refresh_child_tool_icons(app.tool_state.selected_group, tool_button_icon)
+		app.city_toolbar.refresh_child_tool_icons(tool_button_icon)
 
 
 func zoom_in() -> void:

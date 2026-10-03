@@ -533,6 +533,10 @@ static func _draw_artwork_stamps(output: Image, city: CityState, palette: Sc2Pal
 			continue
 
 		var image: Image = rendered.image
+
+		if stamp.flipped:
+			image.flip_x()
+
 		var anchor := Renderer.tile_polygon(city, stamp.point.x, stamp.point.y)[2] / float(configuration.divisor)
 		var origin := Vector2i(anchor) - Vector2i(image.get_width() / 2, image.get_height() - 1)
 

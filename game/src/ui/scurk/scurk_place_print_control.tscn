@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://src/ui/scurk/scurk_place_print_control.gd" id="1_wk7rl"]
+[ext_resource type="Script" path="res://src/ui/scurk/scurk_place_object_list.gd" id="2_objlist"]
 
 [node name="SCURKPlacePrint" type="Window"]
 title = "SCURK Place & Print"
@@ -126,15 +127,24 @@ popup/item_8/id = 8
 popup/item_9/text = "Special"
 popup/item_9/id = 9
 
-[node name="PlaceObjectList" type="ItemList" parent="Panel/Margin/Content"]
+[node name="FlipRow" type="HBoxContainer" parent="Panel/Margin/Content"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="OrientationLabel" type="Label" parent="Panel/Margin/Content/FlipRow"]
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+text = "Orientation"
+
+[node name="FlipButton" type="CheckButton" parent="Panel/Margin/Content/FlipRow"]
+layout_mode = 2
+tooltip_text = "Place the object as a mirror image."
+text = "Flip"
+
+[node name="PlaceObjectList" type="Tree" parent="Panel/Margin/Content"]
 layout_mode = 2
 size_flags_vertical = 3
-allow_reselect = true
-max_columns = 3
-same_column_width = true
-fixed_column_width = 124
-icon_mode = 0
-fixed_icon_size = Vector2i(64, 64)
+script = ExtResource("2_objlist")
 
 [node name="PlaceEditToolList" type="ItemList" parent="Panel/Margin/Content"]
 visible = false

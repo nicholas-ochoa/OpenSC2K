@@ -31,7 +31,9 @@ gd_edit_result! {
     }
 }
 
-/// ScurkPlaceCommand.apply for a tile of the building table.
+/// ScurkPlaceCommand.apply for a tile of the building table. A flipped object
+/// sets the XBIT flip flag on each tile, so the painter mirrors its sprite. The
+/// lower flag bits stay otherwise.
 pub fn apply(
     city: &mut City,
     tile: i64,
@@ -39,6 +41,7 @@ pub fn apply(
     random: &mut SimRandom,
     selected_zone: i64,
     australian_locale: bool,
+    flipped: bool,
 ) -> ScurkPlaceResult {
     let edge = city.map_size;
     let area = building_area(tile);
@@ -90,6 +93,10 @@ pub fn apply(
 
     if tile < tiles::DEVELOPED_FIRST {
         placed_flags = if tile >= tiles::POWER_LINE_FIRST { flag_bits::POWERABLE } else { 0 };
+    }
+
+    if flipped {
+        placed_flags |= flag_bits::FLIPPED;
     }
 
     let mut tile_indices = Vec::new();
@@ -259,5 +266,26 @@ pub fn zone_for_tile(tile: i64, zones: &[u8], site: Rect2i, selected_zone: i64, 
         zone::SEAPORT
     } else {
         zone::NONE
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sim::testing::{empty_full_resolution_city, sequence_random};
+
+    /// A flipped object sets the flip flag on its tiles. An object that is not
+    /// flipped leaves the flag off.
+    #[test]
+    fn placement_sets_the_flip_flag_of_a_flipped_object() {
+        let edge = 128;
+        let mut city = empty_full_resolution_city(edge);
+
+        for (point, flipped) in [(Vec2i::new(10, 10), true), (Vec2i::new(20, 20), false)] {
+            let result = apply(&mut city, tiles::SMALL_PARK, point, &mut sequence_random(&[0]), 0, false, flipped);
+            assert!(result.base.ok, "{}", result.base.error);
+            let flags = city.xbit.data[(point.x * edge + point.y) as usize] as i64;
+            assert_eq!(flags & flag_bits::FLIPPED != 0, flipped);
+        }
     }
 }

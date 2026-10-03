@@ -419,6 +419,9 @@ func refresh_scurk_artwork() -> void:
 			if not rendered.ok:
 				continue
 
+			if stamp.flipped:
+				rendered.image.flip_x()
+
 			var texture := ImageTexture.create_from_image(rendered.image)
 			var anchor: Vector2 = CityIsometricRenderer.tile_polygon(app.document_state.city, stamp.point.x, stamp.point.y)[2]
 			app.map_view.scurk_stamp_visuals.append(CityDynamicVisual.new(texture,

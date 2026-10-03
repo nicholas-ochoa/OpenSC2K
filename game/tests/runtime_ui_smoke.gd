@@ -546,7 +546,7 @@ func _test_scurk_print(main: CityApplication) -> ScurkPlacePrintControl:
 		quit(2)
 
 		return null
-	var place_list: ItemList = place_print.object_list
+	var place_list: ScurkPlaceObjectList = place_print.object_list
 
 	if (
 		not place_print.visible

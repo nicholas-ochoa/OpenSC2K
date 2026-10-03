@@ -124,6 +124,9 @@ func open_scurk_place_print() -> void:
 	ensure_scurk_place_print()
 	app.interface.hide_main_menu()
 
+	if not app.scurk_place_print.visible:
+		app.scurk_state.tool_before_place_print = Vector2i(app.tool_state.selected_group, app.tool_state.selected_subtool)
+
 	if app.scurk_editor != null and app.scurk_editor.visible:
 		app.scurk_editor.hide()
 
@@ -159,6 +162,14 @@ func close_scurk_place_print() -> void:
 
 	if app.scurk_print != null:
 		app.scurk_print.hide()
+
+	# the edit tools change the selected tool. give the sidebar its tool back
+	var before := app.scurk_state.tool_before_place_print
+	app.scurk_state.tool_before_place_print = Vector2i(-1, -1)
+
+	if before.x >= 0:
+		app.current_tool.select_tool_group(before.x)
+		app.current_tool.select_subtool(before.y)
 
 	app.current_tool.update_edit_state()
 
@@ -229,7 +240,9 @@ func apply_scurk_place_selection(point: Vector2i) -> void:
 		tile_id,
 		point,
 		app.tool_state.tool_random,
-		app.scurk_place_print.selected_zone_id()
+		app.scurk_place_print.selected_zone_id(),
+		false,
+		app.scurk_place_print.flipped
 	)
 
 	if not result.ok:

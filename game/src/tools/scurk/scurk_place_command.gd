@@ -43,7 +43,8 @@ static func apply(
 	selected: Vector2i,
 	process_random: SimRandom,
 	selected_zone := 0,
-	australian_locale := false
+	australian_locale := false,
+	flipped := false
 ) -> EditCommandResult:
 	var map_edge: int = city.map_size if city != null else 128
 
@@ -65,7 +66,7 @@ static func apply(
 		artwork.command_type = "scurk_artwork"
 		artwork.scurk_place_history = true
 		artwork.old_stamps = ScurkArtworkStamp.copy_all(city.scurk_artwork_stamps)
-		city.scurk_artwork_stamps.append(ScurkArtworkStamp.new(tile_id, selected))
+		city.scurk_artwork_stamps.append(ScurkArtworkStamp.new(tile_id, selected, flipped))
 		artwork.new_stamps = ScurkArtworkStamp.copy_all(city.scurk_artwork_stamps)
 
 		return artwork
@@ -75,6 +76,7 @@ static func apply(
 		"point": selected,
 		"selected_zone": selected_zone,
 		"australian_locale": australian_locale,
+		"flipped": flipped,
 	}
 	var result: ScurkPlaceResult = NativeToolEdit.run("tool.scurk_place", city, args, PAYLOAD_IDS, process_random)
 

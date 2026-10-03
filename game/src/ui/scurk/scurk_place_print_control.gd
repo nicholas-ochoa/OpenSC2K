@@ -72,7 +72,13 @@ var group_row: HBoxContainer
 var group_selector: OptionButton
 var zone_row: HBoxContainer
 var zone_selector: OptionButton
-var object_list: ItemList
+var object_list: ScurkPlaceObjectList
+var flip_row: HBoxContainer
+var flip_button: CheckButton
+# place the selected object as a mirror image
+var flipped: bool:
+	get:
+		return flip_button != null and flip_button.button_pressed
 var tool_list: ItemList
 var selection_label: Label
 var export_bmp_button: Button
@@ -89,6 +95,8 @@ func _ready() -> void:
 	zone_row = get_node("Panel/Margin/Content/ZoneRow")
 	zone_selector = get_node("Panel/Margin/Content/ZoneRow/ZoneSelector")
 	object_list = get_node("Panel/Margin/Content/PlaceObjectList")
+	flip_row = get_node("Panel/Margin/Content/FlipRow")
+	flip_button = get_node("Panel/Margin/Content/FlipRow/FlipButton")
 	tool_list = get_node("Panel/Margin/Content/PlaceEditToolList")
 	selection_label = get_node("Panel/Margin/Content/SelectionLabel")
 	export_bmp_button = get_node("Panel/Margin/Content/OutputActions/ExportBmpButton")
@@ -96,8 +104,7 @@ func _ready() -> void:
 	redo_button = get_node("Panel/Margin/Content/HistoryActions/RedoButton")
 	get_node("Panel/Margin/Content/WorkspaceRow/ModeSelector").item_selected.connect(_on_mode_selected)
 	get_node("Panel/Margin/Content/GroupRow/GroupSelector").item_selected.connect(_on_group_selected)
-	get_node("Panel/Margin/Content/PlaceObjectList").item_selected.connect(_on_object_selected)
-	get_node("Panel/Margin/Content/PlaceObjectList").item_activated.connect(_on_object_selected)
+	object_list.tile_chosen.connect(_on_object_selected)
 	get_node("Panel/Margin/Content/PlaceEditToolList").item_selected.connect(_on_edit_tool_selected)
 	get_node("Panel/Margin/Content/PlaceEditToolList").item_activated.connect(_on_edit_tool_selected)
 	export_bmp_button.pressed.connect(export_bmp_requested.emit)
@@ -299,7 +306,7 @@ func _on_object_selected(index: int) -> void:
 	if index < 0 or index >= object_list.item_count:
 		return
 
-	selected_tile_id = int(object_list.get_item_metadata(index))
+	selected_tile_id = object_list.tile_id_at(index)
 	_update_selection_label()
 	tile_selected.emit(selected_tile_id)
 
@@ -317,7 +324,7 @@ func _refresh_objects() -> void:
 	if object_list == null:
 		return
 
-	object_list.clear()
+	object_list.clear_tiles()
 
 	if sprites == null or not sprites.is_valid():
 		return
@@ -329,14 +336,9 @@ func _refresh_objects() -> void:
 			continue
 
 		var tile_id := ScurkEditorRules.object_tile_id(large_id)
-		var label := "%03d\n%s" % [tile_id, _object_name(tile_id)]
-		var item_index := object_list.add_item(label, _object_icon(tile_id))
-		object_list.set_item_metadata(item_index, tile_id)
-		object_list.set_item_tooltip(
-			item_index,
-			"%s\nTile %d; large sprite %d" % [
-				_object_name(tile_id), tile_id, large_id,
-			]
+		var item_index := object_list.add_tile(
+			tile_id, _object_name(tile_id), ScurkEditorRules.sprite_role(tile_id), _object_icon(tile_id),
+			"%s\nTile %d; large sprite %d" % [_object_name(tile_id), tile_id, large_id]
 		)
 
 		if tile_id == selected_tile_id:
@@ -344,11 +346,10 @@ func _refresh_objects() -> void:
 
 	if selected_index < 0 and object_list.item_count > 0:
 		selected_index = 0
-		selected_tile_id = int(object_list.get_item_metadata(0))
+		selected_tile_id = object_list.tile_id_at(0)
 
 	if selected_index >= 0:
-		object_list.select(selected_index)
-		object_list.ensure_current_is_visible()
+		object_list.select_index(selected_index)
 
 	_update_selection_label()
 
@@ -397,6 +398,9 @@ func _sync_mode_controls() -> void:
 	if zone_row != null:
 		zone_row.visible = objects_visible
 
+	if flip_row != null:
+		flip_row.visible = objects_visible
+
 	if object_list != null:
 		object_list.visible = objects_visible
 
@@ -427,27 +431,7 @@ func _emit_edit_tool() -> void:
 
 
 func _object_name(tile_id: int) -> String:
-	var custom_name := String(custom_names.get(tile_id, "")).strip_edges()
-
-	if not custom_name.is_empty():
-		return custom_name
-
-	if tile_id >= Tiles.DEVELOPED_FIRST and tile_id <= Tiles.DEVELOPED_3X3_LAST:
-		return "Residential, Commercial, or Industrial"
-
-	if tile_id >= Tiles.HYDRO_POWER_1 and tile_id <= Tiles.COAL_POWER:
-		return "Power Plant"
-
-	if tile_id >= Tiles.CITY_HALL and tile_id <= Tiles.PIER:
-		return "City Service"
-
-	if tile_id >= Tiles.CRANE and tile_id <= Tiles.DESALINIZATION:
-		return "City Infrastructure"
-
-	if tile_id <= Tiles.SMALL_PARK:
-		return "Landscape Object"
-
-	return ScurkEditorRules.sprite_role(tile_id)
+	return ScurkEditorRules.tile_name(tile_id, custom_names)
 
 
 func _object_icon(tile_id: int) -> Texture2D:

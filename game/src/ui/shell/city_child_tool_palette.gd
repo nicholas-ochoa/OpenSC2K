@@ -11,6 +11,8 @@ var heading: Label
 var scroll: ScrollContainer
 var grid: GridContainer
 var buttons: Dictionary = {}
+# the group whose tools the buttons show, or -1
+var shown_group := -1
 
 
 func _ready() -> void:
@@ -52,6 +54,7 @@ func show_tool_group(
 		return 0
 
 	_clear_buttons()
+	shown_group = group_index
 	scroll.scroll_vertical = 0
 	scroll.set_deferred("scroll_vertical", 0)
 	var visible_group := group_index < CityToolIds.Group.SIGNS or group_index == CityToolIds.Group.QUERY
@@ -117,14 +120,16 @@ func sync_selection(subtool_index: int) -> void:
 		button.button_pressed = int(button_subtool) == displayed_subtool
 
 
-func refresh_icons(group_index: int, icon_provider: Callable) -> void:
-	if not icon_provider.is_valid():
+# the buttons keep the icons of the group they show. a scurk edit tool can
+# select another group without a new palette
+func refresh_icons(icon_provider: Callable) -> void:
+	if not icon_provider.is_valid() or shown_group < 0:
 		return
 
 	for subtool_index in buttons:
 		var button: Button = buttons[subtool_index]
 		button.theme_type_variation = "ArtworkButton"
-		button.icon = icon_provider.call(group_index, int(subtool_index))
+		button.icon = icon_provider.call(shown_group, int(subtool_index))
 
 
 func refresh_availability(
@@ -140,7 +145,7 @@ func refresh_availability(
 
 	for subtool_index in buttons:
 		var available := free_landscape or ToolAvailability.is_available(
-			city, group_index, int(subtool_index)
+			city, shown_group, int(subtool_index)
 		)
 		var button: Button = buttons[subtool_index]
 
@@ -149,7 +154,7 @@ func refresh_availability(
 			changed = true
 
 		button.tooltip_text = tool_button_tooltip(
-			group_index, int(subtool_index), available
+			shown_group, int(subtool_index), available
 		)
 
 	var selected_available := free_landscape or ToolAvailability.is_available(

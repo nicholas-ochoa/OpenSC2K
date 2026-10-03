@@ -156,6 +156,7 @@ pub fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut R
             &mut randoms.random,
             convert::int(args, "selected_zone", 0),
             convert::boolean(args, "australian_locale", false),
+            convert::boolean(args, "flipped", false),
         )
         .to_value(),
         "tool.facility_repair" => facility_repair::apply(city).to_value(),

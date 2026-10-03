@@ -252,10 +252,8 @@ func sync_child_tool_selection(group_index: int, subtool_index: int) -> void:
 		landscape_buttons[key].set_pressed_no_signal(key == Vector2i(group_index, subtool_index))
 
 
-func refresh_child_tool_icons(
-	group_index: int, icon_provider: Callable
-) -> void:
-	child_palette.refresh_icons(group_index, icon_provider)
+func refresh_child_tool_icons(icon_provider: Callable) -> void:
+	child_palette.refresh_icons(icon_provider)
 
 
 func refresh_tool_availability(

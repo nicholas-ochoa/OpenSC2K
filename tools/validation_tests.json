@@ -62,6 +62,12 @@
     "lane": "product"
   },
   {
+    "id": "place_print_input_test",
+    "script": "tests/place_print_input_test.gd",
+    "domain": "ui",
+    "lane": "product"
+  },
+  {
     "id": "facility_metadata_test",
     "script": "tests/facility_metadata_test.gd",
     "domain": "tools",
