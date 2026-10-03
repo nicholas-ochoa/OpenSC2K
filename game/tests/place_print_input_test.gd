@@ -113,24 +113,29 @@ func _hover_focus() -> void:
 	assert(not dialog.has_focus())
 	assert(not dialog.unfocusable, "A released dialog can take the focus again")
 
+	# a stretched window gives pixels at twice the viewport scale
+	assert(HoverFocusRouter.viewport_point(Vector2(1000, 400), Transform2D.IDENTITY.scaled(Vector2(2, 2)))
+		== Vector2(500, 200))
+
 	menu.free()
 	dialog.free()
 	router.free()
 	main_area.free()
 
 
-static func _motion(point: Vector2) -> InputEventMouseMotion:
+# the router reads window pixels, as the root window gives them
+func _motion(point: Vector2) -> InputEventMouseMotion:
 	var event := InputEventMouseMotion.new()
-	event.position = point
+	event.position = root.get_final_transform() * point
 
 	return event
 
 
-static func _wheel(point: Vector2) -> InputEventMouseButton:
+func _wheel(point: Vector2) -> InputEventMouseButton:
 	var event := InputEventMouseButton.new()
 	event.button_index = MOUSE_BUTTON_WHEEL_UP
 	event.pressed = true
 	event.factor = 1.0
-	event.position = point
+	event.position = root.get_final_transform() * point
 
 	return event

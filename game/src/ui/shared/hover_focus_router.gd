@@ -27,7 +27,8 @@ func attach(value: Window) -> void:
 		_on_node_added(window)
 
 
-# route one event of the root window. tests call this before push_input
+# route one event of the root window. tests call this before push_input. the
+# signal gives window pixels; the windows use the stretched viewport space
 func route(event: InputEvent) -> void:
 	var point := Vector2.ZERO
 
@@ -44,7 +45,7 @@ func route(event: InputEvent) -> void:
 	if root == null or not root.gui_embed_subwindows or _has_blocking_window():
 		return
 
-	var target := window_at(point)
+	var target := window_at(viewport_point(point, root.get_final_transform()))
 	var focused := focused_window()
 
 	if target == focused:
@@ -57,6 +58,11 @@ func route(event: InputEvent) -> void:
 		target.grab_focus()
 	elif focused != null:
 		release_focus(focused)
+
+
+# a window pixel in the viewport space, as Viewport.push_input converts it
+static func viewport_point(point: Vector2, final_transform: Transform2D) -> Vector2:
+	return final_transform.affine_inverse() * point
 
 
 # the topmost managed window whose frame contains `point`, or null
