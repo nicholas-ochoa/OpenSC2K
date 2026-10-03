@@ -182,6 +182,10 @@ static func apply_written(city: CityState, written: Dictionary, order := PackedS
 static func decode(value: Variant) -> Variant:
 	if value is Dictionary:
 		if value.has("__class"):
+			# a large demolition returns an effect for each tile
+			if value["__class"] == "EffectEvent":
+				return _effect_event(value)
+
 			return _object(value)
 
 		var result := {}
@@ -200,6 +204,18 @@ static func decode(value: Variant) -> Variant:
 		return result
 
 	return value
+
+
+# the native library sends every field of an effect event
+static func _effect_event(fields: Dictionary) -> EffectEvent:
+	var event := EffectEvent.new(fields.point, fields.sprite_id, fields.screen_offset, fields.flip, fields.frame, fields.altitude)
+	event.type = fields.type
+	event.frames = fields.frames
+	event.frame_msec = fields.frame_msec
+	event.distance = fields.distance
+	event.depth_point = fields.depth_point
+
+	return event
 
 
 static func _object(fields: Dictionary) -> Object:

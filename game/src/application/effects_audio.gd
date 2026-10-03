@@ -8,6 +8,16 @@ extends RefCounted
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const ToolSounds = preload("res://src/audio/tool_sound_rules.gd")
 const EFFECT_CACHE_LIMIT := 2048
+# one call shows at most this many effect sprites. a large demolition makes one
+# dust cloud for each tile, and each masked cloud needs its own texture
+const EFFECT_VISUAL_LIMIT := 1024
+# a large edit shows the effects of an even spread of at most this many tiles
+const EFFECT_TILE_LIMIT := 512
+# tiles around the view where an effect can start. tall sprites and altitude
+# move an effect away from its tile
+const EFFECT_TILE_MARGIN := 48
+# large view pixels around the view where an effect can start
+const EFFECT_VIEW_MARGIN := 256.0
 # large view pixels above a launching arcology that a structure in front can reach
 const LAUNCH_MASK_REACH := 320
 # draw layers at one depth: a launching arcology, then fire, then dust and smoke
@@ -104,7 +114,7 @@ func show_effect_events(effect_events: Array[EffectEvent], sound_events: Array[S
 	if document_state.city == null:
 		return
 
-	effect_events = CityEffectTiming.expand_launch_fires(CityEffectTiming.parallel_dust_events(effect_events))
+	effect_events = CityEffectTiming.expand_launch_fires(CityEffectTiming.parallel_dust_events(_sampled_effect_events(effect_events)))
 	var visuals: Array[CityTransientEffectVisual] = []
 
 	for effect in effect_events:
@@ -119,12 +129,13 @@ func show_effect_events(effect_events: Array[EffectEvent], sound_events: Array[S
 		var view_size: int = current_view_size.call()
 		var sprite_archive: Sc2SpriteArchive = sprites_for_view.call(view_size)
 
-		if _effect_textures.size() > EFFECT_CACHE_LIMIT:
-			_effect_textures.clear()
-
 		var launches: Array[CityTransientEffectVisual] = []
+		var shown := map_view.visible_source_rect().grow(EFFECT_VIEW_MARGIN)
 
 		for effect in effect_events:
+			if _effect_textures.size() > EFFECT_CACHE_LIMIT:
+				_effect_textures.clear()
+
 			if effect.type == "earthquake":
 				continue
 
@@ -132,7 +143,10 @@ func show_effect_events(effect_events: Array[EffectEvent], sound_events: Array[S
 				launches.append_array(_launch_visuals(effect, view_size, sprite_archive))
 				continue
 
-			var visual := _effect_visual(effect, view_size, sprite_archive)
+			if visuals.size() >= EFFECT_VISUAL_LIMIT:
+				continue
+
+			var visual := _effect_visual(effect, view_size, sprite_archive, shown)
 
 			if visual != null:
 				visuals.append(visual)
@@ -147,9 +161,43 @@ func show_effect_events(effect_events: Array[EffectEvent], sound_events: Array[S
 	play_sound_events(sound_events, simulation)
 
 
+# the tile effects near the view, from an even spread of at most
+# EFFECT_TILE_LIMIT tiles. effects without a tile, such as an earthquake or a
+# launch, stay
+func _sampled_effect_events(events: Array[EffectEvent]) -> Array[EffectEvent]:
+	if events.size() <= EFFECT_TILE_LIMIT:
+		return events
+
+	var window := CityDebugTileLayer.visible_window(map_view.visible_tile_outline(), document_state.city.map_size, EFFECT_TILE_MARGIN)
+	var tiles: Dictionary[Vector2i, bool] = {}
+
+	for event in events:
+		if event.type.is_empty() and window.has_point(event.point):
+			tiles[event.point] = true
+
+	var stride := ceili(float(tiles.size()) / EFFECT_TILE_LIMIT)
+	var kept: Dictionary[Vector2i, bool] = {}
+	var index := 0
+
+	for point in tiles:
+		if index % stride == 0:
+			kept[point] = true
+
+		index += 1
+
+	var result: Array[EffectEvent] = []
+
+	for event in events:
+		if not event.type.is_empty() or event.point == Vector2i(-1, -1) or kept.has(event.point):
+			result.append(event)
+
+	return result
+
+
 # the effect sprite at its view position, without the pixels of the
-# structures in front of its depth tile
-func _effect_visual(effect: EffectEvent, view_size: int, sprite_archive: Sc2SpriteArchive) -> CityTransientEffectVisual:
+# structures in front of its depth tile. an effect outside `shown` gives null
+func _effect_visual(effect: EffectEvent, view_size: int, sprite_archive: Sc2SpriteArchive, shown: Rect2
+) -> CityTransientEffectVisual:
 	var divisor := IsometricRenderer.view_configuration(view_size).divisor
 	var sprite_id := IsometricRenderer.effect_sprite_id(int(effect.sprite_id), view_size)
 	var image := _effect_image(sprite_archive, sprite_id, effect.flip, divisor)
@@ -165,6 +213,10 @@ func _effect_visual(effect: EffectEvent, view_size: int, sprite_archive: Sc2Spri
 		return null
 
 	var origin := position * divisor
+
+	if not shown.intersects(Rect2(origin, image.get_size())):
+		return null
+
 	var depth_tile: Vector2i = effect.depth_point if effect.depth_point.x >= 0 else effect.point
 	var mask: Image = occluder_mask.call(origin, image.get_size(), depth_tile, view_size) if occluder_mask.is_valid() else null
 	var key := "%d:%d:%d:%d" % [sprite_id, int(effect.flip), divisor, mask.get_instance_id() if mask != null else 0]
