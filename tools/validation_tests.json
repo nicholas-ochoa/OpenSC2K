@@ -1107,6 +1107,16 @@
     ]
   },
   {
+    "id": "large_city_busy_test",
+    "script": "tests/large_city_busy_test.gd",
+    "domain": "ui",
+    "lane": "product",
+    "requires": [
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
+    ]
+  },
+  {
     "id": "closer_zoom_test",
     "script": "tests/closer_zoom_test.gd",
     "domain": "rendering",

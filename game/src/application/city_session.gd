@@ -16,7 +16,8 @@ func _init(application: CityApplication) -> void:
 
 
 func activate_document(
-	document: Sc2File, loaded_scenario: ScenarioState = null, status_text := "", loaded_from_file := false
+	document: Sc2File, loaded_scenario: ScenarioState = null, status_text := "", loaded_from_file := false,
+	content_snapshot := PackedByteArray()
 ) -> bool:
 	app.map_view.clear_trip_reach()
 	var loaded_city := CityModel.from_document(document)
@@ -62,7 +63,8 @@ func activate_document(
 	app.current_tool.select_tool_group(CityToolIds.Group.CENTERING)
 	app.view_state.overlay_mode = CityViewMode.Mode.CITY
 	document_state.current_document = document
-	document_state.saved_city_snapshot = document.content_snapshot()
+	# a large city computes its snapshot while it loads
+	document_state.saved_city_snapshot = content_snapshot if not content_snapshot.is_empty() else document.content_snapshot()
 	var facility_repair := FacilityRecordRepair.apply(app.document_state.city)
 
 	if not facility_repair.ok:
