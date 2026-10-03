@@ -127,7 +127,7 @@ func test_tool_availability(reference_root: String) -> void:
 	)
 	var scurk_object_state := ToolEditState.scurk_object(city, CityViewMode.Mode.CITY, 0xcf)
 	var scurk_zone_state := ToolEditState.scurk_tool(
-		city, ScurkEditTool.new("Light Residential", 9, 0, 1, "city")
+		city, CityViewMode.Mode.CITY, ScurkEditTool.new("Light Residential", 9, 0, 1, "city")
 	)
 	_check(
 		scurk_object_state.enabled
@@ -135,6 +135,15 @@ func test_tool_availability(reference_root: String) -> void:
 		and scurk_zone_state.enabled
 		and scurk_zone_state.selection == "rectangle",
 		"Tool edit state classifies SCURK object and edit modes",
+	)
+	# a SCURK edit tool uses its city tool state without the availability gate
+	var normal_highway := ToolEditState.normal(city, CityViewMode.Mode.CITY, 6, 1)
+	var scurk_highway := ToolEditState.scurk_tool(city, CityViewMode.Mode.CITY, ScurkEditTool.new("Highway", 6, 1, -1, "city"))
+	_check(
+		not normal_highway.available and scurk_highway.available and scurk_highway.enabled
+		and scurk_highway.selection == normal_highway.selection and scurk_highway.area == normal_highway.area
+		and scurk_highway.repeat_placement == normal_highway.repeat_placement,
+		"A SCURK edit tool shares its city tool selection without the availability gate",
 	)
 
 	for invention_index in range(12):

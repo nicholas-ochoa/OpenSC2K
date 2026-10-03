@@ -191,7 +191,7 @@ func update_edit_state() -> void:
 			var cursor_tool := app.scurk_place_print.selected_edit_tool()
 			app.map_view.desktop_cursor_role = DesktopCursorRules.city_tool(cursor_tool.group, cursor_tool.subtool)
 			state = ToolEditState.scurk_tool(
-				app.document_state.city, app.scurk_place_print.selected_edit_tool()
+				app.document_state.city, app.view_state.overlay_mode, app.scurk_place_print.selected_edit_tool()
 			)
 	else:
 		state = ToolEditState.normal(
@@ -230,12 +230,10 @@ func update_edit_state() -> void:
 				and app.tool_state.selected_subtool == CityToolIds.Bulldozer.STRETCH else "Free landscape editor tool.")
 
 	var level_brush := app.new_city.level_brush_active()
-	app.map_view.landscape_brush = ((level_brush or app.tool_state.selected_group == CityToolIds.Group.LANDSCAPE
+	app.map_view.landscape_brush = (level_brush or app.tool_state.selected_group == CityToolIds.Group.LANDSCAPE
 			and app.tool_state.selected_subtool in [CityToolIds.Landscape.TREES, CityToolIds.Landscape.WATER, CityToolIds.Landscape.FOREST])
-			and not (app.scurk_place_print != null and app.scurk_place_print.visible))
 	app.map_view.demolish_brush = (app.tool_state.selected_group == CityToolIds.Group.BULLDOZER
-		and app.tool_state.selected_subtool == CityToolIds.Bulldozer.DEMOLISH
-			and not app.tool_state.landscape_editor and not (app.scurk_place_print != null and app.scurk_place_print.visible))
+		and app.tool_state.selected_subtool == CityToolIds.Bulldozer.DEMOLISH and not app.tool_state.landscape_editor)
 	app.map_view.bulldozer_visual_provider = (app.moving_sprites.demolish_brush_visual
 		if app.view_state.overlay_mode == CityViewMode.Mode.CITY else Callable())
 	app.map_view.placement_ghost_provider = (app.scurk_workspace.place_ghost
@@ -314,13 +312,16 @@ func _placement_preview_error(point: Vector2i) -> String:
 			else String(NativeCityTools.scurk_site_error(app.document_state.city.buildings, app.document_state.city.terrain,
 				app.document_state.city.tile_flags, site, tile_id, map_edge)))
 
+	# Place & Print edit tools are free
+	var free := app.scurk_workspace.scurk_edit_tool_active()
+
 	if Buildings.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
 		return Buildings.preview_error(app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool, point)
 
 	if Hydro.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
 		var index := app.document_state.city.index_of(point.x, point.y)
 
-		if app.document_state.city.funds() < int(Tools.tool(app.tool_state.selected_group, app.tool_state.selected_subtool).cost):
+		if not free and app.document_state.city.funds() < int(Tools.tool(app.tool_state.selected_group, app.tool_state.selected_subtool).cost):
 			return "Insufficient funds."
 
 		if app.document_state.city.buildings[index] != BuildingTileIds.EMPTY:
@@ -335,7 +336,7 @@ func _placement_preview_error(point: Vector2i) -> String:
 			app.tool_state.selected_group,
 			app.tool_state.selected_subtool,
 			point,
-			false,
+			free,
 			true,
 		).error
 
@@ -354,7 +355,7 @@ func _placement_preview_error(point: Vector2i) -> String:
 		if not proposal.confirmation_required:
 			return proposal.error
 
-		return "" if app.document_state.city.funds() >= proposal.cost else "Insufficient funds for this tunnel."
+		return "" if free or app.document_state.city.funds() >= proposal.cost else "Insufficient funds for this tunnel."
 
 	if Highways.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
 		return Highways.preview_error(app.document_state.city, point)
@@ -366,7 +367,7 @@ func update_network_preview() -> void:
 	if app.network_preview == null:
 		return
 
-	if (app.document_state.city == null or not app.camera_input.camera_keys_allowed() or not app.map_view.edit_enabled
+	if (app.document_state.city == null or not app.camera_input.camera_keys_allowed(false, true) or not app.map_view.edit_enabled
 			or app.map_view.is_panning()
 			or not NetworkPlacementPreview.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool)):
 		app.network_preview.clear()

@@ -219,7 +219,19 @@ func record_edit_command(
 	command: EditCommandResult, scurk_history := false, scurk_name := ""
 ) -> void:
 	if scurk_history:
-		app.scurk_state.edit_history.record(command, scurk_name)
+		var history := app.scurk_state.edit_history
+		var stroke := app.map_view.uses_paint_brush() and app.map_view.is_left_drag_active()
+		# the main Undo also routes this edit to the SCURK history
+		command.scurk_place_history = true
+		command.scurk_tool_name = scurk_name
+
+		# one brush stroke is one history entry, as it is one undo of the city tools
+		if stroke and app.scurk_state.brush_stroke != null and history.current_command() == app.scurk_state.brush_stroke:
+			app.scurk_state.brush_stroke.merge_stroke(command)
+		else:
+			var entry := command.copy() if stroke else command
+			history.record(entry, scurk_name)
+			app.scurk_state.brush_stroke = entry if stroke else null
 
 		if app.scurk_place_print != null:
 			app.scurk_place_print.set_history_enabled(true, false)

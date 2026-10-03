@@ -14,8 +14,9 @@ func _init(application: CityApplication) -> void:
 
 
 # Map keys need the city view with no dialog open. Global keys also work while
-# a text field has focus.
-func camera_keys_allowed(allow_text_focus := false) -> bool:
+# a text field has focus. Map previews also work under Place & Print, whose
+# tools edit the map.
+func camera_keys_allowed(allow_text_focus := false, allow_place_print := false) -> bool:
 	if (app.document_state.city == null
 			or app.map_view == null
 			or not app.map_view.is_visible_in_tree()
@@ -29,7 +30,7 @@ func camera_keys_allowed(allow_text_focus := false) -> bool:
 
 	for overlay in [app.main_menu, app.city_dialogs.new_city_dialog, app.city_dialogs.query_dialog, app.scurk_editor, app.scurk_place_print,
 		app.scurk_print, app.main_overlays.settings_dialog, app.main_overlays.save_changes_dialog]:
-		if overlay != null and overlay.visible:
+		if overlay != null and overlay.visible and not (allow_place_print and overlay == app.scurk_place_print):
 			return false
 
 	if app.city_dialogs != null:
@@ -41,7 +42,7 @@ func camera_keys_allowed(allow_text_focus := false) -> bool:
 				return false
 
 	for window in app.get_viewport().get_embedded_subwindows():
-		if window.visible:
+		if window.visible and not (allow_place_print and window == app.scurk_place_print):
 			return false
 
 	return true
@@ -330,6 +331,7 @@ func on_map_selection_canceled() -> void:
 
 func on_map_selection_started() -> void:
 	app.tool_state.landscape_brush_command = null
+	app.scurk_state.brush_stroke = null
 	app.tool_state.level_brush_altitude = -1
 
 	if app.new_city.level_brush_active() and app.document_state.city != null:
@@ -382,39 +384,8 @@ func on_map_selection_changed(
 	_path: Array[Vector2i],
 	dragged: bool
 ) -> void:
-	if app.scurk_place_print != null and app.scurk_place_print.visible:
-		if app.scurk_place_print.is_object_mode():
-			app.map_view.clear_selection_price()
-			return
-
-		var scurk_tool := app.scurk_place_print.selected_edit_tool()
-		var zone_type := scurk_tool.zone if scurk_tool != null else -1
-
-		if zone_type < 0:
-			app.map_view.clear_selection_price()
-			return
-
-		var scurk_preview := Zones.preview_rectangle(
-			app.document_state.city,
-			int(scurk_tool.group),
-			int(scurk_tool.subtool),
-			start,
-			finish,
-			dragged,
-			true,
-			zone_type
-		)
-
-		if not scurk_preview.ok:
-			app.map_view.clear_selection_price()
-			return
-
-		app.map_view.set_selection_price(0, true)
-		app.status_label.theme_type_variation = ""
-		app.status_label.text = "%s preview: %d tiles; free in SCURK." % [
-			scurk_tool.name, int(scurk_preview.changed_tiles),
-		]
-
+	if app.scurk_place_print != null and app.scurk_place_print.visible and app.scurk_place_print.is_object_mode():
+		app.map_view.clear_selection_price()
 		return
 
 	if app.document_state.city != null and NetworkPlacementPreview.supports_tool(
@@ -428,8 +399,12 @@ func on_map_selection_changed(
 		app.map_view.clear_selection_price()
 		return
 
+	# a Place & Print zone tool is free and can save another zone type
+	var free := app.scurk_workspace.scurk_edit_tool_active()
+	var scurk_tool := app.scurk_place_print.selected_edit_tool() if free else null
 	var preview := Zones.preview_rectangle(
-		app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool, start, finish, dragged
+		app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool, start, finish, dragged,
+		free, scurk_tool.zone if scurk_tool != null else -1
 	)
 
 	if not preview.ok:
@@ -440,11 +415,17 @@ func on_map_selection_changed(
 
 	var cost := int(preview.cost)
 	var affordable := bool(preview.affordable)
+	var tool_name: String = scurk_tool.name if scurk_tool != null else Tools.tool(app.tool_state.selected_group, app.tool_state.selected_subtool).name
 
 	app.map_view.set_selection_price(cost, affordable)
 	app.status_label.theme_type_variation = ""
+
+	if free:
+		app.status_label.text = "%s preview: %d tiles; free in SCURK." % [tool_name, int(preview.changed_tiles)]
+		return
+
 	app.status_label.text = "%s preview: %d charged %s for $%s." % [
-		Tools.tool(app.tool_state.selected_group, app.tool_state.selected_subtool).name,
+		tool_name,
 		int(preview.charged_tiles),
 		"tile" if int(preview.charged_tiles) == 1 else "tiles",
 		app.interface.format_number(cost),

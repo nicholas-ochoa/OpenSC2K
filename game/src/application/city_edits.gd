@@ -71,7 +71,7 @@ func apply_map_selection(
 	if _apply_landscape_editor_terrain(start, dragged):
 		return
 
-	if _apply_landscape_brush(start, path):
+	if _apply_landscape_brush(start, path, scurk_tool_mode, scurk_tool):
 		return
 
 	if _apply_simple_edit(start, finish, path, scurk_tool_mode, scurk_tool):
@@ -280,12 +280,16 @@ func _apply_landscape_editor_terrain(start: Vector2i, dragged: bool) -> bool:
 
 
 # terrain and landscape brushes along the dragged path. a brush pass that
-# changes nothing is not reported
-func _apply_landscape_brush(start: Vector2i, path: Array[Vector2i]) -> bool:
+# changes nothing is not reported. the landscape editor and Place & Print
+# paint for free
+func _apply_landscape_brush(
+	start: Vector2i, path: Array[Vector2i], scurk_tool_mode: bool, scurk_tool: ScurkEditTool
+) -> bool:
 	if not app.map_view.landscape_brush:
 		return false
 
 	var tool := app.tool_state
+	var free := tool.landscape_editor or scurk_tool_mode
 
 	if tool.selected_group == CityToolIds.Group.BULLDOZER:
 		var origin := app.map_view.selection_start if app.map_view.selection_start.x >= 0 else start
@@ -294,13 +298,13 @@ func _apply_landscape_brush(start: Vector2i, path: Array[Vector2i]) -> bool:
 			origin.y,
 		)
 		var terrain_command := TerrainTools.apply_path(app.document_state.city, tool.selected_group, tool.selected_subtool,
-			origin, path, tool.tool_random, tool.landscape_editor, target)
+			origin, path, tool.tool_random, free, target)
 
 		if terrain_command.ok or terrain_command.error != "no terrain height changed":
 			_finish_simple_edit(
-				SimpleEdits._result("terrain", terrain_command, tool.selected_group, tool.selected_subtool, tool.landscape_editor),
-				false,
-				null,
+				SimpleEdits._result("terrain", terrain_command, tool.selected_group, tool.selected_subtool, free),
+				scurk_tool_mode,
+				scurk_tool,
 			)
 
 		return true
@@ -311,15 +315,15 @@ func _apply_landscape_brush(start: Vector2i, path: Array[Vector2i]) -> bool:
 		tool.selected_subtool,
 		path,
 		tool.tool_random,
-		tool.landscape_editor,
+		free,
 		true,
 	)
 
 	if command.ok or command.error != "no eligible tiles changed":
 		_finish_simple_edit(
-			SimpleEdits._result("landscape", command, tool.selected_group, tool.selected_subtool, tool.landscape_editor),
-			false,
-			null,
+			SimpleEdits._result("landscape", command, tool.selected_group, tool.selected_subtool, free),
+			scurk_tool_mode,
+			scurk_tool,
 		)
 
 	return true

@@ -45,47 +45,28 @@ static func scurk_object(
 	return result
 
 
-static func scurk_tool(city: CityState, tool: ScurkEditTool) -> Result:
-	var can_edit := city != null and tool != null
-	var group_index := tool.group if tool != null else -1
-	var subtool_index := tool.subtool if tool != null else -1
-	var is_zone := tool != null and tool.zone >= 0
-	var is_demolish := Demolish.supports_tool(group_index, subtool_index)
-	var is_landscape := Landscapes.supports_tool(group_index, subtool_index)
-	var is_network := Networks.supports_tool(group_index, subtool_index)
-	var is_highway := Highways.supports_tool(group_index, subtool_index)
-	var is_terrain := TerrainTools.supports_tool(group_index, subtool_index)
-	var selection := "point"
+# a Place & Print edit tool selects, previews, and repeats as its city tool
+# does. availability and funds do not apply
+static func scurk_tool(city: CityState, overlay_mode: CityViewMode.Mode, tool: ScurkEditTool) -> Result:
+	if tool == null:
+		return normal(null, overlay_mode, -1, -1)
 
-	if is_zone or is_demolish:
-		selection = "rectangle"
-	elif is_landscape or is_network or is_highway or is_terrain:
-		selection = "path"
-
-	var tool_name := tool.name if tool != null else "Edit Tool"
-
-	var result := Result.new()
-	result.available = can_edit
-	result.enabled = can_edit
-	result.selection = selection
-	result.area = 1
-	result.landscape = is_landscape
-	result.show_status = true
-	result.status_text = "SCURK %s" % tool_name
+	var result := normal(city, overlay_mode, tool.group, tool.subtool, true)
+	result.status_text = "SCURK %s" % tool.name
 	result.status_detail = (
 		"%s is active in Place & Print. Click or drag on the city. City funds and development gates do not apply."
-		% tool_name
+		% tool.name
 	)
 
 	return result
 
 
 static func normal(
-	city: CityState, overlay_mode: CityViewMode.Mode, group_index: int, subtool_index: int
+	city: CityState, overlay_mode: CityViewMode.Mode, group_index: int, subtool_index: int, free := false
 ) -> Result:
-	var available := city != null and ToolAvailability.is_available(
+	var available := city != null and (free or ToolAvailability.is_available(
 		city, group_index, subtool_index
-	)
+	))
 	var is_zone := Zones.supports_tool(group_index, subtool_index)
 	var is_landscape := Landscapes.supports_tool(group_index, subtool_index)
 	var is_building := Buildings.supports_tool(group_index, subtool_index)
