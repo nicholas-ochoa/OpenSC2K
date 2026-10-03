@@ -155,7 +155,8 @@ func _selection_preview_tiles() -> Array[Vector2i]:
 		tiles = point_preview_tiles(preview_point)
 	elif map.selection_start.x >= 0 and map.selection_end.x >= 0:
 		tiles = map.selection_path
-	elif map.edit_enabled and map.selection_mode == "path" and map.hover_tile.x >= 0:
+	elif map.edit_enabled and map.selection_mode in ["path", "rectangle"] and map.hover_tile.x >= 0:
+		# a drag tool marks the tile under the cursor before the drag starts
 		tiles = [map.hover_tile]
 
 	if map.highway_preview and not map.network_preview_active:

@@ -349,6 +349,14 @@ func _test_selection_geometry(
 		],
 		"An idle network tool highlights the exact hovered terrain tile",
 	)
+	map_control.set_edit_enabled(true, "rectangle")
+	_check(
+		map_control.selection._selection_source_polygons() == [
+			IsometricRenderer.terrain_surface_polygon(starter, center_tile.x, center_tile.y),
+		],
+		"An idle zone tool highlights the hovered tile before its drag",
+	)
+	map_control.set_edit_enabled(true, "path")
 	map_control.highway_preview = true
 	map_control.hover_tile = center_tile + Vector2i.ONE
 	_check(map_control.selection._selection_source_polygons().size() == 4,
