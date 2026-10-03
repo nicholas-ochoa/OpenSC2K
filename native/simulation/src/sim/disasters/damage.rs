@@ -9,10 +9,13 @@ use crate::sim::ids::sc2zone_layout as zone;
 use crate::sim::ids::terrain_tile_ids as terrain_ids;
 use crate::sim::overlay;
 use crate::sim::random::{SimLfsrRandom, SimRandom};
+use crate::sim::things;
 use crate::sim::tools::demolish::{self, PointResult};
 use crate::sim::tools::network::replace_building;
 
 pub const SOUND_DAMAGE: i64 = 0x1f8;
+const FIRE_OVERLAY: i64 = 0xff;
+const DISPATCH_TYPES: [i64; 3] = [things::TYPE_POLICE, things::TYPE_FIRE, things::TYPE_MILITARY];
 
 /// Story weight of each damaged building class, from executable table
 /// 0x004e8848. Classes 0 to 9 are zone types. Class 10 and up are tiles from 0xc6.
@@ -146,6 +149,35 @@ pub fn apply_flood(
     1
 }
 
+/// SIMCITY.EXE 0x00461330 writes the fire marker over the one XTXT byte of
+/// each burned tile, so a dispatched unit there loses its link and is no
+/// longer drawn or scanned. A layered index keeps objects apart from markers,
+/// so take the unit off the tile. Its record stays, as in the original.
+fn lift_dispatch_units(maps: &mut DisasterMaps, tile_index: i64) {
+    if !overlay::is_layered(maps.maps.text_overlays) {
+        return;
+    }
+
+    let records = things::count(maps.things);
+    let mut id = overlay::object(maps.maps.text_overlays, tile_index);
+
+    for _ in 0..records {
+        let record = overlay::thing_record(id);
+
+        if !overlay::is_thing(id) || record < 0 || record >= records {
+            return;
+        }
+
+        let below = things::field(maps.things, record, things::FIELD_LABEL);
+
+        if DISPATCH_TYPES.contains(&things::field(maps.things, record, things::FIELD_TYPE)) {
+            overlay::lift_object(maps.maps.text_overlays, maps.things, record, tile_index, 0);
+        }
+
+        id = below;
+    }
+}
+
 /// DisasterDamage.burn_structure.
 #[allow(clippy::too_many_arguments)]
 pub fn burn_structure(
@@ -166,7 +198,8 @@ pub fn burn_structure(
     if mark_fire {
         for &changed in &result.indices {
             if maps.maps.flags[changed as usize] as i64 & flag_bits::WATER == 0 {
-                overlay::write(maps.maps.text_overlays, changed, 0xff);
+                lift_dispatch_units(maps, changed);
+                overlay::write(maps.maps.text_overlays, changed, FIRE_OVERLAY);
             }
         }
     }
@@ -218,7 +251,7 @@ pub fn record_damage_class(damage_class: &mut i64, buildings: &[u8], zones: &[u8
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::sim::testing::{empty_full_resolution_city, sequence_lfsr, sequence_random};
+    use crate::sim::testing::{empty_full_resolution_city, empty_sc2x_city, sequence_lfsr, sequence_random};
 
     /// A fire clears only the traffic of its own tile on per-tile maps.
     #[test]
@@ -237,6 +270,39 @@ mod tests {
             assert_eq!(city.xtrf.data[tile], 0);
             assert_eq!(city.xtrf.data[tile + 1], 40);
         }
+    }
+
+    /// A burned structure writes fire over the tile, as the original does over
+    /// its one XTXT byte. A dispatched unit there leaves the tile; other
+    /// moving objects and the unit's record stay.
+    #[test]
+    fn fire_on_a_burned_tile_removes_a_dispatched_unit() {
+        let edge = 128i64;
+        let mut city = empty_sc2x_city(edge);
+        let point = Vec2i::new(40, 40);
+        let tile = point.x * edge + point.y;
+        city.xbld.data[tile as usize] = tiles::LOWER_CLASS_HOMES_1X1_1 as u8;
+        let (unit, ship) = (1i64, 2i64);
+
+        for (record, thing_type) in [(unit, things::TYPE_FIRE), (ship, things::TYPE_SHIP)] {
+            things::write(&mut city.xthg.data, record * things::RECORD_SIZE + things::FIELD_TYPE, thing_type);
+            overlay::push_object(&mut city.xtxt.data, &mut city.xthg.data, record, tile);
+        }
+
+        let mut maps = city.disaster_maps();
+        burn_structure(
+            &mut maps,
+            point,
+            &mut sequence_random(&[0]),
+            &mut sequence_lfsr(&[0]),
+            true,
+            false,
+            false,
+        );
+        assert_eq!(overlay::marker(&city.xtxt.data, tile), FIRE_OVERLAY);
+        assert_eq!(overlay::object(&city.xtxt.data, tile), overlay::thing_id(ship));
+        assert_eq!(things::field(&city.xthg.data, ship, things::FIELD_LABEL), 0);
+        assert_eq!(things::field(&city.xthg.data, unit, things::FIELD_TYPE), things::TYPE_FIRE);
     }
 }
 
