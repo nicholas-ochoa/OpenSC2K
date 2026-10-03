@@ -3,6 +3,7 @@
 use godot::prelude::*;
 
 use crate::sim::city::{CHUNK_IDS, City};
+use crate::sim::effect_packing;
 use crate::sim::geom::{Rect2i as SimRect2i, Vec2i};
 use crate::sim::random::{GameRandomScript, LfsrRandomScript, Randoms, SimRandomScript};
 use crate::sim::value::Value;
@@ -237,6 +238,10 @@ pub fn variant(value: &Value) -> Variant {
             .collect::<PackedStringArray>()
             .to_variant(),
         Value::Array(items) => {
+            if let Some(packed) = effect_packing::pack(items) {
+                return effect_list(packed);
+            }
+
             let mut array = VarArray::new();
 
             for item in items {
@@ -265,6 +270,24 @@ pub fn variant(value: &Value) -> Variant {
             result.to_variant()
         }
     }
+}
+
+/// A list of effect events as `{__class, values, types}`. GDScript makes
+/// the EffectEvent objects again.
+fn effect_list(packed: effect_packing::PackedEffects) -> Variant {
+    let mut result = VarDictionary::new();
+    result.set("__class", effect_packing::PACKED_CLASS);
+    result.set("values", &PackedInt64Array::from(packed.values.as_slice()));
+    result.set(
+        "types",
+        &packed
+            .types
+            .iter()
+            .map(|name| GString::from(name.as_str()))
+            .collect::<PackedStringArray>(),
+    );
+
+    result.to_variant()
 }
 
 /// A SimulationTiming sent as `{work_usec, steps}`.

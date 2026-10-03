@@ -3,6 +3,10 @@ extends RefCounted
 ## Calls the native simulation library and stores its results in GDScript objects.
 ## The native call receives copies of the saved chunks and returns the chunks it wrote.
 
+@warning_ignore_start("integer_division")
+
+# the integers of one effect in a packed effect list
+const EFFECT_STRIDE := 14
 # chunks that the native simulation reads. other chunks stay in the document only
 const CHUNK_IDS: PackedStringArray = [
 	"CNAM", "MISC", "ALTM", "XTER", "XBLD", "XZON", "XUND", "XTXT", "XLAB", "XMIC", "XTHG", "XBIT",
@@ -182,7 +186,10 @@ static func apply_written(city: CityState, written: Dictionary, order := PackedS
 static func decode(value: Variant) -> Variant:
 	if value is Dictionary:
 		if value.has("__class"):
-			# a large demolition returns an effect for each tile
+			# a large demolition returns an effect for each tile, as one packed list
+			if value["__class"] == "EffectEventList":
+				return _effect_event_list(value)
+
 			if value["__class"] == "EffectEvent":
 				return _effect_event(value)
 
@@ -204,6 +211,27 @@ static func decode(value: Variant) -> Variant:
 		return result
 
 	return value
+
+
+# 14 integers for each effect, in the order of native effect_packing.rs
+static func _effect_event_list(fields: Dictionary) -> Array[EffectEvent]:
+	var values: PackedInt64Array = fields.values
+	var types: PackedStringArray = fields.types
+	var events: Array[EffectEvent] = []
+	events.resize(values.size() / EFFECT_STRIDE)
+
+	for index in events.size():
+		var at := index * EFFECT_STRIDE
+		var event := EffectEvent.new(Vector2i(values[at + 1], values[at + 2]), values[at + 3],
+			Vector2i(values[at + 4], values[at + 5]), values[at + 6] != 0, values[at + 7], values[at + 8])
+		event.type = types[values[at]]
+		event.frames = values[at + 9]
+		event.frame_msec = values[at + 10]
+		event.distance = values[at + 11]
+		event.depth_point = Vector2i(values[at + 12], values[at + 13])
+		events[index] = event
+
+	return events
 
 
 # the native library sends every field of an effect event

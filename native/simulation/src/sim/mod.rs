@@ -7,6 +7,7 @@ pub mod civic;
 pub mod data_maps;
 pub mod disasters;
 pub mod economy;
+pub mod effect_packing;
 pub mod engine;
 pub mod events;
 pub mod facility_sites;
