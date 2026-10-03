@@ -56,7 +56,8 @@ static var EDIT_TOOLS: Array[ScurkEditTool] = [
 	ScurkEditTool.new("Power Line", CityToolIds.Group.POWER, CityToolIds.Power.WIRES, -1, "city"),
 	ScurkEditTool.new("Rail", CityToolIds.Group.RAIL, CityToolIds.Rail.RAIL, -1, "city"),
 	ScurkEditTool.new("Subway", CityToolIds.Group.RAIL, CityToolIds.Rail.SUBWAY, -1, "underground"),
-	ScurkEditTool.new("Subway-to-Rail Connector", CityToolIds.Group.RAIL, CityToolIds.Rail.SUBWAY_TO_RAIL, -1, "underground"),
+	# the connector is a surface building, as the city tool places it
+	ScurkEditTool.new("Subway-to-Rail Connector", CityToolIds.Group.RAIL, CityToolIds.Rail.SUBWAY_TO_RAIL, -1, "city"),
 	ScurkEditTool.new("Center", CityToolIds.Group.CENTERING, CityToolIds.Centering.CENTER, -1, "either"),
 ]
 

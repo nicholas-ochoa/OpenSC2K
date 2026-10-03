@@ -259,7 +259,7 @@ func _scurk_selection() -> void:
 		[8, 0, 7, "city"], [6, 0, -1, "city"], [6, 1, -1, "city"],
 		[6, 2, -1, "city"], [6, 3, -1, "city"], [3, 0, -1, "city"],
 		[7, 0, -1, "city"], [7, 1, -1, "underground"],
-		[7, 4, -1, "underground"], [17, 0, -1, "either"],
+		[7, 4, -1, "city"], [17, 0, -1, "either"],
 	]
 	assert(window.selected_edit_tool() == null)
 	assert(window.tool_list.item_count == expected.size())
