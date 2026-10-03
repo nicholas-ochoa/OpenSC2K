@@ -96,10 +96,14 @@ func test_tool_availability(reference_root: String) -> void:
 		and not ToolAvailability.is_available(city, 6, 4),
 		"Initial road availability includes road and tunnel only",
 	)
+	var city_mode := city.city_mode()
+	_check(not ToolAvailability.is_available(city, 2, 2), "Dispatch is not available outside a disaster")
+	city.document.set_misc_u32(Sc2MiscLayout.CITY_MODE, 2)
 	_check(
 		ToolAvailability.is_available(city, 2, 2),
-		"Dispatch selection stays available because live capacity controls dispatch",
+		"Dispatch selection stays available in a disaster because live capacity controls dispatch",
 	)
+	city.document.set_misc_u32(Sc2MiscLayout.CITY_MODE, city_mode)
 	var zone_edit_state := ToolEditState.normal(city, CityViewMode.Mode.CITY, 9, 0)
 	var road_edit_state := ToolEditState.normal(city, CityViewMode.Mode.CITY, 6, 0)
 	var building_edit_state := ToolEditState.normal(city, CityViewMode.Mode.CITY, 13, 3)

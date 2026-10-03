@@ -237,6 +237,7 @@ func show_tool_group(
 	for button_index in toolbar_buttons.size():
 		toolbar_buttons[button_index].button_pressed = button_index == group_index
 
+	_refresh_group_buttons(city)
 	var selected := child_palette.show_tool_group(group_index, city, icon_provider, preferred_subtool)
 	if landscape_editor:
 		child_palette.hide()
@@ -263,9 +264,30 @@ func refresh_tool_availability(
 	selected_subtool: int,
 	selected_was_available: bool,
 ) -> bool:
+	var changed := _refresh_group_buttons(city)
+
 	return child_palette.refresh_availability(
 		city, group_index, selected_subtool, selected_was_available
-	)
+	) or changed
+
+
+# the Emergency button works only in disaster mode
+func _refresh_group_buttons(city: CityState) -> bool:
+	if city == null or toolbar_buttons.size() <= CityToolIds.Group.DISPATCH:
+		return false
+
+	var button := toolbar_buttons[CityToolIds.Group.DISPATCH]
+	var disabled := not ToolAvailability.is_dispatch_enabled(city)
+
+	if button.disabled == disabled:
+		return false
+
+	button.disabled = disabled
+
+	if disabled:
+		hold_menu.hide()
+
+	return true
 
 
 func tool_button_tooltip(

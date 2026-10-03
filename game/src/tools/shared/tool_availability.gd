@@ -19,6 +19,9 @@ const BASE_GROUP_MASKS := [
 # power chooser order: coal, hydro, oil, gas, nuclear, wind, solar,
 # microwave, and fusion
 const BASE_POWER_PLANT_MASK := 0x07
+# MISC city mode 2. SIMCITY.EXE FUN_0040b250 disables the Emergency button
+# in any other mode and moves a selected Emergency tool to Center
+const DISASTER_CITY_MODE := 2
 
 
 static func inspect(city: CityState) -> Result:
@@ -110,6 +113,10 @@ static func inspect_misc(misc: PackedByteArray) -> Result:
 	return result
 
 
+static func is_dispatch_enabled(city: CityState) -> bool:
+	return city != null and city.is_valid() and city.city_mode() == DISASTER_CITY_MODE
+
+
 static func is_available(city: CityState, group_index: int, subtool_index: int) -> bool:
 	var tool := ToolCatalog.tool(group_index, subtool_index)
 
@@ -126,9 +133,9 @@ static func is_available(city: CityState, group_index: int, subtool_index: int) 
 		return false
 
 	# dispatch capacity is prepared from live station and military counts. keep
-	# those tools selectable here and let dispatchcommand report capacity
+	# those tools selectable during a disaster and let dispatchcommand report capacity
 	if group_index == CityToolIds.Group.DISPATCH:
-		return true
+		return is_dispatch_enabled(city)
 
 	if group_index == CityToolIds.Group.POWER and subtool_index >= CityToolIds.Power.COAL:
 		return (int(result.power_plant_mask) & (1 << (subtool_index - CityToolIds.Power.COAL))) != 0

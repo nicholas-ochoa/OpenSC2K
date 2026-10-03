@@ -71,6 +71,9 @@ func select_tool_group(index: int) -> void:
 	if index < 0 or index >= Tools.GROUPS.size():
 		return
 
+	if index == CityToolIds.Group.DISPATCH and not ToolAvailability.is_dispatch_enabled(app.document_state.city):
+		return
+
 	if index != app.tool_state.selected_group:
 		app.tool_state.previous_group = app.tool_state.selected_group
 
@@ -161,6 +164,11 @@ func _sync_child_tool_selection() -> void:
 func refresh_tool_availability() -> bool:
 	if app.document_state.city == null or app.city_toolbar == null:
 		return false
+
+	# the original moves the Emergency tool to Center when the disaster ends
+	if (app.tool_state.selected_group == CityToolIds.Group.DISPATCH
+			and not ToolAvailability.is_dispatch_enabled(app.document_state.city)):
+		select_tool_group(CityToolIds.Group.CENTERING)
 
 	return app.city_toolbar.refresh_tool_availability(
 		app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool, app.tool_state.selected_tool_available
