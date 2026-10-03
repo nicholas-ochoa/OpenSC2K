@@ -31,6 +31,9 @@ var mayor_approval := 0
 var pending_disaster_type := 0
 var pending_disaster_point := Vector2i.ZERO
 var active_disaster_type := 0
+# the unit counts that the last disaster start fixed, and a count of those starts
+var dispatch_capacity := DispatchCommand.NO_CAPACITY
+var dispatch_epoch := 0
 var unsupported_disaster_type := 0
 var disaster_map_counter := 0
 var disaster_hurricane_counter := 0
@@ -358,6 +361,17 @@ func _timed_advance_disaster_tick() -> DisasterMapResult:
 	return phase_result
 
 
+# SIMCITY.EXE 0x00406a50 enters disaster mode from normal mode only. it fixes
+# the dispatch counts and removes the units of an earlier disaster
+func _begin_disaster_mode() -> void:
+	if city.city_mode() == 2:
+		return
+
+	var available := DispatchCommand.begin_disaster(city)
+	dispatch_capacity = available.counts() if available.ok else DispatchCommand.NO_CAPACITY
+	dispatch_epoch += 1
+
+
 func start_disaster(disaster_type: int, point: Vector2i) -> DisasterStartResult:
 	if city == null or not city.is_valid():
 		return DisasterStartResult.failed("city is invalid")
@@ -386,6 +400,8 @@ func start_disaster(disaster_type: int, point: Vector2i) -> DisasterStartResult:
 	disaster_map_counter = started.map_counter
 	disaster_hurricane_counter = started.hurricane_counter
 	unsupported_disaster_type = 0
+
+	_begin_disaster_mode()
 
 	if not city.document.set_misc_u32(Sc2MiscLayout.CITY_MODE, 2):
 		active_disaster_type = 0
@@ -520,6 +536,8 @@ func _append_pending_disaster(result: SimulationDayResult) -> SimulationDayResul
 		active_disaster_type = disaster_type
 		disaster_map_counter = started.map_counter
 		disaster_hurricane_counter = started.hurricane_counter
+
+		_begin_disaster_mode()
 
 		if not city.document.set_misc_u32(Sc2MiscLayout.CITY_MODE, 2):
 			return SimulationDayResult.failure("cannot store active disaster mode")

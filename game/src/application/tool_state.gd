@@ -14,8 +14,12 @@ var group_subtools: Dictionary = {}
 # edit state
 var last_edit_command: EditCommandResult
 var tool_random := Random.new(1)
+# the last slot of each dispatch type, and the tile that each slot used. the
+# original keeps the tiles in zeroed arrays that a new disaster does not clear
 var dispatch_cycles := PackedInt32Array([0, 0, 0])
-var dispatch_initialized := false
+var dispatch_slot_points: Array[Dictionary] = [{}, {}, {}]
+# the disaster start whose counts the cycles follow
+var dispatch_epoch := -1
 # landscape editing
 var landscape_brush_command: EditCommandResult
 var level_brush_altitude := -1

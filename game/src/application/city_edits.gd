@@ -177,15 +177,23 @@ func _apply_dispatch_tool(finish: Vector2i) -> bool:
 	if not Dispatch.supports_tool(tool.selected_group, tool.selected_subtool):
 		return false
 
+	var engine := app.simulation_state.simulation_engine
+
+	# a new disaster resets the slot cycles, as 0x0044f910 does
+	if engine != null and engine.dispatch_epoch != tool.dispatch_epoch:
+		tool.dispatch_cycles = PackedInt32Array([0, 0, 0])
+		tool.dispatch_epoch = engine.dispatch_epoch
+
 	var cycles_before := tool.dispatch_cycles.duplicate()
-	var initialized_before := tool.dispatch_initialized
+	var points_before := _copy_slot_points(tool.dispatch_slot_points)
 	var dispatch := Dispatch.apply(
 		app.document_state.city,
 		tool.selected_group,
 		tool.selected_subtool,
 		finish,
 		tool.dispatch_cycles[tool.selected_subtool],
-		not tool.dispatch_initialized
+		tool.dispatch_slot_points[tool.selected_subtool],
+		engine.dispatch_capacity if engine != null else Dispatch.NO_CAPACITY
 	)
 
 	if not dispatch.ok:
@@ -193,21 +201,30 @@ func _apply_dispatch_tool(finish: Vector2i) -> bool:
 
 		return true
 
-	_record_dispatch(dispatch, cycles_before, initialized_before)
+	_record_dispatch(dispatch, cycles_before, points_before)
 
 	return true
 
 
+static func _copy_slot_points(points: Array[Dictionary]) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+
+	for slots in points:
+		result.append(slots.duplicate())
+
+	return result
+
+
 # advance the unit cycle, keep the cycle state undo restores, and report the unit
 func _record_dispatch(
-	dispatch: DispatchEditResult, cycles_before: PackedInt32Array, initialized_before: bool
+	dispatch: DispatchEditResult, cycles_before: PackedInt32Array, points_before: Array[Dictionary]
 ) -> void:
 	var tool := app.tool_state
 	dispatch.dispatch_cycles_before = cycles_before
-	dispatch.dispatch_initialized_before = initialized_before
+	dispatch.dispatch_slot_points_before = points_before
 
-	tool.dispatch_initialized = true
 	tool.dispatch_cycles[tool.selected_subtool] = dispatch.slot_index
+	tool.dispatch_slot_points[tool.selected_subtool][dispatch.slot_index] = dispatch.target
 
 	dispatch.dispatch_cycles_after = tool.dispatch_cycles.duplicate()
 
@@ -607,7 +624,9 @@ func undo_last_edit() -> void:
 	if command is DispatchEditResult:
 		var dispatch := command as DispatchEditResult
 		app.tool_state.dispatch_cycles = dispatch.dispatch_cycles_before
-		app.tool_state.dispatch_initialized = dispatch.dispatch_initialized_before
+
+		if not dispatch.dispatch_slot_points_before.is_empty():
+			app.tool_state.dispatch_slot_points = dispatch.dispatch_slot_points_before
 
 	app.tool_state.last_edit_command = null
 	_restore_utility_usage(command)

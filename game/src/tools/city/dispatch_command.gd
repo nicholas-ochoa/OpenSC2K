@@ -15,6 +15,7 @@ const THING_RECORD_SIZE := Sc2ThingLayout.RECORD_SIZE
 const THING_LABEL_BASE := 201
 const MILITARY_AVAILABILITY := [0, 0, 5, 2, 3, 0]
 const TYPE_BY_SUBTOOL := [TYPE_POLICE, TYPE_FIRE, TYPE_MILITARY]
+const NO_CAPACITY := Vector3i(-1, -1, -1)
 
 
 static func supports_tool(group_index: int, subtool_index: int) -> bool:
@@ -53,13 +54,21 @@ static func availability(city: CityState) -> Availability:
 	return result
 
 
+# one click of a dispatch tool, as SIMCITY.EXE 0x0044fb50 (police), 0x0044fd60
+# (fire), and 0x0044ff70 (military). each type cycles its own slots 1 to N. the
+# unit that slot k placed before is removed only while it is still on its tile
+# in `slot_points`; units of other types and other slots stay. a slot without a
+# tile uses 0, 0, as the zeroed arrays of the original do. `capacity` holds the
+# police, fire, and military counts that the disaster start fixed. a negative
+# count uses the live count
 static func apply(
 	city: CityState,
 	group_index: int,
 	subtool_index: int,
 	target: Vector2i,
 	cycle_index: int = 0,
-	reset_existing: bool = false
+	slot_points: Dictionary = {},
+	capacity := NO_CAPACITY
 ) -> DispatchEditResult:
 	var map_edge: int = city.map_size if city != null else 128
 
@@ -74,14 +83,17 @@ static func apply(
 	if target_index < 0:
 		return DispatchEditResult.rejected("dispatch target is outside the city")
 
-	var available := availability(city)
+	var counts := capacity
 
-	if not available.ok:
-		return DispatchEditResult.rejected(available.error)
+	if counts.x < 0:
+		var available := availability(city)
 
-	var available_count: int = int(
-		[available.police, available.fire, available.military][subtool_index]
-	)
+		if not available.ok:
+			return DispatchEditResult.rejected(available.error)
+
+		counts = available.counts()
+
+	var available_count: int = counts[subtool_index]
 
 	if available_count == 0:
 		return DispatchEditResult.rejected("no dispatch units of this type are available")
@@ -95,16 +107,13 @@ static func apply(
 	if text_chunk == null or text_chunk.decoded_payload.size() != city.document.decoded_size("XTXT"):
 		return DispatchEditResult.rejected("XTXT is missing or has the wrong size")
 
+	if (city.tile_flags[target_index] & FLAG_WATER) != 0:
+		return DispatchEditResult.rejected("dispatch target is water")
+
 	var old_things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
 	var old_text: PackedByteArray = text_chunk.decoded_payload.duplicate()
 	var things := old_things.duplicate()
 	var text := old_text.duplicate()
-
-	if reset_existing:
-		_clear_existing_dispatch(things, text, map_edge)
-
-	if (city.tile_flags[target_index] & FLAG_WATER) != 0:
-		return DispatchEditResult.rejected("dispatch target is water")
 
 	if OverlayData.read(text, target_index) != 0:
 		return DispatchEditResult.rejected("dispatch target has a text overlay")
@@ -115,10 +124,10 @@ static func apply(
 		slot_index = 1
 
 	var thing_type := int(TYPE_BY_SUBTOOL[subtool_index])
-	var active_records := _records_of_type(things, thing_type)
+	var previous := _unit_at(things, text, slot_points.get(slot_index, Vector2i.ZERO), thing_type, map_edge)
 
-	if slot_index <= active_records.size():
-		_delete_thing(things, text, active_records[slot_index - 1], map_edge)
+	if previous >= 0:
+		_delete_thing(things, text, previous, map_edge)
 
 	var thing_index := _first_free_thing(things, _thing_budget(city))
 
@@ -159,13 +168,38 @@ static func apply(
 	result.target = target
 	result.available = available_count
 	result.slot_index = slot_index
-	result.reset_existing = reset_existing
 	result.old_things = old_things
 	result.new_things = things
 	result.old_text = old_text
 	result.new_text = text
 
 	return result
+
+
+# the disaster-mode start, as SIMCITY.EXE 0x0044f910: fix the unit counts for
+# the disaster and remove every dispatched unit from the map
+static func begin_disaster(city: CityState) -> Availability:
+	var available := availability(city)
+
+	if not available.ok:
+		return available
+
+	var things_chunk := city.document.find_chunk("XTHG")
+	var text_chunk := city.document.find_chunk("XTXT")
+
+	if things_chunk == null or text_chunk == null:
+		return Availability.failure("dispatch chunks are missing")
+
+	var things: PackedByteArray = things_chunk.decoded_payload.duplicate()
+	var text: PackedByteArray = text_chunk.decoded_payload.duplicate()
+	_clear_existing_dispatch(things, text, city.map_size)
+
+	if things != things_chunk.decoded_payload or text != text_chunk.decoded_payload:
+		things_chunk.set_decoded_payload(things)
+		text_chunk.set_decoded_payload(text)
+		city.resync_mirrors(["XTXT"])
+
+	return available
 
 
 static func undo(city: CityState, command: DispatchEditResult) -> EditCommandResult:
@@ -217,14 +251,24 @@ static func _clear_existing_dispatch(things: PackedByteArray, text: PackedByteAr
 			ThingData.write(things, thing_index * THING_RECORD_SIZE, 0)
 
 
-static func _records_of_type(things: PackedByteArray, thing_type: int) -> PackedInt32Array:
-	var result := PackedInt32Array()
+# the record of the unit of `thing_type` that tile `point` shows on top, or -1
+static func _unit_at(
+	things: PackedByteArray, text: PackedByteArray, point: Vector2i, thing_type: int, map_edge: int
+) -> int:
+	if point.x < 0 or point.y < 0 or point.x >= map_edge or point.y >= map_edge:
+		return -1
 
-	for thing_index in range(FIRST_THING, ThingData.count(things)):
-		if ThingData.read(things, thing_index * THING_RECORD_SIZE) == thing_type:
-			result.append(thing_index)
+	var overlay := OverlayData.read(text, point.x * map_edge + point.y)
 
-	return result
+	if not OverlayData.is_thing(overlay):
+		return -1
+
+	var record := OverlayData.thing_record(overlay)
+
+	if record < FIRST_THING or record >= ThingData.count(things):
+		return -1
+
+	return record if ThingData.read(things, record * THING_RECORD_SIZE) == thing_type else -1
 
 
 # With a budget (an SC2X version 4 city), no record is free while the active
@@ -309,6 +353,9 @@ class Availability extends RefCounted:
 	var fire: int = 0
 	var military: int = 0
 	var base_type: int = 0
+
+	func counts() -> Vector3i:
+		return Vector3i(police, fire, military)
 
 	static func failure(message: String) -> Availability:
 		var result := Availability.new()

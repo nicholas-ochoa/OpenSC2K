@@ -77,11 +77,8 @@ func select_tool_group(index: int) -> void:
 	if index != app.tool_state.selected_group:
 		app.tool_state.previous_group = app.tool_state.selected_group
 
+	# the original resets the dispatch slots when a disaster starts, not here
 	app.tool_state.selected_group = index
-
-	if app.tool_state.selected_group == CityToolIds.Group.DISPATCH:
-		app.tool_state.dispatch_cycles = PackedInt32Array([0, 0, 0])
-		app.tool_state.dispatch_initialized = false
 
 	app.tool_state.selected_subtool = app.city_toolbar.show_tool_group(
 		app.tool_state.selected_group, app.document_state.city, app.camera_input.tool_button_icon,
@@ -134,10 +131,8 @@ func select_subtool(index: int) -> void:
 
 		if recalled.ok:
 			recalled.dispatch_cycles_before = app.tool_state.dispatch_cycles.duplicate()
-			recalled.dispatch_initialized_before = app.tool_state.dispatch_initialized
 			app.tool_state.last_edit_command = recalled
 			app.tool_state.dispatch_cycles = PackedInt32Array([0, 0, 0])
-			app.tool_state.dispatch_initialized = false
 			app.static_render.refresh_after_city_edit(recalled)
 			app.status_label.text = "All emergency services recalled."
 

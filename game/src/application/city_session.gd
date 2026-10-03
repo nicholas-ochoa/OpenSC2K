@@ -142,7 +142,7 @@ func activate_document(
 	app.reports.refresh_saved_news_summary()
 	app.tool_state.last_edit_command = null
 	app.tool_state.dispatch_cycles = PackedInt32Array([0, 0, 0])
-	app.tool_state.dispatch_initialized = false
+	app.tool_state.dispatch_epoch = -1
 	app.camera_input.update_zoom_controls(app.map_view.zoom_percent())
 
 	app.city_menu_bar.set_city_name(app.document_state.city.display_name(),

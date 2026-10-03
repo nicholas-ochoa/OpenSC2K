@@ -222,10 +222,12 @@ func _selection(city: CityState) -> void:
 	app.current_tool.select_tool_group(CityToolIds.Group.DISPATCH)
 	assert(app.tool_state.selected_group == CityToolIds.Group.DISPATCH)
 	app.tool_state.dispatch_cycles = PackedInt32Array([1, 2, 3])
-	app.tool_state.dispatch_initialized = true
+	# a new selection of the group keeps the slots, as the original does
+	app.current_tool.select_tool_group(CityToolIds.Group.DISPATCH)
+	assert(app.tool_state.dispatch_cycles == PackedInt32Array([1, 2, 3]))
 	app.current_tool.select_subtool(CityToolIds.Dispatch.RECALL)
 	assert(app.tool_state.selected_subtool == CityToolIds.Dispatch.POLICE)
-	assert(app.tool_state.dispatch_cycles == PackedInt32Array([0, 0, 0]) and not app.tool_state.dispatch_initialized)
+	assert(app.tool_state.dispatch_cycles == PackedInt32Array([0, 0, 0]))
 	var recalled := app.tool_state.last_edit_command as DispatchEditResult
 	assert(recalled != null and recalled.ok and city.text_overlay_id(8, 8) == 0)
 	assert(DispatchCommand.undo(city, recalled).ok)
