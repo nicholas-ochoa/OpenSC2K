@@ -100,6 +100,10 @@ func start_disaster_at_view_center(id: int) -> DisasterReportResult:
 	app.simulation_state.simulation_map_dirty = false
 	app.map_render.refresh_map(false)
 
+	# a disaster enables the Emergency tool
+	if app.current_tool.refresh_tool_availability():
+		app.current_tool.update_edit_state()
+
 	for requested_point in result.view_center_requests:
 		app.map_view.center_on_tile(requested_point)
 

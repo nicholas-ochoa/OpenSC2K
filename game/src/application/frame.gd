@@ -136,8 +136,8 @@ func consume_simulation_result(result: SimulationTickResult) -> void:
 	if ran_days:
 		app.interface.refresh_details()
 		app.debug_tools.on_days_completed()
-	elif result.disaster_results.any(func(disaster: DisasterMapResult) -> bool: return disaster.ended_type != 0):
-		# the end of a disaster disables the Emergency tool
+	elif not result.disaster_results.is_empty():
+		# the start of a disaster enables the Emergency tool, and its end disables it
 		if app.current_tool.refresh_tool_availability():
 			app.current_tool.update_edit_state()
 

@@ -258,5 +258,12 @@ func _check_main_ui() -> void:
 	main.interface.refresh_status_summary()
 	assert(not main.city_status_bar.locate_disaster_button.visible, "The locate button must leave with the disaster")
 	assert(main.city_status_bar.reports_label.text == CityStatusMessages.NEEDS[4])
+
+	# a disaster from the menu enables the Emergency button without another action
+	var dispatch: Button = main.city_toolbar.toolbar_buttons[CityToolIds.Group.DISPATCH]
+	assert(dispatch.disabled)
+	main.reports.on_disaster_menu(8)
+	assert(ToolAvailability.is_dispatch_enabled(main.document_state.city), "The monster did not start disaster mode")
+	assert(not dispatch.disabled, "The Emergency button waits for another tool")
 	main.queue_free()
 	await process_frame
