@@ -27,6 +27,10 @@ const NOTICE_AIR_FORCE: i64 = 0xf2;
 const NOTICE_NAVY: i64 = 0xf3;
 const NOTICE_MISSILE_SILOS: i64 = 0xf4;
 const NOTICE_NO_SITE: i64 = 0x19b;
+/// The executable gives up after one land and missile search. As sc2kfix
+/// does, an accepted proposal repeats the whole search up to ten times.
+const SEARCH_ATTEMPTS: usize = 10;
+const MISSILE_SITES: usize = 6;
 const MODE_ROAD: i64 = 0;
 const ALL_BUILDING_CORNERS: i64 = 0xf0;
 const NAVAL_LENGTH: i64 = 10;
@@ -217,8 +221,6 @@ fn resolve_steps(
     forced: i64,
     span: &mut TimingSpan,
 ) -> MilitaryProposalResult {
-    let edge = city.map_size;
-
     if accepted && game.is_none() {
         return MilitaryProposalResult::failed("a compatible game random generator is required");
     }
@@ -269,7 +271,59 @@ fn resolve_steps(
         return navy;
     }
 
-    span.mark("land base site search");
+    for _ in 0..SEARCH_ATTEMPTS {
+        span.mark("land base site search");
+        let (site, last_altitude) = find_land_site(city, game, forced);
+
+        if let Some((site, all_level)) = site {
+            span.mark("build and store land base");
+            let base_type = match forced {
+                BASE_ARMY | BASE_AIR_FORCE => forced,
+                _ if all_level => BASE_AIR_FORCE,
+                _ => BASE_ARMY,
+            };
+            let notice = if base_type == BASE_AIR_FORCE {
+                NOTICE_AIR_FORCE
+            } else {
+                NOTICE_ARMY
+            };
+
+            if defer_land_plot {
+                city.set_misc_u32(misc_layout::MILITARY_BASE_TYPE, base_type);
+                let mut deferred = result(true, base_type, site, Vec::new(), notice);
+                deferred.base.complete = false;
+                deferred.base.view_center_requests.clear();
+
+                return deferred;
+            }
+
+            return reserve_land_site(city, base_type, site, notice);
+        }
+
+        if forced == BASE_ARMY || forced == BASE_AIR_FORCE {
+            continue;
+        }
+
+        span.mark("missile site search");
+        let sites = find_missile_sites(city, game, last_altitude);
+
+        if sites.len() == MISSILE_SITES {
+            span.mark("store missile sites");
+
+            return store_missile_sites(city, sites);
+        }
+    }
+
+    span.mark("store failed proposal");
+
+    no_site(city)
+}
+
+/// At most 24 draws of an 8 by 8 plot with at least 40 clear cells. The plot
+/// and whether all its clear cells are level, and the altitude of the last
+/// drawn origin. A forced silo proposal draws the plots only for that altitude.
+fn find_land_site(city: &City, game: &mut GameLcgRandom, forced: i64) -> (Option<(Rect2i, bool)>, i64) {
+    let edge = city.map_size;
     let mut last_altitude = 0;
 
     for _ in 0..24 {
@@ -297,55 +351,40 @@ fn resolve_steps(
             }
         }
 
-        // a forced silo proposal draws the land sites only for their altitude
         if valid < 40 || forced == BASE_MISSILE_SILOS {
             continue;
         }
 
-        span.mark("build and store land base");
-        let base_type = match forced {
-            BASE_ARMY | BASE_AIR_FORCE => forced,
-            _ if valid == level => BASE_AIR_FORCE,
-            _ => BASE_ARMY,
-        };
-        let notice = if base_type == BASE_AIR_FORCE {
-            NOTICE_AIR_FORCE
-        } else {
-            NOTICE_ARMY
-        };
-        let site = Rect2i::from(origin, Vec2i::new(8, 8));
-
-        if defer_land_plot {
-            city.set_misc_u32(misc_layout::MILITARY_BASE_TYPE, base_type);
-            let mut deferred = result(true, base_type, site, Vec::new(), notice);
-            deferred.base.complete = false;
-            deferred.base.view_center_requests.clear();
-
-            return deferred;
-        }
-
-        return reserve_land_site(city, base_type, site, notice);
+        return (Some((Rect2i::from(origin, Vec2i::new(8, 8)), valid == level)), last_altitude);
     }
 
-    if forced == BASE_ARMY || forced == BASE_AIR_FORCE {
-        return no_site(city);
-    }
+    (None, last_altitude)
+}
 
-    span.mark("missile site search");
-    let mut sites = Vec::new();
+/// At most 40 draws of a 3 by 3 missile site at `altitude`. As sc2kfix does, a
+/// site may not overlap one that the search already selected. The executable
+/// accepts overlap and changes the shared cells twice.
+fn find_missile_sites(city: &City, game: &mut GameLcgRandom, altitude: i64) -> Vec<Rect2i> {
+    let edge = city.map_size;
+    let mut sites: Vec<Rect2i> = Vec::new();
 
     for _ in 0..40 {
         let x = game.next_mod(edge - 4);
         let y = game.next_mod(edge - 4);
-        let origin = Vec2i::new(x, y);
+        let candidate = Rect2i::from(Vec2i::new(x, y), Vec2i::new(3, 3));
+
+        if sites.iter().any(|site| site.intersects(&candidate)) {
+            continue;
+        }
+
         let mut valid = 0;
 
-        for x in origin.x..origin.x + 3 {
-            for y in origin.y..origin.y + 3 {
+        for x in candidate.position.x..candidate.end().x {
+            for y in candidate.position.y..candidate.end().y {
                 let i = (x * edge + y) as usize;
 
                 if is_clear_land(&city.xbld.data, &city.xter.data, &city.xbit.data, i)
-                    && city.land_altitude(x, y) == last_altitude
+                    && city.land_altitude(x, y) == altitude
                     && city.xzon.data[i] as i64 & zone::TYPE_MASK != ZONE_MILITARY
                     && city.xund.data[i] as i64 == under::EMPTY
                 {
@@ -355,20 +394,19 @@ fn resolve_steps(
         }
 
         if valid == 9 {
-            sites.push(Rect2i::from(origin, Vec2i::new(3, 3)));
+            sites.push(candidate);
 
-            if sites.len() == 6 {
+            if sites.len() == MISSILE_SITES {
                 break;
             }
         }
     }
 
-    span.mark("store missile sites or failed proposal");
+    sites
+}
 
-    if sites.len() != 6 {
-        return no_site(city);
-    }
-
+fn store_missile_sites(city: &mut City, sites: Vec<Rect2i>) -> MilitaryProposalResult {
+    let edge = city.map_size;
     let maps = plot_maps(city);
     let mut changed = Vec::new();
 
@@ -697,8 +735,61 @@ mod tests {
         }
 
         let mut city = empty_city(128);
-        let silos = resolve(&mut city, true, Some(&mut sequence_game(&[5])), true, BASE_MISSILE_SILOS);
+        let spread = [5, 5, 10, 10, 15, 15, 20, 20, 25, 25, 30, 30];
+        let silos = resolve(&mut city, true, Some(&mut sequence_game(&spread)), true, BASE_MISSILE_SILOS);
         assert!(silos.base.ok && silos.base_type == BASE_MISSILE_SILOS);
+    }
+
+    /// Land draws and missile draws for one search that finds nothing.
+    const FAILED_SEARCH_DRAWS: usize = 24 * 2 + 40 * 2;
+
+    /// A city with no clear land except six 3 by 3 missile sites.
+    fn silo_only_city() -> (City, Vec<i64>) {
+        let mut city = empty_city(128);
+        city.xbld.data.fill(tiles::POWER_LINE_FIRST as u8);
+        let origins = vec![10, 20, 30, 40, 50, 60];
+
+        for &origin in &origins {
+            for x in origin..origin + 3 {
+                for y in origin..origin + 3 {
+                    city.xbld.data[(x * 128 + y) as usize] = tiles::EMPTY as u8;
+                }
+            }
+        }
+
+        (city, origins)
+    }
+
+    #[test]
+    fn a_failed_search_is_repeated_before_the_proposal_is_declined() {
+        let (mut city, origins) = silo_only_city();
+        let mut draws = vec![0; FAILED_SEARCH_DRAWS + 24 * 2];
+
+        for origin in &origins {
+            draws.extend([*origin, *origin]);
+        }
+
+        let proposal = resolve(&mut city, true, Some(&mut sequence_game(&draws)), true, 0);
+        assert!(proposal.accepted && proposal.base_type == BASE_MISSILE_SILOS);
+        let found: Vec<i64> = proposal.sites.iter().map(|site| site.position.x).collect();
+        assert_eq!(found, origins, "the second search finds the sites");
+
+        let (mut city, _) = silo_only_city();
+        let declined = resolve(&mut city, true, Some(&mut sequence_game(&[0])), true, 0);
+        assert!(!declined.accepted && declined.base_type == BASE_DECLINED && declined.notice_id == NOTICE_NO_SITE);
+        assert_eq!(city.misc_u32(misc_layout::MILITARY_BASE_TYPE), BASE_DECLINED);
+    }
+
+    #[test]
+    fn missile_sites_do_not_overlap() {
+        let mut city = empty_city(128);
+        let mut draws = vec![0; 24 * 2];
+        draws.extend([5, 5, 5, 5, 6, 7, 10, 10, 15, 15, 20, 20, 25, 25, 30, 30]);
+        let silos = resolve(&mut city, true, Some(&mut sequence_game(&draws)), true, BASE_MISSILE_SILOS);
+        assert!(silos.base.ok && silos.base_type == BASE_MISSILE_SILOS);
+        let origins: Vec<(i64, i64)> = silos.sites.iter().map(|site| (site.position.x, site.position.y)).collect();
+        assert_eq!(origins, vec![(5, 5), (10, 10), (15, 15), (20, 20), (25, 25), (30, 30)]);
+        assert_eq!(silos.changed_indices.0.len(), 54, "each site cell changes once");
     }
 
     /// A forced Navy proposal without a coast ends as declined, without a land base.

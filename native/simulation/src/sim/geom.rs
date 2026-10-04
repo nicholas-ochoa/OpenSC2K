@@ -70,6 +70,14 @@ impl Rect2i {
             && other.position.y + other.size.y <= self.position.y + self.size.y
     }
 
+    /// Rect2i.intersects: the rectangles share at least one cell.
+    pub fn intersects(&self, other: &Rect2i) -> bool {
+        self.position.x < other.end().x
+            && other.position.x < self.end().x
+            && self.position.y < other.end().y
+            && other.position.y < self.end().y
+    }
+
     /// Rect2i.has_point: the end edges are outside.
     pub fn has_point(&self, point: Vec2i) -> bool {
         point.x >= self.position.x
