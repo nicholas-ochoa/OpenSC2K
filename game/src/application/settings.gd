@@ -35,6 +35,7 @@ func open_settings_dialog() -> void:
 	app.main_overlays.settings_dialog.loading_values = true
 	app.main_overlays.settings_dialog.dark_underground_check.button_pressed = preferences.dark_underground
 	app.main_overlays.settings_dialog.sprite_corrections_check.button_pressed = preferences.sprite_corrections
+	app.main_overlays.settings_dialog.recent_autosaves_check.button_pressed = preferences.recent_autosaves
 	app.main_overlays.settings_dialog.theme_selector.select(1 if preferences.ui_theme == "dark" else 0)
 	app.main_overlays.settings_dialog.translucent_menus_check.button_pressed = preferences.translucent_menus
 	app.main_overlays.settings_dialog.ui_scale_selector.select(AppUiScale.option_index(preferences.ui_scale))
@@ -137,6 +138,7 @@ func apply_settings() -> void:
 		app.menus.sync_map_style()
 
 	app.assets.set_sprite_corrections(bool(values.sprite_corrections))
+	preferences.recent_autosaves = bool(values.recent_autosaves)
 
 	if preferences.ui_theme != str(values.ui_theme) or preferences.translucent_menus != bool(values.translucent_menus):
 		preferences.ui_theme = str(values.ui_theme)
@@ -255,6 +257,7 @@ func load_app_settings() -> void:
 	preferences.dark_underground = bool(values.dark_underground)
 	app.menus.sync_map_style()
 	app.assets.set_sprite_corrections(bool(values.sprite_corrections))
+	preferences.recent_autosaves = bool(values.recent_autosaves)
 	preferences.ui_theme = str(values.ui_theme)
 	preferences.translucent_menus = bool(values.translucent_menus)
 	AppUiTheme.select(preferences.ui_theme, preferences.translucent_menus)

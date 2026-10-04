@@ -56,6 +56,9 @@ func on_file_menu(id: int) -> void:
 			app.city_files.open_save_dialog()
 		CityMenuBar.MENU_SAVE_CITY:
 			app.city_files.save_city()
+		CityMenuBar.MENU_OPEN_AUTOSAVES:
+			DirAccess.make_dir_recursive_absolute(app.autosave.directory)
+			OS.shell_open(app.autosave.directory)
 		CityMenuBar.MENU_RENAME_CITY:
 			app.city_files.open_rename_dialog()
 		CityMenuBar.MENU_EXPORT_CITY_PNG:

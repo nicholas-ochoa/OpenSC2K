@@ -196,6 +196,10 @@ func _test_immediate_apply() -> void:
 	dialog.dark_underground_check.button_pressed = dark
 	assert(main.preferences.dark_underground == dark)
 	assert(AppSettingsStore.load_values(settings_path).dark_underground == dark)
+	var autosaves := not main.preferences.recent_autosaves
+	dialog.recent_autosaves_check.button_pressed = autosaves
+	assert(main.preferences.recent_autosaves == autosaves)
+	assert(AppSettingsStore.load_values(settings_path).recent_autosaves == autosaves)
 	var corrections := not main.preferences.sprite_corrections
 	dialog.sprite_corrections_check.button_pressed = corrections
 	assert(main.preferences.sprite_corrections == corrections)

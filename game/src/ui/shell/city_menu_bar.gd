@@ -19,6 +19,7 @@ const MENU_EXPORT_CITY_PNG := 8
 const MENU_RENAME_CITY := 9
 const MENU_UPGRADE_SC2X := 0x8303
 const MENU_CHECK_FOR_UPDATES := 0x8304
+const MENU_OPEN_AUTOSAVES := 0x8305
 const MENU_ABOUT := 0
 const MENU_AUTO_BUDGET := 0x8004
 const MENU_AUTO_GOTO := 0x8005
@@ -111,7 +112,7 @@ func _ready() -> void:
 		["New City", 0], ["Open City", 1],
 		["", -1], ["Save City", MENU_SAVE_CITY], ["Save City As", 2],
 		["", -1], ["Rename City", MENU_RENAME_CITY],
-		["", -1], ["Export City as PNG", MENU_EXPORT_CITY_PNG],
+		["", -1], ["Export City as PNG", MENU_EXPORT_CITY_PNG], ["Open Autosave Folder", MENU_OPEN_AUTOSAVES],
 		["", -1], ["Load Tile Set", 3], ["Restore Original Tile Set", 4],
 		["", -1], ["SCURK Place & Print", MENU_SCURK_PLACE_PRINT],
 		["", -1], ["Main Menu", 5], ["Exit", 6],

@@ -18,6 +18,8 @@ var translucent_menus := true
 var dark_underground := false
 # the sc2kfix corrections of the original sprites (Sc2kfixSpriteFixes)
 var sprite_corrections := false
+# autosaves of the last ten minutes in the temporary folder (ApplicationAutosave)
+var recent_autosaves := true
 var default_mayor_name := "Mayor"
 var overview_graphics := 0
 var zoom_graphics: Array[int] = SettingsStore.normalize_zoom_graphics(SettingsStore.DEFAULT_ZOOM_GRAPHICS)
@@ -61,6 +63,7 @@ func save_options(include_ui_scale := true) -> SettingsStore.SaveOptions:
 	options.ui_theme = ui_theme
 	options.dark_underground = dark_underground
 	options.sprite_corrections = sprite_corrections
+	options.recent_autosaves = recent_autosaves
 	options.translucent_menus = translucent_menus
 	options.check_for_updates = check_for_updates
 	options.data_pack_folder = data_pack_folder

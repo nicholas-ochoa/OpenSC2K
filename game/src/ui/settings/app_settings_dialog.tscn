@@ -88,6 +88,19 @@ tooltip_text = "Show the underground view on a dark background,
 with brighter lines for pipes, water mains, and subways."
 text = "Dark underground view"
 
+[node name="RecentAutosavesSpacer" type="Control" parent="Tabs/General/Fields"]
+custom_minimum_size = Vector2(150, 32)
+layout_mode = 2
+
+[node name="RecentAutosavesCheck" type="CheckBox" parent="Tabs/General/Fields"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+tooltip_text = "Save a copy of the open city each minute to the OpenSC2K Autosaves folder
+in the temporary folder, and keep the copies of the last 10 minutes.
+File > Open Autosave Folder shows them. The city file does not change."
+text = "Keep autosaves of the last 10 minutes"
+
 [node name="UiScaleLabel" type="Label" parent="Tabs/General/Fields"]
 custom_minimum_size = Vector2(150, 32)
 layout_mode = 2

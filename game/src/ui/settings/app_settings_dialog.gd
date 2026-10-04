@@ -39,6 +39,7 @@ var music_slider: HSlider
 var effects_slider: HSlider
 var dark_underground_check: CheckBox
 var sprite_corrections_check: CheckBox
+var recent_autosaves_check: CheckBox
 var fullscreen_check: CheckBox
 var zoom_graphics_selectors: Array[OptionButton] = []
 var overview_graphics_selector: OptionButton
@@ -76,6 +77,7 @@ func _ready() -> void:
 	folder_edit = %FolderEdit
 	dark_underground_check = %DarkUndergroundCheck
 	sprite_corrections_check = %SpriteCorrectionsCheck
+	recent_autosaves_check = %RecentAutosavesCheck
 	fullscreen_check = %FullscreenCheck
 	music_pack_edit = %MusicPackEdit
 	data_pack_edit = %DataPackEdit
@@ -313,6 +315,7 @@ func selected_values() -> AppSettingsStore.Values:
 	result.effects_volume = float(effects_slider.value) / 100.0
 	result.dark_underground = dark_underground_check.button_pressed
 	result.sprite_corrections = sprite_corrections_check.button_pressed
+	result.recent_autosaves = recent_autosaves_check.button_pressed
 	result.fullscreen = fullscreen_check.button_pressed
 	result.check_for_updates = check_for_updates_check.button_pressed
 	result.control_bindings = controls_list.pending.duplicate_set()

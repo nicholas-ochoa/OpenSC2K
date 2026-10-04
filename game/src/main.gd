@@ -95,6 +95,7 @@ var route_edits: ApplicationRouteEdits = ApplicationRouteEdits.new(self)
 var debug: ApplicationDebug = ApplicationDebug.new(self)
 var debug_tools: ApplicationDebugTools = ApplicationDebugTools.new(self)
 var updates := ApplicationUpdates.new(preferences)
+var autosave: ApplicationAutosave = ApplicationAutosave.new(self)
 
 
 func _ready() -> void:
@@ -155,10 +156,12 @@ func _exit_tree() -> void:
 	simulation_state.frame_simulation = null
 	static_render.stop_render_job()
 	city_png_export.close()
+	autosave.close()
 
 
 func _process(delta: float) -> void:
 	frame.process(delta)
+	autosave.process(delta)
 
 
 func _input(event: InputEvent) -> void:

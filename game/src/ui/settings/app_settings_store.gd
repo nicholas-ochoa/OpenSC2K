@@ -29,6 +29,7 @@ static func load_values(
 
 	result.dark_underground = bool(config.get_value("display", "dark_underground", false))
 	result.sprite_corrections = bool(config.get_value("graphics", "sc2kfix_sprite_corrections", false))
+	result.recent_autosaves = bool(config.get_value("general", "recent_autosaves", true))
 	result.ui_theme = normalize_theme(config.get_value("general", "ui_theme", "light"))
 	result.translucent_menus = bool(config.get_value("general", "translucent_menus", true))
 	result.ui_scale = AppUiScale.normalize(config.get_value("general", "ui_scale", AppUiScale.DEFAULT))
@@ -213,6 +214,9 @@ static func save_values(
 	if options.sprite_corrections != null:
 		config.set_value("graphics", "sc2kfix_sprite_corrections", bool(options.sprite_corrections))
 
+	if options.recent_autosaves != null:
+		config.set_value("general", "recent_autosaves", bool(options.recent_autosaves))
+
 	if options.ui_theme != null:
 		config.set_value("general", "ui_theme", normalize_theme(options.ui_theme))
 
@@ -310,6 +314,7 @@ class Values extends RefCounted:
 	var translucent_menus := true
 	var dark_underground := false
 	var sprite_corrections := false
+	var recent_autosaves := true
 	var overview_graphics := 0
 	var music_volume := 0.8
 	var effects_volume := 0.8
@@ -363,6 +368,7 @@ class SaveOptions extends RefCounted:
 	var ui_theme: Variant = null
 	var dark_underground: Variant = null
 	var sprite_corrections: Variant = null
+	var recent_autosaves: Variant = null
 	var translucent_menus: Variant = null
 	var check_for_updates: Variant = null
 	var data_pack_folder: Variant = null
