@@ -67,5 +67,20 @@ func run() -> void:
 	assert(map_control.isometric_check.button_pressed, "The window keeps the box while it drives the view")
 	city_map.sync_view_mode(CityViewMode.Mode.HEIGHT)
 	assert(not map_control.isometric_check.button_pressed, "Another view clears the box")
+	var centered_city := CityState.from_document(EmptyCityTemplate.create())
+	centered_city.document.set_misc_u32(Sc2MiscLayout.CITY_CENTER_X, 40)
+	centered_city.document.set_misc_u32(Sc2MiscLayout.CITY_CENTER_Y, 90)
+	map_control.set_city(centered_city, Sc2Palette.load_bmp("res://../references/SIMCITY2000/BITMAPS/PAL_MSTR.BMP"))
+	assert(map_control.preview.center_marker_rects().is_empty(), "Only the Land Value map shows the city centre")
+	map_control.tab_bar.current_tab = 7
+	var preview := map_control.preview
+	var cross := preview.center_marker_rects()
+	var target := preview.map_rect()
+	var center := target.position + Vector2(40, 90) / 128.0 * target.size
+	assert(cross.size() == 2 and cross[0].position.y == center.y and cross[1].position.x == center.x,
+		"The Land Value map marks the saved city centre")
+	assert(preview.center_marker_color == map_control.palette.color(29))
+	map_control.tab_bar.current_tab = 6
+	assert(preview.center_marker_rects().is_empty())
 	city_map.free()
 	print("PASS: City window scene controls, independent selections and close")

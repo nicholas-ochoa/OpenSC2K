@@ -8,6 +8,10 @@ const BORDER := 2.0
 
 var map_texture: Texture2D
 var viewport_outline := PackedVector2Array()
+# the city-centre cross in tiles. A negative point hides it
+var center_marker := Vector2i(-1, -1)
+var center_marker_map_size := MAP_SIZE
+var center_marker_color := Color.BLACK
 
 
 func _ready() -> void:
@@ -30,6 +34,9 @@ func _draw() -> void:
 	if map_texture != null:
 		draw_texture_rect(map_texture, target, false)
 
+	for rect in center_marker_rects():
+		draw_rect(rect, center_marker_color, true)
+
 	if viewport_outline.size() < 2:
 		return
 
@@ -51,6 +58,31 @@ func set_map(image: Image) -> void:
 func set_viewport_outline(points: PackedVector2Array) -> void:
 	viewport_outline = points.duplicate()
 	queue_redraw()
+
+
+func set_center_marker(point: Vector2i, map_size: int, color: Color) -> void:
+	center_marker = point
+	center_marker_map_size = maxi(1, map_size)
+	center_marker_color = color
+	queue_redraw()
+
+
+# SIMCITY.EXE 0x00487b45 draws a cross of seven pixels across and down at the
+# city centre of a 128-pixel map. The cross keeps that size in 128-tile map
+# cells. It is empty when the marker is hidden.
+func center_marker_rects() -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+
+	if center_marker.x < 0 or center_marker.y < 0:
+		return rects
+
+	var target := map_rect()
+	var unit := maxf(1.0, floorf(target.size.x / float(MAP_SIZE)))
+	var point := target.position + Vector2(center_marker) / float(center_marker_map_size) * target.size
+	rects.append(Rect2(point.x - unit * 3.0, point.y, unit * 7.0, unit))
+	rects.append(Rect2(point.x, point.y - unit * 3.0, unit, unit * 7.0))
+
+	return rects
 
 
 func map_rect() -> Rect2:
