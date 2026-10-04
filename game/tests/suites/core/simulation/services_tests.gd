@@ -128,6 +128,20 @@ func test_simnation(reference_root: String) -> void:
 	_check(zero_rate_result.ok, "SimNation continues with a federal rate of 0: %s" % zero_rate_result.error)
 	_check(zero_rate_result.federal_rate >= 1, "A federal rate change raises a rate of 0 to at least 1")
 
+	# its difficulty of 0 gives the Easy disaster wait
+	var engine := SimulationEngine.new(CityModel.from_document(_load_fixture(reference_root.path_join("CITIES/TOMG_B1.SC2"))), 1, 1, 1)
+	var days_ok := true
+
+	for day in 300:
+		var day_result := engine.advance_day()
+
+		if not day_result.ok:
+			days_ok = false
+			_check(false, "TOMG_B1 day %d completes: %s" % [day, day_result.error])
+
+			break
+
+	_check(days_ok, "TOMG_B1 runs for a year with a federal rate and difficulty of 0")
 
 
 func test_industries(reference_root: String) -> void:

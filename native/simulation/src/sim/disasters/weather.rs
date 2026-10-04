@@ -46,6 +46,7 @@ pub const DISASTER_PLANE_CRASH: i64 = 18;
 /// Simulation months by saved difficulty. The executable stores 0, 100, 60,
 /// and 30 at 0x004e9908.
 const DISASTER_WAIT_MONTHS: [i64; 4] = [0, 100, 60, 30];
+const DIFFICULTY_EASY: i64 = 1;
 
 gd_phase_result! {
     pub struct WeatherResult as "WeatherDisasterPhase.Result" {
@@ -288,8 +289,14 @@ pub fn select_disaster(
     map_edge: i64,
 ) -> Result<WeatherResult, String> {
     let difficulty = read_u32_be(misc, misc_layout::DIFFICULTY) & 0xffff;
-    let valid = difficulty > 0 && difficulty < DISASTER_WAIT_MONTHS.len() as i64;
-    let wait_months = if valid { DISASTER_WAIT_MONTHS[difficulty as usize] } else { -1 };
+
+    // TOMG_B1-B4 have a difficulty of 0, whose wait the original game divides
+    // by. Another difficulty uses the Easy wait.
+    let wait_months = if (DIFFICULTY_EASY..DISASTER_WAIT_MONTHS.len() as i64).contains(&difficulty) {
+        DISASTER_WAIT_MONTHS[difficulty as usize]
+    } else {
+        DISASTER_WAIT_MONTHS[DIFFICULTY_EASY as usize]
+    };
     let mut result = WeatherResult {
         disaster_type: DISASTER_NONE,
         disaster_point: current_point,
@@ -302,10 +309,6 @@ pub fn select_disaster(
 
     if read_u32_be(misc, misc_layout::NO_DISASTERS) != 0 {
         return Ok(result);
-    }
-
-    if !valid {
-        return Err("city difficulty is out of range".to_string());
     }
 
     if read_u32_be(misc, misc_layout::CITY_DAYS) / DAYS_PER_MONTH < wait_months {
@@ -437,6 +440,39 @@ mod tests {
     use super::*;
     use crate::sim::bytes::write_u32_be;
     use crate::sim::testing::{empty_city, sequence_lfsr, sequence_random};
+
+    /// A difficulty of 0 waits as Easy does, and a roll then selects nothing.
+    #[test]
+    fn zero_difficulty_uses_the_easy_wait() {
+        let mut city = empty_city(128);
+        let misc = &mut city.misc.data;
+        write_u32_be(misc, misc_layout::DIFFICULTY, 0);
+        write_u32_be(misc, misc_layout::NO_DISASTERS, 0);
+        write_u32_be(misc, misc_layout::CITY_DAYS, 0);
+        let waiting = select_disaster(
+            &city.misc.data,
+            &city.xplt.data,
+            &mut sequence_random(&[]),
+            &mut sequence_lfsr(&[]),
+            Vec2i::ZERO,
+            128,
+        )
+        .unwrap();
+        assert_eq!(waiting.wait_months, DISASTER_WAIT_MONTHS[DIFFICULTY_EASY as usize]);
+        assert_eq!(waiting.disaster_roll, -1);
+
+        write_u32_be(&mut city.misc.data, misc_layout::CITY_DAYS, 100000);
+        let rolled = select_disaster(
+            &city.misc.data,
+            &city.xplt.data,
+            &mut sequence_random(&[99, 0, 0, 0, 0]),
+            &mut sequence_lfsr(&[0]),
+            Vec2i::ZERO,
+            128,
+        )
+        .unwrap();
+        assert_eq!(rolled.disaster_roll, 99);
+    }
 
     /// Random disaster points span the full interior of every map size. The y
     /// draw comes first.
