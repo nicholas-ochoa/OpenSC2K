@@ -174,23 +174,19 @@ func transient_effect_count() -> int:
 	return count
 
 
-func shake_view(frames := 24, frame_duration := 0.005, distance := 4.0) -> void:
+# `offsets` are parts of `distance` view pixels, one each `frame_duration`
+# seconds. the map multiplies the distance by the zoom
+func shake_view(offsets: Array[Vector2], frame_duration: float, distance: float) -> void:
 	_shake_generation += 1
 	shake_offset = Vector2.ZERO
 
-	if frames <= 0 or not map.is_inside_tree():
+	if offsets.is_empty() or not map.is_inside_tree():
 		map.layers._sync_base_layer()
 		map.queue_redraw()
 
 		return
 
-	_show_shake_frame(
-		0,
-		frames,
-		maxf(0.0, float(frame_duration)),
-		maxf(0.0, float(distance)),
-		_shake_generation
-	)
+	_show_shake_frame(0, offsets, maxf(0.0, frame_duration), maxf(0.0, distance), _shake_generation)
 
 
 func set_dynamic_sprites(sprites: Array[CityDynamicVisual]) -> void:
@@ -271,23 +267,24 @@ func _show_transient_effect_frame(
 
 
 func _show_shake_frame(
-	frame: int, frames: int, duration: float, distance: float, generation: int
+	frame: int, offsets: Array[Vector2], duration: float, distance: float, generation: int
 ) -> void:
 	if generation != _shake_generation:
 		return
 
-	if frame >= frames:
+	if frame >= offsets.size():
 		shake_offset = Vector2.ZERO
 		map.layers._sync_base_layer()
 		map.queue_redraw()
 
 		return
 
-	shake_offset = Vector2(-distance * maxf(1.0, map.zoom_factor) * map.map_pixel_ratio, 0.0) if frame & 1 == 0 else Vector2.ZERO
+	# whole screen pixels keep the pixel art sharp
+	shake_offset = (offsets[frame] * distance * maxf(1.0, map.zoom_factor) * map.map_pixel_ratio).round()
 	map.layers._sync_base_layer()
 	map.queue_redraw()
 	map.get_tree().create_timer(duration).timeout.connect(
-		map._show_shake_frame.bind(frame + 1, frames, duration, distance, generation)
+		map._show_shake_frame.bind(frame + 1, offsets, duration, distance, generation)
 	)
 
 

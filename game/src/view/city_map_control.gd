@@ -321,8 +321,8 @@ func show_transient_effects(effects: Array[CityTransientEffectVisual], duration 
 	presentation.show_transient_effects(effects, duration)
 
 
-func shake_view(frames := 24, frame_duration := 0.005, distance := 4.0) -> void:
-	presentation.shake_view(frames, frame_duration, distance)
+func shake_view(offsets: Array[Vector2], frame_duration: float, distance: float) -> void:
+	presentation.shake_view(offsets, frame_duration, distance)
 
 
 func set_dynamic_sprites(sprites: Array[CityDynamicVisual]) -> void:
@@ -362,6 +362,6 @@ func _show_transient_effect_frame(
 
 # bind timers to this node so they stop with it
 func _show_shake_frame(
-	frame: int, frames: int, duration: float, distance: float, generation: int
+	frame: int, offsets: Array[Vector2], duration: float, distance: float, generation: int
 ) -> void:
-	presentation._show_shake_frame(frame, frames, duration, distance, generation)
+	presentation._show_shake_frame(frame, offsets, duration, distance, generation)

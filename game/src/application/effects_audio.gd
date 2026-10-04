@@ -26,6 +26,7 @@ const LAYER_FIRE := 1
 const LAYER_SMOKE := 2
 # large view pixels below a launching arcology that its exhaust can reach
 const EXHAUST_REACH := 64
+const EARTHQUAKE_SOUNDS: Array[int] = [504]
 
 var document_state: ActiveDocumentState
 var view_state: ViewState
@@ -120,10 +121,11 @@ func show_effect_events(effect_events: Array[EffectEvent], sound_events: Array[S
 	for effect in effect_events:
 		if effect.type == "earthquake":
 			map_view.shake_view(
-				int(effect.frames),
-				float(effect.frame_msec) / 1000.0,
-				float(effect.distance),
+				CityEffectTiming.earthquake_offsets(),
+				1.0 / CityEffectTiming.EARTHQUAKE_FPS,
+				CityEffectTiming.EARTHQUAKE_DISTANCE,
 			)
+			_repeat_earthquake_sound()
 
 	if view_state.overlay_mode == CityViewMode.Mode.CITY:
 		var view_size: int = current_view_size.call()
@@ -414,6 +416,16 @@ func _effect_image(sprite_archive: Sc2SpriteArchive, sprite_id: int, flip: bool,
 	_effect_images[key] = image
 
 	return image
+
+
+# the simulation requests the earthquake sound once for each move of its short
+# shake. play it again while the longer shake of the view continues
+func _repeat_earthquake_sound() -> void:
+	if not map_view.is_inside_tree():
+		return
+
+	for seconds in CityEffectTiming.EARTHQUAKE_RUMBLE_SECONDS:
+		map_view.get_tree().create_timer(seconds).timeout.connect(play_sound_ids.bind(EARTHQUAKE_SOUNDS))
 
 
 func play_sound_ids(sound_ids: Array[int]) -> void:
