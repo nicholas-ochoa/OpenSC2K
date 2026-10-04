@@ -11,7 +11,7 @@ const ZONE_COLORS := [CLEAR, Color("8be28b"), Color("2fae4a"), Color("8cc8ff"), 
 	Color("ff9f1c"), Color("9a9a9a"), Color("b07cff"), Color("2ec4b6")]
 const OVERLAY_COLORS := [CLEAR, Color("ffd166"), Color("06d6a0"), Color("ef476f"), Color("118ab2"), Color("c77dff")]
 # one color for each bit, in bit order. a tile with several bits shows its lowest bit
-const UNUSUAL_COLORS := [Color("ff00ff"), Color("ff7b00"), Color("00e5ff"), Color("ffee00")]
+const UNUSUAL_COLORS := [Color("ff00ff"), Color("ff7b00"), Color("00e5ff"), Color("ffee00"), Color("34c759")]
 const CHANGE_COLORS := [Color("ff3b30"), Color("ffcc00"), Color("a2845e"), Color("ff9500"), Color("5ac8fa"),
 	Color("af52de"), Color("007aff")]
 const FLAG_COLOR := Color("ffd60a")

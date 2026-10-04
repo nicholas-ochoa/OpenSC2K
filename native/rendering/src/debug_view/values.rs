@@ -13,6 +13,11 @@ pub const UNUSUAL_ZONE: u8 = 0x01;
 pub const UNUSUAL_TERRAIN: u8 = 0x02;
 pub const UNUSUAL_UNDERGROUND: u8 = 0x04;
 pub const UNUSUAL_MARK: u8 = 0x08;
+pub const UNUSUAL_BAD_TERRAIN: u8 = 0x10;
+
+// ALTM word fields.
+const LEVEL_MASK: i32 = 0x1f;
+const WATER_SHIFT: u32 = 5;
 
 /// Kinds of the overlay kind layer.
 pub const OVERLAY_NONE: u8 = 0;
@@ -46,9 +51,20 @@ fn unusual_terrain(id: u8) -> bool {
     ) || id > UNUSED_47
 }
 
+/// A dry tile whose own water level is above the city water level and its
+/// land. sc2kfix calls it bad terrain: the tile acts as water in some checks.
+pub fn is_bad_terrain(word: i32, flags: u8, city_water_level: i32) -> bool {
+    let land = word & LEVEL_MASK;
+    let water = (word >> WATER_SHIFT) & LEVEL_MASK;
+
+    flags & sc2tile_flags::WATER == 0 && water > city_water_level && land < water
+}
+
 /// Bits for values that no known table names: a zone type above 9, an unused
-/// terrain or underground ID, and a MARK flag that a scan left set.
-pub fn unusual_values(zones: &[u8], terrain: &[u8], underground: &[u8], flags: &[u8]) -> Vec<u8> {
+/// terrain or underground ID, a MARK flag that a scan left set, and bad
+/// terrain. `altitude` holds the ALTM words; a shorter array skips the terrain
+/// check.
+pub fn unusual_values(zones: &[u8], terrain: &[u8], underground: &[u8], flags: &[u8], altitude: &[i32], city_water_level: i32) -> Vec<u8> {
     let cells = zones.len().min(terrain.len()).min(underground.len()).min(flags.len());
     let mut result = vec![0_u8; cells];
 
@@ -67,6 +83,10 @@ pub fn unusual_values(zones: &[u8], terrain: &[u8], underground: &[u8], flags: &
 
         if flags[i] & sc2tile_flags::MARK != 0 {
             *value |= UNUSUAL_MARK;
+        }
+
+        if i < altitude.len() && is_bad_terrain(altitude[i], flags[i], city_water_level) {
+            *value |= UNUSUAL_BAD_TERRAIN;
         }
     }
 
@@ -119,7 +139,7 @@ mod tests {
         let flags = [0, 0, 0, 0, sc2tile_flags::MARK | sc2tile_flags::POWERED];
 
         assert_eq!(
-            unusual_values(&zones, &terrain, &underground, &flags),
+            unusual_values(&zones, &terrain, &underground, &flags, &[], 4),
             vec![
                 0,
                 UNUSUAL_ZONE,
@@ -128,6 +148,16 @@ mod tests {
                 UNUSUAL_MARK
             ]
         );
+    }
+
+    #[test]
+    fn bad_terrain_is_dry_land_under_a_raised_water_level() {
+        let word = |land: i32, water: i32| land | water << WATER_SHIFT;
+        let altitude = [word(3, 6), word(3, 6), word(6, 6), word(3, 4), word(3, 6)];
+        let flags = [0, sc2tile_flags::WATER, 0, 0, 0];
+        let zeros = [0_u8; 5];
+        let found = unusual_values(&zeros, &zeros, &zeros, &flags, &altitude[..4], 4);
+        assert_eq!(found, vec![UNUSUAL_BAD_TERRAIN, 0, 0, 0, 0]);
     }
 
     #[test]

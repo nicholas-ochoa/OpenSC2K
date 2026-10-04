@@ -75,8 +75,17 @@ impl NativeDebugTiles {
         terrain: PackedByteArray,
         underground: PackedByteArray,
         flags: PackedByteArray,
+        altitude: PackedInt32Array,
+        city_water_level: i64,
     ) -> PackedByteArray {
-        let found = values::unusual_values(zones.as_slice(), terrain.as_slice(), underground.as_slice(), flags.as_slice());
+        let found = values::unusual_values(
+            zones.as_slice(),
+            terrain.as_slice(),
+            underground.as_slice(),
+            flags.as_slice(),
+            altitude.as_slice(),
+            city_water_level as i32,
+        );
 
         PackedByteArray::from(found.as_slice())
     }
@@ -155,6 +164,8 @@ impl NativeDebugTiles {
     const UNUSUAL_UNDERGROUND: i32 = values::UNUSUAL_UNDERGROUND as i32;
     #[constant]
     const UNUSUAL_MARK: i32 = values::UNUSUAL_MARK as i32;
+    #[constant]
+    const UNUSUAL_BAD_TERRAIN: i32 = values::UNUSUAL_BAD_TERRAIN as i32;
 }
 
 /// A copy of the tile arrays, for the changed tiles layer.

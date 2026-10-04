@@ -81,13 +81,16 @@ const SOURCE_CHUNKS: Dictionary[Layer, Array] = {
 	Layer.ZONE_TYPE: ["XZON"], Layer.BUILDING_ID: ["XBLD"], Layer.TERRAIN_ID: ["XTER"], Layer.UNDERGROUND_ID: ["XUND"],
 	Layer.OVERLAY_KIND: ["XTXT"], Layer.LAND_ALTITUDE: ["ALTM"], Layer.WATER_ALTITUDE: ["ALTM"],
 	Layer.TUNNEL_LEVELS: ["ALTM"], Layer.POWER_GRIDS: ["XBIT"], Layer.WATER_NETWORKS: ["XBIT"],
-	Layer.UNUSUAL_VALUES: ["XZON", "XTER", "XUND", "XBIT"],
+	Layer.UNUSUAL_VALUES: ["XZON", "XTER", "XUND", "XBIT", "ALTM", "MISC"],
 	Layer.CHANGED_TILES: ["XBLD", "XZON", "XTER", "ALTM", "XUND", "XTXT", "XBIT"],
 }
 const ZONE_NAMES := ["No zone", "Light residential", "Dense residential", "Light commercial", "Dense commercial",
 	"Light industrial", "Dense industrial", "Military", "Airport", "Seaport"]
 const OVERLAY_NAMES := ["None", "Sign", "Facility", "Moving object", "Connection marker", "Other marker"]
-const UNUSUAL_NAMES := ["Zone type above 9", "Unused terrain ID", "Unused underground ID", "MARK flag left set"]
+const UNUSUAL_NAMES := [
+	"Zone type above 9", "Unused terrain ID", "Unused underground ID", "MARK flag left set",
+	"Bad terrain: dry land under a water level above the city's",
+]
 const CHANGE_NAMES := ["Building", "Zone", "Terrain", "Altitude", "Underground", "Overlay", "Flags"]
 
 

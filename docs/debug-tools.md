@@ -46,6 +46,7 @@ file) also show it.
 | Draw Order | Shows the painter index of each sprite draw in the view, and the depth of foreground draws. It needs the GPU region renderer and at most 600 draws in view. |
 | Freeze Palette Cycling | Stops the animated palette colors, for stable images. |
 | Check Missing Artwork | Paints the tiles around the view with placeholders on a worker thread, and shows each tile that needs a sprite that the artwork lacks as the Missing Artwork layer. |
+| Repair Bad Terrain | Repairs the bad terrain of sc2kfix: dry tiles whose own water level is above the city water level and their land. It finds the water level of the map from its water tiles, sets it on each bad tile, and marks a tile below it as water. **Undo Edit** restores ALTM and XBIT together. |
 | Advance One Phase, Advance One Day | Step the paused simulation. See [Steps](#steps). |
 | Preview Disaster at View Center | Runs the disaster for 20 ticks in a copy of the simulation and shows the tiles that it would change as the Disaster Preview layer. The city and its random states do not change. |
 | Verify Save | Saves a copy of the city to a temporary file with the normal save path, loads it again, and compares every chunk. A second save of the loaded file must write the same content. A dialog lists each chunk. The open city and its save path do not change. |
@@ -59,7 +60,8 @@ The analysis layers:
   set to their four side neighbors. Each network gets its own hue. A network that holds a
   powered or watered tile is bright. The key gives the network counts.
 - **Unusual Values** marks values that no known table names: a zone type above 9, an
-  unused terrain or underground ID, and a MARK flag that a scan left set.
+  unused terrain or underground ID, a MARK flag that a scan left set, and sc2kfix bad
+  terrain (dry land under a water level above the city's).
 
 For a residential, commercial or industrial tile, a pinned Tile Inspector also shows the
 growth inputs: the month day of the tile's growth visit, power, nearby transport, the

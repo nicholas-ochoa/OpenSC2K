@@ -156,6 +156,8 @@ func on_debug_menu(id: int) -> void:
 			_status(checks.check_missing_artwork())
 		CityDebugMenu.MENU_UNDO_EDIT:
 			_status(edits.undo())
+		CityDebugMenu.MENU_REPAIR_BAD_TERRAIN:
+			_status(edits.repair_bad_terrain())
 		CityDebugMenu.MENU_TILE_GRID:
 			if app.map_view != null:
 				app.map_view.debug_view.attach()

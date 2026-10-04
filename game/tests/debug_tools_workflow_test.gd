@@ -90,6 +90,40 @@ func _check_edits(main: CityApplication, city: CityState) -> void:
 	assert(edits.undo() == "There is no debug edit to undo.")
 	assert(DebugEdits.parse_number("12 / 0x0C") == 12 and DebugEdits.parse_number("-0x10") == -16)
 	assert(DebugEdits.parse_number("$1,000") == 1000 and DebugEdits.parse_number("x") == null)
+	_check_bad_terrain(main, city)
+
+
+# sc2kfix bad terrain: the Unusual Values layer marks it, and one undo reverts the repair
+func _check_bad_terrain(main: CityApplication, city: CityState) -> void:
+	var altitude := city.document.find_chunk("ALTM")
+	var flags := city.document.find_chunk("XBIT")
+	var original_altitude := altitude.decoded_payload.duplicate()
+	var original_flags := flags.decoded_payload.duplicate()
+	var level := BadTerrain.city_water_level(city)
+	var index := 0
+
+	while city.tile_flags[index] & Sc2TileFlags.WATER != 0:
+		index += 1
+
+	var damaged := altitude.decoded_payload.duplicate()
+	BinaryData.write_u16_be(damaged, index * 2, 0 | (mini(level + 2, 31) << Sc2AltitudeLayout.WATER_SHIFT))
+	altitude.set_decoded_payload(damaged)
+	city.resync_mirrors(PackedStringArray(["ALTM"]))
+	var layer := DebugLayerValues.build(DebugLayerValues.source(city, DebugTileLayers.Layer.UNUSUAL_VALUES),
+		DebugTileLayers.Layer.UNUSUAL_VALUES)
+	assert(layer.values[index] & 0x10 != 0, "The Unusual Values layer marks bad terrain")
+	var detected := BadTerrain.detected_water_level(city)
+	main.debug_tools.on_debug_menu(CityDebugMenu.MENU_REPAIR_BAD_TERRAIN)
+	assert(main.status_label.text.contains("bad terrain"), main.status_label.text)
+	assert((city.altitude_words[index] >> Sc2AltitudeLayout.WATER_SHIFT) & 0x1f == detected)
+	assert(not BadTerrain.is_bad(city.altitude_words[index], city.tile_flags[index], level))
+	assert(main.debug_tools.edits.undo().begins_with("Undid"))
+	assert(altitude.decoded_payload == damaged and flags.decoded_payload == original_flags, "One undo restores ALTM and XBIT")
+	assert(main.debug_tools.edits.repair_bad_terrain() != "No bad terrain found.")
+	assert(main.debug_tools.edits.undo().begins_with("Undid"))
+	altitude.set_decoded_payload(original_altitude)
+	city.resync_mirrors(PackedStringArray(["ALTM"]))
+	assert(BadTerrain.repair(city).tiles == 0, "The generated city has no bad terrain")
 
 
 func _check_chunks(main: CityApplication) -> void:
