@@ -678,7 +678,9 @@ fn demolish_bridge(
 
         replace_building(maps.buildings, maps.zones, maps.misc, index, tiles::EMPTY);
         maps.zones[i] = (maps.zones[i] as i64 & zone::TYPE_MASK) as u8;
-        maps.flags[i] = (maps.flags[i] as i64 & !flag_bits::FLIPPED & 0xff) as u8;
+        // The executable clears only the flip flag, so a demolished power-line
+        // bridge still carries power across the water. Clear its power flags too.
+        maps.flags[i] = (maps.flags[i] as i64 & FLAG_CLEAR_AFTER_STRUCTURE) as u8;
         points.push(current);
         result.indices.push(index);
 
@@ -705,7 +707,7 @@ fn demolish_bridge(
         let land = terrain::land_altitude(maps.altitude, bank_index);
         terrain::set_land_altitude(maps.altitude, bank_index, (land - 1).max(0));
         maps.flags[b] = (maps.flags[b] as i64 | flag_bits::WATER) as u8;
-        maps.flags[b] = (maps.flags[b] as i64 & !flag_bits::FLIPPED & 0xff) as u8;
+        maps.flags[b] = (maps.flags[b] as i64 & FLAG_CLEAR_AFTER_STRUCTURE) as u8;
         retile_bank(maps, bank, random, rotation, emit_effects, scurk_mode, &mut points, &mut result);
     }
 
@@ -1107,6 +1109,36 @@ mod tests {
             city.xmic.data[offset] = tiles::ZOO as u8;
             release_stadium_team(&mut city.maps(), site);
             assert_eq!(read_u32_be(&city.misc.data, misc_layout::STADIUM_TEAMS), 0b0011);
+        }
+    }
+
+    #[test]
+    fn a_demolished_power_line_bridge_carries_no_power() {
+        use crate::sim::testing::empty_city;
+
+        for edge in [128, 256] {
+            let mut city = empty_city(edge);
+            let tile = |y: i64| (20 * edge + y) as usize;
+
+            // a bridge from y 30 to 34 between power lines on its banks
+            for y in 29..=35 {
+                city.xbit.data[tile(y)] |= flag_bits::POWER_MASK as u8;
+
+                if y == 29 || y == 35 {
+                    city.xbld.data[tile(y)] = tiles::POWER_LINE_FIRST as u8;
+                } else {
+                    city.xbld.data[tile(y)] = tiles::POWER_BRIDGE as u8;
+                    city.xbit.data[tile(y)] |= flag_bits::WATER as u8;
+                }
+            }
+
+            let mut random = SimRandom::new(1);
+            demolish_point(&mut city.maps(), Vec2i::new(20, 32), &mut random, 0, false, true, false, false);
+
+            for y in 29..=35 {
+                assert_eq!(city.xbld.data[tile(y)] as i64, tiles::EMPTY, "map edge {edge}, y {y}");
+                assert_eq!(city.xbit.data[tile(y)] as i64 & flag_bits::POWER_MASK, 0, "map edge {edge}, y {y}");
+            }
         }
     }
 }
