@@ -456,11 +456,15 @@ fn start_pollution(city: &mut City, point: Vec2i, random: Option<&mut SimRandom>
     let attempt_count = population_attempts(city);
     let mut text = city.xtxt.data.clone();
     let mut seed_writes = 0;
+    // 0x0045d8b0 moves the disaster point to each seed and centers the view
+    // on the requested point
+    let mut last_seed = point;
 
     for _ in 0..attempt_count.max(0) {
         let dx = (random.next_u15() & 7) - 4;
         let dy = (random.next_u15() & 7) - 4;
-        let tile_index = index(point + Vec2i::new(dx, dy), edge);
+        let seed = point + Vec2i::new(dx, dy);
+        let tile_index = index(seed, edge);
 
         if tile_index < 0 {
             continue;
@@ -468,13 +472,19 @@ fn start_pollution(city: &mut City, point: Vec2i, random: Option<&mut SimRandom>
 
         overlay::write(&mut text, tile_index, 0xfb);
         seed_writes += 1;
+        last_seed = seed;
     }
 
     if seed_writes > 0 {
         city.xtxt.replace(text);
     }
 
-    let mut result = result(DISASTER_POLLUTION, point, seed_writes > 0, true, 0);
+    let mut result = result(DISASTER_POLLUTION, last_seed, seed_writes > 0, true, 0);
+
+    if seed_writes > 0 {
+        result.base.view_center_requests = vec![point];
+    }
+
     result.counters.set("attempt_count", attempt_count.max(0));
     result.counters.set("seed_writes", seed_writes);
     result
@@ -1343,7 +1353,9 @@ fn start_firestorm(
     let started = remaining < 65;
     let map_changed = snapshot.changed(city);
     snapshot.commit(city);
-    let mut result = result(DISASTER_FIRESTORM, center, started, true, 0);
+    // 0x0045e030 moves the disaster point to each new fire
+    let last_fire = accepted_points.last().copied().unwrap_or(center);
+    let mut result = result(DISASTER_FIRESTORM, last_fire, started, true, 0);
     result.requested_point = center;
     result.scan_finish = point;
     result.counters.set("scan_steps", scan_steps);
@@ -1761,6 +1773,26 @@ mod rule_tests {
             assert_eq!(random.next_u15(), next, "the next random value");
             assert_eq!(result.base.view_center_requests, vec![Vec2i::new(12, 12)]);
         }
+    }
+
+    /// A pollution disaster moves the disaster point to its last seed, where
+    /// a Maxis Man goes, and centers the view on the requested point.
+    #[test]
+    fn pollution_reports_its_last_seed() {
+        let mut city = empty_city(128);
+        let point = Vec2i::new(40, 40);
+        let result = start(
+            &mut city,
+            DISASTER_POLLUTION,
+            point,
+            Some(&mut sequence_random(&[5, 6, 1, 2])),
+            None,
+            false,
+        );
+        assert!(result.started);
+        // five attempts at a zero population; the last uses 5 and 6
+        assert_eq!(result.point, point + Vec2i::new(1, 2));
+        assert_eq!(result.base.view_center_requests, vec![point]);
     }
 
     /// A firestorm counts only new fires. Rubble on a reserved marker is no
