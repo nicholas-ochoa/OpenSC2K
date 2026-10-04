@@ -1,8 +1,14 @@
-//! The city value, as CityValuePhase. These rules reproduce the executable at
-//! 0x0046a270. Some values are defects. In particular, each underground subway
-//! tile subtracts one dollar. The executable indexes shifted cost tables for
-//! 0xc6 through 0xcf. These are valuation constants, not the matching
-//! buildings' construction costs.
+//! The city value, as CityValuePhase. The network values and most building
+//! values reproduce the executable at 0x0046a270. As sc2kfix does, this
+//! function corrects the defects of that executable:
+//!
+//! - Each underground subway tile adds the Subway tool cost. The executable
+//!   subtracts one dollar.
+//! - The power plants use their own tool costs. The executable indexes shifted
+//!   cost tables for 0xc6 through 0xcf, so coal counted as $40,000 and wind as
+//!   $6,600.
+//! - The zoo and the stadium use their own tool costs. The executable swaps them.
+//! - The 2 by 2 water treatment plant divides its tile count by 4, not 9.
 
 use super::to_i32;
 use crate::gd_phase_result;
@@ -18,27 +24,31 @@ gd_phase_result! {
     }
 }
 
+/// The Subway tool cost of one underground subway tile.
+const SUBWAY_TILE_VALUE: i64 = 100;
+
+/// Tile ID, tiles per building, and the tool cost of one building.
 const BUILDING_RULES: [(i64, i64, i64); 47] = [
-    (tiles::HYDRO_POWER_1, 1, 4000),
+    (tiles::HYDRO_POWER_1, 1, 400),
     (tiles::HYDRO_POWER_2, 1, 400),
-    (tiles::WIND_POWER, 1, 6600),
-    (tiles::GAS_POWER, 16, 6600),
-    (tiles::OIL_POWER, 16, 2000),
+    (tiles::WIND_POWER, 1, 100),
+    (tiles::GAS_POWER, 16, 2000),
+    (tiles::OIL_POWER, 16, 6600),
     (tiles::NUCLEAR_POWER, 16, 15000),
-    (tiles::SOLAR_POWER, 16, 100),
-    (tiles::MICROWAVE_POWER, 16, 1300),
-    (tiles::FUSION_POWER, 16, 28000),
-    (tiles::COAL_POWER, 16, 40000),
+    (tiles::SOLAR_POWER, 16, 1300),
+    (tiles::MICROWAVE_POWER, 16, 28000),
+    (tiles::FUSION_POWER, 16, 40000),
+    (tiles::COAL_POWER, 16, 4000),
     (tiles::HOSPITAL, 9, 500),
     (tiles::POLICE_STATION, 9, 500),
     (tiles::FIRE_STATION, 9, 500),
     (tiles::MUSEUM, 9, 1000),
     (tiles::BIG_PARK, 9, 150),
     (tiles::SCHOOL, 9, 250),
-    (tiles::STADIUM, 16, 3000),
+    (tiles::STADIUM, 16, 5000),
     (tiles::PRISON, 16, 3000),
     (tiles::COLLEGE, 16, 1000),
-    (tiles::ZOO, 16, 5000),
+    (tiles::ZOO, 16, 3000),
     (tiles::WATER_PUMP, 1, 100),
     (tiles::RUNWAY, 1, 250),
     (tiles::RUNWAY_CROSSING, 1, 250),
@@ -57,7 +67,7 @@ const BUILDING_RULES: [(i64, i64, i64); 47] = [
     (tiles::PARKING_LOT_1, 1, 250),
     (tiles::LOADING_BAY, 1, 150),
     (tiles::CARGO_YARD, 1, 150),
-    (tiles::WATER_TREATMENT, 9, 500),
+    (tiles::WATER_TREATMENT, 4, 500),
     (tiles::LIBRARY, 4, 500),
     (tiles::HANGAR_2, 1, 250),
     (tiles::MARINA, 9, 1000),
@@ -89,7 +99,7 @@ pub fn calculate(city: &City) -> CityValueResult {
     let misc = &city.misc.data;
     let edge = city.map_size;
     let count = |tile: i64| read_count(misc, misc_layout::TILE_COUNTS + tile * 4, edge);
-    let mut value = to_i32(-read_count(misc, misc_layout::SUBWAY_COUNT, edge));
+    let mut value = to_i32(read_count(misc, misc_layout::SUBWAY_COUNT, edge) * SUBWAY_TILE_VALUE);
 
     for tile in tiles::POWER_LINE_FIRST..tiles::DEVELOPED_FIRST {
         let cost = if tile < tiles::ROAD_STRAIGHT_1 {
@@ -128,4 +138,52 @@ pub fn run(city: &mut City) -> CityValueResult {
     }
 
     calculated
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sim::testing::empty_city;
+
+    fn value_of(edge: i64, counts: &[(i64, i64)], subways: i64) -> i64 {
+        let mut city = empty_city(edge);
+        let misc = city.misc.mutate();
+        write_u32_be(misc, misc_layout::SUBWAY_COUNT, subways);
+
+        for &(tile, count) in counts {
+            write_u32_be(misc, misc_layout::TILE_COUNTS + tile * 4, count);
+        }
+
+        calculate(&city).city_value
+    }
+
+    #[test]
+    fn buildings_use_their_own_tool_costs_and_footprints() {
+        for edge in [128, 256] {
+            for (tile, count, value) in [
+                (tiles::HYDRO_POWER_1, 1, 400),
+                (tiles::WIND_POWER, 1, 100),
+                (tiles::GAS_POWER, 16, 2000),
+                (tiles::OIL_POWER, 16, 6600),
+                (tiles::SOLAR_POWER, 16, 1300),
+                (tiles::MICROWAVE_POWER, 16, 28000),
+                (tiles::FUSION_POWER, 16, 40000),
+                (tiles::COAL_POWER, 16, 4000),
+                (tiles::ZOO, 16, 3000),
+                (tiles::STADIUM, 16, 5000),
+                (tiles::WATER_TREATMENT, 4, 500),
+                (tiles::WATER_TREATMENT, 8, 1000),
+            ] {
+                assert_eq!(value_of(edge, &[(tile, count)], 0), value, "tile {tile:#x} at map edge {edge}");
+            }
+        }
+    }
+
+    #[test]
+    fn each_subway_tile_adds_the_subway_tool_cost() {
+        assert_eq!(value_of(128, &[], 3), 300);
+        assert_eq!(value_of(256, &[(tiles::ROAD_STRAIGHT_1, 2)], 5), 520);
+        // a 128-tile map reads the signed low word of each count
+        assert_eq!(value_of(128, &[], 0xffff), -100);
+    }
 }
