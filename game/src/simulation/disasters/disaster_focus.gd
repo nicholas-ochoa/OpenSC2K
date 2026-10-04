@@ -49,32 +49,37 @@ static func _thing_point(city: CityState) -> Vector2i:
 
 static func _marker_point(city: CityState) -> Vector2i:
 	var map_edge: int = city.map_size
-	var total := Vector2i.ZERO
-	var count := 0
+	var markers := PackedInt32Array()
 
-	for x in map_edge:
-		for y in map_edge:
-			if MARKER_OVERLAYS.has(city.marker_overlay_id(x, y)):
-				total += Vector2i(x, y)
-				count += 1
+	# a search of the overlay bytes costs much less than a check of each tile
+	for overlay: int in MARKER_OVERLAYS:
+		var found := OverlayData.find(city.text_overlays, overlay)
 
-	if count == 0:
+		while found >= 0:
+			markers.append(found)
+			found = OverlayData.find(city.text_overlays, overlay, found + 1)
+
+	if markers.is_empty():
 		return Vector2i(-1, -1)
 
+	# tile order, x first, so equal distances choose the first tile
+	markers.sort()
+	var total := Vector2i.ZERO
+
+	for index in markers:
+		total += Vector2i(index / map_edge, index % map_edge)
+
 	# scattered markers average to a quiet tile, so snap back to the nearest marker
-	var average := Vector2i(total.x / count, total.y / count)
+	var average := Vector2i(total.x / markers.size(), total.y / markers.size())
 	var nearest := Vector2i(-1, -1)
 	var nearest_distance := map_edge * 2
 
-	for x in map_edge:
-		for y in map_edge:
-			if not MARKER_OVERLAYS.has(city.marker_overlay_id(x, y)):
-				continue
+	for index in markers:
+		var point := Vector2i(index / map_edge, index % map_edge)
+		var distance := absi(point.x - average.x) + absi(point.y - average.y)
 
-			var distance := absi(x - average.x) + absi(y - average.y)
-
-			if distance < nearest_distance:
-				nearest = Vector2i(x, y)
-				nearest_distance = distance
+		if distance < nearest_distance:
+			nearest = point
+			nearest_distance = distance
 
 	return nearest

@@ -1,6 +1,9 @@
 extends SceneTree
 
 
+@warning_ignore_start("integer_division")
+
+
 func _initialize() -> void:
 	call_deferred("_run")
 
@@ -189,6 +192,41 @@ func _check_disaster_locate(main) -> void:
 	ThingData.write(things, CityState.THING_RECORD_SIZE, 0)
 	assert(thing_chunk.set_decoded_payload(things))
 	assert(DisasterFocus.find_point(city).x < 0, "Finished disaster still returned a location")
+
+	# mixed markers, with equal distances to the middle, match a check of each tile
+	var markers := {Vector2i(5, 9): DisasterMapConstants.FLOOD_OVERLAY, Vector2i(9, 5): DisasterMapConstants.TOXIC_OVERLAY,
+		Vector2i(7, 3): DisasterMapConstants.FIRE_OVERLAY, Vector2i(3, 7): DisasterMapConstants.FIRE_OVERLAY,
+		Vector2i(100, 2): DisasterStartConstants.RIOT_OVERLAY_FORWARD}
+
+	for point: Vector2i in markers:
+		assert(city.set_text_overlay_id(point.x, point.y, markers[point]))
+
+	assert(DisasterFocus.find_point(city) == _nearest_marker_reference(city, markers.keys()))
+
+	for point: Vector2i in markers:
+		assert(city.set_text_overlay_id(point.x, point.y, 0))
+
+
+# the marker nearest the middle of the markers, the first one in tile order on a tie
+func _nearest_marker_reference(city: CityState, markers: Array) -> Vector2i:
+	var total := Vector2i.ZERO
+
+	for point: Vector2i in markers:
+		total += point
+
+	var average := Vector2i(total.x / markers.size(), total.y / markers.size())
+	var nearest := Vector2i(-1, -1)
+	var nearest_distance := city.map_size * 2
+
+	for x in city.map_size:
+		for y in city.map_size:
+			var distance := absi(x - average.x) + absi(y - average.y)
+
+			if Vector2i(x, y) in markers and distance < nearest_distance:
+				nearest = Vector2i(x, y)
+				nearest_distance = distance
+
+	return nearest
 
 
 func _check_main_ui() -> void:
