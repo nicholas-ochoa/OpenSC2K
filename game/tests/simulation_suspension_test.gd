@@ -118,6 +118,11 @@ func _check_scenario_goals() -> void:
 	assert(main.city_dialogs.scenario_dialog.visible)
 	assert(not main.city_dialogs.scenario_dialog.starts_scenario)
 	assert(not main.city_dialogs.scenario_dialog.text_view.text.is_empty())
+	var rows := engine.scenario.progress_rows(main.document_state.city)
+	assert(not rows.is_empty() and main.city_dialogs.scenario_dialog.progress_grid.visible
+		and main.city_dialogs.scenario_dialog.progress_grid.get_child_count() == (rows.size() + 1) * 4,
+		"Show Scenario Goals lists each goal with its current value")
+	assert(main.city_dialogs.scenario_dialog.progress_heading.text.contains("months left"))
 	assert(main.frame._simulation_suspended())
 	main.city_dialogs.scenario_dialog.get_ok_button().pressed.emit()
 	assert(not main.city_dialogs.scenario_dialog.visible)

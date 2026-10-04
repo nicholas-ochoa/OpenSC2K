@@ -96,6 +96,8 @@ func _init() -> void:
 		ui_shell_tests.test_rci_status_control()
 	if _selected("formats"):
 		ScenariosTests.new(context).test_scenarios(reference_root)
+	if _selected("formats"):
+		ScenariosTests.new(context).test_scenario_progress(reference_root)
 	if _selected("simulation"):
 		ClockEngineTests.new(context).test_simulation_clock()
 	if _selected("simulation"):

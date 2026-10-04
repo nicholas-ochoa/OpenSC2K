@@ -350,6 +350,55 @@ func evaluate_goals(city: CityState) -> Goals:
 	return result
 
 
+# The player progress of each goal, as the scenario status window of sc2kfix
+# shows it: label, requirement, current value, and whether the goal is met.
+# A goal that the scenario does not use is left out.
+func progress_rows(city: CityState) -> Array[ProgressRow]:
+	var rows: Array[ProgressRow] = []
+	var goals := evaluate_goals(city)
+
+	if not goals.ok:
+		return rows
+
+	var money := func(value: int) -> String: return BudgetReport.currency(value)
+	var land := func(value: int) -> String: return BudgetReport.currency(value * 1000)
+	var number := func(value: int) -> String: return str(value)
+
+	for goal: Array in [
+		["city_size", "city_size", city_size_goal, "City population", number, false],
+		["residential", "residential", residential_goal, "Residential population", number, false],
+		["commercial", "commercial", commercial_goal, "Commercial population", number, false],
+		["industrial", "industrial", industrial_goal, "Industrial population", number, false],
+		["cash", "cash_after_bonds", cash_goal, "Funds minus bonds", money, false],
+		["land_value", "land_value", land_value_goal, "Total land value", land, false],
+		["life_expectancy", "life_expectancy", life_expectancy_goal, "Life expectancy", number, false],
+		["education", "education", education_goal, "Education quotient", number, false],
+		["pollution", "pollution", pollution_limit, "Pollution", number, true],
+		["crime", "crime", crime_limit, "Crime", number, true],
+		["traffic", "traffic", traffic_limit, "Traffic", number, true],
+	]:
+		var required: int = goal[2]
+
+		if required <= 0:
+			continue
+
+		var format: Callable = goal[4]
+		rows.append(ProgressRow.create(goal[3], ("at most " if goal[5] else "at least ") + format.call(required),
+			format.call(int(goals.values.get(goal[1], 0))), goal[0] not in goals.unmet))
+
+	for building: Array in [
+		["first_building", "first_building_tiles", first_building_id, first_building_tile_count],
+		["second_building", "second_building_tiles", second_building_id, second_building_tile_count],
+	]:
+		if int(building[2]) == BuildingTileIds.EMPTY:
+			continue
+
+		rows.append(ProgressRow.create("%s tiles" % QueryStrings.tile_name(int(building[2])), "at least %d" % int(building[3]),
+			str(int(goals.values.get(building[1], 0))), building[0] not in goals.unmet))
+
+	return rows
+
+
 func set_time_limit_months(value: int) -> bool:
 	if not is_valid() or value < 0 or value > 0xffff:
 		return false
@@ -414,6 +463,22 @@ func _text_chunk(expected_header: int) -> String:
 		return chunk.decoded_payload.slice(4, end).get_string_from_ascii()
 
 	return ""
+
+
+class ProgressRow extends RefCounted:
+	var label := ""
+	var requirement := ""
+	var current := ""
+	var met := false
+
+	static func create(label_text: String, requirement_text: String, current_text: String, is_met: bool) -> ProgressRow:
+		var row := ProgressRow.new()
+		row.label = label_text
+		row.requirement = requirement_text
+		row.current = current_text
+		row.met = is_met
+
+		return row
 
 
 class TemplateField extends RefCounted:

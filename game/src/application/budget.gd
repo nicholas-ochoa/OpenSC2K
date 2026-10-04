@@ -331,6 +331,14 @@ func open_scenario_intro(scenario: ScenarioState, starting := true) -> void:
 		app.status_label.text = "Review the scenario briefing before the simulation starts."
 	app.city_dialogs.scenario_dialog.show_briefing(name, picture, scenario.opening_description(), starting)
 
+	if not starting:
+		var city := app.document_state.city
+		var rows := scenario.progress_rows(city)
+		var met := rows.filter(func(row: ScenarioState.ProgressRow) -> bool: return row.met).size()
+		var heading := "%d of %d goals met. %d %s left." % [met, rows.size(), scenario.time_limit_months,
+			"month" if scenario.time_limit_months == 1 else "months"]
+		app.city_dialogs.scenario_dialog.set_progress(heading, rows)
+
 
 func begin_scenario() -> void:
 	if not app.city_dialogs.scenario_dialog.starts_scenario:

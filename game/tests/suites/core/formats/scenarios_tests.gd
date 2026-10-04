@@ -227,3 +227,26 @@ func _test_template_validation(reference_root: String) -> void:
 		not ScenarioModel.from_document(unknown_template_document).template_fields().ok,
 		"TMPL reader rejects an unknown field type",
 	)
+
+
+func test_scenario_progress(reference_root: String) -> void:
+	var document := _load_fixture(reference_root.path_join("SCENARIO/MALIBU.SCN"))
+	var city := CityModel.from_document(document)
+	var scenario := ScenarioModel.from_document(document)
+	var goals := scenario.evaluate_goals(city)
+	var rows := scenario.progress_rows(city)
+	var used := 0
+
+	for value: int in [scenario.city_size_goal, scenario.residential_goal, scenario.commercial_goal, scenario.industrial_goal,
+			scenario.cash_goal, scenario.land_value_goal, scenario.life_expectancy_goal, scenario.education_goal,
+			scenario.pollution_limit, scenario.crime_limit, scenario.traffic_limit]:
+		used += 1 if value > 0 else 0
+
+	used += (1 if scenario.first_building_id != BuildingTileIds.EMPTY else 0) + (1 if scenario.second_building_id != BuildingTileIds.EMPTY else 0)
+	_check(rows.size() == used and used > 0, "Scenario progress lists each goal that the scenario uses")
+	var unmet := 0
+
+	for row in rows:
+		unmet += 0 if row.met else 1
+
+	_check(goals.ok and unmet == goals.unmet.size(), "Scenario progress agrees with the goal check")
