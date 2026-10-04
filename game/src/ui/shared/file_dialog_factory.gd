@@ -23,7 +23,7 @@ static func city_save() -> FileDialog:
 static func tile_set_open() -> FileDialog:
 	return _create(
 		FileDialog.FILE_MODE_OPEN_FILE,
-		[["*.MIF, *.mif", "SCURK tile sets"]],
+		[["*.MIF, *.mif", "SCURK tile sets"], ["*.TIL, *.til", "DOS SCURK tile sets"], ["*", "Macintosh SCURK tile sets"]],
 	)
 
 

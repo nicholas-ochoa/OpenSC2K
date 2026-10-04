@@ -1004,3 +1004,48 @@ func test_sc2kfix_and_mac_tile_sets(reference_root: String) -> void:
 	var saved := ScurkMif.new()
 	_check(saved.parse(mac.to_bytes().bytes) and saved.info_payload.size() == ScurkMif.INFO_LENGTH,
 		"A Macintosh tile set saves in the Windows layout")
+
+
+func test_dos_and_mac_native_tile_sets(reference_root: String) -> void:
+	# the sc2kfix DOS and Macintosh table, with the index 1 that the Windows copies use
+	_check(ScurkForeignTileSet.dos_index(0) == 16 and ScurkForeignTileSet.dos_index(1) == 17
+		and ScurkForeignTileSet.dos_index(203) == 219 and ScurkForeignTileSet.dos_index(204) == 0x0a
+		and ScurkForeignTileSet.dos_index(212) == 0xea and ScurkForeignTileSet.dos_index(224) == 224
+		and ScurkForeignTileSet.dos_index(232) == 0x34 and ScurkForeignTileSet.dos_index(233) == 0xb4
+		and ScurkForeignTileSet.dos_index(250) == 0 and ScurkForeignTileSet.dos_index(-1) == -1,
+		"DOS pixels convert with the sc2kfix palette table")
+	_check(ScurkForeignTileSet.mac_index(0xfc) == 0x61 and ScurkForeignTileSet.mac_index(0xff) == 0
+		and ScurkForeignTileSet.mac_index(20) == 36, "Macintosh pixels convert with the sc2kfix palette table")
+
+	var dos_root := reference_root.path_join("../SimCity2000-DOS/SCURKART")
+
+	if DirAccess.dir_exists_absolute(dos_root):
+		var dos := ScurkForeignTileSet.load_path(dos_root.path_join("BIGBEN.TIL"))
+		var windows := ScurkMif.load_path(reference_root.path_join("SCURKART/BIGBEN.MIF"))
+		_check(dos.is_valid() and dos.uses_dos_colors() and dos.overrides.find_sprite(1251) != null,
+			"A DOS tile set loads with the DOS colours: %s" % dos.parse_error)
+		_check(dos.overrides.find_sprite(1251).decode_indices().pixels == windows.overrides.find_sprite(1251).decode_indices().pixels,
+			"A DOS sprite converts to the pixels of its Windows copy")
+		var placeholders := true
+
+		for entry in dos.overrides.entries:
+			placeholders = placeholders and entry.height >= ScurkForeignTileSet.MIN_HEIGHT
+
+		_check(placeholders, "One-row DOS placeholders replace no sprite")
+
+	var mac_fork := reference_root.path_join("../SimCity2000-Macintosh/SimCity 2000® 1.2.rsrc")
+
+	if FileAccess.file_exists(mac_fork):
+		var mac := ScurkForeignTileSet.load_path(mac_fork)
+		var large := SpriteArchive.load_path(reference_root.path_join("DATA/LARGE.DAT"))
+		var same := 0
+
+		for sprite_id in [1001, 1100, 1180, 1300]:
+			var entry := mac.overrides.find_sprite(sprite_id)
+			same += 1 if entry != null and entry.decode_indices().pixels == large.find_sprite(sprite_id).decode_indices().pixels else 0
+
+		_check(mac.is_valid() and mac.uses_dos_colors() and mac.overrides.entries.size() > 1000,
+			"The Macintosh tile set of a resource fork loads: %s" % mac.parse_error)
+		_check(same == 4, "Macintosh sprites convert to the pixels of the Windows sprites")
+
+	_check(not ScurkForeignTileSet.load_path(reference_root.path_join("DEFAULT.SC2")).is_valid(), "A city file is not a tile set")

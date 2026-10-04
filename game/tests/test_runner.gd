@@ -80,6 +80,8 @@ func _init() -> void:
 		TileSetsTests.new(context).test_scurk_mif(reference_root)
 	if _selected("scurk"):
 		TileSetsTests.new(context).test_sc2kfix_and_mac_tile_sets(reference_root)
+	if _selected("scurk"):
+		TileSetsTests.new(context).test_dos_and_mac_native_tile_sets(reference_root)
 	if _selected("formats"):
 		CityFilesTests.new(context).test_reference_corpus(reference_root)
 	if _selected("formats"):

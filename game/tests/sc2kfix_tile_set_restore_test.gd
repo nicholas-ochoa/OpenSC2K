@@ -50,6 +50,14 @@ func _run() -> void:
 	assert(main.asset_state.palette.colors[0xea] == Color.BLACK and main.asset_state.active_scurk_tile_sets.is_empty())
 	DirAccess.remove_absolute(tagged_path)
 
+	# a DOS tile set loads with the DOS colours
+	var dos_path := main.asset_state.reference_root.path_join("../SimCity2000-DOS/SCURKART/BIGBEN.TIL")
+
+	if FileAccess.file_exists(dos_path):
+		main.scurk_workspace.load_tile_set(dos_path)
+		assert(main.asset_state.active_scurk_name == "BIGBEN.TIL" and main.asset_state.palette.colors[0xea] != Color.BLACK)
+		main.scurk_workspace.restore_original_tile_set()
+
 	main.scurk_workspace.restore_original_tile_set()
 	main.city_files._load_city_unchecked(GeneratedCityFixture.path(128))
 	assert(main.asset_state.active_scurk_name.is_empty(), "A city without XFIX keeps the original tile set")

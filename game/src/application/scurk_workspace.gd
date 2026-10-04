@@ -4,7 +4,6 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
-const ScurkTileSet = preload("res://src/assets/scurk_mif.gd")
 const ScurkPlace = preload("res://src/tools/scurk/scurk_place_command.gd")
 
 var app: CityApplication
@@ -427,7 +426,7 @@ func load_tile_set(path: String) -> void:
 
 		return
 
-	var tile_set := ScurkTileSet.load_path(path)
+	var tile_set := ScurkForeignTileSet.load_path(path)
 
 	if not tile_set.is_valid():
 		app.interface.show_error("Cannot load tile set: %s" % tile_set.parse_error)
@@ -560,7 +559,7 @@ func restore_city_tile_sets(document: Sc2File) -> int:
 		if resolved.is_empty():
 			continue
 
-		var tile_set := ScurkTileSet.load_path(resolved)
+		var tile_set := ScurkForeignTileSet.load_path(resolved)
 
 		if tile_set.is_valid():
 			tile_sets.append(tile_set)
