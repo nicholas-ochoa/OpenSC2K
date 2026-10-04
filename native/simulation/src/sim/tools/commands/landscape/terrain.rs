@@ -89,6 +89,10 @@ pub fn apply(city: &mut City, args: &ToolArgs, path: &TerrainPath, mut random: O
     let mut next_effect_frame = 0;
     let mut random_used = false;
 
+    // One decode serves the whole path. Each applied point refreshes the
+    // heights of the tiles it touched.
+    let mut decoded = heights::decode_heights(&city.altm.data, edge);
+
     for &point in path.points {
         let index = city.index_of(point.x, point.y);
 
@@ -102,7 +106,6 @@ pub fn apply(city: &mut City, args: &ToolArgs, path: &TerrainPath, mut random: O
             continue;
         }
 
-        let decoded = heights::decode_heights(&city.altm.data, edge);
         let trial: Plan = if operation == SUBTOOL_RAISE {
             heights::plan_raise(&decoded, &city.xzon.data, &city.xbld.data, point, funds, edge)
         } else {
@@ -129,7 +132,7 @@ pub fn apply(city: &mut City, args: &ToolArgs, path: &TerrainPath, mut random: O
         }
 
         let maps = city.maps();
-        heights::write_heights(maps.altitude, &trial.heights, &trial.modified);
+        heights::write_heights(maps.altitude, &mut decoded, &trial.heights, &trial.modified);
 
         for &index in &trial.zone_indices {
             maps.zones[index as usize] &= zone::CORNERS_MASK as u8;
@@ -161,6 +164,7 @@ pub fn apply(city: &mut City, args: &ToolArgs, path: &TerrainPath, mut random: O
 
         for &index in trial.modified.iter().chain(&retile).chain(&cleared.indices) {
             changed.add(index);
+            decoded[index as usize] = land_altitude(&city.altm.data, index);
         }
 
         next_effect_frame = append_effect_sequence(&mut effect_events, &cleared.effect_events, next_effect_frame);

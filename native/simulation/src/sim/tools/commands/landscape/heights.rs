@@ -1,9 +1,10 @@
 //! Height plans for the raise and lower tools, as TerrainEditHeights.
 //!
-//! A plan works on a copy of the land heights. It lists the tiles it changed in
-//! the order the original visits them, and the price of the change.
+//! A plan reads the land heights and keeps its own changes apart from them, so
+//! a plan costs only the tiles it visits. It lists the tiles it changed in the
+//! order the original visits them, their new heights, and the price.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::sim::geom::Vec2i;
 use crate::sim::ids::building_tile_ids as tiles;
@@ -35,6 +36,7 @@ const ALL_CORNERS: i64 = 15;
 pub struct Plan {
     pub valid: bool,
     pub insufficient: bool,
+    /// The new height of each `modified` tile.
     pub heights: Vec<i64>,
     pub modified: Vec<i64>,
     pub zone_indices: Vec<i64>,
@@ -66,14 +68,44 @@ impl OrderedIndices {
     }
 }
 
+/// The heights of a plan: the map heights with the plan's changes over them.
+struct TrialHeights<'a> {
+    base: &'a [i64],
+    changes: HashMap<i64, i64>,
+}
+
+impl<'a> TrialHeights<'a> {
+    fn new(base: &'a [i64]) -> Self {
+        Self {
+            base,
+            changes: HashMap::new(),
+        }
+    }
+
+    fn get(&self, index: i64) -> i64 {
+        self.changes.get(&index).copied().unwrap_or(self.base[index as usize])
+    }
+
+    fn set(&mut self, index: i64, value: i64) {
+        self.changes.insert(index, value);
+    }
+
+    /// The new height of each index.
+    fn values(&self, indices: &[i64]) -> Vec<i64> {
+        indices.iter().map(|&index| self.get(index)).collect()
+    }
+}
+
 /// Every land height of the map.
 pub fn decode_heights(altitude: &[u8], map_edge: i64) -> Vec<i64> {
     (0..map_edge * map_edge).map(|index| land_altitude(altitude, index)).collect()
 }
 
-pub fn write_heights(altitude: &mut [u8], heights: &[i64], indices: &[i64]) {
-    for &index in indices {
-        set_land_altitude(altitude, index, heights[index as usize]);
+/// Store the new heights of a plan in the altitude map and in `decoded`.
+pub fn write_heights(altitude: &mut [u8], decoded: &mut [i64], heights: &[i64], indices: &[i64]) {
+    for (&index, &height) in indices.iter().zip(heights) {
+        set_land_altitude(altitude, index, height);
+        decoded[index as usize] = height;
     }
 }
 
@@ -97,7 +129,7 @@ pub fn plan_raise(heights: &[i64], zones: &[u8], buildings: &[u8], start: Vec2i,
         return Plan::invalid(false);
     }
 
-    let mut trial = heights.to_vec();
+    let mut trial = TrialHeights::new(heights);
     let mut modified = OrderedIndices::default();
     let mut zone_indices = Vec::new();
     let mut remaining = funds;
@@ -109,7 +141,7 @@ pub fn plan_raise(heights: &[i64], zones: &[u8], buildings: &[u8], start: Vec2i,
         }
 
         let index = point.x * map_edge + point.y;
-        trial[index as usize] += 1;
+        trial.set(index, trial.get(index) + 1);
         remaining -= LEVEL_COST;
         cost += LEVEL_COST;
         zone_indices.push(index);
@@ -124,7 +156,7 @@ pub fn plan_raise(heights: &[i64], zones: &[u8], buildings: &[u8], start: Vec2i,
     Plan {
         valid: true,
         insufficient: false,
-        heights: trial,
+        heights: trial.values(&modified.list),
         modified: modified.list,
         zone_indices,
         funds: remaining,
@@ -190,8 +222,8 @@ impl RaiseSearch<'_> {
 }
 
 /// Keep cardinal neighbors within one level. Parks and larger buildings stay.
-fn normalize_cardinal_slopes(heights: &mut [i64], buildings: &[u8], point: Vec2i, modified: &mut OrderedIndices, map_edge: i64) {
-    let index = (point.x * map_edge + point.y) as usize;
+fn normalize_cardinal_slopes(heights: &mut TrialHeights, buildings: &[u8], point: Vec2i, modified: &mut OrderedIndices, map_edge: i64) {
+    let index = point.x * map_edge + point.y;
 
     for offset in CARDINAL_OFFSETS {
         let neighbor = point + offset;
@@ -201,18 +233,17 @@ fn normalize_cardinal_slopes(heights: &mut [i64], buildings: &[u8], point: Vec2i
         }
 
         let neighbor_index = neighbor.x * map_edge + neighbor.y;
-        let n = neighbor_index as usize;
 
-        if buildings[n] as i64 >= tiles::SMALL_PARK {
+        if buildings[neighbor_index as usize] as i64 >= tiles::SMALL_PARK {
             continue;
         }
 
-        let difference = heights[index] - heights[n];
+        let difference = heights.get(index) - heights.get(neighbor_index);
 
         if difference >= 2 {
-            heights[n] = heights[index] - 1;
+            heights.set(neighbor_index, heights.get(index) - 1);
         } else if difference <= -2 {
-            heights[n] = heights[index] + 1;
+            heights.set(neighbor_index, heights.get(index) + 1);
         } else {
             continue;
         }
@@ -235,7 +266,7 @@ pub fn plan_lower(heights: &[i64], start: Vec2i, funds: i64, map_edge: i64) -> P
         return Plan::invalid(false);
     }
 
-    let mut trial = heights.to_vec();
+    let mut trial = TrialHeights::new(heights);
     let mut queue = [Vec2i::ZERO; LOWER_QUEUE];
     let mask = LOWER_QUEUE - 1;
     let mut head = 0;
@@ -245,7 +276,7 @@ pub fn plan_lower(heights: &[i64], start: Vec2i, funds: i64, map_edge: i64) -> P
     let mut modified = OrderedIndices::default();
     modified.add(start_index);
     let mut zone_indices = OrderedIndices::default();
-    trial[start_index as usize] -= 1;
+    trial.set(start_index, trial.get(start_index) - 1);
     let mut decrements = 1;
 
     while head != tail {
@@ -254,13 +285,13 @@ pub fn plan_lower(heights: &[i64], start: Vec2i, funds: i64, map_edge: i64) -> P
         let index = point.x * map_edge + point.y;
         zone_indices.add(index);
 
-        let current = trial[index as usize];
+        let current = trial.get(index);
         let mut higher_mask = 0;
 
         for neighbor in 0..HIGHER_NEIGHBORS {
             let checked = point + NEIGHBOR_OFFSETS[neighbor];
 
-            if in_bounds(checked, map_edge) && trial[(checked.x * map_edge + checked.y) as usize] > current {
+            if in_bounds(checked, map_edge) && trial.get(checked.x * map_edge + checked.y) > current {
                 higher_mask |= NEIGHBOR_MASKS[neighbor];
             }
         }
@@ -273,10 +304,11 @@ pub fn plan_lower(heights: &[i64], start: Vec2i, funds: i64, map_edge: i64) -> P
             }
 
             let checked_index = checked.x * map_edge + checked.y;
-            let value = trial[checked_index as usize];
+            let value = trial.get(checked_index);
+            let here = trial.get(index);
 
-            if value > trial[index as usize] + 1 || (value > trial[index as usize] && higher_mask == ALL_CORNERS) {
-                trial[checked_index as usize] -= 1;
+            if value > here + 1 || (value > here && higher_mask == ALL_CORNERS) {
+                trial.set(checked_index, value - 1);
                 decrements += 1;
                 queue[tail] = checked;
                 tail = (tail + 1) & mask;
@@ -294,7 +326,7 @@ pub fn plan_lower(heights: &[i64], start: Vec2i, funds: i64, map_edge: i64) -> P
     Plan {
         valid: true,
         insufficient: false,
-        heights: trial,
+        heights: trial.values(&modified.list),
         modified: modified.list,
         zone_indices: zone_indices.list,
         funds: (funds - decrements * LEVEL_COST).max(0),
@@ -320,9 +352,14 @@ mod tests {
 
         let plan = plan_raise(&heights, &zones, &buildings, start, LEVEL_COST, edge);
 
+        let height = |point: Vec2i| {
+            let at = plan.modified.iter().position(|&modified| modified == index(point) as i64);
+            at.map_or(heights[index(point)], |at| plan.heights[at])
+        };
+
         assert!(plan.valid);
-        assert_eq!(plan.heights[index(Vec2i::new(19, 20))], 1);
-        assert_eq!(plan.heights[index(Vec2i::new(20, 19))], 0);
-        assert_eq!(plan.heights[index(start)], 1);
+        assert_eq!(height(Vec2i::new(19, 20)), 1);
+        assert_eq!(height(Vec2i::new(20, 19)), 0);
+        assert_eq!(height(start), 1);
     }
 }
