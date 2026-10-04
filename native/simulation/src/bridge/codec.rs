@@ -115,7 +115,7 @@ pub struct NativeSc2Form {}
 
 #[godot_api]
 impl NativeSc2Form {
-    /// `{ok, error, map_size, large_version, chunks}`. Each chunk is
+    /// `{ok, error, map_size, large_version, repaired_length, chunks}`. Each chunk is
     /// `{chunk_id, source_offset, stored, decoded, expected_size, compressed}`.
     #[func]
     fn parse(bytes: PackedByteArray) -> VarDictionary {
@@ -140,6 +140,7 @@ impl NativeSc2Form {
                 result.set("error", "");
                 result.set("map_size", form.map_size);
                 result.set("large_version", form.large_version);
+                result.set("repaired_length", form.repaired_length);
                 result.set("chunks", &chunks);
             }
             Err(error) => {

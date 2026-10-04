@@ -64,6 +64,8 @@ var chunks: Array[Sc2Chunk] = []
 var source_bytes := PackedByteArray()
 var source_path := ""
 var parse_error := ""
+# The FORM length was zero, so the reader used the file size, as sc2kfix does
+var repaired_form_length := false
 # Cache the first occurrence of each chunk ID. Worker lookups only read
 # the cache; rebuild it when the chunk list changes. A size mismatch
 # falls back to a scan. Store positions so the cache cannot keep chunks alive.
@@ -120,6 +122,7 @@ func parse(bytes: PackedByteArray) -> bool:
 	invalidate_chunk_cache()
 	source_bytes = PackedByteArray()
 	parse_error = ""
+	repaired_form_length = false
 	map_size = 128
 	large_version = 2
 	_clear_sc2x_state()
@@ -152,6 +155,12 @@ func parse(bytes: PackedByteArray) -> bool:
 		chunks.append(chunk)
 
 	source_bytes = bytes.duplicate()
+	repaired_form_length = form.get("repaired_length", false)
+
+	# an unchanged save writes the repaired length, never the zero
+	if repaired_form_length:
+		BinaryData.write_u32_be(source_bytes, 4, source_bytes.size() - 8)
+
 	rebuild_chunk_cache()
 
 	return true
@@ -223,6 +232,7 @@ func duplicate_document(share_source_bytes := false) -> Sc2File:
 	result.source_bytes = source_bytes if share_source_bytes else source_bytes.duplicate()
 	result.source_path = source_path
 	result.parse_error = parse_error
+	result.repaired_form_length = repaired_form_length
 	result.sc2x_metadata = sc2x_metadata.copy() if sc2x_metadata != null else null
 	result.sc2x_compat_labels = sc2x_compat_labels.duplicate()
 	result.sc2x_object_ids = sc2x_object_ids.duplicate()

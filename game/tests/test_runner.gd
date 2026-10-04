@@ -80,6 +80,8 @@ func _init() -> void:
 		CityFilesTests.new(context).test_reference_corpus(reference_root)
 	if _selected("formats"):
 		CityFilesTests.new(context).test_city_options(reference_root)
+	if _selected("formats"):
+		CityFilesTests.new(context).test_zero_form_length(reference_root)
 	if _selected("audio"):
 		audio_tests.test_music(reference_root)
 	if _selected("ui"):

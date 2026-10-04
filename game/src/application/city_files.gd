@@ -349,6 +349,9 @@ func _read_city(path: String) -> ReadCity:
 
 	read.status = "Loaded %s. Map view: %s." % [path.get_file(), CityViewMode.key(app.view_state.overlay_mode).capitalize()]
 
+	if document.repaired_form_length:
+		read.status += " Its file header had a zero length, which the game repaired. Save the city to a new file."
+
 	# an SCLG city becomes an SC2X version 4 city in memory. its file stays unchanged
 	if document.is_extended() and not document.is_sc2x():
 		var converted := Sc2xDocument.from_legacy(document, path.get_file().get_basename())

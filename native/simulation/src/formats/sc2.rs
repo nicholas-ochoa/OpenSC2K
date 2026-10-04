@@ -54,6 +54,8 @@ pub struct Form {
     pub map_size: i64,
     pub large_version: i64,
     pub chunks: Vec<Chunk>,
+    /// The FORM length was zero, and the reader used the file size instead.
+    pub repaired_length: bool,
 }
 
 /// Sc2File.decoded_size for SC2, SCN, and SCLG files: the decoded payload
@@ -146,20 +148,26 @@ pub fn parse(bytes: &[u8]) -> Result<Form, String> {
         return Err("File does not start with FORM".into());
     }
 
-    if u32_at(bytes, 4) as usize != bytes.len() - 8 {
-        return Err("FORM length does not match the file size".into());
-    }
-
     let form_type = &bytes[8..12];
 
     if form_type != b"SCDH" && form_type != b"SCLG" {
         return Err("FORM type is not SCDH or experimental SCLG".into());
     }
 
+    // Some saves of the original game have a zero FORM length. As sc2kfix
+    // does, an original city file then uses its file size.
+    let declared_length = u32_at(bytes, 4) as usize;
+    let repaired_length = declared_length == 0 && form_type == b"SCDH";
+
+    if declared_length != bytes.len() - 8 && !repaired_length {
+        return Err("FORM length does not match the file size".into());
+    }
+
     let mut form = Form {
         map_size: ORIGINAL_EDGE,
         large_version: ORIGINAL_LARGE_VERSION,
         chunks: Vec::new(),
+        repaired_length,
     };
     let mut offset = FORM_HEADER_SIZE;
 
@@ -377,5 +385,22 @@ mod tests {
             parse(&form(b"SCLG", &body)).unwrap_err(),
             "Unsupported experimental city version or size"
         );
+    }
+
+    #[test]
+    fn an_original_city_with_a_zero_form_length_uses_its_file_size() {
+        let mut bytes = form(b"SCDH", &chunk("CNAM", &[b'A'; 32]));
+        let intact = parse(&bytes).expect("an intact city");
+        assert!(!intact.repaired_length);
+
+        bytes[4..8].copy_from_slice(&[0; 4]);
+        let repaired = parse(&bytes).expect("a repaired city");
+        assert!(repaired.repaired_length);
+        assert_eq!(repaired.chunks.len(), 1);
+        assert_eq!(repaired.chunks[0].decoded, vec![b'A'; 32]);
+
+        let mut experimental = form(b"SCLG", &[]);
+        experimental[4..8].copy_from_slice(&[0; 4]);
+        assert_eq!(parse(&experimental).unwrap_err(), "FORM length does not match the file size");
     }
 }

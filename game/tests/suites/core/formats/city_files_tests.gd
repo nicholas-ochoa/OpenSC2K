@@ -241,3 +241,16 @@ func test_modified_save(reference_root: String) -> void:
 		not CityFileStore.save_copy(null, save_base, reference_root).ok,
 		"City file store rejects a missing city document",
 	)
+
+
+func test_zero_form_length(reference_root: String) -> void:
+	var source := FileAccess.get_file_as_bytes(reference_root.path_join("DEFAULT.SC2"))
+	var damaged := source.duplicate()
+	BinaryData.write_u32_be(damaged, 4, 0)
+	var document := Sc2Document.new()
+	_check(document.parse(damaged), "A city with a zero FORM length loads: %s" % document.parse_error)
+	_check(document.repaired_form_length, "The loader reports the repaired FORM length")
+	_check(document.serialize().data == source, "An unchanged save writes the repaired FORM length")
+
+	var intact := Sc2Document.new()
+	_check(intact.parse(source) and not intact.repaired_form_length, "An intact city reports no repair")
