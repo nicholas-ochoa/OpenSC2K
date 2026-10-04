@@ -957,3 +957,50 @@ func _test_partial_archives(scurk_directory: String, reference_root: String) -> 
 		and not bad_pixel_result.parse_error.is_empty(),
 		"SCURK parser rejects a SHAP pixel-length mismatch",
 	)
+
+
+func test_sc2kfix_and_mac_tile_sets(reference_root: String) -> void:
+	var windows := ScurkMif.load_path(reference_root.path_join("SCURKART/BIGBEN.MIF"))
+	_check(windows.is_valid() and windows.revision() == "NIW_" and not windows.uses_dos_colors(), "A Windows tile set has the NIW_ revision")
+
+	# sc2kfix: an empty shape keeps the original sprite, and 00W_ marks its DOS colours
+	var source := FileAccess.get_file_as_bytes(reference_root.path_join("SCURKART/BIGBEN.MIF"))
+	var bytes := source.duplicate()
+	var tile_start := 12 + 8 + ScurkMif.INFO_LENGTH
+	var placeholder := PackedByteArray([0x00, 0xae, 0x00, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0, 0, 0, 0])
+	var piece := "SHAP".to_ascii_buffer()
+	piece.append_array([0, 0, 0, placeholder.size()])
+	piece.append_array(placeholder)
+	bytes = bytes.slice(0, tile_start + 10) + piece + bytes.slice(tile_start + 10)
+	BinaryData.write_u16_be(bytes, tile_start + 8, BinaryData.read_u16_be(bytes, tile_start + 8) + 1)
+	BinaryData.write_u32_be(bytes, tile_start + 4, BinaryData.read_u32_be(bytes, tile_start + 4) + piece.size())
+	BinaryData.write_u32_be(bytes, 4, bytes.size() - 8)
+	bytes.encode_u32(20, "00W_".to_ascii_buffer().decode_u32(0))
+	var sc2kfix := ScurkMif.new()
+	_check(sc2kfix.parse(bytes), "An sc2kfix tile set with an empty shape loads: %s" % sc2kfix.parse_error)
+	_check(sc2kfix.uses_dos_colors() and sc2kfix.overrides.find_sprite(0xae) == null
+		and sc2kfix.overrides.entries.size() == windows.overrides.entries.size(), "An empty shape replaces no sprite")
+	_check(sc2kfix.to_bytes().bytes == bytes, "An sc2kfix tile set saves its empty shape unchanged")
+	var pixels := PackedInt32Array()
+	pixels.resize(4)
+	pixels.fill(0x30)
+	_check(sc2kfix.set_shape_indices(0xae, 2, 2, pixels).ok and sc2kfix.overrides.find_sprite(0xae) != null,
+		"An edit gives an empty shape a sprite")
+
+	# Macintosh SCURK: the same shapes in a 4-byte INFO chunk with a TILE length of 2
+	var mac := ScurkMif.load_path(reference_root.path_join("../SimCity2000-Macintosh/SCURK Artwork/BIGBEN"))
+
+	if not DirAccess.dir_exists_absolute(reference_root.path_join("../SimCity2000-Macintosh")):
+		return
+
+	_check(mac.is_valid() and mac.revision() == "NIW_", "A Macintosh SCURK tile set loads: %s" % mac.parse_error)
+	var same := mac.overrides.entries.size() == windows.overrides.entries.size()
+
+	for entry in windows.overrides.entries:
+		var other := mac.overrides.find_sprite(entry.sprite_id)
+		same = same and other != null and other.decode_indices().pixels == entry.decode_indices().pixels
+
+	_check(same, "A Macintosh tile set holds the shapes of its Windows copy")
+	var saved := ScurkMif.new()
+	_check(saved.parse(mac.to_bytes().bytes) and saved.info_payload.size() == ScurkMif.INFO_LENGTH,
+		"A Macintosh tile set saves in the Windows layout")

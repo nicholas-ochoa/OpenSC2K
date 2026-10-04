@@ -23,5 +23,7 @@ var base_large_sprites: Sc2SpriteArchive
 var base_small_medium_sprites: Sc2SpriteArchive
 # active scurk tile set
 var active_scurk_tile_set: ScurkMif
+# every loaded tile set, in load order. The last one is active_scurk_tile_set
+var active_scurk_tile_sets: Array[ScurkMif] = []
 var active_scurk_name := ""
 var active_scurk_path := ""

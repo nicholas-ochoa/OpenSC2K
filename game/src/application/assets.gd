@@ -283,11 +283,8 @@ func apply_graphics_source(selected: GameAssetSource) -> void:
 	app.asset_state.base_small_medium_sprites = assets.small_medium_sprites
 	use_default_sprites()
 
-	if app.asset_state.active_scurk_tile_set != null:
-		app.asset_state.large_sprites = SpriteArchive.combine([app.asset_state.base_large_sprites,
-			app.asset_state.active_scurk_tile_set.overrides])
-		app.asset_state.small_medium_sprites = SpriteArchive.combine([app.asset_state.base_small_medium_sprites,
-			app.asset_state.active_scurk_tile_set.overrides])
+	if not app.asset_state.active_scurk_tile_sets.is_empty():
+		app.scurk_workspace.combine_tile_sets(app.asset_state.active_scurk_tile_sets)
 
 	app.static_render.invalidate_rendered_city()
 	app.static_render.update_palette_cycle_texture()

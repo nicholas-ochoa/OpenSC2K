@@ -107,10 +107,17 @@ func _test_invalid_fields(bytes: PackedByteArray) -> void:
 		var bad := bytes.duplicate()
 		_replace(bad, edit[0], edit[1])
 		_reject(bad)
-	for edit in [[2, "0000"], [4, "0000"], [6, "00000000"], [6, "00000019"], [6, "ffffffff"]]:
+	for edit in [[6, "00000000"], [6, "00000019"], [6, "ffffffff"]]:
 		var shape := SHAPE.hex_decode()
 		_replace(shape, edit[0], edit[1])
 		_reject(_file([_piece("SHAP", shape)]))
+	# sc2kfix writes an empty shape for each sprite that it keeps. It loads as a record without a sprite
+	for edit in [[2, "0000"], [4, "0000"]]:
+		var shape := SHAPE.hex_decode()
+		_replace(shape, edit[0], edit[1])
+		var empty := ScurkMif.new()
+		var empty_file := _file([_piece("SHAP", shape)])
+		assert(empty.parse(empty_file) and empty.archive.entries.is_empty() and empty.to_bytes().bytes == empty_file)
 	for text_length in ["0000", "0004", "0006", "8000", "ffff"]:
 		var name := NAME.hex_decode()
 		_replace(name, 2, text_length)

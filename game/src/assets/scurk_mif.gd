@@ -4,6 +4,11 @@ extends RefCounted
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const INFO_LENGTH := 0x72
 const FILE_HEADER_LENGTH := 12
+# sc2kfix marks the tile sets that use its DOS colours with this INFO revision
+const SC2KFIX_REVISION := "00W_"
+# Macintosh SCURK writes a 4-byte INFO chunk and a TILE length of 2, the size of
+# the piece count
+const MAC_TILE_LENGTH := 2
 
 # Decoded shape states by shape data. The state depends only on the key fields.
 # Each parse or edit otherwise decodes every shape again.
@@ -90,9 +95,6 @@ func parse(bytes: PackedByteArray) -> bool:
 	var info_length := BinaryData.read_u32_be(bytes, position + 4)
 	position += 8
 
-	if info_length != INFO_LENGTH:
-		return _fail("INFO chunk length is not 0x72")
-
 	if position + info_length > bytes.size():
 		return _fail("INFO chunk extends past the file")
 
@@ -105,6 +107,9 @@ func parse(bytes: PackedByteArray) -> bool:
 	var tile_length := BinaryData.read_u32_be(bytes, position + 4)
 	position += 8
 	var tile_end := position + tile_length
+
+	if tile_length == MAC_TILE_LENGTH and tile_end < bytes.size():
+		tile_end = bytes.size()
 
 	if tile_end != bytes.size():
 		return _fail("TILE chunk length does not match the file size")
@@ -147,12 +152,23 @@ func is_valid() -> bool:
 	return parse_error.is_empty()
 
 
+# The INFO revision tag, such as "NIW_" for Windows and SC2KFIX_REVISION
+func revision() -> String:
+	return info_payload.slice(0, 4).get_string_from_ascii() if info_payload.size() >= 4 else ""
+
+
+# An sc2kfix tile set uses the DOS colours that sc2kfix adds to the palette
+func uses_dos_colors() -> bool:
+	return revision() == SC2KFIX_REVISION
+
+
 func to_bytes() -> AssetBytesResult:
 	if not is_valid():
 		return AssetBytesResult.failure(parse_error)
 
-	if info_payload.size() != INFO_LENGTH:
-		return AssetBytesResult.failure("INFO payload length is not 0x72")
+	# a Macintosh tile set saves with the Windows INFO length
+	var info := info_payload.duplicate()
+	info.resize(INFO_LENGTH)
 
 	if piece_records.size() > 0xffff:
 		return AssetBytesResult.failure("TILE piece count is too large")
@@ -176,8 +192,8 @@ func to_bytes() -> AssetBytesResult:
 	_append_u32_be(bytes, 0)
 	bytes.append_array("SC2K".to_ascii_buffer())
 	bytes.append_array("INFO".to_ascii_buffer())
-	_append_u32_be(bytes, info_payload.size())
-	bytes.append_array(info_payload)
+	_append_u32_be(bytes, info.size())
+	bytes.append_array(info)
 	bytes.append_array("TILE".to_ascii_buffer())
 	_append_u32_be(bytes, tile_payload.size())
 	bytes.append_array(tile_payload)
@@ -320,6 +336,13 @@ func _set_shape_indices(
 		entry = piece_records[record_index].entry as Sc2SpriteArchive.SpriteEntry
 		piece_records[record_index].raw_payload = payload
 
+		# an edit of an empty sc2kfix shape gives it a sprite
+		if entry == null:
+			entry = Sc2SpriteArchive.SpriteEntry.new()
+			entry.sprite_id = sprite_id
+			shapes.append(entry)
+			piece_records[record_index].entry = entry
+
 	entry.width = width
 	entry.height = height
 	entry.encoded_pixels = _normalize_pixel_end(pixel_data)
@@ -353,11 +376,15 @@ func _parse_shape(
 	entry.height = BinaryData.read_u16_be(bytes, payload_start + 4)
 	var pixel_length := BinaryData.read_u32_be(bytes, payload_start + 6)
 
-	if entry.width <= 0 or entry.height <= 0:
-		return _fail("SHAP sprite %d has an empty dimension" % entry.sprite_id)
-
 	if payload_start + 10 + pixel_length != payload_end:
 		return _fail("SHAP sprite %d has an invalid pixel length" % entry.sprite_id)
+
+	# sc2kfix writes an empty shape for each sprite that a tile set keeps. The
+	# record stays for a save; the sprite keeps its original artwork
+	if entry.width <= 0 or entry.height <= 0:
+		piece_records.append(Piece.new("SHAP", entry.sprite_id, bytes.slice(payload_start, payload_end)))
+
+		return true
 
 	entry.offset = payload_start + 10
 	entry.duplicate_index = int(duplicate_counts.get(entry.sprite_id, 0))

@@ -453,38 +453,25 @@ func _apply_scurk_tile_sets(
 
 		return
 
-	var large_archives: Array[Sc2SpriteArchive] = [app.asset_state.base_large_sprites]
-	var small_medium_archives: Array[Sc2SpriteArchive] = [app.asset_state.base_small_medium_sprites]
-	var names: Dictionary[int, String] = {}
-
 	for tile_set in tile_sets:
 		if tile_set == null or not tile_set.is_valid():
 			app.interface.show_error("Cannot apply an invalid SCURK tile set.")
 
 			return
 
-		large_archives.append(tile_set.overrides)
-		small_medium_archives.append(tile_set.overrides)
-		names.merge(tile_set.names, true)
-
 	if tile_sets.is_empty():
 		return
 
-	var new_large := SpriteArchive.combine(large_archives)
-	var new_small_medium := SpriteArchive.combine(small_medium_archives)
-
-	if not new_large.is_valid() or not new_small_medium.is_valid():
+	if not combine_tile_sets(tile_sets):
 		app.interface.show_error("Cannot combine the tile set with the original sprite data.")
 
 		return
 
-	var tile_set: ScurkMif = tile_sets[-1]
-	app.assets.use_dos_colors(false)
-	app.asset_state.active_scurk_tile_set = tile_set
+	var names := _tile_set_names(tile_sets)
+	app.asset_state.active_scurk_tile_set = tile_sets[-1]
+	app.asset_state.active_scurk_tile_sets = tile_sets.duplicate()
 	app.asset_state.active_scurk_name = display_name
 	app.asset_state.active_scurk_path = ProjectSettings.globalize_path(path).simplify_path() if not path.is_empty() else ""
-	app.asset_state.large_sprites = new_large
-	app.asset_state.small_medium_sprites = new_small_medium
 
 	if app.scurk_place_print != null and app.scurk_place_print.visible:
 		app.scurk_place_print.configure(
@@ -508,6 +495,47 @@ func _apply_scurk_tile_sets(
 	app.status_label.text = "Loaded tile set %s: %d graphic replacements and %d names." % [
 		app.asset_state.active_scurk_name, replacements, names.size(),
 	]
+
+
+# Show the sprites of the graphics source with `tile_sets` in order. A tile set
+# that uses the sc2kfix DOS colours adds them to the palette, and the original
+# sprites under it keep those entries black. False when the sprites cannot combine.
+func combine_tile_sets(tile_sets: Array[ScurkMif]) -> bool:
+	var dos_colors := tile_sets.any(func(tile_set: ScurkMif) -> bool: return tile_set.uses_dos_colors())
+	var base_large := app.asset_state.base_large_sprites
+	var base_small_medium := app.asset_state.base_small_medium_sprites
+
+	if dos_colors:
+		base_large = Sc2kfixSpriteFixes.apply(base_large, "large", false)
+		base_small_medium = Sc2kfixSpriteFixes.apply(base_small_medium, "small_medium", false)
+
+	var large_archives: Array[Sc2SpriteArchive] = [base_large]
+	var small_medium_archives: Array[Sc2SpriteArchive] = [base_small_medium]
+
+	for tile_set in tile_sets:
+		large_archives.append(tile_set.overrides)
+		small_medium_archives.append(tile_set.overrides)
+
+	var new_large := SpriteArchive.combine(large_archives)
+	var new_small_medium := SpriteArchive.combine(small_medium_archives)
+
+	if not new_large.is_valid() or not new_small_medium.is_valid():
+		return false
+
+	app.asset_state.large_sprites = new_large
+	app.asset_state.small_medium_sprites = new_small_medium
+	app.assets.use_dos_colors(dos_colors)
+
+	return true
+
+
+static func _tile_set_names(tile_sets: Array[ScurkMif]) -> Dictionary[int, String]:
+	var names: Dictionary[int, String] = {}
+
+	for tile_set in tile_sets:
+		names.merge(tile_set.names, true)
+
+	return names
 
 
 # As sc2kfix does, load the tile sets that the XFIX chunk of a loaded city
@@ -555,6 +583,7 @@ func restore_original_tile_set() -> void:
 		return
 
 	app.asset_state.active_scurk_tile_set = null
+	app.asset_state.active_scurk_tile_sets.clear()
 	app.asset_state.active_scurk_name = ""
 	app.asset_state.active_scurk_path = ""
 	app.assets.use_default_sprites()
