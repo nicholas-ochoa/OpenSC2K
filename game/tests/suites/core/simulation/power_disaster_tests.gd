@@ -174,6 +174,10 @@ func _test_meltdown(reference_root: String) -> void:
 			meltdown_city.tile_flags[toxic_target.x * CityState.MAP_SIZE + toxic_target.y],
 		],
 	)
+	_check(
+		meltdown_city.text_overlay_id(meltdown_center.x, meltdown_center.y) == DisasterMap.FIRE_OVERLAY,
+		"Meltdown leaves the fire burning on the plant center, as SIMCITY.EXE 0x0045f2b0",
+	)
 	var stored_meltdown_misc: PackedByteArray = (
 		meltdown_document.find_chunk("MISC").decoded_payload
 	)

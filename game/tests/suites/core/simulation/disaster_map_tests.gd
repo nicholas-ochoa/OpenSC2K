@@ -236,8 +236,8 @@ func _test_toxic(reference_root: String) -> void:
 		and flat_tick.counters.toxic_markers_scanned == 2
 		and flat_tick.counters.toxic_updates == 1
 		and flat_tick.counters.moved_markers == 1
-		and flat_toxic.city.text_overlay_id(21, 20) == DisasterMap.TOXIC_OVERLAY,
-		"A flat toxic marker uses the process-random cardinal direction",
+		and flat_toxic.city.text_overlay_id(20, 21) == DisasterMap.TOXIC_OVERLAY,
+		"A flat toxic marker uses the process-random direction in the original north, east, south, west order",
 	)
 	_check(
 		flat_random.position == 3 and flat_lfsr.position == 1,

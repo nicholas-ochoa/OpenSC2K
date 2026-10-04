@@ -25,6 +25,9 @@ pub const SOUND_FLOOD: i64 = 0x1ff;
 pub const SOUND_RIOT: i64 = 0x200;
 pub const SOUND_HURRICANE: i64 = 0x1f6;
 const TYPE_FIRE_DISPATCH: i64 = 8;
+/// A toxic cloud moves to the lowest neighbor in this order, from the
+/// executable tables at 0x004e8828 and 0x004e8838.
+const TOXIC_DIRECTIONS: [Vec2i; 4] = [Vec2i::new(0, -1), Vec2i::new(1, 0), Vec2i::new(0, 1), Vec2i::new(-1, 0)];
 const RANDOM_REQUIRED: &str = "a compatible process random generator is required";
 const LFSR_REQUIRED: &str = "a compatible LFSR generator is required";
 
@@ -314,6 +317,7 @@ pub fn run_all(
     };
     result.base.ok = true;
     result.base.effect_events = events.effect_events;
+    result.connection_count_changes = events.connection_changes;
     result.base.sound_events = sounds(&events.sound_events);
     result.base.view_center_requests = view_center_requests;
     result
@@ -470,6 +474,7 @@ fn run_kind(
     result.counters = ordered(values);
     result.base.ok = true;
     result.base.effect_events = events.effect_events;
+    result.connection_count_changes = events.connection_changes;
     result.base.sound_events = sounds(&events.sound_events);
     result
 }
@@ -498,9 +503,12 @@ fn is_special_toxic(tile: i64) -> bool {
     tile == tiles::CHEMICAL_STORAGE_1X1 || tile == tiles::CHEMICAL_PROCESSING_2X2 || tile == tiles::CHEMICAL_PROCESSING_3X3
 }
 
-/// DisasterMapState._collapse_structure.
-fn collapse_structure(maps: &mut DisasterMaps, point: Vec2i, random: &mut SimRandom, lfsr: &mut SimLfsrRandom) {
-    burn_structure(maps, point, random, lfsr, true, true, false);
+/// DisasterMapState._collapse_structure. The original burns the structure
+/// with its dust animation (0x00461330 with 1, 1), then puts out the fire on
+/// the tile and leaves rubble (0x004611e0).
+fn collapse_structure(maps: &mut DisasterMaps, point: Vec2i, random: &mut SimRandom, lfsr: &mut SimLfsrRandom, events: &mut RuntimeEvents) {
+    let damage = burn_structure(maps, point, random, lfsr, true, true, true);
+    append_damage_events(Some(events), &damage);
 }
 
 /// DisasterMapFireFlood._process_fire_cell.
@@ -543,21 +551,8 @@ fn process_fire_cell(
 
         if tile > tiles::RAIL_SUBWAY_ENTRANCE_4 {
             let special = is_special_toxic(tile);
-            let mut toxic_site = Rect2i::default();
 
-            if special {
-                toxic_site = find_building_site(
-                    maps.maps.buildings,
-                    maps.maps.zones,
-                    point,
-                    tile,
-                    building_area(tile),
-                    maps.rotation,
-                    edge,
-                );
-            }
-
-            collapse_structure(maps, point, random, lfsr);
+            collapse_structure(maps, point, random, lfsr, events);
             counters.structure_collapses += 1;
 
             if lfsr.next_mask(0x0f) == 0
@@ -567,7 +562,7 @@ fn process_fire_cell(
             }
 
             if special {
-                counters.toxic_markers += seed_special_toxic(maps.maps.text_overlays, toxic_site, point, edge);
+                counters.toxic_markers += seed_special_toxic(maps.maps.text_overlays, toxic_footprint(point, tile), edge);
             }
         }
     } else {
@@ -575,7 +570,7 @@ fn process_fire_cell(
         let coverage = bytes::at(maps.fire_coverage, coverage_index) + 8;
 
         if (random.next_u15() & 0xff) < coverage {
-            collapse_structure(maps, point, random, lfsr);
+            collapse_structure(maps, point, random, lfsr, events);
             counters.coverage_extinctions += 1;
         }
     }
@@ -674,7 +669,7 @@ fn process_toxic_cell(
     }
 
     overlay::set_marker_at(maps.maps.text_overlays, tile_index, 0);
-    let target = point + CARDINAL_DIRECTIONS[direction as usize];
+    let target = point + TOXIC_DIRECTIONS[direction as usize];
 
     if place_toxic_marker(maps.maps.text_overlays, target, edge) {
         counters.moved_markers += 1;
@@ -809,7 +804,8 @@ fn process_dispatch_cell(
     }
 }
 
-/// DisasterMapScanDispatch._extinguish_dispatch_fire.
+/// DisasterMapScanDispatch._extinguish_dispatch_fire (0x004611e0). A tile
+/// with all four zone corner bits is demolished.
 fn extinguish_dispatch_fire(maps: &mut DisasterMaps, point: Vec2i, random: &mut SimRandom, lfsr: &mut SimLfsrRandom) -> bool {
     let tile_index = index(point, maps.maps.map_edge);
 
@@ -830,7 +826,7 @@ fn extinguish_dispatch_fire(maps: &mut DisasterMaps, point: Vec2i, random: &mut 
         demolish::demolish_point(&mut maps.maps, point, random, rotation, true, true, false, false);
         let rubble = lfsr.next_mod(4) + tiles::RUBBLE_FIRST;
         replace_building(maps.maps.buildings, maps.maps.zones, maps.maps.misc, tile_index, rubble);
-    } else if maps.maps.flags[tile_index as usize] & 0xf0 == 0xf0 {
+    } else if maps.maps.zones[tile_index as usize] & 0xf0 == 0xf0 {
         demolish::demolish_point(&mut maps.maps, point, random, rotation, true, true, false, false);
     }
 
@@ -884,20 +880,26 @@ fn place_marker(text: &mut [u8], point: Vec2i, marker: i64, map_edge: i64) -> bo
     true
 }
 
-/// DisasterMapState._seed_special_toxic.
-fn seed_special_toxic(text: &mut [u8], site: Rect2i, point: Vec2i, map_edge: i64) -> i64 {
-    let site = if site.size == Vec2i::ZERO {
-        Rect2i::from(point, Vec2i::new(1, 1))
-    } else {
-        site
-    };
+/// The tiles that a burned chemical plant poisons. The original looks for the
+/// plant corner after the fire has removed the plant (0x0045f760), so the
+/// search fails and the area starts at the burning tile: `size` tiles to +x
+/// and to -y.
+fn toxic_footprint(point: Vec2i, tile: i64) -> Rect2i {
+    let size = building_area(tile).max(1);
+
+    Rect2i::from(Vec2i::new(point.x, point.y - size + 1), Vec2i::new(size, size))
+}
+
+/// DisasterMapState._seed_special_toxic. A tile with no marker or a sign gets
+/// a toxic marker.
+fn seed_special_toxic(text: &mut [u8], site: Rect2i, map_edge: i64) -> i64 {
     let mut changed = 0;
 
     for x in site.position.x..site.end().x {
         for y in site.position.y..site.end().y {
-            let tile_index = x * map_edge + y;
+            let tile_index = index(Vec2i::new(x, y), map_edge);
 
-            if overlay::read(text, tile_index) < 51 {
+            if tile_index >= 0 && overlay::read(text, tile_index) < 51 {
                 overlay::write(text, tile_index, TOXIC_OVERLAY);
                 changed += 1;
             }
@@ -987,12 +989,13 @@ fn is_construction_or_abandoned(tile: i64) -> bool {
         || (tiles::CONSTRUCTION_3X3_FIRST..=tiles::DEVELOPED_3X3_LAST).contains(&tile)
 }
 
+/// The direction to the first lowest neighbor, or -1 when no neighbor is lower.
 fn lowest_toxic_direction(altitude: &[u8], point: Vec2i, map_edge: i64) -> i64 {
     let point_index = index(point, map_edge);
     let mut lowest = altitude_word(altitude, point_index) & 0x1f;
     let mut direction = -1;
 
-    for (checked, offset) in CARDINAL_DIRECTIONS.iter().enumerate() {
+    for (checked, offset) in TOXIC_DIRECTIONS.iter().enumerate() {
         let target_index = index(point + *offset, map_edge);
 
         if target_index < 0 {
@@ -1010,6 +1013,7 @@ fn lowest_toxic_direction(altitude: &[u8], point: Vec2i, map_edge: i64) -> i64 {
     direction
 }
 
+/// The tiles that a riot follows: rubble and the road tiles (0x0045f760).
 fn riot_supports(buildings: &[u8], point: Vec2i, map_edge: i64) -> bool {
     let tile_index = index(point, map_edge);
 
@@ -1020,9 +1024,121 @@ fn riot_supports(buildings: &[u8], point: Vec2i, map_edge: i64) -> bool {
     let tile = buildings[tile_index as usize] as i64;
 
     (tile > tiles::EMPTY && tile < tiles::RADIOACTIVE_WASTE)
-        || (tile > tiles::ROAD_STRAIGHT_1 && tile < tiles::RAIL_STRAIGHT_1)
+        || (tiles::ROAD_STRAIGHT_1..=tiles::ROAD_CROSSROADS).contains(&tile)
         || (tile > tiles::RAIL_SLOPE_8 && tile < tiles::RAIL_POWER_CROSSING_1)
         || tile == tiles::HIGHWAY_ROAD_CROSSING_1
         || tile == tiles::HIGHWAY_ROAD_CROSSING_2
         || (tile > tiles::POWER_BRIDGE && tile < tiles::HIGHWAY_SLOPE_1)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sim::testing::{empty_city, sequence_lfsr, sequence_random};
+    use crate::sim::tools::terrain::set_land_altitude;
+
+    /// A riot follows rubble and every road tile, also the first straight road.
+    #[test]
+    fn riots_follow_rubble_and_all_road_tiles() {
+        let edge = 128i64;
+        let mut buildings = vec![0u8; (edge * edge) as usize];
+        let point = Vec2i::new(5, 5);
+
+        for (tile, follows) in [
+            (tiles::RUBBLE_1, true),
+            (tiles::ROAD_STRAIGHT_1, true),
+            (tiles::ROAD_CROSSROADS, true),
+            (tiles::RAIL_STRAIGHT_1, false),
+            (tiles::RADIOACTIVE_WASTE, false),
+        ] {
+            buildings[(point.x * edge + point.y) as usize] = tile as u8;
+            assert_eq!(riot_supports(&buildings, point, edge), follows, "tile {tile:#x}");
+        }
+    }
+
+    /// Of two equally low neighbors, a toxic cloud takes the first in the
+    /// original north, east, south, west order.
+    #[test]
+    fn toxic_clouds_take_the_first_low_neighbor_in_the_original_order() {
+        let edge = 128i64;
+        let mut city = empty_city(edge);
+        let point = Vec2i::new(20, 20);
+
+        for (offset, height) in [
+            (Vec2i::ZERO, 5),
+            (Vec2i::new(-1, 0), 2),
+            (Vec2i::new(0, -1), 2),
+            (Vec2i::new(1, 0), 5),
+            (Vec2i::new(0, 1), 5),
+        ] {
+            let target = point + offset;
+            set_land_altitude(&mut city.altm.data, target.x * edge + target.y, height);
+        }
+
+        let direction = lowest_toxic_direction(&city.altm.data, point, edge);
+        assert_eq!(TOXIC_DIRECTIONS[direction as usize], Vec2i::new(0, -1));
+    }
+
+    /// A burned chemical plant poisons the tiles from the burning tile to +x
+    /// and -y, inside the map.
+    #[test]
+    fn burned_chemical_plants_poison_from_the_burning_tile() {
+        let edge = 128i64;
+        assert_eq!(
+            toxic_footprint(Vec2i::new(10, 10), tiles::CHEMICAL_PROCESSING_3X3),
+            Rect2i::from(Vec2i::new(10, 8), Vec2i::new(3, 3))
+        );
+        assert_eq!(
+            toxic_footprint(Vec2i::new(10, 10), tiles::CHEMICAL_STORAGE_1X1),
+            Rect2i::from(Vec2i::new(10, 10), Vec2i::new(1, 1))
+        );
+        let mut text = vec![0u8; (edge * edge) as usize];
+        let site = toxic_footprint(Vec2i::new(edge - 1, 1), tiles::CHEMICAL_PROCESSING_3X3);
+        assert_eq!(seed_special_toxic(&mut text, site, edge), 2);
+        assert_eq!(overlay::read(&text, (edge - 1) * edge), TOXIC_OVERLAY);
+    }
+
+    /// A fire that burns out a building shows its dust and sound, puts out the
+    /// fire on the tile and leaves rubble.
+    #[test]
+    fn burned_out_buildings_show_dust() {
+        let edge = 128i64;
+        let mut city = empty_city(edge);
+        let point = Vec2i::new(40, 40);
+        let tile = point.x * edge + point.y;
+        city.xbld.data[tile as usize] = tiles::LOWER_CLASS_HOMES_1X1_1 as u8;
+        overlay::write(&mut city.xtxt.data, tile, FIRE_OVERLAY);
+        let mut events = RuntimeEvents::default();
+        let mut maps = city.disaster_maps();
+        collapse_structure(&mut maps, point, &mut sequence_random(&[0]), &mut sequence_lfsr(&[0]), &mut events);
+        assert!(!events.effect_events.is_empty());
+        assert_eq!(events.sound_events, vec![damage::SOUND_DAMAGE]);
+        assert_eq!(overlay::read(&city.xtxt.data, tile), 0);
+        assert!((tiles::RUBBLE_FIRST..tiles::RUBBLE_FIRST + 4).contains(&(city.xbld.data[tile as usize] as i64)));
+    }
+
+    /// A fire unit demolishes a burning tile past the network tiles only when
+    /// its zone byte has all four corner bits. The tile flags do not count.
+    #[test]
+    fn put_out_fires_use_the_zone_corner_bits() {
+        for (zones, flags, demolished) in [(0xf1u8, 0u8, true), (0x01, 0xf0, false)] {
+            let edge = 128i64;
+            let mut city = empty_city(edge);
+            let point = Vec2i::new(40, 40);
+            let tile = point.x * edge + point.y;
+            city.xbld.data[tile as usize] = tiles::LOWER_CLASS_HOMES_1X1_1 as u8;
+            city.xzon.data[tile as usize] = zones;
+            city.xbit.data[tile as usize] = flags;
+            overlay::write(&mut city.xtxt.data, tile, FIRE_OVERLAY);
+            let mut maps = city.disaster_maps();
+            assert!(extinguish_dispatch_fire(
+                &mut maps,
+                point,
+                &mut sequence_random(&[0]),
+                &mut sequence_lfsr(&[0])
+            ));
+            assert_eq!(overlay::read(&city.xtxt.data, tile), 0);
+            assert_eq!(city.xbld.data[tile as usize] != tiles::LOWER_CLASS_HOMES_1X1_1 as u8, demolished);
+        }
+    }
 }

@@ -94,13 +94,14 @@ fn population_attempts(city: &City) -> i64 {
     if count & 0x8000 != 0 { count - 0x10000 } else { count }
 }
 
-/// DisasterStartPhase.start.
+/// DisasterStartPhase.start. `scenario` is true while a scenario runs.
 pub fn start(
     city: &mut City,
     disaster_type: i64,
     point: Vec2i,
     random: Option<&mut SimRandom>,
     lfsr: Option<&mut SimLfsrRandom>,
+    scenario: bool,
 ) -> DisasterStartResult {
     match disaster_type {
         DISASTER_NONE => result(disaster_type, point, false, true, 0),
@@ -126,13 +127,20 @@ pub fn start(
         DISASTER_POLLUTION => start_pollution(city, point, random),
         DISASTER_HURRICANE => start_hurricane(city, point, random, lfsr),
         DISASTER_PLANE_CRASH => start_plane_crash(city, lfsr),
-        DISASTER_TORNADO | DISASTER_MONSTER => start_moving_disaster(city, disaster_type, point, random),
+        DISASTER_TORNADO | DISASTER_MONSTER => start_moving_disaster(city, disaster_type, point, random, scenario),
         _ => result(disaster_type, point, false, false, 0),
     }
 }
 
-/// The tornado and monster part of DisasterStartPhase.start.
-fn start_moving_disaster(city: &mut City, disaster_type: i64, point: Vec2i, random: Option<&mut SimRandom>) -> DisasterStartResult {
+/// The tornado and monster part of DisasterStartPhase.start (0x0045f090,
+/// 0x0045ee10).
+fn start_moving_disaster(
+    city: &mut City,
+    disaster_type: i64,
+    point: Vec2i,
+    random: Option<&mut SimRandom>,
+    scenario: bool,
+) -> DisasterStartResult {
     let Some(random) = random else {
         return DisasterStartResult::failed(RANDOM_REQUIRED);
     };
@@ -183,10 +191,11 @@ fn start_moving_disaster(city: &mut City, disaster_type: i64, point: Vec2i, rand
     things::write(&mut thing_data, offset + 9, dy);
     things::write(&mut thing_data, offset + 10, overlay::covered(&text, tile_index));
 
+    // a monster in a scenario only starts fires and draws no random numbers
     if disaster_type == DISASTER_MONSTER {
         things::write(&mut thing_data, offset + 11, 0);
 
-        if random.next_u15() & 1 == 0 {
+        if !scenario && random.next_u15() & 1 == 0 {
             let goal = random.next_u15() % 3 + 1;
             things::write(&mut thing_data, offset + 11, goal);
         }
@@ -195,8 +204,14 @@ fn start_moving_disaster(city: &mut City, disaster_type: i64, point: Vec2i, rand
     overlay::write(&mut text, tile_index, overlay::thing_id(record));
     city.xthg.replace(thing_data);
     city.xtxt.replace(text);
+    let mut result = result(disaster_type, clamped, true, true, record);
 
-    result(disaster_type, clamped, true, true, record)
+    // the original centers a monster 8 tiles up and to the left
+    if disaster_type == DISASTER_MONSTER {
+        result.base.view_center_requests = vec![Vec2i::new((clamped.x - 8).max(0), (clamped.y - 8).max(0))];
+    }
+
+    result
 }
 
 fn start_plane_crash(city: &mut City, lfsr: Option<&mut SimLfsrRandom>) -> DisasterStartResult {
@@ -507,7 +522,8 @@ fn start_meltdown(
         center = Vec2i::new(site.position.x + 1, site.end().y - 2);
     }
 
-    let plant_damage = burn_structure(&mut maps, center, random, lfsr, true, true, true);
+    // 0x0045f2b0 burns the plant with fire marks and leaves the fire burning
+    let plant_damage = burn_structure(&mut maps, center, random, lfsr, true, false, true);
     append_damage_events(Some(&mut events), &plant_damage);
     let mut gate_hits = 0;
     let mut fire_damage_attempts = 0;
@@ -575,6 +591,7 @@ fn start_meltdown(
     result.counters.set("toxic_writes", toxic_writes);
     result.map_changed = map_changed;
     result.base.effect_events = events.effect_events;
+    result.connection_count_changes = events.connection_changes;
     events.sound_events.push(SOUND_SIREN);
     result.base.sound_events = sounds(&events.sound_events);
     result
@@ -678,6 +695,7 @@ fn start_microwave(city: &mut City, random: Option<&mut SimRandom>, lfsr: Option
     events.sound_events.push(SOUND_SIREN);
     result.base.sound_events = sounds(&events.sound_events);
     result.base.effect_events = events.effect_events;
+    result.connection_count_changes = events.connection_changes;
     result.base.view_center_requests = view_centers;
     result.plant_point = plant_point;
     result.path_finish = point;
@@ -1001,6 +1019,7 @@ fn start_hurricane(
     result.base.sound_events = sounds(&events.sound_events);
     result.base.view_center_requests.clear();
     result.base.effect_events = events.effect_events;
+    result.connection_count_changes = events.connection_changes;
     result.map_counter = 60;
     result.hurricane_counter = 50;
     result.direction = direction;
@@ -1181,6 +1200,7 @@ fn start_fire(city: &mut City, random: Option<&mut SimRandom>, lfsr: Option<&mut
     snapshot.commit(city);
     let mut result = result(DISASTER_FIRE, point, true, true, 0);
     result.base.effect_events = events.effect_events;
+    result.connection_count_changes = events.connection_changes;
     events.sound_events.push(SOUND_SIREN);
     result.base.sound_events = sounds(&events.sound_events);
     result
@@ -1251,6 +1271,7 @@ fn start_earthquake(
     result.map_changed = map_changed;
     let mut effect_events = vec![EffectEvent::earthquake()];
     effect_events.append(&mut events.effect_events);
+    result.connection_count_changes = std::mem::take(&mut events.connection_changes);
     result.base.effect_events = effect_events;
     let mut ids = vec![SOUND_EARTHQUAKE; 24];
     ids.append(&mut events.sound_events);
@@ -1298,7 +1319,8 @@ fn start_firestorm(
             attempted_in_map += 1;
             let result_code = damage::apply(&mut maps, point, random, lfsr, true, Some(&mut events));
 
-            if result_code != 0 {
+            // the original reports rubble as no damage, so rubble does not count
+            if starts_fire(result_code) {
                 remaining -= 1;
                 result_codes.push(result_code as i32);
                 accepted_points.push(point);
@@ -1332,6 +1354,7 @@ fn start_firestorm(
     result.accepted_points = accepted_points;
     result.map_changed = map_changed;
     result.base.effect_events = events.effect_events;
+    result.connection_count_changes = events.connection_changes;
 
     if started {
         result.base.view_center_requests = vec![point];
@@ -1718,6 +1741,58 @@ fn start_volcano(city: &mut City, center: Vec2i, random: Option<&mut SimRandom>)
     result.terrain_indices = Ints32(changed_indices.order.iter().map(|value| *value as i32).collect());
     result.map_changed = map_changed;
     result
+}
+
+#[cfg(test)]
+mod rule_tests {
+    use super::*;
+    use crate::sim::testing::{empty_city, sequence_lfsr, sequence_random};
+
+    /// 0x0045ee10 gives a monster no goal in a scenario and draws no random
+    /// numbers for it. Outside a scenario, half the monsters get a goal.
+    #[test]
+    fn scenario_monsters_have_no_goal() {
+        for (scenario, goal, next) in [(true, 0, 0), (false, 2, 9)] {
+            let mut city = empty_city(128);
+            let mut random = sequence_random(&[5, 6, 0, 1, 9]);
+            let result = start(&mut city, DISASTER_MONSTER, Vec2i::new(20, 20), Some(&mut random), None, scenario);
+            assert!(result.started);
+            assert_eq!(things::read(&city.xthg.data, result.record * things::RECORD_SIZE + 11), goal);
+            assert_eq!(random.next_u15(), next, "the next random value");
+            assert_eq!(result.base.view_center_requests, vec![Vec2i::new(12, 12)]);
+        }
+    }
+
+    /// A firestorm counts only new fires. Rubble on a reserved marker is no
+    /// damage in the original, so a map of such markers starts no firestorm.
+    #[test]
+    fn firestorms_do_not_count_rubble() {
+        let edge = 128i64;
+        let mut city = empty_city(edge);
+
+        for tile in 0..edge * edge {
+            overlay::write(&mut city.xtxt.data, tile, 0xf1);
+        }
+
+        let result = start(
+            &mut city,
+            DISASTER_FIRESTORM,
+            Vec2i::new(64, 64),
+            Some(&mut sequence_random(&[0])),
+            Some(&mut sequence_lfsr(&[0])),
+            false,
+        );
+        assert!(!result.started);
+        assert_eq!(
+            result
+                .counters
+                .0
+                .iter()
+                .find(|(name, _)| name == "successful_cells")
+                .map(|(_, value)| *value),
+            Some(0)
+        );
+    }
 }
 
 #[cfg(test)]

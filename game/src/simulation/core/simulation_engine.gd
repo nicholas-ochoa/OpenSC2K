@@ -105,13 +105,14 @@ func _timed_advance_moving_things(current_time_msec := -1) -> MovingThingResult:
 	if current_time_msec < 0:
 		current_time_msec = Time.get_ticks_msec()
 
+	# 0x004546f0: with No Disasters, an explosion damages its neighbors only in a scenario
 	var result := MovingThingPhase.run(
 		city,
 		random,
 		lfsr_random,
 		game_random,
 		ship_home,
-		true,
+		not city.no_disasters_enabled() or scenario != null,
 		current_time_msec,
 		traffic_news_deadline_msec,
 		not vehicle_crashes_enabled
@@ -127,8 +128,7 @@ func _timed_advance_moving_things(current_time_msec := -1) -> MovingThingResult:
 
 	traffic_news_deadline_msec = result.traffic_news_deadline_msec
 
-	for change in result.connection_count_changes:
-		change_connection_count(change.kind, int(change.delta))
+	_apply_connection_changes(result.connection_count_changes)
 
 	for request in result.disaster_start_requests:
 		pending_disaster_type = int(request.type)
@@ -137,8 +137,13 @@ func _timed_advance_moving_things(current_time_msec := -1) -> MovingThingResult:
 	return result
 
 
+func _apply_connection_changes(changes: Array[MovingThingResult.ConnectionChange]) -> void:
+	for change in changes:
+		change_connection_count(change.kind, int(change.delta))
+
+
 # neighbor connection counts are process-local 16-bit values, as in the original.
-# a load counts them. a bought connection, explosion damage and undo change them.
+# a load counts them. a bought connection, disaster damage and undo change them.
 # `kind` is "commerce" or "industry"
 func change_connection_count(kind: String, delta: int) -> void:
 	if kind == "commerce":
@@ -323,6 +328,7 @@ func _timed_advance_disaster_tick() -> DisasterMapResult:
 	disaster_map_counter = phase_result.map_counter
 	disaster_hurricane_counter = phase_result.hurricane_counter
 	disaster_fire_active = phase_result.active_markers.get("fire", false)
+	_apply_connection_changes(phase_result.connection_count_changes)
 	var still_active: bool = bool(phase_result.active) or DisasterStartObjectsState.has_active_object(
 		city, active_disaster_type
 	)
@@ -396,6 +402,7 @@ func start_disaster(disaster_type: int, point: Vector2i) -> DisasterStartResult:
 
 		return started
 
+	_apply_connection_changes(started.connection_count_changes)
 	active_disaster_type = disaster_type
 	disaster_map_counter = started.map_counter
 	disaster_hurricane_counter = started.hurricane_counter
@@ -560,7 +567,7 @@ func _append_pending_disaster(result: SimulationDayResult) -> SimulationDayResul
 
 
 func _start_disaster_phase(disaster_type: int, point: Vector2i) -> DisasterStartResult:
-	var started := DisasterStartPhase.start(city, disaster_type, point, random, lfsr_random)
+	var started := DisasterStartPhase.start(city, disaster_type, point, random, lfsr_random, scenario != null)
 	return MaxisManResponse.apply(city, started, random, lfsr_random)
 
 

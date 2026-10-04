@@ -67,7 +67,6 @@ pub fn run(
     let no_disasters = city.no_disasters_enabled();
     let tick_city = TickCity {
         city_mode: city.city_mode(),
-        exact_counts: city.is_extended(),
     };
     let original_things = city.xthg.data.clone();
     let original_text = city.xtxt.data.clone();
@@ -246,6 +245,7 @@ pub fn run(
 mod tests {
     use super::*;
     use crate::sim::ids::building_tile_ids as tiles;
+    use crate::sim::overlay;
     use crate::sim::random::Randoms;
     use crate::sim::testing::empty_city;
 
@@ -262,14 +262,16 @@ mod tests {
         run(city, random, lfsr, game, &options)
     }
 
-    /// Ordinary vehicles write only XTHG and XTXT. A disaster record writes the map.
+    /// Ordinary vehicles write only XTHG and XTXT. An explosion clears the
+    /// overlay of its tile, which removes a marker there, and keeps the building.
     #[test]
-    fn only_disaster_records_write_the_map() {
+    fn vehicles_leave_the_map_and_explosions_clear_their_overlay() {
         for edge in [128i64, 256] {
             for kind in [TYPE_SAILBOAT, TYPE_EXPLOSION] {
                 let mut city = empty_city(edge);
                 city.xbld.data[(10 * edge + 10) as usize] = tiles::RUBBLE_1 as u8;
                 city.xbit.data[(10 * edge + 10) as usize] = 4;
+                overlay::write(&mut city.xtxt.data, 10 * edge + 10, 0xff);
                 let direction = if kind == TYPE_EXPLOSION { 2 } else { 0 };
 
                 for (field, value) in [(0, kind), (1, direction), (3, 10), (4, 10), (6, 8), (7, 8)] {
@@ -280,8 +282,12 @@ mod tests {
                 assert!(city.xthg.written);
 
                 if kind == TYPE_EXPLOSION {
-                    assert_eq!(city.xbld.data[(10 * edge + 10) as usize], 0, "the explosion clears its tile");
-                    assert!(city.xbld.written);
+                    assert_eq!(city.xbld.data[(10 * edge + 10) as usize], tiles::RUBBLE_1 as u8);
+                    assert_eq!(
+                        overlay::read(&city.xtxt.data, 10 * edge + 10),
+                        0,
+                        "the explosion clears its overlay"
+                    );
                 } else {
                     assert!(
                         !city.xbld.written && !city.misc.written && !city.altm.written,

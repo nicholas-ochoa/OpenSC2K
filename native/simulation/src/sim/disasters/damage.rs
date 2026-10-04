@@ -7,6 +7,7 @@ use crate::sim::ids::building_tile_ids as tiles;
 use crate::sim::ids::sc2tile_flags as flag_bits;
 use crate::sim::ids::sc2zone_layout as zone;
 use crate::sim::ids::terrain_tile_ids as terrain_ids;
+use crate::sim::moving::result::ConnectionChange;
 use crate::sim::overlay;
 use crate::sim::random::{SimLfsrRandom, SimRandom};
 use crate::sim::things;
@@ -38,6 +39,24 @@ pub fn append_damage_events(events: Option<&mut RuntimeEvents>, damage: &PointRe
     events.sound_events.push(SOUND_DAMAGE);
 }
 
+/// The neighbor connection count that a burned connection marker lowers. The
+/// original lowers the commerce count for a road tile and the industry count
+/// for other tiles (0x00460e10).
+pub fn connection_change(tile: i64, point: Vec2i) -> ConnectionChange {
+    let commerce = (tiles::ROAD_STRAIGHT_1..=tiles::ROAD_CROSSROADS).contains(&tile)
+        || (tiles::TUNNEL_ENTRANCE_1..=tiles::ROAD_RAIL_CROSSING_2).contains(&tile)
+        || tile == tiles::HIGHWAY_ROAD_CROSSING_1
+        || tile == tiles::HIGHWAY_ROAD_CROSSING_2
+        || (tiles::HIGHWAY_ONRAMP_1..=tiles::HIGHWAY_ONRAMP_4).contains(&tile);
+    let kind = if commerce { "commerce" } else { "industry" };
+
+    ConnectionChange {
+        kind: kind.to_string(),
+        delta: -1,
+        point,
+    }
+}
+
 /// A sign label clear. An extended sign ID past the label records changes nothing,
 /// as a failed GDScript packed-array store.
 fn clear_sign_label(labels: &mut [u8], overlay_id: i64, wide_labels: bool) {
@@ -47,7 +66,9 @@ fn clear_sign_label(labels: &mut [u8], overlay_id: i64, wide_labels: bool) {
 }
 
 /// DisasterDamage.apply. Returns 0 for no change, 1 for a new fire, 2 for
-/// rubble, 3 for a burned facility, and 4 for a fire on a reserved marker.
+/// rubble, 3 for a burned facility, and 4 for a fire on a neighbor connection
+/// marker. The original reports rubble as no change. `events` also receives
+/// the connection count change of code 4.
 #[allow(clippy::too_many_arguments)]
 pub fn apply(
     maps: &mut DisasterMaps,
@@ -89,6 +110,11 @@ pub fn apply(
             return 0;
         } else {
             result_code = 4;
+
+            if let Some(events) = events {
+                let tile = maps.maps.buildings[tile_index as usize] as i64;
+                events.connection_changes.push(connection_change(tile, point));
+            }
         }
     }
 
@@ -178,7 +204,9 @@ fn lift_dispatch_units(maps: &mut DisasterMaps, tile_index: i64) {
     }
 }
 
-/// DisasterDamage.burn_structure.
+/// DisasterDamage.burn_structure (0x00461330). `mark_fire` sets fire over the
+/// burned tiles, and `clear_current` then puts out the fire on `point` and
+/// leaves rubble (0x004611e0). The original does not burn a tunnel entrance.
 #[allow(clippy::too_many_arguments)]
 pub fn burn_structure(
     maps: &mut DisasterMaps,
@@ -191,9 +219,14 @@ pub fn burn_structure(
 ) -> PointResult {
     let edge = maps.maps.map_edge;
     let point_index = index(point, edge);
-    record_damage_class(maps.damage_class, maps.maps.buildings, maps.maps.zones, point_index);
-    let rotation = maps.rotation;
-    let result = demolish::demolish_point(&mut maps.maps, point, random, rotation, true, true, emit_effects, false);
+    let tunnel = point_index >= 0 && is_tunnel_entrance(maps.maps.buildings[point_index as usize] as i64);
+    let result = if tunnel {
+        PointResult::default()
+    } else {
+        record_damage_class(maps.damage_class, maps.maps.buildings, maps.maps.zones, point_index);
+        let rotation = maps.rotation;
+        demolish::demolish_point(&mut maps.maps, point, random, rotation, true, true, emit_effects, false)
+    };
 
     if mark_fire {
         for &changed in &result.indices {
@@ -208,13 +241,17 @@ pub fn burn_structure(
         overlay::set_marker_at(maps.maps.text_overlays, point_index, 0);
         let tile = maps.maps.buildings[point_index as usize] as i64;
 
-        if !(tiles::TUNNEL_ENTRANCE_1..=tiles::TUNNEL_ENTRANCE_4).contains(&tile) && tile < tiles::HIGHWAY_SLOPE_1 {
+        if !is_tunnel_entrance(tile) && tile < tiles::HIGHWAY_SLOPE_1 {
             let rubble = lfsr.next_mod(4) + tiles::RUBBLE_FIRST;
             replace_building(maps.maps.buildings, maps.maps.zones, maps.maps.misc, point_index, rubble);
         }
     }
 
     result
+}
+
+fn is_tunnel_entrance(tile: i64) -> bool {
+    (tiles::TUNNEL_ENTRANCE_1..=tiles::TUNNEL_ENTRANCE_4).contains(&tile)
 }
 
 /// DisasterDamage.record_damage_class. Keep the most important building class
@@ -227,7 +264,7 @@ pub fn record_damage_class(damage_class: &mut i64, buildings: &[u8], zones: &[u8
 
     let tile = buildings[tile_index as usize] as i64;
 
-    if (tiles::TUNNEL_ENTRANCE_1..=tiles::TUNNEL_ENTRANCE_4).contains(&tile) {
+    if is_tunnel_entrance(tile) {
         return;
     }
 
@@ -303,6 +340,67 @@ mod tests {
         assert_eq!(overlay::object(&city.xtxt.data, tile), overlay::thing_id(ship));
         assert_eq!(things::field(&city.xthg.data, ship, things::FIELD_LABEL), 0);
         assert_eq!(things::field(&city.xthg.data, unit, things::FIELD_TYPE), things::TYPE_FIRE);
+    }
+}
+
+#[cfg(test)]
+mod rule_tests {
+    use super::*;
+    use crate::sim::testing::{empty_city, sequence_lfsr, sequence_random};
+
+    /// 0x00461330 skips a tunnel entrance. A fire there goes out and the
+    /// tunnel stays (0x004611e0).
+    #[test]
+    fn disasters_do_not_burn_tunnel_entrances() {
+        let edge = 128i64;
+        let mut city = empty_city(edge);
+        let point = Vec2i::new(40, 40);
+        let tile = point.x * edge + point.y;
+        city.xbld.data[tile as usize] = tiles::TUNNEL_ENTRANCE_1 as u8;
+        overlay::write(&mut city.xtxt.data, tile, 0xff);
+        let mut maps = city.disaster_maps();
+        let result = burn_structure(
+            &mut maps,
+            point,
+            &mut sequence_random(&[0]),
+            &mut sequence_lfsr(&[0]),
+            true,
+            true,
+            true,
+        );
+        assert!(!result.changed && result.effect_events.is_empty());
+        assert_eq!(*maps.damage_class, -1, "a tunnel is no damaged building class");
+        assert_eq!(city.xbld.data[tile as usize], tiles::TUNNEL_ENTRANCE_1 as u8);
+        assert_eq!(overlay::read(&city.xtxt.data, tile), 0);
+    }
+
+    /// A fire on a neighbor connection marker lowers the commerce count for a
+    /// road and the industry count for other tiles.
+    #[test]
+    fn burned_connection_markers_lower_their_connection_count() {
+        for (tile, kind) in [(tiles::ROAD_STRAIGHT_1, "commerce"), (tiles::RAIL_STRAIGHT_1, "industry")] {
+            let edge = 128i64;
+            let mut city = empty_city(edge);
+            let point = Vec2i::new(0, 40);
+            let tile_index = point.x * edge + point.y;
+            city.xbld.data[tile_index as usize] = tile as u8;
+            overlay::write(&mut city.xtxt.data, tile_index, 250);
+            let mut events = RuntimeEvents::default();
+            let mut maps = city.disaster_maps();
+            let code = apply(
+                &mut maps,
+                point,
+                &mut sequence_random(&[0]),
+                &mut sequence_lfsr(&[0]),
+                false,
+                Some(&mut events),
+            );
+            assert_eq!(code, 4);
+            assert_eq!(events.connection_changes.len(), 1);
+            let change = &events.connection_changes[0];
+            assert!(change.kind == kind && change.delta == -1 && change.point == point);
+            assert_eq!(overlay::read(&city.xtxt.data, tile_index), 0xff);
+        }
     }
 }
 

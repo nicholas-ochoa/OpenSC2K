@@ -258,7 +258,8 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
             let lfsr = convert::boolean(args, "has_lfsr", true).then_some(&mut randoms.lfsr);
             let disaster_type = convert::int(args, "disaster_type", 0);
             let point = convert::point(args, "point", crate::sim::geom::Vec2i::ZERO);
-            Outcome::value(disaster_start::start(city, disaster_type, point, random, lfsr).to_value())
+            let scenario = convert::boolean(args, "scenario", false);
+            Outcome::value(disaster_start::start(city, disaster_type, point, random, lfsr, scenario).to_value())
         }
         "disaster_map.run_all"
         | "disaster_map.dispatch"

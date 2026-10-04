@@ -1070,7 +1070,7 @@ mod tests {
             crate::sim::disasters::start::DISASTER_MONSTER,
             crate::sim::disasters::start::DISASTER_TORNADO,
         ] {
-            let started = crate::sim::disasters::start::start(&mut city, disaster, point, Some(&mut SimRandom::new(1)), None);
+            let started = crate::sim::disasters::start::start(&mut city, disaster, point, Some(&mut SimRandom::new(1)), None, false);
             assert!(!started.started, "a full pool starts no moving disaster");
         }
 

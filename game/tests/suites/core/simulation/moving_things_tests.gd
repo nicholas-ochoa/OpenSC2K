@@ -47,9 +47,9 @@ func _test_explosions(reference_root: String) -> void:
 	)
 	_check(
 		explosion.city.thing(1).type == 0
-		and explosion.city.building_id(20, 20) == 0
+		and explosion.city.building_id(20, 20) == Tiles.NICE_APARTMENTS_2X2_2
 		and explosion.city.text_overlay_id(20, 20) == 0,
-		"Finished non-spreading explosion removes its record, center building, and link: %s %d %d"
+		"Finished non-spreading explosion removes its record and link and keeps the building: %s %d %d"
 		% [explosion.city.thing(1), explosion.city.building_id(20, 20), explosion.city.text_overlay_id(20, 20)],
 	)
 
@@ -193,15 +193,17 @@ func _test_tornadoes(reference_root: String) -> void:
 	_check(tornado.document.set_misc_u32(0x01f0 + 0x1d * 4, 1), "Tornado fixture counts its road")
 	var tornado_result := MovingThingTick.run(
 		tornado.city,
-		SequenceRandom.new([0, 1, 0, 1]),
+		# two dust values, then the rubble and the movement values
+		SequenceRandom.new([0, 0, 0, 1, 0, 1]),
 		NonzeroLfsrRandom.new()
 	)
 	_check(
 		tornado_result.ok
 		and tornado_result.active_tornadoes == 1
 		and tornado_result.tornado_demolitions == 1
-		and tornado_result.moved_tornadoes == 1,
-		"Tornado demolishes a structure and makes its first movement",
+		and tornado_result.moved_tornadoes == 1
+		and not tornado_result.effect_events.is_empty(),
+		"Tornado demolishes a structure with dust and makes its first movement",
 	)
 	_check(
 		tornado.city.building_id(20, 20) == 1
@@ -325,7 +327,8 @@ func _test_monsters(reference_root: String) -> void:
 	_check(radioactive_monster.document.set_misc_u32(0x01f0 + 0x8b * 4, 1), "Monster damage fixture counts its building")
 	var radioactive_result := MovingThingTick.run(
 		radioactive_monster.city,
-		SequenceRandom.new([1, 0, 0, 1, 0, 2]),
+		# the state, animation and direction values, two dust values, then rubble and radiation
+		SequenceRandom.new([1, 0, 0, 1, 0, 0, 0, 2]),
 		NonzeroLfsrRandom.new()
 	)
 	_check(
@@ -333,9 +336,11 @@ func _test_monsters(reference_root: String) -> void:
 		and radioactive_result.monster_damage_hits == 1
 		and radioactive_result.moved_monsters == 1
 		and radioactive_result.news_items.is_empty()
-		and radioactive_result.sound_events[0].sound_id == 0x202
-		and radioactive_result.sound_events[0].thing_type == 5,
-		"Goal-one monster demolishes its diagonal target and marks a damage effect",
+		and radioactive_result.sound_events[0].sound_id == 0x1f8
+		and radioactive_result.sound_events[1].sound_id == 0x202
+		and radioactive_result.sound_events[1].thing_type == 5
+		and not radioactive_result.effect_events.is_empty(),
+		"Goal-one monster demolishes its diagonal target with dust and marks a damage effect",
 	)
 	_check(
 		radioactive_monster.city.building_id(21, 21) == 11

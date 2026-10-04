@@ -12,6 +12,7 @@ use crate::gd_phase_result;
 use crate::sim::city::City;
 use crate::sim::events::{EffectEvent, SoundEvent};
 use crate::sim::geom::{Rect2i, Vec2i};
+use crate::sim::moving::result::ConnectionChange;
 use crate::sim::tools::Maps;
 use crate::sim::value::{Ints32, OrderedMap};
 
@@ -151,6 +152,7 @@ pub struct RuntimeEvents {
     pub effect_events: Vec<EffectEvent>,
     pub sound_events: Vec<i64>,
     pub next_effect_frame: i64,
+    pub connection_changes: Vec<ConnectionChange>,
 }
 
 /// DisasterMapState._index and DisasterStartObjectsState._index. -1 is outside.
@@ -183,6 +185,7 @@ gd_phase_result! {
         pub counters: OrderedMap<i64> = OrderedMap::new(),
         pub active_markers: OrderedMap<bool> = OrderedMap::new(),
         pub dispatch_map: Option<Box<DisasterMapResult>> = None,
+        pub connection_count_changes: Vec<ConnectionChange> = Vec::new(),
     }
 }
 
@@ -220,5 +223,6 @@ gd_phase_result! {
         pub accepted_points: Vec<Vec2i> = Vec::new(),
         pub counters: OrderedMap<i64> = OrderedMap::new(),
         pub maxis_man_response: Option<MaxisManArrival> = None,
+        pub connection_count_changes: Vec<ConnectionChange> = Vec::new(),
     }
 }

@@ -13,7 +13,7 @@ use crate::sim::ids::sc2tile_flags as flag_bits;
 use crate::sim::ids::sc2zone_layout as zone;
 use crate::sim::moving::air::{EXPLOSION_HELICOPTER_CRASH, remove_without_crash};
 use crate::sim::moving::motion::{self, DIRECTIONS, direction_quadrant, index};
-use crate::sim::moving::result::{ConnectionChange, DisasterRequest, MovingThingResult, queue_thing_sound, record_type};
+use crate::sim::moving::result::{DisasterRequest, MovingThingResult, queue_thing_sound, record_type};
 use crate::sim::overlay;
 use crate::sim::random::{SimLfsrRandom, SimRandom};
 use crate::sim::things::{self, RECORD_SIZE, TYPE_AIRPLANE, TYPE_HELICOPTER};
@@ -31,7 +31,6 @@ const TYPE_MILITARY_UNIT: i64 = 14;
 #[derive(Clone, Copy)]
 pub struct TickCity {
     pub city_mode: i64,
-    pub exact_counts: bool,
 }
 
 /// DisasterThingActions._random_direction_step.
@@ -41,17 +40,19 @@ fn random_direction_step(direction: i64, divisor: i64, random: &mut SimRandom) -
 
 /// DisasterThingActions._record_connection_count_change.
 fn record_connection_count_change(counters: &mut MovingThingResult, tile: i64, point: Vec2i) {
-    let commerce = (tiles::ROAD_STRAIGHT_1..=tiles::ROAD_CROSSROADS).contains(&tile)
-        || (tiles::TUNNEL_ENTRANCE_1..=tiles::ROAD_RAIL_CROSSING_2).contains(&tile)
-        || tile == tiles::HIGHWAY_ROAD_CROSSING_1
-        || tile == tiles::HIGHWAY_ROAD_CROSSING_2
-        || (tiles::HIGHWAY_ONRAMP_1..=tiles::HIGHWAY_ONRAMP_4).contains(&tile);
-    let kind = if commerce { "commerce" } else { "industry" };
-    counters.connection_count_changes.push(ConnectionChange {
-        kind: kind.to_string(),
-        delta: -1,
-        point,
-    });
+    counters.connection_count_changes.push(damage::connection_change(tile, point));
+}
+
+/// The dust and sound of a disaster demolition. The original demolishes with
+/// its animation for a tornado and a monster (0x00454ea0, 0x004548c0).
+fn queue_demolition_effects(counters: &mut MovingThingResult, demolition: &demolish::PointResult, data: &[u8], record: i64) {
+    if demolition.effect_events.is_empty() {
+        return;
+    }
+
+    let first_frame = counters.base.effect_events.iter().map(|effect| effect.frame + 1).max().unwrap_or(0);
+    demolish::append_effect_sequence(&mut counters.base.effect_events, &demolition.effect_events, first_frame);
+    queue_thing_sound(counters, SOUND_EXPLOSION, data, record);
 }
 
 /// DisasterThingTick.update_explosion.
@@ -101,12 +102,9 @@ pub fn update_explosion(
         return;
     }
 
-    // The original clears the tile without a count change. Extended cities keep exact counts.
-    if tick_city.exact_counts {
-        crate::sim::growth::replace_building(maps.maps.buildings, maps.maps.zones, maps.maps.misc, center_index, tiles::EMPTY);
-    } else {
-        maps.maps.buildings[center_index as usize] = tiles::EMPTY as u8;
-    }
+    // 0x004546f0 clears the text overlay of the tile, which also removes a
+    // marker under the explosion. The building stays.
+    overlay::set_marker_at(maps.maps.text_overlays, center_index, 0);
 
     if things::read(maps.things, offset + 11) == 0 || !allow_disaster_damage {
         return;
@@ -131,10 +129,8 @@ pub fn update_explosion(
                 let tile = bytes::at(maps.maps.buildings, index(damaged, edge));
                 record_connection_count_change(counters, tile, damaged);
             }
-            2 => {
-                caused_damage = true;
-                counters.rubble_explosion_hits += 1;
-            }
+            // the original reports rubble as no damage
+            2 => counters.rubble_explosion_hits += 1,
             3 => {
                 caused_damage = true;
                 counters.damaged_facilities += 1;
@@ -355,7 +351,8 @@ fn monster_damage(
     }
 
     let rotation = maps.rotation;
-    let demolition = demolish::demolish_point(&mut maps.maps, point, random, rotation, true, true, false, false);
+    let demolition = demolish::demolish_point(&mut maps.maps, point, random, rotation, true, true, true, false);
+    queue_demolition_effects(counters, &demolition, maps.things, offset / RECORD_SIZE);
 
     if !demolition.changed {
         return;
@@ -443,7 +440,8 @@ pub fn update_tornado(maps: &mut DisasterMaps, record: i64, random: &mut SimRand
 
     if building > tiles::RADIOACTIVE_WASTE {
         let rotation = maps.rotation;
-        let demolition = demolish::demolish_point(&mut maps.maps, current, random, rotation, true, true, false, false);
+        let demolition = demolish::demolish_point(&mut maps.maps, current, random, rotation, true, true, true, false);
+        queue_demolition_effects(counters, &demolition, maps.things, record);
 
         if demolition.changed {
             counters.tornado_demolitions += 1;
@@ -488,5 +486,65 @@ pub fn update_tornado(maps: &mut DisasterMaps, record: i64, random: &mut SimRand
     if random.next_u15() & 0xff == 0 {
         motion::remove(maps.maps.text_overlays, maps.things, record, edge);
         counters.removed_tornadoes += 1;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sim::testing::{empty_city, sequence_lfsr, sequence_random};
+
+    fn place(maps: &mut DisasterMaps, record: i64, fields: &[(i64, i64)]) {
+        for &(field, value) in fields {
+            things::write(maps.things, record * RECORD_SIZE + field, value);
+        }
+    }
+
+    /// Rubble on a reserved marker is no damage in the original, so the
+    /// explosion requests no fire.
+    #[test]
+    fn explosion_rubble_requests_no_fire() {
+        let edge = 128i64;
+        let mut city = empty_city(edge);
+
+        for x in 18..23 {
+            for y in 18..23 {
+                city.xbld.data[(x * edge + y) as usize] = tiles::LOWER_CLASS_HOMES_1X1_1 as u8;
+                overlay::write(&mut city.xtxt.data, x * edge + y, 0xf1);
+            }
+        }
+
+        let mut maps = city.disaster_maps();
+        place(&mut maps, 1, &[(0, things::TYPE_EXPLOSION), (1, 2), (3, 20), (4, 20), (11, 1)]);
+        let mut counters = MovingThingResult::default();
+        let tick = TickCity { city_mode: 1 };
+        update_explosion(
+            &mut maps,
+            tick,
+            1,
+            &mut sequence_random(&[0]),
+            &mut sequence_lfsr(&[0, 1, 2, 3, 4]),
+            true,
+            false,
+            &mut counters,
+        );
+        assert_eq!(counters.rubble_explosion_hits, 4);
+        assert!(counters.disaster_start_requests.is_empty());
+    }
+
+    /// A tornado demolishes with the original dust and sound.
+    #[test]
+    fn tornado_demolitions_show_dust() {
+        let edge = 128i64;
+        let mut city = empty_city(edge);
+        city.xbld.data[(20 * edge + 20) as usize] = tiles::LOWER_CLASS_HOMES_1X1_1 as u8;
+        let mut maps = city.disaster_maps();
+        place(&mut maps, 1, &[(0, things::TYPE_TORNADO), (1, 2), (3, 20), (4, 20), (6, 8), (7, 8)]);
+        overlay::write(maps.maps.text_overlays, 20 * edge + 20, overlay::thing_id(1));
+        let mut counters = MovingThingResult::default();
+        update_tornado(&mut maps, 1, &mut sequence_random(&[1]), &mut counters);
+        assert_eq!(counters.tornado_demolitions, 1);
+        assert!(!counters.base.effect_events.is_empty());
+        assert_eq!(counters.base.sound_events[0].sound_id, SOUND_EXPLOSION);
     }
 }

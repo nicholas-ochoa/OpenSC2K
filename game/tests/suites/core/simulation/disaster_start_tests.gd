@@ -40,8 +40,8 @@ func _test_monster_and_fire(reference_root: String) -> void:
 		and monster.complete
 		and monster.record == 1
 		and SoundEvent.same_arrays(monster.sound_events, SoundEvent.from_ids([DisasterStart.SOUND_SIREN]))
-		and monster.view_center_requests == [Vector2i(20, 20)],
-		"Monster disaster replaces an occupied moving object and reports runtime effects",
+		and monster.view_center_requests == [Vector2i(12, 12)],
+		"Monster disaster replaces an occupied moving object and centers the view 8 tiles up and left",
 	)
 	var monster_thing := monster_city.thing(1)
 	_check(
