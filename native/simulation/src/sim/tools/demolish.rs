@@ -398,6 +398,10 @@ pub fn demolish_point(
     let mut indices = Vec::new();
     let mut changed_points = Vec::new();
 
+    if tile == tiles::STADIUM {
+        release_stadium_team(maps, site);
+    }
+
     for x in site.position.x..site.end().x {
         for y in site.position.y..site.end().y {
             let changed_index = x * edge + y;
@@ -462,6 +466,48 @@ pub fn demolish_point(
         indices,
         effect_events,
         ..Default::default()
+    }
+}
+
+/// The facility ID of a tile, or 0.
+fn facility_at(text_overlays: &[u8], index: i64) -> i64 {
+    if overlay::is_layered(text_overlays) {
+        return overlay::facility(text_overlays, index);
+    }
+
+    let id = overlay::read(text_overlays, index);
+
+    if overlay::is_facility(id) { id } else { 0 }
+}
+
+/// A demolished stadium frees its team, as the executable does at 0x00459f56:
+/// the 16-bit team mask adds 0xffff shifted left by the low byte of the team
+/// stored in the stadium's microsimulation record.
+fn release_stadium_team(maps: &mut Maps, site: Rect2i) {
+    let edge = maps.map_edge;
+
+    for x in site.position.x..site.end().x {
+        for y in site.position.y..site.end().y {
+            let id = facility_at(maps.text_overlays, x * edge + y);
+
+            if id == 0 {
+                continue;
+            }
+
+            let offset = (overlay::facility_record(id) * sc2microsim_layout::RECORD_SIZE) as usize;
+
+            if offset + sc2microsim_layout::RECORD_SIZE as usize > maps.microsims.len() || maps.microsims[offset] as i64 != tiles::STADIUM {
+                continue;
+            }
+
+            let team = maps.microsims[offset + sc2microsim_layout::STAT_2 as usize + 1] as u32;
+            let release = 0xffff_u32.checked_shl(team & 31).unwrap_or(0) & 0xffff;
+            let teams = read_u32_be(maps.misc, misc_layout::STADIUM_TEAMS) as u32;
+            let changed = (teams.wrapping_add(release) & 0xffff) as u16 as i16;
+            write_u32_be(maps.misc, misc_layout::STADIUM_TEAMS, changed as i64);
+
+            return;
+        }
     }
 }
 
@@ -1038,5 +1084,29 @@ mod tests {
         assert_eq!(overlay::object(&text, 20), overlay::thing_id(7));
         assert_eq!(microsims[(record * 8) as usize], 0, "the individual record is free");
         assert!(label_records::read(&labels, facility as usize, true).unwrap_or_default().is_empty());
+    }
+
+    #[test]
+    fn a_demolished_stadium_frees_its_team() {
+        use crate::sim::testing::{empty_city, empty_sc2x_city};
+
+        for mut city in [empty_city(128), empty_sc2x_city(256)] {
+            let edge = city.map_size;
+            let record = MICROSIM_DYNAMIC_FIRST + 4;
+            let offset = (record * sc2microsim_layout::RECORD_SIZE) as usize;
+            city.xmic.data[offset] = tiles::STADIUM as u8;
+            city.xmic.data[offset + 5] = 3;
+            overlay::write(&mut city.xtxt.data, 11 * edge + 12, overlay::facility_id(record));
+            write_u32_be(&mut city.misc.data, misc_layout::STADIUM_TEAMS, 0b1011);
+            let site = Rect2i::new(10, 10, 4, 4);
+
+            release_stadium_team(&mut city.maps(), site);
+            assert_eq!(read_u32_be(&city.misc.data, misc_layout::STADIUM_TEAMS), 0b0011, "map edge {edge}");
+
+            // another facility, or a stadium without a record, keeps the teams
+            city.xmic.data[offset] = tiles::ZOO as u8;
+            release_stadium_team(&mut city.maps(), site);
+            assert_eq!(read_u32_be(&city.misc.data, misc_layout::STADIUM_TEAMS), 0b0011);
+        }
     }
 }
