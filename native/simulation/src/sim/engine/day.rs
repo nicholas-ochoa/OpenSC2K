@@ -6,7 +6,7 @@ use crate::sim::civic::scenario::{self, Scenario};
 use crate::sim::civic::{annual, education, mayor, milestones, nation};
 use crate::sim::data_maps;
 use crate::sim::disasters::weather;
-use crate::sim::economy::{self, budget};
+use crate::sim::economy::{self, budget, city_value};
 use crate::sim::engine::month;
 use crate::sim::events::Timing;
 use crate::sim::geom::Vec2i;
@@ -199,6 +199,12 @@ pub fn run_schedule(
             return (DayOutcome::failure("cannot store the tile counts"), state, scenario);
         }
     }
+
+    // The supplied executable rebuilds the city value only before a bond
+    // issue, so the saved value and the Bonds advisor go stale. As sc2kfix
+    // does, the value is rebuilt at the start of every day.
+    span.mark("city value");
+    city_value::run(city);
 
     let mut context = Context {
         city,
@@ -696,5 +702,33 @@ impl ToValue for DayOutcome {
                 .map(|(name, value)| (Value::Str(name.to_string()), value))
                 .collect(),
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sim::bytes::{read_i32_be, write_u32_be};
+    use crate::sim::ids::building_tile_ids as tiles;
+    use crate::sim::ids::sc2misc_layout as misc_layout;
+    use crate::sim::testing::empty_city;
+
+    #[test]
+    fn every_day_rebuilds_the_saved_city_value() {
+        for edge in [128, 256] {
+            let mut city = empty_city(edge);
+            let misc = city.misc.mutate();
+            write_u32_be(misc, misc_layout::TILE_COUNTS + tiles::ROAD_STRAIGHT_1 * 4, 40);
+            write_u32_be(misc, misc_layout::CITY_VALUE, 12345);
+            let mut randoms = Randoms::new(1, 1, 1);
+            let schedule = Schedule {
+                month_day: 7,
+                ..Default::default()
+            };
+            let (outcome, _, _) = run_schedule(&mut city, &mut randoms, None, EngineState::default(), &schedule, false, false);
+
+            assert!(outcome.error.is_empty(), "{}", outcome.error);
+            assert_eq!(read_i32_be(&city.misc.data, misc_layout::CITY_VALUE), 400, "map edge {edge}");
+        }
     }
 }
