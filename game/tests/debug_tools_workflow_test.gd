@@ -91,6 +91,32 @@ func _check_edits(main: CityApplication, city: CityState) -> void:
 	assert(DebugEdits.parse_number("12 / 0x0C") == 12 and DebugEdits.parse_number("-0x10") == -16)
 	assert(DebugEdits.parse_number("$1,000") == 1000 and DebugEdits.parse_number("x") == null)
 	_check_bad_terrain(main, city)
+	_check_orphan_labels(main, city)
+
+
+# a sign label that no tile shows is orphaned. removing it is one debug edit
+func _check_orphan_labels(main: CityApplication, city: CityState) -> void:
+	var labels := city.document.find_chunk("XLAB")
+	var original := labels.decoded_payload.duplicate()
+	var free_id := -1
+
+	for id in range(Sc2OverlayLayout.ORIGINAL_SIGN_FIRST, Sc2OverlayLayout.ORIGINAL_SIGN_LAST + 1):
+		if Sc2LabelLayout.read(labels.decoded_payload, id).is_empty() and OverlayData.find(city.text_overlays, id) < 0:
+			free_id = id
+			break
+
+	assert(free_id > 0)
+	var changed := labels.decoded_payload.duplicate()
+	Sc2LabelLayout.write(changed, free_id, "Lost Sign")
+	labels.set_decoded_payload(changed)
+	assert(OrphanLabels.find(city) == PackedInt32Array([free_id]))
+	main.debug_tools.on_debug_menu(CityDebugMenu.MENU_FIND_ORPHAN_LABELS)
+	assert(main.status_label.text.contains("'Lost Sign'"), main.status_label.text)
+	assert(labels.decoded_payload == changed, "Finding orphaned labels changes nothing")
+	main.debug_tools.on_debug_menu(CityDebugMenu.MENU_REMOVE_ORPHAN_LABELS)
+	assert(Sc2LabelLayout.read(labels.decoded_payload, free_id).is_empty() and OrphanLabels.find(city).is_empty())
+	assert(main.debug_tools.edits.undo().begins_with("Undid") and labels.decoded_payload == changed)
+	labels.set_decoded_payload(original)
 
 
 # sc2kfix bad terrain: the Unusual Values layer marks it, and one undo reverts the repair

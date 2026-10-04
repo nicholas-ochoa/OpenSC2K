@@ -27,6 +27,8 @@ const MENU_TILE_GRID := 0x8414
 const MENU_DISASTER_PREVIEWS := 0x8415
 const MENU_UNDO_EDIT := 0x8416
 const MENU_REPAIR_BAD_TERRAIN := 0x8417
+const MENU_FIND_ORPHAN_LABELS := 0x8418
+const MENU_REMOVE_ORPHAN_LABELS := 0x8419
 # a disaster preview item has this ID plus the disaster ID
 const PREVIEW_BASE := 0x8700
 # disaster ticks of a menu preview. The Scenario tab of the Debug window sets other counts
@@ -64,6 +66,8 @@ const TOOLTIPS := {
 	MENU_MISSING_ARTWORK: "Look for tiles around the view that have no sprite in the tile set.",
 	MENU_REPAIR_BAD_TERRAIN: ("Repair dry tiles under a water level above the city's, as sc2kfix does. " +
 		"The Unusual Values layer shows them. Undo Edit restores them."),
+	MENU_FIND_ORPHAN_LABELS: "List the sign labels that no tile shows, as sc2kfix does. A cancelled sign can leave one.",
+	MENU_REMOVE_ORPHAN_LABELS: "Clear the text of each sign label that no tile shows. Undo Edit restores them.",
 	MENU_STEP_PHASE: "Run the next simulation step of the day. The city must be paused.",
 	MENU_STEP_DAY: "Run the rest of the current day, or one full day. The city must be paused.",
 	MENU_DISASTER_PREVIEWS: "Show where a disaster would spread from the center of the view. The city does not change.",
@@ -100,6 +104,8 @@ static func populate(popup: PopupMenu, handler: Callable) -> void:
 	popup.add_check_item("Freeze Palette Cycling", MENU_FREEZE_PALETTE)
 	popup.add_item("Check Missing Artwork", MENU_MISSING_ARTWORK)
 	popup.add_item("Repair Bad Terrain", MENU_REPAIR_BAD_TERRAIN)
+	popup.add_item("Find Orphaned Labels", MENU_FIND_ORPHAN_LABELS)
+	popup.add_item("Remove Orphaned Labels", MENU_REMOVE_ORPHAN_LABELS)
 	popup.add_separator()
 	popup.add_item("Advance One Phase", MENU_STEP_PHASE)
 	popup.add_item("Advance One Day", MENU_STEP_DAY)

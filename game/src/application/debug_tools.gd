@@ -133,6 +133,20 @@ func on_days_completed() -> void:
 		tile_views.on_days_completed()
 
 
+func _orphan_label_report() -> String:
+	var city := app.document_state.city
+
+	if city == null:
+		return "Load a city before you look for orphaned labels."
+
+	var found: Variant = OrphanLabels.find(city)
+
+	if found == null:
+		return "This city keeps its signs in sign records. It has no orphaned labels."
+
+	return OrphanLabels.describe(city, found)
+
+
 func on_debug_menu(id: int) -> void:
 	match id:
 		CityDebugMenu.MENU_TILE_INSPECTOR:
@@ -158,6 +172,10 @@ func on_debug_menu(id: int) -> void:
 			_status(edits.undo())
 		CityDebugMenu.MENU_REPAIR_BAD_TERRAIN:
 			_status(edits.repair_bad_terrain())
+		CityDebugMenu.MENU_FIND_ORPHAN_LABELS:
+			_status(_orphan_label_report())
+		CityDebugMenu.MENU_REMOVE_ORPHAN_LABELS:
+			_status(edits.remove_orphan_labels())
 		CityDebugMenu.MENU_TILE_GRID:
 			if app.map_view != null:
 				app.map_view.debug_view.attach()

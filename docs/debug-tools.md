@@ -47,6 +47,7 @@ file) also show it.
 | Freeze Palette Cycling | Stops the animated palette colors, for stable images. |
 | Check Missing Artwork | Paints the tiles around the view with placeholders on a worker thread, and shows each tile that needs a sprite that the artwork lacks as the Missing Artwork layer. |
 | Repair Bad Terrain | Repairs the bad terrain of sc2kfix: dry tiles whose own water level is above the city water level and their land. It finds the water level of the map from its water tiles, sets it on each bad tile, and marks a tile below it as water. **Undo Edit** restores ALTM and XBIT together. |
+| Find Orphaned Labels, Remove Orphaned Labels | List, or clear, the sign labels that no tile shows, as sc2kfix does. A cancelled sign in the original game leaves its XLAB text. **Undo Edit** restores removed labels. SC2X version 4 cities keep signs in sign records and have none. |
 | Advance One Phase, Advance One Day | Step the paused simulation. See [Steps](#steps). |
 | Preview Disaster at View Center | Runs the disaster for 20 ticks in a copy of the simulation and shows the tiles that it would change as the Disaster Preview layer. The city and its random states do not change. |
 | Verify Save | Saves a copy of the city to a temporary file with the normal save path, loads it again, and compares every chunk. A second save of the loaded file must write the same content. A dialog lists each chunk. The open city and its save path do not change. |

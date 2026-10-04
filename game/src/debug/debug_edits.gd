@@ -99,6 +99,32 @@ func set_misc_word(offset: int, text: String, name := "") -> String:
 	return _replace(chunk, payload, "MISC 0x%04X%s = %d" % [offset, " (%s)" % name if not name.is_empty() else "", value])
 
 
+# Clear the text of each orphaned sign label (OrphanLabels)
+func remove_orphan_labels() -> String:
+	var city := app.document_state.city
+
+	if city == null:
+		return "Load a city before you remove its orphaned labels."
+
+	var found: Variant = OrphanLabels.find(city)
+
+	if found == null:
+		return "This city keeps its signs in sign records. It has no orphaned labels."
+
+	var ids: PackedInt32Array = found
+
+	if ids.is_empty():
+		return "No orphaned labels found."
+
+	var chunk := city.document.find_chunk("XLAB")
+	var labels := chunk.decoded_payload.duplicate()
+
+	for id in ids:
+		Sc2LabelLayout.clear(labels, id)
+
+	return _replace(chunk, labels, "removed %d orphaned labels" % ids.size())
+
+
 # Repair the bad terrain of sc2kfix (BadTerrain). One undo restores ALTM and XBIT
 func repair_bad_terrain() -> String:
 	var city := app.document_state.city
