@@ -259,7 +259,7 @@ func test_bond_command(reference_root: String) -> void:
 	_check(document.misc_u32(0x0614) == 0, "Bond issue normalizes saved rate fields")
 
 	_check(document.set_misc_u32(0x0058, 5), "Bond fixture changes federal rate")
-	_check(document.set_misc_u32(0x01f0 + 0x1d * 4, 100), "Bond fixture improves city value")
+	_check(document.set_misc_u32(0x01f0 + 0x1d * 4, 5000), "Bond fixture improves city value")
 	var second := Bonds.issue(city, Bonds.CONFIRMATION_CONFIRMED)
 	_check(second.ok and second.rate == 6, "A second bond uses the current rate")
 	_check(city.funds() == 22000 and document.misc_u32(0x0018) == 2, "Second bond is stored")
@@ -310,8 +310,8 @@ func test_bond_command(reference_root: String) -> void:
 	_check(denied_city.set_funds(9999), "Credit fixture sets insufficient repayment funds")
 	var denied := Bonds.issue(denied_city)
 	_check(
-		denied.ok and denied.status == "credit_denied" and denied.credit_value == 24,
-		"Supplied 2,500 credit formula can deny a bond",
+		denied.ok and denied.status == "credit_denied" and denied.credit_value == 247,
+		"The 25,000 credit formula of the budget window can deny a bond",
 	)
 	_check(denied_document.misc_i32(0x0024) == 100, "Denied issue stores rebuilt city value")
 	var insufficient := Bonds.repay(denied_city)
@@ -327,5 +327,6 @@ func test_bond_command(reference_root: String) -> void:
 		maximum_document.set_misc_i32(0x01f0 + tile_id * 4, 0)
 
 	_check(maximum_document.set_misc_u32(0x0018, 50), "Maximum fixture sets fifty bonds")
+	_check(maximum_document.set_misc_u32(0x01f0 + 0x1d * 4, 30000), "Maximum fixture keeps a good credit rating")
 	var maximum := Bonds.issue(maximum_city)
 	_check(maximum.ok and maximum.status == "maximum_bonds", "Bond count is limited to fifty")

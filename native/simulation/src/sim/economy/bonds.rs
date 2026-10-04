@@ -2,6 +2,11 @@
 //!
 //! Each command reads a copy of MISC and returns the changed copy, if any. The
 //! issue command also stores the rebuilt city value when it issues no bond.
+//!
+//! The supplied executable at 0x0041b279 scales the credit value by 2,500. The
+//! budget window and the Bonds advisor scale the same rating by 25,000, so the
+//! bank could lend ten times the debt that the window rates F. As sc2kfix does,
+//! the issue check uses the 25,000 scale of the rating that the player sees.
 
 use super::{divide_toward_zero, to_i32};
 use crate::gd_object;
@@ -13,7 +18,8 @@ pub const BOND_VALUE: i64 = 10000;
 pub const MAX_BONDS: i64 = 50;
 /// The credit value at which the bank refuses another bond.
 pub const CREDIT_LIMIT: i64 = 6;
-const CREDIT_SCALE: i64 = 2500;
+/// The credit rating scale of the budget window and the Bonds advisor.
+pub const CREDIT_SCALE: i64 = 25000;
 const RATE_SCALE: i64 = 10000;
 const RATE_SIZE: i64 = 4;
 
@@ -316,7 +322,7 @@ mod tests {
     fn the_bank_refuses_a_bond_past_the_credit_limit_or_the_bond_cap() {
         let misc = misc_with(&[1; 10], 0, 1);
         let denied = issue(&misc, 1000, CONFIRMATION_CONFIRMED);
-        assert_eq!((denied.result.status.as_str(), denied.result.credit_value), ("credit_denied", 24));
+        assert_eq!((denied.result.status.as_str(), denied.result.credit_value), ("credit_denied", 249));
 
         let full = misc_with(&[1; MAX_BONDS as usize], 0, 1);
         assert_eq!(issue(&full, 100_000_000, CONFIRMATION_CONFIRMED).result.status, "maximum_bonds");
@@ -332,6 +338,22 @@ mod tests {
             issue(&[0; 4], 0, CONFIRMATION_CONFIRMED).result.error,
             "MISC is missing or has the wrong size"
         );
+    }
+
+    #[test]
+    fn the_issue_check_uses_the_rating_scale_of_the_budget_window() {
+        // 4 bonds against a 15,000 city value rate F (credit 6) in the window.
+        // The executable's 2,500 scale gave credit 0 and lent another bond.
+        let misc = misc_with(&[2; 4], 0, 1);
+        let denied = issue(&misc, 15_000, CONFIRMATION_CONFIRMED);
+        assert_eq!((denied.result.status.as_str(), denied.result.credit_value), ("credit_denied", 6));
+
+        let limit = issue(&misc, 16_666, CONFIRMATION_CONFIRMED);
+        assert_eq!((limit.result.status.as_str(), limit.result.credit_value), ("issued", 5));
+
+        let rated_b = issue(&misc, 40_000, CONFIRMATION_CONFIRMED);
+        assert_eq!((rated_b.result.status.as_str(), rated_b.result.credit_value), ("issued", 2));
+        assert_eq!(rated_b.result.rate, 2, "credit does not change the offered rate");
     }
 
     #[test]
