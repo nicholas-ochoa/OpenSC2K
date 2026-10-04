@@ -440,26 +440,45 @@ func load_tile_set(path: String) -> void:
 func _apply_scurk_tile_set(
 	tile_set: ScurkMif, display_name: String, path: String
 ) -> void:
+	_apply_scurk_tile_sets([tile_set], display_name, path)
+
+
+# Combine the original sprites with each tile set in order. A later tile set
+# replaces the graphics and names of an earlier one.
+func _apply_scurk_tile_sets(
+	tile_sets: Array[ScurkMif], display_name: String, path: String
+) -> void:
 	if app.asset_state.base_large_sprites == null or app.asset_state.base_small_medium_sprites == null:
 		app.interface.show_error("Original sprite data is not loaded.")
 
 		return
 
-	if tile_set == null or not tile_set.is_valid():
-		app.interface.show_error("Cannot apply an invalid SCURK tile set.")
+	var large_archives: Array[Sc2SpriteArchive] = [app.asset_state.base_large_sprites]
+	var small_medium_archives: Array[Sc2SpriteArchive] = [app.asset_state.base_small_medium_sprites]
+	var names: Dictionary[int, String] = {}
 
+	for tile_set in tile_sets:
+		if tile_set == null or not tile_set.is_valid():
+			app.interface.show_error("Cannot apply an invalid SCURK tile set.")
+
+			return
+
+		large_archives.append(tile_set.overrides)
+		small_medium_archives.append(tile_set.overrides)
+		names.merge(tile_set.names, true)
+
+	if tile_sets.is_empty():
 		return
 
-	var new_large := SpriteArchive.combine([app.asset_state.base_large_sprites, tile_set.overrides])
-	var new_small_medium := SpriteArchive.combine([
-		app.asset_state.base_small_medium_sprites, tile_set.overrides,
-	])
+	var new_large := SpriteArchive.combine(large_archives)
+	var new_small_medium := SpriteArchive.combine(small_medium_archives)
 
 	if not new_large.is_valid() or not new_small_medium.is_valid():
 		app.interface.show_error("Cannot combine the tile set with the original sprite data.")
 
 		return
 
+	var tile_set: ScurkMif = tile_sets[-1]
 	app.asset_state.active_scurk_tile_set = tile_set
 	app.asset_state.active_scurk_name = display_name
 	app.asset_state.active_scurk_path = ProjectSettings.globalize_path(path).simplify_path() if not path.is_empty() else ""
@@ -470,7 +489,7 @@ func _apply_scurk_tile_set(
 		app.scurk_place_print.configure(
 			app.asset_state.palette,
 			app.asset_state.large_sprites,
-			tile_set.names,
+			names,
 			app.asset_state.scurk_graphics,
 		)
 
@@ -479,10 +498,55 @@ func _apply_scurk_tile_set(
 	if app.document_state.city != null:
 		app.map_render.refresh_map()
 
+	var replacements := 0
+
+	for loaded in tile_sets:
+		replacements += loaded.overrides.entries.size()
+
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "Loaded tile set %s: %d graphic replacements and %d names." % [
-		app.asset_state.active_scurk_name, tile_set.overrides.entries.size(), tile_set.names.size(),
+		app.asset_state.active_scurk_name, replacements, names.size(),
 	]
+
+
+# As sc2kfix does, load the tile sets that the XFIX chunk of a loaded city
+# lists. A path from another computer is found by file name beside the city
+# or in the original SCURKART folder. Returns the number of tile sets loaded.
+func restore_city_tile_sets(document: Sc2File) -> int:
+	var saved_paths := Sc2kfixXfix.tile_set_paths(document)
+
+	if saved_paths.is_empty():
+		return 0
+
+	var directories := PackedStringArray([
+		document.source_path.get_base_dir(),
+		app.asset_state.reference_root.path_join("SCURKART"),
+	])
+	var tile_sets: Array[ScurkMif] = []
+	var last_path := ""
+
+	for saved_path in saved_paths:
+		var resolved := Sc2kfixXfix.resolve_tile_set(saved_path, directories)
+
+		if resolved.is_empty():
+			continue
+
+		var tile_set := ScurkTileSet.load_path(resolved)
+
+		if tile_set.is_valid():
+			tile_sets.append(tile_set)
+			last_path = resolved
+
+	if tile_sets.is_empty():
+		app.status_label.text += " The city lists sc2kfix tile sets that were not found."
+
+		return 0
+
+	var status := app.status_label.text
+	_apply_scurk_tile_sets(tile_sets, last_path.get_file(), last_path)
+	app.status_label.text = "%s Loaded %d of %d sc2kfix tile sets." % [status, tile_sets.size(), saved_paths.size()]
+
+	return tile_sets.size()
 
 
 func restore_original_tile_set() -> void:

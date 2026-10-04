@@ -401,6 +401,7 @@ func _activate_read_city(read: ReadCity) -> void:
 
 	var document := read.document
 	app.city_session.activate_document(document, read.scenario, read.status, true, read.snapshot)
+	app.scurk_workspace.restore_city_tile_sets(document)
 
 	# a converted city has no file of its own yet
 	if not document.sc2x_converted_from.is_empty():

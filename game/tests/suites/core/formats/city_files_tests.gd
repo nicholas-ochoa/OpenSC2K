@@ -329,3 +329,42 @@ func test_sc2kfix_archive(reference_root: String) -> void:
 	_check(CityFileStore.uses_sc2kfix_format(city, "a.SC2X") and not CityFileStore.uses_sc2kfix_format(city, "a.sc2"),
 		"Only the .sc2x extension selects the sc2kfix format")
 	DirAccess.remove_absolute(target)
+
+
+func test_sc2kfix_xfix(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var text := '{"meta":{"creator":"sc2kfix r12","porntipsguzzardo":false},"map":{"terrain_cosmetic_mode":0,"tilesets":["C:\\\\SC2K\\\\SCURKART\\\\XFIXTEST.MIF","D:\\\\missing.mif"]}}'
+	var payload := text.to_utf8_buffer()
+	payload.append(0)
+	var chunk := Sc2Chunk.new()
+	chunk.chunk_id = "XFIX"
+	chunk.expected_decoded_size = document.decoded_size("XFIX")
+	chunk.decoded_payload = payload
+	chunk.is_dirty = true
+	document.chunks.append(chunk)
+	document.rebuild_chunk_cache()
+	var saved := document.serialize()
+	var reloaded := Sc2Document.new()
+	_check(saved.ok and reloaded.parse(saved.data), "A city with an XFIX chunk saves and loads")
+	_check(reloaded.chunks[-1].chunk_id == "XFIX" and reloaded.chunks[-1].decoded_payload == payload
+		and not reloaded.chunks[-1].is_compressed, "The XFIX chunk stays unchanged, uncompressed and in place")
+	var city := CityModel.from_document(reloaded)
+	_check(city.set_funds(4321), "A city with an XFIX chunk can change")
+	var changed := Sc2Document.new()
+	_check(changed.parse(reloaded.serialize().data) and changed.find_chunk("XFIX").decoded_payload == payload,
+		"A changed city keeps its XFIX chunk")
+	_check(Sc2kfixXfix.tile_set_paths(reloaded) == PackedStringArray(["C:\\SC2K\\SCURKART\\XFIXTEST.MIF", "D:\\missing.mif"]),
+		"XFIX lists its tile sets in load order")
+	_check(Sc2kfixXfix.tile_set_paths(Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))).is_empty(),
+		"A city without XFIX lists no tile sets")
+
+	var directory := OS.get_user_data_dir().path_join("xfix_tile_sets")
+	DirAccess.make_dir_recursive_absolute(directory)
+	var file := FileAccess.open(directory.path_join("XfixTest.mif"), FileAccess.WRITE)
+	file.close()
+	_check(Sc2kfixXfix.resolve_tile_set("C:\\SC2K\\SCURKART\\XFIXTEST.MIF", PackedStringArray(["", directory]))
+		== directory.path_join("XfixTest.mif"), "A saved tile set path is found by file name in any letter case")
+	_check(Sc2kfixXfix.resolve_tile_set("D:\\missing.mif", PackedStringArray([directory])).is_empty(),
+		"A missing tile set does not resolve")
+	DirAccess.remove_absolute(directory.path_join("XfixTest.mif"))
+	DirAccess.remove_absolute(directory)

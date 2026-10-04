@@ -522,6 +522,16 @@
     ]
   },
   {
+    "id": "sc2kfix_tile_set_restore_test",
+    "script": "tests/sc2kfix_tile_set_restore_test.gd",
+    "domain": "scurk",
+    "lane": "product",
+    "requires": [
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
+    ]
+  },
+  {
     "id": "expanded_limits_test",
     "script": "tests/expanded_limits_test.gd",
     "domain": "formats",
