@@ -227,3 +227,40 @@ func _test_interface_assets(reference_root: String) -> void:
 		).ok,
 		"Indexed text loader rejects a missing resource ID",
 	)
+
+
+func test_sc2kfix_sprite_fixes(reference_root: String) -> void:
+	var large := SpriteArchive.load_path(reference_root.path_join("DATA/LARGE.DAT"))
+	var corrected := Sc2kfixSpriteFixes.apply(large, "large")
+	_check(Sc2kfixSpriteFixes.fixes().size() == 14, "The sc2kfix data holds 14 sprite corrections")
+	_check(corrected != large and corrected.is_valid(), "The original Windows sprites receive the sc2kfix corrections")
+
+	for fix: Dictionary in Sc2kfixSpriteFixes.fixes():
+		var original := large.find_sprite(int(fix.id))
+		var changed := corrected.find_sprite(int(fix.id))
+		_check(changed != original and changed.width == original.width and changed.height == original.height,
+			"Sprite %d keeps its size and changes" % int(fix.id))
+
+	var drive_in_original := large.find_sprite(1182).decode_indices().pixels
+	var drive_in := corrected.find_sprite(1182).decode_indices().pixels
+	_check(drive_in[40 * 96 + 50] == drive_in_original[40 * 96 + 51] and drive_in[29 * 96 + 95] == 162,
+		"A horizontal correction moves the sprite one pixel left and restores its edge")
+	var crane_original := large.find_sprite(1224).decode_indices().pixels
+	var crane := corrected.find_sprite(1224).decode_indices().pixels
+	var palette_only := true
+
+	for index in crane.size():
+		palette_only = palette_only and (crane[index] == crane_original[index] or crane_original[index] in [0, 232])
+
+	_check(palette_only, "A colour correction changes only black and out-of-range pixels")
+
+	# other art keeps its own sprites
+	var other := SpriteArchive.new()
+	var pixels := PackedInt32Array()
+	pixels.resize(32 * 40)
+	pixels.fill(7)
+	var entry := SpriteArchive.entry_from_indices(1224, 32, 40, pixels)
+	other.entries.append(entry)
+	other.entries_by_id[1224] = entry
+	_check(Sc2kfixSpriteFixes.apply(other, "large") == other, "A sprite from another graphics source is not corrected")
+	_check(Sc2kfixSpriteFixes.apply(large, "small_medium") == large, "Corrections apply only to their archive")

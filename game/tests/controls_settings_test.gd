@@ -196,6 +196,14 @@ func _test_immediate_apply() -> void:
 	dialog.dark_underground_check.button_pressed = dark
 	assert(main.preferences.dark_underground == dark)
 	assert(AppSettingsStore.load_values(settings_path).dark_underground == dark)
+	var corrections := not main.preferences.sprite_corrections
+	dialog.sprite_corrections_check.button_pressed = corrections
+	assert(main.preferences.sprite_corrections == corrections)
+	assert(AppSettingsStore.load_values(settings_path).sprite_corrections == corrections)
+	assert((main.asset_state.large_sprites != main.asset_state.base_large_sprites) == corrections,
+		"The sc2kfix corrections change the original sprites only while they are on")
+	dialog.sprite_corrections_check.button_pressed = not corrections
+	assert(main.asset_state.large_sprites == main.asset_state.base_large_sprites or corrections == false)
 	# a text field applies on Enter, and the Close button applies a field that has focus
 	dialog.default_mayor_edit.text = "Entered Mayor"
 	assert(main.preferences.default_mayor_name != "Entered Mayor", "Typing alone does not apply")

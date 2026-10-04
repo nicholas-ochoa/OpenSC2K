@@ -74,6 +74,8 @@ func _init() -> void:
 		PaletteMinimapTests.new(context).test_palette_and_minimap(reference_root)
 	if _selected("rendering"):
 		SpriteArchivesTests.new(context).test_sprite_archives(reference_root)
+	if _selected("rendering"):
+		SpriteArchivesTests.new(context).test_sc2kfix_sprite_fixes(reference_root)
 	if _selected("scurk"):
 		TileSetsTests.new(context).test_scurk_mif(reference_root)
 	if _selected("formats"):

@@ -523,6 +523,15 @@ theme_override_font_sizes/font_size = 12
 text = "Choose the graphics size for each zoom level. Larger graphics show more detail. Higher zoom levels cannot use a smaller size."
 autowrap_mode = 2
 
+[node name="SpriteCorrectionsCheck" type="CheckBox" parent="Tabs/Graphics/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+tooltip_text = "Use the sc2kfix corrections of the original Windows sprites:
+aligned buildings and the animated colours of the DOS and Macintosh versions.
+They do not apply while a SCURK tile set is loaded."
+text = "sc2kfix sprite corrections"
+
 [node name="Controls" type="ScrollContainer" parent="Tabs"]
 visible = false
 layout_mode = 2

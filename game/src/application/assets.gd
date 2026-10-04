@@ -99,8 +99,7 @@ func initialize_runtime() -> void:
 	app.static_render.update_palette_cycle_texture()
 	app.asset_state.base_large_sprites = original_assets.large_sprites
 	app.asset_state.base_small_medium_sprites = original_assets.small_medium_sprites
-	app.asset_state.large_sprites = app.asset_state.base_large_sprites
-	app.asset_state.small_medium_sprites = app.asset_state.base_small_medium_sprites
+	use_default_sprites()
 	app.camera_input.refresh_child_tool_icons()
 
 	app.interface.show_main_menu()
@@ -280,8 +279,7 @@ func apply_graphics_source(selected: GameAssetSource) -> void:
 	app.asset_state.scurk_graphics = assets.scurk_graphics
 	app.asset_state.base_large_sprites = assets.large_sprites
 	app.asset_state.base_small_medium_sprites = assets.small_medium_sprites
-	app.asset_state.large_sprites = app.asset_state.base_large_sprites
-	app.asset_state.small_medium_sprites = app.asset_state.base_small_medium_sprites
+	use_default_sprites()
 
 	if app.asset_state.active_scurk_tile_set != null:
 		app.asset_state.large_sprites = SpriteArchive.combine([app.asset_state.base_large_sprites,
@@ -319,6 +317,40 @@ func apply_graphics_source(selected: GameAssetSource) -> void:
 		app.main_menu.city_background.configure(app.asset_state.reference_root, app.asset_state.palette, app.asset_state.large_sprites)
 
 	app.map_render.refresh_map(false)
+
+
+# Show the sprites of the graphics source without a SCURK tile set. The sc2kfix
+# corrections apply only here, and only to the original Windows sprites.
+func use_default_sprites() -> void:
+	var large := app.asset_state.base_large_sprites
+	var small_medium := app.asset_state.base_small_medium_sprites
+
+	if app.preferences.sprite_corrections:
+		large = Sc2kfixSpriteFixes.apply(large, "large")
+		small_medium = Sc2kfixSpriteFixes.apply(small_medium, "small_medium")
+
+	app.asset_state.large_sprites = large
+	app.asset_state.small_medium_sprites = small_medium
+
+
+# Apply a changed sprite correction preference to the city view. A SCURK tile
+# set keeps its own sprites.
+func set_sprite_corrections(enabled: bool) -> void:
+	if app.preferences.sprite_corrections == enabled:
+		return
+
+	app.preferences.sprite_corrections = enabled
+
+	if app.asset_state.active_scurk_tile_set != null or app.asset_state.base_large_sprites == null:
+		return
+
+	app.map_render.close_region_cache()
+	app.static_render.stop_render_job()
+	use_default_sprites()
+	app.static_render.invalidate_rendered_city()
+
+	if app.document_state.city != null:
+		app.map_render.refresh_map()
 
 
 func data_pack_folder() -> String:

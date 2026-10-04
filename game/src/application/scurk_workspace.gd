@@ -556,8 +556,7 @@ func restore_original_tile_set() -> void:
 	app.asset_state.active_scurk_tile_set = null
 	app.asset_state.active_scurk_name = ""
 	app.asset_state.active_scurk_path = ""
-	app.asset_state.large_sprites = app.asset_state.base_large_sprites
-	app.asset_state.small_medium_sprites = app.asset_state.base_small_medium_sprites
+	app.assets.use_default_sprites()
 
 	if app.scurk_place_print != null and app.scurk_place_print.visible:
 		app.scurk_place_print.configure(app.asset_state.palette, app.asset_state.large_sprites, {}, app.asset_state.scurk_graphics)
