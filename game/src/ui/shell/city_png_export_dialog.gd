@@ -68,7 +68,16 @@ func configure(
 	_protected_folder = protected_folder.simplify_path()
 	_file_name_chosen = false
 	folder_input.text = folder
-	graphics_selector.select(clampi(graphics_size, 0, AppSettingsStore.GRAPHICS_SIZES.size() - 1))
+	var selected := clampi(graphics_size, 0, AppSettingsStore.GRAPHICS_SIZES.size() - 1)
+
+	for index in graphics_selector.item_count:
+		graphics_selector.set_item_disabled(index, not ExportJob.fits(map_edge, graphics_selector.get_item_id(index)))
+
+	# a 4096 map is too large even at the smallest size
+	while selected > 0 and not ExportJob.fits(map_edge, selected):
+		selected -= 1
+
+	graphics_selector.select(graphics_selector.get_item_index(selected))
 	view_selector.select(1 if view == "underground" else 0)
 	background_check.button_pressed = true
 	signs_check.button_pressed = show_signs
@@ -126,6 +135,12 @@ func validation_error() -> String:
 
 	if file_name.is_empty():
 		return "Enter a file name."
+
+	if not ExportJob.fits(_map_edge, graphics_selector.get_selected_id()):
+		if not ExportJob.fits(_map_edge, 0):
+			return "This city is too large to export as one image."
+
+		return "The image is too large. Choose a smaller graphics size."
 
 	if file_name.validate_filename() != file_name:
 		return "The file name contains characters that are not allowed."

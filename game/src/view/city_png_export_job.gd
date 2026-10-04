@@ -31,6 +31,13 @@ static func output_size(map_edge: int, graphics_size: int) -> Vector2i:
 	return Renderer.output_size_for_view(graphics_size, map_edge)
 
 
+# a larger map at a larger graphics size makes more pixels than one image holds
+static func fits(map_edge: int, graphics_size: int) -> bool:
+	var size := output_size(map_edge, graphics_size)
+
+	return size.x * size.y <= IsometricImageRender.MAXIMUM_IMAGE_PIXELS
+
+
 func start() -> Error:
 	thread = Thread.new()
 

@@ -98,6 +98,14 @@ func _check_menu_and_dialog() -> void:
 	dialog.graphics_selector.select(0)
 	dialog.graphics_selector.item_selected.emit(0)
 	assert(dialog.file_name_input.text == "custom", "A typed file name stays typed")
+
+	# a larger map offers only the graphics sizes that fit in one image
+	dialog.configure("Large", folder, 1024, Renderer.VIEW_LARGE, "city", true)
+	assert(ExportJob.fits(1024, Renderer.VIEW_MEDIUM) and not ExportJob.fits(1024, Renderer.VIEW_LARGE))
+	assert(dialog.graphics_selector.is_item_disabled(dialog.graphics_selector.get_item_index(Renderer.VIEW_LARGE)))
+	assert(dialog.options().view_size == Renderer.VIEW_MEDIUM and not dialog.get_ok_button().disabled)
+	dialog.configure("Huge", folder, 4096, Renderer.VIEW_SMALL, "city", true)
+	assert(not ExportJob.fits(4096, Renderer.VIEW_SMALL) and dialog.get_ok_button().disabled)
 	dialog.hide()
 
 
