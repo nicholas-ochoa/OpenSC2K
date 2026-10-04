@@ -206,6 +206,7 @@ func _test_immediate_apply() -> void:
 	assert(AppSettingsStore.load_values(settings_path).sprite_corrections == corrections)
 	assert((main.asset_state.large_sprites != main.asset_state.base_large_sprites) == corrections,
 		"The sc2kfix corrections change the original sprites only while they are on")
+	assert((main.asset_state.palette.colors[0xea] != Color.BLACK) == corrections, "The corrections add the DOS colours")
 	dialog.sprite_corrections_check.button_pressed = not corrections
 	assert(main.asset_state.large_sprites == main.asset_state.base_large_sprites or corrections == false)
 	# a text field applies on Enter, and the Close button applies a field that has focus

@@ -11,6 +11,8 @@ var runtime_initialized := false
 var assets_ready := false
 # loaded graphics
 var palette: Sc2Palette
+# the palette of the graphics source, without the sc2kfix DOS colours
+var base_palette: Sc2Palette
 var scenario_palette: Sc2Palette
 var scenario_graphics: ScenarioGraphics
 var scurk_graphics: ScurkGraphics

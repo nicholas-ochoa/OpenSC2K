@@ -93,6 +93,7 @@ func initialize_runtime() -> void:
 		return
 
 	app.asset_state.palette = original_assets.palette
+	app.asset_state.base_palette = original_assets.palette
 	app.asset_state.scenario_palette = original_assets.scenario_palette
 	app.asset_state.scenario_graphics = original_assets.scenario_graphics
 	app.asset_state.palette_index_encoding = Palette.index_encoding()
@@ -274,6 +275,7 @@ func apply_graphics_source(selected: GameAssetSource) -> void:
 	text_resources.newspaper_data = assets.newspaper_data
 	text_resources.library_texts = assets.library_texts
 	app.asset_state.palette = assets.palette
+	app.asset_state.base_palette = assets.palette
 	app.asset_state.scenario_palette = assets.scenario_palette
 	app.asset_state.scenario_graphics = assets.scenario_graphics
 	app.asset_state.scurk_graphics = assets.scurk_graphics
@@ -320,17 +322,37 @@ func apply_graphics_source(selected: GameAssetSource) -> void:
 
 
 # Show the sprites of the graphics source without a SCURK tile set. The sc2kfix
-# corrections apply only here, and only to the original Windows sprites.
+# corrections apply only here, and only to the original Windows sprites. They
+# also add the DOS colours of sc2kfix to the palette.
 func use_default_sprites() -> void:
 	var large := app.asset_state.base_large_sprites
 	var small_medium := app.asset_state.base_small_medium_sprites
+	var corrections := app.preferences.sprite_corrections
 
-	if app.preferences.sprite_corrections:
+	if corrections:
 		large = Sc2kfixSpriteFixes.apply(large, "large")
 		small_medium = Sc2kfixSpriteFixes.apply(small_medium, "small_medium")
 
 	app.asset_state.large_sprites = large
 	app.asset_state.small_medium_sprites = small_medium
+	use_dos_colors(corrections)
+
+
+# Use the palette of the graphics source, with the sc2kfix DOS colours when
+# `enabled`. The palette animation textures follow.
+func use_dos_colors(enabled: bool) -> void:
+	var base := app.asset_state.base_palette
+
+	if base == null:
+		return
+
+	var palette := Sc2kfixSpriteFixes.extended_palette(base) if enabled else base
+
+	if palette == app.asset_state.palette or (app.asset_state.palette != null and palette.colors == app.asset_state.palette.colors):
+		return
+
+	app.asset_state.palette = palette
+	app.static_render.update_palette_cycle_texture()
 
 
 # Apply a changed sprite correction preference to the city view. A SCURK tile

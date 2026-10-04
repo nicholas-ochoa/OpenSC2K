@@ -232,10 +232,10 @@ func _test_interface_assets(reference_root: String) -> void:
 func test_sc2kfix_sprite_fixes(reference_root: String) -> void:
 	var large := SpriteArchive.load_path(reference_root.path_join("DATA/LARGE.DAT"))
 	var corrected := Sc2kfixSpriteFixes.apply(large, "large")
-	_check(Sc2kfixSpriteFixes.fixes().size() == 14, "The sc2kfix data holds 14 sprite corrections")
+	_check(Sc2kfixSpriteFixes.corrections().size() == 14, "The sc2kfix data holds 14 sprite corrections")
 	_check(corrected != large and corrected.is_valid(), "The original Windows sprites receive the sc2kfix corrections")
 
-	for fix: Dictionary in Sc2kfixSpriteFixes.fixes():
+	for fix: Dictionary in Sc2kfixSpriteFixes.corrections():
 		var original := large.find_sprite(int(fix.id))
 		var changed := corrected.find_sprite(int(fix.id))
 		_check(changed != original and changed.width == original.width and changed.height == original.height,
@@ -263,4 +263,28 @@ func test_sc2kfix_sprite_fixes(reference_root: String) -> void:
 	other.entries.append(entry)
 	other.entries_by_id[1224] = entry
 	_check(Sc2kfixSpriteFixes.apply(other, "large") == other, "A sprite from another graphics source is not corrected")
-	_check(Sc2kfixSpriteFixes.apply(large, "small_medium") == large, "Corrections apply only to their archive")
+	_check(Sc2kfixSpriteFixes.apply(other, "small_medium") == other, "Corrections apply only to their archive")
+
+	# the DOS colour entries: sc2kfix fills them, and other original sprites keep them black
+	var palette := Sc2Palette.load_bmp(reference_root.path_join("BITMAPS/PAL_MSTR.BMP"))
+	var extended := Sc2kfixSpriteFixes.extended_palette(palette)
+	_check(palette.colors[0xea] == Color.BLACK and extended.colors[0xea] == Color8(104, 53, 0)
+		and extended.colors[0x10] == palette.colors[0x10], "The DOS colours fill only the 20 empty palette entries")
+	var black_only := Sc2kfixSpriteFixes.apply(large, "large", false)
+	var reserved_left := 0
+	var other_changes := 0
+
+	# LARGE.DAT repeats some IDs; a lookup finds the last one
+	for sprite_id: int in large.entries_by_id:
+		var before := large.find_sprite(sprite_id).decode_indices().pixels
+		var after := black_only.find_sprite(sprite_id).decode_indices().pixels
+
+		for index in before.size():
+			if Sc2kfixSpriteFixes.DOS_COLORS.has(after[index]):
+				reserved_left += 1
+			elif after[index] != before[index] and not (Sc2kfixSpriteFixes.DOS_COLORS.has(before[index]) and after[index] == 0):
+				other_changes += 1
+
+	_check(reserved_left == 0 and other_changes == 0,
+		"Without corrections, only the DOS colour pixels of the original sprites turn black")
+	_check(black_only.find_sprite(1182) == large.find_sprite(1182), "Without corrections, the other sprites stay")

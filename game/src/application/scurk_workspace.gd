@@ -479,6 +479,7 @@ func _apply_scurk_tile_sets(
 		return
 
 	var tile_set: ScurkMif = tile_sets[-1]
+	app.assets.use_dos_colors(false)
 	app.asset_state.active_scurk_tile_set = tile_set
 	app.asset_state.active_scurk_name = display_name
 	app.asset_state.active_scurk_path = ProjectSettings.globalize_path(path).simplify_path() if not path.is_empty() else ""
