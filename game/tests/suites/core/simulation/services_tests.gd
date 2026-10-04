@@ -120,6 +120,15 @@ func test_simnation(reference_root: String) -> void:
 		)
 		_check(shock_random.position == 6, "The regional-shock path consumes six process-random values")
 
+	# TOMG_B1 has a federal rate of 0, so a rate change starts from the lowest rate
+	var zero_rate_city := CityModel.from_document(_load_fixture(reference_root.path_join("CITIES/TOMG_B1.SC2")))
+	_check(zero_rate_city.document.misc_u32(0x0058) == 0, "TOMG_B1 has a federal rate of 0")
+	var zero_rate_random := SequenceRandom.new([0, 0, 0, 0, 1, 1])
+	var zero_rate_result := SimNation.run(zero_rate_city, zero_rate_random)
+	_check(zero_rate_result.ok, "SimNation continues with a federal rate of 0: %s" % zero_rate_result.error)
+	_check(zero_rate_result.federal_rate >= 1, "A federal rate change raises a rate of 0 to at least 1")
+
+
 
 func test_industries(reference_root: String) -> void:
 	_check(

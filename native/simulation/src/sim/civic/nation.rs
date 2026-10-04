@@ -17,6 +17,7 @@ const NATIONAL_POPULATION_CENTER: i64 = 5_000_000;
 const NATIONAL_VALUE_CENTER: i64 = 3_500_000;
 const MONTHLY_SCALE: f64 = 1200.0;
 const ECONOMY_FACTORS: [i64; 4] = [6, 3, 0, -3];
+const MIN_FEDERAL_RATE: i64 = 1;
 const NEWS_NATIONAL_ECONOMY: i64 = 0x07;
 const NEWS_FEDERAL_RATE_UP: i64 = 0x09;
 const NEWS_FEDERAL_RATE_DOWN: i64 = 0x0a;
@@ -73,11 +74,6 @@ pub fn run(city: &mut City, random: &mut SimRandom) -> SimNationResult {
     }
 
     let mut federal_rate = to_i16(read_u32_be(&data, misc_layout::NATIONAL_FEDERAL_RATE));
-
-    if federal_rate <= 0 {
-        return SimNationResult::failed("the national federal rate is not positive");
-    }
-
     let mut news_items = Vec::new();
     let mut national_population = read_u32_be(&data, misc_layout::NATIONAL_POPULATION);
     let population_change = scaled_change(national_population, economy_trend);
@@ -92,6 +88,13 @@ pub fn run(city: &mut City, random: &mut SimRandom) -> SimNationResult {
         let national_score = (national_value as f64 / (national_population + 1) as f64 * 100.0) as i64;
 
         if random.next_u15() % 5 < 2 {
+            // TOMG_B1-B4 have a rate of 0, which the original game divides by.
+            // Start from the lowest rate that a decrease keeps.
+            if federal_rate < MIN_FEDERAL_RATE {
+                federal_rate = MIN_FEDERAL_RATE;
+                write_u32_be(&mut data, misc_layout::NATIONAL_FEDERAL_RATE, federal_rate);
+            }
+
             if random.next_u15() % (federal_rate * 25) < national_score {
                 federal_rate += 1;
                 write_u32_be(&mut data, misc_layout::NATIONAL_FEDERAL_RATE, federal_rate);
@@ -101,8 +104,8 @@ pub fn run(city: &mut City, random: &mut SimRandom) -> SimNationResult {
             if national_score < random.next_u15() % (federal_rate * 25) {
                 federal_rate -= 1;
 
-                if federal_rate == 0 {
-                    federal_rate = 1;
+                if federal_rate < MIN_FEDERAL_RATE {
+                    federal_rate = MIN_FEDERAL_RATE;
                 } else {
                     news_items.push(NewsEvent::new(NEWS_FEDERAL_RATE_DOWN, federal_rate));
                 }
@@ -178,4 +181,51 @@ pub fn run(city: &mut City, random: &mut SimRandom) -> SimNationResult {
     result.base_mut().ok = true;
     result.base_mut().news_items = news_items;
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sim::testing::{empty_city, sequence_random};
+
+    fn nation_fixture(federal_rate: i64, national_value: i64) -> City {
+        let mut city = empty_city(16);
+        city.set_misc_u32(misc_layout::NATIONAL_POPULATION, 1_000_000);
+        city.set_misc_u32(misc_layout::NATIONAL_VALUE, national_value);
+        city.set_misc_u32(misc_layout::NATIONAL_FEDERAL_RATE, federal_rate);
+        city.set_misc_u32(misc_layout::NATIONAL_ECONOMY_TREND, 0);
+        city
+    }
+
+    #[test]
+    fn zero_federal_rate_continues_without_a_rate_change() {
+        let mut city = nation_fixture(0, 800_000);
+        let result = run(&mut city, &mut sequence_random(&[1, 0, 0]));
+
+        assert!(result.base().ok);
+        assert_eq!(result.federal_rate, 0);
+        assert_eq!(read_u32_be(&city.misc.data, misc_layout::NATIONAL_FEDERAL_RATE), 0);
+    }
+
+    #[test]
+    fn zero_federal_rate_starts_at_the_lowest_rate_for_a_rate_change() {
+        // a national score of 80 raises the rate
+        let mut city = nation_fixture(0, 800_000);
+        let result = run(&mut city, &mut sequence_random(&[0, 0, 0, 99, 1, 1]));
+
+        assert!(result.base().ok);
+        assert_eq!(result.federal_rate, 2);
+        assert_eq!(read_u32_be(&city.misc.data, misc_layout::NATIONAL_FEDERAL_RATE), 2);
+    }
+
+    #[test]
+    fn decrease_keeps_the_lowest_federal_rate() {
+        // a national score of 10 lowers the rate
+        let mut city = nation_fixture(0, 100_000);
+        let result = run(&mut city, &mut sequence_random(&[0, 0, 20, 20, 1, 1]));
+
+        assert!(result.base().ok);
+        assert_eq!(result.federal_rate, MIN_FEDERAL_RATE);
+        assert!(result.base().news_items.is_empty());
+    }
 }
