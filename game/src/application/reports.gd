@@ -57,24 +57,31 @@ func on_disaster_menu(id: int) -> void:
 
 		return
 
-	var result := start_disaster_at_view_center(id)
+	# the menu item selects the place, as in the original
+	var engine := app.simulation_state.simulation_engine
+	var result := start_disaster_at(id, engine.menu_disaster_point(id, _view_center_tile()))
 
 	if not result.ok:
 		app.interface.show_error("Cannot start the disaster: %s" % result.error)
 
 
 func start_disaster_at_view_center(id: int) -> DisasterReportResult:
+	return start_disaster_at(id, _view_center_tile())
+
+
+func _view_center_tile() -> Vector2i:
+	var point := app.map_view.center_tile() if app.map_view != null else Vector2i(64, 64)
+
+	return point if point.x >= 0 else Vector2i(64, 64)
+
+
+func start_disaster_at(id: int, point: Vector2i) -> DisasterReportResult:
 	var report := DisasterReportResult.new()
 
 	if app.document_state.city == null or app.simulation_state.simulation_engine == null:
 		report.error = "no city is loaded"
 
 		return report
-
-	var point := app.map_view.center_tile() if app.map_view != null else Vector2i(64, 64)
-
-	if point.x < 0:
-		point = Vector2i(64, 64)
 
 	var result := app.simulation_state.simulation_engine.start_disaster(id, point)
 	report.phase_result = result

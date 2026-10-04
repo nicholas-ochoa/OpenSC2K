@@ -378,6 +378,38 @@ func _begin_disaster_mode() -> void:
 	dispatch_epoch += 1
 
 
+# the point that a Disasters or Debug menu item of SIMCITY.EXE gives a disaster
+# (0x0040f5b0 to 0x0040f7b0 and 0x00412340 to 0x004124a0). some items draw
+# process random values. `fallback` is for the types without a menu item and
+# for Air Crash and Hurricane, whose starts do not use the point
+func menu_disaster_point(disaster_type: int, fallback: Vector2i) -> Vector2i:
+	var edge: int = city.map_size
+	var center := Vector2i(
+		city.document.misc_u32(Sc2MiscLayout.CITY_CENTER_X) & 0xffff,
+		city.document.misc_u32(Sc2MiscLayout.CITY_CENTER_Y) & 0xffff
+	)
+
+	# the first random value of each item is the Y coordinate
+	match disaster_type:
+		DisasterStartConstants.DISASTER_FIRE:
+			var y := random.next_u15() % 40 + center.y - 20
+			return Vector2i(random.next_u15() % 40 + center.x - 20, y)
+		DisasterStartConstants.DISASTER_TORNADO, DisasterStartConstants.DISASTER_EARTHQUAKE, \
+				DisasterStartConstants.DISASTER_VOLCANO, DisasterStartConstants.DISASTER_MASS_FLOODS:
+			var y := random.next_u15() % (edge - 2) + 1
+			return Vector2i(random.next_u15() % (edge - 2) + 1, y)
+		DisasterStartConstants.DISASTER_MONSTER, DisasterStartConstants.DISASTER_RIOT:
+			var y := (random.next_u15() & 0x1f) + center.y - 15
+			return Vector2i((random.next_u15() & 0x1f) + center.x - 15, y)
+		DisasterStartConstants.DISASTER_FLOOD, DisasterStartConstants.DISASTER_TOXIC_SPILL, \
+				DisasterStartConstants.DISASTER_FIRESTORM, DisasterStartConstants.DISASTER_MASS_RIOTS:
+			return center
+		DisasterStartConstants.DISASTER_MELTDOWN, DisasterStartConstants.DISASTER_MICROWAVE:
+			return Vector2i.ZERO
+
+	return fallback
+
+
 func start_disaster(disaster_type: int, point: Vector2i) -> DisasterStartResult:
 	if city == null or not city.is_valid():
 		return DisasterStartResult.failed("city is invalid")
@@ -388,9 +420,8 @@ func start_disaster(disaster_type: int, point: Vector2i) -> DisasterStartResult:
 	if not pending_interaction.is_empty():
 		return DisasterStartResult.failed("%s interaction is pending" % pending_interaction)
 
-	if active_disaster_type != 0:
-		return DisasterStartResult.failed("a disaster is already active")
-
+	# SIMCITY.EXE also starts a disaster during another one (0x0045cf10). the
+	# new type replaces the active type, and the markers of both spread
 	var started := _start_disaster_phase(disaster_type, point)
 
 	if not started.ok:
@@ -403,18 +434,25 @@ func start_disaster(disaster_type: int, point: Vector2i) -> DisasterStartResult:
 		return started
 
 	_apply_connection_changes(started.connection_count_changes)
+	var previous := [active_disaster_type, disaster_map_counter, disaster_hurricane_counter]
 	active_disaster_type = disaster_type
-	disaster_map_counter = started.map_counter
-	disaster_hurricane_counter = started.hurricane_counter
+
+	# only a flood or a hurricane sets the counters. another start keeps them
+	if started.map_counter != 0:
+		disaster_map_counter = started.map_counter
+
+	if started.hurricane_counter != 0:
+		disaster_hurricane_counter = started.hurricane_counter
+
 	unsupported_disaster_type = 0
 
 	_begin_disaster_mode()
 
 	if not city.document.set_misc_u32(Sc2MiscLayout.CITY_MODE, 2):
-		active_disaster_type = 0
-		disaster_map_counter = 0
-		disaster_hurricane_counter = 0
-		disaster_fire_active = false
+		active_disaster_type = previous[0]
+		disaster_map_counter = previous[1]
+		disaster_hurricane_counter = previous[2]
+		disaster_fire_active = disaster_fire_active and active_disaster_type != 0
 
 		return DisasterStartResult.failed("cannot store active disaster mode")
 
@@ -540,6 +578,7 @@ func _append_pending_disaster(result: SimulationDayResult) -> SimulationDayResul
 	result.phase_results["disaster_start"] = started
 
 	if started.started:
+		_apply_connection_changes(started.connection_count_changes)
 		active_disaster_type = disaster_type
 		disaster_map_counter = started.map_counter
 		disaster_hurricane_counter = started.hurricane_counter

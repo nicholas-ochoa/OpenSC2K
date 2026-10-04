@@ -174,10 +174,11 @@ func _test_engine(edge: int, native: bool) -> void:
 	check(manual.random.state == scheduled.random.state and manual.lfsr_random.state == 4, "Both paths consume exactly one response gate")
 	var before: Array = DocumentState.capture(city.document)
 	var random_seed := manual.random.state
-	check(not manual.start_disaster(7, target).ok, "Active disaster rejects a second start")
+	var second := manual.start_disaster(7, target)
+	check(second.ok and not second.started, "A second tornado does not start while one is active")
 	check(
 		DocumentState.capture(city.document) == before and manual.random.state == random_seed and manual.lfsr_random.state == 4,
-		"Rejected second start has no response side effects",
+		"A second tornado that does not start has no response side effects",
 	)
 	var tick := manual.advance_moving_things(0)
 	check(tick.ok and tick.malformed_records == 0, "Automatic hero runs through the normal moving-object update")

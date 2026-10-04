@@ -18,6 +18,7 @@ func test_disaster_start_phase(reference_root: String) -> void:
 	_test_pollution(reference_root)
 	_test_riots(reference_root)
 	_test_earthquakes(reference_root)
+	_test_menu_points(reference_root)
 
 
 func _test_monster_and_fire(reference_root: String) -> void:
@@ -471,3 +472,28 @@ func _test_earthquakes(reference_root: String) -> void:
 	)
 	PowerDisasterTests.new(context).run(reference_root)
 	WidespreadDisasterTests.new(context).run(reference_root)
+
+
+# each Disasters menu item of SIMCITY.EXE selects its own place, and Air Crash
+# starts the falling plane of type 18
+func _test_menu_points(reference_root: String) -> void:
+	var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
+	_check(
+		document.set_misc_u32(Sc2MiscLayout.CITY_CENTER_X, 40) and document.set_misc_u32(Sc2MiscLayout.CITY_CENTER_Y, 50),
+		"Menu point fixture sets the city center",
+	)
+	var engine := SimulationEngine.new(CityModel.from_document(document), 1, 7)
+	engine.random = SequenceRandom.new([3, 70, 5, 6, 9, 10])
+	var fallback := Vector2i(1, 2)
+	_check(engine.menu_disaster_point(DisasterStart.DISASTER_FIRE, fallback) == Vector2i(50, 33), "Fire selects a random place near the city center")
+	_check(engine.menu_disaster_point(DisasterStart.DISASTER_EARTHQUAKE, fallback) == Vector2i(7, 6), "Earthquake selects a random map place")
+	_check(engine.menu_disaster_point(DisasterStart.DISASTER_MONSTER, fallback) == Vector2i(35, 44), "Monster selects a place near the city center")
+	_check(engine.menu_disaster_point(DisasterStart.DISASTER_FLOOD, fallback) == Vector2i(40, 50), "Flood starts its search at the city center")
+	_check(engine.menu_disaster_point(DisasterStart.DISASTER_MELTDOWN, fallback) == Vector2i.ZERO, "Melt Down passes the map corner")
+	_check(
+		engine.menu_disaster_point(DisasterStart.DISASTER_PLANE_CRASH, fallback) == fallback
+		and (engine.random as SequenceRandom).position == 6,
+		"Air Crash keeps the place and draws no random value",
+	)
+	var air_crash: Array = CityMenuBar.DISASTERS_MENU_ITEMS.filter(func(item: Array) -> bool: return item[0] == "Air Crash")
+	_check(air_crash.size() == 1 and air_crash[0][1] == DisasterStart.DISASTER_PLANE_CRASH, "The Air Crash menu item starts a plane crash")

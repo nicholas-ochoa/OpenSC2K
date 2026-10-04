@@ -903,11 +903,17 @@ func _test_engine_disaster_lifecycle(reference_root: String) -> void:
 	_check(
 		manual_start.ok
 		and manual_start.started
-		and manual_engine.active_disaster_type == DisasterStart.DISASTER_TORNADO
 		and manual.city.city_mode() == 2
 		and manual.city.thing(1).type == 15
-		and not duplicate_start.ok,
-		"The public engine entry point starts one manual disaster and rejects a second",
+		and duplicate_start.ok
+		and duplicate_start.started,
+		"The public engine entry point starts a manual disaster and another one during it",
+	)
+	_check(
+		manual_engine.active_disaster_type == DisasterStart.DISASTER_MONSTER
+		and manual.city.thing(1).type == 15
+		and manual.city.thing(2).type == 5,
+		"A disaster that starts during another one replaces the active type and both objects stay",
 	)
 
 
