@@ -36,38 +36,65 @@ impl ToValue for RotationResult {
 pub fn rotate(city: &mut City, counter_clockwise: bool) -> RotationResult {
     let map_edge = city.map_size;
     let surface_table = surface_table(counter_clockwise);
-
-    let altitude = rotate_grid(&city.altm.data, map_edge, 2, counter_clockwise);
-    let original = std::mem::replace(&mut city.altm.data, altitude);
-    city.altm.commit_if_changed(&original);
-
-    let terrain = rotate_byte_grid(&city.xter.data, map_edge, counter_clockwise, &terrain_table(counter_clockwise));
-    let original = std::mem::replace(&mut city.xter.data, terrain);
-    city.xter.commit_if_changed(&original);
-
-    let original_buildings = city.xbld.data.clone();
-    city.xbld.data = rotate_byte_grid(&city.xbld.data, map_edge, counter_clockwise, &surface_table);
-
-    let original_zones = std::mem::take(&mut city.xzon.data);
-    city.xzon.data = rotate_grid(&original_zones, map_edge, 1, counter_clockwise);
-
-    let underground = rotate_byte_grid(&city.xund.data, map_edge, counter_clockwise, &underground_table(counter_clockwise));
-    let original = std::mem::replace(&mut city.xund.data, underground);
-    city.xund.commit_if_changed(&original);
+    let terrain_table = terrain_table(counter_clockwise);
+    let underground_table = underground_table(counter_clockwise);
 
     // each plane of a wide or layered tile index turns on its own
     let cells = ((map_edge * map_edge) as usize).max(1);
-    let mut rotated_text = Vec::with_capacity(city.xtxt.data.len());
+    let data_maps = [
+        &city.xtrf, &city.xplt, &city.xval, &city.xcrm, &city.xplc, &city.xfir, &city.xpop, &city.xrog,
+    ];
 
-    for plane in city.xtxt.data.chunks(cells) {
-        rotated_text.extend(rotate_grid(plane, map_edge, 1, counter_clockwise));
-    }
+    // The grids are independent, so they turn at the same time.
+    let rotated = std::thread::scope(|scope| {
+        let altitude = scope.spawn(|| rotate_grid(&city.altm.data, map_edge, 2, counter_clockwise));
+        let terrain = scope.spawn(|| rotate_byte_grid(&city.xter.data, map_edge, counter_clockwise, &terrain_table));
+        let buildings = scope.spawn(|| rotate_byte_grid(&city.xbld.data, map_edge, counter_clockwise, &surface_table));
+        let zones = scope.spawn(|| rotate_grid(&city.xzon.data, map_edge, 1, counter_clockwise));
+        let underground = scope.spawn(|| rotate_byte_grid(&city.xund.data, map_edge, counter_clockwise, &underground_table));
+        let text = scope.spawn(|| {
+            let mut rotated_text = Vec::with_capacity(city.xtxt.data.len());
 
-    let original = std::mem::replace(&mut city.xtxt.data, rotated_text);
+            for plane in city.xtxt.data.chunks(cells) {
+                rotated_text.extend(rotate_grid(plane, map_edge, 1, counter_clockwise));
+            }
+
+            rotated_text
+        });
+        let flags = scope.spawn(|| rotate_grid(&city.xbit.data, map_edge, 1, counter_clockwise));
+        let maps: Vec<_> = data_maps
+            .iter()
+            .map(|chunk| scope.spawn(|| rotate_grid(&chunk.data, grid::edge(&chunk.data, map_edge), 1, counter_clockwise)))
+            .collect();
+
+        Rotated {
+            altitude: altitude.join().expect("altitude rotation"),
+            terrain: terrain.join().expect("terrain rotation"),
+            buildings: buildings.join().expect("building rotation"),
+            zones: zones.join().expect("zone rotation"),
+            underground: underground.join().expect("underground rotation"),
+            text: text.join().expect("text overlay rotation"),
+            flags: flags.join().expect("flag rotation"),
+            maps: maps.into_iter().map(|map| map.join().expect("data map rotation")).collect(),
+        }
+    });
+
+    let original = std::mem::replace(&mut city.altm.data, rotated.altitude);
+    city.altm.commit_if_changed(&original);
+
+    let original = std::mem::replace(&mut city.xter.data, rotated.terrain);
+    city.xter.commit_if_changed(&original);
+
+    let original_buildings = std::mem::replace(&mut city.xbld.data, rotated.buildings);
+    let original_zones = std::mem::replace(&mut city.xzon.data, rotated.zones);
+
+    let original = std::mem::replace(&mut city.xund.data, rotated.underground);
+    city.xund.commit_if_changed(&original);
+
+    let original = std::mem::replace(&mut city.xtxt.data, rotated.text);
     city.xtxt.commit_if_changed(&original);
 
-    let original_flags = std::mem::take(&mut city.xbit.data);
-    city.xbit.data = rotate_grid(&original_flags, map_edge, 1, counter_clockwise);
+    let original_flags = std::mem::replace(&mut city.xbit.data, rotated.flags);
 
     let original_misc = city.misc.data.clone();
     rotate_surface_tile_counts(&mut city.misc.data, &surface_table);
@@ -83,7 +110,7 @@ pub fn rotate(city: &mut City, counter_clockwise: bool) -> RotationResult {
     city.xzon.commit_if_changed(&original_zones);
     city.xbit.commit_if_changed(&original_flags);
 
-    for chunk in [
+    for (chunk, rotated) in [
         &mut city.xtrf,
         &mut city.xplt,
         &mut city.xval,
@@ -92,9 +119,10 @@ pub fn rotate(city: &mut City, counter_clockwise: bool) -> RotationResult {
         &mut city.xfir,
         &mut city.xpop,
         &mut city.xrog,
-    ] {
-        let edge = grid::edge(&chunk.data, map_edge);
-        let rotated = rotate_grid(&chunk.data, edge, 1, counter_clockwise);
+    ]
+    .into_iter()
+    .zip(rotated.maps)
+    {
         let original = std::mem::replace(&mut chunk.data, rotated);
         chunk.commit_if_changed(&original);
     }
@@ -109,6 +137,18 @@ pub fn rotate(city: &mut City, counter_clockwise: bool) -> RotationResult {
     city.misc.commit_if_changed(&original_misc);
 
     RotationResult { old_compass, new_compass }
+}
+
+/// The turned grids of one rotation, before they replace the city grids.
+struct Rotated {
+    altitude: Vec<u8>,
+    terrain: Vec<u8>,
+    buildings: Vec<u8>,
+    zones: Vec<u8>,
+    underground: Vec<u8>,
+    text: Vec<u8>,
+    flags: Vec<u8>,
+    maps: Vec<Vec<u8>>,
 }
 
 /// Where a map point goes after one quarter turn, or (-1, -1) outside the map.
@@ -134,27 +174,48 @@ fn rotate_grid(input: &[u8], size: i64, record_size: usize, counter_clockwise: b
         return rotate_grid_checked(input, size, record_size, counter_clockwise);
     }
 
-    // scan x first to match the original rotation order
-    for old_x in 0..size {
-        for old_y in 0..size {
-            let (x, y) = if counter_clockwise {
-                (old_y, size - 1 - old_x)
-            } else {
-                (size - 1 - old_y, old_x)
-            };
-            let source = (old_x * size + old_y) * record_size;
-            let destination = (x * size + y) * record_size;
-            output[destination..destination + record_size].copy_from_slice(&input[source..source + record_size]);
-        }
+    match record_size {
+        1 => rotate_records::<1>(input, &mut output, size, counter_clockwise),
+        2 => rotate_records::<2>(input, &mut output, size, counter_clockwise),
+        _ => rotate_grid_checked_into(input, &mut output, size, record_size, counter_clockwise),
     }
 
     output
 }
 
+/// A large grid turns in square blocks, so its reads and writes stay in the
+/// cache. Each record has one destination, so the order does not change the result.
+const ROTATION_BLOCK: usize = 64;
+
+fn rotate_records<const RECORD: usize>(input: &[u8], output: &mut [u8], size: usize, counter_clockwise: bool) {
+    for block_x in (0..size).step_by(ROTATION_BLOCK) {
+        for block_y in (0..size).step_by(ROTATION_BLOCK) {
+            for old_x in block_x..(block_x + ROTATION_BLOCK).min(size) {
+                for old_y in block_y..(block_y + ROTATION_BLOCK).min(size) {
+                    let (x, y) = if counter_clockwise {
+                        (old_y, size - 1 - old_x)
+                    } else {
+                        (size - 1 - old_y, old_x)
+                    };
+                    let source = (old_x * size + old_y) * RECORD;
+                    let destination = (x * size + y) * RECORD;
+                    let record: [u8; RECORD] = input[source..source + RECORD].try_into().expect("whole record");
+                    output[destination..destination + RECORD].copy_from_slice(&record);
+                }
+            }
+        }
+    }
+}
+
 /// A short grid. GDScript reads past the end as an error; keep the bytes that exist.
 fn rotate_grid_checked(input: &[u8], size: usize, record_size: usize, counter_clockwise: bool) -> Vec<u8> {
     let mut output = vec![0; input.len()];
+    rotate_grid_checked_into(input, &mut output, size, record_size, counter_clockwise);
 
+    output
+}
+
+fn rotate_grid_checked_into(input: &[u8], output: &mut [u8], size: usize, record_size: usize, counter_clockwise: bool) {
     for old_x in 0..size {
         for old_y in 0..size {
             let (x, y) = if counter_clockwise {
@@ -172,8 +233,6 @@ fn rotate_grid_checked(input: &[u8], size: usize, record_size: usize, counter_cl
             }
         }
     }
-
-    output
 }
 
 fn rotate_byte_grid(input: &[u8], size: i64, counter_clockwise: bool, mapping: &[u8]) -> Vec<u8> {
