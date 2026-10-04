@@ -4,7 +4,9 @@ extends Node
 # tooltip, from a texture of whole screen pixels. At a fractional UI scale the
 # copy can repeat or drop a row or column of pixels. After a window stops
 # moving, or the scale changes, this enlarges the window by a few interface
-# pixels so that the copy is one to one. It never moves a window.
+# pixels so that the copy is one to one. It never moves a window, except a
+# popup such as a menu, which only moves or grows by one or two pixels so that
+# it shows no empty space after its last item.
 
 # a position that no window has, for a window that was not seen before
 const UNSEEN := Vector2i(-2147483648, -2147483648)
@@ -38,10 +40,22 @@ static func fit(window: Window) -> void:
 	if window.size != fitted_size:
 		window.set_meta(&"pixel_fit_unfitted", window.size)
 
-	var target := ScreenPixels.window_size(window.position, window.get_meta(&"pixel_fit_unfitted", window.size))
+	var unfitted: Vector2i = window.get_meta(&"pixel_fit_unfitted", window.size)
 
-	if window.size != target:
-		window.size = target
+	if window is Popup:
+		var rect := ScreenPixels.popup_rect(window.position, unfitted)
+
+		if window.position != rect.position:
+			window.position = rect.position
+			window.set_meta(&"pixel_fit_last_position", window.position)
+
+		if window.size != rect.size:
+			window.size = rect.size
+	else:
+		var target := ScreenPixels.window_size(window.position, unfitted)
+
+		if window.size != target:
+			window.size = target
 
 	# keep the size that the window accepts, which its limits can change
 	window.set_meta(&"pixel_fit_size", window.size)
