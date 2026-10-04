@@ -688,6 +688,30 @@ mod tests {
     }
 
     #[test]
+    fn block_rotation_moves_each_record_to_its_turned_point() {
+        // not a multiple of the block size, so the last blocks are partial
+        let size = ROTATION_BLOCK as i64 * 2 + 13;
+
+        for record_size in [1usize, 2] {
+            let input: Vec<u8> = (0..size * size * record_size as i64).map(|value| (value * 7 % 251) as u8).collect();
+
+            for counter_clockwise in [false, true] {
+                let output = rotate_grid(&input, size, record_size, counter_clockwise);
+
+                for x in 0..size {
+                    for y in 0..size {
+                        let turned = rotate_point(Vec2i::new(x, y), size, counter_clockwise);
+                        let source = (x * size + y) as usize * record_size;
+                        let destination = (turned.x * size + turned.y) as usize * record_size;
+
+                        assert_eq!(output[destination..destination + record_size], input[source..source + record_size]);
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn points_turn_back_after_opposite_turns() {
         for size in [1, 2, 128, 1024] {
             for point in [Vec2i::new(0, 0), Vec2i::new(size - 1, 0), Vec2i::new(0, size - 1)] {
