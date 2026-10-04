@@ -42,6 +42,19 @@ const ADVICE: Array[String] = [
 ]
 
 
+# a saved tile count of any power plant. A 128-tile map reads the signed low word
+static func _has_power_plant(city: CityState) -> bool:
+	var doc := city.document
+
+	for tile in range(BuildingTileIds.HYDRO_POWER_1, BuildingTileIds.COAL_POWER + 1):
+		var count := doc.misc_i32(Sc2MiscLayout.TILE_COUNTS + tile * 4)
+
+		if (count if doc.is_extended() else _signed_word(count)) > 0:
+			return true
+
+	return false
+
+
 static func select(city: CityState, report: BudgetReport, advisor: int, random: SimRandom, power_usage: int) -> int:
 	var doc := city.document
 	var population := doc.misc_u32(Sc2MiscLayout.NORMAL_POPULATION)
@@ -65,7 +78,10 @@ static func select(city: CityState, report: BudgetReport, advisor: int, random: 
 			if not flags & OrdinanceIds.POLLUTION_CONTROLS_MASK and _graph(city, 5) > 30:
 				choice = 14
 			elif not flags & OrdinanceIds.ENERGY_CONSERVATION_MASK and power_usage > 98:
-				choice = 15
+				# a city without power generation reports full use. As sc2kfix
+				# does, it gets no advice to conserve power that it does not have
+				if _has_power_plant(city):
+					choice = 15
 			elif crime > 30:
 				if not flags & OrdinanceIds.NEIGHBORHOOD_WATCH_MASK:
 					choice = 16
