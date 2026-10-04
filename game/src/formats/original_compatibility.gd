@@ -31,8 +31,9 @@ static func save_error(document: Sc2File, path: String) -> String:
 
 	var extension := path.get_extension().to_lower()
 
-	if extension not in ["", "sc2"] and not (extension == "scn" and document.find_chunk("SCEN") != null):
-		return "An SC2 city must use an SC2 file, or an SCN file for a scenario."
+	# an .sc2x file of an original city uses the sc2kfix format
+	if extension not in ["", "sc2", "sc2x"] and not (extension == "scn" and document.find_chunk("SCEN") != null):
+		return "An SC2 city must use an SC2 file, an SCN file for a scenario, or an sc2kfix .sc2x file."
 
 	return ""
 

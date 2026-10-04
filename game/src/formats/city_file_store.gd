@@ -66,6 +66,14 @@ static func prepare(
 		result.bytes = serialized.data
 		result.snapshot = serialized.data
 
+		if uses_sc2kfix_format(document, output_path):
+			var archive := Sc2kfixArchive.encode(document, int(Time.get_unix_time_from_system()))
+
+			if not archive.ok:
+				return PreparedSave.failure(archive.error)
+
+			result.bytes = archive.bytes
+
 		return result
 
 	var error := document.compatibility_error()
@@ -178,6 +186,11 @@ static func _verify(path: String, bytes: PackedByteArray, expected: Sc2xDocument
 		return "The saved file loads with different city data. The previous save is unchanged."
 
 	return ""
+
+
+# An original city saved to an .sc2x file uses the SC2X format of sc2kfix.
+static func uses_sc2kfix_format(document: Sc2File, path: String) -> bool:
+	return not document.is_extended() and path.get_extension().to_lower() == "sc2x"
 
 
 static func _same_path(path: String, other: String) -> bool:

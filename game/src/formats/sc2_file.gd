@@ -66,6 +66,8 @@ var source_path := ""
 var parse_error := ""
 # The FORM length was zero, so the reader used the file size, as sc2kfix does
 var repaired_form_length := false
+# "sc2kfix" for an original city from an sc2kfix SC2X archive (Sc2kfixArchive)
+var source_format := ""
 # Cache the first occurrence of each chunk ID. Worker lookups only read
 # the cache; rebuild it when the chunk list changes. A size mismatch
 # falls back to a scan. Store positions so the cache cannot keep chunks alive.
@@ -123,11 +125,15 @@ func parse(bytes: PackedByteArray) -> bool:
 	source_bytes = PackedByteArray()
 	parse_error = ""
 	repaired_form_length = false
+	source_format = ""
 	map_size = 128
 	large_version = 2
 	_clear_sc2x_state()
 
 	# the signature selects the reader, not the file extension
+	if Sc2kfixArchive.is_archive(bytes):
+		return Sc2kfixArchive.load_bytes(self, bytes)
+
 	if Sc2xDocument.is_archive(bytes):
 		if not Sc2xDocument.load_bytes(self, bytes):
 			return false
@@ -233,6 +239,7 @@ func duplicate_document(share_source_bytes := false) -> Sc2File:
 	result.source_path = source_path
 	result.parse_error = parse_error
 	result.repaired_form_length = repaired_form_length
+	result.source_format = source_format
 	result.sc2x_metadata = sc2x_metadata.copy() if sc2x_metadata != null else null
 	result.sc2x_compat_labels = sc2x_compat_labels.duplicate()
 	result.sc2x_object_ids = sc2x_object_ids.duplicate()

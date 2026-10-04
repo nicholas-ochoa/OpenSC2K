@@ -7,7 +7,7 @@ static func city_open() -> FileDialog:
 		FileDialog.FILE_MODE_OPEN_FILE,
 		[
 			["*.SC2, *.sc2", "SimCity 2000 cities"],
-			["*.sc2x", "Experimental large cities"],
+			["*.sc2x", "Extended and sc2kfix cities"],
 			["*.SCN, *.scn", "SimCity 2000 scenarios"],
 		],
 	)

@@ -10,6 +10,23 @@ them in memory, and a save writes a new version 4 file.
 The reader selects the format from the file signature, not the extension: `PK\x03\x04`
 selects version 4, and `FORM` selects the original or SCLG reader.
 
+## sc2kfix cities
+
+The sc2kfix plugin writes its own `.sc2x` ZIP format for original 128 by 128 cities.
+OpenSC2K calls it the sc2kfix format (`Sc2kfixArchive`). Its first member is `META.json`,
+with the sc2kfix magic in `sc2x.magic` and version 1. A ZIP file whose first member is
+`META.json` loads as an original SC2 city. Saving an original city to an `.sc2x` file
+writes this format; an extended city always writes version 4.
+
+The archive holds `current/MISC.json` (the MISC words under sc2kfix key names),
+`current/XFIX.json`, and the sc2kfix runtime arrays under `current/<ID>`. These match the
+decoded SC2 chunks, except that ALTM words, XGRP values, and the three words of each XMIC
+record are little-endian, and XLAB holds C strings. MISC.json omits the MISC version, the
+industry tables, the words from `0x1050`, and the scenario chunks. OpenSC2K also writes
+`opensc2k/MISC`, `opensc2k/chunks/<ID>` for other or inexact chunks, and
+`opensc2k/chunk_order`, so its own files load again without loss. sc2kfix ignores these
+entries and drops them when it saves.
+
 Every entry is at the archive root. ZIP compresses every entry with DEFLATE level 9
 (`compression/formats/gzip/compression_level=9` in `project.godot`). No entry uses Maxis RLE
 or another inner compression. The writer uses fixed timestamps and this entry order:

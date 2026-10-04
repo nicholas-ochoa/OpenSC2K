@@ -205,10 +205,19 @@ func open_save_dialog() -> void:
 	if save_name.is_empty():
 		save_name = "New City"
 
-	app.city_dialogs.city_save_dialog.filters = PackedStringArray(["*.sc2x ; Extended cities"]
-		if document_state.current_document.is_extended()
-			else ["*.SC2, *.sc2 ; SimCity 2000 cities"])
-	app.city_dialogs.city_save_dialog.current_file = save_name + (".sc2x" if document_state.current_document.is_extended() else ".SC2")
+	var document := document_state.current_document
+	var sc2kfix := document.source_format == "sc2kfix"
+	var sc2_filter := "*.SC2, *.sc2 ; SimCity 2000 cities"
+	var sc2kfix_filter := "*.sc2x ; sc2kfix cities"
+
+	if document.is_extended():
+		app.city_dialogs.city_save_dialog.filters = PackedStringArray(["*.sc2x ; Extended cities"])
+	elif sc2kfix:
+		app.city_dialogs.city_save_dialog.filters = PackedStringArray([sc2kfix_filter, sc2_filter])
+	else:
+		app.city_dialogs.city_save_dialog.filters = PackedStringArray([sc2_filter, sc2kfix_filter])
+
+	app.city_dialogs.city_save_dialog.current_file = save_name + (".sc2x" if document.is_extended() or sc2kfix else ".SC2")
 	app.city_dialogs.city_save_dialog.popup_centered_ratio(0.8)
 
 
@@ -349,6 +358,9 @@ func _read_city(path: String) -> ReadCity:
 
 	read.status = "Loaded %s. Map view: %s." % [path.get_file(), CityViewMode.key(app.view_state.overlay_mode).capitalize()]
 
+	if document.source_format == "sc2kfix":
+		read.status = "Loaded the sc2kfix city %s. Map view: %s." % [path.get_file(), CityViewMode.key(app.view_state.overlay_mode).capitalize()]
+
 	if document.repaired_form_length:
 		read.status += " Its file header had a zero length, which the game repaired. Save the city to a new file."
 
@@ -480,6 +492,9 @@ func _finish_save(document: Sc2File, prepared: CityFiles.PreparedSave, result: F
 
 	# the content snapshot is the saved content, even when the city changed meanwhile
 	document.source_path = result.path
+
+	if not document.is_extended():
+		document.source_format = "sc2kfix" if CityFiles.uses_sc2kfix_format(document, result.path) else ""
 
 	if document_state.current_document == document:
 		document_state.current_save_path = result.path
