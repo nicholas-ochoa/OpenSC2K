@@ -12,6 +12,7 @@ uniform bool water_topography = true;
 uniform bool water_has_seabed = false;
 uniform float water_clock = 0.0;
 uniform float water_rain = 0.0;
+uniform float water_season_strength = 0.0;
 uniform vec2 water_origin = vec2(0.0);
 uniform float water_divisor = 1.0;
 uniform float water_padding = 3.0;
@@ -27,12 +28,25 @@ vec3 palette_color(float encoded) {
 	return texture(animated_palette, vec2((round(encoded * 255.0) + 0.5) / 256.0, 0.5)).rgb;
 }
 
-// Surface color receives ambient grading but never a reflected tree's season
-// mask or a reflected building's emission. Those belong to the mirror sample.
-vec3 water_ambient(vec3 base) {
-	return environment_ambient(base);
+// Seasonal water color is independent of the reflected art's vegetation mask.
+// Work in numeric sRGB before ambient light, weather and the optional LUT.
+vec3 water_season_color(vec3 base) {
+	if (!environment_enabled || water_season_strength <= 0.0) { return base; }
+	vec3 input_color = environment_lut_linear_canvas ? lut_srgb(base) : base;
+	float blue = max(input_color.b - min(input_color.r, input_color.g), 0.0);
+	vec3 spring = input_color + blue * vec3(0.015, 0.28, -0.10);
+	vec3 summer = input_color + blue * vec3(0.0, 0.14, -0.025);
+	vec3 autumn = input_color + blue * vec3(0.13, 0.20, -0.20);
+	vec3 winter = input_color + blue * vec3(0.11, 0.22, -0.07);
+	vec3 seasonal = spring * environment_seasons.x + summer * environment_seasons.y
+		+ autumn * environment_seasons.z + winter * environment_seasons.w;
+	vec3 colored = mix(input_color, clamp(seasonal, vec3(0.0), vec3(1.0)), water_season_strength);
+	if (environment_lut_linear_canvas) { colored = lut_linear(colored); }
+	return lut_four(environment_season_luts, colored, environment_season_lut_weights,
+		environment_season_lut_strength * water_season_strength);
 }
 
+// Reflected trees and lights keep their own masks and authored emission colors.
 void fragment() {
 	vec2 dimensions = vec2(textureSize(TEXTURE, 0));
 	vec2 pixel = floor(UV * dimensions);
@@ -47,29 +61,33 @@ void fragment() {
 	float depth = max(level - bottom.r * 31.0, 0.0);
 	float wave = sin(world.y * 0.17 + water_clock * 0.9)
 		+ 0.38 * sin((world.x + world.y) * 0.073 - water_clock * 0.61);
-	vec4 original_reflection = texture(TEXTURE, UV);
-	// Distance attenuation is encoded in alpha by the geometry pass. Keep
-	// contact pixels still, particularly where bridge piers meet the water.
-	float detached = smoothstep(0.025, 0.20, 1.0 - original_reflection.a);
-	float offset = water_geometry_preview ? 0.0 : round(clamp(wave * (0.65 + 0.25 * water_rain) * detached, -1.0, 1.0)) / water_divisor;
-	vec2 reflected_uv = UV + vec2(offset, 0.0) / dimensions;
-	vec4 sampled_surface = texture(water_surface, reflected_uv);
-	vec4 reflected = texture(TEXTURE, reflected_uv);
-	if (any(lessThan(reflected_uv, vec2(0.0))) || any(greaterThanEqual(reflected_uv, vec2(1.0)))
-			|| abs(sampled_surface.r - surface.r) > 0.001 || sampled_surface.a < 0.5) {
-		reflected_uv = UV;
-		reflected = original_reflection;
-	}
-	vec3 base = palette_color(surface.g);
-	if (!water_geometry_preview) {
+	vec3 base = water_season_color(palette_color(surface.g));
+	if (!water_geometry_preview && (water_reflections_enabled || water_topography)) {
 		base = water_body(base, bottom, depth, world, water_topography);
 		base *= 1.0 + water_light_lines(world, round(surface.b * 255.0), water_clock, water_rain);
 	}
-	base = water_ambient(cloud_shadow(base, cloud_ground_grid));
-	vec3 mirror_color = environment_color(cloud_shadow(palette_color(reflected.r), cloud_ground_grid), reflected_uv);
-	float strength = water_reflections_enabled ? (water_geometry_preview ? 1.0 : mix(0.15, 0.23, 1.0 - exp(-depth * 0.4) * bottom.a)) : 0.0;
-	if (!water_geometry_preview) {
-		mirror_color *= vec3(0.78, 0.87, 1.0);
+	base = environment_ambient(cloud_shadow(base, cloud_ground_grid));
+	vec3 combined = base;
+	if (water_reflections_enabled) {
+		vec4 original_reflection = texture(TEXTURE, UV);
+		// Distance attenuation is encoded in alpha by the geometry pass. Keep
+		// contact pixels still, particularly where bridge piers meet the water.
+		float detached = smoothstep(0.025, 0.20, 1.0 - original_reflection.a);
+		float offset = water_geometry_preview ? 0.0 : round(clamp(wave * (0.65 + 0.25 * water_rain) * detached, -1.0, 1.0)) / water_divisor;
+		vec2 reflected_uv = UV + vec2(offset, 0.0) / dimensions;
+		vec4 sampled_surface = texture(water_surface, reflected_uv);
+		vec4 reflected = texture(TEXTURE, reflected_uv);
+		if (any(lessThan(reflected_uv, vec2(0.0))) || any(greaterThanEqual(reflected_uv, vec2(1.0)))
+				|| abs(sampled_surface.r - surface.r) > 0.001 || sampled_surface.a < 0.5) {
+			reflected_uv = UV;
+			reflected = original_reflection;
+		}
+		if (reflected.a > 0.0) {
+			vec3 mirror_color = environment_color(cloud_shadow(palette_color(reflected.r), cloud_ground_grid), reflected_uv);
+			float strength = water_geometry_preview ? 1.0 : mix(0.15, 0.23, 1.0 - exp(-depth * 0.4) * bottom.a);
+			if (!water_geometry_preview) { mirror_color *= vec3(0.78, 0.87, 1.0); }
+			combined = mix(base, mirror_color, reflected.a * strength);
+		}
 	}
-	COLOR = vec4(mix(base, mirror_color, reflected.a * strength), 1.0);
+	COLOR = vec4(combined, 1.0);
 }

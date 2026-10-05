@@ -78,7 +78,7 @@ func _configure_water(options: Dictionary, refresh := true) -> void:
 	for archive: Sc2SpriteArchive in [app.asset_state.large_sprites, app.asset_state.small_medium_sprites]:
 		if archive == null:
 			continue
-		var enabled: bool = options.water_reflections == 1 or options.water_topography
+		var enabled := VisualEnhancementOptions.water_pass_enabled(options)
 		if archive.water_reflections != enabled or archive.water_indices != indices:
 			archive.water_reflections = enabled
 			archive.water_indices = indices
@@ -148,15 +148,17 @@ func process(delta: float) -> void:
 	profiles.advance_weather(weather.kind, delta, options.weather_transition, active and options.weather_enabled)
 	if active and (options.day_enabled or options.season_enabled or options.weather_enabled):
 		_sync_whole_masks()
-	if active and (options.water_reflections == 1 or options.water_topography):
+	if active and VisualEnhancementOptions.water_pass_enabled(options):
 		_sync_whole_water()
 	tint = lighting.tint if options.day_enabled else Color.WHITE
-	night = lighting.night if options.day_enabled and options.brightmaps else 0.0
+	var ambient_night: float = lighting.night if options.day_enabled else 0.0
+	night = ambient_night if options.brightmaps else 0.0
 	clouds.process(delta, elapsed * factor, active, tint * weather.tint, lighting.night if options.day_enabled else 0.0, weather.kind)
 	var parameters := {
-		"water_enabled": active and (options.water_reflections == 1 or options.water_topography),
+		"water_enabled": active and VisualEnhancementOptions.water_pass_enabled(options),
 		"water_reflections_enabled": active and options.water_reflections == 1,
 		"water_topography": options.water_topography,
+		"water_season_strength": options.season_water_strength if active and options.season_enabled else 0.0,
 		"water_rain": weather.rain,
 		"water_frozen": options.pause_freezes and (speed == 1 or app.frame._simulation_suspended()),
 		"environment_enabled": active and (options.day_enabled or options.season_enabled or options.weather_enabled),
@@ -164,7 +166,7 @@ func process(delta: float) -> void:
 		"environment_frost": weather.frost,
 		"environment_seasons": CitySeasonColors.weights(season, options.season_transition) if options.season_enabled else Vector4(0, 1, 0, 0),
 		"environment_tint": Vector3(tint.r, tint.g, tint.b),
-		"environment_saturation": lerpf(1.0, 0.78, night),
+		"environment_saturation": lerpf(1.0, 0.78, ambient_night),
 		"environment_night": night,
 		"environment_lut": lut,
 		"environment_lut_size": lut_size,
