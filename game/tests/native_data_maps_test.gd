@@ -2,6 +2,7 @@ extends SceneTree
 
 @warning_ignore_start("integer_division")
 
+const PollutionReference = preload("res://tests/support/pollution_reference.gd")
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const DocumentState = preload("res://tests/support/document_state.gd")
 const TimingResults = preload("res://tests/support/timing_results.gd")
@@ -174,7 +175,7 @@ func check_values(edge: int) -> void:
 			city.set_zone_id(point.x + dx, point.y + dy, 2)
 
 	var station := point + Vector2i(8, 0)
-	city.set_building_id(station.x, station.y, PollutionPhase.POLICE_STATION)
+	city.set_building_id(station.x, station.y, PollutionReference.POLICE_STATION)
 	city.zones[station.x * edge + station.y] |= 0x80
 	doc.find_chunk("XZON").set_decoded_payload(city.zones)
 	city.set_tile_flag(station.x, station.y, 0x40, true)
@@ -231,8 +232,8 @@ func check_split_schedule() -> void:
 			city.set_zone_id(point.x + dx, point.y + dy, 4)
 
 	var station := point + Vector2i(6, 0)
-	city.set_building_id(station.x, station.y, PollutionPhase.POLICE_STATION)
-	city.zones[station.x * 128 + station.y] |= PollutionPhase.ZONE_BUILDING_ORIGIN
+	city.set_building_id(station.x, station.y, PollutionReference.POLICE_STATION)
+	city.zones[station.x * 128 + station.y] |= PollutionReference.ZONE_BUILDING_ORIGIN
 	doc.find_chunk("XZON").set_decoded_payload(city.zones)
 	check(city.set_age_in_days(0), "Split schedule starts a month")
 	var expected := CityState.from_document(doc.duplicate_document())

@@ -2,6 +2,7 @@
 
 pub mod damage;
 pub mod end;
+pub mod focus;
 pub mod map;
 pub mod start;
 pub mod things;

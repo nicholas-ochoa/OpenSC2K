@@ -29,6 +29,7 @@ use sc2k_sim::sim::value::{ToValue, Value};
 pub const OPERATIONS: &[&str] = &[
     "echo",
     "query.inspect",
+    "disaster.focus",
     "query.analysis",
     "query.tile_name",
     "query.template",
@@ -387,6 +388,9 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
             },
         ),
         "query.analysis" => Outcome::value(query_analysis(city)),
+        "disaster.focus" => Outcome::value(Value::Vec2i(
+            sc2k_sim::sim::disasters::focus::find_point(city).unwrap_or(sc2k_sim::sim::geom::Vec2i::NONE),
+        )),
         "query.tile_name" => {
             let point = convert::point(args, "point", sc2k_sim::sim::geom::Vec2i::NONE);
             let given = convert::int(args, "building", -1);

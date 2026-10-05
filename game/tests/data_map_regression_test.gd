@@ -2,6 +2,8 @@ extends SceneTree
 
 @warning_ignore_start("integer_division")
 
+const PollutionReference = preload("res://tests/support/pollution_reference.gd")
+
 var failures := 0
 var checks := 0
 
@@ -66,10 +68,10 @@ func check_maps(edge: int, native: bool) -> void:
 		doc.set_misc_u32(0x104c, 0)
 		doc.set_misc_u32(0xfa0, 0)
 		var expected: int = 5 if encoding > 2 else 4 - encoding
-		check(PollutionPhase.pollution_divisor(doc) == expected, "Signed pollution modifier")
+		check(PollutionReference.pollution_divisor(doc) == expected, "Signed pollution modifier")
 		doc.set_misc_u32(0x104c, 1)
-		doc.set_misc_u32(0xfa0, PollutionPhase.CLEAN_INDUSTRY_ORDINANCE)
-		check(PollutionPhase.pollution_divisor(doc) == expected + 2, "Treatment and clean industry combine")
+		doc.set_misc_u32(0xfa0, PollutionReference.CLEAN_INDUSTRY_ORDINANCE)
+		check(PollutionReference.pollution_divisor(doc) == expected + 2, "Treatment and clean industry combine")
 
 	doc.set_misc_u32(0x1034, 65535)
 	doc.set_misc_u32(0x104c, 0)
@@ -143,7 +145,7 @@ func check_industrial_samples(edge: int) -> void:
 	scratch[(x + offset) * edge + y + 1] = 50
 	scratch[(x + offset - 1) * edge + y] = 10
 	scratch[(x + offset + 1) * edge + y] = 20
-	check(PollutionPhase._average_service_grid(scratch, x, y, offset, edge) == 30, "Industrial land samples only industrial scratch rows")
+	check(PollutionReference._average_service_grid(scratch, x, y, offset, edge) == 30, "Industrial land samples only industrial scratch rows")
 
 
 func check_district(edge: int, native: bool) -> void:
@@ -159,7 +161,7 @@ func check_district(edge: int, native: bool) -> void:
 		for y in range(point.y - 12, point.y + 13):
 			city.set_building_id(x, y, BuildingTileIds.CONDOMINIUM_2X2_3)
 			city.set_zone_id(x, y, 3)
-			city.set_tile_flag(x, y, PollutionPhase.FLAG_WATERED, true)
+			city.set_tile_flag(x, y, PollutionReference.FLAG_WATERED, true)
 
 	fill(doc, "XCRM", 0)
 	fill(doc, "XPLT", 0)

@@ -1,8 +1,63 @@
-class_name PollutionValues
-extends PollutionConstants
+extends RefCounted
+## Reference rules of the pollution, land value, crime, and service maps.
+## The native simulation library runs the maps; tests compare it with these.
 
 # Inline integer division avoids a function call for every cell.
 @warning_ignore_start("integer_division")
+
+const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
+const MAP_SIZE := 64
+const MISC_CITY_POLLUTION := Sc2MiscLayout.CITY_POLLUTION
+const MISC_CITY_LAND_VALUE := Sc2MiscLayout.CITY_LAND_VALUE
+const MISC_CITY_CRIME := Sc2MiscLayout.CITY_CRIME
+const MISC_BUDGETS := Sc2MiscLayout.BUDGETS
+const MISC_BUDGET_RECORD_SIZE := Sc2BudgetLayout.RECORD_SIZE
+const MISC_ORDINANCES := Sc2MiscLayout.ORDINANCES
+const MISC_CITY_CENTER_X := Sc2MiscLayout.CITY_CENTER_X
+const MISC_CITY_CENTER_Y := Sc2MiscLayout.CITY_CENTER_Y
+const MISC_POLLUTION_BONUS := Sc2MiscLayout.INDUSTRIAL_POLLUTION_BONUS
+const MISC_PRISON_BONUS := Sc2MiscLayout.PRISON_BONUS
+const MISC_TREATMENT_SUFFICIENT := Sc2MiscLayout.TREATMENT_SUFFICIENT
+const CLEAN_INDUSTRY_ORDINANCE := OrdinanceIds.POLLUTION_CONTROLS_MASK
+const POLICE_COVERAGE_ORDINANCE := OrdinanceIds.NEIGHBORHOOD_WATCH_MASK
+const FIRE_COVERAGE_ORDINANCE := OrdinanceIds.VOLUNTEER_FIRE_MASK
+const CRIME_REDUCTION_ORDINANCE := OrdinanceIds.LEGALIZED_GAMBLING_MASK
+const RADIOACTIVITY := Tiles.RADIOACTIVE_WASTE
+const FIRST_TREE := Tiles.TREE_FIRST
+const SMALL_PARK := Tiles.SMALL_PARK
+const FIRST_ROAD := Tiles.FIRST_ROAD
+const FIRST_POLLUTING_BUILDING := Tiles.DEVELOPED_FIRST
+const BIG_PARK := Tiles.BIG_PARK
+const POLICE_STATION := Tiles.POLICE_STATION
+const FIRE_STATION := Tiles.FIRE_STATION
+const FLAG_WATER := Sc2TileFlags.WATER
+const FLAG_WATERED := Sc2TileFlags.WATERED
+const FLAG_POWERED := Sc2TileFlags.POWERED
+const ZONE_BUILDING_ORIGIN := 0x80
+const BUDGET_POLICE := Sc2BudgetLayout.POLICE
+const BUDGET_FIRE := Sc2BudgetLayout.FIRE
+const LAND_VALUE_HALVED := {
+	Tiles.ABANDONED_1X1_1: true, Tiles.ABANDONED_1X1_2: true,
+	Tiles.ABANDONED_2X2_1: true, Tiles.ABANDONED_2X2_2: true, Tiles.ABANDONED_2X2_3: true, Tiles.ABANDONED_2X2_4: true,
+	Tiles.ABANDONED_3X3_1: true, Tiles.ABANDONED_3X3_2: true,
+}
+# nonzero bytes from the supplied executable table at 0x004e95b8
+const BUILDING_POLLUTION := {
+	Tiles.WAREHOUSE_1X1_2: 6, Tiles.CHEMICAL_STORAGE_1X1: 6, Tiles.WAREHOUSE_1X1_3: 6, Tiles.INDUSTRIAL_SUBSTATION_1X1: 6,
+	Tiles.WAREHOUSE_2X2: 12, Tiles.CHEMICAL_PROCESSING_2X2: 12, Tiles.FACTORY_2X2_1: 12, Tiles.FACTORY_2X2_2: 12,
+	Tiles.FACTORY_2X2_3: 18, Tiles.FACTORY_2X2_4: 18, Tiles.FACTORY_2X2_5: 18, Tiles.FACTORY_2X2_6: 18,
+	Tiles.CHEMICAL_PROCESSING_3X3: 24, Tiles.LARGE_FACTORY_3X3: 24, Tiles.INDUSTRIAL_THINGAMAJIG_3X3: 24, Tiles.FACTORY_3X3: 24,
+	Tiles.LARGE_WAREHOUSE_3X3: 24, Tiles.WAREHOUSE_3X3: 24,
+	Tiles.GAS_POWER: 10, Tiles.OIL_POWER: 25, Tiles.NUCLEAR_POWER: 2, Tiles.FUSION_POWER: 2, Tiles.COAL_POWER: 50,
+	Tiles.STADIUM: 4, Tiles.PRISON: 10, Tiles.WATER_PUMP: 2, Tiles.RUNWAY: 10, Tiles.RUNWAY_CROSSING: 10, Tiles.PIER: 10,
+	Tiles.CRANE: 5, Tiles.SEAPORT_WAREHOUSE: 5, Tiles.AIRPORT_BUILDING_1: 5, Tiles.AIRPORT_BUILDING_2: 5, Tiles.TARMAC: 10,
+	Tiles.FIGHTER_JET: 10,
+	Tiles.SUBWAY_STATION: 5, Tiles.BUS_DEPOT: 3, Tiles.RAIL_STATION: 4, Tiles.PARKING_LOT_1: 2, Tiles.PARKING_LOT_2: 2,
+	Tiles.LOADING_BAY: 2, Tiles.TOP_SECRET: 2,
+	Tiles.CARGO_YARD: 10, Tiles.WATER_TREATMENT: 10, Tiles.HANGAR_2: 5, Tiles.PLYMOUTH_ARCOLOGY: 25, Tiles.FOREST_ARCOLOGY: 10,
+	Tiles.DARCO_ARCOLOGY: 12, Tiles.LAUNCH_ARCOLOGY: 15,
+}
+
 
 
 # sign-extend the low word, 0x0000ffff means -1 here

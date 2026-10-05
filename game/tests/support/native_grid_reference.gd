@@ -3,7 +3,10 @@
 
 # Frozen pre-optimization oracle from e5f6abd9; used only by regression tests.
 extends RefCounted
+
 ## Integer spatial filters for the independent SC2X per-tile simulation.
+
+const PollutionReference = preload("res://tests/support/pollution_reference.gd")
 
 
 static func neighborhood(values: PackedInt32Array, edge: int, radius: int, scale: int,
@@ -98,7 +101,7 @@ static func add_service(values: PackedByteArray, edge: int, origin: Vector2i, st
 	# actual station tile. Four tiles still equal one original service cell.
 	var kernel := PackedByteArray()
 	kernel.resize(49)
-	PollutionPhase._add_service(kernel, 3, 3, strength, 28)
+	PollutionReference._add_service(kernel, 3, 3, strength, 28)
 
 	for dx in range(-15, 16):
 		var x := origin.x + dx
