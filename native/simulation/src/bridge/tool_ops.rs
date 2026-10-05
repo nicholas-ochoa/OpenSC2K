@@ -17,7 +17,7 @@ use sc2k_sim::sim::tools::commands::landscape::terrain::TerrainPath;
 use sc2k_sim::sim::tools::commands::route::{self, RouteChoices};
 use sc2k_sim::sim::tools::commands::zone::{self, ZoneRequest};
 use sc2k_sim::sim::tools::commands::{
-    ToolArgs, building::facility_repair, demolish, highway, hydro, landscape, onramp, scurk_place, subway_to_rail, tunnel,
+    ToolArgs, building::facility_repair, demolish, dispatch, highway, hydro, landscape, onramp, scurk_place, subway_to_rail, tunnel,
 };
 
 use sc2k_sim::sim::value::{ToValue, Value};
@@ -39,6 +39,10 @@ pub const OPERATIONS: &[&str] = &[
     "tool.landscape_editor",
     "tool.scurk_place",
     "tool.facility_repair",
+    "tool.dispatch",
+    "tool.dispatch_recall",
+    "tool.dispatch_availability",
+    "tool.dispatch_begin_disaster",
 ];
 
 pub fn is_tool(op: &str) -> bool {
@@ -168,10 +172,41 @@ pub fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut R
         )
         .to_value(),
         "tool.facility_repair" => facility_repair::apply(city).to_value(),
+        "tool.dispatch" => {
+            let capacity = match convert::ints32(args, "capacity").as_slice() {
+                [police, fire, military] => [i64::from(*police), i64::from(*fire), i64::from(*military)],
+                _ => dispatch::NO_CAPACITY,
+            };
+            let edit = dispatch::apply(
+                city,
+                tool.subtool,
+                point(args, "target"),
+                convert::int(args, "cycle_index", 0),
+                &slot_points(args),
+                capacity,
+            );
+
+            edit.map_or_else(|error| dispatch::rejected(&error), |edit| edit.to_value())
+        }
+        "tool.dispatch_recall" => dispatch::recall_all(city).to_value(),
+        "tool.dispatch_availability" => dispatch::availability_value(dispatch::availability(city)),
+        "tool.dispatch_begin_disaster" => dispatch::availability_value(dispatch::begin_disaster(city)),
         _ => return Outcome::failure(format!("unknown tool operation: {op}")),
     };
 
     Outcome::value(result)
+}
+
+/// The tile of each dispatch slot: a dictionary of slot numbers and points.
+fn slot_points(args: &VarDictionary) -> Vec<(i64, Vec2i)> {
+    convert::dictionary(args, "slot_points")
+        .iter_shared()
+        .filter_map(|(slot, point)| {
+            let point = point.try_to::<Vector2i>().ok()?;
+
+            Some((slot.try_to::<i64>().ok()?, Vec2i::new(i64::from(point.x), i64::from(point.y))))
+        })
+        .collect()
 }
 
 fn building_placement(args: &VarDictionary) -> Placement {

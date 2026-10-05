@@ -1,7 +1,7 @@
 extends SceneTree
 ## SC2X version 4 record budgets: a full facility pool is reported and never
-## evicts a record, and dispatch stops at the moving-object budget. Original
-## cities keep the original allocation.
+## evicts a record. Original cities keep the original allocation. The
+## moving-object budget of dispatch is a native unit test.
 
 var checks := 0
 var failures := 0
@@ -9,7 +9,6 @@ var failures := 0
 
 func _initialize() -> void:
 	_check_facility_pool()
-	_check_dispatch_budget()
 	print("SC2X limits: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
 
@@ -49,30 +48,3 @@ func _check_facility_pool() -> void:
 	var shared := BuildingCommand.apply(
 		city, CityToolIds.Group.EDUCATION, CityToolIds.Education.LIBRARY, Vector2i(12, 12), SimLfsrRandom.new(1), SimRandom.new(1))
 	_check(shared.ok, "Shared categories keep their own slots when the pool is full")
-
-
-func _check_dispatch_budget() -> void:
-	var city := CityState.from_document(Sc2xDocument.create_empty(16).document)
-	var chunk := city.document.find_chunk("XTHG")
-	var things := chunk.decoded_payload.duplicate()
-	var budget := DispatchCommand._thing_budget(city)
-	_check(budget == 15, "A 16-tile city can use 15 moving-object records")
-
-	for record in range(1, budget):
-		ThingData.write(things, record * Sc2ThingLayout.RECORD_SIZE, Sc2ThingLayout.Type.SHIP)
-
-	_check(DispatchCommand._first_free_thing(things, budget) == budget, "The last record under the budget is free")
-	ThingData.write(things, budget * Sc2ThingLayout.RECORD_SIZE, Sc2ThingLayout.Type.SHIP)
-	_check(DispatchCommand._first_free_thing(things, budget) < 0, "A pool at its budget has no free record")
-
-	# an imported table can be larger than its budget
-	var imported := PackedByteArray()
-	imported.resize(32 * Sc2ThingLayout.EXTENDED_RECORD_SIZE)
-
-	for record in range(1, 16):
-		ThingData.write(imported, record * Sc2ThingLayout.RECORD_SIZE, Sc2ThingLayout.Type.SHIP)
-
-	_check(DispatchCommand._first_free_thing(imported, budget) < 0, "An over-budget import allows no new object")
-	ThingData.write(imported, Sc2ThingLayout.RECORD_SIZE, 0)
-	_check(DispatchCommand._first_free_thing(imported, budget) == 1, "Removing an object below the budget allows a new one")
-	_check(DispatchCommand._first_free_thing(imported) == 1, "Original cities use any free record")

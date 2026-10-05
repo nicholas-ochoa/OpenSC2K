@@ -11,6 +11,7 @@ use crate::sim::ids::sc2misc_layout as misc;
 use crate::sim::ids::sc2tile_flags as flags;
 use crate::sim::overlay;
 use crate::sim::things;
+use crate::sim::value::{Bytes, ToValue, Value};
 
 const FIRST_THING: i64 = 1;
 const RECORD_SIZE: i64 = things::RECORD_SIZE;
@@ -27,6 +28,9 @@ pub const NO_CAPACITY: [i64; 3] = [-1, -1, -1];
 /// The disaster city mode.
 const DISASTER_MODE: i64 = 2;
 
+/// The tool group of the dispatch tools.
+const DISPATCH_GROUP: i64 = 2;
+
 /// The police, fire, and military units that the city can send.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Availability {
@@ -40,6 +44,23 @@ impl Availability {
     pub fn counts(&self) -> [i64; 3] {
         [self.police, self.fire, self.military]
     }
+}
+
+/// The DispatchCommand.Availability of a count, or of its error.
+pub fn availability_value(available: Result<Availability, String>) -> Value {
+    let fields = match available {
+        Ok(available) => vec![
+            ("ok", Value::Bool(true)),
+            ("error", Value::Str(String::new())),
+            ("police", Value::Int(available.police)),
+            ("fire", Value::Int(available.fire)),
+            ("military", Value::Int(available.military)),
+            ("base_type", Value::Int(available.base_type)),
+        ],
+        Err(error) => vec![("ok", Value::Bool(false)), ("error", Value::Str(error))],
+    };
+
+    Value::Object("DispatchCommand.Availability", fields)
 }
 
 /// The units of each type: one for each eight station tiles, and the units
@@ -92,8 +113,10 @@ pub fn begin_disaster(city: &mut City) -> Result<Availability, String> {
 
 /// The edit of one dispatch click or of a recall: the XTHG and XTXT payloads
 /// before and after it.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DispatchEdit {
+    /// The dispatch subtool, or -1 for a recall.
+    pub subtool: i64,
     pub thing_type: i64,
     pub thing_index: i64,
     pub target: Vec2i,
@@ -103,6 +126,55 @@ pub struct DispatchEdit {
     pub new_things: Vec<u8>,
     pub old_text: Vec<u8>,
     pub new_text: Vec<u8>,
+}
+
+impl Default for DispatchEdit {
+    fn default() -> Self {
+        Self {
+            subtool: -1,
+            thing_type: 0,
+            thing_index: -1,
+            target: Vec2i::NONE,
+            available: 0,
+            slot_index: 0,
+            old_things: Vec::new(),
+            new_things: Vec::new(),
+            old_text: Vec::new(),
+            new_text: Vec::new(),
+        }
+    }
+}
+
+/// The DispatchEditResult of a successful edit.
+impl ToValue for DispatchEdit {
+    fn to_value(&self) -> Value {
+        let group = if self.subtool >= 0 { DISPATCH_GROUP } else { -1 };
+        let fields = vec![
+            ("ok", Value::Bool(true)),
+            ("command_type", Value::Str("dispatch".into())),
+            ("group_index", Value::Int(group)),
+            ("subtool_index", Value::Int(self.subtool)),
+            ("thing_type", Value::Int(self.thing_type)),
+            ("thing_index", Value::Int(self.thing_index)),
+            ("target", Value::Vec2i(self.target)),
+            ("available", Value::Int(self.available)),
+            ("slot_index", Value::Int(self.slot_index)),
+            ("old_things", Bytes(self.old_things.clone()).to_value()),
+            ("new_things", Bytes(self.new_things.clone()).to_value()),
+            ("old_text", Bytes(self.old_text.clone()).to_value()),
+            ("new_text", Bytes(self.new_text.clone()).to_value()),
+        ];
+
+        Value::Object("DispatchEditResult", fields)
+    }
+}
+
+/// A failed dispatch edit as a DispatchEditResult.
+pub fn rejected(message: &str) -> Value {
+    Value::Object(
+        "DispatchEditResult",
+        vec![("ok", Value::Bool(false)), ("error", Value::Str(message.to_string()))],
+    )
 }
 
 /// One click of a dispatch tool. Each type cycles its own slots 1 to N. The
@@ -207,6 +279,7 @@ pub fn apply(
     city.xtxt.replace(text.clone());
 
     Ok(DispatchEdit {
+        subtool,
         thing_type,
         thing_index,
         target,
@@ -330,5 +403,60 @@ fn delete_thing(things_data: &mut [u8], text: &mut [u8], thing_index: i64, edge:
 
     for byte in 0..RECORD_SIZE {
         things::write(things_data, offset + byte, 0);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn set_ship(data: &mut [u8], record: i64) {
+        things::write(data, record * RECORD_SIZE, things::TYPE_SHIP);
+    }
+
+    #[test]
+    fn a_version_4_budget_limits_the_active_objects() {
+        let city = crate::sim::testing::empty_sc2x_city(16);
+        let budget = thing_budget(&city).expect("a version 4 city has a budget");
+        assert_eq!(budget, 15, "a 16-tile city can use 15 moving-object records");
+
+        let mut data = city.xthg.data.clone();
+
+        for record in 1..budget {
+            set_ship(&mut data, record);
+        }
+
+        assert_eq!(
+            first_free_thing(&data, Some(budget)),
+            Some(budget),
+            "the last record under the budget is free"
+        );
+        set_ship(&mut data, budget);
+        assert_eq!(
+            first_free_thing(&data, Some(budget)),
+            None,
+            "a pool at its budget has no free record"
+        );
+
+        // an imported table can be larger than its budget
+        let mut imported = vec![0; 32 * crate::sim::ids::sc2thing_layout::EXTENDED_RECORD_SIZE as usize];
+
+        for record in 1..16 {
+            set_ship(&mut imported, record);
+        }
+
+        assert_eq!(
+            first_free_thing(&imported, Some(budget)),
+            None,
+            "an over-budget import allows no new object"
+        );
+        things::write(&mut imported, RECORD_SIZE, 0);
+        assert_eq!(
+            first_free_thing(&imported, Some(budget)),
+            Some(1),
+            "removing an object below the budget allows a new one"
+        );
+        assert_eq!(first_free_thing(&imported, None), Some(1), "original cities use any free record");
+        assert_eq!(thing_budget(&crate::sim::testing::empty_city(128)), None);
     }
 }

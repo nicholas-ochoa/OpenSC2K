@@ -1,66 +1,41 @@
 class_name DispatchCommand
 extends RefCounted
+## Emergency dispatch: police, fire, and military units. The native simulation
+## library places and recalls the units; see
+## native/core/sim/src/sim/tools/commands/dispatch.rs.
 
 const GROUP_DISPATCH := CityToolIds.Group.DISPATCH
-const FLAG_WATER := Sc2TileFlags.WATER
-const MISC_TILE_COUNTS := Sc2MiscLayout.TILE_COUNTS
-const POLICE_STATION := BuildingTileIds.POLICE_STATION
-const FIRE_STATION := BuildingTileIds.FIRE_STATION
-const TYPE_POLICE := Sc2ThingLayout.Type.POLICE
-const TYPE_FIRE := Sc2ThingLayout.Type.FIRE
-const TYPE_MILITARY := Sc2ThingLayout.Type.MILITARY
-const FIRST_THING := 1
-const LAST_THING := 39
-const THING_RECORD_SIZE := Sc2ThingLayout.RECORD_SIZE
-const THING_LABEL_BASE := 201
-const MILITARY_AVAILABILITY := [0, 0, 5, 2, 3, 0]
-const TYPE_BY_SUBTOOL := [TYPE_POLICE, TYPE_FIRE, TYPE_MILITARY]
 const NO_CAPACITY := Vector3i(-1, -1, -1)
+const PAYLOAD_IDS: PackedStringArray = ["XTHG", "XTXT"]
 
 
 static func supports_tool(group_index: int, subtool_index: int) -> bool:
 	return group_index == GROUP_DISPATCH and subtool_index >= CityToolIds.Dispatch.POLICE and subtool_index < CityToolIds.Dispatch.RECALL
 
 
+# the units of each type: one for each eight station tiles, and the units of
+# the military base. a city without any can still send one military unit
 static func availability(city: CityState) -> Availability:
 	if city == null or not city.is_valid():
 		return Availability.failure("city is invalid")
 
-	var misc := city.document.find_chunk("MISC")
+	return NativeSimulationBridge.run("tool.dispatch_availability", city, null, null, null).result
 
-	if misc == null or misc.decoded_payload.size() != 4800:
-		return Availability.failure("MISC is missing or has the wrong size")
 
-	var data: PackedByteArray = misc.decoded_payload
-	var police := int(BinaryData.read_u32_be(data, MISC_TILE_COUNTS + POLICE_STATION * 4) >> 3)
-	var fire := int(BinaryData.read_u32_be(data, MISC_TILE_COUNTS + FIRE_STATION * 4) >> 3)
-	var base_type := int(BinaryData.read_u32_be(data, Sc2MiscLayout.MILITARY_BASE_TYPE))
-	var military := 0
+# the disaster-mode start, as SIMCITY.EXE 0x0044f910: fix the unit counts for
+# the disaster and remove every dispatched unit from the map
+static func begin_disaster(city: CityState) -> Availability:
+	if city == null or not city.is_valid():
+		return Availability.failure("city is invalid")
 
-	if base_type >= 0 and base_type < MILITARY_AVAILABILITY.size():
-		military = int(MILITARY_AVAILABILITY[base_type])
-
-	if police == 0 and fire == 0 and military == 0:
-		military = 1
-
-	var result := Availability.new()
-	result.ok = true
-	result.police = police
-	result.fire = fire
-	result.military = military
-	result.base_type = base_type
-	result.error = ""
-
-	return result
+	return NativeSimulationBridge.run("tool.dispatch_begin_disaster", city, null, null, null, {}, PAYLOAD_IDS).result
 
 
 # one click of a dispatch tool, as SIMCITY.EXE 0x0044fb50 (police), 0x0044fd60
-# (fire), and 0x0044ff70 (military). each type cycles its own slots 1 to N. the
-# unit that slot k placed before is removed only while it is still on its tile
-# in `slot_points`; units of other types and other slots stay. a slot without a
-# tile uses 0, 0, as the zeroed arrays of the original do. `capacity` holds the
-# police, fire, and military counts that the disaster start fixed. a negative
-# count uses the live count
+# (fire), and 0x0044ff70 (military). each type cycles its own slots 1 to N.
+# `slot_points` holds the tile of each slot. `capacity` holds the police, fire,
+# and military counts that the disaster start fixed. a negative count uses the
+# live count
 static func apply(
 	city: CityState,
 	group_index: int,
@@ -70,136 +45,25 @@ static func apply(
 	slot_points: Dictionary = {},
 	capacity := NO_CAPACITY
 ) -> DispatchEditResult:
-	var map_edge: int = city.map_size if city != null else 128
-
 	if city == null or not city.is_valid():
 		return DispatchEditResult.rejected("city is invalid")
 
 	if not supports_tool(group_index, subtool_index):
 		return DispatchEditResult.rejected("tool is not an emergency dispatch tool")
 
-	var target_index := city.index_of(target.x, target.y)
+	var args := {
+		"subtool": subtool_index, "target": target, "cycle_index": cycle_index, "slot_points": slot_points,
+		"capacity": PackedInt32Array([capacity.x, capacity.y, capacity.z]),
+	}
 
-	if target_index < 0:
-		return DispatchEditResult.rejected("dispatch target is outside the city")
-
-	var counts := capacity
-
-	if counts.x < 0:
-		var available := availability(city)
-
-		if not available.ok:
-			return DispatchEditResult.rejected(available.error)
-
-		counts = available.counts()
-
-	var available_count: int = counts[subtool_index]
-
-	if available_count == 0:
-		return DispatchEditResult.rejected("no dispatch units of this type are available")
-
-	var thing_chunk := city.document.find_chunk("XTHG")
-	var text_chunk := city.document.find_chunk("XTXT")
-
-	if thing_chunk == null or thing_chunk.decoded_payload.size() != city.document.decoded_size("XTHG"):
-		return DispatchEditResult.rejected("XTHG is missing or has the wrong size")
-
-	if text_chunk == null or text_chunk.decoded_payload.size() != city.document.decoded_size("XTXT"):
-		return DispatchEditResult.rejected("XTXT is missing or has the wrong size")
-
-	if (city.tile_flags[target_index] & FLAG_WATER) != 0:
-		return DispatchEditResult.rejected("dispatch target is water")
-
-	var old_things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
-	var old_text: PackedByteArray = text_chunk.decoded_payload.duplicate()
-	var things := old_things.duplicate()
-	var text := old_text.duplicate()
-
-	if OverlayData.read(text, target_index) != 0:
-		return DispatchEditResult.rejected("dispatch target has a text overlay")
-
-	var slot_index := cycle_index + 1
-
-	if slot_index > available_count or slot_index < 1:
-		slot_index = 1
-
-	var thing_type := int(TYPE_BY_SUBTOOL[subtool_index])
-	var previous := _unit_at(things, text, slot_points.get(slot_index, Vector2i.ZERO), thing_type, map_edge)
-
-	if previous >= 0:
-		_delete_thing(things, text, previous, map_edge)
-
-	var thing_index := _first_free_thing(things, _thing_budget(city))
-
-	if thing_index < 0 and city.document.misc_u32(Sc2MiscLayout.CITY_MODE) == 2:
-		thing_index = ThingData.count(things) - 1
-		_delete_thing(things, text, thing_index, map_edge)
-
-	if thing_index < 0:
-		return DispatchEditResult.rejected("no moving-thing record is available")
-
-	var offset := thing_index * THING_RECORD_SIZE
-
-	for byte_index in THING_RECORD_SIZE:
-		ThingData.write(things, offset + byte_index, 0)
-
-	ThingData.write(things, offset, thing_type)
-	ThingData.write(things, offset + 3, target.x)
-	ThingData.write(things, offset + 4, target.y)
-	OverlayData.write(text, target_index, OverlayData.thing_id(thing_index))
-
-	if not thing_chunk.set_decoded_payload(things):
-		return DispatchEditResult.rejected("cannot store the dispatch unit")
-
-	if not text_chunk.set_decoded_payload(text):
-		thing_chunk.set_decoded_payload(old_things)
-
-		return DispatchEditResult.rejected("cannot store the dispatch overlay")
-
-	city.resync_mirrors(["XTXT"])
-
-	var result := DispatchEditResult.new()
-	result.ok = true
-	result.command_type = "dispatch"
-	result.group_index = group_index
-	result.subtool_index = subtool_index
-	result.thing_type = thing_type
-	result.thing_index = thing_index
-	result.target = target
-	result.available = available_count
-	result.slot_index = slot_index
-	result.old_things = old_things
-	result.new_things = things
-	result.old_text = old_text
-	result.new_text = text
-
-	return result
+	return NativeSimulationBridge.run("tool.dispatch", city, null, null, null, args, PAYLOAD_IDS).result
 
 
-# the disaster-mode start, as SIMCITY.EXE 0x0044f910: fix the unit counts for
-# the disaster and remove every dispatched unit from the map
-static func begin_disaster(city: CityState) -> Availability:
-	var available := availability(city)
+static func recall_all(city: CityState) -> DispatchEditResult:
+	if city == null or not city.is_valid():
+		return DispatchEditResult.rejected("city is invalid")
 
-	if not available.ok:
-		return available
-
-	var things_chunk := city.document.find_chunk("XTHG")
-	var text_chunk := city.document.find_chunk("XTXT")
-
-	if things_chunk == null or text_chunk == null:
-		return Availability.failure("dispatch chunks are missing")
-
-	var things: PackedByteArray = things_chunk.decoded_payload.duplicate()
-	var text: PackedByteArray = text_chunk.decoded_payload.duplicate()
-	_clear_existing_dispatch(things, text, city.map_size)
-
-	if things != things_chunk.decoded_payload or text != text_chunk.decoded_payload:
-		things_chunk.set_decoded_payload(things)
-		text_chunk.set_decoded_payload(text)
-		city.resync_mirrors(["XTXT"])
-
-	return available
+	return NativeSimulationBridge.run("tool.dispatch_recall", city, null, null, null, {}, PAYLOAD_IDS).result
 
 
 static func undo(city: CityState, command: DispatchEditResult) -> EditCommandResult:
@@ -232,118 +96,6 @@ static func undo(city: CityState, command: DispatchEditResult) -> EditCommandRes
 	city.resync_mirrors(["XTXT"])
 
 	return EditCommandResult.undone(0)
-
-
-# Free each dispatched unit that links a tile, and clear its first linked tile
-# in map order. A native search finds the tile; a 4096-tile map has 16.7
-# million tiles. The map size only bounds the search.
-static func _clear_existing_dispatch(things: PackedByteArray, text: PackedByteArray, map_edge: int = 128) -> void:
-	assert(OverlayData.count(text) == map_edge * map_edge)
-
-	for thing_index in range(FIRST_THING, ThingData.count(things)):
-		if not TYPE_BY_SUBTOOL.has(int(ThingData.read(things, thing_index * THING_RECORD_SIZE))):
-			continue
-
-		var index := OverlayData.find(text, OverlayData.thing_id(thing_index))
-
-		if index >= 0:
-			OverlayData.lift_object(text, things, thing_index, index, 0)
-			ThingData.write(things, thing_index * THING_RECORD_SIZE, 0)
-
-
-# the record of the unit of `thing_type` that tile `point` shows on top, or -1
-static func _unit_at(
-	things: PackedByteArray, text: PackedByteArray, point: Vector2i, thing_type: int, map_edge: int
-) -> int:
-	if point.x < 0 or point.y < 0 or point.x >= map_edge or point.y >= map_edge:
-		return -1
-
-	var overlay := OverlayData.read(text, point.x * map_edge + point.y)
-
-	if not OverlayData.is_thing(overlay):
-		return -1
-
-	var record := OverlayData.thing_record(overlay)
-
-	if record < FIRST_THING or record >= ThingData.count(things):
-		return -1
-
-	return record if ThingData.read(things, record * THING_RECORD_SIZE) == thing_type else -1
-
-
-# With a budget (an SC2X version 4 city), no record is free while the active
-# objects fill the budget, even when an imported table has more slots.
-static func _first_free_thing(things: PackedByteArray, budget := -1) -> int:
-	var active := 0
-	var free := -1
-
-	for thing_index in range(FIRST_THING, ThingData.count(things)):
-		if ThingData.read(things, thing_index * THING_RECORD_SIZE) != 0:
-			active += 1
-		elif free < 0:
-			free = thing_index
-
-			if budget < 0:
-				return free
-
-	return free if budget < 0 or active < budget else -1
-
-
-# the usable moving-object records of an SC2X version 4 city; -1 for others
-static func _thing_budget(city: CityState) -> int:
-	if city == null or not city.document.is_sc2x():
-		return -1
-
-	return int(Sc2xDocument.profile(city.map_size).get("things", 1)) - 1
-
-
-static func _delete_thing(
-	things: PackedByteArray, text: PackedByteArray, thing_index: int,
-	map_edge: int = 128,
-) -> void:
-	if thing_index < FIRST_THING or thing_index >= ThingData.count(things):
-		return
-
-	var offset := thing_index * THING_RECORD_SIZE
-	var x := int(ThingData.read(things, offset + 3))
-	var y := int(ThingData.read(things, offset + 4))
-
-	if x >= 0 and x < map_edge and y >= 0 and y < map_edge:
-		var map_index := x * map_edge + y
-
-		if OverlayData.read(text, map_index) == OverlayData.thing_id(thing_index):
-			OverlayData.lift_object(text, things, thing_index, map_index, 0)
-
-	for byte_index in THING_RECORD_SIZE:
-		ThingData.write(things, offset + byte_index, 0)
-
-
-static func recall_all(city: CityState) -> DispatchEditResult:
-	var map_edge: int = city.map_size if city != null else 128
-
-	if city == null or not city.is_valid():
-		return DispatchEditResult.rejected("city is invalid")
-
-	var things_chunk := city.document.find_chunk("XTHG")
-	var text_chunk := city.document.find_chunk("XTXT")
-	var old_things: PackedByteArray = things_chunk.decoded_payload.duplicate()
-	var old_text: PackedByteArray = text_chunk.decoded_payload.duplicate()
-	var things := old_things.duplicate()
-	var text := old_text.duplicate()
-	_clear_existing_dispatch(things, text, map_edge)
-	things_chunk.set_decoded_payload(things)
-	text_chunk.set_decoded_payload(text)
-	city.resync_mirrors(["XTXT"])
-
-	var result := DispatchEditResult.new()
-	result.ok = true
-	result.command_type = "dispatch"
-	result.old_things = old_things
-	result.new_things = things
-	result.old_text = old_text
-	result.new_text = text
-
-	return result
 
 
 class Availability extends RefCounted:

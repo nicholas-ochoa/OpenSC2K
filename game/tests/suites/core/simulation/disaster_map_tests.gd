@@ -381,7 +381,7 @@ func _test_riots(reference_root: String) -> void:
 
 func _test_dispatch(reference_root: String) -> void:
 	var fire_dispatch := _dispatch_map_fixture(
-		reference_root, Dispatch.TYPE_FIRE, Vector2i(20, 20)
+		reference_root, Sc2ThingLayout.Type.FIRE, Vector2i(20, 20)
 	)
 	_check(
 		fire_dispatch.city.set_building_id(19, 20, Tiles.TREES_1)
@@ -408,7 +408,7 @@ func _test_dispatch(reference_root: String) -> void:
 	)
 
 	var rail_dispatch := _dispatch_map_fixture(
-		reference_root, Dispatch.TYPE_FIRE, Vector2i(20, 20)
+		reference_root, Sc2ThingLayout.Type.FIRE, Vector2i(20, 20)
 	)
 	_check(
 		rail_dispatch.city.set_building_id(19, 20, Tiles.TUNNEL_ENTRANCE_1)
@@ -427,7 +427,7 @@ func _test_dispatch(reference_root: String) -> void:
 	)
 
 	var police_dispatch := _dispatch_map_fixture(
-		reference_root, Dispatch.TYPE_POLICE, Vector2i(20, 20)
+		reference_root, Sc2ThingLayout.Type.POLICE, Vector2i(20, 20)
 	)
 	_check(
 		police_dispatch.city.set_building_id(19, 20, Tiles.TUNNEL_ENTRANCE_1)
@@ -454,7 +454,7 @@ func _test_dispatch(reference_root: String) -> void:
 	)
 
 	var gated_police := _dispatch_map_fixture(
-		reference_root, Dispatch.TYPE_POLICE, Vector2i(20, 20)
+		reference_root, Sc2ThingLayout.Type.POLICE, Vector2i(20, 20)
 	)
 	_check(
 		gated_police.city.set_building_id(19, 20, Tiles.TUNNEL_ENTRANCE_1)
@@ -649,7 +649,7 @@ func _test_engine_and_dispatch(reference_root: String) -> void:
 	)
 
 	var dispatch_engine_fixture := _dispatch_map_fixture(
-		reference_root, Dispatch.TYPE_FIRE, Vector2i(20, 20)
+		reference_root, Sc2ThingLayout.Type.FIRE, Vector2i(20, 20)
 	)
 	_check(
 		dispatch_engine_fixture.city.set_building_id(19, 20, Tiles.TUNNEL_ENTRANCE_1)
@@ -672,7 +672,7 @@ func _test_engine_and_dispatch(reference_root: String) -> void:
 	)
 
 	var mixed_map := _dispatch_map_fixture(
-		reference_root, Dispatch.TYPE_FIRE, Vector2i(5, 5)
+		reference_root, Sc2ThingLayout.Type.FIRE, Vector2i(5, 5)
 	)
 	_check(
 		mixed_map.city != null
