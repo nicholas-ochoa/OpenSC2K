@@ -33,7 +33,8 @@ func process(delta: float) -> void:
 	var city := app.document_state.city
 	var options := app.preferences.visual_enhancements
 	var active := city != null and map.city_source != null and app.view_state.overlay_mode == CityViewMode.Mode.CITY \
-		and not app.tool_state.landscape_editor and bool(app.view_state.surface_visibility.networks) and map.zoom_factor >= 0.5
+		and not app.tool_state.landscape_editor and bool(app.view_state.surface_visibility.networks) and map.zoom_factor >= 0.5 \
+		and CityLifeCanvas.supports_view(map.visible_source_rect())
 	_sync_traffic(active and bool(options.life_cars_enabled))
 	if not active or (not options.life_cars_enabled and not options.life_people_enabled):
 		if canvas != null:
@@ -174,7 +175,7 @@ func _spawn(city: CityState, options: Dictionary) -> void:
 			figure.variant = random.randi_range(0, 17)
 			figure.lifetime = random.randf_range(25.0, 55.0)
 			figure.position = CityLifePaths.point(city, tile, figure.enter, figure.exit, figure.progress, walking)
-			figure.direction = figure.exit
+			figure.direction = (figure.enter + 2) % 4 if figure.progress < 0.5 else figure.exit
 			if _crowded(figure, figure.position):
 				continue
 			_serial += 1

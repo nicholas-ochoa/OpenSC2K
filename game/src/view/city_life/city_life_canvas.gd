@@ -5,6 +5,7 @@ extends Node2D
 @warning_ignore_start("integer_division")
 
 const SHADER := preload("res://src/view/city_life/city_life.gdshader")
+const MAX_TEXTURE_EDGE := 4096
 var image: Image
 var texture: ImageTexture
 var source_bounds := Rect2i()
@@ -28,7 +29,7 @@ func _draw() -> void:
 func render(app: CityApplication, figures: Array, sprites: CityLifeSprites) -> void:
 	var map := app.map_view
 	var bounds := Rect2i(map.visible_source_rect()).grow(12)
-	if bounds.size.x > 4096 or bounds.size.y > 4096:
+	if not supports_view(map.visible_source_rect()):
 		hide()
 		return
 	if image == null or source_bounds.size != bounds.size:
@@ -54,6 +55,11 @@ func render(app: CityApplication, figures: Array, sprites: CityLifeSprites) -> v
 	sync_view(app)
 	show()
 	queue_redraw()
+
+
+static func supports_view(bounds: Rect2) -> bool:
+	var extent := bounds.size.ceil() + Vector2(24, 24)
+	return extent.x > 0.0 and extent.y > 0.0 and extent.x <= MAX_TEXTURE_EDGE and extent.y <= MAX_TEXTURE_EDGE
 
 
 func sync_view(app: CityApplication) -> void:

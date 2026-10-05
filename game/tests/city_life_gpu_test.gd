@@ -29,6 +29,15 @@ func _run() -> void:
 	assert(original.get_pixel(24, 6).a == 0.0)
 	var car := original.get_pixel(7, 5)
 	assert(car.a > 0.9 and car.r > car.b, "RGBA car colors must survive the palette-based map pipeline")
+	var cloud_field := Image.create(2, 2, false, Image.FORMAT_RGBA8)
+	cloud_field.fill(Color.WHITE)
+	material.set_shader_parameter("cloud_field", ImageTexture.create_from_image(cloud_field))
+	material.set_shader_parameter("cloud_enabled", true)
+	await RenderingServer.frame_post_draw
+	var shadow := viewport.get_texture().get_image()
+	assert(shadow.get_pixel(7, 5).r < car.r, "Cloud shadows must also shade city-life figures")
+	assert(shadow.get_pixel(0, 0).a == 0.0)
+	material.set_shader_parameter("cloud_enabled", false)
 	material.set_shader_parameter("environment_enabled", true)
 	material.set_shader_parameter("environment_tint", Vector3(0.3, 0.4, 0.6))
 	await RenderingServer.frame_post_draw
@@ -37,5 +46,5 @@ func _run() -> void:
 	assert(night.get_pixel(0, 0).a == 0.0, "Night grading must preserve sprite transparency")
 	viewport.queue_free()
 	await process_frame
-	print("PASS: GPU city-life colors, transparent background and environment lighting")
+	print("PASS: GPU city-life colors, transparent background, cloud shadows and environment lighting")
 	quit()

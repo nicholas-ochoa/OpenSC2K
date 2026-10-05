@@ -90,6 +90,14 @@ func _check_application() -> void:
 	var position := figure.position
 	app.city_life.process(1.0)
 	assert(figure.position == position, "Pause must freeze figure movement")
+	var original_size := app.map_view.size
+	app.map_view.size = Vector2(10000, 10000)
+	app.city_life.process(0.0)
+	assert(not app.asset_state.large_sprites.visual_city_life_traffic and not app.city_life.canvas.visible,
+		"A viewport outside the drawing budget must retain classic traffic")
+	app.map_view.size = original_size
+	app.city_life.process(0.0)
+	assert(app.asset_state.large_sprites.visual_city_life_traffic)
 	app.preferences.visual_enhancements.life_people_enabled = false
 	app.city_life.process(0.0)
 	assert(app.city_life.figures.all(func(f: CityLifeController.Figure) -> bool: return not f.walking))
