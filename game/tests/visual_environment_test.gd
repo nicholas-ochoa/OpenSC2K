@@ -84,6 +84,15 @@ func _run() -> void:
 	assert(main.visual_environment.weather.kind == CityVisualWeather.Kind.HEAVY_RAIN)
 	assert(main.visual_environment.weather.rain == 1.0)
 	assert(main.visual_environment.weather.layer.visible)
+	# LUT feedback must be owned by the exclusive Settings window, so another
+	# exclusive child is not incorrectly opened beside it under the root.
+	var settings := main.main_overlays.settings_dialog
+	main.visual_environment.reload_luts()
+	await process_frame
+	assert(settings.visual_message_dialog.get_parent() == settings)
+	assert(settings.visual_message_dialog.visible)
+	assert(settings.visual_message_dialog.dialog_text == "LUT profiles reloaded.")
+	settings.visual_message_dialog.hide()
 	main.main_overlays.settings_dialog.hide()
 	assert(DocumentState.capture(main.document_state.city.document) == before)
 	assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == random_before)
