@@ -52,6 +52,7 @@ static var classes := {
 	"SimulationDayResult": SimulationDayResult,
 	"SimulationTickResult": SimulationTickResult,
 	"DispatchEditResult": DispatchEditResult,
+	"SignEditResult": SignEditResult,
 	"DispatchCommand.Availability": DispatchCommand.Availability,
 	"RouteEditResult": RouteEditResult,
 	"TunnelEditResult": TunnelEditResult,

@@ -141,6 +141,45 @@ impl Xsgn {
         Ok(())
     }
 
+    /// Give the sign at (`x`, `y`) the text `text`. Empty text removes the
+    /// sign. A new sign takes `next_id` and the first empty slot while fewer
+    /// than `budget` signs are active. Returns the ID of the sign, or 0 for a
+    /// removed sign.
+    pub fn set_text(&mut self, x: u16, y: u16, text: &str, next_id: u32, budget: usize) -> Result<u32, String> {
+        collection::check_name(text)?;
+
+        let free = self.signs.iter().position(|sign| !sign.is_active());
+        let found = self.signs.iter().rposition(|sign| sign.is_active() && sign.x == x && sign.y == y);
+
+        match (text.is_empty(), found) {
+            (true, None) => Err("this tile does not have a sign".into()),
+            (true, Some(slot)) => {
+                self.signs[slot] = Sign::default();
+
+                Ok(0)
+            }
+            (false, Some(slot)) => {
+                self.signs[slot].text = text.to_string();
+
+                Ok(self.signs[slot].id)
+            }
+            (false, None) => match free {
+                Some(slot) if self.active_records() < budget => {
+                    self.signs[slot] = Sign {
+                        id: next_id,
+                        x,
+                        y,
+                        text: text.to_string(),
+                        ..Sign::default()
+                    };
+
+                    Ok(next_id)
+                }
+                _ => Err("all sign slots are in use".into()),
+            },
+        }
+    }
+
     /// The largest sign ID in use.
     pub fn max_id(&self) -> u32 {
         self.signs.iter().map(|sign| sign.id).max().unwrap_or(0)
@@ -159,6 +198,26 @@ mod tests {
             text: text.into(),
             ..Default::default()
         }
+    }
+
+    #[test]
+    fn set_text_adds_renames_and_removes_signs() {
+        let mut table = Xsgn {
+            signs: vec![sign(3, 1, 2, "Old"), Sign::default(), Sign::default()],
+            extension: vec![],
+        };
+        assert_eq!(table.set_text(1, 2, "New", 9, 3), Ok(3));
+        assert_eq!(table.signs[0].text, "New");
+        assert_eq!(table.set_text(4, 4, "Park", 9, 3), Ok(9));
+        assert_eq!(table.signs[1], sign(9, 4, 4, "Park"));
+        assert_eq!(table.set_text(5, 5, "Full", 10, 2), Err("all sign slots are in use".into()));
+        assert_eq!(table.set_text(1, 2, "", 10, 3), Ok(0));
+        assert_eq!(table.signs[0], Sign::default());
+        assert_eq!(table.set_text(1, 2, "", 10, 3), Err("this tile does not have a sign".into()));
+        assert!(
+            table.set_text(6, 6, &"x".repeat(300), 10, 3).is_err(),
+            "a name over 256 bytes is refused"
+        );
     }
 
     #[test]

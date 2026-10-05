@@ -14,6 +14,7 @@ pub mod network;
 pub mod onramp;
 pub mod route;
 pub mod scurk_place;
+pub mod sign;
 pub mod subway_to_rail;
 pub mod tunnel;
 pub mod zone;

@@ -17,7 +17,7 @@ use sc2k_sim::sim::tools::commands::landscape::terrain::TerrainPath;
 use sc2k_sim::sim::tools::commands::route::{self, RouteChoices};
 use sc2k_sim::sim::tools::commands::zone::{self, ZoneRequest};
 use sc2k_sim::sim::tools::commands::{
-    ToolArgs, building::facility_repair, demolish, dispatch, highway, hydro, landscape, onramp, scurk_place, subway_to_rail, tunnel,
+    ToolArgs, building::facility_repair, demolish, dispatch, highway, hydro, landscape, onramp, scurk_place, sign, subway_to_rail, tunnel,
 };
 
 use sc2k_sim::sim::value::{ToValue, Value};
@@ -43,6 +43,7 @@ pub const OPERATIONS: &[&str] = &[
     "tool.dispatch_recall",
     "tool.dispatch_availability",
     "tool.dispatch_begin_disaster",
+    "tool.sign",
 ];
 
 pub fn is_tool(op: &str) -> bool {
@@ -188,6 +189,8 @@ pub fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut R
 
             edit.map_or_else(|error| dispatch::rejected(&error), |edit| edit.to_value())
         }
+        "tool.sign" => sign::set_sign(city, point(args, "point"), &convert::string(args, "text"))
+            .map_or_else(|error| sign::rejected(&error), |edit| edit.to_value()),
         "tool.dispatch_recall" => dispatch::recall_all(city).to_value(),
         "tool.dispatch_availability" => dispatch::availability_value(dispatch::availability(city)),
         "tool.dispatch_begin_disaster" => dispatch::availability_value(dispatch::begin_disaster(city)),

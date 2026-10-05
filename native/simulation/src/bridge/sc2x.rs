@@ -119,6 +119,38 @@ impl NativeSc2x {
         }
     }
 
+    /// `{ok, error, payload, sign_id}`: the XSGN payload after the sign at
+    /// `point` gets `text`. Empty text removes the sign; a new sign takes
+    /// `next_id` while fewer than `budget` signs are active.
+    #[func]
+    fn sign_with_text(data: PackedByteArray, edge: i64, point: Vector2i, text: GString, next_id: i64, budget: i64) -> VarDictionary {
+        let edge = edge.max(0) as usize;
+        let (Ok(x), Ok(y)) = (u16::try_from(point.x), u16::try_from(point.y)) else {
+            return failure("sign position is outside the city");
+        };
+        let changed = Xsgn::decode(data.as_slice(), edge).and_then(|mut table| {
+            let sign_id = table.set_text(
+                x,
+                y,
+                &text.to_string(),
+                next_id.clamp(0, u32::MAX as i64) as u32,
+                budget.max(0) as usize,
+            )?;
+
+            Ok((table.encode(edge)?, sign_id))
+        });
+
+        match changed {
+            Ok((payload, sign_id)) => {
+                let mut value = success();
+                value.set("payload", &packed(&payload));
+                value.set("sign_id", i64::from(sign_id));
+                value
+            }
+            Err(error) => failure(&error),
+        }
+    }
+
     /// The error of one record-owned name, or an empty string.
     #[func]
     fn name_error(text: GString) -> GString {
