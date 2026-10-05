@@ -53,6 +53,13 @@ func _run() -> void:
 	assert(shaded.get_pixel(105, 105).is_equal_approx(original.get_pixel(105, 105)), "Clouds reached a foreground marker")
 	await RenderingServer.frame_post_draw
 	assert(viewport.get_texture().get_image().get_data() == shaded.get_data(), "Shader time advanced a frozen cloud field")
+	material.set_shader_parameter("cloud_drift", Vector2(CityVisualClouds.FIELD_SPAN, CityVisualClouds.FIELD_SPAN))
+	await RenderingServer.frame_post_draw
+	assert(viewport.get_texture().get_image().get_data() == shaded.get_data(), "Cloud drift wrap introduced a visible seam")
+	material.set_shader_parameter("cloud_density", 0.0)
+	await RenderingServer.frame_post_draw
+	assert(viewport.get_texture().get_image().get_data() == original.get_data(), "Zero density left shadows behind")
+	material.set_shader_parameter("cloud_density", 0.4)
 	material.set_shader_parameter("cloud_drift", Vector2(13, 8))
 	await RenderingServer.frame_post_draw
 	assert(viewport.get_texture().get_image().get_data() != shaded.get_data(), "Cloud shadows did not move")
