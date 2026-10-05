@@ -1778,5 +1778,11 @@
     "domain": "formats",
     "lane": "product",
     "requires": ["references/SIMCITY2000"]
+  },
+  {
+    "id": "golden_new_city_test",
+    "script": "tests/golden_new_city_test.gd",
+    "domain": "simulation",
+    "lane": "product"
   }
 ]

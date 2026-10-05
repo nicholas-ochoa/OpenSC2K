@@ -8,6 +8,7 @@ holds only hashes, never content of the original game.
 | --- | --- | --- |
 | `game/tests/fixtures/corpus/golden.json` | `golden_corpus_test` | The committed generated cities, `DEFAULT.SC2`, and the supplied cities and scenarios |
 | `game/tests/fixtures/corpus/golden-import.json` | `golden_corpus_import_test` | An import of the supplied game: the original packs and the media packs |
+| `game/tests/fixtures/corpus/golden-new-cities.json` | `golden_new_city_test` | New-city terrain previews: each layout and feature at two seeds, with original and per-tile data maps |
 
 ## Contents
 
