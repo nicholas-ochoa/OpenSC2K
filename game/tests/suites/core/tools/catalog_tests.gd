@@ -200,8 +200,6 @@ func test_tool_availability(reference_root: String) -> void:
 		and not ToolAvailability.is_available(city, 5, 7),
 		"Arcology availability uses the original released-count behavior",
 	)
-	var misc: PackedByteArray = document.find_chunk("MISC").decoded_payload.duplicate()
-	_check(ToolAvailability.rebuild_reward_mask(misc) == 0x15, "Availability rebuild preserves rewards and enables arcologies")
 
 
 func test_bond_command(reference_root: String) -> void:

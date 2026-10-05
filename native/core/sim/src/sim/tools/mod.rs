@@ -3,9 +3,11 @@
 //! and the map stages of new-city terrain.
 //! These are ports of the GDScript tool helpers that the simulation calls.
 
+pub mod availability;
 pub mod commands;
 pub mod demolish;
 pub mod highway;
+pub mod ids;
 pub mod network;
 pub mod new_terrain;
 pub mod rotation;

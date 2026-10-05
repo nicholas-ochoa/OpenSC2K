@@ -1,12 +1,12 @@
-//! Tool rules that the view and the dialogs read: building sites, building
-//! corners, and bridge decks.
+//! Tool rules that the view and the dialogs read: tool availability, building
+//! sites, building corners, and bridge decks.
 
 use godot::prelude::*;
 
 use sc2k_sim::sim::geom::Rect2i as SimRect2i;
 use sc2k_sim::sim::geom::Vec2i;
 use sc2k_sim::sim::tools::commands::{network, scurk_place};
-use sc2k_sim::sim::tools::{demolish, set_corners};
+use sc2k_sim::sim::tools::{availability, demolish, set_corners};
 
 /// Static tool queries for GDScript.
 #[derive(GodotClass)]
@@ -19,6 +19,40 @@ fn point(value: Vector2i) -> Vec2i {
 
 #[godot_api]
 impl NativeCityTools {
+    /// `{ok, error, group_masks, power_plant_mask, released_inventions,
+    /// arcology_count, progression, military_base_type}` of a MISC payload.
+    #[func]
+    fn tool_availability(misc: PackedByteArray) -> VarDictionary {
+        let mut result = VarDictionary::new();
+
+        match availability::inspect(misc.as_slice()) {
+            Ok(masks) => {
+                let group_masks: Vec<i32> = masks.group_masks.iter().map(|&mask| mask as i32).collect();
+                let released: Vec<u8> = masks.released_inventions.iter().map(|&released| u8::from(released)).collect();
+                result.set("ok", true);
+                result.set("error", "");
+                result.set("group_masks", &PackedInt32Array::from(group_masks.as_slice()));
+                result.set("power_plant_mask", masks.power_plant_mask);
+                result.set("released_inventions", &PackedByteArray::from(released.as_slice()));
+                result.set("arcology_count", masks.arcology_count);
+                result.set("progression", masks.progression);
+                result.set("military_base_type", masks.military_base_type);
+            }
+            Err(error) => {
+                result.set("ok", false);
+                result.set("error", error.as_str());
+            }
+        }
+
+        result
+    }
+
+    /// True when a city with `misc` in `city_mode` allows the tool.
+    #[func]
+    fn tool_available(misc: PackedByteArray, city_mode: i64, group: i64, subtool: i64) -> bool {
+        availability::is_available(misc.as_slice(), city_mode, group, subtool)
+    }
+
     /// The tiles of each building ID outside military zones, as CityTileCounts.count.
     #[func]
     fn building_counts(buildings: PackedByteArray, zones: PackedByteArray) -> PackedInt32Array {
