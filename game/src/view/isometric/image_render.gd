@@ -180,7 +180,14 @@ static func paint_whole_city(context: CityGpuBuildContext, size: Vector2i, backg
 # each view pixel. Call `prepare` with `with_artwork` first.
 static func paint_whole_city_artwork(context: CityGpuBuildContext, size: Vector2i, background: Color, factor: int,
 		progress := Callable()) -> AssetImageResult:
-	var output_size := size * factor
+	return paint_artwork(context, Rect2i(Vector2i.ZERO, size), background, factor, progress)
+
+
+# The view pixels of `bounds` with the full-color art, at `factor` (1, 2 or 4)
+# pixels for each view pixel. Call `prepare` with `with_artwork` first.
+static func paint_artwork(context: CityGpuBuildContext, bounds: Rect2i, background: Color, factor: int,
+		progress := Callable()) -> AssetImageResult:
+	var output_size := bounds.size * factor
 
 	if output_size.x <= 0 or output_size.y <= 0:
 		return AssetImageResult.failure("city image is empty")
@@ -192,18 +199,19 @@ static func paint_whole_city_artwork(context: CityGpuBuildContext, size: Vector2
 	# each native band holds at most MAXIMUM_ARTWORK_BAND_PIXELS output pixels
 	var band_height := clampi(MAXIMUM_ARTWORK_BAND_PIXELS / (output_size.x * factor), 1, RASTER_BAND_HEIGHT)
 
-	for top in range(0, size.y, band_height):
-		var band := Rect2i(0, top, size.x, mini(band_height, size.y - top))
+	for top in range(bounds.position.y, bounds.end.y, band_height):
+		var band := Rect2i(bounds.position.x, top, bounds.size.x, mini(band_height, bounds.end.y - top))
 		var painted := context.raster_artwork(band, background, factor)
 
 		if painted.has("error"):
 			return AssetImageResult.failure(painted.error)
 
 		var image: Image = painted.image
-		output.blit_rect(image, Rect2i(Vector2i.ZERO, image.get_size()), Vector2i(0, top * factor))
+		var placed: Rect2i = painted.bounds
+		output.blit_rect(image, Rect2i(Vector2i.ZERO, image.get_size()), (placed.position - bounds.position) * factor)
 
 		if progress.is_valid():
-			progress.call(float(band.end.y) / size.y)
+			progress.call(float(band.end.y - bounds.position.y) / bounds.size.y)
 
 	var result := AssetImageResult.new()
 	result.ok = true

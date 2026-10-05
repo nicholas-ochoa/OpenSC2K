@@ -4,6 +4,12 @@ extends Control
 const Renderer = preload("res://src/view/city_isometric_renderer.gd")
 const MINIMUM_ZOOM := 0.5
 const SHOT_MAGNIFICATIONS := [3, 2, 1, 1]
+const SHOT_CENTERS: Array[Vector2i] = [Vector2i(64, 64), Vector2i(48, 56), Vector2i(76, 64), Vector2i(62, 80)]
+const SHOT_SECONDS := 24.0
+# the camera moves this far from the middle of a shot, each way
+const SHOT_TRAVEL := Vector2(24, 12)
+# view pixels of HD art outside the view of a shot
+const ARTWORK_MARGIN := 8.0
 const Cleanup = preload("res://src/debug/city_debug_actions.gd")
 
 # this city has no connection to the player's document, save path, or ui events
@@ -27,6 +33,11 @@ var animation_elapsed := 0.0
 var animation_revision := 0
 var city_name_label: Label
 var _discard_render := false
+# HD art: a layer over the indexed image that shows the window of the camera
+# shot, and the moving sprites by sprite ID, flip and density
+var artwork_layer: Sprite2D
+var artwork_windows: Dictionary[int, ArtworkWindow] = {}
+var artwork_sprites: Dictionary[Vector3i, Image] = {}
 
 
 func _ready() -> void:
@@ -42,6 +53,16 @@ func _ready() -> void:
 	shader_material.set_shader_parameter("palette_cycle_enabled", true)
 	static_layer.material = shader_material
 	add_child(static_layer)
+	artwork_layer = Sprite2D.new()
+	artwork_layer.centered = false
+	artwork_layer.show_behind_parent = true
+	artwork_layer.visible = false
+	var artwork_material := ShaderMaterial.new()
+	artwork_material.shader = CityMapControl.PALETTE_CYCLE_SHADER
+	artwork_layer.material = artwork_material
+	# the vertex color selects the filtered full-color path of the shader
+	artwork_layer.self_modulate = CityDynamicSpriteCanvas.ARTWORK_TAG
+	add_child(artwork_layer)
 	city_name_label = Label.new()
 	city_name_label.name = "HighlightedCityName"
 	city_name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -72,6 +93,7 @@ func _process(delta: float) -> void:
 			static_layer.texture = demo_texture
 			occlusion_commands.assign(result.occlusion_commands)
 			occlusion_grid = Renderer.build_occlusion_grid(occlusion_commands, 1)
+			_keep_artwork_windows(result.artwork_windows)
 			_refresh_animation()
 
 		_discard_render = false
@@ -94,6 +116,8 @@ func _process(delta: float) -> void:
 	if refresh_elapsed >= 10.0 and render_thread == null:
 		refresh_elapsed = 0.0
 		_start_render()
+	elif render_thread == null and not _artwork_shots().is_empty():
+		_start_render()
 
 	if animation_elapsed >= 0.1:
 		animation_elapsed = fmod(animation_elapsed, 0.1)
@@ -102,6 +126,7 @@ func _process(delta: float) -> void:
 	var camera := _camera()
 	static_layer.position = camera.offset
 	static_layer.scale = Vector2.ONE * float(camera.scale)
+	_place_artwork_layer(camera)
 	queue_redraw()
 
 
@@ -114,7 +139,7 @@ func _draw() -> void:
 	for visual in dynamic_visuals:
 		draw_texture_rect(
 			visual.texture,
-			Rect2(camera.offset + visual.position * float(camera.scale), visual.texture.get_size() * float(camera.scale)),
+			Rect2(camera.offset + visual.position * float(camera.scale), visual.size * float(camera.scale)),
 			false,
 		)
 
@@ -198,14 +223,26 @@ static func _collect_cities(folder: String, paths: PackedStringArray) -> void:
 
 func _start_render() -> void:
 	var snapshot := CityState.from_document(demo_city.document.duplicate_document())
+	# a periodic render draws the windows of the current and the next shot again
+	var shots := _artwork_shots()
+
+	if (refresh_elapsed == 0.0 or static_image == null) and not demo_sprites.high_resolution.is_empty():
+		shots = _upcoming_shots()
+
+	var windows: Array[ArtworkWindow] = []
+
+	for shot in shots:
+		windows.append(_artwork_window(shot))
+
 	render_thread = Thread.new()
-	var error := render_thread.start(_render.bind(snapshot, demo_sprites), Thread.PRIORITY_LOW)
+	var error := render_thread.start(_render.bind(snapshot, demo_palette, demo_sprites, windows), Thread.PRIORITY_LOW)
 
 	if error != OK:
 		render_thread = null
 
 
-static func _render(snapshot: CityState, sprites: Sc2SpriteArchive) -> RenderResult:
+static func _render(snapshot: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
+		windows: Array[ArtworkWindow]) -> RenderResult:
 	var rendered := Renderer.create_image(snapshot, Sc2Palette.index_encoding(), sprites, Renderer.VIEW_LARGE, 0, false, true, false, false)
 	var result := RenderResult.new()
 	result.ok = rendered.ok
@@ -213,18 +250,103 @@ static func _render(snapshot: CityState, sprites: Sc2SpriteArchive) -> RenderRes
 	result.image = rendered.image
 	result.occlusion_commands = Renderer.static_occlusion_commands(snapshot, sprites)
 
+	if windows.is_empty() or not result.ok:
+		return result
+
+	var context := CityGpuBuildContext.new()
+	var failure := context.prepare(snapshot, palette, sprites, Renderer.VIEW_LARGE, CityViewMode.Mode.CITY, true, true, true, 0,
+		false, false, 0, true, true)
+
+	if not failure.is_empty():
+		return result
+
+	for window in windows:
+		var painted := IsometricImageRender.paint_artwork(context, window.bounds, Color.TRANSPARENT, window.factor)
+
+		if painted.ok:
+			window.image = painted.image
+			result.artwork_windows.append(window)
+
 	return result
+
+
+# The shots whose HD windows are missing: the current shot and the next one.
+func _artwork_shots() -> Array[int]:
+	var result: Array[int] = []
+
+	if demo_city == null or demo_sprites == null or demo_sprites.high_resolution.is_empty() or size.x <= 0.0:
+		return result
+
+	for shot in _upcoming_shots():
+		var window: ArtworkWindow = artwork_windows.get(shot)
+
+		if window == null or window.bounds != _artwork_window(shot).bounds:
+			result.append(shot)
+
+	return result
+
+
+func _upcoming_shots() -> Array[int]:
+	var shot := int(elapsed / SHOT_SECONDS) % SHOT_CENTERS.size()
+
+	return [shot, (shot + 1) % SHOT_CENTERS.size()]
+
+
+# The view pixels that a shot can show, and the density that its zoom needs.
+func _artwork_window(shot: int) -> ArtworkWindow:
+	var pixel_scale := maxf(0.001, get_viewport_transform().get_scale().x)
+	var zoom := camera_zoom(shot, pixel_scale)
+	var center := _shot_center(shot)
+	# the camera travels SHOT_TRAVEL view pixels each way during the shot
+	var half := size / zoom / 2.0 + SHOT_TRAVEL + Vector2.ONE * ARTWORK_MARGIN
+	var bounds := Rect2i(Vector2i((center - half).floor()), Vector2i((half * 2.0).ceil()))
+	var map := Rect2i(Vector2i.ZERO, Renderer.output_size_for_view(Renderer.VIEW_LARGE, demo_city.map_size))
+	var magnification := zoom * pixel_scale
+	var window := ArtworkWindow.new()
+	window.shot = shot
+	window.bounds = bounds.intersection(map)
+	window.factor = 1 if magnification <= 1.0 else (2 if magnification <= 2.0 else 4)
+
+	return window
+
+
+func _keep_artwork_windows(windows: Array[ArtworkWindow]) -> void:
+	var shots := _upcoming_shots()
+
+	for shot: int in artwork_windows.keys():
+		if not shot in shots:
+			artwork_windows.erase(shot)
+
+	for window in windows:
+		window.texture = ImageTexture.create_from_image(window.image)
+		window.image = null
+		artwork_windows[window.shot] = window
+
+
+# Show the HD window of the shot over the indexed image, when it covers the
+# view. Until then the indexed image shows.
+func _place_artwork_layer(camera: CameraFrame) -> void:
+	var window: ArtworkWindow = artwork_windows.get(int(elapsed / SHOT_SECONDS) % SHOT_CENTERS.size())
+	var map := Rect2(Vector2.ZERO, Renderer.output_size_for_view(Renderer.VIEW_LARGE, demo_city.map_size))
+	var view := Rect2(-camera.offset / camera.scale, size / camera.scale).intersection(map)
+
+	if window == null or not Rect2(window.bounds).grow(1.0).encloses(view):
+		artwork_layer.visible = false
+
+		return
+
+	artwork_layer.visible = true
+	artwork_layer.texture = window.texture
+	artwork_layer.position = camera.offset + Vector2(window.bounds.position) * camera.scale
+	artwork_layer.scale = Vector2.ONE * camera.scale / window.factor
 
 
 func _camera() -> CameraFrame:
 	# hold each framing for 24 seconds. integral scales preserve source pixels;
 	# fractional continuous zoom makes nearest-neighbor artwork shimmer
-	var shot := int(elapsed / 24.0) % 4
-	var centers := [Vector2i(64, 64), Vector2i(48, 56), Vector2i(76, 64), Vector2i(62, 80)]
-	var point: Vector2i = centers[shot]
-	var center := Renderer.tile_polygon(demo_city, point.x, point.y)[2]
-	var travel := fmod(elapsed, 24.0) - 12.0
-	center += Vector2(travel * 2.0, travel)
+	var shot := int(elapsed / SHOT_SECONDS) % SHOT_CENTERS.size()
+	var travel := fmod(elapsed, SHOT_SECONDS) / SHOT_SECONDS * 2.0 - 1.0
+	var center := _shot_center(shot) + SHOT_TRAVEL * travel
 	var pixel_scale := maxf(0.001, get_viewport_transform().get_scale().x)
 	var zoom_factor := camera_zoom(shot, pixel_scale)
 	var offset := ((size / 2.0 - center * zoom_factor) * pixel_scale).round() / pixel_scale
@@ -274,18 +396,59 @@ func _refresh_animation() -> void:
 			image.flip_x()
 
 		var sprite_position := Vector2i(command.position)
+		var occluder: Image = null
 
 		if command.shadow:
 			image = NativeSpriteCompositor.palette_shadow(image, static_image, sprite_position, colors.to_rgba_bytes())
 
 		if command.static_occlusion:
-			image = _occlude(image, sprite_position, int(command.depth_order), int(command.floating_altitude))
+			occluder = _occluder(image, sprite_position, int(command.depth_order), int(command.floating_altitude))
+			image = NativeSpriteCompositor.occlude(image, occluder, null, Vector2i.ZERO, PackedInt32Array()).image
 
-		dynamic_visuals.append(CityDynamicVisual.new(ImageTexture.create_from_image(image), Vector2(sprite_position)))
+		var texture: Texture2D = ImageTexture.create_from_image(image)
+
+		if not command.shadow and artwork_layer.visible and demo_sprites.high_resolution.has(int(command.sprite_id)):
+			texture = _artwork_sprite(int(command.sprite_id), bool(command.flip), image.get_size(), occluder)
+
+		dynamic_visuals.append(CityDynamicVisual.new(texture, Vector2(sprite_position), Vector2(image.get_size())))
+
+
+# The HD art of a moving sprite at the density of the HD layer, with the pixels
+# that `occluder` covers removed. It draws with filtering.
+func _artwork_sprite(sprite_id: int, flip: bool, native_size: Vector2i, occluder: Image) -> Texture2D:
+	var factor := 1
+	var window: ArtworkWindow = artwork_windows.get(int(elapsed / SHOT_SECONDS) % SHOT_CENTERS.size())
+
+	if window != null:
+		factor = window.factor
+
+	var key := Vector3i(sprite_id, int(flip), factor)
+
+	if not artwork_sprites.has(key):
+		var art := HdSprite.scaled(demo_sprites.high_resolution[sprite_id].image, native_size * factor)
+
+		if flip:
+			art.flip_x()
+
+		artwork_sprites[key] = art
+
+	var image: Image = artwork_sprites[key]
+
+	if occluder != null:
+		var mask: Image = occluder.duplicate()
+		mask.resize(image.get_width(), image.get_height(), Image.INTERPOLATE_NEAREST)
+		image = NativeSpriteCompositor.occlude(image, mask, null, Vector2i.ZERO, PackedInt32Array()).image
+
+	var texture := CanvasTexture.new()
+	texture.diffuse_texture = ImageTexture.create_from_image(image)
+	texture.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+
+	return texture
 
 
 # ships and sailboats pass `floating_altitude`; see IsometricFloatingOcclusion
-func _occlude(image: Image, sprite_position: Vector2i, order: int, floating_altitude := -1) -> Image:
+# The later static silhouettes that cover a moving sprite at `sprite_position`.
+func _occluder(image: Image, sprite_position: Vector2i, order: int, floating_altitude := -1) -> Image:
 	var bounds := Rect2i(sprite_position, image.get_size())
 	# later foreground silhouettes, combined in the sprite's frame
 	var occluder := Image.create(image.get_width(), image.get_height(), false, Image.FORMAT_RGBA8)
@@ -339,7 +502,7 @@ func _occlude(image: Image, sprite_position: Vector2i, order: int, floating_alti
 		else:
 			occluder.blend_rect(mask, Rect2i(overlap.position - origin, overlap.size), overlap.position - sprite_position)
 
-	return NativeSpriteCompositor.occlude(image, occluder, null, Vector2i.ZERO, PackedInt32Array()).image
+	return occluder
 
 
 # Release the private city, its simulation, and its render buffers while
@@ -369,8 +532,19 @@ func _clear_render_data() -> void:
 	occlusion_grid = null
 	sprite_cache.clear()
 	dynamic_visuals.clear()
+	artwork_windows.clear()
+	artwork_sprites.clear()
+	artwork_layer.texture = null
+	artwork_layer.visible = false
 	RenderingServer.canvas_item_clear(get_canvas_item())
 	queue_redraw()
+
+
+# the view point at the middle of a shot
+func _shot_center(shot: int) -> Vector2:
+	var point: Vector2i = SHOT_CENTERS[shot]
+
+	return Renderer.tile_polygon(demo_city, point.x, point.y)[2]
 
 
 static func camera_zoom(shot: int, pixel_scale: float) -> float:
@@ -404,3 +578,12 @@ class CameraFrame extends RefCounted:
 
 class RenderResult extends AssetImageResult:
 	var occlusion_commands: Array[CityStaticCommand] = []
+	var artwork_windows: Array[ArtworkWindow] = []
+
+
+class ArtworkWindow extends RefCounted:
+	var shot := 0
+	var bounds := Rect2i()
+	var factor := 1
+	var image: Image
+	var texture: ImageTexture
