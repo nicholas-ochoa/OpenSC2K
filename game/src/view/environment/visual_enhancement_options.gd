@@ -3,6 +3,10 @@ extends RefCounted
 ## Local presentation preferences. No value is written to a city document.
 
 const FIELDS := [
+	["cloud_enabled", "Clouds and cloud shadows", "bool", true],
+	["cloud_density", "Cloud density", "number", 0.4, 0.0, 1.0, 0.05],
+	["cloud_shadow_strength", "Cloud shadow strength", "number", 0.22, 0.0, 0.5, 0.02],
+	["cloud_speed", "Cloud movement speed", "number", 1.0, 0.0, 3.0, 0.1],
 	["day_enabled", "Day and night", "bool", true],
 	["day_mode", "Time of day", "choice", 0, ["Cycle", "Fixed time"]],
 	["day_hour", "Fixed hour", "number", 12.0, 0.0, 23.99, 0.25],

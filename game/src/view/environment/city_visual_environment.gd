@@ -12,12 +12,14 @@ var lut_size := 0.0
 var _options := {}
 var _city_id := 0
 var weather: CityVisualWeather
+var clouds: CityVisualClouds
 var _whole_mask_signature: Array = []
 
 
 func _init(application: CityApplication) -> void:
 	app = application
 	weather = CityVisualWeather.new(application)
+	clouds = CityVisualClouds.new(application)
 
 
 func configure() -> void:
@@ -69,6 +71,7 @@ func process(delta: float) -> void:
 		phase = 0.5
 		season_phase = 1.0
 		weather.reset()
+		clouds.reset()
 	var options := app.preferences.visual_enhancements
 	var speed := app.simulation_state.speed_controller.speed if app.simulation_state.speed_controller != null else 1
 	var elapsed := maxf(delta, 0.0)
@@ -91,7 +94,8 @@ func process(delta: float) -> void:
 		_sync_whole_masks()
 	tint = lighting.tint if options.day_enabled else Color.WHITE
 	night = lighting.night if options.day_enabled and options.brightmaps else 0.0
-	app.map_view.layers.set_environment({
+	clouds.process(delta, elapsed * factor, active, tint * weather.tint, lighting.night if options.day_enabled else 0.0, weather.kind)
+	var parameters := {
 		"environment_enabled": active and (options.day_enabled or options.season_enabled or options.weather_enabled),
 		"environment_weather": Vector3(weather.tint.r, weather.tint.g, weather.tint.b),
 		"environment_frost": weather.frost,
@@ -101,7 +105,9 @@ func process(delta: float) -> void:
 		"environment_night": night,
 		"environment_lut": lut,
 		"environment_lut_size": lut_size,
-	})
+	}
+	parameters.merge(clouds.parameters)
+	app.map_view.layers.set_environment(parameters)
 
 
 func _sync_whole_masks() -> void:

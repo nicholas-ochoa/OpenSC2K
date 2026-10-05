@@ -1,5 +1,18 @@
 [
   {
+    "id": "cloud_visual_test",
+    "script": "tests/cloud_visual_test.gd",
+    "domain": "rendering",
+    "lane": "product"
+  },
+  {
+    "id": "cloud_visual_gpu_test",
+    "script": "tests/cloud_visual_gpu_test.gd",
+    "domain": "rendering",
+    "lane": "native",
+    "driver": "scene-batch"
+  },
+  {
     "id": "visual_environment_test",
     "script": "tests/visual_environment_test.gd",
     "domain": "rendering",
