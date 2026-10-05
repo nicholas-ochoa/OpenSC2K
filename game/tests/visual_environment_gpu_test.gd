@@ -99,7 +99,9 @@ func _check_weather_layer() -> void:
 	var sunny := viewport.get_texture().get_image()
 	for kind in [CityVisualWeather.Kind.LIGHT_RAIN, CityVisualWeather.Kind.HEAVY_RAIN, CityVisualWeather.Kind.LIGHT_SNOW, CityVisualWeather.Kind.HEAVY_SNOW]:
 		app.preferences.visual_enhancements.weather_fixed = kind
-		weather.process(5.0, 0.0, true, 1.0)
+		weather.process(5.0, 0.0, true, 3.0)
+		if kind in [CityVisualWeather.Kind.LIGHT_SNOW, CityVisualWeather.Kind.HEAVY_SNOW]:
+			assert(weather.snow > 0.0 and weather.rain == 0.0, "Winter snow did not reach the particle shader")
 		await RenderingServer.frame_post_draw
 		var rendered := viewport.get_texture().get_image()
 		assert(rendered.get_pixel(104, 84).is_equal_approx(sunny.get_pixel(104, 84)), "Weather covered a tool overlay")

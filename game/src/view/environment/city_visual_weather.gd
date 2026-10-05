@@ -10,6 +10,7 @@ const TINTS := [Color.WHITE, Color(0.86, 0.9, 0.96), Color(0.7, 0.77, 0.86),
 var app: CityApplication
 var random := RandomNumberGenerator.new()
 var kind := Kind.SUNNY
+var selected_kind := Kind.SUNNY
 var tint := Color.WHITE
 var frost := 0.0
 var rain := 0.0
@@ -46,6 +47,13 @@ func reset() -> void:
 	last_game_weather = -1
 	last_mode = -1
 	kind = Kind.SUNNY
+	selected_kind = Kind.SUNNY
+	tint = Color.WHITE
+	frost = 0.0
+	rain = 0.0
+	snow = 0.0
+	clock = 0.0
+	lightning_wait = 4.0
 	thunder_wait = -1.0
 	flash = 0.0
 
@@ -62,7 +70,7 @@ func process(delta: float, phase_elapsed: float, active: bool, season: float) ->
 			var game_weather := app.document_state.city.weather_type()
 			if game_weather != last_game_weather:
 				last_game_weather = game_weather
-				kind = from_game(game_weather, random.randf() < 0.5)
+				selected_kind = from_game(game_weather, random.randf() < 0.5)
 		elif options.weather_mode == 1:
 			interval += phase_elapsed
 			if interval >= float(options.weather_seconds):
@@ -70,9 +78,15 @@ func process(delta: float, phase_elapsed: float, active: bool, season: float) ->
 				var choices := [Kind.SUNNY, Kind.SUNNY, Kind.LIGHT_RAIN, Kind.HEAVY_RAIN, Kind.RAIN_STORM, Kind.DRY_STORM]
 				if int(season) == 3:
 					choices = [Kind.SUNNY, Kind.SUNNY, Kind.LIGHT_SNOW, Kind.LIGHT_SNOW, Kind.HEAVY_SNOW]
-				kind = choices[random.randi_range(0, choices.size() - 1)]
+				selected_kind = choices[random.randi_range(0, choices.size() - 1)]
 		else:
-			kind = int(options.weather_fixed) as Kind
+			selected_kind = int(options.weather_fixed) as Kind
+		kind = selected_kind
+		if int(fposmod(season, 4.0)) != 3:
+			if kind == Kind.LIGHT_SNOW:
+				kind = Kind.LIGHT_RAIN
+			elif kind == Kind.HEAVY_SNOW:
+				kind = Kind.HEAVY_RAIN
 	else:
 		kind = Kind.SUNNY
 		thunder_wait = -1.0
@@ -84,6 +98,10 @@ func process(delta: float, phase_elapsed: float, active: bool, season: float) ->
 	frost = move_toward(frost, (0.18 if kind == Kind.LIGHT_SNOW else (0.85 if kind == Kind.HEAVY_SNOW else 0.0)) * strength, weight)
 	rain = move_toward(rain, (0.28 if kind == Kind.LIGHT_RAIN else (1.0 if kind in [Kind.HEAVY_RAIN, Kind.RAIN_STORM] else 0.0)) * strength, weight)
 	snow = move_toward(snow, (0.24 if kind == Kind.LIGHT_SNOW else (1.0 if kind == Kind.HEAVY_SNOW else 0.0)) * strength, weight)
+	if int(fposmod(season, 4.0)) != 3:
+		# A season change removes flakes immediately, including paused frames.
+		snow = 0.0
+		frost = 0.0
 	clock = fposmod(clock + maxf(delta, 0.0), 3600.0)
 	flash = maxf(0.0, flash - delta * 3.0)
 	if kind in [Kind.RAIN_STORM, Kind.DRY_STORM] and enabled:

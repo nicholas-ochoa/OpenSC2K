@@ -1,10 +1,18 @@
 OpenSC2K Visual Enhancement LUT profiles
 
 The 15 built-in profiles refine the existing seasons, light and weather. They
-do not repeat their exposure changes. Day, summer and sunny are neutral.
+do not repeat their exposure changes. Day and sunny are neutral.
 Morning is cool blue; evening is warm orange/yellow. Colors are uniform
 across the scene, with no spatial gradient. Seasons affect masked vegetation
-and ground only. Brightmaps and lightning keep their own colors.
+and ground only. Seasonal water color uses its own surface pass and strength.
+Brightmaps and lightning keep their own colors. Time and season profiles
+emphasize shadows and highlights, with gentle middle tones and opaque black.
+Summer adds warm highlights and cool shadows rather than a neutral table.
+Seasons > Seasonal water color strength blends spring blue-green, clear
+summer blue, muted autumn blue-green and winter steel blue. At zero, water
+bypasses both seasonal surface color and its season LUT. Turning Seasons off
+also disables this water treatment. Reflections retain the reflected art's
+own masks; underwater ground does not inherit the surface's water tint.
 
 EDITING
 Each PNG is an opaque 1024 x 32 RGB strip with 32 samples per RGB axis.
@@ -44,6 +52,11 @@ colored/graded brightmaps. Water and moving art share ambient grading.
 Time and season profiles use the existing cosmetic clock, speed and pause
 settings. Weather profiles follow the selected visual weather, including
 manual overrides and game weather, with its configured transition time.
+Visible snow and weather frost are limited to the resolved winter season.
+Requested light/heavy snow uses light/heavy rain in other seasons, including
+fixed weather. The simulation weather remains unchanged. Leaving winter
+removes flakes immediately even while paused; returning to winter restores
+the requested snow without needing a game-weather change.
 Shader interpolation is trilinear, between sample centers, without mipmaps;
 the source artwork keeps its nearest-neighbor pixel-art filtering. LUT data
 is sampled without implicit gamma decoding. HDR 2D input/output is explicitly

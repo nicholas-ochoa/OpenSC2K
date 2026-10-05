@@ -47,7 +47,7 @@ func _ready() -> void:
 				control = OptionButton.new()
 				for choice in field[4]:
 					(control as OptionButton).add_item(choice)
-				(control as OptionButton).item_selected.connect(func(_v: int) -> void: _choice_changed(field[0]))
+				(control as OptionButton).item_selected.connect(func(_v: int) -> void: _changed())
 			"number":
 				var spin := SpinBox.new()
 				spin.min_value = field[4]
@@ -61,6 +61,8 @@ func _ready() -> void:
 				(control as LineEdit).text_submitted.connect(func(_v: String) -> void: _changed())
 				control.focus_exited.connect(_changed)
 		row.add_child(control)
+		if field[0] == "weather_fixed":
+			control.tooltip_text = "Snow is shown only in winter. In other seasons, snow selections use rain of the same strength."
 		sections[_category_for(field[0])].add_child(row)
 		controls[field[0]] = control
 	var buttons := HFlowContainer.new()
@@ -121,17 +123,51 @@ func _category_for(key: String) -> String:
 
 func _changed() -> void:
 	if not filling:
+		_update_availability()
 		changed.emit()
 
 
-func _choice_changed(key: String) -> void:
-	if filling:
-		return
-	if key == "weather_fixed":
-		# Choosing a specific weather is a manual override, immediately.
-		(controls.weather_mode as OptionButton).select(2)
-		(controls.weather_enabled as CheckBox).set_pressed_no_signal(true)
-	_changed()
+func _update_availability() -> void:
+	var values := selected_values()
+	for key: String in controls:
+		var available := true
+		if key.begins_with("season_") and key != "season_enabled":
+			available = values.season_enabled
+		elif (key.begins_with("day_") and key != "day_enabled") or key in ["night_strength", "brightmaps", "brightmap_folder"]:
+			available = values.day_enabled
+		elif key.begins_with("weather_") and key != "weather_enabled":
+			available = values.weather_enabled
+		elif key.begins_with("cloud_") and key != "cloud_enabled":
+			available = values.cloud_enabled
+		match key:
+			"season_fixed":
+				available = available and values.season_mode == 2
+			"season_seconds":
+				available = available and values.season_mode == 1
+			"season_transition":
+				available = available and values.season_mode != 2
+			"day_hour":
+				available = available and values.day_mode == 1
+			"day_seconds":
+				available = available and values.day_mode == 0
+			"weather_fixed":
+				available = available and values.weather_mode == 2
+			"weather_seconds":
+				available = available and values.weather_mode == 1
+			"brightmap_folder":
+				available = available and values.brightmaps
+			"life_car_amount":
+				available = values.life_cars_enabled
+			"life_people_amount":
+				available = values.life_people_enabled
+		var control: Control = controls[key]
+		if control is BaseButton:
+			(control as BaseButton).disabled = not available
+		elif control is SpinBox:
+			(control as SpinBox).editable = available
+		elif control is LineEdit:
+			(control as LineEdit).editable = available
+		control.get_parent().modulate.a = 1.0 if available else 0.45
 
 
 func show_values(source: Dictionary) -> void:
@@ -148,6 +184,7 @@ func show_values(source: Dictionary) -> void:
 		elif control is LineEdit:
 			(control as LineEdit).text = values[key]
 	filling = false
+	_update_availability()
 
 
 func selected_values() -> Dictionary:
