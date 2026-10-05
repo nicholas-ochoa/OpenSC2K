@@ -1,13 +1,15 @@
 class_name ConsoleWindow
 extends Window
 ## Shows the output that the command line shows: messages, warnings and
-## errors, with their script call stacks. The command line at the bottom runs
-## ConsoleCommands.
+## errors, with their script call stacks. The input at the bottom runs
+## ConsoleCommands. Enter runs the input and Shift+Enter starts a new line.
 
 const DEFAULT_SIZE := Vector2i(900, 520)
 const MINIMUM_SIZE := Vector2i(480, 260)
 # commands that the Up and Down keys can recall
 const HISTORY_LIMIT := 100
+# the input grows to this many lines, then it scrolls
+const INPUT_MAX_LINES := 8
 # the view shows the log again from the start after this many more lines than the log keeps
 const REBUILD_MARGIN := 500
 const MONOSPACE_FONTS: PackedStringArray = ["Menlo", "Consolas", "DejaVu Sans Mono", "Liberation Mono", "monospace"]
@@ -16,7 +18,7 @@ var commands := ConsoleCommands.new()
 # (event: InputEvent) -> bool. true for the shortcut that opens and closes the console
 var toggle_shortcut := Callable()
 var output: RichTextLabel
-var input: LineEdit
+var input: TextEdit
 var show_messages: CheckBox
 var show_warnings: CheckBox
 var show_errors: CheckBox
@@ -29,6 +31,7 @@ var _history: PackedStringArray = []
 # the history entry that the input shows. the history size means the new line
 var _history_index := 0
 var _draft := ""
+var _save_dialog: FileDialog
 
 
 func _init() -> void:
@@ -57,6 +60,8 @@ func open() -> void:
 
 	grab_focus()
 	input.grab_focus()
+	# the fonts of the theme apply only in the tree
+	_fit_input_height()
 
 
 func _build() -> void:
@@ -93,6 +98,8 @@ func _build() -> void:
 	bar.add_child(counts_label)
 
 	_action_button(bar, "Copy", "Copy the lines that the console shows.", copy_shown)
+	_action_button(bar, "Save", "Save all lines of the console to a text file, also the lines that the checks and the filter hide.",
+		open_save_dialog)
 	_action_button(bar, "Clear", "Remove all lines from the console.", func() -> void: ConsoleLog.clear())
 	_action_button(bar, "Log Folder", "Open the folder of the log files. They keep the output of earlier sessions.", open_log_folder)
 
@@ -112,16 +119,25 @@ func _build() -> void:
 	layout.add_child(prompt_row)
 	var prompt := Label.new()
 	prompt.text = ">"
+	prompt.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	prompt_row.add_child(prompt)
 
-	input = LineEdit.new()
-	input.placeholder_text = "Type a command. Type help to list the commands."
+	input = TextEdit.new()
+	input.placeholder_text = "Type a command. Type help to list the commands. Shift+Enter starts a new line."
 	input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	input.keep_editing_on_text_submit = true
 	input.add_theme_font_override("font", mono)
-	input.text_submitted.connect(_on_text_submitted)
+	input.text_changed.connect(_fit_input_height)
+	input.text_set.connect(_fit_input_height)
 	input.gui_input.connect(_on_input_key)
 	prompt_row.add_child(input)
+	_fit_input_height()
+
+
+# one line for each line of the input, up to INPUT_MAX_LINES
+func _fit_input_height() -> void:
+	var lines := clampi(input.get_line_count(), 1, INPUT_MAX_LINES)
+	var frame := input.get_theme_stylebox("normal").get_minimum_size().y if input.has_theme_stylebox("normal") else 0.0
+	input.custom_minimum_size.y = lines * input.get_line_height() + frame
 
 
 func _filter_check(parent: Control, text: String, tooltip: String) -> CheckBox:
@@ -221,10 +237,29 @@ func copy_shown() -> void:
 
 
 func open_log_folder() -> void:
-	var folder := ProjectSettings.globalize_path(str(ProjectSettings.get_setting("debug/file_logging/log_path",
-		"user://logs/godot.log")).get_base_dir())
+	var folder := ConsoleLog.log_folder()
 	DirAccess.make_dir_recursive_absolute(folder)
 	OS.shell_open(folder)
+
+
+func open_save_dialog() -> void:
+	if _save_dialog == null:
+		_save_dialog = FileDialogFactory.console_log_save()
+		_save_dialog.title = "Save Console"
+		_save_dialog.file_selected.connect(save_to)
+		add_child(_save_dialog)
+
+	var path := ConsoleLog.default_save_path()
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+	_save_dialog.current_dir = path.get_base_dir()
+	_save_dialog.current_file = path.get_file()
+	_save_dialog.popup_centered_ratio(0.7)
+
+
+## Saves the console as the save command does, and shows the result.
+func save_to(path: String) -> void:
+	commands.execute("save " + path)
+	refresh()
 
 
 func _refresh_counts() -> void:
@@ -244,7 +279,9 @@ func _level_color(level: ConsoleLog.Level) -> Color:
 	return get_theme_color("ink", "AppPalette")
 
 
-func _on_text_submitted(text: String) -> void:
+## Runs the input and keeps it in the history.
+func submit() -> void:
+	var text := input.text
 	input.clear()
 
 	if text.strip_edges().is_empty():
@@ -262,18 +299,33 @@ func _on_text_submitted(text: String) -> void:
 	refresh()
 
 
-## Up and Down recall earlier commands. Tab completes a command name.
+## Enter runs the input and Shift+Enter starts a new line. Up on the first
+## line and Down on the last line recall earlier input. Tab completes a
+## command name on one line, and types a tab in other input.
 func _on_input_key(event: InputEvent) -> void:
 	var key := event as InputEventKey
 
 	if key == null or not key.pressed:
 		return
 
-	if key.keycode == KEY_UP or key.keycode == KEY_DOWN:
-		_recall(-1 if key.keycode == KEY_UP else 1)
+	if key.keycode == KEY_ENTER or key.keycode == KEY_KP_ENTER:
+		if key.shift_pressed:
+			input.insert_text_at_caret("\n")
+			# TextEdit sends text_changed in the next frame
+			_fit_input_height()
+		elif not key.ctrl_pressed and not key.meta_pressed and not key.alt_pressed:
+			submit()
+		else:
+			return
+
 		input.accept_event()
-	elif key.keycode == KEY_TAB and not key.shift_pressed:
-		_complete()
+	elif key.keycode == KEY_UP and input.get_caret_line() == 0:
+		_recall(-1)
+		input.accept_event()
+	elif key.keycode == KEY_DOWN and input.get_caret_line() == input.get_line_count() - 1:
+		_recall(1)
+		input.accept_event()
+	elif key.keycode == KEY_TAB and not key.shift_pressed and _complete():
 		input.accept_event()
 
 
@@ -286,17 +338,29 @@ func _recall(step: int) -> void:
 
 	_history_index = clampi(_history_index + step, 0, _history.size())
 	input.text = _history[_history_index] if _history_index < _history.size() else _draft
-	input.caret_column = input.text.length()
+	_caret_to_end()
 
 
-func _complete() -> void:
+func _caret_to_end() -> void:
+	input.set_caret_line(input.get_line_count() - 1)
+	input.set_caret_column(input.get_line(input.get_line_count() - 1).length())
+	_fit_input_height()
+
+
+# true when the input is one line that starts a command name
+func _complete() -> bool:
+	if input.text.contains("\n") or input.text.strip_edges().is_empty():
+		return false
+
 	var matches := commands.completions(input.text)
 
 	if matches.size() == 1:
 		input.text = matches[0] + " "
-		input.caret_column = input.text.length()
+		_caret_to_end()
 	elif matches.size() > 1:
 		ConsoleLog.append(ConsoleLog.Level.RESULT, "  ".join(matches))
+
+	return not matches.is_empty()
 
 
 func _on_window_input(event: InputEvent) -> void:

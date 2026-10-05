@@ -130,6 +130,35 @@ static func clear() -> void:
 	_mutex.unlock()
 
 
+## Writes all the entries to a text file. Returns the file error.
+static func save(path: String) -> Error:
+	var file := FileAccess.open(path, FileAccess.WRITE)
+
+	if file == null:
+		return FileAccess.get_open_error()
+
+	file.store_string(plain_text(entries_since(0)) + "\n")
+	var error := file.get_error()
+	file.close()
+
+	return error
+
+
+## The folder of the Godot log files. A saved console log goes there unless the
+## player selects another folder.
+static func log_folder() -> String:
+	var log_path := str(ProjectSettings.get_setting("debug/file_logging/log_path", "user://logs/godot.log"))
+
+	return ProjectSettings.globalize_path(log_path).get_base_dir()
+
+
+## A new file name in the log folder, from the date and time.
+static func default_save_path() -> String:
+	var stamp := Time.get_datetime_string_from_system().replace(":", "-").replace("T", "_")
+
+	return log_folder().path_join("console_%s.log" % stamp)
+
+
 ## The text of the entries, one line for each line of output.
 static func plain_text(entries: Array[Entry]) -> String:
 	var lines := PackedStringArray()

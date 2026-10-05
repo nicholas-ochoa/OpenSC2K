@@ -21,13 +21,21 @@ You can change it in Settings > Controls.
 The Console shows the output that the command line shows when you start the game
 from a terminal: messages, warnings and errors, with the script call stack of
 each error. It keeps the last 5000 entries. Use the checks and the filter field
-to show only some entries. **Copy** copies the entries that show. **Log Folder**
-opens the folder of the log files of earlier sessions.
+to show only some entries. **Copy** copies the entries that show. **Save**
+writes all entries to a text file, also the entries that the checks and the
+filter hide. **Log Folder** opens the folder of the log files of earlier
+sessions.
 
 The Console can stay open while you play. It takes the keys only while it has
-focus. Type `help` in the command line to list the commands. Up and Down recall
-earlier commands, and Tab completes a command name. `ConsoleCommands.evaluator`
-receives the lines that are not commands, for a future script runtime.
+focus. Type `help` in the input to list the commands. `save [path]` saves the
+console without a dialog. Without a path, or with a relative path, the file goes
+in the log folder.
+
+Enter runs the input. Shift+Enter starts a new line, and the input grows to
+eight lines. Up on the first line and Down on the last line recall earlier
+input. Tab completes a command name. Commands use one line.
+`ConsoleCommands.evaluator` receives the other input, and all input with more
+than one line, for a future script runtime.
 
 ## Tile Inspector
 

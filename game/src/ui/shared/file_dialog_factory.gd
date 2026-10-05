@@ -41,6 +41,13 @@ static func city_pdf_save() -> FileDialog:
 	)
 
 
+static func console_log_save() -> FileDialog:
+	return _create(
+		FileDialog.FILE_MODE_SAVE_FILE,
+		[["*.log", "Log files"], ["*.txt", "Text files"]],
+	)
+
+
 static func folder_select() -> FileDialog:
 	return _create(FileDialog.FILE_MODE_OPEN_DIR, [])
 

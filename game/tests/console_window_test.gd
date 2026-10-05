@@ -94,7 +94,7 @@ func _check_commands() -> void:
 	commands.register("Echo", "Show the words.", func(words: PackedStringArray) -> String: return " ".join(words))
 	commands.execute("ECHO a  b")
 	check(ConsoleLog.entries_since(0)[-1].text == "a b", "A registered command takes its words")
-	check(commands.completions("he") == PackedStringArray(["help"]) and commands.completions("").size() == 4,
+	check(commands.completions("he") == PackedStringArray(["help"]) and commands.completions("").size() == 5,
 		"Tab completion lists the matching commands")
 	commands.execute("clear")
 	check(ConsoleLog.entries_since(0).is_empty(), "The clear command empties the log")
@@ -123,18 +123,21 @@ func _check_window() -> void:
 	window.filter_input.text_changed.emit("")
 
 	window.input.text = "version"
-	window.input.text_submitted.emit(window.input.text)
+	window._on_input_key(_key(KEY_ENTER))
 	check(window.input.text.is_empty() and window.output.get_parsed_text().contains("> version")
 		and window.output.get_parsed_text().contains("OpenSC2K"), "The input line runs a command")
 	window.input.text = "draft"
+	window.input.set_caret_line(0)
 	window._on_input_key(_key(KEY_UP))
 	check(window.input.text == "version", "Up recalls the last command")
 	window._on_input_key(_key(KEY_DOWN))
 	check(window.input.text == "draft", "Down returns to the unfinished line")
+	_check_multi_line(window)
+	_check_save(window)
 	window.input.text = "cle"
 	window._on_input_key(_key(KEY_TAB))
 	check(window.input.text == "clear ", "Tab completes a command name")
-	window.input.text_submitted.emit(window.input.text)
+	window.submit()
 	await process_frame
 	check(window.output.get_parsed_text().is_empty(), "The window empties after a clear")
 
@@ -144,6 +147,67 @@ func _check_window() -> void:
 	check(window.visible, "The shortcut opens the window again")
 	window.queue_free()
 	await process_frame
+
+
+func _check_multi_line(window: ConsoleWindow) -> void:
+	var single_height := window.input.custom_minimum_size.y
+	var shift_enter := _key(KEY_ENTER)
+	shift_enter.shift_pressed = true
+	window.input.text = "first"
+	window._caret_to_end()
+	window._on_input_key(shift_enter)
+	window.input.insert_text_at_caret("second")
+	check(window.input.text == "first\nsecond" and window.input.custom_minimum_size.y > single_height,
+		"Shift+Enter starts a new line and the input grows")
+	window._on_input_key(_key(KEY_UP))
+	check(window.input.text == "first\nsecond", "Up on a later line moves the caret, not the history")
+	check(not window._complete() and window.input.text == "first\nsecond", "Tab does not complete multi-line input")
+	var evaluated: Array[String] = []
+	window.commands.evaluator = func(source: String) -> String:
+		evaluated.append(source)
+
+		return ""
+	window.input.text = "first\nsecond"
+	window._on_input_key(_key(KEY_ENTER))
+	check(evaluated == ["first\nsecond"] and window.input.text.is_empty()
+		and window.input.custom_minimum_size.y == single_height, "Enter runs all lines, then the input shrinks")
+	check(window.output.get_parsed_text().contains("> first\n  second"), "The console shows each line of the input")
+	window._on_input_key(_key(KEY_UP))
+	check(window.input.text == "first\nsecond", "Up recalls multi-line input")
+	window.input.clear()
+	window.commands.evaluator = Callable()
+	window.commands.execute("help\nversion")
+	check(ConsoleLog.entries_since(0)[-1].text.begins_with("Only a script runtime"),
+		"Multi-line input without a script runtime shows why it cannot run")
+
+
+func _check_save(window: ConsoleWindow) -> void:
+	var folder := OS.get_temp_dir().path_join("opensc2k_console_test_%d" % OS.get_process_id())
+	var path := folder.path_join("saved console.log")
+	ConsoleLog.append(ConsoleLog.Level.WARNING, "WARNING: hidden by the filter")
+	window.show_warnings.button_pressed = false
+	# the save command line is saved too
+	var count := ConsoleLog.entries_since(0).size() + 1
+	window.save_to(path)
+	var saved := FileAccess.get_file_as_string(path)
+	check(saved.contains("WARNING: hidden by the filter") and saved.contains("> first\n  second") and saved.ends_with("\n"),
+		"Save writes all entries, also the hidden ones")
+	check(ConsoleLog.entries_since(0)[-1].text == "Saved %d entries to %s." % [count, path],
+		"Save shows the path and the entry count")
+	window.show_warnings.button_pressed = true
+	window.commands.execute("save " + folder.path_join("new/../new/second.log"))
+	check(FileAccess.file_exists(folder.path_join("new/second.log")), "The save command makes the folders of its path")
+	window.commands.execute("save " + folder)
+	check(ConsoleLog.entries_since(0)[-1].level == ConsoleLog.Level.ERROR_OUTPUT, "A save that fails shows an error")
+	window.open_save_dialog()
+	check(window._save_dialog.visible and window._save_dialog.current_file.begins_with("console_")
+		and window._save_dialog.file_mode == FileDialog.FILE_MODE_SAVE_FILE, "Save opens a save dialog with a new file name")
+	window._save_dialog.hide()
+	check(ConsoleLog.default_save_path().get_base_dir() == ConsoleLog.log_folder()
+		and ConsoleLog.default_save_path().get_file().begins_with("console_"), "A save without a path goes to the log folder")
+
+	for file in ["saved console.log", "new/second.log", "new", ""]:
+		DirAccess.remove_absolute(folder.path_join(file))
 
 
 func _check_shortcut() -> void:

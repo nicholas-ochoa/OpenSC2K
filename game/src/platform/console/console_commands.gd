@@ -1,8 +1,9 @@
 class_name ConsoleCommands
 extends RefCounted
 ## Runs the lines that the player types in the Console window. A line that
-## starts with the name of a command runs that command. Other lines go to the
-## evaluator, such as a script runtime, when one is set.
+## starts with the name of a command runs that command. Other input, and all
+## input with more than one line, goes to the evaluator, such as a script
+## runtime, when one is set.
 
 var _commands: Dictionary[String, Command] = {}
 # (source: String) -> String. the result text, or "" when there is no result
@@ -17,6 +18,7 @@ func _init() -> void:
 		return "")
 	register("version", "Show the OpenSC2K and Godot versions.", func(_arguments: PackedStringArray) -> String:
 		return ConsoleCommands.version_text())
+	register("save", "Save the console to a text file: save [path]. The log folder holds a relative path.", _save)
 
 
 ## `handler` takes the words after the command name and returns the text to show.
@@ -38,15 +40,21 @@ func execute(line: String) -> void:
 	if source.is_empty():
 		return
 
-	ConsoleLog.append(ConsoleLog.Level.INPUT, "> " + source)
-	var words := source.split(" ", false)
-	var command: Command = _commands.get(words[0].to_lower())
+	# continuation lines of a multi-line input line up under the first line
+	ConsoleLog.append(ConsoleLog.Level.INPUT, "> " + source.replace("\n", "\n  "))
+	var multi_line := source.contains("\n")
+	var words := source.replace("\t", " ").split(" ", false)
+	var command: Command = null if multi_line else _commands.get(words[0].to_lower())
 	var result := ""
 
 	if command != null:
 		result = str(command.handler.call(words.slice(1)))
 	elif evaluator.is_valid():
 		result = str(evaluator.call(source))
+	elif multi_line:
+		ConsoleLog.append(ConsoleLog.Level.ERROR_OUTPUT, "Only a script runtime can run input with more than one line. Type help to list the commands.")
+
+		return
 	else:
 		# a typing error is not a game error, thus the error count does not include it
 		ConsoleLog.append(ConsoleLog.Level.ERROR_OUTPUT, "Unknown command: %s. Type help to list the commands." % words[0])
@@ -70,6 +78,28 @@ func completions(prefix: String) -> PackedStringArray:
 
 static func version_text() -> String:
 	return "OpenSC2K %s\n%s" % [ProjectSettings.get_setting("application/config/version", ""), ConsoleLog.godot_header()]
+
+
+## Writes the console to the path in the words, or to a new file in the log folder.
+func _save(arguments: PackedStringArray) -> String:
+	var path := " ".join(arguments)
+
+	if path.is_empty():
+		path = ConsoleLog.default_save_path()
+	elif path.is_relative_path() and not path.begins_with("user://"):
+		path = ConsoleLog.log_folder().path_join(path)
+
+	path = ProjectSettings.globalize_path(path).simplify_path()
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+	var count := ConsoleLog.entries_since(0).size()
+	var error := ConsoleLog.save(path)
+
+	if error != OK:
+		ConsoleLog.append(ConsoleLog.Level.ERROR_OUTPUT, "Cannot save the console to %s: %s." % [path, error_string(error)])
+
+		return ""
+
+	return "Saved %d entries to %s." % [count, path]
 
 
 func _help(_arguments: PackedStringArray) -> String:
