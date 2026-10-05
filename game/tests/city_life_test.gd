@@ -79,6 +79,7 @@ func _check_application() -> void:
 		app.static_render.start_pending_static_render()
 		await process_frame
 	assert(app.map_view.city_source != null, "Test city must finish its static render")
+	_check_fades(app)
 	var city := app.document_state.city
 	var before := DocumentState.capture(city.document)
 	var engine := app.simulation_state.simulation_engine
@@ -112,6 +113,92 @@ func _check_application() -> void:
 	assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == random_before)
 	app.queue_free()
 	await process_frame
+
+
+func _check_fades(app: CityApplication) -> void:
+	var city := app.document_state.city
+	var life := app.city_life
+	var options := app.preferences.visual_enhancements
+	options.pause_freezes = false
+	options.speed_link = true
+	app.simulation_state.speed_controller.speed = GameSpeedController.Speed.AFRICAN_SWALLOW
+	life.process(0.0)
+	life.figures.clear()
+	var tracked: Array[CityLifeController.Figure] = []
+	for kind in 4:
+		var figure := CityLifeController.Figure.new()
+		figure.id = 10000 + kind
+		figure.walking = kind == 3
+		figure.vehicle_kind = mini(kind, 2)
+		figure.tile = Vector2i(64, 61 + kind)
+		figure.enter = 0
+		figure.exit = 2
+		figure.direction = 2
+		figure.progress = 0.5
+		figure.speed = 0.0
+		figure.lifetime = 100.0
+		figure.position = CityLifePaths.point(city, figure.tile, 0, 2, 0.5, figure.walking)
+		tracked.append(figure)
+		life.figures.append(figure)
+	for step in 4:
+		life.process(0.08)
+	for figure in tracked:
+		assert(figure.opacity() > 0.3 and figure.opacity() < 0.7,
+			"African Swallow must not compress a readable fade-in into one frame")
+		assert(is_equal_approx(figure.age, 0.96), "Movement time must retain its selected speed")
+	# Frequent density and unrelated building updates must preserve figure identity and opacity.
+	var opacity := tracked[0].opacity()
+	var traffic := city.document.find_chunk("XTRF")
+	var population := city.document.find_chunk("XPOP")
+	var traffic_before := traffic.decoded_payload.duplicate()
+	var population_before := population.decoded_payload.duplicate()
+	for step in 4:
+		city.set_building_id(0, 0, 0x74 if step % 2 == 0 else 0)
+		traffic.decoded_payload.fill(0 if step % 2 == 0 else 200)
+		population.decoded_payload.fill(0 if step % 2 == 0 else 160)
+		traffic.mark_mutated()
+		population.mark_mutated()
+		life.process(0.0)
+		for figure in tracked:
+			assert(figure in life.figures and not figure.retiring, "A remote update reset valid city-life figures")
+			assert(is_equal_approx(figure.opacity(), opacity), "A data refresh restarted a fade")
+	traffic.set_decoded_payload(traffic_before)
+	population.set_decoded_payload(population_before)
+	for step in 5:
+		life.process(0.08)
+	for figure in tracked:
+		assert(figure.opacity() == 1.0)
+	# A removed lane fades its occupants only; natural expiry uses the same transition.
+	var removed := tracked[0]
+	var road_id := city.building_id(removed.tile.x, removed.tile.y)
+	city.set_building_id(removed.tile.x, removed.tile.y, 0)
+	life.process(0.0)
+	assert(removed in life.figures and removed.retiring and removed.opacity() == 1.0)
+	assert(not tracked[1].retiring)
+	for figure in tracked.slice(1):
+		figure.lifetime = figure.age
+	life.process(0.08)
+	for figure in tracked:
+		assert(figure in life.figures and figure.retiring and figure.opacity() > 0.9,
+			"Expired cars, trucks, buses and pedestrians must remain visible for their fade-out")
+	options.pause_freezes = true
+	app.simulation_state.speed_controller.speed = GameSpeedController.Speed.PAUSED
+	opacity = removed.opacity()
+	life.process(0.5)
+	assert(removed.opacity() == opacity, "Pause must freeze the fade when configured")
+	app.simulation_state.speed_controller.speed = GameSpeedController.Speed.AFRICAN_SWALLOW
+	for step in 5:
+		life.process(0.08)
+	for figure in tracked:
+		assert(figure in life.figures and figure.opacity() > 0.2 and figure.opacity() < 0.6)
+	for step in 6:
+		life.process(0.08)
+	for figure in tracked:
+		assert(figure not in life.figures and figure.opacity() == 0.0, "Remove a figure only after its fade ends")
+	city.set_building_id(removed.tile.x, removed.tile.y, road_id)
+	options.pause_freezes = false
+	app.simulation_state.speed_controller.speed = GameSpeedController.Speed.PAUSED
+	print("PASS: real-time city-life fades at African Swallow, density/geometry continuity and pause")
 
 
 static func fixture() -> CityState:

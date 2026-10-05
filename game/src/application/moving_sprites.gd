@@ -169,7 +169,7 @@ func refresh_moving_things(view_size := -1) -> void:
 				visual.emission_texture = ImageTexture.create_from_image(emission)
 		if sprite_archive.water_reflections and command.floating_altitude >= 0 and not command.shadow:
 			var lights := CityBrightmaps.transform_mask(moving_lights.mask(sprite_archive, command.sprite_id), resource.image, command.flip)
-			visual.water_reflection = WaterReflectionSprite.create(resource.image, lights, position, int(command.floating_altitude))
+			visual.water_reflection = WaterReflectionSprite.create(resource.image, lights, position, int(command.floating_altitude), app.asset_state.palette)
 		visual.special_overlay = command.overlay >= 0
 		visual.batch_cache_key = visual_cache_key
 		visual.depth_order = int(command.depth_order)
