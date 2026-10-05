@@ -35,8 +35,13 @@ func _generate(
 	if not result.ok:
 		return result
 
+	# HD art at one pixel for each view pixel, when that fits; the indexed
+	# preview can shrink to fit instead
+	var size := CityIsometricRenderer.output_size_for_view(view_size, result.city.map_size)
+	result.landscape_artwork = (not sprites.high_resolution.is_empty()
+		and (maximum_size == Vector2i.ZERO or (size.x <= maximum_size.x and size.y <= maximum_size.y)))
 	var rendered := CityIsometricRenderer.create_image(result.city, palette, sprites, view_size, 0, false, false, false, false,
-		Callable(), maximum_size)
+		Callable(), maximum_size, 1 if result.landscape_artwork else 0)
 
 	if not rendered.ok:
 		return NewCityTerrainSession.PreviewResult.failure(rendered.error, "preview")

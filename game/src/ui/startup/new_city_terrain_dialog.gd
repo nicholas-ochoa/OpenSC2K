@@ -240,8 +240,9 @@ func terrain_options() -> NewCityTerrain.Options:
 	return OriginalCompatibility.terrain_options(options, compatibility_input.button_pressed)
 
 
-func show_preview(landscape: Image, minimap: Image, status: String) -> void:
-	landscape_background.texture = PixelArtTexture.wrap(ImageTexture.create_from_image(landscape))
+func show_preview(landscape: Image, minimap: Image, status: String, artwork := false) -> void:
+	landscape_background.texture = (HdArtworkTexture.create(landscape, landscape.get_size()) if artwork
+		else PixelArtTexture.wrap(ImageTexture.create_from_image(landscape)))
 	preview_view.texture = PixelArtTexture.wrap(ImageTexture.create_from_image(minimap))
 	candidate_valid = true
 	done_button.disabled = false

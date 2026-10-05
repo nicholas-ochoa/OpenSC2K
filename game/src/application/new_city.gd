@@ -114,7 +114,8 @@ func poll_new_city_preview() -> void:
 			app.interface.format_number(int(generated.terrain.tree_tiles)),
 			int(generated.terrain.minimum_altitude),
 			int(generated.terrain.maximum_altitude),
-		]
+		],
+		generated.landscape_artwork,
 	)
 
 
