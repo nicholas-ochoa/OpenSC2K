@@ -15,6 +15,7 @@ pub mod network;
 pub mod new_terrain;
 pub mod query;
 pub mod rotation;
+pub mod sounds;
 pub mod terrain;
 pub mod underground;
 

@@ -189,6 +189,30 @@ impl NativeSimulation {
         GString::from(sc2k_game::checkpoint::save_error(&state).as_str())
     }
 
+    /// `{track, state}`: the budget or newspaper track that `kind` names, and
+    /// the LFSR state after its draw.
+    #[func]
+    fn music_track(kind: GString, lfsr_state: i64) -> VarDictionary {
+        let mut random = sc2k_sim::sim::random::SimLfsrRandom::new(lfsr_state);
+        let track = if kind == "budget" {
+            sc2k_sim::sim::reports::music::budget_track(&mut random)
+        } else {
+            sc2k_sim::sim::reports::music::newspaper_track(&mut random)
+        };
+        let mut result = VarDictionary::new();
+        result.set("track", track);
+        result.set("state", random.state);
+        result
+    }
+
+    /// The next general track and the index after it.
+    #[func]
+    fn next_general_track(index: i64) -> PackedInt64Array {
+        let (track, next) = sc2k_sim::sim::reports::music::next_general_track(index);
+
+        PackedInt64Array::from([track, next].as_slice())
+    }
+
     /// The operations that this library implements.
     #[func]
     fn operations() -> PackedStringArray {

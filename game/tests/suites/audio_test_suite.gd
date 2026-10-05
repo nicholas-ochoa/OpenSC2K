@@ -6,8 +6,6 @@ const MidiSynth = preload("res://src/audio/midi_synth_player.gd")
 const ToolSounds = preload("res://src/audio/tool_sound_rules.gd")
 const WaveSounds = preload("res://src/audio/wave_sound_gate.gd")
 const TestRandoms = preload("res://tests/support/test_randoms.gd")
-const SequenceRandom = TestRandoms.SequenceRandom
-const SequenceModuloRandom = TestRandoms.SequenceModuloRandom
 
 var check_callback: Callable
 
@@ -43,36 +41,8 @@ func _test_music_director() -> void:
 		]),
 		"General music follows the executable's five-track cycle",
 	)
-	var monthly_random := SequenceRandom.new([0, 18])
-	_check(
-		Music.monthly_track(1, false, monthly_random) == 10018
-		and monthly_random.position == 2,
-		"Paused monthly music uses the Turtle divisor and selects one of all 19 tracks",
-	)
-	monthly_random = SequenceRandom.new([25])
-	_check(
-		Music.monthly_track(2, false, monthly_random) == -1
-		and monthly_random.position == 1,
-		"Turtle monthly music rejects a nonzero modulo-24 gate",
-	)
-	monthly_random = SequenceRandom.new([0, 0])
-	_check(
-		Music.monthly_track(5, true, monthly_random) == -1
-		and monthly_random.position == 0,
-		"Active music prevents a monthly selection without consuming random state",
-	)
-	var indexed_random := SequenceModuloRandom.new([0, 1, 2, 3, 4])
-	_check(
-		Music.budget_track(indexed_random) == 10016
-		and Music.budget_track(indexed_random) == 10005
-		and Music.budget_track(indexed_random) == 10002
-		and Music.budget_track(indexed_random) == 10010,
-		"Budget music follows the executable's four-track table",
-	)
-	_check(
-		Music.newspaper_track(indexed_random) == 10002,
-		"Newspaper music uses its five-track table",
-	)
+	# the monthly, budget, and newspaper tracks are native unit tests of
+	# sc2k_sim::sim::reports::music
 	_check(
 		Music.DISASTER_TRACK == 10004 and Music.RECREATION_TRACK == 10010,
 		"Mode and Recreation music use the executable's fixed tracks",

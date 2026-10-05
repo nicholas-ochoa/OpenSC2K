@@ -7,7 +7,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var order := MusicShuffle.new()
-	order.random.seed = 42
+	order.seed(42)
 	var previous := -1
 
 	for cycle in 3:

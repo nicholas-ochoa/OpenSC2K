@@ -3,6 +3,8 @@
 //! the `sc2k_audio` crate.
 
 mod fluid_midi_synth;
+mod midi_file;
+mod music_shuffle;
 
 use godot::prelude::*;
 

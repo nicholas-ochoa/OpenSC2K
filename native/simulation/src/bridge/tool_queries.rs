@@ -8,7 +8,7 @@ use sc2k_sim::sim::geom::Vec2i;
 use sc2k_sim::sim::tools::commands::{network, scurk_place};
 use sc2k_sim::sim::tools::edit_state::{self, View};
 use sc2k_sim::sim::tools::query::{self, Microsim, QueryInfo, Thing};
-use sc2k_sim::sim::tools::{availability, catalog, demolish, set_corners};
+use sc2k_sim::sim::tools::{availability, catalog, demolish, set_corners, sounds};
 
 /// Static tool queries for GDScript.
 #[derive(GodotClass)]
@@ -276,6 +276,27 @@ impl NativeCityTools {
         result.set("status_text", state.status_text.as_str());
         result.set("status_detail", state.status_detail.as_str());
         result
+    }
+
+    /// The sounds of a successful edit of a tool.
+    #[func]
+    fn tool_success_sounds(group: i64, subtool: i64) -> PackedInt32Array {
+        sounds::success_events(group, subtool).iter().map(|&sound| sound as i32).collect()
+    }
+
+    /// The sounds of a zone edit.
+    #[func]
+    fn zone_success_sounds(zone_type: i64) -> PackedInt32Array {
+        sounds::zone_success_events(zone_type).iter().map(|&sound| sound as i32).collect()
+    }
+
+    /// The sounds of a failed edit of a tool.
+    #[func]
+    fn tool_failure_sounds(group: i64, subtool: i64, error: GString) -> PackedInt32Array {
+        sounds::failure_events(group, subtool, &error.to_string())
+            .iter()
+            .map(|&sound| sound as i32)
+            .collect()
     }
 
     /// The dialog text of a QueryResult.

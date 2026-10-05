@@ -14,7 +14,7 @@ func _run() -> void:
 		audio.setup(reference, 0.0, 0.0, false)
 		audio.startup_theme_pending = true
 		audio.set_shuffle_music(shuffle)
-		audio.shuffle_order.remaining.assign([10004])
+		audio.shuffle_order.remaining = PackedInt64Array([10004])
 		assert(not audio.play_music_track(10004) and audio.startup_theme_pending, "Mute cleared the pending title track")
 		audio.set_volumes(0.5, 0.0)
 		audio.music_pack.files[10004] = reference.path_join("SOUNDS/10004.MID")
@@ -51,13 +51,13 @@ func _run() -> void:
 	main.preferences.settings_path = settings_path
 	root.add_child(main)
 	# Put a known non-title song next in the bag before the first process frame.
-	main.audio_controller.shuffle_order.remaining.assign([10004])
+	main.audio_controller.shuffle_order.remaining = PackedInt64Array([10004])
 	await process_frame
 	await process_frame
 	assert(main.preferences.shuffle_music and main.main_menu.visible)
 	assert(main.audio_controller.current_track_id == MusicDirector.MAIN_THEME_TRACK)
 	assert(not main.audio_controller.startup_theme_pending)
-	assert(main.audio_controller.shuffle_order.remaining == [10004])
+	assert(main.audio_controller.shuffle_order.remaining == PackedInt64Array([10004]))
 	main.queue_free()
 	await process_frame
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(settings_path))

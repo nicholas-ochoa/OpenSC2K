@@ -225,8 +225,7 @@ func _play_midi_fallback() -> bool:
 func _music_started() -> void:
 	if startup_theme_pending:
 		startup_theme_pending = false
-		shuffle_order.last_track = current_track_id
-		shuffle_order.remaining.erase(current_track_id)
+		shuffle_order.mark_started(current_track_id)
 
 
 func music_playback_is_active() -> bool:
@@ -300,8 +299,7 @@ func _sync_music_pause() -> void:
 
 func set_shuffle_music(enabled: bool) -> void:
 	if shuffle_music != enabled:
-		shuffle_order.remaining.clear()
-		shuffle_order.last_track = current_track_id
+		shuffle_order.restart_after(current_track_id)
 
 	shuffle_music = enabled
 

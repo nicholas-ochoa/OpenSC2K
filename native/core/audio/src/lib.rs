@@ -5,3 +5,5 @@
 pub mod fluidsynth;
 pub mod midi;
 pub mod sequencer;
+pub mod shuffle;
+pub mod smf;
