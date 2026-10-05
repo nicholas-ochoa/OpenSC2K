@@ -256,3 +256,76 @@ pub fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut R
         result: Value::Dict(fields),
     }
 }
+
+fn saved_randoms(randoms: &PackedInt64Array) -> sc2k_game::checkpoint::SavedRandoms {
+    match randoms.as_slice() {
+        [process, lfsr, game] => sc2k_game::checkpoint::SavedRandoms {
+            process: *process,
+            lfsr: *lfsr,
+            game: *game,
+        },
+        _ => sc2k_game::checkpoint::SavedRandoms::default(),
+    }
+}
+
+fn state_args(engine: &VarDictionary, controller: &VarDictionary) -> VarDictionary {
+    let mut args = VarDictionary::new();
+    args.set("engine", engine);
+    args.set("controller", controller);
+    args
+}
+
+/// `{randoms, phase_state}` of a save: the three saved random states and the
+/// phase state with the engine and controller values.
+pub fn checkpoint_capture(
+    engine: &VarDictionary,
+    controller: &VarDictionary,
+    randoms: &PackedInt64Array,
+    phase_state: &VarDictionary,
+) -> VarDictionary {
+    let args = state_args(engine, controller);
+    let saved = saved_randoms(randoms);
+    let mut live = Randoms::new(1, 1, 1);
+    sc2k_game::checkpoint::restore_randoms(&mut live, saved);
+    let (saved, state) = sc2k_game::checkpoint::capture(
+        &state_from(&args),
+        &speed_from(&args),
+        &live,
+        &super::json_value::object_from(phase_state),
+    );
+    let mut result = VarDictionary::new();
+    result.set(
+        "randoms",
+        &PackedInt64Array::from([saved.process, saved.lfsr, saved.game].as_slice()),
+    );
+    result.set("phase_state", &super::json_value::dictionary_from(&state));
+    result
+}
+
+/// `{error, engine, controller}` after a load restores the state of its file.
+/// `randoms` are the saved random states; the caller sets them.
+pub fn checkpoint_restore(
+    engine: &VarDictionary,
+    controller: &VarDictionary,
+    randoms: &PackedInt64Array,
+    phase_state: &VarDictionary,
+) -> VarDictionary {
+    let args = state_args(engine, controller);
+    let mut state = state_from(&args);
+    let mut speed = speed_from(&args);
+    let mut live = Randoms::new(1, 1, 1);
+    let error = sc2k_game::checkpoint::restore(
+        &mut state,
+        &mut speed,
+        &mut live,
+        saved_randoms(randoms),
+        &super::json_value::object_from(phase_state),
+    )
+    .err()
+    .unwrap_or_default();
+    let mut result = VarDictionary::new();
+    result.set("error", error.as_str());
+    result.set("engine", &convert::variant(&state_value(&state)));
+    result.set("controller", &convert::variant(&speed_value(&speed)));
+    result
+}

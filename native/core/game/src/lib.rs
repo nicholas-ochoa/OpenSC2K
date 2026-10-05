@@ -6,6 +6,7 @@
 //! This replaced SimulationEngine, SimulationClock, SimulationDaySchedule and
 //! GameSpeedController of the scripts. `newspaper` writes the story text.
 
+pub mod checkpoint;
 pub mod clock;
 pub mod engine;
 pub mod newspaper;

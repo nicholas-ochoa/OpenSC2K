@@ -19,97 +19,46 @@ static func save_error(controller: GameSpeedController) -> String:
 	if controller == null or controller.engine == null:
 		return ""
 
-	var pending := controller.engine.pending_interaction
-
-	if not pending.is_empty():
-		return "Finish the %s before saving the city." % pending.replace("_", " ")
-
-	return ""
+	return NativeSimulation.checkpoint_save_error(controller.engine.pending_interaction)
 
 
-# Store the engine state in `metadata`. Unknown phase_state keys stay.
+# Store the engine state in `metadata`. Unknown phase_state keys stay. See
+# native/core/game/src/checkpoint.rs
 static func capture(controller: GameSpeedController, metadata: Sc2xMetadata) -> void:
 	if controller == null or controller.engine == null or metadata == null:
 		return
 
 	var engine := controller.engine
-	metadata.process_random = engine.random.state & 0xffffffff
-	# the lfsr never leaves zero; the loader rejects it
-	metadata.lfsr_random = engine.lfsr_random.state if engine.lfsr_random.state != 0 else 1
-	metadata.game_random = engine.game_random.state & 0xffffffff
-	var state := metadata.phase_state.duplicate(true)
-	state["ship_home"] = [engine.ship_home.x, engine.ship_home.y]
-	state["commerce_connections"] = engine.commerce_connections
-	state["industry_connections"] = engine.industry_connections
-	state["bus_passengers"] = engine.bus_passengers
-	state["rail_passengers"] = engine.rail_passengers
-	state["subway_passengers"] = engine.subway_passengers
-	state["mayor_approval"] = engine.mayor_approval
-	state["pending_disaster_type"] = engine.pending_disaster_type
-	state["pending_disaster_point"] = [engine.pending_disaster_point.x, engine.pending_disaster_point.y]
-	state["active_disaster_type"] = engine.active_disaster_type
-	state["unsupported_disaster_type"] = engine.unsupported_disaster_type
-	state["disaster_map_counter"] = engine.disaster_map_counter
-	state["disaster_hurricane_counter"] = engine.disaster_hurricane_counter
-	state["terminal_state"] = engine.terminal_state
-	state["subtick_counter"] = controller.subtick_counter
-	state["simulation_ready"] = controller.simulation_ready
-	state["developed_tiles"] = engine.developed_tiles
-	state["power_usage_percent"] = engine.power_usage_percent
-	state["water_usage_percent"] = engine.water_usage_percent
-	state["city_status_resource_id"] = engine.city_status_resource_id
-	# the fire timer advances in whole base ticks while a fire burns
-	state[Sc2xMetadata.FIRE_TIMER_KEY] = roundi(controller.fire_elapsed_msec)
-	state[Sc2xMetadata.LAUNCH_ACTIVE_KEY] = engine.arcology_launch_active
-	metadata.phase_state = state
+	var randoms := PackedInt64Array([engine.random.state, engine.lfsr_random.state, engine.game_random.state])
+	var saved := NativeSimulation.checkpoint_capture(engine.state(), controller.state(), randoms, metadata.phase_state)
+	var saved_randoms: PackedInt64Array = saved.randoms
+	metadata.process_random = saved_randoms[0]
+	metadata.lfsr_random = saved_randoms[1]
+	metadata.game_random = saved_randoms[2]
+	metadata.phase_state = saved.phase_state
 
 
-# Restore the engine state of a loaded file. Returns an error for a value of
-# the wrong type; the engine then keeps the values of a fresh load.
 # True when a file holds the load-scan results, so the load does not scan again
 static func has_saved_state(metadata: Sc2xMetadata) -> bool:
 	return metadata != null and not metadata.phase_state.is_empty()
 
 
+# Restore the engine state of a loaded file. Returns an error for a value of
+# the wrong type; the engine then keeps the values of a fresh load.
 static func restore(controller: GameSpeedController, metadata: Sc2xMetadata) -> String:
 	if controller == null or controller.engine == null or metadata == null:
 		return ""
 
 	var engine := controller.engine
-	var state := metadata.phase_state
-	var error := validate(state)
+	var randoms := PackedInt64Array([metadata.process_random, metadata.lfsr_random, metadata.game_random])
+	var restored := NativeSimulation.checkpoint_restore(engine.state(), controller.state(), randoms, metadata.phase_state)
 
-	if not error.is_empty():
-		return error
+	if not str(restored.error).is_empty():
+		return restored.error
 
-	restore_random(controller.engine, metadata)
-
-	if state.is_empty():
-		return ""
-
-	engine.ship_home = _point(state.ship_home)
-	engine.commerce_connections = int(state.commerce_connections)
-	engine.industry_connections = int(state.industry_connections)
-	engine.bus_passengers = int(state.bus_passengers)
-	engine.rail_passengers = int(state.rail_passengers)
-	engine.subway_passengers = int(state.subway_passengers)
-	engine.mayor_approval = int(state.mayor_approval)
-	engine.pending_disaster_type = int(state.pending_disaster_type)
-	engine.pending_disaster_point = _point(state.pending_disaster_point)
-	engine.active_disaster_type = int(state.active_disaster_type)
-	engine.unsupported_disaster_type = int(state.unsupported_disaster_type)
-	engine.disaster_map_counter = int(state.disaster_map_counter)
-	engine.disaster_hurricane_counter = int(state.disaster_hurricane_counter)
-	engine.terminal_state = bool(state.terminal_state)
-	controller.subtick_counter = int(state.subtick_counter) & 7
-	controller.simulation_ready = bool(state.simulation_ready)
-	controller.terminal_blocked = engine.terminal_state
-	engine.developed_tiles = int(state.developed_tiles)
-	engine.power_usage_percent = int(state.power_usage_percent)
-	engine.water_usage_percent = int(state.water_usage_percent)
-	engine.city_status_resource_id = int(state.city_status_resource_id)
-	controller.fire_elapsed_msec = float(state.get(Sc2xMetadata.FIRE_TIMER_KEY, 0))
-	engine.arcology_launch_active = bool(state.get(Sc2xMetadata.LAUNCH_ACTIVE_KEY, false))
+	restore_random(engine, metadata)
+	engine.apply_state(restored.engine)
+	controller.apply_state(restored.controller)
 
 	return ""
 
@@ -126,7 +75,3 @@ static func restore_random(engine: SimulationEngine, metadata: Sc2xMetadata) -> 
 
 static func validate(state: Dictionary) -> String:
 	return Sc2xMetadata.phase_state_error(state)
-
-
-static func _point(value: Array) -> Vector2i:
-	return Vector2i(int(value[0]), int(value[1]))

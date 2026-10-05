@@ -155,6 +155,39 @@ impl NativeSimulation {
         result
     }
 
+    /// The saved random states and phase state of an SC2X save. See sc2k_game::checkpoint.
+    #[func]
+    fn checkpoint_capture(
+        engine: VarDictionary,
+        controller: VarDictionary,
+        randoms: PackedInt64Array,
+        phase_state: VarDictionary,
+    ) -> VarDictionary {
+        game::checkpoint_capture(&engine, &controller, &randoms, &phase_state)
+    }
+
+    /// The engine and controller state after a load restores its saved phase state.
+    #[func]
+    fn checkpoint_restore(
+        engine: VarDictionary,
+        controller: VarDictionary,
+        randoms: PackedInt64Array,
+        phase_state: VarDictionary,
+    ) -> VarDictionary {
+        game::checkpoint_restore(&engine, &controller, &randoms, &phase_state)
+    }
+
+    /// The text that blocks a save, or an empty string.
+    #[func]
+    fn checkpoint_save_error(pending_interaction: GString) -> GString {
+        let state = sc2k_game::state::EngineState {
+            pending_interaction: pending_interaction.to_string(),
+            ..Default::default()
+        };
+
+        GString::from(sc2k_game::checkpoint::save_error(&state).as_str())
+    }
+
     /// The operations that this library implements.
     #[func]
     fn operations() -> PackedStringArray {
