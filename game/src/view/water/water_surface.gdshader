@@ -1,6 +1,7 @@
 shader_type canvas_item;
 #include "res://src/view/environment/environment_color.gdshaderinc"
 #include "res://src/view/clouds/cloud_field.gdshaderinc"
+#include "res://src/view/water/water_appearance.gdshaderinc"
 
 uniform sampler2D animated_palette : source_color, filter_nearest, repeat_disable;
 uniform sampler2D water_surface : filter_nearest, repeat_disable;
@@ -41,30 +42,34 @@ void fragment() {
 		discard;
 	}
 	vec2 world = water_origin + (pixel + vec2(0.5)) * water_divisor;
+	vec4 bottom = water_has_seabed ? texture(water_seabed, UV) : vec4(0.0);
+	float level = round(surface.r * 255.0) - 1.0;
+	float depth = max(level - bottom.r * 31.0, 0.0);
 	float wave = sin(world.y * 0.17 + water_clock * 0.9)
 		+ 0.38 * sin((world.x + world.y) * 0.073 - water_clock * 0.61);
-	float offset = water_geometry_preview ? 0.0 : round(wave * (0.65 + 0.8 * water_rain));
+	vec4 original_reflection = texture(TEXTURE, UV);
+	// Distance attenuation is encoded in alpha by the geometry pass. Keep
+	// contact pixels still, particularly where bridge piers meet the water.
+	float detached = smoothstep(0.025, 0.20, 1.0 - original_reflection.a);
+	float offset = water_geometry_preview ? 0.0 : round(clamp(wave * (0.65 + 0.25 * water_rain) * detached, -1.0, 1.0)) / water_divisor;
 	vec2 reflected_uv = UV + vec2(offset, 0.0) / dimensions;
 	vec4 sampled_surface = texture(water_surface, reflected_uv);
 	vec4 reflected = texture(TEXTURE, reflected_uv);
-	if (abs(sampled_surface.r - surface.r) > 0.001 || sampled_surface.a < 0.5) {
-		reflected.a = 0.0;
+	if (any(lessThan(reflected_uv, vec2(0.0))) || any(greaterThanEqual(reflected_uv, vec2(1.0)))
+			|| abs(sampled_surface.r - surface.r) > 0.001 || sampled_surface.a < 0.5) {
+		reflected_uv = UV;
+		reflected = original_reflection;
 	}
-	vec3 base = water_ambient(cloud_shadow(palette_color(surface.g), cloud_ground_grid));
-	if (water_topography && water_has_seabed) {
-		vec4 bottom = texture(water_seabed, UV);
-		float level = round(surface.r * 255.0) - 1.0;
-		float ground = bottom.r * 31.0;
-		float depth = max(level - ground, 0.0);
-		float transmission = 0.24 * exp(-depth * 0.7) * bottom.a;
-		vec3 floor_color = water_ambient(cloud_shadow(vec3(0.47, 0.40, 0.25) * (0.65 + 0.45 * bottom.g), cloud_ground_grid));
-		base = mix(base, floor_color, transmission);
+	vec3 base = palette_color(surface.g);
+	if (!water_geometry_preview) {
+		base = water_body(base, bottom, depth, world, water_topography);
+		base *= 1.0 + water_light_lines(world, round(surface.b * 255.0), water_clock, water_rain);
 	}
+	base = water_ambient(cloud_shadow(base, cloud_ground_grid));
 	vec3 mirror_color = environment_color(cloud_shadow(palette_color(reflected.r), cloud_ground_grid), reflected_uv);
-	float strength = water_reflections_enabled ? (water_geometry_preview ? 1.0 : 0.20) : 0.0;
+	float strength = water_reflections_enabled ? (water_geometry_preview ? 1.0 : mix(0.15, 0.23, 1.0 - exp(-depth * 0.4) * bottom.a)) : 0.0;
 	if (!water_geometry_preview) {
 		mirror_color *= vec3(0.78, 0.87, 1.0);
 	}
-	float shimmer = water_geometry_preview ? 0.0 : max(wave - 0.72, 0.0) * 0.014;
-	COLOR = vec4(mix(base, mirror_color, reflected.a * strength) + base * shimmer, 1.0);
+	COLOR = vec4(mix(base, mirror_color, reflected.a * strength), 1.0);
 }

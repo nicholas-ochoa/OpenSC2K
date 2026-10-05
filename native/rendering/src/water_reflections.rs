@@ -36,6 +36,35 @@ fn horizontal_water(draw: &Draw, city: &City, config: Config) -> Option<usize> {
     (city.wet(i) || (0x10..=0x1e).contains(&t) || (0x20..=0x45).contains(&t)).then_some(i)
 }
 
+// A display-only channel axis, not simulated water velocity. Open water stays
+// calm; straight narrow reaches use their actual map connections for ripples.
+fn water_axis(city: &City, i: usize) -> u8 {
+    use crate::ids::terrain_tile_ids::*;
+    match city.terrain[i] {
+        CHANNEL_NS | CHANNEL_N | CHANNEL_S => return 1,
+        CHANNEL_EW | CHANNEL_E | CHANNEL_W => return 2,
+        _ => {}
+    }
+    let x = i as i32 / city.edge;
+    let y = i as i32 % city.edge;
+    let wet = |x: i32, y: i32| {
+        if x < 0 || y < 0 || x >= city.edge || y >= city.edge {
+            return false;
+        }
+        let n = city.index(x, y);
+        (city.wet(n)
+            || (DEEP_WATER_FIRST..=DEEP_WATER_DRAW_LAST).contains(&city.terrain[n])
+            || (SURFACE_WATER_FIRST..=CHANNEL_LAST).contains(&city.terrain[n]))
+            && city.terrain[n] != WATERFALL
+            && city.water(n) == city.water(i)
+    };
+    match [wet(x - 1, y), wet(x + 1, y), wet(x, y - 1), wet(x, y + 1)] {
+        [true, true, false, false] => 1,
+        [false, false, true, true] => 2,
+        _ => 0,
+    }
+}
+
 fn contact_row(draw: &Draw, column: i32, developed: bool) -> i32 {
     // Developed SC2K sprites stand on a diamond footprint. Its front boundary
     // slopes up by half a pixel per column from the centre to either edge.
@@ -151,6 +180,7 @@ impl Builder {
         for draw in self.collect(bounds)? {
             let sprite = &self.sprites.images[&draw.image];
             let water = horizontal_water(&draw, &self.city, self.config);
+            let axis = water.map_or(0, |i| water_axis(&self.city, i));
             let clipped = draw.rect.clip(bounds);
             for y in clipped.y..clipped.y + clipped.h {
                 for x in clipped.x..clipped.x + clipped.w {
@@ -163,7 +193,7 @@ impl Builder {
                     if let Some(i) = water.filter(|_| water_indices[sprite.rgba[src] as usize] != 0) {
                         let level = self.city.water(i);
                         levels[level as usize] = true;
-                        out.surface[dst..dst + 4].copy_from_slice(&[level as u8 + 1, sprite.rgba[src], 0, 255]);
+                        out.surface[dst..dst + 4].copy_from_slice(&[level as u8 + 1, sprite.rgba[src], axis, 255]);
                     }
                 }
             }
@@ -442,6 +472,24 @@ mod tests {
         let raised = output[(2 * 16 + 10) * 4];
         assert!(raised > near, "stored slope was flattened");
         assert_eq!(output[(15 * 16 + 15) * 4 + 3], 0);
+    }
+
+    #[test]
+    fn water_ripple_axes_follow_narrow_reaches_and_keep_open_water_calm() {
+        let mut builder = fixture(2);
+        let i = builder.city.index(2, 2);
+        assert_eq!(water_axis(&builder.city, i), 0);
+        for (x, y) in [(2, 1), (2, 3)] {
+            let n = builder.city.index(x, y);
+            builder.city.terrain[n] = 0;
+            builder.city.flags[n] = 0;
+        }
+        assert_eq!(water_axis(&builder.city, i), 1);
+        let n = builder.city.index(1, 2);
+        builder.city.altitude[n] = 1 << 5;
+        assert_eq!(water_axis(&builder.city, i), 0, "different water levels are not one channel");
+        builder.city.terrain[i] = crate::ids::terrain_tile_ids::CHANNEL_EW;
+        assert_eq!(water_axis(&builder.city, i), 2);
     }
 
     #[test]
