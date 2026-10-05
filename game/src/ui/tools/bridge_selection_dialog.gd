@@ -8,12 +8,19 @@ signal choice_requested(index: int)
 
 const Tiles = preload("res://src/tools/shared/building_tile_ids.gd")
 const Numbers = preload("res://src/ui/shared/display_number_format.gd")
+const PREVIEW_SIZE := Vector2i(240, 140)
+# the largest bridge art in a preview
+const PREVIEW_ART_SIZE := Vector2i(228, 128)
+# pixels of an HD preview for each interface pixel
+const ARTWORK_DENSITY := 4
 
 var choice_buttons: Array[Button] = []
 var preview_controls: Array[TextureRect] = []
 var choice_labels: Array[Label] = []
 var preview_palette: Sc2Palette
 var preview_sprites: Sc2SpriteArchive
+# HD previews by [request type, bridge type, palette, sprites]
+var _artwork_previews: Dictionary = {}
 
 
 func _ready() -> void:
@@ -62,7 +69,8 @@ func set_choices(
 			]
 		)
 		choice_button.tooltip_text = "Build %s" % choice.name
-		preview_controls[choice_index].texture = PixelArtTexture.wrap(preview_image(request_type, int(choice.type)))
+		var preview := preview_image(request_type, int(choice.type))
+		preview_controls[choice_index].texture = preview if preview is HdArtworkTexture else PixelArtTexture.wrap(preview)
 		preview_controls[choice_index].texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		choice_labels[choice_index].text = choice_button.text
 
@@ -114,13 +122,17 @@ func preview_image(request_type: String, bridge_type: int) -> Texture2D:
 	for tile in tiles:
 		bounds = bounds.merge(Rect2i(tile.position, tile.image.get_size()))
 
+	if not preview_sprites.high_resolution.is_empty():
+		return _artwork_preview(request_type, bridge_type, tiles, bounds)
+
 	var assembled := Image.create(maxi(1, bounds.size.x), maxi(1, bounds.size.y), false, Image.FORMAT_RGBA8)
 	assembled.fill(Color.TRANSPARENT)
 
 	for tile in tiles:
 		assembled.blend_rect(tile.image, Rect2i(Vector2i.ZERO, tile.image.get_size()), tile.position - bounds.position)
 
-	var factor := minf(1.0, minf(228.0 / assembled.get_width(), 128.0 / assembled.get_height()))
+	var factor := minf(1.0, minf(float(PREVIEW_ART_SIZE.x) / assembled.get_width(),
+		float(PREVIEW_ART_SIZE.y) / assembled.get_height()))
 
 	if factor < 1.0:
 		assembled.resize(
@@ -129,11 +141,59 @@ func preview_image(request_type: String, bridge_type: int) -> Texture2D:
 			Image.INTERPOLATE_NEAREST,
 		)
 
-	var output := Image.create(240, 140, false, Image.FORMAT_RGBA8)
+	var output := Image.create(PREVIEW_SIZE.x, PREVIEW_SIZE.y, false, Image.FORMAT_RGBA8)
 	output.fill(Color.TRANSPARENT)
 	output.blend_rect(assembled, Rect2i(Vector2i.ZERO, assembled.get_size()), (output.get_size() - assembled.get_size()) / 2)
 
 	return ImageTexture.create_from_image(output)
+
+
+# The preview with HD art, at ARTWORK_DENSITY pixels for each interface pixel.
+func _artwork_preview(request_type: String, bridge_type: int, tiles: Array[PreviewTile], bounds: Rect2i) -> Texture2D:
+	var key := [request_type, bridge_type, preview_palette, preview_sprites]
+
+	if _artwork_previews.has(key):
+		return _artwork_previews[key]
+
+	# the indexed preview fits PREVIEW_ART_SIZE; the HD art fills the same place
+	var fit := minf(1.0, minf(float(PREVIEW_ART_SIZE.x) / bounds.size.x, float(PREVIEW_ART_SIZE.y) / bounds.size.y))
+	var density := fit * ARTWORK_DENSITY
+	var assembled := Image.create(maxi(1, roundi(bounds.size.x * density)), maxi(1, roundi(bounds.size.y * density)), false,
+		Image.FORMAT_RGBA8)
+	assembled.fill(Color.TRANSPARENT)
+
+	for tile in tiles:
+		var art: HdSprite = preview_sprites.high_resolution.get(tile.sprite_id)
+		var size := tile.image.get_size()
+		var top := tile.position.y
+
+		if art != null:
+			# HD art can be taller than its sprite. It keeps the bottom edge
+			top += size.y - art.height
+			size.y = art.height
+
+		var target := Vector2i((Vector2(size) * density).round()).max(Vector2i.ONE)
+		var image: Image
+
+		if art != null:
+			image = HdSprite.scaled(art.image, target)
+
+			if tile.flip:
+				image.flip_x()
+		else:
+			image = tile.image.duplicate()
+			image.resize(target.x, target.y, Image.INTERPOLATE_NEAREST)
+
+		var position := Vector2i((Vector2(Vector2i(tile.position.x, top) - bounds.position) * density).round())
+		assembled.blend_rect(image, Rect2i(Vector2i.ZERO, image.get_size()), position)
+
+	var output := Image.create(PREVIEW_SIZE.x * ARTWORK_DENSITY, PREVIEW_SIZE.y * ARTWORK_DENSITY, false, Image.FORMAT_RGBA8)
+	output.fill(Color.TRANSPARENT)
+	output.blend_rect(assembled, Rect2i(Vector2i.ZERO, assembled.get_size()), (output.get_size() - assembled.get_size()) / 2)
+	var texture := HdArtworkTexture.create(output, PREVIEW_SIZE)
+	_artwork_previews[key] = texture
+
+	return texture
 
 
 func _append_preview_tile(tiles: Array[PreviewTile], sprite_id: int, baseline: Vector2i, flip := false) -> void:
@@ -150,7 +210,10 @@ func _append_preview_tile(tiles: Array[PreviewTile], sprite_id: int, baseline: V
 		if flip:
 			image.flip_x()
 
-		tiles.append(PreviewTile.new(image, baseline - Vector2i(image.get_width() / 2, image.get_height() - 1)))
+		var tile := PreviewTile.new(image, baseline - Vector2i(image.get_width() / 2, image.get_height() - 1))
+		tile.sprite_id = sprite_id
+		tile.flip = flip
+		tiles.append(tile)
 
 
 static func _preview_baseline(x: int, y: int) -> Vector2i:
@@ -160,6 +223,8 @@ static func _preview_baseline(x: int, y: int) -> Vector2i:
 class PreviewTile extends RefCounted:
 	var image: Image
 	var position: Vector2i
+	var sprite_id := -1
+	var flip := false
 
 	func _init(pixels: Image, origin: Vector2i) -> void:
 		image = pixels
