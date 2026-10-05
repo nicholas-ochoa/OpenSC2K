@@ -1691,6 +1691,12 @@
     "driver": "scene-batch"
   },
   {
+    "id": "city_life_artwork_test",
+    "script": "tests/city_life_artwork_test.gd",
+    "domain": "rendering",
+    "lane": "product"
+  },
+  {
     "id": "city_life_test",
     "script": "tests/city_life_test.gd",
     "domain": "rendering",

@@ -10,9 +10,11 @@ func _initialize() -> void:
 func _run() -> void:
 	var city := fixture()
 	_check_paths(city)
+	_check_network_sections()
 	_check_density(city)
 	_check_occlusion()
 	_check_spacing()
+	_check_vehicle_mix()
 	var before := DocumentState.capture(city.document)
 	var app := CityApplication.new()
 	var life := app.city_life
@@ -37,12 +39,14 @@ func _run() -> void:
 	var figure: CityLifeController.Figure = life.figures[0]
 	var initial_tile := figure.tile
 	var original_variant := figure.variant
+	var original_kind := figure.vehicle_kind
 	life.figures = [figure]
 	figure.wait = 0.0
 	for step in 100:
 		life._advance(city, 0.08)
 	assert(figure.tile != initial_tile, "Figures must cross tile boundaries")
 	assert(figure.variant == original_variant, "A figure must keep its appearance")
+	assert(figure.vehicle_kind == original_kind, "Vehicles must keep their type across tiles")
 	assert(DocumentState.capture(city.document) == before, "City life wrote saved city data")
 	# Zero density does not seed decorative traffic. Amount controls remain local.
 	life.figures.clear()
@@ -199,4 +203,149 @@ static func _check_spacing() -> void:
 	assert(life._crowded(a, Vector2.ZERO, false), "Cars must yield to a car ahead")
 	b.position = Vector2(-3, 1.5)
 	assert(not life._crowded(a, Vector2.ZERO, false), "A following car cannot block the leader")
+	b.vehicle_kind = CityLifeSprites.Vehicle.BUS
+	b.position = Vector2(5, -2.5)
+	life._rebuild_buckets()
+	assert(life._crowded(a, Vector2.ZERO, false), "A longer vehicle needs more following space")
 	life.app.free()
+
+
+static func _check_vehicle_mix() -> void:
+	var city := fixture()
+	var app := CityApplication.new()
+	var life := app.city_life
+	var near := Vector2i(64, 64)
+	life._refresh_bus_area(city)
+	var trucks := 0
+	for sample in 2000:
+		var kind := life._vehicle_kind(near)
+		assert(kind != CityLifeSprites.Vehicle.BUS, "No bus may appear without a nearby station")
+		trucks += int(kind == CityLifeSprites.Vehicle.TRUCK)
+	assert(trucks > 0 and trucks < 200, "Trucks must remain a small part of traffic")
+	city.set_building_id(62, 62, BuildingTileIds.BUS_DEPOT)
+	life._refresh_bus_area(city)
+	assert(life._bus_tiles.has(near))
+	assert(life._bus_tiles.has(Vector2i(62, 70)), "Roads at the station radius boundary are eligible")
+	assert(not life._bus_tiles.has(Vector2i(70, 70)), "Distant roads cannot show local buses")
+	var buses := 0
+	for sample in 2000:
+		buses += int(life._vehicle_kind(near) == CityLifeSprites.Vehicle.BUS)
+		assert(life._vehicle_kind(Vector2i(70, 70)) != CityLifeSprites.Vehicle.BUS)
+	assert(buses > 0 and buses < 120, "Buses must remain rarer than ordinary cars")
+	# A local bus must turn or retire before it leaves the station area.
+	var bus := CityLifeController.Figure.new()
+	bus.vehicle_kind = CityLifeSprites.Vehicle.BUS
+	bus.tile = Vector2i(62, 70)
+	bus.enter = 0
+	assert(life._exit(city, bus) == -1)
+	life._viewport = Rect2i(0, 0, 5000, 4000)
+	life._collect_tiles(city)
+	var before := DocumentState.capture(city.document)
+	var options := VisualEnhancementOptions.normalize({})
+	var spawned_bus := false
+	var spawned_truck := false
+	for step in 100:
+		life.figures.clear()
+		life._spawn(city, options)
+		for figure in life.figures:
+			if figure.walking:
+				assert(figure.vehicle_kind == CityLifeSprites.Vehicle.CAR)
+				continue
+			if figure.vehicle_kind == CityLifeSprites.Vehicle.BUS:
+				spawned_bus = true
+				assert(life._bus_tiles.has(figure.tile))
+				for tick in 60:
+					life._advance(city, 0.08)
+					assert(life._bus_tiles.has(figure.tile), "A bus left its station neighborhood")
+			spawned_truck = spawned_truck or figure.vehicle_kind == CityLifeSprites.Vehicle.TRUCK
+	assert(spawned_bus and spawned_truck, "Density-driven traffic must include both rare vehicle types")
+	assert(DocumentState.capture(city.document) == before, "Vehicle diversity cannot alter saved city data")
+	city.set_building_id(62, 62, 0)
+	life._refresh_bus_area(city)
+	assert(life._bus_tiles.is_empty(), "Removing a station must invalidate its display area")
+	city.set_building_id(0, 0, BuildingTileIds.BUS_DEPOT)
+	life._refresh_bus_area(city)
+	assert(life._bus_tiles.is_empty(), "An isolated boundary station does not create traffic on distant roads")
+	var sprites := CityLifeSprites.new()
+	for direction in 4:
+		var car := sprites.sprite(false, 0, direction, 0)
+		for kind in [CityLifeSprites.Vehicle.TRUCK, CityLifeSprites.Vehicle.BUS]:
+			var image := sprites.sprite(false, 0, direction, 0, kind)
+			assert(image.get_width() > car.get_width() and not image.is_invisible())
+			assert(image == sprites.sprite(false, 0, direction, 1, kind), "Vehicle artwork must share its cache")
+	app.free()
+
+
+static func _check_network_sections() -> void:
+	var city := CityState.from_document(EmptyCityTemplate.create(128))
+	var tile := Vector2i(64, 64)
+	# Every surface that previously received a car-pattern overlay has a lane.
+	for id in range(BuildingTileIds.ROAD_STRAIGHT_1, BuildingTileIds.REINFORCED_HIGHWAY_BRIDGE + 1):
+		var variant: int = IsometricConstants.TRAFFIC_TILE_VARIANTS[id - BuildingTileIds.ROAD_STRAIGHT_1]
+		if variant == 0:
+			continue
+		city.set_building_id(64, 64, id)
+		if id >= BuildingTileIds.HIGHWAY_CURVE_1 and id <= BuildingTileIds.HIGHWAY_CURVE_4:
+			var occupied := 0
+			for corner in [0x10, 0x20, 0x40, 0x80]:
+				city.set_building_corners(64, 64, corner)
+				if CityLifePaths.ports(city, tile) > 0:
+					occupied += 1
+			assert(occupied == 3, "A composite curve has three occupied footprint cells")
+		else:
+			assert(CityLifePaths.ports(city, tile) > 0, "Missing individual lanes for tile %02x" % id)
+	city.set_building_corners(64, 64, 0)
+	for flipped in [false, true]:
+		city.set_tile_flag(64, 64, Sc2TileFlags.FLIPPED, flipped)
+		for id in range(BuildingTileIds.SUSPENSION_BRIDGE_1, BuildingTileIds.RAISING_BRIDGE_CLOSED + 1):
+			city.set_building_id(64, 64, id)
+			city.set_tile_flag(64, 64, Sc2TileFlags.WATER, true)
+			city.set_water_altitude(64, 64, 3)
+			assert(CityLifePaths.ports(city, tile) == (10 if flipped else 5))
+			assert(CityLifePaths.edge_height(city, tile, 0) == 4.0)
+			assert(CityLifePaths.walkable(city, tile))
+		city.set_tile_flag(64, 64, Sc2TileFlags.WATER, false)
+		for id in range(BuildingTileIds.HIGHWAY_ONRAMP_1, BuildingTileIds.HIGHWAY_ONRAMP_4 + 1):
+			city.set_building_id(64, 64, id)
+			var high := CityLifePaths.ramp_highway_direction(city, tile)
+			var road := CityLifePaths.ramp_road_direction(city, tile)
+			assert(CityLifePaths.edge_height(city, tile, high) == 1.0)
+			assert(CityLifePaths.edge_height(city, tile, road) == 0.0)
+			assert(not CityLifePaths.walkable(city, tile))
+			var highway_tile: Vector2i = tile + CityLifePaths.DIRECTIONS[high]
+			var road_tile: Vector2i = tile + CityLifePaths.DIRECTIONS[road]
+			city.set_building_id(highway_tile.x, highway_tile.y, 0x49 if high % 2 == 0 else 0x4a)
+			city.set_building_id(road_tile.x, road_tile.y, 0x1d if road % 2 == 0 else 0x1e)
+			for direction in [high, road]:
+				assert(CityLifePaths.connected(city, tile, direction))
+				var next: Vector2i = tile + CityLifePaths.DIRECTIONS[direction]
+				var endpoint := CityLifePaths.point(city, tile, road if direction == high else high, direction, 1.0, false)
+				var startpoint := CityLifePaths.point(city, next, (direction + 2) % 4, direction, 0.0, false)
+				assert(endpoint.is_equal_approx(startpoint), "Ramp endpoints must meet both road levels without jumps")
+	# Real composite curves have one inside bend and one three-cell outside bend.
+	for shape in 4:
+		var id := BuildingTileIds.HIGHWAY_CURVE_1 + shape
+		for y in 2:
+			for x in 2:
+				city.set_building_id(64 + x, 64 + y, id)
+				city.set_tile_flag(64 + x, 64 + y, Sc2TileFlags.FLIPPED, false)
+				city.set_building_corners(64 + x, 64 + y, [[0x10, 0x20], [0x80, 0x40]][y][x])
+		for y in 2:
+			for x in 2:
+				var current := Vector2i(64 + x, 64 + y)
+				assert(CityLifePaths.section_origin(city, current) == tile)
+				for direction in 4:
+					var next: Vector2i = current + CityLifePaths.DIRECTIONS[direction]
+					if next.x < 64 or next.x > 65 or next.y < 64 or next.y > 65:
+						continue
+					if CityLifePaths.ports(city, current) & (1 << direction):
+						assert(CityLifePaths.connected(city, current, direction), "Composite bend lanes must be reciprocal")
+	city.set_building_id(64, 64, BuildingTileIds.HIGHWAY_ROAD_CROSSING_1)
+	assert(CityLifePaths.edge_height(city, tile, 0) == 1.0 and CityLifePaths.edge_height(city, tile, 1) == 0.0)
+	assert(not CityLifePaths.can_turn(city, tile, 0, 1), "Crossings must not connect a road directly to its overhead highway")
+	var source := Image.create(3, 30, false, Image.FORMAT_RGBA8)
+	source.fill(Color.WHITE)
+	var deck := CityLifeCanvas.deck_foreground(source, Vector2i.ZERO, Vector2(1, 20), 0.5)
+	assert(deck.get_pixel(1, 10).a == 1.0 and deck.get_pixel(1, 20).a == 0.0,
+		"Towers must remain foreground while the deck beneath a car is removed")
+	assert(source.get_pixel(1, 20) == Color.WHITE)

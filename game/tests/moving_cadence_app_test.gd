@@ -13,7 +13,7 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	# Preferences load on startup. This regression covers the classic display.
-	for key in ["traffic_planes_enabled", "traffic_helicopters_enabled", "traffic_ships_enabled", "traffic_shadows_enabled"]:
+	for key in ["traffic_planes_enabled", "traffic_helicopters_enabled", "traffic_ships_enabled", "traffic_trains_enabled", "traffic_shadows_enabled"]:
 		main.preferences.visual_enhancements[key] = false
 	main.set_process(false)
 	main.main_menu.city_background.set_process(false)
