@@ -29,19 +29,7 @@ vec3 palette_color(float encoded) {
 // Surface color receives ambient grading but never a reflected tree's season
 // mask or a reflected building's emission. Those belong to the mirror sample.
 vec3 water_ambient(vec3 base) {
-	if (!environment_enabled) { return base; }
-	float luminance = dot(base, vec3(0.2126, 0.7152, 0.0722));
-	vec3 color = mix(vec3(luminance), base, environment_saturation) * environment_tint * environment_weather;
-	if (environment_lut_size >= 2.0) {
-		float size = environment_lut_size;
-		vec3 p = clamp(color, vec3(0.0), vec3(1.0)) * (size - 1.0);
-		float z = floor(p.b);
-		vec2 xy = vec2(p.r + 0.5, p.g + 0.5);
-		vec2 a = vec2((xy.x + z * size) / (size * size), xy.y / size);
-		vec2 b = vec2((xy.x + min(z + 1.0, size - 1.0) * size) / (size * size), xy.y / size);
-		color = mix(texture(environment_lut, a).rgb, texture(environment_lut, b).rgb, fract(p.b));
-	}
-	return color;
+	return environment_ambient(base);
 }
 
 void fragment() {

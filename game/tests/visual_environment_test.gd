@@ -13,6 +13,9 @@ func _run() -> void:
 	var path := "user://visual_environment_%d.cfg" % OS.get_process_id()
 	var save := AppSettingsStore.SaveOptions.new()
 	save.visual_enhancements = VisualEnhancementOptions.normalize({"day_mode": 1, "day_hour": 7.0, "weather_fixed": 6})
+	save.visual_enhancements.day_lut_strength = 0.25
+	save.visual_enhancements.season_lut_strength = 0.75
+	save.visual_enhancements.weather_lut_strength = 0.0
 	assert(AppSettingsStore.save_values(0.5, 0.5, false, path, save) == OK)
 	assert(AppSettingsStore.load_values(path).visual_enhancements == save.visual_enhancements)
 	assert(AppSettingsStore.save_values(0.4, 0.4, false, path) == OK)
@@ -66,6 +69,12 @@ func _run() -> void:
 	main.preferences.visual_enhancements.weather_mode = 0
 	main.settings.open_settings_dialog()
 	var tab := main.main_overlays.settings_dialog.visual_tab
+	(tab.controls.day_lut_strength as SpinBox).value = 0.2
+	(tab.controls.season_lut_strength as SpinBox).value = 0.8
+	(tab.controls.weather_lut_strength as SpinBox).value = 0.6
+	assert(main.preferences.visual_enhancements.day_lut_strength == 0.2)
+	assert(main.preferences.visual_enhancements.season_lut_strength == 0.8)
+	assert(main.preferences.visual_enhancements.weather_lut_strength == 0.6)
 	var fixed := tab.controls.weather_fixed as OptionButton
 	fixed.select(CityVisualWeather.Kind.HEAVY_RAIN)
 	fixed.item_selected.emit(CityVisualWeather.Kind.HEAVY_RAIN)

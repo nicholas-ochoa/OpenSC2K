@@ -1,5 +1,6 @@
 shader_type canvas_item;
 render_mode unshaded;
+#include "res://src/view/environment/environment_color.gdshaderinc"
 #include "res://src/view/clouds/cloud_field.gdshaderinc"
 
 uniform mat3 cloud_canvas_to_body_grid = mat3(1.0);
@@ -14,5 +15,6 @@ void vertex() {
 }
 
 void fragment() {
-	COLOR = cloud_body(body_grid, cloud_map_edge, cloud_opacity, cloud_light);
+	vec4 cloud = cloud_body(body_grid, cloud_map_edge, cloud_opacity, cloud_light);
+	COLOR = vec4(environment_cloud_color(cloud.rgb), cloud.a);
 }
