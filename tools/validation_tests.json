@@ -353,6 +353,12 @@
     ]
   },
   {
+    "id": "scripting_types_test",
+    "script": "tests/scripting_types_test.gd",
+    "domain": "scripting",
+    "lane": "product"
+  },
+  {
     "id": "scripting_workflow_test",
     "script": "tests/scripting_workflow_test.gd",
     "domain": "scripting",
