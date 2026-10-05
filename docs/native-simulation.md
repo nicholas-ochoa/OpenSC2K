@@ -41,6 +41,16 @@ The paths below are in `native/core/sim`, except `src/bridge`, which is in `nati
   - `testing.rs` has test cities and scripted random generators.
 - `src/formats` holds the city file codecs. `rle.rs` decodes and encodes the Maxis run-length
   code of compressed chunks. `MaxisRle` calls it through `NativeMaxisRle`.
+  - `document.rs` holds `Document`, the chunks of a city file and the SC2X state outside them.
+    `Document::parse` selects the reader by the file signature: `sc2.rs` (SC2, SCN and SCLG
+    IFF files), `sc2kfix.rs` (the sc2kfix archive) or `sc2x/document.rs` (SC2X version 4).
+    `serialize` writes the format of the document. `Sc2File`, `Sc2xDocument`,
+    `Sc2xMetadata` and `Sc2kfixArchive` call them through `NativeCityDocument`
+    (`src/bridge/document.rs`), which converts a document to and from a dictionary.
+  - `sc2x/metadata.rs` reads and checks `metadata.json`, and writes the same text as the
+    Godot JSON writer. JSON and ZIP are in the `sc2k_formats` crate.
+  - `corpus_tests.rs` loads, saves and converts the generated cities and the supplied cities
+    and compares the results with the golden corpus (see [Golden corpus](golden-corpus.md)).
 - `src/bridge` converts Godot values. `NativeSimulation.run` takes one request and runs one operation.
 
 ## Calls from GDScript

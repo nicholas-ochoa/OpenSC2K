@@ -183,6 +183,7 @@ name = "opensc2k_simulation"
 version = "0.1.0"
 dependencies = [
  "godot",
+ "sc2k_formats",
  "sc2k_sim",
 ]
 
@@ -229,6 +230,9 @@ dependencies = [
 [[package]]
 name = "sc2k_sim"
 version = "0.1.0"
+dependencies = [
+ "sc2k_formats",
+]
 
 [[package]]
 name = "shlex"

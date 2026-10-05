@@ -5,6 +5,8 @@
 mod budgets;
 mod codec;
 mod convert;
+mod document;
+mod json_value;
 mod ops;
 mod reports;
 mod sc2x;

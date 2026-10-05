@@ -4,7 +4,9 @@
 pub mod bmp;
 pub mod crc32;
 pub mod gif;
+pub mod json;
 pub mod pe;
 pub mod png;
+pub mod sha256;
 pub mod sprite;
 pub mod zip;

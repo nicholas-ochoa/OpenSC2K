@@ -131,45 +131,121 @@ func parse(bytes: PackedByteArray) -> bool:
 	_clear_sc2x_state()
 
 	# the signature selects the reader, not the file extension
-	if Sc2kfixArchive.is_archive(bytes):
-		return Sc2kfixArchive.load_bytes(self, bytes)
+	var parsed: Dictionary = NativeCityDocument.parse(bytes)
 
-	if Sc2xDocument.is_archive(bytes):
-		if not Sc2xDocument.load_bytes(self, bytes):
-			return false
+	if not parsed.ok:
+		return _fail(parsed.error)
 
-		source_bytes = bytes.duplicate()
+	apply_native(parsed.document)
 
-		return true
+	return true
 
-	var form: Dictionary = NativeSc2Form.parse(bytes)
 
-	if not form.ok:
-		return _fail(form.error)
+# The document in the form of the native library. See
+# native/simulation/src/bridge/document.rs.
+func to_native() -> Dictionary:
+	var native_chunks := []
 
-	map_size = form.map_size
-	large_version = form.large_version
+	for chunk in chunks:
+		native_chunks.append({
+			"chunk_id": chunk.chunk_id, "source_offset": chunk.source_offset, "stored": chunk.stored_payload,
+			"decoded": chunk.decoded_payload, "expected_size": chunk.expected_decoded_size,
+			"compressed": chunk.is_compressed, "dirty": chunk.is_dirty,
+		})
 
-	for fields: Dictionary in form.chunks:
-		var chunk := ChunkType.new()
+	return {
+		"map_size": map_size, "large_version": large_version, "source_format": source_format,
+		"repaired_form_length": repaired_form_length, "source_bytes": source_bytes,
+		"chunks": native_chunks, "sc2x": _sc2x_native(),
+	}
+
+
+# Takes the fields and chunks of a native document. Chunk objects stay when the
+# chunk list keeps its IDs, so that holders of a chunk see the new payload.
+func apply_native(native: Dictionary) -> void:
+	map_size = native.map_size
+	large_version = native.large_version
+	source_format = native.source_format
+	repaired_form_length = native.repaired_form_length
+	source_bytes = native.source_bytes
+	var native_chunks: Array = native.chunks
+	var same := native_chunks.size() == chunks.size()
+
+	for index in native_chunks.size():
+		if same and chunks[index].chunk_id != native_chunks[index].chunk_id:
+			same = false
+
+	if not same:
+		chunks.clear()
+
+	for index in native_chunks.size():
+		var fields: Dictionary = native_chunks[index]
+		var chunk := chunks[index] if same else ChunkType.new()
 		chunk.chunk_id = fields.chunk_id
 		chunk.source_offset = fields.source_offset
 		chunk.stored_payload = fields.stored
 		chunk.decoded_payload = fields.decoded
 		chunk.expected_decoded_size = fields.expected_size
 		chunk.is_compressed = fields.compressed
-		chunks.append(chunk)
 
-	source_bytes = bytes.duplicate()
-	repaired_form_length = form.get("repaired_length", false)
+		if chunk.is_dirty != fields.dirty or fields.dirty:
+			chunk.is_dirty = fields.dirty
+			chunk.mutation_revision += 1
 
-	# an unchanged save writes the repaired length, never the zero
-	if repaired_form_length:
-		BinaryData.write_u32_be(source_bytes, 4, source_bytes.size() - 8)
+		if not same:
+			chunks.append(chunk)
 
+	apply_native_sc2x(native.sc2x)
 	rebuild_chunk_cache()
 
-	return true
+
+func _sc2x_native() -> Dictionary:
+	if sc2x_metadata == null:
+		return {}
+
+	var extra_names := PackedStringArray()
+	var extra_payloads := []
+	# the native library reads untyped arrays
+	var preserved := []
+	preserved.assign(sc2x_preserved)
+
+	for name in sc2x_extra_entries:
+		extra_names.append(name)
+		extra_payloads.append(sc2x_extra_entries[name])
+
+	return {
+		"metadata": sc2x_metadata.to_fields(), "compat_labels": sc2x_compat_labels,
+		"object_ids": sc2x_object_ids, "object_kinds": sc2x_object_kinds, "object_names": sc2x_object_names,
+		"xmic_extension": sc2x_extensions.get("XMIC", PackedByteArray()),
+		"xthg_extension": sc2x_extensions.get("XTHG", PackedByteArray()),
+		"text_orders": sc2x_text_orders, "preserved": preserved,
+		"extra_names": extra_names, "extra_payloads": extra_payloads,
+		"unsupported_features": sc2x_unsupported_features, "converted_from": sc2x_converted_from,
+	}
+
+
+# Takes the SC2X state of a native document. An empty state is an original city.
+func apply_native_sc2x(state: Dictionary) -> void:
+	if state.is_empty():
+		_clear_sc2x_state()
+
+		return
+
+	sc2x_metadata = Sc2xMetadata.from_fields(state.metadata)
+	sc2x_compat_labels = state.compat_labels
+	sc2x_object_ids = state.object_ids
+	sc2x_object_kinds = state.object_kinds
+	sc2x_object_names = state.object_names
+	sc2x_extensions = {"XMIC": state.xmic_extension, "XTHG": state.xthg_extension}
+	sc2x_text_orders = state.text_orders
+	sc2x_preserved.assign(state.preserved)
+	sc2x_extra_entries = {}
+
+	for index in state.extra_names.size():
+		sc2x_extra_entries[state.extra_names[index]] = state.extra_payloads[index]
+
+	sc2x_unsupported_features = state.unsupported_features
+	sc2x_converted_from = state.converted_from
 
 
 func is_valid() -> bool:
@@ -442,9 +518,6 @@ func set_misc_i32(offset: int, value: int) -> bool:
 
 
 func serialize(force_rebuild: bool = false) -> BinaryResult:
-	if is_sc2x():
-		return Sc2xDocument.encode(self)
-
 	var has_changes := false
 
 	for chunk in chunks:
@@ -452,7 +525,8 @@ func serialize(force_rebuild: bool = false) -> BinaryResult:
 			has_changes = true
 			break
 
-	if not force_rebuild and not has_changes and not source_bytes.is_empty():
+	# an unchanged original file writes its own bytes without a native call
+	if not is_sc2x() and not force_rebuild and not has_changes and not source_bytes.is_empty():
 		var unchanged_result := BinaryResult.new()
 		unchanged_result.ok = true
 		unchanged_result.data = source_bytes.duplicate()
@@ -460,18 +534,18 @@ func serialize(force_rebuild: bool = false) -> BinaryResult:
 
 		return unchanged_result
 
-	var ids := PackedStringArray()
-	var payloads := []
+	var saved: Dictionary = NativeCityDocument.serialize(to_native(), force_rebuild)
 
-	for chunk in chunks:
-		ids.append(chunk.chunk_id)
-		payloads.append(chunk.payload_for_write())
+	if not saved.ok:
+		return BinaryResult.failure(saved.error)
 
-	var output := NativeSc2Form.encode(map_size, large_version, ids, payloads)
+	# a working document stores its new identity counters
+	if is_sc2x():
+		apply_native_sc2x(saved.sc2x)
 
 	var outcome := BinaryResult.new()
 	outcome.ok = true
-	outcome.data = output
+	outcome.data = saved.bytes
 	outcome.error = ""
 
 	return outcome
@@ -526,58 +600,16 @@ func decoded_size(chunk_id: String) -> int:
 
 
 func resize_empty_map(edge: int) -> bool:
-	if edge not in MAP_SIZES or (is_sc2x() and edge != map_size):
-		return false
+	var resized: Dictionary = NativeCityDocument.resize_empty_map(to_native(), edge)
 
-	if edge == map_size:
-		return true
+	if resized.ok:
+		apply_native(resized.document)
 
-	var native_maps := full_resolution_maps()
-	map_size = edge
-	large_version = 3 if native_maps else 2
-	source_bytes.clear()
-
-	for chunk in chunks:
-		if chunk.chunk_id not in FULL_MAP_CHUNKS + HALF_MAP_CHUNKS + QUARTER_MAP_CHUNKS + ["XTHG", "XMIC", "XLAB"]:
-			continue
-
-		chunk.expected_decoded_size = decoded_size(chunk.chunk_id)
-		var data := PackedByteArray()
-		data.resize(chunk.expected_decoded_size)
-		chunk.set_decoded_payload(data)
-
-	set_misc_u32(Sc2MiscLayout.TILE_COUNTS, map_size * map_size)
-
-	return true
+	return resized.ok
 
 
 func upgrade_large_limits() -> void:
-	if map_size == 128 or large_version >= 2:
-		return
-
-	large_version = 2
-	source_bytes.clear()
-
-	for id in ["XTXT", "XMIC", "XLAB", "XTHG"]:
-		var chunk := find_chunk(id)
-
-		if chunk == null:
-			continue
-
-		var old := chunk.decoded_payload.duplicate()
-		chunk.expected_decoded_size = decoded_size(id)
-		var expanded := PackedByteArray()
-		expanded.resize(chunk.expected_decoded_size)
-
-		if id == "XTHG":
-			for index in Sc2ThingLayout.ORIGINAL_SIZE:
-				expanded[index] = old[index]
-				expanded[(expanded.size() / 2) + index] = old[Sc2ThingLayout.ORIGINAL_SIZE + index]
-		else:
-			for index in old.size():
-				expanded[index] = old[index]
-
-		chunk.set_decoded_payload(expanded)
+	apply_native(NativeCityDocument.upgrade_large_limits(to_native()))
 
 
 func is_extended() -> bool:
@@ -608,35 +640,24 @@ func label_record_size() -> int:
 # SCN city, or a digest of the raw entries of an SC2X version 4 city. Equal
 # snapshots mean that a save would write the same city.
 func content_snapshot() -> PackedByteArray:
-	if is_sc2x():
-		return Sc2xDocument.content_digest(self)
+	if not is_sc2x():
+		var serialized := serialize()
 
-	var serialized := serialize()
+		return serialized.data if serialized.ok else PackedByteArray()
 
-	return serialized.data if serialized.ok else PackedByteArray()
+	var result: Dictionary = NativeCityDocument.content_snapshot(to_native())
+	apply_native_sc2x(result.sc2x)
+
+	return result.snapshot
 
 
 func enable_full_resolution_maps() -> bool:
 	if full_resolution_maps():
 		return true
 
-	var expanded: Dictionary[String, PackedByteArray] = {}
+	var expanded: Dictionary = NativeCityDocument.enable_full_resolution_maps(to_native())
 
-	for id in HALF_MAP_CHUNKS + QUARTER_MAP_CHUNKS:
-		var chunk := find_chunk(id)
+	if expanded.ok:
+		apply_native(expanded.document)
 
-		if chunk == null or chunk.decoded_payload.size() != decoded_size(id):
-			return false
-
-		expanded[id] = CityDataGrid.expand(chunk.decoded_payload, map_size)
-
-	upgrade_large_limits()
-	large_version = 3
-	source_bytes.clear()
-
-	for id in expanded:
-		var chunk := find_chunk(id)
-		chunk.expected_decoded_size = decoded_size(id)
-		chunk.set_decoded_payload(expanded[id])
-
-	return true
+	return expanded.ok

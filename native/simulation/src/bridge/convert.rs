@@ -56,6 +56,13 @@ pub fn dictionary(dictionary: &VarDictionary, key: &str) -> VarDictionary {
     }
 }
 
+pub fn array(dictionary: &VarDictionary, key: &str) -> VarArray {
+    dictionary
+        .get(key)
+        .and_then(|value| value.try_to::<VarArray>().ok())
+        .unwrap_or_default()
+}
+
 pub fn ints32(dictionary: &VarDictionary, key: &str) -> Vec<i32> {
     match dictionary.get(key).and_then(|value| value.try_to::<PackedInt32Array>().ok()) {
         Some(values) => values.to_vec(),
