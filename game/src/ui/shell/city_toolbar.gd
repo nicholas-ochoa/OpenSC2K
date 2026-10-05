@@ -479,7 +479,8 @@ func _build_landscape_tools() -> void:
 		button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
 		button.tooltip_text = str(Tools.GROUPS[group].tools[tool].name)
 		button.icon = _icon_provider.call(group, tool) if _icon_provider.is_valid() else null
-		if group in [CityToolIds.Group.BULLDOZER, CityToolIds.Group.LANDSCAPE] and button.icon != null:
+		if (group in [CityToolIds.Group.BULLDOZER, CityToolIds.Group.LANDSCAPE] and button.icon != null
+				and not button.icon is HdArtworkTexture):
 			# terrain symbols are 19-pixel native icons, like the city toolbar
 			var native_icon := PixelArtTexture.unwrap(button.icon).get_image()
 			native_icon.resize(native_icon.get_width() / 2,

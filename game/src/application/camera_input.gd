@@ -5,6 +5,8 @@ const Tools = preload("res://src/tools/shared/tool_catalog.gd")
 const Zones = preload("res://src/tools/city/zone_command.gd")
 const ToolSounds = preload("res://src/audio/tool_sound_rules.gd")
 const CityRotation = preload("res://src/tools/city/city_rotation_command.gd")
+# pixels of an HD tool icon for each interface pixel
+const ARTWORK_ICON_DENSITY := 4
 
 var app: CityApplication
 
@@ -156,7 +158,9 @@ func choose_tool_group(group_index: int) -> void:
 
 
 func tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
-	return PixelArtTexture.wrap(_tool_button_icon(group_index, subtool_index))
+	var icon := _tool_button_icon(group_index, subtool_index)
+
+	return icon if icon is HdArtworkTexture else PixelArtTexture.wrap(icon)
 
 
 func _tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
@@ -207,6 +211,10 @@ func _tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
 	if entry == null:
 		return app.city_toolbar.group_icon(group_index) if app.city_toolbar != null else null
 
+	if app.asset_state.large_sprites.high_resolution.has(sprite_id):
+		return _artwork_tool_icon(app.asset_state.large_sprites.high_resolution[sprite_id], Vector2i(entry.width, entry.height),
+			group_index == CityToolIds.Group.ROADS and subtool_index == CityToolIds.Roads.HIGHWAY)
+
 	var rendered := entry.create_image(app.palette_clock.toolbar_palette if app.palette_clock.toolbar_palette != null
 		else app.asset_state.palette)
 
@@ -234,6 +242,27 @@ func _tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
 		)
 
 	return ImageTexture.create_from_image(image)
+
+
+# A tool icon with HD art, at the size of the indexed icon. The icon has
+# ARTWORK_ICON_DENSITY pixels for each interface pixel, for scaled interfaces.
+func _artwork_tool_icon(art: HdSprite, sprite_size: Vector2i, highway: bool) -> Texture2D:
+	# a highway icon shows a 2 by 2 highway piece, as the indexed icon does
+	var logical := sprite_size + (Vector2i(32, 16) if highway else Vector2i.ZERO)
+	var scale := minf(1.0, minf(48.0 / logical.x, 44.0 / logical.y))
+	var size := Vector2i(maxi(1, roundi(logical.x * scale)), maxi(1, roundi(logical.y * scale)))
+	var density := float(ARTWORK_ICON_DENSITY) * scale
+	var piece := HdSprite.scaled(art.image, Vector2i((Vector2(sprite_size) * density).round()))
+	var image := piece
+
+	if highway:
+		image = Image.create(roundi(logical.x * density), roundi(logical.y * density), false, Image.FORMAT_RGBA8)
+		image.fill(Color.TRANSPARENT)
+
+		for offset in [Vector2(16, 0), Vector2(0, 8), Vector2(32, 8), Vector2(16, 16)]:
+			image.blend_rect(piece, Rect2i(Vector2i.ZERO, piece.get_size()), Vector2i((offset * density).round()))
+
+	return HdArtworkTexture.create(image, size)
 
 
 func refresh_child_tool_icons() -> void:
