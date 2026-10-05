@@ -12,6 +12,23 @@ Debug mode adds:
 When you turn debug mode off, all debug views close. If a debug tool is selected,
 the Query tool replaces it.
 
+## Console
+
+Open the Console with Cmd+Shift+J (Ctrl+Shift+J on Windows and Linux) or
+Windows > Console. The shortcut works on every screen, also on the main menu.
+You can change it in Settings > Controls.
+
+The Console shows the output that the command line shows when you start the game
+from a terminal: messages, warnings and errors, with the script call stack of
+each error. It keeps the last 5000 entries. Use the checks and the filter field
+to show only some entries. **Copy** copies the entries that show. **Log Folder**
+opens the folder of the log files of earlier sessions.
+
+The Console can stay open while you play. It takes the keys only while it has
+focus. Type `help` in the command line to list the commands. Up and Down recall
+earlier commands, and Tab completes a command name. `ConsoleCommands.evaluator`
+receives the lines that are not commands, for a future script runtime.
+
 ## Tile Inspector
 
 Point at a tile to see its stored values:

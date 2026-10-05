@@ -157,6 +157,8 @@ func on_windows_menu(id: int) -> void:
 		city_map.open_window()
 	elif id == 7:
 		app.debug_overlay.toggle()
+	elif id == CityMenuBarView.MENU_CONSOLE:
+		app.console_window.open()
 	elif id == CityMenuBarView.MENU_SCENARIO_GOALS:
 		var engine := app.simulation_state.simulation_engine
 		if engine != null and engine.scenario != null:

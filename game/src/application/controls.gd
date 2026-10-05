@@ -69,6 +69,20 @@ func handle_music_key(event: InputEventKey) -> bool:
 	return app.audio_controller.handle_media_key(ControlActions.MUSIC_KEYS[action])
 
 
+# The console shortcut works on every screen, also while a text field has focus.
+func handle_console_key(event: InputEventKey) -> bool:
+	if app.console_window == null or not is_console_shortcut(event):
+		return false
+
+	app.console_window.toggle()
+
+	return true
+
+
+func is_console_shortcut(event: InputEvent) -> bool:
+	return bindings().action_for(event, [ControlActions.KIND_PRESS], [ControlActions.SCOPE_ANYWHERE]) == "window_console"
+
+
 # Run the press or click action of a key. Returns true when an action ran.
 func handle_key(event: InputEventKey) -> bool:
 	var action := bindings().action_for(event, [ControlActions.KIND_PRESS, ControlActions.KIND_CLICK])

@@ -65,6 +65,8 @@ var desktop_presentation: CityDesktopPresentation
 var scurk_place_print: ScurkPlacePrintControl
 var scurk_print: ScurkPrintControl
 var debug_overlay: CityDebugOverlay
+# the engine output, also when the game does not start from a command line
+var console_window: ConsoleWindow
 # shared state for the controllers; rules and scene ownership stay elsewhere
 var assets: ApplicationAssets = ApplicationAssets.new(self)
 var interface: ApplicationInterface = ApplicationInterface.new(self)
@@ -109,6 +111,9 @@ func _ready() -> void:
 	add_child(hover_focus)
 	hover_focus.attach(get_window())
 	get_tree().auto_accept_quit = false
+	console_window = ConsoleWindow.new()
+	console_window.toggle_shortcut = controls.is_console_shortcut
+	add_child(console_window)
 
 	if asset_state.reference_root.is_empty():
 		asset_state.reference_root = DataPack.default_folder()

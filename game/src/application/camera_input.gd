@@ -42,6 +42,10 @@ func camera_keys_allowed(allow_text_focus := false, allow_place_print := false) 
 				return false
 
 	for window in app.get_viewport().get_embedded_subwindows():
+		# the console can stay open beside the city. it takes the keys only while it has focus
+		if window == app.console_window and not window.has_focus():
+			continue
+
 		if window.visible and not (allow_place_print and window == app.scurk_place_print):
 			return false
 
@@ -69,7 +73,8 @@ func update_keyboard_camera(delta: float) -> void:
 
 
 func input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo and app.controls.handle_music_key(event):
+	if event is InputEventKey and event.pressed and not event.echo and (app.controls.handle_music_key(event)
+			or app.controls.handle_console_key(event)):
 		app.get_viewport().set_input_as_handled()
 
 		return

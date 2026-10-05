@@ -20,6 +20,7 @@ const MENU_RENAME_CITY := 9
 const MENU_UPGRADE_SC2X := 0x8303
 const MENU_CHECK_FOR_UPDATES := 0x8304
 const MENU_OPEN_AUTOSAVES := 0x8305
+const MENU_CONSOLE := 0x8306
 const MENU_ABOUT := 0
 const MENU_AUTO_BUDGET := 0x8004
 const MENU_AUTO_GOTO := 0x8005
@@ -82,6 +83,7 @@ const ACTION_ITEMS: Dictionary[String, Array] = {
 	"window_budget": ["windows", 0], "window_ordinances": ["windows", 1], "window_population": ["windows", 2],
 	"window_industry": ["windows", 3], "window_graphs": ["windows", 4], "window_neighbors": ["windows", 5],
 	"window_map": ["windows", 6], "window_debug": ["windows", 7], "window_scenario_goals": ["windows", MENU_SCENARIO_GOALS],
+	"window_console": ["windows", MENU_CONSOLE],
 }
 
 var bindings := ControlBindings.defaults()
@@ -382,6 +384,7 @@ func set_scenario_available(available: bool) -> void:
 		popup.add_item("Show Scenario Goals", MENU_SCENARIO_GOALS)
 
 	popup.add_separator()
+	popup.add_item("Console", MENU_CONSOLE)
 	popup.add_item("Debug", 7)
 	refresh_shortcut_hints(bindings)
 

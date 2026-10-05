@@ -148,6 +148,7 @@ static func _build() -> void:
 		_add(window[0], window[1], "Windows", SCOPE_MAP if window[0] != "window_debug" else SCOPE_GLOBAL, KIND_PRESS, window[3])
 
 	_add("window_newspaper", "Latest newspaper", "Windows", SCOPE_MAP, KIND_PRESS, ["key:N"])
+	_add("window_console", "Console", "Windows", SCOPE_ANYWHERE, KIND_PRESS, ["key:Command+Shift+J"])
 
 	_add("music_play_pause", "Play or pause music", "Music", SCOPE_ANYWHERE, KIND_PRESS, ["key:MediaPlay"])
 	_add("music_next", "Next track", "Music", SCOPE_ANYWHERE, KIND_PRESS, ["key:MediaNext"])

@@ -305,6 +305,12 @@
     "lane": "product"
   },
   {
+    "id": "console_window_test",
+    "script": "tests/console_window_test.gd",
+    "domain": "ui",
+    "lane": "product"
+  },
+  {
     "id": "control_binding_test",
     "script": "tests/control_binding_test.gd",
     "domain": "ui",
