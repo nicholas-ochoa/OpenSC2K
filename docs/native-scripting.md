@@ -24,6 +24,19 @@ and `build.rs` compiles them with the `cc` crate. The crate dependencies are
   - `tests.rs` holds the unit tests.
 - `src/prelude.js` is the runtime core: `console`, the timers, the event bus,
   `inspect` and the script commands. It keeps `__host` as `__runtime.host`.
+- `src/inspector` holds the DevTools inspector:
+  - `mod.rs` and `server.rs`: the HTTP and WebSocket server on 127.0.0.1. The
+    accept thread answers the `/json` discovery requests of `chrome://inspect`.
+    Each connection has a reader and a writer thread. The threads only move
+    message text; the main thread polls them.
+  - `websocket.rs`, `sha1.rs` and `base64.rs`: the request head, the frames and
+    the handshake key, written for this server.
+  - `inspector.js`: the Chrome DevTools Protocol handler. It runs in the runtime
+    after `prelude.js`, and keeps the table of remote objects.
+  - `tests.rs`: the server tests with a WebSocket client.
+- `src/engine/inspector_native.rs` holds `__inspectorNative`, the engine functions
+  that `inspector.js` uses: send, evaluate, syntax check, scripts, memory.
+  `src/engine/inspector_tests.rs` tests the protocol against a real engine.
 - `src/godot_class` holds `ScriptRuntime`, the Godot class, and the Variant
   conversion.
 
@@ -40,6 +53,23 @@ The first call from the game starts the time limit (5 seconds by default) and
 records the stack top. A nested call uses the same deadline. After the
 outermost call, the engine runs the promise jobs and reports each rejection
 without a handler through the host `console` function.
+
+## Inspector
+
+`ScriptRuntime.inspector_start(port, title)` starts the server, and
+`inspector_poll()` gives the arrived messages to `inspector.js`; GDScript calls
+it each frame. The engine records the source of each script file and module.
+`inspector.js` announces them as `Debugger.scriptParsed`. The prelude gives each
+console call and uncaught error to the inspector through `__runtime.taps`.
+`inspector_log(level, text)` sends a line of the game console.
+
+DevTools input runs as console input does, with top-level await. An evaluation
+that DevTools marks `throwOnSideEffect` (eager evaluation and completion) runs
+only when it is a name or a property path. A message that stops with an
+uncatchable error, such as the time limit, gets that error as its answer.
+
+QuickJS-ng has no debugger API. Breakpoints, pausing and stepping need a change
+to the interpreter loop of `quickjs.c`, thus they are not supported yet.
 
 A debug build of the crate keeps the QuickJS asserts. `JS_FreeRuntime` then
 stops on a leaked value, so `cargo test` without `--release` also checks for

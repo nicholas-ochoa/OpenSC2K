@@ -4,9 +4,11 @@
 use std::ffi::{CStr, c_char, c_void};
 
 use super::callbacks::throw_error;
+use super::state::EngineState;
 use crate::ffi::*;
 
-pub unsafe extern "C" fn load_module(context: *mut JSContext, name: *const c_char, _opaque: *mut c_void) -> *mut JSModuleDef {
+/// The opaque pointer is the EngineState, which keeps the module source.
+pub unsafe extern "C" fn load_module(context: *mut JSContext, name: *const c_char, opaque: *mut c_void) -> *mut JSModuleDef {
     unsafe {
         let path = CStr::from_ptr(name).to_string_lossy().into_owned();
 
@@ -18,6 +20,9 @@ pub unsafe extern "C" fn load_module(context: *mut JSContext, name: *const c_cha
                 return std::ptr::null_mut();
             }
         };
+
+        let state = &*(opaque as *const EngineState);
+        state.record_script(&path, &String::from_utf8_lossy(&source), true);
 
         // JS_Eval needs a NUL after the source
         let length = source.len();

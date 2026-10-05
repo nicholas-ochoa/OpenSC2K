@@ -196,30 +196,57 @@
     return values.map((value) => (typeof value === 'string' ? value : inspect(value))).join(' ');
   }
 
-  const counts = new Map();
-  const timings = new Map();
+  // the inspector sets these hooks: console(type, values) and exception(error, prefix)
+  const taps = { console: null, exception: null };
 
   // a console method returns undefined, as in a browser
   function write(level, line) {
     host('console', level, line);
   }
 
+  // writes the values to the game console, and gives them to the inspector
+  function log(level, type, values) {
+    write(level, text(values));
+
+    if (taps.console) {
+      taps.console(type, values);
+    }
+  }
+
+  // reports an uncaught error in the game console and in the inspector
+  function reportUncaught(error, prefix) {
+    write('error', `${prefix} ${formatError(error)}`);
+
+    if (taps.exception) {
+      taps.exception(error, prefix);
+    }
+  }
+
+  const counts = new Map();
+  const timings = new Map();
+
   const console = {
-    log: (...values) => write('log', text(values)),
-    info: (...values) => write('info', text(values)),
-    debug: (...values) => write('debug', text(values)),
-    warn: (...values) => write('warn', text(values)),
-    error: (...values) => write('error', text(values)),
-    trace: (...values) => write('log', `${text(values)}\n${new Error().stack.split('\n').slice(1).join('\n')}`),
-    dir: (value, options) => write('log', inspect(value, options)),
+    log: (...values) => log('log', 'log', values),
+    info: (...values) => log('info', 'info', values),
+    debug: (...values) => log('debug', 'debug', values),
+    warn: (...values) => log('warn', 'warning', values),
+    error: (...values) => log('error', 'error', values),
+    trace: (...values) => log('log', 'trace', [`${text(values)}\n${new Error().stack.split('\n').slice(1).join('\n')}`]),
+    dir: (value, options) => {
+      write('log', inspect(value, options));
+
+      if (taps.console) {
+        taps.console('dir', [value]);
+      }
+    },
     assert(condition, ...values) {
       if (!condition) {
-        write('error', `Assertion failed${values.length ? ': ' + text(values) : ''}`);
+        log('error', 'assert', [`Assertion failed${values.length ? ': ' + text(values) : ''}`]);
       }
     },
     count(label = 'default') {
       counts.set(label, (counts.get(label) || 0) + 1);
-      write('log', `${label}: ${counts.get(label)}`);
+      log('log', 'count', [`${label}: ${counts.get(label)}`]);
     },
     countReset(label = 'default') {
       counts.delete(label);
@@ -229,7 +256,7 @@
     },
     timeEnd(label = 'default') {
       if (timings.has(label)) {
-        write('log', `${label}: ${Date.now() - timings.get(label)} ms`);
+        log('log', 'timeEnd', [`${label}: ${Date.now() - timings.get(label)} ms`]);
         timings.delete(label);
       }
     },
@@ -339,7 +366,7 @@
       try {
         entry.listener(event);
       } catch (error) {
-        host('console', 'error', `Uncaught error in a "${type}" listener: ${formatError(error)}`);
+        reportUncaught(error, `Uncaught error in a "${type}" listener:`);
       }
     }
 
@@ -403,7 +430,7 @@
       try {
         timer.callback(...timer.values);
       } catch (error) {
-        host('console', 'error', `Uncaught error in a timer: ${formatError(error)}`);
+        reportUncaught(error, 'Uncaught error in a timer:');
       }
     }
 
@@ -456,7 +483,7 @@
           host('console', 'result', inspect(value));
         }
       },
-      (error) => host('console', 'error', `Uncaught ${formatError(error)}`),
+      (error) => reportUncaught(error, 'Uncaught'),
     );
   }
 
@@ -470,6 +497,8 @@
     tick,
     runCommand,
     settle,
+    reportUncaught,
+    taps,
     events: Object.freeze({ on, once, off, listenerCount, emit: (type, detail) => dispatch(type, detail, false) }),
     command,
   });

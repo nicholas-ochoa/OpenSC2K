@@ -5,11 +5,11 @@ use std::time::Duration;
 use super::Engine;
 use crate::value::JsData;
 
-type Calls = Rc<RefCell<Vec<(String, Vec<JsData>)>>>;
+pub type Calls = Rc<RefCell<Vec<(String, Vec<JsData>)>>>;
 
 /// An engine whose host records each call. `add` returns the sum of two
 /// integers and `fail` returns an error.
-fn engine_with_host() -> (Engine, Calls) {
+pub fn engine_with_host() -> (Engine, Calls) {
     let engine = Engine::new().expect("engine");
     let calls: Calls = Rc::new(RefCell::new(Vec::new()));
     let record = calls.clone();

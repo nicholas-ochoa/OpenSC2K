@@ -97,11 +97,13 @@ impl ScriptRuntime {
         engine.set_host(Some(function));
     }
 
-    /// Removes the host. The host Callable can refer to the object that keeps
-    /// this runtime; close breaks that cycle. Scripts then cannot call the game.
+    /// Stops the inspector and removes the host. The host Callable can refer
+    /// to the object that keeps this runtime; close breaks that cycle. Scripts
+    /// then cannot call the game.
     #[func]
     fn close(&self) {
         if let Some(engine) = &self.engine {
+            engine.stop_inspector();
             engine.set_host(None);
         }
     }
@@ -256,6 +258,66 @@ impl ScriptRuntime {
         if let Some(engine) = &self.engine {
             engine.collect_garbage();
         }
+    }
+
+    /// Starts the DevTools server on 127.0.0.1. Port 0 selects a free port.
+    /// Returns an empty text, or why it cannot start.
+    #[func]
+    fn inspector_start(&self, port: i64, title: GString) -> GString {
+        let Some(engine) = &self.engine else {
+            return GString::from(self.error.as_str());
+        };
+
+        match engine.start_inspector(port.clamp(0, u16::MAX as i64) as u16, &title.to_string()) {
+            Ok(_) => GString::new(),
+            Err(error) => GString::from(error.as_str()),
+        }
+    }
+
+    #[func]
+    fn inspector_stop(&self) {
+        if let Some(engine) = &self.engine {
+            engine.stop_inspector();
+        }
+    }
+
+    /// The port of the DevTools server, or 0 when it does not run.
+    #[func]
+    fn inspector_port(&self) -> i64 {
+        self.engine.as_ref().and_then(Engine::inspector_port).map_or(0, |port| port as i64)
+    }
+
+    /// True while a DevTools window is connected.
+    #[func]
+    fn inspector_connected(&self) -> bool {
+        self.engine.as_ref().is_some_and(Engine::inspector_connected)
+    }
+
+    /// Handles the DevTools messages that arrived. Call it once each frame.
+    #[func]
+    fn inspector_poll(&self) {
+        if let Some(engine) = &self.engine {
+            engine.poll_inspector();
+        }
+    }
+
+    /// Shows a line of the game console in DevTools: level is log, warning or error.
+    #[func]
+    fn inspector_log(&self, level: GString, text: GString) {
+        if let Some(engine) = &self.engine {
+            engine.inspector_game_log(&level.to_string(), &text.to_string());
+        }
+    }
+
+    /// The WebSocket address and the DevTools page of a port.
+    #[func]
+    fn inspector_urls(port: i64) -> PackedStringArray {
+        let port = port.clamp(0, u16::MAX as i64) as u16;
+        let mut urls = PackedStringArray::new();
+        urls.push(&GString::from(crate::inspector::websocket_url(port).as_str()));
+        urls.push(&GString::from(crate::inspector::frontend_url(port).as_str()));
+
+        urls
     }
 
     fn missing_engine(&self) -> VarDictionary {

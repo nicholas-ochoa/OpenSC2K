@@ -6,13 +6,18 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
+use std::sync::mpsc::Sender;
+
 use crate::ffi::*;
+use crate::inspector::Outgoing;
 use crate::value::JsData;
 
 /// Runs a host function: `(name, arguments)`. An error becomes a JavaScript
 /// Error with that message.
 pub type HostFunction = Rc<dyn Fn(&str, Vec<JsData>) -> Result<JsData, String>>;
 
+// the file names of the runtime core and the inspector
+pub const INTERNAL_PREFIX: &str = "opensc2k:";
 pub const DEFAULT_TIME_LIMIT: Duration = Duration::from_secs(5);
 
 pub struct EngineState {
@@ -25,6 +30,17 @@ pub struct EngineState {
     pub depth: Cell<u32>,
     // rejected promises without a handler: (promise, reason)
     pub rejections: RefCell<Vec<(JSValue, JSValue)>>,
+    // the script files and modules that ran, for the inspector
+    pub scripts: RefCell<Vec<ScriptRecord>>,
+    // the connection of an attached DevTools window
+    pub inspector_out: RefCell<Option<Sender<Outgoing>>>,
+}
+
+/// A script file or module that the runtime ran.
+pub struct ScriptRecord {
+    pub name: String,
+    pub source: String,
+    pub module: bool,
 }
 
 impl EngineState {
@@ -35,6 +51,8 @@ impl EngineState {
             deadline: Cell::new(None),
             depth: Cell::new(0),
             rejections: RefCell::new(Vec::new()),
+            scripts: RefCell::new(Vec::new()),
+            inspector_out: RefCell::new(None),
         }
     }
 
@@ -53,6 +71,19 @@ impl EngineState {
             }
             None => eprintln!("{text}"),
         }
+    }
+
+    /// Keeps the source of a script for the inspector. Internal scripts are not kept.
+    pub fn record_script(&self, name: &str, source: &str, module: bool) {
+        if name.starts_with(INTERNAL_PREFIX) {
+            return;
+        }
+
+        self.scripts.borrow_mut().push(ScriptRecord {
+            name: name.to_string(),
+            source: source.to_string(),
+            module,
+        });
     }
 
     pub fn deadline_passed(&self) -> bool {

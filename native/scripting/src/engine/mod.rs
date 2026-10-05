@@ -3,9 +3,11 @@
 //! method takes `&self` and holds no borrow while JavaScript runs.
 
 mod callbacks;
+mod inspector_native;
 mod modules;
 mod state;
 
+use std::cell::{Cell, RefCell};
 use std::ffi::{CString, c_char, c_void};
 use std::time::Duration;
 
@@ -13,6 +15,7 @@ pub use state::HostFunction;
 use state::{EngineState, Entry};
 
 use crate::ffi::*;
+use crate::inspector::{Activity, Inspector};
 use crate::value::{JsData, Owned, from_js, get_property, to_js, to_text};
 
 // the heap of one runtime. A larger script stops with an out-of-memory error
@@ -22,6 +25,14 @@ const STACK_LIMIT: usize = 512 * 1024;
 // the file name of console input in error stacks
 pub const CONSOLE_FILE_NAME: &str = "<console>";
 const RUNTIME_FILE_NAME: &str = "opensc2k:runtime";
+const INSPECTOR_FILE_NAME: &str = "opensc2k:inspector";
+// the protocol handler of the inspector; see inspector.js
+const INSPECTOR_HANDLE: &str = "__inspector.handle";
+const INSPECTOR_ATTACH: &str = "__inspector.attach";
+const INSPECTOR_DETACH: &str = "__inspector.detach";
+const INSPECTOR_SYNC: &str = "__inspector.sync";
+const INSPECTOR_GAME_LOG: &str = "__inspector.gameLog";
+const INSPECTOR_FAIL: &str = "__inspector.fail";
 // the runtime core defines this global; see prelude.js
 const RUNTIME_GLOBAL: &str = "__runtime";
 const HOST_GLOBAL: &str = "__host";
@@ -32,6 +43,9 @@ pub struct Engine {
     context: *mut JSContext,
     // boxed, thus the opaque pointers of the runtime and the context stay valid
     state: Box<EngineState>,
+    inspector: RefCell<Option<Inspector>>,
+    // the number of scripts at the last inspector sync
+    synced_scripts: Cell<usize>,
 }
 
 impl Engine {
@@ -55,10 +69,13 @@ impl Engine {
             runtime,
             context,
             state: Box::new(EngineState::new()),
+            inspector: RefCell::new(None),
+            synced_scripts: Cell::new(0),
         };
 
         engine.install_callbacks();
         engine.run_script(include_str!("../prelude.js"), RUNTIME_FILE_NAME)?;
+        engine.run_script(include_str!("../inspector/inspector.js"), INSPECTOR_FILE_NAME)?;
 
         Ok(engine)
     }
@@ -72,11 +89,20 @@ impl Engine {
             JS_SetContextOpaque(self.context, opaque);
             JS_SetInterruptHandler(self.runtime, Some(callbacks::interrupt), opaque);
             JS_SetHostPromiseRejectionTracker(self.runtime, Some(callbacks::track_rejection), opaque);
-            JS_SetModuleLoaderFunc(self.runtime, None, Some(modules::load_module), std::ptr::null_mut());
+            JS_SetModuleLoaderFunc(self.runtime, None, Some(modules::load_module), opaque);
 
             let global = Owned::new(self.context, JS_GetGlobalObject(self.context));
             let host = JS_NewCFunctionData(self.context, callbacks::host_call, 1, 0, 0, std::ptr::null_mut());
             crate::value::set_property(self.context, global.value(), HOST_GLOBAL, host);
+
+            let native = JS_NewObject(self.context);
+
+            for (name, magic, length) in inspector_native::FUNCTIONS {
+                let function = JS_NewCFunctionData(self.context, inspector_native::call, length, magic, 0, std::ptr::null_mut());
+                crate::value::set_property(self.context, native, name, function);
+            }
+
+            crate::value::set_property(self.context, global.value(), inspector_native::GLOBAL_NAME, native);
         }
     }
 
@@ -137,6 +163,7 @@ impl Engine {
         let input = SourceText::new(source);
         let module = file_name.ends_with(MODULE_EXTENSION) || unsafe { JS_DetectModule(input.pointer(), input.length()) };
         let flags = if module { JS_EVAL_TYPE_MODULE } else { JS_EVAL_TYPE_GLOBAL };
+        self.state.record_script(file_name, source, module);
         let value = self.eval(&input, file_name, flags)?;
         self.run_jobs();
 
@@ -284,8 +311,8 @@ impl Engine {
             }
 
             if status < 0 {
-                let error = self.take_exception();
-                self.state.report("error", &format!("Uncaught {error}"));
+                let exception = unsafe { Owned::new(self.context, JS_GetException(self.context)) };
+                self.report_uncaught(exception.value(), "Uncaught");
             }
         }
     }
@@ -294,13 +321,98 @@ impl Engine {
         let rejections = std::mem::take(&mut *self.state.rejections.borrow_mut());
 
         for (promise, reason) in rejections {
-            let text = self.format_error(reason);
-            self.state.report("error", &format!("Uncaught (in promise) {text}"));
+            self.report_uncaught(reason, "Uncaught (in promise)");
 
             unsafe {
                 JS_FreeValue(self.context, promise);
                 JS_FreeValue(self.context, reason);
             }
+        }
+    }
+
+    /// Reports an error in the game console and in the inspector, through
+    /// `__runtime.reportUncaught`.
+    fn report_uncaught(&self, error: JSValue, prefix: &str) {
+        let prefix_value = unsafe { Owned::new(self.context, crate::value::new_string(self.context, prefix)) };
+
+        if self.call_runtime("reportUncaught", &[error, prefix_value.value()]).is_none() {
+            let text = self.format_error(error);
+            self.state.report("error", &format!("{prefix} {text}"));
+        }
+    }
+
+    /// Starts the DevTools server on 127.0.0.1. Port 0 selects a free port.
+    /// Returns the port.
+    pub fn start_inspector(&self, port: u16, title: &str) -> Result<u16, String> {
+        self.stop_inspector();
+        let inspector = Inspector::start(port, title).map_err(|error| format!("Cannot listen on port {port}: {error}"))?;
+        let port = inspector.port();
+        *self.inspector.borrow_mut() = Some(inspector);
+
+        Ok(port)
+    }
+
+    pub fn stop_inspector(&self) {
+        let inspector = self.inspector.borrow_mut().take();
+
+        if inspector.as_ref().is_some_and(Inspector::connected) {
+            *self.state.inspector_out.borrow_mut() = None;
+            let _ = self.call(INSPECTOR_DETACH, &[]);
+        }
+    }
+
+    /// The port of the DevTools server, or None when it is not running.
+    pub fn inspector_port(&self) -> Option<u16> {
+        self.inspector.borrow().as_ref().map(Inspector::port)
+    }
+
+    pub fn inspector_connected(&self) -> bool {
+        self.inspector.borrow().as_ref().is_some_and(Inspector::connected)
+    }
+
+    /// Handles the DevTools messages that arrived, and announces new scripts.
+    pub fn poll_inspector(&self) {
+        let activity = match self.inspector.borrow_mut().as_mut() {
+            Some(inspector) => inspector.poll(),
+            None => return,
+        };
+
+        for item in activity {
+            let result = match item {
+                Activity::Attached => {
+                    *self.state.inspector_out.borrow_mut() = self.inspector.borrow().as_ref().and_then(Inspector::sender);
+                    self.synced_scripts.set(0);
+                    self.call(INSPECTOR_ATTACH, &[])
+                }
+                Activity::Message(text) => self.call(INSPECTOR_HANDLE, &[JsData::String(text)]),
+                Activity::Detached => {
+                    *self.state.inspector_out.borrow_mut() = None;
+                    self.call(INSPECTOR_DETACH, &[])
+                }
+            };
+
+            // an uncatchable error, such as the time limit, stops the message
+            // without an answer. DevTools gets the error as the answer
+            if let Err(error) = result {
+                let _ = self.call(INSPECTOR_FAIL, &[JsData::String(error)]);
+            }
+        }
+
+        let scripts = self.state.scripts.borrow().len();
+
+        if self.inspector_connected() && scripts != self.synced_scripts.get() {
+            self.synced_scripts.set(scripts);
+            let _ = self.call(INSPECTOR_SYNC, &[]);
+        }
+    }
+
+    /// Shows a line of the game console in the DevTools console.
+    pub fn inspector_game_log(&self, level: &str, text: &str) {
+        if self.inspector_connected() {
+            let _ = self.call(
+                INSPECTOR_GAME_LOG,
+                &[JsData::String(level.to_string()), JsData::String(text.to_string())],
+            );
         }
     }
 
@@ -413,6 +525,8 @@ impl SourceText {
 impl Drop for Engine {
     fn drop(&mut self) {
         self.set_host(None);
+        self.inspector.borrow_mut().take();
+        self.state.inspector_out.borrow_mut().take();
 
         for (promise, reason) in std::mem::take(&mut *self.state.rejections.borrow_mut()) {
             unsafe {
@@ -428,5 +542,7 @@ impl Drop for Engine {
     }
 }
 
+#[cfg(test)]
+mod inspector_tests;
 #[cfg(test)]
 mod tests;

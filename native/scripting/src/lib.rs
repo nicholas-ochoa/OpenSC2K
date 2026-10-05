@@ -6,6 +6,7 @@
 mod engine;
 mod ffi;
 mod godot_class;
+mod inspector;
 mod value;
 
 use godot::prelude::*;
