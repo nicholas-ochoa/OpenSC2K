@@ -18,17 +18,17 @@ var snow := 0.0
 var clock := 0.0
 var flash := 0.0
 var interval := 0.0
-var lightning_wait := 4.0
-var thunder_wait := -1.0
+var lightning := CityLightning.new()
+var audio: CityWeatherAudio
 var last_game_weather := -1
 var last_mode := -1
 var layer: ColorRect
 var material: ShaderMaterial
-var thunder: AudioStreamWAV
 
 
 func _init(application: CityApplication) -> void:
 	app = application
+	audio = CityWeatherAudio.new(app)
 	random.randomize()
 
 
@@ -53,8 +53,8 @@ func reset() -> void:
 	rain = 0.0
 	snow = 0.0
 	clock = 0.0
-	lightning_wait = 4.0
-	thunder_wait = -1.0
+	lightning.reset()
+	audio.reset()
 	flash = 0.0
 
 
@@ -89,7 +89,6 @@ func process(delta: float, phase_elapsed: float, active: bool, season: float) ->
 				kind = Kind.HEAVY_RAIN
 	else:
 		kind = Kind.SUNNY
-		thunder_wait = -1.0
 		flash = 0.0
 	var weight := minf(1.0, maxf(delta, 0.0) / float(options.weather_transition)) if enabled else 1.0
 	var strength := float(options.weather_strength)
@@ -103,19 +102,15 @@ func process(delta: float, phase_elapsed: float, active: bool, season: float) ->
 		snow = 0.0
 		frost = 0.0
 	clock = fposmod(clock + maxf(delta, 0.0), 3600.0)
-	flash = maxf(0.0, flash - delta * 3.0)
-	if kind in [Kind.RAIN_STORM, Kind.DRY_STORM] and enabled:
-		lightning_wait -= delta
-		if lightning_wait <= 0.0:
-			flash = strength
-			lightning_wait = random.randf_range(7.0, 18.0)
-			thunder_wait = random.randf_range(0.2, 1.2)
-	else:
-		thunder_wait = -1.0
-	if thunder_wait >= 0.0:
-		thunder_wait -= delta
-		if thunder_wait < 0.0:
-			play_thunder()
+	var storm := enabled and kind in [Kind.RAIN_STORM, Kind.DRY_STORM]
+	audio.update(delta, enabled and strength > 0.0, rain, storm)
+	var thunder_due := lightning.advance(delta, storm, strength)
+	flash = lightning.flash
+	if not audio.allowed():
+		# Muting or losing focus discards pending thunder, without a catch-up burst.
+		lightning.thunder_wait = -1.0
+	elif thunder_due:
+		audio.play_thunder(lightning, strength)
 	_sync_layer(enabled)
 
 
@@ -145,39 +140,6 @@ func _sync_layer(enabled: bool) -> void:
 	material.set_shader_parameter("snow", snow)
 	material.set_shader_parameter("flash", flash)
 
-
-func play_thunder() -> void:
-	var audio := app.audio_controller
-	if audio == null or not audio.audio_allowed() or audio.effects_volume <= 0.0 or not app.document_state.city.sound_enabled():
-		return
-	if AudioServer.get_driver_name() == "Dummy":
-		return
-	if thunder == null:
-		thunder = make_thunder()
-	var player := AudioStreamPlayer.new()
-	player.stream = thunder
-	player.volume_linear = audio.effects_volume
-	player.finished.connect(player.queue_free)
-	audio.add_child(player)
-	player.add_to_group(CityAudioController.SOUND_EFFECT_GROUP)
-	player.play()
-
-
-static func make_thunder() -> AudioStreamWAV:
-	var generator := RandomNumberGenerator.new()
-	generator.seed = 983574
-	var rate := 22050
-	var data := PackedByteArray()
-	data.resize(rate * 3 * 2)
-	var low := 0.0
-	for i in rate * 3:
-		var time := float(i) / rate
-		low = lerpf(low, generator.randf_range(-1.0, 1.0), 0.07)
-		var envelope := minf(time * 28.0, 1.0) * exp(-time * 1.6)
-		var value := clampi(int((low * 2.0 + sin(time * 43.0) * 0.08) * envelope * 26000.0), -32768, 32767)
-		data.encode_s16(i * 2, value)
-	var stream := AudioStreamWAV.new()
-	stream.format = AudioStreamWAV.FORMAT_16_BITS
-	stream.mix_rate = rate
-	stream.data = data
-	return stream
+	material.set_shader_parameter("flash_origin", lightning.origin)
+	material.set_shader_parameter("flash_spread", lightning.spread)
+	material.set_shader_parameter("flash_color", Vector3(lightning.color.r, lightning.color.g, lightning.color.b))

@@ -6,6 +6,9 @@ uniform float clock = 0.0;
 uniform float rain = 0.0;
 uniform float snow = 0.0;
 uniform float flash = 0.0;
+uniform vec2 flash_origin = vec2(0.5, -0.15);
+uniform float flash_spread = 0.8;
+uniform vec3 flash_color = vec3(0.87, 0.93, 1.0);
 
 float random(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 
@@ -30,5 +33,10 @@ void fragment() {
 	}
 	vec3 color = mix(vec3(0.64, 0.75, 0.85), vec3(0.94, 0.97, 1.0), step(rain_alpha, snow_alpha));
 	float alpha = clamp(rain_alpha + snow_alpha, 0.0, 0.9);
-	COLOR = vec4(mix(color, vec3(0.87, 0.93, 1.0), flash), max(alpha, flash * 0.72));
+	// Off-screen/cloud discharges illuminate a broad, varying part of the city.
+	// There is no cosmetic ground strike suggesting damage or a disaster.
+	vec2 offset = (UV - flash_origin) * vec2(extent.x / max(extent.y, 1.0), 1.0);
+	float illumination = 0.16 + 0.84 * exp(-dot(offset, offset) / (flash_spread * flash_spread));
+	float light = flash * illumination;
+	COLOR = vec4(mix(color, flash_color, light), max(alpha, light * 0.55));
 }

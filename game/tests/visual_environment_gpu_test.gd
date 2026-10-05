@@ -112,9 +112,16 @@ func _check_weather_layer() -> void:
 					changed += 1
 		assert(changed > 100 and changed < 20000, "Weather particles are absent or cover the entire city: %d" % changed)
 	weather.flash = 1.0
+	weather.rain = 0.0
+	weather.snow = 0.0
+	weather.lightning.origin = Vector2(0.0, 0.0)
+	weather.lightning.spread = 0.5
 	weather._sync_layer(true)
 	await RenderingServer.frame_post_draw
-	assert(viewport.get_texture().get_image().get_pixel(30, 30).r > sunny.get_pixel(30, 30).r, "Lightning was hidden behind the city")
+	var discharge := viewport.get_texture().get_image()
+	assert(discharge.get_pixel(30, 30).r > sunny.get_pixel(30, 30).r, "Lightning was hidden behind the city")
+	assert(discharge.get_pixel(30, 30).r > discharge.get_pixel(220, 160).r, "Lightning lost its spatial origin")
+	assert(discharge.get_pixel(104, 84).is_equal_approx(sunny.get_pixel(104, 84)), "Lightning covered the tool overlay")
 	weather.flash = 0.0
 	app.preferences.visual_enhancements.weather_fixed = CityVisualWeather.Kind.SUNNY
 	weather.process(5.0, 0.0, true, 1.0)

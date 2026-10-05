@@ -7,6 +7,22 @@ OpenSC2K packages also contain the separate works below. Each keeps its own
 license. The license texts are in `game/assets/licenses/fluidsynth` (in packages:
 `licenses/fluidsynth`, and in the game under **About > Licenses**). Developer details are in `docs/fluidsynth.md`.
 
+## Weather recordings
+
+- Files: `game/assets/audio/weather/*.ogg`.
+- License: CC0 1.0 Universal, separate from the project's MIT source license.
+- Rain (loopable), recordings 1 and 2, by Ylmir:
+  <https://opengameart.org/content/rain-loopable>.
+- Thunder 5, 6, 7 and 9, by LukaCafuka:
+  <https://freesound.org/people/LukaCafuka/packs/41572/>.
+- STE-050-quiet rumble thunder.wav, by tams_kp:
+  <https://freesound.org/people/tams_kp/sounds/653664/>.
+- Rain keeps the original loop audio. The public high-quality thunder previews
+  were filtered to reduce background rain, faded and encoded as Ogg Vorbis.
+  Individual links, hashes and processing are in the adjacent `sources.json`.
+- Full dedication and credits: `game/assets/licenses/Weather-Audio-CC0.txt`,
+  also available in the game under **About > Licenses > Weather recordings**.
+
 ## FluidSynth 2.6.1 shared library
 
 - File: `libfluidsynth-3.dll` (Windows), `libfluidsynth.3.dylib` (macOS,

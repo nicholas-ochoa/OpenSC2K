@@ -1,0 +1,72 @@
+[
+  {
+    "file": "rain_light.ogg",
+    "author": "Ylmir",
+    "source": "https://opengameart.org/content/rain-loopable",
+    "license": "CC0-1.0",
+    "source_file": "rain/1.ogg",
+    "source_sha256": "4f659f68cf5219007d0bb0969a1862491ceee4057fda4c491c6001e8608fa2cb",
+    "sha256": "5dd78e751891f46f69a1abbece2484a4dcc8e62917368b1e6e75a4050f3dc629",
+    "processing": "OGG stream copy; original loop"
+  },
+  {
+    "file": "rain_heavy.ogg",
+    "author": "Ylmir",
+    "source": "https://opengameart.org/content/rain-loopable",
+    "license": "CC0-1.0",
+    "source_file": "rain/2.ogg",
+    "source_sha256": "204bbdba67bd69f744bbb07d81155d0ee775960b979abd0a9b662b23dbc124fd",
+    "sha256": "2464cee56847f10a1b74dd3ca4e387585adc5aec0ea92d747a108c562e60f491",
+    "processing": "OGG stream copy; original loop"
+  },
+  {
+    "file": "thunder_0.ogg",
+    "author": "LukaCafuka",
+    "source": "https://freesound.org/people/LukaCafuka/sounds/750666/",
+    "license": "CC0-1.0",
+    "source_file": "750666.mp3",
+    "source_sha256": "c9be472b9ad09d8fa99b4a41d018b027b43300148f69a6e3796146708faab21d",
+    "sha256": "9dec0234cdd83934f2131fe70177ad7ad8a7db48f22167b379c1ad84136c8923",
+    "processing": "highpass=f=35,lowpass=f=1800,afftdn=nf=-35,afade=t=in:d=0.015,areverse,afade=t=in:d=1.5,areverse,alimiter=limit=0.75:level=false"
+  },
+  {
+    "file": "thunder_1.ogg",
+    "author": "LukaCafuka",
+    "source": "https://freesound.org/people/LukaCafuka/sounds/750667/",
+    "license": "CC0-1.0",
+    "source_file": "750667.mp3",
+    "source_sha256": "2ef436dea86daebc051d6c116ae31f0a91c344b9aac2fee9a84e45c6d0f624e3",
+    "sha256": "ea8287212bfc6b0515f499bb742f68fb102296d42360938934cfa5dc486111b6",
+    "processing": "highpass=f=35,lowpass=f=1800,afftdn=nf=-35,afade=t=in:d=0.015,areverse,afade=t=in:d=1.5,areverse,alimiter=limit=0.75:level=false"
+  },
+  {
+    "file": "thunder_2.ogg",
+    "author": "LukaCafuka",
+    "source": "https://freesound.org/people/LukaCafuka/sounds/750668/",
+    "license": "CC0-1.0",
+    "source_file": "750668.mp3",
+    "source_sha256": "1e1648074adb392a13c9fa76a028ecf39b857d8c2500822ed93ea331a01afefa",
+    "sha256": "3670e2311739009086b331c2e6dc0459f838a18677968aa11cc289fa9e682fd7",
+    "processing": "highpass=f=35,lowpass=f=1800,afftdn=nf=-35,afade=t=in:d=0.015,areverse,afade=t=in:d=1.5,areverse,alimiter=limit=0.75:level=false"
+  },
+  {
+    "file": "thunder_3.ogg",
+    "author": "LukaCafuka",
+    "source": "https://freesound.org/people/LukaCafuka/sounds/750670/",
+    "license": "CC0-1.0",
+    "source_file": "750670.mp3",
+    "source_sha256": "ed7d9c388455a7080ac5372b8fbedfdb0fffdb1d8c1851601673ca1983b60754",
+    "sha256": "078cd88d9093557b4f16b24f6b92d822fb4a78bea4d2901dec6bea6e9be52048",
+    "processing": "highpass=f=35,lowpass=f=1800,afftdn=nf=-35,afade=t=in:d=0.015,areverse,afade=t=in:d=1.5,areverse,alimiter=limit=0.75:level=false"
+  },
+  {
+    "file": "thunder_4.ogg",
+    "author": "tams_kp",
+    "source": "https://freesound.org/people/tams_kp/sounds/653664/",
+    "license": "CC0-1.0",
+    "source_file": "653664.mp3",
+    "source_sha256": "d5169a7dd88d266751b81dda28bdeb933bd20441d456b221fd861aa0d3724412",
+    "sha256": "ce9f4695cf20c3824b062b4cb1a079aaf0cbb4882de2a7aa5d4ca7bfbfd8d29e",
+    "processing": "highpass=f=35,lowpass=f=1800,afftdn=nf=-35,afade=t=in:d=0.015,areverse,afade=t=in:d=1.5,areverse,alimiter=limit=0.75:level=false"
+  }
+]

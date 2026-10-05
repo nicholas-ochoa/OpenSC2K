@@ -1,5 +1,11 @@
 [
   {
+    "id": "weather_audio_test",
+    "script": "tests/weather_audio_test.gd",
+    "domain": "audio",
+    "lane": "product"
+  },
+  {
     "id": "water_reflections_test",
     "script": "tests/water_reflections_test.gd",
     "domain": "rendering",
