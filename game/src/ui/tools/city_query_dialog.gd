@@ -57,7 +57,7 @@ func show_query(
 	animation_palette: Sc2Palette = null,
 	animation_ticks: int = 0,
 ) -> void:
-	title_label.text = "Query — %s" % query_title
+	title_label.text = tr("Query — %s") % (query_title if is_specific else tr(query_title))
 	name_input.visible = is_specific
 	name_input.text = initial_name if is_specific else ""
 	name_input.editable = false
@@ -121,7 +121,7 @@ func _populate_summary(details: String, info: QueryResult) -> void:
 			row.add_theme_constant_override("separation", 14)
 			card.add_child(row)
 			var label := Label.new()
-			label.text = line.left(split)
+			label.text = tr(line.left(split))
 			label.custom_minimum_size.x = 145
 			row.add_child(label)
 			var value := _summary_label(line.substr(split + 1).strip_edges())
@@ -152,7 +152,7 @@ func _populate_grid(grid: Tree, rows: Array[PackedStringArray]) -> void:
 
 func _summary_label(value: String) -> Label:
 	var label := Label.new()
-	label.text = value
+	label.text = tr(value)
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 	return label

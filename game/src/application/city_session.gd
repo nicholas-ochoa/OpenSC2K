@@ -70,10 +70,10 @@ func activate_document(
 	if not facility_repair.ok:
 		status_text += " " + str(facility_repair.error)
 	elif facility_repair.linked > 0 or facility_repair.unfilled > 0:
-		status_text += " Restored facility records for %d buildings." % facility_repair.linked
+		status_text += tr(" Restored facility records for %d buildings.") % facility_repair.linked
 
 		if facility_repair.unfilled > 0:
-			status_text += " %d buildings still need records; the table is full." % facility_repair.unfilled
+			status_text += tr(" %d buildings still need records; the table is full.") % facility_repair.unfilled
 
 	document_state.current_city_saved_once = not document_state.current_document.source_path.is_empty()
 	var source_path := document_state.current_document.source_path.simplify_path()

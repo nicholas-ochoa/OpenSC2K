@@ -21,7 +21,7 @@ static var _cache: Dictionary = {}
 
 static func headline() -> Font:
 	return _cached("headline", func() -> Font:
-		return load(HEADLINE_PATH) as Font
+		return AppLocalization.with_fallback(load(HEADLINE_PATH) as Font, true)
 	)
 
 
@@ -34,7 +34,7 @@ static func masthead(paper_index: int) -> Font:
 		# the variable masthead otherwise starts at its thinnest weight
 		variation.variation_opentype = { TextServerManager.get_primary_interface().name_to_tag("wght"): REGULAR_WEIGHT }
 
-		return variation
+		return AppLocalization.with_fallback(variation, true)
 	)
 
 
@@ -71,6 +71,7 @@ static func _system_font(names: Array[String], weight: int, italic: bool) -> Sys
 	font.font_names = PackedStringArray(names)
 	font.font_weight = weight
 	font.font_italic = italic
+	AppLocalization.with_fallback(font, weight == BOLD_WEIGHT)
 
 	return font
 

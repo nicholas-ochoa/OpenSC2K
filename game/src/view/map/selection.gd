@@ -418,7 +418,7 @@ func _get_tooltip(at_position: Vector2) -> String:
 
 	var reason := String(map.placement_error_provider.call(tile))
 
-	return "Cannot build here: " + reason if not reason.is_empty() else ""
+	return tr("Cannot build here: %s") % tr(reason) if not reason.is_empty() else ""
 
 
 func _show_placement_error(at_position: Vector2) -> void:

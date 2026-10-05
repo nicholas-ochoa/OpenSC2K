@@ -46,6 +46,7 @@ var fullscreen_check: CheckBox
 var zoom_graphics_selectors: Array[OptionButton] = []
 var overview_graphics_selector: OptionButton
 var theme_selector: OptionButton
+var language_selector: OptionButton
 var ui_scale_selector: OptionButton
 var translucent_menus_check: CheckBox
 var default_mayor_edit: LineEdit
@@ -74,6 +75,13 @@ func _ready() -> void:
 	update_status_label = %UpdateStatusLabel
 	default_mayor_edit = %DefaultMayorEdit
 	theme_selector = %ThemeSelector
+	language_selector = %LanguageSelector
+
+	# each language shows its own name, in every language
+	for code in AppLocalization.codes():
+		language_selector.add_item(AppLocalization.LANGUAGES[code])
+
+	language_selector.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	ui_scale_selector = %UiScaleSelector
 	translucent_menus_check = %TranslucentMenusCheck
 	effects_slider = %EffectsSlider
@@ -312,6 +320,7 @@ func selected_values() -> AppSettingsStore.Values:
 	var result := AppSettingsStore.Values.new()
 	result.default_mayor_name = default_mayor_edit.text.strip_edges()
 	result.ui_theme = "dark" if theme_selector.selected == 1 else "light"
+	result.ui_language = AppLocalization.codes()[maxi(0, language_selector.selected)]
 	result.translucent_menus = translucent_menus_check.button_pressed
 	result.ui_scale = AppUiScale.OPTIONS[maxi(0, ui_scale_selector.selected)]
 	result.overview_graphics = overview_graphics_selector.selected
@@ -430,11 +439,11 @@ func _bind_pack_controls(kind: String, edit: LineEdit, label: Label, browse: But
 	import_button.name = kind.capitalize() + "Import"
 	import_button.text = "Import..."
 	import_button.custom_minimum_size = browse.custom_minimum_size
-	import_button.tooltip_text = "Import only a %s pack from your copy of SimCity 2000." % kind
+	import_button.tooltip_text = tr("Import only a %s pack from your copy of SimCity 2000.") % tr(kind)
 	import_button.pressed.connect(_request_original_import.bind(PackedStringArray([kind])))
 	browse.get_parent().add_child(import_button)
 	pack_import_buttons[kind] = import_button
-	edit.placeholder_text = "Automatic (%s)" % MediaPack.default_folder(kind).path_join("pack.json")
+	edit.placeholder_text = tr("Automatic (%s)") % MediaPack.default_folder(kind).path_join("pack.json")
 
 
 func set_loaded_pack(kind: String, pack_name: String, path: String) -> void:
@@ -469,7 +478,7 @@ static func pack_file_path(value: String) -> String:
 func _pack_picker(kind: String, edit: LineEdit) -> FileDialog:
 	var picker := FileDialog.new()
 	picker.theme = AppUiTheme.file_dialog()
-	picker.title = "Select %s pack.json" % ("HD sprite" if kind == "hd" else kind)
+	picker.title = tr("Select %s pack.json") % tr("HD sprite" if kind == "hd" else kind)
 	picker.file_mode = FileDialog.FILE_MODE_OPEN_FILE
 	picker.filters = PackedStringArray(["pack.json ; OpenSC2K pack"])
 	picker.access = FileDialog.ACCESS_FILESYSTEM

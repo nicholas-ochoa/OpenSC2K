@@ -97,7 +97,7 @@ func rename_city() -> void:
 		DebugFileInfo.city_tooltip(app.document_state.city.display_name(), app.document_state.current_document))
 	app.reports.refresh_newspaper_menu()
 	app.status_label.theme_type_variation = ""
-	app.status_label.text = "City renamed to %s." % app.document_state.city.city_name()
+	app.status_label.text = tr("City renamed to %s.") % app.document_state.city.city_name()
 	app.scripting.emit("city.renamed", {"name": app.document_state.city.city_name()})
 
 
@@ -161,7 +161,7 @@ func upgrade_city_to_sc2x(confirmed := false) -> void:
 	var converted := Sc2xDocument.from_legacy(source, source.source_path.get_file().get_basename())
 
 	if not converted.ok:
-		app.interface.show_error("Cannot convert the city to SC2X: %s" % converted.error)
+		app.interface.show_error(tr("Cannot convert the city to SC2X: %s") % converted.error)
 
 		return
 
@@ -172,7 +172,7 @@ func upgrade_city_to_sc2x(confirmed := false) -> void:
 	var status := "City upgraded to SC2X. Save a separate copy; the original game cannot open it."
 
 	if not converted.issues.is_empty():
-		status += " %d links or records that SC2X cannot describe were kept unchanged." % converted.issues.size()
+		status += tr(" %d links or records that SC2X cannot describe were kept unchanged.") % converted.issues.size()
 
 	if not app.city_session.activate_document(document, _loaded_scenario(document), status, true):
 		return
@@ -357,7 +357,7 @@ func _read_city(path: String) -> ReadCity:
 
 		return read
 
-	read.status = "Loaded %s. Map view: %s." % [path.get_file(), CityViewMode.key(app.view_state.overlay_mode).capitalize()]
+	read.status = tr("Loaded %s. Map view: %s.") % [path.get_file(), CityViewMode.key(app.view_state.overlay_mode).capitalize()]
 
 	if document.source_format == "sc2kfix":
 		read.status = "Loaded the sc2kfix city %s. Map view: %s." % [path.get_file(), CityViewMode.key(app.view_state.overlay_mode).capitalize()]
@@ -370,16 +370,16 @@ func _read_city(path: String) -> ReadCity:
 		var converted := Sc2xDocument.from_legacy(document, path.get_file().get_basename())
 
 		if not converted.ok:
-			read.error = "Cannot convert %s to SC2X version 4: %s" % [path.get_file(), converted.error]
+			read.error = tr("Cannot convert %s to SC2X version 4: %s") % [path.get_file(), converted.error]
 
 			return read
 
 		converted.document.sc2x_converted_from = path
 		document = converted.document
-		read.status = "Converted %s to SC2X version 4. Save a new copy; the original file stays unchanged." % path.get_file()
+		read.status = tr("Converted %s to SC2X version 4. Save a new copy; the original file stays unchanged.") % path.get_file()
 
 		if not converted.issues.is_empty():
-			read.status += " %d links or records that SC2X cannot describe were kept unchanged." % converted.issues.size()
+			read.status += tr(" %d links or records that SC2X cannot describe were kept unchanged.") % converted.issues.size()
 
 	read.scenario = _loaded_scenario(document)
 
@@ -471,7 +471,7 @@ func _save_in_background(document: Sc2File, path: String, on_saved: Callable) ->
 		return
 
 	app.status_label.theme_type_variation = ""
-	app.status_label.text = "Saving city: %s" % prepared.path
+	app.status_label.text = tr("Saving city: %s") % prepared.path
 	save_task_id = WorkerThreadPool.add_task(func() -> void:
 		var written := CityFiles.write(prepared)
 		_finish_save.call_deferred(document, prepared, written, on_saved))
@@ -503,7 +503,7 @@ func _finish_save(document: Sc2File, prepared: CityFiles.PreparedSave, result: F
 		document_state.current_city_saved_once = true
 		document_state.saved_city_snapshot = prepared.snapshot
 		app.status_label.theme_type_variation = ""
-		app.status_label.text = "Saved city: %s" % result.path
+		app.status_label.text = tr("Saved city: %s") % result.path
 		sync_upgrade_city_option()
 		app.scripting.emit("city.saved", {"path": result.path})
 

@@ -60,7 +60,7 @@ func apply_tunnel_selection(
 			tunnel.error,
 			free_mode,
 		)
-		app.interface.show_error("Cannot build tunnel: %s" % tunnel.error)
+		app.interface.show_error(tr("Cannot build tunnel: %s") % tunnel.error)
 
 		return
 
@@ -75,7 +75,7 @@ func apply_tunnel_selection(
 	app.static_render.refresh_after_city_edit(tunnel)
 	app.effects_audio.play_tool_success_sound(app.tool_state.selected_group, app.tool_state.selected_subtool, free_mode)
 	app.status_label.theme_type_variation = ""
-	app.status_label.text = "Built a %d-tile tunnel for $%s." % [
+	app.status_label.text = tr("Built a %d-tile tunnel for $%s.") % [
 		tunnel.points.size(), app.interface.format_number(tunnel.cost),
 	]
 
@@ -170,7 +170,7 @@ func apply_highway_selection(
 			highway.error,
 			free_mode,
 		)
-		app.interface.show_error("Cannot build highway: %s" % highway.error)
+		app.interface.show_error(tr("Cannot build highway: %s") % highway.error)
 
 		return
 
@@ -182,28 +182,28 @@ func apply_highway_selection(
 	app.status_label.theme_type_variation = ""
 
 	if highway.bridge_count > 1:
-		app.status_label.text = ("Built %d highway sections and %d bridges for $%s."
+		app.status_label.text = (tr("Built %d highway sections and %d bridges for $%s.")
 				% [highway.sections.size(), highway.bridge_count, app.interface.format_number(highway.cost)])
 	elif highway.bridge_built:
 		if highway.sections.is_empty():
-			app.status_label.text = "Built a %s across %d water sections for $%s." % [
-				highway.bridge_name,
+			app.status_label.text = tr("Built a %s across %d water sections for $%s.") % [
+				tr(highway.bridge_name),
 				highway.bridge_span_length,
 				app.interface.format_number(highway.cost),
 			]
 		else:
-			app.status_label.text = "Built %d highway sections and a %s across %d water sections for $%s." % [
+			app.status_label.text = tr("Built %d highway sections and a %s across %d water sections for $%s.") % [
 				highway.sections.size(),
-				highway.bridge_name,
+				tr(highway.bridge_name),
 				highway.bridge_span_length,
 				app.interface.format_number(highway.cost),
 			]
 	elif highway.connection_built:
-		app.status_label.text = "Built %d highway sections and a neighboring-city connection for $%s." % [
+		app.status_label.text = tr("Built %d highway sections and a neighboring-city connection for $%s.") % [
 			highway.sections.size(), app.interface.format_number(highway.cost),
 		]
 	else:
-		app.status_label.text = "Built %d highway sections for $%s." % [
+		app.status_label.text = tr("Built %d highway sections for $%s.") % [
 			highway.sections.size(), app.interface.format_number(highway.cost),
 		]
 
@@ -212,14 +212,14 @@ func apply_highway_selection(
 		elif highway.bridge_cancelled:
 			app.status_label.text += " The bridge selection was canceled."
 		elif not highway.bridge_error.is_empty():
-			app.status_label.text += " The bridge was not built: %s." % highway.bridge_error
+			app.status_label.text += tr(" The bridge was not built: %s.") % highway.bridge_error
 		elif not highway.connection_error.is_empty():
 			app.status_label.text += " The connection was not offered because funds are too low."
 		elif highway.stopped_early:
 			app.status_label.text += " The route stopped at an obstruction."
 
 	if not highway.continuation_error.is_empty():
-		app.status_label.text += " Route stopped: %s." % highway.continuation_error
+		app.status_label.text += tr(" Route stopped: %s.") % highway.continuation_error
 	elif highway.bridge_built and highway.stopped_early:
 		app.status_label.text += " The route stopped at an obstruction."
 

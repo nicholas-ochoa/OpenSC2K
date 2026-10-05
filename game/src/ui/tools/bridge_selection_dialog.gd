@@ -38,7 +38,7 @@ func set_choices(
 	var span_units := (
 		"2 by 2 water sections" if request_type == "highway" else "water tiles"
 	)
-	dialog_text = "Select a bridge for %d %s." % [span_length, span_units]
+	dialog_text = tr("Select a bridge for %d %s.") % [span_length, tr(span_units)]
 	var cost_unit := (
 		"2 by 2 water section" if request_type == "highway" else "water tile"
 	)
@@ -54,11 +54,11 @@ func set_choices(
 		choice_button.text = (
 			"%s\nFree in Place & Print" % choice.name
 			if free_mode
-			else "%s\n$%s total\n$%s for each %s" % [
-				choice.name,
+			else tr("%s\n$%s total\n$%s for each %s") % [
+				tr(choice.name),
 				Numbers.format(int(choice.cost)),
 				Numbers.format(int(choice.cost_per_tile)),
-				cost_unit,
+				tr(cost_unit),
 			]
 		)
 		choice_button.tooltip_text = "Build %s" % choice.name

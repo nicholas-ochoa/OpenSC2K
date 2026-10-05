@@ -46,6 +46,18 @@ tooltip_text = "The mayor name for new cities."
 placeholder_text = "Mayor"
 max_length = 23
 
+[node name="LanguageLabel" type="Label" parent="Tabs/General/Fields"]
+custom_minimum_size = Vector2(150, 32)
+layout_mode = 2
+vertical_alignment = 1
+text = "Language"
+
+[node name="LanguageSelector" type="OptionButton" parent="Tabs/General/Fields"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+tooltip_text = "The language of menus and windows. Original game text, such as newspapers, uses the language of the imported game."
+
 [node name="ThemeLabel" type="Label" parent="Tabs/General/Fields"]
 custom_minimum_size = Vector2(150, 32)
 layout_mode = 2

@@ -144,12 +144,12 @@ func show_content(value: NewspaperContent, index: int) -> void:
 		var page := content.continuation_pages[slot] if slot < content.continuation_pages.size() else DEFAULT_EXTRA_PAGE
 		# the banner shows the lead headline
 		var heading := "" if slot == 0 else headline
-		articles.append(_add_story("", heading, article, "... (continued on pg %d)" % page, headline, article))
+		articles.append(_add_story("", heading, article, tr("... (continued on pg %d)") % page, headline, article))
 
-	weather = _add_report(content.weather_heading, "Weather", content.weather_headline, content.weather_article,
-		"Turn to pg %d for the full forecast" % content.weather_page)
-	opinion = _add_report(content.opinion_heading, "Opinion", content.opinion_headline, content.opinion_article,
-		"Turn to pg %d for the full column" % content.opinion_page)
+	weather = _add_report(content.weather_heading, tr("Weather"), content.weather_headline, content.weather_article,
+		tr("Turn to pg %d for the full forecast") % content.weather_page)
+	opinion = _add_report(content.opinion_heading, tr("Opinion"), content.opinion_headline, content.opinion_article,
+		tr("Turn to pg %d for the full column") % content.opinion_page)
 
 	if content.shows_picture():
 		photo = TextureRect.new()
@@ -473,7 +473,7 @@ func _fill_free_space(spaces: Array[Rect2]) -> void:
 		while available.has_area() and not candidates.is_empty():
 			var extra: NewspaperContent.ExtraStory = candidates.pop_front()
 			var page := extra.page if extra.page > 0 else DEFAULT_EXTRA_PAGE
-			var story := _add_story("", extra.headline, extra.article, "Turn to pg %d for the full story" % page,
+			var story := _add_story("", extra.headline, extra.article, tr("Turn to pg %d for the full story") % page,
 				extra.headline, extra.article)
 			story.columns = 1 if available.size.y < EXTRA_ONE_COLUMN_HEIGHT else NewspaperStory.columns_for_width(available.size.x)
 			story.fit(available)

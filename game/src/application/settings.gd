@@ -69,6 +69,7 @@ func open_settings_dialog() -> void:
 	app.main_overlays.settings_dialog.sprite_corrections_check.button_pressed = preferences.sprite_corrections
 	app.main_overlays.settings_dialog.recent_autosaves_check.button_pressed = preferences.recent_autosaves
 	app.main_overlays.settings_dialog.theme_selector.select(1 if preferences.ui_theme == "dark" else 0)
+	app.main_overlays.settings_dialog.language_selector.select(AppLocalization.codes().find(preferences.ui_language))
 	app.main_overlays.settings_dialog.translucent_menus_check.button_pressed = preferences.translucent_menus
 	app.main_overlays.settings_dialog.ui_scale_selector.select(AppUiScale.option_index(preferences.ui_scale))
 	app.main_overlays.settings_dialog.default_mayor_edit.text = preferences.default_mayor_name
@@ -183,6 +184,10 @@ func apply_settings() -> void:
 
 	app.assets.set_sprite_corrections(bool(values.sprite_corrections))
 	preferences.recent_autosaves = bool(values.recent_autosaves)
+
+	if preferences.ui_language != str(values.ui_language):
+		preferences.ui_language = AppLocalization.normalize(values.ui_language)
+		AppLocalization.select(preferences.ui_language)
 
 	if preferences.ui_theme != str(values.ui_theme) or preferences.translucent_menus != bool(values.translucent_menus):
 		preferences.ui_theme = str(values.ui_theme)
@@ -303,6 +308,8 @@ func load_app_settings() -> void:
 	app.menus.sync_map_style()
 	app.assets.set_sprite_corrections(bool(values.sprite_corrections))
 	preferences.recent_autosaves = bool(values.recent_autosaves)
+	preferences.ui_language = AppLocalization.normalize(values.ui_language)
+	AppLocalization.select(preferences.ui_language)
 	preferences.ui_theme = str(values.ui_theme)
 	preferences.translucent_menus = bool(values.translucent_menus)
 	AppUiTheme.select(preferences.ui_theme, preferences.translucent_menus)

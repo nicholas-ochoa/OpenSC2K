@@ -427,11 +427,11 @@ func set_newspapers(titles: PackedStringArray, subscribed := false, extras := fa
 
 
 func set_population(display_value: String, available := true) -> void:
-	population_label.text = "Population: %s" % display_value
+	population_label.text = tr("Population: %s") % display_value
 	population_label.set_meta(
 		"status_tooltip_text",
 		(
-			"Current city population: %s" % display_value
+			tr("Current city population: %s") % display_value
 			if available
 			else "Current city population is not available."
 		),
@@ -441,12 +441,12 @@ func set_population(display_value: String, available := true) -> void:
 
 func set_date(display_date: String) -> void:
 	date_label.text = display_date
-	date_label.tooltip_text = "Current city date: %s" % display_date
+	date_label.tooltip_text = tr("Current city date: %s") % display_date
 
 
 func set_money(display_money: String) -> void:
 	money_label.text = display_money
-	money_label.tooltip_text = "Current city funds: %s" % display_money
+	money_label.tooltip_text = tr("Current city funds: %s") % display_money
 
 
 func set_fps(frames_per_second: int) -> void:

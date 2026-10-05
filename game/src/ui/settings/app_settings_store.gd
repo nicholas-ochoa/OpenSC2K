@@ -31,6 +31,7 @@ static func load_values(
 	result.sprite_corrections = bool(config.get_value("graphics", "sc2kfix_sprite_corrections", false))
 	result.recent_autosaves = bool(config.get_value("general", "recent_autosaves", true))
 	result.ui_theme = normalize_theme(config.get_value("general", "ui_theme", "light"))
+	result.ui_language = AppLocalization.normalize(config.get_value("general", "ui_language", AppLocalization.DEFAULT))
 	result.translucent_menus = bool(config.get_value("general", "translucent_menus", true))
 	result.ui_scale = AppUiScale.normalize(config.get_value("general", "ui_scale", AppUiScale.DEFAULT))
 	result.default_mayor_name = str(config.get_value("general", "default_mayor_name", "Mayor"))
@@ -221,6 +222,9 @@ static func save_values(
 	if options.ui_theme != null:
 		config.set_value("general", "ui_theme", normalize_theme(options.ui_theme))
 
+	if options.ui_language != null:
+		config.set_value("general", "ui_language", AppLocalization.normalize(options.ui_language))
+
 	if options.translucent_menus != null:
 		config.set_value("general", "translucent_menus", bool(options.translucent_menus))
 
@@ -337,6 +341,7 @@ static func save_update_state(
 class Values extends RefCounted:
 	var default_mayor_name := "Mayor"
 	var ui_theme := "light"
+	var ui_language := AppLocalization.DEFAULT
 	var ui_scale := AppUiScale.DEFAULT
 	var translucent_menus := true
 	var dark_underground := false
@@ -394,6 +399,7 @@ class SaveOptions extends RefCounted:
 	var default_mayor_name: Variant = null
 	var overview_graphics: Variant = null
 	var ui_theme: Variant = null
+	var ui_language: Variant = null
 	var dark_underground: Variant = null
 	var sprite_corrections: Variant = null
 	var recent_autosaves: Variant = null

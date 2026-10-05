@@ -52,7 +52,7 @@ func process(delta: float) -> void:
 	if not result.ok:
 		app.simulation_state.speed_controller.set_speed(GameSpeed.Speed.PAUSED)
 		sync_speed_ui()
-		app.interface.show_error("Simulation stopped: %s" % result.error)
+		app.interface.show_error(tr("Simulation stopped: %s") % result.error)
 
 		return
 
@@ -229,7 +229,7 @@ func select_speed(speed_value: int) -> void:
 
 	sync_speed_ui()
 	app.status_label.theme_type_variation = ""
-	app.status_label.text = "%s speed selected." % app.simulation_state.speed_controller.speed_name()
+	app.status_label.text = tr("%s speed selected.") % tr(app.simulation_state.speed_controller.speed_name())
 	app.scripting.emit("sim.speed", {"speed": app.simulation_state.speed_controller.speed_name()})
 
 

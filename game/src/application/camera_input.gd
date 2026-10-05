@@ -266,7 +266,7 @@ func rotate_city(counter_clockwise: bool) -> void:
 	var result := CityRotation.apply(app.document_state.city, counter_clockwise)
 
 	if not result.ok:
-		app.interface.show_error("Cannot rotate city: %s" % result.error)
+		app.interface.show_error(tr("Cannot rotate city: %s") % result.error)
 		return
 
 	if app.simulation_state.simulation_engine != null:
@@ -415,7 +415,7 @@ func on_map_selection_changed(
 	if not preview.ok:
 		app.map_view.clear_selection_price()
 		app.status_label.theme_type_variation = "ErrorLabel"
-		app.status_label.text = "Cannot start zone selection: %s" % preview.error
+		app.status_label.text = tr("Cannot start zone selection: %s") % preview.error
 		return
 
 	var cost := int(preview.cost)
@@ -426,13 +426,13 @@ func on_map_selection_changed(
 	app.status_label.theme_type_variation = ""
 
 	if free:
-		app.status_label.text = "%s preview: %d tiles; free in SCURK." % [tool_name, int(preview.changed_tiles)]
+		app.status_label.text = tr("%s preview: %d tiles; free in SCURK.") % [tr(tool_name), int(preview.changed_tiles)]
 		return
 
-	app.status_label.text = "%s preview: %d charged %s for $%s." % [
-		tool_name,
+	app.status_label.text = tr("%s preview: %d charged %s for $%s.") % [
+		tr(tool_name),
 		int(preview.charged_tiles),
-		"tile" if int(preview.charged_tiles) == 1 else "tiles",
+		tr("tile" if int(preview.charged_tiles) == 1 else "tiles"),
 		app.interface.format_number(cost),
 	]
 
@@ -445,7 +445,7 @@ func center_map_on_tile(point: Vector2i) -> void:
 	if app.map_view.center_on_tile(point):
 		app.effects_audio.play_tool_success_sound(CityToolIds.Group.CENTERING, CityToolIds.Centering.CENTER)
 		app.status_label.theme_type_variation = ""
-		app.status_label.text = "Centered the map on tile %d, %d." % [point.x, point.y]
+		app.status_label.text = tr("Centered the map on tile %d, %d.") % [point.x, point.y]
 
 
 func center_map_on_disaster() -> void:

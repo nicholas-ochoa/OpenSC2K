@@ -19,6 +19,18 @@ func _ready() -> void:
 	build()
 
 
+# the buttons put the tool names in their text, so they change with the language
+func _notification(what: int) -> void:
+	if what != NOTIFICATION_TRANSLATION_CHANGED or shown_group < 0:
+		return
+
+	for subtool_index: int in buttons:
+		var button := buttons[subtool_index] as Button
+		var tool := Tools.tool(shown_group, subtool_index)
+		button.text = tr(tool.name) if free_landscape else "%s\n%s" % [tr(tool.name), _tool_price(tool)]
+		button.tooltip_text = tool_button_tooltip(shown_group, subtool_index, not button.disabled)
+
+
 func build() -> void:
 	if heading != null:
 		return
@@ -181,23 +193,23 @@ func tool_button_tooltip(
 			"Click to keep the panel on a tile. Inspection does not change the city.")
 
 	var price := _tool_price(tool)
-	var lines := PackedStringArray([str(tool.name)])
+	var lines := PackedStringArray([tr(str(tool.name))])
 
 	if not free_landscape:
-		lines.append("Cost: %s" % price)
+		lines.append(tr("Cost: %s") % price)
 
 	if int(tool.area) > 0:
-		lines.append("Footprint: %d x %d tiles" % [tool.area, tool.area])
+		lines.append(tr("Footprint: %d x %d tiles") % [tool.area, tool.area])
 
 	if group_index == CityToolIds.Group.POWER and subtool_index >= CityToolIds.Power.COAL:
 		var details := Tools.power_plant_details(subtool_index)
 
 		if details != null:
-			lines.append("Nominal output: %d MW" % details.output_mw)
-			lines.append("Grid capacity: %s" % details.grid_capacity)
-			lines.append("Pollution factor: %d" % details.pollution)
-			lines.append("Service life: %s" % details.service_life)
-			lines.append(str(details.note))
+			lines.append(tr("Nominal output: %d MW") % details.output_mw)
+			lines.append(tr("Grid capacity: %s") % tr(details.grid_capacity))
+			lines.append(tr("Pollution factor: %d") % details.pollution)
+			lines.append(tr("Service life: %s") % tr(details.service_life))
+			lines.append(tr(str(details.note)))
 
 	const FACILITY_DETAILS := {
 		"220": "Requires power and pipes. Output depends on weather and nearby water; each adjacent fresh-water tile adds 10 supply units.",
@@ -222,10 +234,10 @@ func tool_button_tooltip(
 	var tile_id := BuildingSites.tile_for_tool(group_index, subtool_index)
 
 	if FACILITY_DETAILS.has(str(tile_id)):
-		lines.append(FACILITY_DETAILS[str(tile_id)])
+		lines.append(tr(FACILITY_DETAILS[str(tile_id)]))
 
 	if not available:
-		lines.append("Status: Not available in this city.")
+		lines.append(tr("Status: Not available in this city."))
 
 	return "\n".join(lines)
 
@@ -251,7 +263,7 @@ func _create_button(
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.toggle_mode = true
 	button.button_group = button_group
-	button.text = str(tool.name) if free_landscape else "%s\n%s" % [tool.name, _tool_price(tool)]
+	button.text = tr(str(tool.name)) if free_landscape else "%s\n%s" % [tr(tool.name), _tool_price(tool)]
 	button.clip_text = true
 	button.theme_type_variation = "ArtworkButton"
 	button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -273,7 +285,7 @@ func _create_button(
 
 func _tool_price(tool: ToolCatalog.Tool) -> String:
 	if free_landscape:
-		return "Free"
+		return tr("Free")
 
 	return (
 		"Free"

@@ -88,7 +88,7 @@ func _draw() -> void:
 		)
 
 	_draw_outlined_text(
-		NATIONAL_POPULATION % int(data.national_population),
+		tr(NATIONAL_POPULATION) % int(data.national_population),
 		NATIONAL_LABEL_POSITION * layout_scale,
 		font_size,
 	)
@@ -264,6 +264,7 @@ func _draw_outlined_text(text: String, center: Vector2, font_size: int) -> void:
 
 
 func _draw_centered_message(message: String) -> void:
+	message = tr(message)
 	var font := get_theme_default_font()
 	var font_size := 14
 	var width := font.get_string_size(

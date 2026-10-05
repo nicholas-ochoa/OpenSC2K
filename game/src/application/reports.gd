@@ -53,7 +53,7 @@ func on_disaster_menu(id: int) -> void:
 
 		app.menus.sync_city_option_menus()
 		app.status_label.theme_type_variation = ""
-		app.status_label.text = "No Disasters %s." % ("enabled" if enabled else "disabled")
+		app.status_label.text = tr("No Disasters %s.") % tr("enabled" if enabled else "disabled")
 
 		return
 
@@ -62,7 +62,7 @@ func on_disaster_menu(id: int) -> void:
 	var result := start_disaster_at(id, engine.menu_disaster_point(id, _view_center_tile()))
 
 	if not result.ok:
-		app.interface.show_error("Cannot start the disaster: %s" % result.error)
+		app.interface.show_error(tr("Cannot start the disaster: %s") % result.error)
 
 
 func start_disaster_at_view_center(id: int) -> DisasterReportResult:
@@ -137,7 +137,7 @@ func start_disaster_at(id: int, point: Vector2i) -> DisasterReportResult:
 
 	var disaster_name := CityMenuBar.disaster_name(id)
 	app.status_label.theme_type_variation = ""
-	app.status_label.text = "%s started." % disaster_name
+	app.status_label.text = tr("%s started.") % tr(disaster_name)
 
 	report.ok = true
 	report.name = disaster_name
@@ -178,7 +178,7 @@ func _open_ordinance_window() -> void:
 	var result: OrdinanceCommand.Result = app.city_dialogs.ordinance_window.open_city(app.document_state.city)
 
 	if not result.ok:
-		app.interface.show_error("Cannot open ordinances: %s" % result.error)
+		app.interface.show_error(tr("Cannot open ordinances: %s") % result.error)
 
 
 func on_ordinances_changed() -> void:
@@ -281,8 +281,8 @@ func _toggle_newspaper_option(id: int) -> void:
 
 	refresh_newspaper_menu()
 	app.status_label.theme_type_variation = ""
-	app.status_label.text = "Newspaper %s %s." % [
-		"subscription" if subscription else "extra editions", "enabled" if enabled else "disabled",
+	app.status_label.text = tr("Newspaper %s %s.") % [
+		tr("subscription" if subscription else "extra editions"), tr("enabled" if enabled else "disabled"),
 	]
 
 

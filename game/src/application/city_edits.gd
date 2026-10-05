@@ -94,7 +94,7 @@ func _apply_selected_tool(
 		app.document_state.city, tool.selected_group, tool.selected_subtool
 	):
 		app.interface.show_error(
-			"%s is not available in this city."
+			tr("%s is not available in this city.")
 			% Tools.tool(tool.selected_group, tool.selected_subtool).name
 		)
 
@@ -235,7 +235,7 @@ func _apply_dispatch_tool(finish: Vector2i) -> bool:
 	)
 
 	if not dispatch.ok:
-		app.interface.show_error("Cannot dispatch unit: %s" % dispatch.error)
+		app.interface.show_error(tr("Cannot dispatch unit: %s") % dispatch.error)
 
 		return true
 
@@ -272,8 +272,8 @@ func _record_dispatch(
 	app.effects_audio.play_tool_success_sound(tool.selected_group, tool.selected_subtool)
 
 	app.status_label.theme_type_variation = ""
-	app.status_label.text = "Deployed %s unit %d of %d." % [
-		Tools.tool(tool.selected_group, tool.selected_subtool).name,
+	app.status_label.text = tr("Deployed %s unit %d of %d.") % [
+		tr(Tools.tool(tool.selected_group, tool.selected_subtool).name),
 		dispatch.slot_index,
 		dispatch.available,
 	]
@@ -474,13 +474,13 @@ func _report_building_rejection(
 		app.tool_state.pending_building_objection_subtool = building_subtool
 		app.reports.show_building_objection()
 		app.status_label.theme_type_variation = ""
-		app.status_label.text = "%s placement was rejected by nearby residents." % building_name
+		app.status_label.text = tr("%s placement was rejected by nearby residents.") % tr(building_name)
 
 		return
 
 	app.interface.show_error(
-		"Cannot build %s: %s"
-		% [building_name, building.error]
+		tr("Cannot build %s: %s")
+		% [tr(building_name), building.error]
 	)
 	app.effects_audio.play_tool_failure_sound(
 		building_group, building_subtool, str(building.error), scurk_tool_mode
@@ -510,8 +510,8 @@ func _record_building(
 		app.effects_audio.play_music_track(Music.RECREATION_TRACK)
 
 	app.status_label.theme_type_variation = ""
-	app.status_label.text = "Built %s for $%s." % [
-		building_name,
+	app.status_label.text = tr("Built %s for $%s.") % [
+		tr(building_name),
 		app.interface.format_number(building.cost),
 	]
 
@@ -661,7 +661,7 @@ func undo_last_edit() -> void:
 		result = Zones.undo(app.document_state.city, command as ZoneEditResult)
 
 	if not result.ok:
-		app.interface.show_error("Cannot undo the last edit: %s" % result.error)
+		app.interface.show_error(tr("Cannot undo the last edit: %s") % result.error)
 
 		return
 
@@ -686,11 +686,11 @@ func undo_last_edit() -> void:
 	if command_type == "sign":
 		app.status_label.text = "Restored the previous sign."
 	elif command_type == "landscape":
-		app.status_label.text = "Restored %d landscape actions and the previous funds value." % result.restored_tiles
+		app.status_label.text = tr("Restored %d landscape actions and the previous funds value.") % result.restored_tiles
 	elif command_type == "building":
-		app.status_label.text = "Removed the last building and restored %d tiles." % result.restored_tiles
+		app.status_label.text = tr("Removed the last building and restored %d tiles.") % result.restored_tiles
 	elif command_type == "network":
-		app.status_label.text = "Restored the previous route across %d tiles." % result.restored_tiles
+		app.status_label.text = tr("Restored the previous route across %d tiles.") % result.restored_tiles
 	elif command_type == "hydro":
 		app.status_label.text = "Removed the last hydroelectric plant."
 	elif command_type == "subway_to_rail":
@@ -700,14 +700,14 @@ func undo_last_edit() -> void:
 	elif command_type == "tunnel":
 		app.status_label.text = "Removed the last tunnel."
 	elif command_type == "highway":
-		app.status_label.text = "Restored the previous highway route across %d tiles." % result.restored_tiles
+		app.status_label.text = tr("Restored the previous highway route across %d tiles.") % result.restored_tiles
 	elif command_type == "demolish":
-		app.status_label.text = "Restored %d demolished tiles and the previous funds value." % result.restored_tiles
+		app.status_label.text = tr("Restored %d demolished tiles and the previous funds value.") % result.restored_tiles
 	elif command_type == "terrain":
-		app.status_label.text = "Restored %d terrain tiles and the previous funds value." % result.restored_tiles
+		app.status_label.text = tr("Restored %d terrain tiles and the previous funds value.") % result.restored_tiles
 	elif command_type == "dispatch":
 		app.status_label.text = "Restored the previous dispatched unit."
 	else:
-		app.status_label.text = "Restored %d tiles and the previous funds value." % result.restored_tiles
+		app.status_label.text = tr("Restored %d tiles and the previous funds value.") % result.restored_tiles
 
 	app.scripting.emit("tool.undone", {"command": command_type})

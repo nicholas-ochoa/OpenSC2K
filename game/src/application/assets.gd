@@ -192,7 +192,7 @@ func activate_imported_packs(result: Sc2MediaImportResult) -> void:
 				app.preferences.soundtrack_folder = ""
 				app.audio_controller.set_soundtrack_folder("")
 		else:
-			notes.append("%s pack saved, but could not be loaded. The previous pack is still active." % kind.capitalize())
+			notes.append(tr("%s pack saved, but could not be loaded. The previous pack is still active.") % tr(kind.capitalize()))
 
 	if not active.is_empty():
 		notes.append("Active packs: " + ", ".join(active) + ".")
@@ -256,7 +256,7 @@ func _import_original_game(executable_path: String) -> void:
 	)
 
 	app.settings.open_import_settings()
-	app.status_label.text = "Packs active. Imported %d cities and %d scenarios." % [install_result.cities, install_result.scenarios]
+	app.status_label.text = tr("Packs active. Imported %d cities and %d scenarios.") % [install_result.cities, install_result.scenarios]
 
 	if saved != OK:
 		app.interface.show_error("Packs imported, but their preferences could not be saved.")
@@ -496,12 +496,12 @@ func prompt_for_stale_packs() -> void:
 	var names := PackedStringArray()
 
 	for kind in kinds:
-		names.append(PACK_NAMES[kind])
+		names.append(tr(PACK_NAMES[kind]))
 
 	app.pack_update_dialog.set_meta("kinds", kinds)
 	app.pack_update_dialog.dialog_text = (
-		"These imported packs are missing or out of date: %s.\n\n" % ", ".join(names)
-		+ "Import your SimCity 2000 game files again to update them. The import keeps your other packs."
+		tr("These imported packs are missing or out of date: %s.\n\n") % ", ".join(names)
+		+ tr("Import your SimCity 2000 game files again to update them. The import keeps your other packs.")
 	)
 	app.pack_update_dialog.popup_centered(Vector2i(560, 200))
 

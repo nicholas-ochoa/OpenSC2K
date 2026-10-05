@@ -130,14 +130,14 @@ func _fit_speed_label() -> void:
 	var width := 122.0
 
 	for speed_name: String in GameSpeedController.SPEED_NAMES.values():
-		width = maxf(width, font.get_string_size("Speed: " + speed_name,
+		width = maxf(width, font.get_string_size(tr("Speed: %s") % tr(speed_name),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x + 8.0)
 
 	speed_label.custom_minimum_size.x = ceilf(width)
 
 
 func set_environment(demand: Vector3i, weather_name: String) -> void:
-	weather_label.text = "Weather: %s" % weather_name
+	weather_label.text = tr("Weather: %s") % tr(weather_name)
 	rci_graph.set_demand(demand)
 	refresh_tooltips()
 
@@ -151,7 +151,7 @@ func clear_environment() -> void:
 # the fit levels of a large map are below 10% and need a fraction
 func set_zoom(factor: float) -> void:
 	var percent := factor * 100.0
-	zoom_label.text = ("Zoom: %d%%" % roundi(percent)) if percent >= 10.0 else ("Zoom: %s%%" % String.num(percent, 3))
+	zoom_label.text = (tr("Zoom: %d%%") % roundi(percent)) if percent >= 10.0 else (tr("Zoom: %s%%") % String.num(percent, 3))
 	_sync_overflow_tooltip(zoom_label)
 
 
@@ -160,9 +160,9 @@ func set_compass(value: int) -> void:
 
 
 func set_speed(speed_name: String) -> void:
-	speed_label.text = "Speed: %s" % speed_name
+	speed_label.text = tr("Speed: %s") % tr(speed_name)
 	speed_label.set_meta(
-		"status_tooltip_text", "Current simulation speed: %s." % speed_name
+		"status_tooltip_text", tr("Current simulation speed: %s.") % tr(speed_name)
 	)
 	_sync_overflow_tooltip(speed_label)
 
@@ -274,7 +274,7 @@ func _refresh_report_text() -> void:
 
 	if priority_status or (city_status_available and music_notice_seconds <= 0.0):
 		reports_label.text = city_status_text
-		reports_label.set_meta("status_tooltip_text", city_status_text)
+		reports_label.set_meta("status_tooltip_text", tr(city_status_text))
 
 		return
 
@@ -284,11 +284,11 @@ func _refresh_report_text() -> void:
 
 		return
 
-	var current_report := "None"
+	var current_report := tr("None")
 
 	if not recent_reports.is_empty():
 		report_index = posmod(report_index, recent_reports.size())
-		current_report = recent_reports[report_index]
+		current_report = tr(recent_reports[report_index])
 	else:
 		report_index = 0
 		report_elapsed_seconds = 0.0
@@ -297,9 +297,9 @@ func _refresh_report_text() -> void:
 	reports_label.set_meta(
 		"status_tooltip_text",
 		(
-			"Recent city reports. These are the newest saved newspaper records.\n%s"
+			tr("Recent city reports. These are the newest saved newspaper records.\n%s")
 			% (
-				"No reports."
+				tr("No reports.")
 				if recent_reports.is_empty()
 				else "\n".join(recent_reports)
 			)

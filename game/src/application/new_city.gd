@@ -103,12 +103,12 @@ func poll_new_city_preview() -> void:
 		return
 
 	if not generated.ok:
-		app.city_dialogs.new_city_dialog.preview_status.text = "Cannot generate terrain: %s" % generated.error
+		app.city_dialogs.new_city_dialog.preview_status.text = tr("Cannot generate terrain: %s") % generated.error
 		return
 
 	app.new_city_state.session = job.session
 	app.city_dialogs.new_city_dialog.show_preview(generated.landscape_image, generated.minimap_image,
-		"Water: %s tiles   Trees: %s tiles   Height: %s–%s"
+		tr("Water: %s tiles   Trees: %s tiles   Height: %s–%s")
 		% [
 			app.interface.format_number(int(generated.terrain.water_tiles)),
 			app.interface.format_number(int(generated.terrain.tree_tiles)),
@@ -160,7 +160,7 @@ func create_new_city_unchecked() -> void:
 	)
 
 	if not result.ok:
-		app.interface.show_error("Cannot create a new city: %s" % result.error)
+		app.interface.show_error(tr("Cannot create a new city: %s") % result.error)
 
 		return
 
@@ -173,7 +173,7 @@ func create_new_city_unchecked() -> void:
 		var converted := Sc2xDocument.from_new_city(document, setup.city_name, setup.mayor_name)
 
 		if not converted.ok:
-			app.interface.show_error("Cannot create a new city: %s" % converted.error)
+			app.interface.show_error(tr("Cannot create a new city: %s") % converted.error)
 
 			return
 
@@ -181,12 +181,12 @@ func create_new_city_unchecked() -> void:
 	app.city_session.activate_document(
 		document,
 		null,
-		"Created %s in %d on %s difficulty with generated terrain. Map view: %s."
+		tr("Created %s in %d on %s difficulty with generated terrain. Map view: %s.")
 		% [
 			document.city_name(),
 			setup.starting_year,
-			_difficulty_name(setup.difficulty),
-			CityViewMode.key(app.view_state.overlay_mode).capitalize(),
+			tr(_difficulty_name(setup.difficulty)),
+			tr(CityViewMode.key(app.view_state.overlay_mode).capitalize()),
 		],
 	)
 

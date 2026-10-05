@@ -108,13 +108,13 @@ func _populate_page() -> void:
 	var misc_chunk := document.find_chunk("MISC")
 
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != NewsQueue.MISC_SIZE:
-		paper_titles.append("Unavailable")
+		paper_titles.append(tr("Unavailable"))
 		page.set_page(
 			0,
-			"NEWSPAPER",
+			tr("NEWSPAPER"),
 			"",
 			"",
-			"Saved reports are unavailable.",
+			tr("Saved reports are unavailable."),
 			"",
 			PackedStringArray(),
 		)
@@ -166,7 +166,7 @@ func _populate_page() -> void:
 		var story_seed := NewspaperTextGenerator.published_seed(
 			session_seed, city.age_in_days(), selected_newspaper, slot
 		)
-		var headline: String = news_names.get(story_type, "City report")
+		var headline: String = news_names.get(story_type, tr("City report"))
 
 		if story_seed >= 0 and newspaper_data != null and newspaper_data.is_valid():
 			var rendered := NewspaperTextGenerator.render_headline(
@@ -207,7 +207,7 @@ func _populate_page() -> void:
 		elif slot == 7:
 			weather_headline = headline
 			var weather_name: String = RciAftermathPhase.WEATHER_NAMES[clampi(city.weather_type(), 0, 11)]
-			weather_article = "Current weather: %s." % weather_name
+			weather_article = tr("Current weather: %s.") % tr(weather_name)
 
 			if newspaper_data != null and newspaper_data.is_valid():
 				var forecast := NewspaperTextGenerator.render_story(
@@ -220,8 +220,8 @@ func _populate_page() -> void:
 		elif slot == 8:
 			opinion_headline = headline
 			var subjects := ["traffic", "pollution", "crime", "unemployment", "taxes", "education", "health"]
-			opinion_article = ("Residents are concerned about %s. The mayor can review current city conditions in the "
-				+ "graphs and city maps.") % subjects[subject]
+			opinion_article = tr("Residents are concerned about %s. The mayor can review current city conditions in the "
+				+ "graphs and city maps.") % tr(subjects[subject])
 
 			if newspaper_data != null and newspaper_data.is_valid():
 				var opinion := NewspaperTextGenerator.render_story(
@@ -244,12 +244,12 @@ func _populate_page() -> void:
 	)
 	page.set_articles(published_articles)
 	page.set_opinion(
-		OPINION_HEADINGS[clampi(int(paper.opinion), 0, 5)],
+		tr(OPINION_HEADINGS[clampi(int(paper.opinion), 0, 5)]),
 		opinion_headline,
 		opinion_article,
 	)
 	page.set_weather(
-		WEATHER_HEADINGS[clampi(int(paper.weather), 0, 5)],
+		tr(WEATHER_HEADINGS[clampi(int(paper.weather), 0, 5)]),
 		weather_headline,
 		weather_article,
 	)
@@ -363,12 +363,12 @@ func _price_text(paper: NewsQueue.PaperRecord) -> String:
 	var price_style := clampi(int(paper.price), 0, 2)
 	var era := clampi(floori(float(city.current_year() - 1900) / 50.0), 0, 4)
 
-	return PRICES[price_style][era]
+	return tr(PRICES[price_style][era])
 
 
 func _opinion_text(paper: NewsQueue.PaperRecord, headline: String) -> String:
 	var opinion_style := clampi(int(paper.opinion), 0, 5)
-	var heading := OPINION_HEADINGS[opinion_style]
+	var heading := tr(OPINION_HEADINGS[opinion_style])
 
 	if headline.is_empty():
 		return heading
@@ -378,7 +378,7 @@ func _opinion_text(paper: NewsQueue.PaperRecord, headline: String) -> String:
 
 func _weather_text(paper: NewsQueue.PaperRecord, headline: String) -> String:
 	var weather_style := clampi(int(paper.weather), 0, 5)
-	var heading := WEATHER_HEADINGS[weather_style]
+	var heading := tr(WEATHER_HEADINGS[weather_style])
 
 	if headline.is_empty():
 		return heading
@@ -403,24 +403,24 @@ func _local_report(slot: int) -> NewspaperText.Result:
 	var demand := city.rci_demand()
 	var reports := [
 		[
-			"%s counts %d residents" % [name_text, city.population()],
-			(
+			tr("%s counts %d residents") % [name_text, city.population()],
+			tr(
 				"%s has a recorded population of %d. City services and transport must keep pace as "
 				+ "new neighborhoods develop. Residents need connections to employment, electricity and "
 				+ "water. This edition records conditions on %s."
 			) % [name_text, city.population(), _date_text()],
 		],
 		[
-			"Treasury reports $%d" % city.funds(),
-			(
+			tr("Treasury reports $%d") % city.funds(),
+			tr(
 				"The city treasury holds $%d. Construction draws from this balance, while taxes and "
 				+ "service spending affect the annual budget. The Budget window contains current "
 				+ "funding levels and projected totals."
 			) % city.funds(),
 		],
 		[
-			"Development demand in focus",
-			(
+			tr("Development demand in focus"),
+			tr(
 				"Current demand readings are %d for homes, %d for commerce and %d for industry. "
 				+ "Positive readings indicate room for growth. Tax rates, transport access and city "
 				+ "conditions affect development. Zoned land still needs suitable services before it "
@@ -428,16 +428,16 @@ func _local_report(slot: int) -> NewspaperText.Result:
 			) % [demand.x, demand.y, demand.z],
 		],
 		[
-			"Connections keep the city moving",
-			(
+			tr("Connections keep the city moving"),
+			tr(
 				"Roads, rail and subway routes connect neighborhoods with jobs. Gaps and disconnected "
 				+ "stations can prevent trips. The City Map transport views show where the network is "
 				+ "busy and where better connections may help."
 			),
 		],
 		[
-			"A closer look at city services",
-			(
+			tr("A closer look at city services"),
+			tr(
 				"Police, fire protection, schools and health services depend on facilities and their "
 				+ "funding. The city maps show local coverage. The Budget window lets the mayor review "
 				+ "service spending, while Query provides details for individual facilities."

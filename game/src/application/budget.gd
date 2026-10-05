@@ -95,7 +95,7 @@ func request_issue_bond() -> void:
 	var result := Bonds.issue(app.document_state.city)
 
 	if not result.ok:
-		app.interface.show_error("Cannot issue a bond: %s" % result.error)
+		app.interface.show_error(tr("Cannot issue a bond: %s") % result.error)
 
 		return
 
@@ -121,7 +121,7 @@ func request_repay_bond() -> void:
 	var result := Bonds.repay(app.document_state.city)
 
 	if not result.ok:
-		app.interface.show_error("Cannot repay a bond: %s" % result.error)
+		app.interface.show_error(tr("Cannot repay a bond: %s") % result.error)
 
 		return
 
@@ -152,7 +152,7 @@ func resolve_bond_action(action: String, confirmed: bool) -> void:
 	)
 
 	if not result.ok:
-		app.interface.show_error("Cannot update bonds: %s" % result.error)
+		app.interface.show_error(tr("Cannot update bonds: %s") % result.error)
 
 		return
 
@@ -162,9 +162,9 @@ func resolve_bond_action(action: String, confirmed: bool) -> void:
 
 	match result.status:
 		"issued":
-			app.status_label.text = "Issued a $10,000 bond at %d%%." % int(result.rate)
+			app.status_label.text = tr("Issued a $10,000 bond at %d%%.") % int(result.rate)
 		"repaid":
-			app.status_label.text = "Repaid the oldest $10,000 bond at %d%%." % int(result.rate)
+			app.status_label.text = tr("Repaid the oldest $10,000 bond at %d%%.") % int(result.rate)
 		"cancelled":
 			app.status_label.text = "Bond action canceled. No bond balance changed."
 		"credit_denied":
@@ -204,7 +204,7 @@ func commit_budget() -> void:
 		var result := app.simulation_state.speed_controller.resolve_annual_budget(values, auto_budget)
 
 		if not result.ok:
-			app.interface.show_error("Cannot apply the annual budget: %s" % result.error)
+			app.interface.show_error(tr("Cannot apply the annual budget: %s") % result.error)
 			call_deferred("_restore_annual_budget_dialog")
 
 			return
@@ -221,7 +221,7 @@ func commit_budget() -> void:
 	var stored := Budget.set_funding(app.document_state.city, values, auto_budget)
 
 	if not stored.ok:
-		app.interface.show_error("Cannot save the budget: %s" % stored.error)
+		app.interface.show_error(tr("Cannot save the budget: %s") % stored.error)
 
 		return
 
@@ -260,7 +260,7 @@ func _resolve_military_proposal(accepted: bool) -> void:
 	var result := app.simulation_state.speed_controller.resolve_military_proposal(accepted)
 
 	if not result.ok:
-		app.interface.show_error("Cannot resolve the military proposal: %s" % result.error)
+		app.interface.show_error(tr("Cannot resolve the military proposal: %s") % result.error)
 		call_deferred("_restore_military_proposal_dialog")
 
 		return
@@ -278,7 +278,7 @@ func resolve_military_notice() -> void:
 	var result := app.simulation_state.speed_controller.resolve_military_notice()
 
 	if not result.ok:
-		app.interface.show_error("Cannot finish the military proposal: %s" % result.error)
+		app.interface.show_error(tr("Cannot finish the military proposal: %s") % result.error)
 		return
 
 	app.frame.consume_simulation_result(result)

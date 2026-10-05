@@ -126,7 +126,7 @@ func on_options_menu(id: int) -> void:
 			return
 
 	if not stored:
-		app.interface.show_error("Cannot update the %s option." % option_name)
+		app.interface.show_error(tr("Cannot update the %s option.") % tr(option_name))
 
 		return
 
@@ -142,7 +142,7 @@ func on_options_menu(id: int) -> void:
 			app.effects_audio.stop_music()
 
 	app.status_label.theme_type_variation = ""
-	app.status_label.text = "%s %s." % [option_name, "enabled" if enabled else "disabled"]
+	app.status_label.text = tr("%s %s.") % [tr(option_name), tr("enabled" if enabled else "disabled")]
 
 
 func on_view_menu(id: int) -> void:
@@ -328,7 +328,7 @@ func set_overlay(mode: CityViewMode.Mode) -> void:
 	app.current_tool.update_edit_state()
 
 	if app.document_state.city != null:
-		app.status_label.text = "Map view: %s" % CityViewMode.key(app.view_state.overlay_mode).capitalize()
+		app.status_label.text = tr("Map view: %s") % tr(CityViewMode.key(app.view_state.overlay_mode).capitalize())
 		app.map_render.refresh_map(false)
 
 	if changed:
@@ -380,8 +380,8 @@ func set_surface_visibility(enabled: bool, layer: String) -> void:
 	if app.document_state.city != null and app.view_state.overlay_mode == CityViewMode.Mode.CITY:
 		app.map_render.refresh_map(false)
 
-	app.status_label.text = "%s %s." % [
-		layer.capitalize(), "shown" if enabled else "hidden",
+	app.status_label.text = tr("%s %s.") % [
+		tr(layer.capitalize()), tr("shown" if enabled else "hidden"),
 	]
 
 
@@ -402,7 +402,7 @@ func _set_vehicles_visible(enabled: bool) -> void:
 	if app.document_state.city != null and app.view_state.overlay_mode == CityViewMode.Mode.CITY:
 		app.moving_sprites.refresh_moving_things()
 
-	app.status_label.text = "Vehicles %s." % ("shown" if enabled else "hidden")
+	app.status_label.text = tr("Vehicles %s.") % tr("shown" if enabled else "hidden")
 
 
 func set_underground_water_mains_visible(enabled: bool) -> void:
@@ -416,7 +416,7 @@ func set_underground_water_mains_visible(enabled: bool) -> void:
 	if app.document_state.city != null and app.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND:
 		app.map_render.refresh_map(false)
 
-	app.status_label.text = "Water mains %s." % ("shown" if enabled else "hidden")
+	app.status_label.text = tr("Water mains %s.") % tr("shown" if enabled else "hidden")
 
 
 func set_underground_pipes_visible(enabled: bool) -> void:
@@ -430,7 +430,7 @@ func set_underground_pipes_visible(enabled: bool) -> void:
 	if app.document_state.city != null and app.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND:
 		app.map_render.refresh_map(false)
 
-	app.status_label.text = "Underground pipes %s." % ("shown" if enabled else "hidden")
+	app.status_label.text = tr("Underground pipes %s.") % tr("shown" if enabled else "hidden")
 
 
 func set_underground_subways_visible(enabled: bool) -> void:
@@ -444,7 +444,7 @@ func set_underground_subways_visible(enabled: bool) -> void:
 	if app.document_state.city != null and app.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND:
 		app.map_render.refresh_map(false)
 
-	app.status_label.text = "Underground subways %s." % ("shown" if enabled else "hidden")
+	app.status_label.text = tr("Underground subways %s.") % tr("shown" if enabled else "hidden")
 
 
 func set_underground_tunnels_visible(enabled: bool) -> void:
@@ -458,4 +458,4 @@ func set_underground_tunnels_visible(enabled: bool) -> void:
 	if app.document_state.city != null and app.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND:
 		app.map_render.refresh_map(false)
 
-	app.status_label.text = "Tunnels %s." % ("shown" if enabled else "hidden")
+	app.status_label.text = tr("Tunnels %s.") % tr("shown" if enabled else "hidden")

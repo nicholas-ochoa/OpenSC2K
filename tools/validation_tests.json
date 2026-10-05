@@ -478,6 +478,12 @@
     "lane": "product"
   },
   {
+    "id": "localization_test",
+    "script": "tests/localization_test.gd",
+    "domain": "ui",
+    "lane": "product"
+  },
+  {
     "id": "graphics_pack_test",
     "script": "tests/graphics_pack_test.gd",
     "domain": "formats",
