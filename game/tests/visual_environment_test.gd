@@ -66,11 +66,16 @@ func _run() -> void:
 	main.visual_environment.process(5.0)
 	assert(main.visual_environment.weather.tint == Color.WHITE)
 	assert(main.visual_environment.weather.rain == 0.0 and main.visual_environment.weather.snow == 0.0)
-	# Select the actual settings control, starting from disabled Game weather.
+	# Select the actual settings controls, starting from disabled Game weather.
 	main.preferences.visual_enhancements.weather_enabled = false
 	main.preferences.visual_enhancements.weather_mode = 0
 	main.settings.open_settings_dialog()
 	var tab := main.main_overlays.settings_dialog.visual_tab
+	_check_menu_dependencies(tab)
+	(tab.controls.weather_enabled as CheckBox).button_pressed = true
+	var weather_source := tab.controls.weather_mode as OptionButton
+	weather_source.select(2)
+	weather_source.item_selected.emit(2)
 	(tab.controls.day_lut_strength as SpinBox).value = 0.2
 	(tab.controls.season_lut_strength as SpinBox).value = 0.8
 	(tab.controls.weather_lut_strength as SpinBox).value = 0.6
@@ -78,6 +83,7 @@ func _run() -> void:
 	assert(main.preferences.visual_enhancements.season_lut_strength == 0.8)
 	assert(main.preferences.visual_enhancements.weather_lut_strength == 0.6)
 	var fixed := tab.controls.weather_fixed as OptionButton
+	assert(not fixed.disabled)
 	fixed.select(CityVisualWeather.Kind.HEAVY_RAIN)
 	fixed.item_selected.emit(CityVisualWeather.Kind.HEAVY_RAIN)
 	assert(main.preferences.visual_enhancements.weather_enabled)
@@ -170,6 +176,55 @@ func _run() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	print("PASS: cosmetic clocks, speed, pause, grading, seasons, weather mapping, settings preservation and unchanged city/RNG")
 	quit()
+
+
+func _check_menu_dependencies(tab: VisualEnhancementsTab) -> void:
+	var original := tab.selected_values()
+	tab.show_values({})
+	var fixed := tab.controls.season_fixed as OptionButton
+	var source := tab.controls.season_mode as OptionButton
+	assert(fixed.disabled and not (tab.controls.season_seconds as SpinBox).editable)
+	source.select(2)
+	source.item_selected.emit(2)
+	assert(not fixed.disabled and not (tab.controls.season_transition as SpinBox).editable)
+	fixed.select(3)
+	fixed.item_selected.emit(3)
+	source.select(1)
+	source.item_selected.emit(1)
+	assert(fixed.disabled and (tab.controls.season_seconds as SpinBox).editable)
+	assert(tab.selected_values().season_fixed == 3, "Changing source lost the saved fixed season")
+	(tab.controls.season_enabled as CheckBox).button_pressed = false
+	assert(source.disabled and not (tab.controls.season_seconds as SpinBox).editable)
+	assert(not (tab.controls.season_water_strength as SpinBox).editable)
+	assert((tab.controls.weather_fixed as OptionButton).disabled)
+	assert(not (tab.controls.weather_seconds as SpinBox).editable)
+	var weather_source := tab.controls.weather_mode as OptionButton
+	weather_source.select(1)
+	weather_source.item_selected.emit(1)
+	assert((tab.controls.weather_seconds as SpinBox).editable)
+	weather_source.select(2)
+	weather_source.item_selected.emit(2)
+	assert(not (tab.controls.weather_fixed as OptionButton).disabled)
+	assert(not (tab.controls.weather_seconds as SpinBox).editable)
+	(tab.controls.weather_enabled as CheckBox).button_pressed = false
+	assert((tab.controls.weather_fixed as OptionButton).disabled and weather_source.disabled)
+	var day_source := tab.controls.day_mode as OptionButton
+	assert(not (tab.controls.day_hour as SpinBox).editable and (tab.controls.day_seconds as SpinBox).editable)
+	day_source.select(1)
+	day_source.item_selected.emit(1)
+	assert((tab.controls.day_hour as SpinBox).editable and not (tab.controls.day_seconds as SpinBox).editable)
+	(tab.controls.brightmaps as CheckBox).button_pressed = false
+	assert(not (tab.controls.brightmap_folder as LineEdit).editable)
+	(tab.controls.day_enabled as CheckBox).button_pressed = false
+	assert(day_source.disabled and (tab.controls.brightmaps as CheckBox).disabled)
+	(tab.controls.cloud_enabled as CheckBox).button_pressed = false
+	assert(not (tab.controls.cloud_density as SpinBox).editable)
+	(tab.controls.life_cars_enabled as CheckBox).button_pressed = false
+	assert(not (tab.controls.life_car_amount as SpinBox).editable)
+	(tab.controls.life_people_enabled as CheckBox).button_pressed = false
+	assert(not (tab.controls.life_people_amount as SpinBox).editable)
+	tab.show_values(original)
+	tab.changed.emit()
 
 
 func _check_brightmaps() -> void:
