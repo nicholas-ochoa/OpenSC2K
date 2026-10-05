@@ -141,6 +141,40 @@ The folder `examples/mods` holds example mods. Run one with `run <path>` or
 The standard JavaScript built-ins are available: `Promise`, `Map`, `Set`, `JSON`,
 `Math`, `Date`, typed arrays, `WeakRef` and the others of ES2023.
 
+```js
+// console output in the game Console and in DevTools
+console.info('Mod loaded.', game.version);
+console.warn('Funds are low:', city.funds);
+console.error(new Error('This shows with its stack.'));
+console.debug({ tile: city.tile(10, 10) });
+console.dir(city.info(), { depth: 0 });
+console.trace('Where was this called from?');
+console.assert(city.size >= 128, 'This mod needs a map of 128 tiles or more.');
+
+// counters and timings
+console.count('visits'); // visits: 1
+console.count('visits'); // visits: 2
+console.countReset('visits');
+console.time('scan');
+let water = 0;
+
+for (let x = 0; x < city.size; x++) {
+  water += city.tile(x, 0).water ? 1 : 0;
+}
+
+console.timeEnd('scan'); // scan: 3 ms
+
+// timers
+const reminder = setTimeout(() => game.status('Remember to save.'), 60000);
+clearTimeout(reminder);
+const clock = setInterval(() => console.log(city.date), 1000);
+setTimeout(() => clearInterval(clock), 5000);
+
+// the console text of a value, as a string
+const text = inspect({ outer: { inner: { deepest: 1 } } }, { depth: 0 });
+console.log(text); // { outer: [Object] }
+```
+
 ## game
 
 | Member | Use |
@@ -183,6 +217,31 @@ game.storage.set('my-mod.launches', launches);
 // mods can talk through their own events
 game.on('my-mod.ready', (event) => console.log('ready', event.version));
 game.emit('my-mod.ready', { version: 2 });
+```
+
+```js
+// listeners that you remove again
+function onDay(event) {
+  console.log(`Day ${event.day}`);
+}
+
+game.on('sim.day', onDay);
+console.log(game.listenerCount('sim.day')); // 1
+game.off('sim.day', onDay);
+
+// the versions and the event types
+console.log(`OpenSC2K ${game.version.game}, Godot ${game.version.godot}, QuickJS-ng ${game.version.quickjs}`);
+
+for (const [type, description] of Object.entries(game.events)) {
+  console.log(`${type}: ${description}`);
+}
+
+// remove all stored values of one mod
+for (const key of game.storage.keys()) {
+  if (key.startsWith('my-mod.')) {
+    game.storage.remove(key);
+  }
+}
 ```
 
 ## city
@@ -252,6 +311,52 @@ for (let x = 0; x < city.size; x++) {
 }
 ```
 
+```js
+// the city values
+if (!city.loaded) {
+  throw new Error('Open a city first.');
+}
+
+const info = city.info();
+console.log(`${city.name}, mayor ${city.mayor}, founded ${info.foundingYear}: ${city.population} people`);
+console.log(`Date: ${city.date.month}/${city.date.day}/${city.date.year}, ${city.date.age} days old`);
+
+// the demand of each zone type
+const demand = city.demand;
+
+if (demand.residential > demand.commercial && demand.residential > demand.industrial) {
+  game.status('People want to move here: zone more homes.');
+}
+
+// every data map at the view center
+const center = view.center;
+
+for (const name of city.dataMaps) {
+  console.log(`${name}: ${city.data(name, center.x, center.y)}`);
+}
+
+// the newest value of every graph
+for (const name of city.graphs) {
+  console.log(`${name}: ${city.graph(name).at(-1)}`);
+}
+
+// the name and the signs
+city.rename(`${city.name} Heights`);
+
+if (city.sign(20, 20) === null) {
+  city.setSign(20, 20, 'Welcome');
+}
+
+// the moving objects, such as trains and helicopters
+const trains = city.things().filter((thing) => thing.name === 'Train engine');
+console.log(`${trains.length} trains run now`);
+
+// save the city to its file, when it has one
+if (city.info().path) {
+  city.save();
+}
+```
+
 ## budget
 
 | Member | Use |
@@ -296,6 +401,22 @@ game.on('sim.month', () => {
 });
 ```
 
+```js
+// read the budget
+const { taxes, funding, autoBudget, bonds } = budget.info();
+console.log(`Taxes R${taxes.residential}% C${taxes.commercial}% I${taxes.industrial}%, ${bonds} bonds`);
+console.log(`Police ${budget.funding.police}%, fire ${funding.fire}%, automatic budget ${autoBudget}`);
+
+// the same tax for all zones
+const rate = budget.taxes.residential;
+budget.set({ taxes: { commercial: rate, industrial: rate }, autoBudget: true });
+
+// repay bonds while the funds are high
+while (budget.info().bonds > 0 && city.funds > 50000) {
+  budget.repayBond();
+}
+```
+
 ## sim
 
 | Member | Use |
@@ -324,6 +445,25 @@ sim.startDisaster('Fire', city.size / 2, city.size / 2);
 setTimeout(() => sim.endDisaster(), 10000);
 ```
 
+```js
+// one day at a time
+sim.pause();
+console.log(sim.paused); // true
+console.log(sim.step()); // Day ran in 4.1 ms. ...
+sim.resume();
+sim.pause();
+
+// the disasters and the active one
+console.log(Object.keys(sim.disasters).join(', '));
+
+if (sim.disaster) {
+  console.log(`A ${sim.disaster.name.toLowerCase()} is active.`);
+}
+
+// no random disasters while a mod builds
+sim.noDisasters = true;
+```
+
 ## tools
 
 | Member | Use |
@@ -348,6 +488,23 @@ const result = tools.apply([30, 31], [40, 33]);
 console.log(result.changed ? `Zoned for $${result.cost}` : result.message);
 ```
 
+```js
+// the tools that the city can use and pay for
+const affordable = tools.list().filter((tool) => tool.available && tool.cost <= city.funds);
+console.log(`${affordable.length} tools are available`);
+
+// plant trees, then undo it, and select the previous tool again
+const previous = tools.selected;
+tools.select('Landscape', 'Trees');
+const planted = tools.apply([5, 5], [8, 5]);
+
+if (planted.changed) {
+  tools.undo();
+}
+
+tools.select(previous.group, previous.subtool);
+```
+
 ## view
 
 | Member | Use |
@@ -366,6 +523,30 @@ view.mode = 'traffic';
 setTimeout(() => (view.mode = before), 5000);
 ```
 
+```js
+// the view names
+console.log(view.modes.join(', '));
+
+// zoom in two steps and back
+const zoom = view.zoom;
+view.zoomIn();
+view.zoomIn();
+view.zoomOut();
+view.zoomOut();
+console.log(view.zoom === zoom); // true
+
+// a full turn of the map
+const rotation = view.rotation;
+
+for (let turn = 0; turn < 4; turn++) {
+  view.rotate();
+}
+
+view.rotate(false);
+view.rotate(true);
+console.log(view.rotation === rotation); // true
+```
+
 ## ui
 
 | Member | Use |
@@ -373,6 +554,12 @@ setTimeout(() => (view.mode = before), 5000);
 | `ui.alert(text, title)` | A message window with an OK button. The game continues while it shows. |
 | `ui.status(text)` | Shows a message on the status bar, as `game.status`. |
 | `ui.playSound(id)` | Plays `SOUNDS/<id>.WAV` of the sound pack, for example `500`. |
+
+```js
+ui.alert(`Welcome to ${city.name}!`, 'My mod');
+ui.status('My mod is ready.');
+ui.playSound(500);
+```
 
 ## Events
 
@@ -421,6 +608,48 @@ game.on('tool.beforeApply', (event) => {
 
 // a log of every game event
 game.on('*', (event) => console.debug(event.type, event));
+```
+
+```js
+// city events
+game.on('city.opened', (event) => console.log(`Opened ${event.name}, ${event.size} tiles wide, in ${event.date.year}`));
+game.on('city.closed', () => console.log('The city closed.'));
+game.on('city.saved', (event) => console.log(`Saved to ${event.path}`));
+game.on('city.renamed', (event) => console.log(`The city is now ${event.name}`));
+game.on('budget.changed', (event) => console.log(`The residential tax is ${event.taxes.residential}%`));
+
+// simulation events
+game.on('sim.year', (event) => console.log(`Happy new year ${event.year}!`));
+game.on('sim.speed', (event) => console.log(`Speed: ${event.speed}`));
+game.on('news', (event) => console.log(`News story ${event.type} (${event.argument})`));
+game.on('notice', (event) => console.log(`Notice ${event.id}`));
+game.on('budget.prompt', () => game.status('Check the yearly budget.'));
+game.on('military.proposal', () => game.status('The military wants a base.'));
+game.on('game.over', (event) => console.log(`Game over: ${event.type}, funds $${event.funds}`));
+
+// disasters: no fires from menus or scripts, and a log of the others
+game.on('disaster.beforeStart', (event) => {
+  if (event.name === 'Fire') {
+    event.cancel();
+  }
+});
+game.on('disaster.started', (event) => console.log(`${event.name} started`));
+game.on('disaster.ended', (event) => console.log(`${event.name} ended`));
+
+// tools
+game.on('tool.selected', (event) => console.log(`Selected ${event.tool.groupName} > ${event.tool.name}`));
+game.on('tool.applied', (event) => {
+  if (event.changed) {
+    console.log(`${event.tool.name} on ${event.tiles} tiles cost $${event.cost}`);
+  } else if (!event.cancelled) {
+    console.log(`${event.tool.name} did nothing: ${event.message}`);
+  }
+});
+game.on('tool.undone', (event) => console.log(`Undid a ${event.command} edit`));
+
+// the view, and one frame
+game.on('view.mode', (event) => console.log(`View: ${event.mode}`));
+game.once('frame', (event) => console.log(`The frame took ${(event.delta * 1000).toFixed(1)} ms`));
 ```
 
 ## Values between scripts and the game
