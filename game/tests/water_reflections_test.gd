@@ -89,5 +89,51 @@ func _initialize() -> void:
 	assert(is_equal_approx(boat.image.get_pixel(1, 1).r, ship.get_pixel(1, 0).r))
 	assert(boat.emission.get_pixel(0, 5) == lights.get_pixel(0, 0))
 	assert(boat.image.get_pixel(0, 0).a == 0)
+	_check_ship_wakes()
 	print("PASS: indexed native water geometry at all artwork sizes, water-only clipping, deterministic cache output and Off/Subtle preferences")
 	quit()
+
+
+func _check_ship_wakes() -> void:
+	var palette := Sc2Palette.new()
+	palette.colors.resize(256)
+	palette.colors.fill(Color(0.5, 0.5, 0.5))
+	palette.colors[40] = Color(0.7, 0.05, 0.02)
+	palette.colors[96] = Color.BLUE
+	palette.colors[80] = Color(0.1, 0.8, 0.8)
+	# Three art sizes, both diagonal hulls, horizontal hull and flipped artwork.
+	for width: int in [8, 16, 32]:
+		for slope: int in [-1, 0, 1]:
+			var source := Image.create(width, width + 14, false, Image.FORMAT_RGBA8)
+			var lights := Image.create(width, width + 14, false, Image.FORMAT_RGBA8)
+			var contacts := PackedInt32Array()
+			for x in width:
+				var contact := 4 + (x / 2 if slope > 0 else ((width - 1 - x) / 2 if slope < 0 else 0))
+				contacts.append(contact)
+				for y in range(contact - 3, contact):
+					source.set_pixel(x, y, Color(40.0 / 255.0, 0, 0, 1))
+				# A blue deck detail inside the hull must retain its reflection.
+				if x > 0 and x < width - 1:
+					source.set_pixel(x, contact - 2, Color(96.0 / 255.0, 0, 0, 1))
+				lights.set_pixel(x, contact - 1, Color(1, 0.4, 0.1, 0.75))
+				for y in range(contact, contact + 5):
+					source.set_pixel(x, y, Color((80.0 if y % 2 else 96.0) / 255.0, 0, 0, 1))
+			# An isolated gray foam pixel cannot move the waterline either.
+			source.set_pixel(0, source.get_height() - 1, Color(160.0 / 255.0, 0, 0, 1))
+			var before := source.get_data()
+			for flipped in [false, true]:
+				var reflection := WaterReflectionSprite.create(source, lights, Vector2i(13, 29), 5, palette)
+				for x in width:
+					var contact := contacts[width - 1 - x if flipped else x]
+					assert(reflection.image.get_pixel(x, contact).r == source.get_pixel(x, contact - 1).r,
+						"Reflected hull does not meet its waterline")
+					if x > 0 and x < width - 1:
+						assert(roundi(reflection.image.get_pixel(x, contact + 1).r * 255.0) == 96,
+							"Blue deck paint was removed together with the wake")
+					assert(reflection.emission.get_pixel(x, contact) == lights.get_pixel(x, contact - 1))
+					for y in range(contact + 3, reflection.image.get_height()):
+						assert(reflection.image.get_pixel(x, y).a == 0, "Wake or foam entered the mirror")
+				assert(reflection.position == Vector2i(13, 29) and reflection.level == 5)
+				source.flip_x()
+				lights.flip_x()
+			assert(source.get_data() == before, "Reflection extraction changed source artwork")
