@@ -37,6 +37,7 @@ func _run() -> void:
 	cloud_field.fill(Color.WHITE)
 	material.set_shader_parameter("cloud_field", ImageTexture.create_from_image(cloud_field))
 	material.set_shader_parameter("cloud_enabled", true)
+	material.set_shader_parameter("cloud_density", 1.0)
 	await RenderingServer.frame_post_draw
 	var shadow := viewport.get_texture().get_image()
 	assert(shadow.get_pixel(7, 5).r < car.r, "Cloud shadows must also shade city-life figures")
