@@ -13,7 +13,6 @@ const NewspaperTables = preload("res://src/model/newspaper_layout.gd")
 func test_news_queue(reference_root: String) -> void:
 	_test_news_initialization(reference_root)
 	_test_news_queue_updates()
-	_test_news_persistence(reference_root)
 
 
 func _test_news_initialization(reference_root: String) -> void:
@@ -202,45 +201,6 @@ func _test_news_queue_updates() -> void:
 	)
 
 
-func _test_news_persistence(reference_root: String) -> void:
-	var engine_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
-	_check(_clear_news_records(engine_document), "Engine newspaper fixture clears story records")
-	var engine_city := CityModel.from_document(engine_document)
-	var engine := Simulation.new(engine_city, 1, 7, 13)
-	var phase_result := PhaseResult.new()
-	phase_result.ok = true
-	phase_result.news_items = [
-		NewsEvent.new(0x1fe, 0),
-		NewsEvent.new(9, 4),
-	]
-	var persisted := engine._persist_news_result(phase_result)
-	var persisted_record := NewsQueue.story_record(
-		engine_document.find_chunk("MISC").decoded_payload, 0
-	)
-	_check(
-		persisted.ok
-		and persisted.inserted == 1
-		and phase_result.news_queue_updated
-		and phase_result.news_queue_inserted == 1
-		and persisted_record.type == 9
-		and persisted_record.priority == 200
-		and persisted_record.argument == 4,
-		"Simulation engine persists valid story events and skips runtime notifications",
-	)
-	var before_duplicate: PackedByteArray = engine_document.find_chunk("MISC").decoded_payload.duplicate()
-	var already_updated := PhaseResult.new()
-	already_updated.ok = true
-	already_updated.news_queue_updated = true
-	already_updated.news_items = [NewsEvent.new(3, 0)]
-	var duplicate := engine._persist_news_result(already_updated)
-	_check(
-		duplicate.ok
-		and duplicate.inserted == 0
-		and engine_document.find_chunk("MISC").decoded_payload == before_duplicate,
-		"Simulation engine does not insert a phase result twice",
-	)
-
-
 func test_newspaper_text(reference_root: String) -> void:
 	var data := DataUsa.load_path(
 		reference_root.path_join("DATA/DATA_USA.DAT"),
@@ -356,23 +316,9 @@ func test_newspaper_text(reference_root: String) -> void:
 			)
 
 
-# the extra-edition option opens the newspaper for milestone, invention, and
-# power plant stories only
+# a monthly invention release opens an extra edition. the story rules are
+# native unit tests of sc2k_sim::sim::reports::news
 func test_extra_edition_newspaper(reference_root: String) -> void:
-	for extras in [0, 1]:
-		for story_type in [3, 4, 5, 0x24, 2, 6, 0x25, 0x29]:
-			var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
-			var city := CityModel.from_document(document)
-			_check(document.set_misc_u32(0x1008, extras), "Extra-edition fixture sets the option")
-			var result := PhaseResult.new()
-			result.news_items = [NewsEvent.new(story_type, 0)]
-			var persisted := SimulationPhaseContext.persist_news(city, result)
-			var expected: bool = extras != 0 and ((story_type >= 3 and story_type <= 5) or story_type == 0x24)
-			_check(
-				persisted.ok and persisted.inserted == 1 and result.newspaper_requested == expected,
-				"Story %d with extra editions %d requests the newspaper: %s" % [story_type, extras, expected],
-			)
-
 	for extras in [0, 1]:
 		for invention in [0, 7, -1]:
 			var document := EmptyCityTemplate.create()
@@ -391,23 +337,17 @@ func test_extra_edition_newspaper(reference_root: String) -> void:
 			engine.developed_tiles = 0
 			engine.power_usage_percent = 0
 			engine.water_usage_percent = 0
-			var day := engine.advance_day()
-			_check(day.ok and day.complete, "Monthly extra-edition day completes: %s" % day.error)
+			var tick := GameSpeedController.new(engine).run_day()
+			_check(tick.ok and tick.day_results.size() == 1, "Monthly extra-edition day runs: %s" % tick.error)
 
-			if not day.ok or not day.complete:
+			if not tick.ok or tick.day_results.size() != 1:
 				continue
 
+			var day := tick.day_results[0]
+			_check(day.complete, "Monthly extra-edition day completes")
 			var aftermath: RciAftermathPhase.Result = day.phase_results["rci_aftermath"]
 			_check(aftermath.invention_index == invention, "Monthly extra-edition day releases the scheduled invention or innovation")
-			var before: PackedByteArray = document.find_chunk("MISC").decoded_payload.duplicate()
-			var persisted := engine._persist_news_result(aftermath)
-			_check(
-				persisted.ok and persisted.inserted == 0
-				and document.find_chunk("MISC").decoded_payload == before,
-				"Monthly extra-edition notification does not insert saved stories again",
-			)
-			var tick := SimulationTickResult.new()
-			GameSpeedController.new(engine)._consume_day_result(tick, day)
+			_check(invention < 0 or aftermath.news_queue_updated, "Monthly aftermath stores its own release story")
 			_check(
 				tick.newspaper_requested == (extras != 0 and invention >= 0),
 				"Day 22 forwards release %d with extra editions %d to the newspaper UI" % [invention, extras],

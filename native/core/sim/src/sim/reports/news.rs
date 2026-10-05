@@ -417,6 +417,50 @@ mod tests {
         assert!(story_record(&data, 9).is_none() && paper_record(&[0; 4], 0).is_none());
     }
 
+    fn result_with(items: &[(i64, i64)]) -> PhaseBase {
+        PhaseBase {
+            ok: true,
+            news_items: items
+                .iter()
+                .map(|&(story_type, argument)| NewsEvent::new(story_type, argument))
+                .collect(),
+            ..PhaseBase::default()
+        }
+    }
+
+    #[test]
+    fn persistence_stores_stories_once_and_skips_notifications() {
+        let mut city = crate::sim::testing::empty_city(128);
+        let mut result = result_with(&[(0x1fe, 0), (9, 4)]);
+        assert_eq!(persist(&mut city, &mut result), Ok(1));
+        assert!(result.news_queue_updated && result.news_queue_inserted == 1);
+
+        let story = story_record(&city.misc.data, 0).unwrap();
+        assert_eq!((story.story_type, story.priority, story.argument), (9, 200, 4));
+
+        let before = city.misc.data.clone();
+        let mut again = result_with(&[(3, 0)]);
+        again.news_queue_updated = true;
+        assert_eq!(persist(&mut city, &mut again), Ok(0));
+        assert_eq!(city.misc.data, before, "a stored result does not insert twice");
+    }
+
+    #[test]
+    fn extra_editions_open_for_milestones_inventions_and_plants() {
+        for extras in [0, 1] {
+            for story_type in [3, 4, 5, 0x24, 2, 6, 0x25, 0x29] {
+                let mut city = crate::sim::testing::empty_city(128);
+                assert!(city.set_misc_u32(misc_layout::NEWSPAPER_EXTRAS, extras));
+
+                let mut result = result_with(&[(story_type, 0)]);
+                assert_eq!(persist(&mut city, &mut result), Ok(1));
+
+                let expected = extras != 0 && ((3..=5).contains(&story_type) || story_type == 0x24);
+                assert_eq!(result.newspaper_requested, expected, "story {story_type} with extras {extras}");
+            }
+        }
+    }
+
     #[test]
     fn the_paper_count_follows_the_signed_progression() {
         assert_eq!([0, 2, 5, 9, 0xffff, 0x1_0002].map(available_paper_count), [1, 3, 6, 6, 0, 3]);

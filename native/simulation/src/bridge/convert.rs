@@ -340,19 +340,6 @@ pub fn scenario(dictionary: &VarDictionary, key: &str) -> Option<sc2k_sim::sim::
     })
 }
 
-pub fn schedule(dictionary: &VarDictionary, key: &str) -> sc2k_sim::sim::engine::day::Schedule {
-    let fields = self::dictionary(dictionary, key);
-
-    sc2k_sim::sim::engine::day::Schedule {
-        city_days: int(&fields, "city_days", 0),
-        month_day: int(&fields, "month_day", 0),
-        season: int(&fields, "season", 0),
-        actions: strings(&fields, "actions"),
-        growth_step: int(&fields, "growth_step", -1),
-        growth_substep: int(&fields, "growth_substep", -1),
-    }
-}
-
 pub fn engine_state(dictionary: &VarDictionary, key: &str) -> sc2k_sim::sim::engine::day::EngineState {
     let fields = self::dictionary(dictionary, key);
 

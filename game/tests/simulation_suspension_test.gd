@@ -228,8 +228,7 @@ func _check_military_result() -> void:
 	engine.city.document.set_misc_u32(Sc2MiscLayout.PROGRESSION, 3)
 	engine.city.document.set_misc_u32(Sc2MiscLayout.NORMAL_POPULATION, 60001)
 	var controller: GameSpeedController = main.simulation_state.speed_controller
-	var result := SimulationTickResult.new()
-	controller._consume_day_result(result, engine.advance_day())
+	var result := controller.run_day()
 	main.frame.consume_simulation_result(result)
 	assert(main.city_dialogs.military_dialog.visible)
 	main.city_dialogs.military_dialog.hide()

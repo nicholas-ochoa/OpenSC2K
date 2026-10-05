@@ -184,6 +184,7 @@ version = "0.1.0"
 dependencies = [
  "godot",
  "sc2k_formats",
+ "sc2k_game",
  "sc2k_sim",
 ]
 

@@ -36,23 +36,6 @@ const MAXIS_MAN_ARRIVAL_SOUND: i64 = 513;
 /// player's choice.
 const DISASTER_END_PAPER: i64 = 0;
 
-/// Disaster types of the menus. See DisasterStartConstants.
-mod disasters {
-    pub const FIRE: i64 = 1;
-    pub const FLOOD: i64 = 2;
-    pub const TORNADO: i64 = 4;
-    pub const EARTHQUAKE: i64 = 5;
-    pub const MONSTER: i64 = 6;
-    pub const MELTDOWN: i64 = 7;
-    pub const MICROWAVE: i64 = 8;
-    pub const VOLCANO: i64 = 9;
-    pub const FIRESTORM: i64 = 10;
-    pub const MASS_RIOTS: i64 = 11;
-    pub const MASS_FLOODS: i64 = 13;
-    pub const TOXIC_SPILL: i64 = 14;
-    pub const RIOT: i64 = 15;
-}
-
 /// An airplane in this state is crashing.
 const CRASHING_AIRPLANE_STATE: i64 = 7;
 
@@ -404,21 +387,27 @@ impl Engine<'_> {
         );
         let random = &mut self.randoms.random;
 
+        use disaster_start::{
+            DISASTER_EARTHQUAKE, DISASTER_FIRE, DISASTER_FIRESTORM, DISASTER_FLOOD, DISASTER_MASS_FLOODS, DISASTER_MASS_RIOTS,
+            DISASTER_MELTDOWN, DISASTER_MICROWAVE, DISASTER_MONSTER, DISASTER_RIOT, DISASTER_TORNADO, DISASTER_TOXIC_SPILL,
+            DISASTER_VOLCANO,
+        };
+
         match disaster_type {
-            disasters::FIRE => {
+            DISASTER_FIRE => {
                 let y = random.next_u15() % 40 + center.y - 20;
                 Vec2i::new(random.next_u15() % 40 + center.x - 20, y)
             }
-            disasters::TORNADO | disasters::EARTHQUAKE | disasters::VOLCANO | disasters::MASS_FLOODS => {
+            DISASTER_TORNADO | DISASTER_EARTHQUAKE | DISASTER_VOLCANO | DISASTER_MASS_FLOODS => {
                 let y = random.next_u15() % (edge - 2) + 1;
                 Vec2i::new(random.next_u15() % (edge - 2) + 1, y)
             }
-            disasters::MONSTER | disasters::RIOT => {
+            DISASTER_MONSTER | DISASTER_RIOT => {
                 let y = (random.next_u15() & 0x1f) + center.y - 15;
                 Vec2i::new((random.next_u15() & 0x1f) + center.x - 15, y)
             }
-            disasters::FLOOD | disasters::TOXIC_SPILL | disasters::FIRESTORM | disasters::MASS_RIOTS => center,
-            disasters::MELTDOWN | disasters::MICROWAVE => Vec2i::ZERO,
+            DISASTER_FLOOD | DISASTER_TOXIC_SPILL | DISASTER_FIRESTORM | DISASTER_MASS_RIOTS => center,
+            DISASTER_MELTDOWN | DISASTER_MICROWAVE => Vec2i::ZERO,
             _ => fallback,
         }
     }
@@ -566,7 +555,9 @@ impl Engine<'_> {
         true
     }
 
-    fn run_day_schedule(&mut self, schedule: DaySchedule, annual_budget_approved: bool, check_annual_budget: bool) -> DayResult {
+    /// Run a schedule, as the debug steps and the days do. `check_annual_budget`
+    /// asks for the annual budget first when the year needs one.
+    pub fn run_day_schedule(&mut self, schedule: DaySchedule, annual_budget_approved: bool, check_annual_budget: bool) -> DayResult {
         let mut span = TimingSpan::new();
         let mut result = self.execute_day_schedule(schedule, annual_budget_approved, check_annual_budget);
         let steps = result.timing.steps.clone();
@@ -647,7 +638,8 @@ impl Engine<'_> {
         }
     }
 
-    fn append_pending_disaster(&mut self, mut result: DayResult) -> DayResult {
+    /// Start the disaster that the day left pending.
+    pub fn append_pending_disaster(&mut self, mut result: DayResult) -> DayResult {
         if !result.ok || !result.interaction_requests.is_empty() || self.state.day.pending_disaster_type == 0 {
             return result;
         }
@@ -769,5 +761,53 @@ fn rotate_point(point: Vec2i, counter_clockwise: bool, edge: i64) -> Vec2i {
         Vec2i::new(point.y, edge - 1 - point.x)
     } else {
         Vec2i::new(edge - 1 - point.y, point.x)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sc2k_sim::sim::new_city::{city_of, template};
+    use sc2k_sim::sim::random::SimRandom;
+
+    const SEED: i64 = 77;
+
+    /// The menu point of `disaster_type` on a 128-tile city with its center at (40, 50).
+    fn menu_point(disaster_type: i64) -> (Vec2i, i64) {
+        let mut city = city_of(&template::empty_city(128));
+        assert!(city.set_misc_u32(misc::CITY_CENTER_X, 40) && city.set_misc_u32(misc::CITY_CENTER_Y, 50));
+
+        let mut randoms = Randoms::new(SEED, 1, 1);
+        let mut state = EngineState::default();
+        let mut engine = Engine {
+            city: &mut city,
+            randoms: &mut randoms,
+            state: &mut state,
+            detailed: false,
+        };
+        let point = engine.menu_disaster_point(disaster_type, Vec2i::new(1, 2));
+
+        (point, randoms.random.state)
+    }
+
+    #[test]
+    fn each_menu_item_selects_its_own_place() {
+        let mut random = SimRandom::new(SEED);
+        let y = random.next_u15() % 126 + 1;
+        let x = random.next_u15() % 126 + 1;
+
+        for disaster_type in [disaster_start::DISASTER_EARTHQUAKE, disaster_start::DISASTER_TORNADO] {
+            assert_eq!(menu_point(disaster_type), (Vec2i::new(x, y), random.state));
+        }
+
+        let mut random = SimRandom::new(SEED);
+        let y = (random.next_u15() & 0x1f) + 50 - 15;
+        let x = (random.next_u15() & 0x1f) + 40 - 15;
+        assert_eq!(menu_point(disaster_start::DISASTER_MONSTER), (Vec2i::new(x, y), random.state));
+
+        let unused = SimRandom::new(SEED).state;
+        assert_eq!(menu_point(disaster_start::DISASTER_FLOOD), (Vec2i::new(40, 50), unused));
+        assert_eq!(menu_point(disaster_start::DISASTER_MELTDOWN), (Vec2i::ZERO, unused));
+        assert_eq!(menu_point(disaster_start::DISASTER_PLANE_CRASH), (Vec2i::new(1, 2), unused));
     }
 }

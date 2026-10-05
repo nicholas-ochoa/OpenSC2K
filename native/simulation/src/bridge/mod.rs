@@ -7,6 +7,7 @@ mod city_cache;
 mod codec;
 mod convert;
 mod document;
+mod game;
 mod json_value;
 mod ops;
 mod reports;
@@ -159,6 +160,7 @@ impl NativeSimulation {
         ops::OPERATIONS
             .iter()
             .chain(tool_ops::OPERATIONS)
+            .chain(game::OPERATIONS)
             .map(|name| GString::from(*name))
             .collect()
     }

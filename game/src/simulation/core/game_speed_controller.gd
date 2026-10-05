@@ -71,183 +71,59 @@ func speed_name() -> String:
 	return SPEED_NAMES.get(speed, "Paused")
 
 
+# Run the base ticks of `delta_msec` frame time: moving objects on each tick,
+# and days at the pace of the speed. The native simulation library runs them;
+# see native/core/game/src/speed.rs.
 func advance_time(
 	delta_msec: float, current_time_msec := -1, simulation_suspended := false
 ) -> SimulationTickResult:
-	var result := _empty_result()
+	var invalid := _invalid_result()
 
-	if engine == null or engine.city == null or not engine.city.is_valid():
-		result.error = "city is invalid"
-
-		return result
-
-	if delta_msec < 0.0:
-		result.error = "elapsed time cannot be negative"
-
-		return result
+	if invalid != null:
+		return invalid
 
 	if current_time_msec < 0:
 		current_time_msec = Time.get_ticks_msec()
 
-	var launch_error := _run_launch_steps(result, delta_msec, simulation_suspended)
-
-	if not launch_error.is_empty():
-		result.error = launch_error
-
-		return result
-
-	accumulator_msec += delta_msec
-	var ran_swallow_day := false
-
-	while accumulator_msec >= BASE_TICK_MSEC:
-		accumulator_msec -= BASE_TICK_MSEC
-		result.base_ticks += 1
-		subtick_counter = (subtick_counter + 1) & 7
-		simulation_ready = simulation_ready or _is_day_due()
-
-		if speed > Speed.PAUSED and not simulation_suspended and not interaction_blocked and not terminal_blocked:
-			fire_elapsed_msec = minf(FIRE_TICK_MSEC, fire_elapsed_msec + BASE_TICK_MSEC) if _fire_paced() else 0.0
-
-		var pulse_time := current_time_msec - int(accumulator_msec)
-
-		if (
-			speed > Speed.PAUSED
-			and not simulation_suspended
-			and not interaction_blocked
-			and not terminal_blocked
-		):
-			var moving := engine.advance_moving_things(pulse_time)
-
-			if not moving.ok:
-				result.error = moving.error
-
-				return result
-
-			result.moving_results.append(moving)
-			_append_moving_events(result, moving)
-
-		if (
-			speed > Speed.PAUSED
-			and simulation_ready
-			and not simulation_suspended
-			and not interaction_blocked
-			and not terminal_blocked
-		):
-			var day_error := _run_day(result)
-
-			if not day_error.is_empty():
-				result.error = day_error
-
-				return result
-
-			if _pause_on_target_day(result):
-				break
-
-			# African Swallow runs a day in each frame. a disaster scan waits for a base tick
-			if speed == Speed.AFRICAN_SWALLOW and engine.active_disaster_type == 0:
-				ran_swallow_day = true
-			else:
-				simulation_ready = false
-
-	if (
-		speed > Speed.PAUSED
-		and simulation_ready
-		and not ran_swallow_day
-		and not simulation_suspended
-		and not interaction_blocked
-		and not terminal_blocked
-	):
-		var day_error := _run_day(result)
-
-		if not day_error.is_empty():
-			result.error = day_error
-
-			return result
-
-		_pause_on_target_day(result)
-
-		if speed != Speed.AFRICAN_SWALLOW or engine.active_disaster_type != 0:
-			simulation_ready = false
-
-	result.ok = true
-
-	return result
+	return engine.run("game.advance_time", {
+		"delta_msec": delta_msec, "current_time_msec": current_time_msec, "suspended": simulation_suspended,
+	}, self)
 
 
 func resolve_annual_budget(
 	funding_values: PackedInt32Array, auto_budget: bool
 ) -> SimulationTickResult:
-	var result := _empty_result()
+	if engine == null:
+		return _failed("no annual budget interaction is pending")
 
-	if engine == null or not interaction_blocked:
-		result.error = "no annual budget interaction is pending"
-
-		return result
-
-	var day := engine.resolve_annual_budget(funding_values, auto_budget)
-
-	if not day.ok:
-		result.error = day.error
-
-		return result
-
-	interaction_blocked = false
-	_consume_day_result(result, day)
-	result.ok = true
-
-	return result
+	return engine.run("game.resolve_annual_budget", {"values": funding_values, "auto_budget": auto_budget}, self)
 
 
 func resolve_military_proposal(accepted: bool) -> SimulationTickResult:
-	var result := _empty_result()
+	if engine == null:
+		return _failed("no military proposal interaction is pending")
 
-	if engine == null or not interaction_blocked:
-		result.error = "no military proposal interaction is pending"
-
-		return result
-
-	var day := engine.resolve_military_proposal(accepted)
-
-	if not day.ok:
-		result.error = day.error
-
-		return result
-
-	interaction_blocked = false
-	_consume_day_result(result, day)
-	result.ok = true
-
-	return result
+	return engine.run("game.resolve_military_proposal", {"accepted": accepted}, self)
 
 
 func resolve_military_notice() -> SimulationTickResult:
-	var result := _empty_result()
+	if engine == null:
+		return _failed("no military notice is pending")
 
-	if engine == null or not interaction_blocked:
-		result.error = "no military notice is pending"
-		return result
-
-	var day := engine.resolve_military_notice()
-
-	if not day.ok:
-		result.error = day.error
-		return result
-
-	interaction_blocked = false
-	_consume_day_result(result, day)
-	result.ok = true
-	return result
+	return engine.run("game.resolve_military_notice", {}, self)
 
 
-# stop at the end of the target day. the remaining base ticks in this call do no work
-func _pause_on_target_day(result: SimulationTickResult) -> bool:
-	if pause_at_day < 0 or engine.city.age_in_days() < pause_at_day:
-		return false
+# one day or disaster tick now, as the debug step of a day
+func run_day() -> SimulationTickResult:
+	return engine.run("game.run_day", {}, self)
 
-	result.paused_on_target_day = set_speed(Speed.PAUSED)
-	pause_at_day = -1
 
-	return true
+# part of a day, as the debug step of a phase. `first` asks for the annual
+# budget first; `last` starts the disaster that the day left pending
+func step_schedule(schedule: SimulationSchedule, first: bool, last: bool) -> SimulationTickResult:
+	return engine.run("game.step_schedule", {
+		"schedule": SimulationEngine._schedule_fields(schedule), "first": first, "last": last,
+	}, self)
 
 
 # true when advance_time(delta_msec) runs a day or a disaster tick. the delta must not exceed one base tick
@@ -272,70 +148,6 @@ func _is_day_due(counter := subtick_counter) -> bool:
 	return false
 
 
-# a staged arcology launch runs on frame time, not on base ticks, so the
-# launches follow each other. the days wait until it ends
-func _run_launch_steps(result: SimulationTickResult, delta_msec: float, simulation_suspended: bool) -> String:
-	if not engine.arcology_launch_active:
-		launch_elapsed_msec = 0.0
-
-		return ""
-
-	if speed == Speed.PAUSED or simulation_suspended or interaction_blocked or terminal_blocked:
-		return ""
-
-	launch_elapsed_msec += delta_msec
-	var steps := mini(int(launch_elapsed_msec / LAUNCH_STEP_MSEC), LAUNCH_MAX_STEPS)
-
-	if steps <= 0:
-		return ""
-
-	launch_elapsed_msec = fmod(launch_elapsed_msec, LAUNCH_STEP_MSEC)
-	var step := engine.advance_arcology_launch(steps)
-
-	if not step.ok:
-		return step.error
-
-	result.launch_results.append(step)
-	_append_runtime_events(result, step)
-	result.notice_ids.append_array(step.notice_ids)
-
-	return ""
-
-
-func _run_day(result: SimulationTickResult) -> String:
-	if engine.arcology_launch_active:
-		return ""
-
-	if engine.active_disaster_type != 0:
-		if _fire_paced():
-			if fire_elapsed_msec < FIRE_TICK_MSEC:
-				return ""
-
-			fire_elapsed_msec = 0.0
-
-		var disaster := engine.advance_disaster_tick()
-
-		if not disaster.ok:
-			return disaster.error
-
-		result.disaster_results.append(disaster)
-		_append_runtime_events(result, disaster)
-
-		return ""
-
-	var day := engine.advance_day()
-
-	if not day.ok:
-		return day.error
-
-	if engine.active_disaster_type != 0 and slow_for_disaster():
-		result.disaster_slowed = true
-
-	_consume_day_result(result, day)
-
-	return ""
-
-
 # the original drops African Swallow to Cheetah when a disaster starts
 # (0x00406a50). true when the speed changed
 func slow_for_disaster() -> bool:
@@ -345,84 +157,41 @@ func slow_for_disaster() -> bool:
 	return set_speed(Speed.CHEETAH)
 
 
-# fire and firestorm scans keep the fire pace from the start. other disasters
-# use it after a scan finds fire
-func _fire_paced() -> bool:
-	return engine.active_disaster_type in [1, 12] or engine.disaster_fire_active
-
-
-func _consume_day_result(result: SimulationTickResult, day: SimulationDayResult) -> void:
-	result.day_results.append(day)
-	var requests := day.interaction_requests
-	result.interaction_requests.append_array(requests)
-
-	if not requests.is_empty():
-		interaction_blocked = true
-
-	for action in day.pending:
-		if not result.pending_actions.has(action):
-			result.pending_actions.append(action)
-
-	var phase_results := day.phase_results
-
-	for phase_name in phase_results:
-		var phase_result: PhaseResult = phase_results[phase_name]
-
-		for refresh_request in phase_result.refresh_requests:
-			if not result.refresh_requests.has(refresh_request):
-				result.refresh_requests.append(refresh_request)
-
-		result.effect_events.append_array(phase_result.effect_events)
-		result.game_over_events.append_array(phase_result.game_over_events)
-
-		if phase_result is GrowthResult:
-			result.effect_events.append_array(phase_result.bridge_effects)
-
-		result.news_items.append_array(phase_result.news_items)
-		result.sound_events.append_array(phase_result.sound_events)
-		result.music_track_requests.append_array(phase_result.music_track_requests)
-		result.view_center_requests.append_array(phase_result.view_center_requests)
-		result.notice_ids.append_array(phase_result.notice_ids)
-		_append_newspaper_request(result, phase_result)
-
-	for disaster in day.disaster_results:
-		result.disaster_results.append(disaster)
-		_append_runtime_events(result, disaster)
-
-	for event in result.game_over_events:
-		terminal_blocked = terminal_blocked or event.is_terminal()
-		interaction_blocked = true
-
-
 func acknowledge_game_over() -> void:
 	interaction_blocked = engine != null and not engine.pending_interaction.is_empty()
 
 
-func _append_runtime_events(result: SimulationTickResult, phase_result: PhaseResult) -> void:
-	result.news_items.append_array(phase_result.news_items)
-	result.effect_events.append_array(phase_result.effect_events)
-	result.sound_events.append_array(phase_result.sound_events)
-	result.view_center_requests.append_array(phase_result.view_center_requests)
-	_append_newspaper_request(result, phase_result)
+# The controller fields that the native speed controller reads and writes.
+func state() -> Dictionary:
+	return {
+		"speed": speed, "accumulator_msec": accumulator_msec, "fire_elapsed_msec": fire_elapsed_msec,
+		"launch_elapsed_msec": launch_elapsed_msec, "subtick_counter": subtick_counter,
+		"simulation_ready": simulation_ready, "interaction_blocked": interaction_blocked,
+		"terminal_blocked": terminal_blocked, "pause_at_day": pause_at_day,
+	}
 
 
-# a request that names a paper replaces a request for the saved choice
-static func _append_newspaper_request(result: SimulationTickResult, phase_result: PhaseResult) -> void:
-	if not phase_result.newspaper_requested:
-		return
-
-	result.newspaper_requested = true
-
-	if phase_result.newspaper_paper >= 0:
-		result.newspaper_paper = phase_result.newspaper_paper
-
-
-func _empty_result() -> SimulationTickResult:
-	return SimulationTickResult.new()
+func apply_state(fields: Dictionary) -> void:
+	speed = fields.speed as Speed
+	accumulator_msec = fields.accumulator_msec
+	fire_elapsed_msec = fields.fire_elapsed_msec
+	launch_elapsed_msec = fields.launch_elapsed_msec
+	subtick_counter = fields.subtick_counter
+	simulation_ready = fields.simulation_ready
+	interaction_blocked = fields.interaction_blocked
+	terminal_blocked = fields.terminal_blocked
+	pause_at_day = fields.pause_at_day
 
 
-func _append_moving_events(result: SimulationTickResult, moving: MovingThingResult) -> void:
-	result.news_items.append_array(moving.news_items)
-	result.effect_events.append_array(moving.effect_events)
-	result.sound_events.append_array(moving.sound_events)
-	result.view_center_requests.append_array(moving.view_center_requests)
+func _invalid_result() -> SimulationTickResult:
+	if engine == null or engine.city == null or not engine.city.is_valid():
+		return _failed("city is invalid")
+
+	return null
+
+
+func _failed(message: String) -> SimulationTickResult:
+	var result := SimulationTickResult.new()
+	result.error = message
+
+	return result

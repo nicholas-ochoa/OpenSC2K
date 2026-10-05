@@ -247,7 +247,7 @@ func check_split_schedule() -> void:
 	var pollution_after_power := doc.find_chunk("XPLT").decoded_payload.duplicate()
 	var data_day := engine.advance_day()
 	check(data_day.ok and data_day.applied == PackedStringArray(["pollution_terrain_land_value"]), "Data-map day completes")
-	check(SimulationDaySchedule.scanned_data_maps_only(data_day), "Data-map day reports data-map work alone")
+	check(data_day.scanned_data_maps_only(), "Data-map day reports data-map work alone")
 	check(doc.find_chunk("XPLT").decoded_payload == pollution_after_power, "Data-map day keeps pollution")
 	check(doc.find_chunk("XVAL").decoded_payload != land_before, "Data-map day stores land value")
 	check(PowerPhase.run(expected, SimRandom.new(1)).ok and NativeDataMapPhase.run(expected).ok, "Full scan after power")

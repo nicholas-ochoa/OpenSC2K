@@ -11,5 +11,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 sc2k_sim = { path = "../core/sim" }
+sc2k_game = { path = "../core/game" }
 sc2k_formats = { path = "../core/formats" }
 godot = { version = "0.5.5", features = ["api-4-7", "experimental-threads"] }

@@ -217,6 +217,38 @@ impl Speed<'_, '_> {
         result
     }
 
+    /// One day or disaster tick now, as the debug step of a day.
+    pub fn run_one_day(&mut self) -> TickResult {
+        let mut result = TickResult::new();
+
+        match self.run_day(&mut result) {
+            Ok(()) => result.ok = true,
+            Err(error) => result.error = error,
+        }
+
+        result
+    }
+
+    /// Run part of a day, as the debug step of a phase. `first` asks for the
+    /// annual budget first; `last` starts the disaster that the day left pending.
+    pub fn step_schedule(&mut self, schedule: crate::clock::DaySchedule, first: bool, last: bool) -> TickResult {
+        let mut day = self.engine.run_day_schedule(schedule, false, first);
+
+        if last && day.ok {
+            day = self.engine.append_pending_disaster(day);
+        }
+
+        let mut result = TickResult::new();
+        result.ok = day.ok;
+        result.error = day.error.clone();
+
+        if day.ok {
+            self.consume_day_result(&mut result, day);
+        }
+
+        result
+    }
+
     pub fn acknowledge_game_over(&mut self) {
         self.state.interaction_blocked = !self.engine.state.pending_interaction.is_empty();
     }
@@ -424,5 +456,126 @@ fn append_newspaper_request(result: &mut TickResult, phase: &Value) {
 
     if paper >= 0 {
         result.newspaper_paper = paper;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::state::EngineState;
+    use sc2k_sim::sim::city::City;
+    use sc2k_sim::sim::disasters::{FIRE_OVERLAY, TOXIC_OVERLAY};
+    use sc2k_sim::sim::new_city::{city_of, template};
+    use sc2k_sim::sim::overlay;
+    use sc2k_sim::sim::random::Randoms;
+
+    const RIOT: i64 = 3;
+    const TOXIC_SPILL: i64 = 4;
+    const FIRESTORM: i64 = 12;
+
+    /// The markers fill this square, so a few scans do not clear them.
+    const MARKER_FIRST: i64 = 30;
+    const MARKER_END: i64 = 50;
+
+    /// A city with an active disaster and a square of its markers.
+    struct Disaster {
+        city: City,
+        randoms: Randoms,
+        engine: EngineState,
+        speed: SpeedState,
+    }
+
+    impl Disaster {
+        fn new(edge: i64, disaster_type: i64, marker: i64, speed: i64) -> Self {
+            let mut city = city_of(&template::empty_city(edge));
+            let mut text = city.xtxt.data.clone();
+
+            for x in MARKER_FIRST..MARKER_END {
+                for y in MARKER_FIRST..MARKER_END {
+                    overlay::set_marker_at(&mut text, x * edge + y, marker);
+                }
+            }
+
+            city.xtxt.replace(text);
+            let mut engine = EngineState::for_city(&city);
+            engine.active_disaster_type = disaster_type;
+
+            Self {
+                city,
+                randoms: Randoms::new(5, 1, 1),
+                engine,
+                speed: SpeedState {
+                    speed,
+                    ..SpeedState::default()
+                },
+            }
+        }
+
+        /// The disaster scans of `frames` frames of `frame_msec`. No day runs.
+        fn scans(&mut self, frame_msec: f64, frames: i64) -> usize {
+            let mut engine = Engine {
+                city: &mut self.city,
+                randoms: &mut self.randoms,
+                state: &mut self.engine,
+                detailed: false,
+            };
+            let mut controller = Speed {
+                engine: &mut engine,
+                state: &mut self.speed,
+            };
+            let mut scans = 0;
+
+            for _ in 0..frames {
+                let result = controller.advance_time(frame_msec, 1000, false);
+                assert!(result.ok && result.day_results.is_empty(), "{}", result.error);
+                scans += result.disaster_results.len();
+            }
+
+            scans
+        }
+    }
+
+    #[test]
+    fn fire_scans_once_per_second_in_each_city_format() {
+        for edge in [128, 256] {
+            for disaster_type in [1, FIRESTORM] {
+                let mut fire = Disaster::new(edge, disaster_type, FIRE_OVERLAY, CHEETAH);
+                assert_eq!(fire.scans(1000.0, 1), 1, "type {disaster_type} on a {edge} map");
+            }
+        }
+    }
+
+    #[test]
+    fn a_disaster_without_fire_scans_on_each_day_tick() {
+        let mut toxic = Disaster::new(128, TOXIC_SPILL, TOXIC_OVERLAY, CHEETAH);
+        assert_eq!(toxic.scans(1000.0, 1), 5);
+    }
+
+    #[test]
+    fn fire_from_any_disaster_uses_the_fire_pace() {
+        let mut riot = Disaster::new(128, RIOT, FIRE_OVERLAY, CHEETAH);
+        assert_eq!(riot.scans(1000.0, 1), 1);
+        assert!(riot.engine.disaster_fire_active, "the first scan finds fire");
+        assert_eq!(riot.scans(1000.0, 1), 1, "the next scan waits for the fire timer");
+    }
+
+    #[test]
+    fn african_swallow_scans_once_per_base_tick() {
+        let mut toxic = Disaster::new(128, TOXIC_SPILL, TOXIC_OVERLAY, AFRICAN_SWALLOW);
+        assert_eq!(toxic.scans(20.0, 50), 5, "not once per frame");
+
+        let mut fire = Disaster::new(128, 1, FIRE_OVERLAY, AFRICAN_SWALLOW);
+        assert_eq!(fire.scans(20.0, 50), 1);
+    }
+
+    #[test]
+    fn a_paused_fire_waits() {
+        let mut fire = Disaster::new(128, 1, FIRE_OVERLAY, AFRICAN_SWALLOW);
+        let first = fire.scans(1000.0 / 120.0, 120);
+        assert!(first <= 1, "120 frames of one second scan at most once");
+        assert_eq!(first + fire.scans(1000.0, 1), 2);
+
+        fire.speed.speed = PAUSED;
+        assert_eq!(fire.scans(5000.0, 1), 0);
     }
 }

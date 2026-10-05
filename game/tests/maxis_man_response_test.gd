@@ -162,11 +162,14 @@ func _test_engine(edge: int, native: bool) -> void:
 	var direct := manual.start_disaster(7, target)
 	scheduled.pending_disaster_type = 7
 	scheduled.pending_disaster_point = target
-	var day := SimulationDayResult.new()
-	day.ok = true
-	var queued := scheduled._append_pending_disaster(day)
+	# the last step of a day with no actions starts the pending disaster
+	var step := GameSpeedController.new(scheduled).step_schedule(SimulationSchedule.new(), false, true)
+	var queued: SimulationDayResult = step.day_results[0] if step.ok and step.day_results.size() == 1 else SimulationDayResult.new()
 	check(direct.ok and (direct.maxis_man_response != null), "Manual disaster starts automatic hero")
-	check(queued.ok and (queued.phase_results.disaster_start.maxis_man_response != null), "Queued disaster starts automatic hero")
+	check(
+		queued.phase_results.has("disaster_start") and queued.phase_results.disaster_start.maxis_man_response != null,
+		"Queued disaster starts automatic hero",
+	)
 	check(
 		DocumentState.capture(city.document) == DocumentState.capture(copy.document),
 		"Manual and queued paths publish identical city bytes",

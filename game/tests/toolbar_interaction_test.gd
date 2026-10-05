@@ -197,11 +197,10 @@ func _run() -> void:
 
 	paper.hide()
 	await _test_network_drag_price(main, map, city)
-	_test_fire_clock(city)
 	main.queue_free()
 	await process_frame
 	print(("PASS: toolbar interactions, placement validity, rail transitions, dispatch recall, "
-		+ "landscape rectangles, fire timing, newspaper articles and display options"))
+		+ "landscape rectangles, newspaper articles and display options"))
 	quit()
 
 
@@ -234,23 +233,6 @@ func _test_network_drag_price(main: Node, map: CityMapControl, city: CityState) 
 	map.selection._clear_selection()
 	main.current_tool.call("update_network_preview")
 	assert(map.selection_price < 0, "Ending the drag removes the route price")
-
-
-func _test_fire_clock(city: CityState) -> void:
-	var engine := CountingEngine.new(city)
-	engine.active_disaster_type = 1
-	var controller := GameSpeedController.new(engine)
-	controller.set_speed(GameSpeedController.Speed.AFRICAN_SWALLOW)
-
-	for frame in range(120):
-		assert(controller.advance_time(1000.0 / 120.0).ok)
-
-	assert(engine.fire_ticks <= 1)
-	controller.advance_time(1000.0)
-	assert(engine.fire_ticks == 2)
-	controller.set_speed(GameSpeedController.Speed.PAUSED)
-	controller.advance_time(5000.0)
-	assert(engine.fire_ticks == 2)
 
 
 func _test_brush_and_drag_input(map: CityMapControl, shift: InputEventKey) -> void:
@@ -289,23 +271,3 @@ func _test_brush_and_drag_input(map: CityMapControl, shift: InputEventKey) -> vo
 	map._input(shift)
 	assert(map.selection_path.size() == 6)
 	map.selection._clear_selection()
-
-
-class CountingEngine extends SimulationEngine:
-	var fire_ticks := 0
-
-
-	func advance_moving_things(_current_time_msec := -1) -> MovingThingResult:
-		var result := MovingThingResult.new()
-		result.ok = true
-
-		return result
-
-
-	func advance_disaster_tick() -> DisasterMapResult:
-		fire_ticks += 1
-
-		var result := DisasterMapResult.new()
-		result.ok = true
-
-		return result

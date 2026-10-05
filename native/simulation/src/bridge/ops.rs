@@ -68,8 +68,6 @@ pub const OPERATIONS: &[&str] = &[
     "tile_recount",
     "military.resolve",
     "military.reserve",
-    "day.schedule",
-    "engine.initialize",
     "spawn_thing",
     "spawn_maxis_man",
     "trip",
@@ -112,7 +110,14 @@ impl Outcome {
 /// Operations that mark every chunk that they change, so the native city cache
 /// may keep their city. Other operations can edit scratch data without marking
 /// it, as each call once started from new copies; they build a private city.
-const CACHED_OPERATIONS: [&str; 1] = ["moving"];
+const CACHED_OPERATIONS: [&str; 6] = [
+    "moving",
+    "engine.advance_moving_things",
+    "engine.advance_day",
+    "engine.advance_disaster_tick",
+    "game.advance_time",
+    "game.resolve_annual_budget",
+];
 
 pub fn run(request: &VarDictionary) -> VarDictionary {
     let op = convert::string(request, "op");
@@ -136,6 +141,8 @@ pub fn run(request: &VarDictionary) -> VarDictionary {
     let outcome = sc2k_sim::sim::budget::with_budget(budget, || {
         if tool {
             super::tool_ops::dispatch(&op, &args, &mut city, &mut randoms)
+        } else if super::game::is_game(&op) {
+            super::game::dispatch(&op, &args, &mut city, &mut randoms)
         } else {
             dispatch(&op, &args, &mut city, &mut randoms)
         }
@@ -170,7 +177,10 @@ pub fn run(request: &VarDictionary) -> VarDictionary {
     response.set("disaster_damage_class", city.disaster_damage_class);
     response.set("result", &convert::variant(&outcome.result));
 
-    if let Some(cache) = cached.as_deref_mut() {
+    // a failed operation can leave scratch edits that it did not mark
+    if let Some(cache) = cached.as_deref_mut()
+        && outcome.error.is_empty()
+    {
         cache.city = Some(city);
     }
 
@@ -374,47 +384,6 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
             )
             .to_value(),
         ),
-        "day.schedule" => {
-            // The original asks for the annual budget before it runs the day.
-            if convert::boolean(args, "check_annual_budget", false) && budget::requires_annual_budget(city) {
-                return Outcome::value(Value::Dict(vec![
-                    (Value::Str("ok".to_string()), Value::Bool(true)),
-                    (Value::Str("annual_budget".to_string()), Value::Bool(true)),
-                    (
-                        Value::Str("funding_values".to_string()),
-                        Value::Ints32(budget::funding_values(city)),
-                    ),
-                ]));
-            }
-
-            let schedule = convert::schedule(args, "schedule");
-            let state = convert::engine_state(args, "engine");
-            let scenario = convert::scenario(args, "scenario");
-            let (outcome, state, scenario) = sc2k_sim::sim::engine::day::run_schedule(
-                city,
-                randoms,
-                scenario,
-                state,
-                &schedule,
-                convert::boolean(args, "annual_budget_approved", false),
-                convert::boolean(args, "detailed", false),
-            );
-            let Value::Dict(mut fields) = outcome.to_value() else {
-                unreachable!()
-            };
-            fields.push((Value::Str("engine".to_string()), state.to_value()));
-            let time_limit = scenario.map(|scenario| scenario.time_limit_months).unwrap_or(-1);
-            fields.push((Value::Str("scenario_time_limit".to_string()), Value::Int(time_limit)));
-            Outcome::value(Value::Dict(fields))
-        }
-        "engine.initialize" => match sc2k_sim::sim::engine::load::initialize_loaded_city(city, &mut randoms.random) {
-            Some(scan) => Outcome::value(Value::Dict(vec![
-                (Value::Str("power_usage_percent".to_string()), Value::Int(scan.power_usage_percent)),
-                (Value::Str("water_usage_percent".to_string()), Value::Int(scan.water_usage_percent)),
-                (Value::Str("developed_tiles".to_string()), Value::Int(scan.developed_tiles)),
-            ])),
-            None => Outcome::failure("the load scan failed"),
-        },
         "spawn_thing" => {
             let points = convert::points(args, "points");
             let Randoms { random, lfsr, game } = randoms;

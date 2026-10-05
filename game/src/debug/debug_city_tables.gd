@@ -358,7 +358,7 @@ static func _engine_detail_rows(city: CityState, engine: SimulationEngine) -> Ar
 	if schedule != null:
 		# the budget prompt stops the day before its first action. the military prompts stop it after milestones
 		if engine.pending_interaction != "annual_budget":
-			schedule = SimulationDaySchedule._schedule_after(schedule, "milestones")
+			schedule = schedule.after("milestones")
 
 		remaining = "City day %d: %s" % [schedule.city_days, _action_list(city, schedule.actions)]
 
