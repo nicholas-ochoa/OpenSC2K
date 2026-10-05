@@ -228,12 +228,29 @@ func open_query(point: Vector2i) -> void:
 	if not action.is_empty():
 		action_text = str(QueryStrings.ACTIONS.get(action, ""))
 
-	var neighborhood := QueryNeighborhood.render(
-		app.document_state.city,
-		point,
-		app.asset_state.palette_index_encoding,
-		app.asset_state.large_sprites,
-	)
+	# the GPU city view shows HD art, and so does its query
+	var artwork: Array[Image] = []
+
+	if app.render_caches.region_cache != null and app.render_caches.region_cache.gpu_enabled:
+		artwork = QueryNeighborhood.render_artwork(app.document_state.city, point, app.asset_state.palette,
+			app.asset_state.large_sprites)
+
+	var neighborhood_texture: Texture2D = null
+	var selection_texture: Texture2D = null
+	var animation_palette: Sc2Palette = null
+
+	if not artwork.is_empty():
+		neighborhood_texture = HdArtworkTexture.create(artwork[0], QueryNeighborhood.SIZE)
+		selection_texture = HdArtworkTexture.create(artwork[1], QueryNeighborhood.SIZE)
+	else:
+		var neighborhood := QueryNeighborhood.render(
+			app.document_state.city,
+			point,
+			app.asset_state.palette_index_encoding,
+			app.asset_state.large_sprites,
+		)
+		neighborhood_texture = ImageTexture.create_from_image(neighborhood) if neighborhood != null else null
+		animation_palette = app.asset_state.palette
 	app.city_dialogs.query_dialog.set_max_length(app.document_state.city.document.name_limit())
 	app.city_dialogs.query_dialog.show_query(
 		str(result.title),
@@ -242,9 +259,10 @@ func open_query(point: Vector2i) -> void:
 		QueryText.format_text(result),
 		action_text,
 		result,
-		ImageTexture.create_from_image(neighborhood) if neighborhood != null else null,
-		app.asset_state.palette,
+		neighborhood_texture,
+		animation_palette,
 		app.palette_clock.cycle_ticks,
+		selection_texture,
 	)
 	app.effects_audio.play_sound_ids(result.sound_events)
 

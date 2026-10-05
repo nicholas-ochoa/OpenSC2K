@@ -56,6 +56,7 @@ func show_query(
 	neighborhood_texture: Texture2D = null,
 	animation_palette: Sc2Palette = null,
 	animation_ticks: int = 0,
+	selection_texture: Texture2D = null,
 ) -> void:
 	title_label.text = tr("Query — %s") % (query_title if is_specific else tr(query_title))
 	name_input.visible = is_specific
@@ -70,6 +71,7 @@ func show_query(
 	neighborhood_view.configure_animation(animation_palette, animation_ticks)
 	neighborhood_view.zoom = QueryNeighborhood.zoom_for_tile(info.tile_id if info != null else 0)
 	neighborhood_view.texture = neighborhood_texture
+	neighborhood_view.selection_texture = selection_texture
 	neighborhood_view.visible = neighborhood_texture != null
 	show()
 	ok_button.grab_focus()
@@ -87,6 +89,7 @@ func close_query() -> void:
 	hide()
 	neighborhood_view.configure_animation(null, 0)
 	neighborhood_view.texture = null
+	neighborhood_view.selection_texture = null
 
 
 func _populate_summary(details: String, info: QueryResult) -> void:

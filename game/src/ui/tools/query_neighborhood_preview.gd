@@ -1,5 +1,8 @@
 extends Control
 
+# the opacity of the area around the selected building in HD art
+const FADED_ALPHA := 0.25
+
 var zoom := 3.5
 var palette: Sc2Palette
 var palette_texture: ImageTexture
@@ -8,6 +11,11 @@ var elapsed := 0.0
 var texture: Texture2D:
 	set(value):
 		texture = value
+		queue_redraw()
+# HD art: the selected building over a faded `texture`, or null
+var selection_texture: Texture2D:
+	set(value):
+		selection_texture = value
 		queue_redraw()
 
 
@@ -35,7 +43,15 @@ func _draw() -> void:
 	if texture != null:
 		# the zoom on whole screen pixels for each artwork pixel
 		var target := Vector2(ScreenPixels.art_length(texture.get_width(), zoom), ScreenPixels.art_length(texture.get_height(), zoom))
-		draw_texture_rect(texture, Rect2((size - target) * 0.5, target), false)
+		var rect := Rect2((size - target) * 0.5, target)
+
+		if selection_texture == null:
+			draw_texture_rect(texture, rect, false)
+
+			return
+
+		draw_texture_rect(texture, rect, false, Color(1, 1, 1, FADED_ALPHA))
+		draw_texture_rect(selection_texture, rect, false)
 
 
 func configure_animation(source: Sc2Palette, start_ticks: int) -> void:
