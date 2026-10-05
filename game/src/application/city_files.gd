@@ -504,6 +504,7 @@ func _finish_save(document: Sc2File, prepared: CityFiles.PreparedSave, result: F
 		app.status_label.theme_type_variation = ""
 		app.status_label.text = "Saved city: %s" % result.path
 		sync_upgrade_city_option()
+		app.scripting.emit("city.saved", {"path": result.path})
 
 	if on_saved.is_valid():
 		on_saved.call()

@@ -171,6 +171,8 @@ func activate_document(
 	if not facility_repair.ok or facility_repair.linked > 0 or facility_repair.unfilled > 0:
 		app.status_label.text = status_text
 
+	app.scripting.on_city_opened()
+
 	return true
 
 
@@ -192,6 +194,7 @@ func finish_game() -> void:
 	app.simulation_state.speed_controller = null
 	app.simulation_state.simulation_engine = null
 	app.document_state.city = null
+	app.scripting.emit("city.closed")
 	document_state.current_document = null
 	document_state.current_save_path = ""
 	document_state.saved_city_snapshot = PackedByteArray()

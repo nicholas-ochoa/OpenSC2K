@@ -29,6 +29,8 @@ const MENU_UNDO_EDIT := 0x8416
 const MENU_REPAIR_BAD_TERRAIN := 0x8417
 const MENU_FIND_ORPHAN_LABELS := 0x8418
 const MENU_REMOVE_ORPHAN_LABELS := 0x8419
+const MENU_RUN_SCRIPT := 0x841a
+const MENU_RESET_SCRIPTS := 0x841b
 # a disaster preview item has this ID plus the disaster ID
 const PREVIEW_BASE := 0x8700
 # disaster ticks of a menu preview. The Scenario tab of the Debug window sets other counts
@@ -76,6 +78,8 @@ const TOOLTIPS := {
 	MENU_PERFORMANCE_HUD: "Show frame time, render counters and a frame-time graph.",
 	MENU_CAPTURE: "Save a screenshot and a JSON file of the debug state in the debug_captures folder.",
 	MENU_DEBUG_WINDOW: "Open the Debug window with city records, metrics and edit tools.",
+	MENU_RUN_SCRIPT: "Run a JavaScript file. Its event listeners, timers and console commands stay active until a reset.",
+	MENU_RESET_SCRIPTS: "Stop all scripts: their event listeners, timers and console commands.",
 }
 const BASELINE_TOOLTIPS := [
 	"Compare with the city as it was loaded.",
@@ -117,6 +121,9 @@ static func populate(popup: PopupMenu, handler: Callable) -> void:
 	popup.add_check_item("Performance HUD", MENU_PERFORMANCE_HUD)
 	popup.add_item("Capture Screenshot and State", MENU_CAPTURE)
 	popup.add_item("Debug Window", MENU_DEBUG_WINDOW)
+	popup.add_separator()
+	popup.add_item("Run Script File", MENU_RUN_SCRIPT)
+	popup.add_item("Reset Script Runtime", MENU_RESET_SCRIPTS)
 
 	for id: int in TOOLTIPS:
 		popup.set_item_tooltip(popup.get_item_index(id), TOOLTIPS[id])

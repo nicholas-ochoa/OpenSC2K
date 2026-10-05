@@ -87,6 +87,13 @@ func select_tool_group(index: int) -> void:
 	_auto_select_underground()
 	_sync_child_tool_selection()
 	update_edit_state()
+	_emit_selected()
+
+
+func _emit_selected() -> void:
+	app.scripting.emit("tool.selected", {
+		"tool": ApplicationScriptingApi.tool_info(app.tool_state.selected_group, app.tool_state.selected_subtool),
+	})
 
 
 func _auto_select_underground() -> void:
@@ -145,6 +152,7 @@ func select_subtool(index: int) -> void:
 	_auto_select_underground()
 	_sync_child_tool_selection()
 	update_edit_state()
+	_emit_selected()
 
 	if (app.tool_state.landscape_editor and app.tool_state.selected_group == CityToolIds.Group.BULLDOZER
 			and index in [CityToolIds.Bulldozer.RAISE_SEA, CityToolIds.Bulldozer.LOWER_SEA]):

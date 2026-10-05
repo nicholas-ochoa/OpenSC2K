@@ -26,6 +26,14 @@ func register(name: String, description: String, handler: Callable) -> void:
 	_commands[name.to_lower()] = Command.new(name.to_lower(), description, handler)
 
 
+func unregister(name: String) -> void:
+	_commands.erase(name.to_lower())
+
+
+func has(name: String) -> bool:
+	return _commands.has(name.to_lower())
+
+
 func names() -> PackedStringArray:
 	var result := PackedStringArray(_commands.keys())
 	result.sort()

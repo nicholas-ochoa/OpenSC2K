@@ -51,7 +51,7 @@ func _init() -> void:
 	var context := CoreTestContext.new(reference_root)
 
 	for argument in arguments.slice(1):
-		if argument not in ["formats", "simulation", "tools", "rendering", "scurk", "ui", "audio"]:
+		if argument not in ["formats", "simulation", "tools", "rendering", "scurk", "ui", "audio", "scripting"]:
 			push_error("Unknown core domain: " + argument)
 			quit(1)
 			return

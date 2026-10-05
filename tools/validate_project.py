@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import build_native  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
-DOMAINS = ('formats', 'simulation', 'tools', 'rendering', 'scurk', 'ui', 'audio')
+DOMAINS = ('formats', 'simulation', 'tools', 'rendering', 'scurk', 'ui', 'audio', 'scripting')
 SUITES = ('headless', 'renderer', 'release', *DOMAINS)
 CONSOLE_LOCK = threading.Lock()
 

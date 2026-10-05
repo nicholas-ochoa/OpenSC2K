@@ -311,6 +311,22 @@
     "lane": "product"
   },
   {
+    "id": "script_runtime_test",
+    "script": "tests/script_runtime_test.gd",
+    "domain": "scripting",
+    "lane": "product"
+  },
+  {
+    "id": "scripting_workflow_test",
+    "script": "tests/scripting_workflow_test.gd",
+    "domain": "scripting",
+    "lane": "product",
+    "requires": [
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
+    ]
+  },
+  {
     "id": "control_binding_test",
     "script": "tests/control_binding_test.gd",
     "domain": "ui",

@@ -327,5 +327,7 @@ class TestCityEdits extends ApplicationCityEdits:
 	var applied_tools: Array[Vector2i] = []
 
 
-	func apply_map_selection(_start: Vector2i, _finish: Vector2i, _path: Array[Vector2i], _dragged: bool) -> void:
+	func apply_map_selection(_start: Vector2i, _finish: Vector2i, _path: Array[Vector2i], _dragged: bool) -> Dictionary:
 		applied_tools.append(Vector2i(app.tool_state.selected_group, app.tool_state.selected_subtool))
+
+		return {}

@@ -48,6 +48,13 @@ static func console_log_save() -> FileDialog:
 	)
 
 
+static func script_open() -> FileDialog:
+	return _create(
+		FileDialog.FILE_MODE_OPEN_FILE,
+		[["*.js, *.mjs", "JavaScript files"]],
+	)
+
+
 static func folder_select() -> FileDialog:
 	return _create(FileDialog.FILE_MODE_OPEN_DIR, [])
 

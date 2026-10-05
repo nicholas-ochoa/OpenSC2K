@@ -188,6 +188,8 @@ func consume_simulation_result(result: SimulationTickResult) -> void:
 		elif request.type == "military_proposal":
 			app.budget.open_military_proposal()
 
+	app.scripting.on_simulation_result(result)
+
 
 func _update_fps(delta: float) -> void:
 	app.timing_state.fps_update_seconds += delta
@@ -221,6 +223,7 @@ func select_speed(speed_value: int) -> void:
 	sync_speed_ui()
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "%s speed selected." % app.simulation_state.speed_controller.speed_name()
+	app.scripting.emit("sim.speed", {"speed": app.simulation_state.speed_controller.speed_name()})
 
 
 func sync_speed_ui() -> void:

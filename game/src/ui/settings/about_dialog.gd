@@ -84,6 +84,9 @@ func _build_licenses() -> void:
 	if OS.get_name() == "Linux":
 		_add_license("FluidR3 Mono SoundFont — MIT", _license_files("fluidr3mono", ["FluidR3Mono-License.txt"]))
 
+	_add_license("QuickJS-ng — MIT", "QuickJS-ng %s JavaScript engine of the script runtime\nhttps://github.com/quickjs-ng/quickjs\n\n%s"
+		% [ScriptRuntime.engine_version(), FileAccess.get_file_as_string("res://assets/licenses/quickjs/QuickJS-ng-LICENSE.txt").strip_edges()])
+
 	_add_license("Research and original game", """RESEARCH
 
 sc2json — MIT

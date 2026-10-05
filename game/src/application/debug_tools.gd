@@ -176,6 +176,11 @@ func on_debug_menu(id: int) -> void:
 			_status(_orphan_label_report())
 		CityDebugMenu.MENU_REMOVE_ORPHAN_LABELS:
 			_status(edits.remove_orphan_labels())
+		CityDebugMenu.MENU_RUN_SCRIPT:
+			app.scripting.open_run_dialog()
+		CityDebugMenu.MENU_RESET_SCRIPTS:
+			app.scripting.reset()
+			_status("The script runtime stopped. The next script starts a new one.")
 		CityDebugMenu.MENU_TILE_GRID:
 			if app.map_view != null:
 				app.map_view.debug_view.attach()

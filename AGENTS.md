@@ -58,7 +58,7 @@ process and one window with keyboard focus disabled. Stateful pairs keep their o
 shared disposable preferences. Shared fixture preparation finishes first.
 Use `--list` to review the selected coverage.
 
-- Domains: `formats`, `simulation`, `tools`, `rendering`, `scurk`, `ui`, and `audio`.
+- Domains: `formats`, `simulation`, `tools`, `rendering`, `scurk`, `ui`, `audio`, and `scripting`.
 - Run `headless` before merge. It is the default suite. It includes all
   headless product tests and the full runtime UI workflow.
 - Run `renderer` for renderer or shader changes. Use computer-use automation for

@@ -26,15 +26,53 @@ func _init(application: CityApplication) -> void:
 	app = application
 
 
+## Uses the selected tool on a map selection. A script can cancel it in the
+## tool.beforeApply event. Returns the detail of the tool.applied event, or
+## an empty Dictionary without a city.
 func apply_map_selection(
 	start: Vector2i,
 	finish: Vector2i,
 	path: Array[Vector2i],
 	dragged: bool
-) -> void:
-	if app.document_state.city == null:
-		return
+) -> Dictionary:
+	var city := app.document_state.city
 
+	if city == null:
+		return {}
+
+	var detail := {
+		"tool": ApplicationScriptingApi.tool_info(app.tool_state.selected_group, app.tool_state.selected_subtool),
+		"start": start, "finish": finish, "dragged": dragged, "tiles": path.size(),
+	}
+
+	if app.scripting.cancelled("tool.beforeApply", detail):
+		detail.merge({"changed": false, "cancelled": true, "command": "", "cost": 0, "message": "A script cancelled the tool."})
+		app.status_label.theme_type_variation = ""
+		app.status_label.text = detail.message
+
+		return detail
+
+	var command_before := app.tool_state.last_edit_command
+	var funds_before := city.funds()
+	_apply_selected_tool(start, finish, path, dragged)
+	var command := app.tool_state.last_edit_command
+	var changed := command != null and command != command_before
+	detail.merge({
+		"changed": changed, "cancelled": false, "command": command.command_type if changed else "",
+		"cost": funds_before - city.funds() if app.document_state.city == city else 0,
+		"message": app.status_label.text if app.status_label != null else "",
+	})
+	app.scripting.emit("tool.applied", detail)
+
+	return detail
+
+
+func _apply_selected_tool(
+	start: Vector2i,
+	finish: Vector2i,
+	path: Array[Vector2i],
+	dragged: bool
+) -> void:
 	var tool := app.tool_state
 
 	if (tool.landscape_editor
@@ -671,3 +709,5 @@ func undo_last_edit() -> void:
 		app.status_label.text = "Restored the previous dispatched unit."
 	else:
 		app.status_label.text = "Restored %d tiles and the previous funds value." % result.restored_tiles
+
+	app.scripting.emit("tool.undone", {"command": command_type})

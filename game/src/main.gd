@@ -98,6 +98,8 @@ var debug: ApplicationDebug = ApplicationDebug.new(self)
 var debug_tools: ApplicationDebugTools = ApplicationDebugTools.new(self)
 var updates := ApplicationUpdates.new(preferences)
 var autosave: ApplicationAutosave = ApplicationAutosave.new(self)
+# the JavaScript runtime of mods and developer scripts
+var scripting: ApplicationScripting = ApplicationScripting.new(self)
 
 
 func _ready() -> void:
@@ -114,6 +116,7 @@ func _ready() -> void:
 	console_window = ConsoleWindow.new()
 	console_window.toggle_shortcut = controls.is_console_shortcut
 	add_child(console_window)
+	scripting.attach_console(console_window.commands)
 
 	if asset_state.reference_root.is_empty():
 		asset_state.reference_root = DataPack.default_folder()
@@ -162,11 +165,13 @@ func _exit_tree() -> void:
 	static_render.stop_render_job()
 	city_png_export.close()
 	autosave.close()
+	scripting.close()
 
 
 func _process(delta: float) -> void:
 	frame.process(delta)
 	autosave.process(delta)
+	scripting.process(delta)
 
 
 func _input(event: InputEvent) -> void:

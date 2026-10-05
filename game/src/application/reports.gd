@@ -83,6 +83,11 @@ func start_disaster_at(id: int, point: Vector2i) -> DisasterReportResult:
 
 		return report
 
+	if app.scripting.cancelled("disaster.beforeStart", {"id": id, "name": CityMenuBar.disaster_name(id), "x": point.x, "y": point.y}):
+		report.error = "a script cancelled it"
+
+		return report
+
 	var result := app.simulation_state.simulation_engine.start_disaster(id, point)
 	report.phase_result = result
 
@@ -136,6 +141,7 @@ func start_disaster_at(id: int, point: Vector2i) -> DisasterReportResult:
 
 	report.ok = true
 	report.name = disaster_name
+	app.scripting.check_disaster()
 
 	return report
 
