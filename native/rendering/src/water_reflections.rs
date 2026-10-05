@@ -48,11 +48,14 @@ fn contact_row(draw: &Draw, column: i32, developed: bool) -> i32 {
     draw.rect.y + draw.rect.h - inset
 }
 
-fn contact_twice(draw: &Draw, column: i32, building: u8) -> i32 {
+fn bridge(building: u8) -> bool {
     use crate::ids::building_tile_ids::*;
-    let bridge =
-        (SUSPENSION_BRIDGE_1..=POWER_BRIDGE).contains(&building) || [HIGHWAY_BRIDGE, REINFORCED_HIGHWAY_BRIDGE].contains(&building);
-    if bridge {
+    (SUSPENSION_BRIDGE_1..=POWER_BRIDGE).contains(&building) || [HIGHWAY_BRIDGE, REINFORCED_HIGHWAY_BRIDGE].contains(&building)
+}
+
+fn contact_twice(draw: &Draw, column: i32, building: u8) -> i32 {
+    use crate::ids::building_tile_ids::DEVELOPED_FIRST;
+    if bridge(building) {
         // A bridge stands along one isometric map axis, not at a point. Its
         // projected water contact has slope +/- 1/2, matching the deck and the
         // adjacent spans. Keep half-pixel contacts to avoid staircase seams.
@@ -65,6 +68,27 @@ fn contact_twice(draw: &Draw, column: i32, building: u8) -> i32 {
     } else {
         2 * contact_row(draw, column, building >= DEVELOPED_FIRST)
     }
+}
+
+fn contact_twice_at_foot(draw: &Draw, column: i32, building: u8, sprite: &Sprite) -> i32 {
+    let axis = contact_twice(draw, column, building);
+    if !bridge(building) {
+        return axis;
+    }
+
+    // Some bridge sprites include a pier that reaches the waterline. Anchor
+    // those columns at their drawn foot, rather than at the raised deck axis;
+    // otherwise the pillar and its reflection visibly separate. A foot is an
+    // opaque pixel on the last two rows of the sprite, not an arbitrary lower
+    // edge from a truss or cable column.
+    let bottom = (0..sprite.h).rev().find(|&y| {
+        let at = ((y * sprite.w + column) * 4 + 3) as usize;
+        sprite.rgba[at] != 0
+    });
+    if let Some(y) = bottom.filter(|&y| y >= sprite.h - 2) {
+        return 2 * (draw.rect.y + y + 1);
+    }
+    axis
 }
 
 fn auxiliary(artwork: &HashMap<u64, Sprite>, draw: &Draw, sprite: &Sprite, x: i32, y: i32) -> [u8; 4] {
@@ -167,9 +191,9 @@ impl Builder {
             let sprite = &self.sprites.images[&draw.image];
             let altitude = self.city.object(i);
             let building = self.city.buildings[i];
-            let contacts = (0..sprite.w).map(|x| contact_twice(draw, x, building));
-            let lowest = contacts.clone().min().unwrap();
-            let highest = contacts.max().unwrap();
+            let contacts: Vec<_> = (0..sprite.w).map(|x| contact_twice_at_foot(draw, x, building, sprite)).collect();
+            let lowest = *contacts.iter().min().unwrap();
+            let highest = *contacts.iter().max().unwrap();
             for (level, present) in levels.iter().enumerate() {
                 if !present || altitude < level as i32 {
                     continue;
@@ -184,7 +208,7 @@ impl Builder {
                 let first = (bounds.x - draw.rect.x).max(0);
                 let last = (bounds.x + bounds.w - draw.rect.x).min(sprite.w);
                 for sx in first..last {
-                    let contact = contact_twice(draw, sx, building);
+                    let contact = contacts[sx as usize];
                     let plane_twice = contact + lift;
                     let plane = plane_twice.div_euclid(2);
                     // Land obstructions are checked once per column and receiver
@@ -514,6 +538,36 @@ mod tests {
     }
 
     #[test]
+    fn bridge_pier_columns_anchor_reflections_at_the_visible_foot() {
+        use crate::ids::building_tile_ids::ROAD_BRIDGE;
+        let draw = Draw::new(0, Rect::new(100, 200, 32, 67));
+        let mut sprite = Sprite {
+            w: 32,
+            h: 67,
+            rgba: vec![0; 32 * 67 * 4],
+            la: vec![0; 32 * 67 * 2],
+        };
+        let put = |sprite: &mut Sprite, x: i32, y: i32| {
+            let at = ((y * sprite.w + x) * 4) as usize;
+            sprite.rgba[at + 3] = 255;
+        };
+        let support = 4;
+        put(&mut sprite, support, 50);
+        put(&mut sprite, support, 65);
+        put(&mut sprite, support, 66);
+
+        let deck_axis = contact_twice(&draw, support, ROAD_BRIDGE);
+        let foot_axis = contact_twice_at_foot(&draw, support, ROAD_BRIDGE, &sprite);
+        assert_ne!(foot_axis, deck_axis, "off-centre pier should override the deck axis");
+        assert_eq!(foot_axis, 2 * (draw.rect.y + sprite.h));
+        assert_eq!(
+            contact_twice_at_foot(&draw, 5, ROAD_BRIDGE, &sprite),
+            contact_twice(&draw, 5, ROAD_BRIDGE),
+            "truss columns must retain the continuous bridge axis"
+        );
+    }
+
+    #[test]
     fn bridge_sprite_pixels_reflect_without_rotating_in_both_directions() {
         use crate::ids::{building_tile_ids::ROAD_BRIDGE, sc2tile_flags::FLIPPED};
         for view in 0..3 {
@@ -530,14 +584,15 @@ mod tests {
                 };
                 for x in 0..width {
                     let plane = (2 * height + width / 2 - 1 - x).div_euclid(2);
-                    let row = plane - 10 / c.divisor();
+                    let row = plane - 16 / c.divisor();
                     let at = (row * width + x) as usize;
                     let index = 40 + x as u8;
                     image.rgba[at * 4..at * 4 + 4].copy_from_slice(&[index, index, index, 255]);
                     image.la[at * 2..at * 2 + 2].copy_from_slice(&[index, 255]);
                 }
                 builder.city.buildings[0] = ROAD_BRIDGE;
-                builder.city.flags[0] = if flip { FLIPPED } else { 0 };
+                builder.city.terrain[0] = 0x10;
+                builder.city.flags[0] = 4 | if flip { FLIPPED } else { 0 };
                 builder
                     .sprites
                     .images
@@ -555,7 +610,7 @@ mod tests {
                 let mut pixels = 0;
                 for x in 0..width {
                     let original_x = if flip { width - 1 - x } else { x };
-                    let source_row = (2 * height + width / 2 - 1 - original_x).div_euclid(2) - 10 / c.divisor();
+                    let source_row = (2 * height + width / 2 - 1 - original_x).div_euclid(2) - 16 / c.divisor();
                     let axis = 2 * (draw.rect.y + height) + if flip { x - width / 2 } else { width / 2 - 1 - x };
                     let y = axis - (draw.rect.y + source_row) - 1;
                     let at = (((y - bounds.y) * bounds.w + draw.rect.x + x - bounds.x) * 4) as usize;
