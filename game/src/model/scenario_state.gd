@@ -328,16 +328,6 @@ func set_time_limit_months(value: int) -> bool:
 	return true
 
 
-static func _signed_16(value: int) -> int:
-	value &= 0xffff
-	return value - 0x10000 if value & 0x8000 else value
-
-
-static func _signed_32(value: int) -> int:
-	value &= 0xffffffff
-	return value - 0x100000000 if value & 0x80000000 else value
-
-
 
 
 
