@@ -18,7 +18,7 @@ use crate::sim::reports::{graphs, news};
 use crate::sim::value::{Strings, ToValue, Value};
 
 /// SimulationPhaseContext.ENGINE_STATE.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct EngineState {
     pub developed_tiles: i64,
     pub power_usage_percent: i64,

@@ -6,6 +6,7 @@
 
 pub mod building;
 pub mod demolish;
+pub mod dispatch;
 pub mod highway;
 pub mod hydro;
 pub mod landscape;

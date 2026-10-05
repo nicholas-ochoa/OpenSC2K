@@ -217,6 +217,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "sc2k_game"
+version = "0.1.0"
+dependencies = [
+ "sc2k_formats",
+ "sc2k_sim",
+]
+
+[[package]]
 name = "sc2k_render"
 version = "0.1.0"
 
