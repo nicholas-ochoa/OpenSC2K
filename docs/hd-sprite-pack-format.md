@@ -16,9 +16,18 @@ builds an HD sprite pack.
 - `OPENSC2K_HD_PACK`: the path of a `pack.json` file or its folder, for one run.
   It overrides the Settings value.
 
-Only the GPU renderer (**Settings > Graphics > Renderer > GPU**) shows the HD art.
-The CPU renderer, the underground view, the title screen city, and the moving
-objects show the original sprites.
+These show the HD art:
+
+- The city view with the GPU renderer (**Settings > General > Renderer > GPU**),
+  with its moving objects, network placement previews, and query previews.
+- The title screen city, the tool icons, the bridge choices, and the New City
+  terrain preview.
+- **File > Export City as PNG**, with its **Detail** option: the HD art at 1, 2
+  or 4 image pixels for each view pixel.
+
+The CPU renderer, the underground view, and the SCURK editors show the original
+sprites. Palette animation, such as moving water and blinking lights, shows only
+on original sprites; the HD art animates with its strips.
 
 A SCURK tile set sprite replaces the HD art of its sprite ID.
 
