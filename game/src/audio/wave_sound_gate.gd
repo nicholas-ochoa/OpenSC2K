@@ -54,7 +54,9 @@ static func event_replay_msec(sound_id: int) -> float:
 
 
 # `ambient` requests come from moving objects. `simulation` requests come from other
-# simulation events. both wait for their replay delay. other requests are player feedback
+# simulation events. both wait for their replay delay. other requests are player feedback.
+# a moving object that is not a vehicle, such as a tornado that destroys a building,
+# makes a disaster sound. it waits for the event delay, not the ambient delay
 func request(sound_id: int, ambient := false, simulation := false) -> bool:
 	var total_ticks := duration_ticks(sound_id)
 
@@ -62,6 +64,10 @@ func request(sound_id: int, ambient := false, simulation := false) -> bool:
 		return false
 
 	var city_sound := ambient and sound_id in VEHICLE_SOUNDS
+
+	if ambient and not city_sound:
+		ambient = false
+		simulation = true
 
 	if city_sound and (
 		city_sounds == CitySounds.OFF

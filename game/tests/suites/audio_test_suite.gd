@@ -394,6 +394,15 @@ func _test_simulation_sound_gate() -> void:
 	gate.advance(1.0)
 	_check(gate.request(520, false, true), "A simulation sound can repeat at exactly the replay delay")
 	gate.stop()
+	_check(gate.request(WaveSounds.SOUND_EXPLODE, true) and gate.request(510, true),
+		"A tornado demolition and a vehicle sound can start together")
+	gate.advance(WaveSounds.event_replay_msec(WaveSounds.SOUND_EXPLODE) - 1.0)
+	_check(not gate.request(WaveSounds.SOUND_EXPLODE, true) and not gate.request(WaveSounds.SOUND_EXPLODE, false, true),
+		"A tornado demolition shares the disaster explosion delay")
+	gate.advance(1.0)
+	_check(gate.request(WaveSounds.SOUND_EXPLODE, true) and not gate.request(510, true),
+		"A tornado demolition repeats after the explosion delay, not the ambient delay")
+	gate.stop()
 	_check(gate.request(WaveSounds.SOUND_FLOOD, false, true), "The flood sound starts again")
 	gate.advance(3000.0)
 	_check(gate.request(WaveSounds.SOUND_FLOOD, false, true), "The flood sound can repeat at exactly three seconds")
