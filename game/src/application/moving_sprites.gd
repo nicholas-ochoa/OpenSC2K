@@ -57,7 +57,7 @@ func refresh_moving_things(view_size := -1) -> void:
 				Vector2(Vector2i(256, 256)) * divisor).intersects(app.map_view.visible_source_rect().grow(256 * divisor))):
 			continue
 
-		var visual_cache_key := var_to_str([view_size, factor, command.value_signature()])
+		var visual_cache_key := var_to_str([view_size, factor, sprite_archive.visual_revision, command.value_signature()])
 		# Include fully hidden shadows: a static change can make them visible.
 		caches.dynamic_active_keys[visual_cache_key] = true
 
@@ -137,6 +137,9 @@ func refresh_moving_things(view_size := -1) -> void:
 			var emission := CityBrightmaps.transform_mask(sprite_archive.visual_emission.get(command.sprite_id), visual_image, command.flip)
 			if emission != null:
 				visual.emission_texture = ImageTexture.create_from_image(emission)
+		if sprite_archive.water_reflections and command.floating_altitude >= 0 and not command.shadow:
+			var lights := CityBrightmaps.transform_mask(sprite_archive.visual_emission.get(command.sprite_id), resource.image, command.flip)
+			visual.water_reflection = WaterReflectionSprite.create(resource.image, lights, position, int(command.floating_altitude))
 		visual.special_overlay = command.overlay >= 0
 		visual.batch_cache_key = visual_cache_key
 		visual.depth_order = int(command.depth_order)

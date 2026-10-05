@@ -59,6 +59,8 @@ func _ready() -> void:
 				for key in values:
 					if str(key).ends_with("_enabled"):
 						values[key] = false
+				values.water_reflections = 0
+				values.water_topography = false
 				show_values(values)
 			changed.emit()
 			if title == "Reload brightmaps":

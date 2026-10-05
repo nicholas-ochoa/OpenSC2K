@@ -3,6 +3,7 @@ extends AssetImageResult
 # a rendered region and its cache publication state. workers own each result
 
 var bounds := Rect2i()
+var water: WaterReflectionRegion
 var occlusion_commands: Array[CityStaticCommand] = []
 var occlusion_grid: NativeRectIndex
 # A positive screen scale leaves `occlusion_grid` to the first query. Most

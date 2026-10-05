@@ -185,7 +185,14 @@ func _keep_source_payloads(city: CityState) -> void:
 func _region_keys(rects: Array[Rect2i]) -> Dictionary[Vector2i, bool]:
 	var result: Dictionary[Vector2i, bool] = {}
 
-	for key in NativeRegionPlan.keys_for(rects, region_edge):
+	var affected := rects
+	if _sprites != null and _sprites.water_reflections:
+		var limit := CityIsometricRenderer.maximum_sprite_size(_sprites)
+		var reach := limit.y + limit.x + 62 * CityIsometricRenderer.view_configuration(view_size).altitude_step
+		affected = []
+		for rect in rects:
+			affected.append(Rect2i(rect.position - Vector2i(0, reach), rect.size + Vector2i(0, 2 * reach)))
+	for key in NativeRegionPlan.keys_for(affected, region_edge):
 		result[key] = true
 
 	return result
@@ -398,6 +405,7 @@ func texture() -> CityMapSource:
 			entry.texture))
 		output.tiles[-1].emission = entry.emission_texture
 		output.tiles[-1].seasons = entry.season_texture
+		output.tiles[-1].water = entry.water
 
 	_source_updates.clear()
 	_published_viewport = _viewport_serial
@@ -410,6 +418,7 @@ func _mesh_entry(gpu: CityGpuRegionResult) -> CityMapSource.MeshEntry:
 		gpu.source_entry = CityMapSource.MeshEntry.new(Vector2(gpu.bounds.position * divisor), gpu.mesh, gpu.atlas_texture, divisor)
 		gpu.source_entry.emission = gpu.emission_texture
 		gpu.source_entry.seasons = gpu.season_texture
+		gpu.source_entry.water = gpu.water
 		gpu.source_entry.immutable = true
 	return gpu.source_entry
 

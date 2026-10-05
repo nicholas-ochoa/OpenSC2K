@@ -58,5 +58,6 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 	result.emission_image = context.builder.auxiliary_raster(bounds, sprites.visual_emission)
 	result.season_image = context.builder.auxiliary_raster(bounds, sprites.visual_seasons)
 	result.bounds = bounds
+	result.water = context.build_water(bounds, configuration.divisor, sprites, mode)
 
 	return result

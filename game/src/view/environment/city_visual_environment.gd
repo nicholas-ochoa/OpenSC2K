@@ -14,6 +14,7 @@ var _city_id := 0
 var weather: CityVisualWeather
 var clouds: CityVisualClouds
 var _whole_mask_signature: Array = []
+var _whole_water_signature: Array = []
 
 
 func _init(application: CityApplication) -> void:
@@ -34,8 +35,26 @@ func configure() -> void:
 			if image != null and image.get_height() >= 2 and image.get_width() == image.get_height() * image.get_height():
 				lut = ImageTexture.create_from_image(image)
 				lut_size = image.get_height()
+	_configure_water(options)
 	_options = options.duplicate()
 	process(0.0)
+
+
+func _configure_water(options: Dictionary, refresh := true) -> void:
+	var indices := CityWaterLayer.blue_indices(app.asset_state.palette)
+	var changed := false
+	for archive: Sc2SpriteArchive in [app.asset_state.large_sprites, app.asset_state.small_medium_sprites]:
+		if archive == null:
+			continue
+		var enabled: bool = options.water_reflections == 1 or options.water_topography
+		if archive.water_reflections != enabled or archive.water_indices != indices:
+			archive.water_reflections = enabled
+			archive.water_indices = indices
+			archive.visual_revision += 1
+			changed = true
+	if changed and refresh and app.document_state.city != null:
+		app.static_render.invalidate_rendered_city()
+		app.map_render.refresh_map()
 
 
 func reload_brightmaps(refresh := true) -> void:
@@ -46,6 +65,7 @@ func reload_brightmaps(refresh := true) -> void:
 			if app.asset_state.palette != null:
 				CitySeasonColors.prepare(archive, app.asset_state.palette)
 			archive.visual_revision += 1
+	_configure_water(app.preferences.visual_enhancements, refresh)
 	if not refresh:
 		return
 	if app.map_view != null:
@@ -92,10 +112,17 @@ func process(delta: float) -> void:
 	weather.process(delta, elapsed * factor, active, season)
 	if active and (options.day_enabled or options.season_enabled or options.weather_enabled):
 		_sync_whole_masks()
+	if active and (options.water_reflections == 1 or options.water_topography):
+		_sync_whole_water()
 	tint = lighting.tint if options.day_enabled else Color.WHITE
 	night = lighting.night if options.day_enabled and options.brightmaps else 0.0
 	clouds.process(delta, elapsed * factor, active, tint * weather.tint, lighting.night if options.day_enabled else 0.0, weather.kind)
 	var parameters := {
+		"water_enabled": active and (options.water_reflections == 1 or options.water_topography),
+		"water_reflections_enabled": active and options.water_reflections == 1,
+		"water_topography": options.water_topography,
+		"water_rain": weather.rain,
+		"water_frozen": options.pause_freezes and (speed == 1 or app.frame._simulation_suspended()),
 		"environment_enabled": active and (options.day_enabled or options.season_enabled or options.weather_enabled),
 		"environment_weather": Vector3(weather.tint.r, weather.tint.g, weather.tint.b),
 		"environment_frost": weather.frost,
@@ -108,6 +135,26 @@ func process(delta: float) -> void:
 	}
 	parameters.merge(clouds.parameters)
 	app.map_view.layers.set_environment(parameters)
+
+
+func _sync_whole_water() -> void:
+	if app.render_caches.region_cache != null or app.map_view.city_source == null or app.render_caches.static_display_city == null or app.map_view.layers.water_layer == null:
+		return
+	var source := app.map_view.city_source
+	var view := app.static_render.city_view_size()
+	var sprites := app.static_render.sprite_archive_for_view(view)
+	var signature := [source.get_instance_id(), app.static_render_state.epoch, sprites.visual_revision, view]
+	if signature == _whole_water_signature:
+		return
+	_whole_water_signature = signature
+	var context := CityGpuBuildContext.new()
+	var error := context.prepare(app.render_caches.static_display_city, app.asset_state.palette_index_encoding, sprites,
+		view, CityViewMode.Mode.CITY, true, true, true, 0, false)
+	if not error.is_empty():
+		return
+	app.map_view.layers.water_layer.configure_whole(context, sprites, CityIsometricRenderer.view_configuration(view).divisor,
+		source.get_instance_id())
+	app.map_view.layers._sync_base_layer()
 
 
 func _sync_whole_masks() -> void:

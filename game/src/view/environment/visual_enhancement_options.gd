@@ -3,6 +3,8 @@ extends RefCounted
 ## Local presentation preferences. No value is written to a city document.
 
 const FIELDS := [
+	["water_reflections", "Water reflections", "choice", 1, ["Off", "Subtle"]],
+	["water_topography", "Underwater terrain", "bool", true],
 	["cloud_enabled", "Clouds and cloud shadows", "bool", true],
 	["cloud_density", "Cloud density", "number", 0.4, 0.0, 1.0, 0.05],
 	["cloud_shadow_strength", "Cloud shadow strength", "number", 0.22, 0.0, 0.5, 0.02],

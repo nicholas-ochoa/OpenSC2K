@@ -80,8 +80,17 @@ func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	result.draw_records = data.records
 	result.draw_images.assign(data.images)
 	result.draws = data.draws
+	result.water = build_water(bounds, configuration.divisor, sprites, mode)
 
 	return result
+
+
+func build_water(bounds: Rect2i, divisor: int, sprites: Sc2SpriteArchive, mode: CityViewMode.Mode) -> WaterReflectionRegion:
+	if not sprites.water_reflections or mode != CityViewMode.Mode.CITY:
+		return null
+	var data: Dictionary = builder.water_reflections(bounds.grow(WaterReflectionRegion.PADDING), sprites.water_indices,
+			sprites.visual_emission, sprites.visual_seasons)
+	return WaterReflectionRegion.from_native(data, bounds, divisor)
 
 
 # Configure the builder for a layout, or pass a new city revision to it. GPU

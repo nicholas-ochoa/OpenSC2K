@@ -1,5 +1,18 @@
 [
   {
+    "id": "water_reflections_test",
+    "script": "tests/water_reflections_test.gd",
+    "domain": "rendering",
+    "lane": "product"
+  },
+  {
+    "id": "water_reflections_gpu_test",
+    "script": "tests/water_reflections_gpu_test.gd",
+    "domain": "rendering",
+    "lane": "native",
+    "driver": "scene-batch"
+  },
+  {
     "id": "cloud_visual_test",
     "script": "tests/cloud_visual_test.gd",
     "domain": "rendering",

@@ -26,11 +26,14 @@ var _foreground_palette_material: ShaderMaterial
 var _retained_data_mesh: ArrayMesh
 var _retained_data_signature: Array = []
 var environment_parameters: Dictionary = {}
+var water_layer: CityWaterLayer
 var _visual_materials: Dictionary = {}
 
 
 func set_environment(parameters: Dictionary) -> void:
 	environment_parameters = parameters
+	if water_layer != null:
+		water_layer.set_environment(parameters)
 	for material: ShaderMaterial in [_base_material, _dynamic_material]:
 		_apply_environment(material)
 	for material: ShaderMaterial in _visual_materials.values():
@@ -256,6 +259,11 @@ func _ensure_base_layer() -> void:
 	_base_material = _new_palette_material()
 	base_layer.material = _base_material
 	map.add_child(base_layer)
+	water_layer = CityWaterLayer.new()
+	water_layer.name = "WaterReflections"
+	water_layer.show_behind_parent = true
+	map.add_child(water_layer)
+	water_layer.set_environment(environment_parameters)
 	dynamic_canvas = DynamicSpriteCanvas.new()
 	dynamic_canvas.name = "DynamicSpriteCanvas"
 	dynamic_canvas.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -289,6 +297,8 @@ func _sync_base_nodes() -> void:
 
 		if base_layer != null:
 			base_layer.hide()
+		if water_layer != null:
+			water_layer.hide()
 
 		if dynamic_canvas != null:
 			dynamic_canvas.hide()
@@ -300,6 +310,8 @@ func _sync_base_nodes() -> void:
 
 	if map.city_source == null:
 		base_layer.hide()
+		if water_layer != null:
+			water_layer.sync(null, 1.0, Vector2.ZERO, map.animated_palette_texture)
 
 		return
 
@@ -378,6 +390,7 @@ func _sync_base_nodes() -> void:
 	base_layer.position = map.camera._draw_offset(scale)
 	base_layer.size = Vector2(map.city_source.size) * scale
 	base_layer.show()
+	water_layer.sync(map.city_source, scale, map.camera._draw_offset(scale), map.animated_palette_texture, map.visible_source_rect())
 	var used_materials := {}
 	used_materials[base_layer.material] = true
 	for tile in _tile_layers:

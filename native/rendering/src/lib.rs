@@ -17,6 +17,7 @@ mod region;
 mod region_plan;
 mod sprites;
 mod visual_auxiliary;
+mod water_reflections;
 
 use sprites::Sprite;
 use std::collections::HashMap;

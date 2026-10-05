@@ -36,6 +36,7 @@ class TileEntry:
 
 	var position: Vector2
 	var size: Vector2
+	var water: WaterReflectionRegion
 	var seasons: Texture2D
 	var emission: Texture2D
 	var texture: Texture2D
@@ -52,6 +53,7 @@ class MeshEntry:
 
 	# Region results opt in after upload. Their descriptors never change.
 	var immutable := false
+	var water: WaterReflectionRegion
 	var position: Vector2
 	var mesh: Mesh
 	var seasons: Texture2D

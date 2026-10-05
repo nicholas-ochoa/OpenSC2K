@@ -119,6 +119,50 @@ impl NativeCityRegionBuilder {
     }
 
     #[func]
+    fn water_reflections(
+        &mut self,
+        bounds: Rect2i,
+        water_indices: PackedByteArray,
+        emission: VarDictionary,
+        seasons: VarDictionary,
+    ) -> VarDictionary {
+        let mut result = VarDictionary::new();
+        let Some(core) = self.core.as_mut() else { return result };
+        let rect = Rect::new(bounds.position.x, bounds.position.y, bounds.size.x, bounds.size.y);
+        if !rect.area() || rect.w > 2048 || rect.h > 2048 || water_indices.len() != 256 {
+            result.set("error", "invalid water reflection bounds or palette");
+            return result;
+        }
+        let pixels = match core.water_pixels(
+            rect,
+            water_indices.as_slice(),
+            &auxiliary_images(&emission),
+            &auxiliary_images(&seasons),
+        ) {
+            Ok(pixels) => pixels,
+            Err(error) => {
+                result.set("error", &GString::from(&error));
+                return result;
+            }
+        };
+        if !pixels.surface.chunks_exact(4).any(|p| p[3] != 0) {
+            return result;
+        }
+        for (name, bytes) in [
+            ("surface", pixels.surface),
+            ("reflected", pixels.reflected),
+            ("emission", pixels.emission),
+            ("seasons", pixels.seasons),
+            ("seabed", pixels.seabed),
+        ] {
+            let image = Image::create_from_data(rect.w, rect.h, false, Format::RGBA8, &PackedByteArray::from(bytes.as_slice()))
+                .expect("validated water bounds");
+            result.set(name, &image);
+        }
+        result
+    }
+
+    #[func]
     fn configure(&mut self, request: VarDictionary, images: VarDictionary, target: i64) -> GString {
         let previous_revision = self.core.as_ref().map_or(0, |core| core.atlas.revision + 1);
         self.core = None;
