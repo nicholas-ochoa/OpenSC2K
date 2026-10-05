@@ -48,6 +48,25 @@ fn contact_row(draw: &Draw, column: i32, developed: bool) -> i32 {
     draw.rect.y + draw.rect.h - inset
 }
 
+fn contact_twice(draw: &Draw, column: i32, building: u8) -> i32 {
+    use crate::ids::building_tile_ids::*;
+    let bridge =
+        (SUSPENSION_BRIDGE_1..=POWER_BRIDGE).contains(&building) || [HIGHWAY_BRIDGE, REINFORCED_HIGHWAY_BRIDGE].contains(&building);
+    if bridge {
+        // A bridge stands along one isometric map axis, not at a point. Its
+        // projected water contact has slope +/- 1/2, matching the deck and the
+        // adjacent spans. Keep half-pixel contacts to avoid staircase seams.
+        let along = if draw.flip {
+            column - draw.rect.w / 2
+        } else {
+            draw.rect.w / 2 - 1 - column
+        };
+        2 * (draw.rect.y + draw.rect.h) + along
+    } else {
+        2 * contact_row(draw, column, building >= DEVELOPED_FIRST)
+    }
+}
+
 fn auxiliary(artwork: &HashMap<u64, Sprite>, draw: &Draw, sprite: &Sprite, x: i32, y: i32) -> [u8; 4] {
     let Some(mask) = artwork.get(&((draw.sprite as u64) * 2)) else {
         return [0; 4];
@@ -147,37 +166,37 @@ impl Builder {
             }
             let sprite = &self.sprites.images[&draw.image];
             let altitude = self.city.object(i);
-            let developed = self.city.buildings[i] >= crate::ids::building_tile_ids::DEVELOPED_FIRST;
+            let building = self.city.buildings[i];
+            let contacts = (0..sprite.w).map(|x| contact_twice(draw, x, building));
+            let lowest = contacts.clone().min().unwrap();
+            let highest = contacts.max().unwrap();
             for (level, present) in levels.iter().enumerate() {
                 if !present || altitude < level as i32 {
                     continue;
                 }
                 let level = level as i32;
-                let far = mirrored_row(draw.rect.y, draw.rect.y + draw.rect.h, altitude, level, self.config.step());
-                let near = mirrored_row(
-                    draw.rect.y + draw.rect.h - 1,
-                    draw.rect.y + draw.rect.h - draw.rect.w / 4,
-                    altitude,
-                    level,
-                    self.config.step(),
-                );
+                let lift = 2 * (altitude - level) * self.config.step();
+                let far = highest + lift - draw.rect.y - 1;
+                let near = lowest + lift - (draw.rect.y + draw.rect.h - 1) - 1;
                 if !Rect::new(draw.rect.x, near, draw.rect.w, far - near + 1).clip(bounds).area() {
                     continue;
                 }
                 let first = (bounds.x - draw.rect.x).max(0);
                 let last = (bounds.x + bounds.w - draw.rect.x).min(sprite.w);
                 for sx in first..last {
-                    let contact = contact_row(draw, sx, developed);
-                    let plane = contact + (altitude - level) * self.config.step();
+                    let contact = contact_twice(draw, sx, building);
+                    let plane_twice = contact + lift;
+                    let plane = plane_twice.div_euclid(2);
                     // Land obstructions are checked once per column and receiver
                     // tile span, rather than once for every reflected pixel.
                     let mut visibility = HashMap::new();
                     for sy in 0..sprite.h {
                         let src = ((sy * sprite.w + sx) * 4) as usize;
-                        if sprite.rgba[src + 3] == 0 || draw.rect.y + sy >= contact {
+                        if sprite.rgba[src + 3] == 0 || 2 * (draw.rect.y + sy) + 1 >= contact {
                             continue;
                         }
-                        let y = mirrored_row(draw.rect.y + sy, contact, altitude, level, self.config.step());
+                        let y = mirrored_row(draw.rect.y + sy, contact.div_euclid(2), altitude, level, self.config.step())
+                            + contact.rem_euclid(2);
                         if y < bounds.y || y >= bounds.y + bounds.h {
                             continue;
                         }
