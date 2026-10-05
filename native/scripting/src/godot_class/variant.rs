@@ -5,7 +5,7 @@
 use godot::builtin::{AnyArray, AnyDictionary};
 use godot::prelude::*;
 
-use crate::value::{JsData, MAX_DEPTH};
+use sc2k_scripting::value::{JsData, MAX_DEPTH};
 
 pub fn to_variant(data: &JsData) -> Variant {
     match data {

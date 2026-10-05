@@ -36,7 +36,7 @@ AudioStreamPlayer -> Master bus -> output device
   splits each render at event times, seeks (it replays programs, controllers,
   bends and pressure, but no notes), loops, and ends after a release tail of at
   most 2 seconds.
-- `native/audio/src/fluidsynth` is the only code that calls FluidSynth.
+- `native/core/audio/src/fluidsynth` is the only code that calls FluidSynth.
   `platform.rs` opens the library, `api.rs` holds the function table, `synth.rs`
   is the safe `FluidSynth` owner, and `log.rs` keeps the last FluidSynth error.
 - `native/audio/src/fluid_midi_synth.rs` is the Godot class `FluidMidiSynth`.
@@ -72,7 +72,7 @@ No Rust FluidSynth crate is used:
 
 The function declarations follow the FluidSynth API documentation. No FluidSynth
 header or source is copied into OpenSC2K. All `unsafe` code is in
-`native/audio/src/fluidsynth`. The rest of the crate uses the safe `FluidSynth`
+`native/core/audio/src/fluidsynth`. The rest of the crate uses the safe `FluidSynth`
 type. The library is checked at load: its `fluid_version` major version must be 2.
 
 ### Threading
@@ -148,7 +148,7 @@ library.
   pass with a note, unless `OPENSC2K_REQUIRE_FLUIDSYNTH` is set.
   `tools/build_native.py` sets it, and so does CI.
 - The tests use `game/tests/fixtures/soundfonts/opensc2k_test_gm.sf2`, a 17 KB
-  SoundFont that `native/audio/src/fluidsynth/test_soundfont.rs` generates. It has
+  SoundFont that `native/core/audio/src/fluidsynth/test_soundfont.rs` generates. It has
   no third-party content. Set `OPENSC2K_UPDATE_FIXTURES=1` to write it again.
 - `game/tests/fluidsynth_music_test.gd` tests the Godot classes: the library,
   SoundFont errors, MIDI parsing, rendering, looping, seeking, the fallback order,

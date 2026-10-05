@@ -187,7 +187,7 @@ The simulation, the tools, and the renderer use its chunks in the extended layou
 - The document keeps the metadata, the compatibility XLAB table, the object identities,
   the TEXT source orders, and the preserved chunks and entries.
 
-`Sc2xDocument.split` and `join` (native code in `native/simulation/src/formats/sc2x`) convert
+`Sc2xDocument.split` and `join` (native code in `native/core/sim/src/formats/sc2x`) convert
 between the working chunks and the saved structures. A load followed by a save writes the same
 entries. After each simulation step that changes XTHG, a slot whose object was freed or changed
 type loses its identity and name; the next save gives the new object a new ID. IDs are never
@@ -295,7 +295,7 @@ conversion. The load still restores `rng_states` before its scan.
 
 ## Record and vehicle limits
 
-`native/simulation/src/formats/sc2x/limits.rs` holds the default capacities and the ordinary
+`native/core/sim/src/formats/sc2x/limits.rs` holds the default capacities and the ordinary
 vehicle caps of each map size.
 
 | Map size | XMIC | XSGN | XTHG | Airplanes | Helicopters | Ships | Sailboats | Trains |
@@ -333,4 +333,4 @@ SC2 and SCN cities keep the original allocation rules.
 - `game/src/formats/zip_archive.gd`: the in-memory ZIP codec, which checks each CRC-32.
 - `game/src/model/city/sign_table.gd`: sign lookup and edits.
 - `game/src/simulation/core/sc2x_checkpoint.gd`: saved simulation state.
-- `native/simulation/src/formats/sc2x`: the binary structures, the projection, and the limits.
+- `native/core/sim/src/formats/sc2x`: the binary structures, the projection, and the limits.

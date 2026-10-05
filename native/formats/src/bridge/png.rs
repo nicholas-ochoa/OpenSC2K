@@ -1,11 +1,11 @@
 //! Indexed PNG files.
 
-use super::super::png;
 use super::{bytes, failure, ints, success};
 use godot::{
     classes::{Image, file_access::CompressionMode, image::Format},
     prelude::*,
 };
+use sc2k_formats::png;
 
 /// Indexed PNG files. See `png.rs`.
 #[derive(GodotClass)]

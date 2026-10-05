@@ -10,14 +10,14 @@ uniform sampler2D dark_underground_palette : source_color, filter_nearest, repea
 uniform float artwork_animation_seconds = 0.0;
 
 // The red byte of the vertex color of a GPU region quad tells how to draw it.
-// Other values are indexed sprites. Refer to native/rendering/src/region.rs.
+// Other values are indexed sprites. Refer to native/core/render/src/region.rs.
 const float ARTWORK_TAG = 2.0;
 const float POWER_WARNING_TAG = 50.0;
 const float ANIMATION_TAG = 64.0;
 const float SLOW_ANIMATION_TAG = 65.0;
 const float TRAFFIC_TAG = 80.0;
 const float LAST_TRAFFIC_TAG = 111.0;
-// Optional HD effects. Refer to `effects` in native/rendering/src/lib.rs.
+// Optional HD effects. Refer to `effects` in native/core/render/src/lib.rs.
 // Grid lines: UV.y is the distance across the line, in view pixels.
 const float GRID_TAG = 48.0;
 // Waterfall art: green is the view, blue and alpha the sprite position.

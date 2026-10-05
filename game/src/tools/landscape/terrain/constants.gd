@@ -1,7 +1,7 @@
 class_name TerrainEditConstants
 extends RefCounted
 ## The terrain tools, and the slope table that the view shares. The terrain
-## rules run in the native simulation library; see native/simulation/src/sim/tools/commands.
+## rules run in the native simulation library; see native/core/sim/src/sim/tools/commands.
 
 const GROUP_BULLDOZER := CityToolIds.Group.BULLDOZER
 const SUBTOOL_LEVEL := CityToolIds.Bulldozer.LEVEL

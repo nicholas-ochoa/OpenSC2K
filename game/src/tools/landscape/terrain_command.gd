@@ -2,7 +2,7 @@ class_name TerrainCommand
 extends TerrainEditConstants
 # The level, raise, and lower tools. The native simulation library plans the
 # heights and clears the structures in the way; see
-# native/simulation/src/sim/tools/commands/terrain_edit.rs.
+# native/core/sim/src/sim/tools/commands/terrain_edit.rs.
 
 const PAYLOAD_IDS: PackedStringArray = ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT", "XLAB", "XMIC", "MISC"]
 

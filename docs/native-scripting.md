@@ -1,7 +1,8 @@
 # Native scripting
 
-The script runtime is a Rust GDExtension in `native/scripting`. It embeds
-QuickJS-ng 0.17.0. The C sources are in `native/scripting/quickjs`, unchanged,
+The script runtime is the Rust crate `sc2k_scripting` in `native/core/scripting`. The bridge
+crate `opensc2k_scripting` in `native/scripting` holds the Godot class `ScriptRuntime`. It embeds
+QuickJS-ng 0.17.0. The C sources are in `native/core/scripting/quickjs`, unchanged,
 and `build.rs` compiles them with the `cc` crate. The crate dependencies are
 `godot` and, at build time only, `cc`. For the scripting API, see
 [Scripting](scripting.md).
@@ -98,11 +99,11 @@ leaks. A release build defines `NDEBUG`, as the CMake Release build of QuickJS-n
 `python3 tools/build_native.py` builds and installs every native library. Run
 `cargo fmt`, `cargo fmt --check`,
 `cargo clippy --all-targets --all-features -- -D warnings` and
-`cargo test --release` from `native/scripting`. The Godot checks are in the
+`cargo test --release` from `native/`. The Godot checks are in the
 `scripting` validation domain: `tools/validate_project.sh --suite scripting`.
 
 After you add the extension to a checkout, run the Godot editor or
 `godot --headless --path game --import` once. Godot then adds
 `opensc2k_scripting.gdextension` to `.godot/extension_list.cfg`.
 
-To update QuickJS-ng, follow `native/scripting/quickjs/README.md`.
+To update QuickJS-ng, follow `native/core/scripting/quickjs/README.md`.

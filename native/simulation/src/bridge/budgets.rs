@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 
-use crate::sim::budget::SliceBudget;
+use sc2k_sim::sim::budget::SliceBudget;
 
 fn registry() -> &'static Mutex<HashMap<i64, Arc<SliceBudget>>> {
     static REGISTRY: OnceLock<Mutex<HashMap<i64, Arc<SliceBudget>>>> = OnceLock::new();

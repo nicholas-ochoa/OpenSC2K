@@ -1,7 +1,7 @@
 // TypeScript declarations of the OpenSC2K script API: the globals of the
 // console runtime and of each mod. Copy this file into a mod folder for the
 // completion and the checks of TypeScript and of editors such as VS Code.
-// game/assets/scripting/api.js and native/scripting/src/prelude.js define the
+// game/assets/scripting/api.js and native/core/scripting/src/prelude.js define the
 // API; docs/scripting.md and docs/mods.md describe it. The API is new: names
 // and fields can change.
 //

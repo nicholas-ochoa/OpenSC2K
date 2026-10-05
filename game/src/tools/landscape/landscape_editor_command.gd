@@ -2,7 +2,7 @@ class_name LandscapeEditorCommand
 extends RefCounted
 # Terrain editor actions: stretch, sea level, forest, and stream. Each is one
 # undo unit. The native simulation library runs them; see
-# native/simulation/src/sim/tools/commands/landscape_editor.rs.
+# native/core/sim/src/sim/tools/commands/landscape_editor.rs.
 
 
 static func supports_tool(group: int, subtool: int) -> bool:

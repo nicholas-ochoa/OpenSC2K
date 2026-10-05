@@ -1,7 +1,7 @@
 //! CRC-32 of PNG and ZIP records.
 
-use super::super::crc32;
 use godot::prelude::*;
+use sc2k_formats::crc32;
 
 /// CRC-32 of PNG and ZIP records.
 #[derive(GodotClass)]

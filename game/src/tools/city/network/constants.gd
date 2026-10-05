@@ -1,7 +1,7 @@
 class_name NetworkConstants
 extends RefCounted
 ## Network tool modes, bridge types, and connection choices. The route rules
-## run in the native simulation library; see native/simulation/src/sim/tools/commands.
+## run in the native simulation library; see native/core/sim/src/sim/tools/commands.
 
 const MODE_ROAD := 0
 const MODE_RAIL := 1

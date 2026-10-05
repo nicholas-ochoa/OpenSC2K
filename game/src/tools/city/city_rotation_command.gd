@@ -1,7 +1,7 @@
 class_name CityRotationCommand
 extends RefCounted
 ## View rotation rewrites the saved city coordinates. The native simulation
-## library turns the chunks; see native/simulation/src/sim/tools/rotation.rs.
+## library turns the chunks; see native/core/sim/src/sim/tools/rotation.rs.
 
 const REQUIRED_CHUNKS: PackedStringArray = [
 	"MISC", "ALTM", "XTER", "XBLD", "XZON", "XUND", "XTXT", "XTHG", "XBIT", "XTRF", "XPLT", "XVAL", "XCRM", "XPLC", "XFIR",

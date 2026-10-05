@@ -9,7 +9,7 @@ use crate::midi::{Event, Kind};
 use crate::sequencer::Sequencer;
 
 const RATE: f64 = test_soundfont::SAMPLE_RATE as f64;
-const FIXTURE: &str = "../../game/tests/fixtures/soundfonts/opensc2k_test_gm.sf2";
+const FIXTURE: &str = "../../../game/tests/fixtures/soundfonts/opensc2k_test_gm.sf2";
 const REQUIRE_VARIABLE: &str = "OPENSC2K_REQUIRE_FLUIDSYNTH";
 const UPDATE_VARIABLE: &str = "OPENSC2K_UPDATE_FIXTURES";
 const DRUM_CHANNEL: i32 = 9;

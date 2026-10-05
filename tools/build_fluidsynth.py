@@ -65,7 +65,7 @@ SOURCES = {
 }
 
 # the shared library that each platform loads. keep in sync with the
-# candidate names in native/audio/src/fluidsynth/library.rs
+# candidate names in native/core/audio/src/fluidsynth/library.rs
 LIBRARY_NAMES = {
     'macos': ('libfluidsynth.3.dylib',),
     'linux-x86_64': ('libfluidsynth.so.3',),

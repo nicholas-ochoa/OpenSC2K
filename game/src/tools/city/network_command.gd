@@ -1,7 +1,7 @@
 class_name NetworkCommand
 extends NetworkConstants
 # Road, rail, power line, subway, and pipe drags. The native simulation library
-# plans and places the route; see native/simulation/src/sim/tools/commands/route.rs.
+# plans and places the route; see native/core/sim/src/sim/tools/commands/route.rs.
 
 # the chunks that a route checks, in commit order
 const PAYLOAD_IDS: PackedStringArray = ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT", "MISC"]

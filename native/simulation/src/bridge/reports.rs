@@ -5,10 +5,10 @@
 use godot::prelude::*;
 
 use super::convert;
-use crate::sim::economy::{bonds, ordinances};
-use crate::sim::events::NewsEvent;
-use crate::sim::reports::news;
-use crate::sim::value::ToValue;
+use sc2k_sim::sim::economy::{bonds, ordinances};
+use sc2k_sim::sim::events::NewsEvent;
+use sc2k_sim::sim::reports::news;
+use sc2k_sim::sim::value::ToValue;
 
 /// `{ok, error, misc}` of a queue edit. A failed edit returns no MISC.
 fn queue_edit(misc: PackedByteArray, edit: impl FnOnce(&mut [u8]) -> Result<(), String>) -> VarDictionary {

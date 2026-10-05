@@ -1,7 +1,7 @@
 class_name DemolishConstants
 extends RefCounted
 ## The bulldozer tool. The demolition rules run in the native simulation
-## library; see native/simulation/src/sim/tools/commands/demolish.rs.
+## library; see native/core/sim/src/sim/tools/commands/demolish.rs.
 
 const GROUP_BULLDOZER := CityToolIds.Group.BULLDOZER
 const SUBTOOL_DEMOLISH := CityToolIds.Bulldozer.DEMOLISH

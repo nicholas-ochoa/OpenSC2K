@@ -1,8 +1,8 @@
 //! SimCity 2000 sprite records.
 
-use super::super::sprite;
 use super::{failure, ints, rgba_image, success};
 use godot::{classes::Image, prelude::*};
+use sc2k_formats::sprite;
 
 /// SimCity 2000 sprite records. See `sprite.rs`.
 #[derive(GodotClass)]

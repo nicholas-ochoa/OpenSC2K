@@ -2,11 +2,11 @@
 
 use godot::prelude::*;
 
-use crate::sim::city::{CHUNK_IDS, City};
-use crate::sim::effect_packing;
-use crate::sim::geom::{Rect2i as SimRect2i, Vec2i};
-use crate::sim::random::{GameRandomScript, LfsrRandomScript, Randoms, SimRandomScript};
-use crate::sim::value::Value;
+use sc2k_sim::sim::city::{CHUNK_IDS, City};
+use sc2k_sim::sim::effect_packing;
+use sc2k_sim::sim::geom::{Rect2i as SimRect2i, Vec2i};
+use sc2k_sim::sim::random::{GameRandomScript, LfsrRandomScript, Randoms, SimRandomScript};
+use sc2k_sim::sim::value::Value;
 
 /// Read an integer field. Missing fields use `fallback`.
 pub fn int(dictionary: &VarDictionary, key: &str, fallback: i64) -> i64 {
@@ -102,7 +102,7 @@ pub fn city(request: &VarDictionary) -> City {
     city
 }
 
-fn chunk_slot<'a>(city: &'a mut City, id: &str) -> Option<&'a mut crate::sim::city::Chunk> {
+fn chunk_slot<'a>(city: &'a mut City, id: &str) -> Option<&'a mut sc2k_sim::sim::city::Chunk> {
     let slot = match id {
         "CNAM" => &mut city.cnam,
         "MISC" => &mut city.misc,
@@ -291,9 +291,9 @@ fn effect_list(packed: effect_packing::PackedEffects) -> Variant {
 }
 
 /// A SimulationTiming sent as `{work_usec, steps}`.
-pub fn timing(dictionary: &VarDictionary, key: &str) -> crate::sim::events::Timing {
+pub fn timing(dictionary: &VarDictionary, key: &str) -> sc2k_sim::sim::events::Timing {
     let source = self::dictionary(dictionary, key);
-    let mut steps = crate::sim::value::OrderedMap::new();
+    let mut steps = sc2k_sim::sim::value::OrderedMap::new();
 
     for (name, value) in self::dictionary(&source, "steps").iter_shared() {
         steps.set(&name.to_string(), value.try_to::<i64>().unwrap_or(0));
@@ -305,11 +305,11 @@ pub fn timing(dictionary: &VarDictionary, key: &str) -> crate::sim::events::Timi
         -1
     };
 
-    crate::sim::events::Timing::new(total, steps)
+    sc2k_sim::sim::events::Timing::new(total, steps)
 }
 
 /// ScenarioState fields, or None when the dictionary is missing or empty.
-pub fn scenario(dictionary: &VarDictionary, key: &str) -> Option<crate::sim::civic::scenario::Scenario> {
+pub fn scenario(dictionary: &VarDictionary, key: &str) -> Option<sc2k_sim::sim::civic::scenario::Scenario> {
     let source = self::dictionary(dictionary, key);
 
     if source.is_empty() {
@@ -318,7 +318,7 @@ pub fn scenario(dictionary: &VarDictionary, key: &str) -> Option<crate::sim::civ
 
     let field = |name: &str| int(&source, name, 0);
 
-    Some(crate::sim::civic::scenario::Scenario {
+    Some(sc2k_sim::sim::civic::scenario::Scenario {
         format_size: field("format_size") as usize,
         disaster_type: field("disaster_type"),
         disaster_x: field("disaster_x"),
@@ -342,10 +342,10 @@ pub fn scenario(dictionary: &VarDictionary, key: &str) -> Option<crate::sim::civ
     })
 }
 
-pub fn schedule(dictionary: &VarDictionary, key: &str) -> crate::sim::engine::day::Schedule {
+pub fn schedule(dictionary: &VarDictionary, key: &str) -> sc2k_sim::sim::engine::day::Schedule {
     let fields = self::dictionary(dictionary, key);
 
-    crate::sim::engine::day::Schedule {
+    sc2k_sim::sim::engine::day::Schedule {
         city_days: int(&fields, "city_days", 0),
         month_day: int(&fields, "month_day", 0),
         season: int(&fields, "season", 0),
@@ -355,10 +355,10 @@ pub fn schedule(dictionary: &VarDictionary, key: &str) -> crate::sim::engine::da
     }
 }
 
-pub fn engine_state(dictionary: &VarDictionary, key: &str) -> crate::sim::engine::day::EngineState {
+pub fn engine_state(dictionary: &VarDictionary, key: &str) -> sc2k_sim::sim::engine::day::EngineState {
     let fields = self::dictionary(dictionary, key);
 
-    crate::sim::engine::day::EngineState {
+    sc2k_sim::sim::engine::day::EngineState {
         developed_tiles: int(&fields, "developed_tiles", -1),
         power_usage_percent: int(&fields, "power_usage_percent", -1),
         water_usage_percent: int(&fields, "water_usage_percent", -1),

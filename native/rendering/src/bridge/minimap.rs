@@ -1,11 +1,11 @@
 //! City Map window images.
 
-use super::super::minimap;
 use super::int;
 use godot::{
     classes::{Image, image::Format},
     prelude::*,
 };
+use sc2k_render::minimap;
 
 /// City Map window images. See `minimap.rs`.
 #[derive(GodotClass)]

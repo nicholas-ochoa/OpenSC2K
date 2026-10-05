@@ -12,18 +12,18 @@
 use godot::prelude::*;
 
 use super::convert;
-use crate::sim::city::City;
-use crate::sim::civic::{annual, education, milestones, nation, scenario};
-use crate::sim::data_maps;
-use crate::sim::disasters::{end as disaster_end, map as disaster_map, start as disaster_start, weather};
-use crate::sim::economy::{self, budget, city_value};
-use crate::sim::engine::month;
-use crate::sim::growth;
-use crate::sim::growth::{aftermath, demand};
-use crate::sim::infrastructure::{power, traffic, water};
-use crate::sim::random::Randoms;
-use crate::sim::reports::graphs;
-use crate::sim::value::{ToValue, Value};
+use sc2k_sim::sim::city::City;
+use sc2k_sim::sim::civic::{annual, education, milestones, nation, scenario};
+use sc2k_sim::sim::data_maps;
+use sc2k_sim::sim::disasters::{end as disaster_end, map as disaster_map, start as disaster_start, weather};
+use sc2k_sim::sim::economy::{self, budget, city_value};
+use sc2k_sim::sim::engine::month;
+use sc2k_sim::sim::growth;
+use sc2k_sim::sim::growth::{aftermath, demand};
+use sc2k_sim::sim::infrastructure::{power, traffic, water};
+use sc2k_sim::sim::random::Randoms;
+use sc2k_sim::sim::reports::graphs;
+use sc2k_sim::sim::value::{ToValue, Value};
 
 pub const OPERATIONS: &[&str] = &[
     "echo",
@@ -116,7 +116,7 @@ pub fn run(request: &VarDictionary) -> VarDictionary {
     let mut randoms = convert::randoms(request);
     let budget = super::budgets::get(convert::int(request, "budget", 0));
     let tool = super::tool_ops::is_tool(&op);
-    let outcome = crate::sim::budget::with_budget(budget, || {
+    let outcome = sc2k_sim::sim::budget::with_budget(budget, || {
         if tool {
             super::tool_ops::dispatch(&op, &args, &mut city, &mut randoms)
         } else {
@@ -249,7 +249,7 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
                 convert::int(args, "water_usage_percent", 0),
                 convert::int(args, "commerce_connections", 0),
                 convert::int(args, "industry_connections", 0),
-                convert::point(args, "current_disaster_point", crate::sim::geom::Vec2i::ZERO),
+                convert::point(args, "current_disaster_point", sc2k_sim::sim::geom::Vec2i::ZERO),
             )
             .to_value(),
         ),
@@ -257,7 +257,7 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
             let random = convert::boolean(args, "has_random", true).then_some(&mut randoms.random);
             let lfsr = convert::boolean(args, "has_lfsr", true).then_some(&mut randoms.lfsr);
             let disaster_type = convert::int(args, "disaster_type", 0);
-            let point = convert::point(args, "point", crate::sim::geom::Vec2i::ZERO);
+            let point = convert::point(args, "point", sc2k_sim::sim::geom::Vec2i::ZERO);
             let scenario = convert::boolean(args, "scenario", false);
             Outcome::value(disaster_start::start(city, disaster_type, point, random, lfsr, scenario).to_value())
         }
@@ -286,7 +286,7 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
         "maxis_man" => Outcome::value(
             disaster_end::maxis_man_response(
                 city,
-                convert::point(args, "point", crate::sim::geom::Vec2i::ZERO),
+                convert::point(args, "point", sc2k_sim::sim::geom::Vec2i::ZERO),
                 convert::int(args, "disaster_type", 0),
                 convert::int(args, "record", 0),
                 &mut randoms.random,
@@ -295,28 +295,28 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
             .to_value(),
         ),
         "moving" => {
-            let options = crate::sim::moving::phase::TickOptions {
-                ship_home: convert::point(args, "ship_home", crate::sim::geom::Vec2i::NONE),
+            let options = sc2k_sim::sim::moving::phase::TickOptions {
+                ship_home: convert::point(args, "ship_home", sc2k_sim::sim::geom::Vec2i::NONE),
                 allow_disaster_damage: convert::boolean(args, "allow_disaster_damage", true),
                 traffic_news_time_msec: convert::int(args, "traffic_news_time_msec", 0),
                 traffic_news_deadline_msec: convert::int(args, "traffic_news_deadline_msec", 0),
                 suppress_vehicle_crashes: convert::boolean(args, "suppress_vehicle_crashes", false),
             };
             let Randoms { random, lfsr, game } = randoms;
-            Outcome::value(crate::sim::moving::phase::run(city, random, lfsr, game, &options).to_value())
+            Outcome::value(sc2k_sim::sim::moving::phase::run(city, random, lfsr, game, &options).to_value())
         }
-        "mayor_approval" => {
-            Outcome::value(crate::sim::civic::mayor::run(city, &mut randoms.random, convert::int(args, "previous_approval", 0)).to_value())
-        }
+        "mayor_approval" => Outcome::value(
+            sc2k_sim::sim::civic::mayor::run(city, &mut randoms.random, convert::int(args, "previous_approval", 0)).to_value(),
+        ),
         "new_terrain" => new_terrain(args, city, randoms),
         "rotation" => {
-            Outcome::value(crate::sim::tools::rotation::rotate(city, convert::boolean(args, "counter_clockwise", false)).to_value())
+            Outcome::value(sc2k_sim::sim::tools::rotation::rotate(city, convert::boolean(args, "counter_clockwise", false)).to_value())
         }
-        "tile_recount" => Outcome::value(Value::Int(crate::sim::civic::mayor::recount_tiles(city))),
+        "tile_recount" => Outcome::value(Value::Int(sc2k_sim::sim::civic::mayor::recount_tiles(city))),
         "military.resolve" => {
             let game = convert::boolean(args, "has_game", true).then_some(&mut randoms.game);
             Outcome::value(
-                crate::sim::civic::military::resolve(
+                sc2k_sim::sim::civic::military::resolve(
                     city,
                     convert::boolean(args, "accepted", false),
                     game,
@@ -327,7 +327,7 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
             )
         }
         "military.reserve" => Outcome::value(
-            crate::sim::civic::military::reserve_land_site(
+            sc2k_sim::sim::civic::military::reserve_land_site(
                 city,
                 convert::int(args, "base_type", 0),
                 convert::rect(args, "site"),
@@ -351,7 +351,7 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
             let schedule = convert::schedule(args, "schedule");
             let state = convert::engine_state(args, "engine");
             let scenario = convert::scenario(args, "scenario");
-            let (outcome, state, scenario) = crate::sim::engine::day::run_schedule(
+            let (outcome, state, scenario) = sc2k_sim::sim::engine::day::run_schedule(
                 city,
                 randoms,
                 scenario,
@@ -368,7 +368,7 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
             fields.push((Value::Str("scenario_time_limit".to_string()), Value::Int(time_limit)));
             Outcome::value(Value::Dict(fields))
         }
-        "engine.initialize" => match crate::sim::engine::load::initialize_loaded_city(city, &mut randoms.random) {
+        "engine.initialize" => match sc2k_sim::sim::engine::load::initialize_loaded_city(city, &mut randoms.random) {
             Some(scan) => Outcome::value(Value::Dict(vec![
                 (Value::Str("power_usage_percent".to_string()), Value::Int(scan.power_usage_percent)),
                 (Value::Str("water_usage_percent".to_string()), Value::Int(scan.water_usage_percent)),
@@ -379,11 +379,11 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
         "spawn_thing" => {
             let points = convert::points(args, "points");
             let Randoms { random, lfsr, game } = randoms;
-            let (point, count, record) = crate::sim::moving::spawner::spawn_near(
+            let (point, count, record) = sc2k_sim::sim::moving::spawner::spawn_near(
                 city,
                 convert::int(args, "kind", -1),
                 &points,
-                convert::point(args, "view_center", crate::sim::geom::Vec2i::ZERO),
+                convert::point(args, "view_center", sc2k_sim::sim::geom::Vec2i::ZERO),
                 random,
                 lfsr,
                 game,
@@ -398,15 +398,15 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
             let map_edge = city.map_size;
             let mut data = city.xthg.data.clone();
             let mut text = city.xtxt.data.clone();
-            let spawned = crate::sim::moving::spawner::spawn_maxis_man(
+            let spawned = sc2k_sim::sim::moving::spawner::spawn_maxis_man(
                 &mut data,
                 &mut text,
-                convert::point(args, "point", crate::sim::geom::Vec2i::ZERO),
-                convert::point(args, "target", crate::sim::geom::Vec2i::ZERO),
+                convert::point(args, "point", sc2k_sim::sim::geom::Vec2i::ZERO),
+                convert::point(args, "target", sc2k_sim::sim::geom::Vec2i::ZERO),
                 convert::int(args, "goal", 0),
                 convert::int(args, "height", 0),
                 map_edge,
-                &crate::sim::moving::spawner::VehicleCaps::for_city(city),
+                &sc2k_sim::sim::moving::spawner::VehicleCaps::for_city(city),
             );
 
             if spawned.spawned {
@@ -417,9 +417,9 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
             Outcome::value(Value::Bool(spawned.spawned))
         }
         "trip" => Outcome::value(
-            crate::sim::reach::run_trip(
+            sc2k_sim::sim::reach::run_trip(
                 city,
-                convert::point(args, "origin", crate::sim::geom::Vec2i::ZERO),
+                convert::point(args, "origin", sc2k_sim::sim::geom::Vec2i::ZERO),
                 convert::int(args, "zone", 0),
                 convert::int(args, "traffic_weight", 0),
                 &mut randoms.random,
@@ -429,21 +429,21 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
         ),
         // The growth inputs of one tile for the Tile Inspector. It does not change the city.
         "growth_inputs" => Outcome::value(
-            crate::sim::growth::inputs::inspect(city, convert::point(args, "point", crate::sim::geom::Vec2i::ZERO)).to_value(),
+            sc2k_sim::sim::growth::inputs::inspect(city, convert::point(args, "point", sc2k_sim::sim::geom::Vec2i::ZERO)).to_value(),
         ),
-        "trip_reach" => {
-            Outcome::value(crate::sim::reach::inspect(city, convert::point(args, "clicked", crate::sim::geom::Vec2i::ZERO)).to_value())
-        }
+        "trip_reach" => Outcome::value(
+            sc2k_sim::sim::reach::inspect(city, convert::point(args, "clicked", sc2k_sim::sim::geom::Vec2i::ZERO)).to_value(),
+        ),
         // Trip rule queries for tests and diagnostics. They do not change the city.
-        "trip.highway_step" => Outcome::value(Value::Bool(crate::sim::trip::highway_step(
+        "trip.highway_step" => Outcome::value(Value::Bool(sc2k_sim::sim::trip::highway_step(
             &city.xbld.data,
-            convert::point(args, "from", crate::sim::geom::Vec2i::ZERO),
-            convert::point(args, "to", crate::sim::geom::Vec2i::ZERO),
+            convert::point(args, "from", sc2k_sim::sim::geom::Vec2i::ZERO),
+            convert::point(args, "to", sc2k_sim::sim::geom::Vec2i::ZERO),
             city.map_size,
         ))),
         "trip.advance" | "trip.trace" => {
             let edge = city.map_size;
-            let maps = crate::sim::trip::TripMaps {
+            let maps = sc2k_sim::sim::trip::TripMaps {
                 buildings: &city.xbld.data,
                 zones: &city.xzon.data,
                 underground: &city.xund.data,
@@ -453,9 +453,9 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
             };
 
             if op == "trip.advance" {
-                let from = convert::point(args, "from", crate::sim::geom::Vec2i::ZERO);
-                let to = convert::point(args, "to", crate::sim::geom::Vec2i::ZERO);
-                let index = |point: crate::sim::geom::Vec2i| {
+                let from = convert::point(args, "from", sc2k_sim::sim::geom::Vec2i::ZERO);
+                let to = convert::point(args, "to", sc2k_sim::sim::geom::Vec2i::ZERO);
+                let index = |point: sc2k_sim::sim::geom::Vec2i| {
                     if point.x >= 0 && point.y >= 0 && point.x < edge && point.y < edge {
                         point.x * edge + point.y
                     } else {
@@ -464,7 +464,7 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
                 };
                 let mode = convert::int(args, "mode", 0);
                 let zone = convert::int(args, "zone", 0);
-                Outcome::value(Value::Int(crate::sim::trip::advance(
+                Outcome::value(Value::Int(sc2k_sim::sim::trip::advance(
                     &maps,
                     from,
                     to,
@@ -475,11 +475,11 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
                 )))
             } else {
                 let mut traffic = city.xtrf.data.clone();
-                let mut scratch = crate::sim::trip::TripScratch::default();
-                let result = crate::sim::trip::trace(
+                let mut scratch = sc2k_sim::sim::trip::TripScratch::default();
+                let result = sc2k_sim::sim::trip::trace(
                     &maps,
                     &mut traffic,
-                    convert::point(args, "origin", crate::sim::geom::Vec2i::ZERO),
+                    convert::point(args, "origin", sc2k_sim::sim::geom::Vec2i::ZERO),
                     convert::int(args, "zone", 0),
                     convert::int(args, "traffic_weight", 0),
                     &mut randoms.random,
@@ -491,7 +491,7 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
                 Outcome::value(result.to_value())
             }
         }
-        "military.naval_site" => Outcome::value(Value::Rect2i(crate::sim::civic::military::find_naval_site(city))),
+        "military.naval_site" => Outcome::value(Value::Rect2i(sc2k_sim::sim::civic::military::find_naval_site(city))),
         "graphs.advance" => {
             let values: Vec<i64> = convert::ints64(args, "values");
 
@@ -517,7 +517,7 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
             ) {
                 Ok((values, unemployment)) => {
                     let mut result = graphs::GraphResult {
-                        values: crate::sim::value::Ints64(values),
+                        values: sc2k_sim::sim::value::Ints64(values),
                         unemployment,
                         ..Default::default()
                     };
@@ -544,7 +544,7 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
 
 /// `args`: the 128 by 128 `heights` and `coast_flags`, and the generator options.
 fn new_terrain(args: &VarDictionary, city: &mut City, randoms: &mut Randoms) -> Outcome {
-    use crate::sim::tools::new_terrain::{self, LANDFORM_EDGE, Landform};
+    use sc2k_sim::sim::tools::new_terrain::{self, LANDFORM_EDGE, Landform};
 
     let landform = Landform {
         heights: convert::ints32(args, "heights"),
@@ -567,7 +567,7 @@ fn new_terrain(args: &VarDictionary, city: &mut City, randoms: &mut Randoms) -> 
             .iter()
             .any(|chunk| chunk.data.len() != cells)
         || city.xtxt.data.len() < cells
-        || city.misc.data.len() != crate::sim::ids::sc2misc_layout::SIZE as usize
+        || city.misc.data.len() != sc2k_sim::sim::ids::sc2misc_layout::SIZE as usize
     {
         return Outcome::failure("terrain data is missing or invalid");
     }

@@ -136,6 +136,7 @@ name = "opensc2k_audio"
 version = "0.1.0"
 dependencies = [
  "godot",
+ "sc2k_audio",
 ]
 
 [[package]]
@@ -143,6 +144,7 @@ name = "opensc2k_formats"
 version = "0.1.0"
 dependencies = [
  "godot",
+ "sc2k_formats",
 ]
 
 [[package]]
@@ -150,14 +152,15 @@ name = "opensc2k_rendering"
 version = "0.1.0"
 dependencies = [
  "godot",
+ "sc2k_render",
 ]
 
 [[package]]
 name = "opensc2k_scripting"
 version = "0.1.0"
 dependencies = [
- "cc",
  "godot",
+ "sc2k_scripting",
 ]
 
 [[package]]
@@ -165,6 +168,7 @@ name = "opensc2k_simulation"
 version = "0.1.0"
 dependencies = [
  "godot",
+ "sc2k_sim",
 ]
 
 [[package]]
@@ -184,6 +188,29 @@ checksum = "1fbf4db142a473a8d80c26bbf18454ed458bf8d26c8219c331daecfdbd079001"
 dependencies = [
  "proc-macro2",
 ]
+
+[[package]]
+name = "sc2k_audio"
+version = "0.1.0"
+
+[[package]]
+name = "sc2k_formats"
+version = "0.1.0"
+
+[[package]]
+name = "sc2k_render"
+version = "0.1.0"
+
+[[package]]
+name = "sc2k_scripting"
+version = "0.1.0"
+dependencies = [
+ "cc",
+]
+
+[[package]]
+name = "sc2k_sim"
+version = "0.1.0"
 
 [[package]]
 name = "shlex"
@@ -206,3 +233,7 @@ dependencies = [
  "proc-macro2",
  "quote",
 ]
+
+[[package]]
+name = "xtask"
+version = "0.1.0"

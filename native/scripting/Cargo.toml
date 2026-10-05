@@ -4,15 +4,11 @@ version = "0.1.0"
 edition = "2024"
 license = "MIT"
 publish = false
-description = "QuickJS script runtime for OpenSC2K"
-build = "build.rs"
+description = "Godot class of the QuickJS script runtime of OpenSC2K"
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
+sc2k_scripting = { path = "../core/scripting" }
 godot = { version = "0.5.5", features = ["api-4-7"] }
-
-[build-dependencies]
-# compiles the vendored QuickJS C sources with the C compiler of the target
-cc = "1.2"

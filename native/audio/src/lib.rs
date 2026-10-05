@@ -1,11 +1,8 @@
-//! Native music synthesis. The GDScript player owns the music thread and the
-//! stream; this library only renders frames. `FluidMidiSynth` renders with
-//! FluidSynth, a separate LGPL shared library that loads at run time. Modules
-//! without Godot types (`midi`, `sequencer`, `fluidsynth`) run under `cargo test`.
+//! The Godot class of the music synthesizer. The GDScript player owns the music
+//! thread and the stream; this library only renders frames. The synthesis is in
+//! the `sc2k_audio` crate.
+
 mod fluid_midi_synth;
-mod fluidsynth;
-mod midi;
-mod sequencer;
 
 use godot::prelude::*;
 

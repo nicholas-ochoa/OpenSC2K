@@ -8,19 +8,19 @@ use godot::prelude::*;
 
 use super::convert;
 use super::ops::Outcome;
-use crate::sim::city::{CHUNK_IDS, City};
-use crate::sim::effect_sampling;
-use crate::sim::geom::Vec2i;
-use crate::sim::random::Randoms;
-use crate::sim::tools::commands::building::{self, Placement};
-use crate::sim::tools::commands::landscape::terrain::TerrainPath;
-use crate::sim::tools::commands::route::{self, RouteChoices};
-use crate::sim::tools::commands::zone::{self, ZoneRequest};
-use crate::sim::tools::commands::{
+use sc2k_sim::sim::city::{CHUNK_IDS, City};
+use sc2k_sim::sim::effect_sampling;
+use sc2k_sim::sim::geom::Vec2i;
+use sc2k_sim::sim::random::Randoms;
+use sc2k_sim::sim::tools::commands::building::{self, Placement};
+use sc2k_sim::sim::tools::commands::landscape::terrain::TerrainPath;
+use sc2k_sim::sim::tools::commands::route::{self, RouteChoices};
+use sc2k_sim::sim::tools::commands::zone::{self, ZoneRequest};
+use sc2k_sim::sim::tools::commands::{
     ToolArgs, building::facility_repair, demolish, highway, hydro, landscape, onramp, scurk_place, subway_to_rail, tunnel,
 };
 
-use crate::sim::value::{ToValue, Value};
+use sc2k_sim::sim::value::{ToValue, Value};
 
 pub const OPERATIONS: &[&str] = &[
     "tool.route",

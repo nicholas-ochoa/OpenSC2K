@@ -1,0 +1,9 @@
+[package]
+name = "sc2k_audio"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "MIDI sequencing and the FluidSynth backend of OpenSC2K, without engine types"
+
+[dependencies]

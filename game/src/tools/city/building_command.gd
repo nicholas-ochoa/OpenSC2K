@@ -2,7 +2,7 @@ class_name BuildingCommand
 extends BuildingConstants
 # Buildings from the tool palette. The native simulation library checks the
 # site, places the building, and refreshes power and water; see
-# native/simulation/src/sim/tools/commands/building.rs.
+# native/core/sim/src/sim/tools/commands/building.rs.
 
 const PAYLOAD_IDS: PackedStringArray = ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT", "XLAB", "XMIC", "MISC"]
 

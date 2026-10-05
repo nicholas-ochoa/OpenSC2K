@@ -1,7 +1,7 @@
 class_name HydroCommand
 extends RefCounted
 # Hydroelectric dams on waterfalls. The native simulation library places the
-# dam and refreshes power; see native/simulation/src/sim/tools/commands/hydro.rs.
+# dam and refreshes power; see native/core/sim/src/sim/tools/commands/hydro.rs.
 
 const GROUP_POWER := CityToolIds.Group.POWER
 const SUBTOOL_HYDRO := CityToolIds.Power.HYDRO

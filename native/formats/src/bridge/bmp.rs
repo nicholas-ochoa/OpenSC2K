@@ -1,8 +1,8 @@
 //! 8-bit indexed BMP files and DIBs.
 
-use super::super::bmp;
 use super::{bytes, failure, ints, success};
 use godot::prelude::*;
+use sc2k_formats::bmp;
 
 /// 8-bit indexed BMP files and DIBs. See `bmp.rs`.
 #[derive(GodotClass)]

@@ -1,0 +1,9 @@
+[package]
+name = "sc2k_formats"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "File and image codecs of OpenSC2K, without engine types"
+
+[dependencies]

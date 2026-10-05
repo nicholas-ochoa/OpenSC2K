@@ -1,5 +1,5 @@
 // The OpenSC2K game API of scripts. The game runs this file after the core
-// of the runtime (native/scripting/src/prelude.js). Each function calls a
+// of the runtime (native/core/scripting/src/prelude.js). Each function calls a
 // GDScript host function of ApplicationScriptingApi. See docs/scripting.md.
 (function (global) {
   'use strict';

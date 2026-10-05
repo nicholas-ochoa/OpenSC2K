@@ -1,15 +1,15 @@
 //! Godot classes of the debug map layers. See `debug_view`.
 
-use super::super::data_view::DataCity;
-use super::super::debug_view::{
+use super::int;
+use godot::prelude::*;
+use sc2k_render::data_view::DataCity;
+use sc2k_render::debug_view::{
     bytes,
     geometry::{self, TileWindow},
     networks, order,
     snapshot::{self, Snapshot, Tiles},
     things, values,
 };
-use super::int;
-use godot::prelude::*;
 
 /// Geometry and tile values of the debug tile layer.
 #[derive(GodotClass)]

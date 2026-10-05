@@ -1,7 +1,7 @@
 class_name HighwayCommand
 extends HighwayConstants
 # Highway drags of 2 by 2 sections. The native simulation library plans and
-# places the sections; see native/simulation/src/sim/tools/commands/highway_edit.rs.
+# places the sections; see native/core/sim/src/sim/tools/commands/highway_edit.rs.
 
 
 static func supports_tool(group_index: int, subtool_index: int) -> bool:

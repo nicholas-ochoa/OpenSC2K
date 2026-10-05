@@ -1,0 +1,7 @@
+//! Native music synthesis without engine types. `midi` holds the timed events,
+//! `sequencer` plays them through a synthesizer, and `fluidsynth` loads the
+//! FluidSynth shared library (LGPL) at run time.
+
+pub mod fluidsynth;
+pub mod midi;
+pub mod sequencer;

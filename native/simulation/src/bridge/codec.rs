@@ -2,7 +2,7 @@
 
 use godot::prelude::*;
 
-use crate::formats::{rle, sc2};
+use sc2k_sim::formats::{rle, sc2};
 
 /// Static Maxis RLE entry points for `MaxisRle`.
 #[derive(GodotClass)]
@@ -50,14 +50,14 @@ impl NativeCityArrays {
     /// byte. Equal masked content gives an equal signature.
     #[func]
     fn masked_signature(flags: PackedByteArray, mask: i64) -> i64 {
-        crate::sim::signature::masked_bytes(flags.as_slice(), mask as u8)
+        sc2k_sim::sim::signature::masked_bytes(flags.as_slice(), mask as u8)
     }
 
     /// OverlayData.sign_indices: the sign cells of `start..end` of an XTXT
     /// index. A negative `end` scans to the last cell.
     #[func]
     fn sign_indices(overlays: PackedByteArray, start: i64, end: i64) -> PackedInt32Array {
-        PackedInt32Array::from(crate::sim::overlay::sign_indices(overlays.as_slice(), start, end).as_slice())
+        PackedInt32Array::from(sc2k_sim::sim::overlay::sign_indices(overlays.as_slice(), start, end).as_slice())
     }
 
     /// The big-endian 16-bit ALTM words of every tile. A 4096-tile map has

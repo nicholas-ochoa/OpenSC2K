@@ -1,8 +1,9 @@
 # Native simulation
 
-The city simulation is a Rust library in `native/simulation`. It uses
-[godot-rust](https://github.com/godot-rust/gdext) (`gdext`) to load into Godot as a
-GDExtension. Its only dependency is the `godot` crate.
+The city simulation is the Rust crate `sc2k_sim` in `native/core/sim`. It has no
+dependencies and no engine types. The bridge crate `opensc2k_simulation` in
+`native/simulation` uses [godot-rust](https://github.com/godot-rust/gdext) (`gdext`)
+to load it into Godot as a GDExtension. See [Native workspace](native-workspace.md).
 
 ## Build
 
@@ -18,9 +19,11 @@ this folder. `game/opensc2k_simulation.gdextension` names the library of each pl
 `--package` builds a universal library on macOS and the x86_64 library on Windows and Linux.
 
 `tools/validate_project.sh` builds the library and runs its unit tests (`cargo test`) before the
-Godot checks. Rebuild the library after each change to `native/simulation`.
+Godot checks. Rebuild the library after each change to `native/core/sim` or `native/simulation`.
 
 ## Layout
+
+The paths below are in `native/core/sim`, except `src/bridge`, which is in `native/simulation`.
 
 - `src/sim` is the simulation. It has no Godot types, so `cargo test` runs it.
   - `city.rs` holds the saved chunks that the simulation reads and writes.

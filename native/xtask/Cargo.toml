@@ -1,0 +1,9 @@
+[package]
+name = "xtask"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+description = "Native build and validation tasks of OpenSC2K"
+
+[dependencies]

@@ -1,5 +1,5 @@
 //! Tile, flag and layout constants of the GDScript catalogs, with the same names.
-//! They match `native/simulation/src/sim/ids.rs`; the tile arrays hold bytes, so
+//! They match `native/core/sim/src/sim/ids.rs`; the tile arrays hold bytes, so
 //! these constants are bytes too.
 #![allow(dead_code)]
 

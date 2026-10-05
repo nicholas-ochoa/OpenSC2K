@@ -1,7 +1,7 @@
 class_name TunnelCommand
 extends RefCounted
 # Road tunnels through a hill. The native simulation library checks and digs
-# the tunnel; see native/simulation/src/sim/tools/commands/tunnel.rs.
+# the tunnel; see native/core/sim/src/sim/tools/commands/tunnel.rs.
 
 const GROUP_ROADS := CityToolIds.Group.ROADS
 const SUBTOOL_TUNNEL := CityToolIds.Roads.TUNNEL

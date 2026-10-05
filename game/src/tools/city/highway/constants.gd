@@ -1,7 +1,7 @@
 class_name HighwayConstants
 extends RefCounted
 ## Highway bridge types and connection choices. The highway rules run in the
-## native simulation library; see native/simulation/src/sim/tools/commands.
+## native simulation library; see native/core/sim/src/sim/tools/commands.
 
 const GROUP_ROADS := CityToolIds.Group.ROADS
 const SUBTOOL_HIGHWAY := CityToolIds.Roads.HIGHWAY

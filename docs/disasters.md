@@ -2,8 +2,8 @@
 
 This review compares each disaster in OpenSC2K with the Windows 95
 `SIMCITY.EXE` (1996). Addresses are in the executable. The native
-simulation is in `native/simulation/src/sim/disasters/` and
-`native/simulation/src/sim/moving/`.
+simulation is in `native/core/sim/src/sim/disasters/` and
+`native/core/sim/src/sim/moving/`.
 
 ## Common routines
 

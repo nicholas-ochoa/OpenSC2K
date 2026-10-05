@@ -1,7 +1,7 @@
 class_name DemolishCommand
 extends DemolishConstants
 # Bulldozer paths. The native simulation library demolishes each point; see
-# native/simulation/src/sim/tools/commands/demolish.rs.
+# native/core/sim/src/sim/tools/commands/demolish.rs.
 
 
 static func supports_tool(group_index: int, subtool_index: int) -> bool:

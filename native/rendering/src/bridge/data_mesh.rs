@@ -1,7 +1,7 @@
 //! Data map overlay geometry.
 
-use super::super::data_view;
 use godot::prelude::*;
+use sc2k_render::data_view;
 
 /// Data map overlay geometry. See `data_view.rs`.
 #[derive(GodotClass)]

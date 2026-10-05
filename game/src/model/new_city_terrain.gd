@@ -112,7 +112,7 @@ static func generate(
 		TerrainFeatures.carve(heights, coast_flags, water_level, selected, ocean_requested, has_river, staged_game, water, hills)
 
 	# the native simulation library grades, retiles, plants trees, and runs the
-	# streams. see native/simulation/src/sim/tools/new_terrain.rs
+	# streams. see native/core/sim/src/sim/tools/new_terrain.rs
 	var response: Dictionary = NativeSimulation.run({
 		"op": "new_terrain",
 		"city": {

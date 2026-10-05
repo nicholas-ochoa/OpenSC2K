@@ -37,7 +37,7 @@ Load and save cities that the supplied game can use.
 
 ## Validation gates
 
-For Rust changes, run these commands from each affected native crate directory:
+For Rust changes, run these commands from `native/`:
 
 ```sh
 cargo fmt
@@ -46,7 +46,8 @@ cargo clippy --all-targets --all-features -- -D warnings
 ```
 
 Fix formatting and Clippy findings before committing Rust changes.
-Run the crate's unit tests with `cargo test --release`.
+Run the unit tests with `cargo test --release`. Run `cargo xtask check-cores`: the crates in
+`native/core/` must build without Godot. See `docs/native-workspace.md`.
 
 For code changes, use
 `tools/validate_project.sh --suite <domain>` or explicit `--test <id>` entries.

@@ -1,7 +1,7 @@
 class_name LandscapeCommand
 extends RefCounted
 # Trees, forests, and water. The native simulation library plants and floods
-# the tiles; see native/simulation/src/sim/tools/commands/landscape.rs.
+# the tiles; see native/core/sim/src/sim/tools/commands/landscape.rs.
 
 const GROUP_NATURE := CityToolIds.Group.LANDSCAPE
 const SUBTOOL_TREES := CityToolIds.Landscape.TREES

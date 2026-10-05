@@ -1,11 +1,11 @@
 //! Resources of 32-bit Windows executables.
 
-use super::super::pe;
 use super::{bytes, failure, ints, rgba_image, success};
 use godot::{
     classes::{Image, image::Format},
     prelude::*,
 };
+use sc2k_formats::pe;
 
 /// Resources of 32-bit Windows executables. Each call takes the file bytes.
 /// See `pe.rs`.

@@ -1,10 +1,10 @@
 //! Moving sprite pixels.
 
-use super::super::compositing;
 use godot::{
     classes::{Image, image::Format},
     prelude::*,
 };
+use sc2k_render::compositing;
 
 /// Moving sprite pixels. See `compositing.rs`. Sprite and mask images are RGBA8;
 /// indexed city images may also be L8 or LA8.

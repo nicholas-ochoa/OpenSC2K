@@ -1,7 +1,7 @@
 class_name OnrampCommand
 extends RefCounted
 # Highway on-ramps between a highway and a road. The native simulation library
-# checks and places the ramp; see native/simulation/src/sim/tools/commands/onramp.rs.
+# checks and places the ramp; see native/core/sim/src/sim/tools/commands/onramp.rs.
 
 const GROUP_ROADS := CityToolIds.Group.ROADS
 const SUBTOOL_ONRAMP := CityToolIds.Roads.ONRAMP

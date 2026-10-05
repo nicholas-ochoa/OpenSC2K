@@ -1,7 +1,7 @@
 class_name ZoneCommand
 extends RefCounted
 # Zoning and dezoning rectangles. The native simulation library prices and
-# paints the rectangle; see native/simulation/src/sim/tools/commands/zone.rs.
+# paints the rectangle; see native/core/sim/src/sim/tools/commands/zone.rs.
 
 const GROUP_PORTS := CityToolIds.Group.PORTS
 const GROUP_BULLDOZER := CityToolIds.Group.BULLDOZER

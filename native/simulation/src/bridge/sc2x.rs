@@ -5,13 +5,13 @@
 use godot::prelude::*;
 
 use super::convert;
-use crate::formats::sc2x::framing::{self, PreservedChunk, TextOccurrence};
-use crate::formats::sc2x::project::{self, SplitOptions, Working};
-use crate::formats::sc2x::scenario::{self, Scenario};
-use crate::formats::sc2x::xmic::Xmic;
-use crate::formats::sc2x::xsgn::{Sign, Xsgn};
-use crate::formats::sc2x::xthg::Xthg;
-use crate::formats::sc2x::{collection, labels, limits};
+use sc2k_sim::formats::sc2x::framing::{self, PreservedChunk, TextOccurrence};
+use sc2k_sim::formats::sc2x::project::{self, SplitOptions, Working};
+use sc2k_sim::formats::sc2x::scenario::{self, Scenario};
+use sc2k_sim::formats::sc2x::xmic::Xmic;
+use sc2k_sim::formats::sc2x::xsgn::{Sign, Xsgn};
+use sc2k_sim::formats::sc2x::xthg::Xthg;
+use sc2k_sim::formats::sc2x::{collection, labels, limits};
 
 #[derive(GodotClass)]
 #[class(no_init, base = Object)]

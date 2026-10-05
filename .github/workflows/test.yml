@@ -70,6 +70,9 @@ jobs:
       # rust-toolchain.toml selects the Rust version. rustup is on each runner image
       - name: Build FluidSynth for the audio tests
         run: python3 tools/build_fluidsynth.py
+      - name: Check that the core crates build without Godot
+        working-directory: native
+        run: cargo xtask check-cores
       - name: Run cargo tests
         env:
           OPENSC2K_FLUIDSYNTH: ${{ github.workspace }}/game/bin/opensc2k_audio/linux-x86_64/libfluidsynth.so.3

@@ -1,15 +1,8 @@
-//! The JavaScript runtime of OpenSC2K: QuickJS-ng, compiled from the vendored
-//! C sources in `quickjs`. `engine` runs one runtime and `prelude.js` defines
-//! its core: console, timers, events and script commands. `godot_class`
-//! holds `ScriptRuntime`, the Godot class. The game functions of scripts are
-//! GDScript host functions. `sandbox` keeps a mod in its own folder. Modules
-//! without Godot types run under `cargo test`.
-mod engine;
-mod ffi;
+//! `ScriptRuntime`, the Godot class of the JavaScript runtime. The runtime is
+//! in the `sc2k_scripting` crate. The game functions of scripts are GDScript
+//! host functions.
+
 mod godot_class;
-mod inspector;
-mod sandbox;
-mod value;
 
 use godot::prelude::*;
 

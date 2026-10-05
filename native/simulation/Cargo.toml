@@ -10,4 +10,5 @@ description = "Native SimCity 2000 simulation for OpenSC2K"
 crate-type = ["cdylib"]
 
 [dependencies]
+sc2k_sim = { path = "../core/sim" }
 godot = { version = "0.5.5", features = ["api-4-7", "experimental-threads"] }

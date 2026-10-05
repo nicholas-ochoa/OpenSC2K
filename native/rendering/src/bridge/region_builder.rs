@@ -1,13 +1,13 @@
 //! The region builder of the city view. Each builder belongs to one region
 //! worker thread.
 
-use super::super::{Builder, City, Config, Draw, Rect, index::RegionDraws, region::TILE_LIMIT, sprites, sprites::Sprite};
 use super::region_draws::NativeCityRegionDraws;
 use super::{bytes, int, ints};
 use godot::{
     classes::{Image, image::Format},
     prelude::*,
 };
+use sc2k_render::{Builder, City, Config, Draw, Rect, index::RegionDraws, region::TILE_LIMIT, sprites, sprites::Sprite};
 
 use std::collections::HashMap;
 

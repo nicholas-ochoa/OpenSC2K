@@ -58,6 +58,10 @@ impl RectIndex {
     pub fn len(&self) -> usize {
         self.rects.len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.rects.is_empty()
+    }
 }
 
 // The first and last cell of a rectangle.

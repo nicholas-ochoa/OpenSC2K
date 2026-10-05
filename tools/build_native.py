@@ -123,6 +123,9 @@ def test(quiet=False):
     if fluidsynth.is_file():
         environment.setdefault('OPENSC2K_FLUIDSYNTH', str(fluidsynth))
         environment.setdefault('OPENSC2K_REQUIRE_FLUIDSYNTH', '1')
+    # the crates in native/core must build without Godot
+    subprocess.run(['cargo', 'xtask', 'check-cores'], cwd=WORKSPACE, check=True, capture_output=quiet,
+                   env=environment)
     command = ['cargo', 'test', '--release', '--workspace']
     if quiet:
         command.append('--quiet')

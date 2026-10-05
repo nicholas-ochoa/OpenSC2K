@@ -1,7 +1,7 @@
 class_name BondCommand
 extends RefCounted
 ## Bond issue and repayment from the budget window. The native simulation
-## library holds the rules; see native/simulation/src/sim/economy/bonds.rs.
+## library holds the rules; see native/core/sim/src/sim/economy/bonds.rs.
 
 const CityValue = preload("res://src/simulation/economy/city_value_phase.gd")
 const MISC_SIZE := Sc2MiscLayout.SIZE

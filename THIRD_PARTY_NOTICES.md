@@ -48,7 +48,7 @@ license. The license texts are in `game/assets/licenses` (in packages:
 - License text: `game/assets/licenses/quickjs/QuickJS-ng-LICENSE.txt` (in
   packages: `licenses/quickjs`, and in the game under **About > Licenses**).
 - Source: <https://github.com/quickjs-ng/quickjs>, tag `v0.17.0`, unchanged.
-  The used files are in `native/scripting/quickjs`. See `docs/native-scripting.md`.
+  The used files are in `native/core/scripting/quickjs`. See `docs/native-scripting.md`.
 
 ## FluidR3Mono GM SoundFont (Linux packages only)
 

@@ -7,7 +7,7 @@ extends RefCounted
 @warning_ignore_start("integer_division")
 
 const ATLAS_EDGE := 2048
-# Optional effects on HD art. Refer to `effects` in native/rendering/src/lib.rs.
+# Optional effects on HD art. Refer to `effects` in native/core/render/src/lib.rs.
 const HD_GRID := 1
 const HD_WATERFALL := 2
 const HD_PIPE_FLOW := 4

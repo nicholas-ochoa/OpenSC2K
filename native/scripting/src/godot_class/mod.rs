@@ -14,8 +14,8 @@ use std::time::Duration;
 
 use godot::prelude::*;
 
-use crate::engine::{Engine, HostFunction};
-use crate::value::JsData;
+use sc2k_scripting::engine::{Engine, HostFunction};
+use sc2k_scripting::value::JsData;
 use variant::{from_variant, to_variant};
 
 const DISPATCH_FUNCTION: &str = "__runtime.dispatch";
@@ -344,8 +344,8 @@ impl ScriptRuntime {
     fn inspector_urls(port: i64) -> PackedStringArray {
         let port = port.clamp(0, u16::MAX as i64) as u16;
         let mut urls = PackedStringArray::new();
-        urls.push(&GString::from(crate::inspector::websocket_url(port).as_str()));
-        urls.push(&GString::from(crate::inspector::frontend_url(port).as_str()));
+        urls.push(&GString::from(sc2k_scripting::inspector::websocket_url(port).as_str()));
+        urls.push(&GString::from(sc2k_scripting::inspector::frontend_url(port).as_str()));
 
         urls
     }
