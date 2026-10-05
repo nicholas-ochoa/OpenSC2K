@@ -20,6 +20,16 @@ float cloud_hash(vec2 cell) {
 }
 
 vec4 cloud_sample(vec2 grid_position, float softness, float map_edge) {
+	// Compute the footprint before cell selection diverges between neighboring
+	// fragments. Implicit texture derivatives inside that search can select
+	// unrelated atlas mip levels as a cloud crosses a cell boundary.
+	vec2 dx = dFdx(grid_position);
+	vec2 dy = dFdy(grid_position);
+	vec2 sky_dx = dx.x * cloud_projection.xy + dx.y * cloud_projection.zw;
+	vec2 sky_dy = dy.x * cloud_projection.xy + dy.y * cloud_projection.zw;
+	float footprint = max(length(sky_dx), length(sky_dy));
+	float atlas_side = float(textureSize(cloud_field, 0).x) * 0.5;
+	float base_lod = log2(max(footprint * atlas_side / (cloud_span / 3.0), 0.001));
 	if (!cloud_enabled || cloud_density <= 0.0) { return vec4(0.0); }
 	vec2 wrapped_drift = mod(cloud_drift, vec2(cloud_span));
 	vec2 point = grid_position - wrapped_drift;
@@ -33,9 +43,10 @@ vec4 cloud_sample(vec2 grid_position, float softness, float map_edge) {
 			vec2 site = cell + vec2(float(x), float(y));
 			vec2 id = mod(site, vec2(4.0));
 			float seed = cloud_hash(id + vec2(17.0, 31.0));
-			float amount = 1.0 - smoothstep(cloud_density * 1.55 - 0.06,
-				cloud_density * 1.55 + 0.06, seed);
-			if (amount <= 0.001) { continue; }
+			// Density selects whole clouds. It must not turn their solid cores
+			// into persistent translucent copies in the overview.
+			if (seed >= cloud_density * 1.55) { continue; }
+			float amount = 1.0;
 			vec2 jitter = vec2(cloud_hash(id + vec2(5.0, 9.0)),
 				cloud_hash(id + vec2(23.0, 3.0))) - vec2(0.5);
 			vec2 center = (site + vec2(0.5) + jitter * 0.24) * spacing;
@@ -46,14 +57,15 @@ vec4 cloud_sample(vec2 grid_position, float softness, float map_edge) {
 			}
 			vec2 delta = point - center;
 			vec2 sky = delta.x * cloud_projection.xy + delta.y * cloud_projection.zw;
-			float size = cloud_span / 3.0 * mix(0.86, 1.06, cloud_hash(id + vec2(7.0, 11.0)));
+			float size_factor = mix(0.86, 1.06, cloud_hash(id + vec2(7.0, 11.0)));
+			float size = cloud_span / 3.0 * size_factor;
 			vec2 uv = sky / size + vec2(0.5);
 			if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) { continue; }
 			float variant = floor(cloud_hash(id + vec2(13.0, 19.0)) * 4.0);
 			vec2 quadrant = vec2(mod(variant, 2.0), floor(variant * 0.5));
 			vec2 atlas_uv = (quadrant + uv) * 0.5;
-			vec4 cloud = softness < 0.0 ? texture(cloud_field, atlas_uv)
-				: textureLod(cloud_field, atlas_uv, softness);
+			float lod = softness < 0.0 ? max(base_lod - log2(size_factor), 0.0) : softness;
+			vec4 cloud = textureLod(cloud_field, atlas_uv, lod);
 			cloud.a *= amount;
 			combined.rgb = cloud.rgb * cloud.a + combined.rgb * (1.0 - cloud.a);
 			combined.a = cloud.a + combined.a * (1.0 - cloud.a);
