@@ -5,6 +5,7 @@
 mod fluid_midi_synth;
 mod midi_file;
 mod music_shuffle;
+mod wave_sound_gate;
 
 use godot::prelude::*;
 

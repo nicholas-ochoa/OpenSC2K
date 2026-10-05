@@ -7,3 +7,4 @@ pub mod midi;
 pub mod sequencer;
 pub mod shuffle;
 pub mod smf;
+pub mod wave_gate;
