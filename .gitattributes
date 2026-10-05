@@ -1,0 +1,5 @@
+# Bundled third-party JavaScript engine
+native/scripting/quickjs/** linguist-vendored
+
+# Test code
+game/tests/** linguist-documentation
