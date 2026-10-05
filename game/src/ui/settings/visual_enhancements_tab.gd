@@ -53,6 +53,9 @@ func _ready() -> void:
 				spin.min_value = field[4]
 				spin.max_value = field[5]
 				spin.step = field[6]
+				if field[0] == "night_light_strength":
+					spin.suffix = "%"
+					spin.tooltip_text = "Brightness of building and vehicle lights. 100% uses the original brightness; 0% turns the lights off without changing the night colors."
 				spin.value_changed.connect(func(_v: float) -> void: _changed())
 				control = spin
 			"path":
@@ -133,7 +136,7 @@ func _update_availability() -> void:
 		var available := true
 		if key.begins_with("season_") and key != "season_enabled":
 			available = values.season_enabled
-		elif (key.begins_with("day_") and key != "day_enabled") or key in ["night_strength", "brightmaps", "brightmap_folder"]:
+		elif (key.begins_with("day_") and key != "day_enabled") or key in ["night_strength", "brightmaps", "night_light_strength", "brightmap_folder"]:
 			available = values.day_enabled
 		elif key.begins_with("weather_") and key != "weather_enabled":
 			available = values.weather_enabled
@@ -154,7 +157,7 @@ func _update_availability() -> void:
 				available = available and values.weather_mode == 2
 			"weather_seconds":
 				available = available and values.weather_mode == 1
-			"brightmap_folder":
+			"brightmap_folder", "night_light_strength":
 				available = available and values.brightmaps
 			"life_car_amount":
 				available = values.life_cars_enabled

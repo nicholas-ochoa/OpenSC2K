@@ -27,6 +27,7 @@ const FIELDS := [
 	["pause_freezes", "Freeze environment cycles while paused", "bool", true],
 	["night_strength", "Night strength", "number", 1.0, 0.0, 1.0, 0.05],
 	["brightmaps", "Night lights", "bool", true],
+	["night_light_strength", "Night light strength", "number", 100.0, 0.0, 100.0, 5.0],
 	["brightmap_folder", "Brightmap folder", "path", ""],
 	["lut_path", "Optional color LUT (PNG strip)", "path", ""],
 	["lut_folder", "Custom LUT profile folder (empty = built-in)", "path", ""],

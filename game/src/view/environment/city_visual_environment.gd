@@ -152,7 +152,7 @@ func process(delta: float) -> void:
 		_sync_whole_water()
 	tint = lighting.tint if options.day_enabled else Color.WHITE
 	var ambient_night: float = lighting.night if options.day_enabled else 0.0
-	night = ambient_night if options.brightmaps else 0.0
+	night = ambient_night * float(options.night_light_strength) / 100.0 if options.brightmaps else 0.0
 	clouds.process(delta, elapsed * factor, active, tint * weather.tint, lighting.night if options.day_enabled else 0.0, weather.kind)
 	var parameters := {
 		"water_enabled": active and VisualEnhancementOptions.water_pass_enabled(options),

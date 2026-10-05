@@ -9,6 +9,10 @@ func _initialize() -> void:
 func _run() -> void:
 	var defaults := VisualEnhancementOptions.normalize({})
 	assert(defaults.day_seconds == 600.0)
+	assert(defaults.night_light_strength == 100.0)
+	assert(VisualEnhancementOptions.normalize({"night_light_strength": NAN}).night_light_strength == 100.0)
+	assert(VisualEnhancementOptions.normalize({"night_light_strength": -10}).night_light_strength == 0.0)
+	assert(VisualEnhancementOptions.normalize({"night_light_strength": 150}).night_light_strength == 100.0)
 	assert(VisualEnhancementOptions.normalize({"day_seconds": NAN, "weather_fixed": 100}).day_seconds == 600.0)
 	var path := "user://visual_environment_%d.cfg" % OS.get_process_id()
 	var save := AppSettingsStore.SaveOptions.new()
@@ -16,6 +20,7 @@ func _run() -> void:
 	save.visual_enhancements.day_lut_strength = 0.25
 	save.visual_enhancements.season_lut_strength = 0.75
 	save.visual_enhancements.weather_lut_strength = 0.0
+	save.visual_enhancements.night_light_strength = 35.0
 	assert(AppSettingsStore.save_values(0.5, 0.5, false, path, save) == OK)
 	assert(AppSettingsStore.load_values(path).visual_enhancements == save.visual_enhancements)
 	assert(AppSettingsStore.save_values(0.4, 0.4, false, path) == OK)
@@ -174,6 +179,16 @@ func _run() -> void:
 	main.visual_environment.process(0.0)
 	assert(is_equal_approx(main.map_view.layers.environment_parameters.environment_saturation, 0.78))
 	assert(main.map_view.layers.environment_parameters.environment_night == 1.0)
+	var night_tint := main.visual_environment.tint
+	for strength in [0.0, 35.0, 100.0]:
+		main.preferences.visual_enhancements.night_light_strength = strength
+		main.visual_environment.process(0.0)
+		assert(is_equal_approx(main.visual_environment.night, strength / 100.0))
+		assert(is_equal_approx(main.map_view.layers.environment_parameters.environment_night, strength / 100.0))
+		assert(main.visual_environment.tint == night_tint)
+		assert(is_equal_approx(main.map_view.layers.environment_parameters.environment_saturation, 0.78))
+	assert(DocumentState.capture(main.document_state.city.document) == before)
+	assert([engine.random.state, engine.lfsr_random.state, engine.game_random.state] == random_before)
 	# A newly loaded sunny document must not inherit the previous snowstorm.
 	main.preferences.visual_enhancements.season_enabled = true
 	main.preferences.visual_enhancements.weather_mode = 2
@@ -232,8 +247,14 @@ func _check_menu_dependencies(tab: VisualEnhancementsTab) -> void:
 	assert((tab.controls.day_hour as SpinBox).editable and not (tab.controls.day_seconds as SpinBox).editable)
 	(tab.controls.brightmaps as CheckBox).button_pressed = false
 	assert(not (tab.controls.brightmap_folder as LineEdit).editable)
+	assert(not (tab.controls.night_light_strength as SpinBox).editable)
+	(tab.controls.brightmaps as CheckBox).button_pressed = true
+	assert((tab.controls.night_light_strength as SpinBox).editable)
+	(tab.controls.night_light_strength as SpinBox).value = 35.0
+	assert(tab.selected_values().night_light_strength == 35.0)
 	(tab.controls.day_enabled as CheckBox).button_pressed = false
 	assert(day_source.disabled and (tab.controls.brightmaps as CheckBox).disabled)
+	assert(not (tab.controls.night_light_strength as SpinBox).editable)
 	(tab.controls.cloud_enabled as CheckBox).button_pressed = false
 	assert(not (tab.controls.cloud_density as SpinBox).editable)
 	(tab.controls.life_cars_enabled as CheckBox).button_pressed = false
