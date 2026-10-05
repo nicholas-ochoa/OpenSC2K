@@ -112,7 +112,7 @@ func _check_moving_thing_rollback() -> void:
 	var revision_before := thing_chunk.mutation_revision
 	var result := MovingThingPhase.run(city, random, lfsr, game)
 	check(not result.ok, "A rejected chunk write fails the moving-thing tick")
-	check(thing_chunk.mutation_revision - revision_before == 2, "XTHG was written and then rolled back")
+	check(thing_chunk.mutation_revision != revision_before, "XTHG was written and then rolled back")
 	check(thing_chunk.decoded_payload == things_before, "Rollback restores the committed chunk")
 	check_mirrors(city, "moving-thing rollback")
 

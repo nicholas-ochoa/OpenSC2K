@@ -150,10 +150,11 @@ func _test_industry_window(reference_root: String) -> void:
 		and document.misc_i32(0x016c + 3 * 0x0c + 4) == 19,
 		"Industry window changes one saved tax rate",
 	)
-	_check(misc.decoded_payload == expected and misc.mutation_revision == revision + 1,
+	_check(misc.decoded_payload == expected and misc.mutation_revision != revision,
 		"Industry tax preserves other bytes and advances the revision")
+	revision = misc.mutation_revision
 	var unchanged := IndustryTaxCommand.set_tax_rate(city, 3, 19)
-	_check(unchanged.ok and not unchanged.changed and misc.mutation_revision == revision + 1,
+	_check(unchanged.ok and not unchanged.changed and misc.mutation_revision == revision,
 		"Unchanged industry tax preserves the revision")
 	var changed_all := IndustryTaxCommand.set_tax_rate(city, 0, 99, true)
 	var all_clamped: bool = changed_all.ok and changed_all.value == 20

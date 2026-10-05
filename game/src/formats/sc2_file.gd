@@ -188,9 +188,8 @@ func apply_native(native: Dictionary) -> void:
 		chunk.expected_decoded_size = fields.expected_size
 		chunk.is_compressed = fields.compressed
 
-		if chunk.is_dirty != fields.dirty or fields.dirty:
-			chunk.is_dirty = fields.dirty
-			chunk.mutation_revision += 1
+		chunk.is_dirty = fields.dirty
+		chunk.mutation_revision = NativeSimulation.next_revision()
 
 		if not same:
 			chunks.append(chunk)

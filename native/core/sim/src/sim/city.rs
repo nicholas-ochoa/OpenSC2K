@@ -131,7 +131,8 @@ impl City {
         chunk.present.then_some(chunk)
     }
 
-    pub fn chunk_mut(&mut self, id: &str) -> Option<&mut Chunk> {
+    /// The slot of a known chunk id, present or not.
+    pub fn chunk_slot_mut(&mut self, id: &str) -> Option<&mut Chunk> {
         let chunk = match id {
             "CNAM" => &mut self.cnam,
             "MISC" => &mut self.misc,
@@ -161,7 +162,11 @@ impl City {
             _ => return None,
         };
 
-        if chunk.present { Some(chunk) } else { None }
+        Some(chunk)
+    }
+
+    pub fn chunk_mut(&mut self, id: &str) -> Option<&mut Chunk> {
+        self.chunk_slot_mut(id).filter(|chunk| chunk.present)
     }
 
     /// The first missing chunk of `ids`, or None when all are present with the

@@ -29,6 +29,8 @@ static func capture(source: GameSpeedController, budget: SimulationSliceBudget) 
 	original.copy_mirrors_to(city)
 
 	city.simulation_slice = budget
+	# the worker copy keeps the native chunks of the city
+	city.native_cache = original.native_cache
 	city.disaster_damage_class = original.disaster_damage_class
 	var engine := SimulationEngine.new(null)
 	engine.city = city

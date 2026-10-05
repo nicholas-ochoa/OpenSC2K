@@ -55,10 +55,19 @@ The paths below are in `native/core/sim`, except `src/bridge`, which is in `nati
 
 ## Calls from GDScript
 
-`NativeSimulationBridge.run` in `game/src/simulation/native` sends copies of the saved chunks,
-the three random generator states, and the operation arguments. The library returns the chunks
-that it wrote, the new random states, and a result. The bridge stores the written chunks in the
-document, refreshes the city mirrors, and builds the GDScript result objects.
+`NativeSimulationBridge.run` in `game/src/simulation/native` sends the saved chunks with their
+revisions, the three random generator states, and the operation arguments. The library returns
+the chunks that it wrote with new revisions, the new random states, and a result. The bridge
+stores the written chunks in the document, refreshes the city mirrors, and builds the GDScript
+result objects.
+
+Each chunk revision is unique in the process (`NativeSimulation.next_revision`), so equal
+revisions mean equal bytes. A `CityState` has a `CityCacheHandle`: a native copy of its chunks
+that the simulation worker's snapshot shares. Operations in `CACHED_OPERATIONS` of
+`src/bridge/ops.rs` (the moving-object tick) copy only the chunks whose revisions changed since
+the last call; see `src/bridge/city_cache.rs`. Other operations can edit scratch data without
+marking it, so they still build a private city. A call that finds the cache busy also builds a
+private city, because the worker can wait for the main thread at a frame boundary.
 
 The GDScript phase classes, such as `GrowthScan`, `WaterPhase`, and `MovingThingPhase`, keep
 their public functions. Each function calls the bridge. `SimulationEngine` keeps the engine state

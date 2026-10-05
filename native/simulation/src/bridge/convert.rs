@@ -100,7 +100,7 @@ pub fn city(request: &VarDictionary) -> City {
             continue;
         };
 
-        if let Some(slot) = chunk_slot(&mut city, id) {
+        if let Some(slot) = city.chunk_slot_mut(id) {
             slot.present = true;
             slot.data = bytes.to_vec();
         }
@@ -109,37 +109,28 @@ pub fn city(request: &VarDictionary) -> City {
     city
 }
 
-fn chunk_slot<'a>(city: &'a mut City, id: &str) -> Option<&'a mut sc2k_sim::sim::city::Chunk> {
-    let slot = match id {
-        "CNAM" => &mut city.cnam,
-        "MISC" => &mut city.misc,
-        "ALTM" => &mut city.altm,
-        "XTER" => &mut city.xter,
-        "XBLD" => &mut city.xbld,
-        "XZON" => &mut city.xzon,
-        "XUND" => &mut city.xund,
-        "XTXT" => &mut city.xtxt,
-        "XLAB" => &mut city.xlab,
-        "XMIC" => &mut city.xmic,
-        "XTHG" => &mut city.xthg,
-        "XBIT" => &mut city.xbit,
-        "XTRF" => &mut city.xtrf,
-        "XPLT" => &mut city.xplt,
-        "XVAL" => &mut city.xval,
-        "XCRM" => &mut city.xcrm,
-        "XPLC" => &mut city.xplc,
-        "XFIR" => &mut city.xfir,
-        "XPOP" => &mut city.xpop,
-        "XROG" => &mut city.xrog,
-        "XGRP" => &mut city.xgrp,
-        "SCEN" => &mut city.scen,
-        "TEXT" => &mut city.text,
-        "PICT" => &mut city.pict,
-        "TMPL" => &mut city.tmpl,
-        _ => return None,
-    };
+/// The city of a request, from the cached city of the last call. See
+/// `city_cache::sync`.
+pub fn cached_city(request: &VarDictionary, cache: &mut super::city_cache::Cached) -> City {
+    let source = dictionary(request, "city");
+    let chunks = dictionary(&source, "chunks");
+    let revisions = dictionary(&source, "revisions");
 
-    Some(slot)
+    let payloads: Vec<Option<PackedByteArray>> = CHUNK_IDS
+        .iter()
+        .map(|id| chunks.get(*id).and_then(|value| value.try_to::<PackedByteArray>().ok()))
+        .collect();
+
+    let incoming = CHUNK_IDS.iter().zip(&payloads).map(|(id, bytes)| super::city_cache::Incoming {
+        id,
+        bytes: bytes.as_ref().map(|bytes| bytes.as_slice()),
+        revision: int(&revisions, id, 0),
+    });
+
+    let mut city = super::city_cache::sync(cache, int(&source, "map_size", 128), int(&source, "large_version", 2), incoming);
+    city.disaster_damage_class = int(&source, "disaster_damage_class", -1);
+
+    city
 }
 
 /// The written chunks as `{id: bytes}`, in document chunk-id order.

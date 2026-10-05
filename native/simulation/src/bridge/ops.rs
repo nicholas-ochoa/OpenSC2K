@@ -109,10 +109,27 @@ impl Outcome {
     }
 }
 
+/// Operations that mark every chunk that they change, so the native city cache
+/// may keep their city. Other operations can edit scratch data without marking
+/// it, as each call once started from new copies; they build a private city.
+const CACHED_OPERATIONS: [&str; 1] = ["moving"];
+
 pub fn run(request: &VarDictionary) -> VarDictionary {
     let op = convert::string(request, "op");
     let args = convert::dictionary(request, "args");
-    let mut city = convert::city(request);
+
+    let shared = CACHED_OPERATIONS
+        .contains(&op.as_str())
+        .then(|| super::city_cache::get(convert::int(request, "cache", 0)))
+        .flatten();
+
+    let mut cached = shared.as_ref().and_then(super::city_cache::try_lock);
+
+    let mut city = match cached.as_deref_mut() {
+        Some(cache) => convert::cached_city(request, cache),
+        None => convert::city(request),
+    };
+
     let mut randoms = convert::randoms(request);
     let budget = super::budgets::get(convert::int(request, "budget", 0));
     let tool = super::tool_ops::is_tool(&op);
@@ -128,13 +145,35 @@ pub fn run(request: &VarDictionary) -> VarDictionary {
         super::tool_ops::mark_written(request, &mut city, &outcome.result);
     }
 
+    // each written chunk gets a new revision. The cache keeps the city for the next call
+    let mut revisions = VarDictionary::new();
+
+    match cached.as_deref_mut() {
+        Some(cache) => {
+            for (id, revision) in super::city_cache::store_written(cache, &city) {
+                revisions.set(id, revision);
+            }
+        }
+        None => {
+            for id in city.written_ids() {
+                revisions.set(id, super::city_cache::next_revision());
+            }
+        }
+    }
+
     let mut response = VarDictionary::new();
     response.set("ok", outcome.error.is_empty());
     response.set("error", outcome.error.as_str());
     response.set("written", &convert::written_chunks(&city));
+    response.set("revisions", &revisions);
     response.set("randoms", &convert::randoms_value(&randoms));
     response.set("disaster_damage_class", city.disaster_damage_class);
     response.set("result", &convert::variant(&outcome.result));
+
+    if let Some(cache) = cached.as_deref_mut() {
+        cache.city = Some(city);
+    }
+
     response
 }
 

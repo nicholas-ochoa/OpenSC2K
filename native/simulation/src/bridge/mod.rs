@@ -3,6 +3,7 @@
 //! the result as Godot values. GDScript builds the result objects.
 
 mod budgets;
+mod city_cache;
 mod codec;
 mod convert;
 mod document;
@@ -84,6 +85,23 @@ impl NativeSimulation {
         result.set("elapsed_usec", metrics.elapsed_usec);
         result.set("parked_usec", metrics.parked_usec);
         result
+    }
+
+    /// A new native city cache. Free it with `cache_free`.
+    #[func]
+    fn cache_create() -> i64 {
+        city_cache::create()
+    }
+
+    #[func]
+    fn cache_free(handle: i64) {
+        city_cache::free(handle)
+    }
+
+    /// A chunk revision that no other chunk content has. See `city_cache.rs`.
+    #[func]
+    fn next_revision() -> i64 {
+        city_cache::next_revision()
     }
 
     /// The operations that this library implements.

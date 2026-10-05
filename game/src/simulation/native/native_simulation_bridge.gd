@@ -77,8 +77,12 @@ static func run(
 	args := {},
 	commit_order := PackedStringArray(),
 ) -> Dictionary:
+	if city.native_cache == null:
+		city.native_cache = CityCacheHandle.new()
+
 	var request := {
 		"op": operation,
+		"cache": city.native_cache.handle,
 		"city": city_fields(city),
 		"randoms": PackedInt64Array([
 			random.state if random != null else 1,
@@ -107,7 +111,7 @@ static func run(
 	if game_random != null and game_random.get_script() == GameLcgRandom:
 		game_random.state = response.randoms[2]
 
-	response.failed_chunk = apply_written(city, response.written, commit_order)
+	response.failed_chunk = apply_written(city, response.written, commit_order, response.revisions)
 	city.disaster_damage_class = response.disaster_damage_class
 	response.result = decode(response.result)
 
@@ -124,25 +128,28 @@ static func _script(generator: RefCounted, base: Script) -> RefCounted:
 
 static func city_fields(city: CityState) -> Dictionary:
 	var chunks := {}
+	var revisions := {}
 
 	for chunk_id in CHUNK_IDS:
 		var chunk := city.document.find_chunk(chunk_id)
 
 		if chunk != null:
 			chunks[chunk_id] = chunk.decoded_payload
+			revisions[chunk_id] = chunk.mutation_revision
 
 	return {
 		"map_size": city.map_size,
 		"large_version": city.document.large_version,
 		"disaster_damage_class": city.disaster_damage_class,
 		"chunks": chunks,
+		"revisions": revisions,
 	}
 
 
 # store each written chunk in `order`, then the others, and refresh their city
 # mirrors. a rejected store restores the chunks already stored and returns the
-# rejected chunk id
-static func apply_written(city: CityState, written: Dictionary, order := PackedStringArray()) -> String:
+# rejected chunk id. `revisions` gives the native revision of each written chunk
+static func apply_written(city: CityState, written: Dictionary, order := PackedStringArray(), revisions := {}) -> String:
 	if written.is_empty():
 		return ""
 
@@ -173,6 +180,10 @@ static func apply_written(city: CityState, written: Dictionary, order := PackedS
 
 		originals[chunk_id] = original
 		applied.append(chunk_id)
+
+		# the native cache holds these bytes with this revision
+		if revisions.has(chunk_id):
+			chunk.mutation_revision = revisions[chunk_id]
 
 	city.resync_mirrors(applied)
 
