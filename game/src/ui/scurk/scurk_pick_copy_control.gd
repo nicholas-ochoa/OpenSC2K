@@ -692,8 +692,8 @@ class ObjectIcon:
 				continue
 			var index := int(rgba[offset])
 			rgba.encode_u32(offset, value_palette.color(index).to_abgr32())
-			if ((index >= Sc2Palette.FAST_CYCLE_START and index < Sc2Palette.FAST_CYCLE_START + Sc2Palette.FAST_CYCLE_TABLE.size())
-					or (index >= Sc2Palette.SLOW_CYCLE_START and index < Sc2Palette.SLOW_CYCLE_START + Sc2Palette.SLOW_CYCLE_TABLE.size())):
+			if ((index >= Sc2Palette.FAST_CYCLE_START and index < Sc2Palette.FAST_CYCLE_START + Sc2Palette.FAST_CYCLE_COUNT)
+					or (index >= Sc2Palette.SLOW_CYCLE_START and index < Sc2Palette.SLOW_CYCLE_START + Sc2Palette.SLOW_CYCLE_COUNT)):
 				cycle_offsets.append(offset)
 				cycle_indices.append(index)
 		image = Image.create_from_data(index_image.get_width(), index_image.get_height(), false, Image.FORMAT_RGBA8, rgba)

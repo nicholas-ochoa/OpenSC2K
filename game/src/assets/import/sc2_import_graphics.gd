@@ -231,11 +231,11 @@ static func windows_layout_palette(source: Sc2Palette, fast: Array[Color], slow:
 		if target > 0:
 			palette.colors[target] = source.colors[index]
 
-	if fast.size() == Sc2Palette.FAST_CYCLE_TABLE.size():
+	if fast.size() == Sc2Palette.FAST_CYCLE_COUNT:
 		for index in fast.size():
 			palette.colors[Sc2Palette.FAST_CYCLE_START + index] = fast[index]
 
-	if slow.size() == Sc2Palette.SLOW_CYCLE_TABLE.size():
+	if slow.size() == Sc2Palette.SLOW_CYCLE_COUNT:
 		for index in slow.size():
 			palette.colors[Sc2Palette.SLOW_CYCLE_START + index] = slow[index]
 
@@ -250,14 +250,14 @@ static func windows_layout_index(index: int) -> int:
 	if index <= SHIFTED_FAST_CYCLE_END:
 		return index + SHIFTED_INDEX_OFFSET
 
-	if index >= Sc2Palette.SLOW_CYCLE_START and index < Sc2Palette.SLOW_CYCLE_START + Sc2Palette.SLOW_CYCLE_TABLE.size():
+	if index >= Sc2Palette.SLOW_CYCLE_START and index < Sc2Palette.SLOW_CYCLE_START + Sc2Palette.SLOW_CYCLE_COUNT:
 		return index
 
 	return 0
 
 
 func _use_windows_layout(fast: Array[Color], slow: Array[Color]) -> void:
-	if fast.size() != Sc2Palette.FAST_CYCLE_TABLE.size() or slow.size() != Sc2Palette.SLOW_CYCLE_TABLE.size():
+	if fast.size() != Sc2Palette.FAST_CYCLE_COUNT or slow.size() != Sc2Palette.SLOW_CYCLE_COUNT:
 		warnings.append("The source has no complete palette cycle colors. Animated colors can look wrong.")
 
 	_palette = windows_layout_palette(_palette, fast, slow)

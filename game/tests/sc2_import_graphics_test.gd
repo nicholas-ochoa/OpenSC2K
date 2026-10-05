@@ -128,10 +128,10 @@ func _test_pack(header: PackedByteArray, pixels: PackedByteArray) -> void:
 		palette[index * 3 + 2] = index / 2
 
 	var fast := PackedByteArray()
-	fast.resize(Sc2Palette.FAST_CYCLE_TABLE.size() * 3)
+	fast.resize(Sc2Palette.FAST_CYCLE_COUNT * 3)
 	fast.fill(40)
 	var slow := PackedByteArray()
-	slow.resize(Sc2Palette.SLOW_CYCLE_TABLE.size() * 3)
+	slow.resize(Sc2Palette.SLOW_CYCLE_COUNT * 3)
 	slow.fill(80)
 	# TOOL.RAW: height and width, then pixels. Mark the first group button and the sign button.
 	var toolbar := PackedByteArray()

@@ -8,6 +8,7 @@ mod crc32;
 mod data_import;
 mod gif;
 mod johab;
+mod palette;
 mod pe;
 mod png;
 mod sprite;
