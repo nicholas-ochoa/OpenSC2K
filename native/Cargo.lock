@@ -187,6 +187,7 @@ dependencies = [
  "sc2k_assets",
  "sc2k_formats",
  "sc2k_game",
+ "sc2k_platform",
  "sc2k_sim",
 ]
 
@@ -230,6 +231,13 @@ dependencies = [
  "sc2k_assets",
  "sc2k_formats",
  "sc2k_sim",
+]
+
+[[package]]
+name = "sc2k_platform"
+version = "0.1.0"
+dependencies = [
+ "sc2k_formats",
 ]
 
 [[package]]
