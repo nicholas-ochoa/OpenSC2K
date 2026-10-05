@@ -458,6 +458,29 @@ impl NativeCityDocument {
         }
     }
 
+    /// An empty original city of `edge` tiles with the starting values of New City.
+    #[func]
+    fn empty_city(edge: i64) -> VarDictionary {
+        document_value(&sc2k_sim::sim::new_city::template::empty_city(edge))
+    }
+
+    /// `{misc, state}`: MISC with four new neighbor cities, and the process
+    /// random state after the draws.
+    #[func]
+    fn draw_neighbors(misc: PackedByteArray, state: i64) -> VarDictionary {
+        let mut document = Document::default();
+        document
+            .chunks
+            .push(sc2k_sim::formats::document::Chunk::new("MISC", misc.to_vec(), -1));
+        let mut random = sc2k_sim::sim::random::SimRandom::new(state);
+        sc2k_sim::sim::new_city::template::draw_neighbors(&mut document, &mut random);
+
+        let mut result = VarDictionary::new();
+        result.set("misc", &packed(document.payload("MISC")));
+        result.set("state", random.state);
+        result
+    }
+
     /// `{ok, error, metadata}` from the bytes of metadata.json.
     #[func]
     fn parse_metadata(bytes: PackedByteArray) -> VarDictionary {

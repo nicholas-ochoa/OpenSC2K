@@ -247,28 +247,13 @@ static func create(
 
 
 # FUN_0040e250: four different random neighbor names, each with a population
-# that is the smallest of three draws and a value of 1/1, 1/2, or 1/3 of it
+# that is the smallest of three draws and a value of 1/1, 1/2, or 1/3 of it.
+# The native simulation library draws them; see template.rs of new_city.
 static func draw_neighbors(document: Sc2File, random: SimRandom) -> void:
-	var names := PackedInt32Array()
-
-	for slot in CityNeighbors.COUNT:
-		var name_index := random.next_u15() % CityNeighbors.NAMES.size() + 1
-
-		while name_index in names:
-			name_index = random.next_u15() % CityNeighbors.NAMES.size() + 1
-
-		names.append(name_index)
-		var population := random.next_u15() % NEIGHBOR_POPULATION_RANGE + NEIGHBOR_MIN_POPULATION
-
-		for _draw in 2:
-			population = mini(population, random.next_u15() % NEIGHBOR_POPULATION_RANGE + NEIGHBOR_MIN_POPULATION)
-
-		var value := population / (random.next_u15() % NEIGHBOR_VALUE_DIVISORS + 1)
-		var offset := Sc2MiscLayout.NEIGHBORS + slot * NEIGHBOR_STRIDE
-		document.set_misc_u32(offset, name_index)
-		document.set_misc_u32(offset + NEIGHBOR_POPULATION, population)
-		document.set_misc_u32(offset + NEIGHBOR_VALUE, value)
-		document.set_misc_u32(offset + NEIGHBOR_FAME, 0)
+	var misc := document.find_chunk("MISC")
+	var drawn: Dictionary = NativeCityDocument.draw_neighbors(misc.decoded_payload, random.state)
+	misc.set_decoded_payload(drawn.misc, true)
+	random.state = drawn.state
 
 
 # FUN_0042e460 makes the first neighbor the ocean on an ocean map.

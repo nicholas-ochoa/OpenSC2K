@@ -1,55 +1,14 @@
 class_name EmptyCityTemplate
 extends RefCounted
+## The empty city that New City starts from. The native simulation library
+## makes it; see native/core/sim/src/sim/new_city/template.rs.
 
 const NEUTRAL_GROWTH := 0x7f
 
 
 static func create(map_edge: int = 128) -> Sc2File:
 	var document := Sc2File.new()
-
-	for id in Sc2File.DECODED_SIZES:
-		var chunk := Sc2Chunk.new()
-		chunk.chunk_id = id
-		chunk.expected_decoded_size = Sc2File.DECODED_SIZES[id]
-		chunk.is_compressed = not Sc2File.RAW_CHUNKS.has(id)
-		var bytes := PackedByteArray()
-		bytes.resize(chunk.expected_decoded_size)
-		bytes.fill(0)
-		chunk.set_decoded_payload(bytes, true)
-		document.chunks.append(chunk)
-
-	document.rebuild_chunk_cache()
-
-	# independent starting policy. newcitysetup supplies difficulty/year values
-	var values := {
-		0x0000: 0x122, Sc2MiscLayout.CITY_MODE: 1, Sc2MiscLayout.START_YEAR: 1900, Sc2MiscLayout.FUNDS: 20000, Sc2MiscLayout.DIFFICULTY: 1,
-		Sc2MiscLayout.NATIONAL_POPULATION: 10000, Sc2MiscLayout.NATIONAL_VALUE: 3000, Sc2MiscLayout.NATIONAL_FEDERAL_RATE: 3,
-		Sc2MiscLayout.WEATHER_HEAT: 150, Sc2MiscLayout.WEATHER_WIND: 10, Sc2MiscLayout.WEATHER_RAIN: 15, Sc2MiscLayout.WEATHER_TREND: 4,
-		Sc2MiscLayout.TILE_COUNTS: (map_edge * map_edge),
-		Sc2MiscLayout.SIMULATION_SPEED: 2, Sc2MiscLayout.AUTO_GOTO: 1, Sc2MiscLayout.SOUND: 1, Sc2MiscLayout.MUSIC: 1,
-		Sc2MiscLayout.NEWSPAPER_EXTRAS: 1,
-	}
-
-	for offset in values:
-		document.set_misc_u32(offset, values[offset])
-
-	for industry in Sc2IndustryLayout.COUNT:
-		document.set_misc_u32(Sc2MiscLayout.INDUSTRIES + industry * Sc2IndustryLayout.RECORD_SIZE + Sc2IndustryLayout.TAX_RATE, 7)
-
-	for budget in Sc2BudgetLayout.COUNT:
-		var funding := 7 if budget < 3 else (1 if budget == 3 else (0 if budget == 4 else 100))
-		var record := Sc2MiscLayout.BUDGETS + budget * Sc2BudgetLayout.RECORD_SIZE
-		document.set_misc_u32(record + Sc2BudgetLayout.FUNDING, funding)
-
-		# the original also stores the rate as the first month of history
-		document.set_misc_u32(record + Sc2BudgetLayout.MONTHS + Sc2BudgetLayout.MONTH_FUNDING, funding)
-
-	# a new city draws its own neighbors. These fixed ones are never the ocean.
-	NewCitySetup.draw_neighbors(document, SimRandom.new(1))
-
-	document.set_city_name("New City")
-	document.resize_empty_map(map_edge)
-	fill_neutral_growth(document)
+	document.apply_native(NativeCityDocument.empty_city(map_edge))
 
 	return document
 
