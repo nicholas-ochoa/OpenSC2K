@@ -332,9 +332,13 @@ func _sync_base_nodes() -> void:
 
 	base_layer.texture = map.city_source.texture
 
+	# Neighboring tiles round the same shared edge, so no pixel row or column
+	# between them is left empty at a fractional scale
 	for tile in _tile_layers:
-		tile.position = Vector2(tile.get_meta("source_position")) * scale
-		tile.size = Vector2(tile.get_meta("source_size")) * scale
+		var first := (Vector2(tile.get_meta("source_position")) * scale).round()
+		var last := ((Vector2(tile.get_meta("source_position")) + Vector2(tile.get_meta("source_size"))) * scale).round()
+		tile.position = first
+		tile.size = last - first
 
 	if not is_equal_approx(_mesh_view_scale, scale):
 		for mesh in _mesh_layers:
