@@ -466,6 +466,18 @@
     "lane": "product"
   },
   {
+    "id": "johab_text_resource_test",
+    "script": "tests/johab_text_resource_test.gd",
+    "domain": "formats",
+    "lane": "product"
+  },
+  {
+    "id": "johab_newspaper_test",
+    "script": "tests/johab_newspaper_test.gd",
+    "domain": "formats",
+    "lane": "product"
+  },
+  {
     "id": "graphics_pack_test",
     "script": "tests/graphics_pack_test.gd",
     "domain": "formats",

@@ -38,6 +38,7 @@ static func load_ids(
 		return _failure("text index has a partial record")
 
 	var records: Array[Vector2i] = []
+	var text_boundaries := PackedInt32Array()
 
 	for offset in range(0, index.size(), INDEX_RECORD_SIZE):
 		var resource_id := index.decode_u32(offset)
@@ -50,6 +51,9 @@ static func load_ids(
 			return _failure("text resource offsets are not ordered")
 
 		records.append(Vector2i(resource_id, data_offset))
+		text_boundaries.append(data_offset)
+
+	var johab := JohabCodec.is_text(data, text_boundaries)
 
 	for record_index in records.size():
 		var record := records[record_index]
@@ -66,7 +70,8 @@ static func load_ids(
 		if end < record.y or end > data.size():
 			return _failure("text resource %d has an invalid length" % record.x)
 
-		result[record.x] = data.slice(record.y, end).get_string_from_ascii()
+		var bytes := data.slice(record.y, end)
+		result[record.x] = JohabCodec.decode_text(bytes) if johab else bytes.get_string_from_ascii()
 
 	if result.size() != wanted.size():
 		return _failure("one or more requested text resources are missing")

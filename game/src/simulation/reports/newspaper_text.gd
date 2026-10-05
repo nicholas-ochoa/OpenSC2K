@@ -227,6 +227,19 @@ func _expand_phrase(phrase_id: int, mode: int, depth: int) -> void:
 	while cursor < phrase.size() and error.is_empty():
 		var token := int(phrase[cursor])
 
+		# Korean text: a pair is one character, never a grammar token
+		if source.is_johab and token >= 0x80:
+			var point := JohabCodec.code_point(phrase, cursor)
+
+			if point == 0:
+				error = "newspaper grammar contains an invalid Johab pair"
+
+				return
+
+			_append_text(String.chr(point))
+			cursor += 2
+			continue
+
 		if active_mode == 0 and token == 0x2b:
 			return
 
@@ -287,7 +300,13 @@ func _expand_phrase(phrase_id: int, mode: int, depth: int) -> void:
 				cursor = _next_argument(phrase, cursor)
 
 				if cursor >= 0:
-					_append_byte(phrase[cursor])
+					var point := JohabCodec.code_point(phrase, cursor) if source.is_johab else 0
+
+					if point > 0:
+						_append_text(String.chr(point))
+						cursor += 1
+					else:
+						_append_byte(phrase[cursor])
 			0x5e:
 				cursor = _next_argument(phrase, cursor)
 
@@ -374,7 +393,7 @@ func _append_number(value: int) -> void:
 
 
 func _append_text(value: String) -> void:
-	_append_bytes(value.to_ascii_buffer())
+	_append_bytes(value.to_utf8_buffer() if source.is_johab else value.to_ascii_buffer())
 
 
 func _append_bytes(values: PackedByteArray) -> void:
@@ -392,6 +411,9 @@ func _append_byte(value: int) -> void:
 
 
 func _decode_oem(values: PackedByteArray, headline: bool) -> String:
+	if source.is_johab:
+		return values.get_string_from_utf8()
+
 	var result := ""
 
 	for value in values:

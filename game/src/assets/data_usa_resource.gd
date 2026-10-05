@@ -13,6 +13,7 @@ var bases := PackedInt32Array()
 var counts := PackedInt32Array()
 var offsets := PackedInt32Array()
 var grammar := PackedByteArray()
+var is_johab := false
 var load_error := ""
 
 
@@ -148,3 +149,5 @@ func _load(data_path: String, index_path: String) -> void:
 			load_error = "DATA_USA phrase %d is not terminated" % phrase_id
 
 			return
+
+	is_johab = JohabCodec.is_grammar(grammar, offset_bytes)

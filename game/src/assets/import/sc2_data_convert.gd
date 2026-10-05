@@ -98,6 +98,9 @@ static func indexed_records(data: PackedByteArray, index: PackedByteArray) -> Di
 # DOS, Macintosh, and the Windows 3.x demo use tokens 0x80 to 0x9d often. In Windows
 # grammar those bytes are rare CP437 letters, and tokens 0xee to 0xff are common.
 static func uses_shifted_tokens(records: Dictionary[int, PackedByteArray]) -> bool:
+	if JohabCodec.is_grammar(records[GRAMMAR_ID], records[OFFSETS_ID]):
+		return false
+
 	var shifted := 0
 	var windows := 0
 
@@ -135,6 +138,7 @@ static func windows_newspaper(records: Dictionary[int, PackedByteArray]) -> Dict
 	var counts := records[COUNTS_ID]
 	var offsets := records[OFFSETS_ID]
 	var grammar := records[GRAMMAR_ID].duplicate()
+	var johab := JohabCodec.is_grammar(grammar, offsets)
 
 	if bases.size() != counts.size() or bases.size() % 2 != 0 or offsets.size() % 4 != 0 or not has_headline_ends(records):
 		return converted
@@ -147,6 +151,8 @@ static func windows_newspaper(records: Dictionary[int, PackedByteArray]) -> Dict
 	var shifted := uses_shifted_tokens(records)
 
 	for start: int in _phrase_starts(offsets):
+		if johab:
+			break
 		var cursor := start
 
 		while cursor < grammar.size() and grammar[cursor] != 0:
@@ -198,6 +204,7 @@ static func has_headline_ends(records: Dictionary[int, PackedByteArray]) -> bool
 	var offsets := records[OFFSETS_ID]
 	var stories := 0
 	var marked := 0
+	var johab := JohabCodec.is_grammar(records[GRAMMAR_ID], offsets)
 
 	for table in mini(NewsQueue.STORY_PRIORITIES.size(), counts.size() / 2):
 		if NewsQueue.STORY_PRIORITIES[table] <= 0:
@@ -209,16 +216,20 @@ static func has_headline_ends(records: Dictionary[int, PackedByteArray]) -> bool
 			if phrase_id * 4 + 4 <= offsets.size():
 				stories += 1
 
-				if _top_level_byte(records[GRAMMAR_ID], BinaryData.read_u32_be(offsets, phrase_id * 4), HEADLINE_END) >= 0:
+				if _top_level_byte(records[GRAMMAR_ID], BinaryData.read_u32_be(offsets, phrase_id * 4), HEADLINE_END, johab) >= 0:
 					marked += 1
 
 	return marked * 2 >= stories
 
 
-static func _top_level_byte(grammar: PackedByteArray, start: int, wanted: int) -> int:
+static func _top_level_byte(grammar: PackedByteArray, start: int, wanted: int, johab := false) -> int:
 	var cursor := start
 
 	while cursor < grammar.size() and grammar[cursor] != 0:
+		if johab and JohabCodec.code_point(grammar, cursor) > 0:
+			cursor += 2
+			continue
+
 		if grammar[cursor] == wanted:
 			return cursor
 
