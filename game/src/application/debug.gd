@@ -228,6 +228,7 @@ func debug_end_disaster() -> ActionResult:
 	app.map_render.refresh_map(false)
 	app.moving_sprites.refresh_moving_things()
 	app.interface.refresh_details()
+	app.scripting.check_disaster()
 
 	return ActionResult.new(
 		true,

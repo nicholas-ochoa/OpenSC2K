@@ -10,11 +10,18 @@ extends RefCounted
 const API_PATH := "res://assets/scripting/api.js"
 # a relative path of the run command starts in this folder of the user data
 const SCRIPTS_FOLDER := "scripts"
+# the port of the DevTools inspector, as the --inspect option of Node.js uses
+const INSPECTOR_PORT := 9229
+const INSPECTOR_OPTION := "--inspect"
+# the game console lines that a new DevTools window receives
+const INSPECTOR_HISTORY := 200
 # the events that the game sends: type -> description. "*" listens to all
 const EVENTS := {
 	"city.opened": "A city opened: { name, size, date }.",
 	"city.closed": "The city closed.",
 	"city.saved": "The city was saved: { path }.",
+	"city.renamed": "The city has a new name: { name }.",
+	"budget.changed": "The taxes, the funding or the automatic budget changed: { taxes, funding, autoBudget, bonds }.",
 	"sim.speed": "The simulation speed changed: { speed }.",
 	"sim.day": "A simulation day ended: { year, month, day, age }.",
 	"sim.month": "A new month started: { year, month }.",
@@ -31,6 +38,7 @@ const EVENTS := {
 	"tool.beforeApply": "A tool is about to change the map: { tool, start, finish, dragged, tiles }. Cancelable.",
 	"tool.applied": "A tool was used: { tool, start, finish, changed, command, cost, message }.",
 	"tool.undone": "The last edit was undone: { command }.",
+	"view.mode": "The view changed: { mode }.",
 	"frame": "A frame started: { delta } in seconds. Timers are better for most work.",
 }
 
@@ -49,6 +57,13 @@ var _commands: ConsoleCommands
 # the active disaster at the last check, for the started and ended events
 var _disaster := 0
 var _file_dialog: FileDialog
+# the port of the inspector that the player started, or 0 when it is off
+var _inspector_port := 0
+# the newest game console entry that DevTools received, and the entries that
+# scripts wrote. DevTools receives script output from the script runtime itself
+var _forwarded_serial := 0
+var _inspector_was_connected := false
+var _script_serials: Dictionary[int, bool] = {}
 
 
 func _init(application: CityApplication) -> void:
@@ -65,6 +80,7 @@ func attach_console(commands: ConsoleCommands) -> void:
 	commands.register("run", "Run a JavaScript file: run <path>. A relative path starts in the scripts folder.", _run_command_file)
 	commands.register("reset", "Stop all scripts and start a new script runtime.", _reset_command)
 	commands.register("scripts", "Show the script runtime: listeners, timers and memory.", _status_command)
+	commands.register("inspect", "Connect Chrome DevTools to scripts: inspect [port], or inspect off.", _inspect_command)
 
 
 func _run_command_file(words: PackedStringArray) -> String:
@@ -88,6 +104,32 @@ func _status_command(_words: PackedStringArray) -> String:
 	return status_text()
 
 
+func _inspect_command(words: PackedStringArray) -> String:
+	if not words.is_empty() and words[0].to_lower() == "off":
+		stop_inspector()
+
+		return "The script inspector stopped."
+
+	var port := INSPECTOR_PORT
+
+	if not words.is_empty():
+		if not words[0].is_valid_int() or int(words[0]) < 0 or int(words[0]) > 65535:
+			ConsoleLog.append(ConsoleLog.Level.ERROR_OUTPUT, "The port must be a number from 0 to 65535.")
+
+			return ""
+
+		port = int(words[0])
+
+	var error := start_inspector(port)
+
+	if not error.is_empty():
+		ConsoleLog.append(ConsoleLog.Level.ERROR_OUTPUT, error)
+
+		return ""
+
+	return inspector_text()
+
+
 ## Starts the runtime and the game API. False when the runtime cannot start.
 func start() -> bool:
 	if runtime != null:
@@ -103,6 +145,11 @@ func start() -> bool:
 	runtime = created
 	runtime.set_host(_host)
 	_disaster = _active_disaster()
+
+	# DevTools sees the game API in its Sources panel
+	if _inspector_port > 0:
+		_listen(_inspector_port)
+
 	var result := runtime.run_script(FileAccess.get_file_as_string(API_PATH), API_PATH)
 
 	if not bool(result.ok):
@@ -129,6 +176,69 @@ func reset() -> void:
 			_commands.unregister(name)
 
 	_script_commands.clear()
+	_inspector_was_connected = false
+
+	# DevTools can connect again to the new runtime at the same address
+	if _inspector_port > 0:
+		start()
+
+
+## Starts the DevTools server of scripts on 127.0.0.1. Port 0 selects a free
+## port. Returns an empty text, or why it cannot start.
+func start_inspector(port := INSPECTOR_PORT) -> String:
+	if runtime == null:
+		_inspector_port = maxi(port, 1)
+
+		if not start():
+			_inspector_port = 0
+
+			return "The script runtime cannot start."
+
+	var error := _listen(port)
+
+	if error.is_empty():
+		ConsoleLog.append(ConsoleLog.Level.RESULT, inspector_text())
+
+	return error
+
+
+func _listen(port: int) -> String:
+	var error := runtime.inspector_start(port, "OpenSC2K %s" % ProjectSettings.get_setting("application/config/version", ""))
+	_inspector_port = runtime.inspector_port() if error.is_empty() else 0
+
+	return error
+
+
+func stop_inspector() -> void:
+	_inspector_port = 0
+	_inspector_was_connected = false
+
+	if runtime != null:
+		runtime.inspector_stop()
+
+
+func inspector_running() -> bool:
+	return runtime != null and runtime.inspector_port() > 0
+
+
+## How to connect DevTools, or that the inspector is off.
+func inspector_text() -> String:
+	if not inspector_running():
+		return "The script inspector is off. Type inspect to start it."
+
+	var urls := ScriptRuntime.inspector_urls(runtime.inspector_port())
+
+	return ("The script inspector listens on %s.\nIn Chrome, open chrome://inspect and select OpenSC2K under Remote Target, "
+		+ "or open %s") % [urls[0], urls[1]]
+
+
+## Starts the inspector when the command line has --inspect or --inspect=PORT.
+func apply_command_line(arguments: PackedStringArray) -> void:
+	for argument in arguments:
+		if argument == INSPECTOR_OPTION:
+			start_inspector(INSPECTOR_PORT)
+		elif argument.begins_with(INSPECTOR_OPTION + "=") and argument.get_slice("=", 1).is_valid_int():
+			start_inspector(int(argument.get_slice("=", 1)))
 
 
 ## Runs console input. Returns the text of the result.
@@ -245,6 +355,43 @@ func process(delta: float) -> void:
 	if _timers_active or runtime.has_pending_jobs():
 		runtime.tick()
 
+	if _inspector_port > 0:
+		runtime.inspector_poll()
+		_forward_game_log()
+
+
+# sends the new game console lines to DevTools. A new DevTools window first
+# receives the recent lines
+func _forward_game_log() -> void:
+	var connected := runtime.inspector_connected()
+
+	if connected and not _inspector_was_connected:
+		_forwarded_serial = maxi(0, ConsoleLog.latest_serial() - INSPECTOR_HISTORY)
+
+	_inspector_was_connected = connected
+
+	if not connected:
+		_script_serials.clear()
+
+		return
+
+	for entry in ConsoleLog.entries_since(_forwarded_serial):
+		_forwarded_serial = entry.serial
+
+		if _script_serials.has(entry.serial) or entry.level in [ConsoleLog.Level.INPUT, ConsoleLog.Level.RESULT]:
+			continue
+
+		var level := "log"
+
+		if entry.level == ConsoleLog.Level.WARNING:
+			level = "warning"
+		elif entry.level in [ConsoleLog.Level.ERROR, ConsoleLog.Level.ERROR_OUTPUT]:
+			level = "error"
+
+		runtime.inspector_log(level, entry.text)
+
+	_script_serials.clear()
+
 
 func close() -> void:
 	reset()
@@ -313,6 +460,15 @@ func check_disaster() -> void:
 		emit("disaster.started", {"id": active, "name": CityMenuBar.disaster_name(active)})
 
 
+## Sends budget.changed with the budget values.
+func emit_budget_changed() -> void:
+	if listens("budget.changed"):
+		var info: Variant = api.budget_api.handlers()["budget.info"].call([])
+
+		if info is Dictionary:
+			emit("budget.changed", info)
+
+
 func on_city_opened() -> void:
 	_disaster = _active_disaster()
 	var city := app.document_state.city
@@ -363,16 +519,26 @@ func _host(name: String, arguments: Array) -> Variant:
 
 		return null
 
-	api.failure = ""
+	api.take_failure()
 	var value: Variant = handler.call(arguments)
+	var failure := api.take_failure()
 
-	if not api.failure.is_empty() and runtime != null:
-		runtime.throw_error(api.failure)
+	if not failure.is_empty() and runtime != null:
+		runtime.throw_error(failure)
 
 	return value
 
 
 func _console(level: String, text: String) -> void:
+	var before := ConsoleLog.latest_serial()
+	_write_console(level, text)
+
+	if _inspector_was_connected:
+		for serial in range(before + 1, ConsoleLog.latest_serial() + 1):
+			_script_serials[serial] = true
+
+
+func _write_console(level: String, text: String) -> void:
 	match level:
 		"warn":
 			ConsoleLog.append(ConsoleLog.Level.WARNING, text)

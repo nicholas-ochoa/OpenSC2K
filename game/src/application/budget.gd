@@ -214,6 +214,7 @@ func commit_budget() -> void:
 		app.interface.refresh_details()
 		app.status_label.theme_type_variation = ""
 		app.status_label.text = "Annual budget applied. The simulation can continue."
+		app.scripting.emit_budget_changed()
 
 		return
 
@@ -226,6 +227,7 @@ func commit_budget() -> void:
 
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "Budget funding saved."
+	app.scripting.emit_budget_changed()
 
 
 func cancel_budget() -> void:

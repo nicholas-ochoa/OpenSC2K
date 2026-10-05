@@ -1,32 +1,38 @@
 class_name ApplicationScriptingApi
-extends RefCounted
+extends ScriptingApiBase
 ## The game functions that scripts call through `__runtime.host(name, ...)`.
-## game/assets/scripting/api.js wraps them as the `game`, `city`, `sim`,
-## `tools` and `view` objects. A function that fails calls `_fail`: the
-## script then gets an Error with the message. See docs/scripting.md.
+## game/assets/scripting/api.js wraps them as the script objects. This file
+## holds `game`, `sim`, `tools` and `view`; ScriptingCityApi, ScriptingBudgetApi
+## and ScriptingUiApi hold the others. See docs/scripting.md.
 
 const Tools = preload("res://src/tools/shared/tool_catalog.gd")
 const GameSpeed = preload("res://src/simulation/core/game_speed_controller.gd")
 
-var app: CityApplication
-# the message of the last failed call. ApplicationScripting throws it in the script
-var failure := ""
+var city_api: ScriptingCityApi
+var budget_api: ScriptingBudgetApi
+var ui_api: ScriptingUiApi
 
 
 func _init(application: CityApplication) -> void:
-	app = application
+	super(application, {"failure": ""})
+	city_api = ScriptingCityApi.new(application, call_state)
+	budget_api = ScriptingBudgetApi.new(application, call_state)
+	ui_api = ScriptingUiApi.new(application, call_state)
+
+
+## The message of the failed call, or an empty text. Clears it.
+func take_failure() -> String:
+	var message: String = call_state.failure
+	call_state.failure = ""
+
+	return message
 
 
 func handlers() -> Dictionary[String, Callable]:
-	return {
+	var result: Dictionary[String, Callable] = {
 		"game.version": _game_version,
 		"game.events": func(_arguments: Array) -> Variant: return ApplicationScripting.EVENTS,
 		"game.status": _game_status,
-		"city.loaded": func(_arguments: Array) -> Variant: return app.document_state.city != null,
-		"city.info": _city_info,
-		"city.setFunds": _city_set_funds,
-		"city.addFunds": _city_add_funds,
-		"city.tile": _city_tile,
 		"sim.speed": _sim_speed,
 		"sim.setSpeed": _sim_set_speed,
 		"sim.resume": _sim_resume,
@@ -34,6 +40,10 @@ func handlers() -> Dictionary[String, Callable]:
 		"sim.disaster": _sim_disaster,
 		"sim.disasters": _sim_disasters,
 		"sim.startDisaster": _sim_start_disaster,
+		"sim.endDisaster": _sim_end_disaster,
+		"sim.noDisasters": func(_arguments: Array) -> Variant: return need_city() and app.document_state.city.no_disasters_enabled(),
+		"sim.setNoDisasters": _sim_set_no_disasters,
+		"sim.runUntil": _sim_run_until,
 		"tools.list": _tools_list,
 		"tools.selected": func(_arguments: Array) -> Variant: return tool_info(app.tool_state.selected_group, app.tool_state.selected_subtool),
 		"tools.select": _tools_select,
@@ -44,7 +54,17 @@ func handlers() -> Dictionary[String, Callable]:
 		"view.mode": func(_arguments: Array) -> Variant: return CityViewMode.key(app.view_state.overlay_mode),
 		"view.setMode": _view_set_mode,
 		"view.modes": func(_arguments: Array) -> Variant: return CityViewMode.KEYS,
+		"view.zoom": func(_arguments: Array) -> Variant: return app.map_view.zoom_percent() if app.map_view != null else 100,
+		"view.zoomIn": _view_zoom.bind(true),
+		"view.zoomOut": _view_zoom.bind(false),
+		"view.rotation": func(_arguments: Array) -> Variant: return app.document_state.city.compass_rotation() if need_city() else null,
+		"view.rotate": _view_rotate,
 	}
+
+	for api in [city_api, budget_api, ui_api]:
+		result.merge(api.handlers())
+
+	return result
 
 
 ## The script description of a tool: { group, subtool, groupName, name, cost }.
@@ -90,21 +110,6 @@ static func selection_path(selection: String, start: Vector2i, finish: Vector2i)
 	return path
 
 
-func _fail(message: String) -> Variant:
-	failure = message
-
-	return null
-
-
-func _need_city() -> bool:
-	if app.document_state.city == null or app.simulation_state.simulation_engine == null:
-		_fail("No city is loaded.")
-
-		return false
-
-	return true
-
-
 func _game_version(_arguments: Array) -> Variant:
 	var godot := Engine.get_version_info()
 
@@ -123,82 +128,6 @@ func _game_status(arguments: Array) -> Variant:
 	return null
 
 
-func _city_info(_arguments: Array) -> Variant:
-	if not _need_city():
-		return null
-
-	var city := app.document_state.city
-	var demand := city.rci_demand()
-
-	return {
-		"name": city.city_name(),
-		"mayor": city.mayor_name(),
-		"size": city.map_size,
-		"funds": city.funds(),
-		"population": city.population(),
-		"foundingYear": city.founding_year(),
-		"difficulty": city.difficulty(),
-		"scenario": app.simulation_state.simulation_engine.scenario != null,
-		"path": app.document_state.current_save_path,
-		"date": {"year": city.current_year(), "month": city.current_month(), "day": city.current_day(), "age": city.age_in_days()},
-		"demand": {"residential": demand.x, "commercial": demand.y, "industrial": demand.z},
-	}
-
-
-func _city_set_funds(arguments: Array) -> Variant:
-	if not _need_city():
-		return null
-
-	if arguments.is_empty() or typeof(arguments[0]) not in [TYPE_INT, TYPE_FLOAT]:
-		return _fail("Funds must be a number.")
-
-	var result := app.debug.debug_set_funds(int(arguments[0]))
-
-	return app.document_state.city.funds() if result.ok else _fail(result.message)
-
-
-func _city_add_funds(arguments: Array) -> Variant:
-	if not _need_city():
-		return null
-
-	if arguments.is_empty() or typeof(arguments[0]) not in [TYPE_INT, TYPE_FLOAT]:
-		return _fail("The amount must be a number.")
-
-	var total := clampi(app.document_state.city.funds() + int(arguments[0]), CityDebugActions.MIN_FUNDS, CityDebugActions.MAX_FUNDS)
-
-	return _city_set_funds([total])
-
-
-func _city_tile(arguments: Array) -> Variant:
-	if not _need_city():
-		return null
-
-	var point := _point(arguments, 0)
-	var city := app.document_state.city
-
-	if point.x < 0 or point.y < 0 or point.x >= city.map_size or point.y >= city.map_size:
-		return null
-
-	return {
-		"x": point.x,
-		"y": point.y,
-		"altitude": city.land_altitude(point.x, point.y),
-		"waterAltitude": city.water_altitude(point.x, point.y),
-		"terrain": city.terrain_id(point.x, point.y),
-		"building": city.building_id(point.x, point.y),
-		"zone": city.zone_id(point.x, point.y),
-		"underground": city.underground_id(point.x, point.y),
-		"overlay": city.text_overlay_id(point.x, point.y),
-		"water": city.is_water(point.x, point.y),
-		"saltWater": city.is_salt_water(point.x, point.y),
-		"powered": city.is_powered(point.x, point.y),
-		"powerable": city.is_powerable(point.x, point.y),
-		"watered": city.is_watered(point.x, point.y),
-		"piped": city.is_piped(point.x, point.y),
-		"traffic": city.traffic_density(point.x, point.y),
-	}
-
-
 func _sim_speed(_arguments: Array) -> Variant:
 	var controller := app.simulation_state.speed_controller
 
@@ -206,13 +135,13 @@ func _sim_speed(_arguments: Array) -> Variant:
 
 
 func _sim_set_speed(arguments: Array) -> Variant:
-	if not _need_city():
+	if not need_city():
 		return null
 
 	var value: Variant = arguments[0] if not arguments.is_empty() else null
 	var speed := -1
 
-	if typeof(value) in [TYPE_INT, TYPE_FLOAT]:
+	if is_number(value):
 		speed = int(value)
 	elif value is String:
 		for id: int in GameSpeed.SPEED_NAMES:
@@ -220,7 +149,7 @@ func _sim_set_speed(arguments: Array) -> Variant:
 				speed = id
 
 	if not GameSpeed.SPEED_NAMES.has(speed):
-		return _fail("The speed must be one of: %s." % ", ".join(GameSpeed.SPEED_NAMES.values()))
+		return fail("The speed must be one of: %s." % ", ".join(GameSpeed.SPEED_NAMES.values()))
 
 	app.frame.select_speed(speed)
 
@@ -228,7 +157,7 @@ func _sim_set_speed(arguments: Array) -> Variant:
 
 
 func _sim_resume(_arguments: Array) -> Variant:
-	if not _need_city():
+	if not need_city():
 		return null
 
 	var speed := app.simulation_state.resume_speed
@@ -237,12 +166,12 @@ func _sim_resume(_arguments: Array) -> Variant:
 
 
 func _sim_step(_arguments: Array) -> Variant:
-	if not _need_city():
+	if not need_city():
 		return null
 
 	var report := app.debug_tools.steps.step_day()
 
-	return report if report.begins_with("Day ran") else _fail(report)
+	return report if report.begins_with("Day ran") else fail(report)
 
 
 func _sim_disaster(_arguments: Array) -> Variant:
@@ -264,25 +193,62 @@ func _sim_disasters(_arguments: Array) -> Variant:
 
 
 func _sim_start_disaster(arguments: Array) -> Variant:
-	if not _need_city():
+	if not need_city():
 		return null
 
 	var value: Variant = arguments[0] if not arguments.is_empty() else null
 	var disaster := -1
 
 	for item: Array in CityMenuBar.DISASTER_ITEMS:
-		if (value is String and str(item[0]).to_lower() == str(value).to_lower()) or (typeof(value) in [TYPE_INT, TYPE_FLOAT]
+		if (value is String and str(item[0]).to_lower() == str(value).to_lower()) or (is_number(value)
 				and int(value) == int(item[1])):
 			disaster = int(item[1])
 
 	if disaster < 0:
-		return _fail("Unknown disaster: %s. sim.disasters lists them." % str(value))
+		return fail("Unknown disaster: %s. sim.disasters lists them." % str(value))
 
 	var has_point := arguments.size() > 1 and arguments[1] is Dictionary
-	var point := _point(arguments, 1) if has_point else app.map_view.center_tile()
-	var report := app.reports.start_disaster_at(disaster, point)
+	var tile := point(arguments, 1) if has_point else app.map_view.center_tile()
+	var report := app.reports.start_disaster_at(disaster, tile)
 
-	return {"id": disaster, "name": report.name} if report.ok else _fail("The disaster could not start: %s." % report.error)
+	return {"id": disaster, "name": report.name} if report.ok else fail("The disaster could not start: %s." % report.error)
+
+
+func _sim_end_disaster(_arguments: Array) -> Variant:
+	if not need_city():
+		return null
+
+	if app.simulation_state.simulation_engine.active_disaster_type == 0:
+		return false
+
+	var result := app.debug.debug_end_disaster()
+
+	return true if result.ok else fail(result.message)
+
+
+func _sim_set_no_disasters(arguments: Array) -> Variant:
+	if not need_city():
+		return null
+
+	var result := app.debug.debug_set_no_disasters(bool(argument(arguments, 0, true)))
+
+	return app.document_state.city.no_disasters_enabled() if result.ok else fail(result.message)
+
+
+# runUntil({ year, month, day }, speed): runs at the speed, then pauses on the date
+func _sim_run_until(arguments: Array) -> Variant:
+	if not need_city():
+		return null
+
+	var date: Variant = argument(arguments, 0, {})
+
+	if not date is Dictionary or not is_number(date.get("year")):
+		return fail("runUntil takes a date such as { year: 2051, month: 3, day: 1 }.")
+
+	var speed := int(argument(arguments, 1, GameSpeed.Speed.CHEETAH))
+	var result := app.debug.debug_run_to_date(integer(date.get("month"), 1), integer(date.get("day"), 1), int(date.year), speed)
+
+	return true if result.ok else fail(result.message)
 
 
 func _tools_list(_arguments: Array) -> Variant:
@@ -299,13 +265,13 @@ func _tools_list(_arguments: Array) -> Variant:
 
 
 func _tools_select(arguments: Array) -> Variant:
-	if not _need_city():
+	if not need_city():
 		return null
 
 	var choice := _find_tool(arguments[0] if not arguments.is_empty() else null, arguments[1] if arguments.size() > 1 else null)
 
 	if choice.x < 0:
-		return _fail("Unknown tool. tools.list() lists the groups and tools.")
+		return fail("Unknown tool. tools.list() lists the groups and tools.")
 
 	app.current_tool.select_tool_group(choice.x)
 
@@ -313,7 +279,7 @@ func _tools_select(arguments: Array) -> Variant:
 		app.current_tool.select_subtool(choice.y)
 
 	if app.tool_state.selected_group != choice.x or app.tool_state.selected_subtool != choice.y:
-		return _fail("%s cannot be selected now." % Tools.tool(choice.x, choice.y).name)
+		return fail("%s cannot be selected now." % Tools.tool(choice.x, choice.y).name)
 
 	return tool_info(choice.x, choice.y)
 
@@ -356,23 +322,22 @@ func _find_group(value: Variant) -> int:
 
 
 static func _matches(value: Variant, index: int, name: String, id: String) -> bool:
-	if typeof(value) in [TYPE_INT, TYPE_FLOAT]:
+	if is_number(value):
 		return int(value) == index
 
 	return value is String and (str(value).to_lower() == name.to_lower() or str(value).to_lower() == id)
 
 
 func _tools_apply(arguments: Array) -> Variant:
-	if not _need_city():
+	if not need_city():
 		return null
 
-	var start := _point(arguments, 0)
-	var finish := _point(arguments, 1) if arguments.size() > 1 else start
-	var map_size := app.document_state.city.map_size
+	var start := point(arguments, 0)
+	var finish := point(arguments, 1) if arguments.size() > 1 else start
 
-	for point in [start, finish]:
-		if point.x < 0 or point.y < 0 or point.x >= map_size or point.y >= map_size:
-			return _fail("The tile %d, %d is outside the map." % [point.x, point.y])
+	for tile: Vector2i in [start, finish]:
+		if not inside_map(tile):
+			return fail("The tile %d, %d is outside the map." % [tile.x, tile.y])
 
 	var state := ToolEditState.normal(app.document_state.city, app.view_state.overlay_mode, app.tool_state.selected_group,
 		app.tool_state.selected_subtool)
@@ -382,7 +347,7 @@ func _tools_apply(arguments: Array) -> Variant:
 
 
 func _tools_undo(_arguments: Array) -> Variant:
-	if not _need_city():
+	if not need_city():
 		return null
 
 	if app.tool_state.last_edit_command == null:
@@ -397,26 +362,50 @@ func _view_center(_arguments: Array) -> Variant:
 	if app.map_view == null:
 		return null
 
-	var point := app.map_view.center_tile()
+	var center := app.map_view.center_tile()
 
-	return {"x": point.x, "y": point.y}
+	return {"x": center.x, "y": center.y}
 
 
 func _view_center_on(arguments: Array) -> Variant:
-	if not _need_city():
+	if not need_city():
 		return null
 
-	return app.map_view.center_on_tile(_point(arguments, 0))
+	return app.map_view.center_on_tile(point(arguments, 0))
+
+
+func _view_zoom(_arguments: Array, closer: bool) -> Variant:
+	if app.map_view == null:
+		return null
+
+	if closer:
+		app.map_view.zoom_in()
+	else:
+		app.map_view.zoom_out()
+
+	app.camera_input.update_zoom_controls(app.map_view.zoom_percent())
+
+	return app.map_view.zoom_percent()
+
+
+# turns the map a quarter turn, clockwise unless the argument is false
+func _view_rotate(arguments: Array) -> Variant:
+	if not need_city():
+		return null
+
+	app.camera_input.rotate_city(not bool(argument(arguments, 0, true)))
+
+	return app.document_state.city.compass_rotation()
 
 
 func _view_set_mode(arguments: Array) -> Variant:
-	if not _need_city():
+	if not need_city():
 		return null
 
 	var mode := CityViewMode.from_key(str(arguments[0]) if not arguments.is_empty() else "")
 
 	if mode == CityViewMode.Mode.NONE:
-		return _fail("The view mode must be one of: %s." % ", ".join(CityViewMode.KEYS))
+		return fail("The view mode must be one of: %s." % ", ".join(CityViewMode.KEYS))
 
 	app.menus.set_overlay(mode)
 
@@ -424,14 +413,3 @@ func _view_set_mode(arguments: Array) -> Variant:
 
 
 # a tile point from a script argument { x, y }
-static func _point(arguments: Array, index: int) -> Vector2i:
-	if index >= arguments.size() or not arguments[index] is Dictionary:
-		return Vector2i(-1, -1)
-
-	var value: Dictionary = arguments[index]
-
-	return Vector2i(_integer(value.get("x"), -1), _integer(value.get("y"), -1))
-
-
-static func _integer(value: Variant, fallback: int) -> int:
-	return int(value) if typeof(value) in [TYPE_INT, TYPE_FLOAT] else fallback

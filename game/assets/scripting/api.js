@@ -44,6 +44,14 @@
     status(text) {
       host('game.status', String(text));
     },
+
+    // values that stay after the game closes. Each value must be JSON data
+    storage: Object.freeze({
+      get: (key, fallback) => host('storage.get', String(key), fallback === undefined ? null : fallback),
+      set: (key, value) => host('storage.set', String(key), value),
+      remove: (key) => host('storage.remove', String(key)),
+      keys: () => host('storage.keys'),
+    }),
   });
 
   const city = Object.freeze({
@@ -97,6 +105,114 @@
     tile(x, y) {
       return host('city.tile', point(x, y));
     },
+
+    // the value of a data map at a tile, such as city.data('pollution', 10, 20)
+    data(name, x, y) {
+      return host('city.data', name, point(x, y));
+    },
+
+    // a whole data map: { name, size, scale, values, at(x, y) }
+    dataMap(name) {
+      const map = host('city.dataMap', name);
+
+      map.at = (x, y) => {
+        const tile = point(x, y);
+
+        return map.values[Math.floor(tile.x / map.scale) * map.size + Math.floor(tile.y / map.scale)];
+      };
+
+      return map;
+    },
+
+    get dataMaps() {
+      return host('city.dataMaps');
+    },
+
+    // a graph history, oldest value first: graph('Residents', 'decade')
+    graph(name, period = 'year') {
+      return host('city.graph', name, period);
+    },
+
+    get graphs() {
+      return host('city.graphs');
+    },
+
+    rename(name) {
+      return host('city.rename', String(name));
+    },
+
+    // the text of the sign on a tile, or null
+    sign(x, y) {
+      return host('city.sign', point(x, y));
+    },
+
+    // places or changes a sign; an empty text removes it
+    setSign(x, y, text) {
+      return host('city.setSign', point(x, y), String(text));
+    },
+
+    // the moving objects: { id, type, name, x, y, state }
+    things() {
+      return host('city.things');
+    },
+
+    // saves the city to its file
+    save() {
+      return host('city.save');
+    },
+  });
+
+  const budget = Object.freeze({
+    // { taxes, funding, autoBudget, bonds }
+    info() {
+      return host('budget.info');
+    },
+
+    get taxes() {
+      return host('budget.info').taxes;
+    },
+
+    get funding() {
+      return host('budget.info').funding;
+    },
+
+    // set({ taxes: { residential: 8 }, funding: { police: 90 }, autoBudget: true })
+    set(changes) {
+      return host('budget.set', changes);
+    },
+
+    // every ordinance: { key, name, category, enabled, cost }
+    ordinances() {
+      return host('budget.ordinances');
+    },
+
+    setOrdinance(key, enabled = true) {
+      return host('budget.setOrdinance', String(key), Boolean(enabled));
+    },
+
+    issueBond() {
+      return host('budget.issueBond');
+    },
+
+    repayBond() {
+      return host('budget.repayBond');
+    },
+  });
+
+  const ui = Object.freeze({
+    // a message window with an OK button
+    alert(text, title = 'Script') {
+      host('ui.alert', String(text), String(title));
+    },
+
+    status(text) {
+      host('game.status', String(text));
+    },
+
+    // plays SOUNDS/<id>.WAV of the sound pack
+    playSound(id) {
+      host('ui.playSound', id);
+    },
   });
 
   const sim = Object.freeze({
@@ -140,6 +256,27 @@
     // starts a disaster by name or id, at a tile or at the view center
     startDisaster(disaster, x, y) {
       return host('sim.startDisaster', disaster, x === undefined ? null : point(x, y));
+    },
+
+    // ends the active disaster and clears its marks. False without a disaster
+    endDisaster() {
+      return host('sim.endDisaster');
+    },
+
+    // true when random disasters are off
+    get noDisasters() {
+      return host('sim.noDisasters');
+    },
+
+    set noDisasters(value) {
+      host('sim.setNoDisasters', Boolean(value));
+    },
+
+    // runs at the speed until the date, then pauses: runUntil({ year: 2051, month: 1, day: 1 })
+    runUntil(date, speed = 'Cheetah') {
+      const speeds = { Turtle: 2, Llama: 3, Cheetah: 4, 'African Swallow': 5 };
+
+      return host('sim.runUntil', date, typeof speed === 'number' ? speed : speeds[speed] || 4);
     },
   });
 
@@ -191,11 +328,34 @@
     get modes() {
       return host('view.modes');
     },
+
+    // the zoom in percent
+    get zoom() {
+      return host('view.zoom');
+    },
+
+    zoomIn() {
+      return host('view.zoomIn');
+    },
+
+    zoomOut() {
+      return host('view.zoomOut');
+    },
+
+    // the compass rotation of the map, 0 to 3
+    get rotation() {
+      return host('view.rotation');
+    },
+
+    // a quarter turn, clockwise unless the argument is false
+    rotate(clockwise = true) {
+      return host('view.rotate', Boolean(clockwise));
+    },
   });
 
   const fixed = { configurable: true, enumerable: true, writable: false };
 
-  for (const [name, value] of Object.entries({ game, city, sim, tools, view })) {
+  for (const [name, value] of Object.entries({ game, city, budget, sim, tools, view, ui })) {
     Object.defineProperty(global, name, { value, ...fixed });
   }
 })(globalThis);

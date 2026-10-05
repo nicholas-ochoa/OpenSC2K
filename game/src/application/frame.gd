@@ -104,6 +104,10 @@ func consume_simulation_result(result: SimulationTickResult) -> void:
 		app.status_label.theme_type_variation = ""
 		app.status_label.text = "The simulation paused on the target date."
 
+	# the controller changed the speed itself
+	if result.paused_on_target_day or result.disaster_slowed:
+		app.scripting.emit("sim.speed", {"speed": app.simulation_state.speed_controller.speed_name()})
+
 	app.timing_state.simulation_timings.consume(result)
 	var refresh_started := Time.get_ticks_usec()
 	var ran_days: bool = not result.day_results.is_empty()

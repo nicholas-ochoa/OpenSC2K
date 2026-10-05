@@ -181,6 +181,8 @@ func on_debug_menu(id: int) -> void:
 		CityDebugMenu.MENU_RESET_SCRIPTS:
 			app.scripting.reset()
 			_status("The script runtime stopped. The next script starts a new one.")
+		CityDebugMenu.MENU_SCRIPT_INSPECTOR:
+			_toggle_script_inspector()
 		CityDebugMenu.MENU_TILE_GRID:
 			if app.map_view != null:
 				app.map_view.debug_view.attach()
@@ -199,6 +201,23 @@ func on_debug_menu(id: int) -> void:
 				set_tile_layer(id - CityDebugMenu.LAYER_BASE)
 
 	sync_menu()
+
+
+func _toggle_script_inspector() -> void:
+	if app.scripting.inspector_running():
+		app.scripting.stop_inspector()
+		_status("The script inspector stopped.")
+
+		return
+
+	var error := app.scripting.start_inspector()
+
+	if not error.is_empty():
+		app.interface.show_error(error)
+
+		return
+
+	_status("The script inspector listens on port %d. Open chrome://inspect in Chrome." % app.scripting.runtime.inspector_port())
 
 
 func set_tile_layer(layer: Layer) -> void:
@@ -240,9 +259,14 @@ func sync_menu() -> void:
 		return
 
 	var query := app.tool_state.selected_group == CityToolIds.Group.QUERY
-	CityDebugMenu.sync(app.city_menu_bar.debug_menu.get_popup(), state,
+	var popup := app.city_menu_bar.debug_menu.get_popup()
+	CityDebugMenu.sync(popup, state,
 		query and app.tool_state.selected_subtool == CityToolIds.Query.TILE_INSPECTOR,
 		query and app.tool_state.selected_subtool == CityToolIds.Query.TRIP_REACH)
+	var inspector := popup.get_item_index(CityDebugMenu.MENU_SCRIPT_INSPECTOR)
+
+	if inspector >= 0:
+		popup.set_item_checked(inspector, app.scripting.inspector_running())
 
 
 # the current tool decides whether the Tile Inspector follows the pointer

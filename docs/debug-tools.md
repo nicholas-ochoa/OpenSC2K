@@ -36,8 +36,9 @@ eight lines. Up on the first line and Down on the last line recall earlier
 input. Tab completes a command name. Commands use one line.
 Other input, and all input with more than one line, runs as JavaScript. The
 console shows its value. `run <path>` runs a script file, `reset` stops all
-scripts, and `scripts` shows the state of the script runtime. Scripts can add
-their own commands. See [Scripting](scripting.md).
+scripts, `scripts` shows the state of the script runtime, and `inspect` lets
+Chrome DevTools connect to scripts. Scripts can add their own commands. See
+[Scripting](scripting.md).
 
 ## Tile Inspector
 
@@ -83,6 +84,7 @@ file) also show it.
 | Capture Screenshot and State | Saves `screen.png` and `state.json` in a new folder under `debug_captures` in the application data folder. The JSON file holds the debug metrics, the camera, the hovered tile, the inspector text and the active debug views. |
 | Run Script File | Runs a `.js` or `.mjs` file in the script runtime. Its event listeners, timers and console commands stay active until a reset. See [Scripting](scripting.md). |
 | Reset Script Runtime | Stops all scripts: their event listeners, timers and console commands. |
+| Script Inspector | Lets Chrome DevTools connect to scripts on port 9229: open `chrome://inspect` in Chrome. See [Scripting](scripting.md#chrome-devtools). |
 
 The analysis layers:
 

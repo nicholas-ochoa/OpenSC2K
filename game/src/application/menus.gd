@@ -322,6 +322,7 @@ func set_overlay(mode: CityViewMode.Mode) -> void:
 	if not CityViewMode.DISPLAY_MODES.has(mode):
 		return
 
+	var changed := app.view_state.overlay_mode != mode
 	app.view_state.overlay_mode = mode
 	_sync_view_controls()
 	app.current_tool.update_edit_state()
@@ -329,6 +330,9 @@ func set_overlay(mode: CityViewMode.Mode) -> void:
 	if app.document_state.city != null:
 		app.status_label.text = "Map view: %s" % CityViewMode.key(app.view_state.overlay_mode).capitalize()
 		app.map_render.refresh_map(false)
+
+	if changed:
+		app.scripting.emit("view.mode", {"mode": CityViewMode.key(mode)})
 
 
 # Select a view from the view menu or the sidebar. This leaves the zones view.

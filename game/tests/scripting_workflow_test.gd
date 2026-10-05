@@ -2,7 +2,7 @@ extends SceneTree
 ## Scripts in the running application: console input, the game API of
 ## city, sim, tools and view, the tool, simulation and disaster events, a
 ## cancelled tool, script files with console commands, timers, the reset,
-## and the QuickJS-ng license in the About dialog.
+## the DevTools inspector, and the QuickJS-ng license in the About dialog.
 
 const AppFixture = preload("res://tests/support/app_fixture.gd")
 const GameSpeed = preload("res://src/simulation/core/game_speed_controller.gd")
@@ -28,6 +28,7 @@ func _run() -> void:
 	_check_tools(main, city)
 	_check_simulation(main)
 	await _check_files_and_timers(main)
+	await _check_inspector(main)
 	_check_about(main)
 	main.queue_free()
 	await process_frame
@@ -164,6 +165,81 @@ func _check_files_and_timers(main: CityApplication) -> void:
 	assert(main.scripting.emit("tool.applied", {}).is_empty(), "No script receives events after a reset")
 	DirAccess.remove_absolute(path)
 	DirAccess.remove_absolute(folder)
+
+
+# a DevTools client: Godot's WebSocket client against the inspector
+func _check_inspector(main: CityApplication) -> void:
+	main.console_window.commands.execute("inspect 0")
+	assert(main.scripting.inspector_running(), "The inspect command starts the inspector")
+	var port := main.scripting.runtime.inspector_port()
+	var socket := WebSocketPeer.new()
+	assert(socket.connect_to_url("ws://127.0.0.1:%d/opensc2k" % port) == OK)
+	var messages: Array[Dictionary] = []
+	await _socket_until(socket, messages, func() -> bool: return socket.get_ready_state() == WebSocketPeer.STATE_OPEN)
+
+	socket.send_text(JSON.stringify({"id": 1, "method": "Runtime.enable"}))
+	await _socket_until(socket, messages, func() -> bool: return _message(messages, 1) != null)
+	assert(messages.any(func(message: Dictionary) -> bool: return message.get("method") == "Runtime.executionContextCreated"))
+
+	socket.send_text(JSON.stringify({"id": 2, "method": "Runtime.evaluate", "params": {"expression": "city.funds"}}))
+	await _socket_until(socket, messages, func() -> bool: return _message(messages, 2) != null)
+	assert(int(_message(messages, 2).result.result.value) == main.document_state.city.funds(), "DevTools evaluates the game API")
+
+	# game output reaches DevTools once, and script output is not sent twice
+	messages.clear()
+	print("game line for devtools")
+	socket.send_text(JSON.stringify({"id": 3, "method": "Runtime.evaluate", "params": {"expression": "console.log('script line')"}}))
+	await _socket_until(socket, messages, func() -> bool: return _message(messages, 3) != null)
+
+	await _socket_frames(socket, messages, 3)
+
+	var lines := messages.filter(func(message: Dictionary) -> bool: return message.get("method") == "Runtime.consoleAPICalled").map(
+		func(message: Dictionary) -> String: return str(message.params.args[0].value))
+	assert(lines.count("game line for devtools") == 1 and lines.count("script line") == 1, str(lines))
+
+	main.console_window.commands.execute("inspect off")
+	assert(not main.scripting.inspector_running())
+	await _socket_until(socket, messages, func() -> bool: return socket.get_ready_state() == WebSocketPeer.STATE_CLOSED)
+	main.debug_tools.on_debug_menu(CityDebugMenu.MENU_SCRIPT_INSPECTOR)
+	assert(main.scripting.inspector_running(), "The Debug menu starts the inspector")
+	main.debug_tools.on_debug_menu(CityDebugMenu.MENU_SCRIPT_INSPECTOR)
+	assert(not main.scripting.inspector_running(), "The Debug menu stops the inspector")
+
+
+# polls the socket each frame until the condition holds, for 5 seconds at most
+func _socket_until(socket: WebSocketPeer, messages: Array[Dictionary], condition: Callable) -> void:
+	var started := Time.get_ticks_msec()
+
+	while Time.get_ticks_msec() - started < 5000:
+		socket.poll()
+
+		while socket.get_available_packet_count() > 0:
+			messages.append(JSON.parse_string(socket.get_packet().get_string_from_utf8()))
+
+		if condition.call():
+			return
+
+		await process_frame
+
+	assert(condition.call(), "The inspector answered in time")
+
+
+# polls the socket for some frames, for messages that may still arrive
+func _socket_frames(socket: WebSocketPeer, messages: Array[Dictionary], frames: int) -> void:
+	for _frame in frames:
+		await process_frame
+		socket.poll()
+
+		while socket.get_available_packet_count() > 0:
+			messages.append(JSON.parse_string(socket.get_packet().get_string_from_utf8()))
+
+
+func _message(messages: Array[Dictionary], id: int) -> Variant:
+	for message in messages:
+		if int(message.get("id", -1)) == id:
+			return message
+
+	return null
 
 
 func _check_about(main: CityApplication) -> void:

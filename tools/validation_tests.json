@@ -317,6 +317,26 @@
     "lane": "product"
   },
   {
+    "id": "scripting_api_test",
+    "script": "tests/scripting_api_test.gd",
+    "domain": "scripting",
+    "lane": "product",
+    "requires": [
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
+    ]
+  },
+  {
+    "id": "scripting_examples_test",
+    "script": "tests/scripting_examples_test.gd",
+    "domain": "scripting",
+    "lane": "product",
+    "requires": [
+      "ext/graphics/pack.json",
+      "ext/data/pack.json"
+    ]
+  },
+  {
     "id": "scripting_workflow_test",
     "script": "tests/scripting_workflow_test.gd",
     "domain": "scripting",

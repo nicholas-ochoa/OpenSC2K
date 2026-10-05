@@ -98,6 +98,7 @@ func rename_city() -> void:
 	app.reports.refresh_newspaper_menu()
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "City renamed to %s." % app.document_state.city.city_name()
+	app.scripting.emit("city.renamed", {"name": app.document_state.city.city_name()})
 
 
 func _can_upgrade_city_to_sc2x() -> bool:
