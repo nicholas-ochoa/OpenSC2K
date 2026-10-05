@@ -7,3 +7,4 @@ publish = false
 description = "File and image codecs of OpenSC2K, without engine types"
 
 [dependencies]
+miniz_oxide = { version = "0.9", default-features = false, features = ["with-alloc"] }

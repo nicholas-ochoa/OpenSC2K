@@ -7,6 +7,7 @@ mod gif;
 mod pe;
 mod png;
 mod sprite;
+mod zip;
 
 use godot::{
     classes::{Image, image::Format},

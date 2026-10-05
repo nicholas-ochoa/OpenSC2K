@@ -18,6 +18,10 @@ See [Native workspace](native-workspace.md). It does not read city or simulation
 - `src/bmp.rs` reads and writes 8-bit indexed BMP files and DIBs, decodes 1-, 4- and 8-bit
   indexed DIBs, and maps colors to the city palette (`NativeIndexedBmp`, used by `IndexedBmp`,
   `Sc2ImportBitmap` and the SCURK image import).
+- `src/zip` reads and writes ZIP archives in memory: STORED and DEFLATE members, data
+  descriptors and ZIP64 records, with size limits and path checks (`NativeZip`, used by
+  `ZipArchive`). DEFLATE uses `miniz_oxide`. Two compressors can make different bytes from the
+  same members, so tests compare SC2X files by their members.
 - `src/pe.rs` reads the resource directories of 32-bit Windows executables: bitmaps, RLE8
   data, icons and cursors (`NativePeResources`, used by `PeBitmapResource`,
   `PeIconCursorResource` and `WindowsBitmapRle8`).

@@ -51,3 +51,4 @@ Current crates:
 | --- | --- | --- | --- |
 | `godot` | bridge crates only | MPL-2.0 (bridge only; removed with Godot) | GDExtension bindings |
 | `cc` | `sc2k_scripting` (build) | MIT/Apache-2.0 | Compiles QuickJS-ng |
+| `miniz_oxide` | `sc2k_formats` | MIT/Zlib/Apache-2.0 | DEFLATE of ZIP members |

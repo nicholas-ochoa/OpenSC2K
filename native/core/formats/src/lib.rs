@@ -7,3 +7,4 @@ pub mod gif;
 pub mod pe;
 pub mod png;
 pub mod sprite;
+pub mod zip;
