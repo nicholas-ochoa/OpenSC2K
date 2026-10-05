@@ -35,9 +35,12 @@ The paths below are in `native/core/sim`, except `src/bridge`, which is in `nati
     on-ramps, subway-to-rail connections, buildings and their facility records, zones, the bulldozer,
     the terrain and landscape tools, the terrain editor, and SCURK Place & Print.
     `tools/rotation.rs` turns the city for `CityRotationCommand`.
-    `tools/new_terrain.rs` runs the map-size stages of `NewCityTerrain` and the landscape
-    editor stream. GDScript still makes the 128 by 128 landform, because its layout features
-    use Godot noise and float vectors.
+    `tools/new_terrain.rs` runs the map-size stages of New City terrain and the landscape
+    editor stream.
+  - `new_city` makes the 128 by 128 landform of New City and its layout features, and the
+    empty city that New City starts from. `gd.rs` repeats the number rules of the Godot scripts
+    that it replaced (32-bit vectors, 64-bit numbers) and `noise.rs` repeats Godot's
+    `FastNoiseLite` defaults, so the terrain stays equal to the golden new-city corpus.
   - `testing.rs` has test cities and scripted random generators.
 - `src/formats` holds the city file codecs. `rle.rs` decodes and encodes the Maxis run-length
   code of compressed chunks. `MaxisRle` calls it through `NativeMaxisRle`.

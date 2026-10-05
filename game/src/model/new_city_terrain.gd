@@ -2,9 +2,9 @@ class_name NewCityTerrain
 extends NewTerrainConstants
 
 
-@warning_ignore_start("integer_division")
-
-
+# The native simulation library makes the landform and its features, scales
+# it to the map, grades it, retiles it, plants trees, and runs the streams.
+# See native/core/sim/src/sim/new_city.
 static func generate(
 	document: Sc2File,
 	has_ocean: bool,
@@ -18,121 +18,33 @@ static func generate(
 	features: Array = [],
 	smooth_slopes := false,
 ) -> Result:
-	if layout not in LAYOUTS:
-		return Result.failure("unknown terrain layout")
-
-	var selected := features.duplicate()
-
-	if layout != "classic" and layout not in selected:
-		selected.append(layout)
-
-	for feature in selected:
-		if feature not in LAYOUTS or feature == "classic":
-			return Result.failure("unknown terrain feature")
-
-	if "canyon" in selected:
-		for river_feature in ["meander", "delta", "crossing", "branch", "rejoin", "valley"]:
-			selected.erase(river_feature)
-
-	var extended := not selected.is_empty() or (smooth_slopes and has_ocean and has_river)
-	var island := is_island(layout, selected)
-	var ocean_requested := has_ocean or "delta" in selected or "peninsula" in selected or "cliffs" in selected
-
-	has_ocean = ocean_requested or island or "bay" in selected
-	has_river = (not island and "canyon" not in selected
-			and (has_river or "valley" in selected or "delta" in selected or "meander" in selected or "crossing" in selected
-			or "branch" in selected
-			or "rejoin" in selected))
-
-	var map_edge: int = document.map_size if document != null else 128
-
 	if document == null or not document.is_valid():
 		return Result.failure("city document is invalid")
-
-	for value in [hills, water, trees]:
-		if value < MIN_SLIDER or value > MAX_SLIDER:
-			return Result.failure("terrain sliders must be between 0 and 47")
 
 	if process_random == null or game_random == null:
 		return Result.failure("terrain random state is missing")
 
-	var required := {
-		"ALTM": (map_edge * map_edge) * 2,
-		"XTER": (map_edge * map_edge),
-		"XBLD": (map_edge * map_edge),
-		"XZON": (map_edge * map_edge),
-		"XBIT": (map_edge * map_edge),
-		"XTXT": (map_edge * map_edge),
-		"MISC": MISC_SIZE,
-	}
-
 	var payloads := {}
 
-	for chunk_id in required:
+	for chunk_id in ["ALTM", "XTER", "XBLD", "XZON", "XBIT", "XTXT", "MISC"]:
 		var chunk := document.find_chunk(chunk_id)
 
-		if chunk == null or chunk.decoded_payload.size() != document.decoded_size(chunk_id):
-			return Result.failure("required %s data is missing or invalid" % chunk_id)
+		if chunk != null:
+			payloads[chunk_id] = chunk.decoded_payload
 
-		payloads[chunk_id] = chunk.decoded_payload
-
-	var staged_process := ProcessRandom.new(process_random.state)
-	var staged_game := GameRandom.new(game_random.state)
-
-	# Generate one original-size landform. The native stage scales it to the map.
-	# Larger maps should not gain extra basins.
-	var heights := PackedInt32Array()
-	heights.resize(128 * 128)
-	var coast_flags := PackedByteArray()
-	coast_flags.resize(128 * 128)
-
-	NewTerrainHeights._seed_hills(heights, hills + 11, staged_process)
-
-	for pass_values in INTERPOLATION_PASSES:
-		NewTerrainHeights._interpolate(heights, pass_values.x, pass_values.y, hills + 10,
-			has_ocean and not extended, staged_process)
-
-	var water_level := (water + 4) >> 3
-
-	if has_ocean or has_river or "lake" in selected or "lakes" in selected:
-		water_level = maxi(water_level, 4)
-
-	if has_ocean and not extended:
-		NewTerrainHeights._carve_ocean(heights, coast_flags, water_level, staged_game)
-
-	if has_river and not extended:
-		NewTerrainHeights._carve_river(heights, water_level, staged_game)
-
-	NewTerrainHeights._smooth(heights)
-	NewTerrainHeights._smooth(heights)
-	NewTerrainHeights._scale_heights(heights)
-	NewTerrainHeights._smooth(heights)
-
-	if extended:
-		TerrainFeatures.carve(heights, coast_flags, water_level, selected, ocean_requested, has_river, staged_game, water, hills)
-
-	# the native simulation library grades, retiles, plants trees, and runs the
-	# streams. see native/core/sim/src/sim/tools/new_terrain.rs
 	var response: Dictionary = NativeSimulation.run({
 		"op": "new_terrain",
 		"city": {
-			"map_size": map_edge,
+			"map_size": document.map_size,
 			"large_version": document.large_version,
 			"disaster_damage_class": -1,
 			"chunks": payloads,
 		},
-		"randoms": PackedInt64Array([staged_process.state, 1, staged_game.state]),
+		"randoms": PackedInt64Array([process_random.state, 1, game_random.state]),
 		"scripts": [null, null, null],
 		"args": {
-			"heights": heights,
-			"coast_flags": coast_flags,
-			"extended": extended,
-			"smooth_slopes": smooth_slopes,
-			"has_ocean": has_ocean,
-			"has_river": has_river,
-			"water_level": water_level,
-			"water": water,
-			"trees": trees,
+			"ocean": has_ocean, "river": has_river, "hills": hills, "water": water, "trees": trees,
+			"layout": layout, "features": PackedStringArray(features), "smooth_slopes": smooth_slopes,
 		},
 		"budget": 0,
 	})
@@ -145,17 +57,17 @@ static func generate(
 			return Result.failure("cannot store generated %s data" % chunk_id)
 
 	process_random.state = response.randoms[0]
-	game_random.state = staged_game.state
+	game_random.state = response.randoms[2]
 	var summary: Dictionary = response.result
 
 	var result := Result.new()
 	result.ok = true
-	result.has_ocean = has_ocean
-	result.has_river = has_river
+	result.has_ocean = summary.has_ocean
+	result.has_river = summary.has_river
 	result.hills = hills
 	result.water = water
 	result.trees = trees
-	result.water_level = water_level
+	result.water_level = summary.water_level
 	result.water_tiles = summary.water_tiles
 	result.salt_water_tiles = summary.salt_water_tiles
 	result.tree_tiles = summary.tree_tiles

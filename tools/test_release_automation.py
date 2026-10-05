@@ -256,7 +256,7 @@ class PackageTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             source = root / 'source'
-            for folder in ('fluidsynth', 'fluidr3mono', 'quickjs'):
+            for folder in ('fluidsynth', 'fluidr3mono', 'quickjs', 'rust'):
                 (source / 'game/assets/licenses' / folder).mkdir(parents=True)
                 (source / 'game/assets/licenses' / folder / 'NOTICE.txt').write_text(folder)
             (source / 'THIRD_PARTY_NOTICES.md').write_text('notices')
@@ -270,6 +270,7 @@ class PackageTest(unittest.TestCase):
                 linux = platform.startswith('linux')
                 self.assertTrue((folder / 'licenses/fluidsynth/NOTICE.txt').is_file())
                 self.assertTrue((folder / 'licenses/quickjs/NOTICE.txt').is_file())
+                self.assertTrue((folder / 'licenses/rust/NOTICE.txt').is_file())
                 self.assertEqual((folder / 'licenses/fluidr3mono/NOTICE.txt').is_file(), linux, platform)
                 self.assertEqual((folder / packages.SOUNDFONT[2]).is_file(), linux, platform)
 

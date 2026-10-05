@@ -982,12 +982,6 @@
     "lane": "product"
   },
   {
-    "id": "terrain_elevation_test",
-    "script": "tests/terrain_elevation_test.gd",
-    "domain": "tools",
-    "lane": "product"
-  },
-  {
     "id": "coastal_canyon_test",
     "script": "tests/coastal_canyon_test.gd",
     "domain": "ui",

@@ -6,7 +6,6 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	_check_peninsula_headland()
 	var names := {}
 	var random := RandomNumberGenerator.new()
 	random.seed = 123
@@ -66,19 +65,6 @@ func _run() -> void:
 			if layout == "delta":
 				assert(_components(city, true) == 1, "Delta channel is disconnected from the ocean")
 			print("Terrain ", edge, " ", layout, ": water=", result.water_tiles)
-	for random_seed in [29]:
-		# Representative interactions: shared delta outlet/headland, island inlet,
-		# and converging river branches. Single-feature topology is checked above.
-		for features in [["delta", "peninsula", "bay"], ["bay", "islands"], ["bay", "branch"], ["branch", "crossing", "rejoin"]]:
-			# Isolate outlet interactions from unrelated hill interpolation/retile work.
-			var city := _feature_city(features, true, random_seed)
-			assert(_components(city, true) == 1, "Disconnected water: %s seed %d" % [features, random_seed])
-			if "island" in features or "islands" in features:
-				assert(_components(city, false) == (2 if "islands" in features else 1))
-			var inland := _feature_city(features, false, random_seed)
-			for index in inland.tile_flags.size():
-				if inland.tile_flags[index] & 4:
-					assert(city.tile_flags[index] & 4, "Feature outlet is disconnected from the ocean")
 	var estuary := EmptyCityTemplate.create()
 	assert(NewCityTerrain.generate(estuary, true, true, 30, 10, 0,
 		SimRandom.new(719), GameLcgRandom.new(719), "classic", [], true).ok)
@@ -111,42 +97,3 @@ static func _components(city: CityState, water: bool) -> int:
 					seen[next] = 1
 					queue.append(next)
 	return count
-
-
-func _check_peninsula_headland() -> void:
-	for random_seed in [1, 29, 719, 5000]:
-		for features in [["peninsula"], ["peninsula", "bay"]]:
-			var heights := PackedInt32Array()
-			heights.resize(128 * 128)
-			heights.fill(6)
-			var flags := PackedByteArray()
-			flags.resize(128 * 128)
-			var random := GameLcgRandom.new(random_seed)
-			var angle := float(GameLcgRandom.new(random_seed).next_mod(6283)) / 1000.0
-			TerrainFeatures.carve(heights, flags, 5, features, true, false, random, 5)
-			# The neck and tip stay on-map, with ocean on both sides and beyond the tip.
-			for point in [Vector2(0.08, -0.18), Vector2(0.08, 0.0), Vector2(0.08, 0.25)]:
-				assert(_peninsula_height(heights, point, angle) >= 5)
-			for point in [Vector2(-0.20, 0.15), Vector2(0.35, 0.15), Vector2(0.08, 0.46)]:
-				assert(_peninsula_height(heights, point, angle) < 5, "Headland is missing ocean on one of three sides")
-
-
-func _peninsula_height(heights: PackedInt32Array, point: Vector2, angle: float) -> int:
-	var tile := Vector2i(((point.rotated(angle) + Vector2(0.5, 0.5)) * 127.0).round())
-	return heights[tile.x * 128 + tile.y]
-
-
-func _feature_city(features: Array, ocean: bool, random_seed: int) -> CityState:
-	var heights := PackedInt32Array()
-	heights.resize(128 * 128)
-	heights.fill(6)
-	var flags := PackedByteArray()
-	flags.resize(heights.size())
-	TerrainFeatures.carve(heights, flags, 4, features, ocean, "delta" in features,
-		GameLcgRandom.new(random_seed), 10, 30)
-	for index in heights.size():
-		if heights[index] <= 4:
-			flags[index] |= 4
-	var city := CityState.from_document(EmptyCityTemplate.create())
-	assert(city.replace_tile_flags(flags))
-	return city

@@ -88,6 +88,10 @@ func _build_licenses() -> void:
 	_add_license("QuickJS-ng — MIT", "QuickJS-ng %s JavaScript engine of the script runtime\nhttps://github.com/quickjs-ng/quickjs\n\n%s"
 		% [ScriptRuntime.engine_version(), FileAccess.get_file_as_string("res://assets/licenses/quickjs/QuickJS-ng-LICENSE.txt").strip_edges()])
 
+	_add_license("Rust crates and ported code — MIT, 0BSD", _license_files("rust", [
+		"miniz_oxide-LICENSE-MIT.txt", "adler2-LICENSE-0BSD.txt", "FastNoiseLite-LICENSE.txt",
+	]))
+
 	_add_license("Research and original game", """RESEARCH
 
 sc2json — MIT

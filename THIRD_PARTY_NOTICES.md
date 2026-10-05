@@ -50,6 +50,16 @@ license. The license texts are in `game/assets/licenses` (in packages:
 - Source: <https://github.com/quickjs-ng/quickjs>, tag `v0.17.0`, unchanged.
   The used files are in `native/core/scripting/quickjs`. See `docs/native-scripting.md`.
 
+## Rust crates and ported code in the native libraries
+
+| Work | Used in | License | License text |
+| --- | --- | --- | --- |
+| [miniz_oxide](https://github.com/Frommi/miniz_oxide) 0.9 | ZIP members (`opensc2k_formats`, `opensc2k_simulation`) | MIT, Zlib or Apache-2.0 (MIT chosen) | `game/assets/licenses/rust/miniz_oxide-LICENSE-MIT.txt` |
+| [adler2](https://github.com/oyvindln/adler2) 2.0 | Adler-32 for miniz_oxide | 0BSD, MIT or Apache-2.0 (0BSD chosen) | `game/assets/licenses/rust/adler2-LICENSE-0BSD.txt` |
+| [FastNoiseLite](https://github.com/Auburn/FastNoiseLite) | The 2D OpenSimplex2S noise of New City terrain, ported to `native/core/sim/src/sim/new_city/noise.rs` | MIT. Copyright (c) 2023 Jordan Peck and contributors | `game/assets/licenses/rust/FastNoiseLite-LICENSE.txt` |
+
+In packages, the license texts are in `licenses/rust`.
+
 ## FluidR3Mono GM SoundFont (Linux packages only)
 
 - File: `FluidR3Mono_GM.sf3`, beside the executable. The Windows and macOS

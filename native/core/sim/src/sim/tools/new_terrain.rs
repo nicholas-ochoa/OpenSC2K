@@ -1,8 +1,7 @@
-//! New-city terrain on the map, as the map-size stages of NewCityTerrain.generate.
+//! New-city terrain on the map: the map-size stages of New City terrain.
 //!
-//! GDScript makes the 128 by 128 landform, because its layout features use Godot
-//! noise and float vectors. This module scales the landform to the map, grades it,
-//! retiles the terrain, grows trees, and runs the streams.
+//! `sim::new_city` makes the 128 by 128 landform. This module scales the landform
+//! to the map, grades it, retiles the terrain, grows trees, and runs the streams.
 
 use super::Maps;
 use super::terrain::{self, NEIGHBOR_MASKS, NEIGHBOR_OFFSETS};

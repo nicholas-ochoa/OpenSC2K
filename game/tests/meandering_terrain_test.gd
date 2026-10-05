@@ -47,25 +47,6 @@ func _run() -> void:
 			assert(reloaded.parse(combined.serialize().data))
 			assert(reloaded.serialize().data == combined.serialize().data)
 		print("Meandering River checks: ", edge)
-	# The shared bend displacement is applied to every branch endpoint.
-	var paths: Array[PackedVector2Array] = [PackedVector2Array([Vector2(0, -0.9), Vector2.ZERO]),
-		PackedVector2Array([Vector2.ZERO, Vector2(0, 0.9)])]
-	TerrainFeatures._meander_channels(paths, 0.03, 0, 1.0, GameLcgRandom.new(3))
-	assert(paths[0][-1] == paths[1][0])
-	# A straight reach gets a few broad bends, not high-frequency zigzags.
-	var reach := PackedVector2Array()
-	for index in 257:
-		reach.append(Vector2(0, -0.5 + float(index) / 256.0))
-	var smooth_paths: Array[PackedVector2Array] = [reach]
-	TerrainFeatures._meander_channels(smooth_paths, 0.03, 0, 1.0, GameLcgRandom.new(3))
-	var turns := 0
-	for index in range(1, 256):
-		var before := smooth_paths[0][index] - smooth_paths[0][index - 1]
-		var after := smooth_paths[0][index + 1] - smooth_paths[0][index]
-		assert(absf(before.angle_to(after)) < 0.15, "Sharp bend in the channel")
-		if before.x * after.x < 0:
-			turns += 1
-	assert(turns >= 3 and turns <= 4, "Keep bends broad")
 	print("Meandering River and oxbow checks passed")
 	quit()
 

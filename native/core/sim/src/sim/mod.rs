@@ -19,6 +19,7 @@ pub mod ids;
 pub mod infrastructure;
 pub mod moving;
 pub mod network;
+pub mod new_city;
 pub mod overlay;
 pub mod phase;
 pub mod random;

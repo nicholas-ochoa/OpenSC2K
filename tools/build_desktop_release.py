@@ -102,6 +102,7 @@ def install_notices(source, folder, platform):
     shutil.copy2(source / 'THIRD_PARTY_NOTICES.md', folder / 'THIRD_PARTY_NOTICES.md')
     shutil.copytree(source / 'game/assets/licenses/fluidsynth', folder / 'licenses' / 'fluidsynth')
     shutil.copytree(source / 'game/assets/licenses/quickjs', folder / 'licenses' / 'quickjs')
+    shutil.copytree(source / 'game/assets/licenses/rust', folder / 'licenses' / 'rust')
     if platform.startswith('linux'):
         shutil.copytree(source / 'game/assets/licenses/fluidr3mono', folder / 'licenses' / 'fluidr3mono')
 

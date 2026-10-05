@@ -583,33 +583,37 @@ fn dispatch(op: &str, args: &VarDictionary, city: &mut City, randoms: &mut Rando
 
 /// `args`: the 128 by 128 `heights` and `coast_flags`, and the generator options.
 fn new_terrain(args: &VarDictionary, city: &mut City, randoms: &mut Randoms) -> Outcome {
-    use sc2k_sim::sim::tools::new_terrain::{self, LANDFORM_EDGE, Landform};
+    use sc2k_sim::sim::new_city::{self, Options};
 
-    let landform = Landform {
-        heights: convert::ints32(args, "heights"),
-        coast_flags: convert::bytes(args, "coast_flags"),
-        extended: convert::boolean(args, "extended", false),
-        smooth_slopes: convert::boolean(args, "smooth_slopes", false),
-        has_ocean: convert::boolean(args, "has_ocean", false),
-        has_river: convert::boolean(args, "has_river", false),
-        water_level: convert::int(args, "water_level", 0),
+    let options = Options {
+        ocean: convert::boolean(args, "ocean", false),
+        river: convert::boolean(args, "river", false),
+        hills: convert::int(args, "hills", 0),
         water: convert::int(args, "water", 0),
         trees: convert::int(args, "trees", 0),
+        layout: convert::string(args, "layout"),
+        features: convert::strings(args, "features"),
+        smooth_slopes: convert::boolean(args, "smooth_slopes", false),
     };
-    let cells = (city.map_size * city.map_size) as usize;
 
-    if landform.heights.len() != LANDFORM_EDGE * LANDFORM_EDGE
-        || landform.coast_flags.len() != LANDFORM_EDGE * LANDFORM_EDGE
-        || city.map_size < 2
-        || city.altm.data.len() != cells * 2
-        || [&city.xter, &city.xbld, &city.xzon, &city.xbit]
-            .iter()
-            .any(|chunk| chunk.data.len() != cells)
-        || city.xtxt.data.len() < cells
-        || city.misc.data.len() != sc2k_sim::sim::ids::sc2misc_layout::SIZE as usize
-    {
-        return Outcome::failure("terrain data is missing or invalid");
+    match new_city::generate(city, &options, &mut randoms.random, &mut randoms.game) {
+        Ok(generated) => {
+            let summary = &generated.summary;
+            let fields = [
+                ("has_ocean", Value::Bool(generated.has_ocean)),
+                ("has_river", Value::Bool(generated.has_river)),
+                ("water_level", Value::Int(generated.water_level)),
+                ("water_tiles", Value::Int(summary.water_tiles)),
+                ("salt_water_tiles", Value::Int(summary.salt_water_tiles)),
+                ("tree_tiles", Value::Int(summary.tree_tiles)),
+                ("minimum_altitude", Value::Int(summary.minimum_altitude)),
+                ("maximum_altitude", Value::Int(summary.maximum_altitude)),
+            ];
+
+            Outcome::value(Value::Dict(
+                fields.into_iter().map(|(key, value)| (Value::Str(key.into()), value)).collect(),
+            ))
+        }
+        Err(error) => Outcome::failure(error),
     }
-
-    Outcome::value(new_terrain::generate(city, &landform, &mut randoms.random).to_value())
 }
