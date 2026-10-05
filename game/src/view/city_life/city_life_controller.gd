@@ -4,6 +4,9 @@ extends RefCounted
 
 const MAX_FIGURES := 600
 const UPDATE_SECONDS := 0.08
+const BUS_RADIUS := 8
+const TRUCK_SHARE := 0.06
+const BUS_SHARE := 0.03
 var app: CityApplication
 var random := RandomNumberGenerator.new()
 var figures: Array[Figure] = []
@@ -19,6 +22,8 @@ var _spawn_elapsed := 0.0
 var _serial := 0
 var _render_elapsed := 1.0
 var _buckets: Dictionary[Vector2i, Array] = {}
+var _bus_signature: Array = []
+var _bus_tiles: Dictionary[Vector2i, bool] = {}
 
 
 func _init(application: CityApplication) -> void:
@@ -134,6 +139,7 @@ func _collect_tiles(city: CityState) -> void:
 
 
 func _spawn(city: CityState, options: Dictionary) -> void:
+	_refresh_bus_area(city)
 	_rebuild_buckets()
 	var counts: Dictionary[String, int] = {}
 	for figure in figures:
@@ -166,6 +172,8 @@ func _spawn(city: CityState, options: Dictionary) -> void:
 			var figure := Figure.new()
 			figure.walking = walking
 			figure.tile = tile
+			if not walking:
+				figure.vehicle_kind = _vehicle_kind(tile)
 			figure.enter = entries[random.randi_range(0, entries.size() - 1)]
 			figure.exit = _exit(city, figure)
 			if figure.exit < 0:
@@ -189,6 +197,8 @@ func _exit(city: CityState, figure: Figure) -> int:
 	var choices: Array[int] = []
 	for direction in 4:
 		if direction != figure.enter and CityLifePaths.connected(city, figure.tile, direction, figure.walking):
+			if figure.vehicle_kind == CityLifeSprites.Vehicle.BUS and not _bus_tiles.has(figure.tile + CityLifePaths.DIRECTIONS[direction]):
+				continue
 			choices.append(direction)
 	if choices.is_empty():
 		return -1
@@ -196,6 +206,33 @@ func _exit(city: CityState, figure: Figure) -> int:
 	if straight in choices and random.randf() < 0.7:
 		return straight
 	return choices[random.randi_range(0, choices.size() - 1)]
+
+
+func _refresh_bus_area(city: CityState) -> void:
+	var signature := [city.document.get_instance_id(), city.chunk_revision("XBLD"), city.compass_rotation()]
+	if signature == _bus_signature:
+		return
+	_bus_signature = signature
+	_bus_tiles.clear()
+	# Station proximity is a display rule, independent of simulated bus service.
+	for x in city.map_size:
+		for y in city.map_size:
+			if city.building_id(x, y) != BuildingTileIds.BUS_DEPOT:
+				continue
+			for dx in range(-BUS_RADIUS, BUS_RADIUS + 1):
+				for dy in range(-BUS_RADIUS, BUS_RADIUS + 1):
+					var tile := Vector2i(x + dx, y + dy)
+					if dx * dx + dy * dy <= BUS_RADIUS * BUS_RADIUS and CityLifePaths.ports(city, tile) != 0:
+						_bus_tiles[tile] = true
+
+
+func _vehicle_kind(tile: Vector2i) -> int:
+	var roll := random.randf()
+	if roll < TRUCK_SHARE:
+		return CityLifeSprites.Vehicle.TRUCK
+	if roll < TRUCK_SHARE + BUS_SHARE and _bus_tiles.has(tile):
+		return CityLifeSprites.Vehicle.BUS
+	return CityLifeSprites.Vehicle.CAR
 
 
 func _advance(city: CityState, elapsed: float) -> void:
@@ -258,7 +295,10 @@ func _crowded(figure: Figure, position: Vector2, spawning: bool = true) -> bool:
 						continue
 					if direction != other_direction and figure.id < other.id:
 						continue
-				if separation.length_squared() < (9.0 if spawning or figure.walking else 25.0):
+				var spacing := 3.0 if spawning or figure.walking else 5.0
+				if not figure.walking:
+					spacing += figure.extra_spacing() + other.extra_spacing()
+				if separation.length_squared() < spacing * spacing:
 					return true
 	return false
 
@@ -283,6 +323,7 @@ func _rebuild_buckets() -> void:
 class Figure extends RefCounted:
 	var id := 0
 	var walking := false
+	var vehicle_kind := CityLifeSprites.Vehicle.CAR
 	var tile := Vector2i.ZERO
 	var enter := 0
 	var exit := 0
@@ -296,3 +337,7 @@ class Figure extends RefCounted:
 	var lifetime := 40.0
 	var wait := 0.0
 	var retiring := false
+
+
+	func extra_spacing() -> float:
+		return 1.5 if vehicle_kind == CityLifeSprites.Vehicle.BUS else (1.0 if vehicle_kind == CityLifeSprites.Vehicle.TRUCK else 0.0)

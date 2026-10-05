@@ -44,7 +44,7 @@ func render(app: CityApplication, figures: Array, sprites: CityLifeSprites) -> v
 	figures.sort_custom(func(a: CityLifeController.Figure, b: CityLifeController.Figure) -> bool:
 		return a.position.y < b.position.y)
 	for figure: CityLifeController.Figure in figures:
-		var sprite := sprites.sprite(figure.walking, figure.variant, figure.direction, int(figure.distance * 8.0) % 2)
+		var sprite := sprites.sprite(figure.walking, figure.variant, figure.direction, int(figure.distance * 8.0) % 2, figure.vehicle_kind)
 		var origin := Vector2i(figure.position.round()) - Vector2i(sprite.get_width() / 2, sprite.get_height() - 1)
 		if not source_bounds.intersects(Rect2i(origin, sprite.get_size())):
 			continue
