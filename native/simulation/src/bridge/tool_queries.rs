@@ -6,6 +6,7 @@ use godot::prelude::*;
 use sc2k_sim::sim::geom::Rect2i as SimRect2i;
 use sc2k_sim::sim::geom::Vec2i;
 use sc2k_sim::sim::tools::commands::{network, scurk_place};
+use sc2k_sim::sim::tools::edit_state::{self, View};
 use sc2k_sim::sim::tools::query::{self, Microsim, QueryInfo, Thing};
 use sc2k_sim::sim::tools::{availability, catalog, demolish, set_corners};
 
@@ -250,6 +251,31 @@ impl NativeCityTools {
             .iter()
             .map(|&sound| sound as i32)
             .collect()
+    }
+
+    /// `{available, enabled, selection, area, landscape, repeat_placement,
+    /// show_status, status_text, status_detail}` of a catalog tool. `view` is
+    /// "city", "underground", "data", or another view.
+    #[func]
+    fn edit_state(has_city: bool, available: bool, view: GString, group: i64, subtool: i64, dispatch_units: i64) -> VarDictionary {
+        let view = match view.to_string().as_str() {
+            "city" => View::City,
+            "underground" => View::Underground,
+            "data" => View::Data,
+            _ => View::Other,
+        };
+        let state = edit_state::normal(has_city, available, view, group, subtool, dispatch_units);
+        let mut result = VarDictionary::new();
+        result.set("available", state.available);
+        result.set("enabled", state.enabled);
+        result.set("selection", state.selection);
+        result.set("area", state.area);
+        result.set("landscape", state.landscape);
+        result.set("repeat_placement", state.repeat_placement);
+        result.set("show_status", state.show_status);
+        result.set("status_text", state.status_text.as_str());
+        result.set("status_detail", state.status_detail.as_str());
+        result
     }
 
     /// The dialog text of a QueryResult.
