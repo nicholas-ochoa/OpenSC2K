@@ -15,6 +15,13 @@ const EXTENDED_SIZE: usize = 56;
 const SCHEMA2_SIZE: usize = crate::formats::sc2x::scenario::SCHEMA2_SIZE;
 const SCHEMA2_TIME_LIMIT: i64 = 0x0a;
 
+/// The unmet goal names, and the value of each goal by name.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Goals {
+    pub unmet: Vec<String>,
+    pub values: Vec<(String, i64)>,
+}
+
 /// The SCEN fields, as ScenarioState.from_document reads them.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Scenario {
@@ -123,6 +130,11 @@ impl Scenario {
 
     /// ScenarioState.evaluate_goals: the unmet goal names.
     pub fn unmet_goals(&self, city: &City) -> Vec<String> {
+        self.goals(city).unmet
+    }
+
+    /// The unmet goal names and the value of each goal.
+    pub fn goals(&self, city: &City) -> Goals {
         let mut unmet = Vec::new();
         let budget = |id: i64| city.misc_i32(misc_layout::BUDGETS + id * sc2budget_layout::RECORD_SIZE);
         let city_size = city.misc_u32(misc_layout::NORMAL_POPULATION);
@@ -151,6 +163,20 @@ impl Scenario {
             required_education = signed_16(required_education) & 0xffff_ffff;
         }
 
+        let mut values = vec![
+            ("city_size", city_size),
+            ("residential", residential),
+            ("commercial", commercial),
+            ("industrial", industrial),
+            ("cash_after_bonds", cash_after_bonds),
+            ("land_value", land_value),
+            ("life_expectancy", life_expectancy),
+            ("education", education),
+            ("pollution", pollution),
+            ("crime", crime),
+            ("traffic", traffic),
+        ];
+
         let mut minimum = |name: &str, actual: i64, required: i64, zero_disables: bool| {
             if (!zero_disables || required != 0) && actual < required {
                 unmet.push(name.to_string());
@@ -178,15 +204,26 @@ impl Scenario {
             }
         }
 
-        for (name, building, required) in [
-            ("first_building", self.first_building_id, self.first_building_tile_count),
-            ("second_building", self.second_building_id, self.second_building_tile_count),
+        for (name, value_name, building, required) in [
+            (
+                "first_building",
+                "first_building_tiles",
+                self.first_building_id,
+                self.first_building_tile_count,
+            ),
+            (
+                "second_building",
+                "second_building_tiles",
+                self.second_building_id,
+                self.second_building_tile_count,
+            ),
         ] {
             if building == tiles::EMPTY {
                 continue;
             }
 
             let count = city.misc_u32(misc_layout::TILE_COUNTS + building * 4);
+            values.push((value_name, count));
             let short = if original_format {
                 signed_16(count) < signed_16(required)
             } else {
@@ -198,7 +235,10 @@ impl Scenario {
             }
         }
 
-        unmet
+        Goals {
+            unmet,
+            values: values.into_iter().map(|(name, value)| (name.to_string(), value)).collect(),
+        }
     }
 
     /// ScenarioState.set_time_limit_months.
