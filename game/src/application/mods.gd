@@ -208,7 +208,8 @@ func _start(item: ModManifest) -> void:
 	if not bool(result.ok):
 		_running.erase(item.id)
 		scripting.close_context(created)
-		_fail(item, "The main script %s stopped with an error:\n%s" % [item.main, result.error])
+		# the error first: the Mods tab shows the first line in the list
+		_fail(item, "%s\nThe main script %s stopped with this error." % [result.error, item.main])
 
 		return
 

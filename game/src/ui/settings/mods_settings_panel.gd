@@ -46,6 +46,9 @@ func _init() -> void:
 		tree.set_column_expand(column, column == Column.NAME or column == Column.STATUS)
 		tree.set_column_clip_content(column, true)
 
+	tree.set_column_custom_minimum_width(Column.NAME, 150)
+	tree.set_column_custom_minimum_width(Column.VERSION, 70)
+	tree.set_column_custom_minimum_width(Column.AUTHOR, 110)
 	tree.set_column_expand_ratio(Column.STATUS, 2)
 	tree.item_edited.connect(_on_item_edited)
 	tree.item_selected.connect(_on_item_selected)
