@@ -72,7 +72,8 @@ func _initialize() -> void:
 
 
 # A GPU region shows the art in the place of its sprites, with draw tags in the
-# vertex colors. Underground views draw only indexed sprites.
+# vertex colors. The test art has no underground sprites, so the underground
+# view stays indexed.
 func _check_region_quads(sprites: Sc2SpriteArchive) -> void:
 	var city := CityState.from_document(Sc2File.load_path("res://tests/fixtures/cities/generated-128.SC2"))
 	var palette := Sc2Palette.index_encoding()

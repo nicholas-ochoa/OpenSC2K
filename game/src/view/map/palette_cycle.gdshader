@@ -19,6 +19,10 @@ const float TRAFFIC_TAG = 80.0;
 const float LAST_TRAFFIC_TAG = 111.0;
 // The palette entry that makes the power warning blink.
 const float POWER_WARNING_INDEX = 195.0;
+// The dark underground view: art at least this light is the white background.
+const float DARK_WHITE = 0.97;
+const vec3 DARK_BACKGROUND = vec3(0.125, 0.157, 0.188);
+const float DARK_ARTWORK = 0.85;
 // Filtered art reads at most this many texels on each side of a sample.
 const float MAX_FOOTPRINT = 4.0;
 
@@ -139,6 +143,12 @@ void fragment() {
 				local.x = 1.0 - local.x;
 			}
 			COLOR.a *= ATLAS(mask.xy + floor(local * mask.zw)).a;
+		}
+
+		// the dark underground view makes the white background slate, and dims
+		// the art a little, as its palette does for indexed sprites
+		if (dark_underground) {
+			COLOR.rgb = min(COLOR.r, min(COLOR.g, COLOR.b)) > DARK_WHITE ? DARK_BACKGROUND : COLOR.rgb * DARK_ARTWORK;
 		}
 
 		if (power_warning > 0.5 && palette_cycle_enabled) {

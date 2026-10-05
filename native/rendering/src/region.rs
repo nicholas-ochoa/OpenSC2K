@@ -316,7 +316,7 @@ impl Builder {
         }
 
         let draws = self.collect(bounds)?;
-        let with_artwork = !self.config.underground && !self.sprites.artwork.is_empty();
+        let with_artwork = !self.sprites.artwork.is_empty();
 
         if with_artwork {
             self.reserve_artwork(&draws, bounds)?;

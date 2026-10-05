@@ -799,7 +799,7 @@ fn masked_traffic_uses_the_traffic_art_and_a_road_mask_record() {
 }
 
 #[test]
-fn underground_views_draw_no_artwork() {
+fn underground_views_draw_artwork() {
     let mut b = fixture(4, 2);
     b.config.underground = true;
     let key = b.region(Rect::new(0, 0, 600, 700)).unwrap().draws[0].image & !1;
@@ -807,7 +807,9 @@ fn underground_views_draw_no_artwork() {
     b.tiles.clear();
     let region = b.region(Rect::new(0, 0, 600, 700)).unwrap();
 
-    assert!(region.colors.iter().all(|color| *color == [1.0; 4]));
+    // the first quad is the indexed background of the underground view
+    assert_eq!(tag(&region, 0), [255; 4]);
+    assert!(region.colors.iter().any(|color| (color[0] * 255.0).round() == 2.0));
 }
 
 #[test]

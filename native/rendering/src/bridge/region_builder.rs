@@ -242,9 +242,7 @@ impl NativeCityRegionBuilder {
             let mut core = Builder::new(city, config, sprites, (target as u32).to_be_bytes(), atlas_edge, pack_atlas)?;
             core.atlas.revision += previous_revision;
 
-            if !config.underground {
-                configure_artwork(&mut core, &request)?;
-            }
+            configure_artwork(&mut core, &request)?;
 
             // Shadow pairs: each packed RGBA color and the color that a shadow makes of it.
             for pair in ints(&request, "shadow_colors").chunks_exact(2) {

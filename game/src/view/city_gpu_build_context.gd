@@ -108,7 +108,7 @@ func prepare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, vi
 		var request := _snapshot(city)
 
 		# GPU regions and `raster_artwork` draw full-color art
-		if (pack_atlas or with_artwork) and mode != CityViewMode.Mode.UNDERGROUND:
+		if pack_atlas or with_artwork:
 			request.merge(artwork_request(sprites, configuration.sprite_base))
 
 		request.merge({"view": view, "underground_mode": int(mode == CityViewMode.Mode.UNDERGROUND),
