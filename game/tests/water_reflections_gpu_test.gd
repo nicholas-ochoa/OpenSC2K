@@ -92,10 +92,11 @@ func _run() -> void:
 	await RenderingServer.frame_post_draw
 	var shadowed := viewport.get_texture().get_image().get_pixel(8, 8)
 	assert(shadowed.b < unshadowed.b, "Water pass erased cloud shadows")
-	material.set_shader_parameter("cloud_enabled", false)
 	material.set_shader_parameter("water_enabled", false)
 	await RenderingServer.frame_post_draw
 	assert(viewport.get_texture().get_image().get_data() == original.get_data(), "Off did not restore exact original pixels")
+	material.set_shader_parameter("cloud_enabled", false)
+	await _check_surface_details(viewport, sprite, material, mirror, bottom)
 	viewport.queue_free()
 	await process_frame
 	var fixture: Dictionary = load("res://tests/water_reflections_test.gd").fixture()
@@ -143,3 +144,45 @@ func _run() -> void:
 	await process_frame
 	print("PASS: GPU reflection source colors, static occlusion, region clipping, subtle attenuation, brightmaps, depth-dependent transmission and exact Off output")
 	quit()
+
+
+func _check_surface_details(viewport: SubViewport, sprite: Sprite2D, material: ShaderMaterial, mirror: Image, bottom: Image) -> void:
+	material.set_shader_parameter("water_enabled", true)
+	material.set_shader_parameter("water_reflections_enabled", false)
+	material.set_shader_parameter("water_topography", true)
+	bottom.fill(Color(5.0 / 31.0, 0.8, 0, 1))
+	var seabed := material.get_shader_parameter("water_seabed") as ImageTexture
+	seabed.update(bottom)
+	await RenderingServer.frame_post_draw
+	var light_face := viewport.get_texture().get_image().get_pixel(8, 8)
+	bottom.fill(Color(5.0 / 31.0, 0.2, 0, 1))
+	seabed.update(bottom)
+	await RenderingServer.frame_post_draw
+	assert(viewport.get_texture().get_image().get_pixel(8, 8).r < light_face.r,
+		"Underwater slope faces lost their geometry shading")
+	var tones := {}
+	for origin in [0.0, 96.0, 192.0, 288.0, 384.0]:
+		material.set_shader_parameter("water_origin", Vector2(origin, 0))
+		await RenderingServer.frame_post_draw
+		tones[viewport.get_texture().get_image().get_pixel(8, 8).to_rgba32()] = true
+	assert(tones.size() > 1, "Water body has no map-anchored variation")
+	material.set_shader_parameter("water_origin", Vector2(4, 0))
+	await RenderingServer.frame_post_draw
+	var shifted := viewport.get_texture().get_image().get_pixel(8, 8)
+	material.set_shader_parameter("water_origin", Vector2.ZERO)
+	await RenderingServer.frame_post_draw
+	assert(shifted == viewport.get_texture().get_image().get_pixel(12, 8),
+		"Water pattern moves with region boundaries instead of map coordinates")
+	# Opaque contact columns must stay attached even at maximum rain.
+	# Alpha attenuation permits ripples farther away from those contacts.
+	for x in 32:
+		mirror.fill_rect(Rect2i(x, 0, 1, 32), Color((40.0 if x % 2 == 0 else 96.0) / 255.0, 0, 0, 1))
+	(sprite.texture as ImageTexture).update(mirror)
+	material.set_shader_parameter("water_reflections_enabled", true)
+	material.set_shader_parameter("water_rain", 1.0)
+	for time in [0.0, 2.0, 7.0]:
+		material.set_shader_parameter("water_clock", time)
+		await RenderingServer.frame_post_draw
+		var result := viewport.get_texture().get_image()
+		assert(result.get_pixel(8, 8).r > result.get_pixel(9, 8).r,
+			"Ripple displaced a reflection's water contact")

@@ -84,6 +84,23 @@ func _run() -> void:
 	assert(main.visual_environment.weather.kind == CityVisualWeather.Kind.HEAVY_RAIN)
 	assert(main.visual_environment.weather.rain == 1.0)
 	assert(main.visual_environment.weather.layer.visible)
+	# Exercise the real menu action. Water must also leave the vanilla path
+	# even when its independent options and the other effects were enabled.
+	var before_disable := tab.selected_values()
+	for control in tab.find_children("*", "Button", true, false):
+		if control.text == "Disable all":
+			control.pressed.emit()
+	main.visual_environment.process(0.0)
+	var parameters := main.map_view.layers.environment_parameters
+	assert(not parameters.water_enabled and not parameters.water_reflections_enabled)
+	assert(not parameters.water_topography and not parameters.environment_enabled)
+	assert(not parameters.cloud_enabled)
+	assert(not main.visual_environment.weather.layer.visible)
+	assert(main.preferences.visual_enhancements.water_reflections == 0)
+	assert(not main.preferences.visual_enhancements.water_topography)
+	# Restore the fixture through the menu too, including its saved controls.
+	tab.show_values(before_disable)
+	tab.changed.emit()
 	# LUT feedback must be owned by the exclusive Settings window, so another
 	# exclusive child is not incorrectly opened beside it under the root.
 	var settings := main.main_overlays.settings_dialog
