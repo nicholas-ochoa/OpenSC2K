@@ -92,7 +92,7 @@ func render(app: CityApplication, figures: Array, sprites: CityLifeSprites) -> v
 			light_material.set_shader_parameter("vehicle_world", CityLifeLights.vehicle_world(app.document_state.city, figure))
 			light_material.set_shader_parameter("forward", CityLifeLights.FORWARD[figure.direction])
 			light_material.set_shader_parameter("front", float([3, 4, 5][figure.vehicle_kind]))
-			light_material.set_shader_parameter("opacity", clampf(minf(figure.age / 0.3, (figure.lifetime - figure.age) / 0.5), 0.0, 1.0))
+			light_material.set_shader_parameter("opacity", figure.opacity())
 	for id in _light_quads.keys():
 		if not seen.has(id):
 			_light_quads[id].queue_free()
@@ -103,7 +103,7 @@ func render(app: CityApplication, figures: Array, sprites: CityLifeSprites) -> v
 		if not source_bounds.intersects(Rect2i(origin, sprite.get_size())):
 			continue
 		var candidates := _candidates(app, figure.tile, figure.enter)
-		var opacity := clampf(minf(figure.age / 0.3, (figure.lifetime - figure.age) / 0.5), 0.0, 1.0)
+		var opacity := figure.opacity()
 		var mask: Image = lights.lamp_mask(sprite, figure.vehicle_kind, figure.direction) if not figure.walking else null
 		stamp(image, source_bounds.position, sprite, origin, candidates, opacity, emission, mask)
 	texture.update(image)
