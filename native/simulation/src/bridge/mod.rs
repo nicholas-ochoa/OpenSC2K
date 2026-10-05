@@ -9,6 +9,7 @@ mod convert;
 mod document;
 mod game;
 mod json_value;
+mod newspaper;
 mod ops;
 mod reports;
 mod sc2x;

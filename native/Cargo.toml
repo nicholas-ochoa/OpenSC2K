@@ -13,6 +13,7 @@ members = [
     "core/render",
     "core/sim",
     "core/game",
+    "core/assets",
     "xtask",
 ]
 resolver = "3"

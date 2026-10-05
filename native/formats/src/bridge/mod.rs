@@ -4,6 +4,7 @@
 mod bmp;
 mod crc32;
 mod gif;
+mod johab;
 mod pe;
 mod png;
 mod sprite;

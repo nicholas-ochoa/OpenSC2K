@@ -11,5 +11,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 sc2k_formats = { path = "../core/formats" }
+sc2k_assets = { path = "../core/assets" }
 # Asset import and export run codecs on worker threads.
 godot = { version = "0.5.5", features = ["api-4-7", "experimental-threads"] }

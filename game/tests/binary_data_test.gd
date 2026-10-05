@@ -130,7 +130,7 @@ func _test_indexed_resources() -> void:
 	_store(index_path, index)
 	var grammar := DataUsaResource.load_path(data_path, index_path)
 	check(
-		grammar.is_valid() and grammar.phrase_bytes(0) == PackedByteArray([66]) and grammar.phrase_bytes(1) == PackedByteArray([65]),
+		grammar.is_valid() and grammar.offsets[0] == 2 and grammar.offsets[1] == 0 and grammar.grammar == PackedByteArray([65, 0, 66, 0]),
 		"mixed-endian data tables",
 	)
 	for bad in [index.slice(0, 31), "e8030000ffffffff".hex_decode(), "e803000002000000e903000001000000".hex_decode()]:

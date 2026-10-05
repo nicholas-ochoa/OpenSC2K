@@ -159,6 +159,7 @@ name = "opensc2k_formats"
 version = "0.1.0"
 dependencies = [
  "godot",
+ "sc2k_assets",
  "sc2k_formats",
 ]
 
@@ -183,6 +184,7 @@ name = "opensc2k_simulation"
 version = "0.1.0"
 dependencies = [
  "godot",
+ "sc2k_assets",
  "sc2k_formats",
  "sc2k_game",
  "sc2k_sim",
@@ -207,6 +209,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "sc2k_assets"
+version = "0.1.0"
+
+[[package]]
 name = "sc2k_audio"
 version = "0.1.0"
 
@@ -221,6 +227,7 @@ dependencies = [
 name = "sc2k_game"
 version = "0.1.0"
 dependencies = [
+ "sc2k_assets",
  "sc2k_formats",
  "sc2k_sim",
 ]

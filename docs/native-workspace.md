@@ -16,6 +16,8 @@ The Rust code is one Cargo workspace in `native/`. It has two kinds of crates:
 | `sc2k_formats` | `core/formats` | `opensc2k_formats` | BMP, GIF, PNG, PE resources, sprites, CRC-32 |
 | `sc2k_audio` | `core/audio` | `opensc2k_audio` | MIDI events, sequencer, FluidSynth loader |
 | `sc2k_scripting` | `core/scripting` | `opensc2k_scripting` | QuickJS-ng runtime, sandbox, inspector |
+| `sc2k_game` | `core/game` | `opensc2k_simulation` | Engine days, speed controller, newspaper text |
+| `sc2k_assets` | `core/assets` | `opensc2k_formats`, `opensc2k_simulation` | Original resources: DATA_USA grammar, Johab codec |
 
 ## Rules
 

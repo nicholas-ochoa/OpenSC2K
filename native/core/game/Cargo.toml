@@ -9,3 +9,4 @@ description = "The game loop of OpenSC2K: the simulation engine, its clock and i
 [dependencies]
 sc2k_sim = { path = "../sim" }
 sc2k_formats = { path = "../formats" }
+sc2k_assets = { path = "../assets" }
