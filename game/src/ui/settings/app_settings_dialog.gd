@@ -12,6 +12,8 @@ signal button_clicked
 signal settings_changed
 signal brightmaps_reload_requested
 signal brightmaps_export_requested
+signal luts_reload_requested
+signal luts_export_requested
 # the player accepted the Use Defaults warning. the controls reset and save at once
 signal controls_reset_requested
 
@@ -97,6 +99,8 @@ func _ready() -> void:
 	visual_tab.changed.connect(_notify_change)
 	visual_tab.reload_requested.connect(func() -> void: brightmaps_reload_requested.emit())
 	visual_tab.export_requested.connect(func() -> void: brightmaps_export_requested.emit())
+	visual_tab.luts_reload_requested.connect(func() -> void: luts_reload_requested.emit())
+	visual_tab.luts_export_requested.connect(func() -> void: luts_export_requested.emit())
 	toolbar_sounds_check = %ToolbarSoundsCheck
 	city_sounds_selector = %CitySoundsSelector
 	folder_row = folder_edit.get_parent() as HBoxContainer

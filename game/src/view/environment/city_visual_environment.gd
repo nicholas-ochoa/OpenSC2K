@@ -9,6 +9,7 @@ var tint := Color.WHITE
 var night := 0.0
 var lut: ImageTexture
 var lut_size := 0.0
+var profiles := CityVisualLuts.new()
 var _options := {}
 var _city_id := 0
 var weather: CityVisualWeather
@@ -28,16 +29,47 @@ func configure() -> void:
 	if _options.get("brightmap_folder", "") != options.brightmap_folder:
 		reload_brightmaps()
 	if _options.get("lut_path", "") != options.lut_path:
-		lut = null
-		lut_size = 0.0
-		if FileAccess.file_exists(options.lut_path):
-			var image := Image.load_from_file(options.lut_path)
-			if image != null and image.get_height() >= 2 and image.get_width() == image.get_height() * image.get_height():
-				lut = ImageTexture.create_from_image(image)
-				lut_size = image.get_height()
+		_load_custom_lut(options.lut_path)
+	if profiles.atlases.is_empty() or _options.get("lut_folder", "") != options.lut_folder:
+		profiles.reload(options.lut_folder)
 	_configure_water(options)
 	_options = options.duplicate()
 	process(0.0)
+
+
+func _load_custom_lut(path: String) -> void:
+	lut = null
+	lut_size = 0.0
+	var image := CityVisualLuts.load_strip(path)
+	if image != null:
+		image.convert(Image.FORMAT_RGB8)
+		lut = ImageTexture.create_from_image(image)
+		lut_size = image.get_height()
+
+
+func reload_luts() -> void:
+	profiles.reload(app.preferences.visual_enhancements.lut_folder)
+	_load_custom_lut(app.preferences.visual_enhancements.lut_path)
+	process(0.0)
+	var message := "LUT profiles reloaded."
+	if not profiles.issues.is_empty():
+		message += "\n" + "\n".join(profiles.issues)
+	if not app.preferences.visual_enhancements.lut_path.is_empty() and lut == null:
+		message += "\nOptional color LUT: missing or invalid; neutral fallback"
+	app.assets.show_graphics_source_error(message, "Visual Enhancements")
+
+
+func export_luts() -> void:
+	var folder: String = app.preferences.visual_enhancements.lut_folder
+	if folder.is_empty():
+		folder = AppPaths.path("visual_luts")
+	var error := CityVisualLuts.export_profiles(folder)
+	if error.is_empty():
+		var values := app.preferences.visual_enhancements.duplicate()
+		values.lut_folder = folder
+		app.main_overlays.settings_dialog.visual_tab.show_values(values)
+		app.settings.apply_settings()
+	app.assets.show_graphics_source_error(error if not error.is_empty() else "Editable LUT profiles and neutral template exported to:\n" + folder + "\nExisting files were preserved.", "Visual Enhancements")
 
 
 func _configure_water(options: Dictionary, refresh := true) -> void:
@@ -91,6 +123,7 @@ func process(delta: float) -> void:
 		phase = 0.5
 		season_phase = 1.0
 		weather.reset()
+		profiles.reset()
 		clouds.reset()
 	var options := app.preferences.visual_enhancements
 	var speed := app.simulation_state.speed_controller.speed if app.simulation_state.speed_controller != null else 1
@@ -110,6 +143,9 @@ func process(delta: float) -> void:
 	elif options.season_mode == 2:
 		season = float(options.season_fixed)
 	weather.process(delta, elapsed * factor, active, season)
+	if profiles.atlases.is_empty():
+		profiles.reload(options.lut_folder)
+	profiles.advance_weather(weather.kind, delta, options.weather_transition, active and options.weather_enabled)
 	if active and (options.day_enabled or options.season_enabled or options.weather_enabled):
 		_sync_whole_masks()
 	if active and (options.water_reflections == 1 or options.water_topography):
@@ -134,7 +170,10 @@ func process(delta: float) -> void:
 		"environment_lut_size": lut_size,
 	}
 	parameters.merge(clouds.parameters)
+	parameters.merge(profiles.parameters(options, hour, parameters.environment_seasons, app.map_view.get_viewport().use_hdr_2d))
 	app.map_view.layers.set_environment(parameters)
+	if clouds.material != null:
+		app.map_view.layers._apply_environment(clouds.material)
 
 
 func _sync_whole_water() -> void:

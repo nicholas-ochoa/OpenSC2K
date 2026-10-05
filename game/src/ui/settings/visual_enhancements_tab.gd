@@ -4,6 +4,8 @@ extends ScrollContainer
 signal changed
 signal reload_requested
 signal export_requested
+signal luts_reload_requested
+signal luts_export_requested
 
 var controls: Dictionary = {}
 var filling := false
@@ -87,6 +89,17 @@ func _ready() -> void:
 		else:
 			buttons.add_child(button)
 	sections["Day and Night Shift"].add_child(brightmap_buttons)
+	var lut_buttons := HFlowContainer.new()
+	for title in ["Reload LUT profiles", "Export LUT profiles"]:
+		var button := Button.new()
+		button.text = title
+		button.pressed.connect(func() -> void:
+			if title == "Reload LUT profiles":
+				luts_reload_requested.emit()
+			else:
+				luts_export_requested.emit())
+		lut_buttons.add_child(button)
+	sections["Other Effects"].add_child(lut_buttons)
 	content.add_child(HSeparator.new())
 	content.add_child(buttons)
 	show_values({})

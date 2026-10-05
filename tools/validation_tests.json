@@ -1678,6 +1678,19 @@
     "driver": "scene-batch"
   },
   {
+    "id": "visual_luts_test",
+    "script": "tests/visual_luts_test.gd",
+    "domain": "rendering",
+    "lane": "product"
+  },
+  {
+    "id": "visual_luts_gpu_test",
+    "script": "tests/visual_luts_gpu_test.gd",
+    "domain": "rendering",
+    "lane": "native",
+    "driver": "scene-batch"
+  },
+  {
     "id": "city_life_artwork_test",
     "script": "tests/city_life_artwork_test.gd",
     "domain": "rendering",
