@@ -79,7 +79,7 @@ func _draw_overlay() -> void:
 		if visual != null:
 			canvas.draw_texture_rect(
 				visual.texture, Rect2(offset + visual.position * scale, visual.size * scale),
-				false, CityForegroundPalette.INDEXED_DRAW_COLOR
+				false, Color.WHITE if visual.literal_artwork else CityForegroundPalette.INDEXED_DRAW_COLOR
 			)
 
 	if map.trip_reach != null:

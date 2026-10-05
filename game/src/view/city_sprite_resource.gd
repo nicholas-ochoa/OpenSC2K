@@ -6,6 +6,9 @@ var image: Image
 var native_size := Vector2i.ZERO
 var texture: ImageTexture
 var index_texture: ImageTexture
+# the full-color art of the sprite at the size of `image`, or null
+var artwork_image: Image
+var artwork_texture: ImageTexture
 var _waterline := PackedInt32Array()
 
 
