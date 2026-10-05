@@ -10,6 +10,8 @@ signal update_check_requested
 signal button_clicked
 # the player changed a setting. read the new values with selected_values()
 signal settings_changed
+signal brightmaps_reload_requested
+signal brightmaps_export_requested
 # the player accepted the Use Defaults warning. the controls reset and save at once
 signal controls_reset_requested
 
@@ -55,6 +57,7 @@ var use_defaults_button: Button
 var reset_controls_dialog: ConfirmationDialog
 # true while the application fills the controls with the saved values
 var loading_values := false
+var visual_tab: VisualEnhancementsTab
 
 
 func _ready() -> void:
@@ -89,6 +92,11 @@ func _ready() -> void:
 	_build_soundfont_controls()
 	sound_pack_edit = %SoundPackEdit
 	tabs = %Tabs
+	visual_tab = VisualEnhancementsTab.new()
+	tabs.add_child(visual_tab)
+	visual_tab.changed.connect(_notify_change)
+	visual_tab.reload_requested.connect(func() -> void: brightmaps_reload_requested.emit())
+	visual_tab.export_requested.connect(func() -> void: brightmaps_export_requested.emit())
 	toolbar_sounds_check = %ToolbarSoundsCheck
 	city_sounds_selector = %CitySoundsSelector
 	folder_row = folder_edit.get_parent() as HBoxContainer
@@ -291,6 +299,7 @@ func show_control_bindings(bindings: ControlBindings) -> void:
 
 func selected_values() -> AppSettingsStore.Values:
 	var result := AppSettingsStore.Values.new()
+	result.visual_enhancements = visual_tab.selected_values()
 	result.default_mayor_name = default_mayor_edit.text.strip_edges()
 	result.ui_theme = "dark" if theme_selector.selected == 1 else "light"
 	result.translucent_menus = translucent_menus_check.button_pressed

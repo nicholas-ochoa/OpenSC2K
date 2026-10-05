@@ -13,6 +13,10 @@ var usec := 0
 var key := Vector2i.ZERO
 var generation := 0
 var last_visible := 0
+var season_image: Image
+var season_texture: ImageTexture
+var emission_image: Image
+var emission_texture: ImageTexture
 var texture: ImageTexture
 
 

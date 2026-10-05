@@ -1,0 +1,156 @@
+class_name CityVisualEnvironment
+extends RefCounted
+## Advances only presentation time. The city and simulation clock are read-only.
+
+var app: CityApplication
+var phase := 0.5
+var season_phase := 1.0
+var tint := Color.WHITE
+var night := 0.0
+var lut: ImageTexture
+var lut_size := 0.0
+var _options := {}
+var _city_id := 0
+var weather: CityVisualWeather
+var _whole_mask_signature: Array = []
+
+
+func _init(application: CityApplication) -> void:
+	app = application
+	weather = CityVisualWeather.new(application)
+
+
+func configure() -> void:
+	var options := app.preferences.visual_enhancements
+	if _options.get("brightmap_folder", "") != options.brightmap_folder:
+		reload_brightmaps()
+	if _options.get("lut_path", "") != options.lut_path:
+		lut = null
+		lut_size = 0.0
+		if FileAccess.file_exists(options.lut_path):
+			var image := Image.load_from_file(options.lut_path)
+			if image != null and image.get_height() >= 2 and image.get_width() == image.get_height() * image.get_height():
+				lut = ImageTexture.create_from_image(image)
+				lut_size = image.get_height()
+	_options = options.duplicate()
+	process(0.0)
+
+
+func reload_brightmaps(refresh := true) -> void:
+	for pair in [[app.asset_state.large_sprites, "large"], [app.asset_state.small_medium_sprites, "small-medium"]]:
+		var archive: Sc2SpriteArchive = pair[0]
+		if archive != null:
+			CityBrightmaps.load_archive(archive, app.preferences.visual_enhancements.brightmap_folder, pair[1])
+			if app.asset_state.palette != null:
+				CitySeasonColors.prepare(archive, app.asset_state.palette)
+			archive.visual_revision += 1
+	if not refresh:
+		return
+	if app.map_view != null:
+		app.map_view.layers._visual_materials.clear()
+	if app.document_state.city != null:
+		app.static_render.invalidate_rendered_city()
+		app.map_render.refresh_map()
+
+
+func export_brightmaps() -> void:
+	var folder: String = app.preferences.visual_enhancements.brightmap_folder
+	var error := CityBrightmaps.export_originals(app.asset_state.asset_source.assets, folder)
+	app.assets.show_graphics_source_error(error if not error.is_empty() else "Original PNGs and transparent Brightmap templates exported to:\n" + folder, "Visual Enhancements")
+
+
+func process(delta: float) -> void:
+	if app.map_view == null:
+		return
+	var city := app.document_state.city
+	var active := city != null and app.view_state.overlay_mode == CityViewMode.Mode.CITY and not app.tool_state.landscape_editor
+	if city != null and city.document.get_instance_id() != _city_id:
+		_city_id = city.document.get_instance_id()
+		phase = 0.5
+		season_phase = 1.0
+		weather.reset()
+	var options := app.preferences.visual_enhancements
+	var speed := app.simulation_state.speed_controller.speed if app.simulation_state.speed_controller != null else 1
+	var elapsed := maxf(delta, 0.0)
+	if options.pause_freezes and (speed == 1 or app.frame._simulation_suspended()):
+		elapsed = 0.0
+	var factor := VisualEnhancementOptions.speed_factor(speed) if options.speed_link and speed > 1 else 1.0
+	if active and options.day_enabled and options.day_mode == 0:
+		phase = fposmod(phase + elapsed * factor / float(options.day_seconds), 1.0)
+	var hour := phase * 24.0 if options.day_mode == 0 else float(options.day_hour)
+	var lighting := light_at_hour(hour, options.night_strength)
+	if active and options.season_enabled and options.season_mode == 1:
+		season_phase = fposmod(season_phase + elapsed * factor * 4.0 / float(options.season_seconds), 4.0)
+	var season := season_phase
+	if options.season_mode == 0 and city != null:
+		season = fposmod(float(city.age_in_days() % CityCalendar.DAYS_PER_YEAR) / CityCalendar.DAYS_PER_YEAR * 4.0 - 2.0 / 3.0, 4.0)
+	elif options.season_mode == 2:
+		season = float(options.season_fixed)
+	weather.process(delta, elapsed * factor, active, season)
+	if active and (options.day_enabled or options.season_enabled or options.weather_enabled):
+		_sync_whole_masks()
+	tint = lighting.tint if options.day_enabled else Color.WHITE
+	night = lighting.night if options.day_enabled and options.brightmaps else 0.0
+	app.map_view.layers.set_environment({
+		"environment_enabled": active and (options.day_enabled or options.season_enabled or options.weather_enabled),
+		"environment_weather": Vector3(weather.tint.r, weather.tint.g, weather.tint.b),
+		"environment_frost": weather.frost,
+		"environment_seasons": CitySeasonColors.weights(season, options.season_transition) if options.season_enabled else Vector4(0, 1, 0, 0),
+		"environment_tint": Vector3(tint.r, tint.g, tint.b),
+		"environment_saturation": lerpf(1.0, 0.78, night),
+		"environment_night": night,
+		"environment_lut": lut,
+		"environment_lut_size": lut_size,
+	})
+
+
+func _sync_whole_masks() -> void:
+	# CPU cities up to 128 retain the existing whole-image/patch renderer.
+	# Auxiliary masks follow its publication epoch without replacing that path.
+	if app.render_caches.region_cache != null or app.map_view.city_source == null or app.render_caches.static_display_city == null:
+		return
+	var source := app.map_view.city_source
+	var view := app.static_render.city_view_size()
+	var sprites := app.static_render.sprite_archive_for_view(view)
+	var signature := [source.get_instance_id(), app.static_render_state.epoch, sprites.visual_revision]
+	if signature == _whole_mask_signature:
+		return
+	_whole_mask_signature = signature
+	var city := app.render_caches.static_display_city
+	var context := CityGpuBuildContext.new()
+	var error := context.prepare(city, app.asset_state.palette_index_encoding, sprites, view, CityViewMode.Mode.CITY, true, true, true, 0, false)
+	if not error.is_empty():
+		return
+	var bounds := Rect2i(Vector2i.ZERO, CityIsometricRenderer.output_size_for_view(view, city.map_size))
+	for pair in [[sprites.visual_emission, "emission"], [sprites.visual_seasons, "seasons"]]:
+		var artwork: Dictionary = {}
+		artwork.merge(pair[0])
+		var image: Image = context.builder.auxiliary_raster(bounds, artwork)
+		if image == null:
+			source.set(pair[1], null)
+			for tile in source.tiles:
+				tile.set(pair[1], null)
+			continue
+		if image.get_size() != source.size:
+			image.resize(source.size.x, source.size.y, Image.INTERPOLATE_NEAREST)
+		if source.texture != null:
+			source.set(pair[1], ImageTexture.create_from_image(image))
+		for tile in source.tiles:
+			var part := image.get_region(Rect2i(Vector2i(tile.position), Vector2i(tile.size)))
+			tile.set(pair[1], ImageTexture.create_from_image(part))
+	app.map_view.layers._tiled_source = null
+	app.map_view.layers._sync_base_layer()
+
+
+static func light_at_hour(hour: float, strength := 1.0) -> Dictionary:
+	var h := fposmod(hour, 24.0)
+	var keys := [0.0, 5.0, 7.0, 10.0, 16.0, 19.0, 22.0, 24.0]
+	var colors := [Color(0.28, 0.34, 0.52), Color(0.28, 0.34, 0.52), Color(0.86, 0.93, 1.04),
+		Color.WHITE, Color.WHITE, Color(1.06, 0.83, 0.57), Color(0.28, 0.34, 0.52), Color(0.28, 0.34, 0.52)]
+	var levels := [1.0, 1.0, 0.1, 0.0, 0.0, 0.45, 1.0, 1.0]
+	for i in range(keys.size() - 1):
+		if h <= keys[i + 1]:
+			var weight := smoothstep(keys[i], keys[i + 1], h)
+			return {"tint": Color.WHITE.lerp(colors[i].lerp(colors[i + 1], weight), clampf(strength, 0.0, 1.0)),
+				"night": lerpf(levels[i], levels[i + 1], weight) * clampf(strength, 0.0, 1.0)}
+	return {"tint": Color.WHITE, "night": 0.0}

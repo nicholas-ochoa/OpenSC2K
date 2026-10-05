@@ -181,6 +181,20 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 
 					worker.atlas_revision = int(region.atlas_revision)
 
+				if region.emission_image != null:
+					if worker.emission == null or worker.emission.get_size() != Vector2(region.emission_image.get_size()):
+						worker.emission = ImageTexture.create_from_image(region.emission_image)
+					else:
+						worker.emission.update(region.emission_image)
+				elif region.atlas_image != null:
+					worker.emission = null
+				if region.season_image != null:
+					if worker.seasons == null or worker.seasons.get_size() != Vector2(region.season_image.get_size()):
+						worker.seasons = ImageTexture.create_from_image(region.season_image)
+					else:
+						worker.seasons.update(region.season_image)
+				elif region.atlas_image != null:
+					worker.seasons = null
 				_publish_region(cache, worker, region)
 
 			if pending != null:
@@ -360,6 +374,10 @@ static func _publish_region(cache: CityRegionCache, worker: CityRegionCache.Regi
 
 	region.mesh = mesh
 	region.atlas_texture = worker.atlas
+	region.emission_texture = worker.emission
+	region.season_texture = worker.seasons
+	region.season_image = null
+	region.emission_image = null
 	region.generation = worker.generation
 	region.last_visible = (cache._viewport_serial if cache.visible_keys.has(key)
 		else (cache.entries[key].last_visible if cache.entries.has(key) else 0))

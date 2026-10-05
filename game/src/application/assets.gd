@@ -101,6 +101,7 @@ func initialize_runtime() -> void:
 	app.asset_state.base_small_medium_sprites = original_assets.small_medium_sprites
 	app.asset_state.large_sprites = app.asset_state.base_large_sprites
 	app.asset_state.small_medium_sprites = app.asset_state.base_small_medium_sprites
+	app.visual_environment.reload_brightmaps()
 	app.camera_input.refresh_child_tool_icons()
 
 	app.interface.show_main_menu()
@@ -291,6 +292,7 @@ func apply_graphics_source(selected: GameAssetSource) -> void:
 
 	app.static_render.invalidate_rendered_city()
 	app.static_render.update_palette_cycle_texture()
+	app.visual_environment.reload_brightmaps()
 	app.city_toolbar.replace_artwork(assets.toolbar_art)
 	app.camera_input.refresh_child_tool_icons()
 	app.main_overlays.about_dialog.set_assets(assets)

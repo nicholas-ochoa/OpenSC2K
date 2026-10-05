@@ -13,6 +13,10 @@ var builder := NativeCityRegionBuilder.new()
 var atlas_edge := ATLAS_EDGE
 # Sprite images by painter key, for sign masks and the native artwork.
 var images: Dictionary = {}
+var season_atlas: Image
+var _seasons: Dictionary = {}
+var emission_atlas: Image
+var _emission: Dictionary = {}
 var atlas: Image
 var atlas_revision := -1
 var tile_builds := 0
@@ -48,6 +52,8 @@ func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 
 	if data.has("atlas"):
 		atlas = data.atlas
+		emission_atlas = builder.auxiliary_atlas(_emission)
+		season_atlas = builder.auxiliary_atlas(_seasons)
 
 	atlas_edge = data.atlas_edge
 	atlas_revision = data.atlas_revision
@@ -69,6 +75,8 @@ func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	result.atlas_edge = atlas_edge
 	# Native atlas images are new objects, so a result can share one.
 	result.atlas_image = atlas if copy_atlas and atlas_revision != uploaded_revision else null
+	result.emission_image = emission_atlas if copy_atlas and atlas_revision != uploaded_revision else null
+	result.season_image = season_atlas if copy_atlas and atlas_revision != uploaded_revision else null
 	result.draw_records = data.records
 	result.draw_images.assign(data.images)
 	result.draws = data.draws
@@ -90,13 +98,15 @@ func prepare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, vi
 		return "invalid native region assets"
 
 	var layout := [city.map_size, city.visible_altitude_levels, city.compass_rotation(),
-		view, mode, pipes, subways, water_mains, palette, sprites, pack_atlas, special_overlays, animation_phase, tunnels]
+		view, mode, pipes, subways, water_mains, palette, sprites, pack_atlas, special_overlays, animation_phase, tunnels, sprites.visual_revision]
 	var configuration := CityIsometricRenderer.view_configuration(view)
 
 	if configuration == null:
 		return "invalid native region view"
 
 	if layout != _layout:
+		_emission = sprites.visual_emission
+		_seasons = sprites.visual_seasons
 		var artwork: Dictionary[int, Image] = {}
 
 		for id: int in sprites.entries_by_id:

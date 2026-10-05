@@ -256,6 +256,12 @@ func tick() -> bool:
 
 			result.display_city = null
 			result.texture = ImageTexture.create_from_image(result.image)
+			if result.emission_image != null:
+				result.emission_texture = ImageTexture.create_from_image(result.emission_image)
+				result.emission_image = null
+			if result.season_image != null:
+				result.season_texture = ImageTexture.create_from_image(result.season_image)
+				result.season_image = null
 			result.generation = _job_generation
 			publish_changes(entries.get(_job_key), result)
 			entries[_job_key] = result
@@ -390,6 +396,8 @@ func texture() -> CityMapSource:
 
 		output.tiles.append(CityMapSource.TileEntry.new(Vector2(entry.bounds.position * divisor), Vector2(entry.bounds.size * divisor),
 			entry.texture))
+		output.tiles[-1].emission = entry.emission_texture
+		output.tiles[-1].seasons = entry.season_texture
 
 	_source_updates.clear()
 	_published_viewport = _viewport_serial
@@ -400,6 +408,8 @@ func texture() -> CityMapSource:
 func _mesh_entry(gpu: CityGpuRegionResult) -> CityMapSource.MeshEntry:
 	if gpu.source_entry == null:
 		gpu.source_entry = CityMapSource.MeshEntry.new(Vector2(gpu.bounds.position * divisor), gpu.mesh, gpu.atlas_texture, divisor)
+		gpu.source_entry.emission = gpu.emission_texture
+		gpu.source_entry.seasons = gpu.season_texture
 		gpu.source_entry.immutable = true
 	return gpu.source_entry
 
@@ -625,6 +635,8 @@ func _gpu_atlas_bytes() -> int:
 class RegionWorker extends RefCounted:
 	var task: CityRenderTask
 	var context: CityGpuBuildContext
+	var seasons: ImageTexture
+	var emission: ImageTexture
 	var atlas: ImageTexture
 	var atlas_revision := -1
 	var layout := -1

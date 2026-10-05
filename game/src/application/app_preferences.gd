@@ -37,10 +37,12 @@ var update_skipped_version := ""
 var update_checked_at := 0
 var update_error := ""
 var debug_mode := false
+var visual_enhancements := VisualEnhancementOptions.normalize({})
 
 
 func save_options(include_ui_scale := true) -> SettingsStore.SaveOptions:
 	var options := SettingsStore.SaveOptions.new()
+	options.visual_enhancements = visual_enhancements
 	options.graphics_source = graphics_source
 	options.graphics_folder = graphics_folder
 	options.soundtrack_folder = soundtrack_folder

@@ -33,6 +33,7 @@ func open_import_settings() -> void:
 
 func open_settings_dialog() -> void:
 	app.main_overlays.settings_dialog.loading_values = true
+	app.main_overlays.settings_dialog.visual_tab.show_values(preferences.visual_enhancements)
 	app.main_overlays.settings_dialog.dark_underground_check.button_pressed = preferences.dark_underground
 	app.main_overlays.settings_dialog.theme_selector.select(1 if preferences.ui_theme == "dark" else 0)
 	app.main_overlays.settings_dialog.translucent_menus_check.button_pressed = preferences.translucent_menus
@@ -81,6 +82,8 @@ func apply_settings() -> void:
 	var dialog := app.main_overlays.settings_dialog
 	var values: AppSettingsStore.Values = dialog.selected_values()
 	var saved_before := _saved_settings_text()
+	preferences.visual_enhancements = values.visual_enhancements
+	app.visual_environment.configure()
 	var media_packs_changed := (not _same_pack(values.sound_pack_folder, preferences.sound_pack_folder)
 			or not _same_pack(values.music_pack_folder, preferences.music_pack_folder))
 
@@ -245,6 +248,8 @@ func load_app_settings() -> void:
 		preferences.fullscreen,
 	)
 	preferences.toolbar_sounds = bool(values.toolbar_sounds)
+	preferences.visual_enhancements = values.visual_enhancements
+	app.visual_environment.configure()
 	preferences.city_sounds = values.city_sounds
 	preferences.sound_pack_folder = str(values.sound_pack_folder)
 	preferences.music_pack_folder = str(values.music_pack_folder)

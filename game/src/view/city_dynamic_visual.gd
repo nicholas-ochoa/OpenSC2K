@@ -2,6 +2,7 @@ class_name CityDynamicVisual
 extends RefCounted
 # one sprite or overlay batch sent to the city canvas
 
+var emission_texture: Texture2D
 var texture: Texture2D
 var index_texture: Texture2D
 var palette_lookup_all: bool = false
@@ -28,6 +29,7 @@ func _init(image_texture: Texture2D = null, destination := Vector2.ZERO, extent 
 # retained records own their fields and share the image and texture resources
 func copy() -> CityDynamicVisual:
 	var result := CityDynamicVisual.new()
+	result.emission_texture = emission_texture
 	result.texture = texture
 	result.index_texture = index_texture
 	result.palette_lookup_all = palette_lookup_all
@@ -49,6 +51,7 @@ func copy() -> CityDynamicVisual:
 func matches(other: CityDynamicVisual) -> bool:
 	return (other != null
 		and texture == other.texture
+		and emission_texture == other.emission_texture
 		and index_texture == other.index_texture
 		and palette_lookup_all == other.palette_lookup_all
 		and texture_factor == other.texture_factor
@@ -66,7 +69,7 @@ func matches(other: CityDynamicVisual) -> bool:
 
 # cache stamps compare fields by value while retaining resource identity
 func value_signature() -> Array:
-	return [texture, index_texture, palette_lookup_all, texture_factor, position, size,
+	return [texture, emission_texture, index_texture, palette_lookup_all, texture_factor, position, size,
 		image, special_overlay, batch_cache_key, depth_order, shadow, special_batch, hidden]
 
 

@@ -26,6 +26,9 @@ func _draw() -> void:
 			false,
 		)
 
+		if visual.emission_texture != null:
+			draw_texture_rect(visual.emission_texture, Rect2(source_position, source_size), false, Color(0, 1, 1))
+
 
 func set_visuals(
 	value: Array[CityDynamicVisual], scale_value: float, offset_value: Vector2
@@ -56,7 +59,7 @@ static func batch_special_visuals(
 	var pending_bounds := Rect2i()
 
 	for visual in value:
-		if not visual.special_overlay:
+		if not visual.special_overlay or visual.emission_texture != null:
 			_append_special_batch(result, pending, batch_cache)
 			pending.clear()
 			pending_bounds = Rect2i()

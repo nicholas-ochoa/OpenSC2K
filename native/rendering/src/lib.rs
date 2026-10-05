@@ -16,6 +16,7 @@ mod rect_index;
 mod region;
 mod region_plan;
 mod sprites;
+mod visual_auxiliary;
 
 use sprites::Sprite;
 use std::collections::HashMap;

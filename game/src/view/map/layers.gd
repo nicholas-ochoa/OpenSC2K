@@ -25,6 +25,38 @@ var _palette_shader: Shader
 var _foreground_palette_material: ShaderMaterial
 var _retained_data_mesh: ArrayMesh
 var _retained_data_signature: Array = []
+var environment_parameters: Dictionary = {}
+var _visual_materials: Dictionary = {}
+
+
+func set_environment(parameters: Dictionary) -> void:
+	environment_parameters = parameters
+	for material: ShaderMaterial in [_base_material, _dynamic_material]:
+		_apply_environment(material)
+	for material: ShaderMaterial in _visual_materials.values():
+		_apply_environment(material)
+
+
+func _apply_environment(material: ShaderMaterial) -> void:
+	if material == null:
+		return
+	for key in environment_parameters:
+		material.set_shader_parameter(key, environment_parameters[key])
+
+
+func visual_material(emission: Texture2D, seasons: Texture2D) -> ShaderMaterial:
+	if emission == null and seasons == null:
+		return _base_material
+	var key := "%d/%d" % [emission.get_instance_id() if emission != null else 0, seasons.get_instance_id() if seasons != null else 0]
+	if not _visual_materials.has(key):
+		var material := _base_material.duplicate() as ShaderMaterial
+		material.set_shader_parameter("environment_emission", emission)
+		material.set_shader_parameter("environment_has_emission", emission != null)
+		material.set_shader_parameter("environment_season_mask", seasons)
+		material.set_shader_parameter("environment_has_seasons", seasons != null)
+		_apply_environment(material)
+		_visual_materials[key] = material
+	return _visual_materials[key]
 
 
 func _init(control: CityMapControl) -> void:
@@ -294,7 +326,7 @@ func _sync_base_nodes() -> void:
 			tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			tile.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			tile.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			tile.material = _base_material
+			tile.material = visual_material(entry.emission, entry.seasons)
 			base_layer.add_child(tile)
 			_tile_layers.append(tile)
 
@@ -323,13 +355,14 @@ func _sync_base_nodes() -> void:
 			mesh.set_meta("source_position", entry.position)
 			mesh.set_meta("divisor", entry.divisor)
 			mesh.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			mesh.material = _base_material
+			mesh.material = visual_material(entry.emission, entry.seasons)
 			_mesh_layers.append(mesh)
 		for mesh: MeshInstance2D in retained_meshes.values():
 			mesh.hide()
 			mesh.queue_free()
 
 	base_layer.texture = map.city_source.texture
+	base_layer.material = visual_material(map.city_source.emission, map.city_source.seasons)
 
 	for tile in _tile_layers:
 		tile.position = Vector2(tile.get_meta("source_position")) * scale
@@ -345,6 +378,15 @@ func _sync_base_nodes() -> void:
 	base_layer.position = map.camera._draw_offset(scale)
 	base_layer.size = Vector2(map.city_source.size) * scale
 	base_layer.show()
+	var used_materials := {}
+	used_materials[base_layer.material] = true
+	for tile in _tile_layers:
+		used_materials[tile.material] = true
+	for mesh in _mesh_layers:
+		used_materials[mesh.material] = true
+	for key in _visual_materials.keys():
+		if not used_materials.has(_visual_materials[key]):
+			_visual_materials.erase(key)
 	_sync_base_material()
 	_sync_dynamic_canvas()
 
@@ -378,6 +420,7 @@ func _update_region_meshes(scale: float) -> bool:
 		mesh.scale = Vector2.ONE * scale * entry.divisor
 		mesh.mesh = entry.mesh
 		mesh.texture = entry.texture
+		mesh.material = visual_material(entry.emission, entry.seasons)
 		mesh.set_meta("divisor", entry.divisor)
 
 	_tiled_source = after
@@ -411,6 +454,10 @@ func _sync_base_material() -> void:
 			"palette_cycle_enabled", map.animated_palette_texture != null
 		)
 		_dynamic_material.set_shader_parameter("palette_lookup_all", true)
+	for material: ShaderMaterial in _visual_materials.values():
+		for key in ["dark_underground", "dark_underground_palette", "palette_indices", "animated_palette", "palette_cycle_enabled", "palette_lookup_all"]:
+			material.set_shader_parameter(key, _base_material.get_shader_parameter(key))
+	set_environment(environment_parameters)
 
 
 func _sync_dynamic_canvas() -> void:

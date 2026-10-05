@@ -74,8 +74,50 @@ fn city(d: &VarDictionary) -> Result<City, String> {
     Ok(c)
 }
 
+fn auxiliary_images(images: &VarDictionary) -> HashMap<u64, Sprite> {
+    images
+        .iter_shared()
+        .filter_map(|(key, value)| {
+            let id = key.try_to::<i64>().ok()?;
+            let image = value.try_to::<Gd<Image>>().ok()?;
+            Some((id as u64 * 2, sprite_from_image(&image).ok()?))
+        })
+        .collect()
+}
+
 #[godot_api]
 impl NativeCityRegionBuilder {
+    #[func]
+    fn auxiliary_atlas(&self, images: VarDictionary) -> Option<Gd<Image>> {
+        if images.is_empty() {
+            return None;
+        }
+        let core = self.core.as_ref()?;
+        let pixels = crate::visual_auxiliary::atlas(core.atlas.edge, &core.atlas.slots, &core.sprites.images, &auxiliary_images(&images));
+        Image::create_from_data(
+            core.atlas.edge,
+            core.atlas.edge,
+            false,
+            Format::RGBA8,
+            &PackedByteArray::from(pixels.as_slice()),
+        )
+    }
+
+    #[func]
+    fn auxiliary_raster(&mut self, bounds: Rect2i, images: VarDictionary) -> Option<Gd<Image>> {
+        if images.is_empty() {
+            return None;
+        }
+        let core = self.core.as_mut()?;
+        let rect = Rect::new(bounds.position.x, bounds.position.y, bounds.size.x, bounds.size.y);
+        if !rect.area() {
+            return None;
+        }
+        let draws = core.collect(rect).ok()?;
+        let pixels = crate::visual_auxiliary::raster(rect, &draws, &core.sprites.images, &auxiliary_images(&images));
+        Image::create_from_data(rect.w, rect.h, false, Format::RGBA8, &PackedByteArray::from(pixels.as_slice()))
+    }
+
     #[func]
     fn configure(&mut self, request: VarDictionary, images: VarDictionary, target: i64) -> GString {
         let previous_revision = self.core.as_ref().map_or(0, |core| core.atlas.revision + 1);

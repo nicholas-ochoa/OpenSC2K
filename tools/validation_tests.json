@@ -1,5 +1,18 @@
 [
   {
+    "id": "visual_environment_test",
+    "script": "tests/visual_environment_test.gd",
+    "domain": "rendering",
+    "lane": "product"
+  },
+  {
+    "id": "visual_environment_gpu_test",
+    "script": "tests/visual_environment_gpu_test.gd",
+    "domain": "rendering",
+    "lane": "native",
+    "driver": "scene-batch"
+  },
+  {
     "id": "sc2x_edge_render_test",
     "script": "tests/sc2x_edge_render_test.gd",
     "domain": "rendering",

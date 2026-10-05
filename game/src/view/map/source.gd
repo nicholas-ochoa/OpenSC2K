@@ -12,6 +12,8 @@ extends RefCounted
 var size: Vector2i
 # the whole-map texture, or null when the map draws from entries or not at all
 var texture: Texture2D
+var emission: Texture2D
+var seasons: Texture2D
 var tiles: Array[TileEntry] = []
 var meshes: Array[MeshEntry] = []
 # Region snapshots can replace a few entries without changing their order.
@@ -34,6 +36,8 @@ class TileEntry:
 
 	var position: Vector2
 	var size: Vector2
+	var seasons: Texture2D
+	var emission: Texture2D
 	var texture: Texture2D
 
 
@@ -50,6 +54,8 @@ class MeshEntry:
 	var immutable := false
 	var position: Vector2
 	var mesh: Mesh
+	var seasons: Texture2D
+	var emission: Texture2D
 	var texture: Texture2D
 	var divisor: int
 

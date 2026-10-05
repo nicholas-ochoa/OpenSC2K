@@ -1,5 +1,6 @@
 
 shader_type canvas_item;
+#include "res://src/view/environment/environment_color.gdshaderinc"
 
 uniform sampler2D palette_indices : filter_nearest, repeat_disable;
 uniform sampler2D animated_palette : source_color, filter_nearest, repeat_disable;
@@ -7,6 +8,9 @@ uniform bool palette_cycle_enabled = false;
 uniform bool palette_lookup_all = false;
 uniform bool dark_underground = false;
 uniform sampler2D dark_underground_palette : source_color, filter_nearest, repeat_disable;
+
+varying flat float emission_draw;
+void vertex() { emission_draw = float(COLOR.rgb == vec3(0.0, 1.0, 1.0)); }
 
 void fragment() {
 	vec4 base_color = texture(TEXTURE, UV);
@@ -25,7 +29,11 @@ void fragment() {
 	} else {
 		COLOR = base_color;
 	}
-	if (dark_underground) {
+	if (emission_draw > 0.5) {
+		COLOR = vec4(base_color.rgb, base_color.a * environment_night * float(environment_enabled));
+	} else if (dark_underground) {
 		COLOR.rgb = texture(dark_underground_palette, vec2((float(palette_index) + 0.5) / 256.0, 0.5)).rgb;
+	} else {
+		COLOR.rgb = environment_color(COLOR.rgb, UV);
 	}
 }

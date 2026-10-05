@@ -3,6 +3,9 @@ extends RefCounted
 
 var entries: Array[SpriteEntry] = []
 var entries_by_id: Dictionary[int, SpriteEntry] = {}
+var visual_emission: Dictionary[int, Image] = {}
+var visual_seasons: Dictionary[int, Image] = {}
+var visual_revision := 0
 var parse_error := ""
 # alternate art can leave the ground visible below its small highway pieces
 var redraw_small_highway_ground := false
