@@ -16,8 +16,9 @@ use super::json_value;
 use sc2k_formats::json::Object as JsonObject;
 use sc2k_sim::formats::document::{Chunk, Document, Preserved, Sc2xState};
 use sc2k_sim::formats::sc2x::document as sc2x_document;
+use sc2k_sim::formats::sc2x::document::Entries;
 use sc2k_sim::formats::sc2x::metadata::{self, Metadata, TEAM_COUNT};
-use sc2k_sim::formats::{sc2, sc2kfix};
+use sc2k_sim::formats::{sc2, sc2kfix, store};
 
 #[derive(GodotClass)]
 #[class(no_init, base = Object)]
@@ -248,6 +249,35 @@ fn sc2x_of(document: &Document) -> VarDictionary {
     document.sc2x.as_ref().map(sc2x_value).unwrap_or_default()
 }
 
+/// The entries `{order, members}` of a prepared save.
+fn entries_from(order: &PackedStringArray, members: &VarDictionary) -> Entries {
+    let members = order
+        .as_slice()
+        .iter()
+        .map(|name| {
+            let data = members
+                .get(&name.to_variant())
+                .and_then(|value| value.try_to::<PackedByteArray>().ok())
+                .map(|data| data.to_vec())
+                .unwrap_or_default();
+
+            (name.to_string(), data)
+        })
+        .collect();
+
+    Entries {
+        members,
+        issues: Vec::new(),
+    }
+}
+
+fn written(result: Result<(), String>) -> VarDictionary {
+    match result {
+        Ok(()) => success(),
+        Err(error) => failure(&error),
+    }
+}
+
 fn converted(result: Result<(Document, Vec<String>), String>) -> VarDictionary {
     match result {
         Ok((document, issues)) => {
@@ -390,6 +420,42 @@ impl NativeCityDocument {
         native.upgrade_large_limits();
 
         document_value(&native)
+    }
+
+    /// `{ok, error}`: write `bytes` to `path` through a checked temporary file.
+    /// `expected` is empty, or `{order, members}`: the entries that an SC2X file
+    /// must load again with.
+    #[func]
+    fn write_verified(path: GString, bytes: PackedByteArray, expected: VarDictionary) -> VarDictionary {
+        let path = std::path::PathBuf::from(path.to_string());
+
+        if expected.is_empty() {
+            return written(store::write_verified(&path, bytes.as_slice(), None));
+        }
+
+        let order = expected
+            .get("order")
+            .and_then(|value| value.try_to::<PackedStringArray>().ok())
+            .unwrap_or_default();
+        let entries = entries_from(&order, &convert::dictionary(&expected, "members"));
+
+        written(store::write_verified(&path, bytes.as_slice(), Some(&entries)))
+    }
+
+    /// `{ok, error, bytes}`: compress the entries of a working document and
+    /// write them to `path` through a checked temporary file.
+    #[func]
+    fn write_entries(path: GString, order: PackedStringArray, members: VarDictionary) -> VarDictionary {
+        let entries = entries_from(&order, &members);
+
+        match store::write_entries(&std::path::PathBuf::from(path.to_string()), &entries) {
+            Ok(bytes) => {
+                let mut result = success();
+                result.set("bytes", &packed(&bytes));
+                result
+            }
+            Err(error) => failure(&error),
+        }
     }
 
     /// `{ok, error, metadata}` from the bytes of metadata.json.

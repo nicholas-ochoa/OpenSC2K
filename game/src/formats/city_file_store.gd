@@ -2,6 +2,7 @@ class_name CityFileStore
 extends RefCounted
 # Saves write a new temporary file beside the target, close it, read it back,
 # and check it before they replace the target. A failure keeps the last save.
+# The native simulation library compresses, writes and checks the file.
 # `prepare` runs on the main thread and copies the saved content; `write` only
 # reads that copy, so a worker thread can compress and write a large city.
 
@@ -107,85 +108,48 @@ static func prepare(
 
 # Compress, write, and check a prepared save. This reads only `prepared`.
 static func write(prepared: PreparedSave) -> FileWriteResult:
-	var bytes := prepared.bytes
+	if prepared.entries == null:
+		var plain := write_verified(prepared.path, prepared.bytes)
 
-	if prepared.entries != null:
-		var archive := ZipArchive.encode(
-			prepared.entries.order, prepared.entries.members, Sc2xDocument.MAX_ARCHIVE_BYTES, Sc2xDocument.MAX_DATA_BYTES, true)
+		if plain.ok:
+			plain.data = prepared.bytes
 
-		if not archive.ok:
-			return FileWriteResult.failure(archive.error)
+		return plain
 
-		bytes = archive.bytes
+	var path := ProjectSettings.globalize_path(prepared.path)
+	var archive: Dictionary = NativeCityDocument.write_entries(path, prepared.entries.order, prepared.entries.members)
 
-	var written := write_verified(prepared.path, bytes, prepared.entries)
+	if not archive.ok:
+		return FileWriteResult.failure(archive.error)
 
-	if written.ok:
-		written.data = bytes
+	var outcome := FileWriteResult.new()
+	outcome.ok = true
+	outcome.path = prepared.path
+	outcome.data = archive.bytes
 
-	return written
+	return outcome
 
 
 # Write `bytes` to a temporary file beside `path`, read it back, check it, and
 # then replace `path`. An SC2X file must load again with the `expected` entries.
+# The native simulation library writes and checks the file; see
+# native/core/sim/src/formats/store.rs.
 static func write_verified(path: String, bytes: PackedByteArray, expected: Sc2xDocument.EntriesResult = null) -> FileWriteResult:
-	var temporary := "%s.%d.tmp" % [path, Time.get_ticks_usec()]
-	var output := FileAccess.open(temporary, FileAccess.WRITE)
+	var entries := {}
 
-	if output == null:
-		return FileWriteResult.failure("Cannot open save output: %s" % error_string(FileAccess.get_open_error()))
+	if expected != null:
+		entries = {"order": expected.order, "members": expected.members}
 
-	output.store_buffer(bytes)
-	output.flush()
-	var write_error := output.get_error()
-	output.close()
+	var written: Dictionary = NativeCityDocument.write_verified(ProjectSettings.globalize_path(path), bytes, entries)
 
-	if write_error != OK:
-		DirAccess.remove_absolute(temporary)
-
-		return FileWriteResult.failure("Cannot write save output: %s" % error_string(write_error))
-
-	var check := _verify(temporary, bytes, expected)
-
-	if not check.is_empty():
-		DirAccess.remove_absolute(temporary)
-
-		return FileWriteResult.failure(check)
-
-	var rename_error := DirAccess.rename_absolute(temporary, path)
-
-	if rename_error != OK:
-		DirAccess.remove_absolute(temporary)
-
-		return FileWriteResult.failure("Cannot replace the saved city: %s" % error_string(rename_error))
+	if not written.ok:
+		return FileWriteResult.failure(written.error)
 
 	var outcome := FileWriteResult.new()
 	outcome.ok = true
 	outcome.path = path
 
 	return outcome
-
-
-static func _verify(path: String, bytes: PackedByteArray, expected: Sc2xDocument.EntriesResult) -> String:
-	var stored := FileAccess.get_file_as_bytes(path)
-
-	if FileAccess.get_open_error() != OK or stored != bytes:
-		return "The saved file does not match the city data. The previous save is unchanged."
-
-	if expected == null:
-		return ""
-
-	var reloaded := Sc2File.new()
-
-	if not reloaded.parse(stored):
-		return "The saved file does not load again: %s. The previous save is unchanged." % reloaded.parse_error
-
-	var actual := Sc2xDocument.entries(reloaded)
-
-	if not actual.ok or actual.order != expected.order or actual.members != expected.members:
-		return "The saved file loads with different city data. The previous save is unchanged."
-
-	return ""
 
 
 # An original city saved to an .sc2x file uses the SC2X format of sc2kfix.
